@@ -1,0 +1,26 @@
+{
+  "name": "@feishu-timeline/web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "dotenv -e .env.example -- next dev --port 3000",
+    "build": "next build",
+    "start": "dotenv -e .env.example -- next start --port 3000",
+    "lint": "pnpm exec eslint src --ext .ts,.tsx --max-warnings=0",
+    "typecheck": "tsc --noEmit",
+    "test": "pnpm exec vitest run"
+  },
+  "dependencies": {
+    "next": "^15.2.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.10",
+    "@types/react": "^19.0.10",
+    "@types/react-dom": "^19.0.4",
+    "dotenv-cli": "^8.0.0",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.8"
+  }
+}

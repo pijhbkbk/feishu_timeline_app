@@ -1,0 +1,30 @@
+{
+  "name": "feishu-timeline-plugin",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@9.15.4",
+  "engines": {
+    "node": ">=24.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "scripts": {
+    "dev": "concurrently -n web,api -c cyan,green \"pnpm --filter @feishu-timeline/web dev\" \"pnpm --filter @feishu-timeline/api dev\"",
+    "build": "pnpm --filter @feishu-timeline/shared build && pnpm --filter @feishu-timeline/web build && pnpm --filter @feishu-timeline/api build",
+    "lint": "pnpm --filter @feishu-timeline/shared lint && pnpm --filter @feishu-timeline/web lint && pnpm --filter @feishu-timeline/api lint",
+    "typecheck": "pnpm --filter @feishu-timeline/shared typecheck && pnpm --filter @feishu-timeline/web typecheck && pnpm --filter @feishu-timeline/api typecheck",
+    "test": "pnpm --filter @feishu-timeline/shared test && pnpm --filter @feishu-timeline/web test && pnpm --filter @feishu-timeline/api test",
+    "prisma:migrate": "pnpm --filter @feishu-timeline/api prisma:migrate",
+    "prisma:validate": "pnpm --filter @feishu-timeline/api prisma:validate",
+    "prisma:seed": "pnpm --filter @feishu-timeline/api prisma:seed",
+    "infra:up": "docker compose up -d postgres redis",
+    "infra:down": "docker compose down"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.22.0",
+    "@next/eslint-plugin-next": "^15.5.13",
+    "concurrently": "^9.1.2",
+    "eslint": "^9.22.0",
+    "globals": "^16.0.0",
+    "typescript-eslint": "^8.26.1"
+  }
+}

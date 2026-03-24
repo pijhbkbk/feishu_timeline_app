@@ -1,0 +1,42 @@
+{
+  "name": "@feishu-timeline/api",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "predev": "pnpm run prisma:generate",
+    "dev": "dotenv -e .env.example -- tsx watch src/main.ts",
+    "prebuild": "pnpm run prisma:generate",
+    "build": "tsc -p tsconfig.build.json",
+    "start": "dotenv -e .env.example -- node dist/main.js",
+    "lint": "pnpm exec eslint src --ext .ts --max-warnings=0",
+    "pretypecheck": "pnpm run prisma:generate",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "pretest": "pnpm run prisma:generate",
+    "test": "vitest run",
+    "prisma:generate": "dotenv -e .env.example -- prisma generate --schema prisma/schema.prisma",
+    "prisma:validate": "dotenv -e .env.example -- prisma validate --schema prisma/schema.prisma",
+    "prisma:migrate": "dotenv -e .env.example -- prisma migrate dev --schema prisma/schema.prisma",
+    "prisma:seed": "dotenv -e .env.example -- tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "@nestjs/common": "^11.0.11",
+    "@nestjs/config": "^4.0.2",
+    "@nestjs/core": "^11.0.11",
+    "@nestjs/platform-express": "^11.0.11",
+    "@prisma/client": "^6.4.1",
+    "cookie-parser": "^1.4.7",
+    "ioredis": "^5.5.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2"
+  },
+  "devDependencies": {
+    "@types/cookie-parser": "^1.4.9",
+    "@types/express": "^5.0.3",
+    "@types/node": "^22.13.10",
+    "dotenv-cli": "^8.0.0",
+    "prisma": "^6.4.1",
+    "tsx": "^4.19.3",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.8"
+  }
+}

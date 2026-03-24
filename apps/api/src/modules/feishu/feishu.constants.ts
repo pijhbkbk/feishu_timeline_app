@@ -1,0 +1,1 @@
+export const FEISHU_AUTH_ADAPTER = Symbol('FEISHU_AUTH_ADAPTER');
