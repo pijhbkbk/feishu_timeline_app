@@ -56,6 +56,7 @@ export class StubFeishuAuthAdapter implements FeishuAuthAdapter {
 
     const clientId = this.getRequiredConfig('feishuAppId', 'Feishu app id');
     const clientSecret = this.getRequiredConfig('feishuAppSecret', 'Feishu app secret');
+    const redirectUri = this.getRequiredConfig('feishuRedirectUri', 'Feishu redirect uri');
     const tokenPayload = await this.requestJson(
       FEISHU_TOKEN_ENDPOINT,
       {
@@ -69,17 +70,14 @@ export class StubFeishuAuthAdapter implements FeishuAuthAdapter {
           code: trimmedCode,
           client_id: clientId,
           client_secret: clientSecret,
+          redirect_uri: redirectUri,
         }),
       },
       'Feishu token exchange',
     );
     const tokenEnvelope = this.expectFeishuSuccess(tokenPayload, 'Feishu token exchange');
-    const tokenData = this.asObject(tokenEnvelope.data, 'Feishu token exchange response data');
-    const accessToken = this.getRequiredString(
-      tokenData,
-      'access_token',
-      'Feishu token exchange response is missing access_token.',
-    );
+    const accessToken = this.getAccessToken(tokenEnvelope);
+    const tokenData = this.getTokenProfileData(tokenEnvelope);
 
     const userInfoPayload = await this.requestJson(
       FEISHU_USER_INFO_ENDPOINT,
@@ -167,6 +165,36 @@ export class StubFeishuAuthAdapter implements FeishuAuthAdapter {
     return envelope;
   }
 
+  private getAccessToken(tokenEnvelope: JsonObject) {
+    const directAccessToken = this.getOptionalString(tokenEnvelope, 'access_token');
+
+    if (directAccessToken) {
+      return directAccessToken;
+    }
+
+    if (!('data' in tokenEnvelope) || tokenEnvelope.data == null) {
+      throw new ServiceUnavailableException(
+        'Feishu token exchange response is missing access_token.',
+      );
+    }
+
+    const tokenData = this.asObject(tokenEnvelope.data, 'Feishu token exchange response data');
+
+    return this.getRequiredString(
+      tokenData,
+      'access_token',
+      'Feishu token exchange response is missing access_token.',
+    );
+  }
+
+  private getTokenProfileData(tokenEnvelope: JsonObject): JsonObject {
+    if ('data' in tokenEnvelope && tokenEnvelope.data != null) {
+      return this.asObject(tokenEnvelope.data, 'Feishu token exchange response data');
+    }
+
+    return tokenEnvelope;
+  }
+
   private toIdentityProfile(
     userInfoData: JsonObject,
     tokenData: JsonObject,
@@ -246,6 +274,8 @@ export class StubFeishuAuthAdapter implements FeishuAuthAdapter {
     const record = payload as JsonObject;
 
     const message =
+      (typeof record.error_description === 'string' && record.error_description.trim()) ||
+      (typeof record.error === 'string' && record.error.trim()) ||
       (typeof record.msg === 'string' && record.msg.trim()) ||
       (typeof record.message === 'string' && record.message.trim()) ||
       null;
