@@ -161,7 +161,7 @@ export class AuthService {
       {
         httpOnly: true,
         sameSite: 'lax',
-        secure: false,
+        secure: this.shouldUseSecureCookies(),
         path: '/',
         expires: expiresAt,
       },
@@ -172,7 +172,7 @@ export class AuthService {
     response.clearCookie(this.configService.get<string>('sessionCookieName') ?? 'ft_session', {
       httpOnly: true,
       sameSite: 'lax',
-      secure: false,
+      secure: this.shouldUseSecureCookies(),
       path: '/',
     });
   }
@@ -206,5 +206,12 @@ export class AuthService {
     );
 
     return codes && codes.length > 0 ? [...new Set(codes)] : ['project_manager'];
+  }
+
+  private shouldUseSecureCookies() {
+    const nodeEnv = this.configService.get<string>('nodeEnv') ?? process.env.NODE_ENV;
+    const frontendUrl = this.configService.get<string>('frontendUrl')?.trim();
+
+    return nodeEnv === 'production' || Boolean(frontendUrl?.startsWith('https://'));
   }
 }

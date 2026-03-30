@@ -11,14 +11,24 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
   const port = configService.get<number>('port') ?? 3001;
-  const frontendUrl = configService.get<string>('frontendUrl') ?? 'http://localhost:3000';
+  const nodeEnv = configService.get<string>('nodeEnv') ?? process.env.NODE_ENV ?? 'development';
+  const frontendUrl =
+    process.env.FRONTEND_URL?.trim() || (nodeEnv === 'production' ? '' : 'http://localhost:3000');
 
   app.setGlobalPrefix('api');
   app.use(cookieParser());
-  app.enableCors({
-    origin: frontendUrl,
-    credentials: true,
-  });
+
+  if (frontendUrl) {
+    app.enableCors({
+      origin: frontendUrl,
+      credentials: true,
+    });
+  } else {
+    Logger.warn(
+      'FRONTEND_URL is not configured. Production API expects same-origin requests.',
+      'Bootstrap',
+    );
+  }
 
   await app.listen(port);
 

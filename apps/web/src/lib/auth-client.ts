@@ -32,8 +32,11 @@ type RequestOptions = Omit<RequestInit, 'body'> & {
   body?: unknown;
 };
 
-export const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3001/api';
+const configuredApiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
+
+export const API_BASE_URL = configuredApiBaseUrl
+  ? configuredApiBaseUrl.replace(/\/$/, '')
+  : '/api';
 
 export const FRONTEND_ROLE_OPTIONS: Array<{
   code: FrontendRoleCode;

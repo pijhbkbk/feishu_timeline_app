@@ -103,10 +103,16 @@ export function AuthProvider({ children }: PropsWithChildren) {
   async function completeFeishuLogin(input: { code: string; state?: string | null }) {
     setError(null);
 
-    const session = await apiRequest<SessionResponse>('/auth/feishu/callback', {
+    await apiRequest<SessionResponse>('/auth/feishu/callback', {
       method: 'POST',
       body: input,
     });
+
+    const session = await apiRequest<SessionResponse>('/auth/session');
+
+    if (!session.authenticated || !session.user) {
+      throw new Error('飞书登录完成，但系统会话未建立。请检查 Cookie 或跨域配置。');
+    }
 
     applySession(session);
   }
