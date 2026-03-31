@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "dotenv -e .env.example -- next dev --port 3000",
     "build": "next build",
-    "start": "dotenv -e .env.example -- next start --port 3000",
+    "start": "dotenv -e .env.example -- next start --hostname 127.0.0.1 --port 3000",
     "lint": "pnpm exec eslint src --ext .ts,.tsx --max-warnings=0",
     "typecheck": "tsc --noEmit",
     "test": "pnpm exec vitest run"

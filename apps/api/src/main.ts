@@ -12,6 +12,7 @@ async function bootstrap() {
   const configService = app.get(ConfigService);
   const port = configService.get<number>('port') ?? 3001;
   const nodeEnv = configService.get<string>('nodeEnv') ?? process.env.NODE_ENV ?? 'development';
+  const host = process.env.HOST?.trim() || (nodeEnv === 'production' ? '127.0.0.1' : '0.0.0.0');
   const frontendUrl =
     process.env.FRONTEND_URL?.trim() || (nodeEnv === 'production' ? '' : 'http://localhost:3000');
 
@@ -30,9 +31,9 @@ async function bootstrap() {
     );
   }
 
-  await app.listen(port);
+  await app.listen(port, host);
 
-  Logger.log(`API server listening on http://localhost:${port}/api`, 'Bootstrap');
+  Logger.log(`API server listening on http://${host}:${port}/api`, 'Bootstrap');
 }
 
 void bootstrap();
