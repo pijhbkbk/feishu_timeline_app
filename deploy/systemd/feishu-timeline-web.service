@@ -1,0 +1,30 @@
+[Unit]
+Description=Feishu Timeline Web
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=__APP_USER__
+Environment=HOME=/home/__APP_USER__
+Environment=COREPACK_HOME=/home/__APP_USER__/.cache/node/corepack
+WorkingDirectory=/opt/feishu_timeline_app/apps/web
+EnvironmentFile=/opt/feishu_timeline_app/apps/web/.env.production
+Environment=NODE_ENV=production
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+ExecStartPre=/usr/bin/test -d /home/__APP_USER__
+ExecStartPre=/usr/bin/test -d /opt/feishu_timeline_app/apps/web/.next
+ExecStartPre=/usr/bin/env bash -lc 'mkdir -p "$COREPACK_HOME"'
+ExecStartPre=/usr/bin/env bash -lc 'command -v node >/dev/null && node -v >/dev/null'
+ExecStartPre=/usr/bin/env bash -lc 'command -v pnpm >/dev/null && pnpm -v >/dev/null'
+ExecStart=/usr/bin/env bash -lc 'cd /opt/feishu_timeline_app/apps/web && exec pnpm exec next start --hostname 127.0.0.1 --port 3000'
+Restart=always
+RestartSec=5
+SyslogIdentifier=feishu-timeline-web
+NoNewPrivileges=true
+PrivateTmp=true
+UMask=0027
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target

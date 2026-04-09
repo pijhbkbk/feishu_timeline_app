@@ -1,0 +1,33 @@
+[Unit]
+Description=Feishu Timeline API
+After=network-online.target
+Wants=network-online.target
+# Legacy Tencent Cloud unit included After/Requires=docker.service.
+# That dependency is intentionally not copied here until its necessity is verified.
+
+[Service]
+Type=simple
+User=__APP_USER__
+WorkingDirectory=/opt/feishu_timeline_app/apps/api
+EnvironmentFile=/opt/feishu_timeline_app/apps/api/.env.production
+Environment=NODE_ENV=production
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+Environment=EXPECTED_OBJECT_STORAGE_DIR=/opt/feishu_timeline_app/var/object-storage
+ExecStartPre=/usr/bin/test -f /opt/feishu_timeline_app/apps/api/dist/main.js
+ExecStartPre=/usr/bin/env bash -lc 'command -v node >/dev/null && node -v >/dev/null'
+ExecStartPre=/usr/bin/env bash -lc 'resolved="$(node -p '\''require("node:path").resolve(process.cwd(), process.env.OBJECT_STORAGE_LOCAL_ROOT || "var/object-storage")'\'')" && echo "Resolved object-storage path: $resolved" && [ "$resolved" = "${EXPECTED_OBJECT_STORAGE_DIR:?}" ]'
+ExecStartPre=/usr/bin/env bash -lc 'resolved="$(node -p '\''require("node:path").resolve(process.cwd(), process.env.OBJECT_STORAGE_LOCAL_ROOT || "var/object-storage")'\'')" && [ -d "$resolved" ] && [ -w "$resolved" ]'
+# TODO: The old host used WorkingDirectory=/opt/feishu_timeline_app/apps/api, but
+# the confirmed attachment directory is /opt/feishu_timeline_app/var/object-storage.
+# Verify object-storage path resolution in code and env before changing either path.
+ExecStart=/usr/bin/env node /opt/feishu_timeline_app/apps/api/dist/main.js
+Restart=always
+RestartSec=5
+SyslogIdentifier=feishu-timeline-api
+NoNewPrivileges=true
+PrivateTmp=true
+UMask=0027
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target
