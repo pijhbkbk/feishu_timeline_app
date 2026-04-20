@@ -8,9 +8,9 @@
 ## 项目基本信息
 
 - 项目名称：轻卡定制颜色开发项目管理系统
-- 当前阶段：R09 已完成，等待确认
-- 当前轮次：R09
-- 总体状态：PASSED
+- 当前阶段：R10 已部署，等待确认
+- 当前轮次：R10
+- 总体状态：IN_PROGRESS
 - 仓库路径：`/Users/lixiaochen/Downloads/feishu_timeline_app`
 - 默认分支：`main`
 - 最近更新时间：`2026-04-20`
@@ -44,7 +44,7 @@
 | R07 | 流程可视化、甘特图、看板、月度评审台账 | PASSED | CONTINUE | 已补流程图、甘特、看板、日历、负责人/部门视图、第 17 步月度评审台账与第 18 步退出建议展示 |
 | R08 | 自动化测试体系 | PASSED | CONTINUE | 已补关键单测、权限/附件校验、HTTP E2E 主链路与测试覆盖说明 |
 | R09 | 部署脚本、CI/CD、监控、备份、预发布 | PASSED | STOP | 已完成 Docker 化、staging 一键部署、健康检查、回滚脚本与部署文档，等待确认后进入 R10 |
-| R10 | UAT、试运行、上线收口 | NOT_STARTED | - | - |
+| R10 | UAT、试运行、上线收口 | IN_PROGRESS | STOP | 已完成 deploy readiness audit、生产部署、HTTPS 验证与 smoke test，等待确认是否进入 main 合并与 tag 收口 |
 
 状态枚举建议：
 
@@ -1008,3 +1008,85 @@ STOP
 
 #### Next Round
 R10（待用户确认）
+
+### Round R10
+
+#### Goal
+完成 VPS deploy readiness audit、按交付分支执行生产部署、验证 HTTPS/健康检查/基础 smoke test，并形成可追溯的上线记录；暂不合并 `main`，暂不打 tag。
+
+#### Scope
+- 审计 GCE 实例 SSH、域名、证书、代理、运行时、数据库与回滚入口
+- 复用现有 `scripts/deploy/gce-*`、`deploy/nginx/*`、`deploy/systemd/*` 资产完成原地部署
+- 从 `feat/color-pm-r09-r10` 分支部署到生产 VPS
+- 更新本账本
+
+#### Inputs Read
+- `AGENTS.md`
+- `docs/EXECUTION_LEDGER.md`
+- `docs/rounds/R10.md`
+- `.env.production.example`
+- `deploy/nginx/feishu-timeline.conf`
+- `deploy/nginx/timeline.all-too-well.com.conf`
+- `scripts/deploy/gce-bootstrap.sh`
+- `scripts/deploy/gce-sync-and-build.sh`
+- `scripts/deploy/gce-network-and-https.sh`
+- `scripts/deploy/gce-release-verify.sh`
+- `scripts/deploy/gce-production-acceptance.sh`
+- `scripts/deploy/gce-redeploy.sh`
+- `scripts/deploy/gce-rollback-checklist.sh`
+- 当前 Git 分支与最近一次 push 结果
+
+#### Files Changed
+- `docs/EXECUTION_LEDGER.md`
+
+#### Commands Run
+```bash
+git branch --show-current
+git rev-parse HEAD
+git log -1 --oneline --decorate --no-color
+git remote -v
+gcloud --version
+gcloud compute ssh instance-20260408-091840 --project=axial-acrobat-492709-r7 --zone=us-west1-b --command 'whoami && hostname && uname -a'
+gcloud compute instances describe instance-20260408-091840 --project=axial-acrobat-492709-r7 --zone=us-west1-b --format='get(networkInterfaces[0].accessConfigs[0].natIP)'
+dig @1.1.1.1 +short all-too-well.com A
+dig @8.8.8.8 +short all-too-well.com A
+dig @1.1.1.1 +short www.all-too-well.com A
+dig @8.8.8.8 +short www.all-too-well.com A
+dig @1.1.1.1 +short timeline.all-too-well.com A
+dig @8.8.8.8 +short timeline.all-too-well.com A
+curl -k -I --resolve timeline.all-too-well.com:443:35.212.246.199 https://timeline.all-too-well.com/
+curl -k -I --resolve timeline.all-too-well.com:443:35.212.246.199 https://timeline.all-too-well.com/api/health
+gcloud compute ssh instance-20260408-091840 --project=axial-acrobat-492709-r7 --zone=us-west1-b --command '...readiness audit...'
+GIT_REF=feat/color-pm-r09-r10 RUN_PRISMA_MIGRATE_DEPLOY=yes RUN_RELEASE_VERIFY=yes RUN_PRODUCTION_ACCEPTANCE=yes bash scripts/deploy/gce-redeploy.sh
+gcloud compute ssh instance-20260408-091840 --project=axial-acrobat-492709-r7 --zone=us-west1-b --command 'git -C /opt/feishu_timeline_app rev-parse HEAD && systemctl is-active feishu-timeline-api && systemctl is-active feishu-timeline-web && systemctl is-active nginx && systemctl is-active postgresql && systemctl is-active redis-server'
+curl -k -I https://timeline.all-too-well.com/
+curl -k -I https://timeline.all-too-well.com/api/health
+curl -k -I https://timeline.all-too-well.com/_next/static/chunks/742-d77a3f8ae5a58995.js
+curl -k -sS -D - 'https://timeline.all-too-well.com/api/projects?page=1&pageSize=1'
+```
+
+#### Acceptance Result
+- [x] deploy readiness audit 通过：SSH 可达，公网 IP 为 `35.212.246.199`
+- [x] 生产机当前采用 `systemd + nginx + PostgreSQL + Redis` 形态；Docker / Compose 未安装，但不是本次部署 blocker
+- [x] 80/443 由 `nginx` 占用，3000/3001/5432/6379 由现有生产服务占用，说明可采用原地更新而非另起一套端口
+- [x] `apps/api/.env.production` 与 `apps/web/.env.production` 已存在，关键生产变量已就位，未发现示例占位值
+- [x] Nginx 已安装且在线，Certbot 证书有效：`all-too-well.com` / `www.all-too-well.com` / `timeline.all-too-well.com`
+- [x] 回滚入口明确：远端已有 `/var/backups/feishu-timeline-step5/*`、`/var/backups/feishu-timeline-step6/*`，并可通过 `git reset --hard <known-good-commit>` + `systemctl restart` 回退
+- [x] 已从 `origin/feat/color-pm-r09-r10` 部署到 VPS，远端当前代码为 `8521552db6b596bd24e558ddd0653c017a0a2cad`
+- [x] `prisma migrate deploy` 已执行并成功应用 `20260419120000_r02_process_foundation`
+- [x] `feishu-timeline-api`、`feishu-timeline-web`、`nginx`、`postgresql`、`redis-server` 全部 `active`
+- [x] 外部访问通过：`https://timeline.all-too-well.com/` 返回 `307 -> /dashboard`，`https://timeline.all-too-well.com/api/health` 返回 `200`
+- [x] HTTPS 正常，`Strict-Transport-Security`、证书 SAN 和 Nginx 配置验证通过
+- [x] smoke test 通过：首页、`/login`、`/dashboard`、`/projects`、静态资源 `/_next/static/chunks/742-d77a3f8ae5a58995.js`、`/api/health`、`/api/auth/session`、`/api/auth/feishu/login-url` 均通过
+- [x] 受保护业务接口 `GET /api/projects?page=1&pageSize=1` 返回 `401 Authentication required`，表明业务 API 路由与认证边界工作正常
+
+#### Risks / Debt
+- 生产机当前仍沿用 `systemd + nginx` 部署链路，未统一到 Docker；这不是上线 blocker，但后续若要统一环境，需单独规划切换窗口。
+- 本轮未执行真实业务用户的 Feishu 登录与全链路业务 UAT，只完成了匿名可达性、认证入口和受保护接口边界检查。
+- 远端工作树分支名当前仍显示为 `master`，但 `HEAD` 已对齐到 `origin/feat/color-pm-r09-r10` 的最新提交；后续若要长期维护，建议把远端显式切换为同名跟踪分支。
+
+#### Decision
+STOP
+
+#### Next Round
+合并 `main` + 创建 `v1.0.0` tag（待用户确认）
