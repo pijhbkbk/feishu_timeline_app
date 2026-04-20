@@ -991,6 +991,13 @@ bash scripts/deploy/rollback-check.sh
 - 按用户要求重新执行了 `docker compose -f deploy/compose.staging.yml config`、`docker compose -f deploy/compose.staging.yml up -d` 与 `bash scripts/deploy/health-check.sh`，结果均通过。
 - 本轮停留在 `R09`，等待用户确认后再决定是否进入 `R10`。
 
+#### Git Delivery
+- 交付分支：`feat/color-pm-r09-r10`
+- 远端：`https://github.com/pijhbkbk/feishu_timeline_app.git`
+- 首次交付 commit：`1e7f84c61954d1800cdb7e8f6d5fdb4aababb0b8`
+- `git push -u origin feat/color-pm-r09-r10` 已成功
+- 当前已具备进入 VPS 部署前审计的代码与 staging 基线，但本轮未操作生产 VPS
+
 #### Risks / Debt
 - 首次构建一个本机尚未缓存的基础镜像时，仍依赖 Docker Hub 网络可用性；本轮已把“同一 tag 重复部署”优化为优先复用本地镜像。
 - 本地反复对同一 commit 强制重建时，`deploy/.state/current.env` 与 `previous.env` 可能落在同一 `IMAGE_TAG`；实际 staging / VPS 发版应在干净工作树上执行，或显式指定新的 `IMAGE_TAG`。
