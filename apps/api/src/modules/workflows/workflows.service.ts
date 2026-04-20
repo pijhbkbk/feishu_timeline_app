@@ -7,6 +7,8 @@ import {
   AuditTargetType,
   NotificationType,
   ProjectStatus,
+  RecurringTaskStatus,
+  ReviewType,
   WorkflowAction,
   WorkflowInstanceStatus,
   WorkflowNodeCode,
@@ -18,9 +20,11 @@ import { randomUUID } from 'node:crypto';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import type { AuthenticatedUser } from '../auth/auth.types';
+import { ProjectAccessService } from '../auth/project-access.service';
 import { NotificationQueueService } from '../queue/notification-queue.service';
 import {
   DEFAULT_WORKFLOW_TEMPLATE,
+  DEFAULT_WORKFLOW_TEMPLATE_VERSION,
   INITIAL_WORKFLOW_NODE,
   getAllowedWorkflowActions,
   getCurrentNodeName,
@@ -38,6 +42,8 @@ import {
   isWorkflowTaskStatusStartable,
   type WorkflowTaskSpawnTemplate,
 } from './workflow-node.constants';
+import { WorkflowDeadlineService } from './workflow-deadline.service';
+import { WorkflowRecurringService } from './workflow-recurring.service';
 
 type WorkflowDbClient = Prisma.TransactionClient | PrismaService;
 
@@ -51,6 +57,11 @@ type WorkflowActionInput = {
   comment?: string | null;
   targetNodeCode?: WorkflowNodeCode;
   metadata?: Prisma.InputJsonValue;
+};
+
+type WorkflowFormSaveInput = {
+  payload: Record<string, unknown>;
+  comment?: string | null;
 };
 
 type WorkflowTaskWithRelations = Prisma.WorkflowTaskGetPayload<{
@@ -68,6 +79,9 @@ export class WorkflowsService {
     private readonly prisma: PrismaService,
     private readonly activityLogsService: ActivityLogsService,
     private readonly notificationQueueService: NotificationQueueService,
+    private readonly workflowDeadlineService: WorkflowDeadlineService,
+    private readonly workflowRecurringService: WorkflowRecurringService,
+    private readonly projectAccessService: ProjectAccessService,
   ) {}
 
   async initializeProjectWorkflow(
@@ -76,12 +90,9 @@ export class WorkflowsService {
   ) {
     const now = new Date();
     const nodeCode = INITIAL_WORKFLOW_NODE;
-    const projectSchedule = await tx.project.findUnique({
-      where: { id: input.projectId },
-      select: {
-        plannedStartDate: true,
-        plannedEndDate: true,
-      },
+    const taskSchedule = await this.workflowDeadlineService.buildTaskSchedule(tx, {
+      nodeCode,
+      startAt: now,
     });
 
     const instance = await tx.workflowInstance.create({
@@ -90,6 +101,7 @@ export class WorkflowsService {
         instanceNo: this.buildInstanceNo(),
         versionNo: 1,
         templateCode: DEFAULT_WORKFLOW_TEMPLATE,
+        templateVersion: DEFAULT_WORKFLOW_TEMPLATE_VERSION,
         status: WorkflowInstanceStatus.RUNNING,
         currentNodeCode: nodeCode,
         initiatedById: input.initiatedById,
@@ -104,15 +116,20 @@ export class WorkflowsService {
         taskNo: this.buildTaskNo(),
         nodeCode,
         nodeName: getCurrentNodeName(nodeCode) ?? nodeCode,
+        stepCode: taskSchedule.stepCode,
         taskRound: 1,
         status: WorkflowTaskStatus.READY,
         isPrimary: true,
         isActive: true,
         assigneeUserId: input.ownerUserId ?? null,
-        dueAt: this.computeDueAt(projectSchedule, nodeCode),
+        dueAt: taskSchedule.dueAt,
+        effectiveDueAt: taskSchedule.effectiveDueAt,
+        overdueDays: 0,
+        idempotencyKey: `wf-init:${input.projectId}:${nodeCode}:1`,
         payload: {
           autoInitialized: true,
           templateCode: DEFAULT_WORKFLOW_TEMPLATE,
+          templateVersion: DEFAULT_WORKFLOW_TEMPLATE_VERSION,
           nodeCode,
         },
       },
@@ -147,8 +164,17 @@ export class WorkflowsService {
     };
   }
 
-  async getProjectWorkflow(projectId: string) {
+  async getProjectWorkflow(projectId: string, actor: AuthenticatedUser) {
+    await this.projectAccessService.assertProjectAccessWithDefaultClient(
+      projectId,
+      actor,
+      'project.read',
+    );
     const workflowInstance = await this.getWorkflowInstanceByProjectOrThrow(this.prisma, projectId);
+    await this.workflowDeadlineService.refreshWorkflowInstanceTaskDeadlines(
+      this.prisma,
+      workflowInstance.id,
+    );
     const tasks = await this.prisma.workflowTask.findMany({
       where: {
         workflowInstanceId: workflowInstance.id,
@@ -173,7 +199,12 @@ export class WorkflowsService {
     };
   }
 
-  async getWorkflowTimeline(projectId: string) {
+  async getWorkflowTimeline(projectId: string, actor: AuthenticatedUser) {
+    await this.projectAccessService.assertProjectAccessWithDefaultClient(
+      projectId,
+      actor,
+      'project.read',
+    );
     const workflowInstance = await this.getWorkflowInstanceByProjectOrThrow(this.prisma, projectId);
     const transitions = await this.prisma.workflowTransition.findMany({
       where: {
@@ -215,6 +246,275 @@ export class WorkflowsService {
     };
   }
 
+  async getMonthlyReviewWorkspace(projectId: string, actor: AuthenticatedUser) {
+    await this.projectAccessService.assertProjectAccessWithDefaultClient(
+      projectId,
+      actor,
+      'project.read',
+    );
+
+    const [project, recurringPlan, activeConsistencyTask, latestReviews] = await Promise.all([
+      this.prisma.project.findUnique({
+        where: { id: projectId },
+        select: {
+          id: true,
+          code: true,
+          name: true,
+          status: true,
+          currentNodeCode: true,
+        },
+      }),
+      this.prisma.recurringPlan.findFirst({
+        where: {
+          projectId,
+          sourceNodeCode: WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW,
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+        include: {
+          tasks: {
+            orderBy: {
+              periodIndex: 'asc',
+            },
+          },
+        },
+      }),
+      this.prisma.workflowTask.findFirst({
+        where: {
+          projectId,
+          nodeCode: WorkflowNodeCode.COLOR_CONSISTENCY_REVIEW,
+          isActive: true,
+        },
+        include: {
+          assigneeUser: true,
+          assigneeDepartment: true,
+        },
+        orderBy: [
+          { createdAt: 'desc' },
+          { taskRound: 'desc' },
+        ],
+      }),
+      this.prisma.reviewRecord.findMany({
+        where: {
+          projectId,
+          reviewType: ReviewType.COLOR_CONSISTENCY_REVIEW,
+        },
+        include: {
+          reviewer: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+        orderBy: {
+          reviewedAt: 'desc',
+        },
+        take: 6,
+      }),
+    ]);
+
+    if (!project) {
+      throw new NotFoundException('Project not found.');
+    }
+
+    const recurringTasks = recurringPlan?.tasks ?? [];
+
+    return {
+      project: {
+        id: project.id,
+        code: project.code,
+        name: project.name,
+        status: project.status,
+        currentNodeCode: project.currentNodeCode,
+        currentNodeName: getCurrentNodeName(project.currentNodeCode),
+      },
+      recurringPlan: recurringPlan
+        ? {
+            id: recurringPlan.id,
+            planCode: recurringPlan.planCode,
+            status: recurringPlan.status,
+            totalCount: recurringPlan.totalCount,
+            generatedCount: recurringPlan.generatedCount,
+            startDate: recurringPlan.startDate.toISOString(),
+            endDate: recurringPlan.endDate.toISOString(),
+          }
+        : null,
+      summary: {
+        totalPeriods: recurringTasks.length,
+        completedPeriods: recurringTasks.filter((task) => task.status === RecurringTaskStatus.COMPLETED)
+          .length,
+        overduePeriods: recurringTasks.filter((task) => task.status === RecurringTaskStatus.OVERDUE)
+          .length,
+        pendingPeriods: recurringTasks.filter(
+          (task) =>
+            task.status === RecurringTaskStatus.PENDING ||
+            task.status === RecurringTaskStatus.IN_PROGRESS,
+        ).length,
+      },
+      activeWorkflowTask: activeConsistencyTask
+        ? this.toWorkflowTaskSummary(activeConsistencyTask)
+        : null,
+      recurringTasks: recurringTasks.map((task) => this.toRecurringTaskSummary(task)),
+      recentReviews: latestReviews.map((review) => this.toMonthlyReviewRecordSummary(review)),
+    };
+  }
+
+  async getMonthlyReviewTaskDetail(
+    projectId: string,
+    recurringTaskId: string,
+    actor: AuthenticatedUser,
+  ) {
+    await this.projectAccessService.assertProjectAccessWithDefaultClient(
+      projectId,
+      actor,
+      'project.read',
+    );
+
+    const recurringTask = await this.prisma.recurringTask.findFirst({
+      where: {
+        id: recurringTaskId,
+        projectId,
+      },
+      include: {
+        recurringPlan: true,
+      },
+    });
+
+    if (!recurringTask) {
+      throw new NotFoundException('Recurring review task not found.');
+    }
+
+    const { periodStart, periodEnd } = this.getMonthlyReviewPeriodRange(recurringTask.plannedDate);
+    const reviews = await this.prisma.reviewRecord.findMany({
+      where: {
+        projectId,
+        reviewType: ReviewType.COLOR_CONSISTENCY_REVIEW,
+        reviewedAt: {
+          gte: periodStart,
+          lt: periodEnd,
+        },
+      },
+      include: {
+        reviewer: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+      orderBy: {
+        reviewedAt: 'desc',
+      },
+    });
+
+    return {
+      recurringPlan: {
+        id: recurringTask.recurringPlan.id,
+        planCode: recurringTask.recurringPlan.planCode,
+        status: recurringTask.recurringPlan.status,
+      },
+      recurringTask: this.toRecurringTaskSummary(recurringTask),
+      relatedReviews: reviews.map((review) => this.toMonthlyReviewRecordSummary(review)),
+    };
+  }
+
+  async getTaskDetail(taskId: string, actor: AuthenticatedUser) {
+    const task = await this.getTaskOrThrow(this.prisma, taskId);
+    await this.projectAccessService.assertProjectAccessWithDefaultClient(
+      task.projectId,
+      actor,
+      'project.read',
+    );
+
+    return this.buildTaskDetailResponse(this.prisma, task.id);
+  }
+
+  async getTaskRoundHistory(taskId: string, actor: AuthenticatedUser) {
+    const task = await this.getTaskOrThrow(this.prisma, taskId);
+    await this.projectAccessService.assertProjectAccessWithDefaultClient(
+      task.projectId,
+      actor,
+      'project.read',
+    );
+
+    const rounds = await this.prisma.workflowTask.findMany({
+      where: {
+        workflowInstanceId: task.workflowInstanceId,
+        nodeCode: task.nodeCode,
+      },
+      include: {
+        assigneeUser: true,
+        assigneeDepartment: true,
+      },
+      orderBy: [
+        { taskRound: 'asc' },
+        { createdAt: 'asc' },
+      ],
+    });
+
+    return {
+      taskId: task.id,
+      projectId: task.projectId,
+      nodeCode: task.nodeCode,
+      nodeName: task.nodeName,
+      rounds: rounds.map((round) => this.toWorkflowTaskSummary(round)),
+    };
+  }
+
+  async saveTaskForm(taskId: string, actor: AuthenticatedUser, rawInput: unknown) {
+    return this.prisma.$transaction(async (tx) => {
+      const input = this.parseFormSaveInput(rawInput);
+      const task = await this.getTaskOrThrow(tx, taskId);
+
+      await this.projectAccessService.assertProjectAccess(
+        tx,
+        task.projectId,
+        actor,
+        'workflow.transition',
+      );
+      this.assertActorCanOperateTask(task, actor);
+      this.assertTaskCanSaveForm(task);
+
+      const now = new Date();
+      const currentPayload = this.asJsonObject(task.payload);
+      const nextPayload = {
+        ...currentPayload,
+        formData: JSON.parse(JSON.stringify(input.payload)) as Prisma.InputJsonValue,
+        draftSavedAt: now.toISOString(),
+        ...(input.comment ? { draftComment: input.comment } : {}),
+      } satisfies Record<string, Prisma.InputJsonValue>;
+
+      await tx.workflowTask.update({
+        where: {
+          id: taskId,
+        },
+        data: {
+          payload: nextPayload,
+        },
+      });
+
+      await this.activityLogsService.createWithExecutor(tx, {
+        projectId: task.projectId,
+        actorUserId: actor.id,
+        targetType: AuditTargetType.WORKFLOW_TASK,
+        targetId: task.id,
+        action: 'WORKFLOW_FORM_SAVED',
+        nodeCode: task.nodeCode,
+        summary: `${task.nodeName} 已保存节点表单草稿。`,
+        beforeData: {
+          payload: task.payload,
+        },
+        afterData: {
+          payload: nextPayload,
+        },
+      });
+
+      return this.buildTaskDetailResponse(tx, task.id);
+    });
+  }
+
   async transitionTask(
     taskId: string,
     action: WorkflowAction,
@@ -236,6 +536,7 @@ export class WorkflowsService {
     const input = this.parseActionInput(rawInput);
     const task = await this.getTaskOrThrow(tx, taskId);
 
+    await this.projectAccessService.assertProjectAccess(tx, task.projectId, actor, 'workflow.transition');
     this.assertActorCanOperateTask(task, actor);
     this.assertTaskCanTransition(task, action);
 
@@ -298,11 +599,20 @@ export class WorkflowsService {
       data: {
         status: terminalStatus,
         isActive: false,
+        ...(action === WorkflowAction.APPROVE
+          ? { reviewPassAt: this.resolveReviewPassAt(input) ?? now }
+          : {}),
         ...(action === WorkflowAction.RETURN ? { returnedAt: now } : { completedAt: now }),
       },
     });
 
     const createdTasks = await this.createNextTasks(tx, task, actor, action, input, nextTemplates);
+    const recurringPlan = await this.maybeCreateRecurringPlan(
+      tx,
+      task,
+      updatedTask,
+      createdTasks,
+    );
 
     if (createdTasks.length === 0) {
       await tx.workflowTransition.create({
@@ -347,6 +657,14 @@ export class WorkflowsService {
           isPrimary: createdTask.isPrimary,
           taskRound: createdTask.taskRound,
         })),
+        createdRecurringPlan: recurringPlan
+          ? {
+              id: recurringPlan.plan.id,
+              planCode: recurringPlan.plan.planCode,
+              totalCount: recurringPlan.plan.totalCount,
+              generatedTaskCount: recurringPlan.generatedTaskCount,
+            }
+          : null,
       },
       ...(input.metadata === undefined ? {} : { metadata: input.metadata }),
     });
@@ -400,6 +718,10 @@ export class WorkflowsService {
           taskRound: true,
         },
       });
+      const taskSchedule = await this.workflowDeadlineService.buildTaskSchedule(tx, {
+        nodeCode: template.nodeCode,
+        startAt: new Date(),
+      });
 
       const createdTask = await tx.workflowTask.create({
         data: {
@@ -408,18 +730,33 @@ export class WorkflowsService {
           taskNo: this.buildTaskNo(),
           nodeCode: template.nodeCode,
           nodeName: nextNodeMeta.name,
+          stepCode: taskSchedule.stepCode,
           taskRound: (previousTask?.taskRound ?? 0) + 1,
           status: WorkflowTaskStatus.READY,
           isPrimary,
           isActive: true,
           assigneeUserId: sourceTask.project.ownerUserId ?? sourceTask.assigneeUserId ?? null,
-          dueAt: this.computeDueAt(sourceTask.project, template.nodeCode),
+          dueAt: taskSchedule.dueAt,
+          effectiveDueAt: taskSchedule.effectiveDueAt,
+          overdueDays: 0,
+          returnedFromTaskId:
+            action === WorkflowAction.RETURN || action === WorkflowAction.REJECT
+              ? sourceTask.id
+              : null,
+          reworkReason:
+            action === WorkflowAction.RETURN || action === WorkflowAction.REJECT
+              ? input.comment ?? template.reason
+              : null,
+          idempotencyKey: `${sourceTask.id}:${action}:${template.nodeCode}:${(previousTask?.taskRound ?? 0) + 1}`,
           payload: {
             autoCreated: true,
             triggerAction: action,
             fromTaskId: sourceTask.id,
             fromNodeCode: sourceTask.nodeCode,
             reason: template.reason,
+            ...(taskSchedule.defaultChargeAmount
+              ? { defaultChargeAmount: taskSchedule.defaultChargeAmount }
+              : {}),
           },
         },
         select: {
@@ -544,6 +881,25 @@ export class WorkflowsService {
 
     if (isWorkflowReviewAction(action) && !isWorkflowTaskStatusActionable(task.status)) {
       throw new BadRequestException(`${task.nodeName} cannot execute review action from ${task.status}.`);
+    }
+  }
+
+  private assertTaskCanSaveForm(task: WorkflowTaskWithRelations) {
+    if (!task.isActive) {
+      throw new BadRequestException('Workflow task is no longer active.');
+    }
+
+    if (task.workflowInstance.status !== WorkflowInstanceStatus.RUNNING) {
+      throw new BadRequestException('Workflow instance is not in running state.');
+    }
+
+    if (
+      task.status !== WorkflowTaskStatus.PENDING &&
+      task.status !== WorkflowTaskStatus.READY &&
+      task.status !== WorkflowTaskStatus.IN_PROGRESS &&
+      task.status !== WorkflowTaskStatus.RETURNED
+    ) {
+      throw new BadRequestException(`${task.nodeName} 当前状态不允许保存表单。`);
     }
   }
 
@@ -684,6 +1040,10 @@ export class WorkflowsService {
     workflowInstanceId: string,
     projectId: string,
   ) {
+    await this.workflowDeadlineService.refreshWorkflowInstanceTaskDeadlines(
+      tx,
+      workflowInstanceId,
+    );
     const activePrimaryTask = await tx.workflowTask.findFirst({
       where: {
         workflowInstanceId,
@@ -774,6 +1134,10 @@ export class WorkflowsService {
     db: WorkflowDbClient,
     workflowInstanceId: string,
   ) {
+    await this.workflowDeadlineService.refreshWorkflowInstanceTaskDeadlines(
+      db,
+      workflowInstanceId,
+    );
     const workflowInstance = await db.workflowInstance.findUnique({
       where: { id: workflowInstanceId },
     });
@@ -803,6 +1167,49 @@ export class WorkflowsService {
         .filter((task) => task.isActive)
         .map((task) => this.toWorkflowTaskSummary(task)),
       taskHistory: tasks.map((task) => this.toWorkflowTaskSummary(task)),
+    };
+  }
+
+  private async buildTaskDetailResponse(db: WorkflowDbClient, taskId: string) {
+    const task = await this.getTaskOrThrow(db, taskId);
+    const transitions = await db.workflowTransition.findMany({
+      where: {
+        OR: [
+          { fromTaskId: taskId },
+          { toTaskId: taskId },
+        ],
+      },
+      include: {
+        operatorUser: true,
+      },
+      orderBy: {
+        createdAt: 'asc',
+      },
+    });
+
+    return {
+      project: {
+        id: task.project.id,
+        code: task.project.code,
+        name: task.project.name,
+        status: task.project.status,
+        currentNodeCode: task.project.currentNodeCode,
+        currentNodeName: getCurrentNodeName(task.project.currentNodeCode),
+      },
+      workflowInstance: this.toWorkflowInstanceSummary(task.workflowInstance),
+      task: this.toWorkflowTaskSummary(task),
+      transitions: transitions.map((transition) => ({
+        id: transition.id,
+        action: transition.action,
+        comment: transition.comment,
+        fromTaskId: transition.fromTaskId,
+        fromNodeCode: transition.fromNodeCode,
+        toTaskId: transition.toTaskId,
+        toNodeCode: transition.toNodeCode,
+        operatorUserId: transition.operatorUserId,
+        operatorName: transition.operatorUser?.name ?? null,
+        createdAt: transition.createdAt.toISOString(),
+      })),
     };
   }
 
@@ -858,6 +1265,72 @@ export class WorkflowsService {
     };
   }
 
+  private toRecurringTaskSummary(
+    task: {
+      id: string;
+      recurringPlanId: string;
+      taskCode: string;
+      periodIndex: number;
+      periodLabel: string;
+      plannedDate: Date;
+      dueAt: Date | null;
+      completedAt: Date | null;
+      reviewerId: string | null;
+      status: RecurringTaskStatus;
+      result: Prisma.RecurringTaskGetPayload<Record<string, never>>['result'];
+      comment: string | null;
+      payload: Prisma.JsonValue | null;
+      createdAt: Date;
+      updatedAt: Date;
+    },
+  ) {
+    return {
+      id: task.id,
+      recurringPlanId: task.recurringPlanId,
+      taskCode: task.taskCode,
+      periodIndex: task.periodIndex,
+      periodLabel: task.periodLabel,
+      plannedDate: task.plannedDate.toISOString(),
+      dueAt: task.dueAt?.toISOString() ?? null,
+      completedAt: task.completedAt?.toISOString() ?? null,
+      reviewerId: task.reviewerId,
+      status: task.status,
+      result: task.result,
+      comment: task.comment,
+      payload: task.payload,
+      createdAt: task.createdAt.toISOString(),
+      updatedAt: task.updatedAt.toISOString(),
+    };
+  }
+
+  private toMonthlyReviewRecordSummary(
+    review: Prisma.ReviewRecordGetPayload<{
+      include: {
+        reviewer: {
+          select: {
+            id: true;
+            name: true;
+          };
+        };
+      };
+    }>,
+  ) {
+    return {
+      id: review.id,
+      reviewType: review.reviewType,
+      result: review.result,
+      comment: review.comment,
+      rejectReason: review.rejectReason,
+      returnToNodeCode: review.returnToNodeCode,
+      reviewerId: review.reviewerId,
+      reviewerName: review.reviewer?.name ?? null,
+      reviewedAt: review.reviewedAt?.toISOString() ?? null,
+      submittedAt: review.submittedAt?.toISOString() ?? null,
+      createdAt: review.createdAt.toISOString(),
+      updatedAt: review.updatedAt.toISOString(),
+    };
+  }
+
   private parseActionInput(rawInput: unknown): WorkflowActionInput {
     if (rawInput === undefined || rawInput === null) {
       return {};
@@ -889,6 +1362,28 @@ export class WorkflowsService {
     };
   }
 
+  private parseFormSaveInput(rawInput: unknown): WorkflowFormSaveInput {
+    if (!rawInput || typeof rawInput !== 'object' || Array.isArray(rawInput)) {
+      throw new BadRequestException('Invalid workflow form payload.');
+    }
+
+    const input = rawInput as Record<string, unknown>;
+
+    if (!input.payload || typeof input.payload !== 'object' || Array.isArray(input.payload)) {
+      throw new BadRequestException('payload must be a plain object.');
+    }
+
+    const comment =
+      typeof input.comment === 'string' && input.comment.trim().length > 0
+        ? input.comment.trim()
+        : undefined;
+
+    return {
+      payload: input.payload as Record<string, unknown>,
+      ...(comment ? { comment } : {}),
+    };
+  }
+
   private buildInstanceNo() {
     return `WF-${Date.now()}-${randomUUID().slice(0, 8).toUpperCase()}`;
   }
@@ -897,30 +1392,74 @@ export class WorkflowsService {
     return `TASK-${Date.now()}-${randomUUID().slice(0, 8).toUpperCase()}`;
   }
 
-  private computeDueAt(
-    schedule: {
-      plannedStartDate: Date | null;
-      plannedEndDate: Date | null;
-    } | null,
-    nodeCode: WorkflowNodeCode,
-  ) {
-    if (!schedule) {
+  private resolveReviewPassAt(input: WorkflowActionInput) {
+    if (!input.metadata || typeof input.metadata !== 'object' || Array.isArray(input.metadata)) {
       return null;
     }
 
-    if (schedule.plannedStartDate && schedule.plannedEndDate) {
-      const sequences = Object.values(WorkflowNodeCode).map(
-        (currentNodeCode) => getWorkflowNodeMeta(currentNodeCode).sequence,
-      );
-      const maxSequence = Math.max(...sequences);
-      const currentSequence = getWorkflowNodeMeta(nodeCode).sequence;
-      const totalDuration =
-        schedule.plannedEndDate.getTime() - schedule.plannedStartDate.getTime();
-      const ratio = maxSequence > 0 ? currentSequence / maxSequence : 1;
-
-      return new Date(schedule.plannedStartDate.getTime() + totalDuration * ratio);
+    const reviewPassAt = (input.metadata as Record<string, unknown>).reviewPassAt;
+    if (typeof reviewPassAt !== 'string' || reviewPassAt.trim().length === 0) {
+      return null;
     }
 
-    return schedule.plannedEndDate ?? schedule.plannedStartDate;
+    const parsed = new Date(reviewPassAt);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  private asJsonObject(value: Prisma.JsonValue | null | undefined) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      return {} as Record<string, Prisma.InputJsonValue>;
+    }
+
+    return value as Record<string, Prisma.InputJsonValue>;
+  }
+
+  private getMonthlyReviewPeriodRange(plannedDate: Date) {
+    const year = plannedDate.getUTCFullYear();
+    const month = plannedDate.getUTCMonth();
+
+    return {
+      periodStart: new Date(Date.UTC(year, month, 1, 0, 0, 0, 0)),
+      periodEnd: new Date(Date.UTC(year, month + 1, 1, 0, 0, 0, 0)),
+    };
+  }
+
+  private async maybeCreateRecurringPlan(
+    tx: Prisma.TransactionClient,
+    sourceTask: WorkflowTaskWithRelations,
+    updatedTask: {
+      nodeCode: WorkflowNodeCode;
+      status: WorkflowTaskStatus;
+      completedAt: Date | null;
+    },
+    createdTasks: Array<{
+      id: string;
+      nodeCode: WorkflowNodeCode;
+      nodeName: string;
+      isPrimary: boolean;
+      taskRound: number;
+    }>,
+  ) {
+    if (
+      sourceTask.nodeCode !== WorkflowNodeCode.MASS_PRODUCTION ||
+      updatedTask.status !== WorkflowTaskStatus.COMPLETED
+    ) {
+      return null;
+    }
+
+    const monthlyReviewTask = createdTasks.find(
+      (task) => task.nodeCode === WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW,
+    );
+
+    if (!monthlyReviewTask) {
+      return null;
+    }
+
+    return this.workflowRecurringService.ensureMonthlyReviewPlan(tx, {
+      projectId: sourceTask.projectId,
+      sourceWorkflowTaskId: monthlyReviewTask.id,
+      startAt: updatedTask.completedAt ?? new Date(),
+      reviewerId: sourceTask.assigneeUserId ?? sourceTask.project.ownerUserId ?? null,
+    });
   }
 }

@@ -1,0 +1,16 @@
+.DS_Store
+.git
+.github
+node_modules
+**/node_modules
+**/.next
+**/dist
+**/coverage
+**/*.log
+**/tsconfig.tsbuildinfo
+var
+tmp
+.env
+.env.local
+.env.*.local
+

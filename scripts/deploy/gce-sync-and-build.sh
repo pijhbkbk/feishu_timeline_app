@@ -10,7 +10,12 @@ APP_ROOT="${APP_ROOT:-/opt/feishu_timeline_app}"
 GIT_REF="${GIT_REF:-main}"
 REPO_URL="${REPO_URL:-$(git remote get-url origin)}"
 APP_HOST="${APP_HOST:-timeline.all-too-well.com}"
+PUBLIC_SCHEME="${PUBLIC_SCHEME:-https}"
+PUBLIC_APP_URL="${PUBLIC_APP_URL:-${PUBLIC_SCHEME}://${APP_HOST}}"
+FEISHU_CALLBACK_PATH="${FEISHU_CALLBACK_PATH:-/login/callback}"
+FEISHU_AUTHORIZATION_ENDPOINT="${FEISHU_AUTHORIZATION_ENDPOINT:-https://open.feishu.cn/open-apis/authen/v1/index}"
 RUN_PRISMA_MIGRATE_DEPLOY="${RUN_PRISMA_MIGRATE_DEPLOY:-no}"
+FORCE_NGINX_TEMPLATE_SYNC="${FORCE_NGINX_TEMPLATE_SYNC:-no}"
 
 ROOT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 API_TEMPLATE="$ROOT_DIR/deploy/systemd/feishu-timeline-api.service"
@@ -49,8 +54,12 @@ export APP_ROOT='$APP_ROOT'
 export REPO_URL='$REPO_URL'
 export GIT_REF='$GIT_REF'
 export APP_HOST='$APP_HOST'
+export PUBLIC_APP_URL='$PUBLIC_APP_URL'
+export FEISHU_CALLBACK_PATH='$FEISHU_CALLBACK_PATH'
+export FEISHU_AUTHORIZATION_ENDPOINT='$FEISHU_AUTHORIZATION_ENDPOINT'
 export REMOTE_USER='$REMOTE_USER'
 export RUN_PRISMA_MIGRATE_DEPLOY='$RUN_PRISMA_MIGRATE_DEPLOY'
+export FORCE_NGINX_TEMPLATE_SYNC='$FORCE_NGINX_TEMPLATE_SYNC'
 export PATH=/usr/local/bin:/usr/bin:/bin
 export HOME=/home/$REMOTE_USER
 export COREPACK_HOME=/home/$REMOTE_USER/.cache/node/corepack
@@ -106,9 +115,13 @@ ensure_env_file apps/web/.env.production apps/web/.env.example
 upsert_env apps/api/.env.production NODE_ENV production
 upsert_env apps/api/.env.production HOST 127.0.0.1
 upsert_env apps/api/.env.production PORT 3001
-upsert_env apps/api/.env.production FRONTEND_URL http://\$APP_HOST
+upsert_env apps/api/.env.production FRONTEND_URL \"\$PUBLIC_APP_URL\"
+upsert_env apps/api/.env.production FEISHU_REDIRECT_URI \"\${PUBLIC_APP_URL}\${FEISHU_CALLBACK_PATH}\"
+upsert_env apps/api/.env.production FEISHU_AUTHORIZATION_ENDPOINT \"\$FEISHU_AUTHORIZATION_ENDPOINT\"
+upsert_env apps/api/.env.production AUTH_MOCK_ENABLED false
 upsert_env apps/api/.env.production OBJECT_STORAGE_LOCAL_ROOT /opt/feishu_timeline_app/var/object-storage
 upsert_env apps/web/.env.production NEXT_PUBLIC_API_BASE_URL /api
+upsert_env apps/web/.env.production NEXT_PUBLIC_ENABLE_MOCK_LOGIN false
 
 resolved_storage_path=\"\$(
   cd apps/api
@@ -158,7 +171,18 @@ fi
 
 printf '%s' '$API_SERVICE_B64' | base64 -d | sudo tee /etc/systemd/system/feishu-timeline-api.service >/dev/null
 printf '%s' '$WEB_SERVICE_B64' | base64 -d | sudo tee /etc/systemd/system/feishu-timeline-web.service >/dev/null
-printf '%s' '$NGINX_B64' | base64 -d | sudo tee /etc/nginx/sites-available/feishu-timeline >/dev/null
+
+install_nginx_template=yes
+if [ -f /etc/nginx/sites-available/feishu-timeline ] && grep -q 'ssl_certificate .*timeline\\.all-too-well\\.com' /etc/nginx/sites-available/feishu-timeline; then
+  if [ \"\$FORCE_NGINX_TEMPLATE_SYNC\" != yes ]; then
+    install_nginx_template=no
+    echo nginx_template_sync=skipped_existing_timeline_https
+  fi
+fi
+
+if [ \"\$install_nginx_template\" = yes ]; then
+  printf '%s' '$NGINX_B64' | base64 -d | sudo tee /etc/nginx/sites-available/feishu-timeline >/dev/null
+fi
 
 if [ ! -L /etc/nginx/sites-enabled/feishu-timeline ]; then
   sudo ln -s /etc/nginx/sites-available/feishu-timeline /etc/nginx/sites-enabled/feishu-timeline

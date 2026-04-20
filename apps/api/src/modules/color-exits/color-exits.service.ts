@@ -5,9 +5,11 @@ import {
 } from '@nestjs/common';
 import {
   AuditTargetType,
+  ColorExitSuggestion,
   ColorStatus,
   Prisma,
   ProjectStatus,
+  SystemParameterValueType,
   WorkflowAction,
   WorkflowNodeCode,
   WorkflowTaskStatus,
@@ -16,6 +18,7 @@ import {
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import type { AuthenticatedUser } from '../auth/auth.types';
+import { ProjectAccessService } from '../auth/project-access.service';
 import {
   getAllowedWorkflowActions,
   getCurrentNodeName,
@@ -25,6 +28,7 @@ import { WorkflowsService } from '../workflows/workflows.service';
 import {
   COLOR_EXIT_MANAGEMENT_ROLE_CODES,
   getColorExitCompletionIssue,
+  getColorExitSystemSuggestion,
   getColorExitStageIssue,
 } from './color-exits.rules';
 
@@ -35,6 +39,10 @@ type ColorExitWriteInput = {
   exitReason: string;
   description: string | null;
   replacementColorId: string | null;
+  statisticYear: number | null;
+  annualOutput: number | null;
+  finalDecision: ColorExitSuggestion | null;
+  effectiveDate: Date | null;
 };
 
 const COLOR_EXIT_NODE_CODE = WorkflowNodeCode.PROJECT_CLOSED;
@@ -57,9 +65,16 @@ export class ColorExitsService {
     private readonly prisma: PrismaService,
     private readonly activityLogsService: ActivityLogsService,
     private readonly workflowsService: WorkflowsService,
+    private readonly projectAccessService: ProjectAccessService,
   ) {}
 
-  getWorkspace(projectId: string) {
+  async getWorkspace(projectId: string, actor: AuthenticatedUser) {
+    await this.projectAccessService.assertProjectAccessWithDefaultClient(
+      projectId,
+      actor,
+      'project.read',
+    );
+
     return this.buildWorkspace(this.prisma, projectId);
   }
 
@@ -72,6 +87,12 @@ export class ColorExitsService {
     const input = this.parseWriteInput(rawInput);
 
     await this.prisma.$transaction(async (tx) => {
+      await this.projectAccessService.assertProjectAccess(
+        tx,
+        projectId,
+        actor,
+        'workflow.transition',
+      );
       const context = await this.getContext(tx, projectId);
       this.assertWritableStage(context);
 
@@ -82,6 +103,7 @@ export class ColorExitsService {
       await this.startTaskIfNeeded(tx, context.activeTask!, actor, '颜色退出任务已开始处理。');
 
       const boundColor = await this.getBoundProjectColor(tx, projectId);
+      const exitPolicy = await this.resolveExitPolicy(tx, input.annualOutput);
       await this.assertReplacementColor(tx, projectId, boundColor?.id ?? null, input.replacementColorId);
 
       const record = await tx.colorExit.create({
@@ -92,6 +114,12 @@ export class ColorExitsService {
           replacementColorId: input.replacementColorId,
           operatorId: actor.id,
           exitDate: input.exitDate,
+          statisticYear: input.statisticYear ?? input.exitDate.getUTCFullYear(),
+          annualOutput: input.annualOutput,
+          exitThreshold: exitPolicy.exitThreshold,
+          systemSuggestion: exitPolicy.systemSuggestion,
+          finalDecision: input.finalDecision,
+          effectiveDate: input.effectiveDate,
           exitReason: input.exitReason,
           description: input.description,
         },
@@ -123,10 +151,17 @@ export class ColorExitsService {
     const input = this.parseWriteInput(rawInput);
 
     await this.prisma.$transaction(async (tx) => {
+      await this.projectAccessService.assertProjectAccess(
+        tx,
+        projectId,
+        actor,
+        'workflow.transition',
+      );
       const context = await this.getContext(tx, projectId);
       this.assertWritableStage(context);
       const record = await this.getExitRecordOrThrow(tx, projectId, exitId);
       this.assertEditableRecord(record, context.activeTask!.id);
+      const exitPolicy = await this.resolveExitPolicy(tx, input.annualOutput);
 
       await this.assertReplacementColor(
         tx,
@@ -141,6 +176,12 @@ export class ColorExitsService {
           replacementColorId: input.replacementColorId,
           operatorId: actor.id,
           exitDate: input.exitDate,
+          statisticYear: input.statisticYear ?? input.exitDate.getUTCFullYear(),
+          annualOutput: input.annualOutput,
+          exitThreshold: exitPolicy.exitThreshold,
+          systemSuggestion: exitPolicy.systemSuggestion,
+          finalDecision: input.finalDecision,
+          effectiveDate: input.effectiveDate,
           exitReason: input.exitReason,
           description: input.description,
         },
@@ -171,6 +212,12 @@ export class ColorExitsService {
     this.assertActorCanManage(actor);
 
     await this.prisma.$transaction(async (tx) => {
+      await this.projectAccessService.assertProjectAccess(
+        tx,
+        projectId,
+        actor,
+        'workflow.transition',
+      );
       const context = await this.getContext(tx, projectId);
       this.assertWritableStage(context);
       const record = await this.getExitRecordOrThrow(tx, projectId, exitId);
@@ -179,7 +226,11 @@ export class ColorExitsService {
       const completionIssue = getColorExitCompletionIssue({
         exitDate: record.exitDate,
         exitReason: record.exitReason,
-        operatorId: actor.id,
+        operatorId: record.operatorId ?? actor.id,
+        statisticYear: record.statisticYear,
+        annualOutput: record.annualOutput,
+        finalDecision: record.finalDecision,
+        effectiveDate: record.effectiveDate,
       });
 
       if (completionIssue) {
@@ -331,7 +382,7 @@ export class ColorExitsService {
 
   private async buildWorkspace(db: ColorExitsDbClient, projectId: string) {
     const project = await this.getProjectOrThrow(db, projectId);
-    const [activeTask, visualDeltaApproved, currentColor, replacementOptions, items] =
+    const [activeTask, visualDeltaApproved, currentColor, replacementOptions, items, defaultExitThreshold] =
       await Promise.all([
         this.getActiveTask(db, projectId),
         this.hasApprovedOrCompletedWorkflowTask(
@@ -348,6 +399,7 @@ export class ColorExitsService {
           include: COLOR_EXIT_INCLUDE,
           orderBy: [{ createdAt: 'desc' }],
         }),
+        this.getExitThreshold(db),
       ]);
 
     const latestRecord = items[0] ?? null;
@@ -373,6 +425,7 @@ export class ColorExitsService {
         status: color.status,
         isPrimary: color.isPrimary,
       })),
+      defaultExitThreshold,
       canCompleteTask:
         Boolean(activeTask) &&
         latestRecord !== null &&
@@ -380,6 +433,10 @@ export class ColorExitsService {
           exitDate: latestRecord.exitDate,
           exitReason: latestRecord.exitReason,
           operatorId: latestRecord.operatorId,
+          statisticYear: latestRecord.statisticYear,
+          annualOutput: latestRecord.annualOutput,
+          finalDecision: latestRecord.finalDecision,
+          effectiveDate: latestRecord.effectiveDate,
         }) === null,
       completionIssue:
         latestRecord === null
@@ -388,6 +445,10 @@ export class ColorExitsService {
               exitDate: latestRecord.exitDate,
               exitReason: latestRecord.exitReason,
               operatorId: latestRecord.operatorId,
+              statisticYear: latestRecord.statisticYear,
+              annualOutput: latestRecord.annualOutput,
+              finalDecision: latestRecord.finalDecision,
+              effectiveDate: latestRecord.effectiveDate,
             }),
       items: items.map((item) => this.toSummary(item)),
     };
@@ -651,6 +712,15 @@ export class ColorExitsService {
       description,
       replacementColorId,
       exitDate: this.parseDate(input.exitDate, '退出日期'),
+      statisticYear: this.parseOptionalInteger(input.statisticYear, '统计年度', {
+        min: 2000,
+        max: 9999,
+      }),
+      annualOutput: this.parseOptionalInteger(input.annualOutput, '年产量', {
+        min: 0,
+      }),
+      finalDecision: this.parseOptionalColorExitSuggestion(input.finalDecision),
+      effectiveDate: this.parseOptionalDate(input.effectiveDate, '生效日期'),
     };
   }
 
@@ -666,6 +736,100 @@ export class ColorExitsService {
     }
 
     return parsedDate;
+  }
+
+  private parseOptionalDate(value: unknown, label: string) {
+    if (value == null || value === '') {
+      return null;
+    }
+
+    return this.parseDate(value, label);
+  }
+
+  private parseOptionalInteger(
+    value: unknown,
+    label: string,
+    range: {
+      min: number;
+      max?: number;
+    },
+  ) {
+    if (value == null || value === '') {
+      return null;
+    }
+
+    const parsedNumber =
+      typeof value === 'number'
+        ? value
+        : typeof value === 'string'
+          ? Number(value)
+          : Number.NaN;
+
+    if (!Number.isInteger(parsedNumber)) {
+      throw new BadRequestException(`${label}必须为整数。`);
+    }
+
+    if (parsedNumber < range.min) {
+      throw new BadRequestException(`${label}不能小于 ${range.min}。`);
+    }
+
+    if (range.max != null && parsedNumber > range.max) {
+      throw new BadRequestException(`${label}不能大于 ${range.max}。`);
+    }
+
+    return parsedNumber;
+  }
+
+  private parseOptionalColorExitSuggestion(value: unknown) {
+    if (value == null || value === '') {
+      return null;
+    }
+
+    if (
+      value === ColorExitSuggestion.EXIT ||
+      value === ColorExitSuggestion.RETAIN ||
+      value === ColorExitSuggestion.OBSERVE
+    ) {
+      return value;
+    }
+
+    throw new BadRequestException('人工结论不合法。');
+  }
+
+  private async getExitThreshold(db: ColorExitsDbClient) {
+    const parameter = await db.systemParameter.findUnique({
+      where: {
+        category_code: {
+          category: 'COLOR_EXIT',
+          code: 'ANNUAL_OUTPUT_EXIT_THRESHOLD',
+        },
+      },
+      select: {
+        valueType: true,
+        valueNumber: true,
+      },
+    });
+
+    if (
+      parameter?.valueType === SystemParameterValueType.NUMBER &&
+      parameter.valueNumber
+    ) {
+      return Number(parameter.valueNumber);
+    }
+
+    return 20;
+  }
+
+  private async resolveExitPolicy(db: ColorExitsDbClient, annualOutput: number | null) {
+    const exitThreshold = await this.getExitThreshold(db);
+
+    return {
+      exitThreshold,
+      systemSuggestion: getColorExitSystemSuggestion({
+        annualOutput,
+        threshold: exitThreshold,
+      }),
+    };
   }
 
   private toProjectSummary(project: {
@@ -744,6 +908,12 @@ export class ColorExitsService {
       operatorId: record.operatorId,
       operatorName: record.operator?.name ?? null,
       exitDate: record.exitDate.toISOString(),
+      statisticYear: record.statisticYear,
+      annualOutput: record.annualOutput,
+      exitThreshold: record.exitThreshold,
+      systemSuggestion: record.systemSuggestion,
+      finalDecision: record.finalDecision,
+      effectiveDate: record.effectiveDate?.toISOString() ?? null,
       exitReason: record.exitReason,
       description: record.description,
       completedAt: record.completedAt?.toISOString() ?? null,
@@ -753,9 +923,32 @@ export class ColorExitsService {
   }
 
   private toColorExitAuditSnapshot(
-    record: Prisma.ColorExitGetPayload<{
-      include: typeof COLOR_EXIT_INCLUDE;
-    }>,
+    record: {
+      id: string;
+      workflowTaskId: string;
+      colorId: string | null;
+      replacementColorId: string | null;
+      operatorId: string | null;
+      exitDate: Date;
+      statisticYear: number | null;
+      annualOutput: number | null;
+      exitThreshold: number | null;
+      systemSuggestion: ColorExitSuggestion | null;
+      finalDecision: ColorExitSuggestion | null;
+      effectiveDate: Date | null;
+      exitReason: string;
+      description: string | null;
+      completedAt: Date | null;
+      color?: {
+        name: string;
+      } | null;
+      replacementColor?: {
+        name: string;
+      } | null;
+      operator?: {
+        name: string;
+      } | null;
+    },
   ) {
     return {
       id: record.id,
@@ -767,6 +960,12 @@ export class ColorExitsService {
       operatorId: record.operatorId,
       operatorName: record.operator?.name ?? null,
       exitDate: record.exitDate.toISOString(),
+      statisticYear: record.statisticYear,
+      annualOutput: record.annualOutput,
+      exitThreshold: record.exitThreshold,
+      systemSuggestion: record.systemSuggestion,
+      finalDecision: record.finalDecision,
+      effectiveDate: record.effectiveDate?.toISOString() ?? null,
       exitReason: record.exitReason,
       description: record.description,
       completedAt: record.completedAt?.toISOString() ?? null,

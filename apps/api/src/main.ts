@@ -1,8 +1,9 @@
 import 'reflect-metadata';
 
-import { Logger } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
 
 import { AppModule } from './app.module';
@@ -18,6 +19,16 @@ async function bootstrap() {
 
   app.setGlobalPrefix('api');
   app.use(cookieParser());
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+      transformOptions: {
+        enableImplicitConversion: true,
+      },
+    }),
+  );
 
   if (frontendUrl) {
     app.enableCors({
@@ -30,6 +41,21 @@ async function bootstrap() {
       'Bootstrap',
     );
   }
+
+  const swaggerConfig = new DocumentBuilder()
+    .setTitle('Feishu Timeline API')
+    .setDescription('轻卡新颜色开发项目管理系统 API')
+    .setVersion('0.1.0')
+    .addCookieAuth('ft_session', {
+      type: 'apiKey',
+      in: 'cookie',
+    })
+    .build();
+  const swaggerDocument = SwaggerModule.createDocument(app, swaggerConfig);
+
+  SwaggerModule.setup('api/docs', app, swaggerDocument, {
+    jsonDocumentUrl: 'api/docs-json',
+  });
 
   await app.listen(port, host);
 

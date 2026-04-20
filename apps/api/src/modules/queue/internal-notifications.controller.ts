@@ -7,6 +7,7 @@ import { NotificationType } from '@prisma/client';
 
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { CurrentUser } from '../auth/current-user.decorator';
+import { Permissions } from '../auth/permissions.decorator';
 import { Roles } from '../auth/roles.decorator';
 import { NotificationQueueService } from './notification-queue.service';
 
@@ -15,6 +16,7 @@ export class InternalNotificationsController {
   constructor(private readonly notificationQueueService: NotificationQueueService) {}
 
   @Roles('admin')
+  @Permissions('system.manage')
   @Post('enqueue')
   enqueue(
     @Body() body: Record<string, unknown>,
@@ -34,9 +36,23 @@ export class InternalNotificationsController {
   }
 
   @Roles('admin')
+  @Permissions('system.manage')
+  @Post('process-due-reminder-scan')
+  processDueReminderScan() {
+    return this.notificationQueueService.processDueReminderScan();
+  }
+
+  @Roles('admin')
+  @Permissions('system.manage')
   @Post('process-overdue-scan')
   processOverdueScan() {
     return this.notificationQueueService.processOverdueScan();
   }
-}
 
+  @Roles('admin')
+  @Permissions('system.manage')
+  @Post('process-monthly-review-schedule')
+  processMonthlyReviewSchedule() {
+    return this.notificationQueueService.processMonthlyReviewSchedule();
+  }
+}

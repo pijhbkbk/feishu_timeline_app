@@ -28,6 +28,8 @@ export type ColorSummary = {
   isPrimary?: boolean;
 };
 
+export type ColorExitSuggestion = 'EXIT' | 'RETAIN' | 'OBSERVE';
+
 export type ColorExitRecord = {
   id: string;
   workflowTaskId: string;
@@ -40,6 +42,12 @@ export type ColorExitRecord = {
   operatorId: string | null;
   operatorName: string | null;
   exitDate: string;
+  statisticYear: number | null;
+  annualOutput: number | null;
+  exitThreshold: number | null;
+  systemSuggestion: ColorExitSuggestion | null;
+  finalDecision: ColorExitSuggestion | null;
+  effectiveDate: string | null;
   exitReason: string;
   description: string | null;
   completedAt: string | null;
@@ -63,6 +71,7 @@ export type ColorExitWorkspaceResponse = {
   activeTask: WorkflowTaskSummary | null;
   currentColor: ColorSummary | null;
   replacementOptions: ColorSummary[];
+  defaultExitThreshold: number;
   canCompleteTask: boolean;
   completionIssue: string | null;
   items: ColorExitRecord[];
@@ -70,6 +79,10 @@ export type ColorExitWorkspaceResponse = {
 
 export type ColorExitFormInput = {
   exitDate: string;
+  statisticYear: string;
+  annualOutput: string;
+  finalDecision: ColorExitSuggestion | '';
+  effectiveDate: string;
   exitReason: string;
   description: string;
   replacementColorId: string;
@@ -120,6 +133,14 @@ export function validateColorExitForm(input: ColorExitFormInput) {
     return '退出日期不能为空。';
   }
 
+  if (input.statisticYear.trim() && !/^\d{4}$/.test(input.statisticYear.trim())) {
+    return '统计年度必须为四位年份。';
+  }
+
+  if (input.annualOutput.trim() && !/^\d+$/.test(input.annualOutput.trim())) {
+    return '年产量必须为非负整数。';
+  }
+
   if (!input.exitReason.trim()) {
     return '退出原因不能为空。';
   }
@@ -159,12 +180,17 @@ export function getColorExitWorkspaceHighlights(workspace: ColorExitWorkspaceRes
     activeTaskStatusLabel: workspace.activeTask
       ? getWorkflowTaskStatusLabel(workspace.activeTask.status)
       : '当前无颜色退出任务',
+    defaultExitThresholdLabel: `${workspace.defaultExitThreshold} 台`,
   };
 }
 
 export function toColorExitFormInput(record: ColorExitRecord): ColorExitFormInput {
   return {
     exitDate: record.exitDate.slice(0, 10),
+    statisticYear: record.statisticYear ? String(record.statisticYear) : '',
+    annualOutput: record.annualOutput != null ? String(record.annualOutput) : '',
+    finalDecision: record.finalDecision ?? '',
+    effectiveDate: record.effectiveDate?.slice(0, 10) ?? '',
     exitReason: record.exitReason,
     description: record.description ?? '',
     replacementColorId: record.replacementColorId ?? '',
@@ -174,8 +200,28 @@ export function toColorExitFormInput(record: ColorExitRecord): ColorExitFormInpu
 function toColorExitPayload(input: ColorExitFormInput) {
   return {
     exitDate: input.exitDate,
+    statisticYear: input.statisticYear ? Number(input.statisticYear) : null,
+    annualOutput: input.annualOutput ? Number(input.annualOutput) : null,
+    finalDecision: input.finalDecision || null,
+    effectiveDate: input.effectiveDate || null,
     exitReason: input.exitReason,
     description: input.description || null,
     replacementColorId: input.replacementColorId || null,
   };
+}
+
+export function getColorExitSuggestionLabel(value: ColorExitSuggestion | null | undefined) {
+  if (value === 'EXIT') {
+    return '建议退出';
+  }
+
+  if (value === 'RETAIN') {
+    return '建议保留';
+  }
+
+  if (value === 'OBSERVE') {
+    return '延期观察';
+  }
+
+  return '待计算';
 }

@@ -137,6 +137,7 @@ sudo -u feishu -H env \
 | `FEISHU_APP_ID` | 飞书登录配置 | 必需时填写真实值 |
 | `FEISHU_APP_SECRET` | 飞书登录密钥 | 敏感信息 |
 | `FEISHU_REDIRECT_URI` | 飞书回调地址 | 应改为 `https://timeline.all-too-well.com/login/callback` |
+| `FEISHU_AUTHORIZATION_ENDPOINT` | 飞书授权地址 | 当前正式口径为 `https://open.feishu.cn/open-apis/authen/v1/index` |
 
 ## 6. Web 关键变量
 

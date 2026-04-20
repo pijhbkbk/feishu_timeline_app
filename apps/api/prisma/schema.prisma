@@ -110,6 +110,57 @@ enum WorkflowAction {
   SYSTEM_SYNC
 }
 
+enum WorkflowDurationType {
+  WORKDAY
+  SAME_DAY
+  MONTH_END
+  MONTH_OFFSET
+  MANUAL_REVIEW_PASS
+  RECURRING_MONTHLY
+}
+
+enum ProcessTemplateStatus {
+  DRAFT
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+enum WorkCalendarDayType {
+  WORKDAY
+  WEEKEND
+  HOLIDAY
+  ADJUSTED_WORKDAY
+}
+
+enum RecurringPlanStatus {
+  DRAFT
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum RecurringTaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  OVERDUE
+  CANCELLED
+}
+
+enum SystemParameterValueType {
+  STRING
+  NUMBER
+  BOOLEAN
+  JSON
+}
+
+enum ColorExitSuggestion {
+  EXIT
+  RETAIN
+  OBSERVE
+}
+
 enum SampleType {
   PANEL
   CAB
@@ -394,11 +445,26 @@ model Role {
   status      RoleStatus @default(ACTIVE)
   isSystem    Boolean    @default(true)
   userRoles   UserRole[]
+  rolePermissions RolePermission[]
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
   @@index([status])
   @@map("roles")
+}
+
+model RolePermission {
+  id             String   @id @default(cuid())
+  roleId         String
+  permissionCode String
+  description    String?
+  role           Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([roleId, permissionCode])
+  @@index([permissionCode])
+  @@map("role_permissions")
 }
 
 model UserRole {
@@ -534,17 +600,30 @@ model ColorVersion {
 }
 
 model WorkflowNodeDefinition {
-  id           String           @id @default(cuid())
-  nodeCode     WorkflowNodeCode @unique
-  name         String
-  sequence     Int
-  isReviewNode Boolean          @default(false)
-  isActive     Boolean          @default(true)
-  description  String?
-  createdAt    DateTime         @default(now())
-  updatedAt    DateTime         @updatedAt
+  id                     String               @id @default(cuid())
+  nodeCode               WorkflowNodeCode     @unique
+  stepCode               String?              @unique
+  processTemplateCode    String?
+  processTemplateVersion String?
+  name                   String
+  sequence               Int
+  durationType           WorkflowDurationType?
+  durationValue          Int?
+  isBlocking             Boolean              @default(true)
+  isDecisionNode         Boolean              @default(false)
+  allowRework            Boolean              @default(false)
+  allowManualDueAt       Boolean              @default(false)
+  isReviewNode           Boolean              @default(false)
+  isActive               Boolean              @default(true)
+  defaultChargeAmount    Decimal?             @db.Decimal(12, 2)
+  formSchema             Json?
+  requiredAttachments    Json?
+  description            String?
+  createdAt              DateTime             @default(now())
+  updatedAt              DateTime             @updatedAt
 
   @@index([isActive, sequence])
+  @@index([processTemplateCode, processTemplateVersion, sequence])
   @@map("workflow_node_definitions")
 }
 
@@ -564,12 +643,64 @@ model SystemEnumItem {
   @@map("system_enum_items")
 }
 
+model ProcessTemplate {
+  id          String                @id @default(cuid())
+  code        String
+  version     String
+  name        String
+  description String?
+  status      ProcessTemplateStatus @default(ACTIVE)
+  isDefault   Boolean               @default(true)
+  metadata    Json?
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+
+  @@unique([code, version])
+  @@index([status, isDefault])
+  @@map("process_templates")
+}
+
+model WorkCalendar {
+  id           String              @id @default(cuid())
+  calendarDate DateTime            @db.Date
+  dayType      WorkCalendarDayType @default(WORKDAY)
+  isWorkday    Boolean             @default(true)
+  note         String?
+  metadata     Json?
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  @@unique([calendarDate])
+  @@index([dayType, isWorkday])
+  @@map("work_calendar")
+}
+
+model SystemParameter {
+  id           String                   @id @default(cuid())
+  category     String
+  code         String
+  valueType    SystemParameterValueType
+  valueText    String?
+  valueNumber  Decimal?                 @db.Decimal(18, 2)
+  valueBoolean Boolean?
+  valueJson    Json?
+  description  String?
+  isActive     Boolean                  @default(true)
+  createdAt    DateTime                 @default(now())
+  updatedAt    DateTime                 @updatedAt
+
+  @@unique([category, code])
+  @@index([category, isActive])
+  @@map("system_parameters")
+}
+
 model WorkflowInstance {
   id              String                 @id @default(cuid())
   projectId       String
   instanceNo      String                 @unique
   versionNo       Int                    @default(1)
   templateCode    String                 @default("COLOR_DEVELOPMENT_MVP")
+  templateVersion String?
   status          WorkflowInstanceStatus @default(DRAFT)
   currentNodeCode WorkflowNodeCode?
   initiatedById   String?
@@ -597,6 +728,7 @@ model WorkflowTask {
   projectId            String
   taskNo               String               @unique
   nodeCode             WorkflowNodeCode
+  stepCode             String?
   nodeName             String
   taskRound            Int                  @default(1)
   status               WorkflowTaskStatus   @default(PENDING)
@@ -605,9 +737,16 @@ model WorkflowTask {
   assigneeUserId       String?
   assigneeDepartmentId String?
   dueAt                DateTime?
+  manualDueAt          DateTime?
+  effectiveDueAt       DateTime?
+  reviewPassAt         DateTime?
+  overdueDays          Int                  @default(0)
   startedAt            DateTime?
   completedAt          DateTime?
   returnedAt           DateTime?
+  returnedFromTaskId   String?
+  reworkReason         String?
+  idempotencyKey       String?
   payload              Json?
   workflowInstance     WorkflowInstance     @relation(fields: [workflowInstanceId], references: [id], onDelete: Cascade)
   project              Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
@@ -628,7 +767,55 @@ model WorkflowTask {
   @@index([assigneeUserId, status])
   @@index([assigneeDepartmentId, status])
   @@index([projectId, nodeCode, isPrimary, isActive])
+  @@index([idempotencyKey])
   @@map("workflow_tasks")
+}
+
+model RecurringPlan {
+  id                   String              @id @default(cuid())
+  projectId            String
+  sourceWorkflowTaskId String?
+  sourceNodeCode       WorkflowNodeCode?
+  planCode             String              @unique
+  frequency            String
+  totalCount           Int
+  generatedCount       Int                 @default(0)
+  startDate            DateTime            @db.Date
+  endDate              DateTime            @db.Date
+  status               RecurringPlanStatus @default(ACTIVE)
+  metadata             Json?
+  tasks                RecurringTask[]
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+
+  @@index([projectId, status])
+  @@index([sourceWorkflowTaskId])
+  @@map("recurring_plans")
+}
+
+model RecurringTask {
+  id              String              @id @default(cuid())
+  recurringPlanId String
+  projectId       String
+  taskCode        String              @unique
+  periodIndex     Int
+  periodLabel     String
+  plannedDate     DateTime            @db.Date
+  dueAt           DateTime?
+  completedAt     DateTime?
+  reviewerId      String?
+  status          RecurringTaskStatus @default(PENDING)
+  result          ReviewResult        @default(PENDING)
+  comment         String?
+  payload         Json?
+  recurringPlan   RecurringPlan       @relation(fields: [recurringPlanId], references: [id], onDelete: Cascade)
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  @@unique([recurringPlanId, periodIndex])
+  @@index([projectId, status])
+  @@index([reviewerId, status])
+  @@map("recurring_tasks")
 }
 
 model ColorExit {
@@ -639,6 +826,12 @@ model ColorExit {
   replacementColorId String?
   operatorId         String?
   exitDate           DateTime
+  statisticYear      Int?
+  annualOutput       Int?
+  exitThreshold      Int?
+  systemSuggestion   ColorExitSuggestion?
+  finalDecision      ColorExitSuggestion?
+  effectiveDate      DateTime?    @db.Date
   exitReason         String
   description        String?
   completedAt        DateTime?

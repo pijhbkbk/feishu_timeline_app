@@ -217,7 +217,16 @@ export class NotificationsService {
       return { skipped: true };
     }
 
-    const dedupeKey = this.buildDedupeKey(job.type, job.userId, job.taskId, 'system');
+    const metadataDedupeKey =
+      job.metadata &&
+      typeof job.metadata === 'object' &&
+      !Array.isArray(job.metadata) &&
+      typeof (job.metadata as Record<string, unknown>).dedupeKey === 'string'
+        ? ((job.metadata as Record<string, unknown>).dedupeKey as string)
+        : null;
+    const dedupeKey =
+      metadataDedupeKey ??
+      this.buildDedupeKey(job.type, job.userId, job.taskId, 'system');
 
     await this.upsertInAppNotification({
       userId: job.userId,

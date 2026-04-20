@@ -14,6 +14,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
 
 import { CurrentUser } from '../auth/current-user.decorator';
+import { Permissions } from '../auth/permissions.decorator';
 import { Roles } from '../auth/roles.decorator';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { AttachmentsService } from './attachments.service';
@@ -29,6 +30,7 @@ type UploadedBinaryFile = {
 export class AttachmentsController {
   constructor(private readonly attachmentsService: AttachmentsService) {}
 
+  @Permissions('project.read')
   @Get('attachments/:attachmentId/content')
   async getAttachmentContent(
     @Param('attachmentId') attachmentId: string,
@@ -50,6 +52,7 @@ export class AttachmentsController {
     response.send(content.buffer);
   }
 
+  @Permissions('project.read')
   @Get('projects/:projectId/attachments')
   getWorkspace(
     @Param('projectId') projectId: string,
@@ -59,6 +62,7 @@ export class AttachmentsController {
     return this.attachmentsService.getWorkspace(projectId, query, actor);
   }
 
+  @Permissions('project.read')
   @Get('projects/:projectId/attachments/by-entity')
   getAttachmentsByEntity(
     @Param('projectId') projectId: string,
@@ -68,6 +72,7 @@ export class AttachmentsController {
     return this.attachmentsService.getAttachmentsByEntity(projectId, query, actor);
   }
 
+  @Permissions('project.read')
   @Get('projects/:projectId/attachments/:attachmentId')
   getAttachmentDetail(
     @Param('projectId') projectId: string,
@@ -86,6 +91,7 @@ export class AttachmentsController {
     'reviewer',
     'finance',
   )
+  @Permissions('attachment.manage')
   @UseInterceptors(FileInterceptor('file'))
   @Post('projects/:projectId/attachments/upload')
   uploadAttachment(
@@ -106,6 +112,7 @@ export class AttachmentsController {
     'reviewer',
     'finance',
   )
+  @Permissions('attachment.manage')
   @Post('projects/:projectId/attachments/:attachmentId/bind')
   bindAttachment(
     @Param('projectId') projectId: string,
@@ -125,6 +132,7 @@ export class AttachmentsController {
     'reviewer',
     'finance',
   )
+  @Permissions('attachment.manage')
   @Post('projects/:projectId/attachments/:attachmentId/unbind')
   unbindAttachment(
     @Param('projectId') projectId: string,
@@ -143,6 +151,7 @@ export class AttachmentsController {
     'reviewer',
     'finance',
   )
+  @Permissions('attachment.manage')
   @Delete('projects/:projectId/attachments/:attachmentId')
   deleteAttachment(
     @Param('projectId') projectId: string,
@@ -152,6 +161,7 @@ export class AttachmentsController {
     return this.attachmentsService.deleteAttachment(projectId, attachmentId, actor);
   }
 
+  @Permissions('project.read')
   @Get('projects/:projectId/attachments/:attachmentId/download')
   async downloadAttachment(
     @Param('projectId') projectId: string,

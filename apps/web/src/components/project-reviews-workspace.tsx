@@ -3,6 +3,7 @@
 import React from 'react';
 import { CabinReviewWorkspace } from './cabin-review-workspace';
 import { ConsistencyReviewWorkspace } from './consistency-review-workspace';
+import { MonthlyReviewWorkspace } from './monthly-review-workspace';
 
 type ProjectReviewsWorkspaceProps = {
   projectId: string;
@@ -15,6 +16,7 @@ export function ProjectReviewsWorkspace({
     <div className="page-stack">
       <CabinReviewWorkspace projectId={projectId} />
       <ConsistencyReviewWorkspace projectId={projectId} />
+      <MonthlyReviewWorkspace projectId={projectId} />
     </div>
   );
 }

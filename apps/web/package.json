@@ -8,7 +8,8 @@
     "start": "dotenv -e .env.example -- next start --hostname 127.0.0.1 --port 3000",
     "lint": "pnpm exec eslint src --ext .ts,.tsx --max-warnings=0",
     "typecheck": "tsc --noEmit",
-    "test": "pnpm exec vitest run"
+    "test": "pnpm exec vitest run",
+    "test:e2e": "node ./scripts/e2e-mainline.mjs"
   },
   "dependencies": {
     "next": "^15.2.1",

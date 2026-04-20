@@ -7,6 +7,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import {
   NotificationType,
+  RecurringTaskStatus,
   WorkflowTaskStatus,
 } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
@@ -27,6 +28,7 @@ export class NotificationQueueService implements OnModuleInit, OnModuleDestroy {
   private readonly memoryQueue: NotificationQueueJob[] = [];
   private workerTimer: NodeJS.Timeout | null = null;
   private overdueScanTimer: NodeJS.Timeout | null = null;
+  private monthlyReviewScanTimer: NodeJS.Timeout | null = null;
   private isProcessing = false;
 
   constructor(
@@ -55,6 +57,12 @@ export class NotificationQueueService implements OnModuleInit, OnModuleDestroy {
       void this.processOverdueScan();
     }, scanMs);
     this.overdueScanTimer.unref();
+
+    this.monthlyReviewScanTimer = setInterval(() => {
+      void this.processMonthlyReviewSchedule();
+      void this.processDueReminderScan();
+    }, scanMs);
+    this.monthlyReviewScanTimer.unref();
   }
 
   onModuleDestroy() {
@@ -64,6 +72,10 @@ export class NotificationQueueService implements OnModuleInit, OnModuleDestroy {
 
     if (this.overdueScanTimer) {
       clearInterval(this.overdueScanTimer);
+    }
+
+    if (this.monthlyReviewScanTimer) {
+      clearInterval(this.monthlyReviewScanTimer);
     }
   }
 
@@ -228,6 +240,212 @@ export class NotificationQueueService implements OnModuleInit, OnModuleDestroy {
     };
   }
 
+  async processDueReminderScan(now = new Date()) {
+    const startOfDay = new Date(now);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(now);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const dueTodayTasks = await this.prisma.workflowTask.findMany({
+      where: {
+        isActive: true,
+        assigneeUserId: {
+          not: null,
+        },
+        dueAt: {
+          gte: startOfDay,
+          lte: endOfDay,
+        },
+        status: {
+          in: [
+            WorkflowTaskStatus.PENDING,
+            WorkflowTaskStatus.READY,
+            WorkflowTaskStatus.IN_PROGRESS,
+            WorkflowTaskStatus.RETURNED,
+          ],
+        },
+      },
+      select: {
+        id: true,
+        projectId: true,
+        assigneeUserId: true,
+        nodeCode: true,
+        nodeName: true,
+      },
+    });
+
+    const dedupeKeys = dueTodayTasks
+      .filter((task) => task.assigneeUserId)
+      .map((task) =>
+        [NotificationType.SYSTEM_INFO, task.assigneeUserId, task.id, now.toISOString().slice(0, 10), 'due'].join(':'),
+      );
+
+    const existingKeys = await this.notificationsService.hasInAppNotificationDedupeKey(
+      dedupeKeys,
+    );
+
+    let enqueued = 0;
+
+    for (const task of dueTodayTasks) {
+      if (!task.assigneeUserId) {
+        continue;
+      }
+
+      const dedupeKey = [
+        NotificationType.SYSTEM_INFO,
+        task.assigneeUserId,
+        task.id,
+        now.toISOString().slice(0, 10),
+        'due',
+      ].join(':');
+
+      if (existingKeys.has(dedupeKey)) {
+        continue;
+      }
+
+      await this.enqueue({
+        type: NotificationType.SYSTEM_INFO,
+        taskId: task.id,
+        projectId: task.projectId,
+        userId: task.assigneeUserId,
+        title: `${task.nodeName} 今日到期`,
+        content: `${task.nodeName} 将于今日到期，请及时处理。`,
+        linkPath: `/projects/${task.projectId}/workflow`,
+        triggeredByUserId: null,
+        metadata: {
+          dedupeKey,
+          notificationCategory: 'due-reminder',
+          nodeCode: task.nodeCode,
+        },
+      });
+
+      enqueued += 1;
+    }
+
+    return {
+      scanned: dueTodayTasks.length,
+      enqueued,
+    };
+  }
+
+  async processMonthlyReviewSchedule(now = new Date()) {
+    const startOfDay = new Date(now);
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const recurringTasks = await this.prisma.recurringTask.findMany({
+      where: {
+        reviewerId: {
+          not: null,
+        },
+        plannedDate: {
+          lte: startOfDay,
+        },
+        status: {
+          in: [
+            RecurringTaskStatus.PENDING,
+            RecurringTaskStatus.IN_PROGRESS,
+            RecurringTaskStatus.OVERDUE,
+          ],
+        },
+      },
+      select: {
+        id: true,
+        projectId: true,
+        reviewerId: true,
+        periodLabel: true,
+        dueAt: true,
+        status: true,
+      },
+    });
+
+    const overdueIds = recurringTasks
+      .filter(
+        (task) =>
+          task.status !== RecurringTaskStatus.OVERDUE &&
+          task.dueAt !== null &&
+          task.dueAt.getTime() < now.getTime(),
+      )
+      .map((task) => task.id);
+
+    if (overdueIds.length > 0) {
+      await this.prisma.recurringTask.updateMany({
+        where: {
+          id: {
+            in: overdueIds,
+          },
+        },
+        data: {
+          status: RecurringTaskStatus.OVERDUE,
+        },
+      });
+    }
+
+    const dedupeKeys = recurringTasks
+      .filter((task) => task.reviewerId)
+      .map((task) =>
+        [
+          NotificationType.SYSTEM_INFO,
+          task.reviewerId,
+          task.id,
+          now.toISOString().slice(0, 10),
+          'monthly-review',
+        ].join(':'),
+      );
+
+    const existingKeys = await this.notificationsService.hasInAppNotificationDedupeKey(
+      dedupeKeys,
+    );
+
+    let enqueued = 0;
+
+    for (const task of recurringTasks) {
+      if (!task.reviewerId) {
+        continue;
+      }
+
+      const dedupeKey = [
+        NotificationType.SYSTEM_INFO,
+        task.reviewerId,
+        task.id,
+        now.toISOString().slice(0, 10),
+        'monthly-review',
+      ].join(':');
+
+      if (existingKeys.has(dedupeKey)) {
+        continue;
+      }
+
+      const isOverdue = overdueIds.includes(task.id) || task.status === RecurringTaskStatus.OVERDUE;
+
+      await this.enqueue({
+        type: NotificationType.SYSTEM_INFO,
+        taskId: null,
+        projectId: task.projectId,
+        userId: task.reviewerId,
+        title: isOverdue ? '月度评审已超期' : '月度评审待处理',
+        content: isOverdue
+          ? `${task.periodLabel} 的整车色差一致性评审已超期，请尽快处理。`
+          : `${task.periodLabel} 的整车色差一致性评审已到计划时间，请及时处理。`,
+        linkPath: `/projects/${task.projectId}/workflow`,
+        triggeredByUserId: null,
+        metadata: {
+          dedupeKey,
+          notificationCategory: 'monthly-review',
+          recurringTaskId: task.id,
+          periodLabel: task.periodLabel,
+        },
+      });
+
+      enqueued += 1;
+    }
+
+    return {
+      scanned: recurringTasks.length,
+      markedOverdue: overdueIds.length,
+      enqueued,
+    };
+  }
+
   private buildJob(input: NotificationQueueJobInput): NotificationQueueJob {
     return {
       id: randomUUID(),
@@ -290,4 +508,3 @@ export class NotificationQueueService implements OnModuleInit, OnModuleDestroy {
     await this.requeue(nextJob);
   }
 }
-

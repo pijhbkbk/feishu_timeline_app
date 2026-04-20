@@ -1,44 +1,65 @@
+import { WorkflowAction, WorkflowNodeCode } from '@prisma/client';
 import { describe, expect, it } from 'vitest';
-import { WorkflowAction, WorkflowNodeCode, WorkflowTaskStatus } from '@prisma/client';
 
-import {
-  getAllowedWorkflowActions,
-  getCurrentNodeName,
-  getWorkflowNextTaskTemplates,
-  getWorkflowTerminalStatus,
-  isPrimaryWorkflowNode,
-} from './workflow-node.constants';
+import { getWorkflowNextTaskTemplates } from './workflow-node.constants';
 
-describe('workflow node configuration', () => {
-  it('creates color numbering in parallel after sample color confirmation approval', () => {
+describe('workflow node constants', () => {
+  it('creates procurement and numbering in parallel after sample color confirmation approve', () => {
     const templates = getWorkflowNextTaskTemplates(
       WorkflowNodeCode.SAMPLE_COLOR_CONFIRMATION,
       WorkflowAction.APPROVE,
     );
 
-    expect(templates.map((template) => template.nodeCode)).toEqual([
-      WorkflowNodeCode.PAINT_PROCUREMENT,
-      WorkflowNodeCode.COLOR_NUMBERING,
+    expect(templates).toEqual([
+      expect.objectContaining({
+        nodeCode: WorkflowNodeCode.PAINT_PROCUREMENT,
+        isPrimary: true,
+      }),
+      expect.objectContaining({
+        nodeCode: WorkflowNodeCode.COLOR_NUMBERING,
+        isPrimary: false,
+      }),
     ]);
-    expect(templates[1]?.isPrimary).toBe(false);
   });
 
-  it('returns cab review reject to trial production', () => {
+  it('creates mainline and parallel tasks after paint procurement completes', () => {
     const templates = getWorkflowNextTaskTemplates(
-      WorkflowNodeCode.CAB_REVIEW,
-      WorkflowAction.REJECT,
+      WorkflowNodeCode.PAINT_PROCUREMENT,
+      WorkflowAction.COMPLETE,
     );
 
-    expect(templates).toHaveLength(1);
-    expect(templates[0]?.nodeCode).toBe(WorkflowNodeCode.TRIAL_PRODUCTION);
+    expect(templates).toHaveLength(3);
+    expect(templates[0]).toEqual(
+      expect.objectContaining({
+        nodeCode: WorkflowNodeCode.FIRST_UNIT_PRODUCTION_PLAN,
+        isPrimary: true,
+      }),
+    );
+    expect(templates[1]).toEqual(
+      expect.objectContaining({
+        nodeCode: WorkflowNodeCode.PERFORMANCE_TEST,
+        isPrimary: false,
+      }),
+    );
+    expect(templates[2]).toEqual(
+      expect.objectContaining({
+        nodeCode: WorkflowNodeCode.STANDARD_BOARD_PRODUCTION,
+        isPrimary: false,
+      }),
+    );
   });
 
-  it('guards node actions and labels', () => {
-    expect(getAllowedWorkflowActions(WorkflowNodeCode.COLOR_CONSISTENCY_REVIEW)).toContain(
-      WorkflowAction.APPROVE,
+  it('creates board detail update after standard board production completes', () => {
+    const templates = getWorkflowNextTaskTemplates(
+      WorkflowNodeCode.STANDARD_BOARD_PRODUCTION,
+      WorkflowAction.COMPLETE,
     );
-    expect(getCurrentNodeName(WorkflowNodeCode.DEVELOPMENT_ACCEPTANCE)).toBe('颜色开发收费');
-    expect(isPrimaryWorkflowNode(WorkflowNodeCode.PERFORMANCE_TEST)).toBe(false);
-    expect(getWorkflowTerminalStatus(WorkflowAction.APPROVE)).toBe(WorkflowTaskStatus.APPROVED);
+
+    expect(templates).toEqual([
+      expect.objectContaining({
+        nodeCode: WorkflowNodeCode.BOARD_DETAIL_UPDATE,
+        isPrimary: false,
+      }),
+    ]);
   });
 });

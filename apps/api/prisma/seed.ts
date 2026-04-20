@@ -1,4 +1,5 @@
 import {
+  ColorExitSuggestion,
   ColorBoardDetailUpdateStatus,
   ColorStatus,
   DevelopmentFeeStatus,
@@ -18,10 +19,14 @@ import {
   ProjectMemberType,
   ProjectPriority,
   ProjectStatus,
+  RecurringPlanStatus,
+  RecurringTaskStatus,
+  ProcessTemplateStatus,
   ReviewResult,
   ReviewType,
   RoleStatus,
   SampleConfirmationDecision,
+  SystemParameterValueType,
   SampleStatus,
   SampleType,
   StandardBoardStatus,
@@ -31,9 +36,11 @@ import {
   TrialProductionStatus,
   UserStatus,
   WorkflowAction,
+  WorkflowDurationType,
   WorkflowInstanceStatus,
   WorkflowNodeCode,
   WorkflowTaskStatus,
+  WorkCalendarDayType,
 } from '@prisma/client';
 
 const prisma = new PrismaClient();
@@ -76,132 +83,332 @@ const baseRoles = [
   },
 ] as const;
 
+const defaultProcessTemplate = {
+  code: 'LIGHT_TRUCK_CUSTOM_COLOR_DEV',
+  version: '1.0',
+  name: '轻卡定制颜色开发流程',
+  description: '基于三份正式业务文档冻结的轻卡定制颜色开发流程模板。',
+} as const;
+
+const rolePermissionMap = {
+  admin: [
+    'system.manage',
+    'project.read',
+    'project.write',
+    'workflow.transition',
+    'review.execute',
+    'attachment.manage',
+    'audit.read',
+    'dashboard.read',
+  ],
+  project_manager: [
+    'project.read',
+    'project.write',
+    'workflow.transition',
+    'attachment.manage',
+    'dashboard.read',
+  ],
+  process_engineer: [
+    'project.read',
+    'workflow.transition',
+    'attachment.manage',
+    'dashboard.read',
+  ],
+  quality_engineer: ['project.read', 'review.execute', 'attachment.manage', 'dashboard.read'],
+  purchaser: ['project.read', 'attachment.manage', 'dashboard.read'],
+  reviewer: ['project.read', 'review.execute', 'attachment.manage', 'dashboard.read'],
+  finance: ['project.read', 'attachment.manage', 'dashboard.read'],
+} as const;
+
 const workflowNodes = [
   {
+    stepCode: '01',
     nodeCode: WorkflowNodeCode.PROJECT_INITIATION,
-    name: '项目立项',
+    processTemplateCode: defaultProcessTemplate.code,
+    processTemplateVersion: defaultProcessTemplate.version,
+    name: '反映市场需求',
     sequence: 10,
+    durationType: WorkflowDurationType.WORKDAY,
+    durationValue: 4,
+    isBlocking: true,
+    isDecisionNode: false,
+    allowRework: false,
+    allowManualDueAt: false,
     isReviewNode: false,
-    description: '创建项目并初始化流程。',
+    description: '营销公司提交市场需求并发起颜色开发流程。',
   },
   {
+    stepCode: '02',
     nodeCode: WorkflowNodeCode.DEVELOPMENT_REPORT,
+    processTemplateCode: defaultProcessTemplate.code,
+    processTemplateVersion: defaultProcessTemplate.version,
     name: '新颜色开发报告',
     sequence: 20,
+    durationType: WorkflowDurationType.WORKDAY,
+    durationValue: 5,
+    isBlocking: true,
+    isDecisionNode: false,
+    allowRework: false,
+    allowManualDueAt: false,
     isReviewNode: false,
     description: '提交新颜色开发报告。',
   },
   {
+    stepCode: '03',
     nodeCode: WorkflowNodeCode.PAINT_DEVELOPMENT,
+    processTemplateCode: defaultProcessTemplate.code,
+    processTemplateVersion: defaultProcessTemplate.version,
     name: '涂料开发',
     sequence: 30,
+    durationType: WorkflowDurationType.WORKDAY,
+    durationValue: 5,
+    isBlocking: true,
+    isDecisionNode: false,
+    allowRework: false,
+    allowManualDueAt: false,
     isReviewNode: false,
     description: '完成配方与开发记录。',
   },
   {
+    stepCode: '04',
     nodeCode: WorkflowNodeCode.SAMPLE_COLOR_CONFIRMATION,
+    processTemplateCode: defaultProcessTemplate.code,
+    processTemplateVersion: defaultProcessTemplate.version,
     name: '样板颜色确认',
     sequence: 40,
+    durationType: WorkflowDurationType.WORKDAY,
+    durationValue: 2,
+    isBlocking: true,
+    isDecisionNode: false,
+    allowRework: false,
+    allowManualDueAt: false,
     isReviewNode: false,
     description: '确认样板颜色与版本。',
   },
   {
+    stepCode: '05',
     nodeCode: WorkflowNodeCode.COLOR_NUMBERING,
+    processTemplateCode: defaultProcessTemplate.code,
+    processTemplateVersion: defaultProcessTemplate.version,
     name: '新颜色取号',
     sequence: 50,
+    durationType: WorkflowDurationType.WORKDAY,
+    durationValue: 1,
+    isBlocking: false,
+    isDecisionNode: false,
+    allowRework: false,
+    allowManualDueAt: false,
     isReviewNode: false,
     description: '生成或录入新颜色编号。',
   },
   {
+    stepCode: '06',
     nodeCode: WorkflowNodeCode.PAINT_PROCUREMENT,
+    processTemplateCode: defaultProcessTemplate.code,
+    processTemplateVersion: defaultProcessTemplate.version,
     name: '涂料采购',
     sequence: 60,
+    durationType: WorkflowDurationType.WORKDAY,
+    durationValue: 10,
+    isBlocking: true,
+    isDecisionNode: false,
+    allowRework: false,
+    allowManualDueAt: false,
     isReviewNode: false,
     description: '采购开发阶段所需涂料。',
   },
   {
+    stepCode: '09',
     nodeCode: WorkflowNodeCode.PERFORMANCE_TEST,
+    processTemplateCode: defaultProcessTemplate.code,
+    processTemplateVersion: defaultProcessTemplate.version,
     name: '涂料性能试验',
     sequence: 70,
+    durationType: WorkflowDurationType.MONTH_OFFSET,
+    durationValue: 4,
+    isBlocking: false,
+    isDecisionNode: false,
+    allowRework: false,
+    allowManualDueAt: false,
     isReviewNode: false,
     description: '记录性能测试与结果。',
   },
   {
+    stepCode: '07',
     nodeCode: WorkflowNodeCode.STANDARD_BOARD_PRODUCTION,
-    name: '标准板制作',
+    processTemplateCode: defaultProcessTemplate.code,
+    processTemplateVersion: defaultProcessTemplate.version,
+    name: '标准板制作、下发',
     sequence: 80,
+    durationType: WorkflowDurationType.WORKDAY,
+    durationValue: 5,
+    isBlocking: false,
+    isDecisionNode: false,
+    allowRework: false,
+    allowManualDueAt: false,
     isReviewNode: false,
     description: '制作并下发标准板。',
   },
   {
+    stepCode: '08',
     nodeCode: WorkflowNodeCode.BOARD_DETAIL_UPDATE,
+    processTemplateCode: defaultProcessTemplate.code,
+    processTemplateVersion: defaultProcessTemplate.version,
     name: '色板明细更新',
     sequence: 90,
+    durationType: WorkflowDurationType.WORKDAY,
+    durationValue: 1,
+    isBlocking: false,
+    isDecisionNode: false,
+    allowRework: false,
+    allowManualDueAt: false,
     isReviewNode: false,
     description: '维护色板明细信息。',
   },
   {
+    stepCode: '10',
     nodeCode: WorkflowNodeCode.FIRST_UNIT_PRODUCTION_PLAN,
+    processTemplateCode: defaultProcessTemplate.code,
+    processTemplateVersion: defaultProcessTemplate.version,
     name: '首台生产计划',
     sequence: 100,
+    durationType: WorkflowDurationType.SAME_DAY,
+    durationValue: 0,
+    isBlocking: true,
+    isDecisionNode: false,
+    allowRework: false,
+    allowManualDueAt: false,
     isReviewNode: false,
     description: '规划首台样车生产。',
   },
   {
+    stepCode: '11',
     nodeCode: WorkflowNodeCode.TRIAL_PRODUCTION,
+    processTemplateCode: defaultProcessTemplate.code,
+    processTemplateVersion: defaultProcessTemplate.version,
     name: '样车试制',
     sequence: 110,
+    durationType: WorkflowDurationType.WORKDAY,
+    durationValue: 3,
+    isBlocking: true,
+    isDecisionNode: false,
+    allowRework: true,
+    allowManualDueAt: false,
     isReviewNode: false,
     description: '记录样车试制过程与结果。',
   },
   {
+    stepCode: '12',
     nodeCode: WorkflowNodeCode.CAB_REVIEW,
+    processTemplateCode: defaultProcessTemplate.code,
+    processTemplateVersion: defaultProcessTemplate.version,
     name: '样车驾驶室评审',
     sequence: 120,
+    durationType: WorkflowDurationType.MANUAL_REVIEW_PASS,
+    durationValue: 2,
+    isBlocking: true,
+    isDecisionNode: true,
+    allowRework: true,
+    allowManualDueAt: true,
     isReviewNode: true,
     description: '驾驶室颜色效果评审节点。',
   },
   {
+    stepCode: '13',
     nodeCode: WorkflowNodeCode.DEVELOPMENT_ACCEPTANCE,
+    processTemplateCode: defaultProcessTemplate.code,
+    processTemplateVersion: defaultProcessTemplate.version,
     name: '颜色开发收费',
     sequence: 130,
+    durationType: WorkflowDurationType.MONTH_END,
+    durationValue: 0,
+    isBlocking: false,
+    isDecisionNode: false,
+    allowRework: false,
+    allowManualDueAt: false,
     isReviewNode: false,
+    defaultChargeAmount: '10000.00',
     description: '驾驶室评审通过后并行触发的开发收费节点。',
   },
   {
+    stepCode: '14',
     nodeCode: WorkflowNodeCode.COLOR_CONSISTENCY_REVIEW,
+    processTemplateCode: defaultProcessTemplate.code,
+    processTemplateVersion: defaultProcessTemplate.version,
     name: '颜色一致性评审',
     sequence: 140,
+    durationType: WorkflowDurationType.WORKDAY,
+    durationValue: 1,
+    isBlocking: true,
+    isDecisionNode: false,
+    allowRework: false,
+    allowManualDueAt: false,
     isReviewNode: true,
     description: '一致性评审节点。',
   },
   {
+    stepCode: '15',
     nodeCode: WorkflowNodeCode.MASS_PRODUCTION_PLAN,
+    processTemplateCode: defaultProcessTemplate.code,
+    processTemplateVersion: defaultProcessTemplate.version,
     name: '排产计划',
     sequence: 150,
+    durationType: WorkflowDurationType.SAME_DAY,
+    durationValue: 0,
+    isBlocking: true,
+    isDecisionNode: false,
+    allowRework: false,
+    allowManualDueAt: false,
     isReviewNode: false,
     description: '规划量产排产。',
   },
   {
+    stepCode: '16',
     nodeCode: WorkflowNodeCode.MASS_PRODUCTION,
+    processTemplateCode: defaultProcessTemplate.code,
+    processTemplateVersion: defaultProcessTemplate.version,
     name: '批量生产',
     sequence: 160,
+    durationType: WorkflowDurationType.WORKDAY,
+    durationValue: 5,
+    isBlocking: true,
+    isDecisionNode: false,
+    allowRework: false,
+    allowManualDueAt: false,
     isReviewNode: false,
     description: '进入批量生产。',
   },
   {
+    stepCode: '17',
     nodeCode: WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW,
-    name: '色差目视评审',
+    processTemplateCode: defaultProcessTemplate.code,
+    processTemplateVersion: defaultProcessTemplate.version,
+    name: '整车色差一致性评审',
     sequence: 170,
+    durationType: WorkflowDurationType.RECURRING_MONTHLY,
+    durationValue: 12,
+    isBlocking: false,
+    isDecisionNode: false,
+    allowRework: false,
+    allowManualDueAt: false,
     isReviewNode: true,
-    description: '量产后的色差目视评审。',
+    description: '批量生产完成后每月执行一次的整车色差一致性评审。',
   },
   {
+    stepCode: '18',
     nodeCode: WorkflowNodeCode.PROJECT_CLOSED,
+    processTemplateCode: defaultProcessTemplate.code,
+    processTemplateVersion: defaultProcessTemplate.version,
     name: '颜色退出',
     sequence: 180,
+    durationType: WorkflowDurationType.MONTH_OFFSET,
+    durationValue: 12,
+    isBlocking: false,
+    isDecisionNode: true,
+    allowRework: false,
+    allowManualDueAt: true,
     isReviewNode: false,
-    description: '颜色退出并完成项目收尾。',
+    description: '12 个月周期结束后，录入年产量并给出退出建议。',
   },
 ] as const;
 
@@ -211,6 +418,37 @@ const projectStatusItems = [
   { code: ProjectStatus.ON_HOLD, name: '挂起', sortOrder: 30 },
   { code: ProjectStatus.COMPLETED, name: '已完成', sortOrder: 40 },
   { code: ProjectStatus.CANCELLED, name: '已取消', sortOrder: 50 },
+] as const;
+
+const systemParameters = [
+  {
+    category: 'WORKFLOW',
+    code: 'DEVELOPMENT_FEE_FIXED_AMOUNT',
+    valueType: SystemParameterValueType.NUMBER,
+    valueNumber: '10000.00',
+    description: '第 13 步颜色开发收费固定金额。',
+  },
+  {
+    category: 'WORKFLOW',
+    code: 'MONTHLY_REVIEW_TOTAL_COUNT',
+    valueType: SystemParameterValueType.NUMBER,
+    valueNumber: '12.00',
+    description: '第 17 步月度周期实例总数。',
+  },
+  {
+    category: 'COLOR_EXIT',
+    code: 'ANNUAL_OUTPUT_EXIT_THRESHOLD',
+    valueType: SystemParameterValueType.NUMBER,
+    valueNumber: '20.00',
+    description: '颜色退出建议默认年产量阈值。',
+  },
+  {
+    category: 'CALENDAR',
+    code: 'DEFAULT_CALENDAR_MODE',
+    valueType: SystemParameterValueType.STRING,
+    valueText: 'WEEKDAY_WITH_OVERRIDE',
+    description: '默认工作日历模式：工作日 + 节假日覆盖。',
+  },
 ] as const;
 
 const demoDepartments = [
@@ -315,6 +553,32 @@ type SeedRefs = {
   suppliers: Record<string, { id: string; supplierName: string }>;
 };
 
+function buildWorkCalendarEntries(year: number) {
+  const entries: Array<{
+    calendarDate: Date;
+    dayType: WorkCalendarDayType;
+    isWorkday: boolean;
+    note: string;
+  }> = [];
+
+  for (let month = 0; month < 12; month += 1) {
+    const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+    for (let day = 1; day <= daysInMonth; day += 1) {
+      const calendarDate = new Date(Date.UTC(year, month, day));
+      const weekDay = calendarDate.getUTCDay();
+      const isWeekend = weekDay === 0 || weekDay === 6;
+      entries.push({
+        calendarDate,
+        dayType: isWeekend ? WorkCalendarDayType.WEEKEND : WorkCalendarDayType.WORKDAY,
+        isWorkday: !isWeekend,
+        note: isWeekend ? '默认周末' : '默认工作日',
+      });
+    }
+  }
+
+  return entries;
+}
+
 function getNodeName(nodeCode: WorkflowNodeCode) {
   return NODE_NAME_MAP[nodeCode];
 }
@@ -325,6 +589,29 @@ async function upsertBaseData(): Promise<SeedRefs> {
     const roles: SeedRefs['roles'] = {};
     const users: SeedRefs['users'] = {};
     const suppliers: SeedRefs['suppliers'] = {};
+
+    await tx.processTemplate.upsert({
+      where: {
+        code_version: {
+          code: defaultProcessTemplate.code,
+          version: defaultProcessTemplate.version,
+        },
+      },
+      create: {
+        code: defaultProcessTemplate.code,
+        version: defaultProcessTemplate.version,
+        name: defaultProcessTemplate.name,
+        description: defaultProcessTemplate.description,
+        status: ProcessTemplateStatus.ACTIVE,
+        isDefault: true,
+      },
+      update: {
+        name: defaultProcessTemplate.name,
+        description: defaultProcessTemplate.description,
+        status: ProcessTemplateStatus.ACTIVE,
+        isDefault: true,
+      },
+    });
 
     for (const department of demoDepartments) {
       const parentCode = department.path.split('/').filter(Boolean).slice(-2, -1)[0] ?? null;
@@ -373,6 +660,24 @@ async function upsertBaseData(): Promise<SeedRefs> {
       roles[role.code] = { id: record.id };
     }
 
+    for (const [roleCode, permissionCodes] of Object.entries(rolePermissionMap)) {
+      const roleId = roles[roleCode]?.id;
+      if (!roleId) {
+        continue;
+      }
+
+      await tx.rolePermission.deleteMany({
+        where: { roleId },
+      });
+
+      await tx.rolePermission.createMany({
+        data: permissionCodes.map((permissionCode) => ({
+          roleId,
+          permissionCode,
+        })),
+      });
+    }
+
     for (const user of demoUsers) {
       const departmentId = departments[user.departmentCode]?.id ?? null;
       const record = await tx.user.upsert({
@@ -417,10 +722,20 @@ async function upsertBaseData(): Promise<SeedRefs> {
         where: { nodeCode: node.nodeCode },
         create: node,
         update: {
+          stepCode: node.stepCode,
+          processTemplateCode: node.processTemplateCode,
+          processTemplateVersion: node.processTemplateVersion,
           name: node.name,
           sequence: node.sequence,
+          durationType: node.durationType,
+          durationValue: node.durationValue,
+          isBlocking: node.isBlocking,
+          isDecisionNode: node.isDecisionNode,
+          allowRework: node.allowRework,
+          allowManualDueAt: node.allowManualDueAt,
           isReviewNode: node.isReviewNode,
           isActive: true,
+          defaultChargeAmount: node.defaultChargeAmount ?? null,
           description: node.description,
         },
       });
@@ -446,6 +761,56 @@ async function upsertBaseData(): Promise<SeedRefs> {
           sortOrder: status.sortOrder,
           isActive: true,
         },
+      });
+    }
+
+    for (const parameter of systemParameters) {
+      await tx.systemParameter.upsert({
+        where: {
+          category_code: {
+            category: parameter.category,
+            code: parameter.code,
+          },
+        },
+        create: {
+          category: parameter.category,
+          code: parameter.code,
+          valueType: parameter.valueType,
+          valueText: parameter.valueText ?? null,
+          valueNumber: parameter.valueNumber ?? null,
+          description: parameter.description,
+          isActive: true,
+        },
+        update: {
+          valueType: parameter.valueType,
+          valueText: parameter.valueText ?? null,
+          valueNumber: parameter.valueNumber ?? null,
+          description: parameter.description,
+          isActive: true,
+        },
+      });
+    }
+
+    for (const year of [2026, 2027]) {
+      const entries = buildWorkCalendarEntries(year);
+      const firstDate = entries[0]?.calendarDate;
+      const lastDate = entries[entries.length - 1]?.calendarDate;
+
+      if (!firstDate || !lastDate) {
+        continue;
+      }
+
+      await tx.workCalendar.deleteMany({
+        where: {
+          calendarDate: {
+            gte: firstDate,
+            lte: lastDate,
+          },
+        },
+      });
+
+      await tx.workCalendar.createMany({
+        data: entries,
       });
     }
 
@@ -1185,8 +1550,8 @@ async function ensureCompletedDemoProject(refs: SeedRefs) {
 
   await prisma.$transaction(async (tx) => {
     const plannedStartDate = new Date('2026-01-05T00:00:00.000Z');
-    const plannedEndDate = new Date('2026-02-28T00:00:00.000Z');
-    const actualEndDate = new Date('2026-02-26T00:00:00.000Z');
+    const plannedEndDate = new Date('2027-02-28T00:00:00.000Z');
+    const actualEndDate = new Date('2027-02-26T00:00:00.000Z');
 
     const project = await tx.project.create({
       data: {
@@ -1394,7 +1759,7 @@ async function ensureCompletedDemoProject(refs: SeedRefs) {
         nodeCode: WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW,
         status: WorkflowTaskStatus.APPROVED,
         assigneeUserId: refs.users.reviewer.id,
-        completedAt: new Date('2026-02-22T01:00:00.000Z'),
+        completedAt: new Date('2027-02-20T01:00:00.000Z'),
       }),
       projectClosed: await createWorkflowTask(tx, {
         workflowInstanceId: workflowInstance.id,
@@ -1592,8 +1957,8 @@ async function ensureCompletedDemoProject(refs: SeedRefs) {
           reviewType: ReviewType.VISUAL_COLOR_DIFFERENCE_REVIEW,
           result: ReviewResult.APPROVED,
           comment: '目视色差评审通过，可进入颜色退出。',
-          reviewedAt: new Date('2026-02-22T00:00:00.000Z'),
-          submittedAt: new Date('2026-02-21T12:00:00.000Z'),
+          reviewedAt: new Date('2027-02-20T00:00:00.000Z'),
+          submittedAt: new Date('2027-02-19T12:00:00.000Z'),
         },
       ],
     });
@@ -1666,6 +2031,12 @@ async function ensureCompletedDemoProject(refs: SeedRefs) {
         colorId: color.id,
         operatorId: refs.users.processEngineer.id,
         exitDate: actualEndDate,
+        statisticYear: 2027,
+        annualOutput: 18,
+        exitThreshold: 20,
+        systemSuggestion: ColorExitSuggestion.EXIT,
+        finalDecision: ColorExitSuggestion.EXIT,
+        effectiveDate: actualEndDate,
         exitReason: '量产评审完成，项目正式收尾。',
         description: '颜色主数据进入退出状态，项目归档完成。',
         completedAt: actualEndDate,
@@ -1690,7 +2061,7 @@ async function ensureCompletedDemoProject(refs: SeedRefs) {
       ['2026-02-02T01:00:00.000Z', tasks.consistencyReview, tasks.schedulePlan, WorkflowNodeCode.COLOR_CONSISTENCY_REVIEW, WorkflowNodeCode.MASS_PRODUCTION_PLAN, WorkflowAction.APPROVE, '一致性评审通过后进入排产计划。'],
       ['2026-02-06T01:00:00.000Z', tasks.schedulePlan, tasks.massProduction, WorkflowNodeCode.MASS_PRODUCTION_PLAN, WorkflowNodeCode.MASS_PRODUCTION, WorkflowAction.COMPLETE, '排产计划完成。'],
       ['2026-02-16T01:00:00.000Z', tasks.massProduction, tasks.visualReview, WorkflowNodeCode.MASS_PRODUCTION, WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW, WorkflowAction.COMPLETE, '批量生产完成后进入目视色差评审。'],
-      ['2026-02-22T01:00:00.000Z', tasks.visualReview, tasks.projectClosed, WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW, WorkflowNodeCode.PROJECT_CLOSED, WorkflowAction.APPROVE, '目视色差评审通过后进入颜色退出。'],
+      ['2027-02-20T01:00:00.000Z', tasks.visualReview, tasks.projectClosed, WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW, WorkflowNodeCode.PROJECT_CLOSED, WorkflowAction.APPROVE, '12 个月月度评审完成后进入颜色退出。'],
     ] as const;
 
     for (const entry of transitionDates) {
@@ -1762,10 +2133,268 @@ async function ensureCompletedDemoProject(refs: SeedRefs) {
   });
 }
 
+function addUtcMonthsClamped(baseDate: Date, offset: number) {
+  const year = baseDate.getUTCFullYear();
+  const month = baseDate.getUTCMonth() + offset;
+  const day = baseDate.getUTCDate();
+  const monthStart = new Date(Date.UTC(year, month, 1));
+  const monthEnd = new Date(Date.UTC(monthStart.getUTCFullYear(), monthStart.getUTCMonth() + 1, 0));
+
+  return new Date(
+    Date.UTC(
+      monthStart.getUTCFullYear(),
+      monthStart.getUTCMonth(),
+      Math.min(day, monthEnd.getUTCDate()),
+    ),
+  );
+}
+
+async function ensureCompletedDemoRecurringArtifacts(refs: SeedRefs) {
+  const project = await prisma.project.findUnique({
+    where: { code: 'DEMO-COMPLETE-001' },
+    select: { id: true },
+  });
+
+  if (!project) {
+    return;
+  }
+
+  await prisma.$transaction(async (tx) => {
+    const [visualReviewTask, projectClosedTask, workflowInstance] = await Promise.all([
+      tx.workflowTask.findFirst({
+        where: {
+          projectId: project.id,
+          nodeCode: WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW,
+        },
+        select: { id: true },
+        orderBy: { createdAt: 'desc' },
+      }),
+      tx.workflowTask.findFirst({
+        where: {
+          projectId: project.id,
+          nodeCode: WorkflowNodeCode.PROJECT_CLOSED,
+        },
+        select: { id: true },
+        orderBy: { createdAt: 'desc' },
+      }),
+      tx.workflowInstance.findFirst({
+        where: { projectId: project.id },
+        select: { id: true },
+        orderBy: { versionNo: 'desc' },
+      }),
+    ]);
+
+    if (!visualReviewTask || !projectClosedTask || !workflowInstance) {
+      return;
+    }
+
+    const cycleStartDate = new Date('2026-02-16T00:00:00.000Z');
+    const finalReviewAt = new Date('2027-02-20T00:00:00.000Z');
+    const actualEndDate = new Date('2027-02-26T00:00:00.000Z');
+    const recurringEndDate = addUtcMonthsClamped(cycleStartDate, 12);
+
+    let recurringPlan = await tx.recurringPlan.findFirst({
+      where: {
+        sourceWorkflowTaskId: visualReviewTask.id,
+      },
+      select: { id: true },
+    });
+
+    if (!recurringPlan) {
+      recurringPlan = await tx.recurringPlan.create({
+        data: {
+          projectId: project.id,
+          sourceWorkflowTaskId: visualReviewTask.id,
+          sourceNodeCode: WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW,
+          planCode: 'RPLAN-DEMO-COMPLETE-001',
+          frequency: 'MONTHLY',
+          totalCount: 12,
+          generatedCount: 12,
+          startDate: cycleStartDate,
+          endDate: recurringEndDate,
+          status: RecurringPlanStatus.COMPLETED,
+          metadata: {
+            seeded: true,
+            demoProject: 'DEMO-COMPLETE-001',
+          },
+        },
+        select: { id: true },
+      });
+    } else {
+      await tx.recurringPlan.update({
+        where: { id: recurringPlan.id },
+        data: {
+          totalCount: 12,
+          generatedCount: 12,
+          startDate: cycleStartDate,
+          endDate: recurringEndDate,
+          status: RecurringPlanStatus.COMPLETED,
+          metadata: {
+            seeded: true,
+            demoProject: 'DEMO-COMPLETE-001',
+          },
+        },
+      });
+    }
+
+    for (let index = 1; index <= 12; index += 1) {
+      const plannedDate = addUtcMonthsClamped(cycleStartDate, index);
+      const completedAt = new Date(
+        Date.UTC(
+          plannedDate.getUTCFullYear(),
+          plannedDate.getUTCMonth(),
+          Math.min(plannedDate.getUTCDate() + 2, 28),
+          8,
+        ),
+      );
+
+      const existingTask = await tx.recurringTask.findFirst({
+        where: {
+          recurringPlanId: recurringPlan.id,
+          periodIndex: index,
+        },
+        select: { id: true },
+      });
+
+      const taskData = {
+        projectId: project.id,
+        recurringPlanId: recurringPlan.id,
+        taskCode: `DEMO-COMPLETE-MONTHLY-${plannedDate.getUTCFullYear()}${String(plannedDate.getUTCMonth() + 1).padStart(2, '0')}-${String(index).padStart(2, '0')}`,
+        periodIndex: index,
+        periodLabel: `${plannedDate.getUTCFullYear()}-${String(plannedDate.getUTCMonth() + 1).padStart(2, '0')}`,
+        plannedDate,
+        dueAt: new Date(
+          Date.UTC(
+            plannedDate.getUTCFullYear(),
+            plannedDate.getUTCMonth(),
+            plannedDate.getUTCDate(),
+            23,
+            59,
+            59,
+          ),
+        ),
+        completedAt,
+        reviewerId: refs.users.reviewer.id,
+        status: RecurringTaskStatus.COMPLETED,
+        result: index <= 10 ? ReviewResult.APPROVED : ReviewResult.CONDITIONAL_APPROVED,
+        comment:
+          index <= 10
+            ? '月度色差一致性评审完成。'
+            : '月度色差一致性评审完成，并记录持续观察项。',
+        payload: {
+          seeded: true,
+          projectCode: 'DEMO-COMPLETE-001',
+          monthIndex: index,
+        },
+      };
+
+      if (existingTask) {
+        await tx.recurringTask.update({
+          where: { id: existingTask.id },
+          data: taskData,
+        });
+      } else {
+        await tx.recurringTask.create({
+          data: taskData,
+        });
+      }
+    }
+
+    await Promise.all([
+      tx.project.update({
+        where: { id: project.id },
+        data: {
+          plannedEndDate: new Date('2027-02-28T00:00:00.000Z'),
+          actualEndDate,
+          closedAt: actualEndDate,
+        },
+      }),
+      tx.workflowInstance.update({
+        where: { id: workflowInstance.id },
+        data: {
+          completedAt: actualEndDate,
+        },
+      }),
+      tx.workflowTask.update({
+        where: { id: visualReviewTask.id },
+        data: {
+          completedAt: new Date('2027-02-20T01:00:00.000Z'),
+        },
+      }),
+      tx.workflowTask.update({
+        where: { id: projectClosedTask.id },
+        data: {
+          completedAt: actualEndDate,
+        },
+      }),
+      tx.reviewRecord.updateMany({
+        where: {
+          workflowTaskId: visualReviewTask.id,
+          reviewType: ReviewType.VISUAL_COLOR_DIFFERENCE_REVIEW,
+        },
+        data: {
+          reviewedAt: finalReviewAt,
+          submittedAt: new Date('2027-02-19T12:00:00.000Z'),
+          comment: '12 个月月度评审完成，可进入颜色退出。',
+        },
+      }),
+      tx.colorExit.updateMany({
+        where: {
+          projectId: project.id,
+          workflowTaskId: projectClosedTask.id,
+        },
+        data: {
+          exitDate: actualEndDate,
+          statisticYear: 2027,
+          annualOutput: 18,
+          exitThreshold: 20,
+          systemSuggestion: ColorExitSuggestion.EXIT,
+          finalDecision: ColorExitSuggestion.EXIT,
+          effectiveDate: actualEndDate,
+          completedAt: actualEndDate,
+        },
+      }),
+      tx.color.updateMany({
+        where: {
+          projectId: project.id,
+          isPrimary: true,
+        },
+        data: {
+          status: ColorStatus.EXITED,
+          exitFlag: true,
+          exitDate: actualEndDate,
+        },
+      }),
+      tx.workflowTransition.updateMany({
+        where: {
+          workflowInstanceId: workflowInstance.id,
+          fromNodeCode: WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW,
+          toNodeCode: WorkflowNodeCode.PROJECT_CLOSED,
+        },
+        data: {
+          comment: '12 个月月度评审完成后进入颜色退出。',
+          createdAt: new Date('2027-02-20T01:00:00.000Z'),
+        },
+      }),
+      tx.notification.updateMany({
+        where: {
+          projectId: project.id,
+          taskId: projectClosedTask.id,
+          dedupeKey: 'seed:demo-complete:project-closed',
+        },
+        data: {
+          readAt: actualEndDate,
+        },
+      }),
+    ]);
+  });
+}
+
 async function main() {
   const refs = await upsertBaseData();
   await ensureActiveDemoProject(refs);
   await ensureCompletedDemoProject(refs);
+  await ensureCompletedDemoRecurringArtifacts(refs);
 }
 
 void main()

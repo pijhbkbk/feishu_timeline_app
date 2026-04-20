@@ -19,7 +19,8 @@ type WorkflowNodeMeta = {
   defaultReturnNodeCode?: WorkflowNodeCode;
 };
 
-export const DEFAULT_WORKFLOW_TEMPLATE = 'COLOR_DEVELOPMENT_MVP';
+export const DEFAULT_WORKFLOW_TEMPLATE = 'LIGHT_TRUCK_CUSTOM_COLOR_DEV';
+export const DEFAULT_WORKFLOW_TEMPLATE_VERSION = '1.0';
 export const INITIAL_WORKFLOW_NODE = WorkflowNodeCode.PROJECT_INITIATION;
 
 export const ACTIVE_WORKFLOW_TASK_STATUSES: WorkflowTaskStatus[] = [
@@ -66,7 +67,7 @@ export const REVIEW_WORKFLOW_ACTIONS: WorkflowAction[] = [
 
 export const WORKFLOW_NODE_META_MAP: Record<WorkflowNodeCode, WorkflowNodeMeta> = {
   [WorkflowNodeCode.PROJECT_INITIATION]: {
-    name: '项目立项',
+    name: '反映市场需求',
     sequence: 10,
     isReviewNode: false,
     isPrimaryTask: true,
@@ -203,7 +204,7 @@ export const WORKFLOW_NODE_META_MAP: Record<WorkflowNodeCode, WorkflowNodeMeta> 
     defaultReturnNodeCode: WorkflowNodeCode.MASS_PRODUCTION_PLAN,
   },
   [WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW]: {
-    name: '色差目视评审',
+    name: '整车色差一致性评审',
     sequence: 170,
     isReviewNode: true,
     isPrimaryTask: true,

@@ -1,5 +1,7 @@
 # 开发文档
 
+冻结后的节点规则、阻塞关系、回退逻辑和工作日/SLA 基线，统一以 [`docs/WORKFLOW_RULE_FREEZE.md`](/Users/lixiaochen/Downloads/feishu_timeline_app/docs/WORKFLOW_RULE_FREEZE.md) 为准。
+
 ## 系统模块
 
 - 认证与权限：飞书身份与业务 RBAC 分离，接口统一后端鉴权

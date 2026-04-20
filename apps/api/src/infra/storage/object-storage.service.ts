@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
@@ -24,11 +24,11 @@ export abstract class ObjectStorageService {
 export class LocalFilesystemObjectStorageService extends ObjectStorageService {
   private readonly storageRoot: string;
 
-  constructor(configService: ConfigService) {
+  constructor(@Inject(ConfigService) private readonly configService: ConfigService) {
     super();
     this.storageRoot = resolve(
       process.cwd(),
-      configService.get<string>('objectStorageLocalRoot') ?? 'var/object-storage',
+      this.configService.get<string>('objectStorageLocalRoot') ?? 'var/object-storage',
     );
   }
 

@@ -92,6 +92,116 @@ export type ProjectWorkflowTimelineResponse = {
   timeline: WorkflowTimelineEntry[];
 };
 
+export type RecurringPlanStatus = 'DRAFT' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
+
+export type RecurringTaskStatus =
+  | 'PENDING'
+  | 'IN_PROGRESS'
+  | 'COMPLETED'
+  | 'OVERDUE'
+  | 'CANCELLED';
+
+export type ReviewResult =
+  | 'PENDING'
+  | 'APPROVED'
+  | 'CONDITIONAL_APPROVED'
+  | 'REJECTED'
+  | 'NEED_REWORK';
+
+export type WorkflowTaskDetailResponse = {
+  project: {
+    id: string;
+    code: string;
+    name: string;
+    status: string;
+    currentNodeCode: WorkflowNodeCode | null;
+    currentNodeName: string | null;
+  };
+  workflowInstance: WorkflowInstanceSummary;
+  task: WorkflowTaskSummary;
+  transitions: WorkflowTimelineEntry[];
+};
+
+export type WorkflowTaskRoundHistoryResponse = {
+  taskId: string;
+  projectId: string;
+  nodeCode: WorkflowNodeCode;
+  nodeName: string;
+  rounds: WorkflowTaskSummary[];
+};
+
+export type MonthlyReviewRecordSummary = {
+  id: string;
+  reviewType: string;
+  result: ReviewResult;
+  comment: string | null;
+  rejectReason: string | null;
+  returnToNodeCode: WorkflowNodeCode | null;
+  reviewerId: string | null;
+  reviewerName: string | null;
+  reviewedAt: string | null;
+  submittedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type RecurringTaskSummary = {
+  id: string;
+  recurringPlanId: string;
+  taskCode: string;
+  periodIndex: number;
+  periodLabel: string;
+  plannedDate: string;
+  dueAt: string | null;
+  completedAt: string | null;
+  reviewerId: string | null;
+  status: RecurringTaskStatus;
+  result: ReviewResult;
+  comment: string | null;
+  payload: unknown;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type MonthlyReviewWorkspaceResponse = {
+  project: {
+    id: string;
+    code: string;
+    name: string;
+    status: string;
+    currentNodeCode: WorkflowNodeCode | null;
+    currentNodeName: string | null;
+  };
+  recurringPlan: {
+    id: string;
+    planCode: string;
+    status: RecurringPlanStatus;
+    totalCount: number;
+    generatedCount: number;
+    startDate: string;
+    endDate: string;
+  } | null;
+  summary: {
+    totalPeriods: number;
+    completedPeriods: number;
+    overduePeriods: number;
+    pendingPeriods: number;
+  };
+  activeWorkflowTask: WorkflowTaskSummary | null;
+  recurringTasks: RecurringTaskSummary[];
+  recentReviews: MonthlyReviewRecordSummary[];
+};
+
+export type MonthlyReviewTaskDetailResponse = {
+  recurringPlan: {
+    id: string;
+    planCode: string;
+    status: RecurringPlanStatus;
+  };
+  recurringTask: RecurringTaskSummary;
+  relatedReviews: MonthlyReviewRecordSummary[];
+};
+
 const WORKFLOW_TASK_STATUS_LABELS: Record<WorkflowTaskStatus, string> = {
   PENDING: '待处理',
   READY: '待开始',
@@ -112,12 +222,53 @@ const WORKFLOW_ACTION_LABELS: Record<WorkflowAction, string> = {
   COMPLETE: '完成',
 };
 
+const RECURRING_TASK_STATUS_LABELS: Record<RecurringTaskStatus, string> = {
+  PENDING: '待执行',
+  IN_PROGRESS: '进行中',
+  COMPLETED: '已完成',
+  OVERDUE: '已逾期',
+  CANCELLED: '已取消',
+};
+
+const RECURRING_PLAN_STATUS_LABELS: Record<RecurringPlanStatus, string> = {
+  DRAFT: '草稿',
+  ACTIVE: '进行中',
+  COMPLETED: '已完成',
+  CANCELLED: '已取消',
+};
+
+const REVIEW_RESULT_LABELS: Record<ReviewResult, string> = {
+  PENDING: '待评审',
+  APPROVED: '通过',
+  CONDITIONAL_APPROVED: '条件通过',
+  REJECTED: '驳回',
+  NEED_REWORK: '待整改',
+};
+
 export async function fetchProjectWorkflow(projectId: string) {
   return apiRequest<ProjectWorkflowResponse>(`/workflows/projects/${projectId}`);
 }
 
 export async function fetchProjectWorkflowTimeline(projectId: string) {
   return apiRequest<ProjectWorkflowTimelineResponse>(`/workflows/projects/${projectId}/timeline`);
+}
+
+export async function fetchWorkflowTaskDetail(taskId: string) {
+  return apiRequest<WorkflowTaskDetailResponse>(`/workflows/tasks/${taskId}`);
+}
+
+export async function fetchWorkflowTaskRoundHistory(taskId: string) {
+  return apiRequest<WorkflowTaskRoundHistoryResponse>(`/workflows/tasks/${taskId}/history-rounds`);
+}
+
+export async function fetchMonthlyReviewWorkspace(projectId: string) {
+  return apiRequest<MonthlyReviewWorkspaceResponse>(`/workflows/projects/${projectId}/monthly-reviews`);
+}
+
+export async function fetchMonthlyReviewTaskDetail(projectId: string, recurringTaskId: string) {
+  return apiRequest<MonthlyReviewTaskDetailResponse>(
+    `/workflows/projects/${projectId}/monthly-reviews/${recurringTaskId}`,
+  );
 }
 
 export async function executeWorkflowAction(
@@ -140,6 +291,18 @@ export function getWorkflowTaskStatusLabel(status: WorkflowTaskStatus) {
 
 export function getWorkflowActionLabel(action: WorkflowAction) {
   return WORKFLOW_ACTION_LABELS[action];
+}
+
+export function getRecurringTaskStatusLabel(status: RecurringTaskStatus) {
+  return RECURRING_TASK_STATUS_LABELS[status];
+}
+
+export function getRecurringPlanStatusLabel(status: RecurringPlanStatus) {
+  return RECURRING_PLAN_STATUS_LABELS[status];
+}
+
+export function getReviewResultLabel(result: ReviewResult) {
+  return REVIEW_RESULT_LABELS[result];
 }
 
 export function getVisibleWorkflowActions(actions: WorkflowAction[]) {

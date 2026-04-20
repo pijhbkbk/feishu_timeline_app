@@ -1,0 +1,155 @@
+name: ${COMPOSE_PROJECT_NAME:-feishu-timeline-staging}
+
+x-api-runtime: &api-runtime
+  NODE_ENV: production
+  HOST: 0.0.0.0
+  PORT: 3001
+  FRONTEND_URL: ${FRONTEND_URL:-http://localhost:8080}
+  DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/feishu_timeline?schema=public}
+  REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+  NOTIFICATION_QUEUE_ENABLED: ${NOTIFICATION_QUEUE_ENABLED:-true}
+  NOTIFICATION_QUEUE_POLL_MS: ${NOTIFICATION_QUEUE_POLL_MS:-5000}
+  NOTIFICATION_OVERDUE_SCAN_MS: ${NOTIFICATION_OVERDUE_SCAN_MS:-300000}
+  NOTIFICATION_RETRY_DELAY_MS: ${NOTIFICATION_RETRY_DELAY_MS:-5000}
+  NOTIFICATION_MAX_RETRIES: ${NOTIFICATION_MAX_RETRIES:-3}
+  AUTH_MOCK_ENABLED: ${AUTH_MOCK_ENABLED:-true}
+  SESSION_COOKIE_NAME: ${SESSION_COOKIE_NAME:-ft_session}
+  SESSION_TTL_SECONDS: ${SESSION_TTL_SECONDS:-28800}
+  OBJECT_STORAGE_PROVIDER: ${OBJECT_STORAGE_PROVIDER:-local}
+  OBJECT_STORAGE_LOCAL_ROOT: ${OBJECT_STORAGE_LOCAL_ROOT:-/app/var/object-storage}
+  OBJECT_STORAGE_ENDPOINT: ${OBJECT_STORAGE_ENDPOINT:-http://minio.local}
+  OBJECT_STORAGE_BUCKET: ${OBJECT_STORAGE_BUCKET:-feishu-timeline-staging}
+  OBJECT_STORAGE_ACCESS_KEY: ${OBJECT_STORAGE_ACCESS_KEY:-staging-access-key}
+  OBJECT_STORAGE_SECRET_KEY: ${OBJECT_STORAGE_SECRET_KEY:-staging-secret-key}
+  FEISHU_APP_ID: ${FEISHU_APP_ID:-staging-feishu-app-id}
+  FEISHU_APP_SECRET: ${FEISHU_APP_SECRET:-staging-feishu-app-secret}
+  FEISHU_REDIRECT_URI: ${FEISHU_REDIRECT_URI:-http://localhost:8080/login/callback}
+  FEISHU_AUTHORIZATION_ENDPOINT: ${FEISHU_AUTHORIZATION_ENDPOINT:-https://open.feishu.cn/open-apis/authen/v1/index}
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: ${COMPOSE_PROJECT_NAME:-feishu-timeline-staging}-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-feishu_timeline}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    ports:
+      - 127.0.0.1:${STAGING_POSTGRES_PORT:-15432}:5432
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-feishu_timeline}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: ${COMPOSE_PROJECT_NAME:-feishu-timeline-staging}-redis
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - 127.0.0.1:${STAGING_REDIS_PORT:-16379}:6379
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  api:
+    image: ${API_IMAGE_REPO:-feishu-timeline-api}:${IMAGE_TAG:-local}
+    build:
+      context: ..
+      dockerfile: apps/api/Dockerfile
+    container_name: ${COMPOSE_PROJECT_NAME:-feishu-timeline-staging}-api
+    environment: *api-runtime
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - 127.0.0.1:${STAGING_API_PORT:-3101}:3001
+    volumes:
+      - object-storage:/app/var/object-storage
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:3001/api/health >/dev/null"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+  api-migrate:
+    image: ${API_IMAGE_REPO:-feishu-timeline-api}:${IMAGE_TAG:-local}
+    profiles: ["ops"]
+    working_dir: /app/apps/api
+    environment: *api-runtime
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - object-storage:/app/var/object-storage
+    command: ["sh", "-c", "exec /app/apps/api/node_modules/.bin/prisma migrate deploy --schema prisma/schema.prisma"]
+
+  api-seed:
+    image: ${API_IMAGE_REPO:-feishu-timeline-api}:${IMAGE_TAG:-local}
+    profiles: ["ops"]
+    working_dir: /app/apps/api
+    environment: *api-runtime
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - object-storage:/app/var/object-storage
+    command: ["sh", "-c", "exec /app/apps/api/node_modules/.bin/tsx prisma/seed.ts"]
+
+  web:
+    image: ${WEB_IMAGE_REPO:-feishu-timeline-web}:${IMAGE_TAG:-local}
+    build:
+      context: ..
+      dockerfile: apps/web/Dockerfile
+    container_name: ${COMPOSE_PROJECT_NAME:-feishu-timeline-staging}-web
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 3000
+      NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-轻卡新颜色开发项目管理系统}
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-/api}
+      NEXT_PUBLIC_FEISHU_APP_ID: ${NEXT_PUBLIC_FEISHU_APP_ID:-staging-feishu-app-id}
+      NEXT_PUBLIC_ENABLE_MOCK_LOGIN: ${NEXT_PUBLIC_ENABLE_MOCK_LOGIN:-true}
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - 127.0.0.1:${STAGING_WEB_PORT:-3100}:3000
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:3000/login >/dev/null"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: ${COMPOSE_PROJECT_NAME:-feishu-timeline-staging}-nginx
+    depends_on:
+      api:
+        condition: service_healthy
+      web:
+        condition: service_healthy
+    ports:
+      - ${STAGING_HTTP_PORT:-8080}:80
+    volumes:
+      - ./nginx/compose.staging.conf:/etc/nginx/conf.d/default.conf:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/ || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres-data:
+  redis-data:
+  object-storage:

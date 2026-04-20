@@ -23,6 +23,17 @@ RestartSec=5
 SyslogIdentifier=feishu-timeline-web
 NoNewPrivileges=true
 PrivateTmp=true
+PrivateDevices=true
+ProtectControlGroups=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectHostname=true
+ProtectSystem=full
+ReadWritePaths=/home/__APP_USER__/.cache/node/corepack
+RestrictSUIDSGID=true
+RestrictNamespaces=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+LockPersonality=true
 UMask=0027
 LimitNOFILE=65535
 
