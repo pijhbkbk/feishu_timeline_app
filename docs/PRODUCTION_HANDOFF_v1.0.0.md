@@ -7,6 +7,7 @@
 - 生产地址：[https://timeline.all-too-well.com](https://timeline.all-too-well.com)
 - 根域占位页：[https://all-too-well.com](https://all-too-well.com)
 - 部署目标：`GCE instance-20260408-091840 (us-west1-b)`
+- 正式发布基线：`main` 分支
 
 ## 生产运行拓扑
 
@@ -45,6 +46,11 @@
 
 - `bash scripts/deploy/gce-redeploy.sh`
 - `bash scripts/deploy/gce-sync-and-build.sh`
+- 正式发布要求：
+  - 先将正式交付分支合并到 `main`
+  - 再从 `main` 重部署生产
+  - 再执行 `gce-release-verify.sh` 与 `gce-production-acceptance.sh`
+  - 最后推送正式 tag
 
 ### 验证
 
@@ -84,3 +90,14 @@
 - `feishu-timeline-api`、`feishu-timeline-web`、`nginx` 必须保持 `active`
 - 证书有效期、磁盘使用率、Nginx/API 5xx 日志需要持续巡检
 - 发布后重点观察登录、项目列表、流程页、月度评审台账、颜色退出页
+
+## 本次发布验收结果
+
+- 生产环境已从 `main` 重新部署
+- 正式入口、关键页面、健康检查、认证边界和 HTTPS 已全部通过
+- 线上服务状态为：
+  - `feishu-timeline-api=active`
+  - `feishu-timeline-web=active`
+  - `nginx=active`
+  - `postgresql=active`
+  - `redis-server=active`

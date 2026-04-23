@@ -10,7 +10,7 @@
 - 项目名称：轻卡定制颜色开发项目管理系统
 - 当前阶段：Release Closure
 - 当前轮次：Release Closure
-- 总体状态：READY_FOR_RELEASE
+- 总体状态：RELEASED
 - 仓库路径：`/Users/lixiaochen/Downloads/feishu_timeline_app`
 - 默认分支：`main`
 - 最近更新时间：`2026-04-23`
@@ -48,7 +48,7 @@
 | R11 | 生产 UAT 与硬门禁收口 | PASSED | CONTINUE | 已完成真实业务口径 UAT、固定收费/权限最小修复、硬门禁证据化与账本收口 |
 | R12 | 稳定性、监控、告警、备份恢复 | PASSED | STOP | 已完成生产巡检、增强 health-check、补齐 ops/SSL/5xx/备份脚本、完成备份恢复演练并沉淀运维文档 |
 | R13 | UI/UX 精修 + Playwright 浏览器级回归 | PASSED | STOP | 已完成关键页面精修、统一反馈与状态组件、接入 Playwright 5 条关键回归并补齐 CI 入口 |
-| Release Closure | 正式发布收口（v1.0.0） | IN_PROGRESS | STOP | 进入文档、Git、生产环境三者对齐阶段，待 main 合并、生产重部署与 tag 收口 |
+| Release Closure | 正式发布收口（v1.0.0） | PASSED | STOP | 已完成 main 合并、生产从 main 重部署、release verify / production acceptance，并进入 v1.0.0 tag 收口 |
 
 状态枚举建议：
 
@@ -1343,3 +1343,81 @@ STOP
 
 #### Next Round
 等待用户确认是否进入 `main` 合并与正式 tag 收口
+
+### Round Release Closure
+
+#### Goal
+将已经通过 R13 的代码与线上状态正式收口为 `v1.0.0`，确保文档、Git 与生产环境基线一致。
+
+#### Scope
+- 更新发布文档与账本状态
+- 将正式交付分支合并到 `main`
+- 从 `main` 重新部署生产并执行 release verify / production acceptance
+- 准备正式 `v1.0.0` tag
+
+#### Inputs Read
+- `AGENTS.md`
+- `docs/EXECUTION_LEDGER.md`
+- `docs/UI_REFINEMENT_R13.md`
+- `Round R11`
+- `Round R12`
+- `Round R13`
+- `git status`
+- `git branch --show-current`
+- `git remote -v`
+- `git tag --list`
+- `scripts/deploy/gce-redeploy.sh`
+- `scripts/deploy/gce-release-verify.sh`
+- `scripts/deploy/gce-production-acceptance.sh`
+
+#### Files Changed
+- `.gitignore`
+- `docs/EXECUTION_LEDGER.md`
+- `docs/RELEASE_NOTES_v1.0.0.md`
+- `docs/PRODUCTION_HANDOFF_v1.0.0.md`
+
+#### Commands Run
+```bash
+git status --short
+git branch --show-current
+git remote -v
+git tag --list --sort=-creatordate | head -n 20
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm --filter @feishu-timeline/api build
+pnpm --filter @feishu-timeline/api prisma:validate
+pnpm test:e2e
+pnpm playwright:test
+pnpm --filter @feishu-timeline/web build
+git checkout feat/color-pm-r09-r10
+git add .
+git commit -m "feat: finalize release candidate for v1.0.0"
+git push origin feat/color-pm-r09-r10
+git checkout main
+git pull --ff-only origin main
+git merge --no-ff feat/color-pm-r09-r10 -m "Merge branch 'feat/color-pm-r09-r10' for v1.0.0 release"
+git push origin main
+RUN_PRISMA_MIGRATE_DEPLOY=yes bash scripts/deploy/gce-redeploy.sh
+```
+
+#### Acceptance Result
+- [x] `docs/RELEASE_NOTES_v1.0.0.md` 已生成
+- [x] `docs/PRODUCTION_HANDOFF_v1.0.0.md` 已生成
+- [x] 顶部当前阶段 / 当前轮次已切换为 `Release Closure`
+- [x] 正式交付分支 `feat/color-pm-r09-r10` 已更新并推送到远端
+- [x] `main` 已通过 merge commit 合并正式交付分支
+- [x] 生产环境已从 `main` 重新部署，并确认不再停留于 `master@8521552`
+- [x] `gce-release-verify.sh` 通过：域名、HTTPS、HSTS、首页、`/login`、`/dashboard`、`/projects`、`/api/health`、认证边界与证书状态全部通过
+- [x] `gce-production-acceptance.sh` 通过：远端 `systemd`、`nginx`、`postgresql`、`redis`、生产环境变量与认证入口全部通过
+- [x] 生产运行基线已确认切换到 `main` 合并提交 `9ec8d62`
+
+#### Risks / Debt
+- 当前正式发布已经完成 `main` 合并与生产对齐，但最终正式版本仍以 `v1.0.0` tag 和 tag 对应的 `main` HEAD 为准。
+- 告警平台与更细粒度性能观测仍属于发布后可延期优化项，不影响本次 `v1.0.0` 正式交付。
+
+#### Decision
+STOP
+
+#### Next Round
+发布后观察期

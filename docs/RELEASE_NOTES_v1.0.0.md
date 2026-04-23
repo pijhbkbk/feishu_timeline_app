@@ -54,6 +54,21 @@
 - 正式地址：[https://timeline.all-too-well.com](https://timeline.all-too-well.com)
 - 根域占位：[https://all-too-well.com](https://all-too-well.com)
 
+## 发布方式
+
+- 正式交付分支：`feat/color-pm-r09-r10`
+- 正式发布分支：`main`
+- 正式版本标识：`v1.0.0`
+- 生产发布流程：合并 `main` → 从 `main` 重部署生产 → 运行 `gce-release-verify.sh` 与 `gce-production-acceptance.sh` → 推送 `v1.0.0`
+
+## 生产验收摘要
+
+- 首页、`/login`、`/dashboard`、`/projects`、`/api/health` 均通过公网验证
+- `api/auth/session` 边界检查通过：匿名态 `authenticated=false`、`mockEnabled=false`、`feishuEnabled=true`
+- `api/auth/feishu/login-url` 可用，生产飞书登录跳转地址正常
+- `feishu-timeline-api`、`feishu-timeline-web`、`nginx`、`postgresql`、`redis-server` 均为 `active`
+- HTTPS 与证书状态正常，`timeline.all-too-well.com`、`all-too-well.com`、`www.all-too-well.com` 均通过校验
+
 ## 已知可延期优化项
 
 - 当前告警仍以脚本非零退出码为主，尚未接入 webhook / 邮件 / 第三方监控平台
