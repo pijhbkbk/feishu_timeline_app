@@ -7,6 +7,8 @@ import {
 } from '@prisma/client';
 
 import { PrismaService } from '../../infra/prisma/prisma.service';
+import type { AuthenticatedUser } from '../auth/auth.types';
+import { ProjectAccessService } from '../auth/project-access.service';
 import { getCurrentNodeName } from '../workflows/workflow-node.constants';
 
 type AuditLogExecutor = Prisma.TransactionClient | PrismaService;
@@ -26,7 +28,10 @@ type CreateAuditLogInput = {
 
 @Injectable()
 export class ActivityLogsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly projectAccessService: ProjectAccessService,
+  ) {}
 
   create(input: CreateAuditLogInput) {
     return this.createWithExecutor(this.prisma, input);
@@ -49,7 +54,12 @@ export class ActivityLogsService {
     });
   }
 
-  async getProjectLogTimeline(projectId: string) {
+  async getProjectLogTimeline(projectId: string, actor: AuthenticatedUser) {
+    await this.projectAccessService.assertProjectAccessWithDefaultClient(
+      projectId,
+      actor,
+      'project.read',
+    );
     const project = await this.prisma.project.findUnique({
       where: { id: projectId },
       select: {

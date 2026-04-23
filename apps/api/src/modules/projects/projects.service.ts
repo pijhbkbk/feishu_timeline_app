@@ -16,6 +16,7 @@ import {
 
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import type { AuthenticatedUser } from '../auth/auth.types';
+import { ProjectAccessService } from '../auth/project-access.service';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import { WorkflowsService } from '../workflows/workflows.service';
 
@@ -109,11 +110,12 @@ export class ProjectsService {
     private readonly prisma: PrismaService,
     private readonly workflowsService: WorkflowsService,
     private readonly activityLogsService: ActivityLogsService,
+    private readonly projectAccessService: ProjectAccessService,
   ) {}
 
-  async listProjects(rawQuery: Record<string, string | undefined>) {
+  async listProjects(rawQuery: Record<string, unknown>, actor: AuthenticatedUser) {
     const query = this.normalizeListQuery(rawQuery);
-    const where = this.buildListWhere(query);
+    const where = this.buildListWhere(query, actor);
 
     const [total, projects, nodeDefinitions] = await this.prisma.$transaction([
       this.prisma.project.count({ where }),
@@ -171,10 +173,116 @@ export class ProjectsService {
     };
   }
 
-  async getProjectDetail(projectId: string) {
+  async getProjectDetail(projectId: string, actor: AuthenticatedUser) {
+    await this.projectAccessService.assertProjectAccessWithDefaultClient(
+      projectId,
+      actor,
+      'project.read',
+    );
     const project = await this.findProjectDetailOrThrow(this.prisma, projectId);
 
     return this.toProjectDetail(project);
+  }
+
+  async getProjectStageOverview(projectId: string, actor: AuthenticatedUser) {
+    await this.projectAccessService.assertProjectAccessWithDefaultClient(
+      projectId,
+      actor,
+      'project.read',
+    );
+
+    const [project, tasks, recurringPlan] = await Promise.all([
+      this.prisma.project.findUnique({
+        where: { id: projectId },
+        select: {
+          id: true,
+          code: true,
+          name: true,
+          status: true,
+          priority: true,
+          currentNodeCode: true,
+          plannedEndDate: true,
+          updatedAt: true,
+        },
+      }),
+      this.prisma.workflowTask.findMany({
+        where: {
+          projectId,
+        },
+        include: {
+          assigneeUser: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          assigneeDepartment: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+        orderBy: [
+          { createdAt: 'asc' },
+          { taskRound: 'asc' },
+        ],
+      }),
+      this.prisma.recurringPlan.findFirst({
+        where: {
+          projectId,
+          sourceNodeCode: WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW,
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+        select: {
+          id: true,
+          planCode: true,
+          status: true,
+          totalCount: true,
+          generatedCount: true,
+          startDate: true,
+          endDate: true,
+        },
+      }),
+    ]);
+
+    if (!project) {
+      throw new NotFoundException('Project not found.');
+    }
+
+    return {
+      project: {
+        id: project.id,
+        code: project.code,
+        name: project.name,
+        status: project.status,
+        priority: project.priority,
+        currentNodeCode: project.currentNodeCode,
+        currentNodeName: this.workflowsService.getCurrentNodeName(project.currentNodeCode),
+        targetDate: this.serializeDate(project.plannedEndDate),
+        updatedAt: project.updatedAt.toISOString(),
+      },
+      summary: {
+        totalTasks: tasks.length,
+        activeTasks: tasks.filter((task) => task.isActive).length,
+        completedTasks: tasks.filter((task) => !task.isActive).length,
+        overdueTasks: tasks.filter((task) => (task.overdueDays ?? 0) > 0 && task.isActive).length,
+      },
+      recurringPlan: recurringPlan
+        ? {
+            id: recurringPlan.id,
+            planCode: recurringPlan.planCode,
+            status: recurringPlan.status,
+            totalCount: recurringPlan.totalCount,
+            generatedCount: recurringPlan.generatedCount,
+            startDate: this.serializeDate(recurringPlan.startDate),
+            endDate: this.serializeDate(recurringPlan.endDate),
+          }
+        : null,
+      stages: tasks.map((task) => this.toProjectStageOverviewTask(task)),
+    };
   }
 
   async createProject(rawInput: unknown, actor: AuthenticatedUser) {
@@ -254,6 +362,8 @@ export class ProjectsService {
     const input = this.normalizeUpdateInput(rawInput);
 
     return this.prisma.$transaction(async (tx) => {
+      await this.projectAccessService.assertProjectAccess(tx, projectId, actor, 'project.write');
+
       const currentProject = await tx.project.findUnique({
         where: { id: projectId },
       });
@@ -324,6 +434,8 @@ export class ProjectsService {
     const input = this.normalizeMembersInput(rawInput);
 
     return this.prisma.$transaction(async (tx) => {
+      await this.projectAccessService.assertProjectAccess(tx, projectId, actor, 'project.write');
+
       const project = await tx.project.findUnique({
         where: { id: projectId },
         include: {
@@ -374,7 +486,7 @@ export class ProjectsService {
     });
   }
 
-  private normalizeListQuery(rawQuery: Record<string, string | undefined>): ProjectListQuery {
+  private normalizeListQuery(rawQuery: Record<string, unknown>): ProjectListQuery {
     const page = this.parsePositiveInt(rawQuery.page, 1, 'page');
     const pageSize = this.parsePositiveInt(rawQuery.pageSize, 10, 'pageSize', 50);
     const status = this.parseOptionalEnum(rawQuery.status, PROJECT_STATUS_VALUES, 'status');
@@ -555,8 +667,13 @@ export class ProjectsService {
     return normalized;
   }
 
-  private buildListWhere(query: ProjectListQuery): Prisma.ProjectWhereInput {
+  private buildListWhere(query: ProjectListQuery, actor: AuthenticatedUser): Prisma.ProjectWhereInput {
     const andConditions: Prisma.ProjectWhereInput[] = [];
+    const visibleWhere = this.buildVisibleProjectWhere(actor);
+
+    if (Object.keys(visibleWhere).length > 0) {
+      andConditions.push(visibleWhere);
+    }
 
     if (query.status) {
       andConditions.push({ status: query.status });
@@ -593,6 +710,35 @@ export class ProjectsService {
     }
 
     return andConditions.length > 0 ? { AND: andConditions } : {};
+  }
+
+  private buildVisibleProjectWhere(actor: AuthenticatedUser): Prisma.ProjectWhereInput {
+    if (actor.isSystemAdmin || actor.roleCodes.includes('admin')) {
+      return {};
+    }
+
+    const scopeWhere: Prisma.ProjectWhereInput[] = [
+      {
+        ownerUserId: actor.id,
+      },
+      {
+        members: {
+          some: {
+            userId: actor.id,
+          },
+        },
+      },
+    ];
+
+    if (actor.departmentId) {
+      scopeWhere.push({
+        owningDepartmentId: actor.departmentId,
+      });
+    }
+
+    return {
+      OR: scopeWhere,
+    };
   }
 
   private async findProjectDetailOrThrow(db: ProjectDbClient, projectId: string) {
@@ -882,6 +1028,49 @@ export class ProjectsService {
         roleCodes: member.user.userRoles.map((userRole) => userRole.role.code),
         createdAt: member.createdAt.toISOString(),
       })),
+    };
+  }
+
+  private toProjectStageOverviewTask(
+    task: Prisma.WorkflowTaskGetPayload<{
+      include: {
+        assigneeUser: {
+          select: {
+            id: true;
+            name: true;
+          };
+        };
+        assigneeDepartment: {
+          select: {
+            id: true;
+            name: true;
+          };
+        };
+      };
+    }>,
+  ) {
+    return {
+      taskId: task.id,
+      taskNo: task.taskNo,
+      nodeCode: task.nodeCode,
+      nodeName: task.nodeName,
+      stepCode: task.stepCode,
+      taskRound: task.taskRound,
+      status: task.status,
+      isPrimary: task.isPrimary,
+      isActive: task.isActive,
+      overdueDays: task.overdueDays,
+      assigneeUserId: task.assigneeUserId,
+      assigneeUserName: task.assigneeUser?.name ?? null,
+      assigneeDepartmentId: task.assigneeDepartmentId,
+      assigneeDepartmentName: task.assigneeDepartment?.name ?? null,
+      dueAt: this.serializeDate(task.dueAt),
+      effectiveDueAt: this.serializeDate(task.effectiveDueAt),
+      startedAt: this.serializeDate(task.startedAt),
+      completedAt: this.serializeDate(task.completedAt),
+      returnedAt: this.serializeDate(task.returnedAt),
+      createdAt: task.createdAt.toISOString(),
+      updatedAt: task.updatedAt.toISOString(),
     };
   }
 

@@ -77,6 +77,9 @@ export type FeeFormInput = {
   note: string;
 };
 
+export const FIXED_DEVELOPMENT_FEE_TYPE: DevelopmentFeeType = 'PAINT_DEVELOPMENT';
+export const FIXED_DEVELOPMENT_FEE_AMOUNT = '10000';
+
 export const DEVELOPMENT_FEE_TYPE_OPTIONS: Array<{
   value: DevelopmentFeeType;
   label: string;
@@ -164,6 +167,10 @@ export function validateFeeForm(input: FeeFormInput) {
     return '金额必须大于 0。';
   }
 
+  if (Number(input.amount) !== Number(FIXED_DEVELOPMENT_FEE_AMOUNT)) {
+    return '颜色开发收费固定金额为 10000。';
+  }
+
   if (!input.currency.trim()) {
     return '币种不能为空。';
   }
@@ -223,8 +230,8 @@ export function getFeesWorkspaceHighlights(workspace: FeesWorkspaceResponse) {
 
 export function toFeeFormInput(record: FeeRecord): FeeFormInput {
   return {
-    feeType: record.feeType,
-    amount: record.amount,
+    feeType: FIXED_DEVELOPMENT_FEE_TYPE,
+    amount: FIXED_DEVELOPMENT_FEE_AMOUNT,
     currency: record.currency,
     payer: record.payer ?? '',
     payStatus: record.payStatus,
@@ -235,8 +242,8 @@ export function toFeeFormInput(record: FeeRecord): FeeFormInput {
 
 function toFeePayload(input: FeeFormInput) {
   return {
-    feeType: input.feeType,
-    amount: Number(input.amount),
+    feeType: FIXED_DEVELOPMENT_FEE_TYPE,
+    amount: Number(FIXED_DEVELOPMENT_FEE_AMOUNT),
     currency: input.currency,
     payer: input.payer,
     recordedAt: input.recordedAt,

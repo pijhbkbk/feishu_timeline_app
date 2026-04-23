@@ -9,6 +9,7 @@ import {
 } from './color-exit-workspace';
 import {
   canShowCompleteColorExitButton,
+  getColorExitSuggestionLabel,
   validateColorExitForm,
   type ColorExitWorkspaceResponse,
 } from '../lib/color-exits-client';
@@ -78,6 +79,7 @@ const workspace: ColorExitWorkspaceResponse = {
       isPrimary: false,
     },
   ],
+  defaultExitThreshold: 20,
   canCompleteTask: true,
   completionIssue: null,
   items: [
@@ -93,6 +95,12 @@ const workspace: ColorExitWorkspaceResponse = {
       operatorId: 'user-1',
       operatorName: '工艺工程师',
       exitDate: '2026-03-25T00:00:00.000Z',
+      statisticYear: 2026,
+      annualOutput: 18,
+      exitThreshold: 20,
+      systemSuggestion: 'EXIT',
+      finalDecision: 'EXIT',
+      effectiveDate: '2026-03-26T00:00:00.000Z',
       exitReason: '颜色淘汰',
       description: '市场策略调整',
       completedAt: null,
@@ -108,11 +116,17 @@ describe('ColorExitWorkspace', () => {
       <ColorExitForm
         value={{
           exitDate: '2026-03-25',
+          statisticYear: '2026',
+          annualOutput: '18',
+          finalDecision: 'EXIT',
+          effectiveDate: '2026-03-26',
           exitReason: '颜色淘汰',
           description: '市场策略调整',
           replacementColorId: 'color-2',
         }}
         replacementOptions={workspace.replacementOptions}
+        defaultExitThreshold={20}
+        previewSuggestion="EXIT"
         disabled={false}
         submitLabel="保存"
         onChange={() => undefined}
@@ -121,6 +135,8 @@ describe('ColorExitWorkspace', () => {
     );
 
     expect(html).toContain('退出日期');
+    expect(html).toContain('统计年度');
+    expect(html).toContain('年产量');
     expect(html).toContain('退出原因');
     expect(html).toContain('替代颜色');
   });
@@ -132,11 +148,16 @@ describe('ColorExitWorkspace', () => {
     expect(
       validateColorExitForm({
         exitDate: '',
+        statisticYear: '',
+        annualOutput: '',
+        finalDecision: '',
+        effectiveDate: '',
         exitReason: '',
         description: '',
         replacementColorId: '',
       }),
     ).toBe('退出日期不能为空。');
+    expect(getColorExitSuggestionLabel('EXIT')).toBe('建议退出');
   });
 
   it('renders summary and completion status', () => {
@@ -155,6 +176,7 @@ describe('ColorExitWorkspace', () => {
     expect(summaryHtml).toContain('星雾灰');
     expect(summaryHtml).toContain('玄夜黑');
     expect(summaryHtml).toContain('完成颜色退出');
+    expect(summaryHtml).toContain('建议退出');
 
     const badgeHtml = renderToStaticMarkup(<ExitStatusBadge completed />);
     expect(badgeHtml).toContain('已完成');

@@ -7,7 +7,21 @@ import {
 } from '@prisma/client';
 import { describe, expect, it, vi } from 'vitest';
 
+import type { AuthenticatedUser } from '../auth/auth.types';
 import { ActivityLogsService } from './activity-logs.service';
+
+const actor: AuthenticatedUser = {
+  id: 'user-1',
+  username: 'manager',
+  name: '项目经理',
+  email: null,
+  departmentId: 'dept-pmo',
+  departmentName: '项目管理部',
+  isSystemAdmin: false,
+  authSource: 'mock',
+  roleCodes: ['project_manager'],
+  permissionCodes: ['project.read'],
+};
 
 function createService() {
   const prisma = {
@@ -27,11 +41,15 @@ function createService() {
     $transaction: vi.fn(async (operations: Array<Promise<unknown>>) => Promise.all(operations)),
   };
 
-  const service = new ActivityLogsService(prisma as never);
+  const projectAccessService = {
+    assertProjectAccessWithDefaultClient: vi.fn().mockResolvedValue({ id: 'project-1' }),
+  };
+  const service = new ActivityLogsService(prisma as never, projectAccessService as never);
 
   return {
     service,
     prisma,
+    projectAccessService,
   };
 }
 
@@ -86,7 +104,7 @@ describe('ActivityLogsService', () => {
       },
     ]);
 
-    const result = await service.getProjectLogTimeline('project-1');
+    const result = await service.getProjectLogTimeline('project-1', actor);
 
     expect(result.summary.totalCount).toBe(3);
     expect(result.summary.workflowCount).toBe(1);

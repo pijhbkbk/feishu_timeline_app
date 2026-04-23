@@ -3,6 +3,7 @@ import { Prisma, UserStatus } from '@prisma/client';
 
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import {
+  ROLE_PERMISSION_CODE_MAP,
   ROLE_LABELS,
   type AuthSource,
   type RoleCode,
@@ -15,7 +16,11 @@ type UserWithRelations = Prisma.UserGetPayload<{
     department: true;
     userRoles: {
       include: {
-        role: true;
+        role: {
+          include: {
+            rolePermissions: true;
+          };
+        };
       };
     };
   };
@@ -38,7 +43,11 @@ export class UsersService {
         department: true,
         userRoles: {
           include: {
-            role: true,
+            role: {
+              include: {
+                rolePermissions: true,
+              },
+            },
           },
         },
       },
@@ -113,6 +122,25 @@ export class UsersService {
       });
 
       if (roleRecords.length > 0) {
+        await Promise.all(
+          roleRecords.map(async (role) => {
+            const permissionCodes = ROLE_PERMISSION_CODE_MAP[role.code as RoleCode] ?? [];
+
+            await tx.rolePermission.deleteMany({
+              where: { roleId: role.id },
+            });
+
+            if (permissionCodes.length > 0) {
+              await tx.rolePermission.createMany({
+                data: permissionCodes.map((permissionCode) => ({
+                  roleId: role.id,
+                  permissionCode,
+                })),
+              });
+            }
+          }),
+        );
+
         await tx.userRole.createMany({
           data: roleRecords.map((role) => ({
             userId: user.id,
@@ -215,7 +243,11 @@ export class UsersService {
         department: true,
         userRoles: {
           include: {
-            role: true,
+            role: {
+              include: {
+                rolePermissions: true,
+              },
+            },
           },
         },
       },
@@ -249,6 +281,13 @@ export class UsersService {
       roleCodes: user.userRoles
         .map((userRole) => userRole.role.code)
         .filter((roleCode): roleCode is RoleCode => roleCode in ROLE_LABELS),
+      permissionCodes: [
+        ...new Set(
+          user.userRoles.flatMap((userRole) =>
+            userRole.role.rolePermissions.map((permission) => permission.permissionCode),
+          ),
+        ),
+      ],
     };
   }
 }

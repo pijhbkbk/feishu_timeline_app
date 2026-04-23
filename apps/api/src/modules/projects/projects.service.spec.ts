@@ -120,11 +120,16 @@ function createService() {
   const activityLogsService = {
     createWithExecutor: vi.fn().mockResolvedValue(undefined),
   };
+  const projectAccessService = {
+    assertProjectAccessWithDefaultClient: vi.fn().mockResolvedValue(undefined),
+    assertProjectAccess: vi.fn().mockResolvedValue(undefined),
+  };
 
   const service = new ProjectsService(
     prisma as never,
     workflowsService as never,
     activityLogsService as never,
+    projectAccessService as never,
   );
 
   return {
@@ -133,6 +138,7 @@ function createService() {
     tx,
     workflowsService,
     activityLogsService,
+    projectAccessService,
   };
 }
 

@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 
 import {
   LocalFilesystemObjectStorageService,
@@ -6,6 +7,7 @@ import {
 } from './object-storage.service';
 
 @Module({
+  imports: [ConfigModule],
   providers: [
     {
       provide: ObjectStorageService,

@@ -11,6 +11,8 @@ import {
   completeFeeTask,
   createFee,
   fetchFeesWorkspace,
+  FIXED_DEVELOPMENT_FEE_AMOUNT,
+  FIXED_DEVELOPMENT_FEE_TYPE,
   getFeeStatusLabel,
   getFeesWorkspaceHighlights,
   getFeeTypeLabel,
@@ -31,8 +33,8 @@ type FeesWorkspaceProps = {
 };
 
 const EMPTY_FEE_FORM: FeeFormInput = {
-  feeType: 'PAINT_DEVELOPMENT',
-  amount: '',
+  feeType: FIXED_DEVELOPMENT_FEE_TYPE,
+  amount: FIXED_DEVELOPMENT_FEE_AMOUNT,
   currency: 'CNY',
   payer: '',
   payStatus: 'PENDING',
@@ -251,6 +253,7 @@ export function FeesWorkspace({ projectId }: FeesWorkspaceProps) {
             <strong>{workspace.items[0] ? getFeeStatusLabel(workspace.items[0].payStatus) : '暂无'}</strong>
           </div>
         </div>
+        <p className="muted">系统规则：第 13 步“颜色开发收费”固定金额为 {FIXED_DEVELOPMENT_FEE_AMOUNT} 元，前端已按只读展示。</p>
         {workspace.activeTask && isWorkflowTaskOverdue(workspace.activeTask) ? (
           <p className="error-text">当前颜色开发收费任务已超期。</p>
         ) : null}
@@ -348,30 +351,20 @@ export function FeeRecordForm({
       <label className="field">
         <span>费用类型</span>
         <select
-          disabled={disabled}
+          disabled
           value={value.feeType}
-          onChange={(event) =>
-            onChange({
-              ...value,
-              feeType: event.target.value as FeeFormInput['feeType'],
-            })
-          }
+          onChange={() => undefined}
         >
           <option value="PAINT_DEVELOPMENT">涂料开发</option>
-          <option value="SAMPLE_MAKING">样板制作</option>
-          <option value="TESTING">测试验证</option>
-          <option value="STANDARD_BOARD">标准板</option>
-          <option value="PROCUREMENT">采购相关</option>
-          <option value="OTHER">其他</option>
         </select>
       </label>
       <label className="field">
         <span>金额</span>
         <input
           required
-          disabled={disabled}
+          disabled
           value={value.amount}
-          onChange={(event) => onChange({ ...value, amount: event.target.value })}
+          onChange={() => undefined}
         />
       </label>
       <label className="field">
@@ -420,6 +413,7 @@ export function FeeRecordForm({
           onChange={(event) => onChange({ ...value, note: event.target.value })}
         />
       </label>
+      <p className="muted field field-full">固定收费金额 10000 元由前端锁定显示，提交时会按系统规则写入。</p>
       <div className="field field-actions">
         <button type="submit" className="button" disabled={disabled}>
           {submitLabel}

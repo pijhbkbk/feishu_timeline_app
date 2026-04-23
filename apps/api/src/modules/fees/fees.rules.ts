@@ -70,6 +70,14 @@ export function getDevelopmentFeeCompletionIssue(
   return null;
 }
 
+export function getDevelopmentFeeAmountIssue(amount: number, fixedAmount: number) {
+  if (amount !== fixedAmount) {
+    return `颜色开发收费固定金额为 ${fixedAmount}。`;
+  }
+
+  return null;
+}
+
 export function canEditDevelopmentFee(status: DevelopmentFeeStatus) {
   return status === DevelopmentFeeStatus.PENDING || status === DevelopmentFeeStatus.RECORDED;
 }

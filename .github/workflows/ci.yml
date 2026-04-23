@@ -1,0 +1,87 @@
+name: ci
+
+on:
+  push:
+    branches:
+      - main
+      - 'feat/**'
+      - 'codex/**'
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build Web
+        run: pnpm --filter @feishu-timeline/web build
+
+      - name: Build API
+        run: pnpm --filter @feishu-timeline/api build
+
+      - name: Prisma Validate
+        run: pnpm --filter @feishu-timeline/api prisma:validate
+
+      - name: Compose Config
+        run: docker compose --env-file deploy/env/staging.env.example -f deploy/compose.staging.yml config >/tmp/compose-config.txt
+
+      - name: Build API Docker Image
+        run: docker build -t feishu-timeline-api:ci -f apps/api/Dockerfile .
+
+      - name: Build Web Docker Image
+        run: docker build -t feishu-timeline-web:ci -f apps/web/Dockerfile .
+
+  playwright-smoke:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright Chromium
+        run: pnpm --filter @feishu-timeline/web exec playwright install --with-deps chromium
+
+      - name: Run Playwright Smoke
+        run: pnpm playwright:test

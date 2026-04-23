@@ -1,4 +1,4 @@
-import { NotificationType, WorkflowTaskStatus } from '@prisma/client';
+import { NotificationType, RecurringTaskStatus, WorkflowTaskStatus } from '@prisma/client';
 import { describe, expect, it, vi } from 'vitest';
 
 import { NotificationQueueService } from './notification-queue.service';
@@ -12,6 +12,10 @@ function createService(options?: {
   const prisma = {
     workflowTask: {
       findMany: vi.fn(),
+    },
+    recurringTask: {
+      findMany: vi.fn(),
+      updateMany: vi.fn(),
     },
   };
 
@@ -130,5 +134,54 @@ describe('NotificationQueueService', () => {
     expect(result.scanned).toBe(1);
     expect(result.enqueued).toBe(1);
   });
-});
 
+  it('scans due-today tasks and enqueues due reminders', async () => {
+    const { service, prisma, notificationsService } = createService({ redisFails: true });
+    prisma.workflowTask.findMany.mockResolvedValue([
+      {
+        id: 'task-due-today',
+        projectId: 'project-1',
+        assigneeUserId: 'user-1',
+        nodeCode: 'PAINT_PROCUREMENT',
+        nodeName: '涂料采购',
+        dueAt: new Date('2026-03-19T12:00:00.000Z'),
+        status: WorkflowTaskStatus.READY,
+      },
+    ]);
+    notificationsService.hasInAppNotificationDedupeKey.mockResolvedValue(new Set<string>());
+
+    const result = await service.processDueReminderScan(
+      new Date('2026-03-19T08:00:00.000Z'),
+    );
+
+    expect(result.scanned).toBe(1);
+    expect(result.enqueued).toBe(1);
+  });
+
+  it('scans monthly recurring reviews and marks overdue instances', async () => {
+    const { service, prisma, notificationsService } = createService({ redisFails: true });
+    prisma.recurringTask.findMany.mockResolvedValue([
+      {
+        id: 'recurring-task-1',
+        projectId: 'project-1',
+        reviewerId: 'user-1',
+        periodLabel: '2026-03',
+        dueAt: new Date('2026-03-18T23:59:59.999Z'),
+        status: RecurringTaskStatus.PENDING,
+      },
+    ]);
+    prisma.recurringTask.updateMany.mockResolvedValue({ count: 1 });
+    notificationsService.hasInAppNotificationDedupeKey.mockResolvedValue(new Set<string>());
+
+    const result = await service.processMonthlyReviewSchedule(
+      new Date('2026-03-19T08:00:00.000Z'),
+    );
+
+    expect(result).toEqual({
+      scanned: 1,
+      markedOverdue: 1,
+      enqueued: 1,
+    });
+    expect(prisma.recurringTask.updateMany).toHaveBeenCalled();
+  });
+});

@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "predev": "pnpm run prisma:generate",
-    "dev": "dotenv -e .env.example -- tsx watch src/main.ts",
+    "dev": "dotenv -e .env.example -- node --watch --enable-source-maps -r ts-node/register/transpile-only src/main.ts",
+    "start:dev": "pnpm run dev",
     "prebuild": "pnpm run prisma:generate",
     "build": "tsc -p tsconfig.build.json",
     "start": "dotenv -e .env.example -- node dist/main.js",
@@ -23,11 +24,15 @@
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.0.11",
     "@nestjs/platform-express": "^11.0.11",
+    "@nestjs/swagger": "^11.3.0",
     "@prisma/client": "^6.4.1",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.15.1",
     "cookie-parser": "^1.4.7",
     "ioredis": "^5.5.0",
     "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.2"
+    "rxjs": "^7.8.2",
+    "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {
     "@types/cookie-parser": "^1.4.9",
@@ -35,6 +40,7 @@
     "@types/node": "^22.13.10",
     "dotenv-cli": "^8.0.0",
     "prisma": "^6.4.1",
+    "ts-node": "^10.9.2",
     "tsx": "^4.19.3",
     "typescript": "^5.7.3",
     "vitest": "^3.0.8"

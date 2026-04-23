@@ -7,6 +7,7 @@ import {
 
 import { getWorkflowNextTaskTemplates } from '../workflows/workflow-node.constants';
 import {
+  getDevelopmentFeeAmountIssue,
   getDevelopmentFeeCompletionIssue,
   getDevelopmentFeeStageIssue,
   getDevelopmentFeeStatusTransitionTarget,
@@ -51,6 +52,11 @@ describe('fees rules', () => {
         },
       ]),
     ).toBe('没有已支付的收费记录，不能完成收费节点。');
+  });
+
+  it('locks the fee amount to the fixed rule', () => {
+    expect(getDevelopmentFeeAmountIssue(8600, 10000)).toBe('颜色开发收费固定金额为 10000。');
+    expect(getDevelopmentFeeAmountIssue(10000, 10000)).toBeNull();
   });
 
   it('keeps fee node off the main workflow branch', () => {

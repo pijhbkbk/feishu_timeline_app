@@ -6,7 +6,7 @@ import { AuthProvider } from './auth-provider';
 import { ProjectReviewsWorkspace } from './project-reviews-workspace';
 
 describe('ProjectReviewsWorkspace', () => {
-  it('renders both cabin and consistency review panels', () => {
+  it('renders cabin, consistency and monthly review panels', () => {
     const html = renderToStaticMarkup(
       <AuthProvider>
         <ProjectReviewsWorkspace projectId="project-1" />
@@ -15,5 +15,6 @@ describe('ProjectReviewsWorkspace', () => {
 
     expect(html).toContain('正在加载驾驶室评审模块');
     expect(html).toContain('正在加载一致性评审模块');
+    expect(html).toContain('正在加载月度评审台账');
   });
 });

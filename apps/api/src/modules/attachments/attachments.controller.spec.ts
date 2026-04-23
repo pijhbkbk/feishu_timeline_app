@@ -2,7 +2,7 @@ import 'reflect-metadata';
 
 import { describe, expect, it } from 'vitest';
 
-import { ROLE_METADATA_KEY } from '../auth/auth.constants';
+import { PERMISSION_METADATA_KEY, ROLE_METADATA_KEY } from '../auth/auth.constants';
 import { AttachmentsController } from './attachments.controller';
 
 describe('AttachmentsController RBAC metadata', () => {
@@ -22,5 +22,11 @@ describe('AttachmentsController RBAC metadata', () => {
     expect(Reflect.getMetadata(ROLE_METADATA_KEY, prototype.bindAttachment)).toEqual(expectedRoles);
     expect(Reflect.getMetadata(ROLE_METADATA_KEY, prototype.unbindAttachment)).toEqual(expectedRoles);
     expect(Reflect.getMetadata(ROLE_METADATA_KEY, prototype.deleteAttachment)).toEqual(expectedRoles);
+    expect(Reflect.getMetadata(PERMISSION_METADATA_KEY, prototype.getWorkspace)).toEqual([
+      'project.read',
+    ]);
+    expect(Reflect.getMetadata(PERMISSION_METADATA_KEY, prototype.uploadAttachment)).toEqual([
+      'attachment.manage',
+    ]);
   });
 });

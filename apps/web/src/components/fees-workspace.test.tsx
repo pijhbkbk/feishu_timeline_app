@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 import { FeeRecordTable } from './fees-workspace';
 import {
+  FIXED_DEVELOPMENT_FEE_AMOUNT,
   canShowCompleteFeeTaskButton,
   validateFeeForm,
   type FeesWorkspaceResponse,
@@ -118,6 +119,32 @@ describe('FeesWorkspace', () => {
         note: '',
       }),
     ).toBe('金额不能为空。');
+  });
+
+  it('locks fee amount to the fixed 10000 rule', () => {
+    expect(
+      validateFeeForm({
+        feeType: 'PAINT_DEVELOPMENT',
+        amount: '9000',
+        currency: 'CNY',
+        payer: '市场部',
+        payStatus: 'PENDING',
+        recordedAt: '2026-03-24T00:00:00.000Z',
+        note: '',
+      }),
+    ).toBe('颜色开发收费固定金额为 10000。');
+
+    expect(
+      validateFeeForm({
+        feeType: 'PAINT_DEVELOPMENT',
+        amount: FIXED_DEVELOPMENT_FEE_AMOUNT,
+        currency: 'CNY',
+        payer: '市场部',
+        payStatus: 'PENDING',
+        recordedAt: '2026-03-24T00:00:00.000Z',
+        note: '',
+      }),
+    ).toBeNull();
   });
 
   it('shows complete button only when permission and completion conditions are both satisfied', () => {

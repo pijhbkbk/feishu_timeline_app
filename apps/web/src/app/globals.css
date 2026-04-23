@@ -1030,6 +1030,30 @@ a {
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 }
 
+.workflow-lane {
+  display: grid;
+  gap: 12px;
+}
+
+.workflow-lane-copy {
+  display: grid;
+  gap: 6px;
+}
+
+.workflow-lane-copy p {
+  margin: 0;
+}
+
+.workflow-flow-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+.workflow-flow-grid-compact {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
 .workflow-node-card,
 .timeline-card {
   display: grid;
@@ -1038,6 +1062,12 @@ a {
   border-radius: 18px;
   border: 1px solid rgba(15, 23, 42, 0.08);
   background: rgba(248, 250, 252, 0.88);
+}
+
+.workflow-node-button {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
 }
 
 .workflow-node-kicker {
@@ -1067,6 +1097,10 @@ a {
   background: rgba(248, 250, 252, 0.9);
 }
 
+.workflow-node-selected {
+  box-shadow: inset 0 0 0 2px rgba(37, 99, 235, 0.34);
+}
+
 .overdue-badge {
   display: inline-flex;
   align-items: center;
@@ -1084,6 +1118,274 @@ a {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.gantt-shell {
+  display: grid;
+  gap: 16px;
+}
+
+.gantt-axis {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.gantt-body {
+  display: grid;
+  gap: 12px;
+}
+
+.gantt-row {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(180px, 220px) minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.gantt-meta {
+  display: grid;
+  gap: 4px;
+}
+
+.gantt-meta span {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.gantt-track {
+  position: relative;
+  min-height: 44px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(226, 232, 240, 0.65), rgba(241, 245, 249, 0.9));
+  border: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.gantt-bar {
+  position: absolute;
+  left: 0;
+  border-radius: 999px;
+}
+
+.gantt-bar-plan {
+  top: 8px;
+  height: 12px;
+  background: rgba(148, 163, 184, 0.65);
+}
+
+.gantt-bar-actual {
+  top: 22px;
+  height: 14px;
+  background: rgba(37, 99, 235, 0.78);
+}
+
+.gantt-selected-outline {
+  position: absolute;
+  inset: 4px;
+  border-radius: 14px;
+  border: 2px solid rgba(37, 99, 235, 0.26);
+  pointer-events: none;
+}
+
+.kanban-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.kanban-column {
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+  border-radius: 20px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(248, 250, 252, 0.78);
+}
+
+.kanban-column-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.kanban-column-header span {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.kanban-list {
+  display: grid;
+  gap: 10px;
+}
+
+.kanban-card {
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(255, 255, 255, 0.96);
+  text-align: left;
+  cursor: pointer;
+}
+
+.kanban-card span {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.kanban-card-selected {
+  border-color: rgba(37, 99, 235, 0.24);
+  box-shadow: 0 12px 28px rgba(37, 99, 235, 0.08);
+}
+
+.calendar-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.calendar-card {
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+  border-radius: 20px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(248, 250, 252, 0.82);
+}
+
+.calendar-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.calendar-card-header span {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.calendar-weekdays,
+.calendar-days {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.calendar-weekdays span {
+  color: #64748b;
+  font-size: 12px;
+  text-align: center;
+}
+
+.calendar-day {
+  display: grid;
+  gap: 8px;
+  min-height: 92px;
+  padding: 10px;
+  border-radius: 14px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(255, 255, 255, 0.95);
+}
+
+.calendar-day-muted {
+  background: rgba(241, 245, 249, 0.48);
+}
+
+.calendar-day-number {
+  color: #0f172a;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.calendar-day-events {
+  display: grid;
+  gap: 6px;
+}
+
+.calendar-event {
+  padding: 6px 8px;
+  border-radius: 10px;
+  border: 1px solid rgba(37, 99, 235, 0.12);
+  background: rgba(219, 234, 254, 0.72);
+  color: #1d4ed8;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.calendar-event-selected {
+  border-color: rgba(37, 99, 235, 0.34);
+  background: rgba(191, 219, 254, 0.92);
+}
+
+.calendar-event-overdue {
+  border-color: rgba(185, 28, 28, 0.18);
+  background: rgba(254, 226, 226, 0.92);
+  color: #b91c1c;
+}
+
+.double-panel-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.grouped-task-list {
+  display: grid;
+  gap: 12px;
+}
+
+.grouped-task-card {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.grouped-task-chip {
+  min-height: 32px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(248, 250, 252, 0.92);
+  color: #0f172a;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.grouped-task-chip-selected {
+  border-color: rgba(37, 99, 235, 0.22);
+  background: rgba(219, 234, 254, 0.78);
+  color: #1d4ed8;
+}
+
+.monthly-review-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.monthly-review-card {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(248, 250, 252, 0.9);
+  text-align: left;
+  cursor: pointer;
+}
+
+.monthly-review-card-selected {
+  border-color: rgba(37, 99, 235, 0.24);
+  box-shadow: 0 16px 36px rgba(37, 99, 235, 0.08);
 }
 
 .button-small {
@@ -1254,5 +1556,339 @@ a {
 
   .section-header {
     flex-direction: column;
+  }
+}
+
+:root {
+  --ui-status-not-started: #94a3b8;
+  --ui-status-in-progress: #2563eb;
+  --ui-status-review: #c2410c;
+  --ui-status-complete: #15803d;
+  --ui-status-overdue: #b91c1c;
+  --ui-status-returned: #7c3aed;
+  --ui-space-card: 20px;
+}
+
+.button {
+  min-height: 44px;
+  padding: 0 18px;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+  transition:
+    transform 0.16s ease,
+    box-shadow 0.16s ease,
+    background 0.16s ease,
+    border-color 0.16s ease;
+}
+
+.button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.1);
+}
+
+.button-primary {
+  background: linear-gradient(135deg, #1d4ed8, #0f766e);
+  color: #fff;
+}
+
+.button-secondary {
+  background: rgba(255, 255, 255, 0.92);
+  color: #0f172a;
+  border-color: rgba(15, 23, 42, 0.12);
+}
+
+.button-danger {
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
+  color: #fff;
+}
+
+.button-selected {
+  border-color: rgba(37, 99, 235, 0.34);
+  box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.24);
+}
+
+.page-card {
+  padding: 30px;
+}
+
+.section-title {
+  line-height: 1.2;
+}
+
+.summary-card,
+.metadata-item,
+.member-card,
+.detail-block,
+.detail-item,
+.kanban-column,
+.calendar-card,
+.workflow-node-card,
+.timeline-card {
+  border-radius: 20px;
+}
+
+.summary-card {
+  gap: 10px;
+  padding: var(--ui-space-card);
+}
+
+.summary-card span,
+.metadata-item span,
+.detail-item span,
+.detail-block p,
+.timeline-card .muted {
+  line-height: 1.6;
+}
+
+.feedback-banner {
+  display: grid;
+  gap: 6px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(248, 250, 252, 0.85);
+}
+
+.feedback-banner strong,
+.feedback-banner p {
+  margin: 0;
+}
+
+.feedback-banner p {
+  color: #334155;
+  line-height: 1.6;
+}
+
+.feedback-banner-compact {
+  padding: 12px 14px;
+}
+
+.feedback-banner-info {
+  border-color: rgba(37, 99, 235, 0.16);
+  background: rgba(239, 246, 255, 0.88);
+}
+
+.feedback-banner-success {
+  border-color: rgba(22, 163, 74, 0.16);
+  background: rgba(240, 253, 244, 0.9);
+}
+
+.feedback-banner-warning {
+  border-color: rgba(234, 88, 12, 0.16);
+  background: rgba(255, 247, 237, 0.92);
+}
+
+.feedback-banner-error {
+  border-color: rgba(220, 38, 38, 0.16);
+  background: rgba(254, 242, 242, 0.92);
+}
+
+.state-panel {
+  display: grid;
+  gap: 12px;
+  padding: 20px;
+  border-radius: 20px;
+  border: 1px dashed rgba(15, 23, 42, 0.14);
+  background: linear-gradient(180deg, rgba(248, 250, 252, 0.92), rgba(241, 245, 249, 0.8));
+}
+
+.state-panel-compact {
+  padding: 16px;
+  border-radius: 16px;
+}
+
+.state-panel-copy {
+  display: grid;
+  gap: 6px;
+}
+
+.state-panel-copy strong,
+.state-panel-copy p {
+  margin: 0;
+}
+
+.state-panel-copy p {
+  color: #475569;
+  line-height: 1.6;
+}
+
+.state-panel-permission {
+  border-style: solid;
+  border-color: rgba(37, 99, 235, 0.14);
+  background: rgba(239, 246, 255, 0.88);
+}
+
+.state-panel-error {
+  border-style: solid;
+  border-color: rgba(220, 38, 38, 0.14);
+  background: rgba(254, 242, 242, 0.92);
+}
+
+.state-panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.field input,
+.field select,
+.field textarea {
+  transition:
+    border-color 0.16s ease,
+    box-shadow 0.16s ease,
+    background 0.16s ease;
+}
+
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
+  outline: none;
+  border-color: rgba(37, 99, 235, 0.32);
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+}
+
+.field textarea {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.field-hint {
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.field-hint-emphasis {
+  color: #b45309;
+  font-weight: 600;
+}
+
+.review-form-shell {
+  display: grid;
+  gap: 16px;
+}
+
+.review-decision-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.review-decision-card {
+  display: grid;
+  gap: 6px;
+  padding: 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(248, 250, 252, 0.86);
+}
+
+.review-decision-card strong,
+.review-decision-card p {
+  margin: 0;
+}
+
+.review-decision-card p {
+  color: #475569;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.review-decision-card-active {
+  border-color: rgba(37, 99, 235, 0.24);
+  background: linear-gradient(180deg, rgba(219, 234, 254, 0.84), rgba(239, 246, 255, 0.94));
+  box-shadow: 0 12px 32px rgba(37, 99, 235, 0.08);
+}
+
+.table-shell-scroll {
+  max-height: 420px;
+  overflow: auto;
+}
+
+.data-table {
+  min-width: 860px;
+}
+
+.data-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  backdrop-filter: blur(10px);
+}
+
+.data-table td {
+  overflow-wrap: anywhere;
+}
+
+.timeline-card-selected {
+  border-color: rgba(37, 99, 235, 0.2);
+  box-shadow: 0 16px 36px rgba(37, 99, 235, 0.08);
+}
+
+.timeline-comment {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.monthly-review-card {
+  min-height: 168px;
+}
+
+.monthly-review-card-pending {
+  border-color: rgba(148, 163, 184, 0.18);
+}
+
+.monthly-review-card-active {
+  border-color: rgba(37, 99, 235, 0.18);
+  background: linear-gradient(180deg, rgba(219, 234, 254, 0.8), rgba(239, 246, 255, 0.9));
+}
+
+.monthly-review-card-completed {
+  border-color: rgba(22, 163, 74, 0.18);
+  background: rgba(240, 253, 244, 0.92);
+}
+
+.monthly-review-card-overdue {
+  border-color: rgba(220, 38, 38, 0.18);
+  background: rgba(254, 242, 242, 0.92);
+}
+
+.calendar-event {
+  line-height: 1.4;
+}
+
+.empty-state,
+.state-panel {
+  align-content: start;
+}
+
+.status-pill-neutral {
+  color: #475569;
+  background: rgba(148, 163, 184, 0.18);
+}
+
+.status-pill-warning {
+  color: var(--ui-status-review);
+  background: rgba(194, 65, 12, 0.12);
+}
+
+.status-pill-success {
+  color: var(--ui-status-complete);
+  background: rgba(21, 128, 61, 0.12);
+}
+
+.status-pill-danger {
+  color: var(--ui-status-overdue);
+  background: rgba(185, 28, 28, 0.12);
+}
+
+@media (max-width: 900px) {
+  .page-card {
+    padding: 24px;
+  }
+
+  .table-shell-scroll {
+    max-height: none;
   }
 }

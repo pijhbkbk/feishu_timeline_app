@@ -19,6 +19,7 @@ export type AuthenticatedUser = {
   isSystemAdmin: boolean;
   authSource: AuthSource;
   roleCodes: RoleCode[];
+  permissionCodes?: string[];
 };
 
 export type AuthenticatedRequest = Request & {

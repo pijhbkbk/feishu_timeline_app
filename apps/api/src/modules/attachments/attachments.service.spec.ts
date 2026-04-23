@@ -14,6 +14,7 @@ const actor: AuthenticatedUser = {
   isSystemAdmin: false,
   authSource: 'mock',
   roleCodes: ['project_manager'],
+  permissionCodes: ['project.read', 'attachment.manage'],
 };
 
 function createAttachmentRecord(overrides: Record<string, unknown> = {}) {
@@ -138,11 +139,16 @@ function createService() {
     markDeleted: vi.fn().mockResolvedValue(undefined),
   };
 
+  const projectAccessService = {
+    assertProjectAccessWithDefaultClient: vi.fn().mockResolvedValue({ id: 'project-1' }),
+  };
+
   const service = new AttachmentsService(
     prisma as never,
     configService as never,
     activityLogsService as never,
     objectStorageService as never,
+    projectAccessService as never,
   );
 
   return {
@@ -151,6 +157,7 @@ function createService() {
     tx,
     activityLogsService,
     objectStorageService,
+    projectAccessService,
   };
 }
 

@@ -43,15 +43,15 @@
 
 根目录：
 
-- [.env.example](/Users/lixiaochen/Downloads/feishu_timeline_plugin/.env.example)
+- [.env.example](/Users/lixiaochen/Downloads/feishu_timeline_app/.env.example)
 
 后端：
 
-- [apps/api/.env.example](/Users/lixiaochen/Downloads/feishu_timeline_plugin/apps/api/.env.example)
+- [apps/api/.env.example](/Users/lixiaochen/Downloads/feishu_timeline_app/apps/api/.env.example)
 
 前端：
 
-- [apps/web/.env.example](/Users/lixiaochen/Downloads/feishu_timeline_plugin/apps/web/.env.example)
+- [apps/web/.env.example](/Users/lixiaochen/Downloads/feishu_timeline_app/apps/web/.env.example)
 
 关键变量说明：
 
@@ -112,11 +112,30 @@
 - `pnpm lint`
 - `pnpm test`
 - `pnpm build`
+- `pnpm test:e2e`
 
 说明：
 
-- 当前仓库的“E2E”采用现有 Vitest + route smoke 方案，不额外引入大型浏览器依赖。
+- 当前仓库的 E2E 采用 HTTP 主链路脚本，覆盖创建项目、流程推进、退回重跑、月度评审与权限边界。
 - 若需要真实数据库联调，请先启动 PostgreSQL 和 Redis。
+
+## Staging 部署
+
+R09 新增了基于 Docker Compose 的 staging 发布底座：
+
+- Compose: [deploy/compose.staging.yml](/Users/lixiaochen/Downloads/feishu_timeline_app/deploy/compose.staging.yml)
+- 环境模板: [deploy/env/staging.env.example](/Users/lixiaochen/Downloads/feishu_timeline_app/deploy/env/staging.env.example)
+- 部署文档: [docs/STAGING_DEPLOYMENT.md](/Users/lixiaochen/Downloads/feishu_timeline_app/docs/STAGING_DEPLOYMENT.md)
+
+常用命令：
+
+- `pnpm deploy:staging`
+- `pnpm deploy:migrate`
+- `pnpm deploy:seed`
+- `pnpm deploy:health`
+- `pnpm deploy:logs`
+- `pnpm deploy:rollback:check`
+- `pnpm deploy:rollback`
 
 ## 主要页面
 
@@ -150,8 +169,11 @@
 
 ## 开发文档
 
-- [开发文档](/Users/lixiaochen/Downloads/feishu_timeline_plugin/docs/DEVELOPMENT.md)
-- [MVP 验收清单](/Users/lixiaochen/Downloads/feishu_timeline_plugin/docs/MVP_ACCEPTANCE.md)
+- [开发文档](/Users/lixiaochen/Downloads/feishu_timeline_app/docs/DEVELOPMENT.md)
+- [工作流冻结基线](/Users/lixiaochen/Downloads/feishu_timeline_app/docs/WORKFLOW_RULE_FREEZE.md)
+- [R08 测试覆盖说明](/Users/lixiaochen/Downloads/feishu_timeline_app/docs/TEST_COVERAGE_R08.md)
+- [Staging 部署文档](/Users/lixiaochen/Downloads/feishu_timeline_app/docs/STAGING_DEPLOYMENT.md)
+- [MVP 验收清单](/Users/lixiaochen/Downloads/feishu_timeline_app/docs/MVP_ACCEPTANCE.md)
 
 ## 已知说明
 

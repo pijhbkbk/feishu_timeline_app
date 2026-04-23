@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
 import { useAuth } from '../../components/auth-provider';
+import { FeedbackBanner } from '../../components/feedback-banner';
 import { FRONTEND_ROLE_OPTIONS, type FrontendRoleCode } from '../../lib/auth-client';
 
 export default function LoginPage() {
@@ -80,6 +81,7 @@ export default function LoginPage() {
             className="button button-primary"
             onClick={() => void handleFeishuLogin()}
             disabled={!feishuEnabled}
+            data-testid="feishu-login-button"
           >
             {feishuEnabled ? '使用飞书登录' : '飞书登录未配置'}
           </button>
@@ -92,6 +94,7 @@ export default function LoginPage() {
           <label className="field">
             <span>角色</span>
             <select
+              data-testid="mock-role-select"
               value={selectedRole}
               onChange={(event) => {
                 const role = event.target.value as FrontendRoleCode;
@@ -111,6 +114,7 @@ export default function LoginPage() {
           <label className="field">
             <span>用户名</span>
             <input
+              data-testid="mock-username-input"
               value={username}
               onChange={(event) => setUsername(event.target.value)}
               disabled={!mockEnabled || isSubmitting}
@@ -120,6 +124,7 @@ export default function LoginPage() {
           <label className="field">
             <span>显示名</span>
             <input
+              data-testid="mock-display-name-input"
               value={displayName}
               onChange={(event) => setDisplayName(event.target.value)}
               placeholder="可选"
@@ -132,13 +137,14 @@ export default function LoginPage() {
             className="button button-secondary"
             onClick={() => void handleMockLogin()}
             disabled={!mockEnabled || isSubmitting}
+            data-testid="mock-login-button"
           >
             {mockEnabled ? (isSubmitting ? '登录中…' : '使用 Mock 登录') : 'Mock 登录已关闭'}
           </button>
         </section>
       </div>
 
-      {error ? <p className="error-text">{error}</p> : null}
+      {error ? <FeedbackBanner variant="error" title="登录失败" message={error} /> : null}
     </section>
   );
 }

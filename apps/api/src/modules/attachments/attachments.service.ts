@@ -19,6 +19,7 @@ import { PrismaService } from '../../infra/prisma/prisma.service';
 import { ObjectStorageService } from '../../infra/storage/object-storage.service';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import type { AuthenticatedUser } from '../auth/auth.types';
+import { ProjectAccessService } from '../auth/project-access.service';
 import { getCurrentNodeName } from '../workflows/workflow-node.constants';
 import {
   ATTACHMENT_MANAGEMENT_ROLE_CODES,
@@ -103,6 +104,7 @@ export class AttachmentsService {
     private readonly configService: ConfigService,
     private readonly activityLogsService: ActivityLogsService,
     private readonly objectStorageService: ObjectStorageService,
+    private readonly projectAccessService: ProjectAccessService,
   ) {
     this.bucket =
       this.configService.get<string>('objectStorageBucket') ?? 'feishu-timeline-local';
@@ -114,6 +116,11 @@ export class AttachmentsService {
     actor: AuthenticatedUser,
   ) {
     this.assertActorCanView(actor);
+    await this.projectAccessService.assertProjectAccessWithDefaultClient(
+      projectId,
+      actor,
+      'project.read',
+    );
     const filters = this.parseListFilters(rawFilters);
     return this.buildWorkspace(this.prisma, projectId, filters);
   }
@@ -124,6 +131,11 @@ export class AttachmentsService {
     actor: AuthenticatedUser,
   ) {
     this.assertActorCanView(actor);
+    await this.projectAccessService.assertProjectAccessWithDefaultClient(
+      projectId,
+      actor,
+      'project.read',
+    );
     const attachment = await this.getAttachmentOrThrow(this.prisma, projectId, attachmentId, true);
     const entityLabels = await this.buildEntityLabelMap(this.prisma, projectId);
     return this.toAttachmentSummary(attachment, entityLabels);
@@ -135,6 +147,11 @@ export class AttachmentsService {
     actor: AuthenticatedUser,
   ) {
     this.assertActorCanView(actor);
+    await this.projectAccessService.assertProjectAccessWithDefaultClient(
+      projectId,
+      actor,
+      'project.read',
+    );
     const filters = this.parseListFilters(rawQuery);
 
     if (!filters.entityType || !filters.entityId) {
@@ -163,6 +180,11 @@ export class AttachmentsService {
     actor: AuthenticatedUser,
   ) {
     this.assertActorCanManage(actor);
+    await this.projectAccessService.assertProjectAccessWithDefaultClient(
+      projectId,
+      actor,
+      'attachment.manage',
+    );
     const binding = this.parseEntityBindingInput(rawInput, projectId);
 
     return this.createStoredAttachment({
@@ -182,6 +204,11 @@ export class AttachmentsService {
     actor: AuthenticatedUser,
   ) {
     this.assertActorCanManage(actor);
+    await this.projectAccessService.assertProjectAccessWithDefaultClient(
+      projectId,
+      actor,
+      'attachment.manage',
+    );
     const input = this.parseEntityBindingInput(rawInput, projectId);
 
     return this.prisma.$transaction(async (tx) => {
@@ -233,6 +260,11 @@ export class AttachmentsService {
     actor: AuthenticatedUser,
   ) {
     this.assertActorCanManage(actor);
+    await this.projectAccessService.assertProjectAccessWithDefaultClient(
+      projectId,
+      actor,
+      'attachment.manage',
+    );
 
     return this.prisma.$transaction(async (tx) => {
       const attachment = await this.getAttachmentOrThrow(tx, projectId, attachmentId, false);
@@ -275,6 +307,11 @@ export class AttachmentsService {
     actor: AuthenticatedUser,
   ) {
     this.assertActorCanManage(actor);
+    await this.projectAccessService.assertProjectAccessWithDefaultClient(
+      projectId,
+      actor,
+      'attachment.manage',
+    );
 
     return this.prisma.$transaction(async (tx) => {
       const attachment = await this.getAttachmentOrThrow(tx, projectId, attachmentId, false);
@@ -328,6 +365,11 @@ export class AttachmentsService {
     rawDisposition?: unknown,
   ) {
     this.assertActorCanView(actor);
+    await this.projectAccessService.assertProjectAccessWithDefaultClient(
+      projectId,
+      actor,
+      'project.read',
+    );
     const attachment = await this.getAttachmentOrThrow(this.prisma, projectId, attachmentId, false);
     return this.readAttachmentBinary(attachment, actor, rawDisposition);
   }
@@ -346,6 +388,12 @@ export class AttachmentsService {
     if (!attachment || attachment.isDeleted) {
       throw new NotFoundException('附件不存在。');
     }
+
+    await this.projectAccessService.assertProjectAccessWithDefaultClient(
+      attachment.projectId,
+      actor,
+      'project.read',
+    );
 
     return this.readAttachmentBinary(attachment, actor, rawDisposition);
   }
