@@ -114,10 +114,22 @@ const rolePermissionMap = {
     'attachment.manage',
     'dashboard.read',
   ],
-  quality_engineer: ['project.read', 'review.execute', 'attachment.manage', 'dashboard.read'],
-  purchaser: ['project.read', 'attachment.manage', 'dashboard.read'],
-  reviewer: ['project.read', 'review.execute', 'attachment.manage', 'dashboard.read'],
-  finance: ['project.read', 'attachment.manage', 'dashboard.read'],
+  quality_engineer: [
+    'project.read',
+    'workflow.transition',
+    'review.execute',
+    'attachment.manage',
+    'dashboard.read',
+  ],
+  purchaser: ['project.read', 'workflow.transition', 'attachment.manage', 'dashboard.read'],
+  reviewer: [
+    'project.read',
+    'workflow.transition',
+    'review.execute',
+    'attachment.manage',
+    'dashboard.read',
+  ],
+  finance: ['project.read', 'workflow.transition', 'attachment.manage', 'dashboard.read'],
 } as const;
 
 const workflowNodes = [
@@ -1970,7 +1982,7 @@ async function ensureCompletedDemoProject(refs: SeedRefs) {
         createdById: refs.users.finance.id,
         recordedById: refs.users.finance.id,
         feeType: DevelopmentFeeType.TESTING,
-        amount: '8600.00',
+        amount: '10000.00',
         currency: 'CNY',
         payer: '演示整车厂',
         payStatus: DevelopmentFeeStatus.PAID,

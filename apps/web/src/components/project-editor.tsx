@@ -335,6 +335,7 @@ export function ProjectEditor(props: ProjectEditorProps) {
           <label className="field">
             <span>项目编号</span>
             <input
+              data-testid="project-code-input"
               value={formState.code}
               onChange={(event) => updateField('code', event.target.value)}
               placeholder="例如: PROJ-2026-001"
@@ -344,6 +345,7 @@ export function ProjectEditor(props: ProjectEditorProps) {
           <label className="field">
             <span>项目名称</span>
             <input
+              data-testid="project-name-input"
               value={formState.name}
               onChange={(event) => updateField('name', event.target.value)}
               placeholder="请输入项目名称"
@@ -352,6 +354,7 @@ export function ProjectEditor(props: ProjectEditorProps) {
           <label className="field">
             <span>负责人</span>
             <select
+              data-testid="project-owner-select"
               value={formState.ownerUserId}
               onChange={(event) => updateField('ownerUserId', event.target.value)}
               disabled={isLoadingUsers}
@@ -421,7 +424,12 @@ export function ProjectEditor(props: ProjectEditorProps) {
             />
           </label>
           <div className="inline-actions">
-            <button type="submit" className="button button-primary" disabled={isSavingProject}>
+            <button
+              type="submit"
+              className="button button-primary"
+              disabled={isSavingProject}
+              data-testid="project-submit-button"
+            >
               {isSavingProject
                 ? '提交中…'
                 : props.mode === 'create'

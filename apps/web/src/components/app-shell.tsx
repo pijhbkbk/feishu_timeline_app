@@ -15,6 +15,7 @@ import {
 } from '../lib/navigation';
 import { useAuth } from './auth-provider';
 import { NotificationBell } from './notification-bell';
+import { StatePanel } from './state-panel';
 
 export function AppShell({ children }: PropsWithChildren) {
   const pathname = usePathname();
@@ -44,13 +45,16 @@ export function AppShell({ children }: PropsWithChildren) {
     !isLoading && !isAuthenticated && !isAuthRoute ? (
       <section className="page-card">
         <p className="eyebrow">Authentication Required</p>
-        <h1>请先登录</h1>
-        <p>前端仅做登录态提示，真正的权限校验由后端接口完成。</p>
-        <div className="page-actions">
-          <Link href="/login" className="button button-primary">
-            前往登录
-          </Link>
-        </div>
+        <StatePanel
+          variant="permission"
+          title="请先登录"
+          description="前端仅做登录态提示，真正的权限校验仍由后端接口完成。"
+          actions={
+            <Link href="/login" className="button button-primary">
+              前往登录
+            </Link>
+          }
+        />
       </section>
     ) : (
       children

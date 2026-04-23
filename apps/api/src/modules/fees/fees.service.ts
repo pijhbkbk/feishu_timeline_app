@@ -8,6 +8,7 @@ import {
   DevelopmentFeeStatus,
   DevelopmentFeeType,
   Prisma,
+  SystemParameterValueType,
   WorkflowAction,
   WorkflowNodeCode,
   WorkflowTaskStatus,
@@ -25,6 +26,7 @@ import { WorkflowsService } from '../workflows/workflows.service';
 import {
   canEditDevelopmentFee,
   FEE_MANAGEMENT_ROLE_CODES,
+  getDevelopmentFeeAmountIssue,
   getDevelopmentFeeCompletionIssue,
   getDevelopmentFeeNodeCode,
   getDevelopmentFeeStageIssue,
@@ -68,6 +70,7 @@ export class FeesService {
     await this.prisma.$transaction(async (tx) => {
       const context = await this.getFeeContext(tx, projectId);
       this.assertWritableFeeStage(context);
+      await this.assertFixedFeeAmount(tx, input.amount);
 
       const createdRecord = await tx.developmentFee.create({
         data: {
@@ -119,6 +122,7 @@ export class FeesService {
     await this.prisma.$transaction(async (tx) => {
       const context = await this.getFeeContext(tx, projectId);
       this.assertWritableFeeStage(context);
+      await this.assertFixedFeeAmount(tx, input.amount);
       const feeRecord = await this.getFeeOrThrow(tx, projectId, feeId);
 
       if (!canEditDevelopmentFee(feeRecord.payStatus)) {
@@ -331,7 +335,7 @@ export class FeesService {
     projectId: string,
   ) {
     const project = await this.getProjectOrThrow(db, projectId);
-    const [records, activeTask, cabinReviewApproved] = await Promise.all([
+    const [records, activeTask, cabinReviewApproved, fixedAmount] = await Promise.all([
       db.developmentFee.findMany({
         where: { projectId },
         include: {
@@ -342,11 +346,13 @@ export class FeesService {
       }),
       this.getActiveTask(db, projectId),
       this.hasApprovedOrCompletedWorkflowTask(db, projectId, WorkflowNodeCode.CAB_REVIEW),
+      this.getFixedFeeAmount(db),
     ]);
 
     return {
       project: this.toProjectSummary(project),
       cabinReviewApproved,
+      fixedAmount: fixedAmount.toString(),
       activeTask: activeTask ? this.toWorkflowTaskSummary(activeTask) : null,
       canCompleteTask: activeTask
         ? getDevelopmentFeeCompletionIssue(records) === null
@@ -389,6 +395,42 @@ export class FeesService {
       cabinReviewApproved,
       records,
     };
+  }
+
+  private async getFixedFeeAmount(db: FeesDbClient) {
+    const parameter = await db.systemParameter.findUnique({
+      where: {
+        category_code: {
+          category: 'WORKFLOW',
+          code: 'DEVELOPMENT_FEE_FIXED_AMOUNT',
+        },
+      },
+      select: {
+        valueType: true,
+        valueNumber: true,
+      },
+    });
+
+    if (
+      parameter?.valueType === SystemParameterValueType.NUMBER &&
+      parameter.valueNumber
+    ) {
+      return Number(parameter.valueNumber);
+    }
+
+    return 10000;
+  }
+
+  private async assertFixedFeeAmount(
+    db: FeesDbClient,
+    amount: Prisma.Decimal,
+  ) {
+    const fixedAmount = await this.getFixedFeeAmount(db);
+    const issue = getDevelopmentFeeAmountIssue(Number(amount.toString()), fixedAmount);
+
+    if (issue) {
+      throw new BadRequestException(issue);
+    }
   }
 
   private assertWritableFeeStage(context: {

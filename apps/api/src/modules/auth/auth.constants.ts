@@ -52,10 +52,22 @@ export const ROLE_PERMISSION_CODE_MAP: Record<RoleCode, string[]> = {
     'attachment.manage',
     'dashboard.read',
   ],
-  quality_engineer: ['project.read', 'review.execute', 'attachment.manage', 'dashboard.read'],
-  purchaser: ['project.read', 'attachment.manage', 'dashboard.read'],
-  reviewer: ['project.read', 'review.execute', 'attachment.manage', 'dashboard.read'],
-  finance: ['project.read', 'attachment.manage', 'dashboard.read'],
+  quality_engineer: [
+    'project.read',
+    'workflow.transition',
+    'review.execute',
+    'attachment.manage',
+    'dashboard.read',
+  ],
+  purchaser: ['project.read', 'workflow.transition', 'attachment.manage', 'dashboard.read'],
+  reviewer: [
+    'project.read',
+    'workflow.transition',
+    'review.execute',
+    'attachment.manage',
+    'dashboard.read',
+  ],
+  finance: ['project.read', 'workflow.transition', 'attachment.manage', 'dashboard.read'],
 };
 
 export const AUTH_SESSION_PREFIX = 'auth:session:';

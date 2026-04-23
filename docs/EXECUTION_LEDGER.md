@@ -8,12 +8,12 @@
 ## 项目基本信息
 
 - 项目名称：轻卡定制颜色开发项目管理系统
-- 当前阶段：R10 已部署，等待确认
-- 当前轮次：R10
-- 总体状态：IN_PROGRESS
+- 当前阶段：Release Closure
+- 当前轮次：Release Closure
+- 总体状态：READY_FOR_RELEASE
 - 仓库路径：`/Users/lixiaochen/Downloads/feishu_timeline_app`
 - 默认分支：`main`
-- 最近更新时间：`2026-04-20`
+- 最近更新时间：`2026-04-23`
 
 ---
 
@@ -44,7 +44,11 @@
 | R07 | 流程可视化、甘特图、看板、月度评审台账 | PASSED | CONTINUE | 已补流程图、甘特、看板、日历、负责人/部门视图、第 17 步月度评审台账与第 18 步退出建议展示 |
 | R08 | 自动化测试体系 | PASSED | CONTINUE | 已补关键单测、权限/附件校验、HTTP E2E 主链路与测试覆盖说明 |
 | R09 | 部署脚本、CI/CD、监控、备份、预发布 | PASSED | STOP | 已完成 Docker 化、staging 一键部署、健康检查、回滚脚本与部署文档，等待确认后进入 R10 |
-| R10 | UAT、试运行、上线收口 | IN_PROGRESS | STOP | 已完成 deploy readiness audit、生产部署、HTTPS 验证与 smoke test，等待确认是否进入 main 合并与 tag 收口 |
+| R10 | UAT、试运行、上线收口 | PASSED | CONTINUE | 已完成 deploy readiness audit、生产部署、HTTPS 验证与 smoke test，并进入生产口径 UAT 收口 |
+| R11 | 生产 UAT 与硬门禁收口 | PASSED | CONTINUE | 已完成真实业务口径 UAT、固定收费/权限最小修复、硬门禁证据化与账本收口 |
+| R12 | 稳定性、监控、告警、备份恢复 | PASSED | STOP | 已完成生产巡检、增强 health-check、补齐 ops/SSL/5xx/备份脚本、完成备份恢复演练并沉淀运维文档 |
+| R13 | UI/UX 精修 + Playwright 浏览器级回归 | PASSED | STOP | 已完成关键页面精修、统一反馈与状态组件、接入 Playwright 5 条关键回归并补齐 CI 入口 |
+| Release Closure | 正式发布收口（v1.0.0） | IN_PROGRESS | STOP | 进入文档、Git、生产环境三者对齐阶段，待 main 合并、生产重部署与 tag 收口 |
 
 状态枚举建议：
 
@@ -70,7 +74,7 @@
 - 数据库：`PostgreSQL 16（本地 compose）`
 - ORM：`Prisma 6`
 - 缓存/调度：`Redis 7（本地 compose）`
-- 测试框架：`Vitest`
+- 测试框架：`Vitest + Playwright`
 - 包管理：`pnpm workspace`
 - 部署方式：`Docker Compose + GCE/systemd + Nginx`
 
@@ -78,14 +82,21 @@
 
 ## 总体验收硬门禁
 
-- [ ] 流程主线可跑通到第 16 步
-- [ ] 第 12 步不通过可退回第 11 步新轮次
-- [ ] 第 9 步不阻塞主线
-- [ ] 第 17 步自动生成 12 个按月实例
-- [ ] 第 13 步固定金额 10000
-- [ ] 第 18 步支持人工录入年产量
-- [ ] 关键动作具备审计日志
+- [x] 流程主线可跑通到第 16 步
+- [x] 第 12 步不通过可退回第 11 步新轮次
+- [x] 第 9 步不阻塞主线
+- [x] 第 17 步自动生成 12 个按月实例
+- [x] 第 13 步固定金额 10000
+- [x] 第 18 步支持人工录入年产量
+- [x] 关键动作具备审计日志
 - [x] staging 部署可重复执行
+
+### 硬门禁证据索引
+
+- `docs/UAT_R11.md`：覆盖 1→16 主线、第 12 步退回新轮次、第 9 步不阻塞、第 17 步 12 个月实例、第 18 步退出建议、权限验收与审计日志证据
+- `docs/TEST_COVERAGE_R08.md`：覆盖工作流、权限、附件、月度评审、退出治理与固定收费规则的自动化测试基线
+- `docs/STAGING_DEPLOYMENT.md`：覆盖 staging 一键部署、健康检查、迁移/seed 说明与回滚入口
+- `docs/UI_REFINEMENT_R13.md`：覆盖页面标题、按钮、状态色、反馈组件、关键工作区精修口径与浏览器回归入口
 
 ---
 
@@ -1090,3 +1101,245 @@ STOP
 
 #### Next Round
 合并 `main` + 创建 `v1.0.0` tag（待用户确认）
+
+### Round R11
+
+#### Goal
+在不做大范围新功能开发的前提下，完成生产口径 UAT、补齐业务硬门禁、清理演示口径偏差，并把结果沉淀为可复用的业务验收资料。
+
+#### Scope
+- 基于生产机隔离 schema + 临时 API 执行真实业务口径 UAT
+- 最小修复第 13 步固定收费金额、关键角色流程推进权限与种子数据口径
+- 复核并勾选总体验收硬门禁
+- 生成 UAT 文档并更新本账本
+
+#### Inputs Read
+- `AGENTS.md`
+- `docs/EXECUTION_LEDGER.md`
+- `docs/ACCEPTANCE_CHECKLIST.md`
+- `docs/WORKFLOW_RULE_FREEZE.md`
+- `docs/TEST_COVERAGE_R08.md`
+- `apps/api/src/modules/auth/auth.constants.ts`
+- `apps/api/src/modules/auth/auth.service.ts`
+- `apps/api/src/modules/auth/project-access.service.ts`
+- `apps/api/src/modules/workflows/workflows.service.ts`
+- `apps/api/src/modules/workflows/workflow-recurring.service.ts`
+- `apps/api/src/modules/reviews/reviews.service.ts`
+- `apps/api/src/modules/fees/fees.service.ts`
+- `apps/api/src/modules/color-exits/color-exits.service.ts`
+- `apps/api/src/modules/pilot-productions/pilot-productions.service.ts`
+- `apps/api/prisma/seed.ts`
+- `apps/web/scripts/e2e-mainline.mjs`
+
+#### Files Changed
+- `apps/api/src/modules/auth/auth.constants.ts`
+- `apps/api/src/modules/auth/auth.constants.spec.ts`
+- `apps/api/src/modules/fees/fees.rules.ts`
+- `apps/api/src/modules/fees/fees.rules.spec.ts`
+- `apps/api/src/modules/fees/fees.service.ts`
+- `apps/api/prisma/seed.ts`
+- `docs/UAT_R11.md`
+- `docs/ACCEPTANCE_CHECKLIST.md`
+- `docs/EXECUTION_LEDGER.md`
+
+#### Commands Run
+```bash
+pnpm --filter @feishu-timeline/api exec vitest run src/modules/auth/auth.constants.spec.ts src/modules/fees/fees.rules.spec.ts
+pnpm --filter @feishu-timeline/api typecheck
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm --filter @feishu-timeline/api build
+pnpm --filter @feishu-timeline/web build
+curl -sS https://timeline.all-too-well.com/api/health
+curl -sS https://timeline.all-too-well.com/api/auth/session
+curl -sS https://timeline.all-too-well.com/api/auth/feishu/login-url
+curl -I https://timeline.all-too-well.com/login/callback
+gcloud compute ssh instance-20260408-091840 --project=axial-acrobat-492709-r7 --zone=us-west1-b --command '...prepare isolated schema + temp api + run UAT script...'
+gcloud compute ssh instance-20260408-091840 --project=axial-acrobat-492709-r7 --zone=us-west1-b --command 'pnpm exec vitest run src/modules/auth/auth.constants.spec.ts src/modules/fees/fees.rules.spec.ts'
+gcloud compute ssh instance-20260408-091840 --project=axial-acrobat-492709-r7 --zone=us-west1-b --command 'pnpm build && sudo -n systemctl restart feishu-timeline-api'
+gcloud compute ssh instance-20260408-091840 --project=axial-acrobat-492709-r7 --zone=us-west1-b --command '...cleanup isolated schema and temp api artifacts...'
+```
+
+#### Acceptance Result
+- [x] `docs/UAT_R11.md` 已生成，沉淀 5 条业务验收场景、权限验收与 Feishu 登录链路验证结果
+- [x] 生产机隔离 schema UAT 通过 `5 / 5`：主线 1→16、第 12 步退回新轮次、第 9 步不阻塞、第 17 步 12 个月实例、第 18 步退出建议全部通过
+- [x] 第 13 步固定收费金额后端门禁已补齐，`8600` 会被拒绝，系统固定金额统一为 `10000`
+- [x] `reviewer`、`quality_engineer`、`finance`、`purchaser` 已补齐 `workflow.transition` 权限，真实评审/收费流程不再因权限映射缺口失败
+- [x] 旧演示 / seed 中与冻结规则不一致的 `8600` 口径已清理为 `10000`
+- [x] 顶部“总体验收硬门禁”已全部勾选并附证据索引
+- [x] 生产 `Feishu` 登录入口、登录 URL、回调地址与匿名会话状态已验证；未执行真人交互式授权回调，结论为非 blocker 运行债务
+- [x] 本轮最小修复已在生产 API 上完成构建与重启验证，`/api/health` 保持正常
+
+#### Risks / Debt
+- 真实 Feishu 账号授权后的交互式会话闭环尚未人工点击验证；当前只确认登录入口、授权 URL 和回调地址配置正确。
+- 本轮业务 UAT 为“生产机隔离 schema + 临时 API”模式，不会污染正式业务数据；后续若要引入长期回归 UAT，建议沉淀为固定脚本与专用测试账户。
+
+#### Decision
+STOP
+
+#### Next Round
+R12（待用户确认）
+
+### Round R12
+
+#### Goal
+在不改动核心业务规则的前提下，补齐线上系统的可观测性、告警、备份恢复与运行稳定性基线。
+
+#### Scope
+- 增强生产 `health-check`
+- 新增 `ops-check`、证书有效期检查、5xx 日志筛查、PostgreSQL 备份演练脚本
+- 完成一次生产巡检与一次备份恢复演练
+- 生成运维、告警、备份恢复文档
+- 更新本账本
+
+#### Inputs Read
+- `AGENTS.md`
+- `docs/EXECUTION_LEDGER.md`
+- `Round R09`
+- `Round R10`
+- `scripts/deploy/*`
+- `deploy/nginx/*`
+- `deploy/systemd/*`
+- 当前生产环境 `systemctl` / `journalctl` / `nginx` 日志 / 健康检查与回滚脚本
+
+#### Files Changed
+- `scripts/deploy/gce-common.sh`
+- `scripts/deploy/health-check.sh`
+- `scripts/deploy/ops-check.sh`
+- `scripts/deploy/check-ssl-expiry.sh`
+- `scripts/deploy/check-http-errors.sh`
+- `scripts/deploy/backup-postgres.sh`
+- `docs/OPERATIONS_R12.md`
+- `docs/ALERTING_R12.md`
+- `docs/BACKUP_AND_RESTORE_R12.md`
+- `docs/EXECUTION_LEDGER.md`
+
+#### Commands Run
+```bash
+bash -n scripts/deploy/gce-common.sh
+bash -n scripts/deploy/health-check.sh
+bash -n scripts/deploy/ops-check.sh
+bash -n scripts/deploy/check-ssl-expiry.sh
+bash -n scripts/deploy/check-http-errors.sh
+bash -n scripts/deploy/backup-postgres.sh
+bash scripts/deploy/health-check.sh DEPLOY_TARGET=production
+bash scripts/deploy/ops-check.sh
+bash scripts/deploy/check-ssl-expiry.sh
+bash scripts/deploy/check-http-errors.sh LINES=300 JOURNAL_SINCE='24 hours ago'
+bash scripts/deploy/backup-postgres.sh RUN_RESTORE_DRILL=yes
+curl -I https://timeline.all-too-well.com/
+curl -I https://timeline.all-too-well.com/login
+curl -I https://timeline.all-too-well.com/dashboard
+curl -I https://timeline.all-too-well.com/projects
+curl -I https://timeline.all-too-well.com/api/health
+python3 - <<'PY'
+# 连续请求稳定性采样
+PY
+gcloud compute ssh instance-20260408-091840 --project=axial-acrobat-492709-r7 --zone=us-west1-b --command '...systemd / df -h / free -h / ss -tlnp / psql / redis-cli / certbot / logs...'
+```
+
+#### Acceptance Result
+- [x] `docs/OPERATIONS_R12.md` 已生成
+- [x] `docs/ALERTING_R12.md` 已生成
+- [x] `docs/BACKUP_AND_RESTORE_R12.md` 已生成
+- [x] `health-check.sh` 已增强，支持生产模式下的服务状态、关键 URL、HTTP 状态码和失败摘要输出
+- [x] `ops-check.sh` 已新增并可运行，覆盖服务状态、磁盘、内存、端口、证书、数据库、Redis
+- [x] `check-ssl-expiry.sh` 与 `check-http-errors.sh` 已新增并通过实际生产校验
+- [x] 已完成一次 PostgreSQL 备份文件生成 + 临时 schema 恢复演练，结果 `restore_status=ok`
+- [x] 已完成一次生产巡检并记录结果：服务全部 `active`、根分区 `20%`、可用内存约 `3070MB`、最近 300 行 Nginx access log 中 `5xx=0`
+- [x] 连续请求稳定性检查已完成，`/`、`/dashboard`、`/projects`、`/api/health` 10 次请求均未出现异常状态码
+- [x] `docs/EXECUTION_LEDGER.md` 已更新
+
+#### Risks / Debt
+- 当前告警仍是“脚本 + 非零退出码”模式，尚未接入 webhook / 邮件 / 监控平台。
+- PostgreSQL 未启用 `pg_stat_statements`，SQL 热点与慢语句只能做到“无长查询”级别观察，缺少语句级排行。
+- 生产环境仍以 `systemd + nginx` 手工脚本运维为主，运维能力已可用，但离全自动化监控和统一观察面仍有距离。
+
+#### Decision
+STOP
+
+#### Next Round
+R13（待用户确认）
+
+### Round R13
+
+#### Goal
+提升系统界面一致性、关键流程交互体验和浏览器级自动化回归能力，使系统达到“稳定且美观”的交付水平。
+
+#### Scope
+- 统一页面标题、按钮、状态色、空态/错误态/无权限态和页内反馈组件
+- 精修第 12 步评审工作区、第 17 步月度评审台账、第 18 步颜色退出页，以及流程页任务动作与截止日历说明
+- 接入 Playwright 浏览器级回归与基础 CI 入口
+- 更新本账本
+
+#### Inputs Read
+- `AGENTS.md`
+- `docs/EXECUTION_LEDGER.md`
+- `Round R06`
+- `Round R07`
+- `Round R08`
+- `docs/TEST_COVERAGE_R08.md`
+- `apps/web/src/components/*`
+- `apps/web/src/app/*`
+- `apps/web/scripts/e2e-mainline.mjs`
+- `.github/workflows/ci.yml`
+
+#### Files Changed
+- `.github/workflows/ci.yml`
+- `.gitignore`
+- `package.json`
+- `apps/web/package.json`
+- `apps/web/vitest.config.mts`
+- `apps/web/playwright.config.mjs`
+- `apps/web/scripts/playwright-runner.mjs`
+- `apps/web/tests/playwright/helpers.ts`
+- `apps/web/tests/playwright/regression.spec.ts`
+- `apps/web/src/app/globals.css`
+- `apps/web/src/app/login/page.tsx`
+- `apps/web/src/components/app-shell.tsx`
+- `apps/web/src/components/project-editor.tsx`
+- `apps/web/src/components/project-workflow-workspace.tsx`
+- `apps/web/src/components/cabin-review-workspace.tsx`
+- `apps/web/src/components/consistency-review-workspace.tsx`
+- `apps/web/src/components/monthly-review-workspace.tsx`
+- `apps/web/src/components/color-exit-workspace.tsx`
+- `apps/web/src/components/feedback-banner.tsx`
+- `apps/web/src/components/state-panel.tsx`
+- `docs/UI_REFINEMENT_R13.md`
+- `docs/EXECUTION_LEDGER.md`
+
+#### Commands Run
+```bash
+pnpm --filter @feishu-timeline/web add -D @playwright/test@^1.51.1
+pnpm --filter @feishu-timeline/web exec playwright install chromium
+pnpm test
+pnpm lint
+pnpm typecheck
+pnpm --filter @feishu-timeline/web build
+pnpm test:e2e
+pnpm playwright:test
+```
+
+#### Acceptance Result
+- [x] `docs/UI_REFINEMENT_R13.md` 已生成，沉淀标题层级、按钮层级、状态颜色体系、状态组件与浏览器回归入口
+- [x] 第 12 步评审工作区已完成按钮层级、驳回/整改提示、时间线历史与统一反馈精修
+- [x] 第 17 步月度评审台账已完成月份状态着色、摘要卡、绑定规则提示与固定表头滚动表格
+- [x] 第 18 步颜色退出页已完成阈值/建议/人工结论摘要、保存与完成动作分层和统一状态反馈
+- [x] 流程页 / 看板 / 日历已统一状态色与动作按钮层级，并明确 recurring task 只在评审台账展示、不在截止日历重复投影
+- [x] 第 13 步固定收费金额口径保持 `10000`，未引入与冻结规则冲突的新展示
+- [x] Playwright 已接入并通过 5 条关键浏览器级回归：登录入口、创建项目并进入流程页、第 12 步驳回生成新轮次并验证上传入口、第 17 步 12 个月实例、第 18 步退出页摘要
+- [x] `.github/workflows/ci.yml` 已增加可选 `playwright-smoke` 入口，本地可通过 `pnpm playwright:test` 一键复跑
+- [x] `pnpm lint`、`pnpm typecheck`、`pnpm test`、`pnpm --filter @feishu-timeline/web build`、`pnpm test:e2e`、`pnpm playwright:test` 全部通过
+- [x] `docs/EXECUTION_LEDGER.md` 已更新
+
+#### Risks / Debt
+- 当前关键动作反馈以页内 `FeedbackBanner` 为主，尚未接入全局 toast 队列；交付层面已经统一，但还不是完整通知中心。
+- recurring task 目前通过“展示边界说明”而不是直接并入流程日历解决；若后续需要统一时间视图，仍需单独设计信息密度与筛选策略。
+- Playwright 当前覆盖 5 条关键路径，已满足本轮门禁，但尚未扩到更多角色矩阵、移动端视口和视觉截图基线。
+
+#### Decision
+STOP
+
+#### Next Round
+等待用户确认是否进入 `main` 合并与正式 tag 收口

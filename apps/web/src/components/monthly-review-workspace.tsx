@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import React, { useEffect, useRef, useState } from 'react';
 
+import { FeedbackBanner } from './feedback-banner';
+import { StatePanel } from './state-panel';
 import {
   fetchMonthlyReviewTaskDetail,
   fetchMonthlyReviewWorkspace,
@@ -131,6 +133,7 @@ export function MonthlyReviewWorkspace({ projectId }: MonthlyReviewWorkspaceProp
     { label: '逾期', value: String(workspace.summary.overduePeriods) },
     { label: '待处理', value: String(workspace.summary.pendingPeriods) },
   ];
+  const selectedTask = detail?.recurringTask ?? null;
 
   return (
     <div className="page-stack">
@@ -157,7 +160,7 @@ export function MonthlyReviewWorkspace({ projectId }: MonthlyReviewWorkspaceProp
             </Link>
           </div>
         </div>
-        {error ? <p className="error-text">{error}</p> : null}
+        {error ? <FeedbackBanner variant="error" title="台账加载失败" message={error} /> : null}
         <div className="summary-grid">
           {summaryCards.map((card) => (
             <div key={card.label} className="summary-card">
@@ -192,6 +195,12 @@ export function MonthlyReviewWorkspace({ projectId }: MonthlyReviewWorkspaceProp
             <strong>{workspace.activeWorkflowTask?.nodeName ?? '当前无活跃第 17 步任务'}</strong>
           </div>
         </div>
+        <FeedbackBanner
+          variant="info"
+          compact
+          title="实例绑定规则"
+          message="第 17 步台账按 12 个周期实例建档；关联评审记录仅展示与当前月份实例匹配的正式评审数据。"
+        />
       </section>
 
       <section className="page-card">
@@ -203,17 +212,19 @@ export function MonthlyReviewWorkspace({ projectId }: MonthlyReviewWorkspaceProp
           </div>
         </div>
         {workspace.recurringTasks.length === 0 ? (
-          <div className="empty-state">
-            <strong>当前项目尚未生成月度评审计划</strong>
-            <p>第 16 步“批量生产”完成后，系统会自动创建 12 条月度评审任务。</p>
-          </div>
+          <StatePanel
+            title="当前项目尚未生成月度评审计划"
+            description="第 16 步“批量生产”完成后，系统会自动创建 12 条月度评审任务。"
+          />
         ) : (
-          <div className="monthly-review-grid">
+          <div className="monthly-review-grid" data-testid="monthly-review-grid">
             {workspace.recurringTasks.map((task) => (
               <button
                 key={task.id}
                 type="button"
-                className={`monthly-review-card${
+                className={`monthly-review-card monthly-review-card-${getRecurringStatusTone(
+                  task.status,
+                )}${
                   selectedTaskId === task.id ? ' monthly-review-card-selected' : ''
                 }`}
                 onClick={() => setSelectedTaskId(task.id)}
@@ -238,7 +249,7 @@ export function MonthlyReviewWorkspace({ projectId }: MonthlyReviewWorkspaceProp
             <p className="muted">台账字段与周期计划保持一致，便于和流程图、甘特图、日历口径统一。</p>
           </div>
         </div>
-        <div className="table-shell">
+        <div className="table-shell table-shell-scroll">
           <table className="data-table">
             <thead>
               <tr>
@@ -254,10 +265,11 @@ export function MonthlyReviewWorkspace({ projectId }: MonthlyReviewWorkspaceProp
               {workspace.recurringTasks.length === 0 ? (
                 <tr>
                   <td colSpan={6}>
-                    <div className="empty-state">
-                      <strong>暂无周期任务</strong>
-                      <p>批量生产完成后，这里会自动展示 12 条月度评审实例。</p>
-                    </div>
+                    <StatePanel
+                      compact
+                      title="暂无周期任务"
+                      description="批量生产完成后，这里会自动展示 12 条月度评审实例。"
+                    />
                   </td>
                 </tr>
               ) : (
@@ -291,10 +303,12 @@ export function MonthlyReviewWorkspace({ projectId }: MonthlyReviewWorkspaceProp
             <p className="muted">展示选中月份的任务信息，以及该月命中的评审记录。</p>
           </div>
         </div>
-        {detailError ? <p className="error-text">{detailError}</p> : null}
+        {detailError ? (
+          <FeedbackBanner variant="error" title="周期详情加载失败" message={detailError} />
+        ) : null}
         {isLoadingDetail ? <p className="muted">正在加载月度评审详情…</p> : null}
         {!isLoadingDetail && detail ? (
-          <div className="page-stack compact">
+          <div className="page-stack compact" data-testid="monthly-review-detail">
             <div className="metadata-grid">
               <div className="metadata-item">
                 <span>周期计划</span>
@@ -313,11 +327,31 @@ export function MonthlyReviewWorkspace({ projectId }: MonthlyReviewWorkspaceProp
                 <strong>{getReviewResultLabel(detail.recurringTask.result)}</strong>
               </div>
             </div>
+            {selectedTask ? (
+              <div className="summary-grid">
+                <div className="summary-card">
+                  <span>本月状态</span>
+                  <strong>{getRecurringTaskStatusLabel(selectedTask.status)}</strong>
+                </div>
+                <div className="summary-card">
+                  <span>计划日期</span>
+                  <strong>{formatDate(selectedTask.plannedDate)}</strong>
+                </div>
+                <div className="summary-card">
+                  <span>完成日期</span>
+                  <strong>{formatDate(selectedTask.completedAt)}</strong>
+                </div>
+                <div className="summary-card">
+                  <span>关联评审记录</span>
+                  <strong>{String(detail.relatedReviews.length)}</strong>
+                </div>
+              </div>
+            ) : null}
             <div className="detail-block">
               <h3>周期说明</h3>
               <p>{detail.recurringTask.comment ?? '当前月份暂无补充说明。'}</p>
             </div>
-            <div className="table-shell">
+            <div className="table-shell table-shell-scroll">
               <table className="data-table">
                 <thead>
                   <tr>
@@ -332,10 +366,11 @@ export function MonthlyReviewWorkspace({ projectId }: MonthlyReviewWorkspaceProp
                   {detail.relatedReviews.length === 0 ? (
                     <tr>
                       <td colSpan={5}>
-                        <div className="empty-state">
-                          <strong>当前月份暂无关联评审记录</strong>
-                          <p>月度任务已经建档，但该月份暂未查询到匹配的评审记录。</p>
-                        </div>
+                        <StatePanel
+                          compact
+                          title="当前月份暂无关联评审记录"
+                          description="月度任务已经建档，但该月份暂未查询到匹配的评审记录。"
+                        />
                       </td>
                     </tr>
                   ) : (
@@ -379,4 +414,22 @@ function RecurringStatusBadge({
       {getRecurringTaskStatusLabel(status)}
     </span>
   );
+}
+
+function getRecurringStatusTone(
+  status: MonthlyReviewWorkspaceResponse['recurringTasks'][number]['status'],
+) {
+  if (status === 'COMPLETED') {
+    return 'completed';
+  }
+
+  if (status === 'OVERDUE') {
+    return 'overdue';
+  }
+
+  if (status === 'IN_PROGRESS') {
+    return 'active';
+  }
+
+  return 'pending';
 }

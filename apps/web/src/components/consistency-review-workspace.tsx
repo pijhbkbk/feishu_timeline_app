@@ -4,6 +4,8 @@ import Link from 'next/link';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 import { useAuth } from './auth-provider';
+import { FeedbackBanner } from './feedback-banner';
+import { StatePanel } from './state-panel';
 import {
   approveConsistencyReview,
   canManageConsistencyReviews,
@@ -86,6 +88,12 @@ export function ConsistencyReviewWorkspace({
     workspace?.items.find((item) => item.id === selectedReviewId) ?? null;
   const latestReview = workspace?.items[0] ?? null;
   const isReadOnly = !workspace?.activeTask;
+  const decisionGuidance =
+    form.reviewConclusion === 'REJECTED'
+      ? '驳回时必须补充原因，后端会把流程退回到涂料开发并保留历史。'
+      : form.reviewConclusion === 'CONDITIONAL_APPROVED'
+        ? '条件通过时必须补充整改条件，避免后续排产口径不清。'
+        : '通过后排产计划节点可进入，建议在评审意见中留下关键判断依据。';
 
   const summaryCards = useMemo(
     () => [
@@ -337,8 +345,10 @@ export function ConsistencyReviewWorkspace({
         ) : null}
       </section>
 
-      {error ? <p className="error-text">{error}</p> : null}
-      {successMessage ? <p className="success-text">{successMessage}</p> : null}
+      {error ? <FeedbackBanner variant="error" title="评审操作失败" message={error} /> : null}
+      {successMessage ? (
+        <FeedbackBanner variant="success" title="评审操作已完成" message={successMessage} />
+      ) : null}
 
       <section className="page-card">
         <div className="section-header">
@@ -353,14 +363,22 @@ export function ConsistencyReviewWorkspace({
             </button>
           </div>
         </div>
-        <ConsistencyReviewForm
-          value={form}
-          reviewerOptions={reviewerOptions}
-          disabled={!canManage || isReadOnly || isSaving}
-          submitLabel={editingReviewId ? '更新评审记录' : '新建评审记录'}
-          onChange={setForm}
-          onSubmit={() => void handleSave()}
-        />
+        <div className="review-form-shell">
+          <FeedbackBanner
+            variant={form.reviewConclusion === 'REJECTED' ? 'warning' : 'info'}
+            compact
+            title="表单门禁"
+            message={decisionGuidance}
+          />
+          <ConsistencyReviewForm
+            value={form}
+            reviewerOptions={reviewerOptions}
+            disabled={!canManage || isReadOnly || isSaving}
+            submitLabel={editingReviewId ? '更新评审记录' : '新建评审记录'}
+            onChange={setForm}
+            onSubmit={() => void handleSave()}
+          />
+        </div>
       </section>
 
       <section className="page-card">
@@ -441,6 +459,36 @@ export function ConsistencyReviewForm({
         onSubmit();
       }}
     >
+      <div className="field field-full">
+        <div className="review-decision-grid" aria-label="评审结论提示">
+          <div
+            className={`review-decision-card${
+              value.reviewConclusion === 'APPROVED' ? ' review-decision-card-active' : ''
+            }`}
+          >
+            <strong>通过</strong>
+            <p>排产计划节点可继续进入。</p>
+          </div>
+          <div
+            className={`review-decision-card${
+              value.reviewConclusion === 'CONDITIONAL_APPROVED'
+                ? ' review-decision-card-active'
+                : ''
+            }`}
+          >
+            <strong>条件通过</strong>
+            <p>必须明确整改条件，避免后续排产口径偏差。</p>
+          </div>
+          <div
+            className={`review-decision-card${
+              value.reviewConclusion === 'REJECTED' ? ' review-decision-card-active' : ''
+            }`}
+          >
+            <strong>驳回</strong>
+            <p>会退回到涂料开发，必须补充驳回原因。</p>
+          </div>
+        </div>
+      </div>
       <label className="field">
         <span>评审日期</span>
         <input
@@ -491,6 +539,7 @@ export function ConsistencyReviewForm({
           value={value.comment}
           onChange={(event) => onChange({ ...value, comment: event.target.value })}
         />
+        <small className="field-hint">建议补充整改要求、样件依据和责任人说明。</small>
       </label>
       <label className="field field-full">
         <span>条件通过说明</span>
@@ -500,6 +549,7 @@ export function ConsistencyReviewForm({
           value={value.conditionNote}
           onChange={(event) => onChange({ ...value, conditionNote: event.target.value })}
         />
+        <small className="field-hint">选择“条件通过”时，此字段为必填。</small>
       </label>
       <label className="field field-full">
         <span>驳回原因</span>
@@ -509,9 +559,12 @@ export function ConsistencyReviewForm({
           value={value.rejectReason}
           onChange={(event) => onChange({ ...value, rejectReason: event.target.value })}
         />
+        <small className="field-hint field-hint-emphasis">
+          选择“驳回”时，此字段为必填，并会退回到涂料开发。
+        </small>
       </label>
       <div className="field field-actions">
-        <button type="submit" className="button" disabled={disabled}>
+        <button type="submit" className="button button-primary" disabled={disabled}>
           {submitLabel}
         </button>
       </div>
@@ -551,7 +604,7 @@ export function ConsistencyReviewHistory({
   onUploadAttachment: (review: ConsistencyReviewRecord, file: File) => void;
 }) {
   return (
-    <div className="table-shell">
+    <div className="table-shell table-shell-scroll">
       <table className="data-table">
         <thead>
           <tr>
@@ -568,10 +621,11 @@ export function ConsistencyReviewHistory({
           {items.length === 0 ? (
             <tr>
               <td colSpan={7}>
-                <div className="empty-state">
-                  <strong>暂无一致性评审记录</strong>
-                  <p>驾驶室评审通过并激活一致性评审任务后，可在这里创建记录。</p>
-                </div>
+                <StatePanel
+                  compact
+                  title="暂无一致性评审记录"
+                  description="驾驶室评审通过并激活一致性评审任务后，可在这里创建记录。"
+                />
               </td>
             </tr>
           ) : (
@@ -637,7 +691,7 @@ export function ConsistencyReviewHistory({
                     {canShowConsistencyReviewApproveButton(user, workspace, item) ? (
                       <button
                         type="button"
-                        className="button button-small"
+                        className="button button-primary button-small"
                         disabled={actingKey === `approve:${item.id}`}
                         onClick={(event) => {
                           event.stopPropagation();
@@ -650,7 +704,7 @@ export function ConsistencyReviewHistory({
                     {canShowConsistencyReviewRejectButton(user, workspace, item) ? (
                       <button
                         type="button"
-                        className="button button-secondary button-small"
+                        className="button button-danger button-small"
                         disabled={actingKey === `reject:${item.id}`}
                         onClick={(event) => {
                           event.stopPropagation();
@@ -683,10 +737,10 @@ export function ConsistencyReviewDetail({
 }) {
   if (!review) {
     return (
-      <div className="empty-state">
-        <strong>请选择一条一致性评审记录</strong>
-        <p>这里会展示评审意见、附件和后续排产计划状态。</p>
-      </div>
+      <StatePanel
+        title="请选择一条一致性评审记录"
+        description="这里会展示评审意见、附件和后续排产计划状态。"
+      />
     );
   }
 

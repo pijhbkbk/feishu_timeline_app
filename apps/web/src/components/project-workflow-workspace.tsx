@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 
 import { useAuth } from './auth-provider';
+import { FeedbackBanner } from './feedback-banner';
+import { StatePanel } from './state-panel';
 import {
   fetchProject,
   formatDate,
@@ -315,8 +317,10 @@ export function ProjectWorkflowWorkspace({
         </div>
       </section>
 
-      {error ? <p className="error-text">{error}</p> : null}
-      {successMessage ? <p className="success-text">{successMessage}</p> : null}
+      {error ? <FeedbackBanner variant="error" title="流程操作失败" message={error} /> : null}
+      {successMessage ? (
+        <FeedbackBanner variant="success" title="流程操作已完成" message={successMessage} />
+      ) : null}
 
       <section className="page-card">
         <div className="section-header">
@@ -456,7 +460,7 @@ export function ProjectWorkflowWorkspace({
             </Link>
           )}
         </div>
-        <div className="table-shell">
+        <div className="table-shell table-shell-scroll">
           <table className="data-table">
             <thead>
               <tr>
@@ -474,10 +478,11 @@ export function ProjectWorkflowWorkspace({
               {orderedTasks.length === 0 ? (
                 <tr>
                   <td colSpan={8}>
-                    <div className="empty-state">
-                      <strong>当前没有可展示任务</strong>
-                      <p>项目创建后，工作流节点任务会自动出现在这里。</p>
-                    </div>
+                    <StatePanel
+                      compact
+                      title="当前没有可展示任务"
+                      description="项目创建后，工作流节点任务会自动出现在这里。"
+                    />
                   </td>
                 </tr>
               ) : (
@@ -520,7 +525,7 @@ export function ProjectWorkflowWorkspace({
                                   <button
                                     key={actionKey}
                                     type="button"
-                                    className="button button-secondary button-small"
+                                    className={`button button-small ${getWorkflowActionButtonClass(action)}`}
                                     disabled={actingKey === actionKey}
                                     onClick={() => void handleAction(task, action)}
                                   >
@@ -595,10 +600,10 @@ export function ProjectWorkflowWorkspace({
                   </div>
                 </>
               ) : (
-                <div className="empty-state">
-                  <strong>暂无可绘制的甘特数据</strong>
-                  <p>节点触发后会自动显示计划条和实际条。</p>
-                </div>
+                <StatePanel
+                  title="暂无可绘制的甘特数据"
+                  description="节点触发后会自动显示计划条和实际条。"
+                />
               )}
             </div>
           </section>
@@ -620,10 +625,11 @@ export function ProjectWorkflowWorkspace({
                   </div>
                   <div className="kanban-list">
                     {column.tasks.length === 0 ? (
-                      <div className="empty-state">
-                        <strong>当前分组为空</strong>
-                        <p>流程推进后，这里会自动同步对应任务。</p>
-                      </div>
+                      <StatePanel
+                        compact
+                        title="当前分组为空"
+                        description="流程推进后，这里会自动同步对应任务。"
+                      />
                     ) : (
                       column.tasks.map((task) => (
                         <button
@@ -653,12 +659,18 @@ export function ProjectWorkflowWorkspace({
                 <p className="muted">按月展示节点计划日期，超期节点与已选节点在日历中同步高亮。</p>
               </div>
             </div>
+            <FeedbackBanner
+              variant="info"
+              compact
+              title="展示边界"
+              message="当前截止日历只展示工作流节点计划日期；第 17 步月度 recurring task 已统一收口到评审页台账展示，不在这里重复投影。"
+            />
             <div className="calendar-grid">
               {calendarMonths.length === 0 ? (
-                <div className="empty-state">
-                  <strong>暂无截止日历数据</strong>
-                  <p>节点生成计划时间后，这里会自动按月排布。</p>
-                </div>
+                <StatePanel
+                  title="暂无截止日历数据"
+                  description="节点生成计划时间后，这里会自动按月排布。"
+                />
               ) : (
                 calendarMonths.map((month) => (
                   <div key={month.key} className="calendar-card">
@@ -783,7 +795,9 @@ export function ProjectWorkflowWorkspace({
             <p className="muted">展示当前选中节点的详情、流转记录和历史轮次，便于跟踪第 12 步退回后的新轮次。</p>
           </div>
         </div>
-        {selectedTaskError ? <p className="error-text">{selectedTaskError}</p> : null}
+        {selectedTaskError ? (
+          <FeedbackBanner variant="error" compact title="节点详情加载失败" message={selectedTaskError} />
+        ) : null}
         {isLoadingSelectedTask ? <p className="muted">正在加载节点详情…</p> : null}
         {!isLoadingSelectedTask && selectedTaskDetail && selectedTaskRounds ? (
           <div className="page-stack">
@@ -820,7 +834,7 @@ export function ProjectWorkflowWorkspace({
               </div>
             </div>
 
-            <div className="table-shell">
+            <div className="table-shell table-shell-scroll">
               <table className="data-table">
                 <thead>
                   <tr>
@@ -923,6 +937,18 @@ function emptyTask(nodeCode: WorkflowNodeCode, nodeName: string): WorkflowTaskSu
     createdAt: new Date(0).toISOString(),
     updatedAt: new Date(0).toISOString(),
   };
+}
+
+function getWorkflowActionButtonClass(action: WorkflowAction) {
+  if (action === 'APPROVE' || action === 'COMPLETE') {
+    return 'button-primary';
+  }
+
+  if (action === 'REJECT' || action === 'RETURN') {
+    return 'button-danger';
+  }
+
+  return 'button-secondary';
 }
 
 type GanttItem = {

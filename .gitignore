@@ -11,3 +11,7 @@ coverage
 .env.production.local
 apps/api/prisma/dev.db
 var/
+apps/web/playwright-report
+apps/web/test-results
+deploy/.state/
+deploy/env/*.env
