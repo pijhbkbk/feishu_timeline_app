@@ -53,6 +53,9 @@ pnpm playwright:test
 | `pnpm test:e2e` | 通过 |
 | `pnpm playwright:test -- --grep R16` | 通过 |
 | `pnpm playwright:test` | 通过 |
+| `GCE_TUNNEL_THROUGH_IAP=yes GIT_REF=feat/r16-ui-business-e2e RUN_PRISMA_MIGRATE_DEPLOY=no RUN_RELEASE_VERIFY=yes RUN_PRODUCTION_ACCEPTANCE=yes bash scripts/deploy/gce-redeploy.sh` | 通过 |
+| `GCE_TUNNEL_THROUGH_IAP=yes bash scripts/deploy/ops-check.sh` | 通过 |
+| 生产只读页面 smoke | 通过，`/dashboard`、`/projects`、`/projects/timeline`、`/materials`、`/monthly-reviews`、`/analytics`、`/api/health` 均为 200 |
 
 ## 中间失败与修复
 

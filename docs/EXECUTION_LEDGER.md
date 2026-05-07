@@ -1705,6 +1705,11 @@ pnpm --filter @feishu-timeline/web build
 pnpm test:e2e
 pnpm playwright:test
 docker exec feishu-timeline-postgres psql -U postgres -d feishu_timeline -c "select code, name, \"createdAt\" from projects where name like 'UAT-自动化-%' or code like 'R16-UAT-%' order by \"createdAt\" desc limit 20;"
+git add -- apps/api/prisma/seed.ts apps/api/src/modules/projects/projects.service.ts apps/api/src/modules/workflows/workflow-node.constants.ts 'apps/web/src/app/admin/[section]/page.tsx' 'apps/web/src/app/projects/[projectId]/[section]/page.tsx' apps/web/src/app/reviews/page.tsx apps/web/src/components/analytics-center.tsx apps/web/src/components/attachments-workspace.tsx apps/web/src/components/cabin-review-workspace.tsx apps/web/src/components/color-exit-workspace.tsx apps/web/src/components/dashboard-workspace.tsx apps/web/src/components/materials-center.tsx apps/web/src/components/monthly-reviews-board.tsx apps/web/src/components/page-placeholder.tsx apps/web/src/components/project-editor.tsx apps/web/src/components/project-overview-client.tsx apps/web/src/components/project-workflow-workspace.tsx apps/web/src/components/projects-list-client.tsx apps/web/src/lib/navigation.ts apps/web/src/lib/projects-client.ts apps/web/tests/playwright/r16-fixtures.ts apps/web/tests/playwright/r16-ui-chinese.spec.ts apps/web/tests/playwright/r16-create-project.spec.ts apps/web/tests/playwright/r16-business-flow.spec.ts docs/UAT_WEB_TEST_R16.md docs/PLAYWRIGHT_TEST_REPORT_R16.md docs/UI_ISSUES_AND_FIXES_R16.md docs/EXECUTION_LEDGER.md
+git commit -m "test: add R16 browser UAT coverage"
+git push -u origin feat/r16-ui-business-e2e
+GCE_TUNNEL_THROUGH_IAP=yes GIT_REF=feat/r16-ui-business-e2e RUN_PRISMA_MIGRATE_DEPLOY=no RUN_RELEASE_VERIFY=yes RUN_PRODUCTION_ACCEPTANCE=yes bash scripts/deploy/gce-redeploy.sh
+GCE_TUNNEL_THROUGH_IAP=yes bash scripts/deploy/ops-check.sh
 node - <<'NODE'
 const paths = ['/dashboard','/projects','/projects/timeline','/materials','/monthly-reviews','/analytics','/api/health'];
 for (const path of paths) {
@@ -1729,6 +1734,9 @@ NODE
 - [x] 材料提交平台和数据中心页面通过。
 - [x] `pnpm lint`、`pnpm typecheck`、`pnpm test`、`pnpm --filter @feishu-timeline/api prisma:validate`、`pnpm --filter @feishu-timeline/api build`、`pnpm --filter @feishu-timeline/web build`、`pnpm test:e2e`、`pnpm playwright:test -- --grep R16`、`pnpm playwright:test` 全部通过。
 - [x] `docs/UAT_WEB_TEST_R16.md`、`docs/PLAYWRIGHT_TEST_REPORT_R16.md`、`docs/UI_ISSUES_AND_FIXES_R16.md` 已生成。
+- [x] 已创建并推送 `feat/r16-ui-business-e2e`，实现提交为 `c98ec4f`。
+- [x] 已通过 IAP 隧道部署到 `https://timeline.all-too-well.com`，远端 `pnpm build`、Prisma validate、release verification 和 production acceptance 全部通过。
+- [x] `ops-check.sh` 通过：API/Web/Nginx/PostgreSQL/Redis 均 active，80/443/3000/3001/5432/6379 端口监听，磁盘 23%，可用内存 3050MB，证书剩余 62 天。
 
 #### Risks / Debt
 - 生产环境未开启 mock 登录，自动化写入型 UAT 仍只建议在本地或 staging 执行。
