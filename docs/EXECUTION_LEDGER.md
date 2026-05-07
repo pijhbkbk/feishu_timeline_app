@@ -1567,6 +1567,10 @@ STOP
 - `apps/web/src/components/ppt-ui-r14.test.tsx`
 - `apps/web/tests/playwright/regression.spec.ts`
 - `apps/web/scripts/e2e-mainline.mjs`
+- `scripts/deploy/gce-common.sh`
+- `scripts/deploy/gce-sync-and-build.sh`
+- `scripts/deploy/gce-release-verify.sh`
+- `scripts/deploy/gce-production-acceptance.sh`
 - `docs/PPT_UI_IMPLEMENTATION_R14.md`
 - `docs/UI_TIMELINE_BOARD_R14.md`
 - `docs/EXECUTION_LEDGER.md`
@@ -1583,6 +1587,21 @@ pnpm --filter @feishu-timeline/api build
 pnpm --filter @feishu-timeline/api prisma:validate
 pnpm test:e2e
 pnpm playwright:test
+git add apps/api/src/app.module.ts apps/api/src/modules/dashboard apps/api/src/modules/projects apps/api/src/modules/analytics apps/web/scripts/e2e-mainline.mjs apps/web/src/app apps/web/src/components apps/web/src/lib apps/web/tests/playwright docs/EXECUTION_LEDGER.md docs/PPT_UI_IMPLEMENTATION_R14.md docs/UI_TIMELINE_BOARD_R14.md docs/design
+git commit -m "feat: implement PPT UI blueprint for Chinese project timeline dashboard"
+git push -u origin feat/ppt-ui-r14
+GIT_REF=feat/ppt-ui-r14 RUN_PRISMA_MIGRATE_DEPLOY=no RUN_RELEASE_VERIFY=yes RUN_PRODUCTION_ACCEPTANCE=yes bash scripts/deploy/gce-redeploy.sh
+gcloud compute ssh instance-20260408-091840 --project=axial-acrobat-492709-r7 --zone=us-west1-b --tunnel-through-iap --command 'whoami'
+bash -n scripts/deploy/gce-common.sh scripts/deploy/gce-sync-and-build.sh scripts/deploy/gce-release-verify.sh scripts/deploy/gce-production-acceptance.sh
+GCE_TUNNEL_THROUGH_IAP=yes GIT_REF=feat/ppt-ui-r14 RUN_PRISMA_MIGRATE_DEPLOY=no RUN_RELEASE_VERIFY=yes RUN_PRODUCTION_ACCEPTANCE=yes bash scripts/deploy/gce-redeploy.sh
+GCE_TUNNEL_THROUGH_IAP=yes bash scripts/deploy/ops-check.sh
+curl https://timeline.all-too-well.com/dashboard
+curl https://timeline.all-too-well.com/projects
+curl https://timeline.all-too-well.com/projects/timeline
+curl https://timeline.all-too-well.com/materials
+curl https://timeline.all-too-well.com/monthly-reviews
+curl https://timeline.all-too-well.com/analytics
+curl https://timeline.all-too-well.com/api/health
 ```
 
 #### Acceptance Result
@@ -1599,9 +1618,15 @@ pnpm playwright:test
 - [x] `/analytics` 提供项目概览、流程效率、部门负载、返工、月度评审、颜色退出和费用摘要。
 - [x] 新增只读聚合 API `GET /api/analytics/overview`，未修改冻结业务状态机与流程规则。
 - [x] `pnpm lint`、`pnpm typecheck`、`pnpm test`、`pnpm --filter @feishu-timeline/web build`、`pnpm --filter @feishu-timeline/api build`、`pnpm --filter @feishu-timeline/api prisma:validate`、`pnpm test:e2e`、`pnpm playwright:test` 全部通过。
+- [x] 已创建并推送 `feat/ppt-ui-r14`，实现提交为 `4f315aa`。
+- [x] 直连 SSH 被远端关闭后，已为 GCE 部署脚本补充可选 `GCE_TUNNEL_THROUGH_IAP=yes` 开关，默认直连行为不变。
+- [x] 已通过 IAP 隧道部署到 `https://timeline.all-too-well.com`，远端 `pnpm build`、Prisma validate、release verification 和 production acceptance 全部通过。
+- [x] 线上 `/dashboard`、`/projects`、`/projects/timeline`、`/materials`、`/monthly-reviews`、`/analytics`、`/api/health` 均返回 200；受保护聚合 API 在未登录状态返回 401，符合生产鉴权预期。
+- [x] `ops-check.sh` 通过：API/Web/Nginx/PostgreSQL/Redis 均 active，80/443/3000/3001/5432/6379 端口监听，磁盘 23%，可用内存 3057MB，证书剩余 62 天。
 
 #### Risks / Debt
 - 本地环境未安装 LibreOffice，PPT 仅完成文本结构抽取和首屏 Quick Look 渲染，未逐页生成图片证据。
+- 当前本机到 GCE 的直连 SSH 会被远端关闭，本次部署和巡检使用 `GCE_TUNNEL_THROUGH_IAP=yes`；该开关已写入脚本，后续运维可继续复用。
 - 时间线看板已满足普通笔记本阅读，移动端仍以横向滚动为主，后续可增加折叠式节点视图。
 - 聚合 API 当前为 MVP 只读查询，数据量提升后建议增加服务端分页、缓存和排序。
 

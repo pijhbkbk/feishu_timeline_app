@@ -16,6 +16,7 @@ FEISHU_CALLBACK_PATH="${FEISHU_CALLBACK_PATH:-/login/callback}"
 FEISHU_AUTHORIZATION_ENDPOINT="${FEISHU_AUTHORIZATION_ENDPOINT:-https://open.feishu.cn/open-apis/authen/v1/index}"
 RUN_PRISMA_MIGRATE_DEPLOY="${RUN_PRISMA_MIGRATE_DEPLOY:-no}"
 FORCE_NGINX_TEMPLATE_SYNC="${FORCE_NGINX_TEMPLATE_SYNC:-no}"
+GCE_TUNNEL_THROUGH_IAP="${GCE_TUNNEL_THROUGH_IAP:-no}"
 
 ROOT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 API_TEMPLATE="$ROOT_DIR/deploy/systemd/feishu-timeline-api.service"
@@ -32,7 +33,12 @@ fail() {
 }
 
 ssh_gce() {
-  gcloud compute ssh "$INSTANCE" --project="$PROJECT" --zone="$ZONE" --command "$1"
+  local iap_args=()
+  if [ "$GCE_TUNNEL_THROUGH_IAP" = "yes" ]; then
+    iap_args+=(--tunnel-through-iap)
+  fi
+
+  gcloud compute ssh "$INSTANCE" --project="$PROJECT" --zone="$ZONE" "${iap_args[@]}" --command "$1"
 }
 
 render_b64() {

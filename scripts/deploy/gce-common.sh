@@ -6,6 +6,7 @@ IFS=$'\n\t'
 INSTANCE="${INSTANCE:-instance-20260408-091840}"
 PROJECT="${PROJECT:-axial-acrobat-492709-r7}"
 ZONE="${ZONE:-us-west1-b}"
+GCE_TUNNEL_THROUGH_IAP="${GCE_TUNNEL_THROUGH_IAP:-no}"
 
 log() {
   printf '[INFO] %s\n' "$*"
@@ -29,14 +30,23 @@ require_gcloud() {
 }
 
 gce_ssh() {
-  gcloud compute ssh "$INSTANCE" --project="$PROJECT" --zone="$ZONE" --command "$1"
+  local iap_args=()
+  if [ "$GCE_TUNNEL_THROUGH_IAP" = "yes" ]; then
+    iap_args+=(--tunnel-through-iap)
+  fi
+
+  gcloud compute ssh "$INSTANCE" --project="$PROJECT" --zone="$ZONE" "${iap_args[@]}" --command "$1"
 }
 
 gce_scp_to_remote() {
   local source_path="$1"
   local remote_path="$2"
+  local iap_args=()
+  if [ "$GCE_TUNNEL_THROUGH_IAP" = "yes" ]; then
+    iap_args+=(--tunnel-through-iap)
+  fi
 
-  gcloud compute scp "$source_path" "$INSTANCE:$remote_path" --project="$PROJECT" --zone="$ZONE"
+  gcloud compute scp "$source_path" "$INSTANCE:$remote_path" --project="$PROJECT" --zone="$ZONE" "${iap_args[@]}"
 }
 
 gce_run_remote_script() {

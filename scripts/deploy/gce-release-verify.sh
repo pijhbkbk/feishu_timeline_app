@@ -10,13 +10,19 @@ APP_HOST="${APP_HOST:-timeline.all-too-well.com}"
 ROOT_DOMAIN="${ROOT_DOMAIN:-all-too-well.com}"
 WWW_DOMAIN="${WWW_DOMAIN:-www.${ROOT_DOMAIN}}"
 APP_ROOT="${APP_ROOT:-/opt/feishu_timeline_app}"
+GCE_TUNNEL_THROUGH_IAP="${GCE_TUNNEL_THROUGH_IAP:-no}"
 
 log() {
   printf '[INFO] %s\n' "$*"
 }
 
 ssh_gce() {
-  gcloud compute ssh "$INSTANCE" --project="$PROJECT" --zone="$ZONE" --command "$1"
+  local iap_args=()
+  if [ "$GCE_TUNNEL_THROUGH_IAP" = "yes" ]; then
+    iap_args+=(--tunnel-through-iap)
+  fi
+
+  gcloud compute ssh "$INSTANCE" --project="$PROJECT" --zone="$ZONE" "${iap_args[@]}" --command "$1"
 }
 
 query_dns() {
