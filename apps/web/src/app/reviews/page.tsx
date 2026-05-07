@@ -3,7 +3,7 @@ import { PagePlaceholder } from '../../components/page-placeholder';
 export default function ReviewsPage() {
   return (
     <PagePlaceholder
-      eyebrow="Legacy Route"
+      eyebrow="兼容路由"
       title="评审"
       description="该全局路由保留兼容，占位功能已归并到项目级 /projects/[projectId]/reviews。"
       route="/reviews"

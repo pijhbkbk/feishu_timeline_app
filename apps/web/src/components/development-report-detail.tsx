@@ -30,7 +30,7 @@ export function DevelopmentReportDetail({
     <section className="page-card">
       <div className="section-header">
         <div>
-          <p className="eyebrow">Development Report</p>
+          <p className="eyebrow">开发报告</p>
           <h2 className="section-title">报告详情</h2>
           <p className="muted">展示最近一次保存的开发报告及其绑定的流程任务信息。</p>
         </div>

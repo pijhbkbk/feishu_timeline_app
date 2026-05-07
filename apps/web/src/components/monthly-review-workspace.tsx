@@ -14,7 +14,7 @@ import {
   type MonthlyReviewTaskDetailResponse,
   type MonthlyReviewWorkspaceResponse,
 } from '../lib/workflows-client';
-import { formatDate, getWorkflowNodeLabel } from '../lib/projects-client';
+import { formatDate, formatDateTime, getWorkflowNodeLabel } from '../lib/projects-client';
 
 type MonthlyReviewWorkspaceProps = {
   projectId: string;
@@ -31,9 +31,15 @@ export function MonthlyReviewWorkspace({ projectId }: MonthlyReviewWorkspaceProp
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [detailError, setDetailError] = useState<string | null>(null);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null);
 
   useEffect(() => {
     void loadWorkspace({ initial: true });
+    const timer = window.setInterval(() => {
+      void loadWorkspace({ silent: true });
+    }, 30_000);
+
+    return () => window.clearInterval(timer);
   }, [projectId]);
 
   useEffect(() => {
@@ -58,16 +64,18 @@ export function MonthlyReviewWorkspace({ projectId }: MonthlyReviewWorkspaceProp
     }
   }, [selectedTaskId, workspace]);
 
-  async function loadWorkspace(options?: { initial?: boolean }) {
+  async function loadWorkspace(options?: { initial?: boolean; silent?: boolean }) {
     const requestId = ++requestIdRef.current;
 
     if (options?.initial) {
       setIsLoading(true);
-    } else {
+    } else if (!options?.silent) {
       setIsRefreshing(true);
     }
 
-    setError(null);
+    if (!options?.silent) {
+      setError(null);
+    }
 
     try {
       const response = await fetchMonthlyReviewWorkspace(projectId);
@@ -77,6 +85,7 @@ export function MonthlyReviewWorkspace({ projectId }: MonthlyReviewWorkspaceProp
       }
 
       setWorkspace(response);
+      setLastUpdatedAt(new Date().toISOString());
     } catch (loadError) {
       if (requestId !== requestIdRef.current) {
         return;
@@ -120,7 +129,7 @@ export function MonthlyReviewWorkspace({ projectId }: MonthlyReviewWorkspaceProp
   if (isLoading || !workspace) {
     return (
       <section className="page-card">
-        <p className="eyebrow">Monthly Review Ledger</p>
+        <p className="eyebrow">月度评审台账</p>
         <h2 className="section-title">正在加载月度评审台账…</h2>
         <p>第 17 步周期计划、12 个月度实例和最近评审记录正在同步。</p>
       </section>
@@ -140,10 +149,11 @@ export function MonthlyReviewWorkspace({ projectId }: MonthlyReviewWorkspaceProp
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Monthly Review Ledger</p>
+            <p className="eyebrow">月度评审台账</p>
             <h2 className="section-title">第 17 步月度评审台账</h2>
             <p className="muted">
-              批量生产完成后自动生成 12 个按月实例，支持台账查看、详情钻取和最近评审记录回看。
+              批量生产完成后自动生成 12 个按月实例，已完成 {workspace.summary.completedPeriods} / 12。
+              最近更新：{formatDateTime(lastUpdatedAt)}。
             </p>
           </div>
           <div className="inline-actions">
@@ -206,7 +216,7 @@ export function MonthlyReviewWorkspace({ projectId }: MonthlyReviewWorkspaceProp
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">12 Months</p>
+            <p className="eyebrow">12 个月实例</p>
             <h2 className="section-title">12 个月度实例</h2>
             <p className="muted">点击任意月份可查看该周期的明细、结果和关联评审记录。</p>
           </div>
@@ -224,7 +234,7 @@ export function MonthlyReviewWorkspace({ projectId }: MonthlyReviewWorkspaceProp
                 type="button"
                 className={`monthly-review-card monthly-review-card-${getRecurringStatusTone(
                   task.status,
-                )}${
+                )}${isCurrentMonth(task.plannedDate) ? ' monthly-review-card-current' : ''}${
                   selectedTaskId === task.id ? ' monthly-review-card-selected' : ''
                 }`}
                 onClick={() => setSelectedTaskId(task.id)}
@@ -232,9 +242,11 @@ export function MonthlyReviewWorkspace({ projectId }: MonthlyReviewWorkspaceProp
                 <span className="workflow-node-kicker">第 {task.periodIndex} 个月</span>
                 <strong>{task.periodLabel}</strong>
                 <span>{getRecurringTaskStatusLabel(task.status)}</span>
+                {isCurrentMonth(task.plannedDate) ? <span className="status-pill status-pill-warning">本月任务</span> : null}
                 <span>计划: {formatDate(task.plannedDate)}</span>
                 <span>完成: {formatDate(task.completedAt)}</span>
                 <RecurringStatusBadge status={task.status} />
+                <span className="table-link">查看详情</span>
               </button>
             ))}
           </div>
@@ -244,7 +256,7 @@ export function MonthlyReviewWorkspace({ projectId }: MonthlyReviewWorkspaceProp
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Ledger Table</p>
+            <p className="eyebrow">周期台账</p>
             <h2 className="section-title">周期任务台账</h2>
             <p className="muted">台账字段与周期计划保持一致，便于和流程图、甘特图、日历口径统一。</p>
           </div>
@@ -298,7 +310,7 @@ export function MonthlyReviewWorkspace({ projectId }: MonthlyReviewWorkspaceProp
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Task Detail</p>
+            <p className="eyebrow">周期详情</p>
             <h2 className="section-title">周期详情与关联评审</h2>
             <p className="muted">展示选中月份的任务信息，以及该月命中的评审记录。</p>
           </div>
@@ -432,4 +444,11 @@ function getRecurringStatusTone(
   }
 
   return 'pending';
+}
+
+function isCurrentMonth(value: string) {
+  const date = new Date(value);
+  const now = new Date();
+
+  return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth();
 }

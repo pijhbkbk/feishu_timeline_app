@@ -4,13 +4,18 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
+  AttachmentTargetType,
   AuditTargetType,
+  ColorExitSuggestion,
   ProjectMemberType,
   ProjectPriority,
   ProjectStatus,
+  RecurringTaskStatus,
+  ReviewType,
   UserStatus,
   WorkflowNodeCode,
   WorkflowInstanceStatus,
+  WorkflowTaskStatus,
   type Prisma,
 } from '@prisma/client';
 
@@ -19,6 +24,7 @@ import type { AuthenticatedUser } from '../auth/auth.types';
 import { ProjectAccessService } from '../auth/project-access.service';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import { WorkflowsService } from '../workflows/workflows.service';
+import { WORKFLOW_NODE_META_MAP } from '../workflows/workflow-node.constants';
 
 type ProjectDbClient = Prisma.TransactionClient | PrismaService;
 
@@ -32,10 +38,13 @@ type ProjectMemberInput = {
 type ProjectListQuery = {
   page: number;
   pageSize: number;
+  keyword?: string;
   status?: ProjectStatus;
   currentNodeCode?: WorkflowNodeCode;
   ownerUserId?: string;
+  ownerDepartmentId?: string;
   priority?: ProjectPriority;
+  isOverdue?: boolean;
   dateFrom?: Date;
   dateTo?: Date;
 };
@@ -128,9 +137,28 @@ export class ProjectsService {
             },
           },
           owningDepartment: true,
+          colors: {
+            select: {
+              name: true,
+              code: true,
+              isPrimary: true,
+            },
+            orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
+          },
+          workflowTasks: {
+            where: {
+              isActive: true,
+            },
+            select: {
+              isActive: true,
+              dueAt: true,
+              status: true,
+            },
+          },
           _count: {
             select: {
               members: true,
+              workflowTasks: true,
             },
           },
         },
@@ -160,7 +188,9 @@ export class ProjectsService {
         status: query.status ?? null,
         currentNodeCode: query.currentNodeCode ?? null,
         ownerUserId: query.ownerUserId ?? null,
+        ownerDepartmentId: query.ownerDepartmentId ?? null,
         priority: query.priority ?? null,
+        isOverdue: query.isOverdue ?? null,
         dateFrom: this.serializeDate(query.dateFrom),
         dateTo: this.serializeDate(query.dateTo),
       },
@@ -282,6 +312,200 @@ export class ProjectsService {
           }
         : null,
       stages: tasks.map((task) => this.toProjectStageOverviewTask(task)),
+    };
+  }
+
+  async getProjectTimeline(projectId: string, actor: AuthenticatedUser) {
+    await this.projectAccessService.assertProjectAccessWithDefaultClient(
+      projectId,
+      actor,
+      'project.read',
+    );
+
+    const now = new Date();
+    const [project, tasks, recurringPlan, reviewRecords, colorExits] = await Promise.all([
+      this.prisma.project.findUnique({
+        where: { id: projectId },
+        include: {
+          ownerUser: {
+            include: {
+              department: true,
+            },
+          },
+          owningDepartment: true,
+          colors: {
+            orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
+          },
+        },
+      }),
+      this.prisma.workflowTask.findMany({
+        where: {
+          projectId,
+        },
+        include: {
+          assigneeUser: true,
+          assigneeDepartment: true,
+        },
+        orderBy: [{ createdAt: 'asc' }, { taskRound: 'asc' }],
+      }),
+      this.prisma.recurringPlan.findFirst({
+        where: {
+          projectId,
+          sourceNodeCode: WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW,
+        },
+        include: {
+          tasks: {
+            orderBy: {
+              periodIndex: 'asc',
+            },
+          },
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      }),
+      this.prisma.reviewRecord.findMany({
+        where: {
+          projectId,
+        },
+        include: {
+          reviewer: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+        orderBy: [{ reviewedAt: 'desc' }, { createdAt: 'desc' }],
+      }),
+      this.prisma.colorExit.findMany({
+        where: {
+          projectId,
+        },
+        orderBy: [{ createdAt: 'desc' }],
+      }),
+    ]);
+
+    if (!project) {
+      throw new NotFoundException('Project not found.');
+    }
+
+    const taskIds = tasks.map((task) => task.id);
+    const reviewIds = reviewRecords.map((review) => review.id);
+    const attachments =
+      taskIds.length === 0 && reviewIds.length === 0
+        ? []
+        : await this.prisma.attachment.findMany({
+            where: {
+              projectId,
+              isDeleted: false,
+              OR: [
+                {
+                  entityType: AttachmentTargetType.WORKFLOW_TASK,
+                  entityId: {
+                    in: taskIds.length > 0 ? taskIds : ['__none__'],
+                  },
+                },
+                {
+                  entityType: AttachmentTargetType.REVIEW_RECORD,
+                  entityId: {
+                    in: reviewIds.length > 0 ? reviewIds : ['__none__'],
+                  },
+                },
+              ],
+            },
+            select: {
+              entityType: true,
+              entityId: true,
+            },
+          });
+    const attachmentCountByTaskId = new Map<string, number>();
+
+    for (const attachment of attachments) {
+      if (attachment.entityType === AttachmentTargetType.WORKFLOW_TASK) {
+        attachmentCountByTaskId.set(
+          attachment.entityId,
+          (attachmentCountByTaskId.get(attachment.entityId) ?? 0) + 1,
+        );
+      }
+    }
+
+    for (const review of reviewRecords) {
+      if (!review.attachmentId) {
+        continue;
+      }
+
+      attachmentCountByTaskId.set(
+        review.workflowTaskId,
+        (attachmentCountByTaskId.get(review.workflowTaskId) ?? 0) + 1,
+      );
+    }
+
+    const latestTaskByNode = this.getLatestTaskByNode(tasks);
+    const nodes = this.getOrderedWorkflowNodeCodes().map((nodeCode) => {
+      const task = latestTaskByNode.get(nodeCode) ?? null;
+      const nodeReviews = reviewRecords.filter((review) => review.workflowTaskId === task?.id);
+      const attachmentCount = task ? attachmentCountByTaskId.get(task.id) ?? 0 : 0;
+
+      return {
+        stepNumber: WORKFLOW_NODE_META_MAP[nodeCode].sequence / 10,
+        nodeCode,
+        nodeName: WORKFLOW_NODE_META_MAP[nodeCode].name,
+        status: this.resolveTimelineStatus(nodeCode, task, project.currentNodeCode, now),
+        taskId: task?.id ?? null,
+        taskRound: task?.taskRound ?? null,
+        startTime: task?.startedAt?.toISOString() ?? null,
+        triggerTime: task?.createdAt.toISOString() ?? null,
+        dueAt: task?.dueAt?.toISOString() ?? null,
+        completedAt:
+          task?.completedAt?.toISOString() ??
+          task?.reviewPassAt?.toISOString() ??
+          task?.returnedAt?.toISOString() ??
+          null,
+        responsibleDepartment: task?.assigneeDepartment?.name ?? null,
+        ownerName: task?.assigneeUser?.name ?? project.ownerUser?.name ?? null,
+        output:
+          nodeReviews.length > 0
+            ? `评审记录 ${nodeReviews.length} 条`
+            : task
+              ? this.resolveNodeOutput(nodeCode, task)
+              : '未产生输出物',
+        attachmentCount,
+        isOverdue: task ? this.isTaskOverdue(task, now) : false,
+        overdueDays: task ? this.getOverdueDays(task.dueAt, now) : 0,
+        reviewGate:
+          nodeCode === WorkflowNodeCode.CAB_REVIEW
+            ? this.buildCabReviewGate(reviewRecords, tasks)
+            : null,
+        monthlyReview:
+          nodeCode === WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW
+            ? this.buildMonthlyReviewSummary(recurringPlan, now)
+            : null,
+        colorExit:
+          nodeCode === WorkflowNodeCode.PROJECT_CLOSED
+            ? this.buildColorExitSummary(colorExits[0] ?? null)
+            : null,
+      };
+    });
+    const completedNodeCount = nodes.filter((node) => node.status === 'COMPLETED').length;
+
+    return {
+      lastUpdatedAt: now.toISOString(),
+      project: {
+        id: project.id,
+        code: project.code,
+        name: project.name,
+        status: project.status,
+        priority: project.priority,
+        currentNodeCode: project.currentNodeCode,
+        currentNodeName: this.workflowsService.getCurrentNodeName(project.currentNodeCode),
+        colorName: project.colors[0]?.name ?? '未关联颜色',
+        ownerName: project.ownerUser?.name ?? '未分配',
+        ownerDepartmentName: project.ownerUser?.department?.name ?? project.owningDepartment?.name ?? null,
+        plannedEndDate: this.serializeDate(project.plannedEndDate),
+        progressPercent: Math.round((completedNodeCount / this.getOrderedWorkflowNodeCodes().length) * 100),
+      },
+      nodes,
     };
   }
 
@@ -489,6 +713,7 @@ export class ProjectsService {
   private normalizeListQuery(rawQuery: Record<string, unknown>): ProjectListQuery {
     const page = this.parsePositiveInt(rawQuery.page, 1, 'page');
     const pageSize = this.parsePositiveInt(rawQuery.pageSize, 10, 'pageSize', 50);
+    const keyword = this.parseOptionalString(rawQuery.keyword);
     const status = this.parseOptionalEnum(rawQuery.status, PROJECT_STATUS_VALUES, 'status');
     const currentNodeCode = this.parseOptionalEnum(
       rawQuery.currentNodeCode,
@@ -496,11 +721,13 @@ export class ProjectsService {
       'currentNodeCode',
     );
     const ownerUserId = this.parseOptionalString(rawQuery.ownerUserId);
+    const ownerDepartmentId = this.parseOptionalString(rawQuery.ownerDepartmentId);
     const priority = this.parseOptionalEnum(
       rawQuery.priority,
       PROJECT_PRIORITY_VALUES,
       'priority',
     );
+    const isOverdue = this.parseOptionalBoolean(rawQuery.isOverdue);
     const dateFrom = this.parseOptionalDate(rawQuery.dateFrom, 'dateFrom');
     const dateTo = this.parseOptionalDate(rawQuery.dateTo, 'dateTo');
 
@@ -511,10 +738,13 @@ export class ProjectsService {
     return {
       page,
       pageSize,
+      ...(keyword ? { keyword } : {}),
       ...(status ? { status } : {}),
       ...(currentNodeCode ? { currentNodeCode } : {}),
       ...(ownerUserId ? { ownerUserId } : {}),
+      ...(ownerDepartmentId ? { ownerDepartmentId } : {}),
       ...(priority ? { priority } : {}),
+      ...(isOverdue !== undefined ? { isOverdue } : {}),
       ...(dateFrom ? { dateFrom } : {}),
       ...(dateTo ? { dateTo } : {}),
     };
@@ -675,6 +905,25 @@ export class ProjectsService {
       andConditions.push(visibleWhere);
     }
 
+    if (query.keyword) {
+      andConditions.push({
+        OR: [
+          { code: { contains: query.keyword, mode: 'insensitive' } },
+          { name: { contains: query.keyword, mode: 'insensitive' } },
+          {
+            colors: {
+              some: {
+                OR: [
+                  { name: { contains: query.keyword, mode: 'insensitive' } },
+                  { code: { contains: query.keyword, mode: 'insensitive' } },
+                ],
+              },
+            },
+          },
+        ],
+      });
+    }
+
     if (query.status) {
       andConditions.push({ status: query.status });
     }
@@ -687,8 +936,46 @@ export class ProjectsService {
       andConditions.push({ ownerUserId: query.ownerUserId });
     }
 
+    if (query.ownerDepartmentId) {
+      andConditions.push({
+        OR: [
+          { owningDepartmentId: query.ownerDepartmentId },
+          {
+            ownerUser: {
+              is: {
+                departmentId: query.ownerDepartmentId,
+              },
+            },
+          },
+        ],
+      });
+    }
+
     if (query.priority) {
       andConditions.push({ priority: query.priority });
+    }
+
+    if (query.isOverdue !== undefined) {
+      const overdueWhere: Prisma.ProjectWhereInput = {
+        workflowTasks: {
+          some: {
+            isActive: true,
+            dueAt: {
+              lt: new Date(),
+            },
+            status: {
+              in: [
+                WorkflowTaskStatus.PENDING,
+                WorkflowTaskStatus.READY,
+                WorkflowTaskStatus.IN_PROGRESS,
+                WorkflowTaskStatus.RETURNED,
+              ],
+            },
+          },
+        },
+      };
+
+      andConditions.push(query.isOverdue ? overdueWhere : { NOT: overdueWhere });
     }
 
     if (query.dateFrom) {
@@ -941,9 +1228,24 @@ export class ProjectsService {
           };
         };
         owningDepartment: true;
+        colors: {
+          select: {
+            name: true;
+            code: true;
+            isPrimary: true;
+          };
+        };
+        workflowTasks: {
+          select: {
+            isActive: true;
+            dueAt: true;
+            status: true;
+          };
+        };
         _count: {
           select: {
             members: true;
+            workflowTasks: true;
           };
         };
       };
@@ -955,6 +1257,8 @@ export class ProjectsService {
       id: project.id,
       code: project.code,
       name: project.name,
+      colorName: project.colors[0]?.name ?? null,
+      colorCode: project.colors[0]?.code ?? null,
       status: project.status,
       priority: project.priority,
       currentNodeCode: project.currentNodeCode,
@@ -966,6 +1270,8 @@ export class ProjectsService {
       vehicleModel: project.vehicleModel,
       targetDate: this.serializeDate(project.plannedEndDate),
       riskLevel,
+      isOverdue: project.workflowTasks.some((task) => this.isTaskOverdue(task, new Date())),
+      progressPercent: this.computeProgressPercent(project.currentNodeCode),
       plannedStartDate: this.serializeDate(project.plannedStartDate),
       plannedEndDate: this.serializeDate(project.plannedEndDate),
       memberCount: project._count.members,
@@ -1071,6 +1377,256 @@ export class ProjectsService {
       returnedAt: this.serializeDate(task.returnedAt),
       createdAt: task.createdAt.toISOString(),
       updatedAt: task.updatedAt.toISOString(),
+    };
+  }
+
+  private getOrderedWorkflowNodeCodes() {
+    return Object.values(WorkflowNodeCode).sort(
+      (left, right) =>
+        WORKFLOW_NODE_META_MAP[left].sequence - WORKFLOW_NODE_META_MAP[right].sequence,
+    );
+  }
+
+  private getLatestTaskByNode<
+    T extends {
+      nodeCode: WorkflowNodeCode;
+      taskRound: number;
+      createdAt: Date;
+    },
+  >(tasks: T[]) {
+    const result = new Map<WorkflowNodeCode, T>();
+
+    for (const task of tasks) {
+      const current = result.get(task.nodeCode);
+
+      if (
+        !current ||
+        task.taskRound > current.taskRound ||
+        (task.taskRound === current.taskRound && task.createdAt > current.createdAt)
+      ) {
+        result.set(task.nodeCode, task);
+      }
+    }
+
+    return result;
+  }
+
+  private resolveTimelineStatus(
+    nodeCode: WorkflowNodeCode,
+    task:
+      | {
+          status: WorkflowTaskStatus;
+          isActive: boolean;
+          dueAt: Date | null;
+        }
+      | null,
+    currentNodeCode: WorkflowNodeCode | null,
+    now: Date,
+  ) {
+    if (task && this.isTaskOverdue(task, now)) {
+      return 'OVERDUE';
+    }
+
+    if (task?.isActive && currentNodeCode === nodeCode) {
+      return 'CURRENT';
+    }
+
+    if (!task) {
+      return 'NOT_STARTED';
+    }
+
+    if (task.status === WorkflowTaskStatus.APPROVED || task.status === WorkflowTaskStatus.COMPLETED) {
+      return 'COMPLETED';
+    }
+
+    if (task.status === WorkflowTaskStatus.REJECTED || task.status === WorkflowTaskStatus.RETURNED) {
+      return 'RETURNED';
+    }
+
+    if (task.status === WorkflowTaskStatus.IN_PROGRESS) {
+      return 'IN_PROGRESS';
+    }
+
+    return 'PENDING';
+  }
+
+  private isTaskOverdue(
+    task: {
+      dueAt: Date | null;
+      isActive: boolean;
+      status: WorkflowTaskStatus;
+    },
+    now: Date,
+  ) {
+    return (
+      task.isActive &&
+      task.dueAt !== null &&
+      task.dueAt.getTime() < now.getTime() &&
+      ([
+        WorkflowTaskStatus.PENDING,
+        WorkflowTaskStatus.READY,
+        WorkflowTaskStatus.IN_PROGRESS,
+        WorkflowTaskStatus.RETURNED,
+      ] as WorkflowTaskStatus[]).includes(task.status)
+    );
+  }
+
+  private getOverdueDays(dueAt: Date | null, now: Date) {
+    if (!dueAt || dueAt.getTime() >= now.getTime()) {
+      return 0;
+    }
+
+    return Math.max(1, Math.ceil((now.getTime() - dueAt.getTime()) / (24 * 60 * 60 * 1000)));
+  }
+
+  private computeProgressPercent(currentNodeCode: WorkflowNodeCode | null) {
+    if (!currentNodeCode) {
+      return 0;
+    }
+
+    const sequence = WORKFLOW_NODE_META_MAP[currentNodeCode].sequence;
+    const maxSequence = Math.max(
+      ...Object.values(WORKFLOW_NODE_META_MAP).map((meta) => meta.sequence),
+    );
+
+    return Math.min(100, Math.max(0, Math.round((sequence / maxSequence) * 100)));
+  }
+
+  private resolveNodeOutput(
+    nodeCode: WorkflowNodeCode,
+    task: {
+      payload: Prisma.JsonValue | null;
+    },
+  ) {
+    if (nodeCode === WorkflowNodeCode.DEVELOPMENT_ACCEPTANCE) {
+      return '颜色开发收费记录';
+    }
+
+    if (nodeCode === WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW) {
+      return '整车色差一致性评审计划';
+    }
+
+    if (nodeCode === WorkflowNodeCode.PROJECT_CLOSED) {
+      return '颜色退出记录';
+    }
+
+    if (task.payload && typeof task.payload === 'object') {
+      return '节点表单与流程记录';
+    }
+
+    return '流程节点输出物';
+  }
+
+  private buildCabReviewGate(
+    reviewRecords: Array<{
+      reviewType: ReviewType;
+      result: Prisma.ReviewRecordGetPayload<Record<string, never>>['result'];
+      reviewedAt: Date | null;
+      reviewRound: number;
+    }>,
+    tasks: Array<{
+      nodeCode: WorkflowNodeCode;
+      taskRound: number;
+      returnedAt: Date | null;
+      status: WorkflowTaskStatus;
+      reviewPassAt: Date | null;
+    }>,
+  ) {
+    const latestReview =
+      reviewRecords.find((review) => review.reviewType === ReviewType.CAB_REVIEW) ?? null;
+    const cabTasks = tasks.filter((task) => task.nodeCode === WorkflowNodeCode.CAB_REVIEW);
+    const latestPassTask =
+      cabTasks.find((task) => task.reviewPassAt !== null) ??
+      cabTasks.find((task) => task.status === WorkflowTaskStatus.APPROVED) ??
+      null;
+
+    return {
+      reviewConclusion: latestReview?.result ?? null,
+      reviewPassAt:
+        latestPassTask?.reviewPassAt?.toISOString() ??
+        latestReview?.reviewedAt?.toISOString() ??
+        null,
+      returnRounds: Math.max(0, ...cabTasks.map((task) => task.taskRound - 1)),
+    };
+  }
+
+  private buildMonthlyReviewSummary(
+    recurringPlan:
+      | Prisma.RecurringPlanGetPayload<{
+          include: {
+            tasks: true;
+          };
+        }>
+      | null,
+    now: Date,
+  ) {
+    if (!recurringPlan) {
+      return {
+        totalPeriods: 12,
+        completedPeriods: 0,
+        overduePeriods: 0,
+        progressText: '尚未生成 12 个月度实例',
+        currentMonthTask: null,
+      };
+    }
+
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    const currentMonthTask =
+      recurringPlan.tasks.find(
+        (task) =>
+          task.plannedDate.getTime() >= monthStart.getTime() &&
+          task.plannedDate.getTime() < nextMonthStart.getTime(),
+      ) ?? null;
+    const completedPeriods = recurringPlan.tasks.filter(
+      (task) => task.status === RecurringTaskStatus.COMPLETED,
+    ).length;
+
+    return {
+      totalPeriods: recurringPlan.totalCount,
+      completedPeriods,
+      overduePeriods: recurringPlan.tasks.filter(
+        (task) => task.status === RecurringTaskStatus.OVERDUE,
+      ).length,
+      progressText: `已完成 ${completedPeriods} / ${recurringPlan.totalCount}`,
+      currentMonthTask: currentMonthTask
+        ? {
+            id: currentMonthTask.id,
+            periodLabel: currentMonthTask.periodLabel,
+            status: currentMonthTask.status,
+            plannedDate: currentMonthTask.plannedDate.toISOString(),
+          }
+        : null,
+    };
+  }
+
+  private buildColorExitSummary(
+    record:
+      | {
+          annualOutput: number | null;
+          exitThreshold: number | null;
+          systemSuggestion: ColorExitSuggestion | null;
+          finalDecision: ColorExitSuggestion | null;
+          completedAt: Date | null;
+        }
+      | null,
+  ) {
+    if (!record) {
+      return {
+        annualOutput: null,
+        exitThreshold: null,
+        systemSuggestion: null,
+        finalDecision: null,
+        completedAt: null,
+      };
+    }
+
+    return {
+      annualOutput: record.annualOutput,
+      exitThreshold: record.exitThreshold,
+      systemSuggestion: record.systemSuggestion,
+      finalDecision: record.finalDecision,
+      completedAt: record.completedAt?.toISOString() ?? null,
     };
   }
 
@@ -1229,6 +1785,22 @@ export class ProjectsService {
 
     const value = rawValue.trim();
     return value.length > 0 ? value : undefined;
+  }
+
+  private parseOptionalBoolean(rawValue: unknown) {
+    if (rawValue === undefined || rawValue === null || rawValue === '') {
+      return undefined;
+    }
+
+    if (rawValue === true || rawValue === 'true') {
+      return true;
+    }
+
+    if (rawValue === false || rawValue === 'false') {
+      return false;
+    }
+
+    throw new BadRequestException('Invalid boolean payload.');
   }
 
   private parseNullableString(rawValue: unknown): string | null;

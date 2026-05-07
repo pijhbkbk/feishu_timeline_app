@@ -18,6 +18,9 @@ describe('ProjectsController metadata', () => {
     expect(Reflect.getMetadata(PERMISSION_METADATA_KEY, prototype.getProjectStageOverview)).toEqual([
       'project.read',
     ]);
+    expect(Reflect.getMetadata(PERMISSION_METADATA_KEY, prototype.getProjectTimeline)).toEqual([
+      'project.read',
+    ]);
   });
 
   it('protects write endpoints with project.write and PM roles', () => {

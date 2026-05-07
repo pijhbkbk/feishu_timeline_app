@@ -29,6 +29,7 @@ import {
 type AttachmentsWorkspaceProps = {
   projectId: string;
   initialFilters?: AttachmentWorkspaceFilters;
+  mode?: 'attachments' | 'materials';
 };
 
 type UploadFormState = {
@@ -45,6 +46,7 @@ type BindFormState = {
 export function AttachmentsWorkspace({
   projectId,
   initialFilters,
+  mode = 'attachments',
 }: AttachmentsWorkspaceProps) {
   const { user } = useAuth();
   const requestIdRef = useRef(0);
@@ -121,15 +123,15 @@ export function AttachmentsWorkspace({
   const summaryCards = useMemo(
     () => [
       {
-        label: '附件总数',
+        label: mode === 'materials' ? '材料总数' : '附件总数',
         value: String(workspace?.statistics.totalCount ?? 0),
       },
       {
-        label: '活跃附件',
+        label: mode === 'materials' ? '已提交材料' : '活跃附件',
         value: String(workspace?.statistics.activeCount ?? 0),
       },
       {
-        label: '已删除附件',
+        label: mode === 'materials' ? '退回/删除材料' : '已删除附件',
         value: String(workspace?.statistics.deletedCount ?? 0),
       },
       {
@@ -139,7 +141,7 @@ export function AttachmentsWorkspace({
           : '全部实体',
       },
     ],
-    [filters.entityType, workspace],
+    [filters.entityType, mode, workspace],
   );
 
   async function loadWorkspace(options?: {
@@ -224,9 +226,15 @@ export function AttachmentsWorkspace({
         entityId: current.entityType === 'PROJECT' ? projectId : current.entityId,
         file: null,
       }));
-      setSuccessMessage('附件已上传。');
+      setSuccessMessage(mode === 'materials' ? '材料已上传。' : '附件已上传。');
     } catch (uploadError) {
-      setError(uploadError instanceof Error ? uploadError.message : '附件上传失败。');
+      setError(
+        uploadError instanceof Error
+          ? uploadError.message
+          : mode === 'materials'
+            ? '材料上传失败。'
+            : '附件上传失败。',
+      );
     } finally {
       setIsUploading(false);
     }
@@ -234,7 +242,7 @@ export function AttachmentsWorkspace({
 
   async function handleBind() {
     if (!selectedAttachment) {
-      setError('请先选择一条附件记录。');
+      setError(mode === 'materials' ? '请先选择一条材料记录。' : '请先选择一条附件记录。');
       return;
     }
 
@@ -255,9 +263,15 @@ export function AttachmentsWorkspace({
         entityId: bindForm.entityId,
       });
       await loadWorkspace({ nextSelectedAttachmentId: updated.id });
-      setSuccessMessage('附件绑定已更新。');
+      setSuccessMessage(mode === 'materials' ? '材料归属已更新。' : '附件绑定已更新。');
     } catch (bindError) {
-      setError(bindError instanceof Error ? bindError.message : '附件绑定失败。');
+      setError(
+        bindError instanceof Error
+          ? bindError.message
+          : mode === 'materials'
+            ? '材料归属更新失败。'
+            : '附件绑定失败。',
+      );
     } finally {
       setActingKey(null);
     }
@@ -265,7 +279,7 @@ export function AttachmentsWorkspace({
 
   async function handleUnbind() {
     if (!selectedAttachment) {
-      setError('请先选择一条附件记录。');
+      setError(mode === 'materials' ? '请先选择一条材料记录。' : '请先选择一条附件记录。');
       return;
     }
 
@@ -276,7 +290,7 @@ export function AttachmentsWorkspace({
     try {
       const updated = await unbindProjectAttachment(projectId, selectedAttachment.id);
       await loadWorkspace({ nextSelectedAttachmentId: updated.id });
-      setSuccessMessage('附件已解绑为项目级附件。');
+      setSuccessMessage(mode === 'materials' ? '材料已调整为项目级归档。' : '附件已解绑为项目级附件。');
     } catch (unbindError) {
       setError(unbindError instanceof Error ? unbindError.message : '附件解绑失败。');
     } finally {
@@ -295,7 +309,7 @@ export function AttachmentsWorkspace({
         nextSelectedAttachmentId:
           selectedAttachmentId === attachment.id ? null : selectedAttachmentId,
       });
-      setSuccessMessage('附件已逻辑删除。');
+      setSuccessMessage(mode === 'materials' ? '材料已退回或删除。' : '附件已逻辑删除。');
     } catch (deleteError) {
       setError(deleteError instanceof Error ? deleteError.message : '附件删除失败。');
     } finally {
@@ -306,9 +320,9 @@ export function AttachmentsWorkspace({
   if (isLoading || !workspace) {
     return (
       <section className="page-card">
-        <p className="eyebrow">Attachments Center</p>
-        <h1>正在加载附件中心…</h1>
-        <p>项目附件、业务实体关联和预览信息正在同步。</p>
+        <p className="eyebrow">{mode === 'materials' ? '材料中心' : '附件中心'}</p>
+        <h1>{mode === 'materials' ? '正在加载材料中心…' : '正在加载附件中心…'}</h1>
+        <p>{mode === 'materials' ? '项目材料、工序归属和附件预览信息正在同步。' : '项目附件、业务实体关联和预览信息正在同步。'}</p>
       </section>
     );
   }
@@ -318,7 +332,7 @@ export function AttachmentsWorkspace({
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Attachments Center</p>
+            <p className="eyebrow">{mode === 'materials' ? '材料中心' : '附件中心'}</p>
             <h2 className="section-title">{workspace.project.name}</h2>
             <p className="muted">
               当前节点 {workspace.project.currentNodeName ?? '未开始'}，目标日期{' '}
@@ -332,7 +346,7 @@ export function AttachmentsWorkspace({
               disabled={isRefreshing}
               onClick={() => void loadWorkspace()}
             >
-              {isRefreshing ? '刷新中…' : '刷新'}
+              {isRefreshing ? '刷新中…' : '立即刷新'}
             </button>
             <Link href={`/projects/${projectId}/overview`} className="button button-secondary">
               返回概览
@@ -355,8 +369,8 @@ export function AttachmentsWorkspace({
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Filter</p>
-            <h2 className="section-title">附件筛选</h2>
+            <p className="eyebrow">筛选</p>
+            <h2 className="section-title">{mode === 'materials' ? '材料筛选' : '附件筛选'}</h2>
             <p className="muted">按业务实体筛选，必要时可查看逻辑删除记录。</p>
           </div>
         </div>
@@ -372,10 +386,10 @@ export function AttachmentsWorkspace({
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Upload</p>
-            <h2 className="section-title">上传项目附件</h2>
+            <p className="eyebrow">上传</p>
+            <h2 className="section-title">{mode === 'materials' ? '上传项目材料' : '上传项目附件'}</h2>
             <p className="muted">
-              开发环境走本地对象存储适配层，数据库仅保存元数据和业务实体关联。
+              文件存入对象存储，数据库仅保存材料元数据、版本信息和业务实体关联。
             </p>
           </div>
         </div>
@@ -386,15 +400,16 @@ export function AttachmentsWorkspace({
           disabled={!canManage || isUploading}
           onChange={setUploadForm}
           onUpload={() => void handleUpload()}
+          mode={mode}
         />
       </section>
 
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Attachment List</p>
-            <h2 className="section-title">项目附件列表</h2>
-            <p className="muted">支持预览图片和 PDF，其他类型可直接下载。</p>
+            <p className="eyebrow">材料列表</p>
+            <h2 className="section-title">{mode === 'materials' ? '项目材料列表' : '项目附件列表'}</h2>
+            <p className="muted">展示材料版本、上传人、归属工序和审核状态；图片和 PDF 支持预览。</p>
           </div>
         </div>
         <AttachmentList
@@ -404,14 +419,17 @@ export function AttachmentsWorkspace({
           actingKey={actingKey}
           onSelect={setSelectedAttachmentId}
           onDelete={(attachment) => void handleDelete(attachment)}
+          mode={mode}
         />
       </section>
 
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Preview</p>
-            <h2 className="section-title">附件预览与绑定</h2>
+            <p className="eyebrow">预览</p>
+            <h2 className="section-title">
+              {mode === 'materials' ? '材料预览与归属' : '附件预览与绑定'}
+            </h2>
             <p className="muted">图片和 PDF 支持预览，其他文件可下载；同时支持重新绑定业务实体。</p>
           </div>
         </div>
@@ -425,6 +443,7 @@ export function AttachmentsWorkspace({
           onBindFormChange={setBindForm}
           onBind={() => void handleBind()}
           onUnbind={() => void handleUnbind()}
+          mode={mode}
         />
       </section>
     </div>
@@ -506,6 +525,7 @@ export function AttachmentUploader({
   disabled,
   onChange,
   onUpload,
+  mode = 'attachments',
 }: {
   workspace: AttachmentWorkspaceResponse;
   value: UploadFormState;
@@ -513,6 +533,7 @@ export function AttachmentUploader({
   disabled: boolean;
   onChange: (nextValue: UploadFormState) => void;
   onUpload: () => void;
+  mode?: 'attachments' | 'materials';
 }) {
   return (
     <div className="form-grid">
@@ -571,7 +592,7 @@ export function AttachmentUploader({
       </label>
       <div className="field field-actions">
         <button type="button" className="button" disabled={disabled} onClick={onUpload}>
-          {disabled ? '不可上传' : '上传附件'}
+          {disabled ? '不可上传' : mode === 'materials' ? '上传材料' : '上传附件'}
         </button>
       </div>
     </div>
@@ -585,6 +606,7 @@ export function AttachmentList({
   actingKey,
   onSelect,
   onDelete,
+  mode = 'attachments',
 }: {
   items: ProjectAttachmentSummary[];
   selectedAttachmentId: string | null;
@@ -592,6 +614,7 @@ export function AttachmentList({
   actingKey: string | null;
   onSelect: (attachmentId: string) => void;
   onDelete: (attachment: ProjectAttachmentSummary) => void;
+  mode?: 'attachments' | 'materials';
 }) {
   return (
     <div className="table-shell">
@@ -613,8 +636,12 @@ export function AttachmentList({
             <tr>
               <td colSpan={8}>
                 <div className="empty-state">
-                  <strong>暂无附件</strong>
-                  <p>上传项目附件或筛选其他业务实体后，这里会展示对应记录。</p>
+                  <strong>{mode === 'materials' ? '暂无材料' : '暂无附件'}</strong>
+                  <p>
+                    {mode === 'materials'
+                      ? '上传项目材料或筛选其他业务实体后，这里会展示对应记录。'
+                      : '上传项目附件或筛选其他业务实体后，这里会展示对应记录。'}
+                  </p>
                 </div>
               </td>
             </tr>
@@ -670,6 +697,7 @@ export function AttachmentPreviewPanel({
   onBindFormChange,
   onBind,
   onUnbind,
+  mode = 'attachments',
 }: {
   projectId: string;
   attachment: ProjectAttachmentSummary | null;
@@ -680,12 +708,13 @@ export function AttachmentPreviewPanel({
   onBindFormChange: (nextValue: BindFormState) => void;
   onBind: () => void;
   onUnbind: () => void;
+  mode?: 'attachments' | 'materials';
 }) {
   if (!attachment) {
     return (
       <div className="empty-state">
-        <strong>请选择一条附件记录</strong>
-        <p>右侧会展示附件元数据、预览和绑定信息。</p>
+        <strong>{mode === 'materials' ? '请选择一条材料记录' : '请选择一条附件记录'}</strong>
+        <p>{mode === 'materials' ? '右侧会展示材料元数据、预览和归属信息。' : '右侧会展示附件元数据、预览和绑定信息。'}</p>
       </div>
     );
   }
@@ -710,15 +739,15 @@ export function AttachmentPreviewPanel({
           <strong>{attachment.mimeType}</strong>
         </div>
         <div className="metadata-item">
-          <span>当前状态</span>
-          <strong>{attachment.isDeleted ? '已删除' : '有效'}</strong>
+          <span>审核状态</span>
+          <strong>{attachment.isDeleted ? '已退回或删除' : '有效'}</strong>
         </div>
       </div>
 
       <div className="detail-block">
         <h3>文件预览</h3>
         {attachment.isDeleted ? (
-          <p>已删除附件不提供在线预览。</p>
+          <p>{mode === 'materials' ? '已退回或删除材料不提供在线预览。' : '已删除附件不提供在线预览。'}</p>
         ) : previewKind === 'image' && previewUrl ? (
           <img
             src={previewUrl}
@@ -744,21 +773,18 @@ export function AttachmentPreviewPanel({
             target="_blank"
             rel="noreferrer"
           >
-            下载附件
+            {mode === 'materials' ? '下载材料' : '下载附件'}
           </a>
         ) : null}
         {attachment.entityType !== 'PROJECT' ? (
-          <Link
-            href={`/projects/${projectId}/attachments?entityType=${attachment.entityType}&entityId=${attachment.entityId}`}
-            className="button button-secondary"
-          >
-            查看同实体附件
+          <Link href={buildAttachmentEntityHref(projectId, attachment, mode)} className="button button-secondary">
+            {mode === 'materials' ? '查看同实体材料' : '查看同实体附件'}
           </Link>
         ) : null}
       </div>
 
       <div className="detail-block">
-        <h3>绑定关系</h3>
+        <h3>{mode === 'materials' ? '归属关系' : '绑定关系'}</h3>
         <div className="form-grid">
           <label className="field">
             <span>绑定类型</span>
@@ -827,13 +853,26 @@ export function AttachmentPreviewPanel({
               }
               onClick={onUnbind}
             >
-              {actingKey === `unbind:${attachment.id}` ? '解绑中…' : '解绑为项目附件'}
+              {actingKey === `unbind:${attachment.id}`
+                ? '解绑中…'
+                : mode === 'materials'
+                  ? '调整为项目级材料'
+                  : '解绑为项目附件'}
             </button>
           </div>
         </div>
       </div>
     </div>
   );
+}
+
+function buildAttachmentEntityHref(
+  projectId: string,
+  attachment: ProjectAttachmentSummary,
+  mode: 'attachments' | 'materials',
+) {
+  const section = mode === 'materials' ? 'materials' : 'attachments';
+  return `/projects/${projectId}/${section}?entityType=${attachment.entityType}&entityId=${attachment.entityId}`;
 }
 
 export function AttachmentEntityBadge({

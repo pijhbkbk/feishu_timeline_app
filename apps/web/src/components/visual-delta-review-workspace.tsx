@@ -259,7 +259,7 @@ export function VisualDeltaReviewWorkspace({
   if (isLoading || !workspace || !highlights) {
     return (
       <section className="page-card">
-        <p className="eyebrow">Visual Delta Review</p>
+        <p className="eyebrow">目视色差评审</p>
         <h1>正在加载目视色差评审模块…</h1>
         <p>评审记录、附件和颜色退出/项目收尾联动状态正在同步。</p>
       </section>
@@ -271,7 +271,7 @@ export function VisualDeltaReviewWorkspace({
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Visual Delta Review</p>
+            <p className="eyebrow">目视色差评审</p>
             <h2 className="section-title">{workspace.project.name}</h2>
             <p className="muted">
               当前节点 {highlights.currentNodeLabel}，目标日期 {highlights.targetDateLabel}，
@@ -330,7 +330,7 @@ export function VisualDeltaReviewWorkspace({
           </div>
         </div>
         {workspace.activeTask && isWorkflowTaskOverdue(workspace.activeTask) ? (
-          <p className="error-text">当前目视色差评审任务已超期。</p>
+          <p className="error-text">当前目视色差评审任务已逾期。</p>
         ) : null}
         {!workspace.massProductionCompleted ? (
           <p className="muted">批量生产完成后才会激活目视色差评审任务。</p>
@@ -343,7 +343,7 @@ export function VisualDeltaReviewWorkspace({
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Review Form</p>
+            <p className="eyebrow">评审表单</p>
             <h2 className="section-title">目视色差评审表单</h2>
             <p className="muted">提交后由后端判定通过或驳回，并推进或退回流程。</p>
           </div>
@@ -366,7 +366,7 @@ export function VisualDeltaReviewWorkspace({
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Review History</p>
+            <p className="eyebrow">评审历史</p>
             <h2 className="section-title">目视色差评审历史</h2>
             <p className="muted">支持查看提交状态、条件通过说明、退回记录和附件。</p>
           </div>
@@ -394,7 +394,7 @@ export function VisualDeltaReviewWorkspace({
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Review Detail</p>
+            <p className="eyebrow">评审详情</p>
             <h2 className="section-title">目视色差评审详情</h2>
             <p className="muted">展示评审意见、附件历史、退回记录和项目收尾状态。</p>
           </div>

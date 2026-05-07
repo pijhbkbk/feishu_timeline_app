@@ -277,7 +277,7 @@ export function PerformanceTestsWorkspace({
   if (isLoading || !workspace || !highlights) {
     return (
       <section className="page-card">
-        <p className="eyebrow">Performance Tests</p>
+        <p className="eyebrow">性能试验</p>
         <h1>正在加载性能试验模块…</h1>
         <p>试验记录、报告附件和任务状态正在同步。</p>
       </section>
@@ -289,7 +289,7 @@ export function PerformanceTestsWorkspace({
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Performance Tests</p>
+            <p className="eyebrow">性能试验</p>
             <h2 className="section-title">{workspace.project.name}</h2>
             <p className="muted">
               当前节点 {highlights.currentNodeLabel}，目标日期 {highlights.targetDateLabel}，
@@ -329,7 +329,7 @@ export function PerformanceTestsWorkspace({
           </div>
         </div>
         {workspace.activeTask && isWorkflowTaskOverdue(workspace.activeTask) ? (
-          <p className="error-text">当前涂料性能试验任务已超期。</p>
+          <p className="error-text">当前涂料性能试验任务已逾期。</p>
         ) : null}
         {!workspace.procurementCompleted ? (
           <p className="muted">采购节点完成后才会激活性能试验任务。</p>
@@ -342,7 +342,7 @@ export function PerformanceTestsWorkspace({
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Node Completion</p>
+            <p className="eyebrow">节点完成</p>
             <h2 className="section-title">性能试验节点完成</h2>
             <p className="muted">至少存在一条已提交且有结论的试验记录后，才允许完成当前节点。</p>
           </div>
@@ -360,7 +360,7 @@ export function PerformanceTestsWorkspace({
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Test Form</p>
+            <p className="eyebrow">试验表单</p>
             <h2 className="section-title">试验结果录入</h2>
             <p className="muted">支持多条试验项目记录，提交后锁定为只读。</p>
           </div>
@@ -384,7 +384,7 @@ export function PerformanceTestsWorkspace({
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Test Records</p>
+            <p className="eyebrow">试验记录</p>
             <h2 className="section-title">试验记录列表</h2>
             <p className="muted">列表展示试验项目、结论和报告状态，操作完成后会自动刷新。</p>
           </div>
@@ -404,7 +404,7 @@ export function PerformanceTestsWorkspace({
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Test Detail</p>
+            <p className="eyebrow">试验详情</p>
             <h2 className="section-title">试验详情与报告附件</h2>
             <p className="muted">支持查看详情、报告附件和附件历史。</p>
           </div>

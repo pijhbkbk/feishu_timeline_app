@@ -264,7 +264,7 @@ export function CabinReviewWorkspace({
   if (isLoading || !workspace || !highlights) {
     return (
       <section className="page-card">
-        <p className="eyebrow">Cabin Review</p>
+        <p className="eyebrow">驾驶室评审</p>
         <h1>正在加载驾驶室评审模块…</h1>
         <p>评审记录、附件和流程状态正在同步。</p>
       </section>
@@ -276,7 +276,7 @@ export function CabinReviewWorkspace({
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Cabin Review</p>
+            <p className="eyebrow">驾驶室评审</p>
             <h2 className="section-title">{workspace.project.name}</h2>
             <p className="muted">
               当前节点 {highlights.currentNodeLabel}，目标日期 {highlights.targetDateLabel}，
@@ -327,7 +327,7 @@ export function CabinReviewWorkspace({
           </div>
         </div>
         {workspace.activeTask && isWorkflowTaskOverdue(workspace.activeTask) ? (
-          <p className="error-text">当前驾驶室评审任务已超期。</p>
+          <p className="error-text">当前驾驶室评审任务已逾期。</p>
         ) : null}
         {!workspace.trialProductionCompleted ? (
           <p className="muted">样车试制完成后才会激活驾驶室评审任务。</p>
@@ -352,7 +352,7 @@ export function CabinReviewWorkspace({
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Review Form</p>
+            <p className="eyebrow">评审表单</p>
             <h2 className="section-title">驾驶室评审表单</h2>
             <p className="muted">支持草稿编辑、提交审批和附件上传。条件通过与驳回原因必须保留。</p>
           </div>
@@ -383,7 +383,7 @@ export function CabinReviewWorkspace({
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Review History</p>
+            <p className="eyebrow">评审历史</p>
             <h2 className="section-title">驾驶室评审历史</h2>
             <p className="muted">查看草稿、提交、通过、驳回记录，以及退回试制后的历史轨迹。</p>
           </div>
@@ -411,7 +411,7 @@ export function CabinReviewWorkspace({
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Review Detail</p>
+            <p className="eyebrow">评审详情</p>
             <h2 className="section-title">驾驶室评审详情</h2>
             <p className="muted">展示评审意见、附件和并行后续节点状态。</p>
           </div>

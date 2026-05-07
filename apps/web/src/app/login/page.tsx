@@ -43,7 +43,7 @@ export default function LoginPage() {
       });
       router.replace('/projects');
     } catch (loginError) {
-      setError(loginError instanceof Error ? loginError.message : 'Mock 登录失败。');
+      setError(loginError instanceof Error ? loginError.message : '模拟登录失败。');
     } finally {
       setIsSubmitting(false);
     }
@@ -61,14 +61,14 @@ export default function LoginPage() {
 
   return (
     <section className="page-card auth-card">
-      <p className="eyebrow">Authentication</p>
+      <p className="eyebrow">身份认证</p>
       <h1>登录系统</h1>
       <p>飞书负责身份认证，本系统会建立独立会话并在后端执行权限校验。</p>
 
       {isAuthenticated && user ? (
         <div className="panel">
           <strong>当前已登录为 {user.name}</strong>
-          <p className="muted">角色：{user.roleCodes.join(', ')}</p>
+          <p className="muted">角色：{formatRoleCodes(user.roleCodes)}</p>
         </div>
       ) : null}
 
@@ -88,7 +88,7 @@ export default function LoginPage() {
         </section>
 
         <section className="panel">
-          <h2>Mock 登录</h2>
+          <h2>模拟登录</h2>
           <p className="muted">仅用于本地开发联调。系统会在后端创建自己的用户会话。</p>
 
           <label className="field">
@@ -139,7 +139,7 @@ export default function LoginPage() {
             disabled={!mockEnabled || isSubmitting}
             data-testid="mock-login-button"
           >
-            {mockEnabled ? (isSubmitting ? '登录中…' : '使用 Mock 登录') : 'Mock 登录已关闭'}
+            {mockEnabled ? (isSubmitting ? '登录中…' : '使用模拟登录') : '模拟登录已关闭'}
           </button>
         </section>
       </div>
@@ -147,4 +147,9 @@ export default function LoginPage() {
       {error ? <FeedbackBanner variant="error" title="登录失败" message={error} /> : null}
     </section>
   );
+}
+
+function formatRoleCodes(roleCodes: FrontendRoleCode[]) {
+  const labelMap = new Map(FRONTEND_ROLE_OPTIONS.map((item) => [item.code, item.label]));
+  return roleCodes.map((roleCode) => labelMap.get(roleCode) ?? roleCode).join('、');
 }

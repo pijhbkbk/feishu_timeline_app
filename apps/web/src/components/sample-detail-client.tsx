@@ -95,7 +95,7 @@ export function SampleDetailClient({
   if (isLoading || !detail) {
     return (
       <section className="page-card">
-        <p className="eyebrow">Sample Detail</p>
+        <p className="eyebrow">样件详情</p>
         <h1>正在加载样板详情…</h1>
         <p>版本信息、图片和确认记录正在同步。</p>
       </section>
@@ -107,7 +107,7 @@ export function SampleDetailClient({
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Sample Detail</p>
+            <p className="eyebrow">样件详情</p>
             <h2 className="section-title">{detail.sample.sampleName}</h2>
             <p className="muted">
               {detail.sample.sampleNo} / V{detail.sample.versionNo} /{' '}
@@ -161,7 +161,7 @@ export function SampleDetailClient({
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Sample Images</p>
+            <p className="eyebrow">样件图片</p>
             <h2 className="section-title">样板图片上传</h2>
             <p className="muted">图片二进制存本地对象存储目录，数据库仅保存附件元数据。</p>
           </div>
@@ -208,7 +208,7 @@ export function SampleDetailClient({
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Versions</p>
+            <p className="eyebrow">版本</p>
             <h2 className="section-title">版本历史</h2>
             <p className="muted">同编号样板的所有版本按版本号倒序展示。</p>
           </div>
@@ -251,7 +251,7 @@ export function SampleDetailClient({
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Confirmation History</p>
+            <p className="eyebrow">确认历史</p>
             <h2 className="section-title">确认记录</h2>
             <p className="muted">展示该样板编号关联版本的确认历史。</p>
           </div>

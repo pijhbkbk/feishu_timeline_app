@@ -1,5 +1,4 @@
 import { Buffer } from 'node:buffer';
-import { randomUUID } from 'node:crypto';
 
 import { expect, test } from '@playwright/test';
 
@@ -22,21 +21,74 @@ test('login page exposes feishu and mock auth entries', async ({ page }) => {
 
 test('can create a project and open workflow browser views', async ({ page }) => {
   await loginAsProjectManager(page);
+  const request = page.context().request;
+  const project = await createProjectByApi(request, 'BROWSER');
 
-  await page.goto('/projects/new');
-  await page.getByTestId('project-code-input').fill(`UI-${Date.now()}-${randomUUID().slice(0, 4)}`);
-  await page.getByTestId('project-name-input').fill('R13 浏览器创建项目');
-  await page.getByLabel('计划开始日期').fill('2026-04-20');
-  await page.getByLabel('计划结束日期').fill('2027-04-20');
-  await page.getByTestId('project-submit-button').click();
-
-  await page.waitForURL(/\/projects\/[^/]+\/overview/);
-  await page.getByRole('link', { name: '查看流程页' }).click();
+  await page.goto(`/projects/${project.id}/workflow`);
 
   await expect(page.getByRole('heading', { name: '流程图视图' })).toBeVisible();
   await expect(page.getByRole('heading', { name: '任务状态看板' })).toBeVisible();
   await expect(page.getByRole('heading', { name: '截止日历' })).toBeVisible();
   await expect(page.getByText('展示边界')).toBeVisible();
+});
+
+test('shows Chinese project cockpit and timeline board', async ({ page }) => {
+  await loginAsProjectManager(page);
+  const request = page.context().request;
+  const project = await createProjectByApi(request, 'R14-TIMELINE');
+
+  await page.goto('/dashboard');
+  await expect(page.getByRole('heading', { name: '项目进度驾驶舱' })).toBeVisible();
+  await expect(page.getByText('项目总数')).toBeVisible();
+  await expect(page.getByRole('button', { name: '立即刷新' }).first()).toBeVisible();
+  await page.getByRole('button', { name: '立即刷新' }).first().click();
+  await expect(page.getByText(/^最近更新：/).first()).toBeVisible();
+
+  await page.goto('/projects/timeline');
+  await expect(page.getByRole('heading', { name: '项目时间线看板', exact: true })).toBeVisible();
+  await expect(page.getByText(project.name)).toBeVisible();
+  await expect(page.getByText('当前节点').first()).toBeVisible();
+  await expect(page.getByText('进度').first()).toBeVisible();
+  await expect(page.getByRole('button', { name: '立即刷新' })).toBeVisible();
+  await page.getByRole('button', { name: '立即刷新' }).click();
+  await expect(page.getByLabel(/进度/).first()).toBeVisible();
+
+  const dashboardBody = await page.locator('body').innerText();
+  expect(dashboardBody).not.toMatch(/Dashboard|Projects|Workflow|Complete|Reject|No data|MVP Skeleton|Workspace/);
+});
+
+test('shows PPT UI routes for projects, materials, tasks and analytics', async ({ page }) => {
+  await loginAsProjectManager(page);
+  const request = page.context().request;
+  const project = await createProjectByApi(request, 'PPTUI');
+
+  await page.goto('/projects');
+  await expect(page.locator('h1', { hasText: '项目列表' })).toBeVisible();
+  await expect(page.getByLabel('关键词')).toBeVisible();
+  await expect(page.getByLabel('责任部门')).toBeVisible();
+  await expect(page.getByText('颜色名称')).toBeVisible();
+
+  await page.goto(`/projects/${project.id}/overview`);
+  await expect(page.getByRole('heading', { name: '项目详情同步状态' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '立即刷新' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '项目概览', exact: true })).toBeVisible();
+
+  await page.goto(`/projects/${project.id}/tasks`);
+  await expect(page.getByRole('heading', { name: '工序清单与详情抽屉' })).toBeVisible();
+  await expect(page.getByText('节点详情与轮次历史')).toBeVisible();
+
+  await page.goto('/materials');
+  await expect(page.getByRole('heading', { name: '材料提交平台', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: '立即刷新' })).toBeVisible();
+
+  await page.goto(`/projects/${project.id}/materials`);
+  await expect(page.getByRole('heading', { name: '上传项目材料' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '项目材料列表' })).toBeVisible();
+
+  await page.goto('/analytics');
+  await expect(page.getByRole('heading', { name: '数据中心', exact: true })).toBeVisible();
+  await expect(page.getByText('流程效率', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: '立即刷新' })).toBeVisible();
 });
 
 test('can reject cabin review, upload attachment and see a new round', async ({ page }) => {
@@ -88,12 +140,20 @@ test('shows 12 monthly review instances after mass production', async ({ page })
 
   await page.goto(`/projects/${project.id}/reviews`);
   await expect(page.getByRole('heading', { name: '第 17 步月度评审台账' })).toBeVisible();
+  await expect(page.getByText(/已完成 \d+ \/ 12/)).toBeVisible();
   await expect(page.locator('[data-testid="monthly-review-grid"] .monthly-review-card')).toHaveCount(
     12,
   );
 
   await page.locator('[data-testid="monthly-review-grid"] .monthly-review-card').first().click();
   await expect(page.getByTestId('monthly-review-detail')).toContainText('关联评审记录');
+
+  await page.goto('/monthly-reviews');
+  await expect(
+    page.getByRole('heading', { name: '整车色差一致性评审台账', exact: true }),
+  ).toBeVisible();
+  await expect(page.locator('[data-testid="monthly-review-board-grid"] .monthly-review-card')).toHaveCount(12);
+  await expect(page.getByText('本月任务').first()).toBeVisible();
 });
 
 test('shows color exit threshold, suggestion and completion entry', async ({ page }) => {

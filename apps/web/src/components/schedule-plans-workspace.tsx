@@ -212,7 +212,7 @@ export function SchedulePlansWorkspace({
   if (isLoading || !workspace || !highlights) {
     return (
       <section className="page-card">
-        <p className="eyebrow">Schedule Plan</p>
+        <p className="eyebrow">生产计划</p>
         <h1>正在加载排产计划模块…</h1>
         <p>排产记录、任务状态和后续批量生产节点正在同步。</p>
       </section>
@@ -224,7 +224,7 @@ export function SchedulePlansWorkspace({
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Schedule Plan</p>
+            <p className="eyebrow">生产计划</p>
             <h2 className="section-title">{workspace.project.name}</h2>
             <p className="muted">
               当前节点 {highlights.currentNodeLabel}，目标日期 {highlights.targetDateLabel}，
@@ -276,7 +276,7 @@ export function SchedulePlansWorkspace({
           </div>
         </div>
         {workspace.activeTask && isWorkflowTaskOverdue(workspace.activeTask) ? (
-          <p className="error-text">当前排产计划任务已超期。</p>
+          <p className="error-text">当前排产计划任务已逾期。</p>
         ) : null}
         {!workspace.consistencyReviewApproved ? (
           <p className="muted">颜色一致性评审通过后，才会激活排产计划任务。</p>
@@ -289,7 +289,7 @@ export function SchedulePlansWorkspace({
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Schedule Form</p>
+            <p className="eyebrow">计划表单</p>
             <h2 className="section-title">排产计划表单</h2>
             <p className="muted">至少确认一条有效排产计划后，才允许完成排产节点。</p>
           </div>
@@ -312,7 +312,7 @@ export function SchedulePlansWorkspace({
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Node Completion</p>
+            <p className="eyebrow">节点完成</p>
             <h2 className="section-title">排产节点完成</h2>
             <p className="muted">至少存在一条已确认排产计划后，才能完成排产节点。</p>
           </div>
@@ -330,7 +330,7 @@ export function SchedulePlansWorkspace({
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Schedule Records</p>
+            <p className="eyebrow">计划记录</p>
             <h2 className="section-title">排产计划列表</h2>
             <p className="muted">按时间倒序展示，支持草稿编辑、确认和取消。</p>
           </div>

@@ -1854,6 +1854,278 @@ a {
   background: rgba(254, 242, 242, 0.92);
 }
 
+.monthly-review-card-current {
+  box-shadow: inset 0 0 0 2px rgba(194, 65, 12, 0.2);
+}
+
+.timeline-board-shell {
+  max-width: 1320px;
+}
+
+.timeline-board-list {
+  display: grid;
+  gap: 18px;
+}
+
+.timeline-board-filters {
+  margin-bottom: 18px;
+}
+
+.timeline-board-list-compact {
+  gap: 14px;
+}
+
+.timeline-board-card {
+  display: grid;
+  gap: 16px;
+  padding: 20px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 20px;
+  background: rgba(248, 250, 252, 0.88);
+}
+
+.timeline-board-card-header,
+.timeline-board-footer {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.timeline-board-card h3 {
+  margin: 4px 0 6px;
+  color: #0f172a;
+  font-size: 20px;
+}
+
+.timeline-board-card p,
+.timeline-board-footer span {
+  margin: 0;
+  color: #475569;
+}
+
+.timeline-board-meta {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+.timeline-board-meta div {
+  display: grid;
+  gap: 5px;
+  padding: 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+.timeline-board-meta span,
+.timeline-detail-grid span {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.timeline-board-meta strong,
+.timeline-detail-grid strong {
+  color: #0f172a;
+  font-size: 14px;
+}
+
+.timeline-meta-danger strong {
+  color: #b91c1c;
+}
+
+.progress-ring {
+  display: grid;
+  place-items: center;
+  width: 84px;
+  min-width: 84px;
+  height: 84px;
+  border-radius: 999px;
+  border: 8px solid rgba(37, 99, 235, 0.16);
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.progress-ring strong {
+  color: #0f172a;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.progress-ring span {
+  color: #64748b;
+  font-size: 11px;
+}
+
+.timeline-board-nodes {
+  display: grid;
+  grid-template-columns: repeat(18, minmax(118px, 1fr));
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.timeline-board-node {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  min-height: 128px;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.timeline-board-node strong {
+  color: #0f172a;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.timeline-board-node small {
+  color: #475569;
+  font-weight: 700;
+}
+
+.timeline-board-node em {
+  width: fit-content;
+  padding: 3px 7px;
+  border-radius: 999px;
+  color: #b91c1c;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 700;
+  background: rgba(185, 28, 28, 0.12);
+}
+
+.timeline-board-step {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  background: #94a3b8;
+}
+
+.timeline-board-node-current .timeline-board-step,
+.timeline-board-node-current {
+  border-color: rgba(37, 99, 235, 0.22);
+}
+
+.timeline-board-node-current .timeline-board-step {
+  background: #2563eb;
+}
+
+.timeline-board-node-done {
+  background: rgba(240, 253, 244, 0.92);
+}
+
+.timeline-board-node-done .timeline-board-step {
+  background: #15803d;
+}
+
+.timeline-board-node-overdue {
+  background: rgba(254, 242, 242, 0.94);
+}
+
+.timeline-board-node-overdue .timeline-board-step {
+  background: #b91c1c;
+}
+
+.timeline-board-node-returned {
+  background: rgba(245, 243, 255, 0.94);
+}
+
+.timeline-board-node-returned .timeline-board-step {
+  background: #7c3aed;
+}
+
+.timeline-board-node-pending .timeline-board-step {
+  background: #c2410c;
+}
+
+.single-project-timeline {
+  display: grid;
+  gap: 14px;
+}
+
+.single-project-node {
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr);
+  gap: 14px;
+}
+
+.single-project-node-index {
+  display: flex;
+  justify-content: center;
+}
+
+.single-project-node-index span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  color: #fff;
+  font-weight: 800;
+  background: #94a3b8;
+}
+
+.single-project-node-body {
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(248, 250, 252, 0.9);
+}
+
+.single-project-node-current .single-project-node-index span {
+  background: #2563eb;
+}
+
+.single-project-node-done .single-project-node-index span {
+  background: #15803d;
+}
+
+.single-project-node-overdue .single-project-node-index span {
+  background: #b91c1c;
+}
+
+.single-project-node-returned .single-project-node-index span {
+  background: #7c3aed;
+}
+
+.single-project-node-pending .single-project-node-index span {
+  background: #c2410c;
+}
+
+.timeline-detail-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+.timeline-detail-grid div,
+.timeline-special-block {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.86);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+.timeline-special-block p {
+  margin: 0;
+  color: #334155;
+}
+
 .calendar-event {
   line-height: 1.4;
 }
@@ -1891,4 +2163,173 @@ a {
   .table-shell-scroll {
     max-height: none;
   }
+}
+
+/* R14 PPT UI tokens: calm cockpit palette, compact radii, readable enterprise layout. */
+:root {
+  --ui-bg: #f6f8fa;
+  --ui-surface: #ffffff;
+  --ui-border: #e5e7eb;
+  --ui-text: #1f2937;
+  --ui-muted: #6b7280;
+  --ui-primary: #4f6f8f;
+  --ui-status-not-started: #9ca3af;
+  --ui-status-in-progress: #5b7fa6;
+  --ui-status-review: #d6a85b;
+  --ui-status-complete: #6ea37a;
+  --ui-status-overdue: #c86b6b;
+  --ui-status-returned: #9b7bb6;
+  --ui-accent-teal: #5a9ca0;
+  --ui-accent-brown: #a67c52;
+}
+
+body {
+  background: var(--ui-bg);
+  color: var(--ui-text);
+}
+
+.sidebar,
+.top-nav-link,
+.context-nav,
+.page-card,
+.panel,
+.summary-card,
+.metadata-item,
+.member-card,
+.detail-block,
+.detail-item,
+.workflow-node-card,
+.timeline-card,
+.timeline-board-card,
+.timeline-board-node,
+.monthly-review-card,
+.kanban-column,
+.kanban-card,
+.calendar-card,
+.empty-state,
+.placeholder-empty,
+.feedback-banner,
+.table-shell {
+  border-color: var(--ui-border);
+  border-radius: 8px;
+  background: var(--ui-surface);
+  box-shadow: 0 8px 24px rgba(31, 41, 55, 0.06);
+}
+
+.page-card {
+  max-width: 1240px;
+}
+
+.brand-kicker,
+.eyebrow,
+.nav-section-title,
+.workflow-node-kicker {
+  color: var(--ui-primary);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.topbar-title,
+.section-title,
+.page-card h1,
+.summary-card strong,
+.metadata-item strong {
+  color: var(--ui-text);
+}
+
+.topbar-description,
+.muted,
+.session-copy,
+.page-card p,
+.data-table th,
+.summary-card span,
+.metadata-item span {
+  color: var(--ui-muted);
+}
+
+.button,
+.top-nav-link,
+.context-nav-link,
+.nav-link,
+.status-pill,
+.status-badge,
+.tag-chip {
+  border-radius: 8px;
+}
+
+.button-primary {
+  background: var(--ui-primary);
+  color: #ffffff;
+}
+
+.button-secondary {
+  background: #ffffff;
+  color: var(--ui-text);
+  border-color: var(--ui-border);
+}
+
+.distribution-bar,
+.gantt-bar-actual {
+  background: var(--ui-primary);
+}
+
+.nav-link:hover,
+.nav-link-active,
+.top-nav-link-active,
+.context-nav-link-active,
+.workflow-node-current,
+.timeline-board-node-current,
+.monthly-review-card-active {
+  background: rgba(79, 111, 143, 0.12);
+  border-color: rgba(79, 111, 143, 0.24);
+}
+
+.workflow-node-done,
+.timeline-board-node-done,
+.single-project-node-done .single-project-node-body,
+.monthly-review-card-completed {
+  background: rgba(110, 163, 122, 0.14);
+  border-color: rgba(110, 163, 122, 0.28);
+}
+
+.workflow-node-rejected,
+.timeline-board-node-returned,
+.single-project-node-returned .single-project-node-body {
+  background: rgba(155, 123, 182, 0.14);
+  border-color: rgba(155, 123, 182, 0.28);
+}
+
+.timeline-board-node-overdue,
+.single-project-node-overdue .single-project-node-body,
+.monthly-review-card-overdue,
+.calendar-event-overdue {
+  background: rgba(200, 107, 107, 0.14);
+  border-color: rgba(200, 107, 107, 0.32);
+}
+
+.timeline-board-node-current .timeline-board-step,
+.single-project-node-current .single-project-node-index span,
+.notification-dot {
+  background: var(--ui-primary);
+}
+
+.timeline-board-node-done .timeline-board-step,
+.single-project-node-done .single-project-node-index span {
+  background: var(--ui-status-complete);
+}
+
+.timeline-board-node-overdue .timeline-board-step,
+.single-project-node-overdue .single-project-node-index span,
+.notification-badge {
+  background: var(--ui-status-overdue);
+}
+
+.timeline-board-node-returned .timeline-board-step,
+.single-project-node-returned .single-project-node-index span {
+  background: var(--ui-status-returned);
+}
+
+.timeline-board-node-pending .timeline-board-step,
+.single-project-node-pending .single-project-node-index span {
+  background: var(--ui-status-review);
 }

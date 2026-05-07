@@ -418,7 +418,7 @@ export function PilotProductionWorkspace({
   if (isLoading || !firstPlanWorkspace || !trialWorkspace || !highlights) {
     return (
       <section className="page-card">
-        <p className="eyebrow">Pilot Production</p>
+        <p className="eyebrow">试制生产</p>
         <h1>正在加载首台生产计划与样车试制模块…</h1>
         <p>首台计划、试制记录、问题清单和流程状态正在同步。</p>
       </section>
@@ -430,7 +430,7 @@ export function PilotProductionWorkspace({
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Pilot Production</p>
+            <p className="eyebrow">试制生产</p>
             <h2 className="section-title">{firstPlanWorkspace.project.name}</h2>
             <p className="muted">
               当前节点 {highlights.currentNodeLabel}，目标日期 {highlights.targetDateLabel}，
@@ -460,10 +460,10 @@ export function PilotProductionWorkspace({
           ))}
         </div>
         {firstPlanWorkspace.activeTask && isWorkflowTaskOverdue(firstPlanWorkspace.activeTask) ? (
-          <p className="error-text">当前首台生产计划任务已超期。</p>
+          <p className="error-text">当前首台生产计划任务已逾期。</p>
         ) : null}
         {trialWorkspace.activeTask && isWorkflowTaskOverdue(trialWorkspace.activeTask) ? (
-          <p className="error-text">当前样车试制任务已超期。</p>
+          <p className="error-text">当前样车试制任务已逾期。</p>
         ) : null}
       </section>
 
@@ -473,7 +473,7 @@ export function PilotProductionWorkspace({
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Task Completion</p>
+            <p className="eyebrow">任务完成</p>
             <h2 className="section-title">节点完成条件</h2>
             <p className="muted">
               首台计划至少有一条已确认记录后才能完成节点；样车试制至少有一条有效试制记录后才能完成节点。
@@ -507,7 +507,7 @@ export function PilotProductionWorkspace({
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">First Production Plan</p>
+            <p className="eyebrow">首台生产计划</p>
             <h2 className="section-title">首台生产计划</h2>
             <p className="muted">采购完成后进入首台计划阶段，可创建、编辑、确认首台计划。</p>
           </div>
@@ -530,7 +530,7 @@ export function PilotProductionWorkspace({
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Plan Records</p>
+            <p className="eyebrow">计划记录</p>
             <h2 className="section-title">首台计划列表</h2>
             <p className="muted">首台计划确认后，才允许完成当前主节点并进入样车试制。</p>
           </div>
@@ -548,7 +548,7 @@ export function PilotProductionWorkspace({
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Trial Production</p>
+            <p className="eyebrow">样车试制</p>
             <h2 className="section-title">样车试制记录</h2>
             <p className="muted">首台节点完成后进入样车试制，可维护试制记录并补充试制问题。</p>
           </div>
@@ -571,7 +571,7 @@ export function PilotProductionWorkspace({
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Trial Records</p>
+            <p className="eyebrow">试制记录</p>
             <h2 className="section-title">试制记录列表</h2>
             <p className="muted">选择一条试制记录后，可查看问题列表并继续补充问题信息。</p>
           </div>
@@ -591,7 +591,7 @@ export function PilotProductionWorkspace({
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Trial Issues</p>
+            <p className="eyebrow">试制问题</p>
             <h2 className="section-title">试制问题记录</h2>
             <p className="muted">允许为每条试制记录补充多条问题项，用于后续评审追踪。</p>
           </div>

@@ -10,6 +10,7 @@ import {
   formatProjectLogTimestamp,
   getProjectLogActorLabel,
   getProjectLogNodeLabel,
+  getProjectLogSendStatusLabel,
   getProjectLogSourceLabel,
   type ProjectLogItem,
   type ProjectLogsResponse,
@@ -90,7 +91,7 @@ export function ProjectLogsWorkspace({
   if (isLoading || !payload) {
     return (
       <section className="page-card">
-        <p className="eyebrow">Project Logs</p>
+        <p className="eyebrow">项目日志</p>
         <h1>正在加载项目日志…</h1>
         <p>流程流转、审计动作和通知记录正在聚合。</p>
       </section>
@@ -102,7 +103,7 @@ export function ProjectLogsWorkspace({
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Project Logs</p>
+            <p className="eyebrow">项目日志</p>
             <h2 className="section-title">{payload.project.name}</h2>
             <p className="muted">
               当前节点 {payload.project.currentNodeName ?? '未开始'}，目标日期{' '}
@@ -148,7 +149,7 @@ export function ProjectLogsWorkspace({
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Timeline</p>
+            <p className="eyebrow">时间线</p>
             <h2 className="section-title">项目时间线</h2>
             <p className="muted">统一查看流程流转、业务审计和系统通知，便于联调追溯。</p>
           </div>
@@ -218,7 +219,7 @@ export function ProjectLogTimelineList({
               ? ` · ${item.isRead ? '已读' : '未读'}`
               : ''}
             {item.sourceType === 'NOTIFICATION' && item.sendStatus
-              ? ` · ${item.sendStatus}`
+              ? ` · ${getProjectLogSendStatusLabel(item.sendStatus)}`
               : ''}
           </p>
           {item.linkPath ? (

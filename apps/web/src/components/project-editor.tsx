@@ -28,11 +28,13 @@ import {
 type ProjectEditorProps =
   | {
       mode: 'create';
+      onDirtyChange?: (isDirty: boolean) => void;
     }
   | {
       mode: 'edit';
       projectId: string;
       initialProject: ProjectDetail;
+      onDirtyChange?: (isDirty: boolean) => void;
     };
 
 type FormState = {
@@ -106,6 +108,7 @@ export function ProjectEditor(props: ProjectEditorProps) {
   const [isSavingMembers, setIsSavingMembers] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [isDirty, setIsDirty] = useState(false);
 
   useEffect(() => {
     void loadDirectoryUsers();
@@ -116,8 +119,17 @@ export function ProjectEditor(props: ProjectEditorProps) {
       setCurrentProject(props.initialProject);
       setFormState(buildFormState(props.initialProject));
       setMemberDrafts(buildMemberDrafts(props.initialProject));
+      setIsDirty(false);
     }
-  }, [props]);
+  }, [props.mode, props.mode === 'edit' ? props.initialProject : null]);
+
+  useEffect(() => {
+    props.onDirtyChange?.(isDirty);
+  }, [isDirty, props.onDirtyChange]);
+
+  function markDirty() {
+    setIsDirty(true);
+  }
 
   useEffect(() => {
     if (props.mode === 'create' && user && !formState.ownerUserId) {
@@ -143,6 +155,7 @@ export function ProjectEditor(props: ProjectEditorProps) {
   }
 
   function updateField(key: keyof FormState, value: string) {
+    markDirty();
     setFormState((current) => ({
       ...current,
       [key]: value,
@@ -150,6 +163,7 @@ export function ProjectEditor(props: ProjectEditorProps) {
   }
 
   function addMemberRow() {
+    markDirty();
     setMemberDrafts((current) => [...current, { ...EMPTY_MEMBER }]);
   }
 
@@ -158,6 +172,7 @@ export function ProjectEditor(props: ProjectEditorProps) {
     key: Key,
     value: MemberDraft[Key],
   ) {
+    markDirty();
     setMemberDrafts((current) =>
       current.map((member, currentIndex) =>
         currentIndex === index
@@ -171,6 +186,7 @@ export function ProjectEditor(props: ProjectEditorProps) {
   }
 
   function removeMember(index: number) {
+    markDirty();
     setMemberDrafts((current) => current.filter((_, currentIndex) => currentIndex !== index));
   }
 
@@ -195,6 +211,7 @@ export function ProjectEditor(props: ProjectEditorProps) {
       });
 
       setSuccessMessage('项目已创建，流程实例已自动初始化。');
+      setIsDirty(false);
       router.push(`/projects/${detail.id}/overview`);
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : '项目创建失败。');
@@ -229,6 +246,7 @@ export function ProjectEditor(props: ProjectEditorProps) {
       setCurrentProject(detail);
       setFormState(buildFormState(detail));
       setMemberDrafts(buildMemberDrafts(detail));
+      setIsDirty(false);
       setSuccessMessage('项目基础信息已更新。');
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : '项目更新失败。');
@@ -250,6 +268,7 @@ export function ProjectEditor(props: ProjectEditorProps) {
       const detail = await replaceProjectMembers(props.projectId, normalizeMembers(memberDrafts));
       setCurrentProject(detail);
       setMemberDrafts(buildMemberDrafts(detail));
+      setIsDirty(false);
       setSuccessMessage('项目成员已更新。');
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : '项目成员更新失败。');
@@ -266,7 +285,7 @@ export function ProjectEditor(props: ProjectEditorProps) {
         <section className="page-card">
           <div className="section-header">
             <div>
-              <p className="eyebrow">Project Overview</p>
+              <p className="eyebrow">项目概览</p>
               <h2 className="section-title">{project.name}</h2>
               <p className="muted">
                 当前节点、目标日期、风险等级和流程实例在这里集中展示。
@@ -321,11 +340,11 @@ export function ProjectEditor(props: ProjectEditorProps) {
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">{props.mode === 'create' ? 'Create Project' : 'Edit Basics'}</p>
+            <p className="eyebrow">{props.mode === 'create' ? '新建项目' : '基础信息'}</p>
             <h2 className="section-title">
               {props.mode === 'create' ? '新建项目' : '基础信息'}
             </h2>
-            <p className="muted">项目创建成功后，后端会自动初始化 workflow instance。</p>
+            <p className="muted">项目创建成功后，后端会自动初始化流程实例。</p>
           </div>
         </div>
         <form
@@ -338,7 +357,7 @@ export function ProjectEditor(props: ProjectEditorProps) {
               data-testid="project-code-input"
               value={formState.code}
               onChange={(event) => updateField('code', event.target.value)}
-              placeholder="例如: PROJ-2026-001"
+              placeholder="例如：XM-2026-001"
               disabled={props.mode === 'edit'}
             />
           </label>
@@ -387,7 +406,7 @@ export function ProjectEditor(props: ProjectEditorProps) {
             <input
               value={formState.marketRegion}
               onChange={(event) => updateField('marketRegion', event.target.value)}
-              placeholder="例如: 华东 / 东南亚"
+              placeholder="例如：华东 / 东南亚"
             />
           </label>
           <label className="field">
@@ -395,7 +414,7 @@ export function ProjectEditor(props: ProjectEditorProps) {
             <input
               value={formState.vehicleModel}
               onChange={(event) => updateField('vehicleModel', event.target.value)}
-              placeholder="例如: 轻卡 A 平台"
+              placeholder="例如：轻卡 A 平台"
             />
           </label>
           <label className="field">
@@ -448,7 +467,7 @@ export function ProjectEditor(props: ProjectEditorProps) {
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Project Members</p>
+            <p className="eyebrow">项目成员</p>
             <h2 className="section-title">项目成员</h2>
             <p className="muted">成员管理独立保存，所有写操作都会记录审计日志。</p>
           </div>
@@ -459,7 +478,7 @@ export function ProjectEditor(props: ProjectEditorProps) {
         {memberDrafts.length === 0 ? (
           <div className="empty-state">
             <strong>当前没有额外成员</strong>
-            <p>如果不手工添加，后端会至少为负责人创建一个 OWNER 成员记录。</p>
+            <p>如果不手工添加，后端会至少为负责人创建一个项目负责人成员记录。</p>
           </div>
         ) : (
           <div className="member-list">

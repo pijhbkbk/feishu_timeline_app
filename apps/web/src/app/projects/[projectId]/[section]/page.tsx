@@ -27,14 +27,14 @@ export default async function ProjectSectionPage({ params }: ProjectSectionPageP
 
   return (
     <PagePlaceholder
-      eyebrow="Project Workspace"
+      eyebrow="项目工作区"
       title={meta?.label ?? '项目工作区'}
       description={
         meta?.description ??
         '当前项目子页面已预留路由和导航，后续会接入对应业务模块。'
       }
       route={`/projects/${projectId}/${section}`}
-      tags={[`Project: ${projectId}`, meta?.key ?? 'custom-section', 'Empty State']}
+      tags={[`项目：${projectId}`, meta?.label ?? '自定义页面', '空状态']}
       actions={projectQuickLinks.map((key) => ({
         label: projectSectionMetaMap[key].label,
         href: buildProjectRoute(projectId, key),

@@ -10,6 +10,13 @@ import {
   type ProjectDetail,
   type WorkflowNodeCode,
 } from './projects-client';
+import {
+  RECURRING_PLAN_STATUS_LABELS,
+  RECURRING_TASK_STATUS_LABELS,
+  REVIEW_RESULT_LABELS,
+  WORKFLOW_ACTION_LABELS,
+  WORKFLOW_TASK_STATUS_LABELS,
+} from './status-labels';
 
 export type WorkflowAction =
   | 'START'
@@ -200,49 +207,6 @@ export type MonthlyReviewTaskDetailResponse = {
   };
   recurringTask: RecurringTaskSummary;
   relatedReviews: MonthlyReviewRecordSummary[];
-};
-
-const WORKFLOW_TASK_STATUS_LABELS: Record<WorkflowTaskStatus, string> = {
-  PENDING: '待处理',
-  READY: '待开始',
-  IN_PROGRESS: '进行中',
-  APPROVED: '已通过',
-  REJECTED: '已驳回',
-  RETURNED: '已退回',
-  COMPLETED: '已完成',
-  CANCELLED: '已取消',
-};
-
-const WORKFLOW_ACTION_LABELS: Record<WorkflowAction, string> = {
-  START: '开始',
-  SUBMIT: '提交',
-  APPROVE: '通过',
-  REJECT: '驳回',
-  RETURN: '退回',
-  COMPLETE: '完成',
-};
-
-const RECURRING_TASK_STATUS_LABELS: Record<RecurringTaskStatus, string> = {
-  PENDING: '待执行',
-  IN_PROGRESS: '进行中',
-  COMPLETED: '已完成',
-  OVERDUE: '已逾期',
-  CANCELLED: '已取消',
-};
-
-const RECURRING_PLAN_STATUS_LABELS: Record<RecurringPlanStatus, string> = {
-  DRAFT: '草稿',
-  ACTIVE: '进行中',
-  COMPLETED: '已完成',
-  CANCELLED: '已取消',
-};
-
-const REVIEW_RESULT_LABELS: Record<ReviewResult, string> = {
-  PENDING: '待评审',
-  APPROVED: '通过',
-  CONDITIONAL_APPROVED: '条件通过',
-  REJECTED: '驳回',
-  NEED_REWORK: '待整改',
 };
 
 export async function fetchProjectWorkflow(projectId: string) {

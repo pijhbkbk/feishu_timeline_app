@@ -75,7 +75,7 @@ export function getNotificationTypeLabel(type: NotificationType) {
     case 'TASK_RETURNED':
       return '节点退回';
     case 'TASK_OVERDUE':
-      return '任务超期';
+      return '任务逾期';
     case 'SYSTEM_INFO':
     default:
       return '系统提醒';

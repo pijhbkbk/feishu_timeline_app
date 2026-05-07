@@ -15,7 +15,7 @@ type PagePlaceholderProps = {
 };
 
 export function PagePlaceholder({
-  eyebrow = 'Route Placeholder',
+  eyebrow = '页面占位',
   title,
   description,
   route,

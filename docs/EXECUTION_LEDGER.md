@@ -8,12 +8,12 @@
 ## 项目基本信息
 
 - 项目名称：轻卡定制颜色开发项目管理系统
-- 当前阶段：Release Closure
-- 当前轮次：Release Closure
-- 总体状态：RELEASED
+- 当前阶段：R14 PPT UI 实装 + 线上部署
+- 当前轮次：R14_PPT_UI_IMPLEMENTATION
+- 总体状态：PASSED
 - 仓库路径：`/Users/lixiaochen/Downloads/feishu_timeline_app`
 - 默认分支：`main`
-- 最近更新时间：`2026-04-23`
+- 最近更新时间：`2026-05-07`
 
 ---
 
@@ -49,6 +49,8 @@
 | R12 | 稳定性、监控、告警、备份恢复 | PASSED | STOP | 已完成生产巡检、增强 health-check、补齐 ops/SSL/5xx/备份脚本、完成备份恢复演练并沉淀运维文档 |
 | R13 | UI/UX 精修 + Playwright 浏览器级回归 | PASSED | STOP | 已完成关键页面精修、统一反馈与状态组件、接入 Playwright 5 条关键回归并补齐 CI 入口 |
 | Release Closure | 正式发布收口（v1.0.0） | PASSED | STOP | 已完成 main 合并、生产从 main 重部署、release verify / production acceptance，并进入 v1.0.0 tag 收口 |
+| R14 | 中文化 UI + 时间线看板 + 实时项目进度驾驶舱 | PASSED | STOP | 已完成中文驾驶舱、项目时间线看板、单项目详情时间线、月度评审看板优化和聚合 API |
+| R14_PPT_UI_IMPLEMENTATION | PPT UI 蓝图实装 + 线上部署 | PASSED | STOP | 已按 PPT 结构补齐材料中心、月度评审总账、数据中心、项目列表筛选、详情刷新与线上部署闭环 |
 
 状态枚举建议：
 
@@ -97,6 +99,7 @@
 - `docs/TEST_COVERAGE_R08.md`：覆盖工作流、权限、附件、月度评审、退出治理与固定收费规则的自动化测试基线
 - `docs/STAGING_DEPLOYMENT.md`：覆盖 staging 一键部署、健康检查、迁移/seed 说明与回滚入口
 - `docs/UI_REFINEMENT_R13.md`：覆盖页面标题、按钮、状态色、反馈组件、关键工作区精修口径与浏览器回归入口
+- `docs/UI_TIMELINE_BOARD_R14.md`：覆盖中文项目进度驾驶舱、时间线看板、状态颜色规则、自动刷新策略和后续优化项
 
 ---
 
@@ -1421,3 +1424,189 @@ STOP
 
 #### Next Round
 发布后观察期
+
+### Round R14
+
+#### Goal
+在不改变已冻结业务规则和流程状态机的前提下，将系统 UI 升级为中文项目进度驾驶舱，并新增能实时展示轻卡定制颜色开发项目进度的时间线看板。
+
+#### Scope
+- 全站导航、页面标题、按钮、状态、空态、错误提示和核心业务文案中文化
+- 首页 `/dashboard` 改造为“项目进度驾驶舱”
+- 新增 `/projects/timeline-board` 项目时间线看板
+- 项目详情流程页增加单项目完整节点时间线
+- 优化第 17 步整车色差一致性评审台账月份卡片与本月任务展示
+- 新增只读聚合 API，减少前端多接口拼装
+- 更新 R14 文档与本账本
+
+#### Inputs Read
+- `AGENTS.md`
+- `docs/EXECUTION_LEDGER.md`
+- `docs/UI_REFINEMENT_R13.md`
+- `apps/web/src/app/dashboard`
+- `apps/web/src/app/projects`
+- `apps/web/src/components/dashboard-workspace.tsx`
+- `apps/web/src/components/projects-list-client.tsx`
+- `apps/web/src/components/project-workflow-workspace.tsx`
+- `apps/web/src/components/monthly-review-workspace.tsx`
+- `apps/web/src/components/color-exit-workspace.tsx`
+- `apps/api/src/modules/dashboard/*`
+- `apps/api/src/modules/projects/*`
+- `apps/web/src/lib/*`
+
+#### Files Changed
+- `apps/api/src/modules/dashboard/dashboard.controller.ts`
+- `apps/api/src/modules/dashboard/dashboard.service.ts`
+- `apps/api/src/modules/dashboard/dashboard.controller.spec.ts`
+- `apps/api/src/modules/dashboard/dashboard.service.spec.ts`
+- `apps/api/src/modules/projects/projects.controller.ts`
+- `apps/api/src/modules/projects/projects.service.ts`
+- `apps/api/src/modules/projects/projects.controller.spec.ts`
+- `apps/web/src/lib/status-labels.ts`
+- `apps/web/src/lib/dashboard-client.ts`
+- `apps/web/src/lib/projects-client.ts`
+- `apps/web/src/lib/workflows-client.ts`
+- `apps/web/src/components/dashboard-workspace.tsx`
+- `apps/web/src/components/project-timeline-board.tsx`
+- `apps/web/src/components/project-detail-timeline.tsx`
+- `apps/web/src/components/monthly-review-workspace.tsx`
+- `apps/web/src/components/project-workflow-workspace.tsx`
+- `apps/web/src/components/app-shell.tsx`
+- `apps/web/src/lib/navigation.ts`
+- `apps/web/src/app/projects/timeline-board/page.tsx`
+- `apps/web/src/app/globals.css`
+- `apps/web/tests/playwright/regression.spec.ts`
+- `apps/web/src/components/project-timeline-board.test.tsx`
+- `docs/UI_TIMELINE_BOARD_R14.md`
+- `docs/EXECUTION_LEDGER.md`
+
+#### Commands Run
+```bash
+pnpm install
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm --filter @feishu-timeline/web build
+pnpm --filter @feishu-timeline/api build
+pnpm --filter @feishu-timeline/api prisma:validate
+pnpm test:e2e
+pnpm playwright:test
+```
+
+#### Acceptance Result
+- [x] 用户可见核心界面已中文化，导航、标题、按钮、状态、空态、错误提示和核心业务文案不再保留明显英文业务文案。
+- [x] 首页已改造为“项目进度驾驶舱”，包含项目总数、进行中项目、逾期任务、本月待评审、月度色差评审待完成、待退出颜色、最近更新时间和手动刷新。
+- [x] `/projects/timeline-board` 已新增项目时间线看板，项目卡片展示 18 个流程节点、当前节点、责任人、截止时间、逾期天数、进度百分比、下一步和查看详情入口。
+- [x] 项目详情流程页已增加单项目时间线，并覆盖第 12 步评审、第 17 步月度进度、第 18 步颜色退出摘要。
+- [x] 第 17 步月度评审台账已显示 12 个月份卡片、完成进度和本月任务标识，并支持跳转对应月份详情。
+- [x] 首页和项目时间线看板每 30 秒刷新，项目详情流程页每 15 秒刷新，均提供“立即刷新”。
+- [x] 新增/扩展只读聚合 API：`GET /api/dashboard/overview`、`GET /api/dashboard/project-timelines`、`GET /api/projects/:projectId/timeline`、`GET /api/dashboard/monthly-review-board`。
+- [x] `docs/UI_TIMELINE_BOARD_R14.md` 已生成。
+- [x] `docs/EXECUTION_LEDGER.md` 已更新。
+- [x] `pnpm install`、`pnpm lint`、`pnpm typecheck`、`pnpm test`、`pnpm --filter @feishu-timeline/web build`、`pnpm --filter @feishu-timeline/api build`、`pnpm --filter @feishu-timeline/api prisma:validate`、`pnpm test:e2e`、`pnpm playwright:test` 全部通过。
+
+#### Risks / Debt
+- 当前实时刷新采用轮询和手动刷新，未引入 WebSocket；满足 MVP 驾驶舱实时性，但不提供秒级协同。
+- 时间线看板当前以横向滚动承载 18 个节点，普通笔记本可读；后续可针对移动端增加压缩视图和筛选器。
+- 聚合接口目前未做服务端分页和缓存；数据量显著增长后需补排序、分页和缓存策略。
+
+#### Decision
+STOP
+
+#### Next Round
+建议先部署到 VPS 做业务方验收和真实数据观察，再评估移动端压缩视图、看板筛选和聚合接口缓存。
+
+### Round R14_PPT_UI_IMPLEMENTATION
+
+#### Goal
+按 PPT 设计稿将线上系统升级为中文项目进度驾驶舱、项目时间线看板、材料提交平台、整车色差一致性评审台账和数据中心，并部署到 `https://timeline.all-too-well.com`。
+
+#### Scope
+- 复制并归档 PPT 设计稿到 `docs/design`
+- 新增 `docs/PPT_UI_IMPLEMENTATION_R14.md`，建立 PPT slide-to-code 映射
+- 补齐 `/projects/timeline`、`/materials`、`/monthly-reviews`、`/analytics` 和 `/projects/:id/materials`
+- 优化 `/projects` 项目列表筛选和 `/projects/:id/overview` 详情刷新
+- 扩展材料中心、月度评审总账、数据中心聚合展示
+- 新增 `GET /api/analytics/overview`
+- 保持业务状态机、评审门禁、固定收费和颜色退出规则不变
+
+#### Inputs Read
+- `AGENTS.md`
+- `docs/EXECUTION_LEDGER.md`
+- `docs/UI_REFINEMENT_R13.md`
+- `docs/UI_TIMELINE_BOARD_R14.md`
+- `/Users/lixiaochen/Desktop/U I-1.md`
+- `/Users/lixiaochen/Downloads/轻卡颜色开发项目管理系统_UI界面设计稿.pptx`
+- `/Users/lixiaochen/Downloads/轻卡定制颜色开发项目管理系统_UI界面方案.pptx`
+- 当前 dashboard、projects、workflow、reviews、color-exit、attachments、API 与前端组件结构
+
+#### Files Changed
+- `apps/api/src/app.module.ts`
+- `apps/api/src/modules/analytics/*`
+- `apps/api/src/modules/dashboard/*`
+- `apps/api/src/modules/projects/*`
+- `apps/web/src/app/analytics/page.tsx`
+- `apps/web/src/app/materials/page.tsx`
+- `apps/web/src/app/monthly-reviews/page.tsx`
+- `apps/web/src/app/projects/timeline/page.tsx`
+- `apps/web/src/app/projects/timeline-board/page.tsx`
+- `apps/web/src/app/projects/[projectId]/materials/page.tsx`
+- `apps/web/src/components/analytics-center.tsx`
+- `apps/web/src/components/materials-center.tsx`
+- `apps/web/src/components/monthly-reviews-board.tsx`
+- `apps/web/src/components/project-timeline-board.tsx`
+- `apps/web/src/components/project-detail-timeline.tsx`
+- `apps/web/src/components/project-overview-client.tsx`
+- `apps/web/src/components/project-workflow-workspace.tsx`
+- `apps/web/src/components/projects-list-client.tsx`
+- `apps/web/src/components/attachments-workspace.tsx`
+- `apps/web/src/lib/analytics-client.ts`
+- `apps/web/src/lib/status-labels.ts`
+- `apps/web/src/lib/navigation.ts`
+- `apps/web/src/app/globals.css`
+- `apps/web/src/components/ppt-ui-r14.test.tsx`
+- `apps/web/tests/playwright/regression.spec.ts`
+- `apps/web/scripts/e2e-mainline.mjs`
+- `docs/PPT_UI_IMPLEMENTATION_R14.md`
+- `docs/UI_TIMELINE_BOARD_R14.md`
+- `docs/EXECUTION_LEDGER.md`
+- `docs/design/*`
+
+#### Commands Run
+```bash
+git switch -c feat/ppt-ui-r14
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm --filter @feishu-timeline/web build
+pnpm --filter @feishu-timeline/api build
+pnpm --filter @feishu-timeline/api prisma:validate
+pnpm test:e2e
+pnpm playwright:test
+```
+
+#### Acceptance Result
+- [x] PPT 设计稿已复制到 `docs/design`，并生成首屏 Quick Look 参考图。
+- [x] `docs/PPT_UI_IMPLEMENTATION_R14.md` 已建立 PPT 页面到代码/API/测试映射。
+- [x] 全站核心导航、标题、按钮、状态、空态和业务提示已统一中文化，并将“超期”统一为“逾期”。
+- [x] `/dashboard` 为中文项目进度驾驶舱，保留 30 秒轮询和手动刷新。
+- [x] `/projects/timeline` 为项目时间线看板，展示 18 个节点、当前节点、责任人、逾期、进度、下一步，并支持关键词、状态、部门、负责人和逾期筛选。
+- [x] `/projects` 项目列表支持颜色、当前工序、责任部门、负责人、逾期状态和日期筛选。
+- [x] `/projects/:id/overview` 每 15 秒自动刷新，编辑表单时暂停覆盖未保存输入。
+- [x] `/projects/:id/workflow` 与 `/projects/:id/tasks` 提供单项目完整节点时间线、工序清单和节点详情。
+- [x] `/materials` 与 `/projects/:id/materials` 提供材料提交入口、上传、预览和归属管理。
+- [x] `/monthly-reviews` 提供第 17 步全局 12 个月评审台账，项目评审页继续展示单项目月份卡片和详情。
+- [x] `/analytics` 提供项目概览、流程效率、部门负载、返工、月度评审、颜色退出和费用摘要。
+- [x] 新增只读聚合 API `GET /api/analytics/overview`，未修改冻结业务状态机与流程规则。
+- [x] `pnpm lint`、`pnpm typecheck`、`pnpm test`、`pnpm --filter @feishu-timeline/web build`、`pnpm --filter @feishu-timeline/api build`、`pnpm --filter @feishu-timeline/api prisma:validate`、`pnpm test:e2e`、`pnpm playwright:test` 全部通过。
+
+#### Risks / Debt
+- 本地环境未安装 LibreOffice，PPT 仅完成文本结构抽取和首屏 Quick Look 渲染，未逐页生成图片证据。
+- 时间线看板已满足普通笔记本阅读，移动端仍以横向滚动为主，后续可增加折叠式节点视图。
+- 聚合 API 当前为 MVP 只读查询，数据量提升后建议增加服务端分页、缓存和排序。
+
+#### Decision
+STOP
+
+#### Next Round
+生产观察期：收集真实项目数据下的时间线密度、月度评审总账和数据中心指标反馈。

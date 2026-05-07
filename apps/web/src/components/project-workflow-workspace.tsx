@@ -9,14 +9,18 @@ import { FeedbackBanner } from './feedback-banner';
 import { StatePanel } from './state-panel';
 import {
   fetchProject,
+  fetchProjectTimeline,
   formatDate,
+  formatDateTime,
   getProjectPriorityLabel,
   getProjectStatusLabel,
   getWorkflowNodeLabel,
   WORKFLOW_NODE_OPTIONS,
   type ProjectDetail,
+  type ProjectTimelineResponse,
   type WorkflowNodeCode,
 } from '../lib/projects-client';
+import { ProjectDetailTimeline } from './project-detail-timeline';
 import {
   canUserOperateWorkflowTask,
   executeWorkflowAction,
@@ -93,6 +97,7 @@ export function ProjectWorkflowWorkspace({
   const [project, setProject] = useState<ProjectDetail | null>(null);
   const [workflow, setWorkflow] = useState<ProjectWorkflowResponse | null>(null);
   const [timeline, setTimeline] = useState<ProjectWorkflowTimelineResponse | null>(null);
+  const [projectTimeline, setProjectTimeline] = useState<ProjectTimelineResponse | null>(null);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [selectedTaskDetail, setSelectedTaskDetail] = useState<WorkflowTaskDetailResponse | null>(null);
   const [selectedTaskRounds, setSelectedTaskRounds] = useState<WorkflowTaskRoundHistoryResponse | null>(null);
@@ -107,6 +112,11 @@ export function ProjectWorkflowWorkspace({
 
   useEffect(() => {
     void loadWorkspaceData({ initial: true });
+    const timer = window.setInterval(() => {
+      void loadWorkspaceData({ silent: true });
+    }, 15_000);
+
+    return () => window.clearInterval(timer);
   }, [projectId]);
 
   useEffect(() => {
@@ -139,22 +149,25 @@ export function ProjectWorkflowWorkspace({
     void loadSelectedTask(selectedTaskId);
   }, [selectedTaskId, selectedTaskVersion]);
 
-  async function loadWorkspaceData(options?: { initial?: boolean }) {
+  async function loadWorkspaceData(options?: { initial?: boolean; silent?: boolean }) {
     const requestId = ++requestIdRef.current;
 
     if (options?.initial) {
       setIsLoading(true);
-    } else {
+    } else if (!options?.silent) {
       setIsRefreshing(true);
     }
 
-    setError(null);
+    if (!options?.silent) {
+      setError(null);
+    }
 
     try {
-      const [projectDetail, workflowSummary, workflowTimeline] = await Promise.all([
+      const [projectDetail, workflowSummary, workflowTimeline, projectNodeTimeline] = await Promise.all([
         fetchProject(projectId),
         fetchProjectWorkflow(projectId),
         fetchProjectWorkflowTimeline(projectId),
+        fetchProjectTimeline(projectId),
       ]);
 
       if (requestId !== requestIdRef.current) {
@@ -164,6 +177,7 @@ export function ProjectWorkflowWorkspace({
       setProject(projectDetail);
       setWorkflow(workflowSummary);
       setTimeline(workflowTimeline);
+      setProjectTimeline(projectNodeTimeline);
       setSelectedTaskVersion((current) => current + 1);
     } catch (loadError) {
       if (requestId !== requestIdRef.current) {
@@ -225,12 +239,12 @@ export function ProjectWorkflowWorkspace({
     }
   }
 
-  if (isLoading || !project || !workflow || !timeline) {
+  if (isLoading || !project || !workflow || !timeline || !projectTimeline) {
     return (
       <section className="page-card">
-        <p className="eyebrow">Workflow Workspace</p>
-        <h1>正在加载流程视图…</h1>
-        <p>项目状态、任务列表和历史时间线正在刷新。</p>
+        <p className="eyebrow">{mode === 'tasks' ? '工序清单' : '流程工作区'}</p>
+        <h1>{mode === 'tasks' ? '正在加载工序清单…' : '正在加载流程视图…'}</h1>
+        <p>项目状态、工序任务和历史时间线正在刷新。</p>
       </section>
     );
   }
@@ -276,11 +290,14 @@ export function ProjectWorkflowWorkspace({
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Workflow Workspace</p>
-            <h2 className="section-title">{project.name}</h2>
+            <p className="eyebrow">{mode === 'tasks' ? '工序清单' : '流程工作区'}</p>
+            <h2 className="section-title">
+              {mode === 'tasks' ? `${project.name} 工序清单` : project.name}
+            </h2>
             <p className="muted">
               当前节点 {getWorkflowNodeLabel(currentNodeCode)}，项目状态 {getProjectStatusLabel(project.status)}，
-              风险等级 {getProjectPriorityLabel(project.riskLevel)}。
+              风险等级 {getProjectPriorityLabel(project.riskLevel)}。最近更新：
+              {formatDateTime(projectTimeline.lastUpdatedAt)}。
             </p>
           </div>
           <div className="inline-actions">
@@ -290,7 +307,7 @@ export function ProjectWorkflowWorkspace({
               disabled={isRefreshing}
               onClick={() => void loadWorkspaceData()}
             >
-              {isRefreshing ? '刷新中…' : '刷新'}
+              {isRefreshing ? '刷新中…' : '立即刷新'}
             </button>
             <Link href={`/projects/${projectId}/overview`} className="button button-secondary">
               返回概览
@@ -312,7 +329,7 @@ export function ProjectWorkflowWorkspace({
           </div>
           <div className="metadata-item">
             <span>流程状态</span>
-            <strong>{workflow.workflowInstance.status}</strong>
+            <strong>{getWorkflowInstanceStatusLabel(workflow.workflowInstance.status)}</strong>
           </div>
         </div>
       </section>
@@ -322,10 +339,12 @@ export function ProjectWorkflowWorkspace({
         <FeedbackBanner variant="success" title="流程操作已完成" message={successMessage} />
       ) : null}
 
+      <ProjectDetailTimeline timeline={projectTimeline} />
+
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Workflow Map</p>
+            <p className="eyebrow">流程图</p>
             <h2 className="section-title">流程图视图</h2>
             <p className="muted">同一份任务状态同时投影到主线、并行支线和节点卡片，状态颜色保持一致。</p>
           </div>
@@ -360,7 +379,7 @@ export function ProjectWorkflowWorkspace({
                     disabled={!task}
                     onClick={() => task && setSelectedTaskId(task.id)}
                   >
-                    <span className="workflow-node-kicker">{nodeCode}</span>
+                    <span className="workflow-node-kicker">第 {getWorkflowNodeStep(nodeCode)} 步</span>
                     <strong>{nodeLabel}</strong>
                     <span>{task ? getWorkflowTaskStatusLabel(task.status) : '未触发'}</span>
                     <span>负责人: {task?.assigneeUserName ?? '未分配'}</span>
@@ -396,7 +415,7 @@ export function ProjectWorkflowWorkspace({
                       disabled={!task}
                       onClick={() => task && setSelectedTaskId(task.id)}
                     >
-                      <span className="workflow-node-kicker">{nodeCode}</span>
+                      <span className="workflow-node-kicker">第 {getWorkflowNodeStep(nodeCode)} 步</span>
                       <strong>{getWorkflowNodeLabel(nodeCode)}</strong>
                       <span>{task ? getWorkflowTaskStatusLabel(task.status) : '未触发'}</span>
                       <span>计划时间: {formatWorkflowTaskTime(task?.dueAt)}</span>
@@ -428,13 +447,15 @@ export function ProjectWorkflowWorkspace({
                         : 'workflow-node-pending'
                 }`}
               >
-                <span className="workflow-node-kicker">{node.value}</span>
+                <span className="workflow-node-kicker">
+                  第 {getWorkflowNodeStep(node.value as WorkflowNodeCode)} 步
+                </span>
                 <strong>{node.label}</strong>
                 <span>{task ? getWorkflowTaskStatusLabel(task.status) : '未触发'}</span>
                 <span>负责人: {task?.assigneeUserName ?? '未分配'}</span>
                 <span>计划时间: {formatWorkflowTaskTime(task?.dueAt)}</span>
                 <span>实际时间: {formatWorkflowTaskTime(getWorkflowTaskActualTime(task ?? emptyTask(node.value as WorkflowNodeCode, node.label)))}</span>
-                {isOverdue ? <span className="overdue-badge">超期</span> : null}
+                {isOverdue ? <span className="overdue-badge">逾期</span> : null}
               </article>
             );
           })}
@@ -444,9 +465,9 @@ export function ProjectWorkflowWorkspace({
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">{mode === 'workflow' ? 'Active Tasks' : 'Project Tasks'}</p>
+            <p className="eyebrow">{mode === 'workflow' ? '当前任务' : '工序清单'}</p>
             <h2 className="section-title">
-              {mode === 'workflow' ? '当前任务' : '项目任务列表'}
+              {mode === 'workflow' ? '当前任务' : '工序清单与详情抽屉'}
             </h2>
             <p className="muted">动作按钮只走标准接口，并按权限和节点状态控制显示。</p>
           </div>
@@ -470,7 +491,7 @@ export function ProjectWorkflowWorkspace({
                 <th>负责人</th>
                 <th>计划时间</th>
                 <th>实际时间</th>
-                <th>超期</th>
+                <th>逾期</th>
                 <th>动作</th>
               </tr>
             </thead>
@@ -505,7 +526,7 @@ export function ProjectWorkflowWorkspace({
                       <td>{task.assigneeUserName ?? '未分配'}</td>
                       <td>{formatWorkflowTaskTime(task.dueAt)}</td>
                       <td>{formatWorkflowTaskTime(actualTime)}</td>
-                      <td>{isOverdue ? <span className="overdue-badge">超期</span> : '否'}</td>
+                      <td>{isOverdue ? <span className="overdue-badge">逾期</span> : '否'}</td>
                       <td>
                         <div className="task-actions">
                           <button
@@ -555,7 +576,7 @@ export function ProjectWorkflowWorkspace({
           <section className="page-card">
             <div className="section-header">
               <div>
-                <p className="eyebrow">Gantt</p>
+                <p className="eyebrow">甘特图</p>
                 <h2 className="section-title">甘特图视图</h2>
                 <p className="muted">同一节点同时展示计划时间和实际时间，便于追踪滞后与并行支线。</p>
               </div>
@@ -611,7 +632,7 @@ export function ProjectWorkflowWorkspace({
           <section className="page-card">
             <div className="section-header">
               <div>
-                <p className="eyebrow">Kanban</p>
+                <p className="eyebrow">状态看板</p>
                 <h2 className="section-title">任务状态看板</h2>
                 <p className="muted">按状态聚合所有节点任务，便于负责人快速识别待办、进行中和异常项。</p>
               </div>
@@ -654,16 +675,16 @@ export function ProjectWorkflowWorkspace({
           <section className="page-card">
             <div className="section-header">
               <div>
-                <p className="eyebrow">Deadline Calendar</p>
+                <p className="eyebrow">截止日历</p>
                 <h2 className="section-title">截止日历</h2>
-                <p className="muted">按月展示节点计划日期，超期节点与已选节点在日历中同步高亮。</p>
+                <p className="muted">按月展示节点计划日期，逾期节点与已选节点在日历中同步高亮。</p>
               </div>
             </div>
             <FeedbackBanner
               variant="info"
               compact
               title="展示边界"
-              message="当前截止日历只展示工作流节点计划日期；第 17 步月度 recurring task 已统一收口到评审页台账展示，不在这里重复投影。"
+              message="当前截止日历只展示工作流节点计划日期；第 17 步月度评审任务已统一收口到评审页台账展示，不在这里重复投影。"
             />
             <div className="calendar-grid">
               {calendarMonths.length === 0 ? (
@@ -717,7 +738,7 @@ export function ProjectWorkflowWorkspace({
         <section className="page-card">
           <div className="section-header">
             <div>
-              <p className="eyebrow">Owner / Department</p>
+              <p className="eyebrow">负责人 / 部门</p>
               <h2 className="section-title">负责人视图与部门视图</h2>
               <p className="muted">项目任务列表按负责人和部门二次聚合，便于责任分配和部门协同验收。</p>
             </div>
@@ -733,7 +754,7 @@ export function ProjectWorkflowWorkspace({
                       <span>{group.tasks.length} 项</span>
                     </div>
                     <p className="muted">
-                      活跃 {group.activeCount} / 超期 {group.overdueCount}
+                      活跃 {group.activeCount} / 逾期 {group.overdueCount}
                     </p>
                     <div className="tag-row">
                       {group.tasks.map((task) => (
@@ -763,7 +784,7 @@ export function ProjectWorkflowWorkspace({
                       <span>{group.tasks.length} 项</span>
                     </div>
                     <p className="muted">
-                      活跃 {group.activeCount} / 超期 {group.overdueCount}
+                      活跃 {group.activeCount} / 逾期 {group.overdueCount}
                     </p>
                     <div className="tag-row">
                       {group.tasks.map((task) => (
@@ -790,7 +811,7 @@ export function ProjectWorkflowWorkspace({
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Task Detail</p>
+            <p className="eyebrow">节点详情</p>
             <h2 className="section-title">节点详情与轮次历史</h2>
             <p className="muted">展示当前选中节点的详情、流转记录和历史轮次，便于跟踪第 12 步退回后的新轮次。</p>
           </div>
@@ -887,7 +908,7 @@ export function ProjectWorkflowWorkspace({
         <section className="page-card">
           <div className="section-header">
             <div>
-              <p className="eyebrow">Transition Timeline</p>
+              <p className="eyebrow">流转时间线</p>
               <h2 className="section-title">历史流转时间线</h2>
               <p className="muted">按时间倒序展示节点动作、操作者和流转去向。</p>
             </div>
@@ -900,7 +921,7 @@ export function ProjectWorkflowWorkspace({
                   <span>{formatDate(entry.createdAt)}</span>
                 </div>
                 <p className="muted">
-                  {entry.operatorName ?? '系统'} 执行了 {entry.action.toLowerCase()}
+                  {entry.operatorName ?? '系统'} 执行了 {getTimelineActionLabel(entry.action)}
                   {entry.fromNodeName ? `，从 ${entry.fromNodeName}` : ''}
                   {entry.toNodeName ? ` 到 ${entry.toNodeName}` : ''}。
                 </p>
@@ -937,6 +958,36 @@ function emptyTask(nodeCode: WorkflowNodeCode, nodeName: string): WorkflowTaskSu
     createdAt: new Date(0).toISOString(),
     updatedAt: new Date(0).toISOString(),
   };
+}
+
+function getWorkflowNodeStep(nodeCode: WorkflowNodeCode) {
+  const index = WORKFLOW_NODE_OPTIONS.findIndex((node) => node.value === nodeCode);
+  return index >= 0 ? String(index + 1).padStart(2, '0') : '--';
+}
+
+function getWorkflowInstanceStatusLabel(status: string) {
+  const labelMap: Record<string, string> = {
+    ACTIVE: '进行中',
+    COMPLETED: '已完成',
+    CANCELLED: '已取消',
+  };
+
+  return labelMap[status] ?? status;
+}
+
+function getTimelineActionLabel(action: string) {
+  const knownActions: WorkflowAction[] = [
+    'START',
+    'SUBMIT',
+    'APPROVE',
+    'REJECT',
+    'RETURN',
+    'COMPLETE',
+  ];
+
+  return knownActions.includes(action as WorkflowAction)
+    ? getWorkflowActionLabel(action as WorkflowAction)
+    : action;
 }
 
 function getWorkflowActionButtonClass(action: WorkflowAction) {

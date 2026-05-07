@@ -158,7 +158,7 @@ export function DevelopmentReportWorkspace({
   if (isLoading || !workspace) {
     return (
       <section className="page-card">
-        <p className="eyebrow">Development Report</p>
+        <p className="eyebrow">开发报告</p>
         <h1>正在加载开发报告…</h1>
         <p>表单、流程节点和最近一次提交记录正在同步。</p>
       </section>
@@ -170,7 +170,7 @@ export function DevelopmentReportWorkspace({
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Development Report</p>
+            <p className="eyebrow">开发报告</p>
             <h2 className="section-title">{workspace.project.name}</h2>
             <p className="muted">
               当前节点 {workspace.project.currentNodeName ?? '未开始'}，目标日期{' '}
@@ -227,7 +227,7 @@ export function DevelopmentReportWorkspace({
           payload: null,
           createdAt: workspace.activeTask.startedAt ?? new Date().toISOString(),
           updatedAt: workspace.activeTask.returnedAt ?? new Date().toISOString(),
-        }) ? <p className="error-text">当前开发报告节点已超期，请尽快处理。</p> : null}
+        }) ? <p className="error-text">当前开发报告节点已逾期，请尽快处理。</p> : null}
       </section>
 
       {error ? <p className="error-text">{error}</p> : null}
@@ -236,7 +236,7 @@ export function DevelopmentReportWorkspace({
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Report Form</p>
+            <p className="eyebrow">报告表单</p>
             <h2 className="section-title">新颜色开发报告表单</h2>
             <p className="muted">
               保存仅落草稿。提交会绑定当前开发报告节点并推动工作流进入涂料开发。

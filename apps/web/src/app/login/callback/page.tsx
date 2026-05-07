@@ -5,7 +5,7 @@ import { LoginCallbackClient } from './login-callback-client';
 function LoginCallbackFallback() {
   return (
     <section className="page-card">
-      <p className="eyebrow">Login Callback</p>
+      <p className="eyebrow">登录回调</p>
       <h1>正在准备回调上下文</h1>
       <p>页面正在读取飞书回调参数。</p>
     </section>

@@ -17,18 +17,24 @@ import {
 } from '../lib/projects-client';
 
 type FilterState = {
+  keyword: string;
   status: string;
   currentNodeCode: string;
   ownerUserId: string;
+  ownerDepartmentId: string;
+  isOverdue: string;
   priority: string;
   dateFrom: string;
   dateTo: string;
 };
 
 const DEFAULT_FILTERS: FilterState = {
+  keyword: '',
   status: '',
   currentNodeCode: '',
   ownerUserId: '',
+  ownerDepartmentId: '',
+  isOverdue: '',
   priority: '',
   dateFrom: '',
   dateTo: '',
@@ -72,9 +78,15 @@ export function ProjectsListClient() {
       const response = await fetchProjects({
         page,
         pageSize: listResponse?.pageSize ?? 10,
+        keyword: filters.keyword,
         status: filters.status as '' | 'DRAFT' | 'IN_PROGRESS' | 'ON_HOLD' | 'COMPLETED' | 'CANCELLED',
         currentNodeCode: filters.currentNodeCode as WorkflowNodeCode | '',
         ownerUserId: filters.ownerUserId,
+        ownerDepartmentId: filters.ownerDepartmentId,
+        isOverdue:
+          filters.isOverdue === ''
+            ? ''
+            : filters.isOverdue === 'true',
         priority: filters.priority as '' | 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL',
         dateFrom: filters.dateFrom,
         dateTo: filters.dateTo,
@@ -121,15 +133,22 @@ export function ProjectsListClient() {
 
   const nodeOptions = listResponse?.nodeOptions ?? [];
   const hasItems = (listResponse?.items.length ?? 0) > 0;
+  const departmentOptions = Array.from(
+    new Map(
+      directoryUsers
+        .filter((user) => user.departmentId && user.departmentName)
+        .map((user) => [user.departmentId!, user.departmentName!]),
+    ).entries(),
+  ).map(([id, name]) => ({ id, name }));
 
   return (
     <div className="page-stack">
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Project List</p>
+            <p className="eyebrow">项目列表</p>
             <h2 className="section-title">项目筛选</h2>
-            <p className="muted">支持按状态、当前阶段、负责人、优先级和时间范围过滤。</p>
+            <p className="muted">按项目名称、编号、颜色、当前工序、责任部门和逾期状态快速定位项目。</p>
           </div>
           <Link href="/projects/new" className="button button-primary">
             新建项目
@@ -137,7 +156,15 @@ export function ProjectsListClient() {
         </div>
         <form className="filters-grid" onSubmit={handleApplyFilters}>
           <label className="field">
-            <span>状态</span>
+            <span>关键词</span>
+            <input
+              value={filters.keyword}
+              onChange={(event) => handleFilterChange('keyword', event.target.value)}
+              placeholder="项目名称 / 项目编号 / 颜色名称"
+            />
+          </label>
+          <label className="field">
+            <span>项目状态</span>
             <select
               value={filters.status}
               onChange={(event) => handleFilterChange('status', event.target.value)}
@@ -151,7 +178,7 @@ export function ProjectsListClient() {
             </select>
           </label>
           <label className="field">
-            <span>当前阶段</span>
+            <span>当前工序</span>
             <select
               value={filters.currentNodeCode}
               onChange={(event) => handleFilterChange('currentNodeCode', event.target.value)}
@@ -176,6 +203,31 @@ export function ProjectsListClient() {
                   {user.name}
                 </option>
               ))}
+            </select>
+          </label>
+          <label className="field">
+            <span>责任部门</span>
+            <select
+              value={filters.ownerDepartmentId}
+              onChange={(event) => handleFilterChange('ownerDepartmentId', event.target.value)}
+            >
+              <option value="">全部</option>
+              {departmentOptions.map((department) => (
+                <option key={department.id} value={department.id}>
+                  {department.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field">
+            <span>是否逾期</span>
+            <select
+              value={filters.isOverdue}
+              onChange={(event) => handleFilterChange('isOverdue', event.target.value)}
+            >
+              <option value="">全部</option>
+              <option value="true">只看逾期</option>
+              <option value="false">排除逾期</option>
             </select>
           </label>
           <label className="field">
@@ -222,7 +274,7 @@ export function ProjectsListClient() {
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Paginated Projects</p>
+            <p className="eyebrow">项目管理</p>
             <h2 className="section-title">项目列表</h2>
             <p className="muted">
               {listResponse
@@ -241,17 +293,19 @@ export function ProjectsListClient() {
         ) : null}
         {!isLoading && hasItems && listResponse ? (
           <>
-            <div className="table-shell">
+            <div className="table-shell table-shell-scroll">
               <table className="data-table">
                 <thead>
                   <tr>
-                    <th>项目</th>
-                    <th>状态</th>
-                    <th>当前节点</th>
+                    <th>项目编号</th>
+                    <th>项目名称</th>
+                    <th>颜色名称</th>
+                    <th>当前工序</th>
                     <th>负责人</th>
-                    <th>优先级</th>
-                    <th>目标日期</th>
-                    <th>风险等级</th>
+                    <th>责任部门</th>
+                    <th>截止时间</th>
+                    <th>进度</th>
+                    <th>状态</th>
                     <th>操作</th>
                   </tr>
                 </thead>
@@ -260,24 +314,39 @@ export function ProjectsListClient() {
                     <tr key={project.id}>
                       <td>
                         <div className="cell-stack">
-                          <strong>{project.name}</strong>
-                          <span>{project.code}</span>
+                          <strong>{project.code}</strong>
+                          <span>{project.isOverdue ? '已逾期' : getProjectPriorityLabel(project.riskLevel)}</span>
                         </div>
                       </td>
-                      <td>{getProjectStatusLabel(project.status)}</td>
+                      <td>{project.name}</td>
+                      <td>{project.colorName ?? '未关联颜色'}</td>
                       <td>{project.currentNodeName ?? '未开始'}</td>
                       <td>{project.ownerName ?? '未设置'}</td>
-                      <td>{getProjectPriorityLabel(project.priority)}</td>
+                      <td>{project.ownerDepartmentName ?? '未设置'}</td>
                       <td>{formatDate(project.targetDate)}</td>
                       <td>
-                        <span className={`status-pill status-pill-${project.riskLevel.toLowerCase()}`}>
-                          {getProjectPriorityLabel(project.riskLevel)}
+                        <strong>{project.progressPercent}%</strong>
+                      </td>
+                      <td>
+                        <span className={`status-pill status-pill-${project.isOverdue ? 'critical' : project.riskLevel.toLowerCase()}`}>
+                          {project.isOverdue ? '已逾期' : getProjectStatusLabel(project.status)}
                         </span>
                       </td>
                       <td>
-                        <Link href={`/projects/${project.id}/overview`} className="table-link">
-                          查看详情
-                        </Link>
+                        <div className="task-actions">
+                          <Link href={`/projects/${project.id}/overview`} className="table-link">
+                            详情
+                          </Link>
+                          <Link href={`/projects/${project.id}/workflow`} className="table-link">
+                            时间线
+                          </Link>
+                          <Link href={`/projects/${project.id}/materials`} className="table-link">
+                            材料
+                          </Link>
+                          <Link href={`/projects/${project.id}/reviews`} className="table-link">
+                            评审
+                          </Link>
+                        </div>
                       </td>
                     </tr>
                   ))}

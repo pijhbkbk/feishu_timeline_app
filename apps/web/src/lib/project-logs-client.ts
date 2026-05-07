@@ -68,6 +68,19 @@ export function getProjectLogNodeLabel(item: Pick<ProjectLogItem, 'nodeCode' | '
   return item.nodeName ?? getWorkflowNodeLabel(item.nodeCode);
 }
 
+export function getProjectLogSendStatusLabel(status: ProjectLogItem['sendStatus']) {
+  switch (status) {
+    case 'PENDING':
+      return '待发送';
+    case 'SENT':
+      return '已发送';
+    case 'FAILED':
+      return '发送失败';
+    default:
+      return '未知';
+  }
+}
+
 export function formatProjectLogTimestamp(value: string) {
   return new Intl.DateTimeFormat('zh-CN', {
     year: 'numeric',

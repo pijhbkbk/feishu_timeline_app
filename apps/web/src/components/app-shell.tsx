@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { PropsWithChildren } from 'react';
 
+import { FRONTEND_ROLE_OPTIONS } from '../lib/auth-client';
 import {
   filterNavItems,
   getAdminSectionItems,
@@ -32,7 +33,11 @@ export function AppShell({ children }: PropsWithChildren) {
     .filter((section) => section.items.length > 0);
   const projectSegments = pathname.split('/').filter(Boolean);
   const projectId =
-    projectSegments[0] === 'projects' && projectSegments[1] && projectSegments[1] !== 'new'
+    projectSegments[0] === 'projects' &&
+    projectSegments[1] &&
+    projectSegments[1] !== 'new' &&
+    projectSegments[1] !== 'timeline' &&
+    projectSegments[1] !== 'timeline-board'
       ? projectSegments[1]
       : null;
   const contextNav = projectId
@@ -44,7 +49,7 @@ export function AppShell({ children }: PropsWithChildren) {
   const guardedContent =
     !isLoading && !isAuthenticated && !isAuthRoute ? (
       <section className="page-card">
-        <p className="eyebrow">Authentication Required</p>
+        <p className="eyebrow">身份认证</p>
         <StatePanel
           variant="permission"
           title="请先登录"
@@ -64,7 +69,7 @@ export function AppShell({ children }: PropsWithChildren) {
     <div className="shell">
       <aside className="sidebar">
         <div className="brand">
-          <span className="brand-kicker">MVP Skeleton</span>
+          <span className="brand-kicker">项目驾驶舱</span>
           <strong>{appName}</strong>
         </div>
         {visibleSidebarSections.map((section) => (
@@ -85,15 +90,15 @@ export function AppShell({ children }: PropsWithChildren) {
           </section>
         ))}
         <section className="session-panel">
-          <p className="eyebrow">Session</p>
+          <p className="eyebrow">当前会话</p>
           {isLoading ? (
             <p className="session-copy">正在加载登录态…</p>
           ) : user ? (
             <>
               <strong>{user.name}</strong>
-              <p className="session-copy">{user.roleCodes.join(', ')}</p>
+              <p className="session-copy">{formatRoleCodes(user.roleCodes)}</p>
               <p className="session-copy">
-                {user.departmentName ?? '未分配部门'} / {user.authSource}
+                {user.departmentName ?? '未分配部门'} / {user.authSource === 'feishu' ? '飞书登录' : '模拟登录'}
               </p>
               <button type="button" className="button button-secondary" onClick={() => void logout()}>
                 退出登录
@@ -150,4 +155,9 @@ export function AppShell({ children }: PropsWithChildren) {
       </main>
     </div>
   );
+}
+
+function formatRoleCodes(roleCodes: Array<(typeof FRONTEND_ROLE_OPTIONS)[number]['code']>) {
+  const labelMap = new Map(FRONTEND_ROLE_OPTIONS.map((item) => [item.code, item.label]));
+  return roleCodes.map((roleCode) => labelMap.get(roleCode) ?? roleCode).join('、');
 }

@@ -219,7 +219,7 @@ export function ColorExitWorkspace({ projectId }: ColorExitWorkspaceProps) {
   if (isLoading || !workspace || !highlights) {
     return (
       <section className="page-card">
-        <p className="eyebrow">Color Exit</p>
+        <p className="eyebrow">颜色退出</p>
         <h1>正在加载颜色退出模块…</h1>
         <p>退出记录、颜色主数据状态和项目收尾信息正在同步。</p>
       </section>
@@ -231,7 +231,7 @@ export function ColorExitWorkspace({ projectId }: ColorExitWorkspaceProps) {
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Color Exit</p>
+            <p className="eyebrow">颜色退出</p>
             <h2 className="section-title">{workspace.project.name}</h2>
             <p className="muted">
               当前节点 {highlights.currentNodeLabel}，目标日期 {highlights.targetDateLabel}，
@@ -308,7 +308,7 @@ export function ColorExitWorkspace({ projectId }: ColorExitWorkspaceProps) {
           </div>
         </div>
         {workspace.activeTask && isWorkflowTaskOverdue(workspace.activeTask) ? (
-          <FeedbackBanner variant="warning" compact title="节点风险" message="当前颜色退出任务已超期。" />
+          <FeedbackBanner variant="warning" compact title="节点风险" message="当前颜色退出任务已逾期。" />
         ) : null}
         {!workspace.visualDeltaApproved ? (
           <p className="muted">目视色差评审通过后才会激活颜色退出任务。</p>
@@ -323,7 +323,7 @@ export function ColorExitWorkspace({ projectId }: ColorExitWorkspaceProps) {
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Exit Form</p>
+            <p className="eyebrow">退出表单</p>
             <h2 className="section-title">颜色退出表单</h2>
             <p className="muted">填写退出原因、说明和替代颜色后，再完成颜色退出节点。</p>
           </div>
@@ -356,7 +356,7 @@ export function ColorExitWorkspace({ projectId }: ColorExitWorkspaceProps) {
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Exit Summary</p>
+            <p className="eyebrow">退出摘要</p>
             <h2 className="section-title">退出摘要</h2>
             <p className="muted">完成后项目状态应为已完成，颜色主数据状态应为已退出。</p>
           </div>
@@ -375,7 +375,7 @@ export function ColorExitWorkspace({ projectId }: ColorExitWorkspaceProps) {
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Exit Records</p>
+            <p className="eyebrow">退出记录</p>
             <h2 className="section-title">退出记录</h2>
             <p className="muted">展示退出原因、替代颜色和完成状态。</p>
           </div>

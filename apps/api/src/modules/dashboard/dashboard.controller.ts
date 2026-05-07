@@ -27,6 +27,20 @@ export class DashboardController {
   }
 
   @Permissions('dashboard.read')
+  @ApiOperation({ summary: '获取项目时间线看板' })
+  @Get('project-timelines')
+  getProjectTimelines(@CurrentUser() actor: AuthenticatedUser) {
+    return this.dashboardService.getProjectTimelines(actor);
+  }
+
+  @Permissions('dashboard.read')
+  @ApiOperation({ summary: '获取第 17 步月度评审看板' })
+  @Get('monthly-review-board')
+  getMonthlyReviewBoard(@CurrentUser() actor: AuthenticatedUser) {
+    return this.dashboardService.getMonthlyReviewBoard(actor);
+  }
+
+  @Permissions('dashboard.read')
   @ApiOperation({ summary: '获取最近评审记录' })
   @Get('recent-reviews')
   getRecentReviews(@CurrentUser() actor: AuthenticatedUser) {

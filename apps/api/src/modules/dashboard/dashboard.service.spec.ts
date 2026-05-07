@@ -23,27 +23,37 @@ describe('DashboardService', () => {
     const prisma = {
       project: {
         findMany: vi.fn().mockResolvedValue([
-          { status: ProjectStatus.IN_PROGRESS },
-          { status: ProjectStatus.COMPLETED },
+          { id: 'project-1', status: ProjectStatus.IN_PROGRESS, updatedAt: new Date('2026-03-19T00:00:00.000Z') },
+          { id: 'project-2', status: ProjectStatus.COMPLETED, updatedAt: new Date('2026-03-20T00:00:00.000Z') },
         ]),
       },
       workflowTask: {
-        count: vi.fn().mockResolvedValueOnce(2).mockResolvedValueOnce(3),
+        count: vi.fn().mockResolvedValueOnce(2).mockResolvedValueOnce(3).mockResolvedValueOnce(0),
       },
       color: {
         count: vi.fn().mockResolvedValue(5),
       },
+      recurringTask: {
+        count: vi.fn().mockResolvedValue(1),
+      },
     };
     const service = new DashboardService(prisma as never);
 
-    await expect(service.getOverview(createActor())).resolves.toEqual({
-      totalProjects: 2,
-      activeProjects: 1,
-      overdueTasks: 2,
-      pendingReviews: 3,
-      activeColors: 5,
-      completedProjects: 1,
-    });
+    const result = await service.getOverview(createActor());
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        totalProjects: 2,
+        activeProjects: 1,
+        overdueTasks: 2,
+        pendingReviews: 3,
+        currentMonthPendingReviews: 3,
+        monthlyColorReviewPending: 1,
+        pendingColorExits: 0,
+        activeColors: 5,
+        completedProjects: 1,
+      }),
+    );
     expect(prisma.project.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({

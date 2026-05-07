@@ -197,7 +197,7 @@ export function SamplesWorkspace({ projectId }: SamplesWorkspaceProps) {
   if (isLoading || !workspace) {
     return (
       <section className="page-card">
-        <p className="eyebrow">Samples</p>
+        <p className="eyebrow">样件</p>
         <h1>正在加载样板模块…</h1>
         <p>样板列表、确认节点和当前版本信息正在同步。</p>
       </section>
@@ -226,7 +226,7 @@ export function SamplesWorkspace({ projectId }: SamplesWorkspaceProps) {
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Samples</p>
+            <p className="eyebrow">样件</p>
             <h2 className="section-title">{workspace.project.name}</h2>
             <p className="muted">
               当前节点 {workspace.project.currentNodeName ?? '未开始'}，目标日期{' '}
@@ -281,7 +281,7 @@ export function SamplesWorkspace({ projectId }: SamplesWorkspaceProps) {
           payload: null,
           createdAt: workspace.activeConfirmationTask.startedAt ?? new Date().toISOString(),
           updatedAt: workspace.activeConfirmationTask.returnedAt ?? new Date().toISOString(),
-        }) ? <p className="error-text">当前样板颜色确认节点已超期。</p> : null}
+        }) ? <p className="error-text">当前样板颜色确认节点已逾期。</p> : null}
       </section>
 
       {error ? <p className="error-text">{error}</p> : null}
@@ -290,7 +290,7 @@ export function SamplesWorkspace({ projectId }: SamplesWorkspaceProps) {
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Sample Entry</p>
+            <p className="eyebrow">样件录入</p>
             <h2 className="section-title">样板录入与版本管理</h2>
             <p className="muted">同编号样板可新增版本，新版本会自动替换为当前版本。</p>
           </div>
@@ -404,7 +404,7 @@ export function SamplesWorkspace({ projectId }: SamplesWorkspaceProps) {
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Sample Confirmation</p>
+            <p className="eyebrow">样件确认</p>
             <h2 className="section-title">样板确认表单</h2>
             <p className="muted">确认通过后由后端推进到“涂料采购”，并并行创建“新颜色取号”。</p>
           </div>
@@ -525,7 +525,7 @@ export function SamplesWorkspace({ projectId }: SamplesWorkspaceProps) {
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Sample Records</p>
+            <p className="eyebrow">样件记录</p>
             <h2 className="section-title">样板记录列表</h2>
             <p className="muted">列表只展示当前版本，详情页可查看版本历史、图片和确认记录。</p>
           </div>

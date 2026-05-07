@@ -71,7 +71,7 @@ export function getTaskModeTitle(mode: TaskListMode) {
     case 'pending':
       return '待处理任务';
     case 'overdue':
-      return '我的超期任务';
+      return '我的逾期任务';
     default:
       return '任务';
   }
@@ -82,9 +82,9 @@ export function getTaskModeDescription(mode: TaskListMode) {
     case 'my':
       return '展示当前用户分配到的全部活跃任务。';
     case 'pending':
-      return '展示当前用户尚未超期的待处理任务。';
+      return '展示当前用户尚未逾期的待处理任务。';
     case 'overdue':
-      return '展示当前用户已经超期的任务。';
+      return '展示当前用户已经逾期的任务。';
     default:
       return '展示任务列表。';
   }

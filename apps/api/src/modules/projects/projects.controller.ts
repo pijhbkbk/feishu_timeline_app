@@ -35,6 +35,16 @@ export class ProjectsController {
   }
 
   @Permissions('project.read')
+  @ApiOperation({ summary: '获取项目完整节点时间线' })
+  @Get(':projectId/timeline')
+  getProjectTimeline(
+    @Param('projectId') projectId: string,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.projectsService.getProjectTimeline(projectId, actor);
+  }
+
+  @Permissions('project.read')
   @ApiOperation({ summary: '获取项目详情' })
   @Get(':projectId')
   getProjectDetail(

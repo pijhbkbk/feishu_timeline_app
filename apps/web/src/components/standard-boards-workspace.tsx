@@ -365,7 +365,7 @@ export function StandardBoardsWorkspace({
   if (isLoading || !workspace || !highlights) {
     return (
       <section className="page-card">
-        <p className="eyebrow">Standard Boards</p>
+        <p className="eyebrow">标准板</p>
         <h1>正在加载标准板模块…</h1>
         <p>标准板版本、下发记录和色板明细更新状态正在同步。</p>
       </section>
@@ -377,7 +377,7 @@ export function StandardBoardsWorkspace({
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Standard Boards</p>
+            <p className="eyebrow">标准板</p>
             <h2 className="section-title">{workspace.project.name}</h2>
             <p className="muted">
               当前节点 {highlights.currentNodeLabel}，目标日期 {highlights.targetDateLabel}，
@@ -422,11 +422,11 @@ export function StandardBoardsWorkspace({
         </div>
         {workspace.activeStandardBoardTask &&
         isWorkflowTaskOverdue(workspace.activeStandardBoardTask) ? (
-          <p className="error-text">当前标准板制作、下发任务已超期。</p>
+          <p className="error-text">当前标准板制作、下发任务已逾期。</p>
         ) : null}
         {workspace.activeColorBoardDetailUpdateTask &&
         isWorkflowTaskOverdue(workspace.activeColorBoardDetailUpdateTask) ? (
-          <p className="error-text">当前色板明细更新任务已超期。</p>
+          <p className="error-text">当前色板明细更新任务已逾期。</p>
         ) : null}
         {!workspace.procurementCompleted ? (
           <p className="muted">采购节点完成后才会激活标准板制作、下发任务。</p>
@@ -439,7 +439,7 @@ export function StandardBoardsWorkspace({
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Node Completion</p>
+            <p className="eyebrow">节点完成</p>
             <h2 className="section-title">标准板与色板明细节点完成</h2>
             <p className="muted">
               至少存在一条已下发标准板后，才允许完成标准板节点；标准板节点完成后，才会激活色板明细更新。
@@ -473,7 +473,7 @@ export function StandardBoardsWorkspace({
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Board Form</p>
+            <p className="eyebrow">标准板表单</p>
             <h2 className="section-title">标准板版本管理</h2>
             <p className="muted">支持创建版本、编辑基础信息和设置当前有效版本。</p>
           </div>
@@ -496,7 +496,7 @@ export function StandardBoardsWorkspace({
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Board List</p>
+            <p className="eyebrow">标准板列表</p>
             <h2 className="section-title">标准板列表</h2>
             <p className="muted">点击列表可查看详情、下发记录和版本关系。</p>
           </div>
@@ -517,7 +517,7 @@ export function StandardBoardsWorkspace({
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Board Detail</p>
+            <p className="eyebrow">标准板详情</p>
             <h2 className="section-title">标准板详情与下发</h2>
             <p className="muted">在这里查看当前版本详情、执行下发并维护下发记录。</p>
           </div>
@@ -555,7 +555,7 @@ export function StandardBoardsWorkspace({
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Detail Update</p>
+            <p className="eyebrow">明细更新</p>
             <h2 className="section-title">色板明细更新</h2>
             <p className="muted">标准板节点完成后，可记录色板明细更新状态并完成子节点。</p>
           </div>

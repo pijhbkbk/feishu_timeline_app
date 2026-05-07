@@ -24,6 +24,7 @@ export type ProjectSectionKey =
   | 'mass-production'
   | 'color-evaluation'
   | 'color-exit'
+  | 'materials'
   | 'attachments'
   | 'logs';
 
@@ -51,26 +52,41 @@ type AdminSectionMeta = {
 
 export const topNavigationItems: NavItem[] = [
   {
-    label: 'Dashboard',
+    label: '工作台',
     href: '/dashboard',
-    description: '项目工作台',
+    description: '项目进度驾驶舱',
   },
   {
-    label: 'Projects',
+    label: '项目管理',
     href: '/projects',
     description: '项目中心',
     matchMode: 'prefix',
   },
   {
-    label: 'Colors',
-    href: '/colors',
-    description: '颜色与版本',
+    label: '工序管理',
+    href: '/tasks/my',
+    description: '我的待办与逾期工序',
+    matchMode: 'prefix',
   },
   {
-    label: 'Admin',
-    href: '/admin/users',
-    description: '系统管理',
-    requiredRoles: ['admin'],
+    label: '材料中心',
+    href: '/materials',
+    description: '材料提交与归档',
+  },
+  {
+    label: '月度评审',
+    href: '/monthly-reviews',
+    description: '第 17 步月度台账',
+  },
+  {
+    label: '数据中心',
+    href: '/analytics',
+    description: '项目管理分析',
+  },
+  {
+    label: '系统设置',
+    href: '/settings',
+    description: '系统设置',
     matchMode: 'prefix',
   },
 ];
@@ -80,27 +96,22 @@ export const sidebarSections: Array<{
   items: NavItem[];
 }> = [
   {
-    title: 'Workspace',
+    title: '用户端',
     items: [
       {
         label: '工作台',
         href: '/dashboard',
-        description: '查看系统导航和项目入口。',
+        description: '查看项目进度、逾期和评审概览。',
       },
       {
-        label: '我的待办',
-        href: '/tasks/my',
-        description: '查看当前用户分配到的活跃任务。',
+        label: '项目看板',
+        href: '/projects/timeline',
+        description: '横向查看所有项目的 18 个流程节点。',
       },
       {
-        label: '超期任务',
-        href: '/tasks/overdue',
-        description: '查看当前用户已超期的任务。',
-      },
-      {
-        label: '项目中心',
+        label: '项目列表',
         href: '/projects',
-        description: '浏览和进入项目。',
+        description: '检索项目、筛选工序并进入详情。',
         matchMode: 'prefix',
       },
       {
@@ -110,14 +121,39 @@ export const sidebarSections: Array<{
         requiredRoles: ['admin', 'project_manager'],
       },
       {
-        label: '颜色管理',
-        href: '/colors',
-        description: '查看颜色与版本占位页。',
+        label: '我的待办',
+        href: '/tasks/my',
+        description: '查看当前用户分配到的活跃任务。',
+      },
+      {
+        label: '逾期任务',
+        href: '/tasks/overdue',
+        description: '查看当前用户已逾期的任务。',
+      },
+      {
+        label: '材料中心',
+        href: '/materials',
+        description: '按项目、工序和材料类型查看材料归档。',
+      },
+      {
+        label: '月度评审',
+        href: '/monthly-reviews',
+        description: '查看第 17 步整车色差一致性评审台账。',
+      },
+      {
+        label: '数据中心',
+        href: '/analytics',
+        description: '汇总项目进度、工序效率、返工和退出治理。',
+      },
+      {
+        label: '系统设置',
+        href: '/settings',
+        description: '查看系统设置入口。',
       },
     ],
   },
   {
-    title: 'Management',
+    title: '管理',
     items: [
       {
         label: '系统管理',
@@ -144,14 +180,14 @@ export const projectSectionMetaMap: Record<ProjectSectionKey, ProjectSectionMeta
   },
   workflow: {
     key: 'workflow',
-    label: '流程',
-    description: '项目流程状态与节点推进占位。',
+    label: '流程时间线',
+    description: '项目流程状态、18 个节点时间线和流转记录。',
     requiredRoles: ['admin', 'project_manager', 'process_engineer', 'reviewer'],
   },
   tasks: {
     key: 'tasks',
-    label: '任务',
-    description: '项目任务池与节点任务占位。',
+    label: '工序清单',
+    description: '项目工序任务、责任人和详情抽屉。',
   },
   samples: {
     key: 'samples',
@@ -186,7 +222,7 @@ export const projectSectionMetaMap: Record<ProjectSectionKey, ProjectSectionMeta
   reviews: {
     key: 'reviews',
     label: '评审',
-    description: '驾驶室评审、一致性评审和色差评审占位。',
+    description: '第 12 步驾驶室评审、第 14 步一致性评审和第 17 步月度台账。',
     requiredRoles: ['admin', 'project_manager', 'quality_engineer', 'reviewer'],
   },
   fees: {
@@ -219,10 +255,15 @@ export const projectSectionMetaMap: Record<ProjectSectionKey, ProjectSectionMeta
     description: '颜色退出记录、主数据状态切换与项目收尾。',
     requiredRoles: ['admin', 'project_manager', 'process_engineer'],
   },
+  materials: {
+    key: 'materials',
+    label: '材料提交',
+    description: '按项目、工序和材料类型管理材料与附件。',
+  },
   attachments: {
     key: 'attachments',
-    label: '附件',
-    description: '附件、图片和报告元数据占位。',
+    label: '材料 / 附件',
+    description: '材料、图片和报告元数据管理。',
   },
   logs: {
     key: 'logs',
@@ -258,14 +299,28 @@ export const adminSectionMetaMap: Record<AdminSectionKey, AdminSectionMeta> = {
   },
 };
 
+const projectContextSectionKeys: ProjectSectionKey[] = [
+  'overview',
+  'workflow',
+  'tasks',
+  'materials',
+  'reviews',
+  'fees',
+  'color-exit',
+];
+
 export function getProjectSectionItems(projectId: string): NavItem[] {
-  return Object.values(projectSectionMetaMap).map((section) => ({
-    label: section.label,
-    href: buildProjectRoute(projectId, section.key),
-    description: section.description,
-    matchMode: 'prefix',
-    ...(section.requiredRoles ? { requiredRoles: section.requiredRoles } : {}),
-  }));
+  return projectContextSectionKeys.map((sectionKey) => {
+    const section = projectSectionMetaMap[sectionKey];
+
+    return {
+      label: section.label,
+      href: buildProjectRoute(projectId, section.key),
+      description: section.description,
+      matchMode: 'prefix',
+      ...(section.requiredRoles ? { requiredRoles: section.requiredRoles } : {}),
+    };
+  });
 }
 
 export function getAdminSectionItems(): NavItem[] {
@@ -316,25 +371,33 @@ export function isNavItemActive(pathname: string, item: NavItem) {
 export function getRouteContext(pathname: string): RouteContext {
   if (pathname === '/dashboard' || pathname === '/') {
     return {
-      title: 'Dashboard',
-      description: '查看当前系统骨架、核心入口和后续开发落点。',
-      eyebrow: 'Workspace',
+      title: '项目进度驾驶舱',
+      description: '实时查看项目总览、逾期任务、本月评审和颜色退出风险。',
+      eyebrow: '首页工作台',
+    };
+  }
+
+  if (pathname === '/projects/timeline-board' || pathname === '/projects/timeline') {
+    return {
+      title: '项目时间线看板',
+      description: '按项目横向展示 18 个流程节点、当前责任人、逾期状态和下一步。',
+      eyebrow: '项目进度',
     };
   }
 
   if (pathname === '/projects') {
     return {
-      title: '项目中心',
-      description: '项目列表、筛选器和进入详情的入口将从这里展开。',
-      eyebrow: 'Projects',
+      title: '项目列表',
+      description: '按项目、颜色、当前工序、责任部门和逾期状态检索项目。',
+      eyebrow: '项目管理',
     };
   }
 
   if (pathname === '/projects/new') {
     return {
       title: '新建项目',
-      description: '后续会在这里承载项目立项与基础信息表单。',
-      eyebrow: 'Projects',
+      description: '填写项目立项信息，创建后由后端初始化流程实例。',
+      eyebrow: '项目中心',
     };
   }
 
@@ -342,7 +405,39 @@ export function getRouteContext(pathname: string): RouteContext {
     return {
       title: '颜色管理',
       description: '颜色、版本和取号记录会在这里集中展示。',
-      eyebrow: 'Colors',
+      eyebrow: '颜色管理',
+    };
+  }
+
+  if (pathname === '/materials') {
+    return {
+      title: '材料提交平台',
+      description: '按项目、工序、材料类型查看必交材料、版本和归档状态。',
+      eyebrow: '材料中心',
+    };
+  }
+
+  if (pathname === '/monthly-reviews') {
+    return {
+      title: '整车色差一致性评审台账',
+      description: '集中查看第 17 步 12 个月评审进度、本月任务和逾期月份。',
+      eyebrow: '月度评审',
+    };
+  }
+
+  if (pathname === '/analytics') {
+    return {
+      title: '数据中心',
+      description: '汇总项目周期、工序效率、部门责任、返工、月度评审和颜色退出治理。',
+      eyebrow: '管理分析',
+    };
+  }
+
+  if (pathname === '/settings') {
+    return {
+      title: '系统设置',
+      description: '系统基础设置入口，后续承载个性化和运行配置。',
+      eyebrow: '系统设置',
     };
   }
 
@@ -350,23 +445,23 @@ export function getRouteContext(pathname: string): RouteContext {
     return {
       title: '我的待办',
       description: '查看当前登录用户分配到的全部活跃工作项。',
-      eyebrow: 'Tasks',
+      eyebrow: '任务中心',
     };
   }
 
   if (pathname === '/tasks/pending') {
     return {
       title: '待处理任务',
-      description: '查看当前登录用户尚未超期的待处理任务。',
-      eyebrow: 'Tasks',
+      description: '查看当前登录用户尚未逾期的待处理任务。',
+      eyebrow: '任务中心',
     };
   }
 
   if (pathname === '/tasks/overdue') {
     return {
-      title: '超期任务',
-      description: '查看当前登录用户已经超期的工作项。',
-      eyebrow: 'Tasks',
+      title: '逾期任务',
+      description: '查看当前登录用户已经逾期的工作项。',
+      eyebrow: '任务中心',
     };
   }
 
@@ -381,7 +476,7 @@ export function getRouteContext(pathname: string): RouteContext {
       description: section
         ? `${projectId} / ${section.description}`
         : `${projectId} / 项目详情占位页。`,
-      eyebrow: 'Project Workspace',
+      eyebrow: '项目工作区',
     };
   }
 
@@ -393,7 +488,7 @@ export function getRouteContext(pathname: string): RouteContext {
     return {
       title: section ? section.label : '系统管理',
       description: section ? section.description : '系统管理占位页。',
-      eyebrow: 'Administration',
+      eyebrow: '系统管理',
     };
   }
 
@@ -401,13 +496,13 @@ export function getRouteContext(pathname: string): RouteContext {
     return {
       title: '登录',
       description: '飞书认证与本系统会话建立入口。',
-      eyebrow: 'Authentication',
+      eyebrow: '身份认证',
     };
   }
 
   return {
     title: '工作区',
     description: '当前页面已接入统一骨架，等待业务内容填充。',
-    eyebrow: 'Workspace',
+    eyebrow: '工作区',
   };
 }

@@ -3,7 +3,7 @@ import { PagePlaceholder } from '../../components/page-placeholder';
 export default function ColorsPage() {
   return (
     <PagePlaceholder
-      eyebrow="Colors"
+      eyebrow="颜色管理"
       title="颜色管理"
       description="这里后续会承载颜色主数据、颜色版本、编号和状态跟踪。"
       route="/colors"

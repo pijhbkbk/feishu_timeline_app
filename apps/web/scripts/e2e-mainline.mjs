@@ -424,12 +424,15 @@ async function main() {
     log('第 17 步月度评审计划校验通过。');
 
     const workflowPage = await requestHtml(`/projects/${project.id}/workflow`, managerSession.jar);
-    assert(workflowPage.includes('<h1 class="topbar-title">流程</h1>'), '流程页未返回流程工作区壳。');
+    assert(
+      workflowPage.includes('<h1 class="topbar-title">流程时间线</h1>'),
+      '流程页未返回流程时间线壳。',
+    );
     assert(workflowPage.includes('正在加载流程视图'), '流程页未返回流程视图加载壳。');
 
     const reviewsPage = await requestHtml(`/projects/${project.id}/reviews`, managerSession.jar);
     assert(reviewsPage.includes('<h1 class="topbar-title">评审</h1>'), '评审页未返回评审工作区壳。');
-    assert(reviewsPage.includes('驾驶室评审、一致性评审和色差评审占位'), '评审页未返回评审页面描述。');
+    assert(reviewsPage.includes('第 12 步驾驶室评审'), '评审页未返回评审页面描述。');
 
     log('Web 页面校验通过。');
     log(`E2E 主链路完成：${project.code}`);

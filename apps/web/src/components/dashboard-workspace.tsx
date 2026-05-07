@@ -5,6 +5,8 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   fetchDashboardOverview,
+  fetchDashboardMonthlyReviewBoard,
+  fetchDashboardProjectTimelines,
   fetchDashboardRecentReviews,
   fetchDashboardRiskProjects,
   fetchDashboardStageDistribution,
@@ -17,8 +19,10 @@ import {
   type RiskProjectItem,
   type StageDistributionItem,
 } from '../lib/dashboard-client';
-import { formatDate } from '../lib/projects-client';
+import { formatDate, formatDateTime } from '../lib/projects-client';
+import { getRecurringTaskStatusLabel } from '../lib/workflows-client';
 import { fetchTaskList } from '../lib/tasks-client';
+import { ProjectTimelineCard } from './project-timeline-board';
 import { TaskTable } from './tasks-workspace';
 
 export function DashboardWorkspace() {
@@ -30,6 +34,11 @@ export function DashboardWorkspace() {
 
   useEffect(() => {
     void loadDashboard({ initial: true });
+    const timer = window.setInterval(() => {
+      void loadDashboard({ silent: true });
+    }, 30_000);
+
+    return () => window.clearInterval(timer);
   }, []);
 
   const cards = useMemo(
@@ -37,24 +46,37 @@ export function DashboardWorkspace() {
     [payload],
   );
 
-  async function loadDashboard(options?: { initial?: boolean }) {
+  async function loadDashboard(options?: { initial?: boolean; silent?: boolean }) {
     const requestId = ++requestIdRef.current;
 
     if (options?.initial) {
       setIsLoading(true);
-    } else {
+    } else if (!options?.silent) {
       setIsRefreshing(true);
     }
 
-    setError(null);
+    if (!options?.silent) {
+      setError(null);
+    }
 
     try {
-      const [overview, stageDistribution, recentReviews, riskProjects, myTasks, overdueTasks] =
+      const [
+        overview,
+        stageDistribution,
+        recentReviews,
+        riskProjects,
+        projectTimelines,
+        monthlyReviewBoard,
+        myTasks,
+        overdueTasks,
+      ] =
         await Promise.all([
           fetchDashboardOverview(),
           fetchDashboardStageDistribution(),
           fetchDashboardRecentReviews(),
           fetchDashboardRiskProjects(),
+          fetchDashboardProjectTimelines(),
+          fetchDashboardMonthlyReviewBoard(),
           fetchTaskList('my', { pageSize: 5 }),
           fetchTaskList('overdue', { pageSize: 5 }),
         ]);
@@ -68,6 +90,8 @@ export function DashboardWorkspace() {
         stageDistribution,
         recentReviews,
         riskProjects,
+        projectTimelines,
+        monthlyReviewBoard,
         myTasks,
         overdueTasks,
       });
@@ -76,7 +100,7 @@ export function DashboardWorkspace() {
         return;
       }
 
-      setError(loadError instanceof Error ? loadError.message : 'Dashboard 加载失败。');
+      setError(loadError instanceof Error ? loadError.message : '驾驶舱加载失败。');
     } finally {
       if (requestId === requestIdRef.current) {
         setIsLoading(false);
@@ -89,7 +113,7 @@ export function DashboardWorkspace() {
     if (!isLoading && error) {
       return (
         <section className="page-card">
-          <p className="eyebrow">Dashboard</p>
+          <p className="eyebrow">项目进度</p>
           <h1>工作台加载失败</h1>
           <p>{error}</p>
           <div className="page-actions">
@@ -113,9 +137,11 @@ export function DashboardWorkspace() {
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Dashboard</p>
-            <h2 className="section-title">首页工作台</h2>
-            <p className="muted">以当前登录用户视角聚合项目、任务、评审和风险信息。</p>
+            <p className="eyebrow">项目进度</p>
+            <h2 className="section-title">项目进度驾驶舱</h2>
+            <p className="muted">
+              最近更新：{formatDateTime(payload.overview.lastUpdatedAt)}。系统每 30 秒自动刷新，也可手动立即刷新。
+            </p>
           </div>
           <div className="inline-actions">
             <button
@@ -124,10 +150,10 @@ export function DashboardWorkspace() {
               disabled={isRefreshing}
               onClick={() => void loadDashboard()}
             >
-              {isRefreshing ? '正在刷新…' : '刷新数据'}
+              {isRefreshing ? '刷新中…' : '立即刷新'}
             </button>
-            <Link href="/tasks/my" className="button button-primary">
-              查看我的待办
+            <Link href="/projects/timeline" className="button button-primary">
+              查看时间线看板
             </Link>
           </div>
         </div>
@@ -138,7 +164,46 @@ export function DashboardWorkspace() {
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">My Tasks</p>
+            <p className="eyebrow">项目看板</p>
+            <h2 className="section-title">重点项目时间线</h2>
+            <p className="muted">展示最近更新项目的当前节点、责任人、进度百分比和下一步。</p>
+          </div>
+          <Link href="/projects/timeline" className="button button-secondary">
+            打开完整看板
+          </Link>
+        </div>
+        {payload.projectTimelines.items.length === 0 ? (
+          <div className="empty-state">
+            <strong>暂无项目时间线</strong>
+            <p>项目创建并初始化流程后，这里会展示 18 个节点的推进情况。</p>
+          </div>
+        ) : (
+          <div className="timeline-board-list timeline-board-list-compact">
+            {payload.projectTimelines.items.slice(0, 3).map((item) => (
+              <ProjectTimelineCard key={item.projectId} item={item} />
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="page-card">
+        <div className="section-header">
+          <div>
+            <p className="eyebrow">月度评审</p>
+            <h2 className="section-title">整车色差一致性评审进度</h2>
+            <p className="muted">
+              已完成 {payload.monthlyReviewBoard.summary.completedPeriods} / {payload.monthlyReviewBoard.summary.totalPeriods}，
+              本月待完成 {payload.monthlyReviewBoard.summary.currentMonthPending} 项。
+            </p>
+          </div>
+        </div>
+        <MonthlyReviewBoardSummary payload={payload.monthlyReviewBoard} />
+      </section>
+
+      <section className="page-card">
+        <div className="section-header">
+          <div>
+            <p className="eyebrow">我的任务</p>
             <h2 className="section-title">我的待办</h2>
             <p className="muted">展示当前登录用户可直接进入处理的工作项。</p>
           </div>
@@ -155,7 +220,7 @@ export function DashboardWorkspace() {
         <section className="page-card dashboard-column">
           <div className="section-header">
             <div>
-              <p className="eyebrow">Stage Distribution</p>
+              <p className="eyebrow">阶段分布</p>
               <h2 className="section-title">阶段分布</h2>
             </div>
           </div>
@@ -165,8 +230,8 @@ export function DashboardWorkspace() {
         <section className="page-card dashboard-column">
           <div className="section-header">
             <div>
-              <p className="eyebrow">Overdue</p>
-              <h2 className="section-title">我的超期任务</h2>
+              <p className="eyebrow">逾期任务</p>
+              <h2 className="section-title">我的逾期任务</h2>
             </div>
             <div className="inline-actions">
               <Link href="/tasks/overdue" className="button button-secondary">
@@ -182,7 +247,7 @@ export function DashboardWorkspace() {
         <section className="page-card dashboard-column">
           <div className="section-header">
             <div>
-              <p className="eyebrow">Recent Reviews</p>
+              <p className="eyebrow">最近评审</p>
               <h2 className="section-title">最近评审</h2>
             </div>
           </div>
@@ -192,7 +257,7 @@ export function DashboardWorkspace() {
         <section className="page-card dashboard-column">
           <div className="section-header">
             <div>
-              <p className="eyebrow">Risk Projects</p>
+              <p className="eyebrow">风险项目</p>
               <h2 className="section-title">高风险项目</h2>
             </div>
           </div>
@@ -214,6 +279,47 @@ export function KPIOverviewSection({
         <article key={card.label} className="stat-card">
           <p>{card.label}</p>
           <strong>{card.value}</strong>
+        </article>
+      ))}
+    </div>
+  );
+}
+
+function MonthlyReviewBoardSummary({
+  payload,
+}: {
+  payload: DashboardWorkspacePayload['monthlyReviewBoard'];
+}) {
+  if (payload.items.length === 0) {
+    return (
+      <div className="empty-state">
+        <strong>暂无月度评审计划</strong>
+        <p>项目进入第 17 步后，12 个月度实例会自动出现在这里。</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="dashboard-list">
+      {payload.items.slice(0, 4).map((item) => (
+        <article key={item.projectId} className="dashboard-list-row">
+          <div>
+            <strong>{item.projectName}</strong>
+            <p>
+              {item.colorName} · 已完成 {item.completedPeriods} / {item.totalPeriods}
+            </p>
+          </div>
+          <div className="dashboard-list-meta">
+            <span>
+              本月：
+              {item.currentMonthTask
+                ? getRecurringTaskStatusLabel(item.currentMonthTask.status)
+                : '未排期'}
+            </span>
+            <Link href={`/projects/${item.projectId}/reviews`} className="table-link">
+              查看台账
+            </Link>
+          </div>
         </article>
       ))}
     </div>
@@ -296,7 +402,7 @@ export function RiskProjectsPanel({
     return (
       <div className="empty-state">
         <strong>暂无高风险项目</strong>
-        <p>当前没有命中超期或高风险规则的项目。</p>
+        <p>当前没有命中逾期或高风险规则的项目。</p>
       </div>
     );
   }
@@ -312,7 +418,7 @@ export function RiskProjectsPanel({
             </p>
           </div>
           <div className="dashboard-list-meta">
-            <span>{item.overdueDays > 0 ? `超期 ${item.overdueDays} 天` : '预警中'}</span>
+            <span>{item.overdueDays > 0 ? `逾期 ${item.overdueDays} 天` : '预警中'}</span>
             <Link href={`/projects/${item.projectId}/overview`} className="table-link">
               查看项目
             </Link>
@@ -329,7 +435,7 @@ function DashboardWorkspaceSkeleton() {
       <section className="page-card">
         <div className="skeleton-block skeleton-title" />
         <div className="metric-grid">
-          {Array.from({ length: 6 }).map((_, index) => (
+          {Array.from({ length: 7 }).map((_, index) => (
             <div key={index} className="stat-card">
               <div className="skeleton-block skeleton-text" />
               <div className="skeleton-block skeleton-number" />

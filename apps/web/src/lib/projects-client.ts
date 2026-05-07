@@ -1,6 +1,14 @@
 'use client';
 
 import { apiRequest, type FrontendRoleCode } from './auth-client';
+import {
+  COLOR_EXIT_SUGGESTION_LABELS,
+  PROJECT_MEMBER_TYPE_LABELS,
+  PROJECT_PRIORITY_LABELS,
+  PROJECT_STATUS_LABELS,
+  type TimelineNodeStatus,
+} from './status-labels';
+import type { RecurringTaskStatus, ReviewResult } from './workflows-client';
 
 export type ProjectStatus =
   | 'DRAFT'
@@ -59,10 +67,14 @@ export type ProjectListItem = {
   ownerUserId: string | null;
   ownerName: string | null;
   ownerDepartmentName: string | null;
+  colorName: string | null;
+  colorCode: string | null;
   marketRegion: string | null;
   vehicleModel: string | null;
   targetDate: string | null;
   riskLevel: ProjectPriority;
+  isOverdue: boolean;
+  progressPercent: number;
   plannedStartDate: string | null;
   plannedEndDate: string | null;
   memberCount: number;
@@ -76,10 +88,13 @@ export type ProjectListResponse = {
   total: number;
   totalPages: number;
   filters: {
+    keyword: string | null;
     status: ProjectStatus | null;
     currentNodeCode: WorkflowNodeCode | null;
     ownerUserId: string | null;
+    ownerDepartmentId: string | null;
     priority: ProjectPriority | null;
+    isOverdue: boolean | null;
     dateFrom: string | null;
     dateTo: string | null;
   };
@@ -141,6 +156,68 @@ export type ProjectDetail = {
   members: ProjectMember[];
 };
 
+export type ProjectTimelineNode = {
+  stepNumber: number;
+  nodeCode: WorkflowNodeCode;
+  nodeName: string;
+  status: TimelineNodeStatus;
+  taskId: string | null;
+  taskRound: number | null;
+  startTime: string | null;
+  triggerTime: string | null;
+  dueAt: string | null;
+  completedAt: string | null;
+  responsibleDepartment: string | null;
+  ownerName: string | null;
+  output: string;
+  attachmentCount: number;
+  isOverdue: boolean;
+  overdueDays: number;
+  reviewGate: {
+    reviewConclusion: ReviewResult | null;
+    reviewPassAt: string | null;
+    returnRounds: number;
+  } | null;
+  monthlyReview: {
+    totalPeriods: number;
+    completedPeriods: number;
+    overduePeriods: number;
+    progressText: string;
+    currentMonthTask: {
+      id: string;
+      periodLabel: string;
+      status: RecurringTaskStatus;
+      plannedDate: string;
+    } | null;
+  } | null;
+  colorExit: {
+    annualOutput: number | null;
+    exitThreshold: number | null;
+    systemSuggestion: keyof typeof COLOR_EXIT_SUGGESTION_LABELS | null;
+    finalDecision: keyof typeof COLOR_EXIT_SUGGESTION_LABELS | null;
+    completedAt: string | null;
+  } | null;
+};
+
+export type ProjectTimelineResponse = {
+  lastUpdatedAt: string;
+  project: {
+    id: string;
+    code: string;
+    name: string;
+    status: ProjectStatus;
+    priority: ProjectPriority;
+    currentNodeCode: WorkflowNodeCode | null;
+    currentNodeName: string | null;
+    colorName: string;
+    ownerName: string;
+    ownerDepartmentName: string | null;
+    plannedEndDate: string | null;
+    progressPercent: number;
+  };
+  nodes: ProjectTimelineNode[];
+};
+
 export type ProjectMemberInput = {
   userId: string;
   memberType: ProjectMemberType;
@@ -162,30 +239,30 @@ export type ProjectWritePayload = {
 };
 
 export const PROJECT_STATUS_OPTIONS: Array<{ value: ProjectStatus; label: string }> = [
-  { value: 'DRAFT', label: '草稿' },
-  { value: 'IN_PROGRESS', label: '进行中' },
-  { value: 'ON_HOLD', label: '挂起' },
-  { value: 'COMPLETED', label: '已完成' },
-  { value: 'CANCELLED', label: '已取消' },
+  { value: 'DRAFT', label: PROJECT_STATUS_LABELS.DRAFT },
+  { value: 'IN_PROGRESS', label: PROJECT_STATUS_LABELS.IN_PROGRESS },
+  { value: 'ON_HOLD', label: PROJECT_STATUS_LABELS.ON_HOLD },
+  { value: 'COMPLETED', label: PROJECT_STATUS_LABELS.COMPLETED },
+  { value: 'CANCELLED', label: PROJECT_STATUS_LABELS.CANCELLED },
 ];
 
 export const PROJECT_PRIORITY_OPTIONS: Array<{ value: ProjectPriority; label: string }> = [
-  { value: 'LOW', label: '低' },
-  { value: 'MEDIUM', label: '中' },
-  { value: 'HIGH', label: '高' },
-  { value: 'CRITICAL', label: '紧急' },
+  { value: 'LOW', label: PROJECT_PRIORITY_LABELS.LOW },
+  { value: 'MEDIUM', label: PROJECT_PRIORITY_LABELS.MEDIUM },
+  { value: 'HIGH', label: PROJECT_PRIORITY_LABELS.HIGH },
+  { value: 'CRITICAL', label: PROJECT_PRIORITY_LABELS.CRITICAL },
 ];
 
 export const PROJECT_MEMBER_TYPE_OPTIONS: Array<{ value: ProjectMemberType; label: string }> = [
-  { value: 'OWNER', label: '负责人' },
-  { value: 'MANAGER', label: '项目经理' },
-  { value: 'MEMBER', label: '成员' },
-  { value: 'REVIEWER', label: '评审人' },
-  { value: 'OBSERVER', label: '观察者' },
+  { value: 'OWNER', label: PROJECT_MEMBER_TYPE_LABELS.OWNER },
+  { value: 'MANAGER', label: PROJECT_MEMBER_TYPE_LABELS.MANAGER },
+  { value: 'MEMBER', label: PROJECT_MEMBER_TYPE_LABELS.MEMBER },
+  { value: 'REVIEWER', label: PROJECT_MEMBER_TYPE_LABELS.REVIEWER },
+  { value: 'OBSERVER', label: PROJECT_MEMBER_TYPE_LABELS.OBSERVER },
 ];
 
 export const WORKFLOW_NODE_OPTIONS: Array<{ value: WorkflowNodeCode; label: string }> = [
-  { value: 'PROJECT_INITIATION', label: '项目立项' },
+  { value: 'PROJECT_INITIATION', label: '反映市场需求' },
   { value: 'DEVELOPMENT_REPORT', label: '新颜色开发报告' },
   { value: 'PAINT_DEVELOPMENT', label: '涂料开发' },
   { value: 'SAMPLE_COLOR_CONFIRMATION', label: '样板颜色确认' },
@@ -201,7 +278,7 @@ export const WORKFLOW_NODE_OPTIONS: Array<{ value: WorkflowNodeCode; label: stri
   { value: 'COLOR_CONSISTENCY_REVIEW', label: '颜色一致性评审' },
   { value: 'MASS_PRODUCTION_PLAN', label: '排产计划' },
   { value: 'MASS_PRODUCTION', label: '批量生产' },
-  { value: 'VISUAL_COLOR_DIFFERENCE_REVIEW', label: '色差目视评审' },
+  { value: 'VISUAL_COLOR_DIFFERENCE_REVIEW', label: '整车色差一致性评审' },
   { value: 'PROJECT_CLOSED', label: '颜色退出' },
 ];
 
@@ -224,10 +301,13 @@ const NODE_LABEL_MAP = Object.fromEntries(
 type ListProjectFilters = {
   page?: number;
   pageSize?: number;
+  keyword?: string;
   status?: ProjectStatus | '';
   currentNodeCode?: WorkflowNodeCode | '';
   ownerUserId?: string;
+  ownerDepartmentId?: string;
   priority?: ProjectPriority | '';
+  isOverdue?: boolean | '';
   dateFrom?: string;
   dateTo?: string;
 };
@@ -247,6 +327,10 @@ export async function fetchProjects(filters: ListProjectFilters = {}) {
 
 export function fetchProject(projectId: string) {
   return apiRequest<ProjectDetail>(`/projects/${projectId}`);
+}
+
+export function fetchProjectTimeline(projectId: string) {
+  return apiRequest<ProjectTimelineResponse>(`/projects/${projectId}/timeline`);
 }
 
 export function createProject(payload: ProjectWritePayload) {
@@ -305,6 +389,22 @@ export function formatDate(value: string | null | undefined) {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
+  }).format(new Date(value));
+}
+
+export function formatDateTime(value: string | null | undefined) {
+  if (!value) {
+    return '未设置';
+  }
+
+  return new Intl.DateTimeFormat('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
   }).format(new Date(value));
 }
 

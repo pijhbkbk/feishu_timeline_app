@@ -221,7 +221,7 @@ export function MassProductionWorkspace({
   if (isLoading || !workspace || !highlights) {
     return (
       <section className="page-card">
-        <p className="eyebrow">Mass Production</p>
+        <p className="eyebrow">批量生产</p>
         <h1>正在加载批量生产模块…</h1>
         <p>生产记录、节点状态和后续目视色差评审正在同步。</p>
       </section>
@@ -233,7 +233,7 @@ export function MassProductionWorkspace({
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Mass Production</p>
+            <p className="eyebrow">批量生产</p>
             <h2 className="section-title">{workspace.project.name}</h2>
             <p className="muted">
               当前节点 {highlights.currentNodeLabel}，目标日期 {highlights.targetDateLabel}，
@@ -285,7 +285,7 @@ export function MassProductionWorkspace({
           </div>
         </div>
         {workspace.activeTask && isWorkflowTaskOverdue(workspace.activeTask) ? (
-          <p className="error-text">当前批量生产任务已超期。</p>
+          <p className="error-text">当前批量生产任务已逾期。</p>
         ) : null}
         {!workspace.schedulePlanCompleted ? (
           <p className="muted">排产计划完成后，才会激活批量生产任务。</p>
@@ -298,7 +298,7 @@ export function MassProductionWorkspace({
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Mass Production Form</p>
+            <p className="eyebrow">批量生产表单</p>
             <h2 className="section-title">批量生产记录表单</h2>
             <p className="muted">先创建记录，再按业务进度开始和完成批量生产。</p>
           </div>
@@ -321,7 +321,7 @@ export function MassProductionWorkspace({
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Node Completion</p>
+            <p className="eyebrow">节点完成</p>
             <h2 className="section-title">批量生产节点完成</h2>
             <p className="muted">至少存在一条已完成的生产记录后，才允许完成节点。</p>
           </div>
@@ -339,7 +339,7 @@ export function MassProductionWorkspace({
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Mass Production Records</p>
+            <p className="eyebrow">批量生产记录</p>
             <h2 className="section-title">批量生产记录列表</h2>
             <p className="muted">支持开始、完成、取消和异常说明查看。</p>
           </div>

@@ -143,7 +143,7 @@ export function NotificationBell() {
         <div className="notification-drawer">
           <div className="section-header">
             <div>
-              <p className="eyebrow">Notifications</p>
+              <p className="eyebrow">通知中心</p>
               <h2 className="section-title">通知中心</h2>
             </div>
             <div className="inline-actions">
@@ -205,7 +205,7 @@ export function NotificationList({
     return (
       <div className="empty-state">
         <strong>暂无通知</strong>
-        <p>节点分配、评审提醒和超期提醒会统一出现在这里。</p>
+        <p>节点分配、评审提醒和逾期提醒会统一出现在这里。</p>
       </div>
     );
   }
@@ -256,4 +256,3 @@ export function NotificationList({
     </div>
   );
 }
-

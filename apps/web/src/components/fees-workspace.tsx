@@ -194,7 +194,7 @@ export function FeesWorkspace({ projectId }: FeesWorkspaceProps) {
   if (isLoading || !workspace || !highlights) {
     return (
       <section className="page-card">
-        <p className="eyebrow">Development Fees</p>
+        <p className="eyebrow">开发费用</p>
         <h1>正在加载颜色开发收费模块…</h1>
         <p>收费记录、节点状态和并行任务状态正在同步。</p>
       </section>
@@ -206,7 +206,7 @@ export function FeesWorkspace({ projectId }: FeesWorkspaceProps) {
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Development Fees</p>
+            <p className="eyebrow">开发费用</p>
             <h2 className="section-title">{workspace.project.name}</h2>
             <p className="muted">
               当前节点 {highlights.currentNodeLabel}，目标日期 {highlights.targetDateLabel}，
@@ -255,7 +255,7 @@ export function FeesWorkspace({ projectId }: FeesWorkspaceProps) {
         </div>
         <p className="muted">系统规则：第 13 步“颜色开发收费”固定金额为 {FIXED_DEVELOPMENT_FEE_AMOUNT} 元，前端已按只读展示。</p>
         {workspace.activeTask && isWorkflowTaskOverdue(workspace.activeTask) ? (
-          <p className="error-text">当前颜色开发收费任务已超期。</p>
+          <p className="error-text">当前颜色开发收费任务已逾期。</p>
         ) : null}
         {!workspace.cabinReviewApproved ? (
           <p className="muted">样车驾驶室评审通过后才会激活收费任务。</p>
@@ -268,7 +268,7 @@ export function FeesWorkspace({ projectId }: FeesWorkspaceProps) {
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Fee Form</p>
+            <p className="eyebrow">费用表单</p>
             <h2 className="section-title">收费记录表单</h2>
             <p className="muted">创建记录后节点会进入处理中。收费节点完成不阻塞主流程。</p>
           </div>
@@ -290,7 +290,7 @@ export function FeesWorkspace({ projectId }: FeesWorkspaceProps) {
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Node Completion</p>
+            <p className="eyebrow">节点完成</p>
             <h2 className="section-title">收费节点完成</h2>
             <p className="muted">至少存在一条已支付收费记录后，才允许完成收费节点。</p>
           </div>
@@ -307,7 +307,7 @@ export function FeesWorkspace({ projectId }: FeesWorkspaceProps) {
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Fee Records</p>
+            <p className="eyebrow">费用记录</p>
             <h2 className="section-title">收费记录列表</h2>
             <p className="muted">按时间倒序展示，支持记账、支付、取消和备注查看。</p>
           </div>

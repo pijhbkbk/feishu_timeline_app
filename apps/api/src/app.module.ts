@@ -5,6 +5,7 @@ import appConfig from './common/app-config';
 import { PrismaModule } from './infra/prisma/prisma.module';
 import { RedisModule } from './infra/redis/redis.module';
 import { ActivityLogsModule } from './modules/activity-logs/activity-logs.module';
+import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { AttachmentsModule } from './modules/attachments/attachments.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { ColorExitsModule } from './modules/color-exits/color-exits.module';
@@ -43,6 +44,7 @@ import { WorkflowsModule } from './modules/workflows/workflows.module';
     PrismaModule,
     RedisModule,
     HealthModule,
+    AnalyticsModule,
     DashboardModule,
     AuthModule,
     FeishuModule,

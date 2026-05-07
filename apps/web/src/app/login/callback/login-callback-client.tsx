@@ -41,7 +41,7 @@ export function LoginCallbackClient() {
   if (error) {
     return (
       <section className="page-card">
-        <p className="eyebrow">Login Callback</p>
+        <p className="eyebrow">登录回调</p>
         <h1>飞书登录未完成</h1>
         <p>{error}</p>
         <div className="page-actions">
@@ -55,7 +55,7 @@ export function LoginCallbackClient() {
 
   return (
     <section className="page-card">
-      <p className="eyebrow">Login Callback</p>
+      <p className="eyebrow">登录回调</p>
       <h1>正在建立系统会话</h1>
       <p>系统正在处理飞书回调并写入本系统会话，请稍候。</p>
     </section>

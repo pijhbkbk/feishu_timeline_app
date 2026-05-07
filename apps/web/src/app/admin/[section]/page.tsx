@@ -20,11 +20,11 @@ export default async function AdminSectionPage({ params }: AdminSectionPageProps
 
   return (
     <PagePlaceholder
-      eyebrow="Administration"
+      eyebrow="系统管理"
       title={meta?.label ?? '系统管理'}
       description={meta?.description ?? '当前 admin 子页面已创建骨架。'}
       route={`/admin/${section}`}
-      tags={['RBAC', 'System Config', meta?.key ?? 'custom-section']}
+      tags={['权限配置', '系统配置', meta?.label ?? '自定义页面']}
       actions={adminQuickLinks.map((key) => ({
         label: adminSectionMetaMap[key].label,
         href: buildAdminRoute(key),

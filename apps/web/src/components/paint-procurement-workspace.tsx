@@ -297,7 +297,7 @@ export function PaintProcurementWorkspace({
   if (isLoading || !workspace || !highlights) {
     return (
       <section className="page-card">
-        <p className="eyebrow">Paint Procurement</p>
+        <p className="eyebrow">涂料采购</p>
         <h1>正在加载涂料采购模块…</h1>
         <p>采购记录、供应商和流程联动状态正在同步。</p>
       </section>
@@ -309,7 +309,7 @@ export function PaintProcurementWorkspace({
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Paint Procurement</p>
+            <p className="eyebrow">涂料采购</p>
             <h2 className="section-title">{workspace.project.name}</h2>
             <p className="muted">
               当前节点 {highlights.currentNodeLabel}，目标日期 {highlights.targetDateLabel}，
@@ -351,7 +351,7 @@ export function PaintProcurementWorkspace({
         </div>
 
         {workspace.activeTask && isWorkflowTaskOverdue(workspace.activeTask) ? (
-          <p className="error-text">当前涂料采购任务已超期。</p>
+          <p className="error-text">当前涂料采购任务已逾期。</p>
         ) : null}
         {isReadOnly ? (
           <p className="muted">
@@ -366,7 +366,7 @@ export function PaintProcurementWorkspace({
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Task Completion</p>
+            <p className="eyebrow">任务完成</p>
             <h2 className="section-title">采购节点完成条件</h2>
             <p className="muted">
               至少一条有效采购记录达到 ARRIVED 后，才允许完成当前采购节点。
@@ -416,7 +416,7 @@ export function PaintProcurementWorkspace({
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Suppliers</p>
+            <p className="eyebrow">供应商</p>
             <h2 className="section-title">供应商基础管理</h2>
             <p className="muted">支持新增和更新供应商基础信息，采购页面实时可选。</p>
           </div>
@@ -536,7 +536,7 @@ export function PaintProcurementWorkspace({
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Procurement Records</p>
+            <p className="eyebrow">采购记录</p>
             <h2 className="section-title">采购记录与批次信息</h2>
             <p className="muted">采购记录状态由标准动作控制，无活跃采购任务时页面只读。</p>
           </div>

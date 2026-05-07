@@ -14,14 +14,14 @@ describe('DashboardWorkspace', () => {
       <KPIOverviewSection
         cards={[
           { label: '项目总数', value: '8' },
-          { label: '超期任务', value: '3' },
+          { label: '逾期任务', value: '3' },
         ]}
       />,
     );
 
     expect(html).toContain('项目总数');
     expect(html).toContain('8');
-    expect(html).toContain('超期任务');
+    expect(html).toContain('逾期任务');
   });
 
   it('renders recent reviews and risk project links', () => {
@@ -59,7 +59,6 @@ describe('DashboardWorkspace', () => {
     expect(reviewsHtml).toContain('项目A');
     expect(reviewsHtml).toContain('通过');
     expect(risksHtml).toContain('/projects/project-1/overview');
-    expect(risksHtml).toContain('超期 2 天');
+    expect(risksHtml).toContain('逾期 2 天');
   });
 });
-

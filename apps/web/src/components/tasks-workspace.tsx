@@ -50,7 +50,7 @@ export function TasksWorkspace({ mode }: TasksWorkspaceProps) {
         value: String(items.length),
       },
       {
-        label: '超期任务',
+        label: '逾期任务',
         value: String(overdueCount),
       },
       {
@@ -113,7 +113,7 @@ export function TasksWorkspace({ mode }: TasksWorkspaceProps) {
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Tasks</p>
+            <p className="eyebrow">任务中心</p>
             <h2 className="section-title">{getTaskModeTitle(mode)}</h2>
             <p className="muted">{getTaskModeDescription(mode)}</p>
           </div>
@@ -143,7 +143,7 @@ export function TasksWorkspace({ mode }: TasksWorkspaceProps) {
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Task List</p>
+            <p className="eyebrow">任务列表</p>
             <h2 className="section-title">当前任务</h2>
             <p className="muted">点击“进入项目”会跳转到对应项目详情页签。</p>
           </div>
@@ -201,7 +201,7 @@ export function TaskTable({ items }: TaskTableProps) {
                 <td>
                   <div className="task-table-primary">
                     <strong>{item.projectName}</strong>
-                    {item.isOverdue ? <span className="overdue-badge">超期</span> : null}
+                    {item.isOverdue ? <span className="overdue-badge">逾期</span> : null}
                   </div>
                 </td>
                 <td>{getTaskNodeLabel(item)}</td>
@@ -253,4 +253,3 @@ function TasksWorkspaceSkeleton() {
     </div>
   );
 }
-

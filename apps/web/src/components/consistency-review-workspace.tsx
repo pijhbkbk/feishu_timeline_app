@@ -267,7 +267,7 @@ export function ConsistencyReviewWorkspace({
   if (isLoading || !workspace || !highlights) {
     return (
       <section className="page-card">
-        <p className="eyebrow">Consistency Review</p>
+        <p className="eyebrow">一致性评审</p>
         <h1>正在加载一致性评审模块…</h1>
         <p>评审记录、附件和排产计划联动状态正在同步。</p>
       </section>
@@ -279,7 +279,7 @@ export function ConsistencyReviewWorkspace({
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Consistency Review</p>
+            <p className="eyebrow">一致性评审</p>
             <h2 className="section-title">{workspace.project.name}</h2>
             <p className="muted">
               当前节点 {highlights.currentNodeLabel}，目标日期 {highlights.targetDateLabel}，
@@ -338,7 +338,7 @@ export function ConsistencyReviewWorkspace({
           </div>
         </div>
         {workspace.activeTask && isWorkflowTaskOverdue(workspace.activeTask) ? (
-          <p className="error-text">当前颜色一致性评审任务已超期。</p>
+          <p className="error-text">当前颜色一致性评审任务已逾期。</p>
         ) : null}
         {!workspace.cabinReviewCompleted ? (
           <p className="muted">样车驾驶室评审通过后才会激活颜色一致性评审任务。</p>
@@ -353,7 +353,7 @@ export function ConsistencyReviewWorkspace({
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Review Form</p>
+            <p className="eyebrow">评审表单</p>
             <h2 className="section-title">颜色一致性评审表单</h2>
             <p className="muted">提交后由后端判定通过或驳回，并推进或退回流程。</p>
           </div>
@@ -384,7 +384,7 @@ export function ConsistencyReviewWorkspace({
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Review History</p>
+            <p className="eyebrow">评审历史</p>
             <h2 className="section-title">一致性评审历史</h2>
             <p className="muted">支持查看提交状态、条件通过说明、退回记录和附件。</p>
           </div>
@@ -412,7 +412,7 @@ export function ConsistencyReviewWorkspace({
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Review Detail</p>
+            <p className="eyebrow">评审详情</p>
             <h2 className="section-title">一致性评审详情</h2>
             <p className="muted">展示评审意见、附件历史、退回记录和排产计划状态。</p>
           </div>

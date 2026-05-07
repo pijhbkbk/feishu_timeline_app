@@ -35,11 +35,11 @@ describe('TasksWorkspace', () => {
     expect(html).toContain('项目A');
     expect(html).toContain('涂料采购');
     expect(html).toContain('/projects/project-1/paint-procurement');
-    expect(html).toContain('超期');
+    expect(html).toContain('逾期');
   });
 
   it('exposes mode title and task status labels', () => {
-    expect(getTaskModeTitle('overdue')).toBe('我的超期任务');
+    expect(getTaskModeTitle('overdue')).toBe('我的逾期任务');
     expect(getTaskStatusLabel('IN_PROGRESS')).toBe('进行中');
   });
 });

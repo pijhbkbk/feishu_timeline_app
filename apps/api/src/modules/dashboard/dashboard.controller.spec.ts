@@ -15,6 +15,12 @@ describe('DashboardController metadata', () => {
     expect(Reflect.getMetadata(PERMISSION_METADATA_KEY, prototype.getStageDistribution)).toEqual([
       'dashboard.read',
     ]);
+    expect(Reflect.getMetadata(PERMISSION_METADATA_KEY, prototype.getProjectTimelines)).toEqual([
+      'dashboard.read',
+    ]);
+    expect(Reflect.getMetadata(PERMISSION_METADATA_KEY, prototype.getMonthlyReviewBoard)).toEqual([
+      'dashboard.read',
+    ]);
     expect(Reflect.getMetadata(PERMISSION_METADATA_KEY, prototype.getRecentReviews)).toEqual([
       'dashboard.read',
     ]);
