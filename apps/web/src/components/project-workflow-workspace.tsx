@@ -286,7 +286,7 @@ export function ProjectWorkflowWorkspace({
   );
 
   return (
-    <div className="page-stack">
+    <div className="page-stack" data-testid={mode === 'tasks' ? 'project-tasks-page' : 'project-workflow-page'}>
       <section className="page-card">
         <div className="section-header">
           <div>
@@ -482,7 +482,7 @@ export function ProjectWorkflowWorkspace({
           )}
         </div>
         <div className="table-shell table-shell-scroll">
-          <table className="data-table">
+          <table className="data-table" data-testid="task-list-table">
             <thead>
               <tr>
                 <th>节点</th>
@@ -808,7 +808,7 @@ export function ProjectWorkflowWorkspace({
         </section>
       )}
 
-      <section className="page-card">
+      <section className="page-card" data-testid="task-detail-drawer">
         <div className="section-header">
           <div>
             <p className="eyebrow">节点详情</p>

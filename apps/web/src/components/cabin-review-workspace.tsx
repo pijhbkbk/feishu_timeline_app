@@ -272,7 +272,7 @@ export function CabinReviewWorkspace({
   }
 
   return (
-    <div className="page-stack">
+    <div className="page-stack" data-testid="sample-cab-review-panel">
       <section className="page-card">
         <div className="section-header">
           <div>

@@ -192,31 +192,31 @@ export const projectSectionMetaMap: Record<ProjectSectionKey, ProjectSectionMeta
   samples: {
     key: 'samples',
     label: '样件',
-    description: '样板、样件与试制样车占位。',
+    description: '样板、样件与试制样车管理。',
     requiredRoles: ['admin', 'project_manager', 'process_engineer', 'quality_engineer'],
   },
   'standard-boards': {
     key: 'standard-boards',
     label: '标准板',
-    description: '标准板制作与下发记录占位。',
+    description: '标准板制作、下发和色板明细更新记录。',
     requiredRoles: ['admin', 'project_manager', 'process_engineer', 'quality_engineer'],
   },
   'paint-procurement': {
     key: 'paint-procurement',
     label: '涂料采购',
-    description: '采购与供应商协同占位。',
+    description: '采购计划、供应商协同和涂料到货记录。',
     requiredRoles: ['admin', 'project_manager', 'purchaser'],
   },
   'performance-tests': {
     key: 'performance-tests',
     label: '性能试验',
-    description: '性能测试计划、结果与状态占位。',
+    description: '性能测试计划、结果和状态跟踪。',
     requiredRoles: ['admin', 'project_manager', 'quality_engineer', 'reviewer'],
   },
   'pilot-production': {
     key: 'pilot-production',
     label: '试制',
-    description: '首台/试制过程与结果占位。',
+    description: '首台计划、试制过程和样车结果记录。',
     requiredRoles: ['admin', 'project_manager', 'process_engineer', 'quality_engineer'],
   },
   reviews: {
@@ -228,25 +228,25 @@ export const projectSectionMetaMap: Record<ProjectSectionKey, ProjectSectionMeta
   fees: {
     key: 'fees',
     label: '开发费用',
-    description: '费用记录与财务协同占位。',
+    description: '费用记录、固定收费规则和财务协同。',
     requiredRoles: ['admin', 'project_manager', 'finance'],
   },
   'production-plans': {
     key: 'production-plans',
     label: '生产计划',
-    description: '首台计划与排产计划占位。',
+    description: '首台计划、排产计划和后续批量生产联动。',
     requiredRoles: ['admin', 'project_manager', 'process_engineer'],
   },
   'mass-production': {
     key: 'mass-production',
     label: '批量生产',
-    description: '批产阶段状态与记录占位。',
+    description: '批产阶段状态、产量和完成记录。',
     requiredRoles: ['admin', 'project_manager', 'process_engineer', 'quality_engineer'],
   },
   'color-evaluation': {
     key: 'color-evaluation',
     label: '颜色评价',
-    description: '色差与目视评价占位。',
+    description: '色差目视评价、评审结论和退出联动。',
     requiredRoles: ['admin', 'project_manager', 'quality_engineer', 'reviewer'],
   },
   'color-exit': {
@@ -268,7 +268,7 @@ export const projectSectionMetaMap: Record<ProjectSectionKey, ProjectSectionMeta
   logs: {
     key: 'logs',
     label: '日志',
-    description: '审计日志与项目时间线占位。',
+    description: '审计日志、节点动作和项目时间线。',
   },
 };
 
@@ -276,25 +276,25 @@ export const adminSectionMetaMap: Record<AdminSectionKey, AdminSectionMeta> = {
   users: {
     key: 'users',
     label: '用户管理',
-    description: '用户、部门与登录身份映射占位。',
+    description: '用户、部门与登录身份映射管理。',
     requiredRoles: ['admin'],
   },
   roles: {
     key: 'roles',
     label: '角色权限',
-    description: '系统角色与 RBAC 配置占位。',
+    description: '系统角色、权限和 RBAC 配置。',
     requiredRoles: ['admin'],
   },
   dicts: {
     key: 'dicts',
     label: '基础字典',
-    description: '项目状态、下拉项和配置字典占位。',
+    description: '项目状态、下拉项和配置字典。',
     requiredRoles: ['admin'],
   },
   'workflow-nodes': {
     key: 'workflow-nodes',
     label: '流程节点',
-    description: '节点定义与顺序配置占位。',
+    description: '节点定义、顺序和期限配置。',
     requiredRoles: ['admin'],
   },
 };
@@ -475,7 +475,7 @@ export function getRouteContext(pathname: string): RouteContext {
       title: section ? section.label : '项目工作区',
       description: section
         ? `${projectId} / ${section.description}`
-        : `${projectId} / 项目详情占位页。`,
+        : `${projectId} / 项目详情页。`,
       eyebrow: '项目工作区',
     };
   }
@@ -487,7 +487,7 @@ export function getRouteContext(pathname: string): RouteContext {
 
     return {
       title: section ? section.label : '系统管理',
-      description: section ? section.description : '系统管理占位页。',
+      description: section ? section.description : '系统管理页面。',
       eyebrow: '系统管理',
     };
   }

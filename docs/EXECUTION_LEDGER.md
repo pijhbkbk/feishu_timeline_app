@@ -8,8 +8,8 @@
 ## 项目基本信息
 
 - 项目名称：轻卡定制颜色开发项目管理系统
-- 当前阶段：R14 PPT UI 实装 + 线上部署
-- 当前轮次：R14_PPT_UI_IMPLEMENTATION
+- 当前阶段：R16 UI 自动化验收 + 业务流程网页回归
+- 当前轮次：R16_UI_BUSINESS_E2E_TEST_AND_ITERATE
 - 总体状态：PASSED
 - 仓库路径：`/Users/lixiaochen/Downloads/feishu_timeline_app`
 - 默认分支：`main`
@@ -51,6 +51,7 @@
 | Release Closure | 正式发布收口（v1.0.0） | PASSED | STOP | 已完成 main 合并、生产从 main 重部署、release verify / production acceptance，并进入 v1.0.0 tag 收口 |
 | R14 | 中文化 UI + 时间线看板 + 实时项目进度驾驶舱 | PASSED | STOP | 已完成中文驾驶舱、项目时间线看板、单项目详情时间线、月度评审看板优化和聚合 API |
 | R14_PPT_UI_IMPLEMENTATION | PPT UI 蓝图实装 + 线上部署 | PASSED | STOP | 已按 PPT 结构补齐材料中心、月度评审总账、数据中心、项目列表筛选、详情刷新与线上部署闭环 |
+| R16 | UI 自动化验收 + 业务流程网页测试与迭代修复 | PASSED | STOP | 已补 Playwright 网页级业务 UAT、稳定选择器、正式中文文案和节点展示顺序保护 |
 
 状态枚举建议：
 
@@ -100,6 +101,9 @@
 - `docs/STAGING_DEPLOYMENT.md`：覆盖 staging 一键部署、健康检查、迁移/seed 说明与回滚入口
 - `docs/UI_REFINEMENT_R13.md`：覆盖页面标题、按钮、状态色、反馈组件、关键工作区精修口径与浏览器回归入口
 - `docs/UI_TIMELINE_BOARD_R14.md`：覆盖中文项目进度驾驶舱、时间线看板、状态颜色规则、自动刷新策略和后续优化项
+- `docs/UAT_WEB_TEST_R16.md`：覆盖 R16 网页 UAT 策略、稳定选择器、18 步测试基准、测试项目和线上只读 smoke
+- `docs/PLAYWRIGHT_TEST_REPORT_R16.md`：覆盖 R16 专项 Playwright、全量 Playwright 和全部门禁命令结果
+- `docs/UI_ISSUES_AND_FIXES_R16.md`：覆盖 R16 发现的问题分级、修复项和延期优化项
 
 ---
 
@@ -1635,3 +1639,105 @@ STOP
 
 #### Next Round
 生产观察期：收集真实项目数据下的时间线密度、月度评审总账和数据中心指标反馈。
+
+### Round R16_UI_BUSINESS_E2E_TEST_AND_ITERATE
+
+#### Goal
+基于 `https://timeline.all-too-well.com` 的线上页面口径和本地可写测试环境，使用 Playwright 操作真实网页验证中文 UI、项目看板、18 步工序、材料提交、第 12 步退回、第 17 步月度评审、第 18 步颜色退出、数据中心与业务规则。
+
+#### Scope
+- 补充关键页面 `data-testid`，提升 Playwright 选择器稳定性。
+- 新增 R16 Playwright fixtures 和 3 组专项测试：中文 UI、新建项目、18 步业务流。
+- 修复用户可见“占位”类临时文案，改为正式中文业务描述。
+- 修正第 7/8/9 步显示顺序与名称，保持冻结状态机不变。
+- 后端项目列表节点筛选项改用流程常量排序和命名，避免生产旧节点定义影响展示。
+- 更新 R16 UAT、Playwright 报告、问题修复文档和本账本。
+
+#### Inputs Read
+- `AGENTS.md`
+- `docs/EXECUTION_LEDGER.md`
+- `docs/UI_REFINEMENT_R13.md`
+- `docs/UI_TIMELINE_BOARD_R14.md`
+- `/Users/lixiaochen/Desktop/UI-2.md`
+- 当前 dashboard、projects、workflow、reviews、color-exit、materials、monthly-reviews、analytics、API 与前端组件结构
+
+#### Files Changed
+- `apps/api/prisma/seed.ts`
+- `apps/api/src/modules/projects/projects.service.ts`
+- `apps/api/src/modules/workflows/workflow-node.constants.ts`
+- `apps/web/src/app/admin/[section]/page.tsx`
+- `apps/web/src/app/projects/[projectId]/[section]/page.tsx`
+- `apps/web/src/app/reviews/page.tsx`
+- `apps/web/src/components/analytics-center.tsx`
+- `apps/web/src/components/attachments-workspace.tsx`
+- `apps/web/src/components/cabin-review-workspace.tsx`
+- `apps/web/src/components/color-exit-workspace.tsx`
+- `apps/web/src/components/dashboard-workspace.tsx`
+- `apps/web/src/components/materials-center.tsx`
+- `apps/web/src/components/monthly-reviews-board.tsx`
+- `apps/web/src/components/page-placeholder.tsx`
+- `apps/web/src/components/project-editor.tsx`
+- `apps/web/src/components/project-overview-client.tsx`
+- `apps/web/src/components/project-workflow-workspace.tsx`
+- `apps/web/src/components/projects-list-client.tsx`
+- `apps/web/src/lib/navigation.ts`
+- `apps/web/src/lib/projects-client.ts`
+- `apps/web/tests/playwright/r16-fixtures.ts`
+- `apps/web/tests/playwright/r16-ui-chinese.spec.ts`
+- `apps/web/tests/playwright/r16-create-project.spec.ts`
+- `apps/web/tests/playwright/r16-business-flow.spec.ts`
+- `docs/UAT_WEB_TEST_R16.md`
+- `docs/PLAYWRIGHT_TEST_REPORT_R16.md`
+- `docs/UI_ISSUES_AND_FIXES_R16.md`
+- `docs/EXECUTION_LEDGER.md`
+
+#### Commands Run
+```bash
+pnpm install
+pnpm --filter @feishu-timeline/web exec playwright install --with-deps chromium
+pnpm playwright:test -- --grep R16
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm --filter @feishu-timeline/api prisma:validate
+pnpm --filter @feishu-timeline/api build
+pnpm --filter @feishu-timeline/web build
+pnpm test:e2e
+pnpm playwright:test
+docker exec feishu-timeline-postgres psql -U postgres -d feishu_timeline -c "select code, name, \"createdAt\" from projects where name like 'UAT-自动化-%' or code like 'R16-UAT-%' order by \"createdAt\" desc limit 20;"
+node - <<'NODE'
+const paths = ['/dashboard','/projects','/projects/timeline','/materials','/monthly-reviews','/analytics','/api/health'];
+for (const path of paths) {
+  const response = await fetch(`https://timeline.all-too-well.com${path}`, { redirect: 'follow' });
+  console.log(`${path} ${response.status}`);
+}
+NODE
+```
+
+#### Acceptance Result
+- [x] `/dashboard`、`/projects`、`/projects/timeline`、`/materials`、`/monthly-reviews`、`/analytics`、`/api/health` 线上只读 smoke 均返回 200。
+- [x] 本轮未在生产写入 UAT 项目；写入型测试均在本地测试库执行。
+- [x] 已补充关键页面与组件的稳定 `data-testid`。
+- [x] 中文 UI 检查通过，未发现明显英文业务文案、长期加载、空白页或严重控制台错误。
+- [x] Playwright 真实网页创建了 `UAT-自动化-深海蓝-*`、`UAT-自动化-星河银-*`、`UAT-自动化-极光白-*` 本地测试项目。
+- [x] 第 4 步完成后并行创建第 5/6 步通过。
+- [x] 第 9 步独立进行且不阻塞主线通过。
+- [x] 第 12 步不通过退回第 11 步并生成第 2 轮通过。
+- [x] 第 13 步固定金额 `10000` 元通过。
+- [x] 第 16 步完成后第 17 步 12 个月度评审卡片可见通过。
+- [x] 第 18 步颜色退出阈值、系统建议、人工结论和材料上传通过。
+- [x] 材料提交平台和数据中心页面通过。
+- [x] `pnpm lint`、`pnpm typecheck`、`pnpm test`、`pnpm --filter @feishu-timeline/api prisma:validate`、`pnpm --filter @feishu-timeline/api build`、`pnpm --filter @feishu-timeline/web build`、`pnpm test:e2e`、`pnpm playwright:test -- --grep R16`、`pnpm playwright:test` 全部通过。
+- [x] `docs/UAT_WEB_TEST_R16.md`、`docs/PLAYWRIGHT_TEST_REPORT_R16.md`、`docs/UI_ISSUES_AND_FIXES_R16.md` 已生成。
+
+#### Risks / Debt
+- 生产环境未开启 mock 登录，自动化写入型 UAT 仍只建议在本地或 staging 执行。
+- 月度评审卡片与跳转已通过，后续可继续增强单月评审填报向导。
+- 时间线看板在移动端仍以横向滚动为主，可后续补折叠式节点视图。
+- 数据中心当前为 MVP 聚合视图，真实项目数据量上来后建议补分页、缓存和钻取。
+
+#### Decision
+STOP
+
+#### Next Round
+如需继续推进，建议进入生产试运行数据观察与移动端时间线阅读体验优化。

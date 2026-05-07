@@ -179,6 +179,12 @@ export class ProjectsService {
       }),
     ]);
 
+    const orderedNodeOptions = [...nodeDefinitions].sort((left, right) => {
+      const leftSequence = WORKFLOW_NODE_META_MAP[left.nodeCode]?.sequence ?? left.sequence;
+      const rightSequence = WORKFLOW_NODE_META_MAP[right.nodeCode]?.sequence ?? right.sequence;
+      return leftSequence - rightSequence;
+    });
+
     return {
       page: query.page,
       pageSize: query.pageSize,
@@ -194,10 +200,10 @@ export class ProjectsService {
         dateFrom: this.serializeDate(query.dateFrom),
         dateTo: this.serializeDate(query.dateTo),
       },
-      nodeOptions: nodeDefinitions.map((definition) => ({
+      nodeOptions: orderedNodeOptions.map((definition) => ({
         code: definition.nodeCode,
-        name: definition.name,
-        sequence: definition.sequence,
+        name: WORKFLOW_NODE_META_MAP[definition.nodeCode]?.name ?? definition.name,
+        sequence: WORKFLOW_NODE_META_MAP[definition.nodeCode]?.sequence ?? definition.sequence,
       })),
       items: projects.map((project) => this.toProjectListItem(project)),
     };

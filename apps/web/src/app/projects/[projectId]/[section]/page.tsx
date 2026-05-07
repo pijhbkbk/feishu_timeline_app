@@ -40,7 +40,7 @@ export default async function ProjectSectionPage({ params }: ProjectSectionPageP
         href: buildProjectRoute(projectId, key),
       }))}
       emptyTitle={`${projectId} / ${meta?.label ?? '项目工作区'} 已创建骨架`}
-      emptyDescription="当前页面统一使用项目级导航和空状态占位，后续按模块逐步接入接口与表单。"
+      emptyDescription="当前页面统一使用项目级导航和模块空状态，业务数据会随项目进度展示。"
     />
   );
 }

@@ -30,7 +30,7 @@ export default async function AdminSectionPage({ params }: AdminSectionPageProps
         href: buildAdminRoute(key),
       }))}
       emptyTitle={`${meta?.label ?? '系统管理'} 已创建骨架`}
-      emptyDescription="当前页面先保证路由、导航和统一占位，后续再接真实管理功能。"
+      emptyDescription="当前页面已接入系统管理导航，后续按权限展示对应管理功能。"
     />
   );
 }

@@ -15,14 +15,14 @@ type PagePlaceholderProps = {
 };
 
 export function PagePlaceholder({
-  eyebrow = '页面占位',
+  eyebrow = '页面入口',
   title,
   description,
   route,
   tags,
   actions,
   emptyTitle = '页面骨架已就位',
-  emptyDescription = '当前先提供统一布局、导航和空状态占位，后续再填充业务组件与接口数据。',
+  emptyDescription = '当前页面已接入统一布局和导航，业务数据会按模块权限展示。',
 }: PagePlaceholderProps) {
   return (
     <section className="page-card">

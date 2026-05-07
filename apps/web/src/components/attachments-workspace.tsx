@@ -328,7 +328,7 @@ export function AttachmentsWorkspace({
   }
 
   return (
-    <div className="page-stack">
+    <div className="page-stack" data-testid={mode === 'materials' ? 'materials-page' : 'attachments-page'}>
       <section className="page-card">
         <div className="section-header">
           <div>
@@ -580,6 +580,7 @@ export function AttachmentUploader({
       <label className="field field-full">
         <span>选择文件</span>
         <input
+          data-testid={mode === 'materials' ? 'material-file-input' : 'attachment-file-input'}
           type="file"
           disabled={disabled}
           onChange={(event) =>
@@ -591,7 +592,13 @@ export function AttachmentUploader({
         />
       </label>
       <div className="field field-actions">
-        <button type="button" className="button" disabled={disabled} onClick={onUpload}>
+        <button
+          type="button"
+          className="button"
+          disabled={disabled}
+          onClick={onUpload}
+          data-testid={mode === 'materials' ? 'material-upload-button' : 'attachment-upload-button'}
+        >
           {disabled ? '不可上传' : mode === 'materials' ? '上传材料' : '上传附件'}
         </button>
       </div>

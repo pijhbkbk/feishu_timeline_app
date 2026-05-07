@@ -86,7 +86,7 @@ export function MonthlyReviewsBoard() {
   ];
 
   return (
-    <div className="page-stack">
+    <div className="page-stack" data-testid="monthly-review-board">
       <section className="page-card">
         <div className="section-header">
           <div>

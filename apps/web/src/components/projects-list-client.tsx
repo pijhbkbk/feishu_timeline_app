@@ -142,7 +142,7 @@ export function ProjectsListClient() {
   ).map(([id, name]) => ({ id, name }));
 
   return (
-    <div className="page-stack">
+    <div className="page-stack" data-testid="project-list-page">
       <section className="page-card">
         <div className="section-header">
           <div>
@@ -150,7 +150,7 @@ export function ProjectsListClient() {
             <h2 className="section-title">项目筛选</h2>
             <p className="muted">按项目名称、编号、颜色、当前工序、责任部门和逾期状态快速定位项目。</p>
           </div>
-          <Link href="/projects/new" className="button button-primary">
+          <Link href="/projects/new" className="button button-primary" data-testid="create-project-button">
             新建项目
           </Link>
         </div>
@@ -294,7 +294,7 @@ export function ProjectsListClient() {
         {!isLoading && hasItems && listResponse ? (
           <>
             <div className="table-shell table-shell-scroll">
-              <table className="data-table">
+              <table className="data-table" data-testid="project-table">
                 <thead>
                   <tr>
                     <th>项目编号</th>

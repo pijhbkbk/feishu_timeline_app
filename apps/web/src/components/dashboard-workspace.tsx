@@ -133,7 +133,7 @@ export function DashboardWorkspace() {
   }
 
   return (
-    <div className="page-stack">
+    <div className="page-stack" data-testid="dashboard-page">
       <section className="page-card">
         <div className="section-header">
           <div>

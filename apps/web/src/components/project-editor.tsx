@@ -389,6 +389,7 @@ export function ProjectEditor(props: ProjectEditorProps) {
           <label className="field">
             <span>优先级</span>
             <select
+              data-testid="project-priority-select"
               value={formState.priority}
               onChange={(event) =>
                 updateField('priority', event.target.value as ProjectPriority)
@@ -404,6 +405,7 @@ export function ProjectEditor(props: ProjectEditorProps) {
           <label className="field">
             <span>市场</span>
             <input
+              data-testid="project-market-input"
               value={formState.marketRegion}
               onChange={(event) => updateField('marketRegion', event.target.value)}
               placeholder="例如：华东 / 东南亚"
@@ -412,6 +414,7 @@ export function ProjectEditor(props: ProjectEditorProps) {
           <label className="field">
             <span>车型</span>
             <input
+              data-testid="project-vehicle-model-input"
               value={formState.vehicleModel}
               onChange={(event) => updateField('vehicleModel', event.target.value)}
               placeholder="例如：轻卡 A 平台"
@@ -420,6 +423,7 @@ export function ProjectEditor(props: ProjectEditorProps) {
           <label className="field">
             <span>计划开始日期</span>
             <input
+              data-testid="project-start-date-input"
               type="date"
               value={formState.plannedStartDate}
               onChange={(event) => updateField('plannedStartDate', event.target.value)}
@@ -428,6 +432,7 @@ export function ProjectEditor(props: ProjectEditorProps) {
           <label className="field">
             <span>计划结束日期</span>
             <input
+              data-testid="project-end-date-input"
               type="date"
               value={formState.plannedEndDate}
               onChange={(event) => updateField('plannedEndDate', event.target.value)}
@@ -436,6 +441,7 @@ export function ProjectEditor(props: ProjectEditorProps) {
           <label className="field field-full">
             <span>项目说明</span>
             <textarea
+              data-testid="project-description-input"
               value={formState.description}
               onChange={(event) => updateField('description', event.target.value)}
               placeholder="补充项目背景、约束和目标。"

@@ -88,7 +88,7 @@ export function MaterialsCenter() {
   }
 
   return (
-    <div className="page-stack">
+    <div className="page-stack" data-testid="materials-page">
       <section className="page-card">
         <div className="section-header">
           <div>

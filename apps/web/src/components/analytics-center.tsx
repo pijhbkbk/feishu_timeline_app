@@ -93,7 +93,7 @@ export function AnalyticsCenter() {
   }
 
   return (
-    <div className="page-stack">
+    <div className="page-stack" data-testid="analytics-page">
       <section className="page-card">
         <div className="section-header">
           <div>
