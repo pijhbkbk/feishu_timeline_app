@@ -2044,3 +2044,123 @@ STOP
 
 #### Next Round
 等待用户确认 `docs/security/SECURITY_SCOPE_R19.md` 和 `docs/security/SECURITY_CHECKLIST_R19.md` 后，进入 R19 全量扫描、漏洞修复和复测闭环。
+
+### Round R19_SECURITY_AUDIT_FOR_PRIVATE_CLOUD_AND_FEISHU_EXECUTION
+
+#### Goal
+在 R19 范围确认后执行公司私有云部署与飞书工作台上架前安全检查、自动化扫描、权限/附件/业务逻辑专项测试、漏洞整改和复测闭环，并形成可提交信息安全部门的报告材料。
+
+#### Scope
+- 执行基础质量门禁、SAST、SCA、密钥扫描、ZAP baseline、安全响应头、主机检查和网页防篡改检查。
+- 修复已确认的 High / Medium 应用安全问题。
+- 新增 Feishu OAuth state、权限越权、文件上传、输入输出和业务逻辑安全测试。
+- 不对飞书开放平台域名、公司未授权 IP 或生产环境执行主动扫描。
+- 私有云主机和飞书后台配置因未提供授权证据，仅做代码/本地和待确认项记录。
+
+#### Inputs Read
+- `/Users/lixiaochen/Desktop/anquan.md`
+- `AGENTS.md`
+- `docs/security/SECURITY_SCOPE_R19.md`
+- `docs/security/SECURITY_CHECKLIST_R19.md`
+- `docs/security/THREAT_MODEL_R19.md`
+- `apps/api/src/modules/auth/auth.service.ts`
+- `apps/api/src/modules/auth/session-store.service.ts`
+- `apps/api/src/modules/feishu/feishu-auth.adapter.ts`
+- `apps/api/src/modules/attachments/attachments.rules.ts`
+- `apps/api/src/modules/attachments/attachments.service.ts`
+- `apps/api/src/modules/attachments/attachments.controller.ts`
+- `apps/api/src/modules/auth/project-access.service.ts`
+- `apps/api/src/modules/workflows/workflow-node.constants.ts`
+- `apps/api/src/modules/fees/fees.rules.ts`
+- `apps/api/src/modules/reviews/reviews.rules.ts`
+- `apps/api/src/modules/color-exits/color-exits.rules.ts`
+- `apps/web/next.config.ts`
+- `scripts/security/*.sh`
+
+#### Files Changed
+- `apps/api/src/modules/auth/auth.service.ts`
+- `apps/api/src/modules/auth/auth.service.spec.ts`
+- `apps/api/src/modules/auth/session-store.service.ts`
+- `apps/api/src/modules/attachments/attachments.rules.ts`
+- `apps/api/src/modules/attachments/attachments.rules.spec.ts`
+- `apps/api/src/modules/attachments/attachments.service.ts`
+- `apps/api/src/modules/attachments/attachments.service.spec.ts`
+- `apps/api/src/modules/attachments/attachments.controller.ts`
+- `apps/api/test/security/r19-permission-security.spec.ts`
+- `apps/api/test/security/r19-api-input-security.spec.ts`
+- `apps/api/test/security/r19-business-logic-security.spec.ts`
+- `apps/api/test/security/r19-file-upload-security.spec.ts`
+- `apps/api/Dockerfile`
+- `apps/web/Dockerfile`
+- `apps/web/next.config.ts`
+- `apps/web/scripts/e2e-mainline.mjs`
+- `apps/web/tests/playwright/r16-fixtures.ts`
+- `apps/web/tests/playwright/r16-business-flow.spec.ts`
+- `apps/web/tests/playwright/regression.spec.ts`
+- `package.json`
+- `apps/api/package.json`
+- `apps/web/package.json`
+- `packages/shared/package.json`
+- `pnpm-lock.yaml`
+- `scripts/security/run-sast.sh`
+- `scripts/security/run-sca.sh`
+- `scripts/security/run-secrets-scan.sh`
+- `scripts/security/run-zap-baseline.sh`
+- `scripts/security/check-security-headers.sh`
+- `scripts/security/host-security-check.sh`
+- `scripts/security/generate-build-integrity.sh`
+- `docs/security/*.md`
+- `docs/EXECUTION_LEDGER.md`
+
+#### Commands Run
+```bash
+pnpm install
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm --filter @feishu-timeline/api build
+pnpm --filter @feishu-timeline/web build
+pnpm test:e2e
+pnpm --filter @feishu-timeline/web exec playwright install chromium
+pnpm playwright:test
+bash scripts/security/run-sast.sh
+bash scripts/security/run-sca.sh
+bash scripts/security/run-secrets-scan.sh
+TARGET_URL=http://host.docker.internal:3000 bash scripts/security/run-zap-baseline.sh
+BASE_URL=http://localhost:3000 bash scripts/security/check-security-headers.sh
+bash scripts/security/host-security-check.sh
+bash scripts/security/generate-build-integrity.sh
+bash scripts/security/check-build-integrity.sh
+```
+
+#### Acceptance Result
+- [x] `pnpm install`、`pnpm lint`、`pnpm typecheck`、`pnpm test`、API/Web build、`pnpm test:e2e`、`pnpm playwright:test` 全部通过。
+- [x] `pnpm test` 通过：Web 20 files / 61 tests，API 48 files / 129 tests。
+- [x] SAST 通过：Semgrep 0 findings；dangerous grep 均分诊为 Info / positive controls / test runners。
+- [x] SCA 通过：`pnpm audit`、OSV、Trivy fs 均无 High/Critical；Docker image scan 因本地未构建镜像而跳过。
+- [x] 密钥扫描通过：gitleaks current tree 和 git history 均 no leaks found。
+- [x] ZAP baseline 在本地 production build 上无 Critical/High；CSP inline 类 Medium 已记录为后续 hardening。
+- [x] Feishu OAuth state 已改为服务端保存、TTL、一次性消费并补测试。
+- [x] 附件上传已补扩展名、MIME、魔数、路径穿越和响应头校验并补测试。
+- [x] 权限、输入输出、文件上传、业务逻辑 R19 专项测试已新增并通过。
+- [x] 本地 build integrity manifest 生成与复核通过。
+
+#### Findings Summary
+- Critical：0
+- High：3，全部修复并复测
+- Medium：3，其中 2 个修复，1 个 CSP inline hardening 延期
+- Low：1，接受
+- Info：6，接受或等待外部证据
+
+#### Risks / Debt
+- 公司私有云 IP / 主机访问 / 主机安全平台证据未提供，无法给私有云主机安全 PASS。
+- 飞书后台权限、redirect URL、可用范围、通讯录范围和发布审核证据未提供，无法给飞书上架 PASS。
+- Docker 镜像未在本地构建，Trivy image scan 待私有云镜像产物生成后执行。
+- CSP 仍允许 inline script/style，建议后续引入 nonce/hash 或框架级 CSP hardening。
+- 未提供 staging URL，未执行认证后 staging DAST。
+
+#### Decision
+STOP
+
+#### Next Round
+由用户或公司 IT / 飞书管理员补充私有云主机证据、Feishu 后台配置证据、staging URL 和镜像产物后，执行 R19 复审；证据齐全且无新 Critical/High 后再将上线建议从 `FAIL` 调整为 `PASS_WITH_RISK_ACCEPTANCE` 或 `PASS`。

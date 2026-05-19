@@ -24,7 +24,7 @@ PATHS=(
 )
 
 case "$BASE_URL" in
-  http://localhost:*|http://127.0.0.1:*|http://[::1]:*)
+  http://localhost:*|http://127.0.0.1:*|http://[::1]:*|http://host.docker.internal:*)
     ;;
   *)
     if [ "$CONFIRM_AUTHORIZED_TARGET" != "yes" ]; then

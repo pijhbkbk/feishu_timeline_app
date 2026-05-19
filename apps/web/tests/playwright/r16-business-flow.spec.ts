@@ -122,9 +122,9 @@ test.describe('R16 18步业务规则网页验收', () => {
 
     const historyTable = page.getByTestId('cabin-review-history-table');
     await historyTable.locator('input[type="file"]').first().setInputFiles({
-      name: 'r16-cab-review.txt',
-      mimeType: 'text/plain',
-      buffer: Buffer.from('评审报告与样车照片'),
+      name: 'r16-cab-review.pdf',
+      mimeType: 'application/pdf',
+      buffer: Buffer.from('%PDF-1.4\n% 评审报告与样车照片\n'),
     });
     await expect(page.getByText(/已上传附件/)).toBeVisible();
     await historyTable.getByRole('button', { name: '提交' }).first().click();

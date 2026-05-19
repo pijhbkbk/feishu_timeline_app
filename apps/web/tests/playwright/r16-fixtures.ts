@@ -266,12 +266,14 @@ export async function uploadR16ProjectMaterialViaUi(
   fileName: string,
   content: string,
 ) {
+  const safePdfName = fileName.replace(/\.[^.]+$/, '.pdf');
+
   await page.goto(`/projects/${projectId}/materials`);
   await expect(page.getByTestId('materials-page')).toBeVisible();
   await page.getByTestId('material-file-input').setInputFiles({
-    name: fileName,
-    mimeType: 'text/plain',
-    buffer: Buffer.from(content),
+    name: safePdfName,
+    mimeType: 'application/pdf',
+    buffer: Buffer.from(`%PDF-1.4\n% ${content}\n`),
   });
   await page.getByTestId('material-upload-button').click();
   await expect(page.getByText(/材料已上传|附件已上传/)).toBeVisible();

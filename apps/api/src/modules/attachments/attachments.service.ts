@@ -690,8 +690,10 @@ export class AttachmentsService {
     }
 
     const issue = getAttachmentFileValidationIssue({
+      originalName: file.originalname,
       mimeType: file.mimetype,
       fileSize: file.size,
+      buffer: file.buffer,
     });
 
     if (issue) {

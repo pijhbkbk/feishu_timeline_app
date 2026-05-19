@@ -42,7 +42,7 @@ Commit: $commit
 
 ## Build Integrity Manifest
 
-- Manifest: `reports/security/integrity/build-integrity.sha256`
+- Manifest: \`reports/security/integrity/build-integrity.sha256\`
 
 ## Required Checks
 

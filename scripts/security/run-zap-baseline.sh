@@ -17,7 +17,7 @@ timestamp="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 commit="$(git -C "$ROOT_DIR" rev-parse --short HEAD 2>/dev/null || printf 'unknown')"
 
 case "$TARGET_URL" in
-  http://localhost:*|http://127.0.0.1:*|http://[::1]:*)
+  http://localhost:*|http://127.0.0.1:*|http://[::1]:*|http://host.docker.internal:*)
     ;;
   *)
     if [ "$CONFIRM_AUTHORIZED_TARGET" != "yes" ]; then
@@ -80,7 +80,7 @@ Target: $TARGET_URL
 ## Safety Notes
 
 - Active scan is not enabled in this script.
-- Remote targets require `CONFIRM_AUTHORIZED_TARGET=yes`.
+- Remote targets require \`CONFIRM_AUTHORIZED_TARGET=yes\`.
 - Production may only be tested with passive, baseline or smoke checks.
 - Tokens, cookies and passwords must not be written into this report.
 

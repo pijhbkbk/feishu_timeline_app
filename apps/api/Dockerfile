@@ -40,11 +40,16 @@ COPY --from=build /app/package.json /app/package.json
 COPY --from=build /app/pnpm-workspace.yaml /app/pnpm-workspace.yaml
 COPY --from=build /app/apps/api /app/apps/api
 
+RUN mkdir -p /app/apps/api/var/object-storage \
+  && chown -R node:node /app
+
 WORKDIR /app/apps/api
 
 EXPOSE 3001
 
 HEALTHCHECK --interval=15s --timeout=5s --retries=10 --start-period=20s \
   CMD curl -fsS http://127.0.0.1:3001/api/health >/dev/null || exit 1
+
+USER node
 
 CMD ["node", "dist/main.js"]

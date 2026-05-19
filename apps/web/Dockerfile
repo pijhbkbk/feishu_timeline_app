@@ -39,11 +39,15 @@ COPY --from=build /app/package.json /app/package.json
 COPY --from=build /app/pnpm-workspace.yaml /app/pnpm-workspace.yaml
 COPY --from=build /app/apps/web /app/apps/web
 
+RUN chown -R node:node /app
+
 WORKDIR /app/apps/web
 
 EXPOSE 3000
 
 HEALTHCHECK --interval=15s --timeout=5s --retries=10 --start-period=20s \
   CMD curl -fsS http://127.0.0.1:3000/login >/dev/null || exit 1
+
+USER node
 
 CMD ["sh", "-c", "exec /app/apps/web/node_modules/.bin/next start --hostname 0.0.0.0 --port 3000"]

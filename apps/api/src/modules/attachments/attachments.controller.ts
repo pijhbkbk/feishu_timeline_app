@@ -44,11 +44,7 @@ export class AttachmentsController {
       disposition,
     );
 
-    response.setHeader('Content-Type', content.contentType);
-    response.setHeader(
-      'Content-Disposition',
-      `${content.disposition}; filename*=UTF-8''${encodeURIComponent(content.fileName)}`,
-    );
+    this.writeAttachmentResponseHeaders(response, content);
     response.send(content.buffer);
   }
 
@@ -177,11 +173,24 @@ export class AttachmentsController {
       disposition,
     );
 
+    this.writeAttachmentResponseHeaders(response, content);
+    response.send(content.buffer);
+  }
+
+  private writeAttachmentResponseHeaders(
+    response: Response,
+    content: {
+      contentType: string;
+      disposition: string;
+      fileName: string;
+    },
+  ) {
     response.setHeader('Content-Type', content.contentType);
+    response.setHeader('X-Content-Type-Options', 'nosniff');
+    response.setHeader('Cache-Control', 'private, no-store');
     response.setHeader(
       'Content-Disposition',
       `${content.disposition}; filename*=UTF-8''${encodeURIComponent(content.fileName)}`,
     );
-    response.send(content.buffer);
   }
 }

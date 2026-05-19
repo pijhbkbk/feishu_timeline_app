@@ -37,11 +37,16 @@
     "infra:down": "docker compose down"
   },
   "devDependencies": {
-    "@eslint/js": "^9.22.0",
-    "@next/eslint-plugin-next": "^15.5.13",
-    "concurrently": "^9.1.2",
-    "eslint": "^9.22.0",
-    "globals": "^16.0.0",
-    "typescript-eslint": "^8.26.1"
+    "@eslint/js": "^9.39.4",
+    "@next/eslint-plugin-next": "^15.5.18",
+    "concurrently": "^9.2.1",
+    "eslint": "^9.39.4",
+    "globals": "^16.5.0",
+    "typescript-eslint": "^8.59.4"
+  },
+  "pnpm": {
+    "overrides": {
+      "postcss": "8.5.14"
+    }
   }
 }

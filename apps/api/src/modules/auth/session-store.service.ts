@@ -53,6 +53,26 @@ export class SessionStoreService {
     return JSON.parse(entry.value) as T;
   }
 
+  async consumeJson<T>(key: string): Promise<T | null> {
+    const client = await this.getRedisClient();
+
+    if (client) {
+      const result = await client.multi().get(key).del(key).exec();
+      const value = result?.[0]?.[1];
+
+      return typeof value === 'string' ? (JSON.parse(value) as T) : null;
+    }
+
+    const entry = this.memoryStore.get(key);
+    this.memoryStore.delete(key);
+
+    if (!entry || entry.expiresAt <= Date.now()) {
+      return null;
+    }
+
+    return JSON.parse(entry.value) as T;
+  }
+
   async delete(key: string) {
     const client = await this.getRedisClient();
 

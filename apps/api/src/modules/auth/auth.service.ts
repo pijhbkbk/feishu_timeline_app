@@ -20,6 +20,11 @@ import {
 import { SessionStoreService } from './session-store.service';
 import type { AuthSessionPayload, SessionResponse } from './auth.types';
 
+const FEISHU_OAUTH_STATE_PREFIX = 'auth:feishu:state:';
+const FEISHU_OAUTH_STATE_TTL_SECONDS = 10 * 60;
+const UUID_STATE_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 type MockLoginInput = {
   username?: string;
   name?: string;
@@ -109,6 +114,13 @@ export class AuthService {
     }
 
     const state = randomUUID();
+    await this.sessionStoreService.setJson(
+      this.getFeishuOAuthStateStorageKey(state),
+      {
+        createdAt: new Date().toISOString(),
+      },
+      FEISHU_OAUTH_STATE_TTL_SECONDS,
+    );
 
     return {
       enabled: true,
@@ -117,7 +129,16 @@ export class AuthService {
   }
 
   async loginWithFeishu(input: FeishuCallbackInput, response: Response) {
-    const profile = await this.feishuAuthAdapter.exchangeCodeForProfile(input.code, input.state);
+    const state = this.normalizeFeishuOAuthState(input.state);
+    const statePayload = await this.sessionStoreService.consumeJson<{
+      createdAt: string;
+    }>(this.getFeishuOAuthStateStorageKey(state));
+
+    if (!statePayload) {
+      throw new UnauthorizedException('飞书登录状态已失效，请重新发起登录。');
+    }
+
+    const profile = await this.feishuAuthAdapter.exchangeCodeForProfile(input.code, state);
     const user = await this.usersService.upsertFeishuUser(profile);
 
     await this.createSessionAndWriteCookie(user.id, 'feishu', response);
@@ -194,6 +215,20 @@ export class AuthService {
 
   private getSessionStorageKey(sessionToken: string) {
     return `${AUTH_SESSION_PREFIX}${sessionToken}`;
+  }
+
+  private normalizeFeishuOAuthState(state?: string | null) {
+    const normalized = state?.trim();
+
+    if (!normalized || !UUID_STATE_PATTERN.test(normalized)) {
+      throw new UnauthorizedException('飞书登录状态无效，请重新发起登录。');
+    }
+
+    return normalized;
+  }
+
+  private getFeishuOAuthStateStorageKey(state: string) {
+    return `${FEISHU_OAUTH_STATE_PREFIX}${state}`;
   }
 
   private isMockEnabled() {

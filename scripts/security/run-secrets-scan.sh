@@ -6,6 +6,7 @@ IFS=$'\n\t'
 ROOT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 REPORT_DIR="$ROOT_DIR/reports/security/secrets"
 DOC_REPORT="$ROOT_DIR/docs/security/SECRETS_SCAN_R19.md"
+ROOT_GITLEAKS_REPORT="$ROOT_DIR/reports/security/gitleaks-report.json"
 
 mkdir -p "$REPORT_DIR" "$(dirname "$DOC_REPORT")"
 
@@ -31,6 +32,31 @@ elif command -v docker >/dev/null 2>&1; then
   fi
 else
   printf 'gitleaks and docker are not available.\n' >"$REPORT_DIR/gitleaks.log"
+fi
+
+if [ -f "$REPORT_DIR/gitleaks-report.json" ]; then
+  cp "$REPORT_DIR/gitleaks-report.json" "$ROOT_GITLEAKS_REPORT"
+fi
+
+gitleaks_history_status="SKIPPED"
+if command -v gitleaks >/dev/null 2>&1; then
+  if gitleaks detect --source "$ROOT_DIR" --redact --log-opts="--all" --report-format json \
+    --report-path "$REPORT_DIR/gitleaks-history-report.json" >"$REPORT_DIR/gitleaks-history.log" 2>&1; then
+    gitleaks_history_status="PASS"
+  else
+    gitleaks_history_status="FAIL"
+  fi
+elif command -v docker >/dev/null 2>&1; then
+  if docker run --rm -v "$ROOT_DIR:/repo" zricethezav/gitleaks:latest detect \
+    --source /repo --redact --log-opts="--all" --report-format json \
+    --report-path /repo/reports/security/secrets/gitleaks-history-report.json \
+    >"$REPORT_DIR/gitleaks-history.log" 2>&1; then
+    gitleaks_history_status="PASS"
+  else
+    gitleaks_history_status="FAIL"
+  fi
+else
+  printf 'gitleaks and docker are not available.\n' >"$REPORT_DIR/gitleaks-history.log"
 fi
 
 {
@@ -79,9 +105,16 @@ Commit: $commit
 | Check | Status | Raw Output |
 |---|---|---|
 | gitleaks detect --redact | $gitleaks_status | reports/security/secrets/gitleaks.log |
+| gitleaks git history --redact | $gitleaks_history_status | reports/security/secrets/gitleaks-history.log |
 | Environment-like file inventory | INFO | reports/security/secrets/env-files.txt |
 | Sensitive key name location scan | INFO | reports/security/secrets/sensitive-key-name-locations.txt |
 | .gitignore protection check | INFO | reports/security/secrets/gitignore-check.txt |
+
+## Report Files
+
+- reports/security/gitleaks-report.json
+- reports/security/secrets/gitleaks-report.json
+- reports/security/secrets/gitleaks-history-report.json
 
 ## Reporting Rules
 

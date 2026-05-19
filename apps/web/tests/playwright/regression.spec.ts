@@ -115,9 +115,9 @@ test('can reject cabin review, upload attachment and see a new round', async ({ 
 
   const historyTable = page.getByTestId('cabin-review-history-table');
   await historyTable.locator('input[type="file"]').first().setInputFiles({
-    name: 'cabin-review.txt',
-    mimeType: 'text/plain',
-    buffer: Buffer.from('R13 attachment payload'),
+    name: 'cabin-review.pdf',
+    mimeType: 'application/pdf',
+    buffer: Buffer.from('%PDF-1.4\n% R13 attachment payload\n'),
   });
   await expect(page.getByText(/已上传附件/)).toBeVisible();
 

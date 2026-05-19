@@ -295,8 +295,8 @@ async function main() {
     uploadPayload.set('entityId', project.id);
     uploadPayload.set(
       'file',
-      new Blob(['R08 e2e attachment'], { type: 'text/plain' }),
-      'r08-e2e.txt',
+      new Blob(['%PDF-1.4\n% R08 e2e attachment\n'], { type: 'application/pdf' }),
+      'r08-e2e.pdf',
     );
     const uploadResult = await requestJson(
       `/projects/${project.id}/attachments/upload`,

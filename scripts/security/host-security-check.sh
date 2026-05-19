@@ -49,7 +49,7 @@ Host: $(hostname 2>/dev/null || printf 'unknown')
 
 ## Raw Output
 
-See `reports/security/host/host-security.raw.txt`.
+See \`reports/security/host/host-security.raw.txt\`.
 
 ## Review Checklist
 
@@ -59,7 +59,7 @@ See `reports/security/host/host-security.raw.txt`.
 - PostgreSQL must not listen on public interfaces.
 - Redis must not listen on public interfaces.
 - API and Web services should run as non-root users.
-- `.env.production` permissions must be `600` or stricter.
+- \`.env.production\` permissions must be \`600\` or stricter.
 - Nginx must enable HTTPS, HSTS and baseline security headers.
 - Backups and restore drills must be documented.
 - Logs must not contain secrets.
