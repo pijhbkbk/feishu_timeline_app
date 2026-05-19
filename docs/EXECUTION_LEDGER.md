@@ -8,8 +8,8 @@
 ## 项目基本信息
 
 - 项目名称：轻卡定制颜色开发项目管理系统
-- 当前阶段：R20 真实业务场景自动化实操测试与迭代修复
-- 当前轮次：R20_REAL_WORLD_UAT_AUTOMATION
+- 当前阶段：R21 项目实时流程地图 UI 实现
+- 当前轮次：R21_FLOW_MAP_REALTIME_PROGRESS
 - 总体状态：PASSED
 - 仓库路径：`/Users/lixiaochen/Downloads/feishu_timeline_app`
 - 默认分支：`main`
@@ -54,6 +54,7 @@
 | R16 | UI 自动化验收 + 业务流程网页测试与迭代修复 | PASSED | STOP | 已补 Playwright 网页级业务 UAT、稳定选择器、正式中文文案和节点展示顺序保护 |
 | R19 | 公司私有云与飞书工作台上线前安全准入 | BLOCKED | STOP | 代码与本地安全扫描已收口；私有云主机、飞书后台、镜像和 staging 证据待公司侧提供 |
 | R20 | 真实业务场景自动化实操测试与迭代修复 | PASSED | CONTINUE | 已完成 13 条 R20 真实浏览器 UAT；全量 Playwright 28/28 通过 |
+| R21 | 项目实时流程地图 UI 实现 | PASSED | STOP | 已完成单项目实时流程地图、聚合 API、节点抽屉、风险筛选、自动刷新与全量回归 |
 
 状态枚举建议：
 
@@ -2303,3 +2304,110 @@ CONTINUE
 
 #### Next Round
 建议进入 staging 部署验证和业务人工验收；不建议跳过 staging 直接在生产环境执行写入型 UAT。
+
+---
+
+### Round R21_FLOW_MAP_REALTIME_PROGRESS
+
+#### Goal
+将用户提供的轻卡颜色开发流程图升级为单项目“项目实时流程地图”，在不改变已冻结业务状态机和流程规则的前提下，让项目经理一眼识别 18 个节点的当前进度、并行支线、退回路径、风险节点、责任人、材料进度和下一步动作。
+
+#### Scope
+- 新增单项目实时流程地图页面 `/projects/:projectId/flow-map`。
+- 新增后端聚合接口 `GET /api/projects/:projectId/flow-map`，避免前端拼装大量散接口。
+- 在项目列表、项目时间线看板、项目上下文导航和工作台风险项目中增加流程地图入口。
+- 保留第 4 / 6 步并行、第 9 / 13 步非阻塞、第 12 步退回、第 17 步 12 个月评审、第 18 步退出治理等冻结规则。
+- 增加 30 秒地图轮询、15 秒抽屉轮询、手动刷新、风险筛选和节点点击抽屉。
+- 补充组件测试与 Playwright 浏览器回归。
+- 新增 R21 文档并更新执行账本。
+
+#### Inputs Read
+- `AGENTS.md`
+- `docs/EXECUTION_LEDGER.md`
+- `/Users/lixiaochen/Desktop/R21_FLOW_MAP_REALTIME_PROGRESS_Codex执行提示词.md`
+- `/Users/lixiaochen/Desktop/ditu.md`
+- `/Users/lixiaochen/Desktop/20260519-102141.png`
+- `apps/api/src/modules/projects/projects.controller.ts`
+- `apps/api/src/modules/projects/projects.service.ts`
+- `apps/web/src/lib/projects-client.ts`
+- `apps/web/src/lib/navigation.ts`
+- `apps/web/src/components/project-timeline-board.tsx`
+- `apps/web/src/components/dashboard-workspace.tsx`
+- `apps/web/src/components/projects-list-client.tsx`
+- `apps/web/src/components/task-detail-drawer.tsx`
+- `apps/web/src/components/monthly-reviews-board.tsx`
+- `apps/web/tests/playwright/regression.spec.ts`
+
+#### Files Changed
+- `apps/api/src/modules/projects/projects.controller.ts`
+- `apps/api/src/modules/projects/projects.service.ts`
+- `apps/web/src/app/globals.css`
+- `apps/web/src/app/projects/[projectId]/flow-map/page.tsx`
+- `apps/web/src/components/flow-map-workspace.tsx`
+- `apps/web/src/components/flow-map-workspace.test.tsx`
+- `apps/web/src/components/dashboard-workspace.tsx`
+- `apps/web/src/components/monthly-reviews-board.tsx`
+- `apps/web/src/components/project-timeline-board.tsx`
+- `apps/web/src/components/projects-list-client.tsx`
+- `apps/web/src/lib/navigation.ts`
+- `apps/web/src/lib/projects-client.ts`
+- `apps/web/tests/playwright/r21-flow-map-realtime-progress.spec.ts`
+- `docs/FLOW_MAP_REALTIME_PROGRESS_R21.md`
+- `docs/EXECUTION_LEDGER.md`
+
+#### Commands Run
+```bash
+git switch -c feat/flow-map-realtime-r21
+pnpm --filter @feishu-timeline/web test -- flow-map-workspace.test.tsx
+pnpm --filter @feishu-timeline/web exec playwright test tests/playwright/r21-flow-map-realtime-progress.spec.ts --config playwright.config.mjs
+pnpm --filter @feishu-timeline/web exec playwright test tests/playwright/regression.spec.ts:134 --config playwright.config.mjs
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm --filter @feishu-timeline/web build
+pnpm --filter @feishu-timeline/api build
+pnpm --filter @feishu-timeline/api prisma:validate
+pnpm test:e2e
+pnpm playwright:test
+```
+
+#### Acceptance Result
+- [x] 用户可见流程地图页面为中文 UI，无明显英文业务占位文案。
+- [x] 项目详情新增“流程地图”页面，保留用户流程图拓扑。
+- [x] 每个项目节点可显示步骤号、节点名称、状态颜色、负责人、截止时间、逾期天数、材料进度。
+- [x] 第 12 步展示评审通过 / 退回路径和轮次信息。
+- [x] 第 13 步展示固定 10000 元与非阻塞属性。
+- [x] 第 17 步展示 12 个月整车色差一致性评审进度。
+- [x] 第 18 步展示年产量、退出阈值、系统建议和人工结论。
+- [x] 节点点击可打开工序详情抽屉，URL `taskId` 可恢复。
+- [x] 风险筛选、主线筛选、我的任务筛选和未完成筛选可用。
+- [x] 流程地图每 30 秒自动刷新，工序抽屉每 15 秒自动刷新，手动刷新可用。
+- [x] `pnpm lint` 通过。
+- [x] `pnpm typecheck` 通过。
+- [x] `pnpm test` 通过：Web 21 files / 65 tests，API 48 files / 130 tests。
+- [x] `pnpm --filter @feishu-timeline/web build` 通过，包含 `/projects/[projectId]/flow-map`。
+- [x] `pnpm --filter @feishu-timeline/api build` 通过。
+- [x] `pnpm --filter @feishu-timeline/api prisma:validate` 通过。
+- [x] `pnpm test:e2e` 通过。
+- [x] `pnpm playwright:test` 通过：29 passed。
+
+#### Evidence
+- `docs/FLOW_MAP_REALTIME_PROGRESS_R21.md`
+- `apps/web/tests/playwright/r21-flow-map-realtime-progress.spec.ts`
+- `apps/web/src/components/flow-map-workspace.test.tsx`
+- `test-results/r20/traces/`：Playwright 全量回归产物。
+
+#### Issues Fixed
+- R21 新增用例首次断言“最近更新”失败：将流程地图顶部最近更新时间拆为独立中文文案，并按 `YYYY-MM-DD HH:mm:ss` 输出。
+- 全量 Playwright 发现月度评审页存在重复同名标题导致严格定位冲突：保留顶栏页面名，页面内卡片标题改为“月度评审进度总览”。
+
+#### Risks / Debt
+- 流程地图当前采用固定拓扑坐标，后续可补缩放、拖拽和平移。
+- 实时刷新采用轮询，满足本轮要求；多人协同提醒可延期接 SSE / WebSocket。
+- 全局多项目流程地图仍以现有时间线看板为主，本轮重点完成单项目实时流程地图。
+
+#### Decision
+STOP
+
+#### Next Round
+建议 R22 聚焦生产环境真实项目演示数据、流程地图截图证据归档，以及根据业务评审反馈优化节点密度、缩放和平移体验。

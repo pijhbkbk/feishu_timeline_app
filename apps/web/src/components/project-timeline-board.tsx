@@ -397,6 +397,12 @@ export function ProjectTimelineCard({
         </span>
         <div className="task-actions">
           <Link
+            href={`/projects/${item.projectId}/flow-map`}
+            className="button button-primary button-small"
+          >
+            流程地图
+          </Link>
+          <Link
             href={`/projects/${item.projectId}/overview`}
             className="button button-secondary button-small"
           >

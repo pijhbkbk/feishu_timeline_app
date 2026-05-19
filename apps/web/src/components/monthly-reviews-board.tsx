@@ -91,7 +91,7 @@ export function MonthlyReviewsBoard() {
         <div className="section-header">
           <div>
             <p className="eyebrow">第 17 步</p>
-            <h2 className="section-title">整车色差一致性评审台账</h2>
+            <h2 className="section-title">月度评审进度总览</h2>
             <p className="muted">
               最近更新：{formatDateTime(payload.lastUpdatedAt)}。按项目展示 12 个月份卡片，
               突出本月任务、逾期周期和完成进度。

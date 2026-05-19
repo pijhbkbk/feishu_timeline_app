@@ -337,6 +337,9 @@ export function ProjectsListClient() {
                           <Link href={`/projects/${project.id}/overview`} className="table-link">
                             详情
                           </Link>
+                          <Link href={`/projects/${project.id}/flow-map`} className="table-link">
+                            流程地图
+                          </Link>
                           <Link href={`/projects/${project.id}/workflow`} className="table-link">
                             时间线
                           </Link>

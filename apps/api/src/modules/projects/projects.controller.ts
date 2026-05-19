@@ -45,6 +45,16 @@ export class ProjectsController {
   }
 
   @Permissions('project.read')
+  @ApiOperation({ summary: '获取项目实时流程地图' })
+  @Get(':projectId/flow-map')
+  getProjectFlowMap(
+    @Param('projectId') projectId: string,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.projectsService.getProjectFlowMap(projectId, actor);
+  }
+
+  @Permissions('project.read')
   @ApiOperation({ summary: '获取项目详情' })
   @Get(':projectId')
   getProjectDetail(

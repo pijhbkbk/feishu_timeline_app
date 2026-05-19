@@ -10,6 +10,7 @@ export type NavItem = {
 
 export type ProjectSectionKey =
   | 'overview'
+  | 'flow-map'
   | 'development-report'
   | 'workflow'
   | 'tasks'
@@ -182,6 +183,11 @@ export const projectSectionMetaMap: Record<ProjectSectionKey, ProjectSectionMeta
     label: '项目概览',
     description: '项目基础信息、状态汇总和主链路摘要。',
   },
+  'flow-map': {
+    key: 'flow-map',
+    label: '流程地图',
+    description: '按业务拓扑查看项目实时进展、风险和下一步。',
+  },
   'development-report': {
     key: 'development-report',
     label: '开发报告',
@@ -311,6 +317,7 @@ export const adminSectionMetaMap: Record<AdminSectionKey, AdminSectionMeta> = {
 
 const projectContextSectionKeys: ProjectSectionKey[] = [
   'overview',
+  'flow-map',
   'workflow',
   'tasks',
   'materials',

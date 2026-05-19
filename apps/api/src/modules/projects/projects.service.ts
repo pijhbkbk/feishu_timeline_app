@@ -112,6 +112,31 @@ const PROJECT_STATUS_VALUES = Object.values(ProjectStatus);
 const PROJECT_PRIORITY_VALUES = Object.values(ProjectPriority);
 const PROJECT_MEMBER_TYPE_VALUES = Object.values(ProjectMemberType);
 const WORKFLOW_NODE_VALUES = Object.values(WorkflowNodeCode);
+const FLOW_MAP_EDGE_DEFINITIONS: Array<{
+  from: WorkflowNodeCode;
+  to: WorkflowNodeCode;
+  edgeType: 'mainline' | 'parallel' | 'nonBlocking' | 'return';
+  label?: string;
+}> = [
+  { from: WorkflowNodeCode.PROJECT_INITIATION, to: WorkflowNodeCode.DEVELOPMENT_REPORT, edgeType: 'mainline' },
+  { from: WorkflowNodeCode.DEVELOPMENT_REPORT, to: WorkflowNodeCode.PAINT_DEVELOPMENT, edgeType: 'mainline' },
+  { from: WorkflowNodeCode.PAINT_DEVELOPMENT, to: WorkflowNodeCode.SAMPLE_COLOR_CONFIRMATION, edgeType: 'mainline' },
+  { from: WorkflowNodeCode.SAMPLE_COLOR_CONFIRMATION, to: WorkflowNodeCode.COLOR_NUMBERING, edgeType: 'parallel', label: '自动并行' },
+  { from: WorkflowNodeCode.SAMPLE_COLOR_CONFIRMATION, to: WorkflowNodeCode.PAINT_PROCUREMENT, edgeType: 'mainline' },
+  { from: WorkflowNodeCode.PAINT_PROCUREMENT, to: WorkflowNodeCode.PERFORMANCE_TEST, edgeType: 'nonBlocking', label: '非阻塞' },
+  { from: WorkflowNodeCode.PAINT_PROCUREMENT, to: WorkflowNodeCode.STANDARD_BOARD_PRODUCTION, edgeType: 'parallel', label: '自动并行' },
+  { from: WorkflowNodeCode.STANDARD_BOARD_PRODUCTION, to: WorkflowNodeCode.BOARD_DETAIL_UPDATE, edgeType: 'parallel' },
+  { from: WorkflowNodeCode.PAINT_PROCUREMENT, to: WorkflowNodeCode.FIRST_UNIT_PRODUCTION_PLAN, edgeType: 'mainline' },
+  { from: WorkflowNodeCode.FIRST_UNIT_PRODUCTION_PLAN, to: WorkflowNodeCode.TRIAL_PRODUCTION, edgeType: 'mainline' },
+  { from: WorkflowNodeCode.TRIAL_PRODUCTION, to: WorkflowNodeCode.CAB_REVIEW, edgeType: 'mainline' },
+  { from: WorkflowNodeCode.CAB_REVIEW, to: WorkflowNodeCode.TRIAL_PRODUCTION, edgeType: 'return', label: 'N 退回' },
+  { from: WorkflowNodeCode.CAB_REVIEW, to: WorkflowNodeCode.DEVELOPMENT_ACCEPTANCE, edgeType: 'parallel', label: 'Y 非阻塞' },
+  { from: WorkflowNodeCode.CAB_REVIEW, to: WorkflowNodeCode.COLOR_CONSISTENCY_REVIEW, edgeType: 'mainline', label: 'Y' },
+  { from: WorkflowNodeCode.COLOR_CONSISTENCY_REVIEW, to: WorkflowNodeCode.MASS_PRODUCTION_PLAN, edgeType: 'mainline' },
+  { from: WorkflowNodeCode.MASS_PRODUCTION_PLAN, to: WorkflowNodeCode.MASS_PRODUCTION, edgeType: 'mainline' },
+  { from: WorkflowNodeCode.MASS_PRODUCTION, to: WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW, edgeType: 'mainline' },
+  { from: WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW, to: WorkflowNodeCode.PROJECT_CLOSED, edgeType: 'mainline' },
+];
 
 @Injectable()
 export class ProjectsService {
@@ -512,6 +537,153 @@ export class ProjectsService {
         progressPercent: Math.round((completedNodeCount / this.getOrderedWorkflowNodeCodes().length) * 100),
       },
       nodes,
+    };
+  }
+
+  async getProjectFlowMap(projectId: string, actor: AuthenticatedUser) {
+    const timeline = await this.getProjectTimeline(projectId, actor);
+    const [nodeDefinitions, recentTransitions] = await Promise.all([
+      this.prisma.workflowNodeDefinition.findMany({
+        where: {
+          nodeCode: {
+            in: this.getOrderedWorkflowNodeCodes(),
+          },
+        },
+      }),
+      this.prisma.workflowTransition.findMany({
+        where: {
+          projectId,
+        },
+        include: {
+          operatorUser: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+        take: 12,
+      }),
+    ]);
+    const definitionByNode = new Map(nodeDefinitions.map((definition) => [
+      definition.nodeCode,
+      definition,
+    ]));
+    const nodes = timeline.nodes.map((node) => {
+      const definition = definitionByNode.get(node.nodeCode) ?? null;
+      const requiredMaterials = this.parseFlowMapRequiredMaterials(
+        definition?.requiredAttachments,
+      );
+      const submittedMaterials = node.attachmentCount;
+      const requiredCount = requiredMaterials.filter((material) => material.required).length;
+      const totalMaterials = requiredMaterials.length;
+      const status = this.resolveFlowMapNodeStatus(node);
+
+      return {
+        taskId: node.taskId,
+        stepCode: String(node.stepNumber).padStart(2, '0'),
+        stepNumber: node.stepNumber,
+        stepName: node.nodeName,
+        nodeCode: node.nodeCode,
+        status,
+        statusLabel: this.getFlowMapStatusLabel(status),
+        ownerName: node.ownerName,
+        departmentName: node.responsibleDepartment,
+        dueAt: node.dueAt,
+        overdueDays: node.overdueDays,
+        isOverdue: node.isOverdue,
+        isBlocking:
+          definition?.isBlocking ?? WORKFLOW_NODE_META_MAP[node.nodeCode].isPrimaryTask,
+        isMainline: WORKFLOW_NODE_META_MAP[node.nodeCode].isPrimaryTask,
+        nodeType: this.getFlowMapNodeType(node.nodeCode),
+        materialProgress: {
+          submitted: submittedMaterials,
+          required: requiredCount,
+          total: totalMaterials,
+          missing: Math.max(0, requiredCount - submittedMaterials),
+          text:
+            totalMaterials > 0
+              ? `${Math.min(submittedMaterials, totalMaterials)} / ${totalMaterials}`
+              : `${submittedMaterials} 个附件`,
+        },
+        roundNo: node.taskRound ?? 0,
+        reviewGate: node.reviewGate,
+        monthlyReview: node.monthlyReview,
+        colorExit: node.colorExit,
+      };
+    });
+    const nodeByCode = new Map(nodes.map((node) => [node.nodeCode, node]));
+    const currentNode =
+      (timeline.project.currentNodeCode
+        ? nodeByCode.get(timeline.project.currentNodeCode)
+        : null) ??
+      nodes.find((node) => node.status === 'IN_PROGRESS' || node.status === 'OVERDUE') ??
+      nodes.find((node) => node.taskId !== null) ??
+      null;
+    const monthlyReviewNode = nodeByCode.get(WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW);
+    const monthlyReview = monthlyReviewNode?.monthlyReview ?? null;
+
+    return {
+      projectId: timeline.project.id,
+      projectName: timeline.project.name,
+      projectCode: timeline.project.code,
+      colorName: timeline.project.colorName,
+      currentStepCode: timeline.project.currentNodeCode,
+      currentStepName: timeline.project.currentNodeName ?? '未开始',
+      currentOwner: currentNode?.ownerName ?? timeline.project.ownerName,
+      currentDepartment:
+        currentNode?.departmentName ?? timeline.project.ownerDepartmentName ?? null,
+      progressPercent: timeline.project.progressPercent,
+      overdueCount: nodes.filter((node) => node.isOverdue).length,
+      monthlyReviewProgress: monthlyReview
+        ? {
+            completed: monthlyReview.completedPeriods,
+            total: monthlyReview.totalPeriods,
+            overdue: monthlyReview.overduePeriods,
+            text: monthlyReview.progressText,
+          }
+        : {
+            completed: 0,
+            total: 12,
+            overdue: 0,
+            text: '尚未生成 12 个月度实例',
+          },
+      lastUpdatedAt: timeline.lastUpdatedAt,
+      nodes,
+      edges: FLOW_MAP_EDGE_DEFINITIONS.map((edge) => ({
+        fromStepCode: edge.from,
+        toStepCode: edge.to,
+        fromNodeCode: edge.from,
+        toNodeCode: edge.to,
+        edgeType: edge.edgeType,
+        status: this.resolveFlowMapEdgeStatus(
+          nodeByCode.get(edge.from),
+          nodeByCode.get(edge.to),
+          edge.edgeType,
+        ),
+        label: edge.label ?? null,
+      })),
+      recentActivities: recentTransitions.map((transition) => ({
+        id: transition.id,
+        action: transition.action,
+        actionLabel: this.getFlowMapActionLabel(transition.action),
+        summary:
+          transition.comment ??
+          this.buildTransitionSummary(transition.fromNodeCode, transition.toNodeCode),
+        operatorName: transition.operatorUser?.name ?? '系统',
+        fromNodeCode: transition.fromNodeCode,
+        fromNodeName: transition.fromNodeCode
+          ? WORKFLOW_NODE_META_MAP[transition.fromNodeCode].name
+          : null,
+        toNodeCode: transition.toNodeCode,
+        toNodeName: transition.toNodeCode
+          ? WORKFLOW_NODE_META_MAP[transition.toNodeCode].name
+          : null,
+        createdAt: transition.createdAt.toISOString(),
+      })),
     };
   }
 
@@ -1454,6 +1626,216 @@ export class ProjectsService {
     }
 
     return 'PENDING';
+  }
+
+  private resolveFlowMapNodeStatus(node: {
+    nodeCode: WorkflowNodeCode;
+    status: string;
+    taskId: string | null;
+    monthlyReview: {
+      totalPeriods: number;
+      completedPeriods: number;
+    } | null;
+    colorExit: {
+      completedAt: string | null;
+      annualOutput: number | null;
+      systemSuggestion: ColorExitSuggestion | null;
+      finalDecision: ColorExitSuggestion | null;
+    } | null;
+  }) {
+    if (node.status === 'OVERDUE') {
+      return 'OVERDUE';
+    }
+
+    if (node.status === 'RETURNED') {
+      return 'RETURNED';
+    }
+
+    if (
+      node.nodeCode === WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW &&
+      node.status !== 'COMPLETED' &&
+      node.taskId
+    ) {
+      return 'MONTHLY_TRACKING';
+    }
+
+    if (
+      node.nodeCode === WorkflowNodeCode.PROJECT_CLOSED &&
+      node.status !== 'COMPLETED' &&
+      node.taskId
+    ) {
+      return 'EXIT_PENDING';
+    }
+
+    if (
+      node.nodeCode === WorkflowNodeCode.CAB_REVIEW &&
+      node.taskId &&
+      node.status !== 'COMPLETED'
+    ) {
+      return 'PENDING_REVIEW';
+    }
+
+    if (node.status === 'CURRENT') {
+      return 'IN_PROGRESS';
+    }
+
+    return node.status;
+  }
+
+  private getFlowMapStatusLabel(status: string) {
+    switch (status) {
+      case 'NOT_STARTED':
+        return '未开始';
+      case 'PENDING':
+        return '待处理';
+      case 'IN_PROGRESS':
+        return '进行中';
+      case 'PENDING_REVIEW':
+        return '待评审';
+      case 'COMPLETED':
+        return '已完成';
+      case 'COMPLETED_LATE':
+        return '逾期完成';
+      case 'OVERDUE':
+        return '已逾期';
+      case 'RETURNED':
+        return '已退回';
+      case 'MONTHLY_TRACKING':
+        return '月度跟踪中';
+      case 'EXIT_PENDING':
+        return '待退出';
+      default:
+        return status;
+    }
+  }
+
+  private getFlowMapNodeType(nodeCode: WorkflowNodeCode) {
+    if (nodeCode === WorkflowNodeCode.CAB_REVIEW) {
+      return 'DECISION';
+    }
+
+    if (nodeCode === WorkflowNodeCode.PROJECT_INITIATION || nodeCode === WorkflowNodeCode.PROJECT_CLOSED) {
+      return 'TERMINAL';
+    }
+
+    return WORKFLOW_NODE_META_MAP[nodeCode].isPrimaryTask ? 'MAINLINE' : 'PARALLEL';
+  }
+
+  private resolveFlowMapEdgeStatus(
+    fromNode:
+      | {
+          status: string;
+        }
+      | undefined,
+    toNode:
+      | {
+          status: string;
+        }
+      | undefined,
+    edgeType: 'mainline' | 'parallel' | 'nonBlocking' | 'return',
+  ) {
+    if (edgeType === 'return') {
+      return fromNode?.status === 'RETURNED' || toNode?.status === 'RETURNED'
+        ? 'rejected'
+        : 'pending';
+    }
+
+    if (!fromNode || !toNode || fromNode.status === 'NOT_STARTED') {
+      return 'pending';
+    }
+
+    if (fromNode.status === 'COMPLETED' && toNode.status === 'COMPLETED') {
+      return 'completed';
+    }
+
+    if (
+      fromNode.status === 'COMPLETED' &&
+      ['PENDING', 'IN_PROGRESS', 'PENDING_REVIEW', 'OVERDUE', 'MONTHLY_TRACKING', 'EXIT_PENDING'].includes(
+        toNode.status,
+      )
+    ) {
+      return 'active';
+    }
+
+    if (fromNode.status === 'RETURNED' || toNode.status === 'RETURNED') {
+      return 'rejected';
+    }
+
+    return 'pending';
+  }
+
+  private getFlowMapActionLabel(action: string) {
+    switch (action) {
+      case 'START':
+        return '开始处理';
+      case 'SUBMIT':
+        return '提交工序';
+      case 'APPROVE':
+        return '评审通过';
+      case 'REJECT':
+        return '评审驳回';
+      case 'RETURN':
+        return '退回工序';
+      case 'COMPLETE':
+        return '完成工序';
+      default:
+        return action;
+    }
+  }
+
+  private buildTransitionSummary(
+    fromNodeCode: WorkflowNodeCode | null,
+    toNodeCode: WorkflowNodeCode | null,
+  ) {
+    if (fromNodeCode && toNodeCode) {
+      return `${WORKFLOW_NODE_META_MAP[fromNodeCode].name} → ${WORKFLOW_NODE_META_MAP[toNodeCode].name}`;
+    }
+
+    if (toNodeCode) {
+      return `系统创建${WORKFLOW_NODE_META_MAP[toNodeCode].name}`;
+    }
+
+    return '流程状态已更新';
+  }
+
+  private parseFlowMapRequiredMaterials(value: Prisma.JsonValue | null | undefined) {
+    if (!Array.isArray(value)) {
+      return [];
+    }
+
+    return value
+      .map((item, index) => {
+        if (typeof item === 'string') {
+          return {
+            id: `material-${index + 1}`,
+            name: item,
+            required: true,
+          };
+        }
+
+        if (!item || typeof item !== 'object' || Array.isArray(item)) {
+          return null;
+        }
+
+        const record = item as Record<string, unknown>;
+        const name = typeof record.name === 'string' ? record.name : null;
+
+        if (!name) {
+          return null;
+        }
+
+        return {
+          id:
+            typeof record.id === 'string'
+              ? record.id
+              : typeof record.code === 'string'
+                ? record.code
+                : `material-${index + 1}`,
+          name,
+          required: typeof record.required === 'boolean' ? record.required : true,
+        };
+      })
+      .filter((item): item is { id: string; name: string; required: boolean } => item !== null);
   }
 
   private isTaskOverdue(

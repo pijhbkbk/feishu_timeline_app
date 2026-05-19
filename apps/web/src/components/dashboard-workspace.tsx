@@ -422,6 +422,9 @@ export function RiskProjectsPanel({
             <Link href={`/projects/${item.projectId}/overview`} className="table-link">
               查看项目
             </Link>
+            <Link href={`/projects/${item.projectId}/flow-map`} className="table-link">
+              流程地图
+            </Link>
           </div>
         </article>
       ))}

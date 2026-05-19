@@ -218,6 +218,97 @@ export type ProjectTimelineResponse = {
   nodes: ProjectTimelineNode[];
 };
 
+export type FlowMapNodeStatus =
+  | 'NOT_STARTED'
+  | 'PENDING'
+  | 'IN_PROGRESS'
+  | 'PENDING_REVIEW'
+  | 'COMPLETED'
+  | 'COMPLETED_LATE'
+  | 'OVERDUE'
+  | 'RETURNED'
+  | 'MONTHLY_TRACKING'
+  | 'EXIT_PENDING';
+
+export type FlowMapEdgeType = 'mainline' | 'parallel' | 'nonBlocking' | 'return';
+
+export type FlowMapEdgeStatus = 'completed' | 'active' | 'pending' | 'rejected';
+
+export type ProjectFlowMapNode = {
+  taskId: string | null;
+  stepCode: string;
+  stepNumber: number;
+  stepName: string;
+  nodeCode: WorkflowNodeCode;
+  status: FlowMapNodeStatus | string;
+  statusLabel: string;
+  ownerName: string | null;
+  departmentName: string | null;
+  dueAt: string | null;
+  overdueDays: number;
+  isOverdue: boolean;
+  isBlocking: boolean;
+  isMainline: boolean;
+  nodeType: 'MAINLINE' | 'PARALLEL' | 'DECISION' | 'TERMINAL';
+  materialProgress: {
+    submitted: number;
+    required: number;
+    total: number;
+    missing: number;
+    text: string;
+  };
+  roundNo: number;
+  reviewGate: ProjectTimelineNode['reviewGate'];
+  monthlyReview: ProjectTimelineNode['monthlyReview'];
+  colorExit: ProjectTimelineNode['colorExit'];
+};
+
+export type ProjectFlowMapEdge = {
+  fromStepCode: WorkflowNodeCode;
+  toStepCode: WorkflowNodeCode;
+  fromNodeCode: WorkflowNodeCode;
+  toNodeCode: WorkflowNodeCode;
+  edgeType: FlowMapEdgeType;
+  status: FlowMapEdgeStatus;
+  label: string | null;
+};
+
+export type ProjectFlowMapActivity = {
+  id: string;
+  action: string;
+  actionLabel: string;
+  summary: string;
+  operatorName: string;
+  fromNodeCode: WorkflowNodeCode | null;
+  fromNodeName: string | null;
+  toNodeCode: WorkflowNodeCode | null;
+  toNodeName: string | null;
+  createdAt: string;
+};
+
+export type ProjectFlowMapResponse = {
+  projectId: string;
+  projectName: string;
+  projectCode: string;
+  colorName: string;
+  currentStepCode: WorkflowNodeCode | null;
+  currentStepName: string;
+  currentOwner: string | null;
+  currentDepartment: string | null;
+  progressPercent: number;
+  overdueCount: number;
+  monthlyReviewProgress: {
+    completed: number;
+    total: number;
+    overdue: number;
+    text: string;
+  };
+  lastUpdatedAt: string;
+  nodes: ProjectFlowMapNode[];
+  edges: ProjectFlowMapEdge[];
+  recentActivities: ProjectFlowMapActivity[];
+};
+
 export type ProjectMemberInput = {
   userId: string;
   memberType: ProjectMemberType;
@@ -331,6 +422,10 @@ export function fetchProject(projectId: string) {
 
 export function fetchProjectTimeline(projectId: string) {
   return apiRequest<ProjectTimelineResponse>(`/projects/${projectId}/timeline`);
+}
+
+export function fetchProjectFlowMap(projectId: string) {
+  return apiRequest<ProjectFlowMapResponse>(`/projects/${projectId}/flow-map`);
 }
 
 export function createProject(payload: ProjectWritePayload) {
