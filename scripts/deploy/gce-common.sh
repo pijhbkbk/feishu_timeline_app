@@ -30,23 +30,23 @@ require_gcloud() {
 }
 
 gce_ssh() {
-  local iap_args=()
   if [ "$GCE_TUNNEL_THROUGH_IAP" = "yes" ]; then
-    iap_args+=(--tunnel-through-iap)
+    gcloud compute ssh "$INSTANCE" --project="$PROJECT" --zone="$ZONE" --tunnel-through-iap --command "$1"
+    return
   fi
 
-  gcloud compute ssh "$INSTANCE" --project="$PROJECT" --zone="$ZONE" "${iap_args[@]}" --command "$1"
+  gcloud compute ssh "$INSTANCE" --project="$PROJECT" --zone="$ZONE" --command "$1"
 }
 
 gce_scp_to_remote() {
   local source_path="$1"
   local remote_path="$2"
-  local iap_args=()
   if [ "$GCE_TUNNEL_THROUGH_IAP" = "yes" ]; then
-    iap_args+=(--tunnel-through-iap)
+    gcloud compute scp "$source_path" "$INSTANCE:$remote_path" --project="$PROJECT" --zone="$ZONE" --tunnel-through-iap
+    return
   fi
 
-  gcloud compute scp "$source_path" "$INSTANCE:$remote_path" --project="$PROJECT" --zone="$ZONE" "${iap_args[@]}"
+  gcloud compute scp "$source_path" "$INSTANCE:$remote_path" --project="$PROJECT" --zone="$ZONE"
 }
 
 gce_run_remote_script() {

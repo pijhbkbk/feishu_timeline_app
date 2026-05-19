@@ -39,12 +39,12 @@ cleanup() {
 trap cleanup EXIT
 
 ssh_gce() {
-  local iap_args=()
   if [ "$GCE_TUNNEL_THROUGH_IAP" = "yes" ]; then
-    iap_args+=(--tunnel-through-iap)
+    gcloud compute ssh "$INSTANCE" --project="$PROJECT" --zone="$ZONE" --tunnel-through-iap --command "$1"
+    return
   fi
 
-  gcloud compute ssh "$INSTANCE" --project="$PROJECT" --zone="$ZONE" "${iap_args[@]}" --command "$1"
+  gcloud compute ssh "$INSTANCE" --project="$PROJECT" --zone="$ZONE" --command "$1"
 }
 
 add_result() {
