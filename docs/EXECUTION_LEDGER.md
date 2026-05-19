@@ -1813,6 +1813,16 @@ pnpm --filter @feishu-timeline/api build
 pnpm test:e2e
 pnpm --filter @feishu-timeline/web exec playwright install chromium
 pnpm playwright:test
+git add .
+git commit -m "feat: add interactive timeline task detail drawer"
+git push -u origin feat/timeline-node-interaction-r17
+GCE_TUNNEL_THROUGH_IAP=yes GIT_REF=feat/timeline-node-interaction-r17 RUN_PRISMA_MIGRATE_DEPLOY=no RUN_RELEASE_VERIFY=yes RUN_PRODUCTION_ACCEPTANCE=yes bash scripts/deploy/gce-redeploy.sh
+GCE_TUNNEL_THROUGH_IAP=yes bash scripts/deploy/health-check.sh DEPLOY_TARGET=production
+GCE_TUNNEL_THROUGH_IAP=yes bash scripts/deploy/ops-check.sh || true
+curl -k -sS -L -o /tmp/r17-timeline.html -w 'timeline code=%{http_code} url=%{url_effective}\n' https://timeline.all-too-well.com/projects/timeline
+curl -k -sS https://timeline.all-too-well.com/api/health
+curl -k -sS https://timeline.all-too-well.com/api/auth/session
+curl -k -sS https://timeline.all-too-well.com/api/auth/feishu/login-url
 ```
 
 #### Acceptance Result
@@ -1831,7 +1841,13 @@ pnpm playwright:test
 - [x] `pnpm install`、`pnpm lint`、`pnpm typecheck`、`pnpm test`、`pnpm --filter @feishu-timeline/web build`、`pnpm --filter @feishu-timeline/api build`、`pnpm --filter @feishu-timeline/api prisma:validate`、`pnpm test:e2e`、`pnpm playwright:test` 全部通过。
 
 #### Online Verification
-- 待提交推送并部署后补记。
+- [x] 已推送 `feat/timeline-node-interaction-r17`，实现提交为 `92a9e1c`。
+- [x] 已通过 IAP 隧道部署到 `https://timeline.all-too-well.com`，远端 checkout `92a9e1c`，`pnpm install`、Prisma validate、Web/API build、systemd restart、release verification 和 production acceptance 全部通过。
+- [x] `scripts/deploy/health-check.sh DEPLOY_TARGET=production` 通过：API/Web/Nginx/PostgreSQL/Redis 均 active，`/api/health` 返回 `200` 且 `status=ok`，关键页面与静态资源返回 200。
+- [x] `scripts/deploy/ops-check.sh` 通过：API/Web/Nginx/PostgreSQL/Redis 均 active，80/443/3000/3001/5432/6379 端口监听，磁盘 21%，可用内存 3086MB，证书剩余 50 天。
+- [x] 线上只读 smoke：`/projects/timeline` 返回 200，`/api/health` 返回 `{"status":"ok"}`。
+- [x] 生产登录状态验证：`/api/auth/session` 返回 `authenticated=false`、`mockEnabled=false`、`feishuEnabled=true`，飞书登录 URL 可生成。
+- [ ] 线上真实点击节点需要有效飞书用户会话；本轮未使用生产账号执行写入或点击型 UAT。节点点击、专项展示、刷新恢复已由本地 Playwright 全流程覆盖。
 
 #### Risks / Debt
 - “保存”和“转交负责人”按钮当前展示为不可用占位，后续需要专用表单保存和负责人转交 API。
@@ -1840,7 +1856,7 @@ pnpm playwright:test
 - `flowLogs` 当前取最近 30 条聚合记录，真实数据量上来后可分页。
 
 #### Decision
-GO FOR DEPLOY
+STOP
 
 #### Next Round
 建议继续补充抽屉内表单保存、负责人转交、材料内嵌上传和流转记录分页。
