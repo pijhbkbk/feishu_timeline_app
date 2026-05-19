@@ -23,6 +23,7 @@ export function AppShell({ children }: PropsWithChildren) {
   const { user, isAuthenticated, isLoading, logout } = useAuth();
   const appName = process.env.NEXT_PUBLIC_APP_NAME ?? '轻卡新颜色开发项目管理系统';
   const isAuthRoute = pathname.startsWith('/login');
+  const isPublicRoute = isAuthRoute || pathname === '/guide';
   const routeContext = getRouteContext(pathname);
   const topNav = filterNavItems(topNavigationItems, user);
   const visibleSidebarSections = sidebarSections
@@ -47,7 +48,7 @@ export function AppShell({ children }: PropsWithChildren) {
       : [];
 
   const guardedContent =
-    !isLoading && !isAuthenticated && !isAuthRoute ? (
+    !isLoading && !isAuthenticated && !isPublicRoute ? (
       <section className="page-card">
         <p className="eyebrow">身份认证</p>
         <StatePanel

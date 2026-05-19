@@ -16,6 +16,8 @@ import { ProjectEditor } from '../components/project-editor';
 import { ProjectLogsWorkspace } from '../components/project-logs-workspace';
 import { ProjectReviewsWorkspace } from '../components/project-reviews-workspace';
 import { ProjectWorkflowWorkspace } from '../components/project-workflow-workspace';
+import { SystemGuidePage } from '../components/system-guide-page';
+import { sidebarSections, topNavigationItems } from '../lib/navigation';
 
 describe('route smoke', () => {
   it('renders dashboard and create project entry pages', async () => {
@@ -28,6 +30,19 @@ describe('route smoke', () => {
 
     expect(dashboardHtml).toContain('skeleton-block');
     expect(newProjectHtml).toContain('创建项目');
+  });
+
+  it('renders system guide with process, operation, role and FAQ content', async () => {
+    const guideHtml = renderToStaticMarkup(<SystemGuidePage />);
+
+    expect(topNavigationItems[0]?.label).toBe('系统导览');
+    expect(sidebarSections[0]?.items[0]?.label).toBe('系统导览');
+    expect(guideHtml).toContain('轻卡定制颜色开发项目管理系统');
+    expect(guideHtml).toContain('反映市场需求');
+    expect(guideHtml).toContain('颜色退出');
+    expect(guideHtml).toContain('如何使用本系统');
+    expect(guideHtml).toContain('各角色怎么使用');
+    expect(guideHtml).toContain('为什么完成第4步后出现两个任务？');
   });
 
   it('renders project workflow, reviews and logs routes without crashing', async () => {

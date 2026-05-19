@@ -52,6 +52,11 @@ type AdminSectionMeta = {
 
 export const topNavigationItems: NavItem[] = [
   {
+    label: '系统导览',
+    href: '/guide',
+    description: '流程说明与操作指南',
+  },
+  {
     label: '工作台',
     href: '/dashboard',
     description: '项目进度驾驶舱',
@@ -98,6 +103,11 @@ export const sidebarSections: Array<{
   {
     title: '用户端',
     items: [
+      {
+        label: '系统导览',
+        href: '/guide',
+        description: '理解18步流程、操作步骤和角色分工。',
+      },
       {
         label: '工作台',
         href: '/dashboard',
@@ -369,6 +379,14 @@ export function isNavItemActive(pathname: string, item: NavItem) {
 }
 
 export function getRouteContext(pathname: string): RouteContext {
+  if (pathname === '/guide') {
+    return {
+      title: '系统导览',
+      description: '理解轻卡定制颜色开发流程、网站操作步骤和各部门常用入口。',
+      eyebrow: '新用户入口',
+    };
+  }
+
   if (pathname === '/dashboard' || pathname === '/') {
     return {
       title: '项目进度驾驶舱',

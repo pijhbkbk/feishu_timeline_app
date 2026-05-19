@@ -1860,3 +1860,85 @@ STOP
 
 #### Next Round
 建议继续补充抽屉内表单保存、负责人转交、材料内嵌上传和流转记录分页。
+
+### Round R18_SYSTEM_GUIDE_INTRO_PAGE
+
+#### Goal
+新增 `/guide`“系统导览”介绍页，帮助首次进入系统的用户理解轻卡定制颜色开发 18 步流程、网站操作步骤、角色分工、关键业务规则、材料归档和快速入口。
+
+#### Scope
+- 新增系统导览页面和组件，页面内容全部中文化。
+- 将“系统导览”加入用户端主导航最前面，并加入顶部主导航。
+- 页面展示 Hero、流程总览、18 步展开清单、关键业务规则、8 步操作、角色指南、材料说明、快速入口和常见问题。
+- 第 12、17、18 步作为关键节点突出展示。
+- `/guide` 作为公共说明页可未登录阅读；进入业务功能后仍沿用既有登录与后端权限校验。
+- 不改动后端流程规则，不改动第 4、6、9、12、13、16、17、18 步核心逻辑。
+- 新增 R18 Playwright 场景和 R18 文档。
+
+#### Inputs Read
+- `AGENTS.md`
+- `/Users/lixiaochen/Desktop/轻卡颜色开发系统_系统导览界面概念稿.pptx`
+- `docs/EXECUTION_LEDGER.md`
+- `docs/WORKFLOW_RULE_FREEZE.md`
+- `docs/TIMELINE_NODE_INTERACTION_R17.md`
+- `apps/web/src/lib/navigation.ts`
+- `apps/web/src/components/app-shell.tsx`
+- `apps/web/src/app/globals.css`
+- `apps/web/tests/playwright/r16-fixtures.ts`
+
+#### Files Changed
+- `apps/web/src/app/guide/page.tsx`
+- `apps/web/src/app/globals.css`
+- `apps/web/src/app/route-smoke.test.tsx`
+- `apps/web/src/components/app-shell.tsx`
+- `apps/web/src/components/system-guide-page.tsx`
+- `apps/web/src/lib/navigation.ts`
+- `apps/web/e2e/r18-system-guide.spec.ts`
+- `docs/SYSTEM_GUIDE_R18.md`
+- `docs/EXECUTION_LEDGER.md`
+
+#### Commands Run
+```bash
+git switch -c feat/system-guide-r18
+pnpm install
+pnpm --filter @feishu-timeline/web typecheck
+pnpm --filter @feishu-timeline/web test
+pnpm --filter @feishu-timeline/web lint
+pnpm --filter @feishu-timeline/web playwright:test:raw -- e2e/r18-system-guide.spec.ts
+pnpm lint
+pnpm typecheck
+pnpm --filter @feishu-timeline/api prisma:validate
+pnpm test
+pnpm --filter @feishu-timeline/web build
+pnpm --filter @feishu-timeline/api build
+pnpm test:e2e
+pnpm playwright:test
+```
+
+#### Acceptance Result
+- [x] `/guide` 页面已新增，页面名称为“系统导览”。
+- [x] 主导航和用户端侧边导航最前面已增加“系统导览”。
+- [x] Hero 展示“轻卡定制颜色开发项目管理系统”标题、副标题和三个入口按钮。
+- [x] 18 个工序按 4 个阶段完整展示，并支持展开 / 收起详细清单。
+- [x] 第 12、17、18 步作为关键节点突出展示。
+- [x] 关键业务规则覆盖自动流转、并行工序、非阻塞工序、评审退回、固定收费、月度评审与颜色退出。
+- [x] 网站操作步骤覆盖 8 步。
+- [x] 角色指南覆盖营销公司、涂装工艺部、采购部、质量管理部、生产部 / 涂装厂、财务部。
+- [x] 快速入口可跳转到工作台、项目看板、新建项目、我的待办、材料中心、月度评审和数据中心。
+- [x] 常见问题覆盖第 4、9、12、13、17、18 步的易误解点。
+- [x] R18 Playwright 场景通过。
+- [x] `pnpm install`、`pnpm lint`、`pnpm typecheck`、`pnpm test`、`pnpm --filter @feishu-timeline/web build`、`pnpm --filter @feishu-timeline/api build`、`pnpm --filter @feishu-timeline/api prisma:validate`、`pnpm test:e2e`、`pnpm playwright:test` 全部通过。
+
+#### Online Verification
+- 待全量测试、提交推送并部署后补记。
+
+#### Risks / Debt
+- 导览页材料说明为文档化清单，后续可与后端节点必交材料配置联动。
+- 可后续增加首次登录导览完成状态，避免老用户反复看到新手引导。
+- 可后续补充部门培训截图和可下载操作手册。
+
+#### Decision
+GO FOR COMMIT
+
+#### Next Round
+待本轮部署验收完成后再决策。
