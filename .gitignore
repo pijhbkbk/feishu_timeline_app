@@ -5,6 +5,11 @@ coverage
 .DS_Store
 .turbo
 .env
+.env.*
+!.env.example
+apps/*/.env
+apps/*/.env.*
+!apps/*/.env.example
 .env.local
 .env.development.local
 .env.test.local
@@ -15,3 +20,4 @@ apps/web/playwright-report
 apps/web/test-results
 deploy/.state/
 deploy/env/*.env
+reports/security/

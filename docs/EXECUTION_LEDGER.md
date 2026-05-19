@@ -8,12 +8,12 @@
 ## 项目基本信息
 
 - 项目名称：轻卡定制颜色开发项目管理系统
-- 当前阶段：R16 UI 自动化验收 + 业务流程网页回归
-- 当前轮次：R16_UI_BUSINESS_E2E_TEST_AND_ITERATE
-- 总体状态：PASSED
+- 当前阶段：R19 公司私有云与飞书工作台上线前安全准入
+- 当前轮次：R19_SECURITY_AUDIT_FOR_PRIVATE_CLOUD_AND_FEISHU
+- 总体状态：IN_PROGRESS
 - 仓库路径：`/Users/lixiaochen/Downloads/feishu_timeline_app`
 - 默认分支：`main`
-- 最近更新时间：`2026-05-07`
+- 最近更新时间：`2026-05-19`
 
 ---
 
@@ -52,6 +52,7 @@
 | R14 | 中文化 UI + 时间线看板 + 实时项目进度驾驶舱 | PASSED | STOP | 已完成中文驾驶舱、项目时间线看板、单项目详情时间线、月度评审看板优化和聚合 API |
 | R14_PPT_UI_IMPLEMENTATION | PPT UI 蓝图实装 + 线上部署 | PASSED | STOP | 已按 PPT 结构补齐材料中心、月度评审总账、数据中心、项目列表筛选、详情刷新与线上部署闭环 |
 | R16 | UI 自动化验收 + 业务流程网页测试与迭代修复 | PASSED | STOP | 已补 Playwright 网页级业务 UAT、稳定选择器、正式中文文案和节点展示顺序保护 |
+| R19 | 公司私有云与飞书工作台上线前安全准入 | IN_PROGRESS | STOP | 已完成范围、清单、威胁模型和基础脚本准备；等待确认后再执行全量扫描 |
 
 状态枚举建议：
 
@@ -1959,3 +1960,87 @@ STOP
 
 #### Next Round
 建议继续增强首次登录导览完成状态、导览页截图化培训材料，以及材料清单与后端必交材料配置联动。
+
+### Round R19_SECURITY_AUDIT_FOR_PRIVATE_CLOUD_AND_FEISHU
+
+#### Goal
+按公司上线前安全准入口径，为正式部署到公司私有云和上架飞书工作台建立 R19 安全检查范围、检查清单、威胁模型和自动化安全脚本基线。当前阶段只做范围确认和脚本准备，不执行全量扫描、不对生产做主动测试。
+
+#### Scope
+- 新增 R19 安全范围文档、检查清单和威胁模型。
+- 新增 `scripts/security` 基础脚本，覆盖 SAST、SCA、密钥扫描、ZAP baseline、安全响应头、主机检查、构建完整性生成与校验。
+- 新增 `docs/rounds/R19.md` 作为下一轮入口。
+- 增加 root `package.json` 安全脚本入口。
+- 收紧 `.gitignore`，避免 `.env.production`、应用目录环境文件和原始安全扫描报告误入库。
+- 不执行全量扫描，不扫描飞书开放平台域名，不扫描公司未授权 IP，不输出任何真实密钥。
+
+#### Inputs Read
+- `AGENTS.md`
+- `docs/EXECUTION_LEDGER.md`
+- `docs/deploy-gce-security.md`
+- `scripts/deploy/gce-security-hardening.sh`
+- `package.json`
+- `apps/api/package.json`
+- `apps/web/package.json`
+- `apps/api/src/main.ts`
+- `apps/api/src/common/app-config.ts`
+- `apps/api/src/modules/auth/auth.controller.ts`
+- `apps/api/src/modules/auth/auth.service.ts`
+- `apps/api/src/modules/feishu/feishu-auth.adapter.ts`
+- `apps/api/src/modules/attachments/attachments.controller.ts`
+- `apps/api/src/modules/attachments/attachments.rules.ts`
+- `apps/api/src/modules/attachments/attachments.service.ts`
+- `apps/api/src/modules/auth/permissions.guard.ts`
+- `apps/api/src/modules/auth/project-access.service.ts`
+
+#### Files Changed
+- `.gitignore`
+- `package.json`
+- `docs/EXECUTION_LEDGER.md`
+- `docs/rounds/R19.md`
+- `docs/security/SECURITY_SCOPE_R19.md`
+- `docs/security/SECURITY_CHECKLIST_R19.md`
+- `docs/security/THREAT_MODEL_R19.md`
+- `scripts/security/run-sast.sh`
+- `scripts/security/run-sca.sh`
+- `scripts/security/run-secrets-scan.sh`
+- `scripts/security/run-zap-baseline.sh`
+- `scripts/security/check-security-headers.sh`
+- `scripts/security/host-security-check.sh`
+- `scripts/security/generate-build-integrity.sh`
+- `scripts/security/check-build-integrity.sh`
+
+#### Commands Run
+```bash
+git switch -c feat/security-audit-r19
+mkdir -p docs/security scripts/security reports/security/{sast,sca,zap,headers,host,integrity}
+chmod +x scripts/security/*.sh
+bash -n scripts/security/run-sast.sh
+bash -n scripts/security/run-sca.sh
+bash -n scripts/security/run-secrets-scan.sh
+bash -n scripts/security/run-zap-baseline.sh
+bash -n scripts/security/check-security-headers.sh
+bash -n scripts/security/host-security-check.sh
+bash -n scripts/security/generate-build-integrity.sh
+bash -n scripts/security/check-build-integrity.sh
+```
+
+#### Acceptance Result
+- [x] `SECURITY_SCOPE_R19.md` 已覆盖系统名称、业务模块、接口、数据、环境和禁止范围。
+- [x] `SECURITY_CHECKLIST_R19.md` 已覆盖主机、SAST、SCA、密钥、DAST、认证、权限、输入输出、文件上传、网页防篡改、业务逻辑和飞书工作台。
+- [x] `THREAT_MODEL_R19.md` 已覆盖资产、攻击者、关键威胁、风险分级和安全目标。
+- [x] `scripts/security` 基础脚本已建立，默认优先本地目标，远端 DAST / headers 检查需要显式授权。
+- [x] 脚本语法检查通过。
+- [x] 当前阶段未执行全量扫描，未对飞书平台、公司未授权 IP 或生产环境做主动测试。
+
+#### Risks / Debt
+- 飞书 OAuth `state` 当前需要在全量阶段优先复测并补齐一次性服务端校验。
+- 附件上传当前需要在全量阶段复测扩展名白名单、文件魔数校验和危险内容响应头。
+- 私有云主机 IP、测试账号、飞书后台权限和可用范围需要由用户或公司信息安全负责人确认后再写入最终准入报告。
+- `SAST_REPORT_R19.md` 等扫描报告文档尚未生成；需要范围确认后执行对应脚本。
+
+#### Decision
+STOP
+
+#### Next Round
+等待用户确认 `docs/security/SECURITY_SCOPE_R19.md` 和 `docs/security/SECURITY_CHECKLIST_R19.md` 后，进入 R19 全量扫描、漏洞修复和复测闭环。
