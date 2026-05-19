@@ -162,7 +162,7 @@ export const R16_FLOW_NODES = [
 export type R16WorkflowNodeCode = (typeof R16_FLOW_NODES)[number]['code'];
 
 export const R16_BANNED_VISIBLE_ENGLISH =
-  /\b(MVP Skeleton|Workspace|Dashboard|Projects|Project List|Workflow|No data|Loading|Complete|Reject)\b/;
+  /\b(MVP Skeleton|Workspace|Dashboard|Projects|Project List|Workflow|No data|Loading|Complete|Reject|Insufficient permissions|workflow_tasks)\b/;
 
 type WorkflowResponse = {
   activeTasks: Array<{

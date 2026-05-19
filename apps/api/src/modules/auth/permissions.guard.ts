@@ -31,7 +31,7 @@ export class PermissionsGuard implements CanActivate {
     const user = request.authUser;
 
     if (!user) {
-      throw new ForbiddenException('User context not found.');
+      throw new ForbiddenException('请先登录后再操作。');
     }
 
     if (user.isSystemAdmin || user.roleCodes.includes('admin')) {
@@ -42,7 +42,7 @@ export class PermissionsGuard implements CanActivate {
     const hasAccess = requiredPermissions.some((permission) => permissionCodes.has(permission));
 
     if (!hasAccess) {
-      throw new ForbiddenException('Insufficient permissions.');
+      throw new ForbiddenException('无权访问该功能。');
     }
 
     return true;

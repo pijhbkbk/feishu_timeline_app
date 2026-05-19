@@ -69,12 +69,12 @@ export class UsersService {
             create: {
               code: roleCode,
               name: ROLE_LABELS[roleCode],
-              description: `Mock login role: ${ROLE_LABELS[roleCode]}`,
+              description: `模拟登录角色：${ROLE_LABELS[roleCode]}`,
               isSystem: true,
             },
             update: {
               name: ROLE_LABELS[roleCode],
-              description: `Mock login role: ${ROLE_LABELS[roleCode]}`,
+              description: `模拟登录角色：${ROLE_LABELS[roleCode]}`,
             },
           }),
         ),

@@ -384,7 +384,7 @@ export class WorkflowsService {
     ]);
 
     if (!project) {
-      throw new NotFoundException('Project not found.');
+      throw new NotFoundException('项目不存在或已被删除。');
     }
 
     const recurringTasks = recurringPlan?.tasks ?? [];
@@ -451,7 +451,7 @@ export class WorkflowsService {
     });
 
     if (!recurringTask) {
-      throw new NotFoundException('Recurring review task not found.');
+      throw new NotFoundException('月度评审任务不存在或已被删除。');
     }
 
     const { periodStart, periodEnd } = this.getMonthlyReviewPeriodRange(recurringTask.plannedDate);
@@ -544,7 +544,7 @@ export class WorkflowsService {
     });
 
     if (!detailedTask) {
-      throw new NotFoundException('Workflow task not found.');
+      throw new NotFoundException('工序任务不存在或已被删除。');
     }
 
     const [
@@ -1152,7 +1152,7 @@ export class WorkflowsService {
     const terminalStatus = getWorkflowTerminalStatus(action);
 
     if (!terminalStatus) {
-      throw new BadRequestException(`Unsupported workflow action: ${action}.`);
+      throw new BadRequestException('不支持的工序操作。');
     }
 
     const now = new Date();
@@ -1412,47 +1412,47 @@ export class WorkflowsService {
 
   private assertTaskCanTransition(task: WorkflowTaskWithRelations, action: WorkflowAction) {
     if (!task.isActive) {
-      throw new BadRequestException('Workflow task is no longer active.');
+      throw new BadRequestException('当前工序任务已失效，请刷新后重试。');
     }
 
     if (task.workflowInstance.status !== WorkflowInstanceStatus.RUNNING) {
-      throw new BadRequestException('Workflow instance is not in running state.');
+      throw new BadRequestException('当前流程不在运行中，无法继续操作。');
     }
 
     const allowedActions = getAllowedWorkflowActions(task.nodeCode);
 
     if (!allowedActions.includes(action)) {
-      throw new BadRequestException(`${task.nodeName} does not support action ${action}.`);
+      throw new BadRequestException(`${task.nodeName} 不支持当前操作。`);
     }
 
     if (action === WorkflowAction.START) {
       if (!isWorkflowTaskStatusStartable(task.status)) {
-        throw new BadRequestException(`${task.nodeName} cannot be started from ${task.status}.`);
+        throw new BadRequestException(`${task.nodeName} 当前状态不允许开始。`);
       }
 
       return;
     }
 
     if (!isWorkflowTaskStatusActionable(task.status)) {
-      throw new BadRequestException(`${task.nodeName} cannot execute ${action} from ${task.status}.`);
+      throw new BadRequestException(`${task.nodeName} 当前状态不允许执行该操作。`);
     }
 
     if (isWorkflowCompletionAction(action) && !isWorkflowTaskStatusCompletable(task.status)) {
-      throw new BadRequestException(`${task.nodeName} cannot be completed from ${task.status}.`);
+      throw new BadRequestException(`${task.nodeName} 当前状态不允许完成。`);
     }
 
     if (isWorkflowReviewAction(action) && !isWorkflowTaskStatusActionable(task.status)) {
-      throw new BadRequestException(`${task.nodeName} cannot execute review action from ${task.status}.`);
+      throw new BadRequestException(`${task.nodeName} 当前状态不允许提交评审操作。`);
     }
   }
 
   private assertTaskCanSaveForm(task: WorkflowTaskWithRelations) {
     if (!task.isActive) {
-      throw new BadRequestException('Workflow task is no longer active.');
+      throw new BadRequestException('当前工序任务已失效，请刷新后重试。');
     }
 
     if (task.workflowInstance.status !== WorkflowInstanceStatus.RUNNING) {
-      throw new BadRequestException('Workflow instance is not in running state.');
+      throw new BadRequestException('当前流程不在运行中，无法继续操作。');
     }
 
     if (
@@ -1666,7 +1666,7 @@ export class WorkflowsService {
     });
 
     if (!task) {
-      throw new NotFoundException('Workflow task not found.');
+      throw new NotFoundException('工序任务不存在或已被删除。');
     }
 
     return task;
@@ -1686,7 +1686,7 @@ export class WorkflowsService {
     });
 
     if (!workflowInstance) {
-      throw new NotFoundException('Workflow instance not found.');
+      throw new NotFoundException('流程实例不存在或已被删除。');
     }
 
     return workflowInstance;
@@ -1705,7 +1705,7 @@ export class WorkflowsService {
     });
 
     if (!workflowInstance) {
-      throw new NotFoundException('Workflow instance not found.');
+      throw new NotFoundException('流程实例不存在或已被删除。');
     }
 
     const tasks = await db.workflowTask.findMany({
@@ -2280,7 +2280,7 @@ export class WorkflowsService {
     }
 
     if (typeof rawInput !== 'object' || Array.isArray(rawInput)) {
-      throw new BadRequestException('Invalid workflow action payload.');
+      throw new BadRequestException('工序操作请求格式不正确。');
     }
 
     const input = rawInput as Record<string, unknown>;
@@ -2307,13 +2307,13 @@ export class WorkflowsService {
 
   private parseFormSaveInput(rawInput: unknown): WorkflowFormSaveInput {
     if (!rawInput || typeof rawInput !== 'object' || Array.isArray(rawInput)) {
-      throw new BadRequestException('Invalid workflow form payload.');
+      throw new BadRequestException('工序表单请求格式不正确。');
     }
 
     const input = rawInput as Record<string, unknown>;
 
     if (!input.payload || typeof input.payload !== 'object' || Array.isArray(input.payload)) {
-      throw new BadRequestException('payload must be a plain object.');
+      throw new BadRequestException('请求内容必须为表单对象。');
     }
 
     const comment =

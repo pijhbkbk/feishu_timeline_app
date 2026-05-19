@@ -17,6 +17,7 @@ import { ProjectLogsWorkspace } from '../components/project-logs-workspace';
 import { ProjectReviewsWorkspace } from '../components/project-reviews-workspace';
 import { ProjectWorkflowWorkspace } from '../components/project-workflow-workspace';
 import { SystemGuidePage } from '../components/system-guide-page';
+import { normalizeApiErrorMessage } from '../lib/auth-client';
 import { sidebarSections, topNavigationItems } from '../lib/navigation';
 
 describe('route smoke', () => {
@@ -43,6 +44,17 @@ describe('route smoke', () => {
     expect(guideHtml).toContain('如何使用本系统');
     expect(guideHtml).toContain('各角色怎么使用');
     expect(guideHtml).toContain('为什么完成第4步后出现两个任务？');
+  });
+
+  it('normalizes backend technical error messages to Chinese UI text', () => {
+    expect(normalizeApiErrorMessage('Insufficient permissions.', 403)).toBe('无权访问该功能。');
+    expect(normalizeApiErrorMessage('Request failed with 404', 404)).toBe(
+      '请求的数据不存在或已被删除。',
+    );
+    expect(normalizeApiErrorMessage('样车驾驶室评审 cannot execute START from READY.', 400)).toBe(
+      '请求参数不正确，请检查后重试。',
+    );
+    expect(normalizeApiErrorMessage('Failed to fetch')).toBe('网络连接失败，请稍后重试。');
   });
 
   it('renders project workflow, reviews and logs routes without crashing', async () => {

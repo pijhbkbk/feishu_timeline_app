@@ -34,13 +34,13 @@ export class SessionAuthGuard implements CanActivate {
     const sessionToken = request.cookies?.[cookieName];
 
     if (!sessionToken) {
-      throw new UnauthorizedException('Authentication required.');
+      throw new UnauthorizedException('请先登录后再操作。');
     }
 
     const authUser = await this.authService.getAuthenticatedUserFromSessionToken(sessionToken);
 
     if (!authUser) {
-      throw new UnauthorizedException('Session expired or invalid.');
+      throw new UnauthorizedException('登录状态已失效，请重新登录。');
     }
 
     request.authUser = authUser;

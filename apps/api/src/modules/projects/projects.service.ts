@@ -285,7 +285,7 @@ export class ProjectsService {
     ]);
 
     if (!project) {
-      throw new NotFoundException('Project not found.');
+      throw new NotFoundException('项目不存在或已被删除。');
     }
 
     return {
@@ -393,7 +393,7 @@ export class ProjectsService {
     ]);
 
     if (!project) {
-      throw new NotFoundException('Project not found.');
+      throw new NotFoundException('项目不存在或已被删除。');
     }
 
     const taskIds = tasks.map((task) => task.id);
@@ -599,7 +599,7 @@ export class ProjectsService {
       });
 
       if (!currentProject) {
-        throw new NotFoundException('Project not found.');
+        throw new NotFoundException('项目不存在或已被删除。');
       }
 
       const ownerUserId = input.ownerUserId ?? currentProject.ownerUserId;
@@ -678,7 +678,7 @@ export class ProjectsService {
       });
 
       if (!project) {
-        throw new NotFoundException('Project not found.');
+        throw new NotFoundException('项目不存在或已被删除。');
       }
 
       const beforeMembers = project.members.map((member) => ({
@@ -738,7 +738,7 @@ export class ProjectsService {
     const dateTo = this.parseOptionalDate(rawQuery.dateTo, 'dateTo');
 
     if (dateFrom && dateTo && dateFrom > dateTo) {
-      throw new BadRequestException('dateFrom must be earlier than or equal to dateTo.');
+      throw new BadRequestException('开始日期不能晚于结束日期。');
     }
 
     return {
@@ -862,7 +862,7 @@ export class ProjectsService {
     }
 
     if (!Array.isArray(rawValue)) {
-      throw new BadRequestException('members must be an array.');
+      throw new BadRequestException('项目成员必须为数组格式。');
     }
 
     const normalized = rawValue.map((entry, index) => {
@@ -875,7 +875,7 @@ export class ProjectsService {
       );
 
       if (!memberType) {
-        throw new BadRequestException(`members[${index}].memberType is required.`);
+        throw new BadRequestException(`第 ${index + 1} 个项目成员的成员类型不能为空。`);
       }
 
       return {
@@ -1080,7 +1080,7 @@ export class ProjectsService {
     });
 
     if (!project) {
-      throw new NotFoundException('Project not found.');
+      throw new NotFoundException('项目不存在或已被删除。');
     }
 
     return project;
@@ -1204,7 +1204,7 @@ export class ProjectsService {
     });
 
     if (users.length !== userIds.length) {
-      throw new BadRequestException('One or more project members do not exist or are inactive.');
+      throw new BadRequestException('一个或多个项目成员不存在或已停用。');
     }
 
     return members;
@@ -1219,7 +1219,7 @@ export class ProjectsService {
     });
 
     if (!user) {
-      throw new BadRequestException(`User ${userId} does not exist or is inactive.`);
+      throw new BadRequestException('所选项目成员不存在或已停用。');
     }
 
     return user;
@@ -1748,7 +1748,7 @@ export class ProjectsService {
     const value = Number(rawValue);
 
     if (!Number.isInteger(value) || value <= 0) {
-      throw new BadRequestException(`${fieldName} must be a positive integer.`);
+      throw new BadRequestException('数值参数必须是正整数。');
     }
 
     return Math.min(value, maxValue);
@@ -1759,22 +1759,26 @@ export class ProjectsService {
     candidates: readonly T[],
     fieldName: string,
   ) {
+    void fieldName;
+
     if (rawValue === undefined || rawValue === null || rawValue === '') {
       return undefined;
     }
 
     if (typeof rawValue !== 'string' || !candidates.includes(rawValue as T)) {
-      throw new BadRequestException(`${fieldName} is invalid.`);
+      throw new BadRequestException('请求参数不正确。');
     }
 
     return rawValue as T;
   }
 
   private parseRequiredString(rawValue: unknown, fieldName: string) {
+    void fieldName;
+
     const value = this.parseOptionalString(rawValue);
 
     if (!value) {
-      throw new BadRequestException(`${fieldName} is required.`);
+      throw new BadRequestException('必填字段不能为空。');
     }
 
     return value;
@@ -1786,7 +1790,7 @@ export class ProjectsService {
     }
 
     if (typeof rawValue !== 'string') {
-      throw new BadRequestException('Invalid string payload.');
+      throw new BadRequestException('请求字段格式不正确。');
     }
 
     const value = rawValue.trim();
@@ -1806,7 +1810,7 @@ export class ProjectsService {
       return false;
     }
 
-    throw new BadRequestException('Invalid boolean payload.');
+    throw new BadRequestException('请求字段格式不正确。');
   }
 
   private parseNullableString(rawValue: unknown): string | null;
@@ -1821,7 +1825,7 @@ export class ProjectsService {
     }
 
     if (typeof rawValue !== 'string') {
-      throw new BadRequestException('Invalid string payload.');
+      throw new BadRequestException('请求字段格式不正确。');
     }
 
     const value = rawValue.trim();
@@ -1844,13 +1848,13 @@ export class ProjectsService {
     }
 
     if (typeof rawValue !== 'string') {
-      throw new BadRequestException(`${fieldName} must be a valid ISO date string.`);
+      throw new BadRequestException('日期格式不正确。');
     }
 
     const date = new Date(rawValue);
 
     if (Number.isNaN(date.getTime())) {
-      throw new BadRequestException(`${fieldName} must be a valid ISO date string.`);
+      throw new BadRequestException('日期格式不正确。');
     }
 
     return date;

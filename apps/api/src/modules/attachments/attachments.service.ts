@@ -155,7 +155,7 @@ export class AttachmentsService {
     const filters = this.parseListFilters(rawQuery);
 
     if (!filters.entityType || !filters.entityId) {
-      throw new BadRequestException('entityType 和 entityId 不能为空。');
+      throw new BadRequestException('附件归属类型和归属对象不能为空。');
     }
 
     const entityLabels = await this.buildEntityLabelMap(this.prisma, projectId);
@@ -750,7 +750,7 @@ export class AttachmentsService {
   ) {
     if (entityType === AttachmentTargetType.PROJECT) {
       if (entityId !== projectId) {
-        throw new BadRequestException('项目级附件的 entityId 必须等于 projectId。');
+        throw new BadRequestException('项目级附件必须关联到当前项目。');
       }
 
       await this.getProjectOrThrow(db, projectId);

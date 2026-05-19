@@ -191,7 +191,7 @@ export function TaskTable({ items }: TaskTableProps) {
               <td colSpan={8}>
                 <div className="empty-state">
                   <strong>当前没有任务</strong>
-                  <p>该列表已经和 workflow_tasks 联动，暂无符合条件的活跃任务。</p>
+                  <p>该列表已接入工序任务数据，暂无符合条件的活跃任务。</p>
                 </div>
               </td>
             </tr>

@@ -103,7 +103,7 @@ export class NotificationsService {
     });
 
     if (!notification) {
-      throw new NotFoundException('Notification not found.');
+      throw new NotFoundException('通知不存在或已被删除。');
     }
 
     if (!notification.isRead) {

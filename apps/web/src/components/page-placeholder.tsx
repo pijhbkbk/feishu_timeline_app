@@ -29,7 +29,7 @@ export function PagePlaceholder({
       <p className="eyebrow">{eyebrow}</p>
       <h1>{title}</h1>
       <p>{description}</p>
-      {route ? <p className="route-label">{route}</p> : null}
+      {route ? <p className="route-label">页面入口已接入导航</p> : null}
       {tags && tags.length > 0 ? (
         <div className="tag-row">
           {tags.map((tag) => (

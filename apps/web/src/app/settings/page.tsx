@@ -5,7 +5,7 @@ export default function SettingsPage() {
     <PagePlaceholder
       eyebrow="兼容路由"
       title="设置"
-      description="该全局路由保留兼容，系统配置入口优先收敛到 /admin/*。"
+      description="该全局入口保留兼容，系统配置功能统一收敛到系统管理模块。"
       route="/settings"
       actions={[{ label: '进入系统管理', href: '/admin/users' }]}
     />

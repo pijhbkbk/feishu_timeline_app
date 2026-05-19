@@ -287,7 +287,7 @@ export class DevelopmentReportsService {
     const savedReport = await this.getReportByTaskId(tx, input.activeTask.id);
 
     if (!savedReport) {
-      throw new NotFoundException('Development report not found.');
+      throw new NotFoundException('开发报告不存在或已被删除。');
     }
 
     return savedReport;
@@ -306,7 +306,7 @@ export class DevelopmentReportsService {
     });
 
     if (!project) {
-      throw new NotFoundException('Project not found.');
+      throw new NotFoundException('项目不存在或已被删除。');
     }
 
     return project;
@@ -503,8 +503,10 @@ export class DevelopmentReportsService {
   }
 
   private parseRequiredString(rawValue: unknown, fieldName: string) {
+    void fieldName;
+
     if (typeof rawValue !== 'string' || rawValue.trim().length === 0) {
-      throw new BadRequestException(`${fieldName} is required.`);
+      throw new BadRequestException('必填字段不能为空。');
     }
 
     return rawValue.trim();
@@ -516,7 +518,7 @@ export class DevelopmentReportsService {
     }
 
     if (typeof rawValue !== 'string') {
-      throw new BadRequestException('Expected string value.');
+      throw new BadRequestException('字段必须为文本。');
     }
 
     return rawValue.trim();
@@ -528,31 +530,35 @@ export class DevelopmentReportsService {
     }
 
     if (typeof rawValue !== 'string') {
-      throw new BadRequestException('Expected string value.');
+      throw new BadRequestException('字段必须为文本。');
     }
 
     return rawValue.trim();
   }
 
   private parseOptionalDate(rawValue: unknown, fieldName: string) {
+    void fieldName;
+
     if (rawValue === undefined || rawValue === null || rawValue === '') {
       return null;
     }
 
     if (typeof rawValue !== 'string') {
-      throw new BadRequestException(`${fieldName} must be a valid ISO date string.`);
+      throw new BadRequestException('日期格式不正确。');
     }
 
     const value = new Date(rawValue);
 
     if (Number.isNaN(value.getTime())) {
-      throw new BadRequestException(`${fieldName} must be a valid ISO date string.`);
+      throw new BadRequestException('日期格式不正确。');
     }
 
     return value;
   }
 
   private parseOptionalInt(rawValue: unknown, fieldName: string) {
+    void fieldName;
+
     if (rawValue === undefined || rawValue === null || rawValue === '') {
       return null;
     }
@@ -565,6 +571,6 @@ export class DevelopmentReportsService {
       return Number(rawValue);
     }
 
-    throw new BadRequestException(`${fieldName} must be a positive integer.`);
+    throw new BadRequestException('数值参数必须是正整数。');
   }
 }

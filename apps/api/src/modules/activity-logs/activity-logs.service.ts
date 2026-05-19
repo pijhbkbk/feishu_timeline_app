@@ -72,7 +72,7 @@ export class ActivityLogsService {
     });
 
     if (!project) {
-      throw new NotFoundException('Project not found.');
+      throw new NotFoundException('项目不存在或已被删除。');
     }
 
     const [auditLogs, workflowTransitions, notifications] = await this.prisma.$transaction([

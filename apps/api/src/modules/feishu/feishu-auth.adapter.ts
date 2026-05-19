@@ -51,7 +51,7 @@ export class StubFeishuAuthAdapter implements FeishuAuthAdapter {
     const trimmedCode = code.trim();
 
     if (!trimmedCode) {
-      throw new UnauthorizedException('Feishu authorization code is required.');
+      throw new UnauthorizedException('飞书授权码不能为空。');
     }
 
     const clientId = this.getRequiredConfig('feishuAppId', 'Feishu app id');
@@ -159,7 +159,7 @@ export class StubFeishuAuthAdapter implements FeishuAuthAdapter {
     if (typeof responseCode === 'number' && responseCode !== 0) {
       const errorMessage = this.extractFeishuMessage(envelope) ?? 'unknown upstream error';
       this.logger.warn(`${action} was rejected by Feishu with code ${responseCode}: ${errorMessage}.`);
-      throw new UnauthorizedException(`${action} failed with code ${responseCode}: ${errorMessage}.`);
+      throw new UnauthorizedException('飞书接口调用失败，请稍后重试。');
     }
 
     return envelope;

@@ -561,7 +561,7 @@ export class SamplesService {
       },
     }).then((project) => {
       if (!project) {
-        throw new NotFoundException('Project not found.');
+        throw new NotFoundException('项目不存在或已被删除。');
       }
 
       return project;
@@ -576,7 +576,7 @@ export class SamplesService {
       },
     }).then((sample) => {
       if (!sample) {
-        throw new NotFoundException('Sample not found.');
+        throw new NotFoundException('样板不存在或已被删除。');
       }
 
       return sample;
@@ -709,7 +709,7 @@ export class SamplesService {
     );
 
     if (!decision) {
-      throw new BadRequestException('decision is required.');
+      throw new BadRequestException('请选择样板确认结果。');
     }
 
     return {
@@ -730,7 +730,7 @@ export class SamplesService {
       case SampleConfirmationDecision.RETURN:
         return WorkflowAction.RETURN;
       default:
-        throw new BadRequestException('Unsupported sample confirmation decision.');
+        throw new BadRequestException('样板确认结果不受支持。');
     }
   }
 
@@ -759,8 +759,10 @@ export class SamplesService {
   }
 
   private parseRequiredString(rawValue: unknown, fieldName: string) {
+    void fieldName;
+
     if (typeof rawValue !== 'string' || rawValue.trim().length === 0) {
-      throw new BadRequestException(`${fieldName} is required.`);
+      throw new BadRequestException('必填字段不能为空。');
     }
 
     return rawValue.trim();
@@ -772,7 +774,7 @@ export class SamplesService {
     }
 
     if (typeof rawValue !== 'string') {
-      throw new BadRequestException('Expected string value.');
+      throw new BadRequestException('字段必须为文本。');
     }
 
     return rawValue.trim();
@@ -788,7 +790,7 @@ export class SamplesService {
     }
 
     if (typeof rawValue !== 'string') {
-      throw new BadRequestException('Expected string value.');
+      throw new BadRequestException('字段必须为文本。');
     }
 
     return rawValue.trim();
@@ -799,12 +801,14 @@ export class SamplesService {
     values: readonly T[],
     fieldName: string,
   ) {
+    void fieldName;
+
     if (rawValue === undefined || rawValue === null || rawValue === '') {
       return undefined;
     }
 
     if (typeof rawValue !== 'string' || !values.includes(rawValue as T)) {
-      throw new BadRequestException(`${fieldName} must be one of: ${values.join(', ')}.`);
+      throw new BadRequestException('字段取值不在允许范围内。');
     }
 
     return rawValue as T;
@@ -824,13 +828,13 @@ export class SamplesService {
     }
 
     if (typeof rawValue !== 'string') {
-      throw new BadRequestException(`${fieldName} must be a valid ISO date string.`);
+      throw new BadRequestException('日期格式不正确。');
     }
 
     const value = new Date(rawValue);
 
     if (Number.isNaN(value.getTime())) {
-      throw new BadRequestException(`${fieldName} must be a valid ISO date string.`);
+      throw new BadRequestException('日期格式不正确。');
     }
 
     return value;

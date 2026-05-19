@@ -73,7 +73,7 @@ export class AuthService {
 
   async loginWithMock(input: MockLoginInput, response: Response) {
     if (!this.isMockEnabled()) {
-      throw new ForbiddenException('Mock login is disabled.');
+      throw new ForbiddenException('模拟登录已关闭。');
     }
 
     const requestedRoleCodes = this.normalizeRoleCodes(input.roleCodes);
@@ -181,7 +181,7 @@ export class AuthService {
     const user = await this.usersService.getAuthenticatedUser(userId, authSource);
 
     if (!user) {
-      throw new UnauthorizedException('User session could not be established.');
+      throw new UnauthorizedException('登录会话建立失败。');
     }
 
     return {

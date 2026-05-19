@@ -31,7 +31,7 @@ export class RolesGuard implements CanActivate {
     const user = request.authUser;
 
     if (!user) {
-      throw new ForbiddenException('User context not found.');
+      throw new ForbiddenException('请先登录后再操作。');
     }
 
     if (user.roleCodes.includes('admin')) {
@@ -41,7 +41,7 @@ export class RolesGuard implements CanActivate {
     const hasAccess = requiredRoles.some((role) => user.roleCodes.includes(role));
 
     if (!hasAccess) {
-      throw new ForbiddenException('Insufficient role permissions.');
+      throw new ForbiddenException('当前角色无权访问该功能。');
     }
 
     return true;

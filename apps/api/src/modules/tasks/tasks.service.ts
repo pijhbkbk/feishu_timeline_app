@@ -76,7 +76,7 @@ export class TasksService {
     });
 
     if (!task || (!this.isAdmin(actor) && task.assigneeUserId !== actor.id)) {
-      throw new NotFoundException('Task not found.');
+      throw new NotFoundException('工序任务不存在或已被删除。');
     }
 
     return this.toTaskItem(task);
