@@ -7,7 +7,8 @@ const currentDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(currentDir, '../..');
 
 export default defineConfig({
-  testDir: './tests/playwright',
+  testDir: '.',
+  testMatch: ['tests/playwright/**/*.spec.ts', 'e2e/**/*.spec.ts'],
   fullyParallel: false,
   workers: 1,
   timeout: 90_000,

@@ -65,6 +65,16 @@ export class WorkflowsController {
   }
 
   @Permissions('project.read')
+  @ApiOperation({ summary: '获取时间线节点交互详情' })
+  @Get('tasks/:taskId/detail')
+  getTaskInteractionDetail(
+    @Param('taskId') taskId: string,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.workflowsService.getTaskInteractionDetail(taskId, actor);
+  }
+
+  @Permissions('project.read')
   @ApiOperation({ summary: '获取节点历史轮次' })
   @Get('tasks/:taskId/history-rounds')
   getTaskHistoryRounds(

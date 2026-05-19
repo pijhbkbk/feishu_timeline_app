@@ -1749,3 +1749,98 @@ STOP
 
 #### Next Round
 如需继续推进，建议进入生产试运行数据观察与移动端时间线阅读体验优化。
+
+### Round R17_TIMELINE_NODE_INTERACTION
+
+#### Goal
+将“项目时间线看板”升级为主操作入口：用户点击 `/projects/timeline` 和 `/projects/:id/workflow` 的工序节点后，在当前页面打开工序详情抽屉，查看负责人、责任部门、材料、附件、SLA、评审/审批专项、流转记录与可执行动作。
+
+#### Scope
+- 新增时间线节点 hover 提示和 click 交互。
+- 新增 `TaskDetailDrawer` 及工序概况、责任信息、时间与 SLA、材料附件、评审/审批、流转记录分区。
+- 新增后端工序详情聚合 API，不改动冻结流程状态机和第 4/6/9/12/13/16/17/18 步核心规则。
+- 完善项目时间线看板节点数据字段，确保节点携带 `taskId`、负责人、责任部门、截止时间、阻塞和节点类型信息。
+- 新增 R17 Playwright 场景，覆盖第 1/6/12/13/17/18 步抽屉展示和 `taskId` URL 恢复。
+- 新增 R17 设计与 API 文档。
+
+#### Inputs Read
+- `AGENTS.md`
+- `docs/EXECUTION_LEDGER.md`
+- `docs/UI_TIMELINE_BOARD_R14.md`
+- `docs/WORKFLOW_RULE_FREEZE.md`
+- `apps/api/prisma/schema.prisma`
+- `apps/api/prisma/seed.ts`
+- `apps/api/src/modules/workflows/*`
+- `apps/api/src/modules/dashboard/*`
+- `apps/api/src/modules/projects/*`
+- `apps/web/src/components/project-timeline-board.tsx`
+- `apps/web/src/components/project-detail-timeline.tsx`
+- `apps/web/src/components/project-workflow-workspace.tsx`
+- `apps/web/src/lib/*`
+- `apps/web/tests/playwright/*`
+
+#### Files Changed
+- `apps/api/src/modules/dashboard/dashboard.service.ts`
+- `apps/api/src/modules/workflows/workflows.controller.ts`
+- `apps/api/src/modules/workflows/workflows.controller.spec.ts`
+- `apps/api/src/modules/workflows/workflows.service.ts`
+- `apps/web/playwright.config.mjs`
+- `apps/web/e2e/r17-timeline-node-interaction.spec.ts`
+- `apps/web/src/app/globals.css`
+- `apps/web/src/components/ppt-ui-r14.test.tsx`
+- `apps/web/src/components/project-detail-timeline.tsx`
+- `apps/web/src/components/project-timeline-board.tsx`
+- `apps/web/src/components/project-timeline-board.test.tsx`
+- `apps/web/src/components/task-detail-drawer.tsx`
+- `apps/web/src/components/timeline-node.tsx`
+- `apps/web/src/lib/dashboard-client.ts`
+- `apps/web/src/lib/workflows-client.ts`
+- `docs/TIMELINE_NODE_INTERACTION_R17.md`
+- `docs/EXECUTION_LEDGER.md`
+
+#### Commands Run
+```bash
+pnpm install
+pnpm --filter @feishu-timeline/api typecheck
+pnpm --filter @feishu-timeline/web typecheck
+pnpm --filter @feishu-timeline/api prisma:validate
+pnpm --filter @feishu-timeline/web test
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm --filter @feishu-timeline/web build
+pnpm --filter @feishu-timeline/api build
+pnpm test:e2e
+pnpm --filter @feishu-timeline/web exec playwright install chromium
+pnpm playwright:test
+```
+
+#### Acceptance Result
+- [x] `/projects/timeline` 节点 hover 显示步骤号、工序名称、状态、负责人、责任部门、截止时间、逾期/剩余工作日和点击提示。
+- [x] `/projects/timeline` 点击已触发节点打开右侧“工序详情抽屉”，页面不跳转，并写入 `projectId` 与 `taskId`。
+- [x] `/projects/:id/workflow` 单项目时间线节点可直接打开相同详情抽屉。
+- [x] 刷新带 `taskId` 的 URL 后，抽屉可自动恢复打开。
+- [x] 抽屉展示工序概况、责任信息、时间与 SLA、材料与附件、评审 / 审批、流转记录。
+- [x] 加载中、加载失败、无权限、无附件、无流转记录均为中文状态。
+- [x] 第 12 步展示通过、不通过 / 退回、原因、整改要求、责任人、通过时间和历史轮次。
+- [x] 第 13 步展示固定金额 `10000 元`、收费状态、收费凭证和财务确认人。
+- [x] 第 17 步展示 `12 个月`周期、已完成 `n / 12`、本月状态、逾期月份和月度评审台账入口。
+- [x] 第 18 步展示年产量、退出阈值、系统建议、人工结论、退出原因和生效日期。
+- [x] `GET /api/workflows/tasks/:taskId/detail` 返回真实聚合数据，不使用静态假详情冒充执行信息。
+- [x] `GET /api/dashboard/project-timelines` 节点补充 `stepCode`、`stepName`、`status`、`ownerName`、`departmentName`、`isBlocking`、`nodeType`。
+- [x] `pnpm install`、`pnpm lint`、`pnpm typecheck`、`pnpm test`、`pnpm --filter @feishu-timeline/web build`、`pnpm --filter @feishu-timeline/api build`、`pnpm --filter @feishu-timeline/api prisma:validate`、`pnpm test:e2e`、`pnpm playwright:test` 全部通过。
+
+#### Online Verification
+- 待提交推送并部署后补记。
+
+#### Risks / Debt
+- “保存”和“转交负责人”按钮当前展示为不可用占位，后续需要专用表单保存和负责人转交 API。
+- 必交材料清单依赖 `workflow_node_definitions.requiredAttachments`，当前种子数据未配置时展示“暂无必交材料配置”。
+- 抽屉支持附件查看 / 下载 / 上传入口，后续可在抽屉内嵌上传控件。
+- `flowLogs` 当前取最近 30 条聚合记录，真实数据量上来后可分页。
+
+#### Decision
+GO FOR DEPLOY
+
+#### Next Round
+建议继续补充抽屉内表单保存、负责人转交、材料内嵌上传和流转记录分页。

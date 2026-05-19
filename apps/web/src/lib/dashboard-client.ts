@@ -54,13 +54,20 @@ export type RiskProjectItem = {
 
 export type DashboardTimelineNode = {
   stepNumber: number;
+  stepCode: string;
+  stepName: string;
   nodeCode: WorkflowNodeCode;
   nodeName: string;
   taskId: string | null;
   taskStatus: string | null;
+  status: TimelineNodeStatus;
   timelineStatus: TimelineNodeStatus;
   isOverdue: boolean;
   overdueDays: number;
+  ownerName: string | null;
+  departmentName: string | null;
+  isBlocking: boolean;
+  nodeType: 'MAINLINE' | 'PARALLEL';
   assigneeName: string | null;
   dueAt: string | null;
   completedAt: string | null;

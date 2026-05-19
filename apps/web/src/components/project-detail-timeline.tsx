@@ -1,6 +1,8 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import React, { useEffect, useRef, useState } from 'react';
 
 import {
   formatDate,
@@ -12,13 +14,113 @@ import {
   getTimelineNodeStatusLabel,
   getTimelineNodeTone,
 } from '../lib/status-labels';
-import { getReviewResultLabel, getRecurringTaskStatusLabel } from '../lib/workflows-client';
+import {
+  executeWorkflowAction,
+  fetchWorkflowTaskInteractionDetail,
+  getReviewResultLabel,
+  getRecurringTaskStatusLabel,
+  type WorkflowAction,
+  type WorkflowTaskInteractionDetail,
+} from '../lib/workflows-client';
+import { TaskDetailDrawer } from './task-detail-drawer';
+import { TimelineNodeTooltip } from './timeline-node';
 
 export function ProjectDetailTimeline({
   timeline,
 }: {
   timeline: ProjectTimelineResponse;
 }) {
+  const router = useRouter();
+  const selectedTaskRequestIdRef = useRef(0);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [selectedTaskDetail, setSelectedTaskDetail] = useState<WorkflowTaskInteractionDetail | null>(null);
+  const [isLoadingTaskDetail, setIsLoadingTaskDetail] = useState(false);
+  const [taskDetailError, setTaskDetailError] = useState<string | null>(null);
+  const [actingAction, setActingAction] = useState<WorkflowAction | null>(null);
+
+  useEffect(() => {
+    syncSelectedTaskFromUrl();
+    window.addEventListener('popstate', syncSelectedTaskFromUrl);
+
+    return () => window.removeEventListener('popstate', syncSelectedTaskFromUrl);
+  }, []);
+
+  useEffect(() => {
+    if (!selectedTaskId) {
+      setSelectedTaskDetail(null);
+      setTaskDetailError(null);
+      return;
+    }
+
+    void loadSelectedTaskDetail(selectedTaskId);
+  }, [selectedTaskId]);
+
+  function syncSelectedTaskFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    setSelectedTaskId(params.get('taskId'));
+  }
+
+  async function loadSelectedTaskDetail(taskId: string) {
+    const requestId = ++selectedTaskRequestIdRef.current;
+    setIsLoadingTaskDetail(true);
+    setTaskDetailError(null);
+
+    try {
+      const detail = await fetchWorkflowTaskInteractionDetail(taskId);
+
+      if (requestId !== selectedTaskRequestIdRef.current) {
+        return;
+      }
+
+      setSelectedTaskDetail(detail);
+    } catch (loadError) {
+      if (requestId !== selectedTaskRequestIdRef.current) {
+        return;
+      }
+
+      setTaskDetailError(loadError instanceof Error ? loadError.message : '工序详情加载失败。');
+    } finally {
+      if (requestId === selectedTaskRequestIdRef.current) {
+        setIsLoadingTaskDetail(false);
+      }
+    }
+  }
+
+  function handleSelectTask(taskId: string) {
+    setSelectedTaskId(taskId);
+    const params = new URLSearchParams(window.location.search);
+    params.set('taskId', taskId);
+    router.replace(`${window.location.pathname}?${params.toString()}`, { scroll: false });
+  }
+
+  function handleCloseTaskDrawer() {
+    setSelectedTaskId(null);
+    const params = new URLSearchParams(window.location.search);
+    params.delete('taskId');
+    const query = params.toString();
+    router.replace(query ? `${window.location.pathname}?${query}` : window.location.pathname, {
+      scroll: false,
+    });
+  }
+
+  async function handleDrawerAction(action: WorkflowAction) {
+    if (!selectedTaskId) {
+      return;
+    }
+
+    setActingAction(action);
+    setTaskDetailError(null);
+
+    try {
+      await executeWorkflowAction(selectedTaskId, action);
+      await loadSelectedTaskDetail(selectedTaskId);
+    } catch (actionError) {
+      setTaskDetailError(actionError instanceof Error ? actionError.message : '工序操作失败。');
+    } finally {
+      setActingAction(null);
+    }
+  }
+
   return (
     <section className="page-card" data-testid="project-detail-timeline">
       <div className="section-header">
@@ -46,8 +148,28 @@ export function ProjectDetailTimeline({
             <div className="single-project-node-body">
               <div className="timeline-header">
                 <div>
-                  <strong>{node.nodeName}</strong>
-                  <p className="muted">{getTimelineNodeStatusLabel(node.status)}</p>
+                  <button
+                    type="button"
+                    className="single-project-node-open"
+                    disabled={!node.taskId}
+                    data-testid={`timeline-node-${String(node.stepNumber).padStart(2, '0')}`}
+                    onClick={() => node.taskId && handleSelectTask(node.taskId)}
+                  >
+                    <strong>{node.nodeName}</strong>
+                    <span>{getTimelineNodeStatusLabel(node.status)}</span>
+                    <TimelineNodeTooltip
+                      stepNumber={node.stepNumber}
+                      stepName={node.nodeName}
+                      statusLabel={getTimelineNodeStatusLabel(node.status)}
+                      ownerName={node.ownerName ?? '未分配'}
+                      departmentName={node.responsibleDepartment ?? '未分配'}
+                      dueText={formatDate(node.dueAt)}
+                      distanceText={
+                        node.isOverdue ? `逾期 ${node.overdueDays} 天` : getRemainingText(node.dueAt)
+                      }
+                      disabled={!node.taskId}
+                    />
+                  </button>
                 </div>
                 {node.isOverdue ? <span className="overdue-badge">逾期 {node.overdueDays} 天</span> : null}
               </div>
@@ -99,6 +221,16 @@ export function ProjectDetailTimeline({
           </article>
         ))}
       </div>
+      <TaskDetailDrawer
+        open={Boolean(selectedTaskId)}
+        detail={selectedTaskDetail}
+        isLoading={isLoadingTaskDetail}
+        error={taskDetailError}
+        actingAction={actingAction}
+        onClose={handleCloseTaskDrawer}
+        onReload={() => selectedTaskId && void loadSelectedTaskDetail(selectedTaskId)}
+        onExecuteAction={(action) => void handleDrawerAction(action)}
+      />
     </section>
   );
 }
@@ -134,4 +266,18 @@ function ReviewGateSummary({
       </p>
     </div>
   );
+}
+
+function getRemainingText(dueAt: string | null | undefined) {
+  if (!dueAt) {
+    return '未设置截止时间';
+  }
+
+  const diff = new Date(dueAt).getTime() - Date.now();
+
+  if (diff <= 0) {
+    return '今日到期';
+  }
+
+  return `剩余 ${Math.ceil(diff / 86_400_000)} 个工作日`;
 }

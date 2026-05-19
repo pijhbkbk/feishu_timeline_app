@@ -24,6 +24,9 @@ describe('WorkflowsController metadata', () => {
     expect(Reflect.getMetadata(PERMISSION_METADATA_KEY, prototype.getTaskDetail)).toEqual([
       'project.read',
     ]);
+    expect(Reflect.getMetadata(PERMISSION_METADATA_KEY, prototype.getTaskInteractionDetail)).toEqual([
+      'project.read',
+    ]);
     expect(Reflect.getMetadata(PERMISSION_METADATA_KEY, prototype.getTaskHistoryRounds)).toEqual([
       'project.read',
     ]);

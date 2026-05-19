@@ -218,27 +218,44 @@ export class DashboardService {
     });
 
     const projectIds = projects.map((project) => project.id);
-    const recurringPlans =
+    const [recurringPlans, nodeDefinitions] =
       projectIds.length === 0
-        ? []
-        : await this.prisma.recurringPlan.findMany({
-            where: {
-              projectId: {
-                in: projectIds,
+        ? [
+            [],
+            await this.prisma.workflowNodeDefinition.findMany({
+              where: {
+                isActive: true,
               },
-              sourceNodeCode: WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW,
-            },
-            include: {
-              tasks: {
-                orderBy: {
-                  periodIndex: 'asc',
+            }),
+          ] as const
+        : await Promise.all([
+            this.prisma.recurringPlan.findMany({
+              where: {
+                projectId: {
+                  in: projectIds,
+                },
+                sourceNodeCode: WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW,
+              },
+              include: {
+                tasks: {
+                  orderBy: {
+                    periodIndex: 'asc',
+                  },
                 },
               },
-            },
-            orderBy: {
-              createdAt: 'desc',
-            },
-          });
+              orderBy: {
+                createdAt: 'desc',
+              },
+            }),
+            this.prisma.workflowNodeDefinition.findMany({
+              where: {
+                isActive: true,
+              },
+            }),
+          ]);
+    const nodeDefinitionByCode = new Map(
+      nodeDefinitions.map((definition) => [definition.nodeCode, definition]),
+    );
 
     const recurringPlanByProject = new Map<string, (typeof recurringPlans)[number]>();
     for (const plan of recurringPlans) {
@@ -250,7 +267,12 @@ export class DashboardService {
     return {
       lastUpdatedAt: now.toISOString(),
       items: projects.map((project) =>
-        this.toTimelineBoardProject(project, recurringPlanByProject.get(project.id) ?? null, now),
+        this.toTimelineBoardProject(
+          project,
+          recurringPlanByProject.get(project.id) ?? null,
+          nodeDefinitionByCode,
+          now,
+        ),
       ),
     };
   }
@@ -637,6 +659,11 @@ export class DashboardService {
         tasks: true;
       };
     }> | null,
+    nodeDefinitionByCode: Map<WorkflowNodeCode, {
+      nodeCode: WorkflowNodeCode;
+      stepCode: string | null;
+      isBlocking: boolean;
+    }>,
     now: Date,
   ) {
     const latestTaskByNode = this.getLatestTaskByNode(project.workflowTasks);
@@ -657,21 +684,33 @@ export class DashboardService {
     const nodes = TIMELINE_NODE_CODES.map((nodeCode) => {
       const task = latestTaskByNode.get(nodeCode) ?? null;
       const overdueForTask = task ? getOverdueDays(task.dueAt, now) : 0;
+      const timelineStatus = this.resolveTimelineNodeStatus(
+        nodeCode,
+        task,
+        project.currentNodeCode,
+        overdueForTask > 0,
+      );
+      const definition = nodeDefinitionByCode.get(nodeCode) ?? null;
 
       return {
         stepNumber: WORKFLOW_NODE_META_MAP[nodeCode].sequence / 10,
+        stepCode:
+          definition?.stepCode ?? String(WORKFLOW_NODE_META_MAP[nodeCode].sequence / 10).padStart(2, '0'),
+        stepName: WORKFLOW_NODE_META_MAP[nodeCode].name,
         nodeCode,
         nodeName: WORKFLOW_NODE_META_MAP[nodeCode].name,
         taskId: task?.id ?? null,
         taskStatus: task?.status ?? null,
-        timelineStatus: this.resolveTimelineNodeStatus(
-          nodeCode,
-          task,
-          project.currentNodeCode,
-          overdueForTask > 0,
-        ),
+        status: timelineStatus,
+        timelineStatus,
         isOverdue: overdueForTask > 0,
         overdueDays: overdueForTask,
+        ownerName: task?.assigneeUser?.name ?? project.ownerUser?.name ?? null,
+        departmentName:
+          task?.assigneeDepartment?.name ?? project.ownerUser?.department?.name ?? null,
+        isBlocking:
+          definition?.isBlocking ?? WORKFLOW_NODE_META_MAP[nodeCode].isPrimaryTask,
+        nodeType: WORKFLOW_NODE_META_MAP[nodeCode].isPrimaryTask ? 'MAINLINE' : 'PARALLEL',
         assigneeName: task?.assigneeUser?.name ?? null,
         dueAt: task?.dueAt?.toISOString() ?? null,
         completedAt: task?.completedAt?.toISOString() ?? task?.reviewPassAt?.toISOString() ?? null,

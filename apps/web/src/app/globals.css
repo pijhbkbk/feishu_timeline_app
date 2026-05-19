@@ -1974,6 +1974,15 @@ a {
   border-radius: 14px;
   border: 1px solid rgba(15, 23, 42, 0.08);
   background: rgba(255, 255, 255, 0.9);
+  position: relative;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.timeline-board-node:disabled {
+  cursor: not-allowed;
+  opacity: 0.72;
 }
 
 .timeline-board-node strong {
@@ -2048,6 +2057,40 @@ a {
   background: #c2410c;
 }
 
+.timeline-node-selected {
+  box-shadow: inset 0 0 0 2px rgba(79, 111, 143, 0.36);
+}
+
+.timeline-node-tooltip {
+  position: absolute;
+  z-index: 20;
+  bottom: calc(100% + 10px);
+  left: 0;
+  display: none;
+  min-width: 240px;
+  max-width: 280px;
+  gap: 5px;
+  padding: 12px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.12);
+  color: #334155;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.timeline-node-tooltip span {
+  display: block;
+}
+
+.timeline-board-node:hover .timeline-node-tooltip,
+.timeline-board-node:focus-visible .timeline-node-tooltip,
+.single-project-node-open:hover .timeline-node-tooltip,
+.single-project-node-open:focus-visible .timeline-node-tooltip {
+  display: grid;
+}
+
 .single-project-timeline {
   display: grid;
   gap: 14px;
@@ -2105,6 +2148,29 @@ a {
   background: #c2410c;
 }
 
+.single-project-node-open {
+  position: relative;
+  display: inline-grid;
+  gap: 4px;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.single-project-node-open:disabled {
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
+.single-project-node-open span {
+  color: #64748b;
+  font-size: 13px;
+}
+
 .timeline-detail-grid {
   display: grid;
   gap: 10px;
@@ -2124,6 +2190,215 @@ a {
 .timeline-special-block p {
   margin: 0;
   color: #334155;
+}
+
+.task-detail-drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  justify-content: flex-end;
+  background: rgba(15, 23, 42, 0.22);
+}
+
+.task-detail-drawer {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  width: min(720px, 100vw);
+  height: 100vh;
+  background: #f8fafc;
+  border-left: 1px solid rgba(15, 23, 42, 0.12);
+  box-shadow: -20px 0 44px rgba(15, 23, 42, 0.16);
+}
+
+.task-detail-drawer-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 22px;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  background: #ffffff;
+}
+
+.task-detail-drawer-header h2 {
+  margin: 4px 0 6px;
+  color: #0f172a;
+  font-size: 20px;
+}
+
+.task-detail-drawer-body {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 18px 22px 96px;
+}
+
+.task-detail-stats,
+.task-material-summary {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+}
+
+.task-detail-stat,
+.task-detail-field,
+.task-detail-section,
+.task-attachment-card,
+.task-review-record,
+.task-flow-log-card {
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.task-detail-stat,
+.task-detail-field {
+  display: grid;
+  gap: 5px;
+  padding: 12px;
+}
+
+.task-detail-stat span,
+.task-detail-field span {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.task-detail-stat strong,
+.task-detail-field strong {
+  color: #0f172a;
+  font-size: 14px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.task-detail-stat-danger strong {
+  color: #b91c1c;
+}
+
+.task-detail-section {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+}
+
+.task-detail-section h3 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 16px;
+}
+
+.task-detail-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
+}
+
+.task-sla-progress {
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.18);
+}
+
+.task-sla-progress-bar {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--ui-primary);
+}
+
+.task-sla-progress-bar-danger {
+  background: var(--ui-status-overdue);
+}
+
+.task-subsection,
+.task-attachment-list,
+.task-review-records,
+.task-flow-log-list {
+  display: grid;
+  gap: 10px;
+}
+
+.task-material-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.task-material-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(248, 250, 252, 0.9);
+}
+
+.task-material-list em,
+.task-special-actions span {
+  width: fit-content;
+  padding: 4px 8px;
+  border-radius: 999px;
+  color: var(--ui-primary);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 700;
+  background: rgba(79, 111, 143, 0.12);
+}
+
+.task-attachment-card,
+.task-review-record,
+.task-flow-log-card {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+}
+
+.task-special-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.task-detail-action-bar {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 22px;
+  border-top: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(255, 255, 255, 0.96);
+}
+
+.task-detail-skeleton,
+.task-detail-error {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+  margin: 18px 22px;
+  padding: 18px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.task-detail-skeleton span {
+  min-height: 18px;
+  border-radius: 999px;
+  color: transparent;
+  background: linear-gradient(90deg, #eef2f7, #f8fafc, #eef2f7);
+}
+
+.task-detail-error strong {
+  color: #b91c1c;
 }
 
 .calendar-event {
@@ -2162,6 +2437,28 @@ a {
 
   .table-shell-scroll {
     max-height: none;
+  }
+
+  .task-detail-drawer {
+    width: 100vw;
+    border-left: 0;
+  }
+
+  .task-detail-drawer-header {
+    padding: 18px;
+  }
+
+  .task-detail-drawer-body {
+    padding: 16px 16px 104px;
+  }
+
+  .task-detail-action-bar {
+    padding: 12px 16px;
+  }
+
+  .timeline-node-tooltip {
+    left: 0;
+    right: auto;
   }
 }
 

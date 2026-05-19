@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 import {
@@ -15,11 +16,15 @@ import {
   type ProjectStatus,
 } from '../lib/projects-client';
 import {
-  getTimelineNodeStatusLabel,
-  getTimelineNodeTone,
-} from '../lib/status-labels';
+  executeWorkflowAction,
+  fetchWorkflowTaskInteractionDetail,
+  type WorkflowAction,
+  type WorkflowTaskInteractionDetail,
+} from '../lib/workflows-client';
 import { FeedbackBanner } from './feedback-banner';
 import { StatePanel } from './state-panel';
+import { TaskDetailDrawer } from './task-detail-drawer';
+import { TimelineNode } from './timeline-node';
 
 type ProjectTimelineBoardProps = {
   embedded?: boolean;
@@ -38,11 +43,18 @@ export function ProjectTimelineBoard({
   embedded = false,
   maxItems,
 }: ProjectTimelineBoardProps) {
+  const router = useRouter();
   const requestIdRef = useRef(0);
+  const selectedTaskRequestIdRef = useRef(0);
   const [payload, setPayload] = useState<DashboardProjectTimelinesResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [selectedTaskDetail, setSelectedTaskDetail] = useState<WorkflowTaskInteractionDetail | null>(null);
+  const [isLoadingTaskDetail, setIsLoadingTaskDetail] = useState(false);
+  const [taskDetailError, setTaskDetailError] = useState<string | null>(null);
+  const [actingAction, setActingAction] = useState<WorkflowAction | null>(null);
   const [filters, setFilters] = useState<TimelineBoardFilters>({
     keyword: '',
     projectStatus: '',
@@ -53,12 +65,28 @@ export function ProjectTimelineBoard({
 
   useEffect(() => {
     void loadBoard({ initial: true });
+    syncSelectedTaskFromUrl();
     const timer = window.setInterval(() => {
       void loadBoard({ silent: true });
     }, 30_000);
 
-    return () => window.clearInterval(timer);
+    window.addEventListener('popstate', syncSelectedTaskFromUrl);
+
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener('popstate', syncSelectedTaskFromUrl);
+    };
   }, []);
+
+  useEffect(() => {
+    if (!selectedTaskId) {
+      setSelectedTaskDetail(null);
+      setTaskDetailError(null);
+      return;
+    }
+
+    void loadSelectedTaskDetail(selectedTaskId);
+  }, [selectedTaskId]);
 
   async function loadBoard(options?: { initial?: boolean; silent?: boolean }) {
     const requestId = ++requestIdRef.current;
@@ -92,6 +120,76 @@ export function ProjectTimelineBoard({
         setIsLoading(false);
         setIsRefreshing(false);
       }
+    }
+  }
+
+  function syncSelectedTaskFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    setSelectedTaskId(params.get('taskId'));
+  }
+
+  async function loadSelectedTaskDetail(taskId: string) {
+    const requestId = ++selectedTaskRequestIdRef.current;
+    setIsLoadingTaskDetail(true);
+    setTaskDetailError(null);
+
+    try {
+      const detail = await fetchWorkflowTaskInteractionDetail(taskId);
+
+      if (requestId !== selectedTaskRequestIdRef.current) {
+        return;
+      }
+
+      setSelectedTaskDetail(detail);
+    } catch (loadError) {
+      if (requestId !== selectedTaskRequestIdRef.current) {
+        return;
+      }
+
+      setTaskDetailError(loadError instanceof Error ? loadError.message : '工序详情加载失败。');
+    } finally {
+      if (requestId === selectedTaskRequestIdRef.current) {
+        setIsLoadingTaskDetail(false);
+      }
+    }
+  }
+
+  function handleSelectTask(projectId: string, taskId: string) {
+    setSelectedTaskId(taskId);
+    const params = new URLSearchParams(window.location.search);
+    params.set('projectId', projectId);
+    params.set('taskId', taskId);
+    router.replace(`${window.location.pathname}?${params.toString()}`, { scroll: false });
+  }
+
+  function handleCloseTaskDrawer() {
+    setSelectedTaskId(null);
+    const params = new URLSearchParams(window.location.search);
+    params.delete('taskId');
+    const query = params.toString();
+    router.replace(query ? `${window.location.pathname}?${query}` : window.location.pathname, {
+      scroll: false,
+    });
+  }
+
+  async function handleDrawerAction(action: WorkflowAction) {
+    if (!selectedTaskId) {
+      return;
+    }
+
+    setActingAction(action);
+    setTaskDetailError(null);
+
+    try {
+      await executeWorkflowAction(selectedTaskId, action);
+      await Promise.all([
+        loadBoard({ silent: true }),
+        loadSelectedTaskDetail(selectedTaskId),
+      ]);
+    } catch (actionError) {
+      setTaskDetailError(actionError instanceof Error ? actionError.message : '工序操作失败。');
+    } finally {
+      setActingAction(null);
     }
   }
 
@@ -197,15 +295,38 @@ export function ProjectTimelineBoard({
       ) : (
         <div className="timeline-board-list">
           {visibleItems.map((item) => (
-            <ProjectTimelineCard key={item.projectId} item={item} />
+            <ProjectTimelineCard
+              key={item.projectId}
+              item={item}
+              selectedTaskId={selectedTaskId}
+              onSelectTask={handleSelectTask}
+            />
           ))}
         </div>
       )}
+      <TaskDetailDrawer
+        open={Boolean(selectedTaskId)}
+        detail={selectedTaskDetail}
+        isLoading={isLoadingTaskDetail}
+        error={taskDetailError}
+        actingAction={actingAction}
+        onClose={handleCloseTaskDrawer}
+        onReload={() => selectedTaskId && void loadSelectedTaskDetail(selectedTaskId)}
+        onExecuteAction={(action) => void handleDrawerAction(action)}
+      />
     </section>
   );
 }
 
-export function ProjectTimelineCard({ item }: { item: DashboardProjectTimelineItem }) {
+export function ProjectTimelineCard({
+  item,
+  selectedTaskId,
+  onSelectTask,
+}: {
+  item: DashboardProjectTimelineItem;
+  selectedTaskId?: string | null;
+  onSelectTask?: (projectId: string, taskId: string) => void;
+}) {
   return (
     <article className="timeline-board-card" data-testid="project-timeline-card">
       <div className="timeline-board-card-header">
@@ -245,17 +366,26 @@ export function ProjectTimelineCard({ item }: { item: DashboardProjectTimelineIt
       </div>
       <div className="timeline-board-nodes" aria-label={`${item.projectName} 18 个流程节点`}>
         {item.nodes.map((node) => (
-          <div
+          <TimelineNode
             key={node.nodeCode}
-            className={`timeline-board-node timeline-board-node-${getTimelineNodeTone(
-              node.timelineStatus,
-            )}`}
-          >
-            <span className="timeline-board-step">{String(node.stepNumber).padStart(2, '0')}</span>
-            <strong>{node.nodeName}</strong>
-            <small>{getTimelineNodeStatusLabel(node.timelineStatus)}</small>
-            {node.isOverdue ? <em>逾期 {node.overdueDays} 天</em> : null}
-          </div>
+            node={{
+              taskId: node.taskId,
+              stepNumber: node.stepNumber,
+              stepCode: node.stepCode,
+              stepName: node.stepName,
+              nodeName: node.nodeName,
+              status: node.timelineStatus,
+              ownerName: node.ownerName ?? node.assigneeName,
+              departmentName: node.departmentName,
+              dueAt: node.dueAt,
+              isOverdue: node.isOverdue,
+              overdueDays: node.overdueDays,
+              isBlocking: node.isBlocking,
+              nodeType: node.nodeType,
+            }}
+            selected={Boolean(selectedTaskId && selectedTaskId === node.taskId)}
+            onSelect={(taskId) => onSelectTask?.(item.projectId, taskId)}
+          />
         ))}
       </div>
       <div className="timeline-board-footer">

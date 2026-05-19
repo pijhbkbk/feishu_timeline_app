@@ -129,6 +129,187 @@ export type WorkflowTaskDetailResponse = {
   transitions: WorkflowTimelineEntry[];
 };
 
+export type WorkflowTaskInteractionDetail = {
+  taskId: string;
+  projectId: string;
+  stepCode: string | null;
+  stepNumber: number;
+  stepName: string;
+  nodeCode: WorkflowNodeCode;
+  status: WorkflowTaskStatus;
+  statusLabel: string;
+  isBlocking: boolean;
+  isMainline: boolean;
+  nodeType: 'MAINLINE' | 'PARALLEL';
+  roundNo: number;
+  owner: TaskPerson | null;
+  collaborators: TaskPerson[];
+  approvers: TaskPerson[];
+  department: {
+    id: string | null;
+    name: string | null;
+  };
+  deadline: string | null;
+  workContent: string;
+  outputName: string;
+  requiredMaterials: Array<{
+    id: string;
+    name: string;
+    required: boolean;
+    description: string | null;
+  }>;
+  attachments: Array<{
+    id: string;
+    fileName: string;
+    storageKey: string;
+    fileSize: number;
+    mimeType: string;
+    uploadedById: string | null;
+    uploadedByName: string | null;
+    uploadedAt: string;
+    versionNo: number | null;
+    status: string;
+    downloadUrl: string;
+    previewUrl: string;
+  }>;
+  reviewDetail: {
+    latestResult: ReviewResult | null;
+    latestResultLabel: string | null;
+    rejectReason: string | null;
+    conditionNote: string | null;
+    reworkRequirement: string | null;
+    reworkOwnerName: string | null;
+    reviewPassAt: string | null;
+    historyRounds: Array<{
+      taskId: string;
+      roundNo: number;
+      status: WorkflowTaskStatus;
+      statusLabel: string;
+      completedAt: string | null;
+    }>;
+    records: TaskReviewRecordSummary[];
+  };
+  feeSummary: {
+    fixedAmount: number;
+    currency: string;
+    status: string;
+    voucherCount: number;
+    financeConfirmerName: string | null;
+    records: Array<{
+      id: string;
+      amount: number;
+      status: string;
+      statusLabel: string;
+      payer: string | null;
+      recordedByName: string | null;
+      recordedAt: string | null;
+      completedAt: string | null;
+    }>;
+  } | null;
+  monthlyReviewSummary: {
+    planId: string | null;
+    planCode: string | null;
+    totalPeriods: number;
+    completedPeriods: number;
+    overduePeriods: number;
+    currentMonthTask: {
+      id: string;
+      periodLabel: string;
+      status: RecurringTaskStatus;
+      statusLabel: string;
+      plannedDate: string;
+      dueAt: string | null;
+    } | null;
+    ledgerPath: string;
+  } | null;
+  colorExitSummary: {
+    annualOutput: number | null;
+    exitThreshold: number | null;
+    systemSuggestion: string | null;
+    systemSuggestionLabel: string | null;
+    finalDecision: string | null;
+    finalDecisionLabel: string | null;
+    exitReason: string | null;
+    effectiveDate: string | null;
+    operatorName: string | null;
+  } | null;
+  availableActions: Array<{
+    action: WorkflowAction;
+    label: string;
+  }>;
+  flowLogs: Array<{
+    id: string;
+    source: 'WORKFLOW_TRANSITION' | 'AUDIT_LOG';
+    action: string;
+    actionLabel: string;
+    summary: string | null;
+    operatorUserId: string | null;
+    operatorName: string | null;
+    fromNodeCode: WorkflowNodeCode | null;
+    fromNodeName: string | null;
+    toNodeCode: WorkflowNodeCode | null;
+    toNodeName: string | null;
+    createdAt: string;
+  }>;
+  project: {
+    id: string;
+    code: string;
+    name: string;
+    colorName: string;
+    colorCode: string | null;
+    currentNodeCode: WorkflowNodeCode | null;
+    currentNodeName: string | null;
+  };
+  schedule: {
+    durationType: string | null;
+    durationValue: number | null;
+    ruleText: string;
+    startedAt: string;
+    createdAt: string;
+    dueAt: string | null;
+    effectiveDueAt: string | null;
+    completedAt: string | null;
+    remainingWorkdays: number | null;
+    overdueDays: number;
+    isOverdue: boolean;
+    slaStatus: string;
+    progressPercent: number | null;
+  };
+  relations: {
+    previousNodeCode: WorkflowNodeCode | null;
+    previousNodeName: string | null;
+    nextNodeCode: WorkflowNodeCode | null;
+    nextNodeName: string | null;
+    latestOperatorName: string | null;
+  };
+};
+
+export type TaskPerson = {
+  id: string;
+  name: string;
+  memberType?: string;
+  departmentId: string | null;
+  departmentName: string | null;
+};
+
+export type TaskReviewRecordSummary = {
+  id: string;
+  reviewType: string;
+  reviewRound: number;
+  result: ReviewResult;
+  resultLabel: string;
+  comment: string | null;
+  conditionNote: string | null;
+  rejectReason: string | null;
+  returnToNodeCode: WorkflowNodeCode | null;
+  returnToNodeName: string | null;
+  reviewerId: string | null;
+  reviewerName: string | null;
+  reviewedAt: string | null;
+  submittedAt: string | null;
+  attachmentId: string | null;
+};
+
 export type WorkflowTaskRoundHistoryResponse = {
   taskId: string;
   projectId: string;
@@ -219,6 +400,10 @@ export async function fetchProjectWorkflowTimeline(projectId: string) {
 
 export async function fetchWorkflowTaskDetail(taskId: string) {
   return apiRequest<WorkflowTaskDetailResponse>(`/workflows/tasks/${taskId}`);
+}
+
+export async function fetchWorkflowTaskInteractionDetail(taskId: string) {
+  return apiRequest<WorkflowTaskInteractionDetail>(`/workflows/tasks/${taskId}/detail`);
 }
 
 export async function fetchWorkflowTaskRoundHistory(taskId: string) {
