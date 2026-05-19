@@ -18,9 +18,9 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   reporter: [
     ['line'],
-    ['html', { open: 'never', outputFolder: './playwright-report' }],
+    ['html', { open: 'never', outputFolder: '../../test-results/r20/reports/playwright-report' }],
   ],
-  outputDir: './test-results/playwright',
+  outputDir: '../../test-results/r20/traces',
   use: {
     baseURL: process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:3000',
     trace: 'retain-on-failure',

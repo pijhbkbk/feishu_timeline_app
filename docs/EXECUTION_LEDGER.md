@@ -8,9 +8,9 @@
 ## 项目基本信息
 
 - 项目名称：轻卡定制颜色开发项目管理系统
-- 当前阶段：R19 公司私有云与飞书工作台上线前安全准入
-- 当前轮次：R19_SECURITY_AUDIT_FOR_PRIVATE_CLOUD_AND_FEISHU
-- 总体状态：IN_PROGRESS
+- 当前阶段：R20 真实业务场景自动化实操测试与迭代修复
+- 当前轮次：R20_REAL_WORLD_UAT_AUTOMATION
+- 总体状态：PASSED
 - 仓库路径：`/Users/lixiaochen/Downloads/feishu_timeline_app`
 - 默认分支：`main`
 - 最近更新时间：`2026-05-19`
@@ -52,7 +52,8 @@
 | R14 | 中文化 UI + 时间线看板 + 实时项目进度驾驶舱 | PASSED | STOP | 已完成中文驾驶舱、项目时间线看板、单项目详情时间线、月度评审看板优化和聚合 API |
 | R14_PPT_UI_IMPLEMENTATION | PPT UI 蓝图实装 + 线上部署 | PASSED | STOP | 已按 PPT 结构补齐材料中心、月度评审总账、数据中心、项目列表筛选、详情刷新与线上部署闭环 |
 | R16 | UI 自动化验收 + 业务流程网页测试与迭代修复 | PASSED | STOP | 已补 Playwright 网页级业务 UAT、稳定选择器、正式中文文案和节点展示顺序保护 |
-| R19 | 公司私有云与飞书工作台上线前安全准入 | IN_PROGRESS | STOP | 已完成范围、清单、威胁模型和基础脚本准备；等待确认后再执行全量扫描 |
+| R19 | 公司私有云与飞书工作台上线前安全准入 | BLOCKED | STOP | 代码与本地安全扫描已收口；私有云主机、飞书后台、镜像和 staging 证据待公司侧提供 |
+| R20 | 真实业务场景自动化实操测试与迭代修复 | PASSED | CONTINUE | 已完成 13 条 R20 真实浏览器 UAT；全量 Playwright 28/28 通过 |
 
 状态枚举建议：
 
@@ -105,6 +106,8 @@
 - `docs/UAT_WEB_TEST_R16.md`：覆盖 R16 网页 UAT 策略、稳定选择器、18 步测试基准、测试项目和线上只读 smoke
 - `docs/PLAYWRIGHT_TEST_REPORT_R16.md`：覆盖 R16 专项 Playwright、全量 Playwright 和全部门禁命令结果
 - `docs/UI_ISSUES_AND_FIXES_R16.md`：覆盖 R16 发现的问题分级、修复项和延期优化项
+- `docs/testing/R20_TEST_RUN_REPORT.md`：覆盖 R20 真实浏览器 UAT 13 条用例、测试项目、角色、证据路径和执行结果
+- `docs/testing/R20_FINAL_ACCEPTANCE.md`：覆盖第 4/6/9/12/13/16/17/18 关键规则、材料、权限、数据中心和 UI 验收结论
 
 ---
 
@@ -2164,3 +2167,139 @@ STOP
 
 #### Next Round
 由用户或公司 IT / 飞书管理员补充私有云主机证据、Feishu 后台配置证据、staging URL 和镜像产物后，执行 R19 复审；证据齐全且无新 Critical/High 后再将上线建议从 `FAIL` 调整为 `PASS_WITH_RISK_ACCEPTANCE` 或 `PASS`。
+
+### Round R20_REAL_WORLD_UAT_AUTOMATION
+
+#### Goal
+用 Playwright 操作真实网页，模拟营销、涂装工艺、采购、质量、生产、财务、项目经理、普通查看者和未登录用户，完整验证定制颜色开发系统的真实业务流程、权限边界、材料平台、数据中心和 UI 可用性，并对发现问题完成修复与复测。
+
+#### Scope
+- 新增 R20 测试计划、测试用例、运行报告、问题修复记录和最终验收文档。
+- 新增 13 条 R20 Playwright 浏览器级 UAT 用例，覆盖核心页面、项目创建、第 1-18 步关键规则、材料、权限、数据中心和 UI。
+- 新增 `pnpm playwright:test:r20`，支持只跑 R20 专项用例。
+- 增加普通查看者 `viewer` 角色，用于真实只读权限验证。
+- 补稳定 `data-testid`，降低业务页面浏览器测试脆弱性。
+- 修复移动端时间线横向溢出风险。
+- 修复 R16 / regression 月度评审断言在多 UAT 项目并存时的误判。
+- 本轮完整写入测试仅在 local 执行，未对生产执行写入测试。
+
+#### Inputs Read
+- `/Users/lixiaochen/Desktop/ceshi.md`
+- `AGENTS.md`
+- `docs/EXECUTION_LEDGER.md`
+- `apps/web/tests/playwright/r16-fixtures.ts`
+- `apps/web/tests/playwright/r16-business-flow.spec.ts`
+- `apps/web/tests/playwright/regression.spec.ts`
+- `apps/web/src/components/project-workflow-workspace.tsx`
+- `apps/web/src/components/projects-list-client.tsx`
+- `apps/web/src/components/system-guide-page.tsx`
+- `apps/web/src/app/globals.css`
+- `apps/api/src/modules/auth/auth.constants.ts`
+- `apps/api/prisma/seed.ts`
+
+#### Files Changed
+- `.gitignore`
+- `package.json`
+- `apps/api/prisma/seed.ts`
+- `apps/api/src/modules/auth/auth.constants.ts`
+- `apps/api/src/modules/auth/auth.constants.spec.ts`
+- `apps/web/package.json`
+- `apps/web/playwright.config.mjs`
+- `apps/web/src/app/globals.css`
+- `apps/web/src/components/project-workflow-workspace.tsx`
+- `apps/web/src/components/projects-list-client.tsx`
+- `apps/web/src/components/system-guide-page.tsx`
+- `apps/web/src/lib/auth-client.ts`
+- `apps/web/tests/playwright/r16-business-flow.spec.ts`
+- `apps/web/tests/playwright/regression.spec.ts`
+- `apps/web/tests/playwright/r20-fixtures.ts`
+- `apps/web/tests/playwright/r20-guide-dashboard.spec.ts`
+- `apps/web/tests/playwright/r20-create-project.spec.ts`
+- `apps/web/tests/playwright/r20-process-mainline.spec.ts`
+- `apps/web/tests/playwright/r20-parallel-after-step6.spec.ts`
+- `apps/web/tests/playwright/r20-nonblocking-step9.spec.ts`
+- `apps/web/tests/playwright/r20-step12-rework.spec.ts`
+- `apps/web/tests/playwright/r20-fee-fixed-10000.spec.ts`
+- `apps/web/tests/playwright/r20-batch-to-monthly-review.spec.ts`
+- `apps/web/tests/playwright/r20-color-exit.spec.ts`
+- `apps/web/tests/playwright/r20-materials.spec.ts`
+- `apps/web/tests/playwright/r20-permissions.spec.ts`
+- `apps/web/tests/playwright/r20-analytics-consistency.spec.ts`
+- `apps/web/tests/playwright/r20-ui-quality.spec.ts`
+- `docs/testing/R20_REAL_WORLD_UAT_PLAN.md`
+- `docs/testing/R20_TEST_CASES.md`
+- `docs/testing/R20_TEST_RUN_REPORT.md`
+- `docs/testing/R20_ISSUES_AND_FIXES.md`
+- `docs/testing/R20_FINAL_ACCEPTANCE.md`
+- `docs/EXECUTION_LEDGER.md`
+
+#### Commands Run
+```bash
+git switch -c feat/real-world-uat-r20
+pnpm --filter @feishu-timeline/web exec playwright test --config playwright.config.mjs --grep @r20 --list
+rm -rf test-results/r20
+pnpm playwright:test:r20
+pnpm --filter @feishu-timeline/web exec playwright test --config playwright.config.mjs --grep "R20-009|R20-007|R20-005|R20-011|R20-013"
+pnpm --filter @feishu-timeline/web exec playwright test --config playwright.config.mjs --grep "R20-005"
+pnpm --filter @feishu-timeline/web exec playwright test --config playwright.config.mjs --grep "R20-011"
+pnpm install
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm --filter @feishu-timeline/api build
+pnpm --filter @feishu-timeline/web build
+pnpm test:e2e
+pnpm playwright:test
+pnpm playwright:test:r20
+```
+
+#### Acceptance Result
+- [x] R20 专项测试清单识别 13 条用例。
+- [x] `pnpm install` 通过。
+- [x] `pnpm lint` 通过。
+- [x] `pnpm typecheck` 通过。
+- [x] `pnpm test` 通过：Web 20 files / 61 tests，API 48 files / 130 tests。
+- [x] `pnpm --filter @feishu-timeline/api build` 通过。
+- [x] `pnpm --filter @feishu-timeline/web build` 通过。
+- [x] `pnpm test:e2e` 通过。
+- [x] `pnpm playwright:test` 通过：28 passed。
+- [x] `pnpm playwright:test:r20` 通过：13 passed。
+- [x] 第 4 步完成后仅自动并行创建第 5 步和第 6 步。
+- [x] 第 6 步完成后仅自动并行创建第 7 步、第 9 步和第 10 步。
+- [x] 第 9 步未完成时主线仍可推进到第 12 步。
+- [x] 第 12 步不通过必须填写原因，并退回第 11 步新轮次；第二轮通过后生成第 13、14 步。
+- [x] 第 13 步固定 10000 元，且不阻塞第 14、15、16 步。
+- [x] 第 16 步完成后当前项目生成 12 个月度评审实例。
+- [x] 第 18 步按年产量给出建议，最终结论由人工确认。
+- [x] 材料提交平台上传、归档、下载、元数据和权限校验通过。
+- [x] 多角色权限、未登录访问和跨部门受限项目 IDOR smoke 通过。
+- [x] 数据中心统计一致性通过。
+- [x] UI 中文化、状态颜色、抽屉交互、1440px / 1920px / 移动端基本可读性通过。
+
+#### Evidence
+- `test-results/r20/screenshots/`：33 个截图文件。
+- `test-results/r20/api-snapshots/`：8 个 API / 页面快照。
+- `test-results/r20/exported-test-records/`：13 个结构化用例记录。
+- `test-results/r20/traces/`：34 个 trace 附件 / 截图附件。
+- `docs/testing/R20_TEST_RUN_REPORT.md`
+- `docs/testing/R20_FINAL_ACCEPTANCE.md`
+
+#### Issues Fixed
+- 第 18 步颜色退出测试补齐必填退出日期和生效日期。
+- 第 13 步收费测试在财务校验后切回项目经理推进主线。
+- R20 mock 登录用户名改为角色维度稳定值，避免切换角色后项目可见性不稳定。
+- 移动端时间线容器补响应式约束，修复横向溢出风险。
+- R16 / regression 月度评审断言改为当前项目作用域，避免多个 UAT 项目并存误判。
+- R20 权限 IDOR smoke 改为使用 seed 演示项目验证跨部门受限访问。
+
+#### Risks / Debt
+- 本轮完整写入 UAT 仅在 local 执行，未覆盖 staging / 生产网络、域名、证书、Nginx 和真实飞书入口。
+- 本轮使用本地 mock-login 角色，不代表真实飞书企业自建应用授权链路。
+- `test-results/` 证据目录为本地运行产物，不入库；交付给业务或测试人员时需从执行机器导出。
+- R20 测试项目保留为证据数据，后续可按 `UAT-R20-` 前缀归档或清理。
+
+#### Decision
+CONTINUE
+
+#### Next Round
+建议进入 staging 部署验证和业务人工验收；不建议跳过 staging 直接在生产环境执行写入型 UAT。

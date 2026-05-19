@@ -180,7 +180,11 @@ test.describe('R16 18步业务规则网页验收', () => {
 
     await page.goto('/monthly-reviews');
     await expect(page.getByTestId('monthly-review-board')).toBeVisible();
-    await expect(page.getByTestId('monthly-review-board-grid').locator('.monthly-review-card')).toHaveCount(12);
+    const monthlyProjectSection = page.locator('section.page-card').filter({
+      hasText: monthlyProject.name,
+    });
+    await expect(monthlyProjectSection).toBeVisible();
+    await expect(monthlyProjectSection.locator('.monthly-review-card')).toHaveCount(12);
 
     const exitProject = await createR16ProjectByApi(request, {
       prefix: R16_PROJECT_PREFIXES.auroraWhite,

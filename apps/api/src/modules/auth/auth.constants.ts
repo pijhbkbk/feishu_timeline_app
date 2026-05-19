@@ -14,6 +14,7 @@ export const ROLE_CODES = [
   'purchaser',
   'reviewer',
   'finance',
+  'viewer',
 ] as const;
 
 export type RoleCode = (typeof ROLE_CODES)[number];
@@ -26,6 +27,7 @@ export const ROLE_LABELS: Record<RoleCode, string> = {
   purchaser: '采购专员',
   reviewer: '评审人',
   finance: '财务',
+  viewer: '普通查看者',
 };
 
 export const ROLE_PERMISSION_CODE_MAP: Record<RoleCode, string[]> = {
@@ -68,6 +70,7 @@ export const ROLE_PERMISSION_CODE_MAP: Record<RoleCode, string[]> = {
     'dashboard.read',
   ],
   finance: ['project.read', 'workflow.transition', 'attachment.manage', 'dashboard.read'],
+  viewer: ['project.read', 'dashboard.read'],
 };
 
 export const AUTH_SESSION_PREFIX = 'auth:session:';

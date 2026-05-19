@@ -308,7 +308,7 @@ const faqs = [
 export function SystemGuidePage() {
   return (
     <div className="system-guide-page" data-testid="system-guide-page">
-      <nav className="guide-anchor-nav" aria-label="系统导览锚点">
+      <nav className="guide-anchor-nav" aria-label="系统导览锚点" data-testid="guide-page">
         <a href="#guide-flow">流程说明</a>
         <a href="#guide-operation">操作步骤</a>
         <a href="#guide-roles">角色指南</a>

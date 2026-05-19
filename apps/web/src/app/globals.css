@@ -30,6 +30,7 @@ a {
   display: grid;
   grid-template-columns: 280px 1fr;
   min-height: 100vh;
+  min-width: 0;
 }
 
 .sidebar {
@@ -102,6 +103,7 @@ a {
   display: grid;
   align-content: start;
   gap: 18px;
+  min-width: 0;
   padding: 24px 32px 32px;
 }
 
@@ -1543,7 +1545,7 @@ a {
   }
 
   .content {
-    padding: 20px;
+    padding: 16px;
   }
 
   .topbar {
@@ -1860,6 +1862,7 @@ a {
 
 .timeline-board-shell {
   max-width: 1320px;
+  min-width: 0;
 }
 
 .timeline-board-list {
@@ -1878,6 +1881,7 @@ a {
 .timeline-board-card {
   display: grid;
   gap: 16px;
+  min-width: 0;
   padding: 20px;
   border: 1px solid rgba(15, 23, 42, 0.08);
   border-radius: 20px;
@@ -1961,6 +1965,9 @@ a {
   display: grid;
   grid-template-columns: repeat(18, minmax(118px, 1fr));
   gap: 10px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   overflow-x: auto;
   padding-bottom: 4px;
 }
@@ -2459,6 +2466,19 @@ a {
   .timeline-node-tooltip {
     left: 0;
     right: auto;
+  }
+
+  .timeline-board-card-header,
+  .timeline-board-footer {
+    display: grid;
+  }
+
+  .timeline-board-card {
+    padding: 16px;
+  }
+
+  .timeline-board-meta {
+    grid-template-columns: 1fr;
   }
 }
 

@@ -11,6 +11,7 @@
     "test": "pnpm exec vitest run",
     "test:e2e": "node ./scripts/e2e-mainline.mjs",
     "playwright:test": "node ./scripts/playwright-runner.mjs",
+    "playwright:test:r20": "node ./scripts/playwright-runner.mjs -- --grep @r20",
     "playwright:test:raw": "pnpm exec playwright test"
   },
   "dependencies": {

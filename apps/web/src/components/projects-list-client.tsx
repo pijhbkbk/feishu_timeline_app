@@ -311,7 +311,7 @@ export function ProjectsListClient() {
                 </thead>
                 <tbody>
                   {listResponse.items.map((project) => (
-                    <tr key={project.id}>
+                    <tr key={project.id} data-testid="project-card">
                       <td>
                         <div className="cell-stack">
                           <strong>{project.code}</strong>

@@ -14,4 +14,11 @@ describe('ROLE_PERMISSION_CODE_MAP', () => {
     expect(ROLE_PERMISSION_CODE_MAP.reviewer).toContain('workflow.transition');
     expect(ROLE_PERMISSION_CODE_MAP.finance).toContain('workflow.transition');
   });
+
+  it('keeps viewer read-only for UAT permission checks', () => {
+    expect(ROLE_PERMISSION_CODE_MAP.viewer).toContain('project.read');
+    expect(ROLE_PERMISSION_CODE_MAP.viewer).toContain('dashboard.read');
+    expect(ROLE_PERMISSION_CODE_MAP.viewer).not.toContain('workflow.transition');
+    expect(ROLE_PERMISSION_CODE_MAP.viewer).not.toContain('attachment.manage');
+  });
 });

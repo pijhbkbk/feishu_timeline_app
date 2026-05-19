@@ -152,7 +152,9 @@ test('shows 12 monthly review instances after mass production', async ({ page })
   await expect(
     page.getByRole('heading', { name: '整车色差一致性评审台账', exact: true }),
   ).toBeVisible();
-  await expect(page.locator('[data-testid="monthly-review-board-grid"] .monthly-review-card')).toHaveCount(12);
+  const monthlyProjectSection = page.locator('section.page-card').filter({ hasText: project.name });
+  await expect(monthlyProjectSection).toBeVisible();
+  await expect(monthlyProjectSection.locator('.monthly-review-card')).toHaveCount(12);
   await expect(page.getByText('本月任务').first()).toBeVisible();
 });
 

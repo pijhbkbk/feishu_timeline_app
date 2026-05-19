@@ -18,6 +18,7 @@ apps/api/prisma/dev.db
 var/
 apps/web/playwright-report
 apps/web/test-results
+test-results/
 deploy/.state/
 deploy/env/*.env
 reports/security/

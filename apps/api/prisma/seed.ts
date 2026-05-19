@@ -81,6 +81,11 @@ const baseRoles = [
     name: '财务',
     description: '负责费用核对与财务相关审批。',
   },
+  {
+    code: 'viewer',
+    name: '普通查看者',
+    description: '只能查看被授权范围内的项目和看板，不能执行写操作。',
+  },
 ] as const;
 
 const defaultProcessTemplate = {
@@ -130,6 +135,7 @@ const rolePermissionMap = {
     'dashboard.read',
   ],
   finance: ['project.read', 'workflow.transition', 'attachment.manage', 'dashboard.read'],
+  viewer: ['project.read', 'dashboard.read'],
 } as const;
 
 const workflowNodes = [
@@ -536,6 +542,15 @@ const demoUsers = [
     departmentCode: 'FINANCE',
     isSystemAdmin: false,
     roleCodes: ['finance'],
+  },
+  {
+    key: 'viewer',
+    username: 'mock_viewer',
+    name: '演示普通查看者',
+    email: 'viewer.demo@example.com',
+    departmentCode: 'PMO',
+    isSystemAdmin: false,
+    roleCodes: ['viewer'],
   },
 ] as const;
 

@@ -531,6 +531,7 @@ export function ProjectWorkflowWorkspace({
                         <div className="task-actions">
                           <button
                             type="button"
+                            data-testid="task-detail-button"
                             className={`button button-secondary button-small${
                               selectedTaskId === task.id ? ' button-selected' : ''
                             }`}
@@ -546,6 +547,7 @@ export function ProjectWorkflowWorkspace({
                                   <button
                                     key={actionKey}
                                     type="button"
+                                    data-testid={getWorkflowActionTestId(action)}
                                     className={`button button-small ${getWorkflowActionButtonClass(action)}`}
                                     disabled={actingKey === actionKey}
                                     onClick={() => void handleAction(task, action)}
@@ -1000,6 +1002,18 @@ function getWorkflowActionButtonClass(action: WorkflowAction) {
   }
 
   return 'button-secondary';
+}
+
+function getWorkflowActionTestId(action: WorkflowAction) {
+  if (action === 'REJECT' || action === 'RETURN') {
+    return 'task-reject-button';
+  }
+
+  if (action === 'START') {
+    return 'task-start-button';
+  }
+
+  return 'task-complete-button';
 }
 
 type GanttItem = {
