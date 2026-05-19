@@ -1913,6 +1913,15 @@ pnpm --filter @feishu-timeline/web build
 pnpm --filter @feishu-timeline/api build
 pnpm test:e2e
 pnpm playwright:test
+git add .
+git commit -m "feat: add system guide intro page for color development workflow"
+git push -u origin feat/system-guide-r18
+GCE_TUNNEL_THROUGH_IAP=yes GIT_REF=feat/system-guide-r18 RUN_PRISMA_MIGRATE_DEPLOY=no RUN_RELEASE_VERIFY=yes RUN_PRODUCTION_ACCEPTANCE=yes bash scripts/deploy/gce-redeploy.sh
+GCE_TUNNEL_THROUGH_IAP=yes bash scripts/deploy/health-check.sh DEPLOY_TARGET=production
+GCE_TUNNEL_THROUGH_IAP=yes bash scripts/deploy/ops-check.sh || true
+pnpm --filter @feishu-timeline/web exec node --input-type=module # 线上 /guide 可见内容与移动端截图检查
+curl -k -sS -L -o /tmp/r18-guide.html -w 'guide code=%{http_code} url=%{url_effective}\n' https://timeline.all-too-well.com/guide
+curl -k -sS https://timeline.all-too-well.com/api/health
 ```
 
 #### Acceptance Result
@@ -1930,7 +1939,15 @@ pnpm playwright:test
 - [x] `pnpm install`、`pnpm lint`、`pnpm typecheck`、`pnpm test`、`pnpm --filter @feishu-timeline/web build`、`pnpm --filter @feishu-timeline/api build`、`pnpm --filter @feishu-timeline/api prisma:validate`、`pnpm test:e2e`、`pnpm playwright:test` 全部通过。
 
 #### Online Verification
-- 待全量测试、提交推送并部署后补记。
+- [x] 已推送 `feat/system-guide-r18`，功能实现提交为 `0807096`。
+- [x] 已通过 IAP 隧道部署到 `https://timeline.all-too-well.com`，远端 checkout `0807096`，`pnpm install`、Web/API build、Prisma validate、systemd restart、release verification 和 production acceptance 全部通过。
+- [x] `scripts/deploy/health-check.sh DEPLOY_TARGET=production` 通过：API/Web/Nginx/PostgreSQL/Redis 均 active，`/api/health` 返回 `200` 且 `status=ok`，关键页面与静态资源返回 200。
+- [x] `scripts/deploy/ops-check.sh` 通过：API/Web/Nginx/PostgreSQL/Redis 均 active，80/443/3000/3001/5432/6379 端口监听，磁盘 21%，可用内存 3082MB，证书剩余 50 天。
+- [x] 线上 `/guide` 返回 200，页面可未登录访问并展示“系统导览”。
+- [x] 线上 Playwright 可见内容检查通过：导航出现“系统导览”，18 步流程完整，网站操作步骤完整，角色指南与常见问题可见，快速入口跳转到 `/projects/timeline`。
+- [x] 线上中文化检查通过，未发现明显英文业务文案。
+- [x] 线上 1440px 与 390px 截图检查通过，页面低饱和、清晰、移动端可阅读。
+- [x] 线上 `/api/health` 返回 `{"status":"ok"}`。
 
 #### Risks / Debt
 - 导览页材料说明为文档化清单，后续可与后端节点必交材料配置联动。
@@ -1938,7 +1955,7 @@ pnpm playwright:test
 - 可后续补充部门培训截图和可下载操作手册。
 
 #### Decision
-GO FOR COMMIT
+STOP
 
 #### Next Round
-待本轮部署验收完成后再决策。
+建议继续增强首次登录导览完成状态、导览页截图化培训材料，以及材料清单与后端必交材料配置联动。
