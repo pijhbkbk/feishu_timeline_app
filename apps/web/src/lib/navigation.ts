@@ -387,6 +387,10 @@ export function filterNavItems(items: NavItem[], user: SessionUser | null) {
 }
 
 export function isNavItemActive(pathname: string, item: NavItem) {
+  if (item.href === '/projects' && pathname === '/projects/flow-map') {
+    return false;
+  }
+
   if (item.matchMode === 'prefix') {
     return pathname === item.href || pathname.startsWith(`${item.href}/`);
   }
