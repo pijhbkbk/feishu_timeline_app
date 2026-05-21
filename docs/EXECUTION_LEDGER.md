@@ -8,8 +8,8 @@
 ## 项目基本信息
 
 - 项目名称：轻卡定制颜色开发项目管理系统
-- 当前阶段：R21C 生产流程地图权限与演示数据修复
-- 当前轮次：R21C_FLOW_MAP_PRODUCTION_ACCESS_AND_DATA_FIX
+- 当前阶段：R21C 项目实时流程地图 UI 布局重构
+- 当前轮次：R21C_FLOW_MAP_UI_REFINEMENT
 - 总体状态：PASSED
 - 仓库路径：`/Users/lixiaochen/Downloads/feishu_timeline_app`
 - 默认分支：`main`
@@ -57,6 +57,7 @@
 | R21 | 项目实时流程地图 UI 实现 | PASSED | STOP | 已完成单项目实时流程地图、聚合 API、节点抽屉、风险筛选、自动刷新与全量回归 |
 | R21B | 项目实时流程地图线上可见性修复 | PASSED | STOP | 已新增 `/projects/flow-map` 全局入口、导航入口、失败态修复和生产可见性验收 |
 | R21C | 生产流程地图权限与演示数据修复 | PASSED | STOP | 已修复飞书用户默认无角色导致 403，并补齐生产演示项目数据 |
+| R21C_UI | 项目实时流程地图 UI 布局重构 | PASSED | STOP | 已按 `map2.md` 调整画布拓扑、顶部工具栏、正交连线、缩放适配与 Playwright 截图验收 |
 
 状态枚举建议：
 
@@ -111,6 +112,7 @@
 - `docs/UI_ISSUES_AND_FIXES_R16.md`：覆盖 R16 发现的问题分级、修复项和延期优化项
 - `docs/testing/R20_TEST_RUN_REPORT.md`：覆盖 R20 真实浏览器 UAT 13 条用例、测试项目、角色、证据路径和执行结果
 - `docs/testing/R20_FINAL_ACCEPTANCE.md`：覆盖第 4/6/9/12/13/16/17/18 关键规则、材料、权限、数据中心和 UI 验收结论
+- `docs/FLOW_MAP_UI_REFINEMENT_R21C.md`：覆盖 R21C 项目实时流程地图 UI 布局、坐标规则、状态色、自动刷新与截图验收
 
 ---
 
@@ -2587,3 +2589,98 @@ STOP
 
 #### Next Round
 建议补一个生产管理员配置入口，用于给飞书用户分配角色和项目观察者权限，避免以后依赖运维脚本处理真实账号授权。
+
+---
+
+### Round R21C_FLOW_MAP_UI_REFINEMENT
+
+#### Goal
+按 `/Users/lixiaochen/Desktop/map2.md` 提示词重构项目实时流程地图 UI 排版，让 `/projects/flow-map` 和 `/projects/:projectId/flow-map` 进入后直接显示清晰、完整、可读的实时流程图。
+
+#### Scope
+- 不改变业务状态机、流程流转、权限规则或后端接口语义。
+- 移除左侧常驻控制台，改为顶部工具栏和“图例 / 筛选”弹层。
+- 按固定业务拓扑坐标重排 18 个节点，默认自适应屏幕宽度。
+- 将第 12 步菱形节点压缩并去除文字旋转，避免遮挡第 14 步。
+- 将所有连线调整为正交折线，去除长斜线和大面积交叉。
+- 新增 R21C Playwright 截图与布局断言。
+
+#### Inputs Read
+- `AGENTS.md`
+- `docs/EXECUTION_LEDGER.md`
+- `docs/FLOW_MAP_REALTIME_PROGRESS_R21.md`
+- `docs/FLOW_MAP_PRODUCTION_VISIBILITY_R21B.md`
+- `/Users/lixiaochen/Desktop/map2.md`
+- 用户截图：生产流程地图出现侧栏挤压、节点遮挡和斜线混乱
+- `apps/web/src/components/flow-map-workspace.tsx`
+- `apps/web/src/app/globals.css`
+- `apps/web/tests/playwright/helpers.ts`
+- `apps/web/tests/playwright/r21-flow-map-realtime-progress.spec.ts`
+
+#### Files Changed
+- `apps/web/src/components/flow-map-workspace.tsx`
+- `apps/web/src/app/globals.css`
+- `apps/web/e2e/r21c-flow-map-ui-refinement.spec.ts`
+- `apps/web/tests/playwright/r21-flow-map-realtime-progress.spec.ts`
+- `docs/FLOW_MAP_UI_REFINEMENT_R21C.md`
+- `docs/EXECUTION_LEDGER.md`
+
+#### Commands Run
+```bash
+git switch -c feat/flow-map-ui-refinement-r21c
+pnpm --filter @feishu-timeline/web lint
+pnpm --filter @feishu-timeline/web typecheck
+pnpm --filter @feishu-timeline/web test -- flow-map-workspace.test.tsx
+pnpm --filter @feishu-timeline/web exec playwright test tests/playwright/r21-flow-map-realtime-progress.spec.ts --config playwright.config.mjs
+pnpm --filter @feishu-timeline/web exec playwright test e2e/r21c-flow-map-ui-refinement.spec.ts --config playwright.config.mjs
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm --filter @feishu-timeline/web build
+pnpm --filter @feishu-timeline/api build
+pnpm --filter @feishu-timeline/api prisma:validate
+pnpm test:e2e
+pnpm playwright:test
+```
+
+#### Acceptance Result
+- [x] `/projects/flow-map` 全局入口可选择项目并显示 18 个流程节点。
+- [x] `/projects/:projectId/flow-map` 显示顶部工具栏、状态栏和完整地图。
+- [x] 左侧常驻控制台已移除，筛选与图例迁移到顶部弹层。
+- [x] 画布默认自适应屏幕宽度，避免普通笔记本首屏被侧栏挤压。
+- [x] 第 12 步“样车驾驶室评审”文字不旋转，且不遮挡第 14 步。
+- [x] 第 17 步月度评审进度和第 18 步颜色退出节点继续可见。
+- [x] 节点详情抽屉点击、URL `taskId` 恢复和移动端基础布局通过 Playwright 验证。
+- [x] 所有连线通过正交折线断言，无长斜线。
+- [x] `pnpm lint` 通过。
+- [x] `pnpm typecheck` 通过。
+- [x] `pnpm test` 通过：Web 21 files / 65 tests，API 49 files / 132 tests。
+- [x] `pnpm --filter @feishu-timeline/web build` 通过，包含 `/projects/flow-map` 与 `/projects/[projectId]/flow-map`。
+- [x] `pnpm --filter @feishu-timeline/api build` 通过。
+- [x] `pnpm --filter @feishu-timeline/api prisma:validate` 通过。
+- [x] `pnpm test:e2e` 通过。
+- [x] `pnpm playwright:test` 通过：30 passed。
+
+#### Evidence
+- `docs/FLOW_MAP_UI_REFINEMENT_R21C.md`
+- `apps/web/e2e/r21c-flow-map-ui-refinement.spec.ts`
+- `test-results/r21c/filter-popover.png`
+- `test-results/r21c/flow-map-1440.png`
+- `test-results/r21c/flow-map-1920.png`
+- `test-results/r21c/task-drawer.png`
+- `test-results/r21c/flow-map-mobile.png`
+
+#### Issues Fixed
+- 全量 Playwright 首次发现旧 R21 用例仍查找左侧常驻控制台文案；已改为打开“图例 / 筛选”弹层后断言当前显示节点数量。
+- 移动端适应屏幕模式最小缩放过高，导致主线默认横向裁切；已将适配缩放下限调整为窄屏可完整看到流程地图缩略图。
+
+#### Risks / Debt
+- 画布仍为固定业务拓扑坐标，后续可增加拖拽平移、节点搜索和定位能力。
+- 本轮重点修复流程地图 UI 混乱问题，未新增后端业务能力。
+- 生产截图归档需在部署后补充线上登录态验证。
+
+#### Decision
+STOP
+
+#### Next Round
+建议 R22 聚焦生产管理员配置入口、真实账号授权可视化，以及流程地图节点搜索 / 定位增强。

@@ -66,7 +66,9 @@ test('R21 project realtime flow map shows topology, drawer details and refresh',
   await page.getByRole('button', { name: '关闭工序详情' }).click();
 
   await page.getByRole('button', { name: '只看风险节点' }).click();
-  await expect(page.getByText(/当前显示 \d+ \/ 18 个节点/)).toBeVisible();
+  await page.getByRole('button', { name: '图例 / 筛选' }).click();
+  await expect(page.getByTestId('flow-map-filter-popover')).toContainText(/当前显示 \d+ \/ 18 个节点/);
+  await page.getByRole('button', { name: '图例 / 筛选' }).click();
 
   await page.getByRole('button', { name: '立即刷新' }).click();
   await expect(page.getByText(/^最近更新：/)).toBeVisible();

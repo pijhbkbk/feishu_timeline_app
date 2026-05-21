@@ -42,50 +42,59 @@ type NodeLayout = {
 };
 
 const FLOW_MAP_CANVAS = {
-  width: 1180,
-  height: 1780,
+  width: 1440,
+  height: 1740,
 };
 
+function createNodeLayout(centerX: number, y: number, width = 190, height = 92): NodeLayout {
+  return {
+    x: centerX - width / 2,
+    y,
+    width,
+    height,
+  };
+}
+
 const FLOW_MAP_NODE_LAYOUT: Record<WorkflowNodeCode, NodeLayout> = {
-  PROJECT_INITIATION: { x: 500, y: 24, width: 180, height: 76 },
-  DEVELOPMENT_REPORT: { x: 500, y: 148, width: 180, height: 86 },
-  PAINT_DEVELOPMENT: { x: 500, y: 280, width: 180, height: 86 },
-  SAMPLE_COLOR_CONFIRMATION: { x: 500, y: 412, width: 180, height: 86 },
-  COLOR_NUMBERING: { x: 820, y: 412, width: 180, height: 86 },
-  PAINT_PROCUREMENT: { x: 500, y: 548, width: 180, height: 86 },
-  PERFORMANCE_TEST: { x: 90, y: 548, width: 190, height: 86 },
-  STANDARD_BOARD_PRODUCTION: { x: 800, y: 548, width: 210, height: 86 },
-  BOARD_DETAIL_UPDATE: { x: 1040, y: 548, width: 170, height: 86 },
-  FIRST_UNIT_PRODUCTION_PLAN: { x: 500, y: 686, width: 180, height: 86 },
-  TRIAL_PRODUCTION: { x: 500, y: 820, width: 180, height: 86 },
-  CAB_REVIEW: { x: 450, y: 958, width: 280, height: 132 },
-  DEVELOPMENT_ACCEPTANCE: { x: 110, y: 1156, width: 190, height: 86 },
-  COLOR_CONSISTENCY_REVIEW: { x: 500, y: 1156, width: 180, height: 86 },
-  MASS_PRODUCTION_PLAN: { x: 500, y: 1292, width: 180, height: 86 },
-  MASS_PRODUCTION: { x: 500, y: 1428, width: 180, height: 86 },
-  VISUAL_COLOR_DIFFERENCE_REVIEW: { x: 500, y: 1564, width: 180, height: 86 },
-  PROJECT_CLOSED: { x: 500, y: 1690, width: 180, height: 76 },
+  PROJECT_INITIATION: createNodeLayout(720, 80),
+  DEVELOPMENT_REPORT: createNodeLayout(720, 190),
+  PAINT_DEVELOPMENT: createNodeLayout(720, 300),
+  SAMPLE_COLOR_CONFIRMATION: createNodeLayout(720, 410),
+  COLOR_NUMBERING: createNodeLayout(1040, 410),
+  PAINT_PROCUREMENT: createNodeLayout(720, 540),
+  PERFORMANCE_TEST: createNodeLayout(400, 540),
+  STANDARD_BOARD_PRODUCTION: createNodeLayout(1040, 540),
+  BOARD_DETAIL_UPDATE: createNodeLayout(1280, 540),
+  FIRST_UNIT_PRODUCTION_PLAN: createNodeLayout(720, 670),
+  TRIAL_PRODUCTION: createNodeLayout(720, 800),
+  CAB_REVIEW: createNodeLayout(720, 940, 210, 130),
+  DEVELOPMENT_ACCEPTANCE: createNodeLayout(400, 1040),
+  COLOR_CONSISTENCY_REVIEW: createNodeLayout(720, 1120),
+  MASS_PRODUCTION_PLAN: createNodeLayout(720, 1250),
+  MASS_PRODUCTION: createNodeLayout(720, 1380),
+  VISUAL_COLOR_DIFFERENCE_REVIEW: createNodeLayout(720, 1510, 230, 100),
+  PROJECT_CLOSED: createNodeLayout(720, 1640, 190, 84),
 };
 
 const FLOW_MAP_PATHS: Record<string, string> = {
-  'PROJECT_INITIATION->DEVELOPMENT_REPORT': 'M 590 100 L 590 148',
-  'DEVELOPMENT_REPORT->PAINT_DEVELOPMENT': 'M 590 234 L 590 280',
-  'PAINT_DEVELOPMENT->SAMPLE_COLOR_CONFIRMATION': 'M 590 366 L 590 412',
-  'SAMPLE_COLOR_CONFIRMATION->COLOR_NUMBERING': 'M 680 455 L 820 455',
-  'SAMPLE_COLOR_CONFIRMATION->PAINT_PROCUREMENT': 'M 590 498 L 590 548',
-  'PAINT_PROCUREMENT->PERFORMANCE_TEST': 'M 500 591 L 280 591',
-  'PAINT_PROCUREMENT->STANDARD_BOARD_PRODUCTION': 'M 680 591 L 800 591',
-  'STANDARD_BOARD_PRODUCTION->BOARD_DETAIL_UPDATE': 'M 1010 591 L 1040 591',
-  'PAINT_PROCUREMENT->FIRST_UNIT_PRODUCTION_PLAN': 'M 590 634 L 590 686',
-  'FIRST_UNIT_PRODUCTION_PLAN->TRIAL_PRODUCTION': 'M 590 772 L 590 820',
-  'TRIAL_PRODUCTION->CAB_REVIEW': 'M 590 906 L 590 958',
-  'CAB_REVIEW->TRIAL_PRODUCTION': 'M 730 1024 C 840 1024 850 820 680 863',
-  'CAB_REVIEW->DEVELOPMENT_ACCEPTANCE': 'M 530 1075 L 205 1156',
-  'CAB_REVIEW->COLOR_CONSISTENCY_REVIEW': 'M 590 1090 L 590 1156',
-  'COLOR_CONSISTENCY_REVIEW->MASS_PRODUCTION_PLAN': 'M 590 1242 L 590 1292',
-  'MASS_PRODUCTION_PLAN->MASS_PRODUCTION': 'M 590 1378 L 590 1428',
-  'MASS_PRODUCTION->VISUAL_COLOR_DIFFERENCE_REVIEW': 'M 590 1514 L 590 1564',
-  'VISUAL_COLOR_DIFFERENCE_REVIEW->PROJECT_CLOSED': 'M 590 1650 L 590 1690',
+  'PROJECT_INITIATION->DEVELOPMENT_REPORT': 'M 720 172 L 720 190',
+  'DEVELOPMENT_REPORT->PAINT_DEVELOPMENT': 'M 720 282 L 720 300',
+  'PAINT_DEVELOPMENT->SAMPLE_COLOR_CONFIRMATION': 'M 720 392 L 720 410',
+  'SAMPLE_COLOR_CONFIRMATION->COLOR_NUMBERING': 'M 815 456 L 945 456',
+  'SAMPLE_COLOR_CONFIRMATION->PAINT_PROCUREMENT': 'M 720 502 L 720 540',
+  'PAINT_PROCUREMENT->PERFORMANCE_TEST': 'M 625 586 L 495 586',
+  'PAINT_PROCUREMENT->STANDARD_BOARD_PRODUCTION': 'M 815 586 L 945 586',
+  'STANDARD_BOARD_PRODUCTION->BOARD_DETAIL_UPDATE': 'M 1135 586 L 1185 586',
+  'PAINT_PROCUREMENT->FIRST_UNIT_PRODUCTION_PLAN': 'M 720 632 L 720 670',
+  'FIRST_UNIT_PRODUCTION_PLAN->TRIAL_PRODUCTION': 'M 720 762 L 720 800',
+  'TRIAL_PRODUCTION->CAB_REVIEW': 'M 720 892 L 720 940',
+  'CAB_REVIEW->TRIAL_PRODUCTION': 'M 825 1005 L 940 1005 L 940 846 L 815 846',
+  'CAB_REVIEW->DEVELOPMENT_ACCEPTANCE': 'M 615 1005 L 560 1005 L 560 1086 L 495 1086',
+  'CAB_REVIEW->COLOR_CONSISTENCY_REVIEW': 'M 720 1070 L 720 1120',
+  'COLOR_CONSISTENCY_REVIEW->MASS_PRODUCTION_PLAN': 'M 720 1212 L 720 1250',
+  'MASS_PRODUCTION_PLAN->MASS_PRODUCTION': 'M 720 1342 L 720 1380',
+  'MASS_PRODUCTION->VISUAL_COLOR_DIFFERENCE_REVIEW': 'M 720 1472 L 720 1510',
+  'VISUAL_COLOR_DIFFERENCE_REVIEW->PROJECT_CLOSED': 'M 720 1610 L 720 1640',
 };
 
 export function FlowMapWorkspace({ projectId }: FlowMapWorkspaceProps) {
@@ -361,27 +370,18 @@ export function FlowMapWorkspace({ projectId }: FlowMapWorkspaceProps) {
           </div>
         </div>
         {error ? <FeedbackBanner variant="error" title="流程地图刷新失败" message={error} /> : null}
-        <FlowMapOverview payload={payload} />
+        <FlowMapStatusBar payload={payload} />
       </section>
 
-      <section className="flow-map-workbench">
-        <aside className="flow-map-side-panel">
-          <FlowMapControlPanel
-            payload={payload}
-            viewMode={viewMode}
-            visibleCount={visibleNodeCodeSet.size}
-            onViewModeChange={setViewMode}
-          />
-        </aside>
-        <div className="flow-map-main-panel">
-          <FlowMapCanvas
-            payload={payload}
-            visibleNodeCodeSet={visibleNodeCodeSet}
-            selectedNodeCode={selectedNodeCode}
-            onSelectNode={handleSelectNode}
-          />
-        </div>
-      </section>
+      <FlowMapCanvas
+        payload={payload}
+        viewMode={viewMode}
+        visibleCount={visibleNodeCodeSet.size}
+        visibleNodeCodeSet={visibleNodeCodeSet}
+        selectedNodeCode={selectedNodeCode}
+        onViewModeChange={setViewMode}
+        onSelectNode={handleSelectNode}
+      />
 
       <section className="page-card flow-map-activity-card">
         <div className="section-header">
@@ -414,27 +414,31 @@ export function FlowMapWorkspace({ projectId }: FlowMapWorkspaceProps) {
   );
 }
 
-function FlowMapOverview({ payload }: { payload: ProjectFlowMapResponse }) {
+function FlowMapStatusBar({ payload }: { payload: ProjectFlowMapResponse }) {
   return (
-    <div className="flow-map-overview-grid">
-      <FlowMapOverviewItem label="当前节点" value={payload.currentStepName} />
-      <FlowMapOverviewItem label="当前负责人" value={payload.currentOwner ?? '未分配'} />
-      <FlowMapOverviewItem label="责任部门" value={payload.currentDepartment ?? '未分配'} />
-      <FlowMapOverviewItem label="整体进度" value={`${payload.progressPercent}%`} />
-      <FlowMapOverviewItem
+    <div className="flow-map-status-bar" aria-label="项目实时流程地图状态栏">
+      <FlowMapStatusItem label="当前节点" value={payload.currentStepName} />
+      <FlowMapStatusItem label="进度" value={`${payload.progressPercent}%`} />
+      <FlowMapStatusItem label="负责人" value={payload.currentOwner ?? '未分配'} />
+      <FlowMapStatusItem label="责任部门" value={payload.currentDepartment ?? '未分配'} />
+      <FlowMapStatusItem
         label="逾期节点"
         value={payload.overdueCount > 0 ? `${payload.overdueCount} 个` : '无'}
         danger={payload.overdueCount > 0}
       />
-      <FlowMapOverviewItem
-        label="第 17 步月度评审"
+      <FlowMapStatusItem
+        label="月度评审"
         value={`${payload.monthlyReviewProgress.completed} / ${payload.monthlyReviewProgress.total}`}
+      />
+      <FlowMapStatusItem
+        label="最近更新"
+        value={formatFlowMapDateTime(payload.lastUpdatedAt)}
       />
     </div>
   );
 }
 
-function FlowMapOverviewItem({
+function FlowMapStatusItem({
   label,
   value,
   danger = false,
@@ -444,14 +448,14 @@ function FlowMapOverviewItem({
   danger?: boolean;
 }) {
   return (
-    <div className={danger ? 'flow-map-overview-item flow-map-overview-danger' : 'flow-map-overview-item'}>
+    <div className={danger ? 'flow-map-status-item flow-map-status-danger' : 'flow-map-status-item'}>
       <span>{label}</span>
       <strong>{value}</strong>
     </div>
   );
 }
 
-function FlowMapControlPanel({
+function FlowMapLegendFilterPopover({
   payload,
   viewMode,
   visibleCount,
@@ -463,10 +467,10 @@ function FlowMapControlPanel({
   onViewModeChange: (mode: ViewMode) => void;
 }) {
   return (
-    <div className="page-card flow-map-control-card">
+    <div className="flow-map-filter-popover" data-testid="flow-map-filter-popover">
       <div>
         <p className="eyebrow">筛选与图例</p>
-        <h2 className="section-title">流程地图控制台</h2>
+        <h2 className="section-title">图例 / 筛选</h2>
         <p className="muted">
           当前显示 {visibleCount} / {payload.nodes.length} 个节点。筛选不会改变业务状态，只调整地图高亮。
         </p>
@@ -518,15 +522,72 @@ function FlowMapControlPanel({
 
 function FlowMapCanvas({
   payload,
+  viewMode,
+  visibleCount,
   visibleNodeCodeSet,
   selectedNodeCode,
+  onViewModeChange,
   onSelectNode,
 }: {
   payload: ProjectFlowMapResponse;
+  viewMode: ViewMode;
+  visibleCount: number;
   visibleNodeCodeSet: Set<WorkflowNodeCode>;
   selectedNodeCode: WorkflowNodeCode | null;
+  onViewModeChange: (mode: ViewMode) => void;
   onSelectNode: (node: ProjectFlowMapNode) => void;
 }) {
+  const scrollShellRef = useRef<HTMLDivElement>(null);
+  const [fitScale, setFitScale] = useState(0.68);
+  const [manualScale, setManualScale] = useState(1);
+  const [isFitMode, setIsFitMode] = useState(true);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const effectiveScale = isFitMode ? fitScale : manualScale;
+
+  useEffect(() => {
+    const shell = scrollShellRef.current;
+
+    if (!shell) {
+      return;
+    }
+
+    const updateFitScale = () => {
+      const nextScale = Math.min(1, Math.max(0.22, (shell.clientWidth - 24) / FLOW_MAP_CANVAS.width));
+      setFitScale(Number(nextScale.toFixed(3)));
+    };
+
+    updateFitScale();
+    const observer = new ResizeObserver(updateFitScale);
+    observer.observe(shell);
+
+    return () => observer.disconnect();
+  }, []);
+
+  function scrollToStart() {
+    window.requestAnimationFrame(() => {
+      scrollShellRef.current?.scrollTo({ left: 0, top: 0, behavior: 'smooth' });
+    });
+  }
+
+  function handleFitScreen() {
+    setIsFitMode(true);
+    scrollToStart();
+  }
+
+  function handleActualSize() {
+    setIsFitMode(false);
+    setManualScale(1);
+    scrollToStart();
+  }
+
+  function handleZoom(delta: number) {
+    setIsFitMode(false);
+    setManualScale((current) => {
+      const base = isFitMode ? fitScale : current;
+      return Number(Math.min(1.25, Math.max(0.22, base + delta)).toFixed(2));
+    });
+  }
+
   return (
     <section className="page-card flow-map-canvas-card" data-testid="flow-map-canvas">
       <div className="section-header">
@@ -536,11 +597,80 @@ function FlowMapCanvas({
           <p className="muted">保留主线、并行支线、非阻塞节点、评审退回和颜色退出治理拓扑。</p>
         </div>
       </div>
-      <div className="flow-map-scroll-shell">
+      <div className="flow-map-toolbar" data-testid="flow-map-toolbar">
+        <div className="flow-map-view-mode-bar" role="group" aria-label="流程地图视图模式">
+          {[
+            { value: 'all', label: '全部节点' },
+            { value: 'mainline', label: '只看主线' },
+            { value: 'risk', label: '只看风险节点' },
+            { value: 'mine', label: '只看我的任务' },
+            { value: 'open', label: '只看未完成' },
+          ].map((item) => (
+            <button
+              key={item.value}
+              type="button"
+              className={viewMode === item.value ? 'flow-map-filter-active' : undefined}
+              onClick={() => onViewModeChange(item.value as ViewMode)}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+        <div className="flow-map-canvas-actions">
+          <button type="button" onClick={handleFitScreen}>
+            适应屏幕
+          </button>
+          <button type="button" onClick={handleActualSize}>
+            100%
+          </button>
+          <button type="button" aria-label="缩小流程地图" onClick={() => handleZoom(-0.08)}>
+            −
+          </button>
+          <button type="button" aria-label="放大流程地图" onClick={() => handleZoom(0.08)}>
+            +
+          </button>
+          <button type="button" onClick={handleFitScreen}>
+            重置位置
+          </button>
+          <div className="flow-map-filter-menu">
+            <button
+              type="button"
+              aria-expanded={isFilterOpen}
+              aria-controls="flow-map-filter-popover"
+              onClick={() => setIsFilterOpen((current) => !current)}
+            >
+              图例 / 筛选
+            </button>
+            {isFilterOpen ? (
+              <div id="flow-map-filter-popover">
+                <FlowMapLegendFilterPopover
+                  payload={payload}
+                  viewMode={viewMode}
+                  visibleCount={visibleCount}
+                  onViewModeChange={onViewModeChange}
+                />
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </div>
+      <div className="flow-map-scroll-shell" ref={scrollShellRef}>
         <div
-          className="flow-map-canvas"
-          style={{ width: FLOW_MAP_CANVAS.width, height: FLOW_MAP_CANVAS.height }}
+          className="flow-map-viewport"
+          style={{
+            width: FLOW_MAP_CANVAS.width * effectiveScale,
+            height: FLOW_MAP_CANVAS.height * effectiveScale,
+          }}
         >
+          <div
+            className="flow-map-canvas"
+            data-scale={effectiveScale.toFixed(2)}
+            style={{
+              width: FLOW_MAP_CANVAS.width,
+              height: FLOW_MAP_CANVAS.height,
+              transform: `scale(${effectiveScale})`,
+            }}
+          >
           <svg
             className="flow-map-connectors"
             viewBox={`0 0 ${FLOW_MAP_CANVAS.width} ${FLOW_MAP_CANVAS.height}`}
@@ -580,9 +710,12 @@ function FlowMapCanvas({
           <span className="flow-map-branch-label flow-map-branch-label-procurement">自动并行 / 非阻塞</span>
           <span className="flow-map-branch-label flow-map-branch-label-return">N 退回至样车试制</span>
           <span className="flow-map-branch-label flow-map-branch-label-pass">Y 通过后进入评审与收费</span>
+          </div>
         </div>
       </div>
-      <div className="flow-map-mobile-hint">横向滚动可查看全部支线节点。</div>
+      <div className="flow-map-mobile-hint">
+        默认按视口适配完整宽度。需要查看细节时可放大或使用 100% 模式。
+      </div>
     </section>
   );
 }
@@ -615,8 +748,8 @@ export function FlowMapNode({
   onSelect: (node: ProjectFlowMapNode) => void;
 }) {
   const tone = getFlowMapNodeTone(node.status);
-  const dueText = formatDate(node.dueAt);
-  const ownerText = node.ownerName ?? '未分配';
+  const ownerText = formatFlowMapNodeOwner(node);
+  const metaText = getFlowMapNodeMetaText(node);
 
   return (
     <button
@@ -641,8 +774,13 @@ export function FlowMapNode({
     >
       <span className="flow-map-step">{node.stepCode}</span>
       <strong>{node.stepName}</strong>
-      <small>{node.statusLabel}</small>
-      <em>{ownerText}｜{dueText}</em>
+      <small>{metaText}</small>
+      <em>{ownerText}</em>
+      {node.stepCode === '17' && node.monthlyReview ? (
+        <span className="flow-map-node-progress">
+          {node.monthlyReview.completedPeriods} / {node.monthlyReview.totalPeriods} 月
+        </span>
+      ) : null}
       {node.isOverdue ? <b>逾期 {node.overdueDays} 天</b> : null}
       <FlowMapNodeTooltip node={node} />
     </button>
@@ -824,6 +962,48 @@ function isNodeVisibleInMode(
     default:
       return true;
   }
+}
+
+function formatFlowMapNodeOwner(node: ProjectFlowMapNode) {
+  if (!node.ownerName) {
+    return '负责人待分配';
+  }
+
+  const departmentName = shortenDepartmentName(node.departmentName);
+
+  return departmentName ? `${departmentName}｜${node.ownerName}` : node.ownerName;
+}
+
+function shortenDepartmentName(value: string | null) {
+  if (!value) {
+    return null;
+  }
+
+  return value
+    .replace(/^演示/, '')
+    .replace(/责任部门$/, '')
+    .replace(/部门$/, '部')
+    .slice(0, 6);
+}
+
+function getFlowMapNodeMetaText(node: ProjectFlowMapNode) {
+  if (node.stepCode === '12') {
+    return `第 ${node.roundNo || 1} 轮｜${node.statusLabel}`;
+  }
+
+  if (node.stepCode === '17' && node.monthlyReview) {
+    return node.monthlyReview.progressText;
+  }
+
+  if (node.stepCode === '18' && node.colorExit) {
+    return getColorExitLabel(node.colorExit.systemSuggestion);
+  }
+
+  if (node.dueAt && node.status !== 'COMPLETED') {
+    return `${node.statusLabel}｜截止 ${formatDate(node.dueAt)}`;
+  }
+
+  return node.statusLabel;
 }
 
 function getFlowMapNodeTone(status: FlowMapNodeStatus | string) {
