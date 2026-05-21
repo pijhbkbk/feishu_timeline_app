@@ -69,6 +69,11 @@ export const topNavigationItems: NavItem[] = [
     matchMode: 'prefix',
   },
   {
+    label: '流程地图',
+    href: '/projects/flow-map',
+    description: '项目实时流程地图',
+  },
+  {
     label: '工序管理',
     href: '/tasks/my',
     description: '我的待办与逾期工序',
@@ -120,10 +125,14 @@ export const sidebarSections: Array<{
         description: '横向查看所有项目的 18 个流程节点。',
       },
       {
+        label: '流程地图',
+        href: '/projects/flow-map',
+        description: '选择项目并查看实时流程地图。',
+      },
+      {
         label: '项目列表',
         href: '/projects',
         description: '检索项目、筛选工序并进入详情。',
-        matchMode: 'prefix',
       },
       {
         label: '新建项目',
@@ -407,6 +416,14 @@ export function getRouteContext(pathname: string): RouteContext {
       title: '项目时间线看板',
       description: '按项目横向展示 18 个流程节点、当前责任人、逾期状态和下一步。',
       eyebrow: '项目进度',
+    };
+  }
+
+  if (pathname === '/projects/flow-map') {
+    return {
+      title: '项目实时流程地图',
+      description: '选择项目并查看 18 个流程节点、并行支线、退回路径、风险和下一步。',
+      eyebrow: '流程地图',
     };
   }
 

@@ -25,6 +25,7 @@ import { FeedbackBanner } from './feedback-banner';
 import { StatePanel } from './state-panel';
 import { TaskDetailDrawer } from './task-detail-drawer';
 import { TimelineNode } from './timeline-node';
+import { useAuth } from './auth-provider';
 
 type ProjectTimelineBoardProps = {
   embedded?: boolean;
@@ -44,6 +45,7 @@ export function ProjectTimelineBoard({
   maxItems,
 }: ProjectTimelineBoardProps) {
   const router = useRouter();
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const requestIdRef = useRef(0);
   const selectedTaskRequestIdRef = useRef(0);
   const [payload, setPayload] = useState<DashboardProjectTimelinesResponse | null>(null);
@@ -64,6 +66,16 @@ export function ProjectTimelineBoard({
   });
 
   useEffect(() => {
+    if (isAuthLoading) {
+      return;
+    }
+
+    if (!isAuthenticated) {
+      setIsLoading(false);
+      setError('请先登录后查看项目数据。');
+      return;
+    }
+
     void loadBoard({ initial: true });
     syncSelectedTaskFromUrl();
     const timer = window.setInterval(() => {
@@ -76,7 +88,7 @@ export function ProjectTimelineBoard({
       window.clearInterval(timer);
       window.removeEventListener('popstate', syncSelectedTaskFromUrl);
     };
-  }, []);
+  }, [isAuthenticated, isAuthLoading]);
 
   useEffect(() => {
     if (!selectedTaskId) {
@@ -236,6 +248,24 @@ export function ProjectTimelineBoard({
 
     return maxItems ? filtered.slice(0, maxItems) : filtered;
   }, [filters, maxItems, payload]);
+
+  if (error && !payload) {
+    return (
+      <section className="page-card timeline-board-shell">
+        <p className="eyebrow">项目时间线</p>
+        <h2 className="section-title">项目时间线看板加载失败</h2>
+        <p>{error}</p>
+        <div className="inline-actions">
+          <button type="button" className="button button-primary" onClick={() => void loadBoard()}>
+            重新加载
+          </button>
+          <Link href="/login" className="button button-secondary">
+            登录系统
+          </Link>
+        </div>
+      </section>
+    );
+  }
 
   if (isLoading || !payload) {
     return (
@@ -400,7 +430,7 @@ export function ProjectTimelineCard({
             href={`/projects/${item.projectId}/flow-map`}
             className="button button-primary button-small"
           >
-            流程地图
+            查看流程地图
           </Link>
           <Link
             href={`/projects/${item.projectId}/overview`}

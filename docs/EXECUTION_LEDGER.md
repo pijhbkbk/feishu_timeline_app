@@ -8,12 +8,12 @@
 ## 项目基本信息
 
 - 项目名称：轻卡定制颜色开发项目管理系统
-- 当前阶段：R21 项目实时流程地图 UI 实现
-- 当前轮次：R21_FLOW_MAP_REALTIME_PROGRESS
+- 当前阶段：R21B 项目实时流程地图线上可见性修复
+- 当前轮次：R21B_FLOW_MAP_PRODUCTION_VISIBILITY_FIX
 - 总体状态：PASSED
 - 仓库路径：`/Users/lixiaochen/Downloads/feishu_timeline_app`
 - 默认分支：`main`
-- 最近更新时间：`2026-05-19`
+- 最近更新时间：`2026-05-21`
 
 ---
 
@@ -55,6 +55,7 @@
 | R19 | 公司私有云与飞书工作台上线前安全准入 | BLOCKED | STOP | 代码与本地安全扫描已收口；私有云主机、飞书后台、镜像和 staging 证据待公司侧提供 |
 | R20 | 真实业务场景自动化实操测试与迭代修复 | PASSED | CONTINUE | 已完成 13 条 R20 真实浏览器 UAT；全量 Playwright 28/28 通过 |
 | R21 | 项目实时流程地图 UI 实现 | PASSED | STOP | 已完成单项目实时流程地图、聚合 API、节点抽屉、风险筛选、自动刷新与全量回归 |
+| R21B | 项目实时流程地图线上可见性修复 | PASSED | STOP | 已新增 `/projects/flow-map` 全局入口、导航入口、失败态修复和生产可见性验收 |
 
 状态枚举建议：
 
@@ -2411,3 +2412,108 @@ STOP
 
 #### Next Round
 建议 R22 聚焦生产环境真实项目演示数据、流程地图截图证据归档，以及根据业务评审反馈优化节点密度、缩放和平移体验。
+
+---
+
+### Round R21B_FLOW_MAP_PRODUCTION_VISIBILITY_FIX
+
+#### Goal
+修复 R21 项目实时流程地图“已部署但线上用户看不到入口”的问题，确保用户无需知道项目 ID 也能从导航进入流程地图，并且线上未登录或接口失败时不再长期停留在 loading 状态。
+
+#### Scope
+- 复现生产域名 `/dashboard`、`/projects`、`/projects/timeline`、`/projects/flow-map` 的可见性问题。
+- 检查 VPS 当前 commit、`.next` 构建和生产服务状态。
+- 新增 `/projects/flow-map` 全局流程地图入口。
+- 顶部导航和侧边导航新增“流程地图”。
+- 修复项目列表、时间线看板、单项目流程地图在未登录 / 接口失败时的中文失败态。
+- 更新 R21 Playwright，覆盖 `/projects/flow-map` 全局入口。
+- 新增 R21B 文档并更新本账本。
+
+#### Inputs Read
+- `/Users/lixiaochen/Desktop/map1.mk`
+- `docs/EXECUTION_LEDGER.md`
+- `apps/web/src/components/auth-provider.tsx`
+- `apps/web/src/components/projects-list-client.tsx`
+- `apps/web/src/components/project-timeline-board.tsx`
+- `apps/web/src/components/flow-map-workspace.tsx`
+- `apps/web/src/lib/navigation.ts`
+- `apps/web/tests/playwright/r21-flow-map-realtime-progress.spec.ts`
+- 生产域名：`https://timeline.all-too-well.com/dashboard`
+- 生产域名：`https://timeline.all-too-well.com/projects`
+- 生产域名：`https://timeline.all-too-well.com/projects/timeline`
+- 生产域名：`https://timeline.all-too-well.com/projects/flow-map`
+
+#### Files Changed
+- `apps/web/src/app/projects/flow-map/page.tsx`
+- `apps/web/src/components/projects-flow-map-portal.tsx`
+- `apps/web/src/components/flow-map-workspace.tsx`
+- `apps/web/src/components/project-timeline-board.tsx`
+- `apps/web/src/components/projects-list-client.tsx`
+- `apps/web/src/app/globals.css`
+- `apps/web/src/lib/navigation.ts`
+- `apps/web/tests/playwright/r21-flow-map-realtime-progress.spec.ts`
+- `docs/FLOW_MAP_PRODUCTION_VISIBILITY_R21B.md`
+- `docs/EXECUTION_LEDGER.md`
+
+#### Commands Run
+```bash
+pnpm --filter @feishu-timeline/web exec node <production visibility check>
+pnpm --filter @feishu-timeline/web lint
+pnpm --filter @feishu-timeline/web typecheck
+pnpm --filter @feishu-timeline/web test -- flow-map-workspace.test.tsx route-smoke.test.tsx
+pnpm --filter @feishu-timeline/web build
+pnpm --filter @feishu-timeline/web exec playwright test tests/playwright/r21-flow-map-realtime-progress.spec.ts --config playwright.config.mjs
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm --filter @feishu-timeline/web build
+pnpm --filter @feishu-timeline/api build
+pnpm --filter @feishu-timeline/api prisma:validate
+pnpm test:e2e
+pnpm playwright:test
+```
+
+#### Acceptance Result
+- [x] VPS R21 复现确认：远端运行 commit `d035709`，`.next` 中存在 `/projects/[projectId]/flow-map` 和 `FlowMapWorkspace`。
+- [x] 修复前确认 `/projects/flow-map` 会被动态项目路由误识别为 `projectId=flow-map`。
+- [x] 新增 `/projects/flow-map` 全局入口页面。
+- [x] 顶部导航和侧边导航可见“流程地图”。
+- [x] 项目列表行操作保留“流程地图”入口。
+- [x] 项目时间线卡片入口文案调整为“查看流程地图”。
+- [x] 单项目流程地图接口失败时显示中文失败态和“重新加载 / 登录系统”按钮。
+- [x] 项目时间线看板未登录或接口失败时显示中文失败态。
+- [x] 项目列表未登录、接口失败、无项目时分别显示中文状态与操作按钮。
+- [x] R21 Playwright 覆盖 `/projects/flow-map` 全局入口、项目选择器和 18 节点流程地图。
+- [x] `pnpm lint` 通过。
+- [x] `pnpm typecheck` 通过。
+- [x] `pnpm test` 通过：Web 21 files / 65 tests，API 48 files / 130 tests。
+- [x] `pnpm --filter @feishu-timeline/web build` 通过，包含 `/projects/flow-map`。
+- [x] `pnpm --filter @feishu-timeline/api build` 通过。
+- [x] `pnpm --filter @feishu-timeline/api prisma:validate` 通过。
+- [x] `pnpm test:e2e` 通过。
+- [x] `pnpm playwright:test` 通过：29 passed。
+
+#### Evidence
+- `docs/FLOW_MAP_PRODUCTION_VISIBILITY_R21B.md`
+- `test-results/r21b/prod-dashboard.png`
+- `test-results/r21b/prod-projects.png`
+- `test-results/r21b/prod-timeline.png`
+- `test-results/r21b/prod-flow-map.png`
+- `test-results/r21b/prod-before-summary.json`
+- `apps/web/tests/playwright/r21-flow-map-realtime-progress.spec.ts`
+
+#### Issues Fixed
+- 仅有 `/projects/:projectId/flow-map`，无全局入口，导致用户不知道项目 ID 时找不到流程地图。
+- `/projects/flow-map` 修复前会落入动态项目路由，展示错误的项目工作区上下文。
+- `FlowMapWorkspace` 与 `ProjectTimelineBoard` 在接口失败且无 payload 时会继续显示 loading。
+- 项目列表接口失败和空态缺少明确操作按钮。
+
+#### Risks / Debt
+- 生产域名 Playwright 当前为未登录视角，无法直接点击真实项目节点抽屉；需要后续配置可用的生产验收账号或测试租户。
+- `/projects/flow-map` 登录后默认选择最近更新项目；后续可增加“最近项目”快捷卡片和收藏项目。
+
+#### Decision
+STOP
+
+#### Next Round
+建议配置生产验收账号后补一条登录态生产 Playwright，覆盖“选择真实项目 -> 打开流程地图 -> 点击节点抽屉”的完整线上链路。

@@ -2209,6 +2209,51 @@ a {
   max-width: 1480px;
 }
 
+.flow-map-portal {
+  max-width: 1480px;
+}
+
+.flow-map-portal-card {
+  max-width: 1480px;
+}
+
+.flow-map-project-picker {
+  display: grid;
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.flow-map-project-picker .field {
+  max-width: 560px;
+}
+
+.flow-map-project-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px;
+}
+
+.flow-map-project-summary div {
+  display: grid;
+  gap: 6px;
+  min-height: 78px;
+  padding: 14px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 14px;
+  background: rgba(248, 250, 252, 0.92);
+}
+
+.flow-map-project-summary span {
+  color: #667085;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.flow-map-project-summary strong {
+  color: #1f2937;
+  font-size: 16px;
+}
+
 .flow-map-last-updated {
   display: inline-flex;
   align-items: center;

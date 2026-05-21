@@ -15,6 +15,7 @@ import {
   type ProjectListResponse,
   type WorkflowNodeCode,
 } from '../lib/projects-client';
+import { useAuth } from './auth-provider';
 
 type FilterState = {
   keyword: string;
@@ -41,6 +42,7 @@ const DEFAULT_FILTERS: FilterState = {
 };
 
 export function ProjectsListClient() {
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
   const [directoryUsers, setDirectoryUsers] = useState<DirectoryUser[]>([]);
   const [listResponse, setListResponse] = useState<ProjectListResponse | null>(null);
@@ -48,8 +50,18 @@ export function ProjectsListClient() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (isAuthLoading) {
+      return;
+    }
+
+    if (!isAuthenticated) {
+      setIsLoading(false);
+      setError('请先登录后查看项目数据。');
+      return;
+    }
+
     void loadInitialData();
-  }, []);
+  }, [isAuthenticated, isAuthLoading]);
 
   async function loadInitialData() {
     setIsLoading(true);
@@ -285,10 +297,23 @@ export function ProjectsListClient() {
         </div>
         {error ? <p className="error-text">{error}</p> : null}
         {isLoading ? <p className="muted">正在加载项目列表…</p> : null}
-        {!isLoading && !hasItems ? (
+        {!isLoading && error ? (
+          <div className="inline-actions">
+            <button type="button" className="button button-primary" onClick={() => void loadInitialData()}>
+              重新加载
+            </button>
+            <Link href="/login" className="button button-secondary">
+              登录系统
+            </Link>
+          </div>
+        ) : null}
+        {!isLoading && !error && !hasItems ? (
           <div className="empty-state">
             <strong>暂无项目</strong>
             <p>当前筛选条件下没有项目记录，可以先创建一个项目。</p>
+            <Link href="/projects/new" className="button button-primary">
+              新建项目
+            </Link>
           </div>
         ) : null}
         {!isLoading && hasItems && listResponse ? (

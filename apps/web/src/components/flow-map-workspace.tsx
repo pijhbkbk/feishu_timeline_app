@@ -297,6 +297,27 @@ export function FlowMapWorkspace({ projectId }: FlowMapWorkspaceProps) {
     );
   }, [payload, user?.name, viewMode]);
 
+  if (error && !payload) {
+    return (
+      <section className="page-card flow-map-loading-card">
+        <p className="eyebrow">项目实时流程地图</p>
+        <h1>项目实时流程地图加载失败</h1>
+        <p>{error}</p>
+        <div className="inline-actions">
+          <button type="button" className="button button-primary" onClick={() => void loadFlowMap()}>
+            重新加载
+          </button>
+          <Link href="/login" className="button button-secondary">
+            登录系统
+          </Link>
+          <Link href="/projects/flow-map" className="button button-secondary">
+            返回流程地图入口
+          </Link>
+        </div>
+      </section>
+    );
+  }
+
   if (isLoading || !payload) {
     return (
       <section className="page-card flow-map-loading-card">
