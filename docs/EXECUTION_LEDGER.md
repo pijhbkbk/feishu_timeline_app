@@ -2555,6 +2555,10 @@ pnpm --filter @feishu-timeline/api typecheck
 pnpm --filter @feishu-timeline/api test -- users.service.spec.ts auth.constants.spec.ts
 pnpm --filter @feishu-timeline/api build
 pnpm --filter @feishu-timeline/api prisma:validate
+GIT_REF=feat/flow-map-realtime-r21 RUN_PRISMA_MIGRATE_DEPLOY=no RUN_RELEASE_VERIFY=yes RUN_PRODUCTION_ACCEPTANCE=yes bash scripts/deploy/gce-redeploy.sh
+gcloud compute ssh instance-20260408-091840 --project=axial-acrobat-492709-r7 --zone=us-west1-b --command 'cd /opt/feishu_timeline_app/apps/api && . .env.production && pnpm exec tsx prisma/seed.ts'
+gcloud compute ssh instance-20260408-091840 --project=axial-acrobat-492709-r7 --zone=us-west1-b --command '<Prisma observer grant script>'
+pnpm --filter @feishu-timeline/web exec node <production authenticated flow-map Playwright check>
 ```
 
 #### Acceptance Result
@@ -2563,6 +2567,16 @@ pnpm --filter @feishu-timeline/api prisma:validate
 - [x] “普通查看者”仅包含 `project.read` 与 `dashboard.read`，不包含写操作或流程流转权限。
 - [x] 已有角色用户不被覆盖。
 - [x] API lint / typecheck / 相关单测 / build / prisma validate 通过。
+- [x] 生产已部署 commit `bcad035`，release verify / production acceptance 通过。
+- [x] 生产 seed 后项目数为 2，包含进行中和已完成演示项目。
+- [x] 4 个现有飞书用户均补为 `viewer` 角色，并作为观察者加入演示项目。
+- [x] 临时生产登录态 Playwright 打开 `/projects/flow-map`，不再出现“加载失败 / 无权访问”，页面显示演示项目和 18 个流程地图节点。
+
+#### Evidence
+- 生产接口临时会话验证：`/api/auth/session` 返回 `roles=["viewer"]`、`permissions=["project.read","dashboard.read"]`。
+- 生产接口临时会话验证：`/api/projects` 返回 `total=2`。
+- 生产接口临时会话验证：`/api/projects/:projectId/flow-map` 返回 `nodes=18`。
+- `test-results/r21c/prod-flow-map-authenticated.png`
 
 #### Risks / Debt
 - 生产演示数据属于 MVP/UAT 展示数据，正式接入真实业务前应明确演示数据保留策略。
