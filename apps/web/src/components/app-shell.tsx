@@ -37,6 +37,7 @@ export function AppShell({ children }: PropsWithChildren) {
     projectSegments[0] === 'projects' &&
     projectSegments[1] &&
     projectSegments[1] !== 'new' &&
+    projectSegments[1] !== 'flow-map' &&
     projectSegments[1] !== 'timeline' &&
     projectSegments[1] !== 'timeline-board'
       ? projectSegments[1]
