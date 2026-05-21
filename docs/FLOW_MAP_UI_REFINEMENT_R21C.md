@@ -90,9 +90,21 @@
 - `test-results/r21c/flow-map-1920.png`
 - `test-results/r21c/task-drawer.png`
 - `test-results/r21c/flow-map-mobile.png`
+- `test-results/r21c/prod-flow-map-1440.png`
+- `test-results/r21c/prod-flow-map-1920.png`
+- `test-results/r21c/prod-task-drawer-loaded.png`
+
+## 生产验证
+
+- 已部署分支：`feat/flow-map-ui-refinement-r21c`
+- 已部署提交：`cee427f`
+- 生产页面：`https://timeline.all-too-well.com/projects/flow-map`
+- `DEPLOY_TARGET=production bash scripts/deploy/health-check.sh` 通过。
+- `bash scripts/deploy/ops-check.sh` 通过。
+- 登录态 Playwright 验证通过：页面显示 18 个节点、顶部工具栏可见、左侧常驻控制台不再渲染、节点抽屉可加载工序详情。
 
 ## 后续优化项
 
-- 可在生产环境补一条登录态截图自动归档脚本，将 1440、1920、移动端截图作为发布证据。
+- 可将生产登录态截图验证沉淀为固定 CI / CD 验收脚本，减少后续手工创建临时会话的步骤。
 - 可增加画布拖拽平移，但当前默认自适应已满足本轮“进入即清晰可读”的要求。
 - 可增加节点搜索和定位能力，用于真实项目节点较多、风险定位频繁的管理场景。

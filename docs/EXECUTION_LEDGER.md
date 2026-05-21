@@ -1504,6 +1504,10 @@ pnpm --filter @feishu-timeline/api build
 pnpm --filter @feishu-timeline/api prisma:validate
 pnpm test:e2e
 pnpm playwright:test
+GIT_REF=feat/flow-map-ui-refinement-r21c RUN_PRISMA_MIGRATE_DEPLOY=no RUN_RELEASE_VERIFY=yes RUN_PRODUCTION_ACCEPTANCE=yes bash scripts/deploy/gce-redeploy.sh
+DEPLOY_TARGET=production bash scripts/deploy/health-check.sh
+bash scripts/deploy/ops-check.sh
+pnpm --filter @feishu-timeline/web exec node <production authenticated flow-map screenshot check>
 ```
 
 #### Acceptance Result
@@ -2660,6 +2664,11 @@ pnpm playwright:test
 - [x] `pnpm --filter @feishu-timeline/api prisma:validate` 通过。
 - [x] `pnpm test:e2e` 通过。
 - [x] `pnpm playwright:test` 通过：30 passed。
+- [x] GitHub 分支 `feat/flow-map-ui-refinement-r21c` 已推送。
+- [x] 生产已部署提交 `cee427f`，release verify / production acceptance 通过。
+- [x] 生产健康检查通过，`https://timeline.all-too-well.com/api/health` 返回 `status=ok`。
+- [x] 生产运维检查通过：API、Web、Nginx、PostgreSQL、Redis 均 active。
+- [x] 生产登录态 Playwright 验证通过：18 节点可见、顶部工具栏可见、左侧常驻控制台不再渲染、节点抽屉可加载详情。
 
 #### Evidence
 - `docs/FLOW_MAP_UI_REFINEMENT_R21C.md`
@@ -2669,6 +2678,9 @@ pnpm playwright:test
 - `test-results/r21c/flow-map-1920.png`
 - `test-results/r21c/task-drawer.png`
 - `test-results/r21c/flow-map-mobile.png`
+- `test-results/r21c/prod-flow-map-1440.png`
+- `test-results/r21c/prod-flow-map-1920.png`
+- `test-results/r21c/prod-task-drawer-loaded.png`
 
 #### Issues Fixed
 - 全量 Playwright 首次发现旧 R21 用例仍查找左侧常驻控制台文案；已改为打开“图例 / 筛选”弹层后断言当前显示节点数量。
@@ -2677,7 +2689,7 @@ pnpm playwright:test
 #### Risks / Debt
 - 画布仍为固定业务拓扑坐标，后续可增加拖拽平移、节点搜索和定位能力。
 - 本轮重点修复流程地图 UI 混乱问题，未新增后端业务能力。
-- 生产截图归档需在部署后补充线上登录态验证。
+- 生产登录态截图已手工归档，后续可沉淀为固定 CI / CD 验收脚本。
 
 #### Decision
 STOP
