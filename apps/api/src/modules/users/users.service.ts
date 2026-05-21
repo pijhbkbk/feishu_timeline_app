@@ -166,7 +166,7 @@ export class UsersService {
       });
 
       if (existingUser) {
-        return tx.user.update({
+        const user = await tx.user.update({
           where: { id: existingUser.id },
           data: {
             username,
@@ -179,9 +179,13 @@ export class UsersService {
             status: UserStatus.ACTIVE,
           },
         });
+
+        await this.ensureDefaultFeishuRole(tx, user.id);
+
+        return user;
       }
 
-      return tx.user.create({
+      const user = await tx.user.create({
         data: {
           username,
           name: profile.name,
@@ -193,6 +197,10 @@ export class UsersService {
           status: UserStatus.ACTIVE,
         },
       });
+
+      await this.ensureDefaultFeishuRole(tx, user.id);
+
+      return user;
     });
   }
 
@@ -289,5 +297,54 @@ export class UsersService {
         ),
       ],
     };
+  }
+
+  private async ensureDefaultFeishuRole(tx: Prisma.TransactionClient, userId: string) {
+    const existingRoleCount = await tx.userRole.count({
+      where: {
+        userId,
+      },
+    });
+
+    if (existingRoleCount > 0) {
+      return;
+    }
+
+    const roleCode: RoleCode = 'viewer';
+    const role = await tx.role.upsert({
+      where: { code: roleCode },
+      create: {
+        code: roleCode,
+        name: ROLE_LABELS[roleCode],
+        description: '飞书登录默认只读角色。',
+        isSystem: true,
+      },
+      update: {
+        name: ROLE_LABELS[roleCode],
+        description: '飞书登录默认只读角色。',
+        isSystem: true,
+      },
+    });
+    const permissionCodes = ROLE_PERMISSION_CODE_MAP[roleCode] ?? [];
+
+    await tx.rolePermission.deleteMany({
+      where: { roleId: role.id },
+    });
+
+    if (permissionCodes.length > 0) {
+      await tx.rolePermission.createMany({
+        data: permissionCodes.map((permissionCode) => ({
+          roleId: role.id,
+          permissionCode,
+        })),
+      });
+    }
+
+    await tx.userRole.create({
+      data: {
+        userId,
+        roleId: role.id,
+      },
+    });
   }
 }

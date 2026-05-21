@@ -8,8 +8,8 @@
 ## 项目基本信息
 
 - 项目名称：轻卡定制颜色开发项目管理系统
-- 当前阶段：R21B 项目实时流程地图线上可见性修复
-- 当前轮次：R21B_FLOW_MAP_PRODUCTION_VISIBILITY_FIX
+- 当前阶段：R21C 生产流程地图权限与演示数据修复
+- 当前轮次：R21C_FLOW_MAP_PRODUCTION_ACCESS_AND_DATA_FIX
 - 总体状态：PASSED
 - 仓库路径：`/Users/lixiaochen/Downloads/feishu_timeline_app`
 - 默认分支：`main`
@@ -56,6 +56,7 @@
 | R20 | 真实业务场景自动化实操测试与迭代修复 | PASSED | CONTINUE | 已完成 13 条 R20 真实浏览器 UAT；全量 Playwright 28/28 通过 |
 | R21 | 项目实时流程地图 UI 实现 | PASSED | STOP | 已完成单项目实时流程地图、聚合 API、节点抽屉、风险筛选、自动刷新与全量回归 |
 | R21B | 项目实时流程地图线上可见性修复 | PASSED | STOP | 已新增 `/projects/flow-map` 全局入口、导航入口、失败态修复和生产可见性验收 |
+| R21C | 生产流程地图权限与演示数据修复 | PASSED | STOP | 已修复飞书用户默认无角色导致 403，并补齐生产演示项目数据 |
 
 状态枚举建议：
 
@@ -2517,3 +2518,58 @@ STOP
 
 #### Next Round
 建议配置生产验收账号后补一条登录态生产 Playwright，覆盖“选择真实项目 -> 打开流程地图 -> 点击节点抽屉”的完整线上链路。
+
+---
+
+### Round R21C_FLOW_MAP_PRODUCTION_ACCESS_AND_DATA_FIX
+
+#### Goal
+修复生产域名 `/projects/flow-map` 已可见但登录后显示“项目实时流程地图加载失败 / 无权访问该功能”的问题，确保飞书账号具备最小只读权限，并为线上演示补齐可查看的流程地图项目数据。
+
+#### Scope
+- 复现并检查生产库用户、角色和项目数量。
+- 修复飞书新用户 / 无角色老用户登录时没有任何角色导致 `project.read` 403 的问题。
+- 保持只读默认权限，不授予流程流转、附件管理或项目写权限。
+- 补充 API 单元测试覆盖飞书默认角色分配。
+- 生产运行受控 seed，补齐流程模板、角色权限、演示用户和演示项目。
+- 将现有飞书用户作为只读观察者加入演示项目，保证真实登录账号可查看流程地图。
+
+#### Inputs Read
+- 用户截图：生产 `/projects/flow-map` 显示“无权访问该功能”
+- `apps/api/src/modules/users/users.service.ts`
+- `apps/api/src/modules/auth/auth.constants.ts`
+- `apps/api/src/modules/auth/permissions.guard.ts`
+- `apps/api/src/modules/projects/projects.service.ts`
+- `apps/api/prisma/seed.ts`
+- 生产数据库只读检查：用户 4 个、项目 0 个、飞书用户角色数均为 0
+
+#### Files Changed
+- `apps/api/src/modules/users/users.service.ts`
+- `apps/api/src/modules/users/users.service.spec.ts`
+- `docs/EXECUTION_LEDGER.md`
+
+#### Commands Run
+```bash
+pnpm --filter @feishu-timeline/api lint
+pnpm --filter @feishu-timeline/api typecheck
+pnpm --filter @feishu-timeline/api test -- users.service.spec.ts auth.constants.spec.ts
+pnpm --filter @feishu-timeline/api build
+pnpm --filter @feishu-timeline/api prisma:validate
+```
+
+#### Acceptance Result
+- [x] 确认生产库无项目，且飞书用户没有角色，是流程地图 403 的直接原因。
+- [x] 飞书用户无角色时自动补“普通查看者”角色。
+- [x] “普通查看者”仅包含 `project.read` 与 `dashboard.read`，不包含写操作或流程流转权限。
+- [x] 已有角色用户不被覆盖。
+- [x] API lint / typecheck / 相关单测 / build / prisma validate 通过。
+
+#### Risks / Debt
+- 生产演示数据属于 MVP/UAT 展示数据，正式接入真实业务前应明确演示数据保留策略。
+- 默认飞书角色为只读查看者；真实项目仍需由管理员加入项目成员或设置同部门范围后才能访问。
+
+#### Decision
+STOP
+
+#### Next Round
+建议补一个生产管理员配置入口，用于给飞书用户分配角色和项目观察者权限，避免以后依赖运维脚本处理真实账号授权。
