@@ -176,7 +176,6 @@ export class UsersService {
             feishuOpenId: profile.openId,
             feishuUserId: profile.userId ?? null,
             feishuUnionId: profile.unionId ?? null,
-            status: UserStatus.ACTIVE,
           },
         });
 

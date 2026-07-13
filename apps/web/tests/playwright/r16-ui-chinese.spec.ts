@@ -19,8 +19,8 @@ test.describe('R16 中文 UI 与页面质量验收', () => {
 
     const signals = collectSevereBrowserSignals(page);
     const pages = [
-      { path: '/dashboard', title: '项目进度驾驶舱', testId: 'dashboard-page', screenshot: 'dashboard.png' },
-      { path: '/projects', title: '项目列表', testId: 'project-list-page', screenshot: 'projects.png' },
+      { path: '/dashboard', title: '当前任务', testId: 'dashboard-page', screenshot: 'dashboard.png' },
+      { path: '/projects', title: '定制色开发项目', testId: 'project-list-page', screenshot: 'projects.png' },
       {
         path: '/projects/timeline',
         title: '项目时间线看板',
@@ -30,7 +30,7 @@ test.describe('R16 中文 UI 与页面质量验收', () => {
       { path: '/materials', title: '材料提交平台', testId: 'materials-page', screenshot: 'materials.png' },
       {
         path: '/monthly-reviews',
-        title: '整车色差一致性评审台账',
+        title: '月度评审进度总览',
         testId: 'monthly-review-board',
         screenshot: 'monthly-reviews.png',
       },

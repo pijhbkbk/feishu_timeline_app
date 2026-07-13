@@ -1,4 +1,4 @@
-import { redirect } from 'next/navigation';
+import { ProjectWorkspaceR22 } from '../../../components/project-workspace-r22';
 
 type ProjectIndexPageProps = {
   params: Promise<{
@@ -9,5 +9,5 @@ type ProjectIndexPageProps = {
 export default async function ProjectIndexPage({ params }: ProjectIndexPageProps) {
   const { projectId } = await params;
 
-  redirect(`/projects/${projectId}/overview`);
+  return <ProjectWorkspaceR22 projectId={projectId} />;
 }

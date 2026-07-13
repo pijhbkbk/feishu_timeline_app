@@ -5,6 +5,7 @@ import { formatDate, type WorkflowNodeCode } from './projects-client';
 
 export type AttachmentEntityType =
   | 'PROJECT'
+  | 'WORKFLOW_TASK'
   | 'SAMPLE'
   | 'STANDARD_BOARD'
   | 'PERFORMANCE_TEST'
@@ -30,6 +31,9 @@ export type ProjectAttachmentSummary = {
   storageKey: string;
   objectKey: string;
   fileUrl: string;
+  materialType: string | null;
+  versionNo: number;
+  replacesAttachmentId: string | null;
   contentUrl: string;
   downloadUrl: string;
   previewUrl: string | null;
@@ -90,6 +94,11 @@ export type AttachmentBindInput = {
   entityId: string;
 };
 
+export type AttachmentUploadInput = AttachmentBindInput & {
+  materialType?: string;
+  replacesAttachmentId?: string;
+};
+
 const ATTACHMENT_MANAGEMENT_ROLE_CODES: FrontendRoleCode[] = [
   'admin',
   'project_manager',
@@ -102,6 +111,7 @@ const ATTACHMENT_MANAGEMENT_ROLE_CODES: FrontendRoleCode[] = [
 
 const ATTACHMENT_ENTITY_TYPE_LABELS: Record<AttachmentEntityType, string> = {
   PROJECT: '项目',
+  WORKFLOW_TASK: '工序任务',
   SAMPLE: '样板',
   STANDARD_BOARD: '标准板',
   PERFORMANCE_TEST: '性能试验',
@@ -122,12 +132,14 @@ export function fetchAttachmentsWorkspace(
 export function uploadProjectAttachment(
   projectId: string,
   file: File,
-  binding: AttachmentBindInput,
+  binding: AttachmentUploadInput,
 ) {
   const formData = new FormData();
   formData.append('file', file);
   formData.append('entityType', binding.entityType);
   formData.append('entityId', binding.entityId);
+  if (binding.materialType) formData.append('materialType', binding.materialType);
+  if (binding.replacesAttachmentId) formData.append('replacesAttachmentId', binding.replacesAttachmentId);
 
   return apiRequest<ProjectAttachmentSummary>(`/projects/${projectId}/attachments/upload`, {
     method: 'POST',

@@ -19,8 +19,8 @@ test.describe('R20 首页与导览页可用性 @r20', () => {
 
     const pages = [
       { path: '/guide', testId: 'guide-page', title: '轻卡定制颜色开发项目管理系统', screenshot: 'guide' },
-      { path: '/dashboard', testId: 'dashboard-page', title: '项目进度驾驶舱', screenshot: 'dashboard' },
-      { path: '/projects', testId: 'project-list-page', title: '项目列表', screenshot: 'projects' },
+      { path: '/dashboard', testId: 'dashboard-page', title: '当前任务', screenshot: 'dashboard' },
+      { path: '/projects', testId: 'project-list-page', title: '定制色开发项目', screenshot: 'projects' },
       {
         path: '/projects/timeline',
         testId: 'project-timeline-board',
@@ -31,7 +31,7 @@ test.describe('R20 首页与导览页可用性 @r20', () => {
       {
         path: '/monthly-reviews',
         testId: 'monthly-review-board',
-        title: '整车色差一致性评审台账',
+        title: '月度评审进度总览',
         screenshot: 'monthly-review',
       },
       { path: '/analytics', testId: 'analytics-page', title: '数据中心', screenshot: 'analytics' },

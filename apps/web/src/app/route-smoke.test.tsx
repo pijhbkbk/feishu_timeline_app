@@ -29,15 +29,21 @@ describe('route smoke', () => {
       </AuthProvider>,
     );
 
-    expect(dashboardHtml).toContain('skeleton-block');
+    expect(dashboardHtml).toContain('r22-skeleton');
     expect(newProjectHtml).toContain('创建项目');
   });
 
   it('renders system guide with process, operation, role and FAQ content', async () => {
     const guideHtml = renderToStaticMarkup(<SystemGuidePage />);
 
-    expect(topNavigationItems[0]?.label).toBe('系统导览');
-    expect(sidebarSections[0]?.items[0]?.label).toBe('系统导览');
+    expect(topNavigationItems.map((item) => item.label)).toEqual([
+      '工作台',
+      '项目管理',
+      '我的任务',
+      '进展提交',
+      '复盘分析',
+    ]);
+    expect(sidebarSections[0]?.items).toHaveLength(5);
     expect(guideHtml).toContain('轻卡定制颜色开发项目管理系统');
     expect(guideHtml).toContain('反映市场需求');
     expect(guideHtml).toContain('颜色退出');

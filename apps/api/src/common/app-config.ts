@@ -24,6 +24,8 @@ export type AppConfig = {
   feishuAuthorizationEndpoint: string;
 };
 
+export const APP_ENV_FILE_PATHS = ['.env.local', '.env'] as const;
+
 function resolvePort(value: string | undefined, fallback: number) {
   const parsed = Number(value ?? fallback);
   return Number.isNaN(parsed) ? fallback : parsed;
@@ -38,8 +40,8 @@ function resolveBoolean(value: string | undefined, fallback: boolean) {
 }
 
 export function resolveAppConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
-  return {
-    nodeEnv: env.NODE_ENV ?? 'development',
+  const config: AppConfig = {
+    nodeEnv: env.NODE_ENV?.trim().toLowerCase() || 'development',
     port: resolvePort(env.PORT, 3001),
     frontendUrl: env.FRONTEND_URL ?? 'http://localhost:3000',
     databaseUrl:
@@ -51,7 +53,7 @@ export function resolveAppConfig(env: NodeJS.ProcessEnv = process.env): AppConfi
     notificationOverdueScanMs: resolvePort(env.NOTIFICATION_OVERDUE_SCAN_MS, 300000),
     notificationRetryDelayMs: resolvePort(env.NOTIFICATION_RETRY_DELAY_MS, 5000),
     notificationMaxRetries: resolvePort(env.NOTIFICATION_MAX_RETRIES, 3),
-    authMockEnabled: resolveBoolean(env.AUTH_MOCK_ENABLED, true),
+    authMockEnabled: resolveBoolean(env.AUTH_MOCK_ENABLED, false),
     sessionCookieName: env.SESSION_COOKIE_NAME ?? 'ft_session',
     sessionTtlSeconds: resolvePort(env.SESSION_TTL_SECONDS, 28800),
     objectStorageProvider:
@@ -66,6 +68,12 @@ export function resolveAppConfig(env: NodeJS.ProcessEnv = process.env): AppConfi
     feishuRedirectUri: env.FEISHU_REDIRECT_URI ?? 'http://localhost:3000/login/callback',
     feishuAuthorizationEndpoint: env.FEISHU_AUTHORIZATION_ENDPOINT ?? '',
   };
+
+  if (config.nodeEnv === 'production' && config.authMockEnabled) {
+    throw new Error('AUTH_MOCK_ENABLED must be false when NODE_ENV=production.');
+  }
+
+  return config;
 }
 
 export default () => resolveAppConfig();

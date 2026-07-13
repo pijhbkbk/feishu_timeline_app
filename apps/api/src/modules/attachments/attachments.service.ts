@@ -47,6 +47,8 @@ type CreateStoredAttachmentInput = {
   uploadedById: string;
   nodeCode?: WorkflowNodeCode | null;
   summary?: string;
+  materialType?: string | null;
+  replacesAttachmentId?: string | null;
 };
 
 type AttachmentListFilters = {
@@ -69,6 +71,9 @@ type AttachmentRecordLike = {
   fileSize: number;
   checksum: string | null;
   fileUrl: string | null;
+  materialType: string | null;
+  versionNo: number;
+  replacesAttachmentId: string | null;
   uploadedById: string | null;
   uploadedAt: Date;
   isDeleted: boolean;
@@ -194,6 +199,8 @@ export class AttachmentsService {
       file: this.assertFile(file),
       uploadedById: actor.id,
       summary: '上传项目附件',
+      materialType: binding.materialType,
+      replacesAttachmentId: binding.replacesAttachmentId,
     });
   }
 
@@ -402,6 +409,20 @@ export class AttachmentsService {
     this.assertFile(input.file);
     await this.getProjectOrThrow(this.prisma, input.projectId);
     await this.assertEntityReference(this.prisma, input.projectId, input.targetType, input.targetId);
+    const replacement = input.replacesAttachmentId
+      ? await this.getAttachmentOrThrow(
+          this.prisma,
+          input.projectId,
+          input.replacesAttachmentId,
+          false,
+        )
+      : null;
+    if (
+      replacement &&
+      (replacement.entityType !== input.targetType || replacement.entityId !== input.targetId)
+    ) {
+      throw new BadRequestException('只能替换同一工序下的材料。');
+    }
 
     const extension = extname(input.file.originalname).toLowerCase();
     const safeName = this.sanitizeFileName(input.file.originalname);
@@ -435,6 +456,9 @@ export class AttachmentsService {
           checksum,
           uploadedById: input.uploadedById,
           uploadedAt: new Date(),
+          materialType: input.materialType ?? replacement?.materialType ?? null,
+          versionNo: replacement ? replacement.versionNo + 1 : 1,
+          replacesAttachmentId: replacement?.id ?? null,
         },
         include: ATTACHMENT_DETAIL_INCLUDE,
       });
@@ -454,6 +478,17 @@ export class AttachmentsService {
         updated.entityId,
       );
 
+      if (replacement) {
+        await tx.attachment.update({
+          where: { id: replacement.id },
+          data: {
+            isDeleted: true,
+            deletedAt: new Date(),
+            deletedById: input.uploadedById,
+          },
+        });
+      }
+
       await this.activityLogsService.createWithExecutor(tx, {
         projectId: input.projectId,
         actorUserId: input.uploadedById,
@@ -465,8 +500,29 @@ export class AttachmentsService {
         afterData: this.toAttachmentAuditSnapshot(updated),
       });
 
+      if (replacement) {
+        await this.activityLogsService.createWithExecutor(tx, {
+          projectId: input.projectId,
+          actorUserId: input.uploadedById,
+          targetType: AuditTargetType.ATTACHMENT,
+          targetId: updated.id,
+          action: 'ATTACHMENT_REPLACED',
+          nodeCode: input.nodeCode ?? null,
+          summary: `附件 ${replacement.fileName} 已由 V${updated.versionNo} 替换并归档。`,
+          beforeData: this.toAttachmentAuditSnapshot(replacement),
+          afterData: this.toAttachmentAuditSnapshot(updated),
+        });
+      }
+
       return updated;
     });
+
+    if (replacement) {
+      await this.objectStorageService.markDeleted({
+        bucket: replacement.bucket,
+        storageKey: replacement.storageKey,
+      });
+    }
 
     const entityLabels = await this.buildEntityLabelMap(this.prisma, input.projectId);
     return this.toAttachmentSummary(attachment, entityLabels);
@@ -515,6 +571,9 @@ export class AttachmentsService {
       storageKey: attachment.storageKey,
       objectKey: attachment.storageKey,
       fileUrl,
+      materialType: attachment.materialType,
+      versionNo: attachment.versionNo,
+      replacesAttachmentId: attachment.replacesAttachmentId,
       contentUrl: fileUrl,
       downloadUrl: `/projects/${attachment.projectId}/attachments/${attachment.id}/download`,
       previewUrl: canPreviewAttachmentMimeType(attachment.mimeType)
@@ -625,6 +684,8 @@ export class AttachmentsService {
       return {
         entityType: AttachmentTargetType.PROJECT,
         entityId: projectId,
+        materialType: null,
+        replacesAttachmentId: null,
       };
     }
 
@@ -650,9 +711,20 @@ export class AttachmentsService {
       throw new BadRequestException('附件实体标识不能为空。');
     }
 
+    const materialType =
+      typeof input.materialType === 'string' && input.materialType.trim()
+        ? input.materialType.trim().slice(0, 200)
+        : null;
+    const replacesAttachmentId =
+      typeof input.replacesAttachmentId === 'string' && input.replacesAttachmentId.trim()
+        ? input.replacesAttachmentId.trim()
+        : null;
+
     return {
       entityType,
       entityId,
+      materialType,
+      replacesAttachmentId,
     };
   }
 
@@ -772,6 +844,19 @@ export class AttachmentsService {
       return;
     }
 
+    if (entityType === AttachmentTargetType.WORKFLOW_TASK) {
+      const entity = await db.workflowTask.findFirst({
+        where: { id: entityId, projectId },
+        select: { id: true },
+      });
+
+      if (!entity) {
+        throw new BadRequestException('工序任务不存在。');
+      }
+
+      return;
+    }
+
     if (entityType === AttachmentTargetType.STANDARD_BOARD) {
       const entity = await db.standardBoard.findFirst({
         where: { id: entityId, projectId },
@@ -849,7 +934,17 @@ export class AttachmentsService {
       name: string;
     },
   ) {
-    const [samples, boards, tests, reviews, reports, trials] = await Promise.all([
+    const [tasks, samples, boards, tests, reviews, reports, trials] = await Promise.all([
+      db.workflowTask.findMany({
+        where: { projectId },
+        select: {
+          id: true,
+          stepCode: true,
+          nodeName: true,
+          status: true,
+        },
+        orderBy: [{ createdAt: 'asc' }, { taskRound: 'asc' }],
+      }),
       db.sample.findMany({
         where: { projectId },
         select: {
@@ -917,6 +1012,15 @@ export class AttachmentsService {
             subtitle: '项目附件中心',
           },
         ] satisfies AttachmentEntityOptionItem[],
+      },
+      {
+        entityType: AttachmentTargetType.WORKFLOW_TASK,
+        label: '工序任务',
+        items: tasks.map((item) => ({
+          id: item.id,
+          label: `${item.stepCode ?? '--'} / ${item.nodeName}`,
+          subtitle: item.status,
+        })),
       },
       {
         entityType: AttachmentTargetType.SAMPLE,
@@ -1163,6 +1267,9 @@ export class AttachmentsService {
       fileSize: attachment.fileSize,
       bucket: attachment.bucket,
       fileUrl: attachment.fileUrl,
+      materialType: attachment.materialType,
+      versionNo: attachment.versionNo,
+      replacesAttachmentId: attachment.replacesAttachmentId,
       uploadedById: attachment.uploadedById,
       uploadedAt: attachment.uploadedAt.toISOString(),
       isDeleted: attachment.isDeleted,

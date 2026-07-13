@@ -22,6 +22,7 @@ test.describe('R20 新建颜色开发项目 @r20', () => {
     expect(projectId).toBeTruthy();
 
     await page.goto('/projects');
+    await page.getByRole('button', { name: '高级筛选' }).click();
     await page.getByLabel('关键词').fill(project.name);
     await page.getByRole('button', { name: '应用筛选' }).click();
     const projectRow = page.getByTestId('project-card').filter({ hasText: project.name });

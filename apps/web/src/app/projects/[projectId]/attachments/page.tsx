@@ -24,6 +24,7 @@ export default async function AttachmentsPage({
       initialFilters={{
         entityType: (filters.entityType as
           | 'PROJECT'
+          | 'WORKFLOW_TASK'
           | 'SAMPLE'
           | 'STANDARD_BOARD'
           | 'PERFORMANCE_TEST'

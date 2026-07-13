@@ -27,6 +27,7 @@ export function LoginCallbackClient() {
     }
 
     hasHandledRef.current = true;
+    window.history.replaceState(null, '', '/login/callback');
     void completeFeishuLogin({ code, state })
       .then(() => {
         router.replace('/projects');

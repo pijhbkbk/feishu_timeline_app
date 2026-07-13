@@ -3,19 +3,20 @@ import { ConfigService } from '@nestjs/config';
 import type { Response } from 'express';
 
 import { CurrentUser } from './current-user.decorator';
+import { FEISHU_OAUTH_STATE_COOKIE_NAME } from './auth.constants';
 import { Public } from './public.decorator';
 import type { AuthenticatedRequest, AuthenticatedUser } from './auth.types';
 import { AuthService } from './auth.service';
 
 type MockLoginBody = {
-  username?: string;
-  name?: string;
-  roleCodes?: string[];
+  username?: unknown;
+  name?: unknown;
+  roleCodes?: unknown;
 };
 
 type FeishuCallbackBody = {
-  code: string;
-  state?: string | null;
+  code: unknown;
+  state?: unknown;
 };
 
 @Controller('auth')
@@ -45,17 +46,31 @@ export class AuthController {
 
   @Public()
   @Get('feishu/login-url')
-  async getFeishuLoginUrl() {
-    return this.authService.getFeishuLoginUrl();
+  async getFeishuLoginUrl(
+    @Req() request: AuthenticatedRequest,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    return this.authService.getFeishuLoginUrl(
+      response,
+      this.getAuthClientIdentifier(request),
+    );
   }
 
   @Public()
   @Post('feishu/callback')
   async feishuCallback(
     @Body() body: FeishuCallbackBody,
+    @Req() request: AuthenticatedRequest,
     @Res({ passthrough: true }) response: Response,
   ) {
-    return this.authService.loginWithFeishu(body, response);
+    const browserState = request.cookies?.[FEISHU_OAUTH_STATE_COOKIE_NAME];
+
+    return this.authService.loginWithFeishu(
+      body,
+      browserState,
+      response,
+      this.getAuthClientIdentifier(request),
+    );
   }
 
   @Post('logout')
@@ -71,5 +86,17 @@ export class AuthController {
   @Get('me')
   getMe(@CurrentUser() user: AuthenticatedUser) {
     return user;
+  }
+
+  private getAuthClientIdentifier(request: AuthenticatedRequest) {
+    // The production Nginx configuration overwrites X-Real-IP and the API port is
+    // loopback-only. Direct local/test traffic falls back to the socket address.
+    const proxyClientIp = request.headers['x-real-ip'];
+
+    if (typeof proxyClientIp === 'string' && proxyClientIp.trim()) {
+      return proxyClientIp.trim().slice(0, 128);
+    }
+
+    return request.ip || request.socket.remoteAddress || 'unknown';
   }
 }

@@ -9,17 +9,28 @@ ROOT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 
 require_command docker
 require_command git
+require_command node
 
 load_compose_env
+
+GIT_SHA="$(git -C "$ROOT_DIR" rev-parse HEAD 2>/dev/null || true)"
+[[ -n "$GIT_SHA" ]] || fail "Unable to resolve the release Git revision."
+worktree_status="$(git -C "$ROOT_DIR" status --porcelain --untracked-files=normal)"
+GIT_DIRTY="false"
+if [[ -n "$worktree_status" ]]; then
+  GIT_DIRTY="true"
+  if [[ "${ALLOW_DIRTY_DEPLOY:-no}" != "yes" ]]; then
+    fail "Refusing to deploy a dirty worktree. Commit the release or set ALLOW_DIRTY_DEPLOY=yes for an explicitly audited exception."
+  fi
+fi
 
 API_IMAGE_REPO="${API_IMAGE_REPO:-feishu-timeline-api}"
 WEB_IMAGE_REPO="${WEB_IMAGE_REPO:-feishu-timeline-web}"
 IMAGE_TAG="${IMAGE_TAG:-}"
 if [[ -z "$IMAGE_TAG" ]]; then
-  IMAGE_TAG="$(git -C "$ROOT_DIR" rev-parse --short HEAD 2>/dev/null || date -u +%Y%m%d%H%M%S)"
+  IMAGE_TAG="${GIT_SHA:0:12}"
 fi
 RUN_SEED="${RUN_SEED:-no}"
-FORCE_REBUILD="${FORCE_REBUILD:-no}"
 
 export API_IMAGE_REPO WEB_IMAGE_REPO IMAGE_TAG
 
@@ -28,28 +39,37 @@ CURRENT_STATE="$STATE_DIR/current.env"
 PREVIOUS_STATE="$STATE_DIR/previous.env"
 mkdir -p "$STATE_DIR"
 
-build_image_if_needed() {
+build_release_image() {
   local image_ref="$1"
   local dockerfile_path="$2"
 
-  if [[ "$FORCE_REBUILD" != "yes" ]] && docker image inspect "$image_ref" >/dev/null 2>&1; then
-    log "Using existing image ${image_ref}"
-    return
-  fi
-
   log "Building image ${image_ref}"
-  docker build -t "$image_ref" -f "$dockerfile_path" "$ROOT_DIR"
+  docker build --pull \
+    --label "org.opencontainers.image.revision=${GIT_SHA}" \
+    --label "org.opencontainers.image.source=feishu-timeline-app" \
+    -t "$image_ref" -f "$dockerfile_path" "$ROOT_DIR"
 }
 
-build_image_if_needed "${API_IMAGE_REPO}:${IMAGE_TAG}" "$ROOT_DIR/apps/api/Dockerfile"
-build_image_if_needed "${WEB_IMAGE_REPO}:${IMAGE_TAG}" "$ROOT_DIR/apps/web/Dockerfile"
+build_release_image "${API_IMAGE_REPO}:${IMAGE_TAG}" "$ROOT_DIR/apps/api/Dockerfile"
+build_release_image "${WEB_IMAGE_REPO}:${IMAGE_TAG}" "$ROOT_DIR/apps/web/Dockerfile"
+
+log "Scanning the exact API and Web release images"
+"$ROOT_DIR/scripts/security/scan-production-images.sh" \
+  "${API_IMAGE_REPO}:${IMAGE_TAG}" \
+  "${WEB_IMAGE_REPO}:${IMAGE_TAG}"
+
+API_IMAGE_ID="$(docker image inspect --format '{{.Id}}' "${API_IMAGE_REPO}:${IMAGE_TAG}")"
+WEB_IMAGE_ID="$(docker image inspect --format '{{.Id}}' "${WEB_IMAGE_REPO}:${IMAGE_TAG}")"
 
 cat >"$PENDING_STATE" <<EOF
 API_IMAGE_REPO=${API_IMAGE_REPO}
 WEB_IMAGE_REPO=${WEB_IMAGE_REPO}
 IMAGE_TAG=${IMAGE_TAG}
 RELEASED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-GIT_SHA=$(git -C "$ROOT_DIR" rev-parse HEAD 2>/dev/null || echo unknown)
+GIT_SHA=${GIT_SHA}
+GIT_DIRTY=${GIT_DIRTY}
+API_IMAGE_ID=${API_IMAGE_ID}
+WEB_IMAGE_ID=${WEB_IMAGE_ID}
 EOF
 
 log "Starting postgres and redis"

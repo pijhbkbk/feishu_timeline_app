@@ -16,7 +16,7 @@ test('R21 project realtime flow map shows topology, drawer details and refresh',
   await createColorExitRecord(request, project.id);
 
   await page.goto('/projects/flow-map');
-  await expect(page.getByRole('link', { name: /流程地图/ }).first()).toBeVisible();
+  await expect(page.getByRole('link', { name: '项目管理' }).first()).toBeVisible();
   await expect(page.getByTestId('projects-flow-map-portal')).toBeVisible();
   await expect(page.getByRole('heading', { name: '项目实时流程地图' }).first()).toBeVisible();
   await expect(page.getByLabel('选择项目')).toBeVisible();

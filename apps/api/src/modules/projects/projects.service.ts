@@ -12,6 +12,7 @@ import {
   ProjectStatus,
   RecurringTaskStatus,
   ReviewType,
+  TaskBlockerStatus,
   UserStatus,
   WorkflowNodeCode,
   WorkflowInstanceStatus,
@@ -38,6 +39,7 @@ type ProjectMemberInput = {
 type ProjectListQuery = {
   page: number;
   pageSize: number;
+  view?: 'all' | 'normal' | 'risk' | 'overdue' | 'review';
   keyword?: string;
   status?: ProjectStatus;
   currentNodeCode?: WorkflowNodeCode;
@@ -112,6 +114,12 @@ const PROJECT_STATUS_VALUES = Object.values(ProjectStatus);
 const PROJECT_PRIORITY_VALUES = Object.values(ProjectPriority);
 const PROJECT_MEMBER_TYPE_VALUES = Object.values(ProjectMemberType);
 const WORKFLOW_NODE_VALUES = Object.values(WorkflowNodeCode);
+const PROJECT_LIST_VIEW_VALUES = ['all', 'normal', 'risk', 'overdue', 'review'] as const;
+const REVIEW_NODE_CODES = [
+  WorkflowNodeCode.SAMPLE_COLOR_CONFIRMATION,
+  WorkflowNodeCode.CAB_REVIEW,
+  WorkflowNodeCode.COLOR_CONSISTENCY_REVIEW,
+] as const;
 const FLOW_MAP_EDGE_DEFINITIONS: Array<{
   from: WorkflowNodeCode;
   to: WorkflowNodeCode;
@@ -150,8 +158,37 @@ export class ProjectsService {
   async listProjects(rawQuery: Record<string, unknown>, actor: AuthenticatedUser) {
     const query = this.normalizeListQuery(rawQuery);
     const where = this.buildListWhere(query, actor);
+    const summaryQuery: ProjectListQuery = { ...query };
+    delete summaryQuery.view;
+    const summaryWhere = this.buildListWhere(summaryQuery, actor);
+    const now = new Date();
+    const dueWeekEnd = new Date(now);
+    dueWeekEnd.setDate(dueWeekEnd.getDate() + 7);
 
-    const [total, projects, nodeDefinitions] = await this.prisma.$transaction([
+    const activeWhere: Prisma.ProjectWhereInput = {
+      status: { in: [ProjectStatus.DRAFT, ProjectStatus.IN_PROGRESS, ProjectStatus.ON_HOLD] },
+    };
+    const riskWhere = this.buildProjectRiskWhere(now);
+    const dueThisWeekWhere: Prisma.ProjectWhereInput = {
+      workflowTasks: {
+        some: {
+          isActive: true,
+          dueAt: { gte: now, lte: dueWeekEnd },
+          status: { in: this.activeTaskStatuses() },
+        },
+      },
+    };
+    const pendingReviewWhere: Prisma.ProjectWhereInput = {
+      workflowTasks: {
+        some: {
+          isActive: true,
+          nodeCode: { in: [...REVIEW_NODE_CODES] },
+          status: { in: this.activeTaskStatuses() },
+        },
+      },
+    };
+
+    const [total, projects, nodeDefinitions, activeCount, riskCount, dueThisWeekCount, pendingReviewCount] = await this.prisma.$transaction([
       this.prisma.project.count({ where }),
       this.prisma.project.findMany({
         where,
@@ -175,10 +212,22 @@ export class ProjectsService {
               isActive: true,
             },
             select: {
+              id: true,
+              nodeCode: true,
+              nodeName: true,
               isActive: true,
               dueAt: true,
               status: true,
+              updatedAt: true,
+              assigneeUser: { select: { id: true, name: true } },
             },
+            orderBy: [{ dueAt: 'asc' }, { updatedAt: 'desc' }],
+          },
+          taskBlockers: {
+            where: { status: TaskBlockerStatus.OPEN },
+            include: { helperUser: { select: { id: true, name: true } } },
+            orderBy: { createdAt: 'desc' },
+            take: 1,
           },
           _count: {
             select: {
@@ -202,6 +251,10 @@ export class ProjectsService {
           sequence: 'asc',
         },
       }),
+      this.prisma.project.count({ where: { AND: [summaryWhere, activeWhere] } }),
+      this.prisma.project.count({ where: { AND: [summaryWhere, riskWhere] } }),
+      this.prisma.project.count({ where: { AND: [summaryWhere, dueThisWeekWhere] } }),
+      this.prisma.project.count({ where: { AND: [summaryWhere, pendingReviewWhere] } }),
     ]);
 
     const orderedNodeOptions = [...nodeDefinitions].sort((left, right) => {
@@ -215,7 +268,15 @@ export class ProjectsService {
       pageSize: query.pageSize,
       total,
       totalPages: Math.max(1, Math.ceil(total / query.pageSize)),
+      summary: {
+        active: activeCount,
+        risk: riskCount,
+        dueThisWeek: dueThisWeekCount,
+        pendingReview: pendingReviewCount,
+      },
       filters: {
+        view: query.view ?? 'all',
+        keyword: query.keyword ?? null,
         status: query.status ?? null,
         currentNodeCode: query.currentNodeCode ?? null,
         ownerUserId: query.ownerUserId ?? null,
@@ -891,6 +952,7 @@ export class ProjectsService {
   private normalizeListQuery(rawQuery: Record<string, unknown>): ProjectListQuery {
     const page = this.parsePositiveInt(rawQuery.page, 1, 'page');
     const pageSize = this.parsePositiveInt(rawQuery.pageSize, 10, 'pageSize', 50);
+    const view = this.parseOptionalEnum(rawQuery.view, PROJECT_LIST_VIEW_VALUES, 'view');
     const keyword = this.parseOptionalString(rawQuery.keyword);
     const status = this.parseOptionalEnum(rawQuery.status, PROJECT_STATUS_VALUES, 'status');
     const currentNodeCode = this.parseOptionalEnum(
@@ -916,6 +978,7 @@ export class ProjectsService {
     return {
       page,
       pageSize,
+      ...(view && view !== 'all' ? { view } : {}),
       ...(keyword ? { keyword } : {}),
       ...(status ? { status } : {}),
       ...(currentNodeCode ? { currentNodeCode } : {}),
@@ -1078,6 +1141,7 @@ export class ProjectsService {
   private buildListWhere(query: ProjectListQuery, actor: AuthenticatedUser): Prisma.ProjectWhereInput {
     const andConditions: Prisma.ProjectWhereInput[] = [];
     const visibleWhere = this.buildVisibleProjectWhere(actor);
+    const now = new Date();
 
     if (Object.keys(visibleWhere).length > 0) {
       andConditions.push(visibleWhere);
@@ -1156,6 +1220,32 @@ export class ProjectsService {
       andConditions.push(query.isOverdue ? overdueWhere : { NOT: overdueWhere });
     }
 
+    if (query.view === 'risk') {
+      andConditions.push(this.buildProjectRiskWhere(now));
+    } else if (query.view === 'normal') {
+      andConditions.push({ NOT: this.buildProjectRiskWhere(now) });
+    } else if (query.view === 'overdue') {
+      andConditions.push({
+        workflowTasks: {
+          some: {
+            isActive: true,
+            dueAt: { lt: now },
+            status: { in: this.activeTaskStatuses() },
+          },
+        },
+      });
+    } else if (query.view === 'review') {
+      andConditions.push({
+        workflowTasks: {
+          some: {
+            isActive: true,
+            nodeCode: { in: [...REVIEW_NODE_CODES] },
+            status: { in: this.activeTaskStatuses() },
+          },
+        },
+      });
+    }
+
     if (query.dateFrom) {
       andConditions.push({
         OR: [
@@ -1175,6 +1265,34 @@ export class ProjectsService {
     }
 
     return andConditions.length > 0 ? { AND: andConditions } : {};
+  }
+
+  private activeTaskStatuses() {
+    return [
+      WorkflowTaskStatus.PENDING,
+      WorkflowTaskStatus.READY,
+      WorkflowTaskStatus.IN_PROGRESS,
+      WorkflowTaskStatus.RETURNED,
+    ];
+  }
+
+  private buildProjectRiskWhere(now: Date): Prisma.ProjectWhereInput {
+    return {
+      OR: [
+        { status: ProjectStatus.ON_HOLD },
+        { priority: { in: [ProjectPriority.HIGH, ProjectPriority.CRITICAL] } },
+        {
+          workflowTasks: {
+            some: {
+              isActive: true,
+              dueAt: { lt: now },
+              status: { in: this.activeTaskStatuses() },
+            },
+          },
+        },
+        { taskBlockers: { some: { status: TaskBlockerStatus.OPEN } } },
+      ],
+    };
   }
 
   private buildVisibleProjectWhere(actor: AuthenticatedUser): Prisma.ProjectWhereInput {
@@ -1415,9 +1533,19 @@ export class ProjectsService {
         };
         workflowTasks: {
           select: {
+            id: true;
+            nodeCode: true;
+            nodeName: true;
             isActive: true;
             dueAt: true;
             status: true;
+            updatedAt: true;
+            assigneeUser: { select: { id: true; name: true } };
+          };
+        };
+        taskBlockers: {
+          include: {
+            helperUser: { select: { id: true; name: true } };
           };
         };
         _count: {
@@ -1430,6 +1558,17 @@ export class ProjectsService {
     }>,
   ) {
     const riskLevel = this.computeRiskLevel(project);
+    const now = new Date();
+    const currentTask = project.workflowTasks[0] ?? null;
+    const blocker = project.taskBlockers[0] ?? null;
+    const overdueTask = project.workflowTasks.find((task) => this.isTaskOverdue(task, now)) ?? null;
+    const stalledSince = blocker?.createdAt ?? overdueTask?.dueAt ?? null;
+    const stalledDays = stalledSince
+      ? Math.max(0, Math.ceil((now.getTime() - stalledSince.getTime()) / 86_400_000))
+      : 0;
+    const currentSequence = project.currentNodeCode
+      ? Math.round((WORKFLOW_NODE_META_MAP[project.currentNodeCode]?.sequence ?? 0) / 10)
+      : 0;
 
     return {
       id: project.id,
@@ -1450,6 +1589,23 @@ export class ProjectsService {
       riskLevel,
       isOverdue: project.workflowTasks.some((task) => this.isTaskOverdue(task, new Date())),
       progressPercent: this.computeProgressPercent(project.currentNodeCode),
+      progressText: `${Math.min(18, Math.max(0, currentSequence))} / 18`,
+      currentTaskId: currentTask?.id ?? null,
+      currentTaskOwnerId: currentTask?.assigneeUser?.id ?? null,
+      currentTaskOwnerName: currentTask?.assigneeUser?.name ?? project.ownerUser?.name ?? null,
+      currentTaskDueAt: this.serializeDate(currentTask?.dueAt ?? null),
+      latestTaskUpdatedAt: currentTask?.updatedAt.toISOString() ?? project.updatedAt.toISOString(),
+      stall: blocker || overdueTask
+        ? {
+            nodeCode: currentTask?.nodeCode ?? project.currentNodeCode,
+            nodeName: currentTask?.nodeName ?? this.workflowsService.getCurrentNodeName(project.currentNodeCode),
+            days: stalledDays,
+            reason: blocker?.description ?? '当前工序已超过计划完成时间。',
+            ownerName: currentTask?.assigneeUser?.name ?? project.ownerUser?.name ?? null,
+            helperName: blocker?.helperUser?.name ?? null,
+            expectedResolvedAt: this.serializeDate(blocker?.expectedResolvedAt ?? null),
+          }
+        : null,
       plannedStartDate: this.serializeDate(project.plannedStartDate),
       plannedEndDate: this.serializeDate(project.plannedEndDate),
       memberCount: project._count.members,

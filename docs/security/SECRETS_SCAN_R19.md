@@ -1,41 +1,23 @@
-# Secrets Scan R19
+# Secrets Scan R19B
 
-Generated: 2026-05-19T03:45:47Z
-Commit: 4ce7e8a
+Generated: 2026-07-13T08:39:53Z
+Commit: 63f9be6
+Scanner: `ghcr.io/gitleaks/gitleaks:v8.30.1@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f`
 
 ## Command Results
 
 | Check | Status | Raw Output |
 |---|---|---|
-| gitleaks detect --redact | PASS | reports/security/secrets/gitleaks.log |
-| gitleaks git history --redact | PASS | reports/security/secrets/gitleaks-history.log |
+| Gitleaks current tracked/untracked candidate files | PASS | reports/security/secrets/gitleaks-current.log |
+| Gitleaks full Git history | PASS | reports/security/secrets/gitleaks-history.log |
+| Current-tree target manifest | INFO | reports/security/secrets/current-tree-files.txt |
 | Environment-like file inventory | INFO | reports/security/secrets/env-files.txt |
 | Sensitive key name location scan | INFO | reports/security/secrets/sensitive-key-name-locations.txt |
 | .gitignore protection check | INFO | reports/security/secrets/gitignore-check.txt |
 
-## Report Files
-
-- reports/security/gitleaks-report.json
-- reports/security/secrets/gitleaks-report.json
-- reports/security/secrets/gitleaks-history-report.json
-
-## Triage
-
-- Current tree gitleaks scan: PASS, no leaks found.
-- Git history gitleaks scan: PASS, no leaks found.
-- Sensitive key-name scan found variable names, example placeholders, docs, and deployment script references only. No secret values were written into this report.
-- `.gitignore` protects `.env`, `.env.production`, app-level `.env.*`, and `deploy/env/*.env`.
-
-## Findings
-
-| Severity | Count | Status |
-|---|---:|---|
-| Critical | 0 | N/A |
-| High | 0 | N/A |
-| Medium | 0 | N/A |
-| Low | 0 | N/A |
-| Info | 1 | Key-name references reviewed; no secret values found |
+Reports are redacted. Do not paste or copy secret values into review records. A confirmed
+secret exposure is Critical and requires immediate rotation through the owning platform.
 
 ## Current Acceptance
 
-PASS. No confirmed key, token, cookie, database password, Feishu App Secret, API token, or private key exposure was found.
+PASS — current candidate files and full Git history contain no detected secret.

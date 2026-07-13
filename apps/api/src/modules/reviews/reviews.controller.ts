@@ -8,8 +8,7 @@ import {
   UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
-
+import { SecureSingleFileInterceptor } from '../../common/file-upload-options';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { Roles } from '../auth/roles.decorator';
 import type { AuthenticatedUser } from '../auth/auth.types';
@@ -54,7 +53,7 @@ export class ReviewsController {
   }
 
   @Roles('admin', 'project_manager', 'quality_engineer', 'reviewer')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(SecureSingleFileInterceptor('file'))
   @Post('cabin/:reviewId/attachment')
   uploadCabinReviewAttachment(
     @Param('projectId') projectId: string,
@@ -123,7 +122,7 @@ export class ReviewsController {
   }
 
   @Roles('admin', 'project_manager', 'quality_engineer', 'reviewer')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(SecureSingleFileInterceptor('file'))
   @Post('consistency/:reviewId/attachment')
   uploadConsistencyReviewAttachment(
     @Param('projectId') projectId: string,
@@ -192,7 +191,7 @@ export class ReviewsController {
   }
 
   @Roles('admin', 'project_manager', 'quality_engineer', 'reviewer')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(SecureSingleFileInterceptor('file'))
   @Post('visual-delta/:reviewId/attachment')
   uploadVisualDeltaReviewAttachment(
     @Param('projectId') projectId: string,

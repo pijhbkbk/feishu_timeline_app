@@ -8,8 +8,7 @@ import {
   UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
-
+import { SecureSingleFileInterceptor } from '../../common/file-upload-options';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { Roles } from '../auth/roles.decorator';
 import type { AuthenticatedUser } from '../auth/auth.types';
@@ -63,7 +62,7 @@ export class SamplesController {
   }
 
   @Roles('admin', 'project_manager', 'process_engineer', 'quality_engineer')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(SecureSingleFileInterceptor('file'))
   @Post(':sampleId/images')
   uploadImage(
     @Param('projectId') projectId: string,

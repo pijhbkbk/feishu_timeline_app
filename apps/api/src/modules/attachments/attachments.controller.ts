@@ -10,9 +10,9 @@ import {
   UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
 
+import { SecureSingleFileInterceptor } from '../../common/file-upload-options';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { Permissions } from '../auth/permissions.decorator';
 import { Roles } from '../auth/roles.decorator';
@@ -88,7 +88,7 @@ export class AttachmentsController {
     'finance',
   )
   @Permissions('attachment.manage')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(SecureSingleFileInterceptor('file'))
   @Post('projects/:projectId/attachments/upload')
   uploadAttachment(
     @Param('projectId') projectId: string,

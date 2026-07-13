@@ -66,6 +66,10 @@ function createService() {
     project: {
       findUnique: vi.fn(),
     },
+    workflowTask: {
+      findFirst: vi.fn(),
+      findMany: vi.fn().mockResolvedValue([]),
+    },
     sample: {
       findFirst: vi.fn(),
       findMany: vi.fn().mockResolvedValue([]),
@@ -91,6 +95,10 @@ function createService() {
     $transaction: vi.fn(async (executor: (client: typeof tx) => Promise<unknown>) => executor(tx)),
     project: {
       findUnique: vi.fn(),
+    },
+    workflowTask: {
+      findFirst: vi.fn(),
+      findMany: vi.fn().mockResolvedValue([]),
     },
     sample: {
       findFirst: vi.fn(),

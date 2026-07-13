@@ -27,7 +27,7 @@ for path in \
   if [ -e "$path" ]; then
     find "$path" -type f \
       -not -path '*/.DS_Store' \
-      -print0 | sort -z | xargs -0 $hash_cmd >>"$MANIFEST" || true
+      -print0 | sort -z | xargs -0 $hash_cmd >>"$MANIFEST"
   fi
 done
 
@@ -35,7 +35,7 @@ sed -i.bak "s#$ROOT_DIR/##g" "$MANIFEST" 2>/dev/null || true
 rm -f "$MANIFEST.bak"
 
 cat >"$DOC_REPORT" <<EOF
-# Web Tamper Protection R19
+# Web Tamper Protection R19B
 
 Generated: $timestamp
 Commit: $commit

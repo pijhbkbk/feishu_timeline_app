@@ -32,7 +32,7 @@ for path in \
   if [ -e "$path" ]; then
     find "$path" -type f \
       -not -path '*/.DS_Store' \
-      -print0 | sort -z | xargs -0 $hash_cmd >>"$CURRENT" || true
+      -print0 | sort -z | xargs -0 $hash_cmd >>"$CURRENT"
   fi
 done
 

@@ -1,12 +1,9 @@
-FROM node:24-bookworm-slim AS base
+FROM node:24-alpine AS base
 
 ENV PNPM_HOME=/pnpm
 ENV PATH="${PNPM_HOME}:${PATH}"
 
-RUN corepack enable \
-  && apt-get update \
-  && apt-get install -y --no-install-recommends curl ca-certificates \
-  && rm -rf /var/lib/apt/lists/*
+RUN corepack enable
 
 WORKDIR /app
 
@@ -26,29 +23,34 @@ COPY . .
 RUN pnpm --filter @feishu-timeline/shared build \
   && pnpm --filter @feishu-timeline/api build
 
-FROM base AS runtime
+FROM node:24-alpine AS runtime
 
 ENV NODE_ENV=production
 ENV HOST=0.0.0.0
 ENV PORT=3001
+ENV OBJECT_STORAGE_LOCAL_ROOT=/app/var/object-storage
 ENV PATH="/app/node_modules/.bin:${PATH}"
 
 WORKDIR /app
+
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
+  && rm -f /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack \
+    /usr/local/bin/pnpm /usr/local/bin/pnpx
 
 COPY --from=build /app/node_modules /app/node_modules
 COPY --from=build /app/package.json /app/package.json
 COPY --from=build /app/pnpm-workspace.yaml /app/pnpm-workspace.yaml
 COPY --from=build /app/apps/api /app/apps/api
 
-RUN mkdir -p /app/apps/api/var/object-storage \
-  && chown -R node:node /app
+RUN mkdir -p /app/var/object-storage \
+  && chown node:node /app/var/object-storage
 
 WORKDIR /app/apps/api
 
 EXPOSE 3001
 
 HEALTHCHECK --interval=15s --timeout=5s --retries=10 --start-period=20s \
-  CMD curl -fsS http://127.0.0.1:3001/api/health >/dev/null || exit 1
+  CMD node -e "require('node:http').get('http://127.0.0.1:3001/api/health',(response)=>process.exit(response.statusCode===200?0:1)).on('error',()=>process.exit(1))"
 
 USER node
 

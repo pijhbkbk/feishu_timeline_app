@@ -218,6 +218,14 @@ const workflowNodes = [
     allowManualDueAt: false,
     isReviewNode: false,
     description: '生成或录入新颜色编号。',
+    requiredAttachments: [
+      {
+        id: 'color-number-proof',
+        name: '颜色编号确认单',
+        required: true,
+        description: '完成颜色取号前必须提交编号确认凭证。',
+      },
+    ],
   },
   {
     stepCode: '06',
@@ -764,6 +772,8 @@ async function upsertBaseData(): Promise<SeedRefs> {
           isActive: true,
           defaultChargeAmount: node.defaultChargeAmount ?? null,
           description: node.description,
+          requiredAttachments:
+            'requiredAttachments' in node ? node.requiredAttachments : [],
         },
       });
     }

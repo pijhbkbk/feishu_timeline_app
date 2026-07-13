@@ -13,6 +13,13 @@ export class DashboardController {
   constructor(private readonly dashboardService: DashboardService) {}
 
   @Permissions('dashboard.read')
+  @ApiOperation({ summary: '获取当前用户的任务导向工作台' })
+  @Get('personal-overview')
+  getPersonalOverview(@CurrentUser() actor: AuthenticatedUser) {
+    return this.dashboardService.getPersonalOverview(actor);
+  }
+
+  @Permissions('dashboard.read')
   @ApiOperation({ summary: '获取仪表盘总览' })
   @Get('overview')
   getOverview(@CurrentUser() actor: AuthenticatedUser) {

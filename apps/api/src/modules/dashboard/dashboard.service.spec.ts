@@ -19,6 +19,47 @@ function createActor(): AuthenticatedUser {
 }
 
 describe('DashboardService', () => {
+  it('builds a personal task-first dashboard without static data', async () => {
+    const prisma = {
+      workflowTask: {
+        findMany: vi.fn().mockResolvedValue([]),
+        count: vi
+          .fn()
+          .mockResolvedValueOnce(4)
+          .mockResolvedValueOnce(1)
+          .mockResolvedValueOnce(2)
+          .mockResolvedValueOnce(1),
+      },
+      taskBlocker: {
+        count: vi.fn().mockResolvedValue(1),
+      },
+      project: {
+        findMany: vi.fn().mockResolvedValue([{ id: 'project-1' }, { id: 'project-2' }]),
+      },
+      auditLog: {
+        findMany: vi.fn().mockResolvedValue([]),
+      },
+    };
+    const service = new DashboardService(prisma as never);
+
+    const result = await service.getPersonalOverview(createActor());
+
+    expect(result).toMatchObject({
+      user: { id: 'user-1', name: '项目经理' },
+      currentTask: null,
+      nextTask: null,
+      stats: {
+        activeTasks: 4,
+        overdueTasks: 1,
+        dueTodayTasks: 2,
+        visibleProjects: 2,
+        pendingReviewTasks: 1,
+        pendingMaterialTasks: 0,
+        waitingOnOthersTasks: 1,
+      },
+    });
+  });
+
   it('aggregates overview statistics for current user scope', async () => {
     const prisma = {
       project: {

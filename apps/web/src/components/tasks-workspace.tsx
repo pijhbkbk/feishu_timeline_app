@@ -1,255 +1,143 @@
 'use client';
 
 import Link from 'next/link';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 import {
   fetchTaskList,
   getTaskDueDateLabel,
-  getTaskModeDescription,
-  getTaskModeTitle,
   getTaskNodeLabel,
   getTaskPriorityLabel,
-  getTaskProjectStatusLabel,
   getTaskStatusLabel,
   type TaskListItem,
   type TaskListMode,
   type TaskListResponse,
 } from '../lib/tasks-client';
+import { R22ProgressBar, R22StatusBadge } from './r22-ui';
 
-type TasksWorkspaceProps = {
-  mode: TaskListMode;
-};
+type TasksWorkspaceProps = { mode: TaskListMode };
 
-type TaskTableProps = {
-  items: TaskListItem[];
-};
+const FILTERS: Array<{ mode: Exclude<TaskListMode, 'my'>; label: string }> = [
+  { mode: 'pending', label: '待处理' },
+  { mode: 'review', label: '待评审' },
+  { mode: 'due-soon', label: '即将到期' },
+  { mode: 'overdue', label: '已逾期' },
+  { mode: 'completed', label: '已完成' },
+];
 
 export function TasksWorkspace({ mode }: TasksWorkspaceProps) {
   const requestIdRef = useRef(0);
+  const [activeMode, setActiveMode] = useState<TaskListMode>(mode === 'my' ? 'pending' : mode);
   const [response, setResponse] = useState<TaskListResponse | null>(null);
   const [items, setItems] = useState<TaskListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    void loadPage(1, { reset: true });
+    const nextMode = mode === 'my' ? 'pending' : mode;
+    setActiveMode(nextMode);
+    void loadPage(nextMode, 1);
   }, [mode]);
 
-  const summaryCards = useMemo(() => {
-    const overdueCount = items.filter((item) => item.isOverdue).length;
-
-    return [
-      {
-        label: '列表模式',
-        value: getTaskModeTitle(mode),
-      },
-      {
-        label: '已加载任务',
-        value: String(items.length),
-      },
-      {
-        label: '逾期任务',
-        value: String(overdueCount),
-      },
-      {
-        label: '总任务数',
-        value: String(response?.total ?? 0),
-      },
-    ];
-  }, [items, mode, response]);
-
-  async function loadPage(
-    page: number,
-    options?: {
-      reset?: boolean;
-    },
-  ) {
+  async function loadPage(nextMode: TaskListMode, page: number) {
     const requestId = ++requestIdRef.current;
-
-    if (options?.reset) {
-      setIsLoading(true);
-    } else {
-      setIsLoadingMore(true);
-    }
-
+    setIsLoading(true);
     setError(null);
-
     try {
-      const nextResponse = await fetchTaskList(mode, {
-        page,
-        pageSize: mode === 'my' ? 20 : 30,
-      });
-
-      if (requestId !== requestIdRef.current) {
-        return;
-      }
-
-      setResponse(nextResponse);
-      setItems((current) =>
-        options?.reset ? nextResponse.items : [...current, ...nextResponse.items],
-      );
+      const next = await fetchTaskList(nextMode, { page, pageSize: 20 });
+      if (requestId !== requestIdRef.current) return;
+      setResponse(next);
+      setItems(next.items);
     } catch (loadError) {
-      if (requestId !== requestIdRef.current) {
-        return;
-      }
-
+      if (requestId !== requestIdRef.current) return;
       setError(loadError instanceof Error ? loadError.message : '任务列表加载失败。');
     } finally {
-      if (requestId === requestIdRef.current) {
-        setIsLoading(false);
-        setIsLoadingMore(false);
-      }
+      if (requestId === requestIdRef.current) setIsLoading(false);
     }
   }
 
-  if (isLoading && !response) {
-    return <TasksWorkspaceSkeleton />;
+  async function selectMode(nextMode: TaskListMode) {
+    setActiveMode(nextMode);
+    await loadPage(nextMode, 1);
   }
 
   return (
-    <div className="page-stack">
-      <section className="page-card">
-        <div className="section-header">
-          <div>
-            <p className="eyebrow">任务中心</p>
-            <h2 className="section-title">{getTaskModeTitle(mode)}</h2>
-            <p className="muted">{getTaskModeDescription(mode)}</p>
-          </div>
-          <div className="inline-actions">
-            <button
-              type="button"
-              className="button button-secondary"
-              onClick={() => void loadPage(1, { reset: true })}
-              disabled={isLoading}
-            >
-              刷新列表
-            </button>
-          </div>
+    <div className="r22-page r22-tasks-page" data-testid="tasks-page">
+      <header className="r22-page-hero">
+        <div><p className="r22-overline">我的任务</p><h1>今天要推进什么</h1><p>按处理类型聚合真实工序任务，先处理阻塞、评审和临期事项。</p></div>
+        <button type="button" className="r22-button r22-button-secondary" disabled={isLoading} onClick={() => void loadPage(activeMode, response?.page ?? 1)}>刷新任务</button>
+      </header>
+
+      <div className="r22-board-controls">
+        <div className="r22-segmented" role="tablist" aria-label="任务筛选">
+          {FILTERS.map((item) => <button key={item.mode} type="button" role="tab" aria-selected={activeMode === item.mode} className={activeMode === item.mode ? 'is-active' : undefined} onClick={() => void selectMode(item.mode)}>{item.label}</button>)}
         </div>
-        <div className="metric-grid">
-          {summaryCards.map((card) => (
-            <article key={card.label} className="stat-card">
-              <p>{card.label}</p>
-              <strong>{card.value}</strong>
-            </article>
-          ))}
-        </div>
+        <span className="r22-result-count">{response ? `${response.total} 项任务` : '正在读取任务'}</span>
+      </div>
+
+      {error ? <div className="r22-inline-alert"><span>{error}</span><button type="button" onClick={() => void loadPage(activeMode, 1)}>重新加载</button></div> : null}
+      {isLoading && !response ? <TaskSkeleton /> : null}
+      {!isLoading && !error && items.length === 0 ? <section className="r22-card r22-empty-focus"><span className="r22-empty-icon">✓</span><h2>这个列表已经清空</h2><p>当前没有符合条件的任务。</p><Link href="/projects" className="r22-button r22-button-secondary">查看项目</Link></section> : null}
+
+      <section className="r22-task-card-list" aria-busy={isLoading}>
+        {items.map((item) => <TaskWideCard key={item.taskId} item={item} completed={activeMode === 'completed'} />)}
       </section>
 
-      {error ? <p className="error-text">{error}</p> : null}
-
-      <section className="page-card">
-        <div className="section-header">
-          <div>
-            <p className="eyebrow">任务列表</p>
-            <h2 className="section-title">当前任务</h2>
-            <p className="muted">点击“进入项目”会跳转到对应项目详情页签。</p>
-          </div>
-          <div className="section-inline-meta">
-            <span>{response ? `第 ${response.page} / ${response.totalPages} 页` : '未加载'}</span>
-          </div>
-        </div>
-        <TaskTable items={items} />
-        {response && response.page < response.totalPages ? (
-          <div className="page-actions">
-            <button
-              type="button"
-              className="button button-secondary"
-              disabled={isLoadingMore}
-              onClick={() => void loadPage(response.page + 1)}
-            >
-              {isLoadingMore ? '正在加载…' : '加载更多'}
-            </button>
-          </div>
-        ) : null}
-      </section>
+      {response && response.totalPages > 1 ? <nav className="r22-pagination" aria-label="任务分页"><button type="button" className="r22-button r22-button-secondary" disabled={response.page <= 1 || isLoading} onClick={() => void loadPage(activeMode, response.page - 1)}>上一页</button><span>第 {response.page} / {response.totalPages} 页</span><button type="button" className="r22-button r22-button-secondary" disabled={response.page >= response.totalPages || isLoading} onClick={() => void loadPage(activeMode, response.page + 1)}>下一页</button></nav> : null}
     </div>
   );
 }
 
-export function TaskTable({ items }: TaskTableProps) {
+export function TaskWideCard({ item, completed }: { item: TaskListItem; completed: boolean }) {
+  const action = getTaskAction(item, completed);
+  const tone = completed ? 'success' : item.isOverdue || item.blocker?.status === 'OPEN' ? 'danger' : 'brand';
   return (
-    <div className="table-shell">
-      <table className="data-table">
-        <thead>
-          <tr>
-            <th>项目</th>
-            <th>节点</th>
-            <th>任务状态</th>
-            <th>负责人</th>
-            <th>截止时间</th>
-            <th>优先级</th>
-            <th>项目状态</th>
-            <th>操作</th>
-          </tr>
-        </thead>
-        <tbody>
-          {items.length === 0 ? (
-            <tr>
-              <td colSpan={8}>
-                <div className="empty-state">
-                  <strong>当前没有任务</strong>
-                  <p>该列表已接入工序任务数据，暂无符合条件的活跃任务。</p>
-                </div>
-              </td>
-            </tr>
-          ) : (
-            items.map((item) => (
-              <tr key={item.taskId}>
-                <td>
-                  <div className="task-table-primary">
-                    <strong>{item.projectName}</strong>
-                    {item.isOverdue ? <span className="overdue-badge">逾期</span> : null}
-                  </div>
-                </td>
-                <td>{getTaskNodeLabel(item)}</td>
-                <td>
-                  <span className="status-badge status-ready">
-                    {getTaskStatusLabel(item.taskStatus)}
-                  </span>
-                </td>
-                <td>{item.assigneeName}</td>
-                <td>{getTaskDueDateLabel(item.dueAt)}</td>
-                <td>{getTaskPriorityLabel(item.priority)}</td>
-                <td>{getTaskProjectStatusLabel(item.currentProjectStatus)}</td>
-                <td>
-                  <Link href={item.projectHref} className="table-link">
-                    进入项目
-                  </Link>
-                </td>
-              </tr>
-            ))
-          )}
-        </tbody>
-      </table>
-    </div>
+    <article className="r22-card r22-task-wide-card" data-testid="task-card">
+      <div className="r22-task-wide-heading">
+        <div><span>{item.projectName} · {getTaskPriorityLabel(item.priority)}</span><h2>{getTaskNodeLabel(item)}</h2><p>{getTaskStatusLabel(item.taskStatus)} · {item.assigneeName}</p></div>
+        <R22StatusBadge tone={tone}>{completed ? '已完成' : item.isOverdue ? '已逾期' : item.blocker?.status === 'OPEN' ? '有阻塞' : '待推进'}</R22StatusBadge>
+      </div>
+      <div className="r22-task-wide-body">
+        <div className="r22-task-delivery">
+          <span>交付状态</span>
+          <strong>{getTaskDueDateLabel(item.dueAt)}</strong>
+          <p>{item.materialCount > 0 ? `已上传 ${item.materialCount} 份材料` : '当前工序尚未上传材料'}</p>
+          <R22ProgressBar value={completed ? 100 : item.completionPercent} />
+        </div>
+        <div className="r22-task-latest">
+          <span>最近进展</span>
+          <strong>{item.latestUpdate?.content ?? (completed ? '任务已经完成' : '等待首次进展提交')}</strong>
+          <p>{item.blocker?.description ?? item.latestUpdate?.nextPlan ?? '暂无额外说明'}</p>
+          {item.latestUpdate ? <time>{formatRelativeDate(item.latestUpdate.createdAt)}</time> : null}
+        </div>
+      </div>
+      <div className="r22-task-wide-actions">
+        <Link href={action.href} className="r22-button r22-button-primary">{action.label}</Link>
+        {!completed ? <Link href={`/materials/upload?taskId=${item.taskId}`} className="r22-button r22-button-secondary">上传材料</Link> : null}
+        <Link href={`/projects/${item.projectId}`} className="r22-text-link">查看项目</Link>
+      </div>
+    </article>
   );
 }
 
-function TasksWorkspaceSkeleton() {
-  return (
-    <div className="page-stack">
-      <section className="page-card">
-        <div className="skeleton-block skeleton-title" />
-        <div className="metric-grid">
-          {Array.from({ length: 4 }).map((_, index) => (
-            <div key={index} className="stat-card">
-              <div className="skeleton-block skeleton-text" />
-              <div className="skeleton-block skeleton-number" />
-            </div>
-          ))}
-        </div>
-      </section>
-      <section className="page-card">
-        <div className="skeleton-block skeleton-title" />
-        <div className="table-skeleton">
-          {Array.from({ length: 4 }).map((_, index) => (
-            <div key={index} className="skeleton-block skeleton-row" />
-          ))}
-        </div>
-      </section>
-    </div>
-  );
+function getTaskAction(item: TaskListItem, completed: boolean) {
+  if (completed) return { label: '查看完成记录', href: `/projects/${item.projectId}` };
+  if (item.nodeCode === 'SAMPLE_COLOR_CONFIRMATION' || item.nodeCode === 'CAB_REVIEW' || item.nodeCode === 'COLOR_CONSISTENCY_REVIEW') return { label: '开始评审', href: item.projectHref };
+  if (item.nodeCode === 'DEVELOPMENT_ACCEPTANCE') return { label: '处理收费', href: item.projectHref };
+  if (item.nodeCode === 'VISUAL_COLOR_DIFFERENCE_REVIEW') return { label: '填写月度评审', href: item.projectHref };
+  if (item.nodeCode === 'PROJECT_CLOSED') return { label: '确认退出结论', href: item.projectHref };
+  return { label: '提交工作进展', href: `/progress?taskId=${item.taskId}` };
+}
+
+function formatRelativeDate(value: string) {
+  const time = Date.parse(value);
+  if (!Number.isFinite(time)) return '更新时间未知';
+  const hours = Math.max(0, Math.round((Date.now() - time) / 3_600_000));
+  if (hours < 1) return '刚刚更新';
+  if (hours < 24) return `${hours} 小时前更新`;
+  return `${Math.round(hours / 24)} 天前更新`;
+}
+
+function TaskSkeleton() {
+  return <section className="r22-task-card-list" aria-label="正在加载任务"><div className="r22-card r22-task-wide-card r22-skeleton-card" /><div className="r22-card r22-task-wide-card r22-skeleton-card" /></section>;
 }

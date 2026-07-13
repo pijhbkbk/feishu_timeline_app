@@ -89,6 +89,8 @@ function spawnPnpm(label, args) {
     env: {
       ...process.env,
       FORCE_COLOR: '0',
+      AUTH_MOCK_ENABLED: process.env.AUTH_MOCK_ENABLED ?? 'true',
+      NEXT_PUBLIC_ENABLE_MOCK_LOGIN: process.env.NEXT_PUBLIC_ENABLE_MOCK_LOGIN ?? 'true',
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
@@ -425,14 +427,16 @@ async function main() {
 
     const workflowPage = await requestHtml(`/projects/${project.id}/workflow`, managerSession.jar);
     assert(
-      workflowPage.includes('<h1 class="topbar-title">流程时间线</h1>'),
+      workflowPage.includes('轻卡定制色') && workflowPage.includes('正在加载流程视图'),
       '流程页未返回流程时间线壳。',
     );
-    assert(workflowPage.includes('正在加载流程视图'), '流程页未返回流程视图加载壳。');
 
     const reviewsPage = await requestHtml(`/projects/${project.id}/reviews`, managerSession.jar);
-    assert(reviewsPage.includes('<h1 class="topbar-title">评审</h1>'), '评审页未返回评审工作区壳。');
-    assert(reviewsPage.includes('第 12 步驾驶室评审'), '评审页未返回评审页面描述。');
+    assert(
+      reviewsPage.includes('正在加载驾驶室评审模块') &&
+        reviewsPage.includes('正在加载一致性评审模块'),
+      '评审页未返回评审工作区壳。',
+    );
 
     log('Web 页面校验通过。');
     log(`E2E 主链路完成：${project.code}`);

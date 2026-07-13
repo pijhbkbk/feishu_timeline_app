@@ -56,7 +56,7 @@ export async function loginAsProjectManager(page: Page) {
     { apiBaseUrl: API_BASE_URL, nextUsername: username },
   );
   await page.goto('/projects');
-  await expect(page.getByRole('heading', { name: '项目筛选' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '定制色开发项目' })).toBeVisible();
 }
 
 export async function createProjectByApi(

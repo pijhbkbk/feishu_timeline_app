@@ -2,63 +2,46 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
-import {
-  KPIOverviewSection,
-  RecentReviewsPanel,
-  RiskProjectsPanel,
-} from './dashboard-workspace';
+import { R22Kpi, R22TaskCard } from './r22-ui';
 
-describe('DashboardWorkspace', () => {
-  it('renders KPI cards', () => {
+describe('R22 dashboard components', () => {
+  it('renders a readable KPI card', () => {
     const html = renderToStaticMarkup(
-      <KPIOverviewSection
-        cards={[
-          { label: '项目总数', value: '8' },
-          { label: '逾期任务', value: '3' },
-        ]}
-      />,
+      <R22Kpi label="待处理" value={8} hint="分配给我的活跃任务" tone="brand" />,
     );
 
-    expect(html).toContain('项目总数');
+    expect(html).toContain('待处理');
     expect(html).toContain('8');
-    expect(html).toContain('逾期任务');
+    expect(html).toContain('分配给我的活跃任务');
   });
 
-  it('renders recent reviews and risk project links', () => {
-    const reviewsHtml = renderToStaticMarkup(
-      <RecentReviewsPanel
-        items={[
-          {
-            id: 'review-1',
-            reviewType: 'CAB_REVIEW',
-            projectId: 'project-1',
-            projectName: '项目A',
-            reviewerName: '张工',
-            reviewDate: '2026-03-19T12:00:00.000Z',
-            conclusion: 'APPROVED',
-          },
-        ]}
-      />,
-    );
-    const risksHtml = renderToStaticMarkup(
-      <RiskProjectsPanel
-        items={[
-          {
-            projectId: 'project-1',
-            projectName: '项目A',
-            riskLevel: 'HIGH',
-            currentNodeCode: 'PAINT_PROCUREMENT',
-            currentNodeName: '涂料采购',
-            overdueDays: 2,
-            ownerName: '李工',
-          },
-        ]}
+  it('renders the current task with progress and primary action', () => {
+    const html = renderToStaticMarkup(
+      <R22TaskCard
+        primary
+        task={{
+          taskId: 'task-1',
+          projectId: 'project-1',
+          projectCode: 'LC-001',
+          projectName: '项目A',
+          projectPriority: 'HIGH',
+          nodeCode: 'PAINT_DEVELOPMENT',
+          nodeName: '涂料开发',
+          status: 'IN_PROGRESS',
+          dueAt: '2026-07-15T12:00:00.000Z',
+          isOverdue: false,
+          overdueDays: 0,
+          completionPercent: 60,
+          materials: { submitted: 1, required: 2, missing: 1 },
+          progressHref: '/progress?taskId=task-1',
+          projectHref: '/projects/project-1',
+        }}
       />,
     );
 
-    expect(reviewsHtml).toContain('项目A');
-    expect(reviewsHtml).toContain('通过');
-    expect(risksHtml).toContain('/projects/project-1/overview');
-    expect(risksHtml).toContain('逾期 2 天');
+    expect(html).toContain('涂料开发');
+    expect(html).toContain('60%');
+    expect(html).toContain('缺 1 项');
+    expect(html).toContain('/progress?taskId=task-1');
   });
 });

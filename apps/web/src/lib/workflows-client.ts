@@ -167,6 +167,7 @@ export type WorkflowTaskInteractionDetail = {
     uploadedById: string | null;
     uploadedByName: string | null;
     uploadedAt: string;
+    materialType: string | null;
     versionNo: number | null;
     status: string;
     downloadUrl: string;

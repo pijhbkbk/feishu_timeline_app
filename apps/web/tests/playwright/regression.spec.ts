@@ -38,11 +38,12 @@ test('shows Chinese project cockpit and timeline board', async ({ page }) => {
   const project = await createProjectByApi(request, 'R14-TIMELINE');
 
   await page.goto('/dashboard');
-  await expect(page.getByRole('heading', { name: '项目进度驾驶舱' })).toBeVisible();
-  await expect(page.getByText('项目总数')).toBeVisible();
-  await expect(page.getByRole('button', { name: '立即刷新' }).first()).toBeVisible();
-  await page.getByRole('button', { name: '立即刷新' }).first().click();
-  await expect(page.getByText(/^最近更新：/).first()).toBeVisible();
+  await expect(page.getByTestId('dashboard-page')).toBeVisible();
+  await expect(page.getByRole('heading', { name: /好，/ })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '当前任务' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '刷新工作台' })).toBeVisible();
+  await page.getByRole('button', { name: '刷新工作台' }).click();
+  await expect(page.getByText(/^更新于 /).first()).toBeVisible();
 
   await page.goto('/projects/timeline');
   await expect(page.getByRole('heading', { name: '项目时间线看板', exact: true })).toBeVisible();
@@ -63,15 +64,16 @@ test('shows PPT UI routes for projects, materials, tasks and analytics', async (
   const project = await createProjectByApi(request, 'PPTUI');
 
   await page.goto('/projects');
-  await expect(page.locator('h1', { hasText: '项目列表' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '定制色开发项目' })).toBeVisible();
+  await page.getByRole('button', { name: '高级筛选' }).click();
   await expect(page.getByLabel('关键词')).toBeVisible();
   await expect(page.getByLabel('责任部门')).toBeVisible();
-  await expect(page.getByText('颜色名称')).toBeVisible();
+  await expect(page.getByPlaceholder('项目名称 / 编号 / 颜色')).toBeVisible();
 
   await page.goto(`/projects/${project.id}/overview`);
   await expect(page.getByRole('heading', { name: '项目详情同步状态' })).toBeVisible();
   await expect(page.getByRole('button', { name: '立即刷新' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: '项目概览', exact: true })).toBeVisible();
+  await expect(page.getByText('项目概览', { exact: true }).first()).toBeVisible();
 
   await page.goto(`/projects/${project.id}/tasks`);
   await expect(page.getByRole('heading', { name: '工序清单与详情抽屉' })).toBeVisible();
@@ -150,7 +152,7 @@ test('shows 12 monthly review instances after mass production', async ({ page })
 
   await page.goto('/monthly-reviews');
   await expect(
-    page.getByRole('heading', { name: '整车色差一致性评审台账', exact: true }),
+    page.getByRole('heading', { name: '月度评审进度总览', exact: true }),
   ).toBeVisible();
   const monthlyProjectSection = page.locator('section.page-card').filter({ hasText: project.name });
   await expect(monthlyProjectSection).toBeVisible();

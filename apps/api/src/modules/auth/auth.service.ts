@@ -1,18 +1,23 @@
 import {
   ForbiddenException,
+  HttpException,
+  HttpStatus,
   Inject,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { UserStatus } from '@prisma/client';
 import type { Response } from 'express';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 
 import { FEISHU_AUTH_ADAPTER } from '../feishu/feishu.constants';
 import type { FeishuAuthAdapter } from '../feishu/feishu.types';
 import { UsersService } from '../users/users.service';
 import {
   AUTH_SESSION_PREFIX,
+  FEISHU_OAUTH_STATE_COOKIE_NAME,
+  FEISHU_OAUTH_STATE_COOKIE_PATH,
   ROLE_CODES,
   type AuthSource,
   type RoleCode,
@@ -22,18 +27,23 @@ import type { AuthSessionPayload, SessionResponse } from './auth.types';
 
 const FEISHU_OAUTH_STATE_PREFIX = 'auth:feishu:state:';
 const FEISHU_OAUTH_STATE_TTL_SECONDS = 10 * 60;
+const FEISHU_AUTH_RATE_LIMIT_WINDOW_SECONDS = 60;
+const FEISHU_LOGIN_URL_CLIENT_LIMIT = 20;
+const FEISHU_LOGIN_URL_GLOBAL_LIMIT = 500;
+const FEISHU_CALLBACK_CLIENT_LIMIT = 30;
+const FEISHU_CALLBACK_GLOBAL_LIMIT = 1_000;
 const UUID_STATE_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 type MockLoginInput = {
-  username?: string;
-  name?: string;
-  roleCodes?: string[];
+  username?: unknown;
+  name?: unknown;
+  roleCodes?: unknown;
 };
 
 type FeishuCallbackInput = {
-  code: string;
-  state?: string | null;
+  code: unknown;
+  state?: unknown;
 };
 
 @Injectable()
@@ -82,6 +92,8 @@ export class AuthService {
     }
 
     const requestedRoleCodes = this.normalizeRoleCodes(input.roleCodes);
+    const username = this.normalizeOptionalString(input.username);
+    const name = this.normalizeOptionalString(input.name);
     const payload: {
       username?: string;
       name?: string;
@@ -90,12 +102,12 @@ export class AuthService {
       roleCodes: requestedRoleCodes,
     };
 
-    if (input.username?.trim()) {
-      payload.username = input.username.trim();
+    if (username) {
+      payload.username = username;
     }
 
-    if (input.name?.trim()) {
-      payload.name = input.name.trim();
+    if (name) {
+      payload.name = name;
     }
 
     const user = await this.usersService.upsertMockUser(payload);
@@ -105,7 +117,7 @@ export class AuthService {
     return this.getSessionResponseFromUserId(user.id, 'mock');
   }
 
-  async getFeishuLoginUrl() {
+  async getFeishuLoginUrl(response: Response, clientIdentifier = 'unknown') {
     if (!this.feishuAuthAdapter.isConfigured()) {
       return {
         enabled: false,
@@ -113,7 +125,15 @@ export class AuthService {
       };
     }
 
+    await this.enforceFeishuRateLimit(
+      'login-url',
+      clientIdentifier,
+      FEISHU_LOGIN_URL_CLIENT_LIMIT,
+      FEISHU_LOGIN_URL_GLOBAL_LIMIT,
+    );
+
     const state = randomUUID();
+    const loginUrl = await this.feishuAuthAdapter.getAuthorizationUrl(state);
     await this.sessionStoreService.setJson(
       this.getFeishuOAuthStateStorageKey(state),
       {
@@ -121,15 +141,36 @@ export class AuthService {
       },
       FEISHU_OAUTH_STATE_TTL_SECONDS,
     );
+    this.writeFeishuOAuthStateCookie(state, response);
 
     return {
       enabled: true,
-      loginUrl: await this.feishuAuthAdapter.getAuthorizationUrl(state),
+      loginUrl,
     };
   }
 
-  async loginWithFeishu(input: FeishuCallbackInput, response: Response) {
+  async loginWithFeishu(
+    input: FeishuCallbackInput,
+    browserState: string | undefined,
+    response: Response,
+    clientIdentifier = 'unknown',
+  ) {
+    await this.enforceFeishuRateLimit(
+      'callback',
+      clientIdentifier,
+      FEISHU_CALLBACK_CLIENT_LIMIT,
+      FEISHU_CALLBACK_GLOBAL_LIMIT,
+    );
+
+    const code = this.normalizeFeishuAuthorizationCode(input.code);
     const state = this.normalizeFeishuOAuthState(input.state);
+    const normalizedBrowserState = this.normalizeFeishuOAuthState(browserState);
+
+    if (normalizedBrowserState !== state) {
+      throw new UnauthorizedException('飞书登录状态与当前浏览器不匹配，请重新发起登录。');
+    }
+
+    this.clearFeishuOAuthStateCookie(response);
     const statePayload = await this.sessionStoreService.consumeJson<{
       createdAt: string;
     }>(this.getFeishuOAuthStateStorageKey(state));
@@ -138,8 +179,12 @@ export class AuthService {
       throw new UnauthorizedException('飞书登录状态已失效，请重新发起登录。');
     }
 
-    const profile = await this.feishuAuthAdapter.exchangeCodeForProfile(input.code, state);
+    const profile = await this.feishuAuthAdapter.exchangeCodeForProfile(code, state);
     const user = await this.usersService.upsertFeishuUser(profile);
+
+    if (user.status !== UserStatus.ACTIVE) {
+      throw new ForbiddenException('当前账号已停用或锁定，无法登录。');
+    }
 
     await this.createSessionAndWriteCookie(user.id, 'feishu', response);
 
@@ -198,6 +243,25 @@ export class AuthService {
     });
   }
 
+  private writeFeishuOAuthStateCookie(state: string, response: Response) {
+    response.cookie(FEISHU_OAUTH_STATE_COOKIE_NAME, state, {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: this.shouldUseSecureCookies(),
+      path: FEISHU_OAUTH_STATE_COOKIE_PATH,
+      maxAge: FEISHU_OAUTH_STATE_TTL_SECONDS * 1000,
+    });
+  }
+
+  private clearFeishuOAuthStateCookie(response: Response) {
+    response.clearCookie(FEISHU_OAUTH_STATE_COOKIE_NAME, {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: this.shouldUseSecureCookies(),
+      path: FEISHU_OAUTH_STATE_COOKIE_PATH,
+    });
+  }
+
   private async getSessionResponseFromUserId(userId: string, authSource: AuthSource) {
     const user = await this.usersService.getAuthenticatedUser(userId, authSource);
 
@@ -217,8 +281,18 @@ export class AuthService {
     return `${AUTH_SESSION_PREFIX}${sessionToken}`;
   }
 
-  private normalizeFeishuOAuthState(state?: string | null) {
-    const normalized = state?.trim();
+  private normalizeFeishuAuthorizationCode(code: unknown) {
+    const normalized = this.normalizeOptionalString(code);
+
+    if (!normalized || normalized.length > 4096) {
+      throw new UnauthorizedException('飞书授权码无效，请重新发起登录。');
+    }
+
+    return normalized;
+  }
+
+  private normalizeFeishuOAuthState(state: unknown) {
+    const normalized = this.normalizeOptionalString(state);
 
     if (!normalized || !UUID_STATE_PATTERN.test(normalized)) {
       throw new UnauthorizedException('飞书登录状态无效，请重新发起登录。');
@@ -231,16 +305,61 @@ export class AuthService {
     return `${FEISHU_OAUTH_STATE_PREFIX}${state}`;
   }
 
-  private isMockEnabled() {
-    return this.configService.get<boolean>('authMockEnabled') ?? true;
-  }
-
-  private normalizeRoleCodes(input?: string[]): RoleCode[] {
-    const codes = input?.filter((value): value is RoleCode =>
-      ROLE_CODES.includes(value as RoleCode),
+  private async enforceFeishuRateLimit(
+    scope: 'login-url' | 'callback',
+    clientIdentifier: string,
+    clientLimit: number,
+    globalLimit: number,
+  ) {
+    const normalizedClientIdentifier = clientIdentifier.trim() || 'unknown';
+    const clientHash = createHash('sha256')
+      .update(normalizedClientIdentifier)
+      .digest('hex');
+    const globalCount = await this.sessionStoreService.incrementWithTtl(
+      `auth:feishu:rate:${scope}:global`,
+      FEISHU_AUTH_RATE_LIMIT_WINDOW_SECONDS,
     );
 
+    if (globalCount > globalLimit) {
+      throw new HttpException('飞书登录请求过于频繁，请稍后重试。', HttpStatus.TOO_MANY_REQUESTS);
+    }
+
+    const clientCount = await this.sessionStoreService.incrementWithTtl(
+      `auth:feishu:rate:${scope}:client:${clientHash}`,
+      FEISHU_AUTH_RATE_LIMIT_WINDOW_SECONDS,
+    );
+
+    if (clientCount > clientLimit) {
+      throw new HttpException('飞书登录请求过于频繁，请稍后重试。', HttpStatus.TOO_MANY_REQUESTS);
+    }
+  }
+
+  private isMockEnabled() {
+    const enabled = this.configService.get<boolean>('authMockEnabled') ?? false;
+    const nodeEnv = (
+      this.configService.get<string>('nodeEnv') ??
+      process.env.NODE_ENV ??
+      'development'
+    )
+      .trim()
+      .toLowerCase();
+
+    return enabled && nodeEnv !== 'production';
+  }
+
+  private normalizeRoleCodes(input: unknown): RoleCode[] {
+    const codes = Array.isArray(input)
+      ? input.filter(
+          (value): value is RoleCode =>
+            typeof value === 'string' && ROLE_CODES.includes(value as RoleCode),
+        )
+      : undefined;
+
     return codes && codes.length > 0 ? [...new Set(codes)] : ['project_manager'];
+  }
+
+  private normalizeOptionalString(value: unknown) {
+    return typeof value === 'string' && value.trim() ? value.trim() : null;
   }
 
   private shouldUseSecureCookies() {

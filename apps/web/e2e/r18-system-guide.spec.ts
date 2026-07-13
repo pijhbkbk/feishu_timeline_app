@@ -26,7 +26,7 @@ test.describe('R18 系统导览介绍页', () => {
     await page.goto('/guide');
 
     await expect(page.getByTestId('system-guide-page')).toBeVisible();
-    await expect(page.getByRole('link', { name: '系统导览' }).first()).toBeVisible();
+    await expect(page.getByRole('navigation', { name: '系统导览锚点' })).toBeVisible();
     await expect(page.getByRole('heading', { name: '轻卡定制颜色开发项目管理系统' })).toBeVisible();
 
     for (const workflowName of workflowNames) {

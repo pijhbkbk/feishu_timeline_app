@@ -26,6 +26,57 @@ export type DashboardOverview = {
   lastDataUpdatedAt: string;
 };
 
+export type PersonalDashboardTask = {
+  taskId: string;
+  projectId: string;
+  projectCode: string;
+  projectName: string;
+  projectPriority: ProjectPriority;
+  nodeCode: WorkflowNodeCode;
+  nodeName: string;
+  status: string;
+  dueAt: string | null;
+  isOverdue: boolean;
+  overdueDays: number;
+  completionPercent: number;
+  materials: {
+    submitted: number;
+    required: number;
+    missing: number;
+  };
+  progressHref: string;
+  projectHref: string;
+};
+
+export type PersonalDashboardOverview = {
+  generatedAt: string;
+  user: {
+    id: string;
+    name: string;
+    departmentName: string | null;
+  };
+  currentTask: PersonalDashboardTask | null;
+  nextTask: PersonalDashboardTask | null;
+  stats: {
+    activeTasks: number;
+    dueTodayTasks: number;
+    overdueTasks: number;
+    visibleProjects: number;
+    pendingReviewTasks: number;
+    pendingMaterialTasks: number;
+    waitingOnOthersTasks: number;
+  };
+  recentActivity: Array<{
+    id: string;
+    action: string;
+    summary: string;
+    actorName: string;
+    projectId: string | null;
+    projectName: string;
+    createdAt: string;
+  }>;
+};
+
 export type StageDistributionItem = {
   nodeCode: WorkflowNodeCode;
   nodeName: string;
@@ -142,6 +193,10 @@ export type DashboardMonthlyReviewTask = {
 
 export async function fetchDashboardOverview() {
   return apiRequest<DashboardOverview>('/dashboard/overview');
+}
+
+export async function fetchPersonalDashboardOverview() {
+  return apiRequest<PersonalDashboardOverview>('/dashboard/personal-overview');
 }
 
 export async function fetchDashboardStageDistribution() {

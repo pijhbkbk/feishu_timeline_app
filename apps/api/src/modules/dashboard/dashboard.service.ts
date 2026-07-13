@@ -1,10 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import {
+  AttachmentTargetType,
   ColorStatus,
   ProjectPriority,
   ProjectStatus,
   RecurringTaskStatus,
   ReviewResult,
+  TaskBlockerStatus,
   WorkflowAction,
   WorkflowNodeCode,
   WorkflowTaskStatus,
@@ -37,6 +39,189 @@ const TIMELINE_NODE_CODES = Object.values(WorkflowNodeCode).sort(
 @Injectable()
 export class DashboardService {
   constructor(private readonly prisma: PrismaService) {}
+
+  async getPersonalOverview(actor: AuthenticatedUser) {
+    const now = new Date();
+    const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const nextDayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    const assignedWhere = this.buildAssignedActiveTaskWhere(actor);
+    const visibleProjectWhere = this.buildVisibleProjectWhere(actor);
+
+    const [
+      tasks,
+      activeTaskCount,
+      overdueTaskCount,
+      dueTodayTaskCount,
+      pendingReviewTaskCount,
+      waitingOnOthersTaskCount,
+      projectRows,
+      activities,
+    ] =
+      await Promise.all([
+        this.prisma.workflowTask.findMany({
+          where: assignedWhere,
+          include: {
+            project: {
+              select: {
+                id: true,
+                code: true,
+                name: true,
+                priority: true,
+                status: true,
+              },
+            },
+            progressUpdates: {
+              orderBy: { createdAt: 'desc' },
+              take: 1,
+            },
+          },
+          orderBy: [{ dueAt: 'asc' }, { updatedAt: 'desc' }],
+          take: 50,
+        }),
+        this.prisma.workflowTask.count({ where: assignedWhere }),
+        this.prisma.workflowTask.count({
+          where: {
+            ...assignedWhere,
+            dueAt: { lt: now },
+          },
+        }),
+        this.prisma.workflowTask.count({
+          where: {
+            ...assignedWhere,
+            dueAt: { gte: dayStart, lt: nextDayStart },
+          },
+        }),
+        this.prisma.workflowTask.count({
+          where: {
+            ...assignedWhere,
+            nodeCode: { in: DASHBOARD_REVIEW_NODE_CODES },
+          },
+        }),
+        this.prisma.taskBlocker.count({
+          where: {
+            status: TaskBlockerStatus.OPEN,
+            helperUserId: { not: null },
+            workflowTask: assignedWhere,
+          },
+        }),
+        this.prisma.project.findMany({
+          where: visibleProjectWhere,
+          select: { id: true },
+        }),
+        this.prisma.auditLog.findMany({
+          where: {
+            project: { is: visibleProjectWhere },
+          },
+          include: {
+            actorUser: { select: { id: true, name: true } },
+            project: { select: { id: true, name: true } },
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 5,
+        }),
+      ]);
+
+    const orderedTasks = [...tasks].sort((left, right) => {
+      const leftDue = left.dueAt?.getTime() ?? Number.MAX_SAFE_INTEGER;
+      const rightDue = right.dueAt?.getTime() ?? Number.MAX_SAFE_INTEGER;
+      return leftDue - rightDue;
+    });
+    const highlightedTasks = orderedTasks.slice(0, 2);
+    const taskIds = orderedTasks.map((task) => task.id);
+    const nodeCodes = [...new Set(orderedTasks.map((task) => task.nodeCode))];
+    const [definitions, attachmentGroups] = await Promise.all([
+      nodeCodes.length === 0
+        ? Promise.resolve([])
+        : this.prisma.workflowNodeDefinition.findMany({
+            where: { nodeCode: { in: nodeCodes } },
+            select: { nodeCode: true, requiredAttachments: true },
+          }),
+      taskIds.length === 0
+        ? Promise.resolve([])
+        : this.prisma.attachment.groupBy({
+            by: ['entityId'],
+            where: {
+              entityType: AttachmentTargetType.WORKFLOW_TASK,
+              entityId: { in: taskIds },
+              isDeleted: false,
+            },
+            _count: { _all: true },
+          }),
+    ]);
+    const definitionByNode = new Map(
+      definitions.map((definition) => [definition.nodeCode, definition.requiredAttachments]),
+    );
+    const attachmentCountByTask = new Map(
+      attachmentGroups.map((group) => [group.entityId, group._count._all]),
+    );
+    const getMaterialSummary = (task: (typeof highlightedTasks)[number]) => {
+      const required = this.countRequiredMaterials(definitionByNode.get(task.nodeCode));
+      const submitted = attachmentCountByTask.get(task.id) ?? 0;
+
+      return {
+        submitted,
+        required,
+        missing: Math.max(0, required - submitted),
+      };
+    };
+    const pendingMaterialTaskCount = orderedTasks.filter(
+      (task) => getMaterialSummary(task).missing > 0,
+    ).length;
+    const taskItems = highlightedTasks.map((task) => {
+      const materials = getMaterialSummary(task);
+      const dueAt = task.dueAt ?? task.effectiveDueAt;
+      const overdueDays = getOverdueDays(dueAt, now);
+
+      return {
+        taskId: task.id,
+        projectId: task.projectId,
+        projectCode: task.project.code,
+        projectName: task.project.name,
+        projectPriority: task.project.priority,
+        nodeCode: task.nodeCode,
+        nodeName: task.nodeName,
+        status: task.status,
+        dueAt: dueAt?.toISOString() ?? null,
+        isOverdue: overdueDays > 0,
+        overdueDays,
+        completionPercent:
+          task.progressUpdates[0]?.completionPercent ??
+          (task.status === WorkflowTaskStatus.IN_PROGRESS ? 35 : 0),
+        materials,
+        progressHref: `/progress?taskId=${task.id}`,
+        projectHref: `/projects/${task.projectId}?taskId=${task.id}`,
+      };
+    });
+
+    return {
+      generatedAt: now.toISOString(),
+      user: {
+        id: actor.id,
+        name: actor.name,
+        departmentName: actor.departmentName,
+      },
+      currentTask: taskItems[0] ?? null,
+      nextTask: taskItems[1] ?? null,
+      stats: {
+        activeTasks: activeTaskCount,
+        dueTodayTasks: dueTodayTaskCount,
+        overdueTasks: overdueTaskCount,
+        visibleProjects: projectRows.length,
+        pendingReviewTasks: pendingReviewTaskCount,
+        pendingMaterialTasks: pendingMaterialTaskCount,
+        waitingOnOthersTasks: waitingOnOthersTaskCount,
+      },
+      recentActivity: activities.map((activity) => ({
+        id: activity.id,
+        action: activity.action,
+        summary: activity.summary ?? activity.action,
+        actorName: activity.actorUser?.name ?? '系统',
+        projectId: activity.projectId,
+        projectName: activity.project?.name ?? '系统事件',
+        createdAt: activity.createdAt.toISOString(),
+      })),
+    };
+  }
 
   async getOverview(actor: AuthenticatedUser) {
     const now = new Date();
@@ -165,6 +350,20 @@ export class DashboardService {
       lastUpdatedAt: now.toISOString(),
       lastDataUpdatedAt: lastDataUpdatedAt.toISOString(),
     };
+  }
+
+  private countRequiredMaterials(value: Prisma.JsonValue | null | undefined) {
+    if (!Array.isArray(value)) {
+      return 0;
+    }
+
+    return value.filter((item) => {
+      if (!item || typeof item !== 'object' || Array.isArray(item)) {
+        return true;
+      }
+
+      return (item as Prisma.JsonObject).required !== false;
+    }).length;
   }
 
   async getProjectTimelines(actor: AuthenticatedUser) {

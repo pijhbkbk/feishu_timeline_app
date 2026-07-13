@@ -9,9 +9,6 @@ import {
   filterNavItems,
   getAdminSectionItems,
   getProjectSectionItems,
-  getRouteContext,
-  isNavItemActive,
-  sidebarSections,
   topNavigationItems,
 } from '../lib/navigation';
 import { useAuth } from './auth-provider';
@@ -24,14 +21,9 @@ export function AppShell({ children }: PropsWithChildren) {
   const appName = process.env.NEXT_PUBLIC_APP_NAME ?? '轻卡新颜色开发项目管理系统';
   const isAuthRoute = pathname.startsWith('/login');
   const isPublicRoute = isAuthRoute || pathname === '/guide';
-  const routeContext = getRouteContext(pathname);
+  const isAdminRoute = pathname === '/admin' || pathname.startsWith('/admin/');
+  const hasAdminAccess = Boolean(user && (user.isSystemAdmin || user.roleCodes.includes('admin')));
   const topNav = filterNavItems(topNavigationItems, user);
-  const visibleSidebarSections = sidebarSections
-    .map((section) => ({
-      ...section,
-      items: filterNavItems(section.items, user),
-    }))
-    .filter((section) => section.items.length > 0);
   const projectSegments = pathname.split('/').filter(Boolean);
   const projectId =
     projectSegments[0] === 'projects' &&
@@ -49,7 +41,16 @@ export function AppShell({ children }: PropsWithChildren) {
       : [];
 
   const guardedContent =
-    !isLoading && !isAuthenticated && !isPublicRoute ? (
+    !isLoading && isAuthenticated && isAdminRoute && !hasAdminAccess ? (
+      <section className="r22-card r22-state-card">
+        <StatePanel
+          variant="permission"
+          title="仅管理员可访问"
+          description="后台管理不会出现在普通用户导航中，服务端接口也会再次校验管理员角色和 system.manage 权限。"
+          actions={<Link href="/dashboard" className="r22-button r22-button-primary">返回工作台</Link>}
+        />
+      </section>
+    ) : !isLoading && !isAuthenticated && !isPublicRoute ? (
       <section className="page-card">
         <p className="eyebrow">身份认证</p>
         <StatePanel
@@ -68,84 +69,76 @@ export function AppShell({ children }: PropsWithChildren) {
     );
 
   return (
-    <div className="shell">
-      <aside className="sidebar">
-        <div className="brand">
-          <span className="brand-kicker">项目驾驶舱</span>
-          <strong>{appName}</strong>
-        </div>
-        {visibleSidebarSections.map((section) => (
-          <section key={section.title} className="nav-section">
-            <p className="nav-section-title">{section.title}</p>
-            <nav className="nav">
-              {section.items.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`nav-link ${isNavItemActive(pathname, item) ? 'nav-link-active' : ''}`}
-                >
-                  <span>{item.label}</span>
-                  {item.description ? <small>{item.description}</small> : null}
-                </Link>
-              ))}
-            </nav>
-          </section>
-        ))}
-        <section className="session-panel">
-          <p className="eyebrow">当前会话</p>
-          {isLoading ? (
-            <p className="session-copy">正在加载登录态…</p>
-          ) : user ? (
-            <>
-              <strong>{user.name}</strong>
-              <p className="session-copy">{formatRoleCodes(user.roleCodes)}</p>
-              <p className="session-copy">
-                {user.departmentName ?? '未分配部门'} / {user.authSource === 'feishu' ? '飞书登录' : '模拟登录'}
-              </p>
-              <button type="button" className="button button-secondary" onClick={() => void logout()}>
-                退出登录
-              </button>
-            </>
-          ) : (
-            <>
-              <p className="session-copy">当前未登录。</p>
-              <Link href="/login" className="button button-primary">
-                去登录
-              </Link>
-            </>
-          )}
-        </section>
-      </aside>
-      <main className="content">
-        <header className="topbar">
-          <div className="topbar-copy">
-            <p className="eyebrow">{routeContext.eyebrow}</p>
-            <h1 className="topbar-title">{routeContext.title}</h1>
-            <p className="topbar-description">{routeContext.description}</p>
-          </div>
-          <div className="topbar-tools">
-            {!isAuthRoute ? <NotificationBell /> : null}
-            <nav className="top-nav">
+    <div className="shell r22-shell">
+      <header className="r22-app-header">
+        <div className="r22-app-header-inner">
+          <Link href="/dashboard" className="r22-brand" aria-label={`${appName}首页`}>
+            <span className="r22-brand-mark" aria-hidden="true">色</span>
+            <span>
+              <strong>轻卡定制色</strong>
+              <small>开发管理系统</small>
+            </span>
+          </Link>
+
+          {!isAuthRoute ? (
+            <nav className="r22-primary-nav" aria-label="主导航">
               {topNav.map((item) => (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`top-nav-link ${isNavItemActive(pathname, item) ? 'top-nav-link-active' : ''}`}
+                  className={isPrimaryNavActive(pathname, item.href) ? 'is-active' : undefined}
                 >
                   {item.label}
                 </Link>
               ))}
             </nav>
+          ) : null}
+
+          <div className="r22-header-tools">
+            {!isAuthRoute ? (
+              <>
+                <Link href="/projects?focus=search" className="r22-icon-button" aria-label="搜索项目">
+                  <span aria-hidden="true">⌕</span>
+                </Link>
+                <NotificationBell />
+                <Link href="/guide" className="r22-icon-button" aria-label="打开帮助">
+                  <span aria-hidden="true">?</span>
+                </Link>
+              </>
+            ) : null}
+            {isLoading ? (
+              <span className="r22-avatar r22-avatar-loading" aria-label="正在加载登录态" />
+            ) : user ? (
+              <details className="r22-profile-menu">
+                <summary aria-label="打开个人菜单">
+                  <span className="r22-avatar">{user.name.slice(0, 1)}</span>
+                </summary>
+                <div className="r22-profile-popover">
+                  <strong>{user.name}</strong>
+                  <span>{user.departmentName ?? '未分配部门'}</span>
+                  <small>{formatRoleCodes(user.roleCodes)}</small>
+                  {user.isSystemAdmin || user.roleCodes.includes('admin') ? (
+                    <Link href="/admin">后台管理</Link>
+                  ) : null}
+                  <button type="button" onClick={() => void logout()}>退出登录</button>
+                </div>
+              </details>
+            ) : (
+              <Link href="/login" className="r22-login-link">登录</Link>
+            )}
           </div>
-        </header>
+        </div>
+      </header>
+
+      <main className="content r22-content">
         {contextNav.length > 0 ? (
-          <nav className="context-nav">
+          <nav className="context-nav r22-context-nav" aria-label="当前工作区导航">
             {contextNav.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
                 className={`context-nav-link ${
-                  isNavItemActive(pathname, item) ? 'context-nav-link-active' : ''
+                  isContextNavActive(pathname, item.href) ? 'context-nav-link-active' : ''
                 }`}
               >
                 {item.label}
@@ -155,8 +148,54 @@ export function AppShell({ children }: PropsWithChildren) {
         ) : null}
         {guardedContent}
       </main>
+
+      {!isAuthRoute ? (
+        <nav className="r22-mobile-nav" aria-label="移动端主导航">
+          {topNav.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={isPrimaryNavActive(pathname, item.href) ? 'is-active' : undefined}
+            >
+              <span aria-hidden="true">{item.icon}</span>
+              <small>{item.label}</small>
+            </Link>
+          ))}
+        </nav>
+      ) : null}
     </div>
   );
+}
+
+function isPrimaryNavActive(pathname: string, href: string) {
+  if (href === '/projects') {
+    return pathname === '/projects' || pathname.startsWith('/projects/');
+  }
+
+  if (href === '/tasks') {
+    return pathname === '/tasks' || pathname.startsWith('/tasks/');
+  }
+
+  if (href === '/progress') {
+    return pathname === '/progress' || pathname.startsWith('/materials/upload');
+  }
+
+  if (href === '/retrospectives') {
+    return pathname === '/retrospectives' || pathname.startsWith('/retrospectives/');
+  }
+
+  return pathname === href;
+}
+
+function isContextNavActive(pathname: string, href: string) {
+  const pathnameSegments = pathname.split('/').filter(Boolean);
+  const hrefSegments = href.split('/').filter(Boolean);
+
+  if (hrefSegments.length === 2) {
+    return pathnameSegments.length === 2 && pathname === href;
+  }
+
+  return pathname === href || pathname.startsWith(`${href}/`);
 }
 
 function formatRoleCodes(roleCodes: Array<(typeof FRONTEND_ROLE_OPTIONS)[number]['code']>) {

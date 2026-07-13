@@ -1,3 +1,4 @@
+import React from 'react';
 import type { PropsWithChildren, ReactNode } from 'react';
 
 type StatePanelProps = PropsWithChildren<{

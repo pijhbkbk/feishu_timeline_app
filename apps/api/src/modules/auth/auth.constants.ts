@@ -74,3 +74,5 @@ export const ROLE_PERMISSION_CODE_MAP: Record<RoleCode, string[]> = {
 };
 
 export const AUTH_SESSION_PREFIX = 'auth:session:';
+export const FEISHU_OAUTH_STATE_COOKIE_NAME = 'ft_feishu_oauth_state';
+export const FEISHU_OAUTH_STATE_COOKIE_PATH = '/api/auth/feishu';

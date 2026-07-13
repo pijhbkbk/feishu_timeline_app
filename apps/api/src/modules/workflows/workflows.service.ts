@@ -845,7 +845,8 @@ export class WorkflowsService {
         uploadedById: attachment.uploadedById,
         uploadedByName: attachment.uploadedBy?.name ?? null,
         uploadedAt: attachment.uploadedAt.toISOString(),
-        versionNo: null,
+        materialType: attachment.materialType,
+        versionNo: attachment.versionNo,
         status: '已提交',
         downloadUrl: `/projects/${detailedTask.projectId}/attachments/${attachment.id}/download`,
         previewUrl: `/attachments/${attachment.id}/content`,
@@ -1101,6 +1102,10 @@ export class WorkflowsService {
     await this.projectAccessService.assertProjectAccess(tx, task.projectId, actor, 'workflow.transition');
     this.assertActorCanOperateTask(task, actor);
     this.assertTaskCanTransition(task, action);
+
+    if (isWorkflowCompletionAction(action)) {
+      await this.assertRequiredMaterialsSubmitted(tx, task);
+    }
 
     if (action === WorkflowAction.START) {
       const startedTask = await tx.workflowTask.update({
@@ -1462,6 +1467,44 @@ export class WorkflowsService {
       task.status !== WorkflowTaskStatus.RETURNED
     ) {
       throw new BadRequestException(`${task.nodeName} 当前状态不允许保存表单。`);
+    }
+  }
+
+  private async assertRequiredMaterialsSubmitted(
+    tx: Prisma.TransactionClient,
+    task: Pick<WorkflowTaskWithRelations, 'id' | 'nodeCode' | 'nodeName' | 'projectId'>,
+  ) {
+    const definition = await tx.workflowNodeDefinition.findUnique({
+      where: { nodeCode: task.nodeCode },
+      select: { requiredAttachments: true },
+    });
+    const required = this.parseRequiredMaterials(definition?.requiredAttachments)
+      .filter((item) => item.required);
+    if (required.length === 0) {
+      return;
+    }
+
+    const attachments = await tx.attachment.findMany({
+      where: {
+        projectId: task.projectId,
+        entityType: AttachmentTargetType.WORKFLOW_TASK,
+        entityId: task.id,
+        isDeleted: false,
+      },
+      select: { fileName: true, materialType: true },
+    });
+    const missing = required.filter((material) =>
+      !attachments.some((attachment) =>
+        attachment.materialType === material.name ||
+        attachment.materialType === material.id ||
+        attachment.fileName.includes(material.name),
+      ),
+    );
+
+    if (missing.length > 0) {
+      throw new BadRequestException(
+        `${task.nodeName} 缺少必交材料：${missing.map((item) => item.name).join('、')}。请上传后再完成工序。`,
+      );
     }
   }
 

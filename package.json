@@ -47,7 +47,10 @@
   },
   "pnpm": {
     "overrides": {
-      "postcss": "8.5.14"
+      "esbuild": "0.28.1",
+      "postcss": "8.5.14",
+      "shell-quote": "1.8.4",
+      "vite": "7.3.6"
     }
   }
 }

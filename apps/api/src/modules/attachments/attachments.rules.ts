@@ -1,6 +1,8 @@
 import { AttachmentTargetType } from '@prisma/client';
 import { extname } from 'node:path';
 
+import { API_UPLOAD_MAX_FILE_SIZE_BYTES } from '../../common/file-upload-options';
+
 export const ATTACHMENT_ALLOWED_MIME_TYPES = [
   'image/jpeg',
   'image/png',
@@ -31,7 +33,7 @@ export const ATTACHMENT_MANAGEMENT_ROLE_CODES = [
   'finance',
 ] as const;
 
-export const ATTACHMENT_MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024;
+export const ATTACHMENT_MAX_FILE_SIZE_BYTES = API_UPLOAD_MAX_FILE_SIZE_BYTES;
 
 export function getAttachmentFileValidationIssue(input: {
   originalName: string;

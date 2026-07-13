@@ -2,7 +2,7 @@ import { WorkflowNodeCode, WorkflowTaskStatus } from '@prisma/client';
 
 import { ACTIVE_WORKFLOW_TASK_STATUSES } from '../workflows/workflow-node.constants';
 
-export type TaskListMode = 'my' | 'pending' | 'overdue';
+export type TaskListMode = 'my' | 'pending' | 'review' | 'due-soon' | 'overdue' | 'completed';
 
 export function normalizePage(value: string | undefined, fallback: number) {
   const parsed = Number.parseInt(value ?? '', 10);
@@ -58,6 +58,10 @@ export function matchesTaskMode(
     return overdue;
   }
 
+  if (mode === 'completed') {
+    return input.status === WorkflowTaskStatus.COMPLETED;
+  }
+
   if (mode === 'pending') {
     return ACTIVE_WORKFLOW_TASK_STATUSES.includes(input.status) && !overdue;
   }
@@ -98,4 +102,3 @@ export function getTaskRouteSegment(nodeCode: WorkflowNodeCode) {
       return 'workflow';
   }
 }
-

@@ -1,3 +1,4 @@
+import { UserStatus } from '@prisma/client';
 import { describe, expect, it, vi } from 'vitest';
 
 import { ROLE_PERMISSION_CODE_MAP } from '../auth/auth.constants';
@@ -99,4 +100,47 @@ describe('UsersService', () => {
     expect(tx.userRole.create).not.toHaveBeenCalled();
     expect(tx.rolePermission.deleteMany).not.toHaveBeenCalled();
   });
+
+  it.each([UserStatus.INACTIVE, UserStatus.LOCKED])(
+    'does not reactivate an existing %s Feishu user during profile refresh',
+    async (status) => {
+      const existingUser = {
+        id: 'user-disabled',
+        email: 'disabled@example.com',
+        mobile: null,
+        status,
+      };
+      const tx = {
+        user: {
+          findFirst: vi.fn().mockResolvedValue(existingUser),
+          update: vi.fn().mockResolvedValue(existingUser),
+        },
+        userRole: {
+          count: vi.fn().mockResolvedValue(1),
+          create: vi.fn(),
+        },
+        role: {
+          upsert: vi.fn(),
+        },
+        rolePermission: {
+          deleteMany: vi.fn(),
+          createMany: vi.fn(),
+        },
+      };
+      const { service } = createService(tx);
+
+      await expect(
+        service.upsertFeishuUser({
+          openId: 'ou-disabled',
+          userId: 'feishu-disabled',
+          unionId: null,
+          name: '停用用户',
+          email: null,
+        }),
+      ).resolves.toMatchObject({ status });
+
+      const updateInput = tx.user.update.mock.calls[0]?.[0];
+      expect(updateInput.data).not.toHaveProperty('status');
+    },
+  );
 });

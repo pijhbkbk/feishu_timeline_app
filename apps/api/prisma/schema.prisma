@@ -33,6 +33,11 @@ enum ProjectPriority {
   CRITICAL
 }
 
+enum ProjectRetrospectiveStatus {
+  DRAFT
+  COMPLETED
+}
+
 enum ProjectMemberType {
   OWNER
   MANAGER
@@ -94,6 +99,12 @@ enum WorkflowTaskStatus {
   REJECTED
   RETURNED
   COMPLETED
+  CANCELLED
+}
+
+enum TaskBlockerStatus {
+  OPEN
+  RESOLVED
   CANCELLED
 }
 
@@ -391,63 +402,66 @@ model Department {
 }
 
 model User {
-  id                         String                    @id @default(cuid())
-  username                   String                    @unique
-  name                       String
-  email                      String?                   @unique
-  mobile                     String?                   @unique
-  feishuUserId               String?                   @unique
-  feishuOpenId               String?                   @unique
-  feishuUnionId              String?                   @unique
-  departmentId               String?
-  status                     UserStatus                @default(ACTIVE)
-  isSystemAdmin              Boolean                   @default(false)
-  department                 Department?               @relation(fields: [departmentId], references: [id], onDelete: SetNull)
-  userRoles                  UserRole[]
-  ownedProjects              Project[]                 @relation("ProjectOwner")
-  projectMembers             ProjectMember[]
-  createdColorVersions       ColorVersion[]            @relation("ColorVersionCreator")
-  initiatedWorkflowInstances WorkflowInstance[]        @relation("WorkflowInitiator")
-  assignedWorkflowTasks      WorkflowTask[]            @relation("TaskAssigneeUser")
-  workflowTransitions        WorkflowTransition[]      @relation("WorkflowTransitionOperator")
-  boardDistributions         BoardDistributionRecord[] @relation("BoardRecipientUser")
-  requestedPaintProcurements PaintProcurement[]        @relation("ProcurementRequester")
-  reviewRecords              ReviewRecord[]            @relation("ReviewReviewer")
-  createdDevelopmentReports  DevelopmentReport[]       @relation("DevelopmentReportCreator")
-  updatedDevelopmentReports  DevelopmentReport[]       @relation("DevelopmentReportUpdater")
-  submittedDevelopmentReports DevelopmentReport[]      @relation("DevelopmentReportSubmitter")
-  sampleConfirmations        SampleConfirmation[]      @relation("SampleConfirmationActor")
-  performedPerformanceTests  PerformanceTest[]         @relation("PerformanceTestOperator")
-  issuedStandardBoards       StandardBoard[]           @relation("StandardBoardIssuer")
-  updatedColorBoardDetails   ColorBoardDetailUpdate[]  @relation("ColorBoardDetailUpdateOperator")
-  createdDevelopmentFees     DevelopmentFee[]          @relation("DevelopmentFeeCreator")
-  recordedDevelopmentFees    DevelopmentFee[]          @relation("DevelopmentFeeRecorder")
-  createdProductionPlans     ProductionPlan[]          @relation("ProductionPlanCreator")
-  ownedProductionPlans       ProductionPlan[]          @relation("ProductionPlanOwner")
-  confirmedProductionPlans   ProductionPlan[]          @relation("ProductionPlanConfirmer")
-  operatedColorExits         ColorExit[]               @relation("ColorExitOperator")
-  uploadedAttachments        Attachment[]              @relation("AttachmentUploader")
-  deletedAttachments         Attachment[]              @relation("AttachmentDeleter")
-  notifications              Notification[]
-  auditLogs                  AuditLog[]                @relation("AuditActor")
-  createdAt                  DateTime                  @default(now())
-  updatedAt                  DateTime                  @updatedAt
+  id                           String                    @id @default(cuid())
+  username                     String                    @unique
+  name                         String
+  email                        String?                   @unique
+  mobile                       String?                   @unique
+  feishuUserId                 String?                   @unique
+  feishuOpenId                 String?                   @unique
+  feishuUnionId                String?                   @unique
+  departmentId                 String?
+  status                       UserStatus                @default(ACTIVE)
+  isSystemAdmin                Boolean                   @default(false)
+  department                   Department?               @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  userRoles                    UserRole[]
+  ownedProjects                Project[]                 @relation("ProjectOwner")
+  projectMembers               ProjectMember[]
+  createdColorVersions         ColorVersion[]            @relation("ColorVersionCreator")
+  initiatedWorkflowInstances   WorkflowInstance[]        @relation("WorkflowInitiator")
+  assignedWorkflowTasks        WorkflowTask[]            @relation("TaskAssigneeUser")
+  workflowTransitions          WorkflowTransition[]      @relation("WorkflowTransitionOperator")
+  boardDistributions           BoardDistributionRecord[] @relation("BoardRecipientUser")
+  requestedPaintProcurements   PaintProcurement[]        @relation("ProcurementRequester")
+  reviewRecords                ReviewRecord[]            @relation("ReviewReviewer")
+  createdDevelopmentReports    DevelopmentReport[]       @relation("DevelopmentReportCreator")
+  updatedDevelopmentReports    DevelopmentReport[]       @relation("DevelopmentReportUpdater")
+  submittedDevelopmentReports  DevelopmentReport[]       @relation("DevelopmentReportSubmitter")
+  sampleConfirmations          SampleConfirmation[]      @relation("SampleConfirmationActor")
+  performedPerformanceTests    PerformanceTest[]         @relation("PerformanceTestOperator")
+  issuedStandardBoards         StandardBoard[]           @relation("StandardBoardIssuer")
+  updatedColorBoardDetails     ColorBoardDetailUpdate[]  @relation("ColorBoardDetailUpdateOperator")
+  createdDevelopmentFees       DevelopmentFee[]          @relation("DevelopmentFeeCreator")
+  recordedDevelopmentFees      DevelopmentFee[]          @relation("DevelopmentFeeRecorder")
+  createdProductionPlans       ProductionPlan[]          @relation("ProductionPlanCreator")
+  ownedProductionPlans         ProductionPlan[]          @relation("ProductionPlanOwner")
+  confirmedProductionPlans     ProductionPlan[]          @relation("ProductionPlanConfirmer")
+  operatedColorExits           ColorExit[]               @relation("ColorExitOperator")
+  uploadedAttachments          Attachment[]              @relation("AttachmentUploader")
+  deletedAttachments           Attachment[]              @relation("AttachmentDeleter")
+  submittedTaskProgressUpdates TaskProgressUpdate[]      @relation("TaskProgressSubmitter")
+  assistedTaskBlockers         TaskBlocker[]             @relation("TaskBlockerHelper")
+  completedRetrospectives      ProjectRetrospective[]     @relation("RetrospectiveCompleter")
+  notifications                Notification[]
+  auditLogs                    AuditLog[]                @relation("AuditActor")
+  createdAt                    DateTime                  @default(now())
+  updatedAt                    DateTime                  @updatedAt
 
   @@index([departmentId, status])
   @@map("users")
 }
 
 model Role {
-  id          String     @id @default(cuid())
-  code        String     @unique
-  name        String
-  description String?
-  status      RoleStatus @default(ACTIVE)
-  isSystem    Boolean    @default(true)
-  userRoles   UserRole[]
+  id              String           @id @default(cuid())
+  code            String           @unique
+  name            String
+  description     String?
+  status          RoleStatus       @default(ACTIVE)
+  isSystem        Boolean          @default(true)
+  userRoles       UserRole[]
   rolePermissions RolePermission[]
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 
   @@index([status])
   @@map("roles")
@@ -506,6 +520,8 @@ model Project {
   workflowInstances        WorkflowInstance[]
   workflowTasks            WorkflowTask[]
   workflowTransitions      WorkflowTransition[]
+  taskProgressUpdates      TaskProgressUpdate[]
+  taskBlockers             TaskBlocker[]
   samples                  Sample[]
   sampleConfirmations      SampleConfirmation[]
   standardBoards           StandardBoard[]
@@ -520,6 +536,7 @@ model Project {
   attachments              Attachment[]
   notifications            Notification[]
   auditLogs                AuditLog[]
+  retrospective            ProjectRetrospective?
   createdAt                DateTime                  @default(now())
   updatedAt                DateTime                  @updatedAt
 
@@ -547,25 +564,25 @@ model ProjectMember {
 }
 
 model Color {
-  id                String             @id @default(cuid())
-  projectId         String
-  code              String?            @unique
-  name              String
-  description       String?
-  status            ColorStatus        @default(DRAFT)
-  isPrimary         Boolean            @default(false)
-  exitFlag          Boolean            @default(false)
-  exitDate          DateTime?
-  project           Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  versions          ColorVersion[]
-  colorExits        ColorExit[]        @relation("ColorExitColor")
-  replacementInExits ColorExit[]       @relation("ColorExitReplacementColor")
-  samples           Sample[]
-  standardBoards    StandardBoard[]
-  paintProcurements PaintProcurement[]
-  trialProductions  TrialProduction[]
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
+  id                 String             @id @default(cuid())
+  projectId          String
+  code               String?            @unique
+  name               String
+  description        String?
+  status             ColorStatus        @default(DRAFT)
+  isPrimary          Boolean            @default(false)
+  exitFlag           Boolean            @default(false)
+  exitDate           DateTime?
+  project            Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  versions           ColorVersion[]
+  colorExits         ColorExit[]        @relation("ColorExitColor")
+  replacementInExits ColorExit[]        @relation("ColorExitReplacementColor")
+  samples            Sample[]
+  standardBoards     StandardBoard[]
+  paintProcurements  PaintProcurement[]
+  trialProductions   TrialProduction[]
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
 
   @@unique([projectId, name])
   @@index([projectId, status])
@@ -600,27 +617,27 @@ model ColorVersion {
 }
 
 model WorkflowNodeDefinition {
-  id                     String               @id @default(cuid())
-  nodeCode               WorkflowNodeCode     @unique
-  stepCode               String?              @unique
+  id                     String                @id @default(cuid())
+  nodeCode               WorkflowNodeCode      @unique
+  stepCode               String?               @unique
   processTemplateCode    String?
   processTemplateVersion String?
   name                   String
   sequence               Int
   durationType           WorkflowDurationType?
   durationValue          Int?
-  isBlocking             Boolean              @default(true)
-  isDecisionNode         Boolean              @default(false)
-  allowRework            Boolean              @default(false)
-  allowManualDueAt       Boolean              @default(false)
-  isReviewNode           Boolean              @default(false)
-  isActive               Boolean              @default(true)
-  defaultChargeAmount    Decimal?             @db.Decimal(12, 2)
+  isBlocking             Boolean               @default(true)
+  isDecisionNode         Boolean               @default(false)
+  allowRework            Boolean               @default(false)
+  allowManualDueAt       Boolean               @default(false)
+  isReviewNode           Boolean               @default(false)
+  isActive               Boolean               @default(true)
+  defaultChargeAmount    Decimal?              @db.Decimal(12, 2)
   formSchema             Json?
   requiredAttachments    Json?
   description            String?
-  createdAt              DateTime             @default(now())
-  updatedAt              DateTime             @updatedAt
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @updatedAt
 
   @@index([isActive, sequence])
   @@index([processTemplateCode, processTemplateVersion, sequence])
@@ -695,26 +712,26 @@ model SystemParameter {
 }
 
 model WorkflowInstance {
-  id              String                 @id @default(cuid())
-  projectId       String
-  instanceNo      String                 @unique
-  versionNo       Int                    @default(1)
-  templateCode    String                 @default("COLOR_DEVELOPMENT_MVP")
-  templateVersion String?
-  status          WorkflowInstanceStatus @default(DRAFT)
-  currentNodeCode WorkflowNodeCode?
-  initiatedById   String?
-  startedAt       DateTime?
-  completedAt     DateTime?
-  cancelledAt     DateTime?
-  project         Project                @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  initiatedBy     User?                  @relation("WorkflowInitiator", fields: [initiatedById], references: [id], onDelete: SetNull)
-  developmentReports DevelopmentReport[]
+  id                  String                 @id @default(cuid())
+  projectId           String
+  instanceNo          String                 @unique
+  versionNo           Int                    @default(1)
+  templateCode        String                 @default("COLOR_DEVELOPMENT_MVP")
+  templateVersion     String?
+  status              WorkflowInstanceStatus @default(DRAFT)
+  currentNodeCode     WorkflowNodeCode?
+  initiatedById       String?
+  startedAt           DateTime?
+  completedAt         DateTime?
+  cancelledAt         DateTime?
+  project             Project                @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  initiatedBy         User?                  @relation("WorkflowInitiator", fields: [initiatedById], references: [id], onDelete: SetNull)
+  developmentReports  DevelopmentReport[]
   sampleConfirmations SampleConfirmation[]
-  tasks           WorkflowTask[]
-  transitions     WorkflowTransition[]
-  createdAt       DateTime               @default(now())
-  updatedAt       DateTime               @updatedAt
+  tasks               WorkflowTask[]
+  transitions         WorkflowTransition[]
+  createdAt           DateTime               @default(now())
+  updatedAt           DateTime               @updatedAt
 
   @@unique([projectId, versionNo])
   @@index([projectId, status])
@@ -759,6 +776,8 @@ model WorkflowTask {
   fromTransitions      WorkflowTransition[] @relation("WorkflowTransitionFromTask")
   toTransitions        WorkflowTransition[] @relation("WorkflowTransitionToTask")
   reviewRecords        ReviewRecord[]
+  progressUpdates      TaskProgressUpdate[]
+  blockers             TaskBlocker[]
   createdAt            DateTime             @default(now())
   updatedAt            DateTime             @updatedAt
 
@@ -769,6 +788,52 @@ model WorkflowTask {
   @@index([projectId, nodeCode, isPrimary, isActive])
   @@index([idempotencyKey])
   @@map("workflow_tasks")
+}
+
+model TaskProgressUpdate {
+  id                    String       @id @default(cuid())
+  workflowTaskId        String
+  projectId             String
+  submittedById         String?
+  completionPercent     Int
+  completedContent      String
+  nextPlan              String?
+  materialAttachmentIds Json?
+  idempotencyKey        String       @unique
+  workflowTask          WorkflowTask @relation(fields: [workflowTaskId], references: [id], onDelete: Cascade)
+  project               Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  submittedBy           User?        @relation("TaskProgressSubmitter", fields: [submittedById], references: [id], onDelete: SetNull)
+  blocker               TaskBlocker?
+  createdAt             DateTime     @default(now())
+
+  @@index([workflowTaskId, createdAt])
+  @@index([projectId, createdAt])
+  @@index([submittedById, createdAt])
+  @@map("task_progress_updates")
+}
+
+model TaskBlocker {
+  id                 String             @id @default(cuid())
+  progressUpdateId   String             @unique
+  workflowTaskId     String
+  projectId          String
+  blockerType        String
+  description        String
+  helperUserId       String?
+  expectedResolvedAt DateTime?
+  status             TaskBlockerStatus  @default(OPEN)
+  resolvedAt         DateTime?
+  progressUpdate     TaskProgressUpdate @relation(fields: [progressUpdateId], references: [id], onDelete: Cascade)
+  workflowTask       WorkflowTask       @relation(fields: [workflowTaskId], references: [id], onDelete: Cascade)
+  project            Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  helperUser         User?              @relation("TaskBlockerHelper", fields: [helperUserId], references: [id], onDelete: SetNull)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  @@index([workflowTaskId, status, createdAt])
+  @@index([projectId, status, createdAt])
+  @@index([helperUserId, status])
+  @@map("task_blockers")
 }
 
 model RecurringPlan {
@@ -819,9 +884,9 @@ model RecurringTask {
 }
 
 model ColorExit {
-  id                 String       @id @default(cuid())
+  id                 String               @id @default(cuid())
   projectId          String
-  workflowTaskId     String       @unique
+  workflowTaskId     String               @unique
   colorId            String?
   replacementColorId String?
   operatorId         String?
@@ -831,17 +896,17 @@ model ColorExit {
   exitThreshold      Int?
   systemSuggestion   ColorExitSuggestion?
   finalDecision      ColorExitSuggestion?
-  effectiveDate      DateTime?    @db.Date
+  effectiveDate      DateTime?            @db.Date
   exitReason         String
   description        String?
   completedAt        DateTime?
-  project            Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  workflowTask       WorkflowTask @relation(fields: [workflowTaskId], references: [id], onDelete: Cascade)
-  color              Color?       @relation("ColorExitColor", fields: [colorId], references: [id], onDelete: SetNull)
-  replacementColor   Color?       @relation("ColorExitReplacementColor", fields: [replacementColorId], references: [id], onDelete: SetNull)
-  operator           User?        @relation("ColorExitOperator", fields: [operatorId], references: [id], onDelete: SetNull)
-  createdAt          DateTime     @default(now())
-  updatedAt          DateTime     @updatedAt
+  project            Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  workflowTask       WorkflowTask         @relation(fields: [workflowTaskId], references: [id], onDelete: Cascade)
+  color              Color?               @relation("ColorExitColor", fields: [colorId], references: [id], onDelete: SetNull)
+  replacementColor   Color?               @relation("ColorExitReplacementColor", fields: [replacementColorId], references: [id], onDelete: SetNull)
+  operator           User?                @relation("ColorExitOperator", fields: [operatorId], references: [id], onDelete: SetNull)
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
 
   @@index([projectId, exitDate])
   @@index([colorId])
@@ -851,37 +916,37 @@ model ColorExit {
 }
 
 model DevelopmentReport {
-  id                   String                  @id @default(cuid())
-  projectId            String
-  workflowInstanceId   String
-  workflowTaskId       String                  @unique
-  status               DevelopmentReportStatus @default(DRAFT)
-  reportTitle          String
-  demandSource         String
-  targetMarket         String?
-  targetVehicleModel   String?
-  targetColorName      String
-  benchmarkColorRef    String?
-  developmentReason    String
-  expectedLaunchDate   DateTime?
+  id                    String                  @id @default(cuid())
+  projectId             String
+  workflowInstanceId    String
+  workflowTaskId        String                  @unique
+  status                DevelopmentReportStatus @default(DRAFT)
+  reportTitle           String
+  demandSource          String
+  targetMarket          String?
+  targetVehicleModel    String?
+  targetColorName       String
+  benchmarkColorRef     String?
+  developmentReason     String
+  expectedLaunchDate    DateTime?
   estimatedAnnualVolume Int?
   technicalRequirements String?
-  qualityRequirements  String?
-  costTarget           String?
-  riskSummary          String?
-  remark               String?
-  createdById          String?
-  updatedById          String?
-  submittedById        String?
-  submittedAt          DateTime?
-  project              Project                 @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  workflowInstance     WorkflowInstance        @relation(fields: [workflowInstanceId], references: [id], onDelete: Cascade)
-  workflowTask         WorkflowTask            @relation(fields: [workflowTaskId], references: [id], onDelete: Cascade)
-  createdBy            User?                   @relation("DevelopmentReportCreator", fields: [createdById], references: [id], onDelete: SetNull)
-  updatedBy            User?                   @relation("DevelopmentReportUpdater", fields: [updatedById], references: [id], onDelete: SetNull)
-  submittedBy          User?                   @relation("DevelopmentReportSubmitter", fields: [submittedById], references: [id], onDelete: SetNull)
-  createdAt            DateTime                @default(now())
-  updatedAt            DateTime                @updatedAt
+  qualityRequirements   String?
+  costTarget            String?
+  riskSummary           String?
+  remark                String?
+  createdById           String?
+  updatedById           String?
+  submittedById         String?
+  submittedAt           DateTime?
+  project               Project                 @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  workflowInstance      WorkflowInstance        @relation(fields: [workflowInstanceId], references: [id], onDelete: Cascade)
+  workflowTask          WorkflowTask            @relation(fields: [workflowTaskId], references: [id], onDelete: Cascade)
+  createdBy             User?                   @relation("DevelopmentReportCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy             User?                   @relation("DevelopmentReportUpdater", fields: [updatedById], references: [id], onDelete: SetNull)
+  submittedBy           User?                   @relation("DevelopmentReportSubmitter", fields: [submittedById], references: [id], onDelete: SetNull)
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
 
   @@index([projectId, createdAt])
   @@index([workflowInstanceId, status])
@@ -914,30 +979,30 @@ model WorkflowTransition {
 }
 
 model Sample {
-  id                String            @id @default(cuid())
-  projectId         String
-  colorId           String?
-  colorVersionId    String?
-  trialProductionId String?
-  sampleNo          String
-  sampleName        String
-  versionNo         Int               @default(1)
-  isCurrent         Boolean           @default(true)
-  sampleType        SampleType        @default(PANEL)
-  status            SampleStatus      @default(DRAFT)
-  location          String?
-  remark            String?
-  producedAt        DateTime?
-  confirmedAt       DateTime?
-  project           Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  color             Color?            @relation(fields: [colorId], references: [id], onDelete: SetNull)
-  colorVersion      ColorVersion?     @relation(fields: [colorVersionId], references: [id], onDelete: SetNull)
-  trialProduction   TrialProduction?  @relation(fields: [trialProductionId], references: [id], onDelete: SetNull)
+  id                  String               @id @default(cuid())
+  projectId           String
+  colorId             String?
+  colorVersionId      String?
+  trialProductionId   String?
+  sampleNo            String
+  sampleName          String
+  versionNo           Int                  @default(1)
+  isCurrent           Boolean              @default(true)
+  sampleType          SampleType           @default(PANEL)
+  status              SampleStatus         @default(DRAFT)
+  location            String?
+  remark              String?
+  producedAt          DateTime?
+  confirmedAt         DateTime?
+  project             Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  color               Color?               @relation(fields: [colorId], references: [id], onDelete: SetNull)
+  colorVersion        ColorVersion?        @relation(fields: [colorVersionId], references: [id], onDelete: SetNull)
+  trialProduction     TrialProduction?     @relation(fields: [trialProductionId], references: [id], onDelete: SetNull)
   sampleConfirmations SampleConfirmation[]
-  standardBoards     StandardBoard[]
-  performanceTests  PerformanceTest[]
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
+  standardBoards      StandardBoard[]
+  performanceTests    PerformanceTest[]
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
 
   @@unique([projectId, sampleNo, versionNo])
   @@index([projectId, status])
@@ -948,24 +1013,24 @@ model Sample {
 }
 
 model SampleConfirmation {
-  id                 String                     @id @default(cuid())
-  projectId          String
-  sampleId           String
-  workflowInstanceId String
-  workflowTaskId     String                     @unique
-  decision           SampleConfirmationDecision
-  colorAssessment    String?
+  id                   String                     @id @default(cuid())
+  projectId            String
+  sampleId             String
+  workflowInstanceId   String
+  workflowTaskId       String                     @unique
+  decision             SampleConfirmationDecision
+  colorAssessment      String?
   appearanceAssessment String?
-  comment            String?
-  confirmedById      String?
-  confirmedAt        DateTime
-  project            Project                    @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  sample             Sample                     @relation(fields: [sampleId], references: [id], onDelete: Cascade)
-  workflowInstance   WorkflowInstance           @relation(fields: [workflowInstanceId], references: [id], onDelete: Cascade)
-  workflowTask       WorkflowTask               @relation(fields: [workflowTaskId], references: [id], onDelete: Cascade)
-  confirmedBy        User?                      @relation("SampleConfirmationActor", fields: [confirmedById], references: [id], onDelete: SetNull)
-  createdAt          DateTime                   @default(now())
-  updatedAt          DateTime                   @updatedAt
+  comment              String?
+  confirmedById        String?
+  confirmedAt          DateTime
+  project              Project                    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  sample               Sample                     @relation(fields: [sampleId], references: [id], onDelete: Cascade)
+  workflowInstance     WorkflowInstance           @relation(fields: [workflowInstanceId], references: [id], onDelete: Cascade)
+  workflowTask         WorkflowTask               @relation(fields: [workflowTaskId], references: [id], onDelete: Cascade)
+  confirmedBy          User?                      @relation("SampleConfirmationActor", fields: [confirmedById], references: [id], onDelete: SetNull)
+  createdAt            DateTime                   @default(now())
+  updatedAt            DateTime                   @updatedAt
 
   @@index([projectId, confirmedAt])
   @@index([sampleId, confirmedAt])
@@ -1036,18 +1101,18 @@ model BoardDistributionRecord {
 }
 
 model ColorBoardDetailUpdate {
-  id              String                        @id @default(cuid())
+  id              String                       @id @default(cuid())
   projectId       String
   standardBoardId String
   updatedById     String?
   updateStatus    ColorBoardDetailUpdateStatus @default(PENDING)
   detailUpdatedAt DateTime
   note            String?
-  project         Project                       @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  standardBoard   StandardBoard                 @relation(fields: [standardBoardId], references: [id], onDelete: Cascade)
-  updatedBy       User?                         @relation("ColorBoardDetailUpdateOperator", fields: [updatedById], references: [id], onDelete: SetNull)
-  createdAt       DateTime                      @default(now())
-  updatedAt       DateTime                      @updatedAt
+  project         Project                      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  standardBoard   StandardBoard                @relation(fields: [standardBoardId], references: [id], onDelete: Cascade)
+  updatedBy       User?                        @relation("ColorBoardDetailUpdateOperator", fields: [updatedById], references: [id], onDelete: SetNull)
+  createdAt       DateTime                     @default(now())
+  updatedAt       DateTime                     @updatedAt
 
   @@index([projectId, detailUpdatedAt])
   @@index([standardBoardId, detailUpdatedAt])
@@ -1110,30 +1175,30 @@ model PaintProcurement {
 }
 
 model PerformanceTest {
-  id                 String                @id @default(cuid())
+  id                 String                 @id @default(cuid())
   projectId          String
   sampleId           String?
   paintProcurementId String?
   testedById         String?
-  reportAttachmentId String?               @unique
-  testCode           String                @map("testNo")
+  reportAttachmentId String?                @unique
+  testCode           String                 @map("testNo")
   relatedObjectName  String?
-  testItem           PerformanceTestType   @map("testType")
-  status             PerformanceTestStatus @default(DRAFT)
+  testItem           PerformanceTestType    @map("testType")
+  status             PerformanceTestStatus  @default(DRAFT)
   standardValue      String?
   actualValue        String?
   result             PerformanceTestResult?
-  conclusion         String?               @map("resultSummary")
-  metadata           Json?                 @map("resultData")
+  conclusion         String?                @map("resultSummary")
+  metadata           Json?                  @map("resultData")
   testedAt           DateTime?
-  submittedAt        DateTime?             @map("completedAt")
-  project            Project               @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  sample             Sample?               @relation(fields: [sampleId], references: [id], onDelete: SetNull)
-  paintProcurement   PaintProcurement?     @relation(fields: [paintProcurementId], references: [id], onDelete: SetNull)
-  testedBy           User?                 @relation("PerformanceTestOperator", fields: [testedById], references: [id], onDelete: SetNull)
-  reportAttachment   Attachment?           @relation("PerformanceTestReport", fields: [reportAttachmentId], references: [id], onDelete: SetNull)
-  createdAt          DateTime              @default(now())
-  updatedAt          DateTime              @updatedAt
+  submittedAt        DateTime?              @map("completedAt")
+  project            Project                @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  sample             Sample?                @relation(fields: [sampleId], references: [id], onDelete: SetNull)
+  paintProcurement   PaintProcurement?      @relation(fields: [paintProcurementId], references: [id], onDelete: SetNull)
+  testedBy           User?                  @relation("PerformanceTestOperator", fields: [testedById], references: [id], onDelete: SetNull)
+  reportAttachment   Attachment?            @relation("PerformanceTestReport", fields: [reportAttachmentId], references: [id], onDelete: SetNull)
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
 
   @@unique([projectId, testCode])
   @@index([projectId, status])
@@ -1144,31 +1209,31 @@ model PerformanceTest {
 }
 
 model TrialProduction {
-  id             String                @id @default(cuid())
-  projectId      String
+  id               String                 @id @default(cuid())
+  projectId        String
   productionPlanId String?
-  colorId        String?
-  colorVersionId String?
-  trialNo        String
-  status         TrialProductionStatus @default(PLANNED)
-  quantity       Int?
-  paintBatchNo   String?
-  result         TrialProductionResult?
-  note           String?
-  location       String?
-  plannedAt      DateTime?
-  startedAt      DateTime?
-  completedAt    DateTime?
-  summary        String?
-  project        Project               @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  productionPlan ProductionPlan?       @relation(fields: [productionPlanId], references: [id], onDelete: SetNull)
-  color          Color?                @relation(fields: [colorId], references: [id], onDelete: SetNull)
-  colorVersion   ColorVersion?         @relation(fields: [colorVersionId], references: [id], onDelete: SetNull)
-  samples        Sample[]
-  issues         TrialProductionIssue[]
-  reviewRecords  ReviewRecord[]
-  createdAt      DateTime              @default(now())
-  updatedAt      DateTime              @updatedAt
+  colorId          String?
+  colorVersionId   String?
+  trialNo          String
+  status           TrialProductionStatus  @default(PLANNED)
+  quantity         Int?
+  paintBatchNo     String?
+  result           TrialProductionResult?
+  note             String?
+  location         String?
+  plannedAt        DateTime?
+  startedAt        DateTime?
+  completedAt      DateTime?
+  summary          String?
+  project          Project                @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  productionPlan   ProductionPlan?        @relation(fields: [productionPlanId], references: [id], onDelete: SetNull)
+  color            Color?                 @relation(fields: [colorId], references: [id], onDelete: SetNull)
+  colorVersion     ColorVersion?          @relation(fields: [colorVersionId], references: [id], onDelete: SetNull)
+  samples          Sample[]
+  issues           TrialProductionIssue[]
+  reviewRecords    ReviewRecord[]
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
 
   @@unique([projectId, trialNo])
   @@index([projectId, status])
@@ -1194,28 +1259,28 @@ model TrialProductionIssue {
 }
 
 model ReviewRecord {
-  id                String           @id @default(cuid())
+  id                String            @id @default(cuid())
   projectId         String
   workflowTaskId    String
   trialProductionId String?
   reviewerId        String?
-  attachmentId      String?          @unique
+  attachmentId      String?           @unique
   reviewType        ReviewType
-  reviewRound       Int              @default(1)
-  result            ReviewResult     @default(PENDING)
+  reviewRound       Int               @default(1)
+  result            ReviewResult      @default(PENDING)
   comment           String?
   conditionNote     String?
   rejectReason      String?
   returnToNodeCode  WorkflowNodeCode?
   reviewedAt        DateTime?
   submittedAt       DateTime?
-  project           Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  workflowTask      WorkflowTask     @relation(fields: [workflowTaskId], references: [id], onDelete: Cascade)
-  trialProduction   TrialProduction? @relation(fields: [trialProductionId], references: [id], onDelete: SetNull)
-  reviewer          User?            @relation("ReviewReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
-  attachment        Attachment?      @relation("ReviewRecordAttachment", fields: [attachmentId], references: [id], onDelete: SetNull)
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
+  project           Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  workflowTask      WorkflowTask      @relation(fields: [workflowTaskId], references: [id], onDelete: Cascade)
+  trialProduction   TrialProduction?  @relation(fields: [trialProductionId], references: [id], onDelete: SetNull)
+  reviewer          User?             @relation("ReviewReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
+  attachment        Attachment?       @relation("ReviewRecordAttachment", fields: [attachmentId], references: [id], onDelete: SetNull)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
 
   @@unique([workflowTaskId, reviewerId])
   @@index([projectId, reviewType, result, reviewedAt])
@@ -1257,33 +1322,33 @@ model DevelopmentFee {
 }
 
 model ProductionPlan {
-  id             String               @id @default(cuid())
-  projectId      String
-  createdById    String?
-  ownerId        String?
-  confirmedById  String?
-  planNo         String
-  planType       ProductionPlanType
-  status         ProductionPlanStatus @default(DRAFT)
-  quantity       Int?
-  actualQuantity Int?
-  planDate       DateTime?
-  lineName       String?
-  workshop       String?
-  batchNo        String?
-  confirmedAt    DateTime?
-  plannedStartAt DateTime?
-  plannedEndAt   DateTime?
-  actualStartAt  DateTime?
-  actualEndAt    DateTime?
-  remark         String?
-  project        Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  createdBy      User?                @relation("ProductionPlanCreator", fields: [createdById], references: [id], onDelete: SetNull)
-  owner          User?                @relation("ProductionPlanOwner", fields: [ownerId], references: [id], onDelete: SetNull)
-  confirmedBy    User?                @relation("ProductionPlanConfirmer", fields: [confirmedById], references: [id], onDelete: SetNull)
+  id               String               @id @default(cuid())
+  projectId        String
+  createdById      String?
+  ownerId          String?
+  confirmedById    String?
+  planNo           String
+  planType         ProductionPlanType
+  status           ProductionPlanStatus @default(DRAFT)
+  quantity         Int?
+  actualQuantity   Int?
+  planDate         DateTime?
+  lineName         String?
+  workshop         String?
+  batchNo          String?
+  confirmedAt      DateTime?
+  plannedStartAt   DateTime?
+  plannedEndAt     DateTime?
+  actualStartAt    DateTime?
+  actualEndAt      DateTime?
+  remark           String?
+  project          Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdBy        User?                @relation("ProductionPlanCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  owner            User?                @relation("ProductionPlanOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  confirmedBy      User?                @relation("ProductionPlanConfirmer", fields: [confirmedById], references: [id], onDelete: SetNull)
   trialProductions TrialProduction[]
-  createdAt      DateTime             @default(now())
-  updatedAt      DateTime             @updatedAt
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
 
   @@unique([projectId, planNo])
   @@index([projectId, planType, status])
@@ -1305,6 +1370,9 @@ model Attachment {
   fileSize               Int
   checksum               String?
   fileUrl                String?
+  materialType           String?
+  versionNo              Int                  @default(1)
+  replacesAttachmentId   String?
   uploadedById           String?
   uploadedAt             DateTime             @default(now())
   isDeleted              Boolean              @default(false)
@@ -1323,7 +1391,30 @@ model Attachment {
   @@index([entityType, entityId, isDeleted])
   @@index([uploadedById, uploadedAt])
   @@index([deletedById, deletedAt])
+  @@index([replacesAttachmentId])
   @@map("attachments")
+}
+
+model ProjectRetrospective {
+  id                  String                     @id @default(cuid())
+  projectId           String                     @unique
+  status              ProjectRetrospectiveStatus @default(DRAFT)
+  conclusion          String?
+  improvementMeasures Json?
+  strengths           String?
+  problems            String?
+  reusableExperience  String?
+  workflowRuleUpdates String?
+  completedById       String?
+  completedAt         DateTime?
+  project             Project                    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  completedBy         User?                      @relation("RetrospectiveCompleter", fields: [completedById], references: [id], onDelete: SetNull)
+  createdAt           DateTime                   @default(now())
+  updatedAt           DateTime                   @updatedAt
+
+  @@index([status, updatedAt])
+  @@index([completedById, completedAt])
+  @@map("project_retrospectives")
 }
 
 model AuditLog {
@@ -1371,10 +1462,10 @@ model Notification {
   createdAt        DateTime                @default(now())
   updatedAt        DateTime                @updatedAt
 
+  @@unique([sendChannel, dedupeKey])
   @@index([userId, isRead, createdAt])
   @@index([projectId, createdAt])
   @@index([taskId, createdAt])
   @@index([notificationType, createdAt])
-  @@unique([sendChannel, dedupeKey])
   @@map("notifications")
 }

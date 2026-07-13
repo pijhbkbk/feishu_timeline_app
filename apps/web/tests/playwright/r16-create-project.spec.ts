@@ -39,9 +39,10 @@ test.describe('R16 新建项目与时间线看板验收', () => {
     await expect(page.getByText('反映市场需求')).toBeVisible();
 
     await page.goto('/projects');
+    await page.getByRole('button', { name: '高级筛选' }).click();
     await page.getByLabel('关键词').fill(projectName);
     await page.getByRole('button', { name: '应用筛选' }).click();
-    await expect(page.getByTestId('project-table')).toContainText(projectName);
+    await expect(page.getByTestId('project-card').filter({ hasText: projectName })).toBeVisible();
 
     await page.goto('/projects/timeline');
     await expectPageReady(page, 'project-timeline-board');

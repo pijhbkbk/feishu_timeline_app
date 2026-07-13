@@ -35,6 +35,9 @@ export default defineConfig({
       reuseExistingServer: true,
       timeout: 180_000,
       cwd: repoRoot,
+      env: {
+        AUTH_MOCK_ENABLED: 'true',
+      },
     },
     {
       command: 'pnpm --filter @feishu-timeline/web dev',
@@ -42,6 +45,9 @@ export default defineConfig({
       reuseExistingServer: true,
       timeout: 180_000,
       cwd: repoRoot,
+      env: {
+        NEXT_PUBLIC_ENABLE_MOCK_LOGIN: 'true',
+      },
     },
   ],
 });

@@ -1,9 +1,14 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { ProjectPriority, ProjectStatus, WorkflowNodeCode } from '@prisma/client';
-import { Type } from 'class-transformer';
-import { IsDateString, IsEnum, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
+import { IsBoolean, IsDateString, IsEnum, IsIn, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
 
 export class ProjectListQueryDto {
+  @ApiPropertyOptional({ description: '快速视图', enum: ['all', 'normal', 'risk', 'overdue', 'review'] })
+  @IsOptional()
+  @IsIn(['all', 'normal', 'risk', 'overdue', 'review'])
+  view?: 'all' | 'normal' | 'risk' | 'overdue' | 'review';
+
   @ApiPropertyOptional({ description: '页码', default: 1 })
   @IsOptional()
   @Type(() => Number)
@@ -18,6 +23,11 @@ export class ProjectListQueryDto {
   @Min(1)
   @Max(50)
   pageSize?: number;
+
+  @ApiPropertyOptional({ description: '项目名称、编号或颜色关键词' })
+  @IsOptional()
+  @IsString()
+  keyword?: string;
 
   @ApiPropertyOptional({ enum: ProjectStatus, description: '项目状态过滤' })
   @IsOptional()
@@ -34,10 +44,21 @@ export class ProjectListQueryDto {
   @IsString()
   ownerUserId?: string;
 
+  @ApiPropertyOptional({ description: '责任部门 ID' })
+  @IsOptional()
+  @IsString()
+  ownerDepartmentId?: string;
+
   @ApiPropertyOptional({ enum: ProjectPriority, description: '优先级过滤' })
   @IsOptional()
   @IsEnum(ProjectPriority)
   priority?: ProjectPriority;
+
+  @ApiPropertyOptional({ description: '是否逾期' })
+  @IsOptional()
+  @Transform(({ value }) => value === 'true' ? true : value === 'false' ? false : value)
+  @IsBoolean()
+  isOverdue?: boolean;
 
   @ApiPropertyOptional({ description: '计划日期起始', format: 'date-time' })
   @IsOptional()

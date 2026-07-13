@@ -8,12 +8,12 @@
 ## 项目基本信息
 
 - 项目名称：轻卡定制颜色开发项目管理系统
-- 当前阶段：R21C 项目实时流程地图 UI 布局重构
-- 当前轮次：R21C_FLOW_MAP_UI_REFINEMENT
-- 总体状态：PASSED
+- 当前阶段：R22 Apple 风产品 UI 全量还原（视觉闸门）
+- 当前轮次：R22_APPLE_STYLE_PRODUCT_UI_IMPLEMENTATION / Gate 1–3
+- 总体状态：IN_PROGRESS（Gate 1–3 已完成，等待视觉闸门人工确认；R19B 外部生产安全验收仍独立 BLOCKED）
 - 仓库路径：`/Users/lixiaochen/Downloads/feishu_timeline_app`
 - 默认分支：`main`
-- 最近更新时间：`2026-05-21`
+- 最近更新时间：`2026-07-13`
 
 ---
 
@@ -53,11 +53,13 @@
 | R14_PPT_UI_IMPLEMENTATION | PPT UI 蓝图实装 + 线上部署 | PASSED | STOP | 已按 PPT 结构补齐材料中心、月度评审总账、数据中心、项目列表筛选、详情刷新与线上部署闭环 |
 | R16 | UI 自动化验收 + 业务流程网页测试与迭代修复 | PASSED | STOP | 已补 Playwright 网页级业务 UAT、稳定选择器、正式中文文案和节点展示顺序保护 |
 | R19 | 公司私有云与飞书工作台上线前安全准入 | BLOCKED | STOP | 代码与本地安全扫描已收口；私有云主机、飞书后台、镜像和 staging 证据待公司侧提供 |
+| R19B | 厂商 SAST 对账、当前漏洞整改与安全门禁重建 | BLOCKED | STOP | 本地已修复并通过全量安全/质量门禁；私有云、飞书、认证态 staging 和最终发布镜像证据待补 |
 | R20 | 真实业务场景自动化实操测试与迭代修复 | PASSED | CONTINUE | 已完成 13 条 R20 真实浏览器 UAT；全量 Playwright 28/28 通过 |
 | R21 | 项目实时流程地图 UI 实现 | PASSED | STOP | 已完成单项目实时流程地图、聚合 API、节点抽屉、风险筛选、自动刷新与全量回归 |
 | R21B | 项目实时流程地图线上可见性修复 | PASSED | STOP | 已新增 `/projects/flow-map` 全局入口、导航入口、失败态修复和生产可见性验收 |
 | R21C | 生产流程地图权限与演示数据修复 | PASSED | STOP | 已修复飞书用户默认无角色导致 403，并补齐生产演示项目数据 |
 | R21C_UI | 项目实时流程地图 UI 布局重构 | PASSED | STOP | 已按 `map2.md` 调整画布拓扑、顶部工具栏、正交连线、缩放适配与 Playwright 截图验收 |
+| R22 | Apple 风产品 UI 全量还原 | IN_PROGRESS | STOP | Gate 1–3 已完成设计系统、五项导航、工作台、项目工作区和三步进展提交；三页评分 97/95/97，等待视觉闸门确认 |
 
 状态枚举建议：
 
@@ -72,7 +74,9 @@
 
 ## 当前阻塞项
 
-- 无
+- R22 处于预期的视觉闸门：Gate 1–3 证据已齐，必须经用户确认后才允许进入 Gate 4 其余页面；本轮不部署预发布或生产。
+- R19B 本地整改与复测已完成；当前工作树须经评审形成干净 commit，并在该 commit 上复跑 CI。
+- R19/R19B 的公司私有云主机、飞书管理后台、认证后 staging DAST、基础设施镜像和最终发布镜像证据仍待授权或由公司侧导出。
 
 ---
 
@@ -2696,3 +2700,378 @@ STOP
 
 #### Next Round
 建议 R22 聚焦生产管理员配置入口、真实账号授权可视化，以及流程地图节点搜索 / 定位增强。
+
+---
+
+### Round R19B_VENDOR_SAST_RECONCILIATION_AND_REMEDIATION
+
+#### Goal
+对 2026-07-10 厂商 SAST-TS 报告完成逐项归因，修复当前仓库内已确认的全部安全漏洞和 fail-open 门禁，并形成可复现的本地安全审核结论。
+
+#### Scope
+- 对账厂商 PDF 的 156 项 Medium/未确认结果。
+- 修复完整/生产依赖图漏洞。
+- 收紧六个 multipart 上传入口。
+- 修复 Mock 登录、OAuth state、锁定用户、会话存储和限流问题。
+- 为 Next.js 增加每请求 nonce CSP，并保护登录回调。
+- 重建 SAST、SCA、Secrets、制品、镜像、Header 和 ZAP fail-closed 门禁。
+- 加固 API/Web 生产镜像和 staging 部署前校验。
+- 执行全量质量、安全和浏览器回归，发布审核报告。
+
+#### Inputs Read
+- `AGENTS.md`
+- `docs/EXECUTION_LEDGER.md`
+- `docs/rounds/R19.md`
+- `docs/rounds/R19B.md`
+- `/Users/lixiaochen/Downloads/轻卡新颜色开发项目管理系统_前端_SAST-TS.pdf`
+- 当前 Git 索引、非忽略未跟踪源码、lockfile、Dockerfile、CI 和部署脚本
+
+#### Main Files Changed
+- `apps/api/src/common/file-upload-options.ts`
+- `apps/api/src/modules/auth/auth.controller.ts`
+- `apps/api/src/modules/auth/auth.service.ts`
+- `apps/api/src/modules/auth/session-store.service.ts`
+- `apps/api/src/modules/users/users.service.ts`
+- `apps/web/src/middleware.ts`
+- `apps/web/src/app/layout.tsx`
+- `apps/web/src/app/login/callback/login-callback-client.tsx`
+- `apps/api/Dockerfile`
+- `apps/web/Dockerfile`
+- `.github/workflows/ci.yml`
+- `deploy/compose.staging.yml`
+- `scripts/deploy/common.sh`
+- `scripts/deploy/staging-up.sh`
+- `scripts/security/*`
+- `docs/security/VENDOR_SAST_TRIAGE_R19B.md`
+- `docs/security/SECURITY_AUDIT_REPORT_R19B.md`
+- `docs/rounds/R19B.md`
+- `docs/EXECUTION_LEDGER.md`
+
+#### Commands Run
+```bash
+pnpm install
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm --filter @feishu-timeline/web build
+pnpm --filter @feishu-timeline/api build
+pnpm --filter @feishu-timeline/api prisma:validate
+pnpm test:e2e
+pnpm playwright:test
+pnpm security:sast
+pnpm security:sca
+pnpm security:secrets
+bash scripts/security/check-production-build-artifacts.sh
+bash scripts/security/tests/security-gates.test.sh
+docker build --pull -t feishu-timeline-api:r19b-final -f apps/api/Dockerfile .
+docker build --pull -t feishu-timeline-web:r19b-final -f apps/web/Dockerfile .
+bash scripts/security/scan-production-images.sh feishu-timeline-api:r19b-final feishu-timeline-web:r19b-final
+BASE_URL=http://127.0.0.1:3300 bash scripts/security/check-security-headers.sh
+TARGET_URL=http://host.docker.internal:3300 ZAP_MINUTES=2 bash scripts/security/run-zap-baseline.sh
+pnpm security:integrity:generate
+pnpm security:integrity:check
+docker compose --env-file deploy/env/staging.env.example -f deploy/compose.staging.yml config
+git diff --check
+```
+
+#### Acceptance Result
+- [x] 156 个厂商结果全部归因：134 个依赖目录、22 个生成目录、0 个自研源码。
+- [x] Semgrep：347 个候选文件、83 条规则、0 finding、0 scanner error。
+- [x] 完整和生产依赖审计：所有严重度为 0。
+- [x] Gitleaks：当前工作树与完整 Git 历史为 0。
+- [x] API/Web 最终镜像 Trivy：所有严重度为 0。
+- [x] 六个 multipart 路由均在业务处理前限制大小、数量与复杂度。
+- [x] 生产 Mock 登录、OAuth state、锁定用户、Redis 故障和限流 fail-open 已修复。
+- [x] 生产 CSP、回调 URL 清理、no-referrer/no-store 已验证。
+- [x] Web 生产构建、API build、Prisma validate 和 105 文件完整性复核通过。
+- [x] Header 9/9 PASS；ZAP Critical/High/Medium 为 0。
+- [x] 单测 Web 67/API 151、E2E、Playwright 30/30 和安全门禁负向测试通过。
+- [x] 安全审核报告已生成并区分本地 PASS 与外部 BLOCKED。
+
+#### Evidence
+- `docs/security/SECURITY_AUDIT_REPORT_R19B.md`
+- `docs/security/VENDOR_SAST_TRIAGE_R19B.md`
+- `docs/security/SAST_REPORT_R19.md`
+- `docs/security/SCA_REPORT_R19.md`
+- `docs/security/SECRETS_SCAN_R19.md`
+- `docs/security/SECURITY_HEADERS_R19.md`
+- `docs/security/DAST_ZAP_REPORT_R19.md`
+- `docs/security/WEB_TAMPER_PROTECTION_R19.md`
+- `reports/security/image-sca/summary.md`
+
+#### Risks / Debt
+- 当前工作树尚未形成干净、不可变的最终 commit；合并前必须在干净 commit 上复跑 CI。
+- SAST 主规则集未覆盖全部普通 JS/MJS、Shell、Workflow 和 Dockerfile。
+- PostgreSQL、Redis、Nginx 基础设施镜像尚未固定 digest 并纳入 Trivy 门禁。
+- 上传仍采用内存缓冲，需补并发限制、Nginx `limit_conn` 和容器内存上限。
+- 私有云、真实 HTTPS/HSTS、飞书管理后台、认证态 staging DAST、最终发布镜像和部署权限证据仍缺失。
+
+#### Decision
+`LOCAL_SECURITY_REMEDIATION_PASS / EXTERNAL_PRODUCTION_ACCEPTANCE_BLOCKED`
+
+#### Next Round
+`STOP`。先完成干净 commit CI、私有云/飞书证据、认证态 staging DAST 和实际 registry digest 验证，再决定生产放行。
+
+---
+
+### Round R22_APPLE_STYLE_PRODUCT_UI_IMPLEMENTATION — Gate 0
+
+#### Goal
+在不修改产品代码的前提下，将 12 页 Apple 风产品 UI 设计稿转化为可执行的页面规范、路由/组件/API 映射和当前系统差异清单，并在设计闸门停止等待确认。
+
+#### Scope
+- 将 PPT、R22 主执行提示词和冻结流程图归档到仓库。
+- 将 12 页 PPT 逐页导出为 1920×1080 PNG，并生成总览图。
+- 逐页解析页面目标、布局、字体/留白、主动作、路由、API 和当前差异。
+- 审计现有导航、样式、工作台、项目、流程图、任务、材料、复盘和后台页面。
+- 明确保留、重构、合并、隐藏的路由与组件。
+- 更新本执行账本并在 Gate 0 停止。
+
+#### Inputs Read
+- `AGENTS.md`
+- `docs/EXECUTION_LEDGER.md`
+- `docs/WORKFLOW_RULE_FREEZE.md`
+- `docs/UI_REFINEMENT_R13.md`
+- `docs/security/SECURITY_ACCEPTANCE_R19.md`
+- `docs/rounds/R19.md`
+- `docs/rounds/R19B.md`
+- `/Users/lixiaochen/Downloads/R22_APPLE_STYLE_PRODUCT_UI_IMPLEMENTATION_Codex_MASTER_PROMPT.md`
+- `/Users/lixiaochen/Downloads/轻卡定制色开发系统_Apple风产品UI设计稿.pptx`
+- `/Users/lixiaochen/Downloads/定制颜色开发流程图.pdf`
+- 当前 `apps/web`、`apps/api`、`packages/shared` 与 Prisma 路由、组件、接口和数据模型
+- 既有 R20/R21C 浏览器截图证据
+
+#### Main Files Changed
+- `docs/design/轻卡定制色开发系统_Apple风产品UI设计稿.pptx`
+- `docs/design/R22_APPLE_STYLE_PRODUCT_UI_IMPLEMENTATION_Codex_MASTER_PROMPT.md`
+- `docs/design/定制颜色开发流程图.pdf`
+- `docs/design/r22-ppt-render/slide-01.png` ～ `slide-12.png`
+- `docs/design/r22-ppt-render/contact-sheet.png`
+- `docs/design/PPT_UI_ANALYSIS_R22.md`
+- `docs/design/PPT_SLIDE_ROUTE_MATRIX_R22.md`
+- `docs/EXECUTION_LEDGER.md`
+
+本轮没有修改 `apps/web`、`apps/api`、`packages/shared`、Prisma schema 或 migration。
+
+#### Commands Run
+```bash
+git switch -c feat/apple-style-product-ui-r22
+python render_slides.py docs/design/轻卡定制色开发系统_Apple风产品UI设计稿.pptx
+python create_montage.py --input_dir docs/design/r22-ppt-render --output_file docs/design/r22-ppt-render/contact-sheet.png
+python slides_test.py docs/design/轻卡定制色开发系统_Apple风产品UI设计稿.pptx
+shasum -a 256 <源 PPT/提示词及仓库副本>
+rg --files apps/web apps/api packages/shared
+rg <路由、导航、流程、任务、附件、评审、日志、Prisma 关键字>
+```
+
+#### Acceptance Result
+- [x] PPT 12 页全部导出，文件名为 `slide-01.png` ～ `slide-12.png`，尺寸均为 1920×1080。
+- [x] 已逐张全尺寸检查，并通过演示文稿越界检查；未发现裁切或溢出。
+- [x] 仓库 PPT 与源文件 SHA-256 一致：`9b58a59fc56d8cec4756a40dacc701cb610e3d3775ce2157764b9e3094d36b27`。
+- [x] 仓库主提示词与源文件 SHA-256 一致：`666150219899ebf9c274b8000aaedc2e227451a6221821098b4f5375baac3bba`。
+- [x] `PPT_UI_ANALYSIS_R22.md` 已覆盖 12 页的目标、布局、字体/留白、主动作、路由、API 与现状差异。
+- [x] `PPT_SLIDE_ROUTE_MATRIX_R22.md` 已完成目标 IA、路由/组件/API 映射和保留/重构/合并/隐藏清单。
+- [x] 已确认当前最大结构差异：三套导航并存、正文小字号与密集表格、项目根路由不是真正工作区、缺少可追溯进展记录与生命周期复盘。
+- [x] 已保留 R19 安全边界：本轮未改 OAuth、上传验证、权限、依赖、部署或数据库模型。
+- [x] 已在 Gate 0 停止，没有提前实现页面或部署。
+
+#### Evidence
+- `docs/design/r22-ppt-render/contact-sheet.png`
+- `docs/design/PPT_UI_ANALYSIS_R22.md`
+- `docs/design/PPT_SLIDE_ROUTE_MATRIX_R22.md`
+- `docs/design/R22_APPLE_STYLE_PRODUCT_UI_IMPLEMENTATION_Codex_MASTER_PROMPT.md`
+
+#### Risks / Debt
+- 当前分支继承了切分支前未提交的 R19B 安全整改工作树；R22 后续必须精确区分改动并保留全部安全修复，不能用破坏性 Git 操作清理。
+- R19/R19B 的外部生产安全证据仍未闭环，R22 的视觉门禁不能替代生产安全放行。
+- R21C 曾向生产补演示项目和查看权限；R22 发布前必须清理、隔离或明确转换为测试租户，生产不得保留演示文案和假数据。
+- 当前模型没有独立、可重复且不可覆盖的进展记录，也没有生命周期复盘模型；后续若确认实现，必须同步 Prisma schema、migration、API、审计和权限测试。
+- 当前附件安全链路可复用，但任务—材料要求、版本和状态关联不足；不得以放宽校验换取上传体验。
+- Gate 0 是设计文档轮，未运行 `pnpm lint/typecheck/test/build`；代码实现轮必须按 `AGENTS.md` 执行完整检查。
+
+#### Decision
+`GATE_0_COMPLETE / STOP_FOR_DESIGN_CONFIRMATION`
+
+#### Next Round
+仅在用户确认设计闸门和矩阵中的产品选择后进入 Gate 1～3：建立全局设计系统、收敛导航，实现工作台、项目工作区与进展提交面板，并生成 1440/1024/390 截图与 PPT 并排评分。确认前不得开始编码。
+
+---
+
+### Round R22_APPLE_STYLE_PRODUCT_UI_IMPLEMENTATION — Gate 1–3
+
+#### Goal
+建立 Apple-like 全局设计系统和单一应用外壳，完成员工工作台、项目工作区、进展提交三个优先页面，使用真实 API 并以 1440/1024/390 截图、PPT 并排图和浏览器交互作为视觉闸门证据。
+
+#### Scope
+- Gate 1：token、字体、卡片、按钮、状态、KPI、TaskCard 和仅开发环境可见的组件预览页。
+- Gate 2：五项一级导航、辅助入口、项目内上下文导航和移动底部导航。
+- Gate 3：`/dashboard`、`/projects/:projectId`、`/progress?taskId=...&step=...`。
+- 必要后端：个人工作台聚合 API、不可覆盖的进展/阻塞模型和 API、任务附件安全绑定。
+- 不包含 Gate 4 其余页面重构、预发布和生产部署。
+
+#### Main Files Changed
+- `apps/web/src/app/r22.css`
+- `apps/web/src/components/app-shell.tsx`
+- `apps/web/src/components/r22-ui.tsx`
+- `apps/web/src/components/dashboard-workspace.tsx`
+- `apps/web/src/components/project-workspace-r22.tsx`
+- `apps/web/src/components/progress-workspace-r22.tsx`
+- `apps/web/src/lib/navigation.ts`
+- `apps/api/src/modules/dashboard/dashboard.service.ts`
+- `apps/api/src/modules/tasks/tasks.service.ts`
+- `apps/api/src/modules/tasks/dto/create-task-progress.dto.ts`
+- `apps/api/src/modules/attachments/attachments.service.ts`
+- `apps/api/prisma/schema.prisma`
+- `apps/api/prisma/migrations/20260713103000_add_task_progress_updates/migration.sql`
+- `apps/web/tests/playwright/r22-visual-gate.spec.ts`
+- `docs/design/DESIGN_TOKENS_R22.md`
+- `docs/design/SCREENSHOT_COMPARISON_R22.md`
+- `docs/design/VISUAL_ACCEPTANCE_R22.md`
+- `docs/PRODUCT_UI_IMPLEMENTATION_R22.md`
+
+#### Commands Run
+```bash
+pnpm install --frozen-lockfile
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm --filter @feishu-timeline/web build
+pnpm --filter @feishu-timeline/api build
+pnpm --filter @feishu-timeline/api prisma:validate
+pnpm --filter @feishu-timeline/web exec playwright test tests/playwright/r22-visual-gate.spec.ts --config playwright.config.mjs --reporter=line
+pnpm playwright:test
+git diff --check
+```
+
+#### Acceptance Result
+- [x] 五个一级导航已收敛，旧侧栏和顶部导航不再并列。
+- [x] 工作台实时显示问候、今日数量、下一任务、当前大卡、四项真实 KPI 和最近审计动态。
+- [x] 项目工作区使用真实 18 节点，1440px 为约 70/30 流程/工序两栏，点击节点和 URL `taskId` 可恢复。
+- [x] 进展提交分为做了什么、是否阻塞、上传材料三步，已通过真实 API 写入历史与审计。
+- [x] 附件仍使用对象存储元数据链路，R19 扩展名/MIME/文件内容/路径/权限边界未放宽。
+- [x] 1440×900、1024×900、390×844 三种视口无水平溢出，已生成 11 张主/步骤截图。
+- [x] PPT｜Web 并排图已生成；工作台/项目工作区/进展提交评分 97/95/97。
+- [x] `pnpm lint`、`pnpm typecheck`、Web 67 单测、API 153 单测、双端 build 和 Prisma validate 通过。
+- [x] R22 专项 Playwright 1/1 通过；全量 Playwright 31/31 通过。
+- [x] 未开始 Gate 4，未部署预发布或生产。
+
+#### Evidence
+- `docs/design/DESIGN_TOKENS_R22.md`
+- `docs/PRODUCT_UI_IMPLEMENTATION_R22.md`
+- `docs/design/SCREENSHOT_COMPARISON_R22.md`
+- `docs/design/VISUAL_ACCEPTANCE_R22.md`
+- `test-results/r22/local/`
+- `test-results/r22/diffs/`
+
+#### Issues Fixed During Validation
+- 1024px 项目标题和“项目资料”按钮曾出现不自然换行；已收紧字号并保持按钮单行。
+- 390px 工作台刷新动作曾单独占行，进展截图曾保留表单聚焦滚动；已调整移动布局和截图归顶。
+- 完整 Playwright 首轮有 7 条旧导航/旧标题断言失效；已更新为 R22 实际语义并全量通过。
+- 工作台初稿 KPI 未与 PPT 语义一一对齐；已改为真实待评审、缺材料和开放协助阻塞聚合，没有以其他数据换标签。
+
+#### Risks / Debt
+- 项目工作区的进度路径为响应式规则网格，与 PPT 固定坐标连线存在有意的产品化差异。
+- 进展提交为单步向导而非 PPT 三列同时展开，以保持 390px 可用性和 60 秒完成目标。
+- 本地数据库保留真实测试 seed 和浏览器回归记录；不得将演示数据策略带入生产。
+- R19B 安全整改仍是未提交的同一工作树背景；发布前必须在干净 commit 上重跑 CI 和外部安全闸门。
+
+#### Decision
+`GATE_1_2_3_COMPLETE / STOP_FOR_VISUAL_CONFIRMATION`
+
+#### Next Round
+等待用户明确回复“视觉闸门已确认”。确认后才可进入 Gate 4：项目管理、我的任务、材料上传、生命周期复盘和后台管理全量重构。仍不允许部署生产。
+
+---
+
+### Round R22_APPLE_STYLE_PRODUCT_UI_IMPLEMENTATION — Gate 4–7
+
+#### Goal
+在视觉闸门确认后完成其余正式页面、真实数据联调、四档响应式、逐页视觉证据、全量质量与安全门禁，并部署预发布后停止等待发布确认。
+
+#### Scope
+- Gate 4：项目管理、我的任务、材料上传、生命周期复盘、后台管理。
+- Gate 5：项目停滞、五类任务、必交材料、版本替换、复盘持久化、后台概览的真实 API 和权限。
+- Gate 6：八页 1920/1440/1024/390 截图、PPT｜Web 并排图和六维评分。
+- Gate 7：锁定安装、lint、typecheck、单测、双端 build、Prisma、主链路 E2E、全量 Playwright、安全扫描与预发布。
+- 明确不包含 Gate 8 生产部署。
+
+#### Main Files Changed
+- `apps/web/src/components/projects-list-client.tsx`
+- `apps/web/src/components/tasks-workspace.tsx`
+- `apps/web/src/components/materials-upload-r22.tsx`
+- `apps/web/src/components/project-retrospective-r22.tsx`
+- `apps/web/src/components/admin-dashboard-r22.tsx`
+- `apps/web/src/app/r22.css`
+- `apps/web/e2e/r22-apple-style-product-ui.spec.ts`
+- `apps/api/src/modules/projects/projects.service.ts`
+- `apps/api/src/modules/tasks/tasks.service.ts`
+- `apps/api/src/modules/workflows/workflows.service.ts`
+- `apps/api/src/modules/attachments/attachments.service.ts`
+- `apps/api/src/modules/retrospectives/`
+- `apps/api/src/modules/admin/`
+- `apps/api/prisma/schema.prisma`
+- `apps/api/prisma/migrations/20260713150000_add_project_retrospectives/migration.sql`
+- `docs/design/SCREENSHOT_COMPARISON_R22.md`
+- `docs/design/VISUAL_ACCEPTANCE_R22.md`
+- `docs/PRODUCT_UI_IMPLEMENTATION_R22.md`
+
+#### Commands Run
+```bash
+pnpm install --frozen-lockfile
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm --filter web build
+pnpm --filter api build
+pnpm --filter api prisma:validate
+pnpm test:e2e
+pnpm playwright:test
+pnpm security:sast
+pnpm security:sca
+pnpm security:secrets
+R22_EVIDENCE_ENV=local pnpm --filter web exec playwright test e2e/r22-apple-style-product-ui.spec.ts --grep "16 八个正式页面" --config playwright.config.mjs --workers=1
+git diff --check
+```
+
+#### Acceptance Result — Local
+- [x] 项目管理四 KPI、五类快速筛选和真实停滞事实完成。
+- [x] 我的任务五类视图和节点类型化主动作完成。
+- [x] 材料上传使用真实 R19B 安全链路，支持材料类型、版本号和替换归档。
+- [x] 完成工序的必交材料校验位于后端，并返回具体缺项。
+- [x] 生命周期复盘使用真实流程、进展、阻塞、附件、评审和退出数据；草稿可持久化，完成后锁定并写审计。
+- [x] 后台概览使用真实组织、角色、模板、节点参数和审计数据；普通用户前后端均被拒绝。
+- [x] 八页四档截图通过业务就绪、无 skeleton 和无横向溢出断言；无 page/console error。
+- [x] 八页 PPT｜Web 并排图已生成；视觉评分 94–97，全部高于 90。
+- [x] `pnpm lint`、`pnpm typecheck`、Web 23 files / 71 tests、API 51 files / 153 tests、Web/API build、Prisma validate 均通过。
+- [x] 主链路 E2E 通过；全量 Playwright 二次干净运行 36/36 通过。
+- [x] Semgrep 0 finding/0 scanner error；SCA 和密钥扫描通过。
+- [ ] 预发布生产构建部署、预发布截图和预发布全量 Playwright：待本节下一次更新。
+
+#### Evidence
+- `test-results/r22/local/`
+- `test-results/r22/diffs/local/`
+- `test-results/r22/local/quality-metrics.json`
+- `docs/design/SCREENSHOT_COMPARISON_R22.md`
+- `docs/design/VISUAL_ACCEPTANCE_R22.md`
+- `docs/security/SAST_REPORT_R19.md`
+- `docs/security/SCA_REPORT_R19.md`
+- `docs/security/SECRETS_SCAN_R19.md`
+
+#### Issues Fixed During Validation
+- 材料页截图最初在任务详情加载完成前采集；截图门禁现等待“本工序材料清单”且 skeleton 为 0。
+- 必交材料的前端完成态最初按附件数量推断；已改为按材料类型/材料名匹配，后端仍为最终裁决。
+- 既有 E2E 主链路仍断言旧顶栏壳；已改为验证 R22 应用壳和真实工作区加载壳，不放宽业务流转断言。
+- R20 新建项目用例直接定位已收起的关键词字段；已增加“高级筛选”交互，业务搜索断言保持不变。
+- Semgrep 首轮因开发预览 JSX 裸 `&` 出现 parser error；修正文案后重跑为 0 finding/0 error。
+
+#### Risks / Debt
+- 本地测试库积累了回归项目，截图数字只证明真实聚合而非生产数据状态。
+- 项目工作区采用响应式规则网格，而非 PPT 固定坐标拓扑；完整流程语义和后端状态机未改变。
+- 预发布必须使用生产构建重新采集证据；本地开发模式性能数据不能替代预发布数据。
+- R19B 外部真实 HTTPS、飞书后台和私有云证据仍属于生产发布边界，不能由本地/预发布视觉验收替代。
+
+#### Decision
+`GATE_4_5_6_LOCAL_PASS / GATE_7_STAGING_PENDING`
+
+#### Next Round
+提交当前可审计 commit，部署预发布生产构建，重新运行 R22/全量 Playwright、安全响应头检查并生成预发布截图。预发布通过后更新本节并停止在发布闸门；未经用户确认不得部署生产。

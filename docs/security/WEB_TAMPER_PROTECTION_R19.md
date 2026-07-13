@@ -1,7 +1,7 @@
-# Web Tamper Protection R19
+# Web Tamper Protection R19B
 
-Generated: 2026-05-19T03:40:17Z
-Commit: 4ce7e8a
+Generated: 2026-07-10T09:29:23Z
+Commit: 63f9be6
 
 ## Build Integrity Manifest
 
@@ -18,7 +18,7 @@ Commit: 4ce7e8a
 
 ## Current Acceptance
 
-PASS_LOCAL_BLOCKED_REMOTE. Local build integrity manifest generation and recheck passed. Deployment target static-directory permissions, Nginx `autoindex off`, remote hash comparison and deploy-user write permissions still require private-cloud evidence.
+FAIL until deployment target hash comparison and static directory permission review pass.
 
 ## Integrity Recheck
 

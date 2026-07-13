@@ -3,6 +3,7 @@ import type { SessionUser, FrontendRoleCode } from './auth-client';
 export type NavItem = {
   label: string;
   href: string;
+  icon?: string;
   description?: string;
   requiredRoles?: FrontendRoleCode[];
   matchMode?: 'exact' | 'prefix';
@@ -27,6 +28,7 @@ export type ProjectSectionKey =
   | 'color-exit'
   | 'materials'
   | 'attachments'
+  | 'retrospective'
   | 'logs';
 
 export type AdminSectionKey = 'users' | 'roles' | 'dicts' | 'workflow-nodes';
@@ -53,51 +55,36 @@ type AdminSectionMeta = {
 
 export const topNavigationItems: NavItem[] = [
   {
-    label: '系统导览',
-    href: '/guide',
-    description: '流程说明与操作指南',
-  },
-  {
     label: '工作台',
     href: '/dashboard',
-    description: '项目进度驾驶舱',
+    icon: '⌂',
+    description: '今天最应该推进的任务',
   },
   {
     label: '项目管理',
     href: '/projects',
-    description: '项目中心',
+    icon: '▦',
+    description: '项目状态与流程工作区',
     matchMode: 'prefix',
   },
   {
-    label: '流程地图',
-    href: '/projects/flow-map',
-    description: '项目实时流程地图',
-  },
-  {
-    label: '工序管理',
-    href: '/tasks/my',
-    description: '我的待办与逾期工序',
+    label: '我的任务',
+    href: '/tasks',
+    icon: '✓',
+    description: '个人任务中心',
     matchMode: 'prefix',
   },
   {
-    label: '材料中心',
-    href: '/materials',
-    description: '材料提交与归档',
+    label: '进展提交',
+    href: '/progress',
+    icon: '+',
+    description: '60 秒提交真实进展',
   },
   {
-    label: '月度评审',
-    href: '/monthly-reviews',
-    description: '第 17 步月度台账',
-  },
-  {
-    label: '数据中心',
-    href: '/analytics',
-    description: '项目管理分析',
-  },
-  {
-    label: '系统设置',
-    href: '/settings',
-    description: '系统设置',
+    label: '复盘分析',
+    href: '/retrospectives',
+    icon: '◌',
+    description: '生命周期复盘与改进',
     matchMode: 'prefix',
   },
 ];
@@ -108,69 +95,7 @@ export const sidebarSections: Array<{
 }> = [
   {
     title: '用户端',
-    items: [
-      {
-        label: '系统导览',
-        href: '/guide',
-        description: '理解18步流程、操作步骤和角色分工。',
-      },
-      {
-        label: '工作台',
-        href: '/dashboard',
-        description: '查看项目进度、逾期和评审概览。',
-      },
-      {
-        label: '项目看板',
-        href: '/projects/timeline',
-        description: '横向查看所有项目的 18 个流程节点。',
-      },
-      {
-        label: '流程地图',
-        href: '/projects/flow-map',
-        description: '选择项目并查看实时流程地图。',
-      },
-      {
-        label: '项目列表',
-        href: '/projects',
-        description: '检索项目、筛选工序并进入详情。',
-      },
-      {
-        label: '新建项目',
-        href: '/projects/new',
-        description: '创建新的颜色开发项目。',
-        requiredRoles: ['admin', 'project_manager'],
-      },
-      {
-        label: '我的待办',
-        href: '/tasks/my',
-        description: '查看当前用户分配到的活跃任务。',
-      },
-      {
-        label: '逾期任务',
-        href: '/tasks/overdue',
-        description: '查看当前用户已逾期的任务。',
-      },
-      {
-        label: '材料中心',
-        href: '/materials',
-        description: '按项目、工序和材料类型查看材料归档。',
-      },
-      {
-        label: '月度评审',
-        href: '/monthly-reviews',
-        description: '查看第 17 步整车色差一致性评审台账。',
-      },
-      {
-        label: '数据中心',
-        href: '/analytics',
-        description: '汇总项目进度、工序效率、返工和退出治理。',
-      },
-      {
-        label: '系统设置',
-        href: '/settings',
-        description: '查看系统设置入口。',
-      },
-    ],
+    items: topNavigationItems,
   },
   {
     title: '管理',
@@ -194,8 +119,8 @@ export const projectSectionMetaMap: Record<ProjectSectionKey, ProjectSectionMeta
   },
   'flow-map': {
     key: 'flow-map',
-    label: '流程地图',
-    description: '按业务拓扑查看项目实时进展、风险和下一步。',
+    label: '项目工作区',
+    description: '同屏查看流程图、当前工序、风险和下一步。',
   },
   'development-report': {
     key: 'development-report',
@@ -290,6 +215,11 @@ export const projectSectionMetaMap: Record<ProjectSectionKey, ProjectSectionMeta
     label: '材料 / 附件',
     description: '材料、图片和报告元数据管理。',
   },
+  retrospective: {
+    key: 'retrospective',
+    label: '生命周期复盘',
+    description: '项目总结、阶段对比、瓶颈和改进措施。',
+  },
   logs: {
     key: 'logs',
     label: '日志',
@@ -325,14 +255,13 @@ export const adminSectionMetaMap: Record<AdminSectionKey, AdminSectionMeta> = {
 };
 
 const projectContextSectionKeys: ProjectSectionKey[] = [
-  'overview',
   'flow-map',
-  'workflow',
+  'overview',
   'tasks',
   'materials',
   'reviews',
-  'fees',
-  'color-exit',
+  'retrospective',
+  'logs',
 ];
 
 export function getProjectSectionItems(projectId: string): NavItem[] {
@@ -359,6 +288,10 @@ export function getAdminSectionItems(): NavItem[] {
 }
 
 export function buildProjectRoute(projectId: string, section: ProjectSectionKey) {
+  if (section === 'flow-map') {
+    return `/projects/${projectId}`;
+  }
+
   return `/projects/${projectId}/${section}`;
 }
 
@@ -387,10 +320,6 @@ export function filterNavItems(items: NavItem[], user: SessionUser | null) {
 }
 
 export function isNavItemActive(pathname: string, item: NavItem) {
-  if (item.href === '/projects' && pathname === '/projects/flow-map') {
-    return false;
-  }
-
   if (item.matchMode === 'prefix') {
     return pathname === item.href || pathname.startsWith(`${item.href}/`);
   }
@@ -409,8 +338,8 @@ export function getRouteContext(pathname: string): RouteContext {
 
   if (pathname === '/dashboard' || pathname === '/') {
     return {
-      title: '项目进度驾驶舱',
-      description: '实时查看项目总览、逾期任务、本月评审和颜色退出风险。',
+      title: '员工工作台',
+      description: '聚焦当前任务、下一步和需要协作解决的问题。',
       eyebrow: '首页工作台',
     };
   }
@@ -492,6 +421,30 @@ export function getRouteContext(pathname: string): RouteContext {
       title: '我的待办',
       description: '查看当前登录用户分配到的全部活跃工作项。',
       eyebrow: '任务中心',
+    };
+  }
+
+  if (pathname === '/tasks') {
+    return {
+      title: '我的任务',
+      description: '按状态和紧迫度查看需要我处理的任务。',
+      eyebrow: '任务中心',
+    };
+  }
+
+  if (pathname === '/progress') {
+    return {
+      title: '进展提交',
+      description: '记录做了什么、是否阻塞以及本次提交的材料。',
+      eyebrow: '进展驱动',
+    };
+  }
+
+  if (pathname === '/retrospectives') {
+    return {
+      title: '复盘分析',
+      description: '汇总项目周期、异常、评审和改进结论。',
+      eyebrow: '生命周期复盘',
     };
   }
 

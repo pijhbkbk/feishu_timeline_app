@@ -1,10 +1,11 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 
-import appConfig from './common/app-config';
+import appConfig, { APP_ENV_FILE_PATHS } from './common/app-config';
 import { PrismaModule } from './infra/prisma/prisma.module';
 import { RedisModule } from './infra/redis/redis.module';
 import { ActivityLogsModule } from './modules/activity-logs/activity-logs.module';
+import { AdminModule } from './modules/admin/admin.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { AttachmentsModule } from './modules/attachments/attachments.module';
 import { AuthModule } from './modules/auth/auth.module';
@@ -26,6 +27,7 @@ import { ProjectsModule } from './modules/projects/projects.module';
 import { ProductionPlansModule } from './modules/production-plans/production-plans.module';
 import { QueueModule } from './modules/queue/queue.module';
 import { ReviewsModule } from './modules/reviews/reviews.module';
+import { RetrospectivesModule } from './modules/retrospectives/retrospectives.module';
 import { SamplesModule } from './modules/samples/samples.module';
 import { StandardBoardsModule } from './modules/standard-boards/standard-boards.module';
 import { SuppliersModule } from './modules/suppliers/suppliers.module';
@@ -39,11 +41,12 @@ import { WorkflowsModule } from './modules/workflows/workflows.module';
     ConfigModule.forRoot({
       isGlobal: true,
       load: [appConfig],
-      envFilePath: ['.env.local', '.env', '.env.example'],
+      envFilePath: [...APP_ENV_FILE_PATHS],
     }),
     PrismaModule,
     RedisModule,
     HealthModule,
+    AdminModule,
     AnalyticsModule,
     DashboardModule,
     AuthModule,
@@ -66,6 +69,7 @@ import { WorkflowsModule } from './modules/workflows/workflows.module';
     WorkflowsModule,
     QueueModule,
     ReviewsModule,
+    RetrospectivesModule,
     DevelopmentReportsModule,
     AttachmentsModule,
     ActivityLogsModule,

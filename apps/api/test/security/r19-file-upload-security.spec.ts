@@ -53,6 +53,14 @@ describe('R19 file upload security', () => {
     ).toBe('文件内容与允许的文件类型不匹配。');
     expect(
       getAttachmentFileValidationIssue({
+        originalName: 'at-limit.pdf',
+        mimeType: 'application/pdf',
+        fileSize: ATTACHMENT_MAX_FILE_SIZE_BYTES,
+        buffer: Buffer.from('%PDF-1.4\n'),
+      }),
+    ).toBeNull();
+    expect(
+      getAttachmentFileValidationIssue({
         originalName: 'big.pdf',
         mimeType: 'application/pdf',
         fileSize: ATTACHMENT_MAX_FILE_SIZE_BYTES + 1,

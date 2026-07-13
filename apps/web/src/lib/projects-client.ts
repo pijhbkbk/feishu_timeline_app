@@ -75,6 +75,21 @@ export type ProjectListItem = {
   riskLevel: ProjectPriority;
   isOverdue: boolean;
   progressPercent: number;
+  progressText: string;
+  currentTaskId: string | null;
+  currentTaskOwnerId: string | null;
+  currentTaskOwnerName: string | null;
+  currentTaskDueAt: string | null;
+  latestTaskUpdatedAt: string;
+  stall: {
+    nodeCode: WorkflowNodeCode | null;
+    nodeName: string | null;
+    days: number;
+    reason: string;
+    ownerName: string | null;
+    helperName: string | null;
+    expectedResolvedAt: string | null;
+  } | null;
   plannedStartDate: string | null;
   plannedEndDate: string | null;
   memberCount: number;
@@ -87,7 +102,14 @@ export type ProjectListResponse = {
   pageSize: number;
   total: number;
   totalPages: number;
+  summary: {
+    active: number;
+    risk: number;
+    dueThisWeek: number;
+    pendingReview: number;
+  };
   filters: {
+    view: ProjectListView;
     keyword: string | null;
     status: ProjectStatus | null;
     currentNodeCode: WorkflowNodeCode | null;
@@ -105,6 +127,8 @@ export type ProjectListResponse = {
   }>;
   items: ProjectListItem[];
 };
+
+export type ProjectListView = 'all' | 'normal' | 'risk' | 'overdue' | 'review';
 
 export type ProjectMember = {
   id: string;
@@ -390,6 +414,7 @@ const NODE_LABEL_MAP = Object.fromEntries(
 ) as Record<WorkflowNodeCode, string>;
 
 type ListProjectFilters = {
+  view?: ProjectListView;
   page?: number;
   pageSize?: number;
   keyword?: string;

@@ -1,34 +1,32 @@
-# Security Headers R19
+# Security Headers R19B
 
-Generated: 2026-05-19T03:39:31Z
-Commit: 4ce7e8a
-Base URL: http://localhost:3000
+Generated: 2026-07-10T09:21:52Z
+Commit: 63f9be6
+Base URL: http://127.0.0.1:3300
+Result: **PASS**
 
-## Required Headers
+## Machine-checked responses
 
-| Header | Requirement |
-|---|---|
-| Strict-Transport-Security | Required on HTTPS production/private cloud. |
-| X-Content-Type-Options | Should be `nosniff`. |
-| X-Frame-Options or CSP frame-ancestors | Required. |
-| Content-Security-Policy | Required or report-only with hardening plan. |
-| Referrer-Policy | Required. |
-| Permissions-Policy | Required. |
-| Cache-Control | Sensitive pages should not be publicly cached. |
-| Set-Cookie flags | HttpOnly, Secure on HTTPS, SameSite. |
+| URL | Result | HTTP | Detail |
+|---|---|---:|---|
+| `http://127.0.0.1:3300/` | PASS | 307 | - |
+| `http://127.0.0.1:3300/guide` | PASS | 200 | - |
+| `http://127.0.0.1:3300/dashboard` | PASS | 200 | - |
+| `http://127.0.0.1:3300/projects` | PASS | 200 | - |
+| `http://127.0.0.1:3300/projects/timeline` | PASS | 200 | - |
+| `http://127.0.0.1:3300/materials` | PASS | 200 | - |
+| `http://127.0.0.1:3300/monthly-reviews` | PASS | 200 | - |
+| `http://127.0.0.1:3300/analytics` | PASS | 200 | - |
+| `http://127.0.0.1:3300/login/callback` | PASS | 200 | - |
 
-## Raw Output
+## Enforced policy
 
-See `reports/security/headers/security-headers.raw.txt`.
+- HTTP 2xx/3xx response and successful curl execution.
+- `X-Content-Type-Options: nosniff`.
+- Enforced CSP with an explicit `script-src` that excludes `unsafe-inline` and `unsafe-eval`; `style-src-attr unsafe-inline` remains permitted.
+- `X-Frame-Options` or CSP `frame-ancestors`, plus Referrer-Policy and Permissions-Policy.
+- Sensitive routes are non-publicly cacheable; cookies carry HttpOnly/SameSite and Secure on HTTPS.
+- TLS certificates are verified unless `HEADER_INSECURE_TLS=yes` is explicitly set for an authorized local fixture.
+- HSTS with a positive max-age on HTTPS targets.
 
-## Triage
-
-- Required response headers are present on the checked local production-build pages: CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, COOP, COEP, CORP and HSTS.
-- Production CSP no longer contains `unsafe-eval`.
-- CSP still allows inline scripts and inline styles for Next.js runtime compatibility. This is tracked as Medium hardening debt.
-- `/api/health` returns 404 on the local Web server because the local test does not include the production Nginx API proxy. The API health endpoint is separately covered by API server checks and deployment scripts.
-- HSTS is only effective over HTTPS; local HTTP output confirms configuration presence only.
-
-## Current Acceptance
-
-PASS_WITH_MEDIUM_FINDINGS. Required headers are configured, with CSP inline hardening deferred.
+Raw response headers: `/Users/lixiaochen/Downloads/feishu_timeline_app/reports/security/headers/security-headers.raw.txt`

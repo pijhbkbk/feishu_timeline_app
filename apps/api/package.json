@@ -20,11 +20,11 @@
     "prisma:seed": "dotenv -e .env.example -- tsx prisma/seed.ts"
   },
   "dependencies": {
-    "@nestjs/common": "^11.1.21",
+    "@nestjs/common": "^11.1.28",
     "@nestjs/config": "^4.0.4",
-    "@nestjs/core": "^11.1.21",
-    "@nestjs/platform-express": "^11.1.21",
-    "@nestjs/swagger": "^11.4.3",
+    "@nestjs/core": "^11.1.28",
+    "@nestjs/platform-express": "^11.1.28",
+    "@nestjs/swagger": "^11.4.5",
     "@prisma/client": "^6.19.3",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",
@@ -43,6 +43,6 @@
     "ts-node": "^10.9.2",
     "tsx": "^4.22.2",
     "typescript": "^5.9.3",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.6"
   }
 }

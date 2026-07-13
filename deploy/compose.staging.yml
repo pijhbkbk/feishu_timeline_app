@@ -5,24 +5,24 @@ x-api-runtime: &api-runtime
   HOST: 0.0.0.0
   PORT: 3001
   FRONTEND_URL: ${FRONTEND_URL:-http://localhost:8080}
-  DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/feishu_timeline?schema=public}
-  REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+  DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in the staging environment file}
+  REDIS_URL: ${REDIS_URL:?Set REDIS_URL in the staging environment file}
   NOTIFICATION_QUEUE_ENABLED: ${NOTIFICATION_QUEUE_ENABLED:-true}
   NOTIFICATION_QUEUE_POLL_MS: ${NOTIFICATION_QUEUE_POLL_MS:-5000}
   NOTIFICATION_OVERDUE_SCAN_MS: ${NOTIFICATION_OVERDUE_SCAN_MS:-300000}
   NOTIFICATION_RETRY_DELAY_MS: ${NOTIFICATION_RETRY_DELAY_MS:-5000}
   NOTIFICATION_MAX_RETRIES: ${NOTIFICATION_MAX_RETRIES:-3}
-  AUTH_MOCK_ENABLED: ${AUTH_MOCK_ENABLED:-true}
+  AUTH_MOCK_ENABLED: ${AUTH_MOCK_ENABLED:-false}
   SESSION_COOKIE_NAME: ${SESSION_COOKIE_NAME:-ft_session}
   SESSION_TTL_SECONDS: ${SESSION_TTL_SECONDS:-28800}
   OBJECT_STORAGE_PROVIDER: ${OBJECT_STORAGE_PROVIDER:-local}
   OBJECT_STORAGE_LOCAL_ROOT: ${OBJECT_STORAGE_LOCAL_ROOT:-/app/var/object-storage}
   OBJECT_STORAGE_ENDPOINT: ${OBJECT_STORAGE_ENDPOINT:-http://minio.local}
   OBJECT_STORAGE_BUCKET: ${OBJECT_STORAGE_BUCKET:-feishu-timeline-staging}
-  OBJECT_STORAGE_ACCESS_KEY: ${OBJECT_STORAGE_ACCESS_KEY:-staging-access-key}
-  OBJECT_STORAGE_SECRET_KEY: ${OBJECT_STORAGE_SECRET_KEY:-staging-secret-key}
-  FEISHU_APP_ID: ${FEISHU_APP_ID:-staging-feishu-app-id}
-  FEISHU_APP_SECRET: ${FEISHU_APP_SECRET:-staging-feishu-app-secret}
+  OBJECT_STORAGE_ACCESS_KEY: ${OBJECT_STORAGE_ACCESS_KEY:-}
+  OBJECT_STORAGE_SECRET_KEY: ${OBJECT_STORAGE_SECRET_KEY:-}
+  FEISHU_APP_ID: ${FEISHU_APP_ID:-}
+  FEISHU_APP_SECRET: ${FEISHU_APP_SECRET:-}
   FEISHU_REDIRECT_URI: ${FEISHU_REDIRECT_URI:-http://localhost:8080/login/callback}
   FEISHU_AUTHORIZATION_ENDPOINT: ${FEISHU_AUTHORIZATION_ENDPOINT:-https://open.feishu.cn/open-apis/authen/v1/index}
 
@@ -33,7 +33,7 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-feishu_timeline}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the staging environment file}
     ports:
       - 127.0.0.1:${STAGING_POSTGRES_PORT:-15432}:5432
     volumes:
@@ -47,13 +47,15 @@ services:
   redis:
     image: redis:7-alpine
     container_name: ${COMPOSE_PROJECT_NAME:-feishu-timeline-staging}-redis
-    command: ["redis-server", "--appendonly", "yes"]
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in the staging environment file}
+    command: ["sh", "-c", "exec redis-server --appendonly yes --requirepass \"$${REDIS_PASSWORD}\""]
     ports:
       - 127.0.0.1:${STAGING_REDIS_PORT:-16379}:6379
     volumes:
       - redis-data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD}\" ping >/dev/null"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -75,7 +77,13 @@ services:
     volumes:
       - object-storage:/app/var/object-storage
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:3001/api/health >/dev/null"]
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('node:http').get('http://127.0.0.1:3001/api/health',(response)=>process.exit(response.statusCode===200?0:1)).on('error',()=>process.exit(1))",
+        ]
       interval: 15s
       timeout: 5s
       retries: 10
@@ -118,15 +126,21 @@ services:
       PORT: 3000
       NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-轻卡新颜色开发项目管理系统}
       NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-/api}
-      NEXT_PUBLIC_FEISHU_APP_ID: ${NEXT_PUBLIC_FEISHU_APP_ID:-staging-feishu-app-id}
-      NEXT_PUBLIC_ENABLE_MOCK_LOGIN: ${NEXT_PUBLIC_ENABLE_MOCK_LOGIN:-true}
+      NEXT_PUBLIC_FEISHU_APP_ID: ${NEXT_PUBLIC_FEISHU_APP_ID:-}
+      NEXT_PUBLIC_ENABLE_MOCK_LOGIN: ${NEXT_PUBLIC_ENABLE_MOCK_LOGIN:-false}
     depends_on:
       api:
         condition: service_healthy
     ports:
       - 127.0.0.1:${STAGING_WEB_PORT:-3100}:3000
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:3000/login >/dev/null"]
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('node:http').get('http://127.0.0.1:3000/login',(response)=>process.exit(response.statusCode===200?0:1)).on('error',()=>process.exit(1))",
+        ]
       interval: 15s
       timeout: 5s
       retries: 10
