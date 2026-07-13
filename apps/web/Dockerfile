@@ -1,4 +1,6 @@
-FROM node:24-alpine AS base
+ARG NODE_IMAGE=node:24-alpine
+
+FROM ${NODE_IMAGE} AS base
 
 ENV PNPM_HOME=/pnpm
 ENV PATH="${PNPM_HOME}:${PATH}"
@@ -22,7 +24,7 @@ COPY . .
 
 RUN pnpm --filter @feishu-timeline/web build
 
-FROM node:24-alpine AS runtime
+FROM ${NODE_IMAGE} AS runtime
 
 ENV NODE_ENV=production
 ENV HOST=0.0.0.0

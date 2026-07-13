@@ -26,13 +26,14 @@ fi
 
 API_IMAGE_REPO="${API_IMAGE_REPO:-feishu-timeline-api}"
 WEB_IMAGE_REPO="${WEB_IMAGE_REPO:-feishu-timeline-web}"
+NODE_IMAGE="${NODE_IMAGE:-node:24-alpine}"
 IMAGE_TAG="${IMAGE_TAG:-}"
 if [[ -z "$IMAGE_TAG" ]]; then
   IMAGE_TAG="${GIT_SHA:0:12}"
 fi
 RUN_SEED="${RUN_SEED:-no}"
 
-export API_IMAGE_REPO WEB_IMAGE_REPO IMAGE_TAG
+export API_IMAGE_REPO WEB_IMAGE_REPO IMAGE_TAG NODE_IMAGE
 
 PENDING_STATE="$STATE_DIR/pending.env"
 CURRENT_STATE="$STATE_DIR/current.env"
@@ -45,6 +46,7 @@ build_release_image() {
 
   log "Building image ${image_ref}"
   docker build --pull \
+    --build-arg "NODE_IMAGE=${NODE_IMAGE}" \
     --label "org.opencontainers.image.revision=${GIT_SHA}" \
     --label "org.opencontainers.image.source=feishu-timeline-app" \
     -t "$image_ref" -f "$dockerfile_path" "$ROOT_DIR"
