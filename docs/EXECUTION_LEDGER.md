@@ -3108,4 +3108,4 @@ git diff --check
 `GATE_1_2_3_4_5_6_PASS / GATE_7_STAGING_BLOCKED_BY_DOCKER_HUB_503 / PRODUCTION_NOT_AUTHORIZED`
 
 #### Next Round
-待 Docker Hub 恢复后，从干净工作树原样重跑 `RUN_SEED=no pnpm deploy:staging`。仅当 Web/API 镜像 revision 均为 `1e57490` 后，重采后台及全量 staging 截图、复跑真实会话交互、安全响应头和 ZAP，并停止在发布闸门等待人工确认。不得部署生产。
+待 Docker Hub 恢复后，从干净工作树原样重跑 `RUN_SEED=no pnpm deploy:staging`。仅当 Web/API 镜像 revision 与届时干净的分支 HEAD 一致、且该 HEAD 包含应用修复提交 `1e57490` 后，重采后台及全量 staging 截图、复跑真实会话交互、安全响应头和 ZAP，并停止在发布闸门等待人工确认。不得部署生产。
