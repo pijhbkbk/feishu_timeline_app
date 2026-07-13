@@ -1,23 +1,23 @@
 # Security Headers R19B
 
-Generated: 2026-07-10T09:21:52Z
-Commit: 63f9be6
-Base URL: http://127.0.0.1:3300
+Generated: 2026-07-13T11:33:53Z
+Commit: 8297477
+Base URL: http://127.0.0.1:8080
 Result: **PASS**
 
 ## Machine-checked responses
 
 | URL | Result | HTTP | Detail |
 |---|---|---:|---|
-| `http://127.0.0.1:3300/` | PASS | 307 | - |
-| `http://127.0.0.1:3300/guide` | PASS | 200 | - |
-| `http://127.0.0.1:3300/dashboard` | PASS | 200 | - |
-| `http://127.0.0.1:3300/projects` | PASS | 200 | - |
-| `http://127.0.0.1:3300/projects/timeline` | PASS | 200 | - |
-| `http://127.0.0.1:3300/materials` | PASS | 200 | - |
-| `http://127.0.0.1:3300/monthly-reviews` | PASS | 200 | - |
-| `http://127.0.0.1:3300/analytics` | PASS | 200 | - |
-| `http://127.0.0.1:3300/login/callback` | PASS | 200 | - |
+| `http://127.0.0.1:8080/` | PASS | 307 | - |
+| `http://127.0.0.1:8080/guide` | PASS | 200 | - |
+| `http://127.0.0.1:8080/dashboard` | PASS | 200 | - |
+| `http://127.0.0.1:8080/projects` | PASS | 200 | - |
+| `http://127.0.0.1:8080/projects/timeline` | PASS | 200 | - |
+| `http://127.0.0.1:8080/materials` | PASS | 200 | - |
+| `http://127.0.0.1:8080/monthly-reviews` | PASS | 200 | - |
+| `http://127.0.0.1:8080/analytics` | PASS | 200 | - |
+| `http://127.0.0.1:8080/login/callback` | PASS | 200 | - |
 
 ## Enforced policy
 

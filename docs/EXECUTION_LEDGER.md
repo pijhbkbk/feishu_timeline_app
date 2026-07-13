@@ -8,9 +8,9 @@
 ## 项目基本信息
 
 - 项目名称：轻卡定制颜色开发项目管理系统
-- 当前阶段：R22 Apple 风产品 UI 全量还原（视觉闸门）
-- 当前轮次：R22_APPLE_STYLE_PRODUCT_UI_IMPLEMENTATION / Gate 1–3
-- 总体状态：IN_PROGRESS（Gate 1–3 已完成，等待视觉闸门人工确认；R19B 外部生产安全验收仍独立 BLOCKED）
+- 当前阶段：R22 Apple 风产品 UI 全量还原（预发布闸门）
+- 当前轮次：R22_APPLE_STYLE_PRODUCT_UI_IMPLEMENTATION / Gate 7
+- 总体状态：BLOCKED（Gate 1–6 与本地 Gate 7 已通过；最终 staging 重部署连续两次被 Docker Hub 503 阻断；R19B 外部生产安全验收仍独立 BLOCKED）
 - 仓库路径：`/Users/lixiaochen/Downloads/feishu_timeline_app`
 - 默认分支：`main`
 - 最近更新时间：`2026-07-13`
@@ -59,7 +59,7 @@
 | R21B | 项目实时流程地图线上可见性修复 | PASSED | STOP | 已新增 `/projects/flow-map` 全局入口、导航入口、失败态修复和生产可见性验收 |
 | R21C | 生产流程地图权限与演示数据修复 | PASSED | STOP | 已修复飞书用户默认无角色导致 403，并补齐生产演示项目数据 |
 | R21C_UI | 项目实时流程地图 UI 布局重构 | PASSED | STOP | 已按 `map2.md` 调整画布拓扑、顶部工具栏、正交连线、缩放适配与 Playwright 截图验收 |
-| R22 | Apple 风产品 UI 全量还原 | IN_PROGRESS | STOP | Gate 1–3 已完成设计系统、五项导航、工作台、项目工作区和三步进展提交；三页评分 97/95/97，等待视觉闸门确认 |
+| R22 | Apple 风产品 UI 全量还原 | BLOCKED | STOP | Gate 1–6、本地全量门禁和真实飞书 staging 初验已完成；后台坏链接修复后的最终镜像因 Docker Hub 503 连续两次构建失败，未进入发布闸门 |
 
 状态枚举建议：
 
@@ -74,7 +74,7 @@
 
 ## 当前阻塞项
 
-- R22 处于预期的视觉闸门：Gate 1–3 证据已齐，必须经用户确认后才允许进入 Gate 4 其余页面；本轮不部署预发布或生产。
+- R22 已通过视觉闸门并完成 Gate 1–6；Gate 7 最终 staging 镜像构建连续两次被 Docker Hub `registry-1.docker.io` 503 阻断。现有 staging 仍健康运行提交 `8297477`，生产未部署。
 - R19B 本地整改与复测已完成；当前工作树须经评审形成干净 commit，并在该 commit 上复跑 CI。
 - R19/R19B 的公司私有云主机、飞书管理后台、认证后 staging DAST、基础设施镜像和最终发布镜像证据仍待授权或由公司侧导出。
 
@@ -3092,3 +3092,20 @@ git diff --check
 `GATE_4_5_6_LOCAL_PASS / GATE_7_STAGING_BLOCKED_BY_REAL_FEISHU_CREDENTIALS`
 
 需要在本机 `deploy/env/staging.env` 中配置真实的 `FEISHU_APP_ID`、`FEISHU_APP_SECRET`、`NEXT_PUBLIC_FEISHU_APP_ID`，并确认飞书后台允许 `http://localhost:8080/login/callback`（或将 staging 回调和地址一起改为已登记的 HTTPS 地址）。凭据只写本地 600 权限文件，不要提交仓库。配置完成后从同一 commit 重跑预发布；生产仍禁止部署。
+
+#### Staging Resume — 真实飞书与最终镜像阻塞
+- 真实飞书凭据已写入本机 `600` 权限且被 Git 忽略的 `deploy/env/staging.env`；报告、命令输出和 Git 中均不保存 Secret。
+- 提交 `829747706cf4c40d58d2889194ebed7687e02cb7` 已成功构建并部署 staging；两项 R22 migration、seed、镜像扫描、静态资源检查和四服务健康检查通过。
+- 经用户确认，在飞书安全设置新增 `http://localhost:8080/login/callback`；真实 OAuth 平台回调成功，后端在携带一次性 state cookie 时返回 `201` 并签发 `ft_session`。缺少 state cookie 的负向请求返回 `401`，证明 R19 OAuth state 防护仍有效。
+- 新飞书账号默认仅有 `viewer`；staging 使用 Prisma 事务追加 `admin`，并写入 `STAGING_ROLE_BOOTSTRAP` 审计日志。另分配一项真实 staging 任务并写入 `STAGING_TASK_ASSIGNMENT` 审计日志；生产数据库未修改。
+- 使用真实 `authSource=feishu` 会话采集八页 × 1440/1024/390 共 24 张截图；全部核心组件可见、无横向溢出、无 page error 或 5xx。
+- staging 后台页发现 `/logs` 预取 404；已改为有效的 `/admin/audit-logs`，补齐导航元数据并提交、推送 `1e574907cad35801f77fc0a739601ec45b80552f`。
+- 修复后再次通过 lint、typecheck、Web 71、API 153、双端 build、Prisma validate、主链路 E2E 和 Playwright 36/36。
+- staging 安全响应头检查通过；ZAP baseline 为 `PASS_WITH_TRIAGED_LOW_INFO`，Critical/High/Medium 均为 0，Low 2、Info 8。
+- 对 `1e57490` 的最终 staging 重部署在拉取 `node:24-alpine` 元数据时连续两次收到 Docker Hub `503 Service Unavailable`。失败发生在镜像构建前，现有 staging 未被替换，仍健康运行 `8297477`。
+
+#### Updated Decision
+`GATE_1_2_3_4_5_6_PASS / GATE_7_STAGING_BLOCKED_BY_DOCKER_HUB_503 / PRODUCTION_NOT_AUTHORIZED`
+
+#### Next Round
+待 Docker Hub 恢复后，从干净工作树原样重跑 `RUN_SEED=no pnpm deploy:staging`。仅当 Web/API 镜像 revision 均为 `1e57490` 后，重采后台及全量 staging 截图、复跑真实会话交互、安全响应头和 ZAP，并停止在发布闸门等待人工确认。不得部署生产。
