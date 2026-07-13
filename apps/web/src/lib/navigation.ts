@@ -31,7 +31,7 @@ export type ProjectSectionKey =
   | 'retrospective'
   | 'logs';
 
-export type AdminSectionKey = 'users' | 'roles' | 'dicts' | 'workflow-nodes';
+export type AdminSectionKey = 'users' | 'roles' | 'dicts' | 'workflow-nodes' | 'audit-logs';
 
 type RouteContext = {
   title: string;
@@ -250,6 +250,12 @@ export const adminSectionMetaMap: Record<AdminSectionKey, AdminSectionMeta> = {
     key: 'workflow-nodes',
     label: '流程节点',
     description: '节点定义、顺序和期限配置。',
+    requiredRoles: ['admin'],
+  },
+  'audit-logs': {
+    key: 'audit-logs',
+    label: '审计与异常',
+    description: '关键写操作、拒绝、删除和失败事件。',
     requiredRoles: ['admin'],
   },
 };

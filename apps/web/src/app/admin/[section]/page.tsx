@@ -11,7 +11,13 @@ type AdminSectionPageProps = {
   }>;
 };
 
-const adminQuickLinks: AdminSectionKey[] = ['users', 'roles', 'dicts', 'workflow-nodes'];
+const adminQuickLinks: AdminSectionKey[] = [
+  'users',
+  'roles',
+  'dicts',
+  'workflow-nodes',
+  'audit-logs',
+];
 
 export default async function AdminSectionPage({ params }: AdminSectionPageProps) {
   const { section } = await params;

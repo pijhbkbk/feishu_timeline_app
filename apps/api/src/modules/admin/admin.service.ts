@@ -78,7 +78,7 @@ export class AdminService {
           key: 'audit',
           title: '审计与异常',
           description: '检查关键写操作、拒绝、删除和失败事件。',
-          href: '/logs',
+          href: '/admin/audit-logs',
           metric: `近 30 天 ${anomalyCount} 条需关注`,
         },
       ],
