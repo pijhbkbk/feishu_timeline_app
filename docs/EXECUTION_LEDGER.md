@@ -3075,3 +3075,20 @@ git diff --check
 
 #### Next Round
 提交当前可审计 commit，部署预发布生产构建，重新运行 R22/全量 Playwright、安全响应头检查并生成预发布截图。预发布通过后更新本节并停止在发布闸门；未经用户确认不得部署生产。
+
+#### Staging Attempt
+- 应用与安全改动已提交并推送至 `origin/feat/apple-style-product-ui-r22`：`b1c7947d61c1282f076d2caf80dd9ba894ff4f55`。
+- `deploy/env/staging.env` 权限已收紧为 `600`，Mock API/UI 登录已关闭。
+- 旧本地 staging PostgreSQL 密码已无损轮换，Redis 密码与认证 URL 已配置；没有删除数据卷。
+- `RUN_SEED=yes pnpm deploy:staging` 在镜像构建前被安全校验拒绝：飞书 App ID/Secret 仍为 `staging-*` 模板值。
+- 本轮未绕过安全门禁、未启用 Mock、未生成伪造预发布截图，也未部署生产；部分启动的 PostgreSQL 容器已清理，数据卷保留。
+
+#### Blocking Evidence
+```text
+[ERROR] Feishu credentials still use template values.
+```
+
+#### Updated Decision
+`GATE_4_5_6_LOCAL_PASS / GATE_7_STAGING_BLOCKED_BY_REAL_FEISHU_CREDENTIALS`
+
+需要在本机 `deploy/env/staging.env` 中配置真实的 `FEISHU_APP_ID`、`FEISHU_APP_SECRET`、`NEXT_PUBLIC_FEISHU_APP_ID`，并确认飞书后台允许 `http://localhost:8080/login/callback`（或将 staging 回调和地址一起改为已登记的 HTTPS 地址）。凭据只写本地 600 权限文件，不要提交仓库。配置完成后从同一 commit 重跑预发布；生产仍禁止部署。
