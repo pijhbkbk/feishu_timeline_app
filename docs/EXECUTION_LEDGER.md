@@ -8,9 +8,9 @@
 ## 项目基本信息
 
 - 项目名称：轻卡定制颜色开发项目管理系统
-- 当前阶段：R23 真实使用稳定性、UAT 与 Bug 修复
-- 当前轮次：R23_REAL_WORLD_STABILITY_UAT_BUG_REMEDIATION
-- 总体状态：BLOCKED（应用级 P0/P1 已清零且本地全量回归通过；真实飞书九角色矩阵和认证后 2 小时耐久未完成；R19B 外部生产安全验收仍独立 BLOCKED）
+- 当前阶段：R23B 真实角色矩阵、真实写路径与认证耐久收口
+- 当前轮次：R23B_REAL_ROLE_WRITE_PATH_AUTH_ENDURANCE_CLOSURE
+- 总体状态：BLOCKED（R23 应用级 P0/P1 已清零；R23B 阶段 0 通过，但仅有 1 个真实飞书成员，七项目写入未获明确授权，认证耐久会话未准备；R19B 外部生产安全验收仍独立 BLOCKED）
 - 仓库路径：`/Users/lixiaochen/Downloads/feishu_timeline_app`
 - 默认分支：`main`
 - 最近更新时间：`2026-07-14`
@@ -61,6 +61,7 @@
 | R21C_UI | 项目实时流程地图 UI 布局重构 | PASSED | STOP | 已按 `map2.md` 调整画布拓扑、顶部工具栏、正交连线、缩放适配与 Playwright 截图验收 |
 | R22 | Apple 风产品 UI 全量还原 | PASSED | CONTINUE | Gate 1–8、生产发布、临时管理员撤销和生产验收均已完成 |
 | R23 | 真实使用稳定性、UAT 与 Bug 修复 | BLOCKED | STOP | 14 条稳定性专项、50 条全量 Playwright 与工程门禁通过，3 个 P1 已修复；真实角色矩阵和认证后耐久待补 |
+| R23B | 真实角色矩阵、真实写路径与认证耐久收口 | BLOCKED | STOP | 阶段 0 基线通过；等待 9 个真实 OAuth 用户、七项目写入授权和认证耐久会话 |
 
 状态枚举建议：
 
@@ -75,8 +76,9 @@
 
 ## 当前阻塞项
 
-- R23 staging 真实飞书登录已成功，但仅发现“李晓晨”一个测试成员（`admin + viewer`），不能完成营销、工艺、采购、质量、生产、财务、项目经理、管理员、查看者九类真实角色矩阵。
-- R23 不读取或导出登录 Cookie；缺少受控认证负载身份，`5 VU × 2h` 和 `10 VU × 30m` 认证业务耐久尚未执行。
+- R23B staging 仅有 1 个真实飞书成员；其余 7 条 `mock_*` 演示用户和 1 条本地系统管理员记录不能计入真实 OAuth 角色矩阵。
+- 七条 `R23-UAT-*` 项目尚未获得用户明确写入授权，当前项目数为 0。
+- R23B 不读取或导出登录 Cookie/token/storageState；缺少 9 个受控真实 OAuth 会话，`5 VU × 2h` 和 `10 VU × 30m` 认证业务耐久尚未执行。
 - R19/R19B 的公司私有云主机、飞书管理后台、认证后 staging DAST、基础设施镜像和最终发布镜像证据仍待授权或由公司侧导出。
 
 ---
@@ -3304,4 +3306,63 @@ pnpm test:load:r23 -- --base-url http://127.0.0.1:8080 --vus 20 --duration 5m --
 `R23_APPLICATION_P1_CLOSED / LOCAL_FULL_REGRESSION_PASS / BLOCKED_BY_REAL_ROLE_MATRIX_AND_AUTHENTICATED_ENDURANCE / STOP`
 
 #### Next Round
-继续 R23，不进入 R24。待用户提供真实角色成员或授权 staging 角色切换，并提供安全的认证负载身份后，完成真实写路径、5 VU × 2h、10 VU × 30m 认证耐久和最终全量回归。全部门禁通过前不得部署生产、合并 `main` 或打 tag。
+继续 R23B，不进入 R24。待九个不同的真实飞书测试成员分别完成 OAuth、用户明确授权七项目 staging 写入，并准备安全的认证负载会话后，完成真实写路径、5 VU × 2h、10 VU × 30m 认证耐久和最终全量回归。不得以同一管理员切换角色代替矩阵；全部门禁通过前不得部署生产、合并 `main` 或打 tag。
+
+---
+
+### Round R23B_REAL_ROLE_WRITE_PATH_AUTH_ENDURANCE_CLOSURE
+
+#### Goal
+只闭合 R23 的四项外部证据：九个真实业务角色用户、七条真实 UAT 写路径、认证 5 VU × 2h、认证 10 VU × 30m；不重做已通过的 R23 主体测试。
+
+#### Stage 0 Baseline
+- applicationCommit：`69d3332f30d6a7354c9b252d911cfe0a2652f76e`
+- evidenceCommit（R23B 输入）：`1684b67a7dc6bbd340c757033cc7e25c4bcda692`
+- stagingCommit：`69d3332f30d6a7354c9b252d911cfe0a2652f76e`
+- 分支：`release/r22-stability-security-rc`；已确认 `1684b67` 相对应用提交只修改 5 个 R23 报告文件。
+- staging API/Web 镜像 tag 为 `69d3332f30d6`；PostgreSQL、Redis、对象存储使用 `feishu-timeline-staging_*` 独立卷。
+- 五项服务 healthy；API health 为 `ok`；16 个 migration、0 pending。
+- 登录页真实飞书入口可用，mock 登录控件 disabled；当前浏览器无认证会话。
+- `.gitignore` 的 `test-results/` 规则已覆盖 `test-results/r23/.auth/*`。
+
+#### Identity And Data Readiness
+- staging 用户记录 9 条：真实飞书用户 1 条、`mock_*` 演示用户 7 条、本地系统管理员 1 条。
+- 唯一真实飞书用户当前系统角色为 `admin + viewer`；演示/本地用户不得计入真实角色验收。
+- 九个业务身份映射到现有八种系统角色：marketing/project_manager → `project_manager`，coating_process/production → `process_engineer`，procurement → `purchaser`，quality → `quality_engineer`，其余为 `finance/admin/viewer`。业务身份仍必须由九个不同真实 OAuth 用户分别验证。
+- 当前 `R23-UAT-*` 项目数为 0；本轮未创建、修改或删除任何项目。
+
+#### Commands And Checks
+```bash
+git fetch origin
+git switch release/r22-stability-security-rc
+git status --short
+git rev-parse HEAD
+git diff --name-only 69d3332..1684b67
+docker compose --env-file deploy/env/staging.env -f deploy/compose.staging.yml ps
+curl -fsS http://127.0.0.1:8080/api/health
+git check-ignore -v test-results/r23/.auth/marketing.json
+pnpm install
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm --filter web build
+pnpm --filter api build
+pnpm --filter api prisma:validate
+```
+
+另以只读 SQL 核对 migration、真实/演示用户数量、角色映射和 `R23-UAT-*` 项目数；未查询或输出飞书 ID、Cookie、token、OAuth code、密码或 storageState。
+
+#### Acceptance Result
+- [x] application/evidence/staging commit 分离记录且一致性已核验。
+- [x] 独立 staging、migration、服务健康、真实 OAuth 入口和 mock 关闭已核验。
+- [x] 九业务身份到现有系统角色的映射已澄清，无需修改冻结角色模型。
+- [x] 提交前工程检查通过：Web 73/73、API 157/157，lint、typecheck、双端 build、Prisma validate 均通过。
+- [ ] 九个不同真实飞书 OAuth 用户：当前仅 1 个。
+- [ ] 七条 UAT 项目写入授权与真实写路径：未授权，0 条创建。
+- [ ] 五个角色会话的 5 VU × 2h 认证耐久。
+- [ ] 九角色会话加独立项目经理会话的 10 VU × 30m 认证耐久。
+
+#### Decision
+`R23B_STAGE_0_PASS / BLOCKED_BY_REAL_USERS_WRITE_AUTHORIZATION_AND_AUTH_SESSIONS / STOP`
+
+不得进入 R24、部署生产、合并 `main` 或创建 tag。待用户完成九个真实飞书测试用户的应用可用范围与角色映射，并明确授权七项目 staging 写入后，从阶段 1 继续，不重新执行 R23。
