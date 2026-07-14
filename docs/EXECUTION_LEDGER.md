@@ -3161,3 +3161,12 @@ git diff --check
 
 #### Updated Decision
 `RELEASE_AUTHORIZED / STAGING_FINAL_PASS / PRODUCTION_BLOCKED_BY_SEED_DATA_DECISION`
+
+#### Authorized Production Seed Cleanup — 2026-07-14
+- 用户明确授权先备份生产 PostgreSQL，再删除两个 seed 项目及其关联数据。
+- 备份文件：`/var/backups/feishu-timeline-db/20260714T051948Z/feishu-timeline.dump`；大小 206468 bytes、权限 `600`、SHA-256 校验通过，`pg_restore --list` 可读取 409 行目录。
+- 删除语句以精确项目编号为候选，并在同一 SQL 语句内断言候选数必须恰好为 2；实际删除返回 `DEMO-ACTIVE-001`、`DEMO-COMPLETE-001`。
+- 级联删除后复核：项目编号、流程实例编号、颜色编号、任务编号以及项目名称中的 `DEMO`/“演示”命中均为 0。
+
+#### Updated Decision
+`RELEASE_AUTHORIZED / BACKUP_VERIFIED / SEED_DATA_REMOVED / READY_TO_MERGE_MAIN`
