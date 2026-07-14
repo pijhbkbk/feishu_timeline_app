@@ -6,16 +6,19 @@
 |---|---|
 | 分支 | `release/r22-stability-security-rc` |
 | 起始 commit | `7dd2243270c03399cd6da6cec41bf12eab68dd0b` |
-| R23 被测应用 commit | 完成候选提交与 redeploy 后补录 |
+| R23 被测应用 commit | `69d3332f30d6a7354c9b252d911cfe0a2652f76e` |
 | staging | `http://localhost:8080` |
 | migration | 16 个 migration，0 pending |
+| API image | `feishu-timeline-api:69d3332f30d6` / `sha256:f6ae1bbce00760239d51e562a6b2cfafc9b525e5d54867520f8c411148c6ca34` |
+| Web image | `feishu-timeline-web:69d3332f30d6` / `sha256:3cf96221cdb7568110b17e47891523196883fe989d95ac5efec01abdef643e7a` |
 | staging mock | Web/API 均关闭 |
-| 测试窗口 | 2026-07-14 16:18 CST 开始 |
+| 测试窗口 | 2026-07-14 16:18 ～ 17:12 CST |
 
 ## 2. staging 验证
 
 - 五个 staging 容器均 healthy。
-- 初始 R22 镜像 tag `7dd2243270c0`，API/Web image ID 已记录在 `deploy/.state/current.env`。
+- 最终 R23 候选于 2026-07-14 17:02 CST 发布，五个 staging 服务和 HTTP 检查均 healthy。
+- 运行 revision、API/Web 镜像 tag 与上述被测应用 commit 一致；工作树在构建时为 clean。
 - 真实飞书 OAuth 扫码、回调和 `/projects` 页面成功。
 - 真实成员仅发现 `李晓晨`，角色为 `admin + viewer`；未读取 Cookie、token 或密码。
 - 未经用户动作确认，未在真实会话中提交七条 staging UAT 记录。
@@ -31,6 +34,8 @@
 | Web 单元测试 | `73/73 PASS` |
 | API 单元/安全测试 | `157/157 PASS` |
 | Shared | 无测试用例 |
+
+按 50 条浏览器回归加 6 项真实会话/性能门禁计，R23 验收用例共 56 项：52 通过、0 失败、4 阻塞；另有 230 条单元测试全部通过。阻塞项为真实九角色矩阵、七项目真实写路径、5 VU × 2h 和 10 VU × 30m 认证耐久。
 
 ## 4. 工程门禁
 
@@ -71,5 +76,6 @@ pnpm playwright:test:r23
 
 - 九类真实飞书角色矩阵未完成。
 - staging 七类真实 UAT 项目尚未提交创建。
-- 认证后 `5 VU × 2h`、`10 VU × 30m` 与最终 `20 VU × 5m` 正式矩阵未完成。
+- 认证后 `5 VU × 2h`、`10 VU × 30m` 未完成。
+- `20 VU × 5m` 只读档已完成：5600 请求、0 错误、0 非预期状态、0 个 5xx，p95 46.17 ms；详见性能报告。
 - 因此当前运行结论为 `BLOCKED`，不是 `PASSED`。

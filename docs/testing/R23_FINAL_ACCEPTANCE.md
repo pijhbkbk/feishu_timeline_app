@@ -18,8 +18,9 @@ R23：`BLOCKED / NOT PASSED`。
 | 主流程、退回、月度评审、退出、复盘 | PASS（当前版本 local 自动化） |
 | 角色权限矩阵 | BLOCKED：真实飞书角色不足 |
 | 2 小时耐久 | BLOCKED |
+| 20 VU × 5m 只读 | PASS：5600 请求，0 错误/5xx，p95 46.17 ms |
 | 全量测试 | PASS，50/50 Playwright、230 单元测试 |
-| 所有证据同一最终 commit | 待最终 redeploy 收口 |
+| 所有应用证据同一最终 commit | PASS：`69d3332f30d6a7354c9b252d911cfe0a2652f76e` |
 
 ## 3. 已关闭 P1
 

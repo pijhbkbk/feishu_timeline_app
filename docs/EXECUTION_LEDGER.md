@@ -3261,6 +3261,8 @@ pnpm playwright:test:r20
 pnpm playwright:test:r23
 PLAYWRIGHT_RESULT_ROUND=r23 pnpm playwright:test
 pnpm test:load:r23 -- --vus 2 --duration 10s --think-ms 500 --sample-ms 2000 --profile script-smoke
+pnpm deploy:health
+pnpm test:load:r23 -- --base-url http://127.0.0.1:8080 --vus 20 --duration 5m --think-ms 1000 --sample-ms 30000 --profile 20vu-5m-final-candidate
 ```
 
 #### Acceptance Result
@@ -3271,10 +3273,11 @@ pnpm test:load:r23 -- --vus 2 --duration 10s --think-ms 500 --sample-ms 2000 --p
 - [x] 完整 Playwright 50/50、Web 73/73、API 157/157、主链路 E2E、双端 build、Prisma validate 通过。
 - [x] P0 0；发现的 3 个 P1 均已建立回归测试、修复并通过全量回归。
 - [x] 无重复流程节点、陈旧更新复活、同名覆盖、半条附件、重复月度实例或重复提醒入队。
+- [x] 最终被测应用 commit `69d3332f30d6a7354c9b252d911cfe0a2652f76e` 已准确部署；API/Web 镜像 tag 为 `69d3332f30d6`，16 个 migration 无待执行项，五项服务和 HTTP 检查 healthy。
+- [x] 20 VU × 5m 只读档：5600 请求、0 错误、0 非预期状态、0 个 5xx，p95 46.17 ms；DB 慢查询/死锁、容器重启、未处理异常均为 0。负载停止并空闲回收后 API+Web 合计内存较基线增长 4.87%。
 - [ ] 九类真实飞书角色矩阵：仅有一个真实成员可用。
 - [ ] staging 七类真实项目写入：等待用户动作确认和角色安排。
-- [ ] 认证后 5 VU × 2h、10 VU × 30m 与最终 20 VU × 5m 正式耐久矩阵。
-- [ ] 最终候选 commit 与镜像 digest 收口：待外部门禁解除后重新部署。
+- [ ] 认证后 5 VU × 2h、10 VU × 30m 正式耐久矩阵。
 
 #### Bugs Fixed
 - `R23-P1-001`：工作流改为带旧状态/活跃条件的原子更新，陈旧并发动作返回 409。
@@ -3294,11 +3297,11 @@ pnpm test:load:r23 -- --vus 2 --duration 10s --think-ms 500 --sample-ms 2000 --p
 
 #### Risks / Debt
 - local mock 角色只能证明应用权限逻辑，不能替代真实飞书成员和组织可用范围。
-- 10 秒脚本冒烟只能验证工具与指标采集，不能替代 2 小时内存增长和稳定性门禁。
+- 20 VU × 5m 只读档只能证明公开读路径与未认证边界，不能替代 2 小时认证业务耐久和内存门禁。
 - 未经明确确认，不修改 staging 用户角色，不提交真实 UAT 业务数据，不读取认证凭证。
 
 #### Decision
 `R23_APPLICATION_P1_CLOSED / LOCAL_FULL_REGRESSION_PASS / BLOCKED_BY_REAL_ROLE_MATRIX_AND_AUTHENTICATED_ENDURANCE / STOP`
 
 #### Next Round
-继续 R23，不进入 R24。待用户提供真实角色成员或授权 staging 角色切换，并提供安全的认证负载身份后，部署准确候选 commit，完成真实写路径、正式耐久矩阵和最终全量回归。全部门禁通过前不得部署生产、合并 `main` 或打 tag。
+继续 R23，不进入 R24。待用户提供真实角色成员或授权 staging 角色切换，并提供安全的认证负载身份后，完成真实写路径、5 VU × 2h、10 VU × 30m 认证耐久和最终全量回归。全部门禁通过前不得部署生产、合并 `main` 或打 tag。

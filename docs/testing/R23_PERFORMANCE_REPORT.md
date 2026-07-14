@@ -32,7 +32,27 @@
 |---|---|---|
 | 5 VU × 2h | 真实认证业务路径 | BLOCKED：缺少可安全注入的真实测试会话 |
 | 10 VU × 30m | 真实认证业务路径 | BLOCKED：同上 |
-| 20 VU × 5m | 只读 | 待最终候选镜像部署后执行 |
+| 20 VU × 5m | 只读与未认证边界 | PASS |
+
+### 20 VU × 5m 最终候选结果
+
+被测应用 commit：`69d3332f30d6a7354c9b252d911cfe0a2652f76e`。
+
+| 指标 | 结果 |
+|---|---:|
+| 请求 / 吞吐 | `5600 / 18.64 req/s` |
+| transport error / unexpected status / 5xx | `0 / 0 / 0` |
+| p50 / p95 / p99 / max | `7.04 / 46.17 / 74.91 / 181.73 ms` |
+| 查询 API p95 | `7.32 ms` |
+| Web 页面响应 p95 | `55.85 ms` |
+| DB max connection / slow query / deadlock | `4 / 0 / 0` |
+| Redis max memory | `1,423,032 bytes` |
+| 容器重启 | `0` |
+| uncaught / unhandled rejection / Nginx 5xx | `0 / 0 / 0` |
+
+窗口结束时 Web RSS 为 259.4 MiB（基线 113.9 MiB），API+Web 瞬时增长 82.73%；停止负载并空闲回收后，2026-07-14 17:11:34 CST 复核 Web 为 115.6 MiB、API 为 77.66 MiB，合计较负载前基线增长 4.87%。该结果未呈现持续泄漏，但 5 分钟只读档不能替代 2 小时认证耐久门禁。
+
+证据：`test-results/r23/performance/20vu-5m-final-candidate-2026-07-14T09-05-00-621Z.json`、`test-results/r23/performance/20vu-5m-final-candidate-post-idle.md`。
 
 未完成 2 小时耐久前，不给出 R23 性能 PASS，也不以短时冒烟替代耐久结论。
 
