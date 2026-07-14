@@ -3170,3 +3170,42 @@ git diff --check
 
 #### Updated Decision
 `RELEASE_AUTHORIZED / BACKUP_VERIFIED / SEED_DATA_REMOVED / READY_TO_MERGE_MAIN`
+
+---
+
+### Round R22_APPLE_STYLE_PRODUCT_UI_IMPLEMENTATION — Production Release
+
+#### Goal
+在发布闸门确认后完成生产数据保护、seed 清理、`main` 合并、生产部署、真实飞书登录、生产截图及安全验收。
+
+#### Production Changes
+- 生产 PostgreSQL 已先完成自定义格式备份：`/var/backups/feishu-timeline-db/20260714T051948Z/feishu-timeline.dump`；权限 `600`、SHA-256 校验通过，`pg_restore --list` 可读取 409 行目录。
+- 仅以精确编号删除 `DEMO-ACTIVE-001`、`DEMO-COMPLETE-001` 两个 seed 项目；同一 SQL 内断言候选数恰好为 2。项目、流程、颜色、任务及项目名称中的 seed 标识复核均为 0。
+- 功能分支已快进合并到 `main` 并部署生产；两项 R22 migration 已应用，API、Web、Nginx、PostgreSQL、Redis 全部 active。
+- 生产 API/Web `.env.production` 权限均为 `600`。新 App Secret 仅从本机 Git 忽略的 `600` 环境文件安全同步到生产，未打印、未写入 Git；同步前生产环境文件已备份。
+- 真实飞书 OAuth 使用当前账号“李晓晨”完成，`authSource=feishu`，Mock 登录保持关闭。
+
+#### Production Screenshot Acceptance
+- 生产库清理后项目数为 0、任务数为 0；经用户确认，采用“生产真实空态 + 最终预发布真实数据态”的组合证据，不为截图向生产重新写入演示项目。
+- 生产域名生成 1440×900、1024×900、390×844 三档截图 21 张。普通账号可访问的六页共 18/18 PASS：无 skeleton、无登录跳转、无 page error、无 API error、无横向溢出。
+- 禁止文本 `DEMO-ACTIVE`、`DEMO-COMPLETE`、`演示采购专员`、旧 `8600 元` 在生产可见文本中的命中数为 0。
+- 当前飞书账号原始角色仅为 `viewer`；`/admin` 三档视口首先验证为后端 `403`，证明普通用户权限边界有效。
+- 经用户再次明确确认，仅临时追加 `admin` 角色采集后台管理三档截图，3/3 PASS；随后立即删除该次新建的角色关联。最终角色复核为 `viewer`，临时标记不存在。
+- 临时授权和撤销分别写入 `PRODUCTION_TEMP_ADMIN_GRANT_R22`、`PRODUCTION_TEMP_ADMIN_REVOKE_R22` 两条生产审计日志；未修改 `isSystemAdmin`，未创建生产项目或任务。
+- 数据依赖页面沿用最终预发布真实飞书会话 32/32 截图、三步进展交互和 PPT｜Web 对比证据；用户已确认接受该组合证据边界。
+
+#### Production Health and Security
+- 生产健康检查全部通过：根路径、登录、工作台、项目管理、API health 和 Next 静态资源均为 200，五项服务均 active。
+- 9 条生产安全响应头检查全部 PASS。
+- 生产 ZAP 被动基线为 `PASS_WITH_TRIAGED_LOW_INFO`：Critical 0、High 0、Medium 0、Low 2、Info 8，阻塞发现 0。
+- 截图时应用提交为 `2e9470bd2f54cff4887a37885a4ba64c0050c9ae`，本地 `main`、`origin/main` 与生产 VPS HEAD 一致。
+
+#### Evidence
+- `apps/web/test-results/r22/production-2e9470b/browser-evidence.json`（Git 忽略，本机证据）
+- `apps/web/test-results/r22/production-2e9470b/admin-authorized/admin-browser-evidence.json`（Git 忽略，本机证据）
+- `apps/web/test-results/r22/production-2e9470b/security-headers/`（Git 忽略，本机证据）
+- `apps/web/test-results/r22/production-2e9470b/zap/`（Git 忽略，本机证据）
+- `test-results/r22/staging-release-candidate-ab04baa/`（Git 忽略，本机数据态证据）
+
+#### Final Decision
+`GATE_1_2_3_4_5_6_7_8_PASS / PRODUCTION_RELEASED / TEMP_ADMIN_REVOKED / R22_COMPLETE`
