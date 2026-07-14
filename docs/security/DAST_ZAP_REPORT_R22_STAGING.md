@@ -1,7 +1,7 @@
 # DAST ZAP Report R19B
 
-Generated: 2026-07-13T11:36:24Z
-Commit: 8297477
+Generated: 2026-07-14T00:41:29Z
+Commit: eb49f52
 Target: http://host.docker.internal:8080
 Image: `ghcr.io/zaproxy/zaproxy:stable@sha256:8d387b1a63e3425beef4846e39719f5af2a787753af2d8b6558c6257d7a577a2`
 Result: **PASS_WITH_TRIAGED_LOW_INFO**
@@ -35,9 +35,9 @@ Blocking findings: 0
 
 ## Report files
 
-- `/Users/lixiaochen/Downloads/feishu_timeline_app/reports/security/zap-r22-staging/zap-baseline.log`
-- `/Users/lixiaochen/Downloads/feishu_timeline_app/reports/security/zap-r22-staging/zap-baseline.json`
-- `/Users/lixiaochen/Downloads/feishu_timeline_app/reports/security/zap-r22-staging/zap-baseline.html`
+- `/Users/lixiaochen/Downloads/feishu_timeline_app/reports/security/zap-r22-staging-final/zap-baseline.log`
+- `/Users/lixiaochen/Downloads/feishu_timeline_app/reports/security/zap-r22-staging-final/zap-baseline.json`
+- `/Users/lixiaochen/Downloads/feishu_timeline_app/reports/security/zap-r22-staging-final/zap-baseline.html`
 
 ## Gate policy
 

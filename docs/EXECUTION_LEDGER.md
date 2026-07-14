@@ -3109,3 +3109,18 @@ git diff --check
 
 #### Next Round
 待 Docker Hub 恢复后，从干净工作树原样重跑 `RUN_SEED=no pnpm deploy:staging`。仅当 Web/API 镜像 revision 与届时干净的分支 HEAD 一致、且该 HEAD 包含应用修复提交 `1e57490` 后，重采后台及全量 staging 截图、复跑真实会话交互、安全响应头和 ZAP，并停止在发布闸门等待人工确认。不得部署生产。
+
+#### Staging Resume — 2026-07-14
+- 新增可配置 `NODE_IMAGE` build arg，并使用固定 digest 的 Google 镜像代理完成供应链可复核构建；提交 `eb49f521883cf4e5e867cec1e512c7abce5fc415` 已推送。
+- `RUN_SEED=no pnpm deploy:staging` 成功：16 个 migration 无待执行项，镜像扫描、健康检查和静态资源检查通过；Web/API/PostgreSQL/Redis/Nginx 全部 healthy，运行镜像 revision 与 `eb49f52` 一致。
+- 旧 App Secret 已按用户确认重置。新 Secret 仅存在 Git 忽略、权限 `600` 的本机 staging env；重复旧凭据项已清理，官方飞书 tenant token 接口验证成功，任何报告与 Git 均未记录 Secret。
+- staging `mockEnabled=false`、`feishuEnabled=true`；OAuth 缺少一次性 state cookie 的负向测试返回 `401`。
+- `pnpm security:sast`、`security:sca`、`security:secrets` 和 staging security headers 全部 PASS。
+- ZAP baseline 为 `PASS_WITH_TRIAGED_LOW_INFO`：Critical 0、High 0、Medium 0、Low 2、Info 8，无阻塞发现。
+- 真实 OAuth 跳转已到飞书授权端，但飞书明确拒绝当前账号“李晓晨”访问该应用；当前账号尚未位于“测试企业和人员”或正式可用范围，因此不能把旧 revision 的截图冒充本次部署证据。
+
+#### Updated Decision
+`GATE_1_2_3_4_5_6_PASS / GATE_7_STAGING_DEPLOYED / BLOCKED_BY_FEISHU_APP_ACCESS_SCOPE / PRODUCTION_NOT_AUTHORIZED`
+
+#### Next Round
+经用户明确确认后，仅把当前账号加入飞书应用测试/可用范围，完成真实 OAuth、八页 × 1920/1440/1024/390 截图、console/5xx/横向溢出检查并提交发布闸门。未经发布闸门确认不得部署生产。
