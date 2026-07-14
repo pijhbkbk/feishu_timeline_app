@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, type FormEvent } from 'react';
 
+import { formatBusinessCode } from '../lib/business-code';
 import { useAuth } from './auth-provider';
 import {
   createProject,
@@ -316,7 +317,7 @@ export function ProjectEditor(props: ProjectEditorProps) {
           <div className="metadata-grid">
             <div className="metadata-item">
               <span>项目编号</span>
-              <strong>{project.code}</strong>
+              <strong>{formatBusinessCode(project.code, '定制色项目')}</strong>
             </div>
             <div className="metadata-item">
               <span>负责人</span>
@@ -328,7 +329,11 @@ export function ProjectEditor(props: ProjectEditorProps) {
             </div>
             <div className="metadata-item">
               <span>流程实例</span>
-              <strong>{project.currentWorkflowInstance?.instanceNo ?? '未创建'}</strong>
+              <strong>
+                {project.currentWorkflowInstance
+                  ? formatBusinessCode(project.currentWorkflowInstance.instanceNo, '流程已建立')
+                  : '未创建'}
+              </strong>
             </div>
           </div>
         </section>

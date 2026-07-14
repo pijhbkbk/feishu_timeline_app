@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
+import { formatBusinessCode } from '../lib/business-code';
 import {
   fetchDashboardProjectTimelines,
   type DashboardProjectTimelineItem,
@@ -361,7 +362,7 @@ export function ProjectTimelineCard({
     <article className="timeline-board-card" data-testid="project-timeline-card">
       <div className="timeline-board-card-header">
         <div>
-          <span className="workflow-node-kicker">{item.projectCode}</span>
+          <span className="workflow-node-kicker">{formatBusinessCode(item.projectCode, '定制色项目')}</span>
           <h3>{item.projectName}</h3>
           <p>
             颜色：{item.colorName} / 当前节点：{item.currentNodeName}

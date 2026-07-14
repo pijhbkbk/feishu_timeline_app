@@ -10,7 +10,6 @@ export default function ColorsPage() {
       tags={['颜色主数据', '颜色版本', '颜色取号']}
       actions={[
         { label: '进入项目中心', href: '/projects' },
-        { label: '查看示例项目颜色评价', href: '/projects/DEMO-001/color-evaluation' },
       ]}
     />
   );

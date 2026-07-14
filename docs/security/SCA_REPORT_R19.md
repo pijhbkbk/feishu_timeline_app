@@ -1,7 +1,7 @@
 # Dependency SCA Report R19B
 
-Generated: 2026-07-14T00:41:01Z
-Commit: eb49f52
+Generated: 2026-07-14T05:02:11Z
+Commit: e8acbb8
 Scope: all workspace dependencies, with production dependencies also reported as a separate release gate
 
 ## Command Results

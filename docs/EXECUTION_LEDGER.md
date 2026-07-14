@@ -3139,3 +3139,14 @@ git diff --check
 
 #### Next Round
 等待用户明确回复“发布闸门已确认”。只有确认后才可部署生产，并必须在生产域名重新执行 R22 Playwright、全页截图、真实交互、VPS HEAD/GitHub commit/镜像 revision 一致性与安全检查。
+
+#### Release Candidate Guard — 2026-07-14
+- 用户已明确确认发布闸门，同时要求正式页面不得展示 `DEMO-ACTIVE`、`DEMO-COMPLETE` 等英文种子业务编号。
+- 新增统一业务编号展示层：真实业务编号保持原样；包含 `DEMO` 分段的项目/流程编号转换为中文业务文案，种子颜色编号不展示。
+- 项目卡片、任务卡片、项目工作区、复盘、材料、流程实例、月度评审和旧入口页已统一接入；旧的硬编码 `DEMO-001` 路由已删除。
+- R22 浏览器截图门禁新增可见文本断言，八个正式页面的四档视口均拒绝 `DEMO-*`、`WF-DEMO-*`、`CLR-DEMO-*`。
+- 发布候选检查通过：Web 24 files / 73 tests、API 51 files / 153 tests、lint、typecheck、双端 build、Prisma validate、主链路 E2E、Playwright 36/36、SAST、SCA、密钥扫描均通过。
+- 生产部署仍不得执行 seed；下一步先以 `RUN_SEED=no` 更新 staging 并重采真实飞书会话截图，再合并 `main` 和部署生产。
+
+#### Updated Decision
+`RELEASE_AUTHORIZED / RELEASE_CANDIDATE_TESTS_PASS / STAGING_REFRESH_PENDING / PRODUCTION_PENDING`

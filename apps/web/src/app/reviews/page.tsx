@@ -7,7 +7,7 @@ export default function ReviewsPage() {
       title="评审"
       description="该全局入口保留兼容，评审功能已归并到项目详情中的评审页签。"
       route="/reviews"
-      actions={[{ label: '查看示例项目评审', href: '/projects/DEMO-001/reviews' }]}
+      actions={[{ label: '进入项目中心', href: '/projects' }]}
     />
   );
 }

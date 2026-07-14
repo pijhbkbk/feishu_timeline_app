@@ -205,6 +205,7 @@ test.describe.serial('R22 Apple 风产品 UI 全量验收', () => {
         await expect(page.getByTestId(item.testId)).toBeVisible();
         await waitForScreenshotReady(page, item.name);
         await assertNoHorizontalOverflow(page);
+        await assertNoSeedBusinessCodes(page);
         qualityMetrics.push(await collectQualityMetric(page, item.name, viewport.name));
         await page.screenshot({
           path: path.join(evidenceDir, `${item.name}-${viewport.name}.png`),
@@ -226,6 +227,7 @@ test.describe.serial('R22 Apple 风产品 UI 全量验收', () => {
       await expect(page.getByTestId('admin-page')).toBeVisible();
       await waitForScreenshotReady(page, 'admin');
       await assertNoHorizontalOverflow(page);
+      await assertNoSeedBusinessCodes(page);
       qualityMetrics.push(await collectQualityMetric(page, 'admin', viewport.name));
       await page.screenshot({ path: path.join(evidenceDir, `admin-${viewport.name}.png`), fullPage: true, animations: 'disabled' });
     }
@@ -313,4 +315,9 @@ async function assertNoHorizontalOverflow(page: Page) {
     content: document.documentElement.scrollWidth,
   }));
   expect(dimensions.content).toBeLessThanOrEqual(dimensions.viewport + 1);
+}
+
+async function assertNoSeedBusinessCodes(page: Page) {
+  const visibleText = await page.locator('body').innerText();
+  expect(visibleText).not.toMatch(/\b(?:WF-|CLR-)?DEMO(?:[-_ ][A-Z0-9]+)+\b/i);
 }

@@ -4,6 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 
+import { formatBusinessCode } from '../lib/business-code';
 import { useAuth } from './auth-provider';
 import { FeedbackBanner } from './feedback-banner';
 import { StatePanel } from './state-panel';
@@ -321,7 +322,7 @@ export function ProjectWorkflowWorkspace({
           </div>
           <div className="metadata-item">
             <span>实例编号</span>
-            <strong>{workflow.workflowInstance.instanceNo}</strong>
+            <strong>{formatBusinessCode(workflow.workflowInstance.instanceNo, '流程已建立')}</strong>
           </div>
           <div className="metadata-item">
             <span>目标日期</span>

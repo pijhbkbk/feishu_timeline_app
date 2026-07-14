@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import React, { type PropsWithChildren, type ReactNode } from 'react';
 
+import { formatBusinessCode } from '../lib/business-code';
 import { formatDate, type ProjectPriority } from '../lib/projects-client';
 import type { PersonalDashboardTask } from '../lib/dashboard-client';
 
@@ -67,7 +68,7 @@ export function R22TaskCard({
     <article className={`r22-task-card ${primary ? 'r22-task-card-primary' : ''}`}>
       <div className="r22-task-card-heading">
         <div>
-          <span>{task.projectCode} · {getPriorityLabel(task.projectPriority)}</span>
+          <span>{formatBusinessCode(task.projectCode, '定制色项目')} · {getPriorityLabel(task.projectPriority)}</span>
           <h2>{task.nodeName}</h2>
           <p>{task.projectName}</p>
         </div>

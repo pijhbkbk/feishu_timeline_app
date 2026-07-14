@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import React, { useEffect, useMemo, useState, type FormEvent } from 'react';
 
+import { formatBusinessCode, formatOptionalBusinessCode } from '../lib/business-code';
 import {
   fetchProjects,
   fetchUserDirectory,
@@ -217,11 +218,12 @@ export function ProjectsListClient() {
 
 export function ProjectBoardCard({ project }: { project: ProjectListItem }) {
   const tone = project.stall || project.isOverdue ? 'danger' : project.riskLevel === 'HIGH' || project.riskLevel === 'CRITICAL' ? 'warning' : 'success';
+  const displayColorCode = formatOptionalBusinessCode(project.colorCode);
   return (
     <article className="r22-card r22-project-wide-card" data-testid="project-card">
       <div className="r22-project-card-main">
         <div className="r22-project-card-title">
-          <div><span>{project.code}</span><h2>{project.name}</h2><p>{project.colorName ?? '尚未关联颜色'}{project.colorCode ? ` · ${project.colorCode}` : ''}</p></div>
+          <div><span>{formatBusinessCode(project.code, '定制色项目')}</span><h2>{project.name}</h2><p>{project.colorName ?? '尚未关联颜色'}{displayColorCode ? ` · ${displayColorCode}` : ''}</p></div>
           <R22StatusBadge tone={tone}>{project.stall ? '需要协同' : project.isOverdue ? '已经逾期' : getProjectPriorityLabel(project.riskLevel)}</R22StatusBadge>
         </div>
         <div className="r22-project-facts">

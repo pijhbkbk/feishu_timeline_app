@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import React, { useEffect, useRef, useState } from 'react';
 
+import { formatBusinessCode } from '../lib/business-code';
 import {
   fetchDashboardMonthlyReviewBoard,
   type DashboardMonthlyReviewBoardResponse,
@@ -134,7 +135,7 @@ export function MonthlyReviewsBoard() {
           <section key={item.projectId} className="page-card">
             <div className="section-header">
               <div>
-                <p className="eyebrow">{item.projectCode}</p>
+                <p className="eyebrow">{formatBusinessCode(item.projectCode, '定制色项目')}</p>
                 <h3 className="section-title">{item.projectName}</h3>
                 <p className="muted">
                   颜色：{item.colorName}。负责人：{item.ownerName}。已完成{' '}

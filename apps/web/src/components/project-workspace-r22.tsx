@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
+import { formatBusinessCode } from '../lib/business-code';
 import {
   fetchProjectFlowMap,
   formatDate,
@@ -128,7 +129,7 @@ export function ProjectWorkspaceR22({ projectId }: { projectId: string }) {
     <div className="r22-page r22-project-workspace" data-testid="project-workspace-page">
       <header className="r22-project-hero">
         <div>
-          <p className="r22-breadcrumb"><Link href="/projects">项目管理</Link><span>/</span>{payload.projectCode}</p>
+          <p className="r22-breadcrumb"><Link href="/projects">项目管理</Link><span>/</span>{formatBusinessCode(payload.projectCode, '定制色项目')}</p>
           <div className="r22-project-title-row">
             <h1>{payload.projectName}</h1>
             <R22StatusBadge tone={payload.overdueCount > 0 ? 'danger' : 'success'}>

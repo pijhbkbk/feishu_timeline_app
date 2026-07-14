@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import React, { useEffect, useState } from 'react';
 
+import { formatBusinessCode } from '../lib/business-code';
 import {
   completeProjectRetrospective,
   fetchProjectRetrospective,
@@ -80,7 +81,7 @@ export function ProjectRetrospectiveR22({ projectId }: { projectId: string }) {
   return (
     <div className="r22-page r22-retrospective-page" data-testid="retrospective-page">
       <header className="r22-project-hero">
-        <div><p className="r22-breadcrumb"><Link href="/projects">项目</Link><span>/</span><Link href={`/projects/${projectId}`}>{data.project.code}</Link></p><div className="r22-project-title-row"><h1>生命周期复盘</h1><R22StatusBadge tone={isCompleted ? 'success' : 'brand'}>{isCompleted ? '已完成' : '草稿'}</R22StatusBadge></div><p>{data.project.name}{data.project.colorName ? ` · ${data.project.colorName}` : ''}</p></div>
+        <div><p className="r22-breadcrumb"><Link href="/projects">项目</Link><span>/</span><Link href={`/projects/${projectId}`}>{formatBusinessCode(data.project.code, '定制色项目')}</Link></p><div className="r22-project-title-row"><h1>生命周期复盘</h1><R22StatusBadge tone={isCompleted ? 'success' : 'brand'}>{isCompleted ? '已完成' : '草稿'}</R22StatusBadge></div><p>{data.project.name}{data.project.colorName ? ` · ${data.project.colorName}` : ''}</p></div>
         <div className="r22-page-hero-actions"><button type="button" className="r22-button r22-button-secondary" onClick={() => window.print()}>打印 / 导出 PDF</button>{canEdit && !isCompleted ? <button type="button" className="r22-button r22-button-primary" disabled={isSaving} onClick={() => void save()}>{isSaving ? '正在保存…' : '保存草稿'}</button> : null}</div>
       </header>
 

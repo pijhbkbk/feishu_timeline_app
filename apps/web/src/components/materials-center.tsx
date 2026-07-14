@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
+import { formatBusinessCode, formatOptionalBusinessCode } from '../lib/business-code';
 import {
   fetchDashboardProjectTimelines,
   type DashboardProjectTimelineItem,
@@ -173,13 +174,13 @@ export function MaterialsProjectTable({
               <td>
                 <div className="cell-stack">
                   <strong>{item.projectName}</strong>
-                  <span>{item.projectCode}</span>
+                  <span>{formatBusinessCode(item.projectCode, '定制色项目')}</span>
                 </div>
               </td>
               <td>
                 <div className="cell-stack">
                   <strong>{item.colorName}</strong>
-                  <span>{item.colorCode ?? '未维护色号'}</span>
+                  <span>{formatOptionalBusinessCode(item.colorCode) ?? '未维护色号'}</span>
                 </div>
               </td>
               <td>{item.currentNodeName}</td>
