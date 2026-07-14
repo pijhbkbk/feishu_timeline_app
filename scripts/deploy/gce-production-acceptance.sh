@@ -258,6 +258,8 @@ printf 'service_postgresql=%s\n' "$(systemctl is-active postgresql)"
 printf 'service_redis=%s\n' "$(systemctl is-active redis-server)"
 printf 'postgres_ready=%s\n' "$(pg_isready -h localhost -p 5432 >/dev/null 2>&1 && echo yes || echo no)"
 printf 'redis_ping=%s\n' "$(redis-cli ping 2>/dev/null || true)"
+printf 'env_api_mode=%s\n' "$(stat -c '%a' /opt/feishu_timeline_app/apps/api/.env.production)"
+printf 'env_web_mode=%s\n' "$(stat -c '%a' /opt/feishu_timeline_app/apps/web/.env.production)"
 
 if sudo nginx -t >/dev/null 2>&1; then
   echo 'nginx_test=ok'
@@ -335,6 +337,20 @@ if [ "$nginx_test" = "ok" ]; then
   add_result "nginx_test" "ok" "$nginx_test" "PASS"
 else
   add_result "nginx_test" "ok" "${nginx_test:-<missing>}" "FAIL"
+fi
+
+api_env_mode="$(remote_value env_api_mode)"
+if [ "$api_env_mode" = "600" ]; then
+  add_result "env_api_mode" "600" "$api_env_mode" "PASS"
+else
+  add_result "env_api_mode" "600" "${api_env_mode:-<missing>}" "FAIL"
+fi
+
+web_env_mode="$(remote_value env_web_mode)"
+if [ "$web_env_mode" = "600" ]; then
+  add_result "env_web_mode" "600" "$web_env_mode" "PASS"
+else
+  add_result "env_web_mode" "600" "${web_env_mode:-<missing>}" "FAIL"
 fi
 
 frontend_url="$(remote_value value_FRONTEND_URL)"

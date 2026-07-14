@@ -3150,3 +3150,14 @@ git diff --check
 
 #### Updated Decision
 `RELEASE_AUTHORIZED / RELEASE_CANDIDATE_TESTS_PASS / STAGING_REFRESH_PENDING / PRODUCTION_PENDING`
+
+#### Release Candidate Staging + Production Read-only Audit — 2026-07-14
+- `ab04baa3cfd917696072e715da08e25d967b37bf` 已使用固定摘要的镜像代理和 `RUN_SEED=no` 成功重部署 staging；16 个 migration 无待执行项，API/Web/PostgreSQL/Redis/Nginx 全部 healthy。
+- 真实飞书会话八页 × 1920/1440/1024/390 共 32 张截图 32/32 PASS；seed 英文业务编号命中 0、skeleton 0、console/page/5xx/横向溢出均为 0。
+- 三步进展交互通过且网络写请求为 0；安全响应头 PASS；ZAP 为 `PASS_WITH_TRIAGED_LOW_INFO`，Critical/High/Medium 0。
+- 生产只读审计显示当前运行提交为 `cee427f8a6ebde5c8a4bcaabb86bedbc48a265ea`、工作树干净、API/Web active；未执行任何生产写操作。
+- 审计发现 API/Web `.env.production` 权限为 `664`。部署脚本现强制设置为 `600`，生产验收脚本新增双文件权限硬门禁；shell 语法和安全门禁回归测试通过。
+- 审计还发现生产库存在两个 2026-05-21 创建的 seed 项目：`DEMO-ACTIVE-001` 与 `DEMO-COMPLETE-001`，以及关联 workflow/color seed 编号。新版 UI 不再暴露英文编号，但删除生产记录属于破坏性数据操作，必须单独取得用户明确确认。
+
+#### Updated Decision
+`RELEASE_AUTHORIZED / STAGING_FINAL_PASS / PRODUCTION_BLOCKED_BY_SEED_DATA_DECISION`

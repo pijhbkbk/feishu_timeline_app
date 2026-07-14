@@ -117,6 +117,7 @@ upsert_env() {
 
 ensure_env_file apps/api/.env.production apps/api/.env.example
 ensure_env_file apps/web/.env.production apps/web/.env.example
+chmod 600 apps/api/.env.production apps/web/.env.production
 
 upsert_env apps/api/.env.production NODE_ENV production
 upsert_env apps/api/.env.production HOST 127.0.0.1
