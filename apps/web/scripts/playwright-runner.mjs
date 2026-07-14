@@ -54,6 +54,9 @@ async function main() {
   const passthroughArgs = process.argv.slice(2);
   const normalizedArgs =
     passthroughArgs[0] === '--' ? passthroughArgs.slice(1) : passthroughArgs;
+  if (normalizedArgs.includes('@r23')) {
+    process.env.PLAYWRIGHT_RESULT_ROUND = 'r23';
+  }
 
   log('启动本地基础设施。');
   await runPnpm('infra', ['infra:up']);

@@ -8,12 +8,12 @@
 ## 项目基本信息
 
 - 项目名称：轻卡定制颜色开发项目管理系统
-- 当前阶段：R22 Apple 风产品 UI 全量还原（预发布闸门）
-- 当前轮次：R22_APPLE_STYLE_PRODUCT_UI_IMPLEMENTATION / Gate 7
-- 总体状态：BLOCKED（Gate 1–6 与本地 Gate 7 已通过；最终 staging 重部署连续两次被 Docker Hub 503 阻断；R19B 外部生产安全验收仍独立 BLOCKED）
+- 当前阶段：R23 真实使用稳定性、UAT 与 Bug 修复
+- 当前轮次：R23_REAL_WORLD_STABILITY_UAT_BUG_REMEDIATION
+- 总体状态：BLOCKED（应用级 P0/P1 已清零且本地全量回归通过；真实飞书九角色矩阵和认证后 2 小时耐久未完成；R19B 外部生产安全验收仍独立 BLOCKED）
 - 仓库路径：`/Users/lixiaochen/Downloads/feishu_timeline_app`
 - 默认分支：`main`
-- 最近更新时间：`2026-07-13`
+- 最近更新时间：`2026-07-14`
 
 ---
 
@@ -59,7 +59,8 @@
 | R21B | 项目实时流程地图线上可见性修复 | PASSED | STOP | 已新增 `/projects/flow-map` 全局入口、导航入口、失败态修复和生产可见性验收 |
 | R21C | 生产流程地图权限与演示数据修复 | PASSED | STOP | 已修复飞书用户默认无角色导致 403，并补齐生产演示项目数据 |
 | R21C_UI | 项目实时流程地图 UI 布局重构 | PASSED | STOP | 已按 `map2.md` 调整画布拓扑、顶部工具栏、正交连线、缩放适配与 Playwright 截图验收 |
-| R22 | Apple 风产品 UI 全量还原 | BLOCKED | STOP | Gate 1–6、本地全量门禁和真实飞书 staging 初验已完成；后台坏链接修复后的最终镜像因 Docker Hub 503 连续两次构建失败，未进入发布闸门 |
+| R22 | Apple 风产品 UI 全量还原 | PASSED | CONTINUE | Gate 1–8、生产发布、临时管理员撤销和生产验收均已完成 |
+| R23 | 真实使用稳定性、UAT 与 Bug 修复 | BLOCKED | STOP | 14 条稳定性专项、50 条全量 Playwright 与工程门禁通过，3 个 P1 已修复；真实角色矩阵和认证后耐久待补 |
 
 状态枚举建议：
 
@@ -74,8 +75,8 @@
 
 ## 当前阻塞项
 
-- R22 已通过视觉闸门并完成 Gate 1–6；Gate 7 最终 staging 镜像构建连续两次被 Docker Hub `registry-1.docker.io` 503 阻断。现有 staging 仍健康运行提交 `8297477`，生产未部署。
-- R19B 本地整改与复测已完成；当前工作树须经评审形成干净 commit，并在该 commit 上复跑 CI。
+- R23 staging 真实飞书登录已成功，但仅发现“李晓晨”一个测试成员（`admin + viewer`），不能完成营销、工艺、采购、质量、生产、财务、项目经理、管理员、查看者九类真实角色矩阵。
+- R23 不读取或导出登录 Cookie；缺少受控认证负载身份，`5 VU × 2h` 和 `10 VU × 30m` 认证业务耐久尚未执行。
 - R19/R19B 的公司私有云主机、飞书管理后台、认证后 staging DAST、基础设施镜像和最终发布镜像证据仍待授权或由公司侧导出。
 
 ---
@@ -3209,3 +3210,95 @@ git diff --check
 
 #### Final Decision
 `GATE_1_2_3_4_5_6_7_8_PASS / PRODUCTION_RELEASED / TEMP_ADMIN_REVOKED / R22_COMPLETE`
+
+---
+
+### Round R23_REAL_WORLD_STABILITY_UAT_BUG_REMEDIATION
+
+#### Goal
+在 R22 生产完成后的准确版本上，执行真实业务稳定性、并发一致性、异常恢复、角色路径和耐久测试；自动修复 P0/P1，并在门禁未满足时停止。
+
+#### Scope
+- 冻结并推送 `release/r22-stability-security-rc`。
+- 独立 staging 环境、真实飞书 OAuth 与 mock 关闭验证。
+- 七类 `R23-UAT-*` 测试项目和九类角色矩阵。
+- 18 步主链路、评审、收费、附件、月度任务、退出、复盘和审计。
+- 并发、重复、陈旧页面、上传中断、401/403/500、必交材料、换版和定时任务去重。
+- 温和 staging 负载脚本与 5/10/20 VU 耐久矩阵。
+
+#### Inputs Read
+- `AGENTS.md`
+- `docs/EXECUTION_LEDGER.md`
+- `docs/rounds/R00.md` ～ `R10.md`
+- 用户提供的 R23/R24/R25 执行说明
+- R20/R22 现有测试、部署和安全基线
+
+#### Main Files Changed
+- `apps/api/src/modules/workflows/workflows.service.ts`
+- `apps/api/src/common/file-upload-options.ts`
+- `apps/api/src/common/file-upload-options.spec.ts`
+- `apps/api/src/modules/queue/notification-queue.service.ts`
+- `apps/api/src/modules/queue/notification-queue.service.spec.ts`
+- `apps/web/tests/playwright/r23-fixtures.ts`
+- `apps/web/tests/playwright/r23-stability.spec.ts`
+- `apps/web/playwright.config.mjs`
+- `apps/web/scripts/playwright-runner.mjs`
+- `scripts/testing/r23-load.mjs`
+- `docs/testing/R23_*.md`
+- `docs/rounds/R23.md`
+
+#### Commands Run
+```bash
+pnpm install
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm --filter web build
+pnpm --filter api build
+pnpm --filter api prisma:validate
+pnpm test:e2e
+pnpm playwright:test:r20
+pnpm playwright:test:r23
+PLAYWRIGHT_RESULT_ROUND=r23 pnpm playwright:test
+pnpm test:load:r23 -- --vus 2 --duration 10s --think-ms 500 --sample-ms 2000 --profile script-smoke
+```
+
+#### Acceptance Result
+- [x] 候选分支已创建并推送。
+- [x] staging 使用独立 PostgreSQL、Redis、对象存储卷和 Session secret；mock 关闭。
+- [x] 真实飞书 OAuth 登录、回调和项目页可用。
+- [x] R23 专项 14/14 通过；当前版本核心业务重跑 13/13 通过。
+- [x] 完整 Playwright 50/50、Web 73/73、API 157/157、主链路 E2E、双端 build、Prisma validate 通过。
+- [x] P0 0；发现的 3 个 P1 均已建立回归测试、修复并通过全量回归。
+- [x] 无重复流程节点、陈旧更新复活、同名覆盖、半条附件、重复月度实例或重复提醒入队。
+- [ ] 九类真实飞书角色矩阵：仅有一个真实成员可用。
+- [ ] staging 七类真实项目写入：等待用户动作确认和角色安排。
+- [ ] 认证后 5 VU × 2h、10 VU × 30m 与最终 20 VU × 5m 正式耐久矩阵。
+- [ ] 最终候选 commit 与镜像 digest 收口：待外部门禁解除后重新部署。
+
+#### Bugs Fixed
+- `R23-P1-001`：工作流改为带旧状态/活跃条件的原子更新，陈旧并发动作返回 409。
+- `R23-P1-002`：恢复 multipart UTF-8 原始文件名；允许合法的 1 文件 + 4 字段换版边界，文件和字段数量限制未放宽。
+- `R23-P1-003`：定时提醒以 Redis Lua 原子 `SET NX EX + LPUSH` 在入队边界去重，内存回退同样维护 TTL 去重。
+
+#### Evidence
+- `test-results/r23/api-snapshots/`
+- `test-results/r23/traces/`
+- `test-results/r23/videos/`
+- `test-results/r23/performance/`
+- `test-results/r23/logs/`
+- `docs/testing/R23_TEST_RUN_REPORT.md`
+- `docs/testing/R23_BUG_TRACKER.md`
+- `docs/testing/R23_PERFORMANCE_REPORT.md`
+- `docs/testing/R23_FINAL_ACCEPTANCE.md`
+
+#### Risks / Debt
+- local mock 角色只能证明应用权限逻辑，不能替代真实飞书成员和组织可用范围。
+- 10 秒脚本冒烟只能验证工具与指标采集，不能替代 2 小时内存增长和稳定性门禁。
+- 未经明确确认，不修改 staging 用户角色，不提交真实 UAT 业务数据，不读取认证凭证。
+
+#### Decision
+`R23_APPLICATION_P1_CLOSED / LOCAL_FULL_REGRESSION_PASS / BLOCKED_BY_REAL_ROLE_MATRIX_AND_AUTHENTICATED_ENDURANCE / STOP`
+
+#### Next Round
+继续 R23，不进入 R24。待用户提供真实角色成员或授权 staging 角色切换，并提供安全的认证负载身份后，部署准确候选 commit，完成真实写路径、正式耐久矩阵和最终全量回归。全部门禁通过前不得部署生产、合并 `main` 或打 tag。

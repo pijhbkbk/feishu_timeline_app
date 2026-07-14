@@ -28,7 +28,10 @@ export const SECURE_SINGLE_FILE_UPLOAD_OPTIONS = Object.freeze({
     fileSize: API_UPLOAD_MAX_FILE_SIZE_BYTES,
     files: 1,
     fields: 4,
-    parts: 5,
+    // Busboy emits LIMIT_PART_COUNT when the internal counter reaches the
+    // configured boundary, so six is the strict ceiling that permits the
+    // valid replacement payload of one file plus four business fields.
+    parts: 6,
     fieldNameSize: 64,
     fieldSize: 1024,
     headerPairs: 20,
@@ -46,7 +49,18 @@ export function SecureSingleFileInterceptor(fieldName: string): Type<NestInterce
   class SecureSingleFileInterceptorMixin extends NestFileInterceptor {
     override async intercept(context: ExecutionContext, next: CallHandler) {
       try {
-        return await super.intercept(context, next);
+        const result = await super.intercept(context, next);
+        const request = context.switchToHttp().getRequest<{
+          file?: { originalname?: string };
+        }>();
+
+        if (request.file?.originalname) {
+          request.file.originalname = normalizeMultipartOriginalFileName(
+            request.file.originalname,
+          );
+        }
+
+        return result;
       } catch (error) {
         if (isFieldNestingLimitError(error)) {
           throw new BadRequestException('上传表单字段不允许嵌套。');
@@ -58,6 +72,18 @@ export function SecureSingleFileInterceptor(fieldName: string): Type<NestInterce
   }
 
   return mixin(SecureSingleFileInterceptorMixin);
+}
+
+/**
+ * Busboy exposes multipart header parameters as latin1. Browsers encode modern
+ * filenames as UTF-8, so non-ASCII names otherwise arrive as mojibake. Only use
+ * the decoded value when the latin1 bytes form valid UTF-8; this preserves
+ * genuine latin1 names such as `café.pdf`.
+ */
+export function normalizeMultipartOriginalFileName(fileName: string) {
+  const decoded = Buffer.from(fileName, 'latin1').toString('utf8');
+
+  return decoded.includes('\uFFFD') ? fileName.normalize('NFC') : decoded.normalize('NFC');
 }
 
 function isFieldNestingLimitError(error: unknown) {

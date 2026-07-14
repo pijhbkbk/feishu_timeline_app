@@ -8,6 +8,7 @@ function createService(options?: {
   processorFailsOnce?: boolean;
 }) {
   let shouldFail = options?.processorFailsOnce ?? false;
+  const redisDedupeKeys = new Set<string>();
 
   const prisma = {
     workflowTask: {
@@ -22,8 +23,22 @@ function createService(options?: {
   const redisService = {
     execute: options?.redisFails
       ? vi.fn().mockRejectedValue(new Error('redis down'))
-      : vi.fn(async (handler: (client: { lpush: typeof vi.fn; rpop: typeof vi.fn; rpush: typeof vi.fn }) => Promise<unknown>) =>
+      : vi.fn(async (handler: (client: {
+          eval: typeof vi.fn;
+          lpush: typeof vi.fn;
+          rpop: typeof vi.fn;
+          rpush: typeof vi.fn;
+        }) => Promise<unknown>) =>
           handler({
+            eval: vi.fn().mockImplementation(async (
+              _script: string,
+              _keyCount: number,
+              markerKey: string,
+            ) => {
+              if (redisDedupeKeys.has(markerKey)) return 0;
+              redisDedupeKeys.add(markerKey);
+              return 1;
+            }),
             lpush: vi.fn().mockResolvedValue(1),
             rpop: vi.fn().mockResolvedValue(null),
             rpush: vi.fn().mockResolvedValue(1),
@@ -156,6 +171,29 @@ describe('NotificationQueueService', () => {
 
     expect(result.scanned).toBe(1);
     expect(result.enqueued).toBe(1);
+  });
+
+  it('atomically deduplicates repeated due-reminder scans before jobs are consumed', async () => {
+    const { service, prisma, notificationsService } = createService();
+    prisma.workflowTask.findMany.mockResolvedValue([
+      {
+        id: 'task-due-today',
+        projectId: 'project-1',
+        assigneeUserId: 'user-1',
+        nodeCode: 'PAINT_PROCUREMENT',
+        nodeName: '涂料采购',
+        dueAt: new Date('2026-03-19T12:00:00.000Z'),
+        status: WorkflowTaskStatus.READY,
+      },
+    ]);
+    notificationsService.hasInAppNotificationDedupeKey.mockResolvedValue(new Set<string>());
+    const now = new Date('2026-03-19T08:00:00.000Z');
+
+    const first = await service.processDueReminderScan(now);
+    const second = await service.processDueReminderScan(now);
+
+    expect(first).toEqual({ scanned: 1, enqueued: 1 });
+    expect(second).toEqual({ scanned: 1, enqueued: 0 });
   });
 
   it('scans monthly recurring reviews and marks overdue instances', async () => {

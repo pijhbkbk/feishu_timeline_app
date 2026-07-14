@@ -5,6 +5,8 @@ import { defineConfig } from '@playwright/test';
 
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(currentDir, '../..');
+const resultRound = process.env.PLAYWRIGHT_RESULT_ROUND ?? 'r20';
+const resultRoot = `../../test-results/${resultRound}`;
 
 export default defineConfig({
   testDir: '.',
@@ -18,9 +20,9 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   reporter: [
     ['line'],
-    ['html', { open: 'never', outputFolder: '../../test-results/r20/reports/playwright-report' }],
+    ['html', { open: 'never', outputFolder: `${resultRoot}/reports/playwright-report` }],
   ],
-  outputDir: '../../test-results/r20/traces',
+  outputDir: `${resultRoot}/traces`,
   use: {
     baseURL: process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:3000',
     trace: 'retain-on-failure',

@@ -16,6 +16,8 @@
     "test:e2e": "pnpm --filter @feishu-timeline/web test:e2e",
     "playwright:test": "pnpm --filter @feishu-timeline/web playwright:test",
     "playwright:test:r20": "pnpm --filter @feishu-timeline/web playwright:test:r20",
+    "playwright:test:r23": "pnpm --filter @feishu-timeline/web playwright:test:r23",
+    "test:load:r23": "node scripts/testing/r23-load.mjs",
     "deploy:staging": "bash scripts/deploy/staging-up.sh",
     "deploy:migrate": "bash scripts/deploy/migrate.sh",
     "deploy:seed": "bash scripts/deploy/seed.sh",

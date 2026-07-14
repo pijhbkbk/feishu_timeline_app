@@ -10,7 +10,7 @@ import {
   RecurringTaskStatus,
   WorkflowTaskStatus,
 } from '@prisma/client';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { RedisService } from '../../infra/redis/redis.service';
@@ -21,11 +21,20 @@ import type {
 } from './notification-queue.types';
 
 const QUEUE_KEY = 'notifications:jobs';
+const QUEUE_DEDUPE_TTL_SECONDS = 2 * 24 * 60 * 60;
+const ENQUEUE_ONCE_SCRIPT = `
+if redis.call('SET', KEYS[1], '1', 'EX', ARGV[1], 'NX') then
+  redis.call('LPUSH', KEYS[2], ARGV[2])
+  return 1
+end
+return 0
+`;
 
 @Injectable()
 export class NotificationQueueService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(NotificationQueueService.name);
   private readonly memoryQueue: NotificationQueueJob[] = [];
+  private readonly memoryDedupeKeys = new Map<string, number>();
   private workerTimer: NodeJS.Timeout | null = null;
   private overdueScanTimer: NodeJS.Timeout | null = null;
   private monthlyReviewScanTimer: NodeJS.Timeout | null = null;
@@ -95,6 +104,52 @@ export class NotificationQueueService implements OnModuleInit, OnModuleDestroy {
 
       return {
         queued: true,
+        channel: 'memory' as const,
+        jobId: job.id,
+      };
+    }
+  }
+
+  private async enqueueOnce(input: NotificationQueueJobInput, dedupeKey: string) {
+    const job = this.buildJob(input);
+    const markerKey = `notifications:queued:${createHash('sha256').update(dedupeKey).digest('hex')}`;
+
+    try {
+      const result = await this.redisService.execute((client) =>
+        client.eval(
+          ENQUEUE_ONCE_SCRIPT,
+          2,
+          markerKey,
+          QUEUE_KEY,
+          String(QUEUE_DEDUPE_TTL_SECONDS),
+          JSON.stringify(job),
+        ),
+      );
+      const queued = Number(result) === 1;
+      return {
+        queued,
+        duplicate: !queued,
+        channel: 'redis' as const,
+        jobId: queued ? job.id : null,
+      };
+    } catch (error) {
+      this.logger.warn(`Redis queue unavailable, fallback to memory queue: ${String(error)}`);
+      const now = Date.now();
+      const existingExpiry = this.memoryDedupeKeys.get(markerKey) ?? 0;
+      if (existingExpiry > now) {
+        return {
+          queued: false,
+          duplicate: true,
+          channel: 'memory' as const,
+          jobId: null,
+        };
+      }
+
+      this.memoryDedupeKeys.set(markerKey, now + QUEUE_DEDUPE_TTL_SECONDS * 1000);
+      this.memoryQueue.unshift(job);
+      return {
+        queued: true,
+        duplicate: false,
         channel: 'memory' as const,
         jobId: job.id,
       };
@@ -216,7 +271,7 @@ export class NotificationQueueService implements OnModuleInit, OnModuleDestroy {
         continue;
       }
 
-      await this.enqueue({
+      const result = await this.enqueueOnce({
         type: NotificationType.TASK_OVERDUE,
         taskId: task.id,
         projectId: null,
@@ -229,9 +284,9 @@ export class NotificationQueueService implements OnModuleInit, OnModuleDestroy {
           dedupeKey,
           scannedAt: startOfDay.toISOString(),
         },
-      });
+      }, dedupeKey);
 
-      enqueued += 1;
+      if (result.queued) enqueued += 1;
     }
 
     return {
@@ -303,7 +358,7 @@ export class NotificationQueueService implements OnModuleInit, OnModuleDestroy {
         continue;
       }
 
-      await this.enqueue({
+      const result = await this.enqueueOnce({
         type: NotificationType.SYSTEM_INFO,
         taskId: task.id,
         projectId: task.projectId,
@@ -317,9 +372,9 @@ export class NotificationQueueService implements OnModuleInit, OnModuleDestroy {
           notificationCategory: 'due-reminder',
           nodeCode: task.nodeCode,
         },
-      });
+      }, dedupeKey);
 
-      enqueued += 1;
+      if (result.queued) enqueued += 1;
     }
 
     return {
@@ -417,7 +472,7 @@ export class NotificationQueueService implements OnModuleInit, OnModuleDestroy {
 
       const isOverdue = overdueIds.includes(task.id) || task.status === RecurringTaskStatus.OVERDUE;
 
-      await this.enqueue({
+      const result = await this.enqueueOnce({
         type: NotificationType.SYSTEM_INFO,
         taskId: null,
         projectId: task.projectId,
@@ -434,9 +489,9 @@ export class NotificationQueueService implements OnModuleInit, OnModuleDestroy {
           recurringTaskId: task.id,
           periodLabel: task.periodLabel,
         },
-      });
+      }, dedupeKey);
 
-      enqueued += 1;
+      if (result.queued) enqueued += 1;
     }
 
     return {

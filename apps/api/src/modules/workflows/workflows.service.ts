@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -1108,8 +1109,7 @@ export class WorkflowsService {
     }
 
     if (action === WorkflowAction.START) {
-      const startedTask = await tx.workflowTask.update({
-        where: { id: task.id },
+      const startedTask = await this.updateTaskForTransition(tx, task, {
         data: {
           status: WorkflowTaskStatus.IN_PROGRESS,
           startedAt: task.startedAt ?? new Date(),
@@ -1161,8 +1161,7 @@ export class WorkflowsService {
     }
 
     const now = new Date();
-    const updatedTask = await tx.workflowTask.update({
-      where: { id: task.id },
+    const updatedTask = await this.updateTaskForTransition(tx, task, {
       data: {
         status: terminalStatus,
         isActive: false,
@@ -1417,7 +1416,7 @@ export class WorkflowsService {
 
   private assertTaskCanTransition(task: WorkflowTaskWithRelations, action: WorkflowAction) {
     if (!task.isActive) {
-      throw new BadRequestException('当前工序任务已失效，请刷新后重试。');
+      throw new ConflictException('当前工序任务已被其他操作更新，请刷新后重试。');
     }
 
     if (task.workflowInstance.status !== WorkflowInstanceStatus.RUNNING) {
@@ -1449,6 +1448,29 @@ export class WorkflowsService {
     if (isWorkflowReviewAction(action) && !isWorkflowTaskStatusActionable(task.status)) {
       throw new BadRequestException(`${task.nodeName} 当前状态不允许提交评审操作。`);
     }
+  }
+
+  private async updateTaskForTransition(
+    tx: Prisma.TransactionClient,
+    task: Pick<WorkflowTaskWithRelations, 'id' | 'status' | 'isActive'>,
+    input: { data: Prisma.WorkflowTaskUpdateManyMutationInput },
+  ) {
+    const claimed = await tx.workflowTask.updateMany({
+      where: {
+        id: task.id,
+        status: task.status,
+        isActive: task.isActive,
+      },
+      data: input.data,
+    });
+
+    if (claimed.count !== 1) {
+      throw new ConflictException('当前工序任务已被其他操作更新，请刷新后重试。');
+    }
+
+    return tx.workflowTask.findUniqueOrThrow({
+      where: { id: task.id },
+    });
   }
 
   private assertTaskCanSaveForm(task: WorkflowTaskWithRelations) {
