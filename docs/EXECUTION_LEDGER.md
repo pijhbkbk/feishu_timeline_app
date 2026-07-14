@@ -3124,3 +3124,18 @@ git diff --check
 
 #### Next Round
 经用户明确确认后，仅把当前账号加入飞书应用测试/可用范围，完成真实 OAuth、八页 × 1920/1440/1024/390 截图、console/5xx/横向溢出检查并提交发布闸门。未经发布闸门确认不得部署生产。
+
+#### Final Staging Acceptance — 2026-07-14
+- 经用户确认创建飞书测试企业并关联当前应用；“李晓晨”已在测试人员范围内，真实 OAuth 成功完成回调。数据库中对应用户具有真实飞书标识，角色为 `admin`、`viewer`；`mockEnabled=false`。
+- 最终审计提交已重新部署；16 个 migration 无待执行项，五项服务全部 healthy，API/Web 镜像 revision 与干净分支 HEAD 一致。具体 revision 记录于 `deploy/.state/current.env`。
+- 真实会话 Playwright 证据目录：`test-results/r22/staging-release-gate/`。
+- 八页 × 1920/1440/1024/390 共 32 张原始尺寸完整页面截图 32/32 PASS；skeleton 0、console error 0、page error 0、server 5xx 0、横向溢出 0。
+- 八张 PPT｜Web 预发布并排图完成；既有 94–97 分评分基线在当前生产构建与真实数据下保持有效。
+- 进展提交三步已使用真实飞书会话逐步验证，条件式阻塞字段、上传材料步骤与最终提交按钮均可见；测试未执行最终提交，网络写请求为 0。
+- staging 安全响应头复核 PASS；SAST、SCA、密钥扫描通过；ZAP Critical/High/Medium 0。
+
+#### Final Decision
+`GATE_1_2_3_4_5_6_7_PASS / STOP_FOR_RELEASE_CONFIRMATION / PRODUCTION_NOT_AUTHORIZED`
+
+#### Next Round
+等待用户明确回复“发布闸门已确认”。只有确认后才可部署生产，并必须在生产域名重新执行 R22 Playwright、全页截图、真实交互、VPS HEAD/GitHub commit/镜像 revision 一致性与安全检查。

@@ -29,3 +29,14 @@
 `GATE_6_LOCAL_VISUAL_ACCEPTANCE_PASS`
 
 本结论仅证明本地视觉与交互通过。必须在预发布生产构建上重新生成同名截图、质量记录和全量测试结果，之后才能进入发布闸门；未经用户确认不得部署生产。
+
+## 预发布最终结论
+
+- 最终运行 revision 与干净分支 HEAD、API 镜像标签、Web 镜像标签一致，具体值记录于 `deploy/.state/current.env`。
+- 使用真实飞书 OAuth 会话和真实预发布项目/任务数据重新生成八页四档共 32 张截图，32/32 PASS。
+- 1920、1440、1024、390 四档 `clientWidth` 已由 Playwright 原始浏览器验证；无 skeleton、console error、page error、5xx 或横向溢出。
+- 八张 PPT｜Web 预发布并排图已生成；页面结构与已通过的 94–97 分评分基线一致，没有发现需要降至 90 分以下的新偏差。
+- 进展提交已在真实会话中依次验证“做了什么、是否阻塞、上传材料”，阻塞字段按条件展开，最终提交按钮可见；本次证据采集未写入业务数据。
+- staging 安全响应头 PASS；SAST、SCA、密钥扫描通过；ZAP Critical/High/Medium 为 0。
+
+`GATE_7_STAGING_VISUAL_ACCEPTANCE_PASS / STOP_FOR_RELEASE_CONFIRMATION / PRODUCTION_NOT_AUTHORIZED`

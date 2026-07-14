@@ -48,3 +48,15 @@
 - 项目工作区使用响应式规则网格表达 18 步，而不是复制 PPT 固定坐标；完整并行/退回拓扑仍由实时流程数据和既有流程地图能力承载。
 - 进展提交采用逐步向导，不在一个页面同时展开三列，以保证 390px 可用性和 60 秒完成目标。
 - 复盘与后台使用真实数据后，数值和行数不会与 PPT 示例数字一致；信息结构、比例与状态语义保持一致。
+
+## 预发布最终证据
+
+- 预发布地址：`http://localhost:8080`
+- 运行 revision：以 `deploy/.state/current.env` 为准，必须与干净分支 HEAD 完全一致
+- 真实身份：飞书 OAuth 用户“李晓晨”，`mockEnabled=false`，角色为 `admin`、`viewer`
+- 原始截图：`test-results/r22/staging-release-gate/`
+- 浏览器证据：`test-results/r22/staging-release-gate/browser-evidence.json`
+- PPT｜Web 并排图：`test-results/r22/staging-release-gate/comparisons/`
+- 进展提交三步证据：`test-results/r22/staging-release-gate/interactions/`
+
+八个正式页面均以 1920×1080、1440×900、1024×900、390×844 原始视口重新采集，共 32 张完整页面截图；32/32 通过，skeleton、console error、page error、5xx 与横向溢出均为 0。另生成八张当前预发布首屏与 PPT 的并排图。
