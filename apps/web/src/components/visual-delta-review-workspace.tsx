@@ -14,6 +14,7 @@ import {
   fetchVisualDeltaReviewPageOptions,
   fetchVisualDeltaReviewWorkspace,
   getDefaultVisualDeltaReviewerId,
+  getVisualDeltaReviewApprovalSuccessMessage,
   getVisualDeltaReviewConclusionLabel,
   getVisualDeltaReviewWorkspaceHighlights,
   rejectVisualDeltaReview,
@@ -212,7 +213,7 @@ export function VisualDeltaReviewWorkspace({
         action === 'SUBMIT'
           ? '目视色差评审记录已提交。'
           : action === 'APPROVE'
-            ? '目视色差评审已通过，颜色退出/收尾节点已可进入。'
+            ? getVisualDeltaReviewApprovalSuccessMessage(nextWorkspace)
             : '目视色差评审已驳回，流程已退回批量生产。',
       );
     } catch (actionError) {
@@ -586,7 +587,7 @@ export function VisualDeltaReviewHistory({
                 <td>
                   <ReviewResultBadge conclusion={item.reviewConclusion} />
                 </td>
-                <td>{item.submittedAt ? '已提交' : '草稿'}</td>
+                <td>{item.isPeriodCompleted ? '已完成' : item.submittedAt ? '已提交' : '草稿'}</td>
                 <td>{item.reviewConclusion === 'CONDITIONAL_APPROVED' ? '是' : '否'}</td>
                 <td>{item.returnToNodeName ?? '未退回'}</td>
                 <td>

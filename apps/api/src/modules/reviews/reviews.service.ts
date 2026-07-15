@@ -1349,7 +1349,13 @@ export class ReviewsService {
     projectId: string,
   ) {
     const project = await this.getProjectOrThrow(db, projectId);
-    const [activeTask, massProductionCompleted, projectClosedTask, items] =
+    const [
+      activeTask,
+      massProductionCompleted,
+      projectClosedTask,
+      items,
+      completedMonthlyTasks,
+    ] =
       await Promise.all([
         this.getActiveTask(
           db,
@@ -1366,7 +1372,23 @@ export class ReviewsService {
           include: CABIN_REVIEW_INCLUDE,
           orderBy: [{ createdAt: 'desc' }],
         }),
+        db.recurringTask.findMany({
+          where: {
+            projectId,
+            status: RecurringTaskStatus.COMPLETED,
+            recurringPlan: {
+              sourceNodeCode: WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW,
+            },
+          },
+          select: {
+            plannedDate: true,
+          },
+        }),
       ]);
+
+    const completedReviewPeriods = new Set(
+      completedMonthlyTasks.map((task) => getMonthlyReviewPeriodKey(task.plannedDate)),
+    );
 
     return {
       project: this.toProjectSummary(project),
@@ -1375,7 +1397,14 @@ export class ReviewsService {
       downstreamTask: projectClosedTask
         ? this.toWorkflowTaskSummary(projectClosedTask)
         : null,
-      items: await Promise.all(items.map((item) => this.toCabinReviewSummary(db, item))),
+      items: await Promise.all(
+        items.map(async (item) => ({
+          ...(await this.toCabinReviewSummary(db, item)),
+          isPeriodCompleted: Boolean(
+            item.reviewPeriod && completedReviewPeriods.has(item.reviewPeriod),
+          ),
+        })),
+      ),
     };
   }
 
@@ -1944,6 +1973,7 @@ export class ReviewsService {
       id: reviewRecord.id,
       workflowTaskId: reviewRecord.workflowTaskId,
       reviewType: reviewRecord.reviewType,
+      reviewPeriod: reviewRecord.reviewPeriod,
       reviewConclusion: reviewRecord.result,
       reviewDate: reviewRecord.reviewedAt?.toISOString() ?? null,
       submittedAt: reviewRecord.submittedAt?.toISOString() ?? null,

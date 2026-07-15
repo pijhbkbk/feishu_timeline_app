@@ -38,6 +38,8 @@ export type VisualDeltaReviewRecord = {
   id: string;
   workflowTaskId: string;
   reviewType: 'VISUAL_COLOR_DIFFERENCE_REVIEW';
+  reviewPeriod: string | null;
+  isPeriodCompleted: boolean;
   reviewConclusion: VisualDeltaReviewConclusion;
   reviewDate: string | null;
   submittedAt: string | null;
@@ -234,7 +236,7 @@ export function canShowVisualDeltaReviewApproveButton(
   workspace: VisualDeltaReviewWorkspaceResponse,
   review: VisualDeltaReviewRecord,
 ) {
-  if (!workspace.activeTask || !review.submittedAt) {
+  if (!workspace.activeTask || !review.submittedAt || review.isPeriodCompleted) {
     return false;
   }
 
@@ -246,6 +248,14 @@ export function canShowVisualDeltaReviewApproveButton(
   }
 
   return canUserOperateWorkflowTask(user, workspace.activeTask);
+}
+
+export function getVisualDeltaReviewApprovalSuccessMessage(
+  workspace: VisualDeltaReviewWorkspaceResponse,
+) {
+  return workspace.downstreamTask
+    ? '12 个月目视色差评审已全部通过，颜色退出/收尾节点已激活。'
+    : '当前月份目视色差评审已通过，月度进度已同步；完成 12/12 后才会激活颜色退出/收尾。';
 }
 
 export function canShowVisualDeltaReviewRejectButton(

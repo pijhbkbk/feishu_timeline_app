@@ -8,7 +8,9 @@ import {
   VisualDeltaReviewHistory,
 } from './visual-delta-review-workspace';
 import {
+  canShowVisualDeltaReviewApproveButton,
   canShowVisualDeltaReviewSubmitButton,
+  getVisualDeltaReviewApprovalSuccessMessage,
   validateVisualDeltaReviewForm,
   type VisualDeltaReviewWorkspaceResponse,
 } from '../lib/visual-delta-reviews-client';
@@ -65,6 +67,8 @@ const workspace: VisualDeltaReviewWorkspaceResponse = {
       id: 'review-1',
       workflowTaskId: 'task-1',
       reviewType: 'VISUAL_COLOR_DIFFERENCE_REVIEW',
+      reviewPeriod: '2026-03',
+      isPeriodCompleted: false,
       reviewConclusion: 'APPROVED',
       reviewDate: '2026-03-24T00:00:00.000Z',
       submittedAt: null,
@@ -160,5 +164,46 @@ describe('VisualDeltaReviewWorkspace', () => {
 
     const html = renderToStaticMarkup(<ReviewResultBadge conclusion="REJECTED" />);
     expect(html).toContain('驳回');
+  });
+
+  it('hides repeat approval for a completed month and keeps downstream copy accurate', () => {
+    const completedReview = {
+      ...workspace.items[0]!,
+      submittedAt: '2026-03-24T01:00:00.000Z',
+      isPeriodCompleted: true,
+    };
+
+    expect(
+      canShowVisualDeltaReviewApproveButton(reviewerUser, workspace, completedReview),
+    ).toBe(false);
+    expect(getVisualDeltaReviewApprovalSuccessMessage(workspace)).toContain('完成 12/12 后');
+    expect(
+      getVisualDeltaReviewApprovalSuccessMessage({
+        ...workspace,
+        downstreamTask: workspace.activeTask,
+      }),
+    ).toContain('已激活');
+
+    const html = renderToStaticMarkup(
+      <VisualDeltaReviewHistory
+        user={reviewerUser}
+        items={[completedReview]}
+        selectedReviewId="review-1"
+        canManage
+        isReadOnly={false}
+        workspace={workspace}
+        actingKey={null}
+        isUploading={false}
+        onSelect={() => undefined}
+        onEdit={() => undefined}
+        onSubmitReview={() => undefined}
+        onApproveReview={() => undefined}
+        onRejectReview={() => undefined}
+        onUploadAttachment={() => undefined}
+      />,
+    );
+
+    expect(html).toContain('已完成');
+    expect(html).not.toContain('>通过</button>');
   });
 });
