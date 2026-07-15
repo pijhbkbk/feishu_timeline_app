@@ -1,7 +1,9 @@
 import { chmod, mkdir } from 'node:fs/promises';
+import { createRequire } from 'node:module';
 import path from 'node:path';
 
-import { chromium } from '@playwright/test';
+const requireFromWeb = createRequire(new URL('../../apps/web/package.json', import.meta.url));
+const { chromium } = requireFromWeb('@playwright/test');
 
 const sessionDir = await validateSessionDir(process.env.R23_SESSION_DIR);
 const baseUrl = new URL(process.env.R23_STAGING_URL ?? 'http://localhost:8080');
