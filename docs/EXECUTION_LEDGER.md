@@ -8,9 +8,9 @@
 ## 项目基本信息
 
 - 项目名称：轻卡定制颜色开发项目管理系统
-- 当前阶段：R23B 真实角色矩阵、真实写路径与认证耐久收口
-- 当前轮次：R23B_REAL_ROLE_WRITE_PATH_AUTH_ENDURANCE_CLOSURE
-- 总体状态：BLOCKED（R23 应用级 P0/P1 已清零；R23B 阶段 0 通过，但仅有 1 个真实飞书成员，七项目写入未获明确授权，认证耐久会话未准备；R19B 外部生产安全验收仍独立 BLOCKED）
+- 当前阶段：R23B 已认证全权限、真实写路径与认证耐久收口
+- 当前轮次：R23B_AUTHENTICATED_FULL_ACCESS_REMEDIATION
+- 总体状态：BLOCKED（已实现所有有效已认证用户完整权限，定向门禁通过；最新完整 Playwright 被 3 个既有测试夹具问题阻塞，七项目写入未获明确授权，认证耐久会话未准备；R19B 外部生产安全验收仍独立 BLOCKED）
 - 仓库路径：`/Users/lixiaochen/Downloads/feishu_timeline_app`
 - 默认分支：`main`
 - 最近更新时间：`2026-07-14`
@@ -27,6 +27,7 @@
 6. 第 16 步为“批量生产”。
 7. 第 17 步为“整车色差一致性评审”，每月一次，共 12 个月。
 8. 第 18 步支持人工录入年产量并给出退出建议。
+9. 当前访问策略为所有有效已认证用户完整权限；未登录、停用和锁定用户仍被拦截，流程状态、评审、幂等和审计门禁保持后端控制。
 
 ---
 
@@ -60,8 +61,8 @@
 | R21C | 生产流程地图权限与演示数据修复 | PASSED | STOP | 已修复飞书用户默认无角色导致 403，并补齐生产演示项目数据 |
 | R21C_UI | 项目实时流程地图 UI 布局重构 | PASSED | STOP | 已按 `map2.md` 调整画布拓扑、顶部工具栏、正交连线、缩放适配与 Playwright 截图验收 |
 | R22 | Apple 风产品 UI 全量还原 | PASSED | CONTINUE | Gate 1–8、生产发布、临时管理员撤销和生产验收均已完成 |
-| R23 | 真实使用稳定性、UAT 与 Bug 修复 | BLOCKED | STOP | 14 条稳定性专项、50 条全量 Playwright 与工程门禁通过，3 个 P1 已修复；真实角色矩阵和认证后耐久待补 |
-| R23B | 真实角色矩阵、真实写路径与认证耐久收口 | BLOCKED | STOP | 阶段 0 基线通过；等待 9 个真实 OAuth 用户、七项目写入授权和认证耐久会话 |
+| R23 | 真实使用稳定性、UAT 与 Bug 修复 | BLOCKED | STOP | 累计 4 个 P1 已修复；九角色门禁已被全权限策略取代，最新完整回归与认证耐久待补 |
+| R23B | 已认证全权限、真实写路径与认证耐久收口 | BLOCKED | STOP | 全权限策略已实现且定向门禁通过；完整回归被既有测试夹具阻塞，另待七项目写入授权和认证耐久会话 |
 
 状态枚举建议：
 
@@ -76,9 +77,10 @@
 
 ## 当前阻塞项
 
-- R23B staging 仅有 1 个真实飞书成员；其余 7 条 `mock_*` 演示用户和 1 条本地系统管理员记录不能计入真实 OAuth 角色矩阵。
+- 九角色真实 OAuth 矩阵已由用户明确取消；当前任一有效已认证用户均获得完整应用权限。
 - 七条 `R23-UAT-*` 项目尚未获得用户明确写入授权，当前项目数为 0。
-- R23B 不读取或导出登录 Cookie/token/storageState；缺少 9 个受控真实 OAuth 会话，`5 VU × 2h` 和 `10 VU × 30m` 认证业务耐久尚未执行。
+- R23B 不读取或导出登录 Cookie/token/storageState；缺少 1 个受控真实 OAuth 会话，`5 VU × 2h` 和 `10 VU × 30m` 认证业务耐久尚未执行。
+- 最新隔离库完整 Playwright 为 `43 PASS / 3 FAIL / 4 NOT RUN`：两个 R22 用例依赖 seed 账号已有活跃任务，R23-014 与后台自动调度竞争。按连续失败停止协议未继续扩修。
 - R19/R19B 的公司私有云主机、飞书管理后台、认证后 staging DAST、基础设施镜像和最终发布镜像证据仍待授权或由公司侧导出。
 
 ---
@@ -3366,3 +3368,68 @@ pnpm --filter api prisma:validate
 `R23B_STAGE_0_PASS / BLOCKED_BY_REAL_USERS_WRITE_AUTHORIZATION_AND_AUTH_SESSIONS / STOP`
 
 不得进入 R24、部署生产、合并 `main` 或创建 tag。待用户完成九个真实飞书测试用户的应用可用范围与角色映射，并明确授权七项目 staging 写入后，从阶段 1 继续，不重新执行 R23。
+
+---
+
+### Round R23B_AUTHENTICATED_FULL_ACCESS_REMEDIATION
+
+#### Goal
+根据 2026-07-14 19:17 CST 人工测试截图与用户确认，撤销当前使用者角色限制，使所有有效已认证用户拥有完整应用权限，同时保留未登录、停用/锁定账号、业务状态、评审、幂等和审计边界。
+
+#### Inputs And Policy Decision
+- 生产截图中真实飞书用户在 `/projects/new` 被“当前角色无权访问该功能”阻断。
+- 用户明确要求目前将系统所有权限对任何使用者开放。
+- 执行口径解释为“任何有效已认证使用者”，不开放匿名业务访问；未登录 API 继续返回 401。
+- 旧九角色隔离矩阵由本轮业务决策取代；数据库角色数据保留，不执行迁移或批量改角色。
+
+#### Main Files Changed
+- `apps/api/src/modules/auth/auth.constants.ts`
+- `apps/api/src/modules/users/users.service.ts`
+- `apps/api/src/modules/users/users.service.spec.ts`
+- `apps/web/src/components/app-shell.tsx`
+- `apps/web/tests/playwright/r20-permissions.spec.ts`
+- `apps/web/tests/playwright/r20-materials.spec.ts`
+- `apps/web/e2e/r22-apple-style-product-ui.spec.ts`
+- `apps/web/scripts/e2e-mainline.mjs`
+- `docs/rounds/R23.md`
+- `docs/rounds/R23B.md`
+- `docs/testing/R23_*.md`
+
+#### Application Commit
+- `dc0e0f8ec4b7061e23fc3f323c046534c15eef99` — `feat(auth): grant full access to authenticated users`
+- staging/production 均未部署本轮候选；线上截图中的旧权限行为仍会存在，直到另行完成发布授权和门禁。
+
+#### Commands And Checks
+```bash
+pnpm install
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm --filter web build
+pnpm --filter api build
+pnpm --filter api prisma:validate
+pnpm test:e2e
+pnpm playwright:test:r20
+DATABASE_URL=postgresql://.../feishu_timeline_r23b_open_20260714?schema=public PLAYWRIGHT_RESULT_ROUND=r23b-open-access-fresh pnpm playwright:test
+```
+
+#### Acceptance Result
+- [x] 后端统一认证用户出口生成 `admin` 全权限有效身份，所有现有角色/权限/项目范围守卫仍由后端执行但不再区分已认证角色。
+- [x] 前端个人菜单显示“全部权限”，查看者可进入后台管理；新建项目不再出现角色无权提示。
+- [x] 未登录业务 API 仍返回 401；停用/锁定用户过滤逻辑未放宽。
+- [x] API 定向权限测试 `11/11`、R20 Playwright `13/13`、主链路 E2E 通过。
+- [x] Web `73/73`、API `158/158`，lint、typecheck、双端 build、Prisma validate 通过。
+- [ ] 最新候选完整 Playwright：隔离库 `43 PASS / 3 FAIL / 4 NOT RUN`。
+- [ ] staging 七项目真实写路径：未获授权。
+- [ ] 认证 `5 VU × 2h`、`10 VU × 30m`：缺少安全会话注入。
+
+#### Blocker Report
+- R22 Apple 风首条用例和 R22 视觉闸门都假设 seed 项目经理已有活跃任务；全新官方 seed 不提供该数据。
+- R23-014 手动提醒扫描与启动中的后台调度存在竞争，断言前记录已被消费，首次扫描得到 0。
+- 另一次在累计超过一万条 workflow/audit 测试数据的旧本地库运行发生 API 长时阻塞；已通过创建新数据库证明不是权限路径失败，未删除任何审计日志。
+- 按执行协议连续失败后停止，不继续修复测试夹具，不部署候选。
+
+#### Decision
+`AUTHENTICATED_FULL_ACCESS_IMPLEMENTED / TARGETED_GATES_PASS / FULL_REGRESSION_BLOCKED_BY_TEST_FIXTURES / NO_DEPLOY / STOP`
+
+下一步应先让 R22 用例自建活跃任务并隔离 R23-014 自动调度，再在全新数据库执行一次完整回归。通过后仍需取得七项目 staging 写入授权和一个安全认证会话，方可继续 R23B；不得自动进入 R24、部署生产、合并 `main` 或创建 tag。

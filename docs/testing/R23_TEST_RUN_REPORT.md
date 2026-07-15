@@ -1,5 +1,7 @@
 # R23 Test Run Report
 
+> 2026-07-14 补充：本报告第 1～7 节记录 `69d3332` 历史候选。用户随后取消角色隔离，改为“所有有效已认证用户拥有完整权限”；最新候选和回归结果见第 8 节。
+
 ## 1. 候选与环境
 
 | 字段 | 值 |
@@ -79,3 +81,20 @@ pnpm playwright:test:r23
 - 认证后 `5 VU × 2h`、`10 VU × 30m` 未完成。
 - `20 VU × 5m` 只读档已完成：5600 请求、0 错误、0 非预期状态、0 个 5xx，p95 46.17 ms；详见性能报告。
 - 因此当前运行结论为 `BLOCKED`，不是 `PASSED`。
+
+## 8. 已认证全权限策略补充验证（2026-07-14）
+
+| 字段 | 值 |
+|---|---|
+| applicationCommit | `dc0e0f8ec4b7061e23fc3f323c046534c15eef99` |
+| 策略 | 所有有效已认证用户完整权限；未登录仍为 401 |
+| 数据库 | 新建隔离库 `feishu_timeline_r23b_open_20260714`，16 个 migration 全部重新执行 |
+| staging / production | 未部署，仍运行旧候选 |
+
+验证结果：
+
+- 定向 API 权限测试 `11/11 PASS`；Web R20 Playwright `13/13 PASS`。
+- 主链路 E2E PASS；Web `73/73`、API `158/158`，lint、typecheck、双端 build、Prisma validate PASS。
+- 普通查看者可见并进入后台管理；财务/查看者可创建项目和跨项目读取；未登录业务 API 返回 401。
+- 新隔离库完整 Playwright 为 `43 PASS / 3 FAIL / 4 NOT RUN`。失败是两个 R22 用例依赖 seed 账号已有活跃任务，以及 R23-014 被后台调度提前消费；权限专项均通过。
+- 按连续失败停止协议，不继续重跑，不部署 staging/production。九角色矩阵不再是门禁；当前 blocker 为测试夹具、七项目 staging 写入授权和认证耐久会话。
