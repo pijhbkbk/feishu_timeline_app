@@ -3,6 +3,7 @@ import { Prisma, UserStatus } from '@prisma/client';
 
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import {
+  AUTHENTICATED_USERS_HAVE_FULL_ACCESS,
   ROLE_PERMISSION_CODE_MAP,
   ROLE_LABELS,
   type AuthSource,
@@ -276,6 +277,21 @@ export class UsersService {
   }
 
   private toAuthenticatedUser(user: UserWithRelations, authSource: AuthSource): AuthenticatedUser {
+    if (AUTHENTICATED_USERS_HAVE_FULL_ACCESS) {
+      return {
+        id: user.id,
+        username: user.username,
+        name: user.name,
+        email: user.email,
+        departmentId: user.departmentId,
+        departmentName: user.department?.name ?? null,
+        isSystemAdmin: true,
+        authSource,
+        roleCodes: ['admin'],
+        permissionCodes: [...ROLE_PERMISSION_CODE_MAP.admin],
+      };
+    }
+
     return {
       id: user.id,
       username: user.username,

@@ -261,18 +261,30 @@ async function main() {
     }
 
     const financeSession = await loginAs(['finance'], `r08_finance_${Date.now()}`);
-    const unauthorizedCreate = fetchWithCookies(`${API_BASE_URL}/projects`, financeSession.jar, {
+    const financeCreate = fetchWithCookies(`${API_BASE_URL}/projects`, financeSession.jar, {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
       },
       body: JSON.stringify({
-        code: `R08-FORBIDDEN-${Date.now()}`,
-        name: 'R08 权限边界校验',
+        code: `R08-FULL-ACCESS-${Date.now()}`,
+        name: 'R08 已认证全权限校验',
       }),
     });
-    await expectStatus(unauthorizedCreate, 403, '财务角色不应具备项目创建权限');
-    log('权限边界校验通过：finance 被禁止创建项目。');
+    await expectStatus(financeCreate, 201, '已认证财务用户应具备项目创建权限');
+
+    const anonymousCreate = fetchWithCookies(`${API_BASE_URL}/projects`, null, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        code: `R08-ANONYMOUS-${Date.now()}`,
+        name: 'R08 未登录访问边界校验',
+      }),
+    });
+    await expectStatus(anonymousCreate, 401, '未登录用户仍不得创建项目');
+    log('访问策略校验通过：已认证用户全权限，未登录用户仍被拒绝。');
 
     const managerSession = await loginAs(['project_manager'], `r08_manager_${Date.now()}`);
     const projectCode = `R08-E2E-${Date.now()}-${randomUUID().slice(0, 6).toUpperCase()}`;

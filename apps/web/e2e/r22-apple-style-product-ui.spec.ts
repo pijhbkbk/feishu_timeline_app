@@ -156,15 +156,11 @@ test.describe.serial('R22 Apple 风产品 UI 全量验收', () => {
     await expect(page.getByRole('heading', { name: '经验与改进' })).toBeVisible();
   });
 
-  test('12-15 普通用户隔离后台，管理员可访问，中文文案且无无限加载', async ({ page }) => {
+  test('12-15 所有已认证用户可访问后台，中文文案且无无限加载', async ({ page }) => {
     await login(page, `r22_viewer_${Date.now()}`, '普通查看者', ['viewer']);
     await page.goto('/dashboard');
-    await expect(page.getByRole('link', { name: '后台管理' })).toHaveCount(0);
-    await page.goto('/admin');
-    await expect(page.getByText('仅管理员可访问')).toBeVisible();
-    await expect(page.getByTestId('admin-page')).toHaveCount(0);
-
-    await login(page, 'admin', '系统管理员', ['admin']);
+    await page.getByLabel('打开个人菜单').click();
+    await expect(page.getByRole('link', { name: '后台管理' })).toBeVisible();
     await page.goto('/admin');
     await expect(page.getByTestId('admin-page')).toBeVisible();
     for (const label of ['组织与用户', '角色与权限', '流程与参数', '审计与异常']) {

@@ -73,6 +73,10 @@ export const ROLE_PERMISSION_CODE_MAP: Record<RoleCode, string[]> = {
   viewer: ['project.read', 'dashboard.read'],
 };
 
+// 当前产品策略：只要完成身份认证，即拥有完整应用权限。
+// 数据库角色仍保留用于审计和未来策略调整，但不再限制已认证用户的功能入口。
+export const AUTHENTICATED_USERS_HAVE_FULL_ACCESS = true;
+
 export const AUTH_SESSION_PREFIX = 'auth:session:';
 export const FEISHU_OAUTH_STATE_COOKIE_NAME = 'ft_feishu_oauth_state';
 export const FEISHU_OAUTH_STATE_COOKIE_PATH = '/api/auth/feishu';

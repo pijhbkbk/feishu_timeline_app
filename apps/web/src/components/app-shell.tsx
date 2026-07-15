@@ -116,7 +116,7 @@ export function AppShell({ children }: PropsWithChildren) {
                 <div className="r22-profile-popover">
                   <strong>{user.name}</strong>
                   <span>{user.departmentName ?? '未分配部门'}</span>
-                  <small>{formatRoleCodes(user.roleCodes)}</small>
+                  <small>{user.isSystemAdmin ? '全部权限' : formatRoleCodes(user.roleCodes)}</small>
                   {user.isSystemAdmin || user.roleCodes.includes('admin') ? (
                     <Link href="/admin">后台管理</Link>
                   ) : null}

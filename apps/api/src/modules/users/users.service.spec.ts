@@ -16,6 +16,39 @@ function createService(tx: Record<string, unknown>) {
 }
 
 describe('UsersService', () => {
+  it('grants complete effective access to every active authenticated user', async () => {
+    const prisma = {
+      user: {
+        findUnique: vi.fn().mockResolvedValue({
+          id: 'viewer-user',
+          username: 'viewer-user',
+          name: '普通用户',
+          email: null,
+          departmentId: null,
+          status: UserStatus.ACTIVE,
+          isSystemAdmin: false,
+          department: null,
+          userRoles: [
+            {
+              role: {
+                code: 'viewer',
+                rolePermissions: [{ permissionCode: 'project.read' }],
+              },
+            },
+          ],
+        }),
+      },
+    };
+    const service = new UsersService(prisma as never);
+
+    await expect(service.getAuthenticatedUser('viewer-user', 'feishu')).resolves.toMatchObject({
+      id: 'viewer-user',
+      isSystemAdmin: true,
+      roleCodes: ['admin'],
+      permissionCodes: ROLE_PERMISSION_CODE_MAP.admin,
+    });
+  });
+
   it('assigns the read-only viewer role to new Feishu users', async () => {
     const tx = {
       user: {
