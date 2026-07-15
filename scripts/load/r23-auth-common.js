@@ -37,6 +37,7 @@ export function buildOptions({ vus, duration }) {
     vus,
     duration,
     discardResponseBodies: false,
+    summaryTrendStats: ['avg', 'min', 'med', 'max', 'p(90)', 'p(95)', 'p(99)'],
     thresholds: {
       http_req_failed: ['rate<0.01'],
       r23c_read_latency: ['p(95)<800'],

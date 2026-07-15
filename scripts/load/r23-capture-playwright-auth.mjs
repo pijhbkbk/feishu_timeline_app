@@ -12,7 +12,10 @@ const outputPath = path.join(sessionDir, 'playwright-auth.json');
 await mkdir(sessionDir, { recursive: true, mode: 0o700 });
 await chmod(sessionDir, 0o700);
 
-const browser = await chromium.launch({ headless: false });
+const browser = await chromium.launch({
+  headless: false,
+  channel: process.env.R23_BROWSER_CHANNEL ?? 'chrome',
+});
 const context = await browser.newContext();
 const page = await context.newPage();
 
@@ -23,7 +26,7 @@ try {
   await page.goto(new URL('/login', baseUrl).toString(), { waitUntil: 'domcontentloaded' });
   await page.waitForURL(
     (url) => url.origin === baseUrl.origin && !url.pathname.startsWith('/login'),
-    { timeout: 10 * 60 * 1000 },
+    { timeout: Number(process.env.R23_LOGIN_TIMEOUT_MS ?? 30 * 60 * 1000) },
   );
   await context.storageState({ path: outputPath });
   await chmod(outputPath, 0o600);
