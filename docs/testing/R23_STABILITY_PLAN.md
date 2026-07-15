@@ -80,3 +80,13 @@ staging、local 与 production 不共享数据库、Redis 或附件目录。账�
 ## 8. 停止条件
 
 P0/P1 未关闭、已认证全权限或未登录边界未通过、2 小时耐久未完成、全量回归失败或证据 commit 不一致时，R23 必须为 `BLOCKED/FAIL`，不得进入 R24。
+
+## R23B 收口执行结果（2026-07-15）
+
+- 用户确认现行产品策略为“所有有效已认证用户完整权限”，九角色隔离矩阵因此不再适用；真实飞书账号 `李晓晨` 作为单一全权限账号执行全部人工写路径，未登录边界仍由后端拒绝。
+- 最终 `applicationCommit` 与 `stagingCommit` 均为 `cdb51963502e35004bf2667aec7c8b7a49a51e25`；API/Web 镜像 revision 与完整 SHA 一致，17 个 migration，0 pending，五项服务 healthy。
+- 七条权威 `R23-UAT-*` 场景已通过真实页面完成；另有一条退回场景早期记录被权威项目替代。八条记录均通过名称和说明写入“已归档 / 测试项目”逻辑标记，未物理删除。
+- 最终提交上 lint、typecheck、237 条单元测试、主链路 E2E、双端 build、Prisma validate、Playwright 52/52 均通过。
+- `5 VU × 2h` 与 `10 VU × 30m` 仍因没有安全的认证会话注入方式而未执行。禁止读取或导出真实浏览器 Cookie、token、storageState，也不以 20 VU × 5m 未认证只读档替代认证耐久。
+
+因此 R23B 与 R23 保持 `BLOCKED / NOT PASSED`，仅剩 `R23-BLOCK-002`，不得进入 R24。

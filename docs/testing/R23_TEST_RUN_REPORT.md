@@ -1,6 +1,6 @@
 # R23 Test Run Report
 
-> 2026-07-14 补充：本报告第 1～7 节记录 `69d3332` 历史候选。用户随后取消角色隔离，改为“所有有效已认证用户拥有完整权限”；最新候选和回归结果见第 8 节。
+> 2026-07-15 最终补充：第 1～8 节保留历史候选轨迹；R23B 最终应用、staging、真实写路径与完整回归以第 9 节为准。
 
 ## 1. 候选与环境
 
@@ -98,3 +98,52 @@ pnpm playwright:test:r23
 - 普通查看者可见并进入后台管理；财务/查看者可创建项目和跨项目读取；未登录业务 API 返回 401。
 - 新隔离库完整 Playwright 为 `43 PASS / 3 FAIL / 4 NOT RUN`。失败是两个 R22 用例依赖 seed 账号已有活跃任务，以及 R23-014 被后台调度提前消费；权限专项均通过。
 - 按连续失败停止协议，不继续重跑，不部署 staging/production。九角色矩阵不再是门禁；当前 blocker 为测试夹具、七项目 staging 写入授权和认证耐久会话。
+
+## 9. R23B 最终收口（2026-07-15）
+
+### 9.1 精确版本与环境
+
+| 字段 | 值 |
+|---|---|
+| applicationCommit | `cdb51963502e35004bf2667aec7c8b7a49a51e25` |
+| evidenceCommit | 本次 R23B 文档证据提交；完整 SHA 在最终输出中记录 |
+| stagingCommit | `cdb51963502e35004bf2667aec7c8b7a49a51e25` |
+| API image | `feishu-timeline-api:cdb51963502e` / `sha256:82c8973e6e481a49f552f7ad8d2b458f3a1c768552ce8bed1866bc0b629fde7c` |
+| Web image | `feishu-timeline-web:cdb51963502e` / `sha256:38e3f4bbb77262e6375a3e9e28268c02a3aa610875c096199466b020389ba73d` |
+| migration / services | `17 / 0 pending`；PostgreSQL、Redis、API、Web、Nginx 全部 healthy |
+| 身份 | 单一真实飞书账号；所有有效已认证用户完整权限；未读取/导出 Cookie、token 或 storageState |
+
+### 9.2 七条权威 UAT 写路径
+
+| 场景 | 项目 ID | 结果 |
+|---|---|---|
+| 正常主线 | `cmrlhxjk00001n401qc1jk10q` | PASS：进入第 18 步，节点触发关系与 12 月实例正确 |
+| 评审退回 | `cmrllcv5q00crn401xwyb3d6f` | PASS：无原因拦截、退回、新轮次、第二轮通过与历史完整 |
+| 非阻塞支线 | `cmrli33m7000zn401788108zo` | PASS：第 9 步未完成不阻塞主线 |
+| 逾期停滞 | `cmrli3gey001gn4013bniok62` | PASS：逾期、停滞、风险、催办、统计一致 |
+| 材料版本 | `cmrli3jjq001xn401c6pjov7b` | PASS：`定制颜色开发流程图.pdf` 中文原名、V1→V2、同名不覆盖、下载与匿名 401 |
+| 月度跟踪 | `cmrli3mo0002en401r82nwyh0` | PASS：12 条不重复，首月 1/12，第 17 步仍活跃，第 18 步未触发，逾期投影正确 |
+| 并发编辑 | `cmrli3pqi002vn401zld6zcfy` | PASS：同节点同时提交仅一条成功，另一条显示中文冲突；自动化确认 409 与幂等 |
+
+原退回项目 `cmrli1i8a000in401wpos12xy` 因早期夹具状态不权威，被上述 replacement 项目替代并单独逻辑归档。运行清单位于被 Git 忽略的 `test-results/r23/r23-run-manifest.json`，不含敏感身份信息。
+
+### 9.3 最终回归与缺陷
+
+| 套件 | 最终结果 |
+|---|---:|
+| Web 单元测试 | `74/74 PASS` |
+| API 单元/安全测试 | `163/163 PASS` |
+| Shared | 无测试用例 |
+| 主链路 E2E | PASS |
+| 完整 Playwright | `52/52 PASS`，5.7m |
+| lint / typecheck / Web build / API build / Prisma validate | 全部 PASS |
+
+累计产品缺陷为 P0 0、P1 6（全部修复）、P2 2（全部修复）、P3 0。新增 P1 是试制流程可被通用动作绕过，以及月度评审首月即关闭/无法逐月完成；新增 P2 是任务材料中文原名显示和月度完成提示/重复按钮不准确。既有 `R23B-BLOCK-003` 测试夹具问题已修复，最终完整回归通过。
+
+### 9.4 性能与最终判定
+
+- 历史 20 VU × 5m 只读档：5600 请求、0 error、0 5xx，p50/p95/p99 `7.04/46.17/74.91 ms`，空闲回收后 API+Web 合计内存增长 4.87%，DB deadlock 0、服务重启 0。
+- 该档位不是最终提交上的认证耐久，也不能替代 `5 VU × 2h` 或 `10 VU × 30m`。
+- 唯一剩余阻塞 `R23-BLOCK-002`：在不读取/导出真实会话机密的约束下，没有安全的外部会话注入方式。两档认证耐久均未执行。
+
+最终结论：`R23B BLOCKED / R23 NOT PASSED`。不得进入 R24、部署生产、合并 main 或创建 tag。

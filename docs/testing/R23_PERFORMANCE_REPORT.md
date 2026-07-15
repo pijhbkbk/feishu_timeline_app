@@ -65,3 +65,20 @@ pnpm test:load:r23 -- --base-url http://localhost:8080 --vus 5 --duration 2h --p
 pnpm test:load:r23 -- --base-url http://localhost:8080 --vus 10 --duration 30m --profile load-10vu
 pnpm test:load:r23 -- --base-url http://localhost:8080 --vus 20 --duration 5m --profile readonly-20vu
 ```
+
+## 5. R23B 最终候选说明（2026-07-15）
+
+最终 `applicationCommit`/`stagingCommit` 为 `cdb51963502e35004bf2667aec7c8b7a49a51e25`。部署后 17 个 migration、五个服务、HTTP 与静态资源检查全部通过，API/Web 近 10 分钟日志未检出 error、exception、fatal 或 panic。
+
+现有可量化性能数据仍来自较早候选的 20 VU × 5m 未认证只读档：
+
+| 指标 | 值 |
+|---|---:|
+| p50 / p95 / p99 | `7.04 / 46.17 / 74.91 ms` |
+| error rate / 5xx | `0% / 0` |
+| 空闲回收后 API+Web 内存增长 | `4.87%` |
+| DB max connections / slow queries / deadlocks | `4 / 0 / 0` |
+| Redis max memory | `1,423,032 bytes` |
+| service restarts | `0` |
+
+`5 VU × 2h` 与 `10 VU × 30m` 的最终提交认证数据均为 `NOT RUN / BLOCKED`。原因是没有不暴露 Cookie/token/storageState 的安全会话注入路径；本轮没有读取、导出或持久化真实浏览器会话机密。短时只读数字仅供基线参考，不能作为最终候选认证耐久 PASS 证据。

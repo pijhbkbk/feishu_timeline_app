@@ -9,11 +9,11 @@
 
 - 项目名称：轻卡定制颜色开发项目管理系统
 - 当前阶段：R23B 已认证全权限、真实写路径与认证耐久收口
-- 当前轮次：R23B_AUTHENTICATED_FULL_ACCESS_REMEDIATION
-- 总体状态：BLOCKED（已实现所有有效已认证用户完整权限，定向门禁通过；最新完整 Playwright 被 3 个既有测试夹具问题阻塞，七项目写入未获明确授权，认证耐久会话未准备；R19B 外部生产安全验收仍独立 BLOCKED）
+- 当前轮次：R23B_REAL_ACCOUNT_WRITE_PATH_CLOSURE
+- 总体状态：BLOCKED（七条真实 staging 写路径、最终完整回归、精确部署和逻辑归档均已完成；唯一 R23 blocker 为认证 5 VU × 2h 与 10 VU × 30m 缺少安全会话注入；R19B 外部生产安全验收仍独立 BLOCKED）
 - 仓库路径：`/Users/lixiaochen/Downloads/feishu_timeline_app`
 - 默认分支：`main`
-- 最近更新时间：`2026-07-14`
+- 最近更新时间：`2026-07-15`
 
 ---
 
@@ -61,8 +61,8 @@
 | R21C | 生产流程地图权限与演示数据修复 | PASSED | STOP | 已修复飞书用户默认无角色导致 403，并补齐生产演示项目数据 |
 | R21C_UI | 项目实时流程地图 UI 布局重构 | PASSED | STOP | 已按 `map2.md` 调整画布拓扑、顶部工具栏、正交连线、缩放适配与 Playwright 截图验收 |
 | R22 | Apple 风产品 UI 全量还原 | PASSED | CONTINUE | Gate 1–8、生产发布、临时管理员撤销和生产验收均已完成 |
-| R23 | 真实使用稳定性、UAT 与 Bug 修复 | BLOCKED | STOP | 累计 4 个 P1 已修复；九角色门禁已被全权限策略取代，最新完整回归与认证耐久待补 |
-| R23B | 已认证全权限、真实写路径与认证耐久收口 | BLOCKED | STOP | 全权限策略已实现且定向门禁通过；完整回归被既有测试夹具阻塞，另待七项目写入授权和认证耐久会话 |
+| R23 | 真实使用稳定性、UAT 与 Bug 修复 | BLOCKED | STOP | P0=0，P1 6/6、P2 2/2 已修复；七写路径和最终 52/52 已完成，仅认证耐久待补 |
+| R23B | 已认证全权限、真实写路径与认证耐久收口 | BLOCKED | STOP | 单一真实飞书全权限账号完成七场景并逻辑归档；5 VU × 2h 与 10 VU × 30m 因安全会话注入缺失而 BLOCKED |
 
 状态枚举建议：
 
@@ -77,10 +77,10 @@
 
 ## 当前阻塞项
 
-- 九角色真实 OAuth 矩阵已由用户明确取消；当前任一有效已认证用户均获得完整应用权限。
-- 七条 `R23-UAT-*` 项目尚未获得用户明确写入授权，当前项目数为 0。
-- R23B 不读取或导出登录 Cookie/token/storageState；缺少 1 个受控真实 OAuth 会话，`5 VU × 2h` 和 `10 VU × 30m` 认证业务耐久尚未执行。
-- 最新隔离库完整 Playwright 为 `43 PASS / 3 FAIL / 4 NOT RUN`：两个 R22 用例依赖 seed 账号已有活跃任务，R23-014 与后台自动调度竞争。按连续失败停止协议未继续扩修。
+- 九角色真实 OAuth 矩阵已由用户明确取消；当前任一有效已认证用户均获得完整应用权限，真实飞书账号已完成七条 staging 写路径。
+- 七条权威 `R23-UAT-*` 和一条已替代记录均已通过真实页面写入“已归档 / 测试项目”逻辑标记，保留全部审计，无物理删除。
+- R23B 不读取或导出登录 Cookie/token/storageState；缺少受控的外部认证会话注入，`5 VU × 2h` 和 `10 VU × 30m` 认证业务耐久尚未执行。
+- 既有完整回归夹具 blocker 已解除；最终应用提交上 Playwright `52/52 PASS`。
 - R19/R19B 的公司私有云主机、飞书管理后台、认证后 staging DAST、基础设施镜像和最终发布镜像证据仍待授权或由公司侧导出。
 
 ---
@@ -3433,3 +3433,78 @@ DATABASE_URL=postgresql://.../feishu_timeline_r23b_open_20260714?schema=public P
 `AUTHENTICATED_FULL_ACCESS_IMPLEMENTED / TARGETED_GATES_PASS / FULL_REGRESSION_BLOCKED_BY_TEST_FIXTURES / NO_DEPLOY / STOP`
 
 下一步应先让 R22 用例自建活跃任务并隔离 R23-014 自动调度，再在全新数据库执行一次完整回归。通过后仍需取得七项目 staging 写入授权和一个安全认证会话，方可继续 R23B；不得自动进入 R24、部署生产、合并 `main` 或创建 tag。
+
+---
+
+### Round R23B_REAL_ACCOUNT_WRITE_PATH_CLOSURE
+
+#### Goal
+在用户仅有一个真实飞书账号且已确认所有有效已认证用户完整权限的条件下，完成七条独立 staging 真实写路径，修复发现的应用缺陷，在最终应用 commit 上重跑全量门禁并准确部署；认证耐久无法安全执行时保留 blocker，不伪造 PASS。
+
+#### Scope And Inputs
+- 用户明确授权使用其真实账号完成全部测试工作，并已确认 staging 七项目写入。
+- 仅操作 `http://localhost:8080` 独立 staging；未连接或部署生产，未合并 main，未创建 tag，未进入 R24。
+- 单一真实飞书会话只用于页面实操；未读取、导出、打印或持久化 Cookie、token、OAuth code、localStorage 或 storageState。
+- 九角色隔离矩阵由产品全权限策略取代；不把一个账号伪称为九个角色。
+
+#### Application Changes
+- `dc0e0f8ec4b7061e23fc3f323c046534c15eef99`：所有有效已认证用户完整权限，匿名边界不放宽。
+- `af6baaf9021f2fc5e9c3d0beb9f61b32afc8b4b3`：试制领域记录门禁、月度 `reviewPeriod` 与 12/12 门禁、测试夹具和中文任务附件名。
+- `cdb51963502e35004bf2667aec7c8b7a49a51e25`：月度完成状态、重复按钮与下游激活文案准确化；这是最终 applicationCommit。
+- Prisma migration `20260715135000_allow_monthly_review_records` 已部署；staging 累计 17 个 migration、0 pending。
+
+#### Real UAT Projects
+| 场景 | 权威项目 ID | 结果 |
+|---|---|---|
+| A 正常主线 | `cmrlhxjk00001n401qc1jk10q` | PASS：进入第 18 步 |
+| B 评审退回 | `cmrllcv5q00crn401xwyb3d6f` | PASS：退回、新轮次、第二轮与历史完整 |
+| C 非阻塞支线 | `cmrli33m7000zn401788108zo` | PASS：第 9 步未完成不阻塞主线 |
+| D 逾期停滞 | `cmrli3gey001gn4013bniok62` | PASS：逾期/停滞/风险/催办/统计一致 |
+| E 材料版本 | `cmrli3jjq001xn401c6pjov7b` | PASS：中文名、V1→V2、同名不覆盖、匿名 401、中断无半记录 |
+| F 月度跟踪 | `cmrli3mo0002en401r82nwyh0` | PASS：12 条、1/12、第 17 步保持活跃、受控逾期 |
+| G 并发编辑 | `cmrli3pqi002vn401zld6zcfy` | PASS：双标签同节点同时写一成一拒、中文冲突、自动化 409/幂等 |
+
+原项目 `cmrli1i8a000in401wpos12xy` 被 B 场景权威 replacement 替代。七条权威项目与该已替代记录均通过项目编辑页面加上“已归档 / 测试项目”名称/说明标记；数据库无独立 archive 字段，故不改变流程状态、不物理删除，审计记录保留。脱敏清单为 `test-results/r23/r23-run-manifest.json`（Git ignored）。
+
+#### Defects And Severity
+- P0：0。
+- P1：累计 6，全部修复，未关闭 0；本阶段新增试制通用动作绕过和月度首月错误关闭/无法逐月完成。
+- P2：累计 2，全部修复，未关闭 0；任务材料中文原名显示、月度成功提示与重复按钮。
+- P3：0。
+- `R23B-BLOCK-003` 测试夹具问题已解除；最终 52/52。
+
+#### Commands And Checks
+```bash
+pnpm install
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm --filter web build
+pnpm --filter api build
+pnpm --filter api prisma:validate
+pnpm test:e2e
+pnpm playwright:test
+git push origin release/r22-stability-security-rc
+pnpm deploy:staging
+pnpm deploy:migrate
+pnpm deploy:health
+```
+
+#### Acceptance Result
+- [x] applicationCommit `cdb51963502e35004bf2667aec7c8b7a49a51e25` 已推送并精确部署为 stagingCommit。
+- [x] API image `sha256:82c8973e6e481a49f552f7ad8d2b458f3a1c768552ce8bed1866bc0b629fde7c`、Web image `sha256:38e3f4bbb77262e6375a3e9e28268c02a3aa610875c096199466b020389ba73d`，revision 均匹配完整 SHA。
+- [x] 五服务 healthy、HTTP/static PASS、17 migration、0 pending，部署后 API/Web 日志无 error/exception/fatal/panic。
+- [x] Web `74/74`、API `163/163`、主链路 E2E、Playwright `52/52`，lint/typecheck/build/Prisma validate 全部 PASS。
+- [x] 七条真实写路径通过，项目逻辑归档完成。
+- [ ] 认证 `5 VU × 2h`：NOT RUN / BLOCKED。
+- [ ] 认证 `10 VU × 30m`：NOT RUN / BLOCKED。
+
+#### Performance And Risk
+- 历史 20 VU × 5m 未认证只读基线：5600 请求、error rate 0%、5xx 0、p50/p95/p99 `7.04/46.17/74.91 ms`、空闲回收后内存增长 4.87%、DB deadlock 0、重启 0。
+- 该数据来自较早候选且不是认证耐久；不能替代最终应用 commit 的 2 小时/30 分钟认证测试。
+- 唯一 R23 blocker `R23-BLOCK-002`：缺少不暴露真实会话机密的安全认证负载注入方式。
+
+#### Decision And Next
+`REAL_WRITE_PATHS_PASS / FINAL_REGRESSION_PASS / FINAL_STAGING_DEPLOY_PASS / AUTHENTICATED_ENDURANCE_BLOCKED / R23_NOT_PASSED / STOP`
+
+如后续提供受控性能测试身份或由用户在本地进程外安全注入会话，只继续执行 `5 VU × 2h` 与 `10 VU × 30m` 并更新 R23 证据；此前不得进入 R24、部署生产、合并 main 或创建 tag。
