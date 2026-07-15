@@ -47,6 +47,16 @@ export function getR23ResultsPath(...segments: string[]) {
   return path.join(getR23RepoRoot(), 'test-results', 'r23', ...segments);
 }
 
+function getR23DatabaseName() {
+  const databaseUrl = process.env.DATABASE_URL
+    ?? 'postgresql://postgres:postgres@localhost:5432/feishu_timeline?schema=public';
+  const databaseName = decodeURIComponent(new URL(databaseUrl).pathname.replace(/^\//, ''));
+  if (!/^[A-Za-z0-9_-]+$/.test(databaseName)) {
+    throw new Error('R23 数据库辅助测试收到非法数据库名称。');
+  }
+  return databaseName;
+}
+
 export async function ensureR23EvidenceDirs() {
   await Promise.all(
     ['screenshots', 'traces', 'videos', 'har', 'performance', 'logs', 'api-snapshots'].map(
@@ -62,7 +72,19 @@ export async function lockR23WorkflowTask(taskId: string) {
 
   const child = spawn(
     'docker',
-    ['compose', 'exec', '-T', 'postgres', 'psql', '-X', '-q', '-U', 'postgres', '-d', 'feishu_timeline'],
+    [
+      'compose',
+      'exec',
+      '-T',
+      'postgres',
+      'psql',
+      '-X',
+      '-q',
+      '-U',
+      'postgres',
+      '-d',
+      getR23DatabaseName(),
+    ],
     {
       cwd: getR23RepoRoot(),
       stdio: ['pipe', 'pipe', 'pipe'],
@@ -128,7 +150,7 @@ export async function setR23WorkflowTaskDueToday(taskId: string) {
       '-U',
       'postgres',
       '-d',
-      'feishu_timeline',
+      getR23DatabaseName(),
       '-c',
       `UPDATE workflow_tasks SET "dueAt" = now(), "effectiveDueAt" = now() WHERE id = '${taskId}';`,
     ],

@@ -39,6 +39,7 @@ export default defineConfig({
       cwd: repoRoot,
       env: {
         AUTH_MOCK_ENABLED: 'true',
+        NOTIFICATION_QUEUE_ENABLED: 'false',
       },
     },
     {

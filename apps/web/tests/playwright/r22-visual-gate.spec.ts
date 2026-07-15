@@ -113,13 +113,35 @@ async function loginAsSeedProjectManager(page: Page) {
 }
 
 async function getCurrentTaskContext(page: Page) {
-  const result = await page.evaluate(async ({ apiBaseUrl }) => {
+  let result = await page.evaluate(async ({ apiBaseUrl }) => {
     const response = await fetch(`${apiBaseUrl}/dashboard/personal-overview`, {
       credentials: 'include',
     });
     if (!response.ok) throw new Error(`personal dashboard failed: ${response.status}`);
     return response.json() as Promise<PersonalOverview>;
   }, { apiBaseUrl: API_BASE_URL });
+
+  if (!result.currentTask) {
+    const timestamp = Date.now();
+    await page.evaluate(async ({ apiBaseUrl, code, name }) => {
+      const response = await fetch(`${apiBaseUrl}/projects`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ code, name, priority: 'MEDIUM' }),
+      });
+      if (!response.ok) throw new Error(`test project creation failed: ${response.status} ${await response.text()}`);
+    }, {
+      apiBaseUrl: API_BASE_URL,
+      code: `R22-VISUAL-${timestamp}`,
+      name: `R22 视觉闸门夹具 ${timestamp}`,
+    });
+    result = await page.evaluate(async ({ apiBaseUrl }) => {
+      const response = await fetch(`${apiBaseUrl}/dashboard/personal-overview`, { credentials: 'include' });
+      if (!response.ok) throw new Error(`personal dashboard failed: ${response.status}`);
+      return response.json() as Promise<PersonalOverview>;
+    }, { apiBaseUrl: API_BASE_URL });
+  }
 
   if (!result.currentTask) throw new Error('seed project manager has no active task');
   return result.currentTask;
