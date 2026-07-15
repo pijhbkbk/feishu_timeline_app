@@ -2,7 +2,7 @@ import { Buffer } from 'node:buffer';
 
 import { expect, test } from '@playwright/test';
 
-import { advanceToCabinReview } from './helpers';
+import { advanceToCabinReview, completeTrialProductionByApi } from './helpers';
 import {
   createR20ProjectByApi,
   loginAsR20Role,
@@ -56,7 +56,7 @@ test.describe('R20 第12步评审退回与新轮次 @r20', () => {
     await writeR20ApiSnapshot(testInfo, 'workflow-after-step12-reject', workflow);
 
     await loginAsR20Role(page, 'production');
-    await transitionR16Task(request, project.id, 'TRIAL_PRODUCTION', 'submit');
+    await completeTrialProductionByApi(request, project.id, 'R20-REWORK');
     await loginAsR20Role(page, 'quality');
     workflow = await transitionR16Task(request, project.id, 'CAB_REVIEW', 'approve');
     expect(workflow.activeTasks.some((task) => task.nodeCode === 'DEVELOPMENT_ACCEPTANCE' && !task.isPrimary)).toBe(true);

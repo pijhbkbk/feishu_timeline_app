@@ -25,6 +25,12 @@ type TrialProductionWorkspaceResponse = {
   }>;
 };
 
+type FirstProductionPlanWorkspaceResponse = {
+  items: Array<{
+    id: string;
+  }>;
+};
+
 type ProjectSummary = {
   id: string;
   code: string;
@@ -86,7 +92,82 @@ export async function advanceToCabinReview(request: APIRequestContext, projectId
   workflow = await transitionActiveTask(request, workflow, 'PAINT_DEVELOPMENT', 'complete');
   workflow = await transitionActiveTask(request, workflow, 'SAMPLE_COLOR_CONFIRMATION', 'approve');
   workflow = await transitionActiveTask(request, workflow, 'PAINT_PROCUREMENT', 'complete');
-  workflow = await transitionActiveTask(request, workflow, 'FIRST_UNIT_PRODUCTION_PLAN', 'complete');
+
+  await completePilotProductionByApi(request, projectId, 'R13');
+
+  workflow = await fetchWorkflow(request, projectId);
+
+  return workflow;
+}
+
+export async function completePilotProductionByApi(
+  request: APIRequestContext,
+  projectId: string,
+  marker = 'E2E',
+) {
+  const users = await apiJson<Array<{ id: string }>>(request, '/users/directory');
+  const ownerId = users[0]?.id;
+
+  if (!ownerId) {
+    throw new Error('首台计划测试未找到可用责任人');
+  }
+
+  const uniqueMarker = `${marker}-${Date.now()}-${randomUUID().slice(0, 6).toUpperCase()}`;
+  const planWorkspace = await apiJson<FirstProductionPlanWorkspaceResponse>(
+    request,
+    `/projects/${projectId}/first-production-plans`,
+    {
+      method: 'POST',
+      data: {
+        planDate: '2026-04-22',
+        plannedQuantity: 1,
+        workshop: '总装一车间',
+        lineName: `${marker} 试制线`,
+        ownerId,
+        batchNo: `PLAN-${uniqueMarker}`,
+        note: `${marker} 浏览器回归首台计划`,
+      },
+    },
+  );
+  const planId = planWorkspace.items[0]?.id;
+
+  if (!planId) {
+    throw new Error('首台计划创建失败，未返回记录 ID');
+  }
+
+  await apiJson(request, `/projects/${projectId}/first-production-plans/${planId}/confirm`, {
+    method: 'POST',
+    data: {},
+  });
+  await apiJson(request, `/projects/${projectId}/first-production-plans/complete-task`, {
+    method: 'POST',
+    data: {},
+  });
+
+  return completeTrialProductionByApi(request, projectId, marker, planId);
+}
+
+export async function completeTrialProductionByApi(
+  request: APIRequestContext,
+  projectId: string,
+  marker = 'E2E',
+  productionPlanId?: string,
+) {
+  let planId = productionPlanId;
+
+  if (!planId) {
+    const planWorkspace = await apiJson<FirstProductionPlanWorkspaceResponse>(
+      request,
+      `/projects/${projectId}/first-production-plans`,
+    );
+    planId = planWorkspace.items[0]?.id;
+  }
+
+  if (!planId) {
+    throw new Error('试制记录测试未找到可关联的首台计划');
+  }
+
+  const uniqueMarker = `${marker}-${Date.now()}-${randomUUID().slice(0, 6).toUpperCase()}`;
 
   const trialWorkspace = await apiJson<TrialProductionWorkspaceResponse>(
     request,
@@ -94,14 +175,14 @@ export async function advanceToCabinReview(request: APIRequestContext, projectId
     {
       method: 'POST',
       data: {
-        productionPlanId: '',
-        vehicleNo: `R13-TRIAL-${Date.now()}`,
+        productionPlanId: planId,
+        vehicleNo: `TRIAL-${uniqueMarker}`,
         workshop: '总装一车间',
         trialDate: '2026-04-23',
-        paintBatchNo: 'PAINT-R13-001',
+        paintBatchNo: `PAINT-${uniqueMarker}`,
         result: 'PASS',
         issueSummary: '首轮试制记录已闭环。',
-        note: 'R13 浏览器回归试制记录',
+        note: `${marker} 浏览器回归试制记录`,
       },
     },
   );
@@ -121,9 +202,7 @@ export async function advanceToCabinReview(request: APIRequestContext, projectId
     data: {},
   });
 
-  workflow = await fetchWorkflow(request, projectId);
-
-  return workflow;
+  return fetchWorkflow(request, projectId);
 }
 
 export async function advanceToMonthlyReview(request: APIRequestContext, projectId: string) {
@@ -138,15 +217,69 @@ export async function advanceToMonthlyReview(request: APIRequestContext, project
 }
 
 export async function advanceToColorExit(request: APIRequestContext, projectId: string) {
-  let workflow = await advanceToMonthlyReview(request, projectId);
-  workflow = await transitionActiveTask(
-    request,
-    workflow,
-    'VISUAL_COLOR_DIFFERENCE_REVIEW',
-    'approve',
-  );
+  await advanceToMonthlyReview(request, projectId);
+  return completeAllMonthlyReviewsByApi(request, projectId);
+}
 
-  return workflow;
+export async function completeAllMonthlyReviewsByApi(
+  request: APIRequestContext,
+  projectId: string,
+) {
+  const monthly = await apiJson<{
+    recurringTasks: Array<{
+      id: string;
+      plannedDate: string;
+      periodIndex: number;
+      status: string;
+    }>;
+  }>(request, `/workflows/projects/${projectId}/monthly-reviews`);
+  const users = await apiJson<Array<{ id: string }>>(request, '/users/directory');
+  const reviewerId = users[0]?.id;
+
+  if (!reviewerId) {
+    throw new Error('月度评审测试未找到可用评审人');
+  }
+
+  for (const period of monthly.recurringTasks) {
+    if (period.status === 'COMPLETED') {
+      continue;
+    }
+
+    const workspace = await apiJson<{
+      items: Array<{ id: string; reviewDate: string | null }>;
+    }>(request, `/projects/${projectId}/reviews/visual-delta`, {
+      method: 'POST',
+      data: {
+        reviewDate: period.plannedDate,
+        reviewerId,
+        reviewConclusion: 'APPROVED',
+        comment: `第 ${period.periodIndex} 个月目视色差评审通过。`,
+        conditionNote: null,
+        rejectReason: null,
+      },
+    });
+    const periodKey = period.plannedDate.slice(0, 7);
+    const reviewId = workspace.items.find(
+      (item) => item.reviewDate?.slice(0, 7) === periodKey,
+    )?.id;
+
+    if (!reviewId) {
+      throw new Error(`第 ${period.periodIndex} 个月评审创建失败，未返回记录 ID`);
+    }
+
+    await apiJson(
+      request,
+      `/projects/${projectId}/reviews/visual-delta/${reviewId}/submit`,
+      { method: 'POST', data: {} },
+    );
+    await apiJson(
+      request,
+      `/projects/${projectId}/reviews/visual-delta/${reviewId}/approve`,
+      { method: 'POST', data: {} },
+    );
+  }
+
+  return fetchWorkflow(request, projectId);
 }
 
 export async function createColorExitRecord(request: APIRequestContext, projectId: string) {

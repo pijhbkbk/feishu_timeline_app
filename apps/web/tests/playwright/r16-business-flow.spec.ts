@@ -7,6 +7,8 @@ import {
   advanceToColorExit,
   advanceToMonthlyReview,
   apiJson,
+  completePilotProductionByApi,
+  completeTrialProductionByApi,
   createColorExitRecord,
   loginAsProjectManager,
 } from './helpers';
@@ -70,14 +72,10 @@ test.describe('R16 18步业务规则网页验收', () => {
     expect(workflow.activeTasks.some((task) => task.nodeCode === 'PERFORMANCE_TEST' && !task.isPrimary)).toBe(true);
     expect(workflow.activeTasks.some((task) => task.nodeCode === 'FIRST_UNIT_PRODUCTION_PLAN' && task.isPrimary)).toBe(true);
 
-    await transitionR16Task(request, project.id, 'FIRST_UNIT_PRODUCTION_PLAN', 'submit');
-    workflow = await fetchR16Workflow(request, project.id);
-    expect(workflow.workflowInstance.currentNodeCode).toBe('TRIAL_PRODUCTION');
-    expect(workflow.activeTasks.some((task) => task.nodeCode === 'PERFORMANCE_TEST')).toBe(true);
-
-    await transitionR16Task(request, project.id, 'TRIAL_PRODUCTION', 'submit');
+    await completePilotProductionByApi(request, project.id, 'R16-MAIN');
     workflow = await fetchR16Workflow(request, project.id);
     expect(workflow.workflowInstance.currentNodeCode).toBe('CAB_REVIEW');
+    expect(workflow.activeTasks.some((task) => task.nodeCode === 'PERFORMANCE_TEST')).toBe(true);
 
     await page.goto('/projects/timeline');
     await page.getByPlaceholder('搜索项目、颜色、当前节点').fill(project.name);
@@ -138,7 +136,7 @@ test.describe('R16 18步业务规则网页验收', () => {
     );
     expect(roundTwoTrial).toBeTruthy();
 
-    await transitionR16Task(request, project.id, 'TRIAL_PRODUCTION', 'submit');
+    await completeTrialProductionByApi(request, project.id, 'R16-REWORK');
     await transitionR16Task(request, project.id, 'CAB_REVIEW', 'approve');
     workflow = await fetchR16Workflow(request, project.id);
     expect(workflow.activeTasks.some((task) => task.nodeCode === 'DEVELOPMENT_ACCEPTANCE' && !task.isPrimary)).toBe(true);

@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-import { API_BASE_URL, apiJson } from './helpers';
+import { API_BASE_URL, apiJson, completePilotProductionByApi } from './helpers';
 import {
   createR23ProjectByApi,
   lockR23WorkflowTask,
@@ -347,6 +347,125 @@ test.describe('R23 稳定性、并发与数据一致性 @r23', () => {
     expect(monthly.recurringTasks).toHaveLength(12);
     expect(new Set(monthly.recurringTasks.map((item) => item.periodIndex)).size).toBe(12);
     await writeR23Evidence(testInfo, 'monthly-idempotency', { project, repeated, monthly });
+  });
+
+  test('R23-015 completes one monthly review without closing the 12-month workflow @r23', async ({ page }, testInfo) => {
+    test.setTimeout(240_000);
+    await loginAsR23Role(page, 'projectManager');
+    const request = page.context().request;
+    const project = await createR23ProjectByApi(request, 'monthly');
+    await advanceR20ToMonthlyReviews(request, project.id);
+
+    const before = await apiJson<{
+      recurringTasks: Array<{ id: string; plannedDate: string; periodIndex: number }>;
+    }>(request, `/workflows/projects/${project.id}/monthly-reviews`);
+    const users = await apiJson<Array<{ id: string; name: string }>>(request, '/users/directory');
+    const firstPeriod = before.recurringTasks[0]!;
+    const secondPeriod = before.recurringTasks[1]!;
+    const reviewer = users[0]!;
+
+    const created = await requestR23(request, `/projects/${project.id}/reviews/visual-delta`, {
+      method: 'POST',
+      data: {
+        reviewDate: firstPeriod.plannedDate,
+        reviewerId: reviewer.id,
+        reviewConclusion: 'APPROVED',
+        comment: 'R23 第 1 个月目视色差评审通过。',
+        conditionNote: null,
+        rejectReason: null,
+      },
+    });
+    expect(created.status).toBe(201);
+    const reviewId = (JSON.parse(created.body) as { items: Array<{ id: string }> }).items[0]!.id;
+    expect((await requestR23(request, `/projects/${project.id}/reviews/visual-delta/${reviewId}/submit`, {
+      method: 'POST',
+    })).status).toBe(201);
+    expect((await requestR23(request, `/projects/${project.id}/reviews/visual-delta/${reviewId}/approve`, {
+      method: 'POST',
+    })).status).toBe(201);
+
+    const after = await apiJson<{
+      summary: { totalPeriods: number; completedPeriods: number; pendingPeriods: number };
+      activeWorkflowTask: { id: string; nodeCode: string; status: string } | null;
+      recurringTasks: Array<{ id: string; status: string; result: string }>;
+    }>(request, `/workflows/projects/${project.id}/monthly-reviews`);
+    expect(after.summary).toMatchObject({
+      totalPeriods: 12,
+      completedPeriods: 1,
+      pendingPeriods: 11,
+    });
+    expect(after.activeWorkflowTask).toMatchObject({
+      nodeCode: 'VISUAL_COLOR_DIFFERENCE_REVIEW',
+      status: 'IN_PROGRESS',
+    });
+    expect(after.recurringTasks[0]).toMatchObject({ status: 'COMPLETED', result: 'APPROVED' });
+    expect(after.recurringTasks.slice(1).every((task) => task.status === 'PENDING')).toBe(true);
+
+    const genericBypass = await requestR23(
+      request,
+      `/workflows/tasks/${after.activeWorkflowTask!.id}/approve`,
+      { method: 'POST', data: {} },
+    );
+    expect(genericBypass.status).toBe(400);
+    expect(genericBypass.body).toContain('11 个月度评审未完成（1/12）');
+
+    const secondMonth = await requestR23(request, `/projects/${project.id}/reviews/visual-delta`, {
+      method: 'POST',
+      data: {
+        reviewDate: secondPeriod.plannedDate,
+        reviewerId: reviewer.id,
+        reviewConclusion: 'APPROVED',
+        comment: 'R23 同一真实评审人的第 2 个月记录。',
+        conditionNote: null,
+        rejectReason: null,
+      },
+    });
+    expect(secondMonth.status).toBe(201);
+
+    const workflow = await fetchR16Workflow(request, project.id);
+    expect(workflow.activeTasks.some((task) => task.nodeCode === 'PROJECT_CLOSED')).toBe(false);
+    await writeR23Evidence(testInfo, 'monthly-first-period-completion', {
+      project,
+      firstPeriod,
+      secondPeriod,
+      after,
+      genericBypass,
+    });
+  });
+
+  test('R23-016 blocks pilot workflow bypass until production records exist @r23', async ({ page }, testInfo) => {
+    test.setTimeout(180_000);
+    await loginAsR23Role(page, 'projectManager');
+    const request = page.context().request;
+    const project = await createR23ProjectByApi(request, 'rework');
+    await advanceR20ToStep4Branches(request, project.id);
+    const procurement = await requestR23(
+      request,
+      `/workflows/tasks/${(
+        await fetchR16Workflow(request, project.id)
+      ).activeTasks.find((task) => task.nodeCode === 'PAINT_PROCUREMENT')!.id}/submit`,
+      { method: 'POST', data: {} },
+    );
+    expect(procurement.status).toBe(201);
+
+    const before = await fetchR16Workflow(request, project.id);
+    const firstPlanTask = before.activeTasks.find(
+      (task) => task.nodeCode === 'FIRST_UNIT_PRODUCTION_PLAN',
+    );
+    expect(firstPlanTask).toBeTruthy();
+    const bypass = await requestR23(
+      request,
+      `/workflows/tasks/${firstPlanTask!.id}/submit`,
+      { method: 'POST', data: {} },
+    );
+    expect(bypass.status).toBe(400);
+    expect(bypass.body).toContain('已确认的首台生产计划');
+
+    await completePilotProductionByApi(request, project.id, 'R23-GATE');
+    const after = await fetchR16Workflow(request, project.id);
+    expect(after.workflowInstance.currentNodeCode).toBe('CAB_REVIEW');
+    expect(after.activeTasks.some((task) => task.nodeCode === 'CAB_REVIEW')).toBe(true);
+    await writeR23Evidence(testInfo, 'pilot-domain-gate', { project, bypass, after });
   });
 
   test('R23-012 preserves two consecutive review rework rounds @r23', async ({ page }, testInfo) => {

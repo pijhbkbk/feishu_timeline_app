@@ -153,3 +153,27 @@ export function getVisualDeltaReviewStageIssue(input: {
 export function getVisualDeltaReviewReturnNodeCode() {
   return WorkflowNodeCode.MASS_PRODUCTION;
 }
+
+export function getMonthlyReviewPeriodRange(reviewDate: Date) {
+  const year = reviewDate.getUTCFullYear();
+  const month = reviewDate.getUTCMonth();
+
+  return {
+    periodStart: new Date(Date.UTC(year, month, 1)),
+    periodEnd: new Date(Date.UTC(year, month + 1, 1)),
+  };
+}
+
+export function getMonthlyReviewPeriodKey(reviewDate: Date) {
+  return [
+    reviewDate.getUTCFullYear(),
+    String(reviewDate.getUTCMonth() + 1).padStart(2, '0'),
+  ].join('-');
+}
+
+export function shouldCompleteVisualDeltaWorkflow(input: {
+  completedPeriods: number;
+  totalPeriods: number;
+}) {
+  return input.totalPeriods > 0 && input.completedPeriods === input.totalPeriods;
+}

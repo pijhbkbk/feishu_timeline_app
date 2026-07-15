@@ -226,6 +226,72 @@ async function transitionTask(jar, taskId, action, body = {}) {
   });
 }
 
+async function completeFirstProductionPlan(jar, projectId) {
+  const users = await requestJson('/users/directory', jar);
+  const ownerId = users[0]?.id;
+
+  assert(ownerId, '首台计划 E2E 未找到可用责任人。');
+
+  const marker = `${Date.now()}-${randomUUID().slice(0, 6).toUpperCase()}`;
+  const workspace = await requestJson(`/projects/${projectId}/first-production-plans`, jar, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      planDate: '2026-04-22',
+      plannedQuantity: 1,
+      workshop: '总装一车间',
+      lineName: 'R08 E2E 试制线',
+      ownerId,
+      batchNo: `R08-PLAN-${marker}`,
+      note: 'R08 E2E 首台生产计划',
+    }),
+  });
+  const planId = workspace.items[0]?.id;
+
+  assert(planId, '首台计划 E2E 创建后未返回记录 ID。');
+
+  await requestJson(`/projects/${projectId}/first-production-plans/${planId}/confirm`, jar, {
+    method: 'POST',
+  });
+  await requestJson(`/projects/${projectId}/first-production-plans/complete-task`, jar, {
+    method: 'POST',
+  });
+  return planId;
+}
+
+async function completeTrialProduction(jar, projectId, productionPlanId, round) {
+  const marker = `${round}-${Date.now()}-${randomUUID().slice(0, 6).toUpperCase()}`;
+  const workspace = await requestJson(`/projects/${projectId}/trial-productions`, jar, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      productionPlanId,
+      vehicleNo: `R08-TRIAL-${marker}`,
+      workshop: '总装一车间',
+      trialDate: '2026-04-23',
+      paintBatchNo: `R08-PAINT-${marker}`,
+      result: 'PASS',
+      issueSummary: `R08 E2E 第 ${round} 轮试制记录已闭环。`,
+      note: `R08 E2E 第 ${round} 轮试制记录`,
+    }),
+  });
+  const trialId = workspace.items[0]?.id;
+
+  assert(trialId, `第 ${round} 轮试制 E2E 创建后未返回记录 ID。`);
+
+  await requestJson(`/projects/${projectId}/trial-productions/${trialId}/complete`, jar, {
+    method: 'POST',
+  });
+  await requestJson(`/projects/${projectId}/trial-productions/complete-task`, jar, {
+    method: 'POST',
+  });
+  return requestJson(`/workflows/projects/${projectId}`, jar);
+}
+
 async function expectStatus(responsePromise, expectedStatus, message) {
   const response = await responsePromise;
   const body = await response.text();
@@ -378,21 +444,22 @@ async function main() {
     );
     log('第 6 步并行创建校验通过。');
 
-    workflow = await transitionTask(
+    const firstProductionPlanId = await completeFirstProductionPlan(
       managerSession.jar,
-      getActiveTask(workflow, 'FIRST_UNIT_PRODUCTION_PLAN', true).id,
-      'complete',
+      project.id,
     );
+    workflow = await requestJson(`/workflows/projects/${project.id}`, managerSession.jar);
     assert(
       workflow.workflowInstance.currentNodeCode === 'TRIAL_PRODUCTION',
       '并行任务不应阻塞主线推进到样车试制。',
     );
     log('并行任务不阻塞主线校验通过。');
 
-    workflow = await transitionTask(
+    workflow = await completeTrialProduction(
       managerSession.jar,
-      getActiveTask(workflow, 'TRIAL_PRODUCTION', true).id,
-      'complete',
+      project.id,
+      firstProductionPlanId,
+      1,
     );
     workflow = await transitionTask(
       managerSession.jar,
@@ -407,7 +474,12 @@ async function main() {
     assert(roundTwoTrialTask?.taskRound === 2, '第 12 步退回后未生成第 11 步新轮次。');
     log('第 12 步退回与新轮次校验通过。');
 
-    workflow = await transitionTask(managerSession.jar, roundTwoTrialTask.id, 'complete');
+    workflow = await completeTrialProduction(
+      managerSession.jar,
+      project.id,
+      firstProductionPlanId,
+      2,
+    );
     workflow = await transitionTask(
       managerSession.jar,
       getActiveTask(workflow, 'CAB_REVIEW', true).id,

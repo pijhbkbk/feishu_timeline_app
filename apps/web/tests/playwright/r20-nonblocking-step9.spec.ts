@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test';
 
+import { completePilotProductionByApi } from './helpers';
+
 import {
   advanceR20ToStep6Branches,
   createR20ProjectByApi,
@@ -9,7 +11,7 @@ import {
   writeR20ApiSnapshot,
   writeR20CaseRecord,
 } from './r20-fixtures';
-import { fetchR16Workflow, transitionR16Task } from './r16-fixtures';
+import { fetchR16Workflow } from './r16-fixtures';
 
 test.describe('R20 第9步非阻塞主线 @r20', () => {
   test('R20-005 allows the mainline to reach step 12 while step 9 is still active @r20', async ({
@@ -24,8 +26,7 @@ test.describe('R20 第9步非阻塞主线 @r20', () => {
     expect(workflow.activeTasks.some((task) => task.nodeCode === 'PERFORMANCE_TEST')).toBe(true);
 
     await loginAsR20Role(page, 'production');
-    await transitionR16Task(request, project.id, 'FIRST_UNIT_PRODUCTION_PLAN', 'submit');
-    await transitionR16Task(request, project.id, 'TRIAL_PRODUCTION', 'submit');
+    await completePilotProductionByApi(request, project.id, 'R20-NONBLOCK');
 
     workflow = await fetchR16Workflow(request, project.id);
     expect(workflow.workflowInstance.currentNodeCode).toBe('CAB_REVIEW');

@@ -74,6 +74,78 @@ function createService() {
 }
 
 describe('WorkflowsService', () => {
+  it('blocks generic completion of pilot nodes without domain records', async () => {
+    const { service } = createService();
+    const tx = {
+      productionPlan: {
+        findFirst: vi.fn().mockResolvedValue(null),
+      },
+      trialProduction: {
+        findFirst: vi.fn().mockResolvedValue(null),
+      },
+    };
+
+    await expect(
+      (service as any).assertPilotProductionRecordsSubmitted(tx, {
+        projectId: 'project-1',
+        nodeCode: WorkflowNodeCode.FIRST_UNIT_PRODUCTION_PLAN,
+        nodeName: '首台生产计划',
+      }),
+    ).rejects.toThrow('至少需要一条已确认的首台生产计划');
+
+    await expect(
+      (service as any).assertPilotProductionRecordsSubmitted(tx, {
+        projectId: 'project-1',
+        nodeCode: WorkflowNodeCode.TRIAL_PRODUCTION,
+        nodeName: '样车试制',
+      }),
+    ).rejects.toThrow('至少需要一条已完成的有效试制记录');
+  });
+
+  it('blocks generic completion of the monthly review node before all periods finish', async () => {
+    const { service } = createService();
+    const tx = {
+      recurringPlan: {
+        findFirst: vi.fn().mockResolvedValue({
+          id: 'plan-1',
+          totalCount: 12,
+        }),
+      },
+      recurringTask: {
+        count: vi.fn().mockResolvedValue(1),
+      },
+    };
+
+    await expect(
+      (service as any).assertMonthlyReviewPeriodsCompleted(tx, {
+        id: 'task-17',
+        nodeCode: WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW,
+        nodeName: '整车色差一致性评审',
+      }),
+    ).rejects.toThrow('尚有 11 个月度评审未完成（1/12）');
+
+    tx.recurringTask.count.mockResolvedValue(12);
+
+    await expect(
+      (service as any).assertMonthlyReviewPeriodsCompleted(tx, {
+        id: 'task-17',
+        nodeCode: WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW,
+        nodeName: '整车色差一致性评审',
+      }),
+    ).resolves.toBeUndefined();
+  });
+
+  it('uses the original Unicode attachment name in task details', () => {
+    const { service } = createService();
+
+    expect(
+      (service as any).resolveAttachmentDisplayName({
+        fileName: '_________.pdf',
+        originalFileName: '定制颜色开发流程图.pdf',
+      }),
+    ).toBe('定制颜色开发流程图.pdf');
+  });
+
   it('initializes workflow instances with template version and SLA schedule', async () => {
     const { service, workflowDeadlineService, notificationQueueService } = createService();
     const tx = {

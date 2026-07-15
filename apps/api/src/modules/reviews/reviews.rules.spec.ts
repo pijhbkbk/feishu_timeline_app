@@ -11,6 +11,9 @@ import {
   getCabinReviewRejectIssue,
   getCabinReviewStageIssue,
   getConsistencyReviewStageIssue,
+  getMonthlyReviewPeriodKey,
+  getMonthlyReviewPeriodRange,
+  shouldCompleteVisualDeltaWorkflow,
   getVisualDeltaReviewStageIssue,
 } from './reviews.rules';
 
@@ -121,5 +124,25 @@ describe('reviews rules', () => {
 
     expect(templates).toHaveLength(1);
     expect(templates[0]?.nodeCode).toBe(WorkflowNodeCode.MASS_PRODUCTION);
+  });
+
+  it('maps a visual review date to one UTC monthly period', () => {
+    expect(getMonthlyReviewPeriodKey(new Date('2026-08-15T12:30:00.000Z'))).toBe('2026-08');
+    expect(getMonthlyReviewPeriodRange(new Date('2026-08-15T12:30:00.000Z'))).toEqual({
+      periodStart: new Date('2026-08-01T00:00:00.000Z'),
+      periodEnd: new Date('2026-09-01T00:00:00.000Z'),
+    });
+  });
+
+  it('keeps step 17 active until all 12 monthly periods are complete', () => {
+    expect(
+      shouldCompleteVisualDeltaWorkflow({ completedPeriods: 1, totalPeriods: 12 }),
+    ).toBe(false);
+    expect(
+      shouldCompleteVisualDeltaWorkflow({ completedPeriods: 12, totalPeriods: 12 }),
+    ).toBe(true);
+    expect(
+      shouldCompleteVisualDeltaWorkflow({ completedPeriods: 0, totalPeriods: 0 }),
+    ).toBe(false);
   });
 });

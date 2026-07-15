@@ -10,10 +10,13 @@ import {
   ColorExitSuggestion,
   DevelopmentFeeStatus,
   NotificationType,
+  ProductionPlanStatus,
+  ProductionPlanType,
   ProjectStatus,
   RecurringTaskStatus,
   ReviewType,
   SystemParameterValueType,
+  TrialProductionStatus,
   WorkflowAction,
   WorkflowDurationType,
   WorkflowInstanceStatus,
@@ -352,7 +355,7 @@ export class WorkflowsService {
       this.prisma.workflowTask.findFirst({
         where: {
           projectId,
-          nodeCode: WorkflowNodeCode.COLOR_CONSISTENCY_REVIEW,
+          nodeCode: WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW,
           isActive: true,
         },
         include: {
@@ -839,7 +842,7 @@ export class WorkflowsService {
       requiredMaterials: this.parseRequiredMaterials(nodeDefinition?.requiredAttachments),
       attachments: attachments.map((attachment) => ({
         id: attachment.id,
-        fileName: attachment.fileName,
+        fileName: this.resolveAttachmentDisplayName(attachment),
         storageKey: attachment.storageKey,
         fileSize: attachment.fileSize,
         mimeType: attachment.mimeType,
@@ -1106,6 +1109,11 @@ export class WorkflowsService {
 
     if (isWorkflowCompletionAction(action)) {
       await this.assertRequiredMaterialsSubmitted(tx, task);
+      await this.assertPilotProductionRecordsSubmitted(tx, task);
+    }
+
+    if (action === WorkflowAction.APPROVE || isWorkflowCompletionAction(action)) {
+      await this.assertMonthlyReviewPeriodsCompleted(tx, task);
     }
 
     if (action === WorkflowAction.START) {
@@ -1526,6 +1534,94 @@ export class WorkflowsService {
     if (missing.length > 0) {
       throw new BadRequestException(
         `${task.nodeName} 缺少必交材料：${missing.map((item) => item.name).join('、')}。请上传后再完成工序。`,
+      );
+    }
+  }
+
+  private async assertPilotProductionRecordsSubmitted(
+    tx: Prisma.TransactionClient,
+    task: Pick<WorkflowTaskWithRelations, 'nodeCode' | 'nodeName' | 'projectId'>,
+  ) {
+    if (task.nodeCode === WorkflowNodeCode.FIRST_UNIT_PRODUCTION_PLAN) {
+      const plan = await tx.productionPlan.findFirst({
+        where: {
+          projectId: task.projectId,
+          planType: ProductionPlanType.FIRST_UNIT,
+          status: {
+            in: [
+              ProductionPlanStatus.PLANNED,
+              ProductionPlanStatus.IN_PROGRESS,
+              ProductionPlanStatus.COMPLETED,
+            ],
+          },
+        },
+        select: { id: true },
+      });
+
+      if (!plan) {
+        throw new BadRequestException(
+          `${task.nodeName} 至少需要一条已确认的首台生产计划。`,
+        );
+      }
+    }
+
+    if (task.nodeCode === WorkflowNodeCode.TRIAL_PRODUCTION) {
+      const trial = await tx.trialProduction.findFirst({
+        where: {
+          projectId: task.projectId,
+          status: {
+            in: [TrialProductionStatus.PASSED, TrialProductionStatus.FAILED],
+          },
+          result: {
+            not: null,
+          },
+        },
+        select: { id: true },
+      });
+
+      if (!trial) {
+        throw new BadRequestException(
+          `${task.nodeName} 至少需要一条已完成的有效试制记录。`,
+        );
+      }
+    }
+  }
+
+  private async assertMonthlyReviewPeriodsCompleted(
+    tx: Prisma.TransactionClient,
+    task: Pick<WorkflowTaskWithRelations, 'id' | 'nodeCode' | 'nodeName'>,
+  ) {
+    if (task.nodeCode !== WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW) {
+      return;
+    }
+
+    const recurringPlan = await tx.recurringPlan.findFirst({
+      where: {
+        sourceWorkflowTaskId: task.id,
+        sourceNodeCode: WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW,
+      },
+      select: {
+        id: true,
+        totalCount: true,
+      },
+    });
+
+    if (!recurringPlan) {
+      throw new BadRequestException(
+        `${task.nodeName} 尚未生成月度评审计划，不能完成工序。`,
+      );
+    }
+
+    const completedPeriods = await tx.recurringTask.count({
+      where: {
+        recurringPlanId: recurringPlan.id,
+        status: RecurringTaskStatus.COMPLETED,
+      },
+    });
+
+    if (completedPeriods < recurringPlan.totalCount) {
+      throw new BadRequestException(
+        `${task.nodeName} 尚有 ${recurringPlan.totalCount - completedPeriods} 个月度评审未完成（${completedPeriods}/${recurringPlan.totalCount}）。`,
       );
     }
   }
@@ -2420,6 +2516,13 @@ export class WorkflowsService {
     }
 
     return value as Record<string, Prisma.InputJsonValue>;
+  }
+
+  private resolveAttachmentDisplayName(attachment: {
+    fileName: string;
+    originalFileName: string | null;
+  }) {
+    return attachment.originalFileName ?? attachment.fileName;
   }
 
   private getMonthlyReviewPeriodRange(plannedDate: Date) {

@@ -1267,6 +1267,7 @@ model ReviewRecord {
   attachmentId      String?           @unique
   reviewType        ReviewType
   reviewRound       Int               @default(1)
+  reviewPeriod      String            @default("TASK")
   result            ReviewResult      @default(PENDING)
   comment           String?
   conditionNote     String?
@@ -1282,7 +1283,7 @@ model ReviewRecord {
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
 
-  @@unique([workflowTaskId, reviewerId])
+  @@unique([workflowTaskId, reviewerId, reviewPeriod])
   @@index([projectId, reviewType, result, reviewedAt])
   @@index([trialProductionId])
   @@index([reviewerId, reviewedAt])

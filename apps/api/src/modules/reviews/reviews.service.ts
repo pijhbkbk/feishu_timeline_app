@@ -6,6 +6,7 @@ import {
 import {
   AttachmentTargetType,
   AuditTargetType,
+  RecurringTaskStatus,
   ReviewResult,
   ReviewType,
   TrialProductionStatus,
@@ -35,6 +36,9 @@ import {
   getCabinReviewSubmitIssue,
   getConsistencyReviewReturnNodeCode,
   getConsistencyReviewStageIssue,
+  getMonthlyReviewPeriodKey,
+  getMonthlyReviewPeriodRange,
+  shouldCompleteVisualDeltaWorkflow,
   getVisualDeltaReviewReturnNodeCode,
   getVisualDeltaReviewStageIssue,
 } from './reviews.rules';
@@ -829,7 +833,13 @@ export class ReviewsService {
       const context = await this.getVisualDeltaReviewContext(tx, projectId);
       this.assertWritableVisualDeltaReviewStage(context);
       await this.assertReviewerReference(tx, input.reviewerId);
-      await this.assertUniqueReviewerPerTask(tx, context.activeTask!.id, input.reviewerId);
+      await this.getVisualDeltaRecurringTaskForDate(tx, projectId, input.reviewDate);
+      await this.assertUniqueVisualReviewerPerPeriod(
+        tx,
+        context.activeTask!.id,
+        input.reviewerId,
+        input.reviewDate,
+      );
 
       const reviewRecord = await tx.reviewRecord.create({
         data: {
@@ -837,6 +847,7 @@ export class ReviewsService {
           workflowTaskId: context.activeTask!.id,
           reviewerId: input.reviewerId,
           reviewType: ReviewType.VISUAL_COLOR_DIFFERENCE_REVIEW,
+          reviewPeriod: getMonthlyReviewPeriodKey(input.reviewDate),
           result: input.reviewConclusion,
           comment: input.comment,
           conditionNote: input.conditionNote,
@@ -877,10 +888,12 @@ export class ReviewsService {
       this.assertCurrentTaskEditable(reviewRecord, context.activeTask!.id);
       this.assertDraftReviewRecord(reviewRecord);
       await this.assertReviewerReference(tx, input.reviewerId);
-      await this.assertUniqueReviewerPerTask(
+      await this.getVisualDeltaRecurringTaskForDate(tx, projectId, input.reviewDate);
+      await this.assertUniqueVisualReviewerPerPeriod(
         tx,
         context.activeTask!.id,
         input.reviewerId,
+        input.reviewDate,
         reviewId,
       );
 
@@ -888,6 +901,7 @@ export class ReviewsService {
         where: { id: reviewId },
         data: {
           reviewerId: input.reviewerId,
+          reviewPeriod: getMonthlyReviewPeriodKey(input.reviewDate),
           result: input.reviewConclusion,
           comment: input.comment,
           conditionNote: input.conditionNote,
@@ -1050,28 +1064,104 @@ export class ReviewsService {
         include: CABIN_REVIEW_INCLUDE,
       });
 
-      await this.workflowsService.transitionTaskWithExecutor(
-        tx,
-        context.activeTask!.id,
-        WorkflowAction.APPROVE,
-        actor,
-        {
-          comment:
-            updatedReview.result === ReviewResult.CONDITIONAL_APPROVED
-              ? `目视色差评审条件通过：${updatedReview.conditionNote ?? ''}`
-              : '目视色差评审通过。',
-          metadata: {
-            reviewRecordId: updatedReview.id,
-            reviewConclusion: updatedReview.result,
-          },
-        },
-      );
-
-      const projectClosedTask = await this.getLatestWorkflowTaskByNode(
+      const recurringTask = await this.getVisualDeltaRecurringTaskForDate(
         tx,
         projectId,
-        WorkflowNodeCode.PROJECT_CLOSED,
+        updatedReview.reviewedAt!,
       );
+
+      if (recurringTask.status === RecurringTaskStatus.COMPLETED) {
+        throw new BadRequestException('当前月份已完成评审，请选择其他月份。');
+      }
+
+      if (
+        context.activeTask!.status === WorkflowTaskStatus.PENDING ||
+        context.activeTask!.status === WorkflowTaskStatus.READY ||
+        context.activeTask!.status === WorkflowTaskStatus.RETURNED
+      ) {
+        await this.workflowsService.transitionTaskWithExecutor(
+          tx,
+          context.activeTask!.id,
+          WorkflowAction.START,
+          actor,
+          {
+            comment: '开始执行 12 个月目视色差评审计划。',
+            metadata: {
+              reviewRecordId: updatedReview.id,
+              recurringTaskId: recurringTask.id,
+            },
+          },
+        );
+      }
+
+      const completedAt = new Date();
+      const completed = await tx.recurringTask.updateMany({
+        where: {
+          id: recurringTask.id,
+          status: {
+            in: [
+              RecurringTaskStatus.PENDING,
+              RecurringTaskStatus.IN_PROGRESS,
+              RecurringTaskStatus.OVERDUE,
+            ],
+          },
+        },
+        data: {
+          status: RecurringTaskStatus.COMPLETED,
+          result: updatedReview.result,
+          comment: updatedReview.comment,
+          reviewerId: updatedReview.reviewerId,
+          completedAt,
+        },
+      });
+
+      if (completed.count !== 1) {
+        throw new BadRequestException('当前月份评审状态已变更，请刷新后重试。');
+      }
+
+      const [recurringPlan, completedPeriods] = await Promise.all([
+        tx.recurringPlan.findUniqueOrThrow({
+          where: { id: recurringTask.recurringPlanId },
+          select: { totalCount: true },
+        }),
+        tx.recurringTask.count({
+          where: {
+            recurringPlanId: recurringTask.recurringPlanId,
+            status: RecurringTaskStatus.COMPLETED,
+          },
+        }),
+      ]);
+      const workflowComplete = shouldCompleteVisualDeltaWorkflow({
+        completedPeriods,
+        totalPeriods: recurringPlan.totalCount,
+      });
+
+      if (workflowComplete) {
+        await this.workflowsService.transitionTaskWithExecutor(
+          tx,
+          context.activeTask!.id,
+          WorkflowAction.APPROVE,
+          actor,
+          {
+            comment: '12 个月目视色差评审全部完成。',
+            metadata: {
+              reviewRecordId: updatedReview.id,
+              reviewConclusion: updatedReview.result,
+              recurringTaskId: recurringTask.id,
+              completedPeriods,
+              totalPeriods: recurringPlan.totalCount,
+            },
+          },
+        );
+      }
+
+      const projectClosedTask = workflowComplete
+        ? await this.getLatestWorkflowTaskByNode(
+            tx,
+            projectId,
+            WorkflowNodeCode.PROJECT_CLOSED,
+          )
+        : null;
 
       await this.activityLogsService.createWithExecutor(tx, {
         projectId,
@@ -1080,13 +1170,16 @@ export class ReviewsService {
         targetId: reviewId,
         action: 'VISUAL_DELTA_REVIEW_APPROVED',
         nodeCode: WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW,
-        summary:
-          updatedReview.result === ReviewResult.CONDITIONAL_APPROVED
-            ? '目视色差评审条件通过，项目收尾节点已激活。'
-            : '目视色差评审通过，项目收尾节点已激活。',
+        summary: workflowComplete
+          ? '12 个月目视色差评审已全部完成，项目收尾节点已激活。'
+          : `第 ${recurringTask.periodIndex} 个月目视色差评审已完成（${completedPeriods}/${recurringPlan.totalCount}）。`,
         afterData: {
           reviewRecordId: updatedReview.id,
           result: updatedReview.result,
+          recurringTaskId: recurringTask.id,
+          recurringTaskPeriodIndex: recurringTask.periodIndex,
+          completedPeriods,
+          totalPeriods: recurringPlan.totalCount,
           projectClosedTaskId: projectClosedTask?.id ?? null,
         },
       });
@@ -1629,6 +1722,64 @@ export class ReviewsService {
 
     if (duplicatedReview) {
       throw new BadRequestException('当前评审任务下，该评审人已存在记录。');
+    }
+  }
+
+  private async getVisualDeltaRecurringTaskForDate(
+    db: ReviewsDbClient,
+    projectId: string,
+    reviewDate: Date,
+  ) {
+    const { periodStart, periodEnd } = getMonthlyReviewPeriodRange(reviewDate);
+    const recurringTask = await db.recurringTask.findFirst({
+      where: {
+        projectId,
+        plannedDate: {
+          gte: periodStart,
+          lt: periodEnd,
+        },
+        recurringPlan: {
+          sourceNodeCode: WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW,
+        },
+      },
+      orderBy: {
+        periodIndex: 'asc',
+      },
+    });
+
+    if (!recurringTask) {
+      throw new BadRequestException('评审日期未命中任何月度评审周期。');
+    }
+
+    return recurringTask;
+  }
+
+  private async assertUniqueVisualReviewerPerPeriod(
+    db: ReviewsDbClient,
+    workflowTaskId: string,
+    reviewerId: string,
+    reviewDate: Date,
+    excludeReviewId?: string,
+  ) {
+    const reviewPeriod = getMonthlyReviewPeriodKey(reviewDate);
+    const duplicatedReview = await db.reviewRecord.findFirst({
+      where: {
+        workflowTaskId,
+        reviewerId,
+        reviewPeriod,
+        ...(excludeReviewId
+          ? {
+              id: {
+                not: excludeReviewId,
+              },
+            }
+          : {}),
+      },
+      select: { id: true },
+    });
+
+    if (duplicatedReview) {
+      throw new BadRequestException('当前月份下，该评审人已存在记录。');
     }
   }
 

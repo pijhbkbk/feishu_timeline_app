@@ -4,7 +4,12 @@ import path from 'node:path';
 
 import { expect, type APIRequestContext, type Page, type TestInfo } from '@playwright/test';
 
-import { API_BASE_URL, apiJson } from './helpers';
+import {
+  API_BASE_URL,
+  apiJson,
+  completeAllMonthlyReviewsByApi,
+  completePilotProductionByApi,
+} from './helpers';
 import {
   buildR16Timestamp,
   fetchR16Workflow,
@@ -215,8 +220,7 @@ export async function advanceR20ToCabReview(
   projectId: string,
 ) {
   await advanceR20ToStep6Branches(request, projectId);
-  await transitionR16Task(request, projectId, 'FIRST_UNIT_PRODUCTION_PLAN', 'submit');
-  await transitionR16Task(request, projectId, 'TRIAL_PRODUCTION', 'submit');
+  await completePilotProductionByApi(request, projectId, 'R20');
 
   return fetchR16Workflow(request, projectId);
 }
@@ -247,9 +251,7 @@ export async function advanceR20ToColorExit(
   projectId: string,
 ) {
   await advanceR20ToMonthlyReviews(request, projectId);
-  await transitionR16Task(request, projectId, 'VISUAL_COLOR_DIFFERENCE_REVIEW', 'approve');
-
-  return fetchR16Workflow(request, projectId);
+  return completeAllMonthlyReviewsByApi(request, projectId);
 }
 
 export async function uploadR20PdfMaterial(page: Page, projectId: string, fileName: string) {
