@@ -184,7 +184,7 @@ BLOCKED_BY_ENVIRONMENT：API socket transport 4 tests、E2E、Playwright、Gitle
 |---|---|
 | applicationCommit | `d6d4962f88dbb5b297d54c9f27326f3bf5616ec7` |
 | stagingCommit | `d6d4962f88dbb5b297d54c9f27326f3bf5616ec7` |
-| evidenceCommit | `PENDING_EVIDENCE_COMMIT` |
+| evidenceCommit | `075c25314dc30c53aa560fc0cf98fa6bf93aa49e` |
 | application changes in R23E | none; evidence documents only |
 
 ### 11.2 Final gates

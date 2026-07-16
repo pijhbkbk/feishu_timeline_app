@@ -10,7 +10,7 @@ R23D had already closed the exact staging deployment, audit pagination, 10 VU ×
 |---|---|
 | applicationCommit | `d6d4962f88dbb5b297d54c9f27326f3bf5616ec7` |
 | stagingCommit | `d6d4962f88dbb5b297d54c9f27326f3bf5616ec7` |
-| evidenceCommit | `PENDING_EVIDENCE_COMMIT` |
+| evidenceCommit | `075c25314dc30c53aa560fc0cf98fa6bf93aa49e` |
 | branch | `release/r22-stability-security-rc` |
 
 R23 is formally PASSED only after the evidence commit above is created and pushed. This report is limited to R23 closure; production deployment, `main` merge, tag creation and R24 work were not performed.

@@ -14,7 +14,7 @@ R23：`PASSED / STOP BEFORE R24`。
 |---|---|
 | applicationCommit | `d6d4962f88dbb5b297d54c9f27326f3bf5616ec7` |
 | stagingCommit | `d6d4962f88dbb5b297d54c9f27326f3bf5616ec7` |
-| evidenceCommit | `PENDING_EVIDENCE_COMMIT` |
+| evidenceCommit | `075c25314dc30c53aa560fc0cf98fa6bf93aa49e` |
 | branch | `release/r22-stability-security-rc` |
 
 active API/Web 镜像 revision 均等于 staging commit；17 个 migration、0 pending；PostgreSQL、Redis、API、Web、Nginx healthy，restart 0。
@@ -111,7 +111,7 @@ active API/Web 镜像 revision 均等于 staging commit；17 个 migration、0 p
 | auth material | destroyed；临时目录 0 |
 | Gitleaks current/history | PASS/PASS；0 findings |
 | P0/P1/P2/P3 open | `0/0/0/0` |
-| evidenceCommit | `PENDING_EVIDENCE_COMMIT` |
+| evidenceCommit | `075c25314dc30c53aa560fc0cf98fa6bf93aa49e` |
 
 R23D 耐久证据继续有效，因为 application/staging commit 未变且 R23E 没有应用、Prisma、部署或运行时配置改动。最终判定为 `R23E PASS / R23 PASSED / STOP BEFORE R24`。
 

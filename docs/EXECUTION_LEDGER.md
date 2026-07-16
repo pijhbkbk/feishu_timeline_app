@@ -3628,7 +3628,7 @@ GITLEAKS_EXECUTION_MODE=native bash scripts/security/run-secrets-scan.sh
 - 新产品缺陷 0。Playwright 浏览器 binary 缺口是环境修复，不计产品 defect。
 - P0/P1/P2/P3 open：`0/0/0/0`；累计 P1 7/7、P2 2/2 fixed；`R23D-BLOCK-005` RESOLVED。
 - application/staging commit 未变且 R23E 只有 docs evidence changes，因此 R23D audit special、10 VU × 30m 与 5 VU × 2h 继续有效，不重跑。
-- evidenceCommit：`PENDING_EVIDENCE_COMMIT`。
+- evidenceCommit：`075c25314dc30c53aa560fc0cf98fa6bf93aa49e`。
 - 决策：`R23E_PASS / R23_PASSED / STOP_BEFORE_R24`。
 
 R23 当前验收策略仍为所有有效已认证用户完整权限、匿名/停用/锁定拒绝和业务状态门禁保留，不宣称九角色隔离。方案 A 最小权限是进入 R24 前必须实施并产生新应用候选的新工作；本轮不实施，以保持 R23 endurance evidence 的同 commit 完整性。
