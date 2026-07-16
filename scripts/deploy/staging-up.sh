@@ -26,14 +26,19 @@ fi
 
 API_IMAGE_REPO="${API_IMAGE_REPO:-feishu-timeline-api}"
 WEB_IMAGE_REPO="${WEB_IMAGE_REPO:-feishu-timeline-web}"
+POSTGRES_IMAGE_REPO="${POSTGRES_IMAGE_REPO:-feishu-timeline-postgres}"
 NODE_IMAGE="${NODE_IMAGE:-node:24-alpine}"
+POSTGRES_BASE_IMAGE="${POSTGRES_BASE_IMAGE:-postgres:16-alpine@sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777}"
+REDIS_IMAGE="${REDIS_IMAGE:-redis:7-alpine@sha256:6ab0b6e7381779332f97b8ca76193e45b0756f38d4c0dcda72dbb3c32061ab99}"
+NGINX_IMAGE="${NGINX_IMAGE:-nginx:stable-alpine@sha256:ec664813a30459a8e7176315268a623f6b31abc370eeac51c7de81cd4ec4d451}"
 IMAGE_TAG="${IMAGE_TAG:-}"
 if [[ -z "$IMAGE_TAG" ]]; then
   IMAGE_TAG="${GIT_SHA:0:12}"
 fi
 RUN_SEED="${RUN_SEED:-no}"
 
-export API_IMAGE_REPO WEB_IMAGE_REPO IMAGE_TAG NODE_IMAGE
+export API_IMAGE_REPO WEB_IMAGE_REPO POSTGRES_IMAGE_REPO IMAGE_TAG NODE_IMAGE
+export POSTGRES_BASE_IMAGE REDIS_IMAGE NGINX_IMAGE
 
 PENDING_STATE="$STATE_DIR/pending.env"
 CURRENT_STATE="$STATE_DIR/current.env"
@@ -55,23 +60,43 @@ build_release_image() {
 build_release_image "${API_IMAGE_REPO}:${IMAGE_TAG}" "$ROOT_DIR/apps/api/Dockerfile"
 build_release_image "${WEB_IMAGE_REPO}:${IMAGE_TAG}" "$ROOT_DIR/apps/web/Dockerfile"
 
-log "Scanning the exact API and Web release images"
+log "Building hardened PostgreSQL image ${POSTGRES_IMAGE_REPO}:${IMAGE_TAG}"
+docker build --pull \
+  --build-arg "POSTGRES_BASE_IMAGE=${POSTGRES_BASE_IMAGE}" \
+  --label "org.opencontainers.image.revision=${GIT_SHA}" \
+  --label "org.opencontainers.image.source=feishu-timeline-app" \
+  -t "${POSTGRES_IMAGE_REPO}:${IMAGE_TAG}" \
+  -f "$ROOT_DIR/deploy/images/postgres/Dockerfile" "$ROOT_DIR"
+
+log "Scanning the exact application and infrastructure images"
 "$ROOT_DIR/scripts/security/scan-production-images.sh" \
   "${API_IMAGE_REPO}:${IMAGE_TAG}" \
-  "${WEB_IMAGE_REPO}:${IMAGE_TAG}"
+  "${WEB_IMAGE_REPO}:${IMAGE_TAG}" \
+  "${POSTGRES_IMAGE_REPO}:${IMAGE_TAG}" \
+  "$REDIS_IMAGE" \
+  "$NGINX_IMAGE"
 
 API_IMAGE_ID="$(docker image inspect --format '{{.Id}}' "${API_IMAGE_REPO}:${IMAGE_TAG}")"
 WEB_IMAGE_ID="$(docker image inspect --format '{{.Id}}' "${WEB_IMAGE_REPO}:${IMAGE_TAG}")"
+POSTGRES_IMAGE_ID="$(docker image inspect --format '{{.Id}}' "${POSTGRES_IMAGE_REPO}:${IMAGE_TAG}")"
+REDIS_IMAGE_ID="$(docker image inspect --format '{{.Id}}' "$REDIS_IMAGE")"
+NGINX_IMAGE_ID="$(docker image inspect --format '{{.Id}}' "$NGINX_IMAGE")"
 
 cat >"$PENDING_STATE" <<EOF
 API_IMAGE_REPO=${API_IMAGE_REPO}
 WEB_IMAGE_REPO=${WEB_IMAGE_REPO}
+POSTGRES_IMAGE_REPO=${POSTGRES_IMAGE_REPO}
 IMAGE_TAG=${IMAGE_TAG}
 RELEASED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 GIT_SHA=${GIT_SHA}
 GIT_DIRTY=${GIT_DIRTY}
 API_IMAGE_ID=${API_IMAGE_ID}
 WEB_IMAGE_ID=${WEB_IMAGE_ID}
+POSTGRES_IMAGE_ID=${POSTGRES_IMAGE_ID}
+REDIS_IMAGE=${REDIS_IMAGE}
+REDIS_IMAGE_ID=${REDIS_IMAGE_ID}
+NGINX_IMAGE=${NGINX_IMAGE}
+NGINX_IMAGE_ID=${NGINX_IMAGE_ID}
 EOF
 
 log "Starting postgres and redis"

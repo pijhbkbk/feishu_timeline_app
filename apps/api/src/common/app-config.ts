@@ -39,6 +39,9 @@ function resolveBoolean(value: string | undefined, fallback: boolean) {
   return value === 'true';
 }
 
+const FEISHU_AUTHORIZATION_HOSTS = new Set(['open.feishu.cn', 'accounts.feishu.cn']);
+const FEISHU_AUTHORIZATION_PATH = '/open-apis/authen/v1/index';
+
 export function resolveAppConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   const config: AppConfig = {
     nodeEnv: env.NODE_ENV?.trim().toLowerCase() || 'development',
@@ -71,6 +74,31 @@ export function resolveAppConfig(env: NodeJS.ProcessEnv = process.env): AppConfi
 
   if (config.nodeEnv === 'production' && config.authMockEnabled) {
     throw new Error('AUTH_MOCK_ENABLED must be false when NODE_ENV=production.');
+  }
+
+  if (config.feishuAuthorizationEndpoint) {
+    const authorizationEndpoint = new URL(config.feishuAuthorizationEndpoint);
+
+    if (
+      authorizationEndpoint.protocol !== 'https:' ||
+      !FEISHU_AUTHORIZATION_HOSTS.has(authorizationEndpoint.hostname) ||
+      authorizationEndpoint.pathname !== FEISHU_AUTHORIZATION_PATH ||
+      authorizationEndpoint.username ||
+      authorizationEndpoint.password ||
+      authorizationEndpoint.search ||
+      authorizationEndpoint.hash
+    ) {
+      throw new Error('FEISHU_AUTHORIZATION_ENDPOINT must use the approved Feishu OAuth endpoint.');
+    }
+  }
+
+  if (config.nodeEnv === 'production' && config.feishuRedirectUri) {
+    const expectedRedirectUri = new URL('/login/callback', config.frontendUrl).toString();
+    const configuredRedirectUri = new URL(config.feishuRedirectUri).toString();
+
+    if (configuredRedirectUri !== expectedRedirectUri) {
+      throw new Error('FEISHU_REDIRECT_URI must match FRONTEND_URL/login/callback in production.');
+    }
   }
 
   return config;

@@ -10,7 +10,12 @@ describe('R19 API input and upload security', () => {
       { originalName: 'evil.html', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4\n') },
       { originalName: 'evil.svg', mimeType: 'image/png', buffer: Buffer.from('<svg onload=alert(1)>') },
       { originalName: 'evil.js', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4\n') },
+      { originalName: 'evil.jsp', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4\n') },
+      { originalName: 'evil.sh', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4\n') },
       { originalName: 'evil.exe', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4\n') },
+      { originalName: 'evil.js.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4\n') },
+      { originalName: 'archive.zip', mimeType: 'application/zip', buffer: Buffer.from('PK\u0003\u0004') },
+      { originalName: '\"><img src=x onerror=alert(1)>.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4\n') },
     ];
 
     for (const file of dangerousFiles) {

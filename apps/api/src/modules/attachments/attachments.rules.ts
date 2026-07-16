@@ -22,6 +22,16 @@ const ATTACHMENT_ALLOWED_FILE_TYPES = {
 
 const PREVIEWABLE_ATTACHMENT_MIME_TYPES = ['image/jpeg', 'image/png', 'application/pdf'];
 const MAX_ATTACHMENT_FILE_NAME_LENGTH = 180;
+const DANGEROUS_INNER_EXTENSIONS = new Set([
+  'exe',
+  'html',
+  'htm',
+  'js',
+  'jsp',
+  'php',
+  'sh',
+  'svg',
+]);
 
 export const ATTACHMENT_MANAGEMENT_ROLE_CODES = [
   'admin',
@@ -97,9 +107,19 @@ function getAttachmentFileNameIssue(originalName: string) {
     if (name.includes('/') || name.includes('\\') || name.includes('..')) {
       return '附件文件名不能包含路径或上级目录标记。';
     }
+
+    if (/[<>"'`]/u.test(name) || hasDangerousInnerExtension(name)) {
+      return '附件文件名无效。';
+    }
   }
 
   return null;
+}
+
+function hasDangerousInnerExtension(fileName: string) {
+  const segments = fileName.toLowerCase().split('.');
+
+  return segments.slice(1, -1).some((segment) => DANGEROUS_INNER_EXTENSIONS.has(segment));
 }
 
 function matchesAllowedFileSignature(extension: string, buffer: Buffer) {

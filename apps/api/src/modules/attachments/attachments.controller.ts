@@ -188,6 +188,8 @@ export class AttachmentsController {
     response.setHeader('Content-Type', content.contentType);
     response.setHeader('X-Content-Type-Options', 'nosniff');
     response.setHeader('Cache-Control', 'private, no-store');
+    response.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
+    response.setHeader('Content-Security-Policy', "sandbox; default-src 'none'");
     response.setHeader(
       'Content-Disposition',
       `${content.disposition}; filename*=UTF-8''${encodeURIComponent(content.fileName)}`,

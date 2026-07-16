@@ -41,4 +41,43 @@ describe('resolveAppConfig', () => {
       }),
     ).toThrowError('AUTH_MOCK_ENABLED must be false when NODE_ENV=production.');
   });
+
+  it('pins the production OAuth callback to the configured frontend', () => {
+    expect(() =>
+      resolveAppConfig({
+        NODE_ENV: 'production',
+        FRONTEND_URL: 'https://timeline.example.com',
+        FEISHU_REDIRECT_URI: 'https://attacker.example/callback',
+      }),
+    ).toThrowError('FEISHU_REDIRECT_URI must match FRONTEND_URL/login/callback in production.');
+
+    expect(
+      resolveAppConfig({
+        NODE_ENV: 'production',
+        FRONTEND_URL: 'https://timeline.example.com',
+        FEISHU_REDIRECT_URI: 'https://timeline.example.com/login/callback',
+      }).feishuRedirectUri,
+    ).toBe('https://timeline.example.com/login/callback');
+  });
+
+  it('accepts only the approved HTTPS Feishu authorization endpoint', () => {
+    for (const endpoint of [
+      'http://open.feishu.cn/open-apis/authen/v1/index',
+      'https://open.feishu.cn.attacker.example/open-apis/authen/v1/index',
+      'https://open.feishu.cn/open-apis/authen/v1/index?next=https://attacker.example',
+    ]) {
+      expect(() =>
+        resolveAppConfig({ FEISHU_AUTHORIZATION_ENDPOINT: endpoint }),
+      ).toThrowError(
+        'FEISHU_AUTHORIZATION_ENDPOINT must use the approved Feishu OAuth endpoint.',
+      );
+    }
+
+    expect(
+      resolveAppConfig({
+        FEISHU_AUTHORIZATION_ENDPOINT:
+          'https://accounts.feishu.cn/open-apis/authen/v1/index',
+      }).feishuAuthorizationEndpoint,
+    ).toBe('https://accounts.feishu.cn/open-apis/authen/v1/index');
+  });
 });

@@ -1,6 +1,9 @@
 services:
   postgres:
-    image: postgres:16-alpine
+    image: feishu-timeline-postgres:local
+    build:
+      context: .
+      dockerfile: deploy/images/postgres/Dockerfile
     container_name: feishu-timeline-postgres
     environment:
       POSTGRES_DB: feishu_timeline
@@ -17,7 +20,7 @@ services:
       retries: 5
 
   redis:
-    image: redis:7-alpine
+    image: redis:7-alpine@sha256:6ab0b6e7381779332f97b8ca76193e45b0756f38d4c0dcda72dbb3c32061ab99
     container_name: feishu-timeline-redis
     command: redis-server --appendonly yes
     ports:

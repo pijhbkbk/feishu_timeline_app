@@ -28,7 +28,12 @@ x-api-runtime: &api-runtime
 
 services:
   postgres:
-    image: postgres:16-alpine
+    image: ${POSTGRES_IMAGE_REPO:-feishu-timeline-postgres}:${IMAGE_TAG:-local}
+    build:
+      context: ..
+      dockerfile: deploy/images/postgres/Dockerfile
+      args:
+        POSTGRES_BASE_IMAGE: ${POSTGRES_BASE_IMAGE:-postgres:16-alpine@sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777}
     container_name: ${COMPOSE_PROJECT_NAME:-feishu-timeline-staging}-postgres
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-feishu_timeline}
@@ -45,7 +50,7 @@ services:
       retries: 10
 
   redis:
-    image: redis:7-alpine
+    image: ${REDIS_IMAGE:-redis:7-alpine@sha256:6ab0b6e7381779332f97b8ca76193e45b0756f38d4c0dcda72dbb3c32061ab99}
     container_name: ${COMPOSE_PROJECT_NAME:-feishu-timeline-staging}-redis
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in the staging environment file}
@@ -146,7 +151,7 @@ services:
       retries: 10
 
   nginx:
-    image: nginx:1.27-alpine
+    image: ${NGINX_IMAGE:-nginx:stable-alpine@sha256:ec664813a30459a8e7176315268a623f6b31abc370eeac51c7de81cd4ec4d451}
     container_name: ${COMPOSE_PROJECT_NAME:-feishu-timeline-staging}-nginx
     depends_on:
       api:

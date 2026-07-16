@@ -7,6 +7,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
 
 import { AppModule } from './app.module';
+import { createSameOriginMutationGuard } from './common/same-origin.middleware';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -19,6 +20,7 @@ async function bootstrap() {
 
   app.setGlobalPrefix('api');
   app.use(cookieParser());
+  app.use(createSameOriginMutationGuard(frontendUrl));
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,

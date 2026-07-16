@@ -229,6 +229,63 @@ describe('AuthService Feishu OAuth state', () => {
       expect(response.cookie).toHaveBeenCalledTimes(1);
     },
   );
+
+  it('uses secure, HttpOnly and SameSite cookies in production', async () => {
+    const { service, response } = createAuthService({ nodeEnv: 'production' });
+    const loginUrlResult = await service.getFeishuLoginUrl(response as never);
+    const state = new URL(loginUrlResult.loginUrl ?? '').searchParams.get('state');
+
+    await service.loginWithFeishu(
+      { code: 'code', state },
+      state ?? undefined,
+      response as never,
+    );
+
+    expect(response.cookie).toHaveBeenCalledWith(
+      'ft_session',
+      expect.stringMatching(/^[0-9a-f-]{36}$/i),
+      expect.objectContaining({
+        httpOnly: true,
+        secure: true,
+        sameSite: 'lax',
+        path: '/',
+        expires: expect.any(Date),
+      }),
+    );
+  });
+
+  it('expires old sessions and deletes the server-side record', async () => {
+    const { service, sessionStoreService, usersService } = createAuthService();
+    sessionStoreService.getJson.mockResolvedValue({
+      userId: 'user-1',
+      authSource: 'feishu',
+      createdAt: '2026-07-16T00:00:00.000Z',
+      expiresAt: '2026-07-16T00:00:01.000Z',
+    });
+
+    await expect(service.getAuthenticatedUserFromSessionToken('expired')).resolves.toBeNull();
+    expect(sessionStoreService.delete).toHaveBeenCalledWith('auth:session:expired');
+    expect(usersService.getAuthenticatedUser).not.toHaveBeenCalled();
+  });
+
+  it('invalidates logout server-side and clears the cookie with matching attributes', async () => {
+    const { service, response, sessionStoreService } = createAuthService({
+      nodeEnv: 'production',
+    });
+
+    await service.logout('session-token', response as never);
+
+    expect(sessionStoreService.delete).toHaveBeenCalledWith('auth:session:session-token');
+    expect(response.clearCookie).toHaveBeenCalledWith(
+      'ft_session',
+      expect.objectContaining({
+        httpOnly: true,
+        secure: true,
+        sameSite: 'lax',
+        path: '/',
+      }),
+    );
+  });
 });
 
 describe('AuthService mock authentication safety', () => {
