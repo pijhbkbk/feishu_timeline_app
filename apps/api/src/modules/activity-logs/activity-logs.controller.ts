@@ -18,4 +18,14 @@ export class ActivityLogsController {
   ) {
     return this.activityLogsService.getProjectLogTimeline(projectId, actor, query);
   }
+
+  @Permissions('project.read')
+  @Get(':logId')
+  getProjectLogDetail(
+    @Param('projectId') projectId: string,
+    @Param('logId') logId: string,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.activityLogsService.getProjectLogDetail(projectId, logId, actor);
+  }
 }

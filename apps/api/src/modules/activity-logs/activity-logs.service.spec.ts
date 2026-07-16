@@ -32,14 +32,17 @@ function createService() {
       create: vi.fn(),
       count: vi.fn(),
       findMany: vi.fn(),
+      findFirst: vi.fn(),
     },
     workflowTransition: {
       count: vi.fn(),
       findMany: vi.fn(),
+      findFirst: vi.fn(),
     },
     notification: {
       count: vi.fn(),
       findMany: vi.fn(),
+      findFirst: vi.fn(),
     },
     $queryRaw: vi.fn(),
     $transaction: vi.fn(async (operations: Array<Promise<unknown>>) => Promise.all(operations)),
@@ -157,5 +160,105 @@ describe('ActivityLogsService', () => {
     const timelineQuery = prisma.$queryRaw.mock.calls[0]?.[0] as { strings: string[] };
     expect(timelineQuery.strings.join('')).toContain('OFFSET');
     expect(timelineQuery.strings.join('')).toContain('LIMIT');
+  });
+
+  it('caps page size and applies time, actor and action filters to every source', async () => {
+    const { service, prisma } = createService();
+    prisma.project.findUnique.mockResolvedValue({
+      id: 'project-1',
+      code: 'PRJ-001',
+      name: '演示项目',
+      currentNodeCode: WorkflowNodeCode.PROJECT_INITIATION,
+      plannedEndDate: null,
+    });
+    prisma.auditLog.count.mockResolvedValue(0);
+    prisma.workflowTransition.count.mockResolvedValue(0);
+    prisma.notification.count.mockResolvedValue(0);
+    prisma.$queryRaw.mockResolvedValue([]);
+    prisma.auditLog.findMany.mockResolvedValue([]);
+    prisma.workflowTransition.findMany.mockResolvedValue([]);
+    prisma.notification.findMany.mockResolvedValue([]);
+
+    const result = await service.getProjectLogTimeline('project-1', actor, {
+      page: 'invalid',
+      pageSize: '100000',
+      from: '2026-03-01T00:00:00.000Z',
+      to: '2026-03-31T23:59:59.999Z',
+      actorUserId: 'user-1',
+      action: 'PROJECT_CREATED',
+    });
+
+    expect(result.pagination).toEqual({
+      page: 1,
+      pageSize: 100,
+      total: 0,
+      totalPages: 1,
+    });
+    expect(prisma.auditLog.count).toHaveBeenCalledWith({
+      where: expect.objectContaining({
+        projectId: 'project-1',
+        actorUserId: 'user-1',
+        action: 'PROJECT_CREATED',
+      }),
+    });
+    expect(prisma.workflowTransition.count).toHaveBeenCalledWith({
+      where: expect.objectContaining({ id: '__no_match__' }),
+    });
+    expect(prisma.notification.count).toHaveBeenCalledWith({
+      where: expect.objectContaining({ id: '__no_match__' }),
+    });
+    const timelineQuery = prisma.$queryRaw.mock.calls[0]?.[0] as {
+      strings: string[];
+      values: unknown[];
+    };
+    expect(timelineQuery.strings.join('')).toContain('"createdAt" >=');
+    expect(timelineQuery.strings.join('')).toContain('"actorUserId" =');
+    expect(timelineQuery.strings.join('')).toContain('"operatorUserId" =');
+    expect(timelineQuery.strings.join('')).toContain('"notificationType"::text =');
+    expect(timelineQuery.values).toContain('PROJECT_CREATED');
+  });
+
+  it('rejects an inverted time range before querying timeline rows', async () => {
+    const { service, prisma } = createService();
+
+    await expect(
+      service.getProjectLogTimeline('project-1', actor, {
+        from: '2026-04-01T00:00:00.000Z',
+        to: '2026-03-01T00:00:00.000Z',
+      }),
+    ).rejects.toThrow('from 不能晚于 to');
+    expect(prisma.project.findUnique).not.toHaveBeenCalled();
+  });
+
+  it('returns full audit data only from the independent detail endpoint', async () => {
+    const { service, prisma } = createService();
+    prisma.auditLog.findFirst.mockResolvedValue({
+      id: 'audit-1',
+      targetType: 'PROJECT',
+      targetId: 'project-1',
+      action: 'PROJECT_UPDATED',
+      summary: '更新项目',
+      actorUserId: 'user-1',
+      actorUser: { name: '项目经理' },
+      nodeCode: WorkflowNodeCode.PROJECT_INITIATION,
+      beforeData: { name: '旧名称' },
+      afterData: { name: '新名称' },
+      metadata: { requestId: 'request-1' },
+      createdAt: new Date('2026-03-18T08:00:00.000Z'),
+    });
+
+    const result = await service.getProjectLogDetail('project-1', 'audit:audit-1', actor);
+
+    expect(prisma.auditLog.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 'audit-1', projectId: 'project-1' } }),
+    );
+    expect(result).toMatchObject({
+      id: 'audit:audit-1',
+      sourceType: 'AUDIT',
+      actorName: '项目经理',
+      beforeData: { name: '旧名称' },
+      afterData: { name: '新名称' },
+      createdAt: '2026-03-18T08:00:00.000Z',
+    });
   });
 });

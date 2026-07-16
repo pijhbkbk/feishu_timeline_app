@@ -1,8 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import {
   AuditTargetType,
   NotificationSendChannel,
+  NotificationType,
   Prisma,
+  WorkflowAction,
   type WorkflowNodeCode,
 } from '@prisma/client';
 
@@ -73,6 +75,15 @@ export class ActivityLogsService {
     );
     const page = normalizePage(rawQuery.page, 1);
     const pageSize = normalizePageSize(rawQuery.pageSize, 20);
+    const from = this.parseOptionalDateFilter(rawQuery.from, 'from');
+    const to = this.parseOptionalDateFilter(rawQuery.to, 'to');
+    const actorUserId = rawQuery.actorUserId?.trim() || null;
+    const action = rawQuery.action?.trim() || null;
+
+    if (from && to && from > to) {
+      throw new BadRequestException('from 不能晚于 to。');
+    }
+
     const offset = (page - 1) * pageSize;
     const sourceWindowSize = offset + pageSize;
     const project = await this.prisma.project.findUnique({
@@ -90,15 +101,70 @@ export class ActivityLogsService {
       throw new NotFoundException('项目不存在或已被删除。');
     }
 
+    const createdAt = {
+      ...(from ? { gte: from } : {}),
+      ...(to ? { lte: to } : {}),
+    };
+    const hasCreatedAtFilter = Boolean(from || to);
+    const auditWhere: Prisma.AuditLogWhereInput = {
+      projectId,
+      ...(actorUserId ? { actorUserId } : {}),
+      ...(action ? { action } : {}),
+      ...(hasCreatedAtFilter ? { createdAt } : {}),
+    };
+    const workflowAction = action && this.isWorkflowAction(action) ? action : null;
+    const workflowWhere: Prisma.WorkflowTransitionWhereInput = {
+      projectId,
+      ...(actorUserId ? { operatorUserId: actorUserId } : {}),
+      ...(action ? (workflowAction ? { action: workflowAction } : { id: '__no_match__' }) : {}),
+      ...(hasCreatedAtFilter ? { createdAt } : {}),
+    };
+    const notificationType = action && this.isNotificationType(action) ? action : null;
+    const notificationWhere: Prisma.NotificationWhereInput = {
+      projectId,
+      sendChannel: NotificationSendChannel.IN_APP,
+      ...(actorUserId ? { userId: actorUserId } : {}),
+      ...(action
+        ? notificationType
+          ? { notificationType }
+          : { id: '__no_match__' }
+        : {}),
+      ...(hasCreatedAtFilter ? { createdAt } : {}),
+    };
+    const auditSqlFilters = [Prisma.sql`"projectId" = ${projectId}`];
+    const workflowSqlFilters = [Prisma.sql`"projectId" = ${projectId}`];
+    const notificationSqlFilters = [
+      Prisma.sql`"projectId" = ${projectId}`,
+      Prisma.sql`"sendChannel" = ${NotificationSendChannel.IN_APP}::"NotificationSendChannel"`,
+    ];
+
+    if (from) {
+      auditSqlFilters.push(Prisma.sql`"createdAt" >= ${from}`);
+      workflowSqlFilters.push(Prisma.sql`"createdAt" >= ${from}`);
+      notificationSqlFilters.push(Prisma.sql`"createdAt" >= ${from}`);
+    }
+    if (to) {
+      auditSqlFilters.push(Prisma.sql`"createdAt" <= ${to}`);
+      workflowSqlFilters.push(Prisma.sql`"createdAt" <= ${to}`);
+      notificationSqlFilters.push(Prisma.sql`"createdAt" <= ${to}`);
+    }
+    if (actorUserId) {
+      auditSqlFilters.push(Prisma.sql`"actorUserId" = ${actorUserId}`);
+      workflowSqlFilters.push(Prisma.sql`"operatorUserId" = ${actorUserId}`);
+      notificationSqlFilters.push(Prisma.sql`"userId" = ${actorUserId}`);
+    }
+    if (action) {
+      auditSqlFilters.push(Prisma.sql`"action" = ${action}`);
+      workflowSqlFilters.push(Prisma.sql`"action"::text = ${action}`);
+      notificationSqlFilters.push(Prisma.sql`"notificationType"::text = ${action}`);
+    }
+
     const [auditCount, workflowCount, notificationCount, pageReferences] =
       await this.prisma.$transaction([
-        this.prisma.auditLog.count({ where: { projectId } }),
-        this.prisma.workflowTransition.count({ where: { projectId } }),
+        this.prisma.auditLog.count({ where: auditWhere }),
+        this.prisma.workflowTransition.count({ where: workflowWhere }),
         this.prisma.notification.count({
-          where: {
-            projectId,
-            sendChannel: NotificationSendChannel.IN_APP,
-          },
+          where: notificationWhere,
         }),
         this.prisma.$queryRaw<ProjectTimelinePageReference[]>(Prisma.sql`
           SELECT "sourceType", "id", "createdAt"
@@ -106,7 +172,7 @@ export class ActivityLogsService {
             (
               SELECT 'AUDIT'::text AS "sourceType", "id", "createdAt"
               FROM "audit_logs"
-              WHERE "projectId" = ${projectId}
+              WHERE ${Prisma.join(auditSqlFilters, ' AND ')}
               ORDER BY "createdAt" DESC, "id" DESC
               LIMIT ${sourceWindowSize}
             )
@@ -114,7 +180,7 @@ export class ActivityLogsService {
             (
               SELECT 'WORKFLOW'::text AS "sourceType", "id", "createdAt"
               FROM "workflow_transitions"
-              WHERE "projectId" = ${projectId}
+              WHERE ${Prisma.join(workflowSqlFilters, ' AND ')}
               ORDER BY "createdAt" DESC, "id" DESC
               LIMIT ${sourceWindowSize}
             )
@@ -122,8 +188,7 @@ export class ActivityLogsService {
             (
               SELECT 'NOTIFICATION'::text AS "sourceType", "id", "createdAt"
               FROM "notifications"
-              WHERE "projectId" = ${projectId}
-                AND "sendChannel" = ${NotificationSendChannel.IN_APP}::"NotificationSendChannel"
+              WHERE ${Prisma.join(notificationSqlFilters, ' AND ')}
               ORDER BY "createdAt" DESC, "id" DESC
               LIMIT ${sourceWindowSize}
             )
@@ -278,5 +343,152 @@ export class ActivityLogsService {
       },
       items: orderedItems,
     };
+  }
+
+  async getProjectLogDetail(
+    projectId: string,
+    logId: string,
+    actor: AuthenticatedUser,
+  ) {
+    await this.projectAccessService.assertProjectAccessWithDefaultClient(
+      projectId,
+      actor,
+      'project.read',
+    );
+
+    const separatorIndex = logId.indexOf(':');
+    const sourceType = separatorIndex > 0 ? logId.slice(0, separatorIndex) : '';
+    const sourceId = separatorIndex > 0 ? logId.slice(separatorIndex + 1) : '';
+
+    if (!sourceId) {
+      throw new NotFoundException('日志不存在或不属于当前项目。');
+    }
+
+    if (sourceType === 'audit') {
+      const log = await this.prisma.auditLog.findFirst({
+        where: { id: sourceId, projectId },
+        select: {
+          id: true,
+          targetType: true,
+          targetId: true,
+          action: true,
+          summary: true,
+          actorUserId: true,
+          actorUser: { select: { name: true } },
+          nodeCode: true,
+          beforeData: true,
+          afterData: true,
+          metadata: true,
+          createdAt: true,
+        },
+      });
+
+      if (!log) {
+        throw new NotFoundException('日志不存在或不属于当前项目。');
+      }
+
+      return {
+        ...log,
+        id: `audit:${log.id}`,
+        sourceType: 'AUDIT' as const,
+        actorName: log.actorUser?.name ?? null,
+        actorUser: undefined,
+        createdAt: log.createdAt.toISOString(),
+      };
+    }
+
+    if (sourceType === 'workflow') {
+      const transition = await this.prisma.workflowTransition.findFirst({
+        where: { id: sourceId, projectId },
+        select: {
+          id: true,
+          workflowInstanceId: true,
+          fromTaskId: true,
+          toTaskId: true,
+          fromNodeCode: true,
+          toNodeCode: true,
+          action: true,
+          comment: true,
+          operatorUserId: true,
+          operatorUser: { select: { name: true } },
+          createdAt: true,
+        },
+      });
+
+      if (!transition) {
+        throw new NotFoundException('日志不存在或不属于当前项目。');
+      }
+
+      return {
+        ...transition,
+        id: `workflow:${transition.id}`,
+        sourceType: 'WORKFLOW' as const,
+        actorName: transition.operatorUser?.name ?? null,
+        operatorUser: undefined,
+        createdAt: transition.createdAt.toISOString(),
+      };
+    }
+
+    if (sourceType === 'notification') {
+      const notification = await this.prisma.notification.findFirst({
+        where: {
+          id: sourceId,
+          projectId,
+          sendChannel: NotificationSendChannel.IN_APP,
+        },
+        select: {
+          id: true,
+          userId: true,
+          user: { select: { name: true } },
+          taskId: true,
+          notificationType: true,
+          title: true,
+          content: true,
+          linkPath: true,
+          isRead: true,
+          readAt: true,
+          sendStatus: true,
+          retryCount: true,
+          metadata: true,
+          createdAt: true,
+        },
+      });
+
+      if (!notification) {
+        throw new NotFoundException('日志不存在或不属于当前项目。');
+      }
+
+      return {
+        ...notification,
+        id: `notification:${notification.id}`,
+        sourceType: 'NOTIFICATION' as const,
+        actorName: notification.user.name,
+        user: undefined,
+        createdAt: notification.createdAt.toISOString(),
+      };
+    }
+
+    throw new NotFoundException('日志不存在或不属于当前项目。');
+  }
+
+  private parseOptionalDateFilter(value: string | undefined, label: string) {
+    if (!value?.trim()) {
+      return null;
+    }
+
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) {
+      throw new BadRequestException(`${label} 日期格式不正确。`);
+    }
+
+    return parsed;
+  }
+
+  private isWorkflowAction(value: string): value is WorkflowAction {
+    return Object.values(WorkflowAction).includes(value as WorkflowAction);
+  }
+
+  private isNotificationType(value: string): value is NotificationType {
+    return Object.values(NotificationType).includes(value as NotificationType);
   }
 }
