@@ -30,14 +30,18 @@ function createService() {
     },
     auditLog: {
       create: vi.fn(),
+      count: vi.fn(),
       findMany: vi.fn(),
     },
     workflowTransition: {
+      count: vi.fn(),
       findMany: vi.fn(),
     },
     notification: {
+      count: vi.fn(),
       findMany: vi.fn(),
     },
+    $queryRaw: vi.fn(),
     $transaction: vi.fn(async (operations: Array<Promise<unknown>>) => Promise.all(operations)),
   };
 
@@ -63,6 +67,26 @@ describe('ActivityLogsService', () => {
       currentNodeCode: WorkflowNodeCode.CAB_REVIEW,
       plannedEndDate: new Date('2026-04-15T00:00:00.000Z'),
     });
+    prisma.auditLog.count.mockResolvedValue(1);
+    prisma.workflowTransition.count.mockResolvedValue(1);
+    prisma.notification.count.mockResolvedValue(1);
+    prisma.$queryRaw.mockResolvedValue([
+      {
+        sourceType: 'NOTIFICATION',
+        id: 'notification-1',
+        createdAt: new Date('2026-03-19T09:00:00.000Z'),
+      },
+      {
+        sourceType: 'WORKFLOW',
+        id: 'transition-1',
+        createdAt: new Date('2026-03-19T08:00:00.000Z'),
+      },
+      {
+        sourceType: 'AUDIT',
+        id: 'audit-1',
+        createdAt: new Date('2026-03-18T08:00:00.000Z'),
+      },
+    ]);
     prisma.auditLog.findMany.mockResolvedValue([
       {
         id: 'audit-1',
@@ -104,10 +128,19 @@ describe('ActivityLogsService', () => {
       },
     ]);
 
-    const result = await service.getProjectLogTimeline('project-1', actor);
+    const result = await service.getProjectLogTimeline('project-1', actor, {
+      page: '1',
+      pageSize: '20',
+    });
 
     expect(result.summary.totalCount).toBe(3);
     expect(result.summary.workflowCount).toBe(1);
+    expect(result.pagination).toEqual({
+      page: 1,
+      pageSize: 20,
+      total: 3,
+      totalPages: 1,
+    });
     expect(result.items[0]).toMatchObject({
       sourceType: 'NOTIFICATION',
       title: '待处理驾驶室评审',
@@ -116,5 +149,13 @@ describe('ActivityLogsService', () => {
       sourceType: 'WORKFLOW',
       nodeCode: WorkflowNodeCode.CAB_REVIEW,
     });
+    expect(prisma.auditLog.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: { in: ['audit-1'] } },
+      }),
+    );
+    const timelineQuery = prisma.$queryRaw.mock.calls[0]?.[0] as { strings: string[] };
+    expect(timelineQuery.strings.join('')).toContain('OFFSET');
+    expect(timelineQuery.strings.join('')).toContain('LIMIT');
   });
 });

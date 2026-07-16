@@ -22,6 +22,12 @@ export type ProjectLogItem = {
 };
 
 export type ProjectLogsResponse = {
+  pagination: {
+    page: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+  };
   project: {
     id: string;
     code: string;
@@ -39,8 +45,10 @@ export type ProjectLogsResponse = {
   items: ProjectLogItem[];
 };
 
-export function fetchProjectLogs(projectId: string) {
-  return apiRequest<ProjectLogsResponse>(`/projects/${projectId}/logs`);
+export function fetchProjectLogs(projectId: string, page = 1, pageSize = 20) {
+  return apiRequest<ProjectLogsResponse>(
+    `/projects/${projectId}/logs?page=${page}&pageSize=${pageSize}`,
+  );
 }
 
 export function getProjectLogSourceLabel(sourceType: ProjectLogSourceType) {

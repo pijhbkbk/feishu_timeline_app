@@ -1,4 +1,4 @@
-import { Controller, Get, Param } from '@nestjs/common';
+import { Controller, Get, Param, Query } from '@nestjs/common';
 
 import { CurrentUser } from '../auth/current-user.decorator';
 import { Permissions } from '../auth/permissions.decorator';
@@ -13,8 +13,9 @@ export class ActivityLogsController {
   @Get()
   getProjectLogs(
     @Param('projectId') projectId: string,
+    @Query() query: Record<string, string | undefined>,
     @CurrentUser() actor: AuthenticatedUser,
   ) {
-    return this.activityLogsService.getProjectLogTimeline(projectId, actor);
+    return this.activityLogsService.getProjectLogTimeline(projectId, actor, query);
   }
 }

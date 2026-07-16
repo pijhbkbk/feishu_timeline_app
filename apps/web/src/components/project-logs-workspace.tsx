@@ -39,17 +39,21 @@ export function ProjectLogsWorkspace({
   const [filter, setFilter] = useState<'ALL' | ProjectLogSourceType>('ALL');
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     void loadLogs({ initial: true });
   }, [projectId]);
 
-  async function loadLogs(options?: { initial?: boolean }) {
+  async function loadLogs(options?: { initial?: boolean; append?: boolean }) {
     const requestId = ++requestIdRef.current;
+    const page = options?.append && payload ? payload.pagination.page + 1 : 1;
 
     if (options?.initial) {
       setIsLoading(true);
+    } else if (options?.append) {
+      setIsLoadingMore(true);
     } else {
       setIsRefreshing(true);
     }
@@ -57,13 +61,20 @@ export function ProjectLogsWorkspace({
     setError(null);
 
     try {
-      const nextPayload = await fetchProjectLogs(projectId);
+      const nextPayload = await fetchProjectLogs(projectId, page);
 
       if (requestId !== requestIdRef.current) {
         return;
       }
 
-      setPayload(nextPayload);
+      setPayload((currentPayload) =>
+        options?.append && currentPayload
+          ? {
+              ...nextPayload,
+              items: [...currentPayload.items, ...nextPayload.items],
+            }
+          : nextPayload,
+      );
     } catch (loadError) {
       if (requestId !== requestIdRef.current) {
         return;
@@ -74,6 +85,7 @@ export function ProjectLogsWorkspace({
       if (requestId === requestIdRef.current) {
         setIsLoading(false);
         setIsRefreshing(false);
+        setIsLoadingMore(false);
       }
     }
   }
@@ -114,7 +126,7 @@ export function ProjectLogsWorkspace({
             <button
               type="button"
               className="button button-secondary"
-              disabled={isRefreshing}
+              disabled={isRefreshing || isLoadingMore}
               onClick={() => void loadLogs()}
             >
               {isRefreshing ? '刷新中…' : '刷新'}
@@ -156,6 +168,21 @@ export function ProjectLogsWorkspace({
         </div>
         <ProjectLogFilterBar filter={filter} onChange={setFilter} />
         <ProjectLogTimelineList items={filteredItems} />
+        <div className="page-actions">
+          <p className="muted">
+            已加载最近 {payload.items.length} / {payload.pagination.total} 条记录
+          </p>
+          {payload.pagination.page < payload.pagination.totalPages ? (
+            <button
+              type="button"
+              className="button button-secondary"
+              disabled={isLoadingMore || isRefreshing}
+              onClick={() => void loadLogs({ append: true })}
+            >
+              {isLoadingMore ? '加载中…' : '加载更多'}
+            </button>
+          ) : null}
+        </div>
       </section>
     </div>
   );

@@ -197,12 +197,13 @@ function submitProgress(taskId, identifiers = null) {
 }
 
 function request(method, pathname, body, kind, expectedStatuses, requestId = null) {
+  const effectiveRequestId = requestId ?? nextRequestId();
   const headers = {
     Cookie: session.cookieHeader,
     Origin: browserOrigin,
     Accept: 'application/json',
     ...(body === null ? {} : { 'Content-Type': 'application/json' }),
-    ...(requestId ? { 'X-Request-Id': requestId } : {}),
+    'X-Request-Id': effectiveRequestId,
   };
   const response = http.request(
     method,
@@ -215,6 +216,11 @@ function request(method, pathname, body, kind, expectedStatuses, requestId = nul
   if (response.status >= 500) serverErrors.add(1);
   const ok = expectedStatuses.includes(response.status);
   if (!ok) functionalFailures.add(1);
+  if (__ENV.K6_TRACE_REQUEST_IDS === 'true' || !ok) {
+    console.warn(
+      `R23C_REQUEST method=${method} path=${pathname} requestId=${effectiveRequestId} status=${response.status} durationMs=${response.timings.duration}`,
+    );
+  }
   check(response, { [`${method} ${pathname} expected status`]: () => ok });
   return response;
 }
@@ -228,7 +234,9 @@ function safeJson(response) {
 }
 
 function nextRequestId() {
-  return `${testRunId}-${__VU}-${__ITER}-${Date.now()}`.replace(/[^A-Za-z0-9_-]/g, '-');
+  const vu = typeof __VU === 'undefined' ? 0 : __VU;
+  const iteration = typeof __ITER === 'undefined' ? 0 : __ITER;
+  return `${testRunId}-${vu}-${iteration}-${Date.now()}`.replace(/[^A-Za-z0-9_-]/g, '-');
 }
 
 function assertSessionFileFresh() {

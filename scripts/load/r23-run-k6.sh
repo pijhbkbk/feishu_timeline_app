@@ -74,6 +74,7 @@ docker run --rm \
   -e "K6_BASE_URL=http://host.docker.internal:8080" \
   -e "K6_BROWSER_ORIGIN=http://localhost:8080" \
   -e "K6_SUMMARY_PATH=/results/summary.json" \
+  -e "K6_TRACE_REQUEST_IDS=${K6_TRACE_REQUEST_IDS:-false}" \
   "$K6_IMAGE" run "$SCRIPT_NAME" 2>&1 | tee "$RESULT_DIR/k6.log"
 K6_RC=${PIPESTATUS[0]}
 set -e
