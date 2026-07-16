@@ -8,12 +8,12 @@
 ## 项目基本信息
 
 - 项目名称：轻卡定制颜色开发项目管理系统
-- 当前阶段：R23B 已认证全权限、真实写路径与认证耐久收口
-- 当前轮次：R23B_REAL_ACCOUNT_WRITE_PATH_CLOSURE
-- 总体状态：BLOCKED（七条真实 staging 写路径、最终完整回归、精确部署和逻辑归档均已完成；唯一 R23 blocker 为认证 5 VU × 2h 与 10 VU × 30m 缺少安全会话注入；R19B 外部生产安全验收仍独立 BLOCKED）
+- 当前阶段：R23F R24 前方案 A 最小权限边界
+- 当前轮次：PRE_R24_MINIMUM_PERMISSION_BOUNDARY
+- 总体状态：PASSED（R23 已通过；方案 A 已实施并在最终 commit 完成本地、52/52 浏览器回归、精确 staging 与真实飞书管理员路径验证；STOP_BEFORE_R24）
 - 仓库路径：`/Users/lixiaochen/Downloads/feishu_timeline_app`
 - 默认分支：`main`
-- 最近更新时间：`2026-07-15`
+- 最近更新时间：`2026-07-16`
 
 ---
 
@@ -27,7 +27,7 @@
 6. 第 16 步为“批量生产”。
 7. 第 17 步为“整车色差一致性评审”，每月一次，共 12 个月。
 8. 第 18 步支持人工录入年产量并给出退出建议。
-9. 当前访问策略为所有有效已认证用户完整权限；未登录、停用和锁定用户仍被拦截，流程状态、评审、幂等和审计门禁保持后端控制。
+9. R23 历史验收使用“有效已认证用户完整权限”；R23F 起执行方案 A：普通工序限负责人/项目经理，第 12/17 步限指定评审人/项目经理，第 13 步限财务/管理员，第 18 步限项目经理/管理员，配置限管理员，审计限管理员/审计人员；匿名、停用和锁定用户继续拦截。
 
 ---
 
@@ -61,8 +61,10 @@
 | R21C | 生产流程地图权限与演示数据修复 | PASSED | STOP | 已修复飞书用户默认无角色导致 403，并补齐生产演示项目数据 |
 | R21C_UI | 项目实时流程地图 UI 布局重构 | PASSED | STOP | 已按 `map2.md` 调整画布拓扑、顶部工具栏、正交连线、缩放适配与 Playwright 截图验收 |
 | R22 | Apple 风产品 UI 全量还原 | PASSED | CONTINUE | Gate 1–8、生产发布、临时管理员撤销和生产验收均已完成 |
-| R23 | 真实使用稳定性、UAT 与 Bug 修复 | BLOCKED | STOP | P0=0，P1 6/6、P2 2/2 已修复；七写路径和最终 52/52 已完成，仅认证耐久待补 |
+| R23 | 真实使用稳定性、UAT 与 Bug 修复 | PASSED | STOP | R23E 已关闭认证耐久、最终回归、logout 和证据 blocker；停在 R24 前 |
 | R23B | 已认证全权限、真实写路径与认证耐久收口 | BLOCKED | STOP | 单一真实飞书全权限账号完成七场景并逻辑归档；5 VU × 2h 与 10 VU × 30m 因安全会话注入缺失而 BLOCKED |
+| R23E | R23 最终回归与证据关闭 | PASSED | STOP | application/staging 同 commit，耐久、52/52、真实 logout、Gitleaks 全部闭环 |
+| R23F | R24 前方案 A 最小权限边界 | PASSED | STOP | 真实角色/项目范围/负责人/指定评审联合授权，最终 commit 52/52、staging 与真实 OAuth 管理员正向路径通过 |
 
 状态枚举建议：
 
@@ -77,11 +79,10 @@
 
 ## 当前阻塞项
 
-- 九角色真实 OAuth 矩阵已由用户明确取消；当前任一有效已认证用户均获得完整应用权限，真实飞书账号已完成七条 staging 写路径。
-- 七条权威 `R23-UAT-*` 和一条已替代记录均已通过真实页面写入“已归档 / 测试项目”逻辑标记，保留全部审计，无物理删除。
-- R23B 不读取或导出登录 Cookie/token/storageState；缺少受控的外部认证会话注入，`5 VU × 2h` 和 `10 VU × 30m` 认证业务耐久尚未执行。
-- 既有完整回归夹具 blocker 已解除；最终应用提交上 Playwright `52/52 PASS`。
-- R19/R19B 的公司私有云主机、飞书管理后台、认证后 staging DAST、基础设施镜像和最终发布镜像证据仍待授权或由公司侧导出。
+- 方案 A 本身无未关闭 blocker；R24 尚未开始。
+- 当前只有一个真实飞书账号，因此九账号 OAuth 隔离没有作为证据宣称；负向矩阵由独立自动化身份覆盖。
+- pnpm 9 audit 的上游旧端点返回 410，Semgrep 固定镜像拉取中断；替代 pnpm 11/Trivy 扫描均为 0 finding，工具限制已记录在 R23F 报告。
+- R19/R19B 的公司私有云主机、飞书管理后台、认证后生产 DAST、基础设施镜像和最终生产发布镜像证据仍是独立外部安全事项，不阻塞本地 staging 方案 A 验收。
 
 ---
 
@@ -3632,3 +3633,54 @@ GITLEAKS_EXECUTION_MODE=native bash scripts/security/run-secrets-scan.sh
 - 决策：`R23E_PASS / R23_PASSED / STOP_BEFORE_R24`。
 
 R23 当前验收策略仍为所有有效已认证用户完整权限、匿名/停用/锁定拒绝和业务状态门禁保留，不宣称九角色隔离。方案 A 最小权限是进入 R24 前必须实施并产生新应用候选的新工作；本轮不实施，以保持 R23 endurance evidence 的同 commit 完整性。
+
+---
+
+### Round R23F_PRE_R24_MINIMUM_PERMISSION_BOUNDARY
+
+#### Goal And Scope
+- 在 R23 已通过后实施方案 A，撤销认证即管理员的临时策略。
+- 按真实角色、项目范围、任务负责人和指定评审记录收敛权限；不部署 production、不进入 R24、不合并 main、不创建 tag。
+- 唯一真实飞书账号用于 OAuth 与管理员正向路径；负向隔离使用独立自动化身份，不伪造九账号证据。
+
+#### Application And Data Changes
+- `d14538bc78a972c37bb4acf7f0bf6a41ac4ddf0b`：方案 A 主权限实现。
+- `f0de3dd85fee0d69a2f33ac0f32f600b2826207c`：账号菜单展示真实角色名称；最终 application/staging commit。
+- migration `20260716160000_apply_plan_a_role_permissions`：幂等新增 `auditor` 权限并为 `project_manager` 补齐 `review.execute`，不依赖 seed。
+- 普通工序限负责人/项目经理；第 12/17 步限指定评审人/项目经理；第 13 步限财务/管理员；第 18 步限项目经理/管理员；审计限管理员/审计人员。
+- 通用 workflow 接口不能使用任务负责人关系绕过指定评审记录授权。
+
+#### Commands And Results
+```bash
+pnpm install --frozen-lockfile
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm --filter @feishu-timeline/web build
+pnpm --filter @feishu-timeline/api build
+pnpm --filter @feishu-timeline/api prisma:validate
+pnpm playwright:test
+pnpm security:secrets
+corepack pnpm@11.13.1 --pm-on-fail=ignore audit --prod --audit-level low --json
+corepack pnpm@11.13.1 --pm-on-fail=ignore audit --audit-level low --json
+pnpm deploy:staging
+```
+
+- Web 25 files、78/78；API 52 files、173/173；定向权限 API 35/35、Web 7/7。
+- lint、typecheck、Web/API build、Prisma validate 全部 PASS。
+- 最终 commit Playwright 52/52 PASS、0 skipped、4.9m。
+- Gitleaks current/history 0 finding；pnpm 11 生产/全依赖所有严重度 0；Trivy filesystem 与最终两镜像 0 finding。
+- pnpm 9 audit 因上游端点 410 TOOL_ERROR；Semgrep 镜像拉取中断 TOOL_ERROR，均未误报为 PASS。
+
+#### Exact Staging And OAuth
+- API image `sha256:ea7a4b6d99f882b023987146dc0358ceeaa4204544a916d327d2f518ebe1f6d0`。
+- Web image `sha256:bf592a5eabe6a656b489835a173514a8368ddeb106d3114c5701d108ddc68d5a`。
+- OCI revision 与完整 `f0de3dd85fee0d69a2f33ac0f32f600b2826207c` 一致；dirty=false。
+- 18 migrations、0 pending；PostgreSQL/Redis/API/Web/Nginx healthy，restart 0，HTTP/static PASS。
+- staging 角色查询：auditor=`audit.read,dashboard.read,project.read`；project_manager 包含 `review.execute`。
+- 真实飞书 OAuth 成功；唯一账号的既有 `admin + viewer` 身份可访问项目、新建入口和项目日志。未读取/导出 Cookie、token 或 storageState，未新增业务测试数据。
+
+#### Decision
+`PLAN_A_IMPLEMENTED / ALL_FUNCTIONAL_GATES_PASS / EXACT_STAGING_PASS / REAL_OAUTH_ADMIN_PATH_PASS / R23F_PASSED / STOP_BEFORE_R24`
+
+证据：`docs/rounds/R23F.md`、`docs/testing/PRE_R24_PLAN_A_PERMISSION_REPORT.md`。R24 未开始。
