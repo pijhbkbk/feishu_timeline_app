@@ -108,7 +108,7 @@ log "Applying Prisma migrations"
 compose run --rm api-migrate
 
 log "Starting api, web and nginx"
-compose up -d api web nginx
+compose up -d --force-recreate api web nginx
 
 wait_for_service_health api 180
 wait_for_service_health web 180
