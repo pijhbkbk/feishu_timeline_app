@@ -42,7 +42,7 @@ type MockLoginInput = {
 };
 
 type FeishuCallbackInput = {
-  code: unknown;
+  code?: unknown;
   state?: unknown;
 };
 
@@ -150,7 +150,7 @@ export class AuthService {
   }
 
   async loginWithFeishu(
-    input: FeishuCallbackInput,
+    input: FeishuCallbackInput | null | undefined,
     browserState: string | undefined,
     response: Response,
     clientIdentifier = 'unknown',
@@ -162,8 +162,8 @@ export class AuthService {
       FEISHU_CALLBACK_GLOBAL_LIMIT,
     );
 
-    const code = this.normalizeFeishuAuthorizationCode(input.code);
-    const state = this.normalizeFeishuOAuthState(input.state);
+    const code = this.normalizeFeishuAuthorizationCode(input?.code);
+    const state = this.normalizeFeishuOAuthState(input?.state);
     const normalizedBrowserState = this.normalizeFeishuOAuthState(browserState);
 
     if (normalizedBrowserState !== state) {

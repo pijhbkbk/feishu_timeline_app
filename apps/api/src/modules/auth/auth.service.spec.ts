@@ -169,6 +169,17 @@ describe('AuthService Feishu OAuth state', () => {
     expect(feishuAuthAdapter.exchangeCodeForProfile).not.toHaveBeenCalled();
   });
 
+  it('rejects an empty callback body without raising an internal server error', async () => {
+    const { service, response, sessionStoreService, feishuAuthAdapter } = createAuthService();
+
+    await expect(
+      service.loginWithFeishu(undefined, undefined, response as never),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+
+    expect(sessionStoreService.consumeJson).not.toHaveBeenCalled();
+    expect(feishuAuthAdapter.exchangeCodeForProfile).not.toHaveBeenCalled();
+  });
+
   it('consumes callback state once before establishing a Feishu session', async () => {
     const { service, response, feishuAuthAdapter } = createAuthService();
     const loginUrlResult = await service.getFeishuLoginUrl(response as never);
