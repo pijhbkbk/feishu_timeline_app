@@ -16,7 +16,7 @@ function createService(tx: Record<string, unknown>) {
 }
 
 describe('UsersService', () => {
-  it('grants complete effective access to every active authenticated user', async () => {
+  it('preserves the assigned least-privilege role for an active authenticated user', async () => {
     const prisma = {
       user: {
         findUnique: vi.fn().mockResolvedValue({
@@ -43,9 +43,9 @@ describe('UsersService', () => {
 
     await expect(service.getAuthenticatedUser('viewer-user', 'feishu')).resolves.toMatchObject({
       id: 'viewer-user',
-      isSystemAdmin: true,
-      roleCodes: ['admin'],
-      permissionCodes: ROLE_PERMISSION_CODE_MAP.admin,
+      isSystemAdmin: false,
+      roleCodes: ['viewer'],
+      permissionCodes: ['project.read'],
     });
   });
 

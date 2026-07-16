@@ -21,4 +21,11 @@ describe('ROLE_PERMISSION_CODE_MAP', () => {
     expect(ROLE_PERMISSION_CODE_MAP.viewer).not.toContain('workflow.transition');
     expect(ROLE_PERMISSION_CODE_MAP.viewer).not.toContain('attachment.manage');
   });
+
+  it('separates review, audit and business-write permissions for plan A', () => {
+    expect(ROLE_PERMISSION_CODE_MAP.project_manager).toContain('review.execute');
+    expect(ROLE_PERMISSION_CODE_MAP.auditor).toContain('audit.read');
+    expect(ROLE_PERMISSION_CODE_MAP.auditor).not.toContain('workflow.transition');
+    expect(ROLE_PERMISSION_CODE_MAP.finance).not.toContain('audit.read');
+  });
 });

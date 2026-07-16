@@ -19,6 +19,49 @@ function createActor(): AuthenticatedUser {
 }
 
 describe('TasksService', () => {
+  it('limits progress submission to assignee or project manager, with critical-node overrides', () => {
+    const service = new TasksService({} as never, {} as never, {} as never);
+    const projectManager = { ...createActor(), id: 'manager-1', roleCodes: ['project_manager'] as const };
+    const administrator = {
+      ...createActor(),
+      id: 'admin-1',
+      isSystemAdmin: true,
+      roleCodes: ['admin'] as const,
+    };
+    const finance = { ...createActor(), id: 'finance-1', roleCodes: ['finance'] as const };
+
+    expect(
+      (service as any).canSubmitTaskProgress(createActor(), {
+        nodeCode: WorkflowNodeCode.PAINT_DEVELOPMENT,
+        assigneeUserId: 'user-1',
+      }),
+    ).toBe(true);
+    expect(
+      (service as any).canSubmitTaskProgress(projectManager, {
+        nodeCode: WorkflowNodeCode.PAINT_DEVELOPMENT,
+        assigneeUserId: 'other-user',
+      }),
+    ).toBe(true);
+    expect(
+      (service as any).canSubmitTaskProgress(administrator, {
+        nodeCode: WorkflowNodeCode.PAINT_DEVELOPMENT,
+        assigneeUserId: 'other-user',
+      }),
+    ).toBe(false);
+    expect(
+      (service as any).canSubmitTaskProgress(finance, {
+        nodeCode: WorkflowNodeCode.DEVELOPMENT_ACCEPTANCE,
+        assigneeUserId: 'other-user',
+      }),
+    ).toBe(true);
+    expect(
+      (service as any).canSubmitTaskProgress(administrator, {
+        nodeCode: WorkflowNodeCode.PROJECT_CLOSED,
+        assigneeUserId: 'other-user',
+      }),
+    ).toBe(true);
+  });
+
   it('returns overdue tasks for current user only', async () => {
     const prisma = {
       workflowTask: {

@@ -8,6 +8,7 @@ export type FrontendRoleCode =
   | 'purchaser'
   | 'reviewer'
   | 'finance'
+  | 'auditor'
   | 'viewer';
 
 export type SessionUser = {
@@ -50,6 +51,7 @@ export const FRONTEND_ROLE_OPTIONS: Array<{
   { code: 'purchaser', label: '采购专员' },
   { code: 'reviewer', label: '评审人' },
   { code: 'finance', label: '财务' },
+  { code: 'auditor', label: '审计人员' },
   { code: 'viewer', label: '普通查看者' },
 ];
 

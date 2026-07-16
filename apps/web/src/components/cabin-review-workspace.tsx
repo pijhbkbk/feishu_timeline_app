@@ -64,7 +64,7 @@ export function CabinReviewWorkspace({
 
   useEffect(() => {
     void loadWorkspace({ initial: true });
-  }, [projectId]);
+  }, [projectId, user?.id]);
 
   useEffect(() => {
     if (!workspace?.items.length) {
@@ -137,14 +137,29 @@ export function CabinReviewWorkspace({
         return;
       }
 
+      const availableUsers =
+        user && !users.some((item) => item.id === user.id)
+          ? [
+              {
+                id: user.id,
+                username: user.username,
+                name: user.name,
+                email: user.email,
+                departmentId: user.departmentId,
+                departmentName: user.departmentName,
+                roleCodes: user.roleCodes,
+              },
+              ...users,
+            ]
+          : users;
       setWorkspace(workspaceResponse);
-      setReviewerOptions(users);
+      setReviewerOptions(availableUsers);
       setForm((current) => ({
         ...current,
         reviewerId:
-          current.reviewerId && users.some((item) => item.id === current.reviewerId)
+          current.reviewerId && availableUsers.some((item) => item.id === current.reviewerId)
             ? current.reviewerId
-            : getDefaultCabinReviewerId(users, user?.id ?? null),
+            : getDefaultCabinReviewerId(availableUsers, user?.id ?? null),
       }));
     } catch (loadError) {
       if (requestId !== requestIdRef.current) {
@@ -392,7 +407,6 @@ export function CabinReviewWorkspace({
           user={user}
           items={workspace.items}
           selectedReviewId={selectedReviewId}
-          canManage={canManage}
           isReadOnly={isReadOnly}
           workspace={workspace}
           actingKey={actingKey}
@@ -588,7 +602,6 @@ export function CabinReviewHistory({
   user,
   items,
   selectedReviewId,
-  canManage,
   isReadOnly,
   workspace,
   actingKey,
@@ -603,7 +616,7 @@ export function CabinReviewHistory({
   user: ReturnType<typeof useAuth>['user'];
   items: CabinReviewRecord[];
   selectedReviewId: string | null;
-  canManage: boolean;
+  canManage?: boolean;
   isReadOnly: boolean;
   workspace: CabinReviewWorkspaceResponse;
   actingKey: string | null;
@@ -658,7 +671,9 @@ export function CabinReviewHistory({
                   <td>{item.returnToNodeName ?? '未退回'}</td>
                   <td>
                     <div className="task-actions">
-                      {canManage && !isReadOnly && !item.submittedAt ? (
+                      {canManageCabinReviews(user, item.reviewerId) &&
+                      !isReadOnly &&
+                      !item.submittedAt ? (
                         <>
                           <button
                             type="button"
@@ -728,7 +743,8 @@ export function CabinReviewHistory({
                           {actingKey === `reject:${item.id}` ? '处理中…' : '驳回'}
                         </button>
                       ) : null}
-                      {(!canManage || isReadOnly) && !item.submittedAt ? (
+                      {(!canManageCabinReviews(user, item.reviewerId) || isReadOnly) &&
+                      !item.submittedAt ? (
                         <span className="muted">只读</span>
                       ) : null}
                     </div>

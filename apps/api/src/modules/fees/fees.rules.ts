@@ -5,7 +5,6 @@ import {
 
 export const FEE_MANAGEMENT_ROLE_CODES = [
   'admin',
-  'project_manager',
   'finance',
 ] as const;
 

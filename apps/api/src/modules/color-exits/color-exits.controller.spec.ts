@@ -12,17 +12,14 @@ describe('ColorExitsController RBAC metadata', () => {
     expect(Reflect.getMetadata(ROLE_METADATA_KEY, prototype.createExitRecord)).toEqual([
       'admin',
       'project_manager',
-      'process_engineer',
     ]);
     expect(Reflect.getMetadata(ROLE_METADATA_KEY, prototype.updateExitRecord)).toEqual([
       'admin',
       'project_manager',
-      'process_engineer',
     ]);
     expect(Reflect.getMetadata(ROLE_METADATA_KEY, prototype.completeExitRecord)).toEqual([
       'admin',
       'project_manager',
-      'process_engineer',
     ]);
   });
 

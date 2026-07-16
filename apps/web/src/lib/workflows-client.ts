@@ -483,65 +483,26 @@ export function canUserOperateWorkflowTask(
     return false;
   }
 
-  if (
-    user.isSystemAdmin ||
-    user.roleCodes.includes('admin') ||
-    user.roleCodes.includes('project_manager')
-  ) {
-    return true;
+  const isAdmin = user.isSystemAdmin || user.roleCodes.includes('admin');
+  const isProjectManager = user.roleCodes.includes('project_manager');
+
+  if (task.nodeCode === 'DEVELOPMENT_ACCEPTANCE') {
+    return isAdmin || user.roleCodes.includes('finance');
   }
 
-  if (task.nodeCode === 'PAINT_PROCUREMENT' && user.roleCodes.includes('purchaser')) {
-    return true;
-  }
-
-  if (
-    task.nodeCode === 'PERFORMANCE_TEST' &&
-    (user.roleCodes.includes('quality_engineer') ||
-      user.roleCodes.includes('process_engineer'))
-  ) {
-    return true;
+  if (task.nodeCode === 'PROJECT_CLOSED') {
+    return isAdmin || isProjectManager;
   }
 
   if (
-    (task.nodeCode === 'STANDARD_BOARD_PRODUCTION' ||
-      task.nodeCode === 'BOARD_DETAIL_UPDATE') &&
-    (user.roleCodes.includes('quality_engineer') ||
-      user.roleCodes.includes('process_engineer'))
+    task.nodeCode === 'CAB_REVIEW' ||
+    task.nodeCode === 'COLOR_CONSISTENCY_REVIEW' ||
+    task.nodeCode === 'VISUAL_COLOR_DIFFERENCE_REVIEW'
   ) {
-    return true;
+    return isProjectManager;
   }
 
-  if (
-    (task.nodeCode === 'FIRST_UNIT_PRODUCTION_PLAN' ||
-      task.nodeCode === 'TRIAL_PRODUCTION' ||
-      task.nodeCode === 'MASS_PRODUCTION_PLAN' ||
-      task.nodeCode === 'MASS_PRODUCTION' ||
-      task.nodeCode === 'PROJECT_CLOSED') &&
-    user.roleCodes.includes('process_engineer')
-  ) {
-    return true;
-  }
-
-  if (
-    (task.nodeCode === 'CAB_REVIEW' ||
-      task.nodeCode === 'COLOR_CONSISTENCY_REVIEW' ||
-      task.nodeCode === 'VISUAL_COLOR_DIFFERENCE_REVIEW') &&
-    (user.roleCodes.includes('reviewer') ||
-      user.roleCodes.includes('quality_engineer'))
-  ) {
-    return true;
-  }
-
-  if (task.nodeCode === 'DEVELOPMENT_ACCEPTANCE' && user.roleCodes.includes('finance')) {
-    return true;
-  }
-
-  if (!task.assigneeUserId) {
-    return true;
-  }
-
-  return task.assigneeUserId === user.id;
+  return isProjectManager || task.assigneeUserId === user.id;
 }
 
 export function formatWorkflowTaskTime(value: string | null | undefined) {

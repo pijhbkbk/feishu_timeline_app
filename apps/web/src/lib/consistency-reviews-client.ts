@@ -11,7 +11,6 @@ import {
   type WorkflowNodeCode,
 } from './projects-client';
 import {
-  canUserOperateWorkflowTask,
   getWorkflowTaskStatusLabel,
   type WorkflowTaskSummary,
 } from './workflows-client';
@@ -203,17 +202,21 @@ export function validateConsistencyReviewForm(input: ConsistencyReviewFormInput)
   return null;
 }
 
-export function canManageConsistencyReviews(user: SessionUser | null) {
+export function canManageConsistencyReviews(
+  user: SessionUser | null,
+  reviewerId?: string | null,
+) {
   if (!user) {
     return false;
   }
 
-  if (user.isSystemAdmin || user.roleCodes.includes('admin')) {
-    return true;
+  if (reviewerId !== undefined) {
+    return user.roleCodes.includes('project_manager') || reviewerId === user.id;
   }
 
-  return CONSISTENCY_REVIEW_ROLE_CODES.some((roleCode) =>
-    user.roleCodes.includes(roleCode),
+  return (
+    user.isSystemAdmin ||
+    CONSISTENCY_REVIEW_ROLE_CODES.some((roleCode) => user.roleCodes.includes(roleCode))
   );
 }
 
@@ -226,7 +229,7 @@ export function canShowConsistencyReviewSubmitButton(
     return false;
   }
 
-  return canUserOperateWorkflowTask(user, workspace.activeTask);
+  return canManageConsistencyReviews(user, review.reviewerId);
 }
 
 export function canShowConsistencyReviewApproveButton(
@@ -245,7 +248,7 @@ export function canShowConsistencyReviewApproveButton(
     return false;
   }
 
-  return canUserOperateWorkflowTask(user, workspace.activeTask);
+  return canManageConsistencyReviews(user, review.reviewerId);
 }
 
 export function canShowConsistencyReviewRejectButton(
@@ -261,7 +264,7 @@ export function canShowConsistencyReviewRejectButton(
     return false;
   }
 
-  return canUserOperateWorkflowTask(user, workspace.activeTask);
+  return canManageConsistencyReviews(user, review.reviewerId);
 }
 
 export function getConsistencyReviewConclusionLabel(

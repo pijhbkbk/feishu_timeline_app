@@ -179,7 +179,7 @@ export const projectSectionMetaMap: Record<ProjectSectionKey, ProjectSectionMeta
     key: 'fees',
     label: '开发费用',
     description: '费用记录、固定收费规则和财务协同。',
-    requiredRoles: ['admin', 'project_manager', 'finance'],
+    requiredRoles: ['admin', 'finance'],
   },
   'production-plans': {
     key: 'production-plans',
@@ -203,7 +203,7 @@ export const projectSectionMetaMap: Record<ProjectSectionKey, ProjectSectionMeta
     key: 'color-exit',
     label: '颜色退出',
     description: '颜色退出记录、主数据状态切换与项目收尾。',
-    requiredRoles: ['admin', 'project_manager', 'process_engineer'],
+    requiredRoles: ['admin', 'project_manager'],
   },
   materials: {
     key: 'materials',
@@ -224,6 +224,7 @@ export const projectSectionMetaMap: Record<ProjectSectionKey, ProjectSectionMeta
     key: 'logs',
     label: '日志',
     description: '审计日志、节点动作和项目时间线。',
+    requiredRoles: ['admin', 'auditor'],
   },
 };
 

@@ -91,7 +91,6 @@ export type ColorExitFormInput = {
 const COLOR_EXIT_ROLE_CODES: FrontendRoleCode[] = [
   'admin',
   'project_manager',
-  'process_engineer',
 ];
 
 export function fetchColorExitWorkspace(projectId: string) {

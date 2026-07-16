@@ -123,7 +123,7 @@ export class TasksService {
       },
     });
 
-    if (!task || (!this.isAdmin(actor) && task.assigneeUserId !== actor.id)) {
+    if (!task || !this.canViewTask(actor, task.assigneeUserId)) {
       throw new NotFoundException('工序任务不存在或已被删除。');
     }
 
@@ -448,6 +448,33 @@ export class TasksService {
     return actor.isSystemAdmin || actor.roleCodes.includes('admin');
   }
 
+  private isProjectManager(actor: AuthenticatedUser) {
+    return actor.roleCodes.includes('project_manager');
+  }
+
+  private canViewTask(actor: AuthenticatedUser, assigneeUserId: string | null) {
+    return (
+      this.isAdmin(actor) ||
+      this.isProjectManager(actor) ||
+      assigneeUserId === actor.id
+    );
+  }
+
+  private canSubmitTaskProgress(
+    actor: AuthenticatedUser,
+    task: { nodeCode: WorkflowNodeCode; assigneeUserId: string | null },
+  ) {
+    if (task.nodeCode === WorkflowNodeCode.DEVELOPMENT_ACCEPTANCE) {
+      return this.isAdmin(actor) || actor.roleCodes.includes('finance');
+    }
+
+    if (task.nodeCode === WorkflowNodeCode.PROJECT_CLOSED) {
+      return this.isAdmin(actor) || this.isProjectManager(actor);
+    }
+
+    return this.isProjectManager(actor) || task.assigneeUserId === actor.id;
+  }
+
   private async getProgressTaskOrThrow(
     taskId: string,
     actor: AuthenticatedUser,
@@ -476,8 +503,17 @@ export class TasksService {
       permission,
     );
 
-    if (!this.isAdmin(actor) && task.assigneeUserId !== actor.id) {
-      throw new ForbiddenException('只能查看或提交分配给自己的任务进展。');
+    const canAccess =
+      permission === 'project.read'
+        ? this.canViewTask(actor, task.assigneeUserId)
+        : this.canSubmitTaskProgress(actor, task);
+
+    if (!canAccess) {
+      throw new ForbiddenException(
+        permission === 'project.read'
+          ? '只能查看分配给自己的任务进展，项目经理可查看全部。'
+          : '只有当前负责人或项目经理可提交普通工序进展。',
+      );
     }
 
     return task;

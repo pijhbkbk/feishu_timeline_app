@@ -64,7 +64,7 @@ export function ConsistencyReviewWorkspace({
 
   useEffect(() => {
     void loadWorkspace({ initial: true });
-  }, [projectId]);
+  }, [projectId, user?.id]);
 
   useEffect(() => {
     if (!workspace?.items.length) {
@@ -138,14 +138,29 @@ export function ConsistencyReviewWorkspace({
         return;
       }
 
+      const availableUsers =
+        user && !users.some((item) => item.id === user.id)
+          ? [
+              {
+                id: user.id,
+                username: user.username,
+                name: user.name,
+                email: user.email,
+                departmentId: user.departmentId,
+                departmentName: user.departmentName,
+                roleCodes: user.roleCodes,
+              },
+              ...users,
+            ]
+          : users;
       setWorkspace(workspaceResponse);
-      setReviewerOptions(users);
+      setReviewerOptions(availableUsers);
       setForm((current) => ({
         ...current,
         reviewerId:
-          current.reviewerId && users.some((item) => item.id === current.reviewerId)
+          current.reviewerId && availableUsers.some((item) => item.id === current.reviewerId)
             ? current.reviewerId
-            : getDefaultConsistencyReviewerId(users, user?.id ?? null),
+            : getDefaultConsistencyReviewerId(availableUsers, user?.id ?? null),
       }));
     } catch (loadError) {
       if (requestId !== requestIdRef.current) {
@@ -393,7 +408,6 @@ export function ConsistencyReviewWorkspace({
           user={user}
           items={workspace.items}
           selectedReviewId={selectedReviewId}
-          canManage={canManage}
           isReadOnly={isReadOnly}
           workspace={workspace}
           actingKey={actingKey}
@@ -576,7 +590,6 @@ export function ConsistencyReviewHistory({
   user,
   items,
   selectedReviewId,
-  canManage,
   isReadOnly,
   workspace,
   actingKey,
@@ -591,7 +604,7 @@ export function ConsistencyReviewHistory({
   user: ReturnType<typeof useAuth>['user'];
   items: ConsistencyReviewRecord[];
   selectedReviewId: string | null;
-  canManage: boolean;
+  canManage?: boolean;
   isReadOnly: boolean;
   workspace: ConsistencyReviewWorkspaceResponse;
   actingKey: string | null;
@@ -645,7 +658,9 @@ export function ConsistencyReviewHistory({
                 <td>{item.returnToNodeName ?? '未退回'}</td>
                 <td>
                   <div className="task-actions">
-                    {canManage && !isReadOnly && !item.submittedAt ? (
+                    {canManageConsistencyReviews(user, item.reviewerId) &&
+                    !isReadOnly &&
+                    !item.submittedAt ? (
                       <>
                         <button
                           type="button"
@@ -714,7 +729,8 @@ export function ConsistencyReviewHistory({
                         {actingKey === `reject:${item.id}` ? '处理中…' : '驳回'}
                       </button>
                     ) : null}
-                    {(!canManage || isReadOnly) && !item.submittedAt ? (
+                    {(!canManageConsistencyReviews(user, item.reviewerId) || isReadOnly) &&
+                    !item.submittedAt ? (
                       <span className="muted">只读</span>
                     ) : null}
                   </div>

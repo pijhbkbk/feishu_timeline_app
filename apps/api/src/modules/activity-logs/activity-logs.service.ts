@@ -71,7 +71,7 @@ export class ActivityLogsService {
     await this.projectAccessService.assertProjectAccessWithDefaultClient(
       projectId,
       actor,
-      'project.read',
+      'audit.read',
     );
     const page = normalizePage(rawQuery.page, 1);
     const pageSize = normalizePageSize(rawQuery.pageSize, 20);
@@ -353,7 +353,7 @@ export class ActivityLogsService {
     await this.projectAccessService.assertProjectAccessWithDefaultClient(
       projectId,
       actor,
-      'project.read',
+      'audit.read',
     );
 
     const separatorIndex = logId.indexOf(':');

@@ -9,12 +9,7 @@ describe('ReviewsController RBAC metadata', () => {
   it('protects cabin review endpoints with reviewer roles', () => {
     const prototype = ReviewsController.prototype;
 
-    expect(Reflect.getMetadata(ROLE_METADATA_KEY, prototype.getCabinReviewWorkspace)).toEqual([
-      'admin',
-      'project_manager',
-      'quality_engineer',
-      'reviewer',
-    ]);
+    expect(Reflect.getMetadata(ROLE_METADATA_KEY, prototype.getCabinReviewWorkspace)).toBeUndefined();
     expect(Reflect.getMetadata(ROLE_METADATA_KEY, prototype.approveCabinReview)).toEqual([
       'admin',
       'project_manager',
@@ -27,12 +22,9 @@ describe('ReviewsController RBAC metadata', () => {
       'quality_engineer',
       'reviewer',
     ]);
-    expect(Reflect.getMetadata(ROLE_METADATA_KEY, prototype.getConsistencyReviewWorkspace)).toEqual([
-      'admin',
-      'project_manager',
-      'quality_engineer',
-      'reviewer',
-    ]);
+    expect(
+      Reflect.getMetadata(ROLE_METADATA_KEY, prototype.getConsistencyReviewWorkspace),
+    ).toBeUndefined();
     expect(Reflect.getMetadata(ROLE_METADATA_KEY, prototype.approveConsistencyReview)).toEqual([
       'admin',
       'project_manager',
@@ -45,12 +37,9 @@ describe('ReviewsController RBAC metadata', () => {
       'quality_engineer',
       'reviewer',
     ]);
-    expect(Reflect.getMetadata(ROLE_METADATA_KEY, prototype.getVisualDeltaReviewWorkspace)).toEqual([
-      'admin',
-      'project_manager',
-      'quality_engineer',
-      'reviewer',
-    ]);
+    expect(
+      Reflect.getMetadata(ROLE_METADATA_KEY, prototype.getVisualDeltaReviewWorkspace),
+    ).toBeUndefined();
     expect(Reflect.getMetadata(ROLE_METADATA_KEY, prototype.approveVisualDeltaReview)).toEqual([
       'admin',
       'project_manager',

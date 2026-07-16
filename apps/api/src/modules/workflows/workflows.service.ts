@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -1099,12 +1100,13 @@ export class WorkflowsService {
     action: WorkflowAction,
     actor: AuthenticatedUser,
     rawInput: unknown,
+    authorizationSource?: 'designated-review',
   ) {
     const input = this.parseActionInput(rawInput);
     const task = await this.getTaskOrThrow(tx, taskId);
 
     await this.projectAccessService.assertProjectAccess(tx, task.projectId, actor, 'workflow.transition');
-    this.assertActorCanOperateTask(task, actor);
+    this.assertActorCanOperateTask(task, actor, authorizationSource);
     this.assertTaskCanTransition(task, action);
 
     if (isWorkflowCompletionAction(action)) {
@@ -1629,68 +1631,52 @@ export class WorkflowsService {
   private assertActorCanOperateTask(
     task: WorkflowTaskWithRelations,
     actor: AuthenticatedUser,
+    authorizationSource?: 'designated-review',
   ) {
-    if (actor.isSystemAdmin || actor.roleCodes.includes('admin') || actor.roleCodes.includes('project_manager')) {
+    const isAdmin = actor.isSystemAdmin || actor.roleCodes.includes('admin');
+    const isProjectManager = actor.roleCodes.includes('project_manager');
+    const isReviewNode =
+      task.nodeCode === WorkflowNodeCode.CAB_REVIEW ||
+      task.nodeCode === WorkflowNodeCode.COLOR_CONSISTENCY_REVIEW ||
+      task.nodeCode === WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW;
+
+    if (authorizationSource === 'designated-review') {
+      if (isReviewNode) {
+        return;
+      }
+
+      throw new ForbiddenException('指定评审授权不适用于当前工序。');
+    }
+
+    if (task.nodeCode === WorkflowNodeCode.DEVELOPMENT_ACCEPTANCE) {
+      if (isAdmin || actor.roleCodes.includes('finance')) {
+        return;
+      }
+
+      throw new ForbiddenException('第 13 步财务确认仅允许财务确认人或管理员执行。');
+    }
+
+    if (task.nodeCode === WorkflowNodeCode.PROJECT_CLOSED) {
+      if (isAdmin || isProjectManager) {
+        return;
+      }
+
+      throw new ForbiddenException('第 18 步最终退出结论仅允许项目经理或管理员执行。');
+    }
+
+    if (isReviewNode) {
+      if (isProjectManager) {
+        return;
+      }
+
+      throw new ForbiddenException(`${task.nodeName} 仅允许指定评审人或项目经理执行。`);
+    }
+
+    if (isProjectManager || task.assigneeUserId === actor.id) {
       return;
     }
 
-    if (
-      task.nodeCode === WorkflowNodeCode.PAINT_PROCUREMENT &&
-      actor.roleCodes.includes('purchaser')
-    ) {
-      return;
-    }
-
-    if (
-      task.nodeCode === WorkflowNodeCode.PERFORMANCE_TEST &&
-      (actor.roleCodes.includes('quality_engineer') ||
-        actor.roleCodes.includes('process_engineer'))
-    ) {
-      return;
-    }
-
-    if (
-      (task.nodeCode === WorkflowNodeCode.STANDARD_BOARD_PRODUCTION ||
-        task.nodeCode === WorkflowNodeCode.BOARD_DETAIL_UPDATE) &&
-      (actor.roleCodes.includes('quality_engineer') ||
-        actor.roleCodes.includes('process_engineer'))
-    ) {
-      return;
-    }
-
-    if (
-      (task.nodeCode === WorkflowNodeCode.FIRST_UNIT_PRODUCTION_PLAN ||
-        task.nodeCode === WorkflowNodeCode.TRIAL_PRODUCTION ||
-        task.nodeCode === WorkflowNodeCode.MASS_PRODUCTION_PLAN ||
-        task.nodeCode === WorkflowNodeCode.MASS_PRODUCTION ||
-        task.nodeCode === WorkflowNodeCode.PROJECT_CLOSED) &&
-      actor.roleCodes.includes('process_engineer')
-    ) {
-      return;
-    }
-
-    if (
-      (task.nodeCode === WorkflowNodeCode.CAB_REVIEW ||
-        task.nodeCode === WorkflowNodeCode.COLOR_CONSISTENCY_REVIEW ||
-        task.nodeCode === WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW) &&
-      (actor.roleCodes.includes('reviewer') ||
-        actor.roleCodes.includes('quality_engineer'))
-    ) {
-      return;
-    }
-
-    if (
-      task.nodeCode === WorkflowNodeCode.DEVELOPMENT_ACCEPTANCE &&
-      actor.roleCodes.includes('finance')
-    ) {
-      return;
-    }
-
-    if (!task.assigneeUserId || task.assigneeUserId === actor.id) {
-      return;
-    }
-
-    throw new BadRequestException(`${task.nodeName} 仅允许当前负责人执行。`);
+    throw new ForbiddenException(`${task.nodeName} 仅允许当前负责人或项目经理执行。`);
   }
 
   private async assertNoActiveTaskForNode(

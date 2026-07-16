@@ -2,7 +2,7 @@ import { Buffer } from 'node:buffer';
 
 import { expect, test } from '@playwright/test';
 
-import { advanceToCabinReview, completeTrialProductionByApi } from './helpers';
+import { advanceToCabinReview, apiJson, completeTrialProductionByApi } from './helpers';
 import {
   createR20ProjectByApi,
   loginAsR20Role,
@@ -23,12 +23,15 @@ test.describe('R20 第12步评审退回与新轮次 @r20', () => {
     await advanceToCabinReview(request, project.id);
 
     await loginAsR20Role(page, 'quality');
+    const qualitySession = await apiJson<{ user: { id: string } }>(request, '/auth/session');
     await page.goto(`/projects/${project.id}/reviews`);
     await expect(page.getByTestId('sample-cab-review-panel')).toBeVisible();
 
     const cabinForm = page.locator('section.page-card').filter({ hasText: '驾驶室评审表单' }).first();
     await cabinForm.getByTestId('cabin-review-date-input').fill('2026-05-19');
-    await cabinForm.getByTestId('cabin-review-reviewer-select').selectOption({ index: 1 });
+    await cabinForm
+      .getByTestId('cabin-review-reviewer-select')
+      .selectOption(qualitySession.user.id);
     await cabinForm.getByTestId('cabin-review-comment-input').fill('整改要求：重新试制样车并复核驾驶室色差。整改责任人：R20 质量责任人。');
     await cabinForm.getByTestId('cabin-review-conclusion-select').selectOption('REJECTED');
     await cabinForm.getByTestId('cabin-review-save-button').click();
@@ -55,9 +58,8 @@ test.describe('R20 第12步评审退回与新轮次 @r20', () => {
     expect(workflow.activeTasks.some((task) => task.nodeCode === 'TRIAL_PRODUCTION' && task.taskRound === 2)).toBe(true);
     await writeR20ApiSnapshot(testInfo, 'workflow-after-step12-reject', workflow);
 
-    await loginAsR20Role(page, 'production');
+    await loginAsR20Role(page, 'projectManager');
     await completeTrialProductionByApi(request, project.id, 'R20-REWORK');
-    await loginAsR20Role(page, 'quality');
     workflow = await transitionR16Task(request, project.id, 'CAB_REVIEW', 'approve');
     expect(workflow.activeTasks.some((task) => task.nodeCode === 'DEVELOPMENT_ACCEPTANCE' && !task.isPrimary)).toBe(true);
     expect(workflow.activeTasks.some((task) => task.nodeCode === 'COLOR_CONSISTENCY_REVIEW' && task.isPrimary)).toBe(true);
@@ -69,7 +71,7 @@ test.describe('R20 第12步评审退回与新轮次 @r20', () => {
     await writeR20CaseRecord(testInfo, {
       testId: 'R20-006',
       scenario: '第12步评审不通过退回第11步并生成新轮次',
-      role: '质量管理部',
+      role: '指定评审人 / 项目经理',
       project,
       expected: '不填写原因不能提交，填写后退回第11步第2轮；第12步通过后生成第13/14步',
       result: 'PASS',

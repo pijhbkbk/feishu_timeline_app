@@ -49,8 +49,8 @@ test.describe('R20 材料提交平台 @r20', () => {
     await loginAsR20Role(page, 'viewer');
     await page.goto(`/projects/${project.id}/materials`);
     await expect(page.getByTestId('materials-page')).toBeVisible();
-    await expect(page.getByTestId('material-upload-button')).toBeEnabled();
-    await expect(page.getByTestId('material-upload-button')).toContainText('上传材料');
+    await expect(page.getByTestId('material-upload-button')).toBeDisabled();
+    await expect(page.getByTestId('material-upload-button')).toContainText('不可上传');
 
     const firstAttachmentId = workspace.items[0]?.id;
     expect(firstAttachmentId).toBeTruthy();
@@ -69,7 +69,7 @@ test.describe('R20 材料提交平台 @r20', () => {
 
     await writeR20CaseRecord(testInfo, {
       testId: 'R20-010',
-      scenario: '材料提交平台上传、归档、下载和已认证全权限',
+      scenario: '材料提交平台上传、归档、下载和只读角色边界',
       role: '项目经理 / 普通查看者 / 未登录用户',
       project,
       uploadedFiles: files,

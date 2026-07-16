@@ -4,6 +4,7 @@ import { ForbiddenException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 
 import { AttachmentsController } from '../../src/modules/attachments/attachments.controller';
+import { ActivityLogsController } from '../../src/modules/activity-logs/activity-logs.controller';
 import { ColorExitsController } from '../../src/modules/color-exits/color-exits.controller';
 import { FeesController } from '../../src/modules/fees/fees.controller';
 import { PERMISSION_METADATA_KEY, ROLE_METADATA_KEY } from '../../src/modules/auth/auth.constants';
@@ -42,9 +43,9 @@ describe('R19 permission and IDOR security', () => {
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
-  it('keeps fee operations restricted to admin, project manager and finance roles', () => {
+  it('keeps fee operations restricted to admin and finance roles', () => {
     const prototype = FeesController.prototype;
-    const expectedRoles = ['admin', 'project_manager', 'finance'];
+    const expectedRoles = ['admin', 'finance'];
 
     expect(Reflect.getMetadata(ROLE_METADATA_KEY, prototype.createFee)).toEqual(expectedRoles);
     expect(Reflect.getMetadata(ROLE_METADATA_KEY, prototype.updateFee)).toEqual(expectedRoles);
@@ -54,7 +55,7 @@ describe('R19 permission and IDOR security', () => {
 
   it('keeps color exit finalization behind workflow permissions and owner roles', () => {
     const prototype = ColorExitsController.prototype;
-    const expectedRoles = ['admin', 'project_manager', 'process_engineer'];
+    const expectedRoles = ['admin', 'project_manager'];
 
     expect(Reflect.getMetadata(PERMISSION_METADATA_KEY, prototype.createExitRecord)).toEqual([
       'workflow.transition',
@@ -75,6 +76,17 @@ describe('R19 permission and IDOR security', () => {
     ]);
     expect(Reflect.getMetadata(PERMISSION_METADATA_KEY, prototype.deleteAttachment)).toEqual([
       'attachment.manage',
+    ]);
+  });
+
+  it('separates audit log reads from ordinary project reads', () => {
+    const prototype = ActivityLogsController.prototype;
+
+    expect(Reflect.getMetadata(PERMISSION_METADATA_KEY, prototype.getProjectLogs)).toEqual([
+      'audit.read',
+    ]);
+    expect(Reflect.getMetadata(PERMISSION_METADATA_KEY, prototype.getProjectLogDetail)).toEqual([
+      'audit.read',
     ]);
   });
 });

@@ -30,7 +30,7 @@ export class ColorExitsController {
 
   @Permissions('workflow.transition')
   @ApiOperation({ summary: '创建颜色退出记录' })
-  @Roles('admin', 'project_manager', 'process_engineer')
+  @Roles('admin', 'project_manager')
   @Post()
   createExitRecord(
     @Param('projectId') projectId: string,
@@ -42,7 +42,7 @@ export class ColorExitsController {
 
   @Permissions('workflow.transition')
   @ApiOperation({ summary: '更新颜色退出记录' })
-  @Roles('admin', 'project_manager', 'process_engineer')
+  @Roles('admin', 'project_manager')
   @Patch(':exitId')
   updateExitRecord(
     @Param('projectId') projectId: string,
@@ -55,7 +55,7 @@ export class ColorExitsController {
 
   @Permissions('workflow.transition')
   @ApiOperation({ summary: '完成颜色退出记录' })
-  @Roles('admin', 'project_manager', 'process_engineer')
+  @Roles('admin', 'project_manager')
   @Post(':exitId/complete')
   completeExitRecord(
     @Param('projectId') projectId: string,

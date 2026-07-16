@@ -9,29 +9,64 @@ import {
   writeR20CaseRecord,
 } from './r20-fixtures';
 
-test.describe('R20 已认证用户全权限实操 @r20', () => {
-  test('R20-011 verifies full access for authenticated users and keeps anonymous access blocked @r20', async ({
+test.describe('R24 前方案 A 最小权限实操 @r20', () => {
+  test('R20-011 verifies least privilege for authenticated roles and blocks anonymous access @r20', async ({
     page,
   }, testInfo) => {
     test.setTimeout(240_000);
     await loginAsR20Role(page, 'projectManager');
     const request = page.context().request;
     const managerProject = await createR20ProjectByApi(request, 'permissionMaterial');
+    const managerRoleAdminStatus = await fetchR20ApiStatus(request, '/users/roles');
+    expect(managerRoleAdminStatus.status).toBe(403);
 
     await loginAsR20Role(page, 'finance');
     const financeAdminStatus = await fetchR20ApiStatus(request, '/users/roles');
-    expect(financeAdminStatus.status).toBe(200);
-    const financeProject = await createR20ProjectByApi(request, 'rework');
+    const financeProjectCreate = await fetchR20ApiStatus(request, '/projects', {
+      method: 'POST',
+      data: {},
+    });
+    expect(financeAdminStatus.status).toBe(403);
+    expect(financeProjectCreate.status).toBe(403);
 
     await loginAsR20Role(page, 'viewer');
     await page.goto('/projects/new');
-    await expect(page.getByTestId('project-submit-button')).toBeEnabled();
-    await expect(page.getByText('当前角色无权访问该功能。')).toHaveCount(0);
-    await saveR20Screenshot(page, testInfo, 'authenticated-full-access.png');
+    await expect(page.getByTestId('project-submit-button')).toBeDisabled();
+    await expect(
+      page.getByText('只有项目经理或管理员可创建项目、调整负责人和维护项目成员。'),
+    ).toBeVisible();
+    await saveR20Screenshot(page, testInfo, 'minimum-permission-viewer.png');
+    const viewerProjectCreate = await fetchR20ApiStatus(request, '/projects', {
+      method: 'POST',
+      data: {},
+    });
+    const viewerAuditRead = await fetchR20ApiStatus(
+      request,
+      `/projects/${managerProject.id}/logs`,
+    );
+    expect(viewerProjectCreate.status).toBe(403);
+    expect(viewerAuditRead.status).toBe(403);
 
-    const viewerProject = await createR20ProjectByApi(request, 'nonBlocking');
-    const crossProjectRead = await fetchR20ApiStatus(request, `/projects/${managerProject.id}`);
-    expect(crossProjectRead.status).toBe(200);
+    await loginAsR20Role(page, 'admin');
+    const adminRolesStatus = await fetchR20ApiStatus(request, '/users/roles');
+    const adminAuditRead = await fetchR20ApiStatus(
+      request,
+      `/projects/${managerProject.id}/logs`,
+    );
+    expect(adminRolesStatus.status).toBe(200);
+    expect(adminAuditRead.status).toBe(200);
+
+    await loginAsR20Role(page, 'auditor');
+    const auditorAuditRead = await fetchR20ApiStatus(
+      request,
+      `/projects/${managerProject.id}/logs`,
+    );
+    const auditorProjectCreate = await fetchR20ApiStatus(request, '/projects', {
+      method: 'POST',
+      data: {},
+    });
+    expect(auditorAuditRead.status).toBe(200);
+    expect(auditorProjectCreate.status).toBe(403);
 
     await logoutR20(page);
     await page.goto('/dashboard');
@@ -42,11 +77,18 @@ test.describe('R20 已认证用户全权限实操 @r20', () => {
 
     await writeR20CaseRecord(testInfo, {
       testId: 'R20-011',
-      scenario: '已认证用户全权限与未登录访问边界',
-      role: '财务部 / 普通查看者 / 未登录用户',
-      projects: [managerProject, financeProject, viewerProject],
+      scenario: '方案 A 最小权限与未登录访问边界',
+      role: '项目经理 / 财务 / 普通查看者 / 管理员 / 审计人员 / 未登录用户',
+      projects: [managerProject],
+      managerRoleAdminStatus: managerRoleAdminStatus.status,
       financeAdminStatus: financeAdminStatus.status,
-      crossProjectReadStatus: crossProjectRead.status,
+      financeProjectCreateStatus: financeProjectCreate.status,
+      viewerProjectCreateStatus: viewerProjectCreate.status,
+      viewerAuditReadStatus: viewerAuditRead.status,
+      adminRolesStatus: adminRolesStatus.status,
+      adminAuditReadStatus: adminAuditRead.status,
+      auditorAuditReadStatus: auditorAuditRead.status,
+      auditorProjectCreateStatus: auditorProjectCreate.status,
       unauthProjectsStatus: unauthProjects.status,
       result: 'PASS',
     });

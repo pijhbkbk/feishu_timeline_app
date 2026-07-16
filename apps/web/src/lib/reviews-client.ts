@@ -15,7 +15,6 @@ import {
   type WorkflowNodeCode,
 } from './projects-client';
 import {
-  canUserOperateWorkflowTask,
   getWorkflowTaskStatusLabel,
   type WorkflowTaskSummary,
 } from './workflows-client';
@@ -219,16 +218,22 @@ export function validateCabinReviewForm(input: CabinReviewFormInput) {
   return null;
 }
 
-export function canManageCabinReviews(user: SessionUser | null) {
+export function canManageCabinReviews(
+  user: SessionUser | null,
+  reviewerId?: string | null,
+) {
   if (!user) {
     return false;
   }
 
-  if (user.isSystemAdmin || user.roleCodes.includes('admin')) {
-    return true;
+  if (reviewerId !== undefined) {
+    return user.roleCodes.includes('project_manager') || reviewerId === user.id;
   }
 
-  return CABIN_REVIEW_ROLE_CODES.some((roleCode) => user.roleCodes.includes(roleCode));
+  return (
+    user.isSystemAdmin ||
+    CABIN_REVIEW_ROLE_CODES.some((roleCode) => user.roleCodes.includes(roleCode))
+  );
 }
 
 export function canShowCabinReviewSubmitButton(
@@ -240,7 +245,7 @@ export function canShowCabinReviewSubmitButton(
     return false;
   }
 
-  return canManageCabinReviewTask(user, workspace.activeTask);
+  return canManageCabinReviews(user, review.reviewerId);
 }
 
 export function canShowCabinReviewApproveButton(
@@ -259,7 +264,7 @@ export function canShowCabinReviewApproveButton(
     return false;
   }
 
-  return canManageCabinReviewTask(user, workspace.activeTask);
+  return canManageCabinReviews(user, review.reviewerId);
 }
 
 export function canShowCabinReviewRejectButton(
@@ -275,7 +280,7 @@ export function canShowCabinReviewRejectButton(
     return false;
   }
 
-  return canManageCabinReviewTask(user, workspace.activeTask);
+  return canManageCabinReviews(user, review.reviewerId);
 }
 
 export function getCabinReviewConclusionLabel(conclusion: CabinReviewConclusion) {
@@ -323,13 +328,6 @@ export function getDefaultCabinReviewerId(
   }
 
   return users[0]?.id ?? '';
-}
-
-function canManageCabinReviewTask(
-  user: SessionUser | null,
-  task: WorkflowTaskSummary,
-) {
-  return canUserOperateWorkflowTask(user, task);
 }
 
 function toCabinReviewPayload(input: CabinReviewFormInput) {

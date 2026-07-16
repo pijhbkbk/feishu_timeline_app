@@ -9,7 +9,7 @@ import { ActivityLogsService } from './activity-logs.service';
 export class ActivityLogsController {
   constructor(private readonly activityLogsService: ActivityLogsService) {}
 
-  @Permissions('project.read')
+  @Permissions('audit.read')
   @Get()
   getProjectLogs(
     @Param('projectId') projectId: string,
@@ -19,7 +19,7 @@ export class ActivityLogsController {
     return this.activityLogsService.getProjectLogTimeline(projectId, actor, query);
   }
 
-  @Permissions('project.read')
+  @Permissions('audit.read')
   @Get(':logId')
   getProjectLogDetail(
     @Param('projectId') projectId: string,

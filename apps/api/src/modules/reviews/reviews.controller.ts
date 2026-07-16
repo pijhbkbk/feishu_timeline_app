@@ -25,10 +25,12 @@ type UploadedBinaryFile = {
 export class ReviewsController {
   constructor(private readonly reviewsService: ReviewsService) {}
 
-  @Roles('admin', 'project_manager', 'quality_engineer', 'reviewer')
   @Get('cabin')
-  getCabinReviewWorkspace(@Param('projectId') projectId: string) {
-    return this.reviewsService.getCabinReviewWorkspace(projectId);
+  getCabinReviewWorkspace(
+    @Param('projectId') projectId: string,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.reviewsService.getCabinReviewWorkspace(projectId, actor);
   }
 
   @Roles('admin', 'project_manager', 'quality_engineer', 'reviewer')
@@ -94,10 +96,12 @@ export class ReviewsController {
     return this.reviewsService.rejectCabinReview(projectId, reviewId, actor);
   }
 
-  @Roles('admin', 'project_manager', 'quality_engineer', 'reviewer')
   @Get('consistency')
-  getConsistencyReviewWorkspace(@Param('projectId') projectId: string) {
-    return this.reviewsService.getConsistencyReviewWorkspace(projectId);
+  getConsistencyReviewWorkspace(
+    @Param('projectId') projectId: string,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.reviewsService.getConsistencyReviewWorkspace(projectId, actor);
   }
 
   @Roles('admin', 'project_manager', 'quality_engineer', 'reviewer')
@@ -163,10 +167,12 @@ export class ReviewsController {
     return this.reviewsService.rejectConsistencyReview(projectId, reviewId, actor);
   }
 
-  @Roles('admin', 'project_manager', 'quality_engineer', 'reviewer')
   @Get('visual-delta')
-  getVisualDeltaReviewWorkspace(@Param('projectId') projectId: string) {
-    return this.reviewsService.getVisualDeltaReviewWorkspace(projectId);
+  getVisualDeltaReviewWorkspace(
+    @Param('projectId') projectId: string,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.reviewsService.getVisualDeltaReviewWorkspace(projectId, actor);
   }
 
   @Roles('admin', 'project_manager', 'quality_engineer', 'reviewer')

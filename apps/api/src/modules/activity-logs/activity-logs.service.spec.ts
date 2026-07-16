@@ -62,7 +62,7 @@ function createService() {
 
 describe('ActivityLogsService', () => {
   it('aggregates project audit, workflow and notification timeline', async () => {
-    const { service, prisma } = createService();
+    const { service, prisma, projectAccessService } = createService();
     prisma.project.findUnique.mockResolvedValue({
       id: 'project-1',
       code: 'PRJ-001',
@@ -137,6 +137,11 @@ describe('ActivityLogsService', () => {
     });
 
     expect(result.summary.totalCount).toBe(3);
+    expect(projectAccessService.assertProjectAccessWithDefaultClient).toHaveBeenCalledWith(
+      'project-1',
+      actor,
+      'audit.read',
+    );
     expect(result.summary.workflowCount).toBe(1);
     expect(result.pagination).toEqual({
       page: 1,

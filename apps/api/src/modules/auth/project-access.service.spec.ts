@@ -56,6 +56,33 @@ describe('ProjectAccessService', () => {
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
+  it('allows auditors to read audit logs globally without granting global project access', async () => {
+    const prisma = {
+      project: {
+        findUnique: vi.fn().mockResolvedValue({
+          id: 'project-1',
+          ownerUserId: 'other-user',
+          owningDepartmentId: 'other-dept',
+          members: [],
+        }),
+      },
+    };
+    const service = new ProjectAccessService(prisma as never);
+    const auditor: AuthenticatedUser = {
+      ...actor,
+      id: 'auditor-1',
+      roleCodes: ['auditor'],
+      permissionCodes: ['project.read', 'audit.read'],
+    };
+
+    await expect(
+      service.assertProjectAccess(prisma as never, 'project-1', auditor, 'audit.read'),
+    ).resolves.toMatchObject({ id: 'project-1' });
+    await expect(
+      service.assertProjectAccess(prisma as never, 'project-1', auditor, 'project.read'),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
   it('rejects missing projects', async () => {
     const prisma = {
       project: {

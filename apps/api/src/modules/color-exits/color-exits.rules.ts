@@ -3,7 +3,6 @@ import type { ColorExitSuggestion } from '@prisma/client';
 export const COLOR_EXIT_MANAGEMENT_ROLE_CODES = [
   'admin',
   'project_manager',
-  'process_engineer',
 ] as const;
 
 export type ColorExitDecision = ColorExitSuggestion;

@@ -102,7 +102,7 @@ export const DEVELOPMENT_FEE_STATUS_OPTIONS: Array<{
   { value: 'CANCELLED', label: '已取消' },
 ];
 
-const FEE_ROLE_CODES: FrontendRoleCode[] = ['admin', 'project_manager', 'finance'];
+const FEE_ROLE_CODES: FrontendRoleCode[] = ['admin', 'finance'];
 
 const DEVELOPMENT_FEE_TYPE_LABELS = Object.fromEntries(
   DEVELOPMENT_FEE_TYPE_OPTIONS.map((item) => [item.value, item.label]),

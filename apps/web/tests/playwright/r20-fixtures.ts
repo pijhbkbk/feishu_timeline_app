@@ -68,6 +68,11 @@ export const R20_ROLE_MAP = {
     roleCodes: ['admin'],
     displayName: 'R20 系统管理员',
   },
+  auditor: {
+    label: '审计人员',
+    roleCodes: ['auditor'],
+    displayName: 'R20 审计人员',
+  },
   viewer: {
     label: '普通查看者',
     roleCodes: ['viewer'],

@@ -42,6 +42,10 @@ export class ProjectAccessService {
       return project;
     }
 
+    if (requiredPermission === 'audit.read' && actor.roleCodes.includes('auditor')) {
+      return project;
+    }
+
     const permissionCodes = new Set(actor.permissionCodes ?? []);
     if (!permissionCodes.has(requiredPermission)) {
       throw new ForbiddenException('当前用户缺少项目权限。');

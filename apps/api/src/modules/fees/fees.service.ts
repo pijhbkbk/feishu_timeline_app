@@ -17,6 +17,7 @@ import {
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import type { AuthenticatedUser } from '../auth/auth.types';
+import { ProjectAccessService } from '../auth/project-access.service';
 import {
   getAllowedWorkflowActions,
   getCurrentNodeName,
@@ -53,9 +54,15 @@ export class FeesService {
     private readonly prisma: PrismaService,
     private readonly activityLogsService: ActivityLogsService,
     private readonly workflowsService: WorkflowsService,
+    private readonly projectAccessService: ProjectAccessService,
   ) {}
 
-  getWorkspace(projectId: string) {
+  async getWorkspace(projectId: string, actor: AuthenticatedUser) {
+    await this.projectAccessService.assertProjectAccessWithDefaultClient(
+      projectId,
+      actor,
+      'project.read',
+    );
     return this.buildWorkspace(this.prisma, projectId);
   }
 
@@ -65,6 +72,11 @@ export class FeesService {
     actor: AuthenticatedUser,
   ) {
     this.assertActorCanManage(actor);
+    await this.projectAccessService.assertProjectAccessWithDefaultClient(
+      projectId,
+      actor,
+      'workflow.transition',
+    );
     const input = this.parseWriteInput(rawInput);
 
     await this.prisma.$transaction(async (tx) => {
@@ -117,6 +129,11 @@ export class FeesService {
     actor: AuthenticatedUser,
   ) {
     this.assertActorCanManage(actor);
+    await this.projectAccessService.assertProjectAccessWithDefaultClient(
+      projectId,
+      actor,
+      'workflow.transition',
+    );
     const input = this.parseWriteInput(rawInput);
 
     await this.prisma.$transaction(async (tx) => {
@@ -211,6 +228,11 @@ export class FeesService {
 
   async completeTask(projectId: string, actor: AuthenticatedUser) {
     this.assertActorCanManage(actor);
+    await this.projectAccessService.assertProjectAccessWithDefaultClient(
+      projectId,
+      actor,
+      'workflow.transition',
+    );
 
     await this.prisma.$transaction(async (tx) => {
       const context = await this.getFeeContext(tx, projectId);
@@ -269,6 +291,11 @@ export class FeesService {
     summary: string,
   ) {
     this.assertActorCanManage(actor);
+    await this.projectAccessService.assertProjectAccessWithDefaultClient(
+      projectId,
+      actor,
+      'workflow.transition',
+    );
 
     await this.prisma.$transaction(async (tx) => {
       const context = await this.getFeeContext(tx, projectId);

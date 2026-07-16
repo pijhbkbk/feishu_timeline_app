@@ -25,7 +25,7 @@ test.describe('R20 第9步非阻塞主线 @r20', () => {
     let workflow = await advanceR20ToStep6Branches(request, project.id);
     expect(workflow.activeTasks.some((task) => task.nodeCode === 'PERFORMANCE_TEST')).toBe(true);
 
-    await loginAsR20Role(page, 'production');
+    await loginAsR20Role(page, 'projectManager');
     await completePilotProductionByApi(request, project.id, 'R20-NONBLOCK');
 
     workflow = await fetchR16Workflow(request, project.id);
@@ -46,7 +46,7 @@ test.describe('R20 第9步非阻塞主线 @r20', () => {
     await writeR20CaseRecord(testInfo, {
       testId: 'R20-005',
       scenario: '第9步涂料性能试验不阻塞主线',
-      role: '生产部 / 涂装厂',
+      role: '当前负责人 / 项目经理',
       project,
       expected: '第9步未完成时第10、11、12步仍可推进',
       actualCurrentNode: workflow.workflowInstance.currentNodeCode,

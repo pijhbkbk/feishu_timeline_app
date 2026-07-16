@@ -14,6 +14,7 @@ export const ROLE_CODES = [
   'purchaser',
   'reviewer',
   'finance',
+  'auditor',
   'viewer',
 ] as const;
 
@@ -27,6 +28,7 @@ export const ROLE_LABELS: Record<RoleCode, string> = {
   purchaser: '采购专员',
   reviewer: '评审人',
   finance: '财务',
+  auditor: '审计人员',
   viewer: '普通查看者',
 };
 
@@ -45,6 +47,7 @@ export const ROLE_PERMISSION_CODE_MAP: Record<RoleCode, string[]> = {
     'project.read',
     'project.write',
     'workflow.transition',
+    'review.execute',
     'attachment.manage',
     'dashboard.read',
   ],
@@ -70,12 +73,13 @@ export const ROLE_PERMISSION_CODE_MAP: Record<RoleCode, string[]> = {
     'dashboard.read',
   ],
   finance: ['project.read', 'workflow.transition', 'attachment.manage', 'dashboard.read'],
+  auditor: ['project.read', 'audit.read', 'dashboard.read'],
   viewer: ['project.read', 'dashboard.read'],
 };
 
-// 当前产品策略：只要完成身份认证，即拥有完整应用权限。
-// 数据库角色仍保留用于审计和未来策略调整，但不再限制已认证用户的功能入口。
-export const AUTHENTICATED_USERS_HAVE_FULL_ACCESS = true;
+// R24 前方案 A：认证只确认用户身份，不再隐式授予管理员权限。
+// 真实角色、项目范围和关键业务对象关系共同决定可执行动作。
+export const AUTHENTICATED_USERS_HAVE_FULL_ACCESS = false;
 
 export const AUTH_SESSION_PREFIX = 'auth:session:';
 export const FEISHU_OAUTH_STATE_COOKIE_NAME = 'ft_feishu_oauth_state';

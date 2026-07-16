@@ -11,7 +11,6 @@ import {
   type WorkflowNodeCode,
 } from './projects-client';
 import {
-  canUserOperateWorkflowTask,
   getWorkflowTaskStatusLabel,
   type WorkflowTaskSummary,
 } from './workflows-client';
@@ -205,17 +204,21 @@ export function validateVisualDeltaReviewForm(input: VisualDeltaReviewFormInput)
   return null;
 }
 
-export function canManageVisualDeltaReviews(user: SessionUser | null) {
+export function canManageVisualDeltaReviews(
+  user: SessionUser | null,
+  reviewerId?: string | null,
+) {
   if (!user) {
     return false;
   }
 
-  if (user.isSystemAdmin || user.roleCodes.includes('admin')) {
-    return true;
+  if (reviewerId !== undefined) {
+    return user.roleCodes.includes('project_manager') || reviewerId === user.id;
   }
 
-  return VISUAL_DELTA_REVIEW_ROLE_CODES.some((roleCode) =>
-    user.roleCodes.includes(roleCode),
+  return (
+    user.isSystemAdmin ||
+    VISUAL_DELTA_REVIEW_ROLE_CODES.some((roleCode) => user.roleCodes.includes(roleCode))
   );
 }
 
@@ -228,7 +231,7 @@ export function canShowVisualDeltaReviewSubmitButton(
     return false;
   }
 
-  return canUserOperateWorkflowTask(user, workspace.activeTask);
+  return canManageVisualDeltaReviews(user, review.reviewerId);
 }
 
 export function canShowVisualDeltaReviewApproveButton(
@@ -247,7 +250,7 @@ export function canShowVisualDeltaReviewApproveButton(
     return false;
   }
 
-  return canUserOperateWorkflowTask(user, workspace.activeTask);
+  return canManageVisualDeltaReviews(user, review.reviewerId);
 }
 
 export function getVisualDeltaReviewApprovalSuccessMessage(
@@ -271,7 +274,7 @@ export function canShowVisualDeltaReviewRejectButton(
     return false;
   }
 
-  return canUserOperateWorkflowTask(user, workspace.activeTask);
+  return canManageVisualDeltaReviews(user, review.reviewerId);
 }
 
 export function getVisualDeltaReviewConclusionLabel(

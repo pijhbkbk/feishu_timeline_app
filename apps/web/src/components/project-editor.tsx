@@ -110,6 +110,12 @@ export function ProjectEditor(props: ProjectEditorProps) {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isDirty, setIsDirty] = useState(false);
+  const canManageProject = Boolean(
+    user &&
+      (user.isSystemAdmin ||
+        user.roleCodes.includes('admin') ||
+        user.roleCodes.includes('project_manager')),
+  );
 
   useEffect(() => {
     void loadDirectoryUsers();
@@ -341,6 +347,9 @@ export function ProjectEditor(props: ProjectEditorProps) {
 
       {error ? <p className="error-text">{error}</p> : null}
       {successMessage ? <p className="success-text">{successMessage}</p> : null}
+      {!canManageProject ? (
+        <p className="error-text">只有项目经理或管理员可创建项目、调整负责人和维护项目成员。</p>
+      ) : null}
 
       <section className="page-card">
         <div className="section-header">
@@ -457,7 +466,7 @@ export function ProjectEditor(props: ProjectEditorProps) {
             <button
               type="submit"
               className="button button-primary"
-              disabled={isSavingProject}
+              disabled={isSavingProject || !canManageProject}
               data-testid="project-submit-button"
             >
               {isSavingProject
@@ -482,7 +491,12 @@ export function ProjectEditor(props: ProjectEditorProps) {
             <h2 className="section-title">项目成员</h2>
             <p className="muted">成员管理独立保存，所有写操作都会记录审计日志。</p>
           </div>
-          <button type="button" className="button button-secondary" onClick={addMemberRow}>
+          <button
+            type="button"
+            className="button button-secondary"
+            disabled={!canManageProject}
+            onClick={addMemberRow}
+          >
             添加成员
           </button>
         </div>
@@ -563,7 +577,7 @@ export function ProjectEditor(props: ProjectEditorProps) {
             <button
               type="button"
               className="button button-primary"
-              disabled={isSavingMembers}
+              disabled={isSavingMembers || !canManageProject}
               onClick={() => void handleSaveMembers()}
             >
               {isSavingMembers ? '保存中…' : '保存成员'}

@@ -40,7 +40,7 @@ test.describe('R20 第4/6步并行分支幂等 @r20', () => {
     expectR20NodeCount(workflow, 'COLOR_NUMBERING', 1);
     expectR20NodeCount(workflow, 'PAINT_PROCUREMENT', 1);
 
-    await loginAsR20Role(page, 'procurement');
+    await loginAsR20Role(page, 'projectManager');
     workflow = await transitionR16Task(request, project.id, 'PAINT_PROCUREMENT', 'submit');
     expectR20NodeCount(workflow, 'STANDARD_BOARD_PRODUCTION', 1);
     expectR20NodeCount(workflow, 'PERFORMANCE_TEST', 1);
@@ -70,7 +70,7 @@ test.describe('R20 第4/6步并行分支幂等 @r20', () => {
     await writeR20CaseRecord(testInfo, {
       testId: 'R20-004',
       scenario: '第4步和第6步并行节点创建幂等',
-      role: '采购部',
+      role: '当前负责人 / 项目经理',
       project,
       duplicateStep4Status: duplicateStep4.status,
       duplicateStep6Status: duplicateStep6.status,

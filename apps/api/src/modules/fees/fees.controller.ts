@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 
 import { CurrentUser } from '../auth/current-user.decorator';
+import { Permissions } from '../auth/permissions.decorator';
 import { Roles } from '../auth/roles.decorator';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { FeesService } from './fees.service';
@@ -16,12 +17,17 @@ import { FeesService } from './fees.service';
 export class FeesController {
   constructor(private readonly feesService: FeesService) {}
 
+  @Permissions('project.read')
   @Get()
-  getWorkspace(@Param('projectId') projectId: string) {
-    return this.feesService.getWorkspace(projectId);
+  getWorkspace(
+    @Param('projectId') projectId: string,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.feesService.getWorkspace(projectId, actor);
   }
 
-  @Roles('admin', 'project_manager', 'finance')
+  @Permissions('workflow.transition')
+  @Roles('admin', 'finance')
   @Post()
   createFee(
     @Param('projectId') projectId: string,
@@ -31,7 +37,8 @@ export class FeesController {
     return this.feesService.createFee(projectId, body, actor);
   }
 
-  @Roles('admin', 'project_manager', 'finance')
+  @Permissions('workflow.transition')
+  @Roles('admin', 'finance')
   @Patch(':feeId')
   updateFee(
     @Param('projectId') projectId: string,
@@ -42,7 +49,8 @@ export class FeesController {
     return this.feesService.updateFee(projectId, feeId, body, actor);
   }
 
-  @Roles('admin', 'project_manager', 'finance')
+  @Permissions('workflow.transition')
+  @Roles('admin', 'finance')
   @Post(':feeId/mark-recorded')
   markRecorded(
     @Param('projectId') projectId: string,
@@ -52,7 +60,8 @@ export class FeesController {
     return this.feesService.markRecorded(projectId, feeId, actor);
   }
 
-  @Roles('admin', 'project_manager', 'finance')
+  @Permissions('workflow.transition')
+  @Roles('admin', 'finance')
   @Post(':feeId/mark-paid')
   markPaid(
     @Param('projectId') projectId: string,
@@ -62,7 +71,8 @@ export class FeesController {
     return this.feesService.markPaid(projectId, feeId, actor);
   }
 
-  @Roles('admin', 'project_manager', 'finance')
+  @Permissions('workflow.transition')
+  @Roles('admin', 'finance')
   @Post(':feeId/cancel')
   cancelFee(
     @Param('projectId') projectId: string,
@@ -72,7 +82,8 @@ export class FeesController {
     return this.feesService.cancelFee(projectId, feeId, actor);
   }
 
-  @Roles('admin', 'project_manager', 'finance')
+  @Permissions('workflow.transition')
+  @Roles('admin', 'finance')
   @Post('complete-task')
   completeTask(
     @Param('projectId') projectId: string,

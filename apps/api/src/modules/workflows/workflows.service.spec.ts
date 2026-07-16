@@ -1,3 +1,4 @@
+import { ForbiddenException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 import {
   WorkflowAction,
@@ -74,6 +75,101 @@ function createService() {
 }
 
 describe('WorkflowsService', () => {
+  it('enforces the plan A task-operation matrix', () => {
+    const { service } = createService();
+    const makeActor = (
+      id: string,
+      roleCodes: AuthenticatedUser['roleCodes'],
+    ): AuthenticatedUser => ({
+      ...actor,
+      id,
+      isSystemAdmin: roleCodes.includes('admin'),
+      roleCodes,
+    });
+    const ordinaryTask = {
+      nodeCode: WorkflowNodeCode.PAINT_DEVELOPMENT,
+      nodeName: '涂料开发',
+      assigneeUserId: 'owner-1',
+    };
+    const reviewTask = {
+      nodeCode: WorkflowNodeCode.CAB_REVIEW,
+      nodeName: '驾驶室评审',
+      assigneeUserId: 'manager-1',
+    };
+    const feeTask = {
+      nodeCode: WorkflowNodeCode.DEVELOPMENT_ACCEPTANCE,
+      nodeName: '颜色开发收费',
+      assigneeUserId: 'manager-1',
+    };
+    const exitTask = {
+      nodeCode: WorkflowNodeCode.PROJECT_CLOSED,
+      nodeName: '颜色退出',
+      assigneeUserId: 'process-1',
+    };
+
+    expect(() =>
+      (service as any).assertActorCanOperateTask(
+        ordinaryTask,
+        makeActor('owner-1', ['process_engineer']),
+      ),
+    ).not.toThrow();
+    expect(() =>
+      (service as any).assertActorCanOperateTask(
+        ordinaryTask,
+        makeActor('manager-1', ['project_manager']),
+      ),
+    ).not.toThrow();
+    expect(() =>
+      (service as any).assertActorCanOperateTask(
+        ordinaryTask,
+        makeActor('admin-1', ['admin']),
+      ),
+    ).toThrow(ForbiddenException);
+    expect(() =>
+      (service as any).assertActorCanOperateTask(
+        reviewTask,
+        makeActor('reviewer-1', ['reviewer']),
+        'designated-review',
+      ),
+    ).not.toThrow();
+    expect(() =>
+      (service as any).assertActorCanOperateTask(
+        reviewTask,
+        makeActor('reviewer-1', ['reviewer']),
+      ),
+    ).toThrow(ForbiddenException);
+    expect(() =>
+      (service as any).assertActorCanOperateTask(
+        { ...reviewTask, assigneeUserId: 'reviewer-1' },
+        makeActor('reviewer-1', ['reviewer']),
+      ),
+    ).toThrow(ForbiddenException);
+    expect(() =>
+      (service as any).assertActorCanOperateTask(
+        feeTask,
+        makeActor('finance-1', ['finance']),
+      ),
+    ).not.toThrow();
+    expect(() =>
+      (service as any).assertActorCanOperateTask(
+        feeTask,
+        makeActor('manager-1', ['project_manager']),
+      ),
+    ).toThrow(ForbiddenException);
+    expect(() =>
+      (service as any).assertActorCanOperateTask(
+        exitTask,
+        makeActor('admin-1', ['admin']),
+      ),
+    ).not.toThrow();
+    expect(() =>
+      (service as any).assertActorCanOperateTask(
+        exitTask,
+        makeActor('process-1', ['process_engineer']),
+      ),
+    ).toThrow(ForbiddenException);
+  });
+
   it('blocks generic completion of pilot nodes without domain records', async () => {
     const { service } = createService();
     const tx = {

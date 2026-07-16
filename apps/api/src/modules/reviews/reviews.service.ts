@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -21,6 +22,7 @@ import { PrismaService } from '../../infra/prisma/prisma.service';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import { AttachmentsService } from '../attachments/attachments.service';
 import type { AuthenticatedUser } from '../auth/auth.types';
+import { ProjectAccessService } from '../auth/project-access.service';
 import {
   getAllowedWorkflowActions,
   getCurrentNodeName,
@@ -28,7 +30,6 @@ import {
 } from '../workflows/workflow-node.constants';
 import { WorkflowsService } from '../workflows/workflows.service';
 import {
-  CABIN_REVIEW_MANAGEMENT_ROLE_CODES,
   getCabinReviewApproveIssue,
   getCabinReviewRejectIssue,
   getCabinReviewReturnNodeCode,
@@ -88,9 +89,15 @@ export class ReviewsService {
     private readonly activityLogsService: ActivityLogsService,
     private readonly attachmentsService: AttachmentsService,
     private readonly workflowsService: WorkflowsService,
+    private readonly projectAccessService: ProjectAccessService,
   ) {}
 
-  getCabinReviewWorkspace(projectId: string) {
+  async getCabinReviewWorkspace(projectId: string, actor: AuthenticatedUser) {
+    await this.projectAccessService.assertProjectAccessWithDefaultClient(
+      projectId,
+      actor,
+      'project.read',
+    );
     return this.buildCabinReviewWorkspace(this.prisma, projectId);
   }
 
@@ -99,8 +106,9 @@ export class ReviewsService {
     rawInput: unknown,
     actor: AuthenticatedUser,
   ) {
-    this.assertActorCanManage(actor);
+    await this.assertActorCanManage(projectId, actor);
     const input = this.parseReviewWriteInput(rawInput);
+    this.assertActorCanAssignReviewer(actor, input.reviewerId);
 
     await this.prisma.$transaction(async (tx) => {
       const context = await this.getCabinReviewContext(tx, projectId);
@@ -157,13 +165,14 @@ export class ReviewsService {
     rawInput: unknown,
     actor: AuthenticatedUser,
   ) {
-    this.assertActorCanManage(actor);
+    await this.assertActorCanManage(projectId, actor);
     const input = this.parseReviewWriteInput(rawInput);
+    this.assertActorCanAssignReviewer(actor, input.reviewerId);
 
     await this.prisma.$transaction(async (tx) => {
       const context = await this.getCabinReviewContext(tx, projectId);
       this.assertWritableCabinReviewStage(context);
-      const reviewRecord = await this.getCabinReviewOrThrow(tx, projectId, reviewId);
+      const reviewRecord = await this.getCabinReviewOrThrow(tx, projectId, reviewId, actor);
       this.assertCurrentTaskEditable(reviewRecord, context.activeTask!.id);
       this.assertDraftReviewRecord(reviewRecord);
       await this.assertReviewerReference(tx, input.reviewerId);
@@ -209,7 +218,7 @@ export class ReviewsService {
     file: UploadedBinaryFile | undefined,
     actor: AuthenticatedUser,
   ) {
-    this.assertActorCanManage(actor);
+    await this.assertActorCanManage(projectId, actor);
 
     if (!file) {
       throw new BadRequestException('请选择要上传的评审附件。');
@@ -217,7 +226,7 @@ export class ReviewsService {
 
     const context = await this.getCabinReviewContext(this.prisma, projectId);
     this.assertWritableCabinReviewStage(context);
-    const reviewRecord = await this.getCabinReviewOrThrow(this.prisma, projectId, reviewId);
+    const reviewRecord = await this.getCabinReviewOrThrow(this.prisma, projectId, reviewId, actor);
     this.assertCurrentTaskEditable(reviewRecord, context.activeTask!.id);
     this.assertDraftReviewRecord(reviewRecord);
 
@@ -262,12 +271,12 @@ export class ReviewsService {
     reviewId: string,
     actor: AuthenticatedUser,
   ) {
-    this.assertActorCanManage(actor);
+    await this.assertActorCanManage(projectId, actor);
 
     await this.prisma.$transaction(async (tx) => {
       const context = await this.getCabinReviewContext(tx, projectId);
       this.assertWritableCabinReviewStage(context);
-      const reviewRecord = await this.getCabinReviewOrThrow(tx, projectId, reviewId);
+      const reviewRecord = await this.getCabinReviewOrThrow(tx, projectId, reviewId, actor);
       this.assertCurrentTaskEditable(reviewRecord, context.activeTask!.id);
       this.assertDraftReviewRecord(reviewRecord);
 
@@ -312,12 +321,12 @@ export class ReviewsService {
     reviewId: string,
     actor: AuthenticatedUser,
   ) {
-    this.assertActorCanManage(actor);
+    await this.assertActorCanManage(projectId, actor);
 
     await this.prisma.$transaction(async (tx) => {
       const context = await this.getCabinReviewContext(tx, projectId);
       this.assertWritableCabinReviewStage(context);
-      const reviewRecord = await this.getCabinReviewOrThrow(tx, projectId, reviewId);
+      const reviewRecord = await this.getCabinReviewOrThrow(tx, projectId, reviewId, actor);
       this.assertCurrentTaskEditable(reviewRecord, context.activeTask!.id);
 
       const approveIssue = getCabinReviewApproveIssue({
@@ -355,6 +364,7 @@ export class ReviewsService {
             reviewConclusion: updatedReview.result,
           },
         },
+        'designated-review',
       );
 
       const [developmentFeeTask, consistencyReviewTask] = await Promise.all([
@@ -398,12 +408,12 @@ export class ReviewsService {
     reviewId: string,
     actor: AuthenticatedUser,
   ) {
-    this.assertActorCanManage(actor);
+    await this.assertActorCanManage(projectId, actor);
 
     await this.prisma.$transaction(async (tx) => {
       const context = await this.getCabinReviewContext(tx, projectId);
       this.assertWritableCabinReviewStage(context);
-      const reviewRecord = await this.getCabinReviewOrThrow(tx, projectId, reviewId);
+      const reviewRecord = await this.getCabinReviewOrThrow(tx, projectId, reviewId, actor);
       this.assertCurrentTaskEditable(reviewRecord, context.activeTask!.id);
 
       const rejectIssue = getCabinReviewRejectIssue({
@@ -436,6 +446,7 @@ export class ReviewsService {
             returnToNodeCode: updatedReview.returnToNodeCode,
           },
         },
+        'designated-review',
       );
 
       const returnedTrialTask = await this.getLatestWorkflowTaskByNode(
@@ -464,7 +475,12 @@ export class ReviewsService {
     return this.buildCabinReviewWorkspace(this.prisma, projectId);
   }
 
-  getConsistencyReviewWorkspace(projectId: string) {
+  async getConsistencyReviewWorkspace(projectId: string, actor: AuthenticatedUser) {
+    await this.projectAccessService.assertProjectAccessWithDefaultClient(
+      projectId,
+      actor,
+      'project.read',
+    );
     return this.buildConsistencyReviewWorkspace(this.prisma, projectId);
   }
 
@@ -473,8 +489,9 @@ export class ReviewsService {
     rawInput: unknown,
     actor: AuthenticatedUser,
   ) {
-    this.assertActorCanManage(actor);
+    await this.assertActorCanManage(projectId, actor);
     const input = this.parseReviewWriteInput(rawInput);
+    this.assertActorCanAssignReviewer(actor, input.reviewerId);
 
     await this.prisma.$transaction(async (tx) => {
       const context = await this.getConsistencyReviewContext(tx, projectId);
@@ -518,13 +535,14 @@ export class ReviewsService {
     rawInput: unknown,
     actor: AuthenticatedUser,
   ) {
-    this.assertActorCanManage(actor);
+    await this.assertActorCanManage(projectId, actor);
     const input = this.parseReviewWriteInput(rawInput);
+    this.assertActorCanAssignReviewer(actor, input.reviewerId);
 
     await this.prisma.$transaction(async (tx) => {
       const context = await this.getConsistencyReviewContext(tx, projectId);
       this.assertWritableConsistencyReviewStage(context);
-      const reviewRecord = await this.getConsistencyReviewOrThrow(tx, projectId, reviewId);
+      const reviewRecord = await this.getConsistencyReviewOrThrow(tx, projectId, reviewId, actor);
       this.assertCurrentTaskEditable(reviewRecord, context.activeTask!.id);
       this.assertDraftReviewRecord(reviewRecord);
       await this.assertReviewerReference(tx, input.reviewerId);
@@ -570,7 +588,7 @@ export class ReviewsService {
     file: UploadedBinaryFile | undefined,
     actor: AuthenticatedUser,
   ) {
-    this.assertActorCanManage(actor);
+    await this.assertActorCanManage(projectId, actor);
 
     if (!file) {
       throw new BadRequestException('请选择要上传的一致性评审附件。');
@@ -578,7 +596,12 @@ export class ReviewsService {
 
     const context = await this.getConsistencyReviewContext(this.prisma, projectId);
     this.assertWritableConsistencyReviewStage(context);
-    const reviewRecord = await this.getConsistencyReviewOrThrow(this.prisma, projectId, reviewId);
+    const reviewRecord = await this.getConsistencyReviewOrThrow(
+      this.prisma,
+      projectId,
+      reviewId,
+      actor,
+    );
     this.assertCurrentTaskEditable(reviewRecord, context.activeTask!.id);
     this.assertDraftReviewRecord(reviewRecord);
 
@@ -623,12 +646,12 @@ export class ReviewsService {
     reviewId: string,
     actor: AuthenticatedUser,
   ) {
-    this.assertActorCanManage(actor);
+    await this.assertActorCanManage(projectId, actor);
 
     await this.prisma.$transaction(async (tx) => {
       const context = await this.getConsistencyReviewContext(tx, projectId);
       this.assertWritableConsistencyReviewStage(context);
-      const reviewRecord = await this.getConsistencyReviewOrThrow(tx, projectId, reviewId);
+      const reviewRecord = await this.getConsistencyReviewOrThrow(tx, projectId, reviewId, actor);
       this.assertCurrentTaskEditable(reviewRecord, context.activeTask!.id);
       this.assertDraftReviewRecord(reviewRecord);
 
@@ -673,12 +696,12 @@ export class ReviewsService {
     reviewId: string,
     actor: AuthenticatedUser,
   ) {
-    this.assertActorCanManage(actor);
+    await this.assertActorCanManage(projectId, actor);
 
     await this.prisma.$transaction(async (tx) => {
       const context = await this.getConsistencyReviewContext(tx, projectId);
       this.assertWritableConsistencyReviewStage(context);
-      const reviewRecord = await this.getConsistencyReviewOrThrow(tx, projectId, reviewId);
+      const reviewRecord = await this.getConsistencyReviewOrThrow(tx, projectId, reviewId, actor);
       this.assertCurrentTaskEditable(reviewRecord, context.activeTask!.id);
 
       const approveIssue = getCabinReviewApproveIssue({
@@ -716,6 +739,7 @@ export class ReviewsService {
             reviewConclusion: updatedReview.result,
           },
         },
+        'designated-review',
       );
 
       const schedulePlanTask = await this.getLatestWorkflowTaskByNode(
@@ -751,12 +775,12 @@ export class ReviewsService {
     reviewId: string,
     actor: AuthenticatedUser,
   ) {
-    this.assertActorCanManage(actor);
+    await this.assertActorCanManage(projectId, actor);
 
     await this.prisma.$transaction(async (tx) => {
       const context = await this.getConsistencyReviewContext(tx, projectId);
       this.assertWritableConsistencyReviewStage(context);
-      const reviewRecord = await this.getConsistencyReviewOrThrow(tx, projectId, reviewId);
+      const reviewRecord = await this.getConsistencyReviewOrThrow(tx, projectId, reviewId, actor);
       this.assertCurrentTaskEditable(reviewRecord, context.activeTask!.id);
 
       const rejectIssue = getCabinReviewRejectIssue({
@@ -789,6 +813,7 @@ export class ReviewsService {
             returnToNodeCode: updatedReview.returnToNodeCode,
           },
         },
+        'designated-review',
       );
 
       const returnedPaintDevelopmentTask = await this.getLatestWorkflowTaskByNode(
@@ -817,7 +842,12 @@ export class ReviewsService {
     return this.buildConsistencyReviewWorkspace(this.prisma, projectId);
   }
 
-  getVisualDeltaReviewWorkspace(projectId: string) {
+  async getVisualDeltaReviewWorkspace(projectId: string, actor: AuthenticatedUser) {
+    await this.projectAccessService.assertProjectAccessWithDefaultClient(
+      projectId,
+      actor,
+      'project.read',
+    );
     return this.buildVisualDeltaReviewWorkspace(this.prisma, projectId);
   }
 
@@ -826,8 +856,9 @@ export class ReviewsService {
     rawInput: unknown,
     actor: AuthenticatedUser,
   ) {
-    this.assertActorCanManage(actor);
+    await this.assertActorCanManage(projectId, actor);
     const input = this.parseReviewWriteInput(rawInput);
+    this.assertActorCanAssignReviewer(actor, input.reviewerId);
 
     await this.prisma.$transaction(async (tx) => {
       const context = await this.getVisualDeltaReviewContext(tx, projectId);
@@ -878,13 +909,14 @@ export class ReviewsService {
     rawInput: unknown,
     actor: AuthenticatedUser,
   ) {
-    this.assertActorCanManage(actor);
+    await this.assertActorCanManage(projectId, actor);
     const input = this.parseReviewWriteInput(rawInput);
+    this.assertActorCanAssignReviewer(actor, input.reviewerId);
 
     await this.prisma.$transaction(async (tx) => {
       const context = await this.getVisualDeltaReviewContext(tx, projectId);
       this.assertWritableVisualDeltaReviewStage(context);
-      const reviewRecord = await this.getVisualDeltaReviewOrThrow(tx, projectId, reviewId);
+      const reviewRecord = await this.getVisualDeltaReviewOrThrow(tx, projectId, reviewId, actor);
       this.assertCurrentTaskEditable(reviewRecord, context.activeTask!.id);
       this.assertDraftReviewRecord(reviewRecord);
       await this.assertReviewerReference(tx, input.reviewerId);
@@ -933,7 +965,7 @@ export class ReviewsService {
     file: UploadedBinaryFile | undefined,
     actor: AuthenticatedUser,
   ) {
-    this.assertActorCanManage(actor);
+    await this.assertActorCanManage(projectId, actor);
 
     if (!file) {
       throw new BadRequestException('请选择要上传的目视色差评审附件。');
@@ -941,7 +973,12 @@ export class ReviewsService {
 
     const context = await this.getVisualDeltaReviewContext(this.prisma, projectId);
     this.assertWritableVisualDeltaReviewStage(context);
-    const reviewRecord = await this.getVisualDeltaReviewOrThrow(this.prisma, projectId, reviewId);
+    const reviewRecord = await this.getVisualDeltaReviewOrThrow(
+      this.prisma,
+      projectId,
+      reviewId,
+      actor,
+    );
     this.assertCurrentTaskEditable(reviewRecord, context.activeTask!.id);
     this.assertDraftReviewRecord(reviewRecord);
 
@@ -986,12 +1023,12 @@ export class ReviewsService {
     reviewId: string,
     actor: AuthenticatedUser,
   ) {
-    this.assertActorCanManage(actor);
+    await this.assertActorCanManage(projectId, actor);
 
     await this.prisma.$transaction(async (tx) => {
       const context = await this.getVisualDeltaReviewContext(tx, projectId);
       this.assertWritableVisualDeltaReviewStage(context);
-      const reviewRecord = await this.getVisualDeltaReviewOrThrow(tx, projectId, reviewId);
+      const reviewRecord = await this.getVisualDeltaReviewOrThrow(tx, projectId, reviewId, actor);
       this.assertCurrentTaskEditable(reviewRecord, context.activeTask!.id);
       this.assertDraftReviewRecord(reviewRecord);
 
@@ -1036,12 +1073,12 @@ export class ReviewsService {
     reviewId: string,
     actor: AuthenticatedUser,
   ) {
-    this.assertActorCanManage(actor);
+    await this.assertActorCanManage(projectId, actor);
 
     await this.prisma.$transaction(async (tx) => {
       const context = await this.getVisualDeltaReviewContext(tx, projectId);
       this.assertWritableVisualDeltaReviewStage(context);
-      const reviewRecord = await this.getVisualDeltaReviewOrThrow(tx, projectId, reviewId);
+      const reviewRecord = await this.getVisualDeltaReviewOrThrow(tx, projectId, reviewId, actor);
       this.assertCurrentTaskEditable(reviewRecord, context.activeTask!.id);
 
       const approveIssue = getCabinReviewApproveIssue({
@@ -1091,6 +1128,7 @@ export class ReviewsService {
               recurringTaskId: recurringTask.id,
             },
           },
+          'designated-review',
         );
       }
 
@@ -1152,6 +1190,7 @@ export class ReviewsService {
               totalPeriods: recurringPlan.totalCount,
             },
           },
+          'designated-review',
         );
       }
 
@@ -1193,12 +1232,12 @@ export class ReviewsService {
     reviewId: string,
     actor: AuthenticatedUser,
   ) {
-    this.assertActorCanManage(actor);
+    await this.assertActorCanManage(projectId, actor);
 
     await this.prisma.$transaction(async (tx) => {
       const context = await this.getVisualDeltaReviewContext(tx, projectId);
       this.assertWritableVisualDeltaReviewStage(context);
-      const reviewRecord = await this.getVisualDeltaReviewOrThrow(tx, projectId, reviewId);
+      const reviewRecord = await this.getVisualDeltaReviewOrThrow(tx, projectId, reviewId, actor);
       this.assertCurrentTaskEditable(reviewRecord, context.activeTask!.id);
 
       const rejectIssue = getCabinReviewRejectIssue({
@@ -1231,6 +1270,7 @@ export class ReviewsService {
             returnToNodeCode: updatedReview.returnToNodeCode,
           },
         },
+        'designated-review',
       );
 
       const returnedMassProductionTask = await this.getLatestWorkflowTaskByNode(
@@ -1502,22 +1542,34 @@ export class ReviewsService {
     }
   }
 
-  private assertActorCanManage(actor: AuthenticatedUser) {
-    if (actor.isSystemAdmin) {
+  private async assertActorCanManage(projectId: string, actor: AuthenticatedUser) {
+    await this.projectAccessService.assertProjectAccessWithDefaultClient(
+      projectId,
+      actor,
+      'review.execute',
+    );
+  }
+
+  private assertActorCanAssignReviewer(
+    actor: AuthenticatedUser,
+    reviewerId: string,
+  ) {
+    if (actor.roleCodes.includes('project_manager') || reviewerId === actor.id) {
       return;
     }
 
-    if (
-      actor.roleCodes.some((roleCode) =>
-        CABIN_REVIEW_MANAGEMENT_ROLE_CODES.includes(
-          roleCode as (typeof CABIN_REVIEW_MANAGEMENT_ROLE_CODES)[number],
-        ),
-      )
-    ) {
+    throw new ForbiddenException('只有项目经理可指定其他评审人；评审人只能建立本人记录。');
+  }
+
+  private assertActorCanManageReviewRecord(
+    actor: AuthenticatedUser,
+    reviewerId: string | null,
+  ) {
+    if (actor.roleCodes.includes('project_manager') || reviewerId === actor.id) {
       return;
     }
 
-    throw new BadRequestException('当前用户没有评审权限。');
+    throw new ForbiddenException('第 12/17 步评审仅允许指定评审人或项目经理操作。');
   }
 
   private async getProjectOrThrow(db: ReviewsDbClient, projectId: string) {
@@ -1652,6 +1704,7 @@ export class ReviewsService {
     db: ReviewsDbClient,
     projectId: string,
     reviewId: string,
+    actor: AuthenticatedUser,
   ) {
     const reviewRecord = await db.reviewRecord.findFirst({
       where: {
@@ -1666,6 +1719,7 @@ export class ReviewsService {
       throw new NotFoundException('驾驶室评审记录不存在。');
     }
 
+    this.assertActorCanManageReviewRecord(actor, reviewRecord.reviewerId);
     return reviewRecord;
   }
 
@@ -1673,6 +1727,7 @@ export class ReviewsService {
     db: ReviewsDbClient,
     projectId: string,
     reviewId: string,
+    actor: AuthenticatedUser,
   ) {
     const reviewRecord = await db.reviewRecord.findFirst({
       where: {
@@ -1687,6 +1742,7 @@ export class ReviewsService {
       throw new NotFoundException('颜色一致性评审记录不存在。');
     }
 
+    this.assertActorCanManageReviewRecord(actor, reviewRecord.reviewerId);
     return reviewRecord;
   }
 
@@ -1694,6 +1750,7 @@ export class ReviewsService {
     db: ReviewsDbClient,
     projectId: string,
     reviewId: string,
+    actor: AuthenticatedUser,
   ) {
     const reviewRecord = await db.reviewRecord.findFirst({
       where: {
@@ -1708,6 +1765,7 @@ export class ReviewsService {
       throw new NotFoundException('目视色差评审记录不存在。');
     }
 
+    this.assertActorCanManageReviewRecord(actor, reviewRecord.reviewerId);
     return reviewRecord;
   }
 

@@ -82,6 +82,11 @@ const baseRoles = [
     description: '负责费用核对与财务相关审批。',
   },
   {
+    code: 'auditor',
+    name: '审计人员',
+    description: '只读查看项目和审计日志，不执行业务写操作。',
+  },
+  {
     code: 'viewer',
     name: '普通查看者',
     description: '只能查看被授权范围内的项目和看板，不能执行写操作。',
@@ -110,6 +115,7 @@ const rolePermissionMap = {
     'project.read',
     'project.write',
     'workflow.transition',
+    'review.execute',
     'attachment.manage',
     'dashboard.read',
   ],
@@ -135,6 +141,7 @@ const rolePermissionMap = {
     'dashboard.read',
   ],
   finance: ['project.read', 'workflow.transition', 'attachment.manage', 'dashboard.read'],
+  auditor: ['project.read', 'audit.read', 'dashboard.read'],
   viewer: ['project.read', 'dashboard.read'],
 } as const;
 

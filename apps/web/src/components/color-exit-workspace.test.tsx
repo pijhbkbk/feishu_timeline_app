@@ -27,6 +27,14 @@ const processEngineerUser: SessionUser = {
   roleCodes: ['process_engineer'],
 };
 
+const projectManagerUser: SessionUser = {
+  ...processEngineerUser,
+  id: 'manager-1',
+  username: 'manager',
+  name: '项目经理',
+  roleCodes: ['project_manager'],
+};
+
 const workspace: ColorExitWorkspaceResponse = {
   project: {
     id: 'project-1',
@@ -144,6 +152,9 @@ describe('ColorExitWorkspace', () => {
   it('controls complete button visibility and validation', () => {
     expect(
       canShowCompleteColorExitButton(processEngineerUser, workspace, workspace.items[0]!),
+    ).toBe(false);
+    expect(
+      canShowCompleteColorExitButton(projectManagerUser, workspace, workspace.items[0]!),
     ).toBe(true);
     expect(
       validateColorExitForm({
