@@ -3684,3 +3684,75 @@ pnpm deploy:staging
 `PLAN_A_IMPLEMENTED / ALL_FUNCTIONAL_GATES_PASS / EXACT_STAGING_PASS / REAL_OAUTH_ADMIN_PATH_PASS / R23F_PASSED / STOP_BEFORE_R24`
 
 证据：`docs/rounds/R23F.md`、`docs/testing/PRE_R24_PLAN_A_PERMISSION_REPORT.md`。R24 未开始。
+
+---
+
+### Round R24_FULL_SECURITY_REAUDIT_HARDENING_REMEDIATION
+
+#### Goal And Scope
+- 基于 R23F 当前代码重新执行完整安全复审，不把 R19 PASS 直接作为当前证据。
+- 主动扫描仅限授权 staging `http://localhost:8080`；生产仅 passive headers/health/TLS 与私有云只读核查。
+- 不导出真实 Cookie/token/code/storageState，不扫描飞书平台，不做 DoS/爆破/真实数据删除。
+- 不部署生产、不合并 main、不打 tag；完成 R24 判定后停止。
+
+#### Exact Baseline And Candidate
+- R23F evidence baseline：`c41553be92f7b6efddcea7104b15d9c991a7b9cc`。
+- R23F application/staging baseline：`f0de3dd85fee0d69a2f33ac0f32f600b2826207c`。
+- branch：`security/r24-full-reaudit`。
+- final application/staging commit：`d86c04e8c016a0241172fb7c608f55d8dfcca5c9`。
+
+#### Remediation
+- `1bd6a4e`：五镜像供应链、unsafe method Origin、上传文件名/双扩展、OAuth配置与IDOR定向测试加固。
+- `299bf4a`：关闭 Nginx 版本泄露。
+- `fa0a4cd`：配置发布强制重建 proxy，消除运行版本漂移。
+- `d86c04e`：空 OAuth callback body 从 500 收敛为受控 401。
+- 初始 PostgreSQL/Redis/Nginx 镜像累计 11 Critical、119 High occurrence；最终五个精确镜像所有严重度均为 0。
+
+#### Commands And Results
+```text
+pnpm install --frozen-lockfile
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm --filter web build
+pnpm --filter api build
+pnpm --filter api prisma:validate
+pnpm test:e2e
+pnpm playwright:test
+pnpm security:sast
+pnpm security:secrets
+pnpm 11 audit --all / --prod
+OSV Scanner 2.4.0
+Trivy filesystem / five images / CycloneDX SBOM
+ZAP baseline / OpenAPI safe mode
+security headers / CORS / Origin
+RUN_SEED=no pnpm deploy:staging
+production passive checks
+GCE SSH read-only host audit
+Feishu developer-console read-only audit
+```
+
+- Web 78/78、API 186/186；主链路 E2E PASS；Playwright 52/52 PASS（5.6m）。
+- lint/typecheck/Web/API build/Prisma validate 全部 PASS。
+- Semgrep 381 个候选文件 0 finding；Gitleaks current/history 0 finding。
+- pnpm 11、OSV、Trivy filesystem 与最终五镜像全部 0 finding；六份 CycloneDX SBOM 完成。
+- 最终 ZAP baseline：Critical/High/Medium 0，Low 1，Info 8；OpenAPI 165 URLs，WARN/FAIL 0。
+- staging 五服务 healthy、18 migrations、0 pending；真实飞书会话最终 `/projects`、`/admin` 正向路径 PASS。
+
+#### Host And Feishu Evidence
+- 私有云 SSH password/root 禁止，API/Web 非 root，env 0600，PostgreSQL/Redis loopback，TLS/HSTS/CSP、备份校验、恢复演练与远程 tracked tree clean 均通过。
+- `R24-HOST-001` Medium：GCP 默认规则仍允许 `0.0.0.0/0:22`，未接受。
+- 飞书后台证据已读取：正式应用启用、生产回调存在、IP 白名单存在、版本 1.1.2 已发布、可用范围为部分成员、唯一测试人员为李晓晨。
+- `R24-FEISHU-001` Medium：正式应用仍保留 localhost callback。
+- `R24-FEISHU-002` Medium：当前代码未调用 Contact API，但后台启用了多项通讯录只读权限。
+- `R24-FEISHU-003` gate blocker：移动主页和 H5 可信域名为空。
+- `R24-EVID-001` gate blocker：未把唯一真实会话导出给 ZAP，因此 authenticated passive / approved low-risk active 未完成。
+
+#### Final Severity And Decision
+- 当前 consolidated open：Critical 0、High 0、Medium 3、Low 1、Info 11。
+- Critical/High 已全部修复；OAuth/IDOR/上传/业务逻辑与 CSP 通过。
+- 三项 Medium 无书面风险接受，authenticated DAST 未完成，飞书后台配置不通过。
+
+`R24_FAIL / NO_JOINT_RELEASE_GATE / NO_PRODUCTION_DEPLOY / STOP`
+
+证据：`docs/rounds/R24.md` 与 `docs/security/R24_*.md`。
