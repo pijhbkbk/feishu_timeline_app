@@ -3508,3 +3508,29 @@ pnpm deploy:health
 `REAL_WRITE_PATHS_PASS / FINAL_REGRESSION_PASS / FINAL_STAGING_DEPLOY_PASS / AUTHENTICATED_ENDURANCE_BLOCKED / R23_NOT_PASSED / STOP`
 
 如后续提供受控性能测试身份或由用户在本地进程外安全注入会话，只继续执行 `5 VU × 2h` 与 `10 VU × 30m` 并更新 R23 证据；此前不得进入 R24、部署生产、合并 main 或创建 tag。
+
+---
+
+### Round R23C_AUTHENTICATED_ENDURANCE_CONTINUATION
+
+#### Goal And Scope
+- 仅关闭认证 `5 VU × 2h` 与 `10 VU × 30m`，不重跑七条 UAT、不进入 R24、不部署生产。
+- 使用 headed 真实飞书 OAuth；认证材料仅存在于 `/tmp/r23-auth.*`，权限 0700/0600，不输出认证值。
+
+#### Results
+- 5 VU × 2h PASS：32,539/32,539 checks，read p50/p95/p99 `23.436/736.946/2116.852 ms`，write `27.012/133.294/373.641 ms`，error/auth/5xx/deadlock/restart 均 0，回收后内存增长 -59.6311%。
+- 首次 10 VU × 30m FAIL：14,767 请求中 7 次项目日志读取超时，read p50/p95/p99 `37.581/1104.928/4243.791 ms`，0 auth/5xx。
+- `R23C-P1-007`：日志接口忽略分页，23,179条审计记录导致约11.1 MB响应；候选 `a4a9efd50404a512102dd74d1ab18d9bceb971a9` 改为有界跨来源分页和当页详情读取，UI支持加载更多。
+- 修复前定向复现保存了非敏感 request ID；API 163/163、Web 74/74、lint/typecheck/build/Prisma validate PASS。
+
+#### Deployment Blocker
+- attempt 1：拉取 `node:24-alpine` metadata 时 `DeadlineExceeded`。
+- attempt 2：`pnpm install --frozen-lockfile` 下载 403/405 后被 `registry.npmjs.org ECONNRESET` 中止。
+- 两次都发生在候选镜像产出和服务切换前。active staging 仍为 `cdb51963502e35004bf2667aec7c8b7a49a51e25`；五服务 healthy、restart 0、17 migrations。
+- 按连续两次失败停止协议，不作第三次部署尝试。
+
+#### Security Cleanup And Decision
+- Nginx 记录 `POST /api/auth/logout` 返回 201；服务端先删除 Session 再返回。临时认证目录已不存在。
+- `authSessionUsed: true`；`authMaterialDestroyed: true`。
+- 状态：`R23C_BLOCKED / P1_OPEN_1_PENDING_STAGING_RETEST / R23_NOT_PASSED / STOP`。
+- 恢复点：外部 registry 稳定后，重新真实 OAuth，精确部署 `a4a9efd`，只重跑修复后 10 VU、完整回归并完成最终报告；不得进入 R24。

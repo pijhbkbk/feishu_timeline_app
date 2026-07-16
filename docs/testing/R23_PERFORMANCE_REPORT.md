@@ -82,3 +82,19 @@ pnpm test:load:r23 -- --base-url http://localhost:8080 --vus 20 --duration 5m --
 | service restarts | `0` |
 
 `5 VU × 2h` 与 `10 VU × 30m` 的最终提交认证数据均为 `NOT RUN / BLOCKED`。原因是没有不暴露 Cookie/token/storageState 的安全会话注入路径；本轮没有读取、导出或持久化真实浏览器会话机密。短时只读数字仅供基线参考，不能作为最终候选认证耐久 PASS 证据。
+
+## 6. R23C 认证耐久进展（2026-07-16）
+
+真实飞书 OAuth 会话已通过受控临时目录安全注入；不包含认证值的最终状态为 `authSessionUsed: true`、`authMaterialDestroyed: true`。
+
+| Profile | 结果 | p50 / p95 / p99 | error / 5xx / auth |
+|---|---|---|---|
+| 5 VU × 2 h | PASS | read `23.436 / 736.946 / 2116.852 ms`; write `27.012 / 133.294 / 373.641 ms` | `0 / 0 / 0` |
+| 10 VU × 30 m（修复前） | FAIL | read `37.581 / 1104.928 / 4243.791 ms`; write `47.103 / 403.541 / 674.133 ms` | `0.0474% / 0 / 0` |
+| 10 VU × 30 m（修复后） | BLOCKED / NOT RUN | — | 外部 registry 连续两次阻断部署 |
+
+5 VU 共 32,539 请求，0 失败；API/Web 空闲回收后内存增长 -59.6311%；DB max connections 18、slow query 0、deadlock 0；Redis max memory 1,456,784 bytes、queue 0；五服务 restart 0。峰值 CPU（API/Web/Nginx/PostgreSQL/Redis）为 `332.26/9.29/3.14/26.26/2.61%`，峰值内存约 `1103.87/120.90/14.49/173.20/10.41 MiB`。
+
+修复前 10 VU 共 14,767 请求，7 次失败均为项目日志读取10秒超时。项目累计23,179条审计记录时，旧接口仍忽略 `pageSize=20` 并返回约11.1 MB。候选 `a4a9efd50404a512102dd74d1ab18d9bceb971a9` 已实施有界分页，但未能部署；因此 R23 性能门禁保持 BLOCKED，不能用本地测试或修复前数据宣称 PASS。
+
+详见 `docs/testing/R23C_BLOCKER_REPORT.md` 与 `test-results/r23c/`（Git ignored）。

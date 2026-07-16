@@ -2,28 +2,28 @@
 
 ## 1. 最终结论
 
-R23B：`BLOCKED / NOT PASSED`。
+R23C：`BLOCKED / NOT PASSED`。
 
 R23：`BLOCKED / NOT PASSED`。
 
-最终应用和 staging 均为 `cdb51963502e35004bf2667aec7c8b7a49a51e25`。真实飞书单账号已完成七条 UAT 写路径；所有发现的 P1/P2 均关闭；最终完整回归通过。唯一未解除门禁是认证 `5 VU × 2h` 与 `10 VU × 30m`，因此不得将 R23 标为 PASSED。
+当前应用 candidate 为 `a4a9efd50404a512102dd74d1ab18d9bceb971a9`，active staging 仍为 `cdb51963502e35004bf2667aec7c8b7a49a51e25`。真实飞书单账号已完成七条 UAT 写路径与 `5 VU × 2h`；首次 `10 VU × 30m` 暴露项目日志无界响应，代码修复后被外部 registry 连续两次阻断部署和复测，因此不得将 R23 标为 PASSED。
 
 ## 2. 精确提交
 
 | 字段 | 值 |
 |---|---|
-| applicationCommit | `cdb51963502e35004bf2667aec7c8b7a49a51e25` |
-| evidenceCommit | 本次 R23B 证据文档提交；完整 SHA 在最终输出中记录 |
+| applicationCommit candidate | `a4a9efd50404a512102dd74d1ab18d9bceb971a9` |
+| evidenceCommit | 本次 R23C blocker 证据文档提交；完整 SHA 在最终输出中记录 |
 | stagingCommit | `cdb51963502e35004bf2667aec7c8b7a49a51e25` |
 
-API/Web 镜像 revision 均等于完整 application commit；17 个 migration、0 pending；PostgreSQL、Redis、API、Web、Nginx healthy。
+active API/Web 镜像 revision 均等于 staging commit；17 个 migration、0 pending；PostgreSQL、Redis、API、Web、Nginx healthy，restart 0。
 
 ## 3. 门禁状态
 
 | 门禁 | 状态 |
 |---|---|
 | P0 = 0 | PASS |
-| P1 未关闭 = 0 | PASS（累计 6/6 修复） |
+| P1 未关闭 = 0 | FAIL（累计 7，6 已关闭；R23C-P1-007 代码已修复但 staging 复测未完成） |
 | P2 未关闭 = 0 | PASS（累计 2/2 修复） |
 | 有效已认证用户全权限 / 未登录 401 | PASS；用户策略取消九角色隔离，不宣称九角色隔离测试通过 |
 | 七条真实 UAT 写路径 | PASS |
@@ -35,8 +35,8 @@ API/Web 镜像 revision 均等于完整 application commit；17 个 migration、
 | 单元测试 | PASS：Web 74/74、API 163/163 |
 | lint / typecheck / 双端 build / Prisma validate | PASS |
 | 20 VU × 5m 未认证只读参考 | PASS：5600 请求，0 error/5xx，p95 46.17 ms |
-| 5 VU × 2h 真实认证耐久 | BLOCKED / NOT RUN |
-| 10 VU × 30m 真实认证耐久 | BLOCKED / NOT RUN |
+| 5 VU × 2h 真实认证耐久 | PASS：32,539 请求，0 error/auth/5xx，read p95 736.946 ms |
+| 10 VU × 30m 真实认证耐久 | FAIL（修复前）/ BLOCKED（修复后未部署） |
 
 ## 4. 七条权威项目与清理
 
@@ -54,6 +54,18 @@ API/Web 镜像 revision 均等于完整 application commit；17 个 migration、
 
 ## 5. 剩余 blocker 与决策
 
-`R23-BLOCK-002` 仍为 OPEN：在禁止读取/导出 Cookie、token、OAuth code 或 storageState 的前提下，当前没有可供外部负载脚本安全注入的真实认证会话。一个真实账号足以满足当前全权限策略，但不能在不安全共享会话的情况下被宣称为 5/10 个独立认证用户。
+`R23-BLOCK-002` 已通过受控真实 OAuth 临时会话方式解除。当前 blocker 为 `R23C-BLOCK-004`：修复候选连续两次在外部 Docker Hub/npm registry 拉取阶段失败，未能部署到 staging。
 
-解除后必须在同一最终应用 commit 或更新后重新回归的 commit 上完成两档认证耐久并满足阈值。当前禁止进入 R24、生产部署、main 合并和 tag。
+解除后必须精确部署 `a4a9efd`，重跑修复后 `10 VU × 30m` 与完整回归。当前禁止进入 R24、生产部署、main 合并和 tag。
+
+## 6. R23C 更新（2026-07-16）
+
+当前结论仍为 `BLOCKED / NOT PASSED`，但原认证会话注入 blocker 已解除：真实 OAuth 会话完成了受控注入、logout 与临时材料销毁。
+
+- `5 VU × 2 h`：PASS，32,539/32,539 checks，0 auth/5xx/restart/deadlock，read p95 736.946 ms。
+- `10 VU × 30 m` 修复前：FAIL，7 次项目日志读取超时，read p95 1104.928 ms；0 auth/5xx。
+- 产品缺陷 `R23C-P1-007` 已在 candidate `a4a9efd50404a512102dd74d1ab18d9bceb971a9` 修复，API 163/163、Web 74/74、lint/typecheck/build/Prisma validate 通过。
+- 两次 staging 部署在产出镜像前分别被 Docker Hub `DeadlineExceeded` 与 npm registry `ECONNRESET` 阻断；active staging 仍为 `cdb51963502e35004bf2667aec7c8b7a49a51e25`，五服务 healthy、重启 0。
+- 修复后 10 VU 和最终完整回归均未执行；P1 closure 未经 staging 复测，故未关闭 P1 为 1。
+
+恢复点和精确证据见 `docs/testing/R23C_BLOCKER_REPORT.md`。不得标记 R23 PASSED，不得进入 R24。

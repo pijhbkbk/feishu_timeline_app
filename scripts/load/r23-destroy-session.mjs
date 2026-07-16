@@ -17,7 +17,7 @@ try {
     redirect: 'manual',
     signal: AbortSignal.timeout(10_000),
   });
-  logoutSucceeded = response.status === 200 || response.status === 204;
+  logoutSucceeded = [200, 201, 204].includes(response.status);
   await response.body?.cancel();
 } finally {
   await chmod(sessionDir, 0o700).catch(() => undefined);
