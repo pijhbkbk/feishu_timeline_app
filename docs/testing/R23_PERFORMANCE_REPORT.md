@@ -98,3 +98,21 @@ pnpm test:load:r23 -- --base-url http://localhost:8080 --vus 20 --duration 5m --
 修复前 10 VU 共 14,767 请求，7 次失败均为项目日志读取10秒超时。项目累计23,179条审计记录时，旧接口仍忽略 `pageSize=20` 并返回约11.1 MB。候选 `a4a9efd50404a512102dd74d1ab18d9bceb971a9` 已实施有界分页，但未能部署；因此 R23 性能门禁保持 BLOCKED，不能用本地测试或修复前数据宣称 PASS。
 
 详见 `docs/testing/R23C_BLOCKER_REPORT.md` 与 `test-results/r23c/`（Git ignored）。
+
+## 7. R23D final application commit（2026-07-16）
+
+最终 application/staging commit 均为 `d6d4962f88dbb5b297d54c9f27326f3bf5616ec7`。镜像通过本地缓存、`--network=none`、不可变 tag 部署，未访问公共构建 registry。
+
+| Profile | 结果 | 请求 | HTTP p50 / p95 / p99 | read / write / audit p95 | error / 5xx / auth |
+|---|---:|---:|---:|---:|---:|
+| 10m preflight | PASS | 1,050 | `16.976 / 47.181 / 54.603` | `47.452 / 15.049 / 17.828` | `0 / 0 / 0` |
+| 10 VU × 30m | PASS | 17,997 | `32.074 / 96.776 / 139.994` | `97.490 / 95.124 / 92.577` | `0 / 0 / 0` |
+| 5 VU × 2h | PASS | 29,658 | `33.474 / 80.758 / 125.575` | `88.660 / 66.958 / 70.998` | `0 / 0 / 0` |
+
+10 VU / 5 VU 空闲恢复后 API+Web 内存增长分别为 `-1.3618% / -0.4664%`；DB max connections 均为 18，slow query/deadlock 为 0；Redis queue 为 0；所有服务 restart 为 0。API/Web CPU 峰值分别为 `56.23/8.55%` 与 `36.99/7.66%`。
+
+审计专项遍历 23,189 条记录、232 页，唯一 ID 23,189，最大响应 48,714 bytes，p50/p95/p99 `20.495/25.464/66.525 ms`，0 5xx/auth。性能门禁本身已 PASS。
+
+## 8. R23E final evidence closure（2026-07-16）
+
+R23E 在同一 application/staging commit 上补齐最终 API、E2E、Playwright、Gitleaks 与 logout 门禁，且未修改应用代码、Prisma、部署或运行时配置。既有 10 VU × 30m 与 5 VU × 2h 耐久证据继续有效，无需重跑。R23 总状态现为 `PASSED`；进入 R24 前仍须先实施并验证方案 A 最小权限边界。

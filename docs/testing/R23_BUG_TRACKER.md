@@ -5,7 +5,7 @@
 | 等级 | 发现 | 已修复 | 未关闭 |
 |---|---:|---:|---:|
 | P0 | 0 | 0 | 0 |
-| P1 | 7 | 6 | 1 |
+| P1 | 7 | 7 | 0 |
 | P2 | 2 | 2 | 0 |
 | P3 | 0 | 0 | 0 |
 
@@ -19,7 +19,7 @@
 | R23B-P1-004 | P1 | 真实飞书用户进入新建项目即提示“当前角色无权访问该功能”，人工测试无法开始 | 旧角色隔离策略仍把普通查看者限制为只读，与用户确认的当前使用策略不符 | 在统一认证用户出口赋予完整有效权限，保留未登录/停用/锁定边界和全部业务状态门禁 | API 权限 11/11、R20 Playwright 13/13、主链路 E2E PASS；隔离库权限用例 PASS |
 | R23B-P1-005 | P1 | 第 10/11 步没有真实首批计划/试制记录时，通用工作流提交仍可直接推进 | 通用流转只校验节点状态，未接入试制领域记录门禁 | 第 10/11 步统一要求真实首批计划和试制记录满足条件；主链路夹具改为创建领域记录 | R23-016、主链路 E2E、Playwright 52/52 PASS |
 | R23B-P1-006 | P1 | 第 17 步首月通过即关闭节点；其余月份无法逐月完成；通用 APPROVE 可绕过 12/12 | 月度评审记录缺少月份键，评审错误绑定首个活跃节点，工作流完成条件未检查 12/12 | 增加 `reviewPeriod` 与 migration；按月唯一/完成，只有 12/12 才关闭第 17 步；通用动作接入月度门禁 | R23-015、月度真实账号 1/12、Playwright 52/52 PASS |
-| R23C-P1-007 | P1 | 10 VU 认证耐久中 7 次项目日志读取超时；接口每次返回约 11.1 MB | Controller 忽略 `page/pageSize`，Service 加载并排序项目全部审计、流程和通知记录 | `a4a9efd` 增加有界跨来源分页、按当页 ID 读取详情和 UI“加载更多”；保留完整总数与审计历史 | 单元/构建门禁 PASS；因外部 registry 连续两次阻断部署，staging 10 VU 复测未执行，保持 OPEN |
+| R23C-P1-007 | P1 | 10 VU 认证耐久中 7 次项目日志读取超时；接口每次返回约 11.1 MB | Controller 忽略 `page/pageSize`，Service 加载并排序项目全部审计、流程和通知记录 | `a4a9efd` 增加有界跨来源分页；`d6d4962` 补齐时间/用户/动作筛选与独立详情接口 | R23D 审计专项、10 VU × 30m、5 VU × 2h 同 commit PASS；CLOSED |
 | R23B-P2-001 | P2 | 任务材料列表把中文附件名显示为对象 key 的下划线安全名 | 页面使用存储 `fileName`，未优先使用 `originalFileName` | 任务附件展示优先使用 Unicode 原始名，存储 key 保持安全格式 | 真实 V2 `定制颜色开发流程图.pdf` 页面/下载复核 PASS |
 | R23B-P2-002 | P2 | 完成 1/12 后提示“颜色退出已可进入”，且已完成月份仍显示“通过”按钮 | UI 未区分月度实例完成与整个第 17 步完成 | API 返回 `isPeriodCompleted`；已完成月份显示“已完成”并隐藏按钮；成功文案仅在 12/12 时声明下游激活 | Web 定向 4/4、最终 UI 1/12/按钮数 0、Playwright 52/52 PASS |
 
@@ -41,4 +41,9 @@
 | R23-BLOCK-001 | RESOLVED_BY_POLICY | 九类真实角色矩阵 | 用户已明确改为所有已认证用户全权限，不再要求九个真实 OAuth 用户 |
 | R23-BLOCK-002 | RESOLVED | 不读取/导出登录 Cookie，因此尚无安全方式让负载脚本执行认证后业务查询/写入 | 已通过 headed 真实 OAuth + `/tmp/r23-auth.*` 0700/0600 临时材料 + 结束即 logout/销毁的受控方式解除 |
 | R23B-BLOCK-003 | RESOLVED | 全新隔离库完整 Playwright 曾有 3 个既有测试夹具/调度竞争失败 | 已修复夹具与调度隔离；最终 52/52 PASS |
-| R23C-BLOCK-004 | OPEN | 修复提交连续两次 staging 构建失败：Docker Hub metadata `DeadlineExceeded`，随后 npm registry `ECONNRESET` | 外部 registry 连通稳定后，从 `a4a9efd` 原样部署并只重跑修复后 10 VU、完整回归与报告 |
+| R23C-BLOCK-004 | RESOLVED | 外部 registry 阻断候选部署 | 使用本地 lock 匹配依赖、缓存运行时镜像与 `--network=none` 不可变 overlay 部署最终 `d6d4962` |
+| R23D-BLOCK-005 | RESOLVED | 耐久完成后执行环境切换为受限沙箱：localhost bind/connect、Docker API 与 Git index 写入均 `EPERM`，曾阻断 final E2E、Playwright、Gitleaks、server logout 和 evidence commit | R23E unrestricted preflight 通过；API 166/166、E2E、Playwright 52/52、Gitleaks、logout/Session deletion 全部 PASS；未重跑耐久 |
+
+## 5. R23E closure
+
+R23E 未发现新的产品缺陷。Playwright 缺少 Chromium 1223 是执行环境依赖缺口，安装固定 Chrome for Testing 148.0.7778.96 后原套件 52/52 通过，不计入产品 P1/P2。最终未关闭 P0/P1/P2/P3 均为 0。

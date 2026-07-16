@@ -3534,3 +3534,101 @@ pnpm deploy:health
 - `authSessionUsed: true`；`authMaterialDestroyed: true`。
 - 状态：`R23C_BLOCKED / P1_OPEN_1_PENDING_STAGING_RETEST / R23_NOT_PASSED / STOP`。
 - 恢复点：外部 registry 稳定后，重新真实 OAuth，精确部署 `a4a9efd`，只重跑修复后 10 VU、完整回归并完成最终报告；不得进入 R24。
+
+---
+
+### Round R23D_STAGING_ARTIFACT_DEPLOY_AND_ENDURANCE_CLOSURE
+
+#### Goal And Scope
+- 精确部署最终 application commit，关闭审计分页 P1，在同 commit 上完成 10 VU × 30m、5 VU × 2h 和完整回归。
+- 不部署生产、不 seed staging、不进入 R24、不合并 main、不创建 tag。
+
+#### Inputs And Changes
+- staging before：`cdb51963502e35004bf2667aec7c8b7a49a51e25`；final application/staging：`d6d4962f88dbb5b297d54c9f27326f3bf5616ec7`。
+- API/Web images：`sha256:82ebedf96fcaf3edd2096eea2910cd0376b42734026a587f356052bde866d3bd` / `sha256:95d7aff3f653da9b1a63877ccebaa36b199fcba073fc38945662abd05142286b`。
+- 追加审计时间/用户/动作过滤与独立详情 API；列表继续仅返回摘要，pageSize 最大 100。
+- 使用本地 lock 匹配依赖、缓存 base image、`--network=none` overlay 构建；无公共 registry pull。
+- 因无缓存 k6 image，增加本地 Node 认证耐久执行器和完整性/资源监控，不引入网络依赖。
+
+#### Commands And Evidence
+```bash
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm --filter @feishu-timeline/web build
+pnpm --filter @feishu-timeline/api build
+pnpm --filter @feishu-timeline/api prisma:validate
+pnpm test:e2e
+pnpm playwright:test
+```
+
+- Audit special：PASS，23,189/23,189 unique，232 pages，max 48,714 bytes，p95 25.464 ms。
+- Preflight：PASS，1,050 requests，0 error/5xx/auth。
+- 10 VU × 30m：PASS，17,997 requests，HTTP p50/p95/p99 `32.074/96.776/139.994 ms`，idle memory -1.3618%。
+- 5 VU × 2h：PASS，29,658 requests，HTTP p50/p95/p99 `33.474/80.758/125.575 ms`，idle memory -0.4664%。
+- 两档 DB connections peak 18、slow/deadlock 0、Redis queue 0、restart 0、完整性异常 0。
+- lint/typecheck/Web 74/74/build/Prisma PASS；API 162 assertions PASS，4 个 transport tests 被 socket bind EPERM 阻断。
+- E2E 在 tsx IPC listen EPERM 时停止；Playwright 在 Docker socket permission denied 时停止；Gitleaks 与 server logout 同样被沙箱阻断。
+- `git add` 创建 `.git/index.lock` 被 EPERM 拒绝，当前 R23D 文档/执行器尚无 evidence commit。
+- `/tmp/r23d-auth.*` 已删除；server session deletion 不宣称成功。
+
+#### Defects And Severity
+- P0 0；P1 累计 7、已关闭 7、未关闭 0；P2 2/2；P3 0。
+- `R23C-P1-007` 已由专项与两档 final-commit endurance 关闭。
+- `R23C-BLOCK-004` RESOLVED；新增 `R23D-BLOCK-005` 为执行环境证据 blocker，不是产品缺陷。
+
+#### Acceptance And Next
+`EXACT_STAGING_PASS / AUDIT_SPECIAL_PASS / 10VU_PASS / 5VU_PASS / FINAL_REGRESSION_ENV_BLOCKED / AUTH_LOCAL_MATERIAL_DESTROYED / SERVER_LOGOUT_UNVERIFIED / R23_NOT_PASSED / STOP`
+
+恢复后不得重跑耐久，只补跑 final API socket suite、E2E、Playwright、Gitleaks、logout verification，并提交/推送当前证据。全部通过后方可标记 R23 PASSED。R24 前必须实施方案 A 最小权限；当前不实施，以免改变本轮最终应用 commit 并使耐久证据失效。
+
+---
+
+### Round R23E_UNRESTRICTED_FINAL_REGRESSION_AND_EVIDENCE_CLOSURE
+
+#### Goal And Scope
+- 在具备 Git 写入、localhost、Docker Socket、IPC 和 Playwright 权限的本机环境，仅补齐 R23D 被沙箱阻断的最终回归、真实 logout、Session store 删除、Gitleaks 与 evidence commit。
+- 不修改应用代码，不重跑审计专项和两档耐久，不部署生产、不进入 R24、不合并 main、不创建 tag。
+
+#### Exact Baseline And Freeze
+- branch：`release/r22-stability-security-rc`。
+- applicationCommit/stagingCommit：`d6d4962f88dbb5b297d54c9f27326f3bf5616ec7`。
+- staging API/Web OCI revision 均为完整 application commit；五服务 healthy，restart 0。
+- preflight：`GIT_WRITE_OK`、`DOCKER_OK`、`LOCALHOST_LISTEN_OK`。
+- 清理上一轮未提交的测试执行器/构建缓存后，R23E diff 仅含 `docs/`；质量命令生成的 `apps/web/tsconfig.tsbuildinfo` 已恢复。无 `apps/`、`packages/`、Prisma、deploy 或运行时配置变更。
+
+#### Commands And Results
+```bash
+pnpm --filter @feishu-timeline/api test
+pnpm test:e2e
+PLAYWRIGHT_RESULT_ROUND=r23e pnpm playwright:test
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm --filter @feishu-timeline/web build
+pnpm --filter @feishu-timeline/api build
+pnpm --filter @feishu-timeline/api prisma:validate
+GITLEAKS_EXECUTION_MODE=native bash scripts/security/run-secrets-scan.sh
+```
+
+- API：51 files、166/166 PASS、0 skipped、4.52s；R23D 被阻断的 4 个 socket transport tests 已真实执行。
+- Web：24 files、74/74 PASS、0 skipped、2.22s。
+- 主链路 E2E PASS、16.82s；项目、附件、第 4/6 步并行、第 9 步非阻塞、第 12 步退回新轮次、第 17 步月度计划与 Web 页面通过。
+- Playwright 首次因缺少锁定 Chromium binary 在产品执行前停止；安装 user-cache Chrome for Testing 148.0.7778.96 后，原套件 52/52 PASS、0 skipped、5.1m。正式页面质量矩阵 page error/console error 0。
+- lint/typecheck/Web build/API build/Prisma validate 全部 PASS。
+- Gitleaks 8.30.1 current candidate tree 与 full Git history 均 PASS，0 findings；报告 `--redact`，保存于 Git ignored 的 `test-results/r23e/secrets/`。
+
+#### Real OAuth Logout And Cleanup
+- 真实飞书 OAuth 在本机 staging 建立 Session；Redis session records 从 baseline 1 增至 authenticated window 2。
+- 浏览器客户端阻止直接渲染 JSON session endpoint 后，不输出 key/token，在 staging Redis 内选择本轮最新 Session，通过正式 `POST /api/auth/logout` 执行注销。
+- logout HTTP 201；同一旧 Session 再查 `authenticated=false`；对应 Redis record `EXISTS=0`；总 session records 回到 1。
+- Cookie、token、OAuth code、storageState、Session key 均未输出/提交；`/tmp/r23-auth.*` 与 `/tmp/r23e-auth.*` 目录数为 0。
+
+#### Defects, Evidence Validity And Decision
+- 新产品缺陷 0。Playwright 浏览器 binary 缺口是环境修复，不计产品 defect。
+- P0/P1/P2/P3 open：`0/0/0/0`；累计 P1 7/7、P2 2/2 fixed；`R23D-BLOCK-005` RESOLVED。
+- application/staging commit 未变且 R23E 只有 docs evidence changes，因此 R23D audit special、10 VU × 30m 与 5 VU × 2h 继续有效，不重跑。
+- evidenceCommit：`PENDING_EVIDENCE_COMMIT`。
+- 决策：`R23E_PASS / R23_PASSED / STOP_BEFORE_R24`。
+
+R23 当前验收策略仍为所有有效已认证用户完整权限、匿名/停用/锁定拒绝和业务状态门禁保留，不宣称九角色隔离。方案 A 最小权限是进入 R24 前必须实施并产生新应用候选的新工作；本轮不实施，以保持 R23 endurance evidence 的同 commit 完整性。

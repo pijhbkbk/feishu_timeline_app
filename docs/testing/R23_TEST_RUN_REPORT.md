@@ -147,3 +147,66 @@ pnpm playwright:test:r23
 - 唯一剩余阻塞 `R23-BLOCK-002`：在不读取/导出真实会话机密的约束下，没有安全的外部会话注入方式。两档认证耐久均未执行。
 
 最终结论：`R23B BLOCKED / R23 NOT PASSED`。不得进入 R24、部署生产、合并 main 或创建 tag。
+
+## 10. R23D staging artifact and endurance closure（2026-07-16）
+
+### 10.1 Final artifact
+
+| Field | Value |
+|---|---|
+| application/staging commit | `d6d4962f88dbb5b297d54c9f27326f3bf5616ec7` |
+| API image/digest | `r23d-d6d4962f88db` / `sha256:82ebedf96fcaf3edd2096eea2910cd0376b42734026a587f356052bde866d3bd` |
+| Web image/digest | `r23d-d6d4962f88db` / `sha256:95d7aff3f653da9b1a63877ccebaa36b199fcba073fc38945662abd05142286b` |
+| deployment | local cache overlay, `--network=none`, `--pull never`, `RUN_SEED=no` |
+| migration/services | 17 / 0 pending；五服务 healthy；restart 0 |
+
+### 10.2 Special and endurance
+
+- Audit special PASS：23,189 total/traversed/unique，232 pages，最大 48,714 bytes，p95 25.464 ms，0 5xx/auth。
+- 10m preflight PASS：1,050 requests，0 error/5xx/auth，HTTP p95 47.181 ms。
+- 10 VU × 30m PASS：17,997 requests，0 error/5xx/auth，HTTP p50/p95/p99 `32.074/96.776/139.994 ms`，idle memory `-1.3618%`。
+- 5 VU × 2h PASS：29,658 requests，0 error/5xx/auth，HTTP p50/p95/p99 `33.474/80.758/125.575 ms`，idle memory `-0.4664%`。
+- 两档 DB slow/deadlock 0、Redis queue 0、restart 0、uncaught/unhandled 0、重复节点/周期任务/通知 0、附件半记录 0。
+
+### 10.3 Final regression status
+
+PASS：lint、typecheck、Web `74/74`、API 非 socket 测试 `162`、Web/API build、Prisma validate。
+
+BLOCKED_BY_ENVIRONMENT：API socket transport 4 tests、E2E、Playwright、Gitleaks 和 server logout。统一根因是后续启用的受限沙箱拒绝 localhost bind/connect 或 Docker socket（`EPERM`）。本地 `/tmp/r23d-auth.*` 已销毁，没有认证值进入报告/Git。
+
+最终结论：`R23D BLOCKED / R23 NOT PASSED / DO NOT ENTER R24`。产品 P0/P1 均为 0；恢复后只补跑受阻回归与 cleanup，不重跑耐久。详见 `docs/testing/R23D_DEPLOYMENT_RECOVERY.md`。
+
+## 11. R23E unrestricted final regression and evidence closure（2026-07-16）
+
+### 11.1 Version freeze
+
+| Field | Value |
+|---|---|
+| applicationCommit | `d6d4962f88dbb5b297d54c9f27326f3bf5616ec7` |
+| stagingCommit | `d6d4962f88dbb5b297d54c9f27326f3bf5616ec7` |
+| evidenceCommit | `PENDING_EVIDENCE_COMMIT` |
+| application changes in R23E | none; evidence documents only |
+
+### 11.2 Final gates
+
+| Suite | Result |
+|---|---:|
+| API unit/security/transport | `166/166 PASS`，51 files，0 skipped |
+| previously blocked socket tests | `4/4 PASS`，actual localhost listener execution |
+| Web unit | `74/74 PASS`，24 files |
+| mainline E2E | PASS，16.82s |
+| complete Playwright | `52/52 PASS`，0 skipped，5.1m |
+| browser | Playwright 1.60.0 / Chrome for Testing 148.0.7778.96 |
+| console / page errors on formal-page quality matrix | `0 / 0` |
+| lint / typecheck / Web build / API build / Prisma validate | all PASS |
+| Gitleaks current tree / full history | `PASS / PASS`，0 findings |
+| real OAuth logout | HTTP 201; old Session rejected; Redis record deleted |
+| auth material | destroyed; no auth temp directory or tracked auth file |
+
+The initial browser run did not execute product tests because the locked Playwright Chromium binary was missing. After installing Chrome for Testing 148.0.7778.96 in the user cache, the unchanged full suite passed. This is an environment repair, not a product defect.
+
+### 11.3 Final decision
+
+P0/P1/P2/P3 open counts are `0/0/0/0`. The R23D endurance and audit evidence remains valid because application/staging stayed on the exact final commit and R23E introduced no application change. `R23D-BLOCK-005` is resolved.
+
+Final conclusion: `R23E PASS / R23 PASSED / STOP BEFORE R24`. Production deployment, main merge, tag and R24 were not performed. Plan A minimum permission remains the mandatory next application change before R24.
