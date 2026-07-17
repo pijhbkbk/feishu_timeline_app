@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildContentSecurityPolicy } from './middleware';
+import { buildContentSecurityPolicy, config } from './middleware';
 
 describe('content security policy', () => {
   it('uses per-request nonces and excludes development sources in production', () => {
@@ -26,5 +26,12 @@ describe('content security policy', () => {
     expect(policy).toContain('http://localhost:3001');
     expect(policy).toContain('ws://localhost:3000');
     expect(policy).not.toContain('upgrade-insecure-requests');
+  });
+
+  it('keeps favicon responses inside the CSP middleware boundary', () => {
+    const [matcher] = config.matcher;
+    if (!matcher) throw new Error('CSP middleware matcher is missing.');
+
+    expect(matcher.source).not.toContain('favicon.ico');
   });
 });
