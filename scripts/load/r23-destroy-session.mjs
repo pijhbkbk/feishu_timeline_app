@@ -31,12 +31,14 @@ async function validateTempPath(value) {
   if (!value || !path.isAbsolute(value)) throw new Error('K6_SESSION_FILE 必须是绝对路径。');
   const resolved = path.resolve(value);
   if (!isSafeTempPath(resolved)) {
-    throw new Error('认证文件必须位于 /tmp/r23-auth.*。');
+    throw new Error('认证文件必须位于 /tmp/r23-auth.* 或 /tmp/r24b-zap-auth.*。');
   }
   return resolved;
 }
 
 function isSafeTempPath(value) {
   return value.startsWith(`/tmp${path.sep}r23-auth.`) ||
-    value.startsWith(`/private/tmp${path.sep}r23-auth.`);
+    value.startsWith(`/private/tmp${path.sep}r23-auth.`) ||
+    value.startsWith(`/tmp${path.sep}r24b-zap-auth.`) ||
+    value.startsWith(`/private/tmp${path.sep}r24b-zap-auth.`);
 }

@@ -1,0 +1,72 @@
+# Scope contract for scripts/security/run-r24b-zap-authenticated.sh.
+#
+# Authentication material is intentionally absent. The wrapper configures the
+# named manual user and an in-memory HTTP session only after the user has
+# completed real Feishu OAuth. Jobs are disabled here so this plan cannot be
+# run directly without the wrapper's authentication, report-leak checks, and
+# guaranteed logout cleanup.
+env:
+  contexts:
+    - name: R24B
+      urls:
+        - https://r24b-staging.local
+      includePaths:
+        - ^https://r24b-staging[.]local/.*$
+      excludePaths:
+        - ^https://r24b-staging[.]local/api/auth/logout.*$
+        - ^https://r24b-staging[.]local/api/auth/feishu/.*$
+        - ^https://r24b-staging[.]local/login/callback.*$
+      authentication:
+        method: manual
+        verification:
+          method: response
+          loggedInRegex: '\Q"authenticated":true\E'
+          loggedOutRegex: '\Q"authenticated":false\E'
+      sessionManagement:
+        method: cookie
+      users:
+        - name: r24b-session
+          credentials: {}
+  parameters:
+    failOnError: true
+    failOnWarning: false
+    continueOnFailure: false
+    progressToStdout: false
+jobs:
+  - type: spider
+    enabled: false
+    parameters:
+      context: R24B
+      user: r24b-session
+      url: https://r24b-staging.local
+      maxDuration: 5
+      maxDepth: 5
+      maxChildren: 200
+  - type: spiderAjax
+    enabled: false
+    parameters:
+      context: R24B
+      user: r24b-session
+      url: https://r24b-staging.local
+      maxDuration: 3
+      maxCrawlDepth: 4
+  - type: openapi
+    enabled: false
+    parameters:
+      apiFile: /zap/wrk/r24b-get-only-openapi.json
+      context: R24B
+      user: r24b-session
+      targetUrl: https://r24b-staging.local
+  - type: activeScan
+    enabled: false
+    parameters:
+      context: R24B
+      user: r24b-session
+      url: https://r24b-staging.local/api/projects
+      policy: R24B Low Risk
+      defaultStrength: LOW
+      defaultThreshold: MEDIUM
+      maxRuleDurationInMins: 1
+      maxScanDurationInMins: 5
+      delayInMs: 100
+      handleAntiCSRFTokens: true

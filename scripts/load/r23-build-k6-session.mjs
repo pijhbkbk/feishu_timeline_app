@@ -49,7 +49,7 @@ async function validateTempPath(value, label) {
 
   const resolved = path.resolve(value);
   if (!isSafeTempPath(resolved)) {
-    throw new Error(`${label}认证文件必须位于 /tmp/r23-auth.*。`);
+    throw new Error(`${label}认证文件必须位于 /tmp/r23-auth.* 或 /tmp/r24b-zap-auth.*。`);
   }
 
   return resolved;
@@ -57,5 +57,7 @@ async function validateTempPath(value, label) {
 
 function isSafeTempPath(value) {
   return value.startsWith(`/tmp${path.sep}r23-auth.`) ||
-    value.startsWith(`/private/tmp${path.sep}r23-auth.`);
+    value.startsWith(`/private/tmp${path.sep}r23-auth.`) ||
+    value.startsWith(`/tmp${path.sep}r24b-zap-auth.`) ||
+    value.startsWith(`/private/tmp${path.sep}r24b-zap-auth.`);
 }

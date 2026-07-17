@@ -19,11 +19,11 @@ const browser = await chromium.launch({
 const context = await browser.newContext();
 const page = await context.newPage();
 
-console.log('已打开 staging 登录页。请在浏览器窗口中手工完成真实飞书 OAuth 登录。');
-console.log('脚本不会读取或输出密码、OAuth code、Cookie 或 storageState 内容。');
-
 try {
   await page.goto(new URL('/login', baseUrl).toString(), { waitUntil: 'domcontentloaded' });
+  await page.getByTestId('feishu-login-button').click({ timeout: 30_000 });
+  console.log('已打开真实飞书 OAuth 页面。请在浏览器窗口中手工完成登录。');
+  console.log('脚本不会读取或输出密码、OAuth code、Cookie 或 storageState 内容。');
   await page.waitForURL(
     (url) => url.origin === baseUrl.origin && !url.pathname.startsWith('/login'),
     { timeout: Number(process.env.R23_LOGIN_TIMEOUT_MS ?? 30 * 60 * 1000) },
@@ -42,7 +42,7 @@ async function validateSessionDir(value) {
 
   const resolved = path.resolve(value);
   if (!isSafeTempPath(resolved)) {
-    throw new Error('认证目录必须位于 /tmp/r23-auth.*。');
+    throw new Error('认证目录必须位于 /tmp/r23-auth.* 或 /tmp/r24b-zap-auth.*。');
   }
 
   return resolved;
@@ -50,5 +50,7 @@ async function validateSessionDir(value) {
 
 function isSafeTempPath(value) {
   return value.startsWith(`/tmp${path.sep}r23-auth.`) ||
-    value.startsWith(`/private/tmp${path.sep}r23-auth.`);
+    value.startsWith(`/private/tmp${path.sep}r23-auth.`) ||
+    value.startsWith(`/tmp${path.sep}r24b-zap-auth.`) ||
+    value.startsWith(`/private/tmp${path.sep}r24b-zap-auth.`);
 }

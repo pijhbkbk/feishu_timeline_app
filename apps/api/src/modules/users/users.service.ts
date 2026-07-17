@@ -156,15 +156,32 @@ export class UsersService {
 
   async upsertFeishuUser(profile: FeishuIdentityProfile) {
     return this.prisma.$transaction(async (tx) => {
-      const username = profile.userId?.trim() || `feishu_${profile.openId}`;
-      const existingUser = await tx.user.findFirst({
+      const userId = profile.userId?.trim() || null;
+      const unionId = profile.unionId?.trim() || null;
+      const email = profile.email?.trim() || null;
+      const mobile = profile.mobile?.trim() || null;
+      const username = userId || `feishu_${profile.openId}`;
+      const existingFeishuUser = await tx.user.findFirst({
         where: {
           OR: [
             { feishuOpenId: profile.openId },
-            ...(profile.userId ? [{ feishuUserId: profile.userId }] : []),
+            ...(userId ? [{ feishuUserId: userId }] : []),
+            ...(unionId ? [{ feishuUnionId: unionId }] : []),
           ],
         },
       });
+      const existingUser =
+        existingFeishuUser ??
+        ((email || mobile)
+          ? await tx.user.findFirst({
+              where: {
+                OR: [
+                  ...(email ? [{ email }] : []),
+                  ...(mobile ? [{ mobile }] : []),
+                ],
+              },
+            })
+          : null);
 
       if (existingUser) {
         const user = await tx.user.update({
@@ -172,11 +189,11 @@ export class UsersService {
           data: {
             username,
             name: profile.name,
-            email: profile.email ?? existingUser.email,
-            mobile: profile.mobile ?? existingUser.mobile,
+            email: email ?? existingUser.email,
+            mobile: mobile ?? existingUser.mobile,
             feishuOpenId: profile.openId,
-            feishuUserId: profile.userId ?? null,
-            feishuUnionId: profile.unionId ?? null,
+            feishuUserId: userId,
+            feishuUnionId: unionId,
           },
         });
 
@@ -189,11 +206,11 @@ export class UsersService {
         data: {
           username,
           name: profile.name,
-          email: profile.email ?? null,
-          mobile: profile.mobile ?? null,
+          email,
+          mobile,
           feishuOpenId: profile.openId,
-          feishuUserId: profile.userId ?? null,
-          feishuUnionId: profile.unionId ?? null,
+          feishuUserId: userId,
+          feishuUnionId: unionId,
           status: UserStatus.ACTIVE,
         },
       });

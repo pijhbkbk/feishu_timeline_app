@@ -134,6 +134,71 @@ describe('UsersService', () => {
     expect(tx.rolePermission.deleteMany).not.toHaveBeenCalled();
   });
 
+  it('reconciles a test-version Feishu identity with an existing user by verified mobile', async () => {
+    const existingUser = {
+      id: 'user-1',
+      email: 'existing@example.com',
+      mobile: '13800000000',
+    };
+    const tx = {
+      user: {
+        findFirst: vi.fn()
+          .mockResolvedValueOnce(null)
+          .mockResolvedValueOnce(existingUser),
+        update: vi.fn().mockResolvedValue({ id: 'user-1' }),
+        create: vi.fn(),
+      },
+      userRole: {
+        count: vi.fn().mockResolvedValue(1),
+        create: vi.fn(),
+      },
+      role: {
+        upsert: vi.fn(),
+      },
+      rolePermission: {
+        deleteMany: vi.fn(),
+        createMany: vi.fn(),
+      },
+    };
+    const { service } = createService(tx);
+
+    await service.upsertFeishuUser({
+      openId: 'ou-test-version',
+      userId: null,
+      unionId: 'on-cross-app',
+      name: '飞书测试用户',
+      email: null,
+      mobile: '13800000000',
+    });
+
+    expect(tx.user.findFirst).toHaveBeenNthCalledWith(1, {
+      where: {
+        OR: [
+          { feishuOpenId: 'ou-test-version' },
+          { feishuUnionId: 'on-cross-app' },
+        ],
+      },
+    });
+    expect(tx.user.findFirst).toHaveBeenNthCalledWith(2, {
+      where: {
+        OR: [{ mobile: '13800000000' }],
+      },
+    });
+    expect(tx.user.update).toHaveBeenCalledWith({
+      where: { id: 'user-1' },
+      data: {
+        username: 'feishu_ou-test-version',
+        name: '飞书测试用户',
+        email: 'existing@example.com',
+        mobile: '13800000000',
+        feishuOpenId: 'ou-test-version',
+        feishuUserId: null,
+        feishuUnionId: 'on-cross-app',
+      },
+    });
+    expect(tx.user.create).not.toHaveBeenCalled();
+  });
+
   it.each([UserStatus.INACTIVE, UserStatus.LOCKED])(
     'does not reactivate an existing %s Feishu user during profile refresh',
     async (status) => {
