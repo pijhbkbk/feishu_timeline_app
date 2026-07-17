@@ -1,4 +1,4 @@
-import { readFile, stat, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import http from 'node:http';
 import path from 'node:path';
 
@@ -62,8 +62,12 @@ const activeScan = await runLowRiskActiveScan(contextId, userId);
 await waitForPassiveScan();
 const authStats = await collectAuthenticationStats();
 
-const jsonReport = await zapRaw('/OTHER/core/other/jsonreport/');
-const htmlReport = await zapRaw('/OTHER/core/other/htmlreport/');
+const scopedReportDir = path.join(runtimeDir, 'scoped-reports');
+await mkdir(scopedReportDir, { mode: 0o700 });
+await generateScopedReport('traditional-json', 'zap-authenticated.json');
+await generateScopedReport('traditional-html', 'zap-authenticated.html');
+const jsonReport = await readFile(path.join(scopedReportDir, 'zap-authenticated.json'));
+const htmlReport = await readFile(path.join(scopedReportDir, 'zap-authenticated.html'));
 assertReportHasNoAuthenticationMaterial(jsonReport, htmlReport);
 
 const parsedReport = JSON.parse(jsonReport.toString('utf8'));
@@ -72,8 +76,8 @@ const targetHosts = new Set(
     .map((site) => String(site?.['@host'] ?? ''))
     .filter(Boolean),
 );
-if ([...targetHosts].some((host) => host !== target.hostname)) {
-  throw new Error('ZAP report contains a host outside the isolated staging target.');
+if (targetHosts.size !== 1 || !targetHosts.has(target.hostname)) {
+  throw new Error('ZAP report is not limited to exactly one isolated staging host.');
 }
 
 await writeFile(path.join(reportDir, 'zap-authenticated.json'), jsonReport, { mode: 0o600 });
@@ -325,16 +329,26 @@ async function importGetOnlyOpenApi(contextIdValue, userIdValue) {
 
 async function runLowRiskActiveScan(contextIdValue, userIdValue) {
   const policyName = 'R24B Low Risk';
+  const scannerInventory = await zapView('ascan', 'scanners');
+  const availableIds = new Set(
+    (Array.isArray(scannerInventory.scanners) ? scannerInventory.scanners : [])
+      .map((scanner) => Number(scanner?.id))
+      .filter(Number.isInteger),
+  );
+  const enabledScannerIds = safeScannerIds.filter((id) => availableIds.has(id));
+  if (enabledScannerIds.length === 0) {
+    throw new Error('No approved low-risk active scanner is available in the pinned ZAP image.');
+  }
   await expectOk(zapAction('ascan', 'addScanPolicy', { scanPolicyName: policyName }));
   await expectOk(zapAction('ascan', 'disableAllScanners', { scanPolicyName: policyName }));
   await expectOk(zapAction('ascan', 'enableScanners', {
-    ids: safeScannerIds.join(','),
+    ids: enabledScannerIds.join(','),
     scanPolicyName: policyName,
   }));
-  for (const id of safeScannerIds) {
-    await expectOk(zapAction('ascan', 'setScannerAttackMode', {
+  for (const id of enabledScannerIds) {
+    await expectOk(zapAction('ascan', 'setScannerAttackStrength', {
       id: String(id),
-      attackMode: 'LOW',
+      attackStrength: 'LOW',
       scanPolicyName: policyName,
     }));
     await expectOk(zapAction('ascan', 'setScannerAlertThreshold', {
@@ -363,7 +377,14 @@ async function runLowRiskActiveScan(contextIdValue, userIdValue) {
     await waitForPercent('ascan', scanId, 100, 5 * 60_000);
     scans.push({ path: requestPath, status: 'PASS' });
   }
-  return { status: 'PASS', strength: 'LOW', delayMs: 100, requests: scans };
+  return {
+    status: 'PASS',
+    strength: 'LOW',
+    delayMs: 100,
+    approvedScannerCount: enabledScannerIds.length,
+    unavailableApprovedScannerCount: safeScannerIds.length - enabledScannerIds.length,
+    requests: scans,
+  };
 }
 
 async function collectAuthenticationStats() {
@@ -441,6 +462,26 @@ function countRisks(report) {
     }
   }
   return counts;
+}
+
+async function generateScopedReport(template, reportFileName) {
+  const generated = await zapAction('reports', 'generate', {
+    title: 'R24B Authenticated ZAP',
+    template,
+    theme: '',
+    description: 'Authorized staging-only authenticated security scan.',
+    contexts: contextName,
+    sites: target.origin,
+    sections: '',
+    includedConfidences: '',
+    includedRisks: '',
+    reportFileName,
+    reportDir: '/zap/wrk/scoped-reports',
+    display: 'false',
+  });
+  if (typeof generated.generate !== 'string' || generated.generate.length === 0) {
+    throw new Error(`ZAP did not generate the scoped ${template} report.`);
+  }
 }
 
 function walkStats(value, result, prefix = '') {

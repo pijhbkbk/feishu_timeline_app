@@ -24,10 +24,14 @@ try {
   await page.getByTestId('feishu-login-button').click({ timeout: 30_000 });
   console.log('已打开真实飞书 OAuth 页面。请在浏览器窗口中手工完成登录。');
   console.log('脚本不会读取或输出密码、OAuth code、Cookie 或 storageState 内容。');
-  await page.waitForURL(
-    (url) => url.origin === baseUrl.origin && !url.pathname.startsWith('/login'),
-    { timeout: Number(process.env.R23_LOGIN_TIMEOUT_MS ?? 30 * 60 * 1000) },
-  );
+  try {
+    await page.waitForURL(
+      (url) => url.origin === baseUrl.origin && !url.pathname.startsWith('/login'),
+      { timeout: Number(process.env.R23_LOGIN_TIMEOUT_MS ?? 30 * 60 * 1000) },
+    );
+  } catch {
+    throw new Error('真实 OAuth 登录未在时限内完成；未保存任何认证材料。');
+  }
   await context.storageState({ path: outputPath });
   await chmod(outputPath, 0o600);
   console.log(`真实 OAuth 会话已安全保存到临时目录：${outputPath}`);

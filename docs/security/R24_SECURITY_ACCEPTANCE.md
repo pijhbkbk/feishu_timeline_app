@@ -2,61 +2,53 @@
 
 ## Decision
 
-**R24 = FAIL** for release-gate purposes.
+**R24 = PASS**, reclassified by `R24B_SECURITY_GATE_CLOSURE` on 2026-07-17.
 
-This is not a Critical/High application-code failure. All discovered Critical and High findings were fixed and retested, but R24's explicit evidence/configuration gates are not satisfied.
+The original R24 application security fixes remain valid. R24B closed the three open Medium configuration findings, completed authenticated DAST, fixed the two application issues found during real staging OAuth/DAST, and reran the complete regression on one final commit.
 
 ## Final tested artifact
 
-- Commit: `d86c04e8c016a0241172fb7c608f55d8dfcca5c9`
-- Staging: `http://localhost:8080`
-- Five services: healthy; restart count 0 during final verification
-- Prisma: 18 migrations; 0 pending
+- Application commit: `f00703ac7834837f9ad573bc11d779a5caa7c02f`
+- Staging commit: `f00703ac7834837f9ad573bc11d779a5caa7c02f`
+- Evidence commit: the R24B closure commit containing this document
+- Authorized staging: local `http://localhost:8080`, exposed to ZAP only through isolated `https://r24b-staging.local`
+- Production: no active scan or application deployment in this closure round
 
-## Consolidated current findings
+## Final authenticated scan findings
 
-| Critical | High | Medium | Low | Info |
+| Critical | High | Medium | Low | Informational |
 |---:|---:|---:|---:|---:|
-| 0 | 0 | 3 | 1 | 11 |
+| 0 | 0 | 0 | 3 | 4 |
 
-The three open Medium findings are:
+The three authoritative R24 Medium findings are all **Fixed**:
 
-1. GCP SSH ingress permits `0.0.0.0/0:22`.
-2. The formal Feishu application retains a localhost redirect URI.
-3. Feishu Contact API permissions exceed the current repository's demonstrated use.
+1. `R24-HOST-001` — global SSH exposure closed; IAP-only replacement verified.
+2. `R24-FEISHU-001` — formal localhost callback removed; exact production HTTPS callback and real OAuth retested.
+3. `R24-FEISHU-002` — unused Contact/API permissions removed; Contact data range N/A and OAuth retested.
 
-The Low is the ZAP big-redirect heuristic. The Info number is the de-duplicated set of passive ZAP baseline/OpenAPI informational classes; evidence/configuration blockers are listed separately and are not converted into vulnerability severity.
+No Medium was accepted by waiver.
 
 ## Gate decision matrix
 
 | Gate | Result |
 |---|---|
-| Critical = 0 | PASS |
-| High = 0 | PASS |
-| SAST, dependency SCA, filesystem SCA, five-image scan, SBOM, secrets | PASS |
-| OAuth/session/CSRF/CORS code and automated current-release tests | PASS |
-| Permissions and all requested IDOR identifiers | PASS |
+| Critical = 0 / High = 0 / Medium = 0 | PASS |
+| SAST, dependency/filesystem/image SCA, SBOM, secrets | PASS |
+| OAuth/session/logout/CSRF/Origin/CORS | PASS |
+| Permissions and IDOR | PASS |
 | Upload security | PASS |
-| Business logic security | PASS |
-| Unit/integration, mainline E2E and Playwright | PASS; Web 78/78, API 186/186, E2E PASS, Playwright 52/52 |
-| Anonymous ZAP baseline and safe OpenAPI scan | PASS_WITH_TRIAGED_LOW_INFO |
-| Authenticated ZAP passive and approved low-risk active scan | FAIL; not completed |
-| Private-cloud evidence | COMPLETE; PASS_WITH_OPEN_MEDIUM |
-| Remote tamper check | PASS; tracked production tree clean at recorded prior production baseline |
-| CSP nonce/hash hardening | PASS |
-| Feishu admin evidence | EVIDENCE_COMPLETE / CONFIGURATION_FAIL |
-| Medium risk acceptance | FAIL; no owner acceptance recorded for the three open Medium findings |
-
-## Blocking conditions
-
-- `R24-EVID-001`: authenticated ZAP passive/low-risk active evidence is absent.
-- `R24-FEISHU-001`: formal-app localhost redirect remains.
-- `R24-FEISHU-002`: unused Feishu Contact permissions remain.
-- `R24-FEISHU-003`: mobile homepage and H5 trusted-domain evidence/configuration are incomplete.
-- `R24-HOST-001`: global SSH ingress remains open and unaccepted.
+| Business logic and R23 stability smoke | PASS |
+| Web / API tests | PASS; Web 79/79, API 187/187 |
+| Mainline E2E / Playwright | PASS; E2E PASS, Playwright 52/52 |
+| lint / typecheck / Web build / API build / Prisma validate | PASS |
+| Authenticated ZAP | PASS_WITH_TRIAGED_LOW_INFO; six protected 200s, unauthenticated 401, auth statistics present, strict target-only scope |
+| Private-cloud SSH | PASS; `default-allow-ssh` disabled, `allow-iap-ssh` restricted to IAP |
+| Feishu formal application | PASS; redirect, permissions, availability, homepage, H5 and publication controls closed |
+| Credential incident | PASS; rotated, protected production update/restart and real post-rotation OAuth/session/logout verified |
+| Authentication material cleanup | PASS; logout, server invalidation and destruction verified; Gitleaks current/history zero findings |
 
 ## Release decision
 
-`R24_FAIL / NO_JOINT_RELEASE_GATE / NO_PRODUCTION_DEPLOY / STOP`
+`R24_PASS / R25_JOINT_RELEASE_GATE_ALLOWED_BUT_NOT_STARTED / NO_MAIN_MERGE / NO_TAG / STOP`
 
-R24 must be rerun only for the blocked items and their affected regression after the Feishu owner and cloud administrator make or formally accept the required changes and a safe authenticated DAST injection path exists. No production deployment, main merge or release tag was performed.
+R25 remains a separate user-confirmed round. See `docs/security/R24B_SECURITY_ACCEPTANCE.md` and `docs/security/R24B_AUTHENTICATED_ZAP_REPORT.md` for closure evidence.

@@ -8,12 +8,12 @@
 ## 项目基本信息
 
 - 项目名称：轻卡定制颜色开发项目管理系统
-- 当前阶段：R23F R24 前方案 A 最小权限边界
-- 当前轮次：PRE_R24_MINIMUM_PERMISSION_BOUNDARY
-- 总体状态：PASSED（R23 已通过；方案 A 已实施并在最终 commit 完成本地、52/52 浏览器回归、精确 staging 与真实飞书管理员路径验证；STOP_BEFORE_R24）
+- 当前阶段：R24B 安全准入收口完成
+- 当前轮次：R24B_SECURITY_GATE_CLOSURE
+- 总体状态：PASSED（R24 已通过；三个 Medium、SSH、飞书配置、认证态 ZAP、回归和认证材料清理全部闭环；STOP_BEFORE_R25）
 - 仓库路径：`/Users/lixiaochen/Downloads/feishu_timeline_app`
 - 默认分支：`main`
-- 最近更新时间：`2026-07-16`
+- 最近更新时间：`2026-07-17`
 
 ---
 
@@ -65,6 +65,7 @@
 | R23B | 已认证全权限、真实写路径与认证耐久收口 | BLOCKED | STOP | 单一真实飞书全权限账号完成七场景并逻辑归档；5 VU × 2h 与 10 VU × 30m 因安全会话注入缺失而 BLOCKED |
 | R23E | R23 最终回归与证据关闭 | PASSED | STOP | application/staging 同 commit，耐久、52/52、真实 logout、Gitleaks 全部闭环 |
 | R23F | R24 前方案 A 最小权限边界 | PASSED | STOP | 真实角色/项目范围/负责人/指定评审联合授权，最终 commit 52/52、staging 与真实 OAuth 管理员正向路径通过 |
+| R24 | 完整安全复审与 R24B 准入收口 | PASSED | STOP | 三个 Medium 已修复；IAP SSH、飞书最小配置、认证态 ZAP 0/0/0、全量回归和材料销毁通过；等待确认后进入 R25 |
 
 状态枚举建议：
 
@@ -79,10 +80,10 @@
 
 ## 当前阻塞项
 
-- 方案 A 本身无未关闭 blocker；R24 尚未开始。
-- 当前只有一个真实飞书账号，因此九账号 OAuth 隔离没有作为证据宣称；负向矩阵由独立自动化身份覆盖。
-- pnpm 9 audit 的上游旧端点返回 410，Semgrep 固定镜像拉取中断；替代 pnpm 11/Trivy 扫描均为 0 finding，工具限制已记录在 R23F 报告。
-- R19/R19B 的公司私有云主机、飞书管理后台、认证后生产 DAST、基础设施镜像和最终生产发布镜像证据仍是独立外部安全事项，不阻塞本地 staging 方案 A 验收。
+- R24 无未关闭 Critical、High、Medium 或 gate blocker。
+- 当前只有一个真实飞书账号，因此不宣称九账号 OAuth 隔离证据；负向权限和 IDOR 矩阵由独立自动化身份覆盖。
+- 三个 ZAP Low 与四个 Informational 已记录和分流，不阻塞 R24B；其中两个 Low 来自临时扫描别名代理，不是部署端点。
+- R25 尚未开始，等待用户对 R24B 结果的明确确认。
 
 ---
 
@@ -3756,3 +3757,56 @@ Feishu developer-console read-only audit
 `R24_FAIL / NO_JOINT_RELEASE_GATE / NO_PRODUCTION_DEPLOY / STOP`
 
 证据：`docs/rounds/R24.md` 与 `docs/security/R24_*.md`。
+
+---
+
+### Round R24B_SECURITY_GATE_CLOSURE
+
+#### Goal And Scope
+- 仅关闭 R24 的三项 Medium 配置风险、真实认证态 DAST 和关联回归，不重新执行已通过的大规模 SAST/SCA。
+- 主动扫描只针对授权 staging 的隔离别名；禁止生产/飞书域名主动扫描、DoS、爆破和认证材料入库。
+- 不合并 main、不创建 tag、不进入 R25；完成判定后停止。
+
+#### Exact Artifacts And Changes
+- branch：`security/r24-full-reaudit`。
+- application/staging commit：`f00703ac7834837f9ad573bc11d779a5caa7c02f`。
+- `83e5c752fd3cc66faa56c5e9db56933490c1b7c6`：修复同一真实人员在正式/测试飞书应用中 app-scoped 身份标识不同导致的身份合并冲突，新增 6 条回归测试。
+- `f00703ac7834837f9ad573bc11d779a5caa7c02f`：修复 `/favicon.ico` 未经过 CSP middleware matcher 的问题并增加 matcher 测试。
+- evidence commit：本节所在的 `security: close R24 authenticated DAST and configuration gates` 提交。
+
+#### Configuration Closure
+- `R24-HOST-001` Fixed：启用 IAP API，增加 `iap-ssh` tag，创建只允许 `35.235.240.0/20` TCP 22 的 `allow-iap-ssh`；两次禁用前和一次禁用后 IAP SSH 均通过；`default-allow-ssh` 已禁用但保留回滚；非 IAP SSH 未到达 VM。
+- `R24-FEISHU-001` Fixed：正式应用只保留生产 HTTPS callback，localhost 已删除；真实生产 OAuth、受保护页面、logout 和旧会话拒绝通过。
+- `R24-FEISHU-002` Fixed：未使用的 Contact/API 权限全部删除并发布，Contact 数据范围 N/A。
+- `R24-FEISHU-003` Fixed：正式应用可用范围为四名已审核成员，桌面/移动主页和 H5 可信域名已配置。
+- `R24-CRED-001` Fixed：正式凭据经一次性隐藏交接轮换，生产安全更新并重启，后续真实 OAuth/session/logout 通过；证据不保留值。
+
+#### Authenticated ZAP
+- 真实飞书 OAuth 由用户在 headed Chrome 完成；仓库外临时目录权限 700、文件 600，内容未输出。
+- 扫描目标仅 `https://r24b-staging.local`；生产、飞书登录/开放平台、第三方 CDN/监控域名明确排除。
+- 六个受保护接口认证态 HTTP 200；同一项目接口无会话 HTTP 401；ZAP auth statistics 有两项非零值。
+- Spider 55 URLs；AJAX 995 in-scope results、5 个越界请求被阻断；GET-only OpenAPI 66 operations；21 个可用批准规则 LOW strength，100ms delay。
+- 首轮发现 CSP plugin `10038` 仅命中 favicon；修复/部署后定向复测为 0，最终完整认证扫描 Critical/High/Medium/Low/Info=`0/0/0/3/4`。
+- `authMaterialUsed=true`、`authMaterialDestroyed=true`、`serverSessionInvalidated=true`；临时目录和 R24B 容器不存在，报告文件 mode 600。
+
+#### Final Regression
+```text
+pnpm install --frozen-lockfile                     PASS
+pnpm lint                                          PASS
+pnpm typecheck                                     PASS
+pnpm test                                          Web 79/79; API 187/187
+pnpm --filter @feishu-timeline/web build           PASS
+pnpm --filter @feishu-timeline/api build           PASS
+pnpm --filter @feishu-timeline/api prisma:validate PASS
+pnpm test:e2e                                      PASS
+pnpm playwright:test                               52/52 PASS (5.2m)
+pnpm security:secrets                              current/history PASS, 0 findings
+```
+
+- Playwright 包含 R23 全部稳定性用例和项目、流程、评审、上传、审计、复盘主链路。
+- 唯一真实账户只用于真实 OAuth/管理员正向路径；负向角色与 IDOR 由确定性自动化身份覆盖，不宣称九个真实账户。
+
+#### Decision
+`R24B_PASS / R24_PASS / R25_JOINT_RELEASE_GATE_ALLOWED_BUT_NOT_STARTED / NO_MAIN_MERGE / NO_TAG / STOP`
+
+R24 已正式通过。等待用户确认后才允许进入独立的 R25 联合发布门禁轮次。
