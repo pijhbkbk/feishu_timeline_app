@@ -9,6 +9,7 @@ const sampleMs = parseDuration(args['sample-every'] ?? '10m');
 const outputPath = path.resolve(args.output ?? 'test-results/r23c/monitor.json');
 const prefix = args['container-prefix'] ?? 'feishu-timeline-staging';
 const testRunId = validateTestRunId(args['test-run-id'] ?? 'R23C-UNKNOWN');
+const projectId = validateProjectId(args['project-id'] ?? 'cmrli3mo0002en401r82nwyh0');
 const startedAt = new Date();
 const loadDeadline = Date.now() + durationMs;
 const samples = [];
@@ -124,7 +125,7 @@ function captureSample(containerPrefix, runId, phase) {
         FROM workflow_tasks WHERE "isActive" = true
         GROUP BY "workflowInstanceId", "nodeCode", "taskRound" HAVING count(*) > 1
       ) duplicates),
-      (SELECT count(*) FROM recurring_tasks WHERE "projectId"='cmrli3mo0002en401r82nwyh0'),
+      (SELECT count(*) FROM recurring_tasks WHERE "projectId"='${projectId}'),
       (SELECT count(*) FROM task_progress_updates WHERE "completedContent" LIKE '%${runId}%'),
       (SELECT count(*) FROM audit_logs WHERE action='WORKFLOW_FORM_SAVED' AND COALESCE("afterData"::text,'') LIKE '%${runId}%');
   `).split('|').map(Number);
@@ -219,6 +220,11 @@ function parseDuration(value) {
 
 function validateTestRunId(value) {
   if (!/^[A-Za-z0-9_-]{8,120}$/.test(value)) throw new Error('testRunId 格式不安全。');
+  return value;
+}
+
+function validateProjectId(value) {
+  if (!/^[A-Za-z0-9_-]{8,120}$/.test(value)) throw new Error('projectId 格式不安全。');
   return value;
 }
 

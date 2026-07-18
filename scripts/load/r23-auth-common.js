@@ -7,6 +7,11 @@ const baseUrl = __ENV.K6_BASE_URL || session.baseUrl || 'http://host.docker.inte
 const browserOrigin = __ENV.K6_BROWSER_ORIGIN || 'http://localhost:8080';
 const projectId = __ENV.K6_PROJECT_ID || 'cmrli3pqi002vn401zld6zcfy';
 const testRunId = __ENV.K6_TEST_RUN_ID || `R23C-${Date.now()}`;
+const primaryReadRatio10Vu = Number(__ENV.K6_PRIMARY_READ_RATIO_10VU || '0.8');
+
+if (!(primaryReadRatio10Vu > 0 && primaryReadRatio10Vu < 1)) {
+  throw new Error('K6_PRIMARY_READ_RATIO_10VU 必须在 0 和 1 之间。');
+}
 
 export const readLatency = new Trend('r23c_read_latency', true);
 export const writeLatency = new Trend('r23c_write_latency', true);
@@ -98,7 +103,7 @@ export function runProfileIteration(data, profile) {
   if (__VU === 1) {
     Math.random() < 0.5 ? saveDraft(data.taskId) : submitProgress(data.taskId);
   } else {
-    readOne(Math.random() < 0.8 ? primaryReads : secondaryReads);
+    readOne(Math.random() < primaryReadRatio10Vu ? primaryReads : secondaryReads);
   }
   sleep(1);
 }
@@ -164,7 +169,12 @@ function saveDraft(taskId) {
     'PUT',
     `/api/workflows/tasks/${taskId}/form`,
     {
-      payload: { testRunId, requestId, idempotencyKey, source: 'R23C_AUTH_ENDURANCE' },
+      payload: {
+        testRunId,
+        requestId,
+        idempotencyKey,
+        source: testRunId.startsWith('R25') ? 'R25_AUTH_ENDURANCE' : 'R23C_AUTH_ENDURANCE',
+      },
       comment: `${testRunId}:${requestId}`,
     },
     'write',

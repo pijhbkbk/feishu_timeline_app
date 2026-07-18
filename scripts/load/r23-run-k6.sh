@@ -5,7 +5,9 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 PROFILE="${1:-}"
 SESSION_FILE="${K6_SESSION_FILE:-}"
 TEST_RUN_ID="${K6_TEST_RUN_ID:-}"
-K6_IMAGE="${K6_IMAGE:-grafana/k6:latest}"
+K6_IMAGE="${K6_IMAGE:-mirror.gcr.io/grafana/k6:1.3.0@sha256:3ddc8b1a33a2c3d8edc6e99b6a762ae36cba08788463458f5e6a7703e14eb77d}"
+PROJECT_ID="${K6_PROJECT_ID:-cmrli3pqi002vn401zld6zcfy}"
+RESULT_ROOT="${K6_RESULT_ROOT:-$ROOT_DIR/test-results/r23c}"
 
 case "$PROFILE" in
   preflight)
@@ -32,8 +34,8 @@ case "$PROFILE" in
     ;;
 esac
 
-if [[ ! "$SESSION_FILE" = /tmp/r23-auth.*/* ]] || [[ ! -f "$SESSION_FILE" ]]; then
-  echo "K6_SESSION_FILE 必须是 /tmp/r23-auth.* 下的现有文件。" >&2
+if [[ ! "$SESSION_FILE" = /tmp/r23-auth.*/* && ! "$SESSION_FILE" = /tmp/r25-auth.*/* ]] || [[ ! -f "$SESSION_FILE" ]]; then
+  echo "K6_SESSION_FILE 必须是 /tmp/r23-auth.* 或 /tmp/r25-auth.* 下的现有文件。" >&2
   exit 2
 fi
 if [[ ! "$TEST_RUN_ID" =~ ^[A-Za-z0-9_-]{8,120}$ ]]; then
@@ -42,7 +44,12 @@ if [[ ! "$TEST_RUN_ID" =~ ^[A-Za-z0-9_-]{8,120}$ ]]; then
 fi
 
 SESSION_DIR="$(dirname "$SESSION_FILE")"
-RESULT_DIR="$ROOT_DIR/test-results/r23c/$PROFILE/$TEST_RUN_ID"
+if [[ ! "$PROJECT_ID" =~ ^[A-Za-z0-9_-]{8,120}$ ]]; then
+  echo "K6_PROJECT_ID 格式不安全。" >&2
+  exit 2
+fi
+
+RESULT_DIR="$RESULT_ROOT/$PROFILE/$TEST_RUN_ID"
 mkdir -p "$RESULT_DIR"
 
 node "$ROOT_DIR/scripts/load/r23-resource-monitor.mjs" \
@@ -50,6 +57,7 @@ node "$ROOT_DIR/scripts/load/r23-resource-monitor.mjs" \
   --idle-duration "$IDLE_DURATION" \
   --sample-every "$SAMPLE_EVERY" \
   --test-run-id "$TEST_RUN_ID" \
+  --project-id "$PROJECT_ID" \
   --output "$RESULT_DIR/monitor.json" &
 MONITOR_PID=$!
 
@@ -70,10 +78,12 @@ docker run --rm \
   -w /scripts \
   -e "K6_SESSION_FILE=$SESSION_FILE" \
   -e "K6_TEST_RUN_ID=$TEST_RUN_ID" \
+  -e "K6_PROJECT_ID=$PROJECT_ID" \
   -e "K6_DURATION=$DURATION" \
   -e "K6_BASE_URL=http://host.docker.internal:8080" \
   -e "K6_BROWSER_ORIGIN=http://localhost:8080" \
   -e "K6_SUMMARY_PATH=/results/summary.json" \
+  -e "K6_PRIMARY_READ_RATIO_10VU=${K6_PRIMARY_READ_RATIO_10VU:-0.8}" \
   -e "K6_TRACE_REQUEST_IDS=${K6_TRACE_REQUEST_IDS:-false}" \
   "$K6_IMAGE" run "$SCRIPT_NAME" 2>&1 | tee "$RESULT_DIR/k6.log"
 K6_RC=${PIPESTATUS[0]}
@@ -86,4 +96,4 @@ fi
 
 wait "$MONITOR_PID"
 trap - EXIT INT TERM
-echo "R23C $PROFILE 已完成，结果目录：$RESULT_DIR"
+echo "$TEST_RUN_ID $PROFILE 已完成，结果目录：$RESULT_DIR"

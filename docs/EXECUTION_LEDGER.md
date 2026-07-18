@@ -3810,3 +3810,39 @@ pnpm security:secrets                              current/history PASS, 0 findi
 `R24B_PASS / R24_PASS / R25_JOINT_RELEASE_GATE_ALLOWED_BUT_NOT_STARTED / NO_MAIN_MERGE / NO_TAG / STOP`
 
 R24 已正式通过。等待用户确认后才允许进入独立的 R25 联合发布门禁轮次。
+
+---
+
+### Round R25_COMBINED_STABILITY_SECURITY_RELEASE_GATE
+
+#### Goal And Scope
+- 在冻结 runtime `f00703ac7834837f9ad573bc11d779a5caa7c02f` 上统一稳定性、安全、构建溯源、备份恢复、回滚和真实 staging UAT 证据。
+- 只操作独立 staging；不部署 production、不写 production 数据库、不主动扫描 production/飞书域名、不合并 `main`、不创建稳定 tag。
+- 认证材料仅位于仓库外 `/tmp/r25-auth.*`，不得输出 Cookie、OAuth code、token、App Secret、storageState 或数据库密码。
+
+#### Completed Baseline And Evidence
+- 创建并推送 `release/r25-final-gate`；生产只读核查仍运行 `7dd2243270c03399cd6da6cec41bf12eab68dd0b`，tracked tree clean。
+- 从 detached exact `f00703a` 构建并部署不可变 API/Web/PostgreSQL 镜像；OCI revision 一致，`RUN_SEED=no`，18 migrations、0 pending，五服务 healthy/restart 0。
+- API/Web Trivy 全严重度 0；SBOM、Dockerfile/lockfile SHA256 和镜像 digest 已记录于 `docs/release/R25_BUILD_PROVENANCE.md`。
+- R23 证据复核确认其正式 PASSED，但 R24 修改涉及认证、上传、代理、权限、镜像和审计，旧耐久不能直接复用。
+- 真实飞书 OAuth 成功并创建受控项目 `R25-UAT-并发稳定性-*`；未输出认证值。
+- 10 VU × 30 m `R25-10VU30M-20260717T054139Z` PASS：17,484/17,484 checks，error/auth/5xx 0，read/write p95 `72.986/62.546 ms`，deadlock/restart/duplicate 0，idle memory `-2.061%`。
+
+#### 5 VU Failure Attempts
+- Attempt 1 `R25-5VU2H-20260717T061657Z`：34,907/34,907 checks，error/auth/5xx/functional failure 0，read/write p95 `84.591/49.942 ms`，deadlock/restart/duplicate/unhandled 0；但 5 分钟 idle 后 API+Web memory growth `+60.2254%`，超过 `<20%`，因此 FAIL。
+- 只读诊断显示无 Redis fallback、OOM、swap、unbounded queue、detached V8 context 或 descriptor growth；API live JS heap 约 64 MiB，主要高水位来自 V8 young-generation 物理保留。该解释不覆盖显式 RSS 门禁。
+- Attempt 2 `R25-5VU2H-RETRY2-20260717T082834Z`：warmed steady-state monitor memory `+0.7989%`、deadlock/restart/5xx/unhandled 0，但 Mac/任务中断和 sleep 使 k6 只完成约 1 h 20 m，无 summary；恢复后 session 已过期并出现 401。该执行 INVALID，不能作为 2 h PASS。
+- 根据 `AGENTS.md` 连续两次仍失败即停止；未启动第三次。孤立 k6 container 已 stop/remove。
+
+#### Cleanup And Sequential Stop
+- 旧 session 的受保护请求已返回 401；logout 因 session 过期返回非成功，但 cleanup `finally` 已销毁仓库外目录。
+- `/tmp/r25-auth.*=0`、R25/k6 containers=0；Gitleaks 8.30.1 current/history PASS，0 findings。
+- full quality regression、剩余 R24 security smoke、staging backup/restore、rollback/forward recovery、最终 interactive UAT 均因 stage 6 blocker 而 NOT RUN，不误报 PASS。
+- candidate tag `v1.1.0-rc.1` 未创建；production 未变更。
+
+#### Decision And Resume Point
+`R25_BLOCKED / PRODUCTION_NOT_AUTHORIZED / NO_CANDIDATE_TAG / STOP`
+
+恢复必须先获得超过 2 h 10 m 的持续唤醒执行窗口和 fresh real OAuth session，清除 stale load containers，然后重跑完整 `5 VU × 2 h`。若 runtime 未变且该门禁通过，可继续阶段 7–12；若修改 runtime/config，必须重建部署并重跑所有受影响门禁。
+
+证据：`docs/rounds/R25.md`、`docs/release/R25_COMBINED_GATE_REPORT.md`、`docs/release/R25_BLOCKER_REPORT.md`、`docs/security/R25_SECRETS_REPORT.md`。

@@ -46,7 +46,7 @@ async function validateSessionDir(value) {
 
   const resolved = path.resolve(value);
   if (!isSafeTempPath(resolved)) {
-    throw new Error('认证目录必须位于 /tmp/r23-auth.* 或 /tmp/r24b-zap-auth.*。');
+    throw new Error('认证目录必须位于批准的 /tmp/r23-auth.*、/tmp/r24b-zap-auth.* 或 /tmp/r25-auth.*。');
   }
 
   return resolved;
@@ -56,5 +56,7 @@ function isSafeTempPath(value) {
   return value.startsWith(`/tmp${path.sep}r23-auth.`) ||
     value.startsWith(`/private/tmp${path.sep}r23-auth.`) ||
     value.startsWith(`/tmp${path.sep}r24b-zap-auth.`) ||
-    value.startsWith(`/private/tmp${path.sep}r24b-zap-auth.`);
+    value.startsWith(`/private/tmp${path.sep}r24b-zap-auth.`) ||
+    value.startsWith(`/tmp${path.sep}r25-auth.`) ||
+    value.startsWith(`/private/tmp${path.sep}r25-auth.`);
 }
