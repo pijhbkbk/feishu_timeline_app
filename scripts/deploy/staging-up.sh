@@ -36,6 +36,16 @@ if [[ -z "$IMAGE_TAG" ]]; then
   IMAGE_TAG="${GIT_SHA:0:12}"
 fi
 RUN_SEED="${RUN_SEED:-no}"
+OCI_CREATED="${OCI_CREATED:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}"
+OCI_SOURCE="${OCI_SOURCE:-$(git -C "$ROOT_DIR" remote get-url origin 2>/dev/null || true)}"
+OCI_SOURCE="${OCI_SOURCE%.git}"
+OCI_VERSION="${OCI_VERSION:-$IMAGE_TAG}"
+
+[[ -n "$OCI_SOURCE" ]] || fail "Unable to resolve the OCI source repository URL."
+[[ "$OCI_CREATED" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$ ]] \
+  || fail "OCI_CREATED must be a UTC RFC 3339 timestamp."
+[[ "$OCI_VERSION" =~ ^[A-Za-z0-9][A-Za-z0-9._+-]{0,127}$ ]] \
+  || fail "OCI_VERSION contains unsupported characters."
 
 export API_IMAGE_REPO WEB_IMAGE_REPO POSTGRES_IMAGE_REPO IMAGE_TAG NODE_IMAGE
 export POSTGRES_BASE_IMAGE REDIS_IMAGE NGINX_IMAGE
@@ -53,7 +63,9 @@ build_release_image() {
   docker build --pull \
     --build-arg "NODE_IMAGE=${NODE_IMAGE}" \
     --label "org.opencontainers.image.revision=${GIT_SHA}" \
-    --label "org.opencontainers.image.source=feishu-timeline-app" \
+    --label "org.opencontainers.image.created=${OCI_CREATED}" \
+    --label "org.opencontainers.image.source=${OCI_SOURCE}" \
+    --label "org.opencontainers.image.version=${OCI_VERSION}" \
     -t "$image_ref" -f "$dockerfile_path" "$ROOT_DIR"
 }
 
@@ -64,7 +76,9 @@ log "Building hardened PostgreSQL image ${POSTGRES_IMAGE_REPO}:${IMAGE_TAG}"
 docker build --pull \
   --build-arg "POSTGRES_BASE_IMAGE=${POSTGRES_BASE_IMAGE}" \
   --label "org.opencontainers.image.revision=${GIT_SHA}" \
-  --label "org.opencontainers.image.source=feishu-timeline-app" \
+  --label "org.opencontainers.image.created=${OCI_CREATED}" \
+  --label "org.opencontainers.image.source=${OCI_SOURCE}" \
+  --label "org.opencontainers.image.version=${OCI_VERSION}" \
   -t "${POSTGRES_IMAGE_REPO}:${IMAGE_TAG}" \
   -f "$ROOT_DIR/deploy/images/postgres/Dockerfile" "$ROOT_DIR"
 
@@ -90,6 +104,9 @@ IMAGE_TAG=${IMAGE_TAG}
 RELEASED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 GIT_SHA=${GIT_SHA}
 GIT_DIRTY=${GIT_DIRTY}
+OCI_CREATED=${OCI_CREATED}
+OCI_SOURCE=${OCI_SOURCE}
+OCI_VERSION=${OCI_VERSION}
 API_IMAGE_ID=${API_IMAGE_ID}
 WEB_IMAGE_ID=${WEB_IMAGE_ID}
 POSTGRES_IMAGE_ID=${POSTGRES_IMAGE_ID}
