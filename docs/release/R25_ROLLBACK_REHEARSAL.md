@@ -3,8 +3,8 @@
 ## Scope and safety
 
 - Environment: isolated staging only.
-- Current candidate: runtime commit `f00703ac7834837f9ad573bc11d779a5caa7c02f`, image tag `r25-f00703ac7834`.
-- Previous known stable application: `d86c04e8c016a0241172fb7c608f55d8dfcca5c9`, image tag `d86c04e8c016`.
+- Current candidate: runtime commit `6d24378168fd144e539b0e99f975b918b06e37a5`, image tag `r25-6d2437818502`.
+- Previous immutable staging application: `437c0d881efa...`.
 - PostgreSQL data volume and object-storage volume remain in place; no reset, seed or destructive migration command is permitted.
 - Production is not changed.
 
@@ -20,7 +20,7 @@
 
 ## Result
 
-NOT RUN. The formal rehearsal was correctly held behind the authenticated endurance gate, which did not pass after two executions. Staging remains on the exact R25 candidate runtime; production is unchanged.
+NOT RUN. Both authenticated endurance profiles passed, but the round stopped after the administrator UAT gate failed twice. Staging remains on exact runtime `6d24378`; production is unchanged.
 
 | Gate | Result |
 |---|---|

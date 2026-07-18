@@ -3,7 +3,7 @@
 ## Scope and safety
 
 - Target: isolated local staging PostgreSQL only.
-- Runtime application commit: `f00703ac7834837f9ad573bc11d779a5caa7c02f`.
+- Runtime application commit: `6d24378168fd144e539b0e99f975b918b06e37a5`.
 - Production database: not connected and not modified.
 - Backup format: PostgreSQL custom archive, no owner or privileges.
 - Restore target: a temporary staging database, destroyed after validation.
@@ -23,7 +23,7 @@ The rehearsal uses `scripts/testing/r25-backup-restore.sh` to:
 
 ## Result
 
-NOT RUN. The sequential round stopped after two unsuccessful 5 VU endurance executions, before backup I/O was permitted. No production database was connected or modified.
+NOT RUN. Both endurance profiles passed on the final runtime, but the round then stopped after the administrator UAT gate failed twice. No backup I/O, production database connection or production modification occurred.
 
 | Gate | Result |
 |---|---|

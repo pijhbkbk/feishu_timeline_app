@@ -4,105 +4,73 @@
 
 `R25_BLOCKED / PRODUCTION_NOT_AUTHORIZED / NO_CANDIDATE_TAG / STOP`
 
-The required 5 VU × 2 h profile did not pass after two consecutive executions. The round stopped under the repository execution protocol before complete regression, remaining security smoke, staging backup/restore, rollback/forward recovery, real staging UAT and candidate-tag creation. No production deployment, production active scan, `main` merge, candidate tag or stable tag is authorized.
+Both same-runtime authenticated load profiles now pass. R25 nevertheless fails final staging UAT because the required administrator audit-log query surface is not implemented. No production deployment, `main` merge, candidate tag or stable tag is authorized.
 
 ## Frozen candidate
 
 | Field | Value |
 |---|---|
-| runtime application commit | `f00703ac7834837f9ad573bc11d779a5caa7c02f` |
-| security evidence commit | `72adbc3ad2ece6dc03b82509aa0af311c55f7147` |
+| runtime application commit | `6d24378168fd144e539b0e99f975b918b06e37a5` |
 | release branch | `release/r25-final-gate` |
-| release candidate commit | NOT CREATED; round blocked before candidate closure |
+| release candidate commit | NOT CREATED |
 | candidate tag | NOT CREATED; proposed `v1.1.0-rc.1` remains unreserved |
-| staging runtime commit | `f00703ac7834837f9ad573bc11d779a5caa7c02f` |
+| staging runtime commit | `6d24378168fd144e539b0e99f975b918b06e37a5` |
 | production runtime commit | `7dd2243270c03399cd6da6cec41bf12eab68dd0b`; unchanged, tracked tree clean |
 
-The R24B evidence commit contains documentation plus scan/capture tooling corrections but no runtime application change. Candidate application images were built from a detached, exact `f00703a` worktree and carry that full revision in OCI labels.
+## Exact staging artifacts
 
-## Immutable artifacts
-
-| Artifact | Tag | Image ID / digest |
+| Component | Immutable tag | Digest / image ID |
 |---|---|---|
-| API | `feishu-timeline-api:r25-f00703ac7834` | `sha256:c134e7c02b6de1ce9a67322676411bdf439505e629251faeb0251f6943702f91` |
-| Web | `feishu-timeline-web:r25-f00703ac7834` | `sha256:9367d0942d3c1e91492e405d9e7fe762487b86a9b0fac28e5b47f867fc1aa064` |
-| hardened PostgreSQL | `feishu-timeline-postgres:r25-f00703ac7834` | `sha256:5a87473011a32bfe237c96acc23a93d10e40b17c673b8ca73a19c7baff1b0975` |
+| API | `feishu-timeline-api:r25-6d2437818502` | `sha256:b117abb32e0f7c2e8133e58cc00980374b0dc4f2804cbff37e11d4af7e38b980` |
+| Web | `feishu-timeline-web:r25-6d2437818502` | `sha256:298511494483dec4775d97e787cbc56ebf554df97e7998d886ff51547efe65ee` |
+| PostgreSQL | `feishu-timeline-postgres:r25-6d2437818502` | `sha256:5c6597c9de882a5fb279eb1316e98e708ca4f9cb32a1936b8e2316f8270a1602` |
+| Redis | pinned digest | `sha256:6ab0b6e7381779332f97b8ca76193e45b0756f38d4c0dcda72dbb3c32061ab99` |
+| Nginx | pinned digest | `sha256:ec664813a30459a8e7176315268a623f6b31abc370eeac51c7de81cd4ec4d451` |
 
-Redis and Nginx use the pinned digests recorded in `R25_BUILD_PROVENANCE.md`. Staging deployment used `RUN_SEED=no`, `prisma migrate deploy`, 18 migrations with 0 pending, five healthy services and zero restarts.
+OCI revision/source/version/created labels were inspected on API, Web and PostgreSQL. Deployment used `RUN_SEED=no`, 18 migrations/0 pending, and five healthy services with restart count 0.
 
-## Prior-gate evidence
+## Prior gates
 
-| Gate | Result |
-|---|---|
-| R23 | Formally PASSED at application commit `d6d4962f...`; its endurance commit is an ancestor of `f00703a`. |
-| R23 reuse decision | Historical endurance is not sufficient for R25 because OAuth, session, Origin/CSRF, upload, Nginx, API, database/permissions, Redis/container topology and audit behavior changed. Both profiles are rerun. |
-| R24B | PASS at final runtime `f00703a`; Critical/High/Medium `0/0/0`; Low/Informational `3/4`, all triaged with owners. |
+- R23 formally PASSED at `d6d4962...`; its pre-R24 endurance was not reused.
+- R24B PASSED; Critical/High/Medium `0/0/0` and Low/Info `3/4` at the completed R24B gate.
+- GCP IAP and production anti-tamper read-only checks passed in this resumed run.
 
-## Authenticated stability
+## Authenticated stability on `6d24378`
 
-One real Feishu staging account supplied a short-lived repository-external session. The session value is never printed or copied into Git. The test project is restricted to an `R25-UAT-` prefix and all endurance writes carry unique run/request/idempotency identifiers. No nine-real-account claim is made.
+| Profile | Result | Checks | Read/write p95 | Auth/5xx/functional | Memory after idle | Restarts/deadlocks/queue |
+|---|---|---:|---:|---:|---:|---:|
+| 10 VU × 30 m | PASS | 17,424/17,424 | 106.338/58.429 ms | 0/0/0 | -8.255% | 0/0/0 |
+| 5 VU × 2 h + 5 m idle | PASS | 34,832/34,832 | 119.742/44.276 ms | 0/0/0 | -0.602% | 0/0/0 |
 
-### 10 VU × 30 minutes
+The two-hour run completed 34,830 iterations, 29,650 reads, 3,409 draft writes and 1,771 progress writes. Database connections peaked at 18; slow queries, deadlocks, duplicate active workflow groups, restarts, uncaught/unhandled errors and API/Nginx 5xx were all 0.
 
-Run `R25-10VU30M-20260717T054139Z`: **PASS**.
+## Real staging UAT
 
-| Metric | Result | Gate |
-|---|---:|---:|
-| checks | `17,484/17,484`, 0 failures | all functional checks pass |
-| HTTP error rate | `0%` | `<1%` |
-| unexpected 401/403 | `0` | `0` |
-| HTTP 5xx | `0` | `0` |
-| read p95 | `72.986 ms` | `<800 ms` |
-| write p95 | `62.546 ms` | `<1500 ms` |
-| read / draft / progress operations | `15,735 / 876 / 871` | controlled mix |
-| DB connections / slow queries / deadlocks | `18 / 0 / 0` | no saturation or deadlock |
-| Redis memory / queue depth | `1,451,176 bytes / 0` | bounded / zero queue |
-| service restarts | all five `0 → 0` | `0` |
-| uncaught / unhandled / API 5xx / Nginx 5xx | `0 / 0 / 0 / 0` | all zero |
-| duplicate active workflow groups | `0 → 0` | `0` |
-| controlled write integrity | DB increments exactly `871` progress and `874` new draft audit rows, with final counts matching k6 operations | no lost/duplicate write evidence |
-| idle API+Web memory change | `-2.061%` | `<20%` |
+- Employee path: PASS; task 1.102 s, progress/material 58.770 s, operation complete and next operation generated.
+- Project-manager path: PASS; risk 1.405 s and stalled operation in two clicks.
+- Administrator path: **FAIL / P1 `R25-ADMIN-001`**; `/admin/audit-logs` remains a placeholder and authenticated global list endpoint returns 404.
+- Management path: NOT RUN after sequential stop.
 
-### 5 VU × 2 hours
+## Gates not closed
 
-**BLOCKED after two executions.**
+The following are not passes: exact-final full quality suite, remaining R25 security regression and final five-image/SBOM closure, backup/restore rehearsal, rollback/forward rehearsal, management UAT, release document closure and candidate tag creation.
 
-| Execution | Result | Key evidence |
-|---|---|---|
-| `R25-5VU2H-20260717T061657Z` | FAIL | 34,907/34,907 checks and all functional/latency/integrity gates passed, but five-minute idle API+Web memory growth was `+60.2254%` against `<20%`. |
-| `R25-5VU2H-RETRY2-20260717T082834Z` | INVALID / INTERRUPTED | Resource monitor showed a stable plateau and `+0.7989%`, but Mac/task interruption left k6 at about 1 h 20 m with no summary; after session expiry the orphan produced 401 responses. The container was stopped and removed. |
+## Counts at stop
 
-No third execution was started. Full details and the safe resumption condition are in `R25_BLOCKER_REPORT.md`.
+- Product defects: P0/P1/P2/P3 = `0/1/0/0`.
+- Last completed security gate (R24B): Critical/High/Medium/Low/Info = `0/0/0/3/4`.
+- R25 final security counts: NOT ESTABLISHED because the R25 security stage did not complete.
 
-## Regression and security status
+## Evidence
 
-| Area | Current R25 status |
-|---|---|
-| real Feishu OAuth and authorized project create | PASS |
-| IAP firewall read-only recheck | PASS: API enabled, instance tagged, only `35.235.240.0/20` reaches tagged TCP 22; global rule disabled and retained |
-| production remote anti-tamper | PASS: production remains on `7dd2243...`, tracked changes `0` |
-| API/Web candidate Trivy | PASS, zero vulnerabilities at all severities |
-| full regression | NOT RUN; stopped at 5 VU blocker |
-| R24 key security smoke | PARTIAL only; remaining checks NOT RUN |
-| staging backup/restore | NOT RUN; stopped at 5 VU blocker |
-| staging rollback/forward recovery | NOT RUN; stopped at 5 VU blocker |
-| staging real-user UAT | NOT RUN; stopped at 5 VU blocker |
-| auth logout/destruction and final Gitleaks | PASS for cleanup: old session rejected; temp dirs/containers 0; Gitleaks current/history 0 findings |
-
-## Defect and security counts
-
-Known open product defects remain P0/P1/P2/P3 `0/0/0/0`, but R25 final defect counts are not established because full regression was not run. The endurance blocker is test/release evidence, not a product-severity defect. The last complete R24B security counts remain Critical/High/Medium/Low/Informational `0/0/0/3/4`; R25 final security counts are not established because the remaining smoke was not run.
-
-## Evidence locations
-
+- `docs/release/R25_BLOCKER_REPORT.md`
+- `docs/release/R25_STAGING_UAT.md`
 - `docs/release/R25_STABILITY_EVIDENCE_REVIEW.md`
 - `docs/release/R25_BUILD_PROVENANCE.md`
-- `test-results/r25/preflight/` (Git-ignored)
-- `test-results/r25/10vu-30m/` (Git-ignored)
-- `test-results/r25/5vu-2h/` (Git-ignored; failed and interrupted execution evidence)
-- `reports/security/r25/` (Git-ignored)
-- `docs/release/R25_BLOCKER_REPORT.md`
+- Git-ignored `test-results/r25-final/10vu-30m/`
+- Git-ignored `test-results/r25-final/5vu-2h/`
+- Git-ignored `test-results/r25/uat/`
 
-## Release recommendation
+## Recommendation
 
-Do not enter production release. R25 remains blocked until a fresh uninterrupted 5 VU × 2 h run passes and every sequentially stopped gate is completed. A candidate evidence commit/tag and separate product-owner R25B approval would still be required afterward.
+Do not enter R25B or production release. Fix `R25-ADMIN-001` in a separately authorized runtime round, then rebuild/redeploy and repeat all affected same-runtime gates. A candidate evidence commit/tag and explicit product-owner approval are still required after a complete PASS.

@@ -1,24 +1,27 @@
 # R25 Known Issues and Residual Observations
 
-## Release-blocking findings
+## Release-blocking finding
 
-| ID | Type | Owner | Status and action |
+| ID | Severity | Owner | Status and required action |
 |---|---|---|---|
-| `R25-GATE-001` | Release evidence blocker | Release / Reliability | First 5 VU run failed the explicit idle-memory gate (`+60.2254%`). Diagnosis indicates a retained V8 allocation high-water rather than continuing linear growth, but the gate is not waived. |
-| `R25-GATE-002` | Execution-environment blocker | Release operator | Second 5 VU run was interrupted by Mac/task sleep, did not complete 2 h, produced no summary and resumed after session expiry. Require a continuous awake window and fresh OAuth before resumption. |
+| `R25-ADMIN-001` | P1 | Backend / Web / Product | `/admin/audit-logs` remains a placeholder and no authenticated global audit-list API exists. Add bounded pagination, stable filtering/sorting, independent detail lookup and admin/non-admin authorization coverage in a separate runtime-fix round, then repeat affected gates. |
 
-These are not classified as P0/P1 product defects or Critical/High/Medium vulnerabilities. They nevertheless block R25 release closure. No open P0/P1 or Critical/High/Medium item is permitted at any future R25 closure.
+## Resolved release-evidence blockers
+
+| ID | Result |
+|---|---|
+| `R25-GATE-001` cold-baseline RSS high-water | Resolved for the formal gate: warmed preflight and final 2 h run met the explicit post-idle threshold; retained as a non-blocking observation. |
+| `R25-GATE-002` interrupted execution window | Resolved: user supplied a continuous window and the fresh-OAuth 2 h + 5 m run completed with a valid summary. |
 
 ## Triaged Low and Informational observations
 
 | ID | Severity | Owner | Status and action |
 |---|---|---|---|
 | `R24-DAST-002` / ZAP `10044` | Low | Web / Security | Login big-redirect heuristic; no token or sensitive response field observed. Recheck due 2026-08-15. |
-| ZAP `10036` | Low | Security tooling | Belonged to the ephemeral R24B scan-alias proxy, not deployed Nginx. Keep deployed version-suppression regression. |
-| ZAP `10035` | Low | Security tooling | Belonged to the ephemeral R24B scan-alias proxy. Keep production HSTS regression. |
-| ZAP `10024`, `10109`, `10015`, `10031` | Informational | Web / Security | URL-name, modern-app, cache and HTML-attribute heuristics; no exploitable issue demonstrated. Review with the next DAST cycle. |
+| ZAP `10036`, `10035` | Low | Security tooling | Ephemeral R24B scan-alias proxy observations, not deployed Nginx. Retain version-suppression and HSTS regression. |
+| ZAP `10024`, `10109`, `10015`, `10031` | Informational | Web / Security | Heuristics only; no exploit demonstrated. Review in the next DAST cycle. |
 
 ## Operational constraints
 
-- Only one real Feishu account is available for final interactive acceptance. Automated deterministic identities provide negative-role and IDOR coverage; no claim of nine real accounts is made.
-- The candidate is not production-authorized. Stable tag creation and `main` merge remain blocked until R25B deployment and the 72-hour observation period pass.
+- Only one real Feishu account is available for interactive acceptance. Deterministic identities supplement negative-role and IDOR coverage; no nine-real-account claim is made.
+- R25 is production-blocked. No candidate/stable tag or `main` merge is permitted.

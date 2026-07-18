@@ -4,50 +4,57 @@
 
 `R25_BLOCKED / PRODUCTION_NOT_AUTHORIZED / NO_CANDIDATE_TAG / STOP`
 
-R25 did not satisfy the required `5 VU × 2 h` authenticated endurance gate after two consecutive executions. The frozen runtime remains `f00703ac7834837f9ad573bc11d779a5caa7c02f`; no runtime code, workflow rule, production service or production data was changed.
+The resumed endurance gates passed on final runtime commit `6d24378168fd144e539b0e99f975b918b06e37a5`, but final staging UAT exposed a release-blocking administrator-path gap. This is a product P1 (`R25-ADMIN-001`), not missing test evidence:
+
+- `/admin/audit-logs` is still a `PagePlaceholder` skeleton;
+- authenticated `GET /api/admin/overview` returns HTTP 200;
+- authenticated `GET /api/admin/audit-logs?page=1&pageSize=20` returns HTTP 404;
+- the page contains no bounded audit list, filter, stable sort or independent detail reader required by the R25 gate.
+
+R25 is explicitly a non-feature-development round. Implementing a new global audit-log API and UI here would violate the frozen scope and create a new runtime commit that requires every affected gate to be repeated. The round therefore stops under `AGENTS.md` after the same administrator gate failed twice: first through the real authenticated UI, then through authenticated endpoint/server-markup verification.
 
 ## Evidence that remains valid
 
-- Release branch `release/r25-final-gate` exists remotely.
-- Exact R25 API/Web/PostgreSQL images were built and deployed to staging with OCI revision `f00703a`, `RUN_SEED=no`, 18 migrations and 0 pending migrations.
-- Five staging services remained healthy with zero restarts.
-- R23 is formally passed; R24B is passed with Critical/High/Medium `0/0/0`.
-- `R25-10VU30M-20260717T054139Z` passed: 17,484/17,484 checks, 0 HTTP/auth/5xx/functional failures, read/write p95 `72.986/62.546 ms`, 0 deadlocks/restarts/duplicate active workflow groups and idle memory change `-2.061%`.
+- Release branch: `release/r25-final-gate`.
+- Final runtime/staging commit: `6d24378168fd144e539b0e99f975b918b06e37a5`.
+- Staging exact tag: `r25-6d2437818502`; `RUN_SEED=no`; 18 migrations and 0 pending; all five services healthy with restart count 0.
+- R23 formally passed; historical endurance was not reused after R24.
+- R24B passed with Critical/High/Medium `0/0/0`.
+- GCP IAP read-only recheck passed; production remained on `7dd2243270c03399cd6da6cec41bf12eab68dd0b`, tracked changes 0.
+- `R25-10VU30M-6D24378-20260718T083625Z` passed: 17,424/17,424 checks, HTTP/auth/5xx/functional failures 0, read/write p95 `106.338/58.429 ms`, restart/deadlock/duplicate groups 0, idle memory `-8.255%`.
+- `R25-5VU2H-RETRY-6D24378-20260718T112109Z` passed: 34,832/34,832 checks, 34,830 iterations, HTTP/auth/5xx/functional failures 0, read/write p95 `119.742/44.276 ms`, 2 h load plus 5 m idle, idle memory `-0.602%`, restart/deadlock/queue/duplicate groups 0.
+- Real employee UAT passed: task located in 1.102 s, progress/material submission completed in 58.770 s, first operation completed and second operation generated.
+- Real project-manager UAT passed: risk identified in 1.405 s and stalled operation reached in two clicks; owner, blocker and expected-resolution evidence were visible.
 
-## 5 VU attempt 1 — valid execution, failed memory gate
+## Administrator gate — attempt 1
 
-Run: `R25-5VU2H-20260717T061657Z`.
+Using the fresh real Feishu OAuth session in Chrome, navigation to `/admin/audit-logs` did not provide a usable audit query page. The route rendered no interactive audit list, filter, paging or detail control. This was initially treated as possibly a browser-control/rendering anomaly and independently verified.
 
-- 34,907/34,907 checks passed.
-- HTTP error, unexpected 401/403, HTTP 5xx and functional failure counts were all 0.
-- Read/write p95 were `84.591/49.942 ms`.
-- Database deadlocks, slow queries, duplicate active workflow groups, queue depth, service restarts, uncaught exceptions and unhandled rejections were all 0.
-- API/Web memory changed from approximately `87.1/138.3 MiB` to `218.0/143.1 MiB` after the five-minute idle window: `+60.2254%`, exceeding the required `<20%` gate.
-- Read-only staging diagnosis found no Redis fallback, unbounded application queue, detached V8 context, OOM, swap use, restart or descriptor growth. The API JS heap used about 64 MiB while V8 retained a much larger young-generation physical reservation. This explains the high-water behavior but does not override the explicit RSS-based gate.
+## Administrator gate — attempt 2
 
-## 5 VU attempt 2 — invalidated by execution interruption
+The same authenticated identity was used for a read-only endpoint and server-markup verification without printing authentication values:
 
-Run: `R25-5VU2H-RETRY2-20260717T082834Z`.
+```text
+GET /api/admin/overview                         200
+GET /api/admin/audit-logs?page=1&pageSize=20  404
+GET /admin/audit-logs                          200, placeholder=true
+bounded audit list markup                      false
+```
 
-- The retry kept the warmed candidate container and initially showed a stable high-water plateau.
-- The independent resource monitor completed with API/Web memory change `+0.7989%`, database connections 18, slow queries/deadlocks 0, queue depth 0, restarts 0 and runtime 5xx/uncaught/unhandled errors 0.
-- The Mac/task was interrupted and slept while k6 was running. k6 completed only about `1 h 20 m` of its required `2 h`, produced no final summary, and remained as an orphan container.
-- After the short-lived session expired, the resumed orphan generated expected application 401 responses, which violate the endurance gate and make the run unusable as release evidence.
-- The orphan container was stopped and removed. No third attempt was started because `AGENTS.md` requires a blocker report after two consecutive failed executions.
+Repository inspection confirms the route maps to `PagePlaceholder` and the admin controller exposes only `GET /api/admin/overview`. Project-scoped logs exist, but they do not satisfy the required global administrator audit list/detail/filter gate.
 
-## Authentication cleanup
+## Cleanup
 
-- The expired session was already rejected by protected staging endpoints with HTTP 401.
-- Formal logout returned non-success because the session was expired; the cleanup routine still removed the repository-external authentication directory in `finally`.
-- `/tmp/r25-auth.*` directory count: 0.
-- Remaining R25/k6 containers: 0.
-- Gitleaks 8.30.1 current candidate tree and full Git history: PASS, 0 findings.
+- The repository-external load session was successfully logged out server-side and destroyed.
+- Final Gitleaks 8.30.1 current candidate-tree and full-history scans passed with 0 findings; repository-external auth directories and R25/k6 containers both count 0.
 - No Cookie, OAuth code, token, App Secret, database password or storage state was printed or committed.
+- The controlled UAT project and its append-only audit/history evidence were retained; no audit log was deleted or overwritten.
+- No candidate tag, stable tag, `main` merge or production deployment occurred.
 
-## Gates stopped by the blocker
+## Sequentially stopped gates
 
-The sequential round stopped before full quality regression, remaining R24 security smoke, staging backup/restore, staging rollback/forward recovery, final interactive staging UAT and candidate-tag creation. These items are `NOT RUN`, not failures and not passes. Production remains untouched.
+The exact-final full quality suite, remaining R25 security regression, final image scan/SBOM closure, backup/restore rehearsal, rollback/forward rehearsal, management retrospective UAT and release-candidate tag are `NOT RUN`/`NOT CREATED`. They must not be reported as passes.
 
 ## Safe resumption condition
 
-Resume only after the user provides a continuous awake execution window exceeding 2 hours 10 minutes. Obtain a fresh real OAuth session, verify its TTL covers the full run, prove no stale k6 container exists, and execute one new complete `5 VU × 2 h` profile. If runtime code or runtime configuration changes, rebuild/redeploy and rerun every affected gate, including 10 VU. Only after the 5 VU gate passes may the sequential quality, security, backup, rollback and UAT gates continue.
+Resolve `R25-ADMIN-001` in a separate authorized runtime-fix round by adding the required bounded global audit list, independent detail lookup, stable filtering/sorting and administrator/non-administrator authorization coverage. Then create a new runtime commit, rebuild/redeploy exact immutable artifacts and repeat both authenticated load profiles plus all subsequently affected quality, security, backup, rollback and UAT gates. Only a fully passing same-runtime evidence set may create `v1.1.0-rc.1` or request R25B approval.

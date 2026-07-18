@@ -3846,3 +3846,39 @@ R24 已正式通过。等待用户确认后才允许进入独立的 R25 联合�
 恢复必须先获得超过 2 h 10 m 的持续唤醒执行窗口和 fresh real OAuth session，清除 stale load containers，然后重跑完整 `5 VU × 2 h`。若 runtime 未变且该门禁通过，可继续阶段 7–12；若修改 runtime/config，必须重建部署并重跑所有受影响门禁。
 
 证据：`docs/rounds/R25.md`、`docs/release/R25_COMBINED_GATE_REPORT.md`、`docs/release/R25_BLOCKER_REPORT.md`、`docs/security/R25_SECRETS_REPORT.md`。
+
+---
+
+### Round R25_RESUMED_ENDURANCE_AND_UAT_BLOCKER
+
+#### Resume Inputs And Runtime
+- 用户提供超过 2 h 10 m 的持续唤醒窗口并重新完成真实飞书 OAuth。
+- 修复累计历史导致进展页提交超过 API 20 个附件 ID 的问题：只提交最新 20 个 ID、保留全部历史；补齐负载容器 cleanup 和 OCI labels。
+- 最终 runtime/staging commit：`6d24378168fd144e539b0e99f975b918b06e37a5`；staging tag `r25-6d2437818502`；`RUN_SEED=no`；18 migrations、0 pending；五服务 healthy/restart 0。
+- 生产仍运行 `7dd2243270c03399cd6da6cec41bf12eab68dd0b`，tracked changes 0；未修改 production。
+
+#### Formal Load Closure
+- 10 VU × 30 m `R25-10VU30M-6D24378-20260718T083625Z` PASS：17,424/17,424 checks；HTTP/auth/5xx/functional 0；read/write p95 `106.338/58.429 ms`；idle memory `-8.255%`；restart/deadlock/queue/duplicate 0。
+- 5 VU × 2 h `R25-5VU2H-RETRY-6D24378-20260718T112109Z` PASS：34,832/34,832 checks、34,830 iterations；read/write p95 `119.742/44.276 ms`；2 h load + 5 m idle；idle memory `-0.602%`；DB connections max 18；slow/deadlock/queue/restart/5xx/unhandled/duplicate 0。
+- 早期 cold-baseline RSS high-water 保留为非阻塞观察；正式 warmed run 满足显式门禁。
+
+#### Real Staging UAT
+- 员工路径 PASS：1.102 s 找到任务；58.770 s 完成进展与合法 PDF 绑定；第 1 工序按标准接口完成并生成第 2 工序。
+- 项目经理路径 PASS：1.405 s 识别风险；2 次点击进入停滞工序；卡片和节点证据包含责任人、阻塞原因、逾期和预计解决时间。
+- 管理员路径第一次 FAIL：真实认证态 `/admin/audit-logs` 未提供可用的审计查询/list/detail UI。
+- 独立认证态只读复核第二次 FAIL：`/api/admin/overview=200`，`/api/admin/audit-logs?page=1&pageSize=20=404`；`/admin/audit-logs=200` 但服务端标记为 placeholder，无有界列表标记。
+- 仓库确认 `apps/web/src/app/admin/[section]/page.tsx` 仍渲染 `PagePlaceholder`，`AdminController` 仅有 overview；项目级日志不能满足 R25 全局管理员审计门禁。
+
+#### Classification, Cleanup And Stop
+- 新 blocker：`R25-ADMIN-001`，P1；P0/P1/P2/P3=`0/1/0/0`。
+- R25 明确禁止新增业务功能；不得在联合发布门禁内临时实现全局审计后台。根据 `AGENTS.md` 同一门禁连续两次失败后停止。
+- 临时负载认证会话已服务端 logout 成功并销毁；Gitleaks 8.30.1 current/history 0 finding，`/tmp/r25-auth.*=0`、R25/k6 containers=0；未输出或提交 Cookie、OAuth code、token、App Secret、storageState 或数据库密码。
+- exact-final full quality、剩余 R25 security、最终五镜像/SBOM、backup/restore、rollback/forward、管理层 UAT、candidate commit/tag 均 NOT RUN/NOT CREATED，不误报 PASS。
+- production 未部署；未合并 main；未创建 candidate/stable tag。
+
+#### Decision And Safe Resume
+`R25_BLOCKED / R25-ADMIN-001_P1 / PRODUCTION_NOT_AUTHORIZED / NO_CANDIDATE_TAG / STOP`
+
+仅在单独授权的 runtime-fix 轮次补齐有界全局审计列表、独立详情、稳定筛选/排序和 admin/non-admin 权限覆盖后恢复。新 runtime 必须重新构建部署，并重跑 10 VU × 30 m、5 VU × 2 h 及所有受影响的后续门禁。
+
+证据：`docs/release/R25_BLOCKER_REPORT.md`、`docs/release/R25_STAGING_UAT.md`、`docs/release/R25_COMBINED_GATE_REPORT.md`、`docs/rounds/R25.md`。

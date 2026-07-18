@@ -2,11 +2,11 @@
 
 ## Scope and freeze
 
-- Runtime application commit: `f00703ac7834837f9ad573bc11d779a5caa7c02f`.
+- Runtime application commit: `6d24378168fd144e539b0e99f975b918b06e37a5` (blocked candidate source; not approved for production).
 - Release branch: `release/r25-final-gate`.
 - Candidate tag: `v1.1.0-rc.1` (must point to the final R25 evidence commit).
 - Production release is **not authorized by R25**. A separate, explicit R25B approval is required.
-- Deploy the already-scanned immutable API/Web images recorded in `R25_BUILD_PROVENANCE.md`; do not rebuild from a different tree.
+- Do not deploy while `R25-ADMIN-001` is open. After a future complete R25 pass, deploy only the final approved immutable images recorded in `R25_BUILD_PROVENANCE.md`; do not rebuild from a different tree.
 - `RUN_SEED=no`; database change is limited to `prisma migrate deploy`.
 
 ## Required people
