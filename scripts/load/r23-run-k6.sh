@@ -50,7 +50,13 @@ if [[ ! "$PROJECT_ID" =~ ^[A-Za-z0-9_-]{8,120}$ ]]; then
 fi
 
 RESULT_DIR="$RESULT_ROOT/$PROFILE/$TEST_RUN_ID"
+K6_CONTAINER_NAME="r25-${PROFILE}-${TEST_RUN_ID}"
 mkdir -p "$RESULT_DIR"
+
+if docker container inspect "$K6_CONTAINER_NAME" >/dev/null 2>&1; then
+  echo "检测到同名 k6 容器，拒绝覆盖：$K6_CONTAINER_NAME" >&2
+  exit 2
+fi
 
 node "$ROOT_DIR/scripts/load/r23-resource-monitor.mjs" \
   --duration "$DURATION" \
@@ -67,10 +73,20 @@ cleanup_monitor() {
     wait "$MONITOR_PID" 2>/dev/null || true
   fi
 }
-trap cleanup_monitor EXIT INT TERM
+
+cleanup_run() {
+  cleanup_monitor
+  if docker container inspect "$K6_CONTAINER_NAME" >/dev/null 2>&1; then
+    docker container rm --force "$K6_CONTAINER_NAME" >/dev/null 2>&1 || true
+  fi
+}
+
+trap cleanup_run EXIT INT TERM
 
 set +e
 docker run --rm \
+  --name "$K6_CONTAINER_NAME" \
+  --stop-timeout 10 \
   --add-host=host.docker.internal:host-gateway \
   -v "$ROOT_DIR/scripts/load:/scripts:ro" \
   -v "$RESULT_DIR:/results" \

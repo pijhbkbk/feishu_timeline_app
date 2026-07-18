@@ -22,6 +22,10 @@ import {
   type WorkflowTaskInteractionDetail,
 } from '../lib/workflows-client';
 import { formatDate, formatDateTime } from '../lib/projects-client';
+import {
+  MAX_PROGRESS_MATERIAL_ATTACHMENTS,
+  selectProgressMaterialAttachmentIds,
+} from './progress-workspace-r22.rules';
 import { R22Card, R22ProgressBar, R22StatusBadge } from './r22-ui';
 
 type ProgressDraft = {
@@ -195,7 +199,7 @@ export function ProgressWorkspaceR22() {
         completedContent: draft.completedContent.trim(),
         completionPercent: draft.completionPercent,
         isBlocked: draft.isBlocked,
-        materialAttachmentIds: attachments.map((item) => item.id),
+        materialAttachmentIds: selectProgressMaterialAttachmentIds(attachments),
         idempotencyKey,
         ...(draft.nextPlan.trim() ? { nextPlan: draft.nextPlan.trim() } : {}),
         ...(draft.isBlocked
@@ -365,7 +369,7 @@ function ProgressStepThree({ draft, attachments, selectedFile, isUploading, isSu
         <label className="r22-file-button"><input type="file" accept=".jpg,.jpeg,.png,.pdf,.docx,.xlsx" onChange={(event) => onFileChange(event.target.files?.[0] ?? null)} /><span>{selectedFile ? '重新选择' : '选择文件'}</span></label>
         <button type="button" className="r22-button r22-button-secondary" disabled={!selectedFile || isUploading} onClick={onUpload}>{isUploading ? '正在安全上传…' : '上传这份材料'}</button>
       </div>
-      {attachments.length > 0 ? <div className="r22-uploaded-list"><span>已绑定到当前任务</span>{attachments.map((attachment) => <article key={attachment.id}><span>✓</span><div><strong>{attachment.fileName}</strong><small>{attachment.uploadedByName ?? '当前用户'} · {formatDateTime(attachment.uploadedAt)}</small></div></article>)}</div> : null}
+      {attachments.length > 0 ? <div className="r22-uploaded-list"><span>已绑定到当前任务</span>{attachments.length > MAX_PROGRESS_MATERIAL_ATTACHMENTS ? <p>本次进展引用最近 {MAX_PROGRESS_MATERIAL_ATTACHMENTS} 份材料；更早材料仍完整保留在任务附件中。</p> : null}{attachments.map((attachment) => <article key={attachment.id}><span>✓</span><div><strong>{attachment.fileName}</strong><small>{attachment.uploadedByName ?? '当前用户'} · {formatDateTime(attachment.uploadedAt)}</small></div></article>)}</div> : null}
       <div className="r22-submit-summary"><div><span>完成内容</span><strong>{draft.completedContent}</strong></div><div><span>当前进度</span><strong>{draft.completionPercent}%</strong></div><div><span>阻塞状态</span><strong className={draft.isBlocked ? 'is-danger' : ''}>{draft.isBlocked ? '存在阻塞' : '无阻塞'}</strong></div><div><span>材料数量</span><strong>{attachments.length} 份</strong></div></div>
       <button type="button" className="r22-button r22-button-primary r22-submit-progress" disabled={isSubmitting} onClick={onSubmit}>{isSubmitting ? '正在提交…' : '确认提交工作进展'}</button>
     </div>
