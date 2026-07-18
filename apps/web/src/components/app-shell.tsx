@@ -137,6 +137,12 @@ export function AppShell({ children }: PropsWithChildren) {
               <Link
                 key={item.href}
                 href={item.href}
+                {...(item.href === '/admin/audit-logs'
+                  ? {
+                      'data-testid': 'admin-audit-nav-link',
+                      'aria-label': '进入审计与异常',
+                    }
+                  : {})}
                 className={`context-nav-link ${
                   isContextNavActive(pathname, item.href) ? 'context-nav-link-active' : ''
                 }`}

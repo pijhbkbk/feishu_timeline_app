@@ -25,6 +25,9 @@ export default defineConfig({
   outputDir: `${resultRoot}/traces`,
   use: {
     baseURL: process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:3000',
+    ...(process.env.PLAYWRIGHT_STORAGE_STATE
+      ? { storageState: process.env.PLAYWRIGHT_STORAGE_STATE }
+      : {}),
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
