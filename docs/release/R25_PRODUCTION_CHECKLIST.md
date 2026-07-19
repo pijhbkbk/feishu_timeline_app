@@ -7,7 +7,7 @@ This checklist is planning evidence only. R25 does not authorize any production 
 - [ ] Product owner explicitly approves R25B production deployment.
 - [ ] R25 is `PASSED` and the combined gate report has been reviewed.
 - [ ] Candidate tag is `v1.1.0-rc.1` and points to the recorded R25 release candidate commit.
-- [ ] Runtime application commit equals the future fully passing R25 candidate; blocked runtime `6d24378168fd144e539b0e99f975b918b06e37a5` is not production-approved.
+- [ ] Runtime application commit equals the R25 candidate `4aff07c83a6d63e3aeb3cc0b2e72033021ee74a5`.
 - [ ] API and Web image IDs/digests match `R25_BUILD_PROVENANCE.md`.
 - [ ] Production's current commit, services, configuration metadata and rollback point are recorded.
 - [ ] Git working tree is clean and no credential or authentication artifact is tracked.
@@ -48,3 +48,6 @@ This checklist is planning evidence only. R25 does not authorize any production 
 - [ ] Metrics and log owners acknowledge `R25_OBSERVATION_PLAN.md`.
 - [ ] Rollback operator is available for the first release window.
 - [ ] Stable tag and `main` merge remain blocked until 72-hour exit criteria pass.
+
+R25 is `PASSED`, but every item above remains an operator/owner confirmation;
+this checklist and the RC tag do not themselves authorize production.

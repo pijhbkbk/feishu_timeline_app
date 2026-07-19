@@ -1,27 +1,27 @@
 # R25 Known Issues and Residual Observations
 
-## Release-blocking finding
+## Release-blocking findings
 
-| ID | Severity | Owner | Status and required action |
-|---|---|---|---|
-| `R25-ADMIN-001` | P1 | Backend / Web / Product | `/admin/audit-logs` remains a placeholder and no authenticated global audit-list API exists. Add bounded pagination, stable filtering/sorting, independent detail lookup and admin/non-admin authorization coverage in a separate runtime-fix round, then repeat affected gates. |
+None. P0/P1/P2/P3 are `0/0/0/0`.
 
-## Resolved release-evidence blockers
+| ID | Previous severity | Final status |
+|---|---:|---|
+| `R25-ADMIN-001` | P1 | **Fixed / Retest PASS** on runtime `4aff07c...`; bounded list/detail, stable filters/sort, admin UAT and non-admin denial all passed. |
+| `R25-GATE-001` | evidence gate | Resolved; final warmed two-hour recovery memory growth `+7.8548%`, below 20%. |
+| `R25-GATE-002` | evidence gate | Resolved; uninterrupted two-hour authenticated profile completed with a valid summary. |
 
-| ID | Result |
-|---|---|
-| `R25-GATE-001` cold-baseline RSS high-water | Resolved for the formal gate: warmed preflight and final 2 h run met the explicit post-idle threshold; retained as a non-blocking observation. |
-| `R25-GATE-002` interrupted execution window | Resolved: user supplied a continuous window and the fresh-OAuth 2 h + 5 m run completed with a valid summary. |
+## Non-blocking observations
 
-## Triaged Low and Informational observations
+- The initial backup catalog check needed container stdin; fixed and retested in
+  `c7e9a2a`.
+- The initial rollback state swap omitted provenance fields; fixed and retested
+  in `c7e9a2a`.
+- Earlier R24 ZAP Low/Info heuristic observations remain historical. The R25A
+  authenticated audit-route smoke returned Critical/High/Medium/Low/Info
+  `0/0/0/0/0`.
+- Only one real Feishu account was available for interactive positive UAT.
+  Deterministic identities supplemented negative roles and IDOR.
 
-| ID | Severity | Owner | Status and action |
-|---|---|---|---|
-| `R24-DAST-002` / ZAP `10044` | Low | Web / Security | Login big-redirect heuristic; no token or sensitive response field observed. Recheck due 2026-08-15. |
-| ZAP `10036`, `10035` | Low | Security tooling | Ephemeral R24B scan-alias proxy observations, not deployed Nginx. Retain version-suppression and HSTS regression. |
-| ZAP `10024`, `10109`, `10015`, `10031` | Informational | Web / Security | Heuristics only; no exploit demonstrated. Review in the next DAST cycle. |
-
-## Operational constraints
-
-- Only one real Feishu account is available for interactive acceptance. Deterministic identities supplement negative-role and IDOR coverage; no nine-real-account claim is made.
-- R25 is production-blocked. No candidate/stable tag or `main` merge is permitted.
+These observations do not authorize production. Product-owner approval,
+production backup/rollback readiness and an explicit R25B deployment decision
+are still required.

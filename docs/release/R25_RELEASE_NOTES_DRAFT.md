@@ -2,29 +2,38 @@
 
 ## Candidate
 
-- Proposed candidate: `v1.1.0-rc.1`; not created.
-- Runtime application commit: `6d24378168fd144e539b0e99f975b918b06e37a5`.
-- Status: `R25_BLOCKED`; this draft is not an approved release candidate, production release or stable release.
+- Candidate tag: `v1.1.0-rc.1` after the evidence commit.
+- Application runtime commit: `4aff07c83a6d63e3aeb3cc0b2e72033021ee74a5`.
+- Status: `R25_PASSED / READY_FOR_PRODUCTION_APPROVAL`.
+- This is not a production deployment or stable release.
 
 ## Included capabilities
 
-- End-to-end light-truck custom-color project lifecycle, workflow tasks and guarded review transitions.
-- Project material upload/versioning/download with Unicode filenames and object-storage metadata separation.
-- Progress updates, recurring monthly review records, risk views and lifecycle retrospective. The global administrator audit-log query surface is a known release blocker and is not claimed as complete.
-- Real Feishu OAuth, server-side sessions, logout invalidation and H5/mobile layouts.
-- Plan A authenticated-user authorization boundary with anonymous, disabled and locked-user rejection plus backend business-state gates.
+- End-to-end light-truck custom-color lifecycle with backend-controlled 18-step
+  workflow, guarded reviews, recurring monthly checks and color exit.
+- Project progress, legal material upload/versioning, risk views, lifecycle
+  retrospective and append-only audit history.
+- Real administrator `审计与异常` workspace with bounded database paging,
+  validated filters, stable ordering, independent redacted details and stable
+  automation selectors.
+- Real Feishu OAuth, server-side sessions, logout invalidation, minimum
+  permission boundaries and mobile layouts.
 
-## Security and reliability changes since R23
+## R25A security and reliability closure
 
-- Same-origin mutation guard, constrained CORS/OAuth configuration and hardened session/cookie handling.
-- IDOR and workflow authorization enforcement in backend services.
-- Upload filename, MIME and content-signature validation plus sandboxed download responses.
-- CSP coverage for all served application paths, including favicon responses.
-- Hardened, pinned container supply chain; restricted GCP SSH through IAP; separate formal and staging Feishu configurations.
-- Same-runtime 10 VU × 30 m and 5 VU × 2 h authenticated profiles passed. R25 remains blocked because `/admin/audit-logs` is a placeholder and the authenticated global list endpoint is absent; see `R25_BLOCKER_REPORT.md`.
+- Anonymous 401 and ordinary-viewer 403 for global audit list/detail.
+- Recursive sensitive-field redaction and bounded responses.
+- Semgrep, Gitleaks, dependency SCA, exact five-image Trivy, security headers
+  and authenticated low-risk ZAP passed; blocking security findings are 0.
+- Same-runtime 10 VU × 30 m and 5 VU × 2 h authenticated profiles passed with
+  0 HTTP/auth/5xx/functional failure and p95 values below all thresholds.
+- Full lint/typecheck/unit/build/Prisma/E2E/55-test Playwright regression passed.
+- Staging backup/restore and rollback/forward recovery passed with data and
+  audit loss 0.
 
-## Deployment notes
+## Deployment note
 
-- Do not deploy these artifacts while R25 is blocked. After a future R25 pass, use only the immutable images and digests approved by the final combined gate report.
-- Run `prisma migrate deploy` with `RUN_SEED=no`.
-- Follow `R25_PRODUCTION_CHECKLIST.md`; production requires separate R25B approval.
+Do not deploy until the product owner explicitly approves R25B and the release
+operator confirms exact image IDs, a fresh production backup, rollback window
+and observation ownership. Deploy immutable artifacts only, use
+`prisma migrate deploy`, and keep `RUN_SEED=no`.

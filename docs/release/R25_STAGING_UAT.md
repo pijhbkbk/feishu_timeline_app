@@ -2,48 +2,35 @@
 
 ## Scope
 
-- Environment: isolated staging through `http://localhost:8080`.
-- Runtime application commit: `6d24378168fd144e539b0e99f975b918b06e37a5`.
-- Authentication: one fresh real Feishu OAuth account; deterministic automated identities remain the only negative-role supplement. No nine-real-account claim is made.
-- Test data: controlled `R25-UAT-` project only for writes; archived R23 test projects were read-only.
-- Screenshots: Git-ignored `test-results/r25/uat/`; no credential-bearing login/callback/storage view is retained.
+- Isolated staging: `http://localhost:8080`.
+- Application runtime: `4aff07c83a6d63e3aeb3cc0b2e72033021ee74a5`.
+- One real Feishu account covered positive interactive paths. Deterministic
+  identities covered ordinary-viewer, anonymous and IDOR negatives; no
+  nine-real-account claim is made.
+- No production or Feishu-platform active scan was performed.
 
-## Results
+## Final path results
 
-| Persona path | Evidence | Target | Result |
-|---|---|---:|---|
-| Employee | workbench → my tasks → progress → legal PDF → complete operation | task ≤10 s; progress ≤60 s | PASS; `1.102 s` and `58.770 s`; first operation completed and second generated |
-| Project manager | project board → risk filter → stalled project → stalled operation | risk ≤5 s; operation ≤2 clicks | PASS; `1.405 s`, 2 clicks; owner/blocker/expected resolution present |
-| Administrator | admin → audit logs → query key operation | bounded list/filter/detail | **FAIL / P1**; route is a placeholder and global list API is absent |
-| Management | lifecycle retrospective → delay/rework/material gaps/improvements | readable and persistent | NOT RUN; sequential stop after repeated administrator-gate failure |
+| Persona | Path | Result |
+|---|---|---|
+| Employee | workbench → task → progress → legal material → start/submit operation | PASS; real progress and PNG metadata persisted, operation completed and next backend-controlled operation generated |
+| Project manager | project board → risk filter → stalled node → owner/blocker | PASS; 8 risk projects; explicit supplier-window blocker, owner, helper and expected resolution visible |
+| Administrator | `审计与异常` → action/project filter → page 2 → detail | PASS; bounded server paging, list/detail ID, redaction, refresh/error and 390 px verified |
+| Management | lifecycle retrospective → duration/stage/rework/material gap → improvement → audit | PASS; `R25A-MGMT-20260719`, responsible department, due date and workflow-rule flag persisted |
 
-## Employee evidence
+The administrator API contract returned 200 for valid list and detail reads,
+401 anonymously and 403 for the deterministic ordinary viewer. pageSize 100
+was accepted; 101 and other invalid inputs were rejected. Detail/UI inspection
+found no cookie, authorization, session, token, App Secret or connection-string
+value.
 
-- The real user found the assigned controlled task in 1.102 seconds.
-- A progress update and next action were submitted with no blocker.
-- Repository-approved `定制颜色开发流程图.pdf` (158,683 bytes) was uploaded through the normal UI and attached to the task.
-- End-to-end progress submission completed in 58.770 seconds.
-- The current operation was started and submitted through standard backend-controlled actions; status became complete and the next operation was generated.
-- Evidence: `01-employee-task-found.png` through `04-task-completed.png`.
-
-## Project-manager evidence
-
-- The risk filter returned the expected risk project in 1.405 seconds.
-- The archived read-only project `R23-UAT-逾期停滞-赤霞红` showed the explicit supplier-window blocker, owner, helper and expected resolution date.
-- The stalled operation was reached in two clicks and displayed owner and overdue facts.
-- Evidence: `05-risk-identified.png`, `06-stalled-node-detail.png` plus the accessibility operation record.
-
-## Administrator blocker
-
-Two independent attempts established the same failure:
-
-1. Fresh real OAuth Chrome did not expose a usable audit query/list/detail UI at `/admin/audit-logs`.
-2. Authenticated read-only verification returned admin overview 200, global audit-list API 404, and confirmed the page is a placeholder with no bounded-list markup.
-
-The repository confirms `apps/web/src/app/admin/[section]/page.tsx` renders `PagePlaceholder`, while `AdminController` only defines `GET /api/admin/overview`. Project-scoped activity logs do not satisfy this administrator gate.
+After rollback and exact forward recovery, all four paths were rechecked. The
+real account then logged out; protected `/admin/audit-logs` showed `请先登录`,
+proving the old session could not continue.
 
 ## Decision
 
-`STAGING_UAT_FAIL / R25-ADMIN-001 P1 / PRODUCTION_NOT_AUTHORIZED`
+`STAGING_UAT_PASS / R25-ADMIN-001_FIXED_RETEST_PASS / AUTH_MATERIAL_DESTROYED`
 
-The employee and project-manager paths pass, but UAT is indivisible. Management UAT and all later release closure stop; no candidate tag is created.
+Screenshots and browser traces are Git-ignored under `test-results/r25a/` and
+contain no saved login callback or storage state.

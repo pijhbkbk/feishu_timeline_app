@@ -2,35 +2,34 @@
 
 ## Decision
 
-`R23_FORMALLY_PASSED / HISTORICAL_ENDURANCE_NOT_REUSED / R25_FINAL_RUNTIME_LOAD_PASS`
+`HISTORICAL_ENDURANCE_NOT_REUSED / FINAL_RUNTIME_10VU_PASS / FINAL_RUNTIME_5VU_PASS`
 
-R23 was formally marked `PASSED` at application/staging commit `d6d4962f88dbb5b297d54c9f27326f3bf5616ec7`. That commit is an ancestor of the final R25 runtime, but R24 and R25 changed authentication, permissions, upload behavior, Nginx/runtime boundaries and progress attachment handling. The historical R23 endurance was therefore not used as final evidence.
+All formal release evidence below was rerun on application runtime
+`4aff07c83a6d63e3aeb3cc0b2e72033021ee74a5`. Results from earlier R23/R25
+runtimes remain historical only.
 
-## Exact revisions
+| Profile | Run | Checks | Read p95 | Write p95 | Audit list/detail p95 | Result |
+|---|---|---:|---:|---:|---:|---|
+| 10 VU × 30 m | `R25A-10VU-4aff07c-20260719` | 17,189/17,189 | 142.933 ms | 48.355 ms | 184.769/24.440 ms | PASS |
+| 5 VU × 2 h + 5 m idle | `R25A-5VU-4aff07c-20260719` | 34,351/34,351 | 144.526 ms | 39.108 ms | 180.243/20.970 ms | PASS |
 
-| Field | Value |
-|---|---|
-| R23 endurance application/staging commit | `d6d4962f88dbb5b297d54c9f27326f3bf5616ec7` |
-| R24B final security runtime | `f00703ac7834837f9ad573bc11d779a5caa7c02f` |
-| R25 progress/load cleanup fix | `437c0d881efa...` |
-| R25 final runtime/staging commit | `6d24378168fd144e539b0e99f975b918b06e37a5` |
-| Release branch | `release/r25-final-gate` |
+The two-hour run completed exactly two hours and 34,348 iterations. It included
+4,524 audit-list reads, 639 audit-detail reads, 3,496 draft writes and 1,750
+progress writes. HTTP failure rate, unexpected 401/403, 5xx and functional
+failures were 0.
 
-## Why rerun was mandatory
+Resource and integrity observations:
 
-The ancestry from R23 to R25 includes OAuth/identity reconciliation, session/permission behavior, Origin/CSRF handling, upload validation, Nginx/security-header changes, database role migration, runtime image hardening and audit permission changes. R25 additionally fixed a real long-history progress submission issue by capping submitted attachment IDs to the newest 20 while preserving history. These areas affect authenticated endurance and core business writes.
+- API/Web memory growth after five-minute idle recovery: `+7.8548%` (`<20%`).
+- Peak database connections: 18; slow queries and deadlocks: 0.
+- Redis queue depth: 0; service restarts: 0.
+- API/Nginx 5xx, uncaught exceptions and unhandled rejections: 0.
+- Duplicate active workflow groups and lost/duplicate controlled writes: 0.
 
-## Formal same-runtime R25 results
+The 30-minute cold-baseline recovery percentage was not used as the explicit
+two-hour memory threshold; its time series plateaued. The warmed two-hour
+profile satisfied the required recovery gate.
 
-| Profile | Run | Result | Checks | Read/write p95 | Error/auth/5xx/functional | Idle memory |
-|---|---|---|---:|---:|---:|---:|
-| 10 VU × 30 m | `R25-10VU30M-6D24378-20260718T083625Z` | PASS | 17,424/17,424 | 106.338/58.429 ms | 0/0/0/0 | -8.255% |
-| 5 VU × 2 h + 5 m idle | `R25-5VU2H-RETRY-6D24378-20260718T112109Z` | PASS | 34,832/34,832 | 119.742/44.276 ms | 0/0/0/0 | -0.602% |
-
-The two-hour run completed 34,830 iterations, 29,650 reads, 3,409 draft writes and 1,771 progress writes. Database connections peaked at 18; slow queries, deadlocks, Redis queue depth, restarts, duplicate active workflow groups, uncaught/unhandled errors and API/Nginx 5xx were all 0. Exact controlled-write counts matched the final run evidence.
-
-The earlier cold-baseline RSS high-water result is retained as a non-blocking observation. A warmed preflight and the formal warmed run both demonstrated stable post-idle memory within the explicit `<20%` threshold.
-
-## Release implication
-
-The stability gate itself is passed on exact final runtime `6d24378`. R25 still cannot pass because final administrator UAT failed independently; see `R25_BLOCKER_REPORT.md`.
+Raw summaries are Git-ignored under
+`test-results/r25-final/{10vu-30m,5vu-2h}/R25A-*`. The ephemeral authenticated
+proxy was terminated and no authentication value was exported.

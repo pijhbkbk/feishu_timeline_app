@@ -1,33 +1,34 @@
 # R25 Staging Rollback and Forward-Recovery Rehearsal
 
-## Scope and safety
+## Scope and versions
 
-- Environment: isolated staging only.
-- Current candidate: runtime commit `6d24378168fd144e539b0e99f975b918b06e37a5`, image tag `r25-6d2437818502`.
-- Previous immutable staging application: `437c0d881efa...`.
-- PostgreSQL data volume and object-storage volume remain in place; no reset, seed or destructive migration command is permitted.
-- Production is not changed.
-
-## Planned proof
-
-1. Record current service identity, migration state and source data counts.
-2. Use the existing rollback state and immutable prior API/Web images.
-3. Verify all five services, HTTP pages, API health and static assets.
-4. Confirm the database remains readable and migrations are compatible.
-5. Re-run the rollback entry to restore the exact R25 candidate images.
-6. Verify candidate OCI revisions, service health, migration state and data counts.
-7. Record rollback, forward-recovery and total elapsed time.
+- Staging only; persistent database and object-storage volumes were retained.
+- Candidate: `4aff07c83a6d...`, tag `r25a-4aff07c83a6d`.
+- Previous stable application: `6d24378168fd...`, tag `r25-6d2437818502`.
+- No seed, reset, destructive migration or production operation occurred.
 
 ## Result
 
-NOT RUN. Both authenticated endurance profiles passed, but the round stopped after the administrator UAT gate failed twice. Staging remains on exact runtime `6d24378`; production is unchanged.
+`ROLLBACK_PASS / FORWARD_RECOVERY_PASS / DATA_LOSS_0 / AUDIT_LOSS_0`
 
 | Gate | Result |
 |---|---|
-| Rollback prerequisites | PASS |
-| Rollback to previous version | NOT RUN |
-| Previous-version functional smoke | NOT RUN |
-| Forward recovery to R25 | NOT RUN |
-| Migration compatibility | NOT RUN |
-| Data loss | NOT ASSESSED; no rollback operation was performed |
-| Complete elapsed time | NOT RUN |
+| rollback prerequisites and immutable images | PASS |
+| rollback to previous version | PASS, 25 seconds |
+| five-service health and core HTTP/static smoke | PASS |
+| 18-migration database compatibility | PASS |
+| forward recovery to exact candidate | PASS, 25 seconds |
+| API/Web OCI revision equals `4aff07c...` | PASS |
+| counts and audit fingerprint | unchanged |
+| data loss / audit loss | `0 / 0` |
+
+Counts remained 11 projects, 110 workflow tasks, 4 attachments, 8 reviews, 36
+monthly tasks, 1 color-exit row and 63,211 audit rows across the swap. The first
+100 stable audit IDs retained fingerprint
+`243f62a5f030a0f450e3d779a1636ca5071b0005510926646d5417fa6cf79475`.
+
+The initial successful forward recovery revealed that the old swap script kept
+only repository/tag fields in release state. Commit `c7e9a2a` now swaps the
+complete state snapshot, retaining Git SHA, OCI metadata and image IDs. A fresh
+rollback/forward cycle after the fix passed and left staging on the exact
+candidate with full provenance.

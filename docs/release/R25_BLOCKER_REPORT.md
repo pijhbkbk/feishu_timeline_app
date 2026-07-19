@@ -1,5 +1,10 @@
 # R25 Blocker Report
 
+> Historical report. `R25-ADMIN-001` was resolved and retested on runtime
+> `4aff07c83a6d63e3aeb3cc0b2e72033021ee74a5`; R25 is now PASSED. Current
+> evidence is in `R25A_FINAL_GATE_REPORT.md`. The text below records the earlier
+> stop and must not be read as the current decision.
+
 ## Decision
 
 `R25_BLOCKED / PRODUCTION_NOT_AUTHORIZED / NO_CANDIDATE_TAG / STOP`

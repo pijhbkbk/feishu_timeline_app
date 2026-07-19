@@ -1,5 +1,61 @@
 # EXECUTION_LEDGER.md
 
+## R25A final recovery and R25 closure (2026-07-19)
+
+- Authorization: repair the final audit Playwright synchronization assertion,
+  continue every remaining R25 gate on the new application runtime, create an
+  RC only after full PASS, and stop before production.
+- Base runtime: `6d24378168fd144e539b0e99f975b918b06e37a5`.
+- Final application runtime/code commit:
+  `4aff07c83a6d63e3aeb3cc0b2e72033021ee74a5`.
+- Recovery-tool-only commit: `c7e9a2a`; it fixes backup container stdin and
+  complete rollback-state provenance without changing API/Web behavior.
+- The product label remains `审计与异常`; stable test IDs/href/roles/ARIA were
+  added. The final assertion waits for the first matching row to be visible and
+  then requires a positive count.
+- Target Playwright: 3/3 PASS (26.0 s). Local quality: lint/typecheck/build/
+  Prisma PASS; Web 83/83; API 223/223; E2E PASS; full Playwright 55/55 (6.9 m).
+- Exact staging: `r25a-4aff07c83a6d`; clean detached build, `RUN_SEED=no`, 18
+  migrations/0 pending, all five services healthy. API/Web OCI revision equals
+  `4aff07c...`.
+- Audit/admin UAT: list/detail 200, bounded 25/50/100, stable sort and composite
+  filters, invalid-input 400, redaction PASS and 390 px PASS. Anonymous 401;
+  deterministic ordinary viewer list/detail/project/actor attempts 403 and its
+  session was destroyed.
+- Management UAT: lifecycle duration/stages/material gap, persisted improvement
+  `R25A-MGMT-20260719`, department/due date/rule flag and audit detail PASS.
+- Security: Semgrep, Gitleaks, dependency SCA, exact five-image Trivy, standard
+  security headers and authenticated low-risk ZAP PASS; final
+  Critical/High/Medium/Low/Info=`0/0/0/0/0`. Production/Feishu domains were not
+  scanned and no auth value was exported.
+- `R25A-10VU-4aff07c-20260719`: 17,189/17,189 checks PASS; read/write p95
+  142.933/48.355 ms; audit list/detail 184.769/24.440 ms; HTTP/auth/5xx/
+  functional/restart/deadlock/duplicate/queue failures 0.
+- `R25A-5VU-4aff07c-20260719`: 34,351/34,351 checks and 34,348 iterations PASS;
+  read/write p95 144.526/39.108 ms; audit list/detail 180.243/20.970 ms; idle
+  memory +7.8548%; DB max 18; slow/deadlock/restart/5xx/unhandled/duplicate 0.
+- Backup/restore PASS: 4,830,319-byte custom archive and checksum verified;
+  migrations/projects/workflow/material/review/monthly/exit/audit counts match;
+  stable audit-page hash match; temporary database destroyed.
+- Rollback/forward PASS: previous `6d24378...` and candidate `4aff07c...` each in
+  25 s; health/database/OCI provenance PASS; data loss=0, audit loss=0.
+- Final staging UAT PASS for employee, project manager, administrator and
+  management. Employee performed a real progress write, legal PNG upload and
+  backend-controlled task completion. Real logout left the protected audit page
+  at `请先登录`; all temporary authentication/proxy state was destroyed.
+- Release integration: `fix/r25-admin-audit-001` fast-forwarded into
+  `release/r25-final-gate`; the separate evidence commit contains only
+  `docs/release/`, `docs/rounds/R25.md` and this ledger. Candidate tag
+  `v1.1.0-rc.1` is created on that evidence commit after the final secrets scan.
+- Production/main: unchanged; no stable tag. One real account was used for
+  positive UAT and deterministic identities for negative roles; no nine-account
+  claim.
+- Final decision:
+  `R25A_PASSED / R25_PASSED / R25-ADMIN-001_FIXED_RETEST_PASS / P0-P1-P2-P3=0-0-0-0 / READY_FOR_PRODUCTION_APPROVAL`.
+- Next decision: stop and await explicit product-owner R25B production approval,
+  exact candidate/image verification, fresh production backup, rollback window
+  and observation-owner confirmation.
+
 > 用途：记录 Codex 每一轮执行情况、验收结果、风险、遗留问题与下一轮决策。
 > 要求：每完成一轮，必须更新本文件。
 
