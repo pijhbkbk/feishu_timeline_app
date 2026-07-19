@@ -60,7 +60,7 @@ chmod 600 "$BACKUP_FILE"
 chmod 600 "$CHECKSUM_FILE"
 (cd "$RESULT_DIR" && sha256sum --check "$(basename "$CHECKSUM_FILE")") >/dev/null
 
-docker exec "$POSTGRES_CONTAINER" pg_restore --list <"$BACKUP_FILE" >/dev/null
+docker exec -i "$POSTGRES_CONTAINER" pg_restore --list <"$BACKUP_FILE" >/dev/null
 
 docker exec "$POSTGRES_CONTAINER" createdb -U "$DB_USER" "$RESTORE_DB"
 RESTORE_CREATED=yes
