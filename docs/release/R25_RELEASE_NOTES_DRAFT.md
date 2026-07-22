@@ -1,11 +1,12 @@
-# R25 Release Notes Draft
+# R25B / R26 Release Notes
 
 ## Candidate
 
-- Candidate tag: `v1.1.0-rc.1` after the evidence commit.
-- Application runtime commit: `4aff07c83a6d63e3aeb3cc0b2e72033021ee74a5`.
-- Status: `R25_PASSED / READY_FOR_PRODUCTION_APPROVAL`.
-- This is not a production deployment or stable release.
+- Historical R25 candidate: `v1.1.0-rc.1` / runtime `4aff07c...`.
+- Released candidate: `v1.1.0-rc.2`.
+- Production runtime commit: `8c1d3264cb4355c5db0551309e31073adc78df8d`.
+- Status: `R25B_AND_R26_PRODUCTION_RELEASED`.
+- Stable tag: not created.
 
 ## Included capabilities
 
@@ -18,6 +19,8 @@
   automation selectors.
 - Real Feishu OAuth, server-side sessions, logout invalidation, minimum
   permission boundaries and mobile layouts.
+- One-click login handoff from the application directly to real Feishu OAuth;
+  legacy `/login` links perform the same automatic handoff.
 
 ## R25A security and reliability closure
 
@@ -31,9 +34,11 @@
 - Staging backup/restore and rollback/forward recovery passed with data and
   audit loss 0.
 
-## Deployment note
+## Production outcome
 
-Do not deploy until the product owner explicitly approves R25B and the release
-operator confirms exact image IDs, a fresh production backup, rollback window
-and observation ownership. Deploy immutable artifacts only, use
-`prisma migrate deploy`, and keep `RUN_SEED=no`.
+The exact R26 runtime was deployed after a fresh custom-format PostgreSQL backup
+and configuration snapshot. Five services, 18 migrations, TLS/security
+headers, real OAuth, authorized project/task/progress/attachment/audit paths and
+logout passed. Observation and rollback thresholds remain active. Release
+details are in `R25_PRODUCTION_RELEASE_MANIFEST.md` and
+`R25B_PRODUCTION_ACCEPTANCE.md`.

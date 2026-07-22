@@ -3,12 +3,16 @@
 ## R26 登录入口直达飞书（2026-07-22）
 
 - Authorization：按用户截图删除登录后的系统选择页，使主页面“登录”一次点击直达飞书认证。
-- Scope：仅 Web 登录入口、`/login` 兼容路由和浏览器回归；后端认证、权限、流程、数据库、migration、staging/production 均未修改。
+- Scope：Web 登录入口、`/login` 兼容路由和浏览器回归；随后按明确授权创建 RC、部署 production、执行真实 OAuth/业务烟测并合并 `main`。后端业务规则和数据库模型未修改。
 - Changes：AppShell 顶部登录和未登录提示直接调用后端飞书授权入口；`/login` 删除飞书二次按钮及模拟登录表单，改为单次自动跳转；已登录访问返回工作台，配置/网络失败展示受控错误。
 - Test：新增同一 Playwright 用例覆盖“顶部登录直达”和“旧 `/login` 自动直达”；定向 1/1 PASS（14.6 s）。Playwright 浏览器/FFmpeg 缺口与测试桩 UTF-8 问题均已修复，最终断言未放宽。
 - Commands：`pnpm install`、`pnpm lint`、`pnpm typecheck`、`pnpm test`、Web/API build、Prisma validate 全部 PASS；Web 83/83、API 223/223。
-- Risk：未使用真实生产认证材料，未部署现网；飞书按浏览器登录态决定展示二维码或授权确认页。历史 `v1.1.0-rc.1` 不包含本轮变更。
-- Decision：`R26_LOGIN_DIRECT_FEISHU_LOCAL_PASS / NO_DEPLOY / NO_TAG_CHANGE / READY_FOR_NEXT_INTERACTION_CHANGE`。
+- Release：runtime `8c1d3264cb4355c5db0551309e31073adc78df8d`，tag `v1.1.0-rc.2`；生产 exact HEAD、五服务 active、18 migrations/0 pending、API/Web restart 0。
+- Backup：custom dump 214244 bytes、0600、SHA-256 `1ff9e07a79c58c405f97ea3b4d97843b1e82d8be36113cba0c3199f58eb5a8c4`，`pg_restore --list` PASS；八文件 rollback snapshot 保留。
+- Production smoke：真实飞书 OAuth、李晓晨系统管理员、工作台/任务/项目概览/数据中心、进展 100%、合法 PNG、全局审计和真实登出/旧会话拒绝 PASS；无认证材料输出。
+- Security：匿名 protected APIs 401；HSTS/CSP/TLS/CORS PASS；未主动扫描 production/飞书域名；Gitleaks current/history 0 finding。
+- Risk：观察与回滚阈值继续有效；历史 `v1.1.0-rc.1` 未移动；未创建 stable tag。用户明确要求立即合并 `main`，覆盖历史 72 小时等待项。
+- Decision：`R25B_AND_R26_PRODUCTION_RELEASED / RC2_EXACT_RUNTIME / MAIN_INTEGRATION_AUTHORIZED / STABLE_TAG_NOT_CREATED`。
 - Detail：`docs/rounds/R26.md`。
 
 ## R25A final recovery and R25 closure (2026-07-19)
@@ -75,9 +79,9 @@
 ## 项目基本信息
 
 - 项目名称：轻卡定制颜色开发项目管理系统
-- 当前阶段：R26 登录交互改造
-- 当前轮次：R26_LOGIN_INTERACTION_DIRECT_FEISHU
-- 总体状态：LOCAL PASSED（登录入口直达飞书；未部署，等待下一项交互改造）
+- 当前阶段：R26 生产发布后观察
+- 当前轮次：R25B_R26_PRODUCTION_RELEASE
+- 总体状态：PRODUCTION RELEASED（`v1.1.0-rc.2`；真实 OAuth 与业务烟测 PASS；stable tag 未创建）
 - 仓库路径：`/Users/lixiaochen/Downloads/feishu_timeline_app`
 - 默认分支：`main`
 - 最近更新时间：`2026-07-22`
