@@ -7,6 +7,7 @@ const currentDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(currentDir, '../..');
 const resultRound = process.env.PLAYWRIGHT_RESULT_ROUND ?? 'r20';
 const resultRoot = `../../test-results/${resultRound}`;
+const browserExecutablePath = process.env.PLAYWRIGHT_EXECUTABLE_PATH;
 
 export default defineConfig({
   testDir: '.',
@@ -25,6 +26,7 @@ export default defineConfig({
   outputDir: `${resultRoot}/traces`,
   use: {
     baseURL: process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:3000',
+    ...(browserExecutablePath ? { launchOptions: { executablePath: browserExecutablePath } } : {}),
     ...(process.env.PLAYWRIGHT_STORAGE_STATE
       ? { storageState: process.env.PLAYWRIGHT_STORAGE_STATE }
       : {}),

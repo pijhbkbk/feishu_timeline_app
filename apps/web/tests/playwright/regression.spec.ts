@@ -11,12 +11,43 @@ import {
   loginAsProjectManager,
 } from './helpers';
 
-test('login page exposes feishu and mock auth entries', async ({ page }) => {
+test('login entry opens Feishu directly without an intermediate choice page', async ({ page }) => {
+  const feishuTarget = 'http://localhost:3000/__test/feishu-login';
+
+  await page.route('**/api/auth/session', async (route) => {
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({
+        authenticated: false,
+        mockEnabled: false,
+        feishuEnabled: true,
+        user: null,
+      }),
+    });
+  });
+  await page.route('**/api/auth/feishu/login-url', async (route) => {
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({ enabled: true, loginUrl: feishuTarget }),
+    });
+  });
+  await page.route('**/__test/feishu-login', async (route) => {
+    await route.fulfill({
+      contentType: 'text/html; charset=utf-8',
+      body: '<!doctype html><html><body><h1>飞书登录二维码</h1></body></html>',
+    });
+  });
+
+  await page.goto('/dashboard');
+  await page.getByTestId('header-feishu-login').click();
+
+  await expect(page).toHaveURL(feishuTarget);
+  await expect(page.getByRole('heading', { name: '飞书登录二维码' })).toBeVisible();
+
   await page.goto('/login');
 
-  await expect(page.getByRole('heading', { name: '登录系统' })).toBeVisible();
-  await expect(page.getByTestId('feishu-login-button')).toBeVisible();
-  await expect(page.getByTestId('mock-login-button')).toBeVisible();
+  await expect(page).toHaveURL(feishuTarget);
+  await expect(page.getByRole('heading', { name: '飞书登录二维码' })).toBeVisible();
 });
 
 test('can create a project and open workflow browser views', async ({ page }) => {

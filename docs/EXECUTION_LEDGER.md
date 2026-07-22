@@ -1,5 +1,16 @@
 # EXECUTION_LEDGER.md
 
+## R26 登录入口直达飞书（2026-07-22）
+
+- Authorization：按用户截图删除登录后的系统选择页，使主页面“登录”一次点击直达飞书认证。
+- Scope：仅 Web 登录入口、`/login` 兼容路由和浏览器回归；后端认证、权限、流程、数据库、migration、staging/production 均未修改。
+- Changes：AppShell 顶部登录和未登录提示直接调用后端飞书授权入口；`/login` 删除飞书二次按钮及模拟登录表单，改为单次自动跳转；已登录访问返回工作台，配置/网络失败展示受控错误。
+- Test：新增同一 Playwright 用例覆盖“顶部登录直达”和“旧 `/login` 自动直达”；定向 1/1 PASS（14.6 s）。Playwright 浏览器/FFmpeg 缺口与测试桩 UTF-8 问题均已修复，最终断言未放宽。
+- Commands：`pnpm install`、`pnpm lint`、`pnpm typecheck`、`pnpm test`、Web/API build、Prisma validate 全部 PASS；Web 83/83、API 223/223。
+- Risk：未使用真实生产认证材料，未部署现网；飞书按浏览器登录态决定展示二维码或授权确认页。历史 `v1.1.0-rc.1` 不包含本轮变更。
+- Decision：`R26_LOGIN_DIRECT_FEISHU_LOCAL_PASS / NO_DEPLOY / NO_TAG_CHANGE / READY_FOR_NEXT_INTERACTION_CHANGE`。
+- Detail：`docs/rounds/R26.md`。
+
 ## R25A final recovery and R25 closure (2026-07-19)
 
 - Authorization: repair the final audit Playwright synchronization assertion,
@@ -64,12 +75,12 @@
 ## 项目基本信息
 
 - 项目名称：轻卡定制颜色开发项目管理系统
-- 当前阶段：R24B 安全准入收口完成
-- 当前轮次：R24B_SECURITY_GATE_CLOSURE
-- 总体状态：PASSED（R24 已通过；三个 Medium、SSH、飞书配置、认证态 ZAP、回归和认证材料清理全部闭环；STOP_BEFORE_R25）
+- 当前阶段：R26 登录交互改造
+- 当前轮次：R26_LOGIN_INTERACTION_DIRECT_FEISHU
+- 总体状态：LOCAL PASSED（登录入口直达飞书；未部署，等待下一项交互改造）
 - 仓库路径：`/Users/lixiaochen/Downloads/feishu_timeline_app`
 - 默认分支：`main`
-- 最近更新时间：`2026-07-17`
+- 最近更新时间：`2026-07-22`
 
 ---
 

@@ -1,155 +1,48 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { useAuth } from '../../components/auth-provider';
 import { FeedbackBanner } from '../../components/feedback-banner';
-import { FRONTEND_ROLE_OPTIONS, type FrontendRoleCode } from '../../lib/auth-client';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { user, isAuthenticated, mockEnabled, feishuEnabled, loginWithMock, startFeishuLogin } =
-    useAuth();
-  const [selectedRole, setSelectedRole] = useState<FrontendRoleCode>('project_manager');
-  const [username, setUsername] = useState('mock_project_manager');
-  const [displayName, setDisplayName] = useState('');
+  const { isAuthenticated, isLoading, feishuEnabled, startFeishuLogin } = useAuth();
+  const hasStartedRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  async function handleMockLogin() {
-    setIsSubmitting(true);
-    setError(null);
-
-    try {
-      const payload: {
-        username?: string;
-        name?: string;
-        roleCodes: FrontendRoleCode[];
-      } = {
-        roleCodes: [selectedRole],
-      };
-
-      if (username.trim()) {
-        payload.username = username.trim();
-      }
-
-      if (displayName.trim()) {
-        payload.name = displayName.trim();
-      }
-
-      await loginWithMock({
-        ...payload,
-      });
-      router.replace('/projects');
-    } catch (loginError) {
-      setError(loginError instanceof Error ? loginError.message : '模拟登录失败。');
-    } finally {
-      setIsSubmitting(false);
+  useEffect(() => {
+    if (isLoading || hasStartedRef.current) {
+      return;
     }
-  }
 
-  async function handleFeishuLogin() {
+    if (isAuthenticated) {
+      hasStartedRef.current = true;
+      router.replace('/dashboard');
+      return;
+    }
+
+    if (!feishuEnabled) {
+      setError('飞书登录未配置，请联系系统管理员。');
+      return;
+    }
+
+    hasStartedRef.current = true;
     setError(null);
 
-    try {
-      await startFeishuLogin();
-    } catch (loginError) {
+    void startFeishuLogin().catch((loginError: unknown) => {
       setError(loginError instanceof Error ? loginError.message : '飞书登录不可用。');
-    }
-  }
+    });
+  }, [feishuEnabled, isAuthenticated, isLoading, router, startFeishuLogin]);
 
   return (
-    <section className="page-card auth-card">
-      <p className="eyebrow">身份认证</p>
-      <h1>登录系统</h1>
-      <p>飞书负责身份认证，本系统会建立独立会话并在后端执行权限校验。</p>
-
-      {isAuthenticated && user ? (
-        <div className="panel">
-          <strong>当前已登录为 {user.name}</strong>
-          <p className="muted">角色：{formatRoleCodes(user.roleCodes)}</p>
-        </div>
-      ) : null}
-
-      <div className="auth-sections">
-        <section className="panel">
-          <h2>飞书登录</h2>
-          <p className="muted">当前是可替换适配层，接入真实接口后无需改动前端调用方式。</p>
-          <button
-            type="button"
-            className="button button-primary"
-            onClick={() => void handleFeishuLogin()}
-            disabled={!feishuEnabled}
-            data-testid="feishu-login-button"
-          >
-            {feishuEnabled ? '使用飞书登录' : '飞书登录未配置'}
-          </button>
-        </section>
-
-        <section className="panel">
-          <h2>模拟登录</h2>
-          <p className="muted">仅用于本地开发联调。系统会在后端创建自己的用户会话。</p>
-
-          <label className="field">
-            <span>角色</span>
-            <select
-              data-testid="mock-role-select"
-              value={selectedRole}
-              onChange={(event) => {
-                const role = event.target.value as FrontendRoleCode;
-                setSelectedRole(role);
-                setUsername(`mock_${role}`);
-              }}
-              disabled={!mockEnabled || isSubmitting}
-            >
-              {FRONTEND_ROLE_OPTIONS.map((role) => (
-                <option key={role.code} value={role.code}>
-                  {role.label}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="field">
-            <span>用户名</span>
-            <input
-              data-testid="mock-username-input"
-              value={username}
-              onChange={(event) => setUsername(event.target.value)}
-              disabled={!mockEnabled || isSubmitting}
-            />
-          </label>
-
-          <label className="field">
-            <span>显示名</span>
-            <input
-              data-testid="mock-display-name-input"
-              value={displayName}
-              onChange={(event) => setDisplayName(event.target.value)}
-              placeholder="可选"
-              disabled={!mockEnabled || isSubmitting}
-            />
-          </label>
-
-          <button
-            type="button"
-            className="button button-secondary"
-            onClick={() => void handleMockLogin()}
-            disabled={!mockEnabled || isSubmitting}
-            data-testid="mock-login-button"
-          >
-            {mockEnabled ? (isSubmitting ? '登录中…' : '使用模拟登录') : '模拟登录已关闭'}
-          </button>
-        </section>
-      </div>
-
-      {error ? <FeedbackBanner variant="error" title="登录失败" message={error} /> : null}
+    <section className="page-card auth-card auth-redirect-card" aria-live="polite">
+      {error ? (
+        <FeedbackBanner variant="error" title="无法打开飞书登录" message={error} />
+      ) : (
+        <p className="muted">正在打开飞书登录…</p>
+      )}
     </section>
   );
-}
-
-function formatRoleCodes(roleCodes: FrontendRoleCode[]) {
-  const labelMap = new Map(FRONTEND_ROLE_OPTIONS.map((item) => [item.code, item.label]));
-  return roleCodes.map((roleCode) => labelMap.get(roleCode) ?? roleCode).join('、');
 }
