@@ -4124,3 +4124,43 @@ git diff --check                                        PASS
 `R26_GATE1_PRODUCT_OWNER_ACCEPTED / STATIC_V2_ONLY / MAIN_MERGE_AND_PRODUCTION_DEPLOY_AUTHORIZED / GATE2_NOT_STARTED`
 
 2026-07-23，产品负责人明确回复“先就这样，部署提交合并代码”，接受当前结果并授权提交、合并 `main` 和生产部署。部署前必须创建并验证 PostgreSQL 与配置回滚点；Gate 2 真实数据联调未启动。
+
+---
+
+### Round R26_PRODUCT_UI_RECOVERY_GATE1_PRODUCTION_RELEASE
+
+#### Authorization And Scope
+
+- 产品负责人接受 Gate 1 当前结果，并授权提交、合并 `main` 和生产部署。
+- 部署范围仍为隔离静态 V2；不接真实 API、不启动 Gate 2、不创建 stable tag。
+- V1 后端业务、数据库、安全修复和正式入口保持。
+
+#### Merge, Rollback Points And Deploy
+
+- Gate 1 修复提交：`b5f737ec163021608e9643ea83c62b92ecacbfe2`。
+- 生产预取修复提交：`619f879`。
+- 分支：`main`；V2 生产开关：`true`。
+- PostgreSQL 备份：`/var/backups/feishu-timeline-db/20260723T080006Z/feishu-timeline.dump`。
+- 备份 checksum、catalog 和隔离恢复演练全部 PASS；恢复核对 41 表、12 用户、1 项目、22 审计日志。
+- 配置快照：`/var/backups/feishu-timeline-release/20260723T080121Z`；权限与 checksum PASS。
+- Prisma 18 migrations、0 pending；五项服务 active；正式入口验收 PASS。
+
+#### Production UI Evidence
+
+- 四个 V2 正式路由均为 200；匿名 `/api/projects` 为 401。
+- 第一轮浏览器复验发现未开放入口自动预取产生 404；修复并重部署后 404 清零。
+- 1440 完成风险筛选、节点 12 刷新恢复/关闭、节点 17/18 和静态三步提交。
+- 1024 固定图与抽屉可用、无横向溢出。
+- 390 当前任务首屏、18 节点移动总览、390×844 全屏 sheet 和表单下一步可用。
+- 最终 console error、page error、4xx 资源、`/api/` 请求均为 0。
+- 禁止文案 `DEMO-ACTIVE`、`DEMO-COMPLETE`、`demo-r26 · t006` 均未出现。
+
+#### Evidence
+
+- `docs/release/R26_V2_PRODUCT_UI_PRODUCTION_RELEASE.md`
+- `test-results/r26-production/screenshots/`（18 张，Git ignored）
+- `test-results/r26-production/videos/`（3 段，Git ignored）
+
+#### Decision
+
+`R26_GATE1_STATIC_V2_DEPLOYED / PRODUCT_OWNER_ACCEPTED_AS_IS / GATE2_NOT_STARTED / NO_STABLE_TAG`

@@ -198,3 +198,30 @@ git diff --check                                        PASS
 `R26_GATE1_PRODUCT_OWNER_ACCEPTED / STATIC_V2_ONLY / MAIN_MERGE_AND_PRODUCTION_DEPLOY_AUTHORIZED / GATE2_NOT_STARTED`
 
 2026-07-23，产品负责人明确回复“先就这样，部署提交合并代码”，接受当前 Gate 1 修复结果并授权提交、合并 `main` 和生产部署。部署前必须保留 PostgreSQL 与配置回滚点；Gate 2 真实数据联调未启动。
+
+## Gate 1 生产发布（2026-07-23）
+
+### 发布结果
+
+- Gate 1 修复已合并并推送 `main`。
+- 生产已启用 `NEXT_PUBLIC_R26_V2_PROTOTYPE=true`。
+- 发布前 PostgreSQL 备份、校验和隔离恢复演练通过；配置快照校验通过。
+- 18 项 Prisma migration 全部已应用，0 项待执行。
+- API、Web、nginx、PostgreSQL、Redis 均为 active。
+- 四个 V2 正式域名路由均返回 200，匿名业务 API 仍返回 401。
+
+### 生产浏览器复验
+
+- 首轮发现未开放导航自动预取 `/v2/tasks` 与 `/v2/retrospectives`
+  导致 404；提交 `619f879` 禁用这两个入口的预取后重新部署。
+- 1440 完成筛选、节点 12 刷新恢复、关闭抽屉、节点 17/18 和一次静态提交。
+- 1024 保持固定流程图和可用抽屉，无横向溢出。
+- 390 当前任务在首屏，18 节点总览和全屏 sheet 可用，表单可进入下一步。
+- 最终三组录像均为 console error 0、page error 0、4xx 资源 0、`/api/` 请求 0。
+- 页面未出现 `DEMO-ACTIVE`、`DEMO-COMPLETE` 或内部项目/任务组合 ID。
+
+完整记录：`docs/release/R26_V2_PRODUCT_UI_PRODUCTION_RELEASE.md`
+
+### 决定
+
+`R26_GATE1_STATIC_V2_DEPLOYED / PRODUCT_OWNER_ACCEPTED_AS_IS / GATE2_NOT_STARTED / NO_STABLE_TAG`
