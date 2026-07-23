@@ -3999,3 +3999,70 @@ R24 已正式通过。等待用户确认后才允许进入独立的 R25 联合�
 `R26_PRODUCT_UI_RECOVERY_GATE0_COMPLETE / CURRENT_UI_FAIL / NO_CODE_CHANGE / NO_MAIN_MERGE / NO_DEPLOY / NO_TAG / STOP_BEFORE_GATE1`
 
 lint、build、API 200、路由存在和服务 active 均不作为 UI 完成证据。等待用户确认后才允许进入隔离的 Gate 1 静态 V2 原型。
+
+---
+
+### Round R26_PRODUCT_UI_RECOVERY_GATE1_STATIC_V2_PROTOTYPE
+
+#### Goal And Scope
+
+- 用户已确认 Gate 0，只实现四个隔离、静态、可交互的 V2 前端原型场景。
+- 只使用 typed fixtures 和 `sessionStorage`；不接真实 API、不修改后端/数据库、不部署、不合并 `main`、不创建 tag。
+- 设计职责继续遵循 P1 Apple 全局产品 UI > P2 项目实时流程地图 > P3 系统导览；P3 本 Gate 不实现。
+
+#### Branch And Isolation
+
+- Gate 0 固定提交：`1e9d5ab57d09c70dc5b77deb8f4c01705d89bfb4`。
+- Gate 1 分支：`codex/r26-product-ui-recovery-gate1`。
+- `/v2/*` 路由与 `NEXT_PUBLIC_R26_V2_PROTOTYPE=true` Feature Flag 双重隔离。
+- Flag 关闭时 V2 返回 404；V2 根运行时不加载 V1 Providers/AppShell/API 初始化。
+- V2 CSS 作用域为 `[data-ui-version="r26-v2"]`；V1 页面、导航和生产入口保持原状。
+
+#### Implemented Routes And Interactions
+
+- `/v2/dashboard`：当前任务、六阶段摘要、辅助事实、最近动态和唯一“提交这项进展”主动作。
+- `/v2/projects`：四 KPI、五筛选、三项目卡、风险原因和受控“原型范围外”反馈。
+- `/v2/projects/demo-r26`：项目根路由默认固定流程地图 + 工序详情。
+- `/v2/progress?projectId=demo-r26&taskId=t006`：三步进展、条件阻塞字段、本地文件名和成功反馈。
+- `R26PrototypeStore` 提交后只在当前会话联动工作台、步骤 06、步骤 07/09/10 和最近动态；可重置。
+
+#### Fixed Flow Map
+
+- 固定 `viewBox="0 0 1440 1740"`，18 节点坐标/尺寸/形状和全部 path 直接来自冻结规范。
+- 第 12 步菱形和第 2 轮退回历史、第 17 步 `3 / 12` 环形进度、第 18 步系统建议/人工决定均可见。
+- 主线、并行、非阻塞、退回四类连线可区分；自动化确认无节点重叠、无长斜线。
+- 节点点击更新详情和 URL；刷新恢复；关闭详情不重置地图比例。
+
+#### Evidence
+
+- `test-results/r26-gate1/screenshots/`：四页 1440×900、1024×900、390×844，另有第 12 步、阻塞态和成功态。
+- `test-results/r26-gate1/videos/`：员工、项目经理、流程地图三段稳定命名录像。
+- `test-results/r26-gate1/comparisons/`：四组 PPT｜Web 并排对比。
+- `docs/product/R26_GATE1_STATIC_PROTOTYPE_REPORT.md`
+- `docs/product/R26_GATE1_SCREENSHOT_INDEX.md`
+- `docs/product/R26_GATE1_HUMAN_REVIEW.md`
+
+证据目录由 `.gitignore` 排除；未提交视频、浏览器认证材料、环境文件或临时缓存。
+
+#### Validation
+
+```text
+pnpm install --frozen-lockfile                                                    PASS
+pnpm --filter @feishu-timeline/web lint                                          PASS
+pnpm --filter @feishu-timeline/web typecheck                                     PASS
+pnpm --filter @feishu-timeline/web test                                          PASS（28 files / 84 tests）
+pnpm --filter @feishu-timeline/web build                                         PASS
+NEXT_PUBLIC_R26_V2_PROTOTYPE=true ... r26-gate1-static-v2.spec.ts                PASS（7/7）
+pnpm lint                                                                         PASS
+pnpm typecheck                                                                    PASS
+git diff --check                                                                  PASS
+```
+
+- Playwright 覆盖 Feature Flag、V1 隔离、四页访问、`/api/` 请求 0、18 节点、特殊节点、URL 恢复、三步提交、状态联动、三视口无页面横向溢出、console error 0、page error 0。
+- lint、build、API 200 或路由存在未被作为 UI 产品通过证据。
+
+#### Decision
+
+`R26_GATE1_IMPLEMENTED / STATIC_V2_ONLY / AWAITING_PRODUCT_OWNER_VISUAL_CONFIRMATION / NO_API_INTEGRATION / NO_DEPLOY / STOP`
+
+人工复核项全部未勾选。Gate 2 未开始；staging/production 未部署；`main` 未合并；tag 未创建。

@@ -2,8 +2,7 @@ import type { Metadata } from 'next';
 import { headers } from 'next/headers';
 import type { ReactNode } from 'react';
 
-import { AppShell } from '../components/app-shell';
-import { Providers } from '../components/providers';
+import { RootRuntime } from '../components/root-runtime';
 import './globals.css';
 import './r22.css';
 
@@ -24,9 +23,7 @@ export default async function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="zh-CN">
       <body>
-        <Providers>
-          <AppShell>{children}</AppShell>
-        </Providers>
+        <RootRuntime>{children}</RootRuntime>
       </body>
     </html>
   );

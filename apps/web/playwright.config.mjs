@@ -8,6 +8,33 @@ const repoRoot = path.resolve(currentDir, '../..');
 const resultRound = process.env.PLAYWRIGHT_RESULT_ROUND ?? 'r20';
 const resultRoot = `../../test-results/${resultRound}`;
 const browserExecutablePath = process.env.PLAYWRIGHT_EXECUTABLE_PATH;
+const isR26Gate1 = process.argv.some((argument) =>
+  argument.includes('r26-gate1-static-v2'),
+);
+
+const apiServer = {
+  command: 'pnpm --filter @feishu-timeline/api dev',
+  url: 'http://localhost:3001/api/health',
+  reuseExistingServer: true,
+  timeout: 180_000,
+  cwd: repoRoot,
+  env: {
+    AUTH_MOCK_ENABLED: 'true',
+    NOTIFICATION_QUEUE_ENABLED: 'false',
+  },
+};
+
+const webServer = {
+  command: 'pnpm --filter @feishu-timeline/web dev',
+  url: isR26Gate1 ? 'http://localhost:3000/v2/dashboard' : 'http://localhost:3000/login',
+  reuseExistingServer: true,
+  timeout: 180_000,
+  cwd: repoRoot,
+  env: {
+    NEXT_PUBLIC_ENABLE_MOCK_LOGIN: 'true',
+    ...(isR26Gate1 ? { NEXT_PUBLIC_R26_V2_PROTOTYPE: 'true' } : {}),
+  },
+};
 
 export default defineConfig({
   testDir: '.',
@@ -35,27 +62,5 @@ export default defineConfig({
     video: 'retain-on-failure',
     headless: true,
   },
-  webServer: [
-    {
-      command: 'pnpm --filter @feishu-timeline/api dev',
-      url: 'http://localhost:3001/api/health',
-      reuseExistingServer: true,
-      timeout: 180_000,
-      cwd: repoRoot,
-      env: {
-        AUTH_MOCK_ENABLED: 'true',
-        NOTIFICATION_QUEUE_ENABLED: 'false',
-      },
-    },
-    {
-      command: 'pnpm --filter @feishu-timeline/web dev',
-      url: 'http://localhost:3000/login',
-      reuseExistingServer: true,
-      timeout: 180_000,
-      cwd: repoRoot,
-      env: {
-        NEXT_PUBLIC_ENABLE_MOCK_LOGIN: 'true',
-      },
-    },
-  ],
+  webServer: isR26Gate1 ? [webServer] : [apiServer, webServer],
 });
