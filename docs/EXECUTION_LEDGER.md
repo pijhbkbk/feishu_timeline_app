@@ -3953,3 +3953,49 @@ R24 已正式通过。等待用户确认后才允许进入独立的 R25 联合�
 仅在单独授权的 runtime-fix 轮次补齐有界全局审计列表、独立详情、稳定筛选/排序和 admin/non-admin 权限覆盖后恢复。新 runtime 必须重新构建部署，并重跑 10 VU × 30 m、5 VU × 2 h 及所有受影响的后续门禁。
 
 证据：`docs/release/R25_BLOCKER_REPORT.md`、`docs/release/R25_STAGING_UAT.md`、`docs/release/R25_COMBINED_GATE_REPORT.md`、`docs/rounds/R25.md`。
+
+---
+
+### Round R26_PRODUCT_UI_RECOVERY — Gate 0
+
+#### Goal And Scope
+
+- 暂停 R25B、生产发布、`main` 合并和稳定 tag。
+- 保留后端业务、数据库、安全修复和稳定性结果；当前用户端产品验收改为 `FAIL`。
+- 本轮只执行设计解析、当前生产 UI 取证、路由/组件审计和 V2 规格，不修改产品代码。
+- 历史 `docs/rounds/R26.md` 保留；本恢复轮次使用 `docs/rounds/R26_PRODUCT_UI_RECOVERY.md`，不覆盖登录入口历史。
+
+#### Design Source Priority
+
+1. Apple 风产品 UI 决定全局信息架构、字体、留白、颜色和正式页面。
+2. 项目实时流程地图决定项目工作区、固定 SVG 拓扑、节点状态、工序抽屉和刷新。
+3. 系统导览只决定 `/v2/guide` 页面内部，不得覆盖全局导航或项目工作区。
+
+- 三份演示稿均为 12 页，已逐页解析并生成蒙太奇。
+- 补充固定拓扑原图已纳入证据，确认第 4、6、12 步分支和第 12 步 Y/N 语义；未形成第四套设计源。
+- 用户指定的 Apple `(1)` 文件名未找到；当前 Downloads 文件与仓库设计稿 SHA-256 完全一致。
+- 项目流程地图只找到 PowerPoint 修复版；若后续出现内容不同的原文件，必须重开相应 Gate 0 差异矩阵。
+
+#### Current Production Evidence
+
+- 使用已有 Safari 正式会话只读截取 48 个正式路由，另保存进展页内部改写到 `step=1` 后的空白故障截图。
+- 内置浏览器中的测试企业账号被飞书授权页判定为无应用权限；未尝试绕过。
+- 未读取或导出 Cookie、token、OAuth code、App Secret 或 storageState；未写生产数据。
+- 生产可见结果确认：主项目工作区持续骨架屏、进展页可整页空白、多个项目模块长期加载、占位路由仍存在、流程视图重复、业务字号过小、内部英文标注未清除。
+
+#### Gate 0 Artifacts
+
+- `docs/product/R26_CURRENT_UI_AUDIT.md`
+- `docs/product/R26_DESIGN_SOURCE_PRIORITY.md`
+- `docs/product/R26_V2_INFORMATION_ARCHITECTURE.md`
+- `docs/product/R26_FLOW_MAP_SPEC.md`
+- `docs/product/R26_UI_ACCEPTANCE_CRITERIA.md`
+- `docs/product/evidence/r26/current-production/`
+- `docs/product/evidence/r26/design-sources/`
+- `docs/rounds/R26_PRODUCT_UI_RECOVERY.md`
+
+#### Decision
+
+`R26_PRODUCT_UI_RECOVERY_GATE0_COMPLETE / CURRENT_UI_FAIL / NO_CODE_CHANGE / NO_MAIN_MERGE / NO_DEPLOY / NO_TAG / STOP_BEFORE_GATE1`
+
+lint、build、API 200、路由存在和服务 active 均不作为 UI 完成证据。等待用户确认后才允许进入隔离的 Gate 1 静态 V2 原型。
