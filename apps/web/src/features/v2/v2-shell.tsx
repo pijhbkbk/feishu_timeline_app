@@ -81,7 +81,7 @@ export function V2Shell({ children }: { children: React.ReactNode }) {
           </nav>
 
           <div className="r26-header-tools">
-            <span className="r26-prototype-badge">V2 静态原型 · 本地</span>
+            <span className="r26-prototype-badge">V2 产品预览</span>
             <button type="button" className="r26-icon-button" aria-label="搜索" onClick={() => showStaticMessage('搜索功能将在数据联调轮次开放。')}>
               <SearchIcon />
             </button>

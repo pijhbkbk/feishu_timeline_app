@@ -11,7 +11,7 @@ const repoRoot = path.resolve(webRoot, '../..');
 const evidenceRoot = path.join(repoRoot, 'test-results/r26-gate1');
 const screenshotDir = path.join(evidenceRoot, 'screenshots');
 const videoDir = path.join(evidenceRoot, 'videos');
-const forbiddenProductCopy = /DEMO(?:\s*-\s*)?ACTIVE|DEMO(?:\s*-\s*)?COMPLETE|Required|Upload|History|Executive summary|Stage comparison|Learning|Audit/;
+const forbiddenProductCopy = /DEMO(?:\s*-\s*)?ACTIVE|DEMO(?:\s*-\s*)?COMPLETE|demo-r26\s*·\s*t006|Required|Upload|History|Executive summary|Stage comparison|Learning|Audit/;
 const frozenNodeGeometry = [
   { step: 1, code: 'PROJECT_INITIATION', name: '反映市场需求', x: 625, y: 80, width: 190, height: 92, shape: 'rounded' },
   { step: 2, code: 'DEVELOPMENT_REPORT', name: '新颜色开发报告', x: 625, y: 190, width: 190, height: 92, shape: 'rounded' },
@@ -130,7 +130,14 @@ test('R26-02 工作台主动作、项目筛选、卡片跳转与固定地图默�
 
   await page.goto('/v2/projects');
   await expect(page.locator('.r26-project-card')).toHaveCount(3);
-  await page.getByRole('button', { name: '高风险' }).click();
+  await expect(page.locator('.r26-filter-group button')).toHaveText([
+    '全部',
+    '正常',
+    '有风险',
+    '已逾期',
+    '等待评审',
+  ]);
+  await page.getByRole('button', { name: '有风险' }).click();
   await expect(page.locator('.r26-project-card')).toHaveCount(1);
   await expect(page.getByText('缺少到货确认记录，采购工序无法形成完整交付证据。')).toBeVisible();
   await page.getByTestId('open-demo-r26-project').click();
@@ -188,6 +195,37 @@ test('R26-03 18 节点坐标、尺寸、形状、四类连线、无重叠和无�
   }
   expect([...edgeTypes].sort()).toEqual(['mainline', 'nonBlocking', 'parallel', 'return']);
   expect(overlappingNodePairs(r26FlowNodes)).toEqual([]);
+
+  await expect(svg.locator('marker').first()).toHaveAttribute('markerUnits', 'userSpaceOnUse');
+  expect(
+    await page.getByTestId('r26-edge-11-12').evaluate((element) =>
+      Number.parseFloat(getComputedStyle(element).strokeWidth),
+    ),
+  ).toBeLessThanOrEqual(2.5);
+
+  const decisionCopy = await page.getByTestId('r26-node-12').evaluate((element) => {
+    const polygon = element.querySelector('polygon') as SVGPolygonElement;
+    const polygonBox = polygon.getBBox();
+    const textBoxes = [...element.querySelectorAll('text')].map((text) => {
+      const box = (text as SVGTextElement).getBBox();
+      return { x: box.x, y: box.y, right: box.x + box.width, bottom: box.y + box.height };
+    });
+    return {
+      polygon: {
+        x: polygonBox.x,
+        y: polygonBox.y,
+        right: polygonBox.x + polygonBox.width,
+        bottom: polygonBox.y + polygonBox.height,
+      },
+      textBoxes,
+    };
+  });
+  for (const textBox of decisionCopy.textBoxes) {
+    expect(textBox.x).toBeGreaterThanOrEqual(decisionCopy.polygon.x);
+    expect(textBox.right).toBeLessThanOrEqual(decisionCopy.polygon.right);
+    expect(textBox.y).toBeGreaterThanOrEqual(decisionCopy.polygon.y);
+    expect(textBox.bottom).toBeLessThanOrEqual(decisionCopy.polygon.bottom);
+  }
 });
 
 test('R26-04 节点点击更新详情、特殊节点正确、URL 恢复且关闭详情保留地图比例', async ({
@@ -196,6 +234,7 @@ test('R26-04 节点点击更新详情、特殊节点正确、URL 恢复且关闭
   await page.goto('/v2/projects/demo-r26');
   await page.getByTestId('r26-node-12').click();
   await expect(page).toHaveURL(/taskId=t012/);
+  await expect(page.getByTestId('task-conclusion')).toContainText('等待评审结论');
   await expect(page.getByTestId('step12-special-detail')).toContainText('第 2 轮');
   await expect(page.getByTestId('step12-special-detail')).toContainText('喷涂均匀性');
   await page.reload();
@@ -257,7 +296,25 @@ test('R26-05 进展三步、条件阻塞字段与本地页面联动完整可用'
 
   await page.getByTestId('dashboard-primary-action').click();
   await expect(page.getByTestId('r26-node-06')).toHaveAttribute('data-status', 'COMPLETED');
+  await expect(page.getByTestId('r26-node-07')).toHaveAttribute('data-status', 'PENDING');
+  await expect(page.getByTestId('r26-node-07')).toContainText('已创建');
+  await expect(page.getByTestId('r26-node-09')).toHaveAttribute('data-status', 'PENDING');
+  await expect(page.getByTestId('r26-node-09')).toContainText('已创建');
   await expect(page.getByTestId('r26-node-10')).toHaveAttribute('data-status', 'IN_PROGRESS');
+  await expect(page.getByTestId('r26-node-10')).toContainText('已创建');
+  await expect(page.getByTestId('r26-task-detail')).toContainText('3 / 3');
+  await expect(page.getByTestId('r26-task-detail')).toContainText('必交材料已齐备');
+
+  await page.reload();
+  const submittedActivities = await page.evaluate(() => {
+    const state = JSON.parse(window.sessionStorage.getItem('R26PrototypeStore') ?? '{}') as {
+      recentActivities?: Array<{ text: string }>;
+    };
+    return (state.recentActivities ?? []).filter((activity) =>
+      activity.text.includes('提交了涂料采购进展'),
+    ).length;
+  });
+  expect(submittedActivities).toBe(1);
 
   expect(apiRequests).toEqual([]);
   expect(consoleErrors).toEqual([]);
@@ -285,6 +342,9 @@ test('R26-06 1440、1024、390 三视口无页面横向溢出并生成页面证�
 
     await page.goto('/v2/dashboard');
     await assertNoPageOverflow(page);
+    if (viewport.width === 390) {
+      await assertMobileTaskContained(page);
+    }
     await screenshot(page, `dashboard-${viewport.suffix}.png`);
 
     await page.goto('/v2/projects');
@@ -294,9 +354,32 @@ test('R26-06 1440、1024、390 三视口无页面横向溢出并生成页面证�
     await page.goto('/v2/projects/demo-r26');
     await assertNoPageOverflow(page);
     if (viewport.width === 390) {
-      await page.getByRole('button', { name: '关闭工序详情' }).click();
+      await expect(page.getByTestId('r26-mobile-flow-list')).toBeVisible();
+      await expect(page.getByTestId('r26-map-scroll')).toBeHidden();
+      await expect(page.locator('[data-testid^="r26-mobile-node-"]')).toHaveCount(18);
+    }
+    if (viewport.width === 1024) {
+      expect(
+        await page.getByTestId('r26-flow-map-svg').evaluate(
+          (element) => element.getBoundingClientRect().width,
+        ),
+      ).toBeGreaterThanOrEqual(1439);
+      expect(
+        await page.getByTestId('r26-task-detail').evaluate(
+          (element) => element.getBoundingClientRect().width,
+        ),
+      ).toBeLessThanOrEqual(371);
     }
     await screenshot(page, `project-workspace-${viewport.suffix}.png`);
+
+    if (viewport.width === 390) {
+      await page.getByTestId('r26-mobile-node-12').click();
+      await expect(page.getByTestId('r26-task-detail')).toBeVisible();
+      await expect(page.getByTestId('r26-task-detail')).toContainText('第 2 轮正在等待评审结论');
+      await screenshot(page, 'project-step12-sheet-390.png');
+      await page.getByRole('button', { name: '关闭工序详情' }).click();
+      await expect(page.getByTestId('r26-mobile-flow-list')).toBeVisible();
+    }
 
     await page.goto('/v2/progress?projectId=demo-r26&taskId=t006');
     await assertNoPageOverflow(page);
@@ -314,6 +397,12 @@ test('R26-06 1440、1024、390 三视口无页面横向溢出并生成页面证�
   await page.getByTestId('r26-node-12').click();
   await screenshot(page, 'project-step12-selected-1440.png');
 
+  await page.setViewportSize({ width: 1024, height: 900 });
+  await page.goto('/v2/projects/demo-r26');
+  await page.getByTestId('r26-node-12').click();
+  await screenshot(page, 'project-step12-selected-1024.png');
+
+  await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/v2/progress?projectId=demo-r26&taskId=t006');
   await page.getByTestId('progress-next').click();
   await page.getByRole('radio', { name: /存在阻塞/ }).check();
@@ -328,10 +417,11 @@ test('R26-06 1440、1024、390 三视口无页面横向溢出并生成页面证�
   expect(pageErrors).toEqual([]);
 });
 
-test('R26-07 生成员工、项目经理和流程地图三段本地交互录像', async ({ browser }) => {
+test('R26-07 生成 1440、1024、390 核心路径本地交互录像', async ({ browser }) => {
   await recordEmployeeFlow(browser);
   await recordManagerFlow(browser);
   await recordMapFlow(browser);
+  await recordMobileFlow(browser);
 });
 
 async function resetPrototype(page: Page) {
@@ -366,6 +456,27 @@ async function assertNoPageOverflow(page: Page) {
       () => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1,
     ),
   ).toBe(true);
+}
+
+async function assertMobileTaskContained(page: Page) {
+  const bounds = await page.evaluate(() => {
+    const card = document.querySelector('.r26-current-task')!.getBoundingClientRect();
+    const main = document.querySelector('.r26-current-task__main')!.getBoundingClientRect();
+    const action = document.querySelector(
+      '[data-testid="dashboard-primary-action"]',
+    )!.getBoundingClientRect();
+    return {
+      card: { left: card.left, right: card.right },
+      main: { left: main.left, right: main.right },
+      action: { left: action.left, right: action.right, bottom: action.bottom },
+      viewportHeight: window.innerHeight,
+    };
+  });
+  expect(bounds.main.left).toBeGreaterThanOrEqual(bounds.card.left);
+  expect(bounds.main.right).toBeLessThanOrEqual(bounds.card.right + 1);
+  expect(bounds.action.left).toBeGreaterThanOrEqual(bounds.card.left);
+  expect(bounds.action.right).toBeLessThanOrEqual(bounds.card.right + 1);
+  expect(bounds.action.bottom).toBeLessThanOrEqual(bounds.viewportHeight - 74);
 }
 
 async function screenshot(page: Page, name: string) {
@@ -407,7 +518,7 @@ function isOrthogonalPath(pathValue: string) {
 }
 
 async function recordEmployeeFlow(browser: Browser) {
-  const { page, context } = await createVideoPage(browser);
+  const { page, context } = await createVideoPage(browser, 1440, 900);
   await page.goto('/v2/dashboard');
   await page.getByTestId('dashboard-primary-action').click();
   await pause(page);
@@ -423,23 +534,23 @@ async function recordEmployeeFlow(browser: Browser) {
   await page.getByTestId('progress-submit').click();
   await expect(page.getByTestId('r26-progress-success')).toBeVisible();
   await pause(page, 700);
-  await saveVideo(page, context, 'employee-progress-flow.webm');
+  await saveVideo(page, context, 'employee-progress-flow-1440.webm');
 }
 
 async function recordManagerFlow(browser: Browser) {
-  const { page, context } = await createVideoPage(browser);
+  const { page, context } = await createVideoPage(browser, 1024, 900);
   await page.goto('/v2/projects');
-  await page.getByRole('button', { name: '高风险' }).click();
+  await page.getByRole('button', { name: '有风险' }).click();
   await pause(page);
   await page.getByTestId('open-demo-r26-project').click();
   await expect(page.getByTestId('r26-task-detail')).toContainText('张七巧');
   await expect(page.getByTestId('r26-task-detail')).toContainText('到货确认记录');
   await pause(page, 700);
-  await saveVideo(page, context, 'manager-risk-flow.webm');
+  await saveVideo(page, context, 'manager-risk-flow-1024.webm');
 }
 
 async function recordMapFlow(browser: Browser) {
-  const { page, context } = await createVideoPage(browser);
+  const { page, context } = await createVideoPage(browser, 1440, 900);
   await page.goto('/v2/projects/demo-r26');
   for (const step of [6, 12, 17, 18]) {
     await page.getByTestId(`r26-node-${String(step).padStart(2, '0')}`).click();
@@ -448,14 +559,33 @@ async function recordMapFlow(browser: Browser) {
   await page.reload();
   await expect(page.getByTestId('r26-node-18')).toHaveAttribute('aria-pressed', 'true');
   await pause(page, 700);
-  await saveVideo(page, context, 'flow-map-node-and-url-restore.webm');
+  await saveVideo(page, context, 'flow-map-node-and-url-restore-1440.webm');
 }
 
-async function createVideoPage(browser: Browser) {
+async function recordMobileFlow(browser: Browser) {
+  const { page, context } = await createVideoPage(browser, 390, 844);
+  await page.goto('/v2/projects/demo-r26');
+  await expect(page.getByTestId('r26-mobile-flow-list')).toBeVisible();
+  await page.getByTestId('r26-mobile-node-12').scrollIntoViewIfNeeded();
+  await pause(page);
+  await page.getByTestId('r26-mobile-node-12').click();
+  await expect(page.getByTestId('r26-task-detail')).toBeVisible();
+  await expect(page.getByTestId('task-conclusion')).toContainText('等待评审结论');
+  await page.locator('.r26-task-detail__body').evaluate((element) => {
+    element.scrollTop = element.scrollHeight;
+  });
+  await pause(page);
+  await page.getByRole('button', { name: '关闭工序详情' }).click();
+  await expect(page.getByTestId('r26-mobile-flow-list')).toBeVisible();
+  await pause(page, 700);
+  await saveVideo(page, context, 'mobile-flow-and-fullscreen-sheet-390.webm');
+}
+
+async function createVideoPage(browser: Browser, width: number, height: number) {
   const context = await browser.newContext({
     baseURL: 'http://localhost:3000',
-    viewport: { width: 1280, height: 720 },
-    recordVideo: { dir: videoDir, size: { width: 1280, height: 720 } },
+    viewport: { width, height },
+    recordVideo: { dir: videoDir, size: { width, height } },
   });
   const page = await context.newPage();
   return { page, context };

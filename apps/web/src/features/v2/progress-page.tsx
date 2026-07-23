@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
 import { useRef, useState, type DragEvent } from 'react';
 
 import { ArrowLeftIcon, CheckIcon, ResetIcon, UploadIcon } from './icons';
@@ -15,7 +14,6 @@ const steps = [
 ];
 
 export function ProgressPage() {
-  const searchParams = useSearchParams();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { progressSubmitted, submitProgress, resetPrototype } = useR26PrototypeStore();
   const [step, setStep] = useState(1);
@@ -29,10 +27,6 @@ export function ProgressPage() {
   const [expectedResolution, setExpectedResolution] = useState('明天 12:00');
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [submitted, setSubmitted] = useState(progressSubmitted);
-
-  const taskId = searchParams.get('taskId') ?? 't006';
-  const projectId = searchParams.get('projectId') ?? 'demo-r26';
 
   function showNotice(message: string) {
     setNotice(message);
@@ -68,22 +62,20 @@ export function ProgressPage() {
   }
 
   function submit() {
-    if (submitted) {
+    if (progressSubmitted) {
       return;
     }
     submitProgress();
-    setSubmitted(true);
   }
 
   function reset() {
     resetPrototype();
-    setSubmitted(false);
     setStep(1);
     setSelectedFileName(null);
     setBlockerStatus('clear');
   }
 
-  if (submitted) {
+  if (progressSubmitted) {
     return (
       <div className="r26-page r26-progress-page" data-testid="r26-progress-success">
         <section className="r26-success-state">
@@ -135,7 +127,6 @@ export function ProgressPage() {
           <span>截止：今天 17:00</span>
           <StatusPill tone="current">进行中</StatusPill>
         </div>
-        <span className="r26-context-id" aria-hidden="true">{projectId} · {taskId}</span>
       </section>
 
       <nav className="r26-progress-steps" aria-label="进展提交步骤">

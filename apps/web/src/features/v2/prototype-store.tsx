@@ -17,6 +17,7 @@ const STORAGE_KEY = 'R26PrototypeStore';
 type PrototypeState = {
   progressSubmitted: boolean;
   nodeStatusOverrides: Record<string, R26NodeStatus>;
+  createdTaskIds: string[];
   recentActivities: Array<{ time: string; text: string }>;
 };
 
@@ -28,6 +29,7 @@ type PrototypeStoreValue = PrototypeState & {
 const initialState: PrototypeState = {
   progressSubmitted: false,
   nodeStatusOverrides: {},
+  createdTaskIds: [],
   recentActivities: [
     { time: '今天 10:08', text: '张七巧上传了供应商送货单' },
     { time: '昨天 16:40', text: '项目经理提醒补充到货确认记录' },
@@ -47,31 +49,44 @@ export function R26PrototypeProvider({ children }: PropsWithChildren) {
     }
 
     try {
-      setState(JSON.parse(savedState) as PrototypeState);
+      const parsed = JSON.parse(savedState) as Partial<PrototypeState>;
+      setState({
+        ...initialState,
+        ...parsed,
+        nodeStatusOverrides: parsed.nodeStatusOverrides ?? {},
+        createdTaskIds: parsed.createdTaskIds ?? [],
+        recentActivities: parsed.recentActivities ?? initialState.recentActivities,
+      });
     } catch {
       window.sessionStorage.removeItem(STORAGE_KEY);
     }
   }, []);
 
-  const persist = useCallback((nextState: PrototypeState) => {
-    setState(nextState);
-    window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(nextState));
-  }, []);
-
   const submitProgress = useCallback(() => {
-    persist({
-      progressSubmitted: true,
-      nodeStatusOverrides: {
-        t006: 'COMPLETED',
-        t007: 'PENDING',
-        t010: 'IN_PROGRESS',
-      },
-      recentActivities: [
-        { time: '刚刚', text: '张七巧提交了涂料采购进展，首台生产计划已进入进行中' },
-        ...state.recentActivities,
-      ],
+    setState((currentState) => {
+      if (currentState.progressSubmitted) {
+        return currentState;
+      }
+
+      const nextState: PrototypeState = {
+        progressSubmitted: true,
+        nodeStatusOverrides: {
+          ...currentState.nodeStatusOverrides,
+          t006: 'COMPLETED',
+          t007: 'PENDING',
+          t009: 'PENDING',
+          t010: 'IN_PROGRESS',
+        },
+        createdTaskIds: ['t007', 't009', 't010'],
+        recentActivities: [
+          { time: '刚刚', text: '张七巧提交了涂料采购进展，首台生产计划已进入进行中' },
+          ...currentState.recentActivities,
+        ],
+      };
+      window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(nextState));
+      return nextState;
     });
-  }, [persist, state.recentActivities]);
+  }, []);
 
   const resetPrototype = useCallback(() => {
     window.sessionStorage.removeItem(STORAGE_KEY);

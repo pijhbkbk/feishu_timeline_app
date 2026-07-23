@@ -129,6 +129,7 @@ upsert_env apps/api/.env.production AUTH_MOCK_ENABLED false
 upsert_env apps/api/.env.production OBJECT_STORAGE_LOCAL_ROOT /opt/feishu_timeline_app/var/object-storage
 upsert_env apps/web/.env.production NEXT_PUBLIC_API_BASE_URL /api
 upsert_env apps/web/.env.production NEXT_PUBLIC_ENABLE_MOCK_LOGIN false
+upsert_env apps/web/.env.production NEXT_PUBLIC_R26_V2_PROTOTYPE true
 
 resolved_storage_path=\"\$(
   cd apps/api

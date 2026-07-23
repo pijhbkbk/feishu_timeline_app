@@ -15,7 +15,7 @@ export function WorkspacePage({ projectId }: { projectId: string }) {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { progressSubmitted, nodeStatusOverrides } = useR26PrototypeStore();
+  const { progressSubmitted, nodeStatusOverrides, recentActivities } = useR26PrototypeStore();
 
   const initialNode = useMemo(
     () =>
@@ -31,6 +31,8 @@ export function WorkspacePage({ projectId }: { projectId: string }) {
     const queryNode = findNodeFromQuery(searchParams.get('taskId'), searchParams.get('nodeCode'));
     if (queryNode) {
       setSelectedNode(queryNode);
+    } else if (window.matchMedia('(max-width: 767px)').matches) {
+      setSelectedNode(null);
     }
   }, [searchParams]);
 
@@ -47,12 +49,7 @@ export function WorkspacePage({ projectId }: { projectId: string }) {
   }
 
   const resolvedSelectedNode = selectedNode
-    ? {
-        ...selectedNode,
-        status:
-          (selectedNode.taskId ? nodeStatusOverrides[selectedNode.taskId] : undefined) ??
-          selectedNode.status,
-      }
+    ? resolvePrototypeNode(selectedNode, progressSubmitted, nodeStatusOverrides)
     : null;
 
   function selectNode(node: R26FlowNode) {
@@ -124,9 +121,13 @@ export function WorkspacePage({ projectId }: { projectId: string }) {
           <span>静态原型记录</span>
         </div>
         <ol>
-          <li><time>今天 10:08</time><strong>张七巧上传了供应商送货单</strong><span>涂料采购</span></li>
-          <li><time>昨天 16:40</time><strong>项目经理提醒补充到货确认记录</strong><span>材料缺口</span></li>
-          <li><time>7月18日 15:40</time><strong>星河银第 1 轮驾驶室评审退回</strong><span>评审历史</span></li>
+          {recentActivities.slice(0, 4).map((activity, index) => (
+            <li key={`${activity.time}-${activity.text}-${index}`}>
+              <time>{activity.time}</time>
+              <strong>{activity.text}</strong>
+              <span>{index === 0 && progressSubmitted ? '进展提交' : '项目记录'}</span>
+            </li>
+          ))}
         </ol>
       </section>
 
@@ -162,6 +163,12 @@ function TaskDetail({
       </header>
 
       <div className="r26-task-detail__body">
+        <section className="r26-task-conclusion" data-testid="task-conclusion">
+          <span>当前结论</span>
+          <strong>{detailConclusion(node)}</strong>
+          <p>{detailNextAction(node)}</p>
+        </section>
+
         <DetailSection title="责任信息">
           <DetailGrid
             items={[
@@ -192,7 +199,11 @@ function TaskDetail({
         <DetailSection title="材料完整性">
           <div className="r26-material-summary">
             <strong>{node.uploadedMaterials.length} / {node.requiredMaterials.length}</strong>
-            <span>必交材料已具备</span>
+            <span>
+              {node.missingMaterials.length === 0
+                ? '必交材料已齐备'
+                : `仍缺 ${node.missingMaterials.length} 项必交材料`}
+            </span>
           </div>
           <ul className="r26-material-list">
             {node.requiredMaterials.map((material) => {
@@ -314,6 +325,64 @@ function findNodeFromQuery(taskId: string | null, nodeCode: string | null) {
     return r26FlowNodes.find((node) => node.code === nodeCode) ?? null;
   }
   return null;
+}
+
+function resolvePrototypeNode(
+  node: R26FlowNode,
+  progressSubmitted: boolean,
+  nodeStatusOverrides: Record<string, R26FlowNode['status']>,
+) {
+  const status = (node.taskId ? nodeStatusOverrides[node.taskId] : undefined) ?? node.status;
+  if (!progressSubmitted || node.taskId !== 't006') {
+    return { ...node, status };
+  }
+
+  return {
+    ...node,
+    status,
+    uploadedMaterials: [...node.requiredMaterials],
+    missingMaterials: [],
+    recentEvents: [
+      { time: '刚刚', text: '张七巧提交了涂料采购进展与到货确认记录' },
+      ...node.recentEvents,
+    ],
+  };
+}
+
+function detailConclusion(node: R26FlowNode) {
+  if (node.step === 6) {
+    return node.status === 'COMPLETED'
+      ? '采购已完成，材料齐备，可进入后续工序。'
+      : '采购仍在进行，当前缺少到货确认记录。';
+  }
+  if (node.step === 12) {
+    return '第 2 轮正在等待评审结论。';
+  }
+  if (node.step === 17) {
+    return '已完成 3 / 12 次月度评审，下次评审为 8月15日。';
+  }
+  if (node.step === 18) {
+    return '系统建议继续观察，最终退出结论必须人工确认。';
+  }
+  return `${r26StatusLabels[node.status]}，按当前工序要求继续推进。`;
+}
+
+function detailNextAction(node: R26FlowNode) {
+  if (node.step === 6) {
+    return node.status === 'COMPLETED'
+      ? '下一步：跟进标准板制作、涂料性能试验和首台生产计划。'
+      : '下一步：补齐到货确认记录并提交本次进展。';
+  }
+  if (node.step === 12) {
+    return '下一步：选择通过，或退回第 11 步并保留上一轮历史。';
+  }
+  if (node.step === 17) {
+    return '下一步：按月保留独立评审实例，不覆盖历史月份。';
+  }
+  if (node.step === 18) {
+    return '下一步：由授权人员结合 4,800 台年产量与 5,000 台阈值作出决定。';
+  }
+  return `下一步：${node.output}。`;
 }
 
 function statusTone(status: R26FlowNode['status']) {

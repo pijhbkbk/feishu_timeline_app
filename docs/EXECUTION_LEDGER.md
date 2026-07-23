@@ -4036,7 +4036,7 @@ lint、build、API 200、路由存在和服务 active 均不作为 UI 完成证�
 #### Evidence
 
 - `test-results/r26-gate1/screenshots/`：四页 1440×900、1024×900、390×844，另有第 12 步、阻塞态和成功态。
-- `test-results/r26-gate1/videos/`：员工、项目经理、流程地图三段稳定命名录像。
+- `test-results/r26-gate1/videos/`：员工、项目经理、流程地图与移动全屏 sheet 四段当前复验录像。
 - `test-results/r26-gate1/comparisons/`：四组 PPT｜Web 并排对比。
 - `docs/product/R26_GATE1_STATIC_PROTOTYPE_REPORT.md`
 - `docs/product/R26_GATE1_SCREENSHOT_INDEX.md`
@@ -4066,3 +4066,61 @@ git diff --check                                                                
 `R26_GATE1_IMPLEMENTED / STATIC_V2_ONLY / AWAITING_PRODUCT_OWNER_VISUAL_CONFIRMATION / NO_API_INTEGRATION / NO_DEPLOY / STOP`
 
 人工复核项全部未勾选。Gate 2 未开始；staging/production 未部署；`main` 未合并；tag 未创建。
+
+---
+
+### Round R26_PRODUCT_UI_RECOVERY_GATE1_REMEDIATION
+
+#### Goal And Scope
+
+- 修复 2026-07-23 人工检查发现的第 12 步文字越界、节点行距、箭头粗细、1024 地图可读性、390 工作台裁切和移动流程退化。
+- 同时关闭本轮验收发现的筛选口径、提交状态不一致、重复动态和内部 ID 文案问题。
+- 继续保持静态 V2、无真实 API、无后端/数据库修改、无部署、无 `main` 合并、无 tag。
+
+#### Exact Changes
+
+- `flow-map.tsx`：判断节点文字居中、固定箭头、移动 18 节点总览、已创建节点标记。
+- `r26-v2.css`：线宽 `2.5`、1440 固定画布、1024 370px 抽屉、390 全屏 sheet/工作台主动作/固定提交动作。
+- `prototype-store.tsx`、`workspace-page.tsx`：幂等提交、第 06/07/09/10 步和材料 3/3 一致联动、详情结论优先。
+- `projects-page.tsx`：冻结五项筛选。
+- `progress-page.tsx`、`dashboard-page.tsx`：删除内部 ID、统一主动作和完成文案。
+- `next.config.ts`：关闭开发环境调试角标。
+- `r26-gate1-static-v2.spec.ts`：新增上述问题的精确回归断言和四段视口录像。
+
+#### Visual And Interactive Evidence
+
+- 1440、1024、390 全部核心页面截图已重生成。
+- 新增第 12 步 1024 截图、390 节点总览和第 12 步全屏 sheet 截图。
+- 新录像：
+  - `employee-progress-flow-1440.webm`
+  - `manager-risk-flow-1024.webm`
+  - `flow-map-node-and-url-restore-1440.webm`
+  - `mobile-flow-and-fullscreen-sheet-390.webm`
+- 浏览器真实操作确认风险筛选 1 个项目、第 12 步详情滚动/刷新恢复/关闭、33 秒静态进展提交和跨页联动。
+- `docs/product/R26_GATE1_REMEDIATION_REPORT.md`
+- `docs/product/R26_GATE1_SCREENSHOT_INDEX.md`
+- `docs/product/R26_GATE1_HUMAN_REVIEW.md`
+
+#### Validation
+
+```text
+R26 Playwright                                          PASS（7/7）
+pnpm install                                            PASS
+pnpm lint                                               PASS
+pnpm typecheck                                          PASS
+pnpm test                                               PASS（Web 84 / API 223）
+NEXT_PUBLIC_R26_V2_PROTOTYPE=true pnpm --filter web build PASS
+pnpm --filter api build                                 PASS
+pnpm --filter api prisma:validate                       PASS
+git diff --check                                        PASS
+```
+
+- Playwright `/api/` 请求 0、console error 0、page error 0。
+- 第 12 步文字边界、连线宽度、箭头尺寸、390 主按钮首屏、390 节点总览、1024 固定画布/抽屉、提交幂等和材料一致性均有自动化门禁。
+- 首次 Playwright 默认启动因本机缺少 headless Chromium 缓存而未进入测试；随后使用已安装 Google Chrome 完整重跑 7/7 通过。
+
+#### Decision
+
+`R26_GATE1_PRODUCT_OWNER_ACCEPTED / STATIC_V2_ONLY / MAIN_MERGE_AND_PRODUCTION_DEPLOY_AUTHORIZED / GATE2_NOT_STARTED`
+
+2026-07-23，产品负责人明确回复“先就这样，部署提交合并代码”，接受当前结果并授权提交、合并 `main` 和生产部署。部署前必须创建并验证 PostgreSQL 与配置回滚点；Gate 2 真实数据联调未启动。

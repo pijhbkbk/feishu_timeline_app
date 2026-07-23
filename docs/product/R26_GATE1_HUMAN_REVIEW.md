@@ -3,12 +3,25 @@
 ## 当前状态
 
 ```text
-AWAITING_PRODUCT_OWNER_VISUAL_CONFIRMATION
+PRODUCT_OWNER_ACCEPTED_AS_IS / MAIN_MERGE_AND_PRODUCTION_DEPLOY_AUTHORIZED
 ```
 
-以下项目只能由产品负责人勾选。Codex 已提供静态原型、截图、录像和自动化事实，但没有代替人工确认，也没有给出视觉自评分。
+2026-07-23，产品负责人明确回复“先就这样，部署提交合并代码”，接受当前 Gate 1 修复结果并授权提交、合并 `main` 和生产部署。该授权不等于启动 Gate 2 真实数据联调。
 
 证据索引：`docs/product/R26_GATE1_SCREENSHOT_INDEX.md`
+
+修复记录：`docs/product/R26_GATE1_REMEDIATION_REPORT.md`
+
+## 2026-07-23 修复复验
+
+- [ ] 第 12 步三层文字全部位于菱形内部，行距舒适
+- [ ] 流程连线与箭头不再过粗
+- [ ] 1024 抽屉出现后，固定画布节点文字仍可读
+- [ ] 390 工作台第一屏直接显示“提交工作进展”
+- [ ] 390 使用可读节点总览，不机械缩小桌面 SVG
+- [ ] 390 节点详情为可滚动全屏 sheet，关闭后回到总览
+- [ ] 提交后第 06、07、09、10 步、材料 3/3 和最近动态一致
+- [ ] 页面没有 `DEMO - ACTIVE` 或内部项目/任务 ID
 
 ## 员工体验
 
@@ -55,11 +68,13 @@ AWAITING_PRODUCT_OWNER_VISUAL_CONFIRMATION
 
 ## 人工决定
 
-- [ ] 确认 Gate 1 视觉与交互原型
+- [x] 确认 Gate 1 视觉与交互原型
 - [ ] 允许进入 Gate 2 只读真实数据联调
+- [x] 允许当前 V2 以 `/v2/*` 隔离路由和生产 Feature Flag 部署
+- [x] 允许提交当前变更并合并 `main`
 
-在以上决定被产品负责人明确勾选并回复前，状态保持：
+当前授权状态：
 
 ```text
-R26_GATE1_IMPLEMENTED / STATIC_V2_ONLY / AWAITING_PRODUCT_OWNER_VISUAL_CONFIRMATION / NO_API_INTEGRATION / NO_DEPLOY / STOP
+R26_GATE1_PRODUCT_OWNER_ACCEPTED / STATIC_V2_ONLY / MAIN_MERGE_AND_PRODUCTION_DEPLOY_AUTHORIZED / GATE2_NOT_STARTED
 ```

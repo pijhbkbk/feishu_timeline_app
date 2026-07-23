@@ -2,10 +2,10 @@
 
 ## 结论
 
-本轮 `R26_PRODUCT_UI_RECOVERY_GATE1_STATIC_V2_PROTOTYPE` 已实现四个隔离的静态 V2 场景，当前停在产品负责人视觉与交互确认闸门。
+本轮 `R26_PRODUCT_UI_RECOVERY_GATE1_STATIC_V2_PROTOTYPE` 已实现四个隔离的静态 V2 场景，并完成 2026-07-23 人工检查问题修复。产品负责人随后接受当前结果并授权提交、合并和生产部署。
 
 ```text
-R26_GATE1_IMPLEMENTED / STATIC_V2_ONLY / AWAITING_PRODUCT_OWNER_VISUAL_CONFIRMATION / NO_API_INTEGRATION / NO_DEPLOY / STOP
+R26_GATE1_PRODUCT_OWNER_ACCEPTED / STATIC_V2_ONLY / MAIN_MERGE_AND_PRODUCTION_DEPLOY_AUTHORIZED / GATE2_NOT_STARTED
 ```
 
 这不是生产完成结论，也不授权进入 Gate 2。
@@ -49,15 +49,19 @@ R26_GATE1_IMPLEMENTED / STATIC_V2_ONLY / AWAITING_PRODUCT_OWNER_VISUAL_CONFIRMAT
 - 状态覆盖 `COMPLETED`、`IN_PROGRESS`、`PENDING_REVIEW`、`OVERDUE`、`RETURNED`、`MONTHLY_TRACKING`、`EXIT_PENDING`、`NOT_STARTED`。
 - 连线区分主线、并行、非阻塞和退回四类语义。
 - 第 12 步为菱形，显示第 2 轮、退回原因、整改要求和只读历史。
+- 第 12 步元信息、标题和轮次结论均在判断框内居中，三层信息使用独立纵向间距。
 - 第 17 步为 `3 / 12` 环形进度，显示逾期月份和下次评审日期。
 - 第 18 步显示年产量、阈值、系统建议和人工决定边界。
+- 连线宽度为 `2.5`，箭头使用固定用户空间尺寸，避免随线宽放大。
 - 自动化验证 18 节点无矩形重叠，全部固定连线路径为正交折线，没有长斜线。
 
 ## 响应式结果
 
 - 1440：地图约占 70%，详情约占 30%。
-- 1024：地图为主，详情为右侧 overlay drawer。
-- 390：页面无横向溢出，主导航变为底部导航；地图保留内部缩放/平移，工序详情使用全屏 sheet。
+- 1024：地图为主，详情为不超过 370px 的右侧 overlay drawer；固定画布保持 1440px 实际宽度，通过地图内部滚动浏览，不把节点文字整体缩小。
+- 390：页面无横向溢出，主导航变为底部导航；桌面 SVG 隐藏，改用 18 节点可读总览，点击节点后工序详情使用全屏 sheet。
+- 390 工作台第一屏直接显示“提交工作进展”，任务事实卡位于主动作之后。
+- 390 进展提交使用固定在底部导航上方的主动作，并保留 160px 可滚动安全区。
 - 所有核心页面已生成 1440×900、1024×900、390×844 视口截图。
 
 ## 自动化结果
@@ -71,21 +75,25 @@ R26_GATE1_IMPLEMENTED / STATIC_V2_ONLY / AWAITING_PRODUCT_OWNER_VISUAL_CONFIRMAT
 - 第 12、17、18 步专项；
 - 节点点击、`taskId`/`nodeCode` URL 恢复和关闭详情不重置地图比例；
 - 进展三步、阻塞字段、本地材料文件名和跨页状态联动；
+- 第 12 步文字边界、流程线宽和固定箭头尺寸；
+- 390 工作台主按钮首屏可见、18 节点移动总览和全屏 sheet；
+- 1024 固定画布宽度和抽屉宽度；
+- 第 06、07、09、10 步、材料 3/3 与最近动态幂等联动；
 - 三种视口无页面级横向溢出；
 - console error 0、page error 0；
-- 三段本地交互录像。
+- 四段覆盖 1440、1024、390 的本地交互录像。
 
 最终命令与结果：
 
 ```text
-pnpm install --frozen-lockfile                                                    PASS
-pnpm --filter @feishu-timeline/web lint                                          PASS
-pnpm --filter @feishu-timeline/web typecheck                                     PASS
-pnpm --filter @feishu-timeline/web test                                          PASS（28 files / 84 tests）
-pnpm --filter @feishu-timeline/web build                                         PASS
-NEXT_PUBLIC_R26_V2_PROTOTYPE=true ... playwright ... r26-gate1-static-v2.spec.ts PASS（7/7）
+pnpm install                                                                      PASS
 pnpm lint                                                                         PASS
 pnpm typecheck                                                                    PASS
+pnpm test                                                                         PASS（Web 28 files / 84 tests；API 57 files / 223 tests）
+NEXT_PUBLIC_R26_V2_PROTOTYPE=true pnpm --filter web build                         PASS
+pnpm --filter api build                                                           PASS
+pnpm --filter api prisma:validate                                                 PASS
+NEXT_PUBLIC_R26_V2_PROTOTYPE=true ... playwright ... r26-gate1-static-v2.spec.ts PASS（7/7）
 git diff --check                                                                  PASS
 ```
 
@@ -94,6 +102,7 @@ git diff --check                                                                
 ## 视觉证据
 
 - 截图索引：`docs/product/R26_GATE1_SCREENSHOT_INDEX.md`
+- 人工检查修复报告：`docs/product/R26_GATE1_REMEDIATION_REPORT.md`
 - 人工复核表：`docs/product/R26_GATE1_HUMAN_REVIEW.md`
 - 本机证据根目录：`/Users/lixiaochen/Downloads/feishu_timeline_app/test-results/r26-gate1/`
 
@@ -105,7 +114,7 @@ git diff --check                                                                
 
 1. P1 页面稿偏向单页构图；Web 原型加入了冻结的五项产品导航和本地原型标识，用于验证真实产品壳层级。
 2. P2 流程地图参考页是横向总览；Web 必须服从冻结的 1440×1740 SVG 拓扑，因此桌面首屏展示当前节点附近内容，完整拓扑通过纵向页面和地图缩放查看。
-3. 1024 overlay drawer、390 全屏 sheet 和移动端底部导航是响应式推导，PPT 没有逐状态展示。
+3. 1024 overlay drawer、390 节点总览、全屏 sheet 和移动端底部导航是响应式推导，PPT 没有逐状态展示。
 4. 搜索、通知、帮助和个人中心目前仅有静态反馈；“我的任务”“复盘分析”保持 `aria-disabled=true` 并提示 Gate 2 后接入。
 5. 项目创建、评审通过/退回、文件上传和进展提交均为本地视觉交互，没有真实业务写入。
 6. Fixture 使用相对业务时间文案，不代表生产数据。

@@ -8,11 +8,11 @@ import { ChevronRightIcon } from './icons';
 import { PageIntro, StatusPill } from './ui';
 
 const filters = [
-  { label: '全部项目', value: 'all' },
-  { label: '高风险', value: 'risk' },
+  { label: '全部', value: 'all' },
+  { label: '正常', value: 'normal' },
+  { label: '有风险', value: 'risk' },
+  { label: '已逾期', value: 'overdue' },
   { label: '等待评审', value: 'review' },
-  { label: '本周到期', value: 'due' },
-  { label: '月度跟踪', value: 'tracking' },
 ] as const;
 
 export function ProjectsPage() {
@@ -23,8 +23,11 @@ export function ProjectsPage() {
     if (activeFilter === 'all') {
       return r26Projects;
     }
-    if (activeFilter === 'due') {
-      return r26Projects.filter((project) => project.deadline.includes('今天') || project.deadline.includes('明天'));
+    if (activeFilter === 'normal') {
+      return r26Projects.filter((project) => project.tone === 'tracking');
+    }
+    if (activeFilter === 'overdue') {
+      return [];
     }
     return r26Projects.filter((project) => project.tone === activeFilter);
   }, [activeFilter]);
@@ -54,7 +57,7 @@ export function ProjectsPage() {
 
       <section className="r26-project-kpis" aria-label="项目组合摘要">
         <div><span>活跃项目</span><strong>3</strong><small>本周更新 3 个</small></div>
-        <div><span>高风险</span><strong>1</strong><small>缺少关键材料</small></div>
+        <div><span>风险项目</span><strong>1</strong><small>缺少关键材料</small></div>
         <div><span>本周到期</span><strong>2</strong><small>今天 1 个</small></div>
         <div><span>等待评审</span><strong>1</strong><small>第 2 轮评审</small></div>
       </section>

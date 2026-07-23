@@ -128,7 +128,7 @@ stable tag        NOT RUN
 ### 可见证据
 
 - 固定视口截图：`test-results/r26-gate1/screenshots/`
-- 三段交互录像：`test-results/r26-gate1/videos/`
+- 四段当前复验录像（1440/1024/390）：`test-results/r26-gate1/videos/`
 - 四组 PPT 对比：`test-results/r26-gate1/comparisons/`
 - 报告：`docs/product/R26_GATE1_STATIC_PROTOTYPE_REPORT.md`
 - 索引：`docs/product/R26_GATE1_SCREENSHOT_INDEX.md`
@@ -155,3 +155,46 @@ git diff --check                                                                
 `R26_GATE1_IMPLEMENTED / STATIC_V2_ONLY / AWAITING_PRODUCT_OWNER_VISUAL_CONFIRMATION / NO_API_INTEGRATION / NO_DEPLOY / STOP`
 
 人工验收项全部保持未勾选。未进入 Gate 2，未部署 staging/production，未合并 `main`，未创建 tag。
+
+## Gate 1 人工检查修复（2026-07-23）
+
+### 修复范围
+
+- 第 12 步元信息、标题和轮次结论重新居中到判断框内，增加垂直间距。
+- 流程连线缩为 `2.5`，箭头改为固定用户空间尺寸。
+- 1024 保持 1440×1740 固定画布实际尺寸，右侧抽屉收敛为 370px。
+- 390 不再渲染缩小桌面 SVG，改为 18 节点可读总览和全屏工序 sheet。
+- 390 工作台主动作移到事实卡之前，确保第一屏可见。
+- 项目筛选固定为全部、正常、有风险、已逾期、等待评审。
+- 进展提交改为幂等会话更新；提交后第 06 步完成，第 07/09/10 步已创建，第 10 步进行中，材料同步为 3/3。
+- 删除产品页面内部 `demo-r26 · t006`，并将其与 `DEMO - ACTIVE` 一并纳入禁用文案扫描。
+- 关闭开发环境 Next 角标，避免调试元素进入验收截图。
+
+### 复验证据
+
+- 1440/1024/390 固定视口截图：`test-results/r26-gate1/screenshots/`
+- 四段视口标记录像：`test-results/r26-gate1/videos/`
+- 修复报告：`docs/product/R26_GATE1_REMEDIATION_REPORT.md`
+- 更新索引：`docs/product/R26_GATE1_SCREENSHOT_INDEX.md`
+- 更新人工复核表：`docs/product/R26_GATE1_HUMAN_REVIEW.md`
+- 浏览器真实执行风险筛选、节点点击、详情滚动、刷新恢复、关闭抽屉和 33 秒静态进展提交。
+
+### 最终检查
+
+```text
+R26 Playwright                                          PASS（7/7）
+pnpm install                                            PASS
+pnpm lint                                               PASS
+pnpm typecheck                                          PASS
+pnpm test                                               PASS（Web 84 / API 223）
+NEXT_PUBLIC_R26_V2_PROTOTYPE=true pnpm --filter web build PASS
+pnpm --filter api build                                 PASS
+pnpm --filter api prisma:validate                       PASS
+git diff --check                                        PASS
+```
+
+### 决定
+
+`R26_GATE1_PRODUCT_OWNER_ACCEPTED / STATIC_V2_ONLY / MAIN_MERGE_AND_PRODUCTION_DEPLOY_AUTHORIZED / GATE2_NOT_STARTED`
+
+2026-07-23，产品负责人明确回复“先就这样，部署提交合并代码”，接受当前 Gate 1 修复结果并授权提交、合并 `main` 和生产部署。部署前必须保留 PostgreSQL 与配置回滚点；Gate 2 真实数据联调未启动。

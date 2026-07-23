@@ -15,7 +15,7 @@ export function R26FlowMap({
   onSelectNode: (node: R26FlowNode) => void;
 }) {
   const [zoom, setZoom] = useState(1);
-  const { nodeStatusOverrides } = useR26PrototypeStore();
+  const { createdTaskIds, nodeStatusOverrides } = useR26PrototypeStore();
 
   const nodes = useMemo(
     () =>
@@ -72,12 +72,19 @@ export function R26FlowMap({
         ))}
       </div>
 
+      <MobileFlowList
+        nodes={nodes}
+        selectedNode={selectedNode}
+        createdTaskIds={createdTaskIds}
+        onSelectNode={onSelectNode}
+      />
+
       <div className="r26-map-scroll" data-testid="r26-map-scroll">
         <svg
           viewBox="0 0 1440 1740"
           preserveAspectRatio="xMidYMin meet"
           className="r26-flow-svg"
-          style={{ width: `${zoom * 100}%` }}
+          style={{ width: `${zoom * 1440}px` }}
           data-testid="r26-flow-map-svg"
           aria-label="18 步轻卡定制色开发固定拓扑"
         >
@@ -88,10 +95,10 @@ export function R26FlowMap({
                 id={`r26-arrow-${type}`}
                 markerWidth="10"
                 markerHeight="10"
-                refX="8"
+                refX="9"
                 refY="5"
                 orient="auto"
-                markerUnits="strokeWidth"
+                markerUnits="userSpaceOnUse"
               >
                 <path d="M0 0 L10 5 L0 10 z" className={`r26-arrow r26-arrow--${type}`} />
               </marker>
@@ -125,6 +132,7 @@ export function R26FlowMap({
                 key={node.code}
                 node={node}
                 selected={selectedNode?.code === node.code}
+                created={Boolean(node.taskId && createdTaskIds.includes(node.taskId))}
                 onSelect={onSelectNode}
               />
             ))}
@@ -138,10 +146,12 @@ export function R26FlowMap({
 function FlowNode({
   node,
   selected,
+  created,
   onSelect,
 }: {
   node: R26FlowNode;
   selected: boolean;
+  created: boolean;
   onSelect: (node: R26FlowNode) => void;
 }) {
   const status = node.status;
@@ -155,7 +165,7 @@ function FlowNode({
       className={className}
       role="button"
       tabIndex={0}
-      aria-label={`第 ${node.step} 步 ${node.name}，${statusLabel}`}
+      aria-label={`第 ${node.step} 步 ${node.name}，${created ? '已创建，' : ''}${statusLabel}`}
       aria-pressed={selected}
       onClick={() => onSelect(node)}
       onKeyDown={(event) => {
@@ -177,7 +187,7 @@ function FlowNode({
     >
       <title>{`第 ${node.step} 步 ${node.name}｜${statusLabel}｜${node.owner}｜${node.deadline}`}</title>
       <NodeShape node={node} />
-      <NodeContent node={node} status={status} />
+      <NodeContent node={node} status={status} created={created} />
     </g>
   );
 }
@@ -236,31 +246,52 @@ function NodeShape({ node }: { node: R26FlowNode }) {
   );
 }
 
-function NodeContent({ node, status }: { node: R26FlowNode; status: R26NodeStatus }) {
+function NodeContent({
+  node,
+  status,
+  created,
+}: {
+  node: R26FlowNode;
+  status: R26NodeStatus;
+  created: boolean;
+}) {
   const isMonthly = node.shape === 'monthly';
-  const contentX = isMonthly ? node.x + 88 : node.x + 16;
+  const isDecision = node.shape === 'decision';
+  const contentX = isDecision ? node.x + node.width / 2 : isMonthly ? node.x + 88 : node.x + 16;
   const name = node.shortName ?? node.name;
   const lines = splitNodeName(name);
-  const nameY = node.y + (node.shape === 'decision' ? 47 : 34);
+  const metaY = node.y + (isDecision ? 45 : 18);
+  const nameY = node.y + (isDecision ? 70 : 36);
+  const textAnchor = isDecision ? 'middle' : undefined;
 
   return (
     <g className="r26-node-copy" pointerEvents="none">
-      <text x={contentX} y={node.y + 18} className="r26-node-meta">
+      <text x={contentX} y={metaY} textAnchor={textAnchor} className="r26-node-meta">
         {`第 ${String(node.step).padStart(2, '0')} 步 · ${r26StatusLabels[status]}`}
       </text>
-      <text x={contentX} y={nameY} className="r26-node-title">
+      {created && !isDecision ? (
+        <text
+          x={node.x + node.width - 12}
+          y={node.y + 18}
+          textAnchor="end"
+          className="r26-node-created"
+        >
+          已创建
+        </text>
+      ) : null}
+      <text x={contentX} y={nameY} textAnchor={textAnchor} className="r26-node-title">
         {lines.map((line, index) => (
-          <tspan key={line} x={contentX} dy={index === 0 ? 0 : 18}>{line}</tspan>
+          <tspan key={`${line}-${index}`} x={contentX} dy={index === 0 ? 0 : 20}>{line}</tspan>
         ))}
       </text>
-      {node.shape !== 'decision' ? (
+      {!isDecision ? (
         <>
           <text x={contentX} y={node.y + node.height - 24} className="r26-node-detail">{node.owner}</text>
           <text x={contentX} y={node.y + node.height - 8} className="r26-node-deadline">{node.deadline}</text>
         </>
       ) : (
-        <text x={node.x + node.width / 2} y={node.y + 101} textAnchor="middle" className="r26-node-deadline">
-          {node.deadline}
+        <text x={contentX} y={node.y + 95} textAnchor="middle" className="r26-node-deadline">
+          第 2 轮 · 待结论
         </text>
       )}
     </g>
@@ -268,7 +299,7 @@ function NodeContent({ node, status }: { node: R26FlowNode; status: R26NodeStatu
 }
 
 function splitNodeName(name: string) {
-  if (name.length <= 9) {
+  if (name.length <= 11) {
     return [name];
   }
 
@@ -279,4 +310,59 @@ function splitNodeName(name: string) {
 
   const splitAt = Math.ceil(name.length / 2);
   return [name.slice(0, splitAt), name.slice(splitAt)];
+}
+
+function MobileFlowList({
+  nodes,
+  selectedNode,
+  createdTaskIds,
+  onSelectNode,
+}: {
+  nodes: R26FlowNode[];
+  selectedNode: R26FlowNode | null;
+  createdTaskIds: string[];
+  onSelectNode: (node: R26FlowNode) => void;
+}) {
+  return (
+    <section className="r26-mobile-flow" data-testid="r26-mobile-flow-list" aria-label="移动端流程节点总览">
+      <div className="r26-mobile-flow__summary">
+        <div>
+          <span>当前工序</span>
+          <strong>第 06 步 · 涂料采购</strong>
+        </div>
+        <div>
+          <span>需要关注</span>
+          <strong>逾期 1 · 退回 1 · 待评审 1</strong>
+        </div>
+      </div>
+      <ol>
+        {nodes.map((node) => {
+          const created = Boolean(node.taskId && createdTaskIds.includes(node.taskId));
+          const selected = selectedNode?.code === node.code;
+          const statusClass = `is-${node.status.toLowerCase()}`;
+          return (
+            <li key={node.code}>
+              <button
+                type="button"
+                className={[statusClass, selected ? 'is-selected' : ''].filter(Boolean).join(' ')}
+                data-status={node.status}
+                data-testid={`r26-mobile-node-${String(node.step).padStart(2, '0')}`}
+                aria-pressed={selected}
+                onClick={() => onSelectNode(node)}
+              >
+                <span className="r26-mobile-flow__number">{String(node.step).padStart(2, '0')}</span>
+                <span className="r26-mobile-flow__copy">
+                  <strong>{node.shortName ?? node.name}</strong>
+                  <small>{node.owner} · {node.deadline}</small>
+                </span>
+                <span className="r26-mobile-flow__state">
+                  {created ? '已创建' : node.step === 9 ? '非阻塞' : node.step === 18 ? '人工决定' : r26StatusLabels[node.status]}
+                </span>
+              </button>
+            </li>
+          );
+        })}
+      </ol>
+    </section>
+  );
 }

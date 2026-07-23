@@ -61,7 +61,7 @@ export function DashboardPage() {
                 href="/v2/progress?projectId=demo-r26&taskId=t006"
                 testId="dashboard-primary-action"
               >
-                提交这项进展
+                提交工作进展
               </PrimaryLink>
             )}
             <p>预计用时 60 秒</p>
@@ -93,7 +93,11 @@ export function DashboardPage() {
 
       <section className="r26-kpi-grid" aria-label="今日工作摘要">
         <Fact label="我的待办" value={progressSubmitted ? '2' : '3'} note="按优先级排列" />
-        <Fact label="今天到期" value={progressSubmitted ? '0' : '1'} note="采购到货确认" />
+        <Fact
+          label="今天到期"
+          value={progressSubmitted ? '0' : '1'}
+          note={progressSubmitted ? '今日任务已按时完成' : '采购到货确认'}
+        />
         <Fact label="待我评审" value="1" note="驾驶室评审第 2 轮" />
         <Fact label="材料缺口" value={progressSubmitted ? '1' : '2'} note="跨两个项目" />
       </section>
