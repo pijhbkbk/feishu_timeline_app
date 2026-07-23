@@ -10,22 +10,36 @@ import type { R26FlowNode, R26NodeStatus } from './types';
 export function R26FlowMap({
   selectedNode,
   onSelectNode,
+  nodes: suppliedNodes,
+  createdTaskIds: suppliedCreatedTaskIds,
+  currentSummary,
+  ignorePrototypeOverrides = false,
 }: {
   selectedNode: R26FlowNode | null;
   onSelectNode: (node: R26FlowNode) => void;
+  nodes?: R26FlowNode[];
+  createdTaskIds?: string[];
+  currentSummary?: {
+    currentStep: string;
+    attention: string;
+  };
+  ignorePrototypeOverrides?: boolean;
 }) {
   const [zoom, setZoom] = useState(1);
   const { createdTaskIds, nodeStatusOverrides } = useR26PrototypeStore();
 
   const nodes = useMemo(
     () =>
-      r26FlowNodes.map((node) => ({
+      (suppliedNodes ?? r26FlowNodes).map((node) => ({
         ...node,
         status:
-          (node.taskId ? nodeStatusOverrides[node.taskId] : undefined) ?? node.status,
+          (!ignorePrototypeOverrides && node.taskId
+            ? nodeStatusOverrides[node.taskId]
+            : undefined) ?? node.status,
       })),
-    [nodeStatusOverrides],
+    [ignorePrototypeOverrides, nodeStatusOverrides, suppliedNodes],
   );
+  const effectiveCreatedTaskIds = suppliedCreatedTaskIds ?? createdTaskIds;
 
   return (
     <section className="r26-map-card" aria-label="深海蓝项目固定流程地图">
@@ -75,7 +89,8 @@ export function R26FlowMap({
       <MobileFlowList
         nodes={nodes}
         selectedNode={selectedNode}
-        createdTaskIds={createdTaskIds}
+        createdTaskIds={effectiveCreatedTaskIds}
+        {...(currentSummary ? { currentSummary } : {})}
         onSelectNode={onSelectNode}
       />
 
@@ -132,7 +147,7 @@ export function R26FlowMap({
                 key={node.code}
                 node={node}
                 selected={selectedNode?.code === node.code}
-                created={Boolean(node.taskId && createdTaskIds.includes(node.taskId))}
+                created={Boolean(node.taskId && effectiveCreatedTaskIds.includes(node.taskId))}
                 onSelect={onSelectNode}
               />
             ))}
@@ -316,11 +331,16 @@ function MobileFlowList({
   nodes,
   selectedNode,
   createdTaskIds,
+  currentSummary,
   onSelectNode,
 }: {
   nodes: R26FlowNode[];
   selectedNode: R26FlowNode | null;
   createdTaskIds: string[];
+  currentSummary?: {
+    currentStep: string;
+    attention: string;
+  };
   onSelectNode: (node: R26FlowNode) => void;
 }) {
   return (
@@ -328,11 +348,11 @@ function MobileFlowList({
       <div className="r26-mobile-flow__summary">
         <div>
           <span>当前工序</span>
-          <strong>第 06 步 · 涂料采购</strong>
+          <strong>{currentSummary?.currentStep ?? '第 06 步 · 涂料采购'}</strong>
         </div>
         <div>
           <span>需要关注</span>
-          <strong>逾期 1 · 退回 1 · 待评审 1</strong>
+          <strong>{currentSummary?.attention ?? '逾期 1 · 退回 1 · 待评审 1'}</strong>
         </div>
       </div>
       <ol>

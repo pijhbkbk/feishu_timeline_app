@@ -26,6 +26,7 @@ import { PilotProductionsModule } from './modules/pilot-productions/pilot-produc
 import { ProjectsModule } from './modules/projects/projects.module';
 import { ProductionPlansModule } from './modules/production-plans/production-plans.module';
 import { QueueModule } from './modules/queue/queue.module';
+import { R26ReadModelModule } from './modules/r26-read-model/r26-read-model.module';
 import { ReviewsModule } from './modules/reviews/reviews.module';
 import { RetrospectivesModule } from './modules/retrospectives/retrospectives.module';
 import { SamplesModule } from './modules/samples/samples.module';
@@ -68,6 +69,7 @@ import { WorkflowsModule } from './modules/workflows/workflows.module';
     StandardBoardsModule,
     WorkflowsModule,
     QueueModule,
+    R26ReadModelModule,
     ReviewsModule,
     RetrospectivesModule,
     DevelopmentReportsModule,

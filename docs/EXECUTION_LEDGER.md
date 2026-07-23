@@ -4206,3 +4206,64 @@ git diff --check                       PASS
 - 证据：`test-results/r26-production/screenshots/workspace-initial-scroll-fixed-1440.png`。
 
 `R26_SCROLL_FIX_DEPLOYED / NAV_COPY_UPDATED / PRODUCTION_VERIFIED / GATE2_NOT_STARTED`
+
+---
+
+### Round R26_PRODUCT_UI_RECOVERY_GATE2_READ_ONLY_REAL_DATA_INTEGRATION
+
+#### Goal And Scope
+
+- 将四个隔离 V2 页面连接到独立 staging 的 PostgreSQL 真实只读数据。
+- 在项目工作区新增只读“项目成员与分工”和“自动分配预览”。
+- 业务网络请求严格限制为 GET；不修改 V1、状态机、数据库业务数据或 production。
+
+#### Exact Changes
+
+- `apps/api/src/modules/r26-read-model/`：五个 GET-only 聚合接口、18 节点分配规则、
+  权限门禁与契约测试。
+- `apps/web/src/features/v2/r26-readonly-client.ts`：固定 GET、无 body、限 `/v2/*`
+  路径的客户端。
+- `apps/web/src/features/v2/real-*.tsx`：真实工作台、项目列表、固定流程地图、详情、
+  项目成员与分工、自动分配预览和只读进展上下文。
+- `deploy/compose.staging.yml` 与 staging env 示例：显式
+  `NEXT_PUBLIC_R26_V2_DATA_MODE=read-only-real`，未修改 production 配置。
+- `docs/product/evidence/R26_GATE2/`：1440、1024、390 共 12 张有效截图；浏览器
+  产生的空白全页截图已剔除。
+- `docs/product/R26_GATE2_READ_ONLY_REAL_DATA_REPORT.md`：完整证据和人工复核清单。
+
+#### Read-only And Real-data Evidence
+
+- API Controller 只有五个 `@Get`；前端客户端测试断言 `method=GET` 且无 body。
+- Playwright 运行时完成真实页面点击、滚动、抽屉关闭、刷新恢复和移动全屏 sheet。
+- nginx 日志最终快照：`/api/v2/* GET 53`；POST/PUT/PATCH/DELETE 均为 0。
+- 页面 `data-source=database`，Gate 1 fixture 渲染命中数 0。
+- 18 个流程节点、7 个项目成员和 18 行自动分配预览来自 staging 数据库。
+- 长期 skeleton、console error、page error 均为 0。
+
+#### Validation
+
+```text
+pnpm install --frozen-lockfile                                      PASS
+pnpm lint                                                           PASS
+pnpm typecheck                                                      PASS
+pnpm test                                                           PASS（Web 87 / API 225）
+NEXT_PUBLIC_R26_V2_PROTOTYPE=true
+NEXT_PUBLIC_R26_V2_DATA_MODE=read-only-real
+pnpm --filter @feishu-timeline/web build                            PASS
+pnpm --filter @feishu-timeline/api build                            PASS
+pnpm --filter @feishu-timeline/api prisma:validate                  PASS
+```
+
+- Docker Hub metadata 拉取超时后，使用本机通过检查的构建产物生成 staging 临时镜像；
+  只重建 staging API/Web，未运行 migration 或 seed。
+- staging API、Web、nginx healthy；production 未部署。
+
+#### Decision
+
+```text
+R26_GATE2_IMPLEMENTED
+READ_ONLY_REAL_DATA_CONNECTED
+ZERO_BUSINESS_WRITE_REQUESTS
+AWAITING_PRODUCT_OWNER_REAL_DATA_CONFIRMATION
+STOP_BEFORE_GATE3
+```

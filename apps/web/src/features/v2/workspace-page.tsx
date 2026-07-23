@@ -8,10 +8,20 @@ import { r26FlowNodes, r26StatusLabels } from './fixtures';
 import { AlertIcon, CheckIcon, CloseIcon } from './icons';
 import { R26FlowMap } from './flow-map';
 import { useR26PrototypeStore } from './prototype-store';
+import { isR26ReadOnlyRealDataEnabled } from './r26-data-mode';
+import { RealWorkspacePage } from './real-workspace-page';
 import type { R26FlowNode } from './types';
 import { StatusPill } from './ui';
 
 export function WorkspacePage({ projectId }: { projectId: string }) {
+  if (isR26ReadOnlyRealDataEnabled()) {
+    return <RealWorkspacePage projectId={projectId} />;
+  }
+
+  return <PrototypeWorkspacePage projectId={projectId} />;
+}
+
+function PrototypeWorkspacePage({ projectId }: { projectId: string }) {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();

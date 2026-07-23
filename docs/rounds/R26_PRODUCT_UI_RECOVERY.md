@@ -246,3 +246,58 @@ git diff --check                                        PASS
 决定：
 
 `R26_SCROLL_FIX_DEPLOYED / NAV_COPY_UPDATED / PRODUCTION_VERIFIED / GATE2_NOT_STARTED`
+
+## Gate 2 真实只读数据联调（2026-07-23）
+
+### 授权与边界
+
+- 产品负责人已人工确认 Gate 1，通过后明确授权进入
+  `R26_PRODUCT_UI_RECOVERY_GATE2_READ_ONLY_REAL_DATA_INTEGRATION`。
+- 只在独立 staging 为四个 `/v2/*` 页面启用真实读模型。
+- 只允许 GET；没有进展提交、材料上传、分配保存、成员增删、负责人修改或流程推进。
+- 未修改 V1、业务状态机、Prisma schema、migration 或数据库业务数据。
+- 未部署 production，未进入 Gate 3。
+
+### 实现
+
+- 新增五个 `/api/v2/*` GET 读接口，聚合当前用户、权限、项目、任务、18 节点流程、
+  SLA、材料、动态、成员、部门与有效用户。
+- 新增服务端 18 节点分配规则，按部门候选池返回具体建议负责人、协同人和评审人。
+- 项目工作区增加只读“项目成员与分工”和“自动分配预览”，没有保存按钮。
+- 进展页改为真实只读上下文，输入框、文件选择器和业务写按钮均为 0。
+- 真实模式响应与页面均标记 `dataSource=database`；Gate 1 fixture 命中数为 0。
+
+### staging 验收证据
+
+- 使用现有飞书登录态在 1440、1024、390 完整点击项目、流程节点、抽屉、URL 刷新、
+  移动全屏 sheet 和只读进展上下文。
+- 项目工作区显示 18 个 API 节点、7 个项目成员和 18 行自动分配预览。
+- 长期 skeleton、console error、page error、页面横向溢出均为 0。
+- Playwright 运行时业务请求观测和 nginx 日志交叉核对：
+  `/api/v2/* GET 53`，POST/PUT/PATCH/DELETE 均为 0。
+- 12 张有效截图：`docs/product/evidence/R26_GATE2/`；浏览器产生的空白全页截图已剔除。
+- 完整报告：`docs/product/R26_GATE2_READ_ONLY_REAL_DATA_REPORT.md`。
+
+### 检查
+
+```text
+pnpm install --frozen-lockfile                                      PASS
+pnpm lint                                                           PASS
+pnpm typecheck                                                      PASS
+pnpm test                                                           PASS（Web 87 / API 225）
+NEXT_PUBLIC_R26_V2_PROTOTYPE=true
+NEXT_PUBLIC_R26_V2_DATA_MODE=read-only-real
+pnpm --filter @feishu-timeline/web build                            PASS
+pnpm --filter @feishu-timeline/api build                            PASS
+pnpm --filter @feishu-timeline/api prisma:validate                  PASS
+```
+
+### 决定
+
+```text
+R26_GATE2_IMPLEMENTED
+READ_ONLY_REAL_DATA_CONNECTED
+ZERO_BUSINESS_WRITE_REQUESTS
+AWAITING_PRODUCT_OWNER_REAL_DATA_CONFIRMATION
+STOP_BEFORE_GATE3
+```
