@@ -4196,4 +4196,13 @@ git diff --check                       PASS
 
 #### Decision
 
-`R26_SCROLL_FIX_VALIDATED / NAV_COPY_UPDATED / PRODUCTION_DEPLOY_PENDING`
+生产部署后专项浏览器复验：
+
+- 正式页面初始缩放为 100%，未执行任何缩放操作；
+- 鼠标位于地图内执行 600px 纵向滚轮，页面 `scrollY: 0 → 600`；
+- 主导航为“工作台 / 项目列表 / 我的任务 / 进展提交 / 系统管理”；
+- `/v2/admin` 保持禁用且不触发预取；
+- 4xx 资源、console error、page error 均为 0；
+- 证据：`test-results/r26-production/screenshots/workspace-initial-scroll-fixed-1440.png`。
+
+`R26_SCROLL_FIX_DEPLOYED / NAV_COPY_UPDATED / PRODUCTION_VERIFIED / GATE2_NOT_STARTED`

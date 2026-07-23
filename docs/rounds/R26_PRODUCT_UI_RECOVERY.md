@@ -239,3 +239,10 @@ git diff --check                                        PASS
   禁用入口目标为 `/v2/admin`。
 - 本地验证：Web lint、typecheck、84 项测试、生产 build、R26 Playwright
   7/7 全部 PASS。
+- 生产验证：初始 100% 且未操作缩放时，地图内滚轮使页面
+  `scrollY: 0 → 600`；新导航显示正确；4xx、console error、page error
+  均为 0。
+
+决定：
+
+`R26_SCROLL_FIX_DEPLOYED / NAV_COPY_UPDATED / PRODUCTION_VERIFIED / GATE2_NOT_STARTED`

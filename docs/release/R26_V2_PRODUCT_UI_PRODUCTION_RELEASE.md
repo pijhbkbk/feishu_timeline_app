@@ -123,3 +123,10 @@ API / Web / nginx / PostgreSQL / Redis                          active
 - 项目工作区返回文案和面包屑同步改为“项目列表”；
 - Web lint、类型检查、84 项单元测试、生产构建和 R26 Playwright 7/7
   全部通过。
+- 生产专项验证保持初始 100%，未点击缩放按钮；地图内滚轮 600px 后页面
+  `scrollY` 从 0 增加到 600。
+- 生产主导航显示“项目列表”和“系统管理”；系统管理目标为 `/v2/admin`
+  且仍为禁用入口。
+- 正式页面 4xx 资源、console error、page error 均为 0。
+- 截图：
+  `test-results/r26-production/screenshots/workspace-initial-scroll-fixed-1440.png`。
