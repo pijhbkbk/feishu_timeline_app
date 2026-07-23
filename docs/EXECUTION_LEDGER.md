@@ -4164,3 +4164,36 @@ git diff --check                                        PASS
 #### Decision
 
 `R26_GATE1_STATIC_V2_DEPLOYED / PRODUCT_OWNER_ACCEPTED_AS_IS / GATE2_NOT_STARTED / NO_STABLE_TAG`
+
+---
+
+### Round R26_PRODUCT_UI_RECOVERY_SCROLL_AND_NAV_FIX
+
+#### Production Feedback
+
+- 100% 初始缩放时，地图区域吞掉页面纵向滚轮；75% 后恢复 100% 才正常。
+- 主导航要求“项目管理”改为“项目列表”，“复盘分析”改为“系统管理”。
+
+#### Root Cause And Change
+
+- `.r26-map-scroll` 的 `overflow:auto` 与
+  `overscroll-behavior:contain` 将纵向滚动锁在没有纵向滚动范围的内层容器。
+- 改为横向滚动容器，纵向 overscroll 使用 `auto`，允许页面立即接管滚轮。
+- 新增 100% 初始状态地图悬停滚轮回归门禁。
+- 项目工作区面包屑/返回文案同步为“项目列表”；“系统管理”禁用入口指向
+  `/v2/admin`，不再保留错误的复盘路由目标。
+
+#### Local Validation
+
+```text
+web lint                               PASS
+web typecheck                          PASS
+web test                               PASS（84）
+web production build                   PASS
+R26 Playwright                         PASS（7/7）
+git diff --check                       PASS
+```
+
+#### Decision
+
+`R26_SCROLL_FIX_VALIDATED / NAV_COPY_UPDATED / PRODUCTION_DEPLOY_PENDING`

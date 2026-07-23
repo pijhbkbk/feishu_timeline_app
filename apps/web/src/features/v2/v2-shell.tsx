@@ -24,10 +24,10 @@ type NavItem = {
 
 const navItems: NavItem[] = [
   { label: '工作台', href: '/v2/dashboard', enabled: true, icon: HomeIcon },
-  { label: '项目管理', href: '/v2/projects', enabled: true, icon: ProjectIcon },
+  { label: '项目列表', href: '/v2/projects', enabled: true, icon: ProjectIcon },
   { label: '我的任务', href: '/v2/tasks', enabled: false, icon: TaskIcon },
   { label: '进展提交', href: '/v2/progress?projectId=demo-r26&taskId=t006', enabled: true, icon: ProgressIcon },
-  { label: '复盘分析', href: '/v2/retrospectives', enabled: false, icon: RetrospectiveIcon },
+  { label: '系统管理', href: '/v2/admin', enabled: false, icon: RetrospectiveIcon },
 ];
 
 export function V2Shell({ children }: { children: React.ReactNode }) {

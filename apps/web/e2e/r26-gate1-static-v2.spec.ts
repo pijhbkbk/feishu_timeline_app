@@ -121,6 +121,15 @@ test('R26-02 工作台主动作、项目筛选、卡片跳转与固定地图默�
   page,
 }) => {
   await resetPrototype(page);
+  const primaryNavigation = page.getByRole('navigation', { name: 'V2 主导航' });
+  await expect(primaryNavigation).toContainText('项目列表');
+  await expect(primaryNavigation).toContainText('系统管理');
+  await expect(primaryNavigation).not.toContainText('项目管理');
+  await expect(primaryNavigation).not.toContainText('复盘分析');
+  await expect(primaryNavigation.getByRole('link', { name: '系统管理' })).toHaveAttribute(
+    'href',
+    '/v2/admin',
+  );
   await expect(page.getByTestId('dashboard-primary-action')).toHaveAttribute(
     'href',
     '/v2/progress?projectId=demo-r26&taskId=t006',
@@ -353,6 +362,13 @@ test('R26-06 1440、1024、390 三视口无页面横向溢出并生成页面证�
 
     await page.goto('/v2/projects/demo-r26');
     await assertNoPageOverflow(page);
+    if (viewport.width === 1440) {
+      await page.evaluate(() => window.scrollTo(0, 0));
+      await page.getByTestId('r26-map-scroll').hover({ position: { x: 100, y: 100 } });
+      await page.mouse.wheel(0, 600);
+      await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+      await page.evaluate(() => window.scrollTo(0, 0));
+    }
     if (viewport.width === 390) {
       await expect(page.getByTestId('r26-mobile-flow-list')).toBeVisible();
       await expect(page.getByTestId('r26-map-scroll')).toBeHidden();

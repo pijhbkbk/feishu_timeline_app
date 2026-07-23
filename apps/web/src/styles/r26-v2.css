@@ -1262,8 +1262,12 @@
 [data-ui-version="r26-v2"] .r26-map-scroll {
   position: relative;
   width: 100%;
-  overflow: auto;
-  overscroll-behavior: contain;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  overscroll-behavior-y: auto;
+  touch-action: pan-x pan-y;
+  -webkit-overflow-scrolling: touch;
   background:
     linear-gradient(rgba(231, 235, 242, 0.35) 1px, transparent 1px),
     linear-gradient(90deg, rgba(231, 235, 242, 0.35) 1px, transparent 1px),

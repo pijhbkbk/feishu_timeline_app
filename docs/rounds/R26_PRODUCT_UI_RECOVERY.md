@@ -225,3 +225,17 @@ git diff --check                                        PASS
 ### 决定
 
 `R26_GATE1_STATIC_V2_DEPLOYED / PRODUCT_OWNER_ACCEPTED_AS_IS / GATE2_NOT_STARTED / NO_STABLE_TAG`
+
+## 生产反馈修复：初始滚动与导航命名（2026-07-23）
+
+- 生产复现：流程地图 100% 初始状态下，鼠标位于地图区域时滚轮不能推动页面；
+  缩放到 75% 再恢复 100% 后才偶然恢复。
+- 根因：地图滚动容器的全轴 `overflow:auto` 与全轴
+  `overscroll-behavior:contain` 吞掉了纵向滚动链。
+- 修复：横向滚动继续由地图容器管理，纵向滚动明确传递给页面，并保留触摸平移。
+- 回归：首次进入、未点击缩放、地图悬停时执行 600px 纵向滚轮，页面
+  `scrollY` 必须大于 0。
+- 导航与项目工作区文案统一为“项目列表”；“复盘分析”改为“系统管理”，
+  禁用入口目标为 `/v2/admin`。
+- 本地验证：Web lint、typecheck、84 项测试、生产 build、R26 Playwright
+  7/7 全部 PASS。

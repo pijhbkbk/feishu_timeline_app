@@ -41,8 +41,8 @@ export function WorkspacePage({ projectId }: { projectId: string }) {
       <div className="r26-page">
         <section className="r26-empty-state">
           <strong>本轮只提供深海蓝项目工作区</strong>
-          <p>返回项目管理，从深海蓝项目卡进入固定流程地图。</p>
-          <Link className="r26-button r26-button--primary" href="/v2/projects">返回项目管理</Link>
+          <p>返回项目列表，从深海蓝项目卡进入固定流程地图。</p>
+          <Link className="r26-button r26-button--primary" href="/v2/projects">返回项目列表</Link>
         </section>
       </div>
     );
@@ -83,7 +83,7 @@ export function WorkspacePage({ projectId }: { projectId: string }) {
     <div className="r26-page r26-workspace-page" data-testid="r26-workspace">
       <header className="r26-project-header">
         <div className="r26-project-header__identity">
-          <Link href="/v2/projects" aria-label="返回项目管理">项目管理</Link>
+          <Link href="/v2/projects" aria-label="返回项目列表">项目列表</Link>
           <span aria-hidden="true">/</span>
           <div>
             <span className="r26-color-swatch" style={{ background: '#1f4e79' }} aria-label="深海蓝色样" />
