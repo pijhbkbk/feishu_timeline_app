@@ -71,7 +71,10 @@ export function V2Shell({ children }: { children: React.ReactNode }) {
                   aria-current={isActive ? 'page' : undefined}
                   aria-disabled={!item.enabled}
                   {...(!item.enabled
-                    ? { onClick: (event: MouseEvent<HTMLAnchorElement>) => handleDisabled(event, item.label) }
+                    ? {
+                        prefetch: false,
+                        onClick: (event: MouseEvent<HTMLAnchorElement>) => handleDisabled(event, item.label),
+                      }
                     : {})}
                 >
                   {item.label}
@@ -112,7 +115,10 @@ export function V2Shell({ children }: { children: React.ReactNode }) {
               aria-current={isActive ? 'page' : undefined}
               aria-disabled={!item.enabled}
               {...(!item.enabled
-                ? { onClick: (event: MouseEvent<HTMLAnchorElement>) => handleDisabled(event, item.label) }
+                ? {
+                    prefetch: false,
+                    onClick: (event: MouseEvent<HTMLAnchorElement>) => handleDisabled(event, item.label),
+                  }
                 : {})}
             >
               <Icon />
