@@ -278,7 +278,7 @@ function TaskDetail({
 
       <footer className="r26-task-detail__footer">
         {node.taskId === 't006' ? (
-          <Link href="/v2/progress?projectId=demo-r26&taskId=t006" className="r26-button r26-button--primary">
+          <Link href={'/v2/progress?projectId=demo-r26&taskId=t006'} className="r26-button r26-button--primary">
             提交进展
           </Link>
         ) : isStep12 ? (
