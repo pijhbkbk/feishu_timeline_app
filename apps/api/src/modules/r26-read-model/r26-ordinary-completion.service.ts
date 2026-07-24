@@ -222,34 +222,40 @@ export class R26OrdinaryCompletionService {
                 },
               }),
             ]);
-          const assignmentSummary = createdTasks.map((createdTask) => ({
-            taskId: createdTask.id,
-            nodeCode: createdTask.nodeCode,
-            stepNumber:
-              getWorkflowNodeMeta(createdTask.nodeCode).sequence / 10,
-            stepName: createdTask.nodeName,
-            isPrimary: createdTask.isPrimary,
-            isNonBlocking:
-              createdTask.nodeCode ===
-              WorkflowNodeCode.PERFORMANCE_TEST,
-            owner: createdTask.assigneeUser
-              ? {
-                  id: createdTask.assigneeUser.id,
-                  name: createdTask.assigneeUser.name,
-                }
-              : null,
-            department: createdTask.assigneeDepartment
-              ? {
-                  id: createdTask.assigneeDepartment.id,
-                  name: createdTask.assigneeDepartment.name,
-                }
-              : null,
-            assignmentSource:
-              this.readPayloadString(
-                createdTask.payload,
-                'assignmentSource',
-              ) ?? ProjectAssignmentSource.UNASSIGNED,
-          }));
+          const assignmentSummary = createdTasks
+            .map((createdTask) => ({
+              taskId: createdTask.id,
+              nodeCode: createdTask.nodeCode,
+              stepNumber:
+                getWorkflowNodeMeta(createdTask.nodeCode).sequence /
+                10,
+              stepName: createdTask.nodeName,
+              isPrimary: createdTask.isPrimary,
+              isNonBlocking:
+                createdTask.nodeCode ===
+                WorkflowNodeCode.PERFORMANCE_TEST,
+              owner: createdTask.assigneeUser
+                ? {
+                    id: createdTask.assigneeUser.id,
+                    name: createdTask.assigneeUser.name,
+                  }
+                : null,
+              department: createdTask.assigneeDepartment
+                ? {
+                    id: createdTask.assigneeDepartment.id,
+                    name: createdTask.assigneeDepartment.name,
+                  }
+                : null,
+              assignmentSource:
+                this.readPayloadString(
+                  createdTask.payload,
+                  'assignmentSource',
+                ) ?? ProjectAssignmentSource.UNASSIGNED,
+            }))
+            .sort(
+              (left, right) =>
+                left.stepNumber - right.stepNumber,
+            );
           const audit =
             await this.activityLogsService.createWithExecutor(tx, {
               projectId: lockedTask.projectId,

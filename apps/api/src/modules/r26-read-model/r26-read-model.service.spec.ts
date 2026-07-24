@@ -135,6 +135,30 @@ describe('R26ReadModelService assignment preview', () => {
     expect(result.unassignedReason).toBe('当前项目没有采购部有效成员。');
   });
 
+  it('uses the matched company-directory department name in every preview', () => {
+    const input = baseInput(WorkflowNodeCode.STANDARD_BOARD_PRODUCTION);
+    input.departments = [
+      {
+        id: 'dept-process',
+        code: 'PROCESS',
+        name: '工艺开发部',
+        path: null,
+      },
+    ];
+
+    const result = createBuilder().buildAssignmentPreview(input);
+
+    expect(result.primaryDepartment).toMatchObject({
+      id: 'dept-process',
+      code: 'PAINT_PROCESS',
+      name: '工艺开发部',
+      isDirectoryMatched: true,
+    });
+    expect(result.unassignedReason).toBe(
+      '当前项目没有工艺开发部有效成员。',
+    );
+  });
+
   it('uses the project default executor for a matching department', () => {
     const input = baseInput(WorkflowNodeCode.PAINT_PROCUREMENT);
     input.departments = [

@@ -328,7 +328,11 @@ function materializeDepartment(
   return {
     id: directoryDepartment?.id ?? null,
     code: rule.code,
-    name: rule.name,
+    // Once a Gate 3A business rule has matched a real company-directory
+    // department, all downstream previews must use that canonical directory
+    // name. Otherwise the completion preview can say "涂装工艺部" while the
+    // created task (correctly linked by id) says "工艺开发部".
+    name: directoryDepartment?.name ?? rule.name,
     directoryCode: directoryDepartment?.code ?? null,
     directoryName: directoryDepartment?.name ?? null,
     isDirectoryMatched: directoryDepartment !== null,
