@@ -32,7 +32,8 @@ const webServer = {
   cwd: repoRoot,
   env: {
     NEXT_PUBLIC_ENABLE_MOCK_LOGIN: 'true',
-    ...(isR26Gate1 ? { NEXT_PUBLIC_R26_V2_PROTOTYPE: 'true' } : {}),
+    NEXT_PUBLIC_R26_V2_PROTOTYPE: 'true',
+    NEXT_PUBLIC_R26_V2_DATA_MODE: 'fixture',
   },
 };
 
@@ -62,5 +63,5 @@ export default defineConfig({
     video: 'retain-on-failure',
     headless: true,
   },
-  webServer: isR26Gate1 ? [webServer] : [apiServer, webServer],
+  webServer: [apiServer, webServer],
 });

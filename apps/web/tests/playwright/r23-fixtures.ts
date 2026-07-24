@@ -172,23 +172,17 @@ export async function setR23WorkflowTaskDueToday(taskId: string) {
 
 export async function loginAsR23Role(page: Page, role: R23RoleKey) {
   const username = `r23_${role}`;
-  await page.goto('/login');
-  await page.evaluate(
-    async ({ apiBaseUrl, nextUsername, roleCodes }) => {
-      const response = await fetch(`${apiBaseUrl}/auth/mock-login`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          username: nextUsername,
-          name: `R23 ${nextUsername}`,
-          roleCodes,
-        }),
-      });
-      if (!response.ok) throw new Error(`mock login failed: ${response.status}`);
+  const response = await page.request.post(`${API_BASE_URL}/auth/mock-login`, {
+    data: {
+      username,
+      name: `R23 ${username}`,
+      roleCodes: R23_ROLE_MAP[role],
     },
-    { apiBaseUrl: API_BASE_URL, nextUsername: username, roleCodes: R23_ROLE_MAP[role] },
-  );
+  });
+  if (!response.ok()) {
+    throw new Error(`mock login failed: ${response.status()}`);
+  }
+  await page.goto('/dashboard');
 }
 
 export async function logoutR23(page: Page) {

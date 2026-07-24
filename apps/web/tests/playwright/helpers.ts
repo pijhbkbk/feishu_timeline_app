@@ -39,28 +39,16 @@ type ProjectSummary = {
 
 export async function loginAsProjectManager(page: Page) {
   const username = `r13_pm_${Date.now()}`;
-  await page.goto('/login');
-  await page.evaluate(
-    async ({ apiBaseUrl, nextUsername }) => {
-      const response = await fetch(`${apiBaseUrl}/auth/mock-login`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'content-type': 'application/json',
-        },
-        body: JSON.stringify({
-          username: nextUsername,
-          name: 'R13 项目经理',
-          roleCodes: ['project_manager'],
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`mock login failed: ${response.status}`);
-      }
+  const response = await page.request.post(`${API_BASE_URL}/auth/mock-login`, {
+    data: {
+      username,
+      name: 'R13 项目经理',
+      roleCodes: ['project_manager'],
     },
-    { apiBaseUrl: API_BASE_URL, nextUsername: username },
-  );
+  });
+  if (!response.ok()) {
+    throw new Error(`mock login failed: ${response.status()}`);
+  }
   await page.goto('/projects');
   await expect(page.getByRole('heading', { name: '定制色开发项目' })).toBeVisible();
 }

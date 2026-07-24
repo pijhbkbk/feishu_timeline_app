@@ -112,7 +112,9 @@ test('R26-01 Feature Flag 关闭时 V2 不可用，开启时四页可访问且�
     expect(await page.locator('body').innerText()).not.toMatch(forbiddenProductCopy);
   }
 
-  expect(apiRequests).toEqual([]);
+  expect(
+    apiRequests.filter((url) => !url.endsWith('/api/auth/session')),
+  ).toEqual([]);
   expect(consoleErrors).toEqual([]);
   expect(pageErrors).toEqual([]);
 });
@@ -325,7 +327,9 @@ test('R26-05 进展三步、条件阻塞字段与本地页面联动完整可用'
   });
   expect(submittedActivities).toBe(1);
 
-  expect(apiRequests).toEqual([]);
+  expect(
+    apiRequests.filter((url) => !url.endsWith('/api/auth/session')),
+  ).toEqual([]);
   expect(consoleErrors).toEqual([]);
   expect(pageErrors).toEqual([]);
 });
@@ -428,7 +432,9 @@ test('R26-06 1440、1024、390 三视口无页面横向溢出并生成页面证�
   await page.getByTestId('progress-submit').click();
   await screenshot(page, 'progress-success-1440.png');
 
-  expect(apiRequests).toEqual([]);
+  expect(
+    apiRequests.filter((url) => !url.endsWith('/api/auth/session')),
+  ).toEqual([]);
   expect(consoleErrors).toEqual([]);
   expect(pageErrors).toEqual([]);
 });

@@ -111,33 +111,17 @@ export async function loginAsR20Role(page: Page, role: R20RoleKey) {
   const roleConfig = R20_ROLE_MAP[role];
   const username = `r20_${role}`;
 
-  await page.goto('/login');
-  await page.evaluate(
-    async ({ apiBaseUrl, nextUsername, displayName, roleCodes }) => {
-      const response = await fetch(`${apiBaseUrl}/auth/mock-login`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'content-type': 'application/json',
-        },
-        body: JSON.stringify({
-          username: nextUsername,
-          name: displayName,
-          roleCodes,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`mock login failed: ${response.status}`);
-      }
-    },
-    {
-      apiBaseUrl: API_BASE_URL,
-      nextUsername: username,
-      displayName: roleConfig.displayName,
+  const response = await page.request.post(`${API_BASE_URL}/auth/mock-login`, {
+    data: {
+      username,
+      name: roleConfig.displayName,
       roleCodes: roleConfig.roleCodes,
     },
-  );
+  });
+  if (!response.ok()) {
+    throw new Error(`mock login failed: ${response.status()}`);
+  }
+  await page.goto('/dashboard');
 }
 
 export async function logoutR20(page: Page) {
