@@ -247,6 +247,66 @@ git diff --check                                        PASS
 
 `R26_SCROLL_FIX_DEPLOYED / NAV_COPY_UPDATED / PRODUCTION_VERIFIED / GATE2_NOT_STARTED`
 
+## Gate 3A 项目成员与任务分配（2026-07-24）
+
+### 分支与边界
+
+- Gate 2 基线：`5202c46`
+- Gate 3A 分支：`codex/r26-gate3a-project-member-assignment`
+- 只在独立 staging 开放项目成员、职责配置、分配预览、分配应用和任务转交。
+- 保存/提交进展、材料上传、工序完成、评审和流程推进继续关闭。
+- 未修改 V1，未部署 production，未合并 `main`，未创建 tag。
+
+### 实现与保护
+
+- 新增项目成员/节点分配写服务，复用现有 `ProjectMember` 和权限体系。
+- 新增 `ProjectNodeAssignment`、`R26CommandRequest` 和
+  `Project.memberAssignmentVersion`，通过 Prisma migration 管理。
+- 后端统一执行人工任务覆盖、工序专属、部门负责人、默认执行人、唯一候选人和待分配
+  六级优先级；前端只展示服务端结果。
+- 全部真实写接口具备权限、项目作用域、幂等、乐观锁、事务、409、原因和审计。
+- 已完成/历史任务不可变；进行中任务需逐项确认；活动任务成员移除必须转交。
+- 成员移除只转交活动任务，未来节点在无法重新解析时保持待分配，防止跨部门误分配。
+
+### staging 真实验证
+
+- staging URL：`http://localhost:8080`
+- UAT 项目：`R26-G3A-UAT-20260724-1006`
+- 部署镜像：`r26-gate3a-d4a0bdd`
+- 19 项 migration 已应用；API/Web/nginx/PostgreSQL/Redis healthy。
+- 完成采购、质量、工艺成员添加，11 节点分配，READY 任务转交，成员安全移除和恢复。
+- 最终 4 名成员、8 行职责、11 行节点配置、7 条 Gate 3A 命令和 7 条成功审计。
+- 1440、1024、390 真实浏览器截图和状态序列保存于
+  `docs/product/evidence/R26_GATE3A/`。
+
+### 质量门禁
+
+```text
+pnpm install                          PASS
+pnpm lint                             PASS
+pnpm typecheck                        PASS
+pnpm test                             PASS（Web 96 / API 244）
+pnpm --filter web build               PASS
+pnpm --filter api build               PASS
+pnpm --filter api prisma:validate     PASS
+git diff --check                      PASS
+```
+
+报告：`docs/product/R26_GATE3A_PROJECT_MEMBER_ASSIGNMENT_REPORT.md`
+
+人工复核：`docs/product/R26_GATE3A_HUMAN_REVIEW.md`
+
+### 决定
+
+```text
+R26_GATE3A_IMPLEMENTED
+PROJECT_MEMBER_WRITES_ENABLED
+ASSIGNMENT_WRITES_ENABLED
+PROGRESS_AND_WORKFLOW_WRITES_STILL_DISABLED
+AWAITING_PRODUCT_OWNER_GATE3A_CONFIRMATION
+STOP_BEFORE_GATE3B
+```
+
 ## Gate 2 真实只读数据联调（2026-07-23）
 
 ### 授权与边界

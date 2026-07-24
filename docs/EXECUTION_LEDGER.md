@@ -4270,6 +4270,80 @@ STOP_BEFORE_GATE3
 
 ---
 
+### Round R26_PRODUCT_UI_RECOVERY_GATE3A_PROJECT_MEMBER_AND_ASSIGNMENT_MANAGEMENT
+
+#### Goal And Scope
+
+- 只在独立 staging 开放 `/v2/projects/:projectId` 的项目成员、项目职责、部门负责人、
+  默认执行人、分配影响预览、分配应用和任务转交。
+- 进展、材料、工序完成、评审和流程推进写操作继续关闭。
+- 不修改 V1，不部署 production，不合并 `main`，不创建 tag，不自动进入 Gate 3B。
+
+#### Exact Changes
+
+- Prisma：新增 `ProjectAssignmentSource`、`ProjectNodeAssignment`、
+  `R26CommandRequest` 和 `Project.memberAssignmentVersion` 及 migration。
+- API：新增 Gate 3A 预览/成员/分配/任务转交接口；权限、项目作用域、幂等、事务、
+  乐观锁、409、原因和审计全部在服务端执行。
+- 分配器：按任务人工覆盖、工序专属、项目部门负责人、默认执行人、唯一候选人、待分配
+  六级优先级返回负责人和来源。
+- Web：新增成员添加/编辑/移除、影响预览、应用范围、任务转交、项目记录，以及
+  1440/1024/390 响应式抽屉和全屏 sheet。
+- 部署：staging 构建显式传入 R26 开关；production 配置未修改。
+- 证据：`docs/product/evidence/R26_GATE3A/`。
+- 报告：`docs/product/R26_GATE3A_PROJECT_MEMBER_ASSIGNMENT_REPORT.md`。
+- 人工复核：`docs/product/R26_GATE3A_HUMAN_REVIEW.md`。
+
+#### Staging Evidence
+
+```text
+URL                       http://localhost:8080
+UAT project               R26-G3A-UAT-20260724-1006
+image tag                 r26-gate3a-d4a0bdd
+deployed app commit       d4a0bdd
+project assignment version 8
+final distinct members    4
+final node assignments    11
+Gate 3A commands          7
+audit result              7 × SUCCESS
+production requests       0
+```
+
+- 采购、质量、工艺成员的建议工序、影响预览、保存、地图负责人和审计记录已用真实
+  staging 会话核对。
+- 成员移除预览发现并修复未来节点跨部门转交问题；最终只转交活动任务，未来配置无法
+  重新解析时保持 `UNASSIGNED`。
+- 当前真实任务为 `READY`；未篡改状态机来伪造 `IN_PROGRESS`。进行中任务确认/原因
+  门禁由自动化测试覆盖。
+- 匿名预览实测 401；普通成员 403、跨项目 IDOR、幂等和并发 409 由服务层/契约测试
+  覆盖。
+
+#### Validation
+
+```text
+pnpm install                          PASS
+pnpm lint                             PASS
+pnpm typecheck                        PASS
+pnpm test                             PASS（Web 31 files / 96 tests；API 60 files / 244 tests）
+pnpm --filter web build               PASS
+pnpm --filter api build               PASS
+pnpm --filter api prisma:validate     PASS
+git diff --check                      PASS
+```
+
+#### Decision
+
+```text
+R26_GATE3A_IMPLEMENTED
+PROJECT_MEMBER_WRITES_ENABLED
+ASSIGNMENT_WRITES_ENABLED
+PROGRESS_AND_WORKFLOW_WRITES_STILL_DISABLED
+AWAITING_PRODUCT_OWNER_GATE3A_CONFIRMATION
+STOP_BEFORE_GATE3B
+```
+
+---
+
 ### Round R26_PRODUCT_UI_RECOVERY_GATE2_DATA_CONSISTENCY_FIX
 
 #### Goal And Scope
