@@ -73,6 +73,18 @@ export class R26MemberDraftDto {
   replacementOwnerUserId?: string | null;
 }
 
+export class R26TaskTransferDraftDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(64)
+  taskId!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(64)
+  newOwnerUserId!: string;
+}
+
 export class R26AssignmentPreviewDto {
   @IsIn(R26_ASSIGNMENT_SCOPES)
   scope!: R26AssignmentScope;
@@ -98,18 +110,6 @@ export class R26AssignmentPreviewDto {
   @ArrayMaxSize(18)
   @IsString({ each: true })
   confirmedInProgressTaskIds?: string[];
-}
-
-export class R26TaskTransferDraftDto {
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(64)
-  taskId!: string;
-
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(64)
-  newOwnerUserId!: string;
 }
 
 export class R26VersionedCommandDto {
