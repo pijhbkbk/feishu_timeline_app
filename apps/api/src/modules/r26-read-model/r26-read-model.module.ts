@@ -8,6 +8,7 @@ import { ProjectsModule } from '../projects/projects.module';
 import { WorkflowsModule } from '../workflows/workflows.module';
 import { R26ReadModelController } from './r26-read-model.controller';
 import { R26MemberAssignmentService } from './r26-member-assignment.service';
+import { R26OrdinaryCompletionService } from './r26-ordinary-completion.service';
 import { R26ProgressMaterialService } from './r26-progress-material.service';
 import { R26ReadModelService } from './r26-read-model.service';
 
@@ -25,6 +26,7 @@ import { R26ReadModelService } from './r26-read-model.service';
     R26ReadModelService,
     R26MemberAssignmentService,
     R26ProgressMaterialService,
+    R26OrdinaryCompletionService,
   ],
 })
 export class R26ReadModelModule {}

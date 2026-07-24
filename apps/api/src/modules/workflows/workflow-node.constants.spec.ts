@@ -62,4 +62,59 @@ describe('workflow node constants', () => {
       }),
     ]);
   });
+
+  it.each([
+    [
+      WorkflowNodeCode.PROJECT_INITIATION,
+      WorkflowNodeCode.DEVELOPMENT_REPORT,
+    ],
+    [
+      WorkflowNodeCode.DEVELOPMENT_REPORT,
+      WorkflowNodeCode.PAINT_DEVELOPMENT,
+    ],
+    [
+      WorkflowNodeCode.PAINT_DEVELOPMENT,
+      WorkflowNodeCode.SAMPLE_COLOR_CONFIRMATION,
+    ],
+    [
+      WorkflowNodeCode.FIRST_UNIT_PRODUCTION_PLAN,
+      WorkflowNodeCode.TRIAL_PRODUCTION,
+    ],
+    [
+      WorkflowNodeCode.TRIAL_PRODUCTION,
+      WorkflowNodeCode.CAB_REVIEW,
+    ],
+  ])(
+    'keeps the frozen serial transition %s → %s',
+    (current, expectedNext) => {
+      expect(
+        getWorkflowNextTaskTemplates(
+          current,
+          WorkflowAction.COMPLETE,
+        ),
+      ).toEqual([
+        expect.objectContaining({
+          nodeCode: expectedNext,
+        }),
+      ]);
+    },
+  );
+
+  it('keeps step 9 non-blocking and unable to create a new mainline task', () => {
+    expect(
+      getWorkflowNextTaskTemplates(
+        WorkflowNodeCode.PERFORMANCE_TEST,
+        WorkflowAction.COMPLETE,
+      ),
+    ).toEqual([]);
+  });
+
+  it('does not expose step 12 specialized transitions as an ordinary completion', () => {
+    expect(
+      getWorkflowNextTaskTemplates(
+        WorkflowNodeCode.CAB_REVIEW,
+        WorkflowAction.COMPLETE,
+      ),
+    ).toEqual([]);
+  });
 });

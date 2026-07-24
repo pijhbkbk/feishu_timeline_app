@@ -280,7 +280,7 @@ export class R26ReadModelService {
         createdAt: record.createdAt.toISOString(),
       })),
       capabilities: {
-        gate: 'R26_GATE3B',
+        gate: 'R26_GATE3C1',
         memberAssignmentVersion: project.memberAssignmentVersion,
         manageMembers:
           actor.isSystemAdmin ||
@@ -288,7 +288,9 @@ export class R26ReadModelService {
           (project.ownerUserId === actor.id &&
             (actor.permissionCodes ?? []).includes('project.write')),
         progressWriteEnabled: true,
-        workflowWriteEnabled: false,
+        workflowWriteEnabled: true,
+        workflowWriteScope: 'ORDINARY_STEPS_1_TO_11',
+        specialWorkflowActionsEnabled: false,
       },
     };
   }

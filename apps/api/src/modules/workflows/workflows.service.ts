@@ -13,6 +13,7 @@ import {
   NotificationType,
   ProductionPlanStatus,
   ProductionPlanType,
+  ProjectAssignmentSource,
   ProjectStatus,
   RecurringTaskStatus,
   ReviewType,
@@ -68,6 +69,24 @@ type WorkflowActionInput = {
   comment?: string | null;
   targetNodeCode?: WorkflowNodeCode;
   metadata?: Prisma.InputJsonValue;
+};
+
+export type WorkflowResolvedAssignment = {
+  nodeCode: WorkflowNodeCode;
+  ownerUserId: string | null;
+  primaryDepartmentId: string | null;
+  collaboratorUserIds: string[];
+  reviewerUserIds: string[];
+  assignmentSource: ProjectAssignmentSource;
+};
+
+type WorkflowTransitionAuthorizationSource =
+  | 'designated-review'
+  | 'r26-gate3c1';
+
+type WorkflowTransitionTrustedOptions = {
+  enforceCompletionRequirements?: boolean;
+  nextTaskAssignments?: WorkflowResolvedAssignment[];
 };
 
 type WorkflowFormSaveInput = {
@@ -803,6 +822,7 @@ export class WorkflowsService {
 
     return {
       taskId: detailedTask.id,
+      taskVersion: detailedTask.updatedAt.toISOString(),
       projectId: detailedTask.projectId,
       stepCode: nodeDefinition?.stepCode ?? detailedTask.stepCode ?? null,
       stepNumber: WORKFLOW_NODE_META_MAP[detailedTask.nodeCode].sequence / 10,
@@ -1099,6 +1119,107 @@ export class WorkflowsService {
     });
   }
 
+  async inspectTaskCompletionWithExecutor(
+    tx: WorkflowDbClient,
+    taskId: string,
+  ) {
+    const task = await this.getTaskOrThrow(tx, taskId);
+    const [definition, attachments, openBlockers] = await Promise.all([
+      tx.workflowNodeDefinition.findUnique({
+        where: { nodeCode: task.nodeCode },
+        select: {
+          formSchema: true,
+          requiredAttachments: true,
+        },
+      }),
+      tx.attachment.findMany({
+        where: {
+          projectId: task.projectId,
+          entityType: AttachmentTargetType.WORKFLOW_TASK,
+          entityId: task.id,
+          isDeleted: false,
+        },
+        select: {
+          id: true,
+          fileName: true,
+          materialType: true,
+        },
+      }),
+      tx.taskBlocker.findMany({
+        where: {
+          workflowTaskId: task.id,
+          status: 'OPEN',
+        },
+        select: {
+          id: true,
+          blockerType: true,
+          description: true,
+          impactLevel: true,
+          expectedResolvedAt: true,
+          createdAt: true,
+        },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      }),
+    ]);
+    const requiredMaterials = this.parseRequiredMaterials(
+      definition?.requiredAttachments,
+    ).filter((item) => item.required);
+    const missingMaterials = requiredMaterials.filter(
+      (material) =>
+        !attachments.some(
+          (attachment) =>
+            attachment.materialType === material.id ||
+            attachment.materialType === material.name ||
+            attachment.fileName.includes(material.name),
+        ),
+    );
+    const requiredFormFields = this.parseRequiredFormFields(
+      definition?.formSchema,
+    );
+    const formData = this.asJsonObject(
+      this.asJsonObject(task.payload).formData as Prisma.JsonValue | null,
+    );
+    const missingFormFields = requiredFormFields.filter(
+      (field) => !this.hasMeaningfulFormValue(formData[field.key]),
+    );
+    const domainBlockingReasons =
+      await this.getPilotProductionCompletionIssues(tx, task);
+
+    return {
+      task: {
+        id: task.id,
+        projectId: task.projectId,
+        workflowInstanceId: task.workflowInstanceId,
+        nodeCode: task.nodeCode,
+        nodeName: task.nodeName,
+        status: task.status,
+        isActive: task.isActive,
+        taskVersion: task.updatedAt.toISOString(),
+      },
+      form: {
+        required: requiredFormFields,
+        missing: missingFormFields,
+        satisfied: missingFormFields.length === 0,
+      },
+      materials: {
+        required: requiredMaterials,
+        submittedCount: requiredMaterials.length - missingMaterials.length,
+        missing: missingMaterials,
+        satisfied: missingMaterials.length === 0,
+      },
+      blockers: openBlockers.map((blocker) => ({
+        ...blocker,
+        expectedResolvedAt:
+          blocker.expectedResolvedAt?.toISOString() ?? null,
+        createdAt: blocker.createdAt.toISOString(),
+      })),
+      domainBlockingReasons,
+      taskIsActive:
+        task.isActive &&
+        isWorkflowTaskStatusCompletable(task.status),
+    };
+  }
+
   async transitionTask(
     taskId: string,
     action: WorkflowAction,
@@ -1116,7 +1237,8 @@ export class WorkflowsService {
     action: WorkflowAction,
     actor: AuthenticatedUser,
     rawInput: unknown,
-    authorizationSource?: 'designated-review',
+    authorizationSource?: WorkflowTransitionAuthorizationSource,
+    trustedOptions?: WorkflowTransitionTrustedOptions,
   ) {
     const input = this.parseActionInput(rawInput);
     const task = await this.getTaskOrThrow(tx, taskId);
@@ -1124,6 +1246,32 @@ export class WorkflowsService {
     await this.projectAccessService.assertProjectAccess(tx, task.projectId, actor, 'workflow.transition');
     this.assertActorCanOperateTask(task, actor, authorizationSource);
     this.assertTaskCanTransition(task, action);
+
+    if (trustedOptions?.enforceCompletionRequirements) {
+      const inspection = await this.inspectTaskCompletionWithExecutor(
+        tx,
+        task.id,
+      );
+      const blockingReasons = [
+        ...inspection.form.missing.map(
+          (field) => `必填表单缺少：${field.label}`,
+        ),
+        ...inspection.materials.missing.map(
+          (material) => `缺少必交材料：${material.name}`,
+        ),
+        ...inspection.blockers.map(
+          (blocker) => `存在未解除阻塞：${blocker.description}`,
+        ),
+        ...inspection.domainBlockingReasons,
+      ];
+      if (blockingReasons.length > 0) {
+        throw new BadRequestException({
+          code: 'COMPLETION_REQUIREMENTS_NOT_MET',
+          message: '当前工序尚未满足完成条件。',
+          blockingReasons,
+        });
+      }
+    }
 
     if (isWorkflowCompletionAction(action)) {
       await this.assertRequiredMaterialsSubmitted(tx, task);
@@ -1198,7 +1346,15 @@ export class WorkflowsService {
       },
     });
 
-    const createdTasks = await this.createNextTasks(tx, task, actor, action, input, nextTemplates);
+    const createdTasks = await this.createNextTasks(
+      tx,
+      task,
+      actor,
+      action,
+      input,
+      nextTemplates,
+      trustedOptions?.nextTaskAssignments,
+    );
     const recurringPlan = await this.maybeCreateRecurringPlan(
       tx,
       task,
@@ -1277,6 +1433,7 @@ export class WorkflowsService {
     action: WorkflowAction,
     input: WorkflowActionInput,
     templates: WorkflowTaskSpawnTemplate[],
+    trustedAssignments?: WorkflowResolvedAssignment[],
   ) {
     const createdTasks: Prisma.WorkflowTaskGetPayload<{
       select: {
@@ -1322,6 +1479,10 @@ export class WorkflowsService {
           },
         },
       });
+      const trustedAssignment = trustedAssignments?.find(
+        (assignment) => assignment.nodeCode === template.nodeCode,
+      );
+      const hasTrustedAssignment = trustedAssignment !== undefined;
 
       const createdTask = await tx.workflowTask.create({
         data: {
@@ -1335,13 +1496,15 @@ export class WorkflowsService {
           status: WorkflowTaskStatus.READY,
           isPrimary,
           isActive: true,
-          assigneeUserId:
-            projectAssignment?.ownerUserId ??
-            sourceTask.project.ownerUserId ??
-            sourceTask.assigneeUserId ??
-            null,
-          assigneeDepartmentId:
-            projectAssignment?.primaryDepartmentId ?? null,
+          assigneeUserId: hasTrustedAssignment
+            ? trustedAssignment.ownerUserId
+            : projectAssignment?.ownerUserId ??
+              sourceTask.project.ownerUserId ??
+              sourceTask.assigneeUserId ??
+              null,
+          assigneeDepartmentId: hasTrustedAssignment
+            ? trustedAssignment.primaryDepartmentId
+            : projectAssignment?.primaryDepartmentId ?? null,
           dueAt: taskSchedule.dueAt,
           effectiveDueAt: taskSchedule.effectiveDueAt,
           overdueDays: 0,
@@ -1360,11 +1523,15 @@ export class WorkflowsService {
             fromTaskId: sourceTask.id,
             fromNodeCode: sourceTask.nodeCode,
             reason: template.reason,
-            assignmentSource:
-              projectAssignment?.assignmentSource ?? 'TASK_OVERRIDE',
-            collaboratorUserIds:
-              projectAssignment?.collaboratorUserIds ?? [],
-            reviewerUserIds: projectAssignment?.reviewerUserIds ?? [],
+            assignmentSource: hasTrustedAssignment
+              ? trustedAssignment.assignmentSource
+              : projectAssignment?.assignmentSource ?? 'TASK_OVERRIDE',
+            collaboratorUserIds: hasTrustedAssignment
+              ? trustedAssignment.collaboratorUserIds
+              : projectAssignment?.collaboratorUserIds ?? [],
+            reviewerUserIds: hasTrustedAssignment
+              ? trustedAssignment.reviewerUserIds
+              : projectAssignment?.reviewerUserIds ?? [],
             ...(taskSchedule.defaultChargeAmount
               ? { defaultChargeAmount: taskSchedule.defaultChargeAmount }
               : {}),
@@ -1579,6 +1746,19 @@ export class WorkflowsService {
     tx: Prisma.TransactionClient,
     task: Pick<WorkflowTaskWithRelations, 'nodeCode' | 'nodeName' | 'projectId'>,
   ) {
+    const issues = await this.getPilotProductionCompletionIssues(tx, task);
+
+    if (issues[0]) {
+      throw new BadRequestException(issues[0]);
+    }
+  }
+
+  private async getPilotProductionCompletionIssues(
+    tx: Prisma.TransactionClient,
+    task: Pick<WorkflowTaskWithRelations, 'nodeCode' | 'nodeName' | 'projectId'>,
+  ) {
+    const issues: string[] = [];
+
     if (task.nodeCode === WorkflowNodeCode.FIRST_UNIT_PRODUCTION_PLAN) {
       const plan = await tx.productionPlan.findFirst({
         where: {
@@ -1596,7 +1776,7 @@ export class WorkflowsService {
       });
 
       if (!plan) {
-        throw new BadRequestException(
+        issues.push(
           `${task.nodeName} 至少需要一条已确认的首台生产计划。`,
         );
       }
@@ -1617,11 +1797,13 @@ export class WorkflowsService {
       });
 
       if (!trial) {
-        throw new BadRequestException(
+        issues.push(
           `${task.nodeName} 至少需要一条已完成的有效试制记录。`,
         );
       }
     }
+
+    return issues;
   }
 
   private async assertMonthlyReviewPeriodsCompleted(
@@ -1666,7 +1848,7 @@ export class WorkflowsService {
   private assertActorCanOperateTask(
     task: WorkflowTaskWithRelations,
     actor: AuthenticatedUser,
-    authorizationSource?: 'designated-review',
+    authorizationSource?: WorkflowTransitionAuthorizationSource,
   ) {
     const isAdmin = actor.isSystemAdmin || actor.roleCodes.includes('admin');
     const isProjectManager = actor.roleCodes.includes('project_manager');
@@ -1674,6 +1856,21 @@ export class WorkflowsService {
       task.nodeCode === WorkflowNodeCode.CAB_REVIEW ||
       task.nodeCode === WorkflowNodeCode.COLOR_CONSISTENCY_REVIEW ||
       task.nodeCode === WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW;
+
+    if (authorizationSource === 'r26-gate3c1') {
+      if (
+        isAdmin ||
+        isProjectManager ||
+        task.assigneeUserId === actor.id ||
+        task.project.ownerUserId === actor.id
+      ) {
+        return;
+      }
+
+      throw new ForbiddenException(
+        `${task.nodeName} 仅允许当前负责人或项目负责人完成。`,
+      );
+    }
 
     if (authorizationSource === 'designated-review') {
       if (isReviewNode) {
@@ -1836,7 +2033,7 @@ export class WorkflowsService {
     };
   }
 
-  private async getTaskOrThrow(tx: Prisma.TransactionClient, taskId: string) {
+  private async getTaskOrThrow(tx: WorkflowDbClient, taskId: string) {
     const task = await tx.workflowTask.findUnique({
       where: { id: taskId },
       include: {
@@ -2011,6 +2208,58 @@ export class WorkflowsService {
         required: boolean;
         description: string | null;
       } => item !== null);
+  }
+
+  private parseRequiredFormFields(
+    value: Prisma.JsonValue | null | undefined,
+  ) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      return [];
+    }
+    const schema = value as Record<string, unknown>;
+    const required = Array.isArray(schema.required)
+      ? schema.required.filter(
+          (item): item is string =>
+            typeof item === 'string' && item.trim().length > 0,
+        )
+      : [];
+    const properties =
+      schema.properties &&
+      typeof schema.properties === 'object' &&
+      !Array.isArray(schema.properties)
+        ? (schema.properties as Record<string, unknown>)
+        : {};
+
+    return required.map((key) => {
+      const property = properties[key];
+      const record =
+        property && typeof property === 'object' && !Array.isArray(property)
+          ? (property as Record<string, unknown>)
+          : null;
+
+      return {
+        key,
+        label:
+          typeof record?.title === 'string' && record.title.trim()
+            ? record.title.trim()
+            : key,
+      };
+    });
+  }
+
+  private hasMeaningfulFormValue(
+    value: Prisma.InputJsonValue | undefined,
+  ) {
+    if (value === null || value === undefined) {
+      return false;
+    }
+    if (typeof value === 'string') {
+      return value.trim().length > 0;
+    }
+    if (Array.isArray(value)) {
+      return value.length > 0;
+    }
+    return true;
   }
 
   private resolveTaskOutputName(
@@ -2345,6 +2594,7 @@ export class WorkflowsService {
       id: workflowInstance.id,
       instanceNo: workflowInstance.instanceNo,
       versionNo: workflowInstance.versionNo,
+      commandVersion: workflowInstance.commandVersion,
       status: workflowInstance.status,
       currentNodeCode: workflowInstance.currentNodeCode,
       currentNodeName: getCurrentNodeName(workflowInstance.currentNodeCode),

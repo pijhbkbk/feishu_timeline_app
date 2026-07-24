@@ -10,13 +10,21 @@ import {
   createIdempotencyKey,
   r26Gate3Request,
 } from './r26-gate3-client';
+import {
+  createGate3C1IdempotencyKey,
+  r26Gate3C1Request,
+} from './r26-gate3c1-client';
 import { R26_REAL_FLOW_GEOMETRY } from './real-flow-geometry';
 import type {
   R26AssignmentImpactResponse,
   R26AssignmentScope,
+  R26CompletionPreview,
   R26FlowMapNode,
   R26Gate3CommandResponse,
   R26MemberDraft,
+  R26OrdinaryCompletionCommand,
+  R26OrdinaryCompletionResponse,
+  R26ResolveBlockerResponse,
   R26TaskDetail,
   R26TaskResponse,
   R26WorkspaceResponse,
@@ -53,6 +61,8 @@ export function RealWorkspacePage({ projectId }: { projectId: string }) {
   const [mutationError, setMutationError] = useState<string | null>(null);
   const [mutationPending, setMutationPending] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [completionPanel, setCompletionPanel] =
+    useState<CompletionPanelState | null>(null);
   const initializedSelection = useRef(false);
   const workspacePath = `/v2/projects/${encodeURIComponent(projectId)}/workspace`;
   const { data, error, loading } =
@@ -132,6 +142,197 @@ export function RealWorkspacePage({ projectId }: { projectId: string }) {
     params.delete('nodeCode');
     const query = params.toString();
     router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  }
+
+  async function openCompletion(task: R26TaskDetail) {
+    const initial: CompletionPanelState = {
+      preview: null,
+      pending: true,
+      error: null,
+      completionReason: '',
+      acknowledgedConsequences: false,
+      resolutionSummary: '',
+      actualResolvedAt: toLocalDateTimeInput(new Date()),
+      success: null,
+    };
+    setCompletionPanel(initial);
+    try {
+      const preview = await r26Gate3C1Request<R26CompletionPreview>(
+        `/v2/tasks/${encodeURIComponent(task.taskId)}/completion-preview`,
+        {
+          body: { taskVersion: task.taskVersion },
+        },
+      );
+      setCompletionPanel((current) =>
+        current
+          ? { ...current, preview, pending: false }
+          : current,
+      );
+    } catch (requestError) {
+      setCompletionPanel((current) =>
+        current
+          ? {
+              ...current,
+              pending: false,
+              error:
+                requestError instanceof Error
+                  ? requestError.message
+                  : '完成前检查失败。',
+            }
+          : current,
+      );
+    }
+  }
+
+  async function resolveCompletionBlocker(
+    task: R26TaskDetail,
+    blockerId: string,
+  ) {
+    if (!completionPanel?.resolutionSummary.trim()) {
+      setCompletionPanel((current) =>
+        current
+          ? { ...current, error: '请填写阻塞解决说明。' }
+          : current,
+      );
+      return;
+    }
+    setCompletionPanel((current) =>
+      current
+        ? { ...current, pending: true, error: null }
+        : current,
+    );
+    const idempotencyKey =
+      createGate3C1IdempotencyKey('resolve-blocker');
+    try {
+      const response =
+        await r26Gate3C1Request<R26ResolveBlockerResponse>(
+          `/v2/tasks/${encodeURIComponent(task.taskId)}/blockers/${encodeURIComponent(blockerId)}/resolve`,
+          {
+            idempotencyKey,
+            body: {
+              taskVersion: task.taskVersion,
+              actualResolvedAt: new Date(
+                completionPanel.actualResolvedAt,
+              ).toISOString(),
+              resolutionSummary:
+                completionPanel.resolutionSummary.trim(),
+              idempotencyKey,
+            },
+          },
+        );
+      setLiveData(response.viewModel.workspace);
+      taskQuery.refresh();
+      setCompletionPanel((current) =>
+        current
+          ? {
+              ...current,
+              preview: response.viewModel.completionPreview,
+              pending: false,
+              resolutionSummary: '',
+              error: null,
+            }
+          : current,
+      );
+    } catch (requestError) {
+      setCompletionPanel((current) =>
+        current
+          ? {
+              ...current,
+              pending: false,
+              error:
+                requestError instanceof Error
+                  ? requestError.message
+                  : '解除阻塞失败。',
+            }
+          : current,
+      );
+    }
+  }
+
+  async function confirmCompletion(task: R26TaskDetail) {
+    if (
+      !completionPanel?.preview ||
+      !completionPanel.preview.canComplete
+    ) {
+      return;
+    }
+    if (!completionPanel.completionReason.trim()) {
+      setCompletionPanel((current) =>
+        current
+          ? { ...current, error: '请填写完成说明。' }
+          : current,
+      );
+      return;
+    }
+    if (!completionPanel.acknowledgedConsequences) {
+      setCompletionPanel((current) =>
+        current
+          ? { ...current, error: '请确认已阅读推进影响。' }
+          : current,
+      );
+      return;
+    }
+    setCompletionPanel((current) =>
+      current
+        ? { ...current, pending: true, error: null }
+        : current,
+    );
+    const idempotencyKey =
+      createGate3C1IdempotencyKey('complete');
+    try {
+      const response =
+        await r26Gate3C1Request<R26OrdinaryCompletionResponse>(
+          `/v2/tasks/${encodeURIComponent(task.taskId)}/complete`,
+          {
+            idempotencyKey,
+            body: {
+              taskVersion: task.taskVersion,
+              completionReason:
+                completionPanel.completionReason.trim(),
+              acknowledgedConsequences: true,
+              idempotencyKey,
+            },
+          },
+        );
+      setLiveData(response.viewModel.workspace);
+      taskQuery.refresh();
+      setCompletionPanel((current) =>
+        current
+          ? {
+              ...current,
+              pending: false,
+              success: response.command,
+              error: null,
+            }
+          : current,
+      );
+    } catch (requestError) {
+      setCompletionPanel((current) =>
+        current
+          ? {
+              ...current,
+              pending: false,
+              error:
+                requestError instanceof Error
+                  ? requestError.message
+                  : '完成工序失败。',
+            }
+          : current,
+      );
+    }
+  }
+
+  function viewCreatedTask(
+    task: R26OrdinaryCompletionCommand['createdTasks'][number],
+  ) {
+    setCompletionPanel(null);
+    setSelectedNodeCode(task.nodeCode);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('taskId', task.taskId);
+    params.delete('nodeCode');
+    router.replace(`${pathname}?${params.toString()}`, {
+      scroll: false,
+    });
   }
 
   const attention = [
@@ -383,8 +584,8 @@ export function RealWorkspacePage({ projectId }: { projectId: string }) {
       data-source="database"
     >
       <div className="r26-readonly-banner r26-gate3a-banner" role="status">
-        <strong>Gate 3B · 项目事实实时联动</strong>
-        <span>成员分工、进展和材料已开放；完成工序与流程推进仍保持关闭。</span>
+        <strong>Gate 3C1 · 普通工序完成</strong>
+        <span>第 1～11 步普通工序可在完成前检查后推进；第 12 步及后续专项动作仍关闭。</span>
       </div>
       <header className="r26-project-header">
         <div className="r26-project-header__identity">
@@ -434,6 +635,7 @@ export function RealWorkspacePage({ projectId }: { projectId: string }) {
               loading={taskQuery.loading}
               error={taskQuery.error}
               onClose={closeDetail}
+              onComplete={(task) => void openCompletion(task)}
             />
           ) : null}
         </div>
@@ -577,6 +779,28 @@ export function RealWorkspacePage({ projectId }: { projectId: string }) {
             setImpact(null);
             setMutationError(null);
           }}
+        />
+      ) : null}
+      {completionPanel && taskQuery.data?.task ? (
+        <CompletionDrawer
+          task={taskQuery.data.task}
+          state={completionPanel}
+          onChange={(patch) =>
+            setCompletionPanel((current) =>
+              current ? { ...current, ...patch } : current,
+            )
+          }
+          onResolve={(blockerId) =>
+            void resolveCompletionBlocker(
+              taskQuery.data!.task,
+              blockerId,
+            )
+          }
+          onConfirm={() =>
+            void confirmCompletion(taskQuery.data!.task)
+          }
+          onViewTask={viewCreatedTask}
+          onClose={() => setCompletionPanel(null)}
         />
       ) : null}
       {toast ? <div className="r26-toast" role="status">{toast}</div> : null}
@@ -1116,6 +1340,7 @@ function RealTaskDetail({
   loading,
   error,
   onClose,
+  onComplete,
 }: {
   node: R26FlowNode;
   rawNode: R26FlowMapNode | null;
@@ -1123,6 +1348,7 @@ function RealTaskDetail({
   loading: boolean;
   error: string | null;
   onClose: () => void;
+  onComplete: (task: R26TaskDetail) => void;
 }) {
   return (
     <aside className="r26-task-detail" aria-label={`${node.name}工序详情`} data-testid="r26-task-detail">
@@ -1251,13 +1477,20 @@ function RealTaskDetail({
             >
               提交工作进展
             </Link>
-            <Link
-              className="r26-button r26-button--secondary"
-              href={`/v2/progress?projectId=${encodeURIComponent(task.projectId)}&taskId=${encodeURIComponent(task.taskId)}`}
-            >
-              上传材料
-            </Link>
-            <span>不会完成工序或推进流程</span>
+            {isGate3C1CompletableTask(task) ? (
+              <button
+                type="button"
+                className="r26-button r26-button--secondary"
+                onClick={() => onComplete(task)}
+              >
+                完成工序
+              </button>
+            ) : null}
+            <span>
+              {task.stepNumber <= 11
+                ? '提交进展不会推进；完成工序必须先查看检查与影响。'
+                : '第 12 步及后续专项写入尚未开放。'}
+            </span>
           </div>
         ) : (
           <div className="r26-readonly-footer">
@@ -1267,6 +1500,416 @@ function RealTaskDetail({
         )}
       </footer>
     </aside>
+  );
+}
+
+type CompletionPanelState = {
+  preview: R26CompletionPreview | null;
+  pending: boolean;
+  error: string | null;
+  completionReason: string;
+  acknowledgedConsequences: boolean;
+  resolutionSummary: string;
+  actualResolvedAt: string;
+  success: R26OrdinaryCompletionCommand | null;
+};
+
+function CompletionDrawer({
+  task,
+  state,
+  onChange,
+  onResolve,
+  onConfirm,
+  onViewTask,
+  onClose,
+}: {
+  task: R26TaskDetail;
+  state: CompletionPanelState;
+  onChange: (patch: Partial<CompletionPanelState>) => void;
+  onResolve: (blockerId: string) => void;
+  onConfirm: () => void;
+  onViewTask: (
+    task: R26OrdinaryCompletionCommand['createdTasks'][number],
+  ) => void;
+  onClose: () => void;
+}) {
+  const preview = state.preview;
+
+  return (
+    <div
+      className="r26-gate3-drawer-backdrop"
+      role="presentation"
+      onMouseDown={(event) => {
+        if (
+          event.currentTarget === event.target &&
+          !state.pending
+        ) {
+          onClose();
+        }
+      }}
+    >
+      <aside
+        className="r26-gate3-drawer r26-completion-drawer"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="r26-completion-title"
+        data-testid="r26-completion-drawer"
+      >
+        <header>
+          <div>
+            <p className="r26-eyebrow">
+              Gate 3C1 · 服务端状态机
+            </p>
+            <h2 id="r26-completion-title">
+              {state.success
+                ? '工序已完成'
+                : '完成工序前检查'}
+            </h2>
+          </div>
+          <button
+            type="button"
+            aria-label="关闭完成工序面板"
+            onClick={onClose}
+            disabled={state.pending}
+          >
+            <CloseIcon />
+          </button>
+        </header>
+
+        <div className="r26-gate3-drawer__body">
+          {state.success ? (
+            <CompletionSuccess
+              command={state.success}
+              onViewTask={onViewTask}
+              onReturnToMap={onClose}
+            />
+          ) : state.pending && !preview ? (
+            <p className="r26-inline-state">
+              正在检查表单、材料、权限、活动任务和阻塞…
+            </p>
+          ) : preview ? (
+            <>
+              <section className="r26-completion-task">
+                <span>
+                  第 {String(preview.currentTask.stepNumber).padStart(2, '0')} 步
+                </span>
+                <strong>{preview.currentTask.stepName}</strong>
+                <small>
+                  当前负责人：
+                  {preview.currentTask.owner?.name ?? '待分配'} ·
+                  taskVersion {preview.currentTask.taskVersion}
+                </small>
+              </section>
+
+              <section className="r26-completion-section">
+                <h3>完成工序前检查</h3>
+                <ul className="r26-completion-checks">
+                  {preview.checks.map((check) => (
+                    <li
+                      key={check.code}
+                      className={
+                        check.passed ? 'is-passed' : 'is-blocked'
+                      }
+                    >
+                      <span aria-hidden="true">
+                        {check.passed ? '✓' : '○'}
+                      </span>
+                      <div>
+                        <strong>{check.label}</strong>
+                        {check.details.map((detail) => (
+                          <small key={detail}>{detail}</small>
+                        ))}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+
+              {!preview.canComplete ? (
+                <section
+                  className="r26-completion-blocked"
+                  role="alert"
+                >
+                  <strong>暂时不能完成工序</strong>
+                  <span>还需要：</span>
+                  <ul>
+                    {preview.blockingReasons.map((reason) => (
+                      <li key={reason}>{reason}</li>
+                    ))}
+                  </ul>
+                </section>
+              ) : null}
+
+              {preview.openBlockers.length > 0 ? (
+                <section className="r26-completion-section">
+                  <h3>先解除阻塞</h3>
+                  <p>
+                    首版不提供强制忽略阻塞。解决情况和实际解除时间会进入审计日志。
+                  </p>
+                  <label className="r26-gate3-field">
+                    <span>解决说明</span>
+                    <textarea
+                      rows={3}
+                      value={state.resolutionSummary}
+                      onChange={(event) =>
+                        onChange({
+                          resolutionSummary: event.target.value,
+                        })
+                      }
+                      placeholder="说明问题如何解决、由谁确认"
+                    />
+                  </label>
+                  <label className="r26-gate3-field">
+                    <span>实际解除时间</span>
+                    <input
+                      type="datetime-local"
+                      value={state.actualResolvedAt}
+                      onChange={(event) =>
+                        onChange({
+                          actualResolvedAt: event.target.value,
+                        })
+                      }
+                    />
+                  </label>
+                  <div className="r26-blocker-resolution-list">
+                    {preview.openBlockers.map((blocker) => (
+                      <article key={blocker.id}>
+                        <div>
+                          <strong>{blocker.description}</strong>
+                          <small>
+                            预计解除：
+                            {formatDateTime(
+                              blocker.expectedResolvedAt,
+                            )}
+                          </small>
+                        </div>
+                        <button
+                          type="button"
+                          className="r26-button r26-button--secondary"
+                          onClick={() => onResolve(blocker.id)}
+                          disabled={
+                            state.pending ||
+                            !state.resolutionSummary.trim()
+                          }
+                        >
+                          解除阻塞
+                        </button>
+                      </article>
+                    ))}
+                  </div>
+                </section>
+              ) : null}
+
+              <section className="r26-completion-section">
+                <h3>推进影响预览</h3>
+                {preview.nextTasks.length > 0 ? (
+                  <div className="r26-completion-next-tasks">
+                    {preview.nextTasks.map((nextTask) => (
+                      <article key={nextTask.nodeCode}>
+                        <header>
+                          <span>
+                            第 {String(nextTask.stepNumber).padStart(2, '0')} 步
+                          </span>
+                          <strong>{nextTask.stepName}</strong>
+                          <em>
+                            {nextTask.isNonBlocking
+                              ? '非阻塞支线'
+                              : nextTask.isPrimary
+                                ? '项目主线'
+                                : '并行任务'}
+                          </em>
+                        </header>
+                        <dl>
+                          <div>
+                            <dt>建议负责人</dt>
+                            <dd>
+                              {nextTask.suggestedOwner?.name ??
+                                '负责人待分配'}
+                            </dd>
+                          </div>
+                          <div>
+                            <dt>责任部门</dt>
+                            <dd>
+                              {nextTask.primaryDepartment?.name ??
+                                '部门待定'}
+                            </dd>
+                          </div>
+                          <div>
+                            <dt>分配来源</dt>
+                            <dd>
+                              {assignmentSourceLabel(
+                                nextTask.assignmentSource,
+                              )}
+                            </dd>
+                          </div>
+                        </dl>
+                        {nextTask.unassignedReason &&
+                        !nextTask.suggestedOwner ? (
+                          <p>{nextTask.unassignedReason}</p>
+                        ) : null}
+                      </article>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="r26-completion-no-next">
+                    完成该并行/支线任务不会创建其他任务，也不会阻塞或改写当前项目主线。
+                  </p>
+                )}
+                <p className="r26-form-hint">{preview.notice}</p>
+              </section>
+
+              <section className="r26-completion-section">
+                <h3>确认动作</h3>
+                <label className="r26-gate3-field">
+                  <span>完成说明</span>
+                  <textarea
+                    rows={3}
+                    value={state.completionReason}
+                    onChange={(event) =>
+                      onChange({
+                        completionReason: event.target.value,
+                      })
+                    }
+                    placeholder={`说明“${task.stepName}”已满足完成条件`}
+                  />
+                </label>
+                <label className="r26-completion-ack">
+                  <input
+                    type="checkbox"
+                    checked={state.acknowledgedConsequences}
+                    onChange={(event) =>
+                      onChange({
+                        acknowledgedConsequences:
+                          event.target.checked,
+                      })
+                    }
+                  />
+                  <span>
+                    我已核对完成前检查，并确认系统将按上述影响创建或激活任务。
+                  </span>
+                </label>
+              </section>
+            </>
+          ) : null}
+
+          {state.error ? (
+            <div className="r26-gate3-error" role="alert">
+              {state.error}
+            </div>
+          ) : null}
+        </div>
+
+        {!state.success ? (
+          <footer className="r26-gate3-drawer__footer">
+            <button
+              type="button"
+              className="r26-button r26-button--secondary"
+              onClick={onClose}
+              disabled={state.pending}
+            >
+              取消
+            </button>
+            <button
+              type="button"
+              className="r26-button r26-button--primary"
+              onClick={onConfirm}
+              disabled={
+                state.pending ||
+                !preview?.canComplete ||
+                !state.completionReason.trim() ||
+                !state.acknowledgedConsequences
+              }
+            >
+              {state.pending
+                ? '正在推进…'
+                : '确认完成并推进'}
+            </button>
+          </footer>
+        ) : null}
+      </aside>
+    </div>
+  );
+}
+
+function CompletionSuccess({
+  command,
+  onViewTask,
+  onReturnToMap,
+}: {
+  command: R26OrdinaryCompletionCommand;
+  onViewTask: (
+    task: R26OrdinaryCompletionCommand['createdTasks'][number],
+  ) => void;
+  onReturnToMap: () => void;
+}) {
+  const primaryTask =
+    command.createdTasks.find((task) => task.isPrimary) ??
+    command.createdTasks[0] ??
+    null;
+
+  return (
+    <section
+      className="r26-completion-success"
+      data-testid="r26-completion-success"
+    >
+      <span aria-hidden="true">✓</span>
+      <div>
+        <p>工序已完成</p>
+        <h3>
+          “{command.completedTask.stepName}”已标记为已完成。
+        </h3>
+      </div>
+      {command.createdTasks.length > 0 ? (
+        <>
+          <h4>系统已创建：</h4>
+          <ul>
+            {command.createdTasks.map((task) => (
+              <li key={task.taskId}>
+                <div>
+                  <strong>{task.stepName}</strong>
+                  <small>
+                    {task.owner?.name ?? '负责人待分配'} ·
+                    {task.department?.name ?? '部门待定'}
+                    {task.isNonBlocking ? ' · 非阻塞' : ''}
+                  </small>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => onViewTask(task)}
+                >
+                  查看
+                </button>
+              </li>
+            ))}
+          </ul>
+          <p>
+            项目当前主线：
+            {command.createdTasks.find((task) => task.isPrimary)
+              ?.stepName ?? '保持原主线'}
+          </p>
+        </>
+      ) : (
+        <p>该支线已完成，项目主线保持不变。</p>
+      )}
+      <div className="r26-completion-success__actions">
+        {primaryTask ? (
+          <button
+            type="button"
+            className="r26-button r26-button--primary"
+            onClick={() => onViewTask(primaryTask)}
+          >
+            查看新任务
+          </button>
+        ) : null}
+        <button
+          type="button"
+          className="r26-button r26-button--secondary"
+          onClick={onReturnToMap}
+        >
+          返回流程地图
+        </button>
+      </div>
+    </section>
   );
 }
 
@@ -1390,6 +2033,31 @@ function formatDateTime(value: string | null) {
     minute: '2-digit',
     hour12: false,
   }).format(new Date(value));
+}
+
+function toLocalDateTimeInput(value: Date) {
+  const local = new Date(
+    value.getTime() - value.getTimezoneOffset() * 60_000,
+  );
+  return local.toISOString().slice(0, 16);
+}
+
+function isGate3C1CompletableTask(task: R26TaskDetail) {
+  const ordinaryStep =
+    task.stepNumber >= 1 && task.stepNumber <= 11;
+  const activeStatus = [
+    'READY',
+    'IN_PROGRESS',
+    'RETURNED',
+    'PENDING',
+  ].includes(task.status);
+  const serverAllowsCompletion = task.availableActions.some(
+    (action) =>
+      action.action === 'COMPLETE' ||
+      (task.stepNumber === 4 && action.action === 'APPROVE'),
+  );
+
+  return ordinaryStep && activeStatus && serverAllowsCompletion;
 }
 
 function joinSteps(steps: Array<{ stepNumber: number; stepName: string }>) {

@@ -210,6 +210,7 @@ export type R26FlowMapNode = {
 
 export type R26TaskDetail = {
   taskId: string;
+  taskVersion: string;
   projectId: string;
   stepCode: string | null;
   stepNumber: number;
@@ -442,11 +443,13 @@ export type R26WorkspaceResponse = {
     createdAt: string;
   }>;
   capabilities: {
-    gate: 'R26_GATE3B';
+    gate: 'R26_GATE3B' | 'R26_GATE3C1';
     memberAssignmentVersion: number;
     manageMembers: boolean;
     progressWriteEnabled: true;
-    workflowWriteEnabled: false;
+    workflowWriteEnabled: boolean;
+    workflowWriteScope?: 'ORDINARY_STEPS_1_TO_11';
+    specialWorkflowActionsEnabled?: false;
   };
 };
 
@@ -636,5 +639,122 @@ export type R26ProgressCommandResponse = {
     currentNodeAfter: string | null;
     taskCountBefore: number;
     taskCountAfter: number;
+  };
+};
+
+export type R26CompletionPreview = {
+  gate: 'R26_GATE3C1';
+  writePerformed: false;
+  canComplete: boolean;
+  blockingReasons: string[];
+  currentTask: {
+    id: string;
+    projectId: string;
+    nodeCode: string;
+    stepNumber: number;
+    stepName: string;
+    status: string;
+    taskVersion: string;
+    owner: { id: string; name: string } | null;
+  };
+  checks: Array<{
+    code: string;
+    label: string;
+    passed: boolean;
+    details: string[];
+  }>;
+  openBlockers: Array<{
+    id: string;
+    blockerType: string;
+    description: string;
+    impactLevel: string | null;
+    expectedResolvedAt: string | null;
+    createdAt: string;
+  }>;
+  nextTasks: Array<{
+    nodeCode: string;
+    stepNumber: number;
+    stepName: string;
+    isPrimary: boolean;
+    isNonBlocking: boolean;
+    reason: string;
+    primaryDepartment: {
+      id: string | null;
+      name: string;
+    } | null;
+    suggestedOwner: R26Person | null;
+    collaborators: R26Person[];
+    reviewers: R26Person[];
+    assignmentStatus: 'ASSIGNED' | 'SUGGESTED' | 'UNASSIGNED';
+    assignmentSource: R26FlowMapNode['assignmentSource'];
+    unassignedReason: string | null;
+  }>;
+  workflowVersion: number;
+  availableActions: Array<{ action: string; label: string }>;
+  notice: string;
+};
+
+export type R26OrdinaryCompletionCommand = {
+  action: 'R26_ORDINARY_TASK_COMPLETED';
+  requestId: string;
+  idempotencyKey: string;
+  idempotentReplay: boolean;
+  projectId: string;
+  completedTask: {
+    id: string;
+    nodeCode: string;
+    stepNumber: number;
+    stepName: string;
+    status: string;
+    completedAt: string | null;
+  };
+  createdTasks: Array<{
+    taskId: string;
+    nodeCode: string;
+    stepNumber: number;
+    stepName: string;
+    isPrimary: boolean;
+    isNonBlocking: boolean;
+    owner: { id: string; name: string } | null;
+    department: { id: string; name: string } | null;
+    assignmentSource: R26FlowMapNode['assignmentSource'];
+  }>;
+  activatedTasks: [];
+  projectCurrentNodeCode: string | null;
+  assignmentSummary: R26OrdinaryCompletionCommand['createdTasks'];
+  activity: {
+    id: string;
+    summary: string;
+    createdAt: string;
+  };
+  workflowVersion: number;
+};
+
+export type R26OrdinaryCompletionResponse = {
+  command: R26OrdinaryCompletionCommand;
+  viewModel: {
+    workspace: R26WorkspaceResponse;
+    dashboard: R26DashboardResponse;
+    projects: R26ProjectsResponse;
+    task: R26TaskResponse;
+  };
+};
+
+export type R26ResolveBlockerResponse = {
+  command: {
+    action: 'R26_TASK_BLOCKER_RESOLVED';
+    projectId: string;
+    taskId: string;
+    blockerId: string;
+    blockerResolved: true;
+    taskStatusChanged: false;
+    workflowTransitioned: false;
+    resolvedAt: string;
+    resolutionSummary: string;
+  };
+  viewModel: {
+    completionPreview: R26CompletionPreview;
+    workspace: R26WorkspaceResponse;
+    task: R26TaskResponse;
   };
 };

@@ -1253,6 +1253,25 @@ export class R26MemberAssignmentService {
     };
   }
 
+  async resolveFutureAssignmentsWithExecutor(
+    db: Gate3DbClient,
+    projectId: string,
+    nodeCodes: WorkflowNodeCode[],
+  ) {
+    const state = await this.loadAssignmentState(db, projectId);
+    const selected = new Set(nodeCodes);
+
+    return Object.values(WorkflowNodeCode)
+      .filter((nodeCode) => selected.has(nodeCode))
+      .map((nodeCode) =>
+        this.resolveAssignmentForFuture(
+          state,
+          state.projectMembers,
+          nodeCode,
+        ),
+      );
+  }
+
   private resolveAssignments(
     state: AssignmentState,
     projectMembers: R26ProjectMemberRow[],

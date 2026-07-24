@@ -775,6 +775,7 @@ model WorkflowInstance {
   projectId           String
   instanceNo          String                 @unique
   versionNo           Int                    @default(1)
+  commandVersion      Int                    @default(1)
   templateCode        String                 @default("COLOR_DEVELOPMENT_MVP")
   templateVersion     String?
   status              WorkflowInstanceStatus @default(DRAFT)
@@ -889,6 +890,10 @@ model TaskBlocker {
   expectedResolvedAt      DateTime?
   status                  TaskBlockerStatus  @default(OPEN)
   resolvedAt              DateTime?
+  resolutionSummary       String?
+  actualResolvedAt        DateTime?
+  resolvedById            String?
+  resolutionRequestId     String?
   progressUpdate          TaskProgressUpdate @relation(fields: [progressUpdateId], references: [id], onDelete: Cascade)
   workflowTask            WorkflowTask       @relation(fields: [workflowTaskId], references: [id], onDelete: Cascade)
   project                 Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)

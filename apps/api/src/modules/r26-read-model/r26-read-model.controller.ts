@@ -34,7 +34,13 @@ import {
   R26SubmitProgressDto,
   R26UploadMaterialDto,
 } from './dto/r26-progress-material.dto';
+import {
+  R26CompleteOrdinaryTaskDto,
+  R26CompletionPreviewDto,
+  R26ResolveTaskBlockerDto,
+} from './dto/r26-ordinary-completion.dto';
 import { R26MemberAssignmentService } from './r26-member-assignment.service';
+import { R26OrdinaryCompletionService } from './r26-ordinary-completion.service';
 import { R26ProgressMaterialService } from './r26-progress-material.service';
 import { R26ReadModelService } from './r26-read-model.service';
 
@@ -53,6 +59,7 @@ export class R26ReadModelController {
     private readonly service: R26ReadModelService,
     private readonly memberAssignmentService: R26MemberAssignmentService,
     private readonly progressMaterialService: R26ProgressMaterialService,
+    private readonly ordinaryCompletionService: R26OrdinaryCompletionService,
   ) {}
 
   @Permissions('dashboard.read')
@@ -265,6 +272,97 @@ export class R26ReadModelController {
     response.send(content.buffer);
   }
 
+  @Permissions('workflow.transition')
+  @ApiOperation({ summary: 'R26 Gate 3C1 完成普通工序前影响预览（不写入）' })
+  @Post('tasks/:taskId/completion-preview')
+  previewOrdinaryCompletion(
+    @Param('taskId') taskId: string,
+    @Body() body: R26CompletionPreviewDto,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.ordinaryCompletionService.previewCompletion(
+      taskId,
+      body,
+      actor,
+    );
+  }
+
+  @Permissions('workflow.transition')
+  @ApiOperation({ summary: 'R26 Gate 3C1 确认完成普通工序并按冻结拓扑推进' })
+  @Post('tasks/:taskId/complete')
+  async completeOrdinaryTask(
+    @Param('taskId') taskId: string,
+    @Body() body: R26CompleteOrdinaryTaskDto,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+    @Headers('x-request-id') requestId: string | undefined,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    this.assertIdempotencyKey(body.idempotencyKey, idempotencyKey);
+    const command = await this.ordinaryCompletionService.completeTask(
+      taskId,
+      body,
+      actor,
+      requestId?.trim() || body.idempotencyKey,
+    );
+    const projectId = this.readCommandProjectId(command);
+    const [workspace, dashboard, projects, task] = await Promise.all([
+      this.service.getWorkspace(projectId, actor),
+      this.service.getDashboard(actor),
+      this.service.getProjects({}, actor),
+      this.service.getTask(taskId, actor),
+    ]);
+    return {
+      command,
+      viewModel: {
+        workspace,
+        dashboard,
+        projects,
+        task,
+      },
+    };
+  }
+
+  @Permissions('workflow.transition')
+  @ApiOperation({ summary: 'R26 Gate 3C1 解除当前工序阻塞' })
+  @Post('tasks/:taskId/blockers/:blockerId/resolve')
+  async resolveTaskBlocker(
+    @Param('taskId') taskId: string,
+    @Param('blockerId') blockerId: string,
+    @Body() body: R26ResolveTaskBlockerDto,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+    @Headers('x-request-id') requestId: string | undefined,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    this.assertIdempotencyKey(body.idempotencyKey, idempotencyKey);
+    const command = await this.ordinaryCompletionService.resolveBlocker(
+      taskId,
+      blockerId,
+      body,
+      actor,
+      requestId?.trim() || body.idempotencyKey,
+    );
+    const [preview, workspace, task] = await Promise.all([
+      this.ordinaryCompletionService.previewCompletion(
+        taskId,
+        { taskVersion: body.taskVersion },
+        actor,
+      ),
+      this.service.getWorkspace(
+        this.readCommandProjectId(command),
+        actor,
+      ),
+      this.service.getTask(taskId, actor),
+    ]);
+    return {
+      command,
+      viewModel: {
+        completionPreview: preview,
+        workspace,
+        task,
+      },
+    };
+  }
+
   @Permissions('project.read')
   @ApiOperation({ summary: 'R26 Gate 3A 成员或分工变更影响预览（不写入）' })
   @Post('projects/:projectId/assignment-preview')
@@ -393,5 +491,17 @@ export class R26ReadModelController {
         'Idempotency-Key 请求头与请求体不一致。',
       );
     }
+  }
+
+  private readCommandProjectId(command: unknown) {
+    if (
+      !command ||
+      typeof command !== 'object' ||
+      !('projectId' in command) ||
+      typeof command.projectId !== 'string'
+    ) {
+      throw new BadRequestException('命令响应缺少项目标识。');
+    }
+    return command.projectId;
   }
 }

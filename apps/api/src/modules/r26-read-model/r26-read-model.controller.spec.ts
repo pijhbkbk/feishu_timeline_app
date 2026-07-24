@@ -9,7 +9,7 @@ import { PERMISSION_METADATA_KEY } from '../auth/auth.constants';
 import { R26_ASSIGNMENT_RULES } from './r26-assignment.rules';
 import { R26ReadModelController } from './r26-read-model.controller';
 
-describe('R26ReadModelController Gate 3B contract', () => {
+describe('R26ReadModelController Gate 3C1 contract', () => {
   it('keeps the Gate 2 view-model handlers GET-only', () => {
     const prototype = R26ReadModelController.prototype;
     const handlerNames = [
@@ -81,6 +81,52 @@ describe('R26ReadModelController Gate 3B contract', () => {
     expect(Object.getOwnPropertyNames(prototype)).not.toContain('approveTask');
     expect(Object.getOwnPropertyNames(prototype)).not.toContain('rejectTask');
     expect(Object.getOwnPropertyNames(prototype)).not.toContain('transitionWorkflow');
+  });
+
+  it('opens only the three Gate 3C1 ordinary-completion commands', () => {
+    const prototype = R26ReadModelController.prototype;
+    const handlers = [
+      [
+        'previewOrdinaryCompletion',
+        RequestMethod.POST,
+        'tasks/:taskId/completion-preview',
+      ],
+      [
+        'completeOrdinaryTask',
+        RequestMethod.POST,
+        'tasks/:taskId/complete',
+      ],
+      [
+        'resolveTaskBlocker',
+        RequestMethod.POST,
+        'tasks/:taskId/blockers/:blockerId/resolve',
+      ],
+    ] as const;
+
+    for (const [handlerName, method, path] of handlers) {
+      const handler = prototype[handlerName];
+      expect(Reflect.getMetadata(METHOD_METADATA, handler)).toBe(method);
+      expect(Reflect.getMetadata(PATH_METADATA, handler)).toBe(path);
+      expect(
+        Reflect.getMetadata(PERMISSION_METADATA_KEY, handler),
+      ).toEqual(['workflow.transition']);
+    }
+
+    expect(Object.getOwnPropertyNames(prototype)).not.toContain(
+      'approveReview',
+    );
+    expect(Object.getOwnPropertyNames(prototype)).not.toContain(
+      'rejectReview',
+    );
+    expect(Object.getOwnPropertyNames(prototype)).not.toContain(
+      'collectFee',
+    );
+    expect(Object.getOwnPropertyNames(prototype)).not.toContain(
+      'completeMonthlyReview',
+    );
+    expect(Object.getOwnPropertyNames(prototype)).not.toContain(
+      'decideColorExit',
+    );
   });
 
   it('defines a server-side assignment rule for all 18 workflow nodes', () => {
