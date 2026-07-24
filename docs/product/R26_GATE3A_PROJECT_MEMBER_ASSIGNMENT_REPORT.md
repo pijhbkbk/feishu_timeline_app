@@ -2,7 +2,7 @@
 
 日期：2026-07-24
 
-状态：已在独立 staging 实现并完成技术验证，等待产品负责人人工确认；未进入 Gate 3B。
+状态：已在独立 staging 实现并由产品负责人人工确认通过；允许进入 Gate 3B。
 
 ## 1. 范围与隔离
 
@@ -201,15 +201,10 @@ git diff --check                                       PASS
 ## 8. 决定
 
 ```text
-R26_GATE3A_IMPLEMENTED
-PROJECT_MEMBER_WRITES_ENABLED
-ASSIGNMENT_WRITES_ENABLED
-PROGRESS_AND_WORKFLOW_WRITES_STILL_DISABLED
-AWAITING_PRODUCT_OWNER_GATE3A_CONFIRMATION
-STOP_BEFORE_GATE3B
+R26_GATE3A_PASSED
+PROJECT_MEMBER_AND_ASSIGNMENT_MANAGEMENT_ACCEPTED
+READY_FOR_GATE3B_PROGRESS_AND_MATERIALS
 ```
-
-不得依据本报告自动宣布产品验收通过。产品负责人确认前，不进入 Gate 3B。
 
 ## 9. 项目记录排版修复（2026-07-24）
 
@@ -248,6 +243,28 @@ git diff --check                      PASS
 ```
 
 部署后 staging 五个服务均 healthy，19 项 migration 已应用且无待执行 migration。
-真实浏览器会话在重部署后过期，飞书授权页要求重新授予“获取用户标识”权限；在产品
-负责人确认授权前没有点击，因此本小节暂不声称已完成新的三视口截图验收。Gate 3A
-状态仍为等待产品负责人确认，Gate 3B 写能力保持关闭。
+
+## 10. 最终视觉收口与产品批准（2026-07-24）
+
+- 按产品负责人 Gate 3B 启动指令重新完成真实飞书 OAuth，账号为李晓晨；
+- staging 完整应用提交为 `9bca77260a46386408c3e5384c25b15040d5bbb7`；
+- 1440px 四条记录均为时间、摘要、操作人三段式布局，重叠数 0；
+- 1024px 四条记录横向溢出 0、重叠 0；
+- 390px 页面横向溢出 0，记录为单列布局，摘要行高 26.4px；
+- 内部 `record.action` 未进入可见文本；
+- 浏览器 console error 0；
+- Gate 3A 分支已推送。
+
+新增证据：
+
+- `docs/product/evidence/R26_GATE3A/13-project-records-fixed-1440.png`
+- `docs/product/evidence/R26_GATE3A/14-project-records-fixed-1024.png`
+- `docs/product/evidence/R26_GATE3A/15-project-records-fixed-390.png`
+
+最终批准：
+
+```text
+R26_GATE3A_PASSED
+PROJECT_MEMBER_AND_ASSIGNMENT_MANAGEMENT_ACCEPTED
+READY_FOR_GATE3B_PROGRESS_AND_MATERIALS
+```

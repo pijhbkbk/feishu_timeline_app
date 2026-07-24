@@ -319,6 +319,22 @@ STOP_BEFORE_GATE3B
 - staging 重部署后飞书会话过期；重新授权属于权限操作，未在没有产品负责人确认时
   点击。三档浏览器截图复验等待授权后补充。
 
+### Gate 3A 最终产品批准
+
+- 产品负责人通过 Gate 3B 启动指令确认 Gate 3A 通过。
+- 真实飞书 OAuth 已恢复，用户为李晓晨。
+- staging 应用提交：`9bca77260a46386408c3e5384c25b15040d5bbb7`。
+- 项目记录 1440/1024/390 排版复核通过，重叠和页面横向溢出均为 0。
+- 内部英文审计动作代码未显示，console error 为 0。
+- 新增证据：`docs/product/evidence/R26_GATE3A/13-project-records-fixed-1440.png`
+  至 `15-project-records-fixed-390.png`。
+
+```text
+R26_GATE3A_PASSED
+PROJECT_MEMBER_AND_ASSIGNMENT_MANAGEMENT_ACCEPTED
+READY_FOR_GATE3B_PROGRESS_AND_MATERIALS
+```
+
 ## Gate 2 真实只读数据联调（2026-07-23）
 
 ### 授权与边界

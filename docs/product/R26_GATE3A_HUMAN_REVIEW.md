@@ -14,12 +14,14 @@ R26-G3A-UAT-成员分工-20260724-1006
 当前状态：
 
 ```text
-R26_GATE3A_IMPLEMENTED
-AWAITING_PRODUCT_OWNER_GATE3A_CONFIRMATION
-STOP_BEFORE_GATE3B
+R26_GATE3A_PASSED
+PROJECT_MEMBER_AND_ASSIGNMENT_MANAGEMENT_ACCEPTED
+READY_FOR_GATE3B_PROGRESS_AND_MATERIALS
 ```
 
-以下产品验收项故意保持未勾选，必须由产品负责人在 staging 真实操作后确认。
+2026-07-24，产品负责人提交 Gate 3B 启动指令，明确确认 Gate 3A 项目成员、职责、
+部门负责人、任务分配、影响预览、保护规则、数据一致性和最新项目记录排版通过。
+以下细项保留为历史验收清单；最终批准状态以本文件末尾人工决定为准。
 
 ## 90 秒管理员正向路径
 
@@ -85,16 +87,30 @@ STOP_BEFORE_GATE3B
 
 ## 人工决定
 
-- [ ] 确认 Gate 3A 项目成员与分配产品体验
-- [ ] 允许进入 Gate 3B 进展提交与材料上传
+- [x] 确认 Gate 3A 项目成员与分配产品体验
+- [x] 允许进入 Gate 3B 进展提交与材料上传
 
-未勾选以上两项时，状态保持：
+批准状态：
 
 ```text
-R26_GATE3A_IMPLEMENTED
-PROJECT_MEMBER_WRITES_ENABLED
-ASSIGNMENT_WRITES_ENABLED
-PROGRESS_AND_WORKFLOW_WRITES_STILL_DISABLED
-AWAITING_PRODUCT_OWNER_GATE3A_CONFIRMATION
-STOP_BEFORE_GATE3B
+R26_GATE3A_PASSED
+PROJECT_MEMBER_AND_ASSIGNMENT_MANAGEMENT_ACCEPTED
+READY_FOR_GATE3B_PROGRESS_AND_MATERIALS
 ```
+
+### 最新项目记录排版收口
+
+- [x] staging 运行 `9bca77260a46386408c3e5384c25b15040d5bbb7`
+- [x] 真实飞书 OAuth 用户为李晓晨
+- [x] 1440px 时间、摘要、操作人无重叠
+- [x] 1024px 无横向溢出、无重叠
+- [x] 390px 使用单列堆叠，摘要行高为 26.4px
+- [x] 内部英文审计动作代码未显示
+- [x] console error 为 0
+- [x] Gate 3A 分支已推送
+
+证据：
+
+- `docs/product/evidence/R26_GATE3A/13-project-records-fixed-1440.png`
+- `docs/product/evidence/R26_GATE3A/14-project-records-fixed-1024.png`
+- `docs/product/evidence/R26_GATE3A/15-project-records-fixed-390.png`

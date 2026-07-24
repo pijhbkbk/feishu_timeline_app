@@ -4357,6 +4357,22 @@ STOP_BEFORE_GATE3B
   产品负责人确认时改变，新三视口截图待授权后补充。
 - production、V1、`main`、tag 和 Gate 3B 均未改变。
 
+#### Gate 3A Final Product Approval
+
+- 产品负责人明确启动 Gate 3B，确认 Gate 3A 成员管理和分配能力通过。
+- 已重新完成李晓晨真实飞书 OAuth。
+- staging 运行 `9bca77260a46386408c3e5384c25b15040d5bbb7`。
+- 项目记录 1440/1024/390 排版均可读；重叠 0、页面横向溢出 0、console error 0。
+- 内部审计动作代码未显示；Gate 3A 分支已推送。
+- 证据：`docs/product/evidence/R26_GATE3A/13-project-records-fixed-1440.png` 至
+  `15-project-records-fixed-390.png`。
+
+```text
+R26_GATE3A_PASSED
+PROJECT_MEMBER_AND_ASSIGNMENT_MANAGEMENT_ACCEPTED
+READY_FOR_GATE3B_PROGRESS_AND_MATERIALS
+```
+
 ---
 
 ### Round R26_PRODUCT_UI_RECOVERY_GATE2_DATA_CONSISTENCY_FIX
