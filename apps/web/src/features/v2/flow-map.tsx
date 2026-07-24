@@ -318,7 +318,7 @@ function NodeContent({
         <text x={contentX} y={node.y + 95} textAnchor="middle" className="r26-node-deadline">
           {created
             ? `第 ${node.round || 1} 轮 · ${r26StatusLabels[status]}`
-            : '尚未生成 · 负责人待分配'}
+            : `尚未生成 · ${node.owner}`}
         </text>
       )}
     </g>

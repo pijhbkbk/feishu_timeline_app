@@ -28,14 +28,15 @@ describe('R26 Gate 2 real-data consistency contracts', () => {
     expect(flowMapSource).not.toContain('第 2 轮 · 待结论');
   });
 
-  it('renders monthly progress dynamically and keeps ungenerated nodes unassigned', () => {
+  it('renders monthly progress dynamically and uses only the server suggestion for future owners', () => {
     expect(flowMapSource).toContain('{completedPeriods}/{totalPeriods}');
     expect(flowMapSource).not.toContain('>3/12<');
     expect(workspaceSource).toContain(
-      "owner: hasTask ? node.ownerName ?? '负责人待分配' : '负责人待分配'",
+      "owner: node.ownerName ?? node.suggestedOwner?.name ?? '负责人待分配'",
     );
     expect(workspaceSource).toContain(
-      "return '该工序尚未生成，负责人保持待分配。';",
+      '服务端建议负责人：${node.owner}',
     );
+    expect(flowMapSource).toContain('`尚未生成 · ${node.owner}`');
   });
 });

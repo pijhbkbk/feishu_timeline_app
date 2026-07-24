@@ -318,6 +318,135 @@ describe('R26MemberAssignmentService security and command gates', () => {
     });
   });
 
+  it('requires explicit confirmation and a reason before reassigning an in-progress task', async () => {
+    const tx = {
+      project: {
+        findUnique: vi.fn().mockResolvedValue(project()),
+        updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+      },
+      r26CommandRequest: {
+        findUnique: vi.fn().mockResolvedValue(null),
+      },
+      workflowTask: {
+        findFirst: vi.fn().mockResolvedValue({
+          id: 'task-in-progress',
+          projectId: 'project-1',
+          status: WorkflowTaskStatus.IN_PROGRESS,
+          isActive: true,
+          assigneeUserId: 'owner-1',
+        }),
+        update: vi.fn(),
+      },
+    };
+    const prisma = {
+      r26CommandRequest: {
+        findUnique: vi.fn().mockResolvedValue(null),
+      },
+      $transaction: vi.fn(
+        async (callback: (client: typeof tx) => Promise<unknown>) =>
+          callback(tx),
+      ),
+    };
+    const service = new R26MemberAssignmentService(
+      prisma as never,
+      {} as never,
+    );
+
+    await expect(
+      service.transferTask(
+        'project-1',
+        'task-in-progress',
+        {
+          expectedVersion: 1,
+          idempotencyKey: 'r26-g3a:in-progress:00000001',
+          newOwnerUserId: 'user-2',
+          reason: '负责人调整',
+          confirmInProgress: false,
+        },
+        admin,
+        'request-in-progress',
+      ),
+    ).rejects.toMatchObject({
+      response: {
+        code: 'IN_PROGRESS_CONFIRMATION_REQUIRED',
+        affectedTaskIds: ['task-in-progress'],
+      },
+    });
+    expect(tx.workflowTask.update).not.toHaveBeenCalled();
+  });
+
+  it('requires active tasks to be transferred before removing a member', async () => {
+    const tx = {
+      project: {
+        findUnique: vi.fn().mockResolvedValue(project()),
+        updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+      },
+      r26CommandRequest: {
+        findUnique: vi.fn().mockResolvedValue(null),
+      },
+      projectMember: {
+        findMany: vi.fn().mockResolvedValue([
+          {
+            id: 'project-member-1',
+            projectId: 'project-1',
+            userId: 'user-2',
+            memberType: ProjectMemberType.MEMBER,
+            user: {
+              id: 'user-2',
+              name: '待移出成员',
+              department: { name: '采购部' },
+            },
+          },
+        ]),
+      },
+      workflowTask: {
+        findMany: vi.fn().mockResolvedValue([
+          {
+            id: 'task-active',
+            nodeCode: WorkflowNodeCode.PAINT_PROCUREMENT,
+            nodeName: '涂料采购',
+            status: WorkflowTaskStatus.READY,
+            assigneeUserId: 'user-2',
+            assigneeDepartmentId: 'dept-purchase',
+            payload: null,
+          },
+        ]),
+      },
+    };
+    const prisma = {
+      r26CommandRequest: {
+        findUnique: vi.fn().mockResolvedValue(null),
+      },
+      $transaction: vi.fn(
+        async (callback: (client: typeof tx) => Promise<unknown>) =>
+          callback(tx),
+      ),
+    };
+    const service = new R26MemberAssignmentService(
+      prisma as never,
+      {} as never,
+    );
+
+    await expect(
+      service.removeMember(
+        'project-1',
+        'user-2',
+        {
+          expectedVersion: 1,
+          idempotencyKey: 'r26-g3a:remove-active:00000001',
+          reason: '人员离开项目',
+        },
+        admin,
+        'request-remove-active',
+      ),
+    ).rejects.toMatchObject({
+      response: {
+        code: 'ACTIVE_TASK_TRANSFER_REQUIRED',
+        affectedTaskIds: ['task-active'],
+      },
+    });
+  });
+
   it('uses the transfer target only for active tasks when previewing member removal', () => {
     const service = new R26MemberAssignmentService({} as never, {} as never);
     const removedUserId = 'process-user';

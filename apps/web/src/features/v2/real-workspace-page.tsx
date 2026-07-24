@@ -1252,7 +1252,6 @@ function toDisplayNode(node: R26FlowMapNode): R26FlowNode {
     shape: 'rounded' as const,
   };
   const status = isNodeStatus(node.status) ? node.status : 'NOT_STARTED';
-
   const hasTask = node.taskId !== null;
 
   return {
@@ -1266,7 +1265,7 @@ function toDisplayNode(node: R26FlowMapNode): R26FlowNode {
     height: geometry.height,
     shape: geometry.shape,
     status,
-    owner: hasTask ? node.ownerName ?? '负责人待分配' : '负责人待分配',
+    owner: node.ownerName ?? node.suggestedOwner?.name ?? '负责人待分配',
     department: node.departmentName ?? node.primaryDepartment?.name ?? '部门待定',
     deadline: !hasTask
       ? '尚未生成'
@@ -1309,7 +1308,9 @@ function statusTone(status: R26NodeStatus) {
 
 function taskConclusion(node: R26FlowNode, task: R26TaskDetail | null) {
   if (!node.taskId) {
-    return '该工序尚未生成，负责人保持待分配。';
+    return node.owner === '负责人待分配'
+      ? '该工序尚未生成，负责人保持待分配。'
+      : `该工序尚未生成，服务端建议负责人：${node.owner}。`;
   }
   if (task?.colorExitSummary) {
     return task.colorExitSummary.finalDecisionLabel
