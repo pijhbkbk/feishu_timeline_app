@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 
+import { Providers } from '../../components/providers';
 import { isR26V2PrototypeEnabled } from '../../features/v2/r26-feature';
 import { R26PrototypeProvider } from '../../features/v2/prototype-store';
 import { R26RealDataProvider } from '../../features/v2/r26-real-data-context';
@@ -23,11 +24,13 @@ export default function V2Layout({ children }: { children: ReactNode }) {
 
   return (
     <div data-ui-version="r26-v2">
-      <R26PrototypeProvider>
-        <R26RealDataProvider>
-          <V2Shell>{children}</V2Shell>
-        </R26RealDataProvider>
-      </R26PrototypeProvider>
+      <Providers>
+        <R26PrototypeProvider>
+          <R26RealDataProvider>
+            <V2Shell>{children}</V2Shell>
+          </R26RealDataProvider>
+        </R26PrototypeProvider>
+      </Providers>
     </div>
   );
 }
