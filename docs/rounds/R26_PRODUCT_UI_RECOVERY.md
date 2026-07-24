@@ -559,3 +559,54 @@ ZERO_BUSINESS_WRITE_REQUESTS
 AWAITING_PRODUCT_OWNER_REAL_DATA_CONFIRMATION
 STOP_BEFORE_GATE3
 ```
+
+## Gate 3C2、3C3 与 Gate 3D 完整生命周期 UAT（2026-07-25）
+
+### 授权与边界
+
+- 产品负责人要求一次性完成 Gate 3C2、Gate 3C3、Gate 3D 并推送、部署 staging；
+- 分支：`codex/r26-gate3c2-c3-d-full-lifecycle`；
+- 不修改 V1，不访问或部署 production，不合并 `main`，不创建稳定 tag；
+- 所有业务写入仅发生在独立 staging 的 UAT 项目，未运行 seed。
+
+### 完整 UAT
+
+- 第 12 步真实执行评审驳回、第 11 步第二轮试制和第 12 步第二轮通过；
+- 第 13 步固定 10000 元收费完成记账、支付和节点完成；
+- 第 14 步一致性评审通过；
+- 第 15 步排产计划创建、确认并完成；
+- 第 16 步生产记录创建、开始、完成并推进；
+- 第 17 步 12 个独立月度实例全部创建、提交和通过；
+- 第 18 步显示系统建议，由授权人员录入独立人工决定后完成项目收尾；
+- 项目最终 `COMPLETED / PROJECT_CLOSED / 18 / 18`。
+
+### 现场修复
+
+- 月度结论不再出现 `undefined`；
+- 项目和任务原始状态不再暴露 `IN_PROGRESS`；
+- “建议退出”与“人工决定退出”分开显示；
+- 完成项目卡改为“项目流程已经完成”，移除旧活动任务深链接。
+
+### 数据与安全
+
+- 12 个月 recurring task 均为 `COMPLETED / APPROVED`；
+- 第 12 步驳回和第二轮通过均有独立任务与审计历史；
+- 审计记录 94 条，生命周期相关 60 条；
+- staging 备份校验通过；production 请求为 0。
+
+报告：
+
+- `docs/product/R26_GATE3C2_REVIEW_FEE_PRODUCTION_REPORT.md`
+- `docs/product/R26_GATE3C3_MONTHLY_EXIT_REPORT.md`
+- `docs/product/R26_GATE3D_FULL_LIFECYCLE_UAT_REPORT.md`
+- `docs/product/R26_GATE3D_HUMAN_REVIEW.md`
+
+决定：
+
+```text
+R26_GATE3C2_IMPLEMENTED
+R26_GATE3C3_IMPLEMENTED
+R26_GATE3D_STAGING_UAT_COMPLETED
+AWAITING_PRODUCT_OWNER_FULL_LIFECYCLE_CONFIRMATION
+PRODUCTION_UNCHANGED
+```

@@ -4357,6 +4357,77 @@ STOP_BEFORE_GATE3C2
 
 ---
 
+### Round R26_PRODUCT_UI_RECOVERY_GATE3C2_C3_GATE3D
+
+#### Goal And Scope
+
+- 从 Gate 3C1 准确提交继续开放第 12～18 步专项动作；
+- 在独立 staging 完成从真实项目历史到退出治理的完整主链路 UAT；
+- 不修改 V1，不部署 production，不合并 `main`，不创建 tag。
+
+#### Exact Changes
+
+- V2 新增第 12～18 步专项动作路由，复用既有评审、收费、排产、生产、月度评审和
+  颜色退出领域服务；
+- 项目工作区将普通完成、专项动作和进展提交明确分层；
+- 第 17 步返回真实 `completed / total` 文案；
+- 第 18 步区分系统建议和人工决定，项目状态全部中文化；
+- 完成项目卡显示收尾语义并移除旧活动任务深链接；
+- V2 layout 接入现有认证上下文，避免专项工作区独立渲染时缺少会话。
+
+#### Staging UAT
+
+```text
+project                      R26-G3C1-UAT-普通推进-20260724-2301
+project status               COMPLETED
+current node                 PROJECT_CLOSED
+flow progress                18 / 18
+step 12                      REJECTED -> rework -> APPROVED
+step 13                      10000 CNY / PAID / COMPLETED
+step 14                      APPROVED
+step 15                      CONFIRMED / COMPLETED
+step 16                      COMPLETED
+step 17                      12 / 12 APPROVED
+step 18                      system EXIT / human EXIT / COMPLETED
+audit records                94
+production requests          0
+seed                         not run
+```
+
+#### Validation
+
+```text
+pnpm install --frozen-lockfile       PASS
+pnpm lint                            PASS
+pnpm typecheck                       PASS
+pnpm test                            PASS（Web 36 files / 124 tests；API 62 files / 283 tests）
+pnpm --filter web build              PASS
+pnpm --filter api build              PASS
+pnpm --filter api prisma:validate    PASS
+git diff --check                     PASS
+```
+
+#### Evidence
+
+- `docs/product/evidence/R26_GATE3D/`
+- `docs/product/R26_GATE3C2_REVIEW_FEE_PRODUCTION_REPORT.md`
+- `docs/product/R26_GATE3C3_MONTHLY_EXIT_REPORT.md`
+- `docs/product/R26_GATE3D_FULL_LIFECYCLE_UAT_REPORT.md`
+- `docs/product/R26_GATE3D_HUMAN_REVIEW.md`
+
+#### Decision
+
+```text
+R26_GATE3C2_IMPLEMENTED
+R26_GATE3C3_IMPLEMENTED
+R26_GATE3D_STAGING_UAT_COMPLETED
+FULL_MAINLINE_FROM_PROJECT_CREATION_TO_EXIT_VERIFIED
+AWAITING_PRODUCT_OWNER_FULL_LIFECYCLE_CONFIRMATION
+PRODUCTION_UNCHANGED
+```
+
+---
+
 ### Round R26_PRODUCT_UI_RECOVERY_GATE3A_PROJECT_MEMBER_AND_ASSIGNMENT_MANAGEMENT
 
 #### Goal And Scope

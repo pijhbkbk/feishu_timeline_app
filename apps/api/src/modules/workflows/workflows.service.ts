@@ -157,9 +157,9 @@ const COLOR_EXIT_SUGGESTION_LABELS: Record<ColorExitSuggestion, string> = {
 };
 
 const COLOR_EXIT_DECISION_LABELS: Record<ColorExitSuggestion, string> = {
-  [ColorExitSuggestion.EXIT]: '人工决定退出',
-  [ColorExitSuggestion.RETAIN]: '人工决定保留',
-  [ColorExitSuggestion.OBSERVE]: '人工决定延期观察',
+  [ColorExitSuggestion.EXIT]: '退出',
+  [ColorExitSuggestion.RETAIN]: '保留',
+  [ColorExitSuggestion.OBSERVE]: '延期观察',
 };
 
 const WORKFLOW_DURATION_TYPE_LABELS: Record<WorkflowDurationType, string> = {

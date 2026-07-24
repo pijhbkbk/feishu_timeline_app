@@ -174,8 +174,8 @@ function RealProjectsPage() {
       data-source="database"
     >
       <div className="r26-readonly-banner" role="status">
-        <strong>Gate 2 · 真实只读项目</strong>
-        <span>项目卡、风险和停滞原因来自 staging；本页没有新建或修改入口。</span>
+        <strong>真实项目组合 · 服务端事实</strong>
+        <span>项目卡、风险和停滞原因来自 staging；业务写动作仅在授权的专项页面执行。</span>
       </div>
       <PageIntro
         eyebrow="项目组合"
@@ -223,6 +223,7 @@ function RealProjectsPage() {
 }
 
 function RealProjectCard({ project }: { project: R26ProjectListItem }) {
+  const isCompleted = project.status === 'COMPLETED';
   const tone = project.stall || project.isOverdue || project.riskLevel === 'HIGH'
     ? 'risk'
     : project.currentNodeCode?.includes('REVIEW')
@@ -232,12 +233,23 @@ function RealProjectCard({ project }: { project: R26ProjectListItem }) {
     ? project.stall.reason
     : project.isOverdue
       ? '当前工序已经超过计划完成时间。'
-      : '当前未发现阻塞，按计划继续推进。';
+      : isCompleted
+        ? '项目流程已经完成，退出治理与审计记录均已保留。'
+        : '当前未发现阻塞，按计划继续推进。';
   const expected = project.stall?.expectedResolvedAt
     ? `预计 ${formatProjectDate(project.stall.expectedResolvedAt)} 解除`
     : project.stall
       ? '预计解除时间尚未填写'
-      : `下一步：${project.currentNodeName ?? '等待流程启动'}`;
+      : isCompleted
+        ? '下一步：查看项目记录与退出治理结果'
+        : `下一步：${project.currentNodeName ?? '等待流程启动'}`;
+  const projectHref = `/v2/projects/${encodeURIComponent(project.id)}${
+    isCompleted
+      ? ''
+      : project.currentTaskId
+        ? `?taskId=${encodeURIComponent(project.currentTaskId)}`
+        : ''
+  }`;
 
   return (
     <article
@@ -280,9 +292,7 @@ function RealProjectCard({ project }: { project: R26ProjectListItem }) {
           <strong>{project.progressText}</strong>
           <span>当前步骤</span>
         </div>
-        <Link
-          href={`/v2/projects/${encodeURIComponent(project.id)}${project.currentTaskId ? `?taskId=${encodeURIComponent(project.currentTaskId)}` : ''}`}
-        >
+        <Link href={projectHref}>
           打开项目
           <ChevronRightIcon />
         </Link>
