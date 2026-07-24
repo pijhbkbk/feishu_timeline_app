@@ -4375,6 +4375,80 @@ READY_FOR_GATE3B_PROGRESS_AND_MATERIALS
 
 ---
 
+### Round R26_PRODUCT_UI_RECOVERY_GATE3B_PROGRESS_SUBMISSION_AND_MATERIAL_UPLOAD
+
+#### Goal And Scope
+
+- 在独立 staging 开放进展草稿、不可变正式进展、阻塞申报、工序材料上传和版本历史。
+- 写入后同步 V2 工作台、项目列表、工作区、工序详情、进展历史与项目记录。
+- Gate 3B 不完成任务、不生成下一工序、不推进工作流，不开放专项评审/收费/退出写入。
+- 不修改 V1，不访问 production，不合并 `main`，不创建 tag，不进入 Gate 3C。
+
+#### Exact Changes
+
+- Prisma：新增 `R26ProgressDraft`，为进展记录增加状态/请求/版本字段，为阻塞增加
+  协助人员、部门和影响字段，新增 migration
+  `20260724133000_add_r26_gate3b_progress_materials`。
+- API：新增 progress context/history、草稿 PUT/DELETE、正式进展 POST、材料 V1/V2
+  POST 和历史内容 GET；统一幂等、版本、权限、DTO、事务、审计和 409。
+- 附件：复用现有安全拦截器和存储；旧版本只读保留，下载响应启用安全响应头。
+- Web：启用真实三步进展、阻塞条件字段、草稿恢复、上传/取消/替换/历史和局部刷新。
+- 联动：工作台、项目卡、固定流程地图、工序详情和项目记录使用最新服务端 ViewModel。
+- 证据：`docs/product/evidence/R26_GATE3B/`。
+- 报告：`docs/product/R26_GATE3B_PROGRESS_MATERIAL_REPORT.md`。
+- 人工复核：`docs/product/R26_GATE3B_HUMAN_REVIEW.md`。
+
+#### Staging Evidence
+
+```text
+URL                         http://localhost:8080
+user                        李晓晨
+UAT project                 R26-G3B-UAT-进展提交-20260724-2136
+deployed app commit         4f92e8d
+image tag                   r26-gate3b-4f92e8d
+migrations                  20 applied / 0 pending
+formal progress             1
+active/archived materials   1 / 1
+active drafts               0
+console/page errors         0
+production requests         0
+workflow command requests   0
+```
+
+- 真实飞书会话完成阻塞进展、人员/部门协助、PDF V1、替换 V2、正式提交及跨页联动。
+- 草稿保存、刷新恢复和删除完成；删除草稿不影响正式历史。
+- 数据库确认项目和工作流当前节点均未改变，任务仍为 `READY`，活动任务仍为 1。
+- 1440、1024、390 截图和真实浏览器交互帧回放已归档。
+
+#### Validation
+
+```text
+pnpm install --frozen-lockfile       PASS
+pnpm lint                            PASS
+pnpm typecheck                       PASS
+pnpm test                            PASS（Web 33 files / 109 tests；API 61 files / 263 tests）
+pnpm --filter web build              PASS
+pnpm --filter api build              PASS
+pnpm --filter api prisma:validate    PASS
+git diff --check                     PASS
+```
+
+代码级自动化覆盖草稿、阻塞、材料安全、版本、权限、IDOR、XSS、幂等、并发 409 和
+工作流不变量，覆盖项超过 Gate 3B 要求的 24 项。
+
+#### Decision
+
+```text
+R26_GATE3B_IMPLEMENTED
+PROGRESS_DRAFT_AND_SUBMISSION_ENABLED_ON_STAGING
+TASK_MATERIAL_UPLOAD_AND_VERSIONING_ENABLED_ON_STAGING
+WORKFLOW_TRANSITION_STILL_DISABLED
+AWAITING_PRODUCT_OWNER_GATE3B_CONFIRMATION
+STOP_BEFORE_GATE3C
+```
+
+---
+
 ### Round R26_PRODUCT_UI_RECOVERY_GATE2_DATA_CONSISTENCY_FIX
 
 #### Goal And Scope

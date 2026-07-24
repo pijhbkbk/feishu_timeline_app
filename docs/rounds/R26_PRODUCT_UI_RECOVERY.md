@@ -335,6 +335,81 @@ PROJECT_MEMBER_AND_ASSIGNMENT_MANAGEMENT_ACCEPTED
 READY_FOR_GATE3B_PROGRESS_AND_MATERIALS
 ```
 
+## Gate 3B 进展提交与材料上传（2026-07-24）
+
+### 授权与边界
+
+- 产品负责人明确启动 Gate 3B，Gate 3A 最终批准提交为 `e52c9d0`。
+- 从 Gate 3A 准确基线创建 `codex/r26-gate3b-progress-materials`。
+- 仅在独立 staging 开放草稿、正式进展、阻塞申报、材料上传和材料版本。
+- 完成工序、下一节点、评审、收费、月度评审、颜色退出、成员/分配修改继续关闭。
+- 未修改 V1，未访问 production，未合并 `main`，未创建 tag，未进入 Gate 3C。
+
+### 实现
+
+- 新增进展草稿模型、不可变正式进展字段、阻塞协助信息和 migration。
+- 新增 Gate 3B context/history、草稿保存/删除、进展提交、材料 V1/V2 和历史内容接口。
+- 所有写请求要求 `Idempotency-Key`，使用 task/draft version、项目作用域、后端
+  `availableActions`、事务、审计和 409 冲突。
+- 复用既有附件安全校验，保留扩展名、MIME、魔数、大小、双扩展名、路径和文件名
+  安全；替换生成 V2，V1 只读保留。
+- `/v2/progress` 启用真实三步表单；写入后同步工作台、项目列表、流程地图、工序详情、
+  进展历史和项目记录。
+- `WORK_COMPLETE_PENDING_TASK_COMPLETION` 不映射任务完成；响应固定包含
+  `taskStatusChanged=false` 和 `workflowTransitioned=false`。
+
+### staging 真实 UAT
+
+```text
+URL                         http://localhost:8080
+user                        李晓晨
+project                     R26-G3B-UAT-进展提交-20260724-2136
+app commit                  4f92e8d
+image tag                   r26-gate3b-4f92e8d
+migrations                  20 applied / 0 pending
+console/page errors         0
+production requests         0
+workflow command requests   0
+```
+
+- 完成阻塞进展、协助人员/部门、预计解除时间、PDF V1、替换 V2、正式提交和跨页联动。
+- 完成草稿保存、刷新恢复和删除；正式历史在删除草稿后保留。
+- 1440、1024、390 验证三步表单、地图抽屉、移动全屏 sheet、输入焦点和固定主动作。
+- 数据库确认项目/工作流节点均为 `PROJECT_INITIATION`、任务仍为 `READY`、活动任务
+  仍为 1；进展 1 条、当前材料 1 个、归档版本 1 个、活动草稿 0。
+
+### 证据
+
+- 报告：`docs/product/R26_GATE3B_PROGRESS_MATERIAL_REPORT.md`
+- 人工复核：`docs/product/R26_GATE3B_HUMAN_REVIEW.md`
+- 截图/回放：`docs/product/evidence/R26_GATE3B/`
+- API/数据库组合证明：
+  `docs/product/evidence/R26_GATE3B/API_AND_DATABASE_PROOF.md`
+
+### 最终检查
+
+```text
+pnpm install --frozen-lockfile       PASS
+pnpm lint                            PASS
+pnpm typecheck                       PASS
+pnpm test                            PASS（Web 33 files / 109 tests；API 61 files / 263 tests）
+pnpm --filter web build              PASS
+pnpm --filter api build              PASS
+pnpm --filter api prisma:validate    PASS
+git diff --check                     PASS
+```
+
+### 决定
+
+```text
+R26_GATE3B_IMPLEMENTED
+PROGRESS_DRAFT_AND_SUBMISSION_ENABLED_ON_STAGING
+TASK_MATERIAL_UPLOAD_AND_VERSIONING_ENABLED_ON_STAGING
+WORKFLOW_TRANSITION_STILL_DISABLED
+AWAITING_PRODUCT_OWNER_GATE3B_CONFIRMATION
+STOP_BEFORE_GATE3C
+```
+
 ## Gate 2 真实只读数据联调（2026-07-23）
 
 ### 授权与边界
