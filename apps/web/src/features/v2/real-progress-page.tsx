@@ -15,6 +15,7 @@ import {
   r26Gate3BJsonRequest,
   r26Gate3BUpload,
 } from './r26-gate3b-client';
+import { hasRecoverableProgressDraft } from './r26-progress-draft';
 import { API_BASE_URL } from '../../lib/auth-client';
 import type {
   R26ProgressCommandResponse,
@@ -175,10 +176,12 @@ export function RealProgressPage() {
     ) {
       return;
     }
-    window.localStorage.setItem(
-      localDraftKey(taskId, data.viewer.id),
-      JSON.stringify(form),
-    );
+    const key = localDraftKey(taskId, data.viewer.id);
+    if (hasRecoverableProgressDraft(form)) {
+      window.localStorage.setItem(key, JSON.stringify(form));
+    } else {
+      window.localStorage.removeItem(key);
+    }
   }, [data?.viewer.id, form, success, taskId]);
 
   const activeAttachmentIds = useMemo(
@@ -1294,7 +1297,7 @@ function readLocalDraft(
     ) {
       return null;
     }
-    return {
+    const draft = {
       ...EMPTY_FORM,
       ...value,
       assistanceUserIds: Array.isArray(value.assistanceUserIds)
@@ -1306,6 +1309,7 @@ function readLocalDraft(
         ? value.assistanceDepartmentIds
         : [],
     };
+    return hasRecoverableProgressDraft(draft) ? draft : null;
   } catch {
     return null;
   }
