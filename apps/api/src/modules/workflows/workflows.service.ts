@@ -156,6 +156,12 @@ const COLOR_EXIT_SUGGESTION_LABELS: Record<ColorExitSuggestion, string> = {
   [ColorExitSuggestion.OBSERVE]: '延期观察',
 };
 
+const COLOR_EXIT_DECISION_LABELS: Record<ColorExitSuggestion, string> = {
+  [ColorExitSuggestion.EXIT]: '人工决定退出',
+  [ColorExitSuggestion.RETAIN]: '人工决定保留',
+  [ColorExitSuggestion.OBSERVE]: '人工决定延期观察',
+};
+
 const WORKFLOW_DURATION_TYPE_LABELS: Record<WorkflowDurationType, string> = {
   [WorkflowDurationType.WORKDAY]: '按工作日',
   [WorkflowDurationType.SAME_DAY]: '当天完成',
@@ -972,7 +978,7 @@ export class WorkflowsService {
                 : null,
               finalDecision: colorExit?.finalDecision ?? null,
               finalDecisionLabel: colorExit?.finalDecision
-                ? COLOR_EXIT_SUGGESTION_LABELS[colorExit.finalDecision]
+                ? COLOR_EXIT_DECISION_LABELS[colorExit.finalDecision]
                 : null,
               exitReason: colorExit?.exitReason ?? null,
               effectiveDate: colorExit?.effectiveDate?.toISOString() ?? null,
@@ -2384,6 +2390,9 @@ export class WorkflowsService {
       totalPeriods: totalCount,
       completedPeriods: tasks.filter((task) => task.status === RecurringTaskStatus.COMPLETED).length,
       overduePeriods: tasks.filter((task) => task.status === RecurringTaskStatus.OVERDUE).length,
+      progressText: `已完成 ${
+        tasks.filter((task) => task.status === RecurringTaskStatus.COMPLETED).length
+      } / ${totalCount}`,
       currentMonthTask: currentMonthTask
         ? {
             id: currentMonthTask.id,

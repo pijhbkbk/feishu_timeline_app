@@ -9,6 +9,7 @@ import {
 } from './color-exit-workspace';
 import {
   canShowCompleteColorExitButton,
+  getColorExitDecisionLabel,
   getColorExitSuggestionLabel,
   validateColorExitForm,
   type ColorExitWorkspaceResponse,
@@ -169,6 +170,7 @@ describe('ColorExitWorkspace', () => {
       }),
     ).toBe('退出日期不能为空。');
     expect(getColorExitSuggestionLabel('EXIT')).toBe('建议退出');
+    expect(getColorExitDecisionLabel('EXIT')).toBe('人工决定退出');
   });
 
   it('renders summary and completion status', () => {

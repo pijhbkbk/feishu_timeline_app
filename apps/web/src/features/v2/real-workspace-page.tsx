@@ -2042,7 +2042,10 @@ function taskConclusion(node: R26FlowNode, task: R26TaskDetail | null) {
       : `系统建议：${task.colorExitSummary.systemSuggestionLabel ?? '暂无'}；仍需人工决定。`;
   }
   if (task?.monthlyReviewSummary) {
-    return `${task.monthlyReviewSummary.progressText}，历史月份独立保留。`;
+    const progressText =
+      task.monthlyReviewSummary.progressText ??
+      `已完成 ${task.monthlyReviewSummary.completedPeriods} / ${task.monthlyReviewSummary.totalPeriods}`;
+    return `${progressText}，历史月份独立保留。`;
   }
   if (task?.reviewDetail.latestResultLabel) {
     return `最近评审结论：${task.reviewDetail.latestResultLabel}。`;

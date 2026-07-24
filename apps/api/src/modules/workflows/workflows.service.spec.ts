@@ -1,6 +1,7 @@
 import { ForbiddenException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 import {
+  RecurringTaskStatus,
   WorkflowAction,
   WorkflowInstanceStatus,
   WorkflowNodeCode,
@@ -229,6 +230,35 @@ describe('WorkflowsService', () => {
         nodeName: '整车色差一致性评审',
       }),
     ).resolves.toBeUndefined();
+  });
+
+  it('returns a readable monthly review progress summary', () => {
+    const { service } = createService();
+    const summary = (service as any).buildTaskMonthlyReviewSummary(
+      {
+        id: 'plan-1',
+        planCode: 'MONTHLY-1',
+        totalCount: 12,
+        tasks: [
+          {
+            id: 'month-1',
+            status: RecurringTaskStatus.COMPLETED,
+            plannedDate: new Date('2026-08-24T00:00:00.000Z'),
+          },
+          {
+            id: 'month-2',
+            status: RecurringTaskStatus.PENDING,
+            plannedDate: new Date('2026-09-24T00:00:00.000Z'),
+          },
+        ],
+      },
+      [],
+      new Date('2026-08-25T00:00:00.000Z'),
+    );
+
+    expect(summary.progressText).toBe('已完成 1 / 12');
+    expect(summary.completedPeriods).toBe(1);
+    expect(summary.totalPeriods).toBe(12);
   });
 
   it('uses the original Unicode attachment name in task details', () => {

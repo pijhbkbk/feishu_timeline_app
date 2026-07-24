@@ -12,6 +12,7 @@ import {
   completeColorExitRecord,
   createColorExitRecord,
   fetchColorExitWorkspace,
+  getColorExitDecisionLabel,
   getColorExitSuggestionLabel,
   getColorExitWorkspaceHighlights,
   toColorExitFormInput,
@@ -51,6 +52,7 @@ const COLOR_STATUS_LABELS: Record<string, string> = {
 const PROJECT_STATUS_LABELS: Record<string, string> = {
   DRAFT: '草稿',
   ACTIVE: '进行中',
+  IN_PROGRESS: '进行中',
   ON_HOLD: '已暂停',
   COMPLETED: '已完成',
   CANCELLED: '已取消',
@@ -293,7 +295,7 @@ export function ColorExitWorkspace({ projectId }: ColorExitWorkspaceProps) {
           </div>
           <div className="metadata-item">
             <span>人工结论</span>
-            <strong>{getColorExitSuggestionLabel(selectedRecord?.finalDecision)}</strong>
+            <strong>{getColorExitDecisionLabel(selectedRecord?.finalDecision)}</strong>
           </div>
           <div className="metadata-item">
             <span>项目完成时间</span>
@@ -315,7 +317,7 @@ export function ColorExitWorkspace({ projectId }: ColorExitWorkspaceProps) {
           </div>
           <div className="summary-card" data-testid="color-exit-decision-card">
             <span>人工结论</span>
-            <strong>{getColorExitSuggestionLabel(selectedRecord?.finalDecision)}</strong>
+            <strong>{getColorExitDecisionLabel(selectedRecord?.finalDecision)}</strong>
           </div>
         </div>
         {workspace.activeTask && isWorkflowTaskOverdue(workspace.activeTask) ? (
@@ -429,7 +431,7 @@ export function ColorExitWorkspace({ projectId }: ColorExitWorkspaceProps) {
                     <td>{item.statisticYear ?? '未填写'}</td>
                     <td>{item.annualOutput ?? '未填写'}</td>
                     <td>{getColorExitSuggestionLabel(item.systemSuggestion)}</td>
-                    <td>{getColorExitSuggestionLabel(item.finalDecision)}</td>
+                    <td>{getColorExitDecisionLabel(item.finalDecision)}</td>
                     <td>{item.exitReason}</td>
                     <td>{item.colorName ?? '未绑定'}</td>
                     <td>{item.replacementColorName ?? '无'}</td>
@@ -675,7 +677,7 @@ export function ColorExitSummaryCard({
         </div>
         <div className="metadata-item">
           <span>人工结论</span>
-          <strong>{getColorExitSuggestionLabel(record.finalDecision)}</strong>
+          <strong>{getColorExitDecisionLabel(record.finalDecision)}</strong>
         </div>
       </div>
       <div className="detail-block">
