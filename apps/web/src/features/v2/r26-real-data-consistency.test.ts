@@ -39,4 +39,12 @@ describe('R26 Gate 2 real-data consistency contracts', () => {
     );
     expect(flowMapSource).toContain('`尚未生成 · ${node.owner}`');
   });
+
+  it('keeps internal audit action codes out of the project-record copy', () => {
+    expect(workspaceSource).toContain('data-record-action={record.action}');
+    expect(workspaceSource).toContain('操作人：{record.actorName}');
+    expect(workspaceSource).not.toContain(
+      '{record.actorName} · {record.action}',
+    );
+  });
 });

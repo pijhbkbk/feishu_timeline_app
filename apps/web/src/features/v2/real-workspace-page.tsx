@@ -540,13 +540,13 @@ export function RealWorkspacePage({ projectId }: { projectId: string }) {
           </div>
           <ol>
             {workspace.projectRecords.map((record) => (
-              <li key={record.id}>
+              <li key={record.id} data-record-action={record.action}>
                 <time>{formatDateTime(record.createdAt)}</time>
                 <div>
                   <strong>{record.summary}</strong>
                   {record.reason ? <p>原因：{record.reason}</p> : null}
                 </div>
-                <span>{record.actorName} · {record.action}</span>
+                <span className="r26-project-records__actor">操作人：{record.actorName}</span>
               </li>
             ))}
           </ol>
