@@ -1,0 +1,319 @@
+import {
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
+import {
+  Prisma,
+  ProjectMemberType,
+  WorkflowNodeCode,
+  WorkflowTaskStatus,
+} from '@prisma/client';
+import { describe, expect, it, vi } from 'vitest';
+
+import type { AuthenticatedUser } from '../auth/auth.types';
+import { R26MemberAssignmentService } from './r26-member-assignment.service';
+
+const admin: AuthenticatedUser = {
+  id: 'admin-1',
+  username: 'admin',
+  name: '系统管理员',
+  email: null,
+  departmentId: 'dept-pmo',
+  departmentName: '项目管理部',
+  isSystemAdmin: true,
+  authSource: 'feishu',
+  roleCodes: ['admin'],
+  permissionCodes: ['project.read', 'project.write'],
+};
+
+const member: AuthenticatedUser = {
+  ...admin,
+  id: 'member-1',
+  username: 'member',
+  name: '普通成员',
+  isSystemAdmin: false,
+  roleCodes: ['viewer'],
+  permissionCodes: ['project.read'],
+};
+
+const baseCommand = {
+  expectedVersion: 1,
+  idempotencyKey: 'r26-g3a:test:00000001',
+  userId: 'user-2',
+  memberTypes: [ProjectMemberType.MEMBER],
+  responsibility: '采购执行',
+  isDepartmentLead: false,
+  isDefaultExecutor: true,
+  defaultNodeCodes: [WorkflowNodeCode.PAINT_PROCUREMENT],
+  reason: 'Gate 3A UAT',
+};
+
+function project(version = 1) {
+  return {
+    id: 'project-1',
+    name: 'R26-G3A-UAT-成员分工',
+    ownerUserId: 'owner-1',
+    owningDepartmentId: 'dept-pmo',
+    currentNodeCode: WorkflowNodeCode.PAINT_PROCUREMENT,
+    memberAssignmentVersion: version,
+  };
+}
+
+describe('R26MemberAssignmentService security and command gates', () => {
+  it('keeps ordinary project members read-only', async () => {
+    const prisma = {
+      project: {
+        findUnique: vi.fn().mockResolvedValue(project()),
+      },
+    };
+    const service = new R26MemberAssignmentService(
+      prisma as never,
+      {} as never,
+    );
+
+    await expect(
+      service.previewAssignments(
+        'project-1',
+        { scope: 'FUTURE_ONLY' },
+        member,
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('returns a saved idempotent result without executing a second transaction', async () => {
+    const prisma = {
+      r26CommandRequest: {
+        findUnique: vi.fn(),
+      },
+      $transaction: vi.fn(),
+    };
+    const service = new R26MemberAssignmentService(
+      prisma as never,
+      {} as never,
+    );
+    const requestHash = (
+      service as unknown as {
+        hashRequest(value: unknown): string;
+      }
+    ).hashRequest({
+      projectId: 'project-1',
+      action: 'R26_PROJECT_MEMBER_ADDED',
+      actorUserId: admin.id,
+      body: baseCommand,
+    });
+    prisma.r26CommandRequest.findUnique.mockResolvedValue({
+      projectId: 'project-1',
+      actorUserId: admin.id,
+      action: 'R26_PROJECT_MEMBER_ADDED',
+      requestHash,
+      result: {
+        action: 'R26_PROJECT_MEMBER_ADDED',
+        memberAssignmentVersion: 2,
+        auditLogIds: ['audit-1'],
+        affectedTaskIds: [],
+      },
+    });
+
+    const result = await service.addMember(
+      'project-1',
+      baseCommand,
+      admin,
+      'request-1',
+    );
+
+    expect(result).toMatchObject({
+      action: 'R26_PROJECT_MEMBER_ADDED',
+      memberAssignmentVersion: 2,
+      idempotentReplay: true,
+    });
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it('rejects an idempotency key reused with a different request', async () => {
+    const prisma = {
+      r26CommandRequest: {
+        findUnique: vi.fn().mockResolvedValue({
+          projectId: 'project-1',
+          actorUserId: admin.id,
+          action: 'R26_PROJECT_MEMBER_ADDED',
+          requestHash: 'different',
+          result: {},
+        }),
+      },
+    };
+    const service = new R26MemberAssignmentService(
+      prisma as never,
+      {} as never,
+    );
+
+    await expect(
+      service.addMember('project-1', baseCommand, admin, 'request-1'),
+    ).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it('returns 409 semantics for a stale member-assignment version', async () => {
+    const tx = {
+      project: {
+        findUnique: vi
+          .fn()
+          .mockResolvedValueOnce(project(2))
+          .mockResolvedValueOnce({ memberAssignmentVersion: 2 }),
+        updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+      },
+      r26CommandRequest: {
+        findUnique: vi.fn().mockResolvedValue(null),
+      },
+    };
+    const prisma = {
+      r26CommandRequest: {
+        findUnique: vi.fn().mockResolvedValue(null),
+      },
+      $transaction: vi.fn(
+        async (callback: (client: typeof tx) => Promise<unknown>) =>
+          callback(tx),
+      ),
+    };
+    const service = new R26MemberAssignmentService(
+      prisma as never,
+      {} as never,
+    );
+
+    await expect(
+      service.addMember('project-1', baseCommand, admin, 'request-1'),
+    ).rejects.toMatchObject({
+      response: {
+        code: 'STALE_MEMBER_ASSIGNMENT_VERSION',
+        currentVersion: 2,
+      },
+    });
+  });
+
+  it('maps a serializable transaction write conflict to an explicit 409', async () => {
+    const prisma = {
+      r26CommandRequest: {
+        findUnique: vi.fn().mockResolvedValue(null),
+      },
+      $transaction: vi.fn().mockRejectedValue(
+        new Prisma.PrismaClientKnownRequestError('write conflict', {
+          code: 'P2034',
+          clientVersion: '6.19.3',
+        }),
+      ),
+    };
+    const service = new R26MemberAssignmentService(
+      prisma as never,
+      {} as never,
+    );
+
+    await expect(
+      service.addMember('project-1', baseCommand, admin, 'request-concurrent'),
+    ).rejects.toMatchObject({
+      response: {
+        code: 'CONCURRENT_MEMBER_ASSIGNMENT_UPDATE',
+      },
+    });
+  });
+
+  it('uses project-scoped task lookup to block cross-project assignment IDOR', async () => {
+    const tx = {
+      project: {
+        findUnique: vi.fn().mockResolvedValue(project()),
+        updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+      },
+      r26CommandRequest: {
+        findUnique: vi.fn().mockResolvedValue(null),
+      },
+      workflowTask: {
+        findFirst: vi.fn().mockResolvedValue(null),
+      },
+    };
+    const prisma = {
+      r26CommandRequest: {
+        findUnique: vi.fn().mockResolvedValue(null),
+      },
+      $transaction: vi.fn(
+        async (callback: (client: typeof tx) => Promise<unknown>) =>
+          callback(tx),
+      ),
+    };
+    const service = new R26MemberAssignmentService(
+      prisma as never,
+      {} as never,
+    );
+
+    await expect(
+      service.transferTask(
+        'project-1',
+        'task-from-another-project',
+        {
+          expectedVersion: 1,
+          idempotencyKey: 'r26-g3a:idor:00000001',
+          newOwnerUserId: 'user-2',
+          reason: 'UAT',
+        },
+        admin,
+        'request-idor',
+      ),
+    ).rejects.toBeInstanceOf(NotFoundException);
+    expect(tx.workflowTask.findFirst).toHaveBeenCalledWith({
+      where: {
+        id: 'task-from-another-project',
+        projectId: 'project-1',
+        isActive: true,
+      },
+    });
+  });
+
+  it('never reassigns a completed task', async () => {
+    const tx = {
+      project: {
+        findUnique: vi.fn().mockResolvedValue(project()),
+        updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+      },
+      r26CommandRequest: {
+        findUnique: vi.fn().mockResolvedValue(null),
+      },
+      workflowTask: {
+        findFirst: vi.fn().mockResolvedValue({
+          id: 'task-complete',
+          projectId: 'project-1',
+          status: WorkflowTaskStatus.COMPLETED,
+          isActive: true,
+        }),
+      },
+    };
+    const prisma = {
+      r26CommandRequest: {
+        findUnique: vi.fn().mockResolvedValue(null),
+      },
+      $transaction: vi.fn(
+        async (callback: (client: typeof tx) => Promise<unknown>) =>
+          callback(tx),
+      ),
+    };
+    const service = new R26MemberAssignmentService(
+      prisma as never,
+      {} as never,
+    );
+
+    await expect(
+      service.transferTask(
+        'project-1',
+        'task-complete',
+        {
+          expectedVersion: 1,
+          idempotencyKey: 'r26-g3a:complete:00000001',
+          newOwnerUserId: 'user-2',
+          reason: '不应生效',
+        },
+        admin,
+        'request-complete',
+      ),
+    ).rejects.toMatchObject({
+      response: {
+        code: 'COMPLETED_OR_HISTORICAL_TASK_IMMUTABLE',
+      },
+    });
+  });
+});

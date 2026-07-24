@@ -2,7 +2,6 @@ import { Injectable } from '@nestjs/common';
 import {
   ProjectMemberType,
   UserStatus,
-  WorkflowAction,
   WorkflowNodeCode,
   type WorkflowTaskStatus,
 } from '@prisma/client';
@@ -12,29 +11,16 @@ import type { AuthenticatedUser } from '../auth/auth.types';
 import { DashboardService } from '../dashboard/dashboard.service';
 import { ProjectsService } from '../projects/projects.service';
 import { WorkflowsService } from '../workflows/workflows.service';
+import { R26_ASSIGNMENT_RULES } from './r26-assignment.rules';
 import {
-  getAllowedWorkflowActions,
-  isWorkflowActionCurrentlyAvailable,
-  WORKFLOW_NODE_META_MAP,
-} from '../workflows/workflow-node.constants';
-import {
-  R26_ASSIGNMENT_RULES,
-  type R26DepartmentRule,
-} from './r26-assignment.rules';
-
-type DirectoryDepartment = {
-  id: string;
-  code: string;
-  name: string;
-  path: string | null;
-};
-
-type DirectoryUser = {
-  id: string;
-  name: string;
-  departmentId: string | null;
-  departmentName: string | null;
-};
+  buildR26AssignmentPreview,
+  parseAssignmentSource,
+  type R26AssignmentTask,
+  type R26DirectoryDepartment,
+  type R26DirectoryUser,
+  type R26NodeAssignmentConfig,
+  type R26ProjectMemberRow,
+} from './r26-assignment.resolver';
 
 type ProjectDetail = Awaited<ReturnType<ProjectsService['getProjectDetail']>>;
 
@@ -44,19 +30,6 @@ const MEMBER_TYPE_LABELS: Record<ProjectMemberType, string> = {
   MEMBER: '项目成员',
   REVIEWER: '评审人',
   OBSERVER: '观察人',
-};
-
-const ACTION_LABELS: Record<WorkflowAction, string> = {
-  SUBMIT: '提交',
-  ASSIGN: '分配',
-  START: '开始',
-  COMPLETE: '完成',
-  APPROVE: '通过',
-  REJECT: '驳回',
-  RETURN: '退回',
-  REOPEN: '重新打开',
-  CANCEL: '取消',
-  SYSTEM_SYNC: '系统同步',
 };
 
 @Injectable()
@@ -103,7 +76,16 @@ export class R26ReadModelService {
   }
 
   async getWorkspace(projectId: string, actor: AuthenticatedUser) {
-    const [project, flowMap, departments, users, tasks] = await Promise.all([
+    const [
+      project,
+      flowMap,
+      departments,
+      users,
+      tasks,
+      nodeAssignments,
+      projectRecords,
+    ] =
+      await Promise.all([
       this.projectsService.getProjectDetail(projectId, actor),
       this.projectsService.getProjectFlowMap(projectId, actor),
       this.prisma.department.findMany({
@@ -132,6 +114,7 @@ export class R26ReadModelService {
           isActive: true,
           assigneeUserId: true,
           assigneeDepartmentId: true,
+          payload: true,
           assigneeUser: {
             select: {
               id: true,
@@ -144,15 +127,50 @@ export class R26ReadModelService {
         },
         orderBy: [{ taskRound: 'desc' }, { createdAt: 'desc' }],
       }),
+      this.prisma.projectNodeAssignment.findMany({
+        where: { projectId },
+        select: {
+          nodeCode: true,
+          primaryDepartmentId: true,
+          ownerUserId: true,
+          collaboratorUserIds: true,
+          reviewerUserIds: true,
+          assignmentSource: true,
+        },
+      }),
+      this.prisma.auditLog.findMany({
+        where: { projectId },
+        select: {
+          id: true,
+          action: true,
+          summary: true,
+          actorUser: { select: { name: true } },
+          nodeCode: true,
+          metadata: true,
+          createdAt: true,
+        },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        take: 30,
+      }),
     ]);
 
-    const directoryDepartments: DirectoryDepartment[] = departments;
-    const directoryUsers: DirectoryUser[] = users.map((user) => ({
+    const directoryDepartments: R26DirectoryDepartment[] = departments;
+    const directoryUsers: R26DirectoryUser[] = users.map((user) => ({
       id: user.id,
       name: user.name,
       departmentId: user.departmentId,
       departmentName: user.department?.name ?? null,
     }));
+    const assignmentByNode = new Map(
+      nodeAssignments.map((assignment) => [
+        assignment.nodeCode,
+        {
+          ...assignment,
+          collaboratorUserIds: this.parseUserIdList(assignment.collaboratorUserIds),
+          reviewerUserIds: this.parseUserIdList(assignment.reviewerUserIds),
+        } satisfies R26NodeAssignmentConfig,
+      ]),
+    );
     const latestTaskByNode = new Map<WorkflowNodeCode, (typeof tasks)[number]>();
 
     for (const task of tasks) {
@@ -171,6 +189,7 @@ export class R26ReadModelService {
       this.buildAssignmentPreview({
         nodeCode: node.nodeCode,
         task: latestTaskByNode.get(node.nodeCode) ?? null,
+        nodeAssignment: assignmentByNode.get(node.nodeCode) ?? null,
         project,
         departments: directoryDepartments,
         users: directoryUsers,
@@ -184,6 +203,8 @@ export class R26ReadModelService {
 
     return {
       ...this.readOnlyEnvelope(),
+      readOnly: false,
+      writeScope: 'PROJECT_MEMBERS_AND_ASSIGNMENTS',
       viewer: this.serializeViewer(actor),
       project,
       flowMap: {
@@ -215,10 +236,34 @@ export class R26ReadModelService {
             (user) => user.departmentId === department.id,
           ).length,
         })),
-        users: directoryUsers,
+        users: directoryUsers.map((user) => ({
+          ...user,
+          isProjectMember: project.members.some((member) => member.userId === user.id),
+        })),
       },
       memberAssignments: this.buildMemberAssignments(project, assignments),
       assignmentPreview: assignments,
+      projectRecords: projectRecords.map((record) => ({
+        id: record.id,
+        action: record.action,
+        summary: record.summary ?? record.action,
+        actorName: record.actorUser?.name ?? '系统',
+        nodeCode: record.nodeCode,
+        requestId: this.readMetadataString(record.metadata, 'requestId'),
+        reason: this.readMetadataString(record.metadata, 'reason'),
+        createdAt: record.createdAt.toISOString(),
+      })),
+      capabilities: {
+        gate: 'R26_GATE3A',
+        memberAssignmentVersion: project.memberAssignmentVersion,
+        manageMembers:
+          actor.isSystemAdmin ||
+          actor.roleCodes.includes('admin') ||
+          (project.ownerUserId === actor.id &&
+            (actor.permissionCodes ?? []).includes('project.write')),
+        progressWriteEnabled: false,
+        workflowWriteEnabled: false,
+      },
     };
   }
 
@@ -323,6 +368,7 @@ export class R26ReadModelService {
       isActive: boolean;
       assigneeUserId: string | null;
       assigneeDepartmentId: string | null;
+      payload?: unknown;
       assigneeUser: {
         id: string;
         name: string;
@@ -330,181 +376,67 @@ export class R26ReadModelService {
         department: { name: string } | null;
       } | null;
     } | null;
+    nodeAssignment?: R26NodeAssignmentConfig | null;
     project: ProjectDetail;
-    departments: DirectoryDepartment[];
-    users: DirectoryUser[];
+    departments: R26DirectoryDepartment[];
+    users: R26DirectoryUser[];
   }) {
-    const rule = R26_ASSIGNMENT_RULES[input.nodeCode];
-    const departmentByCode = new Map(
-      input.departments.map((department) => [department.code, department]),
+    const payload =
+      input.task?.payload && typeof input.task.payload === 'object'
+        ? (input.task.payload as Record<string, unknown>)
+        : null;
+    const projectMembers: R26ProjectMemberRow[] = input.project.members.map(
+      (member) => ({
+        id: member.id,
+        userId: member.userId,
+        name: member.name,
+        departmentName: member.departmentName,
+        memberType: member.memberType,
+        title: member.title,
+        isPrimary: member.isPrimary,
+      }),
     );
-    const primaryDepartment = this.materializeDepartment(
-      rule.primaryDepartment,
-      departmentByCode,
-    );
-    const collaboratorDepartments = rule.collaboratorDepartments.map((departmentRule) =>
-      this.materializeDepartment(departmentRule, departmentByCode),
-    );
-    const reviewerDepartments = (rule.reviewerDepartments ?? []).map((departmentRule) =>
-      this.materializeDepartment(departmentRule, departmentByCode),
-    );
-    const projectMembersByDepartment = this.findProjectMembersForDepartment(
-      input.project,
-      input.users,
-      primaryDepartment.id,
-    );
-    const departmentLead =
-      projectMembersByDepartment.find(
-        (member) =>
-          member.memberType === ProjectMemberType.MANAGER || member.isPrimary,
-      ) ?? null;
-    const defaultExecutor =
-      projectMembersByDepartment.find(
-        (member) =>
-          member.memberType === ProjectMemberType.MEMBER &&
-          member.title?.includes('负责人') === true,
-      ) ?? null;
-    const singleEligibleMember =
-      projectMembersByDepartment.length === 1 ? projectMembersByDepartment[0] : null;
-    const suggestedOwner = input.task?.assigneeUser
-      ? this.serializePerson(input.task.assigneeUser)
-      : departmentLead
-        ? this.serializeProjectMember(departmentLead, input.users)
-        : defaultExecutor
-          ? this.serializeProjectMember(defaultExecutor, input.users)
-          : singleEligibleMember
-            ? this.serializeProjectMember(singleEligibleMember, input.users)
-            : null;
-    const assignmentStatus = input.task?.assigneeUser
-      ? 'ASSIGNED'
-      : suggestedOwner
-        ? 'SUGGESTED'
-        : 'UNASSIGNED';
-    const assignmentSource = input.task?.assigneeUser
-      ? 'TASK_OVERRIDE'
-      : departmentLead
-        ? 'PROJECT_DEPARTMENT_LEAD'
-        : defaultExecutor
-          ? 'PROJECT_DEFAULT_ASSIGNEE'
-          : singleEligibleMember
-            ? 'SINGLE_ELIGIBLE_MEMBER'
-            : 'UNASSIGNED';
-    const collaborators = this.uniquePeople(
-      collaboratorDepartments.flatMap((department) =>
-        this.findProjectMembersForDepartment(
-          input.project,
-          input.users,
-          department.id,
-        )
-          .filter((member) => member.userId !== suggestedOwner?.id)
-          .map((member) => this.serializeProjectMember(member, input.users)),
-      ),
-    );
-    const reviewers = this.uniquePeople([
-      ...input.project.members
-        .filter((member) => member.memberType === ProjectMemberType.REVIEWER)
-        .map((member) => this.serializeProjectMember(member, input.users)),
-      ...reviewerDepartments.flatMap((department) =>
-        this.findProjectMembersForDepartment(
-          input.project,
-          input.users,
-          department.id,
-        ).map((member) => this.serializeProjectMember(member, input.users)),
-      ),
-    ]).filter((person) => person.id !== suggestedOwner?.id);
+    const task: R26AssignmentTask | null = input.task
+      ? {
+          ...input.task,
+          assignmentSource: parseAssignmentSource(payload?.assignmentSource),
+        }
+      : null;
 
-    return {
+    return buildR26AssignmentPreview({
       nodeCode: input.nodeCode,
-      stepNumber: WORKFLOW_NODE_META_MAP[input.nodeCode].sequence / 10,
-      stepName: WORKFLOW_NODE_META_MAP[input.nodeCode].name,
-      taskId: input.task?.id ?? null,
-      primaryDepartment,
-      collaboratorDepartments,
-      suggestedOwner,
-      collaborators,
-      reviewers: WORKFLOW_NODE_META_MAP[input.nodeCode].isReviewNode ? reviewers : [],
-      assignmentStatus,
-      assignmentSource,
-      unassignedReason:
-        assignmentStatus === 'UNASSIGNED'
-          ? this.resolveUnassignedReason(
-              primaryDepartment,
-              projectMembersByDepartment.length,
-            )
-          : null,
-      availableActions:
-        input.task?.isActive === true
-          ? getAllowedWorkflowActions(input.nodeCode)
-              .filter((action) =>
-                isWorkflowActionCurrentlyAvailable(input.task!.status, action),
-              )
-              .map((action) => ({
-                action,
-                label: ACTION_LABELS[action],
-              }))
-          : [],
-    };
-  }
-
-  private materializeDepartment(
-    rule: R26DepartmentRule,
-    departmentByCode: Map<string, DirectoryDepartment>,
-  ) {
-    const directoryDepartment =
-      departmentByCode.get(rule.directoryCode ?? rule.code) ?? null;
-
-    return {
-      id: directoryDepartment?.id ?? null,
-      code: rule.code,
-      name: rule.name,
-      directoryCode: directoryDepartment?.code ?? null,
-      directoryName: directoryDepartment?.name ?? null,
-      isDirectoryMatched: directoryDepartment !== null,
-    };
-  }
-
-  private findProjectMembersForDepartment(
-    project: ProjectDetail,
-    users: DirectoryUser[],
-    departmentId: string | null,
-  ) {
-    if (!departmentId) {
-      return [];
-    }
-
-    const activeUserIds = new Set(
-      users
-        .filter((user) => user.departmentId === departmentId)
-        .map((user) => user.id),
-    );
-
-    return project.members.filter((member) => activeUserIds.has(member.userId));
-  }
-
-  private resolveUnassignedReason(
-    department: ReturnType<R26ReadModelService['materializeDepartment']>,
-    projectMemberCount: number,
-  ) {
-    if (!department.isDirectoryMatched) {
-      return `公司目录中尚未配置“${department.name}”，负责人待分配。`;
-    }
-
-    if (projectMemberCount === 0) {
-      return `当前项目没有${department.name}有效成员。`;
-    }
-
-    return `当前项目有 ${projectMemberCount} 位${department.name}成员，但未设置部门负责人或默认执行人。`;
-  }
-
-  private uniquePeople<T extends { id: string }>(people: T[]) {
-    return [...new Map(people.map((person) => [person.id, person])).values()];
+      task,
+      nodeAssignment: input.nodeAssignment ?? null,
+      projectMembers,
+      departments: input.departments,
+      users: input.users,
+    });
   }
 
   private buildMemberAssignments(
     project: ProjectDetail,
     assignments: ReturnType<R26ReadModelService['buildAssignmentPreview']>[],
   ) {
-    return project.members.map((member) => {
+    const groupedMembers = [
+      ...new Map(
+        project.members.map((member) => [
+          member.userId,
+          {
+            ...member,
+            roles: project.members
+              .filter((item) => item.userId === member.userId)
+              .map((item) => ({
+                memberType: item.memberType,
+                label: MEMBER_TYPE_LABELS[item.memberType],
+                title: item.title,
+                isPrimary: item.isPrimary,
+              })),
+          },
+        ]),
+      ).values(),
+    ];
+
+    return groupedMembers.map((member) => {
       const ownedAssignments = assignments.filter(
         (assignment) => assignment.suggestedOwner?.id === member.userId,
       );
@@ -524,8 +456,17 @@ export class R26ReadModelService {
         departmentName: member.departmentName,
         memberType: member.memberType,
         memberTypeLabel: MEMBER_TYPE_LABELS[member.memberType],
-        projectResponsibility: member.title ?? MEMBER_TYPE_LABELS[member.memberType],
-        isPrimary: member.isPrimary,
+        roles: member.roles,
+        projectResponsibility:
+          [
+            ...new Set(
+              member.roles
+                .map((role) => role.title)
+                .filter((title): title is string => Boolean(title)),
+            ),
+          ].join('、') ||
+          member.roles.map((role) => role.label).join('、'),
+        isPrimary: member.roles.some((role) => role.isPrimary),
         defaultNodes: defaultAssignments.map((assignment) => ({
           nodeCode: assignment.nodeCode,
           stepNumber: assignment.stepNumber,
@@ -568,33 +509,18 @@ export class R26ReadModelService {
     };
   }
 
-  private serializeProjectMember(
-    member: ProjectDetail['members'][number],
-    users: DirectoryUser[] = [],
-  ) {
-    const directoryUser = users.find((user) => user.id === member.userId) ?? null;
-
-    return {
-      id: member.userId,
-      name: member.name,
-      departmentId: directoryUser?.departmentId ?? null,
-      departmentName: directoryUser?.departmentName ?? member.departmentName,
-    };
+  private parseUserIdList(value: unknown) {
+    return Array.isArray(value)
+      ? value.filter((item): item is string => typeof item === 'string')
+      : [];
   }
 
-  private serializePerson(person: {
-    id: string;
-    name: string;
-    departmentId: string | null;
-    department?: { name: string } | null;
-    departmentName?: string | null;
-  }) {
-    return {
-      id: person.id,
-      name: person.name,
-      departmentId: person.departmentId,
-      departmentName: person.department?.name ?? person.departmentName ?? null,
-    };
+  private readMetadataString(value: unknown, key: string) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      return null;
+    }
+    const candidate = (value as Record<string, unknown>)[key];
+    return typeof candidate === 'string' ? candidate : null;
   }
 
   private readOnlyEnvelope() {

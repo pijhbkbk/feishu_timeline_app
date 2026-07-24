@@ -6,9 +6,17 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { R26FlowMap } from './flow-map';
 import { CloseIcon } from './icons';
+import {
+  createIdempotencyKey,
+  r26Gate3Request,
+} from './r26-gate3-client';
 import { R26_REAL_FLOW_GEOMETRY } from './real-flow-geometry';
 import type {
+  R26AssignmentImpactResponse,
+  R26AssignmentScope,
   R26FlowMapNode,
+  R26Gate3CommandResponse,
+  R26MemberDraft,
   R26TaskDetail,
   R26TaskResponse,
   R26WorkspaceResponse,
@@ -36,14 +44,30 @@ export function RealWorkspacePage({ projectId }: { projectId: string }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [selectedNodeCode, setSelectedNodeCode] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'flow' | 'members' | 'records'>(
+    'flow',
+  );
+  const [liveData, setLiveData] = useState<R26WorkspaceResponse | null>(null);
+  const [editor, setEditor] = useState<MemberEditorState | null>(null);
+  const [impact, setImpact] = useState<R26AssignmentImpactResponse | null>(null);
+  const [mutationError, setMutationError] = useState<string | null>(null);
+  const [mutationPending, setMutationPending] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
   const initializedSelection = useRef(false);
   const workspacePath = `/v2/projects/${encodeURIComponent(projectId)}/workspace`;
   const { data, error, loading } =
     useR26ReadOnlyData<R26WorkspaceResponse>(workspacePath);
+  const workspace = liveData ?? data;
   const nodes = useMemo(
-    () => data?.flowMap.nodes.map(toDisplayNode) ?? [],
-    [data],
+    () => workspace?.flowMap.nodes.map(toDisplayNode) ?? [],
+    [workspace],
   );
+
+  useEffect(() => {
+    if (data) {
+      setLiveData(data);
+    }
+  }, [data]);
 
   useEffect(() => {
     if (nodes.length === 0) {
@@ -70,12 +94,12 @@ export function RealWorkspacePage({ projectId }: { projectId: string }) {
       return;
     }
     setSelectedNodeCode(
-      data?.flowMap.currentStepCode ??
+      workspace?.flowMap.currentStepCode ??
       nodes.find((node) => node.status === 'IN_PROGRESS')?.code ??
       nodes[0]?.code ??
       null,
     );
-  }, [data?.flowMap.currentStepCode, nodes, searchParams]);
+  }, [workspace?.flowMap.currentStepCode, nodes, searchParams]);
 
   const selectedNode =
     nodes.find((node) => node.code === selectedNodeCode) ?? null;
@@ -84,7 +108,7 @@ export function RealWorkspacePage({ projectId }: { projectId: string }) {
     : null;
   const taskQuery = useR26ReadOnlyData<R26TaskResponse>(taskPath);
 
-  if (loading || error || !data) {
+  if (loading || error || !workspace) {
     return <RealDataState loading={loading} error={error} label="正在读取真实项目工作区…" />;
   }
 
@@ -111,10 +135,246 @@ export function RealWorkspacePage({ projectId }: { projectId: string }) {
   }
 
   const attention = [
-    `逾期 ${data.flowMap.nodes.filter((node) => node.status === 'OVERDUE').length}`,
-    `退回 ${data.flowMap.nodes.filter((node) => node.status === 'RETURNED').length}`,
-    `待评审 ${data.flowMap.nodes.filter((node) => node.status === 'PENDING_REVIEW').length}`,
+    `逾期 ${workspace.flowMap.nodes.filter((node) => node.status === 'OVERDUE').length}`,
+    `退回 ${workspace.flowMap.nodes.filter((node) => node.status === 'RETURNED').length}`,
+    `待评审 ${workspace.flowMap.nodes.filter((node) => node.status === 'PENDING_REVIEW').length}`,
   ].join(' · ');
+
+  function showToast(message: string) {
+    setToast(message);
+    window.setTimeout(() => setToast(null), 2800);
+  }
+
+  function openAddMember() {
+    setImpact(null);
+    setMutationError(null);
+    setEditor(createEmptyMemberEditor());
+  }
+
+  function openEditMember(
+    member: R26WorkspaceResponse['memberAssignments'][number],
+  ) {
+    setImpact(null);
+    setMutationError(null);
+    setEditor({
+      mode: 'UPDATE',
+      userId: member.userId,
+      memberTypes: member.roles.map((role) => role.memberType),
+      responsibility: member.projectResponsibility,
+      isDepartmentLead: member.roles.some(
+        (role) => role.memberType === 'MANAGER' && role.isPrimary,
+      ),
+      isDefaultExecutor: member.roles.some(
+        (role) => role.memberType === 'MEMBER' && role.isPrimary,
+      ),
+      defaultNodeCodes: member.defaultNodes.map((node) => node.nodeCode),
+      scope: 'FUTURE_AND_PENDING',
+      transferToUserId: '',
+      replacementOwnerUserId: '',
+      confirmedInProgressTaskIds: [],
+      taskId: null,
+      newOwnerUserId: '',
+      reason: '',
+    });
+  }
+
+  function openRemoveMember(
+    member: R26WorkspaceResponse['memberAssignments'][number],
+  ) {
+    setImpact(null);
+    setMutationError(null);
+    setEditor({
+      mode: 'REMOVE',
+      userId: member.userId,
+      memberTypes: member.roles.map((role) => role.memberType),
+      responsibility: member.projectResponsibility,
+      isDepartmentLead: false,
+      isDefaultExecutor: false,
+      defaultNodeCodes: [],
+      scope: member.currentTasks.length
+        ? 'CONFIRM_IN_PROGRESS'
+        : 'FUTURE_AND_PENDING',
+      transferToUserId: '',
+      replacementOwnerUserId: '',
+      confirmedInProgressTaskIds: [],
+      taskId: null,
+      newOwnerUserId: '',
+      reason: '',
+    });
+  }
+
+  function openAssignmentApply() {
+    setImpact(null);
+    setMutationError(null);
+    setEditor({
+      ...createEmptyMemberEditor(),
+      mode: 'APPLY',
+      userId: '',
+      memberTypes: [],
+    });
+  }
+
+  function openTaskTransfer(
+    assignment: R26WorkspaceResponse['assignmentPreview'][number],
+  ) {
+    if (!assignment.taskId) {
+      return;
+    }
+    setImpact(null);
+    setMutationError(null);
+    setEditor({
+      ...createEmptyMemberEditor(),
+      mode: 'TRANSFER',
+      userId: assignment.suggestedOwner?.id ?? '',
+      memberTypes: [],
+      scope:
+        assignment.taskStatus === 'IN_PROGRESS'
+          ? 'CONFIRM_IN_PROGRESS'
+          : 'FUTURE_AND_PENDING',
+      taskId: assignment.taskId,
+      defaultNodeCodes: [assignment.nodeCode],
+    });
+  }
+
+  async function previewChange(nextEditor: MemberEditorState) {
+    setMutationPending(true);
+    setMutationError(null);
+    try {
+      const memberChange = toMemberDraft(nextEditor);
+      const response = await r26Gate3Request<R26AssignmentImpactResponse>(
+        `/v2/projects/${encodeURIComponent(projectId)}/assignment-preview`,
+        {
+          method: 'POST',
+          body: {
+            scope: nextEditor.scope,
+            ...(nextEditor.defaultNodeCodes.length
+              ? { nodeCodes: nextEditor.defaultNodeCodes }
+              : {}),
+            ...(memberChange ? { memberChange } : {}),
+            ...(nextEditor.mode === 'TRANSFER' &&
+            nextEditor.taskId &&
+            nextEditor.newOwnerUserId
+              ? {
+                  taskTransfer: {
+                    taskId: nextEditor.taskId,
+                    newOwnerUserId: nextEditor.newOwnerUserId,
+                  },
+                }
+              : {}),
+            confirmedInProgressTaskIds:
+              nextEditor.confirmedInProgressTaskIds,
+          },
+        },
+      );
+      setImpact(response);
+      setEditor(nextEditor);
+    } catch (requestError) {
+      setMutationError(
+        requestError instanceof Error ? requestError.message : '影响预览失败。',
+      );
+    } finally {
+      setMutationPending(false);
+    }
+  }
+
+  async function confirmChange(nextEditor: MemberEditorState) {
+    setMutationPending(true);
+    setMutationError(null);
+    try {
+      const expectedVersion =
+        workspace?.capabilities.memberAssignmentVersion;
+      if (!expectedVersion) {
+        throw new Error('成员与分工版本读取失败，请刷新页面后重试。');
+      }
+      let response: R26Gate3CommandResponse;
+      if (nextEditor.mode === 'ADD' || nextEditor.mode === 'UPDATE') {
+        const payload = {
+          expectedVersion,
+          idempotencyKey: createIdempotencyKey(
+            nextEditor.mode.toLowerCase(),
+          ),
+          userId: nextEditor.userId,
+          memberTypes: nextEditor.memberTypes,
+          responsibility: nextEditor.responsibility || null,
+          isDepartmentLead: nextEditor.isDepartmentLead,
+          isDefaultExecutor: nextEditor.isDefaultExecutor,
+          defaultNodeCodes: nextEditor.defaultNodeCodes,
+          reason: nextEditor.reason || null,
+        };
+        const memberPath =
+          nextEditor.mode === 'ADD'
+            ? `/v2/projects/${encodeURIComponent(projectId)}/members`
+            : `/v2/projects/${encodeURIComponent(projectId)}/members/${encodeURIComponent(nextEditor.userId)}`;
+        response = await r26Gate3Request<R26Gate3CommandResponse>(
+          memberPath,
+          {
+            method: nextEditor.mode === 'ADD' ? 'POST' : 'PATCH',
+            body: payload,
+          },
+        );
+      } else if (nextEditor.mode === 'REMOVE') {
+        response = await r26Gate3Request<R26Gate3CommandResponse>(
+          `/v2/projects/${encodeURIComponent(projectId)}/members/${encodeURIComponent(nextEditor.userId)}`,
+          {
+            method: 'DELETE',
+            body: {
+              expectedVersion,
+              idempotencyKey: createIdempotencyKey('remove'),
+              reason: nextEditor.reason,
+              transferToUserId: nextEditor.transferToUserId || null,
+              replacementOwnerUserId:
+                nextEditor.replacementOwnerUserId || null,
+              confirmedInProgressTaskIds:
+                nextEditor.confirmedInProgressTaskIds,
+            },
+          },
+        );
+      } else if (nextEditor.mode === 'TRANSFER') {
+        response = await r26Gate3Request<R26Gate3CommandResponse>(
+          `/v2/projects/${encodeURIComponent(projectId)}/tasks/${encodeURIComponent(nextEditor.taskId ?? '')}/assignment`,
+          {
+            method: 'PATCH',
+            body: {
+              expectedVersion,
+              idempotencyKey: createIdempotencyKey('transfer'),
+              newOwnerUserId: nextEditor.newOwnerUserId,
+              confirmInProgress:
+                nextEditor.scope === 'CONFIRM_IN_PROGRESS',
+              reason: nextEditor.reason || null,
+            },
+          },
+        );
+      } else {
+        response = await r26Gate3Request<R26Gate3CommandResponse>(
+          `/v2/projects/${encodeURIComponent(projectId)}/assignments/apply`,
+          {
+            method: 'POST',
+            body: {
+              expectedVersion,
+              idempotencyKey: createIdempotencyKey('apply'),
+              scope: nextEditor.scope,
+              ...(nextEditor.defaultNodeCodes.length
+                ? { nodeCodes: nextEditor.defaultNodeCodes }
+                : {}),
+              confirmedInProgressTaskIds:
+                nextEditor.confirmedInProgressTaskIds,
+              reason: nextEditor.reason || null,
+            },
+          },
+        );
+      }
+      setLiveData(response.workspace);
+      setEditor(null);
+      setImpact(null);
+      showToast(commandSuccessMessage(nextEditor.mode));
+    } catch (requestError) {
+      setMutationError(
+        requestError instanceof Error ? requestError.message : '操作失败。',
+      );
+    } finally {
+      setMutationPending(false);
+    }
+  }
 
   return (
     <div
@@ -122,9 +382,9 @@ export function RealWorkspacePage({ projectId }: { projectId: string }) {
       data-testid="r26-workspace"
       data-source="database"
     >
-      <div className="r26-readonly-banner" role="status">
-        <strong>Gate 2 · 真实只读工作区</strong>
-        <span>18 个节点、工序详情、成员与分工均来自 staging；页面不提供流程操作。</span>
+      <div className="r26-readonly-banner r26-gate3a-banner" role="status">
+        <strong>Gate 3A · 成员与任务分配</strong>
+        <span>仅开放项目成员和负责人调整；进展、材料与流程动作仍保持关闭。</span>
       </div>
       <header className="r26-project-header">
         <div className="r26-project-header__identity">
@@ -133,150 +393,715 @@ export function RealWorkspacePage({ projectId }: { projectId: string }) {
           <div>
             <span className="r26-color-swatch r26-real-color" aria-hidden="true" />
             <div>
-              <h1>{data.flowMap.colorName ?? data.project.name}</h1>
-              <p>{data.project.name}</p>
+              <h1>{workspace.flowMap.colorName ?? workspace.project.name}</h1>
+              <p>{workspace.project.name}</p>
             </div>
           </div>
         </div>
         <dl className="r26-project-header__facts">
-          <div><dt>当前工序</dt><dd>{data.flowMap.currentStepName}</dd></div>
-          <div><dt>负责人</dt><dd>{data.flowMap.currentOwner ?? '尚未分配'} · {data.flowMap.currentDepartment ?? '部门待定'}</dd></div>
-          <div><dt>流程进度</dt><dd>{data.flowMap.progressText}</dd></div>
-          <div><dt>最近更新</dt><dd>{formatDateTime(data.flowMap.lastUpdatedAt)}</dd></div>
+          <div><dt>当前工序</dt><dd>{workspace.flowMap.currentStepName}</dd></div>
+          <div><dt>负责人</dt><dd>{workspace.flowMap.currentOwner ?? '尚未分配'} · {workspace.flowMap.currentDepartment ?? '部门待定'}</dd></div>
+          <div><dt>流程进度</dt><dd>{workspace.flowMap.progressText}</dd></div>
+          <div><dt>最近更新</dt><dd>{formatDateTime(workspace.flowMap.lastUpdatedAt)}</dd></div>
         </dl>
       </header>
 
-      <nav className="r26-workspace-jumps" aria-label="项目工作区内容">
-        <a href="#flow-map">实时流程地图</a>
-        <a href="#members">项目成员与分工</a>
-        <a href="#assignment-preview">自动分配预览</a>
+      <nav className="r26-project-tabs" aria-label="项目上下文">
+        <button type="button" className={activeTab === 'flow' ? 'is-active' : ''} aria-current={activeTab === 'flow' ? 'page' : undefined} onClick={() => setActiveTab('flow')}>流程进度</button>
+        <button type="button" className={activeTab === 'members' ? 'is-active' : ''} aria-current={activeTab === 'members' ? 'page' : undefined} onClick={() => setActiveTab('members')}>项目成员与分工</button>
+        <button type="button" className={activeTab === 'records' ? 'is-active' : ''} aria-current={activeTab === 'records' ? 'page' : undefined} onClick={() => setActiveTab('records')}>项目记录</button>
       </nav>
 
-      <div id="flow-map" className={`r26-workspace-layout ${selectedNode ? 'has-detail' : ''}`}>
-        <R26FlowMap
-          selectedNode={selectedNode}
-          onSelectNode={selectNode}
-          nodes={nodes}
-          createdTaskIds={nodes.flatMap((node) => node.taskId ? [node.taskId] : [])}
-          currentSummary={{
-            currentStep: data.flowMap.currentStepName,
-            attention,
-          }}
-          ignorePrototypeOverrides
-          ariaLabel={`${data.flowMap.colorName ?? data.project.name}项目固定流程地图`}
-        />
-        {selectedNode ? (
-          <RealTaskDetail
-            node={selectedNode}
-            rawNode={data.flowMap.nodes.find((node) => node.nodeCode === selectedNode.code) ?? null}
-            task={taskQuery.data?.task ?? null}
-            loading={taskQuery.loading}
-            error={taskQuery.error}
-            onClose={closeDetail}
+      {activeTab === 'flow' ? (
+        <div id="flow-map" className={`r26-workspace-layout ${selectedNode ? 'has-detail' : ''}`}>
+          <R26FlowMap
+            selectedNode={selectedNode}
+            onSelectNode={selectNode}
+            nodes={nodes}
+            createdTaskIds={nodes.flatMap((node) => node.taskId ? [node.taskId] : [])}
+            currentSummary={{
+              currentStep: workspace.flowMap.currentStepName,
+              attention,
+            }}
+            ignorePrototypeOverrides
+            ariaLabel={`${workspace.flowMap.colorName ?? workspace.project.name}项目固定流程地图`}
           />
-        ) : null}
-      </div>
+          {selectedNode ? (
+            <RealTaskDetail
+              node={selectedNode}
+              rawNode={workspace.flowMap.nodes.find((node) => node.nodeCode === selectedNode.code) ?? null}
+              task={taskQuery.data?.task ?? null}
+              loading={taskQuery.loading}
+              error={taskQuery.error}
+              onClose={closeDetail}
+            />
+          ) : null}
+        </div>
+      ) : null}
 
-      <section id="members" className="r26-card r26-real-section" data-testid="r26-member-assignments">
-        <div className="r26-section-heading">
-          <div>
-            <p className="r26-eyebrow">真实项目组织</p>
-            <h2>项目成员与分工</h2>
-          </div>
-          <span>{data.memberAssignments.length} 位成员 · {data.organization.departments.length} 个有效部门</span>
-        </div>
-        <div className="r26-member-grid">
-          {data.memberAssignments.map((member) => (
-            <article key={member.id} className="r26-member-card">
-              <header>
-                <span>{member.name.slice(0, 1)}</span>
-                <div>
-                  <h3>{member.name}</h3>
-                  <p>{member.departmentName ?? '未设置部门'} · {member.memberTypeLabel}</p>
-                </div>
-                {member.isPrimary ? <StatusPill tone="current">主责</StatusPill> : null}
-              </header>
-              <dl>
-                <div><dt>项目职责</dt><dd>{member.projectResponsibility}</dd></div>
-                <div><dt>默认负责工序</dt><dd>{joinSteps(member.defaultNodes)}</dd></div>
-                <div><dt>当前任务</dt><dd>{member.currentTasks.map((task) => task.stepName).join('、') || '暂无'}</dd></div>
-                <div><dt>协同 / 评审</dt><dd>{member.relations.map((relation) => `${relation.stepName}（${relation.relation}）`).join('、') || '暂无'}</dd></div>
-              </dl>
-            </article>
-          ))}
-        </div>
-        <div className="r26-organization-summary">
-          {data.organization.departments.map((department) => (
-            <span key={department.id}>{department.name} · {department.activeUserCount} 人</span>
-          ))}
-        </div>
-      </section>
-
-      <section
-        id="assignment-preview"
-        className="r26-card r26-real-section"
-        data-testid="r26-assignment-preview"
-      >
-        <div className="r26-section-heading">
-          <div>
-            <p className="r26-eyebrow">服务端候选规则</p>
-            <h2>自动分配预览</h2>
-          </div>
-          <span>只读预览 · 无保存按钮</span>
-        </div>
-        <div className="r26-assignment-table" role="table" aria-label="18 个工序自动分配预览">
-          <div className="r26-assignment-table__header" role="row">
-            <span>步骤 / 工序</span>
-            <span>主责部门</span>
-            <span>当前 / 建议负责人</span>
-            <span>协同 / 评审</span>
-            <span>匹配状态</span>
-          </div>
-          {data.assignmentPreview.map((assignment) => (
-            <div className="r26-assignment-table__row" role="row" key={assignment.nodeCode}>
+      {activeTab === 'members' ? (
+        <>
+          <section className="r26-card r26-real-section" data-testid="r26-member-assignments">
+            <div className="r26-section-heading r26-member-heading">
               <div>
-                <small>第 {String(assignment.stepNumber).padStart(2, '0')} 步</small>
-                <strong>{assignment.stepName}</strong>
+                <p className="r26-eyebrow">真实项目组织</p>
+                <h2>项目成员与分工</h2>
+                <span>{workspace.memberAssignments.length} 位成员 · 版本 {workspace.capabilities.memberAssignmentVersion}</span>
               </div>
-              <span>{assignment.primaryDepartment?.name ?? '部门规则未命中'}</span>
-              <span>{assignment.suggestedOwner?.name ?? '尚未分配'}</span>
-              <span>
-                {uniquePersonNames([
-                  ...assignment.collaborators,
-                  ...assignment.reviewers,
-                ]) || '无'}
-              </span>
-              <div>
-                <StatusPill tone={assignment.assignmentStatus === 'UNASSIGNED' ? 'risk' : assignment.assignmentStatus === 'ASSIGNED' ? 'completed' : 'current'}>
-                  {assignmentStatusLabel(assignment.assignmentStatus)}
-                </StatusPill>
-                <small>{assignment.unassignedReason ?? assignmentSourceLabel(assignment.assignmentSource)}</small>
-              </div>
+              {workspace.capabilities.manageMembers ? (
+                <button type="button" className="r26-button r26-button--primary" onClick={openAddMember}>添加成员</button>
+              ) : <StatusPill tone="neutral">只读</StatusPill>}
             </div>
-          ))}
-        </div>
-      </section>
+            <div className="r26-member-grid">
+              {workspace.memberAssignments.map((member) => (
+                <article key={member.userId} className="r26-member-card">
+                  <header>
+                    <span>{member.name.slice(0, 1)}</span>
+                    <div>
+                      <h3>{member.name}</h3>
+                      <p>{member.departmentName ?? '未设置部门'} · {member.roles.map((role) => role.label).join('、')}</p>
+                    </div>
+                    {member.isPrimary ? <StatusPill tone="current">主责</StatusPill> : null}
+                  </header>
+                  <dl>
+                    <div><dt>项目职责</dt><dd>{member.projectResponsibility}</dd></div>
+                    <div><dt>默认负责工序</dt><dd>{joinSteps(member.defaultNodes)}</dd></div>
+                    <div><dt>当前任务</dt><dd>{member.currentTasks.map((task) => task.stepName).join('、') || '暂无'}</dd></div>
+                    <div><dt>协同 / 评审</dt><dd>{member.relations.map((relation) => `${relation.stepName}（${relation.relation}）`).join('、') || '暂无'}</dd></div>
+                  </dl>
+                  {workspace.capabilities.manageMembers ? (
+                    <footer className="r26-member-card__actions">
+                      <button type="button" onClick={() => openEditMember(member)}>修改职责</button>
+                      <button type="button" className="is-danger" onClick={() => openRemoveMember(member)}>移出项目</button>
+                    </footer>
+                  ) : null}
+                </article>
+              ))}
+            </div>
+            <div className="r26-organization-summary">
+              {workspace.organization.departments.map((department) => (
+                <span key={department.id}>{department.name} · {department.activeUserCount} 人</span>
+              ))}
+            </div>
+          </section>
 
-      <section className="r26-card r26-workspace-activity">
-        <div className="r26-section-heading">
-          <div>
-            <p className="r26-eyebrow">最近活动</p>
-            <h2>项目事实按时间保留</h2>
+          <section className="r26-card r26-real-section" data-testid="r26-assignment-preview">
+            <div className="r26-section-heading r26-member-heading">
+              <div>
+                <p className="r26-eyebrow">服务端分配规则</p>
+                <h2>自动分配预览</h2>
+                <span>负责人和可执行动作均由服务端返回</span>
+              </div>
+              {workspace.capabilities.manageMembers ? (
+                <button type="button" className="r26-button r26-button--secondary" onClick={openAssignmentApply}>查看并应用分配</button>
+              ) : null}
+            </div>
+            <div className="r26-assignment-table" role="table" aria-label="18 个工序自动分配预览">
+              <div className="r26-assignment-table__header" role="row">
+                <span>步骤 / 工序</span>
+                <span>主责部门</span>
+                <span>当前 / 建议负责人</span>
+                <span>协同 / 评审</span>
+                <span>匹配状态</span>
+              </div>
+              {workspace.assignmentPreview.map((assignment) => (
+                <div className="r26-assignment-table__row" role="row" key={assignment.nodeCode}>
+                  <div>
+                    <small>第 {String(assignment.stepNumber).padStart(2, '0')} 步</small>
+                    <strong>{assignment.stepName}</strong>
+                  </div>
+                  <span>{assignment.primaryDepartment?.name ?? '部门规则未命中'}</span>
+                  <span>{assignment.suggestedOwner?.name ?? '尚未分配'}</span>
+                  <span>{uniquePersonNames([...assignment.collaborators, ...assignment.reviewers]) || '无'}</span>
+                  <div>
+                    <StatusPill tone={assignment.assignmentStatus === 'UNASSIGNED' ? 'risk' : assignment.assignmentStatus === 'ASSIGNED' ? 'completed' : 'current'}>
+                      {assignmentStatusLabel(assignment.assignmentStatus)}
+                    </StatusPill>
+                    <small>{assignment.unassignedReason ?? assignmentSourceLabel(assignment.assignmentSource)}</small>
+                    {workspace.capabilities.manageMembers && assignment.taskId && assignment.availableActions.some((action) => action.action.includes('REASSIGN') || action.action.includes('CONFIRM')) ? (
+                      <button type="button" className="r26-inline-action" onClick={() => openTaskTransfer(assignment)}>转交任务</button>
+                    ) : null}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        </>
+      ) : null}
+
+      {activeTab === 'records' ? (
+        <section className="r26-card r26-workspace-activity r26-project-records" data-testid="r26-project-records">
+          <div className="r26-section-heading">
+            <div>
+              <p className="r26-eyebrow">审计与项目事实</p>
+              <h2>项目记录</h2>
+            </div>
+            <span>{workspace.projectRecords.length} 条最近记录</span>
           </div>
-          <span>数据库审计记录</span>
-        </div>
-        <ol>
-          {data.flowMap.recentActivities.slice(0, 6).map((activity) => (
-            <li key={activity.id}>
-              <time>{formatDateTime(activity.createdAt)}</time>
-              <strong>{activity.summary}</strong>
-              <span>{activity.operatorName} · {activity.actionLabel}</span>
-            </li>
-          ))}
-        </ol>
-      </section>
+          <ol>
+            {workspace.projectRecords.map((record) => (
+              <li key={record.id}>
+                <time>{formatDateTime(record.createdAt)}</time>
+                <div>
+                  <strong>{record.summary}</strong>
+                  {record.reason ? <p>原因：{record.reason}</p> : null}
+                </div>
+                <span>{record.actorName} · {record.action}</span>
+              </li>
+            ))}
+          </ol>
+        </section>
+      ) : null}
+
+      {editor ? (
+        <MemberAssignmentDrawer
+          editor={editor}
+          workspace={workspace}
+          impact={impact}
+          pending={mutationPending}
+          error={mutationError}
+          onChange={(next) => {
+            setEditor(next);
+            setImpact(null);
+            setMutationError(null);
+          }}
+          onPreview={previewChange}
+          onConfirm={confirmChange}
+          onClose={() => {
+            setEditor(null);
+            setImpact(null);
+            setMutationError(null);
+          }}
+        />
+      ) : null}
+      {toast ? <div className="r26-toast" role="status">{toast}</div> : null}
     </div>
   );
+}
+
+type MemberEditorMode =
+  | 'ADD'
+  | 'UPDATE'
+  | 'REMOVE'
+  | 'APPLY'
+  | 'TRANSFER';
+
+type MemberEditorState = {
+  mode: MemberEditorMode;
+  userId: string;
+  memberTypes: string[];
+  responsibility: string;
+  isDepartmentLead: boolean;
+  isDefaultExecutor: boolean;
+  defaultNodeCodes: string[];
+  scope: R26AssignmentScope;
+  transferToUserId: string;
+  replacementOwnerUserId: string;
+  confirmedInProgressTaskIds: string[];
+  taskId: string | null;
+  newOwnerUserId: string;
+  reason: string;
+};
+
+const MEMBER_ROLE_OPTIONS = [
+  { value: 'OWNER', label: '项目负责人' },
+  { value: 'MANAGER', label: '部门项目负责人' },
+  { value: 'MEMBER', label: '项目成员 / 执行人' },
+  { value: 'REVIEWER', label: '评审人' },
+  { value: 'OBSERVER', label: '观察人' },
+] as const;
+
+function createEmptyMemberEditor(): MemberEditorState {
+  return {
+    mode: 'ADD',
+    userId: '',
+    memberTypes: ['MEMBER'],
+    responsibility: '',
+    isDepartmentLead: false,
+    isDefaultExecutor: false,
+    defaultNodeCodes: [],
+    scope: 'FUTURE_AND_PENDING',
+    transferToUserId: '',
+    replacementOwnerUserId: '',
+    confirmedInProgressTaskIds: [],
+    taskId: null,
+    newOwnerUserId: '',
+    reason: '',
+  };
+}
+
+function MemberAssignmentDrawer({
+  editor,
+  workspace,
+  impact,
+  pending,
+  error,
+  onChange,
+  onPreview,
+  onConfirm,
+  onClose,
+}: {
+  editor: MemberEditorState;
+  workspace: R26WorkspaceResponse;
+  impact: R26AssignmentImpactResponse | null;
+  pending: boolean;
+  error: string | null;
+  onChange: (editor: MemberEditorState) => void;
+  onPreview: (editor: MemberEditorState) => Promise<void>;
+  onConfirm: (editor: MemberEditorState) => Promise<void>;
+  onClose: () => void;
+}) {
+  const [search, setSearch] = useState('');
+  const [departmentId, setDepartmentId] = useState('');
+  const candidates = workspace.organization.users.filter((user) => {
+    if (
+      editor.mode === 'ADD' &&
+      user.isProjectMember &&
+      user.id !== editor.userId
+    ) {
+      return false;
+    }
+    if (departmentId && user.departmentId !== departmentId) {
+      return false;
+    }
+    return (
+      !search.trim() ||
+      `${user.name} ${user.departmentName ?? ''}`
+        .toLowerCase()
+        .includes(search.trim().toLowerCase())
+    );
+  });
+  const selectedMember = workspace.memberAssignments.find(
+    (member) => member.userId === editor.userId,
+  );
+  const isOwner = selectedMember?.roles.some(
+    (role) => role.memberType === 'OWNER',
+  );
+  const requiresMemberForm =
+    editor.mode === 'ADD' || editor.mode === 'UPDATE';
+  const requiresTransfer = editor.mode === 'TRANSFER';
+  const canPreview =
+    !pending &&
+    (requiresMemberForm
+      ? Boolean(editor.userId && editor.memberTypes.length)
+      : requiresTransfer
+        ? Boolean(editor.taskId && editor.newOwnerUserId)
+        : editor.mode === 'REMOVE'
+          ? Boolean(editor.userId)
+          : true);
+  const confirmDisabled =
+    pending ||
+    !impact ||
+    (editor.mode === 'APPLY' && !impact.canApply) ||
+    (editor.mode === 'REMOVE' && !editor.reason.trim()) ||
+    (editor.mode === 'TRANSFER' &&
+      (!editor.newOwnerUserId ||
+        (editor.scope === 'CONFIRM_IN_PROGRESS' &&
+          !editor.reason.trim())));
+
+  function update(patch: Partial<MemberEditorState>) {
+    onChange({ ...editor, ...patch });
+  }
+
+  return (
+    <div
+      className="r26-gate3-drawer-backdrop"
+      role="presentation"
+      onMouseDown={(event) => {
+        if (event.currentTarget === event.target && !pending) {
+          onClose();
+        }
+      }}
+    >
+      <aside
+        className="r26-gate3-drawer"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="r26-gate3-drawer-title"
+        data-testid="r26-gate3-member-drawer"
+      >
+        <header>
+          <div>
+            <p className="r26-eyebrow">先预览影响，再确认写入</p>
+            <h2 id="r26-gate3-drawer-title">{drawerTitle(editor.mode)}</h2>
+          </div>
+          <button type="button" aria-label="关闭成员与分工面板" onClick={onClose} disabled={pending}><CloseIcon /></button>
+        </header>
+
+        <div className="r26-gate3-drawer__body">
+          {requiresMemberForm ? (
+            <>
+              {editor.mode === 'ADD' ? (
+                <section className="r26-gate3-form-section">
+                  <h3>选择公司有效用户</h3>
+                  <div className="r26-directory-filters">
+                    <label>
+                      <span>搜索姓名或部门</span>
+                      <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="输入姓名或部门" />
+                    </label>
+                    <label>
+                      <span>部门</span>
+                      <select value={departmentId} onChange={(event) => setDepartmentId(event.target.value)}>
+                        <option value="">全部部门</option>
+                        {workspace.organization.departments.map((department) => (
+                          <option key={department.id} value={department.id}>{department.name}</option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                  <div className="r26-directory-results">
+                    {candidates.map((user) => (
+                      <label key={user.id} className={editor.userId === user.id ? 'is-selected' : ''}>
+                        <input type="radio" name="project-user" checked={editor.userId === user.id} onChange={() => update({ userId: user.id })} />
+                        <span>{user.name.slice(0, 1)}</span>
+                        <div><strong>{user.name}</strong><small>{user.departmentName ?? '未设置部门'} · {user.isProjectMember ? '已是项目成员' : '可添加'}</small></div>
+                      </label>
+                    ))}
+                    {candidates.length === 0 ? <p>没有符合条件且尚未加入项目的有效用户。</p> : null}
+                  </div>
+                </section>
+              ) : (
+                <section className="r26-selected-member">
+                  <span>{selectedMember?.name.slice(0, 1)}</span>
+                  <div><strong>{selectedMember?.name}</strong><small>{selectedMember?.departmentName ?? '未设置部门'}</small></div>
+                </section>
+              )}
+
+              <section className="r26-gate3-form-section">
+                <h3>项目职责</h3>
+                <div className="r26-role-options">
+                  {MEMBER_ROLE_OPTIONS.map((role) => (
+                    <label key={role.value}>
+                      <input
+                        type="checkbox"
+                        checked={editor.memberTypes.includes(role.value)}
+                        onChange={() => update({
+                          memberTypes: toggleValue(editor.memberTypes, role.value),
+                        })}
+                      />
+                      <span>{role.label}</span>
+                    </label>
+                  ))}
+                </div>
+                <label className="r26-gate3-field">
+                  <span>项目职责说明</span>
+                  <input value={editor.responsibility} onChange={(event) => update({ responsibility: event.target.value })} placeholder="例如：采购材料协调与到货确认" />
+                </label>
+                {editor.memberTypes.includes('MANAGER') ? (
+                  <label className="r26-switch-row">
+                    <input type="checkbox" checked={editor.isDepartmentLead} onChange={(event) => update({ isDepartmentLead: event.target.checked })} />
+                    <span><strong>设为该部门项目负责人</strong><small>优先承担本部门工序的负责人建议</small></span>
+                  </label>
+                ) : null}
+                {editor.memberTypes.includes('MEMBER') ? (
+                  <label className="r26-switch-row">
+                    <input type="checkbox" checked={editor.isDefaultExecutor} onChange={(event) => update({ isDefaultExecutor: event.target.checked })} />
+                    <span><strong>设为本部门默认执行人</strong><small>仅作为服务端候选规则，不给部门全员建任务</small></span>
+                  </label>
+                ) : null}
+              </section>
+
+              {editor.memberTypes.includes('MEMBER') ? (
+                <NodeSelection
+                  title="默认负责工序"
+                  selected={editor.defaultNodeCodes}
+                  assignments={workspace.assignmentPreview}
+                  onChange={(defaultNodeCodes) => update({ defaultNodeCodes })}
+                />
+              ) : null}
+            </>
+          ) : null}
+
+          {editor.mode === 'REMOVE' ? (
+            <section className="r26-gate3-form-section">
+              <div className="r26-selected-member">
+                <span>{selectedMember?.name.slice(0, 1)}</span>
+                <div><strong>{selectedMember?.name}</strong><small>{selectedMember?.currentTasks.length ?? 0} 个当前任务</small></div>
+              </div>
+              {(selectedMember?.currentTasks.length ?? 0) > 0 ? (
+                <label className="r26-gate3-field">
+                  <span>活跃任务转交给</span>
+                  <select value={editor.transferToUserId} onChange={(event) => update({ transferToUserId: event.target.value })}>
+                    <option value="">请选择项目成员</option>
+                    {workspace.memberAssignments.filter((member) => member.userId !== editor.userId).map((member) => (
+                      <option key={member.userId} value={member.userId}>{member.name} · {member.departmentName ?? '未设置部门'}</option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
+              {isOwner ? (
+                <label className="r26-gate3-field">
+                  <span>新的项目负责人</span>
+                  <select value={editor.replacementOwnerUserId} onChange={(event) => update({ replacementOwnerUserId: event.target.value })}>
+                    <option value="">请选择新的项目负责人</option>
+                    {workspace.memberAssignments.filter((member) => member.userId !== editor.userId).map((member) => (
+                      <option key={member.userId} value={member.userId}>{member.name}</option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
+              <ReasonField value={editor.reason} onChange={(reason) => update({ reason })} label="移出原因" />
+            </section>
+          ) : null}
+
+          {requiresTransfer ? (
+            <section className="r26-gate3-form-section">
+              <h3>转交任务</h3>
+              <label className="r26-gate3-field">
+                <span>新的负责人</span>
+                <select value={editor.newOwnerUserId} onChange={(event) => update({ newOwnerUserId: event.target.value })}>
+                  <option value="">请选择项目成员</option>
+                  {workspace.memberAssignments.filter((member) => member.userId !== editor.userId).map((member) => (
+                    <option key={member.userId} value={member.userId}>{member.name} · {member.departmentName ?? '未设置部门'}</option>
+                  ))}
+                </select>
+              </label>
+              <ReasonField value={editor.reason} onChange={(reason) => update({ reason })} label="转交原因" />
+            </section>
+          ) : null}
+
+          {editor.mode === 'APPLY' || editor.mode === 'TRANSFER' || editor.mode === 'REMOVE' ? (
+            <ScopeSelection
+              value={editor.scope}
+              onChange={(scope) => update({ scope })}
+              lockToTask={editor.mode === 'TRANSFER'}
+            />
+          ) : null}
+
+          {editor.mode === 'APPLY' ? (
+            <NodeSelection
+              title="应用工序范围"
+              selected={editor.defaultNodeCodes}
+              assignments={workspace.assignmentPreview}
+              emptyMeansAll
+              onChange={(defaultNodeCodes) => update({ defaultNodeCodes })}
+            />
+          ) : null}
+
+          {impact ? (
+            <ImpactPreview
+              impact={impact}
+              confirmedTaskIds={editor.confirmedInProgressTaskIds}
+              onToggleConfirmed={(taskId) => {
+                const nextEditor = {
+                  ...editor,
+                  confirmedInProgressTaskIds: toggleValue(
+                  editor.confirmedInProgressTaskIds,
+                  taskId,
+                  ),
+                };
+                void onPreview(nextEditor);
+              }}
+            />
+          ) : (
+            <div className="r26-impact-placeholder">
+              <strong>尚未生成影响预览</strong>
+              <p>系统会列出未来任务、未开始任务、进行中任务和受保护的历史记录。</p>
+            </div>
+          )}
+          {error ? <div className="r26-gate3-error" role="alert">{error}</div> : null}
+        </div>
+
+        <footer className="r26-gate3-drawer__footer">
+          <button type="button" className="r26-button r26-button--secondary" onClick={() => void onPreview(editor)} disabled={!canPreview}>
+            {pending ? '正在处理…' : impact ? '重新预览影响' : '预览影响'}
+          </button>
+          <button type="button" className="r26-button r26-button--primary" onClick={() => void onConfirm(editor)} disabled={confirmDisabled}>
+            {confirmButtonLabel(editor.mode)}
+          </button>
+        </footer>
+      </aside>
+    </div>
+  );
+}
+
+function ScopeSelection({
+  value,
+  onChange,
+  lockToTask,
+}: {
+  value: R26AssignmentScope;
+  onChange: (value: R26AssignmentScope) => void;
+  lockToTask?: boolean;
+}) {
+  const scopes: Array<{ value: R26AssignmentScope; label: string; hint: string }> = [
+    { value: 'FUTURE_ONLY', label: '仅未来任务', hint: '不改当前已生成任务' },
+    { value: 'FUTURE_AND_PENDING', label: '未来与未开始任务', hint: '默认安全范围' },
+    { value: 'CONFIRM_IN_PROGRESS', label: '包含进行中任务', hint: '必须逐项确认并填写原因' },
+  ];
+  return (
+    <section className="r26-gate3-form-section">
+      <h3>更新范围</h3>
+      <div className="r26-scope-options">
+        {scopes.map((scope) => (
+          <label key={scope.value} className={value === scope.value ? 'is-selected' : ''}>
+            <input type="radio" name="assignment-scope" value={scope.value} checked={value === scope.value} disabled={lockToTask && scope.value === 'FUTURE_ONLY'} onChange={() => onChange(scope.value)} />
+            <span><strong>{scope.label}</strong><small>{scope.hint}</small></span>
+          </label>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function NodeSelection({
+  title,
+  selected,
+  assignments,
+  emptyMeansAll,
+  onChange,
+}: {
+  title: string;
+  selected: string[];
+  assignments: R26WorkspaceResponse['assignmentPreview'];
+  emptyMeansAll?: boolean;
+  onChange: (nodeCodes: string[]) => void;
+}) {
+  return (
+    <section className="r26-gate3-form-section">
+      <h3>{title}</h3>
+      {emptyMeansAll ? <p className="r26-form-hint">未选择时默认覆盖全部 18 个工序。</p> : null}
+      <div className="r26-node-options">
+        {assignments.map((assignment) => (
+          <label key={assignment.nodeCode}>
+            <input type="checkbox" checked={selected.includes(assignment.nodeCode)} onChange={() => onChange(toggleValue(selected, assignment.nodeCode))} />
+            <span>{String(assignment.stepNumber).padStart(2, '0')} · {assignment.stepName}</span>
+          </label>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function ReasonField({
+  value,
+  onChange,
+  label,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  label: string;
+}) {
+  return (
+    <label className="r26-gate3-field">
+      <span>{label}</span>
+      <textarea value={value} onChange={(event) => onChange(event.target.value)} rows={3} placeholder="请说明本次调整的业务原因" />
+    </label>
+  );
+}
+
+function ImpactPreview({
+  impact,
+  confirmedTaskIds,
+  onToggleConfirmed,
+}: {
+  impact: R26AssignmentImpactResponse;
+  confirmedTaskIds: string[];
+  onToggleConfirmed: (taskId: string) => void;
+}) {
+  return (
+    <section className="r26-impact-preview" data-testid="r26-assignment-impact-preview">
+      <header>
+        <div><span>影响预览</span><strong>{impact.summary.nodeCount} 个工序</strong></div>
+        <div><span>未开始任务</span><strong>{impact.summary.pendingTaskCount}</strong></div>
+        <div><span>需逐项确认</span><strong>{impact.summary.inProgressTaskCount}</strong></div>
+        <div><span>冲突</span><strong>{impact.summary.blockedCount}</strong></div>
+      </header>
+      {impact.conflicts.length ? (
+        <div className="r26-impact-conflicts">
+          {impact.conflicts.map((conflict) => <p key={conflict}>{conflict}</p>)}
+        </div>
+      ) : <p className="r26-impact-ok">未发现会覆盖已完成任务或历史记录的冲突。</p>}
+      <div className="r26-impact-list">
+        {impact.items.map((item) => (
+          <article key={item.nodeCode} className={item.blocked ? 'is-blocked' : ''}>
+            <div><small>第 {String(item.stepNumber).padStart(2, '0')} 步</small><strong>{item.stepName}</strong></div>
+            <p>{item.suggestedOwner?.name ?? '负责人待分配'} · {item.primaryDepartment?.name ?? '部门待定'}</p>
+            <span>
+              {item.completedOrHistoricalProtected
+                ? '已完成 / 历史记录受保护'
+                : item.applyToPendingTask
+                  ? '将更新未开始任务'
+                  : item.requiresInProgressConfirmation
+                    ? '进行中任务需确认'
+                    : '仅更新未来任务配置'}
+            </span>
+            {item.requiresInProgressConfirmation && item.taskId ? (
+              <label>
+                <input type="checkbox" checked={confirmedTaskIds.includes(item.taskId)} onChange={() => onToggleConfirmed(item.taskId!)} />
+                <span>确认转交该进行中任务</span>
+              </label>
+            ) : null}
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function toMemberDraft(editor: MemberEditorState): R26MemberDraft | null {
+  if (
+    editor.mode !== 'ADD' &&
+    editor.mode !== 'UPDATE' &&
+    editor.mode !== 'REMOVE'
+  ) {
+    return null;
+  }
+  return {
+    type: editor.mode,
+    userId: editor.userId,
+    ...(editor.mode === 'REMOVE'
+      ? {
+          transferToUserId: editor.transferToUserId || null,
+          replacementOwnerUserId: editor.replacementOwnerUserId || null,
+        }
+      : {
+          memberTypes: editor.memberTypes,
+          responsibility: editor.responsibility || null,
+          isDepartmentLead: editor.isDepartmentLead,
+          isDefaultExecutor: editor.isDefaultExecutor,
+          defaultNodeCodes: editor.defaultNodeCodes,
+        }),
+  };
+}
+
+function toggleValue(values: string[], value: string) {
+  return values.includes(value)
+    ? values.filter((item) => item !== value)
+    : [...values, value];
+}
+
+function drawerTitle(mode: MemberEditorMode) {
+  const labels: Record<MemberEditorMode, string> = {
+    ADD: '添加项目成员',
+    UPDATE: '修改成员职责',
+    REMOVE: '安全移出项目成员',
+    APPLY: '应用任务分配',
+    TRANSFER: '转交任务',
+  };
+  return labels[mode];
+}
+
+function confirmButtonLabel(mode: MemberEditorMode) {
+  const labels: Record<MemberEditorMode, string> = {
+    ADD: '确认添加',
+    UPDATE: '确认更新',
+    REMOVE: '确认移出',
+    APPLY: '确认应用分配',
+    TRANSFER: '确认转交',
+  };
+  return labels[mode];
+}
+
+function commandSuccessMessage(mode: MemberEditorMode) {
+  const labels: Record<MemberEditorMode, string> = {
+    ADD: '项目成员已添加，审计记录已保存。',
+    UPDATE: '成员职责已更新，审计记录已保存。',
+    REMOVE: '成员已安全移出，相关活跃任务已按确认转交。',
+    APPLY: '未来与未开始任务分配已应用。',
+    TRANSFER: '任务负责人已更新。',
+  };
+  return labels[mode];
 }
 
 function RealTaskDetail({

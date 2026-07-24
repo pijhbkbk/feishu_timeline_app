@@ -284,7 +284,8 @@ export type R26TaskDetail = {
 
 export type R26WorkspaceResponse = {
   dataSource: 'database';
-  readOnly: true;
+  readOnly: false;
+  writeScope: 'PROJECT_MEMBERS_AND_ASSIGNMENTS';
   viewer: R26Viewer;
   project: {
     id: string;
@@ -302,6 +303,7 @@ export type R26WorkspaceResponse = {
     owningDepartmentName: string | null;
     updatedAt: string;
     memberCount: number;
+    memberAssignmentVersion: number;
     members: Array<{
       id: string;
       userId: string;
@@ -348,7 +350,7 @@ export type R26WorkspaceResponse = {
       name: string;
       activeUserCount: number;
     }>;
-    users: R26Person[];
+    users: Array<R26Person & { isProjectMember: boolean }>;
   };
   memberAssignments: Array<{
     id: string;
@@ -357,6 +359,12 @@ export type R26WorkspaceResponse = {
     departmentName: string | null;
     memberType: string;
     memberTypeLabel: string;
+    roles: Array<{
+      memberType: string;
+      label: string;
+      title: string | null;
+      isPrimary: boolean;
+    }>;
     projectResponsibility: string;
     isPrimary: boolean;
     defaultNodes: Array<{
@@ -380,6 +388,7 @@ export type R26WorkspaceResponse = {
     stepNumber: number;
     stepName: string;
     taskId: string | null;
+    taskStatus: string | null;
     primaryDepartment: {
       id: string | null;
       code: string;
@@ -402,8 +411,86 @@ export type R26WorkspaceResponse = {
     assignmentStatus: 'ASSIGNED' | 'SUGGESTED' | 'UNASSIGNED';
     assignmentSource: R26FlowMapNode['assignmentSource'];
     unassignedReason: string | null;
+    affectedTaskIds: string[];
+    conflicts: string[];
     availableActions: Array<{ action: string; label: string }>;
   }>;
+  projectRecords: Array<{
+    id: string;
+    action: string;
+    summary: string;
+    actorName: string;
+    nodeCode: string | null;
+    requestId: string | null;
+    reason: string | null;
+    createdAt: string;
+  }>;
+  capabilities: {
+    gate: 'R26_GATE3A';
+    memberAssignmentVersion: number;
+    manageMembers: boolean;
+    progressWriteEnabled: false;
+    workflowWriteEnabled: false;
+  };
+};
+
+export type R26AssignmentScope =
+  | 'FUTURE_ONLY'
+  | 'FUTURE_AND_PENDING'
+  | 'CONFIRM_IN_PROGRESS';
+
+export type R26MemberDraft = {
+  type: 'ADD' | 'UPDATE' | 'REMOVE';
+  userId: string;
+  memberTypes?: string[];
+  responsibility?: string | null;
+  isDepartmentLead?: boolean;
+  isDefaultExecutor?: boolean;
+  defaultNodeCodes?: string[];
+  transferToUserId?: string | null;
+  replacementOwnerUserId?: string | null;
+};
+
+export type R26AssignmentImpactResponse = {
+  dataSource: 'database';
+  writePerformed: false;
+  projectId: string;
+  expectedVersion: number;
+  applicationScope: R26AssignmentScope;
+  memberChange: R26MemberDraft | null;
+  summary: {
+    nodeCount: number;
+    futureAssignmentCount: number;
+    pendingTaskCount: number;
+    inProgressTaskCount: number;
+    blockedCount: number;
+  };
+  conflicts: string[];
+  canApply: boolean;
+  items: Array<
+    R26WorkspaceResponse['assignmentPreview'][number] & {
+      applicationScope: R26AssignmentScope;
+      applyToFuture: boolean;
+      applyToPendingTask: boolean;
+      requiresInProgressConfirmation: boolean;
+      completedOrHistoricalProtected: boolean;
+      blocked: boolean;
+    }
+  >;
+};
+
+export type R26Gate3CommandResponse = {
+  command: {
+    action: string;
+    requestId: string;
+    idempotencyKey: string;
+    idempotentReplay: boolean;
+    previousVersion: number;
+    memberAssignmentVersion: number;
+    auditLogIds: string[];
+    affectedTaskIds: string[];
+  };
+  workspace: R26WorkspaceResponse;
 };
 
 export type R26TaskResponse = {

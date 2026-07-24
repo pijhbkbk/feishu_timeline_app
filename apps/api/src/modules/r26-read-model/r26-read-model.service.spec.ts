@@ -1,4 +1,5 @@
 import {
+  ProjectAssignmentSource,
   ProjectMemberType,
   WorkflowNodeCode,
   WorkflowTaskStatus,
@@ -155,7 +156,7 @@ describe('R26ReadModelService assignment preview', () => {
         departmentName: '采购部',
         memberType: ProjectMemberType.MEMBER,
         title: '采购负责人',
-        isPrimary: false,
+        isPrimary: true,
       },
     ];
 
@@ -188,6 +189,107 @@ describe('R26ReadModelService assignment preview', () => {
     expect(result.assignmentStatus).toBe('ASSIGNED');
     expect(result.assignmentSource).toBe('TASK_OVERRIDE');
     expect(result.suggestedOwner).toMatchObject({ id: 'current-owner', name: '李晓晨' });
+  });
+
+  it('uses a project node override before department defaults', () => {
+    const input = baseInput(WorkflowNodeCode.PAINT_PROCUREMENT) as AssignmentInput & {
+      nodeAssignment: {
+        nodeCode: WorkflowNodeCode;
+        primaryDepartmentId: string;
+        ownerUserId: string;
+        collaboratorUserIds: string[];
+        reviewerUserIds: string[];
+        assignmentSource: ProjectAssignmentSource;
+      };
+    };
+    input.departments = [
+      { id: 'dept-purchasing', code: 'PURCHASING', name: '采购部', path: null },
+    ];
+    input.users = [
+      {
+        id: 'node-owner',
+        name: '节点专属负责人',
+        departmentId: 'dept-purchasing',
+        departmentName: '采购部',
+      },
+      {
+        id: 'default-owner',
+        name: '部门默认负责人',
+        departmentId: 'dept-purchasing',
+        departmentName: '采购部',
+      },
+    ];
+    input.project.members = [
+      {
+        id: 'member-node',
+        userId: 'node-owner',
+        name: '节点专属负责人',
+        departmentName: '采购部',
+        memberType: ProjectMemberType.MEMBER,
+        title: '采购执行',
+        isPrimary: false,
+      },
+      {
+        id: 'member-default',
+        userId: 'default-owner',
+        name: '部门默认负责人',
+        departmentName: '采购部',
+        memberType: ProjectMemberType.MEMBER,
+        title: '采购负责人',
+        isPrimary: true,
+      },
+    ];
+    input.nodeAssignment = {
+      nodeCode: WorkflowNodeCode.PAINT_PROCUREMENT,
+      primaryDepartmentId: 'dept-purchasing',
+      ownerUserId: 'node-owner',
+      collaboratorUserIds: [],
+      reviewerUserIds: [],
+      assignmentSource: ProjectAssignmentSource.PROJECT_NODE_OVERRIDE,
+    };
+
+    const result = createBuilder().buildAssignmentPreview(input);
+
+    expect(result.assignmentSource).toBe('PROJECT_NODE_OVERRIDE');
+    expect(result.suggestedOwner).toMatchObject({
+      id: 'node-owner',
+      name: '节点专属负责人',
+    });
+  });
+
+  it('keeps multiple eligible department members unassigned without an explicit default', () => {
+    const input = baseInput(WorkflowNodeCode.PAINT_PROCUREMENT);
+    input.departments = [
+      { id: 'dept-purchasing', code: 'PURCHASING', name: '采购部', path: null },
+    ];
+    input.users = [
+      {
+        id: 'buyer-1',
+        name: '采购甲',
+        departmentId: 'dept-purchasing',
+        departmentName: '采购部',
+      },
+      {
+        id: 'buyer-2',
+        name: '采购乙',
+        departmentId: 'dept-purchasing',
+        departmentName: '采购部',
+      },
+    ];
+    input.project.members = input.users.map((user, index) => ({
+      id: `member-${index}`,
+      userId: user.id,
+      name: user.name,
+      departmentName: user.departmentName,
+      memberType: ProjectMemberType.MEMBER,
+      title: '采购执行',
+      isPrimary: false,
+    }));
+
+    const result = createBuilder().buildAssignmentPreview(input);
+
+    expect(result.assignmentStatus).toBe('UNASSIGNED');
+    expect(result.suggestedOwner).toBeNull();
   });
 });
 

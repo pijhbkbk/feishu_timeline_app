@@ -1702,6 +1702,7 @@ export class ProjectsService {
       createdAt: project.createdAt.toISOString(),
       updatedAt: project.updatedAt.toISOString(),
       memberCount: project._count.members,
+      memberAssignmentVersion: project.memberAssignmentVersion,
       currentWorkflowInstance: currentWorkflowInstance
         ? {
             id: currentWorkflowInstance.id,

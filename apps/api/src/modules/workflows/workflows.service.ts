@@ -167,6 +167,14 @@ export class WorkflowsService {
       nodeCode,
       startAt: now,
     });
+    const projectAssignment = await tx.projectNodeAssignment.findUnique({
+      where: {
+        projectId_nodeCode: {
+          projectId: input.projectId,
+          nodeCode,
+        },
+      },
+    });
 
     const instance = await tx.workflowInstance.create({
       data: {
@@ -194,7 +202,10 @@ export class WorkflowsService {
         status: WorkflowTaskStatus.READY,
         isPrimary: true,
         isActive: true,
-        assigneeUserId: input.ownerUserId ?? null,
+        assigneeUserId:
+          projectAssignment?.ownerUserId ?? input.ownerUserId ?? null,
+        assigneeDepartmentId:
+          projectAssignment?.primaryDepartmentId ?? null,
         dueAt: taskSchedule.dueAt,
         effectiveDueAt: taskSchedule.effectiveDueAt,
         overdueDays: 0,
@@ -204,6 +215,11 @@ export class WorkflowsService {
           templateCode: DEFAULT_WORKFLOW_TEMPLATE,
           templateVersion: DEFAULT_WORKFLOW_TEMPLATE_VERSION,
           nodeCode,
+          assignmentSource:
+            projectAssignment?.assignmentSource ?? 'TASK_OVERRIDE',
+          collaboratorUserIds:
+            projectAssignment?.collaboratorUserIds ?? [],
+          reviewerUserIds: projectAssignment?.reviewerUserIds ?? [],
         },
       },
     });
@@ -1298,6 +1314,14 @@ export class WorkflowsService {
         nodeCode: template.nodeCode,
         startAt: new Date(),
       });
+      const projectAssignment = await tx.projectNodeAssignment.findUnique({
+        where: {
+          projectId_nodeCode: {
+            projectId: sourceTask.projectId,
+            nodeCode: template.nodeCode,
+          },
+        },
+      });
 
       const createdTask = await tx.workflowTask.create({
         data: {
@@ -1311,7 +1335,13 @@ export class WorkflowsService {
           status: WorkflowTaskStatus.READY,
           isPrimary,
           isActive: true,
-          assigneeUserId: sourceTask.project.ownerUserId ?? sourceTask.assigneeUserId ?? null,
+          assigneeUserId:
+            projectAssignment?.ownerUserId ??
+            sourceTask.project.ownerUserId ??
+            sourceTask.assigneeUserId ??
+            null,
+          assigneeDepartmentId:
+            projectAssignment?.primaryDepartmentId ?? null,
           dueAt: taskSchedule.dueAt,
           effectiveDueAt: taskSchedule.effectiveDueAt,
           overdueDays: 0,
@@ -1330,6 +1360,11 @@ export class WorkflowsService {
             fromTaskId: sourceTask.id,
             fromNodeCode: sourceTask.nodeCode,
             reason: template.reason,
+            assignmentSource:
+              projectAssignment?.assignmentSource ?? 'TASK_OVERRIDE',
+            collaboratorUserIds:
+              projectAssignment?.collaboratorUserIds ?? [],
+            reviewerUserIds: projectAssignment?.reviewerUserIds ?? [],
             ...(taskSchedule.defaultChargeAmount
               ? { defaultChargeAmount: taskSchedule.defaultChargeAmount }
               : {}),

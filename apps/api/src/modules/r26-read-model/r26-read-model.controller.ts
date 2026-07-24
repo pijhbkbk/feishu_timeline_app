@@ -1,16 +1,37 @@
-import { Controller, Get, Param, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Headers,
+  Param,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { ApiCookieAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { CurrentUser } from '../auth/current-user.decorator';
 import { Permissions } from '../auth/permissions.decorator';
 import type { AuthenticatedUser } from '../auth/auth.types';
+import {
+  R26ApplyAssignmentsDto,
+  R26AssignmentPreviewDto,
+  R26RemoveMemberDto,
+  R26TransferTaskDto,
+  R26UpsertMemberDto,
+} from './dto/r26-member-assignment.dto';
+import { R26MemberAssignmentService } from './r26-member-assignment.service';
 import { R26ReadModelService } from './r26-read-model.service';
 
 @ApiTags('r26-v2-read-model')
 @ApiCookieAuth('ft_session')
 @Controller('v2')
 export class R26ReadModelController {
-  constructor(private readonly service: R26ReadModelService) {}
+  constructor(
+    private readonly service: R26ReadModelService,
+    private readonly memberAssignmentService: R26MemberAssignmentService,
+  ) {}
 
   @Permissions('dashboard.read')
   @ApiOperation({ summary: 'R26 V2 当前用户工作台只读模型' })
@@ -57,5 +78,121 @@ export class R26ReadModelController {
     @CurrentUser() actor: AuthenticatedUser,
   ) {
     return this.service.getProgressContext(taskId, actor);
+  }
+
+  @Permissions('project.read')
+  @ApiOperation({ summary: 'R26 Gate 3A 成员或分工变更影响预览（不写入）' })
+  @Post('projects/:projectId/assignment-preview')
+  previewAssignments(
+    @Param('projectId') projectId: string,
+    @Body() body: R26AssignmentPreviewDto,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.memberAssignmentService.previewAssignments(
+      projectId,
+      body,
+      actor,
+    );
+  }
+
+  @Permissions('project.read')
+  @ApiOperation({ summary: 'R26 Gate 3A 添加项目成员' })
+  @Post('projects/:projectId/members')
+  async addMember(
+    @Param('projectId') projectId: string,
+    @Body() body: R26UpsertMemberDto,
+    @Headers('x-request-id') requestId: string | undefined,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    const command = await this.memberAssignmentService.addMember(
+      projectId,
+      body,
+      actor,
+      requestId?.trim() || body.idempotencyKey,
+    );
+    const workspace = await this.service.getWorkspace(projectId, actor);
+    return { command, workspace };
+  }
+
+  @Permissions('project.read')
+  @ApiOperation({ summary: 'R26 Gate 3A 修改项目成员职责' })
+  @Patch('projects/:projectId/members/:userId')
+  async updateMember(
+    @Param('projectId') projectId: string,
+    @Param('userId') userId: string,
+    @Body() body: R26UpsertMemberDto,
+    @Headers('x-request-id') requestId: string | undefined,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    const command = await this.memberAssignmentService.updateMember(
+      projectId,
+      userId,
+      body,
+      actor,
+      requestId?.trim() || body.idempotencyKey,
+    );
+    const workspace = await this.service.getWorkspace(projectId, actor);
+    return { command, workspace };
+  }
+
+  @Permissions('project.read')
+  @ApiOperation({ summary: 'R26 Gate 3A 安全移出项目成员' })
+  @Delete('projects/:projectId/members/:userId')
+  async removeMember(
+    @Param('projectId') projectId: string,
+    @Param('userId') userId: string,
+    @Body() body: R26RemoveMemberDto,
+    @Headers('x-request-id') requestId: string | undefined,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    const command = await this.memberAssignmentService.removeMember(
+      projectId,
+      userId,
+      body,
+      actor,
+      requestId?.trim() || body.idempotencyKey,
+    );
+    const workspace = await this.service.getWorkspace(projectId, actor);
+    return { command, workspace };
+  }
+
+  @Permissions('project.read')
+  @ApiOperation({ summary: 'R26 Gate 3A 应用未来与未开始任务分配' })
+  @Post('projects/:projectId/assignments/apply')
+  async applyAssignments(
+    @Param('projectId') projectId: string,
+    @Body() body: R26ApplyAssignmentsDto,
+    @Headers('x-request-id') requestId: string | undefined,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    const command = await this.memberAssignmentService.applyAssignments(
+      projectId,
+      body,
+      actor,
+      requestId?.trim() || body.idempotencyKey,
+    );
+    const workspace = await this.service.getWorkspace(projectId, actor);
+    return { command, workspace };
+  }
+
+  @Permissions('project.read')
+  @ApiOperation({ summary: 'R26 Gate 3A 转交单个活跃工序任务' })
+  @Patch('projects/:projectId/tasks/:taskId/assignment')
+  async transferTask(
+    @Param('projectId') projectId: string,
+    @Param('taskId') taskId: string,
+    @Body() body: R26TransferTaskDto,
+    @Headers('x-request-id') requestId: string | undefined,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    const command = await this.memberAssignmentService.transferTask(
+      projectId,
+      taskId,
+      body,
+      actor,
+      requestId?.trim() || body.idempotencyKey,
+    );
+    const workspace = await this.service.getWorkspace(projectId, actor);
+    return { command, workspace };
   }
 }

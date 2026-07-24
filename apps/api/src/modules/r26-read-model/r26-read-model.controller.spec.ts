@@ -10,7 +10,7 @@ import { R26_ASSIGNMENT_RULES } from './r26-assignment.rules';
 import { R26ReadModelController } from './r26-read-model.controller';
 
 describe('R26ReadModelController Gate 2 contract', () => {
-  it('exposes only GET handlers under the V2 read model', () => {
+  it('keeps the Gate 2 view-model handlers GET-only', () => {
     const prototype = R26ReadModelController.prototype;
     const handlerNames = [
       'getDashboard',
@@ -29,6 +29,31 @@ describe('R26ReadModelController Gate 2 contract', () => {
         handlerName === 'getDashboard' ? 'dashboard.read' : 'project.read',
       ]);
     }
+  });
+
+  it('opens only the Gate 3A member and assignment write routes', () => {
+    const prototype = R26ReadModelController.prototype;
+    const handlers = [
+      ['previewAssignments', RequestMethod.POST, 'projects/:projectId/assignment-preview'],
+      ['addMember', RequestMethod.POST, 'projects/:projectId/members'],
+      ['updateMember', RequestMethod.PATCH, 'projects/:projectId/members/:userId'],
+      ['removeMember', RequestMethod.DELETE, 'projects/:projectId/members/:userId'],
+      ['applyAssignments', RequestMethod.POST, 'projects/:projectId/assignments/apply'],
+      ['transferTask', RequestMethod.PATCH, 'projects/:projectId/tasks/:taskId/assignment'],
+    ] as const;
+
+    for (const [handlerName, method, path] of handlers) {
+      const handler = prototype[handlerName];
+      expect(Reflect.getMetadata(METHOD_METADATA, handler)).toBe(method);
+      expect(Reflect.getMetadata(PATH_METADATA, handler)).toBe(path);
+      expect(Reflect.getMetadata(PERMISSION_METADATA_KEY, handler)).toEqual([
+        'project.read',
+      ]);
+    }
+
+    expect(Object.getOwnPropertyNames(prototype)).not.toContain('submitProgress');
+    expect(Object.getOwnPropertyNames(prototype)).not.toContain('uploadMaterial');
+    expect(Object.getOwnPropertyNames(prototype)).not.toContain('transitionWorkflow');
   });
 
   it('defines a server-side assignment rule for all 18 workflow nodes', () => {

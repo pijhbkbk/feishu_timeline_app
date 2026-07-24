@@ -245,6 +245,9 @@ describe('WorkflowsService', () => {
   it('initializes workflow instances with template version and SLA schedule', async () => {
     const { service, workflowDeadlineService, notificationQueueService } = createService();
     const tx = {
+      projectNodeAssignment: {
+        findUnique: vi.fn().mockResolvedValue(null),
+      },
       workflowInstance: {
         create: vi.fn().mockResolvedValue({
           id: 'wf-1',
@@ -309,6 +312,9 @@ describe('WorkflowsService', () => {
   it('creates a new round task on reject with rework metadata', async () => {
     const { service, workflowDeadlineService } = createService();
     const tx = {
+      projectNodeAssignment: {
+        findUnique: vi.fn().mockResolvedValue(null),
+      },
       workflowTask: {
         findFirst: vi
           .fn()

@@ -23,7 +23,7 @@ describe('R26 Gate 2 real-data consistency contracts', () => {
   });
 
   it('renders the workspace progress and review round from the API response', () => {
-    expect(workspaceSource).toContain('data.flowMap.progressText');
+    expect(workspaceSource).toContain('workspace.flowMap.progressText');
     expect(flowMapSource).toContain('node.round || 1');
     expect(flowMapSource).not.toContain('第 2 轮 · 待结论');
   });
