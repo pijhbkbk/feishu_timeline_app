@@ -315,6 +315,8 @@ export const r26FlowNodes: R26FlowNode[] = [
     department: '质量管理部',
     deadline: '3 / 12 · 下次 8月15日',
     taskId: 't017',
+    monthlyCompleted: 3,
+    monthlyTotal: 12,
     requirement: '每月完成一次色差评审，保留当月实例和逾期月份。',
     output: '12 个月独立评审记录',
     recentEvents: [

@@ -142,6 +142,7 @@ availableActions
 | 390 | 项目列表 | `13-projects-390.png` |
 | 390 | 移动流程总览 | `14-workspace-mobile-overview-390.png` |
 | 390 | 全屏工序 sheet | `15-workspace-mobile-sheet-390.png` |
+| 1440 | 数据口径修复：第 15 步待分配 | `16-data-consistency-step15-1440.png` |
 
 浏览器全页截图对长页面曾生成空白图，已从证据集中剔除；没有使用空白文件充当验收证据。
 进展页以同一已登录会话的固定视口截图和三档实际交互断言共同取证。
@@ -166,7 +167,69 @@ Docker Hub 拉取 `node:24-alpine` metadata 两次超时，因此 staging 使用
 通过检查的构建产物制作临时镜像，只重建 staging API/Web 容器；未运行 migration 或
 seed。API、Web 与 nginx 容器均为 healthy，production 未受影响。
 
-## 8. 待产品负责人确认
+## 8. 数据口径修复复核（2026-07-24）
+
+产品负责人指出技术门禁通过后仍需核对真实业务口径。本次在不修改数据库业务数据、
+V1、状态机和写接口的前提下修复：
+
+- 登录人没有同步部门时，明确显示“系统管理员 · 组织部门待同步”，不再把缺失组织
+  字段误写成普通业务部门；
+- 工作台责任人和责任部门来自当前真实任务及服务端节点规则，不再使用登录人身份拼接；
+- 项目卡、项目工作区统一以当前步骤显示进度，当前项目均为 `12 / 18`；
+- 第 12 步使用真实 `taskRound=1`，流程节点和详情均显示“第 1 轮”；
+- 第 17 步从月度计划返回值显示 `0/12`，移除固定 `3/12`；
+- 尚未生成的第 13～18 步不再展示建议人冒充现任负责人，统一显示“负责人待分配 /
+  尚未生成”；
+- 18 节点服务端部门规则按业务责任表返回；第 15 步为“生产部”，且因公司目录没有
+  生产部而明确保持未分配；
+- 候选人只允许来自当前项目的有效成员，取消从公司目录任取一人的兜底；
+- 项目卡新增明确的责任部门；真实流程地图的可访问名称使用当前项目颜色名，不再残留
+  “深海蓝”静态文案。
+
+staging 使用李晓晨飞书账号重新检查：
+
+```text
+工作台：样车驾驶室评审 / 李晓晨 / 质量管理部 / 下一项为空
+项目卡：样车驾驶室评审 / 李晓晨 / 质量管理部 / 12 / 18
+工作区：样车驾驶室评审 / 李晓晨 / 质量管理部 / 12 / 18
+第 12 步：第 1 轮 / 已逾期
+第 15 步：生产部 / 负责人待分配 / 尚未生成
+第 17 步：0 / 12
+节点数量：18
+console error：0
+```
+
+本次浏览器复核的 nginx 日志：
+
+```text
+/api/v2/* GET      16
+/api/v2/* POST      0
+/api/v2/* PUT       0
+/api/v2/* PATCH     0
+/api/v2/* DELETE    0
+```
+
+历史演示成员和 UAT 项目登记为 `R26-DATA-001`。本轮没有删除、改名、归档或修改这些
+数据库行；后续须经数据治理审批处理，审计记录不得物理删除。
+
+最终回归：
+
+```text
+pnpm install --frozen-lockfile                                      PASS
+pnpm lint                                                           PASS
+pnpm typecheck                                                      PASS
+pnpm test                                                           PASS
+  Web                                                               30 files / 90 tests
+  API                                                               59 files / 231 tests
+NEXT_PUBLIC_R26_V2_PROTOTYPE=true
+NEXT_PUBLIC_R26_V2_DATA_MODE=read-only-real
+pnpm --filter @feishu-timeline/web build                            PASS
+pnpm --filter @feishu-timeline/api build                            PASS
+pnpm --filter @feishu-timeline/api prisma:validate                  PASS
+git diff --check                                                    PASS
+```
+
+## 9. 待产品负责人确认
 
 - [ ] staging 当前飞书用户与权限符合预期
 - [ ] staging 项目、风险、当前工序和动态符合预期

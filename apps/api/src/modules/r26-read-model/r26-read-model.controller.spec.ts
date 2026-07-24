@@ -37,8 +37,16 @@ describe('R26ReadModelController Gate 2 contract', () => {
       new Set(Object.values(WorkflowNodeCode)),
     );
     for (const rule of Object.values(R26_ASSIGNMENT_RULES)) {
-      expect(rule.primaryDepartmentCode.length).toBeGreaterThan(0);
-      expect(Array.isArray(rule.collaboratorDepartmentCodes)).toBe(true);
+      expect(rule.primaryDepartment.code.length).toBeGreaterThan(0);
+      expect(rule.primaryDepartment.name.length).toBeGreaterThan(0);
+      expect(Array.isArray(rule.collaboratorDepartments)).toBe(true);
     }
+
+    expect(R26_ASSIGNMENT_RULES[WorkflowNodeCode.PAINT_DEVELOPMENT].primaryDepartment.name)
+      .toBe('采购部');
+    expect(R26_ASSIGNMENT_RULES[WorkflowNodeCode.MASS_PRODUCTION_PLAN].primaryDepartment.name)
+      .toBe('生产部');
+    expect(R26_ASSIGNMENT_RULES[WorkflowNodeCode.PROJECT_CLOSED].primaryDepartment.name)
+      .toBe('营销公司');
   });
 });

@@ -14,6 +14,7 @@ export function R26FlowMap({
   createdTaskIds: suppliedCreatedTaskIds,
   currentSummary,
   ignorePrototypeOverrides = false,
+  ariaLabel = '深海蓝项目固定流程地图',
 }: {
   selectedNode: R26FlowNode | null;
   onSelectNode: (node: R26FlowNode) => void;
@@ -24,6 +25,7 @@ export function R26FlowMap({
     attention: string;
   };
   ignorePrototypeOverrides?: boolean;
+  ariaLabel?: string;
 }) {
   const [zoom, setZoom] = useState(1);
   const { createdTaskIds, nodeStatusOverrides } = useR26PrototypeStore();
@@ -42,7 +44,7 @@ export function R26FlowMap({
   const effectiveCreatedTaskIds = suppliedCreatedTaskIds ?? createdTaskIds;
 
   return (
-    <section className="r26-map-card" aria-label="深海蓝项目固定流程地图">
+    <section className="r26-map-card" aria-label={ariaLabel}>
       <div className="r26-map-toolbar">
         <div>
           <p className="r26-eyebrow">固定流程地图</p>
@@ -224,6 +226,12 @@ function NodeShape({ node }: { node: R26FlowNode }) {
     const circleY = node.y + node.height / 2;
     const radius = 32;
     const circumference = 2 * Math.PI * radius;
+    const totalPeriods = Math.max(1, node.monthlyTotal ?? 12);
+    const completedPeriods = Math.min(
+      totalPeriods,
+      Math.max(0, node.monthlyCompleted ?? 0),
+    );
+    const progressRatio = completedPeriods / totalPeriods;
     return (
       <>
         <rect
@@ -241,10 +249,12 @@ function NodeShape({ node }: { node: R26FlowNode }) {
           r={radius}
           className="r26-monthly-progress"
           strokeDasharray={circumference}
-          strokeDashoffset={circumference * 0.75}
+          strokeDashoffset={circumference * (1 - progressRatio)}
           transform={`rotate(-90 ${circleX} ${circleY})`}
         />
-        <text x={circleX} y={circleY + 5} textAnchor="middle" className="r26-monthly-value">3/12</text>
+        <text x={circleX} y={circleY + 5} textAnchor="middle" className="r26-monthly-value">
+          {completedPeriods}/{totalPeriods}
+        </text>
       </>
     );
   }
@@ -306,7 +316,9 @@ function NodeContent({
         </>
       ) : (
         <text x={contentX} y={node.y + 95} textAnchor="middle" className="r26-node-deadline">
-          第 2 轮 · 待结论
+          {created
+            ? `第 ${node.round || 1} 轮 · ${r26StatusLabels[status]}`
+            : '尚未生成 · 负责人待分配'}
         </text>
       )}
     </g>

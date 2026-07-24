@@ -257,9 +257,9 @@ function RealProjectCard({ project }: { project: R26ProjectListItem }) {
         </div>
         <dl className="r26-project-card__facts">
           <div><dt>当前负责人</dt><dd>{project.currentTaskOwnerName ?? project.ownerName ?? '尚未分配'}</dd></div>
+          <div><dt>责任部门</dt><dd>{project.currentTaskDepartmentName ?? '责任部门待分配'}</dd></div>
           <div><dt>计划截止</dt><dd>{formatProjectDate(project.currentTaskDueAt ?? project.targetDate)}</dd></div>
           <div><dt>流程进度</dt><dd>{project.progressText}</dd></div>
-          <div><dt>最近更新</dt><dd>{formatProjectDate(project.latestTaskUpdatedAt)}</dd></div>
         </dl>
         <div className="r26-project-card__risk">
           <span>{tone === 'risk' ? '需要关注' : '当前状态'}</span>
@@ -278,7 +278,7 @@ function RealProjectCard({ project }: { project: R26ProjectListItem }) {
           style={{ '--progress': project.progressPercent } as React.CSSProperties}
         >
           <strong>{project.progressText}</strong>
-          <span>已完成</span>
+          <span>当前步骤</span>
         </div>
         <Link
           href={`/v2/projects/${encodeURIComponent(project.id)}${project.currentTaskId ? `?taskId=${encodeURIComponent(project.currentTaskId)}` : ''}`}

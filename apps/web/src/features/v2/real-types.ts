@@ -6,6 +6,8 @@ export type R26Viewer = {
   roleCodes: string[];
   permissionCodes: string[];
   isSystemAdmin: boolean;
+  roleLabel: string;
+  organizationStatus: 'SYNCED' | 'MISSING_DEPARTMENT';
   authSource: string;
 };
 
@@ -33,6 +35,10 @@ export type R26DashboardTask = {
   nodeCode: string;
   nodeName: string;
   status: string;
+  assigneeUserId: string | null;
+  assigneeUserName: string | null;
+  assigneeDepartmentId: string | null;
+  assigneeDepartmentName: string | null;
   dueAt: string | null;
   isOverdue: boolean;
   overdueDays: number;
@@ -98,6 +104,7 @@ export type R26ProjectListItem = {
   progressText: string;
   currentTaskId: string | null;
   currentTaskOwnerName: string | null;
+  currentTaskDepartmentName: string | null;
   currentTaskDueAt: string | null;
   latestTaskUpdatedAt: string;
   stall: {
@@ -156,20 +163,32 @@ export type R26FlowMapNode = {
     finalDecision: string | null;
   } | null;
   primaryDepartment: {
-    id: string;
+    id: string | null;
     code: string;
     name: string;
+    directoryCode: string | null;
+    directoryName: string | null;
+    isDirectoryMatched: boolean;
   } | null;
   collaboratorDepartments: Array<{
-    id: string;
+    id: string | null;
     code: string;
     name: string;
+    directoryCode: string | null;
+    directoryName: string | null;
+    isDirectoryMatched: boolean;
   }>;
   suggestedOwner: R26Person | null;
   collaborators: R26Person[];
   reviewers: R26Person[];
   assignmentStatus: 'ASSIGNED' | 'SUGGESTED' | 'UNASSIGNED';
-  assignmentSource: 'WORKFLOW_TASK' | 'PROJECT_MEMBER_RULE' | 'DEPARTMENT_POOL' | 'NONE';
+  assignmentSource:
+    | 'TASK_OVERRIDE'
+    | 'PROJECT_NODE_OVERRIDE'
+    | 'PROJECT_DEPARTMENT_LEAD'
+    | 'PROJECT_DEFAULT_ASSIGNEE'
+    | 'SINGLE_ELIGIBLE_MEMBER'
+    | 'UNASSIGNED';
   availableActions: Array<{ action: string; label: string }>;
 };
 
@@ -300,9 +319,11 @@ export type R26WorkspaceResponse = {
     colorName: string | null;
     currentStepCode: string | null;
     currentStepName: string;
+    currentStepNumber: number;
     currentOwner: string | null;
     currentDepartment: string | null;
     progressPercent: number;
+    progressText: string;
     overdueCount: number;
     monthlyReviewProgress: {
       completed: number;
@@ -360,20 +381,26 @@ export type R26WorkspaceResponse = {
     stepName: string;
     taskId: string | null;
     primaryDepartment: {
-      id: string;
+      id: string | null;
       code: string;
       name: string;
+      directoryCode: string | null;
+      directoryName: string | null;
+      isDirectoryMatched: boolean;
     } | null;
     collaboratorDepartments: Array<{
-      id: string;
+      id: string | null;
       code: string;
       name: string;
+      directoryCode: string | null;
+      directoryName: string | null;
+      isDirectoryMatched: boolean;
     }>;
     suggestedOwner: R26Person | null;
     collaborators: R26Person[];
     reviewers: R26Person[];
     assignmentStatus: 'ASSIGNED' | 'SUGGESTED' | 'UNASSIGNED';
-    assignmentSource: string;
+    assignmentSource: R26FlowMapNode['assignmentSource'];
     unassignedReason: string | null;
     availableActions: Array<{ action: string; label: string }>;
   }>;

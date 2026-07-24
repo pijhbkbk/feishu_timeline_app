@@ -1,81 +1,114 @@
 import { WorkflowNodeCode } from '@prisma/client';
 
-export type R26AssignmentRule = {
-  primaryDepartmentCode: string;
-  collaboratorDepartmentCodes: string[];
+export type R26DepartmentRule = {
+  code: string;
+  name: string;
+  directoryCode?: string;
 };
+
+export type R26AssignmentRule = {
+  primaryDepartment: R26DepartmentRule;
+  collaboratorDepartments: R26DepartmentRule[];
+  reviewerDepartments?: R26DepartmentRule[];
+};
+
+const department = (
+  code: string,
+  name: string,
+  directoryCode?: string,
+): R26DepartmentRule => ({
+  code,
+  name,
+  ...(directoryCode ? { directoryCode } : {}),
+});
+
+const MARKETING = department('MARKETING', '营销公司');
+const PAINT_PROCESS = department('PAINT_PROCESS', '涂装工艺部', 'PROCESS');
+const PAINT_PLANT = department('PAINT_PLANT', '涂装厂');
+const PRODUCTION = department('PRODUCTION', '生产部');
+const QUALITY = department('QUALITY_MANAGEMENT', '质量管理部', 'QUALITY');
+const PURCHASING = department('PURCHASING', '采购部');
+const PROCUREMENT_CENTER = department('PROCUREMENT_CENTER', '采购中心', 'PURCHASING');
+const FINANCE = department('FINANCE', '财务部');
+const PROJECT_MANAGEMENT = department('PROJECT_MANAGEMENT', '项目管理部', 'PMO');
+const REVIEW_COMMITTEE = department('REVIEW', '评审委员会');
 
 export const R26_ASSIGNMENT_RULES: Record<WorkflowNodeCode, R26AssignmentRule> = {
   [WorkflowNodeCode.PROJECT_INITIATION]: {
-    primaryDepartmentCode: 'PMO',
-    collaboratorDepartmentCodes: [],
+    primaryDepartment: MARKETING,
+    collaboratorDepartments: [PAINT_PROCESS],
   },
   [WorkflowNodeCode.DEVELOPMENT_REPORT]: {
-    primaryDepartmentCode: 'PROCESS',
-    collaboratorDepartmentCodes: [],
+    primaryDepartment: MARKETING,
+    collaboratorDepartments: [PAINT_PROCESS],
   },
   [WorkflowNodeCode.PAINT_DEVELOPMENT]: {
-    primaryDepartmentCode: 'PROCESS',
-    collaboratorDepartmentCodes: [],
+    primaryDepartment: PURCHASING,
+    collaboratorDepartments: [MARKETING],
   },
   [WorkflowNodeCode.SAMPLE_COLOR_CONFIRMATION]: {
-    primaryDepartmentCode: 'QUALITY',
-    collaboratorDepartmentCodes: ['REVIEW'],
+    primaryDepartment: PAINT_PROCESS,
+    collaboratorDepartments: [MARKETING],
+    reviewerDepartments: [REVIEW_COMMITTEE],
   },
   [WorkflowNodeCode.COLOR_NUMBERING]: {
-    primaryDepartmentCode: 'PMO',
-    collaboratorDepartmentCodes: [],
+    primaryDepartment: PAINT_PROCESS,
+    collaboratorDepartments: [],
   },
   [WorkflowNodeCode.PAINT_PROCUREMENT]: {
-    primaryDepartmentCode: 'PURCHASING',
-    collaboratorDepartmentCodes: [],
+    primaryDepartment: PURCHASING,
+    collaboratorDepartments: [],
   },
   [WorkflowNodeCode.STANDARD_BOARD_PRODUCTION]: {
-    primaryDepartmentCode: 'PROCESS',
-    collaboratorDepartmentCodes: [],
+    primaryDepartment: PAINT_PROCESS,
+    collaboratorDepartments: [PAINT_PLANT],
   },
   [WorkflowNodeCode.BOARD_DETAIL_UPDATE]: {
-    primaryDepartmentCode: 'PROCESS',
-    collaboratorDepartmentCodes: [],
+    primaryDepartment: PAINT_PROCESS,
+    collaboratorDepartments: [],
   },
   [WorkflowNodeCode.PERFORMANCE_TEST]: {
-    primaryDepartmentCode: 'QUALITY',
-    collaboratorDepartmentCodes: [],
+    primaryDepartment: QUALITY,
+    collaboratorDepartments: [PAINT_PROCESS],
   },
   [WorkflowNodeCode.FIRST_UNIT_PRODUCTION_PLAN]: {
-    primaryDepartmentCode: 'PMO',
-    collaboratorDepartmentCodes: [],
+    primaryDepartment: MARKETING,
+    collaboratorDepartments: [PRODUCTION],
   },
   [WorkflowNodeCode.TRIAL_PRODUCTION]: {
-    primaryDepartmentCode: 'PROCESS',
-    collaboratorDepartmentCodes: [],
+    primaryDepartment: PAINT_PROCESS,
+    collaboratorDepartments: [PAINT_PLANT],
   },
   [WorkflowNodeCode.CAB_REVIEW]: {
-    primaryDepartmentCode: 'QUALITY',
-    collaboratorDepartmentCodes: ['REVIEW'],
+    primaryDepartment: QUALITY,
+    collaboratorDepartments: [PAINT_PROCESS, PAINT_PLANT, MARKETING],
+    reviewerDepartments: [REVIEW_COMMITTEE],
   },
   [WorkflowNodeCode.DEVELOPMENT_ACCEPTANCE]: {
-    primaryDepartmentCode: 'FINANCE',
-    collaboratorDepartmentCodes: [],
+    primaryDepartment: MARKETING,
+    collaboratorDepartments: [FINANCE],
+    reviewerDepartments: [FINANCE],
   },
   [WorkflowNodeCode.COLOR_CONSISTENCY_REVIEW]: {
-    primaryDepartmentCode: 'QUALITY',
-    collaboratorDepartmentCodes: ['REVIEW'],
+    primaryDepartment: PAINT_PROCESS,
+    collaboratorDepartments: [QUALITY, PAINT_PLANT],
+    reviewerDepartments: [REVIEW_COMMITTEE],
   },
   [WorkflowNodeCode.MASS_PRODUCTION_PLAN]: {
-    primaryDepartmentCode: 'PMO',
-    collaboratorDepartmentCodes: [],
+    primaryDepartment: PRODUCTION,
+    collaboratorDepartments: [PAINT_PLANT],
   },
   [WorkflowNodeCode.MASS_PRODUCTION]: {
-    primaryDepartmentCode: 'PROCESS',
-    collaboratorDepartmentCodes: [],
+    primaryDepartment: PAINT_PLANT,
+    collaboratorDepartments: [PRODUCTION],
   },
   [WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW]: {
-    primaryDepartmentCode: 'QUALITY',
-    collaboratorDepartmentCodes: ['REVIEW'],
+    primaryDepartment: QUALITY,
+    collaboratorDepartments: [PROCUREMENT_CENTER, PAINT_PROCESS, PAINT_PLANT],
+    reviewerDepartments: [REVIEW_COMMITTEE],
   },
   [WorkflowNodeCode.PROJECT_CLOSED]: {
-    primaryDepartmentCode: 'PMO',
-    collaboratorDepartmentCodes: ['REVIEW'],
+    primaryDepartment: MARKETING,
+    collaboratorDepartments: [PAINT_PROCESS, PROJECT_MANAGEMENT],
   },
 };

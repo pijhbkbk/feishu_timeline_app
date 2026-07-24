@@ -215,11 +215,29 @@ export class ProjectsService {
               id: true,
               nodeCode: true,
               nodeName: true,
+              taskRound: true,
               isActive: true,
               dueAt: true,
               status: true,
               updatedAt: true,
-              assigneeUser: { select: { id: true, name: true } },
+              assigneeUser: {
+                select: {
+                  id: true,
+                  name: true,
+                  department: {
+                    select: {
+                      id: true,
+                      name: true,
+                    },
+                  },
+                },
+              },
+              assigneeDepartment: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
             },
             orderBy: [{ dueAt: 'asc' }, { updatedAt: 'desc' }],
           },
@@ -435,7 +453,11 @@ export class ProjectsService {
           projectId,
         },
         include: {
-          assigneeUser: true,
+          assigneeUser: {
+            include: {
+              department: true,
+            },
+          },
           assigneeDepartment: true,
         },
         orderBy: [{ createdAt: 'asc' }, { taskRound: 'asc' }],
@@ -554,8 +576,9 @@ export class ProjectsService {
           task?.reviewPassAt?.toISOString() ??
           task?.returnedAt?.toISOString() ??
           null,
-        responsibleDepartment: task?.assigneeDepartment?.name ?? null,
-        ownerName: task?.assigneeUser?.name ?? project.ownerUser?.name ?? null,
+        responsibleDepartment:
+          task?.assigneeDepartment?.name ?? task?.assigneeUser?.department?.name ?? null,
+        ownerName: task?.assigneeUser?.name ?? null,
         output:
           nodeReviews.length > 0
             ? `评审记录 ${nodeReviews.length} 条`
@@ -686,6 +709,10 @@ export class ProjectsService {
       null;
     const monthlyReviewNode = nodeByCode.get(WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW);
     const monthlyReview = monthlyReviewNode?.monthlyReview ?? null;
+    const currentStepNumber = timeline.project.currentNodeCode
+      ? WORKFLOW_NODE_META_MAP[timeline.project.currentNodeCode].sequence / 10
+      : 0;
+    const totalStepCount = this.getOrderedWorkflowNodeCodes().length;
 
     return {
       projectId: timeline.project.id,
@@ -694,10 +721,11 @@ export class ProjectsService {
       colorName: timeline.project.colorName,
       currentStepCode: timeline.project.currentNodeCode,
       currentStepName: timeline.project.currentNodeName ?? '未开始',
-      currentOwner: currentNode?.ownerName ?? timeline.project.ownerName,
-      currentDepartment:
-        currentNode?.departmentName ?? timeline.project.ownerDepartmentName ?? null,
-      progressPercent: timeline.project.progressPercent,
+      currentStepNumber,
+      currentOwner: currentNode?.ownerName ?? null,
+      currentDepartment: currentNode?.departmentName ?? null,
+      progressPercent: Math.round((currentStepNumber / totalStepCount) * 100),
+      progressText: `${currentStepNumber} / ${totalStepCount}`,
       overdueCount: nodes.filter((node) => node.isOverdue).length,
       monthlyReviewProgress: monthlyReview
         ? {
@@ -1536,11 +1564,29 @@ export class ProjectsService {
             id: true;
             nodeCode: true;
             nodeName: true;
+            taskRound: true;
             isActive: true;
             dueAt: true;
             status: true;
             updatedAt: true;
-            assigneeUser: { select: { id: true; name: true } };
+            assigneeUser: {
+              select: {
+                id: true;
+                name: true;
+                department: {
+                  select: {
+                    id: true;
+                    name: true;
+                  };
+                };
+              };
+            };
+            assigneeDepartment: {
+              select: {
+                id: true;
+                name: true;
+              };
+            };
           };
         };
         taskBlockers: {
@@ -1559,7 +1605,16 @@ export class ProjectsService {
   ) {
     const riskLevel = this.computeRiskLevel(project);
     const now = new Date();
-    const currentTask = project.workflowTasks[0] ?? null;
+    const currentTask =
+      [...project.workflowTasks]
+        .filter((task) => task.nodeCode === project.currentNodeCode)
+        .sort(
+          (left, right) =>
+            right.taskRound - left.taskRound ||
+            right.updatedAt.getTime() - left.updatedAt.getTime(),
+        )[0] ??
+      project.workflowTasks[0] ??
+      null;
     const blocker = project.taskBlockers[0] ?? null;
     const overdueTask = project.workflowTasks.find((task) => this.isTaskOverdue(task, now)) ?? null;
     const stalledSince = blocker?.createdAt ?? overdueTask?.dueAt ?? null;
@@ -1593,6 +1648,10 @@ export class ProjectsService {
       currentTaskId: currentTask?.id ?? null,
       currentTaskOwnerId: currentTask?.assigneeUser?.id ?? null,
       currentTaskOwnerName: currentTask?.assigneeUser?.name ?? project.ownerUser?.name ?? null,
+      currentTaskDepartmentName:
+        currentTask?.assigneeDepartment?.name ??
+        currentTask?.assigneeUser?.department?.name ??
+        null,
       currentTaskDueAt: this.serializeDate(currentTask?.dueAt ?? null),
       latestTaskUpdatedAt: currentTask?.updatedAt.toISOString() ?? project.updatedAt.toISOString(),
       stall: blocker || overdueTask

@@ -301,3 +301,34 @@ ZERO_BUSINESS_WRITE_REQUESTS
 AWAITING_PRODUCT_OWNER_REAL_DATA_CONFIRMATION
 STOP_BEFORE_GATE3
 ```
+
+### Gate 2 数据口径修复（2026-07-24）
+
+- 统一工作台、项目卡、工作区和流程详情中的当前步骤、负责人、责任部门与轮次；
+  当前真实项目均显示 `12 / 18`、李晓晨、质量管理部、第 1 轮。
+- 第 17 步改为读取月度计划的真实完成数，当前 staging 为 `0 / 12`，不再固定显示
+  `3 / 12`。
+- 未生成节点保持“负责人待分配 / 尚未生成”；第 15 步按服务端规则显示生产部，
+  公司目录未配置该部门时不从公司有效用户中任意选择负责人。
+- 18 节点主责/协同/评审部门规则按业务责任表重建；候选池只包含当前项目有效成员。
+- 项目卡新增责任部门；真实地图可访问名称使用当前项目颜色名。
+- 只替换独立 staging API/Web 构建产物，未执行 migration 或 seed；容器全部 healthy。
+- 李晓晨飞书账号浏览器复核：18 个节点，第 12 步第 1 轮，第 15 步待分配，
+  第 17 步 `0 / 12`，console error 0。
+- nginx 复核：`/api/v2/* GET 16`，POST/PUT/PATCH/DELETE 均为 0。
+- 截图：`docs/product/evidence/R26_GATE2/16-data-consistency-step15-1440.png`。
+- 登记 `R26-DATA-001`：历史演示成员和 UAT 项目后续经数据治理审批处理，本轮没有
+  修改或删除数据库业务数据。
+
+最终回归：lint、typecheck、Web 90 项测试、API 231 项测试、Web/API production
+build、Prisma validate 和 `git diff --check` 全部 PASS。
+
+决定保持：
+
+```text
+R26_GATE2_IMPLEMENTED
+READ_ONLY_REAL_DATA_CONNECTED
+ZERO_BUSINESS_WRITE_REQUESTS
+AWAITING_PRODUCT_OWNER_REAL_DATA_CONFIRMATION
+STOP_BEFORE_GATE3
+```

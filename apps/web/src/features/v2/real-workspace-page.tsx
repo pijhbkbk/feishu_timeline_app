@@ -141,7 +141,7 @@ export function RealWorkspacePage({ projectId }: { projectId: string }) {
         <dl className="r26-project-header__facts">
           <div><dt>当前工序</dt><dd>{data.flowMap.currentStepName}</dd></div>
           <div><dt>负责人</dt><dd>{data.flowMap.currentOwner ?? '尚未分配'} · {data.flowMap.currentDepartment ?? '部门待定'}</dd></div>
-          <div><dt>流程进度</dt><dd>{completedNodeCount(data.flowMap.nodes)} / 18</dd></div>
+          <div><dt>流程进度</dt><dd>{data.flowMap.progressText}</dd></div>
           <div><dt>最近更新</dt><dd>{formatDateTime(data.flowMap.lastUpdatedAt)}</dd></div>
         </dl>
       </header>
@@ -163,6 +163,7 @@ export function RealWorkspacePage({ projectId }: { projectId: string }) {
             attention,
           }}
           ignorePrototypeOverrides
+          ariaLabel={`${data.flowMap.colorName ?? data.project.name}项目固定流程地图`}
         />
         {selectedNode ? (
           <RealTaskDetail
@@ -227,7 +228,7 @@ export function RealWorkspacePage({ projectId }: { projectId: string }) {
           <div className="r26-assignment-table__header" role="row">
             <span>步骤 / 工序</span>
             <span>主责部门</span>
-            <span>建议负责人</span>
+            <span>当前 / 建议负责人</span>
             <span>协同 / 评审</span>
             <span>匹配状态</span>
           </div>
@@ -297,7 +298,9 @@ function RealTaskDetail({
     <aside className="r26-task-detail" aria-label={`${node.name}工序详情`} data-testid="r26-task-detail">
       <header className="r26-task-detail__header">
         <div>
-          <p>第 {String(node.step).padStart(2, '0')} 步 · 第 {node.round || 1} 轮</p>
+          <p>
+            第 {String(node.step).padStart(2, '0')} 步 · {node.taskId ? `第 ${node.round || 1} 轮` : '尚未生成'}
+          </p>
           <h2>{node.name}</h2>
           <StatusPill tone={statusTone(node.status)}>{STATUS_LABELS[node.status]}</StatusPill>
         </div>
@@ -314,7 +317,12 @@ function RealTaskDetail({
 
         <DetailSection title="责任信息">
           <DetailGrid items={[
-            ['负责人', task?.owner?.name ?? rawNode?.suggestedOwner?.name ?? '尚未分配'],
+            [
+              '负责人',
+              task?.owner?.name ??
+                (rawNode?.taskId ? rawNode.suggestedOwner?.name : null) ??
+                '负责人待分配',
+            ],
             ['主责部门', task?.department.name ?? rawNode?.primaryDepartment?.name ?? '尚未匹配'],
             ['协同人', rawNode ? rawNode.collaborators.map((person) => person.name).join('、') || '无' : task?.collaborators.map((person) => person.name).join('、') || '无'],
             ['评审人', rawNode ? rawNode.reviewers.map((person) => person.name).join('、') || '无' : task?.approvers.map((person) => person.name).join('、') || '无'],
@@ -420,6 +428,8 @@ function toDisplayNode(node: R26FlowMapNode): R26FlowNode {
   };
   const status = isNodeStatus(node.status) ? node.status : 'NOT_STARTED';
 
+  const hasTask = node.taskId !== null;
+
   return {
     step: node.stepNumber,
     code: node.nodeCode,
@@ -431,15 +441,19 @@ function toDisplayNode(node: R26FlowMapNode): R26FlowNode {
     height: geometry.height,
     shape: geometry.shape,
     status,
-    owner: node.ownerName ?? node.suggestedOwner?.name ?? '尚未分配',
+    owner: hasTask ? node.ownerName ?? '负责人待分配' : '负责人待分配',
     department: node.departmentName ?? node.primaryDepartment?.name ?? '部门待定',
-    deadline: node.isOverdue
+    deadline: !hasTask
+      ? '尚未生成'
+      : node.isOverdue
       ? `逾期 ${node.overdueDays} 天`
       : node.dueAt
         ? formatDateTime(node.dueAt)
         : '等待前置工序',
     taskId: node.taskId,
     round: node.roundNo || 1,
+    monthlyCompleted: node.monthlyReview?.completedPeriods ?? 0,
+    monthlyTotal: node.monthlyReview?.totalPeriods ?? 12,
     collaborators: node.collaborators.map((person) => person.name),
     approver: node.reviewers.map((person) => person.name).join('、') || '无',
     startedAt: '任务详情中查看',
@@ -469,6 +483,9 @@ function statusTone(status: R26NodeStatus) {
 }
 
 function taskConclusion(node: R26FlowNode, task: R26TaskDetail | null) {
+  if (!node.taskId) {
+    return '该工序尚未生成，负责人保持待分配。';
+  }
   if (task?.colorExitSummary) {
     return task.colorExitSummary.finalDecisionLabel
       ? `人工决定：${task.colorExitSummary.finalDecisionLabel}`
@@ -484,10 +501,6 @@ function taskConclusion(node: R26FlowNode, task: R26TaskDetail | null) {
     return `${STATUS_LABELS[node.status]}，仍缺 ${node.missingMaterials.length} 项必交材料。`;
   }
   return `${STATUS_LABELS[node.status]}，当前材料记录无缺失项。`;
-}
-
-function completedNodeCount(nodes: R26FlowMapNode[]) {
-  return nodes.filter((node) => node.status === 'COMPLETED' || node.status === 'COMPLETED_LATE').length;
 }
 
 function formatDateTime(value: string | null) {
@@ -513,10 +526,12 @@ function assignmentStatusLabel(status: string) {
 
 function assignmentSourceLabel(source: string) {
   const labels: Record<string, string> = {
-    WORKFLOW_TASK: '来自真实工序任务',
-    PROJECT_MEMBER_RULE: '来自项目成员规则',
-    DEPARTMENT_POOL: '来自部门有效用户候选池',
-    NONE: '没有匹配来源',
+    TASK_OVERRIDE: '来自当前真实工序任务',
+    PROJECT_NODE_OVERRIDE: '来自项目工序专属配置',
+    PROJECT_DEPARTMENT_LEAD: '来自项目部门负责人',
+    PROJECT_DEFAULT_ASSIGNEE: '来自项目默认工序执行人',
+    SINGLE_ELIGIBLE_MEMBER: '来自项目内唯一符合条件成员',
+    UNASSIGNED: '没有可确定的项目负责人',
   };
   return labels[source] ?? source;
 }

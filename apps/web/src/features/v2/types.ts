@@ -28,6 +28,8 @@ export type R26FlowNode = {
   deadline: string;
   taskId: string | null;
   round: number;
+  monthlyCompleted?: number;
+  monthlyTotal?: number;
   collaborators: string[];
   approver: string;
   startedAt: string;

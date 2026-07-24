@@ -4267,3 +4267,74 @@ ZERO_BUSINESS_WRITE_REQUESTS
 AWAITING_PRODUCT_OWNER_REAL_DATA_CONFIRMATION
 STOP_BEFORE_GATE3
 ```
+
+---
+
+### Round R26_PRODUCT_UI_RECOVERY_GATE2_DATA_CONSISTENCY_FIX
+
+#### Goal And Scope
+
+- 修复产品负责人复核中发现的 Gate 2 真实数据口径不一致。
+- 继续限定在独立 staging 和 GET-only V2 读模型；不修改 V1、Prisma schema、
+  migration、状态机、数据库业务数据或 production。
+
+#### Exact Changes
+
+- 当前步骤统一为流程元数据序号：项目卡和工作区均显示 `12 / 18`。
+- 工作台、项目卡、工作区和任务详情统一显示当前真实负责人和服务端主责部门；
+  李晓晨未同步组织部门时显示“组织部门待同步”。
+- 第 12 步读取真实 `taskRound`；第 17 步读取月度计划实际完成数；未生成节点不再把
+  建议人展示为现任负责人。
+- 按业务责任表重建 18 节点主责、协同和评审部门规则；候选人仅从当前项目有效成员
+  中选择，无法唯一确定时保持未分配并返回原因。
+- 项目卡新增责任部门；地图可访问名称改为当前项目颜色名。
+- 新增 API 分配/责任部门测试与 Web 真实口径契约测试。
+
+#### Staging Evidence
+
+```text
+工作台 / 项目卡 / 工作区：
+  当前工序=样车驾驶室评审
+  负责人=李晓晨
+  责任部门=质量管理部
+  流程进度=12 / 18
+
+第 12 步=第 1 轮 / 已逾期
+第 15 步=生产部 / 负责人待分配 / 尚未生成
+第 17 步=0 / 12
+节点数量=18
+console error=0
+
+/api/v2/* GET=16
+POST=0 / PUT=0 / PATCH=0 / DELETE=0
+```
+
+- 证据：
+  `docs/product/evidence/R26_GATE2/16-data-consistency-step15-1440.png`。
+- staging API/Web/nginx healthy；未运行 migration 或 seed。
+- `R26-DATA-001` 已登记，历史演示成员和 UAT 项目本轮未修改或删除。
+
+#### Validation
+
+```text
+pnpm install --frozen-lockfile                                      PASS
+pnpm lint                                                           PASS
+pnpm typecheck                                                      PASS
+pnpm test                                                           PASS（Web 90 / API 231）
+NEXT_PUBLIC_R26_V2_PROTOTYPE=true
+NEXT_PUBLIC_R26_V2_DATA_MODE=read-only-real
+pnpm --filter @feishu-timeline/web build                            PASS
+pnpm --filter @feishu-timeline/api build                            PASS
+pnpm --filter @feishu-timeline/api prisma:validate                  PASS
+git diff --check                                                    PASS
+```
+
+#### Decision
+
+```text
+R26_GATE2_IMPLEMENTED
+READ_ONLY_REAL_DATA_CONNECTED
+ZERO_BUSINESS_WRITE_REQUESTS
+AWAITING_PRODUCT_OWNER_REAL_DATA_CONFIRMATION
+STOP_BEFORE_GATE3
+```

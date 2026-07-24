@@ -183,7 +183,7 @@ function RealDashboardPage() {
         <span>当前页面不提交进展、不上传材料，也不改变流程状态。</span>
       </div>
       <PageIntro
-        eyebrow={`今天 · ${viewer.departmentName ?? '未设置部门'}`}
+        eyebrow={`${viewer.roleLabel} · ${viewer.departmentName ?? '组织部门待同步'}`}
         title={`${viewer.name}，今天先处理最重要的一项。`}
         description={
           currentTask
@@ -239,8 +239,8 @@ function RealDashboardPage() {
               <strong>{formatStep(currentTask.nodeCode)} · {currentTask.nodeName}</strong>
             </div>
             <dl className="r26-real-task-summary">
-              <div><dt>负责人</dt><dd>{viewer.name}</dd></div>
-              <div><dt>责任部门</dt><dd>{viewer.departmentName ?? '未设置'}</dd></div>
+              <div><dt>负责人</dt><dd>{currentTask.assigneeUserName ?? '负责人待分配'}</dd></div>
+              <div><dt>责任部门</dt><dd>{currentTask.assigneeDepartmentName ?? '责任部门待分配'}</dd></div>
               <div><dt>任务状态</dt><dd>{taskStatusLabel(currentTask.status)}</dd></div>
               <div><dt>材料缺口</dt><dd>{currentTask.materials.missing} 项</dd></div>
             </dl>
