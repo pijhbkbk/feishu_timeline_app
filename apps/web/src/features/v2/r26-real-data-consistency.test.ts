@@ -2,6 +2,8 @@ import { readFileSync } from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
 
+import { formatV2ActivitySummary } from './real-ui';
+
 const dashboardSource = readFileSync(
   new URL('./dashboard-page.tsx', import.meta.url),
   'utf8',
@@ -46,5 +48,20 @@ describe('R26 Gate 2 real-data consistency contracts', () => {
     expect(workspaceSource).not.toContain(
       '{record.actorName} · {record.action}',
     );
+  });
+
+  it('localizes legacy material codes and hides unknown internal codes', () => {
+    expect(
+      formatV2ActivitySummary(
+        '替换工序材料 WORK_EVIDENCE，生成 V2',
+        '项目动态已更新',
+      ),
+    ).toBe('替换工序材料 工作证明材料，生成 V2');
+    expect(
+      formatV2ActivitySummary(
+        '材料状态 INTERNAL_MATERIAL_CODE 已更新',
+        '项目动态已更新',
+      ),
+    ).toBe('项目动态已更新');
   });
 });

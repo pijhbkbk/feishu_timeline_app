@@ -22,3 +22,22 @@ export function RealDataState({
     </div>
   );
 }
+
+export function formatV2ActivitySummary(
+  summary: string | null | undefined,
+  fallback: string,
+) {
+  if (!summary) return fallback;
+  const normalized = summary.trim();
+  if (normalized === 'Project created and workflow initialized automatically.') {
+    return '项目创建后已自动初始化流程。';
+  }
+  const localized = normalized.replace(
+    /\bWORK_EVIDENCE\b/gu,
+    '工作证明材料',
+  );
+  if (/\b[A-Z][A-Z0-9_]{2,}\b/u.test(localized)) {
+    return fallback;
+  }
+  return localized;
+}

@@ -769,8 +769,8 @@ export class R26ProgressMaterialService {
         materialType: input.materialType,
         replacesAttachmentId: replacement?.id ?? null,
         summary: replacement
-          ? `替换工序材料 ${input.materialType}，生成 V${replacement.versionNo + 1}`
-          : `上传工序材料 ${input.materialType}`,
+          ? `替换工序材料，生成 V${replacement.versionNo + 1}：${file.originalname}`
+          : `上传工序材料：${file.originalname}`,
       });
       const result = {
         action,

@@ -321,6 +321,34 @@ describe('R26 Gate 3B progress and material service', () => {
     );
   });
 
+  it('writes a user-facing material filename instead of an internal material code', async () => {
+    const { service, attachmentCreate } = createService();
+
+    await service.uploadMaterial(
+      'task-6',
+      {
+        materialType: 'WORK_EVIDENCE',
+        taskVersion: taskUpdatedAt.toISOString(),
+        idempotencyKey: 'r26-g3b:upload:filename-summary',
+      },
+      {
+        originalname: '到货确认记录.pdf',
+        mimetype: 'application/pdf',
+        size: 64,
+        buffer: Buffer.from('%PDF-1.4\n'),
+      },
+      actor,
+      'request-upload-summary',
+    );
+
+    expect(attachmentCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        materialType: 'WORK_EVIDENCE',
+        summary: '上传工序材料：到货确认记录.pdf',
+      }),
+    );
+  });
+
   it('resolves the previous blocker before recording the new blocker summary', async () => {
     const { service, tx, activityLogs } = createService();
     tx.taskBlocker.findMany.mockResolvedValue([

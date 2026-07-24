@@ -6,7 +6,7 @@ import { CheckIcon } from './icons';
 import { useR26PrototypeStore } from './prototype-store';
 import { isR26ReadOnlyRealDataEnabled } from './r26-data-mode';
 import { useR26RealData } from './r26-real-data-context';
-import { RealDataState } from './real-ui';
+import { formatV2ActivitySummary, RealDataState } from './real-ui';
 import { Fact, PageIntro, PrimaryLink, StatusPill } from './ui';
 
 const stages = ['需求立项', '开发确认', '采购与验证', '试制评审', '批量生产', '退出跟踪'];
@@ -304,7 +304,12 @@ function RealDashboardPage() {
               <li key={activity.id}>
                 <span aria-hidden="true" />
                 <div>
-                  <strong>{activity.summary}</strong>
+                  <strong>
+                    {formatV2ActivitySummary(
+                      activity.summary,
+                      '项目动态已更新',
+                    )}
+                  </strong>
                   <small>{activity.actorName} · {formatDateTime(activity.createdAt)}</small>
                 </div>
               </li>

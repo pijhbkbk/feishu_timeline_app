@@ -21,7 +21,7 @@ import type {
   R26TaskResponse,
   R26WorkspaceResponse,
 } from './real-types';
-import { RealDataState } from './real-ui';
+import { formatV2ActivitySummary, RealDataState } from './real-ui';
 import type { R26FlowNode, R26NodeStatus } from './types';
 import { StatusPill } from './ui';
 import { useR26ReadOnlyData } from './use-r26-readonly-data';
@@ -1425,18 +1425,4 @@ function exitLabel(value: string | null | undefined) {
     OBSERVE: '建议观察',
   };
   return value ? labels[value] ?? value : null;
-}
-
-function formatV2ActivitySummary(
-  summary: string | null | undefined,
-  fallback: string,
-) {
-  if (!summary) return fallback;
-  if (summary === 'Project created and workflow initialized automatically.') {
-    return '项目创建后已自动初始化流程。';
-  }
-  if (/^[A-Z][A-Z0-9_-]*(?:\s+[A-Z0-9_-]+)*$/u.test(summary.trim())) {
-    return fallback;
-  }
-  return summary;
 }
