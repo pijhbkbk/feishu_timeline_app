@@ -4271,6 +4271,74 @@ STOP_BEFORE_GATE3
 
 ---
 
+### Round R26P_V2_PRODUCTION_PROMOTION
+
+#### Scope
+
+- 产品负责人批准 Gate 3D 后，按串行门禁推送最终源码、建立 release 分支、提升正式
+  V2 路由、执行安全快检和全量回归、创建不可变构建、备份生产数据库并尝试发布。
+- 只有真实飞书 OAuth、受保护页面和有限业务 smoke 全部通过，才允许合并 `main`
+  和创建 RC tag。
+
+#### Exact Commits
+
+```text
+source branch          codex/r26-gate3c2-c3-d-full-lifecycle
+source commit          85a6267494b5ef4fc259ee836d52e7fc44f732a1
+release branch         release/r26-v2-production
+runtime commit         ef6ba4379a4fd9a64eeeabd91160b86d89d59a01
+production before      893b50f5b7ef1f54f840243d3b18dbe1e0f8dcd1
+production attempted   ef6ba4379a4fd9a64eeeabd91160b86d89d59a01
+production after       893b50f5b7ef1f54f840243d3b18dbe1e0f8dcd1
+origin/main            893b50f5b7ef1f54f840243d3b18dbe1e0f8dcd1
+```
+
+#### Passed Gates
+
+- 第一方 Critical/High/Medium、production dependency Critical/High、image
+  Critical/High 和 gitleaks finding 均为 0。
+- install、lint、typecheck、unit、Web/API build、Prisma validate、API E2E、
+  Playwright 62/62、diff check 全部通过。
+- 不可变 staging 构建与 runtime commit 绑定；未运行 seed。
+- 生产 PostgreSQL 备份
+  `/var/backups/feishu-timeline-db/20260724T232837Z/feishu-timeline.dump`
+  非空、SHA256、`pg_restore -l` 和隔离 schema 恢复演练通过。
+- 生产 exact runtime、三个 additive migration、五项服务、TLS、DNS、API health、
+  正式 V2 路由和 V1 fallback 技术检查通过。
+
+#### Failed Gate And Rollback
+
+- Gate 8 飞书授权页明确返回当前账号无应用使用权限；公司飞书会话只到达“扫描成功”，
+  未形成 callback 和受保护 session。
+- 未对生产真实项目执行任何写入；进展、材料和管理员审计 smoke 未执行。
+- 立即使用正式脚本恢复发布前 commit，不执行数据库 reset、强制 db push、seed 或
+  破坏性 down migration。
+- 回滚后 production HEAD/branch/worktree、五项服务、Nginx、public API health 和
+  failed unit 独立复核通过。
+
+#### Evidence
+
+- `docs/release/R26P_RELEASE_MANIFEST.md`
+- `docs/release/R26P_PRE_RELEASE_ACCEPTANCE.md`
+- `docs/release/R26P_PRODUCTION_DEPLOYMENT.md`
+- `docs/release/R26P_PRODUCTION_SMOKE.md`
+- `docs/release/R26P_ROLLBACK_RECORD.md`
+- `docs/release/R26P_OBSERVATION_LOG.md`
+- `docs/security/R26P_PRE_RELEASE_SECURITY_DELTA.md`
+
+#### Decision
+
+```text
+R26P=FAIL
+STATE=ROLLED_BACK
+MAIN_MERGE=NOT_CREATED
+CANDIDATE_TAG=NOT_CREATED
+PRODUCTION_WRITES=0
+NEXT_ACTION=FIX_FEISHU_APP_AVAILABILITY_AND_REPEAT_GATE8
+```
+
+---
+
 ### Round R26_GATE3C1_ORDINARY_TASK_COMPLETION
 
 #### Goal And Scope
