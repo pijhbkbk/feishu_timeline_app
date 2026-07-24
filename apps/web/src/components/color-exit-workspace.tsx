@@ -48,6 +48,14 @@ const COLOR_STATUS_LABELS: Record<string, string> = {
   EXITED: '已退出',
 };
 
+const PROJECT_STATUS_LABELS: Record<string, string> = {
+  DRAFT: '草稿',
+  ACTIVE: '进行中',
+  ON_HOLD: '已暂停',
+  COMPLETED: '已完成',
+  CANCELLED: '已取消',
+};
+
 export function ColorExitWorkspace({ projectId }: ColorExitWorkspaceProps) {
   const { user } = useAuth();
   const requestIdRef = useRef(0);
@@ -110,7 +118,10 @@ export function ColorExitWorkspace({ projectId }: ColorExitWorkspaceProps) {
       },
       {
         label: '项目状态',
-        value: workspace?.project.status ?? '未知',
+        value: workspace?.project.status
+          ? (PROJECT_STATUS_LABELS[workspace.project.status] ??
+            workspace.project.status)
+          : '未知',
       },
       {
         label: '退出记录数',

@@ -302,7 +302,9 @@ export type R26TaskDetail = {
 export type R26WorkspaceResponse = {
   dataSource: 'database';
   readOnly: false;
-  writeScope: 'PROJECT_MEMBERS_AND_ASSIGNMENTS';
+  writeScope:
+    | 'PROJECT_MEMBERS_AND_ASSIGNMENTS'
+    | 'FULL_STAGING_LIFECYCLE';
   viewer: R26Viewer;
   project: {
     id: string;

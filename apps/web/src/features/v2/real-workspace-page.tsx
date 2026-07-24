@@ -14,6 +14,10 @@ import {
   createGate3C1IdempotencyKey,
   r26Gate3C1Request,
 } from './r26-gate3c1-client';
+import {
+  getR26LifecycleActionByStep,
+  getR26LifecycleActionHref,
+} from './lifecycle-actions';
 import { R26_REAL_FLOW_GEOMETRY } from './real-flow-geometry';
 import type {
   R26AssignmentImpactResponse,
@@ -584,8 +588,8 @@ export function RealWorkspacePage({ projectId }: { projectId: string }) {
       data-source="database"
     >
       <div className="r26-readonly-banner r26-gate3a-banner" role="status">
-        <strong>Gate 3C1 · 普通工序完成</strong>
-        <span>第 1～11 步普通工序可在完成前检查后推进；第 12 步及后续专项动作仍关闭。</span>
+        <strong>完整生命周期 · 服务端裁决</strong>
+        <span>第 1～11 步使用完成前检查；第 12～18 步进入对应专项面板，所有推进和退回均由后端状态机决定。</span>
       </div>
       <header className="r26-project-header">
         <div className="r26-project-header__identity">
@@ -1471,12 +1475,37 @@ function RealTaskDetail({
       <footer className="r26-task-detail__footer">
         {task ? (
           <div className="r26-gate3b-task-actions">
-            <Link
-              className="r26-button r26-button--primary"
-              href={`/v2/progress?projectId=${encodeURIComponent(task.projectId)}&taskId=${encodeURIComponent(task.taskId)}`}
-            >
-              提交工作进展
-            </Link>
+            {getR26LifecycleActionByStep(task.stepNumber) ? (
+              <Link
+                className="r26-button r26-button--primary"
+                href={
+                  getR26LifecycleActionHref(
+                    task.projectId,
+                    task.stepNumber,
+                  )!
+                }
+              >
+                {
+                  getR26LifecycleActionByStep(task.stepNumber)!
+                    .primaryActionLabel
+                }
+              </Link>
+            ) : (
+              <Link
+                className="r26-button r26-button--primary"
+                href={`/v2/progress?projectId=${encodeURIComponent(task.projectId)}&taskId=${encodeURIComponent(task.taskId)}`}
+              >
+                提交工作进展
+              </Link>
+            )}
+            {getR26LifecycleActionByStep(task.stepNumber) ? (
+              <Link
+                className="r26-button r26-button--secondary"
+                href={`/v2/progress?projectId=${encodeURIComponent(task.projectId)}&taskId=${encodeURIComponent(task.taskId)}`}
+              >
+                提交工作进展
+              </Link>
+            ) : null}
             {isGate3C1CompletableTask(task) ? (
               <button
                 type="button"
@@ -1489,7 +1518,7 @@ function RealTaskDetail({
             <span>
               {task.stepNumber <= 11
                 ? '提交进展不会推进；完成工序必须先查看检查与影响。'
-                : '第 12 步及后续专项写入尚未开放。'}
+                : '专项动作由后端按冻结流程裁决，提交工作进展本身不会推进节点。'}
             </span>
           </div>
         ) : (
