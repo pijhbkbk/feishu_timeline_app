@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import {
   Prisma,
+  ProjectAssignmentSource,
   ProjectMemberType,
   WorkflowNodeCode,
   WorkflowTaskStatus,
@@ -314,6 +315,75 @@ describe('R26MemberAssignmentService security and command gates', () => {
       response: {
         code: 'COMPLETED_OR_HISTORICAL_TASK_IMMUTABLE',
       },
+    });
+  });
+
+  it('uses the transfer target only for active tasks when previewing member removal', () => {
+    const service = new R26MemberAssignmentService({} as never, {} as never);
+    const removedUserId = 'process-user';
+    const transferUserId = 'owner-1';
+    const assignmentByNode = new Map([
+      [
+        WorkflowNodeCode.SAMPLE_COLOR_CONFIRMATION,
+        {
+          nodeCode: WorkflowNodeCode.SAMPLE_COLOR_CONFIRMATION,
+          primaryDepartmentId: 'dept-process',
+          ownerUserId: removedUserId,
+          collaboratorUserIds: [removedUserId, 'quality-user'],
+          reviewerUserIds: [removedUserId],
+          assignmentSource:
+            ProjectAssignmentSource.PROJECT_DEFAULT_ASSIGNEE,
+        },
+      ],
+    ]);
+    const state = {
+      users: [
+        {
+          id: transferUserId,
+          name: '项目负责人',
+          departmentId: 'dept-pmo',
+          departmentName: '项目管理部',
+        },
+      ],
+      latestTaskByNode: new Map(),
+      assignmentByNode,
+    };
+
+    const previewState = (
+      service as unknown as {
+        buildPreviewState(
+          state: unknown,
+          proposedMembers: Array<{ userId: string }>,
+          input: {
+            memberChange: {
+              type: 'REMOVE';
+              userId: string;
+              transferToUserId: string;
+            };
+          },
+        ): { assignmentByNode: typeof assignmentByNode };
+      }
+    ).buildPreviewState(
+      state,
+      [{ userId: transferUserId }],
+      {
+        memberChange: {
+          type: 'REMOVE',
+          userId: removedUserId,
+          transferToUserId: transferUserId,
+        },
+      },
+    );
+    const previewAssignment = previewState.assignmentByNode.get(
+      WorkflowNodeCode.SAMPLE_COLOR_CONFIRMATION,
+    );
+
+    expect(previewAssignment).toMatchObject({
+      primaryDepartmentId: 'dept-process',
+      ownerUserId: null,
+      collaboratorUserIds: ['quality-user'],
+      reviewerUserIds: [],
+      assignmentSource: ProjectAssignmentSource.UNASSIGNED,
     });
   });
 });

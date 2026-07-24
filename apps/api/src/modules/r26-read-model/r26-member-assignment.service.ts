@@ -311,23 +311,50 @@ export class R26MemberAssignmentService {
           });
         }
 
-        await tx.projectNodeAssignment.updateMany({
-          where: { projectId, ownerUserId: userId },
-          data: transferUser
-            ? {
-                ownerUserId: transferUser.id,
-                primaryDepartmentId: transferUser.departmentId,
-                assignmentSource: ProjectAssignmentSource.PROJECT_NODE_OVERRIDE,
-                updatedById: actor.id,
-                version: { increment: 1 },
-              }
-            : {
-                ownerUserId: null,
-                assignmentSource: ProjectAssignmentSource.UNASSIGNED,
-                updatedById: actor.id,
-                version: { increment: 1 },
-              },
+        const nodeAssignments = await tx.projectNodeAssignment.findMany({
+          where: { projectId },
+          select: {
+            id: true,
+            ownerUserId: true,
+            collaboratorUserIds: true,
+            reviewerUserIds: true,
+          },
         });
+        for (const assignment of nodeAssignments) {
+          const collaboratorUserIds = this.parseUserIdList(
+            assignment.collaboratorUserIds,
+          ).filter((candidateId) => candidateId !== userId);
+          const reviewerUserIds = this.parseUserIdList(
+            assignment.reviewerUserIds,
+          ).filter((candidateId) => candidateId !== userId);
+          const ownerRemoved = assignment.ownerUserId === userId;
+          const collaboratorsChanged =
+            collaboratorUserIds.length !==
+            this.parseUserIdList(assignment.collaboratorUserIds).length;
+          const reviewersChanged =
+            reviewerUserIds.length !==
+            this.parseUserIdList(assignment.reviewerUserIds).length;
+
+          if (!ownerRemoved && !collaboratorsChanged && !reviewersChanged) {
+            continue;
+          }
+
+          await tx.projectNodeAssignment.update({
+            where: { id: assignment.id },
+            data: {
+              ...(ownerRemoved
+                ? {
+                    ownerUserId: null,
+                    assignmentSource: ProjectAssignmentSource.UNASSIGNED,
+                  }
+                : {}),
+              collaboratorUserIds,
+              reviewerUserIds,
+              updatedById: actor.id,
+              version: { increment: 1 },
+            },
+          });
+        }
 
         await tx.projectMember.deleteMany({
           where: { projectId, userId },
@@ -1400,12 +1427,26 @@ export class R26MemberAssignmentService {
         if (assignment.ownerUserId === memberChange.userId) {
           assignmentByNode.set(nodeCode, {
             ...assignment,
-            ownerUserId: transferUser.id,
-            primaryDepartmentId: transferUser.departmentId,
-            assignmentSource:
-              ProjectAssignmentSource.PROJECT_NODE_OVERRIDE,
+            ownerUserId: null,
+            collaboratorUserIds: assignment.collaboratorUserIds.filter(
+              (candidateId) => candidateId !== memberChange.userId,
+            ),
+            reviewerUserIds: assignment.reviewerUserIds.filter(
+              (candidateId) => candidateId !== memberChange.userId,
+            ),
+            assignmentSource: ProjectAssignmentSource.UNASSIGNED,
           });
+          continue;
         }
+        assignmentByNode.set(nodeCode, {
+          ...assignment,
+          collaboratorUserIds: assignment.collaboratorUserIds.filter(
+            (candidateId) => candidateId !== memberChange.userId,
+          ),
+          reviewerUserIds: assignment.reviewerUserIds.filter(
+            (candidateId) => candidateId !== memberChange.userId,
+          ),
+        });
       }
     }
 
