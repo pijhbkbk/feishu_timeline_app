@@ -380,7 +380,10 @@ export function RealProgressPage() {
       );
       if (response.attachment?.id) {
         setUploadedAttachmentIds((current) => [
-          ...new Set([...current, response.attachment!.id]),
+          ...new Set([
+            ...current.filter((id) => id !== replaceAttachmentId),
+            response.attachment!.id,
+          ]),
         ]);
       }
       setSelectedFile(null);
