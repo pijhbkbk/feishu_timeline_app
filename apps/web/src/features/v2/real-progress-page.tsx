@@ -1050,6 +1050,20 @@ export function RealProgressPage() {
                       >
                         {version.isCurrent ? '当前版本' : '历史版本'}
                       </StatusPill>
+                      {version.isCurrent ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMaterialType(
+                              version.materialType ?? 'WORK_EVIDENCE',
+                            );
+                            setReplaceAttachmentId(version.id);
+                            fileInputRef.current?.click();
+                          }}
+                        >
+                          替换版本
+                        </button>
+                      ) : null}
                       <a
                         href={`${API_BASE_URL}${version.downloadUrl}`}
                         target="_blank"
