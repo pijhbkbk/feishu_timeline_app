@@ -12,7 +12,7 @@ export function RealDataState({
       <section className="r26-real-state" role={error ? 'alert' : 'status'}>
         <span className={loading ? 'r26-real-state__spinner' : 'r26-real-state__error'} aria-hidden="true" />
         <strong>{error ? '真实数据暂时不可用' : label}</strong>
-        <p>{error ?? '正在通过只读 GET 接口连接独立 staging 数据。'}</p>
+        <p>{error ?? '正在连接业务数据，请稍候。'}</p>
         {error ? (
           <button type="button" className="r26-button r26-button--primary" onClick={() => window.location.reload()}>
             重新读取

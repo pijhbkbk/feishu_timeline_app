@@ -12,6 +12,7 @@ describe('R26 Gate 2 read-only client', () => {
     expect(isR26ReadOnlyRealDataEnabled(undefined)).toBe(false);
     expect(isR26ReadOnlyRealDataEnabled('prototype')).toBe(false);
     expect(isR26ReadOnlyRealDataEnabled('read-only-real')).toBe(true);
+    expect(isR26ReadOnlyRealDataEnabled('real')).toBe(true);
   });
 
   it('always sends a GET request without a request body', async () => {

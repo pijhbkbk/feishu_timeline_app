@@ -18,6 +18,7 @@ import {
   getR26LifecycleActionByStep,
   getR26LifecycleActionHref,
 } from './lifecycle-actions';
+import { toProductHref } from './production-ui';
 import { R26_REAL_FLOW_GEOMETRY } from './real-flow-geometry';
 import type {
   R26AssignmentImpactResponse,
@@ -593,7 +594,7 @@ export function RealWorkspacePage({ projectId }: { projectId: string }) {
       </div>
       <header className="r26-project-header">
         <div className="r26-project-header__identity">
-          <Link href="/v2/projects" aria-label="返回项目列表">项目列表</Link>
+          <Link href={toProductHref('/v2/projects')} aria-label="返回项目列表">项目列表</Link>
           <span aria-hidden="true">/</span>
           <div>
             <span className="r26-color-swatch r26-real-color" aria-hidden="true" />
@@ -1493,7 +1494,7 @@ function RealTaskDetail({
             ) : (
               <Link
                 className="r26-button r26-button--primary"
-                href={`/v2/progress?projectId=${encodeURIComponent(task.projectId)}&taskId=${encodeURIComponent(task.taskId)}`}
+                href={toProductHref(`/v2/progress?projectId=${encodeURIComponent(task.projectId)}&taskId=${encodeURIComponent(task.taskId)}`)}
               >
                 提交工作进展
               </Link>
@@ -1501,7 +1502,7 @@ function RealTaskDetail({
             {getR26LifecycleActionByStep(task.stepNumber) ? (
               <Link
                 className="r26-button r26-button--secondary"
-                href={`/v2/progress?projectId=${encodeURIComponent(task.projectId)}&taskId=${encodeURIComponent(task.taskId)}`}
+                href={toProductHref(`/v2/progress?projectId=${encodeURIComponent(task.projectId)}&taskId=${encodeURIComponent(task.taskId)}`)}
               >
                 提交工作进展
               </Link>
@@ -1587,7 +1588,7 @@ function CompletionDrawer({
         <header>
           <div>
             <p className="r26-eyebrow">
-              Gate 3C1 · 服务端状态机
+              完成前检查 · 服务端状态机
             </p>
             <h2 id="r26-completion-title">
               {state.success

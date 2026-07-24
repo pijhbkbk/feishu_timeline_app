@@ -12,6 +12,7 @@ import {
   getR26LifecycleActionBySlug,
   type R26LifecycleAction,
 } from '../../../../../../features/v2/lifecycle-actions';
+import { toProductHref } from '../../../../../../features/v2/production-ui';
 
 type R26LifecycleActionPageProps = {
   params: Promise<{
@@ -42,9 +43,9 @@ export default async function R26LifecycleActionPage({
         </div>
         <Link
           className="r26-button r26-button--secondary"
-          href={`/v2/projects/${encodeURIComponent(projectId)}?nodeCode=${encodeURIComponent(
+          href={toProductHref(`/v2/projects/${encodeURIComponent(projectId)}?nodeCode=${encodeURIComponent(
             nodeCodeForAction(action),
-          )}`}
+          )}`)}
         >
           返回流程地图
         </Link>

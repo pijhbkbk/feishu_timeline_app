@@ -7,5 +7,6 @@ describe('R26 V2 prototype feature gate', () => {
     expect(isR26V2PrototypeEnabled(undefined)).toBe(false);
     expect(isR26V2PrototypeEnabled('false')).toBe(false);
     expect(isR26V2PrototypeEnabled('true')).toBe(true);
+    expect(isR26V2PrototypeEnabled('v2')).toBe(true);
   });
 });

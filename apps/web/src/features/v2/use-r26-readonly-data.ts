@@ -28,7 +28,7 @@ export function useR26ReadOnlyData<T>(path: string | null) {
       .catch((requestError: unknown) => {
         setError(
           requestError instanceof DOMException && requestError.name === 'AbortError'
-            ? '真实数据读取超时，请检查 staging 服务后重试。'
+            ? '业务数据读取超时，请稍后重试。'
             : requestError instanceof Error
               ? requestError.message
               : '真实数据读取失败。',

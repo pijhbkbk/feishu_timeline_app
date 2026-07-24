@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react';
 
 import { r26Projects } from './fixtures';
 import { ChevronRightIcon } from './icons';
+import { toProductHref } from './production-ui';
 import { isR26ReadOnlyRealDataEnabled } from './r26-data-mode';
 import type { R26ProjectListItem, R26ProjectsResponse } from './real-types';
 import { RealDataState } from './real-ui';
@@ -174,8 +175,8 @@ function RealProjectsPage() {
       data-source="database"
     >
       <div className="r26-readonly-banner" role="status">
-        <strong>真实项目组合 · 服务端事实</strong>
-        <span>项目卡、风险和停滞原因来自 staging；业务写动作仅在授权的专项页面执行。</span>
+        <strong>实时项目组合</strong>
+        <span>项目卡、风险和停滞原因由服务端业务规则统一计算。</span>
       </div>
       <PageIntro
         eyebrow="项目组合"
@@ -214,7 +215,7 @@ function RealProjectsPage() {
         {projects.length === 0 ? (
           <div className="r26-empty-state">
             <strong>当前筛选下没有项目</strong>
-            <p>这是 staging 数据库的真实查询结果，可切换其他筛选继续查看。</p>
+            <p>当前权限范围内没有匹配项目，可切换其他筛选继续查看。</p>
           </div>
         ) : null}
       </section>
@@ -243,13 +244,13 @@ function RealProjectCard({ project }: { project: R26ProjectListItem }) {
       : isCompleted
         ? '下一步：查看项目记录与退出治理结果'
         : `下一步：${project.currentNodeName ?? '等待流程启动'}`;
-  const projectHref = `/v2/projects/${encodeURIComponent(project.id)}${
+  const projectHref = toProductHref(`/v2/projects/${encodeURIComponent(project.id)}${
     isCompleted
       ? ''
       : project.currentTaskId
         ? `?taskId=${encodeURIComponent(project.currentTaskId)}`
         : ''
-  }`;
+  }`);
 
   return (
     <article

@@ -11,7 +11,7 @@ import '../../styles/r26-v2.css';
 
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = {
-  title: '轻卡定制色 · V2',
+  title: '轻卡定制色开发管理系统',
   icons: {
     icon: '/r26-icon.svg',
   },

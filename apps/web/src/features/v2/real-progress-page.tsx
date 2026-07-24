@@ -29,6 +29,7 @@ import {
   CloseIcon,
   UploadIcon,
 } from './icons';
+import { toProductHref } from './production-ui';
 import { PageIntro, StatusPill } from './ui';
 import { useR26ReadOnlyData } from './use-r26-readonly-data';
 
@@ -492,13 +493,13 @@ export function RealProgressPage() {
           </div>
           <div className="r26-success-state__actions">
             <Link
-              href={`/v2/projects/${encodeURIComponent(projectId ?? task.projectId)}?taskId=${encodeURIComponent(task.taskId)}`}
+              href={toProductHref(`/v2/projects/${encodeURIComponent(projectId ?? task.projectId)}?taskId=${encodeURIComponent(task.taskId)}`)}
               className="r26-button r26-button--primary"
             >
               查看更新后的项目
             </Link>
             <Link
-              href="/v2/dashboard"
+              href={toProductHref('/v2/dashboard')}
               className="r26-button r26-button--secondary"
             >
               返回工作台
@@ -516,8 +517,8 @@ export function RealProgressPage() {
       data-source="database"
     >
       <div className="r26-readonly-banner r26-gate3b-banner" role="status">
-        <strong>Gate 3B · 真实进展与材料</strong>
-        <span>{data.notice}</span>
+        <strong>工序进展与材料</strong>
+        <span>进展、阻塞与材料版本将写入当前工序，并保留完整审计记录。</span>
       </div>
       <PageIntro
         eyebrow="60 秒完成"
@@ -678,8 +679,7 @@ export function RealProgressPage() {
               <div className="r26-work-complete-note">
                 <strong>“本次工作已完成”不会完成工序</strong>
                 <span>
-                  工序仍需通过后续“完成工序”操作正式推进，Gate 3B
-                  尚未开放该能力。
+                  提交本次进展后，请返回工序详情执行“完成工序”，由系统检查材料、阻塞和权限后推进。
                 </span>
               </div>
             ) : null}

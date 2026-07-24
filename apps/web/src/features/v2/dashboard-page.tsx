@@ -3,6 +3,7 @@
 import Link from 'next/link';
 
 import { CheckIcon } from './icons';
+import { toProductHref } from './production-ui';
 import { useR26PrototypeStore } from './prototype-store';
 import { isR26ReadOnlyRealDataEnabled } from './r26-data-mode';
 import { useR26RealData } from './r26-real-data-context';
@@ -179,15 +180,15 @@ function RealDashboardPage() {
       data-source="database"
     >
       <div className="r26-readonly-banner" role="status">
-        <strong>Gate 3B · 真实进展与材料</strong>
-        <span>可提交进展与工序材料；完成工序和流程推进仍保持关闭。</span>
+        <strong>实时工作台</strong>
+        <span>任务、材料、阻塞和流程状态由业务系统实时更新。</span>
       </div>
       <PageIntro
         eyebrow={`${viewer.roleLabel} · ${viewer.departmentName ?? '组织部门待同步'}`}
         title={`${viewer.name}，今天先处理最重要的一项。`}
         description={
           currentTask
-            ? '任务、材料和期限均来自独立 staging 数据库。'
+            ? '任务、材料和期限均来自当前业务数据。'
             : '当前账号没有待处理工序，可以查看可见项目的最近动态。'
         }
       />
@@ -236,7 +237,7 @@ function RealDashboardPage() {
             </div>
             <div className="r26-current-task__action">
               <PrimaryLink
-                href={`/v2/progress?projectId=${encodeURIComponent(currentTask.projectId)}&taskId=${encodeURIComponent(currentTask.taskId)}`}
+                href={toProductHref(`/v2/progress?projectId=${encodeURIComponent(currentTask.projectId)}&taskId=${encodeURIComponent(currentTask.taskId)}`)}
                 testId="dashboard-primary-action"
               >
                 提交工作进展
@@ -261,7 +262,7 @@ function RealDashboardPage() {
         <section className="r26-empty-state">
           <strong>当前没有待处理工序</strong>
           <p>项目和权限数据已经连接成功，可从项目列表继续查看。</p>
-          <Link className="r26-button r26-button--primary" href="/v2/projects">打开项目列表</Link>
+          <Link className="r26-button r26-button--primary" href={toProductHref('/v2/projects')}>打开项目列表</Link>
         </section>
       )}
 
@@ -297,7 +298,7 @@ function RealDashboardPage() {
               <p className="r26-eyebrow">最近动态</p>
               <h2>与你可见的更新</h2>
             </div>
-            <Link href="/v2/projects">查看项目</Link>
+            <Link href={toProductHref('/v2/projects')}>查看项目</Link>
           </div>
           <ul>
             {dashboard.recentActivity.slice(0, 5).map((activity) => (

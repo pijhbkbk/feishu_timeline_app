@@ -127,9 +127,14 @@ upsert_env apps/api/.env.production FEISHU_REDIRECT_URI \"\${PUBLIC_APP_URL}\${F
 upsert_env apps/api/.env.production FEISHU_AUTHORIZATION_ENDPOINT \"\$FEISHU_AUTHORIZATION_ENDPOINT\"
 upsert_env apps/api/.env.production AUTH_MOCK_ENABLED false
 upsert_env apps/api/.env.production OBJECT_STORAGE_LOCAL_ROOT /opt/feishu_timeline_app/var/object-storage
+upsert_env apps/api/.env.production UI_VERSION v2
 upsert_env apps/web/.env.production NEXT_PUBLIC_API_BASE_URL /api
 upsert_env apps/web/.env.production NEXT_PUBLIC_ENABLE_MOCK_LOGIN false
-upsert_env apps/web/.env.production NEXT_PUBLIC_R26_V2_PROTOTYPE true
+upsert_env apps/web/.env.production NEXT_PUBLIC_UI_VERSION v2
+upsert_env apps/web/.env.production NEXT_PUBLIC_UI_DATA_MODE real
+upsert_env apps/web/.env.production V1_FALLBACK_ENABLED true
+sed -i '/^NEXT_PUBLIC_R26_V2_PROTOTYPE=/d' apps/web/.env.production
+sed -i '/^NEXT_PUBLIC_R26_V2_DATA_MODE=/d' apps/web/.env.production
 
 resolved_storage_path=\"\$(
   cd apps/api

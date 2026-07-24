@@ -103,7 +103,7 @@ keys = {
         'DATABASE_URL',
         'REDIS_URL',
     ],
-    Path('$APP_ROOT/apps/web/.env.production'): ['NEXT_PUBLIC_API_BASE_URL', 'NEXT_PUBLIC_FEISHU_APP_ID', 'NEXT_PUBLIC_ENABLE_MOCK_LOGIN'],
+    Path('$APP_ROOT/apps/web/.env.production'): ['NEXT_PUBLIC_API_BASE_URL', 'NEXT_PUBLIC_FEISHU_APP_ID', 'NEXT_PUBLIC_ENABLE_MOCK_LOGIN', 'NEXT_PUBLIC_UI_VERSION', 'NEXT_PUBLIC_UI_DATA_MODE', 'V1_FALLBACK_ENABLED'],
 }
 for path, names in keys.items():
     print(f'[{path}]')
@@ -124,7 +124,7 @@ for path, names in keys.items():
     for name in names:
       value = data.get(name, '')
       if value:
-        if name in {'FRONTEND_URL', 'FEISHU_REDIRECT_URI', 'FEISHU_AUTHORIZATION_ENDPOINT', 'AUTH_MOCK_ENABLED', 'NEXT_PUBLIC_API_BASE_URL', 'NEXT_PUBLIC_ENABLE_MOCK_LOGIN'}:
+        if name in {'FRONTEND_URL', 'FEISHU_REDIRECT_URI', 'FEISHU_AUTHORIZATION_ENDPOINT', 'AUTH_MOCK_ENABLED', 'NEXT_PUBLIC_API_BASE_URL', 'NEXT_PUBLIC_ENABLE_MOCK_LOGIN', 'NEXT_PUBLIC_UI_VERSION', 'NEXT_PUBLIC_UI_DATA_MODE', 'V1_FALLBACK_ENABLED'}:
           print(f'{name}=<set:{value}>')
         elif name in {'FEISHU_APP_ID', 'FEISHU_APP_SECRET', 'NEXT_PUBLIC_FEISHU_APP_ID'} and value in {'your_feishu_app_id', 'your_feishu_app_secret'}:
           print(f'{name}=<placeholder>')
