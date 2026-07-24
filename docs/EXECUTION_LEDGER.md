@@ -4342,6 +4342,21 @@ AWAITING_PRODUCT_OWNER_GATE3A_CONFIRMATION
 STOP_BEFORE_GATE3B
 ```
 
+#### Gate 3A Project Records Typography Remediation
+
+- 产品负责人报告“项目记录”卡片摘要逐字换行、操作人和内部动作代码重叠。
+- 根因：外层三列记录网格与卡片内部三列同时生效，摘要可用宽度被双重压缩。
+- 改为单列记录流；桌面记录行按时间、摘要、操作人分栏，移动端纵向堆叠。
+- 摘要恢复 16px / 1.65 行高，并为长文本设置安全换行。
+- 内部 `record.action` 仅保留为 `data-record-action`，不再作为用户可见英文文案。
+- staging 更新为 `r26-gate3a-records-9bca772`（commit `9bca772`）；19 项 migration
+  已应用、0 项待执行，未运行 seed。
+- `pnpm install`、lint、typecheck、Web 97、API 244、两端 build、Prisma validate、
+  `git diff --check` 全部通过。
+- staging 重部署使原飞书会话失效；授权页等待“获取用户标识”确认。该权限未在没有
+  产品负责人确认时改变，新三视口截图待授权后补充。
+- production、V1、`main`、tag 和 Gate 3B 均未改变。
+
 ---
 
 ### Round R26_PRODUCT_UI_RECOVERY_GATE2_DATA_CONSISTENCY_FIX

@@ -307,6 +307,18 @@ AWAITING_PRODUCT_OWNER_GATE3A_CONFIRMATION
 STOP_BEFORE_GATE3B
 ```
 
+### Gate 3A 项目记录排版修复
+
+- 修复三列记录卡内再次三列布局导致的摘要逐字换行和元信息重叠。
+- 项目记录改为单列时间流，桌面采用时间/摘要/操作人三段式布局，390px 纵向堆叠。
+- 内部英文动作代码不再作为用户可见文案。
+- staging 镜像：`r26-gate3a-records-9bca772`，应用提交：`9bca772`。
+- 全量检查通过：Web 97、API 244，lint、typecheck、两端 build、Prisma validate、
+  `git diff --check` 均通过。
+- 未运行 seed，未修改 production/V1，未进入 Gate 3B。
+- staging 重部署后飞书会话过期；重新授权属于权限操作，未在没有产品负责人确认时
+  点击。三档浏览器截图复验等待授权后补充。
+
 ## Gate 2 真实只读数据联调（2026-07-23）
 
 ### 授权与边界

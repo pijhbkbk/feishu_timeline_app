@@ -210,3 +210,44 @@ STOP_BEFORE_GATE3B
 ```
 
 不得依据本报告自动宣布产品验收通过。产品负责人确认前，不进入 Gate 3B。
+
+## 9. 项目记录排版修复（2026-07-24）
+
+产品负责人指出正式项目的“项目记录”出现摘要逐字换行、操作人与内部动作代码重叠。
+根因是记录列表使用三列卡片，而每张窄卡内部再次使用三列，摘要列被压缩到不足以正常
+排版。
+
+修复内容：
+
+- 项目记录改为单列时间流，每条记录使用“时间 / 摘要 / 操作人”三段式宽度；
+- 摘要列显式允许收缩，正文恢复 16px、1.65 行高；
+- 长摘要和原因允许在词义边界自然换行，不再逐字形成竖排；
+- 移动端改为时间、摘要、操作人纵向堆叠；
+- 内部英文审计动作代码保留在 `data-record-action` 供测试和追踪，不再显示给用户。
+
+staging 已更新：
+
+```text
+image tag     r26-gate3a-records-9bca772
+app commit    9bca772
+seed          NOT RUN
+production    NOT CHANGED
+```
+
+完整检查：
+
+```text
+pnpm install                          PASS
+pnpm lint                             PASS
+pnpm typecheck                        PASS
+pnpm test                             PASS（Web 31 files / 97 tests；API 60 files / 244 tests）
+pnpm --filter web build               PASS
+pnpm --filter api build               PASS
+pnpm --filter api prisma:validate     PASS
+git diff --check                      PASS
+```
+
+部署后 staging 五个服务均 healthy，19 项 migration 已应用且无待执行 migration。
+真实浏览器会话在重部署后过期，飞书授权页要求重新授予“获取用户标识”权限；在产品
+负责人确认授权前没有点击，因此本小节暂不声称已完成新的三视口截图验收。Gate 3A
+状态仍为等待产品负责人确认，Gate 3B 写能力保持关闭。
