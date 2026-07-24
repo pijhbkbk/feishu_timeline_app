@@ -254,6 +254,14 @@ export function RealProgressPage() {
       );
       return false;
     }
+    if (
+      targetStep >= 2 &&
+      form.progressStatus === 'BLOCKED' &&
+      !parseLocalDateTime(form.expectedResolvedAt)
+    ) {
+      setActionError('预计解除时间格式应为 YYYY-MM-DD HH:mm。');
+      return false;
+    }
     setActionError(null);
     return true;
   }
@@ -859,7 +867,11 @@ export function RealProgressPage() {
                 <label className="r26-field r26-field--wide">
                   <span>预计解除时间</span>
                   <input
-                    type="datetime-local"
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="off"
+                    placeholder="例如：2026-07-28 10:00"
+                    maxLength={16}
                     value={form.expectedResolvedAt}
                     onChange={(event) =>
                       updateForm({
@@ -1225,9 +1237,10 @@ function toCommandFields(form: FormState) {
           assistanceDepartmentIds: form.assistanceDepartmentIds,
           ...(form.expectedResolvedAt
             ? {
-                expectedResolvedAt: new Date(
-                  form.expectedResolvedAt,
-                ).toISOString(),
+                expectedResolvedAt:
+                  parseLocalDateTime(
+                    form.expectedResolvedAt,
+                  )?.toISOString() ?? form.expectedResolvedAt,
               }
             : {}),
           impactLevel: form.impactLevel,
@@ -1285,7 +1298,33 @@ function toDateTimeLocal(value: string | null) {
   if (!value) return '';
   const date = new Date(value);
   const offset = date.getTimezoneOffset() * 60_000;
-  return new Date(date.getTime() - offset).toISOString().slice(0, 16);
+  return new Date(date.getTime() - offset)
+    .toISOString()
+    .slice(0, 16)
+    .replace('T', ' ');
+}
+
+function parseLocalDateTime(value: string) {
+  const match =
+    /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})$/u.exec(
+      value.trim(),
+    );
+  if (!match) return null;
+  const [, year, month, day, hour, minute] = match;
+  const date = new Date(
+    Number(year),
+    Number(month) - 1,
+    Number(day),
+    Number(hour),
+    Number(minute),
+  );
+  return date.getFullYear() === Number(year) &&
+    date.getMonth() === Number(month) - 1 &&
+    date.getDate() === Number(day) &&
+    date.getHours() === Number(hour) &&
+    date.getMinutes() === Number(minute)
+    ? date
+    : null;
 }
 
 function progressStatusLabel(value: R26ProgressStatus) {

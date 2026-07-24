@@ -543,7 +543,12 @@ export function RealWorkspacePage({ projectId }: { projectId: string }) {
               <li key={record.id} data-record-action={record.action}>
                 <time>{formatDateTime(record.createdAt)}</time>
                 <div>
-                  <strong>{record.summary}</strong>
+                  <strong>
+                    {formatV2ActivitySummary(
+                      record.summary,
+                      '项目记录已更新',
+                    )}
+                  </strong>
                   {record.reason ? <p>原因：{record.reason}</p> : null}
                 </div>
                 <span className="r26-project-records__actor">操作人：{record.actorName}</span>
@@ -1225,7 +1230,12 @@ function RealTaskDetail({
               {task.flowLogs.slice(0, 8).map((event, index) => (
                 <li key={event.id ?? `${event.createdAt}-${index}`}>
                   <time>{formatDateTime(event.createdAt ?? null)}</time>
-                  <p>{event.summary ?? event.actionLabel ?? '流程记录'}</p>
+                  <p>
+                    {formatV2ActivitySummary(
+                      event.summary,
+                      event.actionLabel ?? '流程记录',
+                    )}
+                  </p>
                 </li>
               ))}
             </ol>
@@ -1415,4 +1425,18 @@ function exitLabel(value: string | null | undefined) {
     OBSERVE: '建议观察',
   };
   return value ? labels[value] ?? value : null;
+}
+
+function formatV2ActivitySummary(
+  summary: string | null | undefined,
+  fallback: string,
+) {
+  if (!summary) return fallback;
+  if (summary === 'Project created and workflow initialized automatically.') {
+    return '项目创建后已自动初始化流程。';
+  }
+  if (/^[A-Z][A-Z0-9_-]*(?:\s+[A-Z0-9_-]+)*$/u.test(summary.trim())) {
+    return fallback;
+  }
+  return summary;
 }
