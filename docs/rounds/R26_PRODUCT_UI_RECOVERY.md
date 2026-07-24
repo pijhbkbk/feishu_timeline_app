@@ -465,6 +465,70 @@ AWAITING_PRODUCT_OWNER_REAL_DATA_CONFIRMATION
 STOP_BEFORE_GATE3
 ```
 
+## Gate 3C1 普通工序完成（2026-07-24）
+
+### 授权与边界
+
+- Gate 3B 已由产品负责人确认通过。
+- 从准确 Gate 3B 提交 `4f92e8d67f808402d6607c13cc30aa3281f69ec7`
+  创建 `codex/r26-gate3c1-ordinary-task-completion`。
+- 只开放第 1～11 步普通工序完成与自动推进；第 12/13/17/18 步专项动作保持关闭。
+- 未修改 V1，未访问 production，未合并 `main`，未创建 tag，未进入 Gate 3C2。
+
+### 实现
+
+- 新增只计算的完成预览、事务完成和阻塞解除三个 V2 command 接口。
+- 完成命令复用 `WorkflowsService`、冻结拓扑、Gate 3A 分配、项目访问、权限、
+  SLA、审计、通知和幂等；V2 前端不计算下一节点或负责人。
+- 第 4 步只产生第 5/6 步，第 6 步只产生第 7/9/10 步；第 9 步标记为
+  非阻塞支线。
+- 完成前检查服务端返回表单、材料、权限、活动任务和开放阻塞事实；失败时返回
+  逐项准确原因。
+- 阻塞解除保存解决说明、实际解除时间、操作者、requestId 和审计，不提供强制忽略。
+- 完成面板要求 `taskVersion`、`Idempotency-Key`、完成原因和后果确认；
+  成功后局部刷新全部 V2 读模型。
+- 390px 完成面板为全屏 sheet；内容独立滚动，底部主动作固定。
+
+### 真实 staging UAT
+
+- 串行项目从第 1 步推进到第 12 步；第 9 步保持未完成，主线不被阻塞。
+- 第 4 步只生成第 5/6 步；第 6 步只生成第 7/9/10 步。
+- 第 5 步缺少“颜色编号确认单”准确阻断。
+- 真实 Gate 3B 阻塞申报后完成被拒绝；解除阻塞后检查即时通过。
+- 双标签并发一个成功、一个 409；数据库只有一条完成命令和一个后续任务。
+- 第 12 步显示专项动作未开放，不存在 Gate 3C1 完成入口。
+- production 请求 0；第 12/13/17/18 步专项写请求 0。
+
+### 质量门禁
+
+```text
+pnpm install                          PASS
+pnpm lint                             PASS
+pnpm typecheck                        PASS
+pnpm test                             PASS（Web 121 / API 282）
+pnpm --filter web build               PASS
+pnpm --filter api build               PASS
+pnpm --filter api prisma:validate     PASS
+git diff --check                      PASS
+```
+
+报告：`docs/product/R26_GATE3C1_ORDINARY_COMPLETION_REPORT.md`
+
+人工复核：`docs/product/R26_GATE3C1_HUMAN_REVIEW.md`
+
+证据：`docs/product/evidence/R26_GATE3C1/`
+
+### 决定
+
+```text
+R26_GATE3C1_IMPLEMENTED
+ORDINARY_TASK_COMPLETION_ENABLED_ON_STAGING
+PARALLEL_AND_NONBLOCKING_TRANSITIONS_VERIFIED
+STEP12_AND_LATER_SPECIAL_ACTIONS_STILL_DISABLED
+AWAITING_PRODUCT_OWNER_GATE3C1_CONFIRMATION
+STOP_BEFORE_GATE3C2
+```
+
 ### Gate 2 数据口径修复（2026-07-24）
 
 - 统一工作台、项目卡、工作区和流程详情中的当前步骤、负责人、责任部门与轮次；

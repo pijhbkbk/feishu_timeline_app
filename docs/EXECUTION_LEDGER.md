@@ -79,12 +79,12 @@
 ## 项目基本信息
 
 - 项目名称：轻卡定制颜色开发项目管理系统
-- 当前阶段：R26 生产发布后观察
-- 当前轮次：R25B_R26_PRODUCTION_RELEASE
-- 总体状态：PRODUCTION RELEASED（`v1.1.0-rc.2`；真实 OAuth 与业务烟测 PASS；stable tag 未创建）
+- 当前阶段：R26 Product UI Recovery staging
+- 当前轮次：R26_GATE3C1_ORDINARY_TASK_COMPLETION
+- 总体状态：IMPLEMENTED ON STAGING（等待产品负责人 Gate 3C1 人工确认；停在 Gate 3C2 前）
 - 仓库路径：`/Users/lixiaochen/Downloads/feishu_timeline_app`
 - 默认分支：`main`
-- 最近更新时间：`2026-07-22`
+- 最近更新时间：`2026-07-24`
 
 ---
 
@@ -137,6 +137,7 @@
 | R23E | R23 最终回归与证据关闭 | PASSED | STOP | application/staging 同 commit，耐久、52/52、真实 logout、Gitleaks 全部闭环 |
 | R23F | R24 前方案 A 最小权限边界 | PASSED | STOP | 真实角色/项目范围/负责人/指定评审联合授权，最终 commit 52/52、staging 与真实 OAuth 管理员正向路径通过 |
 | R24 | 完整安全复审与 R24B 准入收口 | PASSED | STOP | 三个 Medium 已修复；IAP SSH、飞书最小配置、认证态 ZAP 0/0/0、全量回归和材料销毁通过；等待确认后进入 R25 |
+| R26_GATE3C1 | 第 1～11 步普通工序完成与自动推进 | IMPLEMENTED | STOP | staging 串行、4/6 步并行、9 步非阻塞、材料/阻塞门禁、幂等与并发已验证；等待产品负责人确认，不进入 Gate 3C2 |
 
 状态枚举建议：
 
@@ -4266,6 +4267,92 @@ READ_ONLY_REAL_DATA_CONNECTED
 ZERO_BUSINESS_WRITE_REQUESTS
 AWAITING_PRODUCT_OWNER_REAL_DATA_CONFIRMATION
 STOP_BEFORE_GATE3
+```
+
+---
+
+### Round R26_GATE3C1_ORDINARY_TASK_COMPLETION
+
+#### Goal And Scope
+
+- 只在独立 staging 开放第 1～11 步普通工序完成、冻结拓扑自动推进和开放阻塞解除。
+- 第 4 步完成只创建第 5、6 步；第 6 步完成只创建第 7、9、10 步；
+  第 9 步不阻塞主线；第 11 步只生成第 12 步。
+- 第 12/13/17/18 步专项动作、production、V1、`main`、tag 和 Gate 3C2 全部关闭。
+
+#### Exact Changes
+
+- Prisma：工作流实例增加 `commandVersion`；阻塞增加解决说明、实际解除时间、操作者
+  和 requestId；新增 migration
+  `20260724222000_add_r26_gate3c1_completion`。
+- API：增加 completion preview、complete、blocker resolve 三个薄 V2 command 接口。
+- 状态机：复用 `WorkflowsService` 和冻结节点定义，客户端不能提交下一节点或负责人。
+- 分配：后续任务只使用 Gate 3A 服务端优先级，无匹配成员保持 `UNASSIGNED`。
+- 安全：项目访问、权限、活动任务、`taskVersion`、必填表单、材料、开放阻塞、
+  串行化事务、幂等、409 和审计全部在后端裁决。
+- Web：增加“完成工序”、完成前检查、准确阻断、推进影响、阻塞解除、成功反馈和
+  跨页面局部刷新；第 12 步及以后不渲染 Gate 3C1 动作。
+- 响应式：修复后置 `94vw` 覆盖移动全屏抽屉，390px 使用真正全屏 sheet、
+  独立滚动内容和固定底部主动作。
+
+#### Staging Evidence
+
+```text
+URL                         http://localhost:8080
+user                        李晓晨
+serial project              R26-G3C1-UAT-普通推进-20260724-2301
+blocker project             R26-G3C1-UAT-非阻塞-20260724-2301
+concurrent project          R26-G3C1-UAT-并发幂等-20260724-2301
+serial completion commands  7
+serial current node         CAB_REVIEW
+step 9                      READY / active / non-primary
+concurrent command rows     1
+concurrent step 2 rows      1
+loser response              409
+production requests         0
+special step writes         0
+```
+
+- 真实飞书用户通过浏览器完成第 1→2→3→4、4→5/6、6→7/9/10、
+  10→11、11→12。
+- 第 9 步保持未完成时主线到达第 12 步；第 12 步专项写入口保持关闭。
+- 第 5 步缺少“颜色编号确认单”时拒绝完成。
+- 开放“等待供应商确认交付时间”阻塞时拒绝完成；保存解决说明和实际解除时间后
+  同一面板变为可完成。
+- 两标签并发一个成功、一个 409；数据库只有一次完成命令、一个第 2 步任务。
+- 1440、真实 1024×900、真实 390×844 截图和组合回放归档到
+  `docs/product/evidence/R26_GATE3C1/`。
+
+#### Validation
+
+```text
+pnpm install                          PASS
+pnpm lint                             PASS
+pnpm typecheck                        PASS
+pnpm test                             PASS（Web 35 files / 121 tests；API 62 files / 282 tests）
+pnpm --filter web build               PASS
+pnpm --filter api build               PASS
+pnpm --filter api prisma:validate     PASS
+git diff --check                      PASS
+```
+
+#### Evidence
+
+- 报告：`docs/product/R26_GATE3C1_ORDINARY_COMPLETION_REPORT.md`
+- 人工复核：`docs/product/R26_GATE3C1_HUMAN_REVIEW.md`
+- 截图/回放：`docs/product/evidence/R26_GATE3C1/`
+- API/数据库/审计：
+  `docs/product/evidence/R26_GATE3C1/API_AND_DATABASE_PROOF.md`
+
+#### Decision
+
+```text
+R26_GATE3C1_IMPLEMENTED
+ORDINARY_TASK_COMPLETION_ENABLED_ON_STAGING
+PARALLEL_AND_NONBLOCKING_TRANSITIONS_VERIFIED
+STEP12_AND_LATER_SPECIAL_ACTIONS_STILL_DISABLED
+AWAITING_PRODUCT_OWNER_GATE3C1_CONFIRMATION
+STOP_BEFORE_GATE3C2
 ```
 
 ---
