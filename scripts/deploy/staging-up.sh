@@ -58,10 +58,12 @@ mkdir -p "$STATE_DIR"
 build_release_image() {
   local image_ref="$1"
   local dockerfile_path="$2"
+  shift 2
 
   log "Building image ${image_ref}"
   docker build --pull \
     --build-arg "NODE_IMAGE=${NODE_IMAGE}" \
+    "$@" \
     --label "org.opencontainers.image.revision=${GIT_SHA}" \
     --label "org.opencontainers.image.created=${OCI_CREATED}" \
     --label "org.opencontainers.image.source=${OCI_SOURCE}" \
@@ -70,7 +72,15 @@ build_release_image() {
 }
 
 build_release_image "${API_IMAGE_REPO}:${IMAGE_TAG}" "$ROOT_DIR/apps/api/Dockerfile"
-build_release_image "${WEB_IMAGE_REPO}:${IMAGE_TAG}" "$ROOT_DIR/apps/web/Dockerfile"
+build_release_image \
+  "${WEB_IMAGE_REPO}:${IMAGE_TAG}" \
+  "$ROOT_DIR/apps/web/Dockerfile" \
+  --build-arg "NEXT_PUBLIC_APP_NAME=${NEXT_PUBLIC_APP_NAME:-轻卡新颜色开发项目管理系统}" \
+  --build-arg "NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL:-/api}" \
+  --build-arg "NEXT_PUBLIC_FEISHU_APP_ID=${NEXT_PUBLIC_FEISHU_APP_ID:-}" \
+  --build-arg "NEXT_PUBLIC_ENABLE_MOCK_LOGIN=${NEXT_PUBLIC_ENABLE_MOCK_LOGIN:-false}" \
+  --build-arg "NEXT_PUBLIC_R26_V2_PROTOTYPE=${NEXT_PUBLIC_R26_V2_PROTOTYPE:-false}" \
+  --build-arg "NEXT_PUBLIC_R26_V2_DATA_MODE=${NEXT_PUBLIC_R26_V2_DATA_MODE:-prototype}"
 
 log "Building hardened PostgreSQL image ${POSTGRES_IMAGE_REPO}:${IMAGE_TAG}"
 docker build --pull \
