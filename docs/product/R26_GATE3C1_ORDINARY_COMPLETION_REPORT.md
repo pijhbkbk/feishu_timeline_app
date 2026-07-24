@@ -166,4 +166,3 @@ UAT 中发现 Gate 3C1 的后置 `94vw` 规则会覆盖移动端全宽抽屉，�
 - 未访问或部署 production；
 - 未合并 `main`，未创建 tag；
 - 未自动进入 Gate 3C2。
-

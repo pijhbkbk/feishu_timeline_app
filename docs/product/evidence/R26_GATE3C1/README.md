@@ -33,14 +33,13 @@
 
 ## 回放
 
-| 文件 | 用途 |
-| --- | --- |
-| `R26_GATE3C1_REAL_UAT_1440.mp4` | 串行、并行、非阻塞、门禁和并发组合回放 |
-| `R26_GATE3C1_RESPONSIVE_UAT.mp4` | 1024 与 390 响应式组合回放 |
+| 文件 | 用途 | SHA-256 |
+| --- | --- | --- |
+| `R26_GATE3C1_REAL_UAT_1440.mp4` | 串行、并行、非阻塞、门禁和并发组合回放 | `0212fb0a900893ad2a798afb8baff2ac311ed58ef54da8a40142a0540218d995` |
+| `R26_GATE3C1_RESPONSIVE_UAT.mp4` | 1024 与 390 响应式组合回放 | `f936c6c35d4b0e9520add54c3c6a5d2becdcb10a8bdceedbe2b917f79a734f79` |
 
 MP4 是真实浏览器交互帧按时间顺序合成的验收回放，不声明为未经剪辑的连续录屏。
 
 ## 组合证明
 
 API 写请求、数据库拓扑、阻塞、幂等和审计见 `API_AND_DATABASE_PROOF.md`。
-
