@@ -102,7 +102,7 @@ export function V2Shell({ children }: { children: React.ReactNode }) {
 
           <div className="r26-header-tools">
             <span className="r26-prototype-badge">
-              {realDataEnabled ? 'V2 真实只读' : 'V2 产品预览'}
+              {realDataEnabled ? 'V2 真实数据' : 'V2 产品预览'}
             </span>
             <button type="button" className="r26-icon-button" aria-label="搜索" onClick={() => showStaticMessage('搜索功能将在数据联调轮次开放。')}>
               <SearchIcon />
