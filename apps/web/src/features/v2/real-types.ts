@@ -43,6 +43,13 @@ export type R26DashboardTask = {
   isOverdue: boolean;
   overdueDays: number;
   completionPercent: number;
+  blocker: {
+    type: string;
+    description: string;
+    helperName: string | null;
+    expectedResolvedAt: string | null;
+    impactLevel: string | null;
+  } | null;
   materials: {
     submitted: number;
     required: number;
@@ -190,6 +197,15 @@ export type R26FlowMapNode = {
     | 'SINGLE_ELIGIBLE_MEMBER'
     | 'UNASSIGNED';
   availableActions: Array<{ action: string; label: string }>;
+  blocker: {
+    type: string;
+    description: string;
+    helperName: string | null;
+    assistanceUserIds: string[];
+    assistanceDepartmentIds: string[];
+    impactLevel: string | null;
+    expectedResolvedAt: string | null;
+  } | null;
 };
 
 export type R26TaskDetail = {
@@ -426,10 +442,10 @@ export type R26WorkspaceResponse = {
     createdAt: string;
   }>;
   capabilities: {
-    gate: 'R26_GATE3A';
+    gate: 'R26_GATE3B';
     memberAssignmentVersion: number;
     manageMembers: boolean;
-    progressWriteEnabled: false;
+    progressWriteEnabled: true;
     workflowWriteEnabled: false;
   };
 };
@@ -495,12 +511,130 @@ export type R26Gate3CommandResponse = {
 
 export type R26TaskResponse = {
   dataSource: 'database';
-  readOnly: true;
+  readOnly: boolean;
   viewer: R26Viewer;
   task: R26TaskDetail;
 };
 
 export type R26ProgressResponse = R26TaskResponse & {
-  progressSubmissionEnabled: false;
+  gate: 'R26_GATE3B';
+  taskVersion: string;
+  progressSubmissionEnabled: boolean;
+  workflowTransitionEnabled: false;
+  availableActions: Array<{ action: string; label: string }>;
+  draft: R26ProgressDraft | null;
+  progressHistory: R26ProgressHistoryItem[];
+  materials: R26ProgressMaterials;
+  assistanceOptions: {
+    users: R26Person[];
+    departments: Array<{ id: string; name: string }>;
+  };
   notice: string;
+};
+
+export type R26ProgressStatus =
+  | 'NOT_STARTED'
+  | 'IN_PROGRESS'
+  | 'BLOCKED'
+  | 'WORK_COMPLETE_PENDING_TASK_COMPLETION';
+
+export type R26ProgressDraft = {
+  id: string;
+  draftVersion: number;
+  progressStatus: R26ProgressStatus;
+  completedWork: string | null;
+  nextPlan: string | null;
+  blockerType: string | null;
+  blockerDescription: string | null;
+  assistanceUserIds: string[];
+  assistanceDepartmentIds: string[];
+  expectedResolvedAt: string | null;
+  impactLevel: string | null;
+  updatedAt: string;
+};
+
+export type R26ProgressHistoryItem = {
+  id: string;
+  progressStatus: R26ProgressStatus;
+  completionPercent: number;
+  completedWork: string;
+  nextPlan: string | null;
+  attachmentIds: string[];
+  requestId: string | null;
+  taskVersion: string | null;
+  submittedBy: {
+    id: string;
+    name: string;
+    departmentName: string | null;
+  } | null;
+  blocker: {
+    type: string;
+    description: string;
+    assistanceUserIds: string[];
+    assistanceDepartmentIds: string[];
+    impactLevel: string | null;
+    expectedResolvedAt: string | null;
+    status: string;
+    helper: { id: string; name: string } | null;
+  } | null;
+  createdAt: string;
+};
+
+export type R26MaterialVersion = {
+  id: string;
+  fileName: string;
+  mimeType: string;
+  fileSize: number;
+  materialType: string | null;
+  versionNo: number;
+  replacesAttachmentId: string | null;
+  uploadedById: string | null;
+  uploadedByName: string | null;
+  uploadedAt: string;
+  isCurrent: boolean;
+  downloadUrl: string;
+  projectId: string;
+};
+
+export type R26ProgressMaterials = {
+  requirements: Array<{
+    id: string;
+    name: string;
+    required: boolean;
+    description: string | null;
+    status: 'SUBMITTED' | 'MISSING';
+    currentAttachment: R26MaterialVersion | null;
+  }>;
+  current: R26MaterialVersion[];
+  versions: R26MaterialVersion[];
+  summary: {
+    required: number;
+    submitted: number;
+    missing: number;
+    uploaded: number;
+  };
+};
+
+export type R26ProgressCommandResponse = {
+  action: string;
+  requestId: string;
+  idempotencyKey: string;
+  idempotentReplay: boolean;
+  taskStatusChanged: false;
+  workflowTransitioned: false;
+  draft?: R26ProgressDraft;
+  deleted?: boolean;
+  progressSubmitted?: boolean;
+  materialUploaded?: boolean;
+  progress?: R26ProgressHistoryItem;
+  attachment?: R26MaterialVersion;
+  viewModel?: R26ProgressResponse;
+  invariants?: {
+    taskStatusBefore: string;
+    taskStatusAfter: string;
+    currentNodeBefore: string | null;
+    currentNodeAfter: string | null;
+    taskCountBefore: number;
+    taskCountAfter: number;
+  };
 };

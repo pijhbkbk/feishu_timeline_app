@@ -1394,6 +1394,16 @@
   stroke: #7086a7;
 }
 
+[data-ui-version="r26-v2"] .r26-flow-node.is-blocked .r26-node-shape {
+  fill: var(--r26-red-soft);
+  stroke: var(--r26-red);
+  stroke-dasharray: 9 5;
+}
+
+[data-ui-version="r26-v2"] .r26-flow-node.is-blocked .r26-node-created {
+  fill: var(--r26-red);
+}
+
 [data-ui-version="r26-v2"] .r26-flow-node[data-shape="branch"] .r26-node-shape {
   stroke-dasharray: 9 5;
 }
@@ -4165,6 +4175,469 @@
 
   [data-ui-version="r26-v2"] .r26-gate3-drawer__footer {
     padding: 12px 16px max(14px, env(safe-area-inset-bottom));
+  }
+}
+
+/* R26 Gate 3B — progress submission and secure material versions */
+
+[data-ui-version="r26-v2"] .r26-gate3b-banner {
+  border-color: #b9d8c8;
+  background: linear-gradient(120deg, #f1faf5, #fbfefd);
+}
+
+[data-ui-version="r26-v2"] .r26-gate3b-banner strong {
+  color: #126541;
+}
+
+[data-ui-version="r26-v2"] .r26-local-recovery {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 20px 24px;
+  border: 1px solid rgba(176, 96, 0, 0.22);
+  border-radius: 20px;
+  background: #fff9ef;
+}
+
+[data-ui-version="r26-v2"] .r26-local-recovery strong {
+  display: block;
+  color: var(--r26-text-primary);
+  font-size: 17px;
+}
+
+[data-ui-version="r26-v2"] .r26-local-recovery p {
+  margin: 6px 0 0;
+  color: var(--r26-text-secondary);
+  line-height: 1.65;
+}
+
+[data-ui-version="r26-v2"] .r26-local-recovery > div:last-child {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 10px;
+}
+
+[data-ui-version="r26-v2"] .r26-gate3b-permission-note,
+[data-ui-version="r26-v2"] .r26-work-complete-note {
+  display: grid;
+  gap: 5px;
+  margin-top: 18px;
+  padding: 16px 18px;
+  border: 1px solid #ead9a5;
+  border-radius: 14px;
+  background: #fffaf0;
+}
+
+[data-ui-version="r26-v2"] .r26-gate3b-permission-note p,
+[data-ui-version="r26-v2"] .r26-work-complete-note span {
+  margin: 0;
+  color: var(--r26-text-secondary);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+[data-ui-version="r26-v2"] .r26-progress-status {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+[data-ui-version="r26-v2"] .r26-progress-status legend {
+  grid-column: 1 / -1;
+  margin-bottom: 2px;
+  font-size: 14px;
+  font-weight: 750;
+}
+
+[data-ui-version="r26-v2"] .r26-progress-status label {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  min-height: 76px;
+  padding: 14px 16px;
+  border: 1px solid var(--r26-line);
+  border-radius: 14px;
+  background: #fff;
+  cursor: pointer;
+}
+
+[data-ui-version="r26-v2"] .r26-progress-status label.is-selected {
+  border-color: #9bb9ff;
+  background: var(--r26-blue-soft);
+  box-shadow: 0 0 0 3px rgba(36, 107, 253, 0.07);
+}
+
+[data-ui-version="r26-v2"] .r26-progress-status label.is-risk {
+  border-color: #e7a4a4;
+  background: var(--r26-red-soft);
+}
+
+[data-ui-version="r26-v2"] .r26-progress-status input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+[data-ui-version="r26-v2"] .r26-progress-status label > span {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--r26-line-strong);
+  border-radius: 50%;
+  color: #fff;
+  background: #fff;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+[data-ui-version="r26-v2"] .r26-progress-status label.is-selected > span {
+  border-color: var(--r26-blue);
+  background: var(--r26-blue);
+}
+
+[data-ui-version="r26-v2"] .r26-progress-status label.is-risk > span {
+  border-color: var(--r26-red);
+  background: var(--r26-red);
+}
+
+[data-ui-version="r26-v2"] .r26-progress-status label div {
+  display: grid;
+  gap: 3px;
+}
+
+[data-ui-version="r26-v2"] .r26-progress-status label strong {
+  font-size: 15px;
+}
+
+[data-ui-version="r26-v2"] .r26-progress-status label small {
+  color: var(--r26-text-secondary);
+  font-size: 13px;
+}
+
+[data-ui-version="r26-v2"] .r26-work-complete-note {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+[data-ui-version="r26-v2"] .r26-assistance-picker {
+  display: grid;
+  gap: 10px;
+}
+
+[data-ui-version="r26-v2"] .r26-assistance-picker > span {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+[data-ui-version="r26-v2"] .r26-assistance-picker > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+[data-ui-version="r26-v2"] .r26-assistance-picker label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 11px;
+  border: 1px solid var(--r26-line);
+  border-radius: 11px;
+  background: #fff;
+  cursor: pointer;
+}
+
+[data-ui-version="r26-v2"] .r26-assistance-picker label:has(input:checked) {
+  border-color: #9bb9ff;
+  background: var(--r26-blue-soft);
+}
+
+[data-ui-version="r26-v2"] .r26-assistance-picker label > span {
+  display: grid;
+  font-size: 14px;
+  font-weight: 650;
+}
+
+[data-ui-version="r26-v2"] .r26-assistance-picker small {
+  color: var(--r26-text-tertiary);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+[data-ui-version="r26-v2"] .r26-material-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+[data-ui-version="r26-v2"] .r26-material-heading h3 {
+  margin: 0;
+}
+
+[data-ui-version="r26-v2"] .r26-required-materials li button {
+  flex: 0 0 auto;
+  margin-left: auto;
+  padding: 7px 9px;
+  border: 0;
+  border-radius: 9px;
+  color: var(--r26-blue-dark);
+  background: var(--r26-blue-soft);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+[data-ui-version="r26-v2"] .r26-upload-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 9px;
+}
+
+[data-ui-version="r26-v2"] .r26-material-history {
+  grid-column: 1 / -1;
+  padding: 18px;
+  border: 1px solid var(--r26-line);
+  border-radius: 16px;
+}
+
+[data-ui-version="r26-v2"] .r26-material-history h3 {
+  margin: 0 0 12px;
+  font-size: 16px;
+}
+
+[data-ui-version="r26-v2"] .r26-material-history ul {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+[data-ui-version="r26-v2"] .r26-material-history li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 12px;
+  border-radius: 11px;
+  background: var(--r26-surface-soft);
+}
+
+[data-ui-version="r26-v2"] .r26-material-history li > div {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+[data-ui-version="r26-v2"] .r26-material-history li strong {
+  overflow-wrap: anywhere;
+  font-size: 14px;
+}
+
+[data-ui-version="r26-v2"] .r26-material-history li span,
+[data-ui-version="r26-v2"] .r26-material-history li a {
+  color: var(--r26-text-secondary);
+  font-size: 12px;
+}
+
+[data-ui-version="r26-v2"] .r26-form-error {
+  margin-top: 14px;
+  padding: 14px 16px;
+  border: 1px solid #edb4b4;
+  border-radius: 13px;
+  color: #9c2929;
+  background: var(--r26-red-soft);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+[data-ui-version="r26-v2"] .r26-progress-history {
+  margin-top: 20px;
+  padding: 26px;
+  border: 1px solid var(--r26-line);
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: var(--r26-shadow-soft);
+}
+
+[data-ui-version="r26-v2"] .r26-progress-history ol {
+  display: grid;
+  gap: 12px;
+  margin: 20px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+[data-ui-version="r26-v2"] .r26-progress-history li {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: 16px;
+  padding: 17px;
+  border-radius: 14px;
+  background: var(--r26-surface-soft);
+}
+
+[data-ui-version="r26-v2"] .r26-progress-history time {
+  color: var(--r26-text-tertiary);
+  font-size: 13px;
+}
+
+[data-ui-version="r26-v2"] .r26-progress-history li > div {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+}
+
+[data-ui-version="r26-v2"] .r26-progress-history li strong,
+[data-ui-version="r26-v2"] .r26-progress-history li p {
+  margin: 0;
+  overflow-wrap: anywhere;
+  line-height: 1.6;
+}
+
+[data-ui-version="r26-v2"] .r26-progress-history li span,
+[data-ui-version="r26-v2"] .r26-progress-history li small {
+  color: var(--r26-text-secondary);
+  font-size: 13px;
+}
+
+[data-ui-version="r26-v2"] .r26-draft-actions {
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+[data-ui-version="r26-v2"] .r26-draft-actions > span {
+  color: var(--r26-text-tertiary);
+  font-size: 12px;
+}
+
+[data-ui-version="r26-v2"] .r26-delete-draft {
+  padding: 8px;
+  border: 0;
+  color: var(--r26-text-secondary);
+  background: transparent;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+[data-ui-version="r26-v2"] .r26-delete-draft:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+[data-ui-version="r26-v2"] .r26-gate3b-invariant {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  margin-top: 22px;
+  padding: 16px;
+  border-radius: 14px;
+  color: #126541;
+  background: var(--r26-green-soft);
+}
+
+[data-ui-version="r26-v2"] .r26-gate3b-invariant span {
+  font-size: 13px;
+}
+
+[data-ui-version="r26-v2"] .r26-task-blocker-summary {
+  display: grid;
+  gap: 5px;
+  padding: 14px;
+  border: 1px solid #edb4b4;
+  border-radius: 12px;
+  color: #9c2929;
+  background: var(--r26-red-soft);
+}
+
+[data-ui-version="r26-v2"] .r26-task-blocker-summary span {
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+[data-ui-version="r26-v2"] .r26-gate3b-task-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
+}
+
+[data-ui-version="r26-v2"] .r26-gate3b-task-actions > span {
+  grid-column: 1 / -1;
+  color: var(--r26-text-tertiary);
+  font-size: 12px;
+  text-align: center;
+}
+
+@media (max-width: 767px) {
+  [data-ui-version="r26-v2"] .r26-local-recovery {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 14px;
+    padding: 18px;
+  }
+
+  [data-ui-version="r26-v2"] .r26-local-recovery > div:last-child {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  [data-ui-version="r26-v2"] .r26-progress-status {
+    grid-template-columns: 1fr;
+  }
+
+  [data-ui-version="r26-v2"] .r26-progress-status label {
+    min-height: 70px;
+  }
+
+  [data-ui-version="r26-v2"] .r26-assistance-picker > div {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  [data-ui-version="r26-v2"] .r26-material-history li {
+    grid-template-columns: 1fr auto;
+  }
+
+  [data-ui-version="r26-v2"] .r26-material-history li > a {
+    grid-column: 1 / -1;
+  }
+
+  [data-ui-version="r26-v2"] .r26-progress-history {
+    padding: 20px 16px;
+  }
+
+  [data-ui-version="r26-v2"] .r26-progress-history li {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  [data-ui-version="r26-v2"] .r26-progress-footer {
+    bottom: max(10px, env(safe-area-inset-bottom));
+    flex-direction: column;
+  }
+
+  [data-ui-version="r26-v2"] .r26-progress-footer > .r26-draft-actions {
+    display: none;
+  }
+
+  [data-ui-version="r26-v2"] .r26-required-materials li {
+    flex-wrap: wrap;
+  }
+
+  [data-ui-version="r26-v2"] .r26-required-materials li button {
+    width: 100%;
+    margin-left: 33px;
   }
 }
 

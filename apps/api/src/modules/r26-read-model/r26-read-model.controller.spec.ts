@@ -9,7 +9,7 @@ import { PERMISSION_METADATA_KEY } from '../auth/auth.constants';
 import { R26_ASSIGNMENT_RULES } from './r26-assignment.rules';
 import { R26ReadModelController } from './r26-read-model.controller';
 
-describe('R26ReadModelController Gate 2 contract', () => {
+describe('R26ReadModelController Gate 3B contract', () => {
   it('keeps the Gate 2 view-model handlers GET-only', () => {
     const prototype = R26ReadModelController.prototype;
     const handlerNames = [
@@ -31,7 +31,7 @@ describe('R26ReadModelController Gate 2 contract', () => {
     }
   });
 
-  it('opens only the Gate 3A member and assignment write routes', () => {
+  it('keeps the approved Gate 3A member and assignment write routes', () => {
     const prototype = R26ReadModelController.prototype;
     const handlers = [
       ['previewAssignments', RequestMethod.POST, 'projects/:projectId/assignment-preview'],
@@ -51,8 +51,35 @@ describe('R26ReadModelController Gate 2 contract', () => {
       ]);
     }
 
-    expect(Object.getOwnPropertyNames(prototype)).not.toContain('submitProgress');
-    expect(Object.getOwnPropertyNames(prototype)).not.toContain('uploadMaterial');
+    expect(Object.getOwnPropertyNames(prototype)).not.toContain('transitionWorkflow');
+  });
+
+  it('opens only Gate 3B draft, progress and material writes without workflow transition', () => {
+    const prototype = R26ReadModelController.prototype;
+    const handlers = [
+      ['saveProgressDraft', RequestMethod.PUT, 'tasks/:taskId/progress-draft'],
+      ['deleteProgressDraft', RequestMethod.DELETE, 'tasks/:taskId/progress-draft'],
+      ['submitProgress', RequestMethod.POST, 'tasks/:taskId/progress-updates'],
+      ['uploadMaterial', RequestMethod.POST, 'tasks/:taskId/materials'],
+      [
+        'uploadMaterialVersion',
+        RequestMethod.POST,
+        'tasks/:taskId/materials/:attachmentId/versions',
+      ],
+    ] as const;
+
+    for (const [handlerName, method, path] of handlers) {
+      const handler = prototype[handlerName];
+      expect(Reflect.getMetadata(METHOD_METADATA, handler)).toBe(method);
+      expect(Reflect.getMetadata(PATH_METADATA, handler)).toBe(path);
+      expect(Reflect.getMetadata(PERMISSION_METADATA_KEY, handler)).toEqual([
+        'project.read',
+      ]);
+    }
+
+    expect(Object.getOwnPropertyNames(prototype)).not.toContain('completeTask');
+    expect(Object.getOwnPropertyNames(prototype)).not.toContain('approveTask');
+    expect(Object.getOwnPropertyNames(prototype)).not.toContain('rejectTask');
     expect(Object.getOwnPropertyNames(prototype)).not.toContain('transitionWorkflow');
   });
 

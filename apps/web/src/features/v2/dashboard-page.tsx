@@ -179,8 +179,8 @@ function RealDashboardPage() {
       data-source="database"
     >
       <div className="r26-readonly-banner" role="status">
-        <strong>Gate 2 · 真实只读数据</strong>
-        <span>当前页面不提交进展、不上传材料，也不改变流程状态。</span>
+        <strong>Gate 3B · 真实进展与材料</strong>
+        <span>可提交进展与工序材料；完成工序和流程推进仍保持关闭。</span>
       </div>
       <PageIntro
         eyebrow={`${viewer.roleLabel} · ${viewer.departmentName ?? '组织部门待同步'}`}
@@ -209,7 +209,9 @@ function RealDashboardPage() {
               </div>
             </div>
             <p className="r26-current-task__summary">
-              {currentTask.materials.missing > 0
+              {currentTask.blocker
+                ? `当前阻塞：${currentTask.blocker.description}`
+                : currentTask.materials.missing > 0
                 ? `仍缺 ${currentTask.materials.missing} 项必交材料，请先核对工序详情。`
                 : '必交材料已齐备，可按当前工序要求继续处理。'}
             </p>
@@ -222,15 +224,24 @@ function RealDashboardPage() {
               />
               <Fact label="截止时间" value={formatDateTime(currentTask.dueAt)} note={currentTask.isOverdue ? '需要立即关注' : '按 SLA 计算'} />
               <Fact label="完成度" value={`${currentTask.completionPercent}%`} note="最近进展记录" />
+              <Fact
+                label="阻塞"
+                value={currentTask.blocker ? '需要协助' : '无'}
+                note={
+                  currentTask.blocker?.expectedResolvedAt
+                    ? `预计 ${formatDateTime(currentTask.blocker.expectedResolvedAt)} 解除`
+                    : '按当前计划推进'
+                }
+              />
             </div>
             <div className="r26-current-task__action">
               <PrimaryLink
                 href={`/v2/progress?projectId=${encodeURIComponent(currentTask.projectId)}&taskId=${encodeURIComponent(currentTask.taskId)}`}
                 testId="dashboard-primary-action"
               >
-                查看进展上下文
+                提交工作进展
               </PrimaryLink>
-              <p>Gate 2 只读，不提供提交按钮</p>
+              <p>预计用时 60 秒，不会自动完成工序</p>
             </div>
           </div>
           <aside className="r26-current-task__side" aria-label="当前任务事实">

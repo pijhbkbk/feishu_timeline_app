@@ -174,6 +174,8 @@ function FlowNode({
   const status = node.status;
   const statusLabel = r26StatusLabels[status];
   const className = `r26-flow-node r26-flow-node--${status.toLowerCase().replaceAll('_', '-')} ${
+    node.isBlocked ? 'is-blocked' : ''
+  } ${
     selected ? 'is-selected' : ''
   }`;
 
@@ -182,7 +184,7 @@ function FlowNode({
       className={className}
       role="button"
       tabIndex={0}
-      aria-label={`第 ${node.step} 步 ${node.name}，${created ? '已创建，' : ''}${statusLabel}`}
+      aria-label={`第 ${node.step} 步 ${node.name}，${created ? '已创建，' : ''}${node.isBlocked ? `存在阻塞：${node.blockerSummary ?? '等待协助'}，` : ''}${statusLabel}`}
       aria-pressed={selected}
       onClick={() => onSelect(node)}
       onKeyDown={(event) => {
@@ -294,14 +296,14 @@ function NodeContent({
       <text x={contentX} y={metaY} textAnchor={textAnchor} className="r26-node-meta">
         {`第 ${String(node.step).padStart(2, '0')} 步 · ${r26StatusLabels[status]}`}
       </text>
-      {created && !isDecision ? (
+      {(created || node.isBlocked) && !isDecision ? (
         <text
           x={node.x + node.width - 12}
           y={node.y + 18}
           textAnchor="end"
           className="r26-node-created"
         >
-          已创建
+          {node.isBlocked ? '阻塞' : '已创建'}
         </text>
       ) : null}
       <text x={contentX} y={nameY} textAnchor={textAnchor} className="r26-node-title">
@@ -388,7 +390,7 @@ function MobileFlowList({
                   <small>{node.owner} · {node.deadline}</small>
                 </span>
                 <span className="r26-mobile-flow__state">
-                  {created ? '已创建' : node.step === 9 ? '非阻塞' : node.step === 18 ? '人工决定' : r26StatusLabels[node.status]}
+                  {node.isBlocked ? '阻塞' : created ? '已创建' : node.step === 9 ? '非阻塞' : node.step === 18 ? '人工决定' : r26StatusLabels[node.status]}
                 </span>
               </button>
             </li>

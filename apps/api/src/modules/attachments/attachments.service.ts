@@ -405,6 +405,51 @@ export class AttachmentsService {
     return this.readAttachmentBinary(attachment, actor, rawDisposition);
   }
 
+  async getTaskMaterialVersionContent(
+    projectId: string,
+    taskId: string,
+    attachmentId: string,
+    actor: AuthenticatedUser,
+    rawDisposition?: unknown,
+  ) {
+    this.assertActorCanView(actor);
+    await this.projectAccessService.assertProjectAccessWithDefaultClient(
+      projectId,
+      actor,
+      'project.read',
+    );
+    const attachment = await this.prisma.attachment.findFirst({
+      where: {
+        id: attachmentId,
+        projectId,
+        entityType: AttachmentTargetType.WORKFLOW_TASK,
+        entityId: taskId,
+      },
+      include: ATTACHMENT_DETAIL_INCLUDE,
+    });
+
+    if (!attachment) {
+      throw new NotFoundException('工序材料版本不存在。');
+    }
+
+    if (attachment.isDeleted) {
+      const replacement = await this.prisma.attachment.findFirst({
+        where: {
+          projectId,
+          entityType: AttachmentTargetType.WORKFLOW_TASK,
+          entityId: taskId,
+          replacesAttachmentId: attachment.id,
+        },
+        select: { id: true },
+      });
+      if (!replacement) {
+        throw new NotFoundException('工序材料版本不存在。');
+      }
+    }
+
+    return this.readAttachmentBinary(attachment, actor, rawDisposition);
+  }
+
   async createStoredAttachment(input: CreateStoredAttachmentInput) {
     this.assertFile(input.file);
     await this.getProjectOrThrow(this.prisma, input.projectId);

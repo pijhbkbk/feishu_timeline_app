@@ -8,6 +8,7 @@ export function useR26ReadOnlyData<T>(path: string | null) {
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(Boolean(path));
+  const [refreshVersion, setRefreshVersion] = useState(0);
 
   useEffect(() => {
     if (!path) {
@@ -42,7 +43,12 @@ export function useR26ReadOnlyData<T>(path: string | null) {
       window.clearTimeout(timeout);
       controller.abort();
     };
-  }, [path]);
+  }, [path, refreshVersion]);
 
-  return { data, error, loading };
+  return {
+    data,
+    error,
+    loading,
+    refresh: () => setRefreshVersion((version) => version + 1),
+  };
 }

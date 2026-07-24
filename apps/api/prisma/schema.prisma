@@ -453,6 +453,7 @@ model User {
   uploadedAttachments           Attachment[]              @relation("AttachmentUploader")
   deletedAttachments            Attachment[]              @relation("AttachmentDeleter")
   submittedTaskProgressUpdates  TaskProgressUpdate[]      @relation("TaskProgressSubmitter")
+  r26ProgressDrafts             R26ProgressDraft[]        @relation("R26ProgressDraftAuthor")
   assistedTaskBlockers          TaskBlocker[]             @relation("TaskBlockerHelper")
   completedRetrospectives       ProjectRetrospective[]    @relation("RetrospectiveCompleter")
   notifications                 Notification[]
@@ -536,6 +537,7 @@ model Project {
   workflowTasks            WorkflowTask[]
   workflowTransitions      WorkflowTransition[]
   taskProgressUpdates      TaskProgressUpdate[]
+  r26ProgressDrafts        R26ProgressDraft[]
   taskBlockers             TaskBlocker[]
   samples                  Sample[]
   sampleConfirmations      SampleConfirmation[]
@@ -834,6 +836,7 @@ model WorkflowTask {
   toTransitions        WorkflowTransition[] @relation("WorkflowTransitionToTask")
   reviewRecords        ReviewRecord[]
   progressUpdates      TaskProgressUpdate[]
+  r26ProgressDrafts    R26ProgressDraft[]
   blockers             TaskBlocker[]
   createdAt            DateTime             @default(now())
   updatedAt            DateTime             @updatedAt
@@ -852,11 +855,14 @@ model TaskProgressUpdate {
   workflowTaskId        String
   projectId             String
   submittedById         String?
+  progressStatus        String       @default("IN_PROGRESS")
   completionPercent     Int
   completedContent      String
   nextPlan              String?
   materialAttachmentIds Json?
   idempotencyKey        String       @unique
+  requestId             String?
+  taskVersion           String?
   workflowTask          WorkflowTask @relation(fields: [workflowTaskId], references: [id], onDelete: Cascade)
   project               Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
   submittedBy           User?        @relation("TaskProgressSubmitter", fields: [submittedById], references: [id], onDelete: SetNull)
@@ -870,27 +876,57 @@ model TaskProgressUpdate {
 }
 
 model TaskBlocker {
-  id                 String             @id @default(cuid())
-  progressUpdateId   String             @unique
-  workflowTaskId     String
-  projectId          String
-  blockerType        String
-  description        String
-  helperUserId       String?
-  expectedResolvedAt DateTime?
-  status             TaskBlockerStatus  @default(OPEN)
-  resolvedAt         DateTime?
-  progressUpdate     TaskProgressUpdate @relation(fields: [progressUpdateId], references: [id], onDelete: Cascade)
-  workflowTask       WorkflowTask       @relation(fields: [workflowTaskId], references: [id], onDelete: Cascade)
-  project            Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  helperUser         User?              @relation("TaskBlockerHelper", fields: [helperUserId], references: [id], onDelete: SetNull)
-  createdAt          DateTime           @default(now())
-  updatedAt          DateTime           @updatedAt
+  id                      String             @id @default(cuid())
+  progressUpdateId        String             @unique
+  workflowTaskId          String
+  projectId               String
+  blockerType             String
+  description             String
+  helperUserId            String?
+  assistanceUserIds       Json?
+  assistanceDepartmentIds Json?
+  impactLevel             String?
+  expectedResolvedAt      DateTime?
+  status                  TaskBlockerStatus  @default(OPEN)
+  resolvedAt              DateTime?
+  progressUpdate          TaskProgressUpdate @relation(fields: [progressUpdateId], references: [id], onDelete: Cascade)
+  workflowTask            WorkflowTask       @relation(fields: [workflowTaskId], references: [id], onDelete: Cascade)
+  project                 Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  helperUser              User?              @relation("TaskBlockerHelper", fields: [helperUserId], references: [id], onDelete: SetNull)
+  createdAt               DateTime           @default(now())
+  updatedAt               DateTime           @updatedAt
 
   @@index([workflowTaskId, status, createdAt])
   @@index([projectId, status, createdAt])
   @@index([helperUserId, status])
   @@map("task_blockers")
+}
+
+model R26ProgressDraft {
+  id                      String       @id @default(cuid())
+  workflowTaskId          String
+  projectId               String
+  authorUserId            String
+  draftVersion            Int          @default(1)
+  progressStatus          String       @default("IN_PROGRESS")
+  completedWork           String?
+  nextPlan                String?
+  blockerType             String?
+  blockerDescription      String?
+  assistanceUserIds       Json?
+  assistanceDepartmentIds Json?
+  expectedResolvedAt      DateTime?
+  impactLevel             String?
+  workflowTask            WorkflowTask @relation(fields: [workflowTaskId], references: [id], onDelete: Cascade)
+  project                 Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  authorUser              User         @relation("R26ProgressDraftAuthor", fields: [authorUserId], references: [id], onDelete: Cascade)
+  createdAt               DateTime     @default(now())
+  updatedAt               DateTime     @updatedAt
+
+  @@unique([workflowTaskId, authorUserId])
+  @@index([projectId, updatedAt])
+  @@index([authorUserId, updatedAt])
+  @@map("r26_progress_drafts")
 }
 
 model RecurringPlan {

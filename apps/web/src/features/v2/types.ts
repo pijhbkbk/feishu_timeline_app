@@ -40,6 +40,8 @@ export type R26FlowNode = {
   requiredMaterials: string[];
   uploadedMaterials: string[];
   missingMaterials: string[];
+  isBlocked?: boolean;
+  blockerSummary?: string;
   recentEvents: Array<{ time: string; text: string }>;
 };
 

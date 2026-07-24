@@ -38,7 +38,7 @@ export function V2Shell({ children }: { children: React.ReactNode }) {
   const navItems: NavItem[] = [
     ...baseNavItems.slice(0, 3),
     {
-      label: realDataEnabled ? '进展查看' : '进展提交',
+      label: '进展提交',
       href:
         realDataEnabled && currentTask
           ? `/v2/progress?projectId=${encodeURIComponent(currentTask.projectId)}&taskId=${encodeURIComponent(currentTask.taskId)}`

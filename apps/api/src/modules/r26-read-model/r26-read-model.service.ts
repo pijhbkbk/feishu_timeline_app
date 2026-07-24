@@ -123,6 +123,14 @@ export class R26ReadModelService {
               department: { select: { name: true } },
             },
           },
+          blockers: {
+            where: { status: 'OPEN' },
+            include: {
+              helperUser: { select: { id: true, name: true } },
+            },
+            orderBy: { createdAt: 'desc' },
+            take: 1,
+          },
           createdAt: true,
         },
         orderBy: [{ taskRound: 'desc' }, { createdAt: 'desc' }],
@@ -215,6 +223,8 @@ export class R26ReadModelService {
           null,
         nodes: flowMap.nodes.map((node) => {
           const assignment = assignments.find((item) => item.nodeCode === node.nodeCode);
+          const task = latestTaskByNode.get(node.nodeCode) ?? null;
+          const blocker = task?.blockers[0] ?? null;
 
           return {
             ...node,
@@ -226,6 +236,22 @@ export class R26ReadModelService {
             assignmentStatus: assignment?.assignmentStatus ?? 'UNASSIGNED',
             assignmentSource: assignment?.assignmentSource ?? 'UNASSIGNED',
             availableActions: assignment?.availableActions ?? [],
+            blocker: blocker
+              ? {
+                  type: blocker.blockerType,
+                  description: blocker.description,
+                  helperName: blocker.helperUser?.name ?? null,
+                  assistanceUserIds: this.parseUserIdList(
+                    blocker.assistanceUserIds,
+                  ),
+                  assistanceDepartmentIds: this.parseUserIdList(
+                    blocker.assistanceDepartmentIds,
+                  ),
+                  impactLevel: blocker.impactLevel,
+                  expectedResolvedAt:
+                    blocker.expectedResolvedAt?.toISOString() ?? null,
+                }
+              : null,
           };
         }),
       },
@@ -254,14 +280,14 @@ export class R26ReadModelService {
         createdAt: record.createdAt.toISOString(),
       })),
       capabilities: {
-        gate: 'R26_GATE3A',
+        gate: 'R26_GATE3B',
         memberAssignmentVersion: project.memberAssignmentVersion,
         manageMembers:
           actor.isSystemAdmin ||
           actor.roleCodes.includes('admin') ||
           (project.ownerUserId === actor.id &&
             (actor.permissionCodes ?? []).includes('project.write')),
-        progressWriteEnabled: false,
+        progressWriteEnabled: true,
         workflowWriteEnabled: false,
       },
     };

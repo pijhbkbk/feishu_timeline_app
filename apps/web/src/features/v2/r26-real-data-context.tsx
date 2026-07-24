@@ -19,6 +19,7 @@ type R26RealDataContextValue = {
   viewer: R26Viewer | null;
   loading: boolean;
   error: string | null;
+  refresh: () => void;
 };
 
 const R26RealDataContext = createContext<R26RealDataContextValue>({
@@ -27,6 +28,7 @@ const R26RealDataContext = createContext<R26RealDataContextValue>({
   viewer: null,
   loading: false,
   error: null,
+  refresh: () => undefined,
 });
 
 export function R26RealDataProvider({ children }: PropsWithChildren) {
@@ -35,6 +37,7 @@ export function R26RealDataProvider({ children }: PropsWithChildren) {
     useState<R26DashboardResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(enabled);
+  const [refreshVersion, setRefreshVersion] = useState(0);
 
   useEffect(() => {
     if (!enabled) {
@@ -69,7 +72,13 @@ export function R26RealDataProvider({ children }: PropsWithChildren) {
       window.clearTimeout(timeout);
       controller.abort();
     };
-  }, [enabled]);
+  }, [enabled, refreshVersion]);
+
+  useEffect(() => {
+    const refresh = () => setRefreshVersion((version) => version + 1);
+    window.addEventListener('r26:data-changed', refresh);
+    return () => window.removeEventListener('r26:data-changed', refresh);
+  }, []);
 
   const value = useMemo(
     () => ({
@@ -78,6 +87,7 @@ export function R26RealDataProvider({ children }: PropsWithChildren) {
       viewer: dashboardResponse?.viewer ?? null,
       loading,
       error,
+      refresh: () => setRefreshVersion((version) => version + 1),
     }),
     [dashboardResponse, enabled, error, loading],
   );

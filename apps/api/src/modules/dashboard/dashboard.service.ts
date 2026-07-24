@@ -71,6 +71,13 @@ export class DashboardService {
               },
             },
             progressUpdates: {
+              include: {
+                blocker: {
+                  include: {
+                    helperUser: { select: { id: true, name: true } },
+                  },
+                },
+              },
               orderBy: { createdAt: 'desc' },
               take: 1,
             },
@@ -118,7 +125,6 @@ export class DashboardService {
         this.prisma.taskBlocker.count({
           where: {
             status: TaskBlockerStatus.OPEN,
-            helperUserId: { not: null },
             workflowTask: assignedWhere,
           },
         }),
@@ -222,6 +228,18 @@ export class DashboardService {
         completionPercent:
           task.progressUpdates[0]?.completionPercent ??
           (task.status === WorkflowTaskStatus.IN_PROGRESS ? 35 : 0),
+        blocker: task.progressUpdates[0]?.blocker
+          ? {
+              type: task.progressUpdates[0].blocker.blockerType,
+              description: task.progressUpdates[0].blocker.description,
+              helperName:
+                task.progressUpdates[0].blocker.helperUser?.name ?? null,
+              expectedResolvedAt:
+                task.progressUpdates[0].blocker.expectedResolvedAt?.toISOString() ??
+                null,
+              impactLevel: task.progressUpdates[0].blocker.impactLevel,
+            }
+          : null,
         materials,
         progressHref: `/progress?taskId=${task.id}`,
         projectHref: `/projects/${task.projectId}?taskId=${task.id}`,

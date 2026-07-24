@@ -383,8 +383,8 @@ export function RealWorkspacePage({ projectId }: { projectId: string }) {
       data-source="database"
     >
       <div className="r26-readonly-banner r26-gate3a-banner" role="status">
-        <strong>Gate 3A · 成员与任务分配</strong>
-        <span>仅开放项目成员和负责人调整；进展、材料与流程动作仍保持关闭。</span>
+        <strong>Gate 3B · 项目事实实时联动</strong>
+        <span>成员分工、进展和材料已开放；完成工序与流程推进仍保持关闭。</span>
       </div>
       <header className="r26-project-header">
         <div className="r26-project-header__identity">
@@ -1161,6 +1161,17 @@ function RealTaskDetail({
             ['逾期天数', `${task?.schedule.overdueDays ?? rawNode?.overdueDays ?? 0} 天`],
           ]} />
         </DetailSection>
+        {rawNode?.blocker ? (
+          <DetailSection title="当前阻塞">
+            <div className="r26-task-blocker-summary">
+              <strong>{rawNode.blocker.description}</strong>
+              <span>
+                协助人：{rawNode.blocker.helperName ?? '按协助范围协调'} ·
+                预计解除：{formatDateTime(rawNode.blocker.expectedResolvedAt)}
+              </span>
+            </div>
+          </DetailSection>
+        ) : null}
         <DetailSection title="工作要求与输出物">
           <p>{task?.workContent ?? '当前节点尚未创建任务，以下为自动分配预览。'}</p>
           <div className="r26-output-box"><span>预期输出</span><strong>{task?.outputName ?? '工序任务创建后确定'}</strong></div>
@@ -1222,10 +1233,28 @@ function RealTaskDetail({
         </DetailSection>
       </div>
       <footer className="r26-task-detail__footer">
-        <div className="r26-readonly-footer">
-          <strong>只读查看</strong>
-          <span>{rawNode?.availableActions.length ? `后端可用动作：${rawNode.availableActions.map((action) => action.label).join('、')}` : '当前无可执行动作'}</span>
-        </div>
+        {task ? (
+          <div className="r26-gate3b-task-actions">
+            <Link
+              className="r26-button r26-button--primary"
+              href={`/v2/progress?projectId=${encodeURIComponent(task.projectId)}&taskId=${encodeURIComponent(task.taskId)}`}
+            >
+              提交工作进展
+            </Link>
+            <Link
+              className="r26-button r26-button--secondary"
+              href={`/v2/progress?projectId=${encodeURIComponent(task.projectId)}&taskId=${encodeURIComponent(task.taskId)}`}
+            >
+              上传材料
+            </Link>
+            <span>不会完成工序或推进流程</span>
+          </div>
+        ) : (
+          <div className="r26-readonly-footer">
+            <strong>工序尚未生成</strong>
+            <span>当前只展示自动分配预览。</span>
+          </div>
+        )}
       </footer>
     </aside>
   );
@@ -1288,7 +1317,20 @@ function toDisplayNode(node: R26FlowMapNode): R26FlowNode {
     requiredMaterials: Array.from({ length: node.materialProgress.required }, (_, index) => `必交材料 ${index + 1}`),
     uploadedMaterials: Array.from({ length: node.materialProgress.submitted }, (_, index) => `已上传材料 ${index + 1}`),
     missingMaterials: Array.from({ length: node.materialProgress.missing }, (_, index) => `缺失材料 ${index + 1}`),
-    recentEvents: [],
+    isBlocked: Boolean(node.blocker),
+    ...(node.blocker
+      ? { blockerSummary: node.blocker.description }
+      : {}),
+    recentEvents: node.blocker
+      ? [
+          {
+            time: node.blocker.expectedResolvedAt
+              ? formatDateTime(node.blocker.expectedResolvedAt)
+              : '解除时间待定',
+            text: `阻塞：${node.blocker.description}`,
+          },
+        ]
+      : [],
   };
 }
 

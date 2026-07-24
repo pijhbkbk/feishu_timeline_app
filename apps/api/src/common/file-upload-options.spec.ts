@@ -23,6 +23,8 @@ import {
 const EXPECTED_SECURED_UPLOAD_CONTROLLERS = [
   'modules/attachments/attachments.controller.ts',
   'modules/performance-tests/performance-tests.controller.ts',
+  'modules/r26-read-model/r26-read-model.controller.ts',
+  'modules/r26-read-model/r26-read-model.controller.ts',
   'modules/reviews/reviews.controller.ts',
   'modules/reviews/reviews.controller.ts',
   'modules/reviews/reviews.controller.ts',
