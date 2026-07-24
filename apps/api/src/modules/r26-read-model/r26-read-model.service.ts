@@ -354,6 +354,9 @@ export class R26ReadModelService {
           },
           assigneeUser: {
             select: {
+              id: true,
+              name: true,
+              departmentId: true,
               department: {
                 select: {
                   id: true,
@@ -375,6 +378,16 @@ export class R26ReadModelService {
 
     return {
       ...task,
+      owner: assignment?.assigneeUser
+        ? {
+            id: assignment.assigneeUser.id,
+            name: assignment.assigneeUser.name,
+            departmentId:
+              assignment.assigneeUser.departmentId,
+            departmentName:
+              assignment.assigneeUser.department?.name ?? null,
+          }
+        : null,
       department: explicitDepartment
         ? {
             id: explicitDepartment.id,

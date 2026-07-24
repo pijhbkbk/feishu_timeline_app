@@ -301,7 +301,7 @@ describe('R26ReadModelService real-data responsibility', () => {
           findUnique: vi.fn().mockResolvedValue({
             nodeCode: WorkflowNodeCode.CAB_REVIEW,
             assigneeDepartment: null,
-            assigneeUser: { department: null },
+            assigneeUser: null,
           }),
         },
       } as never,
@@ -320,6 +320,7 @@ describe('R26ReadModelService real-data responsibility', () => {
       id: null,
       name: '质量管理部',
     });
+    expect(response.task.owner).toBeNull();
   });
 
   it('preserves an explicitly assigned real task department', async () => {
@@ -332,7 +333,7 @@ describe('R26ReadModelService real-data responsibility', () => {
               id: 'dept-review',
               name: '专项评审组',
             },
-            assigneeUser: { department: null },
+            assigneeUser: null,
           }),
         },
       } as never,
@@ -350,6 +351,51 @@ describe('R26ReadModelService real-data responsibility', () => {
     expect(response.task.department).toEqual({
       id: 'dept-review',
       name: '专项评审组',
+    });
+  });
+
+  it('returns only the persisted task owner and never falls back to the project owner', async () => {
+    const service = new R26ReadModelService(
+      {
+        workflowTask: {
+          findUnique: vi.fn().mockResolvedValue({
+            nodeCode: WorkflowNodeCode.PAINT_PROCUREMENT,
+            assigneeDepartment: null,
+            assigneeUser: {
+              id: 'buyer-1',
+              name: '采购执行人',
+              departmentId: 'dept-purchasing',
+              department: {
+                id: 'dept-purchasing',
+                name: '采购部',
+              },
+            },
+          }),
+        },
+      } as never,
+      {} as never,
+      {} as never,
+      {
+        getTaskInteractionDetail: vi.fn().mockResolvedValue({
+          owner: {
+            id: 'project-owner',
+            name: '项目负责人旧兜底',
+          },
+          department: {
+            id: 'dept-pmo',
+            name: '项目管理部',
+          },
+        }),
+      } as never,
+    );
+
+    const response = await service.getTask('task-6', actor);
+
+    expect(response.task.owner).toEqual({
+      id: 'buyer-1',
+      name: '采购执行人',
+      departmentId: 'dept-purchasing',
+      departmentName: '采购部',
     });
   });
 });
