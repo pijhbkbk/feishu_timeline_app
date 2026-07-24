@@ -46,6 +46,7 @@ export async function r26Gate3C1Request<T>(
       normalizeApiErrorMessage(
         error instanceof Error ? error.message : undefined,
       ),
+      { cause: error },
     );
   }
 

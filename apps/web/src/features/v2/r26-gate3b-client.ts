@@ -92,6 +92,7 @@ async function request<T>(
       normalizeApiErrorMessage(
         error instanceof Error ? error.message : undefined,
       ),
+      { cause: error },
     );
   }
 

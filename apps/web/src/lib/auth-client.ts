@@ -135,6 +135,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}) 
       normalizeApiErrorMessage(
         requestError instanceof Error ? requestError.message : undefined,
       ),
+      { cause: requestError },
     );
   }
 

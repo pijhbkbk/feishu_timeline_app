@@ -29,6 +29,7 @@ export async function r26ReadOnlyGet<T>(
     }
     throw new Error(
       normalizeApiErrorMessage(error instanceof Error ? error.message : undefined),
+      { cause: error },
     );
   }
 
