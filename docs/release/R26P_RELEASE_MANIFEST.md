@@ -25,7 +25,7 @@ R26 V2 候选版本完成了源码、测试、安全快检、不可变 staging �
 | `origin/main` | `893b50f5b7ef1f54f840243d3b18dbe1e0f8dcd1` |
 | main merge commit | not created |
 | candidate tag | not created |
-| evidence commit | recorded after this document is committed |
+| evidence commit | `5088ded4c8e81af610efd4747e859765e894ab9c` |
 
 ## 构建来源
 
