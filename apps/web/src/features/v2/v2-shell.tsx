@@ -100,7 +100,7 @@ export function V2Shell({ children }: { children: React.ReactNode }) {
 
           <nav className="r26-primary-nav" aria-label="V2 主导航">
             {navItems.map((item) => {
-              const isActive = isNavActive(pathname, item.href);
+              const isActive = item.enabled && isNavActive(pathname, item.href);
               return (
                 <Link
                   key={item.label}
@@ -179,7 +179,7 @@ export function V2Shell({ children }: { children: React.ReactNode }) {
       <nav className="r26-mobile-nav" aria-label="V2 移动端主导航">
         {navItems.map((item) => {
           const Icon = item.icon;
-          const isActive = isNavActive(pathname, item.href);
+          const isActive = item.enabled && isNavActive(pathname, item.href);
           return (
             <Link
               key={item.label}

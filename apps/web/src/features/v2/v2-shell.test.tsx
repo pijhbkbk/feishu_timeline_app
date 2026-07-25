@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('next/navigation', () => ({
-  usePathname: () => '/dashboard',
+  usePathname: () => '/v2/dashboard',
 }));
 
 vi.mock('../../components/auth-provider', () => ({
@@ -50,5 +50,19 @@ describe('V2 account menu', () => {
     expect(html).toContain('系统管理员');
     expect(html).toContain('data-testid="v2-logout-button"');
     expect(html).toContain('退出登录');
+  });
+
+  it('does not mark a disabled progress link as active on the dashboard', () => {
+    const html = renderToStaticMarkup(
+      <V2Shell>
+        <p>页面内容</p>
+      </V2Shell>,
+    );
+
+    expect(html.match(/aria-current="page"/g)).toHaveLength(2);
+    expect(html.match(/aria-disabled="true"/g)).toHaveLength(2);
+    expect(html).not.toMatch(
+      /class="is-active"[^>]*aria-current="page"[^>]*aria-disabled="true"/,
+    );
   });
 });

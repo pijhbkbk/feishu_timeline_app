@@ -4271,6 +4271,39 @@ STOP_BEFORE_GATE3
 
 ---
 
+### Round R26P10_NAV_ACTIVE_STATE
+
+#### Goal And Scope
+
+- 修复工作台同时高亮“工作台”和不可用“进展提交”的导航状态错误。
+- 保持无当前任务时“进展提交”不可用，不改变任务或流程数据。
+
+#### Root Cause And Fix
+
+- 无当前任务时，“进展提交”为保持安全兜底将链接指向工作台。
+- 旧激活态只比较当前路径和链接路径，因此把禁用链接误判为当前页面。
+- 桌面端和移动端导航现在均要求 `item.enabled` 后才允许显示激活态。
+- 新增无当前任务时只高亮工作台的服务端渲染回归测试。
+
+#### Validation
+
+```text
+targeted V2 shell tests       PASS (2)
+Web typecheck                 PASS
+git diff --check              PASS
+pnpm install                  PASS
+pnpm lint                     PASS
+pnpm typecheck                PASS
+pnpm test                     PASS (Web 143 / API 294)
+pnpm --filter web build       PASS
+pnpm --filter api build       PASS
+API prisma validate           PASS
+production deployment         PENDING
+production visual check       PENDING
+```
+
+---
+
 ### Round R26P9_VISUAL_SPACING_CLEANUP
 
 #### Goal And Scope
