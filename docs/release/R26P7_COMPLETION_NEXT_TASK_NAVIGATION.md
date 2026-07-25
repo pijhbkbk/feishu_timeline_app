@@ -47,3 +47,17 @@ but closing the success drawer revealed the old selection.
 - No database write or migration was introduced.
 - No V1 behavior changed.
 - Existing idempotency and optimistic-lock behavior remains unchanged.
+
+## Production verification
+
+- Runtime code commit: `e2ccf6a`.
+- Web, API and Nginx services: active.
+- Public and loopback health endpoints: passed.
+- Authenticated read-only workspace verification:
+  - selected node: step 3, `PAINT_DEVELOPMENT`;
+  - selected task: `cms02bvbv000nbr7rpxe1z5q2`;
+  - step 2 displayed once and completed;
+  - step 3 displayed once and in progress;
+  - console errors: 0.
+- No completion, progress, upload or other business write was made during
+  production verification.
