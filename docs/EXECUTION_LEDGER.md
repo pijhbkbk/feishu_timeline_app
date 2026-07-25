@@ -4271,6 +4271,61 @@ STOP_BEFORE_GATE3
 
 ---
 
+### Round R26P2_PAGE_SPACING_AND_CLEAN_RESET
+
+#### Goal And Scope
+
+- 修复“我的任务”和“系统管理”在 V2 正式入口中没有页面 gutter 的问题；
+- 删除 production 全部项目与关联运行记录，为人工从零测试准备空环境；
+- 保留组织、账号、角色权限、流程模板、系统参数和不可篡改审计日志。
+
+#### Implementation
+
+- 为 `.r22-tasks-page` 和 `.r22-admin-page` 增加 V2 1504px 居中内容框；
+- 桌面/平板/手机 gutter 分别为 32/24/20px；
+- 新增 CSS 契约测试覆盖三个断点；
+- runtime commit：
+  `51ab39bbb18dbe2c0dd9d51adab03911c69223b0`；
+- `main` merge：
+  `6a60eb50c9b6e8aa5b7edb106db507c35085efb4`。
+
+#### Backup And Reset
+
+- backup：
+  `/var/backups/feishu-timeline-db/20260725T050659Z/feishu-timeline.dump`；
+- SHA256：
+  `2702c4bb0ba795f003daeceb6ae82be338670bc334f843b71b9e48edc86701ec`；
+- 44/44 tables、12/12 users、1/1 projects、22/22 audit logs 恢复演练通过；
+- project、workflow、task、progress、blocker、attachment、notification、recurring、
+  color、review、fee、production plan 和实时对象文件均为 0；
+- users=12、departments=7、process templates=1、audit logs=25；
+- 三个清空动作均写入系统审计，历史审计未删除或覆盖。
+
+#### Validation
+
+```text
+Web unit tests              129 / 129 PASS
+API unit tests              293 / 293 PASS
+lint / typecheck            PASS
+Web / API build             PASS
+Prisma validate             PASS
+release verify              PASS
+production acceptance       PASS
+production browser /tasks   0 items, empty state PASS
+production browser /projects 0 projects, empty state PASS
+```
+
+#### Decision
+
+```text
+R26P2_PAGE_SPACING_FIXED
+PRODUCTION_PROJECT_DOMAIN_RESET
+AUDIT_LOGS_PRESERVED
+READY_FOR_MANUAL_TEST_FROM_SCRATCH
+```
+
+---
+
 ### Round R26P1_FORMAL_TENANT_PRODUCTION_REPROMOTION
 
 #### Goal And Scope
