@@ -75,7 +75,7 @@ export function V2Shell({ children }: { children: React.ReactNode }) {
 
     try {
       await logout();
-      window.location.assign('/login');
+      window.location.assign('/login?loggedOut=1');
     } catch {
       setIsLoggingOut(false);
       showStaticMessage('退出登录失败，请检查网络后重试。');
