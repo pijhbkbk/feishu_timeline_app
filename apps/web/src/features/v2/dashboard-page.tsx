@@ -3,7 +3,7 @@
 import Link from 'next/link';
 
 import { CheckIcon } from './icons';
-import { toProductHref } from './production-ui';
+import { canCreateR26Project, toProductHref } from './production-ui';
 import { useR26PrototypeStore } from './prototype-store';
 import { isR26ReadOnlyRealDataEnabled } from './r26-data-mode';
 import { useR26RealData } from './r26-real-data-context';
@@ -172,6 +172,7 @@ function RealDashboardPage() {
   const { dashboard, viewer } = dashboardResponse;
   const currentTask = dashboard.currentTask;
   const nextTask = dashboard.nextTask;
+  const canCreateProject = canCreateR26Project(viewer);
 
   return (
     <div
@@ -261,8 +262,28 @@ function RealDashboardPage() {
       ) : (
         <section className="r26-empty-state">
           <strong>当前没有待处理工序</strong>
-          <p>项目和权限数据已经连接成功，可从项目列表继续查看。</p>
-          <Link className="r26-button r26-button--primary" href={toProductHref('/v2/projects')}>打开项目列表</Link>
+          <p>
+            {canCreateProject
+              ? '当前还没有项目。新建第一个项目后，系统会自动初始化开发流程。'
+              : '项目和权限数据已经连接成功，可从项目列表继续查看。'}
+          </p>
+          <div className="r26-empty-state__actions">
+            {canCreateProject ? (
+              <Link
+                className="r26-button r26-button--primary"
+                href={toProductHref('/v2/projects/new')}
+                data-testid="dashboard-create-project-button"
+              >
+                新建项目
+              </Link>
+            ) : null}
+            <Link
+              className={`r26-button ${canCreateProject ? 'r26-button--secondary' : 'r26-button--primary'}`}
+              href={toProductHref('/v2/projects')}
+            >
+              打开项目列表
+            </Link>
+          </div>
         </section>
       )}
 

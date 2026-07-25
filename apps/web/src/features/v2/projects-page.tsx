@@ -5,8 +5,9 @@ import { useMemo, useState } from 'react';
 
 import { r26Projects } from './fixtures';
 import { ChevronRightIcon } from './icons';
-import { toProductHref } from './production-ui';
+import { canCreateR26Project, toProductHref } from './production-ui';
 import { isR26ReadOnlyRealDataEnabled } from './r26-data-mode';
+import { useR26RealData } from './r26-real-data-context';
 import type { R26ProjectListItem, R26ProjectsResponse } from './real-types';
 import { RealDataState } from './real-ui';
 import { PageIntro, StatusPill } from './ui';
@@ -158,6 +159,7 @@ function PrototypeProjectsPage() {
 
 function RealProjectsPage() {
   const [activeFilter, setActiveFilter] = useState<(typeof filters)[number]['value']>('all');
+  const { viewer } = useR26RealData();
   const path = `/v2/projects?view=${encodeURIComponent(activeFilter)}&page=1&pageSize=50`;
   const { data, error, loading } = useR26ReadOnlyData<R26ProjectsResponse>(path);
 
@@ -167,6 +169,8 @@ function RealProjectsPage() {
 
   const summary = data.projects.summary;
   const projects = data.projects.items;
+  const canCreateProject = canCreateR26Project(viewer);
+  const createProjectHref = toProductHref('/v2/projects/new');
 
   return (
     <div
@@ -182,6 +186,17 @@ function RealProjectsPage() {
         eyebrow="项目组合"
         title="哪些项目需要介入？"
         description="先识别停滞、逾期和评审风险，再进入真实项目工作区。"
+        action={
+          canCreateProject ? (
+            <Link
+              className="r26-button r26-button--primary"
+              href={createProjectHref}
+              data-testid="create-project-button"
+            >
+              新建项目
+            </Link>
+          ) : undefined
+        }
       />
 
       <section className="r26-project-kpis" aria-label="项目组合摘要">
@@ -214,8 +229,23 @@ function RealProjectsPage() {
         ))}
         {projects.length === 0 ? (
           <div className="r26-empty-state">
-            <strong>当前筛选下没有项目</strong>
-            <p>当前权限范围内没有匹配项目，可切换其他筛选继续查看。</p>
+            <strong>{activeFilter === 'all' ? '还没有项目' : '当前筛选下没有项目'}</strong>
+            <p>
+              {activeFilter === 'all'
+                ? canCreateProject
+                  ? '创建第一个定制色开发项目，系统会自动初始化流程。'
+                  : '当前权限范围内还没有可见项目。'
+                : '切换其他筛选继续查看。'}
+            </p>
+            {activeFilter === 'all' && canCreateProject ? (
+              <Link
+                className="r26-button r26-button--primary"
+                href={createProjectHref}
+                data-testid="create-first-project-button"
+              >
+                新建第一个项目
+              </Link>
+            ) : null}
           </div>
         ) : null}
       </section>

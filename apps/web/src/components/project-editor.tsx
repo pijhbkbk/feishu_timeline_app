@@ -219,7 +219,7 @@ export function ProjectEditor(props: ProjectEditorProps) {
 
       setSuccessMessage('项目已创建，流程实例已自动初始化。');
       setIsDirty(false);
-      router.push(`/projects/${detail.id}/overview`);
+      router.push(`/projects/${detail.id}`);
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : '项目创建失败。');
     } finally {

@@ -17,6 +17,7 @@ import { ProjectLogsWorkspace } from '../components/project-logs-workspace';
 import { ProjectReviewsWorkspace } from '../components/project-reviews-workspace';
 import { ProjectWorkflowWorkspace } from '../components/project-workflow-workspace';
 import { SystemGuidePage } from '../components/system-guide-page';
+import NewV2ProjectPage from './v2/projects/new/page';
 import { normalizeApiErrorMessage } from '../lib/auth-client';
 import { sidebarSections, topNavigationItems } from '../lib/navigation';
 
@@ -31,6 +32,18 @@ describe('route smoke', () => {
 
     expect(dashboardHtml).toContain('r22-skeleton');
     expect(newProjectHtml).toContain('创建项目');
+  });
+
+  it('renders the production V2 create-project route', () => {
+    const html = renderToStaticMarkup(
+      <AuthProvider>
+        <NewV2ProjectPage />
+      </AuthProvider>,
+    );
+
+    expect(html).toContain('data-testid="r26-project-create"');
+    expect(html).toContain('新建定制色开发项目');
+    expect(html).toContain('data-testid="project-submit-button"');
   });
 
   it('renders system guide with process, operation, role and FAQ content', async () => {

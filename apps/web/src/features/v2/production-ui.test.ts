@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  canCreateR26Project,
   isFormalV2Path,
   isProductionV2Ui,
   toProductHref,
@@ -35,5 +36,28 @@ describe('production V2 routing', () => {
     ).toBe(
       '/projects/project-1?taskId=task-1',
     );
+    expect(toProductHref('/v2/projects/new', 'v2')).toBe('/projects/new');
+  });
+
+  it('shows project creation only to project managers and administrators', () => {
+    expect(
+      canCreateR26Project({
+        isSystemAdmin: true,
+        roleCodes: [],
+      }),
+    ).toBe(true);
+    expect(
+      canCreateR26Project({
+        isSystemAdmin: false,
+        roleCodes: ['project_manager'],
+      }),
+    ).toBe(true);
+    expect(
+      canCreateR26Project({
+        isSystemAdmin: false,
+        roleCodes: ['observer'],
+      }),
+    ).toBe(false);
+    expect(canCreateR26Project(null)).toBe(false);
   });
 });

@@ -1,3 +1,5 @@
+import type { R26Viewer } from './real-types';
+
 const FORMAL_V2_PREFIXES = [
   '/dashboard',
   '/projects',
@@ -28,4 +30,15 @@ export function toProductHref(
   }
 
   return v2Href.replace(/^\/v2(?=\/|$)/, '') || '/dashboard';
+}
+
+export function canCreateR26Project(
+  viewer: Pick<R26Viewer, 'isSystemAdmin' | 'roleCodes'> | null | undefined,
+) {
+  return Boolean(
+    viewer &&
+      (viewer.isSystemAdmin ||
+        viewer.roleCodes.includes('admin') ||
+        viewer.roleCodes.includes('project_manager')),
+  );
 }
