@@ -4271,6 +4271,58 @@ STOP_BEFORE_GATE3
 
 ---
 
+### Round R26P4_ACCOUNT_LOGOUT
+
+#### Goal And Scope
+
+- 修复 V2 右上角头像只能显示临时提示、无法退出登录的问题。
+- 复用现有服务端登出能力，安全销毁会话并清除浏览器 Cookie。
+- 明确展示当前姓名、组织部门状态、系统角色和“退出登录”动作。
+- 退出后停留在清楚的成功页面，避免自动重新触发飞书 OAuth 而造成“没有退出”的误解。
+- 不修改项目、流程、数据库业务数据、权限规则或飞书 OAuth 服务商配置。
+
+#### Exact Changes
+
+- V2 头像改为可访问的账号菜单，显示真实用户信息与退出动作。
+- “退出登录”调用既有 `AuthProvider.logout()` 和 `/api/auth/logout`，不建立第二套认证逻辑。
+- 成功后进入 `/login?loggedOut=1`；该显式退出状态不自动发起飞书授权。
+- 普通 `/login` 入口继续保持原有自动进入飞书登录的行为。
+- 增加账号菜单、登出动作与退出落地状态回归测试。
+
+#### Validation And Production Evidence
+
+```text
+application code commit              507e9c227f789e0541f0b07188b2d22644eff18f
+pnpm install --frozen-lockfile        PASS
+pnpm lint                             PASS
+pnpm typecheck                        PASS
+pnpm test                             PASS（Web 133；API 293）
+pnpm --filter web build               PASS
+pnpm --filter api build               PASS
+pnpm --filter api prisma:validate     PASS
+git diff --check                      PASS
+production release verification      PASS
+production acceptance                PASS
+```
+
+- Safari 正式账号实测：点击头像“李”后显示李晓晨、组织部门状态、系统管理员角色和
+  “退出登录”。
+- 点击退出后，`/api/auth/session` 返回 `authenticated=false`、`user=null`。
+- `/login?loggedOut=1` 显示“已退出登录”和“重新登录”，不会自动跳转飞书授权。
+- 实测浏览器最终保持退出状态；未重新授权，未产生项目或流程写请求。
+- 详细记录：`docs/release/R26P4_ACCOUNT_LOGOUT.md`。
+
+#### Decision
+
+```text
+R26P4_ACCOUNT_LOGOUT_DEPLOYED
+SERVER_SESSION_AND_COOKIE_CLEARED
+SIGNED_OUT_LANDING_CONFIRMED
+PRODUCTION_USER_LOGGED_OUT
+```
+
+---
+
 ### Round R26P3_PROJECT_CREATE_ENTRY
 
 #### Goal And Scope
