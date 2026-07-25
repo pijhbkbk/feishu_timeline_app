@@ -41,8 +41,11 @@ export function AdminDashboardR22() {
 }
 
 function getModuleIcon(key: string) {
+  if (key === 'projects') return '项';
+  if (key === 'tasks') return '序';
   if (key === 'organization') return '组';
-  if (key === 'roles') return '权';
+  if (key === 'assignments') return '责';
+  if (key === 'permissions') return '权';
   if (key === 'workflow') return '流';
   return '审';
 }

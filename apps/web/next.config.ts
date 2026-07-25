@@ -98,6 +98,10 @@ const nextConfig: NextConfig = {
           source: '/admin/audit-logs',
           destination: '/v2/admin/audit-logs',
         },
+        {
+          source: '/admin/:section',
+          destination: '/v2/admin/:section',
+        },
         { source: '/admin', destination: '/v2/admin' },
       ],
     };

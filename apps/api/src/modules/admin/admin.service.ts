@@ -1,5 +1,13 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { AuditTargetType, Prisma, RoleStatus, UserStatus } from '@prisma/client';
+import {
+  AuditTargetType,
+  Prisma,
+  ProjectStatus,
+  RoleStatus,
+  UserStatus,
+  WorkflowNodeCode,
+  WorkflowTaskStatus,
+} from '@prisma/client';
 
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import type { AdminAuditQueryDto } from './dto/admin-audit-query.dto';
@@ -37,6 +45,14 @@ export class AdminService {
       activeParameters,
       anomalyCount,
       anomalies,
+      activeProjects,
+      completedProjects,
+      overdueProjects,
+      waitingReviewProjects,
+      unassignedTasks,
+      dueSoonTasks,
+      overdueTasks,
+      blockedTasks,
     ] = await Promise.all([
       this.prisma.user.count({ where: { status: UserStatus.ACTIVE } }),
       this.prisma.department.count({ where: { isActive: true } }),
@@ -51,6 +67,82 @@ export class AdminService {
         orderBy: { createdAt: 'desc' },
         take: 6,
       }),
+      this.prisma.project.count({
+        where: {
+          status: {
+            in: [ProjectStatus.DRAFT, ProjectStatus.IN_PROGRESS, ProjectStatus.ON_HOLD],
+          },
+        },
+      }),
+      this.prisma.project.count({ where: { status: ProjectStatus.COMPLETED } }),
+      this.prisma.project.count({
+        where: {
+          workflowTasks: {
+            some: { isActive: true, overdueDays: { gt: 0 } },
+          },
+        },
+      }),
+      this.prisma.project.count({
+        where: {
+          workflowTasks: {
+            some: {
+              isActive: true,
+              nodeCode: {
+                in: [
+                  WorkflowNodeCode.CAB_REVIEW,
+                  WorkflowNodeCode.COLOR_CONSISTENCY_REVIEW,
+                  WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW,
+                ],
+              },
+              status: {
+                in: [
+                  WorkflowTaskStatus.PENDING,
+                  WorkflowTaskStatus.READY,
+                  WorkflowTaskStatus.IN_PROGRESS,
+                ],
+              },
+            },
+          },
+        },
+      }),
+      this.prisma.workflowTask.count({
+        where: {
+          isActive: true,
+          assigneeUserId: null,
+          status: {
+            in: [
+              WorkflowTaskStatus.PENDING,
+              WorkflowTaskStatus.READY,
+              WorkflowTaskStatus.IN_PROGRESS,
+            ],
+          },
+        },
+      }),
+      this.prisma.workflowTask.count({
+        where: {
+          isActive: true,
+          effectiveDueAt: {
+            gte: new Date(),
+            lte: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+          },
+          status: {
+            in: [
+              WorkflowTaskStatus.PENDING,
+              WorkflowTaskStatus.READY,
+              WorkflowTaskStatus.IN_PROGRESS,
+            ],
+          },
+        },
+      }),
+      this.prisma.workflowTask.count({
+        where: { isActive: true, overdueDays: { gt: 0 } },
+      }),
+      this.prisma.workflowTask.count({
+        where: {
+          isActive: true,
+          blockers: { some: { status: 'OPEN' } },
+        },
+      }),
     ]);
 
     return {
@@ -60,27 +152,53 @@ export class AdminService {
         activeDepartments,
         activeTemplates,
         anomalyCount,
+        projects: {
+          active: activeProjects,
+          overdue: overdueProjects,
+          waitingReview: waitingReviewProjects,
+          completed: completedProjects,
+        },
+        tasks: {
+          unassigned: unassignedTasks,
+          dueSoon: dueSoonTasks,
+          overdue: overdueTasks,
+          blocked: blockedTasks,
+        },
       },
       modules: [
+        {
+          key: 'projects',
+          title: '项目',
+          description: '进入项目总台账，查看进度、期限、风险和成员。',
+          href: '/admin/projects',
+          metric: `${activeProjects} 个进行中 · ${overdueProjects} 个逾期`,
+        },
+        {
+          key: 'tasks',
+          title: '工序',
+          description: '进入工序总台账，管理计划日期和人员分工。',
+          href: '/admin/tasks',
+          metric: `${unassignedTasks} 个待分配 · ${blockedTasks} 个阻塞`,
+        },
         {
           key: 'organization',
           title: '组织与用户',
           description: '维护组织架构、人员状态与飞书身份映射。',
-          href: '/admin/users',
+          href: '/admin/organization',
           metric: `${activeUsers} 人 · ${activeDepartments} 个部门`,
         },
         {
-          key: 'roles',
-          title: '角色与权限',
-          description: '查看角色覆盖范围与系统权限边界。',
-          href: '/admin/roles',
-          metric: `${activeRoles} 个启用角色`,
+          key: 'assignments',
+          title: '分工与权限',
+          description: '查看 18 节点分工矩阵和真实 RBAC 权限边界。',
+          href: '/admin/assignments',
+          metric: `${activeRoles} 个启用角色 · ${unassignedTasks} 个待分配`,
         },
         {
           key: 'workflow',
-          title: '流程与参数',
-          description: '管理流程模板、节点定义和系统参数。',
-          href: '/admin/workflow-nodes',
+          title: '流程模板',
+          description: '查看模板版本、18 节点和锁定的特殊规则。',
+          href: '/admin/workflow-templates',
           metric: `${activeTemplates} 套模板 · ${activeNodes} 个节点 · ${activeParameters} 项参数`,
         },
         {

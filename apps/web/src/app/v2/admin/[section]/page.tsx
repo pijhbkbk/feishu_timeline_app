@@ -3,7 +3,7 @@ import { notFound, redirect } from 'next/navigation';
 import {
   AdminControlCenter,
   type AdminControlSection,
-} from '../../../components/admin-control-center';
+} from '../../../../components/admin-control-center';
 
 type AdminSectionPageProps = {
   params: Promise<{ section: string }>;
@@ -26,9 +26,7 @@ const legacyRedirects: Record<string, string> = {
   'workflow-nodes': 'workflow-templates',
 };
 
-export default async function AdminSectionPage({
-  params,
-}: AdminSectionPageProps) {
+export default async function Page({ params }: AdminSectionPageProps) {
   const { section } = await params;
   if (legacyRedirects[section]) {
     redirect(`/admin/${legacyRedirects[section]}`);

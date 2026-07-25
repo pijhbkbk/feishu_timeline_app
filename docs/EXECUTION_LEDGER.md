@@ -4271,6 +4271,55 @@ STOP_BEFORE_GATE3
 
 ---
 
+### Round R26_ADMIN_TABLE_CONTROL_CENTER
+
+#### Goal And Scope
+
+- 将仅有视觉入口和占位页的系统管理后台改造成真实数据、表格驱动的控制中心。
+- 复用现有项目、任务、Gate 3A 分配、流程模板、权限和审计服务。
+- 只部署独立 staging；不修改 V1、production、`main` 或 tag。
+
+#### Exact Changes
+
+- Prisma：新增管理员保存视图与管理命令幂等记录及 migration。
+- API：新增项目/工序/组织/分工/RBAC/模板/字典读模型；新增基础信息、日期、分工、
+  用户状态、字典与模板版本明确命令。
+- 批量与导入：最多 100 条原子批量预检/写入；正式 CSV 模板、dry-run、确认导入；
+  CSV 导出公式注入防护。
+- Web：九个后台入口、服务端分页筛选排序、精简/完整列、保存视图、详情面板、
+  影响预览、批量选择、导入导出和 390 只读卡片。
+- 状态机：项目状态、任务状态、当前节点、实际完成时间及第 12/13/17/18 步结论
+  均无直接编辑接口。
+- 报告：`docs/product/R26_ADMIN_TABLE_CONTROL_CENTER_REPORT.md`。
+- 人工验收：`docs/product/R26_ADMIN_TABLE_CONTROL_CENTER_HUMAN_REVIEW.md`。
+- 证据：`docs/product/evidence/R26_ADMIN_TABLE_CONTROL_CENTER/`。
+
+#### Validation
+
+```text
+pnpm install --frozen-lockfile       PASS
+pnpm lint                            PASS
+pnpm typecheck                       PASS
+pnpm test                            PASS（Web 44 files / 170 tests；API 66 files / 298 tests）
+pnpm --filter web build              PASS
+pnpm --filter api build              PASS
+pnpm --filter api prisma:validate    PASS
+git diff --check                     PASS
+```
+
+#### Pending Staging Gate
+
+- 最终 clean commit；
+- migration 应用；
+- 真实管理员会话与真实数据表；
+- 1440/1024/390 截图；
+- 受控写入与审计证据；
+- production 请求为 0。
+
+完成上述证据后停止等待产品负责人确认。
+
+---
+
 ### Round R26P11_UNIFIED_NAVIGATION_MATRIX
 
 #### Goal And Scope

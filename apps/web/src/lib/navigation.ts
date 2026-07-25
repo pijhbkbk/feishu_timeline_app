@@ -31,7 +31,15 @@ export type ProjectSectionKey =
   | 'retrospective'
   | 'logs';
 
-export type AdminSectionKey = 'users' | 'roles' | 'dicts' | 'workflow-nodes' | 'audit-logs';
+export type AdminSectionKey =
+  | 'projects'
+  | 'tasks'
+  | 'organization'
+  | 'assignments'
+  | 'permissions'
+  | 'workflow-templates'
+  | 'dictionaries'
+  | 'audit-logs';
 
 type RouteContext = {
   title: string;
@@ -146,8 +154,8 @@ export const sidebarSections: Array<{
     items: [
       {
         label: '系统管理',
-        href: '/admin/users',
-        description: '用户、角色、字典与流程节点。',
+        href: '/admin/projects',
+        description: '项目、工序、组织、权限、参数与审计。',
         requiredRoles: ['admin'],
         matchMode: 'prefix',
       },
@@ -273,28 +281,46 @@ export const projectSectionMetaMap: Record<ProjectSectionKey, ProjectSectionMeta
 };
 
 export const adminSectionMetaMap: Record<AdminSectionKey, AdminSectionMeta> = {
-  users: {
-    key: 'users',
-    label: '用户管理',
-    description: '用户、部门与登录身份映射管理。',
+  projects: {
+    key: 'projects',
+    label: '项目台账',
+    description: '项目状态、当前工序、风险与计划。',
     requiredRoles: ['admin'],
   },
-  roles: {
-    key: 'roles',
+  tasks: {
+    key: 'tasks',
+    label: '工序台账',
+    description: '全量工序、责任、日期和材料状态。',
+    requiredRoles: ['admin'],
+  },
+  organization: {
+    key: 'organization',
+    label: '组织与人员',
+    description: '用户、部门与项目成员关系。',
+    requiredRoles: ['admin'],
+  },
+  assignments: {
+    key: 'assignments',
+    label: '分工配置',
+    description: '项目 18 节点责任矩阵。',
+    requiredRoles: ['admin'],
+  },
+  permissions: {
+    key: 'permissions',
     label: '角色权限',
-    description: '系统角色、权限和 RBAC 配置。',
+    description: '服务端 RBAC 权限矩阵。',
     requiredRoles: ['admin'],
   },
-  dicts: {
-    key: 'dicts',
+  'workflow-templates': {
+    key: 'workflow-templates',
+    label: '流程模板',
+    description: '模板版本、节点参数和锁定规则。',
+    requiredRoles: ['admin'],
+  },
+  dictionaries: {
+    key: 'dictionaries',
     label: '基础字典',
-    description: '项目状态、下拉项和配置字典。',
-    requiredRoles: ['admin'],
-  },
-  'workflow-nodes': {
-    key: 'workflow-nodes',
-    label: '流程节点',
-    description: '节点定义、顺序和期限配置。',
+    description: '业务枚举和系统参数。',
     requiredRoles: ['admin'],
   },
   'audit-logs': {
@@ -532,7 +558,7 @@ export function getRouteContext(pathname: string): RouteContext {
 
   if (pathname === '/admin' || pathname.startsWith('/admin/')) {
     const segments = pathname.split('/').filter(Boolean);
-    const sectionKey = (segments[1] ?? 'users') as AdminSectionKey;
+    const sectionKey = (segments[1] ?? 'projects') as AdminSectionKey;
     const section = adminSectionMetaMap[sectionKey];
 
     return {

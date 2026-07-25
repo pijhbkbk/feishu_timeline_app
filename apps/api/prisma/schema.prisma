@@ -458,6 +458,8 @@ model User {
   completedRetrospectives       ProjectRetrospective[]    @relation("RetrospectiveCompleter")
   notifications                 Notification[]
   auditLogs                     AuditLog[]                @relation("AuditActor")
+  adminSavedViews               AdminSavedView[]
+  adminCommandRequests          AdminCommandRequest[]     @relation("AdminCommandActor")
   createdAt                     DateTime                  @default(now())
   updatedAt                     DateTime                  @updatedAt
 
@@ -553,6 +555,7 @@ model Project {
   attachments              Attachment[]
   notifications            Notification[]
   auditLogs                AuditLog[]
+  adminCommandRequests     AdminCommandRequest[]
   retrospective            ProjectRetrospective?
   memberAssignmentVersion  Int                       @default(1)
   createdAt                DateTime                  @default(now())
@@ -620,6 +623,39 @@ model R26CommandRequest {
   @@index([projectId, action, createdAt])
   @@index([actorUserId, createdAt])
   @@map("r26_command_requests")
+}
+
+model AdminSavedView {
+  id        String   @id @default(cuid())
+  userId    String
+  pageKey   String
+  name      String
+  config    Json
+  version   Int      @default(1)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, pageKey, name])
+  @@index([userId, pageKey, updatedAt])
+  @@map("admin_saved_views")
+}
+
+model AdminCommandRequest {
+  id             String   @id @default(cuid())
+  projectId      String?
+  actorUserId    String?
+  idempotencyKey String   @unique
+  action         String
+  requestHash    String
+  result         Json?
+  project        Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  actorUser      User?    @relation("AdminCommandActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  createdAt      DateTime @default(now())
+
+  @@index([projectId, action, createdAt])
+  @@index([actorUserId, createdAt])
+  @@map("admin_command_requests")
 }
 
 model Color {
