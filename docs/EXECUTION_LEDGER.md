@@ -4271,6 +4271,56 @@ STOP_BEFORE_GATE3
 
 ---
 
+### Round R26P6_COMPLETION_CONFIRMATION_GUIDANCE
+
+#### Goal And Scope
+
+- 修复“确认完成并推进”视觉上为蓝色主按钮，但点击没有任何反馈的问题。
+- 明确区分前端输入校验、服务端完成门禁和正在提交三种状态。
+- 不修改后端状态机、权限、材料、阻塞、幂等、乐观锁或业务数据。
+
+#### Root Cause And Fix
+
+- 生产日志确认完成前预览成功，但用户点击时没有发出 `/complete` 请求，流程未推进。
+- Safari 无障碍树确认按钮因“完成说明”为空且推进影响未勾选而被原生禁用；两个输入位于
+  抽屉下方，按钮又缺少禁用视觉，因此表现为蓝色按钮点击无反应。
+- 服务端允许完成时，按钮保持可点击；缺少说明时聚焦并滚动到说明框，缺少确认时聚焦
+  复选框，同时展示明确错误。
+- 底部常驻显示下一项必填提示；只有正在提交或服务端门禁不通过时才真正禁用。
+- 为 V2 按钮增加清晰的禁用样式，并新增确认状态回归测试。
+
+#### Validation And Production Evidence
+
+```text
+focused completion tests               PASS（13）
+pnpm install                           PASS
+pnpm lint                              PASS
+pnpm typecheck                         PASS
+pnpm test                              PASS（Web 135；API 294）
+pnpm --filter web build                PASS
+pnpm --filter api build                PASS
+pnpm --filter api prisma:validate      PASS
+git diff --check                       PASS
+production release verification       PASS
+production acceptance                 PASS
+```
+
+- 生产 Safari 只验证缺项反馈：空输入点击后出现“请填写完成说明。”并聚焦说明框。
+- 验证过程不填写完整条件、不调用 `/complete`，项目保持第 1 步，未发生流程写入。
+- 未运行 seed，未新增 migration，未修改生产业务数据。
+- 详细记录：`docs/release/R26P6_COMPLETION_CONFIRMATION_GUIDANCE.md`。
+
+#### Decision
+
+```text
+R26P6_COMPLETION_CONFIRMATION_GUIDANCE_DEPLOYED
+SILENT_DISABLED_ACTION_REMOVED
+MISSING_INPUT_FOCUSED_AND_EXPLAINED
+NO_WORKFLOW_TRANSITION_DURING_VERIFICATION
+```
+
+---
+
 ### Round R26P5_IDEMPOTENT_LOGOUT
 
 #### Goal And Scope

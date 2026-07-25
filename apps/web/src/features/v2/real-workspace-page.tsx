@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { R26FlowMap } from './flow-map';
 import { CloseIcon } from './icons';
+import { getCompletionConfirmationState } from './completion-confirmation';
 import {
   createIdempotencyKey,
   r26Gate3Request,
@@ -267,6 +268,9 @@ export function RealWorkspacePage({ projectId }: { projectId: string }) {
           ? { ...current, error: '请填写完成说明。' }
           : current,
       );
+      window.requestAnimationFrame(() => {
+        document.getElementById('r26-completion-reason')?.focus();
+      });
       return;
     }
     if (!completionPanel.acknowledgedConsequences) {
@@ -275,6 +279,9 @@ export function RealWorkspacePage({ projectId }: { projectId: string }) {
           ? { ...current, error: '请确认已阅读推进影响。' }
           : current,
       );
+      window.requestAnimationFrame(() => {
+        document.getElementById('r26-completion-ack')?.focus();
+      });
       return;
     }
     setCompletionPanel((current) =>
@@ -1564,6 +1571,12 @@ function CompletionDrawer({
   onClose: () => void;
 }) {
   const preview = state.preview;
+  const confirmation = getCompletionConfirmationState({
+    pending: state.pending,
+    canComplete: preview?.canComplete ?? false,
+    completionReason: state.completionReason,
+    acknowledgedConsequences: state.acknowledgedConsequences,
+  });
 
   return (
     <div
@@ -1793,11 +1806,13 @@ function CompletionDrawer({
                 <label className="r26-gate3-field">
                   <span>完成说明</span>
                   <textarea
+                    id="r26-completion-reason"
                     rows={3}
                     value={state.completionReason}
                     onChange={(event) =>
                       onChange({
                         completionReason: event.target.value,
+                        error: null,
                       })
                     }
                     placeholder={`说明“${task.stepName}”已满足完成条件`}
@@ -1805,12 +1820,14 @@ function CompletionDrawer({
                 </label>
                 <label className="r26-completion-ack">
                   <input
+                    id="r26-completion-ack"
                     type="checkbox"
                     checked={state.acknowledgedConsequences}
                     onChange={(event) =>
                       onChange({
                         acknowledgedConsequences:
                           event.target.checked,
+                        error: null,
                       })
                     }
                   />
@@ -1831,6 +1848,13 @@ function CompletionDrawer({
 
         {!state.success ? (
           <footer className="r26-gate3-drawer__footer">
+            <p
+              className="r26-completion-footer-hint"
+              id="r26-completion-footer-hint"
+              role="status"
+            >
+              {confirmation.hint}
+            </p>
             <button
               type="button"
               className="r26-button r26-button--secondary"
@@ -1843,12 +1867,8 @@ function CompletionDrawer({
               type="button"
               className="r26-button r26-button--primary"
               onClick={onConfirm}
-              disabled={
-                state.pending ||
-                !preview?.canComplete ||
-                !state.completionReason.trim() ||
-                !state.acknowledgedConsequences
-              }
+              disabled={confirmation.submitDisabled}
+              aria-describedby="r26-completion-footer-hint"
             >
               {state.pending
                 ? '正在推进…'
