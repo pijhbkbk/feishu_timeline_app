@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  HttpCode,
   HttpStatus,
   Post,
   Req,
@@ -102,6 +103,7 @@ export class AuthController {
 
   @Public()
   @Post('logout')
+  @HttpCode(HttpStatus.OK)
   async logout(
     @Req() request: AuthenticatedRequest,
     @Res({ passthrough: true }) response: Response,
