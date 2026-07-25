@@ -12,12 +12,32 @@ const flowMapSource = readFileSync(
   new URL('./flow-map.tsx', import.meta.url),
   'utf8',
 );
+const projectsSource = readFileSync(
+  new URL('./projects-page.tsx', import.meta.url),
+  'utf8',
+);
 const workspaceSource = readFileSync(
   new URL('./real-workspace-page.tsx', import.meta.url),
   'utf8',
 );
 
 describe('R26 Gate 2 real-data consistency contracts', () => {
+  it('keeps the project list focused on data and actions without explanatory hero copy', () => {
+    expect(projectsSource).not.toContain('哪些项目需要介入？');
+    expect(projectsSource).not.toContain(
+      '先识别停滞、逾期和评审风险，再进入真实项目工作区。',
+    );
+    expect(projectsSource).toContain('data-testid="create-project-button"');
+  });
+
+  it('keeps decision and terminal node copy inside dedicated safe areas', () => {
+    expect(flowMapSource).toContain('isTerminal ? 24 : 16');
+    expect(flowMapSource).toContain('isDecision ? 50 : isTerminal ? 20 : 18');
+    expect(flowMapSource).toContain('isDecision ? 72 : isTerminal ? 40 : 36');
+    expect(flowMapSource).toContain('isTerminal ? 12 : 8');
+    expect(flowMapSource).toContain('node.y + 91');
+  });
+
   it('uses the current task assignment instead of the signed-in viewer as responsibility', () => {
     expect(dashboardSource).toContain('currentTask.assigneeUserName');
     expect(dashboardSource).toContain('currentTask.assigneeDepartmentName');

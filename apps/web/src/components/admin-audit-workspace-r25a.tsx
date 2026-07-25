@@ -120,7 +120,7 @@ export function AdminAuditWorkspaceR25A() {
   }
 
   return (
-    <div className="r22-page r25a-audit-page" data-testid="admin-audit-page">
+    <div className="r22-page r26-page r25a-audit-page" data-testid="admin-audit-page">
       <header className="r22-page-hero r25a-audit-hero">
         <div>
           <p className="r22-overline">系统管理 · 只读</p>

@@ -387,6 +387,12 @@
   flex: 0 0 auto;
 }
 
+[data-ui-version="r26-v2"] .r26-projects-primary-action {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 32px;
+}
+
 [data-ui-version="r26-v2"] .r26-button {
   display: inline-flex;
   align-items: center;
@@ -2691,6 +2697,11 @@
 
   [data-ui-version="r26-v2"] .r26-page-intro__action,
   [data-ui-version="r26-v2"] .r26-page-intro__action .r26-button {
+    width: 100%;
+  }
+
+  [data-ui-version="r26-v2"] .r26-projects-primary-action,
+  [data-ui-version="r26-v2"] .r26-projects-primary-action .r26-button {
     width: 100%;
   }
 

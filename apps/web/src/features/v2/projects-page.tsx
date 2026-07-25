@@ -10,7 +10,7 @@ import { isR26ReadOnlyRealDataEnabled } from './r26-data-mode';
 import { useR26RealData } from './r26-real-data-context';
 import type { R26ProjectListItem, R26ProjectsResponse } from './real-types';
 import { RealDataState } from './real-ui';
-import { PageIntro, StatusPill } from './ui';
+import { StatusPill } from './ui';
 import { useR26ReadOnlyData } from './use-r26-readonly-data';
 
 const filters = [
@@ -53,21 +53,16 @@ function PrototypeProjectsPage() {
 
   return (
     <div className="r26-page r26-projects-page" data-testid="r26-projects">
-      <PageIntro
-        eyebrow="项目组合"
-        title="哪些项目需要介入？"
-        description="先看停滞原因，再决定今天把时间放在哪里。"
-        action={
-          <button
-            type="button"
-            className="r26-button r26-button--primary"
-            onClick={() => showNotice('新建项目不在 Gate 1 静态原型范围内。')}
-            data-testid="new-project-static-action"
-          >
-            新建项目
-          </button>
-        }
-      />
+      <div className="r26-projects-primary-action">
+        <button
+          type="button"
+          className="r26-button r26-button--primary"
+          onClick={() => showNotice('新建项目不在 Gate 1 静态原型范围内。')}
+          data-testid="new-project-static-action"
+        >
+          新建项目
+        </button>
+      </div>
 
       <section className="r26-project-kpis" aria-label="项目组合摘要">
         <div><span>活跃项目</span><strong>3</strong><small>本周更新 3 个</small></div>
@@ -182,22 +177,17 @@ function RealProjectsPage() {
         <strong>实时项目组合</strong>
         <span>项目卡、风险和停滞原因由服务端业务规则统一计算。</span>
       </div>
-      <PageIntro
-        eyebrow="项目组合"
-        title="哪些项目需要介入？"
-        description="先识别停滞、逾期和评审风险，再进入真实项目工作区。"
-        action={
-          canCreateProject ? (
-            <Link
-              className="r26-button r26-button--primary"
-              href={createProjectHref}
-              data-testid="create-project-button"
-            >
-              新建项目
-            </Link>
-          ) : undefined
-        }
-      />
+      {canCreateProject ? (
+        <div className="r26-projects-primary-action">
+          <Link
+            className="r26-button r26-button--primary"
+            href={createProjectHref}
+            data-testid="create-project-button"
+          >
+            新建项目
+          </Link>
+        </div>
+      ) : null}
 
       <section className="r26-project-kpis" aria-label="项目组合摘要">
         <div><span>活跃项目</span><strong>{summary.active}</strong><small>当前可见范围</small></div>

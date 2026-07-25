@@ -284,11 +284,16 @@ function NodeContent({
 }) {
   const isMonthly = node.shape === 'monthly';
   const isDecision = node.shape === 'decision';
-  const contentX = isDecision ? node.x + node.width / 2 : isMonthly ? node.x + 88 : node.x + 16;
+  const isTerminal = node.shape === 'terminal';
+  const contentX = isDecision
+    ? node.x + node.width / 2
+    : isMonthly
+      ? node.x + 88
+      : node.x + (isTerminal ? 24 : 16);
   const name = node.shortName ?? node.name;
   const lines = splitNodeName(name);
-  const metaY = node.y + (isDecision ? 45 : 18);
-  const nameY = node.y + (isDecision ? 70 : 36);
+  const metaY = node.y + (isDecision ? 50 : isTerminal ? 20 : 18);
+  const nameY = node.y + (isDecision ? 72 : isTerminal ? 40 : 36);
   const textAnchor = isDecision ? 'middle' : undefined;
 
   return (
@@ -313,11 +318,23 @@ function NodeContent({
       </text>
       {!isDecision ? (
         <>
-          <text x={contentX} y={node.y + node.height - 24} className="r26-node-detail">{node.owner}</text>
-          <text x={contentX} y={node.y + node.height - 8} className="r26-node-deadline">{node.deadline}</text>
+          <text
+            x={contentX}
+            y={node.y + node.height - (isTerminal ? 26 : 24)}
+            className="r26-node-detail"
+          >
+            {node.owner}
+          </text>
+          <text
+            x={contentX}
+            y={node.y + node.height - (isTerminal ? 12 : 8)}
+            className="r26-node-deadline"
+          >
+            {node.deadline}
+          </text>
         </>
       ) : (
-        <text x={contentX} y={node.y + 95} textAnchor="middle" className="r26-node-deadline">
+        <text x={contentX} y={node.y + 91} textAnchor="middle" className="r26-node-deadline">
           {created
             ? `第 ${node.round || 1} 轮 · ${r26StatusLabels[status]}`
             : `尚未生成 · ${node.owner}`}

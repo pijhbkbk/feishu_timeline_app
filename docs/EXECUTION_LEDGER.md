@@ -4271,6 +4271,42 @@ STOP_BEFORE_GATE3
 
 ---
 
+### Round R26P9_VISUAL_SPACING_CLEANUP
+
+#### Goal And Scope
+
+- 恢复 V2 审计日志页面与其他正式页面一致的左右留白。
+- 删除项目列表顶部问答式标题与解释文案，同时保留“新建项目”主动作。
+- 增加流程地图第 12 步菱形节点与第 18 步终止节点的文字安全区。
+- 不改变冻结的 1440 × 1740 流程拓扑、节点坐标、节点尺寸或业务状态。
+
+#### Exact Changes
+
+- 审计日志工作区接入原生 `r26-page` 居中内容框和响应式页边距。
+- 静态与真实数据项目列表均移除问答式 PageIntro；新建入口改为独立右对齐动作区。
+- 第 12 步文字向菱形中央安全区收拢。
+- 第 18 步增加左侧、顶部和底部文字留白。
+- 新增审计页框架、项目文案移除、节点安全区的静态回归断言。
+- 详细报告：`docs/release/R26P9_VISUAL_SPACING_CLEANUP.md`。
+
+#### Validation
+
+```text
+targeted Web tests            PASS (11)
+pnpm install                  PASS
+pnpm lint                     PASS
+pnpm typecheck                PASS
+pnpm test                     PASS (Web 142 / API 294)
+pnpm --filter web build       PASS
+pnpm --filter api build       PASS
+API prisma validate           PASS
+git diff --check              PASS
+production deployment         PENDING
+production visual checks      PENDING
+```
+
+---
+
 ### Round R26P8_FIRST_UNIT_PLAN_ENTRY
 
 #### Goal And Scope
