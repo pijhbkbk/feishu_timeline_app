@@ -1,6 +1,7 @@
 import { HttpStatus, ServiceUnavailableException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 
+import { PUBLIC_ROUTE_KEY } from './auth.constants';
 import { AuthController } from './auth.controller';
 
 function createController(loginResult: { enabled: boolean; loginUrl: string | null }) {
@@ -53,5 +54,26 @@ describe('AuthController Feishu start', () => {
       controller.startFeishuLogin(request as never, response as never),
     ).rejects.toBeInstanceOf(ServiceUnavailableException);
     expect(response.redirect).not.toHaveBeenCalled();
+  });
+});
+
+describe('AuthController logout', () => {
+  it('is public and clears an expired or missing session idempotently', async () => {
+    const authService = {
+      logout: vi.fn().mockResolvedValue(undefined),
+    };
+    const configService = {
+      get: vi.fn(),
+    };
+    const controller = new AuthController(authService as never, configService as never);
+    const response = {};
+
+    expect(
+      Reflect.getMetadata(PUBLIC_ROUTE_KEY, AuthController.prototype.logout),
+    ).toBe(true);
+    await expect(
+      controller.logout({ sessionToken: undefined } as never, response as never),
+    ).resolves.toEqual({ success: true });
+    expect(authService.logout).toHaveBeenCalledWith(undefined, response);
   });
 });

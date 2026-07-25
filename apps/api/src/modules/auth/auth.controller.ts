@@ -100,6 +100,7 @@ export class AuthController {
     );
   }
 
+  @Public()
   @Post('logout')
   async logout(
     @Req() request: AuthenticatedRequest,

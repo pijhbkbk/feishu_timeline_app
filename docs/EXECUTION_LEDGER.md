@@ -4271,6 +4271,56 @@ STOP_BEFORE_GATE3
 
 ---
 
+### Round R26P5_IDEMPOTENT_LOGOUT
+
+#### Goal And Scope
+
+- 修复会话已经过期或失效时，V2 点击“退出登录”返回失败并停留在半退出页面的问题。
+- 保持登出为幂等清理动作：有会话时销毁服务端会话，无有效会话时仍清除残留 Cookie。
+- 不修改飞书 OAuth、角色权限、项目、流程、数据库结构或业务数据。
+
+#### Root Cause And Fix
+
+- 生产复现确认：未认证状态调用 `POST /api/auth/logout` 返回 `401`。
+- 原因是登出 Controller 被全局 Session Guard 提前拦截，现有支持空会话的登出 Service
+  没有机会运行。
+- 仅将 `POST /api/auth/logout` 标记为公开路由；它仍然是 POST，只执行会话存储删除和
+  Cookie 清理，不读取或写入业务数据。
+- 增加 Controller 回归测试，锁定公开路由元数据、空会话成功响应和既有 Service 调用。
+
+#### Validation And Production Evidence
+
+```text
+focused auth tests                     PASS（16）
+pnpm install                           PASS
+pnpm lint                              PASS
+pnpm typecheck                         PASS
+pnpm test                              PASS（Web 133；API 294）
+pnpm --filter web build                PASS
+pnpm --filter api build                PASS
+pnpm --filter api prisma:validate      PASS
+git diff --check                       PASS
+production release verification       PASS
+production acceptance                 PASS
+```
+
+- 修复前生产匿名/过期会话登出为 `401 Unauthorized`。
+- 修复后同一请求返回 `200 {"success":true}`，随后 Session API 保持
+  `authenticated=false`、`user=null`。
+- 未运行 seed，未新增 migration，未修改项目、流程或其他生产业务数据。
+- 详细记录：`docs/release/R26P5_IDEMPOTENT_LOGOUT.md`。
+
+#### Decision
+
+```text
+R26P5_IDEMPOTENT_LOGOUT_DEPLOYED
+EXPIRED_SESSION_LOGOUT_RETURNS_SUCCESS
+RESIDUAL_SESSION_COOKIE_CLEARED
+NO_BUSINESS_DATA_CHANGE
+```
+
+---
+
 ### Round R26P4_ACCOUNT_LOGOUT
 
 #### Goal And Scope
