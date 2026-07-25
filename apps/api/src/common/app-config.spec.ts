@@ -13,6 +13,9 @@ describe('resolveAppConfig', () => {
 
     expect(config.port).toBe(3001);
     expect(config.deploymentEnvironment).toBe('local');
+    expect(config.runtimeCommit).toBe('unknown');
+    expect(config.buildTime).toBe('unknown');
+    expect(config.release).toBe('development');
     expect(config.frontendUrl).toBe('http://localhost:3000');
     expect(config.redisUrl).toBe('redis://localhost:6379');
     expect(config.notificationQueueEnabled).toBe(true);
@@ -33,6 +36,18 @@ describe('resolveAppConfig', () => {
     expect(config.feishuUserInfoEndpoint).toBe(
       'https://open.feishu.cn/open-apis/authen/v1/user_info',
     );
+  });
+
+  it('exposes only non-sensitive release identity metadata', () => {
+    const config = resolveAppConfig({
+      RUNTIME_COMMIT: '0123456789abcdef0123456789abcdef01234567',
+      BUILD_TIME: '2026-07-25T13:30:00Z',
+      RELEASE: 'r26-admin-controls',
+    });
+
+    expect(config.runtimeCommit).toBe('0123456789abcdef0123456789abcdef01234567');
+    expect(config.buildTime).toBe('2026-07-25T13:30:00Z');
+    expect(config.release).toBe('r26-admin-controls');
   });
 
   it('allows mock auth only when it is explicitly enabled outside production', () => {

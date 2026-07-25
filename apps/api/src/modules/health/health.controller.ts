@@ -14,6 +14,9 @@ export class HealthController {
       status: 'ok',
       service: 'feishu-timeline-api',
       nodeEnv: this.configService.get<string>('nodeEnv') ?? 'development',
+      runtimeCommit: this.configService.get<string>('runtimeCommit') ?? 'unknown',
+      buildTime: this.configService.get<string>('buildTime') ?? 'unknown',
+      release: this.configService.get<string>('release') ?? 'development',
       timestamp: new Date().toISOString(),
     };
   }

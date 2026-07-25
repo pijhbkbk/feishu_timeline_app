@@ -7,6 +7,9 @@ import {
 export type AppConfig = {
   nodeEnv: string;
   deploymentEnvironment: 'local' | 'staging' | 'production';
+  runtimeCommit: string;
+  buildTime: string;
+  release: string;
   port: number;
   frontendUrl: string;
   databaseUrl: string;
@@ -68,6 +71,9 @@ export function resolveAppConfig(env: NodeJS.ProcessEnv = process.env): AppConfi
   const config: AppConfig = {
     nodeEnv,
     deploymentEnvironment: resolveDeploymentEnvironment(env.DEPLOYMENT_ENV, nodeEnv),
+    runtimeCommit: env.RUNTIME_COMMIT?.trim() || 'unknown',
+    buildTime: env.BUILD_TIME?.trim() || 'unknown',
+    release: env.RELEASE?.trim() || 'development',
     port: resolvePort(env.PORT, 3001),
     frontendUrl: env.FRONTEND_URL ?? 'http://localhost:3000',
     databaseUrl:

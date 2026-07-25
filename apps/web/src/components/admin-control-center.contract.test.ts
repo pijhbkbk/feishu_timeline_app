@@ -18,6 +18,14 @@ const rewriteSource = readFileSync(
   new URL('../../next.config.ts', import.meta.url),
   'utf8',
 );
+const productionAcceptanceSource = readFileSync(
+  new URL('../../../../scripts/deploy/gce-production-acceptance.sh', import.meta.url),
+  'utf8',
+);
+const buildInfoSource = readFileSync(
+  new URL('../app/build-info/route.ts', import.meta.url),
+  'utf8',
+);
 
 describe('R26 administrator control center contracts', () => {
   it('exposes every real administrator ledger instead of placeholder pages', () => {
@@ -65,5 +73,14 @@ describe('R26 administrator control center contracts', () => {
     expect(cssSource).toContain('@media (max-width: 700px)');
     expect(componentSource).toContain('请在桌面端完成编辑');
     expect(componentSource).toContain('移动端只读');
+  });
+
+  it('rejects a production release that still serves administrator placeholders', () => {
+    expect(productionAcceptanceSource).toContain('EXPECTED_RUNTIME_COMMIT');
+    expect(productionAcceptanceSource).toContain('admin_route_real');
+    expect(productionAcceptanceSource).toContain('admin_placeholder_build_count');
+    expect(productionAcceptanceSource).toContain('AdminControlCenter');
+    expect(buildInfoSource).toContain('runtimeCommit');
+    expect(buildInfoSource).toContain("'Cache-Control': 'no-store, max-age=0'");
   });
 });

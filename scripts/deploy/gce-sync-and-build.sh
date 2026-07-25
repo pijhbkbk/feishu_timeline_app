@@ -92,6 +92,10 @@ fi
 
 cd \"\$APP_ROOT\"
 
+runtime_commit=\"\$(git rev-parse HEAD)\"
+build_time=\"\$(date -u +%Y-%m-%dT%H:%M:%SZ)\"
+release=\"r26-admin-\${runtime_commit:0:12}\"
+
 ensure_env_file() {
   local file=\"\$1\"
   local example=\"\$2\"
@@ -123,6 +127,9 @@ chmod 600 apps/api/.env.production apps/web/.env.production
 
 upsert_env apps/api/.env.production NODE_ENV production
 upsert_env apps/api/.env.production DEPLOYMENT_ENV production
+upsert_env apps/api/.env.production RUNTIME_COMMIT \"\$runtime_commit\"
+upsert_env apps/api/.env.production BUILD_TIME \"\$build_time\"
+upsert_env apps/api/.env.production RELEASE \"\$release\"
 upsert_env apps/api/.env.production HOST 127.0.0.1
 upsert_env apps/api/.env.production PORT 3001
 upsert_env apps/api/.env.production FRONTEND_URL \"\$PUBLIC_APP_URL\"
@@ -133,6 +140,9 @@ upsert_env apps/api/.env.production AUTH_MOCK_ENABLED false
 upsert_env apps/api/.env.production OBJECT_STORAGE_LOCAL_ROOT /opt/feishu_timeline_app/var/object-storage
 upsert_env apps/api/.env.production UI_VERSION v2
 upsert_env apps/web/.env.production NEXT_PUBLIC_API_BASE_URL /api
+upsert_env apps/web/.env.production RUNTIME_COMMIT \"\$runtime_commit\"
+upsert_env apps/web/.env.production BUILD_TIME \"\$build_time\"
+upsert_env apps/web/.env.production RELEASE \"\$release\"
 upsert_env apps/web/.env.production NEXT_PUBLIC_ENABLE_MOCK_LOGIN false
 upsert_env apps/web/.env.production NEXT_PUBLIC_UI_VERSION v2
 upsert_env apps/web/.env.production NEXT_PUBLIC_UI_DATA_MODE real

@@ -3,6 +3,7 @@ set -euo pipefail
 
 IFS=$'\n\t'
 
+ROOT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 INSTANCE="${INSTANCE:-instance-20260408-091840}"
 PROJECT="${PROJECT:-axial-acrobat-492709-r7}"
 ZONE="${ZONE:-us-west1-b}"
@@ -11,6 +12,7 @@ ROOT_DOMAIN="${ROOT_DOMAIN:-all-too-well.com}"
 WWW_DOMAIN="${WWW_DOMAIN:-www.${ROOT_DOMAIN}}"
 APP_ROOT="${APP_ROOT:-/opt/feishu_timeline_app}"
 GCE_TUNNEL_THROUGH_IAP="${GCE_TUNNEL_THROUGH_IAP:-no}"
+EXPECTED_RUNTIME_COMMIT="${EXPECTED_RUNTIME_COMMIT:-$(git -C "$ROOT_DIR" rev-parse HEAD 2>/dev/null || true)}"
 
 FAILURES=0
 TMP_FILES=()
@@ -248,10 +250,34 @@ done
 
 probe_http "https://${APP_HOST}/api/health"
 health_status="$(json_field "$PROBE_BODY" status)"
-if [ "${PROBE_FINAL_CODE:-}" = "200" ] && [ "$health_status" = "ok" ]; then
-  add_result "https://${APP_HOST}/api/health" "200 status=ok" "code=${PROBE_FINAL_CODE} status=${health_status}" "PASS"
+health_runtime_commit="$(json_field "$PROBE_BODY" runtimeCommit)"
+health_build_time="$(json_field "$PROBE_BODY" buildTime)"
+health_release="$(json_field "$PROBE_BODY" release)"
+if [ "${PROBE_FINAL_CODE:-}" = "200" ] &&
+  [ "$health_status" = "ok" ] &&
+  [ "$health_runtime_commit" = "$EXPECTED_RUNTIME_COMMIT" ] &&
+  [ -n "$health_build_time" ] &&
+  [ "$health_build_time" != "unknown" ] &&
+  [ -n "$health_release" ] &&
+  [ "$health_release" != "development" ]; then
+  add_result "https://${APP_HOST}/api/health" "200 status=ok runtime=${EXPECTED_RUNTIME_COMMIT}" "code=${PROBE_FINAL_CODE} status=${health_status} runtime=${health_runtime_commit} buildTime=${health_build_time} release=${health_release}" "PASS"
 else
-  add_result "https://${APP_HOST}/api/health" "200 status=ok" "code=${PROBE_FINAL_CODE:-<none>} status=${health_status:-<none>}" "FAIL"
+  add_result "https://${APP_HOST}/api/health" "200 status=ok runtime=${EXPECTED_RUNTIME_COMMIT:-<required>}" "code=${PROBE_FINAL_CODE:-<none>} status=${health_status:-<none>} runtime=${health_runtime_commit:-<missing>} buildTime=${health_build_time:-<missing>} release=${health_release:-<missing>}" "FAIL"
+fi
+
+probe_http "https://${APP_HOST}/build-info"
+web_runtime_commit="$(json_field "$PROBE_BODY" runtimeCommit)"
+web_build_time="$(json_field "$PROBE_BODY" buildTime)"
+web_release="$(json_field "$PROBE_BODY" release)"
+if [ "${PROBE_FINAL_CODE:-}" = "200" ] &&
+  [ "$web_runtime_commit" = "$EXPECTED_RUNTIME_COMMIT" ] &&
+  [ -n "$web_build_time" ] &&
+  [ "$web_build_time" != "unknown" ] &&
+  [ -n "$web_release" ] &&
+  [ "$web_release" != "development" ]; then
+  add_result "https://${APP_HOST}/build-info" "200 runtime=${EXPECTED_RUNTIME_COMMIT}" "code=${PROBE_FINAL_CODE} runtime=${web_runtime_commit} buildTime=${web_build_time} release=${web_release}" "PASS"
+else
+  add_result "https://${APP_HOST}/build-info" "200 runtime=${EXPECTED_RUNTIME_COMMIT:-<required>}" "code=${PROBE_FINAL_CODE:-<none>} runtime=${web_runtime_commit:-<missing>} buildTime=${web_build_time:-<missing>} release=${web_release:-<missing>}" "FAIL"
 fi
 
 probe_http "https://${APP_HOST}/api/auth/session"
@@ -303,6 +329,39 @@ printf 'postgres_ready=%s\n' "$(pg_isready -h localhost -p 5432 >/dev/null 2>&1 
 printf 'redis_ping=%s\n' "$(redis-cli ping 2>/dev/null || true)"
 printf 'env_api_mode=%s\n' "$(stat -c '%a' /opt/feishu_timeline_app/apps/api/.env.production)"
 printf 'env_web_mode=%s\n' "$(stat -c '%a' /opt/feishu_timeline_app/apps/web/.env.production)"
+printf 'runtime_commit=%s\n' "$(git -C /opt/feishu_timeline_app rev-parse HEAD)"
+
+if grep -F 'AdminControlCenter' /opt/feishu_timeline_app/apps/web/src/app/admin/\[section\]/page.tsx >/dev/null 2>&1 &&
+  ! grep -E 'PagePlaceholder|已创建骨架|后续按权限展示' /opt/feishu_timeline_app/apps/web/src/app/admin/\[section\]/page.tsx >/dev/null 2>&1; then
+  echo 'admin_route_real=yes'
+else
+  echo 'admin_route_real=no'
+fi
+
+if [ -f /opt/feishu_timeline_app/apps/web/src/components/admin-control-center.tsx ]; then
+  echo 'admin_web_source=yes'
+else
+  echo 'admin_web_source=no'
+fi
+
+if [ -f /opt/feishu_timeline_app/apps/api/src/modules/admin/admin-control-center.controller.ts ]; then
+  echo 'admin_api_source=yes'
+else
+  echo 'admin_api_source=no'
+fi
+
+admin_placeholder_build_count="$(
+  if [ -d /opt/feishu_timeline_app/apps/web/.next/server/app/admin ]; then
+    placeholder_files="$(
+      grep -RIlE '已创建骨架|后续按权限展示|Coming soon|Demo only|暂未实现' \
+        /opt/feishu_timeline_app/apps/web/.next/server/app/admin 2>/dev/null || true
+    )"
+    printf '%s\n' "$placeholder_files" | awk 'NF' | wc -l
+  else
+    echo missing
+  fi
+)"
+printf 'admin_placeholder_build_count=%s\n' "$admin_placeholder_build_count"
 
 if sudo nginx -t >/dev/null 2>&1; then
   echo 'nginx_test=ok'
@@ -358,6 +417,29 @@ for key in service_api service_web service_nginx service_postgresql service_redi
     add_result "$key" "active" "${value:-<missing>}" "FAIL"
   fi
 done
+
+runtime_commit="$(remote_value runtime_commit)"
+if [ -n "$EXPECTED_RUNTIME_COMMIT" ] && [ "$runtime_commit" = "$EXPECTED_RUNTIME_COMMIT" ]; then
+  add_result "server runtime commit" "$EXPECTED_RUNTIME_COMMIT" "$runtime_commit" "PASS"
+else
+  add_result "server runtime commit" "${EXPECTED_RUNTIME_COMMIT:-<required>}" "${runtime_commit:-<missing>}" "FAIL"
+fi
+
+for key in admin_route_real admin_web_source admin_api_source; do
+  value="$(remote_value "$key")"
+  if [ "$value" = "yes" ]; then
+    add_result "$key" "yes" "$value" "PASS"
+  else
+    add_result "$key" "yes" "${value:-<missing>}" "FAIL"
+  fi
+done
+
+admin_placeholder_build_count="$(remote_value admin_placeholder_build_count)"
+if [ "$admin_placeholder_build_count" = "0" ]; then
+  add_result "admin placeholder build scan" "0" "$admin_placeholder_build_count" "PASS"
+else
+  add_result "admin placeholder build scan" "0" "${admin_placeholder_build_count:-<missing>}" "FAIL"
+fi
 
 postgres_ready="$(remote_value postgres_ready)"
 if [ "$postgres_ready" = "yes" ]; then
