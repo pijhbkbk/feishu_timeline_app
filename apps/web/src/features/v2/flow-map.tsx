@@ -10,25 +10,41 @@ import type { R26FlowNode, R26NodeStatus } from './types';
 export function R26FlowMap({
   selectedNode,
   onSelectNode,
+  nodes: suppliedNodes,
+  createdTaskIds: suppliedCreatedTaskIds,
+  currentSummary,
+  ignorePrototypeOverrides = false,
+  ariaLabel = '深海蓝项目固定流程地图',
 }: {
   selectedNode: R26FlowNode | null;
   onSelectNode: (node: R26FlowNode) => void;
+  nodes?: R26FlowNode[];
+  createdTaskIds?: string[];
+  currentSummary?: {
+    currentStep: string;
+    attention: string;
+  };
+  ignorePrototypeOverrides?: boolean;
+  ariaLabel?: string;
 }) {
   const [zoom, setZoom] = useState(1);
   const { createdTaskIds, nodeStatusOverrides } = useR26PrototypeStore();
 
   const nodes = useMemo(
     () =>
-      r26FlowNodes.map((node) => ({
+      (suppliedNodes ?? r26FlowNodes).map((node) => ({
         ...node,
         status:
-          (node.taskId ? nodeStatusOverrides[node.taskId] : undefined) ?? node.status,
+          (!ignorePrototypeOverrides && node.taskId
+            ? nodeStatusOverrides[node.taskId]
+            : undefined) ?? node.status,
       })),
-    [nodeStatusOverrides],
+    [ignorePrototypeOverrides, nodeStatusOverrides, suppliedNodes],
   );
+  const effectiveCreatedTaskIds = suppliedCreatedTaskIds ?? createdTaskIds;
 
   return (
-    <section className="r26-map-card" aria-label="深海蓝项目固定流程地图">
+    <section className="r26-map-card" aria-label={ariaLabel}>
       <div className="r26-map-toolbar">
         <div>
           <p className="r26-eyebrow">固定流程地图</p>
@@ -75,7 +91,8 @@ export function R26FlowMap({
       <MobileFlowList
         nodes={nodes}
         selectedNode={selectedNode}
-        createdTaskIds={createdTaskIds}
+        createdTaskIds={effectiveCreatedTaskIds}
+        {...(currentSummary ? { currentSummary } : {})}
         onSelectNode={onSelectNode}
       />
 
@@ -132,7 +149,7 @@ export function R26FlowMap({
                 key={node.code}
                 node={node}
                 selected={selectedNode?.code === node.code}
-                created={Boolean(node.taskId && createdTaskIds.includes(node.taskId))}
+                created={Boolean(node.taskId && effectiveCreatedTaskIds.includes(node.taskId))}
                 onSelect={onSelectNode}
               />
             ))}
@@ -157,6 +174,8 @@ function FlowNode({
   const status = node.status;
   const statusLabel = r26StatusLabels[status];
   const className = `r26-flow-node r26-flow-node--${status.toLowerCase().replaceAll('_', '-')} ${
+    node.isBlocked ? 'is-blocked' : ''
+  } ${
     selected ? 'is-selected' : ''
   }`;
 
@@ -165,7 +184,7 @@ function FlowNode({
       className={className}
       role="button"
       tabIndex={0}
-      aria-label={`第 ${node.step} 步 ${node.name}，${created ? '已创建，' : ''}${statusLabel}`}
+      aria-label={`第 ${node.step} 步 ${node.name}，${created ? '已创建，' : ''}${node.isBlocked ? `存在阻塞：${node.blockerSummary ?? '等待协助'}，` : ''}${statusLabel}`}
       aria-pressed={selected}
       onClick={() => onSelect(node)}
       onKeyDown={(event) => {
@@ -209,6 +228,12 @@ function NodeShape({ node }: { node: R26FlowNode }) {
     const circleY = node.y + node.height / 2;
     const radius = 32;
     const circumference = 2 * Math.PI * radius;
+    const totalPeriods = Math.max(1, node.monthlyTotal ?? 12);
+    const completedPeriods = Math.min(
+      totalPeriods,
+      Math.max(0, node.monthlyCompleted ?? 0),
+    );
+    const progressRatio = completedPeriods / totalPeriods;
     return (
       <>
         <rect
@@ -226,10 +251,12 @@ function NodeShape({ node }: { node: R26FlowNode }) {
           r={radius}
           className="r26-monthly-progress"
           strokeDasharray={circumference}
-          strokeDashoffset={circumference * 0.75}
+          strokeDashoffset={circumference * (1 - progressRatio)}
           transform={`rotate(-90 ${circleX} ${circleY})`}
         />
-        <text x={circleX} y={circleY + 5} textAnchor="middle" className="r26-monthly-value">3/12</text>
+        <text x={circleX} y={circleY + 5} textAnchor="middle" className="r26-monthly-value">
+          {completedPeriods}/{totalPeriods}
+        </text>
       </>
     );
   }
@@ -269,14 +296,14 @@ function NodeContent({
       <text x={contentX} y={metaY} textAnchor={textAnchor} className="r26-node-meta">
         {`第 ${String(node.step).padStart(2, '0')} 步 · ${r26StatusLabels[status]}`}
       </text>
-      {created && !isDecision ? (
+      {(created || node.isBlocked) && !isDecision ? (
         <text
           x={node.x + node.width - 12}
           y={node.y + 18}
           textAnchor="end"
           className="r26-node-created"
         >
-          已创建
+          {node.isBlocked ? '阻塞' : '已创建'}
         </text>
       ) : null}
       <text x={contentX} y={nameY} textAnchor={textAnchor} className="r26-node-title">
@@ -291,7 +318,9 @@ function NodeContent({
         </>
       ) : (
         <text x={contentX} y={node.y + 95} textAnchor="middle" className="r26-node-deadline">
-          第 2 轮 · 待结论
+          {created
+            ? `第 ${node.round || 1} 轮 · ${r26StatusLabels[status]}`
+            : `尚未生成 · ${node.owner}`}
         </text>
       )}
     </g>
@@ -316,11 +345,16 @@ function MobileFlowList({
   nodes,
   selectedNode,
   createdTaskIds,
+  currentSummary,
   onSelectNode,
 }: {
   nodes: R26FlowNode[];
   selectedNode: R26FlowNode | null;
   createdTaskIds: string[];
+  currentSummary?: {
+    currentStep: string;
+    attention: string;
+  };
   onSelectNode: (node: R26FlowNode) => void;
 }) {
   return (
@@ -328,11 +362,11 @@ function MobileFlowList({
       <div className="r26-mobile-flow__summary">
         <div>
           <span>当前工序</span>
-          <strong>第 06 步 · 涂料采购</strong>
+          <strong>{currentSummary?.currentStep ?? '第 06 步 · 涂料采购'}</strong>
         </div>
         <div>
           <span>需要关注</span>
-          <strong>逾期 1 · 退回 1 · 待评审 1</strong>
+          <strong>{currentSummary?.attention ?? '逾期 1 · 退回 1 · 待评审 1'}</strong>
         </div>
       </div>
       <ol>
@@ -356,7 +390,7 @@ function MobileFlowList({
                   <small>{node.owner} · {node.deadline}</small>
                 </span>
                 <span className="r26-mobile-flow__state">
-                  {created ? '已创建' : node.step === 9 ? '非阻塞' : node.step === 18 ? '人工决定' : r26StatusLabels[node.status]}
+                  {node.isBlocked ? '阻塞' : created ? '已创建' : node.step === 9 ? '非阻塞' : node.step === 18 ? '人工决定' : r26StatusLabels[node.status]}
                 </span>
               </button>
             </li>

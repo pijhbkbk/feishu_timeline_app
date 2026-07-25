@@ -137,7 +137,8 @@ sudo -u feishu -H env \
 | `FEISHU_APP_ID` | 飞书登录配置 | 必需时填写真实值 |
 | `FEISHU_APP_SECRET` | 飞书登录密钥 | 敏感信息 |
 | `FEISHU_REDIRECT_URI` | 飞书回调地址 | 应改为 `https://timeline.all-too-well.com/login/callback` |
-| `FEISHU_AUTHORIZATION_ENDPOINT` | 飞书授权地址 | 当前正式口径为 `https://open.feishu.cn/open-apis/authen/v1/index` |
+| `OAUTH_PROVIDER` | OAuth provider | 固定为 `feishu-cn` |
+| `FEISHU_AUTHORIZATION_ENDPOINT` | 飞书授权地址 | 固定为 `https://accounts.feishu.cn/open-apis/authen/v1/index` |
 
 ## 6. Web 关键变量
 
@@ -145,8 +146,10 @@ sudo -u feishu -H env \
 | --- | --- | --- |
 | `NEXT_PUBLIC_APP_NAME` | 前端标题/展示 | 可保留 |
 | `NEXT_PUBLIC_API_BASE_URL` | 前端 API 基址 | 推荐 `/api` |
-| `NEXT_PUBLIC_FEISHU_APP_ID` | 前端公开飞书 ID | 当前源码未直接使用 |
 | `NEXT_PUBLIC_ENABLE_MOCK_LOGIN` | 前端 mock 开关 | 生产建议关闭 |
+
+飞书 App ID 和第三方授权地址不再进入 Web 构建变量；浏览器只访问同源
+`/api/auth/feishu/start`。
 
 ## 7. object-storage 的特殊说明
 

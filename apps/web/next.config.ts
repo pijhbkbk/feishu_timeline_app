@@ -70,6 +70,38 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  async rewrites() {
+    if (process.env.NEXT_PUBLIC_UI_VERSION !== 'v2') {
+      return [];
+    }
+
+    return {
+      beforeFiles: [
+        { source: '/dashboard', destination: '/v2/dashboard' },
+        { source: '/projects', destination: '/v2/projects' },
+        {
+          source: '/projects/:projectId/actions/:action',
+          destination: '/v2/projects/:projectId/actions/:action',
+        },
+        {
+          source: '/projects/:projectId/retrospective',
+          destination: '/v2/projects/:projectId/retrospective',
+        },
+        {
+          source: '/projects/:projectId',
+          destination: '/v2/projects/:projectId',
+        },
+        { source: '/tasks', destination: '/v2/tasks' },
+        { source: '/progress', destination: '/v2/progress' },
+        { source: '/materials', destination: '/v2/materials' },
+        {
+          source: '/admin/audit-logs',
+          destination: '/v2/admin/audit-logs',
+        },
+        { source: '/admin', destination: '/v2/admin' },
+      ],
+    };
+  },
 };
 
 export default nextConfig;

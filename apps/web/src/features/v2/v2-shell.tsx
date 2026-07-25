@@ -14,6 +14,8 @@ import {
   SearchIcon,
   TaskIcon,
 } from './icons';
+import { isProductionV2Ui, toProductHref } from './production-ui';
+import { useR26RealData } from './r26-real-data-context';
 
 type NavItem = {
   label: string;
@@ -22,17 +24,33 @@ type NavItem = {
   icon: ComponentType<SVGProps<SVGSVGElement>>;
 };
 
-const navItems: NavItem[] = [
-  { label: '工作台', href: '/v2/dashboard', enabled: true, icon: HomeIcon },
-  { label: '项目列表', href: '/v2/projects', enabled: true, icon: ProjectIcon },
-  { label: '我的任务', href: '/v2/tasks', enabled: false, icon: TaskIcon },
-  { label: '进展提交', href: '/v2/progress?projectId=demo-r26&taskId=t006', enabled: true, icon: ProgressIcon },
-  { label: '系统管理', href: '/v2/admin', enabled: false, icon: RetrospectiveIcon },
+const baseNavItems: NavItem[] = [
+  { label: '工作台', href: toProductHref('/v2/dashboard'), enabled: true, icon: HomeIcon },
+  { label: '项目列表', href: toProductHref('/v2/projects'), enabled: true, icon: ProjectIcon },
+  { label: '我的任务', href: toProductHref('/v2/tasks'), enabled: true, icon: TaskIcon },
+  { label: '系统管理', href: toProductHref('/v2/admin'), enabled: true, icon: RetrospectiveIcon },
 ];
 
 export function V2Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [toast, setToast] = useState<string | null>(null);
+  const { enabled: realDataEnabled, dashboardResponse, viewer } = useR26RealData();
+  const currentTask = dashboardResponse?.dashboard.currentTask ?? null;
+  const navItems: NavItem[] = [
+    ...baseNavItems.slice(0, 3),
+    {
+      label: '进展提交',
+      href:
+        realDataEnabled && currentTask
+          ? toProductHref(`/v2/progress?projectId=${encodeURIComponent(currentTask.projectId)}&taskId=${encodeURIComponent(currentTask.taskId)}`)
+          : realDataEnabled
+            ? toProductHref('/v2/dashboard')
+            : '/v2/progress?projectId=demo-r26&taskId=t006',
+      enabled: !realDataEnabled || currentTask !== null,
+      icon: ProgressIcon,
+    },
+    ...baseNavItems.slice(3),
+  ];
 
   function showStaticMessage(message: string) {
     setToast(message);
@@ -48,7 +66,7 @@ export function V2Shell({ children }: { children: React.ReactNode }) {
     <div className="r26-app">
       <header className="r26-app-header">
         <div className="r26-app-header__inner">
-          <Link href="/v2/dashboard" className="r26-brand" aria-label="轻卡定制色开发管理系统工作台">
+          <Link href={toProductHref('/v2/dashboard')} className="r26-brand" aria-label="轻卡定制色开发管理系统工作台">
             <span className="r26-brand__mark" aria-hidden="true">
               <span />
               <span />
@@ -84,18 +102,35 @@ export function V2Shell({ children }: { children: React.ReactNode }) {
           </nav>
 
           <div className="r26-header-tools">
-            <span className="r26-prototype-badge">V2 产品预览</span>
+            <span className="r26-prototype-badge">
+              {isProductionV2Ui()
+                ? '正式系统'
+                : realDataEnabled
+                  ? 'V2 真实数据'
+                  : 'V2 产品预览'}
+            </span>
             <button type="button" className="r26-icon-button" aria-label="搜索" onClick={() => showStaticMessage('搜索功能将在数据联调轮次开放。')}>
               <SearchIcon />
             </button>
-            <button type="button" className="r26-icon-button" aria-label="通知" onClick={() => showStaticMessage('当前没有新的原型通知。')}>
+            <button type="button" className="r26-icon-button" aria-label="通知" onClick={() => showStaticMessage('当前没有新的通知。')}>
               <BellIcon />
             </button>
             <button type="button" className="r26-icon-button" aria-label="帮助" onClick={() => showStaticMessage('系统导览不在本轮实现范围内。')}>
               <HelpIcon />
             </button>
-            <button type="button" className="r26-avatar" aria-label="张七巧的账号菜单" onClick={() => showStaticMessage('当前身份：张七巧 · 采购部')}>
-              张
+            <button
+              type="button"
+              className="r26-avatar"
+              aria-label={`${viewer?.name ?? '当前用户'}的账号信息`}
+              onClick={() =>
+                showStaticMessage(
+                  realDataEnabled
+                    ? `当前身份：${viewer?.name ?? '读取中'} · ${viewer?.departmentName ?? '未设置部门'} · ${viewer?.roleCodes.join('、') || '无角色'}`
+                    : '当前身份：张七巧 · 采购部',
+                )
+              }
+            >
+              {(viewer?.name ?? '张').slice(0, 1)}
             </button>
           </div>
         </div>

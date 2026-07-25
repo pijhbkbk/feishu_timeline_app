@@ -5,6 +5,8 @@ import { useRef, useState, type DragEvent } from 'react';
 
 import { ArrowLeftIcon, CheckIcon, ResetIcon, UploadIcon } from './icons';
 import { useR26PrototypeStore } from './prototype-store';
+import { isR26ReadOnlyRealDataEnabled } from './r26-data-mode';
+import { RealProgressPage } from './real-progress-page';
 import { PageIntro, StatusPill } from './ui';
 
 const steps = [
@@ -14,6 +16,14 @@ const steps = [
 ];
 
 export function ProgressPage() {
+  if (isR26ReadOnlyRealDataEnabled()) {
+    return <RealProgressPage />;
+  }
+
+  return <PrototypeProgressPage />;
+}
+
+function PrototypeProgressPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { progressSubmitted, submitProgress, resetPrototype } = useR26PrototypeStore();
   const [step, setStep] = useState(1);

@@ -1,5 +1,12 @@
+import {
+  assertFeishuCnOAuthProvider,
+  FEISHU_CN_OAUTH_PROVIDER,
+  type OAuthProvider,
+} from './feishu-oauth-provider';
+
 export type AppConfig = {
   nodeEnv: string;
+  deploymentEnvironment: 'local' | 'staging' | 'production';
   port: number;
   frontendUrl: string;
   databaseUrl: string;
@@ -21,7 +28,11 @@ export type AppConfig = {
   feishuAppId: string;
   feishuAppSecret: string;
   feishuRedirectUri: string;
+  oauthProvider: OAuthProvider;
   feishuAuthorizationEndpoint: string;
+  feishuTokenEndpoint: string;
+  feishuUserInfoEndpoint: string;
+  feishuApiBaseUrl: string;
 };
 
 export const APP_ENV_FILE_PATHS = ['.env.local', '.env'] as const;
@@ -39,12 +50,24 @@ function resolveBoolean(value: string | undefined, fallback: boolean) {
   return value === 'true';
 }
 
-const FEISHU_AUTHORIZATION_HOSTS = new Set(['open.feishu.cn', 'accounts.feishu.cn']);
-const FEISHU_AUTHORIZATION_PATH = '/open-apis/authen/v1/index';
+function resolveDeploymentEnvironment(
+  value: string | undefined,
+  nodeEnv: string,
+): AppConfig['deploymentEnvironment'] {
+  const normalized = value?.trim().toLowerCase();
+
+  if (normalized === 'local' || normalized === 'staging' || normalized === 'production') {
+    return normalized;
+  }
+
+  return nodeEnv === 'production' ? 'production' : 'local';
+}
 
 export function resolveAppConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
+  const nodeEnv = env.NODE_ENV?.trim().toLowerCase() || 'development';
   const config: AppConfig = {
-    nodeEnv: env.NODE_ENV?.trim().toLowerCase() || 'development',
+    nodeEnv,
+    deploymentEnvironment: resolveDeploymentEnvironment(env.DEPLOYMENT_ENV, nodeEnv),
     port: resolvePort(env.PORT, 3001),
     frontendUrl: env.FRONTEND_URL ?? 'http://localhost:3000',
     databaseUrl:
@@ -69,35 +92,52 @@ export function resolveAppConfig(env: NodeJS.ProcessEnv = process.env): AppConfi
     feishuAppId: env.FEISHU_APP_ID ?? '',
     feishuAppSecret: env.FEISHU_APP_SECRET ?? '',
     feishuRedirectUri: env.FEISHU_REDIRECT_URI ?? 'http://localhost:3000/login/callback',
-    feishuAuthorizationEndpoint: env.FEISHU_AUTHORIZATION_ENDPOINT ?? '',
+    oauthProvider:
+      (env.OAUTH_PROVIDER?.trim().toLowerCase() as OAuthProvider | undefined) ??
+      FEISHU_CN_OAUTH_PROVIDER.id,
+    feishuAuthorizationEndpoint:
+      env.FEISHU_AUTHORIZATION_ENDPOINT?.trim() ??
+      FEISHU_CN_OAUTH_PROVIDER.authorizationEndpoint,
+    feishuTokenEndpoint: FEISHU_CN_OAUTH_PROVIDER.tokenEndpoint,
+    feishuUserInfoEndpoint: FEISHU_CN_OAUTH_PROVIDER.userInfoEndpoint,
+    feishuApiBaseUrl: FEISHU_CN_OAUTH_PROVIDER.apiBaseUrl,
   };
 
   if (config.nodeEnv === 'production' && config.authMockEnabled) {
     throw new Error('AUTH_MOCK_ENABLED must be false when NODE_ENV=production.');
   }
 
-  if (config.feishuAuthorizationEndpoint) {
-    const authorizationEndpoint = new URL(config.feishuAuthorizationEndpoint);
+  assertFeishuCnOAuthProvider({
+    oauthProvider: config.oauthProvider,
+    authorizationEndpoint: config.feishuAuthorizationEndpoint,
+    tokenEndpoint: config.feishuTokenEndpoint,
+    userInfoEndpoint: config.feishuUserInfoEndpoint,
+    apiBaseUrl: config.feishuApiBaseUrl,
+  });
 
-    if (
-      authorizationEndpoint.protocol !== 'https:' ||
-      !FEISHU_AUTHORIZATION_HOSTS.has(authorizationEndpoint.hostname) ||
-      authorizationEndpoint.pathname !== FEISHU_AUTHORIZATION_PATH ||
-      authorizationEndpoint.username ||
-      authorizationEndpoint.password ||
-      authorizationEndpoint.search ||
-      authorizationEndpoint.hash
-    ) {
-      throw new Error('FEISHU_AUTHORIZATION_ENDPOINT must use the approved Feishu OAuth endpoint.');
-    }
-  }
-
-  if (config.nodeEnv === 'production' && config.feishuRedirectUri) {
-    const expectedRedirectUri = new URL('/login/callback', config.frontendUrl).toString();
+  if (config.deploymentEnvironment === 'production') {
+    const expectedFrontendUrl = 'https://timeline.all-too-well.com';
+    const expectedRedirectUri = `${expectedFrontendUrl}/login/callback`;
+    const configuredFrontendUrl = new URL(config.frontendUrl).toString().replace(/\/$/, '');
     const configuredRedirectUri = new URL(config.feishuRedirectUri).toString();
 
+    if (configuredFrontendUrl !== expectedFrontendUrl) {
+      throw new Error(
+        'FRONTEND_URL must be https://timeline.all-too-well.com in production.',
+      );
+    }
+
     if (configuredRedirectUri !== expectedRedirectUri) {
-      throw new Error('FEISHU_REDIRECT_URI must match FRONTEND_URL/login/callback in production.');
+      throw new Error('FEISHU_REDIRECT_URI must be the approved production callback.');
+    }
+
+    if (
+      !config.feishuAppId.trim() ||
+      !config.feishuAppSecret.trim() ||
+      config.feishuAppId === 'your_feishu_app_id' ||
+      config.feishuAppSecret === 'your_feishu_app_secret'
+    ) {
+      throw new Error('Feishu production credentials must be configured.');
     }
   }
 

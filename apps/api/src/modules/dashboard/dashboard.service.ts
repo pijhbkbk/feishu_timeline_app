@@ -71,8 +71,33 @@ export class DashboardService {
               },
             },
             progressUpdates: {
+              include: {
+                blocker: {
+                  include: {
+                    helperUser: { select: { id: true, name: true } },
+                  },
+                },
+              },
               orderBy: { createdAt: 'desc' },
               take: 1,
+            },
+            assigneeUser: {
+              select: {
+                id: true,
+                name: true,
+                department: {
+                  select: {
+                    id: true,
+                    name: true,
+                  },
+                },
+              },
+            },
+            assigneeDepartment: {
+              select: {
+                id: true,
+                name: true,
+              },
             },
           },
           orderBy: [{ dueAt: 'asc' }, { updatedAt: 'desc' }],
@@ -100,7 +125,6 @@ export class DashboardService {
         this.prisma.taskBlocker.count({
           where: {
             status: TaskBlockerStatus.OPEN,
-            helperUserId: { not: null },
             workflowTask: assignedWhere,
           },
         }),
@@ -126,7 +150,14 @@ export class DashboardService {
       const rightDue = right.dueAt?.getTime() ?? Number.MAX_SAFE_INTEGER;
       return leftDue - rightDue;
     });
-    const highlightedTasks = orderedTasks.slice(0, 2);
+    const productAcceptanceTasks = orderedTasks.filter(
+      (task) =>
+        !task.project.name.startsWith('[已归档/测试项目]') &&
+        !/^(?:R\d+-UAT-|UAT-)/i.test(task.project.code),
+    );
+    const highlightedTasks = (
+      productAcceptanceTasks.length > 0 ? productAcceptanceTasks : orderedTasks
+    ).slice(0, 2);
     const taskIds = orderedTasks.map((task) => task.id);
     const nodeCodes = [...new Set(orderedTasks.map((task) => task.nodeCode))];
     const [definitions, attachmentGroups] = await Promise.all([
@@ -181,12 +212,34 @@ export class DashboardService {
         nodeCode: task.nodeCode,
         nodeName: task.nodeName,
         status: task.status,
+        assigneeUserId: task.assigneeUserId,
+        assigneeUserName: task.assigneeUser?.name ?? null,
+        assigneeDepartmentId:
+          task.assigneeDepartmentId ??
+          task.assigneeUser?.department?.id ??
+          null,
+        assigneeDepartmentName:
+          task.assigneeDepartment?.name ??
+          task.assigneeUser?.department?.name ??
+          null,
         dueAt: dueAt?.toISOString() ?? null,
         isOverdue: overdueDays > 0,
         overdueDays,
         completionPercent:
           task.progressUpdates[0]?.completionPercent ??
           (task.status === WorkflowTaskStatus.IN_PROGRESS ? 35 : 0),
+        blocker: task.progressUpdates[0]?.blocker
+          ? {
+              type: task.progressUpdates[0].blocker.blockerType,
+              description: task.progressUpdates[0].blocker.description,
+              helperName:
+                task.progressUpdates[0].blocker.helperUser?.name ?? null,
+              expectedResolvedAt:
+                task.progressUpdates[0].blocker.expectedResolvedAt?.toISOString() ??
+                null,
+              impactLevel: task.progressUpdates[0].blocker.impactLevel,
+            }
+          : null,
         materials,
         progressHref: `/progress?taskId=${task.id}`,
         projectHref: `/projects/${task.projectId}?taskId=${task.id}`,

@@ -13,7 +13,8 @@ APP_HOST="${APP_HOST:-timeline.all-too-well.com}"
 PUBLIC_APP_URL="${PUBLIC_APP_URL:-https://${APP_HOST}}"
 FEISHU_CALLBACK_PATH="${FEISHU_CALLBACK_PATH:-/login/callback}"
 EXPECTED_FEISHU_REDIRECT_URI="${EXPECTED_FEISHU_REDIRECT_URI:-${PUBLIC_APP_URL}${FEISHU_CALLBACK_PATH}}"
-FEISHU_AUTHORIZATION_ENDPOINT="${FEISHU_AUTHORIZATION_ENDPOINT:-https://open.feishu.cn/open-apis/authen/v1/index}"
+OAUTH_PROVIDER="feishu-cn"
+FEISHU_AUTHORIZATION_ENDPOINT="https://accounts.feishu.cn/open-apis/authen/v1/index"
 PLACEHOLDER_DIR="${PLACEHOLDER_DIR:-/var/www/all-too-well-placeholder}"
 INSTALL_CERTBOT="${INSTALL_CERTBOT:-auto}"
 
@@ -223,11 +224,14 @@ sudo test -f $APP_ROOT/apps/api/.env.production
 sudo test -f $APP_ROOT/apps/web/.env.production
 sudo mkdir -p '$PLACEHOLDER_DIR'
 upsert_env $APP_ROOT/apps/api/.env.production FRONTEND_URL '$PUBLIC_APP_URL'
+upsert_env $APP_ROOT/apps/api/.env.production DEPLOYMENT_ENV production
 upsert_env $APP_ROOT/apps/api/.env.production FEISHU_REDIRECT_URI '$EXPECTED_FEISHU_REDIRECT_URI'
+upsert_env $APP_ROOT/apps/api/.env.production OAUTH_PROVIDER '$OAUTH_PROVIDER'
 upsert_env $APP_ROOT/apps/api/.env.production FEISHU_AUTHORIZATION_ENDPOINT '$FEISHU_AUTHORIZATION_ENDPOINT'
 upsert_env $APP_ROOT/apps/api/.env.production AUTH_MOCK_ENABLED false
 upsert_env $APP_ROOT/apps/web/.env.production NEXT_PUBLIC_API_BASE_URL /api
 upsert_env $APP_ROOT/apps/web/.env.production NEXT_PUBLIC_ENABLE_MOCK_LOGIN false
+sudo sed -i '/^NEXT_PUBLIC_FEISHU_APP_ID=/d' $APP_ROOT/apps/web/.env.production
 
 if ! command -v certbot >/dev/null 2>&1; then
   if [ '$INSTALL_CERTBOT' = 'no' ]; then

@@ -8,10 +8,20 @@ import { r26FlowNodes, r26StatusLabels } from './fixtures';
 import { AlertIcon, CheckIcon, CloseIcon } from './icons';
 import { R26FlowMap } from './flow-map';
 import { useR26PrototypeStore } from './prototype-store';
+import { isR26ReadOnlyRealDataEnabled } from './r26-data-mode';
+import { RealWorkspacePage } from './real-workspace-page';
 import type { R26FlowNode } from './types';
 import { StatusPill } from './ui';
 
 export function WorkspacePage({ projectId }: { projectId: string }) {
+  if (isR26ReadOnlyRealDataEnabled()) {
+    return <RealWorkspacePage projectId={projectId} />;
+  }
+
+  return <PrototypeWorkspacePage projectId={projectId} />;
+}
+
+function PrototypeWorkspacePage({ projectId }: { projectId: string }) {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -268,7 +278,7 @@ function TaskDetail({
 
       <footer className="r26-task-detail__footer">
         {node.taskId === 't006' ? (
-          <Link href="/v2/progress?projectId=demo-r26&taskId=t006" className="r26-button r26-button--primary">
+          <Link href={'/v2/progress?projectId=demo-r26&taskId=t006'} className="r26-button r26-button--primary">
             提交进展
           </Link>
         ) : isStep12 ? (

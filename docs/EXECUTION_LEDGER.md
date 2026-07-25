@@ -79,12 +79,12 @@
 ## 项目基本信息
 
 - 项目名称：轻卡定制颜色开发项目管理系统
-- 当前阶段：R26 生产发布后观察
-- 当前轮次：R25B_R26_PRODUCTION_RELEASE
-- 总体状态：PRODUCTION RELEASED（`v1.1.0-rc.2`；真实 OAuth 与业务烟测 PASS；stable tag 未创建）
+- 当前阶段：R26 Product UI Recovery staging
+- 当前轮次：R26_GATE3C1_ORDINARY_TASK_COMPLETION
+- 总体状态：IMPLEMENTED ON STAGING（等待产品负责人 Gate 3C1 人工确认；停在 Gate 3C2 前）
 - 仓库路径：`/Users/lixiaochen/Downloads/feishu_timeline_app`
 - 默认分支：`main`
-- 最近更新时间：`2026-07-22`
+- 最近更新时间：`2026-07-24`
 
 ---
 
@@ -137,6 +137,7 @@
 | R23E | R23 最终回归与证据关闭 | PASSED | STOP | application/staging 同 commit，耐久、52/52、真实 logout、Gitleaks 全部闭环 |
 | R23F | R24 前方案 A 最小权限边界 | PASSED | STOP | 真实角色/项目范围/负责人/指定评审联合授权，最终 commit 52/52、staging 与真实 OAuth 管理员正向路径通过 |
 | R24 | 完整安全复审与 R24B 准入收口 | PASSED | STOP | 三个 Medium 已修复；IAP SSH、飞书最小配置、认证态 ZAP 0/0/0、全量回归和材料销毁通过；等待确认后进入 R25 |
+| R26_GATE3C1 | 第 1～11 步普通工序完成与自动推进 | IMPLEMENTED | STOP | staging 串行、4/6 步并行、9 步非阻塞、材料/阻塞门禁、幂等与并发已验证；等待产品负责人确认，不进入 Gate 3C2 |
 
 状态枚举建议：
 
@@ -4206,3 +4207,613 @@ git diff --check                       PASS
 - 证据：`test-results/r26-production/screenshots/workspace-initial-scroll-fixed-1440.png`。
 
 `R26_SCROLL_FIX_DEPLOYED / NAV_COPY_UPDATED / PRODUCTION_VERIFIED / GATE2_NOT_STARTED`
+
+---
+
+### Round R26_PRODUCT_UI_RECOVERY_GATE2_READ_ONLY_REAL_DATA_INTEGRATION
+
+#### Goal And Scope
+
+- 将四个隔离 V2 页面连接到独立 staging 的 PostgreSQL 真实只读数据。
+- 在项目工作区新增只读“项目成员与分工”和“自动分配预览”。
+- 业务网络请求严格限制为 GET；不修改 V1、状态机、数据库业务数据或 production。
+
+#### Exact Changes
+
+- `apps/api/src/modules/r26-read-model/`：五个 GET-only 聚合接口、18 节点分配规则、
+  权限门禁与契约测试。
+- `apps/web/src/features/v2/r26-readonly-client.ts`：固定 GET、无 body、限 `/v2/*`
+  路径的客户端。
+- `apps/web/src/features/v2/real-*.tsx`：真实工作台、项目列表、固定流程地图、详情、
+  项目成员与分工、自动分配预览和只读进展上下文。
+- `deploy/compose.staging.yml` 与 staging env 示例：显式
+  `NEXT_PUBLIC_R26_V2_DATA_MODE=read-only-real`，未修改 production 配置。
+- `docs/product/evidence/R26_GATE2/`：1440、1024、390 共 12 张有效截图；浏览器
+  产生的空白全页截图已剔除。
+- `docs/product/R26_GATE2_READ_ONLY_REAL_DATA_REPORT.md`：完整证据和人工复核清单。
+
+#### Read-only And Real-data Evidence
+
+- API Controller 只有五个 `@Get`；前端客户端测试断言 `method=GET` 且无 body。
+- Playwright 运行时完成真实页面点击、滚动、抽屉关闭、刷新恢复和移动全屏 sheet。
+- nginx 日志最终快照：`/api/v2/* GET 53`；POST/PUT/PATCH/DELETE 均为 0。
+- 页面 `data-source=database`，Gate 1 fixture 渲染命中数 0。
+- 18 个流程节点、7 个项目成员和 18 行自动分配预览来自 staging 数据库。
+- 长期 skeleton、console error、page error 均为 0。
+
+#### Validation
+
+```text
+pnpm install --frozen-lockfile                                      PASS
+pnpm lint                                                           PASS
+pnpm typecheck                                                      PASS
+pnpm test                                                           PASS（Web 87 / API 225）
+NEXT_PUBLIC_R26_V2_PROTOTYPE=true
+NEXT_PUBLIC_R26_V2_DATA_MODE=read-only-real
+pnpm --filter @feishu-timeline/web build                            PASS
+pnpm --filter @feishu-timeline/api build                            PASS
+pnpm --filter @feishu-timeline/api prisma:validate                  PASS
+```
+
+- Docker Hub metadata 拉取超时后，使用本机通过检查的构建产物生成 staging 临时镜像；
+  只重建 staging API/Web，未运行 migration 或 seed。
+- staging API、Web、nginx healthy；production 未部署。
+
+#### Decision
+
+```text
+R26_GATE2_IMPLEMENTED
+READ_ONLY_REAL_DATA_CONNECTED
+ZERO_BUSINESS_WRITE_REQUESTS
+AWAITING_PRODUCT_OWNER_REAL_DATA_CONFIRMATION
+STOP_BEFORE_GATE3
+```
+
+---
+
+### Round R26P_V2_PRODUCTION_PROMOTION
+
+#### Scope
+
+- 产品负责人批准 Gate 3D 后，按串行门禁推送最终源码、建立 release 分支、提升正式
+  V2 路由、执行安全快检和全量回归、创建不可变构建、备份生产数据库并尝试发布。
+- 只有真实飞书 OAuth、受保护页面和有限业务 smoke 全部通过，才允许合并 `main`
+  和创建 RC tag。
+
+#### Exact Commits
+
+```text
+source branch          codex/r26-gate3c2-c3-d-full-lifecycle
+source commit          85a6267494b5ef4fc259ee836d52e7fc44f732a1
+release branch         release/r26-v2-production
+runtime commit         ef6ba4379a4fd9a64eeeabd91160b86d89d59a01
+production before      893b50f5b7ef1f54f840243d3b18dbe1e0f8dcd1
+production attempted   ef6ba4379a4fd9a64eeeabd91160b86d89d59a01
+production after       893b50f5b7ef1f54f840243d3b18dbe1e0f8dcd1
+origin/main            893b50f5b7ef1f54f840243d3b18dbe1e0f8dcd1
+evidence commit        5088ded4c8e81af610efd4747e859765e894ab9c
+```
+
+#### Passed Gates
+
+- 第一方 Critical/High/Medium、production dependency Critical/High、image
+  Critical/High 和 gitleaks finding 均为 0。
+- install、lint、typecheck、unit、Web/API build、Prisma validate、API E2E、
+  Playwright 62/62、diff check 全部通过。
+- 不可变 staging 构建与 runtime commit 绑定；未运行 seed。
+- 生产 PostgreSQL 备份
+  `/var/backups/feishu-timeline-db/20260724T232837Z/feishu-timeline.dump`
+  非空、SHA256、`pg_restore -l` 和隔离 schema 恢复演练通过。
+- 生产 exact runtime、三个 additive migration、五项服务、TLS、DNS、API health、
+  正式 V2 路由和 V1 fallback 技术检查通过。
+
+#### Failed Gate And Rollback
+
+- Gate 8 飞书授权页明确返回当前账号无应用使用权限；公司飞书会话只到达“扫描成功”，
+  未形成 callback 和受保护 session。
+- 未对生产真实项目执行任何写入；进展、材料和管理员审计 smoke 未执行。
+- 立即使用正式脚本恢复发布前 commit，不执行数据库 reset、强制 db push、seed 或
+  破坏性 down migration。
+- 回滚后 production HEAD/branch/worktree、五项服务、Nginx、public API health 和
+  failed unit 独立复核通过。
+
+#### Evidence
+
+- `docs/release/R26P_RELEASE_MANIFEST.md`
+- `docs/release/R26P_PRE_RELEASE_ACCEPTANCE.md`
+- `docs/release/R26P_PRODUCTION_DEPLOYMENT.md`
+- `docs/release/R26P_PRODUCTION_SMOKE.md`
+- `docs/release/R26P_ROLLBACK_RECORD.md`
+- `docs/release/R26P_OBSERVATION_LOG.md`
+- `docs/security/R26P_PRE_RELEASE_SECURITY_DELTA.md`
+
+#### Decision
+
+```text
+R26P=FAIL
+STATE=ROLLED_BACK
+MAIN_MERGE=NOT_CREATED
+CANDIDATE_TAG=NOT_CREATED
+PRODUCTION_WRITES=0
+NEXT_ACTION=FIX_FEISHU_APP_AVAILABILITY_AND_REPEAT_GATE8
+```
+
+---
+
+### Round R26P1_FEISHU_CN_OAUTH_PROVIDER_CORRECTION
+
+#### Goal And Scope
+
+- 从失败 runtime `ef6ba4379a4fd9a64eeeabd91160b86d89d59a01` 建立独立修复分支。
+- 先以真实 start、仓库、构建配置和生产只读配置证明 OAuth 跳转来源，再修复发布边界。
+- 浏览器只进入同源 `/api/auth/feishu/start`，由 API 生成 state 与授权 URL 并返回
+  302。
+- 不修改 18 步状态机、Prisma schema、数据库业务数据、V1 或当前稳定 production。
+
+#### Root Cause
+
+```text
+LARK_PROVIDER_SELECTED=false
+LARK_REQUEST_COUNT=0
+staging App ID hash=1e8666fb3953
+production App ID hash=5da19c9cf49e
+App ID match=false
+primary blocker=production app tenant / availability scope
+```
+
+- 失败候选和当前生产实际均使用 `open.feishu.cn` / `accounts.feishu.cn`；授权页上的
+  “切换至 Lark 登录”不是 Lark provider 被选中的证据。
+- Gate 3B 通过的是 staging 测试应用；production 使用不同正式应用，失败发生在飞书
+  签发 code 之前，符合账号不属于应用租户或未在正式应用可用范围内的表现。
+- 详细证据见 `docs/release/R26P1_OAUTH_ROOT_CAUSE.md`。
+
+#### Exact Changes
+
+- 新增唯一、类型安全的 `feishu-cn` 服务端 provider，授权固定为
+  `accounts.feishu.cn`，token / user info / API 固定为 `open.feishu.cn`。
+- 新增 `GET /api/auth/feishu/start`；Web 登录按钮不再读取或解析第三方授权 URL。
+- production 启动校验正式域名、HTTPS callback、provider、端点和非占位服务端凭据。
+- staging 显式声明 `DEPLOYMENT_ENV=staging`，避免 production 构建模式误套正式域名。
+- 删除 Web 构建参数中的 `NEXT_PUBLIC_FEISHU_APP_ID`；App Secret 仍只存在 API 环境。
+- 生产验收、发布复核和安全加固脚本只输出 OAuth 状态码、主机与路径，不输出 App ID、
+  state、Cookie 或完整 Location。
+- 增加 provider、start、token/user info 与 Lark 零请求回归测试。
+- 忽略临时 `.next-*` 目录，并移除误跟踪的 `tsconfig.tsbuildinfo` 构建缓存。
+
+#### Validation
+
+```text
+pnpm install --frozen-lockfile       PASS
+pnpm lint                            PASS
+pnpm typecheck                       PASS
+pnpm test                            PASS（Web 37 files / 127 tests；API 65 files / 293 tests）
+pnpm --filter web build              PASS
+pnpm --filter api build              PASS
+pnpm --filter api prisma:validate    PASS
+pnpm test:e2e                        PASS
+pnpm playwright:test                 PASS（62 / 62）
+Gitleaks current tree                PASS
+Gitleaks full Git history            PASS
+Web production bundle Lark files     0
+API production artifact Lark files   0
+Web production bundle Feishu files   0
+git diff --check                     PASS
+```
+
+#### Current Gate
+
+```text
+production=893b50f5b7ef1f54f840243d3b18dbe1e0f8dcd1
+origin/main=893b50f5b7ef1f54f840243d3b18dbe1e0f8dcd1
+production changed=false
+production seed/reset=false
+READY_FOR_IMMUTABLE_STAGING_REAL_FEISHU_OAUTH
+STOP_BEFORE_PRODUCTION
+```
+
+---
+
+### Round R26_GATE3C1_ORDINARY_TASK_COMPLETION
+
+#### Goal And Scope
+
+- 只在独立 staging 开放第 1～11 步普通工序完成、冻结拓扑自动推进和开放阻塞解除。
+- 第 4 步完成只创建第 5、6 步；第 6 步完成只创建第 7、9、10 步；
+  第 9 步不阻塞主线；第 11 步只生成第 12 步。
+- 第 12/13/17/18 步专项动作、production、V1、`main`、tag 和 Gate 3C2 全部关闭。
+
+#### Exact Changes
+
+- Prisma：工作流实例增加 `commandVersion`；阻塞增加解决说明、实际解除时间、操作者
+  和 requestId；新增 migration
+  `20260724222000_add_r26_gate3c1_completion`。
+- API：增加 completion preview、complete、blocker resolve 三个薄 V2 command 接口。
+- 状态机：复用 `WorkflowsService` 和冻结节点定义，客户端不能提交下一节点或负责人。
+- 分配：后续任务只使用 Gate 3A 服务端优先级，无匹配成员保持 `UNASSIGNED`。
+- 安全：项目访问、权限、活动任务、`taskVersion`、必填表单、材料、开放阻塞、
+  串行化事务、幂等、409 和审计全部在后端裁决。
+- Web：增加“完成工序”、完成前检查、准确阻断、推进影响、阻塞解除、成功反馈和
+  跨页面局部刷新；第 12 步及以后不渲染 Gate 3C1 动作。
+- 响应式：修复后置 `94vw` 覆盖移动全屏抽屉，390px 使用真正全屏 sheet、
+  独立滚动内容和固定底部主动作。
+
+#### Staging Evidence
+
+```text
+URL                         http://localhost:8080
+user                        李晓晨
+serial project              R26-G3C1-UAT-普通推进-20260724-2301
+blocker project             R26-G3C1-UAT-非阻塞-20260724-2301
+concurrent project          R26-G3C1-UAT-并发幂等-20260724-2301
+serial completion commands  7
+serial current node         CAB_REVIEW
+step 9                      READY / active / non-primary
+concurrent command rows     1
+concurrent step 2 rows      1
+loser response              409
+production requests         0
+special step writes         0
+```
+
+- 真实飞书用户通过浏览器完成第 1→2→3→4、4→5/6、6→7/9/10、
+  10→11、11→12。
+- 第 9 步保持未完成时主线到达第 12 步；第 12 步专项写入口保持关闭。
+- 第 5 步缺少“颜色编号确认单”时拒绝完成。
+- 开放“等待供应商确认交付时间”阻塞时拒绝完成；保存解决说明和实际解除时间后
+  同一面板变为可完成。
+- 两标签并发一个成功、一个 409；数据库只有一次完成命令、一个第 2 步任务。
+- 1440、真实 1024×900、真实 390×844 截图和组合回放归档到
+  `docs/product/evidence/R26_GATE3C1/`。
+
+#### Validation
+
+```text
+pnpm install                          PASS
+pnpm lint                             PASS
+pnpm typecheck                        PASS
+pnpm test                             PASS（Web 35 files / 121 tests；API 62 files / 282 tests）
+pnpm --filter web build               PASS
+pnpm --filter api build               PASS
+pnpm --filter api prisma:validate     PASS
+git diff --check                      PASS
+```
+
+#### Evidence
+
+- 报告：`docs/product/R26_GATE3C1_ORDINARY_COMPLETION_REPORT.md`
+- 人工复核：`docs/product/R26_GATE3C1_HUMAN_REVIEW.md`
+- 截图/回放：`docs/product/evidence/R26_GATE3C1/`
+- API/数据库/审计：
+  `docs/product/evidence/R26_GATE3C1/API_AND_DATABASE_PROOF.md`
+
+#### Decision
+
+```text
+R26_GATE3C1_IMPLEMENTED
+ORDINARY_TASK_COMPLETION_ENABLED_ON_STAGING
+PARALLEL_AND_NONBLOCKING_TRANSITIONS_VERIFIED
+STEP12_AND_LATER_SPECIAL_ACTIONS_STILL_DISABLED
+AWAITING_PRODUCT_OWNER_GATE3C1_CONFIRMATION
+STOP_BEFORE_GATE3C2
+```
+
+---
+
+### Round R26_PRODUCT_UI_RECOVERY_GATE3C2_C3_GATE3D
+
+#### Goal And Scope
+
+- 从 Gate 3C1 准确提交继续开放第 12～18 步专项动作；
+- 在独立 staging 完成从真实项目历史到退出治理的完整主链路 UAT；
+- 不修改 V1，不部署 production，不合并 `main`，不创建 tag。
+
+#### Exact Changes
+
+- V2 新增第 12～18 步专项动作路由，复用既有评审、收费、排产、生产、月度评审和
+  颜色退出领域服务；
+- 项目工作区将普通完成、专项动作和进展提交明确分层；
+- 第 17 步返回真实 `completed / total` 文案；
+- 第 18 步区分系统建议和人工决定，项目状态全部中文化；
+- 完成项目卡显示收尾语义并移除旧活动任务深链接；
+- V2 layout 接入现有认证上下文，避免专项工作区独立渲染时缺少会话。
+
+#### Staging UAT
+
+```text
+project                      R26-G3C1-UAT-普通推进-20260724-2301
+project status               COMPLETED
+current node                 PROJECT_CLOSED
+flow progress                18 / 18
+step 12                      REJECTED -> rework -> APPROVED
+step 13                      10000 CNY / PAID / COMPLETED
+step 14                      APPROVED
+step 15                      CONFIRMED / COMPLETED
+step 16                      COMPLETED
+step 17                      12 / 12 APPROVED
+step 18                      system EXIT / human EXIT / COMPLETED
+audit records                94
+production requests          0
+seed                         not run
+```
+
+#### Validation
+
+```text
+pnpm install --frozen-lockfile       PASS
+pnpm lint                            PASS
+pnpm typecheck                       PASS
+pnpm test                            PASS（Web 36 files / 124 tests；API 62 files / 283 tests）
+pnpm --filter web build              PASS
+pnpm --filter api build              PASS
+pnpm --filter api prisma:validate    PASS
+git diff --check                     PASS
+```
+
+#### Evidence
+
+- `docs/product/evidence/R26_GATE3D/`
+- `docs/product/R26_GATE3C2_REVIEW_FEE_PRODUCTION_REPORT.md`
+- `docs/product/R26_GATE3C3_MONTHLY_EXIT_REPORT.md`
+- `docs/product/R26_GATE3D_FULL_LIFECYCLE_UAT_REPORT.md`
+- `docs/product/R26_GATE3D_HUMAN_REVIEW.md`
+
+#### Decision
+
+```text
+R26_GATE3C2_IMPLEMENTED
+R26_GATE3C3_IMPLEMENTED
+R26_GATE3D_STAGING_UAT_COMPLETED
+FULL_MAINLINE_FROM_PROJECT_CREATION_TO_EXIT_VERIFIED
+AWAITING_PRODUCT_OWNER_FULL_LIFECYCLE_CONFIRMATION
+PRODUCTION_UNCHANGED
+```
+
+---
+
+### Round R26_PRODUCT_UI_RECOVERY_GATE3A_PROJECT_MEMBER_AND_ASSIGNMENT_MANAGEMENT
+
+#### Goal And Scope
+
+- 只在独立 staging 开放 `/v2/projects/:projectId` 的项目成员、项目职责、部门负责人、
+  默认执行人、分配影响预览、分配应用和任务转交。
+- 进展、材料、工序完成、评审和流程推进写操作继续关闭。
+- 不修改 V1，不部署 production，不合并 `main`，不创建 tag，不自动进入 Gate 3B。
+
+#### Exact Changes
+
+- Prisma：新增 `ProjectAssignmentSource`、`ProjectNodeAssignment`、
+  `R26CommandRequest` 和 `Project.memberAssignmentVersion` 及 migration。
+- API：新增 Gate 3A 预览/成员/分配/任务转交接口；权限、项目作用域、幂等、事务、
+  乐观锁、409、原因和审计全部在服务端执行。
+- 分配器：按任务人工覆盖、工序专属、项目部门负责人、默认执行人、唯一候选人、待分配
+  六级优先级返回负责人和来源。
+- Web：新增成员添加/编辑/移除、影响预览、应用范围、任务转交、项目记录，以及
+  1440/1024/390 响应式抽屉和全屏 sheet。
+- 部署：staging 构建显式传入 R26 开关；production 配置未修改。
+- 证据：`docs/product/evidence/R26_GATE3A/`。
+- 报告：`docs/product/R26_GATE3A_PROJECT_MEMBER_ASSIGNMENT_REPORT.md`。
+- 人工复核：`docs/product/R26_GATE3A_HUMAN_REVIEW.md`。
+
+#### Staging Evidence
+
+```text
+URL                       http://localhost:8080
+UAT project               R26-G3A-UAT-20260724-1006
+image tag                 r26-gate3a-d4a0bdd
+deployed app commit       d4a0bdd
+project assignment version 8
+final distinct members    4
+final node assignments    11
+Gate 3A commands          7
+audit result              7 × SUCCESS
+production requests       0
+```
+
+- 采购、质量、工艺成员的建议工序、影响预览、保存、地图负责人和审计记录已用真实
+  staging 会话核对。
+- 成员移除预览发现并修复未来节点跨部门转交问题；最终只转交活动任务，未来配置无法
+  重新解析时保持 `UNASSIGNED`。
+- 当前真实任务为 `READY`；未篡改状态机来伪造 `IN_PROGRESS`。进行中任务确认/原因
+  门禁由自动化测试覆盖。
+- 匿名预览实测 401；普通成员 403、跨项目 IDOR、幂等和并发 409 由服务层/契约测试
+  覆盖。
+
+#### Validation
+
+```text
+pnpm install                          PASS
+pnpm lint                             PASS
+pnpm typecheck                        PASS
+pnpm test                             PASS（Web 31 files / 96 tests；API 60 files / 244 tests）
+pnpm --filter web build               PASS
+pnpm --filter api build               PASS
+pnpm --filter api prisma:validate     PASS
+git diff --check                      PASS
+```
+
+#### Decision
+
+```text
+R26_GATE3A_IMPLEMENTED
+PROJECT_MEMBER_WRITES_ENABLED
+ASSIGNMENT_WRITES_ENABLED
+PROGRESS_AND_WORKFLOW_WRITES_STILL_DISABLED
+AWAITING_PRODUCT_OWNER_GATE3A_CONFIRMATION
+STOP_BEFORE_GATE3B
+```
+
+#### Gate 3A Project Records Typography Remediation
+
+- 产品负责人报告“项目记录”卡片摘要逐字换行、操作人和内部动作代码重叠。
+- 根因：外层三列记录网格与卡片内部三列同时生效，摘要可用宽度被双重压缩。
+- 改为单列记录流；桌面记录行按时间、摘要、操作人分栏，移动端纵向堆叠。
+- 摘要恢复 16px / 1.65 行高，并为长文本设置安全换行。
+- 内部 `record.action` 仅保留为 `data-record-action`，不再作为用户可见英文文案。
+- staging 更新为 `r26-gate3a-records-9bca772`（commit `9bca772`）；19 项 migration
+  已应用、0 项待执行，未运行 seed。
+- `pnpm install`、lint、typecheck、Web 97、API 244、两端 build、Prisma validate、
+  `git diff --check` 全部通过。
+- staging 重部署使原飞书会话失效；授权页等待“获取用户标识”确认。该权限未在没有
+  产品负责人确认时改变，新三视口截图待授权后补充。
+- production、V1、`main`、tag 和 Gate 3B 均未改变。
+
+#### Gate 3A Final Product Approval
+
+- 产品负责人明确启动 Gate 3B，确认 Gate 3A 成员管理和分配能力通过。
+- 已重新完成李晓晨真实飞书 OAuth。
+- staging 运行 `9bca77260a46386408c3e5384c25b15040d5bbb7`。
+- 项目记录 1440/1024/390 排版均可读；重叠 0、页面横向溢出 0、console error 0。
+- 内部审计动作代码未显示；Gate 3A 分支已推送。
+- 证据：`docs/product/evidence/R26_GATE3A/13-project-records-fixed-1440.png` 至
+  `15-project-records-fixed-390.png`。
+
+```text
+R26_GATE3A_PASSED
+PROJECT_MEMBER_AND_ASSIGNMENT_MANAGEMENT_ACCEPTED
+READY_FOR_GATE3B_PROGRESS_AND_MATERIALS
+```
+
+---
+
+### Round R26_PRODUCT_UI_RECOVERY_GATE3B_PROGRESS_SUBMISSION_AND_MATERIAL_UPLOAD
+
+#### Goal And Scope
+
+- 在独立 staging 开放进展草稿、不可变正式进展、阻塞申报、工序材料上传和版本历史。
+- 写入后同步 V2 工作台、项目列表、工作区、工序详情、进展历史与项目记录。
+- Gate 3B 不完成任务、不生成下一工序、不推进工作流，不开放专项评审/收费/退出写入。
+- 不修改 V1，不访问 production，不合并 `main`，不创建 tag，不进入 Gate 3C。
+
+#### Exact Changes
+
+- Prisma：新增 `R26ProgressDraft`，为进展记录增加状态/请求/版本字段，为阻塞增加
+  协助人员、部门和影响字段，新增 migration
+  `20260724133000_add_r26_gate3b_progress_materials`。
+- API：新增 progress context/history、草稿 PUT/DELETE、正式进展 POST、材料 V1/V2
+  POST 和历史内容 GET；统一幂等、版本、权限、DTO、事务、审计和 409。
+- 附件：复用现有安全拦截器和存储；旧版本只读保留，下载响应启用安全响应头。
+- Web：启用真实三步进展、阻塞条件字段、草稿恢复、上传/取消/替换/历史和局部刷新。
+- 联动：工作台、项目卡、固定流程地图、工序详情和项目记录使用最新服务端 ViewModel。
+- 证据：`docs/product/evidence/R26_GATE3B/`。
+- 报告：`docs/product/R26_GATE3B_PROGRESS_MATERIAL_REPORT.md`。
+- 人工复核：`docs/product/R26_GATE3B_HUMAN_REVIEW.md`。
+
+#### Staging Evidence
+
+```text
+URL                         http://localhost:8080
+user                        李晓晨
+UAT project                 R26-G3B-UAT-进展提交-20260724-2136
+deployed app commit         4f92e8d
+image tag                   r26-gate3b-4f92e8d
+migrations                  20 applied / 0 pending
+formal progress             1
+active/archived materials   1 / 1
+active drafts               0
+console/page errors         0
+production requests         0
+workflow command requests   0
+```
+
+- 真实飞书会话完成阻塞进展、人员/部门协助、PDF V1、替换 V2、正式提交及跨页联动。
+- 草稿保存、刷新恢复和删除完成；删除草稿不影响正式历史。
+- 数据库确认项目和工作流当前节点均未改变，任务仍为 `READY`，活动任务仍为 1。
+- 1440、1024、390 截图和真实浏览器交互帧回放已归档。
+
+#### Validation
+
+```text
+pnpm install --frozen-lockfile       PASS
+pnpm lint                            PASS
+pnpm typecheck                       PASS
+pnpm test                            PASS（Web 33 files / 109 tests；API 61 files / 263 tests）
+pnpm --filter web build              PASS
+pnpm --filter api build              PASS
+pnpm --filter api prisma:validate    PASS
+git diff --check                     PASS
+```
+
+代码级自动化覆盖草稿、阻塞、材料安全、版本、权限、IDOR、XSS、幂等、并发 409 和
+工作流不变量，覆盖项超过 Gate 3B 要求的 24 项。
+
+#### Decision
+
+```text
+R26_GATE3B_IMPLEMENTED
+PROGRESS_DRAFT_AND_SUBMISSION_ENABLED_ON_STAGING
+TASK_MATERIAL_UPLOAD_AND_VERSIONING_ENABLED_ON_STAGING
+WORKFLOW_TRANSITION_STILL_DISABLED
+AWAITING_PRODUCT_OWNER_GATE3B_CONFIRMATION
+STOP_BEFORE_GATE3C
+```
+
+---
+
+### Round R26_PRODUCT_UI_RECOVERY_GATE2_DATA_CONSISTENCY_FIX
+
+#### Goal And Scope
+
+- 修复产品负责人复核中发现的 Gate 2 真实数据口径不一致。
+- 继续限定在独立 staging 和 GET-only V2 读模型；不修改 V1、Prisma schema、
+  migration、状态机、数据库业务数据或 production。
+
+#### Exact Changes
+
+- 当前步骤统一为流程元数据序号：项目卡和工作区均显示 `12 / 18`。
+- 工作台、项目卡、工作区和任务详情统一显示当前真实负责人和服务端主责部门；
+  李晓晨未同步组织部门时显示“组织部门待同步”。
+- 第 12 步读取真实 `taskRound`；第 17 步读取月度计划实际完成数；未生成节点不再把
+  建议人展示为现任负责人。
+- 按业务责任表重建 18 节点主责、协同和评审部门规则；候选人仅从当前项目有效成员
+  中选择，无法唯一确定时保持未分配并返回原因。
+- 项目卡新增责任部门；地图可访问名称改为当前项目颜色名。
+- 新增 API 分配/责任部门测试与 Web 真实口径契约测试。
+
+#### Staging Evidence
+
+```text
+工作台 / 项目卡 / 工作区：
+  当前工序=样车驾驶室评审
+  负责人=李晓晨
+  责任部门=质量管理部
+  流程进度=12 / 18
+
+第 12 步=第 1 轮 / 已逾期
+第 15 步=生产部 / 负责人待分配 / 尚未生成
+第 17 步=0 / 12
+节点数量=18
+console error=0
+
+/api/v2/* GET=16
+POST=0 / PUT=0 / PATCH=0 / DELETE=0
+```
+
+- 证据：
+  `docs/product/evidence/R26_GATE2/16-data-consistency-step15-1440.png`。
+- staging API/Web/nginx healthy；未运行 migration 或 seed。
+- `R26-DATA-001` 已登记，历史演示成员和 UAT 项目本轮未修改或删除。
+
+#### Validation
+
+```text
+pnpm install --frozen-lockfile                                      PASS
+pnpm lint                                                           PASS
+pnpm typecheck                                                      PASS
+pnpm test                                                           PASS（Web 90 / API 231）
+NEXT_PUBLIC_R26_V2_PROTOTYPE=true
+NEXT_PUBLIC_R26_V2_DATA_MODE=read-only-real
+pnpm --filter @feishu-timeline/web build                            PASS
+pnpm --filter @feishu-timeline/api build                            PASS
+pnpm --filter @feishu-timeline/api prisma:validate                  PASS
+git diff --check                                                    PASS
+```
+
+#### Decision
+
+```text
+R26_GATE2_IMPLEMENTED
+READ_ONLY_REAL_DATA_CONNECTED
+ZERO_BUSINESS_WRITE_REQUESTS
+AWAITING_PRODUCT_OWNER_REAL_DATA_CONFIRMATION
+STOP_BEFORE_GATE3
+```

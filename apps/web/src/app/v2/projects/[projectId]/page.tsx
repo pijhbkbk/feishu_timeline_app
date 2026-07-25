@@ -10,7 +10,7 @@ export default async function Page({
   const { projectId } = await params;
 
   return (
-    <Suspense fallback={<div className="r26-page"><div className="r26-static-loading">正在准备静态流程地图…</div></div>}>
+    <Suspense fallback={<div className="r26-page"><div className="r26-static-loading">正在准备流程地图…</div></div>}>
       <WorkspacePage projectId={projectId} />
     </Suspense>
   );

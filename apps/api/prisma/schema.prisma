@@ -46,6 +46,15 @@ enum ProjectMemberType {
   OBSERVER
 }
 
+enum ProjectAssignmentSource {
+  TASK_OVERRIDE
+  PROJECT_NODE_OVERRIDE
+  PROJECT_DEPARTMENT_LEAD
+  PROJECT_DEFAULT_ASSIGNEE
+  SINGLE_ELIGIBLE_MEMBER
+  UNASSIGNED
+}
+
 enum ColorStatus {
   DRAFT
   ACTIVE
@@ -392,6 +401,7 @@ model Department {
   users                  User[]
   ownedProjects          Project[]                 @relation("OwningDepartmentProjects")
   assignedWorkflowTasks  WorkflowTask[]            @relation("TaskAssigneeDepartment")
+  projectNodeAssignments ProjectNodeAssignment[]
   boardDistributionUsers BoardDistributionRecord[] @relation("BoardRecipientDepartment")
   createdAt              DateTime                  @default(now())
   updatedAt              DateTime                  @updatedAt
@@ -402,50 +412,54 @@ model Department {
 }
 
 model User {
-  id                           String                    @id @default(cuid())
-  username                     String                    @unique
-  name                         String
-  email                        String?                   @unique
-  mobile                       String?                   @unique
-  feishuUserId                 String?                   @unique
-  feishuOpenId                 String?                   @unique
-  feishuUnionId                String?                   @unique
-  departmentId                 String?
-  status                       UserStatus                @default(ACTIVE)
-  isSystemAdmin                Boolean                   @default(false)
-  department                   Department?               @relation(fields: [departmentId], references: [id], onDelete: SetNull)
-  userRoles                    UserRole[]
-  ownedProjects                Project[]                 @relation("ProjectOwner")
-  projectMembers               ProjectMember[]
-  createdColorVersions         ColorVersion[]            @relation("ColorVersionCreator")
-  initiatedWorkflowInstances   WorkflowInstance[]        @relation("WorkflowInitiator")
-  assignedWorkflowTasks        WorkflowTask[]            @relation("TaskAssigneeUser")
-  workflowTransitions          WorkflowTransition[]      @relation("WorkflowTransitionOperator")
-  boardDistributions           BoardDistributionRecord[] @relation("BoardRecipientUser")
-  requestedPaintProcurements   PaintProcurement[]        @relation("ProcurementRequester")
-  reviewRecords                ReviewRecord[]            @relation("ReviewReviewer")
-  createdDevelopmentReports    DevelopmentReport[]       @relation("DevelopmentReportCreator")
-  updatedDevelopmentReports    DevelopmentReport[]       @relation("DevelopmentReportUpdater")
-  submittedDevelopmentReports  DevelopmentReport[]       @relation("DevelopmentReportSubmitter")
-  sampleConfirmations          SampleConfirmation[]      @relation("SampleConfirmationActor")
-  performedPerformanceTests    PerformanceTest[]         @relation("PerformanceTestOperator")
-  issuedStandardBoards         StandardBoard[]           @relation("StandardBoardIssuer")
-  updatedColorBoardDetails     ColorBoardDetailUpdate[]  @relation("ColorBoardDetailUpdateOperator")
-  createdDevelopmentFees       DevelopmentFee[]          @relation("DevelopmentFeeCreator")
-  recordedDevelopmentFees      DevelopmentFee[]          @relation("DevelopmentFeeRecorder")
-  createdProductionPlans       ProductionPlan[]          @relation("ProductionPlanCreator")
-  ownedProductionPlans         ProductionPlan[]          @relation("ProductionPlanOwner")
-  confirmedProductionPlans     ProductionPlan[]          @relation("ProductionPlanConfirmer")
-  operatedColorExits           ColorExit[]               @relation("ColorExitOperator")
-  uploadedAttachments          Attachment[]              @relation("AttachmentUploader")
-  deletedAttachments           Attachment[]              @relation("AttachmentDeleter")
-  submittedTaskProgressUpdates TaskProgressUpdate[]      @relation("TaskProgressSubmitter")
-  assistedTaskBlockers         TaskBlocker[]             @relation("TaskBlockerHelper")
-  completedRetrospectives      ProjectRetrospective[]     @relation("RetrospectiveCompleter")
-  notifications                Notification[]
-  auditLogs                    AuditLog[]                @relation("AuditActor")
-  createdAt                    DateTime                  @default(now())
-  updatedAt                    DateTime                  @updatedAt
+  id                            String                    @id @default(cuid())
+  username                      String                    @unique
+  name                          String
+  email                         String?                   @unique
+  mobile                        String?                   @unique
+  feishuUserId                  String?                   @unique
+  feishuOpenId                  String?                   @unique
+  feishuUnionId                 String?                   @unique
+  departmentId                  String?
+  status                        UserStatus                @default(ACTIVE)
+  isSystemAdmin                 Boolean                   @default(false)
+  department                    Department?               @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  userRoles                     UserRole[]
+  ownedProjects                 Project[]                 @relation("ProjectOwner")
+  projectMembers                ProjectMember[]
+  createdColorVersions          ColorVersion[]            @relation("ColorVersionCreator")
+  initiatedWorkflowInstances    WorkflowInstance[]        @relation("WorkflowInitiator")
+  assignedWorkflowTasks         WorkflowTask[]            @relation("TaskAssigneeUser")
+  ownedProjectNodeAssignments   ProjectNodeAssignment[]   @relation("ProjectNodeAssignmentOwner")
+  updatedProjectNodeAssignments ProjectNodeAssignment[]   @relation("ProjectNodeAssignmentUpdater")
+  r26CommandRequests            R26CommandRequest[]       @relation("R26CommandActor")
+  workflowTransitions           WorkflowTransition[]      @relation("WorkflowTransitionOperator")
+  boardDistributions            BoardDistributionRecord[] @relation("BoardRecipientUser")
+  requestedPaintProcurements    PaintProcurement[]        @relation("ProcurementRequester")
+  reviewRecords                 ReviewRecord[]            @relation("ReviewReviewer")
+  createdDevelopmentReports     DevelopmentReport[]       @relation("DevelopmentReportCreator")
+  updatedDevelopmentReports     DevelopmentReport[]       @relation("DevelopmentReportUpdater")
+  submittedDevelopmentReports   DevelopmentReport[]       @relation("DevelopmentReportSubmitter")
+  sampleConfirmations           SampleConfirmation[]      @relation("SampleConfirmationActor")
+  performedPerformanceTests     PerformanceTest[]         @relation("PerformanceTestOperator")
+  issuedStandardBoards          StandardBoard[]           @relation("StandardBoardIssuer")
+  updatedColorBoardDetails      ColorBoardDetailUpdate[]  @relation("ColorBoardDetailUpdateOperator")
+  createdDevelopmentFees        DevelopmentFee[]          @relation("DevelopmentFeeCreator")
+  recordedDevelopmentFees       DevelopmentFee[]          @relation("DevelopmentFeeRecorder")
+  createdProductionPlans        ProductionPlan[]          @relation("ProductionPlanCreator")
+  ownedProductionPlans          ProductionPlan[]          @relation("ProductionPlanOwner")
+  confirmedProductionPlans      ProductionPlan[]          @relation("ProductionPlanConfirmer")
+  operatedColorExits            ColorExit[]               @relation("ColorExitOperator")
+  uploadedAttachments           Attachment[]              @relation("AttachmentUploader")
+  deletedAttachments            Attachment[]              @relation("AttachmentDeleter")
+  submittedTaskProgressUpdates  TaskProgressUpdate[]      @relation("TaskProgressSubmitter")
+  r26ProgressDrafts             R26ProgressDraft[]        @relation("R26ProgressDraftAuthor")
+  assistedTaskBlockers          TaskBlocker[]             @relation("TaskBlockerHelper")
+  completedRetrospectives       ProjectRetrospective[]    @relation("RetrospectiveCompleter")
+  notifications                 Notification[]
+  auditLogs                     AuditLog[]                @relation("AuditActor")
+  createdAt                     DateTime                  @default(now())
+  updatedAt                     DateTime                  @updatedAt
 
   @@index([departmentId, status])
   @@map("users")
@@ -514,6 +528,8 @@ model Project {
   owningDepartment         Department?               @relation("OwningDepartmentProjects", fields: [owningDepartmentId], references: [id], onDelete: SetNull)
   ownerUser                User?                     @relation("ProjectOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
   members                  ProjectMember[]
+  nodeAssignments          ProjectNodeAssignment[]
+  r26CommandRequests       R26CommandRequest[]
   colors                   Color[]
   colorExits               ColorExit[]
   developmentReports       DevelopmentReport[]
@@ -521,6 +537,7 @@ model Project {
   workflowTasks            WorkflowTask[]
   workflowTransitions      WorkflowTransition[]
   taskProgressUpdates      TaskProgressUpdate[]
+  r26ProgressDrafts        R26ProgressDraft[]
   taskBlockers             TaskBlocker[]
   samples                  Sample[]
   sampleConfirmations      SampleConfirmation[]
@@ -537,6 +554,7 @@ model Project {
   notifications            Notification[]
   auditLogs                AuditLog[]
   retrospective            ProjectRetrospective?
+  memberAssignmentVersion  Int                       @default(1)
   createdAt                DateTime                  @default(now())
   updatedAt                DateTime                  @updatedAt
 
@@ -561,6 +579,47 @@ model ProjectMember {
   @@unique([projectId, userId, memberType])
   @@index([userId, memberType])
   @@map("project_members")
+}
+
+model ProjectNodeAssignment {
+  id                  String                  @id @default(cuid())
+  projectId           String
+  nodeCode            WorkflowNodeCode
+  primaryDepartmentId String?
+  ownerUserId         String?
+  collaboratorUserIds Json?
+  reviewerUserIds     Json?
+  assignmentSource    ProjectAssignmentSource @default(PROJECT_NODE_OVERRIDE)
+  version             Int                     @default(1)
+  updatedById         String?
+  project             Project                 @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  primaryDepartment   Department?             @relation(fields: [primaryDepartmentId], references: [id], onDelete: SetNull)
+  ownerUser           User?                   @relation("ProjectNodeAssignmentOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
+  updatedBy           User?                   @relation("ProjectNodeAssignmentUpdater", fields: [updatedById], references: [id], onDelete: SetNull)
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
+
+  @@unique([projectId, nodeCode])
+  @@index([ownerUserId, nodeCode])
+  @@index([primaryDepartmentId, nodeCode])
+  @@map("project_node_assignments")
+}
+
+model R26CommandRequest {
+  id             String   @id @default(cuid())
+  projectId      String
+  actorUserId    String?
+  idempotencyKey String   @unique
+  action         String
+  requestHash    String
+  result         Json?
+  project        Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  actorUser      User?    @relation("R26CommandActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  createdAt      DateTime @default(now())
+
+  @@index([projectId, action, createdAt])
+  @@index([actorUserId, createdAt])
+  @@map("r26_command_requests")
 }
 
 model Color {
@@ -716,6 +775,7 @@ model WorkflowInstance {
   projectId           String
   instanceNo          String                 @unique
   versionNo           Int                    @default(1)
+  commandVersion      Int                    @default(1)
   templateCode        String                 @default("COLOR_DEVELOPMENT_MVP")
   templateVersion     String?
   status              WorkflowInstanceStatus @default(DRAFT)
@@ -777,6 +837,7 @@ model WorkflowTask {
   toTransitions        WorkflowTransition[] @relation("WorkflowTransitionToTask")
   reviewRecords        ReviewRecord[]
   progressUpdates      TaskProgressUpdate[]
+  r26ProgressDrafts    R26ProgressDraft[]
   blockers             TaskBlocker[]
   createdAt            DateTime             @default(now())
   updatedAt            DateTime             @updatedAt
@@ -795,11 +856,14 @@ model TaskProgressUpdate {
   workflowTaskId        String
   projectId             String
   submittedById         String?
+  progressStatus        String       @default("IN_PROGRESS")
   completionPercent     Int
   completedContent      String
   nextPlan              String?
   materialAttachmentIds Json?
   idempotencyKey        String       @unique
+  requestId             String?
+  taskVersion           String?
   workflowTask          WorkflowTask @relation(fields: [workflowTaskId], references: [id], onDelete: Cascade)
   project               Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
   submittedBy           User?        @relation("TaskProgressSubmitter", fields: [submittedById], references: [id], onDelete: SetNull)
@@ -813,27 +877,61 @@ model TaskProgressUpdate {
 }
 
 model TaskBlocker {
-  id                 String             @id @default(cuid())
-  progressUpdateId   String             @unique
-  workflowTaskId     String
-  projectId          String
-  blockerType        String
-  description        String
-  helperUserId       String?
-  expectedResolvedAt DateTime?
-  status             TaskBlockerStatus  @default(OPEN)
-  resolvedAt         DateTime?
-  progressUpdate     TaskProgressUpdate @relation(fields: [progressUpdateId], references: [id], onDelete: Cascade)
-  workflowTask       WorkflowTask       @relation(fields: [workflowTaskId], references: [id], onDelete: Cascade)
-  project            Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  helperUser         User?              @relation("TaskBlockerHelper", fields: [helperUserId], references: [id], onDelete: SetNull)
-  createdAt          DateTime           @default(now())
-  updatedAt          DateTime           @updatedAt
+  id                      String             @id @default(cuid())
+  progressUpdateId        String             @unique
+  workflowTaskId          String
+  projectId               String
+  blockerType             String
+  description             String
+  helperUserId            String?
+  assistanceUserIds       Json?
+  assistanceDepartmentIds Json?
+  impactLevel             String?
+  expectedResolvedAt      DateTime?
+  status                  TaskBlockerStatus  @default(OPEN)
+  resolvedAt              DateTime?
+  resolutionSummary       String?
+  actualResolvedAt        DateTime?
+  resolvedById            String?
+  resolutionRequestId     String?
+  progressUpdate          TaskProgressUpdate @relation(fields: [progressUpdateId], references: [id], onDelete: Cascade)
+  workflowTask            WorkflowTask       @relation(fields: [workflowTaskId], references: [id], onDelete: Cascade)
+  project                 Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  helperUser              User?              @relation("TaskBlockerHelper", fields: [helperUserId], references: [id], onDelete: SetNull)
+  createdAt               DateTime           @default(now())
+  updatedAt               DateTime           @updatedAt
 
   @@index([workflowTaskId, status, createdAt])
   @@index([projectId, status, createdAt])
   @@index([helperUserId, status])
   @@map("task_blockers")
+}
+
+model R26ProgressDraft {
+  id                      String       @id @default(cuid())
+  workflowTaskId          String
+  projectId               String
+  authorUserId            String
+  draftVersion            Int          @default(1)
+  progressStatus          String       @default("IN_PROGRESS")
+  completedWork           String?
+  nextPlan                String?
+  blockerType             String?
+  blockerDescription      String?
+  assistanceUserIds       Json?
+  assistanceDepartmentIds Json?
+  expectedResolvedAt      DateTime?
+  impactLevel             String?
+  workflowTask            WorkflowTask @relation(fields: [workflowTaskId], references: [id], onDelete: Cascade)
+  project                 Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  authorUser              User         @relation("R26ProgressDraftAuthor", fields: [authorUserId], references: [id], onDelete: Cascade)
+  createdAt               DateTime     @default(now())
+  updatedAt               DateTime     @updatedAt
+
+  @@unique([workflowTaskId, authorUserId])
+  @@index([projectId, updatedAt])
+  @@index([authorUserId, updatedAt])
+  @@map("r26_progress_drafts")
 }
 
 model RecurringPlan {

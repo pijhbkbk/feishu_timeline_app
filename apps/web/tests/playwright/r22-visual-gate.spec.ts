@@ -93,23 +93,17 @@ test.describe.serial('R22 视觉闸门', () => {
 });
 
 async function loginAsSeedProjectManager(page: Page) {
-  await page.goto('/login');
-  await page.evaluate(
-    async ({ apiBaseUrl }) => {
-      const response = await fetch(`${apiBaseUrl}/auth/mock-login`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          username: 'mock_project_manager',
-          name: '演示项目经理',
-          roleCodes: ['project_manager'],
-        }),
-      });
-      if (!response.ok) throw new Error(`mock login failed: ${response.status}`);
+  const response = await page.request.post(`${API_BASE_URL}/auth/mock-login`, {
+    data: {
+      username: 'mock_project_manager',
+      name: '演示项目经理',
+      roleCodes: ['project_manager'],
     },
-    { apiBaseUrl: API_BASE_URL },
-  );
+  });
+  if (!response.ok()) {
+    throw new Error(`mock login failed: ${response.status()}`);
+  }
+  await page.goto('/dashboard');
 }
 
 async function getCurrentTaskContext(page: Page) {

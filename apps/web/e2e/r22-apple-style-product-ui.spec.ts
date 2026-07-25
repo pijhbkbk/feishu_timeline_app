@@ -246,16 +246,13 @@ test.describe.serial('R22 Apple 风产品 UI 全量验收', () => {
 });
 
 async function login(page: Page, username: string, name: string, roleCodes: string[]) {
-  await page.goto('/login');
-  await page.evaluate(async ({ apiBaseUrl, nextUsername, nextName, nextRoleCodes }) => {
-    const response = await fetch(`${apiBaseUrl}/auth/mock-login`, {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ username: nextUsername, name: nextName, roleCodes: nextRoleCodes }),
-    });
-    if (!response.ok) throw new Error(`mock login failed: ${response.status} ${await response.text()}`);
-  }, { apiBaseUrl: API_BASE_URL, nextUsername: username, nextName: name, nextRoleCodes: roleCodes });
+  const response = await page.request.post(`${API_BASE_URL}/auth/mock-login`, {
+    data: { username, name, roleCodes },
+  });
+  if (!response.ok()) {
+    throw new Error(`mock login failed: ${response.status()} ${await response.text()}`);
+  }
+  await page.goto('/dashboard');
 }
 
 async function waitForScreenshotReady(page: Page, pageName: string) {

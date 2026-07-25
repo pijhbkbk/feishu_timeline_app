@@ -224,3 +224,19 @@ export function getColorExitSuggestionLabel(value: ColorExitSuggestion | null | 
 
   return '待计算';
 }
+
+export function getColorExitDecisionLabel(value: ColorExitSuggestion | null | undefined) {
+  if (value === 'EXIT') {
+    return '人工决定退出';
+  }
+
+  if (value === 'RETAIN') {
+    return '人工决定保留';
+  }
+
+  if (value === 'OBSERVE') {
+    return '人工决定延期观察';
+  }
+
+  return '待人工决定';
+}

@@ -6,10 +6,8 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
+import { FEISHU_CN_OAUTH_PROVIDER } from '../../common/feishu-oauth-provider';
 import type { FeishuAuthAdapter, FeishuIdentityProfile } from './feishu.types';
-
-const FEISHU_TOKEN_ENDPOINT = 'https://open.feishu.cn/open-apis/authen/v2/oauth/token';
-const FEISHU_USER_INFO_ENDPOINT = 'https://open.feishu.cn/open-apis/authen/v1/user_info';
 
 type JsonObject = Record<string, unknown>;
 
@@ -58,7 +56,7 @@ export class StubFeishuAuthAdapter implements FeishuAuthAdapter {
     const clientSecret = this.getRequiredConfig('feishuAppSecret', 'Feishu app secret');
     const redirectUri = this.getRequiredConfig('feishuRedirectUri', 'Feishu redirect uri');
     const tokenPayload = await this.requestJson(
-      FEISHU_TOKEN_ENDPOINT,
+      FEISHU_CN_OAUTH_PROVIDER.tokenEndpoint,
       {
         method: 'POST',
         headers: {
@@ -80,7 +78,7 @@ export class StubFeishuAuthAdapter implements FeishuAuthAdapter {
     const tokenData = this.getTokenProfileData(tokenEnvelope);
 
     const userInfoPayload = await this.requestJson(
-      FEISHU_USER_INFO_ENDPOINT,
+      FEISHU_CN_OAUTH_PROVIDER.userInfoEndpoint,
       {
         method: 'GET',
         headers: {
