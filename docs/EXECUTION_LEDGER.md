@@ -4271,6 +4271,55 @@ STOP_BEFORE_GATE3
 
 ---
 
+### Round R26P3_PROJECT_CREATE_ENTRY
+
+#### Goal And Scope
+
+- 修复生产 V2 清空项目后无法开始人工测试的产品阻断。
+- 恢复工作台和项目列表的真实“新建项目”入口。
+- 新增正式 V2 新建项目路由，继续复用现有后端创建、权限、流程初始化和审计能力。
+- 验证过程中不创建项目、不 seed、不修改生产业务数据。
+
+#### Exact Changes
+
+- 管理员和项目经理在 `/dashboard` 空状态中可直接进入“新建项目”。
+- `/projects` 页头和空状态均提供真实创建入口。
+- `/projects/new` 使用真实 `ProjectEditor`，创建成功后进入 V2 项目工作区。
+- 非管理员、非项目经理不展示创建入口，服务端权限边界保持不变。
+- 增加 V2 创建路由、权限可见性和生产别名回归测试。
+
+#### Validation And Production Evidence
+
+```text
+source/runtime commit                 17a96d30459051dafaca33b47f37476c33f4152a
+pnpm install --frozen-lockfile        PASS
+pnpm lint                             PASS
+pnpm typecheck                        PASS
+pnpm test                             PASS（Web 131；API 293）
+pnpm --filter web build               PASS
+pnpm --filter api build               PASS
+pnpm --filter api prisma:validate     PASS
+git diff --check                      PASS
+production release verification      PASS
+production acceptance                PASS
+```
+
+- Safari 正式账号实测：工作台入口、项目列表双入口和新建表单均可达。
+- 新建表单显示李晓晨为默认负责人，“创建项目”按钮可用；未点击提交。
+- 验证后生产 `projects=0`、`workflow_instances=0`、`workflow_tasks=0`。
+- 详细记录：`docs/release/R26P3_PROJECT_CREATE_ENTRY.md`。
+
+#### Decision
+
+```text
+R26P3_PROJECT_CREATE_ENTRY_DEPLOYED
+PRODUCTION_CREATE_FORM_REACHABLE
+NO_PROJECT_CREATED_DURING_VERIFICATION
+READY_FOR_MANUAL_FROM_SCRATCH_UAT
+```
+
+---
+
 ### Round R26P2_PAGE_SPACING_AND_CLEAN_RESET
 
 #### Goal And Scope
