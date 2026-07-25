@@ -257,6 +257,13 @@
   padding: 56px 32px 80px;
 }
 
+[data-ui-version="r26-v2"] .r26-main > .r22-tasks-page,
+[data-ui-version="r26-v2"] .r26-main > .r22-admin-page {
+  width: min(100%, 1504px);
+  margin: 0 auto;
+  padding: 56px 32px 80px;
+}
+
 [data-ui-version="r26-v2"] .r26-page-intro {
   display: flex;
   align-items: flex-end;
@@ -2425,6 +2432,12 @@
     padding-left: 24px;
   }
 
+  [data-ui-version="r26-v2"] .r26-main > .r22-tasks-page,
+  [data-ui-version="r26-v2"] .r26-main > .r22-admin-page {
+    padding-right: 24px;
+    padding-left: 24px;
+  }
+
   [data-ui-version="r26-v2"] .r26-current-task {
     grid-template-columns: minmax(0, 1fr) 310px;
   }
@@ -2561,6 +2574,11 @@
   }
 
   [data-ui-version="r26-v2"] .r26-page {
+    padding: 32px 20px 48px;
+  }
+
+  [data-ui-version="r26-v2"] .r26-main > .r22-tasks-page,
+  [data-ui-version="r26-v2"] .r26-main > .r22-admin-page {
     padding: 32px 20px 48px;
   }
 
