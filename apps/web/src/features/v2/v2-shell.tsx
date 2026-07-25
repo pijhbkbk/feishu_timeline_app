@@ -6,6 +6,7 @@ import React from 'react';
 import { useState, type ComponentType, type MouseEvent, type SVGProps } from 'react';
 
 import { useAuth } from '../../components/auth-provider';
+import { isTopNavigationItemActive } from '../../lib/navigation';
 import {
   BellIcon,
   HelpIcon,
@@ -100,7 +101,9 @@ export function V2Shell({ children }: { children: React.ReactNode }) {
 
           <nav className="r26-primary-nav" aria-label="V2 主导航">
             {navItems.map((item) => {
-              const isActive = item.enabled && isNavActive(pathname, item.href);
+              const isActive =
+                item.enabled &&
+                isTopNavigationItemActive(pathname, item.href);
               return (
                 <Link
                   key={item.label}
@@ -179,7 +182,9 @@ export function V2Shell({ children }: { children: React.ReactNode }) {
       <nav className="r26-mobile-nav" aria-label="V2 移动端主导航">
         {navItems.map((item) => {
           const Icon = item.icon;
-          const isActive = item.enabled && isNavActive(pathname, item.href);
+          const isActive =
+            item.enabled &&
+            isTopNavigationItemActive(pathname, item.href);
           return (
             <Link
               key={item.label}
@@ -208,13 +213,4 @@ export function V2Shell({ children }: { children: React.ReactNode }) {
       ) : null}
     </div>
   );
-}
-
-function isNavActive(pathname: string, href: string) {
-  const path = href.split('?')[0];
-  if (path === '/v2/projects') {
-    return pathname === path || pathname.startsWith('/v2/projects/');
-  }
-
-  return pathname === path;
 }

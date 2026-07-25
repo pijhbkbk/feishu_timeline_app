@@ -51,10 +51,10 @@ describe('route smoke', () => {
 
     expect(topNavigationItems.map((item) => item.label)).toEqual([
       '工作台',
-      '项目管理',
+      '项目列表',
       '我的任务',
       '进展提交',
-      '复盘分析',
+      '系统管理',
     ]);
     expect(sidebarSections[0]?.items).toHaveLength(5);
     expect(guideHtml).toContain('轻卡定制颜色开发项目管理系统');

@@ -147,7 +147,7 @@ a {
 }
 
 .r22-primary-nav a.is-active {
-  color: var(--r22-text);
+  color: var(--r22-brand);
   background: #fff;
   box-shadow: 0 3px 10px rgba(29, 29, 31, 0.08);
 }
@@ -336,8 +336,8 @@ a {
 }
 
 .r22-context-nav .context-nav-link-active {
-  color: var(--r22-text);
-  background: var(--r22-surface-muted);
+  color: var(--r22-brand);
+  background: var(--r22-brand-soft);
 }
 
 .r22-mobile-nav {

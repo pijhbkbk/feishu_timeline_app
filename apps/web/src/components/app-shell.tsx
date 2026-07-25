@@ -9,6 +9,7 @@ import {
   filterNavItems,
   getAdminSectionItems,
   getProjectSectionItems,
+  isTopNavigationItemActive,
   topNavigationItems,
 } from '../lib/navigation';
 import { useAuth } from './auth-provider';
@@ -97,7 +98,8 @@ export function AppShell({ children }: PropsWithChildren) {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={isPrimaryNavActive(pathname, item.href) ? 'is-active' : undefined}
+                  className={isTopNavigationItemActive(pathname, item.href) ? 'is-active' : undefined}
+                  aria-current={isTopNavigationItemActive(pathname, item.href) ? 'page' : undefined}
                 >
                   {item.label}
                 </Link>
@@ -179,7 +181,8 @@ export function AppShell({ children }: PropsWithChildren) {
             <Link
               key={item.href}
               href={item.href}
-              className={isPrimaryNavActive(pathname, item.href) ? 'is-active' : undefined}
+              className={isTopNavigationItemActive(pathname, item.href) ? 'is-active' : undefined}
+              aria-current={isTopNavigationItemActive(pathname, item.href) ? 'page' : undefined}
             >
               <span aria-hidden="true">{item.icon}</span>
               <small>{item.label}</small>
@@ -189,26 +192,6 @@ export function AppShell({ children }: PropsWithChildren) {
       ) : null}
     </div>
   );
-}
-
-function isPrimaryNavActive(pathname: string, href: string) {
-  if (href === '/projects') {
-    return pathname === '/projects' || pathname.startsWith('/projects/');
-  }
-
-  if (href === '/tasks') {
-    return pathname === '/tasks' || pathname.startsWith('/tasks/');
-  }
-
-  if (href === '/progress') {
-    return pathname === '/progress' || pathname.startsWith('/materials/upload');
-  }
-
-  if (href === '/retrospectives') {
-    return pathname === '/retrospectives' || pathname.startsWith('/retrospectives/');
-  }
-
-  return pathname === href;
 }
 
 function isContextNavActive(pathname: string, href: string) {

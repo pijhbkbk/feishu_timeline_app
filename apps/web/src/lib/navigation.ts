@@ -61,7 +61,7 @@ export const topNavigationItems: NavItem[] = [
     description: '今天最应该推进的任务',
   },
   {
-    label: '项目管理',
+    label: '项目列表',
     href: '/projects',
     icon: '▦',
     description: '项目状态与流程工作区',
@@ -81,13 +81,57 @@ export const topNavigationItems: NavItem[] = [
     description: '60 秒提交真实进展',
   },
   {
-    label: '复盘分析',
-    href: '/retrospectives',
+    label: '系统管理',
+    href: '/admin',
     icon: '◌',
-    description: '生命周期复盘与改进',
+    description: '用户、权限、流程参数和审计',
     matchMode: 'prefix',
   },
 ];
+
+export function isTopNavigationItemActive(pathname: string, href: string) {
+  const normalizedPathname = normalizeTopNavigationPath(pathname);
+  const normalizedHref = normalizeTopNavigationPath(
+    href.split('?')[0] ?? href,
+  );
+
+  if (normalizedHref === '/projects') {
+    return (
+      normalizedPathname === '/projects' ||
+      normalizedPathname.startsWith('/projects/')
+    );
+  }
+
+  if (normalizedHref === '/tasks') {
+    return (
+      normalizedPathname === '/tasks' ||
+      normalizedPathname.startsWith('/tasks/')
+    );
+  }
+
+  if (normalizedHref === '/progress') {
+    return (
+      normalizedPathname === '/progress' ||
+      normalizedPathname === '/materials' ||
+      normalizedPathname.startsWith('/materials/')
+    );
+  }
+
+  if (normalizedHref === '/admin') {
+    return (
+      normalizedPathname === '/admin' ||
+      normalizedPathname.startsWith('/admin/')
+    );
+  }
+
+  return normalizedPathname === normalizedHref;
+}
+
+function normalizeTopNavigationPath(pathname: string) {
+  const pathWithoutQuery = pathname.split('?')[0] ?? pathname;
+  const path = pathWithoutQuery.replace(/\/+$/, '') || '/';
+  return path.replace(/^\/v2(?=\/|$)/, '') || '/';
+}
 
 export const sidebarSections: Array<{
   title: string;
@@ -371,7 +415,7 @@ export function getRouteContext(pathname: string): RouteContext {
     return {
       title: '项目列表',
       description: '按项目、颜色、当前工序、责任部门和逾期状态检索项目。',
-      eyebrow: '项目管理',
+      eyebrow: '项目列表',
     };
   }
 
@@ -449,7 +493,7 @@ export function getRouteContext(pathname: string): RouteContext {
 
   if (pathname === '/retrospectives') {
     return {
-      title: '复盘分析',
+      title: '生命周期复盘',
       description: '汇总项目周期、异常、评审和改进结论。',
       eyebrow: '生命周期复盘',
     };

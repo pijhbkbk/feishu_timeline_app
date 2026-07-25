@@ -139,7 +139,7 @@ export function ProjectsListClient() {
     <div className="r22-page r22-project-board" data-testid="project-list-page">
       <header className="r22-page-hero">
         <div>
-          <p className="r22-overline">项目管理</p>
+          <p className="r22-overline">项目列表</p>
           <h1>定制色开发项目</h1>
           <p>优先看清正在推进的项目、具体停滞原因和下一位责任人。</p>
         </div>

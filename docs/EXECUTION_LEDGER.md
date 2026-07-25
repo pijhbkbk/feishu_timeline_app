@@ -4271,6 +4271,52 @@ STOP_BEFORE_GATE3
 
 ---
 
+### Round R26P11_UNIFIED_NAVIGATION_MATRIX
+
+#### Goal And Scope
+
+- 逐域修复正式页面顶层导航名称和激活态。
+- 两套页面壳统一使用“项目列表”“系统管理”。
+- 项目、任务、进展/材料和系统管理的所有子页面均高亮所属顶层入口。
+- 不改变页面业务、流程状态或数据库数据。
+
+#### Root Cause And Fix
+
+- V2 核心页与旧业务子页分别维护导航名称和路由匹配，旧页面仍显示
+  “项目管理 / 复盘分析”。
+- V2 只对 `/v2/projects` 做前缀匹配，生产短路径项目详情和审计日志无法稳定
+  高亮父级入口。
+- 新增唯一的 `isTopNavigationItemActive` 路由裁决，统一 `/v2` 与生产短路径。
+- 顶层名称统一为：工作台、项目列表、我的任务、进展提交、系统管理。
+- 旧页面壳和 V2 页面壳均使用同一裁决；桌面端、移动端同步。
+- 旧页面壳的顶层和上下文当前项使用品牌蓝色。
+
+#### Route Matrix
+
+- 工作台：`/dashboard`、`/v2/dashboard`
+- 项目列表：`/projects` 及全部项目子路由
+- 我的任务：`/tasks` 及全部任务子路由
+- 进展提交：`/progress`、`/materials` 及材料子路由
+- 系统管理：`/admin` 及全部管理子路由
+
+#### Validation
+
+```text
+targeted route/navigation tests PASS (29)
+Web typecheck                   PASS
+Web lint                        PASS
+full repository lint           PASS
+full repository typecheck      PASS
+full repository tests          PASS (Web 165 / API 294)
+Web production build           PASS
+API production build           PASS
+Prisma schema validation       PASS
+production deployment          PENDING
+production route audit         PENDING
+```
+
+---
+
 ### Round R26P10_NAV_ACTIVE_STATE
 
 #### Goal And Scope

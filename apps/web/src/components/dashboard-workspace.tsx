@@ -170,7 +170,7 @@ export function DashboardWorkspace() {
             <p className="r22-overline">最近发生</p>
             <h2>项目动态</h2>
           </div>
-          <Link href="/projects" className="r22-text-link">进入项目管理</Link>
+          <Link href="/projects" className="r22-text-link">进入项目列表</Link>
         </div>
         {payload.recentActivity.length > 0 ? (
           <div className="r22-activity-list">
