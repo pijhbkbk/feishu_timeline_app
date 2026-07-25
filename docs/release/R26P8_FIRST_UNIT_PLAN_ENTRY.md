@@ -46,3 +46,19 @@ the `AuthProvider` and legacy application shell.
 - No production plan was created, edited, confirmed or completed during
   diagnosis and verification.
 - V1 business APIs and audit behavior remain unchanged.
+
+## Production verification
+
+- Runtime commit: `ae2386c`.
+- Web, API and Nginx: active.
+- Authenticated first-unit production plan page:
+  - client exception: fixed;
+  - first-unit production plan form: visible;
+  - `新建首台计划`: visible;
+  - plan list and confirmation column: visible;
+  - `返回项目工作区`: visible;
+  - console errors: 0.
+- Authenticated V2 step-10 workspace:
+  - `新建并确认首台生产计划`: visible;
+  - console errors: 0.
+- Business writes during verification: 0.

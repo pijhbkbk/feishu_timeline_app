@@ -4315,9 +4315,26 @@ pnpm test                     PASS (Web 139 / API 294)
 pnpm --filter web build       PASS
 pnpm --filter api build       PASS
 API prisma validate           PASS
-production deployment         PENDING
-production authenticated UI   PENDING
+production deployment         PASS (ae2386c)
+production services           web/api/nginx active
+production authenticated UI   PASS
+pilot-production crash        FIXED
+first plan form visible        PASS
+new first plan button visible  PASS
+return workspace link visible  PASS
+step 10 direct entry visible   PASS
+production console errors      0
 production business writes    0
+```
+
+#### Decision
+
+```text
+R26P8_IMPLEMENTED
+FIRST_UNIT_PLAN_PAGE_RECOVERED
+STEP10_REMEDIATION_ENTRY_VISIBLE
+PRODUCTION_DEPLOYED
+NO_PRODUCTION_PLAN_WRITE_DURING_VERIFICATION
 ```
 
 ---
