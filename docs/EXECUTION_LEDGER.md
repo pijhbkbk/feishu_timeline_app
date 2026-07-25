@@ -4307,16 +4307,33 @@ pnpm --filter api prisma:validate    PASS
 git diff --check                     PASS
 ```
 
-#### Pending Staging Gate
+#### Staging Evidence And Remediation
 
-- 最终 clean commit；
-- migration 应用；
-- 真实管理员会话与真实数据表；
-- 1440/1024/390 截图；
-- 受控写入与审计证据；
-- production 请求为 0。
+- migration `20260725183000_r26_admin_control_center` 已应用，22 项 migration、
+  0 项待执行，未运行 seed。
+- 真实飞书管理员会话完成九个后台入口与 1440/1024/390 三档浏览器检查。
+- 修复 `/admin/*` 被旧页面壳二次包裹、项目进度只统计活动任务、流程分支类型误判、
+  保存视图查询参数未恢复、表单字段相互覆盖、预览技术字段直出等问题。
+- 计划日期执行一次受控变更并恢复原值；`admin_command_requests` 与 `audit_logs`
+  各有 2 条 `ADMIN_TASK_SCHEDULE_CHANGED`。
+- 不可执行的分工预览会展示精确阻断原因，确认按钮同步禁用。
+- 移动端只保留查询与只读卡片，隐藏保存视图、完整列、导入和批量写操作。
+- 审计页纳入统一后台导航并修复页边距，常见动作、对象和结果改为中文。
+- 主导航逐页唯一高亮：工作台、项目列表、我的任务、进展提交、系统管理。
+- console/page error 为 0；所有验收请求仅指向本机 staging，production 请求为 0。
 
-完成上述证据后停止等待产品负责人确认。
+证据归档：`docs/product/evidence/R26_ADMIN_TABLE_CONTROL_CENTER/`。
+
+#### Decision
+
+```text
+R26_ADMIN_TABLE_CONTROL_CENTER_IMPLEMENTED
+REAL_ADMIN_TABLES_CONNECTED_ON_STAGING
+CONTROLLED_WRITES_AND_AUDIT_VERIFIED
+RESPONSIVE_READ_ONLY_MOBILE_VERIFIED
+AWAITING_PRODUCT_OWNER_ADMIN_CONFIRMATION
+STOP_BEFORE_PRODUCTION
+```
 
 ---
 

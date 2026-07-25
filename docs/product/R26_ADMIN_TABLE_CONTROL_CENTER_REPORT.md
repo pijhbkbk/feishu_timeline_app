@@ -51,8 +51,29 @@ git diff --check                     PASS
 
 ## Staging 证据
 
-部署、真实会话、响应式截图、命令审计和 production 请求计数将在
-`docs/product/evidence/R26_ADMIN_TABLE_CONTROL_CENTER/` 中归档。
+独立 staging `http://localhost:8080` 已使用真实飞书会话完成浏览器验收：
+
+- 九个后台入口均读取真实数据库数据，无占位骨架；
+- 1440px 完成项目、工序、组织、分工、权限、模板、字典和审计逐页检查；
+- 1024px 保留可读表格、横向滚动和完整影响预览；
+- 390px 改用只读卡片，隐藏保存视图、完整列、导入和批量写操作；
+- 主导航逐页仅有一个当前项，名称固定为“项目列表”和“系统管理”；
+- 计划日期先预览、再执行、最后恢复原值，两次命令均成功且各写入一条审计日志；
+- 分工候选不足时服务端返回明确阻断原因，前端禁用确认按钮；
+- 浏览器 console/page error 为 0；
+- 所有验收请求仅发送到本机 staging，production 请求为 0。
+
+数据库证据：
+
+```text
+20260725183000_r26_admin_control_center migration    APPLIED
+admin_command_requests / ADMIN_TASK_SCHEDULE_CHANGED 2
+audit_logs / ADMIN_TASK_SCHEDULE_CHANGED             2
+staging task plannedDueAt after UAT restore          2026-08-01 07:59
+```
+
+截图与逐项记录归档在
+`docs/product/evidence/R26_ADMIN_TABLE_CONTROL_CENTER/`。
 
 ## 门禁
 

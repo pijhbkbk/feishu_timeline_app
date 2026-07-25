@@ -29,7 +29,7 @@ describe('R26 formal task and admin page spacing', () => {
 
   it('places the audit workspace inside the native V2 page frame', () => {
     expect(auditWorkspaceSource).toContain(
-      'className="r22-page r26-page r25a-audit-page"',
+      'className="r22-page r26-page r25a-audit-page admin-cc-audit-page"',
     );
   });
 });

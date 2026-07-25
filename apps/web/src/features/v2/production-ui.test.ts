@@ -21,6 +21,7 @@ describe('production V2 routing', () => {
       isFormalV2Path('/projects/project-1/actions/cabin-review'),
     ).toBe(true);
     expect(isFormalV2Path('/admin/audit-logs')).toBe(true);
+    expect(isFormalV2Path('/admin/tasks')).toBe(true);
     expect(
       isFormalV2Path('/projects/project-1/pilot-production'),
     ).toBe(false);

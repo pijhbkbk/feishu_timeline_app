@@ -5,6 +5,18 @@
 - staging：`http://localhost:8080`
 - production：保持不变
 - 推荐桌面视口：1440 × 1000
+- 分支：`codex/r26-admin-table-control-center`
+
+## 技术验收结论
+
+- [x] 真实项目、工序、用户、部门、成员、分工、权限、模板、字典和审计均可见；
+- [x] 工序计划受控修改已执行一次并恢复原值；
+- [x] 两次写操作均有独立幂等命令与审计记录；
+- [x] 不可执行的分工预览会列出阻断原因并禁用确认；
+- [x] 1440 / 1024 / 390 均完成真实浏览器检查；
+- [x] 页面导航名称与当前项高亮一致；
+- [x] console/page error 为 0；
+- [x] production 请求为 0。
 
 ## 验收路径
 
@@ -22,6 +34,25 @@
 12. 两次点击内从后台进入审计记录；
 13. 在 1024 复核表格滚动和抽屉；
 14. 在 390 复核只读卡片，无横向页面溢出。
+
+## 关键截图
+
+- `1440-admin-overview.png`
+- `1440-admin-projects.png`
+- `1440-admin-schedule-preview.png`
+- `1440-admin-batch-preview.png`
+- `1440-admin-assignment-preview.png`
+- `1440-admin-project-members.png`
+- `1440-admin-assignments.png`
+- `1440-admin-permissions.png`
+- `1440-admin-workflow-templates.png`
+- `1440-admin-dictionaries.png`
+- `1440-admin-audit-logs.png`
+- `1024-admin-tasks.png`
+- `1024-admin-schedule-preview.png`
+- `390-admin-projects.png`
+- `390-admin-tasks.png`
+- `390-admin-organization.png`
 
 ## 产品负责人确认
 

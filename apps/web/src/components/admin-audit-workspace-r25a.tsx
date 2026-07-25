@@ -10,6 +10,7 @@ import {
   type AdminAuditListResponse,
   type AdminAuditQuery,
 } from '../lib/admin-client';
+import { AdminControlNavigation } from './admin-control-center';
 import { R22Kpi, R22StatusBadge } from './r22-ui';
 
 const ENTITY_OPTIONS = [
@@ -120,7 +121,8 @@ export function AdminAuditWorkspaceR25A() {
   }
 
   return (
-    <div className="r22-page r26-page r25a-audit-page" data-testid="admin-audit-page">
+    <div className="r22-page r26-page r25a-audit-page admin-cc-audit-page" data-testid="admin-audit-page">
+      <AdminControlNavigation active="audit-logs" />
       <header className="r22-page-hero r25a-audit-hero">
         <div>
           <p className="r22-overline">系统管理 · 只读</p>
@@ -179,7 +181,7 @@ export function AdminAuditWorkspaceR25A() {
 
       <section className="r22-card r25a-audit-list-card">
         <div className="r22-section-heading r25a-audit-list-heading">
-          <div><p className="r22-overline">Audit trail</p><h2>操作记录</h2><p>按时间和日志 ID 稳定排序，详情单独读取并统一脱敏。</p></div>
+          <div><p className="r22-overline">审计追踪</p><h2>操作记录</h2><p>按时间和日志 ID 稳定排序，详情单独读取并统一脱敏。</p></div>
           <label className="r25a-audit-sort">排序<select aria-label="审计日志排序" data-testid="admin-audit-sort" value={query.sort ?? 'createdAt:desc'} onChange={(event) => commitQuery({ ...query, page: 1, sort: event.target.value as NonNullable<AdminAuditQuery['sort']> })}><option value="createdAt:desc">最新优先</option><option value="createdAt:asc">最早优先</option></select></label>
         </div>
 
@@ -189,8 +191,8 @@ export function AdminAuditWorkspaceR25A() {
         {data && data.items.length ? (
           <div className="r25a-audit-table-wrap" data-testid="admin-audit-table">
             <table className="r25a-audit-table">
-              <thead><tr><th>时间</th><th>操作者</th><th>动作</th><th>对象</th><th>项目</th><th>结果</th><th>requestId</th><th>操作</th></tr></thead>
-              <tbody>{data.items.map((item) => <tr key={item.id} data-testid="admin-audit-row" data-audit-log-id={item.id}><td data-label="时间"><time>{formatDateTime(item.createdAt)}</time></td><td data-label="操作者"><strong>{item.actorName}</strong><small>{item.actorRole ?? '系统'}</small></td><td data-label="动作"><strong>{formatCode(item.action)}</strong><small>{item.summary}</small></td><td data-label="对象"><span>{formatCode(item.entityType)}</span><small>{item.entityId}</small></td><td data-label="项目">{item.projectName ?? '—'}</td><td data-label="结果"><R22StatusBadge tone={getResultTone(item.result)}>{item.result ? formatCode(item.result) : '已记录'}</R22StatusBadge></td><td data-label="requestId"><code>{item.requestId ?? '—'}</code></td><td data-label="操作" data-testid="admin-audit-detail-button"><button type="button" data-testid={`admin-audit-detail-${item.id}`} className="r22-text-link r25a-audit-detail-button" onClick={() => void openDetail(item.id)}>查看详情</button></td></tr>)}</tbody>
+              <thead><tr><th>时间</th><th>操作者</th><th>动作</th><th>对象</th><th>项目</th><th>结果</th><th>请求编号</th><th>操作</th></tr></thead>
+              <tbody>{data.items.map((item) => <tr key={item.id} data-testid="admin-audit-row" data-audit-log-id={item.id}><td data-label="时间"><time>{formatDateTime(item.createdAt)}</time></td><td data-label="操作者"><strong>{item.actorName}</strong><small>{item.actorRole ?? '系统'}</small></td><td data-label="动作"><strong>{formatCode(item.action)}</strong><small>{item.summary}</small></td><td data-label="对象"><span>{formatCode(item.entityType)}</span><small>{item.entityId}</small></td><td data-label="项目">{item.projectName ?? '—'}</td><td data-label="结果"><R22StatusBadge tone={getResultTone(item.result)}>{item.result ? formatCode(item.result) : '已记录'}</R22StatusBadge></td><td data-label="请求编号"><code>{item.requestId ?? '—'}</code></td><td data-label="操作" data-testid="admin-audit-detail-button"><button type="button" data-testid={`admin-audit-detail-${item.id}`} className="r22-text-link r25a-audit-detail-button" onClick={() => void openDetail(item.id)}>查看详情</button></td></tr>)}</tbody>
             </table>
           </div>
         ) : null}
@@ -204,7 +206,7 @@ export function AdminAuditWorkspaceR25A() {
 }
 
 export function AuditDetailDrawer({ detail, isLoading, error, onClose }: { detail: AdminAuditDetailResponse | null; isLoading: boolean; error: string | null; onClose: () => void }) {
-  return <div className="r25a-audit-drawer-backdrop" role="presentation" onMouseDown={(event) => { if (event.currentTarget === event.target) onClose(); }}><aside className="r25a-audit-drawer" role="dialog" aria-modal="true" aria-labelledby="audit-detail-title" data-testid="admin-audit-detail-drawer" data-audit-log-id={detail?.id}><header><div><p className="r22-overline">只读 · 已脱敏</p><h2 id="audit-detail-title">审计详情</h2></div><button type="button" className="r22-icon-button" aria-label="关闭审计详情" onClick={onClose}>×</button></header>{isLoading ? <div className="r25a-audit-loading">正在安全读取详情…</div> : null}{error ? <div className="r22-inline-alert">{error}</div> : null}{detail ? <div className="r25a-audit-detail-body"><DetailItem label="审计 ID" value={detail.id} /><DetailItem label="操作时间" value={formatDateTime(detail.createdAt)} /><DetailItem label="操作者" value={`${detail.actorName}${detail.actorRole ? ` · ${detail.actorRole}` : ''}`} /><DetailItem label="动作" value={detail.action} /><DetailItem label="对象" value={`${detail.entityType} · ${detail.entityId}`} /><DetailItem label="项目" value={detail.projectName ?? '—'} /><DetailItem label="结果" value={detail.result ?? '已记录'} /><DetailItem label="requestId" value={detail.requestId ?? '—'} /><DetailItem label="IP" value={detail.ipAddress ?? '未记录'} /><DetailItem label="原因" value={detail.reason ?? '—'} /><SafeJsonSection title="原值摘要" value={detail.beforeSummary} /><SafeJsonSection title="新值摘要" value={detail.afterSummary} /><SafeJsonSection title="安全 metadata" value={detail.metadata} /></div> : null}</aside></div>;
+  return <div className="r25a-audit-drawer-backdrop" role="presentation" onMouseDown={(event) => { if (event.currentTarget === event.target) onClose(); }}><aside className="r25a-audit-drawer" role="dialog" aria-modal="true" aria-labelledby="audit-detail-title" data-testid="admin-audit-detail-drawer" data-audit-log-id={detail?.id}><header><div><p className="r22-overline">只读 · 已脱敏</p><h2 id="audit-detail-title">审计详情</h2></div><button type="button" className="r22-icon-button" aria-label="关闭审计详情" onClick={onClose}>×</button></header>{isLoading ? <div className="r25a-audit-loading">正在安全读取详情…</div> : null}{error ? <div className="r22-inline-alert">{error}</div> : null}{detail ? <div className="r25a-audit-detail-body"><DetailItem label="审计 ID" value={detail.id} /><DetailItem label="操作时间" value={formatDateTime(detail.createdAt)} /><DetailItem label="操作者" value={`${detail.actorName}${detail.actorRole ? ` · ${detail.actorRole}` : ''}`} /><DetailItem label="动作" value={formatCode(detail.action)} /><DetailItem label="对象" value={`${formatCode(detail.entityType)} · ${detail.entityId}`} /><DetailItem label="项目" value={detail.projectName ?? '—'} /><DetailItem label="结果" value={detail.result ? formatCode(detail.result) : '已记录'} /><DetailItem label="请求编号" value={detail.requestId ?? '—'} /><DetailItem label="IP" value={detail.ipAddress ?? '未记录'} /><DetailItem label="原因" value={detail.reason ?? '—'} /><SafeJsonSection title="原值摘要" value={detail.beforeSummary} /><SafeJsonSection title="新值摘要" value={detail.afterSummary} /><SafeJsonSection title="安全元数据" value={detail.metadata} /></div> : null}</aside></div>;
 }
 
 function FilterField({ label, wide = false, children }: { label: string; wide?: boolean; children: React.ReactNode }) { return <label className={wide ? 'is-wide' : undefined}><span>{label}</span>{children}</label>; }
@@ -233,5 +235,73 @@ function readQueryState(params: URLSearchParams | ReadonlyURLSearchParams) {
 
 type ReadonlyURLSearchParams = ReturnType<typeof useSearchParams>;
 function formatDateTime(value: string) { return new Date(value).toLocaleString('zh-CN', { hour12: false }); }
-function formatCode(value: string) { return value.replaceAll('_', ' ').toLowerCase().replace(/(^|\s)\S/g, (letter) => letter.toUpperCase()); }
+const AUDIT_CODE_LABELS: Record<string, string> = {
+  PROJECT: '项目',
+  COLOR: '颜色',
+  COLOR_EXIT: '颜色退出',
+  WORKFLOW_TASK: '流程工序',
+  REVIEW_RECORD: '评审记录',
+  DEVELOPMENT_FEE: '开发收费',
+  ATTACHMENT: '材料附件',
+  USER: '用户',
+  ROLE: '角色',
+  SYSTEM: '系统',
+  APPROVED: '已通过',
+  REJECTED: '已退回',
+  COMPLETED: '已完成',
+  CREATED: '已创建',
+  SUBMITTED: '已提交',
+  FAILED: '失败',
+  SUCCESS: '成功',
+  WORKFLOW_FORM_SAVED: '工作流表单已保存',
+  TASK_PROGRESS_SUBMITTED: '工序进展已提交',
+  WORKFLOW_START: '流程已启动',
+  WORKFLOW_SUBMIT: '流程已提交',
+  WORKFLOW_COMPLETE: '流程已完成',
+  WORKFLOW_INITIALIZED: '流程已初始化',
+  WORKFLOW_APPROVE: '流程审批通过',
+  WORKFLOW_REJECT: '流程评审退回',
+  PROJECT_CREATED: '项目已创建',
+  PROJECT_UPDATED: '项目已更新',
+  VISUAL_DELTA_REVIEW_CREATED: '目视色差评审已创建',
+  VISUAL_DELTA_REVIEW_SUBMITTED: '目视色差评审已提交',
+  VISUAL_DELTA_REVIEW_APPROVED: '目视色差评审已通过',
+  ATTACHMENT_DOWNLOADED: '材料已下载',
+  ATTACHMENT_UPLOADED: '材料已上传',
+  ATTACHMENT_REPLACED: '材料已替换',
+  R26_ORDINARY_TASK_COMPLETED: '普通工序已完成',
+  R26_PROGRESS_SUBMITTED: '工作进展已提交',
+  R26_TASK_BLOCKER_RESOLVED: '工序阻塞已解除',
+  R26_WORKFLOW_TASK_REASSIGNED: '工序负责人已调整',
+  R26_PROJECT_ASSIGNMENTS_APPLIED: '项目分工配置已应用',
+  R26_PROJECT_MEMBER_ADDED: '项目成员已添加',
+  R26_PROJECT_MEMBER_REMOVED: '项目成员已移除',
+  CABIN_REVIEW_CREATED: '驾驶室评审已创建',
+  CABIN_REVIEW_SUBMITTED: '驾驶室评审已提交',
+  CABIN_REVIEW_APPROVED: '驾驶室评审已通过',
+  CABIN_REVIEW_REJECTED: '驾驶室评审已退回',
+  CONSISTENCY_REVIEW_CREATED: '颜色一致性评审已创建',
+  CONSISTENCY_REVIEW_SUBMITTED: '颜色一致性评审已提交',
+  CONSISTENCY_REVIEW_APPROVED: '颜色一致性评审已通过',
+  TRIAL_PRODUCTION_CREATED: '样车试制记录已创建',
+  TRIAL_PRODUCTION_RECORD_COMPLETED: '样车试制记录已完成',
+  TRIAL_PRODUCTION_TASK_COMPLETED: '样车试制工序已完成',
+  FIRST_PRODUCTION_PLAN_CREATED: '首台生产计划已创建',
+  FIRST_PRODUCTION_PLAN_CONFIRMED: '首台生产计划已确认',
+  FIRST_PRODUCTION_PLAN_TASK_COMPLETED: '首台生产计划工序已完成',
+  SCHEDULE_PLAN_CREATED: '排产计划已创建',
+  SCHEDULE_PLAN_CONFIRMED: '排产计划已确认',
+  SCHEDULE_PLAN_TASK_COMPLETED: '排产计划工序已完成',
+  MASS_PRODUCTION_RECORD_CREATED: '批量生产记录已创建',
+  MASS_PRODUCTION_RECORD_STARTED: '批量生产记录已开始',
+  MASS_PRODUCTION_RECORD_COMPLETED: '批量生产记录已完成',
+  MASS_PRODUCTION_TASK_COMPLETED: '批量生产工序已完成',
+  COLOR_EXIT_CREATED: '颜色退出记录已创建',
+  COLOR_EXIT_COMPLETED: '颜色退出已完成',
+  PROJECT_COMPLETED_BY_COLOR_EXIT: '项目已随颜色退出完成',
+  PROCUREMENT_COMPLETED: '采购已完成',
+  PROJECT_RETROSPECTIVE_SAVED: '项目复盘已保存',
+  ADMIN_TASK_SCHEDULE_CHANGED: '管理员已调整工序计划',
+};
+function formatCode(value: string) { return AUDIT_CODE_LABELS[value] ?? value.replaceAll('_', ' '); }
 function getResultTone(result: string | null): 'success' | 'warning' | 'danger' | 'neutral' { if (!result) return 'neutral'; if (/fail|reject|error/i.test(result)) return 'danger'; if (/pending|condition/i.test(result)) return 'warning'; return 'success'; }

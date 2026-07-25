@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import React, { useCallback, useEffect, useState } from 'react';
 
 import {
@@ -47,8 +47,10 @@ export type AdminControlSection =
   | 'workflow-templates'
   | 'dictionaries';
 
+type AdminNavigationSection = AdminControlSection | 'audit-logs';
+
 const sections: Array<{
-  key: AdminControlSection | 'audit-logs';
+  key: AdminNavigationSection;
   label: string;
   description: string;
 }> = [
@@ -61,6 +63,28 @@ const sections: Array<{
   { key: 'dictionaries', label: '基础字典', description: '业务枚举和系统参数' },
   { key: 'audit-logs', label: '审计与异常', description: '关键操作与失败记录' },
 ];
+
+export function AdminControlNavigation({
+  active,
+}: {
+  active: AdminNavigationSection;
+}) {
+  return (
+    <nav className="admin-cc-nav" aria-label="系统管理导航">
+      {sections.map((item) => (
+        <Link
+          key={item.key}
+          href={`/admin/${item.key}`}
+          className={item.key === active ? 'is-active' : undefined}
+          aria-current={item.key === active ? 'page' : undefined}
+          title={item.description}
+        >
+          {item.label}
+        </Link>
+      ))}
+    </nav>
+  );
+}
 
 const pageMeta: Record<AdminControlSection, { eyebrow: string; title: string; description: string }> = {
   projects: {
@@ -122,10 +146,11 @@ type DialogState =
 
 export function AdminControlCenter({ section }: { section: AdminControlSection }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const meta = pageMeta[section];
   const [data, setData] = useState<LoadState>({});
-  const [search, setSearch] = useState('');
-  const [appliedSearch, setAppliedSearch] = useState('');
+  const [search, setSearch] = useState(() => searchParams.get('search') ?? '');
+  const [appliedSearch, setAppliedSearch] = useState(() => searchParams.get('search') ?? '');
   const [page, setPage] = useState(1);
   const [view, setView] = useState('ALL');
   const [organizationTab, setOrganizationTab] =
@@ -255,19 +280,7 @@ export function AdminControlCenter({ section }: { section: AdminControlSection }
 
   return (
     <div className="admin-cc-page" data-testid={`admin-${section}-page`}>
-      <nav className="admin-cc-nav" aria-label="系统管理导航">
-        {sections.map((item) => (
-          <Link
-            key={item.key}
-            href={`/admin/${item.key}`}
-            className={item.key === section ? 'is-active' : undefined}
-            aria-current={item.key === section ? 'page' : undefined}
-            title={item.description}
-          >
-            {item.label}
-          </Link>
-        ))}
-      </nav>
+      <AdminControlNavigation active={section} />
 
       <header className="admin-cc-hero">
         <div>
@@ -370,9 +383,9 @@ function ProjectsTable({ rows, fullColumns, onEdit }: { rows: AdminProjectRow[];
           <thead><tr><th>项目</th><th>颜色 / 车型</th><th>当前工序</th><th>负责人 / 部门</th><th>风险</th><th>进度</th>{fullColumns ? <><th>成员 / 材料</th><th>计划开始</th><th>实际开始</th><th>实际完成</th></> : null}<th>计划结束</th><th>数据版本</th><th>操作</th></tr></thead>
           <tbody>
             {rows.map((row) => <tr key={row.id}>
-              <td><strong>{row.name}</strong><small>{row.code}</small></td>
+              <td><strong>{row.name}</strong><small>{displayProjectCode(row.code)}</small></td>
               <td>{row.color?.name ?? '未设置'}<small>{row.vehicleModel ?? '车型未设置'}</small></td>
-              <td>{row.currentTask?.nodeName ?? '尚未生成'}<small>{row.currentTask?.status ?? row.status}</small></td>
+              <td>{row.currentTask?.nodeName ?? (row.status === 'COMPLETED' ? '流程已完成' : '尚未生成')}<small>{statusLabel(row.currentTask?.status ?? row.status)}</small></td>
               <td>{row.currentTask?.assignee?.name ?? row.owner?.name ?? '待分配'}<small>{row.owningDepartment?.name ?? '责任部门待定'}</small></td>
               <td><RiskBadge risk={row.riskLevel} /><small>{row.blockerCount} 阻塞 · {row.overdueCount} 逾期</small></td>
               <td>{row.progress.completed}/{row.progress.total}<small>{row.taskCount} 条任务</small></td>
@@ -384,7 +397,7 @@ function ProjectsTable({ rows, fullColumns, onEdit }: { rows: AdminProjectRow[];
           </tbody>
         </table>
       </div>
-      <div className="admin-cc-mobile-list">{rows.map((row) => <article key={row.id}><header><strong>{row.name}</strong><RiskBadge risk={row.riskLevel} /></header><p>{row.code} · {row.color?.name ?? '未设置颜色'}</p><dl><div><dt>当前工序</dt><dd>{row.currentTask?.nodeName ?? '尚未生成'}</dd></div><div><dt>负责人</dt><dd>{row.currentTask?.assignee?.name ?? '待分配'}</dd></div><div><dt>进度</dt><dd>{row.progress.completed}/{row.progress.total}</dd></div></dl><Link href={`/projects/${row.id}`}>打开项目</Link><small>移动端仅供查看，请在桌面端完成编辑。</small></article>)}</div>
+      <div className="admin-cc-mobile-list">{rows.map((row) => <article key={row.id}><header><strong>{row.name}</strong><RiskBadge risk={row.riskLevel} /></header><p>{displayProjectCode(row.code)} · {row.color?.name ?? '未设置颜色'}</p><dl><div><dt>当前工序</dt><dd>{row.currentTask?.nodeName ?? '尚未生成'}</dd></div><div><dt>负责人</dt><dd>{row.currentTask?.assignee?.name ?? '待分配'}</dd></div><div><dt>进度</dt><dd>{row.progress.completed}/{row.progress.total}</dd></div></dl><Link href={`/projects/${row.id}`}>打开项目</Link><small>移动端仅供查看，请在桌面端完成编辑。</small></article>)}</div>
     </>
   );
 }
@@ -401,12 +414,12 @@ function TasksTable({ rows, fullColumns, selectedIds, onSelect, onEdit }: { rows
           </thead>
           <tbody>{rows.map((row) => <tr key={row.id}>
             <td><input aria-label={`选择 ${row.project.name} ${row.nodeName}`} type="checkbox" checked={selectedIds.includes(row.id)} onChange={(event) => onSelect(event.target.checked ? [...new Set([...selectedIds, row.id])] : selectedIds.filter((id) => id !== row.id))} /></td>
-            <td><strong>{row.project.name}</strong><small>{row.project.code}</small></td>
+            <td><strong>{row.project.name}</strong><small>{displayProjectCode(row.project.code)}</small></td>
             <td><strong>第 {row.stepNumber ?? '—'} 步</strong><small>{row.nodeName}</small></td>
             <td>{row.branchType === 'NON_BLOCKING' ? '非阻塞支线' : '项目主线'}</td>
             {fullColumns ? <><td>{row.workContent ?? '—'}</td><td>{row.requiredOutput ?? '—'}</td><td>{row.requiredMaterials.join('、') || '无'}</td><td>{row.predecessor.join('、') || '起始节点'}<small>{row.autoTransitionRule ?? '服务端裁决'}</small></td><td>{formatDate(row.plannedStartAt)}</td></> : null}
             <td>{row.primaryDepartment?.name ?? '待确定'}</td>
-            <td>{row.assignee?.name ?? '待分配'}<small>{row.assignmentSource}</small></td>
+            <td>{row.assignee?.name ?? '待分配'}<small>{assignmentSourceLabel(row.assignmentSource)}</small></td>
             {fullColumns ? <><td>{row.collaboratorUserIds.length ? `${row.collaboratorUserIds.length} 人` : '—'}</td><td>{row.reviewerUserIds.length ? `${row.reviewerUserIds.length} 人` : '—'}</td></> : null}
             <td>{formatDate(row.plannedDueAt)}<small>{row.overdueDays > 0 ? `逾期 ${row.overdueDays} 天` : '未逾期'}</small></td>
             {fullColumns ? <><td>{formatDate(row.actualStartAt)}</td><td>{formatDate(row.actualCompletedAt)}</td><td>{row.durationDays ?? '—'} 天</td><td>{row.pauseDays} 天</td><td>{formatDate(row.updatedAt)}</td></> : null}
@@ -431,7 +444,7 @@ function OrganizationTable({ response, onUserEdit }: { response: AdminOrganizati
     ? ['姓名', '飞书身份', '部门', '角色', '状态', '项目 / 任务', '版本', '操作']
     : response.tab === 'departments'
       ? ['部门', '编码', '上级部门', '负责人', '人数', '活跃任务', '配置节点', '状态']
-      : ['项目', '成员', '部门', '项目职责', '关系', '当前任务', '有效期', '版本'];
+      : ['项目', '成员', '部门', '项目职责', '关系', '当前任务', '有效期', '版本', '操作'];
   return (
     <>
       <div className="admin-cc-table-wrap">
@@ -445,7 +458,7 @@ function OrganizationTable({ response, onUserEdit }: { response: AdminOrganizati
                 <td><StatusBadge value={readText(row.status)} /></td>
                 <td>{readNumber(row.projectCount)} / {readNumber(row.taskCount)}</td>
                 <td><code>{shortVersion(readText(row.dataVersion))}</code></td>
-                <td><button type="button" onClick={() => onUserEdit(row)}>变更状态</button></td>
+                <td><div className="admin-cc-row-actions"><button type="button" onClick={() => onUserEdit(row)}>变更状态</button><Link href={`/admin/tasks?search=${encodeURIComponent(readText(row.name))}`}>查看任务</Link></div></td>
               </tr>
             : response.tab === 'departments'
               ? <tr key={row.id}>
@@ -458,6 +471,7 @@ function OrganizationTable({ response, onUserEdit }: { response: AdminOrganizati
                   <td>{readNestedText(row.project, 'name')}</td><td><strong>{readNestedText(row.user, 'name')}</strong></td>
                   <td>{readNestedText(readRecord(row.user).department, 'name') || '未归属'}</td><td>{readText(row.responsibility) || '成员'}</td>
                   <td>{memberRelations(row)}</td><td>{readNumber(row.activeTaskCount)}</td><td>{formatDate(readText(row.validFrom))}</td><td><code>{shortVersion(readText(row.dataVersion))}</code></td>
+                  <td><Link href={`/projects/${encodeURIComponent(readNestedText(row.project, 'id'))}`}>打开成员管理</Link></td>
                 </tr>)}</tbody>
         </table>
       </div>
@@ -469,13 +483,13 @@ function OrganizationTable({ response, onUserEdit }: { response: AdminOrganizati
 function AssignmentsTable({ response, projectId, onProjectChange }: { response: AdminAssignmentResponse; projectId: string; onProjectChange: (value: string) => void }) {
   return (
     <div>
-      <div className="admin-cc-inline-filter"><label>项目<select value={projectId} onChange={(event) => onProjectChange(event.target.value)}>{response.projects.map((project) => <option key={project.id} value={project.id}>{project.name} · {project.code}</option>)}</select></label><span>项目分工版本：{response.projectVersion ?? '尚未生成'}</span></div>
+      <div className="admin-cc-inline-filter"><label>项目<select value={projectId} onChange={(event) => onProjectChange(event.target.value)}>{response.projects.map((project) => <option key={project.id} value={project.id}>{project.name} · {displayProjectCode(project.code)}</option>)}</select></label><span>项目分工版本：{response.projectVersion ?? '尚未生成'}</span></div>
       {!response.items.length ? <AdminEmpty title="没有可展示的分工" description="请先创建项目。" /> : <div className="admin-cc-table-wrap"><table className="admin-cc-table"><thead><tr><th>步骤</th><th>工序</th><th>主责部门</th><th>建议负责人</th><th>协同人员</th><th>评审人员</th><th>匹配状态</th><th>分配来源</th></tr></thead><tbody>
         {response.items.map((item, index) => <tr key={`${readText(item.nodeCode)}-${index}`}>
           <td>{readNumber(item.stepNumber) || index + 1}</td><td><strong>{readText(item.stepName) || readText(item.nodeName) || readText(item.name)}</strong><small>{readText(item.nodeCode)}</small></td>
           <td>{readNestedText(item.primaryDepartment, 'name') || '待确定'}</td><td>{readNestedText(item.suggestedOwner, 'name') || '待分配'}</td>
           <td>{namesFromUnknown(item.collaboratorDepartments)}<small>{namesFromUnknown(item.collaborators)}</small></td><td>{namesFromUnknown(item.reviewers)}</td>
-          <td><StatusBadge value={readText(item.assignmentStatus) || 'UNASSIGNED'} /><small>{readText(item.unassignedReason)}</small></td><td>{readText(item.assignmentSource) || 'UNASSIGNED'}</td>
+          <td><StatusBadge value={readText(item.assignmentStatus) || 'UNASSIGNED'} /><small>{readText(item.unassignedReason)}</small></td><td>{assignmentSourceLabel(readText(item.assignmentSource) || 'UNASSIGNED')}</td>
         </tr>)}
       </tbody></table></div>}
       <p className="admin-cc-mobile-note">移动端提供只读分工总览；请在桌面端完成受控调整。</p>
@@ -700,43 +714,43 @@ function AdminEditDialog({ state, onClose, onSuccess }: { state: Exclude<DialogS
           <div className="admin-cc-dialog__body">
             <div className="admin-cc-safety-note"><strong>不会直接修改流程状态</strong><span>服务端将校验权限、数据版本、业务边界和幂等键，并写入审计日志。</span></div>
             {state.kind === 'project' ? <>
-              <Field label="项目名称"><input required value={String(form.name)} onChange={(event) => setForm({ ...form, name: event.target.value })} /></Field>
-              <Field label="车型"><input value={String(form.vehicleModel)} onChange={(event) => setForm({ ...form, vehicleModel: event.target.value })} /></Field>
-              <Field label="颜色名称"><input value={String(form.colorName)} onChange={(event) => setForm({ ...form, colorName: event.target.value })} /></Field>
-              <Field label="计划结束日期"><input type="date" value={String(form.plannedEndDate)} onChange={(event) => setForm({ ...form, plannedEndDate: event.target.value })} /></Field>
+              <Field label="项目名称"><input required value={String(form.name)} onChange={(event) => { const value = event.currentTarget.value; setForm((current) => ({ ...current, name: value })); }} /></Field>
+              <Field label="车型"><input value={String(form.vehicleModel)} onChange={(event) => { const value = event.currentTarget.value; setForm((current) => ({ ...current, vehicleModel: value })); }} /></Field>
+              <Field label="颜色名称"><input value={String(form.colorName)} onChange={(event) => { const value = event.currentTarget.value; setForm((current) => ({ ...current, colorName: value })); }} /></Field>
+              <Field label="计划结束日期"><input type="date" value={String(form.plannedEndDate)} onChange={(event) => { const value = event.currentTarget.value; setForm((current) => ({ ...current, plannedEndDate: value })); }} /></Field>
             </> : null}
             {state.kind === 'task' && state.mode === 'schedule' ? <>
-              <Field label="新计划截止日期"><input required type="datetime-local" value={String(form.plannedDueAt)} onChange={(event) => { setForm({ ...form, plannedDueAt: event.target.value }); setPreview(null); }} /></Field>
-              <Field label="影响范围"><select value={String(form.scope)} onChange={(event) => { setForm({ ...form, scope: event.target.value }); setPreview(null); }}><option value="CURRENT_TASK_ONLY">仅当前工序</option><option value="CURRENT_PROJECT_FUTURE_TASKS">当前项目后续工序</option></select></Field>
+              <Field label="新计划截止日期"><input required type="datetime-local" value={String(form.plannedDueAt)} onInput={(event) => { const value = event.currentTarget.value; setForm((current) => ({ ...current, plannedDueAt: value })); setPreview(null); }} /></Field>
+              <Field label="影响范围"><select value={String(form.scope)} onChange={(event) => { const value = event.currentTarget.value; setForm((current) => ({ ...current, scope: value })); setPreview(null); }}><option value="CURRENT_TASK_ONLY">仅当前工序</option><option value="CURRENT_PROJECT_FUTURE_TASKS">当前项目后续工序</option></select></Field>
             </> : null}
             {state.kind === 'batch' ? <>
               <div className="admin-cc-batch-summary"><strong>将修改 {state.rows.length} 条工序</strong><span>未开始 {state.rows.filter((row) => row.status === 'PENDING' || row.status === 'READY').length} 条 · 进行中 {state.rows.filter((row) => row.status === 'IN_PROGRESS').length} 条 · 已完成 {state.rows.filter((row) => row.status === 'COMPLETED').length} 条</span></div>
-              {state.mode === 'schedule' ? <Field label="统一计划截止时间"><input required type="datetime-local" value={String(form.plannedDueAt)} onChange={(event) => { setForm({ ...form, plannedDueAt: event.target.value }); setPreview(null); }} /></Field> : <Field label="统一主责部门"><select value={String(form.primaryDepartmentId)} onChange={(event) => { setForm({ ...form, primaryDepartmentId: event.target.value }); setPreview(null); }}><option value="">由每条工序的服务端规则决定</option>{departments?.items.map((department) => <option key={department.id} value={department.id}>{readText(department.name)}</option>)}</select></Field>}
+              {state.mode === 'schedule' ? <Field label="统一计划截止时间"><input required type="datetime-local" value={String(form.plannedDueAt)} onInput={(event) => { const value = event.currentTarget.value; setForm((current) => ({ ...current, plannedDueAt: value })); setPreview(null); }} /></Field> : <Field label="统一主责部门"><select value={String(form.primaryDepartmentId)} onChange={(event) => { const value = event.currentTarget.value; setForm((current) => ({ ...current, primaryDepartmentId: value })); setPreview(null); }}><option value="">由每条工序的服务端规则决定</option>{departments?.items.map((department) => <option key={department.id} value={department.id}>{readText(department.name)}</option>)}</select></Field>}
             </> : null}
             {state.kind === 'import' ? <div className="admin-cc-batch-summary"><strong>已选择正式导入文件</strong><span>{state.fileName} · {new Blob([state.csv]).size} 字节</span><small>第一步只执行 dry-run；所有行通过后才允许确认写入。</small></div> : null}
             {state.kind === 'task' && state.mode === 'assignment' ? <>
-              <Field label="新主责部门"><select value={String(form.primaryDepartmentId)} onChange={(event) => { setForm({ ...form, primaryDepartmentId: event.target.value, ownerUserId: '' }); setPreview(null); }}><option value="">保持或由服务端规则确定</option>{departments?.items.map((department) => <option key={department.id} value={department.id}>{readText(department.name)}</option>)}</select></Field>
-              <Field label="新负责人"><select value={String(form.ownerUserId)} onChange={(event) => { setForm({ ...form, ownerUserId: event.target.value }); setPreview(null); }}><option value="">由后端规则建议</option>{directory?.items.map((member) => {
+              <Field label="新主责部门"><select value={String(form.primaryDepartmentId)} onChange={(event) => { const value = event.currentTarget.value; setForm((current) => ({ ...current, primaryDepartmentId: value, ownerUserId: '' })); setPreview(null); }}><option value="">保持或由服务端规则确定</option>{departments?.items.map((department) => <option key={department.id} value={department.id}>{readText(department.name)}</option>)}</select></Field>
+              <Field label="新负责人"><select value={String(form.ownerUserId)} onChange={(event) => { const value = event.currentTarget.value; setForm((current) => ({ ...current, ownerUserId: value })); setPreview(null); }}><option value="">由后端规则建议</option>{directory?.items.map((member) => {
                 const user = readRecord(member.user);
                 return <option key={member.id} value={readText(user.id)}>{readText(user.name)} · {readNestedText(user.department, 'name') || '未归属'} · {readText(member.responsibility) || '项目成员'}</option>;
               })}</select></Field>
             </> : null}
-            {state.kind === 'user' ? <Field label="用户状态"><select value={String(form.status)} onChange={(event) => setForm({ ...form, status: event.target.value })}><option value="ACTIVE">启用</option><option value="INACTIVE">停用</option><option value="LOCKED">锁定</option></select></Field> : null}
+            {state.kind === 'user' ? <Field label="用户状态"><select value={String(form.status)} onChange={(event) => { const value = event.currentTarget.value; setForm((current) => ({ ...current, status: value })); }}><option value="ACTIVE">启用</option><option value="INACTIVE">停用</option><option value="LOCKED">锁定</option></select></Field> : null}
             {state.kind === 'dictionary' ? <>
-              <Field label="显示名称"><input required value={String(form.name)} onChange={(event) => setForm({ ...form, name: event.target.value })} /></Field>
-              <Field label="排序"><input type="number" value={String(form.sortOrder)} onChange={(event) => setForm({ ...form, sortOrder: event.target.value })} /></Field>
-              <label className="admin-cc-checkbox"><input type="checkbox" checked={Boolean(form.isActive)} onChange={(event) => setForm({ ...form, isActive: event.target.checked })} />启用此字典项</label>
+              <Field label="显示名称"><input required value={String(form.name)} onChange={(event) => { const value = event.currentTarget.value; setForm((current) => ({ ...current, name: value })); }} /></Field>
+              <Field label="排序"><input type="number" value={String(form.sortOrder)} onChange={(event) => { const value = event.currentTarget.value; setForm((current) => ({ ...current, sortOrder: value })); }} /></Field>
+              <label className="admin-cc-checkbox"><input type="checkbox" checked={Boolean(form.isActive)} onChange={(event) => { const checked = event.currentTarget.checked; setForm((current) => ({ ...current, isActive: checked })); }} />启用此字典项</label>
             </> : null}
             {state.kind === 'template' ? <>
-              <Field label="新版本号"><input required value={String(form.version)} onChange={(event) => setForm({ ...form, version: event.target.value })} placeholder="例如 2026.08" /></Field>
-              <Field label="计划生效时间"><input required type="datetime-local" value={String(form.effectiveAt)} onChange={(event) => setForm({ ...form, effectiveAt: event.target.value })} /></Field>
-              <Field label="版本说明"><textarea value={String(form.description)} onChange={(event) => setForm({ ...form, description: event.target.value })} /></Field>
+              <Field label="新版本号"><input required value={String(form.version)} onChange={(event) => { const value = event.currentTarget.value; setForm((current) => ({ ...current, version: value })); }} placeholder="例如 2026.08" /></Field>
+              <Field label="计划生效时间"><input required type="datetime-local" value={String(form.effectiveAt)} onInput={(event) => { const value = event.currentTarget.value; setForm((current) => ({ ...current, effectiveAt: value })); }} /></Field>
+              <Field label="版本说明"><textarea value={String(form.description)} onChange={(event) => { const value = event.currentTarget.value; setForm((current) => ({ ...current, description: value })); }} /></Field>
             </> : null}
-            <Field label="变更原因"><textarea required minLength={3} value={String(form.reason)} onChange={(event) => { setForm({ ...form, reason: event.target.value }); if (isPreviewCommand) setPreview(null); }} placeholder="说明业务原因和预期结果" /></Field>
-            {preview ? <div className="admin-cc-preview"><strong>影响预览</strong><dl>{Object.entries(preview).slice(0, 10).map(([key, value]) => <div key={key}><dt>{humanizeKey(key)}</dt><dd>{formatUnknown(value)}</dd></div>)}</dl><p>确认后将按以上服务端计算结果执行；前端不会提交下一节点或状态。</p></div> : null}
+            <Field label="变更原因"><textarea required minLength={3} value={String(form.reason)} onChange={(event) => { const value = event.currentTarget.value; setForm((current) => ({ ...current, reason: value })); if (isPreviewCommand) setPreview(null); }} placeholder="说明业务原因和预期结果" /></Field>
+            {preview ? <div className="admin-cc-preview"><strong>影响预览</strong><dl>{previewRows(preview).map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl><p>确认后将按以上服务端计算结果执行；前端不会提交下一节点或状态。</p></div> : null}
             {error ? <div className="admin-cc-alert admin-cc-alert--error">{error}</div> : null}
           </div>
-          <footer><button type="button" className="admin-cc-button admin-cc-button--quiet" onClick={onClose}>取消</button><button type="submit" className="admin-cc-button admin-cc-button--primary" disabled={busy}>{busy ? '处理中…' : isPreviewCommand && !preview ? '查看影响预览' : isPreviewCommand ? '确认执行变更' : '确认保存'}</button></footer>
+          <footer><button type="button" className="admin-cc-button admin-cc-button--quiet" onClick={onClose}>取消</button><button type="submit" className="admin-cc-button admin-cc-button--primary" disabled={busy || Boolean(isPreviewCommand && preview && 'canApply' in preview && !readBoolean(preview.canApply))}>{busy ? '处理中…' : isPreviewCommand && !preview ? '查看影响预览' : isPreviewCommand && preview && 'canApply' in preview && !readBoolean(preview.canApply) ? '条件未满足' : isPreviewCommand ? '确认执行变更' : '确认保存'}</button></footer>
         </form>
       </section>
     </div>
@@ -774,8 +788,44 @@ function RiskBadge({ risk }: { risk: string }) {
 }
 
 function StatusBadge({ value }: { value: string }) {
-  const labels: Record<string, string> = { ACTIVE: '启用', INACTIVE: '停用', LOCKED: '锁定', PENDING: '待开始', READY: '可开始', IN_PROGRESS: '进行中', COMPLETED: '已完成', APPROVED: '已通过', REJECTED: '已拒绝', RETURNED: '已退回', UNASSIGNED: '待分配', ASSIGNED: '已分配', MATCHED: '已匹配', DRAFT: '草稿', PUBLISHED: '已发布' };
-  return <span className={`admin-cc-status admin-cc-status--${value.toLowerCase()}`}>{labels[value] ?? value}</span>;
+  return <span className={`admin-cc-status admin-cc-status--${value.toLowerCase()}`}>{statusLabel(value)}</span>;
+}
+
+function statusLabel(value: string) {
+  const labels: Record<string, string> = {
+    ACTIVE: '启用',
+    INACTIVE: '停用',
+    LOCKED: '锁定',
+    PENDING: '待开始',
+    READY: '可开始',
+    IN_PROGRESS: '进行中',
+    COMPLETED: '已完成',
+    APPROVED: '已通过',
+    REJECTED: '已拒绝',
+    RETURNED: '已退回',
+    UNASSIGNED: '待分配',
+    ASSIGNED: '已分配',
+    MATCHED: '已匹配',
+    DRAFT: '草稿',
+    PUBLISHED: '已发布',
+    ON_HOLD: '已暂停',
+    CANCELLED: '已取消',
+  };
+
+  return labels[value] ?? value;
+}
+
+function assignmentSourceLabel(value: string) {
+  const labels: Record<string, string> = {
+    TASK_OVERRIDE: '任务人工指定',
+    PROJECT_NODE_OVERRIDE: '项目节点专属负责人',
+    PROJECT_DEPARTMENT_LEAD: '项目部门负责人',
+    PROJECT_DEFAULT_ASSIGNEE: '项目默认执行人',
+    SINGLE_ELIGIBLE_MEMBER: '部门唯一符合成员',
+    UNASSIGNED: '待分配',
+  };
+
+  return labels[value] ?? value;
 }
 
 function initialForm(state: Exclude<DialogState, null>): Record<string, string | boolean> {
@@ -826,6 +876,12 @@ function formatDate(value: string | null | undefined) {
   if (!value) return '未设置';
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? value : date.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+}
+
+function displayProjectCode(value: string) {
+  if (/^DEMO-ACTIVE-/i.test(value)) return '演示项目（进行中）';
+  if (/^DEMO-(COMPLETED|CLOSED)-/i.test(value)) return '演示项目（已完成）';
+  return value;
 }
 
 function toDateInput(value: string | null | undefined) {
@@ -885,10 +941,18 @@ function memberRelations(row: Record<string, unknown>) {
 
 function formatUnknown(value: unknown): string {
   if (value === null || value === undefined || value === '') return '—';
-  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') return String(value);
+  if (typeof value === 'boolean') return value ? '是' : '否';
+  if (typeof value === 'number') return String(value);
+  if (typeof value === 'string') {
+    if (/^\d{4}-\d{2}-\d{2}T/.test(value)) return formatDate(value);
+    if (value in PREVIEW_VALUE_LABELS) return PREVIEW_VALUE_LABELS[value] ?? value;
+    return value;
+  }
   if (Array.isArray(value)) return value.length ? value.map(formatUnknown).join('；') : '无';
   if (typeof value === 'object') {
-    const entries = Object.entries(value as Record<string, unknown>);
+    const record = value as Record<string, unknown>;
+    if (typeof record.name === 'string' && record.name) return record.name;
+    const entries = Object.entries(record);
     return entries.length ? entries.slice(0, 6).map(([key, item]) => `${humanizeKey(key)}：${formatUnknown(item)}`).join('；') : '无';
   }
   return String(value);
@@ -904,6 +968,85 @@ function humanizeKey(key: string) {
     affectedTasks: '受影响工序',
     assignmentSource: '分配来源',
     writePerformed: '已执行写入',
+    task: '当前工序',
+    before: '调整前',
+    after: '调整后',
+    projectName: '项目',
+    nodeName: '工序',
+    status: '状态',
+    assignee: '负责人',
+    plannedStartAt: '计划开始',
+    plannedDueAt: '计划截止',
+    overdueDays: '逾期天数',
+    projectPlannedEndDate: '项目计划完成',
+    workdayDifference: '日期变化',
+    scope: '作用范围',
+    downstreamTasks: '下游工序',
+    beforeDueAt: '原截止时间',
+    afterDueAt: '新截止时间',
+    manuallyOverridden: '已有人工覆盖',
+    operation: '操作类型',
+    total: '工序总数',
+    applicableCount: '可执行数量',
+    rejectedCount: '被阻断数量',
+    items: '逐条影响',
+    taskId: '工序记录',
+    preview: '单条影响',
+    primaryDepartmentId: '主责部门',
+    ownerUserId: '负责人',
+    previousOwnerLosesTask: '原负责人减少任务',
+    newOwnerGainsTask: '新负责人增加任务',
+    historyPreserved: '历史记录保留',
+    primaryDepartment: '主责部门',
+    owner: '负责人',
+    collaboratorUserIds: '协同人员',
+    reviewerUserIds: '评审人员',
+    candidates: '候选人员',
   };
   return labels[key] ?? key;
+}
+
+const PREVIEW_VALUE_LABELS: Record<string, string> = {
+  CURRENT_TASK_ONLY: '仅当前工序',
+  CURRENT_PROJECT_FUTURE_TASKS: '当前项目尚未开始的后续工序',
+  TASK_OVERRIDE: '任务人工指定',
+  PROJECT_NODE_OVERRIDE: '项目节点专属负责人',
+  PROJECT_DEPARTMENT_LEAD: '项目部门负责人',
+  PROJECT_DEFAULT_ASSIGNEE: '项目默认执行人',
+  SINGLE_ELIGIBLE_MEMBER: '部门唯一符合成员',
+  UNASSIGNED: '待分配',
+  READY: '可开始',
+  PENDING: '待开始',
+  IN_PROGRESS: '进行中',
+  COMPLETED: '已完成',
+  SCHEDULE: '计划调整',
+  ASSIGNMENT: '分工调整',
+};
+
+function previewRows(preview: Record<string, unknown>): Array<[string, string]> {
+  const rows: Array<[string, string]> = [];
+  if ('canApply' in preview) {
+    rows.push(['是否可执行', readBoolean(preview.canApply) ? '可以执行' : '暂时不能执行']);
+  }
+  if ('blockingReasons' in preview) {
+    rows.push(['阻断原因', formatUnknown(preview.blockingReasons)]);
+  }
+  const task = readRecord(preview.task);
+  if (Object.keys(task).length) {
+    rows.push([
+      '当前工序',
+      [readText(task.projectName), readText(task.nodeName), formatUnknown(task.status)]
+        .filter(Boolean)
+        .join(' · '),
+    ]);
+  }
+  if ('before' in preview) rows.push(['调整前', formatUnknown(preview.before)]);
+  if ('after' in preview) rows.push(['调整后', formatUnknown(preview.after)]);
+  if ('impact' in preview) rows.push(['影响范围', formatUnknown(preview.impact)]);
+  for (const [key, value] of Object.entries(preview)) {
+    if (['canApply', 'blockingReasons', 'task', 'before', 'after', 'impact', 'writePerformed'].includes(key)) continue;
+    rows.push([humanizeKey(key), formatUnknown(value)]);
+  }
+  rows.push(['本次预览', readBoolean(preview.writePerformed) ? '已执行写入' : '尚未写入任何业务数据']);
+  return rows.slice(0, 10);
 }

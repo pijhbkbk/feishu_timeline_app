@@ -32,6 +32,7 @@ import {
   type R26ProjectMemberRow,
 } from '../r26-read-model/r26-assignment.resolver';
 import { WorkflowDeadlineService } from '../workflows/workflow-deadline.service';
+import { getWorkflowNodeMeta } from '../workflows/workflow-node.constants';
 import {
   type AdminAssignmentChangeDto,
   type AdminAssignmentPreviewDto,
@@ -127,7 +128,6 @@ export class AdminControlCenterService {
             select: { id: true, name: true, code: true, status: true },
           },
           workflowTasks: {
-            where: { isActive: true },
             include: {
               assigneeUser: { select: { id: true, name: true } },
               blockers: {
@@ -160,27 +160,30 @@ export class AdminControlCenterService {
       total,
       totalPages: Math.max(1, Math.ceil(total / pageSize)),
       items: rows.map((project) => {
+        const activeTasks = project.workflowTasks.filter((task) => task.isActive);
         const currentTask =
-          project.workflowTasks.find(
+          activeTasks.find(
             (task) => task.nodeCode === project.currentNodeCode,
           ) ??
-          project.workflowTasks.find(
+          activeTasks.find(
             (task) =>
               task.status === WorkflowTaskStatus.IN_PROGRESS ||
               task.status === WorkflowTaskStatus.READY,
           ) ??
-          project.workflowTasks[0] ??
+          activeTasks[0] ??
           null;
-        const overdueCount = project.workflowTasks.filter(
+        const overdueCount = activeTasks.filter(
           (task) => task.overdueDays > 0,
         ).length;
-        const blockerCount = project.workflowTasks.reduce(
+        const blockerCount = activeTasks.reduce(
           (count, task) => count + task.blockers.length,
           0,
         );
-        const completedCount = project.workflowTasks.filter(
-          (task) => task.status === WorkflowTaskStatus.COMPLETED,
-        ).length;
+        const completedCount = new Set(
+          project.workflowTasks
+            .filter((task) => task.status === WorkflowTaskStatus.COMPLETED)
+            .map((task) => task.nodeCode),
+        ).size;
         const riskLevel =
           blockerCount > 0 || overdueCount > 0
             ? 'HIGH'
@@ -348,7 +351,9 @@ export class AdminControlCenterService {
             : null,
           nodeCode: task.nodeCode,
           nodeName: task.nodeName,
-          branchType: definition?.isBlocking === false ? 'NON_BLOCKING' : 'MAIN',
+          branchType: getWorkflowNodeMeta(task.nodeCode).isPrimaryTask
+            ? 'MAIN'
+            : 'NON_BLOCKING',
           workContent: definition?.description ?? null,
           requiredOutput: this.readString(payload.requiredOutput),
           requiredMaterials,

@@ -10,6 +10,7 @@ const FORMAL_V2_PATHS = [
   /^\/progress$/,
   /^\/materials$/,
   /^\/admin$/,
+  /^\/admin\/[^/]+$/,
   /^\/admin\/audit-logs$/,
 ];
 
