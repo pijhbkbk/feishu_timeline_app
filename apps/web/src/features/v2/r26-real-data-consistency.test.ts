@@ -50,6 +50,18 @@ describe('R26 Gate 2 real-data consistency contracts', () => {
     );
   });
 
+  it('moves the workspace selection to the server-designated next task after completion', () => {
+    expect(workspaceSource).toContain(
+      'getPrimaryCompletionTask(\n        response.command.createdTasks',
+    );
+    expect(workspaceSource).toContain(
+      'focusCreatedTask(nextTask, false)',
+    );
+    expect(workspaceSource).toContain(
+      '页面已自动切换到“{primaryTask.stepName}”',
+    );
+  });
+
   it('localizes legacy material codes and hides unknown internal codes', () => {
     expect(
       formatV2ActivitySummary(

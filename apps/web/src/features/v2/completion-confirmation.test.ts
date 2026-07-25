@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { getCompletionConfirmationState } from './completion-confirmation';
+import {
+  getCompletionConfirmationState,
+  getPrimaryCompletionTask,
+} from './completion-confirmation';
 
 describe('completion confirmation affordance', () => {
   it('keeps the action clickable so missing fields produce guidance', () => {
@@ -46,5 +49,22 @@ describe('completion confirmation affordance', () => {
         acknowledgedConsequences: true,
       }).submitDisabled,
     ).toBe(true);
+  });
+
+  it('selects the server-designated primary task after completion', () => {
+    const tasks = [
+      { taskId: 'parallel-task', isPrimary: false },
+      { taskId: 'primary-task', isPrimary: true },
+    ];
+
+    expect(getPrimaryCompletionTask(tasks)?.taskId).toBe(
+      'primary-task',
+    );
+    expect(
+      getPrimaryCompletionTask([
+        { taskId: 'only-task', isPrimary: false },
+      ])?.taskId,
+    ).toBe('only-task');
+    expect(getPrimaryCompletionTask([])).toBeNull();
   });
 });

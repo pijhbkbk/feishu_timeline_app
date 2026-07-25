@@ -11,6 +11,12 @@ export type CompletionConfirmationState = {
   hint: string;
 };
 
+export function getPrimaryCompletionTask<T extends { isPrimary: boolean }>(
+  tasks: readonly T[],
+): T | null {
+  return tasks.find((task) => task.isPrimary) ?? tasks[0] ?? null;
+}
+
 export function getCompletionConfirmationState(
   input: CompletionConfirmationInput,
 ): CompletionConfirmationState {

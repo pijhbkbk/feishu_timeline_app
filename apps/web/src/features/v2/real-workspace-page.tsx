@@ -6,7 +6,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { R26FlowMap } from './flow-map';
 import { CloseIcon } from './icons';
-import { getCompletionConfirmationState } from './completion-confirmation';
+import {
+  getCompletionConfirmationState,
+  getPrimaryCompletionTask,
+} from './completion-confirmation';
 import {
   createIdempotencyKey,
   r26Gate3Request,
@@ -308,6 +311,12 @@ export function RealWorkspacePage({ projectId }: { projectId: string }) {
         );
       setLiveData(response.viewModel.workspace);
       taskQuery.refresh();
+      const nextTask = getPrimaryCompletionTask(
+        response.command.createdTasks,
+      );
+      if (nextTask) {
+        focusCreatedTask(nextTask, false);
+      }
       setCompletionPanel((current) =>
         current
           ? {
@@ -337,7 +346,16 @@ export function RealWorkspacePage({ projectId }: { projectId: string }) {
   function viewCreatedTask(
     task: R26OrdinaryCompletionCommand['createdTasks'][number],
   ) {
-    setCompletionPanel(null);
+    focusCreatedTask(task, true);
+  }
+
+  function focusCreatedTask(
+    task: R26OrdinaryCompletionCommand['createdTasks'][number],
+    closeCompletionPanel: boolean,
+  ) {
+    if (closeCompletionPanel) {
+      setCompletionPanel(null);
+    }
     setSelectedNodeCode(task.nodeCode);
     const params = new URLSearchParams(searchParams.toString());
     params.set('taskId', task.taskId);
@@ -1893,9 +1911,7 @@ function CompletionSuccess({
   onReturnToMap: () => void;
 }) {
   const primaryTask =
-    command.createdTasks.find((task) => task.isPrimary) ??
-    command.createdTasks[0] ??
-    null;
+    getPrimaryCompletionTask(command.createdTasks);
 
   return (
     <section
@@ -1904,7 +1920,9 @@ function CompletionSuccess({
     >
       <span aria-hidden="true">✓</span>
       <div>
-        <p>工序已完成</p>
+        <p>
+          {primaryTask ? '工序已完成 · 已进入下一步' : '工序已完成'}
+        </p>
         <h3>
           “{command.completedTask.stepName}”已标记为已完成。
         </h3>
@@ -1937,6 +1955,11 @@ function CompletionSuccess({
             {command.createdTasks.find((task) => task.isPrimary)
               ?.stepName ?? '保持原主线'}
           </p>
+          {primaryTask ? (
+            <p role="status">
+              页面已自动切换到“{primaryTask.stepName}”，关闭本面板后可直接继续。
+            </p>
+          ) : null}
         </>
       ) : (
         <p>该支线已完成，项目主线保持不变。</p>
@@ -1948,7 +1971,7 @@ function CompletionSuccess({
             className="r26-button r26-button--primary"
             onClick={() => onViewTask(primaryTask)}
           >
-            查看新任务
+            进入下一步：{primaryTask.stepName}
           </button>
         ) : null}
         <button

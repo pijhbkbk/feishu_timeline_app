@@ -4271,6 +4271,60 @@ STOP_BEFORE_GATE3
 
 ---
 
+### Round R26P7_COMPLETION_NEXT_TASK_NAVIGATION
+
+#### Goal And Scope
+
+- 修复完成工序成功后仍停留在旧节点、让用户误以为需要再次完成的问题。
+- 保持后端状态机、幂等、乐观锁和服务端主线裁决不变。
+- 生产诊断只读，不触发当前第三步，不修改数据库业务数据。
+
+#### Read-only Production Evidence
+
+```text
+projectId                     cmrzz7z3k0001br11ep76ub1f
+step 1 PROJECT_INITIATION     1 task / COMPLETED
+step 2 DEVELOPMENT_REPORT     1 task / COMPLETED
+step 3 PAINT_DEVELOPMENT      1 task / READY / active
+workflow currentNodeCode      PAINT_DEVELOPMENT
+step 2 completion POST        exactly 1
+duplicate step 2 task         0
+```
+
+- 第二步曾两次请求“完成前检查”，中间进入进展提交页并新增进展；只有第二次检查后发出
+  一次正式完成命令。
+- 后端没有重复推进；根因是成功后流程数据已刷新，但选中节点和 URL 仍指向已完成的
+  第二步。
+
+#### Exact Changes
+
+- 完成成功后立即使用服务端返回的 `isPrimary` 任务切换选中节点和 `taskId` URL。
+- 成功抽屉继续保留，明确显示“工序已完成 · 已进入下一步”。
+- 主动作改为“进入下一步：工序名称”；关闭抽屉后直接看到新工序。
+- 新增主线任务选择单元测试和成功后导航接线契约测试。
+- 详细报告：
+  `docs/release/R26P7_COMPLETION_NEXT_TASK_NAVIGATION.md`。
+
+#### Validation
+
+```text
+targeted Web tests            PASS
+Web typecheck                 PASS
+Web lint                      PASS
+pnpm install                  PASS
+pnpm lint                     PASS
+pnpm typecheck                PASS
+pnpm test                     PASS (Web 137 / API 294)
+pnpm --filter web build       PASS
+pnpm --filter api build       PASS
+API prisma validate           PASS
+git diff --check              PASS
+production deployment         PENDING
+production read-only smoke    PENDING
+```
+
+---
+
 ### Round R26P6_COMPLETION_CONFIRMATION_GUIDANCE
 
 #### Goal And Scope
