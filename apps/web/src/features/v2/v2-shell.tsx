@@ -2,8 +2,10 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import React from 'react';
 import { useState, type ComponentType, type MouseEvent, type SVGProps } from 'react';
 
+import { useAuth } from '../../components/auth-provider';
 import {
   BellIcon,
   HelpIcon,
@@ -34,6 +36,8 @@ const baseNavItems: NavItem[] = [
 export function V2Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [toast, setToast] = useState<string | null>(null);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const { user, logout } = useAuth();
   const { enabled: realDataEnabled, dashboardResponse, viewer } = useR26RealData();
   const currentTask = dashboardResponse?.dashboard.currentTask ?? null;
   const navItems: NavItem[] = [
@@ -60,6 +64,22 @@ export function V2Shell({ children }: { children: React.ReactNode }) {
   function handleDisabled(event: MouseEvent<HTMLAnchorElement>, label: string) {
     event.preventDefault();
     showStaticMessage(`${label}将在后续轮次开放，本轮仅验证四个核心页面。`);
+  }
+
+  async function handleLogout() {
+    if (isLoggingOut) {
+      return;
+    }
+
+    setIsLoggingOut(true);
+
+    try {
+      await logout();
+      window.location.assign('/login');
+    } catch {
+      setIsLoggingOut(false);
+      showStaticMessage('退出登录失败，请检查网络后重试。');
+    }
   }
 
   return (
@@ -118,20 +138,38 @@ export function V2Shell({ children }: { children: React.ReactNode }) {
             <button type="button" className="r26-icon-button" aria-label="帮助" onClick={() => showStaticMessage('系统导览不在本轮实现范围内。')}>
               <HelpIcon />
             </button>
-            <button
-              type="button"
-              className="r26-avatar"
-              aria-label={`${viewer?.name ?? '当前用户'}的账号信息`}
-              onClick={() =>
-                showStaticMessage(
-                  realDataEnabled
-                    ? `当前身份：${viewer?.name ?? '读取中'} · ${viewer?.departmentName ?? '未设置部门'} · ${viewer?.roleCodes.join('、') || '无角色'}`
-                    : '当前身份：张七巧 · 采购部',
-                )
-              }
-            >
-              {(viewer?.name ?? '张').slice(0, 1)}
-            </button>
+            <details className="r26-account-menu">
+              <summary aria-label={`${viewer?.name ?? user?.name ?? '当前用户'}的账号信息`}>
+                <span className="r26-avatar" aria-hidden="true">
+                  {(viewer?.name ?? user?.name ?? '张').slice(0, 1)}
+                </span>
+              </summary>
+              <div className="r26-account-popover" role="menu" aria-label="账号菜单">
+                <div className="r26-account-popover__identity">
+                  <strong>{viewer?.name ?? user?.name ?? '当前用户'}</strong>
+                  <span>
+                    {viewer?.departmentName ??
+                      user?.departmentName ??
+                      (realDataEnabled ? '组织部门待同步' : '采购部')}
+                  </span>
+                  <small>
+                    {viewer?.roleLabel ??
+                      viewer?.roleCodes.join('、') ??
+                      user?.roleCodes.join('、') ??
+                      '当前账号'}
+                  </small>
+                </div>
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => void handleLogout()}
+                  disabled={isLoggingOut}
+                  data-testid="v2-logout-button"
+                >
+                  {isLoggingOut ? '正在退出…' : '退出登录'}
+                </button>
+              </div>
+            </details>
           </div>
         </div>
       </header>
