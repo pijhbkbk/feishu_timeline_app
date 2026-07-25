@@ -1,5 +1,38 @@
 # EXECUTION_LEDGER.md
 
+## R26 生产后台按钮与部署真实性修复（2026-07-25）
+
+- Authorization：修复用户录屏中生产后台管理入口点击后仍落入占位页的问题，并按永久
+  Bug 协议在原公开 URL 完成精确提交部署与复测。
+- Failure evidence：原始录屏
+  `/Users/lixiaochen/Desktop/录屏2026-07-25 下午9.29.53.mov`；
+  故障时生产 server HEAD 为 `94d6fd01d8840416fb7154d302970d0a94a0c995`，
+  正式 `/admin/[section]` 仍引用 `PagePlaceholder`，真实后台 Web/API 源文件缺失。
+- Root cause：此前 `a2296dd` 只在本机 staging 实现，未部署到
+  `timeline.all-too-well.com`；Nginx、systemd 和数据库并非本次按钮问题根因。
+- Fix：生产发布完整后台表格控制中心；新增 API `/api/health` 与 Web `/build-info`
+  非敏感运行版本元数据；生产验收强制比较 API、Web、server HEAD 与候选 commit，
+  并阻断正式后台路由/构建产物中的 Placeholder。
+- Backup：部署前备份
+  `/var/backups/feishu-timeline-db/20260725T134828Z/feishu-timeline.dump`；
+  隔离恢复 44/44 表、12/12 用户、1/1 项目、44/44 审计记录一致。
+- Validation：lint、typecheck、双端 build、Prisma validate 全部 PASS；Web
+  44 files / 171 tests，API 66 files / 299 tests；生产 22 migrations/0 pending。
+- Release：branch `codex/r26-admin-table-control-center`；production runtime/API/Web/server
+  HEAD 均为 `c0a0dc83b6a133403e6c4ed81bcd3f7a65a282f0`；release
+  `r26-admin-c0a0dc83b6a1`；后台 build Placeholder=0。
+- Production browser：在 `https://timeline.all-too-well.com/admin` 使用真实飞书会话
+  逐个点击总览 6 个入口、顶部 8 个后台标签和审计刷新；所有目标路由、真实表格和
+  `/api/admin/*` 请求均为 200，部署后 API/Web 错误日志为 0。
+- Git：production 已改变；`main`/`origin/main` 仍为
+  `9884b2a686ad80ae78797cffc7013b79089c79aa`，未合并；tag 未改变。
+- Evidence：
+  `docs/product/evidence/R26_ADMIN_BUTTON_PRODUCTION_FIX/` 与
+  `docs/acceptance/ROUTE_ACCEPTANCE_MATRIX.md`。
+- Decision：
+  `PRODUCTION_DEPLOYED_EXACT_COMMIT / ADMIN_BUTTONS_RETESTED /
+  ADMIN_PLACEHOLDERS=0 / AWAITING_PRODUCT_OWNER_CONFIRMATION`。
+
 ## R26 登录入口直达飞书（2026-07-22）
 
 - Authorization：按用户截图删除登录后的系统选择页，使主页面“登录”一次点击直达飞书认证。
