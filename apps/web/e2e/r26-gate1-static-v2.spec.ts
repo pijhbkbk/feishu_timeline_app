@@ -1,5 +1,6 @@
 import { spawn, type ChildProcess } from 'node:child_process';
-import { copyFile, mkdir } from 'node:fs/promises';
+import { once } from 'node:events';
+import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import { expect, test, type Browser, type Page } from '@playwright/test';
@@ -54,10 +55,16 @@ const frozenEdgeGeometry = [
 ] as const;
 
 let featureOffServer: ChildProcess | null = null;
+let originalNextEnv = '';
+let originalTsConfig = '';
 
 test.describe.configure({ mode: 'serial' });
 
 test.beforeAll(async () => {
+  [originalNextEnv, originalTsConfig] = await Promise.all([
+    readFile(path.join(webRoot, 'next-env.d.ts'), 'utf8'),
+    readFile(path.join(webRoot, 'tsconfig.json'), 'utf8'),
+  ]);
   await Promise.all([
     mkdir(screenshotDir, { recursive: true }),
     mkdir(videoDir, { recursive: true }),
@@ -80,8 +87,19 @@ test.beforeAll(async () => {
 });
 
 test.afterAll(async () => {
-  featureOffServer?.kill('SIGTERM');
+  if (featureOffServer?.exitCode === null) {
+    const exited = once(featureOffServer, 'exit');
+    featureOffServer.kill('SIGTERM');
+    await Promise.race([
+      exited,
+      new Promise((resolve) => setTimeout(resolve, 5_000)),
+    ]);
+  }
   featureOffServer = null;
+  await Promise.all([
+    writeFile(path.join(webRoot, 'next-env.d.ts'), originalNextEnv),
+    writeFile(path.join(webRoot, 'tsconfig.json'), originalTsConfig),
+  ]);
 });
 
 test('R26-01 Feature Flag 关闭时 V2 不可用，开启时四页可访问且不请求 API', async ({

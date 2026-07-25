@@ -77,7 +77,6 @@ build_release_image \
   "$ROOT_DIR/apps/web/Dockerfile" \
   --build-arg "NEXT_PUBLIC_APP_NAME=${NEXT_PUBLIC_APP_NAME:-轻卡新颜色开发项目管理系统}" \
   --build-arg "NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL:-/api}" \
-  --build-arg "NEXT_PUBLIC_FEISHU_APP_ID=${NEXT_PUBLIC_FEISHU_APP_ID:-}" \
   --build-arg "NEXT_PUBLIC_ENABLE_MOCK_LOGIN=${NEXT_PUBLIC_ENABLE_MOCK_LOGIN:-false}" \
   --build-arg "NEXT_PUBLIC_UI_VERSION=${NEXT_PUBLIC_UI_VERSION:-v1}" \
   --build-arg "NEXT_PUBLIC_UI_DATA_MODE=${NEXT_PUBLIC_UI_DATA_MODE:-real}" \

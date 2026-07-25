@@ -1,4 +1,13 @@
-import { Body, Controller, Get, Post, Req, Res } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpStatus,
+  Post,
+  Req,
+  Res,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Response } from 'express';
 
@@ -42,6 +51,24 @@ export class AuthController {
     @Res({ passthrough: true }) response: Response,
   ) {
     return this.authService.loginWithMock(body, response);
+  }
+
+  @Public()
+  @Get('feishu/start')
+  async startFeishuLogin(
+    @Req() request: AuthenticatedRequest,
+    @Res() response: Response,
+  ) {
+    const result = await this.authService.getFeishuLoginUrl(
+      response,
+      this.getAuthClientIdentifier(request),
+    );
+
+    if (!result.enabled || !result.loginUrl) {
+      throw new ServiceUnavailableException('飞书登录未配置。');
+    }
+
+    response.redirect(HttpStatus.FOUND, result.loginUrl);
   }
 
   @Public()

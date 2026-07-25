@@ -2,6 +2,7 @@ name: ${COMPOSE_PROJECT_NAME:-feishu-timeline-staging}
 
 x-api-runtime: &api-runtime
   NODE_ENV: production
+  DEPLOYMENT_ENV: staging
   HOST: 0.0.0.0
   PORT: 3001
   FRONTEND_URL: ${FRONTEND_URL:-http://localhost:8080}
@@ -24,7 +25,8 @@ x-api-runtime: &api-runtime
   FEISHU_APP_ID: ${FEISHU_APP_ID:-}
   FEISHU_APP_SECRET: ${FEISHU_APP_SECRET:-}
   FEISHU_REDIRECT_URI: ${FEISHU_REDIRECT_URI:-http://localhost:8080/login/callback}
-  FEISHU_AUTHORIZATION_ENDPOINT: ${FEISHU_AUTHORIZATION_ENDPOINT:-https://open.feishu.cn/open-apis/authen/v1/index}
+  OAUTH_PROVIDER: feishu-cn
+  FEISHU_AUTHORIZATION_ENDPOINT: https://accounts.feishu.cn/open-apis/authen/v1/index
 
 services:
   postgres:
@@ -127,7 +129,6 @@ services:
       args:
         NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-轻卡新颜色开发项目管理系统}
         NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-/api}
-        NEXT_PUBLIC_FEISHU_APP_ID: ${NEXT_PUBLIC_FEISHU_APP_ID:-}
         NEXT_PUBLIC_ENABLE_MOCK_LOGIN: ${NEXT_PUBLIC_ENABLE_MOCK_LOGIN:-false}
         NEXT_PUBLIC_UI_VERSION: ${NEXT_PUBLIC_UI_VERSION:-v1}
         NEXT_PUBLIC_UI_DATA_MODE: ${NEXT_PUBLIC_UI_DATA_MODE:-real}
@@ -141,7 +142,6 @@ services:
       PORT: 3000
       NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-轻卡新颜色开发项目管理系统}
       NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-/api}
-      NEXT_PUBLIC_FEISHU_APP_ID: ${NEXT_PUBLIC_FEISHU_APP_ID:-}
       NEXT_PUBLIC_ENABLE_MOCK_LOGIN: ${NEXT_PUBLIC_ENABLE_MOCK_LOGIN:-false}
       NEXT_PUBLIC_UI_VERSION: ${NEXT_PUBLIC_UI_VERSION:-v1}
       NEXT_PUBLIC_UI_DATA_MODE: ${NEXT_PUBLIC_UI_DATA_MODE:-real}

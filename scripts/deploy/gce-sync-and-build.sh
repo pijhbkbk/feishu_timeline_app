@@ -13,7 +13,8 @@ APP_HOST="${APP_HOST:-timeline.all-too-well.com}"
 PUBLIC_SCHEME="${PUBLIC_SCHEME:-https}"
 PUBLIC_APP_URL="${PUBLIC_APP_URL:-${PUBLIC_SCHEME}://${APP_HOST}}"
 FEISHU_CALLBACK_PATH="${FEISHU_CALLBACK_PATH:-/login/callback}"
-FEISHU_AUTHORIZATION_ENDPOINT="${FEISHU_AUTHORIZATION_ENDPOINT:-https://open.feishu.cn/open-apis/authen/v1/index}"
+OAUTH_PROVIDER="feishu-cn"
+FEISHU_AUTHORIZATION_ENDPOINT="https://accounts.feishu.cn/open-apis/authen/v1/index"
 RUN_PRISMA_MIGRATE_DEPLOY="${RUN_PRISMA_MIGRATE_DEPLOY:-no}"
 FORCE_NGINX_TEMPLATE_SYNC="${FORCE_NGINX_TEMPLATE_SYNC:-no}"
 GCE_TUNNEL_THROUGH_IAP="${GCE_TUNNEL_THROUGH_IAP:-no}"
@@ -62,6 +63,7 @@ export GIT_REF='$GIT_REF'
 export APP_HOST='$APP_HOST'
 export PUBLIC_APP_URL='$PUBLIC_APP_URL'
 export FEISHU_CALLBACK_PATH='$FEISHU_CALLBACK_PATH'
+export OAUTH_PROVIDER='$OAUTH_PROVIDER'
 export FEISHU_AUTHORIZATION_ENDPOINT='$FEISHU_AUTHORIZATION_ENDPOINT'
 export REMOTE_USER='$REMOTE_USER'
 export RUN_PRISMA_MIGRATE_DEPLOY='$RUN_PRISMA_MIGRATE_DEPLOY'
@@ -120,10 +122,12 @@ ensure_env_file apps/web/.env.production apps/web/.env.example
 chmod 600 apps/api/.env.production apps/web/.env.production
 
 upsert_env apps/api/.env.production NODE_ENV production
+upsert_env apps/api/.env.production DEPLOYMENT_ENV production
 upsert_env apps/api/.env.production HOST 127.0.0.1
 upsert_env apps/api/.env.production PORT 3001
 upsert_env apps/api/.env.production FRONTEND_URL \"\$PUBLIC_APP_URL\"
 upsert_env apps/api/.env.production FEISHU_REDIRECT_URI \"\${PUBLIC_APP_URL}\${FEISHU_CALLBACK_PATH}\"
+upsert_env apps/api/.env.production OAUTH_PROVIDER \"\$OAUTH_PROVIDER\"
 upsert_env apps/api/.env.production FEISHU_AUTHORIZATION_ENDPOINT \"\$FEISHU_AUTHORIZATION_ENDPOINT\"
 upsert_env apps/api/.env.production AUTH_MOCK_ENABLED false
 upsert_env apps/api/.env.production OBJECT_STORAGE_LOCAL_ROOT /opt/feishu_timeline_app/var/object-storage
@@ -133,6 +137,7 @@ upsert_env apps/web/.env.production NEXT_PUBLIC_ENABLE_MOCK_LOGIN false
 upsert_env apps/web/.env.production NEXT_PUBLIC_UI_VERSION v2
 upsert_env apps/web/.env.production NEXT_PUBLIC_UI_DATA_MODE real
 upsert_env apps/web/.env.production V1_FALLBACK_ENABLED true
+sed -i '/^NEXT_PUBLIC_FEISHU_APP_ID=/d' apps/web/.env.production
 sed -i '/^NEXT_PUBLIC_R26_V2_PROTOTYPE=/d' apps/web/.env.production
 sed -i '/^NEXT_PUBLIC_R26_V2_DATA_MODE=/d' apps/web/.env.production
 

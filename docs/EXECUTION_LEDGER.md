@@ -4340,6 +4340,79 @@ NEXT_ACTION=FIX_FEISHU_APP_AVAILABILITY_AND_REPEAT_GATE8
 
 ---
 
+### Round R26P1_FEISHU_CN_OAUTH_PROVIDER_CORRECTION
+
+#### Goal And Scope
+
+- 从失败 runtime `ef6ba4379a4fd9a64eeeabd91160b86d89d59a01` 建立独立修复分支。
+- 先以真实 start、仓库、构建配置和生产只读配置证明 OAuth 跳转来源，再修复发布边界。
+- 浏览器只进入同源 `/api/auth/feishu/start`，由 API 生成 state 与授权 URL 并返回
+  302。
+- 不修改 18 步状态机、Prisma schema、数据库业务数据、V1 或当前稳定 production。
+
+#### Root Cause
+
+```text
+LARK_PROVIDER_SELECTED=false
+LARK_REQUEST_COUNT=0
+staging App ID hash=1e8666fb3953
+production App ID hash=5da19c9cf49e
+App ID match=false
+primary blocker=production app tenant / availability scope
+```
+
+- 失败候选和当前生产实际均使用 `open.feishu.cn` / `accounts.feishu.cn`；授权页上的
+  “切换至 Lark 登录”不是 Lark provider 被选中的证据。
+- Gate 3B 通过的是 staging 测试应用；production 使用不同正式应用，失败发生在飞书
+  签发 code 之前，符合账号不属于应用租户或未在正式应用可用范围内的表现。
+- 详细证据见 `docs/release/R26P1_OAUTH_ROOT_CAUSE.md`。
+
+#### Exact Changes
+
+- 新增唯一、类型安全的 `feishu-cn` 服务端 provider，授权固定为
+  `accounts.feishu.cn`，token / user info / API 固定为 `open.feishu.cn`。
+- 新增 `GET /api/auth/feishu/start`；Web 登录按钮不再读取或解析第三方授权 URL。
+- production 启动校验正式域名、HTTPS callback、provider、端点和非占位服务端凭据。
+- staging 显式声明 `DEPLOYMENT_ENV=staging`，避免 production 构建模式误套正式域名。
+- 删除 Web 构建参数中的 `NEXT_PUBLIC_FEISHU_APP_ID`；App Secret 仍只存在 API 环境。
+- 生产验收、发布复核和安全加固脚本只输出 OAuth 状态码、主机与路径，不输出 App ID、
+  state、Cookie 或完整 Location。
+- 增加 provider、start、token/user info 与 Lark 零请求回归测试。
+- 忽略临时 `.next-*` 目录，并移除误跟踪的 `tsconfig.tsbuildinfo` 构建缓存。
+
+#### Validation
+
+```text
+pnpm install --frozen-lockfile       PASS
+pnpm lint                            PASS
+pnpm typecheck                       PASS
+pnpm test                            PASS（Web 37 files / 127 tests；API 65 files / 293 tests）
+pnpm --filter web build              PASS
+pnpm --filter api build              PASS
+pnpm --filter api prisma:validate    PASS
+pnpm test:e2e                        PASS
+pnpm playwright:test                 PASS（62 / 62）
+Gitleaks current tree                PASS
+Gitleaks full Git history            PASS
+Web production bundle Lark files     0
+API production artifact Lark files   0
+Web production bundle Feishu files   0
+git diff --check                     PASS
+```
+
+#### Current Gate
+
+```text
+production=893b50f5b7ef1f54f840243d3b18dbe1e0f8dcd1
+origin/main=893b50f5b7ef1f54f840243d3b18dbe1e0f8dcd1
+production changed=false
+production seed/reset=false
+READY_FOR_IMMUTABLE_STAGING_REAL_FEISHU_OAUTH
+STOP_BEFORE_PRODUCTION
+```
+
+---
+
 ### Round R26_GATE3C1_ORDINARY_TASK_COMPLETION
 
 #### Goal And Scope

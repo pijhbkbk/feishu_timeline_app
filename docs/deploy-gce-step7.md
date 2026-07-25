@@ -36,9 +36,12 @@
    - `authenticated=false`
    - `mockEnabled=false`
    - `feishuEnabled=true`
-4. `/api/auth/feishu/login-url` 返回：
-   - `enabled=true`
-   - `loginUrl` 非空
+4. `/api/auth/feishu/start` 返回：
+   - HTTP `302`
+   - 授权主机为 `accounts.feishu.cn`
+   - 授权路径为 `/open-apis/authen/v1/index`
+   - `redirect_uri` 为 `https://timeline.all-too-well.com/login/callback`
+   - 验收日志不得打印 App ID、OAuth state 或完整 `Location`
 5. 远端：
    - `feishu-timeline-api`、`feishu-timeline-web`、`nginx`、`redis-server` 都是 `active`
    - `redis-cli ping` 返回 `PONG`
@@ -52,7 +55,8 @@
 
 - `FRONTEND_URL=https://timeline.all-too-well.com`
 - `FEISHU_REDIRECT_URI=https://timeline.all-too-well.com/login/callback`
-- `FEISHU_AUTHORIZATION_ENDPOINT=https://open.feishu.cn/open-apis/authen/v1/index`
+- `OAUTH_PROVIDER=feishu-cn`
+- `FEISHU_AUTHORIZATION_ENDPOINT=https://accounts.feishu.cn/open-apis/authen/v1/index`
 - `FEISHU_APP_ID`
 - `FEISHU_APP_SECRET`
 - `AUTH_MOCK_ENABLED=false`
@@ -61,7 +65,6 @@
 
 - `FEISHU_APP_ID=your_feishu_app_id`
 - `FEISHU_APP_SECRET=your_feishu_app_secret`
-- `NEXT_PUBLIC_FEISHU_APP_ID=your_feishu_app_id`
 
 代码上的约束：
 
@@ -72,7 +75,7 @@
   - `FEISHU_AUTHORIZATION_ENDPOINT`
 - [`apps/api/src/modules/auth/auth.service.ts`](/Users/lixiaochen/Downloads/feishu_timeline_app/apps/api/src/modules/auth/auth.service.ts) 只有在 adapter `isConfigured()` 为 `true` 时才会给前端返回可用的飞书登录地址。
 - [`apps/web/src/app/login/callback/login-callback-client.tsx`](/Users/lixiaochen/Downloads/feishu_timeline_app/apps/web/src/app/login/callback/login-callback-client.tsx) 固定回调路径是 `/login/callback`。
-- [`apps/web/src/components/auth-provider.tsx`](/Users/lixiaochen/Downloads/feishu_timeline_app/apps/web/src/components/auth-provider.tsx) 会先调用 `/api/auth/feishu/login-url`，再在回调后调用 `/api/auth/feishu/callback` 和 `/api/auth/session`。
+- [`apps/web/src/components/auth-provider.tsx`](/Users/lixiaochen/Downloads/feishu_timeline_app/apps/web/src/components/auth-provider.tsx) 只进入同源 `/api/auth/feishu/start`；API 生成授权地址并跳转，回调后再调用 `/api/auth/feishu/callback` 和 `/api/auth/session`。
 
 飞书控制台必须人工核对：
 
@@ -174,7 +177,7 @@ bash scripts/deploy/gce-rollback-checklist.sh
 
 如果 `gce-production-acceptance.sh` 失败，优先看两项：
 
-1. `FEISHU_AUTHORIZATION_ENDPOINT` 是否已在 API 生产 env 中填写为 `https://open.feishu.cn/open-apis/authen/v1/index`
+1. `OAUTH_PROVIDER` 是否为 `feishu-cn`，且 `FEISHU_AUTHORIZATION_ENDPOINT` 是否为 `https://accounts.feishu.cn/open-apis/authen/v1/index`
 2. 飞书开放平台回调白名单是否已指向 `https://timeline.all-too-well.com/login/callback`
 
 如果这两项都对，但脚本仍失败，再看飞书相关 env 是否还停留在示例占位值。
