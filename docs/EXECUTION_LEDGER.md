@@ -4313,9 +4313,20 @@ full repository tests          PASS (Web 166 / API 294)
 Web production build           PASS
 API production build           PASS
 Prisma schema validation       PASS
-production deployment          PENDING
-production route audit         PENDING
+production deployment          PASS (`94d6fd0`)
+production route audit         PASS (14 routes)
 ```
+
+#### Production Route Audit
+
+- V2 页面：工作台、项目列表、新建项目、项目工作区、我的任务、进展提交、
+  材料、系统管理、审计日志。
+- 旧业务页面壳：首台生产计划、用户管理、角色权限、基础字典、流程节点。
+- 每页顶层导航均严格显示：
+  `工作台 / 项目列表 / 我的任务 / 进展提交 / 系统管理`。
+- 每页仅有一个 `aria-current="page"`，且当前项使用品牌蓝色。
+- 系统管理子页的上下文当前项同步使用品牌蓝色。
+- 生产浏览器未出现 `Application error`。
 
 ---
 

@@ -47,6 +47,21 @@ full repository tests          PASS (Web 166 / API 294)
 Web production build           PASS
 API production build           PASS
 Prisma schema validation       PASS
-production deployment          PENDING
-production route audit         PENDING
+production deployment          PASS (94d6fd0)
+production route audit         PASS (14 routes)
 ```
+
+## Production Verification
+
+The signed-in production session verified these route families:
+
+- dashboard;
+- project list, project creation, workspace, and a project business page;
+- task list;
+- progress and materials;
+- administrator root, audit log, users, roles, dictionaries, and workflow nodes.
+
+All 14 checked routes rendered the approved five labels and exactly one current
+top-level item. The current item had `aria-current="page"` and a computed
+product-blue text color. Administrator context tabs also highlighted the
+correct child page. No checked page rendered a client-side application error.
