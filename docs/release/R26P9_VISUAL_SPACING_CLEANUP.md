@@ -39,3 +39,13 @@ git diff --check              PASS
 
 Production deployment and visual verification are recorded in
 `docs/EXECUTION_LEDGER.md`.
+
+## Production Result
+
+- Deployed application commit: `09d6548`
+- Audit content padding: `32px` left and right
+- Removed project hero strings: not present
+- Create-project action: present
+- Step 12 minimum measured outer-bounds gap: `36.5px`
+- Step 18 measured left/bottom gaps: `28px` / `15.5px`
+- Client error portal count: `0`

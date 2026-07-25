@@ -4301,9 +4301,19 @@ pnpm --filter web build       PASS
 pnpm --filter api build       PASS
 API prisma validate           PASS
 git diff --check              PASS
-production deployment         PENDING
-production visual checks      PENDING
+production deployment         PASS (09d6548)
+production visual checks      PASS
 ```
+
+#### Production Evidence
+
+- 正式域名审计页在 1280px 浏览器视口下，左右内容内边距均为 `32px`。
+- 项目列表不再渲染指定问答式标题和说明，“新建项目”入口仍可见。
+- 第 12 步文字与 SVG 外接边界的最小测量间距为 `36.5px`。
+- 第 18 步精简为步骤、名称、负责人三层核心信息，左侧和底部测量间距分别为
+  `28px`、`15.5px`。
+- 正式页面 Next.js 客户端错误入口计数为 `0`；Web、API、nginx 均正常。
+- 未执行数据库迁移或业务写请求。
 
 ---
 
