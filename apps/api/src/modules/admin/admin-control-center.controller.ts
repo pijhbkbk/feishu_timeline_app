@@ -5,12 +5,14 @@ import {
   Get,
   Headers,
   Param,
+  ParseEnumPipe,
   Patch,
   Post,
   Query,
   Res,
 } from '@nestjs/common';
 import { ApiCookieAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { WorkflowNodeCode } from '@prisma/client';
 import type { Response } from 'express';
 
 import { CurrentUser } from '../auth/current-user.decorator';
@@ -25,6 +27,8 @@ import {
   AdminBatchTaskPreviewDto,
   AdminDictionaryChangeDto,
   AdminLedgerQueryDto,
+  AdminNodeAssignmentChangeDto,
+  AdminNodeAssignmentPreviewDto,
   AdminOrganizationQueryDto,
   AdminProjectBasicInfoDto,
   AdminSavedViewDto,
@@ -119,6 +123,38 @@ export class AdminControlCenterController {
   @Get('assignments')
   getAssignments(@Query('projectId') projectId?: string) {
     return this.service.getAssignments(projectId);
+  }
+
+  @ApiOperation({ summary: '预览项目节点分工配置影响，不写入' })
+  @Post('projects/:projectId/assignments/:nodeCode/preview')
+  previewNodeAssignment(
+    @Param('projectId') projectId: string,
+    @Param('nodeCode', new ParseEnumPipe(WorkflowNodeCode))
+    nodeCode: WorkflowNodeCode,
+    @Body() body: AdminNodeAssignmentPreviewDto,
+  ) {
+    return this.service.previewNodeAssignment(projectId, nodeCode, body);
+  }
+
+  @ApiOperation({ summary: '保存项目节点分工配置并写入审计' })
+  @Post('projects/:projectId/assignments/:nodeCode')
+  changeNodeAssignment(
+    @Param('projectId') projectId: string,
+    @Param('nodeCode', new ParseEnumPipe(WorkflowNodeCode))
+    nodeCode: WorkflowNodeCode,
+    @Body() body: AdminNodeAssignmentChangeDto,
+    @Headers('idempotency-key') headerKey: string | undefined,
+    @Headers('x-request-id') requestId: string | undefined,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    this.assertIdempotencyKey(body.idempotencyKey, headerKey);
+    return this.service.changeNodeAssignment(
+      projectId,
+      nodeCode,
+      body,
+      actor,
+      requestId?.trim() || body.idempotencyKey,
+    );
   }
 
   @ApiOperation({ summary: '真实 RBAC 权限矩阵' })

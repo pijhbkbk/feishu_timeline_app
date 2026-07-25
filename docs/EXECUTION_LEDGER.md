@@ -4304,6 +4304,79 @@ STOP_BEFORE_GATE3
 
 ---
 
+### Round R26_ADMIN_ASSIGNMENT_EDITABLE_GRID
+
+#### Goal And Scope
+
+- 将 `/admin/assignments` 从只读责任矩阵升级为多字段、可预览、可审计的受控编辑表。
+- 继续复用 Gate 3A 服务端分配规则，不在前端建立第二套负责人推导逻辑。
+- 只部署独立 staging 供产品负责人验收；不部署 production，不合并 `main`，不创建
+  tag。
+- 对产品负责人提供的飞书 Wiki 多维表格只做结构确认，不修改表格、协作者或权限。
+
+#### Exact Changes
+
+- 支持主责部门、默认负责人、协同人员、评审人员、生效范围和变更原因六类字段；
+- 单元格和行级“编辑分工”均进入统一受控编辑面板；
+- 新增分工 preview/command 接口，保存必须经过权限、项目成员、部门、节点类型、
+  `expectedVersion` 和 `Idempotency-Key` 校验；
+- 在单个 Prisma 事务内更新项目节点分工、递增分工版本并写入
+  `ADMIN_PROJECT_NODE_ASSIGNMENT_CHANGED` 审计；
+- 前端不提交下一节点、项目状态或任务状态；
+- 已配置的主责部门优先于静态节点规则，后续服务端分配继续复用 Gate 3A 优先级；
+- 本地登录页只在服务端明确返回 `mockEnabled=true` 时展示隔离测试入口；
+- 修复登录能力标志与 loading 边界异步提交导致的瞬时错误提示；
+- 飞书接入边界记录在
+  `docs/product/R26_FEISHU_BITABLE_INTEGRATION_BOUNDARY.md`。
+
+#### Local Real-Data Evidence
+
+```text
+18 fixed workflow nodes                     PASS
+fixture rows                                0
+preview writePerformed                      false
+project assignment version                  1 -> 2 -> 3
+refresh persistence                         PASS
+stale concurrent editor                     409 / blocked
+anonymous admin request                     401
+ordinary employee admin request             403
+assignment audit record                     PASS
+console/page error                          0
+production request                          0
+```
+
+- 本机开发库通过 Prisma 正式 migration
+  `20260725183000_r26_admin_control_center` 补齐管理命令和保存视图表；未手改数据库表。
+- 首次保存配置到第 1 步，刷新后主责部门和负责人保持。
+- 两个页面同时读取版本 2；先保存页面递增到版本 3，旧页面预览被明确拒绝，没有覆盖
+  新值。
+- 证据目录：`docs/product/evidence/R26_ADMIN_ASSIGNMENT_GRID/`。
+
+#### Validation
+
+```text
+pnpm install                         PASS
+pnpm lint                            PASS
+pnpm typecheck                       PASS
+pnpm test                            PASS（Web 44 files / 172 tests；API 67 files / 301 tests）
+pnpm --filter web build              PASS
+pnpm --filter api build              PASS
+pnpm --filter api prisma:validate    PASS
+git diff --check                     PASS
+```
+
+#### Decision
+
+```text
+R26_ADMIN_ASSIGNMENT_EDITABLE_GRID_IMPLEMENTED
+NATIVE_PREVIEW_FIRST_ASSIGNMENT_EDITOR_READY
+FEISHU_BITABLE_NOT_CONNECTED_OR_MODIFIED
+AWAITING_PRODUCT_OWNER_STAGING_CONFIRMATION
+STOP_BEFORE_PRODUCTION
+```
+
+---
+
 ### Round R26_ADMIN_DEPLOYMENT_TRUTH_AUDIT
 
 #### Goal And Scope

@@ -2002,6 +2002,104 @@ a {
 .admin-cc-inline-filter label { display: flex; align-items: center; gap: 12px; color: #4e5a6d; font-weight: 700; }
 .admin-cc-inline-filter select { min-width: 320px; }
 .admin-cc-inline-filter > span { color: #788396; font-size: 13px; }
+.admin-cc-field-schema {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 14px 22px;
+  border-bottom: 1px solid #e6eaf0;
+  background: #fbfcfe;
+}
+.admin-cc-field-schema > div:first-child { display: grid; gap: 3px; }
+.admin-cc-field-schema > div:first-child span { color: #788396; font-size: 13px; }
+.admin-cc-field-schema > div:last-child { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 7px; }
+.admin-cc-field-schema > div:last-child span {
+  padding: 5px 9px;
+  border: 1px solid #dce6f4;
+  border-radius: 999px;
+  background: #f2f7ff;
+  color: #35628f;
+  font-size: 11px;
+  font-weight: 700;
+}
+.admin-cc-assignment-table { min-width: 1520px; }
+.admin-cc-editable-cell {
+  display: grid;
+  width: 100%;
+  min-height: 54px !important;
+  padding: 8px 10px !important;
+  border: 1px solid transparent !important;
+  border-radius: 10px !important;
+  background: transparent !important;
+  color: #27354a !important;
+  cursor: pointer;
+  text-align: left;
+}
+.admin-cc-editable-cell:hover,
+.admin-cc-editable-cell:focus-visible {
+  border-color: #a9c8f7 !important;
+  background: #f1f7ff !important;
+  outline: 0;
+}
+.admin-cc-editable-cell > span { font-size: 14px; font-weight: 700; line-height: 1.45; }
+.admin-cc-editable-cell > small { color: #7c8aa0 !important; font-size: 11px !important; }
+.admin-cc-row-edit { white-space: nowrap; }
+.admin-cc-assignment-node-summary {
+  display: grid;
+  gap: 5px;
+  padding: 18px;
+  border: 1px solid #c8dcfb;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #f4f8ff, #fff);
+}
+.admin-cc-assignment-node-summary > span { color: #1769e0; font-size: 13px; font-weight: 800; }
+.admin-cc-assignment-node-summary > strong { font-size: 22px; }
+.admin-cc-assignment-node-summary > small { color: #6d7a8d; line-height: 1.5; }
+.admin-cc-person-field {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.admin-cc-person-field legend { margin-bottom: 8px; color: #3d495e; font-size: 14px; font-weight: 700; }
+.admin-cc-person-field > div {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  max-height: 250px;
+  overflow-y: auto;
+  padding: 2px;
+}
+.admin-cc-person-field label {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid #dfe5ed;
+  border-radius: 12px;
+  background: #fff;
+  color: #314056;
+  cursor: pointer;
+}
+.admin-cc-person-field label.is-selected { border-color: #8cb8f7; background: #eef6ff; }
+.admin-cc-person-field label:has(input:disabled) { cursor: not-allowed; opacity: .46; }
+.admin-cc-person-field input { width: 17px; height: 17px; accent-color: #1769e0; }
+.admin-cc-person-field label > span { min-width: 0; font-size: 13px; font-weight: 750; }
+.admin-cc-person-field label small { display: block; overflow: hidden; margin-top: 2px; color: #7a8798; font-size: 11px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+.admin-cc-person-field > small { color: #778498; font-size: 12px; }
+.admin-cc-locked-field {
+  display: grid;
+  gap: 5px;
+  padding: 14px 16px;
+  border: 1px dashed #d7dde6;
+  border-radius: 13px;
+  background: #f8f9fb;
+}
+.admin-cc-locked-field span { color: #7b8798; font-size: 13px; }
 .admin-cc-section-title h2 { margin: 0; font-size: 20px; }
 .admin-cc-section-title p { margin: 5px 0 0; color: #778295; font-size: 14px; }
 .admin-cc-policy-note { align-items: flex-start; justify-content: flex-start; background: #f2f7ff; }
@@ -2146,6 +2244,8 @@ a {
   .admin-cc-inline-filter,
   .admin-cc-section-title,
   .admin-cc-policy-note { align-items: stretch; flex-direction: column; padding: 18px; }
+  .admin-cc-field-schema { align-items: stretch; flex-direction: column; padding: 16px 18px; }
+  .admin-cc-field-schema > div:last-child { justify-content: flex-start; }
   .admin-cc-inline-filter label { align-items: stretch; flex-direction: column; }
   .admin-cc-inline-filter select { min-width: 0; }
   .admin-cc-desktop-action { display: none; }
@@ -2155,4 +2255,5 @@ a {
   .admin-cc-dialog > header,
   .admin-cc-dialog__body { padding-right: 20px; padding-left: 20px; }
   .admin-cc-dialog footer { grid-template-columns: 1fr; padding: 14px 20px max(14px, env(safe-area-inset-bottom)); }
+  .admin-cc-person-field > div { grid-template-columns: 1fr; }
 }

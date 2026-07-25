@@ -251,6 +251,56 @@ export class AdminAssignmentChangeDto
   acknowledgedConsequences!: boolean;
 }
 
+export class AdminNodeAssignmentPreviewDto {
+  @IsInt()
+  @Min(1)
+  expectedVersion!: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  primaryDepartmentId?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  ownerUserId?: string | null;
+
+  @IsArray()
+  @ArrayMaxSize(30)
+  @IsString({ each: true })
+  collaboratorUserIds!: string[];
+
+  @IsArray()
+  @ArrayMaxSize(30)
+  @IsString({ each: true })
+  reviewerUserIds!: string[];
+
+  @IsIn(['FUTURE_ONLY', 'FUTURE_AND_PENDING', 'CONFIRM_IN_PROGRESS'])
+  scope!:
+    | 'FUTURE_ONLY'
+    | 'FUTURE_AND_PENDING'
+    | 'CONFIRM_IN_PROGRESS';
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(500)
+  reason!: string;
+}
+
+export class AdminNodeAssignmentChangeDto
+  extends AdminNodeAssignmentPreviewDto
+  implements AdminVersionedCommandDto
+{
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(128)
+  idempotencyKey!: string;
+
+  @IsBoolean()
+  acknowledgedConsequences!: boolean;
+}
+
 export class AdminUserStatusChangeDto extends AdminVersionedCommandDto {
   @IsDateString()
   expectedVersion!: string;

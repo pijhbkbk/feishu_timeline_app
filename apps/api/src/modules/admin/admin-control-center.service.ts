@@ -40,6 +40,8 @@ import {
   type AdminBatchTaskPreviewDto,
   type AdminDictionaryChangeDto,
   type AdminLedgerQueryDto,
+  type AdminNodeAssignmentChangeDto,
+  type AdminNodeAssignmentPreviewDto,
   type AdminOrganizationQueryDto,
   type AdminProjectBasicInfoDto,
   type AdminSavedViewDto,
@@ -705,6 +707,12 @@ export class AdminControlCenterService {
         } satisfies R26NodeAssignmentConfig,
       ]),
     );
+    const assignmentRecordByNode = new Map(
+      project.nodeAssignments.map((assignment) => [
+        assignment.nodeCode,
+        assignment,
+      ]),
+    );
     const latestTaskByNode = new Map<WorkflowNodeCode, (typeof project.workflowTasks)[number]>();
     for (const task of project.workflowTasks) {
       if (!latestTaskByNode.has(task.nodeCode)) {
@@ -712,13 +720,11 @@ export class AdminControlCenterService {
       }
     }
 
-    return {
-      projects,
-      selectedProjectId,
-      projectVersion: project.memberAssignmentVersion,
-      items: definitions.map((definition) => {
-        const task = latestTaskByNode.get(definition.nodeCode) ?? null;
-        return buildR26AssignmentPreview({
+    const items = definitions.map((definition) => {
+      const task = latestTaskByNode.get(definition.nodeCode) ?? null;
+      const configured = assignmentRecordByNode.get(definition.nodeCode) ?? null;
+      return {
+        ...buildR26AssignmentPreview({
           nodeCode: definition.nodeCode,
           task: task
             ? {
@@ -738,9 +744,219 @@ export class AdminControlCenterService {
           projectMembers: memberRows,
           departments: directoryDepartments,
           users: directoryUsers,
-        });
-      }),
+        }),
+        isReviewNode: definition.isReviewNode,
+        configuration: {
+          primaryDepartmentId: configured?.primaryDepartmentId ?? null,
+          ownerUserId: configured?.ownerUserId ?? null,
+          collaboratorUserIds: configured
+            ? this.readStringList(configured.collaboratorUserIds)
+            : [],
+          reviewerUserIds: configured
+            ? this.readStringList(configured.reviewerUserIds)
+            : [],
+          version: configured?.version ?? 0,
+          updatedAt: configured?.updatedAt.toISOString() ?? null,
+        },
+      };
+    });
+
+    return {
+      projects,
+      selectedProjectId,
+      projectVersion: project.memberAssignmentVersion,
+      schema: [
+        { key: 'primaryDepartmentId', label: '主责部门', type: 'REFERENCE' },
+        { key: 'ownerUserId', label: '默认负责人', type: 'USER' },
+        { key: 'collaboratorUserIds', label: '协同人员', type: 'MULTI_USER' },
+        { key: 'reviewerUserIds', label: '评审人员', type: 'MULTI_USER' },
+        { key: 'scope', label: '生效范围', type: 'SINGLE_SELECT' },
+        { key: 'reason', label: '变更原因', type: 'LONG_TEXT' },
+      ],
+      directory: {
+        departments: directoryDepartments,
+        users: directoryUsers.filter((user) =>
+          memberRows.some((member) => member.userId === user.id),
+        ),
+      },
+      items,
     };
+  }
+
+  async previewNodeAssignment(
+    projectId: string,
+    nodeCode: WorkflowNodeCode,
+    input: AdminNodeAssignmentPreviewDto,
+  ) {
+    return this.buildNodeAssignmentPreview(
+      this.prisma,
+      projectId,
+      nodeCode,
+      input,
+    );
+  }
+
+  async changeNodeAssignment(
+    projectId: string,
+    nodeCode: WorkflowNodeCode,
+    input: AdminNodeAssignmentChangeDto,
+    actor: AuthenticatedUser,
+    requestId: string,
+  ) {
+    if (!input.acknowledgedConsequences) {
+      throw new BadRequestException('必须确认已阅读分工配置影响。');
+    }
+    return this.executeAdminCommand({
+      projectId,
+      action: 'ADMIN_PROJECT_NODE_ASSIGNMENT_CHANGED',
+      input: { ...input, nodeCode },
+      actor,
+      execute: async (tx) => {
+        const preview = await this.buildNodeAssignmentPreview(
+          tx,
+          projectId,
+          nodeCode,
+          input,
+        );
+        if (!preview.canApply) {
+          throw new ConflictException({
+            code: 'NODE_ASSIGNMENT_CHANGE_BLOCKED',
+            message: '当前分工配置不满足保存条件。',
+            reasons: preview.blockingReasons,
+          });
+        }
+
+        const locked = await tx.project.updateMany({
+          where: {
+            id: projectId,
+            memberAssignmentVersion: input.expectedVersion,
+          },
+          data: { memberAssignmentVersion: { increment: 1 } },
+        });
+        if (locked.count !== 1) {
+          const current = await tx.project.findUnique({
+            where: { id: projectId },
+            select: { memberAssignmentVersion: true },
+          });
+          throw new ConflictException({
+            code: 'STALE_MEMBER_ASSIGNMENT_VERSION',
+            message: '项目分工已被其他管理员修改，请刷新后重试。',
+            expectedVersion: input.expectedVersion,
+            currentVersion: current?.memberAssignmentVersion ?? null,
+          });
+        }
+
+        const before = await tx.projectNodeAssignment.findUnique({
+          where: { projectId_nodeCode: { projectId, nodeCode } },
+        });
+        const collaboratorUserIds = [...new Set(input.collaboratorUserIds)];
+        const reviewerUserIds = [...new Set(input.reviewerUserIds)];
+        const configured = await tx.projectNodeAssignment.upsert({
+          where: { projectId_nodeCode: { projectId, nodeCode } },
+          create: {
+            projectId,
+            nodeCode,
+            primaryDepartmentId: input.primaryDepartmentId || null,
+            ownerUserId: input.ownerUserId || null,
+            collaboratorUserIds,
+            reviewerUserIds,
+            assignmentSource: ProjectAssignmentSource.PROJECT_NODE_OVERRIDE,
+            updatedById: actor.id,
+          },
+          update: {
+            primaryDepartmentId: input.primaryDepartmentId || null,
+            ownerUserId: input.ownerUserId || null,
+            collaboratorUserIds,
+            reviewerUserIds,
+            assignmentSource: ProjectAssignmentSource.PROJECT_NODE_OVERRIDE,
+            updatedById: actor.id,
+            version: { increment: 1 },
+          },
+        });
+
+        let affectedTaskId: string | null = null;
+        const task = await tx.workflowTask.findFirst({
+          where: { projectId, nodeCode },
+          orderBy: [{ taskRound: 'desc' }, { createdAt: 'desc' }],
+        });
+        const applyToPending =
+          task?.isActive === true &&
+          input.scope !== 'FUTURE_ONLY' &&
+          (task.status === WorkflowTaskStatus.PENDING ||
+            task.status === WorkflowTaskStatus.READY);
+        const applyToInProgress =
+          task?.isActive === true &&
+          input.scope === 'CONFIRM_IN_PROGRESS' &&
+          task.status === WorkflowTaskStatus.IN_PROGRESS;
+        if (task && (applyToPending || applyToInProgress)) {
+          const proposed = preview.proposed;
+          await tx.workflowTask.update({
+            where: { id: task.id },
+            data: {
+              assigneeDepartmentId: proposed.primaryDepartment?.id ?? null,
+              assigneeUserId: proposed.owner?.id ?? null,
+              payload: this.mergeJson(task.payload, {
+                assignmentSource:
+                  ProjectAssignmentSource.PROJECT_NODE_OVERRIDE,
+                collaboratorUserIds,
+                reviewerUserIds,
+                assignmentReason: input.reason.trim(),
+                assignmentRequestId: requestId,
+              }),
+            },
+          });
+          affectedTaskId = task.id;
+        }
+
+        const project = await tx.project.findUniqueOrThrow({
+          where: { id: projectId },
+          select: { name: true, currentNodeCode: true },
+        });
+        const audit = await this.activityLogsService.createWithExecutor(tx, {
+          projectId,
+          actorUserId: actor.id,
+          targetType: AuditTargetType.PROJECT,
+          targetId: projectId,
+          action: 'ADMIN_PROJECT_NODE_ASSIGNMENT_CHANGED',
+          nodeCode,
+          summary: `调整项目 ${project.name} 的${preview.node.stepName}分工配置`,
+          beforeData: before
+            ? {
+                primaryDepartmentId: before.primaryDepartmentId,
+                ownerUserId: before.ownerUserId,
+                collaboratorUserIds: this.readStringList(
+                  before.collaboratorUserIds,
+                ),
+                reviewerUserIds: this.readStringList(before.reviewerUserIds),
+                version: before.version,
+              }
+            : { configured: false },
+          afterData: {
+            primaryDepartmentId: configured.primaryDepartmentId,
+            ownerUserId: configured.ownerUserId,
+            collaboratorUserIds,
+            reviewerUserIds,
+            version: configured.version,
+            scope: input.scope,
+            affectedTaskId,
+          },
+          metadata: {
+            requestId,
+            idempotencyKey: input.idempotencyKey,
+            reason: input.reason.trim(),
+            result: 'SUCCESS',
+          },
+        });
+        return {
+          projectId,
+          nodeCode,
+          memberAssignmentVersion: input.expectedVersion + 1,
+          assignmentVersion: configured.version,
+          affectedTaskIds: affectedTaskId ? [affectedTaskId] : [],
+          auditLogIds: [audit.id],
+        };
+      },
+    });
   }
 
   async getPermissions() {
@@ -2228,6 +2444,214 @@ export class AdminControlCenterService {
           };
         }),
       },
+      writePerformed: false,
+    };
+  }
+
+  private async buildNodeAssignmentPreview(
+    db: AdminDbClient,
+    projectId: string,
+    nodeCode: WorkflowNodeCode,
+    input: AdminNodeAssignmentPreviewDto,
+  ) {
+    const [project, departments, users, definition] = await Promise.all([
+      db.project.findUnique({
+        where: { id: projectId },
+        include: {
+          members: {
+            include: { user: { include: { department: true } } },
+          },
+          nodeAssignments: true,
+          workflowTasks: {
+            where: { nodeCode },
+            orderBy: [{ taskRound: 'desc' }, { createdAt: 'desc' }],
+            include: {
+              assigneeUser: { include: { department: true } },
+            },
+          },
+        },
+      }),
+      db.department.findMany({
+        where: { isActive: true },
+        orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+      }),
+      db.user.findMany({
+        where: { status: UserStatus.ACTIVE },
+        include: { department: true },
+        orderBy: { name: 'asc' },
+      }),
+      db.workflowNodeDefinition.findUnique({ where: { nodeCode } }),
+    ]);
+    if (!project) {
+      throw new NotFoundException('项目不存在。');
+    }
+    if (!definition) {
+      throw new NotFoundException('流程节点不存在。');
+    }
+    if (project.memberAssignmentVersion !== input.expectedVersion) {
+      throw new ConflictException({
+        code: 'STALE_MEMBER_ASSIGNMENT_VERSION',
+        message: '项目分工已被其他管理员修改，请刷新后重试。',
+        expectedVersion: input.expectedVersion,
+        currentVersion: project.memberAssignmentVersion,
+      });
+    }
+
+    const memberRows: R26ProjectMemberRow[] = project.members.map((member) => ({
+      id: member.id,
+      userId: member.userId,
+      name: member.user.name,
+      departmentName: member.user.department?.name ?? null,
+      memberType: member.memberType,
+      title: member.title,
+      isPrimary: member.isPrimary,
+    }));
+    const directoryDepartments: R26DirectoryDepartment[] = departments.map(
+      (department) => ({
+        id: department.id,
+        code: department.code,
+        name: department.name,
+        path: department.path,
+      }),
+    );
+    const directoryUsers: R26DirectoryUser[] = users.map((user) => ({
+      id: user.id,
+      name: user.name,
+      departmentId: user.departmentId,
+      departmentName: user.department?.name ?? null,
+    }));
+    const activeMemberIds = new Set(memberRows.map((member) => member.userId));
+    const collaboratorUserIds = [...new Set(input.collaboratorUserIds)];
+    const reviewerUserIds = [...new Set(input.reviewerUserIds)];
+    const relatedIds = [...collaboratorUserIds, ...reviewerUserIds];
+    const blockingReasons: string[] = [];
+    const primaryDepartment = input.primaryDepartmentId
+      ? departments.find(
+          (department) => department.id === input.primaryDepartmentId,
+        ) ?? null
+      : null;
+    const requestedOwner = input.ownerUserId
+      ? users.find((user) => user.id === input.ownerUserId) ?? null
+      : null;
+
+    if (input.primaryDepartmentId && !primaryDepartment) {
+      blockingReasons.push('所选主责部门不存在或已停用。');
+    }
+    if (input.ownerUserId && !activeMemberIds.has(input.ownerUserId)) {
+      blockingReasons.push('默认负责人必须是当前项目的有效成员。');
+    }
+    if (
+      requestedOwner &&
+      primaryDepartment &&
+      requestedOwner.departmentId !== primaryDepartment.id
+    ) {
+      blockingReasons.push('默认负责人必须属于所选主责部门。');
+    }
+    if (relatedIds.some((userId) => !activeMemberIds.has(userId))) {
+      blockingReasons.push('协同人员或评审人员中存在非项目有效成员。');
+    }
+    if (
+      input.ownerUserId &&
+      (collaboratorUserIds.includes(input.ownerUserId) ||
+        reviewerUserIds.includes(input.ownerUserId))
+    ) {
+      blockingReasons.push('默认负责人不能同时作为协同人员或评审人员。');
+    }
+    if (
+      collaboratorUserIds.some((userId) => reviewerUserIds.includes(userId))
+    ) {
+      blockingReasons.push('同一成员不能同时配置为协同人员和评审人员。');
+    }
+    if (!definition.isReviewNode && reviewerUserIds.length > 0) {
+      blockingReasons.push('非评审节点不能配置评审人员。');
+    }
+
+    const currentAssignment =
+      project.nodeAssignments.find(
+        (assignment) => assignment.nodeCode === nodeCode,
+      ) ?? null;
+    const task = project.workflowTasks[0] ?? null;
+    if (
+      input.scope === 'CONFIRM_IN_PROGRESS' &&
+      task?.isActive === true &&
+      task.status === WorkflowTaskStatus.IN_PROGRESS &&
+      input.reason.trim().length < 3
+    ) {
+      blockingReasons.push('转交进行中任务必须填写明确原因。');
+    }
+
+    const proposed = buildR26AssignmentPreview({
+      nodeCode,
+      // The grid edits the project-level rule. The currently active task is
+      // evaluated separately below so that a task override cannot mask the
+      // proposed future owner in the impact preview.
+      task: null,
+      nodeAssignment: {
+        nodeCode,
+        primaryDepartmentId: input.primaryDepartmentId || null,
+        ownerUserId: input.ownerUserId || null,
+        collaboratorUserIds,
+        reviewerUserIds,
+        assignmentSource: ProjectAssignmentSource.PROJECT_NODE_OVERRIDE,
+      },
+      projectMembers: memberRows,
+      departments: directoryDepartments,
+      users: directoryUsers,
+    });
+    const affectsPendingTask =
+      task?.isActive === true &&
+      input.scope !== 'FUTURE_ONLY' &&
+      (task.status === WorkflowTaskStatus.PENDING ||
+        task.status === WorkflowTaskStatus.READY);
+    const affectsInProgressTask =
+      task?.isActive === true &&
+      input.scope === 'CONFIRM_IN_PROGRESS' &&
+      task.status === WorkflowTaskStatus.IN_PROGRESS;
+    if (
+      (affectsPendingTask || affectsInProgressTask) &&
+      !proposed.suggestedOwner
+    ) {
+      blockingReasons.push('当前生效范围需要明确可分配的负责人。');
+    }
+
+    return {
+      canApply: blockingReasons.length === 0,
+      blockingReasons,
+      warnings: proposed.unassignedReason ? [proposed.unassignedReason] : [],
+      node: {
+        nodeCode,
+        stepNumber: definition.sequence / 10,
+        stepName: definition.name,
+        taskId: task?.id ?? null,
+        taskStatus: task?.status ?? null,
+      },
+      current: {
+        primaryDepartmentId: currentAssignment?.primaryDepartmentId ?? null,
+        ownerUserId: currentAssignment?.ownerUserId ?? null,
+        collaboratorUserIds: currentAssignment
+          ? this.readStringList(currentAssignment.collaboratorUserIds)
+          : [],
+        reviewerUserIds: currentAssignment
+          ? this.readStringList(currentAssignment.reviewerUserIds)
+          : [],
+        assignmentVersion: currentAssignment?.version ?? 0,
+      },
+      proposed: {
+        primaryDepartment: proposed.primaryDepartment,
+        owner: proposed.suggestedOwner,
+        collaborators: proposed.collaborators,
+        reviewers: proposed.reviewers,
+        assignmentStatus: proposed.assignmentStatus,
+        assignmentSource: proposed.assignmentSource,
+      },
+      impact: {
+        scope: input.scope,
+        futureTasksUseConfiguration: true,
+        pendingTaskUpdated: affectsPendingTask,
+        inProgressTaskUpdated: affectsInProgressTask,
+        historicalTasksPreserved: true,
+      },
+      expectedVersion: project.memberAssignmentVersion,
       writePerformed: false,
     };
   }

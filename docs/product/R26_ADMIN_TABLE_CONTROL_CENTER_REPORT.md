@@ -13,7 +13,7 @@ R26 后台已从占位页改造成真实数据管理控制中心。总览卡片�
 | `/admin/projects` | Project/Color/WorkflowTask | 查询、分页、列设置、基础信息白名单编辑 |
 | `/admin/tasks` | WorkflowTask/Definition/Attachment/Blocker | 预设视图、分页、完整列、导出、批量与导入 |
 | `/admin/organization` | User/Department/ProjectMember | 用户、部门、项目成员；用户状态受控修改 |
-| `/admin/assignments` | Gate 3A 分配服务 | 18 节点责任矩阵与服务端分配来源 |
+| `/admin/assignments` | Gate 3A 分配服务 | 18 节点多字段分工表、影响预览与受控保存 |
 | `/admin/permissions` | Role/RolePermission | 真实 RBAC 矩阵，只读展示服务端边界 |
 | `/admin/workflow-templates` | ProcessTemplate/NodeDefinition | 版本化模板管理，运行中项目不受影响 |
 | `/admin/dictionaries` | SystemEnumItem/SystemParameter | 非保留项维护，核心参数锁定 |
@@ -25,6 +25,7 @@ R26 后台已从占位页改造成真实数据管理控制中心。总览卡片�
 - 写接口均为明确 command，无万能 PATCH；
 - DTO 白名单限制字段、长度、枚举和批量上限；
 - 每次写入校验当前数据版本并使用 `Idempotency-Key`；
+- 分工配置只接受项目有效成员和启用部门；人员关系去重且评审字段受节点类型约束；
 - 命令与审计在同一 Prisma 事务中提交；
 - 已完成、已退回、已取消等历史工序拒绝日期与分工修改；
 - 状态、当前节点、实际完成时间和专项结论没有直接写接口；
@@ -36,13 +37,17 @@ R26 后台已从占位页改造成真实数据管理控制中心。总览卡片�
 - 1024：保留横向滚动、筛选和抽屉；
 - 390：项目、工序和组织切换为可读卡片，复杂编辑明确提示使用桌面端。
 
+分工配置的详细字段、并发验证与飞书多维表格边界见
+`R26_ADMIN_ASSIGNMENT_GRID_REPORT.md` 和
+`R26_FEISHU_BITABLE_INTEGRATION_BOUNDARY.md`。
+
 ## 自动化结果
 
 ```text
 pnpm install --frozen-lockfile       PASS
 pnpm lint                            PASS
 pnpm typecheck                       PASS
-pnpm test                            PASS（Web 44 files / 170 tests；API 66 files / 298 tests）
+pnpm test                            PASS（Web 44 files / 172 tests；API 67 files / 301 tests）
 pnpm --filter web build              PASS
 pnpm --filter api build              PASS
 pnpm --filter api prisma:validate    PASS

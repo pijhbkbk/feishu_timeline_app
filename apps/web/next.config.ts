@@ -71,12 +71,18 @@ const nextConfig: NextConfig = {
     ];
   },
   async rewrites() {
+    const developmentApiProxy =
+      process.env.NODE_ENV === 'development'
+        ? [{ source: '/api/:path*', destination: 'http://localhost:3001/api/:path*' }]
+        : [];
+
     if (process.env.NEXT_PUBLIC_UI_VERSION !== 'v2') {
-      return [];
+      return developmentApiProxy;
     }
 
     return {
       beforeFiles: [
+        ...developmentApiProxy,
         { source: '/dashboard', destination: '/v2/dashboard' },
         { source: '/projects', destination: '/v2/projects' },
         {

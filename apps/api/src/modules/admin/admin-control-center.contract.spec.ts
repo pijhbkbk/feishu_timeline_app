@@ -56,9 +56,26 @@ describe('R26 administrator control center backend contracts', () => {
       'ADMIN_USER_STATUS_CHANGED',
       'ADMIN_DICTIONARY_ITEM_CHANGED',
       'ADMIN_WORKFLOW_TEMPLATE_VERSION_CREATED',
+      'ADMIN_PROJECT_NODE_ASSIGNMENT_CHANGED',
     ]) {
       expect(serviceSource).toContain(action);
     }
     expect(serviceSource.match(/createWithExecutor/g)?.length).toBeGreaterThanOrEqual(6);
+  });
+
+  it('exposes a preview-first editable node-assignment command with concurrency protection', () => {
+    expect(controllerSource).toContain(
+      "assignments/:nodeCode/preview",
+    );
+    expect(controllerSource).toContain(
+      "assignments/:nodeCode",
+    );
+    expect(serviceSource).toContain('buildNodeAssignmentPreview');
+    expect(serviceSource).toContain('memberAssignmentVersion: input.expectedVersion');
+    expect(serviceSource).toContain('STALE_MEMBER_ASSIGNMENT_VERSION');
+    expect(serviceSource).toContain(
+      'ProjectAssignmentSource.PROJECT_NODE_OVERRIDE',
+    );
+    expect(serviceSource).toContain('historicalTasksPreserved: true');
   });
 });

@@ -83,10 +83,22 @@ export function buildR26AssignmentPreview(input: {
   const departmentByCode = new Map(
     input.departments.map((department) => [department.code, department]),
   );
-  const primaryDepartment = materializeDepartment(
-    rule.primaryDepartment,
-    departmentByCode,
-  );
+  const configuredPrimaryDepartment = input.nodeAssignment?.primaryDepartmentId
+    ? input.departments.find(
+        (department) =>
+          department.id === input.nodeAssignment?.primaryDepartmentId,
+      ) ?? null
+    : null;
+  const primaryDepartment = configuredPrimaryDepartment
+    ? {
+        id: configuredPrimaryDepartment.id,
+        code: configuredPrimaryDepartment.code,
+        name: configuredPrimaryDepartment.name,
+        directoryCode: configuredPrimaryDepartment.code,
+        directoryName: configuredPrimaryDepartment.name,
+        isDirectoryMatched: true,
+      }
+    : materializeDepartment(rule.primaryDepartment, departmentByCode);
   const collaboratorDepartments = rule.collaboratorDepartments.map((departmentRule) =>
     materializeDepartment(departmentRule, departmentByCode),
   );

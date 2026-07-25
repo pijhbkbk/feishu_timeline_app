@@ -224,7 +224,42 @@ export type AdminAssignmentResponse = {
   projects: Array<{ id: string; code: string; name: string }>;
   selectedProjectId: string | null;
   projectVersion: number | null;
-  items: Array<Record<string, unknown>>;
+  schema: Array<{
+    key: string;
+    label: string;
+    type:
+      | 'REFERENCE'
+      | 'USER'
+      | 'MULTI_USER'
+      | 'SINGLE_SELECT'
+      | 'LONG_TEXT';
+  }>;
+  directory: {
+    departments: Array<{ id: string; code: string; name: string; path: string | null }>;
+    users: Array<{
+      id: string;
+      name: string;
+      departmentId: string | null;
+      departmentName: string | null;
+    }>;
+  };
+  items: Array<
+    Record<string, unknown> & {
+      nodeCode: string;
+      stepNumber: number;
+      stepName: string;
+      taskId: string | null;
+      taskStatus: string | null;
+      configuration: {
+        primaryDepartmentId: string | null;
+        ownerUserId: string | null;
+        collaboratorUserIds: string[];
+        reviewerUserIds: string[];
+        version: number;
+        updatedAt: string | null;
+      };
+    }
+  >;
 };
 
 export type AdminPermissionResponse = {
@@ -345,6 +380,32 @@ export function fetchAdminOrganization(
 export function fetchAdminAssignments(projectId?: string) {
   return apiRequest<AdminAssignmentResponse>(
     `/admin/assignments${buildQuery({ projectId })}`,
+  );
+}
+
+export function previewAdminNodeAssignment(
+  projectId: string,
+  nodeCode: string,
+  body: Record<string, unknown>,
+) {
+  return apiRequest<Record<string, unknown>>(
+    `/admin/projects/${encodeURIComponent(projectId)}/assignments/${encodeURIComponent(nodeCode)}/preview`,
+    { method: 'POST', body },
+  );
+}
+
+export function updateAdminNodeAssignment(
+  projectId: string,
+  nodeCode: string,
+  body: Record<string, unknown> & { idempotencyKey: string },
+) {
+  return apiRequest(
+    `/admin/projects/${encodeURIComponent(projectId)}/assignments/${encodeURIComponent(nodeCode)}`,
+    {
+      method: 'POST',
+      headers: commandHeaders(body.idempotencyKey),
+      body,
+    },
   );
 }
 

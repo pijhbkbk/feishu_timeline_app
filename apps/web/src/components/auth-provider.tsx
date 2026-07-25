@@ -122,12 +122,13 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }
 
   function applySession(session: SessionResponse) {
-    startTransition(() => {
-      setUser(session.user);
-      setMockEnabled(session.mockEnabled);
-      setFeishuEnabled(session.feishuEnabled);
-      setError(null);
-    });
+    // Authentication capability flags and the loading boundary must commit together.
+    // Deferring these values allowed the login page to briefly observe
+    // `isLoading=false` with both login methods still set to false.
+    setUser(session.user);
+    setMockEnabled(session.mockEnabled);
+    setFeishuEnabled(session.feishuEnabled);
+    setError(null);
   }
 
   const value: AuthContextValue = {

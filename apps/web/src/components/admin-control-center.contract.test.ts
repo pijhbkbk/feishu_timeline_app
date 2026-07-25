@@ -68,6 +68,25 @@ describe('R26 administrator control center contracts', () => {
     expect(clientSource).toContain("'Idempotency-Key'");
   });
 
+  it('provides a typed, preview-first assignment grid instead of a read-only matrix', () => {
+    for (const label of [
+      '关联字段',
+      '单选人员',
+      '多选人员',
+      '生效范围 · 单选',
+      '变更原因',
+      '编辑分工',
+    ]) {
+      expect(componentSource).toContain(label);
+    }
+    expect(clientSource).toContain('previewAdminNodeAssignment');
+    expect(clientSource).toContain('updateAdminNodeAssignment');
+    expect(componentSource).toContain('项目分工版本');
+    expect(componentSource).toContain('确认执行变更');
+    expect(cssSource).toContain('.admin-cc-editable-cell');
+    expect(cssSource).toContain('.admin-cc-person-field');
+  });
+
   it('switches complex tables to mobile read-only cards', () => {
     expect(cssSource).toContain('.admin-cc-mobile-list');
     expect(cssSource).toContain('@media (max-width: 700px)');
