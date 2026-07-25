@@ -80,8 +80,43 @@ echo '---'
 curl -I --max-time 5 http://127.0.0.1:3001/api/health || true
 echo '---'
 curl --max-time 5 http://127.0.0.1:3001/api/auth/session || true
-echo '---'
-curl --max-time 5 http://127.0.0.1:3001/api/auth/feishu/login-url || true
+echo '--- oauth start (sanitized) ---'
+python3 - <<'PY'
+import urllib.error
+import urllib.request
+from urllib.parse import parse_qs, urlparse
+
+class NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, request, file_pointer, code, message, headers, new_url):
+        return None
+
+opener = urllib.request.build_opener(NoRedirect)
+try:
+    response = opener.open(
+        'http://127.0.0.1:3001/api/auth/feishu/start',
+        timeout=5,
+    )
+except urllib.error.HTTPError as error:
+    response = error
+
+location = response.headers.get('Location', '')
+authorization = urlparse(location)
+callback = urlparse(parse_qs(authorization.query).get('redirect_uri', [''])[0])
+
+assert response.status == 302, f'expected 302, got {response.status}'
+assert authorization.scheme == 'https'
+assert authorization.netloc == 'accounts.feishu.cn'
+assert authorization.path == '/open-apis/authen/v1/index'
+assert callback.netloc == 'timeline.all-too-well.com'
+assert callback.path == '/login/callback'
+
+# Never print the authorization query: it contains app_id and the one-time OAuth state.
+print(
+    'code=302 '
+    f'authorization={authorization.netloc}{authorization.path} '
+    f'callback={callback.netloc}{callback.path}'
+)
+PY
 echo '--- origin https probes ---'
 curl -k -I --max-time 10 --resolve '$ROOT_DOMAIN:443:127.0.0.1' https://$ROOT_DOMAIN/ || true
 echo '---'
@@ -94,8 +129,10 @@ from pathlib import Path
 import shlex
 keys = {
     Path('$APP_ROOT/apps/api/.env.production'): [
+        'DEPLOYMENT_ENV',
         'FRONTEND_URL',
         'FEISHU_REDIRECT_URI',
+        'OAUTH_PROVIDER',
         'FEISHU_AUTHORIZATION_ENDPOINT',
         'AUTH_MOCK_ENABLED',
         'FEISHU_APP_ID',
@@ -103,7 +140,7 @@ keys = {
         'DATABASE_URL',
         'REDIS_URL',
     ],
-    Path('$APP_ROOT/apps/web/.env.production'): ['NEXT_PUBLIC_API_BASE_URL', 'NEXT_PUBLIC_FEISHU_APP_ID', 'NEXT_PUBLIC_ENABLE_MOCK_LOGIN', 'NEXT_PUBLIC_UI_VERSION', 'NEXT_PUBLIC_UI_DATA_MODE', 'V1_FALLBACK_ENABLED'],
+    Path('$APP_ROOT/apps/web/.env.production'): ['NEXT_PUBLIC_API_BASE_URL', 'NEXT_PUBLIC_ENABLE_MOCK_LOGIN', 'NEXT_PUBLIC_UI_VERSION', 'NEXT_PUBLIC_UI_DATA_MODE', 'V1_FALLBACK_ENABLED'],
 }
 for path, names in keys.items():
     print(f'[{path}]')
@@ -124,9 +161,9 @@ for path, names in keys.items():
     for name in names:
       value = data.get(name, '')
       if value:
-        if name in {'FRONTEND_URL', 'FEISHU_REDIRECT_URI', 'FEISHU_AUTHORIZATION_ENDPOINT', 'AUTH_MOCK_ENABLED', 'NEXT_PUBLIC_API_BASE_URL', 'NEXT_PUBLIC_ENABLE_MOCK_LOGIN', 'NEXT_PUBLIC_UI_VERSION', 'NEXT_PUBLIC_UI_DATA_MODE', 'V1_FALLBACK_ENABLED'}:
+        if name in {'DEPLOYMENT_ENV', 'FRONTEND_URL', 'FEISHU_REDIRECT_URI', 'OAUTH_PROVIDER', 'FEISHU_AUTHORIZATION_ENDPOINT', 'AUTH_MOCK_ENABLED', 'NEXT_PUBLIC_API_BASE_URL', 'NEXT_PUBLIC_ENABLE_MOCK_LOGIN', 'NEXT_PUBLIC_UI_VERSION', 'NEXT_PUBLIC_UI_DATA_MODE', 'V1_FALLBACK_ENABLED'}:
           print(f'{name}=<set:{value}>')
-        elif name in {'FEISHU_APP_ID', 'FEISHU_APP_SECRET', 'NEXT_PUBLIC_FEISHU_APP_ID'} and value in {'your_feishu_app_id', 'your_feishu_app_secret'}:
+        elif name in {'FEISHU_APP_ID', 'FEISHU_APP_SECRET'} and value in {'your_feishu_app_id', 'your_feishu_app_secret'}:
           print(f'{name}=<placeholder>')
         else:
           print(f'{name}=<set>')

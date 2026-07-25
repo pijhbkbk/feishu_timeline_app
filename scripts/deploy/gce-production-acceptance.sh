@@ -121,6 +121,36 @@ header_field() {
   grep -i "^${field}:" "$file" | head -n1 | cut -d' ' -f2- | tr -d '\r' || true
 }
 
+oauth_location_summary() {
+  local location="$1"
+  python3 - "$location" <<'PY'
+import sys
+from urllib.parse import parse_qs, urlparse
+
+location = sys.argv[1]
+try:
+    authorization = urlparse(location)
+    redirect_uri = parse_qs(authorization.query).get("redirect_uri", [""])[0]
+    callback = urlparse(redirect_uri)
+except Exception:
+    print("||||")
+    raise SystemExit(0)
+
+# Deliberately omit the query string: it contains app_id and the one-time OAuth state.
+print(
+    "|".join(
+        [
+            authorization.scheme,
+            authorization.netloc,
+            authorization.path,
+            callback.netloc,
+            callback.path,
+        ]
+    )
+)
+PY
+}
+
 print_section() {
   printf '\n## %s\n\n' "$1"
 }
@@ -234,13 +264,26 @@ else
   add_result "https://${APP_HOST}/api/auth/session" "authenticated=false, mockEnabled=false, feishuEnabled=true" "code=${PROBE_FINAL_CODE:-<none>} authenticated=${session_authenticated:-<none>} mockEnabled=${session_mock_enabled:-<none>} feishuEnabled=${session_feishu_enabled:-<none>}" "FAIL"
 fi
 
-probe_http "https://${APP_HOST}/api/auth/feishu/login-url"
-feishu_enabled="$(json_field "$PROBE_BODY" enabled)"
-feishu_login_url="$(json_field "$PROBE_BODY" loginUrl)"
-if [ "${PROBE_FINAL_CODE:-}" = "200" ] && [ "$feishu_enabled" = "true" ] && [ -n "$feishu_login_url" ] && [ "$feishu_login_url" != "null" ]; then
-  add_result "https://${APP_HOST}/api/auth/feishu/login-url" "enabled=true" "code=${PROBE_FINAL_CODE} enabled=${feishu_enabled}" "PASS"
+probe_http "https://${APP_HOST}/api/auth/feishu/start"
+oauth_summary="$(oauth_location_summary "${PROBE_LOCATION:-}")"
+IFS='|' read -r oauth_scheme oauth_host oauth_path oauth_callback_host oauth_callback_path <<<"$oauth_summary"
+if [ "${PROBE_DIRECT_CODE:-}" = "302" ] &&
+  [ "$oauth_scheme" = "https" ] &&
+  [ "$oauth_host" = "accounts.feishu.cn" ] &&
+  [ "$oauth_path" = "/open-apis/authen/v1/index" ] &&
+  [ "$oauth_callback_host" = "$APP_HOST" ] &&
+  [ "$oauth_callback_path" = "/login/callback" ]; then
+  add_result \
+    "https://${APP_HOST}/api/auth/feishu/start" \
+    "302 -> Feishu CN; callback=${APP_HOST}/login/callback" \
+    "code=${PROBE_DIRECT_CODE} authorization=${oauth_host}${oauth_path} callback=${oauth_callback_host}${oauth_callback_path}" \
+    "PASS"
 else
-  add_result "https://${APP_HOST}/api/auth/feishu/login-url" "enabled=true" "code=${PROBE_FINAL_CODE:-<none>} enabled=${feishu_enabled:-<none>} loginUrl=${feishu_login_url:-<none>}" "FAIL"
+  add_result \
+    "https://${APP_HOST}/api/auth/feishu/start" \
+    "302 -> Feishu CN; callback=${APP_HOST}/login/callback" \
+    "code=${PROBE_DIRECT_CODE:-<none>} authorization=${oauth_host:-<none>}${oauth_path:-} callback=${oauth_callback_host:-<none>}${oauth_callback_path:-}" \
+    "FAIL"
 fi
 
 print_section "远端运行时检查"
@@ -288,16 +331,14 @@ def load_env(path: Path) -> dict[str, str]:
     return data
 
 api_data = load_env(Path('/opt/feishu_timeline_app/apps/api/.env.production'))
-web_data = load_env(Path('/opt/feishu_timeline_app/apps/web/.env.production'))
 
-for key in ('FRONTEND_URL', 'FEISHU_REDIRECT_URI', 'FEISHU_AUTHORIZATION_ENDPOINT', 'AUTH_MOCK_ENABLED', 'REDIS_URL', 'DATABASE_URL'):
+for key in ('DEPLOYMENT_ENV', 'FRONTEND_URL', 'FEISHU_REDIRECT_URI', 'OAUTH_PROVIDER', 'FEISHU_AUTHORIZATION_ENDPOINT', 'AUTH_MOCK_ENABLED', 'REDIS_URL', 'DATABASE_URL'):
     print(f'env_{key}={"set" if api_data.get(key) else "missing"}')
-    if key in {'FRONTEND_URL', 'FEISHU_REDIRECT_URI', 'AUTH_MOCK_ENABLED'} and api_data.get(key):
+    if key in {'DEPLOYMENT_ENV', 'FRONTEND_URL', 'FEISHU_REDIRECT_URI', 'OAUTH_PROVIDER', 'FEISHU_AUTHORIZATION_ENDPOINT', 'AUTH_MOCK_ENABLED'} and api_data.get(key):
         print(f'value_{key}={api_data[key]}')
 
 print(f'placeholder_FEISHU_APP_ID={"true" if api_data.get("FEISHU_APP_ID") == "your_feishu_app_id" else "false"}')
 print(f'placeholder_FEISHU_APP_SECRET={"true" if api_data.get("FEISHU_APP_SECRET") == "your_feishu_app_secret" else "false"}')
-print(f'placeholder_NEXT_PUBLIC_FEISHU_APP_ID={"true" if web_data.get("NEXT_PUBLIC_FEISHU_APP_ID") == "your_feishu_app_id" else "false"}')
 PY
 REMOTE
 )"
@@ -353,11 +394,25 @@ else
   add_result "env_web_mode" "600" "${web_env_mode:-<missing>}" "FAIL"
 fi
 
+deployment_environment="$(remote_value value_DEPLOYMENT_ENV)"
+if [ "$deployment_environment" = "production" ]; then
+  add_result "env_DEPLOYMENT_ENV" "production" "$deployment_environment" "PASS"
+else
+  add_result "env_DEPLOYMENT_ENV" "production" "${deployment_environment:-<missing>}" "FAIL"
+fi
+
 frontend_url="$(remote_value value_FRONTEND_URL)"
 if [ "$frontend_url" = "https://${APP_HOST}" ]; then
   add_result "env_FRONTEND_URL" "https://${APP_HOST}" "$frontend_url" "PASS"
 else
   add_result "env_FRONTEND_URL" "https://${APP_HOST}" "${frontend_url:-<missing>}" "FAIL"
+fi
+
+oauth_provider="$(remote_value value_OAUTH_PROVIDER)"
+if [ "$oauth_provider" = "feishu-cn" ]; then
+  add_result "env_OAUTH_PROVIDER" "feishu-cn" "$oauth_provider" "PASS"
+else
+  add_result "env_OAUTH_PROVIDER" "feishu-cn" "${oauth_provider:-<missing>}" "FAIL"
 fi
 
 feishu_redirect_uri="$(remote_value value_FEISHU_REDIRECT_URI)"
@@ -374,11 +429,11 @@ else
   add_result "env_AUTH_MOCK_ENABLED" "false" "${auth_mock_enabled:-<missing>}" "FAIL"
 fi
 
-feishu_endpoint_state="$(remote_value env_FEISHU_AUTHORIZATION_ENDPOINT)"
-if [ "$feishu_endpoint_state" = "set" ]; then
-  add_result "env_FEISHU_AUTHORIZATION_ENDPOINT" "set" "$feishu_endpoint_state" "PASS"
+feishu_endpoint="$(remote_value value_FEISHU_AUTHORIZATION_ENDPOINT)"
+if [ "$feishu_endpoint" = "https://accounts.feishu.cn/open-apis/authen/v1/index" ]; then
+  add_result "env_FEISHU_AUTHORIZATION_ENDPOINT" "Feishu CN accounts host" "$feishu_endpoint" "PASS"
 else
-  add_result "env_FEISHU_AUTHORIZATION_ENDPOINT" "set" "${feishu_endpoint_state:-<missing>}" "FAIL"
+  add_result "env_FEISHU_AUTHORIZATION_ENDPOINT" "Feishu CN accounts host" "${feishu_endpoint:-<missing>}" "FAIL"
 fi
 
 redis_url_state="$(remote_value env_REDIS_URL)"
@@ -407,13 +462,6 @@ if [ "$api_app_secret_placeholder" = "false" ]; then
   add_result "env_FEISHU_APP_SECRET" "not example placeholder" "$api_app_secret_placeholder" "PASS"
 else
   add_result "env_FEISHU_APP_SECRET" "not example placeholder" "${api_app_secret_placeholder:-<missing>}" "FAIL"
-fi
-
-web_app_id_placeholder="$(remote_value placeholder_NEXT_PUBLIC_FEISHU_APP_ID)"
-if [ "$web_app_id_placeholder" = "false" ]; then
-  add_result "env_NEXT_PUBLIC_FEISHU_APP_ID" "not example placeholder" "$web_app_id_placeholder" "PASS"
-else
-  add_result "env_NEXT_PUBLIC_FEISHU_APP_ID" "not example placeholder" "${web_app_id_placeholder:-<missing>}" "FAIL"
 fi
 
 print_section "结论"

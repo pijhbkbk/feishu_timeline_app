@@ -12,8 +12,13 @@ import {
 } from './helpers';
 
 test('login entry opens Feishu directly without an intermediate choice page', async ({ page }) => {
-  const feishuTarget = 'http://localhost:3000/__test/feishu-login';
+  let startRequestCount = 0;
 
+  page.on('request', (request) => {
+    if (new URL(request.url()).pathname === '/api/auth/feishu/start') {
+      startRequestCount += 1;
+    }
+  });
   await page.route('**/api/auth/session', async (route) => {
     await route.fulfill({
       contentType: 'application/json',
@@ -25,13 +30,7 @@ test('login entry opens Feishu directly without an intermediate choice page', as
       }),
     });
   });
-  await page.route('**/api/auth/feishu/login-url', async (route) => {
-    await route.fulfill({
-      contentType: 'application/json',
-      body: JSON.stringify({ enabled: true, loginUrl: feishuTarget }),
-    });
-  });
-  await page.route('**/__test/feishu-login', async (route) => {
+  await page.route('https://accounts.feishu.cn/**', async (route) => {
     await route.fulfill({
       contentType: 'text/html; charset=utf-8',
       body: '<!doctype html><html><body><h1>飞书登录二维码</h1></body></html>',
@@ -41,13 +40,23 @@ test('login entry opens Feishu directly without an intermediate choice page', as
   await page.goto('/dashboard');
   await page.getByTestId('header-feishu-login').click();
 
-  await expect(page).toHaveURL(feishuTarget);
-  await expect(page.getByRole('heading', { name: '飞书登录二维码' })).toBeVisible();
+  await expect(page).toHaveURL((url) => {
+    return (
+      url.hostname === 'accounts.feishu.cn' &&
+      url.pathname === '/open-apis/authen/v1/index'
+    );
+  });
+  expect(startRequestCount).toBe(1);
 
   await page.goto('/login');
 
-  await expect(page).toHaveURL(feishuTarget);
-  await expect(page.getByRole('heading', { name: '飞书登录二维码' })).toBeVisible();
+  await expect(page).toHaveURL((url) => {
+    return (
+      url.hostname === 'accounts.feishu.cn' &&
+      url.pathname === '/open-apis/authen/v1/index'
+    );
+  });
+  expect(startRequestCount).toBe(2);
 });
 
 test('can create a project and open workflow browser views', async ({ page }) => {

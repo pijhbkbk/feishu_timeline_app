@@ -33,7 +33,8 @@ API:
 
 - `FRONTEND_URL=https://timeline.all-too-well.com`
 - `FEISHU_REDIRECT_URI=https://timeline.all-too-well.com/login/callback`
-- `FEISHU_AUTHORIZATION_ENDPOINT=https://open.feishu.cn/open-apis/authen/v1/index`
+- `OAUTH_PROVIDER=feishu-cn`
+- `FEISHU_AUTHORIZATION_ENDPOINT=https://accounts.feishu.cn/open-apis/authen/v1/index`
 - `DATABASE_URL`
 - `REDIS_URL`
 - `OBJECT_STORAGE_LOCAL_ROOT`
@@ -41,12 +42,11 @@ API:
 Web:
 
 - `NEXT_PUBLIC_API_BASE_URL=/api`
-- `NEXT_PUBLIC_FEISHU_APP_ID`
 
 说明：
 
 - [`apps/api/src/modules/feishu/feishu-auth.adapter.ts`](/Users/lixiaochen/Downloads/feishu_timeline_app/apps/api/src/modules/feishu/feishu-auth.adapter.ts) 会把 `FEISHU_REDIRECT_URI` 同时用于授权 URL 和 token exchange。
-- 同一个 adapter 还要求 `FEISHU_AUTHORIZATION_ENDPOINT` 非空，否则飞书登录会被视为“未配置”。
+- 同一个 adapter 还要求服务端 App ID、Secret、callback 和 Feishu CN provider 完整。
 - [`apps/api/src/main.ts`](/Users/lixiaochen/Downloads/feishu_timeline_app/apps/api/src/main.ts) 会使用 `FRONTEND_URL` 配置 CORS。
 - [`apps/api/src/modules/auth/auth.service.ts`](/Users/lixiaochen/Downloads/feishu_timeline_app/apps/api/src/modules/auth/auth.service.ts) 在生产环境下会使用 `secure` Cookie。
 

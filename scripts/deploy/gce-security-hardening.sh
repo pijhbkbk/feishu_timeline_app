@@ -120,10 +120,35 @@ if systemctl list-unit-files | grep -q '^fail2ban.service'; then
   systemctl is-active fail2ban
 fi
 curl -fsS https://timeline.all-too-well.com/api/auth/session >/dev/null
-curl -fsS https://timeline.all-too-well.com/api/auth/feishu/login-url >/dev/null
+python3 - <<'PY'
+import urllib.error
+import urllib.request
+from urllib.parse import parse_qs, urlparse
+
+class NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, request, file_pointer, code, message, headers, new_url):
+        return None
+
+opener = urllib.request.build_opener(NoRedirect)
+try:
+    response = opener.open(
+        'https://timeline.all-too-well.com/api/auth/feishu/start',
+        timeout=10,
+    )
+except urllib.error.HTTPError as error:
+    response = error
+
+authorization = urlparse(response.headers.get('Location', ''))
+callback = urlparse(parse_qs(authorization.query).get('redirect_uri', [''])[0])
+assert response.status == 302
+assert authorization.scheme == 'https'
+assert authorization.netloc == 'accounts.feishu.cn'
+assert authorization.path == '/open-apis/authen/v1/index'
+assert callback.netloc == 'timeline.all-too-well.com'
+assert callback.path == '/login/callback'
+PY
 curl -k -I https://timeline.all-too-well.com | grep -i '^strict-transport-security:' >/dev/null
 curl -k -I https://all-too-well.com | grep -i '^strict-transport-security:' >/dev/null
 echo backup_dir=\$backup_dir
 sudo sshd -T | egrep 'permitrootlogin|passwordauthentication|kbdinteractiveauthentication|pubkeyauthentication|maxauthtries|x11forwarding|allowagentforwarding|allowtcpforwarding|logingracetime'
 "
-

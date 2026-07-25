@@ -12,6 +12,7 @@ import {
 } from 'react';
 
 import {
+  API_BASE_URL,
   apiRequest,
   type FrontendRoleCode,
   type SessionResponse,
@@ -89,15 +90,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
   async function startFeishuLogin() {
     setError(null);
-    const response = await apiRequest<{ enabled: boolean; loginUrl: string | null }>(
-      '/auth/feishu/login-url',
-    );
-
-    if (!response.enabled || !response.loginUrl) {
-      throw new Error('飞书登录适配层未配置。');
-    }
-
-    window.location.href = response.loginUrl;
+    window.location.assign(`${API_BASE_URL}/auth/feishu/start`);
   }
 
   async function completeFeishuLogin(input: { code: string; state?: string | null }) {
