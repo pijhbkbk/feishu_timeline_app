@@ -17,7 +17,9 @@ workflow data or the frozen flow topology:
   action remains available in a dedicated action row.
 - Step 12 uses a tighter vertical content band around the center of its
   diamond.
-- Step 18 uses terminal-specific horizontal and vertical text offsets.
+- Step 18 uses terminal-specific horizontal and vertical text offsets and
+  removes the redundant deadline line from the compact map node; its detail
+  panel continues to show the complete timing information.
 - Node coordinates, dimensions, connectors, and workflow behavior remain
   unchanged.
 

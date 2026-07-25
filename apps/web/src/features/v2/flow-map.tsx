@@ -289,7 +289,7 @@ function NodeContent({
     ? node.x + node.width / 2
     : isMonthly
       ? node.x + 88
-      : node.x + (isTerminal ? 24 : 16);
+      : node.x + (isTerminal ? 28 : 16);
   const name = node.shortName ?? node.name;
   const lines = splitNodeName(name);
   const metaY = node.y + (isDecision ? 50 : isTerminal ? 20 : 18);
@@ -320,18 +320,20 @@ function NodeContent({
         <>
           <text
             x={contentX}
-            y={node.y + node.height - (isTerminal ? 26 : 24)}
+            y={node.y + node.height - (isTerminal ? 18 : 24)}
             className="r26-node-detail"
           >
             {node.owner}
           </text>
-          <text
-            x={contentX}
-            y={node.y + node.height - (isTerminal ? 12 : 8)}
-            className="r26-node-deadline"
-          >
-            {node.deadline}
-          </text>
+          {!isTerminal ? (
+            <text
+              x={contentX}
+              y={node.y + node.height - 8}
+              className="r26-node-deadline"
+            >
+              {node.deadline}
+            </text>
+          ) : null}
         </>
       ) : (
         <text x={contentX} y={node.y + 91} textAnchor="middle" className="r26-node-deadline">
