@@ -4271,6 +4271,64 @@ STOP_BEFORE_GATE3
 
 ---
 
+### Round R26P1_FORMAL_TENANT_PRODUCTION_REPROMOTION
+
+#### Goal And Scope
+
+- 保留 R26 V2、Gate 3D、数据库和安全修复；
+- 纠正并锁定飞书中国大陆 OAuth 配置；
+- 仅在正式团队真实 OAuth、生产回调、session、登出和有限业务冒烟通过后合并
+  `main`；
+- 不使用测试租户、staging App ID、Lark provider 或 production 业务写入绕过门禁。
+
+#### Exact Release
+
+```text
+fix commit        77fdba8546853f5138cceb7f83876614c270c4df
+runtime commit    5035f1b0ccbb09cd1990dc75dba6f65dd6a14248
+main merge        6e3fad3
+production URL    https://timeline.all-too-well.com
+provider          feishu-cn
+formal tenant     安徽江淮汽车集团股份有限公司
+formal user       李晓晨
+```
+
+#### Backup And Deployment
+
+- PostgreSQL dump：
+  `/var/backups/feishu-timeline-db/20260725T041532Z/feishu-timeline.dump`。
+- SHA256：
+  `ca23976e4193b8963ec3cf0077d2fc1e5110be17ef63577a3c6c11c91501386c`。
+- 44/44 tables、12/12 users、1/1 projects、22/22 audit logs 恢复演练通过。
+- production 运行 exact runtime，remote worktree clean；21 migrations、0 pending。
+- API/Web/Nginx/PostgreSQL/Redis active；API/Web restart 0。
+- 部署后 service error 和 Lark host 命中均为 0。
+
+#### Product Evidence
+
+- 正式飞书授权页、production callback 和 session 创建通过；
+- 退出登录后旧 session 失效，第二次真实登录通过；
+- 项目列表、工作台、18 节点项目工作区、生命周期复盘和管理员审计使用真实生产数据；
+- 未执行任何完成工序、进展、附件、成员、评审、收费、月度评审或退出写操作；
+- production 用户/项目/审计计数保持 `12 / 1 / 22`。
+
+完整证据：
+`docs/release/R26P1_PRODUCTION_REPROMOTION.md`。
+
+#### Decision
+
+```text
+R26P1_PRODUCTION_REPROMOTED
+FEISHU_CN_FORMAL_TENANT_OAUTH_PASS
+R26_V2_READ_ONLY_PRODUCTION_SMOKE_PASS
+PRODUCTION_BUSINESS_WRITES=0
+MAIN_INTEGRATED
+DEPLOYED_AND_OBSERVING
+STABLE_TAG_NOT_CREATED
+```
+
+---
+
 ### Round R26P_V2_PRODUCTION_PROMOTION
 
 #### Scope

@@ -116,3 +116,23 @@ Playwright 首次重跑曾因测试夹具仍模拟旧的 JSON 登录地址而失
 
 以上证据只证明修复候选具备进入 staging 的技术条件，不代表 production 正式应用
 租户/可用范围已经通过。
+
+## 最终关闭
+
+2026-07-25，产品负责人切换到正式团队后重新执行 production 门禁：
+
+```text
+FORMAL_TENANT=安徽江淮汽车集团股份有限公司
+FORMAL_USER=李晓晨
+FEISHU_AUTHORIZATION_PAGE=PASS
+PRODUCTION_CALLBACK=PASS
+SESSION_CREATION=PASS
+LOGOUT_AND_OLD_SESSION_INVALIDATION=PASS
+SECOND_LOGIN=PASS
+LARK_REQUEST_COUNT=0
+```
+
+因此根因结论关闭为：R26P 首次失败来自验收浏览器仍处于测试企业会话，与 production
+正式应用的租户/可用范围不匹配；不是 Lark provider，也不是 production Secret
+失效。生产重新发布和只读冒烟证据见
+`docs/release/R26P1_PRODUCTION_REPROMOTION.md`。
