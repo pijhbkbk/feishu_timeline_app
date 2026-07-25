@@ -4298,9 +4298,18 @@ pnpm test                     PASS (Web 143 / API 294)
 pnpm --filter web build       PASS
 pnpm --filter api build       PASS
 API prisma validate           PASS
-production deployment         PENDING
-production visual check       PENDING
+production deployment         PASS (85ca071)
+production visual check       PASS
 ```
+
+#### Production Evidence
+
+- 正式 `/dashboard` 桌面导航唯一激活项为“工作台”。
+- “进展提交”保持 `aria-disabled="true"`，且没有 `is-active` 或
+  `aria-current`。
+- 移动端导航唯一激活项同样为“工作台”。
+- 客户端错误入口计数为 `0`；Web、API、nginx 均正常。
+- 未执行数据库迁移或业务写请求。
 
 ---
 

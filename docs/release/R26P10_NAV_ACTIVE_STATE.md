@@ -29,3 +29,11 @@ pnpm --filter web build       PASS
 pnpm --filter api build       PASS
 API prisma validate           PASS
 ```
+
+## Production Result
+
+- Deployed application commit: `85ca071`
+- Desktop active navigation items: `工作台`
+- Mobile active navigation items: `工作台`
+- Progress item: disabled, without `is-active` or `aria-current`
+- Client error portal count: `0`
