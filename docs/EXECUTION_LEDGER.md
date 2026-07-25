@@ -4271,6 +4271,74 @@ STOP_BEFORE_GATE3
 
 ---
 
+### Round R26_ADMIN_DEPLOYMENT_TRUTH_AUDIT
+
+#### Goal And Scope
+
+- 只读确认 `a2296dd` 实际部署环境，以及公开生产
+  `https://timeline.all-too-well.com/admin/dictionaries` 仍显示后台骨架页的原因。
+- 不修改应用代码、不部署 production、不修改 production 数据、不合并 `main`、
+  不创建 tag。
+- 将本轮发现的交付真相与产品验收纪律固化到根目录 `AGENTS.md`。
+
+#### Evidence
+
+```text
+candidate commit
+  a2296dd17c6e07f4214484360021afffb2dc09c7
+candidate remote branch
+  origin/codex/r26-admin-table-control-center
+
+local staging URL
+  http://localhost:8080
+local staging Web/API/PostgreSQL image
+  a2296dd17c6e
+local staging /admin/dictionaries
+  真实 PROJECT_STATUS 5 行 + 4 项系统参数
+
+production URL
+  https://timeline.all-too-well.com
+production server HEAD
+  94d6fd01d8840416fb7154d302970d0a94a0c995
+production branch
+  master
+production origin/main
+  94d6fd01d8840416fb7154d302970d0a94a0c995
+production a2296dd object
+  missing
+production admin control Web/API source
+  missing / missing
+production /admin/[section] component
+  PagePlaceholder
+production placeholder build matches
+  3
+production nginx
+  / -> 127.0.0.1:3000
+  /api/ -> 127.0.0.1:3001
+```
+
+- production 的源码和实际 `.next` 构建均包含“已创建骨架”“后续按权限展示”等文案。
+- production Web/API systemd 进程均从 `/opt/feishu_timeline_app` 启动，Nginx upstream
+  正确；根因不是错误 upstream 或浏览器缓存，而是 production 运行了不含后台控制
+  中心的旧 commit。
+- `a2296dd` 的 `/admin/[section]` 已改为 `AdminControlCenter`，但只部署在本机 staging。
+
+#### Decision
+
+```text
+CODE_IMPLEMENTED=YES
+LOCAL_STAGING_DEPLOYED=YES
+LOCAL_STAGING_USER_PATH=PASS
+PRODUCTION_DEPLOYED=NO
+PRODUCTION_USER_PATH=FAIL
+ROOT_CAUSE=WRONG_RUNTIME_COMMIT_NOT_CONTAINING_ADMIN_CONTROL_CENTER
+CURRENT_STATUS=DEPLOYED_TO_DIFFERENT_STAGING
+PRODUCT_ACCEPTANCE=FAIL
+STOP_BEFORE_PRODUCTION_FIX
+```
+
+---
+
 ### Round R26_ADMIN_TABLE_CONTROL_CENTER
 
 #### Goal And Scope
