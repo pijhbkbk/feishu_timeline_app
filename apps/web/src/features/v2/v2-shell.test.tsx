@@ -1,9 +1,12 @@
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+const { pathnameState } = vi.hoisted(() => ({
+  pathnameState: { value: '/v2/dashboard' },
+}));
 vi.mock('next/navigation', () => ({
-  usePathname: () => '/v2/dashboard',
+  usePathname: () => pathnameState.value,
 }));
 
 vi.mock('../../components/auth-provider', () => ({
@@ -39,6 +42,10 @@ vi.mock('./r26-real-data-context', () => ({
 import { V2Shell } from './v2-shell';
 
 describe('V2 account menu', () => {
+  beforeEach(() => {
+    pathnameState.value = '/v2/dashboard';
+  });
+
   it('renders signed-in identity and a real logout action', () => {
     const html = renderToStaticMarkup(
       <V2Shell>
@@ -62,6 +69,22 @@ describe('V2 account menu', () => {
     expect(html.match(/aria-current="page"/g)).toHaveLength(2);
     expect(html.match(/aria-disabled="true"/g)).toHaveLength(2);
     expect(html).not.toMatch(
+      /class="is-active"[^>]*aria-current="page"[^>]*aria-disabled="true"/,
+    );
+  });
+
+  it('marks progress as current when its page is open even without an active task', () => {
+    pathnameState.value = '/v2/progress';
+
+    const html = renderToStaticMarkup(
+      <V2Shell>
+        <p>页面内容</p>
+      </V2Shell>,
+    );
+
+    expect(html.match(/aria-current="page"/g)).toHaveLength(2);
+    expect(html.match(/aria-disabled="true"/g)).toHaveLength(2);
+    expect(html).toMatch(
       /class="is-active"[^>]*aria-current="page"[^>]*aria-disabled="true"/,
     );
   });

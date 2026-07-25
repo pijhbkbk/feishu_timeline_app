@@ -23,6 +23,9 @@ administrator child routes without a reliable highlighted parent item.
   - 系统管理
 - Added prefix handling for all project, task, material, and administrator
   child routes.
+- Separated the progress entry's canonical active route from its dynamic
+  destination. With no current task it stays inactive on the dashboard while
+  still becoming current on progress and material pages.
 - Updated both desktop and mobile shells.
 - Updated legacy-shell active colors to the product brand blue.
 
@@ -37,10 +40,10 @@ The matrix covers 20 route variants, including:
 - administrator root, users, roles, audit, and V2 administrator routes.
 
 ```text
-targeted route/navigation tests PASS (29)
+targeted route/navigation tests PASS (30)
 full repository lint           PASS
 full repository typecheck      PASS
-full repository tests          PASS (Web 165 / API 294)
+full repository tests          PASS (Web 166 / API 294)
 Web production build           PASS
 API production build           PASS
 Prisma schema validation       PASS

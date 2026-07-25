@@ -23,6 +23,7 @@ import { useR26RealData } from './r26-real-data-context';
 type NavItem = {
   label: string;
   href: string;
+  activeHref?: string;
   enabled: boolean;
   icon: ComponentType<SVGProps<SVGSVGElement>>;
 };
@@ -51,6 +52,7 @@ export function V2Shell({ children }: { children: React.ReactNode }) {
           : realDataEnabled
             ? toProductHref('/v2/dashboard')
             : '/v2/progress?projectId=demo-r26&taskId=t006',
+      activeHref: toProductHref('/v2/progress'),
       enabled: !realDataEnabled || currentTask !== null,
       icon: ProgressIcon,
     },
@@ -101,9 +103,10 @@ export function V2Shell({ children }: { children: React.ReactNode }) {
 
           <nav className="r26-primary-nav" aria-label="V2 主导航">
             {navItems.map((item) => {
-              const isActive =
-                item.enabled &&
-                isTopNavigationItemActive(pathname, item.href);
+              const isActive = isTopNavigationItemActive(
+                pathname,
+                item.activeHref ?? item.href,
+              );
               return (
                 <Link
                   key={item.label}
@@ -182,9 +185,10 @@ export function V2Shell({ children }: { children: React.ReactNode }) {
       <nav className="r26-mobile-nav" aria-label="V2 移动端主导航">
         {navItems.map((item) => {
           const Icon = item.icon;
-          const isActive =
-            item.enabled &&
-            isTopNavigationItemActive(pathname, item.href);
+          const isActive = isTopNavigationItemActive(
+            pathname,
+            item.activeHref ?? item.href,
+          );
           return (
             <Link
               key={item.label}

@@ -4290,6 +4290,8 @@ STOP_BEFORE_GATE3
 - 顶层名称统一为：工作台、项目列表、我的任务、进展提交、系统管理。
 - 旧页面壳和 V2 页面壳均使用同一裁决；桌面端、移动端同步。
 - 旧页面壳的顶层和上下文当前项使用品牌蓝色。
+- 将 V2“进展提交”的当前路由归属与可点击状态分离：无活动任务时，
+  工作台不会误亮“进展提交”，但直接打开进展或材料页仍会正确高亮。
 
 #### Route Matrix
 
@@ -4302,12 +4304,12 @@ STOP_BEFORE_GATE3
 #### Validation
 
 ```text
-targeted route/navigation tests PASS (29)
+targeted route/navigation tests PASS (30)
 Web typecheck                   PASS
 Web lint                        PASS
 full repository lint           PASS
 full repository typecheck      PASS
-full repository tests          PASS (Web 165 / API 294)
+full repository tests          PASS (Web 166 / API 294)
 Web production build           PASS
 API production build           PASS
 Prisma schema validation       PASS
