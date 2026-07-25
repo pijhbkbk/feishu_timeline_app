@@ -4851,6 +4851,22 @@
   line-height: 1.55;
 }
 
+[data-ui-version="r26-v2"] .r26-completion-remediation {
+  display: grid;
+  justify-items: start;
+  gap: 12px;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid #edcaca;
+}
+
+[data-ui-version="r26-v2"] .r26-completion-remediation p {
+  margin: 0;
+  color: var(--r26-text-secondary);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
 [data-ui-version="r26-v2"] .r26-blocker-resolution-list,
 [data-ui-version="r26-v2"] .r26-completion-next-tasks {
   display: grid;

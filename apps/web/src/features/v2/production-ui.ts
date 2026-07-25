@@ -1,12 +1,16 @@
 import type { R26Viewer } from './real-types';
 
-const FORMAL_V2_PREFIXES = [
-  '/dashboard',
-  '/projects',
-  '/tasks',
-  '/progress',
-  '/materials',
-  '/admin',
+const FORMAL_V2_PATHS = [
+  /^\/dashboard$/,
+  /^\/projects$/,
+  /^\/projects\/[^/]+$/,
+  /^\/projects\/[^/]+\/actions\/[^/]+$/,
+  /^\/projects\/[^/]+\/retrospective$/,
+  /^\/tasks$/,
+  /^\/progress$/,
+  /^\/materials$/,
+  /^\/admin$/,
+  /^\/admin\/audit-logs$/,
 ];
 
 export function isProductionV2Ui(
@@ -16,9 +20,7 @@ export function isProductionV2Ui(
 }
 
 export function isFormalV2Path(pathname: string) {
-  return FORMAL_V2_PREFIXES.some(
-    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
-  );
+  return FORMAL_V2_PATHS.some((pattern) => pattern.test(pathname));
 }
 
 export function toProductHref(

@@ -438,6 +438,12 @@ export function PilotProductionWorkspace({
             </p>
           </div>
           <div className="inline-actions">
+            <Link
+              href={`/projects/${projectId}`}
+              className="button button-secondary"
+            >
+              返回项目工作区
+            </Link>
             <button
               type="button"
               className="button button-secondary"

@@ -10,6 +10,7 @@ import {
   getCompletionConfirmationState,
   getPrimaryCompletionTask,
 } from './completion-confirmation';
+import { getR26BusinessRecordAction } from './business-record-actions';
 import {
   createIdempotencyKey,
   r26Gate3Request,
@@ -1380,6 +1381,10 @@ function RealTaskDetail({
   onClose: () => void;
   onComplete: (task: R26TaskDetail) => void;
 }) {
+  const businessRecordAction = task
+    ? getR26BusinessRecordAction(task.nodeCode, task.projectId)
+    : null;
+
   return (
     <aside className="r26-task-detail" aria-label={`${node.name}工序详情`} data-testid="r26-task-detail">
       <header className="r26-task-detail__header">
@@ -1532,6 +1537,14 @@ function RealTaskDetail({
                 提交工作进展
               </Link>
             ) : null}
+            {businessRecordAction ? (
+              <Link
+                className="r26-button r26-button--secondary"
+                href={businessRecordAction.href}
+              >
+                {businessRecordAction.label}
+              </Link>
+            ) : null}
             {isGate3C1CompletableTask(task) ? (
               <button
                 type="button"
@@ -1589,6 +1602,10 @@ function CompletionDrawer({
   onClose: () => void;
 }) {
   const preview = state.preview;
+  const businessRecordAction = getR26BusinessRecordAction(
+    task.nodeCode,
+    task.projectId,
+  );
   const confirmation = getCompletionConfirmationState({
     pending: state.pending,
     canComplete: preview?.canComplete ?? false,
@@ -1698,6 +1715,17 @@ function CompletionDrawer({
                       <li key={reason}>{reason}</li>
                     ))}
                   </ul>
+                  {businessRecordAction ? (
+                    <div className="r26-completion-remediation">
+                      <p>{businessRecordAction.guidance}</p>
+                      <Link
+                        className="r26-button r26-button--primary"
+                        href={businessRecordAction.href}
+                      >
+                        {businessRecordAction.label}
+                      </Link>
+                    </div>
+                  ) : null}
                 </section>
               ) : null}
 

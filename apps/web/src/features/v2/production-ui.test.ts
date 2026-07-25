@@ -17,7 +17,15 @@ describe('production V2 routing', () => {
   it('recognizes formal application routes without matching login', () => {
     expect(isFormalV2Path('/dashboard')).toBe(true);
     expect(isFormalV2Path('/projects/project-1')).toBe(true);
+    expect(
+      isFormalV2Path('/projects/project-1/actions/cabin-review'),
+    ).toBe(true);
     expect(isFormalV2Path('/admin/audit-logs')).toBe(true);
+    expect(
+      isFormalV2Path('/projects/project-1/pilot-production'),
+    ).toBe(false);
+    expect(isFormalV2Path('/materials/upload')).toBe(false);
+    expect(isFormalV2Path('/tasks/pending')).toBe(false);
     expect(isFormalV2Path('/login')).toBe(false);
     expect(isFormalV2Path('/legacy/dashboard')).toBe(false);
   });

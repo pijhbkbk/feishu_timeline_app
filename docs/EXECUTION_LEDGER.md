@@ -4271,6 +4271,57 @@ STOP_BEFORE_GATE3
 
 ---
 
+### Round R26P8_FIRST_UNIT_PLAN_ENTRY
+
+#### Goal And Scope
+
+- 修复第 10 步要求“已确认的首台生产计划”却没有入口的问题。
+- 修复 `/projects/:projectId/pilot-production` 生产环境客户端崩溃。
+- 不创建、不确认任何真实计划，不推进当前工序。
+
+#### Root Cause
+
+```text
+production console:
+Error: useAuth must be used within AuthProvider.
+```
+
+- 正式 V2 路由识别将 `/projects` 的所有子路径都视为 V2 重写页面。
+- 首台生产计划是未被 V2 rewrite 接管的业务子页面，因此 `RootRuntime` 错误跳过
+  `AuthProvider`，页面在客户端渲染阶段崩溃。
+- 第 10 步完成前检查只返回后端阻断原因，未提供业务记录修复入口。
+
+#### Exact Changes
+
+- 正式 V2 路由识别改为与 `next.config.ts` 完全一致的精确路径集合。
+- `/projects/:projectId/pilot-production` 恢复 `AuthProvider` 和业务应用壳。
+- 第 10 步工序详情和完成阻断面板新增“新建并确认首台生产计划”。
+- 阻断面板明确说明“新建 → 在列表确认 → 返回工作区重新检查”。
+- 首台生产计划页面新增“返回项目工作区”。
+- 新增路由边界和业务修复入口测试。
+- 详细报告：`docs/release/R26P8_FIRST_UNIT_PLAN_ENTRY.md`。
+
+#### Validation
+
+```text
+targeted Web tests            PASS (15)
+Web typecheck                 PASS
+Web lint                      PASS
+git diff --check              PASS
+pnpm install                  PASS
+pnpm lint                     PASS
+pnpm typecheck                PASS
+pnpm test                     PASS (Web 139 / API 294)
+pnpm --filter web build       PASS
+pnpm --filter api build       PASS
+API prisma validate           PASS
+production deployment         PENDING
+production authenticated UI   PENDING
+production business writes    0
+```
+
+---
+
 ### Round R26P7_COMPLETION_NEXT_TASK_NAVIGATION
 
 #### Goal And Scope
