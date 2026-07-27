@@ -20,6 +20,10 @@ const workspaceSource = readFileSync(
   new URL('./real-workspace-page.tsx', import.meta.url),
   'utf8',
 );
+const stylesSource = readFileSync(
+  new URL('../../styles/r26-v2.css', import.meta.url),
+  'utf8',
+);
 
 describe('R26 Gate 2 real-data consistency contracts', () => {
   it('keeps the project list focused on data and actions without explanatory hero copy', () => {
@@ -28,6 +32,21 @@ describe('R26 Gate 2 real-data consistency contracts', () => {
       '先识别停滞、逾期和评审风险，再进入真实项目工作区。',
     );
     expect(projectsSource).toContain('data-testid="create-project-button"');
+  });
+
+  it('places the project-opening action inside the card content as a prominent primary control', () => {
+    expect(projectsSource).toContain('className="r26-project-card__header"');
+    expect(projectsSource).toContain('className="r26-project-card__open"');
+    expect(projectsSource).toContain('打开项目');
+    expect(projectsSource).not.toMatch(
+      /className="r26-project-card__action"[\s\S]{0,500}<Link[^>]*>\s*打开项目/,
+    );
+    expect(stylesSource).toMatch(
+      /\.r26-project-card__open\s*\{[\s\S]*?min-width:\s*168px;[\s\S]*?min-height:\s*54px;[\s\S]*?background:\s*var\(--r26-blue\);/,
+    );
+    expect(stylesSource).toMatch(
+      /@media \(max-width: 767px\)[\s\S]*?\.r26-project-card__open\s*\{[\s\S]*?width:\s*100%;/,
+    );
   });
 
   it('keeps decision and terminal node copy inside dedicated safe areas', () => {

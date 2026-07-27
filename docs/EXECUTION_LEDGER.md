@@ -1,5 +1,24 @@
 # EXECUTION_LEDGER.md
 
+## R26 项目列表主操作强化（2026-07-28）
+
+- Authorization：按产品负责人截图要求，将项目卡片的“打开项目”从最右侧弱链接移到卡片
+  正文右上方，并改为显眼的大按钮。
+- Scope：仅调整 V2 项目列表卡片结构、响应式样式与前端契约测试；不修改 API、数据库、
+  权限或工作流状态机，不部署 production。
+- UI：桌面端“打开项目”使用 168×54px 蓝底白字主按钮，带清晰阴影、悬停和键盘焦点
+  状态；右侧栏只保留流程进度环。移动端按钮自动占满卡片宽度，进度环独立居中显示。
+- Browser：在 `http://localhost:8080/projects` 使用真实数据验证；1280px 下按钮由原
+  79×44px、x=1103 移到 168×54px、x=854，页面无横向溢出；点击后进入对应项目 URL，
+  浏览器日志错误为 0。
+- Regression：新增结构和 CSS 契约，确保主操作位于卡片正文、尺寸不退化，且 767px 以下
+  保持 100% 宽度。
+- Validation：`pnpm install --frozen-lockfile`、lint、typecheck、全量测试、Web/API build、
+  Prisma validate 全部 PASS；Web 44 files / 166 tests，API 67 files / 307 tests。
+- Staging：本机独立 staging 五服务健康，23 migrations / 0 pending；production 未触碰。
+- Decision：`PROJECT_OPEN_ACTION_PROMOTED / REAL_CLICK_VERIFIED /
+  RESPONSIVE_CONTRACT_PROTECTED / PRODUCTION_NOT_TOUCHED`。
+
 ## R26 系统管理总览标题精简（2026-07-27）
 
 - Authorization：按产品负责人要求，删除系统管理总览左上角的“系统管理”“后台管理”及

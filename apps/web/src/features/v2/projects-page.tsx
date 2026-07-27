@@ -92,15 +92,28 @@ function PrototypeProjectsPage() {
         {visibleProjects.map((project) => (
           <article key={project.id} className={`r26-project-card r26-project-card--${project.tone}`}>
             <div className="r26-project-card__main">
-              <div className="r26-project-card__identity">
-                <span className="r26-project-color" style={{ background: project.colorHex }} aria-label={`${project.colorName}色样`} />
-                <div>
-                  <div className="r26-project-card__titleline">
-                    <h2>{project.name}</h2>
-                    <StatusPill tone={project.tone}>{project.status}</StatusPill>
+              <div className="r26-project-card__header">
+                <div className="r26-project-card__identity">
+                  <span className="r26-project-color" style={{ background: project.colorHex }} aria-label={`${project.colorName}色样`} />
+                  <div>
+                    <div className="r26-project-card__titleline">
+                      <h2>{project.name}</h2>
+                      <StatusPill tone={project.tone}>{project.status}</StatusPill>
+                    </div>
+                    <p>{project.currentStep}</p>
                   </div>
-                  <p>{project.currentStep}</p>
                 </div>
+                {project.id === 'demo-r26' ? (
+                  <Link className="r26-project-card__open" href="/v2/projects/demo-r26" data-testid="open-demo-r26-project">
+                    打开项目
+                    <ChevronRightIcon />
+                  </Link>
+                ) : (
+                  <button className="r26-project-card__open" type="button" onClick={() => showNotice(`${project.name}仅用于项目组合筛选展示。`)}>
+                    查看摘要
+                    <ChevronRightIcon />
+                  </button>
+                )}
               </div>
 
               <dl className="r26-project-card__facts">
@@ -124,17 +137,6 @@ function PrototypeProjectsPage() {
                 <strong>{project.progress}</strong>
                 <span>已完成</span>
               </div>
-              {project.id === 'demo-r26' ? (
-                <Link href="/v2/projects/demo-r26" data-testid="open-demo-r26-project">
-                  打开项目
-                  <ChevronRightIcon />
-                </Link>
-              ) : (
-                <button type="button" onClick={() => showNotice(`${project.name}仅用于项目组合筛选展示。`)}>
-                  查看摘要
-                  <ChevronRightIcon />
-                </button>
-              )}
             </div>
           </article>
         ))}
@@ -278,15 +280,21 @@ function RealProjectCard({ project }: { project: R26ProjectListItem }) {
       data-testid={`real-project-${project.id}`}
     >
       <div className="r26-project-card__main">
-        <div className="r26-project-card__identity">
-          <span className="r26-project-color r26-real-color" aria-hidden="true" />
-          <div>
-            <div className="r26-project-card__titleline">
-              <h2>{project.colorName ?? project.name}</h2>
-              <StatusPill tone={tone}>{projectStatusLabel(project, tone)}</StatusPill>
+        <div className="r26-project-card__header">
+          <div className="r26-project-card__identity">
+            <span className="r26-project-color r26-real-color" aria-hidden="true" />
+            <div>
+              <div className="r26-project-card__titleline">
+                <h2>{project.colorName ?? project.name}</h2>
+                <StatusPill tone={tone}>{projectStatusLabel(project, tone)}</StatusPill>
+              </div>
+              <p>{project.name} · {project.currentNodeName ?? '尚未启动流程'}</p>
             </div>
-            <p>{project.name} · {project.currentNodeName ?? '尚未启动流程'}</p>
           </div>
+          <Link className="r26-project-card__open" href={projectHref}>
+            打开项目
+            <ChevronRightIcon />
+          </Link>
         </div>
         <dl className="r26-project-card__facts">
           <div><dt>当前负责人</dt><dd>{project.currentTaskOwnerName ?? project.ownerName ?? '尚未分配'}</dd></div>
@@ -313,10 +321,6 @@ function RealProjectCard({ project }: { project: R26ProjectListItem }) {
           <strong>{project.progressText}</strong>
           <span>当前步骤</span>
         </div>
-        <Link href={projectHref}>
-          打开项目
-          <ChevronRightIcon />
-        </Link>
       </div>
     </article>
   );
