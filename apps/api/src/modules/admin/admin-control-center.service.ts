@@ -3175,7 +3175,7 @@ export class AdminControlCenterService {
         primaryDepartment: proposed.primaryDepartment,
         owner: proposed.suggestedOwner,
         collaborators: proposed.collaborators,
-        reviewers: proposed.reviewers,
+        reviewers: definition.isReviewNode ? proposed.reviewers : [],
         assignmentStatus: proposed.assignmentStatus,
         assignmentSource: proposed.assignmentSource,
       },

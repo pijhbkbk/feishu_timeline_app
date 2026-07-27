@@ -154,4 +154,10 @@ describe('R26 administrator control center backend contracts', () => {
     expect(serviceSource).toContain('primaryDepartmentId: resolvedDepartment?.id ?? null');
     expect(serviceSource).toContain('部门编码由服务端生成');
   });
+
+  it('uses the persisted workflow definition when previewing node reviewers', () => {
+    expect(serviceSource).toContain(
+      'reviewers: definition.isReviewNode ? proposed.reviewers : []',
+    );
+  });
 });
