@@ -78,7 +78,7 @@ const LIFECYCLE_ACTIONS: R26LifecycleAction[] = [
     eyebrow: '人工最终决定',
     description:
       '系统建议仅供参考；授权人员必须提交明确的人工决定后，项目与颜色主数据才会收尾。',
-    primaryActionLabel: '办理颜色退出',
+    primaryActionLabel: '颜色退出',
   },
 ];
 

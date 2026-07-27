@@ -20,6 +20,7 @@ describe('R26 Gate 3C2 / 3C3 lifecycle actions', () => {
   it('keeps monthly review and color exit as separate governance actions', () => {
     expect(getR26LifecycleActionByStep(17)?.slug).toBe('monthly-review');
     expect(getR26LifecycleActionByStep(18)?.slug).toBe('color-exit');
+    expect(getR26LifecycleActionByStep(18)?.primaryActionLabel).toBe('颜色退出');
     expect(getR26LifecycleActionByStep(11)).toBeNull();
   });
 

@@ -32,10 +32,11 @@ describe('R26 Gate 2 real-data consistency contracts', () => {
 
   it('keeps decision and terminal node copy inside dedicated safe areas', () => {
     expect(flowMapSource).toContain('isTerminal ? 28 : 16');
-    expect(flowMapSource).toContain('isDecision ? 50 : isTerminal ? 20 : 18');
-    expect(flowMapSource).toContain('isDecision ? 72 : isTerminal ? 40 : 36');
+    expect(flowMapSource).toContain('isDecision ? 50 : isTerminal ? 24 : 20');
+    expect(flowMapSource).toContain('isDecision ? 72 : isTerminal ? 46 : 40');
     expect(flowMapSource).toContain('!isTerminal ? (');
-    expect(flowMapSource).toContain('isTerminal ? 18 : 24');
+    expect(flowMapSource).toContain('isTerminal ? 20 : 26');
+    expect(flowMapSource).toContain('node.y + node.height - 12');
     expect(flowMapSource).toContain('node.y + 91');
   });
 

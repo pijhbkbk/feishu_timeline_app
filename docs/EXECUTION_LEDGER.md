@@ -4339,6 +4339,65 @@ STOP_BEFORE_GATE3
 
 ---
 
+### Round R26_FLOW_MAP_TEXT_SAFE_AREA_FIX
+
+#### Goal And Scope
+
+- 修复固定流程地图第 18 步文字与圆角边框距离过小的问题，并逐一检查全部 18 个节点。
+- 将第 18 步详情面板主动作从“办理颜色退出”收敛为“颜色退出”。
+- 不改变冻结的 `1440 × 1740` 画布、节点坐标、节点尺寸、流程连线或后端状态机。
+
+#### Exact Changes
+
+- 普通、月度和终止节点的标题、负责人、截止时间基线统一增加上下安全区。
+- “已创建”角标只在尚未开始或待处理的普通/支线节点显示；完成态以及第 12、17、18 步
+  不再重复显示该角标，避免角标与状态、标题或圆角边框冲突。
+- 第 18 步终止节点使用独立文字内边距；详情面板主动作更新为“颜色退出”。
+- 新增节点角标显示规则单元测试，并同步更新既有真实数据一致性契约测试。
+
+#### Browser Evidence
+
+```text
+staging URL                  http://localhost:8080
+project                      cmrz2ldw60001o0019ks1qv0h
+flow nodes                   18 / 18
+text overlaps                0
+step 12 diamond max ratio    0.9（< 1，文字全部位于菱形内部）
+step 18 minimum inset        11.5px
+new button label count       1
+old button label count       0
+console warnings/errors      0 / 0
+```
+
+- 使用已登录真实会话打开项目工作区，点击第 18 步并检查流程地图内部滚动、选中态、详情抽屉和
+  主动作。
+- 第 15～18 步在同一可视区域内无文字重叠；第 18 步选中描边与文字之间保留清晰空隙。
+
+#### Validation
+
+```text
+pnpm install --frozen-lockfile       PASS
+pnpm lint                            PASS
+pnpm typecheck                       PASS
+pnpm test                            PASS（Web 43 files / 164 tests；API 67 files / 307 tests）
+pnpm --filter web build              PASS
+pnpm --filter api build              PASS
+pnpm --filter api prisma:validate    PASS
+git diff --check                     PASS
+```
+
+#### Decision
+
+```text
+R26_FLOW_MAP_TEXT_SAFE_AREAS_FIXED
+ALL_18_FLOW_NODES_CHECKED
+COLOR_EXIT_ACTION_LABEL_CORRECTED
+LOCAL_STAGING_VERIFIED
+PRODUCTION_NOT_DEPLOYED
+```
+
+---
+
 ### Round R26_REMOVE_THREE_REDUNDANT_PAGES
 
 #### Goal And Scope

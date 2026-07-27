@@ -292,19 +292,20 @@ function NodeContent({
       : node.x + (isTerminal ? 28 : 16);
   const name = node.shortName ?? node.name;
   const lines = splitNodeName(name);
-  const metaY = node.y + (isDecision ? 50 : isTerminal ? 20 : 18);
-  const nameY = node.y + (isDecision ? 72 : isTerminal ? 40 : 36);
+  const metaY = node.y + (isDecision ? 50 : isTerminal ? 24 : 20);
+  const nameY = node.y + (isDecision ? 72 : isTerminal ? 46 : 40);
   const textAnchor = isDecision ? 'middle' : undefined;
+  const showCornerMarker = shouldShowNodeCornerMarker(node, status, created);
 
   return (
     <g className="r26-node-copy" pointerEvents="none">
       <text x={contentX} y={metaY} textAnchor={textAnchor} className="r26-node-meta">
         {`第 ${String(node.step).padStart(2, '0')} 步 · ${r26StatusLabels[status]}`}
       </text>
-      {(created || node.isBlocked) && !isDecision ? (
+      {showCornerMarker ? (
         <text
-          x={node.x + node.width - 12}
-          y={node.y + 18}
+          x={node.x + node.width - 16}
+          y={node.y + 20}
           textAnchor="end"
           className="r26-node-created"
         >
@@ -320,7 +321,7 @@ function NodeContent({
         <>
           <text
             x={contentX}
-            y={node.y + node.height - (isTerminal ? 18 : 24)}
+            y={node.y + node.height - (isTerminal ? 20 : 26)}
             className="r26-node-detail"
           >
             {node.owner}
@@ -328,7 +329,7 @@ function NodeContent({
           {!isTerminal ? (
             <text
               x={contentX}
-              y={node.y + node.height - 8}
+              y={node.y + node.height - 12}
               className="r26-node-deadline"
             >
               {node.deadline}
@@ -344,6 +345,18 @@ function NodeContent({
       )}
     </g>
   );
+}
+
+export function shouldShowNodeCornerMarker(
+  node: Pick<R26FlowNode, 'shape' | 'isBlocked'>,
+  status: R26NodeStatus,
+  created: boolean,
+) {
+  if (node.shape === 'decision' || node.shape === 'monthly' || node.shape === 'terminal') {
+    return false;
+  }
+
+  return Boolean(node.isBlocked || (created && (status === 'NOT_STARTED' || status === 'PENDING')));
 }
 
 function splitNodeName(name: string) {
