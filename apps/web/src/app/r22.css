@@ -1591,6 +1591,7 @@ a {
 .r22-retro-actions > div { display: flex; align-items: center; gap: 14px; }
 .r22-retro-actions small { max-width: 460px; color: var(--r22-muted); line-height: 1.5; text-align: right; }
 
+.r22-admin-toolbar { display: flex; align-items: center; justify-content: flex-end; }
 .r22-admin-module-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; }
 .r22-admin-module-card { display: grid; align-content: start; gap: 18px; min-height: 280px; color: var(--r22-text); transition: transform 160ms ease, box-shadow 160ms ease; }
 .r22-admin-module-card:hover { transform: translateY(-3px); box-shadow: var(--r22-shadow-hover); }

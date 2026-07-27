@@ -29,7 +29,16 @@ export function AdminDashboardR22() {
 
   return (
     <div className="r22-page r22-admin-page" data-testid="admin-page">
-      <header className="r22-page-hero"><div><p className="r22-overline">系统管理</p><h1>后台管理</h1><p>组织、权限、流程参数和审计风险集中在一个管理员工作台。</p></div><button type="button" className="r22-button r22-button-secondary" disabled={isLoading} onClick={() => void load()}>刷新数据</button></header>
+      <div className="r22-admin-toolbar">
+        <button
+          type="button"
+          className="r22-button r22-button-secondary"
+          disabled={isLoading}
+          onClick={() => void load()}
+        >
+          刷新数据
+        </button>
+      </div>
       {error ? <div className="r22-inline-alert"><span>{error}</span><button type="button" onClick={() => void load()}>重新加载</button></div> : null}
       {data ? <>
         <section className="r22-kpi-grid"><R22Kpi label="启用用户" value={data.summary.activeUsers} hint="当前可登录系统" tone="brand" /><R22Kpi label="启用部门" value={data.summary.activeDepartments} hint="有效组织单元" tone="neutral" /><R22Kpi label="启用角色" value={data.summary.activeRoles} hint="当前权限角色" tone="monthly" /><R22Kpi label="异常动作" value={data.summary.anomalyCount} hint="近 30 天需关注" tone={data.summary.anomalyCount > 0 ? 'danger' : 'success'} /></section>

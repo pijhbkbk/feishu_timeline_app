@@ -1,5 +1,22 @@
 # EXECUTION_LEDGER.md
 
+## R26 系统管理总览标题精简（2026-07-27）
+
+- Authorization：按产品负责人要求，删除系统管理总览左上角的“系统管理”“后台管理”及
+  “组织、权限、流程参数和审计风险集中在一个管理员工作台。”三行说明。
+- Scope：仅调整系统管理总览的 Web 结构与样式；保留“刷新数据”、统计卡片和全部管理入口；
+  不修改 API、数据库、权限或工作流状态机，不部署 production。
+- UI：移除原 `r22-page-hero`，将刷新操作收敛为独立右对齐工具栏，避免删除标题后遗留无效
+  标题占位；工具栏与统计卡片间距为 32px，页面无横向溢出。
+- Browser：在 `http://localhost:8080/admin` 真实刷新并点击“刷新数据”；三段指定文案在
+  `admin-page` 中命中数均为 0，刷新按钮 1 个、统计卡片 4 张、管理入口 5 个，错误提示 0。
+- Regression：补充组件契约断言，禁止“后台管理”标题和原说明文案回归。
+- Validation：`pnpm install --frozen-lockfile`、lint、typecheck、全量测试、Web/API build、
+  Prisma validate 全部 PASS；Web 44 files / 165 tests，API 67 files / 307 tests。
+- Staging：本机独立 staging 五服务健康，23 migrations / 0 pending；production 未触碰。
+- Decision：`ADMIN_OVERVIEW_COPY_REMOVED / REFRESH_AND_MANAGEMENT_ENTRY_PRESERVED /
+  LOCAL_STAGING_VERIFIED / PRODUCTION_NOT_TOUCHED`。
+
 ## R26 组织与人员完整配置（2026-07-27）
 
 - Authorization：按产品负责人要求，使超级管理员能够调整系统用户、公司部门和项目成员

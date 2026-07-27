@@ -88,9 +88,11 @@ describe('R22 product component contracts', () => {
     for (const label of ['阶段用时对比', '经验与改进', '后续改进措施', '完成复盘']) {
       expect(retrospectiveSource).toContain(label);
     }
-    for (const label of ['r22-admin-module-card', '组织、权限、流程参数和审计风险', '近期异常与敏感动作']) {
+    for (const label of ['r22-admin-toolbar', 'r22-admin-module-card', '近期异常与敏感动作']) {
       expect(adminSource).toContain(label);
     }
+    expect(adminSource).not.toContain('<h1>后台管理</h1>');
+    expect(adminSource).not.toContain('组织、权限、流程参数和审计风险集中在一个管理员工作台。');
   });
 
   it('renders empty, error and permission state variants', () => {
