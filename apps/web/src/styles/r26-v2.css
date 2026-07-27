@@ -78,6 +78,10 @@
   backdrop-filter: saturate(180%) blur(20px);
 }
 
+[data-ui-version="r26-v2"] .r26-app-header:has(.r26-account-menu[open]) {
+  z-index: 1200;
+}
+
 [data-ui-version="r26-v2"] .r26-app-header__inner {
   display: grid;
   grid-template-columns: minmax(210px, 1fr) auto minmax(210px, 1fr);

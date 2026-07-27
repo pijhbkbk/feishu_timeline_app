@@ -4398,6 +4398,59 @@ PRODUCTION_NOT_DEPLOYED
 
 ---
 
+### Round R26_ACCOUNT_MENU_OVERLAY_FIX
+
+#### Goal And Scope
+
+- 修复项目工作区滚动后，右上角账号菜单被固定工序详情抽屉遮挡的问题。
+- 账号菜单展开时必须位于工序详情、完成确认等工作流弹层之上；关闭后恢复正常顶部栏层级。
+- 不修改登录/退出接口、流程状态机、数据库、V1 或 production。
+
+#### Exact Changes
+
+- 保留顶部栏默认 `z-index: 80`，仅在 `.r26-account-menu[open]` 时将顶部栏提升至
+  `z-index: 1200`，高于工作流抽屉遮罩的 `z-index: 1000`。
+- 新增弹层层级契约测试，防止后续抽屉样式再次覆盖账号菜单。
+
+#### Browser Evidence
+
+```text
+staging URL                      http://localhost:8080
+project                          cmrz2ldw60001o0019ks1qv0h
+selected node                    第 18 步 · 颜色退出
+page scrollY                     1342px
+account/workflow overlap height  143px
+open account header z-index      1200
+workflow drawer layer            <= 1000
+top element in overlap           r26-account-popover__identity
+logout action visible/clickable  PASS
+console warnings/errors          0 / 0
+```
+
+#### Validation
+
+```text
+pnpm install --frozen-lockfile       PASS
+pnpm lint                            PASS
+pnpm typecheck                       PASS
+pnpm test                            PASS（Web 44 files / 165 tests；API 67 files / 307 tests）
+pnpm --filter web build              PASS
+pnpm --filter api build              PASS
+pnpm --filter api prisma:validate    PASS
+git diff --check                     PASS
+```
+
+#### Decision
+
+```text
+R26_ACCOUNT_MENU_OVERLAY_FIXED
+LOGOUT_ACTION_REMAINS_ACCESSIBLE_ABOVE_WORKFLOW_DRAWERS
+LOCAL_STAGING_VERIFIED
+PRODUCTION_NOT_DEPLOYED
+```
+
+---
+
 ### Round R26_REMOVE_THREE_REDUNDANT_PAGES
 
 #### Goal And Scope
