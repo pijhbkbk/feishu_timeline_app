@@ -27,7 +27,7 @@ export function buildContentSecurityPolicy(nonce: string, isDevelopment: boolean
     "img-src 'self' data: blob:",
     "font-src 'self' data:",
     `style-src-elem ${styleElementSources.join(' ')}`,
-    // A small number of flow-map/progress components require dynamic style attributes.
+    // A small number of flow-map components require dynamic style attributes.
     // Keeping this separate prevents it from authorizing arbitrary inline <style> blocks.
     "style-src-attr 'unsafe-inline'",
     `script-src ${scriptSources.join(' ')}`,

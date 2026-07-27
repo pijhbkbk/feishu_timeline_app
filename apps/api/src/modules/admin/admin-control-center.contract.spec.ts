@@ -55,7 +55,6 @@ describe('R26 administrator control center backend contracts', () => {
     for (const pattern of directUpdatePatterns) {
       expect(serviceSource).not.toMatch(pattern);
     }
-    expect(serviceSource).toContain('SPECIAL_LOCKED_NODE_CODES');
     expect(serviceSource).toContain('HISTORY_LOCKED');
   });
 
@@ -65,8 +64,6 @@ describe('R26 administrator control center backend contracts', () => {
       'ADMIN_TASK_SCHEDULE_CHANGED',
       'ADMIN_TASK_ASSIGNMENT_CHANGED',
       'ADMIN_USER_STATUS_CHANGED',
-      'ADMIN_DICTIONARY_ITEM_CHANGED',
-      'ADMIN_WORKFLOW_TEMPLATE_VERSION_CREATED',
       'ADMIN_PROJECT_NODE_ASSIGNMENT_CHANGED',
     ]) {
       expect(serviceSource).toContain(action);
@@ -128,7 +125,7 @@ describe('R26 administrator control center backend contracts', () => {
     );
     const departmentCommand = serviceSource.slice(
       serviceSource.indexOf('async changeDepartmentConfiguration('),
-      serviceSource.indexOf('async changeDictionaryItem('),
+      serviceSource.indexOf('async exportTasksCsv('),
     );
     expect(userCommand).toContain('return this.executeAdminCommand({');
     expect(departmentCommand).toContain('return this.executeAdminCommand({');

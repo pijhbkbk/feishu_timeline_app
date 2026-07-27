@@ -7,7 +7,6 @@ const FORMAL_V2_PATHS = [
   /^\/projects\/[^/]+\/actions\/[^/]+$/,
   /^\/projects\/[^/]+\/retrospective$/,
   /^\/tasks$/,
-  /^\/progress$/,
   /^\/materials$/,
   /^\/admin$/,
   /^\/admin\/[^/]+$/,

@@ -40,9 +40,6 @@ export class AdminService {
       activeUsers,
       activeDepartments,
       activeRoles,
-      activeTemplates,
-      activeNodes,
-      activeParameters,
       anomalyCount,
       anomalies,
       activeProjects,
@@ -57,9 +54,6 @@ export class AdminService {
       this.prisma.user.count({ where: { status: UserStatus.ACTIVE } }),
       this.prisma.department.count({ where: { isActive: true } }),
       this.prisma.role.count({ where: { status: RoleStatus.ACTIVE } }),
-      this.prisma.processTemplate.count({ where: { status: 'ACTIVE' } }),
-      this.prisma.workflowNodeDefinition.count({ where: { isActive: true } }),
-      this.prisma.systemParameter.count({ where: { isActive: true } }),
       this.prisma.auditLog.count({ where: anomalyWhere }),
       this.prisma.auditLog.findMany({
         where: anomalyWhere,
@@ -150,7 +144,7 @@ export class AdminService {
       summary: {
         activeUsers,
         activeDepartments,
-        activeTemplates,
+        activeRoles,
         anomalyCount,
         projects: {
           active: activeProjects,
@@ -193,13 +187,6 @@ export class AdminService {
           description: '查看 18 节点分工矩阵和真实 RBAC 权限边界。',
           href: '/admin/assignments',
           metric: `${activeRoles} 个启用角色 · ${unassignedTasks} 个待分配`,
-        },
-        {
-          key: 'workflow',
-          title: '流程模板',
-          description: '查看模板版本、18 节点和锁定的特殊规则。',
-          href: '/admin/workflow-templates',
-          metric: `${activeTemplates} 套模板 · ${activeNodes} 个节点 · ${activeParameters} 项参数`,
         },
         {
           key: 'audit',

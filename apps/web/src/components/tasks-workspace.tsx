@@ -126,7 +126,7 @@ function getTaskAction(item: TaskListItem, completed: boolean) {
   if (item.nodeCode === 'DEVELOPMENT_ACCEPTANCE') return { label: '处理收费', href: item.projectHref };
   if (item.nodeCode === 'VISUAL_COLOR_DIFFERENCE_REVIEW') return { label: '填写月度评审', href: item.projectHref };
   if (item.nodeCode === 'PROJECT_CLOSED') return { label: '确认退出结论', href: item.projectHref };
-  return { label: '提交工作进展', href: `/progress?taskId=${item.taskId}` };
+  return { label: '打开工序', href: item.projectHref };
 }
 
 function formatRelativeDate(value: string) {

@@ -64,19 +64,10 @@ function PrototypeDashboardPage() {
           </div>
 
           <div className="r26-current-task__action">
-            {progressSubmitted ? (
-              <PrimaryLink href="/v2/projects/demo-r26?taskId=t006" testId="dashboard-primary-action">
-                查看项目工作区
-              </PrimaryLink>
-            ) : (
-              <PrimaryLink
-                href="/v2/progress?projectId=demo-r26&taskId=t006"
-                testId="dashboard-primary-action"
-              >
-                提交工作进展
-              </PrimaryLink>
-            )}
-            <p>预计用时 60 秒</p>
+            <PrimaryLink href="/v2/projects/demo-r26?taskId=t006" testId="dashboard-primary-action">
+              打开当前工序
+            </PrimaryLink>
+            <p>进入项目工作区查看材料、记录与可执行动作</p>
           </div>
         </div>
 
@@ -238,12 +229,12 @@ function RealDashboardPage() {
             </div>
             <div className="r26-current-task__action">
               <PrimaryLink
-                href={toProductHref(`/v2/progress?projectId=${encodeURIComponent(currentTask.projectId)}&taskId=${encodeURIComponent(currentTask.taskId)}`)}
+                href={toProductHref(`/v2/projects/${encodeURIComponent(currentTask.projectId)}?taskId=${encodeURIComponent(currentTask.taskId)}`)}
                 testId="dashboard-primary-action"
               >
-                提交工作进展
+                打开当前工序
               </PrimaryLink>
-              <p>预计用时 60 秒，不会自动完成工序</p>
+              <p>在项目工作区查看材料、记录与可执行动作</p>
             </div>
           </div>
           <aside className="r26-current-task__side" aria-label="当前任务事实">

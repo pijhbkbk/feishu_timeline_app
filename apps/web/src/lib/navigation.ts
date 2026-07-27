@@ -37,8 +37,6 @@ export type AdminSectionKey =
   | 'organization'
   | 'assignments'
   | 'permissions'
-  | 'workflow-templates'
-  | 'dictionaries'
   | 'audit-logs';
 
 type RouteContext = {
@@ -83,12 +81,6 @@ export const topNavigationItems: NavItem[] = [
     matchMode: 'prefix',
   },
   {
-    label: '进展提交',
-    href: '/progress',
-    icon: '+',
-    description: '60 秒提交真实进展',
-  },
-  {
     label: '系统管理',
     href: '/admin',
     icon: '◌',
@@ -114,14 +106,6 @@ export function isTopNavigationItemActive(pathname: string, href: string) {
     return (
       normalizedPathname === '/tasks' ||
       normalizedPathname.startsWith('/tasks/')
-    );
-  }
-
-  if (normalizedHref === '/progress') {
-    return (
-      normalizedPathname === '/progress' ||
-      normalizedPathname === '/materials' ||
-      normalizedPathname.startsWith('/materials/')
     );
   }
 
@@ -311,18 +295,6 @@ export const adminSectionMetaMap: Record<AdminSectionKey, AdminSectionMeta> = {
     description: '服务端 RBAC 权限矩阵。',
     requiredRoles: ['admin'],
   },
-  'workflow-templates': {
-    key: 'workflow-templates',
-    label: '流程模板',
-    description: '模板版本、节点参数和锁定规则。',
-    requiredRoles: ['admin'],
-  },
-  dictionaries: {
-    key: 'dictionaries',
-    label: '基础字典',
-    description: '业务枚举和系统参数。',
-    requiredRoles: ['admin'],
-  },
   'audit-logs': {
     key: 'audit-logs',
     label: '审计与异常',
@@ -506,14 +478,6 @@ export function getRouteContext(pathname: string): RouteContext {
       title: '我的任务',
       description: '按状态和紧迫度查看需要我处理的任务。',
       eyebrow: '任务中心',
-    };
-  }
-
-  if (pathname === '/progress') {
-    return {
-      title: '进展提交',
-      description: '记录做了什么、是否阻塞以及本次提交的材料。',
-      eyebrow: '进展驱动',
     };
   }
 

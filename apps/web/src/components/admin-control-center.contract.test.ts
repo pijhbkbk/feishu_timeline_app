@@ -35,13 +35,13 @@ describe('R26 administrator control center contracts', () => {
       '组织与人员',
       '分工配置',
       '角色权限',
-      '流程模板',
-      '基础字典',
       '审计与异常',
     ]) {
       expect(componentSource).toContain(label);
     }
     expect(componentSource).not.toContain('已创建骨架');
+    expect(componentSource).not.toContain('流程模板');
+    expect(componentSource).not.toContain('基础字典');
     expect(rewriteSource).toContain("source: '/admin/:section'");
   });
 
@@ -91,7 +91,6 @@ describe('R26 administrator control center contracts', () => {
     expect(cssSource).toContain('.admin-cc-mobile-list');
     expect(cssSource).toContain('@media (max-width: 700px)');
     expect(componentSource).toContain('请在桌面端完成编辑');
-    expect(componentSource).toContain('移动端只读');
   });
 
   it('exposes full super-administrator organization controls instead of a read-only ledger', () => {

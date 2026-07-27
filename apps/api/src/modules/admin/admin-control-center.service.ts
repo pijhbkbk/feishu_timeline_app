@@ -11,7 +11,6 @@ import {
   AttachmentTargetType,
   AuditTargetType,
   Prisma,
-  ProcessTemplateStatus,
   ProjectAssignmentSource,
   ProjectMemberType,
   ProjectStatus,
@@ -39,7 +38,6 @@ import {
   type AdminAssignmentPreviewDto,
   type AdminBatchTaskChangeDto,
   type AdminBatchTaskPreviewDto,
-  type AdminDictionaryChangeDto,
   type AdminDepartmentConfigurationChangeDto,
   type AdminDepartmentConfigurationPreviewDto,
   type AdminLedgerQueryDto,
@@ -50,7 +48,6 @@ import {
   type AdminSavedViewDto,
   type AdminScheduleChangeDto,
   type AdminSchedulePreviewDto,
-  type AdminTemplateVersionDto,
   type AdminTaskScheduleImportDto,
   type AdminTaskScheduleImportPreviewDto,
   type AdminUserStatusChangeDto,
@@ -73,16 +70,6 @@ const REVIEW_NODE_CODES = [
   WorkflowNodeCode.COLOR_CONSISTENCY_REVIEW,
   WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW,
 ];
-
-const SPECIAL_LOCKED_NODE_CODES = new Set<WorkflowNodeCode>([
-  WorkflowNodeCode.SAMPLE_COLOR_CONFIRMATION,
-  WorkflowNodeCode.PAINT_PROCUREMENT,
-  WorkflowNodeCode.PERFORMANCE_TEST,
-  WorkflowNodeCode.CAB_REVIEW,
-  WorkflowNodeCode.DEVELOPMENT_ACCEPTANCE,
-  WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW,
-  WorkflowNodeCode.PROJECT_CLOSED,
-]);
 
 @Injectable()
 export class AdminControlCenterService {
@@ -1145,107 +1132,6 @@ export class AdminControlCenterService {
         backendRequired: true,
         frontendOnlyDenied: true,
       },
-    };
-  }
-
-  async getWorkflowTemplates() {
-    const [templates, definitions] = await Promise.all([
-      this.prisma.processTemplate.findMany({
-        orderBy: [{ code: 'asc' }, { createdAt: 'desc' }],
-      }),
-      this.prisma.workflowNodeDefinition.findMany({
-        orderBy: { sequence: 'asc' },
-      }),
-    ]);
-    return {
-      templates: templates.map((template) => {
-        const metadata = this.readObject(template.metadata);
-        return {
-          id: template.id,
-          code: template.code,
-          version: template.version,
-          name: template.name,
-          description: template.description,
-          status: template.status,
-          isDefault: template.isDefault,
-          effectiveAt: this.readString(metadata.effectiveAt),
-          createdAt: template.createdAt.toISOString(),
-          dataVersion: template.updatedAt.toISOString(),
-        };
-      }),
-      nodes: definitions.map((definition) => ({
-        id: definition.id,
-        step: Math.round(definition.sequence / 10),
-        stepCode: definition.stepCode,
-        nodeCode: definition.nodeCode,
-        name: definition.name,
-        durationType: definition.durationType,
-        durationValue: definition.durationValue,
-        isMain: definition.isBlocking,
-        isBlocking: definition.isBlocking,
-        isReviewNode: definition.isReviewNode,
-        allowManualDueAt: definition.allowManualDueAt,
-        requiredOutput: this.readString(
-          this.readObject(definition.formSchema).requiredOutput,
-        ),
-        requiredMaterials: this.readStringList(
-          definition.requiredAttachments,
-        ),
-        defaultChargeAmount: definition.defaultChargeAmount?.toString() ?? null,
-        lockedRule: SPECIAL_LOCKED_NODE_CODES.has(definition.nodeCode),
-        lockReason: SPECIAL_LOCKED_NODE_CODES.has(definition.nodeCode)
-          ? '特殊拓扑或业务门禁由服务端状态机锁定，不能在表格中直接改写。'
-          : null,
-        isActive: definition.isActive,
-        dataVersion: definition.updatedAt.toISOString(),
-      })),
-    };
-  }
-
-  async getDictionaries() {
-    const [items, parameters] = await Promise.all([
-      this.prisma.systemEnumItem.findMany({
-        orderBy: [{ category: 'asc' }, { sortOrder: 'asc' }, { code: 'asc' }],
-      }),
-      this.prisma.systemParameter.findMany({
-        orderBy: [{ category: 'asc' }, { code: 'asc' }],
-      }),
-    ]);
-    const groups = new Map<string, typeof items>();
-    for (const item of items) {
-      groups.set(item.category, [...(groups.get(item.category) ?? []), item]);
-    }
-    return {
-      categories: [...groups.entries()].map(([category, categoryItems]) => ({
-        category,
-        items: categoryItems.map((item) => ({
-          id: item.id,
-          code: item.code,
-          name: item.name,
-          sortOrder: item.sortOrder,
-          isActive: item.isActive,
-          metadata: item.metadata,
-          locked: this.isSystemDictionaryItem(item.category, item.code),
-          dataVersion: item.updatedAt.toISOString(),
-        })),
-      })),
-      parameters: parameters.map((parameter) => ({
-        id: parameter.id,
-        category: parameter.category,
-        code: parameter.code,
-        valueType: parameter.valueType,
-        value:
-          parameter.valueText ??
-          parameter.valueNumber?.toString() ??
-          parameter.valueBoolean ??
-          parameter.valueJson,
-        description: parameter.description,
-        isActive: parameter.isActive,
-        locked:
-          parameter.code === 'FIXED_DEVELOPMENT_FEE' ||
-          parameter.valueNumber?.toString() === '10000',
-        dataVersion: parameter.updatedAt.toISOString(),
-      })),
     };
   }
 
@@ -2510,164 +2396,6 @@ export class AdminControlCenterService {
     });
   }
 
-  async changeDictionaryItem(
-    itemId: string,
-    input: AdminDictionaryChangeDto,
-    actor: AuthenticatedUser,
-    requestId: string,
-  ) {
-    return this.executeAdminCommand({
-      projectId: null,
-      action: 'ADMIN_DICTIONARY_ITEM_CHANGED',
-      input,
-      actor,
-      execute: async (tx) => {
-        const item = await tx.systemEnumItem.findUnique({
-          where: { id: itemId },
-        });
-        if (!item) {
-          throw new NotFoundException('字典项不存在。');
-        }
-        if (this.isSystemDictionaryItem(item.category, item.code)) {
-          throw new ConflictException({
-            code: 'SYSTEM_DICTIONARY_ITEM_LOCKED',
-            message: '系统保留字典项不可修改。',
-          });
-        }
-        this.assertDateVersion(item.updatedAt, input.expectedVersion, '字典项');
-        const updated = await tx.systemEnumItem.update({
-          where: { id: item.id },
-          data: {
-            ...(input.name !== undefined ? { name: input.name.trim() } : {}),
-            ...(input.isActive !== undefined
-              ? { isActive: input.isActive }
-              : {}),
-            ...(input.sortOrder !== undefined
-              ? { sortOrder: input.sortOrder }
-              : {}),
-          },
-        });
-        const audit = await this.activityLogsService.createWithExecutor(tx, {
-          projectId: null,
-          actorUserId: actor.id,
-          targetType: AuditTargetType.SYSTEM,
-          targetId: item.id,
-          action: 'ADMIN_DICTIONARY_ITEM_CHANGED',
-          summary: `修改字典项 ${item.category}/${item.code}`,
-          beforeData: {
-            name: item.name,
-            isActive: item.isActive,
-            sortOrder: item.sortOrder,
-          },
-          afterData: {
-            name: updated.name,
-            isActive: updated.isActive,
-            sortOrder: updated.sortOrder,
-          },
-          metadata: {
-            requestId,
-            idempotencyKey: input.idempotencyKey,
-            reason: input.reason.trim(),
-            result: 'SUCCESS',
-          },
-        });
-        return {
-          itemId,
-          itemVersion: updated.updatedAt.toISOString(),
-          auditLogIds: [audit.id],
-        };
-      },
-    });
-  }
-
-  async createTemplateVersion(
-    templateId: string,
-    input: AdminTemplateVersionDto,
-    actor: AuthenticatedUser,
-    requestId: string,
-  ) {
-    return this.executeAdminCommand({
-      projectId: null,
-      action: 'ADMIN_WORKFLOW_TEMPLATE_VERSION_CREATED',
-      input,
-      actor,
-      execute: async (tx) => {
-        const source = await tx.processTemplate.findUnique({
-          where: { id: templateId },
-        });
-        if (!source) {
-          throw new NotFoundException('流程模板不存在。');
-        }
-        const effectiveAt = new Date(input.effectiveAt);
-        if (effectiveAt.getTime() <= Date.now()) {
-          throw new BadRequestException('新模板版本生效日期必须晚于当前时间。');
-        }
-        const duplicate = await tx.processTemplate.findUnique({
-          where: {
-            code_version: {
-              code: source.code,
-              version: input.version,
-            },
-          },
-        });
-        if (duplicate) {
-          throw new ConflictException({
-            code: 'TEMPLATE_VERSION_EXISTS',
-            message: '该模板版本已经存在。',
-          });
-        }
-        const created = await tx.processTemplate.create({
-          data: {
-            code: source.code,
-            version: input.version,
-            name: source.name,
-            description: input.description ?? source.description,
-            status: ProcessTemplateStatus.DRAFT,
-            isDefault: false,
-            metadata: {
-              ...this.readObject(source.metadata),
-              effectiveAt: effectiveAt.toISOString(),
-              sourceTemplateId: source.id,
-              nodeOverrides: input.nodeOverrides ?? [],
-              createdBy: actor.id,
-              reason: input.reason.trim(),
-            } as Prisma.InputJsonValue,
-          },
-        });
-        const audit = await this.activityLogsService.createWithExecutor(tx, {
-          projectId: null,
-          actorUserId: actor.id,
-          targetType: AuditTargetType.SYSTEM,
-          targetId: created.id,
-          action: 'ADMIN_WORKFLOW_TEMPLATE_VERSION_CREATED',
-          summary: `创建流程模板 ${source.code} ${created.version}`,
-          beforeData: {
-            sourceTemplateId: source.id,
-            sourceVersion: source.version,
-          },
-          afterData: {
-            templateId: created.id,
-            version: created.version,
-            effectiveAt: effectiveAt.toISOString(),
-            status: created.status,
-          },
-          metadata: {
-            requestId,
-            idempotencyKey: input.idempotencyKey,
-            reason: input.reason.trim(),
-            result: 'SUCCESS',
-          },
-        });
-        return {
-          templateId: created.id,
-          version: created.version,
-          status: created.status,
-          auditLogIds: [audit.id],
-        };
-      },
-    });
-  }
-
   async exportTasksCsv(query: AdminLedgerQueryDto) {
     const result = await this.listTasks({ ...query, page: 1, pageSize: 100 });
     const rows = [
@@ -3607,14 +3335,6 @@ export class AdminControlCenterService {
 
   private iso(value: Date | null | undefined) {
     return value?.toISOString() ?? null;
-  }
-
-  private isSystemDictionaryItem(category: string, code: string) {
-    return (
-      category === 'WORKFLOW_STATUS' ||
-      category === 'PROJECT_STATUS' ||
-      code === 'FIXED_DEVELOPMENT_FEE'
-    );
   }
 
   private csvCell(value: string) {

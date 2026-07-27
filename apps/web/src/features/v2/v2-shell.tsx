@@ -11,7 +11,6 @@ import {
   BellIcon,
   HelpIcon,
   HomeIcon,
-  ProgressIcon,
   ProjectIcon,
   RetrospectiveIcon,
   SearchIcon,
@@ -40,24 +39,8 @@ export function V2Shell({ children }: { children: React.ReactNode }) {
   const [toast, setToast] = useState<string | null>(null);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const { user, logout } = useAuth();
-  const { enabled: realDataEnabled, dashboardResponse, viewer } = useR26RealData();
-  const currentTask = dashboardResponse?.dashboard.currentTask ?? null;
-  const navItems: NavItem[] = [
-    ...baseNavItems.slice(0, 3),
-    {
-      label: '进展提交',
-      href:
-        realDataEnabled && currentTask
-          ? toProductHref(`/v2/progress?projectId=${encodeURIComponent(currentTask.projectId)}&taskId=${encodeURIComponent(currentTask.taskId)}`)
-          : realDataEnabled
-            ? toProductHref('/v2/dashboard')
-            : '/v2/progress?projectId=demo-r26&taskId=t006',
-      activeHref: toProductHref('/v2/progress'),
-      enabled: !realDataEnabled || currentTask !== null,
-      icon: ProgressIcon,
-    },
-    ...baseNavItems.slice(3),
-  ];
+  const { enabled: realDataEnabled, viewer } = useR26RealData();
+  const navItems = baseNavItems;
 
   function showStaticMessage(message: string) {
     setToast(message);

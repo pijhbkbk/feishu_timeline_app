@@ -41,7 +41,8 @@ describe('TasksWorkspace', () => {
 
     expect(html).toContain('项目A');
     expect(html).toContain('涂料采购');
-    expect(html).toContain('/progress?taskId=task-1');
+    expect(html).toContain('/projects/project-1/paint-procurement');
+    expect(html).toContain('打开工序');
     expect(html).toContain('逾期');
   });
 

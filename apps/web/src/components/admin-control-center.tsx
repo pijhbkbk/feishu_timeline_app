@@ -6,16 +6,13 @@ import React, { useCallback, useEffect, useState } from 'react';
 
 import {
   applyAdminTaskImport,
-  createAdminTemplateVersion,
   createAdminProjectMember,
   fetchAdminAssignments,
-  fetchAdminDictionaries,
   fetchAdminOrganization,
   fetchAdminPermissions,
   fetchAdminProjects,
   fetchAdminSavedViews,
   fetchAdminTasks,
-  fetchAdminWorkflowTemplates,
   getAdminTaskExportUrl,
   getAdminTaskImportTemplateUrl,
   previewAdminAssignment,
@@ -29,7 +26,6 @@ import {
   saveAdminView,
   updateAdminAssignment,
   updateAdminBatchTasks,
-  updateAdminDictionary,
   updateAdminDepartmentConfiguration,
   updateAdminNodeAssignment,
   updateAdminProject,
@@ -38,13 +34,11 @@ import {
   updateAdminUserConfiguration,
   removeAdminProjectMember,
   type AdminAssignmentResponse,
-  type AdminDictionaryResponse,
   type AdminOrganizationResponse,
   type AdminPermissionResponse,
   type AdminProjectRow,
   type AdminSavedView,
   type AdminTaskRow,
-  type AdminWorkflowResponse,
 } from '../lib/admin-client';
 
 export type AdminControlSection =
@@ -52,9 +46,7 @@ export type AdminControlSection =
   | 'tasks'
   | 'organization'
   | 'assignments'
-  | 'permissions'
-  | 'workflow-templates'
-  | 'dictionaries';
+  | 'permissions';
 
 type AdminNavigationSection = AdminControlSection | 'audit-logs';
 
@@ -68,8 +60,6 @@ const sections: Array<{
   { key: 'organization', label: '组织与人员', description: '用户、部门和项目成员' },
   { key: 'assignments', label: '分工配置', description: '项目 18 节点责任矩阵' },
   { key: 'permissions', label: '角色权限', description: '服务端 RBAC 权限矩阵' },
-  { key: 'workflow-templates', label: '流程模板', description: '模板版本和节点参数' },
-  { key: 'dictionaries', label: '基础字典', description: '业务枚举和系统参数' },
   { key: 'audit-logs', label: '审计与异常', description: '关键操作与失败记录' },
 ];
 
@@ -129,16 +119,6 @@ const pageMeta: Record<AdminControlSection, { eyebrow: string; title: string; de
     title: '角色与权限',
     description: '展示后端实际执行的 RBAC 矩阵；系统角色和边界规则保持锁定。',
   },
-  'workflow-templates': {
-    eyebrow: '流程治理',
-    title: '流程模板与节点',
-    description: '节点拓扑只读；变更通过新模板版本影响未来项目，不改写运行中项目。',
-  },
-  dictionaries: {
-    eyebrow: '参数治理',
-    title: '基础字典与参数',
-    description: '仅开放非系统保留项的受控维护，冻结业务规则不能直接编辑。',
-  },
 };
 
 type LoadState = {
@@ -147,8 +127,6 @@ type LoadState = {
   organization?: AdminOrganizationResponse;
   assignments?: AdminAssignmentResponse;
   permissions?: AdminPermissionResponse;
-  workflow?: AdminWorkflowResponse;
-  dictionaries?: AdminDictionaryResponse;
 };
 
 type DialogState =
@@ -165,8 +143,6 @@ type DialogState =
   | { kind: 'organizationUser'; mode: 'create' | 'edit'; row?: Record<string, unknown>; response: AdminOrganizationResponse }
   | { kind: 'department'; mode: 'create' | 'edit'; row?: Record<string, unknown>; response: AdminOrganizationResponse }
   | { kind: 'member'; mode: 'create' | 'edit' | 'remove'; row?: Record<string, unknown>; response: AdminOrganizationResponse }
-  | { kind: 'dictionary'; row: AdminDictionaryResponse['categories'][number]['items'][number] }
-  | { kind: 'template'; row: AdminWorkflowResponse['templates'][number] }
   | null;
 
 export function AdminControlCenter({ section }: { section: AdminControlSection }) {
@@ -224,12 +200,8 @@ export function AdminControlCenter({ section }: { section: AdminControlSection }
         const result = await fetchAdminAssignments(projectId || undefined);
         setData({ assignments: result });
         if (!projectId && result.selectedProjectId) setProjectId(result.selectedProjectId);
-      } else if (section === 'permissions') {
-        setData({ permissions: await fetchAdminPermissions() });
-      } else if (section === 'workflow-templates') {
-        setData({ workflow: await fetchAdminWorkflowTemplates() });
       } else {
-        setData({ dictionaries: await fetchAdminDictionaries() });
+        setData({ permissions: await fetchAdminPermissions() });
       }
       try {
         setSavedViews(await fetchAdminSavedViews(section));
@@ -409,8 +381,6 @@ export function AdminControlCenter({ section }: { section: AdminControlSection }
           />
         ) : null}
         {section === 'permissions' && data.permissions ? <PermissionsTable response={data.permissions} /> : null}
-        {section === 'workflow-templates' && data.workflow ? <WorkflowTable response={data.workflow} onVersion={(row) => setDialog({ kind: 'template', row })} /> : null}
-        {section === 'dictionaries' && data.dictionaries ? <DictionariesTable response={data.dictionaries} onEdit={(row) => setDialog({ kind: 'dictionary', row })} /> : null}
       </section>
 
       {pageInfo ? <Pagination page={page} totalPages={pageInfo.totalPages} total={pageInfo.total} onChange={setPage} /> : null}
@@ -608,31 +578,6 @@ function PermissionsTable({ response }: { response: AdminPermissionResponse }) {
   );
 }
 
-function WorkflowTable({ response, onVersion }: { response: AdminWorkflowResponse; onVersion: (row: AdminWorkflowResponse['templates'][number]) => void }) {
-  const firstTemplate = response.templates[0];
-  return (
-    <div className="admin-cc-stack">
-      <section><div className="admin-cc-section-title"><div><h2>模板版本</h2><p>新版本只影响未来项目，运行中项目继续使用原版本。</p></div>{firstTemplate ? <button type="button" className="admin-cc-button admin-cc-button--primary admin-cc-desktop-action" onClick={() => onVersion(firstTemplate)}>新建模板版本</button> : null}</div>
-        <div className="admin-cc-table-wrap"><table className="admin-cc-table"><thead><tr><th>模板</th><th>版本</th><th>状态</th><th>默认</th><th>生效日期</th><th>数据版本</th></tr></thead><tbody>{response.templates.map((template) => <tr key={template.id}><td><strong>{template.name}</strong><small>{template.code}</small></td><td>{template.version}</td><td><StatusBadge value={readText(template.status)} /></td><td>{readBoolean(template.isDefault) ? '是' : '否'}</td><td>{formatDate(readText(template.effectiveAt))}</td><td><code>{shortVersion(readText(template.dataVersion))}</code></td></tr>)}</tbody></table></div>
-      </section>
-      <section><div className="admin-cc-section-title"><div><h2>18 节点参数</h2><p>拓扑、专项门禁和关键规则由服务端锁定。</p></div></div>
-        <div className="admin-cc-table-wrap"><table className="admin-cc-table"><thead><tr><th>步骤</th><th>节点</th><th>工期</th><th>主线</th><th>评审</th><th>必交材料</th><th>参数来源</th><th>规则状态</th></tr></thead><tbody>{response.nodes.map((node) => <tr key={node.id}><td>{node.step}</td><td><strong>{node.name}</strong><small>{node.nodeCode}</small></td><td>{readNumber(node.durationValue)} {readText(node.durationType)}</td><td>{readBoolean(node.isMain) ? '是' : '非阻塞'}</td><td>{readBoolean(node.isReviewNode) ? '评审节点' : '普通节点'}</td><td>{namesFromUnknown(node.requiredMaterials)}</td><td>模板默认</td><td>{readBoolean(node.lockedRule) ? <span title={readText(node.lockReason)}>服务端锁定</span> : '版本化维护'}</td></tr>)}</tbody></table></div>
-      </section>
-      <p className="admin-cc-mobile-note">移动端只读；模板版本管理请使用桌面端。</p>
-    </div>
-  );
-}
-
-function DictionariesTable({ response, onEdit }: { response: AdminDictionaryResponse; onEdit: (row: AdminDictionaryResponse['categories'][number]['items'][number]) => void }) {
-  return (
-    <div className="admin-cc-stack">
-      {response.categories.map((category) => <section key={category.category}><div className="admin-cc-section-title"><div><h2>{category.category}</h2><p>{category.items.length} 个真实字典项</p></div></div><div className="admin-cc-table-wrap"><table className="admin-cc-table"><thead><tr><th>编码</th><th>名称</th><th>顺序</th><th>状态</th><th>保护</th><th>数据版本</th><th>操作</th></tr></thead><tbody>{category.items.map((item) => <tr key={item.id}><td><code>{item.code}</code></td><td>{item.name}</td><td>{item.sortOrder}</td><td>{item.isActive ? '启用' : '停用'}</td><td>{item.locked ? '系统保留' : '可维护'}</td><td><code>{shortVersion(item.dataVersion)}</code></td><td><button type="button" disabled={item.locked} onClick={() => onEdit(item)}>{item.locked ? '已锁定' : '编辑'}</button></td></tr>)}</tbody></table></div></section>)}
-      <section><div className="admin-cc-section-title"><div><h2>系统参数</h2><p>收费标准、流程控制等核心参数只读展示。</p></div></div><div className="admin-cc-table-wrap"><table className="admin-cc-table"><thead><tr><th>分类</th><th>编码</th><th>类型</th><th>值</th><th>说明</th><th>状态</th></tr></thead><tbody>{response.parameters.map((parameter) => <tr key={parameter.id}><td>{readText(parameter.category)}</td><td><code>{readText(parameter.code)}</code></td><td>{readText(parameter.valueType)}</td><td>{formatUnknown(parameter.value)}</td><td>{readText(parameter.description)}</td><td>{readBoolean(parameter.locked) ? '服务端锁定' : '只读'}</td></tr>)}</tbody></table></div></section>
-      <p className="admin-cc-mobile-note">移动端只读；字典维护请使用桌面端。</p>
-    </div>
-  );
-}
-
 function AdminEditDialog({ state, onClose, onSuccess }: { state: Exclude<DialogState, null>; onClose: () => void; onSuccess: (message: string) => Promise<void> }) {
   const [form, setForm] = useState<Record<string, string | boolean | string[]>>(() => initialForm(state));
   const [preview, setPreview] = useState<Record<string, unknown> | null>(null);
@@ -760,25 +705,6 @@ function AdminEditDialog({ state, onClose, onSuccess }: { state: Exclude<DialogS
           else await updateAdminProjectMember(projectId, userId, commandBody);
           await onSuccess(state.mode === 'create' ? '项目成员已添加并写入审计日志。' : '项目成员职责与分工关系已更新。');
         }
-      } else if (state.kind === 'dictionary') {
-        await updateAdminDictionary(state.row.id, {
-          idempotencyKey: crypto.randomUUID(),
-          expectedVersion: state.row.dataVersion,
-          name: String(form.name),
-          sortOrder: Number(form.sortOrder),
-          isActive: Boolean(form.isActive),
-          reason: String(form.reason),
-        });
-        await onSuccess('字典项已更新并写入审计日志。');
-      } else if (state.kind === 'template') {
-        await createAdminTemplateVersion(state.row.id, {
-          idempotencyKey: crypto.randomUUID(),
-          version: String(form.version),
-          effectiveAt: new Date(String(form.effectiveAt)).toISOString(),
-          description: String(form.description),
-          reason: String(form.reason),
-        });
-        await onSuccess('新模板版本已创建；运行中项目未被改写。');
       } else if (state.kind === 'batch') {
         const body = {
           tasks: state.rows.map((row) => ({
@@ -1052,16 +978,6 @@ function AdminEditDialog({ state, onClose, onSuccess }: { state: Exclude<DialogS
                 {inProgressConfirmationRows.length ? <fieldset className="admin-cc-person-field"><legend>逐项确认进行中任务转交</legend><div>{inProgressConfirmationRows.map((item) => <label key={item.id} className={readStringArray(form.confirmedInProgressTaskIds).includes(item.id) ? 'is-selected' : undefined}><input type="checkbox" checked={readStringArray(form.confirmedInProgressTaskIds).includes(item.id)} onChange={(event) => { const current = readStringArray(form.confirmedInProgressTaskIds); const checked = event.currentTarget.checked; setForm((draft) => ({ ...draft, confirmedInProgressTaskIds: checked ? [...new Set([...current, item.id])] : current.filter((id) => id !== item.id) })); setPreview(null); }} /><span>{item.label}<small>{item.id}</small></span></label>)}</div></fieldset> : null}
               </>}
             </> : null}
-            {state.kind === 'dictionary' ? <>
-              <Field label="显示名称"><input required value={String(form.name)} onChange={(event) => { const value = event.currentTarget.value; setForm((current) => ({ ...current, name: value })); }} /></Field>
-              <Field label="排序"><input type="number" value={String(form.sortOrder)} onChange={(event) => { const value = event.currentTarget.value; setForm((current) => ({ ...current, sortOrder: value })); }} /></Field>
-              <label className="admin-cc-checkbox"><input type="checkbox" checked={Boolean(form.isActive)} onChange={(event) => { const checked = event.currentTarget.checked; setForm((current) => ({ ...current, isActive: checked })); }} />启用此字典项</label>
-            </> : null}
-            {state.kind === 'template' ? <>
-              <Field label="新版本号"><input required value={String(form.version)} onChange={(event) => { const value = event.currentTarget.value; setForm((current) => ({ ...current, version: value })); }} placeholder="例如 2026.08" /></Field>
-              <Field label="计划生效时间"><input required type="datetime-local" value={String(form.effectiveAt)} onInput={(event) => { const value = event.currentTarget.value; setForm((current) => ({ ...current, effectiveAt: value })); }} /></Field>
-              <Field label="版本说明"><textarea value={String(form.description)} onChange={(event) => { const value = event.currentTarget.value; setForm((current) => ({ ...current, description: value })); }} /></Field>
-            </> : null}
             <Field label="变更原因"><textarea required minLength={3} value={String(form.reason)} onChange={(event) => { const value = event.currentTarget.value; setForm((current) => ({ ...current, reason: value })); if (isPreviewCommand) setPreview(null); }} placeholder="说明业务原因和预期结果" /></Field>
             {preview ? <div className="admin-cc-preview"><strong>影响预览</strong><dl>{previewRows(preview).map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl><p>确认后将按以上服务端计算结果执行；前端不会提交下一节点或状态。</p></div> : null}
             {error ? <div className="admin-cc-alert admin-cc-alert--error">{error}</div> : null}
@@ -1235,9 +1151,7 @@ function initialForm(state: Exclude<DialogState, null>): Record<string, string |
   }
   if (state.kind === 'department') return { code: readText(state.row?.code), name: readText(state.row?.name), parentId: readNestedText(state.row?.parent, 'id'), leadUserId: readNestedText(state.row?.departmentLead, 'id'), sortOrder: state.mode === 'create' ? '0' : String(readNumber(state.row?.sortOrder)), isActive: state.mode === 'create' ? true : readBoolean(state.row?.isActive), reason: '' };
   if (state.kind === 'member') return { projectId: readNestedText(state.row?.project, 'id'), userId: readNestedText(state.row?.user, 'id'), memberTypes: state.mode === 'create' ? ['MEMBER'] : readStringArray(state.row?.memberTypes), responsibility: readText(state.row?.responsibility), isDepartmentLead: readBoolean(state.row?.isDepartmentLead), isDefaultExecutor: readBoolean(state.row?.isDefaultExecutor), transferToUserId: '', replacementOwnerUserId: '', confirmedInProgressTaskIds: [], reason: '' };
-  if (state.kind === 'dictionary') return { name: state.row.name, sortOrder: String(state.row.sortOrder), isActive: state.row.isActive, reason: '' };
-  const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
-  return { version: '', effectiveAt: toDateTimeInput(tomorrow.toISOString()), description: '', reason: '' };
+  return { reason: '' };
 }
 
 function dialogTitle(state: Exclude<DialogState, null>) {
@@ -1249,12 +1163,10 @@ function dialogTitle(state: Exclude<DialogState, null>) {
   if (state.kind === 'organizationUser') return state.mode === 'create' ? '新增系统用户' : `编辑系统用户：${readText(state.row?.name)}`;
   if (state.kind === 'department') return state.mode === 'create' ? '新增公司部门' : `编辑公司部门：${readText(state.row?.name)}`;
   if (state.kind === 'member') return state.mode === 'create' ? '添加项目成员' : state.mode === 'remove' ? `移出项目成员：${readNestedText(state.row?.user, 'name')}` : `编辑项目成员：${readNestedText(state.row?.user, 'name')}`;
-  if (state.kind === 'dictionary') return `编辑字典项：${state.row.name}`;
-  return `基于 ${state.row.version} 创建新版本`;
+  return '后台配置';
 }
 
 function hasSectionData(section: AdminControlSection, data: LoadState) {
-  if (section === 'workflow-templates') return Boolean(data.workflow);
   return Boolean(data[section]);
 }
 

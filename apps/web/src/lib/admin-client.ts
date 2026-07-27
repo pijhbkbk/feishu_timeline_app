@@ -7,7 +7,7 @@ export type AdminOverviewResponse = {
   summary: {
     activeUsers: number;
     activeDepartments: number;
-    activeTemplates: number;
+    activeRoles: number;
     anomalyCount: number;
     projects?: {
       active: number;
@@ -285,27 +285,6 @@ export type AdminPermissionResponse = {
   enforcement: { backendRequired: boolean; frontendOnlyDenied: boolean };
 };
 
-export type AdminWorkflowResponse = {
-  templates: Array<Record<string, unknown> & { id: string; code: string; version: string; name: string }>;
-  nodes: Array<Record<string, unknown> & { id: string; step: number; nodeCode: string; name: string }>;
-};
-
-export type AdminDictionaryResponse = {
-  categories: Array<{
-    category: string;
-    items: Array<{
-      id: string;
-      code: string;
-      name: string;
-      sortOrder: number;
-      isActive: boolean;
-      locked: boolean;
-      dataVersion: string;
-    }>;
-  }>;
-  parameters: Array<Record<string, unknown> & { id: string; category: string; code: string; locked: boolean }>;
-};
-
 export type AdminSavedView = {
   id: string;
   pageKey: string;
@@ -418,14 +397,6 @@ export function updateAdminNodeAssignment(
 
 export function fetchAdminPermissions() {
   return apiRequest<AdminPermissionResponse>('/admin/permissions');
-}
-
-export function fetchAdminWorkflowTemplates() {
-  return apiRequest<AdminWorkflowResponse>('/admin/workflow-templates');
-}
-
-export function fetchAdminDictionaries() {
-  return apiRequest<AdminDictionaryResponse>('/admin/dictionaries');
 }
 
 export function fetchAdminSavedViews(pageKey: string) {
@@ -585,26 +556,4 @@ export function removeAdminProjectMember(
   body: Record<string, unknown> & { idempotencyKey: string },
 ) {
   return apiRequest(`/v2/projects/${encodeURIComponent(projectId)}/members/${encodeURIComponent(userId)}`, { method: 'DELETE', headers: commandHeaders(body.idempotencyKey), body });
-}
-
-export function updateAdminDictionary(
-  itemId: string,
-  body: Record<string, unknown> & { idempotencyKey: string },
-) {
-  return apiRequest(`/admin/dictionaries/${encodeURIComponent(itemId)}/change`, {
-    method: 'POST',
-    headers: commandHeaders(body.idempotencyKey),
-    body,
-  });
-}
-
-export function createAdminTemplateVersion(
-  templateId: string,
-  body: Record<string, unknown> & { idempotencyKey: string },
-) {
-  return apiRequest(`/admin/workflow-templates/${encodeURIComponent(templateId)}/versions`, {
-    method: 'POST',
-    headers: commandHeaders(body.idempotencyKey),
-    body,
-  });
 }

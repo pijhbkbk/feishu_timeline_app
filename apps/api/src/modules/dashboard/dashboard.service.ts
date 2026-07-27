@@ -241,7 +241,6 @@ export class DashboardService {
             }
           : null,
         materials,
-        progressHref: `/progress?taskId=${task.id}`,
         projectHref: `/projects/${task.projectId}?taskId=${task.id}`,
       };
     });

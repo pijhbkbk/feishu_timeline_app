@@ -59,7 +59,7 @@ describe('V2 account menu', () => {
     expect(html).toContain('退出登录');
   });
 
-  it('does not mark a disabled progress link as active on the dashboard', () => {
+  it('renders only the four retained product destinations', () => {
     const html = renderToStaticMarkup(
       <V2Shell>
         <p>页面内容</p>
@@ -67,13 +67,11 @@ describe('V2 account menu', () => {
     );
 
     expect(html.match(/aria-current="page"/g)).toHaveLength(2);
-    expect(html.match(/aria-disabled="true"/g)).toHaveLength(2);
-    expect(html).not.toMatch(
-      /class="is-active"[^>]*aria-current="page"[^>]*aria-disabled="true"/,
-    );
+    expect(html).not.toContain('aria-disabled="true"');
+    expect(html).not.toContain('进展提交');
   });
 
-  it('marks progress as current when its page is open even without an active task', () => {
+  it('does not invent an active navigation item for a removed route', () => {
     pathnameState.value = '/v2/progress';
 
     const html = renderToStaticMarkup(
@@ -82,10 +80,7 @@ describe('V2 account menu', () => {
       </V2Shell>,
     );
 
-    expect(html.match(/aria-current="page"/g)).toHaveLength(2);
-    expect(html.match(/aria-disabled="true"/g)).toHaveLength(2);
-    expect(html).toMatch(
-      /class="is-active"[^>]*aria-current="page"[^>]*aria-disabled="true"/,
-    );
+    expect(html).not.toContain('aria-current="page"');
+    expect(html).not.toContain('进展提交');
   });
 });

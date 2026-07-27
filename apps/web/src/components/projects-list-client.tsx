@@ -252,7 +252,6 @@ export function ProjectBoardCard({ project }: { project: ProjectListItem }) {
         )}
         <div className="r22-project-card-actions">
           <Link href={`/projects/${project.id}`} className="r22-button r22-button-primary">打开项目</Link>
-          {project.currentTaskId ? <Link href={`/progress?taskId=${project.currentTaskId}`} className="r22-button r22-button-secondary">提交进展</Link> : null}
         </div>
       </aside>
     </article>

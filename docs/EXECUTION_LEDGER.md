@@ -4339,6 +4339,66 @@ STOP_BEFORE_GATE3
 
 ---
 
+### Round R26_REMOVE_THREE_REDUNDANT_PAGES
+
+#### Goal And Scope
+
+- 按产品负责人决定移除独立进展提交、流程模板管理、基础字典管理三个页面及其专属代码。
+- 保留流程状态机、模板/字典内部业务约束、历史进展、材料和审计记录。
+- 不修改 Prisma schema、migration、数据库业务数据或 production。
+
+#### Exact Changes
+
+- 删除 `/progress`、`/v2/progress`、`/legacy/progress` 页面及专属组件、客户端和测试。
+- 主导航收敛为“工作台 / 项目列表 / 我的任务 / 系统管理”；原进展 CTA 统一进入项目工序。
+- 删除 `/admin/workflow-templates`、`/admin/dictionaries` 的导航、页面分支、客户端与后台管理 API。
+- 保留项目、工序、组织、分工、权限和审计后台；后台概览改为显示启用角色。
+- 更新路由契约、组件契约、E2E 路径和验收矩阵。
+
+#### Safety Boundaries
+
+- 数据库结构和业务数据写入：0。
+- production 请求与部署：0。
+- 历史进展、材料、项目记录和审计日志未删除。
+- 工作流推进继续只由后端状态机裁决。
+
+#### Validation
+
+```text
+pnpm install --frozen-lockfile       PASS
+pnpm lint                            PASS
+pnpm typecheck                       PASS
+pnpm test                            PASS（Web 42 files / 162 tests；API 67 files / 307 tests）
+pnpm --filter web build              PASS（构建路由清单不含三个已移除页面）
+pnpm --filter api build              PASS
+pnpm --filter api prisma:validate    PASS
+git diff --check                     PASS
+browser staging regression           PASS（7 个移除地址 404；8 个保留页面正常；console/page error 0）
+```
+
+#### Staging Evidence
+
+- 移除地址：`/progress`、`/v2/progress`、`/legacy/progress`、
+  `/admin/workflow-templates`、`/v2/admin/workflow-templates`、
+  `/admin/dictionaries`、`/v2/admin/dictionaries` 均返回 404。
+- 保留页面：工作台、项目列表、我的任务、系统管理、组织与人员、项目分工配置、
+  审计日志、项目工作区均由真实浏览器正常加载。
+- 正式主导航仅保留“工作台 / 项目列表 / 我的任务 / 系统管理”。
+- 项目列表“新建项目”和工作台“打开当前工序”继续可用；项目工作区仍显示 18 步流程地图。
+- 浏览器 console/page error 为 0；production 请求为 0。
+- staging 未运行 seed；迁移检查结果为 23 applied / 0 pending，业务数据写入为 0。
+
+#### Decision
+
+```text
+R26_THREE_REDUNDANT_PAGES_REMOVED
+RETAINED_ROUTES_AND_CORE_WORKSPACE_VERIFIED
+STABILITY_CHECKS_PASSED
+PRODUCTION_NOT_DEPLOYED
+```
+
+---
+
 ### Round R26_ADMIN_ASSIGNMENT_EDITABLE_GRID
 
 #### Goal And Scope

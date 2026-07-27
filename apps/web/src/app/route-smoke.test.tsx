@@ -53,10 +53,9 @@ describe('route smoke', () => {
       '工作台',
       '项目列表',
       '我的任务',
-      '进展提交',
       '系统管理',
     ]);
-    expect(sidebarSections[0]?.items).toHaveLength(5);
+    expect(sidebarSections[0]?.items).toHaveLength(4);
     expect(guideHtml).toContain('轻卡定制颜色开发项目管理系统');
     expect(guideHtml).toContain('反映市场需求');
     expect(guideHtml).toContain('颜色退出');

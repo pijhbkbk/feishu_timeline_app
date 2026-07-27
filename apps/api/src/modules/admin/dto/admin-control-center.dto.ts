@@ -425,45 +425,6 @@ export class AdminDepartmentConfigurationChangeDto
   acknowledgedConsequences!: boolean;
 }
 
-export class AdminDictionaryChangeDto extends AdminVersionedCommandDto {
-  @IsDateString()
-  expectedVersion!: string;
-
-  @IsOptional()
-  @IsString()
-  @MaxLength(120)
-  name?: string;
-
-  @IsOptional()
-  @IsBoolean()
-  isActive?: boolean;
-
-  @IsOptional()
-  @IsInt()
-  sortOrder?: number;
-}
-
-export class AdminTemplateVersionDto extends AdminVersionedCommandDto {
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(40)
-  version!: string;
-
-  @IsDateString()
-  effectiveAt!: string;
-
-  @IsOptional()
-  @IsString()
-  @MaxLength(500)
-  description?: string | null;
-
-  @IsOptional()
-  @IsArray()
-  @ArrayMaxSize(18)
-  @IsObject({ each: true })
-  nodeOverrides?: Array<Record<string, unknown>>;
-}
-
 export class AdminBatchTaskRowDto {
   @IsString()
   @IsNotEmpty()

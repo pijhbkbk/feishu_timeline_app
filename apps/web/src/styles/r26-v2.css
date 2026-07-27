@@ -2717,7 +2717,7 @@
     bottom: 10px;
     left: 10px;
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     height: 66px;
     padding: 6px;
     border: 1px solid rgba(215, 221, 230, 0.9);

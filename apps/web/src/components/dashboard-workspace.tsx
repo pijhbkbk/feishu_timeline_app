@@ -83,7 +83,7 @@ export function DashboardWorkspace() {
         <div className="r22-page-hero-actions">
           <span>更新于 {formatDateTime(payload.generatedAt)}</span>
           {currentTask ? (
-            <Link href={currentTask.progressHref} className="r22-button r22-button-primary">
+            <Link href={currentTask.projectHref} className="r22-button r22-button-primary">
               处理下一项任务
             </Link>
           ) : null}
@@ -145,7 +145,7 @@ export function DashboardWorkspace() {
                 <div><dt>进度</dt><dd>{nextTask.completionPercent}%</dd></div>
                 <div><dt>材料</dt><dd>{nextTask.materials.missing > 0 ? `缺 ${nextTask.materials.missing} 项` : '已齐全'}</dd></div>
               </dl>
-              <Link href={nextTask.progressHref} className="r22-button r22-button-secondary">打开任务</Link>
+              <Link href={nextTask.projectHref} className="r22-button r22-button-secondary">打开任务</Link>
             </article>
           ) : (
             <article className="r22-next-task r22-next-task-empty">

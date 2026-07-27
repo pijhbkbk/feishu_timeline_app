@@ -25,7 +25,6 @@ import {
   AdminAssignmentPreviewDto,
   AdminBatchTaskChangeDto,
   AdminBatchTaskPreviewDto,
-  AdminDictionaryChangeDto,
   AdminDepartmentConfigurationChangeDto,
   AdminDepartmentConfigurationPreviewDto,
   AdminLedgerQueryDto,
@@ -39,7 +38,6 @@ import {
   AdminSchedulePreviewDto,
   AdminTaskScheduleImportDto,
   AdminTaskScheduleImportPreviewDto,
-  AdminTemplateVersionDto,
   AdminUserStatusChangeDto,
   AdminUserConfigurationChangeDto,
   AdminUserConfigurationPreviewDto,
@@ -255,18 +253,6 @@ export class AdminControlCenterController {
     return this.service.getPermissions();
   }
 
-  @ApiOperation({ summary: '流程模板和节点版本台账' })
-  @Get('workflow-templates')
-  getWorkflowTemplates() {
-    return this.service.getWorkflowTemplates();
-  }
-
-  @ApiOperation({ summary: '基础字典和锁定参数' })
-  @Get('dictionaries')
-  getDictionaries() {
-    return this.service.getDictionaries();
-  }
-
   @ApiOperation({ summary: '读取当前管理员保存的表格视图' })
   @Get('saved-views')
   getSavedViews(
@@ -391,42 +377,6 @@ export class AdminControlCenterController {
     this.assertIdempotencyKey(body.idempotencyKey, headerKey);
     return this.service.changeUserStatus(
       userId,
-      body,
-      actor,
-      requestId?.trim() || body.idempotencyKey,
-    );
-  }
-
-  @ApiOperation({ summary: '修改非系统保留字典项' })
-  @Post('dictionaries/:itemId/change')
-  changeDictionaryItem(
-    @Param('itemId') itemId: string,
-    @Body() body: AdminDictionaryChangeDto,
-    @Headers('idempotency-key') headerKey: string | undefined,
-    @Headers('x-request-id') requestId: string | undefined,
-    @CurrentUser() actor: AuthenticatedUser,
-  ) {
-    this.assertIdempotencyKey(body.idempotencyKey, headerKey);
-    return this.service.changeDictionaryItem(
-      itemId,
-      body,
-      actor,
-      requestId?.trim() || body.idempotencyKey,
-    );
-  }
-
-  @ApiOperation({ summary: '创建只影响未来项目的流程模板版本' })
-  @Post('workflow-templates/:templateId/versions')
-  createTemplateVersion(
-    @Param('templateId') templateId: string,
-    @Body() body: AdminTemplateVersionDto,
-    @Headers('idempotency-key') headerKey: string | undefined,
-    @Headers('x-request-id') requestId: string | undefined,
-    @CurrentUser() actor: AuthenticatedUser,
-  ) {
-    this.assertIdempotencyKey(body.idempotencyKey, headerKey);
-    return this.service.createTemplateVersion(
-      templateId,
       body,
       actor,
       requestId?.trim() || body.idempotencyKey,

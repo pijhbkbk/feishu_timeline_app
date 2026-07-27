@@ -15,15 +15,11 @@ const supportedSections = new Set<AdminControlSection>([
   'organization',
   'assignments',
   'permissions',
-  'workflow-templates',
-  'dictionaries',
 ]);
 
 const legacyRedirects: Record<string, string> = {
   users: 'organization',
   roles: 'permissions',
-  dicts: 'dictionaries',
-  'workflow-nodes': 'workflow-templates',
 };
 
 export default async function Page({ params }: AdminSectionPageProps) {

@@ -273,10 +273,7 @@ function CurrentStagePanel({
 
         <div className="r22-stage-actions">
           {taskId ? (
-            <>
-              <Link href={`/progress?taskId=${taskId}`} className="r22-button r22-button-primary">提交工作进展</Link>
-              <Link href={`/progress?taskId=${taskId}&step=3`} className="r22-button r22-button-secondary">上传材料</Link>
-            </>
+            <Link href={`/materials/upload?taskId=${taskId}`} className="r22-button r22-button-secondary">上传材料</Link>
           ) : (
             <Link href={`/projects/${projectId}/tasks`} className="r22-button r22-button-secondary">查看工序清单</Link>
           )}

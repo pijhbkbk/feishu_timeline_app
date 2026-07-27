@@ -44,7 +44,6 @@ export type PersonalDashboardTask = {
     required: number;
     missing: number;
   };
-  progressHref: string;
   projectHref: string;
 };
 

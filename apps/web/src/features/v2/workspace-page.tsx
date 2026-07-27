@@ -277,11 +277,7 @@ function TaskDetail({
       </div>
 
       <footer className="r26-task-detail__footer">
-        {node.taskId === 't006' ? (
-          <Link href={'/v2/progress?projectId=demo-r26&taskId=t006'} className="r26-button r26-button--primary">
-            提交进展
-          </Link>
-        ) : isStep12 ? (
+        {isStep12 ? (
           <>
             <button type="button" className="r26-button r26-button--secondary" onClick={() => onStaticAction('退回操作将在真实数据联调轮次接入后端门禁。')}>
               退回（静态）

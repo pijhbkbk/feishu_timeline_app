@@ -33,7 +33,6 @@ describe('R22 dashboard components', () => {
           overdueDays: 0,
           completionPercent: 60,
           materials: { submitted: 1, required: 2, missing: 1 },
-          progressHref: '/progress?taskId=task-1',
           projectHref: '/projects/project-1',
         }}
       />,
@@ -42,6 +41,7 @@ describe('R22 dashboard components', () => {
     expect(html).toContain('涂料开发');
     expect(html).toContain('60%');
     expect(html).toContain('缺 1 项');
-    expect(html).toContain('/progress?taskId=task-1');
+    expect(html).toContain('/projects/project-1');
+    expect(html).toContain('打开工序');
   });
 });

@@ -1272,7 +1272,7 @@ a {
   .r22-primary-nav { display: none; }
   .r22-brand strong { font-size: 14px; }
   .r22-content { padding-top: 18px; padding-bottom: 108px; }
-  .r22-mobile-nav { position: fixed; z-index: 45; right: 16px; bottom: 14px; left: 16px; display: grid; grid-template-columns: repeat(5, 1fr); min-height: 66px; padding: 7px; border: 1px solid rgba(226, 229, 233, 0.9); border-radius: 20px; background: rgba(255, 255, 255, 0.92); box-shadow: 0 16px 50px rgba(29, 29, 31, 0.16); backdrop-filter: blur(22px); }
+  .r22-mobile-nav { position: fixed; z-index: 45; right: 16px; bottom: 14px; left: 16px; display: grid; grid-template-columns: repeat(4, 1fr); min-height: 66px; padding: 7px; border: 1px solid rgba(226, 229, 233, 0.9); border-radius: 20px; background: rgba(255, 255, 255, 0.92); box-shadow: 0 16px 50px rgba(29, 29, 31, 0.16); backdrop-filter: blur(22px); }
   .r22-mobile-nav a { display: grid; justify-items: center; align-content: center; gap: 3px; border-radius: 14px; color: var(--r22-muted); }
   .r22-mobile-nav a > span { font-size: 18px; line-height: 1; }
   .r22-mobile-nav a > small { font-size: 10px; font-weight: 650; }

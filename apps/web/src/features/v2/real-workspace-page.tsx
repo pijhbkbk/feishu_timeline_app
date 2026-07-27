@@ -1521,21 +1521,6 @@ function RealTaskDetail({
                     .primaryActionLabel
                 }
               </Link>
-            ) : (
-              <Link
-                className="r26-button r26-button--primary"
-                href={toProductHref(`/v2/progress?projectId=${encodeURIComponent(task.projectId)}&taskId=${encodeURIComponent(task.taskId)}`)}
-              >
-                提交工作进展
-              </Link>
-            )}
-            {getR26LifecycleActionByStep(task.stepNumber) ? (
-              <Link
-                className="r26-button r26-button--secondary"
-                href={toProductHref(`/v2/progress?projectId=${encodeURIComponent(task.projectId)}&taskId=${encodeURIComponent(task.taskId)}`)}
-              >
-                提交工作进展
-              </Link>
             ) : null}
             {businessRecordAction ? (
               <Link
@@ -1548,7 +1533,7 @@ function RealTaskDetail({
             {isGate3C1CompletableTask(task) ? (
               <button
                 type="button"
-                className="r26-button r26-button--secondary"
+                className={`r26-button ${getR26LifecycleActionByStep(task.stepNumber) ? 'r26-button--secondary' : 'r26-button--primary'}`}
                 onClick={() => onComplete(task)}
               >
                 完成工序
@@ -1556,8 +1541,8 @@ function RealTaskDetail({
             ) : null}
             <span>
               {task.stepNumber <= 11
-                ? '提交进展不会推进；完成工序必须先查看检查与影响。'
-                : '专项动作由后端按冻结流程裁决，提交工作进展本身不会推进节点。'}
+                ? '完成工序前必须查看检查与推进影响。'
+                : '专项动作由后端按冻结流程裁决。'}
             </span>
           </div>
         ) : (

@@ -9,7 +9,6 @@ import { R22Kpi, R22ProgressBar, R22StatusBadge, R22TaskCard } from './r22-ui';
 import { StatePanel } from './state-panel';
 
 const css = readFileSync(new URL('../app/r22.css', import.meta.url), 'utf8');
-const progressSource = readFileSync(new URL('./progress-workspace-r22.tsx', import.meta.url), 'utf8');
 const materialsSource = readFileSync(new URL('./materials-upload-r22.tsx', import.meta.url), 'utf8');
 const retrospectiveSource = readFileSync(new URL('./project-retrospective-r22.tsx', import.meta.url), 'utf8');
 const adminSource = readFileSync(new URL('./admin-dashboard-r22.tsx', import.meta.url), 'utf8');
@@ -54,13 +53,12 @@ describe('R22 product component contracts', () => {
           overdueDays: 0,
           completionPercent: 60,
           materials: { submitted: 1, required: 2, missing: 1 },
-          progressHref: '/progress?taskId=task-1',
           projectHref: '/projects/project-1',
         }}
       />,
     );
     expect(taskHtml).toContain('r22-task-card-primary');
-    expect(taskHtml).toContain('提交工作进展');
+    expect(taskHtml).toContain('打开工序');
     expect(taskHtml).toContain('缺 1 项');
 
     const projectHtml = renderToStaticMarkup(
@@ -83,10 +81,7 @@ describe('R22 product component contracts', () => {
     expect(projectHtml).toContain('预计解决');
   });
 
-  it('keeps progress, required materials, retrospective and admin module structures explicit', () => {
-    for (const label of ['做了什么', '是否阻塞', '上传材料', '阻塞说明', '确认提交工作进展']) {
-      expect(progressSource).toContain(label);
-    }
+  it('keeps required materials, retrospective and admin module structures explicit', () => {
     for (const label of ['本工序材料清单', '添加新材料', '已上传材料', 'replacesAttachmentId']) {
       expect(materialsSource).toContain(label);
     }

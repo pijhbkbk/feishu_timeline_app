@@ -98,7 +98,6 @@ const nextConfig: NextConfig = {
           destination: '/v2/projects/:projectId',
         },
         { source: '/tasks', destination: '/v2/tasks' },
-        { source: '/progress', destination: '/v2/progress' },
         { source: '/materials', destination: '/v2/materials' },
         {
           source: '/admin/audit-logs',

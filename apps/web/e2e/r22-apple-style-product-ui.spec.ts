@@ -25,7 +25,7 @@ test.describe.serial('R22 Apple 风产品 UI 全量验收', () => {
     await mkdir(evidenceDir, { recursive: true });
   });
 
-  test('1-7 工作台、项目看板、项目工作区和三步进展使用真实数据', async ({ page }) => {
+  test('1-7 工作台、项目看板和项目工作区使用真实数据', async ({ page }) => {
     await login(page, 'mock_project_manager', '演示项目经理', ['project_manager']);
     const context = await currentTask(page);
     const expectedResolvedAt = new Date(Date.now() + 2 * 86_400_000).toISOString();
@@ -54,7 +54,7 @@ test.describe.serial('R22 Apple 风产品 UI 全量验收', () => {
     await expect(page.getByRole('heading', { name: /演示项目经理/ })).toBeVisible();
     await expect(page.locator('.r22-task-card-primary')).toBeVisible();
     await expect(page.locator('.r22-task-card-primary .r22-button-primary')).toHaveCount(1);
-    await expect(page.locator('.r22-task-card-primary').getByRole('link', { name: '提交工作进展' })).toHaveAttribute('href', new RegExp(context.taskId));
+    await expect(page.locator('.r22-task-card-primary').getByRole('link', { name: '打开工序' })).toHaveAttribute('href', new RegExp(context.projectId));
 
     await page.goto('/projects');
     await expect(page.getByTestId('project-list-page')).toBeVisible();
@@ -80,18 +80,6 @@ test.describe.serial('R22 Apple 风产品 UI 全量验收', () => {
     await nodes.nth(1).click();
     await expect(nodes.nth(1)).toHaveAttribute('aria-pressed', 'true');
 
-    await page.goto(`/progress?taskId=${context.taskId}&step=1`);
-    await expect(page.getByTestId('progress-page')).toBeVisible();
-    await expect(page.getByRole('button', { name: /1/ })).toBeVisible();
-    await page.getByLabel(/本次完成内容/).fill('R22 浏览器验收进展。');
-    await page.getByRole('button', { name: '继续', exact: true }).click();
-    await expect(page.getByRole('heading', { name: '当前是否被阻塞？' })).toBeVisible();
-    await page.getByRole('button', { name: '存在阻塞' }).click();
-    await expect(page.getByLabel(/阻塞类型/)).toBeVisible();
-    await expect(page.getByLabel(/阻塞说明/)).toBeVisible();
-    await page.getByLabel(/阻塞说明/).fill('等待供应商补充颜色参数确认。');
-    await page.getByRole('button', { name: '继续', exact: true }).click();
-    await expect(page.getByRole('heading', { name: '上传材料并确认' })).toBeVisible();
   });
 
   test('8 必交材料缺失由后端门禁返回具体缺项', async ({ page }) => {
@@ -195,7 +183,6 @@ test.describe.serial('R22 Apple 风产品 UI 全量验收', () => {
       { name: 'dashboard', path: '/dashboard', testId: 'dashboard-page' },
       { name: 'projects', path: '/projects', testId: 'project-list-page' },
       { name: 'project-workspace', path: `/projects/${context.projectId}?taskId=${context.taskId}`, testId: 'project-workspace-page' },
-      { name: 'progress-submit', path: `/progress?taskId=${context.taskId}`, testId: 'progress-page' },
       { name: 'tasks', path: '/tasks', testId: 'tasks-page' },
       { name: 'materials-upload', path: `/materials/upload?taskId=${context.taskId}`, testId: 'materials-upload-page' },
       { name: 'retrospective', path: `/projects/${context.projectId}/retrospective`, testId: 'retrospective-page' },

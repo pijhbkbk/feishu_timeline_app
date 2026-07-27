@@ -17,7 +17,6 @@ const previewTask: PersonalDashboardTask = {
   overdueDays: 0,
   completionPercent: 62,
   materials: { submitted: 2, required: 3, missing: 1 },
-  progressHref: '/progress',
   projectHref: '/projects',
 };
 

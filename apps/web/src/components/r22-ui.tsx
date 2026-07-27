@@ -93,8 +93,8 @@ export function R22TaskCard({
       <div className="r22-task-actions">
         {actions ?? (
           <>
-            <Link href={task.progressHref} className="r22-button r22-button-primary">
-              提交工作进展
+            <Link href={task.projectHref} className="r22-button r22-button-primary">
+              打开工序
             </Link>
             <Link href={task.projectHref} className="r22-button r22-button-secondary">
               查看项目

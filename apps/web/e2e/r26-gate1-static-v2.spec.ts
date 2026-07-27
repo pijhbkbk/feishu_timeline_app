@@ -102,7 +102,7 @@ test.afterAll(async () => {
   ]);
 });
 
-test('R26-01 Feature Flag 关闭时 V2 不可用，开启时四页可访问且不请求 API', async ({
+test('R26-01 Feature Flag 关闭时 V2 不可用，开启时三个核心页面可访问且不请求 API', async ({
   page,
   request,
 }) => {
@@ -120,7 +120,6 @@ test('R26-01 Feature Flag 关闭时 V2 不可用，开启时四页可访问且�
     '/v2/dashboard',
     '/v2/projects',
     '/v2/projects/demo-r26',
-    '/v2/progress?projectId=demo-r26&taskId=t006',
   ]) {
     const response = await page.goto(route);
     expect(response?.status(), route).toBe(200);
@@ -152,10 +151,10 @@ test('R26-02 工作台主动作、项目筛选、卡片跳转与固定地图默�
   );
   await expect(page.getByTestId('dashboard-primary-action')).toHaveAttribute(
     'href',
-    '/v2/progress?projectId=demo-r26&taskId=t006',
+    '/v2/projects/demo-r26?taskId=t006',
   );
   await page.getByTestId('dashboard-primary-action').click();
-  await expect(page).toHaveURL(/\/v2\/progress\?projectId=demo-r26&taskId=t006$/);
+  await expect(page).toHaveURL(/\/v2\/projects\/demo-r26\?taskId=t006$/);
 
   await page.goto('/v2/projects');
   await expect(page.locator('.r26-project-card')).toHaveCount(3);
@@ -287,71 +286,6 @@ test('R26-04 节点点击更新详情、特殊节点正确、URL 恢复且关闭
   await expect(page.getByTestId('r26-node-18')).toHaveAttribute('aria-pressed', 'true');
 });
 
-test('R26-05 进展三步、条件阻塞字段与本地页面联动完整可用', async ({ page }) => {
-  const apiRequests: string[] = [];
-  const consoleErrors: string[] = [];
-  const pageErrors: string[] = [];
-  installPageGuards(page, apiRequests, consoleErrors, pageErrors);
-
-  await resetPrototype(page);
-  await page.getByTestId('dashboard-primary-action').click();
-  await expect(page.getByTestId('progress-step-1')).toBeVisible();
-  await page.getByTestId('progress-next').click();
-  await expect(page.getByTestId('progress-step-2')).toBeVisible();
-
-  await page.getByRole('radio', { name: /存在阻塞/ }).check();
-  await expect(page.getByTestId('blocker-fields')).toBeVisible();
-  await page.getByLabel('阻塞描述').fill('供应商需要补充盖章后的到货确认记录。');
-  await page.getByRole('radio', { name: /没有阻塞/ }).check();
-  await expect(page.getByTestId('blocker-fields')).toHaveCount(0);
-
-  await page.getByTestId('progress-next').click();
-  await expect(page.getByTestId('progress-step-3')).toBeVisible();
-  await page.locator('input[type="file"]').setInputFiles({
-    name: '到货确认记录.pdf',
-    mimeType: 'application/pdf',
-    buffer: Buffer.from('%PDF-1.4\n% R26 static filename fixture\n'),
-  });
-  await expect(page.getByTestId('progress-dropzone')).toContainText('到货确认记录.pdf');
-  await page.getByTestId('progress-submit').click();
-  await expect(page.getByTestId('r26-progress-success')).toContainText('进展已提交（静态原型）');
-  await expect(page.getByTestId('r26-progress-success')).toContainText(
-    '系统已创建：标准板制作、涂料性能试验、首台生产计划',
-  );
-
-  await page.getByRole('link', { name: '返回工作台' }).click();
-  await expect(page.getByTestId('r26-dashboard')).toContainText('本次进展已完成');
-  await expect(page.getByTestId('r26-dashboard')).toContainText('首台生产计划已进入进行中');
-
-  await page.getByTestId('dashboard-primary-action').click();
-  await expect(page.getByTestId('r26-node-06')).toHaveAttribute('data-status', 'COMPLETED');
-  await expect(page.getByTestId('r26-node-07')).toHaveAttribute('data-status', 'PENDING');
-  await expect(page.getByTestId('r26-node-07')).toContainText('已创建');
-  await expect(page.getByTestId('r26-node-09')).toHaveAttribute('data-status', 'PENDING');
-  await expect(page.getByTestId('r26-node-09')).toContainText('已创建');
-  await expect(page.getByTestId('r26-node-10')).toHaveAttribute('data-status', 'IN_PROGRESS');
-  await expect(page.getByTestId('r26-node-10')).toContainText('已创建');
-  await expect(page.getByTestId('r26-task-detail')).toContainText('3 / 3');
-  await expect(page.getByTestId('r26-task-detail')).toContainText('必交材料已齐备');
-
-  await page.reload();
-  const submittedActivities = await page.evaluate(() => {
-    const state = JSON.parse(window.sessionStorage.getItem('R26PrototypeStore') ?? '{}') as {
-      recentActivities?: Array<{ text: string }>;
-    };
-    return (state.recentActivities ?? []).filter((activity) =>
-      activity.text.includes('提交了涂料采购进展'),
-    ).length;
-  });
-  expect(submittedActivities).toBe(1);
-
-  expect(
-    apiRequests.filter((url) => !url.endsWith('/api/auth/session')),
-  ).toEqual([]);
-  expect(consoleErrors).toEqual([]);
-  expect(pageErrors).toEqual([]);
-});
-
 test('R26-06 1440、1024、390 三视口无页面横向溢出并生成页面证据', async ({
   page,
 }) => {
@@ -419,15 +353,6 @@ test('R26-06 1440、1024、390 三视口无页面横向溢出并生成页面证�
       await expect(page.getByTestId('r26-mobile-flow-list')).toBeVisible();
     }
 
-    await page.goto('/v2/progress?projectId=demo-r26&taskId=t006');
-    await assertNoPageOverflow(page);
-    const progressName =
-      viewport.width === 1440
-        ? 'progress-step1-1440.png'
-        : viewport.width === 390
-          ? 'progress-390.png'
-          : 'progress-step1-1024.png';
-    await screenshot(page, progressName);
   }
 
   await page.setViewportSize({ width: 1440, height: 900 });
@@ -439,16 +364,6 @@ test('R26-06 1440、1024、390 三视口无页面横向溢出并生成页面证�
   await page.goto('/v2/projects/demo-r26');
   await page.getByTestId('r26-node-12').click();
   await screenshot(page, 'project-step12-selected-1024.png');
-
-  await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto('/v2/progress?projectId=demo-r26&taskId=t006');
-  await page.getByTestId('progress-next').click();
-  await page.getByRole('radio', { name: /存在阻塞/ }).check();
-  await screenshot(page, 'progress-blocker-1440.png');
-  await page.getByRole('radio', { name: /没有阻塞/ }).check();
-  await page.getByTestId('progress-next').click();
-  await page.getByTestId('progress-submit').click();
-  await screenshot(page, 'progress-success-1440.png');
 
   expect(
     apiRequests.filter((url) => !url.endsWith('/api/auth/session')),
@@ -562,19 +477,10 @@ async function recordEmployeeFlow(browser: Browser) {
   await page.goto('/v2/dashboard');
   await page.getByTestId('dashboard-primary-action').click();
   await pause(page);
-  await page.getByTestId('progress-next').click();
-  await pause(page);
-  await page.getByTestId('progress-next').click();
-  await page.locator('input[type="file"]').setInputFiles({
-    name: '到货确认记录.pdf',
-    mimeType: 'application/pdf',
-    buffer: Buffer.from('%PDF-1.4\n'),
-  });
-  await pause(page);
-  await page.getByTestId('progress-submit').click();
-  await expect(page.getByTestId('r26-progress-success')).toBeVisible();
+  await expect(page.getByTestId('r26-task-detail')).toBeVisible();
+  await page.getByRole('button', { name: '关闭工序详情' }).click();
   await pause(page, 700);
-  await saveVideo(page, context, 'employee-progress-flow-1440.webm');
+  await saveVideo(page, context, 'employee-current-task-flow-1440.webm');
 }
 
 async function recordManagerFlow(browser: Browser) {
