@@ -10,20 +10,27 @@
 - API：新增用户和部门的 preview/create/update 命令；项目成员增改移继续复用 Gate 3A
   服务；写操作强制超级管理员、版本、幂等、事务和审计。
 - UI：组织与人员三类真实台账均提供新增/完整编辑/安全移除入口；飞书身份只读；成员移除
-  只允许转交给当前项目有效成员，进行中任务逐项确认。
+  只允许转交给当前项目有效成员，进行中任务逐项确认。分工配置的主责部门不再是固定下拉项，
+  超级管理员可以直接键入现有或新的部门名称；新名称由服务端创建真实公司部门后再关联工序。
 - Correctness：真实本地写烟测覆盖创建部门/用户、幂等重放、部门负责人设置/清除和安全
   停用；修复幂等重放被重复数据预检阻断的问题。
 - Browser bugfix：真人 staging 操作复现组织表单切换下拉项后白屏；根因为 React 事件对象
   在函数式状态更新器中延迟读取。现已先捕获 value/checked，再更新状态，并为同类字段补
-  充契约测试。
+  充契约测试。新增部门名称验收时又发现普通工序错误携带遗留评审人，导致服务端拒绝变更；
+  现已在表单初始化、写请求和影响预览三处按服务端流程定义清理非评审节点的评审人值。
 - Human UAT：真实完成部门新增/改名/负责人设置与清空、用户新增/改部门/改角色/停用、
   项目成员加入/编辑/安全移出；停用有关联人员部门被正确阻断，迁移人员后可执行；所有动作
-  均在审计日志中可追溯。临时用户与部门最终停用，临时项目成员关系已移除。
+  均在审计日志中可追溯。另在第 4 步直接键入 `浏览器自定义部门48970111`，预览明确显示
+  `CREATE_AND_LINK`，确认后生成真实部门 `CUSTOM_244AD0AA97486E94` 并关联工序；随后恢复
+  `工艺开发部`、停用临时部门，创建/分工/恢复/停用审计均成功。临时用户与部门最终停用，
+  临时项目成员关系已移除。
 - Responsive：1440/1024/390 真实浏览器 PASS，console/page error=0；修复 1024px
   后台表格撑大整页导致的横向溢出。
 - Validation：`pnpm install`、lint、typecheck、全量测试、Web/API build、Prisma validate、
-  `git diff --check` 全部 PASS；Web 175 tests，API 305 tests。
-- Staging：修复提交 `8a77e7b` 已推送，独立 staging 已完成真实操作验收；production 未触碰。
+  `git diff --check` 全部 PASS；Web 177 tests，API 307 tests。
+- Staging：自定义部门实现 `c4dde16`、普通工序评审值修复 `c41ac39`、预览一致性修复
+  `24ac366` 均已推送并在独立 staging 完成真实操作验收；浏览器 console error=0；
+  production 未触碰。
 - Evidence：`docs/product/R26_ADMIN_ORGANIZATION_MANAGEMENT_REPORT.md` 与
   `docs/product/evidence/R26_ADMIN_ORGANIZATION_MANAGEMENT/`。
 - Decision：`IMPLEMENTED / PRODUCTION_NOT_TOUCHED / READY_FOR_ISOLATED_STAGING`。
