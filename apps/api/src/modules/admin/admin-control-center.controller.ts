@@ -26,6 +26,8 @@ import {
   AdminBatchTaskChangeDto,
   AdminBatchTaskPreviewDto,
   AdminDictionaryChangeDto,
+  AdminDepartmentConfigurationChangeDto,
+  AdminDepartmentConfigurationPreviewDto,
   AdminLedgerQueryDto,
   AdminNodeAssignmentChangeDto,
   AdminNodeAssignmentPreviewDto,
@@ -39,6 +41,8 @@ import {
   AdminTaskScheduleImportPreviewDto,
   AdminTemplateVersionDto,
   AdminUserStatusChangeDto,
+  AdminUserConfigurationChangeDto,
+  AdminUserConfigurationPreviewDto,
 } from './dto/admin-control-center.dto';
 
 @ApiTags('admin-control-center')
@@ -117,6 +121,94 @@ export class AdminControlCenterController {
   @Get('organization')
   getOrganization(@Query() query: AdminOrganizationQueryDto) {
     return this.service.getOrganization(query);
+  }
+
+  @ApiOperation({ summary: '预览新增系统用户影响，不写入' })
+  @Post('organization/users/preview')
+  previewCreateUser(
+    @Body() body: AdminUserConfigurationPreviewDto,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.service.previewUserConfiguration(null, body, actor);
+  }
+
+  @ApiOperation({ summary: '新增系统用户并写入审计' })
+  @Post('organization/users')
+  createUser(
+    @Body() body: AdminUserConfigurationChangeDto,
+    @Headers('idempotency-key') headerKey: string | undefined,
+    @Headers('x-request-id') requestId: string | undefined,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    this.assertIdempotencyKey(body.idempotencyKey, headerKey);
+    return this.service.changeUserConfiguration(null, body, actor, requestId?.trim() || body.idempotencyKey);
+  }
+
+  @ApiOperation({ summary: '预览系统用户完整配置变更，不写入' })
+  @Post('organization/users/:userId/preview')
+  previewUserConfiguration(
+    @Param('userId') userId: string,
+    @Body() body: AdminUserConfigurationPreviewDto,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.service.previewUserConfiguration(userId, body, actor);
+  }
+
+  @ApiOperation({ summary: '修改系统用户完整配置并写入审计' })
+  @Post('organization/users/:userId')
+  changeUserConfiguration(
+    @Param('userId') userId: string,
+    @Body() body: AdminUserConfigurationChangeDto,
+    @Headers('idempotency-key') headerKey: string | undefined,
+    @Headers('x-request-id') requestId: string | undefined,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    this.assertIdempotencyKey(body.idempotencyKey, headerKey);
+    return this.service.changeUserConfiguration(userId, body, actor, requestId?.trim() || body.idempotencyKey);
+  }
+
+  @ApiOperation({ summary: '预览新增公司部门影响，不写入' })
+  @Post('organization/departments/preview')
+  previewCreateDepartment(
+    @Body() body: AdminDepartmentConfigurationPreviewDto,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.service.previewDepartmentConfiguration(null, body, actor);
+  }
+
+  @ApiOperation({ summary: '新增公司部门并写入审计' })
+  @Post('organization/departments')
+  createDepartment(
+    @Body() body: AdminDepartmentConfigurationChangeDto,
+    @Headers('idempotency-key') headerKey: string | undefined,
+    @Headers('x-request-id') requestId: string | undefined,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    this.assertIdempotencyKey(body.idempotencyKey, headerKey);
+    return this.service.changeDepartmentConfiguration(null, body, actor, requestId?.trim() || body.idempotencyKey);
+  }
+
+  @ApiOperation({ summary: '预览公司部门完整配置变更，不写入' })
+  @Post('organization/departments/:departmentId/preview')
+  previewDepartmentConfiguration(
+    @Param('departmentId') departmentId: string,
+    @Body() body: AdminDepartmentConfigurationPreviewDto,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.service.previewDepartmentConfiguration(departmentId, body, actor);
+  }
+
+  @ApiOperation({ summary: '修改公司部门完整配置并写入审计' })
+  @Post('organization/departments/:departmentId')
+  changeDepartmentConfiguration(
+    @Param('departmentId') departmentId: string,
+    @Body() body: AdminDepartmentConfigurationChangeDto,
+    @Headers('idempotency-key') headerKey: string | undefined,
+    @Headers('x-request-id') requestId: string | undefined,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    this.assertIdempotencyKey(body.idempotencyKey, headerKey);
+    return this.service.changeDepartmentConfiguration(departmentId, body, actor, requestId?.trim() || body.idempotencyKey);
   }
 
   @ApiOperation({ summary: '18 节点分工矩阵' })

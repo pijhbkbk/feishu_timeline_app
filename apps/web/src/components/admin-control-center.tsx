@@ -7,6 +7,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   applyAdminTaskImport,
   createAdminTemplateVersion,
+  createAdminProjectMember,
   fetchAdminAssignments,
   fetchAdminDictionaries,
   fetchAdminOrganization,
@@ -18,6 +19,9 @@ import {
   getAdminTaskExportUrl,
   getAdminTaskImportTemplateUrl,
   previewAdminAssignment,
+  previewAdminDepartmentConfiguration,
+  previewAdminProjectMember,
+  previewAdminUserConfiguration,
   previewAdminBatchTasks,
   previewAdminNodeAssignment,
   previewAdminSchedule,
@@ -26,10 +30,13 @@ import {
   updateAdminAssignment,
   updateAdminBatchTasks,
   updateAdminDictionary,
+  updateAdminDepartmentConfiguration,
   updateAdminNodeAssignment,
   updateAdminProject,
   updateAdminSchedule,
-  updateAdminUserStatus,
+  updateAdminProjectMember,
+  updateAdminUserConfiguration,
+  removeAdminProjectMember,
   type AdminAssignmentResponse,
   type AdminDictionaryResponse,
   type AdminOrganizationResponse,
@@ -65,6 +72,14 @@ const sections: Array<{
   { key: 'dictionaries', label: '基础字典', description: '业务枚举和系统参数' },
   { key: 'audit-logs', label: '审计与异常', description: '关键操作与失败记录' },
 ];
+
+const PROJECT_MEMBER_TYPES = [
+  ['OWNER', '项目负责人'],
+  ['MANAGER', '项目管理者'],
+  ['MEMBER', '执行成员'],
+  ['REVIEWER', '评审人员'],
+  ['OBSERVER', '观察者'],
+] as const;
 
 export function AdminControlNavigation({
   active,
@@ -147,7 +162,9 @@ type DialogState =
     }
   | { kind: 'batch'; rows: AdminTaskRow[]; mode: 'schedule' | 'assignment' }
   | { kind: 'import'; csv: string; fileName: string }
-  | { kind: 'user'; row: Record<string, unknown> }
+  | { kind: 'organizationUser'; mode: 'create' | 'edit'; row?: Record<string, unknown>; response: AdminOrganizationResponse }
+  | { kind: 'department'; mode: 'create' | 'edit'; row?: Record<string, unknown>; response: AdminOrganizationResponse }
+  | { kind: 'member'; mode: 'create' | 'edit' | 'remove'; row?: Record<string, unknown>; response: AdminOrganizationResponse }
   | { kind: 'dictionary'; row: AdminDictionaryResponse['categories'][number]['items'][number] }
   | { kind: 'template'; row: AdminWorkflowResponse['templates'][number] }
   | null;
@@ -361,7 +378,18 @@ export function AdminControlCenter({ section }: { section: AdminControlSection }
         {section === 'organization' && data.organization ? (
           <OrganizationTable
             response={data.organization}
-            onUserEdit={(row) => setDialog({ kind: 'user', row })}
+            onCreate={() => setDialog({
+              kind: organizationTab === 'users' ? 'organizationUser' : organizationTab === 'departments' ? 'department' : 'member',
+              mode: 'create',
+              response: data.organization!,
+            } as Exclude<DialogState, null>)}
+            onEdit={(row) => setDialog({
+              kind: organizationTab === 'users' ? 'organizationUser' : organizationTab === 'departments' ? 'department' : 'member',
+              mode: 'edit',
+              row,
+              response: data.organization!,
+            } as Exclude<DialogState, null>)}
+            onRemove={(row) => setDialog({ kind: 'member', mode: 'remove', row, response: data.organization! })}
           />
         ) : null}
         {section === 'assignments' && data.assignments ? (
@@ -467,8 +495,7 @@ function TasksTable({ rows, fullColumns, selectedIds, onSelect, onEdit }: { rows
   );
 }
 
-function OrganizationTable({ response, onUserEdit }: { response: AdminOrganizationResponse; onUserEdit: (row: Record<string, unknown>) => void }) {
-  if (!response.items.length) return <AdminEmpty title="没有组织记录" description="当前筛选范围没有数据。" />;
+function OrganizationTable({ response, onCreate, onEdit, onRemove }: { response: AdminOrganizationResponse; onCreate: () => void; onEdit: (row: Record<string, unknown>) => void; onRemove: (row: Record<string, unknown>) => void }) {
   const headers = response.tab === 'users'
     ? ['姓名', '飞书身份', '部门', '角色', '状态', '项目 / 任务', '版本', '操作']
     : response.tab === 'departments'
@@ -476,6 +503,11 @@ function OrganizationTable({ response, onUserEdit }: { response: AdminOrganizati
       : ['项目', '成员', '部门', '项目职责', '关系', '当前任务', '有效期', '版本', '操作'];
   return (
     <>
+      <div className="admin-cc-organization-toolbar">
+        <div><strong>超级管理员配置</strong><span>所有变更先预览影响，并经过版本校验、幂等保护与审计记录。</span></div>
+        <button type="button" className="admin-cc-button admin-cc-button--primary" onClick={onCreate}>{response.tab === 'users' ? '新增系统用户' : response.tab === 'departments' ? '新增公司部门' : '添加项目成员'}</button>
+      </div>
+      {!response.items.length ? <AdminEmpty title="没有组织记录" description="当前筛选范围没有数据，可使用右上方按钮新增。" /> : <>
       <div className="admin-cc-table-wrap">
         <table className="admin-cc-table"><thead><tr>{headers.map((header) => <th key={header}>{header}</th>)}</tr></thead>
           <tbody>{response.items.map((row) => response.tab === 'users'
@@ -487,24 +519,25 @@ function OrganizationTable({ response, onUserEdit }: { response: AdminOrganizati
                 <td><StatusBadge value={readText(row.status)} /></td>
                 <td>{readNumber(row.projectCount)} / {readNumber(row.taskCount)}</td>
                 <td><code>{shortVersion(readText(row.dataVersion))}</code></td>
-                <td><div className="admin-cc-row-actions"><button type="button" onClick={() => onUserEdit(row)}>变更状态</button><Link href={`/admin/tasks?search=${encodeURIComponent(readText(row.name))}`}>查看任务</Link></div></td>
+                <td><div className="admin-cc-row-actions"><button type="button" onClick={() => onEdit(row)}>编辑全部参数</button><Link href={`/admin/tasks?search=${encodeURIComponent(readText(row.name))}`}>查看任务</Link></div></td>
               </tr>
             : response.tab === 'departments'
               ? <tr key={row.id}>
                   <td><strong>{readText(row.name)}</strong><small>{readText(row.path)}</small></td>
                   <td>{readText(row.code)}</td><td>{readNestedText(row.parent, 'name') || '根部门'}</td>
                   <td>{readNestedText(row.departmentLead, 'name') || '待设置'}</td><td>{readNumber(row.memberCount)}</td>
-                  <td>{readNumber(row.activeTaskCount)}</td><td>{readNumber(row.configuredNodeCount)}</td><td>{readBoolean(row.isActive) ? '启用' : '停用'}</td>
+                  <td>{readNumber(row.activeTaskCount)}</td><td>{readNumber(row.configuredNodeCount)}</td><td><div className="admin-cc-row-actions"><span>{readBoolean(row.isActive) ? '启用' : '停用'}</span><button type="button" onClick={() => onEdit(row)}>编辑部门</button></div></td>
                 </tr>
               : <tr key={row.id}>
                   <td>{readNestedText(row.project, 'name')}</td><td><strong>{readNestedText(row.user, 'name')}</strong></td>
-                  <td>{readNestedText(readRecord(row.user).department, 'name') || '未归属'}</td><td>{readText(row.responsibility) || '成员'}</td>
+                  <td>{readNestedText(readRecord(row.user).department, 'name') || '未归属'}</td><td><strong>{memberTypeLabels(readStringArray(row.memberTypes)).join('、') || '成员'}</strong><small>{readText(row.responsibility) || '未填写职责说明'}</small></td>
                   <td>{memberRelations(row)}</td><td>{readNumber(row.activeTaskCount)}</td><td>{formatDate(readText(row.validFrom))}</td><td><code>{shortVersion(readText(row.dataVersion))}</code></td>
-                  <td><Link href={`/projects/${encodeURIComponent(readNestedText(row.project, 'id'))}`}>打开成员管理</Link></td>
+                  <td><div className="admin-cc-row-actions"><button type="button" onClick={() => onEdit(row)}>编辑职责</button><button type="button" className="is-danger" onClick={() => onRemove(row)}>移出项目</button></div></td>
                 </tr>)}</tbody>
         </table>
       </div>
-      <div className="admin-cc-mobile-list">{response.items.map((row) => <article key={row.id}><header><strong>{readText(row.name) || readNestedText(row.user, 'name') || readNestedText(row.project, 'name')}</strong><StatusBadge value={readText(row.status) || (readBoolean(row.isActive) ? 'ACTIVE' : 'INACTIVE')} /></header><p>{readNestedText(row.department, 'name') || readText(row.code) || readText(row.responsibility)}</p><small>请在桌面端完成组织治理操作。</small></article>)}</div>
+      <div className="admin-cc-mobile-list">{response.items.map((row) => <article key={row.id}><header><strong>{readText(row.name) || readNestedText(row.user, 'name') || readNestedText(row.project, 'name')}</strong><StatusBadge value={readText(row.status) || (readBoolean(row.isActive) ? 'ACTIVE' : 'INACTIVE')} /></header><p>{readNestedText(row.department, 'name') || readText(row.code) || readText(row.responsibility)}</p><div className="admin-cc-row-actions"><button type="button" className="admin-cc-button admin-cc-button--primary" onClick={() => onEdit(row)}>编辑配置</button>{response.tab === 'members' ? <button type="button" className="admin-cc-button admin-cc-button--quiet is-danger" onClick={() => onRemove(row)}>移出项目</button> : null}</div></article>)}</div>
+      </>}
     </>
   );
 }
@@ -606,6 +639,7 @@ function AdminEditDialog({ state, onClose, onSuccess }: { state: Exclude<DialogS
   const [error, setError] = useState<string | null>(null);
   const [directory, setDirectory] = useState<AdminOrganizationResponse | null>(null);
   const [departments, setDepartments] = useState<AdminOrganizationResponse | null>(null);
+  const [inProgressConfirmationRows, setInProgressConfirmationRows] = useState<Array<{ id: string; label: string }>>([]);
 
   useEffect(() => {
     if (state.kind === 'task' && state.mode === 'assignment') {
@@ -627,6 +661,13 @@ function AdminEditDialog({ state, onClose, onSuccess }: { state: Exclude<DialogS
       void fetchAdminOrganization({ tab: 'departments', pageSize: 100 })
         .then(setDepartments)
         .catch(() => setDepartments(null));
+    } else if (state.kind === 'member' && state.mode === 'remove') {
+      const projectId = readNestedText(state.row?.project, 'id');
+      if (projectId) {
+        void fetchAdminOrganization({ tab: 'members', projectId, pageSize: 100 })
+          .then(setDirectory)
+          .catch(() => setDirectory(null));
+      }
     }
   }, [state]);
 
@@ -635,7 +676,10 @@ function AdminEditDialog({ state, onClose, onSuccess }: { state: Exclude<DialogS
     state.kind === 'task' ||
     state.kind === 'nodeAssignment' ||
     state.kind === 'batch' ||
-    state.kind === 'import';
+    state.kind === 'import' ||
+    state.kind === 'organizationUser' ||
+    state.kind === 'department' ||
+    state.kind === 'member';
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -653,14 +697,68 @@ function AdminEditDialog({ state, onClose, onSuccess }: { state: Exclude<DialogS
           reason: String(form.reason),
         });
         await onSuccess('项目基础信息已更新，状态机字段保持不变。');
-      } else if (state.kind === 'user') {
-        await updateAdminUserStatus(state.row.id as string, {
-          idempotencyKey: crypto.randomUUID(),
-          expectedVersion: readText(state.row.dataVersion),
-          status: String(form.status),
+      } else if (state.kind === 'organizationUser') {
+        const body = {
+          ...(state.mode === 'edit' ? { expectedVersion: readText(state.row?.dataVersion) } : {}),
+          username: String(form.username).trim(), name: String(form.name).trim(),
+          email: String(form.email).trim() || null, mobile: String(form.mobile).trim() || null,
+          departmentId: String(form.departmentId) || null, status: String(form.status),
+          isSystemAdmin: Boolean(form.isSystemAdmin), roleIds: readStringArray(form.roleIds),
           reason: String(form.reason),
-        });
-        await onSuccess('用户状态已更新并写入审计日志。');
+        };
+        const userId = state.mode === 'edit' ? readText(state.row?.id) : null;
+        if (!preview) setPreview(await previewAdminUserConfiguration(userId, body));
+        else {
+          await updateAdminUserConfiguration(userId, { ...body, idempotencyKey: crypto.randomUUID(), acknowledgedConsequences: true });
+          await onSuccess(state.mode === 'create' ? '系统用户已新增并写入审计日志。' : '用户全部可配置参数已更新并写入审计日志。');
+        }
+      } else if (state.kind === 'department') {
+        const body = {
+          ...(state.mode === 'edit' ? { expectedVersion: readText(state.row?.dataVersion) } : {}),
+          code: String(form.code).trim(), name: String(form.name).trim(),
+          parentId: String(form.parentId) || null, leadUserId: String(form.leadUserId) || null,
+          sortOrder: Number(form.sortOrder), isActive: Boolean(form.isActive), reason: String(form.reason),
+        };
+        const departmentId = state.mode === 'edit' ? readText(state.row?.id) : null;
+        if (!preview) setPreview(await previewAdminDepartmentConfiguration(departmentId, body));
+        else {
+          await updateAdminDepartmentConfiguration(departmentId, { ...body, idempotencyKey: crypto.randomUUID(), acknowledgedConsequences: true });
+          await onSuccess(state.mode === 'create' ? '公司部门已新增并写入审计日志。' : '部门名称、层级、负责人和状态等配置已更新。');
+        }
+      } else if (state.kind === 'member') {
+        const projectId = String(form.projectId);
+        const userId = String(form.userId);
+        const project = state.response.directory.projects.find((item) => item.id === projectId);
+        const expectedVersion = state.mode === 'create' ? project?.memberAssignmentVersion : readNumber(state.row?.projectVersion);
+        if (!projectId || !userId || !expectedVersion) throw new Error('项目、成员或分工版本读取失败，请刷新后重试。');
+        const memberChange = state.mode === 'remove'
+          ? { type: 'REMOVE', userId, transferToUserId: String(form.transferToUserId) || null, replacementOwnerUserId: String(form.replacementOwnerUserId) || null }
+          : { type: state.mode === 'create' ? 'ADD' : 'UPDATE', userId, memberTypes: readStringArray(form.memberTypes), responsibility: String(form.responsibility) || null, isDepartmentLead: Boolean(form.isDepartmentLead), isDefaultExecutor: Boolean(form.isDefaultExecutor), defaultNodeCodes: [] };
+        if (!preview) {
+          const nextPreview = await previewAdminProjectMember(projectId, {
+            scope: state.mode === 'remove' ? 'CONFIRM_IN_PROGRESS' : 'FUTURE_ONLY',
+            memberChange,
+            confirmedInProgressTaskIds: readStringArray(form.confirmedInProgressTaskIds),
+          });
+          setInProgressConfirmationRows(
+            readArray(nextPreview.items)
+              .filter((item) => readBoolean(item.requiresInProgressConfirmation))
+              .map((item) => ({
+                id: readText(item.taskId),
+                label: readText(item.stepName) || readText(item.nodeName) || '进行中工序',
+              }))
+              .filter((item) => Boolean(item.id)),
+          );
+          setPreview(nextPreview);
+        } else if (state.mode === 'remove') {
+          await removeAdminProjectMember(projectId, userId, { expectedVersion, idempotencyKey: crypto.randomUUID(), reason: String(form.reason), transferToUserId: String(form.transferToUserId) || null, replacementOwnerUserId: String(form.replacementOwnerUserId) || null, confirmedInProgressTaskIds: readStringArray(form.confirmedInProgressTaskIds) });
+          await onSuccess('项目成员已安全移出；必要的负责人替换和任务转交已写入审计。');
+        } else {
+          const commandBody = { expectedVersion, idempotencyKey: crypto.randomUUID(), reason: String(form.reason), userId, memberTypes: readStringArray(form.memberTypes), responsibility: String(form.responsibility) || null, isDepartmentLead: Boolean(form.isDepartmentLead), isDefaultExecutor: Boolean(form.isDefaultExecutor), defaultNodeCodes: [] };
+          if (state.mode === 'create') await createAdminProjectMember(projectId, commandBody);
+          else await updateAdminProjectMember(projectId, userId, commandBody);
+          await onSuccess(state.mode === 'create' ? '项目成员已添加并写入审计日志。' : '项目成员职责与分工关系已更新。');
+        }
       } else if (state.kind === 'dictionary') {
         await updateAdminDictionary(state.row.id, {
           idempotencyKey: crypto.randomUUID(),
@@ -899,7 +997,42 @@ function AdminEditDialog({ state, onClose, onSuccess }: { state: Exclude<DialogS
                 </select>
               </Field>
             </> : null}
-            {state.kind === 'user' ? <Field label="用户状态"><select value={String(form.status)} onChange={(event) => { const value = event.currentTarget.value; setForm((current) => ({ ...current, status: value })); }}><option value="ACTIVE">启用</option><option value="INACTIVE">停用</option><option value="LOCKED">锁定</option></select></Field> : null}
+            {state.kind === 'organizationUser' ? <>
+              <div className="admin-cc-assignment-node-summary"><span>{state.mode === 'create' ? '新增人员' : '编辑人员'}</span><strong>{String(form.name) || '未命名用户'}</strong><small>飞书 User ID / Open ID / Union ID 由身份同步维护，不能手工覆盖。</small></div>
+              <Field label="登录名"><input required value={String(form.username)} onChange={(event) => { setForm((current) => ({ ...current, username: event.currentTarget.value })); setPreview(null); }} /></Field>
+              <Field label="姓名"><input required value={String(form.name)} onChange={(event) => { setForm((current) => ({ ...current, name: event.currentTarget.value })); setPreview(null); }} /></Field>
+              <Field label="邮箱"><input type="email" value={String(form.email)} onChange={(event) => { setForm((current) => ({ ...current, email: event.currentTarget.value })); setPreview(null); }} /></Field>
+              <Field label="手机号"><input value={String(form.mobile)} onChange={(event) => { setForm((current) => ({ ...current, mobile: event.currentTarget.value })); setPreview(null); }} /></Field>
+              <Field label="所属部门"><select value={String(form.departmentId)} onChange={(event) => { setForm((current) => ({ ...current, departmentId: event.currentTarget.value })); setPreview(null); }}><option value="">未归属部门</option>{state.response.directory.departments.filter((item) => item.isActive).map((item) => <option key={item.id} value={item.id}>{item.name} · {item.code}</option>)}</select></Field>
+              <Field label="用户状态"><select value={String(form.status)} onChange={(event) => { setForm((current) => ({ ...current, status: event.currentTarget.value })); setPreview(null); }}><option value="ACTIVE">启用</option><option value="INACTIVE">停用</option><option value="LOCKED">锁定</option></select></Field>
+              <fieldset className="admin-cc-person-field"><legend>系统角色 · 多选</legend><div>{state.response.directory.roles.filter((role) => role.status === 'ACTIVE').map((role) => <label key={role.id} className={readStringArray(form.roleIds).includes(role.id) ? 'is-selected' : undefined}><input type="checkbox" checked={readStringArray(form.roleIds).includes(role.id)} onChange={(event) => { const current = readStringArray(form.roleIds); setForm((value) => ({ ...value, roleIds: event.currentTarget.checked ? [...new Set([...current, role.id])] : current.filter((id) => id !== role.id) })); setPreview(null); }} /><span>{role.name}<small>{role.code}{role.isSystem ? ' · 系统角色' : ''}</small></span></label>)}</div></fieldset>
+              <label className="admin-cc-checkbox"><input type="checkbox" checked={Boolean(form.isSystemAdmin)} onChange={(event) => { setForm((current) => ({ ...current, isSystemAdmin: event.currentTarget.checked })); setPreview(null); }} />授予超级管理员权限</label>
+            </> : null}
+            {state.kind === 'department' ? <>
+              <div className="admin-cc-assignment-node-summary"><span>{state.mode === 'create' ? '新增组织单元' : '编辑组织单元'}</span><strong>{String(form.name) || '未命名部门'}</strong><small>层级路径由服务端根据上级部门和编码自动维护。</small></div>
+              <Field label="部门编码"><input required value={String(form.code)} onChange={(event) => { setForm((current) => ({ ...current, code: event.currentTarget.value.toUpperCase() })); setPreview(null); }} /></Field>
+              <Field label="部门名称"><input required value={String(form.name)} onChange={(event) => { setForm((current) => ({ ...current, name: event.currentTarget.value })); setPreview(null); }} /></Field>
+              <Field label="上级部门"><select value={String(form.parentId)} onChange={(event) => { setForm((current) => ({ ...current, parentId: event.currentTarget.value })); setPreview(null); }}><option value="">根部门</option>{state.response.directory.departments.filter((item) => item.id !== readText(state.row?.id)).map((item) => <option key={item.id} value={item.id}>{item.name} · {item.path}</option>)}</select></Field>
+              <Field label="部门负责人"><select value={String(form.leadUserId)} onChange={(event) => { setForm((current) => ({ ...current, leadUserId: event.currentTarget.value })); setPreview(null); }}><option value="">待设置</option>{state.response.directory.users.filter((item) => item.status === 'ACTIVE' && item.departmentId === readText(state.row?.id)).map((item) => <option key={item.id} value={item.id}>{item.name} · {item.username}</option>)}</select></Field>
+              <Field label="显示顺序"><input type="number" value={String(form.sortOrder)} onChange={(event) => { setForm((current) => ({ ...current, sortOrder: event.currentTarget.value })); setPreview(null); }} /></Field>
+              <label className="admin-cc-checkbox"><input type="checkbox" checked={Boolean(form.isActive)} onChange={(event) => { setForm((current) => ({ ...current, isActive: event.currentTarget.checked })); setPreview(null); }} />启用此部门</label>
+            </> : null}
+            {state.kind === 'member' ? <>
+              <div className="admin-cc-assignment-node-summary"><span>{state.mode === 'create' ? '添加项目成员' : state.mode === 'remove' ? '安全移出项目' : '编辑项目成员'}</span><strong>{state.mode === 'create' ? '选择项目与人员' : readNestedText(state.row?.user, 'name')}</strong><small>成员关系变化由现有 Gate 3A 服务处理，不在前端重算负责人。</small></div>
+              <Field label="项目"><select disabled={state.mode !== 'create'} value={String(form.projectId)} onChange={(event) => { setForm((current) => ({ ...current, projectId: event.currentTarget.value })); setPreview(null); }}><option value="">请选择项目</option>{state.response.directory.projects.map((item) => <option key={item.id} value={item.id}>{item.name} · {item.code}</option>)}</select></Field>
+              <Field label="系统用户"><select disabled={state.mode !== 'create'} value={String(form.userId)} onChange={(event) => { setForm((current) => ({ ...current, userId: event.currentTarget.value })); setPreview(null); }}><option value="">请选择人员</option>{state.response.directory.users.filter((item) => item.status === 'ACTIVE').map((item) => <option key={item.id} value={item.id}>{item.name} · {item.username}</option>)}</select></Field>
+              {state.mode !== 'remove' ? <>
+                <fieldset className="admin-cc-person-field"><legend>项目职责 · 多选</legend><div>{PROJECT_MEMBER_TYPES.map(([value, label]) => <label key={value} className={readStringArray(form.memberTypes).includes(value) ? 'is-selected' : undefined}><input type="checkbox" checked={readStringArray(form.memberTypes).includes(value)} onChange={(event) => { const current = readStringArray(form.memberTypes); setForm((draft) => ({ ...draft, memberTypes: event.currentTarget.checked ? [...new Set([...current, value])] : current.filter((item) => item !== value) })); setPreview(null); }} /><span>{label}<small>{value}</small></span></label>)}</div></fieldset>
+                <Field label="职责说明"><textarea value={String(form.responsibility)} onChange={(event) => { setForm((current) => ({ ...current, responsibility: event.currentTarget.value })); setPreview(null); }} /></Field>
+                <label className="admin-cc-checkbox"><input type="checkbox" checked={Boolean(form.isDepartmentLead)} onChange={(event) => { setForm((current) => ({ ...current, isDepartmentLead: event.currentTarget.checked })); setPreview(null); }} />设为该项目中的部门负责人</label>
+                <label className="admin-cc-checkbox"><input type="checkbox" checked={Boolean(form.isDefaultExecutor)} onChange={(event) => { setForm((current) => ({ ...current, isDefaultExecutor: event.currentTarget.checked })); setPreview(null); }} />设为该项目中的部门默认执行人</label>
+              </> : <>
+                <Field label="活跃任务转交给"><select value={String(form.transferToUserId)} onChange={(event) => { setForm((current) => ({ ...current, transferToUserId: event.currentTarget.value })); setPreview(null); }}><option value="">没有活跃任务 / 暂不选择</option>{projectMemberUsers(directory, String(form.userId)).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field>
+                {readBoolean(state.row?.isProjectOwner) ? <Field label="新的项目负责人"><select value={String(form.replacementOwnerUserId)} onChange={(event) => { setForm((current) => ({ ...current, replacementOwnerUserId: event.currentTarget.value })); setPreview(null); }}><option value="">请选择替代负责人</option>{projectMemberUsers(directory, String(form.userId)).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field> : null}
+                {directory === null ? <p className="admin-cc-mobile-note">正在读取当前项目的有效成员，读取完成后才可选择转交人员。</p> : null}
+                {inProgressConfirmationRows.length ? <fieldset className="admin-cc-person-field"><legend>逐项确认进行中任务转交</legend><div>{inProgressConfirmationRows.map((item) => <label key={item.id} className={readStringArray(form.confirmedInProgressTaskIds).includes(item.id) ? 'is-selected' : undefined}><input type="checkbox" checked={readStringArray(form.confirmedInProgressTaskIds).includes(item.id)} onChange={(event) => { const current = readStringArray(form.confirmedInProgressTaskIds); setForm((draft) => ({ ...draft, confirmedInProgressTaskIds: event.currentTarget.checked ? [...new Set([...current, item.id])] : current.filter((id) => id !== item.id) })); setPreview(null); }} /><span>{item.label}<small>{item.id}</small></span></label>)}</div></fieldset> : null}
+              </>}
+            </> : null}
             {state.kind === 'dictionary' ? <>
               <Field label="显示名称"><input required value={String(form.name)} onChange={(event) => { const value = event.currentTarget.value; setForm((current) => ({ ...current, name: value })); }} /></Field>
               <Field label="排序"><input type="number" value={String(form.sortOrder)} onChange={(event) => { const value = event.currentTarget.value; setForm((current) => ({ ...current, sortOrder: value })); }} /></Field>
@@ -1073,7 +1206,12 @@ function initialForm(state: Exclude<DialogState, null>): Record<string, string |
     reason: '',
   };
   if (state.kind === 'import') return { reason: '' };
-  if (state.kind === 'user') return { status: readText(state.row.status) || 'ACTIVE', reason: '' };
+  if (state.kind === 'organizationUser') {
+    const roles = readArray(state.row?.roles).map((role) => readNestedText(role, 'id')).filter(Boolean);
+    return { username: readText(state.row?.username), name: readText(state.row?.name), email: readText(state.row?.email), mobile: readText(state.row?.mobile), departmentId: readNestedText(state.row?.department, 'id'), status: readText(state.row?.status) || 'ACTIVE', isSystemAdmin: readBoolean(state.row?.isSystemAdmin), roleIds: roles, reason: '' };
+  }
+  if (state.kind === 'department') return { code: readText(state.row?.code), name: readText(state.row?.name), parentId: readNestedText(state.row?.parent, 'id'), leadUserId: readNestedText(state.row?.departmentLead, 'id'), sortOrder: state.mode === 'create' ? '0' : String(readNumber(state.row?.sortOrder)), isActive: state.mode === 'create' ? true : readBoolean(state.row?.isActive), reason: '' };
+  if (state.kind === 'member') return { projectId: readNestedText(state.row?.project, 'id'), userId: readNestedText(state.row?.user, 'id'), memberTypes: state.mode === 'create' ? ['MEMBER'] : readStringArray(state.row?.memberTypes), responsibility: readText(state.row?.responsibility), isDepartmentLead: readBoolean(state.row?.isDepartmentLead), isDefaultExecutor: readBoolean(state.row?.isDefaultExecutor), transferToUserId: '', replacementOwnerUserId: '', confirmedInProgressTaskIds: [], reason: '' };
   if (state.kind === 'dictionary') return { name: state.row.name, sortOrder: String(state.row.sortOrder), isActive: state.row.isActive, reason: '' };
   const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
   return { version: '', effectiveAt: toDateTimeInput(tomorrow.toISOString()), description: '', reason: '' };
@@ -1085,7 +1223,9 @@ function dialogTitle(state: Exclude<DialogState, null>) {
   if (state.kind === 'nodeAssignment') return `编辑第 ${state.row.stepNumber} 步分工`;
   if (state.kind === 'batch') return state.mode === 'schedule' ? `批量调整 ${state.rows.length} 条工序计划` : `批量调整 ${state.rows.length} 条工序分工`;
   if (state.kind === 'import') return '导入工序计划日期';
-  if (state.kind === 'user') return `变更用户状态：${readText(state.row.name)}`;
+  if (state.kind === 'organizationUser') return state.mode === 'create' ? '新增系统用户' : `编辑系统用户：${readText(state.row?.name)}`;
+  if (state.kind === 'department') return state.mode === 'create' ? '新增公司部门' : `编辑公司部门：${readText(state.row?.name)}`;
+  if (state.kind === 'member') return state.mode === 'create' ? '添加项目成员' : state.mode === 'remove' ? `移出项目成员：${readNestedText(state.row?.user, 'name')}` : `编辑项目成员：${readNestedText(state.row?.user, 'name')}`;
   if (state.kind === 'dictionary') return `编辑字典项：${state.row.name}`;
   return `基于 ${state.row.version} 创建新版本`;
 }
@@ -1166,6 +1306,22 @@ function memberRelations(row: Record<string, unknown>) {
     readBoolean(row.isReviewer) ? '评审人' : '',
   ].filter(Boolean);
   return relations.join('、') || readText(row.memberType) || '项目成员';
+}
+
+function projectMemberUsers(response: AdminOrganizationResponse | null, excludedUserId: string) {
+  const users = new Map<string, { id: string; name: string }>();
+  for (const row of response?.items ?? []) {
+    const user = readRecord(row.user);
+    const id = readText(user.id);
+    if (!id || id === excludedUserId) continue;
+    users.set(id, { id, name: readText(user.name) || id });
+  }
+  return [...users.values()].sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'));
+}
+
+function memberTypeLabels(values: string[]) {
+  const labels = new Map<string, string>(PROJECT_MEMBER_TYPES);
+  return values.map((value) => labels.get(value) ?? value);
 }
 
 function formatUnknown(value: unknown): string {

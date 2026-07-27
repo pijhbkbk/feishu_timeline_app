@@ -94,6 +94,37 @@ describe('R26 administrator control center contracts', () => {
     expect(componentSource).toContain('移动端只读');
   });
 
+  it('exposes full super-administrator organization controls instead of a read-only ledger', () => {
+    for (const label of [
+      '新增系统用户',
+      '编辑全部参数',
+      '新增公司部门',
+      '编辑部门',
+      '添加项目成员',
+      '编辑职责',
+      '移出项目',
+      '部门负责人',
+      '授予超级管理员权限',
+    ]) {
+      expect(componentSource).toContain(label);
+    }
+    expect(clientSource).toContain('previewAdminUserConfiguration');
+    expect(clientSource).toContain('previewAdminDepartmentConfiguration');
+    expect(clientSource).toContain('previewAdminProjectMember');
+    expect(clientSource).toContain('removeAdminProjectMember');
+    expect(cssSource).toContain('.admin-cc-organization-toolbar');
+  });
+
+  it('keeps project-member removal preview-first and limits transfers to real project members', () => {
+    expect(componentSource).toContain("scope: state.mode === 'remove' ? 'CONFIRM_IN_PROGRESS' : 'FUTURE_ONLY'");
+    expect(componentSource).toContain('confirmedInProgressTaskIds');
+    expect(componentSource).toContain('逐项确认进行中任务转交');
+    expect(componentSource).toContain('projectMemberUsers(directory');
+    expect(componentSource).toContain('正在读取当前项目的有效成员');
+    expect(clientSource).toContain('previewAdminProjectMember');
+    expect(clientSource).toContain('removeAdminProjectMember');
+  });
+
   it('rejects a production release that still serves administrator placeholders', () => {
     expect(productionAcceptanceSource).toContain('EXPECTED_RUNTIME_COMMIT');
     expect(productionAcceptanceSource).toContain('admin_route_real');

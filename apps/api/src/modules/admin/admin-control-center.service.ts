@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -39,6 +40,8 @@ import {
   type AdminBatchTaskChangeDto,
   type AdminBatchTaskPreviewDto,
   type AdminDictionaryChangeDto,
+  type AdminDepartmentConfigurationChangeDto,
+  type AdminDepartmentConfigurationPreviewDto,
   type AdminLedgerQueryDto,
   type AdminNodeAssignmentChangeDto,
   type AdminNodeAssignmentPreviewDto,
@@ -51,6 +54,8 @@ import {
   type AdminTaskScheduleImportDto,
   type AdminTaskScheduleImportPreviewDto,
   type AdminUserStatusChangeDto,
+  type AdminUserConfigurationChangeDto,
+  type AdminUserConfigurationPreviewDto,
 } from './dto/admin-control-center.dto';
 
 type AdminDbClient = Prisma.TransactionClient | PrismaService;
@@ -422,6 +427,7 @@ export class AdminControlCenterService {
     const pageSize = this.readPageSize(query.pageSize);
     const tab = query.tab ?? 'users';
     const search = query.search?.trim();
+    const directory = await this.getOrganizationDirectory();
 
     if (tab === 'departments') {
       const where: Prisma.DepartmentWhereInput = search
@@ -441,9 +447,10 @@ export class AdminControlCenterService {
           orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
           include: {
             parent: { select: { id: true, name: true } },
+            leadUser: { select: { id: true, name: true, status: true } },
             users: {
               where: { status: UserStatus.ACTIVE },
-              select: { id: true, name: true, isSystemAdmin: true },
+              select: { id: true, name: true },
             },
             _count: {
               select: {
@@ -467,14 +474,16 @@ export class AdminControlCenterService {
           parent: department.parent,
           path: department.path,
           level: department.level,
+          sortOrder: department.sortOrder,
           isActive: department.isActive,
           memberCount: department.users.length,
-          departmentLead:
-            department.users.find((user) => user.isSystemAdmin) ?? null,
+          departmentLead: department.leadUser,
           activeTaskCount: department._count.assignedWorkflowTasks,
           configuredNodeCount: department._count.projectNodeAssignments,
           dataVersion: department.updatedAt.toISOString(),
+          availableActions: ['EDIT_CONFIGURATION', 'CHANGE_LEADER', 'CHANGE_STATUS'],
         })),
+        directory,
       };
     }
 
@@ -491,24 +500,35 @@ export class AdminControlCenterService {
             }
           : {}),
       };
-      const [total, rows] = await this.prisma.$transaction([
-        this.prisma.projectMember.count({ where }),
-        this.prisma.projectMember.findMany({
-          where,
-          skip: (page - 1) * pageSize,
-          take: pageSize,
-          orderBy: [{ updatedAt: 'desc' }],
-          include: {
-            project: { select: { id: true, code: true, name: true } },
-            user: {
-              include: { department: { select: { id: true, name: true } } },
+      const rawRows = await this.prisma.projectMember.findMany({
+        where,
+        orderBy: [{ updatedAt: 'desc' }],
+        include: {
+          project: {
+            select: {
+              id: true,
+              code: true,
+              name: true,
+              memberAssignmentVersion: true,
+              ownerUserId: true,
             },
           },
-        }),
-      ]);
-      const userProjectPairs = rows.map((row) => ({
-        userId: row.userId,
-        projectId: row.projectId,
+          user: {
+            include: { department: { select: { id: true, name: true } } },
+          },
+        },
+      });
+      const groupedRows = new Map<string, typeof rawRows>();
+      for (const row of rawRows) {
+        const key = `${row.projectId}:${row.userId}`;
+        groupedRows.set(key, [...(groupedRows.get(key) ?? []), row]);
+      }
+      const grouped = [...groupedRows.values()];
+      const total = grouped.length;
+      const rows = grouped.slice((page - 1) * pageSize, page * pageSize);
+      const userProjectPairs = rows.map((group) => ({
+        userId: group[0]!.userId,
+        projectId: group[0]!.projectId,
       }));
       const taskCounts = await Promise.all(
         userProjectPairs.map((pair) =>
@@ -534,8 +554,14 @@ export class AdminControlCenterService {
         pageSize,
         total,
         totalPages: Math.max(1, Math.ceil(total / pageSize)),
-        items: rows.map((row, index) => ({
-          id: row.id,
+        items: rows.map((memberRows, index) => {
+          const row = memberRows[0]!;
+          const memberTypes = memberRows.map((member) => member.memberType);
+          const latest = memberRows.reduce((current, candidate) =>
+            current.updatedAt > candidate.updatedAt ? current : candidate,
+          );
+          return {
+          id: `${row.projectId}:${row.userId}`,
           project: row.project,
           user: {
             id: row.user.id,
@@ -543,18 +569,19 @@ export class AdminControlCenterService {
             department: row.user.department,
             status: row.user.status,
           },
-          memberType: row.memberType,
-          responsibility: row.title,
-          isProjectOwner: row.memberType === ProjectMemberType.OWNER,
-          isDepartmentLead:
-            row.memberType === ProjectMemberType.MANAGER && row.isPrimary,
-          isDefaultExecutor:
-            row.memberType === ProjectMemberType.MEMBER && row.isPrimary,
-          isReviewer: row.memberType === ProjectMemberType.REVIEWER,
+          memberTypes,
+          responsibility: memberRows.find((member) => member.title)?.title ?? null,
+          isProjectOwner: memberTypes.includes(ProjectMemberType.OWNER),
+          isDepartmentLead: memberRows.some((member) => member.memberType === ProjectMemberType.MANAGER && member.isPrimary),
+          isDefaultExecutor: memberRows.some((member) => member.memberType === ProjectMemberType.MEMBER && member.isPrimary),
+          isReviewer: memberTypes.includes(ProjectMemberType.REVIEWER),
           activeTaskCount: taskCounts[index] ?? 0,
           validFrom: row.createdAt.toISOString(),
-          dataVersion: row.updatedAt.toISOString(),
-        })),
+          dataVersion: latest.updatedAt.toISOString(),
+          projectVersion: row.project.memberAssignmentVersion,
+          availableActions: ['EDIT_CONFIGURATION', 'REMOVE_FROM_PROJECT'],
+        };}),
+        directory,
       };
     }
 
@@ -617,6 +644,7 @@ export class AdminControlCenterService {
         dataVersion: user.updatedAt.toISOString(),
         availableActions: ['CHANGE_STATUS', 'VIEW_PROJECTS', 'VIEW_TASKS'],
       })),
+      directory,
     };
   }
 
@@ -2032,6 +2060,354 @@ export class AdminControlCenterService {
     });
   }
 
+  async previewUserConfiguration(
+    userId: string | null,
+    input: AdminUserConfigurationPreviewDto,
+    actor: AuthenticatedUser,
+  ) {
+    this.assertSuperAdministrator(actor);
+    const current = userId
+      ? await this.prisma.user.findUnique({
+          where: { id: userId },
+          include: {
+            department: { select: { id: true, name: true } },
+            userRoles: { include: { role: true } },
+            _count: {
+              select: {
+                projectMembers: true,
+                assignedWorkflowTasks: true,
+                ledDepartments: true,
+              },
+            },
+          },
+        })
+      : null;
+    if (userId && !current) throw new NotFoundException('用户不存在。');
+    if (current && !input.expectedVersion) throw new BadRequestException('缺少用户数据版本。');
+    if (current && input.expectedVersion) {
+      this.assertDateVersion(current.updatedAt, input.expectedVersion, '用户');
+    }
+
+    const [department, roles, duplicate, activeTaskCount, activeSuperAdminCount] = await Promise.all([
+      input.departmentId
+        ? this.prisma.department.findFirst({
+            where: { id: input.departmentId, isActive: true },
+            select: { id: true, name: true },
+          })
+        : Promise.resolve(null),
+      this.prisma.role.findMany({
+        where: { id: { in: input.roleIds } },
+        select: { id: true, code: true, name: true, status: true },
+      }),
+      this.prisma.user.findFirst({
+        where: {
+          ...(userId ? { id: { not: userId } } : {}),
+          OR: [
+            { username: input.username.trim() },
+            ...(input.email?.trim() ? [{ email: input.email.trim() }] : []),
+            ...(input.mobile?.trim() ? [{ mobile: input.mobile.trim() }] : []),
+          ],
+        },
+        select: { id: true, name: true, username: true, email: true, mobile: true },
+      }),
+      userId
+        ? this.prisma.workflowTask.count({
+            where: {
+              assigneeUserId: userId,
+              isActive: true,
+              status: { in: [WorkflowTaskStatus.PENDING, WorkflowTaskStatus.READY, WorkflowTaskStatus.IN_PROGRESS] },
+            },
+          })
+        : Promise.resolve(0),
+      this.prisma.user.count({ where: { isSystemAdmin: true, status: UserStatus.ACTIVE } }),
+    ]);
+
+    const conflicts: string[] = [];
+    const warnings: string[] = [];
+    if (input.departmentId && !department) conflicts.push('所选部门不存在或已停用。');
+    if (roles.length !== new Set(input.roleIds).size) conflicts.push('所选角色包含不存在的记录。');
+    if (roles.some((role) => role.status !== 'ACTIVE')) conflicts.push('停用角色不能分配给用户。');
+    if (input.isSystemAdmin && !roles.some((role) => role.code === 'admin')) {
+      conflicts.push('超级管理员必须同时拥有管理员角色。');
+    }
+    if (duplicate) conflicts.push(`登录名、邮箱或手机号与用户“${duplicate.name}”重复。`);
+    if (userId === actor.id && (input.status !== UserStatus.ACTIVE || !input.isSystemAdmin)) {
+      conflicts.push('不能停用当前账号或移除当前账号的超级管理员权限。');
+    }
+    if (current?.isSystemAdmin && current.status === UserStatus.ACTIVE && activeSuperAdminCount <= 1 && (input.status !== UserStatus.ACTIVE || !input.isSystemAdmin)) {
+      conflicts.push('系统必须至少保留一个启用中的超级管理员。');
+    }
+    if (input.status !== UserStatus.ACTIVE && activeTaskCount > 0) {
+      warnings.push(`该用户仍有 ${activeTaskCount} 项活跃任务；停用不会自动转交任务。`);
+    }
+    if (current?._count.ledDepartments && input.status !== UserStatus.ACTIVE) {
+      conflicts.push(`该用户仍负责 ${current._count.ledDepartments} 个部门，请先调整部门负责人。`);
+    }
+
+    return {
+      operation: current ? 'UPDATE' : 'CREATE',
+      canApply: conflicts.length === 0,
+      conflicts,
+      warnings,
+      before: current
+        ? {
+            username: current.username,
+            name: current.name,
+            email: current.email,
+            mobile: current.mobile,
+            department: current.department,
+            status: current.status,
+            isSystemAdmin: current.isSystemAdmin,
+            roles: current.userRoles.map((row) => row.role.name),
+          }
+        : null,
+      after: {
+        username: input.username.trim(),
+        name: input.name.trim(),
+        email: input.email?.trim() || null,
+        mobile: input.mobile?.trim() || null,
+        department,
+        status: input.status,
+        isSystemAdmin: input.isSystemAdmin,
+        roles: roles.map((role) => role.name),
+      },
+      impact: {
+        projectMembershipsPreserved: current?._count.projectMembers ?? 0,
+        assignedTasksPreserved: current?._count.assignedWorkflowTasks ?? 0,
+        activeTaskCount,
+        feishuIdentityReadOnly: true,
+        auditRequired: true,
+      },
+      writePerformed: false,
+    };
+  }
+
+  async changeUserConfiguration(
+    userId: string | null,
+    input: AdminUserConfigurationChangeDto,
+    actor: AuthenticatedUser,
+    requestId: string,
+  ) {
+    this.assertSuperAdministrator(actor);
+    if (!input.acknowledgedConsequences) throw new BadRequestException('请先确认影响预览。');
+    return this.executeAdminCommand({
+      projectId: null,
+      action: userId ? 'ADMIN_USER_CONFIGURATION_CHANGED' : 'ADMIN_USER_CREATED',
+      input,
+      actor,
+      execute: async (tx) => {
+        const existing = userId
+          ? await tx.user.findUnique({
+              where: { id: userId },
+              include: { userRoles: { include: { role: true } }, department: true },
+            })
+          : null;
+        if (userId && !existing) throw new NotFoundException('用户不存在。');
+        if (existing) this.assertDateVersion(existing.updatedAt, input.expectedVersion ?? '', '用户');
+
+        const [department, roles, duplicate, activeTaskCount, activeSuperAdminCount, ledDepartmentCount] = await Promise.all([
+          input.departmentId
+            ? tx.department.findFirst({ where: { id: input.departmentId, isActive: true }, select: { id: true } })
+            : Promise.resolve(null),
+          tx.role.findMany({ where: { id: { in: input.roleIds } }, select: { id: true, code: true, status: true } }),
+          tx.user.findFirst({
+            where: {
+              ...(userId ? { id: { not: userId } } : {}),
+              OR: [
+                { username: input.username.trim() },
+                ...(input.email?.trim() ? [{ email: input.email.trim() }] : []),
+                ...(input.mobile?.trim() ? [{ mobile: input.mobile.trim() }] : []),
+              ],
+            },
+            select: { id: true },
+          }),
+          userId
+            ? tx.workflowTask.count({
+                where: {
+                  assigneeUserId: userId,
+                  isActive: true,
+                  status: { in: [WorkflowTaskStatus.PENDING, WorkflowTaskStatus.READY, WorkflowTaskStatus.IN_PROGRESS] },
+                },
+              })
+            : Promise.resolve(0),
+          tx.user.count({ where: { isSystemAdmin: true, status: UserStatus.ACTIVE } }),
+          userId ? tx.department.count({ where: { leadUserId: userId } }) : Promise.resolve(0),
+        ]);
+        const transactionConflicts: string[] = [];
+        if (input.departmentId && !department) transactionConflicts.push('所选部门不存在或已停用。');
+        if (roles.length !== new Set(input.roleIds).size || roles.some((role) => role.status !== 'ACTIVE')) transactionConflicts.push('所选角色不存在或已停用。');
+        if (input.isSystemAdmin && !roles.some((role) => role.code === 'admin')) transactionConflicts.push('超级管理员必须同时拥有管理员角色。');
+        if (duplicate) transactionConflicts.push('登录名、邮箱或手机号已被其他用户使用。');
+        if (userId === actor.id && (input.status !== UserStatus.ACTIVE || !input.isSystemAdmin)) transactionConflicts.push('不能停用当前账号或移除当前账号的超级管理员权限。');
+        if (existing?.isSystemAdmin && existing.status === UserStatus.ACTIVE && activeSuperAdminCount <= 1 && (input.status !== UserStatus.ACTIVE || !input.isSystemAdmin)) transactionConflicts.push('系统必须至少保留一个启用中的超级管理员。');
+        if (input.status !== UserStatus.ACTIVE && ledDepartmentCount > 0) transactionConflicts.push('该用户仍是部门负责人，请先调整部门负责人。');
+        if (transactionConflicts.length) {
+          throw new ConflictException({ code: 'USER_CONFIGURATION_BLOCKED', message: '用户配置在提交时已不满足条件。', conflicts: transactionConflicts, activeTaskCount });
+        }
+
+        const user = existing
+          ? await tx.user.update({
+              where: { id: existing.id },
+              data: {
+                username: input.username.trim(), name: input.name.trim(),
+                email: input.email?.trim() || null, mobile: input.mobile?.trim() || null,
+                departmentId: input.departmentId || null, status: input.status,
+                isSystemAdmin: input.isSystemAdmin,
+              },
+            })
+          : await tx.user.create({
+              data: {
+                username: input.username.trim(), name: input.name.trim(),
+                email: input.email?.trim() || null, mobile: input.mobile?.trim() || null,
+                departmentId: input.departmentId || null, status: input.status,
+                isSystemAdmin: input.isSystemAdmin,
+              },
+            });
+        await tx.userRole.deleteMany({ where: { userId: user.id } });
+        if (input.roleIds.length) {
+          await tx.userRole.createMany({
+            data: [...new Set(input.roleIds)].map((roleId) => ({ userId: user.id, roleId })),
+          });
+        }
+        const afterRoles = await tx.role.findMany({ where: { id: { in: input.roleIds } }, select: { id: true, code: true, name: true } });
+        const audit = await this.activityLogsService.createWithExecutor(tx, {
+          projectId: null, actorUserId: actor.id, targetType: AuditTargetType.USER,
+          targetId: user.id,
+          action: existing ? 'ADMIN_USER_CONFIGURATION_CHANGED' : 'ADMIN_USER_CREATED',
+          summary: existing ? `修改系统用户 ${existing.name} 的完整配置` : `新增系统用户 ${user.name}`,
+          ...(existing ? { beforeData: {
+            username: existing.username, name: existing.name, email: existing.email, mobile: existing.mobile,
+            departmentId: existing.departmentId, status: existing.status, isSystemAdmin: existing.isSystemAdmin,
+            roleIds: existing.userRoles.map((row) => row.roleId),
+          } } : {}),
+          afterData: {
+            username: user.username, name: user.name, email: user.email, mobile: user.mobile,
+            departmentId: user.departmentId, status: user.status, isSystemAdmin: user.isSystemAdmin,
+            roles: afterRoles,
+          },
+          metadata: { requestId, idempotencyKey: input.idempotencyKey, reason: input.reason.trim(), result: 'SUCCESS', feishuIdentityPreserved: true },
+        });
+        return { userId: user.id, userVersion: user.updatedAt.toISOString(), auditLogIds: [audit.id] };
+      },
+    });
+  }
+
+  async previewDepartmentConfiguration(
+    departmentId: string | null,
+    input: AdminDepartmentConfigurationPreviewDto,
+    actor: AuthenticatedUser,
+  ) {
+    this.assertSuperAdministrator(actor);
+    const current = departmentId
+      ? await this.prisma.department.findUnique({
+          where: { id: departmentId },
+          include: {
+            parent: { select: { id: true, name: true } },
+            leadUser: { select: { id: true, name: true } },
+            _count: { select: { users: true, children: true, ownedProjects: true, assignedWorkflowTasks: true } },
+          },
+        })
+      : null;
+    if (departmentId && !current) throw new NotFoundException('部门不存在。');
+    if (current && !input.expectedVersion) throw new BadRequestException('缺少部门数据版本。');
+    if (current && input.expectedVersion) this.assertDateVersion(current.updatedAt, input.expectedVersion, '部门');
+    const [parent, leadUser, duplicate] = await Promise.all([
+      input.parentId ? this.prisma.department.findUnique({ where: { id: input.parentId } }) : Promise.resolve(null),
+      input.leadUserId ? this.prisma.user.findUnique({ where: { id: input.leadUserId } }) : Promise.resolve(null),
+      this.prisma.department.findFirst({ where: { code: input.code.trim(), ...(departmentId ? { id: { not: departmentId } } : {}) }, select: { id: true, name: true } }),
+    ]);
+    const conflicts: string[] = [];
+    const warnings: string[] = [];
+    if (!/^[A-Z0-9][A-Z0-9_-]{0,39}$/.test(input.code.trim())) conflicts.push('部门编码只能包含大写字母、数字、下划线和连字符。');
+    if (input.parentId && !parent) conflicts.push('所选上级部门不存在。');
+    if (parent && !parent.isActive) conflicts.push('不能将部门归属到已停用的上级部门。');
+    if (input.parentId === departmentId) conflicts.push('部门不能将自己设为上级部门。');
+    if (departmentId && parent?.path?.startsWith(`${current?.path}/`)) conflicts.push('不能将部门移动到自己的下级部门。');
+    if (duplicate) conflicts.push(`部门编码已被“${duplicate.name}”使用。`);
+    if (input.leadUserId && (!leadUser || leadUser.status !== UserStatus.ACTIVE)) conflicts.push('部门负责人不存在或已停用。');
+    if (leadUser && departmentId && leadUser.departmentId !== departmentId) conflicts.push('部门负责人必须先归属到当前部门。');
+    if (leadUser && !departmentId) conflicts.push('新部门保存后，请先把人员调整到该部门，再设置负责人。');
+    if (current && !input.isActive) {
+      const blockers = [
+        current._count.users ? `${current._count.users} 名人员` : '',
+        current._count.children ? `${current._count.children} 个下级部门` : '',
+        current._count.ownedProjects ? `${current._count.ownedProjects} 个项目` : '',
+        current._count.assignedWorkflowTasks ? `${current._count.assignedWorkflowTasks} 项工序` : '',
+      ].filter(Boolean);
+      if (blockers.length) conflicts.push(`停用前必须处理：${blockers.join('、')}。`);
+    }
+    if (current && (current.code !== input.code.trim() || current.parentId !== (input.parentId || null))) warnings.push('部门路径及全部下级部门路径将同步重算。');
+    return {
+      operation: current ? 'UPDATE' : 'CREATE', canApply: conflicts.length === 0, conflicts, warnings,
+      before: current ? { code: current.code, name: current.name, parent: current.parent, leadUser: current.leadUser, sortOrder: current.sortOrder, isActive: current.isActive, path: current.path } : null,
+      after: { code: input.code.trim(), name: input.name.trim(), parent: parent ? { id: parent.id, name: parent.name } : null, leadUser: leadUser ? { id: leadUser.id, name: leadUser.name } : null, sortOrder: input.sortOrder, isActive: input.isActive },
+      impact: { childPathsRecalculated: current?._count.children ?? 0, usersPreserved: current?._count.users ?? 0, projectsPreserved: current?._count.ownedProjects ?? 0, auditRequired: true },
+      writePerformed: false,
+    };
+  }
+
+  async changeDepartmentConfiguration(
+    departmentId: string | null,
+    input: AdminDepartmentConfigurationChangeDto,
+    actor: AuthenticatedUser,
+    requestId: string,
+  ) {
+    this.assertSuperAdministrator(actor);
+    if (!input.acknowledgedConsequences) throw new BadRequestException('请先确认影响预览。');
+    return this.executeAdminCommand({
+      projectId: null,
+      action: departmentId ? 'ADMIN_DEPARTMENT_CONFIGURATION_CHANGED' : 'ADMIN_DEPARTMENT_CREATED',
+      input, actor,
+      execute: async (tx) => {
+        const existing = departmentId ? await tx.department.findUnique({ where: { id: departmentId } }) : null;
+        if (departmentId && !existing) throw new NotFoundException('部门不存在。');
+        if (existing) this.assertDateVersion(existing.updatedAt, input.expectedVersion ?? '', '部门');
+        const [parent, leadUser, duplicate, currentCounts] = await Promise.all([
+          input.parentId ? tx.department.findUnique({ where: { id: input.parentId } }) : Promise.resolve(null),
+          input.leadUserId ? tx.user.findUnique({ where: { id: input.leadUserId } }) : Promise.resolve(null),
+          tx.department.findFirst({ where: { code: input.code.trim(), ...(departmentId ? { id: { not: departmentId } } : {}) }, select: { id: true } }),
+          departmentId
+            ? tx.department.findUnique({
+                where: { id: departmentId },
+                select: { _count: { select: { users: true, children: true, ownedProjects: true, assignedWorkflowTasks: true } } },
+              })
+            : Promise.resolve(null),
+        ]);
+        const transactionConflicts: string[] = [];
+        if (!/^[A-Z0-9][A-Z0-9_-]{0,39}$/.test(input.code.trim())) transactionConflicts.push('部门编码格式不正确。');
+        if (input.parentId && (!parent || !parent.isActive)) transactionConflicts.push('所选上级部门不存在或已停用。');
+        if (input.parentId === departmentId || (existing && parent?.path?.startsWith(`${existing.path}/`))) transactionConflicts.push('部门层级会形成循环。');
+        if (duplicate) transactionConflicts.push('部门编码已被其他部门使用。');
+        if (input.leadUserId && (!leadUser || leadUser.status !== UserStatus.ACTIVE)) transactionConflicts.push('部门负责人不存在或已停用。');
+        if (leadUser && departmentId && leadUser.departmentId !== departmentId) transactionConflicts.push('部门负责人必须归属当前部门。');
+        if (leadUser && !departmentId) transactionConflicts.push('新部门保存后，请先把人员调整到该部门，再设置负责人。');
+        if (existing && !input.isActive && currentCounts) {
+          const totalBlockers = currentCounts._count.users + currentCounts._count.children + currentCounts._count.ownedProjects + currentCounts._count.assignedWorkflowTasks;
+          if (totalBlockers > 0) transactionConflicts.push('该部门仍关联人员、下级部门、项目或工序，不能停用。');
+        }
+        if (transactionConflicts.length) {
+          throw new ConflictException({ code: 'DEPARTMENT_CONFIGURATION_BLOCKED', message: '部门配置在提交时已不满足条件。', conflicts: transactionConflicts });
+        }
+        const code = input.code.trim();
+        const path = parent ? `${parent.path ?? `/${parent.code}`}/${code}` : `/${code}`;
+        const level = (parent?.level ?? 0) + 1;
+        const department = existing
+          ? await tx.department.update({ where: { id: existing.id }, data: { code, name: input.name.trim(), parentId: input.parentId || null, leadUserId: input.leadUserId || null, sortOrder: input.sortOrder, isActive: input.isActive, path, level } })
+          : await tx.department.create({ data: { code, name: input.name.trim(), parentId: input.parentId || null, leadUserId: input.leadUserId || null, sortOrder: input.sortOrder, isActive: input.isActive, path, level } });
+        await this.refreshDepartmentDescendantPaths(tx, department.id, department.path ?? `/${department.code}`, department.level);
+        const audit = await this.activityLogsService.createWithExecutor(tx, {
+          projectId: null, actorUserId: actor.id, targetType: AuditTargetType.SYSTEM, targetId: department.id,
+          action: existing ? 'ADMIN_DEPARTMENT_CONFIGURATION_CHANGED' : 'ADMIN_DEPARTMENT_CREATED',
+          summary: existing ? `修改公司部门 ${existing.name} 的完整配置` : `新增公司部门 ${department.name}`,
+          ...(existing ? { beforeData: { code: existing.code, name: existing.name, parentId: existing.parentId, leadUserId: existing.leadUserId, sortOrder: existing.sortOrder, isActive: existing.isActive, path: existing.path, level: existing.level } } : {}),
+          afterData: { code: department.code, name: department.name, parentId: department.parentId, leadUserId: department.leadUserId, sortOrder: department.sortOrder, isActive: department.isActive, path: department.path, level: department.level },
+          metadata: { requestId, idempotencyKey: input.idempotencyKey, reason: input.reason.trim(), result: 'SUCCESS' },
+        });
+        return { departmentId: department.id, departmentVersion: department.updatedAt.toISOString(), auditLogIds: [audit.id] };
+      },
+    });
+  }
+
   async changeDictionaryItem(
     itemId: string,
     input: AdminDictionaryChangeDto,
@@ -2942,6 +3318,49 @@ export class AdminControlCenterService {
 
   private readPage(value?: number) {
     return Math.max(1, value ?? 1);
+  }
+
+  private assertSuperAdministrator(actor: AuthenticatedUser) {
+    if (!actor.isSystemAdmin) {
+      throw new ForbiddenException('只有超级管理员可以修改组织、人员和部门配置。');
+    }
+  }
+
+  private async getOrganizationDirectory() {
+    const [departments, users, roles, projects] = await Promise.all([
+      this.prisma.department.findMany({
+        orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+        select: { id: true, code: true, name: true, parentId: true, path: true, isActive: true },
+      }),
+      this.prisma.user.findMany({
+        orderBy: [{ status: 'asc' }, { name: 'asc' }],
+        select: { id: true, username: true, name: true, departmentId: true, status: true },
+      }),
+      this.prisma.role.findMany({
+        orderBy: { name: 'asc' },
+        select: { id: true, code: true, name: true, status: true, isSystem: true },
+      }),
+      this.prisma.project.findMany({
+        orderBy: { updatedAt: 'desc' },
+        select: { id: true, code: true, name: true, status: true, memberAssignmentVersion: true },
+      }),
+    ]);
+    return { departments, users, roles, projects };
+  }
+
+  private async refreshDepartmentDescendantPaths(
+    tx: Prisma.TransactionClient,
+    departmentId: string,
+    parentPath: string,
+    parentLevel: number,
+  ): Promise<void> {
+    const children = await tx.department.findMany({ where: { parentId: departmentId } });
+    for (const child of children) {
+      const path = `${parentPath}/${child.code}`;
+      const level = parentLevel + 1;
+      await tx.department.update({ where: { id: child.id }, data: { path, level } });
+      await this.refreshDepartmentDescendantPaths(tx, child.id, path, level);
+    }
   }
 
   private readPageSize(value?: number) {

@@ -1,5 +1,26 @@
 # EXECUTION_LEDGER.md
 
+## R26 组织与人员完整配置（2026-07-27）
+
+- Authorization：按产品负责人要求，使超级管理员能够调整系统用户、公司部门和项目成员
+  的全部受控参数，包括增减人员、部门名称/层级/负责人和项目职责关系。
+- Scope：独立分支与 staging；不修改 V1 和工作流状态机，不部署 production。
+- Data model：新增真实部门负责人 `Department.leadUserId` 关系及 migration
+  `20260727090000_r26_admin_organization_management`。
+- API：新增用户和部门的 preview/create/update 命令；项目成员增改移继续复用 Gate 3A
+  服务；写操作强制超级管理员、版本、幂等、事务和审计。
+- UI：组织与人员三类真实台账均提供新增/完整编辑/安全移除入口；飞书身份只读；成员移除
+  只允许转交给当前项目有效成员，进行中任务逐项确认。
+- Correctness：真实本地写烟测覆盖创建部门/用户、幂等重放、部门负责人设置/清除和安全
+  停用；修复幂等重放被重复数据预检阻断的问题。
+- Responsive：1440/1024/390 真实浏览器 PASS，console/page error=0；修复 1024px
+  后台表格撑大整页导致的横向溢出。
+- Validation：`pnpm install`、lint、typecheck、全量测试、Web/API build、Prisma validate、
+  `git diff --check` 全部 PASS；Web 174 tests，API 305 tests。
+- Evidence：`docs/product/R26_ADMIN_ORGANIZATION_MANAGEMENT_REPORT.md` 与
+  `docs/product/evidence/R26_ADMIN_ORGANIZATION_MANAGEMENT/`。
+- Decision：`IMPLEMENTED / PRODUCTION_NOT_TOUCHED / READY_FOR_ISOLATED_STAGING`。
+
 ## R26 生产后台按钮与部署真实性修复（2026-07-25）
 
 - Authorization：修复用户录屏中生产后台管理入口点击后仍落入占位页的问题，并按永久

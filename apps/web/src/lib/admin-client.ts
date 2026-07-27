@@ -218,6 +218,12 @@ export type AdminOrganizationRow = Record<string, unknown> & {
 
 export type AdminOrganizationResponse = AdminListResponse<AdminOrganizationRow> & {
   tab: 'users' | 'departments' | 'members';
+  directory: {
+    departments: Array<{ id: string; code: string; name: string; parentId: string | null; path: string | null; isActive: boolean }>;
+    users: Array<{ id: string; username: string; name: string; departmentId: string | null; status: string }>;
+    roles: Array<{ id: string; code: string; name: string; status: string; isSystem: boolean }>;
+    projects: Array<{ id: string; code: string; name: string; status: string; memberAssignmentVersion: number }>;
+  };
 };
 
 export type AdminAssignmentResponse = {
@@ -519,6 +525,65 @@ export function updateAdminUserStatus(
     headers: commandHeaders(body.idempotencyKey),
     body,
   });
+}
+
+export function previewAdminUserConfiguration(
+  userId: string | null,
+  body: Record<string, unknown>,
+) {
+  const suffix = userId ? `/${encodeURIComponent(userId)}` : '';
+  return apiRequest<Record<string, unknown>>(`/admin/organization/users${suffix}/preview`, { method: 'POST', body });
+}
+
+export function updateAdminUserConfiguration(
+  userId: string | null,
+  body: Record<string, unknown> & { idempotencyKey: string },
+) {
+  const suffix = userId ? `/${encodeURIComponent(userId)}` : '';
+  return apiRequest(`/admin/organization/users${suffix}`, { method: 'POST', headers: commandHeaders(body.idempotencyKey), body });
+}
+
+export function previewAdminDepartmentConfiguration(
+  departmentId: string | null,
+  body: Record<string, unknown>,
+) {
+  const suffix = departmentId ? `/${encodeURIComponent(departmentId)}` : '';
+  return apiRequest<Record<string, unknown>>(`/admin/organization/departments${suffix}/preview`, { method: 'POST', body });
+}
+
+export function updateAdminDepartmentConfiguration(
+  departmentId: string | null,
+  body: Record<string, unknown> & { idempotencyKey: string },
+) {
+  const suffix = departmentId ? `/${encodeURIComponent(departmentId)}` : '';
+  return apiRequest(`/admin/organization/departments${suffix}`, { method: 'POST', headers: commandHeaders(body.idempotencyKey), body });
+}
+
+export function previewAdminProjectMember(projectId: string, body: Record<string, unknown>) {
+  return apiRequest<Record<string, unknown>>(`/v2/projects/${encodeURIComponent(projectId)}/assignment-preview`, { method: 'POST', body });
+}
+
+export function createAdminProjectMember(
+  projectId: string,
+  body: Record<string, unknown> & { idempotencyKey: string },
+) {
+  return apiRequest(`/v2/projects/${encodeURIComponent(projectId)}/members`, { method: 'POST', headers: commandHeaders(body.idempotencyKey), body });
+}
+
+export function updateAdminProjectMember(
+  projectId: string,
+  userId: string,
+  body: Record<string, unknown> & { idempotencyKey: string },
+) {
+  return apiRequest(`/v2/projects/${encodeURIComponent(projectId)}/members/${encodeURIComponent(userId)}`, { method: 'PATCH', headers: commandHeaders(body.idempotencyKey), body });
+}
+
+export function removeAdminProjectMember(
+  projectId: string,
+  userId: string,
+  body: Record<string, unknown> & { idempotencyKey: string },
+) {
+  return apiRequest(`/v2/projects/${encodeURIComponent(projectId)}/members/${encodeURIComponent(userId)}`, { method: 'DELETE', headers: commandHeaders(body.idempotencyKey), body });
 }
 
 export function updateAdminDictionary(

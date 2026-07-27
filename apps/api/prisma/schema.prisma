@@ -396,8 +396,10 @@ model Department {
   level                  Int                       @default(1)
   sortOrder              Int                       @default(0)
   isActive               Boolean                   @default(true)
+  leadUserId             String?
   parent                 Department?               @relation("DepartmentHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
   children               Department[]              @relation("DepartmentHierarchy")
+  leadUser               User?                     @relation("DepartmentLead", fields: [leadUserId], references: [id], onDelete: SetNull)
   users                  User[]
   ownedProjects          Project[]                 @relation("OwningDepartmentProjects")
   assignedWorkflowTasks  WorkflowTask[]            @relation("TaskAssigneeDepartment")
@@ -407,6 +409,7 @@ model Department {
   updatedAt              DateTime                  @updatedAt
 
   @@index([parentId])
+  @@index([leadUserId])
   @@index([isActive, sortOrder])
   @@map("departments")
 }
@@ -424,6 +427,7 @@ model User {
   status                        UserStatus                @default(ACTIVE)
   isSystemAdmin                 Boolean                   @default(false)
   department                    Department?               @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  ledDepartments                Department[]              @relation("DepartmentLead")
   userRoles                     UserRole[]
   ownedProjects                 Project[]                 @relation("ProjectOwner")
   projectMembers                ProjectMember[]

@@ -309,6 +309,117 @@ export class AdminUserStatusChangeDto extends AdminVersionedCommandDto {
   status!: UserStatus;
 }
 
+export class AdminUserConfigurationPreviewDto {
+  @IsOptional()
+  @IsDateString()
+  expectedVersion?: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(80)
+  username!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(80)
+  name!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(160)
+  email?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  mobile?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  departmentId?: string | null;
+
+  @IsEnum(UserStatus)
+  status!: UserStatus;
+
+  @IsBoolean()
+  isSystemAdmin!: boolean;
+
+  @IsArray()
+  @ArrayMaxSize(20)
+  @IsString({ each: true })
+  roleIds!: string[];
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(500)
+  reason!: string;
+}
+
+export class AdminUserConfigurationChangeDto
+  extends AdminUserConfigurationPreviewDto
+  implements AdminVersionedCommandDto
+{
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(128)
+  idempotencyKey!: string;
+
+  @IsBoolean()
+  acknowledgedConsequences!: boolean;
+}
+
+export class AdminDepartmentConfigurationPreviewDto {
+  @IsOptional()
+  @IsDateString()
+  expectedVersion?: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(40)
+  code!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(120)
+  name!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  parentId?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  leadUserId?: string | null;
+
+  @IsInt()
+  @Min(0)
+  sortOrder!: number;
+
+  @IsBoolean()
+  isActive!: boolean;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(500)
+  reason!: string;
+}
+
+export class AdminDepartmentConfigurationChangeDto
+  extends AdminDepartmentConfigurationPreviewDto
+  implements AdminVersionedCommandDto
+{
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(128)
+  idempotencyKey!: string;
+
+  @IsBoolean()
+  acknowledgedConsequences!: boolean;
+}
+
 export class AdminDictionaryChangeDto extends AdminVersionedCommandDto {
   @IsDateString()
   expectedVersion!: string;
