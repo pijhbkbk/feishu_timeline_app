@@ -794,7 +794,7 @@ export class AdminControlCenterService {
       selectedProjectId,
       projectVersion: project.memberAssignmentVersion,
       schema: [
-        { key: 'primaryDepartmentId', label: '主责部门', type: 'REFERENCE' },
+        { key: 'primaryDepartmentId', label: '主责部门', type: 'CREATABLE_REFERENCE' },
         { key: 'ownerUserId', label: '默认负责人', type: 'USER' },
         { key: 'collaboratorUserIds', label: '协同人员', type: 'MULTI_USER' },
         { key: 'reviewerUserIds', label: '评审人员', type: 'MULTI_USER' },
@@ -874,6 +874,98 @@ export class AdminControlCenterService {
           });
         }
 
+        const requestedDepartmentName = this.normalizeDepartmentName(
+          input.primaryDepartmentName,
+        );
+        let resolvedDepartment = input.primaryDepartmentId
+          ? await tx.department.findFirst({
+              where: { id: input.primaryDepartmentId, isActive: true },
+            })
+          : requestedDepartmentName
+            ? await tx.department.findFirst({
+                where: {
+                  name: {
+                    equals: requestedDepartmentName,
+                    mode: 'insensitive',
+                  },
+                  isActive: true,
+                },
+                orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+              })
+            : null;
+        let createdDepartmentAuditId: string | null = null;
+        if (!resolvedDepartment && requestedDepartmentName) {
+          const inactiveDepartment = await tx.department.findFirst({
+            where: {
+              name: {
+                equals: requestedDepartmentName,
+                mode: 'insensitive',
+              },
+              isActive: false,
+            },
+            select: { id: true, name: true },
+          });
+          if (inactiveDepartment) {
+            throw new ConflictException({
+              code: 'CUSTOM_DEPARTMENT_INACTIVE',
+              message: `部门“${inactiveDepartment.name}”已停用，请先在组织与人员中启用。`,
+            });
+          }
+          const code = this.customDepartmentCode(requestedDepartmentName);
+          const codeConflict = await tx.department.findUnique({
+            where: { code },
+            select: { id: true, name: true },
+          });
+          if (codeConflict) {
+            throw new ConflictException({
+              code: 'CUSTOM_DEPARTMENT_CODE_CONFLICT',
+              message: `自动生成的部门编码已被“${codeConflict.name}”使用，请在组织与人员中新增该部门后再关联。`,
+            });
+          }
+          const parent = await tx.department.findFirst({
+            where: { isActive: true, OR: [{ code: 'HQ' }, { parentId: null }] },
+            orderBy: [{ code: 'asc' }],
+          });
+          const path = parent
+            ? `${parent.path ?? `/${parent.code}`}/${code}`
+            : `/${code}`;
+          resolvedDepartment = await tx.department.create({
+            data: {
+              code,
+              name: requestedDepartmentName,
+              parentId: parent?.id ?? null,
+              path,
+              level: (parent?.level ?? 0) + 1,
+              sortOrder: 999,
+              isActive: true,
+            },
+          });
+          const departmentAudit =
+            await this.activityLogsService.createWithExecutor(tx, {
+              projectId: null,
+              actorUserId: actor.id,
+              targetType: AuditTargetType.SYSTEM,
+              targetId: resolvedDepartment.id,
+              action: 'ADMIN_DEPARTMENT_CREATED_FROM_ASSIGNMENT',
+              summary: `从分工配置新增公司部门 ${resolvedDepartment.name}`,
+              afterData: {
+                code: resolvedDepartment.code,
+                name: resolvedDepartment.name,
+                parentId: resolvedDepartment.parentId,
+                path: resolvedDepartment.path,
+                isActive: resolvedDepartment.isActive,
+              },
+              metadata: {
+                requestId,
+                idempotencyKey: input.idempotencyKey,
+                reason: input.reason.trim(),
+                source: 'ADMIN_NODE_ASSIGNMENT',
+                result: 'SUCCESS',
+              },
+            });
+          createdDepartmentAuditId = departmentAudit.id;
+        }
+
         const before = await tx.projectNodeAssignment.findUnique({
           where: { projectId_nodeCode: { projectId, nodeCode } },
         });
@@ -884,7 +976,7 @@ export class AdminControlCenterService {
           create: {
             projectId,
             nodeCode,
-            primaryDepartmentId: input.primaryDepartmentId || null,
+            primaryDepartmentId: resolvedDepartment?.id ?? null,
             ownerUserId: input.ownerUserId || null,
             collaboratorUserIds,
             reviewerUserIds,
@@ -892,7 +984,7 @@ export class AdminControlCenterService {
             updatedById: actor.id,
           },
           update: {
-            primaryDepartmentId: input.primaryDepartmentId || null,
+            primaryDepartmentId: resolvedDepartment?.id ?? null,
             ownerUserId: input.ownerUserId || null,
             collaboratorUserIds,
             reviewerUserIds,
@@ -921,7 +1013,7 @@ export class AdminControlCenterService {
           await tx.workflowTask.update({
             where: { id: task.id },
             data: {
-              assigneeDepartmentId: proposed.primaryDepartment?.id ?? null,
+              assigneeDepartmentId: resolvedDepartment?.id ?? null,
               assigneeUserId: proposed.owner?.id ?? null,
               payload: this.mergeJson(task.payload, {
                 assignmentSource:
@@ -961,6 +1053,7 @@ export class AdminControlCenterService {
             : { configured: false },
           afterData: {
             primaryDepartmentId: configured.primaryDepartmentId,
+            primaryDepartmentName: resolvedDepartment?.name ?? null,
             ownerUserId: configured.ownerUserId,
             collaboratorUserIds,
             reviewerUserIds,
@@ -981,7 +1074,16 @@ export class AdminControlCenterService {
           memberAssignmentVersion: input.expectedVersion + 1,
           assignmentVersion: configured.version,
           affectedTaskIds: affectedTaskId ? [affectedTaskId] : [],
-          auditLogIds: [audit.id],
+          createdDepartment: createdDepartmentAuditId
+            ? {
+                id: resolvedDepartment?.id ?? null,
+                code: resolvedDepartment?.code ?? null,
+                name: resolvedDepartment?.name ?? null,
+              }
+            : null,
+          auditLogIds: [createdDepartmentAuditId, audit.id].filter(
+            (id): id is string => Boolean(id),
+          ),
         };
       },
     });
@@ -2873,6 +2975,18 @@ export class AdminControlCenterService {
       });
     }
 
+    const requestedDepartmentName = this.normalizeDepartmentName(
+      input.primaryDepartmentName,
+    );
+    const departmentMatchedByName = requestedDepartmentName
+      ? await db.department.findFirst({
+          where: {
+            name: { equals: requestedDepartmentName, mode: 'insensitive' },
+          },
+          orderBy: [{ isActive: 'desc' }, { sortOrder: 'asc' }],
+        })
+      : null;
+
     const memberRows: R26ProjectMemberRow[] = project.members.map((member) => ({
       id: member.id,
       userId: member.userId,
@@ -2901,17 +3015,53 @@ export class AdminControlCenterService {
     const reviewerUserIds = [...new Set(input.reviewerUserIds)];
     const relatedIds = [...collaboratorUserIds, ...reviewerUserIds];
     const blockingReasons: string[] = [];
-    const primaryDepartment = input.primaryDepartmentId
+    const selectedDepartment = input.primaryDepartmentId
       ? departments.find(
           (department) => department.id === input.primaryDepartmentId,
         ) ?? null
       : null;
+    const existingNamedDepartment =
+      !input.primaryDepartmentId && departmentMatchedByName?.isActive
+        ? departmentMatchedByName
+        : null;
+    const customDepartment =
+      !input.primaryDepartmentId &&
+      requestedDepartmentName &&
+      !departmentMatchedByName
+        ? {
+            id: this.customDepartmentDraftId(requestedDepartmentName),
+            code: this.customDepartmentCode(requestedDepartmentName),
+            name: requestedDepartmentName,
+            path: null,
+            isActive: true,
+          }
+        : null;
+    const primaryDepartment =
+      selectedDepartment ?? existingNamedDepartment ?? customDepartment;
     const requestedOwner = input.ownerUserId
       ? users.find((user) => user.id === input.ownerUserId) ?? null
       : null;
 
     if (input.primaryDepartmentId && !primaryDepartment) {
       blockingReasons.push('所选主责部门不存在或已停用。');
+    }
+    if (
+      selectedDepartment &&
+      requestedDepartmentName &&
+      selectedDepartment.name.toLocaleLowerCase() !==
+        requestedDepartmentName.toLocaleLowerCase()
+    ) {
+      blockingReasons.push('输入的部门名称与所选关联部门不一致。');
+    }
+    if (
+      !input.primaryDepartmentId &&
+      requestedDepartmentName &&
+      departmentMatchedByName &&
+      !departmentMatchedByName.isActive
+    ) {
+      blockingReasons.push(
+        `部门“${departmentMatchedByName.name}”已停用，请先在组织与人员中启用。`,
+      );
     }
     if (input.ownerUserId && !activeMemberIds.has(input.ownerUserId)) {
       blockingReasons.push('默认负责人必须是当前项目的有效成员。');
@@ -2964,14 +3114,16 @@ export class AdminControlCenterService {
       task: null,
       nodeAssignment: {
         nodeCode,
-        primaryDepartmentId: input.primaryDepartmentId || null,
+        primaryDepartmentId: primaryDepartment?.id ?? null,
         ownerUserId: input.ownerUserId || null,
         collaboratorUserIds,
         reviewerUserIds,
         assignmentSource: ProjectAssignmentSource.PROJECT_NODE_OVERRIDE,
       },
       projectMembers: memberRows,
-      departments: directoryDepartments,
+      departments: customDepartment
+        ? [...directoryDepartments, customDepartment]
+        : directoryDepartments,
       users: directoryUsers,
     });
     const affectsPendingTask =
@@ -2993,7 +3145,14 @@ export class AdminControlCenterService {
     return {
       canApply: blockingReasons.length === 0,
       blockingReasons,
-      warnings: proposed.unassignedReason ? [proposed.unassignedReason] : [],
+      warnings: [
+        ...(customDepartment
+          ? [
+              `将新建公司部门“${customDepartment.name}”并关联当前工序；部门编码由服务端生成。`,
+            ]
+          : []),
+        ...(proposed.unassignedReason ? [proposed.unassignedReason] : []),
+      ],
       node: {
         nodeCode,
         stepNumber: definition.sequence / 10,
@@ -3020,6 +3179,19 @@ export class AdminControlCenterService {
         assignmentStatus: proposed.assignmentStatus,
         assignmentSource: proposed.assignmentSource,
       },
+      departmentPlan: customDepartment
+        ? {
+            action: 'CREATE_AND_LINK',
+            name: customDepartment.name,
+            generatedCode: customDepartment.code,
+          }
+        : primaryDepartment
+          ? {
+              action: 'LINK_EXISTING',
+              id: primaryDepartment.id,
+              name: primaryDepartment.name,
+            }
+          : { action: 'USE_SERVER_DEFAULT' },
       impact: {
         scope: input.scope,
         futureTasksUseConfiguration: true,
@@ -3387,6 +3559,18 @@ export class AdminControlCenterService {
       !Array.isArray(value)
       ? (value as Record<string, unknown>)
       : {};
+  }
+
+  private normalizeDepartmentName(value: string | null | undefined) {
+    return value?.trim().replace(/\s+/g, ' ') ?? '';
+  }
+
+  private customDepartmentCode(name: string) {
+    return `CUSTOM_${createHash('sha256').update(name).digest('hex').slice(0, 16).toUpperCase()}`;
+  }
+
+  private customDepartmentDraftId(name: string) {
+    return `draft:${this.customDepartmentCode(name)}`;
   }
 
   private readString(value: unknown) {

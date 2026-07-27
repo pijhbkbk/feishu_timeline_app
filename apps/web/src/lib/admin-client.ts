@@ -235,6 +235,7 @@ export type AdminAssignmentResponse = {
     label: string;
     type:
       | 'REFERENCE'
+      | 'CREATABLE_REFERENCE'
       | 'USER'
       | 'MULTI_USER'
       | 'SINGLE_SELECT'

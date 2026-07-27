@@ -11,6 +11,10 @@ const controllerSource = readFileSync(
   join(__dirname, 'admin-control-center.controller.ts'),
   'utf8',
 );
+const dtoSource = readFileSync(
+  join(__dirname, 'dto/admin-control-center.dto.ts'),
+  'utf8',
+);
 const migrationSource = readFileSync(
   join(
     __dirname,
@@ -139,5 +143,15 @@ describe('R26 administrator control center backend contracts', () => {
     );
     expect(directoryMethod).toContain('this.prisma.project.findMany({');
     expect(directoryMethod).not.toContain('take:');
+  });
+
+  it('creates and audits a typed custom department before linking the node assignment', () => {
+    expect(dtoSource).toContain('primaryDepartmentName?: string | null');
+    expect(serviceSource).toContain("type: 'CREATABLE_REFERENCE'");
+    expect(serviceSource).toContain("action: 'CREATE_AND_LINK'");
+    expect(serviceSource).toContain('customDepartmentCode');
+    expect(serviceSource).toContain('ADMIN_DEPARTMENT_CREATED_FROM_ASSIGNMENT');
+    expect(serviceSource).toContain('primaryDepartmentId: resolvedDepartment?.id ?? null');
+    expect(serviceSource).toContain('部门编码由服务端生成');
   });
 });

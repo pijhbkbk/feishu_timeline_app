@@ -263,6 +263,11 @@ export class AdminNodeAssignmentPreviewDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(120)
+  primaryDepartmentName?: string | null;
+
+  @IsOptional()
+  @IsString()
   @MaxLength(64)
   ownerUserId?: string | null;
 

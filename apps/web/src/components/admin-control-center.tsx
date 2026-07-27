@@ -586,6 +586,7 @@ function AssignmentsTable({
 function fieldTypeLabel(type: AdminAssignmentResponse['schema'][number]['type']) {
   return {
     REFERENCE: '关联',
+    CREATABLE_REFERENCE: '可输入关联',
     USER: '人员',
     MULTI_USER: '多人',
     SINGLE_SELECT: '单选',
@@ -829,6 +830,8 @@ function AdminEditDialog({ state, onClose, onSuccess }: { state: Exclude<DialogS
           expectedVersion: state.response.projectVersion,
           primaryDepartmentId:
             String(form.primaryDepartmentId) || null,
+          primaryDepartmentName:
+            String(form.primaryDepartmentName).trim() || null,
           ownerUserId: String(form.ownerUserId) || null,
           collaboratorUserIds: readStringArray(form.collaboratorUserIds),
           reviewerUserIds: readStringArray(form.reviewerUserIds),
@@ -941,15 +944,29 @@ function AdminEditDialog({ state, onClose, onSuccess }: { state: Exclude<DialogS
                 <strong>{state.row.stepName}</strong>
                 <small>{state.row.nodeCode} · 当前任务 {state.row.taskStatus ? statusLabel(state.row.taskStatus) : '尚未生成'}</small>
               </div>
-              <Field label="主责部门 · 关联字段">
-                <select value={String(form.primaryDepartmentId)} onChange={(event) => {
-                  const value = event.currentTarget.value;
-                  setForm((current) => ({ ...current, primaryDepartmentId: value, ownerUserId: '' }));
-                  setPreview(null);
-                }}>
-                  <option value="">使用服务端默认部门规则</option>
-                  {state.response.directory.departments.map((department) => <option key={department.id} value={department.id}>{department.name}</option>)}
-                </select>
+              <Field label="主责部门名称 · 可输入关联字段">
+                <input
+                  list="admin-node-department-options"
+                  value={String(form.primaryDepartmentName)}
+                  placeholder="输入现有或新的部门名称"
+                  onChange={(event) => {
+                    const value = event.currentTarget.value;
+                    const matchedDepartment = state.response.directory.departments.find(
+                      (department) => department.name.trim().toLocaleLowerCase() === value.trim().toLocaleLowerCase(),
+                    );
+                    setForm((current) => ({
+                      ...current,
+                      primaryDepartmentName: value,
+                      primaryDepartmentId: matchedDepartment?.id ?? '',
+                      ownerUserId: '',
+                    }));
+                    setPreview(null);
+                  }}
+                />
+                <datalist id="admin-node-department-options">
+                  {state.response.directory.departments.map((department) => <option key={department.id} value={department.name}>{department.code}</option>)}
+                </datalist>
+                <small>可直接键入自定义名称；新名称将在确认后创建为真实公司部门。清空则使用服务端默认部门规则。</small>
               </Field>
               <Field label="默认负责人 · 单选人员">
                 <select value={String(form.ownerUserId)} onChange={(event) => {
@@ -1188,6 +1205,8 @@ function initialForm(state: Exclude<DialogState, null>): Record<string, string |
   if (state.kind === 'nodeAssignment') return {
     primaryDepartmentId:
       state.row.configuration.primaryDepartmentId ?? '',
+    primaryDepartmentName:
+      readNestedText(state.row.primaryDepartment, 'name'),
     ownerUserId: state.row.configuration.ownerUserId ?? '',
     collaboratorUserIds:
       state.row.configuration.collaboratorUserIds ?? [],

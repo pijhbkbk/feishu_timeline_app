@@ -137,6 +137,18 @@ describe('R26 administrator control center contracts', () => {
     );
   });
 
+  it('lets a super administrator type a custom primary department name', () => {
+    expect(componentSource).toContain('主责部门名称 · 可输入关联字段');
+    expect(componentSource).toContain('list="admin-node-department-options"');
+    expect(componentSource).toContain('输入现有或新的部门名称');
+    expect(componentSource).toContain('primaryDepartmentName: value');
+    expect(componentSource).toContain('新名称将在确认后创建为真实公司部门');
+    expect(componentSource).not.toContain(
+      '<Field label="主责部门 · 关联字段">',
+    );
+    expect(clientSource).toContain("| 'CREATABLE_REFERENCE'");
+  });
+
   it('rejects a production release that still serves administrator placeholders', () => {
     expect(productionAcceptanceSource).toContain('EXPECTED_RUNTIME_COMMIT');
     expect(productionAcceptanceSource).toContain('admin_route_real');
