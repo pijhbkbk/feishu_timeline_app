@@ -572,7 +572,7 @@ function AssignmentsTable({
           <td><button type="button" className="admin-cc-editable-cell" onClick={() => onEdit(item)}><span>{readNestedText(item.primaryDepartment, 'name') || '待确定'}</span><small>引用字段 · 编辑</small></button></td>
           <td><button type="button" className="admin-cc-editable-cell" onClick={() => onEdit(item)}><span>{readNestedText(item.suggestedOwner, 'name') || '待分配'}</span><small>人员字段 · 编辑</small></button></td>
           <td><button type="button" className="admin-cc-editable-cell" onClick={() => onEdit(item)}><span>{namesFromUnknown(item.collaborators)}</span><small>{namesFromUnknown(item.collaboratorDepartments) || '多选人员'}</small></button></td>
-          <td><button type="button" className="admin-cc-editable-cell" onClick={() => onEdit(item)}><span>{namesFromUnknown(item.reviewers)}</span><small>{readBoolean(item.isReviewNode) ? '多选人员 · 编辑' : '非评审节点'}</small></button></td>
+          <td><button type="button" className="admin-cc-editable-cell" onClick={() => onEdit(item)}><span>{readBoolean(item.isReviewNode) ? namesFromUnknown(item.reviewers) : '—'}</span><small>{readBoolean(item.isReviewNode) ? '多选人员 · 编辑' : '非评审节点'}</small></button></td>
           <td><StatusBadge value={readText(item.assignmentStatus) || 'UNASSIGNED'} /><small>{readText(item.unassignedReason)}</small></td><td>{assignmentSourceLabel(readText(item.assignmentSource) || 'UNASSIGNED')}</td>
           <td><button type="button" className="admin-cc-row-edit" onClick={() => onEdit(item)}>编辑分工</button></td>
         </tr>)}
@@ -834,7 +834,9 @@ function AdminEditDialog({ state, onClose, onSuccess }: { state: Exclude<DialogS
             String(form.primaryDepartmentName).trim() || null,
           ownerUserId: String(form.ownerUserId) || null,
           collaboratorUserIds: readStringArray(form.collaboratorUserIds),
-          reviewerUserIds: readStringArray(form.reviewerUserIds),
+          reviewerUserIds: readBoolean(state.row.isReviewNode)
+            ? readStringArray(form.reviewerUserIds)
+            : [],
           scope: String(form.scope),
           reason: String(form.reason),
         };
@@ -1210,7 +1212,9 @@ function initialForm(state: Exclude<DialogState, null>): Record<string, string |
     ownerUserId: state.row.configuration.ownerUserId ?? '',
     collaboratorUserIds:
       state.row.configuration.collaboratorUserIds ?? [],
-    reviewerUserIds: state.row.configuration.reviewerUserIds ?? [],
+    reviewerUserIds: readBoolean(state.row.isReviewNode)
+      ? state.row.configuration.reviewerUserIds ?? []
+      : [],
     scope:
       state.row.taskStatus === 'IN_PROGRESS'
         ? 'FUTURE_ONLY'

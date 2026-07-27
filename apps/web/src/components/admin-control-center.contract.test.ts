@@ -149,6 +149,15 @@ describe('R26 administrator control center contracts', () => {
     expect(clientSource).toContain("| 'CREATABLE_REFERENCE'");
   });
 
+  it('does not leak legacy reviewer values into ordinary node assignment writes', () => {
+    expect(componentSource).toContain(
+      'reviewerUserIds: readBoolean(state.row.isReviewNode)',
+    );
+    expect(componentSource).toContain(
+      "readBoolean(item.isReviewNode) ? namesFromUnknown(item.reviewers) : '—'",
+    );
+  });
+
   it('rejects a production release that still serves administrator placeholders', () => {
     expect(productionAcceptanceSource).toContain('EXPECTED_RUNTIME_COMMIT');
     expect(productionAcceptanceSource).toContain('admin_route_real');
