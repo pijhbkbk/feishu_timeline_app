@@ -125,6 +125,18 @@ describe('R26 administrator control center contracts', () => {
     expect(clientSource).toContain('removeAdminProjectMember');
   });
 
+  it('captures form event values before React state updater callbacks run', () => {
+    expect(componentSource).not.toMatch(
+      /setForm\(\([^)]*\) => \(\{[^}]*event\.currentTarget\.(?:value|checked)/,
+    );
+    expect(componentSource).toContain(
+      'const value = event.currentTarget.value; setForm',
+    );
+    expect(componentSource).toContain(
+      'const checked = event.currentTarget.checked; setForm',
+    );
+  });
+
   it('rejects a production release that still serves administrator placeholders', () => {
     expect(productionAcceptanceSource).toContain('EXPECTED_RUNTIME_COMMIT');
     expect(productionAcceptanceSource).toContain('admin_route_real');
