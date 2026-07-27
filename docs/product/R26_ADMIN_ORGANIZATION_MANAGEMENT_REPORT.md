@@ -42,6 +42,30 @@
   停用测试用户和测试部门。测试对象最终保持停用，不删除审计记录。
 - 修复了相同幂等键重试被重复数据预校验提前拦截的问题。
 
+## 真人浏览器缺陷修复与 staging 验收
+
+在独立 staging 使用李晓晨真实登录态逐项点击、输入、选择、预览并确认，首轮复现了
+“新增/编辑组织表单改变下拉项后白屏”的客户端异常。根因是 React 事件对象的
+`currentTarget.value` / `currentTarget.checked` 被延迟到函数式状态更新器中读取；并发更新时
+事件目标已经失效。现已在事件回调中先复制原始值，再更新状态，并为系统用户、公司部门和
+项目成员的同类字段增加契约测试。
+
+修复后完成了以下真实操作链：
+
+1. 新增公司部门并设置上级部门；
+2. 新增系统用户，编辑部门、状态和角色；
+3. 修改部门名称并设置、清空负责人；
+4. 将用户加入项目，修改成员类型、职责和默认执行人标记，再安全移出；
+5. 停用用户；
+6. 尝试停用仍有关联人员的部门，服务端正确阻断并返回精确原因；
+7. 将人员迁回总部后再次预览并成功停用部门；
+8. 在“审计与异常”中确认上述创建、修改、加入、移出和停用记录均带操作者、对象、
+   requestId 和成功状态。
+
+本轮临时对象统一使用后缀 `28636807`，测试结束后用户与部门均保持停用，项目成员关系已
+安全移除；审计记录按合规要求保留。staging 已运行包含修复提交 `8a77e7b` 的构建，
+production 仍运行此前提交，本轮未触碰 production。
+
 ## 响应式与浏览器证据
 
 证据目录：`docs/product/evidence/R26_ADMIN_ORGANIZATION_MANAGEMENT/`
@@ -68,7 +92,7 @@ pnpm install                         PASS
 pnpm lint                            PASS
 pnpm typecheck                       PASS
 pnpm test                            PASS
-  Web: 44 files / 174 tests
+  Web: 44 files / 175 tests
   API: 67 files / 305 tests
 pnpm --filter web build              PASS
 pnpm --filter api build              PASS

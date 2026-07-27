@@ -13,10 +13,17 @@
   只允许转交给当前项目有效成员，进行中任务逐项确认。
 - Correctness：真实本地写烟测覆盖创建部门/用户、幂等重放、部门负责人设置/清除和安全
   停用；修复幂等重放被重复数据预检阻断的问题。
+- Browser bugfix：真人 staging 操作复现组织表单切换下拉项后白屏；根因为 React 事件对象
+  在函数式状态更新器中延迟读取。现已先捕获 value/checked，再更新状态，并为同类字段补
+  充契约测试。
+- Human UAT：真实完成部门新增/改名/负责人设置与清空、用户新增/改部门/改角色/停用、
+  项目成员加入/编辑/安全移出；停用有关联人员部门被正确阻断，迁移人员后可执行；所有动作
+  均在审计日志中可追溯。临时用户与部门最终停用，临时项目成员关系已移除。
 - Responsive：1440/1024/390 真实浏览器 PASS，console/page error=0；修复 1024px
   后台表格撑大整页导致的横向溢出。
 - Validation：`pnpm install`、lint、typecheck、全量测试、Web/API build、Prisma validate、
-  `git diff --check` 全部 PASS；Web 174 tests，API 305 tests。
+  `git diff --check` 全部 PASS；Web 175 tests，API 305 tests。
+- Staging：修复提交 `8a77e7b` 已推送，独立 staging 已完成真实操作验收；production 未触碰。
 - Evidence：`docs/product/R26_ADMIN_ORGANIZATION_MANAGEMENT_REPORT.md` 与
   `docs/product/evidence/R26_ADMIN_ORGANIZATION_MANAGEMENT/`。
 - Decision：`IMPLEMENTED / PRODUCTION_NOT_TOUCHED / READY_FOR_ISOLATED_STAGING`。
