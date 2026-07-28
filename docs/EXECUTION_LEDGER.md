@@ -1,5 +1,21 @@
 # EXECUTION_LEDGER.md
 
+## R26 详细管理入口去重与操作纵排（2026-07-28）
+
+- Authorization：按产品负责人截图要求，删除与“工序总台账”结果重复的“流程与参数”
+  管理组，并将同一卡片内横排的操作按钮统一改为纵排。
+- Information architecture：`/admin/manage` 从 5 组收敛为 4 组；“审计与异常”自动由第 05
+  组顺延为第 04 组；不再展示“查看运行工序”重复入口。
+- Layout：桌面端和移动端均使用纵向操作区；双入口卡片中的“项目总台账 / 工序总台账”及
+  “分工配置 / 角色权限”按单列排列，保留统一按钮宽度、间距和点击区域。
+- Regression：更新组件契约和 Playwright 断言，锁定 4 组结构、重复入口消失及操作区
+  `flex-direction: column`，防止后续回归。
+- Validation：`pnpm install`、lint、typecheck、全量测试、Web/API build、Prisma validate 与
+  `git diff --check` 全部 PASS；Web 45 files / 170 tests，API 68 files / 310 tests。
+- Scope：不修改 API、数据库、权限、工作流状态机、V1、production、`main` 或 tag。
+- Decision：`DUPLICATE_WORKFLOW_GROUP_REMOVED / MANAGEMENT_ACTIONS_STACKED /
+  FULL_REGRESSION_PASSED / STAGING_VERIFICATION_IN_PROGRESS`。
+
 ## R26 详细管理页面二次收敛（2026-07-28）
 
 - Authorization：按产品负责人最新版截图要求，继续精简 `/admin/manage`，只保留一个返回

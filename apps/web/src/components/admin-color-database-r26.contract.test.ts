@@ -22,12 +22,15 @@ describe('R26 simplified admin and color archive contracts', () => {
   });
 
   it('preserves existing management capabilities behind the management entry', () => {
-    for (const label of ['项目与工序', '组织与成员', '分工与权限', '流程与参数', '审计与异常']) {
+    for (const label of ['项目与工序', '组织与成员', '分工与权限', '审计与异常']) {
       expect(manageSource).toContain(label);
     }
+    expect(manageSource).not.toContain("title: '流程与参数'");
+    expect(manageSource).not.toContain('查看运行工序');
     for (const route of ['/admin/projects', '/admin/tasks', '/admin/organization', '/admin/assignments', '/admin/permissions', '/admin/audit-logs']) {
       expect(manageSource).toContain(route);
     }
+    expect(cssSource).toContain('flex-direction: column');
   });
 
   it('uses existing attachment reads without exposing a second upload entry', () => {

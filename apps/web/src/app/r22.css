@@ -1826,7 +1826,7 @@ a {
 .r26-admin-manage__groups article > div:first-child > span { color: #7d96ad; font-size: 13px; font-weight: 800; letter-spacing: 0.08em; }
 .r26-admin-manage__groups h2 { margin: 8px 0 0; font-size: 24px; }
 .r26-admin-manage__groups p { max-width: 620px; margin: 8px 0 0; color: #687487; font-size: 15px; line-height: 1.65; }
-.r26-admin-manage__links { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.r26-admin-manage__links { display: flex; min-width: 160px; flex-direction: column; gap: 8px; align-items: stretch; }
 .r26-admin-manage__links a { padding: 12px 15px; border: 1px solid #d7e0ea; border-radius: 12px; color: #28658f; background: #f8fbfd; font-size: 14px; font-weight: 750; text-decoration: none; white-space: nowrap; }
 
 .r26-color-db__metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
@@ -1938,7 +1938,7 @@ a {
   .r26-admin-entry-grid { grid-template-columns: 1fr; gap: 14px; }
   .r26-admin-entry { min-height: 230px; padding: 26px; }
   .r26-admin-manage__groups article { display: grid; padding: 22px; }
-  .r26-admin-manage__links { justify-content: flex-start; }
+  .r26-admin-manage__links { min-width: 0; align-items: flex-start; }
   .r26-color-db__metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
   .r26-color-db__metric { min-height: 118px; padding: 20px 17px; }
   .r26-color-db__metric > strong { font-size: 34px; }

@@ -101,6 +101,8 @@ describe('R22 product component contracts', () => {
     expect(adminManageSource).not.toContain('<h1>进入管理</h1>');
     expect(adminManageSource).not.toContain('详细管理能力按业务职责归类');
     expect(adminManageSource).not.toContain('aria-label="管理模块"');
+    expect(adminManageSource).not.toContain("title: '流程与参数'");
+    expect(adminManageSource).not.toContain('查看运行工序');
   });
 
   it('renders empty, error and permission state variants', () => {

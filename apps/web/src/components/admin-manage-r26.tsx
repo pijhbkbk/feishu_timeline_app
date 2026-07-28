@@ -23,11 +23,6 @@ const managementGroups = [
     ],
   },
   {
-    title: '流程与参数',
-    description: '通过工序台账核对运行中流程；冻结业务规则继续由服务端统一裁决。',
-    links: [{ href: '/admin/tasks', label: '查看运行工序' }],
-  },
-  {
     title: '审计与异常',
     description: '检索关键写操作、失败、拒绝和越权事件，保留完整审计链路。',
     links: [{ href: '/admin/audit-logs', label: '审计日志' }],

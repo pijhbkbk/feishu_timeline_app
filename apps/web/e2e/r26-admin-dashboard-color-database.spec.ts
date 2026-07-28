@@ -68,9 +68,11 @@ test.describe.serial('R26 极简系统管理与颜色数据库', () => {
       await expect(page.getByRole('link', { name: '返回', exact: true })).toHaveAttribute('href', '/admin');
       await expect(page.getByRole('heading', { name: '进入管理', exact: true })).toHaveCount(0);
       await expect(page.getByRole('navigation', { name: '管理模块' })).toHaveCount(0);
-      for (const heading of ['项目与工序', '组织与成员', '分工与权限', '流程与参数', '审计与异常']) {
+      for (const heading of ['项目与工序', '组织与成员', '分工与权限', '审计与异常']) {
         await expect(page.getByRole('heading', { name: heading, exact: true })).toBeVisible();
       }
+      await expect(page.getByRole('heading', { name: '流程与参数', exact: true })).toHaveCount(0);
+      await expect(page.locator('.r26-admin-manage__groups article')).toHaveCount(4);
       await assertNoHorizontalOverflow(page);
       await screenshot(page, `admin-manage-${viewport.name}.png`);
 
