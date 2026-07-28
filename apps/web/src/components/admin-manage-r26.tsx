@@ -37,39 +37,26 @@ const managementGroups = [
 export function AdminManageR26() {
   return (
     <main className="r26-admin-manage" data-testid="admin-manage-page">
-      <header className="r26-admin-subpage-header">
-        <div>
-          <Link href="/admin" className="r26-admin-back">← 返回系统概况</Link>
-          <h1>进入管理</h1>
-          <p>详细管理能力按业务职责归类，避免在系统首页重复展开。</p>
-        </div>
-      </header>
+      <Link href="/admin" className="r26-admin-back r26-admin-manage__back">返回</Link>
 
-      <div className="r26-admin-manage__layout">
-        <nav aria-label="管理模块" className="r26-admin-manage__nav">
-          {managementGroups.map((group, index) => (
-            <a href={`#manage-${index + 1}`} key={group.title}>{group.title}</a>
-          ))}
-        </nav>
-        <section className="r26-admin-manage__groups">
-          {managementGroups.map((group, index) => (
-            <article id={`manage-${index + 1}`} key={group.title}>
-              <div>
-                <span>{String(index + 1).padStart(2, '0')}</span>
-                <h2>{group.title}</h2>
-                <p>{group.description}</p>
-              </div>
-              <div className="r26-admin-manage__links">
-                {group.links.map((link) => (
-                  <Link href={link.href} key={`${group.title}-${link.href}-${link.label}`}>
-                    {link.label} <span aria-hidden="true">→</span>
-                  </Link>
-                ))}
-              </div>
-            </article>
-          ))}
-        </section>
-      </div>
+      <section className="r26-admin-manage__groups">
+        {managementGroups.map((group, index) => (
+          <article key={group.title}>
+            <div>
+              <span>{String(index + 1).padStart(2, '0')}</span>
+              <h2>{group.title}</h2>
+              <p>{group.description}</p>
+            </div>
+            <div className="r26-admin-manage__links">
+              {group.links.map((link) => (
+                <Link href={link.href} key={`${group.title}-${link.href}-${link.label}`}>
+                  {link.label} <span aria-hidden="true">→</span>
+                </Link>
+              ))}
+            </div>
+          </article>
+        ))}
+      </section>
     </main>
   );
 }

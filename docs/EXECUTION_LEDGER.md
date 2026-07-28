@@ -1,5 +1,21 @@
 # EXECUTION_LEDGER.md
 
+## R26 详细管理页面二次收敛（2026-07-28）
+
+- Authorization：按产品负责人最新版截图要求，继续精简 `/admin/manage`，只保留一个返回
+  操作与 5 组实际管理卡片。
+- UI：顶部“返回系统概况”改为简洁的“返回”按钮；删除“进入管理”标题及说明；删除左侧
+  “项目与工序、组织与成员、分工与权限、流程与参数、审计与异常”5 个页内导航按钮。
+- Layout：管理卡片从原 220px 侧栏 + 内容栏改为单列全宽布局；桌面端保持卡片操作右对齐，
+  移动端保持卡片和操作纵向排列，没有遗留空白侧栏或横向溢出。
+- Regression：新增组件源码契约与 Playwright 断言，锁定页面只能出现一个“返回”入口，且
+  不再渲染“进入管理”标题、说明或“管理模块”导航。
+- Validation：`pnpm install`、lint、typecheck、全量测试、Web/API build、Prisma validate、
+  `git diff --check` 全部 PASS；Web 45 files / 170 tests，API 68 files / 310 tests。
+- Scope：不修改 API、数据库、权限、工作流状态机、V1、production、`main` 或 tag。
+- Decision：`ADMIN_MANAGE_HEADER_SIMPLIFIED / CATEGORY_NAV_REMOVED /
+  FULL_WIDTH_MANAGEMENT_CARDS / PRODUCTION_UNCHANGED`。
+
 ## R26 系统管理首页简化与颜色数据库（2026-07-28）
 
 - Authorization：按产品负责人要求，将 `/admin` 收敛为真实数据看板和两个主入口，并新增

@@ -12,6 +12,7 @@ const css = readFileSync(new URL('../app/r22.css', import.meta.url), 'utf8');
 const materialsSource = readFileSync(new URL('./materials-upload-r22.tsx', import.meta.url), 'utf8');
 const retrospectiveSource = readFileSync(new URL('./project-retrospective-r22.tsx', import.meta.url), 'utf8');
 const adminSource = readFileSync(new URL('./admin-dashboard-r22.tsx', import.meta.url), 'utf8');
+const adminManageSource = readFileSync(new URL('./admin-manage-r26.tsx', import.meta.url), 'utf8');
 
 describe('R22 product component contracts', () => {
   it('defines the Apple-like typography, button, status and progress tokens', () => {
@@ -95,6 +96,11 @@ describe('R22 product component contracts', () => {
     expect(adminSource).not.toContain('近期异常与敏感动作');
     expect(adminSource).not.toContain('<h1>后台管理</h1>');
     expect(adminSource).not.toContain('组织、权限、流程参数和审计风险集中在一个管理员工作台。');
+
+    expect(adminManageSource).toContain('>返回</Link>');
+    expect(adminManageSource).not.toContain('<h1>进入管理</h1>');
+    expect(adminManageSource).not.toContain('详细管理能力按业务职责归类');
+    expect(adminManageSource).not.toContain('aria-label="管理模块"');
   });
 
   it('renders empty, error and permission state variants', () => {
