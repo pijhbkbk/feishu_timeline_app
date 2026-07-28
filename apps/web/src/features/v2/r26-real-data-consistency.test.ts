@@ -31,7 +31,20 @@ describe('R26 Gate 2 real-data consistency contracts', () => {
     expect(projectsSource).not.toContain(
       '先识别停滞、逾期和评审风险，再进入真实项目工作区。',
     );
+    expect(projectsSource).not.toContain('实时项目组合');
+    expect(projectsSource).not.toContain(
+      '项目卡、风险和停滞原因由服务端业务规则统一计算。',
+    );
     expect(projectsSource).toContain('data-testid="create-project-button"');
+    expect(stylesSource).toMatch(
+      /\.r26-projects-primary-action\s*\{[\s\S]*?justify-content:\s*flex-start;/,
+    );
+    expect(projectsSource.indexOf('className="r26-project-count"')).toBeLessThan(
+      projectsSource.indexOf('className="r26-filter-group"'),
+    );
+    expect(stylesSource).toMatch(
+      /\.r26-project-toolbar\s*\{[\s\S]*?justify-content:\s*flex-start;/,
+    );
   });
 
   it('places the project-opening action inside the card content as a prominent primary control', () => {

@@ -1,5 +1,20 @@
 # EXECUTION_LEDGER.md
 
+## R26 项目列表顶部信息收敛（2026-07-28）
+
+- Authorization：按产品负责人最新版截图要求，收敛 `/projects` 项目列表顶部信息与操作顺序。
+- UI：删除“实时项目组合 / 项目卡、风险和停滞原因由服务端业务规则统一计算。”整条提示；
+  将“新建项目”主按钮移至内容区左上角；将项目总数移动到筛选行最左侧。
+- Responsive：桌面端项目总数位于筛选按钮之前；移动端项目总数和筛选组均左对齐，筛选按钮
+  继续支持横向滚动，页面不产生横向溢出。
+- Regression：更新真实数据一致性契约，禁止已删除提示文案回归，并锁定新建按钮、项目总数
+  与筛选器的结构顺序和左对齐规则。
+- Validation：`pnpm install`、lint、typecheck、全量测试、Web/API build、Prisma validate 与
+  `git diff --check` 全部 PASS；Web 45 files / 170 tests，API 68 files / 310 tests。
+- Scope：不修改 API、数据库、权限、项目数据、工作流状态机、V1、production、`main` 或 tag。
+- Decision：`PROJECTS_INFO_BANNER_REMOVED / CREATE_ACTION_MOVED_LEFT /
+  PROJECT_COUNT_PRECEDES_FILTERS / FULL_REGRESSION_PASSED / STAGING_VERIFICATION_IN_PROGRESS`。
+
 ## R26 详细管理入口去重与操作纵排（2026-07-28）
 
 - Authorization：按产品负责人截图要求，删除与“工序总台账”结果重复的“流程与参数”

@@ -72,6 +72,7 @@ function PrototypeProjectsPage() {
       </section>
 
       <div className="r26-project-toolbar">
+        <span className="r26-project-count">{visibleProjects.length} 个项目</span>
         <div className="r26-filter-group" role="group" aria-label="项目快速筛选">
           {filters.map((filter) => (
             <button
@@ -85,7 +86,6 @@ function PrototypeProjectsPage() {
             </button>
           ))}
         </div>
-        <span>{visibleProjects.length} 个项目</span>
       </div>
 
       <section className="r26-project-list" aria-live="polite">
@@ -175,10 +175,6 @@ function RealProjectsPage() {
       data-testid="r26-projects"
       data-source="database"
     >
-      <div className="r26-readonly-banner" role="status">
-        <strong>实时项目组合</strong>
-        <span>项目卡、风险和停滞原因由服务端业务规则统一计算。</span>
-      </div>
       {canCreateProject ? (
         <div className="r26-projects-primary-action">
           <Link
@@ -199,6 +195,7 @@ function RealProjectsPage() {
       </section>
 
       <div className="r26-project-toolbar">
+        <span className="r26-project-count">{projects.length} 个项目</span>
         <div className="r26-filter-group" role="group" aria-label="项目快速筛选">
           {filters.map((filter) => (
             <button
@@ -212,7 +209,6 @@ function RealProjectsPage() {
             </button>
           ))}
         </div>
-        <span>{projects.length} 个项目</span>
       </div>
 
       <section className="r26-project-list" aria-live="polite">
