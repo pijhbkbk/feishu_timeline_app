@@ -1,5 +1,33 @@
 # EXECUTION_LEDGER.md
 
+## R26 系统管理首页简化与颜色数据库（2026-07-28）
+
+- Authorization：按产品负责人要求，将 `/admin` 收敛为真实数据看板和两个主入口，并新增
+  按颜色自动归档既有工序材料的颜色数据库。
+- Scope：独立分支与 staging；不复制附件、不新增上传入口、不修改状态机、V1、production、
+  `main` 或 tag。
+- Information architecture：`/admin` 只保留项目总数、进行中项目、风险项目、启用人员、
+  启用部门、已归档颜色 6 项指标，以及“进入管理”“颜色数据库”两个大入口；详细后台能力
+  收进 `/admin/manage` 的 5 个业务域。
+- Color database：新增列表与详情 API/页面，复用既有 Color、ColorVersion、Project、
+  WorkflowTask、Attachment、User、Department 和 Supplier，按 1～18 步归并为 7 个生命周期
+  阶段；附件只建立读取关系，替换链末端为当前版本，其余版本继续保留为历史版本。
+- Security：概况与详细管理沿用服务端 admin + `system.manage` 守卫；颜色资料要求
+  `project.read`，管理员看全部，普通成员仅返回本人负责、参与或所属部门有权访问的项目；
+  匿名 401、越权详情 404；没有新增颜色写接口，没有删除原附件或审计记录。
+- Responsive：1440 为 6 指标一行和双入口并排；1024 为 3×2 和双入口并排；390 为 2 指标
+  一行、双入口纵向排列；三档均无横向溢出。
+- Browser：四条路由、检索、筛选、空态、错误恢复与真实点击 PASS；console/page error=0；
+  管理业务请求只有 GET；production 请求=0。
+- Validation：`pnpm install`、lint、typecheck、全量测试、Web/API build、Prisma validate 和
+  定向 Playwright 全部 PASS；Web 45 files / 170 tests，API 68 files / 310 tests，
+  Playwright 3/3 PASS。
+- Evidence：`docs/product/R26_ADMIN_DASHBOARD_COLOR_DATABASE_REPORT.md`、人工验收清单及
+  `docs/product/evidence/R26_ADMIN_DASHBOARD_COLOR_DATABASE/`。
+- Decision：`R26_ADMIN_DASHBOARD_SIMPLIFIED / COLOR_DATABASE_IMPLEMENTED_ON_STAGING /
+  EXISTING_MATERIALS_AUTOMATICALLY_ARCHIVED / PRODUCTION_UNCHANGED /
+  AWAITING_PRODUCT_OWNER_CONFIRMATION / STOP`。
+
 ## R26 项目列表主操作强化（2026-07-28）
 
 - Authorization：按产品负责人截图要求，将项目卡片的“打开项目”从最右侧弱链接移到卡片

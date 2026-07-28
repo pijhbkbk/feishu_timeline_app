@@ -8,6 +8,7 @@ const repoRoot = path.resolve(currentDir, '../..');
 const resultRound = process.env.PLAYWRIGHT_RESULT_ROUND ?? 'r20';
 const resultRoot = `../../test-results/${resultRound}`;
 const browserExecutablePath = process.env.PLAYWRIGHT_EXECUTABLE_PATH;
+const disableVideo = process.env.PLAYWRIGHT_DISABLE_VIDEO === '1';
 const isR26Gate1 = process.argv.some((argument) =>
   argument.includes('r26-gate1-static-v2'),
 );
@@ -60,7 +61,7 @@ export default defineConfig({
       : {}),
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
-    video: 'retain-on-failure',
+    video: disableVideo ? 'off' : 'retain-on-failure',
     headless: true,
   },
   webServer: [apiServer, webServer],

@@ -1,0 +1,9 @@
+{
+  "generatedAt": "2026-07-28T00:34:27.487Z",
+  "businessRequests": [
+    "GET /api/admin/color-database",
+    "GET /api/admin/color-database/cmo6srqqd00pt9klrhvtrtju9",
+    "GET /api/admin/overview"
+  ],
+  "productionRequests": []
+}

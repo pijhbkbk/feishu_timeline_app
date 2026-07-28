@@ -5,42 +5,117 @@ import { API_BASE_URL, apiRequest } from './auth-client';
 export type AdminOverviewResponse = {
   generatedAt: string;
   summary: {
+    totalProjects: number;
+    activeProjects: number;
+    riskProjects: number;
     activeUsers: number;
     activeDepartments: number;
-    activeRoles: number;
-    anomalyCount: number;
-    projects?: {
-      active: number;
-      overdue: number;
-      waitingReview: number;
-      completed: number;
-    };
-    tasks?: {
-      unassigned: number;
-      dueSoon: number;
-      overdue: number;
-      blocked: number;
-    };
+    archivedColors: number;
+    totalMaterials: number;
   };
-  modules: Array<{
-    key: string;
-    title: string;
-    description: string;
-    href: string;
-    metric: string;
-  }>;
-  anomalies: Array<{
-    id: string;
-    action: string;
-    summary: string;
-    actorName: string;
-    projectId: string | null;
-    createdAt: string;
-  }>;
 };
 
 export function fetchAdminOverview() {
   return apiRequest<AdminOverviewResponse>('/admin/overview');
+}
+
+export type AdminColorArchiveSummary = {
+  id: string;
+  name: string;
+  code: string | null;
+  displayColor: string | null;
+  colorType: string | null;
+  status: string;
+  vehicleModels: string[];
+  suppliers: string[];
+  projects: Array<{ id: string; code: string; name: string; status: string }>;
+  firstProject: { id: string; code: string; name: string };
+  materialCount: number;
+  coveredSteps: number;
+  completenessPercent: number;
+  updatedAt: string;
+  createdAt: string;
+};
+
+export type AdminColorDatabaseResponse = {
+  generatedAt: string;
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+  summary: {
+    archivedColors: number;
+    materialCount: number;
+    incompleteColors: number;
+    newMaterialsThisMonth: number;
+  };
+  facets: {
+    vehicleModels: string[];
+    colorTypes: string[];
+    statuses: string[];
+    years: number[];
+  };
+  items: AdminColorArchiveSummary[];
+};
+
+export type AdminColorMaterial = {
+  id: string;
+  projectId: string;
+  projectCode: string;
+  projectName: string;
+  stepNumber: number | null;
+  stepCode: string | null;
+  stepName: string;
+  archiveCategory: string;
+  fileName: string;
+  mimeType: string;
+  fileSize: number;
+  materialType: string | null;
+  versionNo: number;
+  replacesAttachmentId: string | null;
+  uploader: { id: string; name: string; departmentName: string | null } | null;
+  uploadedAt: string;
+  versionStatus: 'CURRENT' | 'HISTORICAL';
+  downloadUrl: string;
+  previewUrl: string | null;
+};
+
+export type AdminColorArchiveResponse = AdminColorArchiveSummary & {
+  generatedAt: string;
+  stages: Array<{
+    key: string;
+    title: string;
+    stepRange: string;
+    materials: AdminColorMaterial[];
+  }>;
+  unclassifiedMaterials: AdminColorMaterial[];
+};
+
+export type AdminColorDatabaseQuery = {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  vehicleModel?: string;
+  colorType?: string;
+  status?: string;
+  completeness?: 'ALL' | 'COMPLETE' | 'INCOMPLETE';
+  year?: number;
+};
+
+export function fetchAdminColorDatabase(query: AdminColorDatabaseQuery = {}) {
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined && value !== '' && value !== 'ALL') search.set(key, String(value));
+  }
+  return apiRequest<AdminColorDatabaseResponse>(
+    `/admin/color-database${search.size ? `?${search.toString()}` : ''}`,
+  );
+}
+
+export function fetchAdminColorArchive(colorId: string) {
+  return apiRequest<AdminColorArchiveResponse>(
+    `/admin/color-database/${encodeURIComponent(colorId)}`,
+  );
 }
 
 export type AdminAuditListItem = {

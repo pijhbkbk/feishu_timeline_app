@@ -81,16 +81,18 @@ describe('R22 product component contracts', () => {
     expect(projectHtml).toContain('预计解决');
   });
 
-  it('keeps required materials, retrospective and admin module structures explicit', () => {
+  it('keeps required materials, retrospective and the simplified admin structure explicit', () => {
     for (const label of ['本工序材料清单', '添加新材料', '已上传材料', 'replacesAttachmentId']) {
       expect(materialsSource).toContain(label);
     }
     for (const label of ['阶段用时对比', '经验与改进', '后续改进措施', '完成复盘']) {
       expect(retrospectiveSource).toContain(label);
     }
-    for (const label of ['r22-admin-toolbar', 'r22-admin-module-card', '近期异常与敏感动作']) {
+    for (const label of ['项目总数', '进行中项目', '风险项目', '进入管理', '颜色数据库']) {
       expect(adminSource).toContain(label);
     }
+    expect(adminSource).not.toContain('r22-admin-module-card');
+    expect(adminSource).not.toContain('近期异常与敏感动作');
     expect(adminSource).not.toContain('<h1>后台管理</h1>');
     expect(adminSource).not.toContain('组织、权限、流程参数和审计风险集中在一个管理员工作台。');
   });

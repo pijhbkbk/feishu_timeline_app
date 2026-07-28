@@ -104,6 +104,10 @@ const nextConfig: NextConfig = {
           destination: '/v2/admin/audit-logs',
         },
         {
+          source: '/admin/color-database/:colorId',
+          destination: '/v2/admin/color-database/:colorId',
+        },
+        {
           source: '/admin/:section',
           destination: '/v2/admin/:section',
         },

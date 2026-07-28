@@ -9,8 +9,7 @@ const FORMAL_V2_PATHS = [
   /^\/tasks$/,
   /^\/materials$/,
   /^\/admin$/,
-  /^\/admin\/[^/]+$/,
-  /^\/admin\/audit-logs$/,
+  /^\/admin(?:\/[^/]+)+$/,
 ];
 
 export function isProductionV2Ui(

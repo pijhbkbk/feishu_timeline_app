@@ -22,7 +22,10 @@ export function AppShell({ children }: PropsWithChildren) {
   const appName = process.env.NEXT_PUBLIC_APP_NAME ?? '轻卡新颜色开发项目管理系统';
   const isAuthRoute = pathname.startsWith('/login');
   const isPublicRoute = isAuthRoute || pathname === '/guide';
-  const isAdminRoute = pathname === '/admin' || pathname.startsWith('/admin/');
+  const isColorDatabaseRoute =
+    pathname === '/admin/color-database' || pathname.startsWith('/admin/color-database/');
+  const isAdminRoute =
+    (pathname === '/admin' || pathname.startsWith('/admin/')) && !isColorDatabaseRoute;
   const hasAdminAccess = Boolean(user && (user.isSystemAdmin || user.roleCodes.includes('admin')));
   const topNav = filterNavItems(topNavigationItems, user);
   const projectSegments = pathname.split('/').filter(Boolean);
@@ -37,7 +40,7 @@ export function AppShell({ children }: PropsWithChildren) {
       : null;
   const contextNav = projectId
     ? filterNavItems(getProjectSectionItems(projectId), user)
-    : pathname === '/admin' || pathname.startsWith('/admin/')
+    : /^\/admin\/(projects|tasks|organization|assignments|permissions|audit-logs)$/.test(pathname)
       ? filterNavItems(getAdminSectionItems(), user)
       : [];
 
