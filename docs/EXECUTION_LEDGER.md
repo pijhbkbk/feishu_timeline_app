@@ -12,11 +12,14 @@
   旧界面继续累积。
 - Regression：新增真实页面源码契约，禁止成员卡片区和相关入口回归，并锁定 18 工序
   自动分配表继续存在。
+- Browser：在真实项目 `cmryawpo40001pa01qbz0aly5` 验证 1440、1024、390 三档；成员卡片
+  和旧成员区命中数均为 0，表格 18 行，页面横向溢出为 0；“查看并应用分配”面板可正常
+  打开与关闭，浏览器日志错误为 0。
 - Validation：`pnpm install`、lint、typecheck、全量测试、Web/API build、Prisma validate
   与 `git diff --check` 全部 PASS；Web 45 files / 171 tests，API 68 files / 310 tests。
 - Scope：不修改 API、数据库、权限、工作流状态机、V1、production、`main` 或 tag。
 - Decision：`MEMBER_CARDS_REMOVED / ASSIGNMENT_TABLE_PRESERVED /
-  FULL_REGRESSION_PASSED / STAGING_VERIFICATION_IN_PROGRESS`。
+  FULL_REGRESSION_PASSED / STAGING_VERIFIED / PRODUCTION_UNCHANGED`。
 
 ## R26 项目列表顶部信息收敛（2026-07-28）
 
