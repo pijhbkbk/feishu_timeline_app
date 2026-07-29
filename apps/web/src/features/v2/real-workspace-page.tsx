@@ -377,64 +377,6 @@ export function RealWorkspacePage({ projectId }: { projectId: string }) {
     window.setTimeout(() => setToast(null), 2800);
   }
 
-  function openAddMember() {
-    setImpact(null);
-    setMutationError(null);
-    setEditor(createEmptyMemberEditor());
-  }
-
-  function openEditMember(
-    member: R26WorkspaceResponse['memberAssignments'][number],
-  ) {
-    setImpact(null);
-    setMutationError(null);
-    setEditor({
-      mode: 'UPDATE',
-      userId: member.userId,
-      memberTypes: member.roles.map((role) => role.memberType),
-      responsibility: member.projectResponsibility,
-      isDepartmentLead: member.roles.some(
-        (role) => role.memberType === 'MANAGER' && role.isPrimary,
-      ),
-      isDefaultExecutor: member.roles.some(
-        (role) => role.memberType === 'MEMBER' && role.isPrimary,
-      ),
-      defaultNodeCodes: member.defaultNodes.map((node) => node.nodeCode),
-      scope: 'FUTURE_AND_PENDING',
-      transferToUserId: '',
-      replacementOwnerUserId: '',
-      confirmedInProgressTaskIds: [],
-      taskId: null,
-      newOwnerUserId: '',
-      reason: '',
-    });
-  }
-
-  function openRemoveMember(
-    member: R26WorkspaceResponse['memberAssignments'][number],
-  ) {
-    setImpact(null);
-    setMutationError(null);
-    setEditor({
-      mode: 'REMOVE',
-      userId: member.userId,
-      memberTypes: member.roles.map((role) => role.memberType),
-      responsibility: member.projectResponsibility,
-      isDepartmentLead: false,
-      isDefaultExecutor: false,
-      defaultNodeCodes: [],
-      scope: member.currentTasks.length
-        ? 'CONFIRM_IN_PROGRESS'
-        : 'FUTURE_AND_PENDING',
-      transferToUserId: '',
-      replacementOwnerUserId: '',
-      confirmedInProgressTaskIds: [],
-      taskId: null,
-      newOwnerUserId: '',
-      reason: '',
-    });
-  }
-
   function openAssignmentApply() {
     setImpact(null);
     setMutationError(null);
@@ -673,93 +615,47 @@ export function RealWorkspacePage({ projectId }: { projectId: string }) {
       ) : null}
 
       {activeTab === 'members' ? (
-        <>
-          <section className="r26-card r26-real-section" data-testid="r26-member-assignments">
-            <div className="r26-section-heading r26-member-heading">
-              <div>
-                <p className="r26-eyebrow">真实项目组织</p>
-                <h2>项目成员与分工</h2>
-                <span>{workspace.memberAssignments.length} 位成员 · 版本 {workspace.capabilities.memberAssignmentVersion}</span>
-              </div>
-              {workspace.capabilities.manageMembers ? (
-                <button type="button" className="r26-button r26-button--primary" onClick={openAddMember}>添加成员</button>
-              ) : <StatusPill tone="neutral">只读</StatusPill>}
+        <section className="r26-card r26-real-section" data-testid="r26-assignment-preview">
+          <div className="r26-section-heading r26-member-heading">
+            <div>
+              <p className="r26-eyebrow">服务端分配规则</p>
+              <h2>自动分配预览</h2>
+              <span>负责人和可执行动作均由服务端返回</span>
             </div>
-            <div className="r26-member-grid">
-              {workspace.memberAssignments.map((member) => (
-                <article key={member.userId} className="r26-member-card">
-                  <header>
-                    <span>{member.name.slice(0, 1)}</span>
-                    <div>
-                      <h3>{member.name}</h3>
-                      <p>{member.departmentName ?? '未设置部门'} · {member.roles.map((role) => role.label).join('、')}</p>
-                    </div>
-                    {member.isPrimary ? <StatusPill tone="current">主责</StatusPill> : null}
-                  </header>
-                  <dl>
-                    <div><dt>项目职责</dt><dd>{member.projectResponsibility}</dd></div>
-                    <div><dt>默认负责工序</dt><dd>{joinSteps(member.defaultNodes)}</dd></div>
-                    <div><dt>当前任务</dt><dd>{member.currentTasks.map((task) => task.stepName).join('、') || '暂无'}</dd></div>
-                    <div><dt>协同 / 评审</dt><dd>{member.relations.map((relation) => `${relation.stepName}（${relation.relation}）`).join('、') || '暂无'}</dd></div>
-                  </dl>
-                  {workspace.capabilities.manageMembers ? (
-                    <footer className="r26-member-card__actions">
-                      <button type="button" onClick={() => openEditMember(member)}>修改职责</button>
-                      <button type="button" className="is-danger" onClick={() => openRemoveMember(member)}>移出项目</button>
-                    </footer>
-                  ) : null}
-                </article>
-              ))}
+            {workspace.capabilities.manageMembers ? (
+              <button type="button" className="r26-button r26-button--secondary" onClick={openAssignmentApply}>查看并应用分配</button>
+            ) : null}
+          </div>
+          <div className="r26-assignment-table" role="table" aria-label="18 个工序自动分配预览">
+            <div className="r26-assignment-table__header" role="row">
+              <span>步骤 / 工序</span>
+              <span>主责部门</span>
+              <span>当前 / 建议负责人</span>
+              <span>协同 / 评审</span>
+              <span>匹配状态</span>
             </div>
-            <div className="r26-organization-summary">
-              {workspace.organization.departments.map((department) => (
-                <span key={department.id}>{department.name} · {department.activeUserCount} 人</span>
-              ))}
-            </div>
-          </section>
-
-          <section className="r26-card r26-real-section" data-testid="r26-assignment-preview">
-            <div className="r26-section-heading r26-member-heading">
-              <div>
-                <p className="r26-eyebrow">服务端分配规则</p>
-                <h2>自动分配预览</h2>
-                <span>负责人和可执行动作均由服务端返回</span>
-              </div>
-              {workspace.capabilities.manageMembers ? (
-                <button type="button" className="r26-button r26-button--secondary" onClick={openAssignmentApply}>查看并应用分配</button>
-              ) : null}
-            </div>
-            <div className="r26-assignment-table" role="table" aria-label="18 个工序自动分配预览">
-              <div className="r26-assignment-table__header" role="row">
-                <span>步骤 / 工序</span>
-                <span>主责部门</span>
-                <span>当前 / 建议负责人</span>
-                <span>协同 / 评审</span>
-                <span>匹配状态</span>
-              </div>
-              {workspace.assignmentPreview.map((assignment) => (
-                <div className="r26-assignment-table__row" role="row" key={assignment.nodeCode}>
-                  <div>
-                    <small>第 {String(assignment.stepNumber).padStart(2, '0')} 步</small>
-                    <strong>{assignment.stepName}</strong>
-                  </div>
-                  <span>{assignment.primaryDepartment?.name ?? '部门规则未命中'}</span>
-                  <span>{assignment.suggestedOwner?.name ?? '尚未分配'}</span>
-                  <span>{uniquePersonNames([...assignment.collaborators, ...assignment.reviewers]) || '无'}</span>
-                  <div>
-                    <StatusPill tone={assignment.assignmentStatus === 'UNASSIGNED' ? 'risk' : assignment.assignmentStatus === 'ASSIGNED' ? 'completed' : 'current'}>
-                      {assignmentStatusLabel(assignment.assignmentStatus)}
-                    </StatusPill>
-                    <small>{assignment.unassignedReason ?? assignmentSourceLabel(assignment.assignmentSource)}</small>
-                    {workspace.capabilities.manageMembers && assignment.taskId && assignment.availableActions.some((action) => action.action.includes('REASSIGN') || action.action.includes('CONFIRM')) ? (
-                      <button type="button" className="r26-inline-action" onClick={() => openTaskTransfer(assignment)}>转交任务</button>
-                    ) : null}
-                  </div>
+            {workspace.assignmentPreview.map((assignment) => (
+              <div className="r26-assignment-table__row" role="row" key={assignment.nodeCode}>
+                <div>
+                  <small>第 {String(assignment.stepNumber).padStart(2, '0')} 步</small>
+                  <strong>{assignment.stepName}</strong>
                 </div>
-              ))}
-            </div>
-          </section>
-        </>
+                <span>{assignment.primaryDepartment?.name ?? '部门规则未命中'}</span>
+                <span>{assignment.suggestedOwner?.name ?? '尚未分配'}</span>
+                <span>{uniquePersonNames([...assignment.collaborators, ...assignment.reviewers]) || '无'}</span>
+                <div>
+                  <StatusPill tone={assignment.assignmentStatus === 'UNASSIGNED' ? 'risk' : assignment.assignmentStatus === 'ASSIGNED' ? 'completed' : 'current'}>
+                    {assignmentStatusLabel(assignment.assignmentStatus)}
+                  </StatusPill>
+                  <small>{assignment.unassignedReason ?? assignmentSourceLabel(assignment.assignmentSource)}</small>
+                  {workspace.capabilities.manageMembers && assignment.taskId && assignment.availableActions.some((action) => action.action.includes('REASSIGN') || action.action.includes('CONFIRM')) ? (
+                    <button type="button" className="r26-inline-action" onClick={() => openTaskTransfer(assignment)}>转交任务</button>
+                  ) : null}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
       ) : null}
 
       {activeTab === 'records' ? (
@@ -2147,12 +2043,6 @@ function isGate3C1CompletableTask(task: R26TaskDetail) {
   );
 
   return ordinaryStep && activeStatus && serverAllowsCompletion;
-}
-
-function joinSteps(steps: Array<{ stepNumber: number; stepName: string }>) {
-  return steps.length
-    ? steps.map((step) => `${String(step.stepNumber).padStart(2, '0')} · ${step.stepName}`).join('、')
-    : '暂无默认工序';
 }
 
 function assignmentStatusLabel(status: string) {

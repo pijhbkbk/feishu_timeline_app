@@ -1,5 +1,23 @@
 # EXECUTION_LEDGER.md
 
+## R26 项目成员与分工页签收敛（2026-07-29）
+
+- Authorization：按产品负责人最新版截图要求，删除项目工作区“项目成员与分工”页签
+  上方的成员卡片区，只保留下方的工序分配表格。
+- UI：移除“真实项目组织”标题、成员数量、添加成员、成员详情卡片、部门摘要及卡片内
+  修改职责/移出项目入口；页签直接展示“自动分配预览”与 18 工序表格。
+- Behavior：保留表格中的服务端分配状态、负责人、协同/评审、转交任务，以及
+  “查看并应用分配”能力；未修改 API、权限、项目成员数据或后端分配规则。
+- Cleanup：删除不再可达的卡片渲染、三个成员卡片操作入口及对应专用样式，避免隐藏的
+  旧界面继续累积。
+- Regression：新增真实页面源码契约，禁止成员卡片区和相关入口回归，并锁定 18 工序
+  自动分配表继续存在。
+- Validation：`pnpm install`、lint、typecheck、全量测试、Web/API build、Prisma validate
+  与 `git diff --check` 全部 PASS；Web 45 files / 171 tests，API 68 files / 310 tests。
+- Scope：不修改 API、数据库、权限、工作流状态机、V1、production、`main` 或 tag。
+- Decision：`MEMBER_CARDS_REMOVED / ASSIGNMENT_TABLE_PRESERVED /
+  FULL_REGRESSION_PASSED / STAGING_VERIFICATION_IN_PROGRESS`。
+
 ## R26 项目列表顶部信息收敛（2026-07-28）
 
 - Authorization：按产品负责人最新版截图要求，收敛 `/projects` 项目列表顶部信息与操作顺序。

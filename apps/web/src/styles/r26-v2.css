@@ -3425,100 +3425,6 @@
   scroll-margin-top: 160px;
 }
 
-[data-ui-version="r26-v2"] .r26-member-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
-  margin-top: 24px;
-}
-
-[data-ui-version="r26-v2"] .r26-member-card {
-  min-width: 0;
-  padding: 20px;
-  border: 1px solid var(--r26-line);
-  border-radius: 18px;
-  background: var(--r26-surface-soft);
-}
-
-[data-ui-version="r26-v2"] .r26-member-card header {
-  display: grid;
-  grid-template-columns: 44px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 12px;
-}
-
-[data-ui-version="r26-v2"] .r26-member-card header > span:first-child {
-  display: grid;
-  width: 44px;
-  height: 44px;
-  place-items: center;
-  border-radius: 14px;
-  color: #fff;
-  background: linear-gradient(145deg, #42608a, #263c5d);
-  font-weight: 800;
-}
-
-[data-ui-version="r26-v2"] .r26-member-card h3,
-[data-ui-version="r26-v2"] .r26-member-card p {
-  margin: 0;
-}
-
-[data-ui-version="r26-v2"] .r26-member-card h3 {
-  font-size: 17px;
-}
-
-[data-ui-version="r26-v2"] .r26-member-card p {
-  margin-top: 3px;
-  color: var(--r26-text-secondary);
-  font-size: 13px;
-}
-
-[data-ui-version="r26-v2"] .r26-member-card dl {
-  display: grid;
-  gap: 12px;
-  margin: 20px 0 0;
-}
-
-[data-ui-version="r26-v2"] .r26-member-card dl div {
-  display: grid;
-  gap: 4px;
-}
-
-[data-ui-version="r26-v2"] .r26-member-card dt,
-[data-ui-version="r26-v2"] .r26-member-card dd {
-  margin: 0;
-}
-
-[data-ui-version="r26-v2"] .r26-member-card dt {
-  color: var(--r26-text-tertiary);
-  font-size: 12px;
-}
-
-[data-ui-version="r26-v2"] .r26-member-card dd {
-  overflow-wrap: anywhere;
-  font-size: 14px;
-  font-weight: 650;
-  line-height: 1.55;
-}
-
-[data-ui-version="r26-v2"] .r26-organization-summary {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 20px;
-  padding-top: 20px;
-  border-top: 1px solid var(--r26-line);
-}
-
-[data-ui-version="r26-v2"] .r26-organization-summary span {
-  padding: 8px 11px;
-  border-radius: 10px;
-  color: var(--r26-text-secondary);
-  background: var(--r26-surface-soft);
-  font-size: 13px;
-  font-weight: 650;
-}
-
 [data-ui-version="r26-v2"] .r26-assignment-table {
   display: grid;
   margin-top: 24px;
@@ -3744,15 +3650,6 @@
   font-size: 14px;
 }
 
-[data-ui-version="r26-v2"] .r26-member-card__actions {
-  display: flex;
-  gap: 12px;
-  margin-top: 18px;
-  padding-top: 16px;
-  border-top: 1px solid var(--r26-line);
-}
-
-[data-ui-version="r26-v2"] .r26-member-card__actions button,
 [data-ui-version="r26-v2"] .r26-inline-action {
   min-height: 34px;
   padding: 0 10px;
@@ -3764,10 +3661,6 @@
   font-size: 13px;
   font-weight: 720;
   cursor: pointer;
-}
-
-[data-ui-version="r26-v2"] .r26-member-card__actions button.is-danger {
-  color: #9a2f2f;
 }
 
 [data-ui-version="r26-v2"] .r26-inline-action {
@@ -4235,19 +4128,9 @@
     scroll-margin-top: 130px;
   }
 
-  [data-ui-version="r26-v2"] .r26-member-grid,
   [data-ui-version="r26-v2"] .r26-real-progress-grid,
   [data-ui-version="r26-v2"] .r26-progress-material-columns {
     grid-template-columns: 1fr;
-  }
-
-  [data-ui-version="r26-v2"] .r26-member-card header {
-    grid-template-columns: 44px minmax(0, 1fr);
-  }
-
-  [data-ui-version="r26-v2"] .r26-member-card header .r26-status {
-    grid-column: 1 / -1;
-    width: max-content;
   }
 
   [data-ui-version="r26-v2"] .r26-assignment-table {
@@ -4302,10 +4185,6 @@
 
   [data-ui-version="r26-v2"] .r26-member-heading .r26-button {
     width: 100%;
-  }
-
-  [data-ui-version="r26-v2"] .r26-member-card__actions button {
-    flex: 1;
   }
 
   [data-ui-version="r26-v2"] .r26-project-records li {
