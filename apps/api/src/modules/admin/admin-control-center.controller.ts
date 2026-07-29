@@ -32,6 +32,7 @@ import {
   AdminNodeAssignmentPreviewDto,
   AdminOrganizationQueryDto,
   AdminProjectBasicInfoDto,
+  AdminRolePermissionChangeDto,
   AdminSavedViewDto,
   AdminSavedViewQueryDto,
   AdminScheduleChangeDto,
@@ -249,8 +250,26 @@ export class AdminControlCenterController {
 
   @ApiOperation({ summary: '真实 RBAC 权限矩阵' })
   @Get('permissions')
-  getPermissions() {
-    return this.service.getPermissions();
+  getPermissions(@CurrentUser() actor: AuthenticatedUser) {
+    return this.service.getPermissions(actor);
+  }
+
+  @ApiOperation({ summary: '修改角色名称与权限矩阵并写入审计' })
+  @Post('permissions/:roleId')
+  changeRolePermissions(
+    @Param('roleId') roleId: string,
+    @Body() body: AdminRolePermissionChangeDto,
+    @Headers('idempotency-key') headerKey: string | undefined,
+    @Headers('x-request-id') requestId: string | undefined,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    this.assertIdempotencyKey(body.idempotencyKey, headerKey);
+    return this.service.changeRolePermissions(
+      roleId,
+      body,
+      actor,
+      requestId?.trim() || body.idempotencyKey,
+    );
   }
 
   @ApiOperation({ summary: '读取当前管理员保存的表格视图' })

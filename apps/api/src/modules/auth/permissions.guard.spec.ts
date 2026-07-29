@@ -5,7 +5,8 @@ import { PermissionsGuard } from './permissions.guard';
 
 function createContext(input: {
   permissionCodes?: string[];
-  isAdmin?: boolean;
+  isSystemAdmin?: boolean;
+  roleCodes?: string[];
 }) {
   return {
     switchToHttp: () => ({
@@ -17,9 +18,9 @@ function createContext(input: {
           email: null,
           departmentId: null,
           departmentName: null,
-          isSystemAdmin: input.isAdmin ?? false,
+          isSystemAdmin: input.isSystemAdmin ?? false,
           authSource: 'mock',
-          roleCodes: input.isAdmin ? ['admin'] : ['project_manager'],
+          roleCodes: input.roleCodes ?? ['project_manager'],
           permissionCodes: input.permissionCodes ?? [],
         },
       }),
@@ -44,7 +45,7 @@ describe('PermissionsGuard', () => {
     ).toBe(true);
   });
 
-  it('allows admin users without checking permission codes', () => {
+  it('allows explicit super administrators without checking permission codes', () => {
     const reflector = {
       getAllAndOverride: vi
         .fn()
@@ -53,7 +54,21 @@ describe('PermissionsGuard', () => {
     };
     const guard = new PermissionsGuard(reflector as never);
 
-    expect(guard.canActivate(createContext({ isAdmin: true }))).toBe(true);
+    expect(guard.canActivate(createContext({ isSystemAdmin: true, roleCodes: ['admin'] }))).toBe(true);
+  });
+
+  it('does not let the admin role bypass the editable permission matrix', () => {
+    const reflector = {
+      getAllAndOverride: vi
+        .fn()
+        .mockReturnValueOnce(false)
+        .mockReturnValueOnce(['system.manage']),
+    };
+    const guard = new PermissionsGuard(reflector as never);
+
+    expect(() => guard.canActivate(createContext({ roleCodes: ['admin'] }))).toThrow(
+      ForbiddenException,
+    );
   });
 
   it('rejects access when the user lacks the required permission', () => {

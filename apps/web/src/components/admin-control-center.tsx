@@ -31,6 +31,7 @@ import {
   updateAdminProject,
   updateAdminSchedule,
   updateAdminProjectMember,
+  updateAdminRolePermissions,
   updateAdminUserConfiguration,
   removeAdminProjectMember,
   type AdminAssignmentResponse,
@@ -117,7 +118,7 @@ const pageMeta: Record<AdminControlSection, { eyebrow: string; title: string; de
   permissions: {
     eyebrow: '权限治理',
     title: '角色与权限',
-    description: '展示后端实际执行的 RBAC 矩阵；系统角色和边界规则保持锁定。',
+    description: '由超级管理员维护角色名称和后端实际执行的 RBAC 权限矩阵。',
   },
 };
 
@@ -380,7 +381,16 @@ export function AdminControlCenter({ section }: { section: AdminControlSection }
             }
           />
         ) : null}
-        {section === 'permissions' && data.permissions ? <PermissionsTable response={data.permissions} /> : null}
+        {section === 'permissions' && data.permissions ? (
+          <PermissionsTable
+            response={data.permissions}
+            onChanged={async () => {
+              setNotice('角色名称与权限已保存，新的服务端权限已立即生效。');
+              await load();
+              router.refresh();
+            }}
+          />
+        ) : null}
       </section>
 
       {pageInfo ? <Pagination page={page} totalPages={pageInfo.totalPages} total={pageInfo.total} onChange={setPage} /> : null}
@@ -564,16 +574,167 @@ function fieldTypeLabel(type: AdminAssignmentResponse['schema'][number]['type'])
   }[type];
 }
 
-function PermissionsTable({ response }: { response: AdminPermissionResponse }) {
+function PermissionsTable({
+  response,
+  onChanged,
+}: {
+  response: AdminPermissionResponse;
+  onChanged: () => Promise<void>;
+}) {
+  const [editingRoleId, setEditingRoleId] = useState<string | null>(null);
+  const [draftName, setDraftName] = useState('');
+  const [draftPermissionCodes, setDraftPermissionCodes] = useState<string[]>([]);
+  const [reason, setReason] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const editingRole = response.roles.find((role) => role.id === editingRoleId) ?? null;
+
+  function beginEdit(role: AdminPermissionResponse['roles'][number]) {
+    setEditingRoleId(role.id);
+    setDraftName(role.name);
+    setDraftPermissionCodes(
+      role.permissions.filter((permission) => permission.granted).map((permission) => permission.code),
+    );
+    setReason('');
+    setError(null);
+  }
+
+  function cancelEdit() {
+    setEditingRoleId(null);
+    setDraftName('');
+    setDraftPermissionCodes([]);
+    setReason('');
+    setError(null);
+  }
+
+  function togglePermission(code: string) {
+    setDraftPermissionCodes((current) =>
+      current.includes(code)
+        ? current.filter((permissionCode) => permissionCode !== code)
+        : [...current, code],
+    );
+  }
+
+  async function saveRole() {
+    if (!editingRole) return;
+    if (!draftName.trim()) {
+      setError('角色名称不能为空。');
+      return;
+    }
+    if (!reason.trim()) {
+      setError('请填写本次权限变更原因。');
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      await updateAdminRolePermissions(editingRole.id, {
+        expectedVersion: editingRole.dataVersion,
+        name: draftName.trim(),
+        permissionCodes: draftPermissionCodes,
+        reason: reason.trim(),
+        acknowledgedConsequences: true,
+        idempotencyKey: crypto.randomUUID(),
+      });
+      cancelEdit();
+      await onChanged();
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : '角色权限保存失败。');
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div>
-      <div className="admin-cc-policy-note"><strong>权限由后端强制执行</strong><span>前端隐藏按钮不能替代权限校验；系统角色不可在此直接改写。</span></div>
-      <div className="admin-cc-table-wrap"><table className="admin-cc-table admin-cc-matrix"><thead><tr><th>角色</th><th>用户数</th>{response.actions.map((action) => <th key={action.code}>{action.label}</th>)}<th>锁定</th></tr></thead><tbody>
-        {response.roles.map((role) => <tr key={role.id}><td><strong>{role.name}</strong><small>{role.code}</small></td><td>{role.userCount}</td>{response.actions.map((action) => {
-          const permission = role.permissions.find((item) => item.code === action.code);
-          return <td key={action.code}><span className={permission?.granted ? 'admin-cc-granted' : 'admin-cc-denied'}>{permission?.granted ? '允许' : '禁止'}</span><small>{permission?.scope}</small></td>;
-        })}<td>{role.locked ? '系统锁定' : '可扩展角色'}</td></tr>)}
-      </tbody></table></div>
+      <div className="admin-cc-policy-note">
+        <strong>权限由后端强制执行</strong>
+        <span>
+          超级管理员可修改角色显示名称与每项权限；角色编码保持不变，所有变更写入审计。
+          超级管理员身份是独立安全兜底，不受角色矩阵影响。
+        </span>
+      </div>
+
+      {editingRole ? (
+        <section className="admin-cc-permission-editor" aria-label={`编辑${editingRole.name}`}>
+          <header>
+            <div>
+              <span>正在编辑</span>
+              <strong>{editingRole.code}</strong>
+            </div>
+            <button type="button" className="admin-cc-button admin-cc-button--quiet" onClick={cancelEdit} disabled={busy}>取消</button>
+          </header>
+          <label className="admin-cc-field">
+            角色名称
+            <input value={draftName} maxLength={80} onChange={(event) => setDraftName(event.target.value)} />
+          </label>
+          <fieldset className="admin-cc-permission-options">
+            <legend>权限设置</legend>
+            <div>
+              {response.actions.map((action) => {
+                const granted = draftPermissionCodes.includes(action.code);
+                return (
+                  <button
+                    key={action.code}
+                    type="button"
+                    className={granted ? 'is-granted' : 'is-denied'}
+                    aria-pressed={granted}
+                    onClick={() => togglePermission(action.code)}
+                    disabled={busy}
+                  >
+                    <span>{action.label}</span>
+                    <strong>{granted ? '允许' : '禁止'}</strong>
+                  </button>
+                );
+              })}
+            </div>
+          </fieldset>
+          <label className="admin-cc-field">
+            变更原因
+            <textarea value={reason} maxLength={500} placeholder="说明为什么要调整该角色的名称或权限" onChange={(event) => setReason(event.target.value)} />
+          </label>
+          {error ? <p className="admin-cc-form-error" role="alert">{error}</p> : null}
+          <footer>
+            <span>保存后立即按服务端权限矩阵执行，并保留完整审计记录。</span>
+            <button type="button" className="admin-cc-button admin-cc-button--primary" onClick={() => void saveRole()} disabled={busy}>
+              {busy ? '正在保存…' : '保存角色权限'}
+            </button>
+          </footer>
+        </section>
+      ) : null}
+
+      <div className="admin-cc-table-wrap">
+        <table className="admin-cc-table admin-cc-matrix">
+          <thead><tr><th>角色</th><th>用户数</th>{response.actions.map((action) => <th key={action.code}>{action.label}</th>)}<th>操作</th></tr></thead>
+          <tbody>
+            {response.roles.map((role) => (
+              <tr key={role.id} className={editingRoleId === role.id ? 'is-editing' : undefined}>
+                <td><strong>{role.name}</strong><small>{role.code} · {role.locked ? '系统角色' : '自定义角色'}</small></td>
+                <td>{role.userCount}</td>
+                {response.actions.map((action) => {
+                  const permission = role.permissions.find((item) => item.code === action.code);
+                  return <td key={action.code}><span className={permission?.granted ? 'admin-cc-granted' : 'admin-cc-denied'}>{permission?.granted ? '允许' : '禁止'}</span></td>;
+                })}
+                <td>
+                  {response.enforcement.canEdit ? (
+                    <button type="button" className="admin-cc-button admin-cc-button--quiet" onClick={() => beginEdit(role)}>编辑</button>
+                  ) : <small>仅超级管理员可编辑</small>}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="admin-cc-permission-mobile-list">
+        {response.roles.map((role) => (
+          <article key={role.id}>
+            <header><div><strong>{role.name}</strong><small>{role.code}</small></div><span>{role.userCount} 名用户</span></header>
+            <div>{role.permissions.map((permission) => <span key={permission.code} className={permission.granted ? 'is-granted' : 'is-denied'}>{permission.label} · {permission.granted ? '允许' : '禁止'}</span>)}</div>
+            {response.enforcement.canEdit ? <button type="button" className="admin-cc-button admin-cc-button--primary" onClick={() => beginEdit(role)}>编辑角色权限</button> : null}
+          </article>
+        ))}
+      </div>
     </div>
   );
 }

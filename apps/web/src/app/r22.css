@@ -2450,6 +2450,51 @@ a {
 .admin-cc-matrix th:first-child,
 .admin-cc-matrix td:first-child { position: sticky; left: 0; z-index: 3; text-align: left; background: #fff; }
 .admin-cc-matrix th:first-child { background: #f6f8fb; }
+.admin-cc-matrix tr.is-editing td { background: #f2f7ff; }
+
+.admin-cc-permission-editor {
+  display: grid;
+  gap: 18px;
+  padding: 24px 26px;
+  border-bottom: 1px solid #dfe5ed;
+  background: linear-gradient(145deg, #f6f9ff, #fff);
+}
+.admin-cc-permission-editor > header,
+.admin-cc-permission-editor > footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+.admin-cc-permission-editor > header > div { display: grid; gap: 4px; }
+.admin-cc-permission-editor > header span,
+.admin-cc-permission-editor > footer span { color: #6e7a8e; font-size: 13px; }
+.admin-cc-permission-editor > header strong { color: #1769e0; font-size: 18px; }
+.admin-cc-permission-editor .admin-cc-field input { max-width: 520px; }
+.admin-cc-permission-options { margin: 0; padding: 0; border: 0; }
+.admin-cc-permission-options legend { margin-bottom: 10px; color: #3d495e; font-size: 14px; font-weight: 700; }
+.admin-cc-permission-options > div { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.admin-cc-permission-options button {
+  display: flex;
+  min-height: 52px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 1px solid #dfe5ed;
+  border-radius: 12px;
+  background: #fff;
+  color: #314056;
+  cursor: pointer;
+}
+.admin-cc-permission-options button:hover:not(:disabled) { transform: translateY(-1px); }
+.admin-cc-permission-options button.is-granted { border-color: #9edac2; background: #effaf5; }
+.admin-cc-permission-options button.is-denied { border-color: #efc2c2; background: #fff6f6; }
+.admin-cc-permission-options button span { font-weight: 750; }
+.admin-cc-permission-options button.is-granted strong { color: #138058; }
+.admin-cc-permission-options button.is-denied strong { color: #bc3434; }
+.admin-cc-form-error { margin: 0; color: #bc3434; font-size: 14px; font-weight: 700; }
+.admin-cc-permission-mobile-list { display: none; }
 
 .admin-cc-pagination {
   display: flex;
@@ -2546,6 +2591,7 @@ a {
   .admin-cc-toolbar { align-items: stretch; flex-direction: column; }
   .admin-cc-toolbar__right { flex-wrap: wrap; }
   .admin-cc-search { grid-template-columns: 1fr auto; }
+  .admin-cc-permission-options > div { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
 @media (max-width: 700px) {
@@ -2596,4 +2642,21 @@ a {
   .admin-cc-dialog__body { padding-right: 20px; padding-left: 20px; }
   .admin-cc-dialog footer { grid-template-columns: 1fr; padding: 14px 20px max(14px, env(safe-area-inset-bottom)); }
   .admin-cc-person-field > div { grid-template-columns: 1fr; }
+  .admin-cc-permission-editor { margin: 0; padding: 20px; }
+  .admin-cc-permission-editor > header,
+  .admin-cc-permission-editor > footer { align-items: stretch; flex-direction: column; }
+  .admin-cc-permission-editor > header .admin-cc-button,
+  .admin-cc-permission-editor > footer .admin-cc-button { width: 100%; }
+  .admin-cc-permission-options > div { grid-template-columns: 1fr; }
+  .admin-cc-permission-mobile-list { display: grid; gap: 12px; padding: 12px; }
+  .admin-cc-permission-mobile-list article { display: grid; gap: 14px; padding: 18px; border: 1px solid #e2e7ee; border-radius: 16px; background: #fff; }
+  .admin-cc-permission-mobile-list article > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+  .admin-cc-permission-mobile-list article > header div { display: grid; gap: 4px; }
+  .admin-cc-permission-mobile-list article > header strong { color: #182337; font-size: 17px; }
+  .admin-cc-permission-mobile-list article > header small,
+  .admin-cc-permission-mobile-list article > header > span { color: #7a8597; font-size: 12px; }
+  .admin-cc-permission-mobile-list article > div { display: flex; flex-wrap: wrap; gap: 7px; }
+  .admin-cc-permission-mobile-list article > div span { padding: 5px 9px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+  .admin-cc-permission-mobile-list article > div .is-granted { background: #e8f8f0; color: #138058; }
+  .admin-cc-permission-mobile-list article > div .is-denied { background: #fff0f0; color: #bc3434; }
 }

@@ -355,9 +355,15 @@ export type AdminPermissionResponse = {
     isSystem: boolean;
     userCount: number;
     permissions: Array<{ code: string; label: string; granted: boolean; scope: string }>;
+    dataVersion: string;
     locked: boolean;
   }>;
-  enforcement: { backendRequired: boolean; frontendOnlyDenied: boolean };
+  enforcement: {
+    backendRequired: boolean;
+    frontendOnlyDenied: boolean;
+    canEdit: boolean;
+    superAdministratorBypass: boolean;
+  };
 };
 
 export type AdminSavedView = {
@@ -472,6 +478,30 @@ export function updateAdminNodeAssignment(
 
 export function fetchAdminPermissions() {
   return apiRequest<AdminPermissionResponse>('/admin/permissions');
+}
+
+export function updateAdminRolePermissions(
+  roleId: string,
+  body: {
+    expectedVersion: string;
+    name: string;
+    permissionCodes: string[];
+    reason: string;
+    acknowledgedConsequences: boolean;
+    idempotencyKey: string;
+  },
+) {
+  return apiRequest<{
+    roleId: string;
+    roleVersion: string;
+    permissionCodes: string[];
+    auditLogIds: string[];
+    idempotentReplay: boolean;
+  }>(`/admin/permissions/${encodeURIComponent(roleId)}`, {
+    method: 'POST',
+    headers: commandHeaders(body.idempotencyKey),
+    body,
+  });
 }
 
 export function fetchAdminSavedViews(pageKey: string) {

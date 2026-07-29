@@ -89,7 +89,7 @@ describe('R26 administrator control center backend contracts', () => {
 
   it('gives only super administrators preview-first control over users and departments', () => {
     expect(serviceSource).toContain('assertSuperAdministrator');
-    expect(serviceSource).toContain('只有超级管理员可以修改组织、人员和部门配置');
+    expect(serviceSource).toContain('只有超级管理员可以修改系统管理配置');
     for (const route of [
       "organization/users/preview",
       "organization/users/:userId/preview",
@@ -106,6 +106,18 @@ describe('R26 administrator control center backend contracts', () => {
     ]) {
       expect(serviceSource).toContain(action);
     }
+  });
+
+  it('lets only super administrators rename roles and change the enforced permission matrix', () => {
+    expect(controllerSource).toContain("permissions/:roleId");
+    expect(controllerSource).toContain('AdminRolePermissionChangeDto');
+    expect(serviceSource).toContain('async changeRolePermissions(');
+    expect(serviceSource).toContain("action: 'ADMIN_ROLE_PERMISSIONS_CHANGED'");
+    expect(serviceSource).toContain('this.assertSuperAdministrator(actor)');
+    expect(serviceSource).toContain("targetType: AuditTargetType.ROLE");
+    expect(serviceSource).toContain("this.assertDateVersion(role.updatedAt, input.expectedVersion, '角色权限')");
+    expect(serviceSource).toContain('unmanagedPermissionCodes');
+    expect(dtoSource).toContain('export class AdminRolePermissionChangeDto');
   });
 
   it('stores the real department leader and preserves identity and history boundaries', () => {

@@ -45,6 +45,7 @@ import {
   type AdminNodeAssignmentPreviewDto,
   type AdminOrganizationQueryDto,
   type AdminProjectBasicInfoDto,
+  type AdminRolePermissionChangeDto,
   type AdminSavedViewDto,
   type AdminScheduleChangeDto,
   type AdminSchedulePreviewDto,
@@ -70,6 +71,25 @@ const REVIEW_NODE_CODES = [
   WorkflowNodeCode.COLOR_CONSISTENCY_REVIEW,
   WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW,
 ];
+
+const ADMIN_PERMISSION_ACTIONS = [
+  ['project.read', '查看项目'],
+  ['project.write', '编辑项目'],
+  ['project.member.manage', '管理成员'],
+  ['task.progress.write', '提交进展'],
+  ['workflow.transition', '完成工序'],
+  ['review.execute', '评审'],
+  ['attachment.manage', '管理材料'],
+  ['fee.write', '财务确认'],
+  ['color.exit', '退出决定'],
+  ['dashboard.read', '查看工作台'],
+  ['system.manage', '后台管理'],
+  ['audit.read', '读取审计'],
+] as const;
+
+const ADMIN_PERMISSION_CODES = new Set<string>(
+  ADMIN_PERMISSION_ACTIONS.map(([code]) => code),
+);
 
 @Injectable()
 export class AdminControlCenterService {
@@ -1076,7 +1096,7 @@ export class AdminControlCenterService {
     });
   }
 
-  async getPermissions() {
+  async getPermissions(actor?: AuthenticatedUser) {
     const roles = await this.prisma.role.findMany({
       orderBy: [{ isSystem: 'desc' }, { name: 'asc' }],
       include: {
@@ -1086,21 +1106,8 @@ export class AdminControlCenterService {
         _count: { select: { userRoles: true } },
       },
     });
-    const actions = [
-      ['project.read', '查看项目'],
-      ['project.write', '编辑项目'],
-      ['project.member.manage', '管理成员'],
-      ['task.progress.write', '提交进展'],
-      ['workflow.transition', '完成工序'],
-      ['review.write', '评审'],
-      ['fee.write', '财务确认'],
-      ['color.exit', '退出决定'],
-      ['system.manage', '后台管理'],
-      ['audit.read', '读取审计'],
-    ] as const;
-
     return {
-      actions: actions.map(([code, label]) => ({ code, label })),
+      actions: ADMIN_PERMISSION_ACTIONS.map(([code, label]) => ({ code, label })),
       roles: roles.map((role) => {
         const permissionCodes = new Set(
           role.rolePermissions.map((permission) => permission.permissionCode),
@@ -1113,16 +1120,11 @@ export class AdminControlCenterService {
           status: role.status,
           isSystem: role.isSystem,
           userCount: role._count.userRoles,
-          permissions: actions.map(([code, label]) => ({
+          permissions: ADMIN_PERMISSION_ACTIONS.map(([code, label]) => ({
             code,
             label,
-            granted: role.code === 'admin' || permissionCodes.has(code),
-            scope:
-              role.code === 'admin'
-                ? 'ALL'
-                : permissionCodes.has(code)
-                  ? 'ROLE'
-                  : 'NONE',
+            granted: permissionCodes.has(code),
+            scope: permissionCodes.has(code) ? 'ROLE' : 'NONE',
           })),
           dataVersion: role.updatedAt.toISOString(),
           locked: role.isSystem,
@@ -1131,8 +1133,118 @@ export class AdminControlCenterService {
       enforcement: {
         backendRequired: true,
         frontendOnlyDenied: true,
+        canEdit: actor?.isSystemAdmin === true,
+        superAdministratorBypass: true,
       },
     };
+  }
+
+  async changeRolePermissions(
+    roleId: string,
+    input: AdminRolePermissionChangeDto,
+    actor: AuthenticatedUser,
+    requestId: string,
+  ) {
+    this.assertSuperAdministrator(actor);
+    if (!input.acknowledgedConsequences) {
+      throw new BadRequestException('请先确认角色权限变更影响。');
+    }
+
+    const name = input.name.trim().replace(/\s+/g, ' ');
+    if (!name) throw new BadRequestException('角色名称不能为空。');
+    const permissionCodes = [...new Set(input.permissionCodes)];
+    const invalidPermissionCodes = permissionCodes.filter(
+      (code) => !ADMIN_PERMISSION_CODES.has(code),
+    );
+    if (invalidPermissionCodes.length) {
+      throw new BadRequestException(
+        `存在不受支持的权限项：${invalidPermissionCodes.join('、')}。`,
+      );
+    }
+
+    return this.executeAdminCommand({
+      projectId: null,
+      action: 'ADMIN_ROLE_PERMISSIONS_CHANGED',
+      input,
+      actor,
+      execute: async (tx) => {
+        const role = await tx.role.findUnique({
+          where: { id: roleId },
+          include: { rolePermissions: true },
+        });
+        if (!role) throw new NotFoundException('角色不存在。');
+        this.assertDateVersion(role.updatedAt, input.expectedVersion, '角色权限');
+
+        const duplicateName = await tx.role.findFirst({
+          where: { id: { not: roleId }, name: { equals: name, mode: 'insensitive' } },
+          select: { id: true, name: true },
+        });
+        if (duplicateName) {
+          throw new ConflictException({
+            code: 'ROLE_NAME_DUPLICATED',
+            message: `角色名称“${duplicateName.name}”已被使用。`,
+          });
+        }
+
+        const previousPermissionCodes = role.rolePermissions.map(
+          (permission) => permission.permissionCode,
+        );
+        const unmanagedPermissionCodes = previousPermissionCodes.filter(
+          (code) => !ADMIN_PERMISSION_CODES.has(code),
+        );
+        const nextPermissionCodes = [
+          ...new Set([...permissionCodes, ...unmanagedPermissionCodes]),
+        ];
+
+        const updated = await tx.role.update({
+          where: { id: roleId },
+          data: { name },
+        });
+        await tx.rolePermission.deleteMany({ where: { roleId } });
+        if (nextPermissionCodes.length) {
+          await tx.rolePermission.createMany({
+            data: nextPermissionCodes.map((permissionCode) => ({
+              roleId,
+              permissionCode,
+            })),
+          });
+        }
+
+        const audit = await this.activityLogsService.createWithExecutor(tx, {
+          projectId: null,
+          actorUserId: actor.id,
+          targetType: AuditTargetType.ROLE,
+          targetId: roleId,
+          action: 'ADMIN_ROLE_PERMISSIONS_CHANGED',
+          summary: `修改角色 ${role.name} 的名称与权限`,
+          beforeData: {
+            name: role.name,
+            code: role.code,
+            permissionCodes: previousPermissionCodes,
+          },
+          afterData: {
+            name: updated.name,
+            code: updated.code,
+            permissionCodes: nextPermissionCodes,
+          },
+          metadata: {
+            requestId,
+            idempotencyKey: input.idempotencyKey,
+            reason: input.reason.trim(),
+            result: 'SUCCESS',
+            immutableRoleCode: true,
+            explicitSuperAdministratorBypass: true,
+          },
+        });
+
+        return {
+          roleId,
+          roleVersion: updated.updatedAt.toISOString(),
+          permissionCodes: nextPermissionCodes,
+          auditLogIds: [audit.id],
+        };
+      },
+    });
   }
 
   getSavedViews(pageKey: string, actor: AuthenticatedUser) {
@@ -3222,7 +3334,7 @@ export class AdminControlCenterService {
 
   private assertSuperAdministrator(actor: AuthenticatedUser) {
     if (!actor.isSystemAdmin) {
-      throw new ForbiddenException('只有超级管理员可以修改组织、人员和部门配置。');
+      throw new ForbiddenException('只有超级管理员可以修改系统管理配置。');
     }
   }
 

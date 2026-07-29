@@ -34,7 +34,11 @@ export class PermissionsGuard implements CanActivate {
       throw new ForbiddenException('请先登录后再操作。');
     }
 
-    if (user.isSystemAdmin || user.roleCodes.includes('admin')) {
+    // Only the explicit super-administrator flag is an unconditional safety
+    // override. Ordinary users carrying the `admin` role are still governed by
+    // the editable RBAC matrix, otherwise a cell marked "禁止" would not be
+    // enforced by the server.
+    if (user.isSystemAdmin) {
       return true;
     }
 

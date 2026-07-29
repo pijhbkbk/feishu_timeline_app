@@ -136,6 +136,24 @@ export class AdminVersionedCommandDto {
   reason!: string;
 }
 
+export class AdminRolePermissionChangeDto extends AdminVersionedCommandDto {
+  @IsDateString()
+  expectedVersion!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(80)
+  name!: string;
+
+  @IsArray()
+  @ArrayMaxSize(32)
+  @IsString({ each: true })
+  permissionCodes!: string[];
+
+  @IsBoolean()
+  acknowledgedConsequences!: boolean;
+}
+
 export class AdminProjectBasicInfoDto extends AdminVersionedCommandDto {
   @IsDateString()
   expectedVersion!: string;
