@@ -1,5 +1,32 @@
 # EXECUTION_LEDGER.md
 
+## R26 角色名称与权限矩阵可编辑（2026-07-29）
+
+- Authorization：按产品负责人要求，允许超级管理员在 `/admin/permissions` 修改角色显示名称，
+  并逐项决定角色权限为“允许”或“禁止”；角色编码保持不可变。
+- UI：桌面表格与 390px 移动卡片均提供明确的“编辑”入口；编辑面板包含角色名称、12 项
+  权限开关、变更原因、取消与“保存角色权限”，保存成功后立即刷新服务端真实矩阵。
+- Backend authority：新增受 `admin`、`system.manage` 与超级管理员身份共同保护的角色权限
+  命令接口；前端只提交期望权限集合，所有权限合法性、版本、重名和身份裁决均由服务端完成。
+- Safety：写入使用 `Idempotency-Key`、乐观锁、事务和审计日志；系统超级管理员身份继续作为
+  独立安全兜底，不受可编辑角色矩阵影响；普通 `admin` 角色不再绕过实际权限守卫。
+- Real browser：以 0 用户的 `auditor` 角色完成“审计人员 → 审计人员（验收）”及“管理材料
+  禁止 → 允许”的真实保存，再恢复原名称与权限；页面即时反馈、刷新后数据一致。
+- Database：恢复后 `auditor` 名称为“审计人员”，权限精确为 `project.read`、
+  `dashboard.read`、`audit.read`；两次操作均产生 `ADMIN_ROLE_PERMISSIONS_CHANGED` 审计记录。
+- Responsive：390×844 下矩阵自动切换为角色卡片，编辑面板单列展示全部权限和保存操作；
+  桌面与移动端 console/page error 均为 0。
+- Evidence：`docs/product/evidence/R26_ADMIN_PERMISSIONS/role-permission-edit-desktop.png`、
+  `role-permission-editor-desktop.png`、`role-permission-edit-mobile-390.png`。
+- Validation：`pnpm install`、lint、typecheck、全量测试、Web/API build、Prisma validate、
+  定向权限测试及 `git diff --check` 全部 PASS；Web 45 files / 172 tests，API 68 files /
+  312 tests。
+- Staging：本机独立 staging 运行代码提交 `9e08b8e`，服务健康且 migration 无待执行项；
+  未部署 production，未修改 V1、`main` 或 tag。
+- Decision：`ROLE_NAME_EDITABLE / PERMISSION_MATRIX_EDITABLE / SERVER_ENFORCED_RBAC /
+  IDEMPOTENCY_VERSION_AUDIT_VERIFIED / ORIGINAL_AUDITOR_CONFIGURATION_RESTORED /
+  LOCAL_STAGING_VERIFIED / PRODUCTION_UNCHANGED`。
+
 ## R26 项目成员与分工页签收敛（2026-07-29）
 
 - Authorization：按产品负责人最新版截图要求，删除项目工作区“项目成员与分工”页签

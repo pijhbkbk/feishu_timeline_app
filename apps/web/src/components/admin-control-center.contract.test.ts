@@ -114,6 +114,21 @@ describe('R26 administrator control center contracts', () => {
     expect(cssSource).toContain('.admin-cc-organization-toolbar');
   });
 
+  it('lets only a super administrator edit role names and every server permission', () => {
+    expect(componentSource).toContain('编辑角色权限');
+    expect(componentSource).toContain('保存角色权限');
+    expect(componentSource).toContain('角色名称');
+    expect(componentSource).toContain('权限设置');
+    expect(componentSource).toContain('response.actions.map');
+    expect(componentSource).toContain('updateAdminRolePermissions');
+    expect(componentSource).toContain('draftPermissionCodes.includes');
+    expect(componentSource).toContain('response.enforcement.canEdit');
+    expect(clientSource).toContain('/admin/permissions/${encodeURIComponent(roleId)}');
+    expect(componentSource).toContain('acknowledgedConsequences: true');
+    expect(cssSource).toContain('.admin-cc-permission-editor');
+    expect(cssSource).toContain('.admin-cc-permission-options button');
+  });
+
   it('keeps project-member removal preview-first and limits transfers to real project members', () => {
     expect(componentSource).toContain("scope: state.mode === 'remove' ? 'CONFIRM_IN_PROGRESS' : 'FUTURE_ONLY'");
     expect(componentSource).toContain('confirmedInProgressTaskIds');
