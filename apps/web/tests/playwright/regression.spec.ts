@@ -30,6 +30,15 @@ test('login entry opens Feishu directly without an intermediate choice page', as
       }),
     });
   });
+  await page.route('**/api/auth/feishu/start', async (route) => {
+    await route.fulfill({
+      status: 302,
+      headers: {
+        Location:
+          'https://accounts.feishu.cn/open-apis/authen/v1/index?app_id=test&response_type=code&redirect_uri=http%3A%2F%2Flocalhost%3A3000%2Flogin%2Fcallback&state=00000000-0000-4000-8000-000000000001',
+      },
+    });
+  });
   await page.route('https://accounts.feishu.cn/**', async (route) => {
     await route.fulfill({
       contentType: 'text/html; charset=utf-8',
@@ -57,6 +66,53 @@ test('login entry opens Feishu directly without an intermediate choice page', as
     );
   });
   expect(startRequestCount).toBe(2);
+});
+
+test('unauthenticated V2 business routes redirect directly to Feishu login', async ({ page }) => {
+  let startRequestCount = 0;
+
+  page.on('request', (request) => {
+    if (new URL(request.url()).pathname === '/api/auth/feishu/start') {
+      startRequestCount += 1;
+    }
+  });
+  await page.route('**/api/auth/session', async (route) => {
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({
+        authenticated: false,
+        mockEnabled: false,
+        feishuEnabled: true,
+        user: null,
+      }),
+    });
+  });
+  await page.route('**/api/auth/feishu/start', async (route) => {
+    await route.fulfill({
+      status: 302,
+      headers: {
+        Location:
+          'https://accounts.feishu.cn/open-apis/authen/v1/index?app_id=test&response_type=code&redirect_uri=http%3A%2F%2Flocalhost%3A3000%2Flogin%2Fcallback&state=00000000-0000-4000-8000-000000000002',
+      },
+    });
+  });
+  await page.route('https://accounts.feishu.cn/**', async (route) => {
+    await route.fulfill({
+      contentType: 'text/html; charset=utf-8',
+      body: '<!doctype html><html><body><h1>飞书登录二维码</h1></body></html>',
+    });
+  });
+
+  await page.goto('/v2/projects');
+
+  await expect(page).toHaveURL((url) => {
+    return (
+      url.hostname === 'accounts.feishu.cn' &&
+      url.pathname === '/open-apis/authen/v1/index'
+    );
+  });
+  expect(startRequestCount).toBe(1);
+  expect(await page.getByText('真实数据暂时不可用').count()).toBe(0);
 });
 
 test('can create a project and open workflow browser views', async ({ page }) => {

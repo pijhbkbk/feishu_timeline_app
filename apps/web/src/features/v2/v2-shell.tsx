@@ -3,7 +3,13 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import React from 'react';
-import { useState, type ComponentType, type MouseEvent, type SVGProps } from 'react';
+import {
+  useEffect,
+  useState,
+  type ComponentType,
+  type MouseEvent,
+  type SVGProps,
+} from 'react';
 
 import { useAuth } from '../../components/auth-provider';
 import { isTopNavigationItemActive } from '../../lib/navigation';
@@ -38,9 +44,22 @@ export function V2Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [toast, setToast] = useState<string | null>(null);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const { user, logout } = useAuth();
+  const {
+    user,
+    isAuthenticated,
+    isLoading: isAuthLoading,
+    error: authError,
+    refreshSession,
+    logout,
+  } = useAuth();
   const { enabled: realDataEnabled, viewer } = useR26RealData();
   const navItems = baseNavItems;
+
+  useEffect(() => {
+    if (!isAuthLoading && !isAuthenticated && !authError) {
+      window.location.replace('/login');
+    }
+  }, [authError, isAuthenticated, isAuthLoading]);
 
   function showStaticMessage(message: string) {
     setToast(message);
@@ -66,6 +85,47 @@ export function V2Shell({ children }: { children: React.ReactNode }) {
       setIsLoggingOut(false);
       showStaticMessage('退出登录失败，请检查网络后重试。');
     }
+  }
+
+  if (isAuthLoading || !isAuthenticated) {
+    return (
+      <div className="r26-app">
+        <main className="r26-main">
+          <div
+            className="r26-page"
+            data-testid={authError ? 'r26-auth-error' : 'r26-auth-redirect'}
+          >
+            <section className="r26-real-state" role={authError ? 'alert' : 'status'}>
+              <span
+                className={
+                  authError
+                    ? 'r26-real-state__error'
+                    : 'r26-real-state__spinner'
+                }
+                aria-hidden="true"
+              />
+              <strong>
+                {authError
+                  ? '登录服务暂时不可用'
+                  : isAuthLoading
+                    ? '正在验证登录状态…'
+                    : '正在打开飞书登录…'}
+              </strong>
+              <p>{authError ?? '未检测到有效会话，即将进入飞书安全登录。'}</p>
+              {authError ? (
+                <button
+                  type="button"
+                  className="r26-button r26-button--primary"
+                  onClick={() => void refreshSession()}
+                >
+                  重新检查登录状态
+                </button>
+              ) : null}
+            </section>
+          </div>
+        </main>
+      </div>
+    );
   }
 
   return (
