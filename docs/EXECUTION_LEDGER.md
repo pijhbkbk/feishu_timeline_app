@@ -4498,6 +4498,83 @@ STOP_BEFORE_GATE3
 
 ---
 
+### Round R26_MAIN_MERGE_AND_PRODUCTION_DEPLOYMENT_ATTEMPT_20260730
+
+#### Goal And Scope
+
+- 将 `codex/r26-remove-three-pages` 的全部已验证更新快进合并到 `main` 并推送 GitHub。
+- 在部署 `timeline.all-too-well.com` 前备份生产 PostgreSQL，然后从已推送的不可变
+  `main` commit 构建、迁移、部署并执行正式域名浏览器验收。
+
+#### Git Result
+
+```text
+source branch       codex/r26-remove-three-pages
+source commit       fe0600842d57f649757171ca48cee5b9fef7381c
+merge method        fast-forward only
+origin/main         fe0600842d57f649757171ca48cee5b9fef7381c
+tag                 unchanged
+```
+
+#### Local Validation Reused For Immutable Commit
+
+```text
+pnpm install                         PASS
+pnpm lint                            PASS
+pnpm typecheck                       PASS
+pnpm test                            PASS（Web 45 files / 172 tests；API 68 files / 312 tests）
+pnpm --filter web build              PASS
+pnpm --filter api build              PASS
+pnpm --filter api prisma:validate    PASS
+git diff --check                     PASS
+```
+
+- Placeholder 原始扫描命中 22 条；正式历史占位路由仍包括 `/reviews`、`/settings`、
+  `/colors` 和 `projects/[projectId]/[section]`，因此不得宣称这些路由完成。
+
+#### Production Pre-deployment Evidence
+
+```text
+environment          production
+URL                  https://timeline.all-too-well.com
+hostname             timeline.all-too-well.com
+API runtimeCommit    c0a0dc83b6a133403e6c4ed81bcd3f7a65a282f0
+Web runtimeCommit    c0a0dc83b6a133403e6c4ed81bcd3f7a65a282f0
+buildTime            2026-07-25T13:51:54Z
+release              r26-admin-c0a0dc83b6a1
+```
+
+#### Blocker Report
+
+```text
+gate                 production SSH/SCP connectivity before database backup
+attempt 1            gcloud compute scp closed by 35.212.246.199:22
+attempt 2            gcloud compute ssh closed by 35.212.246.199:22
+database backup      NOT_CREATED
+database migration   NOT_EXECUTED
+production deploy    NOT_EXECUTED
+production browser   NOT_EXECUTED
+production changed   NO
+```
+
+- 两次失败均发生在远端 SSH 握手/连接阶段，`pg_dump` 未开始，未接触或修改生产数据。
+- 按 `AGENTS.md` 两次失败停止规则，本轮不得第三次盲目尝试，也不得绕过备份部署。
+- 下一方案：检查 GCE SSH/OS Login/防火墙/实例状态，或明确验证 IAP 隧道后，在新一轮先
+  重新完成数据库备份，再部署当前 `origin/main`。
+
+#### Decision
+
+```text
+CODE_IMPLEMENTED
+LOCAL_VERIFIED
+MAIN_MERGED
+PRODUCTION_NOT_DEPLOYED
+BLOCKER_REPORT
+AWAITING_PRODUCTION_CONNECTIVITY_RECOVERY
+```
+
+---
+
 ### Round R26_FLOW_MAP_TEXT_SAFE_AREA_FIX
 
 #### Goal And Scope
