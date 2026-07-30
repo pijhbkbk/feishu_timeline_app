@@ -4498,6 +4498,68 @@ STOP_BEFORE_GATE3
 
 ---
 
+### Round R26_PRODUCTION_RELEASE_20260730
+
+#### Goal And Scope
+
+- 将已合并到 `main` 的 R26 最新代码部署到
+  `https://timeline.all-too-well.com`。
+- 验证运行版本、飞书登录、生产核心页面、管理页面和三档响应式。
+- 保留 OAuth state、Cookie、权限和数据库安全边界；不通过放宽校验修复登录。
+
+#### Deployment Identity
+
+```text
+environment             production
+hostname                timeline.all-too-well.com
+runtime commit          bea6dc6f5f6a6d76bdc724d4e2c0e7792ed9fd19
+build time              2026-07-30T01:40:32Z
+release                 r26-admin-bea6dc6f5f6a
+web build ID            Qsu1hxr1F9k3dDvIqDFvd
+api dist SHA-256        3606f40d6149526a10136daf18d98b7b8b5f675485f74ba17ab7621e633e0be7
+database                feishu_timeline
+migrations              23 applied / 0 pending
+nginx upstreams         127.0.0.1:3000 / 127.0.0.1:3001
+```
+
+生产 PostgreSQL 备份：
+`/var/backups/feishu-timeline-db/20260730T013223Z/feishu-timeline.dump`，
+SHA-256
+`9d7f52e8abcc15c82a569f0b2fe7e8f51122ade0b53173363a546d91d7f7d392`。
+
+#### OAuth Recovery
+
+- 首次回调在生产页面复现为“飞书登录状态无效，请重新发起登录”。
+- 服务端在 token exchange 之前拒绝无效 state，未改动安全校验。
+- 从同一生产浏览器标签重新发起授权后，成功建立李晓晨的飞书会话并进入
+  `/projects`。
+- 失败和成功证据均未保存 code、state、Cookie、token 或 Secret。
+
+#### Production Browser Evidence
+
+- 已验证工作台、项目列表、项目工作区、系统管理首页、进入管理、项目台账、工序
+  台账、组织与人员、分工配置、角色权限、审计日志和颜色数据库。
+- 已真实点击“打开项目”“进入管理”“角色权限”和“编辑”；权限编辑器打开成功，
+  未提交生产写入。
+- 1440、1024、390 三档页面级横向溢出为 0。
+- 新建生产验收标签的 console/page error 为 0。
+- 证据：`docs/product/evidence/R26_PRODUCTION_RELEASE_20260730/`。
+- 路由矩阵：`docs/acceptance/ROUTE_ACCEPTANCE_MATRIX.md`。
+
+#### Decision
+
+```text
+CODE_IMPLEMENTED
+LOCAL_VERIFIED
+PRODUCTION_DEPLOYED
+PRODUCTION_USER_LOGIN_VERIFIED
+PRODUCTION_CORE_READ_PATHS_VERIFIED
+MAIN_MERGED
+AWAITING_PRODUCT_OWNER_CONFIRMATION
+```
+
+---
+
 ### Round R26_MAIN_MERGE_AND_PRODUCTION_DEPLOYMENT_ATTEMPT_20260730
 
 #### Goal And Scope
