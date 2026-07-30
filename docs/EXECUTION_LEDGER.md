@@ -303,6 +303,54 @@
 
 ---
 
+### Round R26_AUTH_REDIRECT_FIX_20260731
+
+#### Goal And Scope
+
+- 修复未登录或应用会话失效时访问正式 V2 业务路由先显示“真实数据暂时不可用 /
+  重新读取”，没有进入飞书登录的问题。
+- 不修改飞书 OAuth state、回调校验、数据库模型、业务状态机或生产业务数据。
+
+#### Exact Changes
+
+- `V2Shell` 在业务导航和子页面前增加 `AuthProvider` 会话门禁。
+- 未登录时使用 `/login` 进入现有服务端飞书 OAuth 链路。
+- 登录服务失败与业务数据失败分开呈现。
+- 增加组件回归和 Playwright 未登录 V2 路由回归。
+
+#### Validation And Deployment
+
+```text
+runtime commit            63b4998b3893b42ec7f2b80d4181d3ca37f67fa7
+production URL            https://timeline.all-too-well.com/projects
+build time                2026-07-30T17:56:08Z
+release                   r26-admin-63b4998b3893
+API/Web runtime match     PASS
+server HEAD match         PASS
+Nginx upstream            127.0.0.1:3000 / 127.0.0.1:3001
+PostgreSQL                feishu_timeline / schema up to date
+local mandatory checks    PASS
+Playwright redirect       1 / 1 PASS
+production browser        /projects -> accounts.feishu.cn PASS
+production data writes    0
+```
+
+第一次直连 SSH 在远端执行前断开；实例只读核对确认未改变后，改用 IAP 通道完成准确
+commit 部署。部署后 API、Web、Nginx、PostgreSQL、Redis 均为 active。
+
+#### Decision
+
+```text
+CODE_IMPLEMENTED
+LOCAL_VERIFIED
+PRODUCTION_DEPLOYED
+PRODUCTION_USER_PATH_VERIFIED
+MAIN_MERGED
+AWAITING_PRODUCT_OWNER_CONFIRMATION
+```
+
+---
+
 ## 项目基本信息
 
 - 项目名称：轻卡定制颜色开发项目管理系统
