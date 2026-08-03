@@ -1,5 +1,26 @@
 # EXECUTION_LEDGER.md
 
+## R26 工序总台账工具栏收敛（2026-08-03）
+
+- Authorization：按产品负责人截图要求，`/admin/tasks` 工具栏只保留左侧搜索与“查询”。
+- UI：删除右侧保存视图、完整列、导出、模板下载和计划日期导入控件；项目台账和组织人员页的
+  独立保存视图能力不受影响。
+- Cleanup：删除工序导入入口对应的前端文件读取、预览/确认弹窗分支和专用样式；未删除后端
+  接口，未修改数据库、权限、工作流状态或业务数据。
+- Regression：更新后台控制中心契约，锁定工序台账不再渲染全部六项右侧工具。
+- Validation：`pnpm install`、lint、typecheck、全量测试、Web/API build、Prisma validate 与
+  `git diff --check` 全部 PASS；Web 45 files / 174 tests，API 68 files / 312 tests。
+- Git：runtime commit `b02927d7cf63657f592b634859dfc025abe748db` 已推送 `origin/main`。
+- Production：`https://timeline.all-too-well.com` 目标服务器已切换到同一 runtime commit；Web/API metadata、
+  server HEAD、服务和 Nginx/数据库/Redis 检查通过，migration 跳过。
+- Browser：公开 `/build-info` 已确认新版本；受保护的 `/admin/tasks` 在独立验收浏览器进入飞书
+  账号选择页，未代替产品负责人重新授权登录，因此登录态内最终视觉复核仍待人工确认。
+- Evidence：`docs/product/R26_TASK_LEDGER_TOOLBAR_SIMPLIFICATION_20260803.md` 及
+  `docs/product/evidence/R26_TASK_LEDGER_TOOLBAR_20260803/01-production-build-info.jpg`。
+- Decision：`CODE_IMPLEMENTED / LOCAL_VERIFIED / DEPLOYMENT_ATTEMPTED /
+  DEPLOYMENT_UNVERIFIED / MAIN_MERGED /
+  PRODUCTION_ROUTE_AUTHENTICATED_RECHECK_PENDING / AWAITING_PRODUCT_OWNER_CONFIRMATION`。
+
 ## R26 角色名称与权限矩阵可编辑（2026-07-29）
 
 - Authorization：按产品负责人要求，允许超级管理员在 `/admin/permissions` 修改角色显示名称，
