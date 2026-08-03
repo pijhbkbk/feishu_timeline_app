@@ -2089,8 +2089,6 @@ a {
 .admin-cc-button { padding: 0 18px; }
 .admin-cc-button--primary { border-color: #1769e0; background: #1769e0; color: #fff; box-shadow: 0 10px 24px rgba(23, 105, 224, 0.2); }
 .admin-cc-button--quiet { background: rgba(255, 255, 255, 0.86); }
-.admin-cc-import-button { position: relative; overflow: hidden; }
-.admin-cc-import-button input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 .admin-cc-button:hover:not(:disabled) { transform: translateY(-1px); }
 .admin-cc-button:disabled,
 .admin-cc-row-actions button:disabled,

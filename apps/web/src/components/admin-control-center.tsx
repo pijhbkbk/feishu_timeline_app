@@ -5,7 +5,6 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import React, { useCallback, useEffect, useState } from 'react';
 
 import {
-  applyAdminTaskImport,
   createAdminProjectMember,
   fetchAdminAssignments,
   fetchAdminOrganization,
@@ -13,8 +12,6 @@ import {
   fetchAdminProjects,
   fetchAdminSavedViews,
   fetchAdminTasks,
-  getAdminTaskExportUrl,
-  getAdminTaskImportTemplateUrl,
   previewAdminAssignment,
   previewAdminDepartmentConfiguration,
   previewAdminProjectMember,
@@ -22,7 +19,6 @@ import {
   previewAdminBatchTasks,
   previewAdminNodeAssignment,
   previewAdminSchedule,
-  previewAdminTaskImport,
   saveAdminView,
   updateAdminAssignment,
   updateAdminBatchTasks,
@@ -140,7 +136,6 @@ type DialogState =
       projectId: string;
     }
   | { kind: 'batch'; rows: AdminTaskRow[]; mode: 'schedule' | 'assignment' }
-  | { kind: 'import'; csv: string; fileName: string }
   | { kind: 'organizationUser'; mode: 'create' | 'edit'; row?: Record<string, unknown>; response: AdminOrganizationResponse }
   | { kind: 'department'; mode: 'create' | 'edit'; row?: Record<string, unknown>; response: AdminOrganizationResponse }
   | { kind: 'member'; mode: 'create' | 'edit' | 'remove'; row?: Record<string, unknown>; response: AdminOrganizationResponse }
@@ -263,22 +258,6 @@ export function AdminControlCenter({ section }: { section: AdminControlSection }
     setPage(1);
   }
 
-  async function selectImportFile(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    event.target.value = '';
-    if (!file) return;
-    if (file.size > 1_000_000) {
-      setError('导入文件超过 1 MB，已拒绝读取。');
-      return;
-    }
-    try {
-      const csv = await file.text();
-      setDialog({ kind: 'import', csv, fileName: file.name });
-    } catch {
-      setError('无法读取导入文件，请重新选择正式 CSV 模板。');
-    }
-  }
-
   const pageInfo =
     data.projects ?? data.tasks ?? data.organization;
 
@@ -310,7 +289,7 @@ export function AdminControlCenter({ section }: { section: AdminControlSection }
             <button type="submit" className="admin-cc-button admin-cc-button--primary">查询</button>
           </form>
         ) : <div><strong>真实数据</strong><span> 由服务端实时返回</span></div>}
-        <div className="admin-cc-toolbar__right">
+        {section !== 'tasks' ? <div className="admin-cc-toolbar__right">
           <label>
             保存视图
             <select defaultValue="" onChange={(event) => {
@@ -322,13 +301,8 @@ export function AdminControlCenter({ section }: { section: AdminControlSection }
             </select>
           </label>
           <button type="button" className="admin-cc-button admin-cc-button--quiet" onClick={() => void saveCurrentView()}>保存当前视图</button>
-          {(section === 'projects' || section === 'tasks') ? <button type="button" className="admin-cc-button admin-cc-button--quiet" onClick={() => setFullColumns((current) => !current)}>{fullColumns ? '使用精简列' : '显示完整列'}</button> : null}
-          {section === 'tasks' ? <>
-            <a className="admin-cc-button admin-cc-button--quiet" href={getAdminTaskExportUrl({ search: appliedSearch, view })}>导出当前筛选</a>
-            <a className="admin-cc-button admin-cc-button--quiet" href={getAdminTaskImportTemplateUrl()}>下载导入模板</a>
-            <label className="admin-cc-button admin-cc-button--quiet admin-cc-import-button">导入计划日期<input type="file" accept=".csv,text/csv" onChange={(event) => void selectImportFile(event)} /></label>
-          </> : null}
-        </div>
+          {section === 'projects' ? <button type="button" className="admin-cc-button admin-cc-button--quiet" onClick={() => setFullColumns((current) => !current)}>{fullColumns ? '使用精简列' : '显示完整列'}</button> : null}
+        </div> : null}
       </section>
 
       {section === 'tasks' ? <TaskPresets value={view} onChange={(next) => { setView(next); setPage(1); }} /> : null}
@@ -783,7 +757,6 @@ function AdminEditDialog({ state, onClose, onSuccess }: { state: Exclude<DialogS
     state.kind === 'task' ||
     state.kind === 'nodeAssignment' ||
     state.kind === 'batch' ||
-    state.kind === 'import' ||
     state.kind === 'organizationUser' ||
     state.kind === 'department' ||
     state.kind === 'member';
@@ -897,21 +870,6 @@ function AdminEditDialog({ state, onClose, onSuccess }: { state: Exclude<DialogS
             `已原子完成 ${state.rows.length} 条工序的批量调整并写入审计日志。`,
           );
         }
-      } else if (state.kind === 'import') {
-        const body = {
-          csv: state.csv,
-          reason: String(form.reason),
-        };
-        if (!preview) {
-          setPreview(await previewAdminTaskImport(body));
-        } else {
-          await applyAdminTaskImport({
-            ...body,
-            idempotencyKey: crypto.randomUUID(),
-            acknowledgedConsequences: true,
-          });
-          await onSuccess('正式模板中的计划日期已原子导入并写入审计日志。');
-        }
       } else if (state.kind === 'nodeAssignment') {
         const body = {
           expectedVersion: state.response.projectVersion,
@@ -1019,7 +977,6 @@ function AdminEditDialog({ state, onClose, onSuccess }: { state: Exclude<DialogS
               <div className="admin-cc-batch-summary"><strong>将修改 {state.rows.length} 条工序</strong><span>未开始 {state.rows.filter((row) => row.status === 'PENDING' || row.status === 'READY').length} 条 · 进行中 {state.rows.filter((row) => row.status === 'IN_PROGRESS').length} 条 · 已完成 {state.rows.filter((row) => row.status === 'COMPLETED').length} 条</span></div>
               {state.mode === 'schedule' ? <Field label="统一计划截止时间"><input required type="datetime-local" value={String(form.plannedDueAt)} onInput={(event) => { const value = event.currentTarget.value; setForm((current) => ({ ...current, plannedDueAt: value })); setPreview(null); }} /></Field> : <Field label="统一主责部门"><select value={String(form.primaryDepartmentId)} onChange={(event) => { const value = event.currentTarget.value; setForm((current) => ({ ...current, primaryDepartmentId: value })); setPreview(null); }}><option value="">由每条工序的服务端规则决定</option>{departments?.items.map((department) => <option key={department.id} value={department.id}>{readText(department.name)}</option>)}</select></Field>}
             </> : null}
-            {state.kind === 'import' ? <div className="admin-cc-batch-summary"><strong>已选择正式导入文件</strong><span>{state.fileName} · {new Blob([state.csv]).size} 字节</span><small>第一步只执行 dry-run；所有行通过后才允许确认写入。</small></div> : null}
             {state.kind === 'task' && state.mode === 'assignment' ? <>
               <Field label="新主责部门"><select value={String(form.primaryDepartmentId)} onChange={(event) => { const value = event.currentTarget.value; setForm((current) => ({ ...current, primaryDepartmentId: value, ownerUserId: '' })); setPreview(null); }}><option value="">保持或由服务端规则确定</option>{departments?.items.map((department) => <option key={department.id} value={department.id}>{readText(department.name)}</option>)}</select></Field>
               <Field label="新负责人"><select value={String(form.ownerUserId)} onChange={(event) => { const value = event.currentTarget.value; setForm((current) => ({ ...current, ownerUserId: value })); setPreview(null); }}><option value="">由后端规则建议</option>{directory?.items.map((member) => {
@@ -1305,7 +1262,6 @@ function initialForm(state: Exclude<DialogState, null>): Record<string, string |
     primaryDepartmentId: '',
     reason: '',
   };
-  if (state.kind === 'import') return { reason: '' };
   if (state.kind === 'organizationUser') {
     const roles = readArray(state.row?.roles).map((role) => readNestedText(role, 'id')).filter(Boolean);
     return { username: readText(state.row?.username), name: readText(state.row?.name), email: readText(state.row?.email), mobile: readText(state.row?.mobile), departmentId: readNestedText(state.row?.department, 'id'), status: readText(state.row?.status) || 'ACTIVE', isSystemAdmin: readBoolean(state.row?.isSystemAdmin), roleIds: roles, reason: '' };
@@ -1320,7 +1276,6 @@ function dialogTitle(state: Exclude<DialogState, null>) {
   if (state.kind === 'task') return state.mode === 'schedule' ? `调整计划：${state.row.nodeName}` : `调整分工：${state.row.nodeName}`;
   if (state.kind === 'nodeAssignment') return `编辑第 ${state.row.stepNumber} 步分工`;
   if (state.kind === 'batch') return state.mode === 'schedule' ? `批量调整 ${state.rows.length} 条工序计划` : `批量调整 ${state.rows.length} 条工序分工`;
-  if (state.kind === 'import') return '导入工序计划日期';
   if (state.kind === 'organizationUser') return state.mode === 'create' ? '新增系统用户' : `编辑系统用户：${readText(state.row?.name)}`;
   if (state.kind === 'department') return state.mode === 'create' ? '新增公司部门' : `编辑公司部门：${readText(state.row?.name)}`;
   if (state.kind === 'member') return state.mode === 'create' ? '添加项目成员' : state.mode === 'remove' ? `移出项目成员：${readNestedText(state.row?.user, 'name')}` : `编辑项目成员：${readNestedText(state.row?.user, 'name')}`;

@@ -45,11 +45,18 @@ describe('R26 administrator control center contracts', () => {
     expect(rewriteSource).toContain("source: '/admin/:section'");
   });
 
-  it('uses server pagination, saved views and filtered export', () => {
+  it('keeps the task ledger toolbar focused on search only', () => {
     expect(clientSource).toContain('/admin/saved-views');
-    expect(clientSource).toContain('/admin/tasks/export');
     expect(componentSource).toContain('保存当前视图');
-    expect(componentSource).toContain('导出当前筛选');
+    expect(componentSource).toContain("section !== 'tasks'");
+    for (const removedTaskUtility of [
+      '导出当前筛选',
+      '下载导入模板',
+      '导入计划日期',
+    ]) {
+      expect(componentSource).not.toContain(removedTaskUtility);
+    }
+    expect(componentSource).toContain('显示完整列');
     expect(componentSource).toContain('pageSize: 20');
   });
 
