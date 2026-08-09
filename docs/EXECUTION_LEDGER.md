@@ -1,5 +1,41 @@
 # EXECUTION_LEDGER.md
 
+## R26 累积产品与后台更新生产发布（2026-08-09）
+
+- Authorization：产品负责人要求将当前全部代码更新同步到 GitHub、合并 `main`，并发布到
+  `https://timeline.all-too-well.com`。
+- Runtime code：`535041bb25f21d548d863d07b35e3e952b0aeb2c`，提交信息
+  `feat(r26): release accumulated product and admin updates`；发布时本地 HEAD、GitHub
+  `origin/main`、生产 server HEAD、API runtimeCommit 与 Web runtimeCommit 五方一致。
+- Git：119 个本轮源码、测试与证据文件通过显式路径暂存并提交；四个私有根目录附件未暂存、未提交。
+  运行代码提交已推送到 `main`；未创建或移动 tag。
+- Local gate：`pnpm install --frozen-lockfile`、lint、typecheck、Web `193` tests、API `329`
+  tests、Web/API build、Prisma validate、`git diff --check`、Placeholder 扫描与
+  `pnpm security:secrets` 全部通过。
+- Backup：生产 PostgreSQL 发布前备份位于
+  `/var/backups/feishu-timeline-db/20260809T064545Z/feishu-timeline.dump`，SHA-256
+  `622d5457603d620d11fc25a89c9513bb8b266345673224637f1d490f4468ed0b`；隔离恢复并核对
+  46 张表与 users `12/12`、projects `1/1`、audit_logs `49/49` 后清理隔离 schema。
+- Migration：生产应用 3 个新增 migration；远端共 26 个 migration，Prisma 返回
+  `Database schema is up to date!`。
+- Production：GCE `instance-20260408-091840`（`axial-acrobat-492709-r7/us-west1-b`），
+  systemd 源码部署；Web/API 分别由 Nginx 转发到 `127.0.0.1:3000` 和 `127.0.0.1:3001`。
+  API、Web、Nginx 分别在 `06:52:00`、`06:52:05`、`06:52:18 UTC` 进入 active。
+- Metadata：`buildTime=2026-08-09T06:49:11Z`，`release=r26-admin-535041bb25f2`；
+  `/api/health` 与 `/build-info` 在精确生产域名均返回 HTTP 200 和同一完整 commit。
+- Browser：真实浏览器打开精确生产域名后进入中国区飞书 OAuth；回调地址正确。内置验收浏览器当前
+  处于无应用权限的 `测试企业 - 20250216`，切换团队后进入正式二维码登录页，未取得正式团队的已认证
+  业务会话，因此公共认证入口通过，受保护生产业务路由保持人工复核待办。
+- Staging：未建立或部署独立 staging；不得以本机历史截图代替 staging 或生产验收。
+- Placeholder：原始扫描 22 行；本轮更新的正式路由命中 0；历史正式 Placeholder 路由组仍为 4 个：
+  `/reviews`、`/settings`、`/colors`、`/projects/:projectId/:section`。
+- Evidence：`docs/product/R26_PRODUCTION_RELEASE_20260809.md`、
+  `docs/acceptance/ROUTE_ACCEPTANCE_MATRIX.md`。运行代码提交与发布后证据文档提交分开记录；证据提交
+  不重新部署生产。
+- Decision：`CODE_IMPLEMENTED / LOCAL_VERIFIED / MAIN_MERGED / PRODUCTION_DEPLOYED /
+  PRODUCTION_BUSINESS_PATH_AWAITING_AUTHENTICATED_RECHECK /
+  AWAITING_PRODUCT_OWNER_CONFIRMATION / TAG_UNCHANGED`。
+
 ## R26 共享页头动作与材料页英文标签清理（2026-08-08）
 
 - Authorization：按产品负责人截图要求，移除所有正式页面共享页头右上角的搜索、通知和帮助图标及其
