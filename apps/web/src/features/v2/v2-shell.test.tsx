@@ -82,19 +82,38 @@ describe('V2 account menu', () => {
     expect(html).toContain('退出登录');
   });
 
-  it('renders only the four retained product destinations', () => {
+  it('does not render global search, notification, or help controls', () => {
     const html = renderToStaticMarkup(
       <V2Shell>
         <p>页面内容</p>
       </V2Shell>,
     );
 
-    expect(html.match(/aria-current="page"/g)).toHaveLength(2);
-    expect(html).not.toContain('aria-disabled="true"');
-    expect(html).not.toContain('进展提交');
+    expect(html).not.toContain('搜索项目');
+    expect(html).not.toContain('通知中心');
+    expect(html).not.toContain('打开帮助');
+    expect(html).not.toContain('href="/guide"');
+    expect(html).toContain('李晓晨的账号信息');
   });
 
-  it('does not invent an active navigation item for a removed route', () => {
+  it('renders only the four retained product destinations', () => {
+    const html = renderToStaticMarkup(
+      <V2Shell>
+        <p>页面内容</p>
+      </V2Shell>,
+    );
+    const primaryNavHtml = html.match(
+      /<nav class="r26-primary-nav" aria-label="V2 主导航">([\s\S]*?)<\/nav>/,
+    )?.[1];
+
+    expect(primaryNavHtml).toBeDefined();
+    expect(primaryNavHtml?.match(/href="\/v2\/(?:dashboard|projects|tasks|admin)"/g)).toHaveLength(4);
+    expect(primaryNavHtml?.match(/aria-current="page"/g)).toHaveLength(1);
+    expect(primaryNavHtml).not.toContain('aria-disabled="true"');
+    expect(primaryNavHtml).not.toContain('进展提交');
+  });
+
+  it('maps the progress workflow to the retained task destination', () => {
     pathnameState.value = '/v2/progress';
 
     const html = renderToStaticMarkup(
@@ -103,7 +122,10 @@ describe('V2 account menu', () => {
       </V2Shell>,
     );
 
-    expect(html).not.toContain('aria-current="page"');
+    expect(html).toContain(
+      'class="is-active" aria-current="page" aria-disabled="false" href="/v2/tasks"',
+    );
+    expect(html.match(/aria-current="page"/g)).toHaveLength(1);
     expect(html).not.toContain('进展提交');
   });
 

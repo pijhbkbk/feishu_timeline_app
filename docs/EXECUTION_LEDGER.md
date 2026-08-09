@@ -1,5 +1,284 @@
 # EXECUTION_LEDGER.md
 
+## R26 共享页头动作与材料页英文标签清理（2026-08-08）
+
+- Authorization：按产品负责人截图要求，移除所有正式页面共享页头右上角的搜索、通知和帮助图标及其
+  前端功能，并清除材料上传页无业务意义的 `Required`、`Upload`、`History` 英文标签；保留主导航、
+  账号菜单和项目页面自身真实搜索能力。
+- Reproduction：在原失败 URL
+  `http://localhost:8080/materials/upload?taskId=cmrlmnwos00pcn401kt7obo1r` 复现三项全局动作图标、
+  通知角标以及材料卡片英文 overline；共享 `AppShell` 与 `V2Shell` 导致多个正式路由同时出现。
+- UI：从两套共享外壳删除搜索、通知、帮助入口；删除专用通知客户端与前端通知组件；清理已失效的图标
+  导出及通知样式；材料页仅保留中文业务标题。本轮没有删除 `/projects` 内真实关键字搜索表单与过滤逻辑。
+- Regression：新增/更新共享外壳与材料组件契约，锁定全局动作不回归、账号菜单仍存在、项目内搜索仍存在，
+  并锁定 `Required`、`Upload`、`History` 不再渲染。
+- Validation：`pnpm install`、lint、typecheck、完整 test、Web/API build、Prisma validate 与
+  `git diff --check` 全部通过；Web `47 files / 193 tests`，API `70 files / 329 tests`。首次并行全量测试
+  因 Prisma client 生成时序出现一次模块读取失败，随后 API 定向全量与串行完整 `pnpm test` 均通过，
+  未通过删除断言或跳过用例规避。
+- Browser：本机 Docker staging 在原失败 URL 1280×720 真实重载；共享页头 aria-label 仅保留首页、
+  主导航和账号菜单，三项全局动作节点与三项英文标签均为 0，console/page error 为 0。随后访问
+  `/projects` 与 `/v2/dashboard`，确认两套外壳均已清理且账号菜单仍可操作。本轮未取得受控 1024/390
+  浏览器视口证据，不沿用或冒充上一轮响应式证据。
+- Environment：`http://localhost:8080`；Web image
+  `feishu-timeline-web:local-header-cleanup-20260808`，image identity
+  `sha256:44ae792099411eb6e56ff0073e361d96b4f973529a7e4e94e61082dbf29e035c`；API、数据库、
+  Redis 和 Nginx 未重建。当前镜像来自脏工作树，准确记录为 `runtimeCommit=unknown`；源码基线 HEAD
+  仍为 `2081c3920bb5c41578ef9c189477d05f392896ad`，不得将其冒充本机镜像 runtime commit。
+- Placeholder：本轮目标路由命中 0；历史正式 Placeholder 路由组仍有 4 个：`/reviews`、`/settings`、
+  `/colors`、`/projects/:projectId/:section`，不在本轮范围。
+- Scope：未提交、未推送、未部署 production，`main` 指针和 tag 均未改变；产品负责人尚未确认。
+- Evidence：`docs/product/R26_HEADER_ACTION_CLEANUP_20260808.md`、
+  `docs/product/evidence/R26_HEADER_ACTION_CLEANUP_20260808/after-materials-upload-1280.jpg`。
+- Decision：`CODE_IMPLEMENTED / LOCAL_VERIFIED / LOCAL_RUNTIME_UPDATED / NOT_DEPLOYED /
+  PRODUCTION_UNCHANGED / MAIN_UNCHANGED / TAG_UNCHANGED / AWAITING_PRODUCT_OWNER_CONFIRMATION`。
+
+## R26 共享顶部导航响应式收敛（2026-08-07）
+
+- Authorization：按产品负责人要求，修复材料上传页在窄屏把主导航移动到底部的问题，并审计所有复用
+  `AppShell` / `V2Shell` 的正式路由；本轮只修改共享导航、回归测试和证据，不修改业务数据或后端状态机。
+- Reproduction：在原失败 URL
+  `http://localhost:8080/materials/upload?taskId=cmrlmnwos00pcn401kt7obo1r`、390×844 视口稳定复现：
+  顶部主导航被隐藏，页面底部出现第二套固定导航。
+- Root cause：两套共享外壳都保留了旧的“窄屏隐藏顶部导航、改用固定底部导航”实现；此前只修过局部页面，
+  所以材料、任务和部分旧外壳路由仍会复发。
+- UI：两套外壳统一只渲染页头主导航；窄屏页头改成品牌/账号工具与四项主导航两行布局；主导航等宽、
+  可横向滚动兜底且不造成整页横向溢出；同步移除旧底栏占位，并调整粘性步骤条、项目页签、工作区跳转
+  和提示条位置，避免新页头高度造成遮挡。
+- State：`/materials/upload`、`/progress` 及其 V2 规范化路由统一映射到“我的任务”，避免位置修复后当前项仍错误。
+- Browser：本机 Docker staging 的 6 个正式路由 × 1440/1024/390 共 18 组全部通过；每组均有四项顶部导航、
+  正确当前态、旧底部导航节点 0、页面级横向溢出 0。原失败页面在 390px 依次点击四个入口 4/4 正确，
+  滚动到 `scrollY=1031` 后导航仍位于页头。浏览器控制接口不提供 DevTools Console 流，因此只记录
+  “可观察 page error 0”，不伪报 console error 0。
+- Validation：共享外壳定向门禁 `3 files / 31 tests`；完整 Web lint、typecheck、`48 files / 194 tests`
+  和 Next.js 15.5.21 production build（33 个静态页面）全部通过。
+- Environment：`http://localhost:8080`；Web image `feishu-timeline-web:local-top-nav-only-20260807b`，
+  identity `sha256:c8c3c2ebd0de2f777c2fb5e2a0fd1520a925cb283dd7fb7ee6266831715cc63d`，创建时间
+  `2026-08-07T14:06:28.358221136Z`；API、PostgreSQL、Redis 和 Nginx 未重建。当前脏工作树构建没有
+  不可变 runtime commit，准确记录为 `runtimeCommit=unknown`。
+- Placeholder：全仓原始扫描 22 行，本轮 6 个正式路由命中 0；历史 `PagePlaceholder` 正式路由 4 个，
+  不在本轮范围。
+- Scope：未提交、未推送、未部署 production，`main` 指针和 tag 均未改变；产品负责人尚未确认。
+- Evidence：`docs/product/R26_RESPONSIVE_NAV_FIX_20260807.md`、
+  `docs/product/evidence/R26_RESPONSIVE_NAV_FIX_20260807/`。
+- Decision：`CODE_IMPLEMENTED / LOCAL_VERIFIED / LOCAL_DOCKER_STAGING_VERIFIED /
+  PRODUCTION_UNCHANGED / MAIN_UNCHANGED / TAG_UNCHANGED / AWAITING_PRODUCT_OWNER_CONFIRMATION`。
+
+## R26 角色权限表格文案与编辑按钮排版修复（2026-08-06）
+
+- Authorization：按产品负责人要求，移除 `/admin/permissions` 角色名称下方的灰色角色编码与类型，
+  并将最右侧“编辑”按钮固定为横排。
+- UI：桌面权限矩阵和移动端角色卡均只显示角色名称；角色列固定最小宽度并禁止中文逐字竖排；
+  操作列固定宽度，“编辑”按钮使用 `horizontal-tb / nowrap / keep-all`，尺寸为 64×36px。
+- Regression：更新 `admin-control-center.contract.test.ts`，锁定灰色 `<small>` 不回归、操作列类名、
+  编辑按钮横排样式和角色名称不换行规则；定向测试 `17/17` 通过。
+- Validation：本轮完整门禁 `pnpm install --frozen-lockfile`、lint、typecheck、test、Web/API build、
+  Prisma validate 与 `git diff --check` 均通过；最终角色列宽度补丁后再次执行定向测试与 Web build，均通过。
+- Browser：最终补丁前已在 `http://localhost:8080/admin/permissions` 的已登录真实数据页确认 9 行角色、
+  角色灰字数量 `0`，所有“编辑”按钮计算样式均为横排且尺寸 64×36px；最终补丁仅增加角色名称
+  `nowrap / keep-all`。重建本机 Web 容器后原登录态失效，最终构建的再次签入复测未执行，未据此冒充
+  产品验收通过。
+- Environment：`http://localhost:8080/admin/permissions`，本机 Docker staging；Web image
+  `feishu-timeline-web:local-permission-table-cleanup-20260806`，digest
+  `sha256:f9a99cd626df12529ba5b455799f373628bda8ba7bcf1cd6d84f40ce5a425573`；
+  `runtimeCommit=unknown / release=development`，不作为 production 运行版本证明。
+- Scope：未修改 API、数据库、权限裁决或业务数据；未提交、未推送、未部署 production，
+  `main` 指针与 tag 均未改变。
+- Placeholder：全量原始扫描 `22` 行，目标正式组件命中 `0`。
+- Decision：`CODE_IMPLEMENTED / LOCAL_AUTOMATION_VERIFIED / LOCAL_DOCKER_STAGING_BUILT /
+  FINAL_SIGNED_IN_BROWSER_RECHECK_PENDING / PRODUCTION_UNCHANGED / MAIN_UNCHANGED /
+  AWAITING_PRODUCT_OWNER_CONFIRMATION`。
+
+## R26 分工配置表灰色辅助文字清理（2026-08-05）
+
+- Authorization：按产品负责人要求，清除 `/admin/assignments` 表格内全部灰色小字，保持页面整洁。
+- UI：删除节点编码、字段类型、编辑提示、协同部门、匹配原因、分配说明、版本与字段说明；保留
+  步骤、工序、部门、负责人、协同/评审、匹配状态、分配来源和编辑动作。
+- Status copy：将英文 `SUGGESTED` 统一显示为中文“建议匹配”，并使用既有蓝色建议状态语义。
+- Browser：本机真实数据页返回 18 行；表格 `small=0`、字段说明区块 `0`、灰色辅助文案 `0`、
+  英文状态 `0`；项目切换和编辑面板打开/关闭正常，本轮未提交写操作。
+- Regression：更新前端契约，锁定辅助文字不回归，同时保留编辑分工、变更原因、预览和更新接口。
+- Validation：`pnpm install --frozen-lockfile`、lint、typecheck、Web/API build、Prisma validate
+  与 `git diff --check` 通过；Web `45 files / 178 tests`。API 首次全量运行发生一次 Vitest worker
+  模块读取超时；失败用例 `3/3` 单独复跑通过，随后全量 `69 files / 318 tests` 通过。
+- Environment：`http://localhost:8080/admin/assignments`，本机 Docker staging；Web image
+  `feishu-timeline-web:local-assignment-table-clean-20260805`，digest
+  `sha256:db26b50adef18bafd591686cccb008e9ba3acc026937bc4b7f4dab77c9bb6a0d`；
+  `runtimeCommit=unknown / release=development`，不作为 production 运行版本证明。
+- Scope：未修改 API、数据库、权限、工作流或分工数据；未提交、未推送、未部署 production，
+  `main` 指针与 tag 均未改变。
+- Placeholder：全量原始扫描 `22` 行，目标正式组件命中 `0`。
+- Evidence：`docs/product/R26_ASSIGNMENT_TABLE_CLEANUP_20260805.md` 与
+  `docs/product/evidence/R26_ASSIGNMENT_TABLE_CLEANUP_20260805/assignment-table-clean.png`。
+- Decision：`CODE_IMPLEMENTED / LOCAL_VERIFIED / LOCAL_DOCKER_STAGING_VERIFIED /
+  PRODUCTION_UNCHANGED / MAIN_UNCHANGED / AWAITING_PRODUCT_OWNER_CONFIRMATION`。
+
+## R26 抽屉关闭按钮视觉居中修复（2026-08-05）
+
+- Authorization：按产品负责人截图要求，将公司部门编辑抽屉右上角叉号放在按钮正中心，
+  并检查修复所有同类图标型关闭按钮。
+- Root cause：原管理抽屉使用原生文字字形 `×`，浏览器默认按钮内边距与字体行盒导致
+  44×44 按钮内字形中心向下偏移 1px。
+- UI：管理编辑抽屉和审计详情抽屉统一改用 `CloseIcon` SVG；后台与项目工作区图标型关闭
+  按钮统一双向居中、零内边距、零行高和固定 SVG 宽高。
+- Browser：本机真实数据页 `/admin/organization` 和 `/admin/audit-logs` 已分别打开抽屉；
+  44×44/20×20 与 38×38/18×18 两组按钮/图标中心偏差均为 `0px / 0px`，console
+  warning/error 为 `0`；组织抽屉真实点击关闭后 dialog 数量由 `1` 变为 `0`，再次打开正常。
+- Regression：更新组件契约与审计详情渲染测试，禁止原生 `×` 回归，并锁定管理、审计与
+  R26 工作区关闭按钮的居中样式。定向测试 `19/19` 通过；全仓 `pnpm install
+  --frozen-lockfile`、lint、typecheck、test、Web/API build、Prisma validate 与
+  `git diff --check` 全部通过，Web `45 files / 178 tests`、API `69 files / 318 tests`。
+- Environment：`http://localhost:8080`，本机 Docker staging、本机 PostgreSQL；Web
+  image `feishu-timeline-web:local-close-button-center-20260805`，digest
+  `sha256:b6d491f89209593ea2ec57b3c0d3ad76af48bc932f6efe6c9b43bfe62b0b01d3`；
+  `runtimeCommit=unknown / release=development`，不作为 production 运行版本证明。
+- Placeholder：全量原始扫描 `22` 行，本轮两个正式路由组件未新增 Placeholder。
+- Scope：未修改 API、数据库、权限、工作流或业务数据；未提交、未推送、未部署 production，
+  `main` 指针与 tag 均未改变。
+- Evidence：`docs/product/R26_CLOSE_BUTTON_ALIGNMENT_20260805.md` 与
+  `docs/product/evidence/R26_CLOSE_BUTTON_ALIGNMENT_20260805/`。
+- Decision：`CODE_IMPLEMENTED / LOCAL_VERIFIED / LOCAL_DOCKER_STAGING_VERIFIED /
+  PRODUCTION_UNCHANGED / MAIN_UNCHANGED /
+  AWAITING_PRODUCT_OWNER_CONFIRMATION`。
+
+## R26 后台表格双向居中修复（2026-08-05）
+
+- Authorization：按产品负责人要求，后台正式表格的表头和正文统一水平、竖直居中，并修复
+  `/admin/organization` 中“启用”状态与“编辑部门”按钮间距不足。
+- UI：统一 `.admin-cc-table`、`.data-table` 及成员、材料、分工等 Grid 表格的双向居中规则；
+  公司部门操作区使用 `14px` 间距，权限矩阵角色列也与其表头居中对齐。
+- Browser：在本机真实数据页逐页复核 `/admin/projects`、`/admin/tasks`、
+  `/admin/organization`、`/admin/assignments`、`/admin/permissions` 和
+  `/admin/audit-logs`；六页所有抽样表头/单元格计算样式均为 `center / middle`，公司部门
+  操作区计算间距为 `14px`，未出现可见数据错误页。
+- Regression：新增 CSS 合同测试，锁定表头、单元格双向居中与操作区间距；定向测试
+  `15/15` 通过。全仓 `pnpm install`、lint、typecheck、test、Web/API build、Prisma validate 与
+  `git diff --check` 全部通过；Web `45 files / 177 tests`，API `68 files / 315 tests`。
+- Environment：`http://localhost:8080`，本机 Docker staging、本机 PostgreSQL；Web 镜像
+  `feishu-timeline-web:local-table-alignment-20260805`，manifest digest
+  `sha256:3bbf105d27915a9630189d3a82bb8902e6f378c5fdd3f136d8ec80cbf392f6ed`。
+  镜像包含未提交工作树变更，不冒充不可变 runtime commit。
+- Runtime：Web、API、Nginx、PostgreSQL 与 Redis 容器均 healthy；Web/API metadata 均为
+  `runtimeCommit=unknown / release=development`。Placeholder 全量扫描 `22` 行，本轮六个后台
+  路由命中 `0`。
+- Scope：未修改 API、数据库、权限、工作流或业务数据；未提交、未推送、未部署 production，
+  `main` 指针与 tag 均未改变。
+- Evidence：`docs/product/R26_TABLE_ALIGNMENT_20260805.md` 与
+  `docs/product/evidence/R26_TABLE_ALIGNMENT_20260805/`。
+- Decision：`CODE_IMPLEMENTED / LOCAL_VERIFIED / LOCAL_STAGING_VERIFIED /
+  PRODUCTION_UNCHANGED / MAIN_UNCHANGED / AWAITING_PRODUCT_OWNER_CONFIRMATION`。
+
+## R26 项目总台账固定精简列（2026-08-05）
+
+- Authorization：按产品负责人要求，`/admin/projects` 不再提供“显示完整列”或“使用精简列”功能，
+  项目总台账固定使用精简列。
+- UI：删除列模式切换按钮、`fullColumns` 状态及项目/工序表完整列渲染分支；项目表固定展示
+  “项目、颜色 / 车型、当前工序、负责人 / 部门、风险、进度、计划结束、数据版本、操作”九列。
+- Regression：更新前端契约，明确禁止 `显示完整列`、`使用精简列` 和 `fullColumns` 回归；定向
+  契约测试 `14/14` 通过。全仓 `pnpm install --frozen-lockfile`、lint、typecheck、test、Web/API
+  build、Prisma validate 与 `git diff --check` 全部通过；Web `45 files / 176 tests`，API
+  `68 files / 315 tests`。
+- Browser：在已登录的本机真实数据页 `http://localhost:8080/admin/projects` 验证切换按钮命中数为
+  `0`、表头为固定九列；实际搜索 `R26-G3A-UAT-成员分工` 命中项目，刷新后仍保持精简列，
+  console/page error 为 `0`。
+- Environment：本机 Docker staging、本机 PostgreSQL；Web 镜像
+  `feishu-timeline-web:local-project-ledger-compact-20260805`，健康端点返回
+  `runtimeCommit=unknown / release=development`，不得作为 production 运行版本证明。
+- Scope：未修改 API、数据库、权限、工作流或项目业务数据；未提交、未推送、未部署 production，
+  `main` 指针与 tag 均未改变。
+- Placeholder：全量原始扫描命中 `22` 行，目标 `/admin/projects` 组件与路由命中 `0`；历史命中
+  不属于本轮变更，未通过删除测试或隐藏文案规避门禁。
+- Evidence：`docs/product/R26_PROJECT_LEDGER_COMPACT_COLUMNS_20260805.md` 与
+  `docs/product/evidence/R26_PROJECT_LEDGER_COMPACT_COLUMNS_20260805/local-admin-projects-compact.png`。
+- Decision：`CODE_IMPLEMENTED / LOCAL_VERIFIED / PRODUCTION_UNCHANGED / MAIN_UNCHANGED /
+  AWAITING_PRODUCT_OWNER_CONFIRMATION`。
+
+## R26 飞书 OAuth 多标签 state 竞态修复（2026-08-05）
+
+- Failure environment：本机 Docker staging，失败 URL 为
+  `http://localhost:8080/login/callback`；页面提示“飞书登录状态与当前浏览器不匹配”。用户原始
+  失败截图为 `/Users/lixiaochen/Desktop/截屏2026-08-05 上午8.42.59.png`。
+- Root cause：同一浏览器中的多个未登录业务标签会在几乎同一时刻分别请求
+  `/api/auth/feishu/start`。旧实现把所有登录尝试写入同一个 HttpOnly state Cookie，后一次请求
+  覆盖前一次；飞书回调携带较早 state 时，服务端按安全规则拒绝。
+- Fix：每个 OAuth state 使用由 state 的 SHA-256 摘要派生的独立 Cookie 名称；回调仅读取并
+  清理当前 state 对应 Cookie。服务端 10 分钟 TTL、一次性消费、浏览器绑定和防重放校验保持
+  不变，未放宽 OAuth 安全边界。
+- Regression：新增 Service 与 Controller 回归，覆盖两个重叠登录尝试各自保留 Cookie 并分别
+  完成回调；定向 auth 测试 `18/18`、API lint 与 typecheck 均通过。真实 HTTP 连续发起两次
+  登录后 Cookie jar 同时保留 `2` 个不同的 state Cookie。
+- Full validation：`pnpm install --frozen-lockfile`、全仓 lint、typecheck、test、Web/API build、
+  Prisma validate 与 `git diff --check` 全部通过；Web `45 files / 176 tests`，API
+  `68 files / 315 tests`。Placeholder 原始扫描 `22` 行，其中正式路由仍有 `4` 个历史
+  `PagePlaceholder` 文件，本轮登录和项目路由命中数为 `0`。
+- Browser：从新的 `/login` 入口重新发起登录，选择已关联的“测试企业 - 20250216”并授权；
+  回调成功建立“李晓晨”会话并自动进入 `http://localhost:8080/projects`，真实项目数据可见，
+  console/page error 为 `0`。成功截图：
+  `docs/product/evidence/R26_LOGIN_STATE_FIX_20260805/login-success-local.png`。
+- Environment：`http://localhost:8080`，本机 Docker PostgreSQL；API 镜像
+  `feishu-timeline-api:local-oauth-concurrent-state-20260805`、Web 镜像
+  `feishu-timeline-web:local-department-delete-20260803`；健康端点返回
+  `runtimeCommit=unknown / release=development`，不得作为 production 运行版本证据。
+- Scope：本轮仅修改 OAuth state Cookie 的并发隔离及回归测试；未修改数据库模型、项目业务
+  数据、权限规则、工作流、production、`main` 指针或 tag。
+- Evidence：`docs/product/R26_FEISHU_OAUTH_MULTITAB_STATE_FIX_20260805.md`。
+- Decision：`CODE_IMPLEMENTED / LOCAL_REAL_OAUTH_VERIFIED / MULTITAB_STATE_ISOLATED /
+  PRODUCTION_UNCHANGED / MAIN_UNCHANGED / AWAITING_PRODUCT_OWNER_CONFIRMATION`。
+
+## R26 公司部门保存视图移除与受控删除（2026-08-03）
+
+- Authorization：按产品负责人最新截图要求，彻底移除后台控制中心中的“保存视图”选择器与
+  “保存当前视图”按钮，并在 `/admin/organization` 的“公司部门”页签增加勾选和删除能力。
+- UI：桌面表格新增当前页全选与逐行选择；移动卡片新增“选择此部门”；选中后显示明确的
+  已选数量、取消选择和“删除所选部门”，删除确认面板列出部门名称并要求填写变更原因。
+- Backend authority：新增 `POST /api/admin/organization/departments/batch-delete` 薄命令接口；
+  仅超级管理员可用，必须携带每个部门的 `departmentVersion`、`Idempotency-Key`、原因和
+  `acknowledgedConsequences`，全部裁决在服务端事务中完成。
+- Delete guards：根部门，以及仍关联人员、下级部门、项目、工序、节点分工或标准板发放记录的
+  部门均拒绝删除；批量请求任一项不满足时整批回滚。成功删除逐部门写入
+  `ADMIN_DEPARTMENT_DELETED` 审计记录。
+- Real local API：临时认证会话只用于本机回归，测试后已清除；根部门删除返回
+  `409 / DEPARTMENT_DELETE_BLOCKED / 组织根部门不能删除`；一次性空部门成功删除后数据库
+  剩余 `0`、审计记录 `1`；相同幂等键重放返回 `idempotentReplay=true`；普通用户负向调用
+  返回 `403`。一次性测试部门均已删除，未改变真实组织数据。
+- Bundle check：本地 Web 新构建中“保存视图/保存当前视图”文件命中数为 `0`；删除入口、全选
+  与确认文案已进入构建产物。
+- Browser：本地服务恢复后，既有内置浏览器标签仍停留在 Chrome `ERR_CONNECTION_REFUSED`
+  数据错误页；浏览器安全策略禁止从该受限页重新导航到 localhost。本轮未绕过安全策略，需在
+  新开的本地标签页完成最终视觉确认。
+- Environment：`http://localhost:8080`，数据库为本机 Docker PostgreSQL；Web/API 镜像 tag
+  `local-department-delete-20260803`；API/Web/nginx/PostgreSQL/Redis 均 healthy；本地构建元数据
+  为 `runtimeCommit=unknown / release=development`，不作为生产部署证据。
+- Scope：production、staging 公网、`main`、tag 均未改变；未部署 `timeline.all-too-well.com`。
+- Evidence：`docs/product/R26_DEPARTMENT_DELETE_AND_VIEW_CLEANUP_20260803.md`。
+- Decision：`CODE_IMPLEMENTED / LOCAL_API_VERIFIED / LOCAL_BROWSER_VISUAL_RECHECK_PENDING /
+  PRODUCTION_UNCHANGED / MAIN_UNCHANGED / AWAITING_PRODUCT_OWNER_CONFIRMATION`。
+
+## R26 公司部门界面收敛（2026-08-03）
+
+- Authorization：按产品负责人生产截图要求，收敛 `/admin/organization` 的“公司部门”页签。
+- Navigation：将“公司部门”移至“系统用户”左侧，“项目成员”保持第三项。
+- Table：删除“编码”列及部门名称下方的层级编码；“上级部门”统一改为“所属事业部”，
+  桌面表格与移动卡片均不再展示部门编码。
+- Interaction：删除“所有变更先预览影响……”提示，并取消公司部门新增/编辑的前端影响预览步骤；
+  保存按钮直接显示“确认保存”。
+- Safety retained：取消的仅是前端预览步骤；部门写请求仍提交 `expectedVersion`、随机
+  `Idempotency-Key`、`acknowledgedConsequences` 和变更原因，服务端权限、字段校验、事务与
+  审计逻辑未修改。
+- Cleanup：删除未再使用的 `previewAdminDepartmentConfiguration` Web 客户端封装，未删除
+  后端兼容接口；服务端部门校验错误文案同步使用“所属事业部”，校验规则本身不变；未修改
+  数据库、Prisma schema、migration、工作流状态或业务数据。
+- Regression：新增公司部门专用契约，锁定页签顺序、表格列、旧提示/编码/预览调用不回归，
+  并验证直接保存仍携带幂等与确认字段。
+- Validation：`pnpm install`、lint、typecheck、全量测试、Web/API build、Prisma validate、
+  `git diff --check` 全部 PASS；Web 45 files / 175 tests，API 68 files / 312 tests。
+- Browser：本机 Docker daemon 未运行，真实本地数据栈无法启动；未使用静态假数据或截图冒充
+  浏览器验收。
+- Scope：production、staging、`main`、tag 均未改变；生产仍运行
+  `b02927d7cf63657f592b634859dfc025abe748db`，本轮改动尚未部署。
+- Decision：`CODE_IMPLEMENTED / LOCAL_AUTOMATED_VERIFIED / BROWSER_NOT_RUN /
+  PRODUCTION_UNCHANGED / AWAITING_DEPLOYMENT_AUTHORIZATION / AWAITING_PRODUCT_OWNER_CONFIRMATION`。
+
 ## R26 工序总台账工具栏收敛（2026-08-03）
 
 - Authorization：按产品负责人截图要求，`/admin/tasks` 工具栏只保留左侧搜索与“查询”。
@@ -321,6 +600,103 @@
 
 > 用途：记录 Codex 每一轮执行情况、验收结果、风险、遗留问题与下一轮决策。
 > 要求：每完成一轮，必须更新本文件。
+
+---
+
+### Round R26_PROJECT_CREATE_FIELDS_20260806
+
+#### Goal And Scope
+
+- 收敛正式新建项目表单：移除“项目编号”和“市场”。
+- 新增文字字段“颜色营销单位”和受控下拉字段“涂料供应商”。
+- 涂料供应商仅允许巴斯夫、立邦、艾仕得、金力泰、阿克苏诺贝尔、兰陵化工。
+- 不部署 staging/production，不合并 main，不创建 tag。
+
+#### Exact Changes
+
+- 正式表单不再展示或提交项目编号、市场。
+- 服务端在创建请求没有编号时生成唯一内部编号，旧客户端显式传入编号仍兼容。
+- Prisma `Project` 新增 `colorMarketingUnit` 和 `paintSupplier`，并提交独立 migration。
+- 创建、编辑、列表、详情和审计快照统一返回新增字段。
+- DTO 与 Service 双层校验供应商白名单。
+- Playwright 创建项目夹具改用新字段，新增前端合同测试和后端项目创建回归。
+
+#### Validation
+
+```text
+pnpm install                                                    PASS
+pnpm lint                                                       PASS
+pnpm typecheck                                                  PASS
+pnpm test                                                       PASS（Web 46 files / 180 tests；API 70 files / 328 tests）
+pnpm --filter @feishu-timeline/web build                        PASS
+pnpm --filter @feishu-timeline/api build                        PASS
+pnpm --filter @feishu-timeline/api prisma:validate              PASS
+本机 Docker migration                                          PASS
+http://localhost:8080/projects/new 真实浏览器交互               PASS
+浏览器 console error                                           0
+```
+
+- 本机证据：`docs/product/evidence/R26_PROJECT_CREATE_FIELDS_20260806/projects-new-six-suppliers-local.jpg`。
+- 本机镜像：Web/API tag 均为 `local-project-suppliers-six-20260806`；运行元数据为
+  `runtimeCommit=unknown / release=development`，不作为 staging 或 production 部署证据。
+- production、main、tag 均未改变。
+
+#### Decision
+
+```text
+CODE_IMPLEMENTED
+LOCAL_VERIFIED
+NOT_DEPLOYED
+AWAITING_PRODUCT_OWNER_CONFIRMATION
+```
+
+---
+
+### Round R26_DEPARTMENT_FORM_SIMPLIFICATION_20260806
+
+#### Goal And Scope
+
+- 收敛“新增公司部门”和全部“编辑公司部门”面板。
+- 移除顶部蓝色流程提示、部门编码、显示顺序与变更原因，包括 UI、前端提交和后端填写要求。
+- 不部署 staging/production，不合并 main，不创建 tag。
+
+#### Exact Changes
+
+- 部门表单只保留部门名称、所属事业部、部门负责人和启用状态。
+- Web 部门命令不再提交 `code`、`sortOrder`、`reason`。
+- 服务端在新增时生成部门编码和同级显示顺序；编辑时保留既有值。
+- 审计原因由服务端写入系统默认值并标记 `reasonSource=SYSTEM_DEFAULT`。
+- 超级管理员权限、六项事业部限制、版本校验、幂等、事务与审计保持不变。
+
+#### Validation
+
+```text
+pnpm lint                                                       PASS
+pnpm typecheck                                                  PASS
+pnpm test                                                       PASS（Web 180 / API 329）
+pnpm --filter web build                                         PASS
+pnpm --filter api build                                         PASS
+pnpm --filter api prisma:validate                               PASS
+http://localhost:8080/admin/organization 真实浏览器交互          PASS
+财务部 / 总部 / 新增公司部门三类表单禁用文案命中数               0
+浏览器 console error                                           0
+```
+
+- 详细记录：`docs/product/R26_DEPARTMENT_FORM_SIMPLIFICATION_20260806.md`。
+- 本机证据：
+  `docs/product/evidence/R26_DEPARTMENT_FORM_SIMPLIFICATION_20260806/edit-finance-after.png`、
+  `docs/product/evidence/R26_DEPARTMENT_FORM_SIMPLIFICATION_20260806/create-after.png`。
+- 本机 Web/API 镜像 tag 均为 `local-department-form-simplified-20260806`；未提交部门写操作。
+- production、main、tag 均未改变。
+
+#### Decision
+
+```text
+CODE_IMPLEMENTED
+LOCAL_VERIFIED
+NOT_DEPLOYED
+AWAITING_PRODUCT_OWNER_CONFIRMATION
+```
 
 ---
 
@@ -4563,6 +4939,364 @@ READ_ONLY_REAL_DATA_CONNECTED
 ZERO_BUSINESS_WRITE_REQUESTS
 AWAITING_PRODUCT_OWNER_REAL_DATA_CONFIRMATION
 STOP_BEFORE_GATE3
+```
+
+## 2026-08-07 — R26 颜色数据库完整模拟与第 05 步受控编号闭环
+
+### 目标与范围
+
+- 核实颜色数据库起始记录为 0 是否为真实业务结果，而不是页面读取错误。
+- 在本机隔离测试数据中完成第 05 步“新颜色取号”，验证唯一编号、确认材料、操作人、时间、审计及颜色数据库回读。
+- 验证搜索、清除、空态、1440/1024/390 布局和控制台错误。
+- 不修改 production，不合并 main，不创建 tag。
+
+### 环境身份
+
+```text
+environment       local-isolated-simulation
+exact URL         http://localhost:8080/admin/color-database
+web upstream      http://localhost:3100
+api upstream      http://localhost:3201/api
+database          PostgreSQL feishu_timeline @ localhost:15432
+source HEAD       2081c3920bb5c41578ef9c189477d05f392896ad
+runtimeCommit     unknown
+release           development
+production        unchanged
+```
+
+运行元数据无法证明不可变 commit，因此本轮状态不是 `STAGING_DEPLOYED` 或
+`PRODUCTION_DEPLOYED`，只能是本机隔离模拟和浏览器验证。
+
+### 起始数据判断
+
+- 数据库有 2 条旧颜色和自由编号，但没有 `numberingTaskId`、`numberedById`、
+  `numberedAt`、`numberingAttachmentId` 及已完成第 05 步来源。
+- 严格受控颜色数量为 0；颜色数据库显示 0 正确。
+- 旧记录 `星云蓝 / CLR-DEMO-A-001` 与 `极昼银 / CLR-DEMO-C-001` 均未被错误纳入。
+
+### 模拟结果
+
+```text
+颜色总行数                    5
+严格受控颜色                  3
+颜色数据库可见记录            3
+确认材料                      3
+第 05 步完成审计              3
+重复编号新建行                0
+重复编号任务最终状态          READY / active
+```
+
+成功记录：
+
+1. `R26-UAT-1786081484809-5E2149`，任务
+   `cmsiisthv001dqr01hpik44h6`，确认材料
+   `cmsiistz8001jqr01875asfn6`。
+2. `R26-UAT-1786081988039-FBB59C`，任务
+   `cmsij3m2g003xqr01u378sxah`，确认材料
+   `cmsij3m9s0043qr015v00j0lb`。
+3. `R26-UAT-1786104170349-6B17A8`，任务
+   `cmsiwb1zq008eqr010klfe939`，确认材料
+   `cmsiwb27f008kqr0184cxtxe0`。
+
+重复编号场景保持第 05 步为 `READY`，未创建颜色记录，数据库中该编号仍为唯一一条。
+
+### 浏览器验收
+
+- 精确 URL 搜索单一编号只返回目标记录。
+- 无匹配查询显示空态，清除后恢复完整记录。
+- 1440px 两张截图已保存。
+- 1440px 截图拍摄时为两条记录；最终第三条由通过的 Playwright、API 回读与数据库查询证明，未伪称存在第三条截图。
+- 1024px 与 390px 实测无横向溢出且完整导航可见；本轮未成功保存这两档截图，
+  因此只登记布局测量，不登记截图通过。
+- `console error=0`、`page error=0`。
+
+### 技术检查与门禁
+
+```text
+API focused tests                         21/21 PASS
+API build                                 PASS
+Prisma validate                           PASS
+Web typecheck                             PASS
+Web build                                 PASS (33 pages)
+目标路由 Placeholder                      0
+仓库 Placeholder 原始扫描匹配             22
+Playwright 完整门禁                        1/1 PASS (5.2s)
+```
+
+Playwright 第一次因测试读取了错误的扁平附件字段失败；第二次因重复编号中文提示正则过窄失败。
+两次业务写入/拒绝及数据库结果均符合预期，并按“两次失败停止”规则记录 Blocker。
+用户随后明确要求继续；修正断言后只执行一次有界复核，最终 `1/1 PASS (5.2s)`，
+同时验证正常编号、同幂等键重放、重复编号拒绝、颜色数据库精确查询及最终三条受控记录。
+
+### 证据
+
+- `docs/product/R26_COLOR_DATABASE_SIMULATION_BLOCKER_REPORT.md`
+- `docs/product/R26_COLOR_DATABASE_SIMULATION_REPORT.md`
+- `docs/product/evidence/R26_COLOR_DATABASE_SIMULATION_20260807/02-controlled-numbering-api-simulation.json`
+- `docs/product/evidence/R26_COLOR_DATABASE_SIMULATION_20260807/02-controlled-numbering-database-evidence.json`
+- `docs/product/evidence/R26_COLOR_DATABASE_SIMULATION_20260807/03-color-database-two-controlled-1440.png`
+- `docs/product/evidence/R26_COLOR_DATABASE_SIMULATION_20260807/04-color-database-search-match-1440.png`
+
+### Decision
+
+```text
+COLOR_DATABASE_BASELINE_ZERO_CONFIRMED
+STEP05_CONTROLLED_NUMBERING_BUSINESS_PATH_VERIFIED_LOCALLY
+THREE_CONTROLLED_COLOR_RECORDS_VISIBLE_IN_LOCAL_READ_MODEL
+DUPLICATE_COLOR_CODE_REJECTED
+IDEMPOTENCY_VERIFIED
+MATERIAL_AND_AUDIT_PROVENANCE_VERIFIED
+PLAYWRIGHT_GATE_PASSED
+LOCAL_BROWSER_VERIFIED
+NOT_DEPLOYED
+AWAITING_PRODUCT_OWNER_CONFIRMATION
+```
+
+---
+
+### Round R26_RESPONSIVE_NAV_FIX_20260807
+
+#### Goal And Scope
+
+- 修复共享 V2 外壳在 `768–920px` 宽度区间主导航完全消失的问题。
+- 覆盖工作台、项目列表、项目工作区、新建项目、我的任务与系统管理路由。
+- 仅重建并验证本机 Docker staging；不提交、不部署 production、不修改 main/tag。
+
+#### Root Cause And Changes
+
+- 旧 CSS 在 `max-width:920px` 隐藏顶部导航，而移动导航只在
+  `max-width:767px` 显示，造成中间断点空窗。
+- 新增 `768–920px` 紧凑顶部导航；`<=767px` 明确切换移动导航。
+- 新增 `v2-shell-responsive.contract.test.ts` 固化断点契约。
+
+#### Validation
+
+```text
+pnpm --filter web lint       PASS
+pnpm --filter web typecheck  PASS
+pnpm --filter web test       PASS（48 files / 188 tests）
+pnpm --filter web build      PASS
+```
+
+- 本机真实浏览器验证八个共享外壳路由；900px 下四项顶部入口完整显示且当前项正确。
+- 1440、1024、920、900、768、767、390 七个宽度均无导航缺失或页面级横向溢出。
+- 767px 下真实点击“我的任务”进入 `/tasks`；console/page error 为 0。
+- 证据：`docs/product/R26_RESPONSIVE_NAV_FIX_20260807.md`。
+
+#### Decision
+
+```text
+CODE_IMPLEMENTED
+LOCAL_VERIFIED
+LOCAL_STAGING_VERIFIED
+NOT_DEPLOYED
+AWAITING_PRODUCT_OWNER_CONFIRMATION
+```
+
+---
+
+### Round R26_PROJECT_SEARCH_AND_HEADER_ACTION_FIX_20260807
+
+#### Goal And Scope
+
+- 修复 `/projects` 顶部搜索图标只跳到页面顶部、没有真实搜索交互的问题。
+- 排查并回归顶部通知、帮助和账号菜单，避免保留无实际动作的图标。
+- 限定为本机 Docker staging 验证；不提交、不推送、不部署 staging/production。
+
+#### Exact Changes
+
+- 正式 V2 项目列表增加真实搜索表单、URL 关键字持久化、刷新恢复和清除。
+- 真实列表通过 GET `keyword` 查询，不在前端伪造生产结果。
+- 修复请求取消竞态，过期请求不再覆盖最新筛选结果。
+- 顶部搜索入口聚焦搜索框；通知改为真实通知中心；帮助进入 `/guide`；账号菜单保持真实退出入口。
+
+#### Validation
+
+```text
+pnpm --filter web lint       PASS
+pnpm --filter web typecheck  PASS
+pnpm --filter web test       PASS（47 files / 185 tests）
+pnpm --filter web build      PASS
+git diff --check             PASS（目标文件）
+```
+
+#### Browser Evidence
+
+```text
+URL=http://localhost:8080/projects?focus=search
+查询关键字=成员分工-20260724-1006
+筛选结果=1
+刷新恢复=PASS
+清除恢复=17
+通知中心=PASS
+帮助页面=/guide PASS
+账号菜单=PASS
+console error=0
+```
+
+- Screenshot：`docs/product/evidence/R26_PROJECT_SEARCH_FIX_20260807/projects-search-filtered.png`。
+- Web image digest：`sha256:df48a14bf346174e3a9a576a361037bd1a239743efadea8e7dd9c7845f91bdb9`。
+- API runtime metadata 仍为 `unknown/development`，本轮不使用 `DEPLOYED`。
+
+#### Decision
+
+```text
+CODE_IMPLEMENTED
+LOCAL_VERIFIED
+NOT_DEPLOYED
+AWAITING_PRODUCT_OWNER_CONFIRMATION
+```
+
+### R26 公司部门负责人文字输入（2026-08-06）
+
+#### 目标与范围
+
+- 将 `/admin/organization` 新增/编辑部门面板中的“部门负责人”由固定选项改为姓名文字输入。
+- 保留真实用户外键、部门成员关系、权限、乐观锁、幂等、事务和审计边界。
+- 本轮不提交、不推送、不部署 production，不修改数据库业务数据。
+
+#### 实现
+
+- Web 表单提交 `leadUserName`，不再提交前端选择的 `leadUserId`。
+- API 按启用系统用户姓名精确匹配：唯一匹配后写入真实用户 ID；无匹配或同名多匹配时拒绝写入并返回明确原因。
+- 留空负责人仍表示“待设置”；已有负责人按姓名回填。
+- 新增 Web/API 契约回归，防止负责人字段退回为下拉框或由前端提交用户 ID。
+
+#### 验证
+
+```text
+pnpm install --frozen-lockfile                         PASS
+pnpm lint                                              PASS
+pnpm typecheck                                         PASS
+pnpm test                                              PASS（Web 180 / API 329）
+pnpm --filter web build                                PASS
+pnpm --filter api build                                PASS
+pnpm --filter api prisma:validate                      PASS
+git diff --check                                       PASS
+```
+
+- 精确本机 URL：`http://localhost:8080/admin/organization`。
+- 真实浏览器打开“涂装工艺部”编辑面板：负责人文本框 `1` 个、同名下拉框 `0` 个；键入“演示工艺工程师”成功。
+- 点击“取消”退出，未保存、未改变业务数据。
+- 本机镜像 tag：`local-department-lead-name-input-20260806`。
+- production、main 和 tag 均未改变。
+
+#### 当前状态
+
+```text
+CODE_IMPLEMENTED
+LOCAL_VERIFIED
+PRODUCTION_NOT_CHANGED
+AWAITING_PRODUCT_OWNER_CONFIRMATION
+```
+
+---
+
+### Round R26_STEP05_CONTROLLED_COLOR_NUMBERING
+
+#### Goal And Scope
+
+- 将颜色编号固定为第 05 步“新颜色取号”的受控完成结果。
+- 由后端在同一完成事务中校验编号唯一性、确认材料和任务状态，并写入编号任务、操作人、时间和材料来源。
+- 颜色数据库及其他业务读模型只读取来源完整且可验证的正式编号。
+- 本轮不应用数据库迁移，不改变 staging、production、main 或 tag。
+
+#### Exact Changes
+
+- Prisma `Color` 新增 `numberingTaskId`、`numberedById`、`numberedAt`、
+  `numberingAttachmentId` 及唯一键、索引和外键迁移。
+- 第 05 步完成预览和完成命令新增颜色编号；缺少编号、缺少确认材料或编号重复时由服务端明确拒绝。
+- 编号及来源与工作流推进、活动和审计记录在同一 Serializable 事务内提交。
+- V2 完成面板新增颜色编号输入、验证反馈和成功来源展示。
+- 颜色数据库严格过滤未验证的历史自由编号；其他业务读模型统一使用受控编号判断。
+
+#### Validation
+
+```text
+pnpm install --frozen-lockfile                       PASS
+pnpm lint                                            PASS
+pnpm typecheck                                       PASS
+pnpm test                                            PASS（Web 178 / API 327）
+pnpm --filter web build                              PASS
+pnpm --filter api build                              PASS
+pnpm --filter api prisma:validate                    PASS
+git diff --check                                     PASS
+```
+
+#### Evidence And Decision
+
+- 实施报告：`docs/product/R26_STEP05_CONTROLLED_COLOR_NUMBERING_20260805.md`。
+- 数据库迁移尚未应用，因此尚未执行浏览器写入与重新读取验收。
+
+```text
+CODE_IMPLEMENTED
+LOCAL_VERIFIED
+DATABASE_MIGRATION_NOT_APPLIED
+BROWSER_E2E_NOT_RUN
+NOT_DEPLOYED
+AWAITING_PRODUCT_OWNER_CONFIRMATION
+```
+
+---
+
+### 2026-08-05 R26_ADMIN_ORGANIZATION_BUSINESS_DIVISIONS
+
+#### Goal And Scope
+
+- 将公司部门的“所属事业部”候选池固定为产品指定的六个事业部。
+- 同时约束前端候选项、服务端预校验、正式事务、migration 和 seed。
+- 仅更新本机 `http://localhost:8080/admin/organization`；未提交、未推送、未部署 production。
+
+#### Exact Changes
+
+- 新增六项不可变业务清单：技术中心、商用车营销事业部、乘用车营销事业部、制造中心、
+  国际事业部、采购中心。
+- 新增 Prisma 数据 migration，写入六个顶层参考组织；公司部门列表排除这些参考行。
+- API `directory.businessDivisions` 按产品顺序返回启用且编码/名称精确匹配的六项。
+- 新增/编辑部门只渲染该返回值；历史归属不合法时显示必选提示，不默认选中第一项。
+- API 预校验与事务提交均拒绝缺失、停用或六项以外的所属事业部。
+
+#### Local Evidence
+
+```text
+URL                 http://localhost:8080/admin/organization
+user                李晓晨
+API image           feishu-timeline-api:local-business-divisions-20260805
+Web image           feishu-timeline-web:local-business-divisions-20260805
+API/Web health      healthy / healthy
+runtimeCommit       unknown（本机脏工作树构建，不作为 DEPLOYED 证据）
+business divisions  6 / 6
+database parentId   six rows are ROOT
+production          unchanged
+```
+
+- 真实点击“公司部门 → 编辑部门”后，下拉框只出现六个产品指定事业部。
+- 旧“项目管理部”的原归属“总部”不在清单时，面板显示“请选择所属事业部”。
+- 交互细节记录：`docs/product/R26_BUSINESS_DIVISIONS_20260805.md`。
+
+#### Validation
+
+```text
+pnpm install                         PASS
+pnpm lint                            PASS
+pnpm typecheck                       PASS
+pnpm test                            PASS（Web 45 files / 177 tests；API 69 files / 318 tests）
+pnpm --filter web build              PASS
+pnpm --filter api build              PASS
+pnpm --filter api prisma:validate    PASS
+git diff --check                     PASS
+Placeholder total / target route     22 / 0
+Prisma migrations                    24 applied / 0 pending
+```
+
+#### Decision
+
+```text
+CODE_IMPLEMENTED
+LOCAL_VERIFIED
+PRODUCTION_NOT_CHANGED
+MAIN_NOT_CHANGED
+AWAITING_PRODUCT_OWNER_CONFIRMATION
 ```
 
 ---

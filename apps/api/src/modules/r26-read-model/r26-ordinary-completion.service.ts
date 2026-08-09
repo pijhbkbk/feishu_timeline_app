@@ -8,6 +8,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
+  AttachmentTargetType,
   AuditTargetType,
   Prisma,
   ProjectAssignmentSource,
@@ -58,6 +59,8 @@ const GATE3C1_NODE_CODES = new Set<WorkflowNodeCode>([
 
 const COMPLETE_ACTION = 'R26_ORDINARY_TASK_COMPLETED';
 const RESOLVE_BLOCKER_ACTION = 'R26_TASK_BLOCKER_RESOLVED';
+const COLOR_NUMBERING_MATERIAL_ID = 'color-number-proof';
+const COLOR_NUMBERING_MATERIAL_NAME = '颜色编号确认单';
 
 @Injectable()
 export class R26OrdinaryCompletionService {
@@ -86,6 +89,7 @@ export class R26OrdinaryCompletionService {
       this.prisma,
       task,
       actor,
+      input,
     );
   }
 
@@ -133,6 +137,7 @@ export class R26OrdinaryCompletionService {
             tx,
             lockedTask,
             actor,
+            input,
           );
           if (!preview.canComplete) {
             throw new BadRequestException({
@@ -160,6 +165,13 @@ export class R26OrdinaryCompletionService {
           );
           const trustedAssignments =
             this.toWorkflowAssignments(preview.nextTasks);
+          const colorNumbering =
+            await this.persistControlledColorNumber(
+              tx,
+              lockedTask,
+              actor,
+              preview.colorNumbering,
+            );
 
           await this.workflowsService.transitionTaskWithExecutor(
             tx,
@@ -278,6 +290,7 @@ export class R26OrdinaryCompletionService {
                 currentNodeCode: project.currentNodeCode,
                 workflowVersion: workflowInstance.commandVersion,
                 createdTasks: assignmentSummary,
+                colorNumbering,
               },
               metadata: {
                 gate: 'R26_GATE3C1',
@@ -315,6 +328,7 @@ export class R26OrdinaryCompletionService {
               createdAt: audit.createdAt.toISOString(),
             },
             workflowVersion: workflowInstance.commandVersion,
+            colorNumbering,
           };
 
           await tx.r26CommandRequest.create({
@@ -511,6 +525,7 @@ export class R26OrdinaryCompletionService {
     db: Gate3C1DbClient,
     task: Gate3C1Task,
     actor: AuthenticatedUser,
+    input: Pick<R26CompletionPreviewDto, 'colorNumber'> = {},
   ) {
     const inspection =
       await this.workflowsService.inspectTaskCompletionWithExecutor(
@@ -567,6 +582,12 @@ export class R26OrdinaryCompletionService {
     const workflowRunning =
       task.workflowInstance.status ===
       WorkflowInstanceStatus.RUNNING;
+    const colorNumbering =
+      await this.buildColorNumberingPreview(
+        db,
+        task,
+        input.colorNumber,
+      );
     const blockingReasons = [
       ...(!inspection.taskIsActive
         ? ['当前任务不是有效的可完成活动任务。']
@@ -587,6 +608,7 @@ export class R26OrdinaryCompletionService {
         (blocker) => `解除“${blocker.description}”阻塞`,
       ),
       ...inspection.domainBlockingReasons,
+      ...(colorNumbering?.blockingReasons ?? []),
     ];
 
     return {
@@ -659,6 +681,29 @@ export class R26OrdinaryCompletionService {
             inspection.domainBlockingReasons.length === 0,
           details: inspection.domainBlockingReasons,
         },
+        ...(colorNumbering
+          ? [
+              {
+                code: 'COLOR_NUMBER',
+                label: '颜色编号已填写且唯一',
+                passed:
+                  colorNumbering.normalizedCode !== null &&
+                  colorNumbering.duplicateColor === null,
+                details: colorNumbering.numberDetails,
+              },
+              {
+                code: 'COLOR_NUMBERING_MATERIAL',
+                label: '颜色编号确认材料已关联',
+                passed:
+                  colorNumbering.confirmationAttachment !== null,
+                details: colorNumbering.confirmationAttachment
+                  ? [
+                      `将关联：${colorNumbering.confirmationAttachment.fileName}`,
+                    ]
+                  : [COLOR_NUMBERING_MATERIAL_NAME],
+              },
+            ]
+          : []),
       ],
       openBlockers: inspection.blockers,
       nextTasks,
@@ -688,6 +733,7 @@ export class R26OrdinaryCompletionService {
             ]
           : []),
       ],
+      colorNumbering,
       notice:
         getWorkflowNodeMeta(task.nodeCode).sequence === 110
           ? '完成第 11 步只生成第 12 步；第 12 步通过、退回等专项动作仍保持关闭。'
@@ -713,6 +759,7 @@ export class R26OrdinaryCompletionService {
         project: {
           select: {
             id: true,
+            name: true,
             ownerUserId: true,
             members: {
               where: { userId: actor.id },
@@ -735,6 +782,218 @@ export class R26OrdinaryCompletionService {
       'workflow.transition',
     );
     return task;
+  }
+
+  private async buildColorNumberingPreview(
+    db: Gate3C1DbClient,
+    task: Gate3C1Task,
+    submittedColorNumber?: string,
+  ) {
+    if (task.nodeCode !== WorkflowNodeCode.COLOR_NUMBERING) {
+      return null;
+    }
+
+    const normalizedCode = this.normalizeColorNumber(
+      submittedColorNumber,
+    );
+    const projectColors = await db.color.findMany({
+      where: { projectId: task.projectId },
+      select: {
+        id: true,
+        code: true,
+        name: true,
+        isPrimary: true,
+        numberingTaskId: true,
+      },
+      orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
+      take: 3,
+    });
+    const primaryColors = projectColors.filter(
+      (color) => color.isPrimary,
+    );
+    const targetColor =
+      primaryColors[0] ??
+      (projectColors.length === 1 ? projectColors[0] : null);
+    const ambiguousTarget =
+      projectColors.length > 1 && primaryColors.length !== 1;
+    const confirmationAttachment =
+      await db.attachment.findFirst({
+        where: {
+          projectId: task.projectId,
+          entityType: AttachmentTargetType.WORKFLOW_TASK,
+          entityId: task.id,
+          isDeleted: false,
+          OR: [
+            { materialType: COLOR_NUMBERING_MATERIAL_ID },
+            { materialType: COLOR_NUMBERING_MATERIAL_NAME },
+            {
+              fileName: {
+                contains: COLOR_NUMBERING_MATERIAL_NAME,
+                mode: 'insensitive',
+              },
+            },
+          ],
+        },
+        select: {
+          id: true,
+          fileName: true,
+          originalFileName: true,
+          materialType: true,
+          uploadedAt: true,
+        },
+        orderBy: [{ uploadedAt: 'desc' }, { id: 'desc' }],
+      });
+    const duplicateColor = normalizedCode
+      ? await db.color.findFirst({
+          where: {
+            code: {
+              equals: normalizedCode,
+              mode: 'insensitive',
+            },
+            ...(targetColor
+              ? { id: { not: targetColor.id } }
+              : {}),
+          },
+          select: {
+            id: true,
+            code: true,
+            name: true,
+            projectId: true,
+          },
+        })
+      : null;
+    const invalidFormat =
+      Boolean(normalizedCode) &&
+      !this.isValidColorNumber(normalizedCode!);
+    const blockingReasons = [
+      ...(!normalizedCode
+        ? ['请填写第 05 步取得的颜色编号。']
+        : []),
+      ...(invalidFormat
+        ? [
+            '颜色编号只能包含文字、数字、英文句点、短横线、下划线或斜杠，且不能包含空格。',
+          ]
+        : []),
+      ...(duplicateColor
+        ? [
+            `颜色编号“${normalizedCode}”已被颜色“${duplicateColor.name}”使用。`,
+          ]
+        : []),
+      ...(!confirmationAttachment
+        ? [`缺少可关联的${COLOR_NUMBERING_MATERIAL_NAME}。`]
+        : []),
+      ...(ambiguousTarget
+        ? ['项目存在多个颜色但未唯一指定主颜色，无法安全写入颜色编号。']
+        : []),
+      ...(targetColor?.numberingTaskId &&
+      targetColor.numberingTaskId !== task.id
+        ? ['当前主颜色已由另一项第 05 步任务生成正式编号。']
+        : []),
+    ];
+    const numberDetails = [
+      ...(!normalizedCode ? ['颜色编号为必填项'] : []),
+      ...(invalidFormat ? ['编号格式不合法'] : []),
+      ...(duplicateColor
+        ? [`已关联其他颜色：${duplicateColor.name}`]
+        : []),
+    ];
+
+    return {
+      required: true as const,
+      submittedCode: submittedColorNumber?.trim() || null,
+      normalizedCode: invalidFormat ? null : normalizedCode,
+      targetColor: targetColor
+        ? {
+            id: targetColor.id,
+            name: targetColor.name,
+            previousCode: targetColor.code,
+          }
+        : null,
+      duplicateColor,
+      confirmationAttachment: confirmationAttachment
+        ? {
+            id: confirmationAttachment.id,
+            fileName:
+              confirmationAttachment.originalFileName ??
+              confirmationAttachment.fileName,
+            materialType: confirmationAttachment.materialType,
+            uploadedAt:
+              confirmationAttachment.uploadedAt.toISOString(),
+          }
+        : null,
+      numberDetails,
+      blockingReasons,
+    };
+  }
+
+  private async persistControlledColorNumber(
+    tx: Prisma.TransactionClient,
+    task: Gate3C1Task,
+    actor: AuthenticatedUser,
+    preview: Awaited<
+      ReturnType<
+        R26OrdinaryCompletionService['buildColorNumberingPreview']
+      >
+    >,
+  ) {
+    if (task.nodeCode !== WorkflowNodeCode.COLOR_NUMBERING) {
+      return null;
+    }
+    if (
+      !preview?.normalizedCode ||
+      !preview.confirmationAttachment
+    ) {
+      throw new BadRequestException({
+        code: 'COLOR_NUMBERING_REQUIREMENTS_NOT_MET',
+        message: '颜色编号或确认材料不满足第 05 步完成要求。',
+      });
+    }
+
+    const numberedAt = new Date();
+    const data = {
+      code: preview.normalizedCode,
+      numberingTaskId: task.id,
+      numberedById: actor.id,
+      numberedAt,
+      numberingAttachmentId:
+        preview.confirmationAttachment.id,
+    };
+    const color = preview.targetColor
+      ? await tx.color.update({
+          where: { id: preview.targetColor.id },
+          data,
+          select: { id: true, code: true },
+        })
+      : await tx.color.create({
+          data: {
+            projectId: task.projectId,
+            name: task.project.name,
+            description: '由第 05 步新颜色取号生成。',
+            isPrimary: true,
+            ...data,
+          },
+          select: { id: true, code: true },
+        });
+
+    return {
+      colorId: color.id,
+      code: color.code,
+      numberingTaskId: task.id,
+      numberedBy: { id: actor.id, name: actor.name },
+      numberedAt: numberedAt.toISOString(),
+      confirmationAttachment: preview.confirmationAttachment,
+    };
+  }
+
+  private normalizeColorNumber(value?: string) {
+    const normalized = value?.trim().toLocaleUpperCase('zh-CN');
+    return normalized || null;
+  }
+
+  private isValidColorNumber(value: string) {
+    return /^[\p{L}\p{N}][\p{L}\p{N}._/-]{0,63}$/u.test(
+      value,
+    );
   }
 
   private assertGate3C1Node(task: {
@@ -928,6 +1187,11 @@ export class R26OrdinaryCompletionService {
           requestHash,
         );
       }
+      throw new ConflictException({
+        code: 'COLOR_NUMBER_ALREADY_EXISTS',
+        message:
+          '颜色编号或其第 05 步溯源记录已被其他请求占用，请刷新后重新校验。',
+      });
     }
     if (this.isSerializableWriteConflict(error)) {
       throw new ConflictException({

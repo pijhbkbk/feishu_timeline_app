@@ -29,6 +29,13 @@ const organizationMigrationSource = readFileSync(
   ),
   'utf8',
 );
+const businessDivisionMigrationSource = readFileSync(
+  join(
+    __dirname,
+    '../../../prisma/migrations/20260805143000_add_business_division_reference_data/migration.sql',
+  ),
+  'utf8',
+);
 
 describe('R26 administrator control center backend contracts', () => {
   it('requires administrator role and server-side system permission', () => {
@@ -108,6 +115,30 @@ describe('R26 administrator control center backend contracts', () => {
     }
   });
 
+  it('deletes only unreferenced non-root departments with version, idempotency, and audit guards', () => {
+    expect(controllerSource).toContain("organization/departments/batch-delete");
+    expect(controllerSource).toContain('AdminDepartmentBatchDeleteDto');
+    expect(dtoSource).toContain('export class AdminDepartmentDeleteRowDto');
+    expect(dtoSource).toContain('export class AdminDepartmentBatchDeleteDto');
+    expect(serviceSource).toContain('async deleteDepartments(');
+    expect(serviceSource).toContain("action: 'ADMIN_DEPARTMENTS_DELETED'");
+    expect(serviceSource).toContain("action: 'ADMIN_DEPARTMENT_DELETED'");
+    expect(serviceSource).toContain("code: 'DEPARTMENT_DELETE_BLOCKED'");
+    expect(serviceSource).toContain("department.parentId === null ? '组织根部门不能删除'");
+    for (const relation of [
+      'users: true',
+      'children: true',
+      'ownedProjects: true',
+      'assignedWorkflowTasks: true',
+      'projectNodeAssignments: true',
+      'boardDistributionUsers: true',
+    ]) {
+      expect(serviceSource).toContain(relation);
+    }
+    expect(serviceSource).toContain('this.assertDateVersion(');
+    expect(serviceSource).toContain('await tx.department.deleteMany');
+  });
+
   it('lets only super administrators rename roles and change the enforced permission matrix', () => {
     expect(controllerSource).toContain("permissions/:roleId");
     expect(controllerSource).toContain('AdminRolePermissionChangeDto');
@@ -128,6 +159,48 @@ describe('R26 administrator control center backend contracts', () => {
     expect(serviceSource).toContain('assignedTasksPreserved');
     expect(serviceSource).not.toContain('feishuOpenId: input');
     expect(serviceSource).not.toContain('feishuUnionId: input');
+  });
+
+  it('restricts company departments to the six governed business divisions', () => {
+    for (const division of [
+      '技术中心',
+      '商用车营销事业部',
+      '乘用车营销事业部',
+      '制造中心',
+      '国际事业部',
+      '采购中心',
+    ]) {
+      expect(businessDivisionMigrationSource).toContain(division);
+    }
+    expect(serviceSource).toContain('BUSINESS_DIVISIONS.map');
+    expect(serviceSource).toContain('businessDivisions');
+    expect(serviceSource).toContain('必须选择所属事业部。');
+    expect(serviceSource).toContain('所属事业部只能从系统规定的六个选项中选择。');
+  });
+
+  it('keeps department code, ordering, and audit reason as server-managed fields', () => {
+    const departmentDtoStart = dtoSource.indexOf('export class AdminDepartmentConfigurationPreviewDto');
+    const departmentDtoEnd = dtoSource.indexOf('export class AdminDepartmentDeleteRowDto', departmentDtoStart);
+    const departmentDto = dtoSource.slice(departmentDtoStart, departmentDtoEnd);
+    expect(departmentDto).not.toContain('code!:');
+    expect(departmentDto).not.toContain('sortOrder!:');
+    expect(departmentDto).not.toContain('reason!:');
+    expect(departmentDto).toContain('leadUserName?: string | null;');
+    expect(departmentDto).not.toContain('leadUserId?:');
+
+    const departmentCommand = serviceSource.slice(
+      serviceSource.indexOf('async changeDepartmentConfiguration('),
+      serviceSource.indexOf('async deleteDepartments('),
+    );
+    expect(departmentCommand).not.toContain('input.code');
+    expect(departmentCommand).not.toContain('input.sortOrder');
+    expect(departmentCommand).not.toContain('input.reason');
+    expect(departmentCommand).toContain('this.customDepartmentCode(normalizedName)');
+    expect(departmentCommand).toContain('existing?.sortOrder');
+    expect(departmentCommand).toContain("reasonSource: 'SYSTEM_DEFAULT'");
+    expect(departmentCommand).toContain('where: { name: normalizedLeadUserName, status: UserStatus.ACTIVE }');
+    expect(departmentCommand).toContain('matchingLeadUsers.length > 1');
+    expect(departmentCommand).toContain('leadUserId: leadUser?.id ?? null');
   });
 
   it('enters the idempotency command boundary before organization write validation', () => {

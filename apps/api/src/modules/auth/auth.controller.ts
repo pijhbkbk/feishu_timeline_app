@@ -13,7 +13,7 @@ import { ConfigService } from '@nestjs/config';
 import type { Response } from 'express';
 
 import { CurrentUser } from './current-user.decorator';
-import { FEISHU_OAUTH_STATE_COOKIE_NAME } from './auth.constants';
+import { getFeishuOAuthStateCookieName } from './auth.constants';
 import { Public } from './public.decorator';
 import type { AuthenticatedRequest, AuthenticatedUser } from './auth.types';
 import { AuthService } from './auth.service';
@@ -91,7 +91,13 @@ export class AuthController {
     @Req() request: AuthenticatedRequest,
     @Res({ passthrough: true }) response: Response,
   ) {
-    const browserState = request.cookies?.[FEISHU_OAUTH_STATE_COOKIE_NAME];
+    const stateCookieName =
+      typeof body.state === 'string'
+        ? getFeishuOAuthStateCookieName(body.state)
+        : null;
+    const browserState = stateCookieName
+      ? request.cookies?.[stateCookieName]
+      : undefined;
 
     return this.authService.loginWithFeishu(
       body,

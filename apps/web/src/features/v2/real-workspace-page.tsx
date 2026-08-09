@@ -159,6 +159,7 @@ export function RealWorkspacePage({ projectId }: { projectId: string }) {
       preview: null,
       pending: true,
       error: null,
+      colorNumber: '',
       completionReason: '',
       acknowledgedConsequences: false,
       resolutionSummary: '',
@@ -188,6 +189,55 @@ export function RealWorkspacePage({ projectId }: { projectId: string }) {
                 requestError instanceof Error
                   ? requestError.message
                   : '完成前检查失败。',
+            }
+          : current,
+      );
+    }
+  }
+
+  async function refreshColorNumberingPreview(
+    task: R26TaskDetail,
+  ) {
+    const colorNumber = completionPanel?.colorNumber.trim() ?? '';
+    if (!colorNumber) {
+      setCompletionPanel((current) =>
+        current
+          ? { ...current, error: '请填写第 05 步取得的颜色编号。' }
+          : current,
+      );
+      window.requestAnimationFrame(() => {
+        document.getElementById('r26-color-number')?.focus();
+      });
+      return;
+    }
+    setCompletionPanel((current) =>
+      current ? { ...current, pending: true, error: null } : current,
+    );
+    try {
+      const preview = await r26Gate3C1Request<R26CompletionPreview>(
+        `/v2/tasks/${encodeURIComponent(task.taskId)}/completion-preview`,
+        {
+          body: {
+            taskVersion: task.taskVersion,
+            colorNumber,
+          },
+        },
+      );
+      setCompletionPanel((current) =>
+        current
+          ? { ...current, preview, pending: false, error: null }
+          : current,
+      );
+    } catch (requestError) {
+      setCompletionPanel((current) =>
+        current
+          ? {
+              ...current,
+              pending: false,
+              error:
+                requestError instanceof Error
+                  ? requestError.message
+                  : '颜色编号校验失败。',
             }
           : current,
       );
@@ -260,6 +310,28 @@ export function RealWorkspacePage({ projectId }: { projectId: string }) {
   }
 
   async function confirmCompletion(task: R26TaskDetail) {
+    const normalizedColorNumber = completionPanel?.colorNumber
+      .trim()
+      .toLocaleUpperCase('zh-CN');
+    if (
+      task.nodeCode === 'COLOR_NUMBERING' &&
+      (!normalizedColorNumber ||
+        completionPanel?.preview?.colorNumbering?.normalizedCode !==
+          normalizedColorNumber)
+    ) {
+      setCompletionPanel((current) =>
+        current
+          ? {
+              ...current,
+              error: '请先验证颜色编号及其确认材料。',
+            }
+          : current,
+      );
+      window.requestAnimationFrame(() => {
+        document.getElementById('r26-color-number')?.focus();
+      });
+      return;
+    }
     if (
       !completionPanel?.preview ||
       !completionPanel.preview.canComplete
@@ -305,6 +377,10 @@ export function RealWorkspacePage({ projectId }: { projectId: string }) {
               taskVersion: task.taskVersion,
               completionReason:
                 completionPanel.completionReason.trim(),
+              colorNumber:
+                task.nodeCode === 'COLOR_NUMBERING'
+                  ? completionPanel.colorNumber.trim()
+                  : undefined,
               acknowledgedConsequences: true,
               idempotencyKey,
             },
@@ -721,6 +797,11 @@ export function RealWorkspacePage({ projectId }: { projectId: string }) {
             void resolveCompletionBlocker(
               taskQuery.data!.task,
               blockerId,
+            )
+          }
+          onRefreshPreview={() =>
+            void refreshColorNumberingPreview(
+              taskQuery.data!.task,
             )
           }
           onConfirm={() =>
@@ -1456,6 +1537,7 @@ type CompletionPanelState = {
   preview: R26CompletionPreview | null;
   pending: boolean;
   error: string | null;
+  colorNumber: string;
   completionReason: string;
   acknowledgedConsequences: boolean;
   resolutionSummary: string;
@@ -1468,6 +1550,7 @@ function CompletionDrawer({
   state,
   onChange,
   onResolve,
+  onRefreshPreview,
   onConfirm,
   onViewTask,
   onClose,
@@ -1476,6 +1559,7 @@ function CompletionDrawer({
   state: CompletionPanelState;
   onChange: (patch: Partial<CompletionPanelState>) => void;
   onResolve: (blockerId: string) => void;
+  onRefreshPreview: () => void;
   onConfirm: () => void;
   onViewTask: (
     task: R26OrdinaryCompletionCommand['createdTasks'][number],
@@ -1483,13 +1567,23 @@ function CompletionDrawer({
   onClose: () => void;
 }) {
   const preview = state.preview;
+  const normalizedColorNumber = state.colorNumber
+    .trim()
+    .toLocaleUpperCase('zh-CN');
+  const colorNumberingReady =
+    task.nodeCode !== 'COLOR_NUMBERING' ||
+    (Boolean(normalizedColorNumber) &&
+      preview?.colorNumbering?.normalizedCode ===
+        normalizedColorNumber &&
+      preview.colorNumbering.blockingReasons.length === 0);
   const businessRecordAction = getR26BusinessRecordAction(
     task.nodeCode,
     task.projectId,
   );
   const confirmation = getCompletionConfirmationState({
     pending: state.pending,
-    canComplete: preview?.canComplete ?? false,
+    canComplete:
+      (preview?.canComplete ?? false) && colorNumberingReady,
     completionReason: state.completionReason,
     acknowledgedConsequences: state.acknowledgedConsequences,
   });
@@ -1583,6 +1677,59 @@ function CompletionDrawer({
                   ))}
                 </ul>
               </section>
+
+              {task.nodeCode === 'COLOR_NUMBERING' ? (
+                <section className="r26-completion-section">
+                  <h3>第 05 步颜色编号</h3>
+                  <p>
+                    请输入本工序实际取得的编号。服务端将在完成事务中统一转为大写、校验全局唯一性，并关联当前工序的颜色编号确认单。
+                  </p>
+                  <label className="r26-gate3-field">
+                    <span>颜色编号</span>
+                    <input
+                      id="r26-color-number"
+                      type="text"
+                      maxLength={64}
+                      autoComplete="off"
+                      value={state.colorNumber}
+                      onChange={(event) =>
+                        onChange({
+                          colorNumber: event.target.value,
+                          error: null,
+                        })
+                      }
+                      placeholder="例如 CLR-2026-001"
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    className="r26-button r26-button--secondary"
+                    onClick={onRefreshPreview}
+                    disabled={state.pending || !state.colorNumber.trim()}
+                  >
+                    {state.pending
+                      ? '正在校验…'
+                      : '验证编号与确认材料'}
+                  </button>
+                  {preview.colorNumbering?.normalizedCode ===
+                    normalizedColorNumber &&
+                  preview.colorNumbering.blockingReasons.length === 0 ? (
+                    <p className="r26-form-hint" role="status">
+                      编号 {preview.colorNumbering.normalizedCode}{' '}
+                      可用；将关联材料“
+                      {
+                        preview.colorNumbering
+                          .confirmationAttachment?.fileName
+                      }
+                      ”。
+                    </p>
+                  ) : (
+                    <p className="r26-form-hint">
+                      修改编号后必须重新验证，前端不能选择其他任务的材料或直接写入颜色数据库。
+                    </p>
+                  )}
+                </section>
+              ) : null}
 
               {!preview.canComplete ? (
                 <section
@@ -1836,6 +1983,16 @@ function CompletionSuccess({
           “{command.completedTask.stepName}”已标记为已完成。
         </h3>
       </div>
+      {command.colorNumbering ? (
+        <p role="status">
+          正式颜色编号：{command.colorNumbering.code}；已关联“
+          {
+            command.colorNumbering.confirmationAttachment
+              ?.fileName
+          }
+          ”并记录操作人和完成时间。
+        </p>
+      ) : null}
       {command.createdTasks.length > 0 ? (
         <>
           <h4>系统已创建：</h4>

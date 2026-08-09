@@ -2,7 +2,7 @@ import { ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import { UserStatus } from '@prisma/client';
 import { describe, expect, it, vi } from 'vitest';
 
-import { FEISHU_OAUTH_STATE_COOKIE_NAME } from './auth.constants';
+import { getFeishuOAuthStateCookieName } from './auth.constants';
 import { AuthService } from './auth.service';
 
 function createAuthService(
@@ -115,7 +115,7 @@ describe('AuthService Feishu OAuth state', () => {
     );
     expect(result.loginUrl).toContain('state=');
     expect(response.cookie).toHaveBeenCalledWith(
-      FEISHU_OAUTH_STATE_COOKIE_NAME,
+      getFeishuOAuthStateCookieName(state ?? ''),
       state,
       expect.objectContaining({
         httpOnly: true,
@@ -125,6 +125,42 @@ describe('AuthService Feishu OAuth state', () => {
         maxAge: 600_000,
       }),
     );
+  });
+
+  it('keeps overlapping browser login attempts in independent state cookies', async () => {
+    const { service, response, feishuAuthAdapter } = createAuthService();
+    const firstLogin = await service.getFeishuLoginUrl(response as never);
+    const secondLogin = await service.getFeishuLoginUrl(response as never);
+    const firstState = new URL(firstLogin.loginUrl ?? '').searchParams.get('state');
+    const secondState = new URL(secondLogin.loginUrl ?? '').searchParams.get('state');
+
+    expect(firstState).not.toBe(secondState);
+    expect(response.cookie).toHaveBeenCalledWith(
+      getFeishuOAuthStateCookieName(firstState ?? ''),
+      firstState,
+      expect.any(Object),
+    );
+    expect(response.cookie).toHaveBeenCalledWith(
+      getFeishuOAuthStateCookieName(secondState ?? ''),
+      secondState,
+      expect.any(Object),
+    );
+
+    await expect(
+      service.loginWithFeishu(
+        { code: 'first-code', state: firstState },
+        firstState ?? undefined,
+        response as never,
+      ),
+    ).resolves.toMatchObject({ authenticated: true });
+    await expect(
+      service.loginWithFeishu(
+        { code: 'second-code', state: secondState },
+        secondState ?? undefined,
+        response as never,
+      ),
+    ).resolves.toMatchObject({ authenticated: true });
+    expect(feishuAuthAdapter.exchangeCodeForProfile).toHaveBeenCalledTimes(2);
   });
 
   it('rate-limits anonymous login URL requests before allocating OAuth state', async () => {
@@ -193,7 +229,7 @@ describe('AuthService Feishu OAuth state', () => {
     ).rejects.toBeInstanceOf(UnauthorizedException);
     expect(feishuAuthAdapter.exchangeCodeForProfile).toHaveBeenCalledTimes(1);
     expect(response.clearCookie).toHaveBeenCalledWith(
-      FEISHU_OAUTH_STATE_COOKIE_NAME,
+      getFeishuOAuthStateCookieName(state ?? ''),
       expect.objectContaining({
         httpOnly: true,
         sameSite: 'lax',

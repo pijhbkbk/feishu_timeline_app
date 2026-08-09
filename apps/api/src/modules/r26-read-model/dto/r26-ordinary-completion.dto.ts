@@ -3,6 +3,7 @@ import {
   IsBoolean,
   IsISO8601,
   IsNotEmpty,
+  IsOptional,
   IsString,
   MaxLength,
 } from 'class-validator';
@@ -10,6 +11,11 @@ import {
 export class R26CompletionPreviewDto {
   @IsISO8601()
   taskVersion!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  colorNumber?: string;
 }
 
 export class R26CompleteOrdinaryTaskDto {
@@ -29,6 +35,11 @@ export class R26CompleteOrdinaryTaskDto {
   @IsNotEmpty()
   @MaxLength(128)
   idempotencyKey!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  colorNumber?: string;
 }
 
 export class R26ResolveTaskBlockerDto {

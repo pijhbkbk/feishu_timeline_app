@@ -45,16 +45,23 @@ export function R26RealDataProvider({ children }: PropsWithChildren) {
     }
 
     const controller = new AbortController();
+    let isActiveRequest = true;
     const timeout = window.setTimeout(() => controller.abort(), 15_000);
 
     r26ReadOnlyGet<R26DashboardResponse>('/v2/dashboard', {
       signal: controller.signal,
     })
       .then((response) => {
+        if (!isActiveRequest) {
+          return;
+        }
         setDashboardResponse(response);
         setError(null);
       })
       .catch((requestError: unknown) => {
+        if (!isActiveRequest) {
+          return;
+        }
         setError(
           requestError instanceof DOMException && requestError.name === 'AbortError'
             ? '业务数据读取超时，请稍后重试。'
@@ -65,10 +72,13 @@ export function R26RealDataProvider({ children }: PropsWithChildren) {
       })
       .finally(() => {
         window.clearTimeout(timeout);
-        setLoading(false);
+        if (isActiveRequest) {
+          setLoading(false);
+        }
       });
 
     return () => {
+      isActiveRequest = false;
       window.clearTimeout(timeout);
       controller.abort();
     };

@@ -16,9 +16,9 @@ import type { FeishuAuthAdapter } from '../feishu/feishu.types';
 import { UsersService } from '../users/users.service';
 import {
   AUTH_SESSION_PREFIX,
-  FEISHU_OAUTH_STATE_COOKIE_NAME,
   FEISHU_OAUTH_STATE_COOKIE_PATH,
   ROLE_CODES,
+  getFeishuOAuthStateCookieName,
   type AuthSource,
   type RoleCode,
 } from './auth.constants';
@@ -170,7 +170,7 @@ export class AuthService {
       throw new UnauthorizedException('飞书登录状态与当前浏览器不匹配，请重新发起登录。');
     }
 
-    this.clearFeishuOAuthStateCookie(response);
+    this.clearFeishuOAuthStateCookie(state, response);
     const statePayload = await this.sessionStoreService.consumeJson<{
       createdAt: string;
     }>(this.getFeishuOAuthStateStorageKey(state));
@@ -244,7 +244,7 @@ export class AuthService {
   }
 
   private writeFeishuOAuthStateCookie(state: string, response: Response) {
-    response.cookie(FEISHU_OAUTH_STATE_COOKIE_NAME, state, {
+    response.cookie(getFeishuOAuthStateCookieName(state), state, {
       httpOnly: true,
       sameSite: 'lax',
       secure: this.shouldUseSecureCookies(),
@@ -253,8 +253,8 @@ export class AuthService {
     });
   }
 
-  private clearFeishuOAuthStateCookie(response: Response) {
-    response.clearCookie(FEISHU_OAUTH_STATE_COOKIE_NAME, {
+  private clearFeishuOAuthStateCookie(state: string, response: Response) {
+    response.clearCookie(getFeishuOAuthStateCookieName(state), {
       httpOnly: true,
       sameSite: 'lax',
       secure: this.shouldUseSecureCookies(),

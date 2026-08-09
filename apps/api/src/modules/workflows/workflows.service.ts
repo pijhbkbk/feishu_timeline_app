@@ -29,6 +29,7 @@ import {
 import { randomUUID } from 'node:crypto';
 
 import { PrismaService } from '../../infra/prisma/prisma.service';
+import { getControlledColorNumber } from '../../common/controlled-color-number';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { ProjectAccessService } from '../auth/project-access.service';
@@ -999,7 +1000,7 @@ export class WorkflowsService {
         code: detailedTask.project.code,
         name: detailedTask.project.name,
         colorName: primaryColor?.name ?? '未关联颜色',
-        colorCode: primaryColor?.code ?? null,
+        colorCode: getControlledColorNumber(primaryColor),
         currentNodeCode: detailedTask.project.currentNodeCode,
         currentNodeName: getCurrentNodeName(detailedTask.project.currentNodeCode),
       },

@@ -1,0 +1,177 @@
+{
+  "generatedAt": "2026-08-07T20:12:52+08:00",
+  "environment": {
+    "name": "local-isolated-simulation",
+    "browserBaseUrl": "http://localhost:8080",
+    "webUpstream": "http://localhost:3100",
+    "apiUpstream": "http://localhost:3201/api",
+    "database": "PostgreSQL feishu_timeline on localhost:15432",
+    "sourceHead": "2081c3920bb5c41578ef9c189477d05f392896ad",
+    "runtimeCommit": "unknown",
+    "release": "development",
+    "productionChanged": false
+  },
+  "baseline": {
+    "totalColorRows": 2,
+    "strictControlledRecords": 0,
+    "visibleColorDatabaseRecords": 0,
+    "explanation": "Both legacy colors had free-form codes but no completed Step 05 numbering task, operator, timestamp or confirmation attachment provenance, so the strict read model correctly excluded them.",
+    "excludedLegacyColors": [
+      {
+        "name": "星云蓝",
+        "code": "CLR-DEMO-A-001"
+      },
+      {
+        "name": "极昼银",
+        "code": "CLR-DEMO-C-001"
+      }
+    ]
+  },
+  "finalState": {
+    "totalColorRows": 5,
+    "strictControlledRecords": 3,
+    "visibleColorDatabaseRecords": 3,
+    "excludedLegacyRows": 2,
+    "controlledRecords": [
+      {
+        "colorId": "cmsiisu5k002bqr01pmpveeh5",
+        "colorCode": "R26-UAT-1786081484809-5E2149",
+        "colorName": "UAT-R20-正常流程-深海蓝-20260807134443",
+        "projectId": "cmsiist8i000eqr016jqal093",
+        "projectCode": "R20-20260807134443-CE4D39",
+        "numberingTaskId": "cmsiisthv001dqr01hpik44h6",
+        "numberedById": "cmsiissqj0003qr019vtq7inn",
+        "numberedByName": "R20 系统管理员",
+        "numberedAt": "2026-08-07T05:44:45.224Z",
+        "numberingAttachmentId": "cmsiistz8001jqr01875asfn6",
+        "materialName": "颜色编号确认单",
+        "taskStatus": "COMPLETED",
+        "taskActive": false,
+        "materialCount": 1,
+        "workflowCoverage": "1/18"
+      },
+      {
+        "colorId": "cmsij3mdy0047qr01b8looo8h",
+        "colorCode": "R26-UAT-1786081988039-FBB59C",
+        "colorName": "UAT-R20-正常流程-深海蓝-20260807135307",
+        "projectId": "cmsij3loz002yqr01so12y0g6",
+        "projectCode": "R20-20260807135307-A95AF5",
+        "numberingTaskId": "cmsij3m2g003xqr01u378sxah",
+        "numberedById": "cmsiissqj0003qr019vtq7inn",
+        "numberedByName": "R20 系统管理员",
+        "numberedAt": "2026-08-07T05:53:08.374Z",
+        "numberingAttachmentId": "cmsij3m9s0043qr015v00j0lb",
+        "materialName": "颜色编号确认单",
+        "taskStatus": "COMPLETED",
+        "taskActive": false,
+        "materialCount": 1,
+        "workflowCoverage": "1/18"
+      },
+      {
+        "colorId": "cmsiwb2au008oqr01kmxvkpnk",
+        "colorCode": "R26-UAT-1786104170349-6B17A8",
+        "colorName": "UAT-R20-正常流程-深海蓝-20260807200249",
+        "projectId": "cmsiwb1ns007fqr0147gj6k3c",
+        "projectCode": "R20-20260807200249-70880F",
+        "numberingTaskId": "cmsiwb1zq008eqr010klfe939",
+        "numberedById": "cmsiissqj0003qr019vtq7inn",
+        "numberedByName": "R20 系统管理员",
+        "numberedAt": "2026-08-07T12:02:50.598Z",
+        "numberingAttachmentId": "cmsiwb27f008kqr0184cxtxe0",
+        "materialName": "颜色编号确认单",
+        "taskStatus": "COMPLETED",
+        "taskActive": false,
+        "materialCount": 1,
+        "workflowCoverage": "1/18"
+      }
+    ]
+  },
+  "duplicateScenario": {
+    "projectId": "cmsiwb2jg008yqr01mpa24qmn",
+    "projectCode": "R20-20260807200250-C63F43",
+    "projectName": "UAT-R20-非阻塞测试-极光白-20260807200250",
+    "numberingTaskId": "cmsiwb2o4009xqr011ztt4y96",
+    "confirmationAttachmentId": "cmsiwb2pr00a3qr01p5n0vt4x",
+    "attemptedCode": "R26-UAT-1786104170349-6B17A8",
+    "result": "REJECTED",
+    "error": "颜色编号已被另一颜色使用",
+    "taskStatusAfterRejection": "READY",
+    "taskActiveAfterRejection": true,
+    "newStrictColorRowsCreated": 0,
+    "existingRowsWithAttemptedCode": 1
+  },
+  "auditRecords": [
+    {
+      "auditId": "cmsiisu6r002hqr01jue4lliw",
+      "projectId": "cmsiist8i000eqr016jqal093",
+      "targetTaskId": "cmsiisthv001dqr01hpik44h6",
+      "actorId": "cmsiissqj0003qr019vtq7inn",
+      "nodeCode": "COLOR_NUMBERING",
+      "createdAt": "2026-08-07T05:44:45.268Z"
+    },
+    {
+      "auditId": "cmsij3mer004dqr01ax30u1xh",
+      "projectId": "cmsij3loz002yqr01so12y0g6",
+      "targetTaskId": "cmsij3m2g003xqr01u378sxah",
+      "actorId": "cmsiissqj0003qr019vtq7inn",
+      "nodeCode": "COLOR_NUMBERING",
+      "createdAt": "2026-08-07T05:53:08.403Z"
+    },
+    {
+      "action": "R26_ORDINARY_TASK_COMPLETED",
+      "projectId": "cmsiwb1ns007fqr0147gj6k3c",
+      "targetTaskId": "cmsiwb1zq008eqr010klfe939",
+      "actorId": "cmsiissqj0003qr019vtq7inn",
+      "nodeCode": "COLOR_NUMBERING",
+      "requestId": "r26-color-ae93b395-6d52-41cb-be09-9a8ab1132ed5",
+      "idempotencyKey": "r26-color-ae93b395-6d52-41cb-be09-9a8ab1132ed5",
+      "createdAt": "2026-08-07T12:02:50.644Z"
+    }
+  ],
+  "browserVerification": {
+    "exactRoute": "http://localhost:8080/admin/color-database",
+    "visibleRecordsBeforeFinalAutomationRun": 2,
+    "visibleRecordsAfterFinalAutomationRun": 3,
+    "summaryMaterialCountAfterFinalRun": 3,
+    "summaryIncompleteCountAfterFinalRun": 3,
+    "summaryThisMonthMaterialCountAfterFinalRun": 3,
+    "exactCodeSearch": "PASS",
+    "emptyResultState": "PASS",
+    "clearSearchAndRestore": "PASS",
+    "consoleErrors": 0,
+    "pageErrors": 0,
+    "viewport1440Screenshots": [
+      "03-color-database-two-controlled-1440.png",
+      "04-color-database-search-match-1440.png"
+    ],
+    "viewport1024": {
+      "horizontalOverflow": false,
+      "fullNavigationVisible": true,
+      "screenshotSaved": false
+    },
+    "viewport390": {
+      "horizontalOverflow": false,
+      "fullNavigationVisible": true,
+      "screenshotSaved": false
+    },
+    "note": "The two stored 1440 screenshots were captured before the final bounded Playwright rerun. The final count of three is proven by the passing Playwright artifact plus direct database and API reread, not by a post-rerun screenshot."
+  },
+  "technicalChecks": {
+    "apiFocusedTests": "21/21 PASS",
+    "apiBuild": "PASS",
+    "prismaValidate": "PASS",
+    "webTypecheck": "PASS",
+    "webBuild": "PASS (33 pages)",
+    "targetRoutePlaceholderCount": 0,
+    "repositoryPlaceholderScanRawMatches": 22
+  },
+  "playwrightGate": {
+    "status": "PASS",
+    "result": "1/1 PASS (5.2s)",
+    "businessWritesAndDatabaseEffects": "PASS",
+    "idempotentReplay": "PASS",
+    "duplicateRejection": "PASS",
+    "authorizationBasis": "The user explicitly requested continuation after the two-failure stop, so one bounded rerun was performed after correcting assertion-only mismatches.",
+    "artifact": "02-controlled-numbering-api-simulation.json"
+  }
+}

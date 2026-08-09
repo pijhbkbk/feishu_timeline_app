@@ -464,6 +464,7 @@ model User {
   auditLogs                     AuditLog[]                @relation("AuditActor")
   adminSavedViews               AdminSavedView[]
   adminCommandRequests          AdminCommandRequest[]     @relation("AdminCommandActor")
+  numberedColors                Color[]                   @relation("ColorNumberingOperator")
   createdAt                     DateTime                  @default(now())
   updatedAt                     DateTime                  @updatedAt
 
@@ -525,6 +526,8 @@ model Project {
   owningDepartmentId       String?
   ownerUserId              String?
   marketRegion             String?
+  colorMarketingUnit       String?
+  paintSupplier            String?
   vehicleModel             String?
   plannedStartDate         DateTime?
   plannedEndDate           DateTime?
@@ -663,29 +666,37 @@ model AdminCommandRequest {
 }
 
 model Color {
-  id                 String             @id @default(cuid())
-  projectId          String
-  code               String?            @unique
-  name               String
-  description        String?
-  status             ColorStatus        @default(DRAFT)
-  isPrimary          Boolean            @default(false)
-  exitFlag           Boolean            @default(false)
-  exitDate           DateTime?
-  project            Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  versions           ColorVersion[]
-  colorExits         ColorExit[]        @relation("ColorExitColor")
-  replacementInExits ColorExit[]        @relation("ColorExitReplacementColor")
-  samples            Sample[]
-  standardBoards     StandardBoard[]
-  paintProcurements  PaintProcurement[]
-  trialProductions   TrialProduction[]
-  createdAt          DateTime           @default(now())
-  updatedAt          DateTime           @updatedAt
+  id                    String             @id @default(cuid())
+  projectId             String
+  code                  String?            @unique
+  name                  String
+  description           String?
+  status                ColorStatus        @default(DRAFT)
+  isPrimary             Boolean            @default(false)
+  exitFlag              Boolean            @default(false)
+  exitDate              DateTime?
+  numberingTaskId       String?            @unique
+  numberedById          String?
+  numberedAt            DateTime?
+  numberingAttachmentId String?            @unique
+  project               Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  numberingTask         WorkflowTask?       @relation("ColorNumberingTask", fields: [numberingTaskId], references: [id], onDelete: SetNull)
+  numberedBy            User?               @relation("ColorNumberingOperator", fields: [numberedById], references: [id], onDelete: SetNull)
+  numberingAttachment   Attachment?         @relation("ColorNumberingAttachment", fields: [numberingAttachmentId], references: [id], onDelete: SetNull)
+  versions              ColorVersion[]
+  colorExits            ColorExit[]         @relation("ColorExitColor")
+  replacementInExits    ColorExit[]         @relation("ColorExitReplacementColor")
+  samples               Sample[]
+  standardBoards        StandardBoard[]
+  paintProcurements     PaintProcurement[]
+  trialProductions      TrialProduction[]
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
 
   @@unique([projectId, name])
   @@index([projectId, status])
   @@index([exitFlag, exitDate])
+  @@index([numberedById, numberedAt])
   @@map("colors")
 }
 
@@ -879,6 +890,7 @@ model WorkflowTask {
   progressUpdates      TaskProgressUpdate[]
   r26ProgressDrafts    R26ProgressDraft[]
   blockers             TaskBlocker[]
+  numberedColor        Color?               @relation("ColorNumberingTask")
   createdAt            DateTime             @default(now())
   updatedAt            DateTime             @updatedAt
 
@@ -1522,6 +1534,7 @@ model Attachment {
   deletedBy              User?                @relation("AttachmentDeleter", fields: [deletedById], references: [id], onDelete: SetNull)
   performanceTestReport  PerformanceTest?     @relation("PerformanceTestReport")
   reviewRecordAttachment ReviewRecord?        @relation("ReviewRecordAttachment")
+  numberedColor          Color?               @relation("ColorNumberingAttachment")
   createdAt              DateTime             @default(now())
   updatedAt              DateTime             @updatedAt
 

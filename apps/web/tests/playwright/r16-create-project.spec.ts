@@ -15,7 +15,6 @@ test.describe('R16 新建项目与时间线看板验收', () => {
     await loginAsProjectManager(page);
 
     const timestamp = buildR16Timestamp();
-    const projectCode = `R16-UI-${timestamp}`;
     const projectName = `${R16_PROJECT_PREFIXES.deepBlue}${timestamp}`;
 
     await page.goto('/projects');
@@ -23,10 +22,10 @@ test.describe('R16 新建项目与时间线看板验收', () => {
     await page.getByTestId('create-project-button').click();
 
     await expect(page.getByRole('heading', { name: '新建项目' }).first()).toBeVisible();
-    await page.getByTestId('project-code-input').fill(projectCode);
     await page.getByTestId('project-name-input').fill(projectName);
     await page.getByTestId('project-priority-select').selectOption('HIGH');
-    await page.getByTestId('project-market-input').fill('自动化测试客户');
+    await page.getByTestId('project-color-marketing-unit-input').fill('自动化测试营销单位');
+    await page.getByTestId('project-paint-supplier-select').selectOption('巴斯夫');
     await page.getByTestId('project-vehicle-model-input').fill('轻卡测试车型');
     await page.getByTestId('project-start-date-input').fill('2026-05-07');
     await page.getByTestId('project-end-date-input').fill('2027-05-07');

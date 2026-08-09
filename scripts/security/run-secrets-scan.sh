@@ -11,6 +11,7 @@ GITLEAKS_VERSION="8.30.1"
 GITLEAKS_IMAGE_DEFAULT="ghcr.io/gitleaks/gitleaks:v8.30.1@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f"
 GITLEAKS_IMAGE="${GITLEAKS_IMAGE:-$GITLEAKS_IMAGE_DEFAULT}"
 GITLEAKS_EXECUTION_MODE="${GITLEAKS_EXECUTION_MODE:-auto}"
+GITLEAKS_CONFIG="${GITLEAKS_CONFIG:-$ROOT_DIR/.gitleaks.toml}"
 
 mkdir -p "$REPORT_DIR" "$(dirname "$DOC_REPORT")" \
   "$(dirname "$ROOT_GITLEAKS_REPORT")"
@@ -116,9 +117,11 @@ run_gitleaks_scan() {
     if [ "$scan_kind" = "directory" ]; then
       if docker run --rm \
         --volume "$CURRENT_SCAN_DIR:/scan:ro" \
+        --volume "$GITLEAKS_CONFIG:/gitleaks.toml:ro" \
         --volume "$REPORT_DIR:/reports" \
         "$GITLEAKS_IMAGE" \
         dir /scan \
+        --config /gitleaks.toml \
         --redact \
         --no-banner \
         --no-color \
@@ -135,10 +138,12 @@ run_gitleaks_scan() {
       --env GIT_CONFIG_KEY_0=safe.directory \
       --env GIT_CONFIG_VALUE_0=/repo \
       --volume "$ROOT_DIR:/repo:ro" \
+      --volume "$GITLEAKS_CONFIG:/gitleaks.toml:ro" \
       --volume "$REPORT_DIR:/reports" \
       "$GITLEAKS_IMAGE" \
       git /repo \
       --log-opts=--all \
+      --config /gitleaks.toml \
       --redact \
       --no-banner \
       --no-color \
@@ -152,6 +157,7 @@ run_gitleaks_scan() {
     fi
   elif [ "$scan_kind" = "directory" ]; then
     if gitleaks dir "$CURRENT_SCAN_DIR" \
+      --config "$GITLEAKS_CONFIG" \
       --redact \
       --no-banner \
       --no-color \
@@ -165,6 +171,7 @@ run_gitleaks_scan() {
     fi
   elif gitleaks git "$ROOT_DIR" \
     --log-opts=--all \
+    --config "$GITLEAKS_CONFIG" \
     --redact \
     --no-banner \
     --no-color \

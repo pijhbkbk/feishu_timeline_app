@@ -68,7 +68,8 @@ describe('R22 product component contracts', () => {
           id: 'project-1', code: 'R22-001', name: '深海蓝定制色项目', status: 'IN_PROGRESS',
           priority: 'HIGH', currentNodeCode: 'PAINT_DEVELOPMENT', currentNodeName: '涂料开发',
           ownerUserId: 'owner-1', ownerName: '李经理', ownerDepartmentName: '产品部', colorName: '深海蓝',
-          colorCode: 'LC-022', marketRegion: 'CN', vehicleModel: 'LT-01', targetDate: '2026-07-20T00:00:00.000Z',
+          colorCode: 'LC-022', marketRegion: 'CN', colorMarketingUnit: '华东营销公司', paintSupplier: '巴斯夫',
+          vehicleModel: 'LT-01', targetDate: '2026-07-20T00:00:00.000Z',
           riskLevel: 'HIGH', isOverdue: true, progressPercent: 33, progressText: '6 / 18', currentTaskId: 'task-1',
           currentTaskOwnerId: 'owner-1', currentTaskOwnerName: '李经理', currentTaskDueAt: '2026-07-12T00:00:00.000Z',
           latestTaskUpdatedAt: '2026-07-13T00:00:00.000Z',
@@ -85,6 +86,9 @@ describe('R22 product component contracts', () => {
   it('keeps required materials, retrospective and the simplified admin structure explicit', () => {
     for (const label of ['本工序材料清单', '添加新材料', '已上传材料', 'replacesAttachmentId']) {
       expect(materialsSource).toContain(label);
+    }
+    for (const removedLabel of ['>Required<', '>Upload<', '>History<']) {
+      expect(materialsSource).not.toContain(removedLabel);
     }
     for (const label of ['阶段用时对比', '经验与改进', '后续改进措施', '完成复盘']) {
       expect(retrospectiveSource).toContain(label);

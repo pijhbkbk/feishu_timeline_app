@@ -13,6 +13,7 @@ import {
 } from '@prisma/client';
 
 import { PrismaService } from '../../infra/prisma/prisma.service';
+import { getControlledColorNumber } from '../../common/controlled-color-number';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { ProjectAccessService } from '../auth/project-access.service';
@@ -49,7 +50,15 @@ export class RetrospectivesService {
         include: {
           ownerUser: { select: { id: true, name: true } },
           colors: {
-            select: { name: true, code: true, isPrimary: true },
+            select: {
+              name: true,
+              code: true,
+              isPrimary: true,
+              numberingTaskId: true,
+              numberedById: true,
+              numberedAt: true,
+              numberingAttachmentId: true,
+            },
             orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
           },
         },
@@ -126,7 +135,7 @@ export class RetrospectivesService {
         code: project.code,
         name: project.name,
         colorName: project.colors[0]?.name ?? null,
-        colorCode: project.colors[0]?.code ?? null,
+        colorCode: getControlledColorNumber(project.colors[0]),
         status: project.status,
         ownerName: project.ownerUser?.name ?? null,
         currentNodeCode: project.currentNodeCode,

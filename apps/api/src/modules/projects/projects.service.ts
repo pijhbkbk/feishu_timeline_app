@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
 import {
   AttachmentTargetType,
   AuditTargetType,
@@ -21,11 +22,16 @@ import {
 } from '@prisma/client';
 
 import { PrismaService } from '../../infra/prisma/prisma.service';
+import { getControlledColorNumber } from '../../common/controlled-color-number';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { ProjectAccessService } from '../auth/project-access.service';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import { WorkflowsService } from '../workflows/workflows.service';
 import { WORKFLOW_NODE_META_MAP } from '../workflows/workflow-node.constants';
+import {
+  PROJECT_PAINT_SUPPLIER_VALUES,
+  type ProjectPaintSupplier,
+} from './project.constants';
 
 type ProjectDbClient = Prisma.TransactionClient | PrismaService;
 
@@ -57,6 +63,8 @@ type CreateProjectInput = {
   description: string | null;
   priority: ProjectPriority;
   marketRegion: string | null;
+  colorMarketingUnit: string | null;
+  paintSupplier: ProjectPaintSupplier | null;
   vehicleModel: string | null;
   ownerUserId: string;
   plannedStartDate: Date | null;
@@ -69,6 +77,8 @@ type UpdateProjectInput = {
   description?: string | null;
   priority?: ProjectPriority;
   marketRegion?: string | null;
+  colorMarketingUnit?: string | null;
+  paintSupplier?: ProjectPaintSupplier | null;
   vehicleModel?: string | null;
   ownerUserId?: string;
   plannedStartDate?: Date | null;
@@ -204,6 +214,10 @@ export class ProjectsService {
               name: true,
               code: true,
               isPrimary: true,
+              numberingTaskId: true,
+              numberedById: true,
+              numberedAt: true,
+              numberingAttachmentId: true,
             },
             orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
           },
@@ -793,6 +807,8 @@ export class ProjectsService {
           owningDepartmentId: owner.departmentId ?? actor.departmentId ?? null,
           ownerUserId: owner.id,
           marketRegion: input.marketRegion,
+          colorMarketingUnit: input.colorMarketingUnit,
+          paintSupplier: input.paintSupplier,
           vehicleModel: input.vehicleModel,
           plannedStartDate: input.plannedStartDate,
           plannedEndDate: input.plannedEndDate,
@@ -880,6 +896,14 @@ export class ProjectsService {
           priority: input.priority ?? currentProject.priority,
           marketRegion:
             input.marketRegion === undefined ? currentProject.marketRegion : input.marketRegion,
+          colorMarketingUnit:
+            input.colorMarketingUnit === undefined
+              ? currentProject.colorMarketingUnit
+              : input.colorMarketingUnit,
+          paintSupplier:
+            input.paintSupplier === undefined
+              ? currentProject.paintSupplier
+              : input.paintSupplier,
           vehicleModel:
             input.vehicleModel === undefined ? currentProject.vehicleModel : input.vehicleModel,
           ownerUserId: resolvedOwnerUserId ?? null,
@@ -1021,13 +1045,20 @@ export class ProjectsService {
 
   private normalizeCreateInput(rawInput: unknown, actor: AuthenticatedUser): CreateProjectInput {
     const input = this.asRecord(rawInput, 'Invalid project payload.');
-    const code = this.parseRequiredString(input.code, 'code');
+    const code = this.parseOptionalString(input.code) ?? this.generateProjectCode();
     const name = this.parseRequiredString(input.name, 'name');
     const description = this.parseNullableString(input.description);
     const priority =
       this.parseOptionalEnum(input.priority, PROJECT_PRIORITY_VALUES, 'priority') ??
       ProjectPriority.MEDIUM;
     const marketRegion = this.parseNullableString(input.marketRegion);
+    const colorMarketingUnit = this.parseNullableString(input.colorMarketingUnit);
+    const paintSupplier =
+      this.parseOptionalEnum(
+        input.paintSupplier,
+        PROJECT_PAINT_SUPPLIER_VALUES,
+        'paintSupplier',
+      ) ?? null;
     const vehicleModel = this.parseNullableString(input.vehicleModel);
     const ownerUserId = this.parseOptionalString(input.ownerUserId) ?? actor.id;
     const plannedStartDate = this.parseOptionalDate(input.plannedStartDate, 'plannedStartDate');
@@ -1042,6 +1073,8 @@ export class ProjectsService {
       description,
       priority,
       marketRegion,
+      colorMarketingUnit,
+      paintSupplier,
       vehicleModel,
       ownerUserId,
       plannedStartDate,
@@ -1073,6 +1106,15 @@ export class ProjectsService {
       'priority',
     );
     const marketRegion = this.parseNullableString(input.marketRegion, true);
+    const colorMarketingUnit = this.parseNullableString(input.colorMarketingUnit, true);
+    const paintSupplier =
+      input.paintSupplier === null
+        ? null
+        : this.parseOptionalEnum(
+            input.paintSupplier,
+            PROJECT_PAINT_SUPPLIER_VALUES,
+            'paintSupplier',
+          );
     const vehicleModel = this.parseNullableString(input.vehicleModel, true);
     const ownerUserId = this.parseOptionalString(input.ownerUserId);
 
@@ -1090,6 +1132,14 @@ export class ProjectsService {
 
     if (marketRegion !== undefined) {
       normalized.marketRegion = marketRegion;
+    }
+
+    if (colorMarketingUnit !== undefined) {
+      normalized.colorMarketingUnit = colorMarketingUnit;
+    }
+
+    if (paintSupplier !== undefined) {
+      normalized.paintSupplier = paintSupplier;
     }
 
     if (vehicleModel !== undefined) {
@@ -1185,7 +1235,13 @@ export class ProjectsService {
               some: {
                 OR: [
                   { name: { contains: query.keyword, mode: 'insensitive' } },
-                  { code: { contains: query.keyword, mode: 'insensitive' } },
+                  {
+                    code: { contains: query.keyword, mode: 'insensitive' },
+                    numberingTaskId: { not: null },
+                    numberedById: { not: null },
+                    numberedAt: { not: null },
+                    numberingAttachmentId: { not: null },
+                  },
                 ],
               },
             },
@@ -1557,6 +1613,10 @@ export class ProjectsService {
             name: true;
             code: true;
             isPrimary: true;
+            numberingTaskId: true;
+            numberedById: true;
+            numberedAt: true;
+            numberingAttachmentId: true;
           };
         };
         workflowTasks: {
@@ -1630,7 +1690,7 @@ export class ProjectsService {
       code: project.code,
       name: project.name,
       colorName: project.colors[0]?.name ?? null,
-      colorCode: project.colors[0]?.code ?? null,
+      colorCode: getControlledColorNumber(project.colors[0]),
       status: project.status,
       priority: project.priority,
       currentNodeCode: project.currentNodeCode,
@@ -1639,6 +1699,8 @@ export class ProjectsService {
       ownerName: project.ownerUser?.name ?? null,
       ownerDepartmentName: project.ownerUser?.department?.name ?? null,
       marketRegion: project.marketRegion,
+      colorMarketingUnit: project.colorMarketingUnit,
+      paintSupplier: project.paintSupplier,
       vehicleModel: project.vehicleModel,
       targetDate: this.serializeDate(project.plannedEndDate),
       riskLevel,
@@ -1689,6 +1751,8 @@ export class ProjectsService {
       currentNodeName: this.workflowsService.getCurrentNodeName(project.currentNodeCode),
       targetDate: this.serializeDate(project.plannedEndDate),
       marketRegion: project.marketRegion,
+      colorMarketingUnit: project.colorMarketingUnit,
+      paintSupplier: project.paintSupplier,
       vehicleModel: project.vehicleModel,
       ownerUserId: project.ownerUserId,
       ownerName: project.ownerUser?.name ?? null,
@@ -2288,6 +2352,8 @@ export class ProjectsService {
     owningDepartmentId: string | null;
     ownerUserId: string | null;
     marketRegion: string | null;
+    colorMarketingUnit: string | null;
+    paintSupplier: string | null;
     vehicleModel: string | null;
     plannedStartDate: Date | null;
     plannedEndDate: Date | null;
@@ -2305,6 +2371,8 @@ export class ProjectsService {
       owningDepartmentId: project.owningDepartmentId,
       ownerUserId: project.ownerUserId,
       marketRegion: project.marketRegion,
+      colorMarketingUnit: project.colorMarketingUnit,
+      paintSupplier: project.paintSupplier,
       vehicleModel: project.vehicleModel,
       plannedStartDate: this.serializeDate(project.plannedStartDate),
       plannedEndDate: this.serializeDate(project.plannedEndDate),
@@ -2380,6 +2448,11 @@ export class ProjectsService {
     }
 
     return value;
+  }
+
+  private generateProjectCode() {
+    const date = new Date().toISOString().slice(0, 10).replaceAll('-', '');
+    return `PRJ-${date}-${randomUUID().slice(0, 8).toUpperCase()}`;
   }
 
   private parseOptionalString(rawValue: unknown) {

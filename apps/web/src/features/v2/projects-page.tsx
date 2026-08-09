@@ -1,7 +1,14 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
+} from 'react';
 
 import { r26Projects } from './fixtures';
 import { ChevronRightIcon } from './icons';
@@ -32,19 +39,25 @@ export function ProjectsPage() {
 function PrototypeProjectsPage() {
   const [activeFilter, setActiveFilter] = useState<(typeof filters)[number]['value']>('all');
   const [notice, setNotice] = useState<string | null>(null);
+  const projectSearch = useProjectSearch();
 
   const visibleProjects = useMemo(() => {
+    const normalizedKeyword = projectSearch.keyword.trim().toLocaleLowerCase('zh-CN');
+    const matchesKeyword = (project: (typeof r26Projects)[number]) =>
+      !normalizedKeyword || [project.name, project.colorName, project.currentStep]
+        .some((value) => value.toLocaleLowerCase('zh-CN').includes(normalizedKeyword));
+
     if (activeFilter === 'all') {
-      return r26Projects;
+      return r26Projects.filter(matchesKeyword);
     }
     if (activeFilter === 'normal') {
-      return r26Projects.filter((project) => project.tone === 'tracking');
+      return r26Projects.filter((project) => project.tone === 'tracking' && matchesKeyword(project));
     }
     if (activeFilter === 'overdue') {
       return [];
     }
-    return r26Projects.filter((project) => project.tone === activeFilter);
-  }, [activeFilter]);
+    return r26Projects.filter((project) => project.tone === activeFilter && matchesKeyword(project));
+  }, [activeFilter, projectSearch.keyword]);
 
   function showNotice(message: string) {
     setNotice(message);
@@ -63,6 +76,11 @@ function PrototypeProjectsPage() {
           新建项目
         </button>
       </div>
+
+      <ProjectSearchPanel
+        search={projectSearch}
+        resultCount={visibleProjects.length}
+      />
 
       <section className="r26-project-kpis" aria-label="项目组合摘要">
         <div><span>活跃项目</span><strong>3</strong><small>本周更新 3 个</small></div>
@@ -156,8 +174,13 @@ function PrototypeProjectsPage() {
 
 function RealProjectsPage() {
   const [activeFilter, setActiveFilter] = useState<(typeof filters)[number]['value']>('all');
+  const projectSearch = useProjectSearch();
   const { viewer } = useR26RealData();
-  const path = `/v2/projects?view=${encodeURIComponent(activeFilter)}&page=1&pageSize=50`;
+  const path = `/v2/projects?view=${encodeURIComponent(activeFilter)}&page=1&pageSize=50${
+    projectSearch.keyword
+      ? `&keyword=${encodeURIComponent(projectSearch.keyword)}`
+      : ''
+  }`;
   const { data, error, loading } = useR26ReadOnlyData<R26ProjectsResponse>(path);
 
   if (loading || error || !data) {
@@ -186,6 +209,11 @@ function RealProjectsPage() {
           </Link>
         </div>
       ) : null}
+
+      <ProjectSearchPanel
+        search={projectSearch}
+        resultCount={projects.length}
+      />
 
       <section className="r26-project-kpis" aria-label="项目组合摘要">
         <div><span>活跃项目</span><strong>{summary.active}</strong><small>当前可见范围</small></div>
@@ -238,6 +266,124 @@ function RealProjectsPage() {
         ) : null}
       </section>
     </div>
+  );
+}
+
+type ProjectSearchState = ReturnType<typeof useProjectSearch>;
+
+function useProjectSearch() {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [isVisible, setIsVisible] = useState(false);
+  const [inputValue, setInputValue] = useState('');
+  const [keyword, setKeyword] = useState('');
+
+  const focusSearch = useCallback(() => {
+    setIsVisible(true);
+    window.requestAnimationFrame(() => {
+      inputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      inputRef.current?.focus({ preventScroll: true });
+    });
+  }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const initialKeyword = params.get('keyword')?.trim() ?? '';
+
+    if (initialKeyword) {
+      setInputValue(initialKeyword);
+      setKeyword(initialKeyword);
+    }
+    if (params.get('focus') === 'search' || initialKeyword) {
+      focusSearch();
+    }
+
+    window.addEventListener('r22:focus-project-search', focusSearch);
+    return () => window.removeEventListener('r22:focus-project-search', focusSearch);
+  }, [focusSearch]);
+
+  function updateAddress(nextKeyword: string) {
+    const params = new URLSearchParams(window.location.search);
+    params.set('focus', 'search');
+    if (nextKeyword) {
+      params.set('keyword', nextKeyword);
+    } else {
+      params.delete('keyword');
+    }
+    window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`);
+  }
+
+  function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const nextKeyword = inputValue.trim();
+    setKeyword(nextKeyword);
+    updateAddress(nextKeyword);
+  }
+
+  function clear() {
+    setInputValue('');
+    setKeyword('');
+    updateAddress('');
+    window.requestAnimationFrame(() => inputRef.current?.focus({ preventScroll: true }));
+  }
+
+  return {
+    clear,
+    focusSearch,
+    inputRef,
+    inputValue,
+    isVisible,
+    keyword,
+    setInputValue,
+    submit,
+  };
+}
+
+function ProjectSearchPanel({
+  search,
+  resultCount,
+}: {
+  search: ProjectSearchState;
+  resultCount: number;
+}) {
+  if (!search.isVisible) {
+    return null;
+  }
+
+  return (
+    <form
+      className="r26-project-search"
+      role="search"
+      aria-label="搜索项目"
+      onSubmit={search.submit}
+      data-testid="r26-project-search"
+    >
+      <label htmlFor="r26-project-search-input">搜索项目</label>
+      <div className="r26-project-search__controls">
+        <input
+          ref={search.inputRef}
+          id="r26-project-search-input"
+          type="search"
+          value={search.inputValue}
+          placeholder="输入项目名称、项目编号、颜色名称或颜色编号"
+          autoComplete="off"
+          onChange={(event) => search.setInputValue(event.target.value)}
+          data-testid="r26-project-search-input"
+        />
+        <button type="submit" className="r26-button r26-button--primary">
+          查询
+        </button>
+        {search.keyword ? (
+          <button type="button" className="r26-button r26-button--secondary" onClick={search.clear}>
+            清除
+          </button>
+        ) : null}
+      </div>
+      <p className="r26-project-search__status" aria-live="polite">
+        {search.keyword
+          ? `“${search.keyword}”找到 ${resultCount} 个项目`
+          : '可按项目名称、项目编号、颜色名称或第 05 步确认的颜色编号查询。'}
+      </p>
+    </form>
   );
 }
 

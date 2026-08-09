@@ -25,6 +25,7 @@ import {
   AdminAssignmentPreviewDto,
   AdminBatchTaskChangeDto,
   AdminBatchTaskPreviewDto,
+  AdminDepartmentBatchDeleteDto,
   AdminDepartmentConfigurationChangeDto,
   AdminDepartmentConfigurationPreviewDto,
   AdminLedgerQueryDto,
@@ -185,6 +186,22 @@ export class AdminControlCenterController {
   ) {
     this.assertIdempotencyKey(body.idempotencyKey, headerKey);
     return this.service.changeDepartmentConfiguration(null, body, actor, requestId?.trim() || body.idempotencyKey);
+  }
+
+  @ApiOperation({ summary: '批量删除无业务引用的公司部门并写入审计' })
+  @Post('organization/departments/batch-delete')
+  deleteDepartments(
+    @Body() body: AdminDepartmentBatchDeleteDto,
+    @Headers('idempotency-key') headerKey: string | undefined,
+    @Headers('x-request-id') requestId: string | undefined,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    this.assertIdempotencyKey(body.idempotencyKey, headerKey);
+    return this.service.deleteDepartments(
+      body,
+      actor,
+      requestId?.trim() || body.idempotencyKey,
+    );
   }
 
   @ApiOperation({ summary: '预览公司部门完整配置变更，不写入' })

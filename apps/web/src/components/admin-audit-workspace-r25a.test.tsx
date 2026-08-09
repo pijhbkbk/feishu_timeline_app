@@ -55,6 +55,9 @@ describe('AdminAuditWorkspaceR25A', () => {
       />,
     );
     expect(html).toContain('只读 · 已脱敏');
+    expect(html).toContain('aria-label="关闭审计详情"');
+    expect(html).toContain('<svg');
+    expect(html).not.toContain('>×</button>');
     expect(html).toContain('[REDACTED]');
     expect(html).not.toContain('real-token');
     expect(html).not.toContain('删除');

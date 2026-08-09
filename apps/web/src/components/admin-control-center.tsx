@@ -6,20 +6,18 @@ import React, { useCallback, useEffect, useState } from 'react';
 
 import {
   createAdminProjectMember,
+  deleteAdminDepartments,
   fetchAdminAssignments,
   fetchAdminOrganization,
   fetchAdminPermissions,
   fetchAdminProjects,
-  fetchAdminSavedViews,
   fetchAdminTasks,
   previewAdminAssignment,
-  previewAdminDepartmentConfiguration,
   previewAdminProjectMember,
   previewAdminUserConfiguration,
   previewAdminBatchTasks,
   previewAdminNodeAssignment,
   previewAdminSchedule,
-  saveAdminView,
   updateAdminAssignment,
   updateAdminBatchTasks,
   updateAdminDepartmentConfiguration,
@@ -34,9 +32,9 @@ import {
   type AdminOrganizationResponse,
   type AdminPermissionResponse,
   type AdminProjectRow,
-  type AdminSavedView,
   type AdminTaskRow,
 } from '../lib/admin-client';
+import { CloseIcon } from '../features/v2/icons';
 
 export type AdminControlSection =
   | 'projects'
@@ -109,7 +107,7 @@ const pageMeta: Record<AdminControlSection, { eyebrow: string; title: string; de
   assignments: {
     eyebrow: '责任治理',
     title: '项目分工配置',
-    description: '按项目查看 18 节点主责部门、建议负责人、协同与评审关系。',
+    description: '',
   },
   permissions: {
     eyebrow: '权限治理',
@@ -138,6 +136,7 @@ type DialogState =
   | { kind: 'batch'; rows: AdminTaskRow[]; mode: 'schedule' | 'assignment' }
   | { kind: 'organizationUser'; mode: 'create' | 'edit'; row?: Record<string, unknown>; response: AdminOrganizationResponse }
   | { kind: 'department'; mode: 'create' | 'edit'; row?: Record<string, unknown>; response: AdminOrganizationResponse }
+  | { kind: 'departmentDelete'; rows: Record<string, unknown>[] }
   | { kind: 'member'; mode: 'create' | 'edit' | 'remove'; row?: Record<string, unknown>; response: AdminOrganizationResponse }
   | null;
 
@@ -153,9 +152,8 @@ export function AdminControlCenter({ section }: { section: AdminControlSection }
   const [organizationTab, setOrganizationTab] =
     useState<'users' | 'departments' | 'members'>('users');
   const [projectId, setProjectId] = useState('');
-  const [savedViews, setSavedViews] = useState<AdminSavedView[]>([]);
-  const [fullColumns, setFullColumns] = useState(false);
   const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([]);
+  const [selectedDepartmentIds, setSelectedDepartmentIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -192,19 +190,15 @@ export function AdminControlCenter({ section }: { section: AdminControlSection }
           tab: organizationTab,
         });
         setData({ organization: result });
+        setSelectedDepartmentIds((current) =>
+          current.filter((id) => result.items.some((item) => item.id === id)),
+        );
       } else if (section === 'assignments') {
         const result = await fetchAdminAssignments(projectId || undefined);
         setData({ assignments: result });
         if (!projectId && result.selectedProjectId) setProjectId(result.selectedProjectId);
       } else {
         setData({ permissions: await fetchAdminPermissions() });
-      }
-      try {
-        setSavedViews(await fetchAdminSavedViews(section));
-      } catch {
-        // Saved views are an optional convenience. A failure here must not make
-        // already-loaded business data appear unavailable.
-        setSavedViews([]);
       }
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : '后台数据加载失败。');
@@ -223,41 +217,6 @@ export function AdminControlCenter({ section }: { section: AdminControlSection }
     setAppliedSearch(search.trim());
   }
 
-  async function saveCurrentView() {
-    const name = window.prompt('请输入视图名称');
-    if (!name?.trim()) return;
-    try {
-      await saveAdminView({
-        pageKey: section,
-        name: name.trim(),
-        config: {
-          search: appliedSearch,
-          view,
-          organizationTab,
-          projectId,
-          fullColumns,
-        },
-      });
-      setNotice('视图已保存。');
-      await load();
-    } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : '保存视图失败。');
-    }
-  }
-
-  function applySavedView(savedView: AdminSavedView) {
-    const config = savedView.config;
-    setSearch(readText(config.search));
-    setAppliedSearch(readText(config.search));
-    setView(readText(config.view) || 'ALL');
-    if (config.organizationTab === 'users' || config.organizationTab === 'departments' || config.organizationTab === 'members') {
-      setOrganizationTab(config.organizationTab);
-    }
-    setProjectId(readText(config.projectId));
-    setFullColumns(readBoolean(config.fullColumns));
-    setPage(1);
-  }
-
   const pageInfo =
     data.projects ?? data.tasks ?? data.organization;
 
@@ -269,7 +228,7 @@ export function AdminControlCenter({ section }: { section: AdminControlSection }
         <div>
           <p>{meta.eyebrow}</p>
           <h1>{meta.title}</h1>
-          <span>{meta.description}</span>
+          {meta.description ? <span>{meta.description}</span> : null}
         </div>
         <div className="admin-cc-hero__actions">
           <button type="button" className="admin-cc-button admin-cc-button--quiet" onClick={() => void load()} disabled={loading}>
@@ -281,7 +240,7 @@ export function AdminControlCenter({ section }: { section: AdminControlSection }
       {error ? <div className="admin-cc-alert admin-cc-alert--error"><span>{error}</span><button type="button" onClick={() => void load()}>重试</button></div> : null}
       {notice ? <div className="admin-cc-alert admin-cc-alert--success"><span>{notice}</span><button type="button" onClick={() => setNotice(null)}>关闭</button></div> : null}
 
-      <section className="admin-cc-toolbar" aria-label="表格工具栏">
+      {section !== 'assignments' ? <section className="admin-cc-toolbar" aria-label="表格工具栏">
         {(section === 'projects' || section === 'tasks' || section === 'organization') ? (
           <form onSubmit={applySearch} className="admin-cc-search">
             <label htmlFor="admin-table-search">搜索</label>
@@ -289,21 +248,7 @@ export function AdminControlCenter({ section }: { section: AdminControlSection }
             <button type="submit" className="admin-cc-button admin-cc-button--primary">查询</button>
           </form>
         ) : <div><strong>真实数据</strong><span> 由服务端实时返回</span></div>}
-        {section !== 'tasks' ? <div className="admin-cc-toolbar__right">
-          <label>
-            保存视图
-            <select defaultValue="" onChange={(event) => {
-              const selected = savedViews.find((item) => item.id === event.target.value);
-              if (selected) applySavedView(selected);
-            }}>
-              <option value="">选择视图</option>
-              {savedViews.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-            </select>
-          </label>
-          <button type="button" className="admin-cc-button admin-cc-button--quiet" onClick={() => void saveCurrentView()}>保存当前视图</button>
-          {section === 'projects' ? <button type="button" className="admin-cc-button admin-cc-button--quiet" onClick={() => setFullColumns((current) => !current)}>{fullColumns ? '使用精简列' : '显示完整列'}</button> : null}
-        </div> : null}
-      </section>
+      </section> : null}
 
       {section === 'tasks' ? <TaskPresets value={view} onChange={(next) => { setView(next); setPage(1); }} /> : null}
       {section === 'tasks' && selectedTaskIds.length ? (
@@ -316,15 +261,38 @@ export function AdminControlCenter({ section }: { section: AdminControlSection }
           </div>
         </section>
       ) : null}
-      {section === 'organization' ? <OrganizationTabs value={organizationTab} onChange={(next) => { setOrganizationTab(next); setPage(1); }} /> : null}
+      {section === 'organization' ? <OrganizationTabs value={organizationTab} onChange={(next) => { setOrganizationTab(next); setSelectedDepartmentIds([]); setPage(1); }} /> : null}
+      {section === 'organization' && organizationTab === 'departments' && selectedDepartmentIds.length ? (
+        <section className="admin-cc-batch-bar" aria-label="部门批量操作">
+          <div>
+            <strong>已选择 {selectedDepartmentIds.length} 个部门</strong>
+            <span>仅无人员、下级部门、项目、工序、分工或发放记录的非根部门可删除。</span>
+          </div>
+          <div>
+            <button type="button" className="admin-cc-button admin-cc-button--quiet" onClick={() => setSelectedDepartmentIds([])}>取消选择</button>
+            <button
+              type="button"
+              className="admin-cc-button admin-cc-button--danger"
+              onClick={() => setDialog({
+                kind: 'departmentDelete',
+                rows: data.organization?.items.filter((row) => selectedDepartmentIds.includes(row.id)) ?? [],
+              })}
+            >
+              删除所选部门
+            </button>
+          </div>
+        </section>
+      ) : null}
 
       <section className="admin-cc-table-card">
         {loading && !hasSectionData(section, data) ? <AdminTableSkeleton /> : null}
-        {section === 'projects' && data.projects ? <ProjectsTable rows={data.projects.items} fullColumns={fullColumns} onEdit={(row) => setDialog({ kind: 'project', row })} /> : null}
-        {section === 'tasks' && data.tasks ? <TasksTable rows={data.tasks.items} fullColumns={fullColumns} selectedIds={selectedTaskIds} onSelect={setSelectedTaskIds} onEdit={(row, mode) => setDialog({ kind: 'task', row, mode })} /> : null}
+        {section === 'projects' && data.projects ? <ProjectsTable rows={data.projects.items} onEdit={(row) => setDialog({ kind: 'project', row })} /> : null}
+        {section === 'tasks' && data.tasks ? <TasksTable rows={data.tasks.items} selectedIds={selectedTaskIds} onSelect={setSelectedTaskIds} onEdit={(row, mode) => setDialog({ kind: 'task', row, mode })} /> : null}
         {section === 'organization' && data.organization ? (
           <OrganizationTable
             response={data.organization}
+            selectedDepartmentIds={selectedDepartmentIds}
+            onSelectDepartments={setSelectedDepartmentIds}
             onCreate={() => setDialog({
               kind: organizationTab === 'users' ? 'organizationUser' : organizationTab === 'departments' ? 'department' : 'member',
               mode: 'create',
@@ -374,6 +342,7 @@ export function AdminControlCenter({ section }: { section: AdminControlSection }
           state={dialog}
           onClose={() => setDialog(null)}
           onSuccess={async (message) => {
+            if (dialog?.kind === 'departmentDelete') setSelectedDepartmentIds([]);
             setDialog(null);
             setNotice(message);
             await load();
@@ -385,13 +354,13 @@ export function AdminControlCenter({ section }: { section: AdminControlSection }
   );
 }
 
-function ProjectsTable({ rows, fullColumns, onEdit }: { rows: AdminProjectRow[]; fullColumns: boolean; onEdit: (row: AdminProjectRow) => void }) {
+function ProjectsTable({ rows, onEdit }: { rows: AdminProjectRow[]; onEdit: (row: AdminProjectRow) => void }) {
   if (!rows.length) return <AdminEmpty title="没有项目记录" description="当前筛选范围内没有真实项目。" />;
   return (
     <>
       <div className="admin-cc-table-wrap">
         <table className="admin-cc-table">
-          <thead><tr><th>项目</th><th>颜色 / 车型</th><th>当前工序</th><th>负责人 / 部门</th><th>风险</th><th>进度</th>{fullColumns ? <><th>成员 / 材料</th><th>计划开始</th><th>实际开始</th><th>实际完成</th></> : null}<th>计划结束</th><th>数据版本</th><th>操作</th></tr></thead>
+          <thead><tr><th>项目</th><th>颜色 / 车型</th><th>当前工序</th><th>负责人 / 部门</th><th>风险</th><th>进度</th><th>计划结束</th><th>数据版本</th><th>操作</th></tr></thead>
           <tbody>
             {rows.map((row) => <tr key={row.id}>
               <td><strong>{row.name}</strong><small>{displayProjectCode(row.code)}</small></td>
@@ -400,7 +369,6 @@ function ProjectsTable({ rows, fullColumns, onEdit }: { rows: AdminProjectRow[];
               <td>{row.currentTask?.assignee?.name ?? row.owner?.name ?? '待分配'}<small>{row.owningDepartment?.name ?? '责任部门待定'}</small></td>
               <td><RiskBadge risk={row.riskLevel} /><small>{row.blockerCount} 阻塞 · {row.overdueCount} 逾期</small></td>
               <td>{row.progress.completed}/{row.progress.total}<small>{row.taskCount} 条任务</small></td>
-              {fullColumns ? <><td>{row.memberCount} 人 / {row.materialCount} 项</td><td>{formatDate(row.plannedStartDate)}</td><td>{formatDate(row.actualStartDate)}</td><td>{formatDate(row.actualEndDate)}</td></> : null}
               <td>{formatDate(row.plannedEndDate)}</td>
               <td><code>{shortVersion(row.dataVersion)}</code></td>
               <td><div className="admin-cc-row-actions"><button type="button" onClick={() => onEdit(row)}>编辑基础信息</button><Link href={`/projects/${row.id}`}>打开项目</Link></div></td>
@@ -413,27 +381,23 @@ function ProjectsTable({ rows, fullColumns, onEdit }: { rows: AdminProjectRow[];
   );
 }
 
-function TasksTable({ rows, fullColumns, selectedIds, onSelect, onEdit }: { rows: AdminTaskRow[]; fullColumns: boolean; selectedIds: string[]; onSelect: (ids: string[]) => void; onEdit: (row: AdminTaskRow, mode: 'schedule' | 'assignment') => void }) {
+function TasksTable({ rows, selectedIds, onSelect, onEdit }: { rows: AdminTaskRow[]; selectedIds: string[]; onSelect: (ids: string[]) => void; onEdit: (row: AdminTaskRow, mode: 'schedule' | 'assignment') => void }) {
   if (!rows.length) return <AdminEmpty title="没有工序记录" description="当前筛选范围内没有真实工序。" />;
   return (
     <>
       <div className="admin-cc-table-wrap">
         <table className="admin-cc-table">
           <thead>
-            {fullColumns ? <tr className="admin-cc-column-groups"><th /><th colSpan={3}>项目与工序</th><th colSpan={4}>工作内容与输出</th><th colSpan={7}>日期与期限</th><th colSpan={4}>人员与部门</th><th colSpan={2}>状态与风险</th><th colSpan={2}>系统记录</th></tr> : null}
-            <tr><th><input aria-label="选择当前页全部可编辑工序" type="checkbox" checked={rows.length > 0 && rows.every((row) => selectedIds.includes(row.id))} onChange={(event) => onSelect(event.target.checked ? rows.map((row) => row.id) : [])} /></th><th>项目</th><th>步骤 / 工序</th><th>分支</th>{fullColumns ? <><th>工作内容</th><th>要求输出</th><th>必交材料</th><th>前置 / 流转</th><th>计划开始</th></> : null}<th>主责部门</th><th>负责人</th>{fullColumns ? <><th>协同人员</th><th>评审人员</th></> : null}<th>计划截止</th>{fullColumns ? <><th>实际开始</th><th>实际完成</th><th>工期</th><th>暂停</th><th>最近更新</th></> : null}<th>材料</th><th>状态 / 风险</th><th>参数来源</th><th>操作</th></tr>
+            <tr><th><input aria-label="选择当前页全部可编辑工序" type="checkbox" checked={rows.length > 0 && rows.every((row) => selectedIds.includes(row.id))} onChange={(event) => onSelect(event.target.checked ? rows.map((row) => row.id) : [])} /></th><th>项目</th><th>步骤 / 工序</th><th>分支</th><th>主责部门</th><th>负责人</th><th>计划截止</th><th>材料</th><th>状态 / 风险</th><th>参数来源</th><th>操作</th></tr>
           </thead>
           <tbody>{rows.map((row) => <tr key={row.id}>
             <td><input aria-label={`选择 ${row.project.name} ${row.nodeName}`} type="checkbox" checked={selectedIds.includes(row.id)} onChange={(event) => onSelect(event.target.checked ? [...new Set([...selectedIds, row.id])] : selectedIds.filter((id) => id !== row.id))} /></td>
             <td><strong>{row.project.name}</strong><small>{displayProjectCode(row.project.code)}</small></td>
             <td><strong>第 {row.stepNumber ?? '—'} 步</strong><small>{row.nodeName}</small></td>
             <td>{row.branchType === 'NON_BLOCKING' ? '非阻塞支线' : '项目主线'}</td>
-            {fullColumns ? <><td>{row.workContent ?? '—'}</td><td>{row.requiredOutput ?? '—'}</td><td>{row.requiredMaterials.join('、') || '无'}</td><td>{row.predecessor.join('、') || '起始节点'}<small>{row.autoTransitionRule ?? '服务端裁决'}</small></td><td>{formatDate(row.plannedStartAt)}</td></> : null}
             <td>{row.primaryDepartment?.name ?? '待确定'}</td>
             <td>{row.assignee?.name ?? '待分配'}<small>{assignmentSourceLabel(row.assignmentSource)}</small></td>
-            {fullColumns ? <><td>{row.collaboratorUserIds.length ? `${row.collaboratorUserIds.length} 人` : '—'}</td><td>{row.reviewerUserIds.length ? `${row.reviewerUserIds.length} 人` : '—'}</td></> : null}
             <td>{formatDate(row.plannedDueAt)}<small>{row.overdueDays > 0 ? `逾期 ${row.overdueDays} 天` : '未逾期'}</small></td>
-            {fullColumns ? <><td>{formatDate(row.actualStartAt)}</td><td>{formatDate(row.actualCompletedAt)}</td><td>{row.durationDays ?? '—'} 天</td><td>{row.pauseDays} 天</td><td>{formatDate(row.updatedAt)}</td></> : null}
             <td>{row.materialProgress.completed}/{row.materialProgress.required}</td>
             <td><StatusBadge value={row.status} /><small><RiskBadge risk={row.riskLevel} /></small></td>
             <td><code>{row.taskVersion ? '服务端版本' : '模板默认'}</code></td>
@@ -449,21 +413,38 @@ function TasksTable({ rows, fullColumns, selectedIds, onSelect, onEdit }: { rows
   );
 }
 
-function OrganizationTable({ response, onCreate, onEdit, onRemove }: { response: AdminOrganizationResponse; onCreate: () => void; onEdit: (row: Record<string, unknown>) => void; onRemove: (row: Record<string, unknown>) => void }) {
+function OrganizationTable({
+  response,
+  selectedDepartmentIds,
+  onSelectDepartments,
+  onCreate,
+  onEdit,
+  onRemove,
+}: {
+  response: AdminOrganizationResponse;
+  selectedDepartmentIds: string[];
+  onSelectDepartments: (ids: string[]) => void;
+  onCreate: () => void;
+  onEdit: (row: Record<string, unknown>) => void;
+  onRemove: (row: Record<string, unknown>) => void;
+}) {
   const headers = response.tab === 'users'
     ? ['姓名', '飞书身份', '部门', '角色', '状态', '项目 / 任务', '版本', '操作']
     : response.tab === 'departments'
-      ? ['部门', '编码', '上级部门', '负责人', '人数', '活跃任务', '配置节点', '状态']
+      ? ['部门', '所属事业部', '负责人', '人数', '活跃任务', '配置节点', '状态']
       : ['项目', '成员', '部门', '项目职责', '关系', '当前任务', '有效期', '版本', '操作'];
   return (
     <>
       <div className="admin-cc-organization-toolbar">
-        <div><strong>超级管理员配置</strong><span>所有变更先预览影响，并经过版本校验、幂等保护与审计记录。</span></div>
+        <div><strong>超级管理员配置</strong></div>
         <button type="button" className="admin-cc-button admin-cc-button--primary" onClick={onCreate}>{response.tab === 'users' ? '新增系统用户' : response.tab === 'departments' ? '新增公司部门' : '添加项目成员'}</button>
       </div>
       {!response.items.length ? <AdminEmpty title="没有组织记录" description="当前筛选范围没有数据，可使用右上方按钮新增。" /> : <>
       <div className="admin-cc-table-wrap">
-        <table className="admin-cc-table"><thead><tr>{headers.map((header) => <th key={header}>{header}</th>)}</tr></thead>
+        <table className="admin-cc-table"><thead><tr>
+          {response.tab === 'departments' ? <th className="admin-cc-selection-cell"><input aria-label="选择当前页全部部门" type="checkbox" checked={response.items.length > 0 && response.items.every((row) => selectedDepartmentIds.includes(row.id))} onChange={(event) => onSelectDepartments(event.target.checked ? response.items.map((row) => row.id) : [])} /></th> : null}
+          {headers.map((header) => <th key={header}>{header}</th>)}
+        </tr></thead>
           <tbody>{response.items.map((row) => response.tab === 'users'
             ? <tr key={row.id}>
                 <td><strong>{readText(row.name)}</strong><small>{readText(row.username)}</small></td>
@@ -477,8 +458,9 @@ function OrganizationTable({ response, onCreate, onEdit, onRemove }: { response:
               </tr>
             : response.tab === 'departments'
               ? <tr key={row.id}>
-                  <td><strong>{readText(row.name)}</strong><small>{readText(row.path)}</small></td>
-                  <td>{readText(row.code)}</td><td>{readNestedText(row.parent, 'name') || '根部门'}</td>
+                  <td className="admin-cc-selection-cell"><input aria-label={`选择部门 ${readText(row.name)}`} type="checkbox" checked={selectedDepartmentIds.includes(row.id)} onChange={(event) => onSelectDepartments(event.target.checked ? [...new Set([...selectedDepartmentIds, row.id])] : selectedDepartmentIds.filter((id) => id !== row.id))} /></td>
+                  <td><strong>{readText(row.name)}</strong></td>
+                  <td>{readNestedText(row.parent, 'name') || '未设置'}</td>
                   <td>{readNestedText(row.departmentLead, 'name') || '待设置'}</td><td>{readNumber(row.memberCount)}</td>
                   <td>{readNumber(row.activeTaskCount)}</td><td>{readNumber(row.configuredNodeCount)}</td><td><div className="admin-cc-row-actions"><span>{readBoolean(row.isActive) ? '启用' : '停用'}</span><button type="button" onClick={() => onEdit(row)}>编辑部门</button></div></td>
                 </tr>
@@ -490,7 +472,7 @@ function OrganizationTable({ response, onCreate, onEdit, onRemove }: { response:
                 </tr>)}</tbody>
         </table>
       </div>
-      <div className="admin-cc-mobile-list">{response.items.map((row) => <article key={row.id}><header><strong>{readText(row.name) || readNestedText(row.user, 'name') || readNestedText(row.project, 'name')}</strong><StatusBadge value={readText(row.status) || (readBoolean(row.isActive) ? 'ACTIVE' : 'INACTIVE')} /></header><p>{readNestedText(row.department, 'name') || readText(row.code) || readText(row.responsibility)}</p><div className="admin-cc-row-actions"><button type="button" className="admin-cc-button admin-cc-button--primary" onClick={() => onEdit(row)}>编辑配置</button>{response.tab === 'members' ? <button type="button" className="admin-cc-button admin-cc-button--quiet is-danger" onClick={() => onRemove(row)}>移出项目</button> : null}</div></article>)}</div>
+      <div className="admin-cc-mobile-list">{response.items.map((row) => <article key={row.id}><header><strong>{readText(row.name) || readNestedText(row.user, 'name') || readNestedText(row.project, 'name')}</strong><StatusBadge value={readText(row.status) || (readBoolean(row.isActive) ? 'ACTIVE' : 'INACTIVE')} /></header>{response.tab === 'departments' ? <label className="admin-cc-mobile-selection"><input aria-label={`选择部门 ${readText(row.name)}`} type="checkbox" checked={selectedDepartmentIds.includes(row.id)} onChange={(event) => onSelectDepartments(event.target.checked ? [...new Set([...selectedDepartmentIds, row.id])] : selectedDepartmentIds.filter((id) => id !== row.id))} /><span>选择此部门</span></label> : null}<p>{response.tab === 'departments' ? `所属事业部：${readNestedText(row.parent, 'name') || '未设置'}` : readNestedText(row.department, 'name') || readText(row.responsibility)}</p><div className="admin-cc-row-actions"><button type="button" className="admin-cc-button admin-cc-button--primary" onClick={() => onEdit(row)}>编辑配置</button>{response.tab === 'members' ? <button type="button" className="admin-cc-button admin-cc-button--quiet is-danger" onClick={() => onRemove(row)}>移出项目</button> : null}</div></article>)}</div>
       </>}
     </>
   );
@@ -511,41 +493,21 @@ function AssignmentsTable({
     <div className="admin-cc-assignment-grid">
       <div className="admin-cc-inline-filter">
         <label>项目<select value={projectId} onChange={(event) => onProjectChange(event.target.value)}>{response.projects.map((project) => <option key={project.id} value={project.id}>{project.name} · {displayProjectCode(project.code)}</option>)}</select></label>
-        <span>项目分工版本：{response.projectVersion ?? '尚未生成'}</span>
-      </div>
-      <div className="admin-cc-field-schema" aria-label="可编辑字段类型">
-        <div>
-          <strong>多字段分工表</strong>
-          <span>点击带铅笔的单元格或“编辑分工”，先预览影响，再保存。</span>
-        </div>
-        <div>{response.schema.map((field) => <span key={field.key} title={field.label}>{fieldTypeLabel(field.type)} · {field.label}</span>)}</div>
       </div>
       {!response.items.length ? <AdminEmpty title="没有可展示的分工" description="请先创建项目。" /> : <div className="admin-cc-table-wrap"><table className="admin-cc-table admin-cc-assignment-table"><thead><tr><th>步骤</th><th>工序</th><th>主责部门</th><th>默认 / 当前负责人</th><th>协同人员</th><th>评审人员</th><th>匹配状态</th><th>分配来源</th><th>操作</th></tr></thead><tbody>
         {response.items.map((item, index) => <tr key={`${readText(item.nodeCode)}-${index}`}>
-          <td>{readNumber(item.stepNumber) || index + 1}</td><td><strong>{readText(item.stepName) || readText(item.nodeName) || readText(item.name)}</strong><small>{readText(item.nodeCode)}</small></td>
-          <td><button type="button" className="admin-cc-editable-cell" onClick={() => onEdit(item)}><span>{readNestedText(item.primaryDepartment, 'name') || '待确定'}</span><small>引用字段 · 编辑</small></button></td>
-          <td><button type="button" className="admin-cc-editable-cell" onClick={() => onEdit(item)}><span>{readNestedText(item.suggestedOwner, 'name') || '待分配'}</span><small>人员字段 · 编辑</small></button></td>
-          <td><button type="button" className="admin-cc-editable-cell" onClick={() => onEdit(item)}><span>{namesFromUnknown(item.collaborators)}</span><small>{namesFromUnknown(item.collaboratorDepartments) || '多选人员'}</small></button></td>
-          <td><button type="button" className="admin-cc-editable-cell" onClick={() => onEdit(item)}><span>{readBoolean(item.isReviewNode) ? namesFromUnknown(item.reviewers) : '—'}</span><small>{readBoolean(item.isReviewNode) ? '多选人员 · 编辑' : '非评审节点'}</small></button></td>
-          <td><StatusBadge value={readText(item.assignmentStatus) || 'UNASSIGNED'} /><small>{readText(item.unassignedReason)}</small></td><td>{assignmentSourceLabel(readText(item.assignmentSource) || 'UNASSIGNED')}</td>
+          <td>{readNumber(item.stepNumber) || index + 1}</td><td><strong>{readText(item.stepName) || readText(item.nodeName) || readText(item.name)}</strong></td>
+          <td><button type="button" className="admin-cc-editable-cell" onClick={() => onEdit(item)}><span>{readNestedText(item.primaryDepartment, 'name') || '待确定'}</span></button></td>
+          <td><button type="button" className="admin-cc-editable-cell" onClick={() => onEdit(item)}><span>{readNestedText(item.suggestedOwner, 'name') || '待分配'}</span></button></td>
+          <td><button type="button" className="admin-cc-editable-cell" onClick={() => onEdit(item)}><span>{namesFromUnknown(item.collaborators)}</span></button></td>
+          <td><button type="button" className="admin-cc-editable-cell" onClick={() => onEdit(item)}><span>{readBoolean(item.isReviewNode) ? namesFromUnknown(item.reviewers) : '—'}</span></button></td>
+          <td><StatusBadge value={readText(item.assignmentStatus) || 'UNASSIGNED'} /></td><td>{assignmentSourceLabel(readText(item.assignmentSource) || 'UNASSIGNED')}</td>
           <td><button type="button" className="admin-cc-row-edit" onClick={() => onEdit(item)}>编辑分工</button></td>
         </tr>)}
       </tbody></table></div>}
       <div className="admin-cc-mobile-list">{response.items.map((item, index) => <article key={item.nodeCode}><header><strong>第 {readNumber(item.stepNumber) || index + 1} 步 · {item.stepName}</strong><StatusBadge value={readText(item.assignmentStatus) || 'UNASSIGNED'} /></header><p>{readNestedText(item.primaryDepartment, 'name') || '部门待定'} · {readNestedText(item.suggestedOwner, 'name') || '负责人待分配'}</p><button type="button" className="admin-cc-button admin-cc-button--primary" onClick={() => onEdit(item)}>编辑分工</button></article>)}</div>
-      <p className="admin-cc-mobile-note">移动端使用全屏编辑面板；流程状态和历史记录不会被直接改写。</p>
     </div>
   );
-}
-
-function fieldTypeLabel(type: AdminAssignmentResponse['schema'][number]['type']) {
-  return {
-    REFERENCE: '关联',
-    CREATABLE_REFERENCE: '可输入关联',
-    USER: '人员',
-    MULTI_USER: '多人',
-    SINGLE_SELECT: '单选',
-    LONG_TEXT: '长文本',
-  }[type];
 }
 
 function PermissionsTable({
@@ -683,15 +645,15 @@ function PermissionsTable({
           <tbody>
             {response.roles.map((role) => (
               <tr key={role.id} className={editingRoleId === role.id ? 'is-editing' : undefined}>
-                <td><strong>{role.name}</strong><small>{role.code} · {role.locked ? '系统角色' : '自定义角色'}</small></td>
+                <td><strong>{role.name}</strong></td>
                 <td>{role.userCount}</td>
                 {response.actions.map((action) => {
                   const permission = role.permissions.find((item) => item.code === action.code);
                   return <td key={action.code}><span className={permission?.granted ? 'admin-cc-granted' : 'admin-cc-denied'}>{permission?.granted ? '允许' : '禁止'}</span></td>;
                 })}
-                <td>
+                <td className="admin-cc-permission-action">
                   {response.enforcement.canEdit ? (
-                    <button type="button" className="admin-cc-button admin-cc-button--quiet" onClick={() => beginEdit(role)}>编辑</button>
+                    <button type="button" className="admin-cc-button admin-cc-button--quiet admin-cc-role-edit" onClick={() => beginEdit(role)}>编辑</button>
                   ) : <small>仅超级管理员可编辑</small>}
                 </td>
               </tr>
@@ -703,7 +665,7 @@ function PermissionsTable({
       <div className="admin-cc-permission-mobile-list">
         {response.roles.map((role) => (
           <article key={role.id}>
-            <header><div><strong>{role.name}</strong><small>{role.code}</small></div><span>{role.userCount} 名用户</span></header>
+            <header><div><strong>{role.name}</strong></div><span>{role.userCount} 名用户</span></header>
             <div>{role.permissions.map((permission) => <span key={permission.code} className={permission.granted ? 'is-granted' : 'is-denied'}>{permission.label} · {permission.granted ? '允许' : '禁止'}</span>)}</div>
             {response.enforcement.canEdit ? <button type="button" className="admin-cc-button admin-cc-button--primary" onClick={() => beginEdit(role)}>编辑角色权限</button> : null}
           </article>
@@ -758,7 +720,6 @@ function AdminEditDialog({ state, onClose, onSuccess }: { state: Exclude<DialogS
     state.kind === 'nodeAssignment' ||
     state.kind === 'batch' ||
     state.kind === 'organizationUser' ||
-    state.kind === 'department' ||
     state.kind === 'member';
 
   async function submit(event: React.FormEvent) {
@@ -795,16 +756,24 @@ function AdminEditDialog({ state, onClose, onSuccess }: { state: Exclude<DialogS
       } else if (state.kind === 'department') {
         const body = {
           ...(state.mode === 'edit' ? { expectedVersion: readText(state.row?.dataVersion) } : {}),
-          code: String(form.code).trim(), name: String(form.name).trim(),
-          parentId: String(form.parentId) || null, leadUserId: String(form.leadUserId) || null,
-          sortOrder: Number(form.sortOrder), isActive: Boolean(form.isActive), reason: String(form.reason),
+          name: String(form.name).trim(),
+          parentId: String(form.parentId) || null, leadUserName: String(form.leadUserName).trim() || null,
+          isActive: Boolean(form.isActive),
         };
         const departmentId = state.mode === 'edit' ? readText(state.row?.id) : null;
-        if (!preview) setPreview(await previewAdminDepartmentConfiguration(departmentId, body));
-        else {
-          await updateAdminDepartmentConfiguration(departmentId, { ...body, idempotencyKey: crypto.randomUUID(), acknowledgedConsequences: true });
-          await onSuccess(state.mode === 'create' ? '公司部门已新增并写入审计日志。' : '部门名称、层级、负责人和状态等配置已更新。');
-        }
+        await updateAdminDepartmentConfiguration(departmentId, { ...body, idempotencyKey: crypto.randomUUID(), acknowledgedConsequences: true });
+        await onSuccess(state.mode === 'create' ? '公司部门已新增并写入审计日志。' : '部门名称、所属事业部、负责人和状态等配置已更新。');
+      } else if (state.kind === 'departmentDelete') {
+        await deleteAdminDepartments({
+          departments: state.rows.map((row) => ({
+            departmentId: readText(row.id),
+            departmentVersion: readText(row.dataVersion),
+          })),
+          reason: String(form.reason),
+          acknowledgedConsequences: true,
+          idempotencyKey: crypto.randomUUID(),
+        });
+        await onSuccess(`已删除 ${state.rows.length} 个部门，并写入审计日志。`);
       } else if (state.kind === 'member') {
         const projectId = String(form.projectId);
         const userId = String(form.userId);
@@ -959,10 +928,21 @@ function AdminEditDialog({ state, onClose, onSuccess }: { state: Exclude<DialogS
   return (
     <div className="admin-cc-dialog-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
       <section className="admin-cc-dialog" role="dialog" aria-modal="true" aria-labelledby="admin-dialog-title">
-        <header><div><p>受控管理操作</p><h2 id="admin-dialog-title">{title}</h2></div><button type="button" aria-label="关闭" onClick={onClose}>×</button></header>
+        <header><div><p>受控管理操作</p><h2 id="admin-dialog-title">{title}</h2></div><button type="button" aria-label="关闭" onClick={onClose}><CloseIcon /></button></header>
         <form onSubmit={(event) => void submit(event)}>
           <div className="admin-cc-dialog__body">
-            <div className="admin-cc-safety-note"><strong>不会直接修改流程状态</strong><span>服务端将校验权限、数据版本、业务边界和幂等键，并写入审计日志。</span></div>
+            {state.kind === 'departmentDelete' ? (
+              <div className="admin-cc-safety-note admin-cc-safety-note--danger"><strong>部门删除不可撤销</strong><span>服务端会逐个校验版本与全部业务引用；任一部门不满足条件时，本次删除全部拒绝。</span></div>
+            ) : state.kind !== 'department' ? (
+              <div className="admin-cc-safety-note"><strong>不会直接修改流程状态</strong><span>服务端将校验权限、数据版本、业务边界和幂等键，并写入审计日志。</span></div>
+            ) : null}
+            {state.kind === 'departmentDelete' ? (
+              <div className="admin-cc-delete-summary">
+                <strong>将删除以下 {state.rows.length} 个部门</strong>
+                <ul>{state.rows.map((row) => <li key={readText(row.id)}>{readText(row.name)}</li>)}</ul>
+                <p>根部门或仍关联人员、下级部门、项目、工序、分工配置、标准板发放记录的部门不能删除。</p>
+              </div>
+            ) : null}
             {state.kind === 'project' ? <>
               <Field label="项目名称"><input required value={String(form.name)} onChange={(event) => { const value = event.currentTarget.value; setForm((current) => ({ ...current, name: value })); }} /></Field>
               <Field label="车型"><input value={String(form.vehicleModel)} onChange={(event) => { const value = event.currentTarget.value; setForm((current) => ({ ...current, vehicleModel: value })); }} /></Field>
@@ -1072,12 +1052,10 @@ function AdminEditDialog({ state, onClose, onSuccess }: { state: Exclude<DialogS
               <label className="admin-cc-checkbox"><input type="checkbox" checked={Boolean(form.isSystemAdmin)} onChange={(event) => { const checked = event.currentTarget.checked; setForm((current) => ({ ...current, isSystemAdmin: checked })); setPreview(null); }} />授予超级管理员权限</label>
             </> : null}
             {state.kind === 'department' ? <>
-              <div className="admin-cc-assignment-node-summary"><span>{state.mode === 'create' ? '新增组织单元' : '编辑组织单元'}</span><strong>{String(form.name) || '未命名部门'}</strong><small>层级路径由服务端根据上级部门和编码自动维护。</small></div>
-              <Field label="部门编码"><input required value={String(form.code)} onChange={(event) => { const value = event.currentTarget.value.toUpperCase(); setForm((current) => ({ ...current, code: value })); setPreview(null); }} /></Field>
+              <div className="admin-cc-assignment-node-summary"><span>{state.mode === 'create' ? '新增组织单元' : '编辑组织单元'}</span><strong>{String(form.name) || '未命名部门'}</strong></div>
               <Field label="部门名称"><input required value={String(form.name)} onChange={(event) => { const value = event.currentTarget.value; setForm((current) => ({ ...current, name: value })); setPreview(null); }} /></Field>
-              <Field label="上级部门"><select value={String(form.parentId)} onChange={(event) => { const value = event.currentTarget.value; setForm((current) => ({ ...current, parentId: value })); setPreview(null); }}><option value="">根部门</option>{state.response.directory.departments.filter((item) => item.id !== readText(state.row?.id)).map((item) => <option key={item.id} value={item.id}>{item.name} · {item.path}</option>)}</select></Field>
-              <Field label="部门负责人"><select value={String(form.leadUserId)} onChange={(event) => { const value = event.currentTarget.value; setForm((current) => ({ ...current, leadUserId: value })); setPreview(null); }}><option value="">待设置</option>{state.response.directory.users.filter((item) => item.status === 'ACTIVE' && item.departmentId === readText(state.row?.id)).map((item) => <option key={item.id} value={item.id}>{item.name} · {item.username}</option>)}</select></Field>
-              <Field label="显示顺序"><input type="number" value={String(form.sortOrder)} onChange={(event) => { const value = event.currentTarget.value; setForm((current) => ({ ...current, sortOrder: value })); setPreview(null); }} /></Field>
+              <Field label="所属事业部"><select required value={String(form.parentId)} onChange={(event) => { const value = event.currentTarget.value; setForm((current) => ({ ...current, parentId: value })); setPreview(null); }}><option value="" disabled>请选择所属事业部</option>{state.response.directory.businessDivisions.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field>
+              <Field label="部门负责人"><input value={String(form.leadUserName)} onChange={(event) => { const value = event.currentTarget.value; setForm((current) => ({ ...current, leadUserName: value })); setPreview(null); }} placeholder="输入系统用户姓名；留空表示待设置" autoComplete="off" /></Field>
               <label className="admin-cc-checkbox"><input type="checkbox" checked={Boolean(form.isActive)} onChange={(event) => { const checked = event.currentTarget.checked; setForm((current) => ({ ...current, isActive: checked })); setPreview(null); }} />启用此部门</label>
             </> : null}
             {state.kind === 'member' ? <>
@@ -1096,11 +1074,11 @@ function AdminEditDialog({ state, onClose, onSuccess }: { state: Exclude<DialogS
                 {inProgressConfirmationRows.length ? <fieldset className="admin-cc-person-field"><legend>逐项确认进行中任务转交</legend><div>{inProgressConfirmationRows.map((item) => <label key={item.id} className={readStringArray(form.confirmedInProgressTaskIds).includes(item.id) ? 'is-selected' : undefined}><input type="checkbox" checked={readStringArray(form.confirmedInProgressTaskIds).includes(item.id)} onChange={(event) => { const current = readStringArray(form.confirmedInProgressTaskIds); const checked = event.currentTarget.checked; setForm((draft) => ({ ...draft, confirmedInProgressTaskIds: checked ? [...new Set([...current, item.id])] : current.filter((id) => id !== item.id) })); setPreview(null); }} /><span>{item.label}<small>{item.id}</small></span></label>)}</div></fieldset> : null}
               </>}
             </> : null}
-            <Field label="变更原因"><textarea required minLength={3} value={String(form.reason)} onChange={(event) => { const value = event.currentTarget.value; setForm((current) => ({ ...current, reason: value })); if (isPreviewCommand) setPreview(null); }} placeholder="说明业务原因和预期结果" /></Field>
+            {state.kind !== 'department' ? <Field label="变更原因"><textarea required minLength={3} value={String(form.reason)} onChange={(event) => { const value = event.currentTarget.value; setForm((current) => ({ ...current, reason: value })); if (isPreviewCommand) setPreview(null); }} placeholder="说明业务原因和预期结果" /></Field> : null}
             {preview ? <div className="admin-cc-preview"><strong>影响预览</strong><dl>{previewRows(preview).map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl><p>确认后将按以上服务端计算结果执行；前端不会提交下一节点或状态。</p></div> : null}
             {error ? <div className="admin-cc-alert admin-cc-alert--error">{error}</div> : null}
           </div>
-          <footer><button type="button" className="admin-cc-button admin-cc-button--quiet" onClick={onClose}>取消</button><button type="submit" className="admin-cc-button admin-cc-button--primary" disabled={busy || Boolean(isPreviewCommand && preview && 'canApply' in preview && !readBoolean(preview.canApply))}>{busy ? '处理中…' : isPreviewCommand && !preview ? '查看影响预览' : isPreviewCommand && preview && 'canApply' in preview && !readBoolean(preview.canApply) ? '条件未满足' : isPreviewCommand ? '确认执行变更' : '确认保存'}</button></footer>
+          <footer><button type="button" className="admin-cc-button admin-cc-button--quiet" onClick={onClose}>取消</button><button type="submit" className={state.kind === 'departmentDelete' ? 'admin-cc-button admin-cc-button--danger' : 'admin-cc-button admin-cc-button--primary'} disabled={busy || Boolean(isPreviewCommand && preview && 'canApply' in preview && !readBoolean(preview.canApply))}>{busy ? '处理中…' : state.kind === 'departmentDelete' ? '确认删除部门' : isPreviewCommand && !preview ? '查看影响预览' : isPreviewCommand && preview && 'canApply' in preview && !readBoolean(preview.canApply) ? '条件未满足' : isPreviewCommand ? '确认执行变更' : '确认保存'}</button></footer>
         </form>
       </section>
     </div>
@@ -1113,7 +1091,7 @@ function TaskPresets({ value, onChange }: { value: string; onChange: (value: str
 }
 
 function OrganizationTabs({ value, onChange }: { value: 'users' | 'departments' | 'members'; onChange: (value: 'users' | 'departments' | 'members') => void }) {
-  return <div className="admin-cc-presets" role="tablist" aria-label="组织数据类型">{([['users', '系统用户'], ['departments', '公司部门'], ['members', '项目成员']] as const).map(([key, label]) => <button key={key} type="button" role="tab" aria-selected={value === key} className={value === key ? 'is-active' : undefined} onClick={() => onChange(key)}>{label}</button>)}</div>;
+  return <div className="admin-cc-presets" role="tablist" aria-label="组织数据类型">{([['departments', '公司部门'], ['users', '系统用户'], ['members', '项目成员']] as const).map(([key, label]) => <button key={key} type="button" role="tab" aria-selected={value === key} className={value === key ? 'is-active' : undefined} onClick={() => onChange(key)}>{label}</button>)}</div>;
 }
 
 function Pagination({ page, totalPages, total, onChange }: { page: number; totalPages: number; total: number; onChange: (page: number) => void }) {
@@ -1200,6 +1178,7 @@ function statusLabel(value: string) {
     RETURNED: '已退回',
     UNASSIGNED: '待分配',
     ASSIGNED: '已分配',
+    SUGGESTED: '建议匹配',
     MATCHED: '已匹配',
     DRAFT: '草稿',
     PUBLISHED: '已发布',
@@ -1266,7 +1245,22 @@ function initialForm(state: Exclude<DialogState, null>): Record<string, string |
     const roles = readArray(state.row?.roles).map((role) => readNestedText(role, 'id')).filter(Boolean);
     return { username: readText(state.row?.username), name: readText(state.row?.name), email: readText(state.row?.email), mobile: readText(state.row?.mobile), departmentId: readNestedText(state.row?.department, 'id'), status: readText(state.row?.status) || 'ACTIVE', isSystemAdmin: readBoolean(state.row?.isSystemAdmin), roleIds: roles, reason: '' };
   }
-  if (state.kind === 'department') return { code: readText(state.row?.code), name: readText(state.row?.name), parentId: readNestedText(state.row?.parent, 'id'), leadUserId: readNestedText(state.row?.departmentLead, 'id'), sortOrder: state.mode === 'create' ? '0' : String(readNumber(state.row?.sortOrder)), isActive: state.mode === 'create' ? true : readBoolean(state.row?.isActive), reason: '' };
+  if (state.kind === 'department') {
+    const currentParentId = readNestedText(state.row?.parent, 'id');
+    const governedParentId = state.response.directory.businessDivisions.some(
+      (division) => division.id === currentParentId,
+    )
+      ? currentParentId
+      : '';
+    return {
+      name: readText(state.row?.name),
+      parentId: governedParentId,
+      leadUserName: readNestedText(state.row?.departmentLead, 'name'),
+      isActive:
+        state.mode === 'create' ? true : readBoolean(state.row?.isActive),
+    };
+  }
+  if (state.kind === 'departmentDelete') return { reason: '' };
   if (state.kind === 'member') return { projectId: readNestedText(state.row?.project, 'id'), userId: readNestedText(state.row?.user, 'id'), memberTypes: state.mode === 'create' ? ['MEMBER'] : readStringArray(state.row?.memberTypes), responsibility: readText(state.row?.responsibility), isDepartmentLead: readBoolean(state.row?.isDepartmentLead), isDefaultExecutor: readBoolean(state.row?.isDefaultExecutor), transferToUserId: '', replacementOwnerUserId: '', confirmedInProgressTaskIds: [], reason: '' };
   return { reason: '' };
 }
@@ -1278,6 +1272,7 @@ function dialogTitle(state: Exclude<DialogState, null>) {
   if (state.kind === 'batch') return state.mode === 'schedule' ? `批量调整 ${state.rows.length} 条工序计划` : `批量调整 ${state.rows.length} 条工序分工`;
   if (state.kind === 'organizationUser') return state.mode === 'create' ? '新增系统用户' : `编辑系统用户：${readText(state.row?.name)}`;
   if (state.kind === 'department') return state.mode === 'create' ? '新增公司部门' : `编辑公司部门：${readText(state.row?.name)}`;
+  if (state.kind === 'departmentDelete') return `删除 ${state.rows.length} 个公司部门`;
   if (state.kind === 'member') return state.mode === 'create' ? '添加项目成员' : state.mode === 'remove' ? `移出项目成员：${readNestedText(state.row?.user, 'name')}` : `编辑项目成员：${readNestedText(state.row?.user, 'name')}`;
   return '后台配置';
 }

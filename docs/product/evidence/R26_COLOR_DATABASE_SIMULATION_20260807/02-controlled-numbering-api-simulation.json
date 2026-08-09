@@ -1,0 +1,1037 @@
+{
+  "generatedAt": "2026-08-07T12:02:51.246Z",
+  "apiBaseUrl": "http://localhost:3201/api",
+  "baseline": {
+    "generatedAt": "2026-08-07T12:02:49.711Z",
+    "page": 1,
+    "pageSize": 12,
+    "total": 2,
+    "totalPages": 1,
+    "summary": {
+      "archivedColors": 2,
+      "materialCount": 2,
+      "incompleteColors": 2,
+      "newMaterialsThisMonth": 2
+    },
+    "facets": {
+      "vehicleModels": [
+        "轻卡 R20 测试车型"
+      ],
+      "colorTypes": [],
+      "statuses": [
+        "DRAFT"
+      ],
+      "years": [
+        2026
+      ]
+    },
+    "items": [
+      {
+        "id": "cmsij3mdy0047qr01b8looo8h",
+        "name": "UAT-R20-正常流程-深海蓝-20260807135307",
+        "code": "R26-UAT-1786081988039-FBB59C",
+        "displayColor": null,
+        "colorType": null,
+        "status": "DRAFT",
+        "vehicleModels": [
+          "轻卡 R20 测试车型"
+        ],
+        "suppliers": [],
+        "projects": [
+          {
+            "id": "cmsij3loz002yqr01so12y0g6",
+            "code": "R20-20260807135307-A95AF5",
+            "name": "UAT-R20-正常流程-深海蓝-20260807135307",
+            "status": "IN_PROGRESS"
+          }
+        ],
+        "firstProject": {
+          "id": "cmsij3loz002yqr01so12y0g6",
+          "code": "R20-20260807135307-A95AF5",
+          "name": "UAT-R20-正常流程-深海蓝-20260807135307"
+        },
+        "materialCount": 1,
+        "coveredSteps": 1,
+        "completenessPercent": 6,
+        "updatedAt": "2026-08-07T05:53:08.375Z",
+        "createdAt": "2026-08-07T05:53:08.375Z"
+      },
+      {
+        "id": "cmsiisu5k002bqr01pmpveeh5",
+        "name": "UAT-R20-正常流程-深海蓝-20260807134443",
+        "code": "R26-UAT-1786081484809-5E2149",
+        "displayColor": null,
+        "colorType": null,
+        "status": "DRAFT",
+        "vehicleModels": [
+          "轻卡 R20 测试车型"
+        ],
+        "suppliers": [],
+        "projects": [
+          {
+            "id": "cmsiist8i000eqr016jqal093",
+            "code": "R20-20260807134443-CE4D39",
+            "name": "UAT-R20-正常流程-深海蓝-20260807134443",
+            "status": "IN_PROGRESS"
+          }
+        ],
+        "firstProject": {
+          "id": "cmsiist8i000eqr016jqal093",
+          "code": "R20-20260807134443-CE4D39",
+          "name": "UAT-R20-正常流程-深海蓝-20260807134443"
+        },
+        "materialCount": 1,
+        "coveredSteps": 1,
+        "completenessPercent": 6,
+        "updatedAt": "2026-08-07T05:44:45.225Z",
+        "createdAt": "2026-08-07T05:44:45.225Z"
+      }
+    ]
+  },
+  "positive": {
+    "project": {
+      "id": "cmsiwb1ns007fqr0147gj6k3c",
+      "code": "R20-20260807200249-70880F",
+      "name": "UAT-R20-正常流程-深海蓝-20260807200249",
+      "description": "R20 真实业务场景自动化测试项目，可归档。基准项目：UAT-R20-正常流程-深海蓝",
+      "status": "IN_PROGRESS",
+      "priority": "MEDIUM",
+      "riskLevel": "MEDIUM",
+      "currentNodeCode": "PROJECT_INITIATION",
+      "currentNodeName": "反映市场需求",
+      "targetDate": "2027-05-19T00:00:00.000Z",
+      "marketRegion": "R20 自动化测试客户",
+      "colorMarketingUnit": null,
+      "paintSupplier": null,
+      "vehicleModel": "轻卡 R20 测试车型",
+      "ownerUserId": "cmsiissqj0003qr019vtq7inn",
+      "ownerName": "R20 系统管理员",
+      "owningDepartmentId": "cmsiissqb0001qr016y27mjdm",
+      "owningDepartmentName": "本地开发",
+      "plannedStartDate": "2026-05-19T00:00:00.000Z",
+      "plannedEndDate": "2027-05-19T00:00:00.000Z",
+      "actualStartDate": null,
+      "actualEndDate": null,
+      "closedAt": null,
+      "createdAt": "2026-08-07T12:02:49.768Z",
+      "updatedAt": "2026-08-07T12:02:49.768Z",
+      "memberCount": 1,
+      "memberAssignmentVersion": 1,
+      "currentWorkflowInstance": {
+        "id": "cmsiwb1ov007iqr01z0mcoqf3",
+        "instanceNo": "WF-1786104169806-F05A031E",
+        "status": "RUNNING",
+        "versionNo": 1,
+        "currentNodeCode": "PROJECT_INITIATION",
+        "currentNodeName": "反映市场需求",
+        "startedAt": "2026-08-07T12:02:49.787Z"
+      },
+      "members": [
+        {
+          "id": "cmsiwb1o2007gqr013xruakls",
+          "userId": "cmsiissqj0003qr019vtq7inn",
+          "name": "R20 系统管理员",
+          "email": "r20_admin@local.dev",
+          "departmentName": "本地开发",
+          "memberType": "OWNER",
+          "title": "项目负责人",
+          "isPrimary": true,
+          "roleCodes": [
+            "admin"
+          ],
+          "createdAt": "2026-08-07T12:02:49.778Z"
+        }
+      ]
+    },
+    "taskId": "cmsiwb1zq008eqr010klfe939",
+    "taskVersion": "2026-08-07T12:02:50.198Z",
+    "colorNumber": "R26-UAT-1786104170349-6B17A8",
+    "proof": {
+      "id": "cmsiwb27f008kqr0184cxtxe0",
+      "projectId": "cmsiwb1ns007fqr0147gj6k3c",
+      "entityType": "WORKFLOW_TASK",
+      "entityId": "cmsiwb1zq008eqr010klfe939",
+      "entityLabel": "05 / 新颜色取号",
+      "targetType": "WORKFLOW_TASK",
+      "targetId": "cmsiwb1zq008eqr010klfe939",
+      "fileName": "_05________-cmsiwb1ns007fqr0147gj6k3c.pdf",
+      "originalFileName": "第05步颜色编号确认单-cmsiwb1ns007fqr0147gj6k3c.pdf",
+      "fileExtension": ".pdf",
+      "mimeType": "application/pdf",
+      "contentType": "application/pdf",
+      "fileSize": 48,
+      "bucket": "feishu-timeline-staging",
+      "storageKey": "cmsiwb1ns007fqr0147gj6k3c/workflow_task/cmsiwb1zq008eqr010klfe939/1786104170472-252ea49a-6ffe-44b5-9e1b-216cd0794a5f.pdf",
+      "objectKey": "cmsiwb1ns007fqr0147gj6k3c/workflow_task/cmsiwb1zq008eqr010klfe939/1786104170472-252ea49a-6ffe-44b5-9e1b-216cd0794a5f.pdf",
+      "fileUrl": "/attachments/cmsiwb27f008kqr0184cxtxe0/content",
+      "materialType": "颜色编号确认单",
+      "versionNo": 1,
+      "replacesAttachmentId": null,
+      "contentUrl": "/attachments/cmsiwb27f008kqr0184cxtxe0/content",
+      "downloadUrl": "/projects/cmsiwb1ns007fqr0147gj6k3c/attachments/cmsiwb27f008kqr0184cxtxe0/download",
+      "previewUrl": "/projects/cmsiwb1ns007fqr0147gj6k3c/attachments/cmsiwb27f008kqr0184cxtxe0/download?disposition=inline",
+      "canPreview": true,
+      "uploadedById": "cmsiissqj0003qr019vtq7inn",
+      "uploadedByName": "R20 系统管理员",
+      "uploadedAt": "2026-08-07T12:02:50.474Z",
+      "isDeleted": false,
+      "deletedAt": null,
+      "deletedById": null,
+      "deletedByName": null,
+      "createdAt": "2026-08-07T12:02:50.475Z",
+      "updatedAt": "2026-08-07T12:02:50.479Z"
+    },
+    "missingNumber": {
+      "gate": "R26_GATE3C1",
+      "writePerformed": false,
+      "canComplete": false,
+      "blockingReasons": [
+        "缺少必交材料：颜色编号确认单",
+        "请填写第 05 步取得的颜色编号。",
+        "缺少可关联的颜色编号确认单。"
+      ],
+      "currentTask": {
+        "id": "cmsiwb1zq008eqr010klfe939",
+        "projectId": "cmsiwb1ns007fqr0147gj6k3c",
+        "nodeCode": "COLOR_NUMBERING",
+        "stepNumber": 5,
+        "stepName": "新颜色取号",
+        "status": "READY",
+        "taskVersion": "2026-08-07T12:02:50.198Z",
+        "owner": {
+          "id": "cmsiissqj0003qr019vtq7inn",
+          "name": "R20 系统管理员"
+        }
+      },
+      "checks": [
+        {
+          "code": "REQUIRED_FORM",
+          "label": "必填表单已完成",
+          "passed": true,
+          "details": []
+        },
+        {
+          "code": "REQUIRED_MATERIALS",
+          "label": "必交材料已提交",
+          "passed": false,
+          "details": [
+            "颜色编号确认单"
+          ]
+        },
+        {
+          "code": "PERMISSION",
+          "label": "当前用户有完成权限",
+          "passed": true,
+          "details": []
+        },
+        {
+          "code": "ACTIVE_TASK",
+          "label": "当前任务仍为有效活动任务",
+          "passed": true,
+          "details": []
+        },
+        {
+          "code": "OPEN_BLOCKERS",
+          "label": "当前不存在未解除阻塞",
+          "passed": true,
+          "details": []
+        },
+        {
+          "code": "DOMAIN_RECORDS",
+          "label": "工序业务记录满足完成要求",
+          "passed": true,
+          "details": []
+        },
+        {
+          "code": "COLOR_NUMBER",
+          "label": "颜色编号已填写且唯一",
+          "passed": false,
+          "details": [
+            "颜色编号为必填项"
+          ]
+        },
+        {
+          "code": "COLOR_NUMBERING_MATERIAL",
+          "label": "颜色编号确认材料已关联",
+          "passed": false,
+          "details": [
+            "颜色编号确认单"
+          ]
+        }
+      ],
+      "openBlockers": [],
+      "nextTasks": [],
+      "assignmentPreview": [],
+      "workflowVersion": 1,
+      "availableActions": [
+        {
+          "action": "COMPLETE",
+          "label": "确认完成并推进"
+        }
+      ],
+      "colorNumbering": {
+        "required": true,
+        "submittedCode": null,
+        "normalizedCode": null,
+        "targetColor": null,
+        "duplicateColor": null,
+        "confirmationAttachment": null,
+        "numberDetails": [
+          "颜色编号为必填项"
+        ],
+        "blockingReasons": [
+          "请填写第 05 步取得的颜色编号。",
+          "缺少可关联的颜色编号确认单。"
+        ]
+      },
+      "notice": "下一任务及负责人由现有工作流状态机和 Gate 3A 服务端分配规则计算。"
+    },
+    "invalidNumber": {
+      "gate": "R26_GATE3C1",
+      "writePerformed": false,
+      "canComplete": false,
+      "blockingReasons": [
+        "缺少必交材料：颜色编号确认单",
+        "颜色编号只能包含文字、数字、英文句点、短横线、下划线或斜杠，且不能包含空格。",
+        "缺少可关联的颜色编号确认单。"
+      ],
+      "currentTask": {
+        "id": "cmsiwb1zq008eqr010klfe939",
+        "projectId": "cmsiwb1ns007fqr0147gj6k3c",
+        "nodeCode": "COLOR_NUMBERING",
+        "stepNumber": 5,
+        "stepName": "新颜色取号",
+        "status": "READY",
+        "taskVersion": "2026-08-07T12:02:50.198Z",
+        "owner": {
+          "id": "cmsiissqj0003qr019vtq7inn",
+          "name": "R20 系统管理员"
+        }
+      },
+      "checks": [
+        {
+          "code": "REQUIRED_FORM",
+          "label": "必填表单已完成",
+          "passed": true,
+          "details": []
+        },
+        {
+          "code": "REQUIRED_MATERIALS",
+          "label": "必交材料已提交",
+          "passed": false,
+          "details": [
+            "颜色编号确认单"
+          ]
+        },
+        {
+          "code": "PERMISSION",
+          "label": "当前用户有完成权限",
+          "passed": true,
+          "details": []
+        },
+        {
+          "code": "ACTIVE_TASK",
+          "label": "当前任务仍为有效活动任务",
+          "passed": true,
+          "details": []
+        },
+        {
+          "code": "OPEN_BLOCKERS",
+          "label": "当前不存在未解除阻塞",
+          "passed": true,
+          "details": []
+        },
+        {
+          "code": "DOMAIN_RECORDS",
+          "label": "工序业务记录满足完成要求",
+          "passed": true,
+          "details": []
+        },
+        {
+          "code": "COLOR_NUMBER",
+          "label": "颜色编号已填写且唯一",
+          "passed": false,
+          "details": [
+            "编号格式不合法"
+          ]
+        },
+        {
+          "code": "COLOR_NUMBERING_MATERIAL",
+          "label": "颜色编号确认材料已关联",
+          "passed": false,
+          "details": [
+            "颜色编号确认单"
+          ]
+        }
+      ],
+      "openBlockers": [],
+      "nextTasks": [],
+      "assignmentPreview": [],
+      "workflowVersion": 1,
+      "availableActions": [
+        {
+          "action": "COMPLETE",
+          "label": "确认完成并推进"
+        }
+      ],
+      "colorNumbering": {
+        "required": true,
+        "submittedCode": "INVALID COLOR NUMBER",
+        "normalizedCode": null,
+        "targetColor": null,
+        "duplicateColor": null,
+        "confirmationAttachment": null,
+        "numberDetails": [
+          "编号格式不合法"
+        ],
+        "blockingReasons": [
+          "颜色编号只能包含文字、数字、英文句点、短横线、下划线或斜杠，且不能包含空格。",
+          "缺少可关联的颜色编号确认单。"
+        ]
+      },
+      "notice": "下一任务及负责人由现有工作流状态机和 Gate 3A 服务端分配规则计算。"
+    },
+    "missingMaterial": {
+      "gate": "R26_GATE3C1",
+      "writePerformed": false,
+      "canComplete": false,
+      "blockingReasons": [
+        "缺少必交材料：颜色编号确认单",
+        "缺少可关联的颜色编号确认单。"
+      ],
+      "currentTask": {
+        "id": "cmsiwb1zq008eqr010klfe939",
+        "projectId": "cmsiwb1ns007fqr0147gj6k3c",
+        "nodeCode": "COLOR_NUMBERING",
+        "stepNumber": 5,
+        "stepName": "新颜色取号",
+        "status": "READY",
+        "taskVersion": "2026-08-07T12:02:50.198Z",
+        "owner": {
+          "id": "cmsiissqj0003qr019vtq7inn",
+          "name": "R20 系统管理员"
+        }
+      },
+      "checks": [
+        {
+          "code": "REQUIRED_FORM",
+          "label": "必填表单已完成",
+          "passed": true,
+          "details": []
+        },
+        {
+          "code": "REQUIRED_MATERIALS",
+          "label": "必交材料已提交",
+          "passed": false,
+          "details": [
+            "颜色编号确认单"
+          ]
+        },
+        {
+          "code": "PERMISSION",
+          "label": "当前用户有完成权限",
+          "passed": true,
+          "details": []
+        },
+        {
+          "code": "ACTIVE_TASK",
+          "label": "当前任务仍为有效活动任务",
+          "passed": true,
+          "details": []
+        },
+        {
+          "code": "OPEN_BLOCKERS",
+          "label": "当前不存在未解除阻塞",
+          "passed": true,
+          "details": []
+        },
+        {
+          "code": "DOMAIN_RECORDS",
+          "label": "工序业务记录满足完成要求",
+          "passed": true,
+          "details": []
+        },
+        {
+          "code": "COLOR_NUMBER",
+          "label": "颜色编号已填写且唯一",
+          "passed": true,
+          "details": []
+        },
+        {
+          "code": "COLOR_NUMBERING_MATERIAL",
+          "label": "颜色编号确认材料已关联",
+          "passed": false,
+          "details": [
+            "颜色编号确认单"
+          ]
+        }
+      ],
+      "openBlockers": [],
+      "nextTasks": [],
+      "assignmentPreview": [],
+      "workflowVersion": 1,
+      "availableActions": [
+        {
+          "action": "COMPLETE",
+          "label": "确认完成并推进"
+        }
+      ],
+      "colorNumbering": {
+        "required": true,
+        "submittedCode": "R26-UAT-1786104170349-6B17A8",
+        "normalizedCode": "R26-UAT-1786104170349-6B17A8",
+        "targetColor": null,
+        "duplicateColor": null,
+        "confirmationAttachment": null,
+        "numberDetails": [],
+        "blockingReasons": [
+          "缺少可关联的颜色编号确认单。"
+        ]
+      },
+      "notice": "下一任务及负责人由现有工作流状态机和 Gate 3A 服务端分配规则计算。"
+    },
+    "ready": {
+      "gate": "R26_GATE3C1",
+      "writePerformed": false,
+      "canComplete": true,
+      "blockingReasons": [],
+      "currentTask": {
+        "id": "cmsiwb1zq008eqr010klfe939",
+        "projectId": "cmsiwb1ns007fqr0147gj6k3c",
+        "nodeCode": "COLOR_NUMBERING",
+        "stepNumber": 5,
+        "stepName": "新颜色取号",
+        "status": "READY",
+        "taskVersion": "2026-08-07T12:02:50.198Z",
+        "owner": {
+          "id": "cmsiissqj0003qr019vtq7inn",
+          "name": "R20 系统管理员"
+        }
+      },
+      "checks": [
+        {
+          "code": "REQUIRED_FORM",
+          "label": "必填表单已完成",
+          "passed": true,
+          "details": []
+        },
+        {
+          "code": "REQUIRED_MATERIALS",
+          "label": "必交材料已提交",
+          "passed": true,
+          "details": []
+        },
+        {
+          "code": "PERMISSION",
+          "label": "当前用户有完成权限",
+          "passed": true,
+          "details": []
+        },
+        {
+          "code": "ACTIVE_TASK",
+          "label": "当前任务仍为有效活动任务",
+          "passed": true,
+          "details": []
+        },
+        {
+          "code": "OPEN_BLOCKERS",
+          "label": "当前不存在未解除阻塞",
+          "passed": true,
+          "details": []
+        },
+        {
+          "code": "DOMAIN_RECORDS",
+          "label": "工序业务记录满足完成要求",
+          "passed": true,
+          "details": []
+        },
+        {
+          "code": "COLOR_NUMBER",
+          "label": "颜色编号已填写且唯一",
+          "passed": true,
+          "details": []
+        },
+        {
+          "code": "COLOR_NUMBERING_MATERIAL",
+          "label": "颜色编号确认材料已关联",
+          "passed": true,
+          "details": [
+            "将关联：第05步颜色编号确认单-cmsiwb1ns007fqr0147gj6k3c.pdf"
+          ]
+        }
+      ],
+      "openBlockers": [],
+      "nextTasks": [],
+      "assignmentPreview": [],
+      "workflowVersion": 1,
+      "availableActions": [
+        {
+          "action": "COMPLETE",
+          "label": "确认完成并推进"
+        }
+      ],
+      "colorNumbering": {
+        "required": true,
+        "submittedCode": "R26-UAT-1786104170349-6B17A8",
+        "normalizedCode": "R26-UAT-1786104170349-6B17A8",
+        "targetColor": null,
+        "duplicateColor": null,
+        "confirmationAttachment": {
+          "id": "cmsiwb27f008kqr0184cxtxe0",
+          "fileName": "第05步颜色编号确认单-cmsiwb1ns007fqr0147gj6k3c.pdf",
+          "materialType": "颜色编号确认单",
+          "uploadedAt": "2026-08-07T12:02:50.474Z"
+        },
+        "numberDetails": [],
+        "blockingReasons": []
+      },
+      "notice": "下一任务及负责人由现有工作流状态机和 Gate 3A 服务端分配规则计算。"
+    },
+    "completion": {
+      "action": "R26_ORDINARY_TASK_COMPLETED",
+      "requestId": "r26-color-ae93b395-6d52-41cb-be09-9a8ab1132ed5",
+      "idempotencyKey": "r26-color-ae93b395-6d52-41cb-be09-9a8ab1132ed5",
+      "idempotentReplay": false,
+      "projectId": "cmsiwb1ns007fqr0147gj6k3c",
+      "completedTask": {
+        "id": "cmsiwb1zq008eqr010klfe939",
+        "nodeCode": "COLOR_NUMBERING",
+        "stepNumber": 5,
+        "stepName": "新颜色取号",
+        "status": "COMPLETED",
+        "completedAt": "2026-08-07T12:02:50.613Z"
+      },
+      "createdTasks": [],
+      "activatedTasks": [],
+      "projectCurrentNodeCode": "PAINT_PROCUREMENT",
+      "assignmentSummary": [],
+      "activity": {
+        "id": "cmsiwb2c4008uqr010nq3b4uj",
+        "summary": "完成工序 新颜色取号，系统已按冻结拓扑推进。",
+        "createdAt": "2026-08-07T12:02:50.644Z"
+      },
+      "workflowVersion": 2,
+      "colorNumbering": {
+        "colorId": "cmsiwb2au008oqr01kmxvkpnk",
+        "code": "R26-UAT-1786104170349-6B17A8",
+        "numberingTaskId": "cmsiwb1zq008eqr010klfe939",
+        "numberedBy": {
+          "id": "cmsiissqj0003qr019vtq7inn",
+          "name": "R20 系统管理员"
+        },
+        "numberedAt": "2026-08-07T12:02:50.598Z",
+        "confirmationAttachment": {
+          "id": "cmsiwb27f008kqr0184cxtxe0",
+          "fileName": "第05步颜色编号确认单-cmsiwb1ns007fqr0147gj6k3c.pdf",
+          "materialType": "颜色编号确认单",
+          "uploadedAt": "2026-08-07T12:02:50.474Z"
+        }
+      }
+    },
+    "idempotentReplayMatched": true
+  },
+  "duplicate": {
+    "project": {
+      "id": "cmsiwb2jg008yqr01mpa24qmn",
+      "code": "R20-20260807200250-C63F43",
+      "name": "UAT-R20-非阻塞测试-极光白-20260807200250",
+      "description": "R20 真实业务场景自动化测试项目，可归档。基准项目：UAT-R20-非阻塞测试-极光白",
+      "status": "IN_PROGRESS",
+      "priority": "MEDIUM",
+      "riskLevel": "MEDIUM",
+      "currentNodeCode": "PROJECT_INITIATION",
+      "currentNodeName": "反映市场需求",
+      "targetDate": "2027-05-19T00:00:00.000Z",
+      "marketRegion": "R20 自动化测试客户",
+      "colorMarketingUnit": null,
+      "paintSupplier": null,
+      "vehicleModel": "轻卡 R20 测试车型",
+      "ownerUserId": "cmsiissqj0003qr019vtq7inn",
+      "ownerName": "R20 系统管理员",
+      "owningDepartmentId": "cmsiissqb0001qr016y27mjdm",
+      "owningDepartmentName": "本地开发",
+      "plannedStartDate": "2026-05-19T00:00:00.000Z",
+      "plannedEndDate": "2027-05-19T00:00:00.000Z",
+      "actualStartDate": null,
+      "actualEndDate": null,
+      "closedAt": null,
+      "createdAt": "2026-08-07T12:02:50.908Z",
+      "updatedAt": "2026-08-07T12:02:50.908Z",
+      "memberCount": 1,
+      "memberAssignmentVersion": 1,
+      "currentWorkflowInstance": {
+        "id": "cmsiwb2jn0091qr01xzj1tes6",
+        "instanceNo": "WF-1786104170914-D82E76A2",
+        "status": "RUNNING",
+        "versionNo": 1,
+        "currentNodeCode": "PROJECT_INITIATION",
+        "currentNodeName": "反映市场需求",
+        "startedAt": "2026-08-07T12:02:50.911Z"
+      },
+      "members": [
+        {
+          "id": "cmsiwb2ji008zqr019q8w1vw6",
+          "userId": "cmsiissqj0003qr019vtq7inn",
+          "name": "R20 系统管理员",
+          "email": "r20_admin@local.dev",
+          "departmentName": "本地开发",
+          "memberType": "OWNER",
+          "title": "项目负责人",
+          "isPrimary": true,
+          "roleCodes": [
+            "admin"
+          ],
+          "createdAt": "2026-08-07T12:02:50.910Z"
+        }
+      ]
+    },
+    "taskId": "cmsiwb2o4009xqr011ztt4y96",
+    "proof": {
+      "id": "cmsiwb2pr00a3qr01p5n0vt4x",
+      "projectId": "cmsiwb2jg008yqr01mpa24qmn",
+      "entityType": "WORKFLOW_TASK",
+      "entityId": "cmsiwb2o4009xqr011ztt4y96",
+      "entityLabel": "05 / 新颜色取号",
+      "targetType": "WORKFLOW_TASK",
+      "targetId": "cmsiwb2o4009xqr011ztt4y96",
+      "fileName": "_05________-cmsiwb2jg008yqr01mpa24qmn.pdf",
+      "originalFileName": "第05步颜色编号确认单-cmsiwb2jg008yqr01mpa24qmn.pdf",
+      "fileExtension": ".pdf",
+      "mimeType": "application/pdf",
+      "contentType": "application/pdf",
+      "fileSize": 48,
+      "bucket": "feishu-timeline-staging",
+      "storageKey": "cmsiwb2jg008yqr01mpa24qmn/workflow_task/cmsiwb2o4009xqr011ztt4y96/1786104171134-3ff61067-e5f3-428e-8470-5d04be67ada9.pdf",
+      "objectKey": "cmsiwb2jg008yqr01mpa24qmn/workflow_task/cmsiwb2o4009xqr011ztt4y96/1786104171134-3ff61067-e5f3-428e-8470-5d04be67ada9.pdf",
+      "fileUrl": "/attachments/cmsiwb2pr00a3qr01p5n0vt4x/content",
+      "materialType": "颜色编号确认单",
+      "versionNo": 1,
+      "replacesAttachmentId": null,
+      "contentUrl": "/attachments/cmsiwb2pr00a3qr01p5n0vt4x/content",
+      "downloadUrl": "/projects/cmsiwb2jg008yqr01mpa24qmn/attachments/cmsiwb2pr00a3qr01p5n0vt4x/download",
+      "previewUrl": "/projects/cmsiwb2jg008yqr01mpa24qmn/attachments/cmsiwb2pr00a3qr01p5n0vt4x/download?disposition=inline",
+      "canPreview": true,
+      "uploadedById": "cmsiissqj0003qr019vtq7inn",
+      "uploadedByName": "R20 系统管理员",
+      "uploadedAt": "2026-08-07T12:02:51.135Z",
+      "isDeleted": false,
+      "deletedAt": null,
+      "deletedById": null,
+      "deletedByName": null,
+      "createdAt": "2026-08-07T12:02:51.135Z",
+      "updatedAt": "2026-08-07T12:02:51.141Z"
+    },
+    "preview": {
+      "gate": "R26_GATE3C1",
+      "writePerformed": false,
+      "canComplete": false,
+      "blockingReasons": [
+        "颜色编号“R26-UAT-1786104170349-6B17A8”已被颜色“UAT-R20-正常流程-深海蓝-20260807200249”使用。"
+      ],
+      "currentTask": {
+        "id": "cmsiwb2o4009xqr011ztt4y96",
+        "projectId": "cmsiwb2jg008yqr01mpa24qmn",
+        "nodeCode": "COLOR_NUMBERING",
+        "stepNumber": 5,
+        "stepName": "新颜色取号",
+        "status": "READY",
+        "taskVersion": "2026-08-07T12:02:51.076Z",
+        "owner": {
+          "id": "cmsiissqj0003qr019vtq7inn",
+          "name": "R20 系统管理员"
+        }
+      },
+      "checks": [
+        {
+          "code": "REQUIRED_FORM",
+          "label": "必填表单已完成",
+          "passed": true,
+          "details": []
+        },
+        {
+          "code": "REQUIRED_MATERIALS",
+          "label": "必交材料已提交",
+          "passed": true,
+          "details": []
+        },
+        {
+          "code": "PERMISSION",
+          "label": "当前用户有完成权限",
+          "passed": true,
+          "details": []
+        },
+        {
+          "code": "ACTIVE_TASK",
+          "label": "当前任务仍为有效活动任务",
+          "passed": true,
+          "details": []
+        },
+        {
+          "code": "OPEN_BLOCKERS",
+          "label": "当前不存在未解除阻塞",
+          "passed": true,
+          "details": []
+        },
+        {
+          "code": "DOMAIN_RECORDS",
+          "label": "工序业务记录满足完成要求",
+          "passed": true,
+          "details": []
+        },
+        {
+          "code": "COLOR_NUMBER",
+          "label": "颜色编号已填写且唯一",
+          "passed": false,
+          "details": [
+            "已关联其他颜色：UAT-R20-正常流程-深海蓝-20260807200249"
+          ]
+        },
+        {
+          "code": "COLOR_NUMBERING_MATERIAL",
+          "label": "颜色编号确认材料已关联",
+          "passed": true,
+          "details": [
+            "将关联：第05步颜色编号确认单-cmsiwb2jg008yqr01mpa24qmn.pdf"
+          ]
+        }
+      ],
+      "openBlockers": [],
+      "nextTasks": [],
+      "assignmentPreview": [],
+      "workflowVersion": 1,
+      "availableActions": [
+        {
+          "action": "COMPLETE",
+          "label": "确认完成并推进"
+        }
+      ],
+      "colorNumbering": {
+        "required": true,
+        "submittedCode": "r26-uat-1786104170349-6b17a8",
+        "normalizedCode": "R26-UAT-1786104170349-6B17A8",
+        "targetColor": null,
+        "duplicateColor": {
+          "id": "cmsiwb2au008oqr01kmxvkpnk",
+          "code": "R26-UAT-1786104170349-6B17A8",
+          "name": "UAT-R20-正常流程-深海蓝-20260807200249",
+          "projectId": "cmsiwb1ns007fqr0147gj6k3c"
+        },
+        "confirmationAttachment": {
+          "id": "cmsiwb2pr00a3qr01p5n0vt4x",
+          "fileName": "第05步颜色编号确认单-cmsiwb2jg008yqr01mpa24qmn.pdf",
+          "materialType": "颜色编号确认单",
+          "uploadedAt": "2026-08-07T12:02:51.135Z"
+        },
+        "numberDetails": [
+          "已关联其他颜色：UAT-R20-正常流程-深海蓝-20260807200249"
+        ],
+        "blockingReasons": [
+          "颜色编号“R26-UAT-1786104170349-6B17A8”已被颜色“UAT-R20-正常流程-深海蓝-20260807200249”使用。"
+        ]
+      },
+      "notice": "下一任务及负责人由现有工作流状态机和 Gate 3A 服务端分配规则计算。"
+    }
+  },
+  "finalArchive": {
+    "generatedAt": "2026-08-07T12:02:51.243Z",
+    "page": 1,
+    "pageSize": 12,
+    "total": 3,
+    "totalPages": 1,
+    "summary": {
+      "archivedColors": 3,
+      "materialCount": 3,
+      "incompleteColors": 3,
+      "newMaterialsThisMonth": 3
+    },
+    "facets": {
+      "vehicleModels": [
+        "轻卡 R20 测试车型"
+      ],
+      "colorTypes": [],
+      "statuses": [
+        "DRAFT"
+      ],
+      "years": [
+        2026
+      ]
+    },
+    "items": [
+      {
+        "id": "cmsiwb2au008oqr01kmxvkpnk",
+        "name": "UAT-R20-正常流程-深海蓝-20260807200249",
+        "code": "R26-UAT-1786104170349-6B17A8",
+        "displayColor": null,
+        "colorType": null,
+        "status": "DRAFT",
+        "vehicleModels": [
+          "轻卡 R20 测试车型"
+        ],
+        "suppliers": [],
+        "projects": [
+          {
+            "id": "cmsiwb1ns007fqr0147gj6k3c",
+            "code": "R20-20260807200249-70880F",
+            "name": "UAT-R20-正常流程-深海蓝-20260807200249",
+            "status": "IN_PROGRESS"
+          }
+        ],
+        "firstProject": {
+          "id": "cmsiwb1ns007fqr0147gj6k3c",
+          "code": "R20-20260807200249-70880F",
+          "name": "UAT-R20-正常流程-深海蓝-20260807200249"
+        },
+        "materialCount": 1,
+        "coveredSteps": 1,
+        "completenessPercent": 6,
+        "updatedAt": "2026-08-07T12:02:50.598Z",
+        "createdAt": "2026-08-07T12:02:50.598Z"
+      },
+      {
+        "id": "cmsij3mdy0047qr01b8looo8h",
+        "name": "UAT-R20-正常流程-深海蓝-20260807135307",
+        "code": "R26-UAT-1786081988039-FBB59C",
+        "displayColor": null,
+        "colorType": null,
+        "status": "DRAFT",
+        "vehicleModels": [
+          "轻卡 R20 测试车型"
+        ],
+        "suppliers": [],
+        "projects": [
+          {
+            "id": "cmsij3loz002yqr01so12y0g6",
+            "code": "R20-20260807135307-A95AF5",
+            "name": "UAT-R20-正常流程-深海蓝-20260807135307",
+            "status": "IN_PROGRESS"
+          }
+        ],
+        "firstProject": {
+          "id": "cmsij3loz002yqr01so12y0g6",
+          "code": "R20-20260807135307-A95AF5",
+          "name": "UAT-R20-正常流程-深海蓝-20260807135307"
+        },
+        "materialCount": 1,
+        "coveredSteps": 1,
+        "completenessPercent": 6,
+        "updatedAt": "2026-08-07T05:53:08.375Z",
+        "createdAt": "2026-08-07T05:53:08.375Z"
+      },
+      {
+        "id": "cmsiisu5k002bqr01pmpveeh5",
+        "name": "UAT-R20-正常流程-深海蓝-20260807134443",
+        "code": "R26-UAT-1786081484809-5E2149",
+        "displayColor": null,
+        "colorType": null,
+        "status": "DRAFT",
+        "vehicleModels": [
+          "轻卡 R20 测试车型"
+        ],
+        "suppliers": [],
+        "projects": [
+          {
+            "id": "cmsiist8i000eqr016jqal093",
+            "code": "R20-20260807134443-CE4D39",
+            "name": "UAT-R20-正常流程-深海蓝-20260807134443",
+            "status": "IN_PROGRESS"
+          }
+        ],
+        "firstProject": {
+          "id": "cmsiist8i000eqr016jqal093",
+          "code": "R20-20260807134443-CE4D39",
+          "name": "UAT-R20-正常流程-深海蓝-20260807134443"
+        },
+        "materialCount": 1,
+        "coveredSteps": 1,
+        "completenessPercent": 6,
+        "updatedAt": "2026-08-07T05:44:45.225Z",
+        "createdAt": "2026-08-07T05:44:45.225Z"
+      }
+    ]
+  },
+  "search": {
+    "matched": {
+      "generatedAt": "2026-08-07T12:02:50.887Z",
+      "page": 1,
+      "pageSize": 12,
+      "total": 1,
+      "totalPages": 1,
+      "summary": {
+        "archivedColors": 3,
+        "materialCount": 3,
+        "incompleteColors": 3,
+        "newMaterialsThisMonth": 3
+      },
+      "facets": {
+        "vehicleModels": [
+          "轻卡 R20 测试车型"
+        ],
+        "colorTypes": [],
+        "statuses": [
+          "DRAFT"
+        ],
+        "years": [
+          2026
+        ]
+      },
+      "items": [
+        {
+          "id": "cmsiwb2au008oqr01kmxvkpnk",
+          "name": "UAT-R20-正常流程-深海蓝-20260807200249",
+          "code": "R26-UAT-1786104170349-6B17A8",
+          "displayColor": null,
+          "colorType": null,
+          "status": "DRAFT",
+          "vehicleModels": [
+            "轻卡 R20 测试车型"
+          ],
+          "suppliers": [],
+          "projects": [
+            {
+              "id": "cmsiwb1ns007fqr0147gj6k3c",
+              "code": "R20-20260807200249-70880F",
+              "name": "UAT-R20-正常流程-深海蓝-20260807200249",
+              "status": "IN_PROGRESS"
+            }
+          ],
+          "firstProject": {
+            "id": "cmsiwb1ns007fqr0147gj6k3c",
+            "code": "R20-20260807200249-70880F",
+            "name": "UAT-R20-正常流程-深海蓝-20260807200249"
+          },
+          "materialCount": 1,
+          "coveredSteps": 1,
+          "completenessPercent": 6,
+          "updatedAt": "2026-08-07T12:02:50.598Z",
+          "createdAt": "2026-08-07T12:02:50.598Z"
+        }
+      ]
+    },
+    "empty": {
+      "generatedAt": "2026-08-07T12:02:50.900Z",
+      "page": 1,
+      "pageSize": 12,
+      "total": 0,
+      "totalPages": 1,
+      "summary": {
+        "archivedColors": 3,
+        "materialCount": 3,
+        "incompleteColors": 3,
+        "newMaterialsThisMonth": 3
+      },
+      "facets": {
+        "vehicleModels": [
+          "轻卡 R20 测试车型"
+        ],
+        "colorTypes": [],
+        "statuses": [
+          "DRAFT"
+        ],
+        "years": [
+          2026
+        ]
+      },
+      "items": []
+    }
+  }
+}

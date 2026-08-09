@@ -3,25 +3,10 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import React from 'react';
-import {
-  useEffect,
-  useState,
-  type ComponentType,
-  type MouseEvent,
-  type SVGProps,
-} from 'react';
+import { useEffect, useState, type MouseEvent } from 'react';
 
 import { useAuth } from '../../components/auth-provider';
 import { isTopNavigationItemActive } from '../../lib/navigation';
-import {
-  BellIcon,
-  HelpIcon,
-  HomeIcon,
-  ProjectIcon,
-  RetrospectiveIcon,
-  SearchIcon,
-  TaskIcon,
-} from './icons';
 import { isProductionV2Ui, toProductHref } from './production-ui';
 import { useR26RealData } from './r26-real-data-context';
 
@@ -30,14 +15,13 @@ type NavItem = {
   href: string;
   activeHref?: string;
   enabled: boolean;
-  icon: ComponentType<SVGProps<SVGSVGElement>>;
 };
 
 const baseNavItems: NavItem[] = [
-  { label: '工作台', href: toProductHref('/v2/dashboard'), enabled: true, icon: HomeIcon },
-  { label: '项目列表', href: toProductHref('/v2/projects'), enabled: true, icon: ProjectIcon },
-  { label: '我的任务', href: toProductHref('/v2/tasks'), enabled: true, icon: TaskIcon },
-  { label: '系统管理', href: toProductHref('/v2/admin'), enabled: true, icon: RetrospectiveIcon },
+  { label: '工作台', href: toProductHref('/v2/dashboard'), enabled: true },
+  { label: '项目列表', href: toProductHref('/v2/projects'), enabled: true },
+  { label: '我的任务', href: toProductHref('/v2/tasks'), enabled: true },
+  { label: '系统管理', href: toProductHref('/v2/admin'), enabled: true },
 ];
 
 export function V2Shell({ children }: { children: React.ReactNode }) {
@@ -178,15 +162,6 @@ export function V2Shell({ children }: { children: React.ReactNode }) {
                   ? 'V2 真实数据'
                   : 'V2 产品预览'}
             </span>
-            <button type="button" className="r26-icon-button" aria-label="搜索" onClick={() => showStaticMessage('搜索功能将在数据联调轮次开放。')}>
-              <SearchIcon />
-            </button>
-            <button type="button" className="r26-icon-button" aria-label="通知" onClick={() => showStaticMessage('当前没有新的通知。')}>
-              <BellIcon />
-            </button>
-            <button type="button" className="r26-icon-button" aria-label="帮助" onClick={() => showStaticMessage('系统导览不在本轮实现范围内。')}>
-              <HelpIcon />
-            </button>
             <details className="r26-account-menu">
               <summary aria-label={`${viewer?.name ?? user?.name ?? '当前用户'}的账号信息`}>
                 <span className="r26-avatar" aria-hidden="true">
@@ -224,34 +199,6 @@ export function V2Shell({ children }: { children: React.ReactNode }) {
       </header>
 
       <main className="r26-main">{children}</main>
-
-      <nav className="r26-mobile-nav" aria-label="V2 移动端主导航">
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = isTopNavigationItemActive(
-            pathname,
-            item.activeHref ?? item.href,
-          );
-          return (
-            <Link
-              key={item.label}
-              href={item.href}
-              className={isActive ? 'is-active' : undefined}
-              aria-current={isActive ? 'page' : undefined}
-              aria-disabled={!item.enabled}
-              {...(!item.enabled
-                ? {
-                    prefetch: false,
-                    onClick: (event: MouseEvent<HTMLAnchorElement>) => handleDisabled(event, item.label),
-                  }
-                : {})}
-            >
-              <Icon />
-              <span>{item.label}</span>
-            </Link>
-          );
-        })}
-      </nav>
 
       {toast ? (
         <div className="r26-toast" role="status" data-testid="r26-toast">

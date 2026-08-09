@@ -14,6 +14,7 @@ import {
 } from '@prisma/client';
 
 import { PrismaService } from '../../infra/prisma/prisma.service';
+import { getControlledColorNumber } from '../../common/controlled-color-number';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { getCurrentNodeName, WORKFLOW_NODE_META_MAP } from '../workflows/workflow-node.constants';
 import {
@@ -443,6 +444,10 @@ export class DashboardService {
             name: true,
             isPrimary: true,
             status: true,
+            numberingTaskId: true,
+            numberedById: true,
+            numberedAt: true,
+            numberingAttachmentId: true,
           },
           orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
         },
@@ -885,6 +890,10 @@ export class DashboardService {
             name: true;
             isPrimary: true;
             status: true;
+            numberingTaskId: true;
+            numberedById: true;
+            numberedAt: true;
+            numberingAttachmentId: true;
           };
         };
         workflowTasks: {
@@ -975,7 +984,7 @@ export class DashboardService {
       projectCode: project.code,
       projectName: project.name,
       colorName: color?.name ?? '未关联颜色',
-      colorCode: color?.code ?? null,
+      colorCode: getControlledColorNumber(color),
       projectStatus: project.status,
       currentNodeCode: project.currentNodeCode,
       currentNodeName:

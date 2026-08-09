@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 export const PUBLIC_ROUTE_KEY = 'public-route';
 export const ROLE_METADATA_KEY = 'role-metadata';
 export const PERMISSION_METADATA_KEY = 'permission-metadata';
@@ -82,5 +84,11 @@ export const ROLE_PERMISSION_CODE_MAP: Record<RoleCode, string[]> = {
 export const AUTHENTICATED_USERS_HAVE_FULL_ACCESS = false;
 
 export const AUTH_SESSION_PREFIX = 'auth:session:';
-export const FEISHU_OAUTH_STATE_COOKIE_NAME = 'ft_feishu_oauth_state';
+export const FEISHU_OAUTH_STATE_COOKIE_NAME_PREFIX = 'ft_feishu_oauth_state_';
 export const FEISHU_OAUTH_STATE_COOKIE_PATH = '/api/auth/feishu';
+
+export function getFeishuOAuthStateCookieName(state: string) {
+  const stateDigest = createHash('sha256').update(state.trim()).digest('hex').slice(0, 32);
+
+  return `${FEISHU_OAUTH_STATE_COOKIE_NAME_PREFIX}${stateDigest}`;
+}

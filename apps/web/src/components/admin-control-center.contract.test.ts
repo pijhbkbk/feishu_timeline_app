@@ -14,6 +14,14 @@ const cssSource = readFileSync(
   new URL('../app/r22.css', import.meta.url),
   'utf8',
 );
+const globalCssSource = readFileSync(
+  new URL('../app/globals.css', import.meta.url),
+  'utf8',
+);
+const r26CssSource = readFileSync(
+  new URL('../styles/r26-v2.css', import.meta.url),
+  'utf8',
+);
 const rewriteSource = readFileSync(
   new URL('../../next.config.ts', import.meta.url),
   'utf8',
@@ -45,10 +53,25 @@ describe('R26 administrator control center contracts', () => {
     expect(rewriteSource).toContain("source: '/admin/:section'");
   });
 
-  it('keeps the task ledger toolbar focused on search only', () => {
-    expect(clientSource).toContain('/admin/saved-views');
-    expect(componentSource).toContain('保存当前视图');
-    expect(componentSource).toContain("section !== 'tasks'");
+  it('centers every icon-only close control without font-glyph offsets', () => {
+    expect(componentSource).toContain('aria-label="关闭" onClick={onClose}><CloseIcon />');
+    expect(componentSource).not.toContain('aria-label="关闭" onClick={onClose}>×');
+    expect(cssSource).toContain('.admin-cc-dialog > header > button svg');
+    expect(cssSource).toContain('place-items: center;');
+    expect(cssSource).toContain('padding: 0;');
+    expect(cssSource).toContain('line-height: 0;');
+    expect(globalCssSource).toContain('.r25a-audit-drawer > header .r22-icon-button svg');
+    expect(r26CssSource).toContain('.r26-task-detail__header > button svg');
+    expect(r26CssSource).toContain('.r26-gate3-drawer > header svg');
+    expect(r26CssSource).toContain('line-height: 0;');
+  });
+
+  it('removes saved views and keeps ledger toolbars focused on current work', () => {
+    expect(clientSource).not.toContain('/admin/saved-views');
+    expect(componentSource).not.toContain('保存视图');
+    expect(componentSource).not.toContain('保存当前视图');
+    expect(componentSource).not.toContain('fetchAdminSavedViews');
+    expect(componentSource).not.toContain('saveAdminView');
     for (const removedTaskUtility of [
       '导出当前筛选',
       '下载导入模板',
@@ -56,7 +79,9 @@ describe('R26 administrator control center contracts', () => {
     ]) {
       expect(componentSource).not.toContain(removedTaskUtility);
     }
-    expect(componentSource).toContain('显示完整列');
+    expect(componentSource).not.toContain('显示完整列');
+    expect(componentSource).not.toContain('使用精简列');
+    expect(componentSource).not.toContain('fullColumns');
     expect(componentSource).toContain('pageSize: 20');
   });
 
@@ -75,23 +100,27 @@ describe('R26 administrator control center contracts', () => {
     expect(clientSource).toContain("'Idempotency-Key'");
   });
 
-  it('provides a typed, preview-first assignment grid instead of a read-only matrix', () => {
-    for (const label of [
-      '关联字段',
-      '单选人员',
-      '多选人员',
-      '生效范围 · 单选',
-      '变更原因',
-      '编辑分工',
-    ]) {
-      expect(componentSource).toContain(label);
-    }
+  it('keeps assignment editing complete while removing gray helper copy from the table', () => {
+    const assignmentTableStart = componentSource.indexOf('function AssignmentsTable');
+    const assignmentTableEnd = componentSource.indexOf('function PermissionsTable', assignmentTableStart);
+    const assignmentTableSource = componentSource.slice(assignmentTableStart, assignmentTableEnd);
+    expect(assignmentTableSource).toContain('编辑分工');
+    expect(assignmentTableSource).toContain('onEdit(item)');
+    expect(assignmentTableSource).not.toContain('<small>');
+    expect(assignmentTableSource).not.toContain('admin-cc-field-schema');
+    expect(assignmentTableSource).not.toContain('项目分工版本');
+    expect(assignmentTableSource).not.toContain('引用字段 · 编辑');
+    expect(assignmentTableSource).not.toContain('人员字段 · 编辑');
+    expect(assignmentTableSource).not.toContain('非评审节点');
+    expect(componentSource).toContain("SUGGESTED: '建议匹配'");
+    expect(cssSource).toContain('.admin-cc-status--suggested');
     expect(clientSource).toContain('previewAdminNodeAssignment');
     expect(clientSource).toContain('updateAdminNodeAssignment');
-    expect(componentSource).toContain('项目分工版本');
+    expect(componentSource).toContain('变更原因');
     expect(componentSource).toContain('确认执行变更');
     expect(cssSource).toContain('.admin-cc-editable-cell');
     expect(cssSource).toContain('.admin-cc-person-field');
+    expect(cssSource).not.toContain('.admin-cc-field-schema');
   });
 
   it('switches complex tables to mobile read-only cards', () => {
@@ -115,10 +144,101 @@ describe('R26 administrator control center contracts', () => {
       expect(componentSource).toContain(label);
     }
     expect(clientSource).toContain('previewAdminUserConfiguration');
-    expect(clientSource).toContain('previewAdminDepartmentConfiguration');
     expect(clientSource).toContain('previewAdminProjectMember');
     expect(clientSource).toContain('removeAdminProjectMember');
     expect(cssSource).toContain('.admin-cc-organization-toolbar');
+  });
+
+  it('keeps the company department screen concise and saves without an impact-preview step', () => {
+    const departmentTab = componentSource.indexOf("['departments', '公司部门']");
+    const userTab = componentSource.indexOf("['users', '系统用户']");
+    expect(departmentTab).toBeGreaterThan(-1);
+    expect(departmentTab).toBeLessThan(userTab);
+    expect(componentSource).toContain("['部门', '所属事业部', '负责人', '人数', '活跃任务', '配置节点', '状态']");
+    expect(componentSource).toContain('<Field label="所属事业部">');
+    expect(componentSource).toContain('state.response.directory.businessDivisions.map');
+    expect(componentSource).toContain('state.response.directory.businessDivisions.some');
+    expect(componentSource).toContain('请选择所属事业部');
+    expect(componentSource).not.toContain('未设置所属事业部');
+    expect(clientSource).toContain('businessDivisions: Array<');
+    expect(componentSource).not.toContain('<Field label="上级部门">');
+    expect(componentSource).not.toContain("['部门', '编码', '上级部门'");
+    expect(componentSource).not.toContain('<small>{readText(row.path)}</small>');
+    expect(componentSource).not.toContain("readNestedText(row.department, 'name') || readText(row.code)");
+    expect(componentSource).not.toContain('所有变更先预览影响，并经过版本校验、幂等保护与审计记录。');
+    expect(componentSource).not.toContain("state.kind === 'department' ||");
+    expect(componentSource).not.toContain('previewAdminDepartmentConfiguration');
+    expect(clientSource).not.toContain('previewAdminDepartmentConfiguration');
+    expect(componentSource).toContain('updateAdminDepartmentConfiguration');
+    expect(componentSource).toContain('idempotencyKey: crypto.randomUUID()');
+    expect(componentSource).toContain('acknowledgedConsequences: true');
+    expect(componentSource).toContain("state.kind !== 'department' ? (");
+
+    const departmentFieldsStart = componentSource.indexOf("{state.kind === 'department' ? <>");
+    const departmentFieldsEnd = componentSource.indexOf("{state.kind === 'member' ? <>", departmentFieldsStart);
+    const departmentFields = componentSource.slice(departmentFieldsStart, departmentFieldsEnd);
+    for (const removedDepartmentField of [
+      '不会直接修改流程状态',
+      '部门编码',
+      '显示顺序',
+      '变更原因',
+    ]) {
+      expect(departmentFields).not.toContain(removedDepartmentField);
+    }
+    expect(departmentFields).toContain('部门名称');
+    expect(departmentFields).toContain('所属事业部');
+    expect(departmentFields).toContain('部门负责人');
+    expect(departmentFields).toContain('启用此部门');
+    expect(departmentFields).toContain('placeholder="输入系统用户姓名；留空表示待设置"');
+    expect(departmentFields).toContain('leadUserName');
+    expect(departmentFields).not.toContain('leadUserId');
+    expect(departmentFields).not.toContain('<Field label="部门负责人"><select');
+
+    const departmentSubmitStart = componentSource.indexOf("} else if (state.kind === 'department') {");
+    const departmentSubmitEnd = componentSource.indexOf("} else if (state.kind === 'departmentDelete') {", departmentSubmitStart);
+    const departmentSubmit = componentSource.slice(departmentSubmitStart, departmentSubmitEnd);
+    expect(departmentSubmit).not.toContain('form.code');
+    expect(departmentSubmit).not.toContain('form.sortOrder');
+    expect(departmentSubmit).not.toContain('form.reason');
+    expect(departmentSubmit).toContain('leadUserName: String(form.leadUserName).trim() || null');
+    expect(departmentSubmit).not.toContain('leadUserId:');
+  });
+
+  it('supports multi-select department deletion through the audited backend command', () => {
+    expect(componentSource).toContain('选择当前页全部部门');
+    expect(componentSource).toContain('选择部门 ${readText(row.name)}');
+    expect(componentSource).toContain('删除所选部门');
+    expect(componentSource).toContain('确认删除部门');
+    expect(componentSource).toContain('部门删除不可撤销');
+    expect(componentSource).toContain('deleteAdminDepartments');
+    expect(clientSource).toContain('/admin/organization/departments/batch-delete');
+    expect(componentSource).toContain('departmentVersion: readText(row.dataVersion)');
+    expect(componentSource).toContain('acknowledgedConsequences: true');
+    expect(cssSource).toContain('.admin-cc-button--danger');
+  });
+
+  it('centers table headers and cells in both axes with clear action spacing', () => {
+    expect(cssSource).toMatch(
+      /\.admin-cc-table th \{[\s\S]*?text-align: center;[\s\S]*?vertical-align: middle;/,
+    );
+    expect(cssSource).toMatch(
+      /\.admin-cc-table td \{[\s\S]*?text-align: center;[\s\S]*?vertical-align: middle;/,
+    );
+    expect(cssSource).toContain(
+      '.admin-cc-row-actions { display: flex; align-items: center; justify-content: center; gap: 14px;',
+    );
+    expect(cssSource).toMatch(
+      /\.admin-cc-editable-cell \{[\s\S]*?justify-items: center;[\s\S]*?text-align: center;/,
+    );
+    expect(globalCssSource).toMatch(
+      /\.data-table th,[\s\S]*?\.data-table td \{[\s\S]*?text-align: center;[\s\S]*?vertical-align: middle;/,
+    );
+    expect(globalCssSource).toMatch(
+      /\.r25a-audit-table th,[\s\S]*?\.r25a-audit-table td \{[\s\S]*?text-align: center;[\s\S]*?vertical-align: middle;/,
+    );
+    expect(r26CssSource).toMatch(
+      /\.r26-assignment-table__row \{[\s\S]*?align-items: center;[\s\S]*?text-align: center;/,
+    );
   });
 
   it('lets only a super administrator edit role names and every server permission', () => {
@@ -134,6 +254,19 @@ describe('R26 administrator control center contracts', () => {
     expect(componentSource).toContain('acknowledgedConsequences: true');
     expect(cssSource).toContain('.admin-cc-permission-editor');
     expect(cssSource).toContain('.admin-cc-permission-options button');
+  });
+
+  it('keeps the permission role column clean and the edit action horizontal', () => {
+    expect(componentSource).not.toContain("<small>{role.code} · {role.locked ? '系统角色' : '自定义角色'}</small>");
+    expect(componentSource).not.toContain('<small>{role.code}</small>');
+    expect(componentSource).toContain('className="admin-cc-permission-action"');
+    expect(componentSource).toContain('admin-cc-role-edit');
+    expect(cssSource).toMatch(
+      /\.admin-cc-role-edit \{[\s\S]*?white-space: nowrap;[\s\S]*?word-break: keep-all;[\s\S]*?writing-mode: horizontal-tb;/,
+    );
+    expect(cssSource).toMatch(
+      /\.admin-cc-matrix td:first-child strong \{ white-space: nowrap; word-break: keep-all; \}/,
+    );
   });
 
   it('keeps project-member removal preview-first and limits transfers to real project members', () => {

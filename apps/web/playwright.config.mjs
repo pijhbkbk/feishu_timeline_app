@@ -64,5 +64,7 @@ export default defineConfig({
     video: disableVideo ? 'off' : 'retain-on-failure',
     headless: true,
   },
-  webServer: [apiServer, webServer],
+  webServer: process.env.PLAYWRIGHT_EXTERNAL_SERVER === '1'
+    ? undefined
+    : [apiServer, webServer],
 });

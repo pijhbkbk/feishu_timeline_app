@@ -215,7 +215,6 @@
   white-space: nowrap;
 }
 
-[data-ui-version="r26-v2"] .r26-icon-button,
 [data-ui-version="r26-v2"] .r26-avatar {
   display: inline-grid;
   place-items: center;
@@ -228,17 +227,6 @@
   color: var(--r26-text-secondary);
   background: transparent;
   cursor: pointer;
-}
-
-[data-ui-version="r26-v2"] .r26-icon-button:hover {
-  color: var(--r26-text);
-  border-color: var(--r26-line);
-  background: var(--r26-surface-soft);
-}
-
-[data-ui-version="r26-v2"] .r26-icon-button svg {
-  width: 20px;
-  height: 20px;
 }
 
 [data-ui-version="r26-v2"] .r26-avatar {
@@ -521,10 +509,6 @@
   font-size: 22px;
   line-height: 1.25;
   letter-spacing: -0.025em;
-}
-
-[data-ui-version="r26-v2"] .r26-mobile-nav {
-  display: none;
 }
 
 [data-ui-version="r26-v2"] .r26-toast {
@@ -882,6 +866,54 @@
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 16px;
+}
+
+[data-ui-version="r26-v2"] .r26-project-search {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 24px;
+  padding: 22px 24px;
+  border: 1px solid var(--r26-line);
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: var(--r26-shadow-soft);
+}
+
+[data-ui-version="r26-v2"] .r26-project-search > label {
+  color: var(--r26-text);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+[data-ui-version="r26-v2"] .r26-project-search__controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 10px;
+}
+
+[data-ui-version="r26-v2"] .r26-project-search__controls input {
+  min-width: 0;
+  min-height: 48px;
+  padding: 0 16px;
+  border: 1px solid var(--r26-line-strong);
+  border-radius: 14px;
+  color: var(--r26-text);
+  background: #fff;
+  font: inherit;
+  font-size: 16px;
+  outline: none;
+}
+
+[data-ui-version="r26-v2"] .r26-project-search__controls input:focus {
+  border-color: var(--r26-blue);
+  box-shadow: 0 0 0 3px rgba(36, 107, 253, 0.14);
+}
+
+[data-ui-version="r26-v2"] .r26-project-search__status {
+  margin: 0;
+  color: var(--r26-text-secondary);
+  font-size: 14px;
+  line-height: 1.6;
 }
 
 [data-ui-version="r26-v2"] .r26-project-kpis > div {
@@ -1646,6 +1678,7 @@
   width: 44px;
   height: 44px;
   padding: 0;
+  line-height: 0;
   border: 1px solid var(--r26-line);
   border-radius: 13px;
   color: var(--r26-text-secondary);
@@ -1654,7 +1687,9 @@
 }
 
 [data-ui-version="r26-v2"] .r26-task-detail__header > button svg {
+  display: block;
   width: 18px;
+  height: 18px;
 }
 
 [data-ui-version="r26-v2"] .r26-task-detail__body {
@@ -2551,9 +2586,7 @@
     padding: 0 11px;
   }
 
-  [data-ui-version="r26-v2"] .r26-header-tools .r26-prototype-badge,
-  [data-ui-version="r26-v2"] .r26-header-tools .r26-icon-button:nth-of-type(1),
-  [data-ui-version="r26-v2"] .r26-header-tools .r26-icon-button:nth-of-type(2) {
+  [data-ui-version="r26-v2"] .r26-header-tools .r26-prototype-badge {
     display: none;
   }
 
@@ -2609,14 +2642,6 @@
 }
 
 @media (max-width: 920px) {
-  [data-ui-version="r26-v2"] .r26-app-header__inner {
-    grid-template-columns: 1fr auto;
-  }
-
-  [data-ui-version="r26-v2"] .r26-primary-nav {
-    display: none;
-  }
-
   [data-ui-version="r26-v2"] .r26-current-task {
     min-width: 0;
     width: 100%;
@@ -2665,14 +2690,80 @@
   }
 }
 
+@media (min-width: 768px) and (max-width: 920px) {
+  [data-ui-version="r26-v2"] .r26-app-header__inner {
+    grid-template-columns: minmax(48px, 1fr) auto minmax(48px, 1fr);
+    gap: 10px;
+    padding-inline: 20px;
+  }
+
+  [data-ui-version="r26-v2"] .r26-brand__copy {
+    display: none;
+  }
+
+  [data-ui-version="r26-v2"] .r26-primary-nav {
+    display: flex;
+    gap: 2px;
+    padding: 4px;
+    border-radius: 14px;
+  }
+
+  [data-ui-version="r26-v2"] .r26-primary-nav a {
+    min-height: 40px;
+    padding-inline: 10px;
+    font-size: 13px;
+  }
+
+  [data-ui-version="r26-v2"] .r26-header-tools {
+    min-width: 48px;
+  }
+
+  [data-ui-version="r26-v2"] .r26-header-tools .r26-prototype-badge {
+    display: none;
+  }
+}
+
 @media (max-width: 767px) {
   [data-ui-version="r26-v2"] .r26-app {
-    padding-bottom: 78px;
+    padding-bottom: 0;
   }
 
   [data-ui-version="r26-v2"] .r26-app-header__inner {
-    min-height: 64px;
-    padding: 0 20px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto auto;
+    gap: 8px 12px;
+    min-height: auto;
+    padding: 10px 20px;
+  }
+
+  [data-ui-version="r26-v2"] .r26-primary-nav {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    display: flex;
+    justify-self: stretch;
+    gap: 2px;
+    width: 100%;
+    min-width: 0;
+    padding: 4px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  [data-ui-version="r26-v2"] .r26-primary-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  [data-ui-version="r26-v2"] .r26-primary-nav a {
+    flex: 1 1 0;
+    min-width: 0;
+    padding-inline: 6px;
+    font-size: 12px;
+  }
+
+  [data-ui-version="r26-v2"] .r26-brand {
+    grid-column: 1;
+    grid-row: 1;
+    min-width: 0;
   }
 
   [data-ui-version="r26-v2"] .r26-brand__mark {
@@ -2690,11 +2781,9 @@
   }
 
   [data-ui-version="r26-v2"] .r26-header-tools {
+    grid-column: 2;
+    grid-row: 1;
     gap: 2px;
-  }
-
-  [data-ui-version="r26-v2"] .r26-header-tools .r26-icon-button {
-    display: none;
   }
 
   [data-ui-version="r26-v2"] .r26-avatar {
@@ -2739,55 +2828,9 @@
     width: 100%;
   }
 
-  [data-ui-version="r26-v2"] .r26-mobile-nav {
-    position: fixed;
-    z-index: 100;
-    right: 10px;
-    bottom: 10px;
-    left: 10px;
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    height: 66px;
-    padding: 6px;
-    border: 1px solid rgba(215, 221, 230, 0.9);
-    border-radius: 20px;
-    background: rgba(255, 255, 255, 0.94);
-    box-shadow: 0 14px 38px rgba(22, 31, 47, 0.18);
-    backdrop-filter: blur(18px);
-  }
-
-  [data-ui-version="r26-v2"] .r26-mobile-nav a {
-    display: grid;
-    place-items: center;
-    align-content: center;
-    gap: 3px;
-    min-width: 0;
-    border-radius: 14px;
-    color: var(--r26-text-tertiary);
-  }
-
-  [data-ui-version="r26-v2"] .r26-mobile-nav a.is-active {
-    color: var(--r26-blue-dark);
-    background: var(--r26-blue-soft);
-  }
-
-  [data-ui-version="r26-v2"] .r26-mobile-nav svg {
-    width: 20px;
-    height: 20px;
-  }
-
-  [data-ui-version="r26-v2"] .r26-mobile-nav span {
-    overflow: hidden;
-    max-width: 100%;
-    font-size: 10px;
-    font-weight: 700;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
   [data-ui-version="r26-v2"] .r26-toast {
     right: 20px;
-    bottom: 92px;
+    bottom: 20px;
     left: 20px;
   }
 
@@ -2871,6 +2914,18 @@
   [data-ui-version="r26-v2"] .r26-project-kpis {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
+  }
+
+  [data-ui-version="r26-v2"] .r26-project-search {
+    padding: 18px;
+  }
+
+  [data-ui-version="r26-v2"] .r26-project-search__controls {
+    grid-template-columns: 1fr;
+  }
+
+  [data-ui-version="r26-v2"] .r26-project-search__controls .r26-button {
+    width: 100%;
   }
 
   [data-ui-version="r26-v2"] .r26-project-kpis > div {
@@ -3440,6 +3495,7 @@
   align-items: center;
   gap: 14px;
   padding: 14px 16px;
+  text-align: center;
 }
 
 [data-ui-version="r26-v2"] .r26-assignment-table__header {
@@ -3457,6 +3513,8 @@
 
 [data-ui-version="r26-v2"] .r26-assignment-table__row > div {
   display: grid;
+  align-content: center;
+  justify-items: center;
   gap: 3px;
 }
 
@@ -3471,6 +3529,7 @@
 
 [data-ui-version="r26-v2"] .r26-assignment-table__row .r26-status {
   width: max-content;
+  justify-self: center;
 }
 
 [data-ui-version="r26-v2"] .r26-real-progress-grid {
@@ -3760,14 +3819,17 @@
   width: 42px;
   height: 42px;
   place-items: center;
+  padding: 0;
   border: 1px solid var(--r26-line);
   border-radius: 14px;
   color: var(--r26-text-secondary);
   background: #fff;
   cursor: pointer;
+  line-height: 0;
 }
 
 [data-ui-version="r26-v2"] .r26-gate3-drawer > header svg {
+  display: block;
   width: 18px;
   height: 18px;
 }
@@ -4119,7 +4181,7 @@
   }
 
   [data-ui-version="r26-v2"] .r26-workspace-jumps {
-    top: 68px;
+    top: 112px;
     width: 100%;
   }
 
@@ -4168,7 +4230,7 @@
   }
 
   [data-ui-version="r26-v2"] .r26-project-tabs {
-    top: 64px;
+    top: 112px;
     width: 100%;
     margin-bottom: 14px;
   }

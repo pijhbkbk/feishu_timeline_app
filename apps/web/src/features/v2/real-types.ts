@@ -673,6 +673,30 @@ export type R26CompletionPreview = {
     expectedResolvedAt: string | null;
     createdAt: string;
   }>;
+  colorNumbering: {
+    required: true;
+    submittedCode: string | null;
+    normalizedCode: string | null;
+    targetColor: {
+      id: string;
+      name: string;
+      previousCode: string | null;
+    } | null;
+    duplicateColor: {
+      id: string;
+      code: string;
+      name: string;
+      projectId: string;
+    } | null;
+    confirmationAttachment: {
+      id: string;
+      fileName: string;
+      materialType: string | null;
+      uploadedAt: string;
+    } | null;
+    numberDetails: string[];
+    blockingReasons: string[];
+  } | null;
   nextTasks: Array<{
     nodeCode: string;
     stepNumber: number;
@@ -730,6 +754,16 @@ export type R26OrdinaryCompletionCommand = {
     createdAt: string;
   };
   workflowVersion: number;
+  colorNumbering: {
+    colorId: string;
+    code: string;
+    numberingTaskId: string;
+    numberedBy: { id: string; name: string };
+    numberedAt: string;
+    confirmationAttachment: NonNullable<
+      R26CompletionPreview['colorNumbering']
+    >['confirmationAttachment'];
+  } | null;
 };
 
 export type R26OrdinaryCompletionResponse = {

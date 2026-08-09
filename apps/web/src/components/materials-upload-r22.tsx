@@ -127,12 +127,12 @@ export function MaterialsUploadR22() {
 
           <section className="r22-material-upload-grid">
             <R22Card className="r22-required-materials">
-              <div className="r22-section-heading"><div><p className="r22-overline">Required</p><h2>本工序材料清单</h2><p>材料要求由流程节点配置自动带入。</p></div></div>
+              <div className="r22-section-heading"><div><h2>本工序材料清单</h2><p>材料要求由流程节点配置自动带入。</p></div></div>
               {detail.requiredMaterials.length ? <ul>{detail.requiredMaterials.map((item) => { const submitted = detail.attachments.some((attachment) => attachment.materialType === item.id || attachment.materialType === item.name); return <li key={item.id}><span className={submitted ? 'is-done' : ''}>{submitted ? '✓' : '○'}</span><button type="button" className={materialType === item.id ? 'is-selected' : undefined} onClick={() => setMaterialType(item.id)}><strong>{item.name}</strong><small>{item.description ?? (item.required ? '必交材料' : '选交材料')}</small></button><R22StatusBadge tone={submitted ? 'success' : item.required ? 'warning' : 'neutral'}>{submitted ? '已提交' : item.required ? '待提交' : '可选'}</R22StatusBadge></li>; })}</ul> : <div className="r22-empty-compact"><strong>{detail.outputName}</strong><p>该节点未配置细分清单，上传文件会作为工序输出材料。</p></div>}
             </R22Card>
 
             <R22Card className="r22-material-drop-card">
-              <div className="r22-section-heading"><div><p className="r22-overline">Upload</p><h2>{replacingId ? '上传替换版本' : '添加新材料'}</h2><p>系统将文件绑定到 {detail.stepName}。</p></div></div>
+              <div className="r22-section-heading"><div><h2>{replacingId ? '上传替换版本' : '添加新材料'}</h2><p>系统将文件绑定到 {detail.stepName}。</p></div></div>
               <label className="r22-field"><span>材料类型</span><select value={materialType} onChange={(event) => setMaterialType(event.target.value)}>{detail.requiredMaterials.length ? detail.requiredMaterials.map((item) => <option key={item.id} value={item.id}>{item.name}</option>) : <option value={detail.outputName}>{detail.outputName}</option>}</select></label>
               <label className="r22-upload-zone r22-material-upload-zone" htmlFor="r22-material-file"><span className="r22-upload-icon">↑</span><strong>{file?.name ?? '选择要上传的文件'}</strong><p>支持 PDF、Office、图片及受控压缩包。扩展名、MIME、文件魔数和大小由服务端再次校验。</p><input id="r22-material-file" type="file" onChange={(event: ChangeEvent<HTMLInputElement>) => setFile(event.target.files?.[0] ?? null)} /></label>
               {file ? <div className="r22-selected-file"><span>{file.name}</span><strong>{formatAttachmentSize(file.size)}</strong></div> : null}
@@ -141,7 +141,7 @@ export function MaterialsUploadR22() {
           </section>
 
           <R22Card className="r22-material-history">
-            <div className="r22-section-heading"><div><p className="r22-overline">History</p><h2>已上传材料</h2><p>{detail.attachments.length} 份有效材料，旧文件不会被物理覆盖。</p></div></div>
+            <div className="r22-section-heading"><div><h2>已上传材料</h2><p>{detail.attachments.length} 份有效材料，旧文件不会被物理覆盖。</p></div></div>
               {detail.attachments.length ? <div className="r22-material-table" role="table" aria-label="已上传材料"><div className="r22-material-row r22-material-row-head" role="row"><span>文件</span><span>材料类型</span><span>上传人 / 时间</span><span>版本</span><span>状态</span><span>操作</span></div>{detail.attachments.map((item) => <div className="r22-material-row" role="row" key={item.id}><span><strong>{item.fileName}</strong><small>{formatAttachmentSize(item.fileSize)}</small></span><span>{item.materialType ?? detail.outputName}</span><span><strong>{item.uploadedByName ?? '系统用户'}</strong><small>{new Date(item.uploadedAt).toLocaleString('zh-CN')}</small></span><span>V{item.versionNo ?? versions.get(item.id) ?? 1}</span><span><R22StatusBadge tone="success">{item.status}</R22StatusBadge></span><span className="r22-material-actions"><a href={`${API_BASE_URL}${item.previewUrl}`} target="_blank" rel="noreferrer">查看</a><button type="button" onClick={() => chooseReplacement(item.id)}>替换</button></span></div>)}</div> : <div className="r22-empty-compact"><strong>尚未上传材料</strong><p>选择文件并完成上传后，版本记录会显示在这里。</p></div>}
           </R22Card>
         </>

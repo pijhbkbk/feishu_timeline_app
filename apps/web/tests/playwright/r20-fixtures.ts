@@ -163,16 +163,15 @@ export async function createR20ProjectViaUi(
   projectKey: keyof typeof R20_PROJECT_NAMES,
 ) {
   const timestamp = buildR16Timestamp();
-  const code = `R20-UI-${timestamp}`;
   const name = `${R20_PROJECT_NAMES[projectKey]}-${timestamp}`;
 
   await page.goto('/projects');
   await expect(page.getByTestId('project-list-page')).toBeVisible();
   await page.getByTestId('create-project-button').click();
-  await page.getByTestId('project-code-input').fill(code);
   await page.getByTestId('project-name-input').fill(name);
   await page.getByTestId('project-priority-select').selectOption('HIGH');
-  await page.getByTestId('project-market-input').fill('R20 自动化测试客户');
+  await page.getByTestId('project-color-marketing-unit-input').fill('R20 自动化测试营销单位');
+  await page.getByTestId('project-paint-supplier-select').selectOption('立邦');
   await page.getByTestId('project-vehicle-model-input').fill('轻卡 R20 测试车型');
   await page.getByTestId('project-start-date-input').fill('2026-05-19');
   await page.getByTestId('project-end-date-input').fill('2027-05-19');
@@ -181,7 +180,7 @@ export async function createR20ProjectViaUi(
   await expect(page.getByRole('heading', { name: '项目详情同步状态' })).toBeVisible();
   await expect(page.getByText(name)).toBeVisible();
 
-  return { code, name };
+  return { name };
 }
 
 export async function advanceR20ToStep4Branches(

@@ -399,11 +399,6 @@ export class AdminDepartmentConfigurationPreviewDto {
 
   @IsString()
   @IsNotEmpty()
-  @MaxLength(40)
-  code!: string;
-
-  @IsString()
-  @IsNotEmpty()
   @MaxLength(120)
   name!: string;
 
@@ -414,30 +409,52 @@ export class AdminDepartmentConfigurationPreviewDto {
 
   @IsOptional()
   @IsString()
-  @MaxLength(64)
-  leadUserId?: string | null;
-
-  @IsInt()
-  @Min(0)
-  sortOrder!: number;
+  @MaxLength(120)
+  leadUserName?: string | null;
 
   @IsBoolean()
   isActive!: boolean;
-
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(500)
-  reason!: string;
 }
 
 export class AdminDepartmentConfigurationChangeDto
   extends AdminDepartmentConfigurationPreviewDto
-  implements AdminVersionedCommandDto
 {
   @IsString()
   @IsNotEmpty()
   @MaxLength(128)
   idempotencyKey!: string;
+
+  @IsBoolean()
+  acknowledgedConsequences!: boolean;
+}
+
+export class AdminDepartmentDeleteRowDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(64)
+  departmentId!: string;
+
+  @IsDateString()
+  departmentVersion!: string;
+}
+
+export class AdminDepartmentBatchDeleteDto implements AdminVersionedCommandDto {
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(100)
+  @ValidateNested({ each: true })
+  @Type(() => AdminDepartmentDeleteRowDto)
+  departments!: AdminDepartmentDeleteRowDto[];
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(128)
+  idempotencyKey!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(500)
+  reason!: string;
 
   @IsBoolean()
   acknowledgedConsequences!: boolean;

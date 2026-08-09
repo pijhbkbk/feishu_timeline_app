@@ -66,33 +66,6 @@ export function RetrospectiveIcon(props: IconProps) {
   );
 }
 
-export function SearchIcon(props: IconProps) {
-  return (
-    <IconBase {...props}>
-      <circle cx="11" cy="11" r="7" />
-      <path d="m16.5 16.5 4 4" />
-    </IconBase>
-  );
-}
-
-export function BellIcon(props: IconProps) {
-  return (
-    <IconBase {...props}>
-      <path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 7h18s-3 0-3-7" />
-      <path d="M10 20h4" />
-    </IconBase>
-  );
-}
-
-export function HelpIcon(props: IconProps) {
-  return (
-    <IconBase {...props}>
-      <circle cx="12" cy="12" r="9" />
-      <path d="M9.8 9a2.4 2.4 0 1 1 3.4 2.2c-.8.4-1.2.9-1.2 1.8M12 17h.01" />
-    </IconBase>
-  );
-}
-
 export function ChevronRightIcon(props: IconProps) {
   return (
     <IconBase {...props}>

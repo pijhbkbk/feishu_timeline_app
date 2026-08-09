@@ -1,6 +1,8 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { ProjectPriority } from '@prisma/client';
-import { IsDateString, IsEnum, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsDateString, IsEnum, IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
+
+import { PROJECT_PAINT_SUPPLIER_VALUES } from '../project.constants';
 
 export class UpdateProjectDto {
   @ApiPropertyOptional({ description: '项目名称' })
@@ -25,6 +27,21 @@ export class UpdateProjectDto {
   @IsString()
   @MaxLength(64)
   marketRegion?: string | null;
+
+  @ApiPropertyOptional({ description: '颜色营销单位', nullable: true })
+  @IsOptional()
+  @IsString()
+  @MaxLength(128)
+  colorMarketingUnit?: string | null;
+
+  @ApiPropertyOptional({
+    description: '涂料供应商',
+    enum: PROJECT_PAINT_SUPPLIER_VALUES,
+    nullable: true,
+  })
+  @IsOptional()
+  @IsIn(PROJECT_PAINT_SUPPLIER_VALUES)
+  paintSupplier?: string | null;
 
   @ApiPropertyOptional({ description: '车型', nullable: true })
   @IsOptional()

@@ -1,7 +1,14 @@
 'use client';
 
 import Link from 'next/link';
-import React, { useEffect, useMemo, useState, type FormEvent } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
+} from 'react';
 
 import { formatBusinessCode, formatOptionalBusinessCode } from '../lib/business-code';
 import {
@@ -52,9 +59,11 @@ const QUICK_VIEWS: Array<{ value: ProjectListView; label: string }> = [
 
 export function ProjectsListClient() {
   const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
+  const keywordInputRef = useRef<HTMLInputElement>(null);
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
   const [view, setView] = useState<ProjectListView>('all');
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [shouldFocusSearch, setShouldFocusSearch] = useState(false);
   const [directoryUsers, setDirectoryUsers] = useState<DirectoryUser[]>([]);
   const [response, setResponse] = useState<ProjectListResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -69,6 +78,36 @@ export function ProjectsListClient() {
     }
     void loadInitialData();
   }, [isAuthenticated, isAuthLoading]);
+
+  const openProjectSearch = useCallback(() => {
+    setShowAdvanced(true);
+    setShouldFocusSearch(true);
+  }, []);
+
+  useEffect(() => {
+    function handleFocusProjectSearch() {
+      openProjectSearch();
+    }
+
+    window.addEventListener('r22:focus-project-search', handleFocusProjectSearch);
+    if (new URLSearchParams(window.location.search).get('focus') === 'search') {
+      openProjectSearch();
+    }
+
+    return () => {
+      window.removeEventListener('r22:focus-project-search', handleFocusProjectSearch);
+    };
+  }, [openProjectSearch]);
+
+  useEffect(() => {
+    if (!showAdvanced || !shouldFocusSearch || !keywordInputRef.current) {
+      return;
+    }
+
+    keywordInputRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    keywordInputRef.current.focus({ preventScroll: true });
+    setShouldFocusSearch(false);
+  }, [shouldFocusSearch, showAdvanced]);
 
   async function loadInitialData() {
     setIsLoading(true);
@@ -174,15 +213,35 @@ export function ProjectsListClient() {
           type="button"
           className="r22-button r22-button-secondary"
           aria-expanded={showAdvanced}
-          onClick={() => setShowAdvanced((current) => !current)}
+          onClick={() => {
+            if (showAdvanced) {
+              setShowAdvanced(false);
+              return;
+            }
+            openProjectSearch();
+          }}
         >
           {showAdvanced ? '收起筛选' : '高级筛选'}
         </button>
       </section>
 
       {showAdvanced ? (
-        <form className="r22-card r22-filter-panel" onSubmit={applyFilters}>
-          <label className="r22-field"><span>关键词</span><input value={filters.keyword} placeholder="项目名称 / 编号 / 颜色" onChange={(event) => setFilters({ ...filters, keyword: event.target.value })} /></label>
+        <form
+          className="r22-card r22-filter-panel"
+          role="search"
+          aria-label="搜索与筛选项目"
+          onSubmit={applyFilters}
+        >
+          <label className="r22-field">
+            <span>搜索项目</span>
+            <input
+              ref={keywordInputRef}
+              value={filters.keyword}
+              placeholder="项目名称 / 编号 / 颜色"
+              onChange={(event) => setFilters({ ...filters, keyword: event.target.value })}
+              data-testid="project-search-input"
+            />
+          </label>
           <label className="r22-field"><span>状态</span><select value={filters.status} onChange={(event) => setFilters({ ...filters, status: event.target.value })}><option value="">全部</option>{PROJECT_STATUS_OPTIONS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label>
           <label className="r22-field"><span>当前工序</span><select value={filters.currentNodeCode} onChange={(event) => setFilters({ ...filters, currentNodeCode: event.target.value })}><option value="">全部</option>{response?.nodeOptions.map((item) => <option key={item.code} value={item.code}>{item.name}</option>)}</select></label>
           <label className="r22-field"><span>负责人</span><select value={filters.ownerUserId} onChange={(event) => setFilters({ ...filters, ownerUserId: event.target.value })}><option value="">全部</option>{directoryUsers.map((user) => <option key={user.id} value={user.id}>{user.name}</option>)}</select></label>

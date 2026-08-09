@@ -13,7 +13,6 @@ import {
   topNavigationItems,
 } from '../lib/navigation';
 import { useAuth } from './auth-provider';
-import { NotificationBell } from './notification-bell';
 import { StatePanel } from './state-panel';
 
 export function AppShell({ children }: PropsWithChildren) {
@@ -111,17 +110,6 @@ export function AppShell({ children }: PropsWithChildren) {
           ) : null}
 
           <div className="r22-header-tools">
-            {!isAuthRoute ? (
-              <>
-                <Link href="/projects?focus=search" className="r22-icon-button" aria-label="搜索项目">
-                  <span aria-hidden="true">⌕</span>
-                </Link>
-                <NotificationBell />
-                <Link href="/guide" className="r22-icon-button" aria-label="打开帮助">
-                  <span aria-hidden="true">?</span>
-                </Link>
-              </>
-            ) : null}
             {isLoading ? (
               <span className="r22-avatar r22-avatar-loading" aria-label="正在加载登录态" />
             ) : user ? (
@@ -177,22 +165,6 @@ export function AppShell({ children }: PropsWithChildren) {
         ) : null}
         {guardedContent}
       </main>
-
-      {!isAuthRoute ? (
-        <nav className="r22-mobile-nav" aria-label="移动端主导航">
-          {topNav.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={isTopNavigationItemActive(pathname, item.href) ? 'is-active' : undefined}
-              aria-current={isTopNavigationItemActive(pathname, item.href) ? 'page' : undefined}
-            >
-              <span aria-hidden="true">{item.icon}</span>
-              <small>{item.label}</small>
-            </Link>
-          ))}
-        </nav>
-      ) : null}
     </div>
   );
 }

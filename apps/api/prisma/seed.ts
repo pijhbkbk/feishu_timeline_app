@@ -484,6 +484,15 @@ const systemParameters = [
   },
 ] as const;
 
+const businessDivisionDepartments = [
+  { code: 'BU_TECHNOLOGY', name: '技术中心', path: '/BU_TECHNOLOGY', level: 1, sortOrder: 1001 },
+  { code: 'BU_COMMERCIAL_VEHICLE_MARKETING', name: '商用车营销事业部', path: '/BU_COMMERCIAL_VEHICLE_MARKETING', level: 1, sortOrder: 1002 },
+  { code: 'BU_PASSENGER_VEHICLE_MARKETING', name: '乘用车营销事业部', path: '/BU_PASSENGER_VEHICLE_MARKETING', level: 1, sortOrder: 1003 },
+  { code: 'BU_MANUFACTURING', name: '制造中心', path: '/BU_MANUFACTURING', level: 1, sortOrder: 1004 },
+  { code: 'BU_INTERNATIONAL', name: '国际事业部', path: '/BU_INTERNATIONAL', level: 1, sortOrder: 1005 },
+  { code: 'BU_PROCUREMENT', name: '采购中心', path: '/BU_PROCUREMENT', level: 1, sortOrder: 1006 },
+] as const;
+
 const demoDepartments = [
   { code: 'HQ', name: '总部', path: '/HQ', level: 1, sortOrder: 1 },
   { code: 'PMO', name: '项目管理部', path: '/HQ/PMO', level: 2, sortOrder: 10 },
@@ -655,7 +664,7 @@ async function upsertBaseData(): Promise<SeedRefs> {
       },
     });
 
-    for (const department of demoDepartments) {
+    for (const department of [...businessDivisionDepartments, ...demoDepartments]) {
       const parentCode = department.path.split('/').filter(Boolean).slice(-2, -1)[0] ?? null;
       const parentId = parentCode ? departments[parentCode]?.id ?? null : null;
       const record = await tx.department.upsert({

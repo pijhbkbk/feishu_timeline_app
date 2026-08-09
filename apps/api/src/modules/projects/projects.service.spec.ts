@@ -31,6 +31,8 @@ function createProjectRecord() {
     owningDepartmentId: 'dept-pmo',
     ownerUserId: 'owner-1',
     marketRegion: '华东',
+    colorMarketingUnit: '商用车营销事业部',
+    paintSupplier: '阿克苏诺贝尔',
     vehicleModel: '轻卡 X1',
     plannedStartDate: new Date('2026-03-01T00:00:00.000Z'),
     plannedEndDate: new Date('2026-04-01T00:00:00.000Z'),
@@ -183,9 +185,10 @@ describe('ProjectsService', () => {
 
     const result = await service.createProject(
       {
-        code: 'PRJ-001',
         name: '演示项目',
         priority: 'HIGH',
+        colorMarketingUnit: '商用车营销事业部',
+        paintSupplier: '阿克苏诺贝尔',
         ownerUserId: 'owner-1',
         members: [],
       },
@@ -201,7 +204,30 @@ describe('ProjectsService', () => {
       }),
     );
     expect(activityLogsService.createWithExecutor).toHaveBeenCalledTimes(2);
+    expect(tx.project.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        code: expect.stringMatching(/^PRJ-\d{8}-[A-F0-9]{8}$/),
+        colorMarketingUnit: '商用车营销事业部',
+        paintSupplier: '阿克苏诺贝尔',
+      }),
+    });
     expect(result.code).toBe('PRJ-001');
+    expect(result.colorMarketingUnit).toBe('商用车营销事业部');
+    expect(result.paintSupplier).toBe('阿克苏诺贝尔');
     expect(result.currentWorkflowInstance?.id).toBe('wf-1');
+  });
+
+  it('拒绝白名单以外的涂料供应商', async () => {
+    const { service } = createService();
+
+    await expect(
+      service.createProject(
+        {
+          name: '非法供应商测试',
+          paintSupplier: '任意供应商',
+        },
+        actor,
+      ),
+    ).rejects.toThrow('请求参数不正确。');
   });
 });

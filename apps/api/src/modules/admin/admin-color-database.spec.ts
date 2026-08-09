@@ -50,6 +50,10 @@ describe('AdminService simplified overview and color database', () => {
     prisma.color.findMany.mockResolvedValue([{
       id: 'color-1', projectId: project.id, code: 'JAC-BL-028', name: '深海蓝', description: null,
       status: 'ACTIVE', isPrimary: true, exitFlag: false, exitDate: null,
+      numberingTaskId: 'task-5', numberedById: 'user-1',
+      numberedAt: new Date('2026-01-05T08:00:00.000Z'), numberingAttachmentId: 'number-proof-1',
+      numberingTask: { id: 'task-5', nodeCode: WorkflowNodeCode.COLOR_NUMBERING, status: 'COMPLETED' },
+      numberingAttachment: { id: 'number-proof-1', entityType: 'WORKFLOW_TASK', entityId: 'task-5', isDeleted: false },
       createdAt: new Date('2026-01-01T00:00:00.000Z'), updatedAt: new Date('2026-07-28T00:00:00.000Z'),
       project,
       versions: [{ id: 'color-version-1', versionNo: 1, technicalData: { displayHex: '#194f7a', colorType: '金属漆' } }],
@@ -67,7 +71,7 @@ describe('AdminService simplified overview and color database', () => {
     const detail = await service.getColorArchive('color-1');
 
     expect(list.items[0]).toEqual(expect.objectContaining({
-      name: '深海蓝', displayColor: '#194f7a', materialCount: 2, coveredSteps: 1,
+      name: '深海蓝', code: 'JAC-BL-028', displayColor: '#194f7a', materialCount: 2, coveredSteps: 1,
     }));
     const validationStage = detail.stages.find((stage) => stage.key === 'VALIDATION');
     expect(validationStage?.materials).toHaveLength(2);
@@ -75,6 +79,28 @@ describe('AdminService simplified overview and color database', () => {
     expect(validationStage?.materials[0]).toEqual(expect.objectContaining({
       projectCode: 'R26-001', stepNumber: 12, uploader: expect.objectContaining({ departmentName: '质量验证部' }),
     }));
+  });
+
+  it('does not archive a legacy color without complete step 05 provenance', async () => {
+    prisma.color.findMany.mockResolvedValue([{
+      id: 'legacy-color', projectId: 'project-legacy', code: 'LEGACY-001', name: '历史颜色',
+      status: 'ACTIVE', isPrimary: true, exitFlag: false, exitDate: null,
+      numberingTaskId: null, numberedById: null, numberedAt: null, numberingAttachmentId: null,
+      numberingTask: null, numberingAttachment: null,
+      createdAt: new Date('2026-01-01T00:00:00.000Z'), updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+      project: {
+        id: 'project-legacy', code: 'LEGACY-PROJECT', name: '历史项目', status: ProjectStatus.COMPLETED,
+        vehicleModel: null, createdAt: new Date('2026-01-01T00:00:00.000Z'), updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+      },
+      versions: [], paintProcurements: [],
+    }]);
+    prisma.attachment.findMany.mockResolvedValue([]);
+    prisma.workflowTask.findMany.mockResolvedValue([]);
+
+    const result = await service.getColorDatabase({});
+
+    expect(result.items).toEqual([]);
+    expect(result.summary.archivedColors).toBe(0);
   });
 
   it('limits ordinary readers to projects they own, join or access through their department', async () => {
@@ -88,17 +114,21 @@ describe('AdminService simplified overview and color database', () => {
     } as never);
 
     expect(prisma.color.findMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: {
-        project: {
-          is: {
-            OR: [
-              { ownerUserId: 'viewer-1' },
-              { members: { some: { userId: 'viewer-1' } } },
-              { owningDepartmentId: 'department-1' },
-            ],
-          },
-        },
-      },
+      where: expect.objectContaining({
+        AND: expect.arrayContaining([
+          expect.objectContaining({
+            project: {
+              is: {
+                OR: [
+                  { ownerUserId: 'viewer-1' },
+                  { members: { some: { userId: 'viewer-1' } } },
+                  { owningDepartmentId: 'department-1' },
+                ],
+              },
+            },
+          }),
+        ]),
+      }),
     }));
   });
 

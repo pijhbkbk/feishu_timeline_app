@@ -105,7 +105,11 @@ export function isTopNavigationItemActive(pathname: string, href: string) {
   if (normalizedHref === '/tasks') {
     return (
       normalizedPathname === '/tasks' ||
-      normalizedPathname.startsWith('/tasks/')
+      normalizedPathname.startsWith('/tasks/') ||
+      normalizedPathname === '/progress' ||
+      normalizedPathname.startsWith('/progress/') ||
+      normalizedPathname === '/materials' ||
+      normalizedPathname.startsWith('/materials/')
     );
   }
 

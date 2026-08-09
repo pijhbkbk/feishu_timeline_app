@@ -19,6 +19,14 @@ export type ProjectStatus =
 
 export type ProjectPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 
+export type ProjectPaintSupplier =
+  | '巴斯夫'
+  | '立邦'
+  | '艾仕得'
+  | '金力泰'
+  | '阿克苏诺贝尔'
+  | '兰陵化工';
+
 export type ProjectMemberType =
   | 'OWNER'
   | 'MANAGER'
@@ -70,6 +78,8 @@ export type ProjectListItem = {
   colorName: string | null;
   colorCode: string | null;
   marketRegion: string | null;
+  colorMarketingUnit: string | null;
+  paintSupplier: ProjectPaintSupplier | null;
   vehicleModel: string | null;
   targetDate: string | null;
   riskLevel: ProjectPriority;
@@ -155,6 +165,8 @@ export type ProjectDetail = {
   currentNodeName: string | null;
   targetDate: string | null;
   marketRegion: string | null;
+  colorMarketingUnit: string | null;
+  paintSupplier: ProjectPaintSupplier | null;
   vehicleModel: string | null;
   ownerUserId: string | null;
   ownerName: string | null;
@@ -346,6 +358,8 @@ export type ProjectWritePayload = {
   description?: string | null;
   priority: ProjectPriority;
   marketRegion?: string | null;
+  colorMarketingUnit?: string | null;
+  paintSupplier?: ProjectPaintSupplier | null;
   vehicleModel?: string | null;
   ownerUserId?: string | null;
   plannedStartDate?: string | null;
@@ -366,6 +380,18 @@ export const PROJECT_PRIORITY_OPTIONS: Array<{ value: ProjectPriority; label: st
   { value: 'MEDIUM', label: PROJECT_PRIORITY_LABELS.MEDIUM },
   { value: 'HIGH', label: PROJECT_PRIORITY_LABELS.HIGH },
   { value: 'CRITICAL', label: PROJECT_PRIORITY_LABELS.CRITICAL },
+];
+
+export const PROJECT_PAINT_SUPPLIER_OPTIONS: Array<{
+  value: ProjectPaintSupplier;
+  label: ProjectPaintSupplier;
+}> = [
+  { value: '巴斯夫', label: '巴斯夫' },
+  { value: '立邦', label: '立邦' },
+  { value: '艾仕得', label: '艾仕得' },
+  { value: '金力泰', label: '金力泰' },
+  { value: '阿克苏诺贝尔', label: '阿克苏诺贝尔' },
+  { value: '兰陵化工', label: '兰陵化工' },
 ];
 
 export const PROJECT_MEMBER_TYPE_OPTIONS: Array<{ value: ProjectMemberType; label: string }> = [

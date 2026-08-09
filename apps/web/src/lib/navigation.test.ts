@@ -15,6 +15,9 @@ const routeMatrix = [
   ['/tasks', '我的任务'],
   ['/tasks/pending', '我的任务'],
   ['/v2/tasks', '我的任务'],
+  ['/progress?projectId=project-1&taskId=task-1', '我的任务'],
+  ['/v2/progress?projectId=project-1&taskId=task-1', '我的任务'],
+  ['/materials/upload?taskId=task-1', '我的任务'],
   ['/admin', '系统管理'],
   ['/admin/users', '系统管理'],
   ['/admin/roles', '系统管理'],
@@ -50,11 +53,6 @@ describe('top navigation route matrix', () => {
     expect(
       topNavigationItems.filter((item) =>
         isTopNavigationItemActive('/guide', item.href),
-      ),
-    ).toEqual([]);
-    expect(
-      topNavigationItems.filter((item) =>
-        isTopNavigationItemActive('/progress', item.href),
       ),
     ).toEqual([]);
   });

@@ -16,6 +16,7 @@ import {
 } from '@prisma/client';
 
 import { PrismaService } from '../../infra/prisma/prisma.service';
+import { getControlledColorNumber } from '../../common/controlled-color-number';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { ProjectAccessService } from '../auth/project-access.service';
@@ -411,7 +412,7 @@ export class ColorExitsService {
       currentColor: currentColor
         ? {
             id: currentColor.id,
-            code: currentColor.code,
+            code: getControlledColorNumber(currentColor),
             name: currentColor.name,
             status: currentColor.status,
             exitFlag: currentColor.exitFlag,
@@ -420,7 +421,7 @@ export class ColorExitsService {
         : null,
       replacementOptions: replacementOptions.map((color) => ({
         id: color.id,
-        code: color.code,
+        code: getControlledColorNumber(color),
         name: color.name,
         status: color.status,
         isPrimary: color.isPrimary,
@@ -581,6 +582,10 @@ export class ColorExitsService {
         isPrimary: true,
         exitFlag: true,
         exitDate: true,
+        numberingTaskId: true,
+        numberedById: true,
+        numberedAt: true,
+        numberingAttachmentId: true,
       },
       orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
     });
@@ -595,6 +600,10 @@ export class ColorExitsService {
         name: true,
         status: true,
         isPrimary: true,
+        numberingTaskId: true,
+        numberedById: true,
+        numberedAt: true,
+        numberingAttachmentId: true,
       },
       orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
     });
@@ -901,10 +910,10 @@ export class ColorExitsService {
       workflowTaskId: record.workflowTaskId,
       colorId: record.colorId,
       colorName: record.color?.name ?? null,
-      colorCode: record.color?.code ?? null,
+      colorCode: getControlledColorNumber(record.color),
       replacementColorId: record.replacementColorId,
       replacementColorName: record.replacementColor?.name ?? null,
-      replacementColorCode: record.replacementColor?.code ?? null,
+      replacementColorCode: getControlledColorNumber(record.replacementColor),
       operatorId: record.operatorId,
       operatorName: record.operator?.name ?? null,
       exitDate: record.exitDate.toISOString(),

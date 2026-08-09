@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import {
+  AttachmentTargetType,
   AuditTargetType,
   Prisma,
   ProjectStatus,
@@ -21,6 +22,26 @@ const MAX_DETAIL_DEPTH = 4;
 const MAX_OBJECT_KEYS = 30;
 const MAX_ARRAY_ITEMS = 20;
 const MAX_DETAIL_STRING_LENGTH = 500;
+
+const CONTROLLED_COLOR_ARCHIVE_WHERE = {
+  code: { not: null },
+  numberingTaskId: { not: null },
+  numberedById: { not: null },
+  numberedAt: { not: null },
+  numberingAttachmentId: { not: null },
+  numberingTask: {
+    is: {
+      nodeCode: WorkflowNodeCode.COLOR_NUMBERING,
+      status: WorkflowTaskStatus.COMPLETED,
+    },
+  },
+  numberingAttachment: {
+    is: {
+      entityType: AttachmentTargetType.WORKFLOW_TASK,
+      isDeleted: false,
+    },
+  },
+} satisfies Prisma.ColorWhereInput;
 
 const COLOR_ARCHIVE_STAGES = [
   { key: 'INITIATION', title: '需求与立项', from: 1, to: 2 },
@@ -144,9 +165,14 @@ export class AdminService {
       }),
       this.prisma.user.count({ where: { status: UserStatus.ACTIVE } }),
       this.prisma.department.count({ where: { isActive: true } }),
-      this.prisma.color.count(),
+      this.prisma.color.count({ where: CONTROLLED_COLOR_ARCHIVE_WHERE }),
       this.prisma.attachment.count({
-        where: { isDeleted: false, project: { colors: { some: {} } } },
+        where: {
+          isDeleted: false,
+          project: {
+            colors: { some: CONTROLLED_COLOR_ARCHIVE_WHERE },
+          },
+        },
       }),
     ]);
 
@@ -261,7 +287,14 @@ export class AdminService {
           }
         : undefined;
     const colors = await this.prisma.color.findMany({
-      ...(projectScope ? { where: { project: { is: projectScope } } } : {}),
+      where: projectScope
+        ? {
+            AND: [
+              CONTROLLED_COLOR_ARCHIVE_WHERE,
+              { project: { is: projectScope } },
+            ],
+          }
+        : CONTROLLED_COLOR_ARCHIVE_WHERE,
       include: {
         project: {
           select: {
@@ -278,6 +311,21 @@ export class AdminService {
         paintProcurements: {
           include: { supplier: { select: { supplierName: true } } },
           orderBy: { createdAt: 'asc' },
+        },
+        numberingTask: {
+          select: {
+            id: true,
+            nodeCode: true,
+            status: true,
+          },
+        },
+        numberingAttachment: {
+          select: {
+            id: true,
+            entityType: true,
+            entityId: true,
+            isDeleted: true,
+          },
         },
       },
       orderBy: [{ updatedAt: 'desc' }, { id: 'asc' }],
@@ -340,7 +388,26 @@ export class AdminService {
 
     const archiveByKey = new Map<string, ColorArchive>();
     for (const color of colors) {
-      const key = (color.code ? `code:${color.code}` : `name:${color.name}`).toLocaleLowerCase('zh-CN');
+      const controlledCode =
+        color.code &&
+        color.numberingTaskId &&
+        color.numberedById &&
+        color.numberedAt &&
+        color.numberingAttachmentId &&
+        color.numberingTask?.nodeCode ===
+          WorkflowNodeCode.COLOR_NUMBERING &&
+        color.numberingTask.status === WorkflowTaskStatus.COMPLETED &&
+        color.numberingAttachment?.entityType ===
+          AttachmentTargetType.WORKFLOW_TASK &&
+        color.numberingAttachment.entityId ===
+          color.numberingTaskId &&
+        !color.numberingAttachment.isDeleted
+          ? color.code
+          : null;
+      if (!controlledCode) continue;
+      const key = (
+        `code:${controlledCode}`
+      ).toLocaleLowerCase('zh-CN');
       const technicalData = readRecord(color.versions[0]?.technicalData);
       const displayColor = readColorValue(technicalData);
       const colorType = readOptionalText(technicalData, ['colorType', 'paintType', 'type']);
@@ -413,7 +480,7 @@ export class AdminService {
         id: color.id,
         key,
         name: color.name,
-        code: color.code,
+        code: controlledCode,
         displayColor,
         colorType,
         status: color.status,

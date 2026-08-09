@@ -48,6 +48,7 @@ function task(
     [WorkflowNodeCode.SAMPLE_COLOR_CONFIRMATION]:
       '样板颜色确认',
     [WorkflowNodeCode.PAINT_PROCUREMENT]: '涂料采购',
+    [WorkflowNodeCode.COLOR_NUMBERING]: '新颜色取号',
     [WorkflowNodeCode.CAB_REVIEW]:
       '样车驾驶室评审',
   };
@@ -74,6 +75,7 @@ function task(
     },
     project: {
       id: 'project-1',
+      name: '极昼银开发项目',
       ownerUserId: owner.id,
       members: [
         {
@@ -154,6 +156,13 @@ function createService(options: {
     workflowTask: {
       findUnique: vi.fn().mockResolvedValue(loadedTask),
     },
+    color: {
+      findMany: vi.fn().mockResolvedValue([]),
+      findFirst: vi.fn().mockResolvedValue(null),
+    },
+    attachment: {
+      findFirst: vi.fn().mockResolvedValue(null),
+    },
     r26CommandRequest: {
       findUnique: vi.fn().mockResolvedValue(
         options.command ?? null,
@@ -219,6 +228,7 @@ function createService(options: {
     projectAccess,
     workflows,
     assignments,
+    activityLogs,
   };
 }
 
@@ -278,6 +288,195 @@ describe('R26OrdinaryCompletionService Gate 3C1', () => {
     ).toMatchObject({
       isPrimary: true,
       isNonBlocking: false,
+    });
+  });
+
+  it('requires a unique color number and a step 05 confirmation attachment', async () => {
+    const loadedTask = task(WorkflowNodeCode.COLOR_NUMBERING);
+    const { service, prisma } = createService({ loadedTask });
+
+    const preview = await service.previewCompletion(
+      loadedTask.id,
+      { taskVersion: updatedAt.toISOString() },
+      owner,
+    );
+
+    expect(preview.canComplete).toBe(false);
+    expect(preview.blockingReasons).toEqual(
+      expect.arrayContaining([
+        '请填写第 05 步取得的颜色编号。',
+        '缺少可关联的颜色编号确认单。',
+      ]),
+    );
+    expect(prisma.color.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { projectId: loadedTask.projectId },
+      }),
+    );
+  });
+
+  it('rejects a duplicate step 05 color number before completion', async () => {
+    const loadedTask = task(WorkflowNodeCode.COLOR_NUMBERING);
+    const { service, prisma } = createService({ loadedTask });
+    prisma.color.findMany.mockResolvedValue([
+      {
+        id: 'color-target',
+        code: null,
+        name: '极昼银',
+        isPrimary: true,
+        numberingTaskId: null,
+      },
+    ]);
+    prisma.color.findFirst.mockResolvedValue({
+      id: 'color-existing',
+      code: 'CLR-2026-001',
+      name: '已有颜色',
+      projectId: 'project-other',
+    });
+    prisma.attachment.findFirst.mockResolvedValue({
+      id: 'attachment-number-proof',
+      fileName: 'number-proof.pdf',
+      originalFileName: '颜色编号确认单.pdf',
+      materialType: 'color-number-proof',
+      uploadedAt: updatedAt,
+    });
+
+    const preview = await service.previewCompletion(
+      loadedTask.id,
+      {
+        taskVersion: updatedAt.toISOString(),
+        colorNumber: 'clr-2026-001',
+      },
+      owner,
+    );
+
+    expect(preview.canComplete).toBe(false);
+    expect(preview.colorNumbering).toMatchObject({
+      normalizedCode: 'CLR-2026-001',
+      duplicateColor: { id: 'color-existing' },
+    });
+    expect(preview.blockingReasons).toContain(
+      '颜色编号“CLR-2026-001”已被颜色“已有颜色”使用。',
+    );
+  });
+
+  it('writes the controlled step 05 result and provenance inside the completion transaction', async () => {
+    const loadedTask = task(WorkflowNodeCode.COLOR_NUMBERING);
+    const base = createService({ loadedTask });
+    const confirmationAttachment = {
+      id: 'attachment-number-proof',
+      fileName: 'number-proof.pdf',
+      originalFileName: '颜色编号确认单.pdf',
+      materialType: 'color-number-proof',
+      uploadedAt: updatedAt,
+    };
+    const createdTask = {
+      id: 'task-step-6',
+      nodeCode: WorkflowNodeCode.PAINT_PROCUREMENT,
+      nodeName: '涂料采购',
+      isPrimary: true,
+      payload: {
+        assignmentSource:
+          ProjectAssignmentSource.PROJECT_DEFAULT_ASSIGNEE,
+      },
+      createdAt: updatedAt,
+      assigneeUser: { id: 'owner-next', name: '采购专员' },
+      assigneeDepartment: { id: 'dept-purchase', name: '采购部' },
+    };
+    const tx = {
+      workflowTask: {
+        findUnique: vi.fn().mockResolvedValue(loadedTask),
+        findUniqueOrThrow: vi.fn().mockResolvedValue({
+          ...loadedTask,
+          status: WorkflowTaskStatus.COMPLETED,
+          completedAt: updatedAt,
+        }),
+        findMany: vi
+          .fn()
+          .mockResolvedValueOnce([{ id: loadedTask.id }])
+          .mockResolvedValueOnce([createdTask]),
+      },
+      color: {
+        findMany: vi.fn().mockResolvedValue([
+          {
+            id: 'color-target',
+            code: null,
+            name: '极昼银',
+            isPrimary: true,
+            numberingTaskId: null,
+          },
+        ]),
+        findFirst: vi.fn().mockResolvedValue(null),
+        update: vi.fn().mockResolvedValue({
+          id: 'color-target',
+          code: 'CLR-2026-005',
+        }),
+      },
+      attachment: {
+        findFirst: vi
+          .fn()
+          .mockResolvedValue(confirmationAttachment),
+      },
+      workflowInstance: {
+        update: vi.fn().mockResolvedValue({ commandVersion: 9 }),
+      },
+      project: {
+        findUniqueOrThrow: vi.fn().mockResolvedValue({
+          id: loadedTask.projectId,
+          currentNodeCode: WorkflowNodeCode.PAINT_PROCUREMENT,
+        }),
+      },
+      r26CommandRequest: {
+        create: vi.fn().mockResolvedValue({ id: 'command-1' }),
+      },
+    };
+    base.prisma.$transaction.mockImplementation(
+      async (callback: (client: typeof tx) => Promise<unknown>) =>
+        callback(tx),
+    );
+    base.activityLogs.createWithExecutor.mockResolvedValue({
+      id: 'activity-1',
+      summary: '完成工序 新颜色取号',
+      createdAt: updatedAt,
+    });
+
+    const result = await base.service.completeTask(
+      loadedTask.id,
+      {
+        taskVersion: updatedAt.toISOString(),
+        colorNumber: 'clr-2026-005',
+        completionReason: '颜色编号已确认',
+        acknowledgedConsequences: true,
+        idempotencyKey: 'r26-g3c1:numbering:00000001',
+      },
+      owner,
+      'request-numbering',
+    );
+
+    expect(tx.color.update).toHaveBeenCalledWith({
+      where: { id: 'color-target' },
+      data: expect.objectContaining({
+        code: 'CLR-2026-005',
+        numberingTaskId: loadedTask.id,
+        numberedById: owner.id,
+        numberingAttachmentId: confirmationAttachment.id,
+        numberedAt: expect.any(Date),
+      }),
+      select: { id: true, code: true },
+    });
+    expect(
+      base.workflows.transitionTaskWithExecutor,
+    ).toHaveBeenCalledTimes(1);
+    expect(result).toMatchObject({
+      colorNumbering: {
+        colorId: 'color-target',
+        code: 'CLR-2026-005',
+        numberingTaskId: loadedTask.id,
+        numberedBy: { id: owner.id, name: owner.name },
+        confirmationAttachment: {
+          id: confirmationAttachment.id,
+        },
+      },
     });
   });
 

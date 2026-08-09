@@ -21,6 +21,7 @@ import {
 } from '@prisma/client';
 
 import { PrismaService } from '../../infra/prisma/prisma.service';
+import { getControlledColorNumber } from '../../common/controlled-color-number';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import {
@@ -34,10 +35,16 @@ import {
 import { WorkflowDeadlineService } from '../workflows/workflow-deadline.service';
 import { getWorkflowNodeMeta } from '../workflows/workflow-node.constants';
 import {
+  BUSINESS_DIVISION_CODES,
+  BUSINESS_DIVISIONS,
+  isBusinessDivision,
+} from './admin-organization.constants';
+import {
   type AdminAssignmentChangeDto,
   type AdminAssignmentPreviewDto,
   type AdminBatchTaskChangeDto,
   type AdminBatchTaskPreviewDto,
+  type AdminDepartmentBatchDeleteDto,
   type AdminDepartmentConfigurationChangeDto,
   type AdminDepartmentConfigurationPreviewDto,
   type AdminLedgerQueryDto,
@@ -116,7 +123,13 @@ export class AdminControlCenterService {
                   some: {
                     OR: [
                       { name: { contains: search, mode: 'insensitive' } },
-                      { code: { contains: search, mode: 'insensitive' } },
+                      {
+                        code: { contains: search, mode: 'insensitive' },
+                        numberingTaskId: { not: null },
+                        numberedById: { not: null },
+                        numberedAt: { not: null },
+                        numberingAttachmentId: { not: null },
+                      },
                     ],
                   },
                 },
@@ -139,7 +152,16 @@ export class AdminControlCenterService {
           colors: {
             orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
             take: 1,
-            select: { id: true, name: true, code: true, status: true },
+            select: {
+              id: true,
+              name: true,
+              code: true,
+              status: true,
+              numberingTaskId: true,
+              numberedById: true,
+              numberedAt: true,
+              numberingAttachmentId: true,
+            },
           },
           workflowTasks: {
             include: {
@@ -210,7 +232,12 @@ export class AdminControlCenterService {
           code: project.code,
           name: project.name,
           vehicleModel: project.vehicleModel,
-          color: project.colors[0] ?? null,
+          color: project.colors[0]
+            ? {
+                ...project.colors[0],
+                code: getControlledColorNumber(project.colors[0]),
+              }
+            : null,
           owner: project.ownerUser,
           owningDepartment: project.owningDepartment,
           status: project.status,
@@ -266,7 +293,14 @@ export class AdminControlCenterService {
               colors: {
                 orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
                 take: 1,
-                select: { name: true, code: true },
+                select: {
+                  name: true,
+                  code: true,
+                  numberingTaskId: true,
+                  numberedById: true,
+                  numberedAt: true,
+                  numberingAttachmentId: true,
+                },
               },
             },
           },
@@ -355,7 +389,7 @@ export class AdminControlCenterService {
             name: task.project.name,
             vehicleModel: task.project.vehicleModel,
             colorName: task.project.colors[0]?.name ?? null,
-            colorCode: task.project.colors[0]?.code ?? null,
+            colorCode: getControlledColorNumber(task.project.colors[0]),
             status: task.project.status,
             owner: task.project.ownerUser,
           },
@@ -439,12 +473,13 @@ export class AdminControlCenterService {
     if (tab === 'departments') {
       const where: Prisma.DepartmentWhereInput = search
         ? {
+            code: { notIn: BUSINESS_DIVISION_CODES },
             OR: [
               { name: { contains: search, mode: 'insensitive' } },
               { code: { contains: search, mode: 'insensitive' } },
             ],
           }
-        : {};
+        : { code: { notIn: BUSINESS_DIVISION_CODES } };
       const [total, rows] = await this.prisma.$transaction([
         this.prisma.department.count({ where }),
         this.prisma.department.findMany({
@@ -2411,20 +2446,40 @@ export class AdminControlCenterService {
     if (departmentId && !current) throw new NotFoundException('部门不存在。');
     if (current && !input.expectedVersion) throw new BadRequestException('缺少部门数据版本。');
     if (current && input.expectedVersion) this.assertDateVersion(current.updatedAt, input.expectedVersion, '部门');
-    const [parent, leadUser, duplicate] = await Promise.all([
+    const normalizedName = this.normalizeDepartmentName(input.name);
+    const normalizedLeadUserName = input.leadUserName?.trim() ?? '';
+    const code = current?.code ?? this.customDepartmentCode(normalizedName);
+    const [parent, matchingLeadUsers, duplicate, sortOrderAggregate] = await Promise.all([
       input.parentId ? this.prisma.department.findUnique({ where: { id: input.parentId } }) : Promise.resolve(null),
-      input.leadUserId ? this.prisma.user.findUnique({ where: { id: input.leadUserId } }) : Promise.resolve(null),
-      this.prisma.department.findFirst({ where: { code: input.code.trim(), ...(departmentId ? { id: { not: departmentId } } : {}) }, select: { id: true, name: true } }),
+      normalizedLeadUserName
+        ? this.prisma.user.findMany({
+            where: { name: normalizedLeadUserName, status: UserStatus.ACTIVE },
+            select: { id: true, name: true, departmentId: true, status: true },
+            take: 3,
+          })
+        : Promise.resolve([]),
+      this.prisma.department.findFirst({ where: { code, ...(departmentId ? { id: { not: departmentId } } : {}) }, select: { id: true, name: true } }),
+      current
+        ? Promise.resolve(null)
+        : this.prisma.department.aggregate({
+            where: { parentId: input.parentId || null },
+            _max: { sortOrder: true },
+          }),
     ]);
+    const leadUser = matchingLeadUsers.length === 1 ? matchingLeadUsers[0] : null;
+    const sortOrder = current?.sortOrder ?? ((sortOrderAggregate?._max.sortOrder ?? 0) + 10);
     const conflicts: string[] = [];
     const warnings: string[] = [];
-    if (!/^[A-Z0-9][A-Z0-9_-]{0,39}$/.test(input.code.trim())) conflicts.push('部门编码只能包含大写字母、数字、下划线和连字符。');
-    if (input.parentId && !parent) conflicts.push('所选上级部门不存在。');
-    if (parent && !parent.isActive) conflicts.push('不能将部门归属到已停用的上级部门。');
-    if (input.parentId === departmentId) conflicts.push('部门不能将自己设为上级部门。');
+    if (!normalizedName) conflicts.push('必须填写部门名称。');
+    if (!input.parentId) conflicts.push('必须选择所属事业部。');
+    if (input.parentId && !parent) conflicts.push('所选所属事业部不存在。');
+    if (parent && !isBusinessDivision(parent)) conflicts.push('所属事业部只能从系统规定的六个选项中选择。');
+    if (parent && !parent.isActive) conflicts.push('不能将部门归属到已停用的所属事业部。');
+    if (input.parentId === departmentId) conflicts.push('部门不能归属于自身。');
     if (departmentId && parent?.path?.startsWith(`${current?.path}/`)) conflicts.push('不能将部门移动到自己的下级部门。');
-    if (duplicate) conflicts.push(`部门编码已被“${duplicate.name}”使用。`);
-    if (input.leadUserId && (!leadUser || leadUser.status !== UserStatus.ACTIVE)) conflicts.push('部门负责人不存在或已停用。');
+    if (duplicate) conflicts.push(`同名部门“${duplicate.name}”已存在。`);
+    if (normalizedLeadUserName && matchingLeadUsers.length === 0) conflicts.push(`未找到姓名为“${normalizedLeadUserName}”的启用系统用户。`);
+    if (matchingLeadUsers.length > 1) conflicts.push(`姓名“${normalizedLeadUserName}”对应多个启用用户，请先在系统用户中区分姓名。`);
     if (leadUser && departmentId && leadUser.departmentId !== departmentId) conflicts.push('部门负责人必须先归属到当前部门。');
     if (leadUser && !departmentId) conflicts.push('新部门保存后，请先把人员调整到该部门，再设置负责人。');
     if (current && !input.isActive) {
@@ -2436,11 +2491,11 @@ export class AdminControlCenterService {
       ].filter(Boolean);
       if (blockers.length) conflicts.push(`停用前必须处理：${blockers.join('、')}。`);
     }
-    if (current && (current.code !== input.code.trim() || current.parentId !== (input.parentId || null))) warnings.push('部门路径及全部下级部门路径将同步重算。');
+    if (current && current.parentId !== (input.parentId || null)) warnings.push('部门路径及全部下级部门路径将同步重算。');
     return {
       operation: current ? 'UPDATE' : 'CREATE', canApply: conflicts.length === 0, conflicts, warnings,
       before: current ? { code: current.code, name: current.name, parent: current.parent, leadUser: current.leadUser, sortOrder: current.sortOrder, isActive: current.isActive, path: current.path } : null,
-      after: { code: input.code.trim(), name: input.name.trim(), parent: parent ? { id: parent.id, name: parent.name } : null, leadUser: leadUser ? { id: leadUser.id, name: leadUser.name } : null, sortOrder: input.sortOrder, isActive: input.isActive },
+      after: { code, name: normalizedName, parent: parent ? { id: parent.id, name: parent.name } : null, leadUser: leadUser ? { id: leadUser.id, name: leadUser.name } : null, sortOrder, isActive: input.isActive },
       impact: { childPathsRecalculated: current?._count.children ?? 0, usersPreserved: current?._count.users ?? 0, projectsPreserved: current?._count.ownedProjects ?? 0, auditRequired: true },
       writePerformed: false,
     };
@@ -2453,7 +2508,7 @@ export class AdminControlCenterService {
     requestId: string,
   ) {
     this.assertSuperAdministrator(actor);
-    if (!input.acknowledgedConsequences) throw new BadRequestException('请先确认影响预览。');
+    if (!input.acknowledgedConsequences) throw new BadRequestException('请确认本次部门变更。');
     return this.executeAdminCommand({
       projectId: null,
       action: departmentId ? 'ADMIN_DEPARTMENT_CONFIGURATION_CHANGED' : 'ADMIN_DEPARTMENT_CREATED',
@@ -2462,23 +2517,43 @@ export class AdminControlCenterService {
         const existing = departmentId ? await tx.department.findUnique({ where: { id: departmentId } }) : null;
         if (departmentId && !existing) throw new NotFoundException('部门不存在。');
         if (existing) this.assertDateVersion(existing.updatedAt, input.expectedVersion ?? '', '部门');
-        const [parent, leadUser, duplicate, currentCounts] = await Promise.all([
+        const normalizedName = this.normalizeDepartmentName(input.name);
+        const normalizedLeadUserName = input.leadUserName?.trim() ?? '';
+        const code = existing?.code ?? this.customDepartmentCode(normalizedName);
+        const [parent, matchingLeadUsers, duplicate, currentCounts, sortOrderAggregate] = await Promise.all([
           input.parentId ? tx.department.findUnique({ where: { id: input.parentId } }) : Promise.resolve(null),
-          input.leadUserId ? tx.user.findUnique({ where: { id: input.leadUserId } }) : Promise.resolve(null),
-          tx.department.findFirst({ where: { code: input.code.trim(), ...(departmentId ? { id: { not: departmentId } } : {}) }, select: { id: true } }),
+          normalizedLeadUserName
+            ? tx.user.findMany({
+                where: { name: normalizedLeadUserName, status: UserStatus.ACTIVE },
+                select: { id: true, name: true, departmentId: true, status: true },
+                take: 3,
+              })
+            : Promise.resolve([]),
+          tx.department.findFirst({ where: { code, ...(departmentId ? { id: { not: departmentId } } : {}) }, select: { id: true } }),
           departmentId
             ? tx.department.findUnique({
                 where: { id: departmentId },
                 select: { _count: { select: { users: true, children: true, ownedProjects: true, assignedWorkflowTasks: true } } },
               })
             : Promise.resolve(null),
+          existing
+            ? Promise.resolve(null)
+            : tx.department.aggregate({
+                where: { parentId: input.parentId || null },
+                _max: { sortOrder: true },
+              }),
         ]);
+        const leadUser = matchingLeadUsers.length === 1 ? matchingLeadUsers[0] : null;
+        const sortOrder = existing?.sortOrder ?? ((sortOrderAggregate?._max.sortOrder ?? 0) + 10);
         const transactionConflicts: string[] = [];
-        if (!/^[A-Z0-9][A-Z0-9_-]{0,39}$/.test(input.code.trim())) transactionConflicts.push('部门编码格式不正确。');
-        if (input.parentId && (!parent || !parent.isActive)) transactionConflicts.push('所选上级部门不存在或已停用。');
+        if (!normalizedName) transactionConflicts.push('必须填写部门名称。');
+        if (!input.parentId) transactionConflicts.push('必须选择所属事业部。');
+        if (input.parentId && (!parent || !parent.isActive)) transactionConflicts.push('所选所属事业部不存在或已停用。');
+        if (parent && !isBusinessDivision(parent)) transactionConflicts.push('所属事业部只能从系统规定的六个选项中选择。');
         if (input.parentId === departmentId || (existing && parent?.path?.startsWith(`${existing.path}/`))) transactionConflicts.push('部门层级会形成循环。');
-        if (duplicate) transactionConflicts.push('部门编码已被其他部门使用。');
-        if (input.leadUserId && (!leadUser || leadUser.status !== UserStatus.ACTIVE)) transactionConflicts.push('部门负责人不存在或已停用。');
+        if (duplicate) transactionConflicts.push('同名部门已存在。');
+        if (normalizedLeadUserName && matchingLeadUsers.length === 0) transactionConflicts.push(`未找到姓名为“${normalizedLeadUserName}”的启用系统用户。`);
+        if (matchingLeadUsers.length > 1) transactionConflicts.push(`姓名“${normalizedLeadUserName}”对应多个启用用户，请先在系统用户中区分姓名。`);
         if (leadUser && departmentId && leadUser.departmentId !== departmentId) transactionConflicts.push('部门负责人必须归属当前部门。');
         if (leadUser && !departmentId) transactionConflicts.push('新部门保存后，请先把人员调整到该部门，再设置负责人。');
         if (existing && !input.isActive && currentCounts) {
@@ -2488,12 +2563,11 @@ export class AdminControlCenterService {
         if (transactionConflicts.length) {
           throw new ConflictException({ code: 'DEPARTMENT_CONFIGURATION_BLOCKED', message: '部门配置在提交时已不满足条件。', conflicts: transactionConflicts });
         }
-        const code = input.code.trim();
         const path = parent ? `${parent.path ?? `/${parent.code}`}/${code}` : `/${code}`;
         const level = (parent?.level ?? 0) + 1;
         const department = existing
-          ? await tx.department.update({ where: { id: existing.id }, data: { code, name: input.name.trim(), parentId: input.parentId || null, leadUserId: input.leadUserId || null, sortOrder: input.sortOrder, isActive: input.isActive, path, level } })
-          : await tx.department.create({ data: { code, name: input.name.trim(), parentId: input.parentId || null, leadUserId: input.leadUserId || null, sortOrder: input.sortOrder, isActive: input.isActive, path, level } });
+          ? await tx.department.update({ where: { id: existing.id }, data: { name: normalizedName, parentId: input.parentId || null, leadUserId: leadUser?.id ?? null, isActive: input.isActive, path, level } })
+          : await tx.department.create({ data: { code, name: normalizedName, parentId: input.parentId || null, leadUserId: leadUser?.id ?? null, sortOrder, isActive: input.isActive, path, level } });
         await this.refreshDepartmentDescendantPaths(tx, department.id, department.path ?? `/${department.code}`, department.level);
         const audit = await this.activityLogsService.createWithExecutor(tx, {
           projectId: null, actorUserId: actor.id, targetType: AuditTargetType.SYSTEM, targetId: department.id,
@@ -2501,9 +2575,153 @@ export class AdminControlCenterService {
           summary: existing ? `修改公司部门 ${existing.name} 的完整配置` : `新增公司部门 ${department.name}`,
           ...(existing ? { beforeData: { code: existing.code, name: existing.name, parentId: existing.parentId, leadUserId: existing.leadUserId, sortOrder: existing.sortOrder, isActive: existing.isActive, path: existing.path, level: existing.level } } : {}),
           afterData: { code: department.code, name: department.name, parentId: department.parentId, leadUserId: department.leadUserId, sortOrder: department.sortOrder, isActive: department.isActive, path: department.path, level: department.level },
-          metadata: { requestId, idempotencyKey: input.idempotencyKey, reason: input.reason.trim(), result: 'SUCCESS' },
+          metadata: {
+            requestId,
+            idempotencyKey: input.idempotencyKey,
+            reason: existing ? '更新公司部门配置' : '新增公司部门',
+            reasonSource: 'SYSTEM_DEFAULT',
+            result: 'SUCCESS',
+          },
         });
         return { departmentId: department.id, departmentVersion: department.updatedAt.toISOString(), auditLogIds: [audit.id] };
+      },
+    });
+  }
+
+  async deleteDepartments(
+    input: AdminDepartmentBatchDeleteDto,
+    actor: AuthenticatedUser,
+    requestId: string,
+  ) {
+    this.assertSuperAdministrator(actor);
+    if (!input.acknowledgedConsequences) {
+      throw new BadRequestException('请先确认部门删除影响。');
+    }
+    const requestedRows = new Map(
+      input.departments.map((row) => [row.departmentId, row]),
+    );
+    if (requestedRows.size !== input.departments.length) {
+      throw new BadRequestException('删除列表中存在重复部门。');
+    }
+
+    return this.executeAdminCommand({
+      projectId: null,
+      action: 'ADMIN_DEPARTMENTS_DELETED',
+      input,
+      actor,
+      execute: async (tx) => {
+        const departments = await tx.department.findMany({
+          where: { id: { in: [...requestedRows.keys()] } },
+          include: {
+            _count: {
+              select: {
+                users: true,
+                children: true,
+                ownedProjects: true,
+                assignedWorkflowTasks: true,
+                projectNodeAssignments: true,
+                boardDistributionUsers: true,
+              },
+            },
+          },
+        });
+        if (departments.length !== requestedRows.size) {
+          const found = new Set(departments.map((department) => department.id));
+          const missing = [...requestedRows.keys()].filter((id) => !found.has(id));
+          throw new NotFoundException({
+            code: 'DEPARTMENT_NOT_FOUND',
+            message: '部分待删除部门不存在，请刷新后重试。',
+            departmentIds: missing,
+          });
+        }
+
+        const conflicts: Array<{
+          departmentId: string;
+          departmentName: string;
+          reasons: string[];
+        }> = [];
+        for (const department of departments) {
+          const row = requestedRows.get(department.id)!;
+          this.assertDateVersion(
+            department.updatedAt,
+            row.departmentVersion,
+            `部门“${department.name}”`,
+          );
+          const reasons = [
+            department.parentId === null ? '组织根部门不能删除' : '',
+            department._count.users
+              ? `仍有关联人员 ${department._count.users} 名`
+              : '',
+            department._count.children
+              ? `仍有下级部门 ${department._count.children} 个`
+              : '',
+            department._count.ownedProjects
+              ? `仍有关联项目 ${department._count.ownedProjects} 个`
+              : '',
+            department._count.assignedWorkflowTasks
+              ? `仍有关联工序 ${department._count.assignedWorkflowTasks} 项`
+              : '',
+            department._count.projectNodeAssignments
+              ? `仍有分工配置 ${department._count.projectNodeAssignments} 项`
+              : '',
+            department._count.boardDistributionUsers
+              ? `仍有标准板发放记录 ${department._count.boardDistributionUsers} 项`
+              : '',
+          ].filter(Boolean);
+          if (reasons.length) {
+            conflicts.push({
+              departmentId: department.id,
+              departmentName: department.name,
+              reasons,
+            });
+          }
+        }
+        if (conflicts.length) {
+          throw new ConflictException({
+            code: 'DEPARTMENT_DELETE_BLOCKED',
+            message: '所选部门仍有业务引用，暂时不能删除。',
+            conflicts,
+          });
+        }
+
+        const auditLogIds: string[] = [];
+        for (const department of departments) {
+          const audit = await this.activityLogsService.createWithExecutor(tx, {
+            projectId: null,
+            actorUserId: actor.id,
+            targetType: AuditTargetType.SYSTEM,
+            targetId: department.id,
+            action: 'ADMIN_DEPARTMENT_DELETED',
+            summary: `删除公司部门 ${department.name}`,
+            beforeData: {
+              id: department.id,
+              code: department.code,
+              name: department.name,
+              parentId: department.parentId,
+              leadUserId: department.leadUserId,
+              sortOrder: department.sortOrder,
+              isActive: department.isActive,
+              path: department.path,
+              level: department.level,
+            },
+            afterData: { deleted: true },
+            metadata: {
+              requestId,
+              idempotencyKey: input.idempotencyKey,
+              reason: input.reason.trim(),
+              result: 'SUCCESS',
+            },
+          });
+          auditLogIds.push(audit.id);
+        }
+        await tx.department.deleteMany({
+          where: { id: { in: departments.map((department) => department.id) } },
+        });
+        return {
+          deletedDepartmentIds: departments.map((department) => department.id),
+          deletedCount: departments.length,
+          auditLogIds,
+        };
       },
     });
   }
@@ -3357,7 +3575,19 @@ export class AdminControlCenterService {
         select: { id: true, code: true, name: true, status: true, memberAssignmentVersion: true },
       }),
     ]);
-    return { departments, users, roles, projects };
+    const businessDivisions = BUSINESS_DIVISIONS.map((division) =>
+      departments.find(
+        (department) =>
+          department.code === division.code &&
+          department.name === division.name &&
+          department.isActive,
+      ),
+    ).filter(
+      (department): department is (typeof departments)[number] =>
+        department !== undefined,
+    );
+
+    return { departments, businessDivisions, users, roles, projects };
   }
 
   private async refreshDepartmentDescendantPaths(

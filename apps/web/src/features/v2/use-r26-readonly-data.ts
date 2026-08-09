@@ -19,13 +19,23 @@ export function useR26ReadOnlyData<T>(path: string | null) {
     }
 
     const controller = new AbortController();
+    let isActiveRequest = true;
     const timeout = window.setTimeout(() => controller.abort(), 15_000);
     setLoading(true);
     setError(null);
 
     r26ReadOnlyGet<T>(path, { signal: controller.signal })
-      .then((response) => setData(response))
+      .then((response) => {
+        if (!isActiveRequest) {
+          return;
+        }
+        setData(response);
+        setError(null);
+      })
       .catch((requestError: unknown) => {
+        if (!isActiveRequest) {
+          return;
+        }
         setError(
           requestError instanceof DOMException && requestError.name === 'AbortError'
             ? '业务数据读取超时，请稍后重试。'
@@ -36,10 +46,13 @@ export function useR26ReadOnlyData<T>(path: string | null) {
       })
       .finally(() => {
         window.clearTimeout(timeout);
-        setLoading(false);
+        if (isActiveRequest) {
+          setLoading(false);
+        }
       });
 
     return () => {
+      isActiveRequest = false;
       window.clearTimeout(timeout);
       controller.abort();
     };

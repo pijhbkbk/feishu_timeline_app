@@ -1,0 +1,9 @@
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Published API build SHA-256 digests are integrity metadata, not credentials"
+regexTarget = "match"
+regexes = [
+  '''API dist SHA-256:\s*`[0-9a-f]{64}`''',
+]

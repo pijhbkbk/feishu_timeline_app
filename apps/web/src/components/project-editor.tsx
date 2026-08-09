@@ -15,6 +15,7 @@ import {
   getProjectStatusLabel,
   getWorkflowNodeLabel,
   PROJECT_MEMBER_TYPE_OPTIONS,
+  PROJECT_PAINT_SUPPLIER_OPTIONS,
   PROJECT_PRIORITY_OPTIONS,
   replaceProjectMembers,
   toDateInputValue,
@@ -23,6 +24,7 @@ import {
   type ProjectDetail,
   type ProjectMemberInput,
   type ProjectMemberType,
+  type ProjectPaintSupplier,
   type ProjectPriority,
 } from '../lib/projects-client';
 
@@ -39,11 +41,11 @@ type ProjectEditorProps =
     };
 
 type FormState = {
-  code: string;
   name: string;
   description: string;
   priority: ProjectPriority;
-  marketRegion: string;
+  colorMarketingUnit: string;
+  paintSupplier: ProjectPaintSupplier;
   vehicleModel: string;
   ownerUserId: string;
   plannedStartDate: string;
@@ -66,11 +68,11 @@ const EMPTY_MEMBER: MemberDraft = {
 
 function buildFormState(project?: ProjectDetail): FormState {
   return {
-    code: project?.code ?? '',
     name: project?.name ?? '',
     description: project?.description ?? '',
     priority: project?.priority ?? 'MEDIUM',
-    marketRegion: project?.marketRegion ?? '',
+    colorMarketingUnit: project?.colorMarketingUnit ?? '',
+    paintSupplier: project?.paintSupplier ?? '巴斯夫',
     vehicleModel: project?.vehicleModel ?? '',
     ownerUserId: project?.ownerUserId ?? '',
     plannedStartDate: toDateInputValue(project?.plannedStartDate),
@@ -205,11 +207,11 @@ export function ProjectEditor(props: ProjectEditorProps) {
 
     try {
       const detail = await createProject({
-        code: formState.code,
         name: formState.name,
         description: formState.description || null,
         priority: formState.priority,
-        marketRegion: formState.marketRegion || null,
+        colorMarketingUnit: formState.colorMarketingUnit || null,
+        paintSupplier: formState.paintSupplier,
         vehicleModel: formState.vehicleModel || null,
         ownerUserId: formState.ownerUserId || null,
         plannedStartDate: formState.plannedStartDate || null,
@@ -243,7 +245,8 @@ export function ProjectEditor(props: ProjectEditorProps) {
         name: formState.name,
         description: formState.description || null,
         priority: formState.priority,
-        marketRegion: formState.marketRegion || null,
+        colorMarketingUnit: formState.colorMarketingUnit || null,
+        paintSupplier: formState.paintSupplier,
         vehicleModel: formState.vehicleModel || null,
         ownerUserId: formState.ownerUserId || null,
         plannedStartDate: formState.plannedStartDate || null,
@@ -366,16 +369,6 @@ export function ProjectEditor(props: ProjectEditorProps) {
           onSubmit={props.mode === 'create' ? handleCreateProject : handleSaveProjectBasics}
         >
           <label className="field">
-            <span>项目编号</span>
-            <input
-              data-testid="project-code-input"
-              value={formState.code}
-              onChange={(event) => updateField('code', event.target.value)}
-              placeholder="例如：XM-2026-001"
-              disabled={props.mode === 'edit'}
-            />
-          </label>
-          <label className="field">
             <span>项目名称</span>
             <input
               data-testid="project-name-input"
@@ -417,13 +410,29 @@ export function ProjectEditor(props: ProjectEditorProps) {
             </select>
           </label>
           <label className="field">
-            <span>市场</span>
+            <span>颜色营销单位</span>
             <input
-              data-testid="project-market-input"
-              value={formState.marketRegion}
-              onChange={(event) => updateField('marketRegion', event.target.value)}
-              placeholder="例如：华东 / 东南亚"
+              data-testid="project-color-marketing-unit-input"
+              value={formState.colorMarketingUnit}
+              onChange={(event) => updateField('colorMarketingUnit', event.target.value)}
+              placeholder="请输入颜色营销单位"
             />
+          </label>
+          <label className="field">
+            <span>涂料供应商</span>
+            <select
+              data-testid="project-paint-supplier-select"
+              value={formState.paintSupplier}
+              onChange={(event) =>
+                updateField('paintSupplier', event.target.value as ProjectPaintSupplier)
+              }
+            >
+              {PROJECT_PAINT_SUPPLIER_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
           </label>
           <label className="field">
             <span>车型</span>

@@ -67,7 +67,7 @@ export class ProjectsController {
   @Permissions('project.write')
   @ApiOperation({
     summary: '创建项目',
-    description: '当前接口不做请求级幂等；调用方需保证项目编号不会被重复提交。',
+    description: '项目编号未传入时由服务端生成；项目创建后由服务端初始化流程实例。',
   })
   @Roles('admin', 'project_manager')
   @Post()

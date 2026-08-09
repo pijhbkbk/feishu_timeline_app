@@ -4,6 +4,7 @@ import {
   IsArray,
   IsDateString,
   IsEnum,
+  IsIn,
   IsNotEmpty,
   IsOptional,
   IsString,
@@ -13,13 +14,14 @@ import {
 import { Type } from 'class-transformer';
 
 import { ProjectMemberDto } from './project-member.dto';
+import { PROJECT_PAINT_SUPPLIER_VALUES } from '../project.constants';
 
 export class CreateProjectDto {
-  @ApiProperty({ description: '项目编号' })
+  @ApiPropertyOptional({ description: '兼容字段；未传入时由服务端生成内部项目编号' })
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
   @MaxLength(64)
-  code!: string;
+  code?: string;
 
   @ApiProperty({ description: '项目名称' })
   @IsString()
@@ -43,6 +45,21 @@ export class CreateProjectDto {
   @IsString()
   @MaxLength(64)
   marketRegion?: string | null;
+
+  @ApiPropertyOptional({ description: '颜色营销单位', nullable: true })
+  @IsOptional()
+  @IsString()
+  @MaxLength(128)
+  colorMarketingUnit?: string | null;
+
+  @ApiPropertyOptional({
+    description: '涂料供应商',
+    enum: PROJECT_PAINT_SUPPLIER_VALUES,
+    nullable: true,
+  })
+  @IsOptional()
+  @IsIn(PROJECT_PAINT_SUPPLIER_VALUES)
+  paintSupplier?: string | null;
 
   @ApiPropertyOptional({ description: '车型', nullable: true })
   @IsOptional()
