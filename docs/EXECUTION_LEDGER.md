@@ -7000,3 +7000,62 @@ ZERO_BUSINESS_WRITE_REQUESTS
 AWAITING_PRODUCT_OWNER_REAL_DATA_CONFIRMATION
 STOP_BEFORE_GATE3
 ```
+
+---
+
+### Round R26 Gate 3D Product Owner Acceptance And R27 Entry Preparation（2026-08-09）
+
+#### Product Owner Decision
+
+产品负责人已在任务中明确回复：
+
+```text
+PRODUCT_OWNER_ACCEPTED
+R26_GATE3D_PASSED
+FULL_LIFECYCLE_PRODUCT_EXPERIENCE_ACCEPTED
+AUTHORIZE_R27_FINAL_SOURCE_SECURITY_CLEARANCE
+```
+
+已同步更新：
+
+- `docs/product/R26_GATE3D_HUMAN_REVIEW.md`
+- `docs/rounds/R27.md`
+
+#### R27 Preflight
+
+```text
+branch=main
+local_HEAD=81fbc6064b79947b0345fabe681f5fd8100258b6
+origin/main=81fbc6064b79947b0345fabe681f5fd8100258b6
+recorded_production_runtime=535041bb25f21d548d863d07b35e3e952b0aeb2c
+untracked_user_attachments=4
+```
+
+产品负责人依据 Gate 3D 截图、数据库、审计与完整生命周期操作证据，接受 Gate 3C2、
+Gate 3C3 和 1440/1024/390 三档响应式验收结果。人工验收表的具体项目已同步勾选。
+
+本次只授权提交三份治理文档；正式源码安全清场授权已经记录，但以下独立基线令牌仍缺：
+
+```text
+R27_SOURCE_BASELINE_APPROVED=<full-40-char-commit>
+```
+
+治理提交完成后，必须先比较记录的 production runtime
+`535041bb25f21d548d863d07b35e3e952b0aeb2c` 到新治理提交的 name-status 和提交历史。
+只有在运行时代码差异得到解释并由产品负责人批准后，才能从批准提交创建独立 worktree 和
+`security/r27-final-source-clearance` 分支。四个用户附件保持未跟踪，不删除、不移动、不暂存。
+
+#### Decision
+
+```text
+R26_GATE3C2_PASSED
+R26_GATE3C3_PASSED
+R26_GATE3D_PASSED
+FULL_LIFECYCLE_PRODUCT_EXPERIENCE_ACCEPTED
+AUTHORIZE_R27_FINAL_SOURCE_SECURITY_CLEARANCE
+R26_GOVERNANCE_COMMITTED
+R27_AWAITING_SOURCE_BASELINE_APPROVAL
+PRODUCTION_UNCHANGED
+TAG_UNCHANGED
+STOP_BEFORE_SECURITY_SCAN_AND_SOURCE_CHANGE
+```
