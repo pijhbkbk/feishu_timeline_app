@@ -1,5 +1,64 @@
 # EXECUTION_LEDGER.md
 
+## R27 Gate 0～2 源码真相、扫描包与历史报告研判（2026-08-09）
+
+- Authorization：产品负责人已提供 `R27_SOURCE_BASELINE_APPROVED=41b4b166c587692e6f0fb9536dca2e1aab646c70`、
+  `R27_GATE0_SOURCE_COMPOSITION_APPROVED` 和 `PLACEHOLDER_DISPOSITIONS_APPROVED`。仍禁止部署
+  production、合并 `main`、建 tag 或跨过人工闸门。
+- Immutable identity：独立 worktree
+  `/Users/lixiaochen/Downloads/feishu_timeline_app-r27-security`，分支
+  `security/r27-final-source-clearance`；治理基线 `41b4b166c587692e6f0fb9536dca2e1aab646c70`；
+  production runtime/source `535041bb25f21d548d863d07b35e3e952b0aeb2c`。两者差异仅五个
+  `docs/**`，运行时代码差异为 0。
+- Source truth：34 个远端分支对 runtime 的独有提交数为 0；V2、18 步、成员/分配、
+  进展/材料、第 12/13/17/18 步、OAuth、后台、颜色库、权限/审计、26 个 migration、
+  Docker/Nginx/systemd/部署脚本和 CI 均在同一谱系；不重新合并历史分支。
+- Frozen fingerprints：pnpm-lock
+  `897bec6a0bf51a3f004ca9c5261606d01f756f50388d926649143ce6a570d9ec`；API Dockerfile
+  `17380e1e7de0255eae6ecb8f5ce56e8f3db12e9313378ff6affabac2a87cc7bf`；Web Dockerfile
+  `56e435169b41e3d42171c6fd568084f4d29ff4a823322472b8dac32980c10148`。R26 Gate 3D staging runtime
+  commit 在历史报告中未记录，准确值为 `UNKNOWN_NOT_RECORDED`。
+- Placeholder implementation：批准去向已在
+  `359b3cb0c01d294d421cf173e0ef0e1d1c06ad5c` 实施；`/reviews`、`/settings`、`/colors`
+  固定跳转，动态 `[section]` 占位兜底删除，20 个合法 section 保留。无开放重定向，
+  权限边界未放宽；正式应用源码 Placeholder 红线命中 0，原始 `rg` 10 行均为
+  测试负向断言/选择器。
+- Placeholder validation：定向回归 `4/4`，Web `48 files / 197 tests`，API
+  `70 files / 329 tests`；`pnpm install --frozen-lockfile`、lint、typecheck、Web/API build、
+  Prisma validate 和 `git diff --check` 全部 PASS。本地 production HTTP 实测三个 `307`
+  Location 精确匹配，非法 section 为 `404`。未执行 staging/生产浏览器验收，不将本地
+  HTTP 冒充为产品证据。
+- Gate 1：打包器与 PDF 解析器提交为
+  `27a0338ac0c59217d121fa6defe0feeec45ca252`。正式第一方包
+  `company-source-scan-27a0338ac0c5.tar.gz`，`887239` bytes，SHA-256
+  `83aff4f1474819ba370088418f018ddf1de29238d9745bf4139580f09864d940`；627 文件、3 个脱敏
+  env 示例排除、禁止路径 0。连续两次 tar 与 5 个 sidecar 逐字节一致，contents 和
+  per-file SHA-256 均 `627/627` PASS。
+- Package boundary：只从 Git commit 的第一方白名单取文件，强制包含项目审计日志路由、
+  Auth、Session、Cookie guard 和 Feishu OAuth；排除依赖、生成物、报告、备份、env、认证
+  artifact、DB dump 和未脱敏日志。未编辑 `node_modules` 或 `.next`。
+- Gate 2：历史 6609 页 PDF 的 156 项已生成每项 15 字段记录，ID 唯一、证据非空。
+  规则统计为 weak hash `80`、setTimeout `38`、eval `22`、setInterval `14`、load `2`；
+  ownership 为 FIRST_PARTY `0`、THIRD_PARTY `134`、GENERATED_ARTIFACT `22`；处置为
+  FALSE_POSITIVE `55`、NOT_IN_PRODUCTION `88`、NEEDS_SECURITY_REVIEW `13`，未研判 `0`。
+  未批量标记误报，13 项保持开放。
+- Gate 2 evidence：JSON SHA-256
+  `3c217ddc8347ca0cfcc8baf6e9a941e091d40f8105a83257b3675f0c1cda2656`；Markdown SHA-256
+  `89224e4d0e3f38374b3c7d65035ed861db773722de96ed63a94ad572ba410cb5`；parser SHA-256
+  `76ad46f80114089c36d217e21a8d46abe502984c20631feac1964b2533c57b57`。重生逐字节一致，
+  schema/156 ledger rows/15 字段/规则统计验证、代表页视觉抽查、gitleaks 与敏感模式检查均 PASS。
+- Evidence files：`docs/security/R27_SOURCE_OF_TRUTH_AUDIT.md`、
+  `docs/security/R27_SOURCE_SCAN_MANIFEST.md`、`docs/security/R27_COMPANY_SAST_TRIAGE.md`、
+  `reports/security/r27/company-sast-findings.json`、`docs/acceptance/ROUTE_ACCEPTANCE_MATRIX.md` 和
+  `docs/rounds/R27.md`。JSON 使用精确强制路径纳入版本控制；tar/sidecar 保留在被忽略的本地交付区。
+- Boundary：正式当前基线第一方 SAST、SCA、Secrets、SBOM、许可证、镜像扫描、R26 业务
+  安全回归和 staging DAST 均未开始。不能宣称 Critical/High/Medium 为 0；当前第一方
+  security clearance 尚未建立。production、`main` 和 tag 均未改变，四个设计草图仍仅存于原仓库。
+- Decision：`R27_GATE1_SOURCE_PACKAGE_COMPLETE / R27_GATE2_156_FINDING_TRIAGE_COMPLETE /
+  UNTRIAGED_HISTORICAL_FINDINGS=0 / OPEN_NEEDS_SECURITY_REVIEW=13 /
+  AWAITING_TRIAGE_AND_FIX_LIST_CONFIRMATION / FORMAL_FIRST_PARTY_SAST_NOT_STARTED /
+  CURRENT_FIRST_PARTY_SECURITY_CLEARANCE=NOT_ESTABLISHED / PRODUCTION_UNCHANGED / STOP`。
+
 ## R26 累积产品与后台更新生产发布（2026-08-09）
 
 - Authorization：产品负责人要求将当前全部代码更新同步到 GitHub、合并 `main`，并发布到
