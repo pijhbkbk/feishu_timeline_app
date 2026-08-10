@@ -7118,3 +7118,209 @@ PRODUCTION_UNCHANGED
 TAG_UNCHANGED
 STOP_BEFORE_SECURITY_SCAN_AND_SOURCE_CHANGE
 ```
+
+---
+
+### Round R27 Gate 3—5 Initial Security Scan And Semgrep Blocker（2026-08-10）
+
+#### Authorization And Immutable Input
+
+产品负责人明确提供：
+
+```text
+R27_GATE2_TRIAGE_AND_FIX_LIST_APPROVED
+R27_SOURCE_SCAN_COMMIT=27a0338ac0c59217d121fa6defe0feeec45ca252
+OPEN_NEEDS_SECURITY_REVIEW=13
+```
+
+本轮从不可变 source commit 和已验证源码包启动 Gate 3—5 只读初扫：
+
+```text
+worktree=/Users/lixiaochen/Downloads/feishu_timeline_app-r27-security
+branch=security/r27-final-source-clearance
+scan_start_HEAD=4a1b4abfbb1d18278ca8438c0b1d1085243e2daf
+source_commit=27a0338ac0c59217d121fa6defe0feeec45ca252
+source_archive=company-source-scan-27a0338ac0c5.tar.gz
+source_archive_sha256=83aff4f1474819ba370088418f018ddf1de29238d9745bf4139580f09864d940
+source_archive_files=627
+```
+
+没有使用原仓库四个未跟踪用户设计草图，没有启动应用容器，没有执行 migration，没有访问或
+部署 staging/production，没有修改 main 或 tag。
+
+#### Gate 3 Formal SAST Blocker
+
+仓库固定扫描器：
+
+```text
+Semgrep=1.169.0
+image=docker.io/semgrep/semgrep:1.169.0@sha256:2b33f46ba66cf8cc2ad59ccfa7d22951fd00c632c38f1339e84ec8e6e641a942
+Docker=29.5.2
+enumerated_targets=503
+```
+
+第一次通过 `scripts/security/run-sast.sh` 拉取固定 digest 时，Docker Hub manifest GET 返回
+`Service Unavailable`，Docker rc `125`，`semgrep.status=TOOL_ERROR`。第二次只执行同 digest
+`docker pull`，manifest HEAD 再次返回 `Service Unavailable`。
+
+失败发生在 scanner 启动前：
+
+```text
+formal_semgrep_findings=NOT_PRODUCED
+formal_semgrep_parse_errors=NOT_PRODUCED
+formal_semgrep_result=TOOL_ERROR
+attempts=2
+```
+
+依 `AGENTS.md` 12.13 停止，没有第三次正式 Semgrep 门禁执行。此前曾短暂启动非批准
+Semgrep `1.172.0` 隔离环境下载；发现版本不匹配后立即中止，未完成安装、未执行扫描、未用于
+任何结论，临时目录已删除。正式固定 digest 的失败次数仍严格为两次。
+正式 blocker 的失败环境、命令、根因、两次尝试和恢复条件见
+`docs/security/R27_GATE3_SAST_BLOCKER_REPORT.md`。
+
+人工补证得到 TypeScript-family 516 文件、106,159 行、AST parse error `0`；Bash 49 文件，
+`bash -n` parse error `0`。这些不是正式 Semgrep 结果。
+
+正式 target manifest 还漏扫 49 个 `.sh`、12 个非 config `.mjs` 和 4 个 `.js`；Semgrep
+registry ruleset 未固定，恢复后必须修复扫描覆盖和可重复性。
+
+#### Confirmed First-Party Findings
+
+人工 source-to-sink 审计确认：
+
+| ID | Severity | 结论 |
+|---|---|---|
+| `G3-SAST-001` | HIGH | public logout 没有把 cookie token 传给 service，客户端清 cookie 后 Redis session 仍可保留默认 8 小时 |
+| `G3-SAST-002` | HIGH | 三个生产运维脚本以 `eval` 解析 CLI，另有两个远端 Bash 源码插值 sink |
+| `G3-SAST-003` | MEDIUM | 附件无 quarantine/恶意文件 scanner verdict 即可绑定和下载 |
+| `G3-SAST-004` | MEDIUM | production notification log 记录 user/project/task/dedupe 标识 |
+| `G3-SAST-005` | MEDIUM | 两个部署引导脚本把未固定的 NodeSource 内容 pipe 给 root shell |
+
+新增两个 Low/`NEEDS_SECURITY_REVIEW` 候选：notification `linkPath` 缺站内路径约束，以及缺失
+Origin 的 mutation 被允许。本地对象存储 canonical containment 暂为当前 HTTP 数据流
+`FALSE_POSITIVE`，保留 defense-in-depth 建议。
+
+本轮没有开始修复；后续每项必须先增加失败复现测试。
+
+#### Gate 4 SCA, SBOM, License And Images
+
+依赖初扫：
+
+```text
+production_dependencies=227
+production_Critical=0
+production_High=2
+production_Medium=0
+development_dependencies=248
+development_Critical=0
+development_High=2
+lock_components=472
+lock_unique_High=3
+```
+
+3 个唯一 High 为 `js-yaml@4.3.0`、`nanoid@3.3.16` 和
+`brace-expansion@5.0.8`。前两项进入 production dependency graph；第三项是 dev graph，
+但现有 Dockerfile 把完整 workspace node_modules 复制到 runtime，因此三项都进入 API/Web
+production image。
+
+镜像初扫：
+
+```text
+API image:        Critical=0 High=3 BLOCKED
+Web image:        Critical=0 High=3 BLOCKED
+PostgreSQL image: Critical=0 High=0 PASS
+Redis image:      Critical=0 High=0 PASS
+Nginx image:      Critical=0 High=0 PASS
+```
+
+没有启动这些镜像。临时 CycloneDX 1.6 SBOM 经 OSV 重新解析仍为相同 3 个 High，随后删除；
+最终 SBOM 和 THIRD_PARTY_NOTICES 必须从修复后的冻结 lock/runtime image 重生。14 个
+Sharp/libvips LGPL 表达式仍需分发/法务复核。完整证据见
+`docs/security/R27_GATE4_SCA_INITIAL_REPORT.md`。
+
+历史 13 项已有逐项关闭建议（11 `NOT_IN_PRODUCTION`、2 `FALSE_POSITIVE`），但为遵守 Gate 3
+两次失败停止，本轮没有改写已批准 JSON，仍保留 approved Gate 2 状态。
+
+#### Gate 5 Secrets
+
+Gitleaks `8.30.1` 对 approved source、当前 HEAD、全部有效 refs/reflogs 历史、报告、源码包、
+tracked env/example、二进制及 431 张媒体/OCR 图像的结果：
+
+```text
+confirmed_secret_findings=0
+current_source_findings=0
+full_history_findings=0
+untriaged_secret_candidates=0
+tracked_media_findings=0
+secret_rotation_required=NO
+```
+
+去除仓库窄 allowlist 后唯一候选是文档中公开的 64 位 API dist SHA-256 完整性元数据，已逐项
+确认为 false positive。非 Secret 后续包括 production/staging DB/Redis 配置 fail-closed 和
+空的 `.git/refs/.DS_Store` 元数据清理；没有修改共享 `.git`。详见
+`docs/security/R27_GATE5_SECRETS_REPORT.md`。
+
+#### Checks And Change Boundary
+
+本轮执行的是只读安全初扫和治理证据固化，不是修复后的质量回归：
+
+```text
+source_package_integrity                 PASS
+TypeScript AST parse                     PASS (manual, 516 files / 0 errors)
+bash -n                                  PASS (manual, 49 files / 0 errors)
+formal Semgrep                           TOOL_ERROR / BLOCKED
+production dependency Critical/High=0    FAIL (High=2)
+production image Critical/High=0         FAIL (API=3, Web=3)
+confirmed secrets=0                      PASS
+lint/typecheck/unit/build/Prisma/E2E     NOT_RERUN (no source fix started)
+authenticated staging DAST               NOT_STARTED
+stability test                           NOT_STARTED
+```
+
+只新增/更新 R27 安全治理文档；没有业务源码、lockfile、Dockerfile、migration 或扫描配置修复。
+
+#### Mandatory Delivery Truth
+
+1. 代码是否实现：Gate 1/2 既有工具与证据已存在；本轮确认漏洞尚未修复。
+2. 本地测试是否通过：Secrets PASS；人工 parse PASS；正式 SAST TOOL_ERROR；SCA/image FAIL；
+   修复后全量质量门禁未执行。
+3. staging 精确 URL：未执行；没有访问 staging。
+4. staging runtime commit：`UNKNOWN_NOT_RECORDED`，本轮未改变。
+5. staging 用户路径是否通过：未执行。
+6. production 是否改变：否。
+7. production runtime commit：记录值
+   `535041bb25f21d548d863d07b35e3e952b0aeb2c`，本轮未在线复核、未改变。
+8. production 用户路径是否通过：未执行；没有访问 production。
+9. main 是否改变：否；local main 与 origin/main 均为
+   `41b4b166c587692e6f0fb9536dca2e1aab646c70`。
+10. tag 是否改变：否；仍为既有 `v1.0.0`、`v1.1.0-rc.1`、`v1.1.0-rc.2`、
+    `v1.1.0-rc.3`。
+11. 产品负责人是否确认：R26 Gate 3D、R27 baseline、Gate 0、Gate 2 已确认；本轮安全清场未通过。
+12. 未完成路由：本轮未新增路由；R27 安全修复和动态复测未完成。
+13. Placeholder 数量：Gate 0 正式源码残留 `0`；本轮未改变。
+14. 当前准确状态：见下方 Decision。
+
+#### Decision
+
+```text
+R27_GATE3_FIRST_PARTY_SAST_BLOCKED
+FORMAL_SEMGREP_TOOL_ERROR_AFTER_2_ATTEMPTS
+KNOWN_FIRST_PARTY_CRITICAL=0
+KNOWN_FIRST_PARTY_HIGH_GROUPS=2
+KNOWN_FIRST_PARTY_MEDIUM_GROUPS=3
+NEW_NEEDS_SECURITY_REVIEW=2
+TOTAL_OPEN_NEEDS_SECURITY_REVIEW=15
+R27_GATE4_SCA_FAIL
+PRODUCTION_DEPENDENCY_HIGH=2
+PRODUCTION_IMAGE_UNIQUE_HIGH=3
+R27_GATE5_SECRETS_PASS
+CONFIRMED_SECRET_FINDINGS=0
+SECURITY_CLEARANCE=NOT_ESTABLISHED
+FIXES_NOT_STARTED
+STAGING_DAST_NOT_STARTED
+PRODUCTION_UNCHANGED
+MAIN_UNCHANGED
+TAG_UNCHANGED
+BLOCKER_REPORT
+STOP
+```
