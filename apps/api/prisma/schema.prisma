@@ -1397,14 +1397,14 @@ model PerformanceTest {
   paintProcurementId String?
   testedById         String?
   reportAttachmentId String?                @unique
-  testCode           String                 @map("testNo")
-  relatedObjectName  String?
+  testCode           String                 @map("testNo") @db.VarChar(64)
+  relatedObjectName  String?                @db.VarChar(200)
   testItem           PerformanceTestType    @map("testType")
   status             PerformanceTestStatus  @default(DRAFT)
-  standardValue      String?
-  actualValue        String?
+  standardValue      String?                @db.VarChar(500)
+  actualValue        String?                @db.VarChar(500)
   result             PerformanceTestResult?
-  conclusion         String?                @map("resultSummary")
+  conclusion         String?                @map("resultSummary") @db.VarChar(4000)
   metadata           Json?                  @map("resultData")
   testedAt           DateTime?
   submittedAt        DateTime?              @map("completedAt")
