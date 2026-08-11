@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  GoneException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -81,7 +82,6 @@ type UpdateProjectInput = {
   colorMarketingUnit?: string | null;
   paintSupplier?: ProjectPaintSupplier | null;
   vehicleModel?: string | null;
-  ownerUserId?: string;
   plannedStartDate?: Date | null;
   plannedEndDate?: Date | null;
 };
@@ -894,14 +894,6 @@ export class ProjectsService {
         throw new NotFoundException('项目不存在或已被删除。');
       }
 
-      const ownerUserId = input.ownerUserId ?? currentProject.ownerUserId;
-      let resolvedOwnerUserId = ownerUserId;
-
-      if (ownerUserId) {
-        const owner = await this.findActiveUserOrThrow(tx, ownerUserId);
-        resolvedOwnerUserId = owner.id;
-      }
-
       const updatedProject = await tx.project.update({
         where: { id: projectId },
         data: {
@@ -921,13 +913,6 @@ export class ProjectsService {
               : input.paintSupplier,
           vehicleModel:
             input.vehicleModel === undefined ? currentProject.vehicleModel : input.vehicleModel,
-          ownerUserId: resolvedOwnerUserId ?? null,
-          owningDepartmentId:
-            resolvedOwnerUserId && resolvedOwnerUserId !== currentProject.ownerUserId
-              ? (
-                  await this.findActiveUserOrThrow(tx, resolvedOwnerUserId)
-                ).departmentId ?? currentProject.owningDepartmentId
-              : currentProject.owningDepartmentId,
           plannedStartDate:
             input.plannedStartDate === undefined
               ? currentProject.plannedStartDate
@@ -938,10 +923,6 @@ export class ProjectsService {
               : input.plannedEndDate,
         },
       });
-
-      if (resolvedOwnerUserId) {
-        await this.ensureOwnerMemberInTx(tx, projectId, resolvedOwnerUserId);
-      }
 
       await this.activityLogsService.createWithExecutor(tx, {
         projectId,
@@ -961,58 +942,12 @@ export class ProjectsService {
   }
 
   async replaceProjectMembers(projectId: string, rawInput: unknown, actor: AuthenticatedUser) {
-    const input = this.normalizeMembersInput(rawInput);
-
-    return this.prisma.$transaction(async (tx) => {
-      await this.projectAccessService.assertProjectAccess(tx, projectId, actor, 'project.write');
-
-      const project = await tx.project.findUnique({
-        where: { id: projectId },
-        include: {
-          members: {
-            include: {
-              user: true,
-            },
-          },
-        },
-      });
-
-      if (!project) {
-        throw new NotFoundException('项目不存在或已被删除。');
-      }
-
-      const beforeMembers = project.members.map((member) => ({
-        userId: member.userId,
-        userName: member.user.name,
-        memberType: member.memberType,
-        title: member.title,
-        isPrimary: member.isPrimary,
-      }));
-
-      const updatedMembers = await this.replaceMembersInTx(tx, {
-        projectId,
-        ownerUserId: project.ownerUserId,
-        members: input.members,
-      });
-
-      await this.activityLogsService.createWithExecutor(tx, {
-        projectId,
-        actorUserId: actor.id,
-        targetType: AuditTargetType.PROJECT,
-        targetId: projectId,
-        action: 'PROJECT_MEMBERS_REPLACED',
-        nodeCode: project.currentNodeCode,
-        summary: `更新项目 ${project.name} 成员`,
-        beforeData: {
-          members: beforeMembers,
-        },
-        afterData: {
-          members: this.toMemberAuditSnapshot(updatedMembers),
-        },
-      });
-
-      const detail = await this.findProjectDetailOrThrow(tx, projectId);
-      return this.toProjectDetail(detail);
+    void projectId;
+    void rawInput;
+    void actor;
+    throw new GoneException({
+      code: 'LEGACY_PROJECT_MEMBER_REPLACEMENT_DISABLED',
+      message: '成员变更必须通过受版本控制的成员分工接口完成。',
     });
   }
 
@@ -1100,6 +1035,12 @@ export class ProjectsService {
 
   private normalizeUpdateInput(rawInput: unknown): UpdateProjectInput {
     const input = this.asRecord(rawInput, 'Invalid project payload.');
+    if (Object.prototype.hasOwnProperty.call(input, 'ownerUserId')) {
+      throw new BadRequestException({
+        code: 'PROJECT_OWNER_CHANGE_REQUIRES_VERSIONED_COMMAND',
+        message: '负责人变更必须通过受版本控制的成员分工接口完成。',
+      });
+    }
     const plannedStartDate = this.parseOptionalDate(
       input.plannedStartDate,
       'plannedStartDate',
@@ -1131,7 +1072,6 @@ export class ProjectsService {
             'paintSupplier',
           );
     const vehicleModel = this.parseNullableString(input.vehicleModel, true);
-    const ownerUserId = this.parseOptionalString(input.ownerUserId);
 
     if (name !== undefined) {
       normalized.name = name;
@@ -1161,10 +1101,6 @@ export class ProjectsService {
       normalized.vehicleModel = vehicleModel;
     }
 
-    if (ownerUserId !== undefined) {
-      normalized.ownerUserId = ownerUserId;
-    }
-
     if (plannedStartDate !== undefined) {
       normalized.plannedStartDate = plannedStartDate;
     }
@@ -1174,14 +1110,6 @@ export class ProjectsService {
     }
 
     return normalized;
-  }
-
-  private normalizeMembersInput(rawInput: unknown) {
-    const input = this.asRecord(rawInput, 'Invalid project members payload.');
-
-    return {
-      members: this.parseMembers(input.members),
-    };
   }
 
   private parseMembers(rawValue: unknown): ProjectMemberInput[] {

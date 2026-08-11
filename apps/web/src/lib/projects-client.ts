@@ -493,15 +493,6 @@ export function updateProject(projectId: string, payload: ProjectWritePayload) {
   });
 }
 
-export function replaceProjectMembers(projectId: string, members: ProjectMemberInput[]) {
-  return apiRequest<ProjectDetail>(`/projects/${projectId}/members`, {
-    method: 'PUT',
-    body: {
-      members,
-    },
-  });
-}
-
 export function fetchUserDirectory() {
   return apiRequest<DirectoryUser[]>('/users/directory');
 }

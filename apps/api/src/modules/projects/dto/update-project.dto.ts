@@ -49,12 +49,6 @@ export class UpdateProjectDto {
   @MaxLength(64)
   vehicleModel?: string | null;
 
-  @ApiPropertyOptional({ description: '项目负责人用户 ID' })
-  @IsOptional()
-  @IsString()
-  @MaxLength(64)
-  ownerUserId?: string;
-
   @ApiPropertyOptional({ description: '计划开始日期', format: 'date-time', nullable: true })
   @IsOptional()
   @IsDateString()

@@ -92,8 +92,9 @@ export class ProjectsController {
 
   @Permissions('project.write')
   @ApiOperation({
-    summary: '替换项目成员',
-    description: '该接口会整体替换当前成员列表，而不是增量追加。',
+    summary: '已停用：替换项目成员',
+    description: '成员变更必须使用 /api/v2/projects/:projectId/members 的版本化命令接口。',
+    deprecated: true,
   })
   @Roles('admin', 'project_manager')
   @Put(':projectId/members')
