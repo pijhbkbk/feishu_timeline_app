@@ -11,11 +11,43 @@ import type { FeishuAuthAdapter, FeishuIdentityProfile } from './feishu.types';
 
 type JsonObject = Record<string, unknown>;
 
+type FeishuOauthDeadline = {
+  controller: AbortController;
+  deadlineAt: number;
+  timer: NodeJS.Timeout;
+  timedOut: boolean;
+  timeoutLogged: boolean;
+};
+
+const FEISHU_OAUTH_RESPONSE_MAX_BYTES = 256 * 1024;
+const FEISHU_OAUTH_DEFAULT_OVERALL_TIMEOUT_MS = 10_000;
+const FEISHU_OAUTH_MIN_OVERALL_TIMEOUT_MS = 1_000;
+const FEISHU_OAUTH_MAX_OVERALL_TIMEOUT_MS = 30_000;
+const FEISHU_OAUTH_DEFAULT_MAX_CONCURRENT_REQUESTS = 8;
+const FEISHU_OAUTH_MAX_CONFIGURED_CONCURRENT_REQUESTS = 64;
+
 @Injectable()
 export class StubFeishuAuthAdapter implements FeishuAuthAdapter {
   private readonly logger = new Logger(StubFeishuAuthAdapter.name);
+  private readonly overallTimeoutMs: number;
+  private readonly maxConcurrentRequests: number;
+  // This provider is a singleton, so the counter caps every OAuth exchange in this API process.
+  private activeOutboundRequests = 0;
 
-  constructor(private readonly configService: ConfigService) {}
+  constructor(private readonly configService: ConfigService) {
+    this.overallTimeoutMs = this.readBoundedConfig(
+      'feishuOauthOverallTimeoutMs',
+      FEISHU_OAUTH_DEFAULT_OVERALL_TIMEOUT_MS,
+      FEISHU_OAUTH_MIN_OVERALL_TIMEOUT_MS,
+      FEISHU_OAUTH_MAX_OVERALL_TIMEOUT_MS,
+    );
+    this.maxConcurrentRequests = this.readBoundedConfig(
+      'feishuOauthMaxConcurrentRequests',
+      FEISHU_OAUTH_DEFAULT_MAX_CONCURRENT_REQUESTS,
+      1,
+      FEISHU_OAUTH_MAX_CONFIGURED_CONCURRENT_REQUESTS,
+    );
+  }
 
   isConfigured() {
     return Boolean(
@@ -55,43 +87,60 @@ export class StubFeishuAuthAdapter implements FeishuAuthAdapter {
     const clientId = this.getRequiredConfig('feishuAppId', 'Feishu app id');
     const clientSecret = this.getRequiredConfig('feishuAppSecret', 'Feishu app secret');
     const redirectUri = this.getRequiredConfig('feishuRedirectUri', 'Feishu redirect uri');
-    const tokenPayload = await this.requestJson(
-      FEISHU_CN_OAUTH_PROVIDER.tokenEndpoint,
-      {
-        method: 'POST',
-        headers: {
-          Accept: 'application/json',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          grant_type: 'authorization_code',
-          code: trimmedCode,
-          client_id: clientId,
-          client_secret: clientSecret,
-          redirect_uri: redirectUri,
-        }),
-      },
-      'Feishu token exchange',
-    );
-    const tokenEnvelope = this.expectFeishuSuccess(tokenPayload, 'Feishu token exchange');
-    const accessToken = this.getAccessToken(tokenEnvelope);
-    const tokenData = this.getTokenProfileData(tokenEnvelope);
+    const release = this.acquireOutboundLease();
+    const deadline = this.startDeadline();
 
-    const userInfoPayload = await this.requestJson(
-      FEISHU_CN_OAUTH_PROVIDER.userInfoEndpoint,
-      {
-        method: 'GET',
-        headers: {
-          Accept: 'application/json',
-          Authorization: `Bearer ${accessToken}`,
+    try {
+      const tokenPayload = await this.requestJson(
+        FEISHU_CN_OAUTH_PROVIDER.tokenEndpoint,
+        {
+          method: 'POST',
+          headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            grant_type: 'authorization_code',
+            code: trimmedCode,
+            client_id: clientId,
+            client_secret: clientSecret,
+            redirect_uri: redirectUri,
+          }),
         },
-      },
-      'Feishu user info request',
-    );
-    const userInfoEnvelope = this.expectFeishuSuccess(userInfoPayload, 'Feishu user info request');
-    const userInfoData = this.asObject(userInfoEnvelope.data, 'Feishu user info response data');
+        'Feishu token exchange',
+        deadline,
+      );
+      const tokenEnvelope = this.expectFeishuSuccess(tokenPayload, 'Feishu token exchange');
+      const accessToken = this.getAccessToken(tokenEnvelope);
+      const tokenData = this.getTokenProfileData(tokenEnvelope);
 
-    return this.toIdentityProfile(userInfoData, tokenData);
+      const userInfoPayload = await this.requestJson(
+        FEISHU_CN_OAUTH_PROVIDER.userInfoEndpoint,
+        {
+          method: 'GET',
+          headers: {
+            Accept: 'application/json',
+            Authorization: `Bearer ${accessToken}`,
+          },
+        },
+        'Feishu user info request',
+        deadline,
+      );
+      const userInfoEnvelope = this.expectFeishuSuccess(
+        userInfoPayload,
+        'Feishu user info request',
+      );
+      const userInfoData = this.asObject(
+        userInfoEnvelope.data,
+        'Feishu user info response data',
+      );
+
+      this.throwIfDeadlineExceeded(deadline);
+      return this.toIdentityProfile(userInfoData, tokenData);
+    } finally {
+      clearTimeout(deadline.timer);
+      release();
+    }
   }
 
   private getRequiredConfig(key: string, label: string) {
@@ -108,24 +157,59 @@ export class StubFeishuAuthAdapter implements FeishuAuthAdapter {
     url: string,
     init: RequestInit,
     action: string,
+    deadline: FeishuOauthDeadline,
   ): Promise<unknown> {
     let response: Response;
 
+    this.throwIfDeadlineExceeded(deadline);
     try {
-      response = await fetch(url, init);
+      response = await this.awaitAbortable(
+        fetch(url, {
+          ...init,
+          signal: deadline.controller.signal,
+        }),
+        deadline.controller.signal,
+      );
     } catch {
+      if (this.hasDeadlineExpired(deadline)) {
+        this.throwTimeout(deadline);
+      }
       this.logger.error('eventType=feishu_oauth result=upstream_unreachable');
-      throw new ServiceUnavailableException(`${action} failed to reach Feishu.`);
+      throw this.serviceUnavailable(
+        'FEISHU_OAUTH_UPSTREAM_UNREACHABLE',
+        `${action} failed to reach Feishu.`,
+      );
     }
 
-    const rawBody = await response.text();
-    const payload = this.parseJson(rawBody, action);
+    this.throwIfDeadlineExceeded(deadline);
     if (!response.ok) {
+      this.cancelResponseBody(response);
       this.logger.warn('eventType=feishu_oauth result=upstream_http_error');
-      throw new ServiceUnavailableException(`${action} failed with an upstream HTTP error.`);
+      throw this.serviceUnavailable(
+        'FEISHU_OAUTH_UPSTREAM_HTTP_ERROR',
+        `${action} failed with an upstream HTTP error.`,
+      );
     }
 
-    return payload;
+    let rawBody: string;
+    try {
+      rawBody = await this.readBoundedResponseBody(response, deadline);
+    } catch (error) {
+      if (error instanceof ServiceUnavailableException) {
+        throw error;
+      }
+      if (this.hasDeadlineExpired(deadline)) {
+        this.throwTimeout(deadline);
+      }
+      this.logger.warn('eventType=feishu_oauth result=upstream_read_error');
+      throw this.serviceUnavailable(
+        'FEISHU_OAUTH_UPSTREAM_READ_ERROR',
+        `${action} returned an unreadable response.`,
+      );
+    }
+
+    this.throwIfDeadlineExceeded(deadline);
+    return this.parseJson(rawBody, action);
   }
 
   private parseJson(rawBody: string, action: string): unknown {
@@ -137,8 +221,211 @@ export class StubFeishuAuthAdapter implements FeishuAuthAdapter {
       return JSON.parse(rawBody) as unknown;
     } catch {
       this.logger.warn('eventType=feishu_oauth result=invalid_upstream_payload');
-      throw new ServiceUnavailableException(`${action} returned an invalid JSON response.`);
+      throw this.serviceUnavailable(
+        'FEISHU_OAUTH_INVALID_RESPONSE',
+        `${action} returned an invalid JSON response.`,
+      );
     }
+  }
+
+  private acquireOutboundLease() {
+    if (this.activeOutboundRequests >= this.maxConcurrentRequests) {
+      this.logger.warn('eventType=feishu_oauth result=overloaded');
+      throw this.serviceUnavailable(
+        'FEISHU_OAUTH_OVERLOADED',
+        'Feishu OAuth is temporarily overloaded.',
+      );
+    }
+
+    this.activeOutboundRequests += 1;
+    let released = false;
+
+    return () => {
+      if (released) return;
+      released = true;
+      this.activeOutboundRequests = Math.max(0, this.activeOutboundRequests - 1);
+    };
+  }
+
+  private startDeadline(): FeishuOauthDeadline {
+    const controller = new AbortController();
+    const deadline: FeishuOauthDeadline = {
+      controller,
+      deadlineAt: Date.now() + this.overallTimeoutMs,
+      timer: undefined as unknown as NodeJS.Timeout,
+      timedOut: false,
+      timeoutLogged: false,
+    };
+    deadline.timer = setTimeout(() => {
+      deadline.timedOut = true;
+      controller.abort();
+    }, this.overallTimeoutMs);
+    deadline.timer.unref();
+
+    return deadline;
+  }
+
+  private hasDeadlineExpired(deadline: FeishuOauthDeadline) {
+    return (
+      deadline.timedOut ||
+      deadline.controller.signal.aborted ||
+      Date.now() >= deadline.deadlineAt
+    );
+  }
+
+  private throwIfDeadlineExceeded(deadline: FeishuOauthDeadline) {
+    if (this.hasDeadlineExpired(deadline)) {
+      this.throwTimeout(deadline);
+    }
+  }
+
+  private throwTimeout(deadline: FeishuOauthDeadline): never {
+    deadline.timedOut = true;
+    if (!deadline.controller.signal.aborted) {
+      deadline.controller.abort();
+    }
+    if (!deadline.timeoutLogged) {
+      deadline.timeoutLogged = true;
+      this.logger.warn('eventType=feishu_oauth result=timeout');
+    }
+    throw this.serviceUnavailable(
+      'FEISHU_OAUTH_TIMEOUT',
+      'Feishu OAuth exceeded its overall deadline.',
+    );
+  }
+
+  private async readBoundedResponseBody(
+    response: Response,
+    deadline: FeishuOauthDeadline,
+  ) {
+    const declaredLength = Number(response.headers.get('content-length'));
+    if (
+      Number.isFinite(declaredLength) &&
+      declaredLength > FEISHU_OAUTH_RESPONSE_MAX_BYTES
+    ) {
+      this.cancelResponseBody(response);
+      this.logger.warn('eventType=feishu_oauth result=response_too_large');
+      throw this.serviceUnavailable(
+        'FEISHU_OAUTH_RESPONSE_TOO_LARGE',
+        'Feishu OAuth returned an oversized response.',
+      );
+    }
+
+    if (!response.body) {
+      return '';
+    }
+
+    const reader = response.body.getReader();
+    const chunks: Uint8Array[] = [];
+    let totalBytes = 0;
+    let cancelReader = false;
+
+    try {
+      while (true) {
+        this.throwIfDeadlineExceeded(deadline);
+        const chunk = await this.awaitAbortable(
+          reader.read(),
+          deadline.controller.signal,
+        );
+        this.throwIfDeadlineExceeded(deadline);
+
+        if (chunk.done) break;
+        totalBytes += chunk.value.byteLength;
+        if (totalBytes > FEISHU_OAUTH_RESPONSE_MAX_BYTES) {
+          cancelReader = true;
+          this.logger.warn('eventType=feishu_oauth result=response_too_large');
+          throw this.serviceUnavailable(
+            'FEISHU_OAUTH_RESPONSE_TOO_LARGE',
+            'Feishu OAuth returned an oversized response.',
+          );
+        }
+        chunks.push(chunk.value);
+      }
+    } catch (error) {
+      cancelReader = true;
+      throw error;
+    } finally {
+      if (cancelReader) {
+        try {
+          void reader.cancel().catch(() => undefined);
+        } catch {
+          // A failed best-effort cancellation must not replace the bounded error.
+        }
+      }
+      try {
+        reader.releaseLock();
+      } catch {
+        // The body remains aborted/cancelled; no upstream detail is logged.
+      }
+    }
+
+    const bytes = new Uint8Array(totalBytes);
+    let offset = 0;
+    for (const chunk of chunks) {
+      bytes.set(chunk, offset);
+      offset += chunk.byteLength;
+    }
+
+    return new TextDecoder().decode(bytes);
+  }
+
+  private cancelResponseBody(response: Response) {
+    try {
+      const cancellation = response.body?.cancel();
+      if (cancellation) {
+        void cancellation.catch(() => undefined);
+      }
+    } catch {
+      // Cancellation is best effort and errors must not expose upstream data.
+    }
+  }
+
+  private awaitAbortable<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      let settled = false;
+      const cleanup = () => signal.removeEventListener('abort', onAbort);
+      const resolveOnce = (value: T) => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        resolve(value);
+      };
+      const rejectOnce = (error: unknown) => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        reject(error);
+      };
+      const onAbort = () => rejectOnce(new Error('FEISHU_OAUTH_ABORTED'));
+
+      if (signal.aborted) {
+        onAbort();
+        return;
+      }
+
+      signal.addEventListener('abort', onAbort, { once: true });
+      promise.then(resolveOnce, rejectOnce);
+    });
+  }
+
+  private serviceUnavailable(code: string, message: string) {
+    return new ServiceUnavailableException({ code, message });
+  }
+
+  private readBoundedConfig(
+    key: string,
+    fallback: number,
+    minimum: number,
+    maximum: number,
+  ) {
+    const rawValue = this.configService.get<number | string>(key);
+    const value = rawValue === undefined ? fallback : Number(rawValue);
+
+    if (!Number.isInteger(value) || value < minimum || value > maximum) {
+      throw new Error(`${key} must be an integer between ${minimum} and ${maximum}.`);
+    }
+
+    return value;
   }
 
   private expectFeishuSuccess(payload: unknown, action: string) {

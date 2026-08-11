@@ -73,6 +73,8 @@ describe('resolveAppConfig', () => {
     expect(config.uploadAdmissionPerTargetLimit).toBe(3);
     expect(config.uploadAdmissionRateMaxRequests).toBe(6);
     expect(config.uploadAdmissionRateWindowMs).toBe(60000);
+    expect(config.feishuOauthOverallTimeoutMs).toBe(10000);
+    expect(config.feishuOauthMaxConcurrentRequests).toBe(8);
     expect(config.oauthProvider).toBe('feishu-cn');
     expect(config.feishuAuthorizationEndpoint).toBe(
       'https://accounts.feishu.cn/open-apis/authen/v1/index',
@@ -83,6 +85,39 @@ describe('resolveAppConfig', () => {
     expect(config.feishuUserInfoEndpoint).toBe(
       'https://open.feishu.cn/open-apis/authen/v1/user_info',
     );
+  });
+
+  it('accepts only bounded Feishu OAuth outbound resource controls', () => {
+    expect(
+      resolveAppConfig({
+        FEISHU_OAUTH_OVERALL_TIMEOUT_MS: '1000',
+        FEISHU_OAUTH_MAX_CONCURRENT_REQUESTS: '1',
+      }),
+    ).toMatchObject({
+      feishuOauthOverallTimeoutMs: 1000,
+      feishuOauthMaxConcurrentRequests: 1,
+    });
+
+    expect(
+      resolveAppConfig({
+        FEISHU_OAUTH_OVERALL_TIMEOUT_MS: '30000',
+        FEISHU_OAUTH_MAX_CONCURRENT_REQUESTS: '64',
+      }),
+    ).toMatchObject({
+      feishuOauthOverallTimeoutMs: 30000,
+      feishuOauthMaxConcurrentRequests: 64,
+    });
+
+    for (const [name, value] of [
+      ['FEISHU_OAUTH_OVERALL_TIMEOUT_MS', '999'],
+      ['FEISHU_OAUTH_OVERALL_TIMEOUT_MS', '30001'],
+      ['FEISHU_OAUTH_OVERALL_TIMEOUT_MS', 'not-an-integer'],
+      ['FEISHU_OAUTH_MAX_CONCURRENT_REQUESTS', '0'],
+      ['FEISHU_OAUTH_MAX_CONCURRENT_REQUESTS', '65'],
+      ['FEISHU_OAUTH_MAX_CONCURRENT_REQUESTS', '1.5'],
+    ] as const) {
+      expect(() => resolveAppConfig({ [name]: value })).toThrowError(name);
+    }
   });
 
   it('exposes only non-sensitive release identity metadata', () => {

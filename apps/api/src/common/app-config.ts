@@ -52,6 +52,8 @@ export type AppConfig = {
   feishuAppId: string;
   feishuAppSecret: string;
   feishuRedirectUri: string;
+  feishuOauthOverallTimeoutMs: number;
+  feishuOauthMaxConcurrentRequests: number;
   oauthProvider: OAuthProvider;
   feishuAuthorizationEndpoint: string;
   feishuTokenEndpoint: string;
@@ -558,6 +560,20 @@ export function resolveAppConfig(env: NodeJS.ProcessEnv = process.env): AppConfi
     feishuAppId: env.FEISHU_APP_ID ?? '',
     feishuAppSecret: env.FEISHU_APP_SECRET ?? '',
     feishuRedirectUri: env.FEISHU_REDIRECT_URI ?? 'http://localhost:3000/login/callback',
+    feishuOauthOverallTimeoutMs: resolveBoundedInteger(
+      'FEISHU_OAUTH_OVERALL_TIMEOUT_MS',
+      env.FEISHU_OAUTH_OVERALL_TIMEOUT_MS,
+      10000,
+      1000,
+      30000,
+    ),
+    feishuOauthMaxConcurrentRequests: resolveBoundedInteger(
+      'FEISHU_OAUTH_MAX_CONCURRENT_REQUESTS',
+      env.FEISHU_OAUTH_MAX_CONCURRENT_REQUESTS,
+      8,
+      1,
+      64,
+    ),
     oauthProvider:
       (env.OAUTH_PROVIDER?.trim().toLowerCase() as OAuthProvider | undefined) ??
       FEISHU_CN_OAUTH_PROVIDER.id,
