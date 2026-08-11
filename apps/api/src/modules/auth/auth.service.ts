@@ -32,6 +32,8 @@ const FEISHU_LOGIN_URL_CLIENT_LIMIT = 20;
 const FEISHU_LOGIN_URL_GLOBAL_LIMIT = 500;
 const FEISHU_CALLBACK_CLIENT_LIMIT = 30;
 const FEISHU_CALLBACK_GLOBAL_LIMIT = 1_000;
+const SESSION_TOKEN_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const UUID_STATE_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -192,7 +194,7 @@ export class AuthService {
   }
 
   async logout(sessionToken: string | undefined, response: Response) {
-    if (sessionToken) {
+    if (sessionToken && SESSION_TOKEN_PATTERN.test(sessionToken)) {
       await this.sessionStoreService.delete(this.getSessionStorageKey(sessionToken));
     }
 

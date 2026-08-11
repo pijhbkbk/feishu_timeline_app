@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Injectable,
   Logger,
   OnModuleDestroy,
@@ -98,8 +99,10 @@ export class NotificationQueueService implements OnModuleInit, OnModuleDestroy {
         channel: 'redis' as const,
         jobId: job.id,
       };
-    } catch (error) {
-      this.logger.warn(`Redis queue unavailable, fallback to memory queue: ${String(error)}`);
+    } catch {
+      this.logger.warn(
+        'eventType=notification_queue operation=enqueue result=memory_fallback',
+      );
       this.memoryQueue.unshift(job);
 
       return {
@@ -132,8 +135,10 @@ export class NotificationQueueService implements OnModuleInit, OnModuleDestroy {
         channel: 'redis' as const,
         jobId: queued ? job.id : null,
       };
-    } catch (error) {
-      this.logger.warn(`Redis queue unavailable, fallback to memory queue: ${String(error)}`);
+    } catch {
+      this.logger.warn(
+        'eventType=notification_queue operation=enqueue_once result=memory_fallback',
+      );
       const now = Date.now();
       const existingExpiry = this.memoryDedupeKeys.get(markerKey) ?? 0;
       if (existingExpiry > now) {
@@ -196,8 +201,8 @@ export class NotificationQueueService implements OnModuleInit, OnModuleDestroy {
 
         try {
           await this.notificationsService.processQueuedNotification(job);
-        } catch (error) {
-          await this.handleJobFailure(job, error);
+        } catch {
+          await this.handleJobFailure(job);
         }
 
         processed += 1;
@@ -510,12 +515,47 @@ export class NotificationQueueService implements OnModuleInit, OnModuleDestroy {
       userId: input.userId ?? null,
       title: input.title ?? null,
       content: input.content ?? null,
-      linkPath: input.linkPath ?? null,
+      linkPath: this.normalizeLinkPath(input.linkPath ?? null),
       triggeredByUserId: input.triggeredByUserId ?? null,
       retryCount: input.retryCount ?? 0,
       availableAt: input.availableAt ?? new Date().toISOString(),
       ...(input.metadata === undefined ? {} : { metadata: input.metadata }),
     };
+  }
+
+  private normalizeLinkPath(linkPath: string | null) {
+    if (linkPath === null) return null;
+
+    if (
+      linkPath.length === 0 ||
+      linkPath.length > 2048 ||
+      linkPath !== linkPath.trim() ||
+      !linkPath.startsWith('/') ||
+      linkPath.startsWith('//') ||
+      linkPath.includes('\\') ||
+      this.hasControlCharacter(linkPath)
+    ) {
+      throw new BadRequestException('通知链接必须是站内绝对路径。');
+    }
+
+    const baseOrigin = 'https://notification-link.invalid';
+    const parsed = new URL(linkPath, baseOrigin);
+    if (parsed.origin !== baseOrigin) {
+      throw new BadRequestException('通知链接必须是站内绝对路径。');
+    }
+
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+  }
+
+  private hasControlCharacter(value: string) {
+    for (let index = 0; index < value.length; index += 1) {
+      const codePoint = value.charCodeAt(index);
+      if (codePoint <= 0x1f || codePoint === 0x7f) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   private async dequeue() {
@@ -525,8 +565,10 @@ export class NotificationQueueService implements OnModuleInit, OnModuleDestroy {
       if (raw) {
         return JSON.parse(raw) as NotificationQueueJob;
       }
-    } catch (error) {
-      this.logger.warn(`Redis dequeue failed, fallback to memory queue: ${String(error)}`);
+    } catch {
+      this.logger.warn(
+        'eventType=notification_queue operation=dequeue result=memory_fallback',
+      );
     }
 
     return this.memoryQueue.pop() ?? null;
@@ -536,20 +578,22 @@ export class NotificationQueueService implements OnModuleInit, OnModuleDestroy {
     try {
       await this.redisService.execute((client) => client.rpush(QUEUE_KEY, JSON.stringify(job)));
       return;
-    } catch (error) {
-      this.logger.warn(`Redis requeue failed, fallback to memory queue: ${String(error)}`);
+    } catch {
+      this.logger.warn(
+        'eventType=notification_queue operation=requeue result=memory_fallback',
+      );
     }
 
     this.memoryQueue.unshift(job);
   }
 
-  private async handleJobFailure(job: NotificationQueueJob, error: unknown) {
+  private async handleJobFailure(job: NotificationQueueJob) {
     const maxRetries = this.configService.get<number>('notificationMaxRetries') ?? 3;
     const retryDelayMs = this.configService.get<number>('notificationRetryDelayMs') ?? 5000;
 
     if (job.retryCount + 1 >= maxRetries) {
       this.logger.error(
-        `Notification job dropped after ${job.retryCount + 1} attempts: ${String(error)}`,
+        `eventType=notification_job result=dropped retryCount=${job.retryCount + 1}`,
       );
       return;
     }

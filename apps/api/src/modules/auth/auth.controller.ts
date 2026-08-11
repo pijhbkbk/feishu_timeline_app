@@ -39,10 +39,9 @@ export class AuthController {
   @Public()
   @Get('session')
   async getSession(@Req() request: AuthenticatedRequest) {
-    const cookieName = this.configService.get<string>('sessionCookieName') ?? 'ft_session';
-    const sessionToken = request.cookies?.[cookieName];
-
-    return this.authService.getSessionResponse(sessionToken);
+    return this.authService.getSessionResponse(
+      this.getSessionTokenFromCookie(request),
+    );
   }
 
   @Public()
@@ -114,7 +113,10 @@ export class AuthController {
     @Req() request: AuthenticatedRequest,
     @Res({ passthrough: true }) response: Response,
   ) {
-    await this.authService.logout(request.sessionToken, response);
+    await this.authService.logout(
+      this.getSessionTokenFromCookie(request),
+      response,
+    );
 
     return { success: true };
   }
@@ -122,6 +124,13 @@ export class AuthController {
   @Get('me')
   getMe(@CurrentUser() user: AuthenticatedUser) {
     return user;
+  }
+
+  private getSessionTokenFromCookie(request: AuthenticatedRequest) {
+    const cookieName = this.configService.get<string>('sessionCookieName') ?? 'ft_session';
+    const sessionToken = request.cookies?.[cookieName];
+
+    return typeof sessionToken === 'string' ? sessionToken : undefined;
   }
 
   private getAuthClientIdentifier(request: AuthenticatedRequest) {

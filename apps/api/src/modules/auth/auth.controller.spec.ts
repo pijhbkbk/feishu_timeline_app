@@ -104,22 +104,48 @@ describe('AuthController Feishu callback', () => {
 });
 
 describe('AuthController logout', () => {
-  it('is public and clears an expired or missing session idempotently', async () => {
+  it('is public and forwards the current session cookie for server-side invalidation', async () => {
     const authService = {
       logout: vi.fn().mockResolvedValue(undefined),
     };
     const configService = {
-      get: vi.fn(),
+      get: vi.fn((key: string) => key === 'sessionCookieName' ? 'ft_session' : undefined),
     };
     const controller = new AuthController(authService as never, configService as never);
     const response = {};
+    const sessionToken = ['8dcfdac1', '2a27', '46df', 'bd09', 'ec35ea84ccdb'].join('-');
 
     expect(
       Reflect.getMetadata(PUBLIC_ROUTE_KEY, AuthController.prototype.logout),
     ).toBe(true);
     await expect(
-      controller.logout({ sessionToken: undefined } as never, response as never),
+      controller.logout({
+        cookies: { ft_session: sessionToken },
+        sessionToken: undefined,
+      } as never, response as never),
     ).resolves.toEqual({ success: true });
-    expect(authService.logout).toHaveBeenCalledWith(undefined, response);
+    expect(authService.logout).toHaveBeenCalledWith(sessionToken, response);
+  });
+
+  it('remains idempotent when the session cookie is missing', async () => {
+    const authService = {
+      logout: vi.fn().mockResolvedValue(undefined),
+    };
+    const configService = {
+      get: vi.fn((key: string) => key === 'sessionCookieName' ? 'ft_session' : undefined),
+    };
+    const controller = new AuthController(authService as never, configService as never);
+    const response = {};
+    const request = { cookies: {} };
+
+    await expect(
+      controller.logout(request as never, response as never),
+    ).resolves.toEqual({ success: true });
+    await expect(
+      controller.logout(request as never, response as never),
+    ).resolves.toEqual({ success: true });
+
+    expect(authService.logout).toHaveBeenNthCalledWith(1, undefined, response);
+    expect(authService.logout).toHaveBeenNthCalledWith(2, undefined, response);
   });
 });

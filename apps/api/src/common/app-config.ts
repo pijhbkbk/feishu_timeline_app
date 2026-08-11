@@ -28,6 +28,10 @@ export type AppConfig = {
   objectStorageBucket: string;
   objectStorageAccessKey: string;
   objectStorageSecretKey: string;
+  malwareScannerProvider: 'local-eicar' | 'clamav';
+  malwareScannerHost: string;
+  malwareScannerPort: number;
+  malwareScannerTimeoutMs: number;
   feishuAppId: string;
   feishuAppSecret: string;
   feishuRedirectUri: string;
@@ -39,6 +43,30 @@ export type AppConfig = {
 };
 
 export const APP_ENV_FILE_PATHS = ['.env.local', '.env'] as const;
+
+const LOCAL_CONNECTION_HOSTS = new Set([
+  'localhost',
+  '127.0.0.1',
+  '0.0.0.0',
+  '::1',
+]);
+const PLACEHOLDER_CREDENTIAL_MARKERS = [
+  'changeme',
+  'placeholder',
+  'replace-with',
+  'your-',
+  'your_',
+  '${',
+  '<',
+  '>',
+];
+const WEAK_DEFAULT_PASSWORDS = new Set([
+  'admin',
+  'minioadmin',
+  'password',
+  'postgres',
+  'redis',
+]);
 
 function resolvePort(value: string | undefined, fallback: number) {
   const parsed = Number(value ?? fallback);
@@ -53,6 +81,25 @@ function resolveBoolean(value: string | undefined, fallback: boolean) {
   return value === 'true';
 }
 
+function resolveBoundedInteger(
+  name: string,
+  value: string | undefined,
+  fallback: number,
+  minimum: number,
+  maximum: number,
+) {
+  const normalized = value?.trim();
+  const parsed = normalized === undefined || normalized === ''
+    ? fallback
+    : Number(normalized);
+
+  if (!Number.isInteger(parsed) || parsed < minimum || parsed > maximum) {
+    throw new Error(`${name} must be an integer between ${minimum} and ${maximum}.`);
+  }
+
+  return parsed;
+}
+
 function resolveDeploymentEnvironment(
   value: string | undefined,
   nodeEnv: string,
@@ -63,23 +110,235 @@ function resolveDeploymentEnvironment(
     return normalized;
   }
 
-  return nodeEnv === 'production' ? 'production' : 'local';
+  if (normalized) {
+    throw new Error('DEPLOYMENT_ENV must be local, staging, or production.');
+  }
+
+  if (nodeEnv === 'production' || nodeEnv === 'staging') {
+    return nodeEnv;
+  }
+
+  return 'local';
+}
+
+function decodeUrlCredential(value: string) {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
+function isPlaceholderCredential(value: string) {
+  const normalized = decodeUrlCredential(value).trim().toLowerCase();
+
+  return (
+    WEAK_DEFAULT_PASSWORDS.has(normalized) ||
+    PLACEHOLDER_CREDENTIAL_MARKERS.some((marker) => normalized.includes(marker))
+  );
+}
+
+function assertProtectedConnectionUrl(
+  name: 'DATABASE_URL' | 'REDIS_URL',
+  rawValue: string | undefined,
+) {
+  const value = rawValue?.trim();
+
+  if (!value) {
+    throw new Error(`${name} must be explicitly configured in staging and production.`);
+  }
+
+  let parsed: URL;
+
+  try {
+    parsed = new URL(value);
+  } catch {
+    throw new Error(`${name} must be a valid connection URL in staging and production.`);
+  }
+
+  const allowedProtocols = name === 'DATABASE_URL'
+    ? new Set(['postgres:', 'postgresql:'])
+    : new Set(['redis:', 'rediss:']);
+
+  if (!allowedProtocols.has(parsed.protocol)) {
+    throw new Error(`${name} uses an unsupported protocol.`);
+  }
+
+  const hostname = parsed.hostname
+    .trim()
+    .toLowerCase()
+    .replace(/^\[|\]$/g, '')
+    .replace(/\.$/, '');
+
+  if (
+    !hostname ||
+    LOCAL_CONNECTION_HOSTS.has(hostname) ||
+    hostname.startsWith('127.') ||
+    hostname.endsWith('.localhost') ||
+    hostname.endsWith('.docker.internal') ||
+    hostname === 'example' ||
+    hostname.endsWith('.example') ||
+    hostname.endsWith('.example.com')
+  ) {
+    throw new Error(`${name} must not use a local or placeholder host in staging or production.`);
+  }
+
+  const password = decodeUrlCredential(parsed.password).trim();
+
+  if (password.length < 20 || isPlaceholderCredential(password)) {
+    throw new Error(
+      `${name} must include a non-placeholder password of at least 20 characters in staging and production.`,
+    );
+  }
+
+  if (
+    name === 'DATABASE_URL' &&
+    decodeUrlCredential(parsed.username).trim().toLowerCase() === 'postgres' &&
+    password.toLowerCase() === 'postgres'
+  ) {
+    throw new Error('DATABASE_URL must not use the default PostgreSQL credentials.');
+  }
+
+  if (name === 'DATABASE_URL' && !parsed.pathname.replace(/^\/+/, '')) {
+    throw new Error('DATABASE_URL must include a database name in staging and production.');
+  }
+
+  return value;
+}
+
+function assertProtectedScannerHost(rawValue: string | undefined) {
+  const value = rawValue?.trim() ?? '';
+  const normalized = value.toLowerCase();
+
+  if (
+    !value ||
+    value.length > 253 ||
+    !/^[a-zA-Z0-9](?:[a-zA-Z0-9.-]*[a-zA-Z0-9])?$/.test(value) ||
+    value.includes('..') ||
+    normalized === 'localhost' ||
+    normalized.startsWith('127.') ||
+    normalized.endsWith('.localhost') ||
+    normalized.startsWith('replace-') ||
+    normalized.includes('placeholder')
+  ) {
+    throw new Error('CLAMAV_HOST must be an approved non-placeholder scanner hostname.');
+  }
+
+  return value;
+}
+
+function assertProtectedFrontendUrl(
+  rawValue: string | undefined,
+  deploymentEnvironment: 'staging' | 'production',
+) {
+  const value = rawValue?.trim();
+
+  if (!value) {
+    throw new Error(
+      'FRONTEND_URL must be explicitly configured in staging and production.',
+    );
+  }
+
+  let parsed: URL;
+
+  try {
+    parsed = new URL(value);
+  } catch {
+    throw new Error(
+      'FRONTEND_URL must be a valid origin in staging and production.',
+    );
+  }
+
+  const hostname = parsed.hostname
+    .trim()
+    .toLowerCase()
+    .replace(/^\[|\]$/g, '');
+  const isLocalStagingHost =
+    deploymentEnvironment === 'staging' &&
+    (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1');
+  const protocolIsAllowed =
+    parsed.protocol === 'https:' ||
+    (deploymentEnvironment === 'staging' && isLocalStagingHost && parsed.protocol === 'http:') ||
+    // Production is pinned to the one approved HTTPS origin below. Let a
+    // syntactically valid HTTP origin reach that exact policy check so the
+    // startup error identifies the production invariant that was violated.
+    (deploymentEnvironment === 'production' && parsed.protocol === 'http:');
+  const hasOriginOnly =
+    (parsed.pathname === '' || parsed.pathname === '/') &&
+    !parsed.search &&
+    !parsed.hash &&
+    !parsed.username &&
+    !parsed.password;
+
+  if (
+    !hostname ||
+    !hasOriginOnly ||
+    !protocolIsAllowed
+  ) {
+    throw new Error(
+      'FRONTEND_URL must be an HTTPS origin (or an explicit localhost staging origin).',
+    );
+  }
+
+  return parsed.origin;
 }
 
 export function resolveAppConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   const nodeEnv = env.NODE_ENV?.trim().toLowerCase() || 'development';
+  const deploymentEnvironment = resolveDeploymentEnvironment(
+    env.DEPLOYMENT_ENV,
+    nodeEnv,
+  );
+  const isProtectedEnvironment =
+    deploymentEnvironment === 'staging' || deploymentEnvironment === 'production';
+  const databaseUrl = isProtectedEnvironment
+    ? assertProtectedConnectionUrl('DATABASE_URL', env.DATABASE_URL)
+    : env.DATABASE_URL ??
+      'postgresql://postgres:postgres@localhost:5432/feishu_timeline?schema=public';
+  const redisUrl = isProtectedEnvironment
+    ? assertProtectedConnectionUrl('REDIS_URL', env.REDIS_URL)
+    : env.REDIS_URL ?? 'redis://localhost:6379';
+  const scannerProviderValue =
+    env.MALWARE_SCANNER_PROVIDER?.trim().toLowerCase() ||
+    (isProtectedEnvironment ? '' : 'local-eicar');
+
+  if (
+    scannerProviderValue !== 'local-eicar' &&
+    scannerProviderValue !== 'clamav'
+  ) {
+    throw new Error(
+      'MALWARE_SCANNER_PROVIDER must be local-eicar or clamav.',
+    );
+  }
+
+  if (isProtectedEnvironment && scannerProviderValue !== 'clamav') {
+    throw new Error(
+      'MALWARE_SCANNER_PROVIDER must be clamav in staging and production.',
+    );
+  }
+
+  const localScannerHost = env.CLAMAV_HOST?.trim() ?? '';
+  let malwareScannerHost = '';
+  if (scannerProviderValue === 'clamav') {
+    if (!localScannerHost) {
+      throw new Error('CLAMAV_HOST must be configured for the ClamAV scanner.');
+    }
+    malwareScannerHost = isProtectedEnvironment
+      ? assertProtectedScannerHost(localScannerHost)
+      : localScannerHost;
+  }
+
   const config: AppConfig = {
     nodeEnv,
-    deploymentEnvironment: resolveDeploymentEnvironment(env.DEPLOYMENT_ENV, nodeEnv),
+    deploymentEnvironment,
     runtimeCommit: env.RUNTIME_COMMIT?.trim() || 'unknown',
     buildTime: env.BUILD_TIME?.trim() || 'unknown',
     release: env.RELEASE?.trim() || 'development',
     port: resolvePort(env.PORT, 3001),
-    frontendUrl: env.FRONTEND_URL ?? 'http://localhost:3000',
-    databaseUrl:
-      env.DATABASE_URL ??
-      'postgresql://postgres:postgres@localhost:5432/feishu_timeline?schema=public',
-    redisUrl: env.REDIS_URL ?? 'redis://localhost:6379',
+    frontendUrl: env.FRONTEND_URL?.trim() ||
+      (isProtectedEnvironment ? '' : 'http://localhost:3000'),
+    databaseUrl,
+    redisUrl,
     notificationQueueEnabled: resolveBoolean(env.NOTIFICATION_QUEUE_ENABLED, true),
     notificationQueuePollMs: resolvePort(env.NOTIFICATION_QUEUE_POLL_MS, 5000),
     notificationOverdueScanMs: resolvePort(env.NOTIFICATION_OVERDUE_SCAN_MS, 300000),
@@ -95,6 +354,22 @@ export function resolveAppConfig(env: NodeJS.ProcessEnv = process.env): AppConfi
     objectStorageBucket: env.OBJECT_STORAGE_BUCKET ?? 'feishu-timeline-local',
     objectStorageAccessKey: env.OBJECT_STORAGE_ACCESS_KEY ?? 'minioadmin',
     objectStorageSecretKey: env.OBJECT_STORAGE_SECRET_KEY ?? 'minioadmin',
+    malwareScannerProvider: scannerProviderValue,
+    malwareScannerHost,
+    malwareScannerPort: resolveBoundedInteger(
+      'CLAMAV_PORT',
+      env.CLAMAV_PORT,
+      3310,
+      1,
+      65535,
+    ),
+    malwareScannerTimeoutMs: resolveBoundedInteger(
+      'CLAMAV_TIMEOUT_MS',
+      env.CLAMAV_TIMEOUT_MS,
+      15000,
+      1000,
+      60000,
+    ),
     feishuAppId: env.FEISHU_APP_ID ?? '',
     feishuAppSecret: env.FEISHU_APP_SECRET ?? '',
     feishuRedirectUri: env.FEISHU_REDIRECT_URI ?? 'http://localhost:3000/login/callback',
@@ -109,8 +384,19 @@ export function resolveAppConfig(env: NodeJS.ProcessEnv = process.env): AppConfi
     feishuApiBaseUrl: FEISHU_CN_OAUTH_PROVIDER.apiBaseUrl,
   };
 
-  if (config.nodeEnv === 'production' && config.authMockEnabled) {
-    throw new Error('AUTH_MOCK_ENABLED must be false when NODE_ENV=production.');
+  if (isProtectedEnvironment && config.authMockEnabled) {
+    throw new Error('AUTH_MOCK_ENABLED must be false in staging and production.');
+  }
+
+  if (isProtectedEnvironment && config.nodeEnv !== 'production') {
+    throw new Error('NODE_ENV must be production in staging and production deployments.');
+  }
+
+  if (isProtectedEnvironment) {
+    config.frontendUrl = assertProtectedFrontendUrl(
+      env.FRONTEND_URL,
+      deploymentEnvironment,
+    );
   }
 
   assertFeishuCnOAuthProvider({
@@ -124,7 +410,7 @@ export function resolveAppConfig(env: NodeJS.ProcessEnv = process.env): AppConfi
   if (config.deploymentEnvironment === 'production') {
     const expectedFrontendUrl = 'https://timeline.all-too-well.com';
     const expectedRedirectUri = `${expectedFrontendUrl}/login/callback`;
-    const configuredFrontendUrl = new URL(config.frontendUrl).toString().replace(/\/$/, '');
+    const configuredFrontendUrl = config.frontendUrl;
     const configuredRedirectUri = new URL(config.feishuRedirectUri).toString();
 
     if (configuredFrontendUrl !== expectedFrontendUrl) {

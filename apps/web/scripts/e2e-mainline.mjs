@@ -8,6 +8,9 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '../../..');
 const API_BASE_URL = process.env.E2E_API_URL ?? 'http://127.0.0.1:3001/api';
 const WEB_BASE_URL = process.env.E2E_WEB_URL ?? 'http://127.0.0.1:3000';
+const MUTATION_ORIGIN = new URL(
+  process.env.E2E_FRONTEND_ORIGIN ?? process.env.FRONTEND_URL ?? 'http://localhost:3000',
+).origin;
 const START_TIMEOUT_MS = Number(process.env.E2E_START_TIMEOUT_MS ?? '180000');
 
 class CookieJar {
@@ -143,9 +146,13 @@ async function ensureServer(label, readyUrl, args) {
 async function fetchWithCookies(url, jar, init = {}) {
   const headers = new Headers(init.headers ?? {});
   const cookieHeader = jar?.toHeader();
+  const method = (init.method ?? 'GET').toUpperCase();
 
   if (cookieHeader) {
     headers.set('cookie', cookieHeader);
+  }
+  if (!['GET', 'HEAD', 'OPTIONS'].includes(method) && !headers.has('origin')) {
+    headers.set('origin', MUTATION_ORIGIN);
   }
 
   const response = await fetch(url, {

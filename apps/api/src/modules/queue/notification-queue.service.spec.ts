@@ -1,10 +1,12 @@
+import { Logger } from '@nestjs/common';
 import { NotificationType, RecurringTaskStatus, WorkflowTaskStatus } from '@prisma/client';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { NotificationQueueService } from './notification-queue.service';
 
 function createService(options?: {
   redisFails?: boolean;
+  redisError?: Error;
   processorFailsOnce?: boolean;
 }) {
   let shouldFail = options?.processorFailsOnce ?? false;
@@ -22,7 +24,7 @@ function createService(options?: {
 
   const redisService = {
     execute: options?.redisFails
-      ? vi.fn().mockRejectedValue(new Error('redis down'))
+      ? vi.fn().mockRejectedValue(options.redisError ?? new Error('redis down'))
       : vi.fn(async (handler: (client: {
           eval: typeof vi.fn;
           lpush: typeof vi.fn;
@@ -91,7 +93,37 @@ function createService(options?: {
   };
 }
 
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
 describe('NotificationQueueService', () => {
+  it.each([
+    'https://attacker.example/path',
+    '//attacker.example/path',
+    'javascript:alert(1)',
+    '/\\\\attacker.example/path',
+    '/projects/project-1/\nworkflow',
+    '/projects/project-1/\u0000workflow',
+    '/projects/project-1/\u007fworkflow',
+  ])('rejects an unsafe notification link path: %s', async (linkPath) => {
+    const { service, redisService } = createService();
+
+    await expect(
+      service.enqueue({
+        type: NotificationType.SYSTEM_INFO,
+        taskId: null,
+        projectId: 'project-1',
+        userId: 'user-1',
+        title: '系统提醒',
+        content: '请查看系统消息。',
+        linkPath,
+        triggeredByUserId: 'user-1',
+      }),
+    ).rejects.toThrow('通知链接必须是站内绝对路径');
+    expect(redisService.execute).not.toHaveBeenCalled();
+  });
+
   it('falls back to memory queue when redis is unavailable', async () => {
     const { service } = createService({ redisFails: true });
 
@@ -107,6 +139,31 @@ describe('NotificationQueueService', () => {
     });
 
     expect(result.channel).toBe('memory');
+  });
+
+  it('does not copy Redis error contents into production-style queue logs', async () => {
+    const sensitiveError = 'cookie=private-cookie-marker-271828 taskId=private-task';
+    const warnSpy = vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+    const { service } = createService({
+      redisFails: true,
+      redisError: new Error(sensitiveError),
+    });
+
+    await service.enqueue({
+      type: NotificationType.SYSTEM_INFO,
+      taskId: 'private-task',
+      projectId: 'project-1',
+      userId: 'user-1',
+      title: '敏感项目标题',
+      content: '请查看系统消息。',
+      linkPath: '/dashboard',
+      triggeredByUserId: 'user-1',
+    });
+
+    const serializedLogs = JSON.stringify(warnSpy.mock.calls);
+    expect(serializedLogs).not.toContain(sensitiveError);
+    expect(serializedLogs).not.toContain('private-cookie-marker-271828');
+    expect(serializedLogs).not.toContain('private-task');
   });
 
   it('supports basic retry when queue processing fails once', async () => {

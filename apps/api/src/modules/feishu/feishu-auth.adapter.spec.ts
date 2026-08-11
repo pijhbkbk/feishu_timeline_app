@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { FEISHU_CN_OAUTH_PROVIDER } from '../../common/feishu-oauth-provider';
@@ -84,5 +85,21 @@ describe('StubFeishuAuthAdapter Feishu CN endpoints', () => {
       '/open-apis/authen/v1/user_info',
     ]);
     expect(requestedUrls.filter((url) => url.hostname.endsWith('larksuite.com'))).toHaveLength(0);
+  });
+
+  it('does not copy upstream exception contents into application logs', async () => {
+    const sensitiveError = 'synthetic-upstream-exception-marker-314159';
+    const errorSpy = vi.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+    vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error(sensitiveError));
+    const adapter = createAdapter();
+
+    await expect(adapter.exchangeCodeForProfile('authorization-code')).rejects.toThrow(
+      'failed to reach Feishu',
+    );
+
+    const serializedLogs = JSON.stringify(errorSpy.mock.calls);
+    expect(serializedLogs).not.toContain(sensitiveError);
+    expect(serializedLogs).not.toContain('private-marker-314159');
+    expect(serializedLogs).not.toContain('private-cookie-marker');
   });
 });

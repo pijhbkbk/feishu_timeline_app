@@ -12,9 +12,7 @@ export class FeishuMessagesService {
   private readonly logger = new Logger(FeishuMessagesService.name);
 
   async sendNotification(input: FeishuMessageInput) {
-    this.logger.log(
-      `[mock] send feishu message to ${input.userId}: ${input.title} (${input.dedupeKey})`,
-    );
+    this.logger.log('eventType=feishu_notification result=mock_sent');
 
     return {
       success: true,
@@ -22,4 +20,3 @@ export class FeishuMessagesService {
     };
   }
 }
-

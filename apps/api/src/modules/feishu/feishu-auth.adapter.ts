@@ -113,22 +113,16 @@ export class StubFeishuAuthAdapter implements FeishuAuthAdapter {
 
     try {
       response = await fetch(url, init);
-    } catch (error) {
-      this.logger.error(`${action} failed to reach Feishu.`, error instanceof Error ? error.stack : undefined);
+    } catch {
+      this.logger.error('eventType=feishu_oauth result=upstream_unreachable');
       throw new ServiceUnavailableException(`${action} failed to reach Feishu.`);
     }
 
     const rawBody = await response.text();
     const payload = this.parseJson(rawBody, action);
-    const errorMessage = this.extractFeishuMessage(payload);
-
     if (!response.ok) {
-      this.logger.warn(
-        `${action} returned non-2xx status ${response.status}${errorMessage ? `: ${errorMessage}` : ''}.`,
-      );
-      throw new ServiceUnavailableException(
-        `${action} failed with status ${response.status}${errorMessage ? `: ${errorMessage}` : '.'}`,
-      );
+      this.logger.warn('eventType=feishu_oauth result=upstream_http_error');
+      throw new ServiceUnavailableException(`${action} failed with an upstream HTTP error.`);
     }
 
     return payload;
@@ -141,11 +135,8 @@ export class StubFeishuAuthAdapter implements FeishuAuthAdapter {
 
     try {
       return JSON.parse(rawBody) as unknown;
-    } catch (error) {
-      this.logger.warn(
-        `${action} returned a non-JSON response.`,
-        error instanceof Error ? error.stack : undefined,
-      );
+    } catch {
+      this.logger.warn('eventType=feishu_oauth result=invalid_upstream_payload');
       throw new ServiceUnavailableException(`${action} returned an invalid JSON response.`);
     }
   }
@@ -155,8 +146,7 @@ export class StubFeishuAuthAdapter implements FeishuAuthAdapter {
     const responseCode = envelope.code;
 
     if (typeof responseCode === 'number' && responseCode !== 0) {
-      const errorMessage = this.extractFeishuMessage(envelope) ?? 'unknown upstream error';
-      this.logger.warn(`${action} was rejected by Feishu with code ${responseCode}: ${errorMessage}.`);
+      this.logger.warn('eventType=feishu_oauth result=upstream_rejected');
       throw new UnauthorizedException('飞书接口调用失败，请稍后重试。');
     }
 

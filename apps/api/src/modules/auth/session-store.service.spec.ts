@@ -1,4 +1,4 @@
-import { ServiceUnavailableException } from '@nestjs/common';
+import { Logger, ServiceUnavailableException } from '@nestjs/common';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -6,10 +6,16 @@ import {
   SessionStoreService,
 } from './session-store.service';
 
-function createService(options: { nodeEnv?: string; redisStatus?: string } = {}) {
+function createService(options: {
+  nodeEnv?: string;
+  redisStatus?: string;
+  redisConnectError?: Error;
+} = {}) {
   const redisClient = {
     status: options.redisStatus ?? 'end',
-    connect: vi.fn(),
+    connect: options.redisConnectError
+      ? vi.fn().mockRejectedValue(options.redisConnectError)
+      : vi.fn(),
     set: vi.fn(),
     get: vi.fn(),
     del: vi.fn(),
@@ -33,6 +39,7 @@ function createService(options: { nodeEnv?: string; redisStatus?: string } = {})
 
 afterEach(() => {
   vi.useRealTimers();
+  vi.restoreAllMocks();
 });
 
 describe('SessionStoreService security boundaries', () => {
@@ -42,6 +49,22 @@ describe('SessionStoreService security boundaries', () => {
     await expect(service.setJson('session:test', { userId: 'user-1' }, 60)).rejects.toBeInstanceOf(
       ServiceUnavailableException,
     );
+  });
+
+  it('does not copy Redis connection error contents into fallback logs', async () => {
+    const sensitiveError = 'connection=private-marker-161803 session=private-session-marker';
+    const warnSpy = vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+    const { service } = createService({
+      redisStatus: 'wait',
+      redisConnectError: new Error(sensitiveError),
+    });
+
+    await expect(service.setJson('session:test', { userId: 'user-1' }, 60)).resolves.toBeUndefined();
+
+    const serializedLogs = JSON.stringify(warnSpy.mock.calls);
+    expect(serializedLogs).not.toContain(sensitiveError);
+    expect(serializedLogs).not.toContain('private-marker-161803');
+    expect(serializedLogs).not.toContain('private-session-marker');
   });
 
   it('bounds the development fallback store and reclaims expired entries', async () => {

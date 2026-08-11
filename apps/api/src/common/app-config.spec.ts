@@ -2,6 +2,38 @@ import { describe, expect, it } from 'vitest';
 
 import { APP_ENV_FILE_PATHS, resolveAppConfig } from './app-config';
 
+const PROTECTED_DATA_ENV = {
+  DATABASE_URL:
+    'postgresql://app_user:test-only-strong-db-password@postgres:5432/feishu_timeline?schema=public',
+  REDIS_URL: 'redis://:test-only-strong-redis-password@redis:6379',
+} as const;
+const PROTECTED_SCANNER_ENV = {
+  MALWARE_SCANNER_PROVIDER: 'clamav',
+  CLAMAV_HOST: 'clamav-scanner.internal',
+} as const;
+
+function createProtectedEnvironment(
+  deploymentEnvironment: 'staging' | 'production',
+): NodeJS.ProcessEnv {
+  return {
+    NODE_ENV: 'production',
+    DEPLOYMENT_ENV: deploymentEnvironment,
+    ...PROTECTED_DATA_ENV,
+    ...PROTECTED_SCANNER_ENV,
+    ...(deploymentEnvironment === 'production'
+      ? {
+          FRONTEND_URL: 'https://timeline.all-too-well.com',
+          FEISHU_REDIRECT_URI: 'https://timeline.all-too-well.com/login/callback',
+          FEISHU_APP_ID: 'production-app',
+          FEISHU_APP_SECRET: 'production-secret',
+        }
+      : {
+          FRONTEND_URL: 'https://timeline.staging.internal',
+          FEISHU_REDIRECT_URI: 'https://timeline.staging.internal/login/callback',
+        }),
+  };
+}
+
 describe('resolveAppConfig', () => {
   it('never treats example files as runtime configuration', () => {
     expect(APP_ENV_FILE_PATHS).toEqual(['.env.local', '.env']);
@@ -26,6 +58,10 @@ describe('resolveAppConfig', () => {
     expect(config.sessionCookieName).toBe('ft_session');
     expect(config.objectStorageProvider).toBe('local');
     expect(config.objectStorageLocalRoot).toBe('var/object-storage');
+    expect(config.malwareScannerProvider).toBe('local-eicar');
+    expect(config.malwareScannerHost).toBe('');
+    expect(config.malwareScannerPort).toBe(3310);
+    expect(config.malwareScannerTimeoutMs).toBe(15000);
     expect(config.oauthProvider).toBe('feishu-cn');
     expect(config.feishuAuthorizationEndpoint).toBe(
       'https://accounts.feishu.cn/open-apis/authen/v1/index',
@@ -64,31 +100,49 @@ describe('resolveAppConfig', () => {
       resolveAppConfig({
         NODE_ENV: ' Production ',
         AUTH_MOCK_ENABLED: 'true',
+        ...PROTECTED_DATA_ENV,
+        ...PROTECTED_SCANNER_ENV,
       }),
-    ).toThrowError('AUTH_MOCK_ENABLED must be false when NODE_ENV=production.');
+    ).toThrowError('AUTH_MOCK_ENABLED must be false in staging and production.');
   });
+
+  it.each(['staging', 'production'] as const)(
+    'refuses mock auth when DEPLOYMENT_ENV=%s even if NODE_ENV is development',
+    (deploymentEnvironment) => {
+      expect(() =>
+        resolveAppConfig({
+          ...createProtectedEnvironment(deploymentEnvironment),
+          NODE_ENV: 'development',
+          AUTH_MOCK_ENABLED: 'true',
+        }),
+      ).toThrowError(/AUTH_MOCK_ENABLED/);
+    },
+  );
+
+  it.each(['staging', 'production'] as const)(
+    'requires NODE_ENV=production when DEPLOYMENT_ENV=%s',
+    (deploymentEnvironment) => {
+      expect(() =>
+        resolveAppConfig({
+          ...createProtectedEnvironment(deploymentEnvironment),
+          NODE_ENV: 'development',
+        }),
+      ).toThrowError(/NODE_ENV must be production/);
+    },
+  );
 
   it('pins production OAuth to the approved HTTPS callback and credentials', () => {
     expect(() =>
       resolveAppConfig({
-        NODE_ENV: 'production',
-        DEPLOYMENT_ENV: 'production',
-        FRONTEND_URL: 'https://timeline.all-too-well.com',
+        ...createProtectedEnvironment('production'),
         FEISHU_REDIRECT_URI: 'https://attacker.example/callback',
-        FEISHU_APP_ID: 'production-app',
-        FEISHU_APP_SECRET: 'production-secret',
       }),
     ).toThrowError('FEISHU_REDIRECT_URI must be the approved production callback.');
 
     expect(
-      resolveAppConfig({
-        NODE_ENV: 'production',
-        DEPLOYMENT_ENV: 'production',
-        FRONTEND_URL: 'https://timeline.all-too-well.com',
-        FEISHU_REDIRECT_URI: 'https://timeline.all-too-well.com/login/callback',
-        FEISHU_APP_ID: 'production-app',
-        FEISHU_APP_SECRET: 'production-secret',
-      }).feishuRedirectUri,
+      resolveAppConfig(
+        createProtectedEnvironment('production'),
+      ).feishuRedirectUri,
     ).toBe('https://timeline.all-too-well.com/login/callback');
   });
 
@@ -124,8 +178,7 @@ describe('resolveAppConfig', () => {
 
   it('allows an explicit staging deployment to use its registered local callback', () => {
     const config = resolveAppConfig({
-      NODE_ENV: 'production',
-      DEPLOYMENT_ENV: 'staging',
+      ...createProtectedEnvironment('staging'),
       FRONTEND_URL: 'http://localhost:8080',
       FEISHU_REDIRECT_URI: 'http://localhost:8080/login/callback',
     });
@@ -137,12 +190,9 @@ describe('resolveAppConfig', () => {
   it('rejects incomplete or non-production production identity configuration', () => {
     expect(() =>
       resolveAppConfig({
-        NODE_ENV: 'production',
-        DEPLOYMENT_ENV: 'production',
+        ...createProtectedEnvironment('production'),
         FRONTEND_URL: 'http://timeline.all-too-well.com',
         FEISHU_REDIRECT_URI: 'http://timeline.all-too-well.com/login/callback',
-        FEISHU_APP_ID: 'production-app',
-        FEISHU_APP_SECRET: 'production-secret',
       }),
     ).toThrowError(
       'FRONTEND_URL must be https://timeline.all-too-well.com in production.',
@@ -152,6 +202,8 @@ describe('resolveAppConfig', () => {
       resolveAppConfig({
         NODE_ENV: 'production',
         DEPLOYMENT_ENV: 'production',
+        ...PROTECTED_DATA_ENV,
+        ...PROTECTED_SCANNER_ENV,
         FRONTEND_URL: 'https://timeline.all-too-well.com',
         FEISHU_REDIRECT_URI: 'https://timeline.all-too-well.com/login/callback',
       }),
@@ -161,6 +213,8 @@ describe('resolveAppConfig', () => {
       resolveAppConfig({
         NODE_ENV: 'production',
         DEPLOYMENT_ENV: 'production',
+        ...PROTECTED_DATA_ENV,
+        ...PROTECTED_SCANNER_ENV,
         FRONTEND_URL: 'https://timeline.all-too-well.com',
         FEISHU_REDIRECT_URI: 'https://timeline.all-too-well.com/login/callback',
         FEISHU_APP_ID: 'your_feishu_app_id',
@@ -168,4 +222,187 @@ describe('resolveAppConfig', () => {
       }),
     ).toThrowError('Feishu production credentials must be configured.');
   });
+
+  it.each(['staging', 'production'] as const)(
+    'fails closed when %s database or Redis configuration is missing',
+    (deploymentEnvironment) => {
+      expect(() =>
+        resolveAppConfig({
+          ...createProtectedEnvironment(deploymentEnvironment),
+          DATABASE_URL: undefined,
+        }),
+      ).toThrowError(/DATABASE_URL/);
+
+      expect(() =>
+        resolveAppConfig({
+          ...createProtectedEnvironment(deploymentEnvironment),
+          REDIS_URL: '   ',
+        }),
+      ).toThrowError(/REDIS_URL/);
+    },
+  );
+
+  it('requires an explicit valid staging frontend origin', () => {
+    expect(() =>
+      resolveAppConfig({
+        ...createProtectedEnvironment('staging'),
+        FRONTEND_URL: undefined,
+      }),
+    ).toThrowError(/FRONTEND_URL/);
+
+    expect(() =>
+      resolveAppConfig({
+        ...createProtectedEnvironment('staging'),
+        FRONTEND_URL: 'http://staging.example.internal',
+      }),
+    ).toThrowError(/FRONTEND_URL/);
+  });
+
+  it.each(['staging', 'production'] as const)(
+    'requires a real ClamAV adapter in %s',
+    (deploymentEnvironment) => {
+      expect(() =>
+        resolveAppConfig({
+          ...createProtectedEnvironment(deploymentEnvironment),
+          MALWARE_SCANNER_PROVIDER: 'local-eicar',
+        }),
+      ).toThrowError(/MALWARE_SCANNER_PROVIDER/);
+
+      expect(() =>
+        resolveAppConfig({
+          ...createProtectedEnvironment(deploymentEnvironment),
+          CLAMAV_HOST: '   ',
+        }),
+      ).toThrowError(/CLAMAV_HOST/);
+
+      expect(() =>
+        resolveAppConfig({
+          ...createProtectedEnvironment(deploymentEnvironment),
+          CLAMAV_HOST: 'replace-with-approved-clamav-host',
+        }),
+      ).toThrowError(/CLAMAV_HOST/);
+
+      expect(() =>
+        resolveAppConfig({
+          ...createProtectedEnvironment(deploymentEnvironment),
+          CLAMAV_HOST: 'localhost',
+        }),
+      ).toThrowError(/CLAMAV_HOST/);
+    },
+  );
+
+  it('rejects unsupported scanner providers and invalid ClamAV limits', () => {
+    expect(() =>
+      resolveAppConfig({ MALWARE_SCANNER_PROVIDER: 'allow-all' }),
+    ).toThrowError(/MALWARE_SCANNER_PROVIDER/);
+    expect(() =>
+      resolveAppConfig({
+        MALWARE_SCANNER_PROVIDER: 'clamav',
+        CLAMAV_HOST: 'clamav',
+        CLAMAV_PORT: '0',
+      }),
+    ).toThrowError(/CLAMAV_PORT/);
+    expect(() =>
+      resolveAppConfig({
+        MALWARE_SCANNER_PROVIDER: 'clamav',
+        CLAMAV_HOST: 'clamav',
+        CLAMAV_TIMEOUT_MS: '999999',
+      }),
+    ).toThrowError(/CLAMAV_TIMEOUT_MS/);
+  });
+
+  it.each([
+    {
+      name: 'local PostgreSQL',
+      key: 'DATABASE_URL',
+      value: 'postgresql://app_user:strong-password@localhost:5432/feishu_timeline',
+    },
+    {
+      name: 'default PostgreSQL credentials',
+      key: 'DATABASE_URL',
+      value: 'postgresql://postgres:postgres@postgres:5432/feishu_timeline',
+    },
+    {
+      name: 'placeholder PostgreSQL password',
+      key: 'DATABASE_URL',
+      value: 'postgresql://app_user:replace-with-strong-password@postgres:5432/feishu_timeline',
+    },
+    {
+      name: 'local Redis',
+      key: 'REDIS_URL',
+      value: 'redis://:strong-password@127.0.0.1:6379',
+    },
+    {
+      name: 'Redis without authentication',
+      key: 'REDIS_URL',
+      value: 'redis://redis:6379',
+    },
+    {
+      name: 'placeholder Redis password',
+      key: 'REDIS_URL',
+      value: 'redis://:changeme@redis:6379',
+    },
+  ])('rejects $name in protected environments', ({ key, value }) => {
+    expect(() =>
+      resolveAppConfig({
+        ...createProtectedEnvironment('staging'),
+        [key]: value,
+      }),
+    ).toThrowError(new RegExp(key));
+  });
+
+  it.each(['staging', 'production'] as const)(
+    'rejects short database and Redis passwords in %s',
+    (deploymentEnvironment) => {
+      expect(() =>
+        resolveAppConfig({
+          ...createProtectedEnvironment(deploymentEnvironment),
+          DATABASE_URL:
+            'postgresql://app_user:x@postgres:5432/feishu_timeline?schema=public',
+        }),
+      ).toThrowError(/DATABASE_URL/);
+
+      expect(() =>
+        resolveAppConfig({
+          ...createProtectedEnvironment(deploymentEnvironment),
+          REDIS_URL: 'redis://:x@redis:6379',
+        }),
+      ).toThrowError(/REDIS_URL/);
+    },
+  );
+
+  it('maps NODE_ENV=staging to a protected staging deployment', () => {
+    expect(() =>
+      resolveAppConfig({
+        NODE_ENV: 'staging',
+      }),
+    ).toThrowError(/DATABASE_URL/);
+
+    expect(() =>
+      resolveAppConfig({
+        NODE_ENV: 'staging',
+        ...PROTECTED_DATA_ENV,
+        ...PROTECTED_SCANNER_ENV,
+      }),
+    ).toThrowError(/NODE_ENV must be production/);
+  });
+
+  it('rejects an unknown deployment environment instead of falling back to local', () => {
+    expect(() =>
+      resolveAppConfig({
+        NODE_ENV: 'development',
+        DEPLOYMENT_ENV: 'stageing',
+      }),
+    ).toThrowError('DEPLOYMENT_ENV must be local, staging, or production.');
+  });
+
+  it.each(['development', 'test'])(
+    'retains explicit local defaults in %s',
+    (nodeEnv) => {
+      const config = resolveAppConfig({ NODE_ENV: nodeEnv });
+
+      expect(config.databaseUrl).toContain('@localhost:5432/');
+      expect(config.redisUrl).toBe('redis://localhost:6379');
+    },
+  );
 });

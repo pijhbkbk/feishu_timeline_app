@@ -51,8 +51,14 @@ describe('R19 API input and upload security', () => {
   it('uses a fixed frontend origin instead of wildcard CORS configuration', () => {
     expect(
       resolveAppConfig({
-        NODE_ENV: 'staging',
+        NODE_ENV: 'production',
+        DEPLOYMENT_ENV: 'staging',
         FRONTEND_URL: 'https://staging.timeline.example.com',
+        DATABASE_URL:
+          'postgresql://app_user:test-only-strong-db-password@postgres:5432/feishu_timeline',
+        REDIS_URL: 'redis://:test-only-strong-redis-password@redis:6379',
+        MALWARE_SCANNER_PROVIDER: 'clamav',
+        CLAMAV_HOST: 'clamav-scanner.internal',
       } as NodeJS.ProcessEnv).frontendUrl,
     ).toBe('https://staging.timeline.example.com');
   });

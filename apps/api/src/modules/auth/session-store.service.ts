@@ -136,8 +136,8 @@ export class SessionStoreService {
       try {
         await client.connect();
         return client;
-      } catch (error) {
-        return this.handleRedisUnavailable(error);
+      } catch {
+        return this.handleRedisUnavailable();
       }
     }
 
@@ -148,12 +148,12 @@ export class SessionStoreService {
     return this.handleRedisUnavailable();
   }
 
-  private handleRedisUnavailable(error?: unknown): null {
+  private handleRedisUnavailable(): null {
     if (this.isProduction()) {
       throw new ServiceUnavailableException('认证服务暂时不可用，请稍后重试。');
     }
 
-    this.logRedisFallback(error);
+    this.logRedisFallback();
     return null;
   }
 
@@ -185,15 +185,13 @@ export class SessionStoreService {
     return nodeEnv.trim().toLowerCase() === 'production';
   }
 
-  private logRedisFallback(error?: unknown) {
+  private logRedisFallback() {
     if (this.hasLoggedRedisFallback) {
       return;
     }
 
     this.hasLoggedRedisFallback = true;
 
-    this.logger.warn(
-      `Redis unavailable, auth sessions fall back to memory store.${error instanceof Error ? ` ${error.message}` : ''}`,
-    );
+    this.logger.warn('eventType=auth_session_store result=memory_fallback');
   }
 }

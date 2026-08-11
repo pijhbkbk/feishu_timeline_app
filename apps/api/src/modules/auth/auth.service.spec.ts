@@ -3,7 +3,9 @@ import { UserStatus } from '@prisma/client';
 import { describe, expect, it, vi } from 'vitest';
 
 import { getFeishuOAuthStateCookieName } from './auth.constants';
+import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { SessionAuthGuard } from './session-auth.guard';
 
 function createAuthService(
   options: {
@@ -57,13 +59,15 @@ function createAuthService(
     setJson: vi.fn(async (key: string, value: unknown) => {
       stateStore.set(key, value);
     }),
-    getJson: vi.fn(),
+    getJson: vi.fn(async (key: string) => stateStore.get(key) ?? null),
     consumeJson: vi.fn(async (key: string) => {
       const value = stateStore.get(key);
       stateStore.delete(key);
       return value ?? null;
     }),
-    delete: vi.fn(),
+    delete: vi.fn(async (key: string) => {
+      stateStore.delete(key);
+    }),
     incrementWithTtl: vi.fn().mockResolvedValue(1),
   };
   const feishuAuthAdapter = {
@@ -91,9 +95,11 @@ function createAuthService(
   return {
     service,
     response,
+    configService,
     usersService,
     sessionStoreService,
     feishuAuthAdapter,
+    stateStore,
   };
 }
 
@@ -320,9 +326,13 @@ describe('AuthService Feishu OAuth state', () => {
       nodeEnv: 'production',
     });
 
-    await service.logout('session-token', response as never);
+    const sessionToken = ['8dcfdac1', '2a27', '46df', 'bd09', 'ec35ea84ccdb'].join('-');
 
-    expect(sessionStoreService.delete).toHaveBeenCalledWith('auth:session:session-token');
+    await service.logout(sessionToken, response as never);
+
+    expect(sessionStoreService.delete).toHaveBeenCalledWith(
+      `auth:session:${sessionToken}`,
+    );
     expect(response.clearCookie).toHaveBeenCalledWith(
       'ft_session',
       expect.objectContaining({
@@ -332,6 +342,115 @@ describe('AuthService Feishu OAuth state', () => {
         path: '/',
       }),
     );
+  });
+
+  it('makes the old cookie unusable while preserving another device session', async () => {
+    const { service, response, sessionStoreService } = createAuthService();
+
+    await service.loginWithMock({}, response as never);
+    await service.loginWithMock({}, response as never);
+    const firstToken = response.cookie.mock.calls[0]?.[1] as string;
+    const secondToken = response.cookie.mock.calls[1]?.[1] as string;
+
+    await expect(
+      service.getAuthenticatedUserFromSessionToken(firstToken),
+    ).resolves.toMatchObject({ id: 'user-1' });
+    await expect(
+      service.getAuthenticatedUserFromSessionToken(secondToken),
+    ).resolves.toMatchObject({ id: 'user-1' });
+
+    await service.logout(firstToken, response as never);
+
+    await expect(
+      service.getAuthenticatedUserFromSessionToken(firstToken),
+    ).resolves.toBeNull();
+    await expect(
+      service.getAuthenticatedUserFromSessionToken(secondToken),
+    ).resolves.toMatchObject({ id: 'user-1' });
+    expect(sessionStoreService.delete).toHaveBeenCalledWith(
+      `auth:session:${firstToken}`,
+    );
+  });
+
+  it('treats missing, malformed and repeated logout cookies safely', async () => {
+    const { service, response, sessionStoreService } = createAuthService();
+
+    await service.loginWithMock({}, response as never);
+    const activeToken = response.cookie.mock.calls[0]?.[1] as string;
+    const forgedToken = '00000000-0000-4000-8000-000000000001';
+
+    await expect(service.logout(undefined, response as never)).resolves.toBeUndefined();
+    await expect(
+      service.logout('not-a-valid-session-token', response as never),
+    ).resolves.toBeUndefined();
+    await expect(service.logout(forgedToken, response as never)).resolves.toBeUndefined();
+    await expect(
+      service.getAuthenticatedUserFromSessionToken(activeToken),
+    ).resolves.toMatchObject({ id: 'user-1' });
+
+    await expect(service.logout(activeToken, response as never)).resolves.toBeUndefined();
+    await expect(service.logout(activeToken, response as never)).resolves.toBeUndefined();
+    await expect(
+      service.getAuthenticatedUserFromSessionToken(activeToken),
+    ).resolves.toBeNull();
+
+    expect(sessionStoreService.delete).not.toHaveBeenCalledWith(
+      'auth:session:not-a-valid-session-token',
+    );
+    expect(sessionStoreService.delete).toHaveBeenCalledWith(
+      `auth:session:${forgedToken}`,
+    );
+    expect(response.clearCookie).toHaveBeenCalledTimes(5);
+  });
+
+  it('rejects an old logout cookie with 401 while another device stays authenticated', async () => {
+    const { service, response, configService } = createAuthService();
+    const controller = new AuthController(service, configService as never);
+    const reflector = {
+      getAllAndOverride: vi.fn().mockReturnValue(false),
+    };
+    const guard = new SessionAuthGuard(
+      reflector as never,
+      configService as never,
+      service,
+    );
+
+    await service.loginWithMock({}, response as never);
+    await service.loginWithMock({}, response as never);
+    const loggedOutToken = response.cookie.mock.calls[0]?.[1] as string;
+    const otherDeviceToken = response.cookie.mock.calls[1]?.[1] as string;
+    const contextFor = (sessionToken: string) => {
+      const request = {
+        cookies: { ft_session: sessionToken },
+      };
+
+      return {
+        request,
+        context: {
+          getHandler: () => controller.getMe,
+          getClass: () => AuthController,
+          switchToHttp: () => ({
+            getRequest: () => request,
+          }),
+        },
+      };
+    };
+
+    await expect(
+      guard.canActivate(contextFor(loggedOutToken).context as never),
+    ).resolves.toBe(true);
+
+    await controller.logout(
+      { cookies: { ft_session: loggedOutToken } } as never,
+      response as never,
+    );
+
+    await expect(
+      guard.canActivate(contextFor(loggedOutToken).context as never),
+    ).rejects.toMatchObject({ status: 401 });
+    await expect(
+      guard.canActivate(contextFor(otherDeviceToken).context as never),
+    ).resolves.toBe(true);
   });
 });
 
