@@ -831,15 +831,16 @@ export class DashboardService {
     nextMonthStart: Date,
   ) {
     const hasGlobalScope = actor.isSystemAdmin || actor.roleCodes.includes('admin');
+    const recurringStatuses = [
+      RecurringTaskStatus.PENDING,
+      RecurringTaskStatus.IN_PROGRESS,
+      RecurringTaskStatus.OVERDUE,
+    ].map((status) => Prisma.sql`${status}::"RecurringTaskStatus"`);
     const rows = await this.prisma.$queryRaw<Array<{ count: bigint }>>(Prisma.sql`
       SELECT COUNT(*)::bigint AS "count"
       FROM "recurring_tasks" AS recurring_task
       WHERE recurring_task."status" IN (
-        ${Prisma.join([
-          RecurringTaskStatus.PENDING,
-          RecurringTaskStatus.IN_PROGRESS,
-          RecurringTaskStatus.OVERDUE,
-        ])}
+        ${Prisma.join(recurringStatuses)}
       )
         AND recurring_task."plannedDate" >= ${monthStart}
         AND recurring_task."plannedDate" < ${nextMonthStart}

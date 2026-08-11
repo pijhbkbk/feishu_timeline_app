@@ -1,4 +1,9 @@
-import { ProjectStatus, ReviewResult, WorkflowNodeCode } from '@prisma/client';
+import {
+  ProjectStatus,
+  RecurringTaskStatus,
+  ReviewResult,
+  WorkflowNodeCode,
+} from '@prisma/client';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { AuthenticatedUser } from '../auth/auth.types';
@@ -111,6 +116,23 @@ describe('DashboardService', () => {
     );
     expect(prisma.recurringTask.count).not.toHaveBeenCalled();
     expect(prisma.$queryRaw).toHaveBeenCalledTimes(1);
+    const monthlyReviewQuery = prisma.$queryRaw.mock.calls[0]?.[0] as {
+      strings: string[];
+      values: unknown[];
+    };
+    expect(monthlyReviewQuery.strings.join('?')).toContain(
+      '::"RecurringTaskStatus"',
+    );
+    expect(
+      monthlyReviewQuery.strings
+        .join('?')
+        .match(/::"RecurringTaskStatus"/g),
+    ).toHaveLength(3);
+    expect(monthlyReviewQuery.values.slice(0, 3)).toEqual([
+      RecurringTaskStatus.PENDING,
+      RecurringTaskStatus.IN_PROGRESS,
+      RecurringTaskStatus.OVERDUE,
+    ]);
   });
 
   it('groups stage distribution by current node code', async () => {
