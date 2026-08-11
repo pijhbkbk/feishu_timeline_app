@@ -994,8 +994,7 @@ export class WorkflowsService {
             }
           : null,
       availableActions: detailedTask.isActive
-        ? getAllowedWorkflowActions(detailedTask.nodeCode)
-            .filter((action) => isWorkflowActionCurrentlyAvailable(detailedTask.status, action))
+        ? this.getPublicGenericWorkflowActions(detailedTask)
             .map((action) => ({
               action,
               label: WORKFLOW_ACTION_LABELS[action],
@@ -1241,6 +1240,13 @@ export class WorkflowsService {
     actor: AuthenticatedUser,
     rawInput: unknown,
   ) {
+    if (action !== WorkflowAction.START) {
+      throw new BadRequestException({
+        code: 'GENERIC_TERMINAL_TRANSITION_DISABLED',
+        message: '终态流转必须通过对应业务接口完成。',
+      });
+    }
+
     return this.prisma.$transaction((tx) =>
       this.transitionTaskWithExecutor(tx, taskId, action, actor, rawInput),
     );
@@ -1355,7 +1361,7 @@ export class WorkflowsService {
         status: terminalStatus,
         isActive: false,
         ...(action === WorkflowAction.APPROVE
-          ? { reviewPassAt: this.resolveReviewPassAt(input) ?? now }
+          ? { reviewPassAt: now }
           : {}),
         ...(action === WorkflowAction.RETURN ? { returnedAt: now } : { completedAt: now }),
       },
@@ -1616,6 +1622,18 @@ export class WorkflowsService {
     const configuredTemplates = getWorkflowNextTaskTemplates(task.nodeCode, action);
 
     if (configuredTemplates.length > 0) {
+      if (
+        action === WorkflowAction.RETURN &&
+        input.targetNodeCode &&
+        !configuredTemplates.some(
+          (template) => template.nodeCode === input.targetNodeCode,
+        )
+      ) {
+        throw new BadRequestException(
+          `${task.nodeName} 不允许退回到客户端指定的目标节点。`,
+        );
+      }
+
       return configuredTemplates;
     }
 
@@ -1624,12 +1642,17 @@ export class WorkflowsService {
     }
 
     const targetNodeCode =
-      input.targetNodeCode ??
       getWorkflowDefaultReturnNode(task.nodeCode) ??
       getPreviousPrimaryNodeCode(task.nodeCode);
 
     if (!targetNodeCode) {
       throw new BadRequestException(`${task.nodeName} 没有可用的退回目标节点。`);
+    }
+
+    if (input.targetNodeCode && input.targetNodeCode !== targetNodeCode) {
+      throw new BadRequestException(
+        `${task.nodeName} 不允许退回到客户端指定的目标节点。`,
+      );
     }
 
     return [
@@ -2650,13 +2673,22 @@ export class WorkflowsService {
       returnedAt: task.returnedAt?.toISOString() ?? null,
       payload: task.payload,
       availableActions: task.isActive
-        ? getAllowedWorkflowActions(task.nodeCode).filter((action) =>
-            isWorkflowActionCurrentlyAvailable(task.status, action),
-          )
+        ? this.getPublicGenericWorkflowActions(task)
         : [],
       createdAt: task.createdAt.toISOString(),
       updatedAt: task.updatedAt.toISOString(),
     };
+  }
+
+  private getPublicGenericWorkflowActions(task: {
+    nodeCode: WorkflowNodeCode;
+    status: WorkflowTaskStatus;
+  }) {
+    return getAllowedWorkflowActions(task.nodeCode).filter(
+      (action) =>
+        action === WorkflowAction.START &&
+        isWorkflowActionCurrentlyAvailable(task.status, action),
+    );
   }
 
   private toRecurringTaskSummary(
@@ -2744,10 +2776,22 @@ export class WorkflowsService {
       Object.values(WorkflowNodeCode).includes(input.targetNodeCode as WorkflowNodeCode)
         ? (input.targetNodeCode as WorkflowNodeCode)
         : undefined;
-    const metadata =
+    const parsedMetadata =
       input.metadata === undefined
         ? undefined
         : (JSON.parse(JSON.stringify(input.metadata)) as Prisma.InputJsonValue);
+    const metadata =
+      parsedMetadata &&
+      typeof parsedMetadata === 'object' &&
+      !Array.isArray(parsedMetadata)
+        ? (() => {
+            const sanitizedMetadata = {
+              ...(parsedMetadata as Prisma.InputJsonObject),
+            };
+            delete sanitizedMetadata.reviewPassAt;
+            return sanitizedMetadata as Prisma.InputJsonValue;
+          })()
+        : parsedMetadata;
 
     return {
       ...(comment ? { comment } : {}),
@@ -2784,20 +2828,6 @@ export class WorkflowsService {
 
   private buildTaskNo() {
     return `TASK-${Date.now()}-${randomUUID().slice(0, 8).toUpperCase()}`;
-  }
-
-  private resolveReviewPassAt(input: WorkflowActionInput) {
-    if (!input.metadata || typeof input.metadata !== 'object' || Array.isArray(input.metadata)) {
-      return null;
-    }
-
-    const reviewPassAt = (input.metadata as Record<string, unknown>).reviewPassAt;
-    if (typeof reviewPassAt !== 'string' || reviewPassAt.trim().length === 0) {
-      return null;
-    }
-
-    const parsed = new Date(reviewPassAt);
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
   }
 
   private asJsonObject(value: Prisma.JsonValue | null | undefined) {

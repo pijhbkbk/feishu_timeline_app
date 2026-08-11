@@ -429,6 +429,10 @@ export async function executeWorkflowAction(
     targetNodeCode?: WorkflowNodeCode;
   },
 ) {
+  if (action !== 'START') {
+    throw new Error('终态流转必须通过对应业务工作区完成。');
+  }
+
   return apiRequest<ProjectWorkflowResponse>(`/workflows/tasks/${taskId}/${action.toLowerCase()}`, {
     method: 'POST',
     body: input ?? {},

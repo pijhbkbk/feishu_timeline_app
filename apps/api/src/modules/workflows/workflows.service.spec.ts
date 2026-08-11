@@ -25,6 +25,7 @@ const actor: AuthenticatedUser = {
 
 function createService() {
   const prisma = {
+    $transaction: vi.fn(),
     workflowTask: {
       findMany: vi.fn(),
       update: vi.fn(),
@@ -76,6 +77,285 @@ function createService() {
 }
 
 describe('WorkflowsService', () => {
+  const sampleColorConfirmationTask = {
+    id: 'task-step-4',
+    workflowInstanceId: 'wf-1',
+    projectId: 'project-1',
+    nodeCode: WorkflowNodeCode.SAMPLE_COLOR_CONFIRMATION,
+    nodeName: '样板颜色确认',
+    status: WorkflowTaskStatus.IN_PROGRESS,
+    isActive: true,
+    assigneeUserId: actor.id,
+    workflowInstance: {
+      id: 'wf-1',
+      status: WorkflowInstanceStatus.RUNNING,
+      currentNodeCode: WorkflowNodeCode.SAMPLE_COLOR_CONFIRMATION,
+    },
+    project: {
+      id: 'project-1',
+      ownerUserId: actor.id,
+    },
+    assigneeUser: null,
+    assigneeDepartment: null,
+  };
+
+  function stubTransitionSideEffects(service: WorkflowsService) {
+    vi.spyOn(service as any, 'getTaskOrThrow').mockResolvedValue(
+      sampleColorConfirmationTask,
+    );
+    vi.spyOn(service as any, 'createNextTasks').mockResolvedValue([]);
+    vi.spyOn(service as any, 'maybeCreateRecurringPlan').mockResolvedValue(null);
+    vi.spyOn(service as any, 'applyWorkflowCompletionIfNeeded').mockResolvedValue(
+      undefined,
+    );
+    vi.spyOn(service as any, 'syncWorkflowState').mockResolvedValue({
+      currentNodeCode: WorkflowNodeCode.SAMPLE_COLOR_CONFIRMATION,
+    });
+    vi.spyOn(service as any, 'enqueueWorkflowNotifications').mockResolvedValue(
+      undefined,
+    );
+    vi.spyOn(service as any, 'getProjectWorkflowByInstance').mockResolvedValue({
+      workflowInstance: { id: 'wf-1' },
+    });
+  }
+
+  function createTransitionExecutor() {
+    return {
+      workflowTask: {
+        updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+        findUniqueOrThrow: vi.fn().mockImplementation(({ where }) =>
+          Promise.resolve({
+            ...sampleColorConfirmationTask,
+            id: where.id,
+            status: WorkflowTaskStatus.RETURNED,
+            isActive: false,
+          }),
+        ),
+      },
+      workflowTransition: {
+        create: vi.fn().mockResolvedValue({ id: 'transition-1' }),
+      },
+    };
+  }
+
+  it.each([
+    ['approve', WorkflowAction.APPROVE],
+    ['reject', WorkflowAction.REJECT],
+    ['return', WorkflowAction.RETURN],
+  ])(
+    'blocks generic CAB %s before opening a transaction when no ReviewRecord exists',
+    async (_label, action) => {
+      const { service, prisma } = createService();
+      prisma.$transaction.mockImplementation(async (callback) => callback({}));
+      const executor = vi
+        .spyOn(service, 'transitionTaskWithExecutor')
+        .mockResolvedValue({ workflowInstance: { id: 'wf-1' } } as never);
+
+      await expect(
+        service.transitionTask(
+          'task-cab-without-review-record',
+          action,
+          actor,
+          {},
+        ),
+      ).rejects.toThrow('终态流转必须通过对应业务接口完成');
+
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+      expect(executor).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    ['complete', WorkflowAction.COMPLETE],
+    ['submit', WorkflowAction.SUBMIT],
+  ])(
+    'blocks generic ordinary-task %s before form and blocker checks can be bypassed',
+    async (_label, action) => {
+      const { service, prisma } = createService();
+      prisma.$transaction.mockImplementation(async (callback) => callback({}));
+      const executor = vi
+        .spyOn(service, 'transitionTaskWithExecutor')
+        .mockResolvedValue({ workflowInstance: { id: 'wf-1' } } as never);
+
+      await expect(
+        service.transitionTask(
+          'task-ordinary-missing-form-open-blocker',
+          action,
+          actor,
+          {},
+        ),
+      ).rejects.toThrow('终态流转必须通过对应业务接口完成');
+
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+      expect(executor).not.toHaveBeenCalled();
+    },
+  );
+
+  it('keeps generic START as the only public transition delegated to the executor', async () => {
+    const { service, prisma } = createService();
+    const tx = { workflowTask: {} };
+    prisma.$transaction.mockImplementation(async (callback) => callback(tx));
+    const executor = vi
+      .spyOn(service, 'transitionTaskWithExecutor')
+      .mockResolvedValue({ workflowInstance: { id: 'wf-1' } } as never);
+
+    await expect(
+      service.transitionTask('task-ordinary-1', WorkflowAction.START, actor, {
+        comment: '开始处理',
+      }),
+    ).resolves.toEqual({ workflowInstance: { id: 'wf-1' } });
+
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(executor).toHaveBeenCalledWith(
+      tx,
+      'task-ordinary-1',
+      WorkflowAction.START,
+      actor,
+      { comment: '开始处理' },
+    );
+  });
+
+  it.each([
+    [WorkflowTaskStatus.READY, [WorkflowAction.START]],
+    [WorkflowTaskStatus.IN_PROGRESS, []],
+  ])(
+    'exposes only generic START capability for an active %s workflow task',
+    (status, expectedActions) => {
+      const { service } = createService();
+
+      const summary = (service as any).toWorkflowTaskSummary({
+        id: 'task-generic-surface',
+        taskNo: 'TASK-GENERIC-1',
+        nodeCode: WorkflowNodeCode.PAINT_DEVELOPMENT,
+        nodeName: '涂料开发',
+        taskRound: 1,
+        status,
+        isPrimary: true,
+        isActive: true,
+        assigneeUserId: actor.id,
+        assigneeUser: null,
+        assigneeDepartmentId: null,
+        assigneeDepartment: null,
+        dueAt: null,
+        startedAt: null,
+        completedAt: null,
+        returnedAt: null,
+        payload: null,
+        createdAt: new Date('2026-08-11T00:00:00.000Z'),
+        updatedAt: new Date('2026-08-11T00:00:00.000Z'),
+      });
+
+      expect(summary.availableActions).toEqual(expectedActions);
+    },
+  );
+
+  it.each([
+    ['terminal node', WorkflowNodeCode.PROJECT_CLOSED],
+    ['future primary node', WorkflowNodeCode.PAINT_PROCUREMENT],
+    ['parallel node', WorkflowNodeCode.COLOR_NUMBERING],
+  ])(
+    'rejects a client-selected RETURN target to a %s before any task write',
+    async (_label, targetNodeCode) => {
+      const { service } = createService();
+      const tx = createTransitionExecutor();
+      stubTransitionSideEffects(service);
+      const createNextTasks = vi.mocked((service as any).createNextTasks);
+
+      await expect(
+        service.transitionTaskWithExecutor(
+          tx as never,
+          sampleColorConfirmationTask.id,
+          WorkflowAction.RETURN,
+          actor,
+          { targetNodeCode },
+        ),
+      ).rejects.toThrow('不允许退回到客户端指定的目标节点');
+
+      expect(tx.workflowTask.updateMany).not.toHaveBeenCalled();
+      expect(createNextTasks).not.toHaveBeenCalled();
+    },
+  );
+
+  it('uses only the server-defined default target for a legal step 4 RETURN', async () => {
+    const { service } = createService();
+    const tx = createTransitionExecutor();
+    stubTransitionSideEffects(service);
+    const createNextTasks = vi.mocked((service as any).createNextTasks);
+
+    await service.transitionTaskWithExecutor(
+      tx as never,
+      sampleColorConfirmationTask.id,
+      WorkflowAction.RETURN,
+      actor,
+      {},
+    );
+
+    expect(createNextTasks).toHaveBeenCalledWith(
+      tx,
+      sampleColorConfirmationTask,
+      actor,
+      WorkflowAction.RETURN,
+      {},
+      [
+        {
+          nodeCode: WorkflowNodeCode.PAINT_DEVELOPMENT,
+          isPrimary: true,
+          reason: '样板颜色确认 退回到 涂料开发。',
+        },
+      ],
+      undefined,
+    );
+  });
+
+  it.each([
+    ['past', '2020-01-01T00:00:00.000Z'],
+    ['future', '2099-01-01T00:00:00.000Z'],
+  ])(
+    'ignores a client-supplied %s reviewPassAt and records server time',
+    async (_label, reviewPassAt) => {
+      vi.useFakeTimers();
+      const serverNow = new Date('2026-08-11T03:00:00.000Z');
+      vi.setSystemTime(serverNow);
+
+      try {
+        const { service, activityLogsService } = createService();
+        const tx = createTransitionExecutor();
+        stubTransitionSideEffects(service);
+
+        await service.transitionTaskWithExecutor(
+          tx as never,
+          sampleColorConfirmationTask.id,
+          WorkflowAction.APPROVE,
+          actor,
+          {
+            metadata: {
+              reviewPassAt,
+              evidenceId: 'client-note-1',
+            },
+          },
+        );
+
+        expect(tx.workflowTask.updateMany).toHaveBeenCalledWith(
+          expect.objectContaining({
+            data: expect.objectContaining({
+              reviewPassAt: serverNow,
+            }),
+          }),
+        );
+        expect(activityLogsService.createWithExecutor).toHaveBeenCalledWith(
+          tx,
+          expect.objectContaining({
+            metadata: {
+              evidenceId: 'client-note-1',
+            },
+          }),
+        );
+      } finally {
+        vi.useRealTimers();
+      }
+    },
+  );
+
   it('enforces the plan A task-operation matrix', () => {
     const { service } = createService();
     const makeActor = (
