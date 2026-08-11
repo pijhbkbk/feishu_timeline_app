@@ -63,10 +63,14 @@ describe('DashboardService', () => {
   it('aggregates overview statistics for current user scope', async () => {
     const prisma = {
       project: {
-        findMany: vi.fn().mockResolvedValue([
-          { id: 'project-1', status: ProjectStatus.IN_PROGRESS, updatedAt: new Date('2026-03-19T00:00:00.000Z') },
-          { id: 'project-2', status: ProjectStatus.COMPLETED, updatedAt: new Date('2026-03-20T00:00:00.000Z') },
+        findMany: vi.fn().mockRejectedValue(new Error('unbounded project read')),
+        groupBy: vi.fn().mockResolvedValue([
+          { status: ProjectStatus.IN_PROGRESS, _count: { _all: 1 } },
+          { status: ProjectStatus.COMPLETED, _count: { _all: 1 } },
         ]),
+        aggregate: vi.fn().mockResolvedValue({
+          _max: { updatedAt: new Date('2026-03-20T00:00:00.000Z') },
+        }),
       },
       workflowTask: {
         count: vi.fn().mockResolvedValueOnce(2).mockResolvedValueOnce(3).mockResolvedValueOnce(0),
@@ -75,8 +79,9 @@ describe('DashboardService', () => {
         count: vi.fn().mockResolvedValue(5),
       },
       recurringTask: {
-        count: vi.fn().mockResolvedValue(1),
+        count: vi.fn().mockRejectedValue(new Error('unbounded recurring task read')),
       },
+      $queryRaw: vi.fn().mockResolvedValue([{ count: 1n }]),
     };
     const service = new DashboardService(prisma as never);
 
@@ -95,22 +100,32 @@ describe('DashboardService', () => {
         completedProjects: 1,
       }),
     );
-    expect(prisma.project.findMany).toHaveBeenCalledWith(
+    expect(prisma.project.findMany).not.toHaveBeenCalled();
+    expect(prisma.project.groupBy).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
           OR: expect.any(Array),
         }),
+        by: ['status'],
       }),
     );
+    expect(prisma.recurringTask.count).not.toHaveBeenCalled();
+    expect(prisma.$queryRaw).toHaveBeenCalledTimes(1);
   });
 
   it('groups stage distribution by current node code', async () => {
     const prisma = {
       project: {
-        findMany: vi.fn().mockResolvedValue([
-          { currentNodeCode: WorkflowNodeCode.PAINT_PROCUREMENT },
-          { currentNodeCode: WorkflowNodeCode.PAINT_PROCUREMENT },
-          { currentNodeCode: WorkflowNodeCode.CAB_REVIEW },
+        findMany: vi.fn().mockRejectedValue(new Error('unbounded project read')),
+        groupBy: vi.fn().mockResolvedValue([
+          {
+            currentNodeCode: WorkflowNodeCode.PAINT_PROCUREMENT,
+            _count: { _all: 2 },
+          },
+          {
+            currentNodeCode: WorkflowNodeCode.CAB_REVIEW,
+            _count: { _all: 1 },
+          },
         ]),
       },
     };
@@ -128,6 +143,13 @@ describe('DashboardService', () => {
         count: 1,
       },
     ]);
+    expect(prisma.project.findMany).not.toHaveBeenCalled();
+    expect(prisma.project.groupBy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        by: ['currentNodeCode'],
+        _count: { _all: true },
+      }),
+    );
   });
 
   it('filters and maps recent reviews', async () => {

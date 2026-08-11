@@ -11,7 +11,7 @@ import {
   WorkflowAction,
   WorkflowNodeCode,
   WorkflowTaskStatus,
-  type Prisma,
+  Prisma,
 } from '@prisma/client';
 
 import { PrismaService } from '../../infra/prisma/prisma.service';
@@ -286,17 +286,24 @@ export class DashboardService {
     const myTaskWhere = this.buildAssignedActiveTaskWhere(actor);
 
     const [
-      projects,
+      projectStatusGroups,
+      projectUpdatedAggregate,
       overdueTasks,
       currentMonthReviewTasks,
       activeColors,
       pendingColorExits,
+      effectiveMonthlyReviewPending,
     ] = await Promise.all([
-      this.prisma.project.findMany({
+      this.prisma.project.groupBy({
+        by: ['status'],
         where: visibleProjectWhere,
-        select: {
-          id: true,
-          status: true,
+        _count: {
+          _all: true,
+        },
+      }),
+      this.prisma.project.aggregate({
+        where: visibleProjectWhere,
+        _max: {
           updatedAt: true,
         },
       }),
@@ -361,47 +368,30 @@ export class DashboardService {
           },
         },
       }),
+      this.countVisibleMonthlyReviews(actor, monthStart, nextMonthStart),
     ]);
 
-    const projectIds = projects.map((project) => project.id);
-    const effectiveMonthlyReviewPending =
-      projectIds.length === 0
-        ? 0
-        : await this.prisma.recurringTask.count({
-            where: {
-              projectId: {
-                in: projectIds,
-              },
-              status: {
-                in: [RecurringTaskStatus.PENDING, RecurringTaskStatus.IN_PROGRESS, RecurringTaskStatus.OVERDUE],
-              },
-              plannedDate: {
-                gte: monthStart,
-                lt: nextMonthStart,
-              },
-            },
-          });
-    const lastDataUpdatedAt =
-      projects.length > 0
-        ? new Date(Math.max(...projects.map((project) => project.updatedAt.getTime())))
-        : now;
+    const projectCountByStatus = new Map(
+      projectStatusGroups.map((group) => [group.status, group._count._all]),
+    );
+    const totalProjects = projectStatusGroups.reduce(
+      (total, group) => total + group._count._all,
+      0,
+    );
+    const completedProjects = projectCountByStatus.get(ProjectStatus.COMPLETED) ?? 0;
+    const cancelledProjects = projectCountByStatus.get(ProjectStatus.CANCELLED) ?? 0;
+    const lastDataUpdatedAt = projectUpdatedAggregate._max.updatedAt ?? now;
 
     return {
-      totalProjects: projects.length,
-      activeProjects: projects.filter(
-        (project) =>
-          project.status !== ProjectStatus.COMPLETED &&
-          project.status !== ProjectStatus.CANCELLED,
-      ).length,
+      totalProjects,
+      activeProjects: totalProjects - completedProjects - cancelledProjects,
       overdueTasks,
       pendingReviews: currentMonthReviewTasks,
       currentMonthPendingReviews: currentMonthReviewTasks,
       monthlyColorReviewPending: effectiveMonthlyReviewPending,
       pendingColorExits,
       activeColors,
-      completedProjects: projects.filter(
-        (project) => project.status === ProjectStatus.COMPLETED,
-      ).length,
+      completedProjects,
       lastUpdatedAt: now.toISOString(),
       lastDataUpdatedAt: lastDataUpdatedAt.toISOString(),
     };
@@ -639,37 +629,35 @@ export class DashboardService {
   }
 
   async getStageDistribution(actor: AuthenticatedUser) {
-    const projects = await this.prisma.project.findMany({
+    const projectGroups = await this.prisma.project.groupBy({
+      by: ['currentNodeCode'],
       where: {
         ...this.buildVisibleProjectWhere(actor),
         currentNodeCode: {
           not: null,
         },
       },
-      select: {
-        currentNodeCode: true,
+      _count: {
+        _all: true,
       },
     });
 
-    const counter = new Map<WorkflowNodeCode, number>();
-
-    for (const project of projects) {
-      if (!project.currentNodeCode) {
-        continue;
-      }
-
-      counter.set(project.currentNodeCode, (counter.get(project.currentNodeCode) ?? 0) + 1);
-    }
-
-    return [...counter.entries()]
+    return projectGroups
+      .filter(
+        (
+          group,
+        ): group is typeof group & { currentNodeCode: WorkflowNodeCode } =>
+          group.currentNodeCode !== null,
+      )
       .sort(
         (left, right) =>
-          WORKFLOW_NODE_META_MAP[left[0]].sequence - WORKFLOW_NODE_META_MAP[right[0]].sequence,
+          WORKFLOW_NODE_META_MAP[left.currentNodeCode].sequence -
+          WORKFLOW_NODE_META_MAP[right.currentNodeCode].sequence,
       )
-      .map(([nodeCode, count]) => ({
-        nodeCode,
-        nodeName: getCurrentNodeName(nodeCode) ?? nodeCode,
-        count,
+      .map((group) => ({
+        nodeCode: group.currentNodeCode,
+        nodeName: getCurrentNodeName(group.currentNodeCode) ?? group.currentNodeCode,
+        count: group._count._all,
       }));
   }
 
@@ -835,6 +823,52 @@ export class DashboardService {
         },
       ],
     };
+  }
+
+  private async countVisibleMonthlyReviews(
+    actor: AuthenticatedUser,
+    monthStart: Date,
+    nextMonthStart: Date,
+  ) {
+    const hasGlobalScope = actor.isSystemAdmin || actor.roleCodes.includes('admin');
+    const rows = await this.prisma.$queryRaw<Array<{ count: bigint }>>(Prisma.sql`
+      SELECT COUNT(*)::bigint AS "count"
+      FROM "recurring_tasks" AS recurring_task
+      WHERE recurring_task."status" IN (
+        ${Prisma.join([
+          RecurringTaskStatus.PENDING,
+          RecurringTaskStatus.IN_PROGRESS,
+          RecurringTaskStatus.OVERDUE,
+        ])}
+      )
+        AND recurring_task."plannedDate" >= ${monthStart}
+        AND recurring_task."plannedDate" < ${nextMonthStart}
+        AND (
+          ${hasGlobalScope}
+          OR EXISTS (
+            SELECT 1
+            FROM "projects" AS project
+            WHERE project."id" = recurring_task."projectId"
+              AND (
+                project."ownerUserId" = ${actor.id}
+                OR EXISTS (
+                  SELECT 1
+                  FROM "project_members" AS member
+                  WHERE member."projectId" = project."id"
+                    AND member."userId" = ${actor.id}
+                )
+                OR EXISTS (
+                  SELECT 1
+                  FROM "workflow_tasks" AS task
+                  WHERE task."projectId" = project."id"
+                    AND task."assigneeUserId" = ${actor.id}
+                )
+              )
+          )
+        )
+    `);
+
+    return Number(rows[0]?.count ?? 0n);
   }
 
   private buildAssignedActiveTaskWhere(actor: AuthenticatedUser): Prisma.WorkflowTaskWhereInput {
