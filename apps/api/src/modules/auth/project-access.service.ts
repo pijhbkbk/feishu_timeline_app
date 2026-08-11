@@ -38,17 +38,25 @@ export class ProjectAccessService {
       throw new NotFoundException('项目不存在。');
     }
 
-    if (actor.isSystemAdmin || actor.roleCodes.includes('admin')) {
-      return project;
-    }
-
-    if (requiredPermission === 'audit.read' && actor.roleCodes.includes('auditor')) {
+    if (actor.isSystemAdmin) {
       return project;
     }
 
     const permissionCodes = new Set(actor.permissionCodes ?? []);
     if (!permissionCodes.has(requiredPermission)) {
       throw new ForbiddenException('当前用户缺少项目权限。');
+    }
+
+    // Ordinary administrator and auditor roles may have global data scope, but
+    // they still obey the editable permission matrix. Only the explicit
+    // isSystemAdmin flag is a permissionless safety override, matching
+    // PermissionsGuard.
+    if (actor.roleCodes.includes('admin')) {
+      return project;
+    }
+
+    if (requiredPermission === 'audit.read' && actor.roleCodes.includes('auditor')) {
+      return project;
     }
 
     const hasScope =
