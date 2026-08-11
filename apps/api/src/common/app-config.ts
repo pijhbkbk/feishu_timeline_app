@@ -29,12 +29,26 @@ export type AppConfig = {
   authMockEnabled: boolean;
   sessionCookieName: string;
   sessionTtlSeconds: number;
-  objectStorageProvider: 'local' | 's3' | 'minio' | 'oss';
+  objectStorageProvider: 'local';
   objectStorageLocalRoot: string;
   objectStorageEndpoint: string;
   objectStorageBucket: string;
   objectStorageAccessKey: string;
   objectStorageSecretKey: string;
+  attachmentStorageGlobalMaxBytes: number;
+  attachmentStorageProjectMaxBytes: number;
+  attachmentStorageActorMaxBytes: number;
+  attachmentStorageGlobalMaxObjects: number;
+  attachmentStorageProjectMaxObjects: number;
+  attachmentStorageActorMaxObjects: number;
+  attachmentStorageMinFreeBytes: number;
+  attachmentStorageReservationTtlMs: number;
+  attachmentStorageActorWindowMs: number;
+  attachmentStorageReconcileIntervalMs: number;
+  attachmentStorageReconcileBatchSize: number;
+  attachmentStorageReconciliationLeaseMs: number;
+  attachmentStorageReconciliationRetryMs: number;
+  attachmentStoragePurgedMetadataRetentionMs: number;
   malwareScannerProvider: 'local-eicar' | 'clamav';
   malwareScannerHost: string;
   malwareScannerPort: number;
@@ -349,6 +363,120 @@ export function resolveAppConfig(env: NodeJS.ProcessEnv = process.env): AppConfi
       : localScannerHost;
   }
 
+  const objectStorageProviderValue =
+    env.OBJECT_STORAGE_PROVIDER?.trim().toLowerCase() || 'local';
+  if (objectStorageProviderValue !== 'local') {
+    throw new Error(
+      'OBJECT_STORAGE_PROVIDER must be local until a reviewed remote adapter is implemented.',
+    );
+  }
+
+  const malwareScannerTimeoutMs = resolveBoundedInteger(
+    'CLAMAV_TIMEOUT_MS',
+    env.CLAMAV_TIMEOUT_MS,
+    15_000,
+    1_000,
+    60_000,
+  );
+  const attachmentStorageGlobalMaxBytes = resolveBoundedInteger(
+    'ATTACHMENT_STORAGE_GLOBAL_MAX_BYTES',
+    env.ATTACHMENT_STORAGE_GLOBAL_MAX_BYTES,
+    5_368_709_120,
+    1_048_576,
+    1_099_511_627_776,
+  );
+  const attachmentStorageProjectMaxBytes = resolveBoundedInteger(
+    'ATTACHMENT_STORAGE_PROJECT_MAX_BYTES',
+    env.ATTACHMENT_STORAGE_PROJECT_MAX_BYTES,
+    1_073_741_824,
+    1_048_576,
+    1_099_511_627_776,
+  );
+  const attachmentStorageActorMaxBytes = resolveBoundedInteger(
+    'ATTACHMENT_STORAGE_ACTOR_MAX_BYTES',
+    env.ATTACHMENT_STORAGE_ACTOR_MAX_BYTES,
+    536_870_912,
+    1_048_576,
+    1_099_511_627_776,
+  );
+  const attachmentStorageGlobalMaxObjects = resolveBoundedInteger(
+    'ATTACHMENT_STORAGE_GLOBAL_MAX_OBJECTS',
+    env.ATTACHMENT_STORAGE_GLOBAL_MAX_OBJECTS,
+    5_000,
+    1,
+    1_000_000,
+  );
+  const attachmentStorageProjectMaxObjects = resolveBoundedInteger(
+    'ATTACHMENT_STORAGE_PROJECT_MAX_OBJECTS',
+    env.ATTACHMENT_STORAGE_PROJECT_MAX_OBJECTS,
+    1_000,
+    1,
+    1_000_000,
+  );
+  const attachmentStorageActorMaxObjects = resolveBoundedInteger(
+    'ATTACHMENT_STORAGE_ACTOR_MAX_OBJECTS',
+    env.ATTACHMENT_STORAGE_ACTOR_MAX_OBJECTS,
+    500,
+    1,
+    1_000_000,
+  );
+  const attachmentStorageMinFreeBytes = resolveBoundedInteger(
+    'ATTACHMENT_STORAGE_MIN_FREE_BYTES',
+    env.ATTACHMENT_STORAGE_MIN_FREE_BYTES,
+    1_073_741_824,
+    67_108_864,
+    1_099_511_627_776,
+  );
+  const attachmentStorageReservationTtlMs = resolveBoundedInteger(
+    'ATTACHMENT_STORAGE_RESERVATION_TTL_MS',
+    env.ATTACHMENT_STORAGE_RESERVATION_TTL_MS,
+    7_200_000,
+    300_000,
+    86_400_000,
+  );
+  const attachmentStorageActorWindowMs = resolveBoundedInteger(
+    'ATTACHMENT_STORAGE_ACTOR_WINDOW_MS',
+    env.ATTACHMENT_STORAGE_ACTOR_WINDOW_MS,
+    2_592_000_000,
+    3_600_000,
+    31_536_000_000,
+  );
+  const attachmentStorageReconcileIntervalMs = resolveBoundedInteger(
+    'ATTACHMENT_STORAGE_RECONCILE_INTERVAL_MS',
+    env.ATTACHMENT_STORAGE_RECONCILE_INTERVAL_MS,
+    300_000,
+    60_000,
+    86_400_000,
+  );
+  const attachmentStorageReconcileBatchSize = resolveBoundedInteger(
+    'ATTACHMENT_STORAGE_RECONCILE_BATCH_SIZE',
+    env.ATTACHMENT_STORAGE_RECONCILE_BATCH_SIZE,
+    100,
+    1,
+    1_000,
+  );
+  const attachmentStorageReconciliationLeaseMs = resolveBoundedInteger(
+    'ATTACHMENT_STORAGE_RECONCILIATION_LEASE_MS',
+    env.ATTACHMENT_STORAGE_RECONCILIATION_LEASE_MS,
+    300_000,
+    60_000,
+    3_600_000,
+  );
+  const attachmentStorageReconciliationRetryMs = resolveBoundedInteger(
+    'ATTACHMENT_STORAGE_RECONCILIATION_RETRY_MS',
+    env.ATTACHMENT_STORAGE_RECONCILIATION_RETRY_MS,
+    300_000,
+    60_000,
+    3_600_000,
+  );
+  const attachmentStoragePurgedMetadataRetentionMs = resolveBoundedInteger(
+    'ATTACHMENT_STORAGE_PURGED_METADATA_RETENTION_MS',
+    env.ATTACHMENT_STORAGE_PURGED_METADATA_RETENTION_MS,
+    7_776_000_000,
+    86_400_000,
+    31_536_000_000,
+  );
+
   const notificationMemoryQueueMaxJobs = resolveBoundedInteger(
     'NOTIFICATION_MEMORY_QUEUE_MAX_JOBS',
     env.NOTIFICATION_MEMORY_QUEUE_MAX_JOBS,
@@ -464,13 +592,26 @@ export function resolveAppConfig(env: NodeJS.ProcessEnv = process.env): AppConfi
     authMockEnabled: resolveBoolean(env.AUTH_MOCK_ENABLED, false),
     sessionCookieName: env.SESSION_COOKIE_NAME ?? 'ft_session',
     sessionTtlSeconds: resolvePort(env.SESSION_TTL_SECONDS, 28800),
-    objectStorageProvider:
-      (env.OBJECT_STORAGE_PROVIDER as AppConfig['objectStorageProvider'] | undefined) ?? 'local',
+    objectStorageProvider: objectStorageProviderValue,
     objectStorageLocalRoot: env.OBJECT_STORAGE_LOCAL_ROOT ?? 'var/object-storage',
     objectStorageEndpoint: env.OBJECT_STORAGE_ENDPOINT ?? 'http://localhost:9000',
     objectStorageBucket: env.OBJECT_STORAGE_BUCKET ?? 'feishu-timeline-local',
     objectStorageAccessKey: env.OBJECT_STORAGE_ACCESS_KEY ?? 'minioadmin',
     objectStorageSecretKey: env.OBJECT_STORAGE_SECRET_KEY ?? 'minioadmin',
+    attachmentStorageGlobalMaxBytes,
+    attachmentStorageProjectMaxBytes,
+    attachmentStorageActorMaxBytes,
+    attachmentStorageGlobalMaxObjects,
+    attachmentStorageProjectMaxObjects,
+    attachmentStorageActorMaxObjects,
+    attachmentStorageMinFreeBytes,
+    attachmentStorageReservationTtlMs,
+    attachmentStorageActorWindowMs,
+    attachmentStorageReconcileIntervalMs,
+    attachmentStorageReconcileBatchSize,
+    attachmentStorageReconciliationLeaseMs,
+    attachmentStorageReconciliationRetryMs,
+    attachmentStoragePurgedMetadataRetentionMs,
     malwareScannerProvider: scannerProviderValue,
     malwareScannerHost,
     malwareScannerPort: resolveBoundedInteger(
@@ -480,13 +621,7 @@ export function resolveAppConfig(env: NodeJS.ProcessEnv = process.env): AppConfi
       1,
       65535,
     ),
-    malwareScannerTimeoutMs: resolveBoundedInteger(
-      'CLAMAV_TIMEOUT_MS',
-      env.CLAMAV_TIMEOUT_MS,
-      15000,
-      1000,
-      60000,
-    ),
+    malwareScannerTimeoutMs,
     uploadAdmissionGlobalLimit: resolveBoundedInteger(
       'UPLOAD_ADMISSION_GLOBAL_LIMIT',
       env.UPLOAD_ADMISSION_GLOBAL_LIMIT,
@@ -604,6 +739,37 @@ export function resolveAppConfig(env: NodeJS.ProcessEnv = process.env): AppConfi
     );
   }
 
+  if (
+    config.attachmentStorageProjectMaxBytes >
+      config.attachmentStorageGlobalMaxBytes ||
+    config.attachmentStorageActorMaxBytes >
+      config.attachmentStorageProjectMaxBytes
+  ) {
+    throw new Error(
+      'ATTACHMENT_STORAGE_PROJECT_MAX_BYTES must not exceed ATTACHMENT_STORAGE_GLOBAL_MAX_BYTES, and ATTACHMENT_STORAGE_ACTOR_MAX_BYTES must not exceed the project limit.',
+    );
+  }
+
+  if (
+    config.attachmentStorageProjectMaxObjects >
+      config.attachmentStorageGlobalMaxObjects ||
+    config.attachmentStorageActorMaxObjects >
+      config.attachmentStorageProjectMaxObjects
+  ) {
+    throw new Error(
+      'ATTACHMENT_STORAGE_PROJECT_MAX_OBJECTS must not exceed ATTACHMENT_STORAGE_GLOBAL_MAX_OBJECTS, and ATTACHMENT_STORAGE_ACTOR_MAX_OBJECTS must not exceed the project limit.',
+    );
+  }
+
+  if (
+    config.attachmentStorageReservationTtlMs <=
+    config.malwareScannerTimeoutMs + 300_000
+  ) {
+    throw new Error(
+      'ATTACHMENT_STORAGE_RESERVATION_TTL_MS must exceed CLAMAV_TIMEOUT_MS plus the finalize safety window.',
+    );
+  }
+
   if (isProtectedEnvironment && config.nodeEnv !== 'production') {
     throw new Error('NODE_ENV must be production in staging and production deployments.');
   }
@@ -646,6 +812,32 @@ export function resolveAppConfig(env: NodeJS.ProcessEnv = process.env): AppConfi
       config.feishuAppSecret === 'your_feishu_app_secret'
     ) {
       throw new Error('Feishu production credentials must be configured.');
+    }
+  }
+
+  if (isProtectedEnvironment) {
+    const requiredAttachmentStorageKeys = [
+      'ATTACHMENT_STORAGE_GLOBAL_MAX_BYTES',
+      'ATTACHMENT_STORAGE_PROJECT_MAX_BYTES',
+      'ATTACHMENT_STORAGE_ACTOR_MAX_BYTES',
+      'ATTACHMENT_STORAGE_GLOBAL_MAX_OBJECTS',
+      'ATTACHMENT_STORAGE_PROJECT_MAX_OBJECTS',
+      'ATTACHMENT_STORAGE_ACTOR_MAX_OBJECTS',
+      'ATTACHMENT_STORAGE_MIN_FREE_BYTES',
+      'ATTACHMENT_STORAGE_RESERVATION_TTL_MS',
+      'ATTACHMENT_STORAGE_ACTOR_WINDOW_MS',
+      'ATTACHMENT_STORAGE_RECONCILE_INTERVAL_MS',
+      'ATTACHMENT_STORAGE_RECONCILE_BATCH_SIZE',
+      'ATTACHMENT_STORAGE_RECONCILIATION_LEASE_MS',
+      'ATTACHMENT_STORAGE_RECONCILIATION_RETRY_MS',
+      'ATTACHMENT_STORAGE_PURGED_METADATA_RETENTION_MS',
+    ] as const;
+    for (const key of requiredAttachmentStorageKeys) {
+      if (!env[key]?.trim()) {
+        throw new Error(
+          `${key} must be explicitly configured in staging and production.`,
+        );
+      }
     }
   }
 

@@ -11,6 +11,22 @@ const PROTECTED_SCANNER_ENV = {
   MALWARE_SCANNER_PROVIDER: 'clamav',
   CLAMAV_HOST: 'clamav-scanner.internal',
 } as const;
+const PROTECTED_ATTACHMENT_STORAGE_ENV = {
+  ATTACHMENT_STORAGE_GLOBAL_MAX_BYTES: '5368709120',
+  ATTACHMENT_STORAGE_PROJECT_MAX_BYTES: '1073741824',
+  ATTACHMENT_STORAGE_ACTOR_MAX_BYTES: '536870912',
+  ATTACHMENT_STORAGE_GLOBAL_MAX_OBJECTS: '5000',
+  ATTACHMENT_STORAGE_PROJECT_MAX_OBJECTS: '1000',
+  ATTACHMENT_STORAGE_ACTOR_MAX_OBJECTS: '500',
+  ATTACHMENT_STORAGE_MIN_FREE_BYTES: '1073741824',
+  ATTACHMENT_STORAGE_RESERVATION_TTL_MS: '7200000',
+  ATTACHMENT_STORAGE_ACTOR_WINDOW_MS: '2592000000',
+  ATTACHMENT_STORAGE_RECONCILE_INTERVAL_MS: '300000',
+  ATTACHMENT_STORAGE_RECONCILE_BATCH_SIZE: '100',
+  ATTACHMENT_STORAGE_RECONCILIATION_LEASE_MS: '300000',
+  ATTACHMENT_STORAGE_RECONCILIATION_RETRY_MS: '300000',
+  ATTACHMENT_STORAGE_PURGED_METADATA_RETENTION_MS: '7776000000',
+} as const;
 
 function createProtectedEnvironment(
   deploymentEnvironment: 'staging' | 'production',
@@ -20,6 +36,7 @@ function createProtectedEnvironment(
     DEPLOYMENT_ENV: deploymentEnvironment,
     ...PROTECTED_DATA_ENV,
     ...PROTECTED_SCANNER_ENV,
+    ...PROTECTED_ATTACHMENT_STORAGE_ENV,
     ...(deploymentEnvironment === 'production'
       ? {
           FRONTEND_URL: 'https://timeline.all-too-well.com',
@@ -64,6 +81,14 @@ describe('resolveAppConfig', () => {
     expect(config.sessionCookieName).toBe('ft_session');
     expect(config.objectStorageProvider).toBe('local');
     expect(config.objectStorageLocalRoot).toBe('var/object-storage');
+    expect(config.attachmentStorageGlobalMaxBytes).toBe(5368709120);
+    expect(config.attachmentStorageProjectMaxBytes).toBe(1073741824);
+    expect(config.attachmentStorageActorMaxBytes).toBe(536870912);
+    expect(config.attachmentStorageGlobalMaxObjects).toBe(5000);
+    expect(config.attachmentStorageProjectMaxObjects).toBe(1000);
+    expect(config.attachmentStorageActorMaxObjects).toBe(500);
+    expect(config.attachmentStorageMinFreeBytes).toBe(1073741824);
+    expect(config.attachmentStorageReservationTtlMs).toBe(7200000);
     expect(config.malwareScannerProvider).toBe('local-eicar');
     expect(config.malwareScannerHost).toBe('');
     expect(config.malwareScannerPort).toBe(3310);
@@ -355,6 +380,42 @@ describe('resolveAppConfig', () => {
         CLAMAV_TIMEOUT_MS: '999999',
       }),
     ).toThrowError(/CLAMAV_TIMEOUT_MS/);
+  });
+
+  it('fails closed for unsupported object-storage providers and invalid quota hierarchies', () => {
+    expect(() =>
+      resolveAppConfig({ OBJECT_STORAGE_PROVIDER: 's3' }),
+    ).toThrowError(/OBJECT_STORAGE_PROVIDER/);
+
+    expect(() =>
+      resolveAppConfig({
+        ATTACHMENT_STORAGE_GLOBAL_MAX_BYTES: '2000000',
+        ATTACHMENT_STORAGE_PROJECT_MAX_BYTES: '3000000',
+      }),
+    ).toThrowError(/ATTACHMENT_STORAGE_PROJECT_MAX_BYTES/);
+
+    expect(() =>
+      resolveAppConfig({
+        ATTACHMENT_STORAGE_GLOBAL_MAX_OBJECTS: '100',
+        ATTACHMENT_STORAGE_PROJECT_MAX_OBJECTS: '101',
+      }),
+    ).toThrowError(/ATTACHMENT_STORAGE_PROJECT_MAX_OBJECTS/);
+
+    expect(() =>
+      resolveAppConfig({
+        CLAMAV_TIMEOUT_MS: '60000',
+        ATTACHMENT_STORAGE_RESERVATION_TTL_MS: '300000',
+      }),
+    ).toThrowError(/ATTACHMENT_STORAGE_RESERVATION_TTL_MS/);
+  });
+
+  it('requires explicit attachment storage budgets in protected environments', () => {
+    expect(() =>
+      resolveAppConfig({
+        ...createProtectedEnvironment('staging'),
+        ATTACHMENT_STORAGE_GLOBAL_MAX_BYTES: undefined,
+      }),
+    ).toThrowError(/ATTACHMENT_STORAGE_GLOBAL_MAX_BYTES/);
   });
 
   it('bounds upload admission concurrency and forbids a per-actor limit above the global limit', () => {

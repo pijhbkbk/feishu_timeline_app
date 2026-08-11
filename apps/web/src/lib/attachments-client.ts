@@ -72,6 +72,8 @@ export type AttachmentWorkspaceResponse = {
     entityType: AttachmentEntityType | null;
     entityId: string | null;
     includeDeleted: boolean;
+    cursor?: string | null;
+    pageSize?: number;
   };
   limits: {
     maxFileSizeBytes: number;
@@ -90,13 +92,21 @@ export type AttachmentWorkspaceResponse = {
       subtitle: string | null;
     }>;
   }>;
+  entityOptionsHasMore?: boolean;
   items: ProjectAttachmentSummary[];
+  pageInfo?: {
+    pageSize: number;
+    hasMore: boolean;
+    nextCursor: string | null;
+  };
 };
 
 export type AttachmentWorkspaceFilters = {
   entityType?: AttachmentEntityType | '';
   entityId?: string;
   includeDeleted?: boolean;
+  cursor?: string;
+  pageSize?: number;
 };
 
 export type AttachmentBindInput = {
@@ -224,6 +234,11 @@ export function fetchAttachmentsByEntity(
     entityType: AttachmentEntityType;
     entityId: string;
     items: ProjectAttachmentSummary[];
+    pageInfo?: {
+      pageSize: number;
+      hasMore: boolean;
+      nextCursor: string | null;
+    };
   }>(
     `/projects/${projectId}/attachments/by-entity${buildQueryString({
       entityType: binding.entityType,
@@ -403,6 +418,14 @@ function buildQueryString(filters: AttachmentWorkspaceFilters) {
 
   if (filters.includeDeleted) {
     searchParams.set('includeDeleted', 'true');
+  }
+
+  if (filters.cursor) {
+    searchParams.set('cursor', filters.cursor);
+  }
+
+  if (filters.pageSize) {
+    searchParams.set('pageSize', String(filters.pageSize));
   }
 
   const serialized = searchParams.toString();

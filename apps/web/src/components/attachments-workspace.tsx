@@ -163,6 +163,7 @@ export function AttachmentsWorkspace({
 
   async function loadWorkspace(options?: {
     initial?: boolean;
+    append?: boolean;
     nextSelectedAttachmentId?: string | null;
     nextFilters?: AttachmentWorkspaceFilters;
   }) {
@@ -184,9 +185,16 @@ export function AttachmentsWorkspace({
         return;
       }
 
-      setWorkspace(response);
+      const nextWorkspace =
+        options?.append && workspace
+          ? {
+              ...response,
+              items: [...workspace.items, ...response.items],
+            }
+          : response;
+      setWorkspace(nextWorkspace);
 
-      if (options?.nextFilters) {
+      if (options?.nextFilters && !options.append) {
         setFilters(effectiveFilters);
       }
 
@@ -205,11 +213,11 @@ export function AttachmentsWorkspace({
           entityId:
             entityType === 'PROJECT'
               ? projectId
-              : current.entityId && getEntityItemsForType(response, entityType).some(
+              : current.entityId && getEntityItemsForType(nextWorkspace, entityType).some(
                   (item) => item.id === current.entityId,
                 )
                 ? current.entityId
-                : (getEntityItemsForType(response, entityType)[0]?.id ?? ''),
+                : (getEntityItemsForType(nextWorkspace, entityType)[0]?.id ?? ''),
         };
       });
     } catch (loadError) {
@@ -224,6 +232,21 @@ export function AttachmentsWorkspace({
         setIsRefreshing(false);
       }
     }
+  }
+
+  async function loadNextPage() {
+    const nextCursor = workspace?.pageInfo?.nextCursor;
+    if (!nextCursor || !workspace.pageInfo?.hasMore) {
+      return;
+    }
+    await loadWorkspace({
+      append: true,
+      nextFilters: {
+        ...filters,
+        cursor: nextCursor,
+        pageSize: workspace.pageInfo.pageSize,
+      },
+    });
   }
 
   async function handleUpload() {
@@ -420,6 +443,11 @@ export function AttachmentsWorkspace({
           onChange={setFilters}
           onApply={() => void loadWorkspace({ nextFilters: filters })}
         />
+        {workspace.entityOptionsHasMore ? (
+          <p className="muted">
+            归属实体候选已按类型限制为前 100 项；请先选择具体类型和对象后再筛选。
+          </p>
+        ) : null}
       </section>
 
       <section className="page-card">
@@ -460,6 +488,18 @@ export function AttachmentsWorkspace({
           onDelete={(attachment) => void handleDelete(attachment)}
           mode={mode}
         />
+        {workspace.pageInfo?.hasMore ? (
+          <div className="inline-actions">
+            <button
+              type="button"
+              className="button button-secondary"
+              disabled={isRefreshing}
+              onClick={() => void loadNextPage()}
+            >
+              {isRefreshing ? '加载中…' : '加载更多'}
+            </button>
+          </div>
+        ) : null}
       </section>
 
       <section className="page-card">

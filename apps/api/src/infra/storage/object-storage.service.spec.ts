@@ -26,6 +26,20 @@ afterEach(async () => {
 });
 
 describe('LocalFilesystemObjectStorageService', () => {
+  it('checks filesystem headroom before a quota reservation is admitted', async () => {
+    const { service } = await createService();
+
+    await expect(
+      service.assertWriteCapacity({ bytes: 1, minFreeBytes: 0 }),
+    ).resolves.toEqual({ availableBytes: expect.any(BigInt) });
+    await expect(
+      service.assertWriteCapacity({
+        bytes: Number.MAX_SAFE_INTEGER,
+        minFreeBytes: Number.MAX_SAFE_INTEGER,
+      }),
+    ).rejects.toThrow('OBJECT_STORAGE_CAPACITY_BELOW_RESERVED_HEADROOM');
+  });
+
   it('promotes a quarantined object into its clean key', async () => {
     const { root, service } = await createService();
     await service.upload({
@@ -43,6 +57,22 @@ describe('LocalFilesystemObjectStorageService', () => {
     await expect(readFile(join(root, 'attachments/project/file.pdf'), 'utf8')).resolves.toBe(
       'clean',
     );
+  });
+
+  it('inspects regular objects without buffering and reports missing keys', async () => {
+    const { service } = await createService();
+    await service.upload({
+      bucket: 'attachments',
+      storageKey: 'project/file.pdf',
+      buffer: Buffer.from('metadata-only'),
+    });
+
+    await expect(
+      service.inspect({ bucket: 'attachments', storageKey: 'project/file.pdf' }),
+    ).resolves.toEqual({ exists: true, size: Buffer.byteLength('metadata-only') });
+    await expect(
+      service.inspect({ bucket: 'attachments', storageKey: 'project/missing.pdf' }),
+    ).resolves.toEqual({ exists: false, size: null });
   });
 
   it('opens a bounded-memory read stream and reports the exact content length', async () => {
@@ -117,6 +147,12 @@ describe('LocalFilesystemObjectStorageService', () => {
         bucket: 'attachments',
         storageKey: 'project/link.txt',
         expectedContentLength: 6,
+      }),
+    ).rejects.toMatchObject({ code: 'ELOOP' });
+    await expect(
+      service.inspect({
+        bucket: 'attachments',
+        storageKey: 'project/link.txt',
       }),
     ).rejects.toMatchObject({ code: 'ELOOP' });
   });

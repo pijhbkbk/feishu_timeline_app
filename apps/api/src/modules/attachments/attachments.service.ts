@@ -40,6 +40,7 @@ import {
   MalwareScanner,
   type MalwareScanResult,
 } from './malware-scanner.service';
+import { AttachmentStorageQuotaService } from './attachment-storage-quota.service';
 
 type AttachmentDbClient = Prisma.TransactionClient | PrismaService;
 
@@ -72,6 +73,8 @@ type AttachmentListFilters = {
   entityType: AttachmentTargetType | null;
   entityId: string | null;
   includeDeleted: boolean;
+  cursor: string | null;
+  pageSize: number;
 };
 
 type AttachmentRecordLike = {
@@ -129,6 +132,10 @@ const DOMAIN_GOVERNED_ATTACHMENT_TARGET_TYPES = new Set<AttachmentTargetType>([
   AttachmentTargetType.REVIEW_RECORD,
   AttachmentTargetType.PERFORMANCE_TEST,
 ]);
+const ATTACHMENT_DEFAULT_PAGE_SIZE = 50;
+const ATTACHMENT_MAX_PAGE_SIZE = 100;
+const ATTACHMENT_ENTITY_OPTION_LIMIT = 100;
+const ATTACHMENT_TARGET_HISTORY_LIMIT = 1_000;
 
 @Injectable()
 export class AttachmentsService {
@@ -140,6 +147,7 @@ export class AttachmentsService {
     private readonly configService: ConfigService,
     private readonly activityLogsService: ActivityLogsService,
     private readonly objectStorageService: ObjectStorageService,
+    private readonly attachmentStorageQuotaService: AttachmentStorageQuotaService,
     private readonly projectAccessService: ProjectAccessService,
     private readonly malwareScanner: MalwareScanner,
   ) {
@@ -174,7 +182,11 @@ export class AttachmentsService {
       'project.read',
     );
     const attachment = await this.getAttachmentOrThrow(this.prisma, projectId, attachmentId, true);
-    const entityLabels = await this.buildEntityLabelMap(this.prisma, projectId);
+    const entityLabels = await this.buildEntityLabelMapForAttachments(
+      this.prisma,
+      projectId,
+      [attachment],
+    );
     return this.toAttachmentSummary(attachment, entityLabels);
   }
 
@@ -195,18 +207,33 @@ export class AttachmentsService {
       throw new BadRequestException('附件归属类型和归属对象不能为空。');
     }
 
-    const entityLabels = await this.buildEntityLabelMap(this.prisma, projectId);
-    const items = await this.prisma.attachment.findMany({
+    const rawItems = await this.prisma.attachment.findMany({
       where: this.buildAttachmentWhere(projectId, filters),
       include: ATTACHMENT_DETAIL_INCLUDE,
-      orderBy: [{ uploadedAt: 'desc' }, { createdAt: 'desc' }],
+      orderBy: [{ uploadedAt: 'desc' }, { id: 'desc' }],
+      take: filters.pageSize + 1,
+      ...(filters.cursor
+        ? { cursor: { id: filters.cursor }, skip: 1 }
+        : {}),
     });
+    const hasMore = rawItems.length > filters.pageSize;
+    const items = rawItems.slice(0, filters.pageSize);
+    const entityLabels = await this.buildEntityLabelMapForAttachments(
+      this.prisma,
+      projectId,
+      items,
+    );
 
     return {
       projectId,
       entityType: filters.entityType,
       entityId: filters.entityId,
       items: items.map((attachment) => this.toAttachmentSummary(attachment, entityLabels)),
+      pageInfo: {
+        pageSize: filters.pageSize,
+        hasMore,
+        nextCursor: hasMore ? items.at(-1)?.id ?? null : null,
+      },
     };
   }
 
@@ -302,7 +329,11 @@ export class AttachmentsService {
         afterData: this.toAttachmentAuditSnapshot(updated),
       });
 
-      const entityLabels = await this.buildEntityLabelMap(tx, projectId);
+      const entityLabels = await this.buildEntityLabelMapForAttachments(
+        tx,
+        projectId,
+        [updated],
+      );
       return this.toAttachmentSummary(updated, entityLabels);
     });
   }
@@ -350,7 +381,11 @@ export class AttachmentsService {
         afterData: this.toAttachmentAuditSnapshot(updated),
       });
 
-      const entityLabels = await this.buildEntityLabelMap(tx, projectId);
+      const entityLabels = await this.buildEntityLabelMapForAttachments(
+        tx,
+        projectId,
+        [updated],
+      );
       return this.toAttachmentSummary(updated, entityLabels);
     });
   }
@@ -408,7 +443,11 @@ export class AttachmentsService {
         afterData: this.toAttachmentAuditSnapshot(updated),
       });
 
-      const entityLabels = await this.buildEntityLabelMap(tx, projectId);
+      const entityLabels = await this.buildEntityLabelMapForAttachments(
+        tx,
+        projectId,
+        [updated],
+      );
       return this.toAttachmentSummary(updated, entityLabels);
     });
   }
@@ -529,11 +568,33 @@ export class AttachmentsService {
     const quarantineStorageKey = `quarantine/${cleanStorageKey}`;
     const checksum = createHash('sha256').update(input.file.buffer).digest('hex');
 
-    await this.objectStorageService.upload({
+    const storageReservation = await this.attachmentStorageQuotaService.reserve({
+      projectId: input.projectId,
+      actorUserId: input.uploadedById,
+      targetType: input.targetType,
+      targetId: input.targetId,
       bucket: this.bucket,
-      storageKey: quarantineStorageKey,
-      buffer: input.file.buffer,
+      quarantineStorageKey,
+      cleanStorageKey,
+      bytes: input.file.buffer.length,
     });
+
+    try {
+      await this.objectStorageService.upload({
+        bucket: this.bucket,
+        storageKey: quarantineStorageKey,
+        buffer: input.file.buffer,
+      });
+    } catch {
+      await this.releaseReservedBinary(
+        storageReservation.id,
+        storageReservation.ownerToken,
+        'QUARANTINE_UPLOAD_FAILED',
+      );
+      throw new ServiceUnavailableException(
+        '附件隔离存储暂不可用，文件未进入业务存储。',
+      );
+    }
 
     const pendingAttachment = await this.prisma.$transaction(async (tx) => {
       const created = await tx.attachment.create({
@@ -560,6 +621,15 @@ export class AttachmentsService {
         include: ATTACHMENT_DETAIL_INCLUDE,
       });
 
+      await this.attachmentStorageQuotaService.attachPendingRecordWithExecutor(
+        tx,
+        {
+          reservationId: storageReservation.id,
+          ownerToken: storageReservation.ownerToken,
+          attachmentId: created.id,
+        },
+      );
+
       await this.activityLogsService.createWithExecutor(tx, {
         projectId: input.projectId,
         actorUserId: input.uploadedById,
@@ -573,12 +643,18 @@ export class AttachmentsService {
 
       return created;
     }).catch(async (error: unknown) => {
-      await this.objectStorageService.purge({
-        bucket: this.bucket,
-        storageKey: quarantineStorageKey,
-      });
+      await this.releaseReservedBinary(
+        storageReservation.id,
+        storageReservation.ownerToken,
+        'PENDING_ATTACHMENT_TRANSACTION_FAILED',
+      );
       throw error;
     });
+
+    await this.attachmentStorageQuotaService.heartbeat(
+      storageReservation.id,
+      storageReservation.ownerToken,
+    );
 
     let scanResult: MalwareScanResult;
     try {
@@ -589,7 +665,7 @@ export class AttachmentsService {
         checksum,
       });
     } catch {
-      await this.recordScanFailureAndPurgeQuarantine(
+      await this.recordScanFailureAndRelease(
         pendingAttachment,
         input,
         AttachmentScanStatus.SCAN_ERROR,
@@ -600,7 +676,7 @@ export class AttachmentsService {
           resultSummary: 'SCANNER_UNAVAILABLE',
           scannedAt: new Date(),
         },
-        quarantineStorageKey,
+        storageReservation,
       );
       throw new ServiceUnavailableException(
         '附件安全扫描暂不可用，文件未进入业务存储且不能下载。',
@@ -608,12 +684,12 @@ export class AttachmentsService {
     }
 
     if (scanResult.verdict === 'REJECTED') {
-      await this.recordScanFailureAndPurgeQuarantine(
+      await this.recordScanFailureAndRelease(
         pendingAttachment,
         input,
         AttachmentScanStatus.REJECTED,
         scanResult,
-        quarantineStorageKey,
+        storageReservation,
       );
       throw new UnprocessableEntityException(
         '附件安全扫描未通过，文件未进入业务存储且不能下载。',
@@ -621,7 +697,7 @@ export class AttachmentsService {
     }
 
     if (scanResult.verdict !== 'CLEAN') {
-      await this.recordScanFailureAndPurgeQuarantine(
+      await this.recordScanFailureAndRelease(
         pendingAttachment,
         input,
         AttachmentScanStatus.SCAN_ERROR,
@@ -629,7 +705,7 @@ export class AttachmentsService {
           ...scanResult,
           resultSummary: 'SCANNER_INVALID_VERDICT',
         },
-        quarantineStorageKey,
+        storageReservation,
       );
       throw new ServiceUnavailableException(
         '附件安全扫描返回异常，文件未进入业务存储且不能下载。',
@@ -643,7 +719,7 @@ export class AttachmentsService {
         destinationStorageKey: cleanStorageKey,
       });
     } catch {
-      await this.recordScanFailureAndPurgeQuarantine(
+      await this.recordScanFailureAndRelease(
         pendingAttachment,
         input,
         AttachmentScanStatus.SCAN_ERROR,
@@ -651,12 +727,17 @@ export class AttachmentsService {
           ...scanResult,
           resultSummary: 'QUARANTINE_PROMOTION_ERROR',
         },
-        quarantineStorageKey,
+        storageReservation,
       );
       throw new ServiceUnavailableException(
         '附件安全处理暂不可用，文件未进入业务存储且不能下载。',
       );
     }
+
+    await this.attachmentStorageQuotaService.heartbeat(
+      storageReservation.id,
+      storageReservation.ownerToken,
+    );
 
     const attachment = await this.prisma.$transaction(async (tx) => {
       await input.finalizeDomainAttachment?.(tx, {
@@ -676,6 +757,12 @@ export class AttachmentsService {
           scannedAt: scanResult.scannedAt,
         },
         include: ATTACHMENT_DETAIL_INCLUDE,
+      });
+
+      await this.attachmentStorageQuotaService.markRetainedWithExecutor(tx, {
+        reservationId: storageReservation.id,
+        ownerToken: storageReservation.ownerToken,
+        attachmentId: updated.id,
       });
 
       if (!DOMAIN_GOVERNED_ATTACHMENT_TARGET_TYPES.has(input.targetType)) {
@@ -746,50 +833,19 @@ export class AttachmentsService {
 
       return updated;
     }).catch(async (error: unknown) => {
-      if (this.isAttachmentTargetStateChanged(error)) {
-        await this.recordDomainCommitRejectionAndPurgeClean(
-          pendingAttachment,
-          input,
-          scanResult,
-          cleanStorageKey,
-        );
+      const domainStateChanged = this.isAttachmentTargetStateChanged(error);
+      await this.recordFinalCommitFailureAndRelease(
+        pendingAttachment,
+        input,
+        scanResult,
+        storageReservation,
+        domainStateChanged
+          ? 'DOMAIN_COMMIT_REJECTED'
+          : 'CLEAN_COMMIT_ERROR',
+      );
+
+      if (domainStateChanged) {
         throw error;
-      }
-
-      let storageCompensationSummary = 'CLEAN_COMMIT_ERROR_QUARANTINE_RESTORED';
-
-      try {
-        await this.objectStorageService.promote({
-          bucket: this.bucket,
-          sourceStorageKey: cleanStorageKey,
-          destinationStorageKey: quarantineStorageKey,
-        });
-      } catch {
-        storageCompensationSummary = 'CLEAN_COMMIT_ERROR_BINARY_PURGED';
-        try {
-          await this.objectStorageService.purge({
-            bucket: this.bucket,
-            storageKey: cleanStorageKey,
-          });
-        } catch {
-          storageCompensationSummary = 'CLEAN_COMMIT_ERROR_COMPENSATION_FAILED';
-        }
-      }
-
-      try {
-        await this.recordScanFailure(
-          pendingAttachment,
-          input,
-          AttachmentScanStatus.SCAN_ERROR,
-          {
-            ...scanResult,
-            resultSummary: storageCompensationSummary,
-          },
-        );
-      } catch {
-        // The original transaction remains rolled back and therefore never exposes
-        // the attachment as CLEAN. A reconciliation job must handle this rare
-        // storage/database double-failure window.
       }
 
       throw new ServiceUnavailableException(
@@ -804,7 +860,11 @@ export class AttachmentsService {
       });
     }
 
-    const entityLabels = await this.buildEntityLabelMap(this.prisma, input.projectId);
+    const entityLabels = await this.buildEntityLabelMapForAttachments(
+      this.prisma,
+      input.projectId,
+      [attachment],
+    );
     return this.toAttachmentSummary(attachment, entityLabels);
   }
 
@@ -824,6 +884,7 @@ export class AttachmentsService {
       orderBy: {
         uploadedAt: 'desc',
       },
+      take: ATTACHMENT_TARGET_HISTORY_LIMIT,
     });
   }
 
@@ -888,11 +949,15 @@ export class AttachmentsService {
     filters: AttachmentListFilters,
   ) {
     const project = await this.getProjectOrThrow(db, projectId);
-    const [items, totalCount, deletedCount, entityOptions, entityLabels] = await Promise.all([
+    const [rawItems, totalCount, deletedCount, entityOptionResult] = await Promise.all([
       db.attachment.findMany({
         where: this.buildAttachmentWhere(projectId, filters),
         include: ATTACHMENT_DETAIL_INCLUDE,
-        orderBy: [{ isDeleted: 'asc' }, { uploadedAt: 'desc' }, { createdAt: 'desc' }],
+        orderBy: [{ isDeleted: 'asc' }, { uploadedAt: 'desc' }, { id: 'desc' }],
+        take: filters.pageSize + 1,
+        ...(filters.cursor
+          ? { cursor: { id: filters.cursor }, skip: 1 }
+          : {}),
       }),
       db.attachment.count({
         where: {
@@ -906,8 +971,14 @@ export class AttachmentsService {
         },
       }),
       this.buildEntityOptions(db, projectId, project),
-      this.buildEntityLabelMap(db, projectId),
     ]);
+    const hasMore = rawItems.length > filters.pageSize;
+    const items = rawItems.slice(0, filters.pageSize);
+    const entityLabels = await this.buildEntityLabelMapForAttachments(
+      db,
+      projectId,
+      items,
+    );
 
     return {
       project: {
@@ -922,6 +993,8 @@ export class AttachmentsService {
         entityType: filters.entityType,
         entityId: filters.entityId,
         includeDeleted: filters.includeDeleted,
+        cursor: filters.cursor,
+        pageSize: filters.pageSize,
       },
       limits: {
         maxFileSizeBytes: ATTACHMENT_MAX_FILE_SIZE_BYTES,
@@ -931,8 +1004,14 @@ export class AttachmentsService {
         activeCount: totalCount - deletedCount,
         deletedCount,
       },
-      entityOptions,
+      entityOptions: entityOptionResult.groups,
+      entityOptionsHasMore: entityOptionResult.hasMore,
       items: items.map((attachment) => this.toAttachmentSummary(attachment, entityLabels)),
+      pageInfo: {
+        pageSize: filters.pageSize,
+        hasMore,
+        nextCursor: hasMore ? items.at(-1)?.id ?? null : null,
+      },
     };
   }
 
@@ -961,12 +1040,46 @@ export class AttachmentsService {
       typeof input.entityId === 'string' && input.entityId.trim().length > 0
         ? input.entityId.trim()
         : null;
+    const pageSize = this.parseAttachmentPageSize(input.pageSize);
+    const cursor =
+      typeof input.cursor === 'string' && input.cursor.trim().length > 0
+        ? input.cursor.trim()
+        : null;
+
+    if (cursor && cursor.length > 200) {
+      throw new BadRequestException({
+        code: 'ATTACHMENT_CURSOR_INVALID',
+        message: '附件分页游标不合法。',
+      });
+    }
 
     return {
       entityType,
       entityId,
       includeDeleted: parseBooleanFlag(input.includeDeleted),
+      cursor,
+      pageSize,
     };
+  }
+
+  private parseAttachmentPageSize(value: unknown) {
+    if (value === undefined || value === null || value === '') {
+      return ATTACHMENT_DEFAULT_PAGE_SIZE;
+    }
+    const normalized = typeof value === 'string' ? value.trim() : value;
+    const parsed = Number(normalized);
+    if (
+      !Number.isSafeInteger(parsed) ||
+      parsed < 1 ||
+      parsed > ATTACHMENT_MAX_PAGE_SIZE ||
+      (typeof normalized === 'string' && !/^\d+$/u.test(normalized))
+    ) {
+      throw new BadRequestException({
+        code: 'ATTACHMENT_PAGE_SIZE_INVALID',
+        message: `附件分页大小必须在 1-${ATTACHMENT_MAX_PAGE_SIZE} 之间。`,
+      });
+    }
+    return parsed;
   }
 
   private parseEntityBindingInput(rawInput: unknown, projectId: string) {
@@ -1091,6 +1204,13 @@ export class AttachmentsService {
 
     if (!file.originalname || !file.mimetype || !file.buffer || file.size <= 0) {
       throw new BadRequestException('无效的附件文件。');
+    }
+
+    if (file.size !== file.buffer.length) {
+      throw new BadRequestException({
+        code: 'ATTACHMENT_FILE_SIZE_MISMATCH',
+        message: '附件大小元数据与实际内容不一致。',
+      });
     }
 
     const issue = getAttachmentFileValidationIssue({
@@ -1276,6 +1396,7 @@ export class AttachmentsService {
           status: true,
         },
         orderBy: [{ createdAt: 'asc' }, { taskRound: 'asc' }],
+        take: ATTACHMENT_ENTITY_OPTION_LIMIT + 1,
       }),
       db.sample.findMany({
         where: { projectId },
@@ -1286,6 +1407,7 @@ export class AttachmentsService {
           versionNo: true,
         },
         orderBy: [{ sampleNo: 'asc' }, { versionNo: 'desc' }],
+        take: ATTACHMENT_ENTITY_OPTION_LIMIT + 1,
       }),
       db.standardBoard.findMany({
         where: { projectId },
@@ -1295,6 +1417,7 @@ export class AttachmentsService {
           versionNo: true,
         },
         orderBy: [{ boardCode: 'asc' }, { versionNo: 'desc' }],
+        take: ATTACHMENT_ENTITY_OPTION_LIMIT + 1,
       }),
       db.performanceTest.findMany({
         where: { projectId },
@@ -1304,6 +1427,7 @@ export class AttachmentsService {
           testItem: true,
         },
         orderBy: { createdAt: 'desc' },
+        take: ATTACHMENT_ENTITY_OPTION_LIMIT + 1,
       }),
       db.reviewRecord.findMany({
         where: { projectId },
@@ -1313,6 +1437,7 @@ export class AttachmentsService {
           result: true,
         },
         orderBy: { createdAt: 'desc' },
+        take: ATTACHMENT_ENTITY_OPTION_LIMIT + 1,
       }),
       db.developmentReport.findMany({
         where: { projectId },
@@ -1321,6 +1446,7 @@ export class AttachmentsService {
           reportTitle: true,
         },
         orderBy: { createdAt: 'desc' },
+        take: ATTACHMENT_ENTITY_OPTION_LIMIT + 1,
       }),
       db.trialProduction.findMany({
         where: { projectId },
@@ -1330,10 +1456,14 @@ export class AttachmentsService {
           status: true,
         },
         orderBy: { createdAt: 'desc' },
+        take: ATTACHMENT_ENTITY_OPTION_LIMIT + 1,
       }),
     ]);
 
-    return [
+    const hasMore = [tasks, samples, boards, tests, reviews, reports, trials].some(
+      (items) => items.length > ATTACHMENT_ENTITY_OPTION_LIMIT,
+    );
+    const groups = [
       {
         entityType: AttachmentTargetType.PROJECT,
         label: '项目级附件',
@@ -1348,7 +1478,7 @@ export class AttachmentsService {
       {
         entityType: AttachmentTargetType.WORKFLOW_TASK,
         label: '工序任务',
-        items: tasks.map((item) => ({
+        items: tasks.slice(0, ATTACHMENT_ENTITY_OPTION_LIMIT).map((item) => ({
           id: item.id,
           label: `${item.stepCode ?? '--'} / ${item.nodeName}`,
           subtitle: item.status,
@@ -1357,7 +1487,7 @@ export class AttachmentsService {
       {
         entityType: AttachmentTargetType.SAMPLE,
         label: '样板',
-        items: samples.map((item) => ({
+        items: samples.slice(0, ATTACHMENT_ENTITY_OPTION_LIMIT).map((item) => ({
           id: item.id,
           label: `${item.sampleNo} / ${item.sampleName}`,
           subtitle: `V${item.versionNo}`,
@@ -1366,7 +1496,7 @@ export class AttachmentsService {
       {
         entityType: AttachmentTargetType.STANDARD_BOARD,
         label: '标准板',
-        items: boards.map((item) => ({
+        items: boards.slice(0, ATTACHMENT_ENTITY_OPTION_LIMIT).map((item) => ({
           id: item.id,
           label: item.boardCode,
           subtitle: `V${item.versionNo}`,
@@ -1375,7 +1505,7 @@ export class AttachmentsService {
       {
         entityType: AttachmentTargetType.PERFORMANCE_TEST,
         label: '性能试验',
-        items: tests.map((item) => ({
+        items: tests.slice(0, ATTACHMENT_ENTITY_OPTION_LIMIT).map((item) => ({
           id: item.id,
           label: item.testCode,
           subtitle: this.getPerformanceTestTypeLabel(item.testItem),
@@ -1384,7 +1514,7 @@ export class AttachmentsService {
       {
         entityType: AttachmentTargetType.REVIEW_RECORD,
         label: '评审记录',
-        items: reviews.map((item) => ({
+        items: reviews.slice(0, ATTACHMENT_ENTITY_OPTION_LIMIT).map((item) => ({
           id: item.id,
           label: this.getReviewTypeLabel(item.reviewType),
           subtitle: item.result,
@@ -1393,7 +1523,7 @@ export class AttachmentsService {
       {
         entityType: AttachmentTargetType.NEW_COLOR_REPORT,
         label: '新颜色开发报告',
-        items: reports.map((item) => ({
+        items: reports.slice(0, ATTACHMENT_ENTITY_OPTION_LIMIT).map((item) => ({
           id: item.id,
           label: item.reportTitle,
           subtitle: '开发报告',
@@ -1402,23 +1532,141 @@ export class AttachmentsService {
       {
         entityType: AttachmentTargetType.TRIAL_PRODUCTION,
         label: '样车试制',
-        items: trials.map((item) => ({
+        items: trials.slice(0, ATTACHMENT_ENTITY_OPTION_LIMIT).map((item) => ({
           id: item.id,
           label: item.trialNo,
           subtitle: item.status,
         })),
       },
     ];
+    return { groups, hasMore };
   }
 
-  private async buildEntityLabelMap(db: AttachmentDbClient, projectId: string) {
-    const project = await this.getProjectOrThrow(db, projectId);
-    const groups = await this.buildEntityOptions(db, projectId, project);
+  private async buildEntityLabelMapForAttachments(
+    db: AttachmentDbClient,
+    projectId: string,
+    attachments: AttachmentRecordLike[],
+  ) {
     const labels = new Map<string, string>();
+    const idsFor = (entityType: AttachmentTargetType) => [
+      ...new Set(
+        attachments
+          .filter((attachment) => attachment.entityType === entityType)
+          .map((attachment) => attachment.entityId),
+      ),
+    ];
 
-    for (const group of groups) {
-      for (const item of group.items) {
-        labels.set(`${group.entityType}:${item.id}`, item.label);
+    const projectIds = idsFor(AttachmentTargetType.PROJECT);
+    if (projectIds.length > 0) {
+      const project = await this.getProjectOrThrow(db, projectId);
+      labels.set(
+        `${AttachmentTargetType.PROJECT}:${project.id}`,
+        `${project.code} / ${project.name}`,
+      );
+    }
+
+    const taskIds = idsFor(AttachmentTargetType.WORKFLOW_TASK);
+    if (taskIds.length > 0) {
+      const tasks = await db.workflowTask.findMany({
+        where: { projectId, id: { in: taskIds } },
+        select: { id: true, stepCode: true, nodeName: true },
+        take: ATTACHMENT_MAX_PAGE_SIZE,
+      });
+      for (const item of tasks) {
+        labels.set(
+          `${AttachmentTargetType.WORKFLOW_TASK}:${item.id}`,
+          `${item.stepCode ?? '--'} / ${item.nodeName}`,
+        );
+      }
+    }
+
+    const sampleIds = idsFor(AttachmentTargetType.SAMPLE);
+    if (sampleIds.length > 0) {
+      const samples = await db.sample.findMany({
+        where: { projectId, id: { in: sampleIds } },
+        select: { id: true, sampleNo: true, sampleName: true },
+        take: ATTACHMENT_MAX_PAGE_SIZE,
+      });
+      for (const item of samples) {
+        labels.set(
+          `${AttachmentTargetType.SAMPLE}:${item.id}`,
+          `${item.sampleNo} / ${item.sampleName}`,
+        );
+      }
+    }
+
+    const boardIds = idsFor(AttachmentTargetType.STANDARD_BOARD);
+    if (boardIds.length > 0) {
+      const boards = await db.standardBoard.findMany({
+        where: { projectId, id: { in: boardIds } },
+        select: { id: true, boardCode: true },
+        take: ATTACHMENT_MAX_PAGE_SIZE,
+      });
+      for (const item of boards) {
+        labels.set(
+          `${AttachmentTargetType.STANDARD_BOARD}:${item.id}`,
+          item.boardCode,
+        );
+      }
+    }
+
+    const performanceTestIds = idsFor(AttachmentTargetType.PERFORMANCE_TEST);
+    if (performanceTestIds.length > 0) {
+      const tests = await db.performanceTest.findMany({
+        where: { projectId, id: { in: performanceTestIds } },
+        select: { id: true, testCode: true },
+        take: ATTACHMENT_MAX_PAGE_SIZE,
+      });
+      for (const item of tests) {
+        labels.set(
+          `${AttachmentTargetType.PERFORMANCE_TEST}:${item.id}`,
+          item.testCode,
+        );
+      }
+    }
+
+    const reviewIds = idsFor(AttachmentTargetType.REVIEW_RECORD);
+    if (reviewIds.length > 0) {
+      const reviews = await db.reviewRecord.findMany({
+        where: { projectId, id: { in: reviewIds } },
+        select: { id: true, reviewType: true },
+        take: ATTACHMENT_MAX_PAGE_SIZE,
+      });
+      for (const item of reviews) {
+        labels.set(
+          `${AttachmentTargetType.REVIEW_RECORD}:${item.id}`,
+          this.getReviewTypeLabel(item.reviewType),
+        );
+      }
+    }
+
+    const reportIds = idsFor(AttachmentTargetType.NEW_COLOR_REPORT);
+    if (reportIds.length > 0) {
+      const reports = await db.developmentReport.findMany({
+        where: { projectId, id: { in: reportIds } },
+        select: { id: true, reportTitle: true },
+        take: ATTACHMENT_MAX_PAGE_SIZE,
+      });
+      for (const item of reports) {
+        labels.set(
+          `${AttachmentTargetType.NEW_COLOR_REPORT}:${item.id}`,
+          item.reportTitle,
+        );
+      }
+    }
+
+    const trialIds = idsFor(AttachmentTargetType.TRIAL_PRODUCTION);
+    if (trialIds.length > 0) {
+      const trials = await db.trialProduction.findMany({
+        where: { projectId, id: { in: trialIds } },
+        select: { id: true, trialNo: true },
+        take: ATTACHMENT_MAX_PAGE_SIZE,
+      });
+      for (const item of trials) {
+        labels.set(
+          `${AttachmentTargetType.TRIAL_PRODUCTION}:${item.id}`,
+          item.trialNo,
+        );
       }
     }
 
@@ -1625,60 +1873,41 @@ export class AttachmentsService {
     });
   }
 
-  private async recordDomainCommitRejectionAndPurgeClean(
+  private async recordDomainCommitRejection(
     attachment: AttachmentRecordLike,
     input: CreateStoredAttachmentInput,
     scanResult: MalwareScanResult,
-    cleanStorageKey: string,
   ) {
-    const [recordResult, purgeResult] = await Promise.allSettled([
-      this.prisma.$transaction(async (tx) => {
-        const updated = await tx.attachment.update({
-          where: { id: attachment.id },
-          data: {
-            fileUrl: null,
-            scanStatus: AttachmentScanStatus.SCAN_ERROR,
-            scannerEngine: scanResult.engine,
-            scannerVersion: scanResult.engineVersion,
-            scannerSignatureVersion: scanResult.signatureVersion,
-            scanResultSummary: 'DOMAIN_COMMIT_REJECTED',
-            scannedAt: scanResult.scannedAt,
-          },
-          include: ATTACHMENT_DETAIL_INCLUDE,
-        });
+    await this.prisma.$transaction(async (tx) => {
+      const updated = await tx.attachment.update({
+        where: { id: attachment.id },
+        data: {
+          fileUrl: null,
+          scanStatus: AttachmentScanStatus.SCAN_ERROR,
+          scannerEngine: scanResult.engine,
+          scannerVersion: scanResult.engineVersion,
+          scannerSignatureVersion: scanResult.signatureVersion,
+          scanResultSummary: 'DOMAIN_COMMIT_REJECTED',
+          scannedAt: scanResult.scannedAt,
+        },
+        include: ATTACHMENT_DETAIL_INCLUDE,
+      });
 
-        await this.activityLogsService.createWithExecutor(tx, {
-          projectId: input.projectId,
-          actorUserId: input.uploadedById,
-          targetType: AuditTargetType.ATTACHMENT,
-          targetId: attachment.id,
-          action: 'ATTACHMENT_DOMAIN_COMMIT_REJECTED',
-          nodeCode: input.nodeCode ?? null,
-          summary: '附件扫描期间业务状态已变更，正式绑定已拒绝。',
-          beforeData: this.toAttachmentAuditSnapshot(attachment),
-          afterData: this.toAttachmentAuditSnapshot(updated),
-        });
-      }),
-      this.objectStorageService.purge({
-        bucket: this.bucket,
-        storageKey: cleanStorageKey,
-      }),
-    ]);
-
-    if (recordResult.status === 'rejected') {
-      this.logger.error(
-        'Attachment domain rejection metadata could not be persisted; reconciliation is required.',
-      );
-    }
-
-    if (purgeResult.status === 'rejected') {
-      this.logger.error(
-        'Attachment clean-object purge failed after domain rejection; reconciliation is required.',
-      );
-    }
+      await this.activityLogsService.createWithExecutor(tx, {
+        projectId: input.projectId,
+        actorUserId: input.uploadedById,
+        targetType: AuditTargetType.ATTACHMENT,
+        targetId: attachment.id,
+        action: 'ATTACHMENT_DOMAIN_COMMIT_REJECTED',
+        nodeCode: input.nodeCode ?? null,
+        summary: '附件扫描期间业务状态已变更，正式绑定已拒绝。',
+        beforeData: this.toAttachmentAuditSnapshot(attachment),
+        afterData: this.toAttachmentAuditSnapshot(updated),
+      });
+    });
   }
 
-  private async recordScanFailureAndPurgeQuarantine(
+  private async recordScanFailureAndRelease(
     attachment: AttachmentRecordLike,
     input: CreateStoredAttachmentInput,
     scanStatus: 'REJECTED' | 'SCAN_ERROR',
@@ -1689,13 +1918,14 @@ export class AttachmentsService {
       resultSummary: string;
       scannedAt: Date;
     },
-    quarantineStorageKey: string,
+    reservation: { id: string; ownerToken: string },
   ) {
     const [recordResult, purgeResult] = await Promise.allSettled([
       this.recordScanFailure(attachment, input, scanStatus, result),
-      this.objectStorageService.purge({
-        bucket: this.bucket,
-        storageKey: quarantineStorageKey,
+      this.attachmentStorageQuotaService.purgeAndRelease({
+        reservationId: reservation.id,
+        expectedOwnerToken: reservation.ownerToken,
+        reason: result.resultSummary,
       }),
     ]);
 
@@ -1707,7 +1937,65 @@ export class AttachmentsService {
 
     if (purgeResult.status === 'rejected') {
       this.logger.error(
-        'Attachment quarantine cleanup failed; reconciliation is required.',
+        'eventType=attachment_storage_release result=reconciliation_required',
+      );
+    }
+  }
+
+  private async recordFinalCommitFailureAndRelease(
+    attachment: AttachmentRecordLike,
+    input: CreateStoredAttachmentInput,
+    scanResult: MalwareScanResult,
+    reservation: { id: string; ownerToken: string },
+    reason: 'DOMAIN_COMMIT_REJECTED' | 'CLEAN_COMMIT_ERROR',
+  ) {
+    const recordFailure =
+      reason === 'DOMAIN_COMMIT_REJECTED'
+        ? this.recordDomainCommitRejection(attachment, input, scanResult)
+        : this.recordScanFailure(
+            attachment,
+            input,
+            AttachmentScanStatus.SCAN_ERROR,
+            {
+              ...scanResult,
+              resultSummary: reason,
+            },
+          );
+    const [recordResult, purgeResult] = await Promise.allSettled([
+      recordFailure,
+      this.attachmentStorageQuotaService.purgeAndRelease({
+        reservationId: reservation.id,
+        expectedOwnerToken: reservation.ownerToken,
+        reason,
+      }),
+    ]);
+
+    if (recordResult.status === 'rejected') {
+      this.logger.error(
+        'eventType=attachment_commit_failure_audit result=reconciliation_required',
+      );
+    }
+    if (purgeResult.status === 'rejected') {
+      this.logger.error(
+        'eventType=attachment_storage_release result=reconciliation_required',
+      );
+    }
+  }
+
+  private async releaseReservedBinary(
+    reservationId: string,
+    ownerToken: string,
+    reason: string,
+  ) {
+    try {
+      await this.attachmentStorageQuotaService.purgeAndRelease({
+        reservationId,
+        expectedOwnerToken: ownerToken,
+        reason,
+      });
+    } catch {
+      this.logger.error(
+        'eventType=attachment_storage_release result=reconciliation_required',
       );
     }
   }

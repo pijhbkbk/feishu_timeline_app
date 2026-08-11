@@ -341,6 +341,14 @@ enum AttachmentScanStatus {
   LEGACY_UNSCANNED
 }
 
+enum AttachmentBinaryState {
+  RESERVED
+  RETAINED
+  PURGING
+  PURGED
+  RECONCILIATION_REQUIRED
+}
+
 enum NotificationType {
   TASK_ASSIGNED
   REVIEW_PENDING
@@ -1549,17 +1557,47 @@ model Attachment {
   performanceTestReport   PerformanceTest?     @relation("PerformanceTestReport")
   reviewRecordAttachment  ReviewRecord?        @relation("ReviewRecordAttachment")
   numberedColor           Color?               @relation("ColorNumberingAttachment")
+  storageReservation      AttachmentStorageReservation?
   createdAt               DateTime             @default(now())
   updatedAt               DateTime             @updatedAt
 
   @@index([projectId, uploadedAt])
   @@index([projectId, isDeleted, uploadedAt])
+  @@index([projectId, isDeleted, uploadedAt, id])
+  @@index([projectId, entityType, entityId, isDeleted, uploadedAt, id])
   @@index([entityType, entityId, isDeleted])
   @@index([uploadedById, uploadedAt])
   @@index([deletedById, deletedAt])
   @@index([replacesAttachmentId])
   @@index([scanStatus, uploadedAt])
   @@map("attachments")
+}
+
+model AttachmentStorageReservation {
+  id                   String                @id @default(cuid())
+  attachmentId         String?               @unique
+  projectId            String
+  actorUserId          String?
+  targetType           AttachmentTargetType
+  targetId             String
+  bucket               String
+  quarantineStorageKey String
+  cleanStorageKey      String
+  reservedBytes        BigInt
+  state                AttachmentBinaryState @default(RESERVED)
+  ownerToken           String
+  leaseExpiresAt       DateTime?
+  failureReason        String?
+  purgedAt             DateTime?
+  attachment           Attachment?           @relation(fields: [attachmentId], references: [id], onDelete: SetNull)
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+
+  @@index([state, leaseExpiresAt, id])
+  @@index([projectId, state, createdAt])
+  @@index([actorUserId, state, createdAt])
+  @@index([purgedAt, id])
+  @@map("attachment_storage_reservations")
 }
 
 model ProjectRetrospective {

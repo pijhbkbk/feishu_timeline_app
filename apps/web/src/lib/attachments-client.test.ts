@@ -6,7 +6,10 @@ vi.mock('./auth-client', () => ({
 }));
 
 import { apiRequest } from './auth-client';
-import { uploadTaskMaterial } from './attachments-client';
+import {
+  fetchAttachmentsWorkspace,
+  uploadTaskMaterial,
+} from './attachments-client';
 
 const mockedApiRequest = vi.mocked(apiRequest);
 
@@ -70,5 +73,19 @@ describe('R26 task material upload client', () => {
     );
     expect(body.get('replacesAttachmentId')).toBe('attachment/old');
     expect(path).not.toContain('/projects/');
+  });
+
+  it('sends the bounded attachment cursor and page size without changing the filter scope', async () => {
+    await fetchAttachmentsWorkspace('project-1', {
+      entityType: 'PROJECT',
+      entityId: 'project/1',
+      includeDeleted: true,
+      cursor: 'attachment/100',
+      pageSize: 100,
+    });
+
+    expect(mockedApiRequest).toHaveBeenCalledWith(
+      '/projects/project-1/attachments?entityType=PROJECT&entityId=project%2F1&includeDeleted=true&cursor=attachment%2F100&pageSize=100',
+    );
   });
 });

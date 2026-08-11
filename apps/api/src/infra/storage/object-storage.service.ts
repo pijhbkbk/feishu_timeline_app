@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { constants } from 'node:fs';
-import { mkdir, open, rename, unlink, writeFile } from 'node:fs/promises';
+import { mkdir, open, rename, statfs, unlink, writeFile } from 'node:fs/promises';
 import { dirname, isAbsolute, relative, resolve } from 'node:path';
 import type { Readable } from 'node:stream';
 
@@ -31,7 +31,28 @@ export type ObjectStoragePromoteInput = {
   destinationStorageKey: string;
 };
 
+export type ObjectStorageWriteCapacityInput = {
+  bytes: number;
+  minFreeBytes: number;
+};
+
+export type ObjectStorageWriteCapacity = {
+  availableBytes: bigint;
+};
+
+export type ObjectStorageObjectMetadata = {
+  exists: boolean;
+  size: number | null;
+};
+
 export abstract class ObjectStorageService {
+  abstract assertWriteCapacity(
+    input: ObjectStorageWriteCapacityInput,
+  ): Promise<ObjectStorageWriteCapacity>;
+  abstract readAvailableBytes(): Promise<bigint>;
+  abstract inspect(
+    input: ObjectStorageDownloadInput,
+  ): Promise<ObjectStorageObjectMetadata>;
   abstract upload(input: ObjectStorageUploadInput): Promise<void>;
   abstract promote(input: ObjectStoragePromoteInput): Promise<void>;
   abstract purge(input: ObjectStorageDownloadInput): Promise<void>;
@@ -51,10 +72,50 @@ export class LocalFilesystemObjectStorageService extends ObjectStorageService {
     );
   }
 
+  async assertWriteCapacity(input: ObjectStorageWriteCapacityInput) {
+    await mkdir(this.storageRoot, { recursive: true });
+    const availableBytes = await this.readAvailableBytes();
+    const requiredBytes = BigInt(input.bytes) + BigInt(input.minFreeBytes);
+    if (availableBytes < requiredBytes) {
+      throw new Error('OBJECT_STORAGE_CAPACITY_BELOW_RESERVED_HEADROOM');
+    }
+    return { availableBytes };
+  }
+
+  async readAvailableBytes() {
+    const metadata = await statfs(this.storageRoot, { bigint: true });
+    return metadata.bavail * metadata.bsize;
+  }
+
   async upload(input: ObjectStorageUploadInput) {
     const absolutePath = this.resolveAbsolutePath(input.bucket, input.storageKey);
     await mkdir(dirname(absolutePath), { recursive: true });
     await writeFile(absolutePath, input.buffer);
+  }
+
+  async inspect(input: ObjectStorageDownloadInput) {
+    let fileHandle;
+    try {
+      fileHandle = await open(
+        this.resolveAbsolutePath(input.bucket, input.storageKey),
+        constants.O_RDONLY | constants.O_NOFOLLOW,
+      );
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        return { exists: false, size: null };
+      }
+      throw error;
+    }
+
+    try {
+      const metadata = await fileHandle.stat();
+      if (!metadata.isFile()) {
+        throw new Error('OBJECT_STORAGE_OBJECT_NOT_REGULAR_FILE');
+      }
+      return { exists: true, size: metadata.size };
+    } finally {
+      await fileHandle.close();
+    }
   }
 
   async promote(input: ObjectStoragePromoteInput) {
