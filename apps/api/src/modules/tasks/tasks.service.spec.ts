@@ -5,7 +5,11 @@ import {
   WorkflowNodeCode,
   WorkflowTaskStatus,
 } from '@prisma/client';
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { AuthenticatedUser } from '../auth/auth.types';
@@ -44,6 +48,7 @@ function createTaskDetailRecord() {
       currentNodeCode: WorkflowNodeCode.PAINT_DEVELOPMENT,
     },
     createdAt: new Date('2026-08-11T08:00:00.000Z'),
+    updatedAt: new Date('2026-08-11T08:30:00.000Z'),
     progressUpdates: [],
   };
 }
@@ -239,6 +244,7 @@ describe('TasksService', () => {
               currentNodeCode: WorkflowNodeCode.PAINT_PROCUREMENT,
             },
             createdAt: new Date('2026-03-17T12:00:00.000Z'),
+            updatedAt: new Date('2026-03-17T12:30:00.000Z'),
             progressUpdates: [],
           },
         ]),
@@ -274,6 +280,7 @@ describe('TasksService', () => {
   });
 
   it('creates an immutable progress record and matching audit log', async () => {
+    const taskVersion = '2026-07-13T02:00:00.000Z';
     const createdAt = new Date('2026-07-13T03:00:00.000Z');
     const progress = {
       id: 'progress-1',
@@ -286,6 +293,7 @@ describe('TasksService', () => {
       nextPlan: '同步供应商修订',
       materialAttachmentIds: null,
       idempotencyKey: 'progress-key-001',
+      taskVersion,
       createdAt,
       blocker: null,
     };
@@ -299,6 +307,7 @@ describe('TasksService', () => {
           status: WorkflowTaskStatus.IN_PROGRESS,
           isActive: true,
           assigneeUserId: 'user-1',
+          updatedAt: new Date(taskVersion),
         }),
       },
       taskProgressUpdate: {
@@ -309,9 +318,22 @@ describe('TasksService', () => {
         count: vi.fn(),
       },
       $transaction: vi.fn(async (callback) => callback(prisma)),
+      $queryRaw: vi.fn().mockResolvedValue([
+        {
+          id: 'task-1',
+          projectId: 'project-1',
+          nodeCode: WorkflowNodeCode.PAINT_DEVELOPMENT,
+          nodeName: '涂料开发',
+          status: WorkflowTaskStatus.IN_PROGRESS,
+          isActive: true,
+          assigneeUserId: 'user-1',
+          updatedAt: new Date(taskVersion),
+        },
+      ]),
     };
     const projectAccessService = {
       assertProjectAccessWithDefaultClient: vi.fn().mockResolvedValue(undefined),
+      assertProjectAccess: vi.fn().mockResolvedValue(undefined),
     };
     const activityLogsService = {
       createWithExecutor: vi.fn().mockResolvedValue({ id: 'audit-1' }),
@@ -330,6 +352,7 @@ describe('TasksService', () => {
         completionPercent: 60,
         isBlocked: false,
         idempotencyKey: 'progress-key-001',
+        taskVersion,
       },
       createActor(),
     );
@@ -346,5 +369,198 @@ describe('TasksService', () => {
         targetId: 'task-1',
       }),
     );
+  });
+
+  it('rejects a progress write when the locked task became terminal after preflight', async () => {
+    const taskVersion = '2026-08-11T01:00:00.000Z';
+    const create = vi.fn();
+    const audit = vi.fn();
+    const prisma = {
+      workflowTask: {
+        findUnique: vi.fn().mockResolvedValue({
+          id: 'task-1',
+          projectId: 'project-1',
+          nodeCode: WorkflowNodeCode.PAINT_DEVELOPMENT,
+          nodeName: '涂料开发',
+          status: WorkflowTaskStatus.IN_PROGRESS,
+          isActive: true,
+          assigneeUserId: 'user-1',
+          updatedAt: new Date(taskVersion),
+        }),
+      },
+      taskProgressUpdate: {
+        findUnique: vi.fn().mockResolvedValue(null),
+        create,
+      },
+      attachment: { count: vi.fn() },
+      $transaction: vi.fn(),
+      $queryRaw: vi.fn().mockResolvedValue([
+        {
+          id: 'task-1',
+          projectId: 'project-1',
+          nodeCode: WorkflowNodeCode.PAINT_DEVELOPMENT,
+          nodeName: '涂料开发',
+          status: WorkflowTaskStatus.COMPLETED,
+          isActive: false,
+          assigneeUserId: 'user-1',
+          updatedAt: new Date('2026-08-11T01:01:00.000Z'),
+        },
+      ]),
+    };
+    prisma.$transaction.mockImplementation(
+      async (callback: (tx: typeof prisma) => Promise<unknown>) => callback(prisma),
+    );
+    const projectAccessService = {
+      assertProjectAccessWithDefaultClient: vi.fn().mockResolvedValue(undefined),
+      assertProjectAccess: vi.fn().mockResolvedValue(undefined),
+    };
+    const service = new TasksService(
+      prisma as never,
+      projectAccessService as never,
+      { createWithExecutor: audit } as never,
+    );
+
+    await expect(
+      service.createTaskProgress(
+        'task-1',
+        {
+          completedContent: '扫描期间任务已完成',
+          completionPercent: 80,
+          isBlocked: true,
+          blockerType: 'SCHEDULE',
+          blockerDescription: '不应写入终态任务',
+          idempotencyKey: 'progress-terminal-001',
+          taskVersion,
+        },
+        createActor(),
+      ),
+    ).rejects.toBeInstanceOf(ConflictException);
+
+    expect(prisma.$queryRaw).toHaveBeenCalledTimes(1);
+    expect(create).not.toHaveBeenCalled();
+    expect(audit).not.toHaveBeenCalled();
+  });
+
+  it('rejects a progress write when the locked task assignment changed after preflight', async () => {
+    const taskVersion = '2026-08-11T02:00:00.000Z';
+    const create = vi.fn();
+    const prisma = {
+      workflowTask: {
+        findUnique: vi.fn().mockResolvedValue({
+          id: 'task-1',
+          projectId: 'project-1',
+          nodeCode: WorkflowNodeCode.PAINT_DEVELOPMENT,
+          nodeName: '涂料开发',
+          status: WorkflowTaskStatus.IN_PROGRESS,
+          isActive: true,
+          assigneeUserId: 'user-1',
+          updatedAt: new Date(taskVersion),
+        }),
+      },
+      taskProgressUpdate: {
+        findUnique: vi.fn().mockResolvedValue(null),
+        create,
+      },
+      attachment: { count: vi.fn() },
+      $transaction: vi.fn(),
+      $queryRaw: vi.fn().mockResolvedValue([
+        {
+          id: 'task-1',
+          projectId: 'project-1',
+          nodeCode: WorkflowNodeCode.PAINT_DEVELOPMENT,
+          nodeName: '涂料开发',
+          status: WorkflowTaskStatus.IN_PROGRESS,
+          isActive: true,
+          assigneeUserId: 'user-2',
+          updatedAt: new Date('2026-08-11T02:01:00.000Z'),
+        },
+      ]),
+    };
+    prisma.$transaction.mockImplementation(
+      async (callback: (tx: typeof prisma) => Promise<unknown>) => callback(prisma),
+    );
+    const service = new TasksService(
+      prisma as never,
+      {
+        assertProjectAccessWithDefaultClient: vi.fn().mockResolvedValue(undefined),
+        assertProjectAccess: vi.fn().mockResolvedValue(undefined),
+      } as never,
+      { createWithExecutor: vi.fn() } as never,
+    );
+
+    await expect(
+      service.createTaskProgress(
+        'task-1',
+        {
+          completedContent: '旧负责人不应继续写入',
+          completionPercent: 30,
+          isBlocked: false,
+          idempotencyKey: 'progress-reassigned-001',
+          taskVersion,
+        },
+        createActor(),
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it('rejects reuse of an idempotency key with a different progress payload', async () => {
+    const taskVersion = '2026-08-11T03:00:00.000Z';
+    const existing = {
+      id: 'progress-1',
+      workflowTaskId: 'task-1',
+      projectId: 'project-1',
+      submittedById: 'user-1',
+      submittedBy: { id: 'user-1', name: '工艺工程师' },
+      completionPercent: 20,
+      completedContent: '原始内容',
+      nextPlan: null,
+      materialAttachmentIds: null,
+      idempotencyKey: 'progress-reuse-001',
+      taskVersion,
+      createdAt: new Date('2026-08-11T03:01:00.000Z'),
+      blocker: null,
+    };
+    const prisma = {
+      workflowTask: {
+        findUnique: vi.fn().mockResolvedValue({
+          id: 'task-1',
+          projectId: 'project-1',
+          nodeCode: WorkflowNodeCode.PAINT_DEVELOPMENT,
+          nodeName: '涂料开发',
+          status: WorkflowTaskStatus.IN_PROGRESS,
+          isActive: true,
+          assigneeUserId: 'user-1',
+          updatedAt: new Date(taskVersion),
+        }),
+      },
+      taskProgressUpdate: {
+        findUnique: vi.fn().mockResolvedValue(existing),
+      },
+      attachment: { count: vi.fn() },
+      $transaction: vi.fn(),
+    };
+    const service = new TasksService(
+      prisma as never,
+      { assertProjectAccessWithDefaultClient: vi.fn().mockResolvedValue(undefined) } as never,
+      {} as never,
+    );
+
+    await expect(
+      service.createTaskProgress(
+        'task-1',
+        {
+          completedContent: '被篡改的新内容',
+          completionPercent: 99,
+          isBlocked: false,
+          idempotencyKey: 'progress-reuse-001',
+          taskVersion,
+        },
+        createActor(),
+      ),
+    ).rejects.toBeInstanceOf(ConflictException);
+
+    expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 });

@@ -24,6 +24,10 @@ export const TASK_BLOCKER_TYPES = [
 ] as const;
 
 export class CreateTaskProgressDto {
+  @ApiProperty({ description: '客户端读取到的工序更新时间，用于并发写入校验' })
+  @IsISO8601()
+  taskVersion!: string;
+
   @ApiProperty({ description: '本次完成内容', maxLength: 4000 })
   @IsString()
   @MinLength(1)
