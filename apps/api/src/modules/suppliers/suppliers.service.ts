@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -32,7 +33,8 @@ export class SuppliersService {
     private readonly activityLogsService: ActivityLogsService,
   ) {}
 
-  async listSuppliers() {
+  async listSuppliers(actor: AuthenticatedUser) {
+    this.assertPermission(actor, 'project.read');
     const suppliers = await this.prisma.supplier.findMany({
       orderBy: [
         { status: 'asc' },
@@ -44,6 +46,7 @@ export class SuppliersService {
   }
 
   async createSupplier(rawInput: unknown, actor: AuthenticatedUser) {
+    this.assertPermission(actor, 'workflow.transition');
     const input = this.parseSupplierWriteInput(rawInput);
 
     return this.prisma.$transaction(async (tx) => {
@@ -88,6 +91,7 @@ export class SuppliersService {
     rawInput: unknown,
     actor: AuthenticatedUser,
   ) {
+    this.assertPermission(actor, 'workflow.transition');
     const input = this.parseSupplierWriteInput(rawInput);
 
     return this.prisma.$transaction(async (tx) => {
@@ -143,6 +147,17 @@ export class SuppliersService {
     }
 
     return supplier;
+  }
+
+  private assertPermission(
+    actor: AuthenticatedUser,
+    requiredPermission: 'project.read' | 'workflow.transition',
+  ) {
+    if (actor.isSystemAdmin || actor.permissionCodes?.includes(requiredPermission)) {
+      return;
+    }
+
+    throw new ForbiddenException('当前用户没有供应商目录操作权限。');
   }
 
   private parseSupplierWriteInput(rawInput: unknown): SupplierWriteInput {
