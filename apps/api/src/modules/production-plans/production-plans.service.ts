@@ -49,6 +49,15 @@ type SchedulePlanWriteInput = {
 };
 
 const SCHEDULE_PLAN_NODE_CODE = getSchedulePlanNodeCode();
+const SCHEDULE_PLAN_RECORD_LIMIT = 100;
+const SCHEDULE_PLAN_MAX_PAYLOAD_BYTES = 16 * 1024;
+const SCHEDULE_PLAN_NAME_MAX_CHARS = 200;
+const SCHEDULE_PLAN_ID_MAX_CHARS = 64;
+const SCHEDULE_PLAN_CODE_MAX_CHARS = 64;
+const SCHEDULE_PLAN_NOTE_MAX_CHARS = 4_000;
+const SCHEDULE_PLAN_MAX_QUANTITY = 2_147_483_647;
+const SCHEDULE_PLAN_ID_PATTERN = /^[A-Za-z0-9_-]+$/;
+const SCHEDULE_PLAN_CODE_PATTERN = /^[A-Za-z0-9._-]+$/;
 
 const SCHEDULE_PLAN_INCLUDE = {
   owner: true,
@@ -84,6 +93,7 @@ export class ProductionPlansService {
         tx,
         projectId,
       );
+      this.assertSchedulePlanRecordCapacity(context.items, true);
       await this.getUserOrThrow(tx, input.ownerId);
       await this.startTaskIfNeeded(tx, context.activeTask!, actor, '排产计划已开始处理。');
 
@@ -373,8 +383,10 @@ export class ProductionPlansService {
           },
           include: SCHEDULE_PLAN_INCLUDE,
           orderBy: [{ createdAt: 'desc' }],
+          take: SCHEDULE_PLAN_RECORD_LIMIT + 1,
         }),
       ]);
+    this.assertSchedulePlanRecordCapacity(items, false);
 
     return {
       project: this.toProjectSummary(project),
@@ -411,8 +423,11 @@ export class ProductionPlansService {
           id: true,
           status: true,
         },
+        take: SCHEDULE_PLAN_RECORD_LIMIT + 1,
       }),
     ]);
+
+    this.assertSchedulePlanRecordCapacity(items, false);
 
     return {
       project,
@@ -663,11 +678,25 @@ export class ProductionPlansService {
       throw new BadRequestException('计划批次不能为空。');
     }
 
-    if (!Number.isFinite(plannedQuantity) || plannedQuantity <= 0) {
-      throw new BadRequestException('计划数量必须大于 0。');
+    if (
+      !Number.isSafeInteger(plannedQuantity) ||
+      plannedQuantity <= 0 ||
+      plannedQuantity > SCHEDULE_PLAN_MAX_QUANTITY
+    ) {
+      this.throwSchedulePlanInputOutOfBounds(
+        `计划数量必须为 1～${SCHEDULE_PLAN_MAX_QUANTITY} 的整数。`,
+      );
     }
 
-    return {
+    this.assertSchedulePlanText(workshop, '车间', SCHEDULE_PLAN_NAME_MAX_CHARS);
+    this.assertSchedulePlanText(lineName, '生产线', SCHEDULE_PLAN_NAME_MAX_CHARS);
+    this.assertSchedulePlanId(ownerId, '责任人');
+    this.assertSchedulePlanCode(batchNo, '计划批次');
+    if (note) {
+      this.assertSchedulePlanText(note, '备注', SCHEDULE_PLAN_NOTE_MAX_CHARS);
+    }
+
+    const normalized = {
       workshop,
       lineName,
       ownerId,
@@ -676,6 +705,57 @@ export class ProductionPlansService {
       plannedQuantity,
       planDate: this.parseDate(input.planDate, '计划日期'),
     };
+    if (
+      Buffer.byteLength(JSON.stringify(normalized), 'utf8') >
+      SCHEDULE_PLAN_MAX_PAYLOAD_BYTES
+    ) {
+      this.throwSchedulePlanInputOutOfBounds(
+        `排产计划不得超过 ${SCHEDULE_PLAN_MAX_PAYLOAD_BYTES} 字节。`,
+      );
+    }
+    return normalized;
+  }
+
+  private assertSchedulePlanRecordCapacity(items: readonly unknown[], forCreate: boolean) {
+    if (
+      items.length > SCHEDULE_PLAN_RECORD_LIMIT ||
+      (forCreate && items.length >= SCHEDULE_PLAN_RECORD_LIMIT)
+    ) {
+      throw new ConflictException({
+        code: 'PRODUCTION_PLAN_RECORD_LIMIT_EXCEEDED',
+        message: `每个项目最多保留 ${SCHEDULE_PLAN_RECORD_LIMIT} 条排产计划。`,
+      });
+    }
+  }
+
+  private assertSchedulePlanText(value: string, label: string, maxChars: number) {
+    if (value.length > maxChars) {
+      this.throwSchedulePlanInputOutOfBounds(`${label}不得超过 ${maxChars} 个字符。`);
+    }
+  }
+
+  private assertSchedulePlanId(value: string, label: string) {
+    if (value.length > SCHEDULE_PLAN_ID_MAX_CHARS || !SCHEDULE_PLAN_ID_PATTERN.test(value)) {
+      this.throwSchedulePlanInputOutOfBounds(`${label}标识不合法。`);
+    }
+  }
+
+  private assertSchedulePlanCode(value: string, label: string) {
+    if (
+      value.length > SCHEDULE_PLAN_CODE_MAX_CHARS ||
+      !SCHEDULE_PLAN_CODE_PATTERN.test(value)
+    ) {
+      this.throwSchedulePlanInputOutOfBounds(
+        `${label}仅允许 1～${SCHEDULE_PLAN_CODE_MAX_CHARS} 位字母、数字、点、下划线或连字符。`,
+      );
+    }
+  }
+
+  private throwSchedulePlanInputOutOfBounds(message: string): never {
+    throw new BadRequestException({
+      code: 'PRODUCTION_PLAN_INPUT_OUT_OF_BOUNDS',
+      message,
+    });
   }
 
   private parseDate(value: unknown, label: string) {

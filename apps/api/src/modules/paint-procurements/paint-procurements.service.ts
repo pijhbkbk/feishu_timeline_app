@@ -59,6 +59,16 @@ const PAINT_PROCUREMENT_DOWNSTREAM_NODES = [
   WorkflowNodeCode.PERFORMANCE_TEST,
   WorkflowNodeCode.STANDARD_BOARD_PRODUCTION,
 ] as const;
+const PAINT_PROCUREMENT_RECORD_LIMIT = 100;
+const PAINT_PROCUREMENT_MAX_PAYLOAD_BYTES = 16 * 1024;
+const PAINT_PROCUREMENT_ID_MAX_CHARS = 64;
+const PAINT_PROCUREMENT_CODE_MAX_CHARS = 64;
+const PAINT_PROCUREMENT_NAME_MAX_CHARS = 200;
+const PAINT_PROCUREMENT_UNIT_MAX_CHARS = 32;
+const PAINT_PROCUREMENT_NOTE_MAX_CHARS = 4_000;
+const PAINT_PROCUREMENT_DECIMAL_PATTERN = /^(?:0|[1-9]\d{0,14})(?:\.\d{1,3})?$/;
+const PAINT_PROCUREMENT_ID_PATTERN = /^[A-Za-z0-9_-]+$/;
+const PAINT_PROCUREMENT_CODE_PATTERN = /^[A-Za-z0-9._-]+$/;
 
 @Injectable()
 export class PaintProcurementsService {
@@ -84,7 +94,8 @@ export class PaintProcurementsService {
     const input = this.parseCreateInput(rawInput);
 
     await this.prisma.$transaction(async (tx) => {
-      await this.lockActiveProcurementTaskAndGetContext(tx, projectId);
+      const context = await this.lockActiveProcurementTaskAndGetContext(tx, projectId);
+      this.assertProcurementRecordCapacity(context.records, true);
       await this.getSupplierOrThrow(tx, input.supplierId);
       await this.assertUniqueProcurementCode(tx, projectId, input.procurementCode);
 
@@ -391,6 +402,7 @@ export class PaintProcurementsService {
           { updatedAt: 'desc' },
           { createdAt: 'desc' },
         ],
+        take: PAINT_PROCUREMENT_RECORD_LIMIT + 1,
       }),
       db.supplier.findMany({
         orderBy: [
@@ -401,28 +413,34 @@ export class PaintProcurementsService {
         take: 100,
       }),
       this.getActiveProcurementTask(db, projectId),
-      db.workflowTask.findMany({
-        where: {
-          projectId,
-          nodeCode: {
-            in: [...PAINT_PROCUREMENT_DOWNSTREAM_NODES],
-          },
-        },
-        include: {
-          assigneeUser: true,
-          assigneeDepartment: true,
-        },
-        orderBy: [
-          { createdAt: 'desc' },
-          { taskRound: 'desc' },
-        ],
-      }),
+      Promise.all(
+        PAINT_PROCUREMENT_DOWNSTREAM_NODES.map((nodeCode) =>
+          db.workflowTask.findFirst({
+            where: {
+              projectId,
+              nodeCode,
+            },
+            include: {
+              assigneeUser: true,
+              assigneeDepartment: true,
+            },
+            orderBy: [
+              { createdAt: 'desc' },
+              { taskRound: 'desc' },
+            ],
+          }),
+        ),
+      ),
     ]);
+    this.assertProcurementRecordCapacity(records, false);
 
-    const downstreamTaskMap = new Map<WorkflowNodeCode, (typeof downstreamTasks)[number]>();
+    const downstreamTaskMap = new Map<
+      WorkflowNodeCode,
+      NonNullable<(typeof downstreamTasks)[number]>
+    >();
 
     for (const task of downstreamTasks) {
-      if (!downstreamTaskMap.has(task.nodeCode)) {
+      if (task) {
         downstreamTaskMap.set(task.nodeCode, task);
       }
     }
@@ -484,8 +502,11 @@ export class PaintProcurementsService {
         where: {
           projectId,
         },
+        take: PAINT_PROCUREMENT_RECORD_LIMIT + 1,
       }),
     ]);
+
+    this.assertProcurementRecordCapacity(records, false);
 
     return {
       project,
@@ -724,7 +745,16 @@ export class PaintProcurementsService {
       throw new BadRequestException('单位不能为空。');
     }
 
-    return {
+    this.assertProcurementId(supplierId, '供应商');
+    this.assertProcurementCode(procurementCode, '采购单号');
+    this.assertProcurementText(materialName, '物料名称', PAINT_PROCUREMENT_NAME_MAX_CHARS);
+    this.assertProcurementCode(batchNo, '批次号');
+    this.assertProcurementText(unit, '单位', PAINT_PROCUREMENT_UNIT_MAX_CHARS);
+    if (note) {
+      this.assertProcurementText(note, '备注', PAINT_PROCUREMENT_NOTE_MAX_CHARS);
+    }
+
+    const normalized = {
       supplierId,
       procurementCode,
       materialName,
@@ -734,6 +764,8 @@ export class PaintProcurementsService {
       arrivalDate,
       note,
     };
+    this.assertProcurementPayloadBytes(normalized);
+    return normalized;
   }
 
   private parseUpdateInput(rawInput: unknown): PaintProcurementUpdateInput {
@@ -790,7 +822,20 @@ export class PaintProcurementsService {
       throw new BadRequestException('至少提交一个要更新的字段。');
     }
 
-    return {
+    if (supplierId) this.assertProcurementId(supplierId, '供应商');
+    if (procurementCode) this.assertProcurementCode(procurementCode, '采购单号');
+    if (materialName) {
+      this.assertProcurementText(
+        materialName,
+        '物料名称',
+        PAINT_PROCUREMENT_NAME_MAX_CHARS,
+      );
+    }
+    if (batchNo) this.assertProcurementCode(batchNo, '批次号');
+    if (unit) this.assertProcurementText(unit, '单位', PAINT_PROCUREMENT_UNIT_MAX_CHARS);
+    if (note) this.assertProcurementText(note, '备注', PAINT_PROCUREMENT_NOTE_MAX_CHARS);
+
+    const normalized = {
       ...(supplierId ? { supplierId } : {}),
       ...(procurementCode ? { procurementCode } : {}),
       ...(materialName ? { materialName } : {}),
@@ -800,6 +845,8 @@ export class PaintProcurementsService {
       ...(arrivalDate ? { arrivalDate } : {}),
       ...(note !== undefined ? { note } : {}),
     };
+    this.assertProcurementPayloadBytes(normalized);
+    return normalized;
   }
 
   private parseDecimal(value: unknown, label: string) {
@@ -813,13 +860,72 @@ export class PaintProcurementsService {
       throw new BadRequestException(`${label}不能为空。`);
     }
 
-    const parsedValue = Number(normalizedValue);
-
-    if (!Number.isFinite(parsedValue) || parsedValue <= 0) {
-      throw new BadRequestException(`${label}必须大于 0。`);
+    if (
+      !PAINT_PROCUREMENT_DECIMAL_PATTERN.test(normalizedValue) ||
+      new Prisma.Decimal(normalizedValue).lessThanOrEqualTo(0)
+    ) {
+      this.throwProcurementInputOutOfBounds(
+        `${label}必须为大于 0 且最多 15 位整数、3 位小数的数值。`,
+      );
     }
 
     return new Prisma.Decimal(normalizedValue);
+  }
+
+  private assertProcurementRecordCapacity(records: readonly unknown[], forCreate: boolean) {
+    if (
+      records.length > PAINT_PROCUREMENT_RECORD_LIMIT ||
+      (forCreate && records.length >= PAINT_PROCUREMENT_RECORD_LIMIT)
+    ) {
+      throw new ConflictException({
+        code: 'PAINT_PROCUREMENT_RECORD_LIMIT_EXCEEDED',
+        message: `每个项目最多保留 ${PAINT_PROCUREMENT_RECORD_LIMIT} 条采购记录。`,
+      });
+    }
+  }
+
+  private assertProcurementId(value: string, label: string) {
+    if (
+      value.length > PAINT_PROCUREMENT_ID_MAX_CHARS ||
+      !PAINT_PROCUREMENT_ID_PATTERN.test(value)
+    ) {
+      this.throwProcurementInputOutOfBounds(`${label}标识不合法。`);
+    }
+  }
+
+  private assertProcurementCode(value: string, label: string) {
+    if (
+      value.length > PAINT_PROCUREMENT_CODE_MAX_CHARS ||
+      !PAINT_PROCUREMENT_CODE_PATTERN.test(value)
+    ) {
+      this.throwProcurementInputOutOfBounds(
+        `${label}仅允许 1～${PAINT_PROCUREMENT_CODE_MAX_CHARS} 位字母、数字、点、下划线或连字符。`,
+      );
+    }
+  }
+
+  private assertProcurementText(value: string, label: string, maxChars: number) {
+    if (value.length > maxChars) {
+      this.throwProcurementInputOutOfBounds(`${label}不得超过 ${maxChars} 个字符。`);
+    }
+  }
+
+  private assertProcurementPayloadBytes(value: object) {
+    if (
+      Buffer.byteLength(JSON.stringify(value), 'utf8') >
+      PAINT_PROCUREMENT_MAX_PAYLOAD_BYTES
+    ) {
+      this.throwProcurementInputOutOfBounds(
+        `采购记录不得超过 ${PAINT_PROCUREMENT_MAX_PAYLOAD_BYTES} 字节。`,
+      );
+    }
+  }
+
+  private throwProcurementInputOutOfBounds(message: string): never {
+    throw new BadRequestException({
+      code: 'PAINT_PROCUREMENT_INPUT_OUT_OF_BOUNDS',
+      message,
+    });
   }
 
   private parseDate(value: unknown, label: string) {

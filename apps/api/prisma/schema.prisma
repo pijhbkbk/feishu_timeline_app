@@ -1359,19 +1359,19 @@ model PaintProcurement {
   supplierId       String?
   colorId          String?
   colorVersionId   String?
-  procurementCode  String            @map("procurementNo")
-  materialName     String?
-  batchNo          String?
+  procurementCode  String            @map("procurementNo") @db.VarChar(64)
+  materialName     String?           @db.VarChar(200)
+  batchNo          String?           @db.VarChar(64)
   status           ProcurementStatus @default(DRAFT)
   quantity         Decimal?          @db.Decimal(18, 3)
-  unit             String?
+  unit             String?           @db.VarChar(32)
   unitPrice        Decimal?          @db.Decimal(18, 2)
   totalAmount      Decimal?          @db.Decimal(18, 2)
   requestedById    String?
   orderedAt        DateTime?
   arrivalDate      DateTime?         @map("receivedAt")
   cancelledAt      DateTime?
-  note             String?           @map("remark")
+  note             String?           @map("remark") @db.VarChar(4000)
   project          Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
   supplier         Supplier?         @relation(fields: [supplierId], references: [id], onDelete: SetNull)
   color            Color?            @relation(fields: [colorId], references: [id], onDelete: SetNull)
@@ -1515,15 +1515,15 @@ model DevelopmentFee {
   recordedById String?
   feeType      DevelopmentFeeType
   amount       Decimal              @db.Decimal(18, 2)
-  currency     String               @default("CNY")
-  payer        String?
+  currency     String               @default("CNY") @db.VarChar(3)
+  payer        String?              @db.VarChar(200)
   payStatus    DevelopmentFeeStatus @default(PENDING)
   occurredAt   DateTime
   recordedAt   DateTime?
   completedAt  DateTime?
   cancelledAt  DateTime?
-  remark       String?
-  note         String?
+  remark       String?              @db.VarChar(4000)
+  note         String?              @db.VarChar(4000)
   project      Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
   supplier     Supplier?            @relation(fields: [supplierId], references: [id], onDelete: SetNull)
   createdBy    User?                @relation("DevelopmentFeeCreator", fields: [createdById], references: [id], onDelete: SetNull)

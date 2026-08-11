@@ -48,6 +48,11 @@ type DevelopmentFeeCreateInput = {
 };
 
 const DEVELOPMENT_FEE_NODE_CODE = getDevelopmentFeeNodeCode();
+const DEVELOPMENT_FEE_RECORD_LIMIT = 100;
+const DEVELOPMENT_FEE_MAX_PAYLOAD_BYTES = 16 * 1024;
+const DEVELOPMENT_FEE_PAYER_MAX_CHARS = 200;
+const DEVELOPMENT_FEE_NOTE_MAX_CHARS = 4_000;
+const DEVELOPMENT_FEE_AMOUNT_PATTERN = /^(?:0|[1-9]\d{0,15})(?:\.\d{1,2})?$/;
 
 @Injectable()
 export class FeesService {
@@ -82,6 +87,7 @@ export class FeesService {
 
     await this.prisma.$transaction(async (tx) => {
       const context = await this.lockActiveFeeTaskAndGetContext(tx, projectId);
+      this.assertFeeRecordCapacity(context.records, true);
       await this.assertFixedFeeAmount(tx, input.amount);
 
       const createdRecord = await tx.developmentFee.create({
@@ -385,11 +391,13 @@ export class FeesService {
           createdBy: true,
         },
         orderBy: [{ recordedAt: 'desc' }, { createdAt: 'desc' }],
+        take: DEVELOPMENT_FEE_RECORD_LIMIT + 1,
       }),
       this.getActiveTask(db, projectId),
       this.hasApprovedOrCompletedWorkflowTask(db, projectId, WorkflowNodeCode.CAB_REVIEW),
       this.getFixedFeeAmount(db),
     ]);
+    this.assertFeeRecordCapacity(records, false);
 
     return {
       project: this.toProjectSummary(project),
@@ -428,8 +436,11 @@ export class FeesService {
           id: true,
           payStatus: true,
         },
+        take: DEVELOPMENT_FEE_RECORD_LIMIT + 1,
       }),
     ]);
+
+    this.assertFeeRecordCapacity(records, false);
 
     return {
       project,
@@ -672,12 +683,10 @@ export class FeesService {
       Object.values(DevelopmentFeeType).includes(input.feeType as DevelopmentFeeType)
         ? (input.feeType as DevelopmentFeeType)
         : null;
-    const amount =
-      typeof input.amount === 'number'
-        ? input.amount
-        : typeof input.amount === 'string'
-          ? Number(input.amount)
-          : NaN;
+    const normalizedAmount =
+      typeof input.amount === 'number' || typeof input.amount === 'string'
+        ? String(input.amount).trim()
+        : '';
     const currency =
       typeof input.currency === 'string' && input.currency.trim().length > 0
         ? input.currency.trim().toUpperCase()
@@ -692,22 +701,75 @@ export class FeesService {
       throw new BadRequestException('费用类型不能为空。');
     }
 
-    if (!Number.isFinite(amount) || amount <= 0) {
-      throw new BadRequestException('金额必须大于 0。');
+    if (
+      !DEVELOPMENT_FEE_AMOUNT_PATTERN.test(normalizedAmount) ||
+      new Prisma.Decimal(normalizedAmount).lessThanOrEqualTo(0)
+    ) {
+      this.throwFeeInputOutOfBounds('金额必须为大于 0 且最多 16 位整数、2 位小数的数值。');
     }
 
     if (!payer) {
       throw new BadRequestException('付款方不能为空。');
     }
 
-    return {
+    if (!/^[A-Z]{3}$/.test(currency)) {
+      this.throwFeeInputOutOfBounds('币种必须为 3 位大写字母。');
+    }
+    this.assertFeeTextBound(payer, '付款方', DEVELOPMENT_FEE_PAYER_MAX_CHARS);
+    if (note) {
+      this.assertFeeTextBound(note, '备注', DEVELOPMENT_FEE_NOTE_MAX_CHARS);
+    }
+
+    const normalized = {
       feeType,
-      amount: new Prisma.Decimal(amount),
+      amount: normalizedAmount,
       currency,
       payer,
       note,
       recordedAt: this.parseDate(input.recordedAt, '记录时间'),
     };
+    if (
+      Buffer.byteLength(JSON.stringify(normalized), 'utf8') >
+      DEVELOPMENT_FEE_MAX_PAYLOAD_BYTES
+    ) {
+      this.throwFeeInputOutOfBounds(
+        `收费记录不得超过 ${DEVELOPMENT_FEE_MAX_PAYLOAD_BYTES} 字节。`,
+      );
+    }
+
+    return {
+      feeType,
+      amount: new Prisma.Decimal(normalizedAmount),
+      currency,
+      payer,
+      note,
+      recordedAt: normalized.recordedAt,
+    };
+  }
+
+  private assertFeeRecordCapacity(records: readonly unknown[], forCreate: boolean) {
+    if (
+      records.length > DEVELOPMENT_FEE_RECORD_LIMIT ||
+      (forCreate && records.length >= DEVELOPMENT_FEE_RECORD_LIMIT)
+    ) {
+      throw new ConflictException({
+        code: 'DEVELOPMENT_FEE_RECORD_LIMIT_EXCEEDED',
+        message: `每个项目最多保留 ${DEVELOPMENT_FEE_RECORD_LIMIT} 条收费记录。`,
+      });
+    }
+  }
+
+  private assertFeeTextBound(value: string, label: string, maxChars: number) {
+    if (value.length > maxChars) {
+      this.throwFeeInputOutOfBounds(`${label}不得超过 ${maxChars} 个字符。`);
+    }
+  }
+
+  private throwFeeInputOutOfBounds(message: string): never {
+    throw new BadRequestException({
+      code: 'FEE_INPUT_OUT_OF_BOUNDS',
+      message,
+    });
   }
 
   private parseDate(value: unknown, label: string) {

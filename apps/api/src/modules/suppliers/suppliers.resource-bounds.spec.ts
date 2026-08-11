@@ -140,7 +140,10 @@ describe('Paint procurement supplier selector bound', () => {
     const prisma = {
       paintProcurement: { findMany: vi.fn().mockResolvedValue([]) },
       supplier: { findMany: vi.fn().mockResolvedValue([]) },
-      workflowTask: { findMany: vi.fn().mockResolvedValue([]) },
+      workflowTask: {
+        findFirst: vi.fn().mockResolvedValue(null),
+        findMany: vi.fn().mockResolvedValue([]),
+      },
     };
     const service = new PaintProcurementsService(
       prisma as never,
@@ -177,5 +180,6 @@ describe('Paint procurement supplier selector bound', () => {
     expect(prisma.supplier.findMany).toHaveBeenCalledWith(
       expect.objectContaining({ take: 100 }),
     );
+    expect(prisma.workflowTask.findMany).not.toHaveBeenCalled();
   });
 });
