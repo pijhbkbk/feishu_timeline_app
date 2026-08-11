@@ -52,8 +52,18 @@ describe('R26ReadModelController Gate 3C1 contract', () => {
 
   it('keeps the approved Gate 3A member and assignment write routes', () => {
     const prototype = R26ReadModelController.prototype;
-    const handlers = [
-      ['previewAssignments', RequestMethod.POST, 'projects/:projectId/assignment-preview'],
+    const previewHandler = prototype.previewAssignments;
+    expect(Reflect.getMetadata(METHOD_METADATA, previewHandler)).toBe(
+      RequestMethod.POST,
+    );
+    expect(Reflect.getMetadata(PATH_METADATA, previewHandler)).toBe(
+      'projects/:projectId/assignment-preview',
+    );
+    expect(
+      Reflect.getMetadata(PERMISSION_METADATA_KEY, previewHandler),
+    ).toEqual(['project.read']);
+
+    const writeHandlers = [
       ['addMember', RequestMethod.POST, 'projects/:projectId/members'],
       ['updateMember', RequestMethod.PATCH, 'projects/:projectId/members/:userId'],
       ['removeMember', RequestMethod.DELETE, 'projects/:projectId/members/:userId'],
@@ -61,12 +71,12 @@ describe('R26ReadModelController Gate 3C1 contract', () => {
       ['transferTask', RequestMethod.PATCH, 'projects/:projectId/tasks/:taskId/assignment'],
     ] as const;
 
-    for (const [handlerName, method, path] of handlers) {
+    for (const [handlerName, method, path] of writeHandlers) {
       const handler = prototype[handlerName];
       expect(Reflect.getMetadata(METHOD_METADATA, handler)).toBe(method);
       expect(Reflect.getMetadata(PATH_METADATA, handler)).toBe(path);
       expect(Reflect.getMetadata(PERMISSION_METADATA_KEY, handler)).toEqual([
-        'project.read',
+        'project.write',
       ]);
     }
 

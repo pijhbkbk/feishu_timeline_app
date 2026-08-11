@@ -1111,12 +1111,16 @@ export class R26MemberAssignmentService {
       throw new NotFoundException('项目不存在。');
     }
 
+    const hasProjectWrite = (actor.permissionCodes ?? []).includes(
+      'project.write',
+    );
     const isAdmin =
-      actor.isSystemAdmin || actor.roleCodes.includes('admin');
+      actor.isSystemAdmin ||
+      (actor.roleCodes.includes('admin') && hasProjectWrite);
     const isAuthorizedOwner =
       project.ownerUserId === actor.id &&
-      (actor.roleCodes.includes('project_manager') ||
-        (actor.permissionCodes ?? []).includes('project.write'));
+      actor.roleCodes.includes('project_manager') &&
+      hasProjectWrite;
 
     if (!isAdmin && !isAuthorizedOwner) {
       throw new ForbiddenException(

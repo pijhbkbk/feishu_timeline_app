@@ -404,7 +404,7 @@ export class R26ReadModelController {
     );
   }
 
-  @Permissions('project.read')
+  @Permissions('project.write')
   @ApiOperation({ summary: 'R26 Gate 3A 添加项目成员' })
   @Post('projects/:projectId/members')
   async addMember(
@@ -423,7 +423,7 @@ export class R26ReadModelController {
     return { command, workspace };
   }
 
-  @Permissions('project.read')
+  @Permissions('project.write')
   @ApiOperation({ summary: 'R26 Gate 3A 修改项目成员职责' })
   @Patch('projects/:projectId/members/:userId')
   async updateMember(
@@ -444,7 +444,7 @@ export class R26ReadModelController {
     return { command, workspace };
   }
 
-  @Permissions('project.read')
+  @Permissions('project.write')
   @ApiOperation({ summary: 'R26 Gate 3A 安全移出项目成员' })
   @Delete('projects/:projectId/members/:userId')
   async removeMember(
@@ -465,7 +465,7 @@ export class R26ReadModelController {
     return { command, workspace };
   }
 
-  @Permissions('project.read')
+  @Permissions('project.write')
   @ApiOperation({ summary: 'R26 Gate 3A 应用未来与未开始任务分配' })
   @Post('projects/:projectId/assignments/apply')
   async applyAssignments(
@@ -484,7 +484,7 @@ export class R26ReadModelController {
     return { command, workspace };
   }
 
-  @Permissions('project.read')
+  @Permissions('project.write')
   @ApiOperation({ summary: 'R26 Gate 3A 转交单个活跃工序任务' })
   @Patch('projects/:projectId/tasks/:taskId/assignment')
   async transferTask(

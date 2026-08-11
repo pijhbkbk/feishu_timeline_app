@@ -38,6 +38,33 @@ const member: AuthenticatedUser = {
   permissionCodes: ['project.read'],
 };
 
+const ordinaryAdminReadOnly: AuthenticatedUser = {
+  ...admin,
+  id: 'ordinary-admin-read-only',
+  username: 'ordinary-admin-read-only',
+  name: '仅有项目读取权限的普通管理员',
+  isSystemAdmin: false,
+  roleCodes: ['admin'],
+  permissionCodes: ['project.read'],
+};
+
+const ordinaryAdminWriter: AuthenticatedUser = {
+  ...ordinaryAdminReadOnly,
+  id: 'ordinary-admin-writer',
+  username: 'ordinary-admin-writer',
+  name: '具有项目写权限的普通管理员',
+  permissionCodes: ['project.read', 'project.write'],
+};
+
+const permissionlessSystemAdmin: AuthenticatedUser = {
+  ...admin,
+  id: 'system-admin-without-permissions',
+  username: 'system-admin-without-permissions',
+  name: '无权限码系统管理员',
+  roleCodes: [],
+  permissionCodes: [],
+};
+
 const baseCommand = {
   expectedVersion: 1,
   idempotencyKey: 'r26-g3a:test:00000001',
@@ -80,6 +107,209 @@ describe('R26MemberAssignmentService security and command gates', () => {
         member,
       ),
     ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('rejects all five member and assignment mutations for an ordinary admin with project.read only before any write or audit', async () => {
+    const tx = {
+      project: {
+        findUnique: vi.fn().mockResolvedValue(project()),
+        updateMany: vi.fn(),
+      },
+      r26CommandRequest: {
+        findUnique: vi.fn(),
+        create: vi.fn(),
+      },
+      projectMember: {
+        findMany: vi.fn(),
+        deleteMany: vi.fn(),
+        updateMany: vi.fn(),
+        upsert: vi.fn(),
+      },
+      projectNodeAssignment: {
+        deleteMany: vi.fn(),
+        upsert: vi.fn(),
+      },
+      workflowTask: {
+        findFirst: vi.fn(),
+        findMany: vi.fn(),
+        update: vi.fn(),
+      },
+      user: {
+        findFirst: vi.fn(),
+      },
+    };
+    const prisma = {
+      r26CommandRequest: {
+        findUnique: vi.fn().mockResolvedValue(null),
+      },
+      $transaction: vi.fn(
+        async (callback: (client: typeof tx) => Promise<unknown>) =>
+          callback(tx),
+      ),
+    };
+    const activityLogs = {
+      createWithExecutor: vi.fn(),
+    };
+    const service = new R26MemberAssignmentService(
+      prisma as never,
+      activityLogs as never,
+    );
+
+    const attempts = [
+      () =>
+        service.addMember(
+          'project-1',
+          { ...baseCommand, idempotencyKey: 'r26-permission:add' },
+          ordinaryAdminReadOnly,
+          'request-add',
+        ),
+      () =>
+        service.updateMember(
+          'project-1',
+          baseCommand.userId,
+          { ...baseCommand, idempotencyKey: 'r26-permission:update' },
+          ordinaryAdminReadOnly,
+          'request-update',
+        ),
+      () =>
+        service.removeMember(
+          'project-1',
+          baseCommand.userId,
+          {
+            expectedVersion: 1,
+            idempotencyKey: 'r26-permission:remove',
+            reason: '权限负向测试',
+          },
+          ordinaryAdminReadOnly,
+          'request-remove',
+        ),
+      () =>
+        service.applyAssignments(
+          'project-1',
+          {
+            expectedVersion: 1,
+            idempotencyKey: 'r26-permission:apply',
+            scope: 'FUTURE_ONLY',
+          },
+          ordinaryAdminReadOnly,
+          'request-apply',
+        ),
+      () =>
+        service.transferTask(
+          'project-1',
+          'task-1',
+          {
+            expectedVersion: 1,
+            idempotencyKey: 'r26-permission:transfer',
+            newOwnerUserId: 'user-3',
+          },
+          ordinaryAdminReadOnly,
+          'request-transfer',
+        ),
+    ];
+
+    for (const attempt of attempts) {
+      await expect(attempt()).rejects.toBeInstanceOf(ForbiddenException);
+    }
+
+    expect(tx.project.updateMany).not.toHaveBeenCalled();
+    expect(tx.r26CommandRequest.create).not.toHaveBeenCalled();
+    expect(tx.projectMember.deleteMany).not.toHaveBeenCalled();
+    expect(tx.projectMember.updateMany).not.toHaveBeenCalled();
+    expect(tx.projectMember.upsert).not.toHaveBeenCalled();
+    expect(tx.projectNodeAssignment.deleteMany).not.toHaveBeenCalled();
+    expect(tx.projectNodeAssignment.upsert).not.toHaveBeenCalled();
+    expect(tx.workflowTask.update).not.toHaveBeenCalled();
+    expect(activityLogs.createWithExecutor).not.toHaveBeenCalled();
+  });
+
+  it('allows an ordinary admin with project.write to manage any project', async () => {
+    const prisma = {
+      project: {
+        findUnique: vi.fn().mockResolvedValue(project()),
+      },
+    };
+    const service = new R26MemberAssignmentService(
+      prisma as never,
+      {} as never,
+    );
+
+    await expect(
+      (
+        service as unknown as {
+          assertCanManage(
+            db: typeof prisma,
+            projectId: string,
+            actor: AuthenticatedUser,
+          ): Promise<unknown>;
+        }
+      ).assertCanManage(prisma, 'project-1', ordinaryAdminWriter),
+    ).resolves.toMatchObject({ id: 'project-1' });
+  });
+
+  it('keeps the system-administrator bypass independent from permission codes', async () => {
+    const prisma = {
+      project: {
+        findUnique: vi.fn().mockResolvedValue(project()),
+      },
+    };
+    const service = new R26MemberAssignmentService(
+      prisma as never,
+      {} as never,
+    );
+
+    await expect(
+      (
+        service as unknown as {
+          assertCanManage(
+            db: typeof prisma,
+            projectId: string,
+            actor: AuthenticatedUser,
+          ): Promise<unknown>;
+        }
+      ).assertCanManage(prisma, 'project-1', permissionlessSystemAdmin),
+    ).resolves.toMatchObject({ id: 'project-1' });
+  });
+
+  it('requires both the project-manager role and project.write for a project owner', async () => {
+    const prisma = {
+      project: {
+        findUnique: vi.fn().mockResolvedValue({
+          ...project(),
+          ownerUserId: 'owner-1',
+        }),
+      },
+    };
+    const service = new R26MemberAssignmentService(
+      prisma as never,
+      {} as never,
+    );
+    const ownerWithoutWrite: AuthenticatedUser = {
+      ...member,
+      id: 'owner-1',
+      roleCodes: ['project_manager'],
+      permissionCodes: ['project.read'],
+    };
+    const ownerWithWrite: AuthenticatedUser = {
+      ...ownerWithoutWrite,
+      permissionCodes: ['project.read', 'project.write'],
+    };
+    const assertCanManage = (
+      service as unknown as {
+        assertCanManage(
+          db: typeof prisma,
+          projectId: string,
+          actor: AuthenticatedUser,
+        ): Promise<unknown>;
+      }
+    ).assertCanManage.bind(service);
+
+    await expect(
+      assertCanManage(prisma, 'project-1', ownerWithoutWrite),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(
+      assertCanManage(prisma, 'project-1', ownerWithWrite),
+    ).resolves.toMatchObject({ id: 'project-1' });
   });
 
   it('returns a saved idempotent result without executing a second transaction', async () => {
