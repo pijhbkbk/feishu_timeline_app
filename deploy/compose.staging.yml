@@ -22,6 +22,10 @@ x-api-runtime: &api-runtime
   OBJECT_STORAGE_BUCKET: ${OBJECT_STORAGE_BUCKET:-feishu-timeline-staging}
   OBJECT_STORAGE_ACCESS_KEY: ${OBJECT_STORAGE_ACCESS_KEY:-}
   OBJECT_STORAGE_SECRET_KEY: ${OBJECT_STORAGE_SECRET_KEY:-}
+  MALWARE_SCANNER_PROVIDER: ${MALWARE_SCANNER_PROVIDER:?Set MALWARE_SCANNER_PROVIDER=clamav in the staging environment file}
+  CLAMAV_HOST: ${CLAMAV_HOST:?Set CLAMAV_HOST to the approved scanner endpoint}
+  CLAMAV_PORT: ${CLAMAV_PORT:?Set CLAMAV_PORT in the staging environment file}
+  CLAMAV_TIMEOUT_MS: ${CLAMAV_TIMEOUT_MS:?Set CLAMAV_TIMEOUT_MS in the staging environment file}
   FEISHU_APP_ID: ${FEISHU_APP_ID:-}
   FEISHU_APP_SECRET: ${FEISHU_APP_SECRET:-}
   FEISHU_REDIRECT_URI: ${FEISHU_REDIRECT_URI:-http://localhost:8080/login/callback}
@@ -72,6 +76,7 @@ services:
     build:
       context: ..
       dockerfile: apps/api/Dockerfile
+      target: runtime
     container_name: ${COMPOSE_PROJECT_NAME:-feishu-timeline-staging}-api
     environment: *api-runtime
     depends_on:
@@ -96,21 +101,29 @@ services:
       retries: 10
 
   api-migrate:
-    image: ${API_IMAGE_REPO:-feishu-timeline-api}:${IMAGE_TAG:-local}
+    image: ${API_OPS_IMAGE_REPO:-feishu-timeline-api-ops}:${IMAGE_TAG:-local}
+    build:
+      context: ..
+      dockerfile: apps/api/Dockerfile
+      target: ops
     profiles: ["ops"]
-    working_dir: /app/apps/api
+    working_dir: /app
     environment: *api-runtime
     depends_on:
       postgres:
         condition: service_healthy
     volumes:
       - object-storage:/app/var/object-storage
-    command: ["sh", "-c", "exec /app/apps/api/node_modules/.bin/prisma migrate deploy --schema prisma/schema.prisma"]
+    command: ["/app/node_modules/.bin/prisma", "migrate", "deploy", "--schema", "prisma/schema.prisma"]
 
   api-seed:
-    image: ${API_IMAGE_REPO:-feishu-timeline-api}:${IMAGE_TAG:-local}
+    image: ${API_OPS_IMAGE_REPO:-feishu-timeline-api-ops}:${IMAGE_TAG:-local}
+    build:
+      context: ..
+      dockerfile: apps/api/Dockerfile
+      target: ops
     profiles: ["ops"]
-    working_dir: /app/apps/api
+    working_dir: /app
     environment: *api-runtime
     depends_on:
       postgres:
@@ -119,13 +132,14 @@ services:
         condition: service_healthy
     volumes:
       - object-storage:/app/var/object-storage
-    command: ["sh", "-c", "exec /app/apps/api/node_modules/.bin/tsx prisma/seed.ts"]
+    command: ["/app/node_modules/.bin/tsx", "prisma/seed.ts"]
 
   web:
     image: ${WEB_IMAGE_REPO:-feishu-timeline-web}:${IMAGE_TAG:-local}
     build:
       context: ..
       dockerfile: apps/web/Dockerfile
+      target: runtime
       args:
         NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-轻卡新颜色开发项目管理系统}
         NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-/api}

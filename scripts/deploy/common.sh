@@ -22,6 +22,32 @@ require_command() {
   command -v "$1" >/dev/null 2>&1 || fail "Missing required command: $1"
 }
 
+validate_digest_pinned_image() {
+  local label="$1"
+  local image="$2"
+  local reference
+  local digest
+
+  if [ -z "$image" ] \
+    || [ "${#image}" -gt 335 ] \
+    || [[ ! "$image" =~ ^([^@]+)@sha256:([a-f0-9]{64})$ ]]; then
+    fail "$label must be an image reference pinned as image@sha256:<64 lowercase hex characters>."
+  fi
+
+  reference="${BASH_REMATCH[1]}"
+  digest="${BASH_REMATCH[2]}"
+  if [ "${#reference}" -gt 255 ] \
+    || { [ "${#reference}" -gt 1 ] \
+      && [[ ! "$reference" =~ ^[A-Za-z0-9][A-Za-z0-9._/:_-]*[A-Za-z0-9]$ ]]; } \
+    || [[ ! "$reference" =~ ^[A-Za-z0-9._/:_-]+$ ]] \
+    || [[ "$reference" == *..* ]] \
+    || [[ "$reference" == *//* ]] \
+    || [[ "$reference" == *::* ]] \
+    || [[ ! "$digest" =~ ^[a-f0-9]{64}$ ]]; then
+    fail "$label contains an invalid digest-pinned image reference."
+  fi
+}
+
 ensure_compose_env_file() {
   mkdir -p "$(dirname "$COMPOSE_ENV_FILE")"
 
@@ -41,6 +67,11 @@ ensure_compose_env_file() {
 }
 
 validate_staging_security_env() {
+  local database_prefix
+  local scanner_host
+
+  [[ "${DEPLOYMENT_ENV:-}" == "staging" ]] \
+    || fail "DEPLOYMENT_ENV must be staging for staging deployment."
   [[ "${AUTH_MOCK_ENABLED:-}" == "false" ]] \
     || fail "AUTH_MOCK_ENABLED must be false for staging deployment."
   [[ "${NEXT_PUBLIC_ENABLE_MOCK_LOGIN:-}" == "false" ]] \
@@ -50,8 +81,9 @@ validate_staging_security_env() {
     || fail "POSTGRES_PASSWORD must be at least 20 URL-safe characters."
   [[ "$POSTGRES_PASSWORD" != replace-* && "$POSTGRES_PASSWORD" != "postgres" ]] \
     || fail "POSTGRES_PASSWORD still uses a template/default value."
-  [[ "${DATABASE_URL:-}" != *"postgres:postgres@"* ]] \
-    || fail "DATABASE_URL still contains the default PostgreSQL credential."
+  database_prefix="postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/"
+  [[ "${DATABASE_URL:-}" == "$database_prefix"* ]] \
+    || fail "DATABASE_URL must authenticate to the staging PostgreSQL service with the configured credentials."
 
   [[ "${REDIS_PASSWORD:-}" =~ ^[A-Za-z0-9_-]{20,}$ ]] \
     || fail "REDIS_PASSWORD must be at least 20 URL-safe characters."
@@ -59,6 +91,29 @@ validate_staging_security_env() {
     || fail "REDIS_PASSWORD still uses a template value."
   [[ "${REDIS_URL:-}" == "redis://:${REDIS_PASSWORD}@redis:6379" ]] \
     || fail "REDIS_URL must authenticate with REDIS_PASSWORD on the staging Redis service."
+
+  [[ "${MALWARE_SCANNER_PROVIDER:-}" == "clamav" ]] \
+    || fail "MALWARE_SCANNER_PROVIDER must be clamav for staging deployment."
+  scanner_host="${CLAMAV_HOST:-}"
+  if [ "${#scanner_host}" -gt 253 ] \
+    || [[ ! "$scanner_host" =~ ^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$ ]] \
+    || [[ "$scanner_host" == *..* ]] \
+    || [[ "$scanner_host" == "localhost" ]] \
+    || [[ "$scanner_host" == 127.* ]] \
+    || [[ "$scanner_host" == *.localhost ]] \
+    || [[ "$scanner_host" == replace-* ]] \
+    || [[ "$scanner_host" == *placeholder* ]]; then
+    fail "CLAMAV_HOST must be an approved non-placeholder scanner hostname."
+  fi
+  if [[ ! "${CLAMAV_PORT:-}" =~ ^[1-9][0-9]*$ ]] \
+    || [ "$CLAMAV_PORT" -gt 65535 ]; then
+    fail "CLAMAV_PORT must be an integer from 1 through 65535."
+  fi
+  if [[ ! "${CLAMAV_TIMEOUT_MS:-}" =~ ^[1-9][0-9]*$ ]] \
+    || [ "$CLAMAV_TIMEOUT_MS" -lt 1000 ] \
+    || [ "$CLAMAV_TIMEOUT_MS" -gt 60000 ]; then
+    fail "CLAMAV_TIMEOUT_MS must be an integer from 1000 through 60000."
+  fi
 
   if [[ -n "${FEISHU_APP_ID:-}${FEISHU_APP_SECRET:-}" ]]; then
     [[ -n "${FEISHU_APP_ID:-}" && -n "${FEISHU_APP_SECRET:-}" ]] \

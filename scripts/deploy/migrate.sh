@@ -12,6 +12,8 @@ require_command docker
 load_compose_env
 load_release_state_if_present
 
+API_OPS_IMAGE_REPO="${API_OPS_IMAGE_REPO:-feishu-timeline-api-ops}"
+export API_OPS_IMAGE_REPO
+
 log "Running Prisma migrate deploy"
 compose run --rm api-migrate
-

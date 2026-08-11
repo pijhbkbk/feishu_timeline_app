@@ -25,12 +25,17 @@ if [[ -n "$worktree_status" ]]; then
 fi
 
 API_IMAGE_REPO="${API_IMAGE_REPO:-feishu-timeline-api}"
+API_OPS_IMAGE_REPO="${API_OPS_IMAGE_REPO:-feishu-timeline-api-ops}"
 WEB_IMAGE_REPO="${WEB_IMAGE_REPO:-feishu-timeline-web}"
 POSTGRES_IMAGE_REPO="${POSTGRES_IMAGE_REPO:-feishu-timeline-postgres}"
-NODE_IMAGE="${NODE_IMAGE:-node:24-alpine}"
+NODE_IMAGE="${NODE_IMAGE:-node:24-alpine@sha256:d32cdf619f63fe0471182d08996dd516c6275bb5fd31ae06e55a570bd9e1ad43}"
 POSTGRES_BASE_IMAGE="${POSTGRES_BASE_IMAGE:-postgres:16-alpine@sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777}"
 REDIS_IMAGE="${REDIS_IMAGE:-redis:7-alpine@sha256:6ab0b6e7381779332f97b8ca76193e45b0756f38d4c0dcda72dbb3c32061ab99}"
 NGINX_IMAGE="${NGINX_IMAGE:-nginx:stable-alpine@sha256:ec664813a30459a8e7176315268a623f6b31abc370eeac51c7de81cd4ec4d451}"
+validate_digest_pinned_image NODE_IMAGE "$NODE_IMAGE"
+validate_digest_pinned_image POSTGRES_BASE_IMAGE "$POSTGRES_BASE_IMAGE"
+validate_digest_pinned_image REDIS_IMAGE "$REDIS_IMAGE"
+validate_digest_pinned_image NGINX_IMAGE "$NGINX_IMAGE"
 IMAGE_TAG="${IMAGE_TAG:-}"
 if [[ -z "$IMAGE_TAG" ]]; then
   IMAGE_TAG="${GIT_SHA:0:12}"
@@ -47,7 +52,8 @@ OCI_VERSION="${OCI_VERSION:-$IMAGE_TAG}"
 [[ "$OCI_VERSION" =~ ^[A-Za-z0-9][A-Za-z0-9._+-]{0,127}$ ]] \
   || fail "OCI_VERSION contains unsupported characters."
 
-export API_IMAGE_REPO WEB_IMAGE_REPO POSTGRES_IMAGE_REPO IMAGE_TAG NODE_IMAGE
+export API_IMAGE_REPO API_OPS_IMAGE_REPO WEB_IMAGE_REPO POSTGRES_IMAGE_REPO
+export IMAGE_TAG NODE_IMAGE
 export POSTGRES_BASE_IMAGE REDIS_IMAGE NGINX_IMAGE
 
 PENDING_STATE="$STATE_DIR/pending.env"
@@ -71,7 +77,14 @@ build_release_image() {
     -t "$image_ref" -f "$dockerfile_path" "$ROOT_DIR"
 }
 
-build_release_image "${API_IMAGE_REPO}:${IMAGE_TAG}" "$ROOT_DIR/apps/api/Dockerfile"
+build_release_image \
+  "${API_IMAGE_REPO}:${IMAGE_TAG}" \
+  "$ROOT_DIR/apps/api/Dockerfile" \
+  --target runtime
+build_release_image \
+  "${API_OPS_IMAGE_REPO}:${IMAGE_TAG}" \
+  "$ROOT_DIR/apps/api/Dockerfile" \
+  --target ops
 build_release_image \
   "${WEB_IMAGE_REPO}:${IMAGE_TAG}" \
   "$ROOT_DIR/apps/web/Dockerfile" \
@@ -97,12 +110,14 @@ docker build --pull \
 log "Scanning the exact application and infrastructure images"
 "$ROOT_DIR/scripts/security/scan-production-images.sh" \
   "${API_IMAGE_REPO}:${IMAGE_TAG}" \
+  "${API_OPS_IMAGE_REPO}:${IMAGE_TAG}" \
   "${WEB_IMAGE_REPO}:${IMAGE_TAG}" \
   "${POSTGRES_IMAGE_REPO}:${IMAGE_TAG}" \
   "$REDIS_IMAGE" \
   "$NGINX_IMAGE"
 
 API_IMAGE_ID="$(docker image inspect --format '{{.Id}}' "${API_IMAGE_REPO}:${IMAGE_TAG}")"
+API_OPS_IMAGE_ID="$(docker image inspect --format '{{.Id}}' "${API_OPS_IMAGE_REPO}:${IMAGE_TAG}")"
 WEB_IMAGE_ID="$(docker image inspect --format '{{.Id}}' "${WEB_IMAGE_REPO}:${IMAGE_TAG}")"
 POSTGRES_IMAGE_ID="$(docker image inspect --format '{{.Id}}' "${POSTGRES_IMAGE_REPO}:${IMAGE_TAG}")"
 REDIS_IMAGE_ID="$(docker image inspect --format '{{.Id}}' "$REDIS_IMAGE")"
@@ -110,6 +125,7 @@ NGINX_IMAGE_ID="$(docker image inspect --format '{{.Id}}' "$NGINX_IMAGE")"
 
 cat >"$PENDING_STATE" <<EOF
 API_IMAGE_REPO=${API_IMAGE_REPO}
+API_OPS_IMAGE_REPO=${API_OPS_IMAGE_REPO}
 WEB_IMAGE_REPO=${WEB_IMAGE_REPO}
 POSTGRES_IMAGE_REPO=${POSTGRES_IMAGE_REPO}
 IMAGE_TAG=${IMAGE_TAG}
@@ -120,6 +136,7 @@ OCI_CREATED=${OCI_CREATED}
 OCI_SOURCE=${OCI_SOURCE}
 OCI_VERSION=${OCI_VERSION}
 API_IMAGE_ID=${API_IMAGE_ID}
+API_OPS_IMAGE_ID=${API_OPS_IMAGE_ID}
 WEB_IMAGE_ID=${WEB_IMAGE_ID}
 POSTGRES_IMAGE_ID=${POSTGRES_IMAGE_ID}
 REDIS_IMAGE=${REDIS_IMAGE}

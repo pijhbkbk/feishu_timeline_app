@@ -42,10 +42,15 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   distDir: process.env.NEXT_DIST_DIR ?? '.next',
+  output: 'standalone',
   devIndicators: false,
   poweredByHeader: false,
   reactStrictMode: true,
   outputFileTracingRoot: path.join(currentDir, '../../'),
+  outputFileTracingExcludes: {
+    'next-server': ['**/node_modules/typescript/**/*'],
+    '*': ['../../node_modules/typescript/**/*'],
+  },
   eslint: {
     ignoreDuringBuilds: true,
   },
