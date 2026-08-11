@@ -2,7 +2,7 @@ import 'reflect-metadata';
 
 import { describe, expect, it } from 'vitest';
 
-import { ROLE_METADATA_KEY } from '../auth/auth.constants';
+import { PERMISSION_METADATA_KEY, ROLE_METADATA_KEY } from '../auth/auth.constants';
 import { ProductionPlansController } from './production-plans.controller';
 
 describe('ProductionPlansController RBAC metadata', () => {
@@ -24,5 +24,24 @@ describe('ProductionPlansController RBAC metadata', () => {
       'project_manager',
       'process_engineer',
     ]);
+  });
+
+  it('requires project read or workflow transition permission on every endpoint', () => {
+    const prototype = ProductionPlansController.prototype;
+
+    expect(Reflect.getMetadata(PERMISSION_METADATA_KEY, prototype.getScheduleWorkspace)).toEqual([
+      'project.read',
+    ]);
+    for (const handler of [
+      prototype.createSchedulePlan,
+      prototype.updateSchedulePlan,
+      prototype.confirmSchedulePlan,
+      prototype.cancelSchedulePlan,
+      prototype.completeScheduleTask,
+    ]) {
+      expect(Reflect.getMetadata(PERMISSION_METADATA_KEY, handler)).toEqual([
+        'workflow.transition',
+      ]);
+    }
   });
 });

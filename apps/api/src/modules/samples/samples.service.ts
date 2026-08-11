@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
+  AttachmentScanStatus,
   AttachmentTargetType,
   AuditTargetType,
   SampleConfirmationDecision,
@@ -18,6 +19,7 @@ import { PrismaService } from '../../infra/prisma/prisma.service';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import { AttachmentsService } from '../attachments/attachments.service';
 import type { AuthenticatedUser } from '../auth/auth.types';
+import { ProjectAccessService } from '../auth/project-access.service';
 import {
   getAllowedWorkflowActions,
   getCurrentNodeName,
@@ -77,13 +79,20 @@ export class SamplesService {
     private readonly activityLogsService: ActivityLogsService,
     private readonly attachmentsService: AttachmentsService,
     private readonly workflowsService: WorkflowsService,
+    private readonly projectAccessService: ProjectAccessService,
   ) {}
 
-  getWorkspace(projectId: string) {
+  async getWorkspace(projectId: string, actor: AuthenticatedUser) {
+    await this.assertProjectAccess(projectId, actor, 'project.read');
     return this.buildWorkspace(this.prisma, projectId);
   }
 
-  getSampleDetail(projectId: string, sampleId: string) {
+  async getSampleDetail(
+    projectId: string,
+    sampleId: string,
+    actor: AuthenticatedUser,
+  ) {
+    await this.assertProjectAccess(projectId, actor, 'project.read');
     return this.buildSampleDetail(this.prisma, projectId, sampleId);
   }
 
@@ -92,6 +101,7 @@ export class SamplesService {
     rawInput: unknown,
     actor: AuthenticatedUser,
   ) {
+    await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     const input = this.parseSampleWriteInput(rawInput);
 
     return this.prisma.$transaction(async (tx) => {
@@ -164,6 +174,7 @@ export class SamplesService {
     rawInput: unknown,
     actor: AuthenticatedUser,
   ) {
+    await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     const input = this.parseSampleUpdateInput(rawInput);
 
     return this.prisma.$transaction(async (tx) => {
@@ -209,6 +220,7 @@ export class SamplesService {
     file: UploadedBinaryFile | undefined,
     actor: AuthenticatedUser,
   ) {
+    await this.assertProjectAccess(projectId, actor, 'attachment.manage');
     const sample = await this.getSampleOrThrow(this.prisma, projectId, sampleId);
 
     if (!file) {
@@ -240,6 +252,7 @@ export class SamplesService {
     rawInput: unknown,
     actor: AuthenticatedUser,
   ) {
+    await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     const input = this.parseConfirmationInput(rawInput);
 
     return this.prisma.$transaction(async (tx) => {
@@ -338,6 +351,18 @@ export class SamplesService {
     });
   }
 
+  private assertProjectAccess(
+    projectId: string,
+    actor: AuthenticatedUser,
+    requiredPermission: string,
+  ) {
+    return this.projectAccessService.assertProjectAccessWithDefaultClient(
+      projectId,
+      actor,
+      requiredPermission,
+    );
+  }
+
   private async buildWorkspace(db: SamplesDbClient, projectId: string) {
     const project = await this.getProjectOrThrow(db, projectId);
     const activeTask = await this.getActiveConfirmationTask(db, projectId);
@@ -366,6 +391,7 @@ export class SamplesService {
               in: currentSamples.map((sample) => sample.id),
             },
             isDeleted: false,
+            scanStatus: AttachmentScanStatus.CLEAN,
           },
           orderBy: {
             createdAt: 'desc',
@@ -495,6 +521,7 @@ export class SamplesService {
           in: versions.map((version) => version.id),
         },
         isDeleted: false,
+        scanStatus: AttachmentScanStatus.CLEAN,
       },
     })) {
       attachmentCountByVersion.set(

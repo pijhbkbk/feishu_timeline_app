@@ -227,6 +227,16 @@ describe('R26 administrator control center backend contracts', () => {
     expect(directoryMethod).not.toContain('take:');
   });
 
+  it('counts only CLEAN non-deleted attachments as project materials', () => {
+    const listProjectsMethod = serviceSource.slice(
+      serviceSource.indexOf('async listProjects('),
+      serviceSource.indexOf('async listTasks('),
+    );
+    expect(listProjectsMethod).toMatch(
+      /attachments:\s*\{\s*where:\s*\{\s*isDeleted:\s*false,\s*scanStatus:\s*AttachmentScanStatus\.CLEAN/,
+    );
+  });
+
   it('creates and audits a typed custom department before linking the node assignment', () => {
     expect(dtoSource).toContain('primaryDepartmentName?: string | null');
     expect(serviceSource).toContain("type: 'CREATABLE_REFERENCE'");

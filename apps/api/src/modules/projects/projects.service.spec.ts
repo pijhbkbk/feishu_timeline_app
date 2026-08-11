@@ -2,10 +2,17 @@ import {
   ProjectPriority,
   ProjectStatus,
 } from '@prisma/client';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { ProjectsService } from './projects.service';
+
+const projectsServiceSource = readFileSync(
+  join(__dirname, 'projects.service.ts'),
+  'utf8',
+);
 
 const actor: AuthenticatedUser = {
   id: 'user-manager',
@@ -145,6 +152,21 @@ function createService() {
 }
 
 describe('ProjectsService', () => {
+  it('counts only CLEAN non-deleted direct review attachments in the project timeline', () => {
+    const timelineSource = projectsServiceSource.slice(
+      projectsServiceSource.indexOf('async getProjectTimeline('),
+      projectsServiceSource.indexOf('async getProjectFlowMap('),
+    );
+
+    expect(timelineSource).toMatch(
+      /attachment:\s*\{\s*select:\s*\{\s*scanStatus:\s*true,\s*isDeleted:\s*true/,
+    );
+    expect(timelineSource).toContain(
+      'review.attachment?.scanStatus !== AttachmentScanStatus.CLEAN',
+    );
+    expect(timelineSource).toContain('review.attachment.isDeleted');
+  });
+
   it('creates project and initializes workflow instance', async () => {
     const { service, tx, workflowsService, activityLogsService } = createService();
     const projectRecord = createProjectRecord();

@@ -14,6 +14,7 @@ import {
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import type { AuthenticatedUser } from '../auth/auth.types';
+import { ProjectAccessService } from '../auth/project-access.service';
 import {
   getAllowedWorkflowActions,
   getCurrentNodeName,
@@ -64,9 +65,11 @@ export class DevelopmentReportsService {
     private readonly prisma: PrismaService,
     private readonly workflowsService: WorkflowsService,
     private readonly activityLogsService: ActivityLogsService,
+    private readonly projectAccessService: ProjectAccessService,
   ) {}
 
-  getWorkspace(projectId: string, actor: AuthenticatedUser) {
+  async getWorkspace(projectId: string, actor: AuthenticatedUser) {
+    await this.assertProjectAccess(projectId, actor, 'project.read');
     return this.buildWorkspaceResponse(this.prisma, projectId, actor);
   }
 
@@ -75,6 +78,7 @@ export class DevelopmentReportsService {
     rawInput: unknown,
     actor: AuthenticatedUser,
   ) {
+    await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     const input = this.parseWriteInput(rawInput);
 
     return this.prisma.$transaction(async (tx) => {
@@ -121,6 +125,7 @@ export class DevelopmentReportsService {
     rawInput: unknown,
     actor: AuthenticatedUser,
   ) {
+    await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     const input = this.parseWriteInput(rawInput);
 
     return this.prisma.$transaction(async (tx) => {
@@ -175,6 +180,18 @@ export class DevelopmentReportsService {
 
       return this.buildWorkspaceResponse(tx, projectId, actor);
     });
+  }
+
+  private assertProjectAccess(
+    projectId: string,
+    actor: AuthenticatedUser,
+    requiredPermission: string,
+  ) {
+    return this.projectAccessService.assertProjectAccessWithDefaultClient(
+      projectId,
+      actor,
+      requiredPermission,
+    );
   }
 
   private async buildWorkspaceResponse(

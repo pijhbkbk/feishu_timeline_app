@@ -8,6 +8,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
+  AttachmentScanStatus,
   AttachmentTargetType,
   AuditTargetType,
   Prisma,
@@ -129,6 +130,12 @@ export class AdminControlCenterService {
                         numberedById: { not: null },
                         numberedAt: { not: null },
                         numberingAttachmentId: { not: null },
+                        numberingAttachment: {
+                          is: {
+                            isDeleted: false,
+                            scanStatus: AttachmentScanStatus.CLEAN,
+                          },
+                        },
                       },
                     ],
                   },
@@ -161,6 +168,9 @@ export class AdminControlCenterService {
               numberedById: true,
               numberedAt: true,
               numberingAttachmentId: true,
+              numberingAttachment: {
+                select: { scanStatus: true, isDeleted: true },
+              },
             },
           },
           workflowTasks: {
@@ -180,7 +190,12 @@ export class AdminControlCenterService {
           _count: {
             select: {
               members: true,
-              attachments: true,
+              attachments: {
+                where: {
+                  isDeleted: false,
+                  scanStatus: AttachmentScanStatus.CLEAN,
+                },
+              },
               workflowTasks: true,
             },
           },
@@ -300,6 +315,9 @@ export class AdminControlCenterService {
                   numberedById: true,
                   numberedAt: true,
                   numberingAttachmentId: true,
+                  numberingAttachment: {
+                    select: { scanStatus: true, isDeleted: true },
+                  },
                 },
               },
             },
@@ -345,6 +363,7 @@ export class AdminControlCenterService {
               entityType: AttachmentTargetType.WORKFLOW_TASK,
               entityId: { in: taskIds },
               isDeleted: false,
+              scanStatus: AttachmentScanStatus.CLEAN,
             },
             _count: { _all: true },
           })
@@ -2834,6 +2853,7 @@ export class AdminControlCenterService {
           where: {
             entityType: AttachmentTargetType.WORKFLOW_TASK,
             isDeleted: false,
+            scanStatus: AttachmentScanStatus.CLEAN,
           },
           distinct: ['entityId'],
           select: { entityId: true },

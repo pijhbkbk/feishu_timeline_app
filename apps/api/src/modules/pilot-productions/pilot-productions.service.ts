@@ -20,6 +20,7 @@ import { randomUUID } from 'node:crypto';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import type { AuthenticatedUser } from '../auth/auth.types';
+import { ProjectAccessService } from '../auth/project-access.service';
 import {
   getAllowedWorkflowActions,
   getCurrentNodeName,
@@ -96,17 +97,25 @@ export class PilotProductionsService {
     private readonly prisma: PrismaService,
     private readonly activityLogsService: ActivityLogsService,
     private readonly workflowsService: WorkflowsService,
+    private readonly projectAccessService: ProjectAccessService,
   ) {}
 
-  getFirstProductionPlanWorkspace(projectId: string) {
+  async getFirstProductionPlanWorkspace(projectId: string, actor: AuthenticatedUser) {
+    await this.assertProjectAccess(projectId, actor, 'project.read');
     return this.buildFirstProductionPlanWorkspace(this.prisma, projectId);
   }
 
-  getTrialProductionWorkspace(projectId: string) {
+  async getTrialProductionWorkspace(projectId: string, actor: AuthenticatedUser) {
+    await this.assertProjectAccess(projectId, actor, 'project.read');
     return this.buildTrialProductionWorkspace(this.prisma, projectId);
   }
 
-  async getTrialProductionDetail(projectId: string, trialId: string) {
+  async getTrialProductionDetail(
+    projectId: string,
+    trialId: string,
+    actor: AuthenticatedUser,
+  ) {
+    await this.assertProjectAccess(projectId, actor, 'project.read');
     const trial = await this.getTrialProductionOrThrow(this.prisma, projectId, trialId);
     return this.toTrialProductionSummary(trial);
   }
@@ -116,6 +125,7 @@ export class PilotProductionsService {
     rawInput: unknown,
     actor: AuthenticatedUser,
   ) {
+    await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     this.assertActorCanManage(actor);
     const input = this.parseFirstProductionPlanWriteInput(rawInput);
 
@@ -163,6 +173,7 @@ export class PilotProductionsService {
     rawInput: unknown,
     actor: AuthenticatedUser,
   ) {
+    await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     this.assertActorCanManage(actor);
     const input = this.parseFirstProductionPlanWriteInput(rawInput);
 
@@ -212,6 +223,7 @@ export class PilotProductionsService {
     planId: string,
     actor: AuthenticatedUser,
   ) {
+    await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     this.assertActorCanManage(actor);
 
     await this.prisma.$transaction(async (tx) => {
@@ -253,6 +265,7 @@ export class PilotProductionsService {
     projectId: string,
     actor: AuthenticatedUser,
   ) {
+    await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     this.assertActorCanManage(actor);
 
     await this.prisma.$transaction(async (tx) => {
@@ -318,6 +331,7 @@ export class PilotProductionsService {
     rawInput: unknown,
     actor: AuthenticatedUser,
   ) {
+    await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     this.assertActorCanManage(actor);
     const input = this.parseTrialProductionWriteInput(rawInput);
 
@@ -364,6 +378,7 @@ export class PilotProductionsService {
     rawInput: unknown,
     actor: AuthenticatedUser,
   ) {
+    await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     this.assertActorCanManage(actor);
     const input = this.parseTrialProductionWriteInput(rawInput);
 
@@ -422,6 +437,7 @@ export class PilotProductionsService {
     rawInput: unknown,
     actor: AuthenticatedUser,
   ) {
+    await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     this.assertActorCanManage(actor);
     const input = this.parseTrialIssueWriteInput(rawInput);
 
@@ -469,6 +485,7 @@ export class PilotProductionsService {
     trialId: string,
     actor: AuthenticatedUser,
   ) {
+    await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     this.assertActorCanManage(actor);
 
     await this.prisma.$transaction(async (tx) => {
@@ -523,6 +540,7 @@ export class PilotProductionsService {
     projectId: string,
     actor: AuthenticatedUser,
   ) {
+    await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     this.assertActorCanManage(actor);
 
     await this.prisma.$transaction(async (tx) => {
@@ -568,6 +586,18 @@ export class PilotProductionsService {
     });
 
     return this.buildTrialProductionWorkspace(this.prisma, projectId);
+  }
+
+  private assertProjectAccess(
+    projectId: string,
+    actor: AuthenticatedUser,
+    requiredPermission: string,
+  ) {
+    return this.projectAccessService.assertProjectAccessWithDefaultClient(
+      projectId,
+      actor,
+      requiredPermission,
+    );
   }
 
   private async buildFirstProductionPlanWorkspace(

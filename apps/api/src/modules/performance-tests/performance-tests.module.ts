@@ -2,12 +2,13 @@ import { Module } from '@nestjs/common';
 
 import { ActivityLogsModule } from '../activity-logs/activity-logs.module';
 import { AttachmentsModule } from '../attachments/attachments.module';
+import { AuthModule } from '../auth/auth.module';
 import { WorkflowsModule } from '../workflows/workflows.module';
 import { PerformanceTestsController } from './performance-tests.controller';
 import { PerformanceTestsService } from './performance-tests.service';
 
 @Module({
-  imports: [ActivityLogsModule, AttachmentsModule, WorkflowsModule],
+  imports: [ActivityLogsModule, AttachmentsModule, AuthModule, WorkflowsModule],
   controllers: [PerformanceTestsController],
   providers: [PerformanceTestsService],
   exports: [PerformanceTestsService],

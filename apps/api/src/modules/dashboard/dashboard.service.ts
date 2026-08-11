@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import {
+  AttachmentScanStatus,
   AttachmentTargetType,
   ColorStatus,
   ProjectPriority,
@@ -176,6 +177,7 @@ export class DashboardService {
               entityType: AttachmentTargetType.WORKFLOW_TASK,
               entityId: { in: taskIds },
               isDeleted: false,
+              scanStatus: AttachmentScanStatus.CLEAN,
             },
             _count: { _all: true },
           }),
@@ -448,6 +450,9 @@ export class DashboardService {
             numberedById: true,
             numberedAt: true,
             numberingAttachmentId: true,
+            numberingAttachment: {
+              select: { scanStatus: true, isDeleted: true },
+            },
           },
           orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
         },
@@ -894,6 +899,9 @@ export class DashboardService {
             numberedById: true;
             numberedAt: true;
             numberingAttachmentId: true;
+            numberingAttachment: {
+              select: { scanStatus: true; isDeleted: true };
+            };
           };
         };
         workflowTasks: {

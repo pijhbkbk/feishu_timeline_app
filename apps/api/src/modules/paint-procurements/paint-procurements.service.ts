@@ -14,6 +14,7 @@ import {
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import type { AuthenticatedUser } from '../auth/auth.types';
+import { ProjectAccessService } from '../auth/project-access.service';
 import {
   getAllowedWorkflowActions,
   getCurrentNodeName,
@@ -64,9 +65,11 @@ export class PaintProcurementsService {
     private readonly prisma: PrismaService,
     private readonly activityLogsService: ActivityLogsService,
     private readonly workflowsService: WorkflowsService,
+    private readonly projectAccessService: ProjectAccessService,
   ) {}
 
-  getWorkspace(projectId: string) {
+  async getWorkspace(projectId: string, actor: AuthenticatedUser) {
+    await this.assertProjectAccess(projectId, actor, 'project.read');
     return this.buildWorkspace(this.prisma, projectId);
   }
 
@@ -75,6 +78,7 @@ export class PaintProcurementsService {
     rawInput: unknown,
     actor: AuthenticatedUser,
   ) {
+    await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     this.assertActorCanManage(actor);
     const input = this.parseCreateInput(rawInput);
 
@@ -124,6 +128,7 @@ export class PaintProcurementsService {
     rawInput: unknown,
     actor: AuthenticatedUser,
   ) {
+    await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     this.assertActorCanManage(actor);
     const input = this.parseUpdateInput(rawInput);
 
@@ -190,6 +195,7 @@ export class PaintProcurementsService {
     procurementId: string,
     actor: AuthenticatedUser,
   ) {
+    await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     return this.transitionProcurementStatus(
       projectId,
       procurementId,
@@ -205,6 +211,7 @@ export class PaintProcurementsService {
     procurementId: string,
     actor: AuthenticatedUser,
   ) {
+    await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     return this.transitionProcurementStatus(
       projectId,
       procurementId,
@@ -220,6 +227,7 @@ export class PaintProcurementsService {
     procurementId: string,
     actor: AuthenticatedUser,
   ) {
+    await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     return this.transitionProcurementStatus(
       projectId,
       procurementId,
@@ -231,6 +239,7 @@ export class PaintProcurementsService {
   }
 
   async completeTask(projectId: string, actor: AuthenticatedUser) {
+    await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     this.assertActorCanManage(actor);
 
     await this.prisma.$transaction(async (tx) => {
@@ -279,6 +288,18 @@ export class PaintProcurementsService {
     });
 
     return this.buildWorkspace(this.prisma, projectId);
+  }
+
+  private assertProjectAccess(
+    projectId: string,
+    actor: AuthenticatedUser,
+    requiredPermission: 'project.read' | 'workflow.transition',
+  ) {
+    return this.projectAccessService.assertProjectAccessWithDefaultClient(
+      projectId,
+      actor,
+      requiredPermission,
+    );
   }
 
   private async transitionProcurementStatus(

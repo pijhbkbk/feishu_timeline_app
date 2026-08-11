@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { join, resolve } from 'node:path';
+import { mkdir, readFile, rename, unlink, writeFile } from 'node:fs/promises';
+import { dirname, isAbsolute, relative, resolve } from 'node:path';
 
 export type ObjectStorageUploadInput = {
   bucket: string;
@@ -14,8 +14,16 @@ export type ObjectStorageDownloadInput = {
   storageKey: string;
 };
 
+export type ObjectStoragePromoteInput = {
+  bucket: string;
+  sourceStorageKey: string;
+  destinationStorageKey: string;
+};
+
 export abstract class ObjectStorageService {
   abstract upload(input: ObjectStorageUploadInput): Promise<void>;
+  abstract promote(input: ObjectStoragePromoteInput): Promise<void>;
+  abstract purge(input: ObjectStorageDownloadInput): Promise<void>;
   abstract download(input: ObjectStorageDownloadInput): Promise<Buffer>;
   abstract markDeleted(input: ObjectStorageDownloadInput): Promise<void>;
 }
@@ -34,10 +42,28 @@ export class LocalFilesystemObjectStorageService extends ObjectStorageService {
 
   async upload(input: ObjectStorageUploadInput) {
     const absolutePath = this.resolveAbsolutePath(input.bucket, input.storageKey);
-    await mkdir(join(this.storageRoot, input.bucket, this.getParentDirectory(input.storageKey)), {
-      recursive: true,
-    });
+    await mkdir(dirname(absolutePath), { recursive: true });
     await writeFile(absolutePath, input.buffer);
+  }
+
+  async promote(input: ObjectStoragePromoteInput) {
+    const sourcePath = this.resolveAbsolutePath(input.bucket, input.sourceStorageKey);
+    const destinationPath = this.resolveAbsolutePath(
+      input.bucket,
+      input.destinationStorageKey,
+    );
+    await mkdir(dirname(destinationPath), { recursive: true });
+    await rename(sourcePath, destinationPath);
+  }
+
+  async purge(input: ObjectStorageDownloadInput) {
+    try {
+      await unlink(this.resolveAbsolutePath(input.bucket, input.storageKey));
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+        throw error;
+      }
+    }
   }
 
   download(input: ObjectStorageDownloadInput) {
@@ -49,11 +75,24 @@ export class LocalFilesystemObjectStorageService extends ObjectStorageService {
   }
 
   private resolveAbsolutePath(bucket: string, storageKey: string) {
-    return join(this.storageRoot, bucket, storageKey);
-  }
+    const bucketRoot = resolve(this.storageRoot, bucket);
+    const bucketRelativePath = relative(this.storageRoot, bucketRoot);
 
-  private getParentDirectory(storageKey: string) {
-    const lastSlashIndex = storageKey.lastIndexOf('/');
-    return lastSlashIndex === -1 ? '' : storageKey.slice(0, lastSlashIndex);
+    if (
+      !bucketRelativePath ||
+      bucketRelativePath.startsWith('..') ||
+      isAbsolute(bucketRelativePath)
+    ) {
+      throw new Error('OBJECT_STORAGE_PATH_OUTSIDE_ROOT');
+    }
+
+    const absolutePath = resolve(bucketRoot, storageKey);
+    const relativePath = relative(bucketRoot, absolutePath);
+
+    if (!relativePath || relativePath.startsWith('..') || isAbsolute(relativePath)) {
+      throw new Error('OBJECT_STORAGE_PATH_OUTSIDE_ROOT');
+    }
+
+    return absolutePath;
   }
 }

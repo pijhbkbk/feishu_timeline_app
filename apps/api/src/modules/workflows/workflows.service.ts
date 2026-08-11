@@ -6,6 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
+  AttachmentScanStatus,
   AttachmentTargetType,
   AuditTargetType,
   ColorExitSuggestion,
@@ -573,6 +574,11 @@ export class WorkflowsService {
             },
             owningDepartment: true,
             colors: {
+              include: {
+                numberingAttachment: {
+                  select: { scanStatus: true, isDeleted: true },
+                },
+              },
               orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
             },
             members: {
@@ -777,6 +783,7 @@ export class WorkflowsService {
       where: {
         projectId: detailedTask.projectId,
         isDeleted: false,
+        scanStatus: AttachmentScanStatus.CLEAN,
         OR: [
           {
             entityType: AttachmentTargetType.WORKFLOW_TASK,
@@ -1145,6 +1152,7 @@ export class WorkflowsService {
           entityType: AttachmentTargetType.WORKFLOW_TASK,
           entityId: task.id,
           isDeleted: false,
+          scanStatus: AttachmentScanStatus.CLEAN,
         },
         select: {
           id: true,
@@ -1731,6 +1739,7 @@ export class WorkflowsService {
         entityType: AttachmentTargetType.WORKFLOW_TASK,
         entityId: task.id,
         isDeleted: false,
+        scanStatus: AttachmentScanStatus.CLEAN,
       },
       select: { fileName: true, materialType: true },
     });

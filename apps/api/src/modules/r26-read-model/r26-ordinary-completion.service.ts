@@ -8,6 +8,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
+  AttachmentScanStatus,
   AttachmentTargetType,
   AuditTargetType,
   Prisma,
@@ -823,6 +824,7 @@ export class R26OrdinaryCompletionService {
           entityType: AttachmentTargetType.WORKFLOW_TASK,
           entityId: task.id,
           isDeleted: false,
+          scanStatus: AttachmentScanStatus.CLEAN,
           OR: [
             { materialType: COLOR_NUMBERING_MATERIAL_ID },
             { materialType: COLOR_NUMBERING_MATERIAL_NAME },

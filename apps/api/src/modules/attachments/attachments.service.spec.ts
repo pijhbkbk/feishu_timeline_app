@@ -1,4 +1,8 @@
-import { AttachmentTargetType, AuditTargetType } from '@prisma/client';
+import {
+  AttachmentScanStatus,
+  AttachmentTargetType,
+  AuditTargetType,
+} from '@prisma/client';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { AuthenticatedUser } from '../auth/auth.types';
@@ -32,6 +36,15 @@ function createAttachmentRecord(overrides: Record<string, unknown> = {}) {
     fileSize: 128,
     checksum: 'abc',
     fileUrl: '/attachments/attachment-1/content',
+    scanStatus: AttachmentScanStatus.CLEAN,
+    scannerEngine: 'test-scanner',
+    scannerVersion: '1.0.0',
+    scannerSignatureVersion: 'test-signatures',
+    scanResultSummary: 'CLEAN',
+    scannedAt: new Date('2026-03-19T10:00:01.000Z'),
+    materialType: null,
+    versionNo: 1,
+    replacesAttachmentId: null,
     uploadedById: 'user-1',
     uploadedAt: new Date('2026-03-19T10:00:00.000Z'),
     isDeleted: false,
@@ -124,6 +137,10 @@ function createService() {
       findFirst: vi.fn(),
       findMany: vi.fn().mockResolvedValue([]),
     },
+    attachment: {
+      findFirst: vi.fn(),
+      findUnique: vi.fn(),
+    },
   };
 
   const configService = {
@@ -143,8 +160,21 @@ function createService() {
 
   const objectStorageService = {
     upload: vi.fn().mockResolvedValue(undefined),
+    promote: vi.fn().mockResolvedValue(undefined),
+    purge: vi.fn().mockResolvedValue(undefined),
     download: vi.fn().mockResolvedValue(Buffer.from('ok')),
     markDeleted: vi.fn().mockResolvedValue(undefined),
+  };
+
+  const malwareScanner = {
+    scan: vi.fn().mockResolvedValue({
+      verdict: 'CLEAN',
+      engine: 'test-scanner',
+      engineVersion: '1.0.0',
+      signatureVersion: 'test-signatures',
+      resultSummary: 'CLEAN',
+      scannedAt: new Date('2026-03-19T10:00:01.000Z'),
+    }),
   };
 
   const projectAccessService = {
@@ -157,6 +187,7 @@ function createService() {
     activityLogsService as never,
     objectStorageService as never,
     projectAccessService as never,
+    malwareScanner as never,
   );
 
   return {
@@ -165,6 +196,7 @@ function createService() {
     tx,
     activityLogsService,
     objectStorageService,
+    malwareScanner,
     projectAccessService,
   };
 }
@@ -179,7 +211,17 @@ describe('AttachmentsService', () => {
       currentNodeCode: null,
       plannedEndDate: null,
     });
-    tx.attachment.create.mockResolvedValue(createAttachmentRecord({ fileUrl: null }));
+    tx.attachment.create.mockResolvedValue(
+      createAttachmentRecord({
+        fileUrl: null,
+        scanStatus: AttachmentScanStatus.PENDING_SCAN,
+        scannerEngine: null,
+        scannerVersion: null,
+        scannerSignatureVersion: null,
+        scanResultSummary: null,
+        scannedAt: null,
+      }),
+    );
     tx.attachment.update.mockResolvedValue(createAttachmentRecord());
 
     const result = await service.createStoredAttachment({
@@ -196,6 +238,26 @@ describe('AttachmentsService', () => {
     });
 
     expect(objectStorageService.upload).toHaveBeenCalled();
+    expect(objectStorageService.promote).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sourceStorageKey: expect.stringContaining('quarantine/'),
+      }),
+    );
+    expect(tx.attachment.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          scanStatus: AttachmentScanStatus.PENDING_SCAN,
+          fileUrl: null,
+        }),
+      }),
+    );
+    expect(tx.attachment.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          scanStatus: AttachmentScanStatus.CLEAN,
+        }),
+      }),
+    );
     expect(activityLogsService.createWithExecutor).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
@@ -205,6 +267,431 @@ describe('AttachmentsService', () => {
     );
     expect(result.projectId).toBe('project-1');
     expect(result.entityType).toBe('PROJECT');
+    expect(result.scanStatus).toBe(AttachmentScanStatus.CLEAN);
+  });
+
+  it('keeps rejected files quarantined and never creates a business reference', async () => {
+    const { service, prisma, tx, malwareScanner, objectStorageService } = createService();
+    prisma.project.findUnique.mockResolvedValue({
+      id: 'project-1',
+      code: 'PRJ-001',
+      name: '示例项目',
+      currentNodeCode: null,
+      plannedEndDate: null,
+    });
+    tx.attachment.create.mockResolvedValue(
+      createAttachmentRecord({
+        fileUrl: null,
+        scanStatus: AttachmentScanStatus.PENDING_SCAN,
+        scannerEngine: null,
+        scannerVersion: null,
+        scannerSignatureVersion: null,
+        scanResultSummary: null,
+        scannedAt: null,
+      }),
+    );
+    tx.attachment.update.mockResolvedValue(
+      createAttachmentRecord({
+        fileUrl: null,
+        scanStatus: AttachmentScanStatus.REJECTED,
+        scanResultSummary: 'MALWARE_FOUND:Eicar-Test-Signature',
+      }),
+    );
+    malwareScanner.scan.mockResolvedValue({
+      verdict: 'REJECTED',
+      engine: 'test-scanner',
+      engineVersion: '1.0.0',
+      signatureVersion: 'test-signatures',
+      resultSummary: 'MALWARE_FOUND:Eicar-Test-Signature',
+      scannedAt: new Date('2026-03-19T10:00:01.000Z'),
+    });
+
+    await expect(
+      service.createStoredAttachment({
+        projectId: 'project-1',
+        targetType: AttachmentTargetType.PROJECT,
+        targetId: 'project-1',
+        uploadedById: actor.id,
+        file: {
+          originalname: 'eicar.pdf',
+          mimetype: 'application/pdf',
+          size: 128,
+          buffer: Buffer.from('%PDF-1.4\nEICAR'),
+        },
+      }),
+    ).rejects.toThrow('附件安全扫描未通过');
+
+    expect(objectStorageService.promote).not.toHaveBeenCalled();
+    expect(objectStorageService.purge).toHaveBeenCalledWith(
+      expect.objectContaining({ storageKey: expect.stringContaining('quarantine/') }),
+    );
+    expect(tx.reviewRecord.update).not.toHaveBeenCalled();
+    expect(tx.performanceTest.update).not.toHaveBeenCalled();
+  });
+
+  it('purges rejected quarantine data even when recording the scan failure is unavailable', async () => {
+    const { service, prisma, tx, malwareScanner, objectStorageService } = createService();
+    const pending = createAttachmentRecord({
+      fileUrl: null,
+      scanStatus: AttachmentScanStatus.PENDING_SCAN,
+      storageKey: 'quarantine/project-1/project/project-1/eicar.pdf',
+    });
+    prisma.project.findUnique.mockResolvedValue({
+      id: 'project-1',
+      code: 'PRJ-001',
+      name: '示例项目',
+      currentNodeCode: null,
+      plannedEndDate: null,
+    });
+    tx.attachment.create.mockResolvedValue(pending);
+    malwareScanner.scan.mockResolvedValue({
+      verdict: 'REJECTED',
+      engine: 'test-scanner',
+      engineVersion: '1.0.0',
+      signatureVersion: 'test-signatures',
+      resultSummary: 'MALWARE_FOUND:Eicar-Test-Signature',
+      scannedAt: new Date('2026-03-19T10:00:01.000Z'),
+    });
+    let transactionCall = 0;
+    prisma.$transaction.mockImplementation(
+      async (executor: (client: typeof tx) => Promise<unknown>) => {
+        transactionCall += 1;
+        if (transactionCall === 2) {
+          throw new Error('scan failure transaction unavailable');
+        }
+        return executor(tx);
+      },
+    );
+
+    await expect(
+      service.createStoredAttachment({
+        projectId: 'project-1',
+        targetType: AttachmentTargetType.PROJECT,
+        targetId: 'project-1',
+        uploadedById: actor.id,
+        file: {
+          originalname: 'eicar.pdf',
+          mimetype: 'application/pdf',
+          size: 128,
+          buffer: Buffer.from('%PDF-1.4\nEICAR'),
+        },
+      }),
+    ).rejects.toThrow('附件安全扫描未通过');
+
+    expect(objectStorageService.purge).toHaveBeenCalledWith(
+      expect.objectContaining({ storageKey: expect.stringContaining('quarantine/') }),
+    );
+    expect(objectStorageService.promote).not.toHaveBeenCalled();
+  });
+
+  it('atomically repoints a direct review reference when replacing its clean attachment', async () => {
+    const { service, prisma, tx } = createService();
+    const replacement = createAttachmentRecord({
+      id: 'attachment-old',
+      entityType: AttachmentTargetType.REVIEW_RECORD,
+      entityId: 'review-1',
+    });
+    const pending = createAttachmentRecord({
+      id: 'attachment-new',
+      entityType: AttachmentTargetType.REVIEW_RECORD,
+      entityId: 'review-1',
+      storageKey: 'quarantine/project-1/review_record/review-1/new.pdf',
+      fileUrl: null,
+      scanStatus: AttachmentScanStatus.PENDING_SCAN,
+      replacesAttachmentId: 'attachment-old',
+      versionNo: 2,
+    });
+    const clean = createAttachmentRecord({
+      ...pending,
+      storageKey: 'project-1/review_record/review-1/new.pdf',
+      fileUrl: '/attachments/attachment-new/content',
+      scanStatus: AttachmentScanStatus.CLEAN,
+    });
+    prisma.project.findUnique.mockResolvedValue({
+      id: 'project-1',
+      code: 'PRJ-001',
+      name: '示例项目',
+      currentNodeCode: null,
+      plannedEndDate: null,
+    });
+    prisma.reviewRecord.findFirst.mockResolvedValue({ id: 'review-1' });
+    prisma.attachment.findFirst.mockResolvedValue(replacement);
+    tx.attachment.create.mockResolvedValue(pending);
+    tx.attachment.update.mockResolvedValue(clean);
+    tx.reviewRecord.findUnique
+      .mockResolvedValueOnce({ attachmentId: 'attachment-old' })
+      .mockResolvedValueOnce({ attachmentId: null });
+
+    await service.createStoredAttachment({
+      projectId: 'project-1',
+      targetType: AttachmentTargetType.REVIEW_RECORD,
+      targetId: 'review-1',
+      uploadedById: actor.id,
+      replacesAttachmentId: 'attachment-old',
+      file: {
+        originalname: 'new.pdf',
+        mimetype: 'application/pdf',
+        size: 128,
+        buffer: Buffer.from('%PDF-1.4\n'),
+      },
+    });
+
+    expect(tx.reviewRecord.update).toHaveBeenNthCalledWith(1, {
+      where: { id: 'review-1' },
+      data: { attachmentId: null },
+    });
+    expect(tx.reviewRecord.update).toHaveBeenNthCalledWith(2, {
+      where: { id: 'review-1' },
+      data: { attachmentId: 'attachment-new' },
+    });
+  });
+
+  it('fails closed when the malware scanner is unavailable', async () => {
+    const { service, prisma, tx, malwareScanner, objectStorageService } = createService();
+    prisma.project.findUnique.mockResolvedValue({
+      id: 'project-1',
+      code: 'PRJ-001',
+      name: '示例项目',
+      currentNodeCode: null,
+      plannedEndDate: null,
+    });
+    tx.attachment.create.mockResolvedValue(
+      createAttachmentRecord({
+        fileUrl: null,
+        scanStatus: AttachmentScanStatus.PENDING_SCAN,
+      }),
+    );
+    tx.attachment.update.mockResolvedValue(
+      createAttachmentRecord({
+        fileUrl: null,
+        scanStatus: AttachmentScanStatus.SCAN_ERROR,
+        scanResultSummary: 'SCANNER_UNAVAILABLE',
+      }),
+    );
+    malwareScanner.scan.mockRejectedValue(new Error('scanner connection refused'));
+
+    await expect(
+      service.createStoredAttachment({
+        projectId: 'project-1',
+        targetType: AttachmentTargetType.PROJECT,
+        targetId: 'project-1',
+        uploadedById: actor.id,
+        file: {
+          originalname: 'a.pdf',
+          mimetype: 'application/pdf',
+          size: 128,
+          buffer: Buffer.from('%PDF-1.4\n'),
+        },
+      }),
+    ).rejects.toThrow('附件安全扫描暂不可用');
+
+    expect(objectStorageService.promote).not.toHaveBeenCalled();
+    expect(objectStorageService.purge).toHaveBeenCalledWith(
+      expect.objectContaining({ storageKey: expect.stringContaining('quarantine/') }),
+    );
+    expect(tx.attachment.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          scanStatus: AttachmentScanStatus.SCAN_ERROR,
+          fileUrl: null,
+        }),
+      }),
+    );
+  });
+
+  it('fails closed when a scanner adapter returns an unknown verdict', async () => {
+    const { service, prisma, tx, malwareScanner, objectStorageService } = createService();
+    prisma.project.findUnique.mockResolvedValue({
+      id: 'project-1',
+      code: 'PRJ-001',
+      name: '示例项目',
+      currentNodeCode: null,
+      plannedEndDate: null,
+    });
+    tx.attachment.create.mockResolvedValue(
+      createAttachmentRecord({
+        fileUrl: null,
+        scanStatus: AttachmentScanStatus.PENDING_SCAN,
+      }),
+    );
+    tx.attachment.update.mockResolvedValue(
+      createAttachmentRecord({
+        fileUrl: null,
+        scanStatus: AttachmentScanStatus.SCAN_ERROR,
+        scanResultSummary: 'SCANNER_INVALID_VERDICT',
+      }),
+    );
+    malwareScanner.scan.mockResolvedValue({
+      verdict: 'UNKNOWN',
+      engine: 'test-scanner',
+      engineVersion: '1.0.0',
+      signatureVersion: 'test-signatures',
+      resultSummary: 'UNKNOWN',
+      scannedAt: new Date('2026-03-19T10:00:01.000Z'),
+    });
+
+    await expect(
+      service.createStoredAttachment({
+        projectId: 'project-1',
+        targetType: AttachmentTargetType.PROJECT,
+        targetId: 'project-1',
+        uploadedById: actor.id,
+        file: {
+          originalname: 'a.pdf',
+          mimetype: 'application/pdf',
+          size: 128,
+          buffer: Buffer.from('%PDF-1.4\n'),
+        },
+      }),
+    ).rejects.toThrow('附件安全扫描返回异常');
+
+    expect(objectStorageService.promote).not.toHaveBeenCalled();
+    expect(objectStorageService.purge).toHaveBeenCalledWith(
+      expect.objectContaining({ storageKey: expect.stringContaining('quarantine/') }),
+    );
+    expect(tx.attachment.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          scanStatus: AttachmentScanStatus.SCAN_ERROR,
+          scanResultSummary: 'SCANNER_INVALID_VERDICT',
+        }),
+      }),
+    );
+  });
+
+  it('purges quarantine when the pending database record cannot be created', async () => {
+    const { service, prisma, objectStorageService } = createService();
+    prisma.project.findUnique.mockResolvedValue({
+      id: 'project-1',
+      code: 'PRJ-001',
+      name: '示例项目',
+      currentNodeCode: null,
+      plannedEndDate: null,
+    });
+    prisma.$transaction.mockRejectedValueOnce(new Error('database unavailable'));
+
+    await expect(
+      service.createStoredAttachment({
+        projectId: 'project-1',
+        targetType: AttachmentTargetType.PROJECT,
+        targetId: 'project-1',
+        uploadedById: actor.id,
+        file: {
+          originalname: 'a.pdf',
+          mimetype: 'application/pdf',
+          size: 128,
+          buffer: Buffer.from('%PDF-1.4\n'),
+        },
+      }),
+    ).rejects.toThrow('database unavailable');
+
+    expect(objectStorageService.purge).toHaveBeenCalledWith(
+      expect.objectContaining({ storageKey: expect.stringContaining('quarantine/') }),
+    );
+  });
+
+  it('restores the clean object to quarantine when the CLEAN database transaction fails', async () => {
+    const { service, prisma, tx, objectStorageService } = createService();
+    const pending = createAttachmentRecord({
+      storageKey: 'quarantine/project-1/project/project-1/a.pdf',
+      fileUrl: null,
+      scanStatus: AttachmentScanStatus.PENDING_SCAN,
+    });
+    const scanError = createAttachmentRecord({
+      ...pending,
+      scanStatus: AttachmentScanStatus.SCAN_ERROR,
+      scanResultSummary: 'CLEAN_COMMIT_ERROR_QUARANTINE_RESTORED',
+    });
+    prisma.project.findUnique.mockResolvedValue({
+      id: 'project-1',
+      code: 'PRJ-001',
+      name: '示例项目',
+      currentNodeCode: null,
+      plannedEndDate: null,
+    });
+    tx.attachment.create.mockResolvedValue(pending);
+    tx.attachment.update.mockResolvedValue(scanError);
+    let transactionCall = 0;
+    prisma.$transaction.mockImplementation(
+      async (executor: (client: typeof tx) => Promise<unknown>) => {
+        transactionCall += 1;
+        if (transactionCall === 2) {
+          throw new Error('clean transaction failed');
+        }
+        return executor(tx);
+      },
+    );
+
+    await expect(
+      service.createStoredAttachment({
+        projectId: 'project-1',
+        targetType: AttachmentTargetType.PROJECT,
+        targetId: 'project-1',
+        uploadedById: actor.id,
+        file: {
+          originalname: 'a.pdf',
+          mimetype: 'application/pdf',
+          size: 128,
+          buffer: Buffer.from('%PDF-1.4\n'),
+        },
+      }),
+    ).rejects.toThrow('附件安全状态保存失败');
+
+    expect(objectStorageService.promote).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        sourceStorageKey: expect.not.stringContaining('quarantine/'),
+        destinationStorageKey: expect.stringContaining('quarantine/'),
+      }),
+    );
+    expect(tx.attachment.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          scanStatus: AttachmentScanStatus.SCAN_ERROR,
+          scanResultSummary: 'CLEAN_COMMIT_ERROR_QUARANTINE_RESTORED',
+        }),
+      }),
+    );
+  });
+
+  it.each([
+    AttachmentScanStatus.PENDING_SCAN,
+    AttachmentScanStatus.REJECTED,
+    AttachmentScanStatus.SCAN_ERROR,
+    AttachmentScanStatus.LEGACY_UNSCANNED,
+  ])('blocks download when scan status is %s', async (scanStatus) => {
+    const { service, prisma, objectStorageService } = createService();
+    prisma.attachment.findFirst.mockResolvedValue(
+      createAttachmentRecord({ scanStatus, fileUrl: null }),
+    );
+
+    await expect(
+      service.downloadAttachment('project-1', 'attachment-1', actor),
+    ).rejects.toThrow('安全扫描');
+    expect(objectStorageService.download).not.toHaveBeenCalled();
+  });
+
+  it('refuses to bind an attachment before it is clean', async () => {
+    const { service, prisma, tx } = createService();
+    prisma.$transaction.mockImplementation(async (executor: (client: typeof tx) => Promise<unknown>) => {
+      tx.attachment.findFirst.mockResolvedValue(
+        createAttachmentRecord({
+          scanStatus: AttachmentScanStatus.LEGACY_UNSCANNED,
+          fileUrl: null,
+        }),
+      );
+      return executor(tx);
+    });
+
+    await expect(
+      service.bindAttachment(
+        'project-1',
+        'attachment-1',
+        { entityType: 'PROJECT', entityId: 'project-1' },
+        actor,
+      ),
+    ).rejects.toThrow('安全扫描');
+    expect(tx.attachment.update).not.toHaveBeenCalled();
   });
 
   it('rejects invalid entity binding', async () => {
@@ -274,6 +761,7 @@ describe('AttachmentsService', () => {
           entityType: AttachmentTargetType.SAMPLE,
           entityId: 'sample-1',
           isDeleted: false,
+          scanStatus: AttachmentScanStatus.CLEAN,
         }),
       }),
     );

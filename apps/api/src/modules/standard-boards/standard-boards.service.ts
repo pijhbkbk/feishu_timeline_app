@@ -18,6 +18,7 @@ import {
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import type { AuthenticatedUser } from '../auth/auth.types';
+import { ProjectAccessService } from '../auth/project-access.service';
 import {
   getAllowedWorkflowActions,
   getCurrentNodeName,
@@ -96,13 +97,16 @@ export class StandardBoardsService {
     private readonly prisma: PrismaService,
     private readonly activityLogsService: ActivityLogsService,
     private readonly workflowsService: WorkflowsService,
+    private readonly projectAccessService: ProjectAccessService,
   ) {}
 
-  getWorkspace(projectId: string) {
+  async getWorkspace(projectId: string, actor: AuthenticatedUser) {
+    await this.assertProjectAccess(projectId, actor, 'project.read');
     return this.buildWorkspace(this.prisma, projectId);
   }
 
-  async getCurrentBoard(projectId: string) {
+  async getCurrentBoard(projectId: string, actor: AuthenticatedUser) {
+    await this.assertProjectAccess(projectId, actor, 'project.read');
     const board = await this.prisma.standardBoard.findFirst({
       where: {
         projectId,
@@ -118,7 +122,8 @@ export class StandardBoardsService {
     return board ? this.toStandardBoardSummary(board) : null;
   }
 
-  getColorBoardDetailUpdateWorkspace(projectId: string) {
+  async getColorBoardDetailUpdateWorkspace(projectId: string, actor: AuthenticatedUser) {
+    await this.assertProjectAccess(projectId, actor, 'project.read');
     return this.buildColorBoardDetailUpdateWorkspace(this.prisma, projectId);
   }
 
@@ -127,6 +132,7 @@ export class StandardBoardsService {
     rawInput: unknown,
     actor: AuthenticatedUser,
   ) {
+    await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     this.assertActorCanManage(actor);
     const input = this.parseBoardWriteInput(rawInput);
 
@@ -170,6 +176,7 @@ export class StandardBoardsService {
     rawInput: unknown,
     actor: AuthenticatedUser,
   ) {
+    await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     this.assertActorCanManage(actor);
     const input = this.parseBoardWriteInput(rawInput);
 
@@ -228,6 +235,7 @@ export class StandardBoardsService {
     boardId: string,
     actor: AuthenticatedUser,
   ) {
+    await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     this.assertActorCanManage(actor);
 
     await this.prisma.$transaction(async (tx) => {
@@ -278,6 +286,7 @@ export class StandardBoardsService {
     boardId: string,
     actor: AuthenticatedUser,
   ) {
+    await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     return this.transitionBoardStatus(
       projectId,
       boardId,
@@ -294,6 +303,7 @@ export class StandardBoardsService {
     rawInput: unknown,
     actor: AuthenticatedUser,
   ) {
+    await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     this.assertActorCanManage(actor);
     const input = this.parseIssueBoardInput(rawInput);
 
@@ -345,6 +355,7 @@ export class StandardBoardsService {
     rawInput: unknown,
     actor: AuthenticatedUser,
   ) {
+    await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     this.assertActorCanManage(actor);
     const input = this.parseDistributionWriteInput(rawInput);
 
@@ -396,6 +407,7 @@ export class StandardBoardsService {
     rawInput: unknown,
     actor: AuthenticatedUser,
   ) {
+    await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     this.assertActorCanManage(actor);
     const input = this.parseColorBoardDetailUpdateWriteInput(rawInput);
 
@@ -432,6 +444,7 @@ export class StandardBoardsService {
   }
 
   async completeStandardBoardTask(projectId: string, actor: AuthenticatedUser) {
+    await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     this.assertActorCanManage(actor);
 
     await this.prisma.$transaction(async (tx) => {
@@ -481,6 +494,7 @@ export class StandardBoardsService {
     projectId: string,
     actor: AuthenticatedUser,
   ) {
+    await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     this.assertActorCanManage(actor);
 
     await this.prisma.$transaction(async (tx) => {
@@ -525,6 +539,18 @@ export class StandardBoardsService {
     });
 
     return this.buildWorkspace(this.prisma, projectId);
+  }
+
+  private assertProjectAccess(
+    projectId: string,
+    actor: AuthenticatedUser,
+    requiredPermission: string,
+  ) {
+    return this.projectAccessService.assertProjectAccessWithDefaultClient(
+      projectId,
+      actor,
+      requiredPermission,
+    );
   }
 
   private async transitionBoardStatus(

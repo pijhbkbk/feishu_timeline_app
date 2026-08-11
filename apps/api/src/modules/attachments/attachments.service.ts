@@ -1,11 +1,16 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
+  ServiceUnavailableException,
+  UnprocessableEntityException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   AttachmentTargetType,
+  AttachmentScanStatus,
   AuditTargetType,
   PerformanceTestType,
   Prisma,
@@ -29,6 +34,10 @@ import {
   parseAttachmentEntityType,
   parseBooleanFlag,
 } from './attachments.rules';
+import {
+  MalwareScanner,
+  type MalwareScanResult,
+} from './malware-scanner.service';
 
 type AttachmentDbClient = Prisma.TransactionClient | PrismaService;
 
@@ -71,6 +80,12 @@ type AttachmentRecordLike = {
   fileSize: number;
   checksum: string | null;
   fileUrl: string | null;
+  scanStatus: AttachmentScanStatus;
+  scannerEngine: string | null;
+  scannerVersion: string | null;
+  scannerSignatureVersion: string | null;
+  scanResultSummary: string | null;
+  scannedAt: Date | null;
   materialType: string | null;
   versionNo: number;
   replacesAttachmentId: string | null;
@@ -103,6 +118,7 @@ const ATTACHMENT_DETAIL_INCLUDE = {
 @Injectable()
 export class AttachmentsService {
   private readonly bucket: string;
+  private readonly logger = new Logger(AttachmentsService.name);
 
   constructor(
     private readonly prisma: PrismaService,
@@ -110,6 +126,7 @@ export class AttachmentsService {
     private readonly activityLogsService: ActivityLogsService,
     private readonly objectStorageService: ObjectStorageService,
     private readonly projectAccessService: ProjectAccessService,
+    private readonly malwareScanner: MalwareScanner,
   ) {
     this.bucket =
       this.configService.get<string>('objectStorageBucket') ?? 'feishu-timeline-local';
@@ -220,6 +237,7 @@ export class AttachmentsService {
 
     return this.prisma.$transaction(async (tx) => {
       const attachment = await this.getAttachmentOrThrow(tx, projectId, attachmentId, false);
+      this.assertAttachmentClean(attachment);
       await this.assertEntityReference(tx, projectId, input.entityType, input.entityId);
 
       await this.clearDirectEntityReferenceIfNeeded(
@@ -471,34 +489,37 @@ export class AttachmentsService {
 
     const extension = extname(input.file.originalname).toLowerCase();
     const safeName = this.sanitizeFileName(input.file.originalname);
-    const storageKey = this.buildStorageKey(
+    const cleanStorageKey = this.buildStorageKey(
       input.projectId,
       input.targetType,
       input.targetId,
       extension,
     );
+    const quarantineStorageKey = `quarantine/${cleanStorageKey}`;
     const checksum = createHash('sha256').update(input.file.buffer).digest('hex');
 
     await this.objectStorageService.upload({
       bucket: this.bucket,
-      storageKey,
+      storageKey: quarantineStorageKey,
       buffer: input.file.buffer,
     });
 
-    const attachment = await this.prisma.$transaction(async (tx) => {
+    const pendingAttachment = await this.prisma.$transaction(async (tx) => {
       const created = await tx.attachment.create({
         data: {
           projectId: input.projectId,
           entityType: input.targetType,
           entityId: input.targetId,
           bucket: this.bucket,
-          storageKey,
+          storageKey: quarantineStorageKey,
           fileName: safeName,
           originalFileName: input.file.originalname,
           fileExtension: extension || null,
           mimeType: input.file.mimetype,
           fileSize: input.file.size,
           checksum,
+          fileUrl: null,
+          scanStatus: AttachmentScanStatus.PENDING_SCAN,
           uploadedById: input.uploadedById,
           uploadedAt: new Date(),
           materialType: input.materialType ?? replacement?.materialType ?? null,
@@ -508,13 +529,128 @@ export class AttachmentsService {
         include: ATTACHMENT_DETAIL_INCLUDE,
       });
 
+      await this.activityLogsService.createWithExecutor(tx, {
+        projectId: input.projectId,
+        actorUserId: input.uploadedById,
+        targetType: AuditTargetType.ATTACHMENT,
+        targetId: created.id,
+        action: 'ATTACHMENT_SCAN_PENDING',
+        nodeCode: input.nodeCode ?? null,
+        summary: '附件已进入隔离区，等待安全扫描。',
+        afterData: this.toAttachmentAuditSnapshot(created),
+      });
+
+      return created;
+    }).catch(async (error: unknown) => {
+      await this.objectStorageService.purge({
+        bucket: this.bucket,
+        storageKey: quarantineStorageKey,
+      });
+      throw error;
+    });
+
+    let scanResult: MalwareScanResult;
+    try {
+      scanResult = await this.malwareScanner.scan({
+        buffer: input.file.buffer,
+        fileName: safeName,
+        mimeType: input.file.mimetype,
+        checksum,
+      });
+    } catch {
+      await this.recordScanFailureAndPurgeQuarantine(
+        pendingAttachment,
+        input,
+        AttachmentScanStatus.SCAN_ERROR,
+        {
+          engine: null,
+          engineVersion: null,
+          signatureVersion: null,
+          resultSummary: 'SCANNER_UNAVAILABLE',
+          scannedAt: new Date(),
+        },
+        quarantineStorageKey,
+      );
+      throw new ServiceUnavailableException(
+        '附件安全扫描暂不可用，文件未进入业务存储且不能下载。',
+      );
+    }
+
+    if (scanResult.verdict === 'REJECTED') {
+      await this.recordScanFailureAndPurgeQuarantine(
+        pendingAttachment,
+        input,
+        AttachmentScanStatus.REJECTED,
+        scanResult,
+        quarantineStorageKey,
+      );
+      throw new UnprocessableEntityException(
+        '附件安全扫描未通过，文件未进入业务存储且不能下载。',
+      );
+    }
+
+    if (scanResult.verdict !== 'CLEAN') {
+      await this.recordScanFailureAndPurgeQuarantine(
+        pendingAttachment,
+        input,
+        AttachmentScanStatus.SCAN_ERROR,
+        {
+          ...scanResult,
+          resultSummary: 'SCANNER_INVALID_VERDICT',
+        },
+        quarantineStorageKey,
+      );
+      throw new ServiceUnavailableException(
+        '附件安全扫描返回异常，文件未进入业务存储且不能下载。',
+      );
+    }
+
+    try {
+      await this.objectStorageService.promote({
+        bucket: this.bucket,
+        sourceStorageKey: quarantineStorageKey,
+        destinationStorageKey: cleanStorageKey,
+      });
+    } catch {
+      await this.recordScanFailureAndPurgeQuarantine(
+        pendingAttachment,
+        input,
+        AttachmentScanStatus.SCAN_ERROR,
+        {
+          ...scanResult,
+          resultSummary: 'QUARANTINE_PROMOTION_ERROR',
+        },
+        quarantineStorageKey,
+      );
+      throw new ServiceUnavailableException(
+        '附件安全处理暂不可用，文件未进入业务存储且不能下载。',
+      );
+    }
+
+    const attachment = await this.prisma.$transaction(async (tx) => {
       const updated = await tx.attachment.update({
-        where: { id: created.id },
+        where: { id: pendingAttachment.id },
         data: {
-          fileUrl: `/attachments/${created.id}/content`,
+          storageKey: cleanStorageKey,
+          fileUrl: `/attachments/${pendingAttachment.id}/content`,
+          scanStatus: AttachmentScanStatus.CLEAN,
+          scannerEngine: scanResult.engine,
+          scannerVersion: scanResult.engineVersion,
+          scannerSignatureVersion: scanResult.signatureVersion,
+          scanResultSummary: scanResult.resultSummary,
+          scannedAt: scanResult.scannedAt,
         },
         include: ATTACHMENT_DETAIL_INCLUDE,
       });
+
+      if (replacement) {
+        await this.clearDirectEntityReferenceIfNeeded(
+          tx,
+          replacement.id,
+          replacement.entityType,
+          replacement.entityId,
+        );
+      }
 
       await this.syncDirectEntityReferenceOnBind(
         tx,
@@ -533,6 +669,18 @@ export class AttachmentsService {
           },
         });
       }
+
+      await this.activityLogsService.createWithExecutor(tx, {
+        projectId: input.projectId,
+        actorUserId: input.uploadedById,
+        targetType: AuditTargetType.ATTACHMENT,
+        targetId: updated.id,
+        action: 'ATTACHMENT_SCAN_CLEAN',
+        nodeCode: input.nodeCode ?? null,
+        summary: '附件安全扫描通过。',
+        beforeData: this.toAttachmentAuditSnapshot(pendingAttachment),
+        afterData: this.toAttachmentAuditSnapshot(updated),
+      });
 
       await this.activityLogsService.createWithExecutor(tx, {
         projectId: input.projectId,
@@ -560,6 +708,46 @@ export class AttachmentsService {
       }
 
       return updated;
+    }).catch(async () => {
+      let storageCompensationSummary = 'CLEAN_COMMIT_ERROR_QUARANTINE_RESTORED';
+
+      try {
+        await this.objectStorageService.promote({
+          bucket: this.bucket,
+          sourceStorageKey: cleanStorageKey,
+          destinationStorageKey: quarantineStorageKey,
+        });
+      } catch {
+        storageCompensationSummary = 'CLEAN_COMMIT_ERROR_BINARY_PURGED';
+        try {
+          await this.objectStorageService.purge({
+            bucket: this.bucket,
+            storageKey: cleanStorageKey,
+          });
+        } catch {
+          storageCompensationSummary = 'CLEAN_COMMIT_ERROR_COMPENSATION_FAILED';
+        }
+      }
+
+      try {
+        await this.recordScanFailure(
+          pendingAttachment,
+          input,
+          AttachmentScanStatus.SCAN_ERROR,
+          {
+            ...scanResult,
+            resultSummary: storageCompensationSummary,
+          },
+        );
+      } catch {
+        // The original transaction remains rolled back and therefore never exposes
+        // the attachment as CLEAN. A reconciliation job must handle this rare
+        // storage/database double-failure window.
+      }
+
+      throw new ServiceUnavailableException(
+        '附件安全状态保存失败，文件未进入可下载状态。',
+      );
     });
 
     if (replacement) {
@@ -583,6 +771,7 @@ export class AttachmentsService {
         entityType: targetType,
         entityId: targetId,
         isDeleted: false,
+        scanStatus: AttachmentScanStatus.CLEAN,
       },
       include: ATTACHMENT_DETAIL_INCLUDE,
       orderBy: {
@@ -596,7 +785,11 @@ export class AttachmentsService {
     entityLabels?: Map<string, string>,
   ) {
     const entityKey = `${attachment.entityType}:${attachment.entityId}`;
-    const fileUrl = attachment.fileUrl ?? `/attachments/${attachment.id}/content`;
+    const canDownload =
+      !attachment.isDeleted && attachment.scanStatus === AttachmentScanStatus.CLEAN;
+    const fileUrl = canDownload
+      ? attachment.fileUrl ?? `/attachments/${attachment.id}/content`
+      : null;
 
     return {
       id: attachment.id,
@@ -616,15 +809,20 @@ export class AttachmentsService {
       storageKey: attachment.storageKey,
       objectKey: attachment.storageKey,
       fileUrl,
+      scanStatus: attachment.scanStatus,
+      scannedAt: attachment.scannedAt?.toISOString() ?? null,
+      canDownload,
       materialType: attachment.materialType,
       versionNo: attachment.versionNo,
       replacesAttachmentId: attachment.replacesAttachmentId,
       contentUrl: fileUrl,
-      downloadUrl: `/projects/${attachment.projectId}/attachments/${attachment.id}/download`,
-      previewUrl: canPreviewAttachmentMimeType(attachment.mimeType)
+      downloadUrl: canDownload
+        ? `/projects/${attachment.projectId}/attachments/${attachment.id}/download`
+        : null,
+      previewUrl: canDownload && canPreviewAttachmentMimeType(attachment.mimeType)
         ? `/projects/${attachment.projectId}/attachments/${attachment.id}/download?disposition=inline`
         : null,
-      canPreview: canPreviewAttachmentMimeType(attachment.mimeType),
+      canPreview: canDownload && canPreviewAttachmentMimeType(attachment.mimeType),
       uploadedById: attachment.uploadedById,
       uploadedByName: attachment.uploadedBy?.name ?? null,
       uploadedAt: attachment.uploadedAt.toISOString(),
@@ -1217,6 +1415,7 @@ export class AttachmentsService {
     actor: AuthenticatedUser,
     rawDisposition?: unknown,
   ) {
+    this.assertAttachmentClean(attachment);
     const buffer = await this.objectStorageService.download({
       bucket: attachment.bucket,
       storageKey: attachment.storageKey,
@@ -1255,6 +1454,101 @@ export class AttachmentsService {
     }
 
     return 'attachment';
+  }
+
+  private assertAttachmentClean(
+    attachment: Pick<AttachmentRecordLike, 'scanStatus'>,
+  ) {
+    if (attachment.scanStatus === AttachmentScanStatus.CLEAN) {
+      return;
+    }
+
+    if (attachment.scanStatus === AttachmentScanStatus.REJECTED) {
+      throw new ForbiddenException('附件安全扫描未通过，不能下载或绑定。');
+    }
+
+    throw new ForbiddenException('附件尚未通过安全扫描，不能下载或绑定。');
+  }
+
+  private async recordScanFailure(
+    attachment: AttachmentRecordLike,
+    input: CreateStoredAttachmentInput,
+    scanStatus: 'REJECTED' | 'SCAN_ERROR',
+    result: {
+      engine: string | null;
+      engineVersion: string | null;
+      signatureVersion: string | null;
+      resultSummary: string;
+      scannedAt: Date;
+    },
+  ) {
+    await this.prisma.$transaction(async (tx) => {
+      const updated = await tx.attachment.update({
+        where: { id: attachment.id },
+        data: {
+          fileUrl: null,
+          scanStatus,
+          scannerEngine: result.engine,
+          scannerVersion: result.engineVersion,
+          scannerSignatureVersion: result.signatureVersion,
+          scanResultSummary: result.resultSummary,
+          scannedAt: result.scannedAt,
+        },
+        include: ATTACHMENT_DETAIL_INCLUDE,
+      });
+
+      await this.activityLogsService.createWithExecutor(tx, {
+        projectId: input.projectId,
+        actorUserId: input.uploadedById,
+        targetType: AuditTargetType.ATTACHMENT,
+        targetId: attachment.id,
+        action:
+          scanStatus === AttachmentScanStatus.REJECTED
+            ? 'ATTACHMENT_SCAN_REJECTED'
+            : 'ATTACHMENT_SCAN_ERROR',
+        nodeCode: input.nodeCode ?? null,
+        summary:
+          scanStatus === AttachmentScanStatus.REJECTED
+            ? '附件安全扫描未通过，文件未进入业务存储。'
+            : '附件安全扫描异常，文件未进入业务存储。',
+        beforeData: this.toAttachmentAuditSnapshot(attachment),
+        afterData: this.toAttachmentAuditSnapshot(updated),
+      });
+    });
+  }
+
+  private async recordScanFailureAndPurgeQuarantine(
+    attachment: AttachmentRecordLike,
+    input: CreateStoredAttachmentInput,
+    scanStatus: 'REJECTED' | 'SCAN_ERROR',
+    result: {
+      engine: string | null;
+      engineVersion: string | null;
+      signatureVersion: string | null;
+      resultSummary: string;
+      scannedAt: Date;
+    },
+    quarantineStorageKey: string,
+  ) {
+    const [recordResult, purgeResult] = await Promise.allSettled([
+      this.recordScanFailure(attachment, input, scanStatus, result),
+      this.objectStorageService.purge({
+        bucket: this.bucket,
+        storageKey: quarantineStorageKey,
+      }),
+    ]);
+
+    if (recordResult.status === 'rejected') {
+      this.logger.error(
+        'Attachment scan failure metadata could not be persisted; reconciliation is required.',
+      );
+    }
+
+    if (purgeResult.status === 'rejected') {
+      this.logger.error(
+        'Attachment quarantine cleanup failed; reconciliation is required.',
+      );
+    }
   }
 
   private buildStorageKey(
@@ -1312,6 +1606,12 @@ export class AttachmentsService {
       fileSize: attachment.fileSize,
       bucket: attachment.bucket,
       fileUrl: attachment.fileUrl,
+      scanStatus: attachment.scanStatus,
+      scannerEngine: attachment.scannerEngine,
+      scannerVersion: attachment.scannerVersion,
+      scannerSignatureVersion: attachment.scannerSignatureVersion,
+      scanResultSummary: attachment.scanResultSummary,
+      scannedAt: attachment.scannedAt?.toISOString() ?? null,
       materialType: attachment.materialType,
       versionNo: attachment.versionNo,
       replacesAttachmentId: attachment.replacesAttachmentId,

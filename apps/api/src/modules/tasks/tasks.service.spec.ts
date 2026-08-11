@@ -1,4 +1,10 @@
-import { ProjectPriority, ProjectStatus, WorkflowNodeCode, WorkflowTaskStatus } from '@prisma/client';
+import {
+  AttachmentScanStatus,
+  ProjectPriority,
+  ProjectStatus,
+  WorkflowNodeCode,
+  WorkflowTaskStatus,
+} from '@prisma/client';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { AuthenticatedUser } from '../auth/auth.types';
@@ -107,6 +113,13 @@ describe('TasksService', () => {
       expect.objectContaining({
         where: expect.objectContaining({
           assigneeUserId: 'user-1',
+        }),
+      }),
+    );
+    expect(prisma.attachment.groupBy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          scanStatus: AttachmentScanStatus.CLEAN,
         }),
       }),
     );

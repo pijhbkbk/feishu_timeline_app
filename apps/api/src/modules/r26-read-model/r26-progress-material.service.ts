@@ -8,6 +8,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
+  AttachmentScanStatus,
   AttachmentTargetType,
   AuditTargetType,
   Prisma,
@@ -108,6 +109,8 @@ export class R26ProgressMaterialService {
           projectId: task.projectId,
           entityType: AttachmentTargetType.WORKFLOW_TASK,
           entityId: task.id,
+          isDeleted: false,
+          scanStatus: AttachmentScanStatus.CLEAN,
         },
         include: {
           uploadedBy: { select: { id: true, name: true } },
@@ -689,6 +692,7 @@ export class R26ProgressMaterialService {
         entityId: task.id,
         materialType: input.materialType,
         isDeleted: false,
+        scanStatus: AttachmentScanStatus.CLEAN,
       },
     });
     if (activeSameType && activeSameType.id !== replacement?.id) {
@@ -1030,6 +1034,7 @@ export class R26ProgressMaterialService {
         entityType: AttachmentTargetType.WORKFLOW_TASK,
         entityId: task.id,
         isDeleted: false,
+        scanStatus: AttachmentScanStatus.CLEAN,
       },
     });
     if (count !== uniqueIds.length) {

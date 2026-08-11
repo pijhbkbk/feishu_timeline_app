@@ -13,6 +13,13 @@ export type AttachmentEntityType =
   | 'NEW_COLOR_REPORT'
   | 'TRIAL_PRODUCTION';
 
+export type AttachmentScanStatus =
+  | 'PENDING_SCAN'
+  | 'CLEAN'
+  | 'REJECTED'
+  | 'SCAN_ERROR'
+  | 'LEGACY_UNSCANNED';
+
 export type ProjectAttachmentSummary = {
   id: string;
   projectId: string;
@@ -30,12 +37,15 @@ export type ProjectAttachmentSummary = {
   bucket: string;
   storageKey: string;
   objectKey: string;
-  fileUrl: string;
+  fileUrl: string | null;
+  scanStatus: AttachmentScanStatus;
+  scannedAt: string | null;
+  canDownload: boolean;
   materialType: string | null;
   versionNo: number;
   replacesAttachmentId: string | null;
-  contentUrl: string;
-  downloadUrl: string;
+  contentUrl: string | null;
+  downloadUrl: string | null;
   previewUrl: string | null;
   canPreview: boolean;
   uploadedById: string | null;
@@ -118,6 +128,14 @@ const ATTACHMENT_ENTITY_TYPE_LABELS: Record<AttachmentEntityType, string> = {
   REVIEW_RECORD: '评审记录',
   NEW_COLOR_REPORT: '开发报告',
   TRIAL_PRODUCTION: '样车试制',
+};
+
+const ATTACHMENT_SCAN_STATUS_LABELS: Record<AttachmentScanStatus, string> = {
+  PENDING_SCAN: '安全扫描中',
+  CLEAN: '安全扫描通过',
+  REJECTED: '安全扫描未通过',
+  SCAN_ERROR: '扫描异常',
+  LEGACY_UNSCANNED: '历史文件待复扫',
 };
 
 export function fetchAttachmentsWorkspace(
@@ -216,16 +234,20 @@ export function getAttachmentEntityTypeLabel(entityType: AttachmentEntityType) {
   return ATTACHMENT_ENTITY_TYPE_LABELS[entityType];
 }
 
+export function getAttachmentScanStatusLabel(scanStatus: AttachmentScanStatus) {
+  return ATTACHMENT_SCAN_STATUS_LABELS[scanStatus];
+}
+
 export function getAttachmentPreviewUrl(attachment: Pick<ProjectAttachmentSummary, 'previewUrl'>) {
   return attachment.previewUrl ? `${API_BASE_URL}${attachment.previewUrl}` : null;
 }
 
 export function getAttachmentDownloadUrl(attachment: Pick<ProjectAttachmentSummary, 'downloadUrl'>) {
-  return `${API_BASE_URL}${attachment.downloadUrl}`;
+  return attachment.downloadUrl ? `${API_BASE_URL}${attachment.downloadUrl}` : null;
 }
 
 export function getAttachmentContentUrl(attachment: Pick<ProjectAttachmentSummary, 'contentUrl'>) {
-  return `${API_BASE_URL}${attachment.contentUrl}`;
+  return attachment.contentUrl ? `${API_BASE_URL}${attachment.contentUrl}` : null;
 }
 
 export function getAttachmentPreviewKind(

@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 import { SecureSingleFileInterceptor } from '../../common/file-upload-options';
 import { CurrentUser } from '../auth/current-user.decorator';
+import { Permissions } from '../auth/permissions.decorator';
 import { Roles } from '../auth/roles.decorator';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { SamplesService } from './samples.service';
@@ -26,21 +27,28 @@ export class SamplesController {
   constructor(private readonly samplesService: SamplesService) {}
 
   @Roles('admin', 'project_manager', 'process_engineer', 'quality_engineer', 'reviewer')
+  @Permissions('project.read')
   @Get()
-  getWorkspace(@Param('projectId') projectId: string) {
-    return this.samplesService.getWorkspace(projectId);
+  getWorkspace(
+    @Param('projectId') projectId: string,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.samplesService.getWorkspace(projectId, actor);
   }
 
   @Roles('admin', 'project_manager', 'process_engineer', 'quality_engineer', 'reviewer')
+  @Permissions('project.read')
   @Get(':sampleId')
   getDetail(
     @Param('projectId') projectId: string,
     @Param('sampleId') sampleId: string,
+    @CurrentUser() actor: AuthenticatedUser,
   ) {
-    return this.samplesService.getSampleDetail(projectId, sampleId);
+    return this.samplesService.getSampleDetail(projectId, sampleId, actor);
   }
 
   @Roles('admin', 'project_manager', 'process_engineer', 'quality_engineer')
+  @Permissions('workflow.transition')
   @Post()
   createSample(
     @Param('projectId') projectId: string,
@@ -51,6 +59,7 @@ export class SamplesController {
   }
 
   @Roles('admin', 'project_manager', 'process_engineer', 'quality_engineer')
+  @Permissions('workflow.transition')
   @Patch(':sampleId')
   updateSample(
     @Param('projectId') projectId: string,
@@ -62,6 +71,7 @@ export class SamplesController {
   }
 
   @Roles('admin', 'project_manager', 'process_engineer', 'quality_engineer')
+  @Permissions('attachment.manage')
   @UseInterceptors(SecureSingleFileInterceptor('file'))
   @Post(':sampleId/images')
   uploadImage(
@@ -74,6 +84,7 @@ export class SamplesController {
   }
 
   @Roles('admin', 'project_manager', 'process_engineer', 'quality_engineer', 'reviewer')
+  @Permissions('workflow.transition')
   @Post('confirm')
   submitConfirmation(
     @Param('projectId') projectId: string,

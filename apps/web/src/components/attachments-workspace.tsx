@@ -15,6 +15,7 @@ import {
   getAttachmentEntityTypeLabel,
   getAttachmentPreviewKind,
   getAttachmentPreviewUrl,
+  getAttachmentScanStatusLabel,
   getEntityItemsForType,
   unbindProjectAttachment,
   uploadProjectAttachment,
@@ -675,7 +676,7 @@ export function AttachmentList({
                   <td>{formatAttachmentSize(attachment.fileSize)}</td>
                   <td>{attachment.uploadedByName ?? '未知'}</td>
                   <td>{formatAttachmentTime(attachment.uploadedAt)}</td>
-                  <td>有效</td>
+                  <td>{getAttachmentScanStatusLabel(attachment.scanStatus)}</td>
                   <td>
                     <AttachmentActionMenu
                       attachment={attachment}
@@ -729,6 +730,7 @@ export function AttachmentPreviewPanel({
   const previewKind = getAttachmentPreviewKind(attachment);
   const previewUrl = getAttachmentPreviewUrl(attachment);
   const downloadUrl = getAttachmentDownloadUrl(attachment);
+  const scanStatusLabel = getAttachmentScanStatusLabel(attachment.scanStatus);
 
   return (
     <div className="page-stack compact">
@@ -746,8 +748,8 @@ export function AttachmentPreviewPanel({
           <strong>{attachment.mimeType}</strong>
         </div>
         <div className="metadata-item">
-          <span>审核状态</span>
-          <strong>{attachment.isDeleted ? '已退回或删除' : '有效'}</strong>
+          <span>安全扫描状态</span>
+          <strong>{attachment.isDeleted ? '已退回或删除' : scanStatusLabel}</strong>
         </div>
       </div>
 
@@ -755,6 +757,8 @@ export function AttachmentPreviewPanel({
         <h3>文件预览</h3>
         {attachment.isDeleted ? (
           <p>{mode === 'materials' ? '已退回或删除材料不提供在线预览。' : '已删除附件不提供在线预览。'}</p>
+        ) : !attachment.canDownload ? (
+          <p>{scanStatusLabel}；通过安全扫描前不能预览、下载或绑定到业务对象。</p>
         ) : previewKind === 'image' && previewUrl ? (
           <img
             src={previewUrl}
@@ -773,7 +777,7 @@ export function AttachmentPreviewPanel({
       </div>
 
       <div className="inline-actions">
-        {!attachment.isDeleted ? (
+        {!attachment.isDeleted && attachment.canDownload && downloadUrl ? (
           <a
             href={downloadUrl}
             className="button button-secondary"
@@ -792,11 +796,14 @@ export function AttachmentPreviewPanel({
 
       <div className="detail-block">
         <h3>{mode === 'materials' ? '归属关系' : '绑定关系'}</h3>
-        <div className="form-grid">
+        {!attachment.canDownload || attachment.isDeleted ? (
+          <p>{scanStatusLabel}；当前文件不能更新业务绑定。</p>
+        ) : (
+          <div className="form-grid">
           <label className="field">
             <span>绑定类型</span>
             <select
-              disabled={!canManage || attachment.isDeleted}
+              disabled={!canManage}
               value={bindForm.entityType}
               onChange={(event) =>
                 onBindFormChange({
@@ -817,7 +824,7 @@ export function AttachmentPreviewPanel({
           <label className="field">
             <span>绑定实体</span>
             <select
-              disabled={!canManage || attachment.isDeleted || bindForm.entityType === 'PROJECT'}
+              disabled={!canManage || bindForm.entityType === 'PROJECT'}
               value={bindForm.entityId}
               onChange={(event) =>
                 onBindFormChange({
@@ -842,7 +849,7 @@ export function AttachmentPreviewPanel({
             <button
               type="button"
               className="button button-secondary"
-              disabled={!canManage || attachment.isDeleted || actingKey === `bind:${attachment.id}`}
+              disabled={!canManage || actingKey === `bind:${attachment.id}`}
               onClick={onBind}
             >
               {actingKey === `bind:${attachment.id}` ? '绑定中…' : '更新绑定'}
@@ -854,7 +861,6 @@ export function AttachmentPreviewPanel({
               className="button button-secondary"
               disabled={
                 !canManage ||
-                attachment.isDeleted ||
                 attachment.entityType === 'PROJECT' ||
                 actingKey === `unbind:${attachment.id}`
               }
@@ -867,7 +873,8 @@ export function AttachmentPreviewPanel({
                   : '解绑为项目附件'}
             </button>
           </div>
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -903,15 +910,17 @@ export function AttachmentActionMenu({
 }) {
   return (
     <div className="task-actions">
-      <a
-        href={getAttachmentDownloadUrl(attachment)}
-        className="button button-secondary button-small"
-        target="_blank"
-        rel="noreferrer"
-        onClick={(event) => event.stopPropagation()}
-      >
-        下载
-      </a>
+      {attachment.canDownload && getAttachmentDownloadUrl(attachment) ? (
+        <a
+          href={getAttachmentDownloadUrl(attachment) ?? undefined}
+          className="button button-secondary button-small"
+          target="_blank"
+          rel="noreferrer"
+          onClick={(event) => event.stopPropagation()}
+        >
+          下载
+        </a>
+      ) : null}
       {canManage && !attachment.isDeleted ? (
         <button
           type="button"

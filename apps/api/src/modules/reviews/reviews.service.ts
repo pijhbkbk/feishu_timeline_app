@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
+  AttachmentScanStatus,
   AttachmentTargetType,
   AuditTargetType,
   RecurringTaskStatus,
@@ -2052,7 +2053,10 @@ export class ReviewsService {
             completedAt: reviewRecord.trialProduction.completedAt?.toISOString() ?? null,
           }
         : null,
-      attachment: reviewRecord.attachment
+      attachment:
+        reviewRecord.attachment &&
+        !reviewRecord.attachment.isDeleted &&
+        reviewRecord.attachment.scanStatus === AttachmentScanStatus.CLEAN
         ? this.attachmentsService.toAttachmentSummary(reviewRecord.attachment)
         : null,
       attachmentHistory: attachmentHistory.map((attachment) =>

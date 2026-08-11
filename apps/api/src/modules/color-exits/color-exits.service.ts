@@ -55,8 +55,20 @@ const COLOR_EXIT_INCLUDE = {
       assigneeDepartment: true,
     },
   },
-  color: true,
-  replacementColor: true,
+  color: {
+    include: {
+      numberingAttachment: {
+        select: { scanStatus: true, isDeleted: true },
+      },
+    },
+  },
+  replacementColor: {
+    include: {
+      numberingAttachment: {
+        select: { scanStatus: true, isDeleted: true },
+      },
+    },
+  },
   operator: true,
 } satisfies Prisma.ColorExitInclude;
 
@@ -586,6 +598,9 @@ export class ColorExitsService {
         numberedById: true,
         numberedAt: true,
         numberingAttachmentId: true,
+        numberingAttachment: {
+          select: { scanStatus: true, isDeleted: true },
+        },
       },
       orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
     });
@@ -604,6 +619,9 @@ export class ColorExitsService {
         numberedById: true,
         numberedAt: true,
         numberingAttachmentId: true,
+        numberingAttachment: {
+          select: { scanStatus: true, isDeleted: true },
+        },
       },
       orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
     });

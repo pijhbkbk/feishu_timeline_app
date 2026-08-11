@@ -333,6 +333,14 @@ enum AttachmentTargetType {
   OTHER
 }
 
+enum AttachmentScanStatus {
+  PENDING_SCAN
+  CLEAN
+  REJECTED
+  SCAN_ERROR
+  LEGACY_UNSCANNED
+}
+
 enum NotificationType {
   TASK_ASSIGNED
   REVIEW_PENDING
@@ -680,18 +688,18 @@ model Color {
   numberedAt            DateTime?
   numberingAttachmentId String?            @unique
   project               Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  numberingTask         WorkflowTask?       @relation("ColorNumberingTask", fields: [numberingTaskId], references: [id], onDelete: SetNull)
-  numberedBy            User?               @relation("ColorNumberingOperator", fields: [numberedById], references: [id], onDelete: SetNull)
-  numberingAttachment   Attachment?         @relation("ColorNumberingAttachment", fields: [numberingAttachmentId], references: [id], onDelete: SetNull)
+  numberingTask         WorkflowTask?      @relation("ColorNumberingTask", fields: [numberingTaskId], references: [id], onDelete: SetNull)
+  numberedBy            User?              @relation("ColorNumberingOperator", fields: [numberedById], references: [id], onDelete: SetNull)
+  numberingAttachment   Attachment?        @relation("ColorNumberingAttachment", fields: [numberingAttachmentId], references: [id], onDelete: SetNull)
   versions              ColorVersion[]
-  colorExits            ColorExit[]         @relation("ColorExitColor")
-  replacementInExits    ColorExit[]         @relation("ColorExitReplacementColor")
+  colorExits            ColorExit[]        @relation("ColorExitColor")
+  replacementInExits    ColorExit[]        @relation("ColorExitReplacementColor")
   samples               Sample[]
   standardBoards        StandardBoard[]
   paintProcurements     PaintProcurement[]
   trialProductions      TrialProduction[]
-  createdAt             DateTime             @default(now())
-  updatedAt             DateTime             @updatedAt
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
 
   @@unique([projectId, name])
   @@index([projectId, status])
@@ -1508,35 +1516,41 @@ model ProductionPlan {
 }
 
 model Attachment {
-  id                     String               @id @default(cuid())
-  projectId              String
-  entityType             AttachmentTargetType @map("targetType")
-  entityId               String               @map("targetId")
-  bucket                 String
-  storageKey             String               @unique @map("objectKey")
-  fileName               String
-  originalFileName       String?
-  fileExtension          String?
-  mimeType               String               @map("contentType")
-  fileSize               Int
-  checksum               String?
-  fileUrl                String?
-  materialType           String?
-  versionNo              Int                  @default(1)
-  replacesAttachmentId   String?
-  uploadedById           String?
-  uploadedAt             DateTime             @default(now())
-  isDeleted              Boolean              @default(false)
-  deletedAt              DateTime?
-  deletedById            String?
-  project                Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  uploadedBy             User?                @relation("AttachmentUploader", fields: [uploadedById], references: [id], onDelete: SetNull)
-  deletedBy              User?                @relation("AttachmentDeleter", fields: [deletedById], references: [id], onDelete: SetNull)
-  performanceTestReport  PerformanceTest?     @relation("PerformanceTestReport")
-  reviewRecordAttachment ReviewRecord?        @relation("ReviewRecordAttachment")
-  numberedColor          Color?               @relation("ColorNumberingAttachment")
-  createdAt              DateTime             @default(now())
-  updatedAt              DateTime             @updatedAt
+  id                      String               @id @default(cuid())
+  projectId               String
+  entityType              AttachmentTargetType @map("targetType")
+  entityId                String               @map("targetId")
+  bucket                  String
+  storageKey              String               @unique @map("objectKey")
+  fileName                String
+  originalFileName        String?
+  fileExtension           String?
+  mimeType                String               @map("contentType")
+  fileSize                Int
+  checksum                String?
+  fileUrl                 String?
+  scanStatus              AttachmentScanStatus @default(LEGACY_UNSCANNED)
+  scannerEngine           String?
+  scannerVersion          String?
+  scannerSignatureVersion String?
+  scanResultSummary       String?
+  scannedAt               DateTime?
+  materialType            String?
+  versionNo               Int                  @default(1)
+  replacesAttachmentId    String?
+  uploadedById            String?
+  uploadedAt              DateTime             @default(now())
+  isDeleted               Boolean              @default(false)
+  deletedAt               DateTime?
+  deletedById             String?
+  project                 Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  uploadedBy              User?                @relation("AttachmentUploader", fields: [uploadedById], references: [id], onDelete: SetNull)
+  deletedBy               User?                @relation("AttachmentDeleter", fields: [deletedById], references: [id], onDelete: SetNull)
+  performanceTestReport   PerformanceTest?     @relation("PerformanceTestReport")
+  reviewRecordAttachment  ReviewRecord?        @relation("ReviewRecordAttachment")
+  numberedColor           Color?               @relation("ColorNumberingAttachment")
+  createdAt               DateTime             @default(now())
+  updatedAt               DateTime             @updatedAt
 
   @@index([projectId, uploadedAt])
   @@index([projectId, isDeleted, uploadedAt])
@@ -1544,6 +1558,7 @@ model Attachment {
   @@index([uploadedById, uploadedAt])
   @@index([deletedById, deletedAt])
   @@index([replacesAttachmentId])
+  @@index([scanStatus, uploadedAt])
   @@map("attachments")
 }
 

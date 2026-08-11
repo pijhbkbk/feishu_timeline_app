@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
+  AttachmentScanStatus,
   AttachmentTargetType,
   AuditTargetType,
   PerformanceTestResult,
@@ -20,6 +21,7 @@ import { PrismaService } from '../../infra/prisma/prisma.service';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import { AttachmentsService } from '../attachments/attachments.service';
 import type { AuthenticatedUser } from '../auth/auth.types';
+import { ProjectAccessService } from '../auth/project-access.service';
 import {
   getAllowedWorkflowActions,
   getCurrentNodeName,
@@ -70,13 +72,16 @@ export class PerformanceTestsService {
     private readonly activityLogsService: ActivityLogsService,
     private readonly attachmentsService: AttachmentsService,
     private readonly workflowsService: WorkflowsService,
+    private readonly projectAccessService: ProjectAccessService,
   ) {}
 
-  getWorkspace(projectId: string) {
+  async getWorkspace(projectId: string, actor: AuthenticatedUser) {
+    await this.assertProjectAccess(projectId, actor, 'project.read');
     return this.buildWorkspace(this.prisma, projectId);
   }
 
-  getDetail(projectId: string, testId: string) {
+  async getDetail(projectId: string, testId: string, actor: AuthenticatedUser) {
+    await this.assertProjectAccess(projectId, actor, 'project.read');
     return this.buildDetail(this.prisma, projectId, testId);
   }
 
@@ -85,6 +90,7 @@ export class PerformanceTestsService {
     rawInput: unknown,
     actor: AuthenticatedUser,
   ) {
+    await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     this.assertActorCanManage(actor);
     const input = this.parseWriteInput(rawInput);
 
@@ -135,6 +141,7 @@ export class PerformanceTestsService {
     rawInput: unknown,
     actor: AuthenticatedUser,
   ) {
+    await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     this.assertActorCanManage(actor);
     const input = this.parseWriteInput(rawInput);
 
@@ -193,6 +200,7 @@ export class PerformanceTestsService {
     file: UploadedBinaryFile | undefined,
     actor: AuthenticatedUser,
   ) {
+    await this.assertProjectAccess(projectId, actor, 'attachment.manage');
     this.assertActorCanManage(actor);
 
     if (!file) {
@@ -248,6 +256,7 @@ export class PerformanceTestsService {
     testId: string,
     actor: AuthenticatedUser,
   ) {
+    await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     this.assertActorCanManage(actor);
 
     await this.prisma.$transaction(async (tx) => {
@@ -267,6 +276,10 @@ export class PerformanceTestsService {
         testedById: testRecord.testedById,
         testedAt: testRecord.testedAt,
         reportAttachmentId: testRecord.reportAttachmentId,
+        reportAttachmentScanStatus:
+          testRecord.reportAttachment?.scanStatus ?? null,
+        reportAttachmentIsDeleted:
+          testRecord.reportAttachment?.isDeleted ?? null,
         sampleId: testRecord.sampleId,
         relatedObjectName: testRecord.relatedObjectName,
       });
@@ -301,6 +314,7 @@ export class PerformanceTestsService {
   }
 
   async completeTask(projectId: string, actor: AuthenticatedUser) {
+    await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     this.assertActorCanManage(actor);
 
     await this.prisma.$transaction(async (tx) => {
@@ -351,6 +365,18 @@ export class PerformanceTestsService {
     });
 
     return this.buildWorkspace(this.prisma, projectId);
+  }
+
+  private assertProjectAccess(
+    projectId: string,
+    actor: AuthenticatedUser,
+    requiredPermission: string,
+  ) {
+    return this.projectAccessService.assertProjectAccessWithDefaultClient(
+      projectId,
+      actor,
+      requiredPermission,
+    );
   }
 
   private async buildWorkspace(
@@ -797,7 +823,10 @@ export class PerformanceTestsService {
             versionNo: testRecord.sample.versionNo,
           }
         : null,
-      reportAttachment: testRecord.reportAttachment
+      reportAttachment:
+        testRecord.reportAttachment &&
+        !testRecord.reportAttachment.isDeleted &&
+        testRecord.reportAttachment.scanStatus === AttachmentScanStatus.CLEAN
         ? this.attachmentsService.toAttachmentSummary(testRecord.reportAttachment)
         : null,
     };

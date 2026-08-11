@@ -69,6 +69,9 @@ const workspace: AttachmentWorkspaceResponse = {
       storageKey: 'sample/sample-1/sample.png',
       objectKey: 'sample/sample-1/sample.png',
       fileUrl: '/attachments/attachment-1/content',
+      scanStatus: 'CLEAN',
+      scannedAt: '2026-03-19T10:00:01.000Z',
+      canDownload: true,
       materialType: '样板确认材料',
       versionNo: 1,
       replacesAttachmentId: null,
@@ -103,14 +106,17 @@ const workspace: AttachmentWorkspaceResponse = {
       bucket: 'local-dev',
       storageKey: 'project/project-1/report.pdf',
       objectKey: 'project/project-1/report.pdf',
-      fileUrl: '/attachments/attachment-2/content',
+      fileUrl: null,
+      scanStatus: 'LEGACY_UNSCANNED',
+      scannedAt: null,
+      canDownload: false,
       materialType: null,
       versionNo: 1,
       replacesAttachmentId: null,
-      contentUrl: '/attachments/attachment-2/content',
-      downloadUrl: '/projects/project-1/attachments/attachment-2/download',
-      previewUrl: '/projects/project-1/attachments/attachment-2/download?disposition=inline',
-      canPreview: true,
+      contentUrl: null,
+      downloadUrl: null,
+      previewUrl: null,
+      canPreview: false,
       uploadedById: 'user-1',
       uploadedByName: '测试用户',
       uploadedAt: '2026-03-19T09:00:00.000Z',
@@ -160,7 +166,7 @@ describe('AttachmentsWorkspace', () => {
     expect(filterHtml).toContain('实体类型');
     expect(filterHtml).toContain('样板');
     expect(getAttachmentPreviewKind(workspace.items[0]!)).toBe('image');
-    expect(getAttachmentPreviewKind(workspace.items[1]!)).toBe('pdf');
+    expect(getAttachmentPreviewKind(workspace.items[1]!)).toBe('none');
   });
 
   it('renders preview panel and upload validation', () => {
@@ -203,5 +209,48 @@ describe('AttachmentsWorkspace', () => {
         entityId: 'project-1',
       }),
     ).toBe('请选择要上传的附件。');
+  });
+
+  it('shows legacy files as awaiting rescan and exposes no download or bind action', () => {
+    const legacyAttachment = {
+      ...workspace.items[0]!,
+      id: 'legacy-attachment',
+      scanStatus: 'LEGACY_UNSCANNED' as const,
+      scannedAt: null,
+      canDownload: false,
+      canPreview: false,
+      fileUrl: null,
+      contentUrl: null,
+      downloadUrl: null,
+      previewUrl: null,
+    };
+    const listHtml = renderToStaticMarkup(
+      <AttachmentList
+        items={[legacyAttachment]}
+        selectedAttachmentId="legacy-attachment"
+        canManage
+        actingKey={null}
+        onSelect={() => undefined}
+        onDelete={() => undefined}
+      />,
+    );
+    const previewHtml = renderToStaticMarkup(
+      <AttachmentPreviewPanel
+        projectId="project-1"
+        attachment={legacyAttachment}
+        canManage
+        bindForm={{ entityType: 'SAMPLE', entityId: 'sample-1' }}
+        entityItems={getEntityItemsForType(workspace, 'SAMPLE')}
+        actingKey={null}
+        onBindFormChange={() => undefined}
+        onBind={() => undefined}
+        onUnbind={() => undefined}
+      />,
+    );
+
+    expect(listHtml).toContain('历史文件待复扫');
+    expect(previewHtml).toContain('历史文件待复扫');
+    expect(previewHtml).not.toContain('下载附件');
+    expect(previewHtml).not.toContain('更新绑定');
   });
 });

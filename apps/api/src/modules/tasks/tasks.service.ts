@@ -6,6 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
+  AttachmentScanStatus,
   AttachmentTargetType,
   AuditTargetType,
   Prisma,
@@ -379,6 +380,7 @@ export class TasksService {
             entityType: AttachmentTargetType.WORKFLOW_TASK,
             entityId: { in: filtered.map((task) => task.id) },
             isDeleted: false,
+            scanStatus: AttachmentScanStatus.CLEAN,
           },
           _count: { _all: true },
         })
@@ -573,6 +575,7 @@ export class TasksService {
         entityType: AttachmentTargetType.WORKFLOW_TASK,
         entityId: taskId,
         isDeleted: false,
+        scanStatus: AttachmentScanStatus.CLEAN,
       },
     });
 

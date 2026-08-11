@@ -1,9 +1,15 @@
+import { AttachmentScanStatus } from '@prisma/client';
+
 type ControlledColorNumberSource = {
   code: string | null;
   numberingTaskId: string | null;
   numberedById: string | null;
   numberedAt: Date | null;
   numberingAttachmentId: string | null;
+  numberingAttachment: {
+    scanStatus: AttachmentScanStatus;
+    isDeleted: boolean;
+  } | null;
 };
 
 /**
@@ -19,7 +25,10 @@ export function getControlledColorNumber(
     !color.numberingTaskId ||
     !color.numberedById ||
     !color.numberedAt ||
-    !color.numberingAttachmentId
+    !color.numberingAttachmentId ||
+    !color.numberingAttachment ||
+    color.numberingAttachment.isDeleted ||
+    color.numberingAttachment.scanStatus !== AttachmentScanStatus.CLEAN
   ) {
     return null;
   }

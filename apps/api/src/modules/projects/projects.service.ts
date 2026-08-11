@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import {
+  AttachmentScanStatus,
   AttachmentTargetType,
   AuditTargetType,
   ColorExitSuggestion,
@@ -218,6 +219,9 @@ export class ProjectsService {
               numberedById: true,
               numberedAt: true,
               numberingAttachmentId: true,
+              numberingAttachment: {
+                select: { scanStatus: true, isDeleted: true },
+              },
             },
             orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
           },
@@ -503,6 +507,12 @@ export class ProjectsService {
               name: true,
             },
           },
+          attachment: {
+            select: {
+              scanStatus: true,
+              isDeleted: true,
+            },
+          },
         },
         orderBy: [{ reviewedAt: 'desc' }, { createdAt: 'desc' }],
       }),
@@ -527,6 +537,7 @@ export class ProjectsService {
             where: {
               projectId,
               isDeleted: false,
+              scanStatus: AttachmentScanStatus.CLEAN,
               OR: [
                 {
                   entityType: AttachmentTargetType.WORKFLOW_TASK,
@@ -559,7 +570,11 @@ export class ProjectsService {
     }
 
     for (const review of reviewRecords) {
-      if (!review.attachmentId) {
+      if (
+        !review.attachmentId ||
+        review.attachment?.scanStatus !== AttachmentScanStatus.CLEAN ||
+        review.attachment.isDeleted
+      ) {
         continue;
       }
 
@@ -1241,6 +1256,12 @@ export class ProjectsService {
                     numberedById: { not: null },
                     numberedAt: { not: null },
                     numberingAttachmentId: { not: null },
+                    numberingAttachment: {
+                      is: {
+                        isDeleted: false,
+                        scanStatus: AttachmentScanStatus.CLEAN,
+                      },
+                    },
                   },
                 ],
               },
@@ -1617,6 +1638,9 @@ export class ProjectsService {
             numberedById: true;
             numberedAt: true;
             numberingAttachmentId: true;
+            numberingAttachment: {
+              select: { scanStatus: true; isDeleted: true };
+            };
           };
         };
         workflowTasks: {

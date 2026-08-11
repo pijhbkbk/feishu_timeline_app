@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import {
+  AttachmentScanStatus,
   AttachmentTargetType,
   AuditTargetType,
   Prisma,
@@ -39,6 +40,7 @@ const CONTROLLED_COLOR_ARCHIVE_WHERE = {
     is: {
       entityType: AttachmentTargetType.WORKFLOW_TASK,
       isDeleted: false,
+      scanStatus: AttachmentScanStatus.CLEAN,
     },
   },
 } satisfies Prisma.ColorWhereInput;
@@ -169,6 +171,7 @@ export class AdminService {
       this.prisma.attachment.count({
         where: {
           isDeleted: false,
+          scanStatus: AttachmentScanStatus.CLEAN,
           project: {
             colors: { some: CONTROLLED_COLOR_ARCHIVE_WHERE },
           },
@@ -334,7 +337,11 @@ export class AdminService {
 
     const projectIds = uniqueSorted(colors.map((color) => color.projectId));
     const attachments = await this.prisma.attachment.findMany({
-      where: { projectId: { in: projectIds }, isDeleted: false },
+      where: {
+        projectId: { in: projectIds },
+        isDeleted: false,
+        scanStatus: AttachmentScanStatus.CLEAN,
+      },
       include: {
         uploadedBy: {
           select: { id: true, name: true, department: { select: { name: true } } },

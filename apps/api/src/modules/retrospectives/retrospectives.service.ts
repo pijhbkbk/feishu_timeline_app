@@ -1,5 +1,6 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import {
+  AttachmentScanStatus,
   AttachmentTargetType,
   AuditTargetType,
   ColorExitSuggestion,
@@ -58,6 +59,9 @@ export class RetrospectivesService {
               numberedById: true,
               numberedAt: true,
               numberingAttachmentId: true,
+              numberingAttachment: {
+                select: { scanStatus: true, isDeleted: true },
+              },
             },
             orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
           },
@@ -104,6 +108,7 @@ export class RetrospectivesService {
             entityType: AttachmentTargetType.WORKFLOW_TASK,
             entityId: { in: tasks.map((task) => task.id) },
             isDeleted: false,
+            scanStatus: AttachmentScanStatus.CLEAN,
           },
           _count: { _all: true },
         })

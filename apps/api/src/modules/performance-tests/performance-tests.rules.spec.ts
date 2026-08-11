@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  AttachmentScanStatus,
   PerformanceTestResult,
   PerformanceTestStatus,
   WorkflowAction,
@@ -50,9 +51,29 @@ describe('performance tests rules', () => {
         testedById: 'user-1',
         testedAt: new Date('2026-03-18T10:00:00.000Z'),
         reportAttachmentId: null,
+        reportAttachmentScanStatus: null,
+        reportAttachmentIsDeleted: null,
         sampleId: 'sample-1',
         relatedObjectName: null,
       }),
     ).toBe('请先上传试验报告附件。');
+  });
+
+  it('rejects a legacy report attachment until malware scanning passes', () => {
+    expect(
+      getPerformanceTestSubmitIssue({
+        standardValue: '>= 90',
+        actualValue: '92',
+        result: PerformanceTestResult.PASS,
+        conclusion: '满足要求',
+        testedById: 'user-1',
+        testedAt: new Date('2026-03-18T10:00:00.000Z'),
+        reportAttachmentId: 'legacy-report-1',
+        reportAttachmentScanStatus: AttachmentScanStatus.LEGACY_UNSCANNED,
+        reportAttachmentIsDeleted: false,
+        sampleId: 'sample-1',
+        relatedObjectName: null,
+      }),
+    ).toBe('试验报告附件尚未通过安全扫描。');
   });
 });
