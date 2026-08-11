@@ -119,18 +119,92 @@ describe('NotificationsService', () => {
       title: '新任务',
       isRead: false,
     });
-    prisma.notification.update.mockResolvedValue(undefined);
+    prisma.notification.updateMany.mockResolvedValue({ count: 1 });
     prisma.notification.count.mockResolvedValue(0);
 
     await service.markRead('notification-1', actor);
 
-    expect(prisma.notification.update).toHaveBeenCalled();
+    expect(prisma.notification.updateMany).toHaveBeenCalled();
     expect(activityLogsService.create).toHaveBeenCalledWith(
       expect.objectContaining({
         targetType: AuditTargetType.NOTIFICATION,
         action: 'NOTIFICATION_MARKED_READ',
       }),
     );
+  });
+
+  it('claims a single unread notification atomically and audits only the winning request', async () => {
+    const { service, prisma, activityLogsService } = createService();
+    prisma.notification.findFirst.mockResolvedValue({
+      id: 'notification-1',
+      projectId: 'project-1',
+      notificationType: NotificationType.TASK_ASSIGNED,
+      title: '新任务',
+      isRead: false,
+    });
+    prisma.notification.updateMany
+      .mockResolvedValueOnce({ count: 1 })
+      .mockResolvedValueOnce({ count: 0 });
+    prisma.notification.count.mockResolvedValue(0);
+
+    await Promise.all([
+      service.markRead('notification-1', actor),
+      service.markRead('notification-1', actor),
+    ]);
+
+    expect(prisma.notification.update).not.toHaveBeenCalled();
+    expect(prisma.notification.updateMany).toHaveBeenCalledTimes(2);
+    expect(prisma.notification.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: 'notification-1',
+        userId: actor.id,
+        sendChannel: NotificationSendChannel.IN_APP,
+        isRead: false,
+      },
+      data: {
+        isRead: true,
+        readAt: expect.any(Date),
+      },
+    });
+    expect(activityLogsService.create).toHaveBeenCalledTimes(1);
+  });
+
+  it('marks all unread notifications with constant-size query and audit metadata', async () => {
+    const { service, prisma, activityLogsService } = createService();
+    prisma.notification.findMany.mockResolvedValue(
+      Array.from({ length: 10_000 }, (_, index) => ({
+        id: `notification-${index}`,
+        projectId: `project-${index}`,
+      })),
+    );
+    prisma.notification.updateMany.mockResolvedValue({ count: 10_000 });
+    prisma.notification.count.mockResolvedValue(0);
+
+    await service.markAllRead(actor);
+
+    expect(prisma.notification.findMany).not.toHaveBeenCalled();
+    expect(prisma.notification.updateMany).toHaveBeenCalledWith({
+      where: {
+        userId: actor.id,
+        sendChannel: NotificationSendChannel.IN_APP,
+        isRead: false,
+      },
+      data: {
+        isRead: true,
+        readAt: expect.any(Date),
+      },
+    });
+    expect(activityLogsService.create).toHaveBeenCalledWith({
+      projectId: null,
+      actorUserId: actor.id,
+      targetType: AuditTargetType.NOTIFICATION,
+      targetId: actor.id,
+      action: 'NOTIFICATIONS_MARKED_ALL_READ',
+      summary: '批量已读 10000 条通知',
+      metadata: {
+        count: 10_000,
+      },
+    });
   });
 
   it('creates notifications successfully for queued task jobs', async () => {

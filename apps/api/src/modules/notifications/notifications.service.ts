@@ -107,66 +107,60 @@ export class NotificationsService {
     }
 
     if (!notification.isRead) {
-      await this.prisma.notification.update({
-        where: { id: notification.id },
+      const claimed = await this.prisma.notification.updateMany({
+        where: {
+          id: notification.id,
+          userId: actor.id,
+          sendChannel: NotificationSendChannel.IN_APP,
+          isRead: false,
+        },
         data: {
           isRead: true,
           readAt: new Date(),
         },
       });
 
-      await this.activityLogsService.create({
-        projectId: notification.projectId,
-        actorUserId: actor.id,
-        targetType: AuditTargetType.NOTIFICATION,
-        targetId: notification.id,
-        action: 'NOTIFICATION_MARKED_READ',
-        summary: `通知 ${notification.title} 已读`,
-        metadata: {
-          notificationType: notification.notificationType,
-        },
-      });
+      if (claimed.count === 1) {
+        await this.activityLogsService.create({
+          projectId: notification.projectId,
+          actorUserId: actor.id,
+          targetType: AuditTargetType.NOTIFICATION,
+          targetId: notification.id,
+          action: 'NOTIFICATION_MARKED_READ',
+          summary: `通知 ${notification.title} 已读`,
+          metadata: {
+            notificationType: notification.notificationType,
+          },
+        });
+      }
     }
 
     return this.getUnreadCount(actor);
   }
 
   async markAllRead(actor: AuthenticatedUser) {
-    const unreadNotifications = await this.prisma.notification.findMany({
+    const claimed = await this.prisma.notification.updateMany({
       where: {
         userId: actor.id,
         sendChannel: NotificationSendChannel.IN_APP,
         isRead: false,
       },
-      select: {
-        id: true,
-        projectId: true,
+      data: {
+        isRead: true,
+        readAt: new Date(),
       },
     });
 
-    if (unreadNotifications.length > 0) {
-      await this.prisma.notification.updateMany({
-        where: {
-          id: {
-            in: unreadNotifications.map((item) => item.id),
-          },
-        },
-        data: {
-          isRead: true,
-          readAt: new Date(),
-        },
-      });
-
+    if (claimed.count > 0) {
       await this.activityLogsService.create({
-        projectId: unreadNotifications[0]?.projectId ?? null,
+        projectId: null,
         actorUserId: actor.id,
         targetType: AuditTargetType.NOTIFICATION,
         targetId: actor.id,
         action: 'NOTIFICATIONS_MARKED_ALL_READ',
-        summary: `批量已读 ${unreadNotifications.length} 条通知`,
+        summary: `批量已读 ${claimed.count} 条通知`,
         metadata: {
-          notificationIds: unreadNotifications.map((item) => item.id),
-          count: unreadNotifications.length,
+          count: claimed.count,
         },
       });
     }
