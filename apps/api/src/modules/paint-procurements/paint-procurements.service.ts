@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -83,8 +84,7 @@ export class PaintProcurementsService {
     const input = this.parseCreateInput(rawInput);
 
     await this.prisma.$transaction(async (tx) => {
-      const context = await this.getProcurementContextOrThrow(tx, projectId);
-      this.assertWritableProcurementStage(context);
+      await this.lockActiveProcurementTaskAndGetContext(tx, projectId);
       await this.getSupplierOrThrow(tx, input.supplierId);
       await this.assertUniqueProcurementCode(tx, projectId, input.procurementCode);
 
@@ -133,9 +133,9 @@ export class PaintProcurementsService {
     const input = this.parseUpdateInput(rawInput);
 
     await this.prisma.$transaction(async (tx) => {
-      const context = await this.getProcurementContextOrThrow(tx, projectId);
-      this.assertWritableProcurementStage(context);
+      await this.lockProcurementRow(tx, projectId, procurementId);
       const procurement = await this.getProcurementOrThrow(tx, projectId, procurementId);
+      await this.lockActiveProcurementTaskAndGetContext(tx, projectId);
 
       if (!canEditPaintProcurement(procurement.status)) {
         throw new BadRequestException('已到货或已取消的采购记录不允许编辑。');
@@ -157,8 +157,13 @@ export class PaintProcurementsService {
         );
       }
 
-      const updatedRecord = await tx.paintProcurement.update({
-        where: { id: procurementId },
+      const claimed = await tx.paintProcurement.updateMany({
+        where: {
+          id: procurementId,
+          projectId,
+          status: procurement.status,
+          updatedAt: procurement.updatedAt,
+        },
         data: {
           ...(input.supplierId ? { supplierId: input.supplierId } : {}),
           ...(input.procurementCode ? { procurementCode: input.procurementCode } : {}),
@@ -169,9 +174,13 @@ export class PaintProcurementsService {
           ...(input.arrivalDate ? { arrivalDate: input.arrivalDate } : {}),
           ...(input.note !== undefined ? { note: input.note } : {}),
         },
-        include: {
-          supplier: true,
-        },
+      });
+      if (claimed.count !== 1) {
+        this.throwProcurementStateChanged();
+      }
+      const updatedRecord = await tx.paintProcurement.findUniqueOrThrow({
+        where: { id: procurementId },
+        include: { supplier: true },
       });
 
       await this.activityLogsService.createWithExecutor(tx, {
@@ -243,8 +252,10 @@ export class PaintProcurementsService {
     this.assertActorCanManage(actor);
 
     await this.prisma.$transaction(async (tx) => {
-      const context = await this.getProcurementContextOrThrow(tx, projectId);
-      this.assertWritableProcurementStage(context);
+      const context = await this.lockActiveProcurementTaskAndGetContext(
+        tx,
+        projectId,
+      );
 
       if (!context.activeTask) {
         throw new BadRequestException('当前没有可完成的涂料采购任务。');
@@ -313,9 +324,9 @@ export class PaintProcurementsService {
     this.assertActorCanManage(actor);
 
     await this.prisma.$transaction(async (tx) => {
-      const context = await this.getProcurementContextOrThrow(tx, projectId);
-      this.assertWritableProcurementStage(context);
+      await this.lockProcurementRow(tx, projectId, procurementId);
       const procurement = await this.getProcurementOrThrow(tx, projectId, procurementId);
+      await this.lockActiveProcurementTaskAndGetContext(tx, projectId);
       const nextStatus = getProcurementStatusTransitionTarget(procurement.status, action);
 
       if (!nextStatus) {
@@ -323,8 +334,13 @@ export class PaintProcurementsService {
       }
 
       const now = new Date();
-      const updatedRecord = await tx.paintProcurement.update({
-        where: { id: procurementId },
+      const claimed = await tx.paintProcurement.updateMany({
+        where: {
+          id: procurementId,
+          projectId,
+          status: procurement.status,
+          updatedAt: procurement.updatedAt,
+        },
         data: {
           status: nextStatus,
           ...(action === 'ORDER' ? { orderedAt: now } : {}),
@@ -333,9 +349,13 @@ export class PaintProcurementsService {
             : {}),
           ...(action === 'CANCEL' ? { cancelledAt: now } : {}),
         },
-        include: {
-          supplier: true,
-        },
+      });
+      if (claimed.count !== 1) {
+        this.throwProcurementStateChanged();
+      }
+      const updatedRecord = await tx.paintProcurement.findUniqueOrThrow({
+        where: { id: procurementId },
+        include: { supplier: true },
       });
 
       await this.activityLogsService.createWithExecutor(tx, {
@@ -470,6 +490,56 @@ export class PaintProcurementsService {
       activeTask,
       records,
     };
+  }
+
+  private async lockActiveProcurementTaskAndGetContext(
+    tx: Prisma.TransactionClient,
+    projectId: string,
+  ) {
+    const lockedTasks = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+      SELECT "id"
+      FROM "workflow_tasks"
+      WHERE "projectId" = ${projectId}
+        AND "nodeCode" = ${WorkflowNodeCode.PAINT_PROCUREMENT}::"WorkflowNodeCode"
+        AND "isActive" = true
+      ORDER BY "createdAt" DESC, "taskRound" DESC
+      LIMIT 1
+      FOR UPDATE
+    `);
+    const lockedTaskId = lockedTasks[0]?.id;
+    if (!lockedTaskId) {
+      this.throwProcurementStateChanged();
+    }
+
+    const context = await this.getProcurementContextOrThrow(tx, projectId);
+    this.assertWritableProcurementStage(context);
+    if (context.activeTask?.id !== lockedTaskId) {
+      this.throwProcurementStateChanged();
+    }
+    return context;
+  }
+
+  private async lockProcurementRow(
+    tx: Prisma.TransactionClient,
+    projectId: string,
+    procurementId: string,
+  ) {
+    const rows = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+      SELECT "id"
+      FROM "paint_procurements"
+      WHERE "id" = ${procurementId} AND "projectId" = ${projectId}
+      FOR UPDATE
+    `);
+    if (rows.length !== 1) {
+      throw new NotFoundException('采购记录不存在。');
+    }
+  }
+
+  private throwProcurementStateChanged(): never {
+    throw new ConflictException({
+      code: 'PAINT_PROCUREMENT_STATE_CHANGED',
+      message: '采购记录或流程状态已变更，请刷新后重试。',
+    });
   }
 
   private assertWritableProcurementStage(context: {

@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -80,8 +81,7 @@ export class FeesService {
     const input = this.parseWriteInput(rawInput);
 
     await this.prisma.$transaction(async (tx) => {
-      const context = await this.getFeeContext(tx, projectId);
-      this.assertWritableFeeStage(context);
+      const context = await this.lockActiveFeeTaskAndGetContext(tx, projectId);
       await this.assertFixedFeeAmount(tx, input.amount);
 
       const createdRecord = await tx.developmentFee.create({
@@ -137,17 +137,22 @@ export class FeesService {
     const input = this.parseWriteInput(rawInput);
 
     await this.prisma.$transaction(async (tx) => {
-      const context = await this.getFeeContext(tx, projectId);
-      this.assertWritableFeeStage(context);
-      await this.assertFixedFeeAmount(tx, input.amount);
+      await this.lockFeeRow(tx, projectId, feeId);
       const feeRecord = await this.getFeeOrThrow(tx, projectId, feeId);
+      await this.lockActiveFeeTaskAndGetContext(tx, projectId);
+      await this.assertFixedFeeAmount(tx, input.amount);
 
       if (!canEditDevelopmentFee(feeRecord.payStatus)) {
         throw new BadRequestException('已支付或已取消的收费记录不允许编辑。');
       }
 
-      const updatedRecord = await tx.developmentFee.update({
-        where: { id: feeId },
+      const claimed = await tx.developmentFee.updateMany({
+        where: {
+          id: feeId,
+          projectId,
+          payStatus: feeRecord.payStatus,
+          updatedAt: feeRecord.updatedAt,
+        },
         data: {
           feeType: input.feeType,
           amount: input.amount,
@@ -159,10 +164,13 @@ export class FeesService {
           remark: input.note,
           recordedById: actor.id,
         },
-        include: {
-          recordedBy: true,
-          createdBy: true,
-        },
+      });
+      if (claimed.count !== 1) {
+        this.throwFeeStateChanged();
+      }
+      const updatedRecord = await tx.developmentFee.findUniqueOrThrow({
+        where: { id: feeId },
+        include: { recordedBy: true, createdBy: true },
       });
 
       await this.activityLogsService.createWithExecutor(tx, {
@@ -235,8 +243,7 @@ export class FeesService {
     );
 
     await this.prisma.$transaction(async (tx) => {
-      const context = await this.getFeeContext(tx, projectId);
-      this.assertWritableFeeStage(context);
+      const context = await this.lockActiveFeeTaskAndGetContext(tx, projectId);
 
       if (!context.activeTask) {
         throw new BadRequestException('当前没有可完成的颜色开发收费任务。');
@@ -298,9 +305,9 @@ export class FeesService {
     );
 
     await this.prisma.$transaction(async (tx) => {
-      const context = await this.getFeeContext(tx, projectId);
-      this.assertWritableFeeStage(context);
+      await this.lockFeeRow(tx, projectId, feeId);
       const feeRecord = await this.getFeeOrThrow(tx, projectId, feeId);
+      const context = await this.lockActiveFeeTaskAndGetContext(tx, projectId);
       const nextStatus = getDevelopmentFeeStatusTransitionTarget(feeRecord.payStatus, action);
 
       if (!nextStatus) {
@@ -310,8 +317,13 @@ export class FeesService {
       await this.startTaskIfNeeded(tx, context.activeTask!, actor, '颜色开发收费记录开始处理。');
 
       const now = new Date();
-      const updatedRecord = await tx.developmentFee.update({
-        where: { id: feeId },
+      const claimed = await tx.developmentFee.updateMany({
+        where: {
+          id: feeId,
+          projectId,
+          payStatus: feeRecord.payStatus,
+          updatedAt: feeRecord.updatedAt,
+        },
         data: {
           payStatus: nextStatus,
           recordedById: actor.id,
@@ -335,10 +347,13 @@ export class FeesService {
               }
             : {}),
         },
-        include: {
-          recordedBy: true,
-          createdBy: true,
-        },
+      });
+      if (claimed.count !== 1) {
+        this.throwFeeStateChanged();
+      }
+      const updatedRecord = await tx.developmentFee.findUniqueOrThrow({
+        where: { id: feeId },
+        include: { recordedBy: true, createdBy: true },
       });
 
       await this.activityLogsService.createWithExecutor(tx, {
@@ -422,6 +437,56 @@ export class FeesService {
       cabinReviewApproved,
       records,
     };
+  }
+
+  private async lockActiveFeeTaskAndGetContext(
+    tx: Prisma.TransactionClient,
+    projectId: string,
+  ) {
+    const lockedTasks = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+      SELECT "id"
+      FROM "workflow_tasks"
+      WHERE "projectId" = ${projectId}
+        AND "nodeCode" = ${DEVELOPMENT_FEE_NODE_CODE}::"WorkflowNodeCode"
+        AND "isActive" = true
+      ORDER BY "createdAt" DESC, "taskRound" DESC
+      LIMIT 1
+      FOR UPDATE
+    `);
+    const lockedTaskId = lockedTasks[0]?.id;
+    if (!lockedTaskId) {
+      this.throwFeeStateChanged();
+    }
+
+    const context = await this.getFeeContext(tx, projectId);
+    this.assertWritableFeeStage(context);
+    if (context.activeTask?.id !== lockedTaskId) {
+      this.throwFeeStateChanged();
+    }
+    return context;
+  }
+
+  private async lockFeeRow(
+    tx: Prisma.TransactionClient,
+    projectId: string,
+    feeId: string,
+  ) {
+    const rows = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+      SELECT "id"
+      FROM "development_fees"
+      WHERE "id" = ${feeId} AND "projectId" = ${projectId}
+      FOR UPDATE
+    `);
+    if (rows.length !== 1) {
+      throw new NotFoundException('收费记录不存在。');
+    }
+  }
+
+  private throwFeeStateChanged(): never {
+    throw new ConflictException({
+      code: 'DEVELOPMENT_FEE_STATE_CHANGED',
+      message: '收费记录或流程状态已变更，请刷新后重试。',
+    });
   }
 
   private async getFixedFeeAmount(db: FeesDbClient) {

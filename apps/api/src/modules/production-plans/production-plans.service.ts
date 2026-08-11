@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -79,8 +80,10 @@ export class ProductionPlansService {
     const input = this.parseSchedulePlanWriteInput(rawInput);
 
     await this.prisma.$transaction(async (tx) => {
-      const context = await this.getSchedulePlanContext(tx, projectId);
-      this.assertWritableSchedulePlanStage(context);
+      const context = await this.lockActiveScheduleTaskAndGetContext(
+        tx,
+        projectId,
+      );
       await this.getUserOrThrow(tx, input.ownerId);
       await this.startTaskIfNeeded(tx, context.activeTask!, actor, '排产计划已开始处理。');
 
@@ -128,9 +131,9 @@ export class ProductionPlansService {
     const input = this.parseSchedulePlanWriteInput(rawInput);
 
     await this.prisma.$transaction(async (tx) => {
-      const context = await this.getSchedulePlanContext(tx, projectId);
-      this.assertWritableSchedulePlanStage(context);
+      await this.lockSchedulePlanRow(tx, projectId, planId);
       const plan = await this.getSchedulePlanOrThrow(tx, projectId, planId);
+      await this.lockActiveScheduleTaskAndGetContext(tx, projectId);
 
       if (!canEditSchedulePlan(plan.status)) {
         throw new BadRequestException('已确认的排产计划不允许编辑。');
@@ -138,8 +141,14 @@ export class ProductionPlansService {
 
       await this.getUserOrThrow(tx, input.ownerId);
 
-      const updatedPlan = await tx.productionPlan.update({
-        where: { id: planId },
+      const claimed = await tx.productionPlan.updateMany({
+        where: {
+          id: planId,
+          projectId,
+          planType: ProductionPlanType.SCHEDULE,
+          status: plan.status,
+          updatedAt: plan.updatedAt,
+        },
         data: {
           ownerId: input.ownerId,
           quantity: input.plannedQuantity,
@@ -149,6 +158,12 @@ export class ProductionPlansService {
           batchNo: input.batchNo,
           remark: input.note,
         },
+      });
+      if (claimed.count !== 1) {
+        this.throwSchedulePlanStateChanged();
+      }
+      const updatedPlan = await tx.productionPlan.findUniqueOrThrow({
+        where: { id: planId },
         include: SCHEDULE_PLAN_INCLUDE,
       });
 
@@ -177,21 +192,33 @@ export class ProductionPlansService {
     this.assertActorCanManage(actor);
 
     await this.prisma.$transaction(async (tx) => {
-      const context = await this.getSchedulePlanContext(tx, projectId);
-      this.assertWritableSchedulePlanStage(context);
+      await this.lockSchedulePlanRow(tx, projectId, planId);
       const plan = await this.getSchedulePlanOrThrow(tx, projectId, planId);
+      await this.lockActiveScheduleTaskAndGetContext(tx, projectId);
 
       if (!canConfirmSchedulePlan(plan.status)) {
         throw new BadRequestException('当前排产计划状态不允许确认。');
       }
 
-      const confirmedPlan = await tx.productionPlan.update({
-        where: { id: planId },
+      const claimed = await tx.productionPlan.updateMany({
+        where: {
+          id: planId,
+          projectId,
+          planType: ProductionPlanType.SCHEDULE,
+          status: plan.status,
+          updatedAt: plan.updatedAt,
+        },
         data: {
           status: ProductionPlanStatus.CONFIRMED,
           confirmedAt: new Date(),
           confirmedById: actor.id,
         },
+      });
+      if (claimed.count !== 1) {
+        this.throwSchedulePlanStateChanged();
+      }
+      const confirmedPlan = await tx.productionPlan.findUniqueOrThrow({
+        where: { id: planId },
         include: SCHEDULE_PLAN_INCLUDE,
       });
 
@@ -220,19 +247,31 @@ export class ProductionPlansService {
     this.assertActorCanManage(actor);
 
     await this.prisma.$transaction(async (tx) => {
-      const context = await this.getSchedulePlanContext(tx, projectId);
-      this.assertWritableSchedulePlanStage(context);
+      await this.lockSchedulePlanRow(tx, projectId, planId);
       const plan = await this.getSchedulePlanOrThrow(tx, projectId, planId);
+      await this.lockActiveScheduleTaskAndGetContext(tx, projectId);
 
       if (!canCancelSchedulePlan(plan.status)) {
         throw new BadRequestException('当前排产计划状态不允许取消。');
       }
 
-      const cancelledPlan = await tx.productionPlan.update({
-        where: { id: planId },
+      const claimed = await tx.productionPlan.updateMany({
+        where: {
+          id: planId,
+          projectId,
+          planType: ProductionPlanType.SCHEDULE,
+          status: plan.status,
+          updatedAt: plan.updatedAt,
+        },
         data: {
           status: ProductionPlanStatus.CANCELLED,
         },
+      });
+      if (claimed.count !== 1) {
+        this.throwSchedulePlanStateChanged();
+      }
+      const cancelledPlan = await tx.productionPlan.findUniqueOrThrow({
+        where: { id: planId },
         include: SCHEDULE_PLAN_INCLUDE,
       });
 
@@ -257,8 +296,10 @@ export class ProductionPlansService {
     this.assertActorCanManage(actor);
 
     await this.prisma.$transaction(async (tx) => {
-      const context = await this.getSchedulePlanContext(tx, projectId);
-      this.assertWritableSchedulePlanStage(context);
+      const context = await this.lockActiveScheduleTaskAndGetContext(
+        tx,
+        projectId,
+      );
 
       if (!context.activeTask) {
         throw new BadRequestException('当前没有可完成的排产计划任务。');
@@ -379,6 +420,58 @@ export class ProductionPlansService {
       consistencyReviewApproved,
       items,
     };
+  }
+
+  private async lockActiveScheduleTaskAndGetContext(
+    tx: Prisma.TransactionClient,
+    projectId: string,
+  ) {
+    const lockedTasks = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+      SELECT "id"
+      FROM "workflow_tasks"
+      WHERE "projectId" = ${projectId}
+        AND "nodeCode" = ${SCHEDULE_PLAN_NODE_CODE}::"WorkflowNodeCode"
+        AND "isActive" = true
+      ORDER BY "createdAt" DESC, "taskRound" DESC
+      LIMIT 1
+      FOR UPDATE
+    `);
+    const lockedTaskId = lockedTasks[0]?.id;
+    if (!lockedTaskId) {
+      this.throwSchedulePlanStateChanged();
+    }
+
+    const context = await this.getSchedulePlanContext(tx, projectId);
+    this.assertWritableSchedulePlanStage(context);
+    if (context.activeTask?.id !== lockedTaskId) {
+      this.throwSchedulePlanStateChanged();
+    }
+    return context;
+  }
+
+  private async lockSchedulePlanRow(
+    tx: Prisma.TransactionClient,
+    projectId: string,
+    planId: string,
+  ) {
+    const rows = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+      SELECT "id"
+      FROM "production_plans"
+      WHERE "id" = ${planId}
+        AND "projectId" = ${projectId}
+        AND "planType" = ${ProductionPlanType.SCHEDULE}::"ProductionPlanType"
+      FOR UPDATE
+    `);
+    if (rows.length !== 1) {
+      throw new NotFoundException('排产计划不存在。');
+    }
+  }
+
+  private throwSchedulePlanStateChanged(): never {
+    throw new ConflictException({
+      code: 'SCHEDULE_PLAN_STATE_CHANGED',
+      message: '排产计划或流程状态已变更，请刷新后重试。',
+    });
   }
 
   private assertWritableSchedulePlanStage(context: {
