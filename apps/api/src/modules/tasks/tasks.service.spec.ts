@@ -54,6 +54,26 @@ function createTaskDetailRecord() {
 }
 
 describe('TasksService', () => {
+  it('rejects a deep task-list page before issuing count or row queries', async () => {
+    const prisma = {
+      workflowTask: {
+        count: vi.fn(),
+        findMany: vi.fn(),
+      },
+    };
+    const service = new TasksService(prisma as never, {} as never, {} as never);
+
+    await expect(
+      service.getMyTasks({ page: '10000000', pageSize: '100' }, createActor()),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({
+        code: 'PAGINATION_PAGE_OUT_OF_RANGE',
+      }),
+    });
+    expect(prisma.workflowTask.count).not.toHaveBeenCalled();
+    expect(prisma.workflowTask.findMany).not.toHaveBeenCalled();
+  });
+
   it('rejects an out-of-scope project manager before loading task details', async () => {
     const prisma = {
       workflowTask: {

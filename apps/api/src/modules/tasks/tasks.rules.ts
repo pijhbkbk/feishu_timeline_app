@@ -1,14 +1,32 @@
+import { BadRequestException } from '@nestjs/common';
 import { WorkflowNodeCode, WorkflowTaskStatus } from '@prisma/client';
 
 import { ACTIVE_WORKFLOW_TASK_STATUSES } from '../workflows/workflow-node.constants';
 
 export type TaskListMode = 'my' | 'pending' | 'review' | 'due-soon' | 'overdue' | 'completed';
 
+export const MAX_PAGINATION_PAGE = 100;
+
 export function normalizePage(value: string | undefined, fallback: number) {
-  const parsed = Number.parseInt(value ?? '', 10);
+  const normalized = value?.trim() ?? '';
+
+  if (!/^\d+$/.test(normalized)) {
+    return fallback;
+  }
+
+  const parsed = Number(normalized);
 
   if (!Number.isFinite(parsed) || parsed <= 0) {
     return fallback;
+  }
+
+  if (!Number.isSafeInteger(parsed) || parsed > MAX_PAGINATION_PAGE) {
+    throw new BadRequestException({
+      statusCode: 400,
+      error: 'Bad Request',
+      code: 'PAGINATION_PAGE_OUT_OF_RANGE',
+      message: `page 必须是 1 到 ${MAX_PAGINATION_PAGE} 之间的安全整数。`,
+    });
   }
 
   return parsed;

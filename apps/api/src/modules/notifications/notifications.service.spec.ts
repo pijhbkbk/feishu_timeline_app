@@ -64,6 +64,20 @@ function createService() {
 }
 
 describe('NotificationsService', () => {
+  it('rejects a deep notification page before issuing count or row queries', async () => {
+    const { service, prisma } = createService();
+
+    await expect(
+      service.getMyNotifications({ page: '10000000', pageSize: '100' }, actor),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({
+        code: 'PAGINATION_PAGE_OUT_OF_RANGE',
+      }),
+    });
+    expect(prisma.notification.count).not.toHaveBeenCalled();
+    expect(prisma.notification.findMany).not.toHaveBeenCalled();
+  });
+
   it('returns notifications scoped to current user', async () => {
     const { service, prisma } = createService();
     prisma.notification.count.mockResolvedValueOnce(1).mockResolvedValueOnce(1);
@@ -163,4 +177,3 @@ describe('NotificationsService', () => {
     expect(feishuMessagesService.sendNotification).toHaveBeenCalled();
   });
 });
-

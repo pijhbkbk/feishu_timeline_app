@@ -14,6 +14,8 @@ import { ProjectAccessService } from '../auth/project-access.service';
 import { normalizePage, normalizePageSize } from '../tasks/tasks.rules';
 import { getCurrentNodeName } from '../workflows/workflow-node.constants';
 
+const MAX_PROJECT_TIMELINE_SOURCE_WINDOW = 10_000;
+
 type AuditLogExecutor = Prisma.TransactionClient | PrismaService;
 
 type ProjectTimelinePageReference = {
@@ -68,13 +70,13 @@ export class ActivityLogsService {
     actor: AuthenticatedUser,
     rawQuery: Record<string, string | undefined> = {},
   ) {
+    const page = normalizePage(rawQuery.page, 1);
+    const pageSize = normalizePageSize(rawQuery.pageSize, 20);
     await this.projectAccessService.assertProjectAccessWithDefaultClient(
       projectId,
       actor,
       'audit.read',
     );
-    const page = normalizePage(rawQuery.page, 1);
-    const pageSize = normalizePageSize(rawQuery.pageSize, 20);
     const from = this.parseOptionalDateFilter(rawQuery.from, 'from');
     const to = this.parseOptionalDateFilter(rawQuery.to, 'to');
     const actorUserId = rawQuery.actorUserId?.trim() || null;
@@ -86,6 +88,18 @@ export class ActivityLogsService {
 
     const offset = (page - 1) * pageSize;
     const sourceWindowSize = offset + pageSize;
+    if (
+      !Number.isSafeInteger(offset) ||
+      !Number.isSafeInteger(sourceWindowSize) ||
+      sourceWindowSize > MAX_PROJECT_TIMELINE_SOURCE_WINDOW
+    ) {
+      throw new BadRequestException({
+        statusCode: 400,
+        error: 'Bad Request',
+        code: 'PAGINATION_SOURCE_WINDOW_OUT_OF_RANGE',
+        message: '审计时间线分页窗口超出安全上限。',
+      });
+    }
     const project = await this.prisma.project.findUnique({
       where: { id: projectId },
       select: {

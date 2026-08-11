@@ -61,6 +61,28 @@ function createService() {
 }
 
 describe('ActivityLogsService', () => {
+  it.each(['101', '10000000', '9007199254740992'])(
+    'rejects unsafe page %s before project access or timeline queries',
+    async (page) => {
+      const { service, prisma, projectAccessService } = createService();
+
+      await expect(
+        service.getProjectLogTimeline('project-1', actor, {
+          page,
+          pageSize: '100',
+        }),
+      ).rejects.toMatchObject({
+        response: expect.objectContaining({
+          code: 'PAGINATION_PAGE_OUT_OF_RANGE',
+        }),
+      });
+      expect(projectAccessService.assertProjectAccessWithDefaultClient).not.toHaveBeenCalled();
+      expect(prisma.project.findUnique).not.toHaveBeenCalled();
+      expect(prisma.$queryRaw).not.toHaveBeenCalled();
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    },
+  );
+
   it('aggregates project audit, workflow and notification timeline', async () => {
     const { service, prisma, projectAccessService } = createService();
     prisma.project.findUnique.mockResolvedValue({
