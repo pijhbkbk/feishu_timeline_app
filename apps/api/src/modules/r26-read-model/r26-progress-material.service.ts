@@ -1069,19 +1069,32 @@ export class R26ProgressMaterialService {
         (member.memberType === ProjectMemberType.OWNER ||
           member.memberType === ProjectMemberType.MANAGER),
     );
-    const canSubmit =
+    const hasWritableScope =
       actor.isSystemAdmin ||
       actor.roleCodes.includes('admin') ||
       task.assigneeUserId === actor.id ||
       task.project.ownerUserId === actor.id ||
       managerMember ||
       collaboratorIds.includes(actor.id);
-    if (!canSubmit) return [];
+    if (!hasWritableScope) return [];
+
+    const permissionCodes = new Set(actor.permissionCodes ?? []);
+    const canWriteProgress =
+      actor.isSystemAdmin || permissionCodes.has('workflow.transition');
+    const canManageAttachments =
+      actor.isSystemAdmin || permissionCodes.has('attachment.manage');
+
     return [
-      { action: 'SAVE_PROGRESS_DRAFT', label: '保存草稿' },
-      { action: 'DELETE_PROGRESS_DRAFT', label: '删除草稿' },
-      { action: 'SUBMIT_PROGRESS', label: '提交工作进展' },
-      { action: 'UPLOAD_MATERIAL', label: '上传工序材料' },
+      ...(canWriteProgress
+        ? [
+            { action: 'SAVE_PROGRESS_DRAFT', label: '保存草稿' },
+            { action: 'DELETE_PROGRESS_DRAFT', label: '删除草稿' },
+            { action: 'SUBMIT_PROGRESS', label: '提交工作进展' },
+          ]
+        : []),
+      ...(canManageAttachments
+        ? [{ action: 'UPLOAD_MATERIAL', label: '上传工序材料' }]
+        : []),
     ];
   }
 

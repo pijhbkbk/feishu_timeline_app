@@ -83,12 +83,14 @@ describe('R26ReadModelController Gate 3C1 contract', () => {
     expect(Object.getOwnPropertyNames(prototype)).not.toContain('transitionWorkflow');
   });
 
-  it('opens only Gate 3B draft, progress and material writes without workflow transition', () => {
+  it('splits Gate 3B progress and material writes by the editable permission matrix', () => {
     const prototype = R26ReadModelController.prototype;
-    const handlers = [
+    const progressHandlers = [
       ['saveProgressDraft', RequestMethod.PUT, 'tasks/:taskId/progress-draft'],
       ['deleteProgressDraft', RequestMethod.DELETE, 'tasks/:taskId/progress-draft'],
       ['submitProgress', RequestMethod.POST, 'tasks/:taskId/progress-updates'],
+    ] as const;
+    const materialHandlers = [
       ['uploadMaterial', RequestMethod.POST, 'tasks/:taskId/materials'],
       [
         'uploadMaterialVersion',
@@ -97,12 +99,21 @@ describe('R26ReadModelController Gate 3C1 contract', () => {
       ],
     ] as const;
 
-    for (const [handlerName, method, path] of handlers) {
+    for (const [handlerName, method, path] of progressHandlers) {
       const handler = prototype[handlerName];
       expect(Reflect.getMetadata(METHOD_METADATA, handler)).toBe(method);
       expect(Reflect.getMetadata(PATH_METADATA, handler)).toBe(path);
       expect(Reflect.getMetadata(PERMISSION_METADATA_KEY, handler)).toEqual([
-        'project.read',
+        'workflow.transition',
+      ]);
+    }
+
+    for (const [handlerName, method, path] of materialHandlers) {
+      const handler = prototype[handlerName];
+      expect(Reflect.getMetadata(METHOD_METADATA, handler)).toBe(method);
+      expect(Reflect.getMetadata(PATH_METADATA, handler)).toBe(path);
+      expect(Reflect.getMetadata(PERMISSION_METADATA_KEY, handler)).toEqual([
+        'attachment.manage',
       ]);
     }
 

@@ -140,7 +140,7 @@ export class R26ReadModelController {
     return this.progressMaterialService.getProgressHistory(taskId, actor);
   }
 
-  @Permissions('project.read')
+  @Permissions('workflow.transition')
   @ApiOperation({ summary: 'R26 Gate 3B 保存进展草稿' })
   @Put('tasks/:taskId/progress-draft')
   saveProgressDraft(
@@ -159,7 +159,7 @@ export class R26ReadModelController {
     );
   }
 
-  @Permissions('project.read')
+  @Permissions('workflow.transition')
   @ApiOperation({ summary: 'R26 Gate 3B 删除本人进展草稿' })
   @Delete('tasks/:taskId/progress-draft')
   deleteProgressDraft(
@@ -178,7 +178,7 @@ export class R26ReadModelController {
     );
   }
 
-  @Permissions('project.read')
+  @Permissions('workflow.transition')
   @ApiOperation({ summary: 'R26 Gate 3B 提交正式进展（不推进流程）' })
   @Post('tasks/:taskId/progress-updates')
   submitProgress(
@@ -197,7 +197,7 @@ export class R26ReadModelController {
     );
   }
 
-  @Permissions('project.read')
+  @Permissions('attachment.manage')
   @UseInterceptors(SecureSingleFileInterceptor('file'))
   @ApiOperation({ summary: 'R26 Gate 3B 上传工序材料 V1' })
   @Post('tasks/:taskId/materials')
@@ -219,7 +219,7 @@ export class R26ReadModelController {
     );
   }
 
-  @Permissions('project.read')
+  @Permissions('attachment.manage')
   @UseInterceptors(SecureSingleFileInterceptor('file'))
   @ApiOperation({ summary: 'R26 Gate 3B 替换工序材料并创建新版本' })
   @Post('tasks/:taskId/materials/:attachmentId/versions')

@@ -24,7 +24,46 @@ const actor: AuthenticatedUser = {
   isSystemAdmin: false,
   authSource: 'feishu',
   roleCodes: ['purchaser'],
+  permissionCodes: [
+    'project.read',
+    'workflow.transition',
+    'attachment.manage',
+  ],
+};
+
+const ordinaryAdminReadOnly: AuthenticatedUser = {
+  ...actor,
+  id: 'ordinary-admin-read-only',
+  username: 'ordinary-admin-read-only',
+  name: '仅有读取权限的普通管理员',
+  roleCodes: ['admin'],
   permissionCodes: ['project.read'],
+};
+
+const ordinaryAdminProgressWriter: AuthenticatedUser = {
+  ...ordinaryAdminReadOnly,
+  id: 'ordinary-admin-progress-writer',
+  username: 'ordinary-admin-progress-writer',
+  name: '仅有进展写权限的普通管理员',
+  permissionCodes: ['project.read', 'workflow.transition'],
+};
+
+const ordinaryAdminMaterialWriter: AuthenticatedUser = {
+  ...ordinaryAdminReadOnly,
+  id: 'ordinary-admin-material-writer',
+  username: 'ordinary-admin-material-writer',
+  name: '仅有材料写权限的普通管理员',
+  permissionCodes: ['project.read', 'attachment.manage'],
+};
+
+const permissionlessSystemAdmin: AuthenticatedUser = {
+  ...ordinaryAdminReadOnly,
+  id: 'permissionless-system-admin',
+  username: 'permissionless-system-admin',
+  name: '无权限码系统管理员',
+  isSystemAdmin: true,
+  roleCodes: [],
+  permissionCodes: [],
 };
 
 const taskUpdatedAt = new Date('2026-07-24T03:00:00.000Z');
@@ -268,6 +307,284 @@ const submitInput = {
 };
 
 describe('R26 Gate 3B progress and material service', () => {
+  it('rejects save, submit and upload for an ordinary admin with project.read only before commands, storage or audit', async () => {
+    const noScopeTask = task({
+      assigneeUserId: 'another-user',
+      project: {
+        ...task().project,
+        ownerUserId: 'another-owner',
+        members: [],
+        nodeAssignments: [],
+      },
+    });
+
+    const draftCase = createService({ loadedTask: noScopeTask });
+    await expect(
+      draftCase.service.saveDraft(
+        'task-6',
+        {
+          draftVersion: 0,
+          progressStatus: 'IN_PROGRESS',
+          completedWork: '不应写入',
+          idempotencyKey: 'r26-permission:draft-read-only',
+        },
+        ordinaryAdminReadOnly,
+        'request-draft-read-only',
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(draftCase.prisma.$transaction).not.toHaveBeenCalled();
+    expect(draftCase.prisma.r26CommandRequest.findUnique).not.toHaveBeenCalled();
+    expect(draftCase.tx.r26ProgressDraft.create).not.toHaveBeenCalled();
+    expect(draftCase.activityLogs.createWithExecutor).not.toHaveBeenCalled();
+
+    const submitCase = createService({ loadedTask: noScopeTask });
+    await expect(
+      submitCase.service.submitProgress(
+        'task-6',
+        submitInput,
+        ordinaryAdminReadOnly,
+        'request-submit-read-only',
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(submitCase.prisma.$transaction).not.toHaveBeenCalled();
+    expect(submitCase.prisma.r26CommandRequest.findUnique).not.toHaveBeenCalled();
+    expect(submitCase.tx.taskProgressUpdate.create).not.toHaveBeenCalled();
+    expect(submitCase.activityLogs.createWithExecutor).not.toHaveBeenCalled();
+
+    const uploadCase = createService({ loadedTask: noScopeTask });
+    await expect(
+      uploadCase.service.uploadMaterial(
+        'task-6',
+        {
+          materialType: 'WORK_EVIDENCE',
+          taskVersion: taskUpdatedAt.toISOString(),
+          idempotencyKey: 'r26-permission:upload-read-only',
+        },
+        {
+          originalname: '不应写入.pdf',
+          mimetype: 'application/pdf',
+          size: 64,
+          buffer: Buffer.from('%PDF-1.4\n'),
+        },
+        ordinaryAdminReadOnly,
+        'request-upload-read-only',
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(uploadCase.prisma.r26CommandRequest.create).not.toHaveBeenCalled();
+    expect(uploadCase.attachmentCreate).not.toHaveBeenCalled();
+    expect(uploadCase.activityLogs.createWithExecutor).not.toHaveBeenCalled();
+  });
+
+  it('lets an ordinary admin with workflow.transition write progress but not materials', async () => {
+    const noScopeTask = task({
+      assigneeUserId: 'another-user',
+      project: {
+        ...task().project,
+        ownerUserId: 'another-owner',
+        members: [],
+        nodeAssignments: [],
+      },
+    });
+    const progressCase = createService({ loadedTask: noScopeTask });
+
+    await expect(
+      progressCase.service.submitProgress(
+        'task-6',
+        submitInput,
+        ordinaryAdminProgressWriter,
+        'request-progress-writer',
+      ),
+    ).resolves.toMatchObject({ progressSubmitted: true });
+
+    const materialCase = createService({ loadedTask: noScopeTask });
+    await expect(
+      materialCase.service.uploadMaterial(
+        'task-6',
+        {
+          materialType: 'WORK_EVIDENCE',
+          taskVersion: taskUpdatedAt.toISOString(),
+          idempotencyKey: 'r26-permission:progress-cannot-upload',
+        },
+        {
+          originalname: '不应上传.pdf',
+          mimetype: 'application/pdf',
+          size: 64,
+          buffer: Buffer.from('%PDF-1.4\n'),
+        },
+        ordinaryAdminProgressWriter,
+        'request-progress-cannot-upload',
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(materialCase.attachmentCreate).not.toHaveBeenCalled();
+  });
+
+  it('lets an ordinary admin with attachment.manage upload materials but not write progress', async () => {
+    const noScopeTask = task({
+      assigneeUserId: 'another-user',
+      project: {
+        ...task().project,
+        ownerUserId: 'another-owner',
+        members: [],
+        nodeAssignments: [],
+      },
+    });
+    const progressCase = createService({ loadedTask: noScopeTask });
+    await expect(
+      progressCase.service.submitProgress(
+        'task-6',
+        submitInput,
+        ordinaryAdminMaterialWriter,
+        'request-material-cannot-progress',
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(progressCase.tx.taskProgressUpdate.create).not.toHaveBeenCalled();
+
+    const materialCase = createService({ loadedTask: noScopeTask });
+    await expect(
+      materialCase.service.uploadMaterial(
+        'task-6',
+        {
+          materialType: 'WORK_EVIDENCE',
+          taskVersion: taskUpdatedAt.toISOString(),
+          idempotencyKey: 'r26-permission:material-writer',
+        },
+        {
+          originalname: '允许上传.pdf',
+          mimetype: 'application/pdf',
+          size: 64,
+          buffer: Buffer.from('%PDF-1.4\n'),
+        },
+        ordinaryAdminMaterialWriter,
+        'request-material-writer',
+      ),
+    ).resolves.toMatchObject({ materialUploaded: true });
+    expect(materialCase.attachmentCreate).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the system-administrator progress and material bypass independent from permission codes', async () => {
+    const noScopeTask = task({
+      assigneeUserId: 'another-user',
+      project: {
+        ...task().project,
+        ownerUserId: 'another-owner',
+        members: [],
+        nodeAssignments: [],
+      },
+    });
+    const progressCase = createService({ loadedTask: noScopeTask });
+    await expect(
+      progressCase.service.submitProgress(
+        'task-6',
+        submitInput,
+        permissionlessSystemAdmin,
+        'request-system-admin-progress',
+      ),
+    ).resolves.toMatchObject({ progressSubmitted: true });
+
+    const materialCase = createService({ loadedTask: noScopeTask });
+    await expect(
+      materialCase.service.uploadMaterial(
+        'task-6',
+        {
+          materialType: 'WORK_EVIDENCE',
+          taskVersion: taskUpdatedAt.toISOString(),
+          idempotencyKey: 'r26-permission:system-admin-upload',
+        },
+        {
+          originalname: '系统管理员上传.pdf',
+          mimetype: 'application/pdf',
+          size: 64,
+          buffer: Buffer.from('%PDF-1.4\n'),
+        },
+        permissionlessSystemAdmin,
+        'request-system-admin-upload',
+      ),
+    ).resolves.toMatchObject({ materialUploaded: true });
+  });
+
+  it('requires the corresponding permission for assignees, owners and collaborators too', () => {
+    const { service } = createService();
+    const getAvailableActions = (
+      service as unknown as {
+        getAvailableActions(
+          loadedTask: ReturnType<typeof task>,
+          authenticatedUser: AuthenticatedUser,
+        ): Array<{ action: string }>;
+      }
+    ).getAvailableActions.bind(service);
+    const scopedActors: Array<{
+      scopedTask: ReturnType<typeof task>;
+      scopedActor: AuthenticatedUser;
+    }> = [
+      {
+        scopedTask: task(),
+        scopedActor: {
+          ...actor,
+          permissionCodes: ['project.read'],
+        },
+      },
+      {
+        scopedTask: task({
+          assigneeUserId: 'another-user',
+          project: {
+            ...task().project,
+            ownerUserId: 'project-owner',
+            members: [],
+          },
+        }),
+        scopedActor: {
+          ...actor,
+          id: 'project-owner',
+          roleCodes: ['project_manager'],
+          permissionCodes: ['project.read'],
+        },
+      },
+      {
+        scopedTask: task({
+          assigneeUserId: 'another-user',
+          project: {
+            ...task().project,
+            ownerUserId: 'another-owner',
+            members: [],
+            nodeAssignments: [
+              {
+                nodeCode: WorkflowNodeCode.PAINT_PROCUREMENT,
+                collaboratorUserIds: ['project-collaborator'],
+                reviewerUserIds: [],
+              },
+            ],
+          },
+        }),
+        scopedActor: {
+          ...actor,
+          id: 'project-collaborator',
+          roleCodes: ['process_engineer'],
+          permissionCodes: ['project.read'],
+        },
+      },
+    ];
+
+    for (const { scopedTask, scopedActor } of scopedActors) {
+      expect(getAvailableActions(scopedTask, scopedActor)).toEqual([]);
+      expect(
+        getAvailableActions(scopedTask, {
+          ...scopedActor,
+          permissionCodes: ['project.read', 'workflow.transition'],
+        }).map((item) => item.action),
+      ).toEqual([
+        'SAVE_PROGRESS_DRAFT',
+        'DELETE_PROGRESS_DRAFT',
+        'SUBMIT_PROGRESS',
+      ]);
+      expect(
+        getAvailableActions(scopedTask, {
+          ...scopedActor,
+          permissionCodes: ['project.read', 'attachment.manage'],
+        }).map((item) => item.action),
+      ).toEqual(['UPLOAD_MATERIAL']);
+    }
+  });
+
   it('submits immutable progress while preserving task, node and task count', async () => {
     const { service, tx, activityLogs } = createService();
 
