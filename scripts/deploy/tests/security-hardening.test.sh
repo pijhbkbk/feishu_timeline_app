@@ -425,6 +425,15 @@ for expected_upload_setting in \
   grep -Fx "$expected_upload_setting" "$PRODUCTION_ENV_TEMPLATE" >/dev/null \
     || fail "root production env template omits upload admission setting: $expected_upload_setting"
 done
+for expected_download_setting in \
+  'DOWNLOAD_ADMISSION_GLOBAL_LIMIT=8' \
+  'DOWNLOAD_ADMISSION_PER_ACTOR_LIMIT=2' \
+  'DOWNLOAD_ADMISSION_PER_TARGET_LIMIT=2' \
+  'DOWNLOAD_ADMISSION_RATE_MAX_REQUESTS=12' \
+  'DOWNLOAD_ADMISSION_RATE_WINDOW_MS=60000'; do
+  grep -Fx "$expected_download_setting" "$PRODUCTION_ENV_TEMPLATE" >/dev/null \
+    || fail "root production env template omits download admission setting: $expected_download_setting"
+done
 grep -E '^DATABASE_URL=postgresql://[^:]+:[^@]+@[^/]+/[^?]+\?schema=[A-Za-z0-9_]+$' \
   "$PRODUCTION_ENV_TEMPLATE" >/dev/null \
   || fail 'root production env template does not use an authenticated PostgreSQL placeholder URL'
@@ -640,6 +649,15 @@ for setting in \
   grep -F "  $setting" "$ROOT_DIR/deploy/compose.staging.yml" >/dev/null \
     || fail "compose.staging.yml omits upload admission pass-through: $setting"
 done
+for setting in \
+  'DOWNLOAD_ADMISSION_GLOBAL_LIMIT: ${DOWNLOAD_ADMISSION_GLOBAL_LIMIT:-8}' \
+  'DOWNLOAD_ADMISSION_PER_ACTOR_LIMIT: ${DOWNLOAD_ADMISSION_PER_ACTOR_LIMIT:-2}' \
+  'DOWNLOAD_ADMISSION_PER_TARGET_LIMIT: ${DOWNLOAD_ADMISSION_PER_TARGET_LIMIT:-2}' \
+  'DOWNLOAD_ADMISSION_RATE_MAX_REQUESTS: ${DOWNLOAD_ADMISSION_RATE_MAX_REQUESTS:-12}' \
+  'DOWNLOAD_ADMISSION_RATE_WINDOW_MS: ${DOWNLOAD_ADMISSION_RATE_WINDOW_MS:-60000}'; do
+  grep -F "  $setting" "$ROOT_DIR/deploy/compose.staging.yml" >/dev/null \
+    || fail "compose.staging.yml omits download admission pass-through: $setting"
+done
 grep -F '    mem_limit: ${API_MEM_LIMIT:-768m}' "$ROOT_DIR/deploy/compose.staging.yml" >/dev/null \
   || fail 'compose.staging.yml does not set an API memory limit'
 grep -F '    pids_limit: ${API_PIDS_LIMIT:-256}' "$ROOT_DIR/deploy/compose.staging.yml" >/dev/null \
@@ -667,6 +685,35 @@ for nginx_config in \
     grep -F "$directive" "$ROOT_DIR/$nginx_config" >/dev/null \
       || fail "$nginx_config omits upload ingress control: $directive"
   done
+  for download_directive in \
+    'location ~* ^/api/(?:attachments/[A-Za-z0-9_-]+/content|projects/[A-Za-z0-9_-]+/attachments/[A-Za-z0-9_-]+/download|v2/tasks/[A-Za-z0-9_-]+/materials/[A-Za-z0-9_-]+/content)/?$ {' \
+    'download_conn 4;' \
+    'download_rate burst=8 nodelay;' \
+    'proxy_buffering off;' \
+    'send_timeout 30s;' \
+    'proxy_ignore_client_abort off;'; do
+    grep -F "$download_directive" "$ROOT_DIR/$nginx_config" >/dev/null \
+      || fail "$nginx_config omits download ingress control: $download_directive"
+  done
+done
+download_route_ere='^/api/(attachments/[A-Za-z0-9_-]+/content|projects/[A-Za-z0-9_-]+/attachments/[A-Za-z0-9_-]+/download|v2/tasks/[A-Za-z0-9_-]+/materials/[A-Za-z0-9_-]+/content)/?$'
+for request_uri in \
+  '/api/attachments/attachment-1/content' \
+  '/api/projects/project-1/attachments/attachment-1/download/' \
+  '/API/V2/TASKS/task-1/MATERIALS/attachment-1/CONTENT' \
+  '/api/projects/project-1/attachments/attachment-1/download?disposition=inline'; do
+  location_uri="${request_uri%%\?*}"
+  printf '%s\n' "$location_uri" | grep -Eiq "$download_route_ere" \
+    || fail "download ingress route pattern misses: $request_uri"
+done
+for request_uri in \
+  '/api/projects/project-1/attachments' \
+  '/api/projects/project-1/attachments/upload' \
+  '/api/v2/tasks/task-1/materials' \
+  '/api/health'; do
+  if printf '%s\n' "$request_uri" | grep -Eiq "$download_route_ere"; then
+    fail "download ingress route pattern overmatches: $request_uri"
+  fi
 done
 for directive in \
   'map \$http_content_type \$feishu_timeline_upload_client' \
@@ -679,6 +726,18 @@ for directive in \
   'add_header Retry-After "1" always;'; do
   grep -F "$directive" "$ROOT_DIR/scripts/deploy/gce-postcutover-hardening.sh" >/dev/null \
     || fail "gce-postcutover-hardening.sh omits upload ingress control: $directive"
+done
+for directive in \
+  'limit_conn_zone \$binary_remote_addr zone=feishu_timeline_download_conn:10m;' \
+  'limit_req_zone \$binary_remote_addr zone=feishu_timeline_download_rate:10m rate=6r/s;' \
+  'location ~* ^/api/(?:attachments/[A-Za-z0-9_-]+/content|projects/[A-Za-z0-9_-]+/attachments/[A-Za-z0-9_-]+/download|v2/tasks/[A-Za-z0-9_-]+/materials/[A-Za-z0-9_-]+/content)/?\$ {' \
+  'limit_conn feishu_timeline_download_conn 4;' \
+  'limit_req zone=feishu_timeline_download_rate burst=8 nodelay;' \
+  'proxy_buffering off;' \
+  'send_timeout 30s;' \
+  'proxy_ignore_client_abort off;'; do
+  grep -F "$directive" "$ROOT_DIR/scripts/deploy/gce-postcutover-hardening.sh" >/dev/null \
+    || fail "gce-postcutover-hardening.sh omits download ingress control: $directive"
 done
 
 preflight_base=(
@@ -700,6 +759,11 @@ preflight_base=(
   'UPLOAD_ADMISSION_PER_TARGET_LIMIT=3'
   'UPLOAD_ADMISSION_RATE_MAX_REQUESTS=6'
   'UPLOAD_ADMISSION_RATE_WINDOW_MS=60000'
+  'DOWNLOAD_ADMISSION_GLOBAL_LIMIT=8'
+  'DOWNLOAD_ADMISSION_PER_ACTOR_LIMIT=2'
+  'DOWNLOAD_ADMISSION_PER_TARGET_LIMIT=2'
+  'DOWNLOAD_ADMISSION_RATE_MAX_REQUESTS=12'
+  'DOWNLOAD_ADMISSION_RATE_WINDOW_MS=60000'
   'API_MEM_LIMIT=768m'
   'API_PIDS_LIMIT=256'
 )
@@ -744,6 +808,16 @@ for invalid_override in \
   'UPLOAD_ADMISSION_RATE_MAX_REQUESTS=61' \
   'UPLOAD_ADMISSION_RATE_WINDOW_MS=999' \
   'UPLOAD_ADMISSION_RATE_WINDOW_MS=300001' \
+  'DOWNLOAD_ADMISSION_GLOBAL_LIMIT=0' \
+  'DOWNLOAD_ADMISSION_GLOBAL_LIMIT=33' \
+  'DOWNLOAD_ADMISSION_PER_ACTOR_LIMIT=0' \
+  'DOWNLOAD_ADMISSION_PER_ACTOR_LIMIT=9' \
+  'DOWNLOAD_ADMISSION_PER_TARGET_LIMIT=0' \
+  'DOWNLOAD_ADMISSION_PER_TARGET_LIMIT=9' \
+  'DOWNLOAD_ADMISSION_RATE_MAX_REQUESTS=0' \
+  'DOWNLOAD_ADMISSION_RATE_MAX_REQUESTS=121' \
+  'DOWNLOAD_ADMISSION_RATE_WINDOW_MS=999' \
+  'DOWNLOAD_ADMISSION_RATE_WINDOW_MS=300001' \
   'API_MEM_LIMIT=128m' \
   'API_MEM_LIMIT=5g' \
   'API_PIDS_LIMIT=63' \
@@ -756,6 +830,16 @@ if run_staging_preflight \
   'UPLOAD_ADMISSION_GLOBAL_LIMIT=2' \
   'UPLOAD_ADMISSION_PER_ACTOR_LIMIT=3' >/dev/null 2>&1; then
   fail 'staging preflight accepted a per-actor upload limit above the global limit'
+fi
+if run_staging_preflight \
+  'DOWNLOAD_ADMISSION_GLOBAL_LIMIT=2' \
+  'DOWNLOAD_ADMISSION_PER_ACTOR_LIMIT=3' >/dev/null 2>&1; then
+  fail 'staging preflight accepted a per-actor download limit above the global limit'
+fi
+if run_staging_preflight \
+  'DOWNLOAD_ADMISSION_GLOBAL_LIMIT=2' \
+  'DOWNLOAD_ADMISSION_PER_TARGET_LIMIT=3' >/dev/null 2>&1; then
+  fail 'staging preflight accepted a per-target download limit above the global limit'
 fi
 
 PINNED_NODE_IMAGE='node:24-alpine@sha256:d32cdf619f63fe0471182d08996dd516c6275bb5fd31ae06e55a570bd9e1ad43'

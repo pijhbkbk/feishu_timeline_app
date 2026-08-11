@@ -5,19 +5,26 @@ import {
   Delete,
   Get,
   Headers,
+  Logger,
   Param,
   Patch,
   Post,
   Put,
   Query,
   Res,
+  ServiceUnavailableException,
   UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
 import { ApiCookieAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
 
+import { DownloadAdmissionInterceptor } from '../../common/download-admission.interceptor';
 import { SecureSingleFileInterceptor } from '../../common/file-upload-options';
+import {
+  closeDownloadStream,
+  createSecureDownloadStreamableFile,
+} from '../../common/secure-download-streamable-file';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { Permissions } from '../auth/permissions.decorator';
 import type { AuthenticatedUser } from '../auth/auth.types';
@@ -55,6 +62,8 @@ type UploadedBinaryFile = {
 @ApiCookieAuth('ft_session')
 @Controller('v2')
 export class R26ReadModelController {
+  private readonly logger = new Logger(R26ReadModelController.name);
+
   constructor(
     private readonly service: R26ReadModelService,
     private readonly memberAssignmentService: R26MemberAssignmentService,
@@ -241,6 +250,7 @@ export class R26ReadModelController {
   }
 
   @Permissions('project.read')
+  @UseInterceptors(DownloadAdmissionInterceptor)
   @ApiOperation({ summary: 'R26 Gate 3B 查看当前或历史材料版本' })
   @Get('tasks/:taskId/materials/:attachmentId/content')
   async getMaterialVersionContent(
@@ -248,7 +258,7 @@ export class R26ReadModelController {
     @Param('attachmentId') attachmentId: string,
     @Query('disposition') disposition: string | undefined,
     @CurrentUser() actor: AuthenticatedUser,
-    @Res() response: Response,
+    @Res({ passthrough: true }) response: Response,
   ) {
     const content =
       await this.progressMaterialService.getHistoricalMaterialContent(
@@ -257,19 +267,35 @@ export class R26ReadModelController {
         actor,
         disposition,
       );
-    response.setHeader('Content-Type', content.contentType);
-    response.setHeader('X-Content-Type-Options', 'nosniff');
-    response.setHeader('Cache-Control', 'private, no-store');
-    response.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
-    response.setHeader(
-      'Content-Security-Policy',
-      "sandbox; default-src 'none'",
-    );
-    response.setHeader(
-      'Content-Disposition',
-      `${content.disposition}; filename*=UTF-8''${encodeURIComponent(content.fileName)}`,
-    );
-    response.send(content.buffer);
+    try {
+      response.setHeader('Content-Type', content.contentType);
+      response.setHeader('X-Content-Type-Options', 'nosniff');
+      response.setHeader('Cache-Control', 'private, no-store');
+      response.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
+      response.setHeader(
+        'Content-Security-Policy',
+        "sandbox; default-src 'none'",
+      );
+      response.setHeader(
+        'Content-Disposition',
+        `${content.disposition}; filename*=UTF-8''${encodeURIComponent(content.fileName).replace(
+          /['()*]/g,
+          (character) => `%${character.charCodeAt(0).toString(16).toUpperCase()}`,
+        )}`,
+      );
+      response.setHeader('Content-Length', String(content.contentLength));
+      response.setHeader('X-Accel-Buffering', 'no');
+      return createSecureDownloadStreamableFile(
+        content.stream,
+        () => this.logger.error('eventType=material_download_stream result=terminated'),
+      );
+    } catch {
+      await closeDownloadStream(content.stream);
+      this.logger.error(
+        'eventType=material_download_response_setup result=failed',
+      );
+      throw new ServiceUnavailableException('附件内容暂不可用。');
+    }
   }
 
   @Permissions('workflow.transition')

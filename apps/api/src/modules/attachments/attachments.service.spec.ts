@@ -3,6 +3,7 @@ import {
   AttachmentTargetType,
   AuditTargetType,
 } from '@prisma/client';
+import { PassThrough } from 'node:stream';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { AuthenticatedUser } from '../auth/auth.types';
@@ -162,7 +163,10 @@ function createService() {
     upload: vi.fn().mockResolvedValue(undefined),
     promote: vi.fn().mockResolvedValue(undefined),
     purge: vi.fn().mockResolvedValue(undefined),
-    download: vi.fn().mockResolvedValue(Buffer.from('ok')),
+    openDownload: vi.fn().mockImplementation(() => ({
+      stream: new PassThrough(),
+      contentLength: 128,
+    })),
     markDeleted: vi.fn().mockResolvedValue(undefined),
   };
 
@@ -668,7 +672,105 @@ describe('AttachmentsService', () => {
     await expect(
       service.downloadAttachment('project-1', 'attachment-1', actor),
     ).rejects.toThrow('安全扫描');
-    expect(objectStorageService.download).not.toHaveBeenCalled();
+    expect(objectStorageService.openDownload).not.toHaveBeenCalled();
+  });
+
+  it('checks project access before opening the CLEAN attachment stream', async () => {
+    const { service, projectAccessService, objectStorageService } = createService();
+    projectAccessService.assertProjectAccessWithDefaultClient.mockRejectedValue(
+      new Error('PROJECT_ACCESS_DENIED'),
+    );
+
+    await expect(
+      service.downloadAttachment('project-1', 'attachment-1', actor),
+    ).rejects.toThrow('PROJECT_ACCESS_DENIED');
+    expect(objectStorageService.openDownload).not.toHaveBeenCalled();
+  });
+
+  it('checks generic-content project access before opening storage', async () => {
+    const { service, prisma, projectAccessService, objectStorageService } = createService();
+    prisma.attachment.findUnique.mockResolvedValue(createAttachmentRecord());
+    projectAccessService.assertProjectAccessWithDefaultClient.mockRejectedValue(
+      new Error('PROJECT_ACCESS_DENIED'),
+    );
+
+    await expect(
+      service.getAttachmentContent('attachment-1', actor),
+    ).rejects.toThrow('PROJECT_ACCESS_DENIED');
+    expect(objectStorageService.openDownload).not.toHaveBeenCalled();
+  });
+
+  it('blocks a non-CLEAN historical material before opening storage', async () => {
+    const { service, prisma, objectStorageService } = createService();
+    prisma.attachment.findFirst.mockResolvedValue(
+      createAttachmentRecord({
+        entityType: AttachmentTargetType.WORKFLOW_TASK,
+        entityId: 'task-1',
+        scanStatus: AttachmentScanStatus.LEGACY_UNSCANNED,
+      }),
+    );
+
+    await expect(
+      service.getTaskMaterialVersionContent(
+        'project-1',
+        'task-1',
+        'attachment-1',
+        actor,
+      ),
+    ).rejects.toThrow('安全扫描');
+    expect(objectStorageService.openDownload).not.toHaveBeenCalled();
+  });
+
+  it('opens a CLEAN attachment with its database size only after authorization', async () => {
+    const { service, prisma, objectStorageService } = createService();
+    prisma.attachment.findFirst.mockResolvedValue(
+      createAttachmentRecord({ fileSize: 128 }),
+    );
+
+    const result = await service.downloadAttachment(
+      'project-1',
+      'attachment-1',
+      actor,
+    );
+
+    expect(objectStorageService.openDownload).toHaveBeenCalledWith({
+      bucket: 'local-dev',
+      storageKey: 'project-1/project/project-1/a.pdf',
+      expectedContentLength: 128,
+    });
+    expect(result.contentLength).toBe(128);
+  });
+
+  it('closes the opened stream before surfacing an audit write failure', async () => {
+    const { service, prisma, objectStorageService, activityLogsService } = createService();
+    const stream = new PassThrough();
+    const destroy = vi.spyOn(stream, 'destroy');
+    objectStorageService.openDownload.mockResolvedValue({
+      stream,
+      contentLength: 128,
+    });
+    prisma.attachment.findFirst.mockResolvedValue(createAttachmentRecord());
+    activityLogsService.create.mockRejectedValue(new Error('AUDIT_WRITE_FAILED'));
+
+    await expect(
+      service.downloadAttachment('project-1', 'attachment-1', actor),
+    ).rejects.toThrow('附件内容暂不可用');
+    expect(destroy).toHaveBeenCalledTimes(1);
+    expect(stream.closed).toBe(true);
+  });
+
+  it('does not surface a sensitive storage path when opening fails', async () => {
+    const { service, prisma, objectStorageService } = createService();
+    prisma.attachment.findFirst.mockResolvedValue(createAttachmentRecord());
+    objectStorageService.openDownload.mockRejectedValue(
+      new Error('ENOENT /private/var/object-storage/customer/secret.pdf'),
+    );
+
+    await expect(
+      service.downloadAttachment('project-1', 'attachment-1', actor),
+    ).rejects.toMatchObject({
+      message: '附件内容暂不可用。',
+    });
   });
 
   it('refuses to bind an attachment before it is clean', async () => {

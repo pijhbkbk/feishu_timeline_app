@@ -1,15 +1,34 @@
 import 'reflect-metadata';
 
 import { RequestMethod } from '@nestjs/common';
-import { METHOD_METADATA, PATH_METADATA } from '@nestjs/common/constants';
+import {
+  INTERCEPTORS_METADATA,
+  METHOD_METADATA,
+  PATH_METADATA,
+} from '@nestjs/common/constants';
 import { WorkflowNodeCode } from '@prisma/client';
 import { describe, expect, it } from 'vitest';
 
 import { PERMISSION_METADATA_KEY } from '../auth/auth.constants';
+import { DownloadAdmissionInterceptor } from '../../common/download-admission.interceptor';
 import { R26_ASSIGNMENT_RULES } from './r26-assignment.rules';
 import { R26ReadModelController } from './r26-read-model.controller';
 
 describe('R26ReadModelController Gate 3C1 contract', () => {
+  it('guards the historical material content stream with download admission', () => {
+    expect(
+      Reflect.getMetadata(
+        INTERCEPTORS_METADATA,
+        R26ReadModelController.prototype.getMaterialVersionContent,
+      ),
+    ).toContain(DownloadAdmissionInterceptor);
+    expect(
+      Reflect.getMetadata(
+        PERMISSION_METADATA_KEY,
+        R26ReadModelController.prototype.getMaterialVersionContent,
+      ),
+    ).toEqual(['project.read']);
+  });
   it('keeps the Gate 2 view-model handlers GET-only', () => {
     const prototype = R26ReadModelController.prototype;
     const handlerNames = [

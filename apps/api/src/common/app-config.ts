@@ -38,6 +38,11 @@ export type AppConfig = {
   uploadAdmissionPerTargetLimit: number;
   uploadAdmissionRateMaxRequests: number;
   uploadAdmissionRateWindowMs: number;
+  downloadAdmissionGlobalLimit: number;
+  downloadAdmissionPerActorLimit: number;
+  downloadAdmissionPerTargetLimit: number;
+  downloadAdmissionRateMaxRequests: number;
+  downloadAdmissionRateWindowMs: number;
   feishuAppId: string;
   feishuAppSecret: string;
   feishuRedirectUri: string;
@@ -411,6 +416,41 @@ export function resolveAppConfig(env: NodeJS.ProcessEnv = process.env): AppConfi
       1_000,
       300_000,
     ),
+    downloadAdmissionGlobalLimit: resolveBoundedInteger(
+      'DOWNLOAD_ADMISSION_GLOBAL_LIMIT',
+      env.DOWNLOAD_ADMISSION_GLOBAL_LIMIT,
+      8,
+      1,
+      32,
+    ),
+    downloadAdmissionPerActorLimit: resolveBoundedInteger(
+      'DOWNLOAD_ADMISSION_PER_ACTOR_LIMIT',
+      env.DOWNLOAD_ADMISSION_PER_ACTOR_LIMIT,
+      2,
+      1,
+      8,
+    ),
+    downloadAdmissionPerTargetLimit: resolveBoundedInteger(
+      'DOWNLOAD_ADMISSION_PER_TARGET_LIMIT',
+      env.DOWNLOAD_ADMISSION_PER_TARGET_LIMIT,
+      2,
+      1,
+      8,
+    ),
+    downloadAdmissionRateMaxRequests: resolveBoundedInteger(
+      'DOWNLOAD_ADMISSION_RATE_MAX_REQUESTS',
+      env.DOWNLOAD_ADMISSION_RATE_MAX_REQUESTS,
+      12,
+      1,
+      120,
+    ),
+    downloadAdmissionRateWindowMs: resolveBoundedInteger(
+      'DOWNLOAD_ADMISSION_RATE_WINDOW_MS',
+      env.DOWNLOAD_ADMISSION_RATE_WINDOW_MS,
+      60_000,
+      1_000,
+      300_000,
+    ),
     feishuAppId: env.FEISHU_APP_ID ?? '',
     feishuAppSecret: env.FEISHU_APP_SECRET ?? '',
     feishuRedirectUri: env.FEISHU_REDIRECT_URI ?? 'http://localhost:3000/login/callback',
@@ -432,6 +472,15 @@ export function resolveAppConfig(env: NodeJS.ProcessEnv = process.env): AppConfi
   if (config.uploadAdmissionPerActorLimit > config.uploadAdmissionGlobalLimit) {
     throw new Error(
       'UPLOAD_ADMISSION_PER_ACTOR_LIMIT must not exceed UPLOAD_ADMISSION_GLOBAL_LIMIT.',
+    );
+  }
+
+  if (
+    config.downloadAdmissionPerActorLimit > config.downloadAdmissionGlobalLimit ||
+    config.downloadAdmissionPerTargetLimit > config.downloadAdmissionGlobalLimit
+  ) {
+    throw new Error(
+      'DOWNLOAD_ADMISSION_PER_ACTOR_LIMIT and DOWNLOAD_ADMISSION_PER_TARGET_LIMIT must not exceed DOWNLOAD_ADMISSION_GLOBAL_LIMIT.',
     );
   }
 

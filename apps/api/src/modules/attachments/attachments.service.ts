@@ -19,6 +19,7 @@ import {
 } from '@prisma/client';
 import { createHash, randomUUID } from 'node:crypto';
 import { extname } from 'node:path';
+import { finished } from 'node:stream/promises';
 
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { ObjectStorageService } from '../../infra/storage/object-storage.service';
@@ -1416,28 +1417,47 @@ export class AttachmentsService {
     rawDisposition?: unknown,
   ) {
     this.assertAttachmentClean(attachment);
-    const buffer = await this.objectStorageService.download({
-      bucket: attachment.bucket,
-      storageKey: attachment.storageKey,
-    });
+    let download: Awaited<ReturnType<ObjectStorageService['openDownload']>>;
+    try {
+      download = await this.objectStorageService.openDownload({
+        bucket: attachment.bucket,
+        storageKey: attachment.storageKey,
+        expectedContentLength: attachment.fileSize,
+      });
+    } catch {
+      this.logger.error(
+        'eventType=attachment_download_storage_open result=failed',
+      );
+      throw new ServiceUnavailableException('附件内容暂不可用。');
+    }
     const disposition = this.getDownloadDisposition(attachment.mimeType, rawDisposition);
 
-    await this.activityLogsService.create({
-      projectId: attachment.projectId,
-      actorUserId: actor.id,
-      targetType: AuditTargetType.ATTACHMENT,
-      targetId: attachment.id,
-      action: 'ATTACHMENT_DOWNLOADED',
-      summary: `下载附件 ${attachment.originalFileName ?? attachment.fileName}`,
-      metadata: {
-        disposition,
-        entityType: attachment.entityType,
-        entityId: attachment.entityId,
-      },
-    });
+    try {
+      await this.activityLogsService.create({
+        projectId: attachment.projectId,
+        actorUserId: actor.id,
+        targetType: AuditTargetType.ATTACHMENT,
+        targetId: attachment.id,
+        action: 'ATTACHMENT_DOWNLOADED',
+        summary: `下载附件 ${attachment.originalFileName ?? attachment.fileName}`,
+        metadata: {
+          disposition,
+          entityType: attachment.entityType,
+          entityId: attachment.entityId,
+        },
+      });
+    } catch {
+      download.stream.destroy();
+      await finished(download.stream).catch(() => undefined);
+      this.logger.error(
+        'eventType=attachment_download_audit_write result=failed',
+      );
+      throw new ServiceUnavailableException('附件内容暂不可用。');
+    }
 
     return {
-      buffer,
+      stream: download.stream,
+      contentLength: download.contentLength,
       contentType: attachment.mimeType,
       fileName: attachment.originalFileName ?? attachment.fileName,
       disposition,

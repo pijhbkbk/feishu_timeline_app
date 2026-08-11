@@ -353,6 +353,47 @@ describe('resolveAppConfig', () => {
     }
   });
 
+  it('bounds download admission and forbids actor or target limits above global', () => {
+    expect(
+      resolveAppConfig({
+        DOWNLOAD_ADMISSION_GLOBAL_LIMIT: '8',
+        DOWNLOAD_ADMISSION_PER_ACTOR_LIMIT: '3',
+        DOWNLOAD_ADMISSION_PER_TARGET_LIMIT: '4',
+        DOWNLOAD_ADMISSION_RATE_MAX_REQUESTS: '24',
+        DOWNLOAD_ADMISSION_RATE_WINDOW_MS: '30000',
+      }),
+    ).toMatchObject({
+      downloadAdmissionGlobalLimit: 8,
+      downloadAdmissionPerActorLimit: 3,
+      downloadAdmissionPerTargetLimit: 4,
+      downloadAdmissionRateMaxRequests: 24,
+      downloadAdmissionRateWindowMs: 30000,
+    });
+
+    for (const env of [
+      { DOWNLOAD_ADMISSION_GLOBAL_LIMIT: '0' },
+      { DOWNLOAD_ADMISSION_GLOBAL_LIMIT: '33' },
+      { DOWNLOAD_ADMISSION_PER_ACTOR_LIMIT: '0' },
+      { DOWNLOAD_ADMISSION_PER_ACTOR_LIMIT: '9' },
+      { DOWNLOAD_ADMISSION_PER_TARGET_LIMIT: '0' },
+      { DOWNLOAD_ADMISSION_PER_TARGET_LIMIT: '9' },
+      { DOWNLOAD_ADMISSION_RATE_MAX_REQUESTS: '0' },
+      { DOWNLOAD_ADMISSION_RATE_MAX_REQUESTS: '121' },
+      { DOWNLOAD_ADMISSION_RATE_WINDOW_MS: '999' },
+      { DOWNLOAD_ADMISSION_RATE_WINDOW_MS: '300001' },
+      {
+        DOWNLOAD_ADMISSION_GLOBAL_LIMIT: '2',
+        DOWNLOAD_ADMISSION_PER_ACTOR_LIMIT: '3',
+      },
+      {
+        DOWNLOAD_ADMISSION_GLOBAL_LIMIT: '2',
+        DOWNLOAD_ADMISSION_PER_TARGET_LIMIT: '3',
+      },
+    ]) {
+      expect(() => resolveAppConfig(env)).toThrowError(/DOWNLOAD_ADMISSION/);
+    }
+  });
+
   it.each([
     {
       name: 'local PostgreSQL',

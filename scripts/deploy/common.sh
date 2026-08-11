@@ -134,6 +134,27 @@ validate_staging_security_env() {
     || [ "$UPLOAD_ADMISSION_RATE_WINDOW_MS" -gt 300000 ]; then
     fail "UPLOAD_ADMISSION_RATE_WINDOW_MS must be an integer from 1000 through 300000."
   fi
+  if [[ ! "${DOWNLOAD_ADMISSION_GLOBAL_LIMIT:-}" =~ ^[1-9][0-9]?$ ]] \
+    || [ "$DOWNLOAD_ADMISSION_GLOBAL_LIMIT" -gt 32 ]; then
+    fail "DOWNLOAD_ADMISSION_GLOBAL_LIMIT must be an integer from 1 through 32."
+  fi
+  if [[ ! "${DOWNLOAD_ADMISSION_PER_ACTOR_LIMIT:-}" =~ ^[1-8]$ ]] \
+    || [ "$DOWNLOAD_ADMISSION_PER_ACTOR_LIMIT" -gt "$DOWNLOAD_ADMISSION_GLOBAL_LIMIT" ]; then
+    fail "DOWNLOAD_ADMISSION_PER_ACTOR_LIMIT must be from 1 through 8 and not exceed the global limit."
+  fi
+  if [[ ! "${DOWNLOAD_ADMISSION_PER_TARGET_LIMIT:-}" =~ ^[1-8]$ ]] \
+    || [ "$DOWNLOAD_ADMISSION_PER_TARGET_LIMIT" -gt "$DOWNLOAD_ADMISSION_GLOBAL_LIMIT" ]; then
+    fail "DOWNLOAD_ADMISSION_PER_TARGET_LIMIT must be from 1 through 8 and not exceed the global limit."
+  fi
+  if [[ ! "${DOWNLOAD_ADMISSION_RATE_MAX_REQUESTS:-}" =~ ^[1-9][0-9]{0,2}$ ]] \
+    || [ "$DOWNLOAD_ADMISSION_RATE_MAX_REQUESTS" -gt 120 ]; then
+    fail "DOWNLOAD_ADMISSION_RATE_MAX_REQUESTS must be an integer from 1 through 120."
+  fi
+  if [[ ! "${DOWNLOAD_ADMISSION_RATE_WINDOW_MS:-}" =~ ^[1-9][0-9]*$ ]] \
+    || [ "$DOWNLOAD_ADMISSION_RATE_WINDOW_MS" -lt 1000 ] \
+    || [ "$DOWNLOAD_ADMISSION_RATE_WINDOW_MS" -gt 300000 ]; then
+    fail "DOWNLOAD_ADMISSION_RATE_WINDOW_MS must be an integer from 1000 through 300000."
+  fi
   if [[ ! "${API_MEM_LIMIT:-}" =~ ^([1-9][0-9]*)([mMgG])$ ]]; then
     fail "API_MEM_LIMIT must be a positive m or g memory limit."
   fi

@@ -1,7 +1,9 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { mkdir, readFile, rename, unlink, writeFile } from 'node:fs/promises';
+import { constants } from 'node:fs';
+import { mkdir, open, rename, unlink, writeFile } from 'node:fs/promises';
 import { dirname, isAbsolute, relative, resolve } from 'node:path';
+import type { Readable } from 'node:stream';
 
 export type ObjectStorageUploadInput = {
   bucket: string;
@@ -14,6 +16,15 @@ export type ObjectStorageDownloadInput = {
   storageKey: string;
 };
 
+export type ObjectStorageOpenDownloadInput = ObjectStorageDownloadInput & {
+  expectedContentLength: number;
+};
+
+export type ObjectStorageDownload = {
+  stream: Readable;
+  contentLength: number;
+};
+
 export type ObjectStoragePromoteInput = {
   bucket: string;
   sourceStorageKey: string;
@@ -24,7 +35,7 @@ export abstract class ObjectStorageService {
   abstract upload(input: ObjectStorageUploadInput): Promise<void>;
   abstract promote(input: ObjectStoragePromoteInput): Promise<void>;
   abstract purge(input: ObjectStorageDownloadInput): Promise<void>;
-  abstract download(input: ObjectStorageDownloadInput): Promise<Buffer>;
+  abstract openDownload(input: ObjectStorageOpenDownloadInput): Promise<ObjectStorageDownload>;
   abstract markDeleted(input: ObjectStorageDownloadInput): Promise<void>;
 }
 
@@ -66,8 +77,27 @@ export class LocalFilesystemObjectStorageService extends ObjectStorageService {
     }
   }
 
-  download(input: ObjectStorageDownloadInput) {
-    return readFile(this.resolveAbsolutePath(input.bucket, input.storageKey));
+  async openDownload(input: ObjectStorageOpenDownloadInput) {
+    const fileHandle = await open(
+      this.resolveAbsolutePath(input.bucket, input.storageKey),
+      constants.O_RDONLY | constants.O_NOFOLLOW,
+    );
+    try {
+      const metadata = await fileHandle.stat();
+      if (!metadata.isFile()) {
+        throw new Error('OBJECT_STORAGE_OBJECT_NOT_REGULAR_FILE');
+      }
+      if (metadata.size !== input.expectedContentLength) {
+        throw new Error('OBJECT_STORAGE_CONTENT_LENGTH_MISMATCH');
+      }
+      return {
+        stream: fileHandle.createReadStream(),
+        contentLength: metadata.size,
+      };
+    } catch (error) {
+      await fileHandle.close();
+      throw error;
+    }
   }
 
   async markDeleted() {
