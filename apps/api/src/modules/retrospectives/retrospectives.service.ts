@@ -197,17 +197,20 @@ export class RetrospectivesService {
       actor,
       'project.write',
     );
-    const existing = await this.prisma.projectRetrospective.findUnique({ where: { projectId } });
-    if (existing?.status === ProjectRetrospectiveStatus.COMPLETED) {
-      throw new ConflictException('复盘已经完成，不能覆盖历史结论。');
-    }
+    const persistenceInput = this.toPersistenceInput(input);
 
     await this.prisma.$transaction(async (tx) => {
-      const record = await tx.projectRetrospective.upsert({
-        where: { projectId },
-        create: { projectId, ...this.toPersistenceInput(input) },
-        update: this.toPersistenceInput(input),
-      });
+      await this.lockRetrospectiveWriteScope(tx, projectId);
+      const existing = await tx.projectRetrospective.findUnique({ where: { projectId } });
+      if (existing?.status === ProjectRetrospectiveStatus.COMPLETED) {
+        throw new ConflictException('复盘已经完成，不能覆盖历史结论。');
+      }
+
+      const record = existing
+        ? await this.updateDraftRetrospective(tx, existing.id, persistenceInput)
+        : await tx.projectRetrospective.create({
+            data: { projectId, ...persistenceInput },
+          });
       await this.activityLogsService.createWithExecutor(tx, {
         projectId,
         actorUserId: actor.id,
@@ -232,42 +235,44 @@ export class RetrospectivesService {
       actor,
       'project.write',
     );
-    const project = await this.prisma.project.findUnique({
-      where: { id: projectId },
-      select: { id: true, status: true, currentNodeCode: true },
-    });
-    if (!project) {
-      throw new NotFoundException('项目不存在或已被删除。');
-    }
-    if (
-      project.status !== ProjectStatus.COMPLETED &&
-      project.currentNodeCode !== WorkflowNodeCode.PROJECT_CLOSED
-    ) {
-      throw new BadRequestException('项目尚未进入关闭节点，不能完成生命周期复盘。');
-    }
-
-    const existing = await this.prisma.projectRetrospective.findUnique({ where: { projectId } });
-    if (existing?.status === ProjectRetrospectiveStatus.COMPLETED) {
-      return this.getRetrospective(projectId, actor);
-    }
+    const persistenceInput = this.toPersistenceInput(input);
 
     await this.prisma.$transaction(async (tx) => {
-      const record = await tx.projectRetrospective.upsert({
-        where: { projectId },
-        create: {
-          projectId,
-          ...this.toPersistenceInput(input),
-          status: ProjectRetrospectiveStatus.COMPLETED,
-          completedById: actor.id,
-          completedAt: new Date(),
-        },
-        update: {
-          ...this.toPersistenceInput(input),
-          status: ProjectRetrospectiveStatus.COMPLETED,
-          completedById: actor.id,
-          completedAt: new Date(),
-        },
+      await this.lockRetrospectiveWriteScope(tx, projectId);
+      const project = await tx.project.findUnique({
+        where: { id: projectId },
+        select: { id: true, status: true, currentNodeCode: true },
       });
+      if (!project) {
+        throw new NotFoundException('项目不存在或已被删除。');
+      }
+      if (
+        project.status !== ProjectStatus.COMPLETED &&
+        project.currentNodeCode !== WorkflowNodeCode.PROJECT_CLOSED
+      ) {
+        throw new BadRequestException('项目尚未进入关闭节点，不能完成生命周期复盘。');
+      }
+
+      const existing = await tx.projectRetrospective.findUnique({ where: { projectId } });
+      if (existing?.status === ProjectRetrospectiveStatus.COMPLETED) {
+        if (this.hasSameRetrospectiveContent(existing, persistenceInput)) {
+          return;
+        }
+        throw new ConflictException('复盘已经完成，提交内容与已锁定结论不一致。');
+      }
+
+      const now = new Date();
+      const completionData = {
+        ...persistenceInput,
+        status: ProjectRetrospectiveStatus.COMPLETED,
+        completedById: actor.id,
+        completedAt: now,
+      };
+      const record = existing
+        ? await this.completeDraftRetrospective(tx, existing.id, completionData)
+        : await tx.projectRetrospective.create({
+            data: { projectId, ...completionData },
+          });
       await this.activityLogsService.createWithExecutor(tx, {
         projectId,
         actorUserId: actor.id,
@@ -280,6 +285,120 @@ export class RetrospectivesService {
     });
 
     return this.getRetrospective(projectId, actor);
+  }
+
+  private async lockRetrospectiveWriteScope(
+    tx: Prisma.TransactionClient,
+    projectId: string,
+  ) {
+    const projects = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+      SELECT "id"
+      FROM "projects"
+      WHERE "id" = ${projectId}
+      FOR UPDATE
+    `);
+    if (projects.length === 0) {
+      throw new NotFoundException('项目不存在或已被删除。');
+    }
+
+    await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+      SELECT "id"
+      FROM "project_retrospectives"
+      WHERE "projectId" = ${projectId}
+      FOR UPDATE
+    `);
+  }
+
+  private async updateDraftRetrospective(
+    tx: Prisma.TransactionClient,
+    retrospectiveId: string,
+    input: ReturnType<RetrospectivesService['toPersistenceInput']>,
+  ) {
+    const result = await tx.projectRetrospective.updateMany({
+      where: {
+        id: retrospectiveId,
+        status: ProjectRetrospectiveStatus.DRAFT,
+      },
+      data: input,
+    });
+    if (result.count !== 1) {
+      throw new ConflictException('复盘状态已变化，请刷新后重试。');
+    }
+
+    const record = await tx.projectRetrospective.findUnique({
+      where: { id: retrospectiveId },
+    });
+    if (!record) {
+      throw new ConflictException('复盘状态已变化，请刷新后重试。');
+    }
+    return record;
+  }
+
+  private async completeDraftRetrospective(
+    tx: Prisma.TransactionClient,
+    retrospectiveId: string,
+    input: ReturnType<RetrospectivesService['toPersistenceInput']> & {
+      status: ProjectRetrospectiveStatus;
+      completedById: string;
+      completedAt: Date;
+    },
+  ) {
+    const result = await tx.projectRetrospective.updateMany({
+      where: {
+        id: retrospectiveId,
+        status: ProjectRetrospectiveStatus.DRAFT,
+      },
+      data: input,
+    });
+    if (result.count !== 1) {
+      throw new ConflictException('复盘状态已变化，请刷新后重试。');
+    }
+
+    const record = await tx.projectRetrospective.findUnique({
+      where: { id: retrospectiveId },
+    });
+    if (!record) {
+      throw new ConflictException('复盘状态已变化，请刷新后重试。');
+    }
+    return record;
+  }
+
+  private hasSameRetrospectiveContent(
+    existing: {
+      conclusion: string | null;
+      improvementMeasures: Prisma.JsonValue | null;
+      strengths: string | null;
+      problems: string | null;
+      reusableExperience: string | null;
+      workflowRuleUpdates: string | null;
+    },
+    input: ReturnType<RetrospectivesService['toPersistenceInput']>,
+  ) {
+    return this.canonicalJson({
+      conclusion: existing.conclusion,
+      improvementMeasures: existing.improvementMeasures,
+      strengths: existing.strengths,
+      problems: existing.problems,
+      reusableExperience: existing.reusableExperience,
+      workflowRuleUpdates: existing.workflowRuleUpdates,
+    }) === this.canonicalJson(input);
+  }
+
+  private canonicalJson(value: unknown): string {
+    const normalize = (item: unknown): unknown => {
+      if (Array.isArray(item)) {
+        return item.map(normalize);
+      }
+      if (item && typeof item === 'object') {
+        return Object.fromEntries(
+          Object.entries(item as Record<string, unknown>)
+            .sort(([left], [right]) => left.localeCompare(right))
+            .map(([key, child]) => [key, normalize(child)]),
+        );
+      }
+      return item;
+    };
+    return JSON.stringify(normalize(value));
   }
 
   private toPersistenceInput(input: SaveRetrospectiveDto) {
