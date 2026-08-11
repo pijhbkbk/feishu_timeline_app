@@ -146,6 +146,13 @@ EOF
 
 FINAL_TIMELINE_CONF_B64="$(
   cat <<EOF | base64 | tr -d '\n'
+map \$http_content_type \$feishu_timeline_upload_client {
+    default "";
+    "~*^multipart/form-data(?:;|\$)" \$binary_remote_addr;
+}
+limit_conn_zone \$feishu_timeline_upload_client zone=feishu_timeline_api_conn:10m;
+limit_req_zone \$feishu_timeline_upload_client zone=feishu_timeline_api_rate:10m rate=30r/s;
+
 server {
     listen 80;
     listen [::]:80;
@@ -165,7 +172,9 @@ server {
     access_log /var/log/nginx/feishu-timeline.access.log;
     error_log /var/log/nginx/feishu-timeline.error.log warn;
 
-    client_max_body_size 20m;
+    client_max_body_size 21m;
+    client_body_timeout 15s;
+    error_page 429 = @api_ingress_limited;
     add_header Strict-Transport-Security "max-age=31536000" always;
     add_header X-Content-Type-Options "nosniff" always;
     add_header X-Frame-Options "SAMEORIGIN" always;
@@ -174,7 +183,12 @@ server {
     proxy_hide_header X-Powered-By;
 
     location /api/ {
+        limit_conn_status 429;
+        limit_req_status 429;
+        limit_conn feishu_timeline_api_conn 20;
+        limit_req zone=feishu_timeline_api_rate burst=60 nodelay;
         proxy_pass http://127.0.0.1:3001;
+        proxy_request_buffering off;
         proxy_http_version 1.1;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
@@ -184,6 +198,11 @@ server {
         proxy_set_header X-Forwarded-Port \$server_port;
         proxy_read_timeout 60s;
         proxy_send_timeout 60s;
+    }
+
+    location @api_ingress_limited {
+        add_header Retry-After "1" always;
+        return 429;
     }
 
     location / {

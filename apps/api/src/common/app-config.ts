@@ -3,6 +3,7 @@ import {
   FEISHU_CN_OAUTH_PROVIDER,
   type OAuthProvider,
 } from './feishu-oauth-provider';
+import { API_UPLOAD_MAX_CONCURRENT_REQUESTS } from './upload-security.constants';
 
 export type AppConfig = {
   nodeEnv: string;
@@ -32,6 +33,11 @@ export type AppConfig = {
   malwareScannerHost: string;
   malwareScannerPort: number;
   malwareScannerTimeoutMs: number;
+  uploadAdmissionGlobalLimit: number;
+  uploadAdmissionPerActorLimit: number;
+  uploadAdmissionPerTargetLimit: number;
+  uploadAdmissionRateMaxRequests: number;
+  uploadAdmissionRateWindowMs: number;
   feishuAppId: string;
   feishuAppSecret: string;
   feishuRedirectUri: string;
@@ -370,6 +376,41 @@ export function resolveAppConfig(env: NodeJS.ProcessEnv = process.env): AppConfi
       1000,
       60000,
     ),
+    uploadAdmissionGlobalLimit: resolveBoundedInteger(
+      'UPLOAD_ADMISSION_GLOBAL_LIMIT',
+      env.UPLOAD_ADMISSION_GLOBAL_LIMIT,
+      4,
+      1,
+      API_UPLOAD_MAX_CONCURRENT_REQUESTS,
+    ),
+    uploadAdmissionPerActorLimit: resolveBoundedInteger(
+      'UPLOAD_ADMISSION_PER_ACTOR_LIMIT',
+      env.UPLOAD_ADMISSION_PER_ACTOR_LIMIT,
+      2,
+      1,
+      4,
+    ),
+    uploadAdmissionPerTargetLimit: resolveBoundedInteger(
+      'UPLOAD_ADMISSION_PER_TARGET_LIMIT',
+      env.UPLOAD_ADMISSION_PER_TARGET_LIMIT,
+      3,
+      1,
+      API_UPLOAD_MAX_CONCURRENT_REQUESTS,
+    ),
+    uploadAdmissionRateMaxRequests: resolveBoundedInteger(
+      'UPLOAD_ADMISSION_RATE_MAX_REQUESTS',
+      env.UPLOAD_ADMISSION_RATE_MAX_REQUESTS,
+      6,
+      1,
+      60,
+    ),
+    uploadAdmissionRateWindowMs: resolveBoundedInteger(
+      'UPLOAD_ADMISSION_RATE_WINDOW_MS',
+      env.UPLOAD_ADMISSION_RATE_WINDOW_MS,
+      60_000,
+      1_000,
+      300_000,
+    ),
     feishuAppId: env.FEISHU_APP_ID ?? '',
     feishuAppSecret: env.FEISHU_APP_SECRET ?? '',
     feishuRedirectUri: env.FEISHU_REDIRECT_URI ?? 'http://localhost:3000/login/callback',
@@ -386,6 +427,12 @@ export function resolveAppConfig(env: NodeJS.ProcessEnv = process.env): AppConfi
 
   if (isProtectedEnvironment && config.authMockEnabled) {
     throw new Error('AUTH_MOCK_ENABLED must be false in staging and production.');
+  }
+
+  if (config.uploadAdmissionPerActorLimit > config.uploadAdmissionGlobalLimit) {
+    throw new Error(
+      'UPLOAD_ADMISSION_PER_ACTOR_LIMIT must not exceed UPLOAD_ADMISSION_GLOBAL_LIMIT.',
+    );
   }
 
   if (isProtectedEnvironment && config.nodeEnv !== 'production') {

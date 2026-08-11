@@ -62,6 +62,11 @@ describe('resolveAppConfig', () => {
     expect(config.malwareScannerHost).toBe('');
     expect(config.malwareScannerPort).toBe(3310);
     expect(config.malwareScannerTimeoutMs).toBe(15000);
+    expect(config.uploadAdmissionGlobalLimit).toBe(4);
+    expect(config.uploadAdmissionPerActorLimit).toBe(2);
+    expect(config.uploadAdmissionPerTargetLimit).toBe(3);
+    expect(config.uploadAdmissionRateMaxRequests).toBe(6);
+    expect(config.uploadAdmissionRateWindowMs).toBe(60000);
     expect(config.oauthProvider).toBe('feishu-cn');
     expect(config.feishuAuthorizationEndpoint).toBe(
       'https://accounts.feishu.cn/open-apis/authen/v1/index',
@@ -309,6 +314,43 @@ describe('resolveAppConfig', () => {
         CLAMAV_TIMEOUT_MS: '999999',
       }),
     ).toThrowError(/CLAMAV_TIMEOUT_MS/);
+  });
+
+  it('bounds upload admission concurrency and forbids a per-actor limit above the global limit', () => {
+    expect(
+      resolveAppConfig({
+        UPLOAD_ADMISSION_GLOBAL_LIMIT: '4',
+        UPLOAD_ADMISSION_PER_ACTOR_LIMIT: '4',
+        UPLOAD_ADMISSION_PER_TARGET_LIMIT: '4',
+        UPLOAD_ADMISSION_RATE_MAX_REQUESTS: '12',
+        UPLOAD_ADMISSION_RATE_WINDOW_MS: '30000',
+      }),
+    ).toMatchObject({
+      uploadAdmissionGlobalLimit: 4,
+      uploadAdmissionPerActorLimit: 4,
+      uploadAdmissionPerTargetLimit: 4,
+      uploadAdmissionRateMaxRequests: 12,
+      uploadAdmissionRateWindowMs: 30000,
+    });
+
+    for (const env of [
+      { UPLOAD_ADMISSION_GLOBAL_LIMIT: '0' },
+      { UPLOAD_ADMISSION_GLOBAL_LIMIT: '5' },
+      { UPLOAD_ADMISSION_PER_ACTOR_LIMIT: '0' },
+      { UPLOAD_ADMISSION_PER_ACTOR_LIMIT: '5' },
+      { UPLOAD_ADMISSION_PER_TARGET_LIMIT: '0' },
+      { UPLOAD_ADMISSION_PER_TARGET_LIMIT: '5' },
+      { UPLOAD_ADMISSION_RATE_MAX_REQUESTS: '0' },
+      { UPLOAD_ADMISSION_RATE_MAX_REQUESTS: '61' },
+      { UPLOAD_ADMISSION_RATE_WINDOW_MS: '999' },
+      { UPLOAD_ADMISSION_RATE_WINDOW_MS: '300001' },
+      {
+        UPLOAD_ADMISSION_GLOBAL_LIMIT: '2',
+        UPLOAD_ADMISSION_PER_ACTOR_LIMIT: '3',
+      },
+    ]) {
+      expect(() => resolveAppConfig(env)).toThrowError(/UPLOAD_ADMISSION/);
+    }
   });
 
   it.each([

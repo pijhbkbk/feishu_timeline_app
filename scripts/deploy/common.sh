@@ -115,6 +115,40 @@ validate_staging_security_env() {
     fail "CLAMAV_TIMEOUT_MS must be an integer from 1000 through 60000."
   fi
 
+  if [[ ! "${UPLOAD_ADMISSION_GLOBAL_LIMIT:-}" =~ ^[1-4]$ ]]; then
+    fail "UPLOAD_ADMISSION_GLOBAL_LIMIT must be an integer from 1 through 4."
+  fi
+  if [[ ! "${UPLOAD_ADMISSION_PER_ACTOR_LIMIT:-}" =~ ^[1-4]$ ]] \
+    || [ "$UPLOAD_ADMISSION_PER_ACTOR_LIMIT" -gt "$UPLOAD_ADMISSION_GLOBAL_LIMIT" ]; then
+    fail "UPLOAD_ADMISSION_PER_ACTOR_LIMIT must be from 1 through 4 and not exceed the global limit."
+  fi
+  if [[ ! "${UPLOAD_ADMISSION_PER_TARGET_LIMIT:-}" =~ ^[1-4]$ ]]; then
+    fail "UPLOAD_ADMISSION_PER_TARGET_LIMIT must be an integer from 1 through 4."
+  fi
+  if [[ ! "${UPLOAD_ADMISSION_RATE_MAX_REQUESTS:-}" =~ ^[1-9][0-9]?$ ]] \
+    || [ "$UPLOAD_ADMISSION_RATE_MAX_REQUESTS" -gt 60 ]; then
+    fail "UPLOAD_ADMISSION_RATE_MAX_REQUESTS must be an integer from 1 through 60."
+  fi
+  if [[ ! "${UPLOAD_ADMISSION_RATE_WINDOW_MS:-}" =~ ^[1-9][0-9]*$ ]] \
+    || [ "$UPLOAD_ADMISSION_RATE_WINDOW_MS" -lt 1000 ] \
+    || [ "$UPLOAD_ADMISSION_RATE_WINDOW_MS" -gt 300000 ]; then
+    fail "UPLOAD_ADMISSION_RATE_WINDOW_MS must be an integer from 1000 through 300000."
+  fi
+  if [[ ! "${API_MEM_LIMIT:-}" =~ ^([1-9][0-9]*)([mMgG])$ ]]; then
+    fail "API_MEM_LIMIT must be a positive m or g memory limit."
+  fi
+  local api_mem_amount="${BASH_REMATCH[1]}"
+  local api_mem_unit="${BASH_REMATCH[2],,}"
+  if { [ "$api_mem_unit" = m ] && { [ "$api_mem_amount" -lt 256 ] || [ "$api_mem_amount" -gt 4096 ]; }; } \
+    || { [ "$api_mem_unit" = g ] && { [ "$api_mem_amount" -lt 1 ] || [ "$api_mem_amount" -gt 4 ]; }; }; then
+    fail "API_MEM_LIMIT must be between 256m and 4096m (or 1g through 4g)."
+  fi
+  if [[ ! "${API_PIDS_LIMIT:-}" =~ ^[1-9][0-9]*$ ]] \
+    || [ "$API_PIDS_LIMIT" -lt 64 ] \
+    || [ "$API_PIDS_LIMIT" -gt 1024 ]; then
+    fail "API_PIDS_LIMIT must be an integer from 64 through 1024."
+  fi
+
   if [[ -n "${FEISHU_APP_ID:-}${FEISHU_APP_SECRET:-}" ]]; then
     [[ -n "${FEISHU_APP_ID:-}" && -n "${FEISHU_APP_SECRET:-}" ]] \
       || fail "FEISHU_APP_ID and FEISHU_APP_SECRET must be configured together."

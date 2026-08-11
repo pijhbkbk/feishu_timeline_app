@@ -26,6 +26,11 @@ x-api-runtime: &api-runtime
   CLAMAV_HOST: ${CLAMAV_HOST:?Set CLAMAV_HOST to the approved scanner endpoint}
   CLAMAV_PORT: ${CLAMAV_PORT:?Set CLAMAV_PORT in the staging environment file}
   CLAMAV_TIMEOUT_MS: ${CLAMAV_TIMEOUT_MS:?Set CLAMAV_TIMEOUT_MS in the staging environment file}
+  UPLOAD_ADMISSION_GLOBAL_LIMIT: ${UPLOAD_ADMISSION_GLOBAL_LIMIT:-4}
+  UPLOAD_ADMISSION_PER_ACTOR_LIMIT: ${UPLOAD_ADMISSION_PER_ACTOR_LIMIT:-2}
+  UPLOAD_ADMISSION_PER_TARGET_LIMIT: ${UPLOAD_ADMISSION_PER_TARGET_LIMIT:-3}
+  UPLOAD_ADMISSION_RATE_MAX_REQUESTS: ${UPLOAD_ADMISSION_RATE_MAX_REQUESTS:-6}
+  UPLOAD_ADMISSION_RATE_WINDOW_MS: ${UPLOAD_ADMISSION_RATE_WINDOW_MS:-60000}
   FEISHU_APP_ID: ${FEISHU_APP_ID:-}
   FEISHU_APP_SECRET: ${FEISHU_APP_SECRET:-}
   FEISHU_REDIRECT_URI: ${FEISHU_REDIRECT_URI:-http://localhost:8080/login/callback}
@@ -78,6 +83,8 @@ services:
       dockerfile: apps/api/Dockerfile
       target: runtime
     container_name: ${COMPOSE_PROJECT_NAME:-feishu-timeline-staging}-api
+    mem_limit: ${API_MEM_LIMIT:-768m}
+    pids_limit: ${API_PIDS_LIMIT:-256}
     environment: *api-runtime
     depends_on:
       postgres:
@@ -107,6 +114,8 @@ services:
       dockerfile: apps/api/Dockerfile
       target: ops
     profiles: ["ops"]
+    mem_limit: ${API_MEM_LIMIT:-768m}
+    pids_limit: ${API_PIDS_LIMIT:-256}
     working_dir: /app
     environment: *api-runtime
     depends_on:
@@ -123,6 +132,8 @@ services:
       dockerfile: apps/api/Dockerfile
       target: ops
     profiles: ["ops"]
+    mem_limit: ${API_MEM_LIMIT:-768m}
+    pids_limit: ${API_PIDS_LIMIT:-256}
     working_dir: /app
     environment: *api-runtime
     depends_on:

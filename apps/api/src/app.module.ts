@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 
 import appConfig, { APP_ENV_FILE_PATHS } from './common/app-config';
+import { UploadAdmissionModule } from './common/upload-admission.module';
 import { PrismaModule } from './infra/prisma/prisma.module';
 import { RedisModule } from './infra/redis/redis.module';
 import { ActivityLogsModule } from './modules/activity-logs/activity-logs.module';
@@ -44,6 +45,7 @@ import { WorkflowsModule } from './modules/workflows/workflows.module';
       load: [appConfig],
       envFilePath: [...APP_ENV_FILE_PATHS],
     }),
+    UploadAdmissionModule,
     PrismaModule,
     RedisModule,
     HealthModule,

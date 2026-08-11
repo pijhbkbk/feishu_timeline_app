@@ -416,6 +416,15 @@ for expected_scanner_setting in \
   grep -Fx "$expected_scanner_setting" "$PRODUCTION_ENV_TEMPLATE" >/dev/null \
     || fail "root production env template omits scanner setting: $expected_scanner_setting"
 done
+for expected_upload_setting in \
+  'UPLOAD_ADMISSION_GLOBAL_LIMIT=4' \
+  'UPLOAD_ADMISSION_PER_ACTOR_LIMIT=2' \
+  'UPLOAD_ADMISSION_PER_TARGET_LIMIT=3' \
+  'UPLOAD_ADMISSION_RATE_MAX_REQUESTS=6' \
+  'UPLOAD_ADMISSION_RATE_WINDOW_MS=60000'; do
+  grep -Fx "$expected_upload_setting" "$PRODUCTION_ENV_TEMPLATE" >/dev/null \
+    || fail "root production env template omits upload admission setting: $expected_upload_setting"
+done
 grep -E '^DATABASE_URL=postgresql://[^:]+:[^@]+@[^/]+/[^?]+\?schema=[A-Za-z0-9_]+$' \
   "$PRODUCTION_ENV_TEMPLATE" >/dev/null \
   || fail 'root production env template does not use an authenticated PostgreSQL placeholder URL'
@@ -622,6 +631,55 @@ for variable in \
   grep -E "^${variable}=" "$ROOT_DIR/deploy/env/staging.env.example" >/dev/null \
     || fail "staging.env.example omits $variable"
 done
+for setting in \
+  'UPLOAD_ADMISSION_GLOBAL_LIMIT: ${UPLOAD_ADMISSION_GLOBAL_LIMIT:-4}' \
+  'UPLOAD_ADMISSION_PER_ACTOR_LIMIT: ${UPLOAD_ADMISSION_PER_ACTOR_LIMIT:-2}' \
+  'UPLOAD_ADMISSION_PER_TARGET_LIMIT: ${UPLOAD_ADMISSION_PER_TARGET_LIMIT:-3}' \
+  'UPLOAD_ADMISSION_RATE_MAX_REQUESTS: ${UPLOAD_ADMISSION_RATE_MAX_REQUESTS:-6}' \
+  'UPLOAD_ADMISSION_RATE_WINDOW_MS: ${UPLOAD_ADMISSION_RATE_WINDOW_MS:-60000}'; do
+  grep -F "  $setting" "$ROOT_DIR/deploy/compose.staging.yml" >/dev/null \
+    || fail "compose.staging.yml omits upload admission pass-through: $setting"
+done
+grep -F '    mem_limit: ${API_MEM_LIMIT:-768m}' "$ROOT_DIR/deploy/compose.staging.yml" >/dev/null \
+  || fail 'compose.staging.yml does not set an API memory limit'
+grep -F '    pids_limit: ${API_PIDS_LIMIT:-256}' "$ROOT_DIR/deploy/compose.staging.yml" >/dev/null \
+  || fail 'compose.staging.yml does not set an API PID limit'
+grep -Fx 'MemoryMax=768M' "$ROOT_DIR/deploy/systemd/feishu-timeline-api.service" >/dev/null \
+  || fail 'API systemd unit does not set MemoryMax'
+grep -Fx 'TasksMax=256' "$ROOT_DIR/deploy/systemd/feishu-timeline-api.service" >/dev/null \
+  || fail 'API systemd unit does not set TasksMax'
+for nginx_config in \
+  deploy/nginx/compose.staging.conf \
+  deploy/nginx/feishu-timeline.conf \
+  deploy/nginx/timeline.all-too-well.com.conf; do
+  for directive in \
+    'map $http_content_type' \
+    '"~*^multipart/form-data(?:;|$)" $binary_remote_addr;' \
+    'limit_conn_zone $' \
+    '_upload_client zone=' \
+    'limit_req_zone $' \
+    'client_max_body_size 21m;' \
+    'client_body_timeout 15s;' \
+    'limit_conn_status 429;' \
+    'limit_req_status 429;' \
+    'proxy_request_buffering off;' \
+    'add_header Retry-After "1" always;'; do
+    grep -F "$directive" "$ROOT_DIR/$nginx_config" >/dev/null \
+      || fail "$nginx_config omits upload ingress control: $directive"
+  done
+done
+for directive in \
+  'map \$http_content_type \$feishu_timeline_upload_client' \
+  '"~*^multipart/form-data(?:;|\$)" \$binary_remote_addr;' \
+  'limit_conn_zone \$feishu_timeline_upload_client' \
+  'limit_req_zone \$feishu_timeline_upload_client' \
+  'client_max_body_size 21m;' \
+  'client_body_timeout 15s;' \
+  'proxy_request_buffering off;' \
+  'add_header Retry-After "1" always;'; do
+  grep -F "$directive" "$ROOT_DIR/scripts/deploy/gce-postcutover-hardening.sh" >/dev/null \
+    || fail "gce-postcutover-hardening.sh omits upload ingress control: $directive"
+done
 
 preflight_base=(
   'DEPLOYMENT_ENV=staging'
@@ -637,6 +695,13 @@ preflight_base=(
   'CLAMAV_HOST=clamav.security.internal'
   'CLAMAV_PORT=3310'
   'CLAMAV_TIMEOUT_MS=15000'
+  'UPLOAD_ADMISSION_GLOBAL_LIMIT=4'
+  'UPLOAD_ADMISSION_PER_ACTOR_LIMIT=2'
+  'UPLOAD_ADMISSION_PER_TARGET_LIMIT=3'
+  'UPLOAD_ADMISSION_RATE_MAX_REQUESTS=6'
+  'UPLOAD_ADMISSION_RATE_WINDOW_MS=60000'
+  'API_MEM_LIMIT=768m'
+  'API_PIDS_LIMIT=256'
 )
 
 run_staging_preflight() {
@@ -667,6 +732,31 @@ for invalid_override in \
     fail "staging preflight accepted unsafe protected configuration: $invalid_override"
   fi
 done
+
+for invalid_override in \
+  'UPLOAD_ADMISSION_GLOBAL_LIMIT=0' \
+  'UPLOAD_ADMISSION_GLOBAL_LIMIT=5' \
+  'UPLOAD_ADMISSION_PER_ACTOR_LIMIT=0' \
+  'UPLOAD_ADMISSION_PER_ACTOR_LIMIT=5' \
+  'UPLOAD_ADMISSION_PER_TARGET_LIMIT=0' \
+  'UPLOAD_ADMISSION_PER_TARGET_LIMIT=5' \
+  'UPLOAD_ADMISSION_RATE_MAX_REQUESTS=0' \
+  'UPLOAD_ADMISSION_RATE_MAX_REQUESTS=61' \
+  'UPLOAD_ADMISSION_RATE_WINDOW_MS=999' \
+  'UPLOAD_ADMISSION_RATE_WINDOW_MS=300001' \
+  'API_MEM_LIMIT=128m' \
+  'API_MEM_LIMIT=5g' \
+  'API_PIDS_LIMIT=63' \
+  'API_PIDS_LIMIT=1025'; do
+  if run_staging_preflight "$invalid_override" >/dev/null 2>&1; then
+    fail "staging preflight accepted unsafe upload/resource configuration: $invalid_override"
+  fi
+done
+if run_staging_preflight \
+  'UPLOAD_ADMISSION_GLOBAL_LIMIT=2' \
+  'UPLOAD_ADMISSION_PER_ACTOR_LIMIT=3' >/dev/null 2>&1; then
+  fail 'staging preflight accepted a per-actor upload limit above the global limit'
+fi
 
 PINNED_NODE_IMAGE='node:24-alpine@sha256:d32cdf619f63fe0471182d08996dd516c6275bb5fd31ae06e55a570bd9e1ad43'
 grep -F "NODE_IMAGE=\"\${NODE_IMAGE:-$PINNED_NODE_IMAGE}\"" \

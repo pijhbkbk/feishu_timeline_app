@@ -39,6 +39,8 @@ RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
 LockPersonality=true
 UMask=0027
 LimitNOFILE=65535
+MemoryMax=768M
+TasksMax=256
 
 [Install]
 WantedBy=multi-user.target
