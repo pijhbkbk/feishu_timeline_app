@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   GoneException,
   Injectable,
   NotFoundException,
@@ -75,6 +76,7 @@ type CreateProjectInput = {
 };
 
 type UpdateProjectInput = {
+  expectedVersion: Date;
   name?: string;
   description?: string | null;
   priority?: ProjectPriority;
@@ -894,35 +896,51 @@ export class ProjectsService {
         throw new NotFoundException('项目不存在或已被删除。');
       }
 
-      const updatedProject = await tx.project.update({
-        where: { id: projectId },
+      if (currentProject.updatedAt.getTime() !== input.expectedVersion.getTime()) {
+        this.throwProjectStateChanged(projectId, input.expectedVersion, currentProject.updatedAt);
+      }
+
+      const nextVersion = new Date(
+        Math.max(Date.now(), input.expectedVersion.getTime() + 1),
+      );
+      const claimed = await tx.project.updateMany({
+        where: {
+          id: projectId,
+          updatedAt: input.expectedVersion,
+          memberAssignmentVersion: currentProject.memberAssignmentVersion,
+        },
         data: {
-          name: input.name ?? currentProject.name,
-          description:
-            input.description === undefined ? currentProject.description : input.description,
-          priority: input.priority ?? currentProject.priority,
-          marketRegion:
-            input.marketRegion === undefined ? currentProject.marketRegion : input.marketRegion,
-          colorMarketingUnit:
-            input.colorMarketingUnit === undefined
-              ? currentProject.colorMarketingUnit
-              : input.colorMarketingUnit,
-          paintSupplier:
-            input.paintSupplier === undefined
-              ? currentProject.paintSupplier
-              : input.paintSupplier,
-          vehicleModel:
-            input.vehicleModel === undefined ? currentProject.vehicleModel : input.vehicleModel,
-          plannedStartDate:
-            input.plannedStartDate === undefined
-              ? currentProject.plannedStartDate
-              : input.plannedStartDate,
-          plannedEndDate:
-            input.plannedEndDate === undefined
-              ? currentProject.plannedEndDate
-              : input.plannedEndDate,
+          ...(input.name !== undefined ? { name: input.name } : {}),
+          ...(input.description !== undefined ? { description: input.description } : {}),
+          ...(input.priority !== undefined ? { priority: input.priority } : {}),
+          ...(input.marketRegion !== undefined ? { marketRegion: input.marketRegion } : {}),
+          ...(input.colorMarketingUnit !== undefined
+            ? { colorMarketingUnit: input.colorMarketingUnit }
+            : {}),
+          ...(input.paintSupplier !== undefined
+            ? { paintSupplier: input.paintSupplier }
+            : {}),
+          ...(input.vehicleModel !== undefined ? { vehicleModel: input.vehicleModel } : {}),
+          ...(input.plannedStartDate !== undefined
+            ? { plannedStartDate: input.plannedStartDate }
+            : {}),
+          ...(input.plannedEndDate !== undefined
+            ? { plannedEndDate: input.plannedEndDate }
+            : {}),
+          updatedAt: nextVersion,
         },
       });
+
+      if (claimed.count !== 1) {
+        this.throwProjectStateChanged(projectId, input.expectedVersion);
+      }
+
+      const updatedProject = await tx.project.findUnique({
+        where: { id: projectId },
+      });
+      if (!updatedProject) {
+        this.throwProjectStateChanged(projectId, input.expectedVersion);
+      }
 
       await this.activityLogsService.createWithExecutor(tx, {
         projectId,
@@ -1041,6 +1059,7 @@ export class ProjectsService {
         message: '负责人变更必须通过受版本控制的成员分工接口完成。',
       });
     }
+    const expectedVersion = this.parseRequiredProjectVersion(input.expectedVersion);
     const plannedStartDate = this.parseOptionalDate(
       input.plannedStartDate,
       'plannedStartDate',
@@ -1053,7 +1072,7 @@ export class ProjectsService {
       plannedEndDate === undefined ? undefined : plannedEndDate,
     );
 
-    const normalized: UpdateProjectInput = {};
+    const normalized: UpdateProjectInput = { expectedVersion };
     const name = this.parseOptionalString(input.name);
     const description = this.parseNullableString(input.description, true);
     const priority = this.parseOptionalEnum(
@@ -1110,6 +1129,44 @@ export class ProjectsService {
     }
 
     return normalized;
+  }
+
+  private parseRequiredProjectVersion(rawValue: unknown) {
+    if (rawValue === undefined || rawValue === null || rawValue === '') {
+      throw new BadRequestException({
+        code: 'PROJECT_VERSION_REQUIRED',
+        message: '缺少项目数据版本，请刷新后重试。',
+      });
+    }
+    if (typeof rawValue !== 'string') {
+      throw new BadRequestException({
+        code: 'PROJECT_VERSION_INVALID',
+        message: '项目数据版本格式不正确，请刷新后重试。',
+      });
+    }
+
+    const version = new Date(rawValue);
+    if (Number.isNaN(version.getTime())) {
+      throw new BadRequestException({
+        code: 'PROJECT_VERSION_INVALID',
+        message: '项目数据版本格式不正确，请刷新后重试。',
+      });
+    }
+    return version;
+  }
+
+  private throwProjectStateChanged(
+    projectId: string,
+    expectedVersion: Date,
+    currentVersion?: Date,
+  ): never {
+    throw new ConflictException({
+      code: 'PROJECT_STATE_CHANGED',
+      message: '项目基础信息已被其他操作更新，请刷新后重试。',
+      projectId,
+      expectedVersion: expectedVersion.toISOString(),
+      currentVersion: currentVersion?.toISOString() ?? null,
+    });
   }
 
   private parseMembers(rawValue: unknown): ProjectMemberInput[] {

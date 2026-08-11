@@ -84,6 +84,7 @@ describe('ProjectsService legacy write boundary', () => {
       service.updateProject(
         'project-1',
         {
+          expectedVersion: '2026-08-11T08:00:00.000Z',
           name: '允许更新的项目名称',
         },
         actor,
@@ -94,6 +95,7 @@ describe('ProjectsService legacy write boundary', () => {
   });
 
   it('never writes a stale owner snapshot during an ordinary field update', async () => {
+    const version = new Date('2026-08-11T08:00:00.000Z');
     const currentProject = {
       id: 'project-1',
       name: '更新前名称',
@@ -108,17 +110,24 @@ describe('ProjectsService legacy write boundary', () => {
       plannedStartDate: null,
       plannedEndDate: null,
       currentNodeCode: 'PROJECT_INITIATION',
+      memberAssignmentVersion: 7,
+      updatedAt: version,
     };
-    const update = vi.fn().mockResolvedValue({
+    const updatedProject = {
       ...currentProject,
       name: '更新后名称',
       ownerUserId: 'owner-after-r26-transfer',
       owningDepartmentId: 'dept-after-r26-transfer',
-    });
+      updatedAt: new Date(version.getTime() + 1),
+    };
+    const updateMany = vi.fn().mockResolvedValue({ count: 1 });
     const tx = {
       project: {
-        findUnique: vi.fn().mockResolvedValue(currentProject),
-        update,
+        findUnique: vi
+          .fn()
+          .mockResolvedValueOnce(currentProject)
+          .mockResolvedValueOnce(updatedProject),
+        updateMany,
       },
     };
     const prisma = {
@@ -138,11 +147,21 @@ describe('ProjectsService legacy write boundary', () => {
     vi.spyOn(service as any, 'findProjectDetailOrThrow').mockResolvedValue({ id: 'project-1' });
     vi.spyOn(service as any, 'toProjectDetail').mockReturnValue({ id: 'project-1' });
 
-    await service.updateProject('project-1', { name: '更新后名称' }, actor);
+    await service.updateProject(
+      'project-1',
+      { expectedVersion: version.toISOString(), name: '更新后名称' },
+      actor,
+    );
 
-    const data = update.mock.calls[0]![0].data;
+    const claim = updateMany.mock.calls[0]![0];
+    const data = claim.data;
     expect(data).not.toHaveProperty('ownerUserId');
     expect(data).not.toHaveProperty('owningDepartmentId');
     expect(data).toMatchObject({ name: '更新后名称' });
+    expect(claim.where).toMatchObject({
+      id: 'project-1',
+      updatedAt: version,
+      memberAssignmentVersion: 7,
+    });
   });
 });

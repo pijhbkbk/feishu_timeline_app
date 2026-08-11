@@ -259,12 +259,19 @@ export function ProjectEditor(props: ProjectEditorProps) {
       return;
     }
 
+    const expectedVersion = currentProject?.updatedAt;
+    if (!expectedVersion) {
+      setError('项目数据版本缺失，请刷新后重试。');
+      return;
+    }
+
     setIsSavingProject(true);
     setError(null);
     setSuccessMessage(null);
 
     try {
       const detail = await updateProject(props.projectId, {
+        expectedVersion,
         name: formState.name,
         description: formState.description || null,
         priority: formState.priority,

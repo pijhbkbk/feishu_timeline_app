@@ -371,6 +371,19 @@ export type ProjectWritePayload = {
   members?: ProjectMemberInput[];
 };
 
+export type ProjectUpdatePayload = {
+  expectedVersion: string;
+  name?: string;
+  description?: string | null;
+  priority?: ProjectPriority;
+  marketRegion?: string | null;
+  colorMarketingUnit?: string | null;
+  paintSupplier?: ProjectPaintSupplier | null;
+  vehicleModel?: string | null;
+  plannedStartDate?: string | null;
+  plannedEndDate?: string | null;
+};
+
 export const PROJECT_STATUS_OPTIONS: Array<{ value: ProjectStatus; label: string }> = [
   { value: 'DRAFT', label: PROJECT_STATUS_LABELS.DRAFT },
   { value: 'IN_PROGRESS', label: PROJECT_STATUS_LABELS.IN_PROGRESS },
@@ -490,7 +503,7 @@ export function createProject(payload: ProjectWritePayload) {
   });
 }
 
-export function updateProject(projectId: string, payload: ProjectWritePayload) {
+export function updateProject(projectId: string, payload: ProjectUpdatePayload) {
   return apiRequest<ProjectDetail>(`/projects/${projectId}`, {
     method: 'PATCH',
     body: payload,
