@@ -8,11 +8,15 @@ import {
   AttachmentFilterBar,
   AttachmentList,
   AttachmentPreviewPanel,
+  AttachmentUploader,
 } from './attachments-workspace';
 import {
+  canMutateAttachmentInGenericWorkspace,
   getAttachmentPreviewKind,
   getEntityItemsForType,
+  validateAttachmentBindInput,
   validateAttachmentUploadInput,
+  type AttachmentEntityType,
   type AttachmentWorkspaceResponse,
 } from '../lib/attachments-client';
 
@@ -169,7 +173,7 @@ describe('AttachmentsWorkspace', () => {
     expect(getAttachmentPreviewKind(workspace.items[1]!)).toBe('none');
   });
 
-  it('renders preview panel and upload validation', () => {
+  it('keeps domain-governed attachments read-only and directs users to their domain workspace', () => {
     const previewHtml = renderToStaticMarkup(
       <AttachmentPreviewPanel
         projectId="project-1"
@@ -186,7 +190,9 @@ describe('AttachmentsWorkspace', () => {
 
     expect(previewHtml).toContain('文件预览');
     expect(previewHtml).toContain('样板图片.png');
-    expect(previewHtml).toContain('更新绑定');
+    expect(previewHtml).toContain('请前往对应领域工作区');
+    expect(previewHtml).not.toContain('更新绑定');
+    expect(previewHtml).not.toContain('解绑为项目附件');
 
     const actionHtml = renderToStaticMarkup(
       <AttachmentActionMenu
@@ -197,7 +203,7 @@ describe('AttachmentsWorkspace', () => {
       />,
     );
     expect(actionHtml).toContain('下载');
-    expect(actionHtml).toContain('删除');
+    expect(actionHtml).not.toContain('删除');
 
     const badgeHtml = renderToStaticMarkup(<AttachmentEntityBadge entityType="REVIEW_RECORD" />);
     expect(badgeHtml).toContain('评审记录');
@@ -209,6 +215,146 @@ describe('AttachmentsWorkspace', () => {
         entityId: 'project-1',
       }),
     ).toBe('请选择要上传的附件。');
+  });
+
+  it.each([
+    'SAMPLE',
+    'WORKFLOW_TASK',
+    'REVIEW_RECORD',
+    'PERFORMANCE_TEST',
+  ] as const)('hides every generic mutation control for %s while retaining download', (entityType) => {
+    const attachment = {
+      ...workspace.items[0]!,
+      entityType,
+      targetType: entityType,
+    };
+    const previewHtml = renderToStaticMarkup(
+      <AttachmentPreviewPanel
+        projectId="project-1"
+        attachment={attachment}
+        canManage
+        bindForm={{ entityType, entityId: attachment.entityId }}
+        entityItems={[]}
+        actingKey={null}
+        onBindFormChange={() => undefined}
+        onBind={() => undefined}
+        onUnbind={() => undefined}
+      />,
+    );
+    const actionHtml = renderToStaticMarkup(
+      <AttachmentActionMenu
+        attachment={attachment}
+        canManage
+        actingKey={null}
+        onDelete={() => undefined}
+      />,
+    );
+
+    expect(canMutateAttachmentInGenericWorkspace(entityType)).toBe(false);
+    expect(previewHtml).toContain('请前往对应领域工作区');
+    expect(previewHtml).toContain('下载附件');
+    expect(previewHtml).not.toContain('更新绑定');
+    expect(actionHtml).toContain('下载');
+    expect(actionHtml).not.toContain('删除');
+  });
+
+  it('keeps PROJECT generic upload, bind and delete controls while excluding domain types from mutation selectors', () => {
+    const projectAttachment = {
+      ...workspace.items[0]!,
+      entityType: 'PROJECT' as const,
+      entityId: 'project-1',
+      targetType: 'PROJECT' as const,
+      targetId: 'project-1',
+      entityLabel: 'PRJ-001 / 示例项目',
+    };
+    const allEntityTypes: AttachmentEntityType[] = [
+      'PROJECT',
+      'SAMPLE',
+      'WORKFLOW_TASK',
+      'STANDARD_BOARD',
+      'PERFORMANCE_TEST',
+      'REVIEW_RECORD',
+      'NEW_COLOR_REPORT',
+      'TRIAL_PRODUCTION',
+    ];
+    const allOptionsWorkspace: AttachmentWorkspaceResponse = {
+      ...workspace,
+      entityOptions: allEntityTypes.map((entityType) => ({
+        entityType,
+        label: entityType,
+        items: [
+          {
+            id: entityType === 'PROJECT' ? 'project-1' : `${entityType.toLowerCase()}-1`,
+            label: entityType,
+            subtitle: null,
+          },
+        ],
+      })),
+    };
+    const uploaderHtml = renderToStaticMarkup(
+      <AttachmentUploader
+        workspace={allOptionsWorkspace}
+        value={{ entityType: 'PROJECT', entityId: 'project-1', file: null }}
+        entityItems={getEntityItemsForType(allOptionsWorkspace, 'PROJECT')}
+        disabled={false}
+        onChange={() => undefined}
+        onUpload={() => undefined}
+      />,
+    );
+    const previewHtml = renderToStaticMarkup(
+      <AttachmentPreviewPanel
+        projectId="project-1"
+        attachment={projectAttachment}
+        canManage
+        bindForm={{ entityType: 'PROJECT', entityId: 'project-1' }}
+        entityItems={getEntityItemsForType(allOptionsWorkspace, 'PROJECT')}
+        actingKey={null}
+        onBindFormChange={() => undefined}
+        onBind={() => undefined}
+        onUnbind={() => undefined}
+      />,
+    );
+    const actionHtml = renderToStaticMarkup(
+      <AttachmentActionMenu
+        attachment={projectAttachment}
+        canManage
+        actingKey={null}
+        onDelete={() => undefined}
+      />,
+    );
+
+    expect(canMutateAttachmentInGenericWorkspace('PROJECT')).toBe(true);
+    expect(uploaderHtml).toContain('value="PROJECT"');
+    expect(uploaderHtml).toContain('value="STANDARD_BOARD"');
+    expect(uploaderHtml).toContain('value="NEW_COLOR_REPORT"');
+    expect(uploaderHtml).toContain('value="TRIAL_PRODUCTION"');
+    expect(uploaderHtml).not.toContain('value="SAMPLE"');
+    expect(uploaderHtml).not.toContain('value="WORKFLOW_TASK"');
+    expect(uploaderHtml).not.toContain('value="REVIEW_RECORD"');
+    expect(uploaderHtml).not.toContain('value="PERFORMANCE_TEST"');
+    expect(previewHtml).toContain('更新绑定');
+    expect(actionHtml).toContain('删除');
+  });
+
+  it.each([
+    'SAMPLE',
+    'WORKFLOW_TASK',
+    'REVIEW_RECORD',
+    'PERFORMANCE_TEST',
+  ] as const)('rejects generic client-side upload and bind validation for %s', (entityType) => {
+    expect(
+      validateAttachmentUploadInput({
+        file: {} as File,
+        entityType,
+        entityId: 'domain-entity-1',
+      }),
+    ).toContain('对应领域工作区');
+    expect(
+      validateAttachmentBindInput({
+        entityType,
+        entityId: 'domain-entity-1',
+      }),
+    ).toContain('对应领域工作区');
   });
 
   it('shows legacy files as awaiting rescan and exposes no download or bind action', () => {

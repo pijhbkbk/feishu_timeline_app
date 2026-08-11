@@ -22,6 +22,13 @@ const actor: AuthenticatedUser = {
   permissionCodes: ['project.read', 'attachment.manage'],
 };
 
+const DOMAIN_GOVERNED_ATTACHMENT_TARGETS = [
+  [AttachmentTargetType.SAMPLE, 'sample-1'],
+  [AttachmentTargetType.WORKFLOW_TASK, 'task-1'],
+  [AttachmentTargetType.REVIEW_RECORD, 'review-1'],
+  [AttachmentTargetType.PERFORMANCE_TEST, 'performance-test-1'],
+] as const;
+
 function createAttachmentRecord(overrides: Record<string, unknown> = {}) {
   return {
     id: 'attachment-1',
@@ -805,12 +812,12 @@ describe('AttachmentsService', () => {
       currentNodeCode: null,
       plannedEndDate: null,
     });
-    prisma.sample.findFirst.mockResolvedValue(null);
+    prisma.standardBoard.findFirst.mockResolvedValue(null);
 
     await expect(
       service.uploadAttachment(
         'project-1',
-        { entityType: 'SAMPLE', entityId: 'sample-404' },
+        { entityType: 'STANDARD_BOARD', entityId: 'standard-board-404' },
         {
           originalname: 'a.pdf',
           mimetype: 'application/pdf',
@@ -819,7 +826,285 @@ describe('AttachmentsService', () => {
         },
         actor,
       ),
-    ).rejects.toThrow('样板实体不存在。');
+    ).rejects.toThrow('标准板实体不存在。');
+  });
+
+  it.each(DOMAIN_GOVERNED_ATTACHMENT_TARGETS)(
+    'rejects generic upload to the domain-governed %s target before storage or database mutation',
+    async (entityType, entityId) => {
+      const { service, prisma, objectStorageService } = createService();
+
+      await expect(
+        service.uploadAttachment(
+          'project-1',
+          { entityType, entityId },
+          {
+            originalname: 'evidence.pdf',
+            mimetype: 'application/pdf',
+            size: 128,
+            buffer: Buffer.from('%PDF-1.4\n'),
+          },
+          actor,
+        ),
+      ).rejects.toMatchObject({
+        response: expect.objectContaining({
+          code: 'GENERIC_ATTACHMENT_DOMAIN_OPERATION_DISABLED',
+        }),
+      });
+
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+      expect(objectStorageService.upload).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(DOMAIN_GOVERNED_ATTACHMENT_TARGETS)(
+    'rejects generic bind to the domain-governed %s target before opening a transaction',
+    async (entityType, entityId) => {
+      const { service, prisma, tx } = createService();
+
+      await expect(
+        service.bindAttachment(
+          'project-1',
+          'attachment-1',
+          { entityType, entityId },
+          actor,
+        ),
+      ).rejects.toMatchObject({
+        response: expect.objectContaining({
+          code: 'GENERIC_ATTACHMENT_DOMAIN_OPERATION_DISABLED',
+        }),
+      });
+
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+      expect(tx.attachment.update).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(DOMAIN_GOVERNED_ATTACHMENT_TARGETS)(
+    'rejects generic unbind of an existing domain-governed %s attachment without changing references',
+    async (entityType, entityId) => {
+      const { service, tx, objectStorageService } = createService();
+      tx.attachment.findFirst.mockResolvedValue(
+        createAttachmentRecord({ entityType, entityId }),
+      );
+
+      await expect(
+        service.unbindAttachment('project-1', 'attachment-1', actor),
+      ).rejects.toMatchObject({
+        response: expect.objectContaining({
+          code: 'GENERIC_ATTACHMENT_DOMAIN_OPERATION_DISABLED',
+        }),
+      });
+
+      expect(tx.attachment.update).not.toHaveBeenCalled();
+      expect(tx.reviewRecord.update).not.toHaveBeenCalled();
+      expect(tx.performanceTest.update).not.toHaveBeenCalled();
+      expect(objectStorageService.markDeleted).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(DOMAIN_GOVERNED_ATTACHMENT_TARGETS)(
+    'rejects generic delete of an existing domain-governed %s attachment without deleting storage or references',
+    async (entityType, entityId) => {
+      const { service, tx, objectStorageService } = createService();
+      tx.attachment.findFirst.mockResolvedValue(
+        createAttachmentRecord({ entityType, entityId }),
+      );
+
+      await expect(
+        service.deleteAttachment('project-1', 'attachment-1', actor),
+      ).rejects.toMatchObject({
+        response: expect.objectContaining({
+          code: 'GENERIC_ATTACHMENT_DOMAIN_OPERATION_DISABLED',
+        }),
+      });
+
+      expect(tx.attachment.update).not.toHaveBeenCalled();
+      expect(tx.reviewRecord.update).not.toHaveBeenCalled();
+      expect(tx.performanceTest.update).not.toHaveBeenCalled();
+      expect(objectStorageService.markDeleted).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(DOMAIN_GOVERNED_ATTACHMENT_TARGETS)(
+    'rejects generic rebind of an existing domain-governed %s attachment without changing references',
+    async (entityType, entityId) => {
+      const { service, tx } = createService();
+      tx.attachment.findFirst.mockResolvedValue(
+        createAttachmentRecord({ entityType, entityId }),
+      );
+
+      await expect(
+        service.bindAttachment(
+          'project-1',
+          'attachment-1',
+          { entityType: AttachmentTargetType.PROJECT, entityId: 'project-1' },
+          actor,
+        ),
+      ).rejects.toMatchObject({
+        response: expect.objectContaining({
+          code: 'GENERIC_ATTACHMENT_DOMAIN_OPERATION_DISABLED',
+        }),
+      });
+
+      expect(tx.attachment.update).not.toHaveBeenCalled();
+      expect(tx.reviewRecord.update).not.toHaveBeenCalled();
+      expect(tx.performanceTest.update).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(DOMAIN_GOVERNED_ATTACHMENT_TARGETS)(
+    'rejects generic replacement of an existing domain-governed %s attachment before storage or database mutation',
+    async (entityType, entityId) => {
+      const { service, prisma, objectStorageService } = createService();
+
+      await expect(
+        service.uploadAttachment(
+          'project-1',
+          {
+            entityType,
+            entityId,
+            replacesAttachmentId: 'attachment-1',
+          },
+          {
+            originalname: 'replacement.pdf',
+            mimetype: 'application/pdf',
+            size: 128,
+            buffer: Buffer.from('%PDF-1.4\n'),
+          },
+          actor,
+        ),
+      ).rejects.toMatchObject({
+        response: expect.objectContaining({
+          code: 'GENERIC_ATTACHMENT_DOMAIN_OPERATION_DISABLED',
+        }),
+      });
+
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+      expect(objectStorageService.upload).not.toHaveBeenCalled();
+      expect(objectStorageService.markDeleted).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(DOMAIN_GOVERNED_ATTACHMENT_TARGETS)(
+    'rejects a generic PROJECT replacement request when its existing attachment belongs to %s',
+    async (entityType, entityId) => {
+      const { service, prisma, objectStorageService } = createService();
+      prisma.attachment.findFirst.mockResolvedValue(
+        createAttachmentRecord({ entityType, entityId }),
+      );
+
+      await expect(
+        service.uploadAttachment(
+          'project-1',
+          {
+            entityType: AttachmentTargetType.PROJECT,
+            entityId: 'project-1',
+            replacesAttachmentId: 'attachment-1',
+          },
+          {
+            originalname: 'replacement.pdf',
+            mimetype: 'application/pdf',
+            size: 128,
+            buffer: Buffer.from('%PDF-1.4\n'),
+          },
+          actor,
+        ),
+      ).rejects.toMatchObject({
+        response: expect.objectContaining({
+          code: 'GENERIC_ATTACHMENT_DOMAIN_OPERATION_DISABLED',
+        }),
+      });
+
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+      expect(objectStorageService.upload).not.toHaveBeenCalled();
+      expect(objectStorageService.markDeleted).not.toHaveBeenCalled();
+    },
+  );
+
+  it('keeps generic PROJECT upload and delete behavior available', async () => {
+    const { service, prisma, tx, objectStorageService } = createService();
+    const projectAttachment = createAttachmentRecord();
+    prisma.project.findUnique.mockResolvedValue({
+      id: 'project-1',
+      code: 'PRJ-001',
+      name: '示例项目',
+      currentNodeCode: null,
+      plannedEndDate: null,
+    });
+    tx.project.findUnique.mockResolvedValue({
+      id: 'project-1',
+      code: 'PRJ-001',
+      name: '示例项目',
+      currentNodeCode: null,
+      plannedEndDate: null,
+    });
+    tx.attachment.create.mockResolvedValue(
+      createAttachmentRecord({
+        fileUrl: null,
+        scanStatus: AttachmentScanStatus.PENDING_SCAN,
+      }),
+    );
+    tx.attachment.update
+      .mockResolvedValueOnce(projectAttachment)
+      .mockResolvedValueOnce(
+        createAttachmentRecord({
+          isDeleted: true,
+          deletedAt: new Date('2026-03-19T11:00:00.000Z'),
+          deletedById: actor.id,
+        }),
+      );
+    tx.attachment.findFirst.mockResolvedValue(projectAttachment);
+
+    const uploaded = await service.uploadAttachment(
+      'project-1',
+      { entityType: AttachmentTargetType.PROJECT, entityId: 'project-1' },
+      {
+        originalname: 'project.pdf',
+        mimetype: 'application/pdf',
+        size: 128,
+        buffer: Buffer.from('%PDF-1.4\n'),
+      },
+      actor,
+    );
+    const deleted = await service.deleteAttachment(
+      'project-1',
+      uploaded.id,
+      actor,
+    );
+
+    expect(uploaded.entityType).toBe(AttachmentTargetType.PROJECT);
+    expect(deleted.isDeleted).toBe(true);
+    expect(objectStorageService.upload).toHaveBeenCalledTimes(1);
+    expect(objectStorageService.markDeleted).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps generic PROJECT bind and unbind behavior available', async () => {
+    const { service, tx } = createService();
+    const projectAttachment = createAttachmentRecord();
+    tx.attachment.findFirst.mockResolvedValue(projectAttachment);
+    tx.attachment.update.mockResolvedValue(projectAttachment);
+    tx.project.findUnique.mockResolvedValue({
+      id: 'project-1',
+      code: 'PRJ-001',
+      name: '示例项目',
+      currentNodeCode: null,
+      plannedEndDate: null,
+    });
+
+    await expect(
+      service.bindAttachment(
+        'project-1',
+        'attachment-1',
+        { entityType: AttachmentTargetType.PROJECT, entityId: 'project-1' },
+        actor,
+      ),
+    ).resolves.toMatchObject({ entityType: AttachmentTargetType.PROJECT });
+    await expect(
+      service.unbindAttachment('project-1', 'attachment-1', actor),
+    ).resolves.toMatchObject({ entityType: AttachmentTargetType.PROJECT });
+
+    expect(tx.attachment.update).toHaveBeenCalledTimes(2);
   });
 
   it('marks attachment as logically deleted', async () => {

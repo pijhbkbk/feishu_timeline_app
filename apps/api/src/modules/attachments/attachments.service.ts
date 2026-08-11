@@ -116,6 +116,13 @@ const ATTACHMENT_DETAIL_INCLUDE = {
   deletedBy: true,
 } satisfies Prisma.AttachmentInclude;
 
+const DOMAIN_GOVERNED_ATTACHMENT_TARGET_TYPES = new Set<AttachmentTargetType>([
+  AttachmentTargetType.SAMPLE,
+  AttachmentTargetType.WORKFLOW_TASK,
+  AttachmentTargetType.REVIEW_RECORD,
+  AttachmentTargetType.PERFORMANCE_TEST,
+]);
+
 @Injectable()
 export class AttachmentsService {
   private readonly bucket: string;
@@ -209,6 +216,17 @@ export class AttachmentsService {
       'attachment.manage',
     );
     const binding = this.parseEntityBindingInput(rawInput, projectId);
+    this.assertGenericMutationTargetAllowed(binding.entityType);
+
+    if (binding.replacesAttachmentId) {
+      const replacement = await this.getAttachmentOrThrow(
+        this.prisma,
+        projectId,
+        binding.replacesAttachmentId,
+        false,
+      );
+      this.assertGenericMutationTargetAllowed(replacement.entityType);
+    }
 
     return this.createStoredAttachment({
       projectId,
@@ -235,9 +253,11 @@ export class AttachmentsService {
       'attachment.manage',
     );
     const input = this.parseEntityBindingInput(rawInput, projectId);
+    this.assertGenericMutationTargetAllowed(input.entityType);
 
     return this.prisma.$transaction(async (tx) => {
       const attachment = await this.getAttachmentOrThrow(tx, projectId, attachmentId, false);
+      this.assertGenericMutationTargetAllowed(attachment.entityType);
       this.assertAttachmentClean(attachment);
       await this.assertEntityReference(tx, projectId, input.entityType, input.entityId);
 
@@ -294,6 +314,7 @@ export class AttachmentsService {
 
     return this.prisma.$transaction(async (tx) => {
       const attachment = await this.getAttachmentOrThrow(tx, projectId, attachmentId, false);
+      this.assertGenericMutationTargetAllowed(attachment.entityType);
 
       await this.clearDirectEntityReferenceIfNeeded(
         tx,
@@ -341,6 +362,7 @@ export class AttachmentsService {
 
     return this.prisma.$transaction(async (tx) => {
       const attachment = await this.getAttachmentOrThrow(tx, projectId, attachmentId, false);
+      this.assertGenericMutationTargetAllowed(attachment.entityType);
 
       if (attachment.isDeleted) {
         throw new BadRequestException('附件已删除。');
@@ -994,6 +1016,18 @@ export class AttachmentsService {
     }
 
     throw new BadRequestException('当前用户没有附件管理权限。');
+  }
+
+  private assertGenericMutationTargetAllowed(entityType: AttachmentTargetType) {
+    if (!DOMAIN_GOVERNED_ATTACHMENT_TARGET_TYPES.has(entityType)) {
+      return;
+    }
+
+    throw new ForbiddenException({
+      code: 'GENERIC_ATTACHMENT_DOMAIN_OPERATION_DISABLED',
+      message:
+        '该类附件由对应业务流程管理，请前往对应领域工作区操作。',
+    });
   }
 
   private assertFile(file: UploadedBinaryFile | undefined) {

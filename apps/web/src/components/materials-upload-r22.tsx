@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import React, { useEffect, useMemo, useState, type ChangeEvent } from 'react';
 
-import { formatAttachmentSize, uploadProjectAttachment } from '../lib/attachments-client';
+import { formatAttachmentSize, uploadTaskMaterial } from '../lib/attachments-client';
 import { API_BASE_URL } from '../lib/auth-client';
 import { fetchTaskDetail, fetchTaskList, type TaskListItem } from '../lib/tasks-client';
 import {
@@ -76,10 +76,9 @@ export function MaterialsUploadR22() {
     setError(null);
     setSuccess(null);
     try {
-      await uploadProjectAttachment(detail.projectId, file, {
-        entityType: 'WORKFLOW_TASK',
-        entityId: detail.taskId,
+      await uploadTaskMaterial(detail.taskId, file, {
         materialType: inferredMaterialName,
+        taskVersion: detail.taskVersion,
         ...(replacingId ? { replacesAttachmentId: replacingId } : {}),
       });
       await loadDetail(detail.taskId);

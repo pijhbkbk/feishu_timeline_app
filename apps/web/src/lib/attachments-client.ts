@@ -109,6 +109,12 @@ export type AttachmentUploadInput = AttachmentBindInput & {
   replacesAttachmentId?: string;
 };
 
+export type TaskMaterialUploadInput = {
+  materialType: string;
+  taskVersion: string;
+  replacesAttachmentId?: string;
+};
+
 const ATTACHMENT_MANAGEMENT_ROLE_CODES: FrontendRoleCode[] = [
   'admin',
   'project_manager',
@@ -118,6 +124,16 @@ const ATTACHMENT_MANAGEMENT_ROLE_CODES: FrontendRoleCode[] = [
   'reviewer',
   'finance',
 ];
+
+const DOMAIN_GOVERNED_ATTACHMENT_ENTITY_TYPES = new Set<AttachmentEntityType>([
+  'SAMPLE',
+  'WORKFLOW_TASK',
+  'REVIEW_RECORD',
+  'PERFORMANCE_TEST',
+]);
+
+export const GENERIC_ATTACHMENT_DOMAIN_WORKSPACE_MESSAGE =
+  '该类附件由对应业务流程管理，请前往对应领域工作区操作。';
 
 const ATTACHMENT_ENTITY_TYPE_LABELS: Record<AttachmentEntityType, string> = {
   PROJECT: '项目',
@@ -161,6 +177,36 @@ export function uploadProjectAttachment(
 
   return apiRequest<ProjectAttachmentSummary>(`/projects/${projectId}/attachments/upload`, {
     method: 'POST',
+    body: formData,
+  });
+}
+
+export function uploadTaskMaterial(
+  taskId: string,
+  file: File,
+  input: TaskMaterialUploadInput,
+) {
+  const idempotencyKey = createTaskMaterialIdempotencyKey();
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('materialType', input.materialType);
+  formData.append('taskVersion', input.taskVersion);
+  formData.append('idempotencyKey', idempotencyKey);
+  if (input.replacesAttachmentId) {
+    formData.append('replacesAttachmentId', input.replacesAttachmentId);
+  }
+
+  const encodedTaskId = encodeURIComponent(taskId);
+  const path = input.replacesAttachmentId
+    ? `/v2/tasks/${encodedTaskId}/materials/${encodeURIComponent(input.replacesAttachmentId)}/versions`
+    : `/v2/tasks/${encodedTaskId}/materials`;
+
+  return apiRequest<{ attachment: ProjectAttachmentSummary }>(path, {
+    method: 'POST',
+    headers: {
+      'Idempotency-Key': idempotencyKey,
+      'X-Request-Id': idempotencyKey,
+    },
     body: formData,
   });
 }
@@ -230,6 +276,12 @@ export function canManageProjectAttachments(user: SessionUser | null) {
   return ATTACHMENT_MANAGEMENT_ROLE_CODES.some((roleCode) => user.roleCodes.includes(roleCode));
 }
 
+export function canMutateAttachmentInGenericWorkspace(
+  entityType: AttachmentEntityType | '' | null | undefined,
+) {
+  return Boolean(entityType && !DOMAIN_GOVERNED_ATTACHMENT_ENTITY_TYPES.has(entityType));
+}
+
 export function getAttachmentEntityTypeLabel(entityType: AttachmentEntityType) {
   return ATTACHMENT_ENTITY_TYPE_LABELS[entityType];
 }
@@ -297,6 +349,10 @@ export function validateAttachmentUploadInput(input: {
     return '请选择附件归属类型。';
   }
 
+  if (!canMutateAttachmentInGenericWorkspace(input.entityType)) {
+    return GENERIC_ATTACHMENT_DOMAIN_WORKSPACE_MESSAGE;
+  }
+
   if (!input.entityId.trim()) {
     return '请选择附件归属实体。';
   }
@@ -310,6 +366,10 @@ export function validateAttachmentBindInput(input: {
 }) {
   if (!input.entityType) {
     return '请选择绑定实体类型。';
+  }
+
+  if (!canMutateAttachmentInGenericWorkspace(input.entityType)) {
+    return GENERIC_ATTACHMENT_DOMAIN_WORKSPACE_MESSAGE;
   }
 
   if (!input.entityId.trim()) {
@@ -347,4 +407,12 @@ function buildQueryString(filters: AttachmentWorkspaceFilters) {
 
   const serialized = searchParams.toString();
   return serialized ? `?${serialized}` : '';
+}
+
+function createTaskMaterialIdempotencyKey() {
+  const suffix =
+    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  return `r26-material:${suffix}`;
 }

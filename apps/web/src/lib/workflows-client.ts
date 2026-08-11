@@ -131,6 +131,7 @@ export type WorkflowTaskDetailResponse = {
 
 export type WorkflowTaskInteractionDetail = {
   taskId: string;
+  taskVersion: string;
   projectId: string;
   stepCode: string | null;
   stepNumber: number;
