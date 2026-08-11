@@ -1,4 +1,4 @@
-import { ForbiddenException } from '@nestjs/common';
+import { ConflictException, ForbiddenException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 import {
   RecurringTaskStatus,
@@ -118,6 +118,89 @@ describe('WorkflowsService', () => {
       workflowInstance: { id: 'wf-1' },
     });
   }
+
+  it('rejects a form save when a terminal transition wins the task CAS', async () => {
+    const { service, prisma, activityLogsService } = createService();
+    const staleTask = {
+      ...sampleColorConfirmationTask,
+      payload: { formData: { color: 'before' } },
+      updatedAt: new Date('2026-08-11T04:00:00.000Z'),
+    };
+    const tx = {
+      workflowTask: {
+        update: vi.fn(),
+        updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+      },
+    };
+    prisma.$transaction.mockImplementation(
+      async (callback: (executor: typeof tx) => Promise<unknown>) => callback(tx),
+    );
+    vi.spyOn(service as any, 'getTaskOrThrow').mockResolvedValue(staleTask);
+    const buildResponse = vi
+      .spyOn(service as any, 'buildTaskDetailResponse')
+      .mockResolvedValue({ task: { id: staleTask.id } });
+
+    await expect(
+      service.saveTaskForm(staleTask.id, actor, {
+        payload: { color: 'stale-after-terminal' },
+      }),
+    ).rejects.toBeInstanceOf(ConflictException);
+
+    expect(tx.workflowTask.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: staleTask.id,
+        status: staleTask.status,
+        isActive: true,
+        updatedAt: staleTask.updatedAt,
+      },
+      data: {
+        payload: expect.objectContaining({
+          formData: { color: 'stale-after-terminal' },
+        }),
+      },
+    });
+    expect(tx.workflowTask.update).not.toHaveBeenCalled();
+    expect(activityLogsService.createWithExecutor).not.toHaveBeenCalled();
+    expect(buildResponse).not.toHaveBeenCalled();
+  });
+
+  it('writes and audits a task form only after claiming the unchanged active version', async () => {
+    const { service, prisma, activityLogsService } = createService();
+    const currentTask = {
+      ...sampleColorConfirmationTask,
+      payload: { formData: { color: 'before' } },
+      updatedAt: new Date('2026-08-11T05:00:00.000Z'),
+    };
+    const tx = {
+      workflowTask: {
+        update: vi.fn(),
+        updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+      },
+    };
+    prisma.$transaction.mockImplementation(
+      async (callback: (executor: typeof tx) => Promise<unknown>) => callback(tx),
+    );
+    vi.spyOn(service as any, 'getTaskOrThrow').mockResolvedValue(currentTask);
+    vi.spyOn(service as any, 'buildTaskDetailResponse').mockResolvedValue({
+      task: { id: currentTask.id },
+    });
+
+    await expect(
+      service.saveTaskForm(currentTask.id, actor, {
+        payload: { color: 'claimed-before-terminal' },
+      }),
+    ).resolves.toMatchObject({ task: { id: currentTask.id } });
+
+    expect(tx.workflowTask.updateMany).toHaveBeenCalledTimes(1);
+    expect(tx.workflowTask.update).not.toHaveBeenCalled();
+    expect(activityLogsService.createWithExecutor).toHaveBeenCalledWith(
+      tx,
+      expect.objectContaining({
+        action: 'WORKFLOW_FORM_SAVED',
+        targetId: currentTask.id,
+      }),
+    );
+  });
 
   function createTransitionExecutor() {
     return {

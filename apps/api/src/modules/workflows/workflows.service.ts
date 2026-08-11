@@ -1103,14 +1103,23 @@ export class WorkflowsService {
         ...(input.comment ? { draftComment: input.comment } : {}),
       } satisfies Record<string, Prisma.InputJsonValue>;
 
-      await tx.workflowTask.update({
+      const claimed = await tx.workflowTask.updateMany({
         where: {
           id: taskId,
+          status: task.status,
+          isActive: task.isActive,
+          updatedAt: task.updatedAt,
         },
         data: {
           payload: nextPayload,
         },
       });
+      if (claimed.count !== 1) {
+        throw new ConflictException({
+          code: 'TASK_STATE_CHANGED',
+          message: '工序状态或内容已更新，请刷新后再保存表单。',
+        });
+      }
 
       await this.activityLogsService.createWithExecutor(tx, {
         projectId: task.projectId,
