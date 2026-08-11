@@ -135,6 +135,7 @@ const trialRecord = {
   startedAt: new Date('2026-08-11T00:00:00.000Z'),
   completedAt: null,
   issues: [],
+  _count: { issues: 0 },
   createdAt: new Date('2026-08-11T00:00:00.000Z'),
   updatedAt: new Date('2026-08-11T00:00:00.000Z'),
 };
@@ -283,9 +284,10 @@ describe('production execution finalized-write integrity', () => {
       firstPlanTaskCompleted: true,
       items: [trialRecord],
     } as never);
-    vi.spyOn(service as never, 'getTrialProductionOrThrow' as never).mockResolvedValue(
-      trialRecord as never,
-    );
+    vi.spyOn(
+      service as never,
+      'getTrialProductionForMutationOrThrow' as never,
+    ).mockResolvedValue(trialRecord as never);
 
     await expect(
       service.addTrialProductionIssue(
@@ -504,9 +506,10 @@ describe('production execution finalized-write integrity', () => {
       firstPlanTaskCompleted: true,
       items: [trialRecord],
     } as never);
-    vi.spyOn(service as never, 'getTrialProductionOrThrow' as never).mockResolvedValue(
-      trialRecord as never,
-    );
+    vi.spyOn(
+      service as never,
+      'getTrialProductionForMutationOrThrow' as never,
+    ).mockResolvedValue(trialRecord as never);
     vi.spyOn(service as never, 'assertValidTrialProductionPlan' as never).mockResolvedValue(
       undefined as never,
     );

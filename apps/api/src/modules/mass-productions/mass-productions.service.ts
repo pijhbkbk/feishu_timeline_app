@@ -51,6 +51,15 @@ type MassProductionWriteInput = {
 };
 
 const MASS_PRODUCTION_NODE_CODE = getMassProductionNodeCode();
+const MASS_PRODUCTION_RECORD_LIMIT = 100;
+const MASS_PRODUCTION_MAX_PAYLOAD_BYTES = 16 * 1024;
+const MASS_PRODUCTION_ID_MAX_CHARS = 64;
+const MASS_PRODUCTION_CODE_MAX_CHARS = 64;
+const MASS_PRODUCTION_NAME_MAX_CHARS = 200;
+const MASS_PRODUCTION_NOTE_MAX_CHARS = 4_000;
+const MASS_PRODUCTION_MAX_QUANTITY = 2_147_483_647;
+const MASS_PRODUCTION_ID_PATTERN = /^[A-Za-z0-9_-]+$/;
+const MASS_PRODUCTION_CODE_PATTERN = /^[A-Za-z0-9._-]+$/;
 
 const MASS_PRODUCTION_INCLUDE = {
   owner: true,
@@ -83,6 +92,7 @@ export class MassProductionsService {
 
     await this.prisma.$transaction(async (tx) => {
       const context = await this.lockActiveTaskAndGetContext(tx, projectId);
+      this.assertRecordCapacity(context.items, true);
       await this.getUserOrThrow(tx, input.ownerId);
       await this.startTaskIfNeeded(tx, context.activeTask!, actor, '批量生产已开始准备。');
 
@@ -427,8 +437,11 @@ export class MassProductionsService {
           },
           include: MASS_PRODUCTION_INCLUDE,
           orderBy: [{ createdAt: 'desc' }],
+          take: MASS_PRODUCTION_RECORD_LIMIT + 1,
         }),
       ]);
+
+    this.assertRecordCapacity(items, false);
 
     return {
       project: this.toProjectSummary(project),
@@ -464,8 +477,11 @@ export class MassProductionsService {
           id: true,
           status: true,
         },
+        take: MASS_PRODUCTION_RECORD_LIMIT + 1,
       }),
     ]);
+
+    this.assertRecordCapacity(items, false);
 
     return {
       project,
@@ -720,18 +736,40 @@ export class MassProductionsService {
       throw new BadRequestException('生产批次不能为空。');
     }
 
-    if (!Number.isInteger(plannedQuantity) || plannedQuantity <= 0) {
-      throw new BadRequestException('计划数量必须是大于 0 的整数。');
+    if (
+      !Number.isSafeInteger(plannedQuantity) ||
+      plannedQuantity <= 0 ||
+      plannedQuantity > MASS_PRODUCTION_MAX_QUANTITY
+    ) {
+      this.throwInputOutOfBounds(
+        `计划数量必须为 1～${MASS_PRODUCTION_MAX_QUANTITY} 的整数。`,
+      );
     }
 
     if (
       actualQuantity !== null &&
-      (!Number.isInteger(actualQuantity) || actualQuantity < 0)
+      (!Number.isSafeInteger(actualQuantity) ||
+        actualQuantity < 0 ||
+        actualQuantity > MASS_PRODUCTION_MAX_QUANTITY)
     ) {
-      throw new BadRequestException('实际数量必须是大于等于 0 的整数。');
+      this.throwInputOutOfBounds(
+        `实际数量必须为 0～${MASS_PRODUCTION_MAX_QUANTITY} 的整数。`,
+      );
     }
 
-    return {
+    this.assertTextBound(workshop, '车间', MASS_PRODUCTION_NAME_MAX_CHARS);
+    this.assertTextBound(lineName, '生产线', MASS_PRODUCTION_NAME_MAX_CHARS);
+    this.assertId(ownerId, '责任人');
+    this.assertCode(batchNo, '生产批次');
+    if (exceptionNote) {
+      this.assertTextBound(
+        exceptionNote,
+        '异常说明',
+        MASS_PRODUCTION_NOTE_MAX_CHARS,
+      );
+    }
+
+    const normalized = {
       workshop,
       lineName,
       ownerId,
@@ -741,6 +779,60 @@ export class MassProductionsService {
       actualQuantity,
       productionDate: this.parseDate(input.productionDate, '生产日期'),
     };
+    if (
+      Buffer.byteLength(JSON.stringify(normalized), 'utf8') >
+      MASS_PRODUCTION_MAX_PAYLOAD_BYTES
+    ) {
+      this.throwInputOutOfBounds(
+        `批量生产记录不得超过 ${MASS_PRODUCTION_MAX_PAYLOAD_BYTES} 字节。`,
+      );
+    }
+    return normalized;
+  }
+
+  private assertRecordCapacity(items: readonly unknown[], forCreate: boolean) {
+    if (
+      items.length > MASS_PRODUCTION_RECORD_LIMIT ||
+      (forCreate && items.length >= MASS_PRODUCTION_RECORD_LIMIT)
+    ) {
+      throw new ConflictException({
+        code: 'MASS_PRODUCTION_RECORD_LIMIT_EXCEEDED',
+        message: `每个项目最多保留 ${MASS_PRODUCTION_RECORD_LIMIT} 条批量生产记录。`,
+      });
+    }
+  }
+
+  private assertTextBound(value: string, label: string, maxChars: number) {
+    if (value.length > maxChars) {
+      this.throwInputOutOfBounds(`${label}不得超过 ${maxChars} 个字符。`);
+    }
+  }
+
+  private assertId(value: string, label: string) {
+    if (
+      value.length > MASS_PRODUCTION_ID_MAX_CHARS ||
+      !MASS_PRODUCTION_ID_PATTERN.test(value)
+    ) {
+      this.throwInputOutOfBounds(`${label}标识不合法。`);
+    }
+  }
+
+  private assertCode(value: string, label: string) {
+    if (
+      value.length > MASS_PRODUCTION_CODE_MAX_CHARS ||
+      !MASS_PRODUCTION_CODE_PATTERN.test(value)
+    ) {
+      this.throwInputOutOfBounds(
+        `${label}仅允许 1～${MASS_PRODUCTION_CODE_MAX_CHARS} 位字母、数字、点、下划线或连字符。`,
+      );
+    }
+  }
+
+  private throwInputOutOfBounds(message: string): never {
+    throw new BadRequestException({
+      code: 'MASS_PRODUCTION_INPUT_OUT_OF_BOUNDS',
+      message,
+    });
   }
 
   private parseDate(value: unknown, label: string) {

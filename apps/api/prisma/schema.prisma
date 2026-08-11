@@ -1430,17 +1430,17 @@ model TrialProduction {
   productionPlanId String?
   colorId          String?
   colorVersionId   String?
-  trialNo          String
+  trialNo          String                 @db.VarChar(64)
   status           TrialProductionStatus  @default(PLANNED)
   quantity         Int?
-  paintBatchNo     String?
+  paintBatchNo     String?                @db.VarChar(64)
   result           TrialProductionResult?
-  note             String?
-  location         String?
+  note             String?                @db.VarChar(4000)
+  location         String?                @db.VarChar(200)
   plannedAt        DateTime?
   startedAt        DateTime?
   completedAt      DateTime?
-  summary          String?
+  summary          String?                @db.VarChar(4000)
   project          Project                @relation(fields: [projectId], references: [id], onDelete: Cascade)
   productionPlan   ProductionPlan?        @relation(fields: [productionPlanId], references: [id], onDelete: SetNull)
   color            Color?                 @relation(fields: [colorId], references: [id], onDelete: SetNull)
@@ -1461,10 +1461,10 @@ model TrialProduction {
 model TrialProductionIssue {
   id                String                       @id @default(cuid())
   trialProductionId String
-  issueType         String
-  description       String
+  issueType         String                       @db.VarChar(500)
+  description       String                       @db.VarChar(4000)
   severity          TrialProductionIssueSeverity
-  responsibleDept   String
+  responsibleDept   String                       @db.VarChar(500)
   trialProduction   TrialProduction              @relation(fields: [trialProductionId], references: [id], onDelete: Cascade)
   createdAt         DateTime                     @default(now())
   updatedAt         DateTime                     @updatedAt

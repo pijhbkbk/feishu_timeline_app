@@ -5,7 +5,9 @@ import { describe, expect, it } from 'vitest';
 import {
   CompleteFirstPlanTaskButton,
   FirstProductionPlanForm,
+  shouldApplyTrialDetailResponse,
   TrialIssueList,
+  TrialProductionList,
 } from './pilot-production-workspace';
 import {
   canShowCompleteFirstProductionPlanTaskButton,
@@ -138,6 +140,82 @@ describe('PilotProductionWorkspace', () => {
     expect(html).toContain('外观');
     expect(html).toContain('局部流挂');
     expect(html).toContain('涂装车间');
+  });
+
+  it('renders a workspace issue count without issue bodies', () => {
+    const html = renderToStaticMarkup(
+      <TrialProductionList
+        items={[
+          {
+            id: 'trial-1',
+            productionPlanId: null,
+            productionPlanNo: null,
+            vehicleNo: 'TRIAL-001',
+            workshop: '试制车间',
+            trialDate: '2026-03-24T00:00:00.000Z',
+            paintBatchNo: 'PAINT-001',
+            issueSummary: '无阻塞问题',
+            result: 'PASS',
+            status: 'PASSED',
+            note: null,
+            startedAt: '2026-03-24T00:00:00.000Z',
+            completedAt: '2026-03-24T01:00:00.000Z',
+            createdAt: '2026-03-24T00:00:00.000Z',
+            updatedAt: '2026-03-24T01:00:00.000Z',
+            issueCount: 7,
+          },
+        ]}
+        selectedTrialId="trial-1"
+        canManage={false}
+        isReadOnly
+        actingKey={null}
+        onSelect={() => undefined}
+        onEdit={() => undefined}
+        onCompleteRecord={() => undefined}
+      />,
+    );
+
+    expect(html).toContain('TRIAL-001');
+    expect(html).toContain('<td>7</td>');
+  });
+
+  it('rejects stale or mismatched trial detail responses', () => {
+    expect(
+      shouldApplyTrialDetailResponse({
+        requestId: 3,
+        latestRequestId: 3,
+        requestedTrialId: 'trial-1',
+        selectedTrialId: 'trial-1',
+        responseTrialId: 'trial-1',
+      }),
+    ).toBe(true);
+    expect(
+      shouldApplyTrialDetailResponse({
+        requestId: 2,
+        latestRequestId: 3,
+        requestedTrialId: 'trial-1',
+        selectedTrialId: 'trial-1',
+        responseTrialId: 'trial-1',
+      }),
+    ).toBe(false);
+    expect(
+      shouldApplyTrialDetailResponse({
+        requestId: 3,
+        latestRequestId: 3,
+        requestedTrialId: 'trial-1',
+        selectedTrialId: 'trial-2',
+        responseTrialId: 'trial-1',
+      }),
+    ).toBe(false);
+    expect(
+      shouldApplyTrialDetailResponse({
+        requestId: 3,
+        latestRequestId: 3,
+        requestedTrialId: 'trial-1',
+        selectedTrialId: 'trial-1',
+        responseTrialId: 'trial-2',
+      }),
+    ).toBe(false);
   });
 
   it('controls complete button visibility and validation logic', () => {

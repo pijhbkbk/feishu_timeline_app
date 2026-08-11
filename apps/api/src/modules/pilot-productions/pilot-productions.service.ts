@@ -71,26 +71,77 @@ type TrialIssueWriteInput = {
   responsibleDept: string;
 };
 
+const FIRST_PRODUCTION_PLAN_RECORD_LIMIT = 100;
+const TRIAL_PRODUCTION_RECORD_LIMIT = 100;
+const TRIAL_PRODUCTION_ISSUE_LIMIT = 100;
+const PILOT_PRODUCTION_MAX_PAYLOAD_BYTES = 16 * 1024;
+const PILOT_PRODUCTION_ID_MAX_CHARS = 64;
+const PILOT_PRODUCTION_CODE_MAX_CHARS = 64;
+const PILOT_PRODUCTION_NAME_MAX_CHARS = 200;
+const PILOT_PRODUCTION_SHORT_TEXT_MAX_CHARS = 500;
+const PILOT_PRODUCTION_LONG_TEXT_MAX_CHARS = 4_000;
+const PILOT_PRODUCTION_MAX_QUANTITY = 2_147_483_647;
+const PILOT_PRODUCTION_ID_PATTERN = /^[A-Za-z0-9_-]+$/;
+const PILOT_PRODUCTION_CODE_PATTERN = /^[A-Za-z0-9._-]+$/;
+
 const FIRST_PRODUCTION_PLAN_INCLUDE = {
   owner: true,
   confirmedBy: true,
   createdBy: true,
 } satisfies Prisma.ProductionPlanInclude;
 
-const TRIAL_PRODUCTION_INCLUDE = {
+const TRIAL_PRODUCTION_RELATION_INCLUDE = {
   productionPlan: {
     include: {
       owner: true,
       confirmedBy: true,
     },
   },
+} satisfies Prisma.TrialProductionInclude;
+
+const TRIAL_PRODUCTION_WRITE_INCLUDE = {
+  ...TRIAL_PRODUCTION_RELATION_INCLUDE,
+  _count: {
+    select: { issues: true },
+  },
+} satisfies Prisma.TrialProductionInclude;
+
+const TRIAL_PRODUCTION_DETAIL_INCLUDE = {
+  ...TRIAL_PRODUCTION_RELATION_INCLUDE,
   issues: {
     orderBy: [
       { createdAt: 'desc' as const },
       { updatedAt: 'desc' as const },
     ],
+    take: TRIAL_PRODUCTION_ISSUE_LIMIT + 1,
+  },
+  _count: {
+    select: { issues: true },
   },
 } satisfies Prisma.TrialProductionInclude;
+
+const TRIAL_PRODUCTION_WORKSPACE_SELECT = {
+  id: true,
+  productionPlanId: true,
+  productionPlan: {
+    select: { planNo: true },
+  },
+  trialNo: true,
+  location: true,
+  plannedAt: true,
+  paintBatchNo: true,
+  summary: true,
+  result: true,
+  status: true,
+  note: true,
+  startedAt: true,
+  completedAt: true,
+  createdAt: true,
+  updatedAt: true,
+  _count: {
+    select: { issues: true },
+  },
+} satisfies Prisma.TrialProductionSelect;
 
 @Injectable()
 export class PilotProductionsService {
@@ -118,7 +169,7 @@ export class PilotProductionsService {
   ) {
     await this.assertProjectAccess(projectId, actor, 'project.read');
     const trial = await this.getTrialProductionOrThrow(this.prisma, projectId, trialId);
-    return this.toTrialProductionSummary(trial);
+    return this.toTrialProductionDetailSummary(trial);
   }
 
   async createFirstProductionPlan(
@@ -131,7 +182,8 @@ export class PilotProductionsService {
     const input = this.parseFirstProductionPlanWriteInput(rawInput);
 
     await this.prisma.$transaction(async (tx) => {
-      await this.lockFirstProductionPlanTaskAndGetContext(tx, projectId);
+      const context = await this.lockFirstProductionPlanTaskAndGetContext(tx, projectId);
+      this.assertFirstProductionPlanCapacity(context.items, true);
       await this.getUserOrThrow(tx, input.ownerId);
 
       const createdPlan = await tx.productionPlan.create({
@@ -375,7 +427,8 @@ export class PilotProductionsService {
     const input = this.parseTrialProductionWriteInput(rawInput);
 
     await this.prisma.$transaction(async (tx) => {
-      await this.lockTrialProductionTaskAndGetContext(tx, projectId);
+      const context = await this.lockTrialProductionTaskAndGetContext(tx, projectId);
+      this.assertTrialProductionCapacity(context.items, true);
       await this.assertValidTrialProductionPlan(tx, projectId, input.productionPlanId);
       await this.assertUniqueVehicleNo(tx, projectId, input.vehicleNo);
 
@@ -392,7 +445,7 @@ export class PilotProductionsService {
           summary: input.issueSummary,
           note: input.note,
         },
-        include: TRIAL_PRODUCTION_INCLUDE,
+        include: TRIAL_PRODUCTION_WRITE_INCLUDE,
       });
 
       await this.activityLogsService.createWithExecutor(tx, {
@@ -422,8 +475,13 @@ export class PilotProductionsService {
 
     await this.prisma.$transaction(async (tx) => {
       await this.lockTrialProductionRow(tx, projectId, trialId);
-      const trial = await this.getTrialProductionOrThrow(tx, projectId, trialId);
+      const trial = await this.getTrialProductionForMutationOrThrow(
+        tx,
+        projectId,
+        trialId,
+      );
       await this.lockTrialProductionTaskAndGetContext(tx, projectId);
+      this.assertTrialProductionIssueCount(trial._count.issues, false);
 
       if (!canEditTrialProduction(trial.status)) {
         throw new BadRequestException('已完成或已取消的试制记录不允许编辑。');
@@ -461,7 +519,7 @@ export class PilotProductionsService {
       }
       const updatedTrial = await tx.trialProduction.findUniqueOrThrow({
         where: { id: trialId },
-        include: TRIAL_PRODUCTION_INCLUDE,
+        include: TRIAL_PRODUCTION_WRITE_INCLUDE,
       });
 
       await this.activityLogsService.createWithExecutor(tx, {
@@ -492,8 +550,13 @@ export class PilotProductionsService {
 
     await this.prisma.$transaction(async (tx) => {
       await this.lockTrialProductionRow(tx, projectId, trialId);
-      const trial = await this.getTrialProductionOrThrow(tx, projectId, trialId);
+      const trial = await this.getTrialProductionForMutationOrThrow(
+        tx,
+        projectId,
+        trialId,
+      );
       await this.lockTrialProductionTaskAndGetContext(tx, projectId);
+      this.assertTrialProductionIssueCount(trial._count.issues, true);
 
       if (!canEditTrialProduction(trial.status)) {
         throw new BadRequestException('当前试制记录状态不允许新增问题。');
@@ -539,7 +602,11 @@ export class PilotProductionsService {
 
     await this.prisma.$transaction(async (tx) => {
       await this.lockTrialProductionRow(tx, projectId, trialId);
-      const trial = await this.getTrialProductionOrThrow(tx, projectId, trialId);
+      const trial = await this.getTrialProductionForMutationOrThrow(
+        tx,
+        projectId,
+        trialId,
+      );
       await this.lockTrialProductionTaskAndGetContext(tx, projectId);
 
       if (!canEditTrialProduction(trial.status)) {
@@ -577,7 +644,7 @@ export class PilotProductionsService {
       }
       const completedTrial = await tx.trialProduction.findUniqueOrThrow({
         where: { id: trialId },
-        include: TRIAL_PRODUCTION_INCLUDE,
+        include: TRIAL_PRODUCTION_WRITE_INCLUDE,
       });
 
       await this.activityLogsService.createWithExecutor(tx, {
@@ -675,8 +742,11 @@ export class PilotProductionsService {
         },
         include: FIRST_PRODUCTION_PLAN_INCLUDE,
         orderBy: [{ createdAt: 'desc' }],
+        take: FIRST_PRODUCTION_PLAN_RECORD_LIMIT + 1,
       }),
     ]);
+
+    this.assertFirstProductionPlanCapacity(items, false);
 
     return {
       project: this.toProjectSummary(project),
@@ -720,15 +790,31 @@ export class PilotProductionsService {
             in: [ProductionPlanStatus.PLANNED, ProductionPlanStatus.COMPLETED],
           },
         },
-        include: FIRST_PRODUCTION_PLAN_INCLUDE,
+        select: {
+          id: true,
+          planNo: true,
+          planDate: true,
+          status: true,
+          owner: {
+            select: { name: true },
+          },
+        },
         orderBy: [{ planDate: 'desc' }, { createdAt: 'desc' }],
+        take: FIRST_PRODUCTION_PLAN_RECORD_LIMIT + 1,
       }),
       db.trialProduction.findMany({
         where: { projectId },
-        include: TRIAL_PRODUCTION_INCLUDE,
+        select: TRIAL_PRODUCTION_WORKSPACE_SELECT,
         orderBy: [{ createdAt: 'desc' }],
+        take: TRIAL_PRODUCTION_RECORD_LIMIT + 1,
       }),
     ]);
+
+    this.assertFirstProductionPlanCapacity(planOptions, false);
+    this.assertTrialProductionCapacity(items, false);
+    for (const item of items) {
+      this.assertTrialProductionIssueCount(item._count.issues, false);
+    }
 
     return {
       project: this.toProjectSummary(project),
@@ -748,7 +834,7 @@ export class PilotProductionsService {
         status: item.status,
         ownerName: item.owner?.name ?? null,
       })),
-      items: items.map((item) => this.toTrialProductionSummary(item)),
+      items: items.map((item) => this.toTrialProductionWorkspaceSummary(item)),
     };
   }
 
@@ -765,8 +851,16 @@ export class PilotProductionsService {
           projectId,
           planType: ProductionPlanType.FIRST_UNIT,
         },
+        select: {
+          id: true,
+          status: true,
+          updatedAt: true,
+        },
+        take: FIRST_PRODUCTION_PLAN_RECORD_LIMIT + 1,
       }),
     ]);
+
+    this.assertFirstProductionPlanCapacity(items, false);
 
     return {
       project,
@@ -790,8 +884,16 @@ export class PilotProductionsService {
       ),
       db.trialProduction.findMany({
         where: { projectId },
+        select: {
+          id: true,
+          status: true,
+          result: true,
+        },
+        take: TRIAL_PRODUCTION_RECORD_LIMIT + 1,
       }),
     ]);
+
+    this.assertTrialProductionCapacity(items, false);
 
     return {
       project,
@@ -877,14 +979,16 @@ export class PilotProductionsService {
     tx: Prisma.TransactionClient,
     projectId: string,
   ) {
-    await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+    const rows = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
       SELECT "id"
       FROM "production_plans"
       WHERE "projectId" = ${projectId}
         AND "planType" = ${ProductionPlanType.FIRST_UNIT}::"ProductionPlanType"
       ORDER BY "id"
+      LIMIT ${FIRST_PRODUCTION_PLAN_RECORD_LIMIT + 1}
       FOR UPDATE
     `);
+    this.assertFirstProductionPlanCapacity(rows, false);
   }
 
   private async lockTrialProductionRow(
@@ -1020,13 +1124,36 @@ export class PilotProductionsService {
         id: trialId,
         projectId,
       },
-      include: TRIAL_PRODUCTION_INCLUDE,
+      include: TRIAL_PRODUCTION_DETAIL_INCLUDE,
     });
 
     if (!trial) {
       throw new NotFoundException('试制记录不存在。');
     }
 
+    this.assertTrialProductionIssueCapacity(trial.issues, false);
+    this.assertTrialProductionIssueCount(trial._count.issues, false);
+    return trial;
+  }
+
+  private async getTrialProductionForMutationOrThrow(
+    db: PilotProductionsDbClient,
+    projectId: string,
+    trialId: string,
+  ) {
+    const trial = await db.trialProduction.findFirst({
+      where: {
+        id: trialId,
+        projectId,
+      },
+      include: TRIAL_PRODUCTION_WRITE_INCLUDE,
+    });
+
+    if (!trial) {
+      throw new NotFoundException('试制记录不存在。');
+    }
+
+    this.assertTrialProductionIssueCount(trial._count.issues, false);
     return trial;
   }
 
@@ -1154,15 +1281,51 @@ export class PilotProductionsService {
       throw new BadRequestException('批次号不能为空。');
     }
 
-    return {
+    this.assertPilotId(ownerId, '责任人', this.throwFirstProductionPlanInput.bind(this));
+    this.assertPilotText(
+      workshop,
+      '车间',
+      PILOT_PRODUCTION_NAME_MAX_CHARS,
+      this.throwFirstProductionPlanInput.bind(this),
+    );
+    this.assertPilotText(
+      lineName,
+      '生产线',
+      PILOT_PRODUCTION_NAME_MAX_CHARS,
+      this.throwFirstProductionPlanInput.bind(this),
+    );
+    this.assertPilotCode(
+      batchNo,
+      '批次号',
+      this.throwFirstProductionPlanInput.bind(this),
+    );
+    if (note) {
+      this.assertPilotText(
+        note,
+        '备注',
+        PILOT_PRODUCTION_LONG_TEXT_MAX_CHARS,
+        this.throwFirstProductionPlanInput.bind(this),
+      );
+    }
+
+    const plannedQuantity = this.parseFirstProductionPlanQuantity(
+      input.plannedQuantity,
+    );
+    const normalized = {
       ownerId,
       workshop,
       lineName,
       batchNo,
       note,
       planDate: this.parseDate(input.planDate, '计划日期'),
-      plannedQuantity: this.parsePositiveInteger(input.plannedQuantity, '计划数量'),
+      plannedQuantity,
     };
+    this.assertPilotPayloadBound(
+      normalized,
+      '首台计划',
+      this.throwFirstProductionPlanInput.bind(this),
+    );
+    return normalized;
   }
 
   private parseTrialProductionWriteInput(rawInput: unknown): TrialProductionWriteInput {
@@ -1207,7 +1370,47 @@ export class PilotProductionsService {
       throw new BadRequestException('涂料批次不能为空。');
     }
 
-    return {
+    if (productionPlanId) {
+      this.assertPilotId(
+        productionPlanId,
+        '关联首台计划',
+        this.throwTrialProductionInput.bind(this),
+      );
+    }
+    this.assertPilotCode(
+      vehicleNo,
+      '样车编号',
+      this.throwTrialProductionInput.bind(this),
+    );
+    this.assertPilotText(
+      workshop,
+      '车间',
+      PILOT_PRODUCTION_NAME_MAX_CHARS,
+      this.throwTrialProductionInput.bind(this),
+    );
+    this.assertPilotCode(
+      paintBatchNo,
+      '涂料批次',
+      this.throwTrialProductionInput.bind(this),
+    );
+    if (issueSummary) {
+      this.assertPilotText(
+        issueSummary,
+        '问题摘要',
+        PILOT_PRODUCTION_LONG_TEXT_MAX_CHARS,
+        this.throwTrialProductionInput.bind(this),
+      );
+    }
+    if (note) {
+      this.assertPilotText(
+        note,
+        '备注',
+        PILOT_PRODUCTION_LONG_TEXT_MAX_CHARS,
+        this.throwTrialProductionInput.bind(this),
+      );
+    }
+
+    const normalized = {
       productionPlanId,
       vehicleNo,
       workshop,
@@ -1217,6 +1420,12 @@ export class PilotProductionsService {
       issueSummary,
       note,
     };
+    this.assertPilotPayloadBound(
+      normalized,
+      '试制记录',
+      this.throwTrialProductionInput.bind(this),
+    );
+    return normalized;
   }
 
   private parseTrialIssueWriteInput(rawInput: unknown): TrialIssueWriteInput {
@@ -1254,26 +1463,176 @@ export class PilotProductionsService {
       throw new BadRequestException('责任部门不能为空。');
     }
 
-    return {
+    this.assertPilotText(
+      issueType,
+      '问题类型',
+      PILOT_PRODUCTION_SHORT_TEXT_MAX_CHARS,
+      this.throwTrialProductionIssueInput.bind(this),
+    );
+    this.assertPilotText(
+      description,
+      '问题描述',
+      PILOT_PRODUCTION_LONG_TEXT_MAX_CHARS,
+      this.throwTrialProductionIssueInput.bind(this),
+    );
+    this.assertPilotText(
+      responsibleDept,
+      '责任部门',
+      PILOT_PRODUCTION_SHORT_TEXT_MAX_CHARS,
+      this.throwTrialProductionIssueInput.bind(this),
+    );
+
+    const normalized = {
       issueType,
       description,
       severity,
       responsibleDept,
     };
+    this.assertPilotPayloadBound(
+      normalized,
+      '试制问题',
+      this.throwTrialProductionIssueInput.bind(this),
+    );
+    return normalized;
   }
 
-  private parsePositiveInteger(value: unknown, label: string) {
+  private parseFirstProductionPlanQuantity(value: unknown) {
     if (typeof value !== 'number' && typeof value !== 'string') {
-      throw new BadRequestException(`${label}不能为空。`);
+      throw new BadRequestException('计划数量不能为空。');
     }
 
     const numericValue = Number(value);
 
-    if (!Number.isInteger(numericValue) || numericValue <= 0) {
-      throw new BadRequestException(`${label}必须是大于 0 的整数。`);
+    if (
+      !Number.isSafeInteger(numericValue) ||
+      numericValue <= 0 ||
+      numericValue > PILOT_PRODUCTION_MAX_QUANTITY
+    ) {
+      this.throwFirstProductionPlanInput(
+        `计划数量必须为 1～${PILOT_PRODUCTION_MAX_QUANTITY} 的整数。`,
+      );
     }
 
     return numericValue;
+  }
+
+  private assertFirstProductionPlanCapacity(
+    items: readonly unknown[],
+    forCreate: boolean,
+  ) {
+    if (
+      items.length > FIRST_PRODUCTION_PLAN_RECORD_LIMIT ||
+      (forCreate && items.length >= FIRST_PRODUCTION_PLAN_RECORD_LIMIT)
+    ) {
+      throw new ConflictException({
+        code: 'FIRST_PRODUCTION_PLAN_RECORD_LIMIT_EXCEEDED',
+        message: `每个项目最多保留 ${FIRST_PRODUCTION_PLAN_RECORD_LIMIT} 条首台生产计划。`,
+      });
+    }
+  }
+
+  private assertTrialProductionCapacity(items: readonly unknown[], forCreate: boolean) {
+    if (
+      items.length > TRIAL_PRODUCTION_RECORD_LIMIT ||
+      (forCreate && items.length >= TRIAL_PRODUCTION_RECORD_LIMIT)
+    ) {
+      throw new ConflictException({
+        code: 'TRIAL_PRODUCTION_RECORD_LIMIT_EXCEEDED',
+        message: `每个项目最多保留 ${TRIAL_PRODUCTION_RECORD_LIMIT} 条试制记录。`,
+      });
+    }
+  }
+
+  private assertTrialProductionIssueCapacity(
+    issues: readonly unknown[],
+    forCreate: boolean,
+  ) {
+    this.assertTrialProductionIssueCount(issues.length, forCreate);
+  }
+
+  private assertTrialProductionIssueCount(issueCount: number, forCreate: boolean) {
+    if (
+      issueCount > TRIAL_PRODUCTION_ISSUE_LIMIT ||
+      (forCreate && issueCount >= TRIAL_PRODUCTION_ISSUE_LIMIT)
+    ) {
+      throw new ConflictException({
+        code: 'TRIAL_PRODUCTION_ISSUE_LIMIT_EXCEEDED',
+        message: `每条试制记录最多保留 ${TRIAL_PRODUCTION_ISSUE_LIMIT} 个问题。`,
+      });
+    }
+  }
+
+  private assertPilotText(
+    value: string,
+    label: string,
+    maxChars: number,
+    fail: (message: string) => never,
+  ) {
+    if (value.length > maxChars) {
+      fail(`${label}不得超过 ${maxChars} 个字符。`);
+    }
+  }
+
+  private assertPilotId(
+    value: string,
+    label: string,
+    fail: (message: string) => never,
+  ) {
+    if (
+      value.length > PILOT_PRODUCTION_ID_MAX_CHARS ||
+      !PILOT_PRODUCTION_ID_PATTERN.test(value)
+    ) {
+      fail(`${label}标识不合法。`);
+    }
+  }
+
+  private assertPilotCode(
+    value: string,
+    label: string,
+    fail: (message: string) => never,
+  ) {
+    if (
+      value.length > PILOT_PRODUCTION_CODE_MAX_CHARS ||
+      !PILOT_PRODUCTION_CODE_PATTERN.test(value)
+    ) {
+      fail(
+        `${label}仅允许 1～${PILOT_PRODUCTION_CODE_MAX_CHARS} 位字母、数字、点、下划线或连字符。`,
+      );
+    }
+  }
+
+  private assertPilotPayloadBound(
+    normalized: object,
+    label: string,
+    fail: (message: string) => never,
+  ) {
+    if (
+      Buffer.byteLength(JSON.stringify(normalized), 'utf8') >
+      PILOT_PRODUCTION_MAX_PAYLOAD_BYTES
+    ) {
+      fail(`${label}不得超过 ${PILOT_PRODUCTION_MAX_PAYLOAD_BYTES} 字节。`);
+    }
+  }
+
+  private throwFirstProductionPlanInput(message: string): never {
+    throw new BadRequestException({
+      code: 'FIRST_PRODUCTION_PLAN_INPUT_OUT_OF_BOUNDS',
+      message,
+    });
+  }
+
+  private throwTrialProductionInput(message: string): never {
+    throw new BadRequestException({
+      code: 'TRIAL_PRODUCTION_INPUT_OUT_OF_BOUNDS',
+      message,
+    });
+  }
+
+  private throwTrialProductionIssueInput(message: string): never {
+    throw new BadRequestException({
+      code: 'TRIAL_PRODUCTION_ISSUE_INPUT_OUT_OF_BOUNDS',
+      message,
+    });
   }
 
   private parseDate(value: unknown, label: string) {
@@ -1375,9 +1734,9 @@ export class PilotProductionsService {
     };
   }
 
-  private toTrialProductionSummary(
+  private toTrialProductionWorkspaceSummary(
     trial: Prisma.TrialProductionGetPayload<{
-      include: typeof TRIAL_PRODUCTION_INCLUDE;
+      select: typeof TRIAL_PRODUCTION_WORKSPACE_SELECT;
     }>,
   ) {
     return {
@@ -1396,6 +1755,32 @@ export class PilotProductionsService {
       completedAt: trial.completedAt?.toISOString() ?? null,
       createdAt: trial.createdAt.toISOString(),
       updatedAt: trial.updatedAt.toISOString(),
+      issueCount: trial._count.issues,
+    };
+  }
+
+  private toTrialProductionDetailSummary(
+    trial: Prisma.TrialProductionGetPayload<{
+      include: typeof TRIAL_PRODUCTION_DETAIL_INCLUDE;
+    }>,
+  ) {
+    return {
+      id: trial.id,
+      productionPlanId: trial.productionPlanId,
+      productionPlanNo: trial.productionPlan?.planNo ?? null,
+      vehicleNo: trial.trialNo,
+      workshop: trial.location,
+      trialDate: trial.plannedAt?.toISOString() ?? null,
+      paintBatchNo: trial.paintBatchNo,
+      issueSummary: trial.summary,
+      result: trial.result,
+      status: trial.status,
+      note: trial.note,
+      startedAt: trial.startedAt?.toISOString() ?? null,
+      completedAt: trial.completedAt?.toISOString() ?? null,
+      createdAt: trial.createdAt.toISOString(),
+      updatedAt: trial.updatedAt.toISOString(),
+      issueCount: trial._count.issues,
       issues: trial.issues.map((issue) => ({
         id: issue.id,
         issueType: issue.issueType,
@@ -1434,7 +1819,7 @@ export class PilotProductionsService {
 
   private toTrialProductionAuditSnapshot(
     trial: Prisma.TrialProductionGetPayload<{
-      include: typeof TRIAL_PRODUCTION_INCLUDE;
+      include: typeof TRIAL_PRODUCTION_WRITE_INCLUDE;
     }>,
   ) {
     return {
@@ -1450,7 +1835,7 @@ export class PilotProductionsService {
       status: trial.status,
       note: trial.note,
       completedAt: trial.completedAt?.toISOString() ?? null,
-      issueCount: trial.issues.length,
+      issueCount: trial._count.issues,
     } satisfies Prisma.InputJsonValue;
   }
 }

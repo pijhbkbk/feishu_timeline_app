@@ -67,7 +67,7 @@ export type TrialProductionIssueRecord = {
   updatedAt: string;
 };
 
-export type TrialProductionRecord = {
+export type TrialProductionWorkspaceRecord = {
   id: string;
   productionPlanId: string | null;
   productionPlanNo: string | null;
@@ -83,6 +83,10 @@ export type TrialProductionRecord = {
   completedAt: string | null;
   createdAt: string;
   updatedAt: string;
+  issueCount: number;
+};
+
+export type TrialProductionDetailRecord = TrialProductionWorkspaceRecord & {
   issues: TrialProductionIssueRecord[];
 };
 
@@ -126,7 +130,7 @@ export type TrialProductionWorkspaceResponse = {
     status: FirstProductionPlanStatus;
     ownerName: string | null;
   }>;
-  items: TrialProductionRecord[];
+  items: TrialProductionWorkspaceRecord[];
 };
 
 export type FirstProductionPlanFormInput = {
@@ -273,7 +277,7 @@ export async function fetchTrialProductionWorkspace(projectId: string) {
 }
 
 export async function fetchTrialProductionDetail(projectId: string, trialId: string) {
-  return apiRequest<TrialProductionRecord>(
+  return apiRequest<TrialProductionDetailRecord>(
     `/projects/${projectId}/trial-productions/${trialId}`,
   );
 }
