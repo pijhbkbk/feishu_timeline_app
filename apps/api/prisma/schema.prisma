@@ -658,6 +658,7 @@ model AdminSavedView {
   pageKey   String
   name      String
   config    Json
+  configBytes Int?
   version   Int      @default(1)
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())

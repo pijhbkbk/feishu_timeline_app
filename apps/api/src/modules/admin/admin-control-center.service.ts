@@ -85,6 +85,37 @@ const REVIEW_NODE_CODES = [
 ];
 
 const MAX_DEPARTMENT_HIERARCHY_DEPTH = 100;
+const ADMIN_SAVED_VIEW_MAX_PER_PAGE = 20;
+const ADMIN_SAVED_VIEW_MAX_PER_USER = 100;
+const ADMIN_SAVED_VIEW_MAX_CONFIG_BYTES = 16 * 1024;
+const ADMIN_SAVED_VIEW_MAX_DEPTH = 8;
+const ADMIN_SAVED_VIEW_MAX_NODES = 256;
+const ADMIN_SAVED_VIEW_MAX_ARRAY_ITEMS = 100;
+const ADMIN_SAVED_VIEW_MAX_OBJECT_KEYS = 100;
+const ADMIN_SAVED_VIEW_MAX_KEY_LENGTH = 100;
+const ADMIN_SAVED_VIEW_MAX_STRING_LENGTH = 2_000;
+const ADMIN_SAVED_VIEW_FORBIDDEN_KEYS = new Set([
+  '__proto__',
+  'constructor',
+  'prototype',
+]);
+type AdminSavedViewJson =
+  | null
+  | boolean
+  | number
+  | string
+  | AdminSavedViewJson[]
+  | { [key: string]: AdminSavedViewJson };
+const ADMIN_SAVED_VIEW_PUBLIC_SELECT = {
+  id: true,
+  userId: true,
+  pageKey: true,
+  name: true,
+  config: true,
+  version: true,
+  createdAt: true,
+  updatedAt: true,
+} satisfies Prisma.AdminSavedViewSelect;
 
 const ADMIN_PERMISSION_ACTIONS = [
   ['project.read', '查看项目'],
@@ -1347,51 +1378,141 @@ export class AdminControlCenterService {
   }
 
   getSavedViews(pageKey: string, actor: AuthenticatedUser) {
-    return this.prisma.adminSavedView.findMany({
-      where: { userId: actor.id, pageKey },
-      orderBy: { updatedAt: 'desc' },
-    });
+    const normalizedPageKey = this.normalizeAdminSavedViewText(
+      pageKey,
+      64,
+      '页面标识',
+    );
+    return this.prisma.$queryRaw<
+      Array<{
+        id: string;
+        userId: string;
+        pageKey: string;
+        name: string;
+        config: Prisma.JsonValue;
+        version: number;
+        createdAt: Date;
+        updatedAt: Date;
+      }>
+    >(Prisma.sql`
+      WITH candidate_views AS MATERIALIZED (
+        SELECT saved_view."id"
+        FROM "admin_saved_views" AS saved_view
+        WHERE saved_view."userId" = ${actor.id}
+          AND saved_view."pageKey" = ${normalizedPageKey}
+          AND saved_view."configBytes" IS NOT NULL
+        ORDER BY saved_view."updatedAt" DESC
+        LIMIT ${ADMIN_SAVED_VIEW_MAX_PER_PAGE}
+      )
+      SELECT
+        saved_view."id",
+        saved_view."userId",
+        saved_view."pageKey",
+        saved_view."name",
+        saved_view."config",
+        saved_view."version",
+        saved_view."createdAt",
+        saved_view."updatedAt"
+      FROM candidate_views
+      INNER JOIN "admin_saved_views" AS saved_view
+        ON saved_view."id" = candidate_views."id"
+      ORDER BY saved_view."updatedAt" DESC, saved_view."id" DESC
+    `);
   }
 
   async saveView(input: AdminSavedViewDto, actor: AuthenticatedUser) {
-    const existing = await this.prisma.adminSavedView.findUnique({
-      where: {
-        userId_pageKey_name: {
-          userId: actor.id,
-          pageKey: input.pageKey,
-          name: input.name,
-        },
-      },
-    });
-    if (
-      existing &&
-      input.expectedVersion !== undefined &&
-      existing.version !== input.expectedVersion
-    ) {
-      throw new ConflictException({
-        code: 'STALE_SAVED_VIEW',
-        message: '保存视图已被其他会话更新，请刷新后重试。',
-        currentVersion: existing.version,
-      });
-    }
-    return this.prisma.adminSavedView.upsert({
-      where: {
-        userId_pageKey_name: {
-          userId: actor.id,
-          pageKey: input.pageKey,
-          name: input.name,
-        },
-      },
-      create: {
+    const pageKey = this.normalizeAdminSavedViewText(
+      input.pageKey,
+      64,
+      '页面标识',
+    );
+    const name = this.normalizeAdminSavedViewText(input.name, 80, '视图名称');
+    const { value: config, bytes: configBytes } =
+      this.normalizeAdminSavedViewConfig(input.config);
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw(
+        Prisma.sql`SELECT pg_advisory_xact_lock(hashtext(${'feishu-timeline:admin-saved-view'}), hashtext(${actor.id})) AS "locked"`,
+      );
+
+      const key = {
         userId: actor.id,
-        pageKey: input.pageKey,
-        name: input.name,
-        config: input.config as Prisma.InputJsonValue,
-      },
-      update: {
-        config: input.config as Prisma.InputJsonValue,
-        version: { increment: 1 },
-      },
+        pageKey,
+        name,
+      };
+      const existing = await tx.adminSavedView.findUnique({
+        where: { userId_pageKey_name: key },
+        select: { id: true, version: true },
+      });
+      if (existing) {
+        if (
+          input.expectedVersion === undefined ||
+          existing.version !== input.expectedVersion
+        ) {
+          throw new ConflictException({
+            code: 'STALE_SAVED_VIEW',
+            message: '保存视图已被其他会话更新，请刷新后重试。',
+            currentVersion: existing.version,
+          });
+        }
+        const updated = await tx.adminSavedView.updateMany({
+          where: { id: existing.id, version: existing.version },
+          data: {
+            config,
+            configBytes,
+            version: { increment: 1 },
+          },
+        });
+        if (updated.count !== 1) {
+          throw new ConflictException({
+            code: 'STALE_SAVED_VIEW',
+            message: '保存视图已被其他会话更新，请刷新后重试。',
+            currentVersion: existing.version,
+          });
+        }
+        const result = await tx.adminSavedView.findUnique({
+          where: { id: existing.id },
+          select: ADMIN_SAVED_VIEW_PUBLIC_SELECT,
+        });
+        if (!result) {
+          throw new ConflictException({
+            code: 'STALE_SAVED_VIEW',
+            message: '保存视图已被其他会话修改，请刷新后重试。',
+          });
+        }
+        return result;
+      }
+
+      const totalViews = await tx.adminSavedView.findMany({
+        where: { userId: actor.id },
+        select: { id: true },
+        take: ADMIN_SAVED_VIEW_MAX_PER_USER,
+      });
+      if (totalViews.length >= ADMIN_SAVED_VIEW_MAX_PER_USER) {
+        throw new ConflictException({
+          code: 'ADMIN_SAVED_VIEW_LIMIT_REACHED',
+          message: '保存视图数量已达上限，请先删除不再使用的视图。',
+        });
+      }
+      const pageViews = await tx.adminSavedView.findMany({
+        where: { userId: actor.id, pageKey },
+        select: { id: true },
+        take: ADMIN_SAVED_VIEW_MAX_PER_PAGE,
+      });
+      if (pageViews.length >= ADMIN_SAVED_VIEW_MAX_PER_PAGE) {
+        throw new ConflictException({
+          code: 'ADMIN_SAVED_VIEW_PAGE_LIMIT_REACHED',
+          message: '当前页面的保存视图数量已达上限。',
+        });
+      }
+
+      return tx.adminSavedView.create({
+        data: {
+          ...key,
+          config,
+          configBytes,
+        },
+        select: ADMIN_SAVED_VIEW_PUBLIC_SELECT,
+      });
     });
   }
 
@@ -4159,6 +4280,103 @@ export class AdminControlCenterService {
 
   private normalizeDepartmentName(value: string | null | undefined) {
     return value?.trim().replace(/\s+/g, ' ') ?? '';
+  }
+
+  private normalizeAdminSavedViewText(
+    value: string,
+    maxLength: number,
+    label: string,
+  ) {
+    const normalized = value.trim();
+    if (!normalized || normalized.length > maxLength) {
+      throw new BadRequestException({
+        code: 'ADMIN_SAVED_VIEW_INPUT_INVALID',
+        message: `${label}无效。`,
+      });
+    }
+    return normalized;
+  }
+
+  private normalizeAdminSavedViewConfig(
+    value: unknown,
+  ): { value: Prisma.InputJsonObject; bytes: number } {
+    let nodeCount = 0;
+    const fail = (message: string): never => {
+      throw new BadRequestException({
+        code: 'ADMIN_SAVED_VIEW_CONFIG_INVALID',
+        message,
+      });
+    };
+    const visit = (entry: unknown, depth: number): AdminSavedViewJson => {
+      nodeCount += 1;
+      if (nodeCount > ADMIN_SAVED_VIEW_MAX_NODES) {
+        return fail('保存视图配置的节点数量超过上限。');
+      }
+      if (depth > ADMIN_SAVED_VIEW_MAX_DEPTH) {
+        return fail('保存视图配置的嵌套层级超过上限。');
+      }
+      if (entry === null || typeof entry === 'boolean') {
+        return entry;
+      }
+      if (typeof entry === 'number') {
+        if (!Number.isFinite(entry)) {
+          return fail('保存视图配置包含无效数字。');
+        }
+        return entry;
+      }
+      if (typeof entry === 'string') {
+        if (entry.length > ADMIN_SAVED_VIEW_MAX_STRING_LENGTH) {
+          return fail('保存视图配置中的文本超过长度上限。');
+        }
+        return entry;
+      }
+      if (Array.isArray(entry)) {
+        if (entry.length > ADMIN_SAVED_VIEW_MAX_ARRAY_ITEMS) {
+          return fail('保存视图配置中的数组超过项目数上限。');
+        }
+        return entry.map((item) => visit(item, depth + 1));
+      }
+      if (typeof entry !== 'object') {
+        return fail('保存视图配置包含不支持的数据类型。');
+      }
+      const prototype = Object.getPrototypeOf(entry);
+      if (prototype !== Object.prototype && prototype !== null) {
+        return fail('保存视图配置必须是普通 JSON 对象。');
+      }
+      const entries = Object.entries(entry as Record<string, unknown>).sort(
+        ([left], [right]) => left.localeCompare(right),
+      );
+      if (entries.length > ADMIN_SAVED_VIEW_MAX_OBJECT_KEYS) {
+        return fail('保存视图配置中的对象字段数超过上限。');
+      }
+      const result: Record<string, AdminSavedViewJson> = {};
+      for (const [key, child] of entries) {
+        if (
+          key.length > ADMIN_SAVED_VIEW_MAX_KEY_LENGTH ||
+          ADMIN_SAVED_VIEW_FORBIDDEN_KEYS.has(key)
+        ) {
+          return fail('保存视图配置包含无效字段名。');
+        }
+        result[key] = visit(child, depth + 1);
+      }
+      return result;
+    };
+
+    if (value === null || Array.isArray(value) || typeof value !== 'object') {
+      return fail('保存视图配置必须是 JSON 对象。');
+    }
+    const normalized = visit(value, 0);
+    const serialized = JSON.stringify(normalized);
+    if (
+      Buffer.byteLength(serialized, 'utf8') >
+      ADMIN_SAVED_VIEW_MAX_CONFIG_BYTES
+    ) {
+      return fail('保存视图配置超过 16 KiB 上限。');
+    }
+    return {
+      value: normalized as Prisma.InputJsonObject,
+      bytes: Buffer.byteLength(serialized, 'utf8'),
+    };
   }
 
   private customDepartmentCode(name: string) {

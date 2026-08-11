@@ -193,3 +193,54 @@ describe('WorkflowsService task form resource bounds', () => {
     expect(Buffer.byteLength(JSON.stringify(auditInput), 'utf8')).toBeLessThan(2_000);
   });
 });
+
+describe('WorkflowsService action metadata resource bounds', () => {
+  const parseActionInput = (service: WorkflowsService, input: unknown) =>
+    (
+      service as unknown as {
+        parseActionInput: (rawInput: unknown) => unknown;
+      }
+    ).parseActionInput(input);
+
+  it('rejects oversized action metadata', () => {
+    const { service } = createHarness();
+    const metadata = Object.fromEntries(
+      Array.from({ length: 9 }, (_, index) => [
+        `section-${index}`,
+        'x'.repeat(2_000),
+      ]),
+    );
+
+    expect(() => parseActionInput(service, { metadata })).toThrowError(
+      expect.objectContaining({
+        response: expect.objectContaining({
+          code: 'WORKFLOW_ACTION_METADATA_TOO_LARGE',
+        }),
+      }),
+    );
+  });
+
+  it('rejects prototype-affecting metadata keys and oversized comments', () => {
+    const { service } = createHarness();
+    const metadata = JSON.parse(
+      '{"constructor":{"prototype":{"polluted":true}}}',
+    ) as Record<string, unknown>;
+
+    expect(() => parseActionInput(service, { metadata })).toThrowError(
+      expect.objectContaining({
+        response: expect.objectContaining({
+          code: 'WORKFLOW_ACTION_METADATA_INVALID',
+        }),
+      }),
+    );
+    expect(() =>
+      parseActionInput(service, { comment: 'x'.repeat(2_001) }),
+    ).toThrowError(
+      expect.objectContaining({
+        response: expect.objectContaining({
+          code: 'WORKFLOW_ACTION_COMMENT_INVALID',
+        }),
+      }),
+    );
+  });
+});

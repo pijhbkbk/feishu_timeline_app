@@ -2845,27 +2845,21 @@ export class WorkflowsService {
       typeof input.comment === 'string' && input.comment.trim().length > 0
         ? input.comment.trim()
         : undefined;
+    if (comment && comment.length > WORKFLOW_FORM_COMMENT_MAX_LENGTH) {
+      throw new BadRequestException({
+        code: 'WORKFLOW_ACTION_COMMENT_INVALID',
+        message: `工序操作备注不得超过 ${WORKFLOW_FORM_COMMENT_MAX_LENGTH} 个字符。`,
+      });
+    }
     const targetNodeCode =
       typeof input.targetNodeCode === 'string' &&
       Object.values(WorkflowNodeCode).includes(input.targetNodeCode as WorkflowNodeCode)
         ? (input.targetNodeCode as WorkflowNodeCode)
         : undefined;
-    const parsedMetadata =
+    const metadata =
       input.metadata === undefined
         ? undefined
-        : (JSON.parse(JSON.stringify(input.metadata)) as Prisma.InputJsonValue);
-    const metadata =
-      parsedMetadata &&
-      typeof parsedMetadata === 'object' &&
-      !Array.isArray(parsedMetadata)
-        ? (() => {
-            const sanitizedMetadata = {
-              ...(parsedMetadata as Prisma.InputJsonObject),
-            };
-            delete sanitizedMetadata.reviewPassAt;
-            return sanitizedMetadata as Prisma.InputJsonValue;
-          })()
-        : parsedMetadata;
+        : this.normalizeWorkflowActionMetadata(input.metadata);
 
     return {
       ...(comment ? { comment } : {}),
@@ -2906,7 +2900,10 @@ export class WorkflowsService {
     };
   }
 
-  private normalizeWorkflowFormPayload(rawPayload: object) {
+  private normalizeWorkflowFormPayload(
+    rawPayload: object,
+    allowEmptyRoot = false,
+  ) {
     const state = { nodes: 0 };
     const visit = (
       value: unknown,
@@ -2960,7 +2957,7 @@ export class WorkflowsService {
       const record = value as Record<string, unknown>;
       const keys = Object.keys(record).sort();
       if (
-        keys.length === 0 && depth === 0 ||
+        (keys.length === 0 && depth === 0 && !allowEmptyRoot) ||
         keys.length > WORKFLOW_FORM_MAX_OBJECT_KEYS
       ) {
         this.throwWorkflowFormPayloadInvalid(
@@ -2997,6 +2994,46 @@ export class WorkflowsService {
       );
     }
     return { value, json, bytes };
+  }
+
+  private normalizeWorkflowActionMetadata(rawMetadata: unknown) {
+    if (
+      !rawMetadata ||
+      typeof rawMetadata !== 'object' ||
+      Array.isArray(rawMetadata)
+    ) {
+      throw new BadRequestException({
+        code: 'WORKFLOW_ACTION_METADATA_INVALID',
+        message: '工序操作扩展元数据必须是 JSON 对象。',
+      });
+    }
+    try {
+      const normalized = this.normalizeWorkflowFormPayload(rawMetadata, true);
+      const metadata = {
+        ...(normalized.value as Prisma.InputJsonObject),
+      };
+      delete metadata.reviewPassAt;
+      return metadata as Prisma.InputJsonValue;
+    } catch (error) {
+      if (!(error instanceof BadRequestException)) {
+        throw error;
+      }
+      const response = error.getResponse();
+      const code =
+        typeof response === 'object' &&
+        response !== null &&
+        'code' in response &&
+        response.code === 'WORKFLOW_FORM_PAYLOAD_TOO_LARGE'
+          ? 'WORKFLOW_ACTION_METADATA_TOO_LARGE'
+          : 'WORKFLOW_ACTION_METADATA_INVALID';
+      throw new BadRequestException({
+        code,
+        message:
+          code === 'WORKFLOW_ACTION_METADATA_TOO_LARGE'
+            ? `工序操作扩展元数据不得超过 ${WORKFLOW_FORM_MAX_BYTES} 字节。`
+            : '工序操作扩展元数据不符合安全约束。',
+      });
+    }
   }
 
   private tryCanonicalWorkflowFormJson(value: unknown) {
