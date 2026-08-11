@@ -84,6 +84,10 @@ const CABIN_REVIEW_INCLUDE = {
   },
 } satisfies Prisma.ReviewRecordInclude;
 
+type ReviewRecordWithDetails = Prisma.ReviewRecordGetPayload<{
+  include: typeof CABIN_REVIEW_INCLUDE;
+}>;
+
 @Injectable()
 export class ReviewsService {
   constructor(
@@ -113,8 +117,11 @@ export class ReviewsService {
     this.assertActorCanAssignReviewer(actor, input.reviewerId);
 
     await this.prisma.$transaction(async (tx) => {
-      const context = await this.getCabinReviewContext(tx, projectId);
-      this.assertWritableCabinReviewStage(context);
+      const { context } = await this.lockCabinReviewWriteState(
+        tx,
+        projectId,
+        actor,
+      );
       await this.assertReviewerReference(tx, input.reviewerId);
 
       const trialProduction = await this.getLatestCompletedTrialProductionOrThrow(tx, projectId);
@@ -172,11 +179,16 @@ export class ReviewsService {
     this.assertActorCanAssignReviewer(actor, input.reviewerId);
 
     await this.prisma.$transaction(async (tx) => {
-      const context = await this.getCabinReviewContext(tx, projectId);
-      this.assertWritableCabinReviewStage(context);
-      const reviewRecord = await this.getCabinReviewOrThrow(tx, projectId, reviewId, actor);
-      this.assertCurrentTaskEditable(reviewRecord, context.activeTask!.id);
-      this.assertDraftReviewRecord(reviewRecord);
+      const { context, reviewRecord } = await this.lockCabinReviewWriteState(
+        tx,
+        projectId,
+        actor,
+        reviewId,
+      );
+      if (!reviewRecord) {
+        this.throwReviewStateChanged();
+      }
+      this.assertDraftReviewRecordForLockedWrite(reviewRecord);
       await this.assertReviewerReference(tx, input.reviewerId);
       await this.assertUniqueReviewerPerTask(
         tx,
@@ -185,9 +197,10 @@ export class ReviewsService {
         reviewId,
       );
 
-      const updatedRecord = await tx.reviewRecord.update({
-        where: { id: reviewId },
-        data: {
+      const updatedRecord = await this.claimReviewRecordUpdate(
+        tx,
+        reviewRecord,
+        {
           reviewerId: input.reviewerId,
           result: input.reviewConclusion,
           comment: input.comment,
@@ -195,8 +208,7 @@ export class ReviewsService {
           rejectReason: input.rejectReason,
           reviewedAt: input.reviewDate,
         },
-        include: CABIN_REVIEW_INCLUDE,
-      });
+      );
 
       await this.activityLogsService.createWithExecutor(tx, {
         projectId,
@@ -280,11 +292,16 @@ export class ReviewsService {
     await this.assertActorCanManage(projectId, actor);
 
     await this.prisma.$transaction(async (tx) => {
-      const context = await this.getCabinReviewContext(tx, projectId);
-      this.assertWritableCabinReviewStage(context);
-      const reviewRecord = await this.getCabinReviewOrThrow(tx, projectId, reviewId, actor);
-      this.assertCurrentTaskEditable(reviewRecord, context.activeTask!.id);
-      this.assertDraftReviewRecord(reviewRecord);
+      const { reviewRecord } = await this.lockCabinReviewWriteState(
+        tx,
+        projectId,
+        actor,
+        reviewId,
+      );
+      if (!reviewRecord) {
+        this.throwReviewStateChanged();
+      }
+      this.assertDraftReviewRecordForLockedWrite(reviewRecord);
 
       const submitIssue = getCabinReviewSubmitIssue({
         reviewDate: reviewRecord.reviewedAt,
@@ -299,13 +316,13 @@ export class ReviewsService {
         throw new BadRequestException(submitIssue);
       }
 
-      const submittedRecord = await tx.reviewRecord.update({
-        where: { id: reviewId },
-        data: {
+      const submittedRecord = await this.claimReviewRecordUpdate(
+        tx,
+        reviewRecord,
+        {
           submittedAt: new Date(),
         },
-        include: CABIN_REVIEW_INCLUDE,
-      });
+      );
 
       await this.activityLogsService.createWithExecutor(tx, {
         projectId,
@@ -330,10 +347,15 @@ export class ReviewsService {
     await this.assertActorCanManage(projectId, actor);
 
     await this.prisma.$transaction(async (tx) => {
-      const context = await this.getCabinReviewContext(tx, projectId);
-      this.assertWritableCabinReviewStage(context);
-      const reviewRecord = await this.getCabinReviewOrThrow(tx, projectId, reviewId, actor);
-      this.assertCurrentTaskEditable(reviewRecord, context.activeTask!.id);
+      const { context, reviewRecord } = await this.lockCabinReviewWriteState(
+        tx,
+        projectId,
+        actor,
+        reviewId,
+      );
+      if (!reviewRecord) {
+        this.throwReviewStateChanged();
+      }
 
       const approveIssue = getCabinReviewApproveIssue({
         reviewConclusion: reviewRecord.result,
@@ -345,15 +367,15 @@ export class ReviewsService {
         throw new BadRequestException(approveIssue);
       }
 
-      const updatedReview = await tx.reviewRecord.update({
-        where: { id: reviewId },
-        data: {
+      const updatedReview = await this.claimReviewRecordUpdate(
+        tx,
+        reviewRecord,
+        {
           returnToNodeCode: null,
           rejectReason: null,
           reviewedAt: reviewRecord.reviewedAt ?? new Date(),
         },
-        include: CABIN_REVIEW_INCLUDE,
-      });
+      );
 
       await this.workflowsService.transitionTaskWithExecutor(
         tx,
@@ -417,10 +439,15 @@ export class ReviewsService {
     await this.assertActorCanManage(projectId, actor);
 
     await this.prisma.$transaction(async (tx) => {
-      const context = await this.getCabinReviewContext(tx, projectId);
-      this.assertWritableCabinReviewStage(context);
-      const reviewRecord = await this.getCabinReviewOrThrow(tx, projectId, reviewId, actor);
-      this.assertCurrentTaskEditable(reviewRecord, context.activeTask!.id);
+      const { context, reviewRecord } = await this.lockCabinReviewWriteState(
+        tx,
+        projectId,
+        actor,
+        reviewId,
+      );
+      if (!reviewRecord) {
+        this.throwReviewStateChanged();
+      }
 
       const rejectIssue = getCabinReviewRejectIssue({
         reviewConclusion: reviewRecord.result,
@@ -432,13 +459,13 @@ export class ReviewsService {
         throw new BadRequestException(rejectIssue);
       }
 
-      const updatedReview = await tx.reviewRecord.update({
-        where: { id: reviewId },
-        data: {
+      const updatedReview = await this.claimReviewRecordUpdate(
+        tx,
+        reviewRecord,
+        {
           returnToNodeCode: getCabinReviewReturnNodeCode(),
         },
-        include: CABIN_REVIEW_INCLUDE,
-      });
+      );
 
       await this.workflowsService.transitionTaskWithExecutor(
         tx,
@@ -500,8 +527,11 @@ export class ReviewsService {
     this.assertActorCanAssignReviewer(actor, input.reviewerId);
 
     await this.prisma.$transaction(async (tx) => {
-      const context = await this.getConsistencyReviewContext(tx, projectId);
-      this.assertWritableConsistencyReviewStage(context);
+      const { context } = await this.lockConsistencyReviewWriteState(
+        tx,
+        projectId,
+        actor,
+      );
       await this.assertReviewerReference(tx, input.reviewerId);
       await this.assertUniqueReviewerPerTask(tx, context.activeTask!.id, input.reviewerId);
 
@@ -546,11 +576,17 @@ export class ReviewsService {
     this.assertActorCanAssignReviewer(actor, input.reviewerId);
 
     await this.prisma.$transaction(async (tx) => {
-      const context = await this.getConsistencyReviewContext(tx, projectId);
-      this.assertWritableConsistencyReviewStage(context);
-      const reviewRecord = await this.getConsistencyReviewOrThrow(tx, projectId, reviewId, actor);
-      this.assertCurrentTaskEditable(reviewRecord, context.activeTask!.id);
-      this.assertDraftReviewRecord(reviewRecord);
+      const { context, reviewRecord } =
+        await this.lockConsistencyReviewWriteState(
+          tx,
+          projectId,
+          actor,
+          reviewId,
+        );
+      if (!reviewRecord) {
+        this.throwReviewStateChanged();
+      }
+      this.assertDraftReviewRecordForLockedWrite(reviewRecord);
       await this.assertReviewerReference(tx, input.reviewerId);
       await this.assertUniqueReviewerPerTask(
         tx,
@@ -559,9 +595,10 @@ export class ReviewsService {
         reviewId,
       );
 
-      const updatedRecord = await tx.reviewRecord.update({
-        where: { id: reviewId },
-        data: {
+      const updatedRecord = await this.claimReviewRecordUpdate(
+        tx,
+        reviewRecord,
+        {
           reviewerId: input.reviewerId,
           result: input.reviewConclusion,
           comment: input.comment,
@@ -569,8 +606,7 @@ export class ReviewsService {
           rejectReason: input.rejectReason,
           reviewedAt: input.reviewDate,
         },
-        include: CABIN_REVIEW_INCLUDE,
-      });
+      );
 
       await this.activityLogsService.createWithExecutor(tx, {
         projectId,
@@ -659,11 +695,16 @@ export class ReviewsService {
     await this.assertActorCanManage(projectId, actor);
 
     await this.prisma.$transaction(async (tx) => {
-      const context = await this.getConsistencyReviewContext(tx, projectId);
-      this.assertWritableConsistencyReviewStage(context);
-      const reviewRecord = await this.getConsistencyReviewOrThrow(tx, projectId, reviewId, actor);
-      this.assertCurrentTaskEditable(reviewRecord, context.activeTask!.id);
-      this.assertDraftReviewRecord(reviewRecord);
+      const { reviewRecord } = await this.lockConsistencyReviewWriteState(
+        tx,
+        projectId,
+        actor,
+        reviewId,
+      );
+      if (!reviewRecord) {
+        this.throwReviewStateChanged();
+      }
+      this.assertDraftReviewRecordForLockedWrite(reviewRecord);
 
       const submitIssue = getCabinReviewSubmitIssue({
         reviewDate: reviewRecord.reviewedAt,
@@ -678,13 +719,13 @@ export class ReviewsService {
         throw new BadRequestException(submitIssue);
       }
 
-      const submittedRecord = await tx.reviewRecord.update({
-        where: { id: reviewId },
-        data: {
+      const submittedRecord = await this.claimReviewRecordUpdate(
+        tx,
+        reviewRecord,
+        {
           submittedAt: new Date(),
         },
-        include: CABIN_REVIEW_INCLUDE,
-      });
+      );
 
       await this.activityLogsService.createWithExecutor(tx, {
         projectId,
@@ -709,10 +750,16 @@ export class ReviewsService {
     await this.assertActorCanManage(projectId, actor);
 
     await this.prisma.$transaction(async (tx) => {
-      const context = await this.getConsistencyReviewContext(tx, projectId);
-      this.assertWritableConsistencyReviewStage(context);
-      const reviewRecord = await this.getConsistencyReviewOrThrow(tx, projectId, reviewId, actor);
-      this.assertCurrentTaskEditable(reviewRecord, context.activeTask!.id);
+      const { context, reviewRecord } =
+        await this.lockConsistencyReviewWriteState(
+          tx,
+          projectId,
+          actor,
+          reviewId,
+        );
+      if (!reviewRecord) {
+        this.throwReviewStateChanged();
+      }
 
       const approveIssue = getCabinReviewApproveIssue({
         reviewConclusion: reviewRecord.result,
@@ -724,15 +771,15 @@ export class ReviewsService {
         throw new BadRequestException(approveIssue);
       }
 
-      const updatedReview = await tx.reviewRecord.update({
-        where: { id: reviewId },
-        data: {
+      const updatedReview = await this.claimReviewRecordUpdate(
+        tx,
+        reviewRecord,
+        {
           returnToNodeCode: null,
           rejectReason: null,
           reviewedAt: reviewRecord.reviewedAt ?? new Date(),
         },
-        include: CABIN_REVIEW_INCLUDE,
-      });
+      );
 
       await this.workflowsService.transitionTaskWithExecutor(
         tx,
@@ -788,10 +835,16 @@ export class ReviewsService {
     await this.assertActorCanManage(projectId, actor);
 
     await this.prisma.$transaction(async (tx) => {
-      const context = await this.getConsistencyReviewContext(tx, projectId);
-      this.assertWritableConsistencyReviewStage(context);
-      const reviewRecord = await this.getConsistencyReviewOrThrow(tx, projectId, reviewId, actor);
-      this.assertCurrentTaskEditable(reviewRecord, context.activeTask!.id);
+      const { context, reviewRecord } =
+        await this.lockConsistencyReviewWriteState(
+          tx,
+          projectId,
+          actor,
+          reviewId,
+        );
+      if (!reviewRecord) {
+        this.throwReviewStateChanged();
+      }
 
       const rejectIssue = getCabinReviewRejectIssue({
         reviewConclusion: reviewRecord.result,
@@ -803,13 +856,13 @@ export class ReviewsService {
         throw new BadRequestException(rejectIssue);
       }
 
-      const updatedReview = await tx.reviewRecord.update({
-        where: { id: reviewId },
-        data: {
+      const updatedReview = await this.claimReviewRecordUpdate(
+        tx,
+        reviewRecord,
+        {
           returnToNodeCode: getConsistencyReviewReturnNodeCode(),
         },
-        include: CABIN_REVIEW_INCLUDE,
-      });
+      );
 
       await this.workflowsService.transitionTaskWithExecutor(
         tx,
@@ -871,8 +924,11 @@ export class ReviewsService {
     this.assertActorCanAssignReviewer(actor, input.reviewerId);
 
     await this.prisma.$transaction(async (tx) => {
-      const context = await this.getVisualDeltaReviewContext(tx, projectId);
-      this.assertWritableVisualDeltaReviewStage(context);
+      const { context } = await this.lockVisualDeltaReviewWriteState(
+        tx,
+        projectId,
+        actor,
+      );
       await this.assertReviewerReference(tx, input.reviewerId);
       await this.getVisualDeltaRecurringTaskForDate(tx, projectId, input.reviewDate);
       await this.assertUniqueVisualReviewerPerPeriod(
@@ -924,11 +980,17 @@ export class ReviewsService {
     this.assertActorCanAssignReviewer(actor, input.reviewerId);
 
     await this.prisma.$transaction(async (tx) => {
-      const context = await this.getVisualDeltaReviewContext(tx, projectId);
-      this.assertWritableVisualDeltaReviewStage(context);
-      const reviewRecord = await this.getVisualDeltaReviewOrThrow(tx, projectId, reviewId, actor);
-      this.assertCurrentTaskEditable(reviewRecord, context.activeTask!.id);
-      this.assertDraftReviewRecord(reviewRecord);
+      const { context, reviewRecord } =
+        await this.lockVisualDeltaReviewWriteState(
+          tx,
+          projectId,
+          actor,
+          reviewId,
+        );
+      if (!reviewRecord) {
+        this.throwReviewStateChanged();
+      }
+      this.assertDraftReviewRecordForLockedWrite(reviewRecord);
       await this.assertReviewerReference(tx, input.reviewerId);
       await this.getVisualDeltaRecurringTaskForDate(tx, projectId, input.reviewDate);
       await this.assertUniqueVisualReviewerPerPeriod(
@@ -939,9 +1001,10 @@ export class ReviewsService {
         reviewId,
       );
 
-      const updatedRecord = await tx.reviewRecord.update({
-        where: { id: reviewId },
-        data: {
+      const updatedRecord = await this.claimReviewRecordUpdate(
+        tx,
+        reviewRecord,
+        {
           reviewerId: input.reviewerId,
           reviewPeriod: getMonthlyReviewPeriodKey(input.reviewDate),
           result: input.reviewConclusion,
@@ -950,8 +1013,7 @@ export class ReviewsService {
           rejectReason: input.rejectReason,
           reviewedAt: input.reviewDate,
         },
-        include: CABIN_REVIEW_INCLUDE,
-      });
+      );
 
       await this.activityLogsService.createWithExecutor(tx, {
         projectId,
@@ -1040,11 +1102,16 @@ export class ReviewsService {
     await this.assertActorCanManage(projectId, actor);
 
     await this.prisma.$transaction(async (tx) => {
-      const context = await this.getVisualDeltaReviewContext(tx, projectId);
-      this.assertWritableVisualDeltaReviewStage(context);
-      const reviewRecord = await this.getVisualDeltaReviewOrThrow(tx, projectId, reviewId, actor);
-      this.assertCurrentTaskEditable(reviewRecord, context.activeTask!.id);
-      this.assertDraftReviewRecord(reviewRecord);
+      const { reviewRecord } = await this.lockVisualDeltaReviewWriteState(
+        tx,
+        projectId,
+        actor,
+        reviewId,
+      );
+      if (!reviewRecord) {
+        this.throwReviewStateChanged();
+      }
+      this.assertDraftReviewRecordForLockedWrite(reviewRecord);
 
       const submitIssue = getCabinReviewSubmitIssue({
         reviewDate: reviewRecord.reviewedAt,
@@ -1059,13 +1126,13 @@ export class ReviewsService {
         throw new BadRequestException(submitIssue);
       }
 
-      const submittedRecord = await tx.reviewRecord.update({
-        where: { id: reviewId },
-        data: {
+      const submittedRecord = await this.claimReviewRecordUpdate(
+        tx,
+        reviewRecord,
+        {
           submittedAt: new Date(),
         },
-        include: CABIN_REVIEW_INCLUDE,
-      });
+      );
 
       await this.activityLogsService.createWithExecutor(tx, {
         projectId,
@@ -1090,10 +1157,16 @@ export class ReviewsService {
     await this.assertActorCanManage(projectId, actor);
 
     await this.prisma.$transaction(async (tx) => {
-      const context = await this.getVisualDeltaReviewContext(tx, projectId);
-      this.assertWritableVisualDeltaReviewStage(context);
-      const reviewRecord = await this.getVisualDeltaReviewOrThrow(tx, projectId, reviewId, actor);
-      this.assertCurrentTaskEditable(reviewRecord, context.activeTask!.id);
+      const { context, reviewRecord } =
+        await this.lockVisualDeltaReviewWriteState(
+          tx,
+          projectId,
+          actor,
+          reviewId,
+        );
+      if (!reviewRecord) {
+        this.throwReviewStateChanged();
+      }
 
       const approveIssue = getCabinReviewApproveIssue({
         reviewConclusion: reviewRecord.result,
@@ -1105,15 +1178,15 @@ export class ReviewsService {
         throw new BadRequestException(approveIssue);
       }
 
-      const updatedReview = await tx.reviewRecord.update({
-        where: { id: reviewId },
-        data: {
+      const updatedReview = await this.claimReviewRecordUpdate(
+        tx,
+        reviewRecord,
+        {
           returnToNodeCode: null,
           rejectReason: null,
           reviewedAt: reviewRecord.reviewedAt ?? new Date(),
         },
-        include: CABIN_REVIEW_INCLUDE,
-      });
+      );
 
       const recurringTask = await this.getVisualDeltaRecurringTaskForDate(
         tx,
@@ -1249,10 +1322,16 @@ export class ReviewsService {
     await this.assertActorCanManage(projectId, actor);
 
     await this.prisma.$transaction(async (tx) => {
-      const context = await this.getVisualDeltaReviewContext(tx, projectId);
-      this.assertWritableVisualDeltaReviewStage(context);
-      const reviewRecord = await this.getVisualDeltaReviewOrThrow(tx, projectId, reviewId, actor);
-      this.assertCurrentTaskEditable(reviewRecord, context.activeTask!.id);
+      const { context, reviewRecord } =
+        await this.lockVisualDeltaReviewWriteState(
+          tx,
+          projectId,
+          actor,
+          reviewId,
+        );
+      if (!reviewRecord) {
+        this.throwReviewStateChanged();
+      }
 
       const rejectIssue = getCabinReviewRejectIssue({
         reviewConclusion: reviewRecord.result,
@@ -1264,13 +1343,13 @@ export class ReviewsService {
         throw new BadRequestException(rejectIssue);
       }
 
-      const updatedReview = await tx.reviewRecord.update({
-        where: { id: reviewId },
-        data: {
+      const updatedReview = await this.claimReviewRecordUpdate(
+        tx,
+        reviewRecord,
+        {
           returnToNodeCode: getVisualDeltaReviewReturnNodeCode(),
         },
-        include: CABIN_REVIEW_INCLUDE,
-      });
+      );
 
       await this.workflowsService.transitionTaskWithExecutor(
         tx,
@@ -1783,6 +1862,164 @@ export class ReviewsService {
     return reviewRecord;
   }
 
+  private lockCabinReviewWriteState(
+    tx: Prisma.TransactionClient,
+    projectId: string,
+    actor: AuthenticatedUser,
+    reviewId?: string,
+  ) {
+    return this.lockReviewWriteState(tx, projectId, {
+      ...(reviewId ? { reviewId } : {}),
+      getContext: () => this.getCabinReviewContext(tx, projectId),
+      assertWritable: (context) => this.assertWritableCabinReviewStage(context),
+      getReview: (id) =>
+        this.getCabinReviewOrThrow(tx, projectId, id, actor),
+    });
+  }
+
+  private lockConsistencyReviewWriteState(
+    tx: Prisma.TransactionClient,
+    projectId: string,
+    actor: AuthenticatedUser,
+    reviewId?: string,
+  ) {
+    return this.lockReviewWriteState(tx, projectId, {
+      ...(reviewId ? { reviewId } : {}),
+      getContext: () => this.getConsistencyReviewContext(tx, projectId),
+      assertWritable: (context) =>
+        this.assertWritableConsistencyReviewStage(context),
+      getReview: (id) =>
+        this.getConsistencyReviewOrThrow(tx, projectId, id, actor),
+    });
+  }
+
+  private lockVisualDeltaReviewWriteState(
+    tx: Prisma.TransactionClient,
+    projectId: string,
+    actor: AuthenticatedUser,
+    reviewId?: string,
+  ) {
+    return this.lockReviewWriteState(tx, projectId, {
+      ...(reviewId ? { reviewId } : {}),
+      getContext: () => this.getVisualDeltaReviewContext(tx, projectId),
+      assertWritable: (context) =>
+        this.assertWritableVisualDeltaReviewStage(context),
+      getReview: (id) =>
+        this.getVisualDeltaReviewOrThrow(tx, projectId, id, actor),
+    });
+  }
+
+  private async lockReviewWriteState<
+    TContext extends { activeTask: { id: string } | null },
+  >(
+    tx: Prisma.TransactionClient,
+    projectId: string,
+    input: {
+      reviewId?: string;
+      getContext: () => Promise<TContext>;
+      assertWritable: (context: TContext) => void;
+      getReview: (reviewId: string) => Promise<ReviewRecordWithDetails>;
+    },
+  ): Promise<{
+    context: TContext;
+    reviewRecord: ReviewRecordWithDetails | null;
+  }> {
+    if (input.reviewId) {
+      if (!(await this.lockReviewRecordRow(tx, projectId, input.reviewId))) {
+        this.throwReviewStateChanged();
+      }
+      let reviewRecord = await input.getReview(input.reviewId);
+
+      if (
+        !(await this.lockWorkflowTaskRow(
+          tx,
+          projectId,
+          reviewRecord.workflowTaskId,
+        ))
+      ) {
+        this.throwReviewStateChanged();
+      }
+
+      const context = await input.getContext();
+      if (
+        !context.activeTask ||
+        context.activeTask.id !== reviewRecord.workflowTaskId
+      ) {
+        this.throwReviewStateChanged();
+      }
+      try {
+        input.assertWritable(context);
+      } catch {
+        this.throwReviewStateChanged();
+      }
+
+      reviewRecord = await input.getReview(input.reviewId);
+      if (reviewRecord.workflowTaskId !== context.activeTask.id) {
+        this.throwReviewStateChanged();
+      }
+      return { context, reviewRecord };
+    }
+
+    const candidateContext = await input.getContext();
+    input.assertWritable(candidateContext);
+    const candidateTask = candidateContext.activeTask;
+    if (!candidateTask) {
+      this.throwReviewStateChanged();
+    }
+
+    if (!(await this.lockWorkflowTaskRow(tx, projectId, candidateTask.id))) {
+      this.throwReviewStateChanged();
+    }
+
+    const context = await input.getContext();
+    if (!context.activeTask || context.activeTask.id !== candidateTask.id) {
+      this.throwReviewStateChanged();
+    }
+    try {
+      input.assertWritable(context);
+    } catch {
+      this.throwReviewStateChanged();
+    }
+    return { context, reviewRecord: null };
+  }
+
+  private async claimReviewRecordUpdate(
+    tx: Prisma.TransactionClient,
+    reviewRecord: ReviewRecordWithDetails,
+    data: Prisma.ReviewRecordUncheckedUpdateManyInput,
+  ) {
+    const claimed = await tx.reviewRecord.updateMany({
+      where: {
+        id: reviewRecord.id,
+        projectId: reviewRecord.projectId,
+        reviewType: reviewRecord.reviewType,
+        workflowTaskId: reviewRecord.workflowTaskId,
+        reviewRound: reviewRecord.reviewRound,
+        reviewPeriod: reviewRecord.reviewPeriod,
+        reviewerId: reviewRecord.reviewerId,
+        submittedAt: reviewRecord.submittedAt,
+        updatedAt: reviewRecord.updatedAt,
+      },
+      data,
+    });
+    if (claimed.count !== 1) {
+      this.throwReviewStateChanged();
+    }
+
+    const updatedReview = await tx.reviewRecord.findFirst({
+      where: {
+        id: reviewRecord.id,
+        projectId: reviewRecord.projectId,
+        reviewType: reviewRecord.reviewType,
+      },
+      include: CABIN_REVIEW_INCLUDE,
+    });
+    if (!updatedReview) {
+      this.throwReviewStateChanged();
+    }
+    return updatedReview;
+  }
+
   private async assertReviewerReference(
     db: ReviewsDbClient,
     reviewerId: string,
@@ -2042,6 +2279,13 @@ export class ReviewsService {
     });
   }
 
+  private throwReviewStateChanged(): never {
+    throw new ConflictException({
+      code: 'REVIEW_STATE_CHANGED',
+      message: '评审记录或流程状态已变更，请刷新后重试。',
+    });
+  }
+
   private assertCurrentTaskEditable(
     reviewRecord: Prisma.ReviewRecordGetPayload<{
       include: typeof CABIN_REVIEW_INCLUDE;
@@ -2060,6 +2304,14 @@ export class ReviewsService {
   ) {
     if (reviewRecord.submittedAt) {
       throw new BadRequestException('评审记录已提交，不能再修改。');
+    }
+  }
+
+  private assertDraftReviewRecordForLockedWrite(
+    reviewRecord: ReviewRecordWithDetails,
+  ) {
+    if (reviewRecord.submittedAt) {
+      this.throwReviewStateChanged();
     }
   }
 

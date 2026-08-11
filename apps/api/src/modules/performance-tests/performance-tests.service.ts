@@ -96,8 +96,7 @@ export class PerformanceTestsService {
     const input = this.parseWriteInput(rawInput);
 
     await this.prisma.$transaction(async (tx) => {
-      const context = await this.getPerformanceContext(tx, projectId);
-      this.assertWritableStage(context);
+      await this.lockPerformanceWriteContext(tx, projectId);
 
       await this.assertUniqueTestCode(tx, projectId, input.testCode);
       await this.assertSampleReference(tx, projectId, input.sampleId);
@@ -147,12 +146,14 @@ export class PerformanceTestsService {
     const input = this.parseWriteInput(rawInput);
 
     await this.prisma.$transaction(async (tx) => {
-      const context = await this.getPerformanceContext(tx, projectId);
-      this.assertWritableStage(context);
-      const testRecord = await this.getTestOrThrow(tx, projectId, testId);
+      const { testRecord } = await this.lockPerformanceWriteContext(
+        tx,
+        projectId,
+        testId,
+      );
 
-      if (!canEditPerformanceTest(testRecord.status)) {
-        throw new BadRequestException('已提交的试验记录不允许编辑。');
+      if (!testRecord || !canEditPerformanceTest(testRecord.status)) {
+        this.throwPerformanceTestStateChanged();
       }
 
       if (testRecord.testCode !== input.testCode) {
@@ -162,8 +163,13 @@ export class PerformanceTestsService {
       await this.assertSampleReference(tx, projectId, input.sampleId);
       await this.assertTesterReference(tx, input.testedById);
 
-      const updatedTest = await tx.performanceTest.update({
-        where: { id: testId },
+      const updated = await tx.performanceTest.updateMany({
+        where: {
+          id: testId,
+          projectId,
+          status: PerformanceTestStatus.DRAFT,
+          updatedAt: testRecord.updatedAt,
+        },
         data: {
           sampleId: input.sampleId,
           relatedObjectName: input.relatedObjectName,
@@ -176,8 +182,11 @@ export class PerformanceTestsService {
           testedById: input.testedById,
           testedAt: input.testedAt,
         },
-        include: PERFORMANCE_TEST_DETAIL_INCLUDE,
       });
+      if (updated.count !== 1) {
+        this.throwPerformanceTestStateChanged();
+      }
+      const updatedTest = await this.getTestOrThrow(tx, projectId, testId);
 
       await this.activityLogsService.createWithExecutor(tx, {
         projectId,
@@ -261,12 +270,14 @@ export class PerformanceTestsService {
     this.assertActorCanManage(actor);
 
     await this.prisma.$transaction(async (tx) => {
-      const context = await this.getPerformanceContext(tx, projectId);
-      this.assertWritableStage(context);
-      const testRecord = await this.getTestOrThrow(tx, projectId, testId);
+      const { testRecord } = await this.lockPerformanceWriteContext(
+        tx,
+        projectId,
+        testId,
+      );
 
-      if (!canEditPerformanceTest(testRecord.status)) {
-        throw new BadRequestException('当前试验记录已提交，不能重复提交。');
+      if (!testRecord || !canEditPerformanceTest(testRecord.status)) {
+        this.throwPerformanceTestStateChanged();
       }
 
       const submitIssue = getPerformanceTestSubmitIssue({
@@ -289,14 +300,22 @@ export class PerformanceTestsService {
         throw new BadRequestException(submitIssue);
       }
 
-      const submittedTest = await tx.performanceTest.update({
-        where: { id: testId },
+      const submitted = await tx.performanceTest.updateMany({
+        where: {
+          id: testId,
+          projectId,
+          status: PerformanceTestStatus.DRAFT,
+          updatedAt: testRecord.updatedAt,
+        },
         data: {
           status: PerformanceTestStatus.SUBMITTED,
           submittedAt: new Date(),
         },
-        include: PERFORMANCE_TEST_DETAIL_INCLUDE,
       });
+      if (submitted.count !== 1) {
+        this.throwPerformanceTestStateChanged();
+      }
+      const submittedTest = await this.getTestOrThrow(tx, projectId, testId);
 
       await this.activityLogsService.createWithExecutor(tx, {
         projectId,
@@ -319,11 +338,10 @@ export class PerformanceTestsService {
     this.assertActorCanManage(actor);
 
     await this.prisma.$transaction(async (tx) => {
-      const context = await this.getPerformanceContext(tx, projectId);
-      this.assertWritableStage(context);
+      const context = await this.lockPerformanceCompletionContext(tx, projectId);
 
       if (!context.activeTask) {
-        throw new BadRequestException('当前没有可完成的性能试验任务。');
+        this.throwPerformanceTestStateChanged();
       }
 
       const completionIssue = getPerformanceTestCompletionIssue(context.records);
@@ -557,6 +575,92 @@ export class PerformanceTestsService {
     return testRecord;
   }
 
+  private async lockPerformanceWriteContext(
+    tx: Prisma.TransactionClient,
+    projectId: string,
+    testId?: string,
+  ) {
+    let testRecord: Awaited<ReturnType<typeof this.getTestOrThrow>> | null = null;
+
+    if (testId) {
+      if (!(await this.lockPerformanceTestRow(tx, projectId, testId))) {
+        this.throwPerformanceTestStateChanged();
+      }
+      testRecord = await this.getTestOrThrow(tx, projectId, testId);
+      if (!canEditPerformanceTest(testRecord.status)) {
+        this.throwPerformanceTestStateChanged();
+      }
+    }
+
+    const candidateContext = await this.getPerformanceContext(tx, projectId);
+    this.assertWritableStage(candidateContext);
+    const candidateTask = candidateContext.activeTask;
+    if (!candidateTask) {
+      this.throwPerformanceTestStateChanged();
+    }
+
+    if (
+      !(await this.lockWorkflowTaskRow(tx, projectId, candidateTask.id))
+    ) {
+      this.throwPerformanceTestStateChanged();
+    }
+
+    const context = await this.getPerformanceContext(tx, projectId);
+    if (!context.activeTask || context.activeTask.id !== candidateTask.id) {
+      this.throwPerformanceTestStateChanged();
+    }
+    try {
+      this.assertWritableStage(context);
+    } catch {
+      this.throwPerformanceTestStateChanged();
+    }
+
+    if (testId) {
+      testRecord = await this.getTestOrThrow(tx, projectId, testId);
+      if (!canEditPerformanceTest(testRecord.status)) {
+        this.throwPerformanceTestStateChanged();
+      }
+    }
+
+    return { context, testRecord };
+  }
+
+  private async lockPerformanceCompletionContext(
+    tx: Prisma.TransactionClient,
+    projectId: string,
+  ) {
+    const candidateContext = await this.getPerformanceContext(tx, projectId);
+    this.assertWritableStage(candidateContext);
+    const candidateTask = candidateContext.activeTask;
+    if (!candidateTask) {
+      this.throwPerformanceTestStateChanged();
+    }
+
+    const recordIds = candidateContext.records
+      .map((record) => record.id)
+      .sort((left, right) => left.localeCompare(right));
+    for (const recordId of recordIds) {
+      if (!(await this.lockPerformanceTestRow(tx, projectId, recordId))) {
+        this.throwPerformanceTestStateChanged();
+      }
+    }
+
+    if (!(await this.lockWorkflowTaskRow(tx, projectId, candidateTask.id))) {
+      this.throwPerformanceTestStateChanged();
+    }
+
+    const context = await this.getPerformanceContext(tx, projectId);
+    if (!context.activeTask || context.activeTask.id !== candidateTask.id) {
+      this.throwPerformanceTestStateChanged();
+    }
+    try {
+      this.assertWritableStage(context);
+    } catch {
+      this.throwPerformanceTestStateChanged();
+    }
+    return context;
+  }
+
   private createReportAttachmentFinalizeHook(input: {
     projectId: string;
     testId: string;
@@ -697,6 +801,13 @@ export class PerformanceTestsService {
     throw new ConflictException({
       code: 'ATTACHMENT_TARGET_STATE_CHANGED',
       message: '附件扫描期间性能试验或流程状态已变更，请刷新后重试。',
+    });
+  }
+
+  private throwPerformanceTestStateChanged(): never {
+    throw new ConflictException({
+      code: 'PERFORMANCE_TEST_STATE_CHANGED',
+      message: '性能试验记录或流程状态已变更，请刷新后重试。',
     });
   }
 

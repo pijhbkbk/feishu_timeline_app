@@ -1,14 +1,15 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import {
   AuditTargetType,
   DevelopmentReportStatus,
+  Prisma,
   WorkflowAction,
   WorkflowNodeCode,
-  type Prisma,
 } from '@prisma/client';
 
 import { PrismaService } from '../../infra/prisma/prisma.service';
@@ -83,11 +84,10 @@ export class DevelopmentReportsService {
 
     return this.prisma.$transaction(async (tx) => {
       const project = await this.getProjectOrThrow(tx, projectId);
-      const activeTask = await this.getActiveTaskOrThrow(tx, projectId);
+      const { activeTask, existingReport } =
+        await this.lockDevelopmentReportWriteState(tx, projectId);
 
       this.assertActorCanOperateTask(activeTask, actor);
-
-      const existingReport = await this.getReportByTaskId(tx, activeTask.id);
       const savedReport = await this.upsertReportForTask(tx, {
         project,
         activeTask,
@@ -130,12 +130,11 @@ export class DevelopmentReportsService {
 
     return this.prisma.$transaction(async (tx) => {
       const project = await this.getProjectOrThrow(tx, projectId);
-      const activeTask = await this.getActiveTaskOrThrow(tx, projectId);
+      const { activeTask, existingReport } =
+        await this.lockDevelopmentReportWriteState(tx, projectId);
 
       this.assertActorCanOperateTask(activeTask, actor);
       this.assertTaskCanSubmit(activeTask);
-
-      const existingReport = await this.getReportByTaskId(tx, activeTask.id);
       const submittedReport = await this.upsertReportForTask(tx, {
         project,
         activeTask,
@@ -285,10 +284,19 @@ export class DevelopmentReportsService {
     };
 
     if (input.existingReport) {
-      await tx.developmentReport.update({
-        where: { id: input.existingReport.id },
+      const updated = await tx.developmentReport.updateMany({
+        where: {
+          id: input.existingReport.id,
+          workflowTaskId: input.activeTask.id,
+          status: DevelopmentReportStatus.DRAFT,
+          submittedAt: null,
+          updatedAt: input.existingReport.updatedAt,
+        },
         data: reportData,
       });
+      if (updated.count !== 1) {
+        this.throwDevelopmentReportStateChanged();
+      }
     } else {
       await tx.developmentReport.create({
         data: {
@@ -373,6 +381,110 @@ export class DevelopmentReportsService {
         updatedBy: true,
         submittedBy: true,
       },
+    });
+  }
+
+  private async lockDevelopmentReportWriteState(
+    tx: Prisma.TransactionClient,
+    projectId: string,
+  ) {
+    const candidateTask = await this.getActiveTaskOrThrow(tx, projectId);
+    const candidateReport = await this.getReportByTaskId(tx, candidateTask.id);
+
+    if (
+      candidateReport &&
+      !(await this.lockDevelopmentReportRow(
+        tx,
+        projectId,
+        candidateReport.id,
+      ))
+    ) {
+      this.throwDevelopmentReportStateChanged();
+    }
+
+    if (
+      !(await this.lockDevelopmentReportTaskRow(
+        tx,
+        projectId,
+        candidateTask.id,
+      ))
+    ) {
+      this.throwDevelopmentReportStateChanged();
+    }
+
+    const activeTask = await this.getExactActiveTask(
+      tx,
+      projectId,
+      candidateTask.id,
+    );
+    if (!activeTask) {
+      this.throwDevelopmentReportStateChanged();
+    }
+
+    const existingReport = await this.getReportByTaskId(tx, activeTask.id);
+    if (
+      (candidateReport && existingReport?.id !== candidateReport.id) ||
+      existingReport?.status === DevelopmentReportStatus.SUBMITTED ||
+      existingReport?.submittedAt
+    ) {
+      this.throwDevelopmentReportStateChanged();
+    }
+
+    return { activeTask, existingReport };
+  }
+
+  private getExactActiveTask(
+    db: DevelopmentReportDbClient,
+    projectId: string,
+    taskId: string,
+  ) {
+    return db.workflowTask.findFirst({
+      where: {
+        id: taskId,
+        projectId,
+        nodeCode: WorkflowNodeCode.DEVELOPMENT_REPORT,
+        isActive: true,
+      },
+      include: {
+        assigneeUser: true,
+        assigneeDepartment: true,
+        workflowInstance: true,
+      },
+    });
+  }
+
+  private async lockDevelopmentReportRow(
+    tx: Prisma.TransactionClient,
+    projectId: string,
+    reportId: string,
+  ) {
+    const rows = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+      SELECT "id"
+      FROM "development_reports"
+      WHERE "id" = ${reportId} AND "projectId" = ${projectId}
+      FOR UPDATE
+    `);
+    return rows.length === 1;
+  }
+
+  private async lockDevelopmentReportTaskRow(
+    tx: Prisma.TransactionClient,
+    projectId: string,
+    taskId: string,
+  ) {
+    const rows = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+      SELECT "id"
+      FROM "workflow_tasks"
+      WHERE "id" = ${taskId} AND "projectId" = ${projectId}
+      FOR UPDATE
+    `);
+    return rows.length === 1;
+  }
+
+  private throwDevelopmentReportStateChanged(): never {
+    throw new ConflictException({
+      code: 'DEVELOPMENT_REPORT_STATE_CHANGED',
+      message: '开发报告或流程状态已变更，请刷新后重试。',
     });
   }
 
