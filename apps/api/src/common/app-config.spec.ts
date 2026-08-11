@@ -54,6 +54,12 @@ describe('resolveAppConfig', () => {
     expect(config.notificationQueuePollMs).toBe(5000);
     expect(config.notificationOverdueScanMs).toBe(300000);
     expect(config.notificationMaxRetries).toBe(3);
+    expect(config.notificationRedisQueueMaxJobs).toBe(2000);
+    expect(config.notificationMemoryQueueMaxJobs).toBe(1000);
+    expect(config.notificationMemoryDedupeMaxKeys).toBe(5000);
+    expect(config.notificationJobMaxBytes).toBe(65536);
+    expect(config.notificationScanBatchSize).toBe(100);
+    expect(config.notificationScanMaxItems).toBe(1000);
     expect(config.authMockEnabled).toBe(false);
     expect(config.sessionCookieName).toBe('ft_session');
     expect(config.objectStorageProvider).toBe('local');
@@ -392,6 +398,82 @@ describe('resolveAppConfig', () => {
     ]) {
       expect(() => resolveAppConfig(env)).toThrowError(/DOWNLOAD_ADMISSION/);
     }
+  });
+
+  it('strictly bounds notification fallback and scan resource controls', () => {
+    expect(
+      resolveAppConfig({
+        NOTIFICATION_MEMORY_QUEUE_MAX_JOBS: '200',
+        NOTIFICATION_REDIS_QUEUE_MAX_JOBS: '2000',
+        NOTIFICATION_MEMORY_DEDUPE_MAX_KEYS: '600',
+        NOTIFICATION_JOB_MAX_BYTES: '32768',
+        NOTIFICATION_SCAN_BATCH_SIZE: '50',
+        NOTIFICATION_SCAN_MAX_ITEMS: '250',
+      }),
+    ).toMatchObject({
+      notificationMemoryQueueMaxJobs: 200,
+      notificationRedisQueueMaxJobs: 2000,
+      notificationMemoryDedupeMaxKeys: 600,
+      notificationJobMaxBytes: 32768,
+      notificationScanBatchSize: 50,
+      notificationScanMaxItems: 250,
+    });
+
+    for (const env of [
+      { NOTIFICATION_QUEUE_POLL_MS: '99' },
+      { NOTIFICATION_QUEUE_POLL_MS: '60001' },
+      { NOTIFICATION_OVERDUE_SCAN_MS: '999' },
+      { NOTIFICATION_OVERDUE_SCAN_MS: '86400001' },
+      { NOTIFICATION_RETRY_DELAY_MS: '-1' },
+      { NOTIFICATION_RETRY_DELAY_MS: '3600001' },
+      { NOTIFICATION_MAX_RETRIES: '0' },
+      { NOTIFICATION_MAX_RETRIES: '21' },
+      { NOTIFICATION_REDIS_QUEUE_MAX_JOBS: '0' },
+      { NOTIFICATION_REDIS_QUEUE_MAX_JOBS: '100001' },
+      { NOTIFICATION_MEMORY_QUEUE_MAX_JOBS: '0' },
+      { NOTIFICATION_MEMORY_QUEUE_MAX_JOBS: '100001' },
+      { NOTIFICATION_MEMORY_DEDUPE_MAX_KEYS: '0' },
+      { NOTIFICATION_MEMORY_DEDUPE_MAX_KEYS: '200001' },
+      { NOTIFICATION_JOB_MAX_BYTES: '1023' },
+      { NOTIFICATION_JOB_MAX_BYTES: '1048577' },
+      { NOTIFICATION_SCAN_BATCH_SIZE: '0' },
+      { NOTIFICATION_SCAN_BATCH_SIZE: '1001' },
+      { NOTIFICATION_SCAN_MAX_ITEMS: '0' },
+      { NOTIFICATION_SCAN_MAX_ITEMS: '10001' },
+      {
+        NOTIFICATION_SCAN_BATCH_SIZE: '100',
+        NOTIFICATION_SCAN_MAX_ITEMS: '50',
+      },
+      {
+        NOTIFICATION_MEMORY_QUEUE_MAX_JOBS: '1000',
+        NOTIFICATION_JOB_MAX_BYTES: '1048576',
+      },
+    ]) {
+      expect(() => resolveAppConfig(env)).toThrowError(/NOTIFICATION_/);
+    }
+  });
+
+  it('caps both serialized notification queue budgets at 128 MiB', () => {
+    expect(
+      resolveAppConfig({
+        NOTIFICATION_MEMORY_QUEUE_MAX_JOBS: '128',
+        NOTIFICATION_REDIS_QUEUE_MAX_JOBS: '2048',
+        NOTIFICATION_JOB_MAX_BYTES: '65536',
+      }),
+    ).toMatchObject({
+      notificationMemoryQueueMaxJobs: 128,
+      notificationRedisQueueMaxJobs: 2048,
+      notificationJobMaxBytes: 65536,
+    });
+
+    expect(() =>
+      resolveAppConfig({
+        NOTIFICATION_REDIS_QUEUE_MAX_JOBS: '2049',
+        NOTIFICATION_JOB_MAX_BYTES: '65536',
+      }),
+    ).toThrowError(
+      /NOTIFICATION_REDIS_QUEUE_MAX_JOBS.*NOTIFICATION_JOB_MAX_BYTES/,
+    );
   });
 
   it.each([

@@ -20,6 +20,12 @@ export type AppConfig = {
   notificationOverdueScanMs: number;
   notificationRetryDelayMs: number;
   notificationMaxRetries: number;
+  notificationRedisQueueMaxJobs: number;
+  notificationMemoryQueueMaxJobs: number;
+  notificationMemoryDedupeMaxKeys: number;
+  notificationJobMaxBytes: number;
+  notificationScanBatchSize: number;
+  notificationScanMaxItems: number;
   authMockEnabled: boolean;
   sessionCookieName: string;
   sessionTtlSeconds: number;
@@ -78,6 +84,8 @@ const WEAK_DEFAULT_PASSWORDS = new Set([
   'postgres',
   'redis',
 ]);
+const MAX_NOTIFICATION_MEMORY_QUEUE_SERIALIZED_BYTES = 128 * 1024 * 1024;
+const MAX_NOTIFICATION_REDIS_QUEUE_SERIALIZED_BYTES = 128 * 1024 * 1024;
 
 function resolvePort(value: string | undefined, fallback: number) {
   const parsed = Number(value ?? fallback);
@@ -339,6 +347,66 @@ export function resolveAppConfig(env: NodeJS.ProcessEnv = process.env): AppConfi
       : localScannerHost;
   }
 
+  const notificationMemoryQueueMaxJobs = resolveBoundedInteger(
+    'NOTIFICATION_MEMORY_QUEUE_MAX_JOBS',
+    env.NOTIFICATION_MEMORY_QUEUE_MAX_JOBS,
+    1000,
+    1,
+    100000,
+  );
+  const notificationRedisQueueMaxJobs = resolveBoundedInteger(
+    'NOTIFICATION_REDIS_QUEUE_MAX_JOBS',
+    env.NOTIFICATION_REDIS_QUEUE_MAX_JOBS,
+    2000,
+    1,
+    100000,
+  );
+  const notificationJobMaxBytes = resolveBoundedInteger(
+    'NOTIFICATION_JOB_MAX_BYTES',
+    env.NOTIFICATION_JOB_MAX_BYTES,
+    65536,
+    1024,
+    1048576,
+  );
+  const notificationScanBatchSize = resolveBoundedInteger(
+    'NOTIFICATION_SCAN_BATCH_SIZE',
+    env.NOTIFICATION_SCAN_BATCH_SIZE,
+    100,
+    1,
+    1000,
+  );
+  const notificationScanMaxItems = resolveBoundedInteger(
+    'NOTIFICATION_SCAN_MAX_ITEMS',
+    env.NOTIFICATION_SCAN_MAX_ITEMS,
+    1000,
+    1,
+    10000,
+  );
+
+  if (notificationScanBatchSize > notificationScanMaxItems) {
+    throw new Error(
+      'NOTIFICATION_SCAN_BATCH_SIZE must not exceed NOTIFICATION_SCAN_MAX_ITEMS.',
+    );
+  }
+
+  if (
+    notificationMemoryQueueMaxJobs * notificationJobMaxBytes >
+    MAX_NOTIFICATION_MEMORY_QUEUE_SERIALIZED_BYTES
+  ) {
+    throw new Error(
+      'NOTIFICATION_MEMORY_QUEUE_MAX_JOBS multiplied by NOTIFICATION_JOB_MAX_BYTES must not exceed the fallback memory budget.',
+    );
+  }
+
+  if (
+    notificationRedisQueueMaxJobs * notificationJobMaxBytes >
+    MAX_NOTIFICATION_REDIS_QUEUE_SERIALIZED_BYTES
+  ) {
+    throw new Error(
+      'NOTIFICATION_REDIS_QUEUE_MAX_JOBS multiplied by NOTIFICATION_JOB_MAX_BYTES must not exceed the Redis serialized queue budget.',
+    );
+  }
+
   const config: AppConfig = {
     nodeEnv,
     deploymentEnvironment,
@@ -351,10 +419,46 @@ export function resolveAppConfig(env: NodeJS.ProcessEnv = process.env): AppConfi
     databaseUrl,
     redisUrl,
     notificationQueueEnabled: resolveBoolean(env.NOTIFICATION_QUEUE_ENABLED, true),
-    notificationQueuePollMs: resolvePort(env.NOTIFICATION_QUEUE_POLL_MS, 5000),
-    notificationOverdueScanMs: resolvePort(env.NOTIFICATION_OVERDUE_SCAN_MS, 300000),
-    notificationRetryDelayMs: resolvePort(env.NOTIFICATION_RETRY_DELAY_MS, 5000),
-    notificationMaxRetries: resolvePort(env.NOTIFICATION_MAX_RETRIES, 3),
+    notificationQueuePollMs: resolveBoundedInteger(
+      'NOTIFICATION_QUEUE_POLL_MS',
+      env.NOTIFICATION_QUEUE_POLL_MS,
+      5000,
+      100,
+      60000,
+    ),
+    notificationOverdueScanMs: resolveBoundedInteger(
+      'NOTIFICATION_OVERDUE_SCAN_MS',
+      env.NOTIFICATION_OVERDUE_SCAN_MS,
+      300000,
+      1000,
+      86400000,
+    ),
+    notificationRetryDelayMs: resolveBoundedInteger(
+      'NOTIFICATION_RETRY_DELAY_MS',
+      env.NOTIFICATION_RETRY_DELAY_MS,
+      5000,
+      0,
+      3600000,
+    ),
+    notificationMaxRetries: resolveBoundedInteger(
+      'NOTIFICATION_MAX_RETRIES',
+      env.NOTIFICATION_MAX_RETRIES,
+      3,
+      1,
+      20,
+    ),
+    notificationRedisQueueMaxJobs,
+    notificationMemoryQueueMaxJobs,
+    notificationMemoryDedupeMaxKeys: resolveBoundedInteger(
+      'NOTIFICATION_MEMORY_DEDUPE_MAX_KEYS',
+      env.NOTIFICATION_MEMORY_DEDUPE_MAX_KEYS,
+      5000,
+      1,
+      200000,
+    ),
+    notificationJobMaxBytes,
+    notificationScanBatchSize,
+    notificationScanMaxItems,
     authMockEnabled: resolveBoolean(env.AUTH_MOCK_ENABLED, false),
     sessionCookieName: env.SESSION_COOKIE_NAME ?? 'ft_session',
     sessionTtlSeconds: resolvePort(env.SESSION_TTL_SECONDS, 28800),
