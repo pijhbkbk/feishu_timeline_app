@@ -2,6 +2,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { ProjectPriority } from '@prisma/client';
 import {
   IsArray,
+  ArrayMaxSize,
   IsDateString,
   IsEnum,
   IsIn,
@@ -14,7 +15,10 @@ import {
 import { Type } from 'class-transformer';
 
 import { ProjectMemberDto } from './project-member.dto';
-import { PROJECT_PAINT_SUPPLIER_VALUES } from '../project.constants';
+import {
+  PROJECT_CREATE_MEMBERS_MAX_COUNT,
+  PROJECT_PAINT_SUPPLIER_VALUES,
+} from '../project.constants';
 
 export class CreateProjectDto {
   @ApiPropertyOptional({ description: '兼容字段；未传入时由服务端生成内部项目编号' })
@@ -87,6 +91,7 @@ export class CreateProjectDto {
   @ApiPropertyOptional({ type: [ProjectMemberDto], description: '项目成员列表' })
   @IsOptional()
   @IsArray()
+  @ArrayMaxSize(PROJECT_CREATE_MEMBERS_MAX_COUNT)
   @ValidateNested({ each: true })
   @Type(() => ProjectMemberDto)
   members?: ProjectMemberDto[];

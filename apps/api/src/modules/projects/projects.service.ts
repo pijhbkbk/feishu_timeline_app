@@ -5,7 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import {
   AttachmentScanStatus,
   AttachmentTargetType,
@@ -21,7 +21,7 @@ import {
   WorkflowNodeCode,
   WorkflowInstanceStatus,
   WorkflowTaskStatus,
-  type Prisma,
+  Prisma,
 } from '@prisma/client';
 
 import { PrismaService } from '../../infra/prisma/prisma.service';
@@ -32,6 +32,7 @@ import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import { WorkflowsService } from '../workflows/workflows.service';
 import { WORKFLOW_NODE_META_MAP } from '../workflows/workflow-node.constants';
 import {
+  PROJECT_CREATE_MEMBERS_MAX_COUNT,
   PROJECT_PAINT_SUPPLIER_VALUES,
   type ProjectPaintSupplier,
 } from './project.constants';
@@ -61,7 +62,7 @@ type ProjectListQuery = {
 };
 
 type CreateProjectInput = {
-  code: string;
+  code: string | null;
   name: string;
   description: string | null;
   priority: ProjectPriority;
@@ -127,6 +128,9 @@ const PROJECT_STATUS_VALUES = Object.values(ProjectStatus);
 const PROJECT_PRIORITY_VALUES = Object.values(ProjectPriority);
 const PROJECT_MEMBER_TYPE_VALUES = Object.values(ProjectMemberType);
 const WORKFLOW_NODE_VALUES = Object.values(WorkflowNodeCode);
+const PROJECT_CREATE_ACTION = 'PROJECT_CREATE';
+const PROJECT_IDEMPOTENCY_KEY_MAX_LENGTH = 128;
+const PROJECT_IDEMPOTENCY_KEY_PATTERN = /^[A-Za-z0-9._:-]+$/;
 const PROJECT_LIST_VIEW_VALUES = ['all', 'normal', 'risk', 'overdue', 'review'] as const;
 const REVIEW_NODE_CODES = [
   WorkflowNodeCode.SAMPLE_COLOR_CONFIRMATION,
@@ -807,79 +811,125 @@ export class ProjectsService {
     };
   }
 
-  async createProject(rawInput: unknown, actor: AuthenticatedUser) {
+  async createProject(
+    rawInput: unknown,
+    actor: AuthenticatedUser,
+    rawIdempotencyKey?: string,
+  ) {
+    const idempotencyKey = this.parseProjectIdempotencyKey(rawIdempotencyKey);
     const input = this.normalizeCreateInput(rawInput, actor);
+    const requestHash = this.hashProjectCreateCommand(input);
+    const commandInput = {
+      actorUserId: actor.id,
+      idempotencyKey,
+      requestHash,
+    };
 
-    return this.prisma.$transaction(async (tx) => {
-      const owner = await this.findActiveUserOrThrow(tx, input.ownerUserId);
+    const replay = await this.findProjectCreateCommandReplay(this.prisma, commandInput);
+    if (replay) {
+      return replay;
+    }
 
-      const project = await tx.project.create({
-        data: {
-          code: input.code,
-          name: input.name,
-          description: input.description,
-          status: ProjectStatus.IN_PROGRESS,
-          priority: input.priority,
-          currentNodeCode: WorkflowNodeCode.PROJECT_INITIATION,
-          owningDepartmentId: owner.departmentId ?? actor.departmentId ?? null,
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        await this.lockProjectCreateCommand(tx, actor.id, idempotencyKey);
+        const lockedReplay = await this.findProjectCreateCommandReplay(tx, commandInput);
+        if (lockedReplay) {
+          return lockedReplay;
+        }
+
+        const owner = await this.findActiveUserOrThrow(tx, input.ownerUserId);
+
+        const project = await tx.project.create({
+          data: {
+            code: input.code ?? this.generateProjectCode(),
+            name: input.name,
+            description: input.description,
+            status: ProjectStatus.IN_PROGRESS,
+            priority: input.priority,
+            currentNodeCode: WorkflowNodeCode.PROJECT_INITIATION,
+            owningDepartmentId: owner.departmentId ?? actor.departmentId ?? null,
+            ownerUserId: owner.id,
+            marketRegion: input.marketRegion,
+            colorMarketingUnit: input.colorMarketingUnit,
+            paintSupplier: input.paintSupplier,
+            vehicleModel: input.vehicleModel,
+            plannedStartDate: input.plannedStartDate,
+            plannedEndDate: input.plannedEndDate,
+            actualStartDate: null,
+            actualEndDate: null,
+            closedAt: null,
+          },
+        });
+
+        const createdMembers = await this.replaceMembersInTx(tx, {
+          projectId: project.id,
           ownerUserId: owner.id,
-          marketRegion: input.marketRegion,
-          colorMarketingUnit: input.colorMarketingUnit,
-          paintSupplier: input.paintSupplier,
-          vehicleModel: input.vehicleModel,
-          plannedStartDate: input.plannedStartDate,
-          plannedEndDate: input.plannedEndDate,
-          actualStartDate: null,
-          actualEndDate: null,
-          closedAt: null,
-        },
+          members: input.members,
+        });
+
+        const workflow = await this.workflowsService.initializeProjectWorkflow(tx, {
+          projectId: project.id,
+          ownerUserId: owner.id,
+          initiatedById: actor.id,
+        });
+
+        await this.activityLogsService.createWithExecutor(tx, {
+          projectId: project.id,
+          actorUserId: actor.id,
+          targetType: AuditTargetType.PROJECT,
+          targetId: project.id,
+          action: 'PROJECT_CREATED',
+          nodeCode: WorkflowNodeCode.PROJECT_INITIATION,
+          summary: `创建项目 ${project.name}`,
+          afterData: {
+            project: this.toProjectAuditSnapshot(project),
+            members: this.toMemberAuditSnapshot(createdMembers),
+          },
+        });
+
+        await this.activityLogsService.createWithExecutor(tx, {
+          projectId: project.id,
+          actorUserId: actor.id,
+          targetType: AuditTargetType.WORKFLOW_INSTANCE,
+          targetId: workflow.instance.id,
+          action: 'WORKFLOW_INITIALIZED',
+          nodeCode: WorkflowNodeCode.PROJECT_INITIATION,
+          summary: '项目创建后自动初始化流程实例。',
+          afterData: {
+            workflowInstanceId: workflow.instance.id,
+            workflowTaskId: workflow.task.id,
+            currentNodeCode: workflow.instance.currentNodeCode,
+          },
+        });
+
+        const createdProject = await this.findProjectDetailOrThrow(tx, project.id);
+        const result = this.toProjectDetail(createdProject);
+
+        await tx.projectCreateCommandRequest.create({
+          data: {
+            actorUserId: actor.id,
+            idempotencyKey,
+            requestHash,
+            projectId: project.id,
+            resultSnapshot: result as unknown as Prisma.InputJsonValue,
+          },
+        });
+
+        return { ...result, idempotentReplay: false };
       });
-
-      const createdMembers = await this.replaceMembersInTx(tx, {
-        projectId: project.id,
-        ownerUserId: owner.id,
-        members: input.members,
-      });
-
-      const workflow = await this.workflowsService.initializeProjectWorkflow(tx, {
-        projectId: project.id,
-        ownerUserId: owner.id,
-        initiatedById: actor.id,
-      });
-
-      await this.activityLogsService.createWithExecutor(tx, {
-        projectId: project.id,
-        actorUserId: actor.id,
-        targetType: AuditTargetType.PROJECT,
-        targetId: project.id,
-        action: 'PROJECT_CREATED',
-        nodeCode: WorkflowNodeCode.PROJECT_INITIATION,
-        summary: `创建项目 ${project.name}`,
-        afterData: {
-          project: this.toProjectAuditSnapshot(project),
-          members: this.toMemberAuditSnapshot(createdMembers),
-        },
-      });
-
-      await this.activityLogsService.createWithExecutor(tx, {
-        projectId: project.id,
-        actorUserId: actor.id,
-        targetType: AuditTargetType.WORKFLOW_INSTANCE,
-        targetId: workflow.instance.id,
-        action: 'WORKFLOW_INITIALIZED',
-        nodeCode: WorkflowNodeCode.PROJECT_INITIATION,
-        summary: '项目创建后自动初始化流程实例。',
-        afterData: {
-          workflowInstanceId: workflow.instance.id,
-          workflowTaskId: workflow.task.id,
-          currentNodeCode: workflow.instance.currentNodeCode,
-        },
-      });
-
-      const createdProject = await this.findProjectDetailOrThrow(tx, project.id);
-
-      return this.toProjectDetail(createdProject);
-    });
+    } catch (error) {
+      if (this.isUniqueConstraintError(error)) {
+        const winningReplay = await this.findProjectCreateCommandReplay(
+          this.prisma,
+          commandInput,
+        );
+        if (winningReplay) {
+          return winningReplay;
+        }
+      }
+      throw error;
+    }
   }
 
   async updateProject(projectId: string, rawInput: unknown, actor: AuthenticatedUser) {
@@ -1013,7 +1063,7 @@ export class ProjectsService {
 
   private normalizeCreateInput(rawInput: unknown, actor: AuthenticatedUser): CreateProjectInput {
     const input = this.asRecord(rawInput, 'Invalid project payload.');
-    const code = this.parseOptionalString(input.code) ?? this.generateProjectCode();
+    const code = this.parseOptionalString(input.code) ?? null;
     const name = this.parseRequiredString(input.name, 'name');
     const description = this.parseNullableString(input.description);
     const priority =
@@ -1034,6 +1084,7 @@ export class ProjectsService {
     const members = this.parseMembers(input.members);
 
     this.assertDateRange(plannedStartDate, plannedEndDate);
+    this.assertCreateMemberLimit(members, ownerUserId);
 
     return {
       code,
@@ -1049,6 +1100,155 @@ export class ProjectsService {
       plannedEndDate,
       members,
     };
+  }
+
+  private parseProjectIdempotencyKey(rawValue: string | undefined) {
+    const value = rawValue?.trim() ?? '';
+    if (
+      !value ||
+      value.length > PROJECT_IDEMPOTENCY_KEY_MAX_LENGTH ||
+      !PROJECT_IDEMPOTENCY_KEY_PATTERN.test(value)
+    ) {
+      throw new BadRequestException({
+        statusCode: 400,
+        error: 'Bad Request',
+        code: 'PROJECT_IDEMPOTENCY_KEY_INVALID',
+        message: `Idempotency-Key 必须为 1-${PROJECT_IDEMPOTENCY_KEY_MAX_LENGTH} 位安全字符。`,
+      });
+    }
+    return value;
+  }
+
+  private hashProjectCreateCommand(input: CreateProjectInput) {
+    const members = input.members
+      .map((member) => ({
+        userId: member.userId,
+        memberType: member.memberType,
+        title: member.title,
+        isPrimary: member.isPrimary,
+      }))
+      .sort((left, right) =>
+        this.stableSerialize(left).localeCompare(this.stableSerialize(right)),
+      );
+    const canonicalPayload = {
+      action: PROJECT_CREATE_ACTION,
+      code: input.code,
+      name: input.name,
+      description: input.description,
+      priority: input.priority,
+      marketRegion: input.marketRegion,
+      colorMarketingUnit: input.colorMarketingUnit,
+      paintSupplier: input.paintSupplier,
+      vehicleModel: input.vehicleModel,
+      ownerUserId: input.ownerUserId,
+      plannedStartDate: input.plannedStartDate?.toISOString() ?? null,
+      plannedEndDate: input.plannedEndDate?.toISOString() ?? null,
+      members,
+    };
+    return createHash('sha256')
+      .update(this.stableSerialize(canonicalPayload))
+      .digest('hex');
+  }
+
+  private stableSerialize(value: unknown): string {
+    if (Array.isArray(value)) {
+      return `[${value.map((item) => this.stableSerialize(item)).join(',')}]`;
+    }
+    if (value && typeof value === 'object') {
+      return `{${Object.entries(value as Record<string, unknown>)
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(
+          ([key, item]) =>
+            `${JSON.stringify(key)}:${this.stableSerialize(item)}`,
+        )
+        .join(',')}}`;
+    }
+    return JSON.stringify(value) ?? 'null';
+  }
+
+  private async findProjectCreateCommandReplay(
+    db: ProjectDbClient,
+    input: {
+      actorUserId: string;
+      idempotencyKey: string;
+      requestHash: string;
+    },
+  ) {
+    const existing = await db.projectCreateCommandRequest.findUnique({
+      where: {
+        actorUserId_idempotencyKey: {
+          actorUserId: input.actorUserId,
+          idempotencyKey: input.idempotencyKey,
+        },
+      },
+    });
+    if (!existing) {
+      return null;
+    }
+    if (existing.requestHash !== input.requestHash) {
+      throw new ConflictException({
+        statusCode: 409,
+        error: 'Conflict',
+        code: 'IDEMPOTENCY_KEY_REUSED_WITH_DIFFERENT_REQUEST',
+        message: '同一幂等键不能用于不同的项目创建请求。',
+      });
+    }
+    if (
+      !existing.resultSnapshot ||
+      typeof existing.resultSnapshot !== 'object' ||
+      Array.isArray(existing.resultSnapshot)
+    ) {
+      throw new ConflictException({
+        statusCode: 409,
+        error: 'Conflict',
+        code: 'PROJECT_CREATE_COMMAND_RESULT_INVALID',
+        message: '项目创建请求的幂等结果不可用，请联系系统管理员。',
+      });
+    }
+    return {
+      ...(existing.resultSnapshot as Record<string, unknown>),
+      idempotentReplay: true,
+    };
+  }
+
+  private async lockProjectCreateCommand(
+    tx: Prisma.TransactionClient,
+    actorUserId: string,
+    idempotencyKey: string,
+  ) {
+    await tx.$queryRaw(
+      Prisma.sql`SELECT pg_advisory_xact_lock(hashtext(${'feishu-timeline:project-create'}), hashtext(${`${actorUserId}:${idempotencyKey}`})) AS "locked"`,
+    );
+  }
+
+  private isUniqueConstraintError(error: unknown) {
+    return (
+      (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') ||
+      (!!error &&
+        typeof error === 'object' &&
+        'code' in error &&
+        error.code === 'P2002')
+    );
+  }
+
+  private assertCreateMemberLimit(
+    members: ProjectMemberInput[],
+    ownerUserId: string,
+  ) {
+    const includesOwner = members.some(
+      (member) =>
+        member.userId === ownerUserId &&
+        member.memberType === ProjectMemberType.OWNER,
+    );
+    const persistedMemberCount = members.length + (includesOwner ? 0 : 1);
+    if (persistedMemberCount > PROJECT_CREATE_MEMBERS_MAX_COUNT) {
+      throw new BadRequestException({
+        statusCode: 400,
+        error: 'Bad Request',
+        code: 'PROJECT_MEMBER_LIMIT_EXCEEDED',
+        message: `项目成员（含负责人）不得超过 ${PROJECT_CREATE_MEMBERS_MAX_COUNT} 人。`,
+      });
+    }
   }
 
   private normalizeUpdateInput(rawInput: unknown): UpdateProjectInput {

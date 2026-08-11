@@ -101,7 +101,13 @@ function createProjectRecord() {
 }
 
 function createService() {
+  const projectCreateCommandRequest = {
+    findUnique: vi.fn().mockResolvedValue(null),
+    create: vi.fn().mockResolvedValue({ id: 'command-1' }),
+  };
   const tx = {
+    $queryRaw: vi.fn().mockResolvedValue([{ locked: true }]),
+    projectCreateCommandRequest,
     user: {
       findFirst: vi.fn(),
       findMany: vi.fn(),
@@ -118,6 +124,7 @@ function createService() {
   };
 
   const prisma = {
+    projectCreateCommandRequest,
     $transaction: vi.fn(async (executor: (client: typeof tx) => Promise<unknown>) => executor(tx)),
   };
 
@@ -215,6 +222,7 @@ describe('ProjectsService', () => {
         members: [],
       },
       actor,
+      'project-create:service-1',
     );
 
     expect(workflowsService.initializeProjectWorkflow).toHaveBeenCalledWith(
@@ -233,10 +241,12 @@ describe('ProjectsService', () => {
         paintSupplier: '阿克苏诺贝尔',
       }),
     });
-    expect(result.code).toBe('PRJ-001');
-    expect(result.colorMarketingUnit).toBe('商用车营销事业部');
-    expect(result.paintSupplier).toBe('阿克苏诺贝尔');
-    expect(result.currentWorkflowInstance?.id).toBe('wf-1');
+    expect(result).toMatchObject({
+      code: 'PRJ-001',
+      colorMarketingUnit: '商用车营销事业部',
+      paintSupplier: '阿克苏诺贝尔',
+      currentWorkflowInstance: { id: 'wf-1' },
+    });
   });
 
   it('拒绝白名单以外的涂料供应商', async () => {
@@ -249,6 +259,7 @@ describe('ProjectsService', () => {
           paintSupplier: '任意供应商',
         },
         actor,
+        'project-create:invalid-supplier-1',
       ),
     ).rejects.toThrow('请求参数不正确。');
   });

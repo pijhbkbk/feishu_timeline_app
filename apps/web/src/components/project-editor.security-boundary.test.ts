@@ -51,4 +51,23 @@ describe('ProjectEditor legacy ownership and member write boundary', () => {
     expect(updatePayload).not.toContain('owningDepartmentId');
     expect(updateClient).toContain('payload: ProjectUpdatePayload');
   });
+
+  it('reuses one create key after an ambiguous failure and clears it when payload changes', () => {
+    const createHandler = editorSource.slice(
+      editorSource.indexOf('async function handleCreateProject'),
+      editorSource.indexOf('async function handleSaveProjectBasics'),
+    );
+
+    expect(editorSource).toContain('useRef<string | null>(null)');
+    expect(createHandler).toContain('createIdempotencyKeyRef.current ?? crypto.randomUUID()');
+    expect(createHandler).toContain('createProject(createPayload, idempotencyKey)');
+    expect(createHandler).toContain('createIdempotencyKeyRef.current = null;');
+    expect(editorSource).toContain('function markDirty()');
+    expect(
+      editorSource.slice(
+        editorSource.indexOf('function markDirty()'),
+        editorSource.indexOf('useEffect(() => {', editorSource.indexOf('function markDirty()')),
+      ),
+    ).toContain('createIdempotencyKeyRef.current = null;');
+  });
 });

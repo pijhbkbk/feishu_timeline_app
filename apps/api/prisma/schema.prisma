@@ -480,6 +480,7 @@ model User {
   auditLogs                     AuditLog[]                @relation("AuditActor")
   adminSavedViews               AdminSavedView[]
   adminCommandRequests          AdminCommandRequest[]     @relation("AdminCommandActor")
+  projectCreateCommandRequests ProjectCreateCommandRequest[]
   supplierMutationBucket        SupplierMutationBucket?
   supplierCommandRequests       SupplierCommandRequest[]
   numberedColors                Color[]                   @relation("ColorNumberingOperator")
@@ -581,6 +582,7 @@ model Project {
   notifications            Notification[]
   auditLogs                AuditLog[]
   adminCommandRequests     AdminCommandRequest[]
+  createCommandRequests    ProjectCreateCommandRequest[]
   retrospective            ProjectRetrospective?
   memberAssignmentVersion  Int                       @default(1)
   createdAt                DateTime                  @default(now())
@@ -681,6 +683,23 @@ model AdminCommandRequest {
   @@index([projectId, action, createdAt])
   @@index([actorUserId, createdAt])
   @@map("admin_command_requests")
+}
+
+model ProjectCreateCommandRequest {
+  id             String   @id @default(cuid())
+  actorUserId    String
+  idempotencyKey String   @db.VarChar(128)
+  requestHash    String   @db.VarChar(64)
+  projectId      String
+  resultSnapshot Json
+  actor          User     @relation(fields: [actorUserId], references: [id], onDelete: Cascade)
+  project        Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdAt      DateTime @default(now())
+
+  @@unique([actorUserId, idempotencyKey])
+  @@index([actorUserId, createdAt])
+  @@index([projectId])
+  @@map("project_create_command_requests")
 }
 
 model Color {

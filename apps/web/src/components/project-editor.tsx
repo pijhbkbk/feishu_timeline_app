@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 
 import { formatBusinessCode } from '../lib/business-code';
 import { useAuth } from './auth-provider';
@@ -111,6 +111,7 @@ function buildProjectDirectory(project: ProjectDetail): DirectoryUser[] {
 export function ProjectEditor(props: ProjectEditorProps) {
   const router = useRouter();
   const { user, isLoading: isAuthLoading } = useAuth();
+  const createIdempotencyKeyRef = useRef<string | null>(null);
   const [directoryUsers, setDirectoryUsers] = useState<DirectoryUser[]>([]);
   const [formState, setFormState] = useState<FormState>(() =>
     props.mode === 'edit' ? buildFormState(props.initialProject) : buildFormState(),
@@ -160,11 +161,15 @@ export function ProjectEditor(props: ProjectEditorProps) {
   }, [isDirty, props.onDirtyChange]);
 
   function markDirty() {
+    if (props.mode === 'create') {
+      createIdempotencyKeyRef.current = null;
+    }
     setIsDirty(true);
   }
 
   useEffect(() => {
     if (props.mode === 'create' && user && !formState.ownerUserId) {
+      createIdempotencyKeyRef.current = null;
       setFormState((current) => ({
         ...current,
         ownerUserId: user.id,
@@ -227,21 +232,26 @@ export function ProjectEditor(props: ProjectEditorProps) {
     setIsSavingProject(true);
     setError(null);
     setSuccessMessage(null);
+    const createPayload = {
+      name: formState.name,
+      description: formState.description || null,
+      priority: formState.priority,
+      colorMarketingUnit: formState.colorMarketingUnit || null,
+      paintSupplier: formState.paintSupplier,
+      vehicleModel: formState.vehicleModel || null,
+      ownerUserId: formState.ownerUserId || null,
+      plannedStartDate: formState.plannedStartDate || null,
+      plannedEndDate: formState.plannedEndDate || null,
+      members: normalizeMembers(memberDrafts),
+    };
+    const idempotencyKey =
+      createIdempotencyKeyRef.current ?? crypto.randomUUID();
+    createIdempotencyKeyRef.current = idempotencyKey;
 
     try {
-      const detail = await createProject({
-        name: formState.name,
-        description: formState.description || null,
-        priority: formState.priority,
-        colorMarketingUnit: formState.colorMarketingUnit || null,
-        paintSupplier: formState.paintSupplier,
-        vehicleModel: formState.vehicleModel || null,
-        ownerUserId: formState.ownerUserId || null,
-        plannedStartDate: formState.plannedStartDate || null,
-        plannedEndDate: formState.plannedEndDate || null,
-        members: normalizeMembers(memberDrafts),
-      });
+      const detail = await createProject(createPayload, idempotencyKey);
 
+      createIdempotencyKeyRef.current = null;
       setSuccessMessage('项目已创建，流程实例已自动初始化。');
       setIsDirty(false);
       router.push(`/projects/${detail.id}`);

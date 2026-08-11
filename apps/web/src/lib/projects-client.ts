@@ -496,9 +496,15 @@ export function fetchProjectFlowMap(projectId: string) {
   return apiRequest<ProjectFlowMapResponse>(`/projects/${projectId}/flow-map`);
 }
 
-export function createProject(payload: ProjectWritePayload) {
+export function createProject(
+  payload: ProjectWritePayload,
+  idempotencyKey = crypto.randomUUID(),
+) {
   return apiRequest<ProjectDetail>('/projects', {
     method: 'POST',
+    headers: {
+      'Idempotency-Key': idempotencyKey,
+    },
     body: payload,
   });
 }

@@ -1,5 +1,5 @@
-import { Body, Controller, Get, Param, Patch, Post, Put, Query } from '@nestjs/common';
-import { ApiCookieAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Body, Controller, Get, Headers, Param, Patch, Post, Put, Query } from '@nestjs/common';
+import { ApiCookieAuth, ApiHeader, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { CurrentUser } from '../auth/current-user.decorator';
 import { Permissions } from '../auth/permissions.decorator';
@@ -69,10 +69,19 @@ export class ProjectsController {
     summary: '创建项目',
     description: '项目编号未传入时由服务端生成；项目创建后由服务端初始化流程实例。',
   })
+  @ApiHeader({
+    name: 'Idempotency-Key',
+    required: true,
+    description: '每次显式创建尝试使用一个新的 1-128 位安全幂等键；网络重试复用原键。',
+  })
   @Roles('admin', 'project_manager')
   @Post()
-  createProject(@Body() body: CreateProjectDto, @CurrentUser() actor: AuthenticatedUser) {
-    return this.projectsService.createProject(body, actor);
+  createProject(
+    @Body() body: CreateProjectDto,
+    @CurrentUser() actor: AuthenticatedUser,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+  ) {
+    return this.projectsService.createProject(body, actor, idempotencyKey);
   }
 
   @Permissions('project.write')
