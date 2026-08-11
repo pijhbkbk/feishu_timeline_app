@@ -313,12 +313,15 @@ export class SamplesService {
     const input = this.parseConfirmationInput(rawInput);
 
     return this.prisma.$transaction(async (tx) => {
-      const activeTask = await this.getActiveConfirmationTaskOrThrow(tx, projectId);
-      const sample = await this.getSampleOrThrow(tx, projectId, input.sampleId);
-
-      if (!sample.isCurrent) {
-        throw new BadRequestException('只能确认当前版本样板。');
+      if (!(await this.lockSampleRow(tx, projectId, input.sampleId))) {
+        throw new NotFoundException('样板不存在或已被删除。');
       }
+      const sample = await this.getSampleOrThrow(tx, projectId, input.sampleId);
+      this.assertSampleWritable(sample);
+      const activeTask = await this.lockActiveConfirmationTaskOrThrow(
+        tx,
+        projectId,
+      );
 
       const sampleImages = await this.attachmentsService.listTargetAttachments(
         tx,

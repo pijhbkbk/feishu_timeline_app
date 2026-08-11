@@ -1,4 +1,10 @@
-import { SampleStatus, WorkflowNodeCode } from '@prisma/client';
+import {
+  AttachmentScanStatus,
+  SampleConfirmationDecision,
+  SampleStatus,
+  WorkflowNodeCode,
+  WorkflowTaskStatus,
+} from '@prisma/client';
 import { describe, expect, it, vi } from 'vitest';
 
 import { SamplesService } from './samples.service';
@@ -55,6 +61,25 @@ function activeConfirmationTask() {
   };
 }
 
+type ConcurrentSampleRecord = Omit<
+  ReturnType<typeof sampleRecord>,
+  'status' | 'confirmedAt' | 'producedAt' | 'location' | 'remark'
+> & {
+  status: SampleStatus;
+  confirmedAt: Date | null;
+  producedAt: Date | null;
+  location: string | null;
+  remark: string | null;
+};
+
+type ConcurrentTaskRecord = Omit<
+  ReturnType<typeof activeConfirmationTask>,
+  'isActive'
+> & {
+  isActive: boolean;
+  status: WorkflowTaskStatus;
+};
+
 function createHarness() {
   const tx = {
     $queryRaw: vi.fn().mockResolvedValue([{ id: 'locked' }]),
@@ -106,6 +131,262 @@ function createHarness() {
   vi.spyOn(service as never, 'buildSampleDetail' as never).mockResolvedValue({} as never);
 
   return { service, prisma, tx, attachments };
+}
+
+function createRowLock() {
+  let holder: symbol | null = null;
+  const waiters: Array<{ owner: symbol; resolve: () => void }> = [];
+
+  return {
+    async acquire(owner: symbol) {
+      if (holder === owner) {
+        return;
+      }
+      if (holder === null) {
+        holder = owner;
+        return;
+      }
+
+      await new Promise<void>((resolve) => {
+        waiters.push({ owner, resolve });
+      });
+    },
+    release(owner: symbol) {
+      if (holder !== owner) {
+        return;
+      }
+
+      const next = waiters.shift();
+      if (!next) {
+        holder = null;
+        return;
+      }
+
+      holder = next.owner;
+      next.resolve();
+    },
+  };
+}
+
+function createConcurrentSampleWriteHarness() {
+  const sampleLock = createRowLock();
+  const taskLock = createRowLock();
+  const submitReachedImageCheck = createDeferred<void>();
+  const releaseSubmitImageCheck = createDeferred<void>();
+  const competingSampleLockAttempted = createDeferred<void>();
+  const lockSqlByTransaction = new Map<number, string[]>();
+  const transactionOwners = new WeakMap<object, symbol>();
+  let transactionSequence = 0;
+  let imageCheckPaused = false;
+  let samples: ConcurrentSampleRecord[] = [sampleRecord()];
+  let activeTask: ConcurrentTaskRecord = {
+    ...activeConfirmationTask(),
+    status: WorkflowTaskStatus.IN_PROGRESS,
+  };
+
+  const prisma = {
+    $transaction: vi.fn(
+      async (executor: (client: Record<string, unknown>) => Promise<unknown>) => {
+        const transactionNumber = ++transactionSequence;
+        const owner = Symbol(`tx-${transactionNumber}`);
+        const lockSql: string[] = [];
+        lockSqlByTransaction.set(transactionNumber, lockSql);
+
+        const tx = {
+          $queryRaw: vi.fn(async (query: { strings?: readonly string[] }) => {
+            const sql = query.strings?.join('') ?? '';
+            lockSql.push(sql);
+            if (sql.includes('FROM "samples"')) {
+              if (transactionNumber === 2) {
+                competingSampleLockAttempted.resolve();
+              }
+              await sampleLock.acquire(owner);
+              return samples.some((sample) => sample.id === 'sample-1')
+                ? [{ id: 'sample-1' }]
+                : [];
+            }
+            if (sql.includes('FROM "workflow_tasks"')) {
+              await taskLock.acquire(owner);
+              return [{ id: activeTask.id }];
+            }
+            return [];
+          }),
+          project: {
+            findUnique: vi.fn().mockResolvedValue({
+              id: 'project-1',
+              code: 'PRJ-001',
+              name: '项目 A',
+              currentNodeCode: WorkflowNodeCode.SAMPLE_COLOR_CONFIRMATION,
+              plannedEndDate: null,
+            }),
+          },
+          sample: {
+            findFirst: vi.fn(async (args: { where: { id?: string } }) => {
+              const sample = samples.find(
+                (candidate) => !args.where.id || candidate.id === args.where.id,
+              );
+              return sample ? { ...sample } : null;
+            }),
+            findMany: vi.fn(
+              async (args: { where: { sampleNo?: string; isCurrent?: boolean } }) =>
+                samples
+                  .filter(
+                    (sample) =>
+                      (!args.where.sampleNo || sample.sampleNo === args.where.sampleNo) &&
+                      (args.where.isCurrent === undefined ||
+                        sample.isCurrent === args.where.isCurrent),
+                  )
+                  .sort((left, right) => right.versionNo - left.versionNo)
+                  .map((sample) => ({ ...sample })),
+            ),
+            updateMany: vi.fn(
+              async (args: {
+                where: { sampleNo?: string; isCurrent?: boolean };
+                data: { isCurrent?: boolean };
+              }) => {
+                await sampleLock.acquire(owner);
+                let count = 0;
+                samples = samples.map((sample) => {
+                  if (
+                    (!args.where.sampleNo || sample.sampleNo === args.where.sampleNo) &&
+                    (args.where.isCurrent === undefined ||
+                      sample.isCurrent === args.where.isCurrent)
+                  ) {
+                    count += 1;
+                    return { ...sample, ...args.data };
+                  }
+                  return sample;
+                });
+                return { count };
+              },
+            ),
+            create: vi.fn(async (args: { data: Record<string, unknown> }) => {
+              const created = sampleRecord({
+                ...args.data,
+                id: `sample-${samples.length + 1}`,
+                createdAt: new Date('2026-08-11T04:01:00.000Z'),
+                updatedAt: new Date('2026-08-11T04:01:00.000Z'),
+              }) as ConcurrentSampleRecord;
+              samples.push(created);
+              return { ...created };
+            }),
+            update: vi.fn(
+              async (args: { where: { id: string }; data: Record<string, unknown> }) => {
+                await sampleLock.acquire(owner);
+                const index = samples.findIndex(
+                  (sample) => sample.id === args.where.id,
+                );
+                if (index < 0) {
+                  throw new Error('SAMPLE_NOT_FOUND');
+                }
+                samples[index] = {
+                  ...samples[index],
+                  ...args.data,
+                  updatedAt: new Date('2026-08-11T04:02:00.000Z'),
+                } as ConcurrentSampleRecord;
+                return { ...samples[index] };
+              },
+            ),
+          },
+          workflowTask: {
+            findFirst: vi.fn(
+              async (args: {
+                where: {
+                  id?: string;
+                  nodeCode?: WorkflowNodeCode;
+                  isActive?: boolean;
+                };
+              }) => {
+                if (
+                  (args.where.id && args.where.id !== activeTask.id) ||
+                  (args.where.nodeCode &&
+                    args.where.nodeCode !== activeTask.nodeCode) ||
+                  (args.where.isActive !== undefined &&
+                    args.where.isActive !== activeTask.isActive)
+                ) {
+                  return null;
+                }
+                return { ...activeTask };
+              },
+            ),
+          },
+          sampleConfirmation: {
+            upsert: vi.fn().mockResolvedValue({ id: 'confirmation-1' }),
+          },
+        };
+        transactionOwners.set(tx, owner);
+
+        try {
+          return await executor(tx);
+        } finally {
+          taskLock.release(owner);
+          sampleLock.release(owner);
+        }
+      },
+    ),
+  };
+  const activityLogs = {
+    createWithExecutor: vi.fn().mockResolvedValue({ id: 'audit-1' }),
+  };
+  const attachments = {
+    listTargetAttachments: vi.fn(async () => {
+      if (!imageCheckPaused) {
+        imageCheckPaused = true;
+        submitReachedImageCheck.resolve();
+        await releaseSubmitImageCheck.promise;
+      }
+      return [
+        {
+          id: 'sample-image-1',
+          scanStatus: AttachmentScanStatus.CLEAN,
+          isDeleted: false,
+        },
+      ];
+    }),
+  };
+  const workflows = {
+    transitionTaskWithExecutor: vi.fn(async (tx: Record<string, unknown>) => {
+      const owner = transactionOwners.get(tx);
+      if (!owner) {
+        throw new Error('TRANSACTION_OWNER_NOT_FOUND');
+      }
+      await taskLock.acquire(owner);
+      activeTask = {
+        ...activeTask,
+        status: WorkflowTaskStatus.COMPLETED,
+        isActive: false,
+      };
+    }),
+  };
+  const service = new SamplesService(
+    prisma as never,
+    activityLogs as never,
+    attachments as never,
+    workflows as never,
+    {
+      assertProjectAccessWithDefaultClient: vi
+        .fn()
+        .mockResolvedValue({ id: 'project-1' }),
+    } as never,
+  );
+  vi.spyOn(service as never, 'buildSampleDetail' as never).mockResolvedValue({} as never);
+  vi.spyOn(service as never, 'buildWorkspace' as never).mockResolvedValue({} as never);
+
+  return {
+    service,
+    submitReachedImageCheck,
+    releaseSubmitImageCheck,
+    competingSampleLockAttempted,
+    getLockSql(transactionNumber: number) {
+      return lockSqlByTransaction.get(transactionNumber) ?? [];
+    },
+    getState() {
+      return {
+        samples: samples.map((sample) => ({ ...sample })),
+        task: { ...activeTask },
+      };
+    },
+  };
 }
 
 describe('SamplesService write-state integrity', () => {
@@ -298,5 +579,91 @@ describe('SamplesService write-state integrity', () => {
     expect(lockSql[0]).toContain('FOR UPDATE');
     expect(lockSql[1]).toContain('workflow_tasks');
     expect(lockSql[1]).toContain('FOR UPDATE');
+  });
+
+  it('serializes confirmation against createNewVersion without completing the task for an unconfirmed current version', async () => {
+    const harness = createConcurrentSampleWriteHarness();
+    const confirmation = harness.service.submitConfirmation(
+      'project-1',
+      {
+        sampleId: 'sample-1',
+        decision: SampleConfirmationDecision.APPROVE,
+        comment: '确认当前样板',
+      },
+      actor,
+    );
+    await harness.submitReachedImageCheck.promise;
+
+    const newVersion = harness.service.createSample(
+      'project-1',
+      {
+        sampleNo: 'S-001',
+        sampleName: '样板 A V2',
+        sampleType: 'PANEL',
+        createNewVersion: true,
+      },
+      actor,
+    );
+    await harness.competingSampleLockAttempted.promise;
+    harness.releaseSubmitImageCheck.resolve();
+
+    const outcomes = await Promise.allSettled([confirmation, newVersion]);
+    expect(
+      outcomes.filter((result) => result.status === 'fulfilled'),
+    ).toHaveLength(1);
+    const state = harness.getState();
+    const currentSample = state.samples.find((sample) => sample.isCurrent);
+    expect(state.samples).toHaveLength(1);
+    expect(currentSample).toMatchObject({
+      id: 'sample-1',
+      status: SampleStatus.CONFIRMED,
+    });
+    expect(state.task).toMatchObject({
+      status: WorkflowTaskStatus.COMPLETED,
+      isActive: false,
+    });
+    expect(
+      state.task.status === WorkflowTaskStatus.COMPLETED &&
+        currentSample?.status !== SampleStatus.CONFIRMED,
+    ).toBe(false);
+
+    const confirmationLockSql = harness.getLockSql(1);
+    expect(confirmationLockSql[0]).toContain('FROM "samples"');
+    expect(confirmationLockSql[0]).toContain('FOR UPDATE');
+    expect(confirmationLockSql[1]).toContain('FROM "workflow_tasks"');
+    expect(confirmationLockSql[1]).toContain('FOR UPDATE');
+  });
+
+  it('serializes confirmation against an update so only one write can commit', async () => {
+    const harness = createConcurrentSampleWriteHarness();
+    const confirmation = harness.service.submitConfirmation(
+      'project-1',
+      {
+        sampleId: 'sample-1',
+        decision: SampleConfirmationDecision.APPROVE,
+        comment: '确认当前样板',
+      },
+      actor,
+    );
+    await harness.submitReachedImageCheck.promise;
+
+    const update = harness.service.updateSample(
+      'project-1',
+      'sample-1',
+      { remark: '并发修改不应写入' },
+      actor,
+    );
+    await harness.competingSampleLockAttempted.promise;
+    harness.releaseSubmitImageCheck.resolve();
+
+    const outcomes = await Promise.allSettled([confirmation, update]);
+    expect(
+      outcomes.filter((result) => result.status === 'fulfilled'),
+    ).toHaveLength(1);
+    expect(harness.getState().samples[0]).toMatchObject({
+      status: SampleStatus.CONFIRMED,
+      confirmedAt: expect.any(Date),
+      remark: null,
+    });
   });
 });
