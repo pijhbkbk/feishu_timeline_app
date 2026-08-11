@@ -25,6 +25,13 @@ import { WorkflowsService } from '../workflows/workflows.service';
 
 type DevelopmentReportDbClient = Prisma.TransactionClient | PrismaService;
 
+const DEVELOPMENT_REPORT_MAX_PAYLOAD_BYTES = 16 * 1024;
+const DEVELOPMENT_REPORT_MAX_POSTGRES_INT = 2_147_483_647;
+const DEVELOPMENT_REPORT_NAME_MAX_CHARS = 200;
+const DEVELOPMENT_REPORT_SHORT_TEXT_MAX_CHARS = 500;
+const DEVELOPMENT_REPORT_LONG_TEXT_MAX_CHARS = 4_000;
+const DEVELOPMENT_REPORT_COMMENT_MAX_CHARS = 2_000;
+
 type DevelopmentReportWriteInput = {
   reportTitle?: string;
   demandSource: string;
@@ -255,10 +262,13 @@ export class DevelopmentReportsService {
     },
   ) {
     const now = new Date();
-    const resolvedTitle =
+    const resolvedTitle = this.assertBoundedString(
       input.input.reportTitle?.trim() ||
       input.existingReport?.reportTitle ||
-      `${input.project.name} 新颜色开发报告`;
+        `${input.project.name} 新颜色开发报告`,
+      'reportTitle',
+      DEVELOPMENT_REPORT_NAME_MAX_CHARS,
+    );
     const status = input.submit
       ? DevelopmentReportStatus.SUBMITTED
       : DevelopmentReportStatus.DRAFT;
@@ -580,31 +590,91 @@ export class DevelopmentReportsService {
 
   private parseWriteInput(rawInput: unknown): DevelopmentReportWriteInput {
     const input = this.asRecord(rawInput, 'Invalid development report payload.');
-    const reportTitle = this.parseOptionalString(input.reportTitle);
+    const reportTitle = this.parseOptionalString(
+      input.reportTitle,
+      'reportTitle',
+      DEVELOPMENT_REPORT_NAME_MAX_CHARS,
+    );
 
-    return {
-      demandSource: this.parseRequiredString(input.demandSource, 'demandSource'),
-      targetMarket: this.parseNullableString(input.targetMarket),
-      targetVehicleModel: this.parseNullableString(input.targetVehicleModel),
-      targetColorName: this.parseRequiredString(input.targetColorName, 'targetColorName'),
-      benchmarkColorRef: this.parseNullableString(input.benchmarkColorRef),
+    const normalized: DevelopmentReportWriteInput = {
+      demandSource: this.parseRequiredString(
+        input.demandSource,
+        'demandSource',
+        DEVELOPMENT_REPORT_SHORT_TEXT_MAX_CHARS,
+      ),
+      targetMarket: this.parseNullableString(
+        input.targetMarket,
+        'targetMarket',
+        DEVELOPMENT_REPORT_NAME_MAX_CHARS,
+      ),
+      targetVehicleModel: this.parseNullableString(
+        input.targetVehicleModel,
+        'targetVehicleModel',
+        DEVELOPMENT_REPORT_NAME_MAX_CHARS,
+      ),
+      targetColorName: this.parseRequiredString(
+        input.targetColorName,
+        'targetColorName',
+        DEVELOPMENT_REPORT_NAME_MAX_CHARS,
+      ),
+      benchmarkColorRef: this.parseNullableString(
+        input.benchmarkColorRef,
+        'benchmarkColorRef',
+        DEVELOPMENT_REPORT_NAME_MAX_CHARS,
+      ),
       developmentReason: this.parseRequiredString(
         input.developmentReason,
         'developmentReason',
+        DEVELOPMENT_REPORT_LONG_TEXT_MAX_CHARS,
       ),
       expectedLaunchDate: this.parseOptionalDate(input.expectedLaunchDate, 'expectedLaunchDate'),
       estimatedAnnualVolume: this.parseOptionalInt(
         input.estimatedAnnualVolume,
         'estimatedAnnualVolume',
       ),
-      technicalRequirements: this.parseNullableString(input.technicalRequirements),
-      qualityRequirements: this.parseNullableString(input.qualityRequirements),
-      costTarget: this.parseNullableString(input.costTarget),
-      riskSummary: this.parseNullableString(input.riskSummary),
-      remark: this.parseNullableString(input.remark),
-      submitComment: this.parseNullableString(input.submitComment),
+      technicalRequirements: this.parseNullableString(
+        input.technicalRequirements,
+        'technicalRequirements',
+        DEVELOPMENT_REPORT_LONG_TEXT_MAX_CHARS,
+      ),
+      qualityRequirements: this.parseNullableString(
+        input.qualityRequirements,
+        'qualityRequirements',
+        DEVELOPMENT_REPORT_LONG_TEXT_MAX_CHARS,
+      ),
+      costTarget: this.parseNullableString(
+        input.costTarget,
+        'costTarget',
+        DEVELOPMENT_REPORT_SHORT_TEXT_MAX_CHARS,
+      ),
+      riskSummary: this.parseNullableString(
+        input.riskSummary,
+        'riskSummary',
+        DEVELOPMENT_REPORT_LONG_TEXT_MAX_CHARS,
+      ),
+      remark: this.parseNullableString(
+        input.remark,
+        'remark',
+        DEVELOPMENT_REPORT_LONG_TEXT_MAX_CHARS,
+      ),
+      submitComment: this.parseNullableString(
+        input.submitComment,
+        'submitComment',
+        DEVELOPMENT_REPORT_COMMENT_MAX_CHARS,
+      ),
       ...(reportTitle ? { reportTitle } : {}),
     };
+
+    if (
+      Buffer.byteLength(JSON.stringify(normalized), 'utf8') >
+      DEVELOPMENT_REPORT_MAX_PAYLOAD_BYTES
+    ) {
+      this.throwInputOutOfBounds(
+        `新颜色开发报告不得超过 ${DEVELOPMENT_REPORT_MAX_PAYLOAD_BYTES} 字节。`,
+      );
+    }
+
+    return normalized;
   }
 
   private toAuditSnapshot(report: DevelopmentReportRecord) {
@@ -631,17 +701,15 @@ export class DevelopmentReportsService {
     return rawValue as Record<string, unknown>;
   }
 
-  private parseRequiredString(rawValue: unknown, fieldName: string) {
-    void fieldName;
-
+  private parseRequiredString(rawValue: unknown, fieldName: string, maxChars: number) {
     if (typeof rawValue !== 'string' || rawValue.trim().length === 0) {
       throw new BadRequestException('必填字段不能为空。');
     }
 
-    return rawValue.trim();
+    return this.assertBoundedString(rawValue.trim(), fieldName, maxChars);
   }
 
-  private parseOptionalString(rawValue: unknown) {
+  private parseOptionalString(rawValue: unknown, fieldName: string, maxChars: number) {
     if (rawValue === undefined || rawValue === null || rawValue === '') {
       return undefined;
     }
@@ -650,10 +718,10 @@ export class DevelopmentReportsService {
       throw new BadRequestException('字段必须为文本。');
     }
 
-    return rawValue.trim();
+    return this.assertBoundedString(rawValue.trim(), fieldName, maxChars);
   }
 
-  private parseNullableString(rawValue: unknown) {
+  private parseNullableString(rawValue: unknown, fieldName: string, maxChars: number) {
     if (rawValue === undefined || rawValue === null || rawValue === '') {
       return null;
     }
@@ -662,7 +730,7 @@ export class DevelopmentReportsService {
       throw new BadRequestException('字段必须为文本。');
     }
 
-    return rawValue.trim();
+    return this.assertBoundedString(rawValue.trim(), fieldName, maxChars);
   }
 
   private parseOptionalDate(rawValue: unknown, fieldName: string) {
@@ -692,14 +760,37 @@ export class DevelopmentReportsService {
       return null;
     }
 
-    if (typeof rawValue === 'number' && Number.isInteger(rawValue) && rawValue >= 0) {
+    if (
+      typeof rawValue === 'number' &&
+      Number.isInteger(rawValue) &&
+      rawValue >= 0 &&
+      rawValue <= DEVELOPMENT_REPORT_MAX_POSTGRES_INT
+    ) {
       return rawValue;
     }
 
-    if (typeof rawValue === 'string' && /^\d+$/.test(rawValue)) {
-      return Number(rawValue);
+    if (typeof rawValue === 'string' && /^\d{1,10}$/.test(rawValue)) {
+      const parsed = Number(rawValue);
+      if (parsed <= DEVELOPMENT_REPORT_MAX_POSTGRES_INT) {
+        return parsed;
+      }
     }
 
-    throw new BadRequestException('数值参数必须是正整数。');
+    this.throwInputOutOfBounds('数值参数超出允许范围。');
+  }
+
+  private assertBoundedString(value: string, fieldName: string, maxChars: number) {
+    if (value.length > maxChars) {
+      this.throwInputOutOfBounds(`${fieldName} 不得超过 ${maxChars} 个字符。`);
+    }
+
+    return value;
+  }
+
+  private throwInputOutOfBounds(message: string): never {
+    throw new BadRequestException({
+      code: 'DEVELOPMENT_REPORT_INPUT_OUT_OF_BOUNDS',
+      message,
+    });
   }
 }

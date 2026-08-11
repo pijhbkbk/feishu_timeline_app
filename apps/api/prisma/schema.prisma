@@ -1109,20 +1109,20 @@ model DevelopmentReport {
   workflowInstanceId    String
   workflowTaskId        String                  @unique
   status                DevelopmentReportStatus @default(DRAFT)
-  reportTitle           String
-  demandSource          String
-  targetMarket          String?
-  targetVehicleModel    String?
-  targetColorName       String
-  benchmarkColorRef     String?
-  developmentReason     String
+  reportTitle           String                  @db.VarChar(200)
+  demandSource          String                  @db.VarChar(500)
+  targetMarket          String?                 @db.VarChar(200)
+  targetVehicleModel    String?                 @db.VarChar(200)
+  targetColorName       String                  @db.VarChar(200)
+  benchmarkColorRef     String?                 @db.VarChar(200)
+  developmentReason     String                  @db.VarChar(4000)
   expectedLaunchDate    DateTime?
   estimatedAnnualVolume Int?
-  technicalRequirements String?
-  qualityRequirements   String?
-  costTarget            String?
-  riskSummary           String?
-  remark                String?
+  technicalRequirements String?                 @db.VarChar(4000)
+  qualityRequirements   String?                 @db.VarChar(4000)
+  costTarget            String?                 @db.VarChar(500)
+  riskSummary           String?                 @db.VarChar(4000)
+  remark                String?                 @db.VarChar(4000)
   createdById           String?
   updatedById           String?
   submittedById         String?
