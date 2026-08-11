@@ -173,12 +173,14 @@ function createService(options: {
       : vi.fn(
           async (
             callback: (client: {
+              $queryRaw: ReturnType<typeof vi.fn>;
               workflowTask: {
                 findUnique: ReturnType<typeof vi.fn>;
               };
             }) => Promise<unknown>,
           ) =>
             callback({
+              $queryRaw: vi.fn().mockResolvedValue([{ locked: true }]),
               workflowTask: {
                 findUnique: vi
                   .fn()

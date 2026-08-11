@@ -31,6 +31,7 @@ import { randomUUID } from 'node:crypto';
 
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { getControlledColorNumber } from '../../common/controlled-color-number';
+import { lockWorkflowAssignmentMutations } from '../../common/workflow-assignment-lock';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { ProjectAccessService } from '../auth/project-access.service';
@@ -190,6 +191,7 @@ export class WorkflowsService {
   ) {
     const now = new Date();
     const nodeCode = INITIAL_WORKFLOW_NODE;
+    await lockWorkflowAssignmentMutations(tx, input.projectId, [nodeCode]);
     const taskSchedule = await this.workflowDeadlineService.buildTaskSchedule(tx, {
       nodeCode,
       startAt: now,
@@ -1364,6 +1366,12 @@ export class WorkflowsService {
       throw new BadRequestException('不支持的工序操作。');
     }
 
+    await lockWorkflowAssignmentMutations(
+      tx,
+      task.projectId,
+      nextTemplates.map((template) => template.nodeCode),
+    );
+
     const now = new Date();
     const updatedTask = await this.updateTaskForTransition(tx, task, {
       data: {
@@ -1711,7 +1719,7 @@ export class WorkflowsService {
 
   private async updateTaskForTransition(
     tx: Prisma.TransactionClient,
-    task: Pick<WorkflowTaskWithRelations, 'id' | 'status' | 'isActive'>,
+    task: Pick<WorkflowTaskWithRelations, 'id' | 'status' | 'isActive' | 'updatedAt'>,
     input: { data: Prisma.WorkflowTaskUpdateManyMutationInput },
   ) {
     const claimed = await tx.workflowTask.updateMany({
@@ -1719,12 +1727,16 @@ export class WorkflowsService {
         id: task.id,
         status: task.status,
         isActive: task.isActive,
+        updatedAt: task.updatedAt,
       },
       data: input.data,
     });
 
     if (claimed.count !== 1) {
-      throw new ConflictException('当前工序任务已被其他操作更新，请刷新后重试。');
+      throw new ConflictException({
+        code: 'WORKFLOW_TASK_STATE_CHANGED',
+        message: '当前工序任务已被其他操作更新，请刷新后重试。',
+      });
     }
 
     return tx.workflowTask.findUniqueOrThrow({

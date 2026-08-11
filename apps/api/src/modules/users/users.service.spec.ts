@@ -1,7 +1,6 @@
 import { UserStatus } from '@prisma/client';
 import { describe, expect, it, vi } from 'vitest';
 
-import { ROLE_PERMISSION_CODE_MAP } from '../auth/auth.constants';
 import { UsersService } from './users.service';
 
 function createService(tx: Record<string, unknown>) {
@@ -49,7 +48,7 @@ describe('UsersService', () => {
     });
   });
 
-  it('assigns the read-only viewer role to new Feishu users', async () => {
+  it('assigns the existing viewer role without mutating its governed definition', async () => {
     const tx = {
       user: {
         findFirst: vi.fn().mockResolvedValue(null),
@@ -60,7 +59,12 @@ describe('UsersService', () => {
         create: vi.fn(),
       },
       role: {
-        upsert: vi.fn().mockResolvedValue({ id: 'role-viewer', code: 'viewer' }),
+        findUnique: vi.fn().mockResolvedValue({
+          id: 'role-viewer',
+          code: 'viewer',
+          status: 'ACTIVE',
+        }),
+        upsert: vi.fn(),
       },
       rolePermission: {
         deleteMany: vi.fn(),
@@ -77,23 +81,50 @@ describe('UsersService', () => {
       email: null,
     });
 
-    expect(tx.role.upsert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { code: 'viewer' },
-      }),
-    );
-    expect(tx.rolePermission.createMany).toHaveBeenCalledWith({
-      data: ROLE_PERMISSION_CODE_MAP.viewer.map((permissionCode) => ({
-        roleId: 'role-viewer',
-        permissionCode,
-      })),
+    expect(tx.role.findUnique).toHaveBeenCalledWith({
+      where: { code: 'viewer' },
+      select: { id: true, code: true, status: true },
     });
+    expect(tx.role.upsert).not.toHaveBeenCalled();
+    expect(tx.rolePermission.deleteMany).not.toHaveBeenCalled();
+    expect(tx.rolePermission.createMany).not.toHaveBeenCalled();
     expect(tx.userRole.create).toHaveBeenCalledWith({
       data: {
         userId: 'user-1',
         roleId: 'role-viewer',
       },
     });
+  });
+
+  it('fails closed when the governed default Feishu role is missing', async () => {
+    const tx = {
+      user: {
+        findFirst: vi.fn().mockResolvedValue(null),
+        create: vi.fn().mockResolvedValue({ id: 'user-1' }),
+      },
+      userRole: {
+        count: vi.fn().mockResolvedValue(0),
+        create: vi.fn(),
+      },
+      role: {
+        findUnique: vi.fn().mockResolvedValue(null),
+      },
+    };
+    const { service } = createService(tx);
+
+    await expect(
+      service.upsertFeishuUser({
+        openId: 'ou-missing-role',
+        userId: 'feishu-missing-role',
+        unionId: null,
+        name: '飞书用户',
+        email: null,
+      }),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({ code: 'DEFAULT_FEISHU_ROLE_MISSING' }),
+    });
+
+    expect(tx.userRole.create).not.toHaveBeenCalled();
   });
 
   it('keeps existing Feishu role assignments unchanged', async () => {

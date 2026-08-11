@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { Prisma, UserStatus } from '@prisma/client';
 
 import { PrismaService } from '../../infra/prisma/prisma.service';
@@ -342,33 +342,14 @@ export class UsersService {
       return;
     }
 
-    const roleCode: RoleCode = 'viewer';
-    const role = await tx.role.upsert({
-      where: { code: roleCode },
-      create: {
-        code: roleCode,
-        name: ROLE_LABELS[roleCode],
-        description: '飞书登录默认只读角色。',
-        isSystem: true,
-      },
-      update: {
-        name: ROLE_LABELS[roleCode],
-        description: '飞书登录默认只读角色。',
-        isSystem: true,
-      },
+    const role = await tx.role.findUnique({
+      where: { code: 'viewer' },
+      select: { id: true, code: true, status: true },
     });
-    const permissionCodes = ROLE_PERMISSION_CODE_MAP[roleCode] ?? [];
-
-    await tx.rolePermission.deleteMany({
-      where: { roleId: role.id },
-    });
-
-    if (permissionCodes.length > 0) {
-      await tx.rolePermission.createMany({
-        data: permissionCodes.map((permissionCode) => ({
-          roleId: role.id,
-          permissionCode,
-        })),
+    if (!role || role.status !== 'ACTIVE') {
+      throw new ServiceUnavailableException({
+        code: 'DEFAULT_FEISHU_ROLE_MISSING',
+        message: '飞书默认角色未配置或已停用，请联系系统管理员。',
       });
     }
 

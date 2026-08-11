@@ -23,6 +23,10 @@ import {
 
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { getControlledColorNumber } from '../../common/controlled-color-number';
+import {
+  lockWorkflowAssignmentMutations,
+  lockWorkflowAssignmentTargets,
+} from '../../common/workflow-assignment-lock';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import {
@@ -901,6 +905,15 @@ export class AdminControlCenterService {
       input: { ...input, nodeCode },
       actor,
       execute: async (tx) => {
+        await lockWorkflowAssignmentMutations(tx, projectId, [nodeCode]);
+        const lockedTaskId =
+          input.scope === 'FUTURE_ONLY'
+            ? null
+            : await this.lockAdminNodeAssignmentTask(
+                tx,
+                projectId,
+                nodeCode,
+              );
         const preview = await this.buildNodeAssignmentPreview(
           tx,
           projectId,
@@ -912,6 +925,17 @@ export class AdminControlCenterService {
             code: 'NODE_ASSIGNMENT_CHANGE_BLOCKED',
             message: '当前分工配置不满足保存条件。',
             reasons: preview.blockingReasons,
+          });
+        }
+        if (
+          (preview.impact.pendingTaskUpdated ||
+            preview.impact.inProgressTaskUpdated) &&
+          preview.node.taskId !== lockedTaskId
+        ) {
+          throw new ConflictException({
+            code: 'ADMIN_TASK_STATE_CHANGED',
+            message: '工序状态或内容已变化，请刷新后重试。',
+            taskId: preview.node.taskId,
           });
         }
 
@@ -1056,10 +1080,11 @@ export class AdminControlCenterService {
         });
 
         let affectedTaskId: string | null = null;
-        const task = await tx.workflowTask.findFirst({
-          where: { projectId, nodeCode },
-          orderBy: [{ taskRound: 'desc' }, { createdAt: 'desc' }],
-        });
+        const task = lockedTaskId
+          ? await tx.workflowTask.findUnique({
+              where: { id: lockedTaskId },
+            })
+          : null;
         const applyToPending =
           task?.isActive === true &&
           input.scope !== 'FUTURE_ONLY' &&
@@ -1071,9 +1096,10 @@ export class AdminControlCenterService {
           task.status === WorkflowTaskStatus.IN_PROGRESS;
         if (task && (applyToPending || applyToInProgress)) {
           const proposed = preview.proposed;
-          await tx.workflowTask.update({
-            where: { id: task.id },
-            data: {
+          await this.claimAdminWorkflowTaskMutation(
+            tx,
+            task,
+            {
               assigneeDepartmentId: resolvedDepartment?.id ?? null,
               assigneeUserId: proposed.owner?.id ?? null,
               payload: this.mergeJson(task.payload, {
@@ -1085,7 +1111,7 @@ export class AdminControlCenterService {
                 assignmentRequestId: requestId,
               }),
             },
-          });
+          );
           affectedTaskId = task.id;
         }
 
@@ -1250,10 +1276,26 @@ export class AdminControlCenterService {
           ...new Set([...permissionCodes, ...unmanagedPermissionCodes]),
         ];
 
-        const updated = await tx.role.update({
-          where: { id: roleId },
+        const claimed = await tx.role.updateMany({
+          where: {
+            id: roleId,
+            updatedAt: role.updatedAt,
+          },
           data: { name },
         });
+        if (claimed.count !== 1) {
+          throw new ConflictException({
+            code: 'ROLE_PERMISSION_STATE_CHANGED',
+            message: '角色权限已被其他会话修改，请刷新后重试。',
+          });
+        }
+        const updated = await tx.role.findUnique({ where: { id: roleId } });
+        if (!updated) {
+          throw new ConflictException({
+            code: 'ROLE_PERMISSION_STATE_CHANGED',
+            message: '角色权限已被其他会话修改，请刷新后重试。',
+          });
+        }
         await tx.rolePermission.deleteMany({ where: { roleId } });
         if (nextPermissionCodes.length) {
           await tx.rolePermission.createMany({
@@ -1399,15 +1441,16 @@ export class AdminControlCenterService {
           scheduleChangeRequestId: requestId,
           scheduleSource: 'PROJECT_OVERRIDE',
         });
-        const updated = await tx.workflowTask.update({
-          where: { id: taskId },
-          data: {
+        const updated = await this.claimAdminWorkflowTaskMutation(
+          tx,
+          task,
+          {
             manualDueAt: newDueAt,
             effectiveDueAt: newDueAt,
             overdueDays: this.deadlineService.getOverdueDays(newDueAt),
             payload,
           },
-        });
+        );
         const shiftedTasks: Array<{
           id: string;
           beforeDueAt: string | null;
@@ -1445,18 +1488,20 @@ export class AdminControlCenterService {
               })
             ).map((definition) => definition.nodeCode),
           );
-          for (const downstreamTask of downstream.filter((item) =>
-            downstreamCodes.has(item.nodeCode),
-          )) {
+          const downstreamToShift = downstream
+            .filter((item) => downstreamCodes.has(item.nodeCode))
+            .sort((left, right) => left.id.localeCompare(right.id));
+          for (const downstreamTask of downstreamToShift) {
             const beforeDueAt =
               downstreamTask.effectiveDueAt ?? downstreamTask.dueAt;
             if (!beforeDueAt) {
               continue;
             }
             const afterDueAt = new Date(beforeDueAt.getTime() + deltaMs);
-            await tx.workflowTask.update({
-              where: { id: downstreamTask.id },
-              data: {
+            await this.claimAdminWorkflowTaskMutation(
+              tx,
+              downstreamTask,
+              {
                 dueAt: downstreamTask.manualDueAt
                   ? downstreamTask.dueAt
                   : afterDueAt,
@@ -1467,7 +1512,7 @@ export class AdminControlCenterService {
                   downstreamTask.manualDueAt ?? afterDueAt,
                 ),
               },
-            });
+            );
             shiftedTasks.push({
               id: downstreamTask.id,
               beforeDueAt: beforeDueAt.toISOString(),
@@ -1542,6 +1587,18 @@ export class AdminControlCenterService {
       input,
       actor,
       execute: async (tx) => {
+        const assignmentTarget = await tx.workflowTask.findUnique({
+          where: { id: taskId },
+          select: { projectId: true, nodeCode: true },
+        });
+        if (!assignmentTarget) {
+          throw new NotFoundException('工序任务不存在。');
+        }
+        await lockWorkflowAssignmentMutations(
+          tx,
+          assignmentTarget.projectId,
+          [assignmentTarget.nodeCode],
+        );
         const preview = await this.buildAssignmentPreview(tx, taskId, input);
         if (!preview.canApply) {
           throw new ConflictException({
@@ -1563,9 +1620,10 @@ export class AdminControlCenterService {
         const assignmentSource = input.ownerUserId
           ? ProjectAssignmentSource.TASK_OVERRIDE
           : preview.proposed.assignmentSource;
-        const updated = await tx.workflowTask.update({
-          where: { id: task.id },
-          data: {
+        const updated = await this.claimAdminWorkflowTaskMutation(
+          tx,
+          task,
+          {
             assigneeUserId: selectedOwnerId,
             assigneeDepartmentId: selectedDepartmentId,
             payload: this.mergeJson(task.payload, {
@@ -1576,7 +1634,7 @@ export class AdminControlCenterService {
               assignmentRequestId: requestId,
             }),
           },
-        });
+        );
         await tx.projectNodeAssignment.upsert({
           where: {
             projectId_nodeCode: {
@@ -1716,6 +1774,17 @@ export class AdminControlCenterService {
       input,
       actor,
       execute: async (tx) => {
+        if (input.operation === 'ASSIGNMENT') {
+          const taskIds = [...new Set(input.tasks.map((row) => row.taskId))];
+          const assignmentTargets = await tx.workflowTask.findMany({
+            where: { id: { in: taskIds } },
+            select: { id: true, projectId: true, nodeCode: true },
+          });
+          if (assignmentTargets.length !== taskIds.length) {
+            throw new NotFoundException('批量修改包含不存在的工序任务。');
+          }
+          await lockWorkflowAssignmentTargets(tx, assignmentTargets);
+        }
         const previewItems: Array<{
           row: (typeof input.tasks)[number];
           preview: Record<string, unknown>;
@@ -1754,9 +1823,12 @@ export class AdminControlCenterService {
           });
         }
 
+        const sortedPreviewItems = previewItems.sort((left, right) =>
+          left.row.taskId.localeCompare(right.row.taskId),
+        );
         const results: Array<Record<string, unknown>> = [];
         const auditLogIds: string[] = [];
-        for (const item of previewItems) {
+        for (const item of sortedPreviewItems) {
           const task = await tx.workflowTask.findUnique({
             where: { id: item.row.taskId },
           });
@@ -1767,9 +1839,10 @@ export class AdminControlCenterService {
           if (input.operation === 'SCHEDULE') {
             const newDueAt = new Date(input.plannedDueAt!);
             const beforeDueAt = task.effectiveDueAt ?? task.dueAt;
-            const updated = await tx.workflowTask.update({
-              where: { id: task.id },
-              data: {
+            const updated = await this.claimAdminWorkflowTaskMutation(
+              tx,
+              task,
+              {
                 manualDueAt: newDueAt,
                 effectiveDueAt: newDueAt,
                 overdueDays: this.deadlineService.getOverdueDays(newDueAt),
@@ -1779,7 +1852,7 @@ export class AdminControlCenterService {
                   scheduleSource: 'PROJECT_OVERRIDE',
                 }),
               },
-            });
+            );
             const audit =
               await this.activityLogsService.createWithExecutor(tx, {
                 projectId: task.projectId,
@@ -1816,9 +1889,10 @@ export class AdminControlCenterService {
             const assignmentSource = input.ownerUserId
               ? ProjectAssignmentSource.TASK_OVERRIDE
               : assignmentPreview.proposed.assignmentSource;
-            const updated = await tx.workflowTask.update({
-              where: { id: task.id },
-              data: {
+            const updated = await this.claimAdminWorkflowTaskMutation(
+              tx,
+              task,
+              {
                 assigneeUserId: ownerId,
                 assigneeDepartmentId: departmentId,
                 payload: this.mergeJson(task.payload, {
@@ -1827,7 +1901,7 @@ export class AdminControlCenterService {
                   assignmentRequestId: requestId,
                 }),
               },
-            });
+            );
             await tx.projectNodeAssignment.upsert({
               where: {
                 projectId_nodeCode: {
@@ -1993,9 +2067,12 @@ export class AdminControlCenterService {
           }
           previews.push({ row, preview });
         }
+        const sortedPreviews = previews.sort((left, right) =>
+          left.row.taskId.localeCompare(right.row.taskId),
+        );
         const auditLogIds: string[] = [];
         const items = [];
-        for (const { row } of previews) {
+        for (const { row } of sortedPreviews) {
           const task = await tx.workflowTask.findUnique({
             where: { id: row.taskId },
           });
@@ -2005,9 +2082,10 @@ export class AdminControlCenterService {
           this.assertDateVersion(task.updatedAt, row.taskVersion, '工序');
           const newDueAt = new Date(row.plannedDueAt);
           const beforeDueAt = task.effectiveDueAt ?? task.dueAt;
-          const updated = await tx.workflowTask.update({
-            where: { id: task.id },
-            data: {
+          const updated = await this.claimAdminWorkflowTaskMutation(
+            tx,
+            task,
+            {
               manualDueAt: newDueAt,
               effectiveDueAt: newDueAt,
               overdueDays: this.deadlineService.getOverdueDays(newDueAt),
@@ -2018,7 +2096,7 @@ export class AdminControlCenterService {
                 importedByAdmin: true,
               }),
             },
-          });
+          );
           const audit =
             await this.activityLogsService.createWithExecutor(tx, {
               projectId: task.projectId,
@@ -2995,6 +3073,9 @@ export class AdminControlCenterService {
           })
         : [];
     const blockingReasons: string[] = [];
+    if (!task.isActive) {
+      blockingReasons.push('历史工序不可调整计划日期。');
+    }
     if (IMMUTABLE_TASK_STATUSES.has(task.status)) {
       blockingReasons.push('已完成或历史工序不可调整计划日期。');
     }
@@ -3441,6 +3522,9 @@ export class AdminControlCenterService {
       (userId) => !activeMemberIds.has(userId),
     );
     const blockingReasons: string[] = [];
+    if (!task.isActive) {
+      blockingReasons.push('历史工序不可修改负责人。');
+    }
     if (IMMUTABLE_TASK_STATUSES.has(task.status)) {
       blockingReasons.push('已完成或历史工序不可修改负责人。');
     }
@@ -3515,6 +3599,70 @@ export class AdminControlCenterService {
       },
       writePerformed: false,
     };
+  }
+
+  private async lockAdminNodeAssignmentTask(
+    tx: Prisma.TransactionClient,
+    projectId: string,
+    nodeCode: WorkflowNodeCode,
+  ) {
+    const rows = await tx.$queryRaw<Array<{ id: string }>>(
+      Prisma.sql`
+        SELECT "id"
+        FROM "workflow_tasks"
+        WHERE "projectId" = ${projectId}
+          AND "nodeCode" = ${nodeCode}::"WorkflowNodeCode"
+          AND "isActive" = TRUE
+          AND "status" IN (
+            'PENDING'::"WorkflowTaskStatus",
+            'READY'::"WorkflowTaskStatus",
+            'IN_PROGRESS'::"WorkflowTaskStatus"
+          )
+        ORDER BY "taskRound" DESC, "createdAt" DESC, "id" DESC
+        LIMIT 1
+        FOR UPDATE
+      `,
+    );
+    return rows[0]?.id ?? null;
+  }
+
+  private async claimAdminWorkflowTaskMutation(
+    tx: Prisma.TransactionClient,
+    task: {
+      id: string;
+      status: WorkflowTaskStatus;
+      isActive: boolean;
+      updatedAt: Date;
+    },
+    data: Prisma.WorkflowTaskUncheckedUpdateManyInput,
+  ) {
+    const claimed = await tx.workflowTask.updateMany({
+      where: {
+        id: task.id,
+        status: task.status,
+        isActive: task.isActive,
+        updatedAt: task.updatedAt,
+      },
+      data,
+    });
+    if (claimed.count !== 1) {
+      throw new ConflictException({
+        code: 'ADMIN_TASK_STATE_CHANGED',
+        message: '工序状态或内容已变化，请刷新后重试。',
+        taskId: task.id,
+      });
+    }
+    const updated = await tx.workflowTask.findUnique({
+      where: { id: task.id },
+    });
+    if (!updated) {
+      throw new ConflictException({
+        code: 'ADMIN_TASK_STATE_CHANGED',
+        message: '工序状态或内容已变化，请刷新后重试。',
+        taskId: task.id,
+      });
+    }
+    return updated;
   }
 
   private async executeAdminCommand<T extends object>(input: {

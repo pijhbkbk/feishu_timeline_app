@@ -21,6 +21,7 @@ import {
 } from '@prisma/client';
 
 import { PrismaService } from '../../infra/prisma/prisma.service';
+import { lockWorkflowAssignmentMutations } from '../../common/workflow-assignment-lock';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { ProjectAccessService } from '../auth/project-access.service';
@@ -134,6 +135,21 @@ export class R26OrdinaryCompletionService {
           this.assertGate3C1Node(lockedTask);
           this.assertTaskVersion(lockedTask, input.taskVersion);
           this.assertActorCanComplete(lockedTask, actor);
+          if (!input.acknowledgedConsequences) {
+            throw new BadRequestException('必须确认推进影响后才能完成工序。');
+          }
+          const action = this.resolveCompletionAction(
+            lockedTask.nodeCode,
+          );
+          const nextTemplates = getWorkflowNextTaskTemplates(
+            lockedTask.nodeCode,
+            action,
+          );
+          await lockWorkflowAssignmentMutations(
+            tx,
+            lockedTask.projectId,
+            nextTemplates.map((template) => template.nodeCode),
+          );
           const preview = await this.buildCompletionPreview(
             tx,
             lockedTask,
@@ -147,10 +163,6 @@ export class R26OrdinaryCompletionService {
               blockingReasons: preview.blockingReasons,
             });
           }
-          if (!input.acknowledgedConsequences) {
-            throw new BadRequestException('必须确认推进影响后才能完成工序。');
-          }
-
           const beforeTaskIds = new Set(
             (
               await tx.workflowTask.findMany({
@@ -160,9 +172,6 @@ export class R26OrdinaryCompletionService {
                 select: { id: true },
               })
             ).map((item) => item.id),
-          );
-          const action = this.resolveCompletionAction(
-            lockedTask.nodeCode,
           );
           const trustedAssignments =
             this.toWorkflowAssignments(preview.nextTasks);

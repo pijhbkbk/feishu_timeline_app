@@ -18,6 +18,7 @@ import {
 } from '@prisma/client';
 
 import { PrismaService } from '../../infra/prisma/prisma.service';
+import { lockWorkflowAssignmentMutations } from '../../common/workflow-assignment-lock';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import {
@@ -977,6 +978,11 @@ export class R26MemberAssignmentService {
             tx,
             input.projectId,
             input.actor,
+          );
+          await lockWorkflowAssignmentMutations(
+            tx,
+            input.projectId,
+            Object.values(WorkflowNodeCode),
           );
           const duplicate = await tx.r26CommandRequest.findUnique({
             where: { idempotencyKey: input.input.idempotencyKey },

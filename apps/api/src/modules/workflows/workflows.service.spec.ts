@@ -85,6 +85,7 @@ describe('WorkflowsService', () => {
     nodeName: '样板颜色确认',
     status: WorkflowTaskStatus.IN_PROGRESS,
     isActive: true,
+    updatedAt: new Date('2026-08-11T05:30:00.000Z'),
     assigneeUserId: actor.id,
     workflowInstance: {
       id: 'wf-1',
@@ -202,8 +203,66 @@ describe('WorkflowsService', () => {
     );
   });
 
+  it('rejects START when an assignment change wins after authorization', async () => {
+    const { service, activityLogsService } = createService();
+    const staleTask = {
+      ...sampleColorConfirmationTask,
+      status: WorkflowTaskStatus.READY,
+    };
+    const tx = createTransitionExecutor();
+    tx.workflowTask.updateMany.mockImplementation(async ({ where }) => ({
+      count: where.updatedAt === staleTask.updatedAt ? 0 : 1,
+    }));
+    vi.spyOn(service as any, 'getTaskOrThrow').mockResolvedValue(staleTask);
+    vi.spyOn(service as any, 'syncWorkflowState').mockResolvedValue(undefined);
+    const response = vi
+      .spyOn(service as any, 'getProjectWorkflowByInstance')
+      .mockResolvedValue({ workflowInstance: { id: 'wf-1' } });
+
+    await expect(
+      service.transitionTaskWithExecutor(
+        tx as never,
+        staleTask.id,
+        WorkflowAction.START,
+        actor,
+        {},
+      ),
+    ).rejects.toBeInstanceOf(ConflictException);
+
+    expect(tx.workflowTransition.create).not.toHaveBeenCalled();
+    expect(activityLogsService.createWithExecutor).not.toHaveBeenCalled();
+    expect(response).not.toHaveBeenCalled();
+  });
+
+  it('rejects a terminal transition when an assignment change wins after authorization', async () => {
+    const { service, activityLogsService } = createService();
+    const staleTask = { ...sampleColorConfirmationTask };
+    const tx = createTransitionExecutor();
+    tx.workflowTask.updateMany.mockImplementation(async ({ where }) => ({
+      count: where.updatedAt === staleTask.updatedAt ? 0 : 1,
+    }));
+    stubTransitionSideEffects(service);
+    vi.spyOn(service as any, 'getTaskOrThrow').mockResolvedValue(staleTask);
+    const createNextTasks = vi.mocked((service as any).createNextTasks);
+
+    await expect(
+      service.transitionTaskWithExecutor(
+        tx as never,
+        staleTask.id,
+        WorkflowAction.RETURN,
+        actor,
+        {},
+      ),
+    ).rejects.toBeInstanceOf(ConflictException);
+
+    expect(tx.workflowTransition.create).not.toHaveBeenCalled();
+    expect(activityLogsService.createWithExecutor).not.toHaveBeenCalled();
+    expect(createNextTasks).not.toHaveBeenCalled();
+  });
+
   function createTransitionExecutor() {
     return {
+      $queryRaw: vi.fn().mockResolvedValue([{ locked: true }]),
       workflowTask: {
         updateMany: vi.fn().mockResolvedValue({ count: 1 }),
         findUniqueOrThrow: vi.fn().mockImplementation(({ where }) =>
@@ -638,6 +697,7 @@ describe('WorkflowsService', () => {
   it('initializes workflow instances with template version and SLA schedule', async () => {
     const { service, workflowDeadlineService, notificationQueueService } = createService();
     const tx = {
+      $queryRaw: vi.fn().mockResolvedValue([{ locked: true }]),
       projectNodeAssignment: {
         findUnique: vi.fn().mockResolvedValue(null),
       },
