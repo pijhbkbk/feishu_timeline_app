@@ -2179,15 +2179,56 @@ export class AdminControlCenterService {
       input,
       actor,
       execute: async (tx) => {
+        await this.lockSystemAdministratorMutation(tx);
         const user = await tx.user.findUnique({ where: { id: userId } });
         if (!user) {
           throw new NotFoundException('用户不存在。');
         }
+        if (user.isSystemAdmin && !actor.isSystemAdmin) {
+          throw new ForbiddenException({
+            code: 'SYSTEM_ADMIN_STATUS_CHANGE_REQUIRES_SUPER_ADMIN',
+            message: '只有超级管理员可以修改超级管理员账号状态。',
+          });
+        }
+        if (
+          user.isSystemAdmin &&
+          user.status === UserStatus.ACTIVE &&
+          input.status !== UserStatus.ACTIVE
+        ) {
+          const activeSystemAdministratorCount = await tx.user.count({
+            where: {
+              isSystemAdmin: true,
+              status: UserStatus.ACTIVE,
+            },
+          });
+          if (activeSystemAdministratorCount <= 1) {
+            throw new ConflictException({
+              code: 'LAST_ACTIVE_SYSTEM_ADMIN_REQUIRED',
+              message: '系统必须至少保留一个启用中的超级管理员。',
+            });
+          }
+        }
         this.assertDateVersion(user.updatedAt, input.expectedVersion, '用户');
-        const updated = await tx.user.update({
-          where: { id: userId },
+        const claimed = await tx.user.updateMany({
+          where: {
+            id: userId,
+            updatedAt: user.updatedAt,
+          },
           data: { status: input.status },
         });
+        if (claimed.count !== 1) {
+          throw new ConflictException({
+            code: 'USER_STATUS_STATE_CHANGED',
+            message: '用户状态已变化，请刷新后重试。',
+          });
+        }
+        const updated = await tx.user.findUnique({ where: { id: userId } });
+        if (!updated) {
+          throw new ConflictException({
+            code: 'USER_STATUS_STATE_CHANGED',
+            message: '用户状态已变化，请刷新后重试。',
+          });
+        }
         const audit = await this.activityLogsService.createWithExecutor(tx, {
           projectId: null,
           actorUserId: actor.id,
@@ -2350,6 +2391,7 @@ export class AdminControlCenterService {
       input,
       actor,
       execute: async (tx) => {
+        await this.lockSystemAdministratorMutation(tx);
         const existing = userId
           ? await tx.user.findUnique({
               where: { id: userId },
@@ -2399,24 +2441,43 @@ export class AdminControlCenterService {
           throw new ConflictException({ code: 'USER_CONFIGURATION_BLOCKED', message: '用户配置在提交时已不满足条件。', conflicts: transactionConflicts, activeTaskCount });
         }
 
-        const user = existing
-          ? await tx.user.update({
-              where: { id: existing.id },
-              data: {
-                username: input.username.trim(), name: input.name.trim(),
-                email: input.email?.trim() || null, mobile: input.mobile?.trim() || null,
-                departmentId: input.departmentId || null, status: input.status,
-                isSystemAdmin: input.isSystemAdmin,
-              },
-            })
-          : await tx.user.create({
-              data: {
-                username: input.username.trim(), name: input.name.trim(),
-                email: input.email?.trim() || null, mobile: input.mobile?.trim() || null,
-                departmentId: input.departmentId || null, status: input.status,
-                isSystemAdmin: input.isSystemAdmin,
-              },
+        let user;
+        if (existing) {
+          const claimed = await tx.user.updateMany({
+            where: {
+              id: existing.id,
+              updatedAt: existing.updatedAt,
+            },
+            data: {
+              username: input.username.trim(), name: input.name.trim(),
+              email: input.email?.trim() || null, mobile: input.mobile?.trim() || null,
+              departmentId: input.departmentId || null, status: input.status,
+              isSystemAdmin: input.isSystemAdmin,
+            },
+          });
+          if (claimed.count !== 1) {
+            throw new ConflictException({
+              code: 'USER_CONFIGURATION_STATE_CHANGED',
+              message: '用户配置已变化，请刷新后重试。',
             });
+          }
+          user = await tx.user.findUnique({ where: { id: existing.id } });
+          if (!user) {
+            throw new ConflictException({
+              code: 'USER_CONFIGURATION_STATE_CHANGED',
+              message: '用户配置已变化，请刷新后重试。',
+            });
+          }
+        } else {
+          user = await tx.user.create({
+            data: {
+              username: input.username.trim(), name: input.name.trim(),
+              email: input.email?.trim() || null, mobile: input.mobile?.trim() || null,
+              departmentId: input.departmentId || null, status: input.status,
+              isSystemAdmin: input.isSystemAdmin,
+            },
+          });
+        }
         await tx.userRole.deleteMany({ where: { userId: user.id } });
         if (input.roleIds.length) {
           await tx.userRole.createMany({
@@ -3492,6 +3553,25 @@ export class AdminControlCenterService {
 
     try {
       return await this.prisma.$transaction(async (tx) => {
+        await this.lockAdminCommandIdempotency(tx, idempotencyKey);
+        const transactionReplay = await tx.adminCommandRequest.findUnique({
+          where: { idempotencyKey },
+        });
+        if (transactionReplay) {
+          if (
+            transactionReplay.action !== input.action ||
+            transactionReplay.requestHash !== requestHash
+          ) {
+            throw new ConflictException({
+              code: 'IDEMPOTENCY_KEY_REUSED',
+              message: '同一幂等键不能用于不同的后台管理请求。',
+            });
+          }
+          return {
+            ...(this.readObject(transactionReplay.result) as T),
+            idempotentReplay: true,
+          };
+        }
         const result = await input.execute(tx);
         await tx.adminCommandRequest.create({
           data: {
@@ -3574,6 +3654,21 @@ export class AdminControlCenterService {
     if (!actor.isSystemAdmin) {
       throw new ForbiddenException('只有超级管理员可以修改系统管理配置。');
     }
+  }
+
+  private async lockSystemAdministratorMutation(tx: Prisma.TransactionClient) {
+    await tx.$queryRaw(
+      Prisma.sql`SELECT pg_advisory_xact_lock(hashtext(${'feishu-timeline:system-administrator-mutation'})) AS "locked"`,
+    );
+  }
+
+  private async lockAdminCommandIdempotency(
+    tx: Prisma.TransactionClient,
+    idempotencyKey: string,
+  ) {
+    await tx.$queryRaw(
+      Prisma.sql`SELECT pg_advisory_xact_lock(hashtext(${'feishu-timeline:admin-command'}), hashtext(${idempotencyKey})) AS "locked"`,
+    );
   }
 
   private async getOrganizationDirectory() {
