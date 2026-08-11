@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
+  HttpException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -27,7 +28,7 @@ import {
   WorkflowTaskStatus,
   type Prisma,
 } from '@prisma/client';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { getControlledColorNumber } from '../../common/controlled-color-number';
@@ -94,6 +95,8 @@ type WorkflowTransitionTrustedOptions = {
 
 type WorkflowFormSaveInput = {
   payload: Record<string, unknown>;
+  payloadJson: string;
+  payloadBytes: number;
   comment?: string | null;
 };
 
@@ -129,6 +132,17 @@ const WORKFLOW_ACTION_LABELS: Record<WorkflowAction, string> = {
   [WorkflowAction.CANCEL]: '取消',
   [WorkflowAction.SYSTEM_SYNC]: '系统同步',
 };
+
+const WORKFLOW_FORM_MAX_BYTES = 16 * 1024;
+const WORKFLOW_FORM_MAX_DEPTH = 8;
+const WORKFLOW_FORM_MAX_NODES = 256;
+const WORKFLOW_FORM_MAX_ARRAY_ITEMS = 100;
+const WORKFLOW_FORM_MAX_OBJECT_KEYS = 100;
+const WORKFLOW_FORM_MAX_KEY_LENGTH = 100;
+const WORKFLOW_FORM_MAX_STRING_LENGTH = 2_000;
+const WORKFLOW_FORM_COMMENT_MAX_LENGTH = 2_000;
+const WORKFLOW_FORM_RATE_MAX_REQUESTS = 30;
+const WORKFLOW_FORM_RATE_WINDOW_MS = 3_600_000;
 
 const REVIEW_RESULT_LABELS = {
   PENDING: '待评审',
@@ -1083,8 +1097,9 @@ export class WorkflowsService {
   }
 
   async saveTaskForm(taskId: string, actor: AuthenticatedUser, rawInput: unknown) {
+    const input = this.parseFormSaveInput(rawInput);
+
     return this.prisma.$transaction(async (tx) => {
-      const input = this.parseFormSaveInput(rawInput);
       const task = await this.getTaskOrThrow(tx, taskId);
 
       await this.projectAccessService.assertProjectAccess(
@@ -1096,11 +1111,47 @@ export class WorkflowsService {
       this.assertActorCanOperateTask(task, actor);
       this.assertTaskCanSaveForm(task);
 
-      const now = new Date();
       const currentPayload = this.asJsonObject(task.payload);
+      const currentFormData = currentPayload.formData;
+      const currentFormJson = this.tryCanonicalWorkflowFormJson(currentFormData);
+      const currentComment =
+        typeof currentPayload.draftComment === 'string'
+          ? currentPayload.draftComment
+          : undefined;
+      if (
+        currentFormJson === input.payloadJson &&
+        (input.comment === undefined || input.comment === currentComment)
+      ) {
+        return this.buildTaskDetailResponse(tx, task.id);
+      }
+
+      const recentSaveCount = await tx.auditLog.count({
+        where: {
+          actorUserId: actor.id,
+          targetType: AuditTargetType.WORKFLOW_TASK,
+          targetId: task.id,
+          action: 'WORKFLOW_FORM_SAVED',
+          createdAt: {
+            gte: new Date(Date.now() - WORKFLOW_FORM_RATE_WINDOW_MS),
+          },
+        },
+      });
+      if (recentSaveCount >= WORKFLOW_FORM_RATE_MAX_REQUESTS) {
+        throw new HttpException(
+          {
+            statusCode: 429,
+            error: 'Too Many Requests',
+            code: 'WORKFLOW_FORM_RATE_EXCEEDED',
+            message: '工序表单保存过于频繁，请稍后重试。',
+          },
+          429,
+        );
+      }
+
+      const now = new Date();
       const nextPayload = {
         ...currentPayload,
-        formData: JSON.parse(JSON.stringify(input.payload)) as Prisma.InputJsonValue,
+        formData: input.payload as Prisma.InputJsonValue,
         draftSavedAt: now.toISOString(),
         ...(input.comment ? { draftComment: input.comment } : {}),
       } satisfies Record<string, Prisma.InputJsonValue>;
@@ -1131,12 +1182,14 @@ export class WorkflowsService {
         action: 'WORKFLOW_FORM_SAVED',
         nodeCode: task.nodeCode,
         summary: `${task.nodeName} 已保存节点表单草稿。`,
-        beforeData: {
-          payload: task.payload,
-        },
-        afterData: {
-          payload: nextPayload,
-        },
+        beforeData: this.buildWorkflowFormAuditSnapshot(
+          currentFormData,
+          currentComment,
+        ),
+        afterData: this.buildWorkflowFormAuditSnapshotFromJson(
+          input.payloadJson,
+          input.comment ?? currentComment,
+        ),
       });
 
       return this.buildTaskDetailResponse(tx, task.id);
@@ -2832,15 +2885,158 @@ export class WorkflowsService {
       throw new BadRequestException('请求内容必须为表单对象。');
     }
 
+    const payload = this.normalizeWorkflowFormPayload(input.payload);
+
     const comment =
       typeof input.comment === 'string' && input.comment.trim().length > 0
         ? input.comment.trim()
         : undefined;
+    if (comment && comment.length > WORKFLOW_FORM_COMMENT_MAX_LENGTH) {
+      this.throwWorkflowFormPayloadInvalid(
+        'WORKFLOW_FORM_PAYLOAD_INVALID',
+        `表单备注不得超过 ${WORKFLOW_FORM_COMMENT_MAX_LENGTH} 个字符。`,
+      );
+    }
 
     return {
-      payload: input.payload as Record<string, unknown>,
+      payload: payload.value as Record<string, unknown>,
+      payloadJson: payload.json,
+      payloadBytes: payload.bytes,
       ...(comment ? { comment } : {}),
     };
+  }
+
+  private normalizeWorkflowFormPayload(rawPayload: object) {
+    const state = { nodes: 0 };
+    const visit = (
+      value: unknown,
+      depth: number,
+    ): Prisma.InputJsonValue | null => {
+      state.nodes += 1;
+      if (state.nodes > WORKFLOW_FORM_MAX_NODES || depth > WORKFLOW_FORM_MAX_DEPTH) {
+        this.throwWorkflowFormPayloadInvalid(
+          'WORKFLOW_FORM_PAYLOAD_INVALID',
+          '表单字段数量或嵌套深度超过允许范围。',
+        );
+      }
+
+      if (value === null || typeof value === 'boolean') {
+        return value;
+      }
+      if (typeof value === 'number') {
+        if (!Number.isFinite(value)) {
+          this.throwWorkflowFormPayloadInvalid(
+            'WORKFLOW_FORM_PAYLOAD_INVALID',
+            '表单数值必须为有限数字。',
+          );
+        }
+        return value;
+      }
+      if (typeof value === 'string') {
+        if (value.length > WORKFLOW_FORM_MAX_STRING_LENGTH) {
+          this.throwWorkflowFormPayloadInvalid(
+            'WORKFLOW_FORM_PAYLOAD_INVALID',
+            `单个表单文本不得超过 ${WORKFLOW_FORM_MAX_STRING_LENGTH} 个字符。`,
+          );
+        }
+        return value;
+      }
+      if (Array.isArray(value)) {
+        if (value.length > WORKFLOW_FORM_MAX_ARRAY_ITEMS) {
+          this.throwWorkflowFormPayloadInvalid(
+            'WORKFLOW_FORM_PAYLOAD_INVALID',
+            `单个表单数组不得超过 ${WORKFLOW_FORM_MAX_ARRAY_ITEMS} 项。`,
+          );
+        }
+        return value.map((item) => visit(item, depth + 1));
+      }
+      if (!value || typeof value !== 'object') {
+        this.throwWorkflowFormPayloadInvalid(
+          'WORKFLOW_FORM_PAYLOAD_INVALID',
+          '表单只能包含 JSON 数据。',
+        );
+      }
+
+      const record = value as Record<string, unknown>;
+      const keys = Object.keys(record).sort();
+      if (
+        keys.length === 0 && depth === 0 ||
+        keys.length > WORKFLOW_FORM_MAX_OBJECT_KEYS
+      ) {
+        this.throwWorkflowFormPayloadInvalid(
+          'WORKFLOW_FORM_PAYLOAD_INVALID',
+          `表单对象必须非空且单层不得超过 ${WORKFLOW_FORM_MAX_OBJECT_KEYS} 个字段。`,
+        );
+      }
+      const normalized: Record<string, Prisma.InputJsonValue | null> = {};
+      for (const key of keys) {
+        if (
+          !key ||
+          key.length > WORKFLOW_FORM_MAX_KEY_LENGTH ||
+          key === '__proto__' ||
+          key === 'constructor' ||
+          key === 'prototype'
+        ) {
+          this.throwWorkflowFormPayloadInvalid(
+            'WORKFLOW_FORM_PAYLOAD_INVALID',
+            '表单字段名不符合安全约束。',
+          );
+        }
+        normalized[key] = visit(record[key], depth + 1);
+      }
+      return normalized as Prisma.InputJsonObject;
+    };
+
+    const value = visit(rawPayload, 0);
+    const json = JSON.stringify(value);
+    const bytes = Buffer.byteLength(json, 'utf8');
+    if (bytes > WORKFLOW_FORM_MAX_BYTES) {
+      this.throwWorkflowFormPayloadInvalid(
+        'WORKFLOW_FORM_PAYLOAD_TOO_LARGE',
+        `表单 JSON 不得超过 ${WORKFLOW_FORM_MAX_BYTES} 字节。`,
+      );
+    }
+    return { value, json, bytes };
+  }
+
+  private tryCanonicalWorkflowFormJson(value: unknown) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      return null;
+    }
+    try {
+      return this.normalizeWorkflowFormPayload(value).json;
+    } catch {
+      return null;
+    }
+  }
+
+  private buildWorkflowFormAuditSnapshot(value: unknown, comment?: string) {
+    let json: string;
+    try {
+      json = this.tryCanonicalWorkflowFormJson(value) ?? JSON.stringify(value ?? null);
+    } catch {
+      json = 'null';
+    }
+    return this.buildWorkflowFormAuditSnapshotFromJson(json, comment);
+  }
+
+  private buildWorkflowFormAuditSnapshotFromJson(json: string, comment?: string) {
+    const normalizedComment = comment ?? '';
+    return {
+      payloadSha256: createHash('sha256').update(json).digest('hex'),
+      payloadBytes: Buffer.byteLength(json, 'utf8'),
+      commentSha256: createHash('sha256').update(normalizedComment).digest('hex'),
+      commentBytes: Buffer.byteLength(normalizedComment, 'utf8'),
+    } satisfies Prisma.InputJsonObject;
+  }
+
+  private throwWorkflowFormPayloadInvalid(code: string, message: string): never {
+    throw new BadRequestException({
+      statusCode: 400,
+      error: 'Bad Request',
+      code,
+      message,
+    });
   }
 
   private buildInstanceNo() {

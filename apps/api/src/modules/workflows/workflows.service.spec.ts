@@ -132,6 +132,9 @@ describe('WorkflowsService', () => {
         update: vi.fn(),
         updateMany: vi.fn().mockResolvedValue({ count: 0 }),
       },
+      auditLog: {
+        count: vi.fn().mockResolvedValue(0),
+      },
     };
     prisma.$transaction.mockImplementation(
       async (callback: (executor: typeof tx) => Promise<unknown>) => callback(tx),
@@ -176,6 +179,9 @@ describe('WorkflowsService', () => {
       workflowTask: {
         update: vi.fn(),
         updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+      },
+      auditLog: {
+        count: vi.fn().mockResolvedValue(0),
       },
     };
     prisma.$transaction.mockImplementation(
