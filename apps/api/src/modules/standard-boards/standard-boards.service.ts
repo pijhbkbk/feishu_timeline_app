@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -137,7 +138,13 @@ export class StandardBoardsService {
     const input = this.parseBoardWriteInput(rawInput);
 
     await this.prisma.$transaction(async (tx) => {
+      const lockedTaskId = await this.lockActiveTaskForWrite(
+        tx,
+        projectId,
+        WorkflowNodeCode.STANDARD_BOARD_PRODUCTION,
+      );
       const context = await this.getStandardBoardContext(tx, projectId);
+      this.assertLockedContextTask(context.activeTask, lockedTaskId);
       this.assertWritableStandardBoardStage(context);
       await this.assertSampleReference(tx, projectId, input.basedOnSampleId);
       await this.assertUniqueBoardVersion(tx, projectId, input.boardCode, input.versionNo);
@@ -181,7 +188,13 @@ export class StandardBoardsService {
     const input = this.parseBoardWriteInput(rawInput);
 
     await this.prisma.$transaction(async (tx) => {
+      const lockedTaskId = await this.lockActiveTaskForWrite(
+        tx,
+        projectId,
+        WorkflowNodeCode.STANDARD_BOARD_PRODUCTION,
+      );
       const context = await this.getStandardBoardContext(tx, projectId);
+      this.assertLockedContextTask(context.activeTask, lockedTaskId);
       this.assertWritableStandardBoardStage(context);
       const board = await this.getBoardOrThrow(tx, projectId, boardId);
 
@@ -239,7 +252,13 @@ export class StandardBoardsService {
     this.assertActorCanManage(actor);
 
     await this.prisma.$transaction(async (tx) => {
+      const lockedTaskId = await this.lockActiveTaskForWrite(
+        tx,
+        projectId,
+        WorkflowNodeCode.STANDARD_BOARD_PRODUCTION,
+      );
       const context = await this.getStandardBoardContext(tx, projectId);
+      this.assertLockedContextTask(context.activeTask, lockedTaskId);
       this.assertWritableStandardBoardStage(context);
       const board = await this.getBoardOrThrow(tx, projectId, boardId);
 
@@ -308,7 +327,13 @@ export class StandardBoardsService {
     const input = this.parseIssueBoardInput(rawInput);
 
     await this.prisma.$transaction(async (tx) => {
+      const lockedTaskId = await this.lockActiveTaskForWrite(
+        tx,
+        projectId,
+        WorkflowNodeCode.STANDARD_BOARD_PRODUCTION,
+      );
       const context = await this.getStandardBoardContext(tx, projectId);
+      this.assertLockedContextTask(context.activeTask, lockedTaskId);
       this.assertWritableStandardBoardStage(context);
       const board = await this.getBoardOrThrow(tx, projectId, boardId);
       const nextStatus = getStandardBoardStatusTransitionTarget(
@@ -360,7 +385,13 @@ export class StandardBoardsService {
     const input = this.parseDistributionWriteInput(rawInput);
 
     await this.prisma.$transaction(async (tx) => {
+      const lockedTaskId = await this.lockActiveTaskForWrite(
+        tx,
+        projectId,
+        WorkflowNodeCode.STANDARD_BOARD_PRODUCTION,
+      );
       const context = await this.getStandardBoardContext(tx, projectId);
+      this.assertLockedContextTask(context.activeTask, lockedTaskId);
       this.assertWritableStandardBoardStage(context);
       const board = await this.getBoardOrThrow(tx, projectId, boardId);
 
@@ -412,7 +443,13 @@ export class StandardBoardsService {
     const input = this.parseColorBoardDetailUpdateWriteInput(rawInput);
 
     await this.prisma.$transaction(async (tx) => {
+      const lockedTaskId = await this.lockActiveTaskForWrite(
+        tx,
+        projectId,
+        WorkflowNodeCode.BOARD_DETAIL_UPDATE,
+      );
       const context = await this.getColorBoardDetailUpdateContext(tx, projectId);
+      this.assertLockedContextTask(context.activeTask, lockedTaskId);
       this.assertWritableBoardDetailUpdateStage(context);
       await this.getBoardOrThrow(tx, projectId, input.standardBoardId);
 
@@ -448,7 +485,13 @@ export class StandardBoardsService {
     this.assertActorCanManage(actor);
 
     await this.prisma.$transaction(async (tx) => {
+      const lockedTaskId = await this.lockActiveTaskForWrite(
+        tx,
+        projectId,
+        WorkflowNodeCode.STANDARD_BOARD_PRODUCTION,
+      );
       const context = await this.getStandardBoardContext(tx, projectId);
+      this.assertLockedContextTask(context.activeTask, lockedTaskId);
       this.assertWritableStandardBoardStage(context);
 
       if (!context.activeTask) {
@@ -498,7 +541,13 @@ export class StandardBoardsService {
     this.assertActorCanManage(actor);
 
     await this.prisma.$transaction(async (tx) => {
+      const lockedTaskId = await this.lockActiveTaskForWrite(
+        tx,
+        projectId,
+        WorkflowNodeCode.BOARD_DETAIL_UPDATE,
+      );
       const context = await this.getColorBoardDetailUpdateContext(tx, projectId);
+      this.assertLockedContextTask(context.activeTask, lockedTaskId);
       this.assertWritableBoardDetailUpdateStage(context);
 
       if (!context.activeTask) {
@@ -564,7 +613,13 @@ export class StandardBoardsService {
     this.assertActorCanManage(actor);
 
     await this.prisma.$transaction(async (tx) => {
+      const lockedTaskId = await this.lockActiveTaskForWrite(
+        tx,
+        projectId,
+        WorkflowNodeCode.STANDARD_BOARD_PRODUCTION,
+      );
       const context = await this.getStandardBoardContext(tx, projectId);
+      this.assertLockedContextTask(context.activeTask, lockedTaskId);
       this.assertWritableStandardBoardStage(context);
       const board = await this.getBoardOrThrow(tx, projectId, boardId);
       const nextStatus = getStandardBoardStatusTransitionTarget(board.status, action);
@@ -596,6 +651,43 @@ export class StandardBoardsService {
     });
 
     return this.buildWorkspace(this.prisma, projectId);
+  }
+
+  private async lockActiveTaskForWrite(
+    tx: Prisma.TransactionClient,
+    projectId: string,
+    nodeCode: WorkflowNodeCode,
+  ) {
+    const rows = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+      SELECT "id"
+      FROM "workflow_tasks"
+      WHERE "projectId" = ${projectId}
+        AND "nodeCode" = ${nodeCode}::"WorkflowNodeCode"
+        AND "isActive" = true
+      ORDER BY "createdAt" DESC, "taskRound" DESC
+      LIMIT 1
+      FOR UPDATE
+    `);
+    const taskId = rows[0]?.id;
+    if (!taskId) {
+      throw new ConflictException({
+        code: 'DOMAIN_STAGE_CHANGED',
+        message: '工序状态已更新，请刷新后再提交标准板数据。',
+      });
+    }
+    return taskId;
+  }
+
+  private assertLockedContextTask(
+    activeTask: { id: string } | null,
+    lockedTaskId: string,
+  ) {
+    if (activeTask?.id !== lockedTaskId) {
+      throw new ConflictException({
+        code: 'DOMAIN_STAGE_CHANGED',
+        message: '工序状态已更新，请刷新后再提交标准板数据。',
+      });
+    }
   }
 
   private async buildWorkspace(

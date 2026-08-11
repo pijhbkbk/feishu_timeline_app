@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -106,7 +107,9 @@ export class ColorExitsService {
         actor,
         'workflow.transition',
       );
+      const lockedTaskId = await this.lockActiveTaskForWrite(tx, projectId);
       const context = await this.getContext(tx, projectId);
+      this.assertLockedContextTask(context.activeTask, lockedTaskId);
       this.assertWritableStage(context);
 
       if (context.activeRecord) {
@@ -170,7 +173,9 @@ export class ColorExitsService {
         actor,
         'workflow.transition',
       );
+      const lockedTaskId = await this.lockActiveTaskForWrite(tx, projectId);
       const context = await this.getContext(tx, projectId);
+      this.assertLockedContextTask(context.activeTask, lockedTaskId);
       this.assertWritableStage(context);
       const record = await this.getExitRecordOrThrow(tx, projectId, exitId);
       this.assertEditableRecord(record, context.activeTask!.id);
@@ -231,7 +236,9 @@ export class ColorExitsService {
         actor,
         'workflow.transition',
       );
+      const lockedTaskId = await this.lockActiveTaskForWrite(tx, projectId);
       const context = await this.getContext(tx, projectId);
+      this.assertLockedContextTask(context.activeTask, lockedTaskId);
       this.assertWritableStage(context);
       const record = await this.getExitRecordOrThrow(tx, projectId, exitId);
       this.assertEditableRecord(record, context.activeTask!.id);
@@ -391,6 +398,42 @@ export class ColorExitsService {
     });
 
     return this.buildWorkspace(this.prisma, projectId);
+  }
+
+  private async lockActiveTaskForWrite(
+    tx: Prisma.TransactionClient,
+    projectId: string,
+  ) {
+    const rows = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+      SELECT "id"
+      FROM "workflow_tasks"
+      WHERE "projectId" = ${projectId}
+        AND "nodeCode" = ${COLOR_EXIT_NODE_CODE}::"WorkflowNodeCode"
+        AND "isActive" = true
+      ORDER BY "createdAt" DESC, "taskRound" DESC
+      LIMIT 1
+      FOR UPDATE
+    `);
+    const taskId = rows[0]?.id;
+    if (!taskId) {
+      throw new ConflictException({
+        code: 'DOMAIN_STAGE_CHANGED',
+        message: '颜色退出工序状态已更新，请刷新后再提交。',
+      });
+    }
+    return taskId;
+  }
+
+  private assertLockedContextTask(
+    activeTask: { id: string } | null,
+    lockedTaskId: string,
+  ) {
+    if (activeTask?.id !== lockedTaskId) {
+      throw new ConflictException({
+        code: 'DOMAIN_STAGE_CHANGED',
+        message: '颜色退出工序状态已更新，请刷新后再提交。',
+      });
+    }
   }
 
   private async buildWorkspace(db: ColorExitsDbClient, projectId: string) {
