@@ -173,8 +173,8 @@ export function rejectVisualDeltaReview(projectId: string, reviewId: string) {
   );
 }
 
-export function fetchVisualDeltaReviewPageOptions() {
-  return fetchUserDirectory();
+export function fetchVisualDeltaReviewPageOptions(projectId: string) {
+  return fetchUserDirectory({ projectId });
 }
 
 export function validateVisualDeltaReviewForm(input: VisualDeltaReviewFormInput) {

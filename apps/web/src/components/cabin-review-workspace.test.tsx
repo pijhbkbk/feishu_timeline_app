@@ -125,12 +125,9 @@ describe('CabinReviewWorkspace', () => {
         reviewerOptions={[
           {
             id: 'user-1',
-            username: 'reviewer',
             name: '评审员',
-            email: null,
             departmentId: null,
             departmentName: null,
-            roleCodes: ['reviewer'],
           },
         ]}
         disabled={false}

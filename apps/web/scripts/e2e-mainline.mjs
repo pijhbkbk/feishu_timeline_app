@@ -234,7 +234,10 @@ async function transitionTask(jar, taskId, action, body = {}) {
 }
 
 async function completeFirstProductionPlan(jar, projectId) {
-  const users = await requestJson('/users/directory', jar);
+  const users = await requestJson(
+    `/users/directory?projectId=${encodeURIComponent(projectId)}&take=50`,
+    jar,
+  );
   const ownerId = users[0]?.id;
 
   assert(ownerId, '首台计划 E2E 未找到可用责任人。');

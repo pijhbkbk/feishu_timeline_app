@@ -157,8 +157,8 @@ export function completeMassProductionTask(projectId: string) {
   );
 }
 
-export function fetchMassProductionPageOptions() {
-  return fetchUserDirectory();
+export function fetchMassProductionPageOptions(projectId: string) {
+  return fetchUserDirectory({ projectId });
 }
 
 export function getDefaultMassProductionOwnerId(

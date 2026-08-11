@@ -101,7 +101,7 @@ export function SchedulePlansWorkspace({
     try {
       const [nextWorkspace, nextOwners] = await Promise.all([
         fetchSchedulePlansWorkspace(projectId),
-        fetchSchedulePlanPageOptions(),
+        fetchSchedulePlanPageOptions(projectId),
       ]);
 
       if (requestId !== requestIdRef.current) {

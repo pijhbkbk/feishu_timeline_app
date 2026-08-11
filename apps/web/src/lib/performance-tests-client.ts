@@ -209,8 +209,8 @@ export async function completePerformanceTestTask(projectId: string) {
   );
 }
 
-export async function fetchPerformanceTestPageOptions() {
-  return fetchUserDirectory();
+export async function fetchPerformanceTestPageOptions(projectId: string) {
+  return fetchUserDirectory({ projectId });
 }
 
 export function getPerformanceTestItemLabel(item: PerformanceTestItem) {

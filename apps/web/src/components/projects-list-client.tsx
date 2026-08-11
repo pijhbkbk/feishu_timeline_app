@@ -58,7 +58,7 @@ const QUICK_VIEWS: Array<{ value: ProjectListView; label: string }> = [
 ];
 
 export function ProjectsListClient() {
-  const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
+  const { isAuthenticated, isLoading: isAuthLoading, user } = useAuth();
   const keywordInputRef = useRef<HTMLInputElement>(null);
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
   const [view, setView] = useState<ProjectListView>('all');
@@ -115,10 +115,12 @@ export function ProjectsListClient() {
     try {
       const [projects, users] = await Promise.all([
         fetchProjects({ page: 1, pageSize: 12, view: 'all' }),
-        fetchUserDirectory(),
+        user && (user.isSystemAdmin || user.permissionCodes?.includes('project.write'))
+          ? fetchUserDirectory()
+          : Promise.resolve(null),
       ]);
       setResponse(projects);
-      setDirectoryUsers(users);
+      setDirectoryUsers(users ?? getVisibleProjectOwners(projects.items));
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : '项目看板加载失败。');
     } finally {
@@ -273,6 +275,25 @@ export function ProjectsListClient() {
       ) : null}
     </div>
   );
+}
+
+function getVisibleProjectOwners(projects: ProjectListItem[]): DirectoryUser[] {
+  const owners = new Map<string, DirectoryUser>();
+
+  for (const project of projects) {
+    if (!project.ownerUserId || !project.ownerName || owners.has(project.ownerUserId)) {
+      continue;
+    }
+
+    owners.set(project.ownerUserId, {
+      id: project.ownerUserId,
+      name: project.ownerName,
+      departmentId: null,
+      departmentName: project.ownerDepartmentName,
+    });
+  }
+
+  return [...owners.values()].sort((left, right) => left.name.localeCompare(right.name, 'zh-CN'));
 }
 
 export function ProjectBoardCard({ project }: { project: ProjectListItem }) {

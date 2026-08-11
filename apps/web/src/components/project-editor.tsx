@@ -92,9 +92,25 @@ function buildMemberDrafts(project?: ProjectDetail): MemberDraft[] {
   }));
 }
 
+function buildProjectDirectory(project: ProjectDetail): DirectoryUser[] {
+  const users = new Map<string, DirectoryUser>();
+
+  for (const member of project.members) {
+    if (users.has(member.userId)) continue;
+    users.set(member.userId, {
+      id: member.userId,
+      name: member.name,
+      departmentId: null,
+      departmentName: member.departmentName,
+    });
+  }
+
+  return [...users.values()];
+}
+
 export function ProjectEditor(props: ProjectEditorProps) {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, isLoading: isAuthLoading } = useAuth();
   const [directoryUsers, setDirectoryUsers] = useState<DirectoryUser[]>([]);
   const [formState, setFormState] = useState<FormState>(() =>
     props.mode === 'edit' ? buildFormState(props.initialProject) : buildFormState(),
@@ -111,15 +127,24 @@ export function ProjectEditor(props: ProjectEditorProps) {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isDirty, setIsDirty] = useState(false);
   const canManageProject = Boolean(
-    user &&
-      (user.isSystemAdmin ||
-        user.roleCodes.includes('admin') ||
-        user.roleCodes.includes('project_manager')),
+    user && (user.isSystemAdmin || user.permissionCodes?.includes('project.write')),
   );
 
   useEffect(() => {
+    if (isAuthLoading) return;
+    if (props.mode === 'edit') {
+      setDirectoryUsers(buildProjectDirectory(props.initialProject));
+      setIsLoadingUsers(false);
+      return;
+    }
+    if (!canManageProject) {
+      setDirectoryUsers([]);
+      setIsLoadingUsers(false);
+      return;
+    }
+
     void loadDirectoryUsers();
-  }, []);
+  }, [canManageProject, isAuthLoading, props.mode === 'edit' ? props.initialProject : null]);
 
   useEffect(() => {
     if (props.mode === 'edit') {

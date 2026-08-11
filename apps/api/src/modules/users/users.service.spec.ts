@@ -1,6 +1,8 @@
+import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { UserStatus } from '@prisma/client';
 import { describe, expect, it, vi } from 'vitest';
 
+import type { AuthenticatedUser } from '../auth/auth.types';
 import { UsersService } from './users.service';
 
 function createService(tx: Record<string, unknown>) {
@@ -13,6 +15,29 @@ function createService(tx: Record<string, unknown>) {
     prisma,
   };
 }
+
+const projectManager: AuthenticatedUser = {
+  id: 'manager-1',
+  username: 'manager',
+  name: '项目经理',
+  email: 'manager@example.com',
+  departmentId: 'dept-pmo',
+  departmentName: '项目管理部',
+  isSystemAdmin: false,
+  authSource: 'mock',
+  roleCodes: ['project_manager'],
+  permissionCodes: ['project.read', 'project.write'],
+};
+
+const viewer: AuthenticatedUser = {
+  ...projectManager,
+  id: 'viewer-1',
+  username: 'viewer',
+  name: '普通查看者',
+  email: 'viewer@example.com',
+  roleCodes: ['viewer'],
+  permissionCodes: ['project.read'],
+};
 
 describe('UsersService', () => {
   it('preserves the assigned least-privilege role for an active authenticated user', async () => {
@@ -272,4 +297,195 @@ describe('UsersService', () => {
       expect(updateInput.data).not.toHaveProperty('status');
     },
   );
+
+  it('rejects a global directory request unless the actor has project.write', async () => {
+    const prisma = {
+      user: {
+        findMany: vi.fn(),
+      },
+    };
+    const service = new UsersService(prisma as never);
+
+    await expect(service.getDirectory({}, viewer)).rejects.toBeInstanceOf(ForbiddenException);
+    expect(prisma.user.findMany).not.toHaveBeenCalled();
+  });
+
+  it('allows the explicit system administrator override but not an admin role without project.write', async () => {
+    const prisma = {
+      user: {
+        findMany: vi.fn().mockResolvedValue([]),
+      },
+    };
+    const service = new UsersService(prisma as never);
+
+    await expect(
+      service.getDirectory({}, {
+        ...viewer,
+        id: 'system-admin',
+        isSystemAdmin: true,
+        roleCodes: ['admin'],
+        permissionCodes: [],
+      }),
+    ).resolves.toEqual([]);
+
+    await expect(
+      service.getDirectory({}, {
+        ...viewer,
+        id: 'ordinary-admin',
+        roleCodes: ['admin'],
+      }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('returns only the bounded minimum global directory projection to a project writer', async () => {
+    const prisma = {
+      user: {
+        findMany: vi.fn().mockResolvedValue([
+          {
+            id: 'user-2',
+            name: '张三',
+            departmentId: 'dept-pmo',
+            department: { name: '项目管理部' },
+          },
+        ]),
+      },
+    };
+    const service = new UsersService(prisma as never);
+
+    await expect(
+      service.getDirectory(
+        {
+          q: '  张三  ',
+          take: 50,
+          cursor: 'user-1',
+        },
+        projectManager,
+      ),
+    ).resolves.toEqual([
+      {
+        id: 'user-2',
+        name: '张三',
+        departmentId: 'dept-pmo',
+        departmentName: '项目管理部',
+      },
+    ]);
+
+    expect(prisma.user.findMany).toHaveBeenCalledWith({
+      where: {
+        status: UserStatus.ACTIVE,
+        name: {
+          contains: '张三',
+          mode: 'insensitive',
+        },
+      },
+      select: {
+        id: true,
+        name: true,
+        departmentId: true,
+        department: {
+          select: {
+            name: true,
+          },
+        },
+      },
+      orderBy: [{ name: 'asc' }, { id: 'asc' }],
+      take: 50,
+      cursor: { id: 'user-1' },
+      skip: 1,
+    });
+
+    const response = await service.getDirectory({}, projectManager);
+    expect(response[0]).not.toHaveProperty('username');
+    expect(response[0]).not.toHaveProperty('email');
+    expect(response[0]).not.toHaveProperty('roleCodes');
+  });
+
+  it('limits a project directory to active members and the project owner after enforcing actor scope', async () => {
+    const prisma = {
+      project: {
+        findUnique: vi.fn().mockResolvedValue({
+          id: 'project-1',
+          ownerUserId: 'owner-1',
+          owningDepartmentId: 'dept-pmo',
+          members: [{ id: 'membership-1' }],
+        }),
+      },
+      user: {
+        findMany: vi.fn().mockResolvedValue([]),
+      },
+    };
+    const service = new UsersService(prisma as never);
+
+    await expect(
+      service.getDirectory({ projectId: 'project-1' }, viewer),
+    ).resolves.toEqual([]);
+
+    expect(prisma.project.findUnique).toHaveBeenCalledWith({
+      where: { id: 'project-1' },
+      select: {
+        id: true,
+        ownerUserId: true,
+        owningDepartmentId: true,
+        members: {
+          where: { userId: 'viewer-1' },
+          select: { id: true },
+          take: 1,
+        },
+      },
+    });
+    expect(prisma.user.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          status: UserStatus.ACTIVE,
+          OR: [
+            { projectMembers: { some: { projectId: 'project-1' } } },
+            { ownedProjects: { some: { id: 'project-1' } } },
+          ],
+        },
+        take: 50,
+      }),
+    );
+  });
+
+  it('does not let project.read enumerate members outside the actor project scope', async () => {
+    const prisma = {
+      project: {
+        findUnique: vi.fn().mockResolvedValue({
+          id: 'project-1',
+          ownerUserId: 'owner-1',
+          owningDepartmentId: 'other-dept',
+          members: [],
+        }),
+      },
+      user: {
+        findMany: vi.fn(),
+      },
+    };
+    const service = new UsersService(prisma as never);
+
+    await expect(
+      service.getDirectory({ projectId: 'project-1' }, viewer),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(prisma.user.findMany).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { q: 'x'.repeat(81) },
+    { take: 51 },
+    { take: 0 },
+    { cursor: 'x'.repeat(65) },
+    { projectId: 'x'.repeat(65) },
+  ] as const)('fails closed on an invalid bounded directory query (%s)', async (query) => {
+    const prisma = {
+      user: {
+        findMany: vi.fn(),
+      },
+    };
+    const service = new UsersService(prisma as never);
+
+    await expect(
+      service.getDirectory(query, projectManager),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(prisma.user.findMany).not.toHaveBeenCalled();
+  });
 });

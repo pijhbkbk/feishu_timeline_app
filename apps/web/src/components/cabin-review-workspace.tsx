@@ -130,28 +130,14 @@ export function CabinReviewWorkspace({
     try {
       const [workspaceResponse, users] = await Promise.all([
         fetchCabinReviewWorkspace(projectId),
-        fetchCabinReviewPageOptions(),
+        fetchCabinReviewPageOptions(projectId),
       ]);
 
       if (requestId !== requestIdRef.current) {
         return;
       }
 
-      const availableUsers =
-        user && !users.some((item) => item.id === user.id)
-          ? [
-              {
-                id: user.id,
-                username: user.username,
-                name: user.name,
-                email: user.email,
-                departmentId: user.departmentId,
-                departmentName: user.departmentName,
-                roleCodes: user.roleCodes,
-              },
-              ...users,
-            ]
-          : users;
+      const availableUsers = users;
       setWorkspace(workspaceResponse);
       setReviewerOptions(availableUsers);
       setForm((current) => ({

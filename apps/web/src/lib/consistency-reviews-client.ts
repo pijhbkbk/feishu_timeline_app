@@ -171,8 +171,8 @@ export function rejectConsistencyReview(projectId: string, reviewId: string) {
   );
 }
 
-export function fetchConsistencyReviewPageOptions() {
-  return fetchUserDirectory();
+export function fetchConsistencyReviewPageOptions(projectId: string) {
+  return fetchUserDirectory({ projectId });
 }
 
 export function validateConsistencyReviewForm(input: ConsistencyReviewFormInput) {

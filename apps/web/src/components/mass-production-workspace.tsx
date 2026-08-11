@@ -104,7 +104,7 @@ export function MassProductionWorkspace({
     try {
       const [nextWorkspace, nextOwners] = await Promise.all([
         fetchMassProductionWorkspace(projectId),
-        fetchMassProductionPageOptions(),
+        fetchMassProductionPageOptions(projectId),
       ]);
 
       if (requestId !== requestIdRef.current) {

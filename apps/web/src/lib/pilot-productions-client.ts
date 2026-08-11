@@ -349,8 +349,8 @@ export async function completeTrialProductionTask(projectId: string) {
   );
 }
 
-export async function fetchPilotProductionPageOptions() {
-  return fetchUserDirectory();
+export async function fetchPilotProductionPageOptions(projectId: string) {
+  return fetchUserDirectory({ projectId });
 }
 
 export function getDefaultProductionOwnerId(

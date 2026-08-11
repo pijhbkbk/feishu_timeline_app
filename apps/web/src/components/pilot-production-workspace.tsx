@@ -179,7 +179,7 @@ export function PilotProductionWorkspace({
       const [nextFirstPlanWorkspace, nextTrialWorkspace, nextUsers] = await Promise.all([
         fetchFirstProductionPlanWorkspace(projectId),
         fetchTrialProductionWorkspace(projectId),
-        fetchPilotProductionPageOptions(),
+        fetchPilotProductionPageOptions(projectId),
       ]);
 
       if (requestId !== requestIdRef.current) {

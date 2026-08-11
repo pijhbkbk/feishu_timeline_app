@@ -187,8 +187,8 @@ export function rejectCabinReview(projectId: string, reviewId: string) {
   );
 }
 
-export function fetchCabinReviewPageOptions() {
-  return fetchUserDirectory();
+export function fetchCabinReviewPageOptions(projectId: string) {
+  return fetchUserDirectory({ projectId });
 }
 
 export function validateCabinReviewForm(input: CabinReviewFormInput) {

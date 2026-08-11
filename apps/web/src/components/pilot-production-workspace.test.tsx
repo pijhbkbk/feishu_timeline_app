@@ -101,12 +101,9 @@ describe('PilotProductionWorkspace', () => {
         ownerOptions={[
           {
             id: 'user-1',
-            username: 'process',
             name: '工艺工程师',
-            email: null,
             departmentId: null,
             departmentName: null,
-            roleCodes: ['process_engineer'],
           },
         ]}
         disabled={false}

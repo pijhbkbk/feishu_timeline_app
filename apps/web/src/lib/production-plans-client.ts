@@ -142,8 +142,8 @@ export function completeSchedulePlanTask(projectId: string) {
   );
 }
 
-export function fetchSchedulePlanPageOptions() {
-  return fetchUserDirectory();
+export function fetchSchedulePlanPageOptions(projectId: string) {
+  return fetchUserDirectory({ projectId });
 }
 
 export function getDefaultSchedulePlanOwnerId(

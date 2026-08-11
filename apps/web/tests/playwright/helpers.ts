@@ -93,7 +93,10 @@ export async function completePilotProductionByApi(
   projectId: string,
   marker = 'E2E',
 ) {
-  const users = await apiJson<Array<{ id: string }>>(request, '/users/directory');
+  const users = await apiJson<Array<{ id: string }>>(
+    request,
+    `/users/directory?projectId=${encodeURIComponent(projectId)}&take=50`,
+  );
   const ownerId = users[0]?.id;
 
   if (!ownerId) {
@@ -221,7 +224,10 @@ export async function completeAllMonthlyReviewsByApi(
       status: string;
     }>;
   }>(request, `/workflows/projects/${projectId}/monthly-reviews`);
-  const users = await apiJson<Array<{ id: string }>>(request, '/users/directory');
+  const users = await apiJson<Array<{ id: string }>>(
+    request,
+    `/users/directory?projectId=${encodeURIComponent(projectId)}&take=50`,
+  );
   const reviewerId = users[0]?.id;
 
   if (!reviewerId) {

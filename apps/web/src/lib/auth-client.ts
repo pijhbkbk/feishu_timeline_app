@@ -21,6 +21,7 @@ export type SessionUser = {
   isSystemAdmin: boolean;
   authSource: 'mock' | 'feishu';
   roleCodes: FrontendRoleCode[];
+  permissionCodes?: string[];
 };
 
 export type SessionResponse = {
