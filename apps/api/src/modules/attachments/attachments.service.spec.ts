@@ -3,6 +3,7 @@ import {
   AttachmentTargetType,
   AuditTargetType,
 } from '@prisma/client';
+import { ConflictException } from '@nestjs/common';
 import { PassThrough } from 'node:stream';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -28,6 +29,14 @@ const DOMAIN_GOVERNED_ATTACHMENT_TARGETS = [
   [AttachmentTargetType.REVIEW_RECORD, 'review-1'],
   [AttachmentTargetType.PERFORMANCE_TEST, 'performance-test-1'],
 ] as const;
+
+function createDeferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((resolver) => {
+    resolve = resolver;
+  });
+  return { promise, resolve };
+}
 
 function createAttachmentRecord(overrides: Record<string, unknown> = {}) {
   return {
@@ -429,16 +438,18 @@ describe('AttachmentsService', () => {
     prisma.attachment.findFirst.mockResolvedValue(replacement);
     tx.attachment.create.mockResolvedValue(pending);
     tx.attachment.update.mockResolvedValue(clean);
-    tx.reviewRecord.findUnique
-      .mockResolvedValueOnce({ attachmentId: 'attachment-old' })
-      .mockResolvedValueOnce({ attachmentId: null });
-
     await service.createStoredAttachment({
       projectId: 'project-1',
       targetType: AttachmentTargetType.REVIEW_RECORD,
       targetId: 'review-1',
       uploadedById: actor.id,
       replacesAttachmentId: 'attachment-old',
+      finalizeDomainAttachment: async (executor, context) => {
+        await executor.reviewRecord.update({
+          where: { id: 'review-1' },
+          data: { attachmentId: context.attachmentId },
+        });
+      },
       file: {
         originalname: 'new.pdf',
         mimetype: 'application/pdf',
@@ -447,11 +458,8 @@ describe('AttachmentsService', () => {
       },
     });
 
-    expect(tx.reviewRecord.update).toHaveBeenNthCalledWith(1, {
-      where: { id: 'review-1' },
-      data: { attachmentId: null },
-    });
-    expect(tx.reviewRecord.update).toHaveBeenNthCalledWith(2, {
+    expect(tx.reviewRecord.update).toHaveBeenCalledOnce();
+    expect(tx.reviewRecord.update).toHaveBeenCalledWith({
       where: { id: 'review-1' },
       data: { attachmentId: 'attachment-new' },
     });
@@ -663,6 +671,232 @@ describe('AttachmentsService', () => {
         }),
       }),
     );
+  });
+
+  it.each(DOMAIN_GOVERNED_ATTACHMENT_TARGETS)(
+    'fails closed before quarantine upload when %s has no final transaction hook',
+    async (targetType, targetId) => {
+      const { service, prisma, tx, objectStorageService } = createService();
+      prisma.project.findUnique.mockResolvedValue({
+        id: 'project-1',
+        code: 'PRJ-001',
+        name: '项目 A',
+        currentNodeCode: null,
+        plannedEndDate: null,
+      });
+      prisma.sample.findFirst.mockResolvedValue({ id: targetId });
+      prisma.workflowTask.findFirst.mockResolvedValue({ id: targetId });
+      prisma.reviewRecord.findFirst.mockResolvedValue({ id: targetId });
+      prisma.performanceTest.findFirst.mockResolvedValue({ id: targetId });
+      tx.attachment.create.mockResolvedValue(
+        createAttachmentRecord({
+          entityType: targetType,
+          entityId: targetId,
+          scanStatus: AttachmentScanStatus.PENDING_SCAN,
+          fileUrl: null,
+        }),
+      );
+      tx.attachment.update.mockResolvedValue(
+        createAttachmentRecord({ entityType: targetType, entityId: targetId }),
+      );
+
+      await expect(
+        service.createStoredAttachment({
+          projectId: 'project-1',
+          targetType,
+          targetId,
+          uploadedById: actor.id,
+          file: {
+            originalname: 'evidence.pdf',
+            mimetype: 'application/pdf',
+            size: 128,
+            buffer: Buffer.from('%PDF-1.4\n'),
+          },
+        }),
+      ).rejects.toMatchObject({
+        response: expect.objectContaining({
+          code: 'ATTACHMENT_DOMAIN_FINALIZE_HOOK_REQUIRED',
+        }),
+      });
+
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+      expect(objectStorageService.upload).not.toHaveBeenCalled();
+    },
+  );
+
+  it('runs a domain finalize hook before CLEAN state and formal direct-reference mutation', async () => {
+    const { service, prisma, tx } = createService();
+    const order: string[] = [];
+    prisma.project.findUnique.mockResolvedValue({
+      id: 'project-1',
+      code: 'PRJ-001',
+      name: '项目 A',
+      currentNodeCode: null,
+      plannedEndDate: null,
+    });
+    prisma.reviewRecord.findFirst.mockResolvedValue({ id: 'review-1' });
+    tx.attachment.create.mockResolvedValue(
+      createAttachmentRecord({
+        entityType: AttachmentTargetType.REVIEW_RECORD,
+        entityId: 'review-1',
+        scanStatus: AttachmentScanStatus.PENDING_SCAN,
+        fileUrl: null,
+      }),
+    );
+    tx.attachment.update.mockImplementation(async (args: { data: { scanStatus?: string } }) => {
+      if (args.data.scanStatus === AttachmentScanStatus.CLEAN) {
+        order.push('clean');
+      }
+      return createAttachmentRecord({
+        entityType: AttachmentTargetType.REVIEW_RECORD,
+        entityId: 'review-1',
+      });
+    });
+
+    await service.createStoredAttachment({
+      projectId: 'project-1',
+      targetType: AttachmentTargetType.REVIEW_RECORD,
+      targetId: 'review-1',
+      uploadedById: actor.id,
+      finalizeDomainAttachment: vi.fn(async (_executor, context) => {
+        expect(context.attachmentId).toBe('attachment-1');
+        order.push('hook');
+      }),
+      file: {
+        originalname: 'evidence.pdf',
+        mimetype: 'application/pdf',
+        size: 128,
+        buffer: Buffer.from('%PDF-1.4\n'),
+      },
+    });
+
+    expect(order.slice(0, 2)).toEqual(['hook', 'clean']);
+  });
+
+  it('rejects a post-scan domain conflict without CLEAN state, direct FK mutation, replacement archive, or storage deletion', async () => {
+    const {
+      service,
+      prisma,
+      tx,
+      malwareScanner,
+      objectStorageService,
+      activityLogsService,
+    } = createService();
+    const scanStarted = createDeferred<void>();
+    const releaseScan = createDeferred<void>();
+    let domainState = 'DRAFT';
+    const replacement = createAttachmentRecord({
+      id: 'attachment-old',
+      entityType: AttachmentTargetType.REVIEW_RECORD,
+      entityId: 'review-1',
+    });
+    const pending = createAttachmentRecord({
+      id: 'attachment-new',
+      entityType: AttachmentTargetType.REVIEW_RECORD,
+      entityId: 'review-1',
+      storageKey: 'quarantine/project-1/review_record/review-1/new.pdf',
+      fileUrl: null,
+      scanStatus: AttachmentScanStatus.PENDING_SCAN,
+      replacesAttachmentId: replacement.id,
+      versionNo: 2,
+    });
+    const scanError = createAttachmentRecord({
+      ...pending,
+      scanStatus: AttachmentScanStatus.SCAN_ERROR,
+      scanResultSummary: 'DOMAIN_COMMIT_REJECTED',
+    });
+    prisma.project.findUnique.mockResolvedValue({
+      id: 'project-1',
+      code: 'PRJ-001',
+      name: '项目 A',
+      currentNodeCode: null,
+      plannedEndDate: null,
+    });
+    prisma.reviewRecord.findFirst.mockResolvedValue({ id: 'review-1' });
+    prisma.attachment.findFirst.mockResolvedValue(replacement);
+    tx.attachment.create.mockResolvedValue(pending);
+    tx.attachment.update.mockResolvedValue(scanError);
+    malwareScanner.scan.mockImplementation(async () => {
+      scanStarted.resolve();
+      await releaseScan.promise;
+      return {
+        verdict: 'CLEAN',
+        engine: 'test-scanner',
+        engineVersion: '1.0.0',
+        signatureVersion: 'test-signatures',
+        resultSummary: 'CLEAN',
+        scannedAt: new Date('2026-08-11T04:00:01.000Z'),
+      };
+    });
+
+    const upload = service.createStoredAttachment({
+      projectId: 'project-1',
+      targetType: AttachmentTargetType.REVIEW_RECORD,
+      targetId: 'review-1',
+      uploadedById: actor.id,
+      replacesAttachmentId: replacement.id,
+      finalizeDomainAttachment: vi.fn(async () => {
+        if (domainState !== 'DRAFT') {
+          throw new ConflictException({
+            code: 'ATTACHMENT_TARGET_STATE_CHANGED',
+            message: '扫描期间业务状态已变更。',
+          });
+        }
+      }),
+      file: {
+        originalname: 'replacement.pdf',
+        mimetype: 'application/pdf',
+        size: 128,
+        buffer: Buffer.from('%PDF-1.4\n'),
+      },
+    });
+
+    await scanStarted.promise;
+    domainState = 'SUBMITTED';
+    releaseScan.resolve();
+
+    await expect(upload).rejects.toMatchObject({
+      response: expect.objectContaining({
+        code: 'ATTACHMENT_TARGET_STATE_CHANGED',
+      }),
+    });
+    expect(tx.attachment.update).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ scanStatus: AttachmentScanStatus.CLEAN }),
+      }),
+    );
+    expect(tx.attachment.update).not.toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: replacement.id } }),
+    );
+    expect(tx.reviewRecord.update).not.toHaveBeenCalled();
+    expect(objectStorageService.markDeleted).not.toHaveBeenCalled();
+    expect(objectStorageService.purge).toHaveBeenCalledWith(
+      expect.objectContaining({ storageKey: expect.not.stringContaining('quarantine/') }),
+    );
+    expect(tx.attachment.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: pending.id },
+        data: expect.objectContaining({
+          scanStatus: AttachmentScanStatus.SCAN_ERROR,
+          fileUrl: null,
+          scanResultSummary: 'DOMAIN_COMMIT_REJECTED',
+        }),
+      }),
+    );
+    expect(activityLogsService.createWithExecutor).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ action: 'ATTACHMENT_DOMAIN_COMMIT_REJECTED' }),
+    );
+    const forbiddenActions = new Set([
+      'ATTACHMENT_SCAN_CLEAN',
+      'ATTACHMENT_UPLOADED',
+      'ATTACHMENT_REPLACED',
+    ]);
+    expect(
+      activityLogsService.createWithExecutor.mock.calls.some(([, input]) =>
+        forbiddenActions.has((input as { action: string }).action),
+      ),
+    ).toBe(false);
   });
 
   it.each([

@@ -15,6 +15,7 @@ import {
   ProjectMemberType,
   TaskBlockerStatus,
   UserStatus,
+  WorkflowNodeCode,
   WorkflowTaskStatus,
 } from '@prisma/client';
 
@@ -775,6 +776,15 @@ export class R26ProgressMaterialService {
         summary: replacement
           ? `替换工序材料，生成 V${replacement.versionNo + 1}：${file.originalname}`
           : `上传工序材料：${file.originalname}`,
+        finalizeDomainAttachment: this.createMaterialAttachmentFinalizeHook({
+          projectId: task.projectId,
+          taskId: task.id,
+          nodeCode: task.nodeCode,
+          materialType: input.materialType,
+          taskVersion: input.taskVersion,
+          replacementId: replacement?.id ?? null,
+          replacementVersion: replacement?.versionNo ?? null,
+        }),
       });
       const result = {
         action,
@@ -816,6 +826,143 @@ export class R26ProgressMaterialService {
       actor,
       disposition,
     );
+  }
+
+  private createMaterialAttachmentFinalizeHook(input: {
+    projectId: string;
+    taskId: string;
+    nodeCode: WorkflowNodeCode;
+    materialType: string;
+    taskVersion: string;
+    replacementId: string | null;
+    replacementVersion: number | null;
+  }) {
+    return async (tx: Prisma.TransactionClient) => {
+      if (!(await this.lockWorkflowTaskRow(tx, input.projectId, input.taskId))) {
+        this.throwAttachmentTargetStateChanged();
+      }
+
+      const task = await tx.workflowTask.findUnique({
+        where: { id: input.taskId },
+        select: {
+          id: true,
+          projectId: true,
+          nodeCode: true,
+          status: true,
+          isActive: true,
+          updatedAt: true,
+        },
+      });
+      const expectedVersion = new Date(input.taskVersion);
+      if (
+        !task ||
+        task.projectId !== input.projectId ||
+        task.nodeCode !== input.nodeCode ||
+        !task.isActive ||
+        !EDITABLE_TASK_STATUSES.has(task.status) ||
+        task.updatedAt.getTime() !== expectedVersion.getTime()
+      ) {
+        this.throwAttachmentTargetStateChanged();
+      }
+
+      if (input.replacementId) {
+        if (
+          !(await this.lockAttachmentRow(
+            tx,
+            input.projectId,
+            input.replacementId,
+          ))
+        ) {
+          this.throwAttachmentTargetStateChanged();
+        }
+        const replacement = await tx.attachment.findFirst({
+          where: {
+            id: input.replacementId,
+            projectId: input.projectId,
+            entityType: AttachmentTargetType.WORKFLOW_TASK,
+            entityId: input.taskId,
+            materialType: input.materialType,
+            ...(input.replacementVersion !== null
+              ? { versionNo: input.replacementVersion }
+              : {}),
+            isDeleted: false,
+            scanStatus: AttachmentScanStatus.CLEAN,
+          },
+          select: { id: true },
+        });
+        if (!replacement) {
+          this.throwAttachmentTargetStateChanged();
+        }
+      }
+
+      const activeMaterial = await tx.attachment.findFirst({
+        where: {
+          projectId: input.projectId,
+          entityType: AttachmentTargetType.WORKFLOW_TASK,
+          entityId: input.taskId,
+          materialType: input.materialType,
+          isDeleted: false,
+          scanStatus: AttachmentScanStatus.CLEAN,
+        },
+        select: { id: true },
+      });
+      if ((activeMaterial?.id ?? null) !== input.replacementId) {
+        this.throwAttachmentTargetStateChanged();
+      }
+
+      const nextTaskVersion = new Date(
+        Math.max(Date.now(), expectedVersion.getTime() + 1),
+      );
+      const updated = await tx.workflowTask.updateMany({
+        where: {
+          id: input.taskId,
+          projectId: input.projectId,
+          nodeCode: input.nodeCode,
+          isActive: true,
+          status: { in: [...EDITABLE_TASK_STATUSES] },
+          updatedAt: expectedVersion,
+        },
+        data: { updatedAt: nextTaskVersion },
+      });
+      if (updated.count !== 1) {
+        this.throwAttachmentTargetStateChanged();
+      }
+    };
+  }
+
+  private async lockWorkflowTaskRow(
+    tx: Prisma.TransactionClient,
+    projectId: string,
+    taskId: string,
+  ) {
+    const rows = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+      SELECT "id"
+      FROM "workflow_tasks"
+      WHERE "id" = ${taskId} AND "projectId" = ${projectId}
+      FOR UPDATE
+    `);
+    return rows.length === 1;
+  }
+
+  private async lockAttachmentRow(
+    tx: Prisma.TransactionClient,
+    projectId: string,
+    attachmentId: string,
+  ) {
+    const rows = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+      SELECT "id"
+      FROM "attachments"
+      WHERE "id" = ${attachmentId} AND "projectId" = ${projectId}
+      FOR UPDATE
+    `);
+    return rows.length === 1;
+  }
+
+  private throwAttachmentTargetStateChanged(): never {
+    throw new ConflictException({
+      code: 'ATTACHMENT_TARGET_STATE_CHANGED',
+      message: '附件扫描期间工序或材料状态已变更，请刷新后重试。',
+    });
   }
 
   private async loadTaskOrThrow(

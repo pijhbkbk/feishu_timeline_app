@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   Logger,
@@ -59,6 +60,12 @@ type CreateStoredAttachmentInput = {
   summary?: string;
   materialType?: string | null;
   replacesAttachmentId?: string | null;
+  finalizeDomainAttachment?: (
+    tx: Prisma.TransactionClient,
+    context: {
+      attachmentId: string;
+    },
+  ) => Promise<void>;
 };
 
 type AttachmentListFilters = {
@@ -493,6 +500,7 @@ export class AttachmentsService {
 
   async createStoredAttachment(input: CreateStoredAttachmentInput) {
     this.assertFile(input.file);
+    this.assertDomainFinalizeHookPresent(input);
     await this.getProjectOrThrow(this.prisma, input.projectId);
     await this.assertEntityReference(this.prisma, input.projectId, input.targetType, input.targetId);
     const replacement = input.replacesAttachmentId
@@ -651,6 +659,10 @@ export class AttachmentsService {
     }
 
     const attachment = await this.prisma.$transaction(async (tx) => {
+      await input.finalizeDomainAttachment?.(tx, {
+        attachmentId: pendingAttachment.id,
+      });
+
       const updated = await tx.attachment.update({
         where: { id: pendingAttachment.id },
         data: {
@@ -666,21 +678,23 @@ export class AttachmentsService {
         include: ATTACHMENT_DETAIL_INCLUDE,
       });
 
-      if (replacement) {
-        await this.clearDirectEntityReferenceIfNeeded(
+      if (!DOMAIN_GOVERNED_ATTACHMENT_TARGET_TYPES.has(input.targetType)) {
+        if (replacement) {
+          await this.clearDirectEntityReferenceIfNeeded(
+            tx,
+            replacement.id,
+            replacement.entityType,
+            replacement.entityId,
+          );
+        }
+
+        await this.syncDirectEntityReferenceOnBind(
           tx,
-          replacement.id,
-          replacement.entityType,
-          replacement.entityId,
+          updated.id,
+          updated.entityType,
+          updated.entityId,
         );
       }
-
-      await this.syncDirectEntityReferenceOnBind(
-        tx,
-        updated.id,
-        updated.entityType,
-        updated.entityId,
-      );
 
       if (replacement) {
         await tx.attachment.update({
@@ -731,7 +745,17 @@ export class AttachmentsService {
       }
 
       return updated;
-    }).catch(async () => {
+    }).catch(async (error: unknown) => {
+      if (this.isAttachmentTargetStateChanged(error)) {
+        await this.recordDomainCommitRejectionAndPurgeClean(
+          pendingAttachment,
+          input,
+          scanResult,
+          cleanStorageKey,
+        );
+        throw error;
+      }
+
       let storageCompensationSummary = 'CLEAN_COMMIT_ERROR_QUARANTINE_RESTORED';
 
       try {
@@ -1028,6 +1052,36 @@ export class AttachmentsService {
       message:
         '该类附件由对应业务流程管理，请前往对应领域工作区操作。',
     });
+  }
+
+  private assertDomainFinalizeHookPresent(input: CreateStoredAttachmentInput) {
+    if (
+      !DOMAIN_GOVERNED_ATTACHMENT_TARGET_TYPES.has(input.targetType) ||
+      input.finalizeDomainAttachment
+    ) {
+      return;
+    }
+
+    throw new ServiceUnavailableException({
+      code: 'ATTACHMENT_DOMAIN_FINALIZE_HOOK_REQUIRED',
+      message: '正式业务附件缺少领域终态校验，已拒绝写入。',
+    });
+  }
+
+  private isAttachmentTargetStateChanged(
+    error: unknown,
+  ): error is ConflictException {
+    if (!(error instanceof ConflictException)) {
+      return false;
+    }
+
+    const response = error.getResponse();
+    return (
+      typeof response === 'object' &&
+      response !== null &&
+      'code' in response &&
+      response.code === 'ATTACHMENT_TARGET_STATE_CHANGED'
+    );
   }
 
   private assertFile(file: UploadedBinaryFile | undefined) {
@@ -1569,6 +1623,59 @@ export class AttachmentsService {
         afterData: this.toAttachmentAuditSnapshot(updated),
       });
     });
+  }
+
+  private async recordDomainCommitRejectionAndPurgeClean(
+    attachment: AttachmentRecordLike,
+    input: CreateStoredAttachmentInput,
+    scanResult: MalwareScanResult,
+    cleanStorageKey: string,
+  ) {
+    const [recordResult, purgeResult] = await Promise.allSettled([
+      this.prisma.$transaction(async (tx) => {
+        const updated = await tx.attachment.update({
+          where: { id: attachment.id },
+          data: {
+            fileUrl: null,
+            scanStatus: AttachmentScanStatus.SCAN_ERROR,
+            scannerEngine: scanResult.engine,
+            scannerVersion: scanResult.engineVersion,
+            scannerSignatureVersion: scanResult.signatureVersion,
+            scanResultSummary: 'DOMAIN_COMMIT_REJECTED',
+            scannedAt: scanResult.scannedAt,
+          },
+          include: ATTACHMENT_DETAIL_INCLUDE,
+        });
+
+        await this.activityLogsService.createWithExecutor(tx, {
+          projectId: input.projectId,
+          actorUserId: input.uploadedById,
+          targetType: AuditTargetType.ATTACHMENT,
+          targetId: attachment.id,
+          action: 'ATTACHMENT_DOMAIN_COMMIT_REJECTED',
+          nodeCode: input.nodeCode ?? null,
+          summary: '附件扫描期间业务状态已变更，正式绑定已拒绝。',
+          beforeData: this.toAttachmentAuditSnapshot(attachment),
+          afterData: this.toAttachmentAuditSnapshot(updated),
+        });
+      }),
+      this.objectStorageService.purge({
+        bucket: this.bucket,
+        storageKey: cleanStorageKey,
+      }),
+    ]);
+
+    if (recordResult.status === 'rejected') {
+      this.logger.error(
+        'Attachment domain rejection metadata could not be persisted; reconciliation is required.',
+      );
+    }
+
+    if (purgeResult.status === 'rejected') {
+      this.logger.error(
+        'Attachment clean-object purge failed after domain rejection; reconciliation is required.',
+      );
+    }
   }
 
   private async recordScanFailureAndPurgeQuarantine(

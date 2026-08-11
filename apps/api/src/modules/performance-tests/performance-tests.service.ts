@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -223,16 +224,16 @@ export class PerformanceTestsService {
       uploadedById: actor.id,
       nodeCode: WorkflowNodeCode.PERFORMANCE_TEST,
       summary: `上传性能试验报告 ${testRecord.testCode}`,
+      replacesAttachmentId: testRecord.reportAttachmentId,
+      finalizeDomainAttachment: this.createReportAttachmentFinalizeHook({
+        projectId,
+        testId,
+        workflowTaskId: context.activeTask!.id,
+        expectedAttachmentId: testRecord.reportAttachmentId,
+      }),
     });
 
     await this.prisma.$transaction(async (tx) => {
-      await tx.performanceTest.update({
-        where: { id: testId },
-        data: {
-          reportAttachmentId: attachment.id,
-        },
-      });
-
       await this.activityLogsService.createWithExecutor(tx, {
         projectId,
         actorUserId: actor.id,
@@ -554,6 +555,149 @@ export class PerformanceTestsService {
     }
 
     return testRecord;
+  }
+
+  private createReportAttachmentFinalizeHook(input: {
+    projectId: string;
+    testId: string;
+    workflowTaskId: string;
+    expectedAttachmentId: string | null;
+  }) {
+    return async (
+      tx: Prisma.TransactionClient,
+      context: { attachmentId: string },
+    ) => {
+      if (
+        !(await this.lockPerformanceTestRow(tx, input.projectId, input.testId))
+      ) {
+        this.throwAttachmentTargetStateChanged();
+      }
+      const lockedTest = await tx.performanceTest.findFirst({
+        where: { id: input.testId, projectId: input.projectId },
+        select: {
+          id: true,
+          status: true,
+          reportAttachmentId: true,
+        },
+      });
+      if (
+        !lockedTest ||
+        lockedTest.status !== PerformanceTestStatus.DRAFT ||
+        lockedTest.reportAttachmentId !== input.expectedAttachmentId
+      ) {
+        this.throwAttachmentTargetStateChanged();
+      }
+
+      if (
+        !(await this.lockWorkflowTaskRow(
+          tx,
+          input.projectId,
+          input.workflowTaskId,
+        ))
+      ) {
+        this.throwAttachmentTargetStateChanged();
+      }
+      const activeTask = await tx.workflowTask.findFirst({
+        where: {
+          id: input.workflowTaskId,
+          projectId: input.projectId,
+          nodeCode: WorkflowNodeCode.PERFORMANCE_TEST,
+          isActive: true,
+        },
+        select: { id: true },
+      });
+      if (!activeTask) {
+        this.throwAttachmentTargetStateChanged();
+      }
+
+      if (input.expectedAttachmentId) {
+        if (
+          !(await this.lockAttachmentRow(
+            tx,
+            input.projectId,
+            input.expectedAttachmentId,
+          ))
+        ) {
+          this.throwAttachmentTargetStateChanged();
+        }
+        const replacement = await tx.attachment.findFirst({
+          where: {
+            id: input.expectedAttachmentId,
+            projectId: input.projectId,
+            entityType: AttachmentTargetType.PERFORMANCE_TEST,
+            entityId: input.testId,
+            isDeleted: false,
+            scanStatus: AttachmentScanStatus.CLEAN,
+          },
+          select: { id: true },
+        });
+        if (!replacement) {
+          this.throwAttachmentTargetStateChanged();
+        }
+      }
+
+      const updated = await tx.performanceTest.updateMany({
+        where: {
+          id: input.testId,
+          projectId: input.projectId,
+          status: PerformanceTestStatus.DRAFT,
+          reportAttachmentId: input.expectedAttachmentId,
+        },
+        data: { reportAttachmentId: context.attachmentId },
+      });
+      if (updated.count !== 1) {
+        this.throwAttachmentTargetStateChanged();
+      }
+    };
+  }
+
+  private async lockPerformanceTestRow(
+    tx: Prisma.TransactionClient,
+    projectId: string,
+    testId: string,
+  ) {
+    const rows = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+      SELECT "id"
+      FROM "performance_tests"
+      WHERE "id" = ${testId} AND "projectId" = ${projectId}
+      FOR UPDATE
+    `);
+    return rows.length === 1;
+  }
+
+  private async lockWorkflowTaskRow(
+    tx: Prisma.TransactionClient,
+    projectId: string,
+    taskId: string,
+  ) {
+    const rows = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+      SELECT "id"
+      FROM "workflow_tasks"
+      WHERE "id" = ${taskId} AND "projectId" = ${projectId}
+      FOR UPDATE
+    `);
+    return rows.length === 1;
+  }
+
+  private async lockAttachmentRow(
+    tx: Prisma.TransactionClient,
+    projectId: string,
+    attachmentId: string,
+  ) {
+    const rows = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+      SELECT "id"
+      FROM "attachments"
+      WHERE "id" = ${attachmentId} AND "projectId" = ${projectId}
+      FOR UPDATE
+    `);
+    return rows.length === 1;
+  }
+
+  private throwAttachmentTargetStateChanged(): never {
+    throw new ConflictException({
+      code: 'ATTACHMENT_TARGET_STATE_CHANGED',
+      message: '附件扫描期间性能试验或流程状态已变更，请刷新后重试。',
+    });
   }
 
   private async getActiveTask(db: PerformanceTestsDbClient, projectId: string) {

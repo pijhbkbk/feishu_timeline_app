@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -12,7 +13,7 @@ import {
   SampleType,
   WorkflowAction,
   WorkflowNodeCode,
-  type Prisma,
+  Prisma,
 } from '@prisma/client';
 
 import { PrismaService } from '../../infra/prisma/prisma.service';
@@ -126,6 +127,25 @@ export class SamplesService {
       }
 
       if (input.createNewVersion) {
+        const currentVersion = existingVersions.find((version) => version.isCurrent);
+        if (!currentVersion) {
+          throw new BadRequestException('当前样板版本不存在，不能创建新版本。');
+        }
+        await this.lockSampleRow(tx, projectId, currentVersion.id);
+        const lockedCurrentVersion = await this.getSampleOrThrow(
+          tx,
+          projectId,
+          currentVersion.id,
+        );
+        if (
+          lockedCurrentVersion.sampleNo !== input.sampleNo ||
+          !lockedCurrentVersion.isCurrent
+        ) {
+          throw new BadRequestException('当前样板版本已变化，请刷新后重试。');
+        }
+        this.assertSampleWritable(lockedCurrentVersion);
+        await this.lockActiveConfirmationTaskOrThrow(tx, projectId);
+
         await tx.sample.updateMany({
           where: {
             projectId,
@@ -136,6 +156,8 @@ export class SamplesService {
             isCurrent: false,
           },
         });
+      } else {
+        await this.lockActiveConfirmationTaskOrThrow(tx, projectId);
       }
 
       const createdSample = await tx.sample.create({
@@ -178,7 +200,10 @@ export class SamplesService {
     const input = this.parseSampleUpdateInput(rawInput);
 
     return this.prisma.$transaction(async (tx) => {
+      await this.lockSampleRow(tx, projectId, sampleId);
       const sample = await this.getSampleOrThrow(tx, projectId, sampleId);
+      this.assertSampleWritable(sample);
+      await this.lockActiveConfirmationTaskOrThrow(tx, projectId);
 
       const updatedSample = await tx.sample.update({
         where: { id: sampleId },
@@ -222,6 +247,11 @@ export class SamplesService {
   ) {
     await this.assertProjectAccess(projectId, actor, 'attachment.manage');
     const sample = await this.getSampleOrThrow(this.prisma, projectId, sampleId);
+    this.assertSampleWritable(sample);
+    const activeTask = await this.getActiveConfirmationTaskOrThrow(
+      this.prisma,
+      projectId,
+    );
 
     if (!file) {
       throw new BadRequestException('请选择要上传的样板图片。');
@@ -239,6 +269,33 @@ export class SamplesService {
       uploadedById: actor.id,
       nodeCode: WorkflowNodeCode.SAMPLE_COLOR_CONFIRMATION,
       summary: `上传样板图片 ${sample.sampleNo} V${sample.versionNo}`,
+      finalizeDomainAttachment: async (tx) => {
+        if (!(await this.lockSampleRow(tx, projectId, sampleId))) {
+          this.throwAttachmentTargetStateChanged();
+        }
+        const lockedSample = await tx.sample.findFirst({
+          where: { id: sampleId, projectId },
+        });
+        if (!lockedSample || !this.isSampleWritable(lockedSample)) {
+          this.throwAttachmentTargetStateChanged();
+        }
+
+        if (!(await this.lockWorkflowTaskRow(tx, projectId, activeTask.id))) {
+          this.throwAttachmentTargetStateChanged();
+        }
+        const lockedTask = await tx.workflowTask.findFirst({
+          where: {
+            id: activeTask.id,
+            projectId,
+            nodeCode: WorkflowNodeCode.SAMPLE_COLOR_CONFIRMATION,
+            isActive: true,
+          },
+          select: { id: true },
+        });
+        if (!lockedTask) {
+          this.throwAttachmentTargetStateChanged();
+        }
+      },
     });
 
     return {
@@ -640,6 +697,92 @@ export class SamplesService {
     }
 
     return activeTask;
+  }
+
+  private async lockActiveConfirmationTaskOrThrow(
+    tx: Prisma.TransactionClient,
+    projectId: string,
+  ) {
+    const candidate = await this.getActiveConfirmationTask(tx, projectId);
+    if (!candidate) {
+      throw new BadRequestException('当前项目没有活跃的样板颜色确认节点。');
+    }
+    if (!(await this.lockWorkflowTaskRow(tx, projectId, candidate.id))) {
+      throw new BadRequestException('当前项目没有活跃的样板颜色确认节点。');
+    }
+
+    const activeTask = await tx.workflowTask.findFirst({
+      where: {
+        id: candidate.id,
+        projectId,
+        nodeCode: WorkflowNodeCode.SAMPLE_COLOR_CONFIRMATION,
+        isActive: true,
+      },
+      include: {
+        assigneeUser: true,
+        assigneeDepartment: true,
+        workflowInstance: true,
+      },
+    });
+    if (!activeTask) {
+      throw new BadRequestException('当前项目没有活跃的样板颜色确认节点。');
+    }
+
+    return activeTask;
+  }
+
+  private async lockSampleRow(
+    tx: Prisma.TransactionClient,
+    projectId: string,
+    sampleId: string,
+  ) {
+    const rows = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+      SELECT "id"
+      FROM "samples"
+      WHERE "id" = ${sampleId} AND "projectId" = ${projectId}
+      FOR UPDATE
+    `);
+    return rows.length === 1;
+  }
+
+  private async lockWorkflowTaskRow(
+    tx: Prisma.TransactionClient,
+    projectId: string,
+    taskId: string,
+  ) {
+    const rows = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+      SELECT "id"
+      FROM "workflow_tasks"
+      WHERE "id" = ${taskId} AND "projectId" = ${projectId}
+      FOR UPDATE
+    `);
+    return rows.length === 1;
+  }
+
+  private isSampleWritable(
+    sample: Pick<SampleRecord, 'isCurrent' | 'status' | 'confirmedAt'>,
+  ) {
+    return (
+      sample.isCurrent &&
+      sample.confirmedAt === null &&
+      (sample.status === SampleStatus.DRAFT ||
+        sample.status === SampleStatus.IN_PREPARATION)
+    );
+  }
+
+  private assertSampleWritable(
+    sample: Pick<SampleRecord, 'isCurrent' | 'status' | 'confirmedAt'>,
+  ) {
+    if (!this.isSampleWritable(sample)) {
+      throw new BadRequestException('当前样板版本不允许修改。');
+    }
+  }
+
+  private throwAttachmentTargetStateChanged(): never {
+    throw new ConflictException({
+      code: 'ATTACHMENT_TARGET_STATE_CHANGED',
+      message: '附件扫描期间样板或流程状态已变更，请刷新后重试。',
+    });
   }
 
   private toTaskSummary(task: ActiveTaskRecord) {

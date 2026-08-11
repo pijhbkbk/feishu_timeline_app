@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -16,7 +17,7 @@ import {
   WorkflowAction,
   WorkflowNodeCode,
   WorkflowTaskStatus,
-  type Prisma,
+  Prisma,
 } from '@prisma/client';
 
 import { PrismaService } from '../../infra/prisma/prisma.service';
@@ -239,16 +240,20 @@ export class ReviewsService {
       uploadedById: actor.id,
       nodeCode: WorkflowNodeCode.CAB_REVIEW,
       summary: `上传驾驶室评审附件 ${reviewId}`,
+      replacesAttachmentId: reviewRecord.attachmentId,
+      finalizeDomainAttachment: this.createReviewAttachmentFinalizeHook({
+        projectId,
+        reviewId,
+        reviewType: ReviewType.CAB_REVIEW,
+        workflowTaskId: context.activeTask!.id,
+        reviewerId: reviewRecord.reviewerId,
+        expectedAttachmentId: reviewRecord.attachmentId,
+        nodeCode: WorkflowNodeCode.CAB_REVIEW,
+        actor,
+      }),
     });
 
     await this.prisma.$transaction(async (tx) => {
-      await tx.reviewRecord.update({
-        where: { id: reviewId },
-        data: {
-          attachmentId: attachment.id,
-        },
-      });
-
       await this.activityLogsService.createWithExecutor(tx, {
         projectId,
         actorUserId: actor.id,
@@ -614,16 +619,20 @@ export class ReviewsService {
       uploadedById: actor.id,
       nodeCode: WorkflowNodeCode.COLOR_CONSISTENCY_REVIEW,
       summary: `上传颜色一致性评审附件 ${reviewId}`,
+      replacesAttachmentId: reviewRecord.attachmentId,
+      finalizeDomainAttachment: this.createReviewAttachmentFinalizeHook({
+        projectId,
+        reviewId,
+        reviewType: ReviewType.COLOR_CONSISTENCY_REVIEW,
+        workflowTaskId: context.activeTask!.id,
+        reviewerId: reviewRecord.reviewerId,
+        expectedAttachmentId: reviewRecord.attachmentId,
+        nodeCode: WorkflowNodeCode.COLOR_CONSISTENCY_REVIEW,
+        actor,
+      }),
     });
 
     await this.prisma.$transaction(async (tx) => {
-      await tx.reviewRecord.update({
-        where: { id: reviewId },
-        data: {
-          attachmentId: attachment.id,
-        },
-      });
-
       await this.activityLogsService.createWithExecutor(tx, {
         projectId,
         actorUserId: actor.id,
@@ -991,16 +1000,20 @@ export class ReviewsService {
       uploadedById: actor.id,
       nodeCode: WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW,
       summary: `上传目视色差评审附件 ${reviewId}`,
+      replacesAttachmentId: reviewRecord.attachmentId,
+      finalizeDomainAttachment: this.createReviewAttachmentFinalizeHook({
+        projectId,
+        reviewId,
+        reviewType: ReviewType.VISUAL_COLOR_DIFFERENCE_REVIEW,
+        workflowTaskId: context.activeTask!.id,
+        reviewerId: reviewRecord.reviewerId,
+        expectedAttachmentId: reviewRecord.attachmentId,
+        nodeCode: WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW,
+        actor,
+      }),
     });
 
     await this.prisma.$transaction(async (tx) => {
-      await tx.reviewRecord.update({
-        where: { id: reviewId },
-        data: {
-          attachmentId: attachment.id,
-        },
-      });
-
       await this.activityLogsService.createWithExecutor(tx, {
         projectId,
         actorUserId: actor.id,
@@ -1869,6 +1882,164 @@ export class ReviewsService {
     if (duplicatedReview) {
       throw new BadRequestException('当前月份下，该评审人已存在记录。');
     }
+  }
+
+  private createReviewAttachmentFinalizeHook(input: {
+    projectId: string;
+    reviewId: string;
+    reviewType: ReviewType;
+    workflowTaskId: string;
+    reviewerId: string | null;
+    expectedAttachmentId: string | null;
+    nodeCode: WorkflowNodeCode;
+    actor: AuthenticatedUser;
+  }) {
+    return async (
+      tx: Prisma.TransactionClient,
+      context: { attachmentId: string },
+    ) => {
+      if (!(await this.lockReviewRecordRow(tx, input.projectId, input.reviewId))) {
+        this.throwAttachmentTargetStateChanged();
+      }
+
+      const lockedReview = await tx.reviewRecord.findFirst({
+        where: {
+          id: input.reviewId,
+          projectId: input.projectId,
+          reviewType: input.reviewType,
+        },
+        select: {
+          id: true,
+          workflowTaskId: true,
+          reviewerId: true,
+          attachmentId: true,
+          submittedAt: true,
+        },
+      });
+      if (
+        !lockedReview ||
+        lockedReview.workflowTaskId !== input.workflowTaskId ||
+        lockedReview.reviewerId !== input.reviewerId ||
+        lockedReview.attachmentId !== input.expectedAttachmentId ||
+        lockedReview.submittedAt !== null
+      ) {
+        this.throwAttachmentTargetStateChanged();
+      }
+      this.assertActorCanManageReviewRecord(input.actor, lockedReview.reviewerId);
+
+      if (
+        !(await this.lockWorkflowTaskRow(
+          tx,
+          input.projectId,
+          input.workflowTaskId,
+        ))
+      ) {
+        this.throwAttachmentTargetStateChanged();
+      }
+      const activeTask = await tx.workflowTask.findFirst({
+        where: {
+          id: input.workflowTaskId,
+          projectId: input.projectId,
+          nodeCode: input.nodeCode,
+          isActive: true,
+        },
+        select: { id: true },
+      });
+      if (!activeTask) {
+        this.throwAttachmentTargetStateChanged();
+      }
+
+      if (input.expectedAttachmentId) {
+        if (
+          !(await this.lockAttachmentRow(
+            tx,
+            input.projectId,
+            input.expectedAttachmentId,
+          ))
+        ) {
+          this.throwAttachmentTargetStateChanged();
+        }
+        const replacement = await tx.attachment.findFirst({
+          where: {
+            id: input.expectedAttachmentId,
+            projectId: input.projectId,
+            entityType: AttachmentTargetType.REVIEW_RECORD,
+            entityId: input.reviewId,
+            isDeleted: false,
+            scanStatus: AttachmentScanStatus.CLEAN,
+          },
+          select: { id: true },
+        });
+        if (!replacement) {
+          this.throwAttachmentTargetStateChanged();
+        }
+      }
+
+      const updated = await tx.reviewRecord.updateMany({
+        where: {
+          id: input.reviewId,
+          projectId: input.projectId,
+          reviewType: input.reviewType,
+          workflowTaskId: input.workflowTaskId,
+          reviewerId: input.reviewerId,
+          submittedAt: null,
+          attachmentId: input.expectedAttachmentId,
+        },
+        data: { attachmentId: context.attachmentId },
+      });
+      if (updated.count !== 1) {
+        this.throwAttachmentTargetStateChanged();
+      }
+    };
+  }
+
+  private async lockReviewRecordRow(
+    tx: Prisma.TransactionClient,
+    projectId: string,
+    reviewId: string,
+  ) {
+    const rows = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+      SELECT "id"
+      FROM "review_records"
+      WHERE "id" = ${reviewId} AND "projectId" = ${projectId}
+      FOR UPDATE
+    `);
+    return rows.length === 1;
+  }
+
+  private async lockWorkflowTaskRow(
+    tx: Prisma.TransactionClient,
+    projectId: string,
+    taskId: string,
+  ) {
+    const rows = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+      SELECT "id"
+      FROM "workflow_tasks"
+      WHERE "id" = ${taskId} AND "projectId" = ${projectId}
+      FOR UPDATE
+    `);
+    return rows.length === 1;
+  }
+
+  private async lockAttachmentRow(
+    tx: Prisma.TransactionClient,
+    projectId: string,
+    attachmentId: string,
+  ) {
+    const rows = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+      SELECT "id"
+      FROM "attachments"
+      WHERE "id" = ${attachmentId} AND "projectId" = ${projectId}
+      FOR UPDATE
+    `);
+    return rows.length === 1;
+  }
+
+  private throwAttachmentTargetStateChanged(): never {
+    throw new ConflictException({
+      code: 'ATTACHMENT_TARGET_STATE_CHANGED',
+      message: '附件扫描期间评审或流程状态已变更，请刷新后重试。',
+    });
   }
 
   private assertCurrentTaskEditable(

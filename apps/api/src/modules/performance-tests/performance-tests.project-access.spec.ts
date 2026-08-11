@@ -116,9 +116,12 @@ describe('PerformanceTestsService project-scoped attachment access', () => {
       ),
     ).resolves.toEqual({ id: 'test-1' });
     expect(attachments.createStoredAttachment).toHaveBeenCalledOnce();
-    expect(tx.performanceTest.update).toHaveBeenCalledWith({
-      where: { id: 'test-1' },
-      data: { reportAttachmentId: 'attachment-1' },
-    });
+    expect(attachments.createStoredAttachment).toHaveBeenCalledWith(
+      expect.objectContaining({
+        replacesAttachmentId: undefined,
+        finalizeDomainAttachment: expect.any(Function),
+      }),
+    );
+    expect(tx.performanceTest.update).not.toHaveBeenCalled();
   });
 });

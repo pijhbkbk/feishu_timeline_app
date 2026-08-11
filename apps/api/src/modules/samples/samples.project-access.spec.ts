@@ -60,6 +60,17 @@ describe('SamplesService project-scoped attachment access', () => {
           projectId: 'project-1',
           sampleNo: 'S-001',
           versionNo: 1,
+          isCurrent: true,
+          status: 'DRAFT',
+          confirmedAt: null,
+        }),
+      },
+      workflowTask: {
+        findFirst: vi.fn().mockResolvedValue({
+          id: 'sample-task-1',
+          projectId: 'project-1',
+          nodeCode: 'SAMPLE_COLOR_CONFIRMATION',
+          isActive: true,
         }),
       },
     };
@@ -94,5 +105,10 @@ describe('SamplesService project-scoped attachment access', () => {
       attachment: { id: 'attachment-1' },
     });
     expect(attachments.createStoredAttachment).toHaveBeenCalledOnce();
+    expect(attachments.createStoredAttachment).toHaveBeenCalledWith(
+      expect.objectContaining({
+        finalizeDomainAttachment: expect.any(Function),
+      }),
+    );
   });
 });
