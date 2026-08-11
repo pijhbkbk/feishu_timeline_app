@@ -13,7 +13,9 @@ for arg in "$@"; do
     BACKUP_ROOT=*) BACKUP_ROOT="${arg#*=}" ;;
     RUN_RESTORE_DRILL=*) RUN_RESTORE_DRILL="${arg#*=}" ;;
     KEEP_DRILL_ARTIFACTS=*) KEEP_DRILL_ARTIFACTS="${arg#*=}" ;;
-    INSTANCE=*|PROJECT=*|ZONE=*) eval "$arg" ;;
+    INSTANCE=*) INSTANCE="${arg#*=}" ;;
+    PROJECT=*) PROJECT="${arg#*=}" ;;
+    ZONE=*) ZONE="${arg#*=}" ;;
     *)
       printf '[ERROR] Unsupported argument: %s\n' "$arg" >&2
       exit 1
@@ -23,59 +25,102 @@ done
 
 # shellcheck source=/dev/null
 . "$ROOT_DIR/scripts/deploy/gce-common.sh"
+: "$INSTANCE" "$PROJECT" "$ZONE"
+validate_gce_connection_parameters
+
+if [ "${#BACKUP_ROOT}" -gt 255 ] \
+  || [[ ! "$BACKUP_ROOT" =~ ^/[A-Za-z0-9._/-]+$ ]] \
+  || [[ "$BACKUP_ROOT" =~ (^|/)\.\.?(/|$) ]]; then
+  fail 'BACKUP_ROOT must be an absolute path without whitespace, control characters, or dot segments.'
+fi
+case "$RUN_RESTORE_DRILL" in
+  yes|no)
+    ;;
+  *)
+    fail 'RUN_RESTORE_DRILL must be yes or no.'
+    ;;
+esac
+case "$KEEP_DRILL_ARTIFACTS" in
+  yes|no)
+    ;;
+  *)
+    fail 'KEEP_DRILL_ARTIFACTS must be yes or no.'
+    ;;
+esac
 require_gcloud
 
 remote_script="$(mktemp)"
-cat >"$remote_script" <<EOF
+cleanup_remote_script() {
+  rm -f -- "$remote_script"
+}
+trap cleanup_remote_script EXIT
+
+cat >"$remote_script" <<'EOF'
 set -euo pipefail
 umask 077
 
-backup_root="${BACKUP_ROOT}"
-run_restore_drill="${RUN_RESTORE_DRILL}"
-keep_drill_artifacts="${KEEP_DRILL_ARTIFACTS}"
+backup_root="${1:?missing backup root}"
+run_restore_drill="${2:?missing restore-drill mode}"
+keep_drill_artifacts="${3:?missing artifact-retention mode}"
+
+if [ "${#backup_root}" -gt 255 ] \
+  || [[ ! "$backup_root" =~ ^/[A-Za-z0-9._/-]+$ ]] \
+  || [[ "$backup_root" =~ (^|/)\.\.?(/|$) ]]; then
+  printf '[ERROR] Invalid backup root.\n' >&2
+  exit 2
+fi
+case "$run_restore_drill:$keep_drill_artifacts" in
+  yes:yes|yes:no|no:yes|no:no)
+    ;;
+  *)
+    printf '[ERROR] Invalid restore-drill mode.\n' >&2
+    exit 2
+    ;;
+esac
 
 set -a
 . /opt/feishu_timeline_app/apps/api/.env.production
 set +a
 
-base_db_url="\${DATABASE_URL%%\\?*}"
-timestamp="\$(date -u +%Y%m%dT%H%M%SZ)"
-backup_dir="\${backup_root}/\${timestamp}"
-backup_file="\${backup_dir}/feishu-timeline.dump"
-plain_sql="\${backup_dir}/feishu-timeline.sql"
-rewritten_sql="\${backup_dir}/feishu-timeline.restore.sql"
-report_file="\${backup_dir}/restore-drill-report.txt"
-restore_schema="r12_restore_\$(date +%s)"
+base_db_url="${DATABASE_URL%%\?*}"
+timestamp="$(date -u +%Y%m%dT%H%M%SZ)"
+backup_dir="${backup_root}/${timestamp}"
+backup_file="${backup_dir}/feishu-timeline.dump"
+plain_sql="${backup_dir}/feishu-timeline.sql"
+rewritten_sql="${backup_dir}/feishu-timeline.restore.sql"
+report_file="${backup_dir}/restore-drill-report.txt"
+restore_schema="r12_restore_$(date +%s)"
 
-current_user="\$(id -un)"
-current_group="\$(id -gn)"
+current_user="$(id -un)"
+current_group="$(id -gn)"
 
-if ! mkdir -p "\$backup_root" 2>/dev/null; then
-  sudo install -d -m 0750 -o "\$current_user" -g "\$current_group" "\$backup_root"
+if ! mkdir -p "$backup_root" 2>/dev/null; then
+  sudo install -d -m 0750 -o "$current_user" -g "$current_group" "$backup_root"
 fi
 
-mkdir -p "\$backup_dir"
+mkdir -p "$backup_dir"
 
-pg_dump --format=custom --no-owner --file "\$backup_file" "\$base_db_url"
-sha256sum "\$backup_file" > "\${backup_file}.sha256"
+pg_dump --format=custom --no-owner --file "$backup_file" "$base_db_url"
+sha256sum "$backup_file" >"${backup_file}.sha256"
 
-printf 'backup_dir=%s\n' "\$backup_dir"
-printf 'backup_file=%s\n' "\$backup_file"
-printf 'backup_size=%s\n' "\$(du -h "\$backup_file" | awk '{print \$1}')"
+printf 'backup_dir=%s\n' "$backup_dir"
+printf 'backup_file=%s\n' "$backup_file"
+printf 'backup_size=%s\n' "$(du -h "$backup_file" | awk '{print $1}')"
 
-if [ "\$run_restore_drill" != "yes" ]; then
+if [ "$run_restore_drill" != "yes" ]; then
   exit 0
 fi
 
 cleanup_restore_schema() {
-  psql "\$base_db_url" -v ON_ERROR_STOP=1 -c "DROP SCHEMA IF EXISTS \\"\$restore_schema\\" CASCADE" >/dev/null 2>&1 || true
+  psql "$base_db_url" -v ON_ERROR_STOP=1 \
+    -c "DROP SCHEMA IF EXISTS \"$restore_schema\" CASCADE" >/dev/null 2>&1 || true
 }
 
 trap cleanup_restore_schema EXIT
 
-pg_restore --no-owner --file "\$plain_sql" "\$backup_file"
+pg_restore --no-owner --file "$plain_sql" "$backup_file"
 
-python3 - "\$plain_sql" "\$rewritten_sql" "\$restore_schema" <<'PY'
+python3 - "$plain_sql" "$rewritten_sql" "$restore_schema" <<'PY'
 from pathlib import Path
 import sys
 
@@ -99,45 +144,54 @@ for old, new in replacements:
 Path(target).write_text(source)
 PY
 
-psql "\$base_db_url" -v ON_ERROR_STOP=1 -c "DROP SCHEMA IF EXISTS \\"\$restore_schema\\" CASCADE"
-psql "\$base_db_url" -v ON_ERROR_STOP=1 -c "CREATE SCHEMA \\"\$restore_schema\\""
-psql "\$base_db_url" -v ON_ERROR_STOP=1 -f "\$rewritten_sql" >/dev/null
+psql "$base_db_url" -v ON_ERROR_STOP=1 -c "DROP SCHEMA IF EXISTS \"$restore_schema\" CASCADE"
+psql "$base_db_url" -v ON_ERROR_STOP=1 -c "CREATE SCHEMA \"$restore_schema\""
+psql "$base_db_url" -v ON_ERROR_STOP=1 -f "$rewritten_sql" >/dev/null
 
-public_tables="\$(psql "\$base_db_url" -Atqc "select count(*) from information_schema.tables where table_schema='public'")"
-restore_tables="\$(psql "\$base_db_url" -Atqc "select count(*) from information_schema.tables where table_schema='\$restore_schema'")"
-public_users="\$(psql "\$base_db_url" -Atqc "select count(*) from public.users")"
-restore_users="\$(psql "\$base_db_url" -Atqc "select count(*) from \\"\$restore_schema\\".users")"
-public_projects="\$(psql "\$base_db_url" -Atqc "select count(*) from public.projects")"
-restore_projects="\$(psql "\$base_db_url" -Atqc "select count(*) from \\"\$restore_schema\\".projects")"
-public_audit_logs="\$(psql "\$base_db_url" -Atqc "select count(*) from public.audit_logs")"
-restore_audit_logs="\$(psql "\$base_db_url" -Atqc "select count(*) from \\"\$restore_schema\\".audit_logs")"
+public_tables="$(psql "$base_db_url" -Atqc "select count(*) from information_schema.tables where table_schema='public'")"
+restore_tables="$(psql "$base_db_url" -Atqc "select count(*) from information_schema.tables where table_schema='$restore_schema'")"
+public_users="$(psql "$base_db_url" -Atqc "select count(*) from public.users")"
+restore_users="$(psql "$base_db_url" -Atqc "select count(*) from \"$restore_schema\".users")"
+public_projects="$(psql "$base_db_url" -Atqc "select count(*) from public.projects")"
+restore_projects="$(psql "$base_db_url" -Atqc "select count(*) from \"$restore_schema\".projects")"
+public_audit_logs="$(psql "$base_db_url" -Atqc "select count(*) from public.audit_logs")"
+restore_audit_logs="$(psql "$base_db_url" -Atqc "select count(*) from \"$restore_schema\".audit_logs")"
 
 {
-  printf 'restore_schema=%s\n' "\$restore_schema"
-  printf 'public_tables=%s\n' "\$public_tables"
-  printf 'restore_tables=%s\n' "\$restore_tables"
-  printf 'public_users=%s\n' "\$public_users"
-  printf 'restore_users=%s\n' "\$restore_users"
-  printf 'public_projects=%s\n' "\$public_projects"
-  printf 'restore_projects=%s\n' "\$restore_projects"
-  printf 'public_audit_logs=%s\n' "\$public_audit_logs"
-  printf 'restore_audit_logs=%s\n' "\$restore_audit_logs"
-} | tee "\$report_file"
+  printf 'restore_schema=%s\n' "$restore_schema"
+  printf 'public_tables=%s\n' "$public_tables"
+  printf 'restore_tables=%s\n' "$restore_tables"
+  printf 'public_users=%s\n' "$public_users"
+  printf 'restore_users=%s\n' "$restore_users"
+  printf 'public_projects=%s\n' "$public_projects"
+  printf 'restore_projects=%s\n' "$restore_projects"
+  printf 'public_audit_logs=%s\n' "$public_audit_logs"
+  printf 'restore_audit_logs=%s\n' "$restore_audit_logs"
+} | tee "$report_file"
 
-if [ "\$public_tables" != "\$restore_tables" ] || [ "\$public_users" != "\$restore_users" ] || [ "\$public_projects" != "\$restore_projects" ] || [ "\$public_audit_logs" != "\$restore_audit_logs" ]; then
+if [ "$public_tables" != "$restore_tables" ] \
+  || [ "$public_users" != "$restore_users" ] \
+  || [ "$public_projects" != "$restore_projects" ] \
+  || [ "$public_audit_logs" != "$restore_audit_logs" ]; then
   echo 'restore_status=mismatch' >&2
   exit 1
 fi
 
 echo 'restore_status=ok'
 
-psql "\$base_db_url" -v ON_ERROR_STOP=1 -c "DROP SCHEMA IF EXISTS \\"\$restore_schema\\" CASCADE" >/dev/null
+psql "$base_db_url" -v ON_ERROR_STOP=1 \
+  -c "DROP SCHEMA IF EXISTS \"$restore_schema\" CASCADE" >/dev/null
 trap - EXIT
 
-if [ "\$keep_drill_artifacts" != "yes" ]; then
-  rm -f "\$plain_sql" "\$rewritten_sql"
+if [ "$keep_drill_artifacts" != "yes" ]; then
+  rm -f -- "$plain_sql" "$rewritten_sql"
 fi
 EOF
 
-gce_run_remote_script "$remote_script"
-rm -f "$remote_script"
+gce_run_remote_script_with_args \
+  "$remote_script" \
+  "$BACKUP_ROOT" \
+  "$RUN_RESTORE_DRILL" \
+  "$KEEP_DRILL_ARTIFACTS"
+cleanup_remote_script
+trap - EXIT

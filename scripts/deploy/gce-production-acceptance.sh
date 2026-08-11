@@ -14,6 +14,21 @@ APP_ROOT="${APP_ROOT:-/opt/feishu_timeline_app}"
 GCE_TUNNEL_THROUGH_IAP="${GCE_TUNNEL_THROUGH_IAP:-no}"
 EXPECTED_RUNTIME_COMMIT="${EXPECTED_RUNTIME_COMMIT:-$(git -C "$ROOT_DIR" rev-parse HEAD 2>/dev/null || true)}"
 
+# shellcheck source=scripts/deploy/gce-common.sh
+. "$ROOT_DIR/scripts/deploy/gce-common.sh"
+validate_gce_connection_parameters
+for domain in "$APP_HOST" "$ROOT_DOMAIN" "$WWW_DOMAIN"; do
+  if [ "${#domain}" -gt 253 ] \
+    || [[ ! "$domain" =~ ^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$ ]] \
+    || [[ "$domain" != *.* ]]; then
+    fail 'All configured domains must be valid DNS hostnames.'
+  fi
+done
+if [ -n "$EXPECTED_RUNTIME_COMMIT" ] \
+  && [[ ! "$EXPECTED_RUNTIME_COMMIT" =~ ^[a-f0-9]{40}$ ]]; then
+  fail 'EXPECTED_RUNTIME_COMMIT must be a full lowercase Git commit hash.'
+fi
+
 FAILURES=0
 TMP_FILES=()
 
@@ -39,15 +54,6 @@ cleanup() {
 }
 
 trap cleanup EXIT
-
-ssh_gce() {
-  if [ "$GCE_TUNNEL_THROUGH_IAP" = "yes" ]; then
-    gcloud compute ssh "$INSTANCE" --project="$PROJECT" --zone="$ZONE" --tunnel-through-iap --command "$1"
-    return
-  fi
-
-  gcloud compute ssh "$INSTANCE" --project="$PROJECT" --zone="$ZONE" --command "$1"
-}
 
 add_result() {
   local check="$1"
@@ -402,7 +408,7 @@ PY
 REMOTE
 )"
 
-REMOTE_SUMMARY="$(ssh_gce "printf '%s' '$REMOTE_CHECK_B64' | base64 -d | bash")"
+REMOTE_SUMMARY="$(gce_ssh "printf '%s' '$REMOTE_CHECK_B64' | base64 -d | bash")"
 
 remote_value() {
   local key="$1"

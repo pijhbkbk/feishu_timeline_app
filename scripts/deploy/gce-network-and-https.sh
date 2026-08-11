@@ -23,22 +23,42 @@ ROOT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 TIMELINE_TEMPLATE="$ROOT_DIR/deploy/nginx/feishu-timeline.conf"
 ROOT_TEMPLATE="$ROOT_DIR/deploy/nginx/all-too-well.com.placeholder.conf"
 
-log() {
-  printf '[INFO] %s\n' "$*"
-}
+# shellcheck source=scripts/deploy/gce-common.sh
+. "$ROOT_DIR/scripts/deploy/gce-common.sh"
 
-warn() {
-  printf '[WARN] %s\n' "$*" >&2
-}
-
-fail() {
-  printf '[ERROR] %s\n' "$*" >&2
-  exit 1
-}
-
-ssh_gce() {
-  gcloud compute ssh "$INSTANCE" --project="$PROJECT" --zone="$ZONE" --command "$1"
-}
+validate_gce_connection_parameters
+if [ "${#REGION}" -gt 63 ] \
+  || [[ ! "$REGION" =~ ^[a-z]([a-z0-9-]{0,61}[a-z0-9])?$ ]]; then
+  fail 'REGION must be a safe lowercase Google Cloud region name.'
+fi
+for domain in "$APP_HOST" "$ROOT_DOMAIN" "$WWW_DOMAIN"; do
+  if [ "${#domain}" -gt 253 ] \
+    || [[ ! "$domain" =~ ^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$ ]] \
+    || [[ "$domain" != *.* ]]; then
+    fail 'All configured domains must be valid DNS hostnames.'
+  fi
+done
+for path in "$APP_ROOT" "$PLACEHOLDER_DIR"; do
+  if [ "${#path}" -gt 256 ] \
+    || [[ ! "$path" =~ ^/[A-Za-z0-9._/-]+$ ]] \
+    || [[ "$path" =~ (^|/)\.\.?(/|$) ]]; then
+    fail 'Configured application paths must be absolute and normalized.'
+  fi
+done
+for resource_name in "$STATIC_IP_NAME" "$WEB_TAG"; do
+  if [ "${#resource_name}" -gt 63 ] \
+    || [[ ! "$resource_name" =~ ^[a-z]([a-z0-9-]{0,61}[a-z0-9])?$ ]]; then
+    fail 'Google Cloud resource names must be safe lowercase RFC 1035 names.'
+  fi
+done
+case "$RESERVE_STATIC_IP" in yes|no) ;; *) fail 'RESERVE_STATIC_IP must be yes or no.' ;; esac
+case "$INSTALL_CERTBOT" in auto|yes|no) ;; *) fail 'INSTALL_CERTBOT must be auto, yes or no.' ;; esac
+case "$FORCE_CERTBOT" in yes|no) ;; *) fail 'FORCE_CERTBOT must be yes or no.' ;; esac
+if [ -n "$CERTBOT_EMAIL" ] \
+  && { [ "${#CERTBOT_EMAIL}" -gt 254 ] \
+    || [[ ! "$CERTBOT_EMAIL" =~ ^[A-Za-z0-9.!#$%\&\'*+/=?^_\`{|}~-]+@[A-Za-z0-9.-]+$ ]]; }; then
+  fail 'CERTBOT_EMAIL contains invalid characters.'
+fi
 
 require_file() {
   local file="$1"
@@ -119,6 +139,13 @@ PUBLIC_IP="$(gcloud compute instances describe "$INSTANCE" --project="$PROJECT" 
 NETWORK_TIER="$(gcloud compute instances describe "$INSTANCE" --project="$PROJECT" --zone="$ZONE" --format='get(networkInterfaces[0].accessConfigs[0].networkTier)')"
 NETWORK_URL="$(gcloud compute instances describe "$INSTANCE" --project="$PROJECT" --zone="$ZONE" --format='get(networkInterfaces[0].network)')"
 NETWORK="${NETWORK_URL##*/}"
+[ "${#PUBLIC_IP}" -le 45 ] && [[ "$PUBLIC_IP" =~ ^[0-9A-Fa-f:.]+$ ]] \
+  || fail 'gcloud returned an invalid public IP address.'
+case "$NETWORK_TIER" in PREMIUM|STANDARD) ;; *) fail 'gcloud returned an invalid network tier.' ;; esac
+if [ "${#NETWORK}" -gt 63 ] \
+  || [[ ! "$NETWORK" =~ ^[a-z]([a-z0-9-]{0,61}[a-z0-9])?$ ]]; then
+  fail 'gcloud returned an invalid network name.'
+fi
 CURRENT_TAGS="$(gcloud compute instances describe "$INSTANCE" --project="$PROJECT" --zone="$ZONE" --format='csv[no-heading](tags.items)' || true)"
 STATIC_IP_BINDING="$(
   gcloud compute addresses list \
@@ -126,6 +153,11 @@ STATIC_IP_BINDING="$(
     --format='csv[no-heading](name,address,region.basename())' | \
     awk -F, -v ip="$PUBLIC_IP" -v region="$REGION" '$2 == ip && $3 == region { print $1; exit }'
 )"
+if [ -n "$STATIC_IP_BINDING" ] \
+  && { [ "${#STATIC_IP_BINDING}" -gt 63 ] \
+    || [[ ! "$STATIC_IP_BINDING" =~ ^[a-z]([a-z0-9-]{0,61}[a-z0-9])?$ ]]; }; then
+  fail 'gcloud returned an invalid static address binding name.'
+fi
 
 log "Instance: $INSTANCE"
 log "Project: $PROJECT"
@@ -234,27 +266,43 @@ if answers_include_ip "$WWW_DNS_ANSWERS" "$PUBLIC_IP"; then
   WWW_DIRECT_TO_ORIGIN=yes
 fi
 
-ssh_gce "set -euo pipefail
-backup_dir=\"/var/backups/feishu-timeline-step5/\$(date -u +%Y%m%dT%H%M%SZ)\"
-sudo mkdir -p \"\$backup_dir\"
+REMOTE_CONFIGURE_SCRIPT="$(mktemp /tmp/r27a-gce-network-configure.XXXXXX)"
+REMOTE_CERTBOT_SCRIPT="$(mktemp /tmp/r27a-gce-network-certbot.XXXXXX)"
+cleanup_remote_scripts() {
+  rm -f -- "$REMOTE_CONFIGURE_SCRIPT" "$REMOTE_CERTBOT_SCRIPT"
+}
+trap cleanup_remote_scripts EXIT
+
+cat >"$REMOTE_CONFIGURE_SCRIPT" <<'REMOTE_CONFIGURE_EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+PLACEHOLDER_DIR="$1"
+PLACEHOLDER_HTML_B64="$2"
+TIMELINE_B64="$3"
+ROOT_B64="$4"
+ROOT_DOMAIN="$5"
+WWW_DOMAIN="$6"
+APP_HOST="$7"
+backup_dir="/var/backups/feishu-timeline-step5/$(date -u +%Y%m%dT%H%M%SZ)"
+sudo mkdir -p "$backup_dir"
 
 if [ -f /etc/nginx/sites-available/feishu-timeline ]; then
-  sudo cp /etc/nginx/sites-available/feishu-timeline \"\$backup_dir/feishu-timeline.conf.bak\"
+  sudo cp /etc/nginx/sites-available/feishu-timeline "$backup_dir/feishu-timeline.conf.bak"
 fi
 if [ -f /etc/nginx/sites-available/all-too-well-root ]; then
-  sudo cp /etc/nginx/sites-available/all-too-well-root \"\$backup_dir/all-too-well-root.conf.bak\"
+  sudo cp /etc/nginx/sites-available/all-too-well-root "$backup_dir/all-too-well-root.conf.bak"
 fi
 if [ -f /etc/nginx/sites-available/default ]; then
-  sudo cp /etc/nginx/sites-available/default \"\$backup_dir/default.conf.bak\"
+  sudo cp /etc/nginx/sites-available/default "$backup_dir/default.conf.bak"
 fi
 
-sudo mkdir -p '$PLACEHOLDER_DIR'
-if [ ! -f '$PLACEHOLDER_DIR/index.html' ]; then
-  printf '%s' '$PLACEHOLDER_HTML_B64' | base64 -d | sudo tee '$PLACEHOLDER_DIR/index.html' >/dev/null
+sudo mkdir -p "$PLACEHOLDER_DIR"
+if [ ! -f "$PLACEHOLDER_DIR/index.html" ]; then
+  printf '%s' "$PLACEHOLDER_HTML_B64" | base64 -d | sudo tee "$PLACEHOLDER_DIR/index.html" >/dev/null
 fi
 
-printf '%s' '$TIMELINE_B64' | base64 -d | sudo tee /etc/nginx/sites-available/feishu-timeline >/dev/null
-printf '%s' '$ROOT_B64' | base64 -d | sudo tee /etc/nginx/sites-available/all-too-well-root >/dev/null
+printf '%s' "$TIMELINE_B64" | base64 -d | sudo tee /etc/nginx/sites-available/feishu-timeline >/dev/null
+printf '%s' "$ROOT_B64" | base64 -d | sudo tee /etc/nginx/sites-available/all-too-well-root >/dev/null
 
 if [ ! -L /etc/nginx/sites-enabled/feishu-timeline ]; then
   sudo ln -s /etc/nginx/sites-available/feishu-timeline /etc/nginx/sites-enabled/feishu-timeline
@@ -269,18 +317,59 @@ fi
 sudo nginx -t
 sudo systemctl reload nginx
 
-printf 'backup_dir=%s\n' \"\$backup_dir\"
+printf 'backup_dir=%s\n' "$backup_dir"
 printf '%s\n' '--- root host ---'
-curl -I --max-time 5 -H 'Host: $ROOT_DOMAIN' http://127.0.0.1 || true
+curl -I --max-time 5 -H "Host: $ROOT_DOMAIN" http://127.0.0.1 || true
 printf '%s\n' '--- www host ---'
-curl -I --max-time 5 -H 'Host: $WWW_DOMAIN' http://127.0.0.1 || true
+curl -I --max-time 5 -H "Host: $WWW_DOMAIN" http://127.0.0.1 || true
 printf '%s\n' '--- timeline host ---'
-curl -I --max-time 5 -H 'Host: $APP_HOST' http://127.0.0.1 || true
-"
+curl -I --max-time 5 -H "Host: $APP_HOST" http://127.0.0.1 || true
+REMOTE_CONFIGURE_EOF
+chmod 0700 "$REMOTE_CONFIGURE_SCRIPT"
+gce_run_remote_script_with_args \
+  "$REMOTE_CONFIGURE_SCRIPT" \
+  "$PLACEHOLDER_DIR" "$PLACEHOLDER_HTML_B64" "$TIMELINE_B64" "$ROOT_B64" \
+  "$ROOT_DOMAIN" "$WWW_DOMAIN" "$APP_HOST"
 
-HAS_CERTBOT="$(ssh_gce 'if command -v certbot >/dev/null 2>&1; then echo yes; else echo no; fi')"
-HAS_LETSENCRYPT_DIR="$(ssh_gce 'if sudo test -d /etc/letsencrypt; then echo yes; else echo no; fi')"
-HAS_ROOT_CERT="$(ssh_gce 'if sudo test -f /etc/letsencrypt/live/all-too-well.com/fullchain.pem; then echo yes; else echo no; fi')"
+cat >"$REMOTE_CERTBOT_SCRIPT" <<'REMOTE_CERTBOT_EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+ACTION="$1"
+case "$ACTION" in
+  install)
+    export DEBIAN_FRONTEND=noninteractive
+    sudo apt-get update
+    sudo apt-get install -y certbot python3-certbot-nginx
+    ;;
+  issue)
+    ROOT_DOMAIN="$2"
+    WWW_DOMAIN="$3"
+    CERTBOT_EMAIL="$4"
+    args=(--nginx --non-interactive --agree-tos --redirect)
+    if [ -n "$CERTBOT_EMAIL" ]; then
+      args+=(-m "$CERTBOT_EMAIL")
+    fi
+    sudo certbot "${args[@]}" -d "$ROOT_DOMAIN" -d "$WWW_DOMAIN"
+    ;;
+  probe)
+    ROOT_DOMAIN="$2"
+    WWW_DOMAIN="$3"
+    echo '--- https root local resolve ---'
+    curl -kI --max-time 10 --resolve "$ROOT_DOMAIN:443:127.0.0.1" "https://$ROOT_DOMAIN" || true
+    echo '--- https www local resolve ---'
+    curl -kI --max-time 10 --resolve "$WWW_DOMAIN:443:127.0.0.1" "https://$WWW_DOMAIN" || true
+    echo '--- certbot timer ---'
+    systemctl status certbot.timer --no-pager -l || true
+    systemctl list-timers --all | grep -i certbot || true
+    ;;
+  *) exit 64 ;;
+esac
+REMOTE_CERTBOT_EOF
+chmod 0700 "$REMOTE_CERTBOT_SCRIPT"
+
+HAS_CERTBOT="$(gce_ssh 'if command -v certbot >/dev/null 2>&1; then echo yes; else echo no; fi')"
+HAS_LETSENCRYPT_DIR="$(gce_ssh 'if sudo test -d /etc/letsencrypt; then echo yes; else echo no; fi')"
+HAS_ROOT_CERT="$(gce_ssh 'if sudo test -f /etc/letsencrypt/live/all-too-well.com/fullchain.pem; then echo yes; else echo no; fi')"
 
 CERTBOT_READY=no
 CERTBOT_BLOCKER="public DNS for $ROOT_DOMAIN / $WWW_DOMAIN does not directly resolve to $PUBLIC_IP"
@@ -313,11 +402,7 @@ esac
 
 if [ "$SHOULD_INSTALL_CERTBOT" = "yes" ] && [ "$HAS_CERTBOT" = "no" ]; then
   log "Installing certbot and nginx plugin on remote host"
-  ssh_gce "set -euo pipefail
-export DEBIAN_FRONTEND=noninteractive
-sudo apt-get update
-sudo apt-get install -y certbot python3-certbot-nginx
-"
+  gce_run_remote_script_with_args "$REMOTE_CERTBOT_SCRIPT" install
   HAS_CERTBOT=yes
 fi
 
@@ -326,15 +411,13 @@ if [ "$HAS_ROOT_CERT" = "yes" ]; then
 elif [ "$CERTBOT_READY" = "yes" ]; then
   if [ "$HAS_LETSENCRYPT_DIR" = "yes" ]; then
     log "Attempting certificate issuance with existing certbot account"
-    ssh_gce "set -euo pipefail
-sudo certbot --nginx --non-interactive --agree-tos --redirect -d '$ROOT_DOMAIN' -d '$WWW_DOMAIN'
-"
+    gce_run_remote_script_with_args \
+      "$REMOTE_CERTBOT_SCRIPT" issue "$ROOT_DOMAIN" "$WWW_DOMAIN" ''
     HAS_ROOT_CERT=yes
   elif [ -n "$CERTBOT_EMAIL" ]; then
     log "Attempting certificate issuance for $ROOT_DOMAIN and $WWW_DOMAIN"
-    ssh_gce "set -euo pipefail
-sudo certbot --nginx --non-interactive --agree-tos --redirect -m '$CERTBOT_EMAIL' -d '$ROOT_DOMAIN' -d '$WWW_DOMAIN'
-"
+    gce_run_remote_script_with_args \
+      "$REMOTE_CERTBOT_SCRIPT" issue "$ROOT_DOMAIN" "$WWW_DOMAIN" "$CERTBOT_EMAIL"
     HAS_ROOT_CERT=yes
   else
     warn "Certbot prerequisites are otherwise satisfied, but CERTBOT_EMAIL is missing."
@@ -344,15 +427,8 @@ else
 fi
 
 if [ "$HAS_ROOT_CERT" = "yes" ]; then
-  ssh_gce "set -euo pipefail
-echo '--- https root local resolve ---'
-curl -kI --max-time 10 --resolve '$ROOT_DOMAIN:443:127.0.0.1' https://$ROOT_DOMAIN || true
-echo '--- https www local resolve ---'
-curl -kI --max-time 10 --resolve '$WWW_DOMAIN:443:127.0.0.1' https://$WWW_DOMAIN || true
-echo '--- certbot timer ---'
-systemctl status certbot.timer --no-pager -l || true
-systemctl list-timers --all | grep -i certbot || true
-"
+  gce_run_remote_script_with_args \
+    "$REMOTE_CERTBOT_SCRIPT" probe "$ROOT_DOMAIN" "$WWW_DOMAIN"
 fi
 
 log "Summary:"

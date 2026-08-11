@@ -18,7 +18,9 @@ for arg in "$@"; do
     WWW_DOMAIN=*) WWW_DOMAIN="${arg#*=}" ;;
     DISK_WARN_PERCENT=*) DISK_WARN_PERCENT="${arg#*=}" ;;
     MEMORY_WARN_MB=*) MEMORY_WARN_MB="${arg#*=}" ;;
-    INSTANCE=*|PROJECT=*|ZONE=*) eval "$arg" ;;
+    INSTANCE=*) INSTANCE="${arg#*=}" ;;
+    PROJECT=*) PROJECT="${arg#*=}" ;;
+    ZONE=*) ZONE="${arg#*=}" ;;
     *)
       printf '[ERROR] Unsupported argument: %s\n' "$arg" >&2
       exit 1
@@ -28,6 +30,46 @@ done
 
 # shellcheck source=/dev/null
 . "$ROOT_DIR/scripts/deploy/gce-common.sh"
+: "$INSTANCE" "$PROJECT" "$ZONE"
+validate_gce_connection_parameters
+
+validate_hostname() {
+  local label="$1"
+  local hostname="$2"
+  local host_label
+  local -a host_labels
+
+  if [ "${#hostname}" -gt 253 ] \
+    || [[ ! "$hostname" =~ ^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$ ]] \
+    || [[ "$hostname" == *..* ]]; then
+    fail "$label must be a valid DNS hostname no longer than 253 characters."
+  fi
+
+  local IFS='.'
+  read -r -a host_labels <<<"$hostname"
+  for host_label in "${host_labels[@]}"; do
+    if [ "${#host_label}" -gt 63 ] \
+      || [[ ! "$host_label" =~ ^[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?$ ]]; then
+      fail "$label contains an invalid DNS label."
+    fi
+  done
+}
+
+validate_positive_integer() {
+  local label="$1"
+  local value="$2"
+  local maximum="$3"
+
+  if [[ ! "$value" =~ ^[0-9]+$ ]] || [ "$value" -lt 1 ] || [ "$value" -gt "$maximum" ]; then
+    fail "$label must be an integer from 1 through $maximum."
+  fi
+}
+
+validate_hostname APP_HOST "$APP_HOST"
+validate_hostname ROOT_DOMAIN "$ROOT_DOMAIN"
+validate_hostname WWW_DOMAIN "$WWW_DOMAIN"
+validate_positive_integer DISK_WARN_PERCENT "$DISK_WARN_PERCENT" 100
+validate_positive_integer MEMORY_WARN_MB "$MEMORY_WARN_MB" 1048576
 require_gcloud
 
 pass() {
@@ -40,6 +82,10 @@ record_failure() {
 }
 
 remote_script="$(mktemp)"
+cleanup_remote_script() {
+  rm -f -- "$remote_script"
+}
+trap cleanup_remote_script EXIT
 cat >"$remote_script" <<'EOF'
 set -euo pipefail
 set -a
@@ -82,7 +128,8 @@ section() {
 }
 
 output="$(gce_run_remote_script "$remote_script")"
-rm -f "$remote_script"
+cleanup_remote_script
+trap - EXIT
 
 section "Remote Runtime Snapshot"
 printf '%s\n' "$output"

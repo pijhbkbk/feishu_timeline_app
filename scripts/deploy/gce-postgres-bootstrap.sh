@@ -15,41 +15,72 @@ DB_SCHEMA="${DB_SCHEMA:-public}"
 ROTATE_PLACEHOLDER_CREDENTIALS="${ROTATE_PLACEHOLDER_CREDENTIALS:-yes}"
 RUN_PRISMA_MIGRATE_DEPLOY="${RUN_PRISMA_MIGRATE_DEPLOY:-yes}"
 
-log() {
-  printf '[INFO] %s\n' "$*"
-}
-
-fail() {
-  printf '[ERROR] %s\n' "$*" >&2
-  exit 1
-}
-
-ssh_gce() {
-  gcloud compute ssh "$INSTANCE" --project="$PROJECT" --zone="$ZONE" --command "$1"
-}
-
 ROOT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
+# shellcheck source=scripts/deploy/gce-common.sh
+. "$ROOT_DIR/scripts/deploy/gce-common.sh"
 
+validate_postgres_inputs() {
+  validate_gce_connection_parameters
+
+  if [ "${#APP_ROOT}" -gt 256 ] \
+    || [[ ! "$APP_ROOT" =~ ^/[A-Za-z0-9._/-]+$ ]] \
+    || [[ "$APP_ROOT" =~ (^|/)\.\.?(/|$) ]]; then
+    fail 'APP_ROOT must be an absolute normalized path containing only safe path characters.'
+  fi
+  if [ "${#DB_HOST}" -gt 253 ] \
+    || [[ ! "$DB_HOST" =~ ^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$ ]]; then
+    fail 'DB_HOST must be a valid hostname or address literal without shell metacharacters.'
+  fi
+  if [[ ! "$DB_PORT" =~ ^[0-9]{1,5}$ ]] \
+    || [ "$DB_PORT" -lt 1 ] || [ "$DB_PORT" -gt 65535 ]; then
+    fail 'DB_PORT must be an integer from 1 through 65535.'
+  fi
+  for identifier in "$DB_NAME_DEFAULT" "$DB_USER_DEFAULT" "$DB_SCHEMA"; do
+    if [ "${#identifier}" -gt 63 ] \
+      || [[ ! "$identifier" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+      fail 'Database names, users and schemas must be safe PostgreSQL identifiers.'
+    fi
+  done
+  case "$ROTATE_PLACEHOLDER_CREDENTIALS" in yes|no) ;; *) fail 'ROTATE_PLACEHOLDER_CREDENTIALS must be yes or no.' ;; esac
+  case "$RUN_PRISMA_MIGRATE_DEPLOY" in yes|no) ;; *) fail 'RUN_PRISMA_MIGRATE_DEPLOY must be yes or no.' ;; esac
+}
+
+validate_postgres_inputs
 log "Bootstrapping PostgreSQL on $INSTANCE"
-ssh_gce "set -euo pipefail
-APP_ROOT='$APP_ROOT'
-DB_HOST='$DB_HOST'
-DB_PORT='$DB_PORT'
-DB_NAME_DEFAULT='$DB_NAME_DEFAULT'
-DB_USER_DEFAULT='$DB_USER_DEFAULT'
-DB_SCHEMA='$DB_SCHEMA'
-ROTATE_PLACEHOLDER_CREDENTIALS='$ROTATE_PLACEHOLDER_CREDENTIALS'
-RUN_PRISMA_MIGRATE_DEPLOY='$RUN_PRISMA_MIGRATE_DEPLOY'
-API_ENV=\"\$APP_ROOT/apps/api/.env.production\"
+REMOTE_SCRIPT="$(mktemp /tmp/r27a-gce-postgres-remote.XXXXXX)"
+cleanup_remote_script() {
+  case "$REMOTE_SCRIPT" in
+    /tmp/r27a-gce-postgres-remote.*) rm -f -- "$REMOTE_SCRIPT" ;;
+    *) fail 'Refusing to remove an unexpected temporary path.' ;;
+  esac
+}
+trap cleanup_remote_script EXIT
+
+cat >"$REMOTE_SCRIPT" <<'REMOTE_SCRIPT_EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+APP_ROOT="$1"
+DB_HOST="$2"
+DB_PORT="$3"
+DB_NAME_DEFAULT="$4"
+DB_USER_DEFAULT="$5"
+DB_SCHEMA="$6"
+ROTATE_PLACEHOLDER_CREDENTIALS="$7"
+RUN_PRISMA_MIGRATE_DEPLOY="$8"
+export APP_ROOT DB_HOST DB_PORT DB_NAME_DEFAULT DB_USER_DEFAULT DB_SCHEMA
+export ROTATE_PLACEHOLDER_CREDENTIALS RUN_PRISMA_MIGRATE_DEPLOY
+API_ENV="$APP_ROOT/apps/api/.env.production"
 
 python3 - <<'PY'
 from pathlib import Path
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
+import os
 import secrets
 import shlex
 import subprocess
 
-app_root = Path('$APP_ROOT')
+app_root = Path(os.environ['APP_ROOT'])
 env_path = app_root / 'apps/api/.env.production'
 if not env_path.exists():
     raise SystemExit('Missing ' + str(env_path))
@@ -69,17 +100,17 @@ for line in env_path.read_text().splitlines():
 database_url = data.get('DATABASE_URL', '')
 parsed = urlparse(database_url) if database_url else None
 
-db_name = ((parsed.path or '/').lstrip('/') if parsed else '') or '$DB_NAME_DEFAULT'
-db_user = (parsed.username if parsed else '') or '$DB_USER_DEFAULT'
+db_name = ((parsed.path or '/').lstrip('/') if parsed else '') or os.environ['DB_NAME_DEFAULT']
+db_user = (parsed.username if parsed else '') or os.environ['DB_USER_DEFAULT']
 db_password = (parsed.password if parsed else '') or ''
-db_host = (parsed.hostname if parsed else '') or '$DB_HOST'
-db_port = str(parsed.port) if parsed and parsed.port else '$DB_PORT'
+db_host = (parsed.hostname if parsed else '') or os.environ['DB_HOST']
+db_port = str(parsed.port) if parsed and parsed.port else os.environ['DB_PORT']
 query = parse_qs(parsed.query if parsed else '', keep_blank_values=True)
-db_schema = (query.get('schema', ['$DB_SCHEMA'])[0] or '$DB_SCHEMA')
+db_schema = (query.get('schema', [os.environ['DB_SCHEMA']])[0] or os.environ['DB_SCHEMA'])
 
-rotate = '$ROTATE_PLACEHOLDER_CREDENTIALS' == 'yes'
+rotate = os.environ['ROTATE_PLACEHOLDER_CREDENTIALS'] == 'yes'
 if rotate and db_user == 'postgres':
-    db_user = '$DB_USER_DEFAULT'
+    db_user = os.environ['DB_USER_DEFAULT']
 if rotate and db_password in {'', 'postgres'}:
     db_password = secrets.token_urlsafe(24)
 
@@ -109,7 +140,7 @@ for line in lines:
 for key, value in data.items():
     if key not in seen:
         out.append(f'{key}={value}')
-env_path.write_text('\\n'.join(out) + '\\n')
+env_path.write_text('\n'.join(out) + '\n')
 
 print(f'DB_NAME={db_name}')
 print(f'DB_USER={db_user}')
@@ -122,22 +153,23 @@ PY
 sudo apt-get update
 sudo apt-get install -y postgresql postgresql-contrib
 
-cluster_version=\"\$(pg_lsclusters --no-header | awk 'NR==1 {print \$1}')\"
-cluster_name=\"\$(pg_lsclusters --no-header | awk 'NR==1 {print \$2}')\"
-[ -n \"\$cluster_version\" ] || { echo 'No PostgreSQL cluster found.' >&2; exit 1; }
-[ -n \"\$cluster_name\" ] || { echo 'No PostgreSQL cluster name found.' >&2; exit 1; }
+cluster_version="$(pg_lsclusters --no-header | awk 'NR==1 {print $1}')"
+cluster_name="$(pg_lsclusters --no-header | awk 'NR==1 {print $2}')"
+[ -n "$cluster_version" ] || { echo 'No PostgreSQL cluster found.' >&2; exit 1; }
+[ -n "$cluster_name" ] || { echo 'No PostgreSQL cluster name found.' >&2; exit 1; }
 
 sudo systemctl enable postgresql
 sudo systemctl restart postgresql
 
-sudo sed -i \"s/^#\\?listen_addresses\\s*=.*/listen_addresses = 'localhost'/\" \"/etc/postgresql/\$cluster_version/\$cluster_name/postgresql.conf\"
+sudo sed -i "s/^#\?listen_addresses\s*=.*/listen_addresses = 'localhost'/" "/etc/postgresql/$cluster_version/$cluster_name/postgresql.conf"
 sudo systemctl restart postgresql
 
-DB_NAME=\"\$(python3 - <<'PY'
+DB_NAME="$(python3 - <<'PY'
 from pathlib import Path
 from urllib.parse import urlparse
+import os
 import shlex
-path = Path('$APP_ROOT/apps/api/.env.production')
+path = Path(os.environ['APP_ROOT']) / 'apps/api/.env.production'
 data = {}
 for line in path.read_text().splitlines():
     s = line.strip()
@@ -152,13 +184,14 @@ for line in path.read_text().splitlines():
 parsed = urlparse(data['DATABASE_URL'])
 print((parsed.path or '/').lstrip('/'))
 PY
-)\"
+)"
 
-DB_USER=\"\$(python3 - <<'PY'
+DB_USER="$(python3 - <<'PY'
 from pathlib import Path
 from urllib.parse import urlparse
+import os
 import shlex
-path = Path('$APP_ROOT/apps/api/.env.production')
+path = Path(os.environ['APP_ROOT']) / 'apps/api/.env.production'
 data = {}
 for line in path.read_text().splitlines():
     s = line.strip()
@@ -173,13 +206,14 @@ for line in path.read_text().splitlines():
 parsed = urlparse(data['DATABASE_URL'])
 print(parsed.username or '')
 PY
-)\"
+)"
 
-DB_PASSWORD=\"\$(python3 - <<'PY'
+DB_PASSWORD="$(python3 - <<'PY'
 from pathlib import Path
 from urllib.parse import urlparse
+import os
 import shlex
-path = Path('$APP_ROOT/apps/api/.env.production')
+path = Path(os.environ['APP_ROOT']) / 'apps/api/.env.production'
 data = {}
 for line in path.read_text().splitlines():
     s = line.strip()
@@ -194,30 +228,36 @@ for line in path.read_text().splitlines():
 parsed = urlparse(data['DATABASE_URL'])
 print(parsed.password or '')
 PY
-)\"
+)"
 
 cd /tmp
 
-sudo -u postgres psql -v ON_ERROR_STOP=1 <<SQL
-DO \\$\\$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '\$DB_USER') THEN
-    EXECUTE format('CREATE ROLE %I LOGIN PASSWORD %L', '\$DB_USER', '\$DB_PASSWORD');
-  ELSE
-    EXECUTE format('ALTER ROLE %I WITH LOGIN PASSWORD %L', '\$DB_USER', '\$DB_PASSWORD');
-  END IF;
-END
-\\$\\$;
+ROLE_EXISTS="$(sudo -u postgres psql -v db_user="$DB_USER" -tA <<'SQL'
+SELECT 1 FROM pg_roles WHERE rolname = :'db_user';
+SQL
+)"
+if [ "$ROLE_EXISTS" != 1 ]; then
+  sudo -u postgres createuser --login "$DB_USER"
+fi
+sudo -u postgres psql \
+  -v ON_ERROR_STOP=1 \
+  -v db_user="$DB_USER" \
+  -v db_password="$DB_PASSWORD" <<'SQL'
+ALTER ROLE :"db_user" WITH LOGIN PASSWORD :'db_password';
 SQL
 
-if ! sudo -u postgres psql -tAc \"SELECT 1 FROM pg_database WHERE datname = '\$DB_NAME'\" | grep -q 1; then
-  sudo -u postgres createdb -O \"\$DB_USER\" \"\$DB_NAME\"
+DB_EXISTS="$(sudo -u postgres psql -v db_name="$DB_NAME" -tA <<'SQL'
+SELECT 1 FROM pg_database WHERE datname = :'db_name';
+SQL
+)"
+if [ "$DB_EXISTS" != 1 ]; then
+  sudo -u postgres createdb -O "$DB_USER" "$DB_NAME"
 fi
 
 pg_isready -h localhost -p 5432
 
-if [ \"\$RUN_PRISMA_MIGRATE_DEPLOY\" = yes ]; then
-  cd \"\$APP_ROOT/apps/api\"
+if [ "$RUN_PRISMA_MIGRATE_DEPLOY" = yes ]; then
+  cd "$APP_ROOT/apps/api"
   (
     set -a
     . ./.env.production
@@ -234,8 +274,9 @@ systemctl is-active feishu-timeline-api
 python3 - <<'PY'
 from pathlib import Path
 from urllib.parse import urlparse
+import os
 import shlex
-path = Path('$APP_ROOT/apps/api/.env.production')
+path = Path(os.environ['APP_ROOT']) / 'apps/api/.env.production'
 data = {}
 for line in path.read_text().splitlines():
     s = line.strip()
@@ -254,4 +295,16 @@ print('DATABASE_URL_name=' + ((parsed.path or '/').lstrip('/') or '<none>'))
 print('DATABASE_URL_user_present=' + ('yes' if parsed.username else 'no'))
 print('DATABASE_URL_password_present=' + ('yes' if parsed.password else 'no'))
 PY
-"
+REMOTE_SCRIPT_EOF
+
+chmod 0700 "$REMOTE_SCRIPT"
+gce_run_remote_script_with_args \
+  "$REMOTE_SCRIPT" \
+  "$APP_ROOT" \
+  "$DB_HOST" \
+  "$DB_PORT" \
+  "$DB_NAME_DEFAULT" \
+  "$DB_USER_DEFAULT" \
+  "$DB_SCHEMA" \
+  "$ROTATE_PLACEHOLDER_CREDENTIALS" \
+  "$RUN_PRISMA_MIGRATE_DEPLOY"

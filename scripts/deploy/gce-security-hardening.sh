@@ -10,13 +10,11 @@ RUN_POSTCUTOVER_HARDENING="${RUN_POSTCUTOVER_HARDENING:-yes}"
 INSTALL_FAIL2BAN="${INSTALL_FAIL2BAN:-yes}"
 ROOT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 
-log() {
-  printf '[INFO] %s\n' "$*"
-}
-
-ssh_gce() {
-  gcloud compute ssh "$INSTANCE" --project="$PROJECT" --zone="$ZONE" --command "$1"
-}
+# shellcheck source=scripts/deploy/gce-common.sh
+. "$ROOT_DIR/scripts/deploy/gce-common.sh"
+validate_gce_connection_parameters
+case "$RUN_POSTCUTOVER_HARDENING" in yes|no) ;; *) fail 'RUN_POSTCUTOVER_HARDENING must be yes or no.' ;; esac
+case "$INSTALL_FAIL2BAN" in yes|no) ;; *) fail 'INSTALL_FAIL2BAN must be yes or no.' ;; esac
 
 if [ "$RUN_POSTCUTOVER_HARDENING" = "yes" ]; then
   log "Re-applying post-cutover Nginx hardening"
@@ -24,15 +22,20 @@ if [ "$RUN_POSTCUTOVER_HARDENING" = "yes" ]; then
 fi
 
 log "Applying SSH, systemd and host-level hardening on $INSTANCE"
-ssh_gce "set -euo pipefail
-backup_dir=\"/var/backups/feishu-timeline-security/\$(date -u +%Y%m%dT%H%M%SZ)\"
-sudo mkdir -p \"\$backup_dir\"
+REMOTE_SCRIPT="$(mktemp /tmp/r27a-gce-security-hardening-remote.XXXXXX)"
+trap 'rm -f -- "$REMOTE_SCRIPT"' EXIT
+cat >"$REMOTE_SCRIPT" <<'REMOTE_SCRIPT_EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+INSTALL_FAIL2BAN="$1"
+backup_dir="/var/backups/feishu-timeline-security/$(date -u +%Y%m%dT%H%M%SZ)"
+sudo mkdir -p "$backup_dir"
 
 backup_if_exists() {
-  local source=\"\$1\"
-  local target=\"\$2\"
-  if [ -e \"\$source\" ]; then
-    sudo cp -a \"\$source\" \"\$backup_dir/\$target\"
+  local source="$1"
+  local target="$2"
+  if [ -e "$source" ]; then
+    sudo cp -a "$source" "$backup_dir/$target"
   fi
 }
 
@@ -41,8 +44,8 @@ backup_if_exists /etc/fail2ban/jail.d/sshd.local fail2ban.sshd.local.bak
 backup_if_exists /etc/systemd/system/feishu-timeline-api.service.d/10-hardening.conf api.service.d.10-hardening.conf.bak
 backup_if_exists /etc/systemd/system/feishu-timeline-web.service.d/10-hardening.conf web.service.d.10-hardening.conf.bak
 
-APP_USER=\"\$(systemctl show -p User --value feishu-timeline-web)\"
-[ -n \"\$APP_USER\" ] || APP_USER=\"\$(whoami)\"
+APP_USER="$(systemctl show -p User --value feishu-timeline-web)"
+[ -n "$APP_USER" ] || APP_USER="$(whoami)"
 
 sudo mkdir -p /etc/ssh/sshd_config.d
 cat <<'EOF' | sudo tee /etc/ssh/sshd_config.d/99-feishu-hardening.conf >/dev/null
@@ -59,7 +62,7 @@ EOF
 sudo sshd -t
 sudo systemctl reload ssh
 
-if [ '$INSTALL_FAIL2BAN' = 'yes' ]; then
+if [ "$INSTALL_FAIL2BAN" = yes ]; then
   sudo apt-get update
   sudo apt-get install -y fail2ban
   sudo mkdir -p /etc/fail2ban/jail.d
@@ -101,7 +104,7 @@ ProtectKernelModules=true
 ProtectKernelTunables=true
 ProtectHostname=true
 ProtectSystem=full
-ReadWritePaths=/home/\${APP_USER}/.cache/node/corepack
+ReadWritePaths=/home/${APP_USER}/.cache/node/corepack
 RestrictSUIDSGID=true
 RestrictNamespaces=true
 RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
@@ -149,6 +152,8 @@ assert callback.path == '/login/callback'
 PY
 curl -k -I https://timeline.all-too-well.com | grep -i '^strict-transport-security:' >/dev/null
 curl -k -I https://all-too-well.com | grep -i '^strict-transport-security:' >/dev/null
-echo backup_dir=\$backup_dir
+echo backup_dir=$backup_dir
 sudo sshd -T | egrep 'permitrootlogin|passwordauthentication|kbdinteractiveauthentication|pubkeyauthentication|maxauthtries|x11forwarding|allowagentforwarding|allowtcpforwarding|logingracetime'
-"
+REMOTE_SCRIPT_EOF
+chmod 0700 "$REMOTE_SCRIPT"
+gce_run_remote_script_with_args "$REMOTE_SCRIPT" "$INSTALL_FAIL2BAN"

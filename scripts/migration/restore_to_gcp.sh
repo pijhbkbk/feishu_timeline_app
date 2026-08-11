@@ -32,7 +32,8 @@ PRIMARY_WEB_ENV_TARGET="${PRIMARY_WEB_ENV_TARGET:-$WEB_DIR/.env.production}"
 
 GIT_REPO_URL="${GIT_REPO_URL:-}"
 GIT_REF="${GIT_REF:-main}"
-REPO_STAGE_DIR="${REPO_STAGE_DIR:-$(mktemp -d "/tmp/${APP_NAME}-repo-stage-XXXXXX")}"
+REPO_STAGE_DIR="${REPO_STAGE_DIR:-}"
+RESTORE_VALIDATE_ONLY="${RESTORE_VALIDATE_ONLY:-no}"
 
 RESTORE_PRIMARY_ENV="${RESTORE_PRIMARY_ENV:-no}"
 RESTORE_EXTRA_ENV="${RESTORE_EXTRA_ENV:-no}"
@@ -53,15 +54,15 @@ API_SERVICE_SOURCE_REL="deploy/systemd/feishu-timeline-api.service"
 WEB_SERVICE_SOURCE_REL="deploy/systemd/feishu-timeline-web.service"
 
 log() {
-  printf '[INFO] %s\n' "$*"
+  printf '[INFO] %s\n' "${1:-}"
 }
 
 warn() {
-  printf '[WARN] %s\n' "$*" >&2
+  printf '[WARN] %s\n' "${1:-}" >&2
 }
 
 fail() {
-  printf '[ERROR] %s\n' "$*" >&2
+  printf '[ERROR] %s\n' "${1:-}" >&2
   exit 1
 }
 
@@ -77,16 +78,173 @@ require_command() {
   fi
 }
 
+validate_controlled_path() {
+  local label="$1"
+  local value="$2"
+
+  if [ -z "$value" ] \
+    || [ "${#value}" -gt 512 ] \
+    || [[ ! "$value" =~ ^/[A-Za-z0-9._/-]+$ ]] \
+    || [[ "$value" == *//* ]] \
+    || [[ "$value" =~ (^|/)\.\.?(/|$) ]]; then
+    fail "Invalid controlled path: $label"
+  fi
+}
+
+validate_optional_controlled_path() {
+  local label="$1"
+  local value="$2"
+
+  [ -z "$value" ] || validate_controlled_path "$label" "$value"
+}
+
+validate_runtime_path() {
+  local path_entry
+  local -a path_entries
+  local IFS=':'
+
+  [ -n "$APP_RUNTIME_PATH" ] \
+    || fail 'APP_RUNTIME_PATH must not be empty.'
+  read -r -a path_entries <<<"$APP_RUNTIME_PATH"
+  for path_entry in "${path_entries[@]}"; do
+    validate_controlled_path APP_RUNTIME_PATH "$path_entry"
+  done
+}
+
+validate_yes_no() {
+  local label="$1"
+  local value="$2"
+
+  case "$value" in
+    yes|no)
+      ;;
+    *)
+      fail "$label must be yes or no."
+      ;;
+  esac
+}
+
+validate_restore_parameters() {
+  local toggle
+
+  if [[ ! "$APP_NAME" =~ ^[a-z][a-z0-9_-]{0,63}$ ]]; then
+    fail 'APP_NAME must be a bounded lowercase application name.'
+  fi
+  if [[ ! "$APP_USER" =~ ^[a-z_][a-z0-9_-]{0,31}$ ]] \
+    || [[ ! "$APP_GROUP" =~ ^[a-z_][a-z0-9_-]{0,31}$ ]]; then
+    fail 'APP_USER and APP_GROUP must be bounded Linux account names.'
+  fi
+  if [[ ! "$PNPM_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    fail 'PNPM_VERSION must be an exact semantic version.'
+  fi
+
+  validate_controlled_path APP_HOME "$APP_HOME"
+  validate_controlled_path COREPACK_HOME "$COREPACK_HOME"
+  validate_runtime_path
+  validate_controlled_path APP_ROOT "$APP_ROOT"
+  validate_controlled_path API_DIR "$API_DIR"
+  validate_controlled_path WEB_DIR "$WEB_DIR"
+  validate_controlled_path OBJECT_STORAGE_DIR "$OBJECT_STORAGE_DIR"
+  validate_controlled_path CONFIG_REVIEW_DIR "$CONFIG_REVIEW_DIR"
+  validate_controlled_path PRIMARY_API_ENV_TARGET "$PRIMARY_API_ENV_TARGET"
+  validate_controlled_path PRIMARY_WEB_ENV_TARGET "$PRIMARY_WEB_ENV_TARGET"
+  validate_optional_controlled_path BACKUP_ROOT "$BACKUP_ROOT"
+  validate_optional_controlled_path REPO_STAGE_DIR "$REPO_STAGE_DIR"
+
+  [ "$COREPACK_HOME" = "$APP_HOME/.cache/node/corepack" ] \
+    || fail 'COREPACK_HOME must use the controlled application-home location.'
+  [ "$API_DIR" = "$APP_ROOT/apps/api" ] \
+    || fail 'API_DIR must use the controlled application layout.'
+  [ "$WEB_DIR" = "$APP_ROOT/apps/web" ] \
+    || fail 'WEB_DIR must use the controlled application layout.'
+  [ "$OBJECT_STORAGE_DIR" = "$APP_ROOT/var/object-storage" ] \
+    || fail 'OBJECT_STORAGE_DIR must use the controlled application layout.'
+  [ "$CONFIG_REVIEW_DIR" = "$APP_ROOT/var/config-review" ] \
+    || fail 'CONFIG_REVIEW_DIR must use the controlled application layout.'
+  [ "$PRIMARY_API_ENV_TARGET" = "$API_DIR/.env.production" ] \
+    || fail 'PRIMARY_API_ENV_TARGET must be the controlled API production env path.'
+  [ "$PRIMARY_WEB_ENV_TARGET" = "$WEB_DIR/.env.production" ] \
+    || fail 'PRIMARY_WEB_ENV_TARGET must be the controlled Web production env path.'
+
+  if [ -z "$GIT_REPO_URL" ] \
+    || { [[ ! "$GIT_REPO_URL" =~ ^https://[A-Za-z0-9._~:/@+-]+$ ]] \
+      && [[ ! "$GIT_REPO_URL" =~ ^ssh://[A-Za-z0-9._~:/@+-]+$ ]] \
+      && [[ ! "$GIT_REPO_URL" =~ ^git@[A-Za-z0-9.-]+:[A-Za-z0-9._/-]+$ ]]; }; then
+    fail 'GIT_REPO_URL must be an explicit HTTPS or SSH Git URL without shell control characters.'
+  fi
+  if [ "${#GIT_REF}" -gt 128 ] \
+    || [[ ! "$GIT_REF" =~ ^[A-Za-z0-9][A-Za-z0-9._/-]*$ ]] \
+    || [[ "$GIT_REF" == *..* ]] \
+    || [[ "$GIT_REF" == *//* ]] \
+    || [[ "$GIT_REF" == *@\{* ]]; then
+    fail 'GIT_REF contains unsupported characters or ref syntax.'
+  fi
+
+  for toggle in \
+    RESTORE_VALIDATE_ONLY \
+    RESTORE_PRIMARY_ENV \
+    RESTORE_EXTRA_ENV \
+    RESTORE_OBJECT_STORAGE \
+    RESTORE_DATABASE \
+    REQUIRE_CONFIRM_RESTORE \
+    APPLY_SYSTEM_CONFIG \
+    ENABLE_TIMELINE_SITE \
+    ENABLE_ROOT_PLACEHOLDER_SITE \
+    ENABLE_SERVICES \
+    START_SERVICES \
+    RELOAD_NGINX; do
+    validate_yes_no "$toggle" "${!toggle}"
+  done
+}
+
+validate_restore_source_paths() {
+  validate_optional_controlled_path PRIMARY_API_ENV_SOURCE "$PRIMARY_API_ENV_SOURCE"
+  validate_optional_controlled_path PRIMARY_WEB_ENV_SOURCE "$PRIMARY_WEB_ENV_SOURCE"
+  validate_optional_controlled_path EXTRA_ENV_SOURCE_DIR "$EXTRA_ENV_SOURCE_DIR"
+  validate_optional_controlled_path DATABASE_RESTORE_FILE "$DATABASE_RESTORE_FILE"
+  validate_optional_controlled_path OBJECT_STORAGE_ARCHIVE "$OBJECT_STORAGE_ARCHIVE"
+}
+
+initialize_repo_stage_dir() {
+  if [ -z "$REPO_STAGE_DIR" ]; then
+    REPO_STAGE_DIR="$(mktemp -d "/tmp/${APP_NAME}-repo-stage-XXXXXX")"
+  fi
+  validate_controlled_path REPO_STAGE_DIR "$REPO_STAGE_DIR"
+}
+
 run_as_app() {
   if [[ "$(id -u)" -eq 0 ]]; then
     if command -v sudo >/dev/null 2>&1; then
-      sudo -u "$APP_USER" -H bash -lc "$*"
+      sudo -u "$APP_USER" -H -- "$@"
     else
-      runuser -u "$APP_USER" -- bash -lc "$*"
+      runuser -u "$APP_USER" -- "$@"
     fi
   else
-    bash -lc "$*"
+    "$@"
   fi
+}
+
+run_as_app_with_runtime() {
+  run_as_app env \
+    HOME="$APP_HOME" \
+    COREPACK_HOME="$COREPACK_HOME" \
+    PATH="$APP_RUNTIME_PATH" \
+    "$@"
+}
+
+run_as_app_in_dir() {
+  local workdir="$1"
+  shift
+
+  # Static program; all dynamic values use positional arguments.
+  # shellcheck disable=SC2016
+  run_as_app_with_runtime bash -c '
+    set -euo pipefail
+    workdir="$1"
+    shift
+    cd -- "$workdir"
+    exec "$@"
+  ' restore-to-gcp "$workdir" "$@"
 }
 
 ensure_app_user_exists() {
@@ -99,6 +257,86 @@ ensure_app_home_exists() {
   if [[ ! -d "$APP_HOME" ]]; then
     fail "Application home directory not found: $APP_HOME. Web service requires a real HOME for pnpm/corepack."
   fi
+}
+
+validate_trusted_env_file() {
+  local env_file="$1"
+  local file_mode
+  local file_owner
+  local file_group
+
+  case "$env_file" in
+    "$PRIMARY_API_ENV_TARGET"|"$PRIMARY_WEB_ENV_TARGET")
+      ;;
+    *)
+      fail 'Refusing to source an env file outside the controlled production env paths.'
+      ;;
+  esac
+
+  [ -f "$env_file" ] && [ ! -L "$env_file" ] \
+    || fail "Trusted production env must be a regular non-symlink file: $env_file"
+
+  file_mode="$(stat -c '%a' "$env_file" 2>/dev/null \
+    || stat -f '%Lp' "$env_file" 2>/dev/null \
+    || true)"
+  file_owner="$(stat -c '%U' "$env_file" 2>/dev/null \
+    || stat -f '%Su' "$env_file" 2>/dev/null \
+    || true)"
+  file_group="$(stat -c '%G' "$env_file" 2>/dev/null \
+    || stat -f '%Sg' "$env_file" 2>/dev/null \
+    || true)"
+
+  [ "$file_owner" = 'root' ] \
+    || fail "Trusted production env must be owned by root: $env_file"
+  [ "$file_group" = "$APP_GROUP" ] \
+    || fail "Trusted production env must use the application group: $env_file"
+  case "$file_mode" in
+    440|640)
+      ;;
+    *)
+      fail "Trusted production env must have mode 440 or 640: $env_file"
+      ;;
+  esac
+  run_as_app test -r "$env_file" \
+    || fail "Application user cannot read the trusted production env: $env_file"
+}
+
+run_as_app_in_dir_with_trusted_env() {
+  local workdir="$1"
+  local env_file="$2"
+  shift 2
+
+  validate_trusted_env_file "$env_file"
+  # Static program; all dynamic values use positional arguments.
+  # shellcheck disable=SC2016
+  run_as_app_with_runtime bash -c '
+    set -euo pipefail
+    workdir="$1"
+    env_file="$2"
+    controlled_home="$3"
+    controlled_corepack_home="$4"
+    controlled_path="$5"
+    shift 5
+    cd -- "$workdir"
+
+    # This file is an explicitly trusted, root-controlled shell configuration boundary.
+    # validate_trusted_env_file requires root ownership, the application group,
+    # mode 440/640, a regular non-symlink file and an exact controlled target path.
+    set -a
+    source "$env_file"
+    set +a
+
+    export HOME="$controlled_home"
+    export COREPACK_HOME="$controlled_corepack_home"
+    export PATH="$controlled_path"
+    exec "$@"
+  ' restore-to-gcp \
+    "$workdir" \
+    "$env_file" \
+    "$APP_HOME" \
+    "$COREPACK_HOME" \
+    "$APP_RUNTIME_PATH" \
+    "$@"
 }
 
 maybe_set_default_backup_paths() {
@@ -131,9 +369,10 @@ restore_primary_env_if_requested() {
 
   log "Restoring primary env files into legacy-compatible paths"
   install -d -m 0755 "$API_DIR" "$WEB_DIR"
-  install -m 0640 "$PRIMARY_API_ENV_SOURCE" "$PRIMARY_API_ENV_TARGET"
-  install -m 0640 "$PRIMARY_WEB_ENV_SOURCE" "$PRIMARY_WEB_ENV_TARGET"
-  chown "$APP_USER:$APP_GROUP" "$PRIMARY_API_ENV_TARGET" "$PRIMARY_WEB_ENV_TARGET"
+  install -o root -g "$APP_GROUP" -m 0640 \
+    "$PRIMARY_API_ENV_SOURCE" "$PRIMARY_API_ENV_TARGET"
+  install -o root -g "$APP_GROUP" -m 0640 \
+    "$PRIMARY_WEB_ENV_SOURCE" "$PRIMARY_WEB_ENV_TARGET"
 }
 
 restore_extra_env_if_requested() {
@@ -169,22 +408,30 @@ sync_repo_into_app_root() {
   [[ -n "$GIT_REPO_URL" ]] || fail "GIT_REPO_URL is required."
 
   log "Cloning repository into temporary staging dir: $REPO_STAGE_DIR"
-  git clone "$GIT_REPO_URL" "$REPO_STAGE_DIR"
-  git -C "$REPO_STAGE_DIR" checkout "$GIT_REF"
+  git clone -- "$GIT_REPO_URL" "$REPO_STAGE_DIR"
+  git -C "$REPO_STAGE_DIR" checkout --detach "$GIT_REF"
 
-  log "Syncing repository into $APP_ROOT without deleting var/ data"
+  log "Syncing repository into $APP_ROOT without deleting var/ data or replacing trusted production env"
   install -d -m 0755 "$APP_ROOT"
-  rsync -a --exclude 'var/' "$REPO_STAGE_DIR"/ "$APP_ROOT"/
-
-  log "Setting ownership for application directory"
-  chown -R "$APP_USER:$APP_GROUP" "$APP_ROOT"
+  rsync -a \
+    --chown="$APP_USER:$APP_GROUP" \
+    --exclude 'var/' \
+    --exclude 'apps/api/.env.production' \
+    --exclude 'apps/web/.env.production' \
+    "$REPO_STAGE_DIR"/ "$APP_ROOT"/
 }
 
 prepare_app_runtime() {
   log "Preparing node/pnpm runtime for $APP_USER"
   install -d -m 0755 -o "$APP_USER" -g "$APP_GROUP" "$APP_HOME" "$COREPACK_HOME"
 
-  run_as_app "export HOME='$APP_HOME' COREPACK_HOME='$COREPACK_HOME' PATH='$APP_RUNTIME_PATH'; command -v node >/dev/null && node -v >/dev/null && command -v pnpm >/dev/null && pnpm -v >/dev/null"
+  run_as_app_with_runtime bash -c '
+    set -euo pipefail
+    command -v node >/dev/null
+    node -v >/dev/null
+    command -v pnpm >/dev/null
+    pnpm -v >/dev/null
+  '
 }
 
 clean_build_outputs() {
@@ -207,14 +454,15 @@ restore_object_storage_if_requested() {
 }
 
 require_runtime_env_files_for_build() {
-  [[ -f "$PRIMARY_API_ENV_TARGET" ]] || fail "API env file not found: $PRIMARY_API_ENV_TARGET"
-  [[ -f "$PRIMARY_WEB_ENV_TARGET" ]] || fail "Web env file not found: $PRIMARY_WEB_ENV_TARGET"
+  validate_trusted_env_file "$PRIMARY_API_ENV_TARGET"
+  validate_trusted_env_file "$PRIMARY_WEB_ENV_TARGET"
 }
 
 resolve_object_storage_path_from_api_env() {
   local env_file="$1"
   local workdir="$2"
 
+  validate_trusted_env_file "$env_file"
   (
     set +u
     set -a
@@ -244,22 +492,30 @@ build_application() {
   verify_object_storage_resolution
 
   log "Installing dependencies"
-  run_as_app "export HOME='$APP_HOME' COREPACK_HOME='$COREPACK_HOME' PATH='$APP_RUNTIME_PATH'; cd '$APP_ROOT' && pnpm install --frozen-lockfile"
+  run_as_app_in_dir "$APP_ROOT" pnpm install --frozen-lockfile
 
   log "Building shared package"
-  run_as_app "export HOME='$APP_HOME' COREPACK_HOME='$COREPACK_HOME' PATH='$APP_RUNTIME_PATH'; cd '$APP_ROOT' && pnpm --filter @feishu-timeline/shared build"
+  run_as_app_in_dir "$APP_ROOT" pnpm --filter @feishu-timeline/shared build
 
   log "Generating Prisma client with API production env"
-  run_as_app "export HOME='$APP_HOME' COREPACK_HOME='$COREPACK_HOME' PATH='$APP_RUNTIME_PATH'; cd '$API_DIR' && set -a && source '.env.production' && set +a && pnpm exec prisma generate --schema prisma/schema.prisma"
+  run_as_app_in_dir_with_trusted_env \
+    "$API_DIR" "$PRIMARY_API_ENV_TARGET" \
+    pnpm exec prisma generate --schema prisma/schema.prisma
 
   log "Building API without reusing the package start script"
-  run_as_app "export HOME='$APP_HOME' COREPACK_HOME='$COREPACK_HOME' PATH='$APP_RUNTIME_PATH'; cd '$API_DIR' && set -a && source '.env.production' && set +a && pnpm exec tsc -p tsconfig.build.json"
+  run_as_app_in_dir_with_trusted_env \
+    "$API_DIR" "$PRIMARY_API_ENV_TARGET" \
+    pnpm exec tsc -p tsconfig.build.json
 
   log "Validating Prisma schema with API production env"
-  run_as_app "export HOME='$APP_HOME' COREPACK_HOME='$COREPACK_HOME' PATH='$APP_RUNTIME_PATH'; cd '$API_DIR' && set -a && source '.env.production' && set +a && pnpm exec prisma validate --schema prisma/schema.prisma"
+  run_as_app_in_dir_with_trusted_env \
+    "$API_DIR" "$PRIMARY_API_ENV_TARGET" \
+    pnpm exec prisma validate --schema prisma/schema.prisma
 
   log "Building Web with Web production env"
-  run_as_app "export HOME='$APP_HOME' COREPACK_HOME='$COREPACK_HOME' PATH='$APP_RUNTIME_PATH'; cd '$WEB_DIR' && set -a && source '.env.production' && set +a && pnpm exec next build"
+  run_as_app_in_dir_with_trusted_env \
+    "$WEB_DIR" "$PRIMARY_WEB_ENV_TARGET" \
+    pnpm exec next build
 }
 
 restore_database_if_requested() {
@@ -273,8 +529,11 @@ restore_database_if_requested() {
   fi
 
   [[ -f "$DATABASE_RESTORE_FILE" ]] || fail "Database restore file not found: $DATABASE_RESTORE_FILE"
-  [[ -f "$PRIMARY_API_ENV_TARGET" ]] || fail "API env file not found for DB restore: $PRIMARY_API_ENV_TARGET"
+  validate_trusted_env_file "$PRIMARY_API_ENV_TARGET"
 
+  # This file is an explicitly trusted, root-controlled shell configuration boundary.
+  # validate_trusted_env_file enforces its canonical path, ownership, group, mode,
+  # regular-file type and application-user readability before this privileged source.
   set +u
   set -a
   # shellcheck disable=SC1090
@@ -367,6 +626,15 @@ stage_or_apply_system_config() {
   fi
 }
 
+validate_restore_parameters
+maybe_set_default_backup_paths
+validate_restore_source_paths
+
+if [ "$RESTORE_VALIDATE_ONLY" = 'yes' ]; then
+  printf 'VALIDATION_ONLY=PASS\n'
+  exit 0
+fi
+
 require_root
 ensure_app_user_exists
 ensure_app_home_exists
@@ -379,7 +647,7 @@ require_command node
 require_command corepack
 require_command systemctl
 
-maybe_set_default_backup_paths
+initialize_repo_stage_dir
 restore_primary_env_if_requested
 restore_extra_env_if_requested
 sync_repo_into_app_root
