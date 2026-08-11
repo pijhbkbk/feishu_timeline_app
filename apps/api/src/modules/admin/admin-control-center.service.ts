@@ -84,6 +84,8 @@ const REVIEW_NODE_CODES = [
   WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW,
 ];
 
+const MAX_DEPARTMENT_HIERARCHY_DEPTH = 100;
+
 const ADMIN_PERMISSION_ACTIONS = [
   ['project.read', '查看项目'],
   ['project.write', '编辑项目'],
@@ -914,6 +916,7 @@ export class AdminControlCenterService {
                 projectId,
                 nodeCode,
               );
+        await this.lockAdminDepartmentHierarchyMutation(tx);
         const preview = await this.buildNodeAssignmentPreview(
           tx,
           projectId,
@@ -1519,14 +1522,27 @@ export class AdminControlCenterService {
               afterDueAt: afterDueAt.toISOString(),
             });
           }
-          if (task.project.plannedEndDate) {
-            await tx.project.update({
-              where: { id: task.projectId },
-              data: {
-                plannedEndDate: new Date(
-                  task.project.plannedEndDate.getTime() + deltaMs,
-                ),
-              },
+          await this.lockAdminProjectMutation(tx, task.projectId);
+          const currentProject = await tx.project.findUnique({
+            where: { id: task.projectId },
+            select: {
+              id: true,
+              updatedAt: true,
+              plannedEndDate: true,
+            },
+          });
+          if (!currentProject) {
+            throw new ConflictException({
+              code: 'ADMIN_PROJECT_STATE_CHANGED',
+              message: '项目状态已变化，请刷新后重试。',
+              projectId: task.projectId,
+            });
+          }
+          if (currentProject.plannedEndDate) {
+            await this.claimAdminProjectMutation(tx, currentProject, {
+              plannedEndDate: new Date(
+                currentProject.plannedEndDate.getTime() + deltaMs,
+              ),
             });
           }
         }
@@ -2157,6 +2173,7 @@ export class AdminControlCenterService {
       input,
       actor,
       execute: async (tx) => {
+        await this.lockAdminProjectMutation(tx, projectId);
         const project = await tx.project.findUnique({
           where: { id: projectId },
           include: {
@@ -2170,31 +2187,28 @@ export class AdminControlCenterService {
           throw new NotFoundException('项目不存在。');
         }
         this.assertDateVersion(project.updatedAt, input.expectedVersion, '项目');
-        const updated = await tx.project.update({
-          where: { id: projectId },
-          data: {
-            ...(input.name !== undefined ? { name: input.name.trim() } : {}),
-            ...(input.vehicleModel !== undefined
-              ? { vehicleModel: input.vehicleModel?.trim() || null }
-              : {}),
-            ...(input.description !== undefined
-              ? { description: input.description?.trim() || null }
-              : {}),
-            ...(input.plannedStartDate !== undefined
-              ? {
-                  plannedStartDate: input.plannedStartDate
-                    ? new Date(input.plannedStartDate)
-                    : null,
-                }
-              : {}),
-            ...(input.plannedEndDate !== undefined
-              ? {
-                  plannedEndDate: input.plannedEndDate
-                    ? new Date(input.plannedEndDate)
-                    : null,
-                }
-              : {}),
-          },
+        const updated = await this.claimAdminProjectMutation(tx, project, {
+          ...(input.name !== undefined ? { name: input.name.trim() } : {}),
+          ...(input.vehicleModel !== undefined
+            ? { vehicleModel: input.vehicleModel?.trim() || null }
+            : {}),
+          ...(input.description !== undefined
+            ? { description: input.description?.trim() || null }
+            : {}),
+          ...(input.plannedStartDate !== undefined
+            ? {
+                plannedStartDate: input.plannedStartDate
+                  ? new Date(input.plannedStartDate)
+                  : null,
+              }
+            : {}),
+          ...(input.plannedEndDate !== undefined
+            ? {
+                plannedEndDate: input.plannedEndDate
+                  ? new Date(input.plannedEndDate)
+                  : null,
+              }
+            : {}),
         });
         if (input.colorName !== undefined && project.colors[0]) {
           await tx.color.update({
@@ -2672,9 +2686,20 @@ export class AdminControlCenterService {
       action: departmentId ? 'ADMIN_DEPARTMENT_CONFIGURATION_CHANGED' : 'ADMIN_DEPARTMENT_CREATED',
       input, actor,
       execute: async (tx) => {
-        const existing = departmentId ? await tx.department.findUnique({ where: { id: departmentId } }) : null;
-        if (departmentId && !existing) throw new NotFoundException('部门不存在。');
-        if (existing) this.assertDateVersion(existing.updatedAt, input.expectedVersion ?? '', '部门');
+        await this.lockAdminDepartmentHierarchyMutation(tx);
+        const existing = departmentId
+          ? await tx.department.findUnique({ where: { id: departmentId } })
+          : null;
+        if (departmentId && !existing) {
+          throw new NotFoundException('部门不存在。');
+        }
+        if (existing) {
+          this.assertDateVersion(
+            existing.updatedAt,
+            input.expectedVersion ?? '',
+            '部门',
+          );
+        }
         const normalizedName = this.normalizeDepartmentName(input.name);
         const normalizedLeadUserName = input.leadUserName?.trim() ?? '';
         const code = existing?.code ?? this.customDepartmentCode(normalizedName);
@@ -2701,6 +2726,13 @@ export class AdminControlCenterService {
                 _max: { sortOrder: true },
               }),
         ]);
+        const ancestorInspection = input.parentId
+          ? await this.inspectDepartmentAncestorChain(
+              tx,
+              departmentId,
+              input.parentId,
+            )
+          : { wouldCreateCycle: false };
         const leadUser = matchingLeadUsers.length === 1 ? matchingLeadUsers[0] : null;
         const sortOrder = existing?.sortOrder ?? ((sortOrderAggregate?._max.sortOrder ?? 0) + 10);
         const transactionConflicts: string[] = [];
@@ -2708,7 +2740,12 @@ export class AdminControlCenterService {
         if (!input.parentId) transactionConflicts.push('必须选择所属事业部。');
         if (input.parentId && (!parent || !parent.isActive)) transactionConflicts.push('所选所属事业部不存在或已停用。');
         if (parent && !isBusinessDivision(parent)) transactionConflicts.push('所属事业部只能从系统规定的六个选项中选择。');
-        if (input.parentId === departmentId || (existing && parent?.path?.startsWith(`${existing.path}/`))) transactionConflicts.push('部门层级会形成循环。');
+        if (
+          input.parentId === departmentId ||
+          ancestorInspection.wouldCreateCycle
+        ) {
+          transactionConflicts.push('部门层级会形成循环。');
+        }
         if (duplicate) transactionConflicts.push('同名部门已存在。');
         if (normalizedLeadUserName && matchingLeadUsers.length === 0) transactionConflicts.push(`未找到姓名为“${normalizedLeadUserName}”的启用系统用户。`);
         if (matchingLeadUsers.length > 1) transactionConflicts.push(`姓名“${normalizedLeadUserName}”对应多个启用用户，请先在系统用户中区分姓名。`);
@@ -2724,9 +2761,23 @@ export class AdminControlCenterService {
         const path = parent ? `${parent.path ?? `/${parent.code}`}/${code}` : `/${code}`;
         const level = (parent?.level ?? 0) + 1;
         const department = existing
-          ? await tx.department.update({ where: { id: existing.id }, data: { name: normalizedName, parentId: input.parentId || null, leadUserId: leadUser?.id ?? null, isActive: input.isActive, path, level } })
+          ? await this.claimAdminDepartmentMutation(tx, existing, {
+              name: normalizedName,
+              parentId: input.parentId || null,
+              leadUserId: leadUser?.id ?? null,
+              isActive: input.isActive,
+              path,
+              level,
+            })
           : await tx.department.create({ data: { code, name: normalizedName, parentId: input.parentId || null, leadUserId: leadUser?.id ?? null, sortOrder, isActive: input.isActive, path, level } });
-        await this.refreshDepartmentDescendantPaths(tx, department.id, department.path ?? `/${department.code}`, department.level);
+        await this.refreshDepartmentDescendantPaths(
+          tx,
+          department.id,
+          department.path ?? `/${department.code}`,
+          department.level,
+          new Set([department.id]),
+          0,
+        );
         const audit = await this.activityLogsService.createWithExecutor(tx, {
           projectId: null, actorUserId: actor.id, targetType: AuditTargetType.SYSTEM, targetId: department.id,
           action: existing ? 'ADMIN_DEPARTMENT_CONFIGURATION_CHANGED' : 'ADMIN_DEPARTMENT_CREATED',
@@ -2768,21 +2819,29 @@ export class AdminControlCenterService {
       input,
       actor,
       execute: async (tx) => {
-        const departments = await tx.department.findMany({
-          where: { id: { in: [...requestedRows.keys()] } },
-          include: {
-            _count: {
-              select: {
-                users: true,
-                children: true,
-                ownedProjects: true,
-                assignedWorkflowTasks: true,
-                projectNodeAssignments: true,
-                boardDistributionUsers: true,
+        await this.lockAdminDepartmentHierarchyMutation(tx);
+        const stableDepartmentIds = [...requestedRows.keys()].sort((left, right) =>
+          left.localeCompare(right),
+        );
+        await this.lockDepartmentRowsForDeletion(tx, stableDepartmentIds);
+        const departments = (
+          await tx.department.findMany({
+            where: { id: { in: stableDepartmentIds } },
+            orderBy: { id: 'asc' },
+            include: {
+              _count: {
+                select: {
+                  users: true,
+                  children: true,
+                  ownedProjects: true,
+                  assignedWorkflowTasks: true,
+                  projectNodeAssignments: true,
+                  boardDistributionUsers: true,
+                },
               },
             },
-          },
-        });
+          })
+        ).sort((left, right) => left.id.localeCompare(right.id));
         if (departments.length !== requestedRows.size) {
           const found = new Set(departments.map((department) => department.id));
           const missing = [...requestedRows.keys()].filter((id) => !found.has(id));
@@ -2842,6 +2901,22 @@ export class AdminControlCenterService {
           });
         }
 
+        for (const department of departments) {
+          const deleted = await tx.department.deleteMany({
+            where: {
+              id: department.id,
+              updatedAt: department.updatedAt,
+            },
+          });
+          if (deleted.count !== 1) {
+            throw new ConflictException({
+              code: 'DEPARTMENT_STATE_CHANGED',
+              message: '部门状态已变化，请刷新后重试。',
+              departmentId: department.id,
+            });
+          }
+        }
+
         const auditLogIds: string[] = [];
         for (const department of departments) {
           const audit = await this.activityLogsService.createWithExecutor(tx, {
@@ -2872,9 +2947,6 @@ export class AdminControlCenterService {
           });
           auditLogIds.push(audit.id);
         }
-        await tx.department.deleteMany({
-          where: { id: { in: departments.map((department) => department.id) } },
-        });
         return {
           deletedDepartmentIds: departments.map((department) => department.id),
           deletedCount: departments.length,
@@ -3665,6 +3737,80 @@ export class AdminControlCenterService {
     return updated;
   }
 
+  private async claimAdminProjectMutation(
+    tx: Prisma.TransactionClient,
+    project: { id: string; updatedAt: Date },
+    data: Prisma.ProjectUncheckedUpdateManyInput,
+  ) {
+    const claimed = await tx.project.updateMany({
+      where: {
+        id: project.id,
+        updatedAt: project.updatedAt,
+      },
+      data: {
+        ...data,
+        updatedAt: new Date(
+          Math.max(Date.now(), project.updatedAt.getTime() + 1),
+        ),
+      },
+    });
+    if (claimed.count !== 1) {
+      throw new ConflictException({
+        code: 'ADMIN_PROJECT_STATE_CHANGED',
+        message: '项目状态已变化，请刷新后重试。',
+        projectId: project.id,
+      });
+    }
+    const updated = await tx.project.findUnique({
+      where: { id: project.id },
+    });
+    if (!updated) {
+      throw new ConflictException({
+        code: 'ADMIN_PROJECT_STATE_CHANGED',
+        message: '项目状态已变化，请刷新后重试。',
+        projectId: project.id,
+      });
+    }
+    return updated;
+  }
+
+  private async claimAdminDepartmentMutation(
+    tx: Prisma.TransactionClient,
+    department: { id: string; updatedAt: Date },
+    data: Prisma.DepartmentUncheckedUpdateManyInput,
+  ) {
+    const claimed = await tx.department.updateMany({
+      where: {
+        id: department.id,
+        updatedAt: department.updatedAt,
+      },
+      data: {
+        ...data,
+        updatedAt: new Date(
+          Math.max(Date.now(), department.updatedAt.getTime() + 1),
+        ),
+      },
+    });
+    if (claimed.count !== 1) {
+      throw new ConflictException({
+        code: 'DEPARTMENT_STATE_CHANGED',
+        message: '部门状态已变化，请刷新后重试。',
+        departmentId: department.id,
+      });
+    }
+    const updated = await tx.department.findUnique({
+      where: { id: department.id },
+    });
+    if (!updated) {
+      throw new ConflictException({
+        code: 'DEPARTMENT_STATE_CHANGED',
+        message: '部门状态已变化，请刷新后重试。',
+        departmentId: department.id,
+      });
+    }
+    return updated;
+  }
+
   private async executeAdminCommand<T extends object>(input: {
     projectId: string | null;
     action: string;
@@ -3819,6 +3965,94 @@ export class AdminControlCenterService {
     );
   }
 
+  private async lockAdminProjectMutation(
+    tx: Prisma.TransactionClient,
+    projectId: string,
+  ) {
+    await tx.$queryRaw(
+      Prisma.sql`SELECT pg_advisory_xact_lock(hashtext(${'feishu-timeline:admin-project-mutation'}), hashtext(${projectId})) AS "locked"`,
+    );
+  }
+
+  private async lockAdminDepartmentHierarchyMutation(
+    tx: Prisma.TransactionClient,
+  ) {
+    await tx.$queryRaw(
+      Prisma.sql`SELECT pg_advisory_xact_lock(hashtext(${'feishu-timeline:admin-department-hierarchy'})) AS "locked"`,
+    );
+  }
+
+  private async inspectDepartmentAncestorChain(
+    tx: Prisma.TransactionClient,
+    departmentId: string | null,
+    parentId: string,
+  ) {
+    const ancestors = await tx.$queryRaw<
+      Array<{
+        id: string;
+        parentId: string | null;
+        depth: number;
+        cycle: boolean;
+      }>
+    >(Prisma.sql`
+      WITH RECURSIVE "ancestor_chain" AS (
+        SELECT
+          "id",
+          "parentId",
+          1 AS "depth",
+          ARRAY["id"]::text[] AS "visited",
+          FALSE AS "cycle"
+        FROM "departments"
+        WHERE "id" = ${parentId}
+
+        UNION ALL
+
+        SELECT
+          parent."id",
+          parent."parentId",
+          chain."depth" + 1 AS "depth",
+          chain."visited" || parent."id" AS "visited",
+          parent."id" = ANY(chain."visited") AS "cycle"
+        FROM "departments" parent
+        INNER JOIN "ancestor_chain" chain
+          ON parent."id" = chain."parentId"
+        WHERE chain."depth" < ${MAX_DEPARTMENT_HIERARCHY_DEPTH}
+          AND NOT chain."cycle"
+      )
+      SELECT "id", "parentId", "depth", "cycle"
+      FROM "ancestor_chain"
+      ORDER BY "depth" ASC
+    `);
+    const tail = ancestors.at(-1);
+    if (
+      ancestors.some((ancestor) => ancestor.cycle) ||
+      (tail && tail.depth >= MAX_DEPARTMENT_HIERARCHY_DEPTH)
+    ) {
+      throw new ConflictException({
+        code: 'DEPARTMENT_HIERARCHY_INVALID',
+        message: '现有部门层级包含循环或超过安全深度，已拒绝变更。',
+      });
+    }
+    return {
+      wouldCreateCycle:
+        departmentId !== null &&
+        ancestors.some((ancestor) => ancestor.id === departmentId),
+    };
+  }
+
+  private async lockDepartmentRowsForDeletion(
+    tx: Prisma.TransactionClient,
+    departmentIds: string[],
+  ) {
+    await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+      SELECT "id"
+      FROM "departments"
+      WHERE "id" IN (${Prisma.join(departmentIds)})
+      ORDER BY "id" ASC
+      FOR UPDATE
+    `);
+  }
+
   private async getOrganizationDirectory() {
     const [departments, users, roles, projects] = await Promise.all([
       this.prisma.department.findMany({
@@ -3858,13 +4092,42 @@ export class AdminControlCenterService {
     departmentId: string,
     parentPath: string,
     parentLevel: number,
+    visited: Set<string>,
+    depth: number,
   ): Promise<void> {
-    const children = await tx.department.findMany({ where: { parentId: departmentId } });
+    const children = await tx.department.findMany({
+      where: { parentId: departmentId },
+      orderBy: { id: 'asc' },
+    });
+    if (
+      children.length > 0 &&
+      (parentLevel >= MAX_DEPARTMENT_HIERARCHY_DEPTH ||
+        depth >= MAX_DEPARTMENT_HIERARCHY_DEPTH)
+    ) {
+      throw new ConflictException({
+        code: 'DEPARTMENT_HIERARCHY_INVALID',
+        message: '部门层级超过安全深度，已拒绝重算路径。',
+      });
+    }
     for (const child of children) {
+      if (visited.has(child.id)) {
+        throw new ConflictException({
+          code: 'DEPARTMENT_HIERARCHY_INVALID',
+          message: '部门层级包含循环，已拒绝重算路径。',
+        });
+      }
+      visited.add(child.id);
       const path = `${parentPath}/${child.code}`;
       const level = parentLevel + 1;
       await tx.department.update({ where: { id: child.id }, data: { path, level } });
-      await this.refreshDepartmentDescendantPaths(tx, child.id, path, level);
+      await this.refreshDepartmentDescendantPaths(
+        tx,
+        child.id,
+        path,
+        level,
+        visited,
+        depth + 1,
+      );
     }
   }
 
