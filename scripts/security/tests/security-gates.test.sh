@@ -44,6 +44,73 @@ while IFS= read -r target; do
   fi
 done <"$targets_file"
 
+ci_workflow="$ROOT_DIR/.github/workflows/ci.yml"
+remote_uses_count=0
+while IFS= read -r uses_line; do
+  action_ref="$(printf '%s\n' "$uses_line" \
+    | sed -E 's/^[[:space:]]*(-[[:space:]]*)?uses:[[:space:]]*//; s/[[:space:]]+#.*$//; s/[[:space:]]+$//')"
+
+  case "$action_ref" in
+    ./*)
+      continue
+      ;;
+  esac
+
+  remote_uses_count=$((remote_uses_count + 1))
+  if [[ ! "$action_ref" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_./-]+@[0-9a-f]{40}$ ]]; then
+    fail "remote GitHub Action is not pinned to a lowercase 40-hex commit: $action_ref"
+  fi
+done < <(grep -E '^[[:space:]]*uses:' "$ci_workflow")
+
+[ "$remote_uses_count" -gt 0 ] \
+  || fail 'CI workflow does not contain any remote GitHub Actions to verify'
+
+checkout_steps=''
+if ! checkout_steps="$(awk '
+  function finish_checkout() {
+    if (in_checkout && !has_persist_credentials) {
+      invalid_checkout = 1
+    }
+  }
+
+  /^[[:space:]]+- name:/ {
+    finish_checkout()
+    in_checkout = 0
+    has_with = 0
+    with_indent = 0
+    has_persist_credentials = 0
+  }
+
+  /^[[:space:]]+uses:[[:space:]]+actions\/checkout@/ {
+    in_checkout = 1
+    checkout_count += 1
+  }
+
+  in_checkout && /^[[:space:]]+with:[[:space:]]*(#.*)?$/ {
+    match($0, /^[[:space:]]*/)
+    has_with = 1
+    with_indent = RLENGTH
+  }
+
+  in_checkout && has_with && /^[[:space:]]+persist-credentials:[[:space:]]+false([[:space:]]*(#.*)?)?$/ {
+    match($0, /^[[:space:]]*/)
+    if (RLENGTH > with_indent) {
+      has_persist_credentials = 1
+    }
+  }
+
+  END {
+    finish_checkout()
+    if (invalid_checkout) exit 1
+    print checkout_count + 0
+  }
+' "$ci_workflow")"; then
+  fail 'every actions/checkout step must set persist-credentials: false explicitly'
+fi
+
+[ "$checkout_steps" -gt 0 ] \
+  || fail 'CI workflow does not contain an actions/checkout step to verify'
+
 grep -F "configService.get<string>('frontendUrl')" \
   "$ROOT_DIR/apps/api/src/main.ts" >/dev/null \
   || fail 'API bootstrap does not consume the validated frontendUrl from ConfigService'
