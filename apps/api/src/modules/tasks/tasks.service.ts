@@ -97,6 +97,29 @@ export class TasksService {
   }
 
   async getTaskDetail(taskId: string, actor: AuthenticatedUser) {
+    const taskScope = await this.prisma.workflowTask.findUnique({
+      where: { id: taskId },
+      select: {
+        id: true,
+        projectId: true,
+        assigneeUserId: true,
+      },
+    });
+
+    if (!taskScope) {
+      throw new NotFoundException('工序任务不存在或已被删除。');
+    }
+
+    await this.projectAccessService.assertProjectAccessWithDefaultClient(
+      taskScope.projectId,
+      actor,
+      'project.read',
+    );
+
+    if (!this.canViewTask(actor, taskScope.assigneeUserId)) {
+      throw new ForbiddenException('只能查看分配给自己的任务，项目经理可查看全部。');
+    }
+
     const task = await this.prisma.workflowTask.findUnique({
       where: { id: taskId },
       include: {
@@ -124,7 +147,7 @@ export class TasksService {
       },
     });
 
-    if (!task || !this.canViewTask(actor, task.assigneeUserId)) {
+    if (!task) {
       throw new NotFoundException('工序任务不存在或已被删除。');
     }
 

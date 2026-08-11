@@ -5,6 +5,7 @@ import {
   WorkflowNodeCode,
   WorkflowTaskStatus,
 } from '@prisma/client';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { AuthenticatedUser } from '../auth/auth.types';
@@ -24,7 +25,154 @@ function createActor(): AuthenticatedUser {
   };
 }
 
+function createTaskDetailRecord() {
+  return {
+    id: 'task-1',
+    projectId: 'project-1',
+    nodeCode: WorkflowNodeCode.PAINT_DEVELOPMENT,
+    nodeName: '涂料开发',
+    status: WorkflowTaskStatus.IN_PROGRESS,
+    isActive: true,
+    dueAt: new Date('2026-08-20T08:00:00.000Z'),
+    assigneeUserId: 'user-1',
+    assigneeUser: { name: '工艺工程师' },
+    project: {
+      id: 'project-1',
+      name: '项目A',
+      priority: ProjectPriority.HIGH,
+      status: ProjectStatus.IN_PROGRESS,
+      currentNodeCode: WorkflowNodeCode.PAINT_DEVELOPMENT,
+    },
+    createdAt: new Date('2026-08-11T08:00:00.000Z'),
+    progressUpdates: [],
+  };
+}
+
 describe('TasksService', () => {
+  it('rejects an out-of-scope project manager before loading task details', async () => {
+    const prisma = {
+      workflowTask: {
+        findUnique: vi.fn().mockResolvedValue({
+          id: 'task-1',
+          projectId: 'project-1',
+          assigneeUserId: 'user-1',
+        }),
+      },
+    };
+    const projectAccessService = {
+      assertProjectAccessWithDefaultClient: vi
+        .fn()
+        .mockRejectedValue(new ForbiddenException('当前用户无权访问该项目。')),
+    };
+    const service = new TasksService(
+      prisma as never,
+      projectAccessService as never,
+      {} as never,
+    );
+    const outOfScopeManager: AuthenticatedUser = {
+      ...createActor(),
+      id: 'manager-outside',
+      roleCodes: ['project_manager'],
+      permissionCodes: ['project.read'],
+    };
+
+    await expect(service.getTaskDetail('task-1', outOfScopeManager)).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
+
+    expect(projectAccessService.assertProjectAccessWithDefaultClient).toHaveBeenCalledWith(
+      'project-1',
+      outOfScopeManager,
+      'project.read',
+    );
+    expect(prisma.workflowTask.findUnique).toHaveBeenCalledTimes(1);
+    expect(prisma.workflowTask.findUnique).toHaveBeenCalledWith({
+      where: { id: 'task-1' },
+      select: {
+        id: true,
+        projectId: true,
+        assigneeUserId: true,
+      },
+    });
+  });
+
+  it('keeps missing task semantics and does not consult project scope', async () => {
+    const prisma = {
+      workflowTask: {
+        findUnique: vi.fn().mockResolvedValue(null),
+      },
+    };
+    const projectAccessService = {
+      assertProjectAccessWithDefaultClient: vi.fn(),
+    };
+    const service = new TasksService(
+      prisma as never,
+      projectAccessService as never,
+      {} as never,
+    );
+
+    await expect(service.getTaskDetail('missing-task', createActor())).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+    expect(projectAccessService.assertProjectAccessWithDefaultClient).not.toHaveBeenCalled();
+    expect(prisma.workflowTask.findUnique).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    {
+      label: 'in-scope project manager',
+      actor: {
+        ...createActor(),
+        id: 'manager-1',
+        roleCodes: ['project_manager'],
+        permissionCodes: ['project.read'],
+      } satisfies AuthenticatedUser,
+    },
+    {
+      label: 'current assignee',
+      actor: {
+        ...createActor(),
+        permissionCodes: ['project.read'],
+      } satisfies AuthenticatedUser,
+    },
+  ])('returns task details for an authorized $label after scope validation', async ({ actor }) => {
+    const detail = createTaskDetailRecord();
+    const prisma = {
+      workflowTask: {
+        findUnique: vi
+          .fn()
+          .mockResolvedValueOnce({
+            id: detail.id,
+            projectId: detail.projectId,
+            assigneeUserId: detail.assigneeUserId,
+          })
+          .mockResolvedValueOnce(detail),
+      },
+    };
+    const projectAccessService = {
+      assertProjectAccessWithDefaultClient: vi.fn().mockResolvedValue(undefined),
+    };
+    const service = new TasksService(
+      prisma as never,
+      projectAccessService as never,
+      {} as never,
+    );
+
+    await expect(service.getTaskDetail(detail.id, actor)).resolves.toMatchObject({
+      taskId: detail.id,
+      projectId: detail.projectId,
+      projectName: detail.project.name,
+      assigneeName: detail.assigneeUser.name,
+    });
+
+    expect(projectAccessService.assertProjectAccessWithDefaultClient).toHaveBeenCalledWith(
+      detail.projectId,
+      actor,
+      'project.read',
+    );
+    expect(prisma.workflowTask.findUnique).toHaveBeenCalledTimes(2);
+  });
+
   it('limits progress submission to assignee or project manager, with critical-node overrides', () => {
     const service = new TasksService({} as never, {} as never, {} as never);
     const projectManager = { ...createActor(), id: 'manager-1', roleCodes: ['project_manager'] as const };

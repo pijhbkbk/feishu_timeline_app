@@ -87,6 +87,7 @@ export class TasksController {
     return this.tasksService.createTaskProgress(taskId, body, actor);
   }
 
+  @Permissions('project.read')
   @Get(':taskId')
   getTaskDetail(
     @Param('taskId') taskId: string,
