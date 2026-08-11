@@ -661,15 +661,47 @@ export class R26ProgressMaterialService {
     actor: AuthenticatedUser,
     requestId: string,
   ) {
-    const task = await this.loadWritableTaskOrThrow(taskId, actor, true);
-    this.assertTaskVersion(task, input.taskVersion);
+    const task = await this.loadWritableTaskOrThrow(
+      taskId,
+      actor,
+      true,
+      false,
+    );
     this.assertMaterialType(input.materialType);
     if (!file) throw new BadRequestException('请选择要上传的材料。');
 
-    const replacement = input.replacesAttachmentId
+    const replacementId = input.replacesAttachmentId ?? null;
+    const action = replacementId
+      ? 'R26_MATERIAL_VERSION_UPLOADED'
+      : 'R26_MATERIAL_UPLOADED';
+    const requestHash = this.hashRequest({
+      action,
+      taskId,
+      actorUserId: actor.id,
+      materialType: input.materialType,
+      taskVersion: input.taskVersion,
+      replacesAttachmentId: replacementId,
+      fileName: file.originalname,
+      mimeType: file.mimetype,
+      fileSize: file.size,
+      checksum: createHash('sha256').update(file.buffer).digest('hex'),
+    });
+    const replay = await this.findCommandReplay(
+      input.idempotencyKey,
+      task,
+      actor,
+      action,
+      requestHash,
+    );
+    if (replay) return replay;
+
+    this.assertTaskCanReceiveProgress(task);
+    this.assertTaskVersion(task, input.taskVersion);
+
+    const replacement = replacementId
       ? await this.prisma.attachment.findFirst({
           where: {
-            id: input.replacesAttachmentId,
+            id: replacementId,
             projectId: task.projectId,
             entityType: AttachmentTargetType.WORKFLOW_TASK,
             entityId: task.id,
@@ -677,7 +709,7 @@ export class R26ProgressMaterialService {
           },
         })
       : null;
-    if (input.replacesAttachmentId && !replacement) {
+    if (replacementId && !replacement) {
       throw new NotFoundException('待替换材料不存在或不属于当前工序。');
     }
     if (
@@ -703,32 +735,6 @@ export class R26ProgressMaterialService {
         attachmentId: activeSameType.id,
       });
     }
-
-    const requestHash = this.hashRequest({
-      action: replacement
-        ? 'R26_MATERIAL_VERSION_UPLOADED'
-        : 'R26_MATERIAL_UPLOADED',
-      taskId,
-      actorUserId: actor.id,
-      materialType: input.materialType,
-      taskVersion: input.taskVersion,
-      replacesAttachmentId: replacement?.id ?? null,
-      fileName: file.originalname,
-      mimeType: file.mimetype,
-      fileSize: file.size,
-      checksum: createHash('sha256').update(file.buffer).digest('hex'),
-    });
-    const action = replacement
-      ? 'R26_MATERIAL_VERSION_UPLOADED'
-      : 'R26_MATERIAL_UPLOADED';
-    const replay = await this.findCommandReplay(
-      input.idempotencyKey,
-      task,
-      actor,
-      action,
-      requestHash,
-    );
-    if (replay) return replay;
 
     try {
       await this.prisma.r26CommandRequest.create({
@@ -1035,18 +1041,11 @@ export class R26ProgressMaterialService {
     taskId: string,
     actor: AuthenticatedUser,
     forMaterial = false,
+    requireEditableState = true,
   ) {
     const task = await this.loadTaskOrThrow(taskId, actor);
-    this.assertTaskCanReceiveProgress(task);
-    const actions = this.getAvailableActions(task, actor);
-    const requiredAction = forMaterial ? 'UPLOAD_MATERIAL' : 'SUBMIT_PROGRESS';
-    if (!actions.some((action) => action.action === requiredAction)) {
-      throw new ForbiddenException(
-        forMaterial
-          ? '当前用户不是该工序明确授权的材料提交人。'
-          : '当前用户不是该工序明确授权的进展提交人。',
-      );
-    }
+    if (requireEditableState) this.assertTaskCanReceiveProgress(task);
+    this.assertActorCanWriteTask(task, actor, forMaterial);
     return task;
   }
 
@@ -1057,26 +1056,7 @@ export class R26ProgressMaterialService {
     ) {
       return [];
     }
-    const nodeAssignment = task.project.nodeAssignments.find(
-      (item) => item.nodeCode === task.nodeCode,
-    );
-    const collaboratorIds = this.parseIdList(
-      nodeAssignment?.collaboratorUserIds,
-    );
-    const managerMember = task.project.members.some(
-      (member) =>
-        member.userId === actor.id &&
-        (member.memberType === ProjectMemberType.OWNER ||
-          member.memberType === ProjectMemberType.MANAGER),
-    );
-    const hasWritableScope =
-      actor.isSystemAdmin ||
-      actor.roleCodes.includes('admin') ||
-      task.assigneeUserId === actor.id ||
-      task.project.ownerUserId === actor.id ||
-      managerMember ||
-      collaboratorIds.includes(actor.id);
-    if (!hasWritableScope) return [];
+    if (!this.hasWritableTaskScope(task, actor)) return [];
 
     const permissionCodes = new Set(actor.permissionCodes ?? []);
     const canWriteProgress =
@@ -1096,6 +1076,49 @@ export class R26ProgressMaterialService {
         ? [{ action: 'UPLOAD_MATERIAL', label: '上传工序材料' }]
         : []),
     ];
+  }
+
+  private hasWritableTaskScope(task: Gate3BTask, actor: AuthenticatedUser) {
+    const nodeAssignment = task.project.nodeAssignments.find(
+      (item) => item.nodeCode === task.nodeCode,
+    );
+    const collaboratorIds = this.parseIdList(
+      nodeAssignment?.collaboratorUserIds,
+    );
+    const managerMember = task.project.members.some(
+      (member) =>
+        member.userId === actor.id &&
+        (member.memberType === ProjectMemberType.OWNER ||
+          member.memberType === ProjectMemberType.MANAGER),
+    );
+    return (
+      actor.isSystemAdmin ||
+      actor.roleCodes.includes('admin') ||
+      task.assigneeUserId === actor.id ||
+      task.project.ownerUserId === actor.id ||
+      managerMember ||
+      collaboratorIds.includes(actor.id)
+    );
+  }
+
+  private assertActorCanWriteTask(
+    task: Gate3BTask,
+    actor: AuthenticatedUser,
+    forMaterial: boolean,
+  ) {
+    const requiredPermission = forMaterial
+      ? 'attachment.manage'
+      : 'workflow.transition';
+    const hasPermission =
+      actor.isSystemAdmin ||
+      (actor.permissionCodes ?? []).includes(requiredPermission);
+    if (!this.hasWritableTaskScope(task, actor) || !hasPermission) {
+      throw new ForbiddenException(
+        forMaterial
+          ? '当前用户不是该工序明确授权的材料提交人。'
+          : '当前用户不是该工序明确授权的进展提交人。',
+      );
+    }
   }
 
   private assertTaskCanReceiveProgress(task: {

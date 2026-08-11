@@ -295,6 +295,101 @@ function createService(options: {
   };
 }
 
+const replayMaterialFile = {
+  originalname: '到货确认记录.pdf',
+  mimetype: 'application/pdf',
+  size: 64,
+  buffer: Buffer.from('%PDF-1.4\nmaterial-replay'),
+};
+
+function createMaterialReplayHarness(options: { replacement?: boolean } = {}) {
+  const replacement = options.replacement ?? false;
+  const oldAttachment = {
+    id: 'attachment-old',
+    projectId: 'project-1',
+    entityType: 'WORKFLOW_TASK',
+    entityId: 'task-6',
+    materialType: 'WORK_EVIDENCE',
+    versionNo: 2,
+    isDeleted: false,
+    scanStatus: 'CLEAN',
+  };
+  let oldAttachmentDeleted = false;
+  let currentTask = task();
+  let storedCommand: Record<string, unknown> | null = null;
+
+  const commandFindUnique = vi.fn(async () => storedCommand);
+  const commandCreate = vi.fn(
+    async (args: { data: Record<string, unknown> }) => {
+      storedCommand = { ...args.data };
+      return { id: 'command-material-replay' };
+    },
+  );
+  const commandUpdate = vi.fn(
+    async (args: { data: { result: unknown } }) => {
+      storedCommand = {
+        ...(storedCommand ?? {}),
+        result: args.data.result,
+      };
+      currentTask = task({
+        updatedAt: new Date(taskUpdatedAt.getTime() + 1_000),
+      });
+      if (replacement) oldAttachmentDeleted = true;
+      return { id: 'command-material-replay' };
+    },
+  );
+  const attachmentFindFirst = vi.fn(
+    async (args: { where: Record<string, unknown> }) => {
+      if (!replacement || oldAttachmentDeleted) return null;
+      if (
+        args.where.id === oldAttachment.id ||
+        args.where.materialType === oldAttachment.materialType
+      ) {
+        return oldAttachment;
+      }
+      return null;
+    },
+  );
+  const attachmentCreate = vi.fn().mockResolvedValue({
+    id: replacement ? 'attachment-v3' : 'attachment-v1',
+    fileName: replayMaterialFile.originalname,
+    versionNo: replacement ? 3 : 1,
+  });
+  const prisma = {
+    workflowTask: {
+      findUnique: vi.fn(async () => currentTask),
+    },
+    attachment: {
+      findFirst: attachmentFindFirst,
+    },
+    r26CommandRequest: {
+      findUnique: commandFindUnique,
+      create: commandCreate,
+      update: commandUpdate,
+      deleteMany: vi.fn().mockResolvedValue({ count: 1 }),
+    },
+  };
+  const projectAccess = {
+    assertProjectAccessWithDefaultClient: vi.fn().mockResolvedValue({
+      id: 'project-1',
+    }),
+  };
+  const service = new R26ProgressMaterialService(
+    prisma as never,
+    projectAccess as never,
+    {} as never,
+    { createStoredAttachment: attachmentCreate } as never,
+  );
+
+  return {
+    service,
+    prisma,
+    attachmentCreate,
+    attachmentFindFirst,
+    isOldAttachmentDeleted: () => oldAttachmentDeleted,
+  };
+}
+
 const submitInput = {
   progressStatus: 'IN_PROGRESS' as const,
   completedWork: '已核对采购批次。',
@@ -307,6 +402,125 @@ const submitInput = {
 };
 
 describe('R26 Gate 3B progress and material service', () => {
+  it('replays a successful V1 material upload after the finalize hook bumps taskVersion without a second scan or storage write', async () => {
+    const harness = createMaterialReplayHarness();
+    const input = {
+      materialType: 'WORK_EVIDENCE',
+      taskVersion: taskUpdatedAt.toISOString(),
+      idempotencyKey: 'r26-material-replay-v1',
+    };
+
+    const first = await harness.service.uploadMaterial(
+      'task-6',
+      input,
+      replayMaterialFile,
+      actor,
+      'request-material-v1-first',
+    );
+    const replay = await harness.service.uploadMaterial(
+      'task-6',
+      input,
+      replayMaterialFile,
+      actor,
+      'request-material-v1-replay',
+    );
+
+    expect(first).toMatchObject({
+      action: 'R26_MATERIAL_UPLOADED',
+      idempotentReplay: false,
+      materialUploaded: true,
+    });
+    expect(replay).toMatchObject({
+      action: 'R26_MATERIAL_UPLOADED',
+      idempotentReplay: true,
+      materialUploaded: true,
+    });
+    expect(harness.attachmentCreate).toHaveBeenCalledTimes(1);
+    expect(harness.prisma.r26CommandRequest.create).toHaveBeenCalledTimes(1);
+    expect(harness.prisma.r26CommandRequest.update).toHaveBeenCalledTimes(1);
+    expect(harness.attachmentFindFirst).toHaveBeenCalledTimes(1);
+  });
+
+  it('replays a successful material replacement after the old attachment is deleted without revalidating or rescanning it', async () => {
+    const harness = createMaterialReplayHarness({ replacement: true });
+    const input = {
+      materialType: 'WORK_EVIDENCE',
+      taskVersion: taskUpdatedAt.toISOString(),
+      idempotencyKey: 'r26-material-replay-replacement',
+      replacesAttachmentId: 'attachment-old',
+    };
+
+    const first = await harness.service.uploadMaterial(
+      'task-6',
+      input,
+      replayMaterialFile,
+      actor,
+      'request-material-replacement-first',
+    );
+    expect(harness.isOldAttachmentDeleted()).toBe(true);
+    const attachmentReadsAfterFirstUpload =
+      harness.attachmentFindFirst.mock.calls.length;
+
+    const replay = await harness.service.uploadMaterial(
+      'task-6',
+      input,
+      replayMaterialFile,
+      actor,
+      'request-material-replacement-replay',
+    );
+
+    expect(first).toMatchObject({
+      action: 'R26_MATERIAL_VERSION_UPLOADED',
+      idempotentReplay: false,
+      materialUploaded: true,
+    });
+    expect(replay).toMatchObject({
+      action: 'R26_MATERIAL_VERSION_UPLOADED',
+      idempotentReplay: true,
+      materialUploaded: true,
+    });
+    expect(harness.attachmentFindFirst).toHaveBeenCalledTimes(
+      attachmentReadsAfterFirstUpload,
+    );
+    expect(harness.attachmentCreate).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects a changed material payload that reuses a completed upload key before any second scan or storage write', async () => {
+    const harness = createMaterialReplayHarness();
+    const input = {
+      materialType: 'WORK_EVIDENCE',
+      taskVersion: taskUpdatedAt.toISOString(),
+      idempotencyKey: 'r26-material-replay-different-payload',
+    };
+    await harness.service.uploadMaterial(
+      'task-6',
+      input,
+      replayMaterialFile,
+      actor,
+      'request-material-original',
+    );
+
+    await expect(
+      harness.service.uploadMaterial(
+        'task-6',
+        input,
+        {
+          ...replayMaterialFile,
+          buffer: Buffer.from('%PDF-1.4\nchanged-payload'),
+        },
+        actor,
+        'request-material-changed',
+      ),
+    ).rejects.toMatchObject({
+      response: {
+        code: 'IDEMPOTENCY_KEY_REUSED_WITH_DIFFERENT_REQUEST',
+      },
+    });
+    expect(harness.attachmentCreate).toHaveBeenCalledTimes(1);
+    expect(harness.attachmentFindFirst).toHaveBeenCalledTimes(1);
+    expect(harness.prisma.r26CommandRequest.create).toHaveBeenCalledTimes(1);
+  });
+
   it('rejects save, submit and upload for an ordinary admin with project.read only before commands, storage or audit', async () => {
     const noScopeTask = task({
       assigneeUserId: 'another-user',
