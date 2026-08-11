@@ -2,9 +2,11 @@ import {
   Body,
   Controller,
   Get,
+  Headers,
   Param,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common';
 
 import { CurrentUser } from '../auth/current-user.decorator';
@@ -20,15 +22,22 @@ export class SuppliersController {
   @Roles('admin', 'project_manager', 'purchaser')
   @Permissions('project.read')
   @Get()
-  listSuppliers(@CurrentUser() actor: AuthenticatedUser) {
-    return this.suppliersService.listSuppliers(actor);
+  listSuppliers(
+    @CurrentUser() actor: AuthenticatedUser,
+    @Query() query: Record<string, string | undefined>,
+  ) {
+    return this.suppliersService.listSuppliers(actor, query);
   }
 
   @Roles('admin', 'project_manager', 'purchaser')
   @Permissions('workflow.transition')
   @Post()
-  createSupplier(@Body() body: unknown, @CurrentUser() actor: AuthenticatedUser) {
-    return this.suppliersService.createSupplier(body, actor);
+  createSupplier(
+    @Body() body: unknown,
+    @CurrentUser() actor: AuthenticatedUser,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+  ) {
+    return this.suppliersService.createSupplier(body, actor, idempotencyKey);
   }
 
   @Roles('admin', 'project_manager', 'purchaser')
@@ -38,7 +47,13 @@ export class SuppliersController {
     @Param('supplierId') supplierId: string,
     @Body() body: unknown,
     @CurrentUser() actor: AuthenticatedUser,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
   ) {
-    return this.suppliersService.updateSupplier(supplierId, body, actor);
+    return this.suppliersService.updateSupplier(
+      supplierId,
+      body,
+      actor,
+      idempotencyKey,
+    );
   }
 }

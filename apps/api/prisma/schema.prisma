@@ -480,6 +480,8 @@ model User {
   auditLogs                     AuditLog[]                @relation("AuditActor")
   adminSavedViews               AdminSavedView[]
   adminCommandRequests          AdminCommandRequest[]     @relation("AdminCommandActor")
+  supplierMutationBucket        SupplierMutationBucket?
+  supplierCommandRequests       SupplierCommandRequest[]
   numberedColors                Color[]                   @relation("ColorNumberingOperator")
   createdAt                     DateTime                  @default(now())
   updatedAt                     DateTime                  @updatedAt
@@ -1288,10 +1290,10 @@ model ColorBoardDetailUpdate {
 
 model Supplier {
   id                String             @id @default(cuid())
-  supplierCode      String             @unique(map: "suppliers_code_key") @map("code")
-  supplierName      String             @map("name")
-  contactName       String?
-  contactPhone      String?
+  supplierCode      String             @unique(map: "suppliers_code_key") @map("code") @db.VarChar(64)
+  supplierName      String             @map("name") @db.VarChar(200)
+  contactName       String?            @db.VarChar(100)
+  contactPhone      String?            @db.VarChar(64)
   email             String?
   status            SupplierStatus     @default(ACTIVE)
   paintProcurements PaintProcurement[]
@@ -1301,6 +1303,34 @@ model Supplier {
 
   @@index([status, supplierName], map: "suppliers_status_name_idx")
   @@map("suppliers")
+}
+
+model SupplierMutationBucket {
+  actorUserId     String   @id
+  windowStartedAt DateTime
+  requestCount    Int
+  actor            User     @relation(fields: [actorUserId], references: [id], onDelete: Cascade)
+  updatedAt        DateTime @updatedAt
+
+  @@index([windowStartedAt])
+  @@map("supplier_mutation_buckets")
+}
+
+model SupplierCommandRequest {
+  id             String   @id @default(cuid())
+  actorUserId    String
+  idempotencyKey String   @db.VarChar(128)
+  action         String   @db.VarChar(32)
+  targetId       String?
+  requestHash    String   @db.VarChar(64)
+  resultSnapshot Json
+  actor          User     @relation(fields: [actorUserId], references: [id], onDelete: Cascade)
+  createdAt      DateTime @default(now())
+
+  @@unique([actorUserId, idempotencyKey])
+  @@index([actorUserId, createdAt])
+  @@index([createdAt])
+  @@map("supplier_command_requests")
 }
 
 model PaintProcurement {

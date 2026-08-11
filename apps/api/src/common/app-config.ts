@@ -26,6 +26,9 @@ export type AppConfig = {
   notificationJobMaxBytes: number;
   notificationScanBatchSize: number;
   notificationScanMaxItems: number;
+  supplierCatalogMaxItems: number;
+  supplierMutationMaxRequests: number;
+  supplierMutationWindowMs: number;
   authMockEnabled: boolean;
   sessionCookieName: string;
   sessionTtlSeconds: number;
@@ -512,6 +515,27 @@ export function resolveAppConfig(env: NodeJS.ProcessEnv = process.env): AppConfi
     1,
     10000,
   );
+  const supplierCatalogMaxItems = resolveBoundedInteger(
+    'SUPPLIER_CATALOG_MAX_ITEMS',
+    env.SUPPLIER_CATALOG_MAX_ITEMS,
+    5_000,
+    100,
+    10_000,
+  );
+  const supplierMutationMaxRequests = resolveBoundedInteger(
+    'SUPPLIER_MUTATION_MAX_REQUESTS',
+    env.SUPPLIER_MUTATION_MAX_REQUESTS,
+    30,
+    1,
+    1_000,
+  );
+  const supplierMutationWindowMs = resolveBoundedInteger(
+    'SUPPLIER_MUTATION_WINDOW_MS',
+    env.SUPPLIER_MUTATION_WINDOW_MS,
+    3_600_000,
+    60_000,
+    86_400_000,
+  );
 
   if (notificationScanBatchSize > notificationScanMaxItems) {
     throw new Error(
@@ -589,6 +613,9 @@ export function resolveAppConfig(env: NodeJS.ProcessEnv = process.env): AppConfi
     notificationJobMaxBytes,
     notificationScanBatchSize,
     notificationScanMaxItems,
+    supplierCatalogMaxItems,
+    supplierMutationMaxRequests,
+    supplierMutationWindowMs,
     authMockEnabled: resolveBoolean(env.AUTH_MOCK_ENABLED, false),
     sessionCookieName: env.SESSION_COOKIE_NAME ?? 'ft_session',
     sessionTtlSeconds: resolvePort(env.SESSION_TTL_SECONDS, 28800),

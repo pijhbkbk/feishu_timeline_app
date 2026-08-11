@@ -572,6 +572,31 @@ describe('resolveAppConfig', () => {
     );
   });
 
+  it('strictly bounds supplier catalog and persisted mutation admission', () => {
+    expect(
+      resolveAppConfig({
+        SUPPLIER_CATALOG_MAX_ITEMS: '5000',
+        SUPPLIER_MUTATION_MAX_REQUESTS: '30',
+        SUPPLIER_MUTATION_WINDOW_MS: '3600000',
+      }),
+    ).toMatchObject({
+      supplierCatalogMaxItems: 5000,
+      supplierMutationMaxRequests: 30,
+      supplierMutationWindowMs: 3600000,
+    });
+
+    for (const env of [
+      { SUPPLIER_CATALOG_MAX_ITEMS: '99' },
+      { SUPPLIER_CATALOG_MAX_ITEMS: '10001' },
+      { SUPPLIER_MUTATION_MAX_REQUESTS: '0' },
+      { SUPPLIER_MUTATION_MAX_REQUESTS: '1001' },
+      { SUPPLIER_MUTATION_WINDOW_MS: '59999' },
+      { SUPPLIER_MUTATION_WINDOW_MS: '86400001' },
+    ]) {
+      expect(() => resolveAppConfig(env)).toThrowError(/SUPPLIER_/);
+    }
+  });
+
   it.each([
     {
       name: 'local PostgreSQL',

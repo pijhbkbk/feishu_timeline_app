@@ -396,7 +396,9 @@ export class PaintProcurementsService {
         orderBy: [
           { status: 'asc' },
           { supplierName: 'asc' },
+          { id: 'asc' },
         ],
+        take: 100,
       }),
       this.getActiveProcurementTask(db, projectId),
       db.workflowTask.findMany({
@@ -844,6 +846,8 @@ export class PaintProcurementsService {
       contactName: supplier.contactName,
       contactPhone: supplier.contactPhone,
       status: supplier.status,
+      createdAt: supplier.createdAt.toISOString(),
+      updatedAt: supplier.updatedAt.toISOString(),
     };
   }
 

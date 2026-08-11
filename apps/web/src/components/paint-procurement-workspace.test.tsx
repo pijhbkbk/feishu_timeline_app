@@ -1,5 +1,6 @@
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 import { ProcurementRecordList } from './paint-procurement-workspace';
@@ -74,6 +75,8 @@ const baseWorkspace: PaintProcurementWorkspaceResponse = {
         contactName: '张工',
         contactPhone: '13800000000',
         status: 'ACTIVE',
+        createdAt: '2026-03-19T00:00:00.000Z',
+        updatedAt: '2026-03-20T00:00:00.000Z',
       },
     },
   ],
@@ -97,6 +100,18 @@ const purchaserUser: SessionUser = {
 };
 
 describe('PaintProcurementWorkspace', () => {
+  it('discovers suppliers beyond the embedded page through bounded server search', () => {
+    const source = readFileSync(
+      new URL('./paint-procurement-workspace.tsx', import.meta.url),
+      'utf8',
+    );
+
+    expect(source).toContain('await fetchSuppliers(1, supplierSearch)');
+    expect(source).toContain('setSupplierCatalog(page.items)');
+    expect(source).toContain('if (item.supplier) supplierById.set(item.supplier.id, item.supplier)');
+    expect(source).toContain('maxLength={100}');
+  });
+
   it('renders procurement record list rows', () => {
     const html = renderToStaticMarkup(
       <ProcurementRecordList

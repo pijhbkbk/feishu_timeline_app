@@ -19,12 +19,19 @@ const readOnlyActor: AuthenticatedUser = {
 
 function createHarness() {
   const prisma = {
-    supplier: { findMany: vi.fn().mockResolvedValue([]) },
+    supplier: {
+      count: vi.fn().mockResolvedValue(0),
+      findMany: vi.fn().mockResolvedValue([]),
+    },
     $transaction: vi
       .fn()
       .mockRejectedValue(new Error('unauthorized supplier write reached database')),
   };
-  const service = new SuppliersService(prisma as never, {} as never);
+  const service = new SuppliersService(
+    prisma as never,
+    {} as never,
+    { get: vi.fn() } as never,
+  );
   return { service, prisma };
 }
 
@@ -68,7 +75,13 @@ describe('SuppliersService permission matrix', () => {
       isSystemAdmin: true,
     };
 
-    await expect(service.listSuppliers(systemAdmin)).resolves.toEqual([]);
+    await expect(service.listSuppliers(systemAdmin)).resolves.toEqual({
+      page: 1,
+      pageSize: 20,
+      total: 0,
+      totalPages: 1,
+      items: [],
+    });
     expect(prisma.supplier.findMany).toHaveBeenCalledTimes(1);
   });
 });

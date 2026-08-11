@@ -28,8 +28,9 @@ export type SupplierSummary = {
   contactName: string | null;
   contactPhone: string | null;
   status: SupplierStatus;
-  createdAt?: string;
-  updatedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+  idempotentReplay?: boolean;
 };
 
 export type PaintProcurementRecord = {
@@ -97,6 +98,14 @@ export type SupplierFormInput = {
   status: SupplierStatus;
 };
 
+export type SupplierPageResponse = {
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+  items: SupplierSummary[];
+};
+
 export const PROCUREMENT_STATUS_OPTIONS: Array<{
   value: ProcurementStatus;
   label: string;
@@ -123,21 +132,36 @@ export async function fetchPaintProcurementWorkspace(projectId: string) {
   );
 }
 
-export async function fetchSuppliers() {
-  return apiRequest<SupplierSummary[]>('/suppliers');
+export async function fetchSuppliers(page = 1, query = '') {
+  const params = new URLSearchParams({ page: String(page), pageSize: '100' });
+  if (query.trim()) params.set('q', query.trim());
+  return apiRequest<SupplierPageResponse>(`/suppliers?${params.toString()}`);
 }
 
 export async function createSupplier(input: SupplierFormInput) {
   return apiRequest<SupplierSummary>('/suppliers', {
     method: 'POST',
+    headers: {
+      'Idempotency-Key': crypto.randomUUID(),
+    },
     body: input,
   });
 }
 
-export async function updateSupplier(supplierId: string, input: SupplierFormInput) {
-  return apiRequest<SupplierSummary>(`/suppliers/${supplierId}`, {
+export async function updateSupplier(
+  supplierId: string,
+  input: SupplierFormInput,
+  expectedVersion: string,
+) {
+  return apiRequest<SupplierSummary>(`/suppliers/${encodeURIComponent(supplierId)}`, {
     method: 'PATCH',
-    body: input,
+    headers: {
+      'Idempotency-Key': crypto.randomUUID(),
+    },
+    body: {
+      ...input,
+      expectedVersion,
+    },
   });
 }
 
