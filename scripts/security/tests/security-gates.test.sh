@@ -22,7 +22,12 @@ for expected in \
   apps/web/src/app/layout.tsx \
   apps/web/src/middleware.ts \
   apps/web/next.config.ts \
-  apps/web/eslint.config.mjs; do
+  apps/web/eslint.config.mjs \
+  .github/workflows/ci.yml \
+  scripts/deploy/ops-check.sh \
+  scripts/load/r23-auth-common.js \
+  scripts/load/r23-build-k6-session.mjs \
+  scripts/security/list-sast-targets.sh; do
   grep -Fx "$expected" "$targets_file" >/dev/null \
     || fail "expected SAST target is missing: $expected"
 done
@@ -38,6 +43,68 @@ while IFS= read -r target; do
     fail "ignored or out-of-scope path leaked into the SAST target manifest: $target"
   fi
 done <"$targets_file"
+
+grep -F "configService.get<string>('frontendUrl')" \
+  "$ROOT_DIR/apps/api/src/main.ts" >/dev/null \
+  || fail 'API bootstrap does not consume the validated frontendUrl from ConfigService'
+if grep -F 'process.env.FRONTEND_URL' "$ROOT_DIR/apps/api/src/main.ts" >/dev/null; then
+  fail 'API bootstrap bypasses protected FRONTEND_URL validation through process.env'
+fi
+
+# The first-party allowlist is intentionally exhaustive for authored executable
+# and source extensions. The only generated TypeScript exclusion currently in
+# the allowlist is Next.js' tracked next-env.d.ts declaration.
+expected_targets="$TMP_DIR/expected-targets.txt"
+sorted_targets="$TMP_DIR/sorted-targets.txt"
+: >"$expected_targets"
+while IFS= read -r -d '' candidate; do
+  case "$candidate" in
+    */node_modules/*|*/.next/*|*/dist/*|*/build/*|*/coverage/*|*/generated/*|*/__generated__/*|*/playwright-report/*|*/test-results/*|*.tsbuildinfo|*/next-env.d.ts)
+      continue
+      ;;
+  esac
+
+  case "$candidate" in
+    .github/workflows/*)
+      case "$candidate" in
+        *.yml|*.yaml)
+          printf '%s\n' "$candidate" >>"$expected_targets"
+          ;;
+      esac
+      ;;
+    apps/web/*|apps/api/*|apps/api-ops/*|packages/shared/*|deploy/*|scripts/*)
+      case "$candidate" in
+        *.sh|*.js|*.jsx|*.mjs|*.cjs|*.ts|*.tsx|*.mts|*.cts|*.py|tsconfig*.json|*/tsconfig*.json)
+          printf '%s\n' "$candidate" >>"$expected_targets"
+          ;;
+      esac
+      ;;
+    eslint.config.mjs|tsconfig*.json)
+      printf '%s\n' "$candidate" >>"$expected_targets"
+      ;;
+  esac
+done < <(git -C "$ROOT_DIR" ls-files --cached --others --exclude-standard -z)
+
+LC_ALL=C sort -u "$expected_targets" -o "$expected_targets"
+LC_ALL=C sort -u "$targets_file" >"$sorted_targets"
+if ! cmp -s "$expected_targets" "$sorted_targets"; then
+  comm -23 "$expected_targets" "$sorted_targets" >&2 || true
+  comm -13 "$expected_targets" "$sorted_targets" >&2 || true
+  fail 'SAST target manifest does not exactly cover the approved first-party source allowlist'
+fi
+
+# Dockerfiles and Prisma schemas remain mandatory company-package inputs, but
+# they are not claimed as Semgrep targets until pinned language-specific rules
+# are approved. Docker runtime risk and Prisma schema validity use their
+# separate image/config and prisma:validate gates.
+for separate_gate_input in \
+  apps/api/Dockerfile \
+  apps/web/Dockerfile \
+  apps/api/prisma/schema.prisma; do
+  if grep -Fx "$separate_gate_input" "$targets_file" >/dev/null; then
+    fail "separate-gate input was incorrectly claimed as a Semgrep target: $separate_gate_input"
+  fi
+done
 
 safe_build="$TMP_DIR/safe/.next"
 mkdir -p "$safe_build/server" "$safe_build/static/chunks"

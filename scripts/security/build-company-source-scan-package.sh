@@ -41,13 +41,13 @@ is_excluded_path() {
   fi
 
   case "$lower_path" in
-    *.env|*.env.*|*/.env|*/.env.*)
+    *.env|*.env.*)
       return 0
       ;;
     *.log|*.out|*.err|*.har|*.trace|*.trace.zip|*.sarif|*.dump|*.bak|*.backup|*.sqlite|*.sqlite3|*.db|*.pyc|*.pyo)
       return 0
       ;;
-    */.auth/*|*/playwright/.auth/*)
+    */.auth/*)
       return 0
       ;;
     */auth-state.json|*/auth-state.yaml|*/auth-state.yml|*/auth-state.txt|*/storage-state.json|*/storage-state.yaml|*/storage-state.yml|*/storage-state.txt)
@@ -144,6 +144,7 @@ fi
 ALLOWLIST_PATHS=(
   apps/web
   apps/api
+  apps/api-ops
   packages/shared
   deploy
   scripts
@@ -155,6 +156,7 @@ ALLOWLIST_PATHS=(
   eslint.config.mjs
   docker-compose.yml
   .dockerignore
+  THIRD_PARTY_NOTICES
 )
 
 # Never package a commit while the same source scope has uncommitted or
@@ -241,6 +243,8 @@ require_manifest_match 'Web authentication/session source' '^apps/web/src/compon
 require_manifest_match 'Prisma schema' '^apps/api/prisma/schema\.prisma$' "$SELECTED_MANIFEST"
 require_manifest_match 'Prisma migrations' '^apps/api/prisma/migrations/[^/]+/migration\.sql$' "$SELECTED_MANIFEST"
 require_manifest_match 'root package manifest' '^package\.json$' "$SELECTED_MANIFEST"
+require_manifest_match 'API operations package manifest' '^apps/api-ops/package\.json$' "$SELECTED_MANIFEST"
+require_manifest_match 'third-party notices' '^THIRD_PARTY_NOTICES$' "$SELECTED_MANIFEST"
 require_manifest_match 'pnpm lockfile' '^pnpm-lock\.yaml$' "$SELECTED_MANIFEST"
 require_manifest_match 'TypeScript configuration' '(^|/)tsconfig[^/]*\.json$' "$SELECTED_MANIFEST"
 require_manifest_match 'API Dockerfile' '^apps/api/Dockerfile$' "$SELECTED_MANIFEST"
