@@ -693,6 +693,9 @@
   exact candidate/image verification, fresh production backup, rollback window
   and observation-owner confirmation.
 
+> **HISTORICAL_NON_NORMATIVE — R27B Governance v2.1**
+> 以下内容保留为历史记录，不再定义当前 Codex 执行协议。当前规范仅来自根 `AGENTS.md`、已批准 Task Contract 和 `docs/gates/VERIFICATION_GATES.md`。不得据此自动 CONTINUE、进入 Next Round、每条命令更新 Ledger，或对小 patch 重跑完整发布 Gate。
+
 > 用途：记录 Codex 每一轮执行情况、验收结果、风险、遗留问题与下一轮决策。
 > 要求：每完成一轮，必须更新本文件。
 
@@ -965,6 +968,9 @@ AWAITING_PRODUCT_OWNER_CONFIRMATION
 - `docs/FLOW_MAP_UI_REFINEMENT_R21C.md`：覆盖 R21C 项目实时流程地图 UI 布局、坐标规则、状态色、自动刷新与截图验收
 
 ---
+
+> **HISTORICAL_NON_NORMATIVE — R27B Governance v2.1**
+> 以下内容保留为历史记录，不再定义当前 Codex 执行协议。当前规范仅来自根 `AGENTS.md`、已批准 Task Contract 和 `docs/gates/VERIFICATION_GATES.md`。不得据此自动 CONTINUE、进入 Next Round、每条命令更新 Ledger，或对小 patch 重跑完整发布 Gate。
 
 ## Round 记录模板（复制使用）
 
@@ -7323,4 +7329,38 @@ MAIN_UNCHANGED
 TAG_UNCHANGED
 BLOCKER_REPORT
 STOP
+```
+
+
+---
+
+### R27B Codex Governance Refactor Milestone（2026-08-13）
+
+- Baseline：`41b4b166c587692e6f0fb9536dca2e1aab646c70`。
+- Isolation：`/Users/lixiaochen/Downloads/feishu_timeline_app-r27-governance`，分支
+  `governance/r27-agent-architecture`。
+- Scope：仅安装产品负责人批准的治理文件并追加本里程碑；未修改业务源码。
+- Verification：未运行源码测试、build、安全扫描或部署；等待产品负责人 review 治理 diff。
+- Gate：未改变 R27/R27A Gate 结论，R27A security clearance 仍未建立。
+
+---
+
+### R27B Governance Repair v2.1 Milestone（2026-08-13）
+
+```text
+R27B_OWNER_REVIEW_V1=FAIL
+R27B_REPAIR_V2_1_APPLIED=YES
+GOV_WORKTREE_DIRTY=YES
+COMMIT_CREATED=NO
+STAGE_EXECUTED=NO
+PUSH_EXECUTED=NO
+MAIN_UNCHANGED=YES
+PRODUCTION_UNCHANGED=YES
+TAG_UNCHANGED=YES
+SOURCE_REPO_UNCHANGED=YES
+FORMAL_R27_WORKTREE_UNCHANGED=YES
+SOURCE_TESTS=NOT_RUN_BY_DESIGN
+SECURITY_SCAN=NOT_RUN_BY_DESIGN
+DEPLOYMENT=NOT_AUTHORIZED
+AWAITING_OWNER_REVIEW_V2
 ```

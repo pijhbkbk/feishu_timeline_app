@@ -1,0 +1,815 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://timeline.all-too-well.com/schemas/findings-ledger-v2.schema.json",
+  "title": "Feishu Timeline Security Finding Ledger",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schema_version",
+    "ledger_path",
+    "repository",
+    "migration",
+    "findings"
+  ],
+  "properties": {
+    "$schema": {
+      "const": "./FINDINGS.schema.yaml"
+    },
+    "schema_version": {
+      "const": 2
+    },
+    "ledger_path": {
+      "const": "docs/security/FINDINGS.yaml"
+    },
+    "repository": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "baseline_commit",
+        "baseline_tree",
+        "lockfile_sha256",
+        "recorded_at"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "baseline_commit": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "baseline_tree": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "lockfile_sha256": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "recorded_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/finding"
+      }
+    },
+    "migration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "source_paths",
+        "notes"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "pending",
+            "in_progress",
+            "complete"
+          ]
+        },
+        "source_paths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "evidenceBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "commit",
+        "tree",
+        "tool_name",
+        "tool_version",
+        "command",
+        "environment",
+        "result_sha256",
+        "recorded_at"
+      ],
+      "properties": {
+        "commit": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "tree": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "tool_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tool_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "command": {
+          "type": "string",
+          "minLength": 1
+        },
+        "environment": {
+          "type": "string",
+          "minLength": 1
+        },
+        "result_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "log_path": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "config_sha256": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "recorded_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "verificationItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "binding"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "pending",
+            "pass",
+            "fail",
+            "blocked",
+            "not_required"
+          ]
+        },
+        "binding": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/evidenceBinding"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "notes": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "historyEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "at",
+        "transition",
+        "actor",
+        "reason"
+      ],
+      "properties": {
+        "at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "transition": {
+          "enum": [
+            "null->candidate",
+            "candidate->confirmed",
+            "candidate->duplicate",
+            "candidate->false_positive",
+            "confirmed->accepted_for_fix",
+            "confirmed->risk_accepted",
+            "accepted_for_fix->in_progress",
+            "in_progress->fixed_target_verified",
+            "fixed_target_verified->fixed_diff_verified",
+            "fixed_diff_verified->fixed_full_verified",
+            "fixed_full_verified->closed",
+            "risk_accepted->accepted_for_fix",
+            "risk_accepted->confirmed",
+            "duplicate->candidate",
+            "false_positive->candidate",
+            "closed->confirmed"
+          ]
+        },
+        "actor": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "approval_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "binding": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/evidenceBinding"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title",
+        "status",
+        "severity",
+        "confidence",
+        "classification",
+        "cwe",
+        "source",
+        "scope",
+        "evidence",
+        "root_cause_cluster",
+        "security_invariants",
+        "disposition",
+        "fix",
+        "verification",
+        "history"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^R[0-9]+-[A-Z0-9_-]+-[0-9]{3}$"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "enum": [
+            "candidate",
+            "confirmed",
+            "duplicate",
+            "false_positive",
+            "accepted_for_fix",
+            "in_progress",
+            "fixed_target_verified",
+            "fixed_diff_verified",
+            "fixed_full_verified",
+            "risk_accepted",
+            "closed"
+          ]
+        },
+        "severity": {
+          "enum": [
+            "critical",
+            "high",
+            "medium",
+            "low",
+            "info"
+          ]
+        },
+        "confidence": {
+          "enum": [
+            "low",
+            "medium",
+            "high"
+          ]
+        },
+        "classification": {
+          "enum": [
+            "pre_existing",
+            "patch_regression",
+            "duplicate",
+            "false_positive",
+            "hardening",
+            "external_blocker",
+            "proof_gap"
+          ]
+        },
+        "cwe": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^CWE-[0-9]+$"
+        },
+        "source": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "report_path",
+            "binding"
+          ],
+          "properties": {
+            "type": {
+              "enum": [
+                "deep_scan",
+                "diff_scan",
+                "component_scan",
+                "sast",
+                "sca",
+                "dast",
+                "secrets",
+                "manual",
+                "historical_import"
+              ]
+            },
+            "report_path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "binding": {
+              "$ref": "#/$defs/evidenceBinding"
+            }
+          }
+        },
+        "scope": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "component",
+            "affected_files",
+            "entry_points",
+            "trust_boundary"
+          ],
+          "properties": {
+            "component": {
+              "type": "string",
+              "minLength": 1
+            },
+            "affected_files": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "uniqueItems": true
+            },
+            "entry_points": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "uniqueItems": true
+            },
+            "trust_boundary": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "evidence": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "reachable",
+            "production_exposed",
+            "reproduction_path",
+            "proof_gap"
+          ],
+          "properties": {
+            "reachable": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "production_exposed": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "reproduction_path": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "proof_gap": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        },
+        "root_cause_cluster": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "security_invariants": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^SEC-[0-9]{3}[A-Z]?$"
+          },
+          "uniqueItems": true
+        },
+        "disposition": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "duplicate_of",
+            "false_positive_reason",
+            "risk_acceptance"
+          ],
+          "properties": {
+            "duplicate_of": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "false_positive_reason": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "risk_acceptance": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "approval_id",
+                    "approved_by",
+                    "risk_owner",
+                    "basis",
+                    "approved_at",
+                    "expires_at",
+                    "review_at",
+                    "remediation_plan"
+                  ],
+                  "properties": {
+                    "approval_id": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "approved_by": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "risk_owner": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "basis": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "approved_at": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "expires_at": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "review_at": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "remediation_plan": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "fix": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "task_id",
+            "branch",
+            "commit",
+            "tree",
+            "changed_files"
+          ],
+          "properties": {
+            "task_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "branch": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "commit": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "pattern": "^[0-9a-f]{40}$"
+            },
+            "tree": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "pattern": "^[0-9a-f]{40}$"
+            },
+            "changed_files": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "uniqueItems": true
+            }
+          }
+        },
+        "verification": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "targeted",
+            "affected_regression",
+            "diff_review",
+            "full_regression"
+          ],
+          "properties": {
+            "targeted": {
+              "$ref": "#/$defs/verificationItem"
+            },
+            "affected_regression": {
+              "$ref": "#/$defs/verificationItem"
+            },
+            "diff_review": {
+              "$ref": "#/$defs/verificationItem"
+            },
+            "full_regression": {
+              "$ref": "#/$defs/verificationItem"
+            }
+          }
+        },
+        "closure": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "closed_by",
+                "closed_at",
+                "criterion",
+                "binding"
+              ],
+              "properties": {
+                "closed_by": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "closed_at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "criterion": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "binding": {
+                  "$ref": "#/$defs/evidenceBinding"
+                }
+              }
+            }
+          ]
+        },
+        "history": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/historyEvent"
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "duplicate"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "disposition": {
+                "properties": {
+                  "duplicate_of": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "false_positive"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "disposition": {
+                "properties": {
+                  "false_positive_reason": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "risk_accepted"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "disposition": {
+                "properties": {
+                  "risk_acceptance": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "enum": [
+                  "fixed_target_verified",
+                  "fixed_diff_verified",
+                  "fixed_full_verified",
+                  "closed"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "verification": {
+                "properties": {
+                  "targeted": {
+                    "properties": {
+                      "status": {
+                        "const": "pass"
+                      },
+                      "binding": {
+                        "type": "object"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "enum": [
+                  "fixed_diff_verified",
+                  "fixed_full_verified",
+                  "closed"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "verification": {
+                "properties": {
+                  "diff_review": {
+                    "properties": {
+                      "status": {
+                        "const": "pass"
+                      },
+                      "binding": {
+                        "type": "object"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "enum": [
+                  "fixed_full_verified",
+                  "closed"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "verification": {
+                "properties": {
+                  "full_regression": {
+                    "properties": {
+                      "status": {
+                        "const": "pass"
+                      },
+                      "binding": {
+                        "type": "object"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "closed"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "closure"
+            ],
+            "properties": {
+              "closure": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}
