@@ -1,0 +1,23 @@
+{
+  "$schema": "./FINDINGS.schema.yaml",
+  "schema_version": 2,
+  "ledger_path": "docs/security/FINDINGS.yaml",
+  "repository": {
+    "path": "/Users/lixiaochen/Downloads/feishu_timeline_app",
+    "baseline_commit": "41b4b166c587692e6f0fb9536dca2e1aab646c70",
+    "baseline_tree": "f550d22358e69f334fe0a0355851754ddb038382",
+    "lockfile_sha256": "897bec6a0bf51a3f004ca9c5261606d01f756f50388d926649143ce6a570d9ec",
+    "recorded_at": "2026-08-13T08:12:33Z"
+  },
+  "migration": {
+    "status": "pending",
+    "source_paths": [
+      "docs/security/R27_REMEDIATION_TRACKER.md",
+      "docs/security/R27A_REMEDIATION_REPORT.md",
+      "docs/rounds/R27.md",
+      "docs/handoff/R27_HANDOFF.md"
+    ],
+    "notes": "R27C must normalize and import historical/current findings before this ledger is treated as complete."
+  },
+  "findings": []
+}
