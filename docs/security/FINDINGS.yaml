@@ -17,7 +17,168 @@
       "docs/rounds/R27.md",
       "docs/handoff/R27_HANDOFF.md"
     ],
-    "notes": "R27C must normalize and import historical/current findings before this ledger is treated as complete."
+    "notes": "R27C historical normalization remains pending. R27D-G4-001 and R27D-G4-002 are recorded and closed against the exact Reviews fix commit and gate evidence. Production deployment remains blocked until an approved online-index or maintenance-window strategy exists."
   },
-  "findings": []
+  "findings": [
+    {
+      "id": "R27D-G4-001",
+      "title": "Reviews workspace materializes unbounded persisted legacy text before admission",
+      "status": "closed",
+      "severity": "medium",
+      "confidence": "high",
+      "classification": "pre_existing",
+      "cwe": "CWE-400",
+      "source": {
+        "type": "diff_scan",
+        "report_path": "codex-thread://019ffdaf-221f-7f50-85ad-cc5446dadb85/turn/019ffdaf-80cc-7b50-a8da-746b3c9c425b/item/item-3",
+        "binding": {"commit": "f952ec049a6aa5f4f51461f67172ed7872d13bf5", "tree": "5785ff1885f564f15be02117132f14cb5cf5fea4", "tool_name": "Codex independent G4_DIFF review", "tool_version": "gpt-5.6-sol", "command": "R27D_REVIEWS_INDEPENDENT_G4_DIFF_REVIEW", "environment": "local read-only worktree; reviewed working diff SHA-256 25948cbf4b6867c645d201f64e95350c73f338ec52da6d82cefccfa331b5d10c", "result_sha256": "beec529c109208701ebd37c185d2e81c952497371ec1aca5cbc46fdd346e6549", "log_path": "codex-thread://019ffdaf-221f-7f50-85ad-cc5446dadb85/turn/019ffdaf-80cc-7b50-a8da-746b3c9c425b/item/item-3", "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db", "recorded_at": "2026-08-14T00:52:55Z"}
+      },
+      "scope": {
+        "component": "Reviews workspace persisted-source admission",
+        "affected_files": ["apps/api/src/modules/reviews/reviews.service.ts", "apps/api/prisma/schema.prisma"],
+        "entry_points": ["getCabinReviewWorkspace", "getConsistencyReviewWorkspace", "getVisualDeltaReviewWorkspace"],
+        "trust_boundary": "Persisted ReviewRecord and reviewer text crossing from PostgreSQL into Node workspace responses"
+      },
+      "evidence": {
+        "reachable": true,
+        "production_exposed": null,
+        "reproduction_path": "Authorized workspace read loaded legacy comment, conditionNote, rejectReason, and reviewer.name before a database-side bounded admission decision.",
+        "proof_gap": null
+      },
+      "root_cause_cluster": "REVIEWS_BOUNDED_SNAPSHOT_ORPHAN_FINALIZE",
+      "security_invariants": ["SEC-009", "SEC-010"],
+      "disposition": {"duplicate_of": null, "false_positive_reason": null, "risk_acceptance": null},
+      "fix": {
+        "task_id": "R27D_REVIEWS_BOUNDARY_MINIMAL_FIX",
+        "branch": "security/r27-integration-v2",
+        "commit": "2ad18e31a52d2e89617601a0dc29eab07aca0b87",
+        "tree": "0fdfb94eb30b4757907e38c72dd4e0e7bd1a6990",
+        "changed_files": [
+          "apps/api/src/modules/reviews/reviews.service.ts",
+          "apps/api/src/modules/reviews/reviews.resource-bounds.spec.ts",
+          "apps/api/src/modules/reviews/reviews.postgres-boundary.integration.spec.ts",
+          "apps/api/prisma/schema.prisma",
+          "apps/api/prisma/migrations/20260814120000_add_review_records_project_type_id_index/migration.sql"
+        ]
+      },
+      "verification": {
+        "targeted": {
+          "status": "pass",
+          "binding": {"commit": "2ad18e31a52d2e89617601a0dc29eab07aca0b87", "tree": "0fdfb94eb30b4757907e38c72dd4e0e7bd1a6990", "tool_name": "Codex R27D Reviews boundary verification", "tool_version": "gpt-5.6-sol; pnpm 9.15.4; Vitest 3.2.6; Prisma 6.19.3", "command": "R27D_REVIEWS_BOUNDARY_MINIMAL_FIX Phase 5: diff check, three-file ESLint, and 90 targeted/static tests", "environment": "local isolated worktree; exact five-file diff SHA-256 a9684768bfa6cc6f4b098b9e2a478c0bb1b0b9c71c5b2605400b9e30fe114800 later committed unchanged", "result_sha256": "51f7a67a689f6adb69577877d69d4f774207453eec1f2c9018eda7447f3e859b", "log_path": "codex-thread://019ffee2-6ec3-74c0-9df2-7e82ddafce77/turn/019ffee5-912a-76d1-8596-f0dfe6796a4b/item/item-58", "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db", "recorded_at": "2026-08-14T06:55:06Z"},
+          "notes": "G1 result artifact SHA-256 51f7a67a689f6adb69577877d69d4f774207453eec1f2c9018eda7447f3e859b."
+        },
+        "affected_regression": {
+          "status": "pass",
+          "binding": {"commit": "2ad18e31a52d2e89617601a0dc29eab07aca0b87", "tree": "0fdfb94eb30b4757907e38c72dd4e0e7bd1a6990", "tool_name": "Codex R27D Reviews boundary verification", "tool_version": "gpt-5.6-sol; pnpm 9.15.4; Vitest 3.2.6; TypeScript 5.9.3", "command": "R27D_REVIEWS_BOUNDARY_MINIMAL_FIX Phase 6: seven Reviews test files, 128 tests, targeted ESLint, and API typecheck", "environment": "local isolated worktree; exact five-file diff SHA-256 a9684768bfa6cc6f4b098b9e2a478c0bb1b0b9c71c5b2605400b9e30fe114800 later committed unchanged", "result_sha256": "51f7a67a689f6adb69577877d69d4f774207453eec1f2c9018eda7447f3e859b", "log_path": "codex-thread://019ffee2-6ec3-74c0-9df2-7e82ddafce77/turn/019ffee5-912a-76d1-8596-f0dfe6796a4b/item/item-58", "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db", "recorded_at": "2026-08-14T06:55:06Z"},
+          "notes": "G2 result artifact SHA-256 51f7a67a689f6adb69577877d69d4f774207453eec1f2c9018eda7447f3e859b."
+        },
+        "diff_review": {
+          "status": "pass",
+          "binding": {"commit": "2ad18e31a52d2e89617601a0dc29eab07aca0b87", "tree": "0fdfb94eb30b4757907e38c72dd4e0e7bd1a6990", "tool_name": "Codex independent G4_DIFF evidence closure", "tool_version": "gpt-5.6-sol", "command": "R27D_REVIEWS_G4_EVIDENCE_CLOSURE_CORRECTED", "environment": "local read-only exact five-file identity; static G4 reused after PostgreSQL evidence manifest correction", "result_sha256": "b934e4a4336dc3ebc81b126722a863cb46d72b9c138a97b24bb1a39843525d33", "log_path": "codex-thread://019fff16-293a-7ce0-8bcf-8d352fd58bc1/turn/019fff84-e083-7cb0-bcc2-769fc145e7dd/item/item-26", "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db", "recorded_at": "2026-08-14T09:10:10Z"},
+          "notes": "G4 result artifact SHA-256 b934e4a4336dc3ebc81b126722a863cb46d72b9c138a97b24bb1a39843525d33; reviewed diff SHA-256 a9684768bfa6cc6f4b098b9e2a478c0bb1b0b9c71c5b2605400b9e30fe114800."
+        },
+        "full_regression": {
+          "status": "pass",
+          "binding": {"commit": "2ad18e31a52d2e89617601a0dc29eab07aca0b87", "tree": "0fdfb94eb30b4757907e38c72dd4e0e7bd1a6990", "tool_name": "Codex R27D Reviews schema G3", "tool_version": "gpt-5.6-sol; pnpm 9.15.4; Vitest 3.2.6; Prisma 6.19.3", "command": "R27D_REVIEWS_BOUNDARY_MINIMAL_FIX Phase 7: 36 migrations, second deploy, migration/index checks, PostgreSQL 15/15, API typecheck, and API build", "environment": "isolated disposable PostgreSQL; exact five-file diff SHA-256 a9684768bfa6cc6f4b098b9e2a478c0bb1b0b9c71c5b2605400b9e30fe114800 later committed unchanged", "result_sha256": "51f7a67a689f6adb69577877d69d4f774207453eec1f2c9018eda7447f3e859b", "log_path": "codex-thread://019ffee2-6ec3-74c0-9df2-7e82ddafce77/turn/019ffee5-912a-76d1-8596-f0dfe6796a4b/item/item-58", "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db", "recorded_at": "2026-08-14T06:55:06Z"},
+          "notes": "G3 result artifact SHA-256 51f7a67a689f6adb69577877d69d4f774207453eec1f2c9018eda7447f3e859b. Production online-index strategy remains required before deployment."
+        }
+      },
+      "closure": {
+        "closed_by": "R27D_REVIEWS_G4_EVIDENCE_CLOSURE_CORRECTED",
+        "closed_at": "2026-08-14T09:10:10Z",
+        "criterion": "G1, G2, G3 and independent G4_DIFF passed; PostgreSQL execution was proven by JSON SHA-256 9c01532c104625548872b94e42baeabb8b1f2eb52fa046aec7f2f37139f6ff53 and log SHA-256 a43237ba4d405e6a07e70a8d42338d0ba27b53003c06385957fdf369f41f6473. Production deployment remains blocked until an approved online-index or maintenance-window strategy exists.",
+        "binding": {"commit": "2ad18e31a52d2e89617601a0dc29eab07aca0b87", "tree": "0fdfb94eb30b4757907e38c72dd4e0e7bd1a6990", "tool_name": "R27D PostgreSQL boundary integration evidence replay", "tool_version": "PostgreSQL 16.14; Vitest 3.2.6; Prisma 6.19.3", "command": "env DATABASE_URL=<REDACTED_TEST_DATABASE_URL> REVIEWS_POSTGRES_TEST_DATABASE_URL=<REDACTED_TEST_DATABASE_URL> pnpm exec vitest run src/modules/reviews/reviews.postgres-boundary.integration.spec.ts --reporter=verbose", "environment": "isolated disposable local PostgreSQL; 15 passed, 0 failed, 0 skipped; database removed", "result_sha256": "9c01532c104625548872b94e42baeabb8b1f2eb52fa046aec7f2f37139f6ff53", "log_path": "/Users/lixiaochen/Downloads/R27D_REVIEWS_POSTGRES_EVIDENCE_20260814T073052Z.json", "config_sha256": "1479327555c1dcc05a7d6fd075f1b2f85e409be0acbddb41a6f8e814330ce4b4", "recorded_at": "2026-08-14T07:40:38.402Z"}
+      },
+      "history": [
+        {"at": "2026-08-14T00:52:55Z", "transition": "null->candidate", "actor": "Codex independent reviewer", "reason": "Independent exact-diff review identified the reachable persisted-source resource boundary gap."},
+        {"at": "2026-08-14T00:52:55Z", "transition": "candidate->confirmed", "actor": "Codex independent reviewer", "reason": "Confirmed Medium CWE-400 with high confidence across all three Reviews workspaces."},
+        {"at": "2026-08-14T06:11:25Z", "transition": "confirmed->accepted_for_fix", "actor": "R27D remediation task owner", "reason": "Approved PATH_B schema-assisted local refactor and exact five-file scope."},
+        {"at": "2026-08-14T06:11:25Z", "transition": "accepted_for_fix->in_progress", "actor": "Codex remediation agent", "reason": "Started bounded snapshot, persisted-source admission, index, and regression implementation."},
+        {"at": "2026-08-14T06:55:06Z", "transition": "in_progress->fixed_target_verified", "actor": "Codex remediation agent", "reason": "G1 and G2 passed on the exact final five-file identity."},
+        {"at": "2026-08-14T09:10:10Z", "transition": "fixed_target_verified->fixed_diff_verified", "actor": "Codex independent reviewer", "reason": "Independent G4_DIFF passed after corrected evidence closure."},
+        {"at": "2026-08-14T09:10:10Z", "transition": "fixed_diff_verified->fixed_full_verified", "actor": "Codex independent reviewer", "reason": "Reused exact-identity G3 and PostgreSQL execution evidence without rerunning gates."},
+        {"at": "2026-08-14T09:10:10Z", "transition": "fixed_full_verified->closed", "actor": "Codex independent reviewer", "reason": "Closure criteria met; production online-index strategy retained as a deployment blocker."}
+      ]
+    },
+    {
+      "id": "R27D-G4-002",
+      "title": "Review attachment side effects begin before deterministic admission",
+      "status": "closed",
+      "severity": "medium",
+      "confidence": "high",
+      "classification": "patch_regression",
+      "cwe": "CWE-703",
+      "source": {
+        "type": "diff_scan",
+        "report_path": "codex-thread://019ffdaf-221f-7f50-85ad-cc5446dadb85/turn/019ffdaf-80cc-7b50-a8da-746b3c9c425b/item/item-3",
+        "binding": {"commit": "f952ec049a6aa5f4f51461f67172ed7872d13bf5", "tree": "5785ff1885f564f15be02117132f14cb5cf5fea4", "tool_name": "Codex independent G4_DIFF review", "tool_version": "gpt-5.6-sol", "command": "R27D_REVIEWS_INDEPENDENT_G4_DIFF_REVIEW", "environment": "local read-only worktree; reviewed working diff SHA-256 25948cbf4b6867c645d201f64e95350c73f338ec52da6d82cefccfa331b5d10c", "result_sha256": "beec529c109208701ebd37c185d2e81c952497371ec1aca5cbc46fdd346e6549", "log_path": "codex-thread://019ffdaf-221f-7f50-85ad-cc5446dadb85/turn/019ffdaf-80cc-7b50-a8da-746b3c9c425b/item/item-3", "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db", "recorded_at": "2026-08-14T00:52:55Z"}
+      },
+      "scope": {
+        "component": "Reviews attachment preflight and finalize conflict handling",
+        "affected_files": ["apps/api/src/modules/reviews/reviews.service.ts", "apps/api/src/modules/attachments/attachments.service.ts"],
+        "entry_points": ["uploadCabinReviewAttachment", "uploadConsistencyReviewAttachment", "uploadVisualDeltaReviewAttachment", "createReviewAttachmentFinalizeHook"],
+        "trust_boundary": "Authorized Review attachment requests crossing into quota, object storage, scanning, promotion, and domain binding side effects"
+      },
+      "evidence": {
+        "reachable": true,
+        "production_exposed": null,
+        "reproduction_path": "A deterministic Review capacity, persisted-source, orphan-reviewer, or visual-plan failure reached createStoredAttachment before final admission and could be converted to retryable attachment failure.",
+        "proof_gap": null
+      },
+      "root_cause_cluster": "REVIEWS_BOUNDED_SNAPSHOT_ORPHAN_FINALIZE",
+      "security_invariants": ["SEC-009"],
+      "disposition": {"duplicate_of": null, "false_positive_reason": null, "risk_acceptance": null},
+      "fix": {
+        "task_id": "R27D_REVIEWS_BOUNDARY_MINIMAL_FIX",
+        "branch": "security/r27-integration-v2",
+        "commit": "2ad18e31a52d2e89617601a0dc29eab07aca0b87",
+        "tree": "0fdfb94eb30b4757907e38c72dd4e0e7bd1a6990",
+        "changed_files": [
+          "apps/api/src/modules/reviews/reviews.service.ts",
+          "apps/api/src/modules/reviews/reviews.resource-bounds.spec.ts",
+          "apps/api/src/modules/reviews/reviews.postgres-boundary.integration.spec.ts",
+          "apps/api/prisma/schema.prisma",
+          "apps/api/prisma/migrations/20260814120000_add_review_records_project_type_id_index/migration.sql"
+        ]
+      },
+      "verification": {
+        "targeted": {
+          "status": "pass",
+          "binding": {"commit": "2ad18e31a52d2e89617601a0dc29eab07aca0b87", "tree": "0fdfb94eb30b4757907e38c72dd4e0e7bd1a6990", "tool_name": "Codex R27D Reviews boundary verification", "tool_version": "gpt-5.6-sol; pnpm 9.15.4; Vitest 3.2.6; Prisma 6.19.3", "command": "R27D_REVIEWS_BOUNDARY_MINIMAL_FIX Phase 5: diff check, three-file ESLint, and 90 targeted/static tests", "environment": "local isolated worktree; exact five-file diff SHA-256 a9684768bfa6cc6f4b098b9e2a478c0bb1b0b9c71c5b2605400b9e30fe114800 later committed unchanged", "result_sha256": "51f7a67a689f6adb69577877d69d4f774207453eec1f2c9018eda7447f3e859b", "log_path": "codex-thread://019ffee2-6ec3-74c0-9df2-7e82ddafce77/turn/019ffee5-912a-76d1-8596-f0dfe6796a4b/item/item-58", "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db", "recorded_at": "2026-08-14T06:55:06Z"},
+          "notes": "G1 result artifact SHA-256 51f7a67a689f6adb69577877d69d4f774207453eec1f2c9018eda7447f3e859b."
+        },
+        "affected_regression": {
+          "status": "pass",
+          "binding": {"commit": "2ad18e31a52d2e89617601a0dc29eab07aca0b87", "tree": "0fdfb94eb30b4757907e38c72dd4e0e7bd1a6990", "tool_name": "Codex R27D Reviews boundary verification", "tool_version": "gpt-5.6-sol; pnpm 9.15.4; Vitest 3.2.6; TypeScript 5.9.3", "command": "R27D_REVIEWS_BOUNDARY_MINIMAL_FIX Phase 6: seven Reviews test files, 128 tests, targeted ESLint, and API typecheck", "environment": "local isolated worktree; exact five-file diff SHA-256 a9684768bfa6cc6f4b098b9e2a478c0bb1b0b9c71c5b2605400b9e30fe114800 later committed unchanged", "result_sha256": "51f7a67a689f6adb69577877d69d4f774207453eec1f2c9018eda7447f3e859b", "log_path": "codex-thread://019ffee2-6ec3-74c0-9df2-7e82ddafce77/turn/019ffee5-912a-76d1-8596-f0dfe6796a4b/item/item-58", "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db", "recorded_at": "2026-08-14T06:55:06Z"},
+          "notes": "G2 result artifact SHA-256 51f7a67a689f6adb69577877d69d4f774207453eec1f2c9018eda7447f3e859b."
+        },
+        "diff_review": {
+          "status": "pass",
+          "binding": {"commit": "2ad18e31a52d2e89617601a0dc29eab07aca0b87", "tree": "0fdfb94eb30b4757907e38c72dd4e0e7bd1a6990", "tool_name": "Codex independent G4_DIFF evidence closure", "tool_version": "gpt-5.6-sol", "command": "R27D_REVIEWS_G4_EVIDENCE_CLOSURE_CORRECTED", "environment": "local read-only exact five-file identity; static G4 reused after PostgreSQL evidence manifest correction", "result_sha256": "b934e4a4336dc3ebc81b126722a863cb46d72b9c138a97b24bb1a39843525d33", "log_path": "codex-thread://019fff16-293a-7ce0-8bcf-8d352fd58bc1/turn/019fff84-e083-7cb0-bcc2-769fc145e7dd/item/item-26", "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db", "recorded_at": "2026-08-14T09:10:10Z"},
+          "notes": "G4 result artifact SHA-256 b934e4a4336dc3ebc81b126722a863cb46d72b9c138a97b24bb1a39843525d33; reviewed diff SHA-256 a9684768bfa6cc6f4b098b9e2a478c0bb1b0b9c71c5b2605400b9e30fe114800."
+        },
+        "full_regression": {
+          "status": "pass",
+          "binding": {"commit": "2ad18e31a52d2e89617601a0dc29eab07aca0b87", "tree": "0fdfb94eb30b4757907e38c72dd4e0e7bd1a6990", "tool_name": "Codex R27D Reviews schema G3", "tool_version": "gpt-5.6-sol; pnpm 9.15.4; Vitest 3.2.6; Prisma 6.19.3", "command": "R27D_REVIEWS_BOUNDARY_MINIMAL_FIX Phase 7: 36 migrations, second deploy, migration/index checks, PostgreSQL 15/15, API typecheck, and API build", "environment": "isolated disposable PostgreSQL; exact five-file diff SHA-256 a9684768bfa6cc6f4b098b9e2a478c0bb1b0b9c71c5b2605400b9e30fe114800 later committed unchanged", "result_sha256": "51f7a67a689f6adb69577877d69d4f774207453eec1f2c9018eda7447f3e859b", "log_path": "codex-thread://019ffee2-6ec3-74c0-9df2-7e82ddafce77/turn/019ffee5-912a-76d1-8596-f0dfe6796a4b/item/item-58", "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db", "recorded_at": "2026-08-14T06:55:06Z"},
+          "notes": "G3 result artifact SHA-256 51f7a67a689f6adb69577877d69d4f774207453eec1f2c9018eda7447f3e859b. Production online-index strategy remains required before deployment."
+        }
+      },
+      "closure": {
+        "closed_by": "R27D_REVIEWS_G4_EVIDENCE_CLOSURE_CORRECTED",
+        "closed_at": "2026-08-14T09:10:10Z",
+        "criterion": "G1, G2, G3 and independent G4_DIFF passed; PostgreSQL execution was proven by JSON SHA-256 9c01532c104625548872b94e42baeabb8b1f2f37139f6ff53 and log SHA-256 a43237ba4d405e6a07e70a8d42338d0ba27b53003c06385957fdf369f41f6473. Production deployment remains blocked until an approved online-index or maintenance-window strategy exists.",
+        "binding": {"commit": "2ad18e31a52d2e89617601a0dc29eab07aca0b87", "tree": "0fdfb94eb30b4757907e38c72dd4e0e7bd1a6990", "tool_name": "R27D PostgreSQL boundary integration evidence replay", "tool_version": "PostgreSQL 16.14; Vitest 3.2.6; Prisma 6.19.3", "command": "env DATABASE_URL=<REDACTED_TEST_DATABASE_URL> REVIEWS_POSTGRES_TEST_DATABASE_URL=<REDACTED_TEST_DATABASE_URL> pnpm exec vitest run src/modules/reviews/reviews.postgres-boundary.integration.spec.ts --reporter=verbose", "environment": "isolated disposable local PostgreSQL; 15 passed, 0 failed, 0 skipped; database removed", "result_sha256": "9c01532c104625548872b94e42baeabb8b1f2eb52fa046aec7f2f37139f6ff53", "log_path": "/Users/lixiaochen/Downloads/R27D_REVIEWS_POSTGRES_EVIDENCE_20260814T073052Z.json", "config_sha256": "1479327555c1dcc05a7d6fd075f1b2f85e409be0acbddb41a6f8e814330ce4b4", "recorded_at": "2026-08-14T07:40:38.402Z"}
+      },
+      "history": [
+        {"at": "2026-08-14T00:52:55Z", "transition": "null->candidate", "actor": "Codex independent reviewer", "reason": "Independent exact-diff review identified deterministic admission occurring after attachment side effects."},
+        {"at": "2026-08-14T00:52:55Z", "transition": "candidate->confirmed", "actor": "Codex independent reviewer", "reason": "Confirmed Medium CWE-400/CWE-703 behavior with high confidence across all three Review attachment entry points."},
+        {"at": "2026-08-14T06:11:25Z", "transition": "confirmed->accepted_for_fix", "actor": "R27D remediation task owner", "reason": "Approved PATH_B schema-assisted local refactor and exact five-file scope."},
+        {"at": "2026-08-14T06:11:25Z", "transition": "accepted_for_fix->in_progress", "actor": "Codex remediation agent", "reason": "Started pre-storage admission, orphan-reviewer rejection, finalize recheck, and regression implementation."},
+        {"at": "2026-08-14T06:55:06Z", "transition": "in_progress->fixed_target_verified", "actor": "Codex remediation agent", "reason": "G1 and G2 passed on the exact final five-file identity."},
+        {"at": "2026-08-14T09:10:10Z", "transition": "fixed_target_verified->fixed_diff_verified", "actor": "Codex independent reviewer", "reason": "Independent G4_DIFF passed after corrected evidence closure."},
+        {"at": "2026-08-14T09:10:10Z", "transition": "fixed_diff_verified->fixed_full_verified", "actor": "Codex independent reviewer", "reason": "Reused exact-identity G3 and PostgreSQL execution evidence without rerunning gates."},
+        {"at": "2026-08-14T09:10:10Z", "transition": "fixed_full_verified->closed", "actor": "Codex independent reviewer", "reason": "Closure criteria met; production online-index strategy retained as a deployment blocker."}
+      ]
+    }
+  ]
 }

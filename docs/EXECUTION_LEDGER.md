@@ -7364,3 +7364,32 @@ SECURITY_SCAN=NOT_RUN_BY_DESIGN
 DEPLOYMENT=NOT_AUTHORIZED
 AWAITING_OWNER_REVIEW_V2
 ```
+
+---
+
+### R27D Reviews Finding Ledger Closure（2026-08-15）
+
+- 目标：将 `R27D-G4-001`、`R27D-G4-002` 绑定到 Reviews 修复提交
+  `2ad18e31a52d2e89617601a0dc29eab07aca0b87` 并记录为 `closed`。
+- 范围：仅 `docs/security/FINDINGS.yaml`、`docs/security/FINDINGS.schema.yaml` 与本执行记录；
+  未修改业务源码、Migration、依赖、Samples 或运行环境。
+- 输入：G1/G2/G3 result artifact SHA-256
+  `51f7a67a689f6adb69577877d69d4f774207453eec1f2c9018eda7447f3e859b`；独立 G4 closure
+  SHA-256 `b934e4a4336dc3ebc81b126722a863cb46d72b9c138a97b24bb1a39843525d33`；
+  PostgreSQL JSON/log SHA-256 分别为
+  `9c01532c104625548872b94e42baeabb8b1f2eb52fa046aec7f2f37139f6ff53` 与
+  `a43237ba4d405e6a07e70a8d42338d0ba27b53003c06385957fdf369f41f6473`。
+- 改动：写入两条 Finding 的 source、scope、fix commit/tree、G1/G2/G3/G4 binding、
+  PostgreSQL closure binding 与完整生命周期；ID schema 支持 `R27D-*` round suffix。
+- 检查：JSON 解析、Ledger 结构/状态/SHA/transition 定向校验、`git diff --check`、docs-only
+  范围核对与 Placeholder 扫描。
+- 验收：两条 Finding 均为 `closed`，fix commit/tree 一致，四类 Gate binding 与 PostgreSQL
+  evidence SHA 已记录；未重跑源码测试、Migration、数据库或安全审查。
+- 风险：普通 `CREATE INDEX` 的生产锁时长尚无数据；正式部署前仍必须批准在线索引或维护窗口
+  策略。该 blocker 不影响本地 Finding/代码提交闭合，但继续阻止 production deployment。
+- Placeholder：全量命令有 10 个 raw match，均为测试中的负向断言或 `getByPlaceholder` API；
+  排除测试后的 `apps/web/src` 正式源码命中为 `0`。
+- 下一步：本 docs-only 提交完成并验证后，Reviews 批次才具备进入独立 Samples 任务的顺序条件；
+  本任务不自动修改 Samples。
+- 环境：未访问 staging/production；main、tag、production 均未改变；产品负责人尚未对部署或
+  产品路径给出 `PRODUCT_OWNER_ACCEPTED`。
