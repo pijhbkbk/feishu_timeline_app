@@ -1500,6 +1500,7 @@ model ReviewRecord {
   updatedAt         DateTime          @updatedAt
 
   @@unique([workflowTaskId, reviewerId, reviewPeriod])
+  @@index([projectId, reviewType, id], map: "review_records_projectId_reviewType_id_idx")
   @@index([projectId, reviewType, result, reviewedAt])
   @@index([trialProductionId])
   @@index([reviewerId, reviewedAt])
