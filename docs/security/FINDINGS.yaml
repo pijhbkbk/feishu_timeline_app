@@ -17,7 +17,7 @@
       "docs/rounds/R27.md",
       "docs/handoff/R27_HANDOFF.md"
     ],
-    "notes": "R27C historical normalization remains pending. R27D-G4-001 and R27D-G4-002 Reviews findings are recorded and closed against the exact Reviews fix commit and gate evidence. R27E-G4-001 and R27E-G4-002 Samples findings are recorded at fixed_diff_verified; no approved batch G3/full regression was run, so Samples closure is deferred until the approved Samples+StandardBoards batch regression. Production deployment remains blocked until an approved Reviews online-index or maintenance-window strategy exists."
+    "notes": "R27C historical normalization remains pending. R27D-G4-001 and R27D-G4-002 Reviews findings are recorded and closed against the exact Reviews fix commit and gate evidence. R27E-G4-001 and R27E-G4-002 Samples findings are recorded at fixed_diff_verified and await the approved Samples+StandardBoards batch G3/full regression. R27F-G4-001 and R27F-G4-002 StandardBoards findings are recorded at fixed_diff_verified and await the same approved Samples+StandardBoards batch G3/full regression. Samples and StandardBoards will share one approved batch G3. Production deployment remains blocked until an approved Reviews online-index or maintenance-window strategy exists."
   },
   "findings": [
     {
@@ -318,6 +318,169 @@
         {"at": "2026-08-16T03:48:24Z", "transition": "accepted_for_fix->in_progress", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact task evidence: implementation proceeded on the exact two-file Samples remediation scope."},
         {"at": "2026-08-16T03:48:24Z", "transition": "in_progress->fixed_target_verified", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact task evidence: G1 targeted verification and G2 affected regression passed on the exact fix identity."},
         {"at": "2026-08-16T03:48:24Z", "transition": "fixed_target_verified->fixed_diff_verified", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact task evidence: independent G4_DIFF passed on the exact two-file diff; no batch G3/full regression or closure is recorded."}
+      ]
+    },
+    {
+      "id": "R27F-G4-001",
+      "title": "Persisted StandardBoard sources reach normalization and audit construction before resource admission",
+      "status": "fixed_diff_verified",
+      "severity": "medium",
+      "confidence": "high",
+      "classification": "pre_existing",
+      "cwe": "CWE-400",
+      "source": {
+        "type": "manual",
+        "report_path": "/Users/lixiaochen/Downloads/R27F_STANDARDBOARDS_LEDGER_EVIDENCE_20260816T120352Z/source.json",
+        "binding": {"commit": "1d8969b7ffba46490354fcedcf369f5526b92372", "tree": "5f3cca094b9a001606443c03569685c23090a203", "tool_name": "Codex bounded StandardBoards remediation intake", "tool_version": "gpt-5.6-terra", "command": "R27F_STANDARDBOARDS_CANDIDATE_MIGRATION_AND_REMEDIATION", "environment": "local isolated integration worktree; source candidate patch SHA-256 9f0bdb5066b9588f3d90e0b003965af4c4e49ae9e5828bc670e052221dd00c42", "result_sha256": "821ddb5b2f13e875701e61576603989451ceaea368b7ccc25320773522cc7749", "log_path": "/Users/lixiaochen/Downloads/R27F_STANDARDBOARDS_LEDGER_EVIDENCE_20260816T120352Z/source.json", "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db", "recorded_at": "2026-08-16T12:03:52Z"}
+      },
+      "scope": {
+        "component": "StandardBoards persisted-source admission and audit construction in getBoardOrThrow, assertPersistedStandardBoardAdmission, assertSampleReference, toStandardBoardAuditSnapshot, and toColorBoardDetailUpdateAuditSnapshot",
+        "affected_files": ["apps/api/src/modules/standard-boards/standard-boards.service.ts"],
+        "entry_points": [
+          "createStandardBoard",
+          "updateStandardBoard",
+          "setCurrentBoard",
+          "markCreated",
+          "issueBoard",
+          "addDistribution",
+          "createColorBoardDetailUpdate",
+          "completeStandardBoardTask",
+          "completeColorBoardDetailUpdateTask"
+        ],
+        "trust_boundary": "Persisted StandardBoard, Sample, and ColorBoardDetailUpdate values from PostgreSQL or legacy internal StandardBoardsService callers crossing into normalization, admission, audit construction, AuditLog creation, and business writes"
+      },
+      "evidence": {
+        "reachable": true,
+        "production_exposed": null,
+        "reproduction_path": "Before the fix, legacy persisted StandardBoard and related source fields could reach trim or normalization, audit snapshot construction, or mutation-side effects before raw resource admission; Controller DTOs did not fully protect legacy rows or direct internal StandardBoardsService callers. The fix applies bounded raw projections and fail-closed persisted-source assertions before normalization, audit construction, ActivityLogsService.createWithExecutor, and business writes, without reflecting rejected raw values and while preserving audit facts.",
+        "proof_gap": "Production exposure was not established because production access and deployed-row inspection were not authorized for this task."
+      },
+      "root_cause_cluster": "STANDARDBOARDS_LEGACY_AUDIT_AND_ADMISSION_BOUNDS",
+      "security_invariants": ["SEC-009"],
+      "disposition": {"duplicate_of": null, "false_positive_reason": null, "risk_acceptance": null},
+      "fix": {
+        "task_id": "R27F_STANDARDBOARDS_CANDIDATE_MIGRATION_AND_REMEDIATION",
+        "branch": "security/r27-integration-v2",
+        "commit": "e18c9e8ac6961a05bf2c055f8ae69610c4eb2afc",
+        "tree": "d7264f03ef8f85a2cd637b7ea75435e581f0d3c8",
+        "changed_files": [
+          "apps/api/src/modules/standard-boards/standard-boards.service.ts",
+          "apps/api/src/modules/standard-boards/standard-boards.resource-bounds.spec.ts"
+        ]
+      },
+      "verification": {
+        "targeted": {
+          "status": "pass",
+          "binding": {"commit": "e18c9e8ac6961a05bf2c055f8ae69610c4eb2afc", "tree": "d7264f03ef8f85a2cd637b7ea75435e581f0d3c8", "tool_name": "Codex R27F StandardBoards targeted verification", "tool_version": "gpt-5.6-terra", "command": "R27F_STANDARDBOARDS_CANDIDATE_MIGRATION_AND_REMEDIATION G1", "environment": "local isolated exact two-file diff SHA-256 49715db1d7c7a499cd2a2cb292dc992ba58fb74f0f0072658517928f5f2ad29f", "result_sha256": "d5c274548933c096e59038bf2bc76277105ea22f9bfe9e44adb929ba30ce2e39", "log_path": "/Users/lixiaochen/Downloads/R27F_STANDARDBOARDS_LEDGER_EVIDENCE_20260816T120352Z/g1.json", "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db", "recorded_at": "2026-08-16T12:03:52Z"},
+          "notes": "G1 targeted verification passed on the exact StandardBoards two-file fix identity; no unprovided test count is recorded."
+        },
+        "affected_regression": {
+          "status": "pass",
+          "binding": {"commit": "e18c9e8ac6961a05bf2c055f8ae69610c4eb2afc", "tree": "d7264f03ef8f85a2cd637b7ea75435e581f0d3c8", "tool_name": "Codex R27F StandardBoards affected regression", "tool_version": "gpt-5.6-terra", "command": "R27F_STANDARDBOARDS_CANDIDATE_MIGRATION_AND_REMEDIATION G2", "environment": "local isolated exact two-file diff SHA-256 49715db1d7c7a499cd2a2cb292dc992ba58fb74f0f0072658517928f5f2ad29f", "result_sha256": "bde29c190a2bbabc8d312c571e3584595e25d0c34b48d556b63512d1e325a290", "log_path": "/Users/lixiaochen/Downloads/R27F_STANDARDBOARDS_LEDGER_EVIDENCE_20260816T120352Z/g2.json", "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db", "recorded_at": "2026-08-16T12:03:52Z"},
+          "notes": "G2 affected regression passed for the directly affected StandardBoards scope; no unprovided test count is recorded."
+        },
+        "diff_review": {
+          "status": "pass",
+          "binding": {"commit": "e18c9e8ac6961a05bf2c055f8ae69610c4eb2afc", "tree": "d7264f03ef8f85a2cd637b7ea75435e581f0d3c8", "tool_name": "Codex independent StandardBoards G4_DIFF review", "tool_version": "gpt-5.6-sol", "command": "R27F_STANDARDBOARDS_INDEPENDENT_G4_DIFF_REVIEW", "environment": "local read-only exact two-file identity; reviewed diff SHA-256 49715db1d7c7a499cd2a2cb292dc992ba58fb74f0f0072658517928f5f2ad29f", "result_sha256": "ca770b64c4ad673d3dfeeaebedffff6a88f72da91e1ddc6f9356238e7721c579", "log_path": "/Users/lixiaochen/Downloads/R27F_STANDARDBOARDS_LEDGER_EVIDENCE_20260816T120352Z/g4.json", "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db", "recorded_at": "2026-08-16T12:03:52Z"},
+          "notes": "Independent G4_DIFF passed and closed both task-local review findings on the exact two-file diff; Ledger closure remains deferred."
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "No approved Samples+StandardBoards batch G3/full regression has run. Closure is deferred until that approved batch regression passes on the exact integration commit."
+        }
+      },
+      "closure": null,
+      "history": [
+        {"at": "2026-08-16T12:03:52Z", "transition": "null->candidate", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact R27F StandardBoards task and source evidence: persisted sources reaching normalization or audit construction before resource admission were identified as a candidate."},
+        {"at": "2026-08-16T12:03:52Z", "transition": "candidate->confirmed", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact R27F task evidence: the candidate was confirmed as a reachable Medium CWE-400 and SEC-009 persisted-source boundary issue with high confidence."},
+        {"at": "2026-08-16T12:03:52Z", "transition": "confirmed->accepted_for_fix", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact R27F authorization and task evidence: the confirmed finding was accepted for the bounded two-file StandardBoards fix."},
+        {"at": "2026-08-16T12:03:52Z", "transition": "accepted_for_fix->in_progress", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact R27F task evidence: remediation proceeded on the authorized StandardBoards service and resource-bounds spec scope."},
+        {"at": "2026-08-16T12:03:52Z", "transition": "in_progress->fixed_target_verified", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact R27F task and commit evidence: targeted verification and affected regression passed on commit e18c9e8ac6961a05bf2c055f8ae69610c4eb2afc."},
+        {"at": "2026-08-16T12:03:52Z", "transition": "fixed_target_verified->fixed_diff_verified", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact R27F independent review and commit evidence: G4_DIFF passed on the two-file fix; no Samples+StandardBoards batch G3/full regression or closure is recorded."}
+      ]
+    },
+    {
+      "id": "R27F-G4-002",
+      "title": "StandardBoards admission materializes unbounded context before a bounded decision",
+      "status": "fixed_diff_verified",
+      "severity": "medium",
+      "confidence": "high",
+      "classification": "pre_existing",
+      "cwe": "CWE-400",
+      "source": {
+        "type": "manual",
+        "report_path": "/Users/lixiaochen/Downloads/R27F_STANDARDBOARDS_LEDGER_EVIDENCE_20260816T120352Z/source.json",
+        "binding": {"commit": "1d8969b7ffba46490354fcedcf369f5526b92372", "tree": "5f3cca094b9a001606443c03569685c23090a203", "tool_name": "Codex bounded StandardBoards remediation intake", "tool_version": "gpt-5.6-terra", "command": "R27F_STANDARDBOARDS_CANDIDATE_MIGRATION_AND_REMEDIATION", "environment": "local isolated integration worktree; source candidate patch SHA-256 9f0bdb5066b9588f3d90e0b003965af4c4e49ae9e5828bc670e052221dd00c42", "result_sha256": "821ddb5b2f13e875701e61576603989451ceaea368b7ccc25320773522cc7749", "log_path": "/Users/lixiaochen/Downloads/R27F_STANDARDBOARDS_LEDGER_EVIDENCE_20260816T120352Z/source.json", "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db", "recorded_at": "2026-08-16T12:03:52Z"}
+      },
+      "scope": {
+        "component": "StandardBoards context admission in buildWorkspace, buildColorBoardDetailUpdateWorkspace, getStandardBoardContext, getColorBoardDetailUpdateContext, bounded reference loaders, and loadAdmittedDistributionRecords",
+        "affected_files": ["apps/api/src/modules/standard-boards/standard-boards.service.ts"],
+        "entry_points": [
+          "getWorkspace",
+          "getCurrentBoard",
+          "getColorBoardDetailUpdateWorkspace",
+          "createStandardBoard",
+          "updateStandardBoard",
+          "setCurrentBoard",
+          "markCreated",
+          "issueBoard",
+          "addDistribution",
+          "createColorBoardDetailUpdate",
+          "completeStandardBoardTask",
+          "completeColorBoardDetailUpdateTask"
+        ],
+        "trust_boundary": "Persisted StandardBoard, BoardDistributionRecord, ColorBoardDetailUpdate, Sample, and related identity/state rows crossing from PostgreSQL into StandardBoards read and mutation admission contexts"
+      },
+      "evidence": {
+        "reachable": true,
+        "production_exposed": null,
+        "reproduction_path": "Before the fix, StandardBoards admission contexts could load complete text fields and relations before a cap or resource decision, so database transfer and Node materialization grew with legacy board, distribution, detail-update, and sample context. The fix first loads minimal limit-plus-one projections, makes the cap decision, retains stable IDs as the exact admission identity, and only then loads capped summaries or audit context. Distribution data is loaded in one bounded follow-up query, raw row admission uses parameterized SQL, no N+1 or unbounded aggregation is introduced, and no Schema change is required.",
+        "proof_gap": "Production exposure was not established because production access and deployed-row inspection were not authorized for this task."
+      },
+      "root_cause_cluster": "STANDARDBOARDS_LEGACY_AUDIT_AND_ADMISSION_BOUNDS",
+      "security_invariants": ["SEC-010"],
+      "disposition": {"duplicate_of": null, "false_positive_reason": null, "risk_acceptance": null},
+      "fix": {
+        "task_id": "R27F_STANDARDBOARDS_CANDIDATE_MIGRATION_AND_REMEDIATION",
+        "branch": "security/r27-integration-v2",
+        "commit": "e18c9e8ac6961a05bf2c055f8ae69610c4eb2afc",
+        "tree": "d7264f03ef8f85a2cd637b7ea75435e581f0d3c8",
+        "changed_files": [
+          "apps/api/src/modules/standard-boards/standard-boards.service.ts",
+          "apps/api/src/modules/standard-boards/standard-boards.resource-bounds.spec.ts"
+        ]
+      },
+      "verification": {
+        "targeted": {
+          "status": "pass",
+          "binding": {"commit": "e18c9e8ac6961a05bf2c055f8ae69610c4eb2afc", "tree": "d7264f03ef8f85a2cd637b7ea75435e581f0d3c8", "tool_name": "Codex R27F StandardBoards targeted verification", "tool_version": "gpt-5.6-terra", "command": "R27F_STANDARDBOARDS_CANDIDATE_MIGRATION_AND_REMEDIATION G1", "environment": "local isolated exact two-file diff SHA-256 49715db1d7c7a499cd2a2cb292dc992ba58fb74f0f0072658517928f5f2ad29f", "result_sha256": "d5c274548933c096e59038bf2bc76277105ea22f9bfe9e44adb929ba30ce2e39", "log_path": "/Users/lixiaochen/Downloads/R27F_STANDARDBOARDS_LEDGER_EVIDENCE_20260816T120352Z/g1.json", "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db", "recorded_at": "2026-08-16T12:03:52Z"},
+          "notes": "G1 targeted verification passed on the exact StandardBoards two-file fix identity; no unprovided test count is recorded."
+        },
+        "affected_regression": {
+          "status": "pass",
+          "binding": {"commit": "e18c9e8ac6961a05bf2c055f8ae69610c4eb2afc", "tree": "d7264f03ef8f85a2cd637b7ea75435e581f0d3c8", "tool_name": "Codex R27F StandardBoards affected regression", "tool_version": "gpt-5.6-terra", "command": "R27F_STANDARDBOARDS_CANDIDATE_MIGRATION_AND_REMEDIATION G2", "environment": "local isolated exact two-file diff SHA-256 49715db1d7c7a499cd2a2cb292dc992ba58fb74f0f0072658517928f5f2ad29f", "result_sha256": "bde29c190a2bbabc8d312c571e3584595e25d0c34b48d556b63512d1e325a290", "log_path": "/Users/lixiaochen/Downloads/R27F_STANDARDBOARDS_LEDGER_EVIDENCE_20260816T120352Z/g2.json", "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db", "recorded_at": "2026-08-16T12:03:52Z"},
+          "notes": "G2 affected regression passed for the directly affected StandardBoards scope; no unprovided test count is recorded."
+        },
+        "diff_review": {
+          "status": "pass",
+          "binding": {"commit": "e18c9e8ac6961a05bf2c055f8ae69610c4eb2afc", "tree": "d7264f03ef8f85a2cd637b7ea75435e581f0d3c8", "tool_name": "Codex independent StandardBoards G4_DIFF review", "tool_version": "gpt-5.6-sol", "command": "R27F_STANDARDBOARDS_INDEPENDENT_G4_DIFF_REVIEW", "environment": "local read-only exact two-file identity; reviewed diff SHA-256 49715db1d7c7a499cd2a2cb292dc992ba58fb74f0f0072658517928f5f2ad29f", "result_sha256": "ca770b64c4ad673d3dfeeaebedffff6a88f72da91e1ddc6f9356238e7721c579", "log_path": "/Users/lixiaochen/Downloads/R27F_STANDARDBOARDS_LEDGER_EVIDENCE_20260816T120352Z/g4.json", "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db", "recorded_at": "2026-08-16T12:03:52Z"},
+          "notes": "Independent G4_DIFF passed and closed both task-local review findings on the exact two-file diff; Ledger closure remains deferred."
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "No approved Samples+StandardBoards batch G3/full regression has run. Closure is deferred until that approved batch regression passes on the exact integration commit."
+        }
+      },
+      "closure": null,
+      "history": [
+        {"at": "2026-08-16T12:03:52Z", "transition": "null->candidate", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact R27F StandardBoards task and source evidence: admission materializing unbounded context before a bounded decision was identified as a candidate."},
+        {"at": "2026-08-16T12:03:52Z", "transition": "candidate->confirmed", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact R27F task evidence: the candidate was confirmed as a reachable Medium CWE-400 and SEC-010 context-materialization issue with high confidence."},
+        {"at": "2026-08-16T12:03:52Z", "transition": "confirmed->accepted_for_fix", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact R27F authorization and task evidence: the confirmed finding was accepted for the bounded two-file StandardBoards fix."},
+        {"at": "2026-08-16T12:03:52Z", "transition": "accepted_for_fix->in_progress", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact R27F task evidence: remediation proceeded on the authorized StandardBoards service and resource-bounds spec scope."},
+        {"at": "2026-08-16T12:03:52Z", "transition": "in_progress->fixed_target_verified", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact R27F task and commit evidence: targeted verification and affected regression passed on commit e18c9e8ac6961a05bf2c055f8ae69610c4eb2afc."},
+        {"at": "2026-08-16T12:03:52Z", "transition": "fixed_target_verified->fixed_diff_verified", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact R27F independent review and commit evidence: G4_DIFF passed on the two-file fix; no Samples+StandardBoards batch G3/full regression or closure is recorded."}
       ]
     }
   ]
