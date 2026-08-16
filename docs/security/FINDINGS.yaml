@@ -17,7 +17,7 @@
       "docs/rounds/R27.md",
       "docs/handoff/R27_HANDOFF.md"
     ],
-    "notes": "R27C historical normalization remains pending. R27D-G4-001 and R27D-G4-002 Reviews findings are recorded and closed against the exact Reviews fix commit and gate evidence. R27E-G4-001 and R27E-G4-002 Samples findings are recorded at fixed_diff_verified and await the approved Samples+StandardBoards batch G3/full regression. R27F-G4-001 and R27F-G4-002 StandardBoards findings are recorded at fixed_diff_verified and await the same approved Samples+StandardBoards batch G3/full regression. Samples and StandardBoards will share one approved batch G3. Production deployment remains blocked until an approved Reviews online-index or maintenance-window strategy exists."
+    "notes": "R27C historical normalization remains pending. R27D Reviews findings are closed. R27E Samples findings are closed after the approved Samples + StandardBoards batch G3. R27F StandardBoards findings are closed after the same approved Samples + StandardBoards batch G3. The Reviews production online-index or maintenance-window strategy remains a deployment blocker. This closure does not authorize production deployment."
   },
   "findings": [
     {
@@ -183,7 +183,7 @@
     {
       "id": "R27E-G4-001",
       "title": "Persisted sampleName is normalized before raw resource admission",
-      "status": "fixed_diff_verified",
+      "status": "closed",
       "severity": "medium",
       "confidence": "high",
       "classification": "pre_existing",
@@ -235,25 +235,32 @@
           "notes": "Independent G4_DIFF closed both diff-review findings with zero confirmed Critical, High, or Medium residual findings."
         },
         "full_regression": {
-          "status": "pending",
-          "binding": null,
-          "notes": "No approved batch G3/full regression was run for the isolated Samples patch. Closure is deferred until the approved Samples+StandardBoards batch regression."
+          "status": "pass",
+          "binding": {"commit": "7df281e74c8bbe0e927865c822e725604a2dd2da", "tree": "7e908e8a0727ba16f5f9a59d7f1d0c9ac5935b43", "tool_name": "Codex approved Samples and StandardBoards batch G3", "tool_version": "Node v24.14.0; pnpm 9.15.4; repository-defined API scripts", "command": "R27FG_SAMPLES_STANDARDBOARDS_BATCH_G3", "environment": "local clean integration worktree; API lint, typecheck, Prisma validate, 124 test files and 1128 tests, and API build passed; 0 failed and 0 skipped", "result_sha256": "5382f5e55d9c2d1ae9bc08eeba6955b596d6351eb144bd4ca280a0b8660d77af", "log_path": "/Users/lixiaochen/Downloads/R27FG_BATCH_G3_EVIDENCE_/g3-summary.json", "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db", "recorded_at": "2026-08-16T13:05:42Z"},
+          "notes": "This is the approved Samples + StandardBoards batch G3. API lint, typecheck, Prisma validate, full API tests, and API build passed: 124 test files and 1128 tests passed, with 0 failed and 0 skipped. This G3 does not constitute production deployment approval."
         }
       },
-      "closure": null,
+      "closure": {
+        "closed_by": "R27FG_SAMPLES_STANDARDBOARDS_BATCH_LEDGER_CLOSURE",
+        "closed_at": "2026-08-16T13:05:42Z",
+        "criterion": "Targeted verification passed; affected regression passed; independent G4_DIFF passed; approved Samples + StandardBoards batch G3 passed with exact summary SHA-256 5382f5e55d9c2d1ae9bc08eeba6955b596d6351eb144bd4ca280a0b8660d77af. This closure does not constitute production deployment approval; the Reviews production online-index or maintenance-window strategy blocker remains in effect.",
+        "binding": {"commit": "7df281e74c8bbe0e927865c822e725604a2dd2da", "tree": "7e908e8a0727ba16f5f9a59d7f1d0c9ac5935b43", "tool_name": "R27FG Samples and StandardBoards batch G3 evidence", "tool_version": "Node v24.14.0; pnpm 9.15.4", "command": "R27FG_SAMPLES_STANDARDBOARDS_BATCH_G3", "environment": "local clean integration worktree; 124 test files, 1128 tests, 0 failed, 0 skipped; no repository modification", "result_sha256": "5382f5e55d9c2d1ae9bc08eeba6955b596d6351eb144bd4ca280a0b8660d77af", "log_path": "/Users/lixiaochen/Downloads/R27FG_BATCH_G3_EVIDENCE_/g3-summary.json", "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db", "recorded_at": "2026-08-16T13:05:42Z"}
+      },
       "history": [
         {"at": "2026-08-16T03:48:24Z", "transition": "null->candidate", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact task evidence: the bounded Samples remediation intake identified the persisted sampleName resource-admission candidate."},
         {"at": "2026-08-16T03:48:24Z", "transition": "candidate->confirmed", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact task evidence: the candidate was confirmed as a reachable Medium CWE-400 persisted-source boundary issue with high confidence."},
         {"at": "2026-08-16T03:48:24Z", "transition": "confirmed->accepted_for_fix", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact task evidence: the confirmed finding was accepted for the bounded two-file Samples fix."},
         {"at": "2026-08-16T03:48:24Z", "transition": "accepted_for_fix->in_progress", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact task evidence: implementation proceeded on the exact two-file Samples remediation scope."},
         {"at": "2026-08-16T03:48:24Z", "transition": "in_progress->fixed_target_verified", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact task evidence: G1 targeted verification and G2 affected regression passed on the exact fix identity."},
-        {"at": "2026-08-16T03:48:24Z", "transition": "fixed_target_verified->fixed_diff_verified", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact task evidence: independent G4_DIFF passed on the exact two-file diff; no batch G3/full regression or closure is recorded."}
+        {"at": "2026-08-16T03:48:24Z", "transition": "fixed_target_verified->fixed_diff_verified", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact task evidence: independent G4_DIFF passed on the exact two-file diff; no batch G3/full regression or closure is recorded."},
+        {"at": "2026-08-16T13:05:42Z", "transition": "fixed_diff_verified->fixed_full_verified", "actor": "R27FG approved batch G3 verifier", "reason": "Approved Samples and StandardBoards batch G3 passed on exact integration commit 7df281e74c8bbe0e927865c822e725604a2dd2da with 124 test files and 1128 tests passing, 0 failed and 0 skipped."},
+        {"at": "2026-08-16T13:05:42Z", "transition": "fixed_full_verified->closed", "actor": "R27FG batch closure task", "reason": "Targeted verification, affected regression, independent G4_DIFF and approved batch G3 all passed on bound evidence; no Critical, High or Medium finding remains in this finding scope."}
       ]
     },
     {
       "id": "R27E-G4-002",
       "title": "Samples attachment lookup aggregates an unbounded ID set before selecting one",
-      "status": "fixed_diff_verified",
+      "status": "closed",
       "severity": "medium",
       "confidence": "high",
       "classification": "pre_existing",
@@ -305,25 +312,32 @@
           "notes": "Independent G4_DIFF closed both diff-review findings with zero confirmed Critical, High, or Medium residual findings."
         },
         "full_regression": {
-          "status": "pending",
-          "binding": null,
-          "notes": "No approved batch G3/full regression was run for the isolated Samples patch. Closure is deferred until the approved Samples+StandardBoards batch regression."
+          "status": "pass",
+          "binding": {"commit": "7df281e74c8bbe0e927865c822e725604a2dd2da", "tree": "7e908e8a0727ba16f5f9a59d7f1d0c9ac5935b43", "tool_name": "Codex approved Samples and StandardBoards batch G3", "tool_version": "Node v24.14.0; pnpm 9.15.4; repository-defined API scripts", "command": "R27FG_SAMPLES_STANDARDBOARDS_BATCH_G3", "environment": "local clean integration worktree; API lint, typecheck, Prisma validate, 124 test files and 1128 tests, and API build passed; 0 failed and 0 skipped", "result_sha256": "5382f5e55d9c2d1ae9bc08eeba6955b596d6351eb144bd4ca280a0b8660d77af", "log_path": "/Users/lixiaochen/Downloads/R27FG_BATCH_G3_EVIDENCE_/g3-summary.json", "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db", "recorded_at": "2026-08-16T13:05:42Z"},
+          "notes": "This is the approved Samples + StandardBoards batch G3. API lint, typecheck, Prisma validate, full API tests, and API build passed: 124 test files and 1128 tests passed, with 0 failed and 0 skipped. This G3 does not constitute production deployment approval."
         }
       },
-      "closure": null,
+      "closure": {
+        "closed_by": "R27FG_SAMPLES_STANDARDBOARDS_BATCH_LEDGER_CLOSURE",
+        "closed_at": "2026-08-16T13:05:42Z",
+        "criterion": "Targeted verification passed; affected regression passed; independent G4_DIFF passed; approved Samples + StandardBoards batch G3 passed with exact summary SHA-256 5382f5e55d9c2d1ae9bc08eeba6955b596d6351eb144bd4ca280a0b8660d77af. This closure does not constitute production deployment approval; the Reviews production online-index or maintenance-window strategy blocker remains in effect.",
+        "binding": {"commit": "7df281e74c8bbe0e927865c822e725604a2dd2da", "tree": "7e908e8a0727ba16f5f9a59d7f1d0c9ac5935b43", "tool_name": "R27FG Samples and StandardBoards batch G3 evidence", "tool_version": "Node v24.14.0; pnpm 9.15.4", "command": "R27FG_SAMPLES_STANDARDBOARDS_BATCH_G3", "environment": "local clean integration worktree; 124 test files, 1128 tests, 0 failed, 0 skipped; no repository modification", "result_sha256": "5382f5e55d9c2d1ae9bc08eeba6955b596d6351eb144bd4ca280a0b8660d77af", "log_path": "/Users/lixiaochen/Downloads/R27FG_BATCH_G3_EVIDENCE_/g3-summary.json", "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db", "recorded_at": "2026-08-16T13:05:42Z"}
+      },
       "history": [
         {"at": "2026-08-16T03:48:24Z", "transition": "null->candidate", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact task evidence: the bounded Samples remediation intake identified the unbounded attachment-ID aggregation candidate."},
         {"at": "2026-08-16T03:48:24Z", "transition": "candidate->confirmed", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact task evidence: the candidate was confirmed as a reachable Medium CWE-400 attachment-query resource issue with high confidence."},
         {"at": "2026-08-16T03:48:24Z", "transition": "confirmed->accepted_for_fix", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact task evidence: the confirmed finding was accepted for the bounded two-file Samples fix."},
         {"at": "2026-08-16T03:48:24Z", "transition": "accepted_for_fix->in_progress", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact task evidence: implementation proceeded on the exact two-file Samples remediation scope."},
         {"at": "2026-08-16T03:48:24Z", "transition": "in_progress->fixed_target_verified", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact task evidence: G1 targeted verification and G2 affected regression passed on the exact fix identity."},
-        {"at": "2026-08-16T03:48:24Z", "transition": "fixed_target_verified->fixed_diff_verified", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact task evidence: independent G4_DIFF passed on the exact two-file diff; no batch G3/full regression or closure is recorded."}
+        {"at": "2026-08-16T03:48:24Z", "transition": "fixed_target_verified->fixed_diff_verified", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact task evidence: independent G4_DIFF passed on the exact two-file diff; no batch G3/full regression or closure is recorded."},
+        {"at": "2026-08-16T13:05:42Z", "transition": "fixed_diff_verified->fixed_full_verified", "actor": "R27FG approved batch G3 verifier", "reason": "Approved Samples and StandardBoards batch G3 passed on exact integration commit 7df281e74c8bbe0e927865c822e725604a2dd2da with 124 test files and 1128 tests passing, 0 failed and 0 skipped."},
+        {"at": "2026-08-16T13:05:42Z", "transition": "fixed_full_verified->closed", "actor": "R27FG batch closure task", "reason": "Targeted verification, affected regression, independent G4_DIFF and approved batch G3 all passed on bound evidence; no Critical, High or Medium finding remains in this finding scope."}
       ]
     },
     {
       "id": "R27F-G4-001",
       "title": "Persisted StandardBoard sources reach normalization and audit construction before resource admission",
-      "status": "fixed_diff_verified",
+      "status": "closed",
       "severity": "medium",
       "confidence": "high",
       "classification": "pre_existing",
@@ -385,25 +399,32 @@
           "notes": "Independent G4_DIFF passed and closed both task-local review findings on the exact two-file diff; Ledger closure remains deferred."
         },
         "full_regression": {
-          "status": "pending",
-          "binding": null,
-          "notes": "No approved Samples+StandardBoards batch G3/full regression has run. Closure is deferred until that approved batch regression passes on the exact integration commit."
+          "status": "pass",
+          "binding": {"commit": "7df281e74c8bbe0e927865c822e725604a2dd2da", "tree": "7e908e8a0727ba16f5f9a59d7f1d0c9ac5935b43", "tool_name": "Codex approved Samples and StandardBoards batch G3", "tool_version": "Node v24.14.0; pnpm 9.15.4; repository-defined API scripts", "command": "R27FG_SAMPLES_STANDARDBOARDS_BATCH_G3", "environment": "local clean integration worktree; API lint, typecheck, Prisma validate, 124 test files and 1128 tests, and API build passed; 0 failed and 0 skipped", "result_sha256": "5382f5e55d9c2d1ae9bc08eeba6955b596d6351eb144bd4ca280a0b8660d77af", "log_path": "/Users/lixiaochen/Downloads/R27FG_BATCH_G3_EVIDENCE_/g3-summary.json", "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db", "recorded_at": "2026-08-16T13:05:42Z"},
+          "notes": "This is the approved Samples + StandardBoards batch G3. API lint, typecheck, Prisma validate, full API tests, and API build passed: 124 test files and 1128 tests passed, with 0 failed and 0 skipped. This G3 does not constitute production deployment approval."
         }
       },
-      "closure": null,
+      "closure": {
+        "closed_by": "R27FG_SAMPLES_STANDARDBOARDS_BATCH_LEDGER_CLOSURE",
+        "closed_at": "2026-08-16T13:05:42Z",
+        "criterion": "Targeted verification passed; affected regression passed; independent G4_DIFF passed; approved Samples + StandardBoards batch G3 passed with exact summary SHA-256 5382f5e55d9c2d1ae9bc08eeba6955b596d6351eb144bd4ca280a0b8660d77af. This closure does not constitute production deployment approval; the Reviews production online-index or maintenance-window strategy blocker remains in effect.",
+        "binding": {"commit": "7df281e74c8bbe0e927865c822e725604a2dd2da", "tree": "7e908e8a0727ba16f5f9a59d7f1d0c9ac5935b43", "tool_name": "R27FG Samples and StandardBoards batch G3 evidence", "tool_version": "Node v24.14.0; pnpm 9.15.4", "command": "R27FG_SAMPLES_STANDARDBOARDS_BATCH_G3", "environment": "local clean integration worktree; 124 test files, 1128 tests, 0 failed, 0 skipped; no repository modification", "result_sha256": "5382f5e55d9c2d1ae9bc08eeba6955b596d6351eb144bd4ca280a0b8660d77af", "log_path": "/Users/lixiaochen/Downloads/R27FG_BATCH_G3_EVIDENCE_/g3-summary.json", "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db", "recorded_at": "2026-08-16T13:05:42Z"}
+      },
       "history": [
         {"at": "2026-08-16T12:03:52Z", "transition": "null->candidate", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact R27F StandardBoards task and source evidence: persisted sources reaching normalization or audit construction before resource admission were identified as a candidate."},
         {"at": "2026-08-16T12:03:52Z", "transition": "candidate->confirmed", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact R27F task evidence: the candidate was confirmed as a reachable Medium CWE-400 and SEC-009 persisted-source boundary issue with high confidence."},
         {"at": "2026-08-16T12:03:52Z", "transition": "confirmed->accepted_for_fix", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact R27F authorization and task evidence: the confirmed finding was accepted for the bounded two-file StandardBoards fix."},
         {"at": "2026-08-16T12:03:52Z", "transition": "accepted_for_fix->in_progress", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact R27F task evidence: remediation proceeded on the authorized StandardBoards service and resource-bounds spec scope."},
         {"at": "2026-08-16T12:03:52Z", "transition": "in_progress->fixed_target_verified", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact R27F task and commit evidence: targeted verification and affected regression passed on commit e18c9e8ac6961a05bf2c055f8ae69610c4eb2afc."},
-        {"at": "2026-08-16T12:03:52Z", "transition": "fixed_target_verified->fixed_diff_verified", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact R27F independent review and commit evidence: G4_DIFF passed on the two-file fix; no Samples+StandardBoards batch G3/full regression or closure is recorded."}
+        {"at": "2026-08-16T12:03:52Z", "transition": "fixed_target_verified->fixed_diff_verified", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact R27F independent review and commit evidence: G4_DIFF passed on the two-file fix; no Samples+StandardBoards batch G3/full regression or closure is recorded."},
+        {"at": "2026-08-16T13:05:42Z", "transition": "fixed_diff_verified->fixed_full_verified", "actor": "R27FG approved batch G3 verifier", "reason": "Approved Samples and StandardBoards batch G3 passed on exact integration commit 7df281e74c8bbe0e927865c822e725604a2dd2da with 124 test files and 1128 tests passing, 0 failed and 0 skipped."},
+        {"at": "2026-08-16T13:05:42Z", "transition": "fixed_full_verified->closed", "actor": "R27FG batch closure task", "reason": "Targeted verification, affected regression, independent G4_DIFF and approved batch G3 all passed on bound evidence; no Critical, High or Medium finding remains in this finding scope."}
       ]
     },
     {
       "id": "R27F-G4-002",
       "title": "StandardBoards admission materializes unbounded context before a bounded decision",
-      "status": "fixed_diff_verified",
+      "status": "closed",
       "severity": "medium",
       "confidence": "high",
       "classification": "pre_existing",
@@ -468,19 +489,26 @@
           "notes": "Independent G4_DIFF passed and closed both task-local review findings on the exact two-file diff; Ledger closure remains deferred."
         },
         "full_regression": {
-          "status": "pending",
-          "binding": null,
-          "notes": "No approved Samples+StandardBoards batch G3/full regression has run. Closure is deferred until that approved batch regression passes on the exact integration commit."
+          "status": "pass",
+          "binding": {"commit": "7df281e74c8bbe0e927865c822e725604a2dd2da", "tree": "7e908e8a0727ba16f5f9a59d7f1d0c9ac5935b43", "tool_name": "Codex approved Samples and StandardBoards batch G3", "tool_version": "Node v24.14.0; pnpm 9.15.4; repository-defined API scripts", "command": "R27FG_SAMPLES_STANDARDBOARDS_BATCH_G3", "environment": "local clean integration worktree; API lint, typecheck, Prisma validate, 124 test files and 1128 tests, and API build passed; 0 failed and 0 skipped", "result_sha256": "5382f5e55d9c2d1ae9bc08eeba6955b596d6351eb144bd4ca280a0b8660d77af", "log_path": "/Users/lixiaochen/Downloads/R27FG_BATCH_G3_EVIDENCE_/g3-summary.json", "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db", "recorded_at": "2026-08-16T13:05:42Z"},
+          "notes": "This is the approved Samples + StandardBoards batch G3. API lint, typecheck, Prisma validate, full API tests, and API build passed: 124 test files and 1128 tests passed, with 0 failed and 0 skipped. This G3 does not constitute production deployment approval."
         }
       },
-      "closure": null,
+      "closure": {
+        "closed_by": "R27FG_SAMPLES_STANDARDBOARDS_BATCH_LEDGER_CLOSURE",
+        "closed_at": "2026-08-16T13:05:42Z",
+        "criterion": "Targeted verification passed; affected regression passed; independent G4_DIFF passed; approved Samples + StandardBoards batch G3 passed with exact summary SHA-256 5382f5e55d9c2d1ae9bc08eeba6955b596d6351eb144bd4ca280a0b8660d77af. This closure does not constitute production deployment approval; the Reviews production online-index or maintenance-window strategy blocker remains in effect.",
+        "binding": {"commit": "7df281e74c8bbe0e927865c822e725604a2dd2da", "tree": "7e908e8a0727ba16f5f9a59d7f1d0c9ac5935b43", "tool_name": "R27FG Samples and StandardBoards batch G3 evidence", "tool_version": "Node v24.14.0; pnpm 9.15.4", "command": "R27FG_SAMPLES_STANDARDBOARDS_BATCH_G3", "environment": "local clean integration worktree; 124 test files, 1128 tests, 0 failed, 0 skipped; no repository modification", "result_sha256": "5382f5e55d9c2d1ae9bc08eeba6955b596d6351eb144bd4ca280a0b8660d77af", "log_path": "/Users/lixiaochen/Downloads/R27FG_BATCH_G3_EVIDENCE_/g3-summary.json", "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db", "recorded_at": "2026-08-16T13:05:42Z"}
+      },
       "history": [
         {"at": "2026-08-16T12:03:52Z", "transition": "null->candidate", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact R27F StandardBoards task and source evidence: admission materializing unbounded context before a bounded decision was identified as a candidate."},
         {"at": "2026-08-16T12:03:52Z", "transition": "candidate->confirmed", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact R27F task evidence: the candidate was confirmed as a reachable Medium CWE-400 and SEC-010 context-materialization issue with high confidence."},
         {"at": "2026-08-16T12:03:52Z", "transition": "confirmed->accepted_for_fix", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact R27F authorization and task evidence: the confirmed finding was accepted for the bounded two-file StandardBoards fix."},
         {"at": "2026-08-16T12:03:52Z", "transition": "accepted_for_fix->in_progress", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact R27F task evidence: remediation proceeded on the authorized StandardBoards service and resource-bounds spec scope."},
         {"at": "2026-08-16T12:03:52Z", "transition": "in_progress->fixed_target_verified", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact R27F task and commit evidence: targeted verification and affected regression passed on commit e18c9e8ac6961a05bf2c055f8ae69610c4eb2afc."},
-        {"at": "2026-08-16T12:03:52Z", "transition": "fixed_target_verified->fixed_diff_verified", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact R27F independent review and commit evidence: G4_DIFF passed on the two-file fix; no Samples+StandardBoards batch G3/full regression or closure is recorded."}
+        {"at": "2026-08-16T12:03:52Z", "transition": "fixed_target_verified->fixed_diff_verified", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact R27F independent review and commit evidence: G4_DIFF passed on the two-file fix; no Samples+StandardBoards batch G3/full regression or closure is recorded."},
+        {"at": "2026-08-16T13:05:42Z", "transition": "fixed_diff_verified->fixed_full_verified", "actor": "R27FG approved batch G3 verifier", "reason": "Approved Samples and StandardBoards batch G3 passed on exact integration commit 7df281e74c8bbe0e927865c822e725604a2dd2da with 124 test files and 1128 tests passing, 0 failed and 0 skipped."},
+        {"at": "2026-08-16T13:05:42Z", "transition": "fixed_full_verified->closed", "actor": "R27FG batch closure task", "reason": "Targeted verification, affected regression, independent G4_DIFF and approved batch G3 all passed on bound evidence; no Critical, High or Medium finding remains in this finding scope."}
       ]
     }
   ]
