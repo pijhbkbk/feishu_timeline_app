@@ -17,7 +17,7 @@
       "docs/rounds/R27.md",
       "docs/handoff/R27_HANDOFF.md"
     ],
-    "notes": "R27C historical normalization remains pending. R27D-G4-001 and R27D-G4-002 are recorded and closed against the exact Reviews fix commit and gate evidence. Production deployment remains blocked until an approved online-index or maintenance-window strategy exists."
+    "notes": "R27C historical normalization remains pending. R27D-G4-001 and R27D-G4-002 Reviews findings are recorded and closed against the exact Reviews fix commit and gate evidence. R27E-G4-001 and R27E-G4-002 Samples findings are recorded at fixed_diff_verified; no approved batch G3/full regression was run, so Samples closure is deferred until the approved Samples+StandardBoards batch regression. Production deployment remains blocked until an approved Reviews online-index or maintenance-window strategy exists."
   },
   "findings": [
     {
@@ -178,6 +178,146 @@
         {"at": "2026-08-14T09:10:10Z", "transition": "fixed_target_verified->fixed_diff_verified", "actor": "Codex independent reviewer", "reason": "Independent G4_DIFF passed after corrected evidence closure."},
         {"at": "2026-08-14T09:10:10Z", "transition": "fixed_diff_verified->fixed_full_verified", "actor": "Codex independent reviewer", "reason": "Reused exact-identity G3 and PostgreSQL execution evidence without rerunning gates."},
         {"at": "2026-08-14T09:10:10Z", "transition": "fixed_full_verified->closed", "actor": "Codex independent reviewer", "reason": "Closure criteria met; production online-index strategy retained as a deployment blocker."}
+      ]
+    },
+    {
+      "id": "R27E-G4-001",
+      "title": "Persisted sampleName is normalized before raw resource admission",
+      "status": "fixed_diff_verified",
+      "severity": "medium",
+      "confidence": "high",
+      "classification": "pre_existing",
+      "cwe": "CWE-400",
+      "source": {
+        "type": "manual",
+        "report_path": "/Users/lixiaochen/Downloads/R27E_SAMPLES_LEDGER_EVIDENCE_20260816T034824Z/source.json",
+        "binding": {"commit": "3cb95fe5ee3ba7ee05a40ec7fa66baa5bee64cc0", "tree": "c3fc89e9ffcf964316e2b1f5aae09a06faf868cd", "tool_name": "Codex bounded Samples remediation intake", "tool_version": "gpt-5.6-terra", "command": "R27E_SAMPLES_CANDIDATE_MIGRATION_AND_REMEDIATION", "environment": "local isolated integration worktree; source candidate patch SHA-256 91acefa6f5c046d6aa8c306880cf858d297b9e32fd0467c1186af8bf7dd9536c", "result_sha256": "6f4b373341d9951d0ce66bf2833417332938c3a803247fafb107a7f0583f5c7e", "log_path": "/Users/lixiaochen/Downloads/R27E_SAMPLES_LEDGER_EVIDENCE_20260816T034824Z/source.json", "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db", "recorded_at": "2026-08-16T03:48:24Z"}
+      },
+      "scope": {
+        "component": "Samples persisted SampleRecord admission across buildWorkspace, buildSampleDetail, preflightSampleImageUpload, toConfirmationSummary, and toSampleAuditSnapshot",
+        "affected_files": ["apps/api/src/modules/samples/samples.service.ts"],
+        "entry_points": ["getWorkspace", "getSampleDetail", "createSample", "updateSample", "uploadSampleImage", "submitConfirmation"],
+        "trust_boundary": "Persisted SampleRecord values from PostgreSQL or legacy internal Service callers crossing into Samples read, write, audit, attachment, and confirmation processing"
+      },
+      "evidence": {
+        "reachable": true,
+        "production_exposed": null,
+        "reproduction_path": "A legacy persisted sampleName could reach trim or normalization before raw resource admission because historical rows and direct internal SamplesService callers bypass Controller DTO validation. The fix applies assertPersistedSampleRow to raw persisted rows, checks sampleName length before sampleName.trim(), and fails closed with a non-reflective SAMPLE_PERSISTED_ROW_OUT_OF_BOUNDS error.",
+        "proof_gap": "Production exposure was not established because production access and deployed-row inspection were not authorized for this task."
+      },
+      "root_cause_cluster": "SAMPLES_PERSISTED_SOURCE_AND_ATTACHMENT_QUERY_BOUNDS",
+      "security_invariants": ["SEC-009"],
+      "disposition": {"duplicate_of": null, "false_positive_reason": null, "risk_acceptance": null},
+      "fix": {
+        "task_id": "R27E_SAMPLES_CANDIDATE_MIGRATION_AND_REMEDIATION",
+        "branch": "security/r27-integration-v2",
+        "commit": "e675ecf8d2bbfb9fd65c16ca0cd1823f9620182f",
+        "tree": "d9bbf579a8f6fd8d95b2f1124d95f0a9bb9e15b2",
+        "changed_files": [
+          "apps/api/src/modules/samples/samples.service.ts",
+          "apps/api/src/modules/samples/samples.resource-bounds.spec.ts"
+        ]
+      },
+      "verification": {
+        "targeted": {
+          "status": "pass",
+          "binding": {"commit": "e675ecf8d2bbfb9fd65c16ca0cd1823f9620182f", "tree": "d9bbf579a8f6fd8d95b2f1124d95f0a9bb9e15b2", "tool_name": "Codex Samples remediation G1", "tool_version": "gpt-5.6-terra", "command": "R27E_SAMPLES_CANDIDATE_MIGRATION_AND_REMEDIATION G1", "environment": "local isolated integration worktree; 49/49 resource-bounds tests, targeted ESLint, and diff checks passed; exact final diff SHA-256 1eab5e2aaaf9cb6e54cbffc8fe56c35480f6dbd9a38b5c90120cc2af1c365f45", "result_sha256": "47ecdf8ded8c82ed1e1f2339d79c2dbe8f6e82dd0cd023e9798467aecbe914ae", "log_path": "/Users/lixiaochen/Downloads/R27E_SAMPLES_LEDGER_EVIDENCE_20260816T034824Z/g1.json", "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db", "recorded_at": "2026-08-16T03:48:24Z"},
+          "notes": "G1 evidence records 49/49 resource-bounds tests, targeted ESLint, and diff checks as pass."
+        },
+        "affected_regression": {
+          "status": "pass",
+          "binding": {"commit": "e675ecf8d2bbfb9fd65c16ca0cd1823f9620182f", "tree": "d9bbf579a8f6fd8d95b2f1124d95f0a9bb9e15b2", "tool_name": "Codex Samples remediation G2", "tool_version": "gpt-5.6-terra", "command": "R27E_SAMPLES_CANDIDATE_MIGRATION_AND_REMEDIATION G2", "environment": "local isolated integration worktree; 3 directly affected Samples specs, 65/65 tests, Samples module lint, and API typecheck passed; exact final diff SHA-256 1eab5e2aaaf9cb6e54cbffc8fe56c35480f6dbd9a38b5c90120cc2af1c365f45", "result_sha256": "872e33875ca06df03437912ff32f4c1b041c1d41064d65de94481cd1c2e5990a", "log_path": "/Users/lixiaochen/Downloads/R27E_SAMPLES_LEDGER_EVIDENCE_20260816T034824Z/g2.json", "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db", "recorded_at": "2026-08-16T03:48:24Z"},
+          "notes": "G2 evidence records three directly affected Samples specs, 65/65 tests, module lint, and API typecheck as pass."
+        },
+        "diff_review": {
+          "status": "pass",
+          "binding": {"commit": "e675ecf8d2bbfb9fd65c16ca0cd1823f9620182f", "tree": "d9bbf579a8f6fd8d95b2f1124d95f0a9bb9e15b2", "tool_name": "Codex independent G4_DIFF review", "tool_version": "gpt-5.6-sol", "command": "R27E_SAMPLES_INDEPENDENT_G4_DIFF_REVIEW", "environment": "local read-only exact two-file identity; reviewed diff SHA-256 1eab5e2aaaf9cb6e54cbffc8fe56c35480f6dbd9a38b5c90120cc2af1c365f45", "result_sha256": "7b4d939da267357cf2d66fe6100eff4dc9e9e9c3b7670b5b1f4c745863cf1b4c", "log_path": "/Users/lixiaochen/Downloads/R27E_SAMPLES_LEDGER_EVIDENCE_20260816T034824Z/g4.json", "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db", "recorded_at": "2026-08-16T03:48:24Z"},
+          "notes": "Independent G4_DIFF closed both diff-review findings with zero confirmed Critical, High, or Medium residual findings."
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "No approved batch G3/full regression was run for the isolated Samples patch. Closure is deferred until the approved Samples+StandardBoards batch regression."
+        }
+      },
+      "closure": null,
+      "history": [
+        {"at": "2026-08-16T03:48:24Z", "transition": "null->candidate", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact task evidence: the bounded Samples remediation intake identified the persisted sampleName resource-admission candidate."},
+        {"at": "2026-08-16T03:48:24Z", "transition": "candidate->confirmed", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact task evidence: the candidate was confirmed as a reachable Medium CWE-400 persisted-source boundary issue with high confidence."},
+        {"at": "2026-08-16T03:48:24Z", "transition": "confirmed->accepted_for_fix", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact task evidence: the confirmed finding was accepted for the bounded two-file Samples fix."},
+        {"at": "2026-08-16T03:48:24Z", "transition": "accepted_for_fix->in_progress", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact task evidence: implementation proceeded on the exact two-file Samples remediation scope."},
+        {"at": "2026-08-16T03:48:24Z", "transition": "in_progress->fixed_target_verified", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact task evidence: G1 targeted verification and G2 affected regression passed on the exact fix identity."},
+        {"at": "2026-08-16T03:48:24Z", "transition": "fixed_target_verified->fixed_diff_verified", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact task evidence: independent G4_DIFF passed on the exact two-file diff; no batch G3/full regression or closure is recorded."}
+      ]
+    },
+    {
+      "id": "R27E-G4-002",
+      "title": "Samples attachment lookup aggregates an unbounded ID set before selecting one",
+      "status": "fixed_diff_verified",
+      "severity": "medium",
+      "confidence": "high",
+      "classification": "pre_existing",
+      "cwe": "CWE-400",
+      "source": {
+        "type": "manual",
+        "report_path": "/Users/lixiaochen/Downloads/R27E_SAMPLES_LEDGER_EVIDENCE_20260816T034824Z/source.json",
+        "binding": {"commit": "3cb95fe5ee3ba7ee05a40ec7fa66baa5bee64cc0", "tree": "c3fc89e9ffcf964316e2b1f5aae09a06faf868cd", "tool_name": "Codex bounded Samples remediation intake", "tool_version": "gpt-5.6-terra", "command": "R27E_SAMPLES_CANDIDATE_MIGRATION_AND_REMEDIATION", "environment": "local isolated integration worktree; source candidate patch SHA-256 91acefa6f5c046d6aa8c306880cf858d297b9e32fd0467c1186af8bf7dd9536c", "result_sha256": "6f4b373341d9951d0ce66bf2833417332938c3a803247fafb107a7f0583f5c7e", "log_path": "/Users/lixiaochen/Downloads/R27E_SAMPLES_LEDGER_EVIDENCE_20260816T034824Z/source.json", "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db", "recorded_at": "2026-08-16T03:48:24Z"}
+      },
+      "scope": {
+        "component": "Samples workspace attachment summary in buildWorkspace and getSampleAttachmentStats",
+        "affected_files": ["apps/api/src/modules/samples/samples.service.ts"],
+        "entry_points": ["getWorkspace", "submitConfirmation", "buildWorkspace", "getSampleAttachmentStats"],
+        "trust_boundary": "CLEAN SAMPLE attachment rows crossing from PostgreSQL into workspace imageCount and latestImageAttachmentId aggregation"
+      },
+      "evidence": {
+        "reachable": true,
+        "production_exposed": null,
+        "reproduction_path": "The original buildWorkspace path used attachment.findMany to materialize the full matching attachment collection, then aggregated every ID in memory while retaining only the first ordered ID per sample. Work grew with the number of matching attachments. The fix uses one parameterized grouped count query with a deterministic correlated top-1 ordered by uploadedAt DESC and id DESC, aligned with the existing composite index; it preserves selection semantics and introduces no N+1 query pattern.",
+        "proof_gap": "Production exposure was not established because production access and deployed-row inspection were not authorized for this task."
+      },
+      "root_cause_cluster": "SAMPLES_PERSISTED_SOURCE_AND_ATTACHMENT_QUERY_BOUNDS",
+      "security_invariants": ["SEC-010"],
+      "disposition": {"duplicate_of": null, "false_positive_reason": null, "risk_acceptance": null},
+      "fix": {
+        "task_id": "R27E_SAMPLES_CANDIDATE_MIGRATION_AND_REMEDIATION",
+        "branch": "security/r27-integration-v2",
+        "commit": "e675ecf8d2bbfb9fd65c16ca0cd1823f9620182f",
+        "tree": "d9bbf579a8f6fd8d95b2f1124d95f0a9bb9e15b2",
+        "changed_files": [
+          "apps/api/src/modules/samples/samples.service.ts",
+          "apps/api/src/modules/samples/samples.resource-bounds.spec.ts"
+        ]
+      },
+      "verification": {
+        "targeted": {
+          "status": "pass",
+          "binding": {"commit": "e675ecf8d2bbfb9fd65c16ca0cd1823f9620182f", "tree": "d9bbf579a8f6fd8d95b2f1124d95f0a9bb9e15b2", "tool_name": "Codex Samples remediation G1", "tool_version": "gpt-5.6-terra", "command": "R27E_SAMPLES_CANDIDATE_MIGRATION_AND_REMEDIATION G1", "environment": "local isolated integration worktree; 49/49 resource-bounds tests, targeted ESLint, and diff checks passed; exact final diff SHA-256 1eab5e2aaaf9cb6e54cbffc8fe56c35480f6dbd9a38b5c90120cc2af1c365f45", "result_sha256": "47ecdf8ded8c82ed1e1f2339d79c2dbe8f6e82dd0cd023e9798467aecbe914ae", "log_path": "/Users/lixiaochen/Downloads/R27E_SAMPLES_LEDGER_EVIDENCE_20260816T034824Z/g1.json", "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db", "recorded_at": "2026-08-16T03:48:24Z"},
+          "notes": "G1 evidence records 49/49 resource-bounds tests, targeted ESLint, and diff checks as pass."
+        },
+        "affected_regression": {
+          "status": "pass",
+          "binding": {"commit": "e675ecf8d2bbfb9fd65c16ca0cd1823f9620182f", "tree": "d9bbf579a8f6fd8d95b2f1124d95f0a9bb9e15b2", "tool_name": "Codex Samples remediation G2", "tool_version": "gpt-5.6-terra", "command": "R27E_SAMPLES_CANDIDATE_MIGRATION_AND_REMEDIATION G2", "environment": "local isolated integration worktree; 3 directly affected Samples specs, 65/65 tests, Samples module lint, and API typecheck passed; exact final diff SHA-256 1eab5e2aaaf9cb6e54cbffc8fe56c35480f6dbd9a38b5c90120cc2af1c365f45", "result_sha256": "872e33875ca06df03437912ff32f4c1b041c1d41064d65de94481cd1c2e5990a", "log_path": "/Users/lixiaochen/Downloads/R27E_SAMPLES_LEDGER_EVIDENCE_20260816T034824Z/g2.json", "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db", "recorded_at": "2026-08-16T03:48:24Z"},
+          "notes": "G2 evidence records three directly affected Samples specs, 65/65 tests, module lint, and API typecheck as pass."
+        },
+        "diff_review": {
+          "status": "pass",
+          "binding": {"commit": "e675ecf8d2bbfb9fd65c16ca0cd1823f9620182f", "tree": "d9bbf579a8f6fd8d95b2f1124d95f0a9bb9e15b2", "tool_name": "Codex independent G4_DIFF review", "tool_version": "gpt-5.6-sol", "command": "R27E_SAMPLES_INDEPENDENT_G4_DIFF_REVIEW", "environment": "local read-only exact two-file identity; reviewed diff SHA-256 1eab5e2aaaf9cb6e54cbffc8fe56c35480f6dbd9a38b5c90120cc2af1c365f45", "result_sha256": "7b4d939da267357cf2d66fe6100eff4dc9e9e9c3b7670b5b1f4c745863cf1b4c", "log_path": "/Users/lixiaochen/Downloads/R27E_SAMPLES_LEDGER_EVIDENCE_20260816T034824Z/g4.json", "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db", "recorded_at": "2026-08-16T03:48:24Z"},
+          "notes": "Independent G4_DIFF closed both diff-review findings with zero confirmed Critical, High, or Medium residual findings."
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "No approved batch G3/full regression was run for the isolated Samples patch. Closure is deferred until the approved Samples+StandardBoards batch regression."
+        }
+      },
+      "closure": null,
+      "history": [
+        {"at": "2026-08-16T03:48:24Z", "transition": "null->candidate", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact task evidence: the bounded Samples remediation intake identified the unbounded attachment-ID aggregation candidate."},
+        {"at": "2026-08-16T03:48:24Z", "transition": "candidate->confirmed", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact task evidence: the candidate was confirmed as a reachable Medium CWE-400 attachment-query resource issue with high confidence."},
+        {"at": "2026-08-16T03:48:24Z", "transition": "confirmed->accepted_for_fix", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact task evidence: the confirmed finding was accepted for the bounded two-file Samples fix."},
+        {"at": "2026-08-16T03:48:24Z", "transition": "accepted_for_fix->in_progress", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact task evidence: implementation proceeded on the exact two-file Samples remediation scope."},
+        {"at": "2026-08-16T03:48:24Z", "transition": "in_progress->fixed_target_verified", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact task evidence: G1 targeted verification and G2 affected regression passed on the exact fix identity."},
+        {"at": "2026-08-16T03:48:24Z", "transition": "fixed_target_verified->fixed_diff_verified", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact task evidence: independent G4_DIFF passed on the exact two-file diff; no batch G3/full regression or closure is recorded."}
       ]
     }
   ]
