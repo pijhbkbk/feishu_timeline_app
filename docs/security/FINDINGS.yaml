@@ -510,6 +510,71 @@
         {"at": "2026-08-16T13:05:42Z", "transition": "fixed_diff_verified->fixed_full_verified", "actor": "R27FG approved batch G3 verifier", "reason": "Approved Samples and StandardBoards batch G3 passed on exact integration commit 7df281e74c8bbe0e927865c822e725604a2dd2da with 124 test files and 1128 tests passing, 0 failed and 0 skipped."},
         {"at": "2026-08-16T13:05:42Z", "transition": "fixed_full_verified->closed", "actor": "R27FG batch closure task", "reason": "Targeted verification, affected regression, independent G4_DIFF and approved batch G3 all passed on bound evidence; no Critical, High or Medium finding remains in this finding scope."}
       ]
+    },
+    {
+      "id": "R27S-D015-001",
+      "title": "Notification linkPath is not revalidated across queue, persistence, and read boundaries",
+      "status": "confirmed",
+      "severity": "low",
+      "confidence": "high",
+      "classification": "pre_existing",
+      "cwe": "CWE-601",
+      "source": {
+        "type": "manual",
+        "report_path": "/Users/lixiaochen/Downloads/R27S_D015_INDEPENDENT_CONFIRMATION_20260817T061336Z/finding-decision.json",
+        "binding": {
+          "commit": "28a672fee90cb55d1ee76c3b67aca5ab75a57f8b",
+          "tree": "a945674545d4562bf5ae9350b75d7870db59fcb7",
+          "tool_name": "Codex independent current finding confirmation",
+          "tool_version": "gpt-5.6-sol",
+          "command": "R27S_D015_INDEPENDENT_CURRENT_FINDING_CONFIRMATION",
+          "environment": "local read-only exact integration identity; R27Q/R27R evidence verified; no real Redis or DB contents inspected",
+          "result_sha256": "8d5e787702cc3cff47482aa233126f54fe8c46df1f4e3c5303840d89cc76e196",
+          "log_path": "/Users/lixiaochen/Downloads/R27S_D015_INDEPENDENT_CONFIRMATION_20260817T061336Z/finding-decision.json",
+          "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db",
+          "recorded_at": "2026-08-17T07:02:14Z"
+        }
+      },
+      "scope": {
+        "component": "Notification linkPath downstream admission, persistence, read serialization, and Web navigation",
+        "affected_files": [
+          "apps/api/src/modules/queue/notification-queue.service.ts",
+          "apps/api/src/modules/notifications/notifications.service.ts",
+          "apps/api/src/modules/activity-logs/activity-logs.service.ts",
+          "apps/web/src/components/project-logs-workspace.tsx"
+        ],
+        "entry_points": [
+          "NotificationQueueService.processPendingJobs",
+          "NotificationsService.processQueuedNotification",
+          "NotificationsService.processSystemNotification",
+          "NotificationsService.processTaskNotification",
+          "ActivityLogsService.getProjectLogTimeline",
+          "ActivityLogsService.getProjectLogDetail",
+          "ProjectLogTimelineList"
+        ],
+        "trust_boundary": "Legacy or externally supplied queued/persisted notification linkPath values crossing into Notification storage, API read models, and clickable Web navigation without downstream runtime revalidation."
+      },
+      "evidence": {
+        "reachable": true,
+        "production_exposed": null,
+        "reproduction_path": "The current new enqueue entry validates linkPath. The Redis queue persists across deployments and has no TTL or version boundary. A legacy-compatible unsafe job can enter the current processPendingJobs path, where current processing and NotificationsService do not revalidate linkPath, so an unsafe linkPath may persist. ActivityLogs read paths return it, and the Web uses it as a Next Link href; the user must click it. No current direct production caller bypass was found. CWE-601 is the primary scalar classification supported by the Ledger Schema; CWE-20 also applies to the missing downstream input revalidation.",
+        "proof_gap": "Live Redis/DB contents were not inspected; actual retained unsafe payload or row presence is unproven. Redis ACL, external purge, and durability policy are outside the confirmation scope."
+      },
+      "root_cause_cluster": "NOTIFICATION_LINKPATH_DOWNSTREAM_TRUST_BOUNDARIES_LACK_REVALIDATION",
+      "security_invariants": ["SEC-009", "SEC-013"],
+      "disposition": {"duplicate_of": null, "false_positive_reason": null, "risk_acceptance": null},
+      "fix": {"task_id": null, "branch": null, "commit": null, "tree": null, "changed_files": []},
+      "verification": {
+        "targeted": {"status": "pending", "binding": null, "notes": "Current Finding confirmation is complete; remediation verification has not been executed."},
+        "affected_regression": {"status": "pending", "binding": null},
+        "diff_review": {"status": "pending", "binding": null},
+        "full_regression": {"status": "pending", "binding": null}
+      },
+      "closure": null,
+      "history": [
+        {"at": "2026-08-17T07:02:14Z", "transition": "null->candidate", "actor": "R27R current bounded reverification", "reason": "Corrected-scope current-state verification found downstream notification linkPath trust boundaries without runtime revalidation and requested independent confirmation."},
+        {"at": "2026-08-17T07:02:14Z", "transition": "candidate->confirmed", "actor": "R27S independent reviewer", "reason": "Independent review confirmed a reachable Low CWE-601/CWE-20 issue through legacy Redis jobs, Notification persistence, API read models, and clickable Web navigation on exact commit 28a672fee90cb55d1ee76c3b67aca5ab75a57f8b."}
+      ]
     }
   ]
 }
