@@ -514,7 +514,7 @@
     {
       "id": "R27S-D015-001",
       "title": "Notification linkPath is not revalidated across queue, persistence, and read boundaries",
-      "status": "confirmed",
+      "status": "fixed_diff_verified",
       "severity": "low",
       "confidence": "high",
       "classification": "pre_existing",
@@ -563,17 +563,80 @@
       "root_cause_cluster": "NOTIFICATION_LINKPATH_DOWNSTREAM_TRUST_BOUNDARIES_LACK_REVALIDATION",
       "security_invariants": ["SEC-009", "SEC-013"],
       "disposition": {"duplicate_of": null, "false_positive_reason": null, "risk_acceptance": null},
-      "fix": {"task_id": null, "branch": null, "commit": null, "tree": null, "changed_files": []},
+      "fix": {
+        "task_id": "R27V_D015_NOTIFICATION_LINKPATH_SECURITY_FIX",
+        "branch": "security/r27-integration-v2",
+        "commit": "ac27b737265172a016fe750d77cf70ad4b193ebb",
+        "tree": "d35782404c2f8b97eaabc02b4f2cad3ed1ef7825",
+        "changed_files": [
+          "apps/api/src/modules/notifications/notification-link-path.rules.ts",
+          "apps/api/src/modules/queue/notification-queue.service.ts",
+          "apps/api/src/modules/notifications/notifications.service.ts",
+          "apps/api/src/modules/activity-logs/activity-logs.service.ts",
+          "apps/api/src/modules/queue/notification-queue.service.spec.ts",
+          "apps/api/src/modules/notifications/notifications.service.spec.ts",
+          "apps/api/src/modules/activity-logs/activity-logs.service.spec.ts"
+        ]
+      },
       "verification": {
-        "targeted": {"status": "pending", "binding": null, "notes": "Current Finding confirmation is complete; remediation verification has not been executed."},
-        "affected_regression": {"status": "pending", "binding": null},
-        "diff_review": {"status": "pending", "binding": null},
+        "targeted": {
+          "status": "pass",
+          "binding": {
+            "commit": "ac27b737265172a016fe750d77cf70ad4b193ebb",
+            "tree": "d35782404c2f8b97eaabc02b4f2cad3ed1ef7825",
+            "tool_name": "Codex D015 final targeted remediation verification",
+            "tool_version": "gpt-5.6-terra",
+            "command": "R27Z_D015_NORMALIZED_LENGTH_REGRESSION_CLOSURE G1",
+            "environment": "local exact seven-file identity later committed unchanged as ac27b737265172a016fe750d77cf70ad4b193ebb; targeted notification linkPath rule, Queue and NotificationsService tests; no real Redis or database access; execution artifact lacks an embedded execution timestamp; binding recorded_at is the later Ledger binding time, not test execution time",
+            "result_sha256": "c8454b33583127a95c18daec319141ea7fdf29e0cf458221d1e42b1441a40812",
+            "log_path": "/Users/lixiaochen/Downloads/R27Z_D015_NORMALIZED_LENGTH_REGRESSION_EVIDENCE_/g1-results.json",
+            "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db",
+            "recorded_at": "2026-08-18T01:32:21Z"
+          },
+          "notes": "Immutable G1 result SHA-256 c8454b33583127a95c18daec319141ea7fdf29e0cf458221d1e42b1441a40812; normalized-length matrix covered; timestamp-semantics-attestation SHA-256 2aed552dfb915c40fe9233e9c41f250f5e601a3025022012b0baaec1188e8d24; source execution time is unavailable; binding.recorded_at is Ledger binding time, not test execution time, and does not prove historical test execution."
+        },
+        "affected_regression": {
+          "status": "pass",
+          "binding": {
+            "commit": "ac27b737265172a016fe750d77cf70ad4b193ebb",
+            "tree": "d35782404c2f8b97eaabc02b4f2cad3ed1ef7825",
+            "tool_name": "Codex D015 final affected regression verification",
+            "tool_version": "gpt-5.6-terra",
+            "command": "R27Z_D015_NORMALIZED_LENGTH_REGRESSION_CLOSURE G2",
+            "environment": "final exact seven-file identity later committed unchanged; queue, notifications and activity-logs related specs; API typecheck; 110 tests passed, 0 failed, 0 skipped; no full repository test; no real Redis/database; no Web regression; source artifact contains no execution timestamp; binding recorded_at is Ledger binding time only",
+            "result_sha256": "f738ac94c904ffd860e7288b39ca0606183b251d3bb8bd1226dcb206a4c0db5c",
+            "log_path": "/Users/lixiaochen/Downloads/R27Z_D015_NORMALIZED_LENGTH_REGRESSION_EVIDENCE_/g2-results.json",
+            "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db",
+            "recorded_at": "2026-08-18T01:32:21Z"
+          },
+          "notes": "Immutable G2 result SHA-256 f738ac94c904ffd860e7288b39ca0606183b251d3bb8bd1226dcb206a4c0db5c records 3 test files, 110 tests passed, 0 failed, 0 skipped, and API typecheck passed; timestamp-semantics-attestation SHA-256 2aed552dfb915c40fe9233e9c41f250f5e601a3025022012b0baaec1188e8d24; source execution time is unavailable; full regression remains pending."
+        },
+        "diff_review": {
+          "status": "pass",
+          "binding": {
+            "commit": "ac27b737265172a016fe750d77cf70ad4b193ebb",
+            "tree": "d35782404c2f8b97eaabc02b4f2cad3ed1ef7825",
+            "tool_name": "Codex independent G4_DIFF V3 evidence closure",
+            "tool_version": "gpt-5.6-sol",
+            "command": "R27AA_D015_G4_DIFF_V3_EVIDENCE_CLOSURE",
+            "environment": "local read-only exact seven-file identity; final review diff fd3403555af7ec7ad9870d9c3494fc711472ec4dc580eacd1db4f54024f152ee; R27W patch Finding and R27Y INFO closed; static G4 reused after production-file identity check; normalized-length test delta independently reviewed; Critical/High/Medium/Low zero; review performed before commit and committed blobs later verified unchanged",
+            "result_sha256": "3adf2c30730f84a6330a9ed6206ebb63b93021d032e3c09fa999bf07e35d8bb9",
+            "log_path": "/Users/lixiaochen/Downloads/R27AA_D015_G4_DIFF_V3_EVIDENCE_20260818T003734Z/g4-summary.json",
+            "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db",
+            "recorded_at": "2026-08-18T01:32:21Z"
+          },
+          "notes": "Immutable G4 summary artifact SHA-256 3adf2c30730f84a6330a9ed6206ebb63b93021d032e3c09fa999bf07e35d8bb9; g4-summary.json contains no structured review timestamp, so binding.recorded_at is Ledger binding time from timestamp-semantics-attestation SHA-256 2aed552dfb915c40fe9233e9c41f250f5e601a3025022012b0baaec1188e8d24, not review execution time; reviewed diff SHA-256 fd3403555af7ec7ad9870d9c3494fc711472ec4dc580eacd1db4f54024f152ee."
+        },
         "full_regression": {"status": "pending", "binding": null}
       },
       "closure": null,
       "history": [
         {"at": "2026-08-17T07:02:14Z", "transition": "null->candidate", "actor": "R27R current bounded reverification", "reason": "Corrected-scope current-state verification found downstream notification linkPath trust boundaries without runtime revalidation and requested independent confirmation."},
-        {"at": "2026-08-17T07:02:14Z", "transition": "candidate->confirmed", "actor": "R27S independent reviewer", "reason": "Independent review confirmed a reachable Low CWE-601/CWE-20 issue through legacy Redis jobs, Notification persistence, API read models, and clickable Web navigation on exact commit 28a672fee90cb55d1ee76c3b67aca5ab75a57f8b."}
+        {"at": "2026-08-17T07:02:14Z", "transition": "candidate->confirmed", "actor": "R27S independent reviewer", "reason": "Independent review confirmed a reachable Low CWE-601/CWE-20 issue through legacy Redis jobs, Notification persistence, API read models, and clickable Web navigation on exact commit 28a672fee90cb55d1ee76c3b67aca5ab75a57f8b."},
+        {"at": "2026-08-18T01:32:21Z", "transition": "confirmed->accepted_for_fix", "actor": "R27T remediation architecture decision", "reason": "Approved PATH_A_API_SHARED_RULES_NO_SCHEMA with one pure shared linkPath rule, exact seven-file scope, no Schema, no Migration and no Web change."},
+        {"at": "2026-08-18T01:32:21Z", "transition": "accepted_for_fix->in_progress", "actor": "R27V remediation agent", "reason": "Started bounded remediation of queue ingress, post-deserialization admission, pre-persistence final admission and persisted-read sanitization."},
+        {"at": "2026-08-18T01:32:21Z", "transition": "in_progress->fixed_target_verified", "actor": "R27Z remediation verifier", "reason": "Final G1 and G2 passed on the exact seven-file identity later committed unchanged as ac27b737265172a016fe750d77cf70ad4b193ebb; 110 tests passed, 0 failed, 0 skipped, and API typecheck passed. The transition time records Ledger binding, not test execution."},
+        {"at": "2026-08-18T01:32:21Z", "transition": "fixed_target_verified->fixed_diff_verified", "actor": "R27AA independent reviewer", "reason": "Independent G4_DIFF V3 passed on review diff fd3403555af7ec7ad9870d9c3494fc711472ec4dc580eacd1db4f54024f152ee; R27W-D015-001 and R27Y-INFO-001 were closed, with no Critical, High, Medium or Low finding remaining. The transition time records Ledger binding."}
       ]
     }
   ]
