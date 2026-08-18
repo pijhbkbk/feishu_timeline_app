@@ -514,7 +514,7 @@
     {
       "id": "R27S-D015-001",
       "title": "Notification linkPath is not revalidated across queue, persistence, and read boundaries",
-      "status": "fixed_diff_verified",
+      "status": "closed",
       "severity": "low",
       "confidence": "high",
       "classification": "pre_existing",
@@ -627,16 +627,49 @@
           },
           "notes": "Immutable G4 summary artifact SHA-256 3adf2c30730f84a6330a9ed6206ebb63b93021d032e3c09fa999bf07e35d8bb9; g4-summary.json contains no structured review timestamp, so binding.recorded_at is Ledger binding time from timestamp-semantics-attestation SHA-256 2aed552dfb915c40fe9233e9c41f250f5e601a3025022012b0baaec1188e8d24, not review execution time; reviewed diff SHA-256 fd3403555af7ec7ad9870d9c3494fc711472ec4dc580eacd1db4f54024f152ee."
         },
-        "full_regression": {"status": "pending", "binding": null}
+        "full_regression": {
+          "status": "pass",
+          "binding": {
+            "commit": "14d9fe62550fd6487c8633937f511ab80e2a81ea",
+            "tree": "516b66916bae8fd4dd05975ee9b7766c89dbceaf",
+            "tool_name": "Codex D015 standalone API G3",
+            "tool_version": "gpt-5.6-terra; Node v24.14.0; pnpm 9.15.4",
+            "command": "R27AD_D015_STANDALONE_API_G3",
+            "environment": "local exact integration HEAD 14d9fe62550fd6487c8633937f511ab80e2a81ea and tree 516b66916bae8fd4dd05975ee9b7766c89dbceaf; canonical API lint, typecheck, full test and build; 124 test files and 1196 tests passed, 0 failed, 0 skipped; all three D015 relevant test files executed with 0 skipped; no test filter; no real Redis, database or external service; no Web regression; Prisma validate not required by gate design",
+            "result_sha256": "c38b54b51a4e7c6f09515e85782d618d7d56484efd57c1ecf971eaedcfbbdeb0",
+            "log_path": "/Users/lixiaochen/Downloads/R27AD_D015_STANDALONE_API_G3_EVIDENCE_20260818T015127Z/g3-results.json",
+            "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db",
+            "recorded_at": "2026-08-18T01:55:36Z"
+          },
+          "notes": "Immutable G3 result SHA-256 c38b54b51a4e7c6f09515e85782d618d7d56484efd57c1ecf971eaedcfbbdeb0; test execution summary SHA-256 675b6e6adaace9118137db0ea3cd2496043b31b04ceba273f8fd1364696733f0; commands log SHA-256 61e46d0b7564b455b41869ab84627cac217649e7fcf7751fd1323776640ed0c8; API lint, typecheck, canonical full test and build passed; 124 test files and 1196 tests passed, 0 failed, 0 skipped; all three D015 relevant test files executed; source Finding closure does not authorize production deployment."
+        }
       },
-      "closure": null,
+      "closure": {
+        "closed_by": "R27AE_D015_FULL_REGRESSION_AND_CLOSURE",
+        "closed_at": "2026-08-18T02:05:36Z",
+        "criterion": "Targeted verification, affected regression, independent G4_DIFF V3 and standalone API G3 passed. G3 ran on exact integration HEAD 14d9fe62550fd6487c8633937f511ab80e2a81ea and tree 516b66916bae8fd4dd05975ee9b7766c89dbceaf; API lint, typecheck, canonical full test and build passed; 124 test files and 1196 tests passed with 0 failures and 0 skipped tests; all three D015 relevant test files executed. This closes the source Finding only. Historical migration and all release/deployment blockers remain separate, and no production deployment is authorized.",
+        "binding": {
+          "commit": "14d9fe62550fd6487c8633937f511ab80e2a81ea",
+          "tree": "516b66916bae8fd4dd05975ee9b7766c89dbceaf",
+          "tool_name": "Codex R27AD standalone API G3 closure readiness",
+          "tool_version": "gpt-5.6-terra; Node v24.14.0; pnpm 9.15.4",
+          "command": "R27AD_D015_STANDALONE_API_G3",
+          "environment": "local exact integration HEAD; G3 PASS; API lint/typecheck/full test/build PASS; 124 test files and 1196 tests passed; 0 failed; 0 skipped; three D015 test files executed; worktree clean; Ledger and lockfile unchanged; no Web regression, external service, staging, production or deployment",
+          "result_sha256": "d7acfe5c7f7aaef1260dcf8bc995accf3f202f3ea4db1926530ec1095adae824",
+          "log_path": "/Users/lixiaochen/Downloads/R27AD_D015_STANDALONE_API_G3_EVIDENCE_20260818T015127Z/closure-readiness.json",
+          "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db",
+          "recorded_at": "2026-08-18T01:55:36Z"
+        }
+      },
       "history": [
         {"at": "2026-08-17T07:02:14Z", "transition": "null->candidate", "actor": "R27R current bounded reverification", "reason": "Corrected-scope current-state verification found downstream notification linkPath trust boundaries without runtime revalidation and requested independent confirmation."},
         {"at": "2026-08-17T07:02:14Z", "transition": "candidate->confirmed", "actor": "R27S independent reviewer", "reason": "Independent review confirmed a reachable Low CWE-601/CWE-20 issue through legacy Redis jobs, Notification persistence, API read models, and clickable Web navigation on exact commit 28a672fee90cb55d1ee76c3b67aca5ab75a57f8b."},
         {"at": "2026-08-18T01:32:21Z", "transition": "confirmed->accepted_for_fix", "actor": "R27T remediation architecture decision", "reason": "Approved PATH_A_API_SHARED_RULES_NO_SCHEMA with one pure shared linkPath rule, exact seven-file scope, no Schema, no Migration and no Web change."},
         {"at": "2026-08-18T01:32:21Z", "transition": "accepted_for_fix->in_progress", "actor": "R27V remediation agent", "reason": "Started bounded remediation of queue ingress, post-deserialization admission, pre-persistence final admission and persisted-read sanitization."},
         {"at": "2026-08-18T01:32:21Z", "transition": "in_progress->fixed_target_verified", "actor": "R27Z remediation verifier", "reason": "Final G1 and G2 passed on the exact seven-file identity later committed unchanged as ac27b737265172a016fe750d77cf70ad4b193ebb; 110 tests passed, 0 failed, 0 skipped, and API typecheck passed. The transition time records Ledger binding, not test execution."},
-        {"at": "2026-08-18T01:32:21Z", "transition": "fixed_target_verified->fixed_diff_verified", "actor": "R27AA independent reviewer", "reason": "Independent G4_DIFF V3 passed on review diff fd3403555af7ec7ad9870d9c3494fc711472ec4dc580eacd1db4f54024f152ee; R27W-D015-001 and R27Y-INFO-001 were closed, with no Critical, High, Medium or Low finding remaining. The transition time records Ledger binding."}
+        {"at": "2026-08-18T01:32:21Z", "transition": "fixed_target_verified->fixed_diff_verified", "actor": "R27AA independent reviewer", "reason": "Independent G4_DIFF V3 passed on review diff fd3403555af7ec7ad9870d9c3494fc711472ec4dc580eacd1db4f54024f152ee; R27W-D015-001 and R27Y-INFO-001 were closed, with no Critical, High, Medium or Low finding remaining. The transition time records Ledger binding."},
+        {"at": "2026-08-18T01:55:36Z", "transition": "fixed_diff_verified->fixed_full_verified", "actor": "R27AD standalone API G3", "reason": "Standalone API G3 passed on exact HEAD 14d9fe62550fd6487c8633937f511ab80e2a81ea and tree 516b66916bae8fd4dd05975ee9b7766c89dbceaf; API lint, typecheck, canonical full test and build passed; 124 test files and 1196 tests passed, 0 failed and 0 skipped; all three D015 relevant test files executed."},
+        {"at": "2026-08-18T02:05:36Z", "transition": "fixed_full_verified->closed", "actor": "R27AE closure recorder", "reason": "Closure was recorded after exact-identity targeted, affected-regression, independent G4_DIFF V3 and standalone API G3 evidence all passed. Historical migration and release/deployment blockers remain separate; production deployment was not authorized."}
       ]
     }
   ]
