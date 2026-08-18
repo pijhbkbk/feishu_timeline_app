@@ -2,6 +2,7 @@ import { Logger } from '@nestjs/common';
 import { NotificationType, RecurringTaskStatus, WorkflowTaskStatus } from '@prisma/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { NotificationLinkPathValidationError } from '../notifications/notification-link-path.rules';
 import { NotificationQueueService } from './notification-queue.service';
 
 function createService(options?: {
@@ -139,6 +140,8 @@ afterEach(() => {
 });
 
 describe('NotificationQueueService', () => {
+  const normalizedLengthExpansionRawPath = `/a${' '.repeat(683)}b`;
+
   const systemNotification = (content = '请查看系统消息。') => ({
     type: NotificationType.SYSTEM_INFO,
     taskId: null,
@@ -149,6 +152,260 @@ describe('NotificationQueueService', () => {
     linkPath: '/dashboard',
     triggeredByUserId: 'user-1',
   });
+
+  const legacyJob = (linkPath: string) => ({
+    id: 'legacy-job-1',
+    ...systemNotification('legacy notification'),
+    linkPath,
+    retryCount: 0,
+    availableAt: new Date(0).toISOString(),
+  });
+
+  it.each([
+    ['redis', 'https://legacy-marker.example/path'],
+    ['redis', '//legacy-marker.example/path'],
+    ['redis', 'javascript:legacy-marker'],
+    ['memory', 'https://legacy-marker.example/path'],
+    ['memory', '//legacy-marker.example/path'],
+    ['memory', 'javascript:legacy-marker'],
+  ] as const)(
+    'terminally drops an unsafe %s legacy job before processing: %s',
+    async (channel, linkPath) => {
+      const warnSpy = vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+      const context = createService({ redisFails: channel === 'memory' });
+      context.notificationsService.processQueuedNotification.mockRejectedValue(
+        new Error('transient processor failure'),
+      );
+      const serialized = JSON.stringify(legacyJob(linkPath));
+
+      if (channel === 'redis') {
+        context.redisQueue.push(serialized);
+      } else {
+        const privateService = context.service as unknown as { memoryQueue: string[] };
+        privateService.memoryQueue.push(serialized);
+      }
+
+      const result = await context.service.processPendingJobs();
+
+      expect(result).toEqual({ processed: 0 });
+      expect(context.notificationsService.processQueuedNotification).not.toHaveBeenCalled();
+      expect(context.redisClient.eval).not.toHaveBeenCalled();
+      expect(context.redisQueue).toHaveLength(0);
+      const privateService = context.service as unknown as { memoryQueue: string[] };
+      expect(privateService.memoryQueue).toHaveLength(0);
+      expect(JSON.stringify(warnSpy.mock.calls)).not.toContain('legacy-marker');
+    },
+  );
+
+  it.each([
+    ['undefined', undefined],
+    ['number', 42],
+  ] as const)('runtime-checks a non-string queue ingress value: %s', async (_label, linkPath) => {
+    const { service, redisService } = createService();
+
+    await expect(
+      service.enqueue({ ...systemNotification('runtime type'), linkPath } as never),
+    ).rejects.toThrow('通知链接必须是站内绝对路径');
+    expect(redisService.execute).not.toHaveBeenCalled();
+  });
+
+  it.each(['redis', 'memory'] as const)(
+    'rejects normalized-length expansion before enqueue and enqueueOnce side effects on %s',
+    async (channel) => {
+      const raw = normalizedLengthExpansionRawPath;
+      const serialized = new URL(raw, 'https://notification.invalid').pathname;
+      const warnSpy = vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+      const context = createService({ redisFails: channel === 'memory' });
+      const enqueueOnce = context.service as unknown as {
+        enqueueOnce(
+          input: ReturnType<typeof systemNotification>,
+          dedupeKey: string,
+        ): Promise<unknown>;
+      };
+
+      expect(raw.length).toBeLessThanOrEqual(2048);
+      expect(serialized.length).toBeGreaterThan(2048);
+
+      await enqueueOnce.enqueueOnce(systemNotification('existing job'), 'existing-key');
+
+      const privateService = context.service as unknown as {
+        memoryQueue: string[];
+        memoryDedupeKeys: Map<string, number>;
+        buildJob(...args: unknown[]): unknown;
+        handleJobFailure(...args: unknown[]): Promise<void>;
+      };
+      const executeCalls = context.redisService.execute.mock.calls.length;
+      const evalCalls = context.redisClient.eval.mock.calls.length;
+      const redisQueueSnapshot = [...context.redisQueue];
+      const redisDedupeSnapshot = [...context.redisDedupeKeys];
+      const memoryQueueSnapshot = [...privateService.memoryQueue];
+      const memoryDedupeSnapshot = [...privateService.memoryDedupeKeys];
+      const buildJobSpy = vi.spyOn(privateService, 'buildJob');
+      const retrySpy = vi.spyOn(privateService, 'handleJobFailure');
+
+      const enqueueError = await context.service
+        .enqueue({ ...systemNotification('normalized length enqueue'), linkPath: raw })
+        .catch((caught: unknown) => caught);
+      const enqueueOnceError = await enqueueOnce
+        .enqueueOnce(
+          { ...systemNotification('normalized length dedupe hit'), linkPath: raw },
+          'existing-key',
+        )
+        .catch((caught: unknown) => caught);
+
+      expect(enqueueError).toBeInstanceOf(Error);
+      expect(enqueueOnceError).toBeInstanceOf(Error);
+      expect(String((enqueueError as Error).message)).not.toContain(raw);
+      expect(String((enqueueOnceError as Error).message)).not.toContain(raw);
+      expect(String((enqueueError as Error).message)).not.toContain(serialized);
+      expect(String((enqueueOnceError as Error).message)).not.toContain(serialized);
+      expect(buildJobSpy).not.toHaveBeenCalled();
+      expect(retrySpy).not.toHaveBeenCalled();
+      expect(context.notificationsService.processQueuedNotification).not.toHaveBeenCalled();
+      expect(context.redisService.execute).toHaveBeenCalledTimes(executeCalls);
+      expect(context.redisClient.eval).toHaveBeenCalledTimes(evalCalls);
+      expect(context.redisQueue).toEqual(redisQueueSnapshot);
+      expect([...context.redisDedupeKeys]).toEqual(redisDedupeSnapshot);
+      expect(privateService.memoryQueue).toEqual(memoryQueueSnapshot);
+      expect([...privateService.memoryDedupeKeys]).toEqual(memoryDedupeSnapshot);
+      expect(JSON.stringify(warnSpy.mock.calls)).not.toContain(raw);
+      expect(JSON.stringify(warnSpy.mock.calls)).not.toContain(serialized);
+    },
+  );
+
+  it.each(['redis', 'memory'] as const)(
+    'QUEUE_INGRESS_ADMITS_THEN_DEQUEUE_DROPS: rejects a normalized protocol-relative path before %s queue write',
+    async (channel) => {
+      vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+      const context = createService({ redisFails: channel === 'memory' });
+      let ingressError: unknown;
+
+      try {
+        await context.service.enqueue({
+          ...systemNotification('normalized protocol-relative ingress'),
+          linkPath: '/a/..//queue-closure-marker.example/path',
+        });
+      } catch (caught) {
+        ingressError = caught;
+      }
+
+      const privateService = context.service as unknown as { memoryQueue: string[] };
+      const queuedBeforeProcessing =
+        context.redisQueue.length + privateService.memoryQueue.length;
+      const ingressRedisCalls = context.redisService.execute.mock.calls.length;
+      const result = await context.service.processPendingJobs();
+
+      expect(ingressError).toBeInstanceOf(Error);
+      expect(String((ingressError as Error).message)).toContain(
+        '通知链接必须是站内绝对路径',
+      );
+      expect(String((ingressError as Error).message)).not.toContain('queue-closure-marker');
+      expect({
+        queuedBeforeProcessing,
+        ingressRedisCalls,
+        processed: result.processed,
+        processorCalls: context.notificationsService.processQueuedNotification.mock.calls.length,
+      }).toEqual({
+        queuedBeforeProcessing: 0,
+        ingressRedisCalls: 0,
+        processed: 0,
+        processorCalls: 0,
+      });
+      expect(context.redisQueue).toHaveLength(0);
+      expect(privateService.memoryQueue).toHaveLength(0);
+    },
+  );
+
+  it.each(['redis', 'memory'] as const)(
+    'consumes a malformed %s payload and continues to a legal job',
+    async (channel) => {
+      const context = createService({ redisFails: channel === 'memory' });
+      const legal = JSON.stringify(legacyJob('/projects/project-1/workflow?tab=todo#item'));
+      const malformed = '{malformed-json';
+
+      if (channel === 'redis') {
+        context.redisQueue.push(legal, malformed);
+      } else {
+        const privateService = context.service as unknown as { memoryQueue: string[] };
+        privateService.memoryQueue.push(legal, malformed);
+      }
+
+      await context.service.processPendingJobs();
+
+      expect(context.notificationsService.processQueuedNotification).toHaveBeenCalledTimes(1);
+      expect(context.notificationsService.processQueuedNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          linkPath: '/projects/project-1/workflow?tab=todo#item',
+          retryCount: 0,
+        }),
+      );
+      expect(context.redisQueue).toHaveLength(0);
+      const privateService = context.service as unknown as { memoryQueue: string[] };
+      expect(privateService.memoryQueue).toHaveLength(0);
+    },
+  );
+
+  it.each(['redis', 'memory'] as const)(
+    'validates enqueueOnce input before a dedupe hit on %s',
+    async (channel) => {
+      const context = createService({ redisFails: channel === 'memory' });
+      const enqueueOnce = context.service as unknown as {
+        enqueueOnce(
+          input: ReturnType<typeof systemNotification>,
+          dedupeKey: string,
+        ): Promise<unknown>;
+      };
+
+      await enqueueOnce.enqueueOnce(systemNotification('existing job'), 'existing-key');
+      const executeCalls = context.redisService.execute.mock.calls.length;
+      const queueSnapshot = [...context.redisQueue];
+      const privateService = context.service as unknown as {
+        memoryQueue: string[];
+        memoryDedupeKeys: Map<string, number>;
+      };
+      const memorySnapshot = [...privateService.memoryQueue];
+      const dedupeSnapshot = [...privateService.memoryDedupeKeys];
+
+      for (const linkPath of [
+        '//unsafe.example/path',
+        '/a/..//enqueue-once-closure-marker.example/path',
+      ]) {
+        await expect(
+          enqueueOnce.enqueueOnce(
+            { ...systemNotification('unsafe dedupe hit'), linkPath },
+            'existing-key',
+          ),
+        ).rejects.toThrow('通知链接必须是站内绝对路径');
+
+        expect(context.redisService.execute).toHaveBeenCalledTimes(executeCalls);
+        expect(context.redisQueue).toEqual(queueSnapshot);
+        expect(privateService.memoryQueue).toEqual(memorySnapshot);
+        expect([...privateService.memoryDedupeKeys]).toEqual(dedupeSnapshot);
+      }
+    },
+  );
+
+  it.each(['redis', 'memory'] as const)(
+    'does not retry a final-boundary link admission error on %s',
+    async (channel) => {
+      const context = createService({ redisFails: channel === 'memory' });
+      context.notificationsService.processQueuedNotification.mockRejectedValueOnce(
+        new NotificationLinkPathValidationError(),
+      );
+
+      await context.service.enqueue(systemNotification('final boundary backstop'));
+      const evalCalls = context.redisClient.eval.mock.calls.length;
+      const executeCalls = context.redisService.execute.mock.calls.length;
+      await context.service.processPendingJobs();
+
+      expect(context.notificationsService.processQueuedNotification).toHaveBeenCalledTimes(1);
+      expect(context.redisClient.eval).toHaveBeenCalledTimes(evalCalls);
+      expect(context.redisService.execute).toHaveBeenCalledTimes(executeCalls + 2);
+      expect(context.redisQueue).toHaveLength(0);
+      const privateService = context.service as unknown as { memoryQueue: string[] };
+      expect(privateService.memoryQueue).toHaveLength(0);
+    },
+  );
 
   it.each([
     'https://attacker.example/path',

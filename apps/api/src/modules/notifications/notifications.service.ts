@@ -17,6 +17,10 @@ import { FeishuMessagesService } from '../feishu-messages/feishu-messages.servic
 import { getTaskRouteSegment, normalizePage, normalizePageSize } from '../tasks/tasks.rules';
 import { getCurrentNodeName } from '../workflows/workflow-node.constants';
 import type { NotificationQueueJob } from '../queue/notification-queue.types';
+import {
+  normalizeNotificationLinkPathForWrite,
+  sanitizeNotificationLinkPathForRead,
+} from './notification-link-path.rules';
 
 type WorkflowTaskNotificationRecord = Prisma.WorkflowTaskGetPayload<{
   include: {
@@ -34,6 +38,19 @@ type WorkflowTaskNotificationRecord = Prisma.WorkflowTaskGetPayload<{
     };
   };
 }>;
+
+type PersistedNotificationInput = {
+  userId: string;
+  projectId: string | null;
+  taskId: string | null;
+  type: NotificationType;
+  title: string;
+  content: string;
+  linkPath: string | null;
+  retryCount: number;
+  dedupeKey: string;
+  metadata?: Prisma.InputJsonValue;
+};
 
 @Injectable()
 export class NotificationsService {
@@ -222,20 +239,7 @@ export class NotificationsService {
       metadataDedupeKey ??
       this.buildDedupeKey(job.type, job.userId, job.taskId, 'system');
 
-    await this.upsertInAppNotification({
-      userId: job.userId,
-      projectId: job.projectId,
-      taskId: job.taskId,
-      type: job.type,
-      title: job.title,
-      content: job.content,
-      linkPath: job.linkPath,
-      retryCount: job.retryCount,
-      dedupeKey,
-      ...(job.metadata === undefined ? {} : { metadata: job.metadata }),
-    });
-
-    await this.deliverMockFeishu({
+    await this.persistAndDeliverNotification({
       userId: job.userId,
       projectId: job.projectId,
       taskId: job.taskId,
@@ -288,23 +292,7 @@ export class NotificationsService {
         : null;
     const dedupeKey = metadataDedupeKey ?? this.buildTaskDedupeKey(task, job.type);
 
-    await this.upsertInAppNotification({
-      userId: task.assigneeUserId,
-      projectId: task.projectId,
-      taskId: task.id,
-      type: job.type,
-      title: copy.title,
-      content: copy.content,
-      linkPath: copy.linkPath,
-      retryCount: job.retryCount,
-      dedupeKey,
-      metadata: {
-        taskNo: task.taskNo,
-        nodeCode: task.nodeCode,
-      },
-    });
-
-    await this.deliverMockFeishu({
+    await this.persistAndDeliverNotification({
       userId: task.assigneeUserId,
       projectId: task.projectId,
       taskId: task.id,
@@ -323,18 +311,15 @@ export class NotificationsService {
     return { skipped: false };
   }
 
-  private async upsertInAppNotification(input: {
-    userId: string;
-    projectId: string | null;
-    taskId: string | null;
-    type: NotificationType;
-    title: string;
-    content: string;
-    linkPath: string | null;
-    retryCount: number;
-    dedupeKey: string;
-    metadata?: Prisma.InputJsonValue;
-  }) {
+  private async persistAndDeliverNotification(input: PersistedNotificationInput) {
+    const linkPath = normalizeNotificationLinkPathForWrite(input.linkPath);
+    const admittedInput = { ...input, linkPath };
+
+    await this.upsertInAppNotification(admittedInput);
+    await this.deliverMockFeishu(admittedInput);
+  }
+
+  private async upsertInAppNotification(input: PersistedNotificationInput) {
     return this.prisma.notification.upsert({
       where: {
         sendChannel_dedupeKey: {
@@ -367,18 +352,7 @@ export class NotificationsService {
     });
   }
 
-  private async deliverMockFeishu(input: {
-    userId: string;
-    projectId: string | null;
-    taskId: string | null;
-    type: NotificationType;
-    title: string;
-    content: string;
-    linkPath: string | null;
-    retryCount: number;
-    dedupeKey: string;
-    metadata?: Prisma.InputJsonValue;
-  }) {
+  private async deliverMockFeishu(input: PersistedNotificationInput) {
     const existing = await this.prisma.notification.findUnique({
       where: {
         sendChannel_dedupeKey: {
@@ -520,7 +494,7 @@ export class NotificationsService {
       notificationType: notification.notificationType,
       title: notification.title,
       content: notification.content,
-      linkPath: notification.linkPath,
+      linkPath: sanitizeNotificationLinkPathForRead(notification.linkPath),
       isRead: notification.isRead,
       readAt: notification.readAt?.toISOString() ?? null,
       sendStatus: notification.sendStatus,

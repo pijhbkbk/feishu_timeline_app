@@ -15,6 +15,12 @@ import { createHash, randomUUID } from 'node:crypto';
 
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { RedisService } from '../../infra/redis/redis.service';
+import {
+  NOTIFICATION_LINK_PATH_INVALID,
+  NotificationLinkPathValidationError,
+  normalizeNotificationLinkPathForWrite,
+  parseNotificationLinkPath,
+} from '../notifications/notification-link-path.rules';
 import { NotificationsService } from '../notifications/notifications.service';
 import type {
   NotificationQueueJob,
@@ -55,6 +61,17 @@ redis.call('LPUSH', KEYS[2], ARGV[3])
 redis.call('SET', KEYS[1], '1', 'EX', ARGV[1])
 return 1
 `;
+
+type NotificationQueueChannel = 'redis' | 'memory';
+
+type NotificationQueueDequeueResult =
+  | { kind: 'empty' }
+  | { kind: 'invalid' }
+  | {
+      kind: 'job';
+      job: NotificationQueueJob;
+      queueChannel: NotificationQueueChannel;
+    };
 
 @Injectable()
 export class NotificationQueueService implements OnModuleInit, OnModuleDestroy {
@@ -124,7 +141,8 @@ export class NotificationQueueService implements OnModuleInit, OnModuleDestroy {
   }
 
   async enqueue(input: NotificationQueueJobInput) {
-    const job = this.buildJob(input);
+    const linkPath = this.normalizeIngressLinkPath(input.linkPath);
+    const job = this.buildJob(input, linkPath);
     const serialized = this.serializeJob(job);
 
     if (serialized === null) {
@@ -151,7 +169,8 @@ export class NotificationQueueService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async enqueueOnce(input: NotificationQueueJobInput, dedupeKey: string) {
-    const job = this.buildJob(input);
+    const linkPath = this.normalizeIngressLinkPath(input.linkPath);
+    const job = this.buildJob(input, linkPath);
     const serialized = this.serializeJob(job);
 
     if (serialized === null) {
@@ -293,14 +312,23 @@ export class NotificationQueueService implements OnModuleInit, OnModuleDestroy {
 
     this.isProcessing = true;
     let processed = 0;
+    let inspected = 0;
 
     try {
-      while (processed < 20) {
-        const job = await this.dequeue();
+      while (inspected < 20) {
+        const dequeued = await this.dequeue();
 
-        if (!job) {
+        if (dequeued.kind === 'empty') {
           break;
         }
+
+        inspected += 1;
+
+        if (dequeued.kind === 'invalid') {
+          continue;
+        }
+
+        const { job, queueChannel } = dequeued;
 
         if (new Date(job.availableAt).getTime() > Date.now()) {
           await this.requeue(job);
@@ -309,8 +337,16 @@ export class NotificationQueueService implements OnModuleInit, OnModuleDestroy {
 
         try {
           await this.notificationsService.processQueuedNotification(job);
-        } catch {
-          await this.handleJobFailure(job);
+        } catch (error) {
+          if (error instanceof NotificationLinkPathValidationError) {
+            this.logTerminalInvalidJob(
+              NOTIFICATION_LINK_PATH_INVALID,
+              queueChannel,
+              job.id,
+            );
+          } else {
+            await this.handleJobFailure(job);
+          }
         }
 
         processed += 1;
@@ -909,7 +945,10 @@ export class NotificationQueueService implements OnModuleInit, OnModuleDestroy {
       DEFAULT_SCAN_MAX_ITEMS;
   }
 
-  private buildJob(input: NotificationQueueJobInput): NotificationQueueJob {
+  private buildJob(
+    input: NotificationQueueJobInput,
+    linkPath: string | null,
+  ): NotificationQueueJob {
     return {
       id: randomUUID(),
       type: input.type,
@@ -918,7 +957,7 @@ export class NotificationQueueService implements OnModuleInit, OnModuleDestroy {
       userId: input.userId ?? null,
       title: input.title ?? null,
       content: input.content ?? null,
-      linkPath: this.normalizeLinkPath(input.linkPath ?? null),
+      linkPath,
       triggeredByUserId: input.triggeredByUserId ?? null,
       retryCount: input.retryCount ?? 0,
       availableAt: input.availableAt ?? new Date().toISOString(),
@@ -926,47 +965,24 @@ export class NotificationQueueService implements OnModuleInit, OnModuleDestroy {
     };
   }
 
-  private normalizeLinkPath(linkPath: string | null) {
-    if (linkPath === null) return null;
-
-    if (
-      linkPath.length === 0 ||
-      linkPath.length > 2048 ||
-      linkPath !== linkPath.trim() ||
-      !linkPath.startsWith('/') ||
-      linkPath.startsWith('//') ||
-      linkPath.includes('\\') ||
-      this.hasControlCharacter(linkPath)
-    ) {
-      throw new BadRequestException('通知链接必须是站内绝对路径。');
-    }
-
-    const baseOrigin = 'https://notification-link.invalid';
-    const parsed = new URL(linkPath, baseOrigin);
-    if (parsed.origin !== baseOrigin) {
-      throw new BadRequestException('通知链接必须是站内绝对路径。');
-    }
-
-    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
-  }
-
-  private hasControlCharacter(value: string) {
-    for (let index = 0; index < value.length; index += 1) {
-      const codePoint = value.charCodeAt(index);
-      if (codePoint <= 0x1f || codePoint === 0x7f) {
-        return true;
+  private normalizeIngressLinkPath(linkPath: unknown) {
+    try {
+      return normalizeNotificationLinkPathForWrite(linkPath);
+    } catch (error) {
+      if (!(error instanceof NotificationLinkPathValidationError)) {
+        throw error;
       }
-    }
 
-    return false;
+      throw new BadRequestException('通知链接必须是站内绝对路径。');
+    }
   }
 
-  private async dequeue() {
+  private async dequeue(): Promise<NotificationQueueDequeueResult> {
     try {
       const raw = await this.redisService.execute((client) => client.rpop(QUEUE_KEY));
 
       if (raw) {
-        return this.deserializeJob(raw);
+        return this.deserializeJob(raw, 'redis');
       }
     } catch {
       this.logger.warn(
@@ -975,25 +991,66 @@ export class NotificationQueueService implements OnModuleInit, OnModuleDestroy {
     }
 
     const memoryJob = this.memoryQueue.pop();
-    return memoryJob ? this.deserializeJob(memoryJob) : null;
+    return memoryJob
+      ? this.deserializeJob(memoryJob, 'memory')
+      : { kind: 'empty' };
   }
 
-  private deserializeJob(serialized: string) {
+  private deserializeJob(
+    serialized: string,
+    queueChannel: NotificationQueueChannel,
+  ): NotificationQueueDequeueResult {
     if (Buffer.byteLength(serialized, 'utf8') > this.jobMaxBytes) {
-      this.logger.warn(
-        'eventType=notification_queue operation=dequeue result=dropped reason=job_too_large',
-      );
-      return null;
+      this.logTerminalInvalidJob('job_too_large', queueChannel);
+      return { kind: 'invalid' };
     }
 
+    let parsed: unknown;
     try {
-      return JSON.parse(serialized) as NotificationQueueJob;
+      parsed = JSON.parse(serialized) as unknown;
     } catch {
-      this.logger.warn(
-        'eventType=notification_queue operation=dequeue result=dropped reason=invalid_job',
-      );
-      return null;
+      this.logTerminalInvalidJob('invalid_job', queueChannel);
+      return { kind: 'invalid' };
     }
+
+    if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      this.logTerminalInvalidJob('invalid_job', queueChannel);
+      return { kind: 'invalid' };
+    }
+
+    const record = parsed as Record<string, unknown>;
+    const admission = parseNotificationLinkPath(record.linkPath);
+    if (!admission.ok) {
+      this.logTerminalInvalidJob(
+        NOTIFICATION_LINK_PATH_INVALID,
+        queueChannel,
+        record.id,
+      );
+      return { kind: 'invalid' };
+    }
+
+    return {
+      kind: 'job',
+      queueChannel,
+      job: {
+        ...(parsed as NotificationQueueJob),
+        linkPath: admission.normalized,
+      },
+    };
+  }
+
+  private logTerminalInvalidJob(
+    reason: 'job_too_large' | 'invalid_job' | typeof NOTIFICATION_LINK_PATH_INVALID,
+    queueChannel: NotificationQueueChannel,
+    jobId: unknown = null,
+  ) {
+    const jobIdField =
+      typeof jobId === 'string'
+        ? ` jobIdHash=${createHash('sha256').update(jobId).digest('hex').slice(0, 16)}`
+        : '';
+    this.logger.warn(
+      `eventType=notification_queue operation=dequeue result=dropped reason=${reason} queueChannel=${queueChannel}${jobIdField}`,
+    );
   }
 
   private async requeue(job: NotificationQueueJob) {

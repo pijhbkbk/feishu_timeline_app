@@ -11,6 +11,7 @@ import {
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { ProjectAccessService } from '../auth/project-access.service';
+import { sanitizeNotificationLinkPathForRead } from '../notifications/notification-link-path.rules';
 import { normalizePage, normalizePageSize } from '../tasks/tasks.rules';
 import { getCurrentNodeName } from '../workflows/workflow-node.constants';
 
@@ -321,7 +322,7 @@ export class ActivityLogsService {
         actorUserId: notification.userId,
         nodeCode: null,
         nodeName: null,
-        linkPath: notification.linkPath,
+        linkPath: sanitizeNotificationLinkPathForRead(notification.linkPath),
         isRead: notification.isRead,
         sendStatus: notification.sendStatus,
         createdAt: notification.createdAt.toISOString(),
@@ -474,6 +475,7 @@ export class ActivityLogsService {
 
       return {
         ...notification,
+        linkPath: sanitizeNotificationLinkPathForRead(notification.linkPath),
         id: `notification:${notification.id}`,
         sourceType: 'NOTIFICATION' as const,
         actorName: notification.user.name,
