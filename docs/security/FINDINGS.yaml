@@ -10,14 +10,12 @@
     "recorded_at": "2026-08-13T08:12:33Z"
   },
   "migration": {
-    "status": "pending",
+    "status": "complete",
     "source_paths": [
-      "docs/security/R27_REMEDIATION_TRACKER.md",
-      "docs/security/R27A_REMEDIATION_REPORT.md",
-      "docs/rounds/R27.md",
-      "docs/handoff/R27_HANDOFF.md"
+      "docs/security/R27_HISTORICAL_IMPORT_MAP_V8_CANONICAL.json",
+      "docs/security/R27_HISTORICAL_NORMALIZATION_SUMMARY.md"
     ],
-    "notes": "R27C historical normalization remains pending. R27D Reviews findings are closed. R27E Samples findings are closed after the approved Samples + StandardBoards batch G3. R27F StandardBoards findings are closed after the same approved Samples + StandardBoards batch G3. The Reviews production online-index or maintenance-window strategy remains a deployment blocker. This closure does not authorize production deployment."
+    "notes": "R27 historical normalization is complete for 137 historical records. All 18 Owner Decisions are recorded. No historical record was added to, modified in, or removed from the formal Finding Ledger; the seven current formal Findings remain closed. Eight unresolved records are excluded from formal import. All 27 records that require proof gaps retain them unwaived, and current bounded evidence does not reconstruct historical testing or closure. The raw external Import Map V8 was not committed because it contained machine-specific paths; docs/security/R27_HISTORICAL_IMPORT_MAP_V8_CANONICAL.json and docs/security/R27_HISTORICAL_NORMALIZATION_SUMMARY.md are the repository-safe record. Product acceptance, runtime security acceptance, staging verification, production verification, risk acceptance, production exceptions, and deployment authorization are not established by this migration. Production deployment remains independently blocked, including the required Reviews production online-index or approved maintenance-window strategy."
   },
   "findings": [
     {
