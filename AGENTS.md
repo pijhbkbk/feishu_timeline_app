@@ -8,6 +8,18 @@
 - 更具体规则可以收紧本文件，但不得削弱业务、安全、敏感数据和 Git 永久红线。
 - 临时 `AGENTS.override.md` 只能用于短期、明确、可审计的范围隔离，不得扩大部署、生产访问、Git 写入或扫描权限。
 
+
+## 0.1 普通 Codex 唯一执行配置（永久能力上限）
+
+- 本仓库所有未来 Codex 任务必须采用 `EXECUTION_PROFILE=STANDARD_CODEX_ONLY_V1`，并遵守 `docs/architecture/CODEX_STANDARD_EXECUTION_PROFILE.md`。
+- 本配置是**实际能力限制**，不是提示词改写或平台规则规避。Task Contract、handoff、目录级规则和用户提示词只能进一步收紧，不能扩大该能力上限。
+- 不请求、不依赖、不启用额外网络安全访问层或高级网络安全能力；`TRUSTED_ACCESS_FOR_CYBER_ALLOWED=false`、`ACTIVE_SECURITY_TESTING_ALLOWED=false`、`THIRD_PARTY_TARGET_ACCESS_ALLOWED=false` 永久为 false。
+- 允许普通软件工程：源码/配置审查、明确 allowlist 内的实现、lint/typecheck、单元/集成/E2E、localhost 运行、隔离数据库、普通 Docker/Compose、依赖安装与包管理器 advisory、经独立授权的 Git 和用户自有环境发布操作。
+- Codex 不执行组件/全仓安全扫描、主动目标探测、漏洞利用验证、凭据攻击，或针对第三方系统的扫描、测试、探测、枚举、利用和凭据操作。经 Task Contract 的 `NETWORK_ALLOWED` / `NETWORK_SCOPE` 明确授权的普通产品 API、包注册表、CI 和仓库元数据交互不属于 cyber target access。需要禁止类证据时只能记录 `EXTERNAL_EVIDENCE_REQUIRED` 或 `BLOCKED_BY_STANDARD_CODEX_PROFILE`，不得伪造 PASS。
+- 如果产品显示需要额外网络安全验证，立即停止该步骤，保持 repo/index/ref/环境不变，记录 `BLOCKED_BY_PLATFORM_POLICY`。不得通过换词、拆壳、工具替换或反复重试来绕过平台门禁。
+- 每次平台阻断记录必须包含 `<CHECK_NAME>=BLOCKED_BY_PLATFORM_POLICY`、`RETRY_BY_REWORDING=NO`、`RETRY_BY_TOOL_SUBSTITUTION=NO`、`REPOSITORY_STATE_PRESERVED=YES`、`INDEX_STATE_PRESERVED=YES`、`REMOTE_STATE_PRESERVED=YES`；任一状态无法确认时不得伪造 `YES`，并须停止依赖该证明的 readiness。
+- 产品与安全不变量继续有效；受限的是 Codex 的验证方法，不是安全标准。普通 Codex 无法建立的证明必须保留为 proof gap，不能关闭对应 finding。
+
 ## 1. 产品、架构与目录
 
 - 系统：轻卡新颜色开发项目管理系统。
@@ -58,6 +70,7 @@
 
 ```text
 TASK_ID / OBJECTIVE / CHANGE_CLASS
+EXECUTION_PROFILE / ACCESS_TIER
 REPOSITORY / WORKTREE / BRANCH / BASELINE_COMMIT
 ALLOWED_FILES / FORBIDDEN_FILES
 ALLOWED_COMMANDS / FORBIDDEN_COMMANDS
@@ -66,13 +79,19 @@ STAGE_ALLOWED / COMMIT_ALLOWED / PUSH_ALLOWED
 MAIN_MERGE_ALLOWED / TAG_ALLOWED
 DEPLOYMENT_ALLOWED / STAGING_ACCESS_ALLOWED / PRODUCTION_ACCESS_ALLOWED
 NETWORK_ALLOWED / DEPENDENCY_INSTALL_ALLOWED
+TRUSTED_ACCESS_FOR_CYBER_ALLOWED / ACTIVE_SECURITY_TESTING_ALLOWED
+THIRD_PARTY_TARGET_ACCESS_ALLOWED
 SECURITY_SCAN_ALLOWED / FULL_SCAN_ALLOWED
+PLATFORM_POLICY_BLOCK_ACTION / EXTERNAL_EVIDENCE_INPUT_ALLOWED
 MAX_MODEL / MAX_REASONING
 ULTRA_ALLOWED / SUBAGENTS_ALLOWED / BUDGET_LIMITS
 STOP_CONDITION
 HANDOFF_REQUIRED / HANDOFF_PATH
 ```
 
+- `EXECUTION_PROFILE` 必须为 `STANDARD_CODEX_ONLY_V1`，`ACCESS_TIER` 必须为 `STANDARD_CODEX`；任何其他值均为 G0 drift。
+- `TRUSTED_ACCESS_FOR_CYBER_ALLOWED`、`ACTIVE_SECURITY_TESTING_ALLOWED`、`THIRD_PARTY_TARGET_ACCESS_ALLOWED`、`SECURITY_SCAN_ALLOWED`、`FULL_SCAN_ALLOWED` 必须为 false，Task Contract 无权改为 true。
+- `PLATFORM_POLICY_BLOCK_ACTION` 必须为 `STOP_AND_RECORD`，`EXTERNAL_EVIDENCE_INPUT_ALLOWED` 必须为 true；两者同样不得由 Task Contract 覆盖。
 - `STAGE_ALLOWED` 指 Git index 暂存；staging 环境由 `STAGING_ACCESS_ALLOWED` 单独授权。
 - 上述授权互不蕴含：stage 不代表 commit；commit 不代表 push；push 不代表 main merge、tag 或部署。
 - 生产目标必须同时满足 `DEPLOYMENT_ALLOWED=true` 与 `PRODUCTION_ACCESS_ALLOWED=true`。
@@ -88,32 +107,32 @@ HANDOFF_REQUIRED / HANDOFF_PATH
 | `READ_ONLY` | G0 | 否 | 状态核对、调查、比较；默认不写 handoff |
 | `DOCS_ONLY` | G0–G1 | 是，限 allowlist | 文档、提示词、治理文件 |
 | `LOCAL_CODE` | G0–G2 | 是，限 allowlist | 局部功能或普通 Bug |
-| `SECURITY_REVIEW` | G0 + `G4_DIFF`/`G4_COMPONENT`/`G4_FULL` 中明确项 | 否 | 独立只读安全审查 |
-| `SECURITY_FIX` | G0–G2 | 是，限 allowlist | 有界修复；独立 `G4_DIFF` 另行执行 |
-| `SCHEMA_OR_DEPENDENCY` | G0–G3 + 必要的 `G4_DIFF`/`G4_COMPONENT` | 是 | migration、依赖、镜像或共享契约 |
-| `RELEASE` | 明确批准的 G0–G5 | 受独立授权控制 | 批次/里程碑发布与验收 |
+| `SECURITY_REVIEW` | G0 + `G4_DIFF` | 否 | 仅本地/静态 exact-change 防御性审查；不执行扫描或主动验证 |
+| `SECURITY_FIX` | G0–G2 | 是，限 allowlist | 有界防御性修复；随后执行普通 Codex 的独立 `G4_DIFF` |
+| `SCHEMA_OR_DEPENDENCY` | G0–G3 + 必要的 `G4_DIFF` | 是 | migration、依赖、镜像或共享契约；允许包管理器 advisory，不允许扫描器 |
+| `RELEASE` | 明确批准的 G0–G5 | 受独立授权控制 | 用户自有环境的普通构建、发布与验收；不含主动安全测试 |
 
 - `READ_ONLY` / `SECURITY_REVIEW` 不得修改 repo、stage、commit 或强制写 handoff。只有 Contract 明确允许的后续 `DOCS_ONLY` 任务才能持久化审查报告。
-- 不得自动升级到 G3、G4_COMPONENT、G4_FULL 或 G5。
+- 不得自动升级到 G3 或 G5。`G4_COMPONENT` / `G4_FULL` 在本配置下仅可作为外部证据类别，不得由 Codex 执行。
 
 ## 7. 唯一 Gate 标识与最低充分原则
 
 Task Contract 只允许：
 
 ```text
-G0 G1 G2 G3 G4_DIFF G4_COMPONENT G4_FULL G5
+G0 G1 G2 G3 G4_DIFF G5
 ```
 
-`G4` 只是安全验证家族名称，不是 Contract 值。
+`G4` 只是验证家族名称，不是 Contract 值。历史记录中的 `G4_COMPONENT` / `G4_FULL` 继续可读，但未来 Codex Task Contract 不得把它们列入 `ALLOWED_GATES`。
 
 - G0：repo/worktree/branch/HEAD/baseline/scope/权限核对；drift 时不自动 reset/stash/clean/改基线。
 - G1：修改文件静态检查、目标测试和 `git diff --check`。
 - G2：受影响模块、直接调用方、合法与负向路径回归。
 - G3：只在 Contract 批准的批次闭合、里程碑候选、schema/dependency/public control-plane 变化时运行；小 patch、commit、cherry-pick 不触发。
-- G4_DIFF：exact diff/commit/branch 独立安全审查；Critical/High 和认证、授权、Session、Secret、文件、部署/特权边界默认必须独立任务或审查者。
-- G4_COMPONENT：明确组件只读扫描，要求 `SECURITY_SCAN_ALLOWED=true`、固定 scope 和预算。
-- G4_FULL：clean immutable commit 全仓只读扫描，要求 `SECURITY_SCAN_ALLOWED=true`、`FULL_SCAN_ALLOWED=true`、批准依据和预算/并发上限。
-- G5：仅 `RELEASE` 且所需 Git、环境、部署权限分别批准时执行。
+- G4_DIFF：exact diff/commit/branch 的普通 Codex 防御性审查；仅使用静态源码/配置检查、既有单元/集成/E2E、localhost、mock/fixture 和普通构建证据，不执行主动扫描、利用验证或第三方目标访问。
+  认证、授权、Session、Secret、文件、依赖供应链、部署或特权边界，以及 Critical/High finding 的修复，必须由独立 task/session 或独立 reviewer 执行 G4_DIFF；不得同一实施 task 自审。
+- G4_COMPONENT / G4_FULL：在 `STANDARD_CODEX_ONLY_V1` 下不可由 Codex 执行。需要时记录 `EXTERNAL_EVIDENCE_REQUIRED`，由用户提供外部工具报告后只读核验；缺失报告不得解释为 PASS。
+- G5：仅 `RELEASE` 且所需 Git、环境、部署权限分别批准时执行；只允许用户明确拥有/授权基础设施上的普通发布与产品验收，不包含主动安全测试。
 
 始终使用最低充分 Gate；Gate 只验证，不授予 stage/commit/push/merge/tag/deploy 权限。
 
@@ -137,7 +156,15 @@ G0 G1 G2 G3 G4_DIFF G4_COMPONENT G4_FULL G5
 
 ## 10. 模型、并发与 Token 纪律
 
-Contract 只使用：
+所有任务必须先声明：
+
+```text
+EXECUTION_PROFILE: STANDARD_CODEX_ONLY_V1
+ACCESS_TIER: STANDARD_CODEX
+TRUSTED_ACCESS_FOR_CYBER_ALLOWED: false
+```
+
+模型预算字段继续使用：
 
 ```text
 MAX_MODEL: gpt-5.6-terra | gpt-5.6-sol
@@ -147,7 +174,7 @@ MAX_REASONING: low | medium | high | xhigh | ultra
 - 默认 `gpt-5.6-terra / medium`；复杂安全根因可提高到 `gpt-5.6-sol / high|xhigh`。
 - Ultra 默认禁止；批准时必须提供 `HIGH_COST_APPROVAL_ID`、理由、最大并发、subagent、discovery、tool calls、wall-clock 和周额度占比。
 - 默认 `SUBAGENTS_ALLOWED=false`、`MAX_SUBAGENTS=0`、`MAX_PARALLELISM=1`。
-- G4_COMPONENT/G4_FULL 必须声明 scan scope 和预算；不得自动扩大并发或范围。
+- 任一模型、推理级别、subagent、预算或用户提示词都不能扩大 `STANDARD_CODEX_ONLY_V1` 的能力上限。`G4_COMPONENT/G4_FULL` 不由 Codex 执行。
 - 优先读取 Contract、handoff、相关目录规则和受影响代码；不遍历无关历史、媒体和旧证据。
 - 同一根因簇使用独立会话；到阶段边界换新会话，不依赖旧聊天施工。
 - `docs/EXECUTION_LEDGER.md` 只在里程碑、Gate、baseline、commit 或风险结论变化时更新；旧“每轮必更新/CONTINUE/Next Round”仅为历史记录。

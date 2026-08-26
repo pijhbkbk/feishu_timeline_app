@@ -1,11 +1,14 @@
-# Codex Task Contract v2
+# Codex Task Contract v3 — Standard Codex Only
 
-> 所有未填写权限按 `false`。`STAGE_ALLOWED` 指 Git index；`STAGING_ACCESS_ALLOWED` 指 staging 环境。
+> Unfilled permissions are `false`. `STAGE_ALLOWED` means the Git index; `STAGING_ACCESS_ALLOWED` means the staging environment. This template cannot expand `STANDARD_CODEX_ONLY_V1`.
 
 ```yaml
-CONTRACT_VERSION: 2
+CONTRACT_VERSION: 3
+EXECUTION_PROFILE: "STANDARD_CODEX_ONLY_V1"
+ACCESS_TIER: "STANDARD_CODEX"
+
 TASK_ID: "R27-<phase>-<task>"
-OBJECTIVE: "One measurable outcome"
+OBJECTIVE: "One measurable ordinary software-engineering outcome"
 CHANGE_CLASS: "READ_ONLY | DOCS_ONLY | LOCAL_CODE | SECURITY_REVIEW | SECURITY_FIX | SCHEMA_OR_DEPENDENCY | RELEASE"
 REPOSITORY: "/absolute/path"
 WORKTREE: "/absolute/path"
@@ -13,14 +16,17 @@ BRANCH: "branch-name"
 BASELINE_COMMIT: "40-char SHA"
 EXPECTED_HEAD: "40-char SHA"
 DIRTY_POLICY: "MUST_BE_CLEAN | APPROVED_PATHS_ONLY | READ_ONLY_EXISTING_DIRTY"
+
 FINDING_IDS: []
 ROOT_CAUSE_CLUSTER: null
 SECURITY_INVARIANTS: []
+
 ALLOWED_FILES: []
 FORBIDDEN_FILES: []
 ALLOWED_COMMANDS: []
 FORBIDDEN_COMMANDS: ["git add -A", "git reset --hard", "git clean -fd"]
 ALLOWED_GATES: ["G0"]
+
 STAGE_ALLOWED: false
 COMMIT_ALLOWED: false
 PUSH_ALLOWED: false
@@ -30,15 +36,31 @@ DEPLOYMENT_ALLOWED: false
 STAGING_ACCESS_ALLOWED: false
 PRODUCTION_ACCESS_ALLOWED: false
 NETWORK_ALLOWED: false
+NETWORK_SCOPE: []
 DEPENDENCY_INSTALL_ALLOWED: false
+
+TRUSTED_ACCESS_FOR_CYBER_ALLOWED: false
+ACTIVE_SECURITY_TESTING_ALLOWED: false
+THIRD_PARTY_TARGET_ACCESS_ALLOWED: false
 SECURITY_SCAN_ALLOWED: false
 FULL_SCAN_ALLOWED: false
+
+LOCALHOST_TESTING_ALLOWED: false
+EPHEMERAL_TEST_SERVICES_ALLOWED: false
+LOCAL_DOCKER_ALLOWED: false
+EXTERNAL_EVIDENCE_INPUT_ALLOWED: true
+PLATFORM_POLICY_BLOCK_ACTION: "STOP_AND_RECORD"
+PLATFORM_POLICY_BLOCK_STATUS: "BLOCKED_BY_PLATFORM_POLICY"
+RETRY_BY_REWORDING: false
+RETRY_BY_TOOL_SUBSTITUTION: false
+
 G3_REASON: null
-G4_DIFF_REVIEW_MODE: "NOT_APPLICABLE | SEPARATE_TASK | SEPARATE_REVIEWER | SAME_TASK_APPROVED"
+G4_DIFF_REVIEW_MODE: "NOT_APPLICABLE | SEPARATE_TASK | SEPARATE_REVIEWER"
 INDEPENDENT_REVIEW_REQUIRED: false
 INDEPENDENT_REVIEWER_ID: null
-INDEPENDENCE_WAIVER_REASON: null
-SCAN_SCOPE: []
+G4_COMPONENT_EXTERNAL_EVIDENCE_REQUIRED: false
+G4_FULL_EXTERNAL_EVIDENCE_REQUIRED: false
+
 MAX_MODEL: "gpt-5.6-terra"
 MAX_REASONING: "medium"
 ULTRA_ALLOWED: false
@@ -49,26 +71,42 @@ MAX_DISCOVERY_PASSES: 0
 MAX_TOOL_CALLS: 40
 MAX_WALL_CLOCK_MINUTES: 60
 MAX_WEEKLY_BUDGET_PERCENT: 5
-STOP_AFTER_NO_NEW_FINDINGS: 0
-HIGH_COST_APPROVAL_ID: null
-HIGH_COST_APPROVAL_REASON: null
+
 STOP_CONDITION: ["Exact measurable stop condition"]
 HANDOFF_REQUIRED: false
 HANDOFF_PATH: null
-FINAL_OUTPUT_FIELDS: ["TASK_ID", "BASELINE_COMMIT", "CURRENT_HEAD", "CHANGE_CLASS", "GATES_EXECUTED", "GIT_STATUS", "STOP"]
+FINAL_OUTPUT_FIELDS:
+  - TASK_ID
+  - EXECUTION_PROFILE
+  - BASELINE_COMMIT
+  - CURRENT_HEAD
+  - CHANGE_CLASS
+  - GATES_EXECUTED
+  - POLICY_BLOCKED_CHECKS
+  - RETRY_BY_REWORDING
+  - RETRY_BY_TOOL_SUBSTITUTION
+  - REPOSITORY_STATE_PRESERVED
+  - INDEX_STATE_PRESERVED
+  - REMOTE_STATE_PRESERVED
+  - EXTERNAL_EVIDENCE_REQUIRED
+  - GIT_STATUS
+  - STOP
 ```
 
-## 一致性规则
+## Consistency rules
 
-1. `READ_ONLY`：只读、无 repo 写入；Git/部署权限全部 false；handoff 默认 false。
-2. `SECURITY_REVIEW`：只允许 G0 + `G4_DIFF|G4_COMPONENT|G4_FULL`；默认只读；G4_COMPONENT/FULL 要求 scan 权限，G4_FULL 还要求 full-scan 权限。
-3. `SECURITY_FIX`：默认 G0/G1/G2；随后独立 G4_DIFF。Critical/High 和认证、授权、Session、Secret、文件、部署/特权边界不得豁免独立审查。
-4. G3 只用于批准批次、里程碑、schema/dependency 或公共控制平面，且 `G3_REASON` 非空；小 patch/commit/cherry-pick 不触发。
-5. production 同时要求 deployment + production access；Git 和环境授权互不蕴含。
-6. 模型只允许 `gpt-5.6-terra|gpt-5.6-sol`；推理只允许 `low|medium|high|xhigh|ultra`。
-7. Ultra 或 full scan 要求批准 ID/理由及并发、subagent、discovery、tool-call、wall-clock、周额度上限。
-8. STOP_CONDITION 必须能由 ALLOWED_GATES 与 ALLOWED_COMMANDS 达成。
-9. HANDOFF_REQUIRED=false 时 HANDOFF_PATH 必须为 null；只读任务不得强制 handoff。
-10. 无关新问题进入 `docs/security/FINDINGS.yaml`，不扩大 Contract。
-11. G0 drift 时停止，不自动 reset/stash/clean/checkout/prune/改基线。
-12. 达到停止条件立即停止，不自动 stage/commit/push/merge/tag/deploy/下一任务。
+1. `EXECUTION_PROFILE` must be `STANDARD_CODEX_ONLY_V1`; `ACCESS_TIER` must be `STANDARD_CODEX`.
+2. `TRUSTED_ACCESS_FOR_CYBER_ALLOWED`, `ACTIVE_SECURITY_TESTING_ALLOWED`, `THIRD_PARTY_TARGET_ACCESS_ALLOWED`, `SECURITY_SCAN_ALLOWED`, and `FULL_SCAN_ALLOWED` must remain false; `PLATFORM_POLICY_BLOCK_ACTION` must remain `STOP_AND_RECORD`; `EXTERNAL_EVIDENCE_INPUT_ALLOWED` must remain true. The owner, task prompt, model, or reviewer cannot override these values.
+3. Future `ALLOWED_GATES` may contain only `G0`, `G1`, `G2`, `G3`, `G4_DIFF`, and `G5`.
+4. Historical `G4_COMPONENT`/`G4_FULL` requirements are evaluated individually. When the corresponding external-evidence-required field is false, record `NOT_APPLICABLE`; when true and exact evidence is absent, record `EXTERNAL_EVIDENCE_REQUIRED`; only exact verified external evidence may be `PASS` with `EVIDENCE_SOURCE=EXTERNAL`.
+5. `READ_ONLY` performs G0 only by default; no repo write and no mandatory handoff.
+6. `SECURITY_REVIEW` is passive/local G4_DIFF only. It cannot scan, probe, exploit, enumerate, or access third-party targets.
+7. Every `SECURITY_FIX` performs G0/G1/G2 using ordinary local methods and then requires a separate passive/local G4_DIFF task/session or independent reviewer. Set `INDEPENDENT_REVIEW_REQUIRED=true`; same-task self-review is not permitted.
+8. G3 requires an approved batch/milestone/shared-control reason. A small patch, commit, or docs-only task does not trigger it.
+9. Production requires both deployment and production-access permission. Git and environment permissions never imply one another.
+10. `STOP_CONDITION` must be achievable by the permitted gates and commands. A condition requiring a prohibited capability is invalid and must become `EXTERNAL_EVIDENCE_REQUIRED` or an explicit blocked status.
+11. If the platform asks for additional cyber access, stop the affected step, preserve all state, record `BLOCKED_BY_PLATFORM_POLICY`, set both retry fields to false/`NO`, and report verified repository/index/remote preservation values. Do not retry by rewording or substituting an equivalent operation.
+12. A blocked/unavailable/not-run check is not PASS. Mandatory missing evidence keeps dependent readiness and formal finding closure at `NO`.
+13. `HANDOFF_REQUIRED=false` requires `HANDOFF_PATH=null`; read-only tasks do not write mandatory handoffs.
+14. G0 drift stops without reset, stash, clean, checkout, prune, baseline switch, or unauthorized untracked-file access.
+15. Reaching the stop condition never automatically authorizes stage, commit, push, merge, tag, deployment, or another task.

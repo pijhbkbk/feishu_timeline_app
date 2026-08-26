@@ -1,12 +1,23 @@
-# Verification Gates v2
+# Verification Gates v3 — Standard Codex Only
 
-## 1. 目的
+## 1. Purpose and controlling profile
 
-用最低充分验证回答当前任务，避免把局部修改自动放大为全仓测试、全仓安全扫描、部署和产品验收。Gate 只定义验证，不授予 Git 写入、环境访问或部署权限。
+Use the lowest sufficient validation for the current task. Gates define evidence requirements; they do not grant Git writes, environment access, or deployment permissions.
 
-## 2. 唯一 Gate 标识
+All future Codex tasks are governed by:
 
-Task Contract 中只允许：
+```text
+EXECUTION_PROFILE=STANDARD_CODEX_ONLY_V1
+ACCESS_TIER=STANDARD_CODEX
+```
+
+`docs/architecture/CODEX_STANDARD_EXECUTION_PROFILE.md` is the capability ceiling. Task Contracts may narrow it but cannot enable Trusted Access for Cyber, active security testing, third-party target access, security scans, or full scans.
+
+If a requested operation is outside the profile, record `BLOCKED_BY_STANDARD_CODEX_PROFILE`. If the product/platform blocks it, record `BLOCKED_BY_PLATFORM_POLICY`. Neither status is PASS.
+
+## 2. Executable Gate identifiers
+
+Future Task Contracts may list only:
 
 ```text
 G0
@@ -14,38 +25,35 @@ G1
 G2
 G3
 G4_DIFF
-G4_COMPONENT
-G4_FULL
 G5
 ```
 
-`G4` 仅是安全验证家族名称，不得作为 `ALLOWED_GATES` 值。
+Historical `G4_COMPONENT` and `G4_FULL` labels remain readable as external-evidence classifications, but are not executable Codex gates under this profile.
 
-| Gate | 核心问题 | 典型成本 | 默认触发 |
+| Gate | Core question | Typical cost | Default trigger |
 |---|---|---:|---|
-| G0 | repo/worktree/branch/commit/scope/权限是否正确？ | 低 | 每个任务 |
-| G1 | 当前 patch 的语法、类型和目标行为是否正确？ | 低 | 写任务 |
-| G2 | 直接受影响模块和安全负向路径是否回归？ | 中 | 代码/安全 patch |
-| G3 | 批次或里程碑候选的全仓质量是否健康？ | 高 | 明确批准的批次/里程碑 |
-| G4_DIFF | exact diff/commit 是否存在安全回归？ | 中 | 有界安全 patch |
-| G4_COMPONENT | 明确组件是否存在未处理风险？ | 中—高 | 批准的组件审查 |
-| G4_FULL | clean immutable commit 的全仓安全状态如何？ | 很高 | 最终或明确里程碑审计 |
-| G5 | 不可变版本是否真实部署并被验收？ | 很高 | 明确 Release 任务 |
+| G0 | Are repo, worktree, branch, commit, scope, profile, and permissions exact? | Low | Every task |
+| G1 | Is the patch syntactically and behaviorally correct for its direct target? | Low | Write tasks |
+| G2 | Do affected modules and safe local negative/configuration paths regress correctly? | Medium | Code/fix tasks |
+| G3 | Is an approved batch or milestone candidate healthy repository-wide? | High | Explicit batch/milestone |
+| G4_DIFF | Does the exact change preserve relevant invariants under passive/local review? | Medium | Bounded defensive fixes |
+| G5 | Is an immutable release actually deployed and accepted in the explicitly authorized owner environment? | Very high | Explicit release tasks |
 
+## 2.1 Change Class defaults
 
-## 2.1 Change Class 与 Gate 默认关系
+- `READ_ONLY`: G0; no repository writes; no mandatory handoff.
+- `DOCS_ONLY`: G0–G1.
+- `LOCAL_CODE`: G0–G2.
+- `SECURITY_REVIEW`: G0 + G4_DIFF only; passive/local and read-only.
+- `SECURITY_FIX`: G0–G2; then a separate standard-profile G4_DIFF.
+- `SCHEMA_OR_DEPENDENCY`: approved G0–G3 and, when needed, G4_DIFF.
+- `RELEASE`: G0 plus explicitly authorized ordinary G5 after every Git/environment/deployment permission is separately granted; add G1–G3 or G4_DIFF only when the Contract identifies a concrete need.
 
-- `READ_ONLY`：G0；不写 repo，不强制 handoff。
-- `DOCS_ONLY`：G0–G1。
-- `LOCAL_CODE`：G0–G2。
-- `SECURITY_REVIEW`：G0 + 明确的 `G4_DIFF` / `G4_COMPONENT` / `G4_FULL`；默认只读。
-- `SECURITY_FIX`：G0–G2；随后由独立 `SECURITY_REVIEW` 执行 `G4_DIFF`。
-- `SCHEMA_OR_DEPENDENCY`：经批准的 G0–G3 与必要安全子 Gate。
-- `RELEASE`：只有逐项授权后才进入 G5。
+A task title or finding severity does not expand the execution profile.
 
-## 3. Gate 不授予操作权限
+## 3. Gates do not grant permissions
 
-下列权限必须在 Task Contract 中分别为 true，Gate 本身不蕴含这些权限：
+The Task Contract must separately define:
 
 ```text
 STAGE_ALLOWED
@@ -58,36 +66,39 @@ STAGING_ACCESS_ALLOWED
 PRODUCTION_ACCESS_ALLOWED
 NETWORK_ALLOWED
 DEPENDENCY_INSTALL_ALLOWED
-SECURITY_SCAN_ALLOWED
-FULL_SCAN_ALLOWED
 ```
 
-- `STAGE_ALLOWED` 指 Git index；不是 staging 环境。
-- 生产访问/部署必须同时满足 `DEPLOYMENT_ALLOWED=true` 与 `PRODUCTION_ACCESS_ALLOWED=true`。
-- 允许 commit 不代表允许 push；允许 push 不代表允许 main merge、tag 或部署。
+The following profile values are fixed and cannot be enabled:
+
+```text
+TRUSTED_ACCESS_FOR_CYBER_ALLOWED=false
+ACTIVE_SECURITY_TESTING_ALLOWED=false
+THIRD_PARTY_TARGET_ACCESS_ALLOWED=false
+SECURITY_SCAN_ALLOWED=false
+FULL_SCAN_ALLOWED=false
+```
+
+- `STAGE_ALLOWED` means Git index, not staging environment.
+- Commit does not imply push; push does not imply main merge, tag, or deployment.
+- Production requires both `DEPLOYMENT_ALLOWED=true` and `PRODUCTION_ACCESS_ALLOWED=true`.
 
 ## 4. G0 — Preflight
 
-必须记录：
+Record:
 
 ```text
-repository
-worktree
-branch
-HEAD
-baseline commit
-git status
+execution profile / access tier
+repository / worktree / branch / HEAD / baseline
+raw and parsed git status
 change class
-allowed/forbidden files
-allowed/forbidden commands
-allowed gates
-Git permissions
-environment permissions
-model/budget limits
+allowed and forbidden files/commands/gates
+Git and environment permissions
+network and dependency-install boundaries
+platform-block policy
 sensitive exclusions
 ```
 
-如与 Task Contract 或 handoff 不一致：
+Any mismatch requires:
 
 ```text
 DRIFT_DETECTED
@@ -95,191 +106,141 @@ NO_SOURCE_CHANGE
 STOP
 ```
 
-不得自动 reset、stash、clean、checkout、prune、切换 baseline 或读取未获准的 untracked 文件。
+Do not automatically reset, stash, clean, checkout, prune, switch baseline, or read unauthorized untracked files.
 
-## 5. G1 — Targeted Verification
+## 5. G1 — Targeted verification
 
-按变更类型选择最小命令：
+Select the smallest applicable checks:
 
-- Markdown/TOML/JSON/YAML：语法、结构、schema 或链接检查；
-- TypeScript：修改文件 lint/typecheck、目标单测、`git diff --check`；
-- shell/Python helper：目标语法检查与 focused test；
-- migration：仅在 Contract 允许时做 schema/migration 的目标验证。
+- Markdown/TOML/JSON/YAML: syntax, structure, schema, or links;
+- TypeScript: changed-file lint/typecheck, focused tests, `git diff --check`;
+- shell/Python helper: syntax and focused safe tests;
+- Prisma: schema/generation/migration checks only when authorized;
+- build/config: ordinary local build and configuration validation.
 
-G1 不默认运行全仓测试、build、Playwright、Semgrep、Docker 或环境访问。
+G1 does not automatically run full tests, Playwright, Docker, environment access, or any scanner.
 
-## 6. G2 — Affected Regression
+## 6. G2 — Affected regression
 
-覆盖：
+Cover only what impact analysis supports:
 
-- 修改模块；
-- 直接调用方；
-- 合法行为；
-- 负向权限/输入/资源路径；
-- 当前 patch 可能破坏的契约。
+- changed modules and direct callers;
+- legitimate behavior;
+- safe local rejection/permission/input/resource cases;
+- concurrency, idempotency, state-machine, migration, or legacy-data paths when relevant;
+- current contracts the patch could break.
 
-只运行影响分析能够解释的回归集合。不因一个小 patch 自动扩大到全仓。
+Use unit/integration/E2E on localhost, mocks, fixtures, and ephemeral services. Do not turn a regression test into active target testing or exploit development.
 
-## 7. G3 — Approved Batch or Milestone Quality Gate
+## 7. G3 — Approved batch or milestone quality
 
-G3 只有在以下任一条件满足且 Task Contract 明确列出 `G3`、填写 `G3_REASON` 时运行：
+G3 runs only when the Task Contract includes `G3` and a non-empty `G3_REASON`, for example:
 
-1. 产品负责人批准的安全修复批次闭合；
-2. 明确的里程碑 candidate 准备进入下一层 Gate；
-3. schema、dependency、lockfile、共享 auth/authorization guard、共享契约或基础设施控制平面发生变化；
-4. 最终 evidence commit 前的批准全仓回归。
+1. an approved repair batch closes;
+2. a milestone candidate proceeds to another gate;
+3. schema, dependency, lockfile, shared auth/authorization guard, shared contract, or infrastructure control plane changes;
+4. a final evidence commit requires one repository-wide regression.
 
-以下情况**不触发 G3**：
+G3 does not trigger merely because of a small patch, single commit, ordinary cherry-pick, docs-only change, read-only review, or historical template.
 
-- 单个小 patch；
-- 单次 commit；
-- 普通 cherry-pick；
-- docs-only 变更；
-- 只读 security review；
-- 为了满足旧“每轮全量验证”模板。
+Commands must be discovered from repository sources and may include lint, typecheck, necessary unit/integration/E2E, Web/API build, Prisma validation, local Docker/Compose, and package-manager advisory checks. `pnpm install` requires lockfile/workspace change, missing environment, or explicit permission.
 
-G3 的具体命令由 Task Contract 给出，通常从 lint、typecheck、必要 unit/integration/E2E、Web/API build、Prisma validate 中选择。`pnpm install` 仅在依赖/lockfile/workspace 变化、环境缺失或明确授权时运行。
+## 8. G4_DIFF — Passive/local exact-change review
 
-## 8. G4_DIFF — Exact Change Security Review
+### 8.1 Scope
 
-### 8.1 范围
+Read-only review of an exact working-tree patch, commit, or branch range plus only directly supporting code. It must not expand into component or repository scanning.
 
-只读审查 exact working-tree patch、commit 或 branch range，以及直接支持该 diff 的代码。不得自动扩展为全仓 deep scan。
+### 8.2 Permitted evidence
 
-### 8.2 独立性
+Use only:
 
-默认模式：
+- static source/configuration and data-flow review;
+- exact patch/tree/blob reconstruction;
+- existing or focused unit/integration tests;
+- localhost-only documented product flows;
+- mocks, fixtures, configuration-rejection tests, and ephemeral local services;
+- ordinary build, package-manager advisory, and artifact inspection;
+- user-supplied external reports bound to exact identity.
 
-```text
-G4_DIFF_REVIEW_MODE=SEPARATE_TASK
-```
+Do not execute active scanners, offensive tools, target enumeration, exploit PoCs, credential testing, or third-party access.
 
-也可使用 `SEPARATE_REVIEWER`。以下情况必须独立：
+### 8.3 Independence and result
 
-- Critical/High finding；
-- 认证、授权、Session/Cookie、Secret、文件上传/下载、外部调用、部署、root/特权和供应链边界；
-- 修改公共 security control plane；
-- patch 作者的同一会话已经出现两次失败或范围漂移。
+A separate read-only task/session remains the default for high-impact changes. The review reports:
 
-`SAME_TASK_APPROVED` 只允许 Medium/Low 的局部 hardening，并必须：
+Every `SECURITY_FIX` requires a separate read-only task/session or independent reviewer. The implementation task cannot waive or satisfy its own G4_DIFF.
 
-- `INDEPENDENT_REVIEW_REQUIRED=false`；
-- 填写 `INDEPENDENCE_WAIVER_REASON`；
-- 由产品负责人明确批准；
-- 审查阶段保持只读，不在审查过程中继续无边界修改。
+- exact identity and scope;
+- invariant preservation;
+- legitimate behavior and safe rejection behavior;
+- regressions/findings;
+- blocked or external-evidence requirements;
+- proof gaps;
+- exact evidence identity.
 
-### 8.3 结果
+G4_DIFF grants no stage or commit permission.
 
-输出 finding 是否关闭、是否引入回归、proof gap、未审查范围和精确 evidence identity。Review 不授予 stage/commit 权限。
+## 9. External component/full evidence
 
-## 9. G4_COMPONENT — Bounded Component Scan
+`G4_COMPONENT` and `G4_FULL` are not executable by Codex under `STANDARD_CODEX_ONLY_V1`.
 
-必须满足：
+Evaluate the two classifications independently. When repository policy or a finding requires component evidence, record `G4_COMPONENT=EXTERNAL_EVIDENCE_REQUIRED`; when it requires full-repository evidence, record `G4_FULL=EXTERNAL_EVIDENCE_REQUIRED`. Requiring one does not make the other mandatory.
 
-```text
-CHANGE_CLASS=SECURITY_REVIEW
-SECURITY_SCAN_ALLOWED=true
-ALLOWED_GATES includes G4_COMPONENT
-SCAN_SCOPE is non-empty
-MAX_PARALLELISM / MAX_DISCOVERY_PASSES / MAX_TOOL_CALLS / MAX_WALL_CLOCK_MINUTES are set
-```
-
-- 扫描只读；
-- scope 必须是明确目录/组件和信任边界；
-- 新 finding 写入唯一 Ledger 或在 chat 中形成导入包；
-- 不在扫描任务中自动修复；
-- 达到预算或停止条件立即停止。
-
-## 10. G4_FULL — Full Repository Security Scan
-
-必须同时满足：
+or, when the platform itself blocks the attempted step:
 
 ```text
-CHANGE_CLASS=SECURITY_REVIEW
-SECURITY_SCAN_ALLOWED=true
-FULL_SCAN_ALLOWED=true
-ALLOWED_GATES includes G4_FULL
-clean immutable commit/tree
-HIGH_COST_APPROVAL_ID is non-null
-HIGH_COST_APPROVAL_REASON is non-null
-budget/concurrency limits are explicit
+<CHECK_NAME>=BLOCKED_BY_PLATFORM_POLICY
+RETRY_BY_REWORDING=NO
+RETRY_BY_TOOL_SUBSTITUTION=NO
+REPOSITORY_STATE_PRESERVED=YES
+INDEX_STATE_PRESERVED=YES
+REMOTE_STATE_PRESERVED=YES
 ```
 
-最低预算字段：
+Codex may read and verify an externally produced report only if it is bound to exact commit/tree, scope, tool/version or digest, command, environment, timestamp, and report hash. Missing, empty, stale, mismatched, unavailable, or tool-error evidence is not PASS and cannot formally close a finding.
 
-```text
-MAX_MODEL
-MAX_REASONING
-ULTRA_ALLOWED
-SUBAGENTS_ALLOWED
-MAX_SUBAGENTS
-MAX_PARALLELISM
-MAX_DISCOVERY_PASSES
-MAX_TOOL_CALLS
-MAX_WALL_CLOCK_MINUTES
-MAX_WEEKLY_BUDGET_PERCENT
-STOP_AFTER_NO_NEW_FINDINGS
-```
+Evaluate each external classification against approved closure/readiness criteria: record `NOT_APPLICABLE` when it is not required, `EXTERNAL_EVIDENCE_REQUIRED` when mandatory evidence is absent, or `PASS` with `EVIDENCE_SOURCE=EXTERNAL` only after exact evidence is verified. Never infer component/full PASS from Codex's local checks.
 
-- 全仓扫描只读；
-- 不得在同一任务自动修复；
-- 工具失败或无报告不得解释为 PASS；
-- 输出 coverage、findings、proof gaps、工具/环境 identity 和预算实际使用摘要。
+## 10. G5 — Release and product acceptance
 
-## 11. G5 — Release and Product Acceptance
-
-G5 仅在：
+G5 requires:
 
 ```text
 CHANGE_CLASS=RELEASE
 DEPLOYMENT_ALLOWED=true
 ```
 
-时可运行。除此之外，还必须分别检查：
+and the relevant individual Git/environment permissions. For staging, `STAGING_ACCESS_ALLOWED=true`; for production, `PRODUCTION_ACCESS_ALLOWED=true`.
 
-- stage/commit/push/main merge/tag 是否获得对应授权；
-- 目标为 staging 时：`STAGING_ACCESS_ALLOWED=true`；
-- 目标为 production 时：`PRODUCTION_ACCESS_ALLOWED=true`；
-- 部署 commit clean、不可变、已推送且远端可解析；
-- 构建/镜像 tag、digest、runtime metadata；
-- migration、Nginx/upstream、精确 URL/hostname；
-- 浏览器 Network/console、真实操作、刷新后持久性；
-- 目标角色与负向权限；
-- 产品负责人确认。
+Ordinary G5 may validate an immutable pushed commit, build/image identity, migration, service configuration, exact URL, documented product flows, browser console/network needed for product acceptance, persistence, roles, and owner confirmation on infrastructure explicitly owned/authorized by the user.
 
-普通修复不得为满足旧模板而访问 staging/production。
+G5 does not authorize active security testing. A release task must not add probes, scanners, fuzzing, exploitation, or credential testing.
 
-## 12. 证据缓存与失效
+## 11. Evidence caching and invalidation
 
-可复用 PASS 的 identity：
+Reusable PASS identity includes:
 
 ```text
-commit
-tree
-lockfile hash
-relevant config hash
-tool name/version
-command
-environment
-result/log SHA-256
+commit / tree / lockfile hash / relevant config hash
+tool and version / command / environment / result-log SHA-256
 ```
 
-失效规则：
+Rules:
 
-- 仅文档变化：不使源码测试/build/scan 失效；
-- 局部模块变化：只使相关 G1/G2/G4_DIFF 失效；
-- shared guard/schema/dependency/config 变化：先影响分析，再由 Contract 决定 G3/G4_COMPONENT；
-- 最终 evidence commit：按批准计划运行一次最终 Gate；
-- 工具失败：记录 `BLOCKED_TOOLING`，不得解释为 PASS。
+- docs-only change does not invalidate source tests/build evidence;
+- local change invalidates only relevant G1/G2/G4_DIFF evidence;
+- shared guard/schema/dependency/config change requires impact analysis and may trigger G3;
+- a final evidence commit runs only the approved final gate;
+- tooling failure is `BLOCKED_TOOLING`, not PASS;
+- standard-profile restriction is `BLOCKED_BY_STANDARD_CODEX_PROFILE`, not PASS;
+- product/platform restriction is `BLOCKED_BY_PLATFORM_POLICY`, not PASS.
 
-## 13. 两次失败停止
+## 12. Stop and retry rules
 
-同一命令、环境和失败原因连续两次后停止。下一次尝试至少改变一项：
+After two failures with the same command, environment, and cause, stop. A later attempt must demonstrably change at least one of: root cause, tool/install state, required input/permission, environment, or validation method.
 
-- 已修复且可解释的根因；
-- 工具版本或安装状态；
-- 缺失输入/授权；
-- 环境；
-- 验证方案。
+Do not retry a platform-blocked operation by rewording, wrapping, encoding, or switching to an equivalent prohibited tool.
+Record the six platform-block audit fields from section 9, verify each preservation value, and keep dependent readiness at `NO` whenever a required proof or preservation result is missing.
 
-Blocker 只包含 identity、错误摘要、已尝试方案、根因/未知项、下一最小方案和所需用户决定。
+A blocker report contains only identity, error summary, attempted permitted approaches, root cause/unknowns, smallest permitted next step, external evidence requirement, and any owner decision.
