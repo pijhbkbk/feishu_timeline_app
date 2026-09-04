@@ -1,4 +1,8 @@
 ARG NODE_IMAGE=node:24-alpine@sha256:d32cdf619f63fe0471182d08996dd516c6275bb5fd31ae06e55a570bd9e1ad43
+ARG BUILD_SOURCE_COMMIT
+ARG BUILD_SOURCE_TREE
+ARG BUILD_RELEASE
+ARG BUILD_TIME
 
 FROM ${NODE_IMAGE} AS base
 
@@ -21,6 +25,10 @@ RUN pnpm install --frozen-lockfile
 
 FROM deps AS build
 
+ARG BUILD_SOURCE_COMMIT
+ARG BUILD_SOURCE_TREE
+ARG BUILD_RELEASE
+ARG BUILD_TIME
 ARG NEXT_PUBLIC_APP_NAME
 ARG NEXT_PUBLIC_API_BASE_URL
 ARG NEXT_PUBLIC_ENABLE_MOCK_LOGIN
@@ -41,7 +49,13 @@ ENV NEXT_PUBLIC_R26_V2_DATA_MODE=${NEXT_PUBLIC_R26_V2_DATA_MODE}
 
 COPY . .
 
-RUN pnpm --filter @feishu-timeline/web build
+RUN node scripts/deploy/release-identity.mjs generate-ts \
+    --source-commit "$BUILD_SOURCE_COMMIT" \
+    --source-tree "$BUILD_SOURCE_TREE" \
+    --release "$BUILD_RELEASE" \
+    --build-time "$BUILD_TIME" \
+    --output apps/web/src/lib/build-identity.generated.ts \
+  && pnpm --filter @feishu-timeline/web build
 
 FROM build AS web-runtime-bundle
 
@@ -60,6 +74,16 @@ RUN set -eu; \
   cp -a "$libvips_dir" /out/
 
 FROM ${NODE_IMAGE} AS runtime
+
+ARG BUILD_SOURCE_COMMIT
+ARG BUILD_SOURCE_TREE
+ARG BUILD_RELEASE
+ARG BUILD_TIME
+
+LABEL org.opencontainers.image.revision="${BUILD_SOURCE_COMMIT}" \
+  org.opencontainers.image.version="${BUILD_RELEASE}" \
+  org.opencontainers.image.created="${BUILD_TIME}" \
+  com.feishu-timeline.source-tree="${BUILD_SOURCE_TREE}"
 
 ENV NODE_ENV=production
 ENV HOSTNAME=0.0.0.0
@@ -103,7 +127,7 @@ WORKDIR /app/apps/web
 EXPOSE 3000
 
 HEALTHCHECK --interval=15s --timeout=5s --retries=10 --start-period=20s \
-  CMD node -e "require('node:http').get('http://127.0.0.1:3000/login',(response)=>process.exit(response.statusCode===200?0:1)).on('error',()=>process.exit(1))"
+  CMD node -e "require('node:http').get('http://127.0.0.1:3000/build-info',(response)=>process.exit(response.statusCode===200?0:1)).on('error',()=>process.exit(1))"
 
 USER node
 

@@ -1,4 +1,8 @@
 ARG NODE_IMAGE=node:24-alpine@sha256:d32cdf619f63fe0471182d08996dd516c6275bb5fd31ae06e55a570bd9e1ad43
+ARG BUILD_SOURCE_COMMIT
+ARG BUILD_SOURCE_TREE
+ARG BUILD_RELEASE
+ARG BUILD_TIME
 
 FROM ${NODE_IMAGE} AS base
 
@@ -21,9 +25,20 @@ RUN pnpm install --frozen-lockfile
 
 FROM deps AS build
 
+ARG BUILD_SOURCE_COMMIT
+ARG BUILD_SOURCE_TREE
+ARG BUILD_RELEASE
+ARG BUILD_TIME
+
 COPY . .
 
-RUN pnpm --filter @feishu-timeline/shared build \
+RUN node scripts/deploy/release-identity.mjs generate-ts \
+    --source-commit "$BUILD_SOURCE_COMMIT" \
+    --source-tree "$BUILD_SOURCE_TREE" \
+    --release "$BUILD_RELEASE" \
+    --build-time "$BUILD_TIME" \
+    --output apps/api/src/common/build-identity.generated.ts \
+  && pnpm --filter @feishu-timeline/shared build \
   && pnpm --filter @feishu-timeline/api build
 
 FROM build AS api-production-deps
@@ -41,6 +56,16 @@ RUN pnpm --filter @feishu-timeline/api-ops deploy --prod /out/api-ops \
   && ./node_modules/.bin/prisma generate --schema prisma/schema.prisma
 
 FROM ${NODE_IMAGE} AS ops
+
+ARG BUILD_SOURCE_COMMIT
+ARG BUILD_SOURCE_TREE
+ARG BUILD_RELEASE
+ARG BUILD_TIME
+
+LABEL org.opencontainers.image.revision="${BUILD_SOURCE_COMMIT}" \
+  org.opencontainers.image.version="${BUILD_RELEASE}" \
+  org.opencontainers.image.created="${BUILD_TIME}" \
+  com.feishu-timeline.source-tree="${BUILD_SOURCE_TREE}"
 
 ENV NODE_ENV=production
 ENV PATH="/app/node_modules/.bin:${PATH}"
@@ -61,6 +86,16 @@ USER node
 CMD ["./node_modules/.bin/prisma", "--help"]
 
 FROM ${NODE_IMAGE} AS runtime
+
+ARG BUILD_SOURCE_COMMIT
+ARG BUILD_SOURCE_TREE
+ARG BUILD_RELEASE
+ARG BUILD_TIME
+
+LABEL org.opencontainers.image.revision="${BUILD_SOURCE_COMMIT}" \
+  org.opencontainers.image.version="${BUILD_RELEASE}" \
+  org.opencontainers.image.created="${BUILD_TIME}" \
+  com.feishu-timeline.source-tree="${BUILD_SOURCE_TREE}"
 
 ENV NODE_ENV=production
 ENV HOST=0.0.0.0

@@ -5,33 +5,56 @@ IFS=$'\n\t'
 
 ROOT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 DEPLOY_TARGET="${DEPLOY_TARGET:-staging}"
-APP_BASE_URL="${APP_BASE_URL:-https://timeline.all-too-well.com}"
-APP_HOST="${APP_HOST:-timeline.all-too-well.com}"
 STATIC_PROBE_PATH="${STATIC_PROBE_PATH:-/login}"
 SHOW_COMPOSE_STATUS="${SHOW_COMPOSE_STATUS:-yes}"
-TMP_DIR="$(mktemp -d)"
+MANIFEST_OVERRIDE=''
+TMP_DIR="$(mktemp -d /tmp/feishu-release-health.XXXXXX)"
 FAILURES=0
-declare -a FAILURE_SUMMARY=()
+FAILURE_SUMMARY=()
+
+# shellcheck source=scripts/deploy/common.sh
+. "$ROOT_DIR/scripts/deploy/common.sh"
 
 cleanup() {
-  rm -rf "$TMP_DIR"
+  case "$TMP_DIR" in
+    /tmp/feishu-release-health.*)
+      find "$TMP_DIR" -mindepth 1 -depth -delete
+      rmdir "$TMP_DIR"
+      ;;
+    *)
+      printf '[WARN] Refusing to clean unexpected temporary path.\n' >&2
+      ;;
+  esac
 }
-
 trap cleanup EXIT
 
 for arg in "$@"; do
   case "$arg" in
     DEPLOY_TARGET=*) DEPLOY_TARGET="${arg#*=}" ;;
-    APP_BASE_URL=*) APP_BASE_URL="${arg#*=}" ;;
-    APP_HOST=*) APP_HOST="${arg#*=}" ;;
     STATIC_PROBE_PATH=*) STATIC_PROBE_PATH="${arg#*=}" ;;
     SHOW_COMPOSE_STATUS=*) SHOW_COMPOSE_STATUS="${arg#*=}" ;;
+    APPROVED_RELEASE_MANIFEST=*) MANIFEST_OVERRIDE="${arg#*=}" ;;
     *)
-      printf '[ERROR] Unsupported argument: %s\n' "$arg" >&2
-      exit 1
+      printf '[ERROR] Unsupported health-check argument.\n' >&2
+      exit 64
       ;;
   esac
 done
+
+case "$SHOW_COMPOSE_STATUS" in
+  yes|no) ;;
+  *)
+    printf '[ERROR] SHOW_COMPOSE_STATUS must be yes or no.\n' >&2
+    exit 64
+    ;;
+esac
+if [ "${#STATIC_PROBE_PATH}" -gt 512 ] \
+  || [[ ! "$STATIC_PROBE_PATH" =~ ^/[A-Za-z0-9._~/-]+$ ]] \
+  || [[ "$STATIC_PROBE_PATH" == //* ]] \
+  || [[ "$STATIC_PROBE_PATH" =~ (^|/)\.\.?(/|$) ]]; then
+  printf '[ERROR] STATIC_PROBE_PATH must be a normalized absolute URL path.\n' >&2
+  exit 64
+fi
 
 section() {
   printf '\n== %s ==\n' "$1"
@@ -39,10 +62,6 @@ section() {
 
 pass() {
   printf '[PASS] %s\n' "$*"
-}
-
-warn() {
-  printf '[WARN] %s\n' "$*" >&2
 }
 
 record_failure() {
@@ -57,154 +76,166 @@ probe_url() {
   local url="$2"
   local expected_code="${3:-200}"
   local follow_redirects="${4:-yes}"
-  local header_file="$TMP_DIR/$(date +%s%N).headers"
-  local body_file="$TMP_DIR/$(date +%s%N).body"
+  local output_name="$5"
+  local header_file="$TMP_DIR/$output_name.headers"
+  local body_file="$TMP_DIR/$output_name.json"
   local curl_args=(-k -sS --retry 2 --retry-delay 1 --retry-all-errors --connect-timeout 5 --max-time 20 -D "$header_file" -o "$body_file" -w '%{http_code}|%{url_effective}')
   local result
   local code
   local final_url
 
-  if [ "$follow_redirects" = "yes" ]; then
+  if [ "$follow_redirects" = yes ]; then
     curl_args+=(-L --max-redirs 5)
   fi
-
   result="$(curl "${curl_args[@]}" "$url" 2>/dev/null || true)"
   code="${result%%|*}"
   final_url="${result#*|}"
-
   if [ "$code" = "$expected_code" ]; then
     pass "$name -> code=$code url=${final_url:-$url}"
   else
     record_failure "$name -> expected=$expected_code actual=${code:-<none>} url=${final_url:-$url}"
+    [ -f "$body_file" ] || printf '{}\n' >"$body_file"
   fi
-
-  LAST_HEADER_FILE="$header_file"
   LAST_BODY_FILE="$body_file"
-  LAST_HTTP_CODE="$code"
-  LAST_FINAL_URL="$final_url"
 }
 
 extract_static_asset() {
   local body_file="$1"
-
   grep -Eo '/_next/static/[^"'"'"'<> ]+' "$body_file" | head -n1 || true
 }
 
-run_staging_health_checks() {
-  local HTTP_PORT WEB_PORT API_PORT asset_path
+capture_json() {
+  local output_file="$1"
+  shift
+  if ! "$@" >"$output_file" 2>/dev/null; then
+    printf '[]\n' >"$output_file"
+    return 1
+  fi
+}
 
-  # shellcheck source=/dev/null
-  . "$ROOT_DIR/scripts/deploy/common.sh"
+verify_release_identity() {
+  local api_container_id="$1"
+  local web_container_id="$2"
+  local api_response="$3"
+  local web_response="$4"
+  local api_image_inspect="$TMP_DIR/api-image-inspect.json"
+  local api_ops_image_inspect="$TMP_DIR/api-ops-image-inspect.json"
+  local web_image_inspect="$TMP_DIR/web-image-inspect.json"
+  local api_container_inspect="$TMP_DIR/api-container-inspect.json"
+  local web_container_inspect="$TMP_DIR/web-container-inspect.json"
+  local capture_failed=no
+
+  capture_json "$api_image_inspect" docker image inspect "$APPROVED_API_IMAGE" \
+    || capture_failed=yes
+  capture_json "$api_ops_image_inspect" docker image inspect "$APPROVED_API_OPS_IMAGE" \
+    || capture_failed=yes
+  capture_json "$web_image_inspect" docker image inspect "$APPROVED_WEB_IMAGE" \
+    || capture_failed=yes
+  capture_json "$api_container_inspect" docker inspect "$api_container_id" \
+    || capture_failed=yes
+  capture_json "$web_container_inspect" docker inspect "$web_container_id" \
+    || capture_failed=yes
+
+  if [ "$capture_failed" = yes ]; then
+    record_failure 'Unable to collect complete immutable image/container evidence.'
+    return
+  fi
+
+  if node "$RELEASE_IDENTITY_HELPER" verify-evidence \
+    --manifest "$APPROVED_RELEASE_MANIFEST" \
+    --expected-source-commit "$EXPECTED_SOURCE_COMMIT" \
+    --expected-source-tree "$EXPECTED_SOURCE_TREE" \
+    --expected-release "$EXPECTED_RELEASE" \
+    --expected-build-time "$EXPECTED_BUILD_TIME" \
+    --api-response "$api_response" \
+    --web-response "$web_response" \
+    --api-repository-digest "$APPROVED_API_IMAGE" \
+    --api-ops-repository-digest "$APPROVED_API_OPS_IMAGE" \
+    --web-repository-digest "$APPROVED_WEB_IMAGE" \
+    --api-image-inspect "$api_image_inspect" \
+    --api-ops-image-inspect "$api_ops_image_inspect" \
+    --web-image-inspect "$web_image_inspect" \
+    --api-container-inspect "$api_container_inspect" \
+    --web-container-inspect "$web_container_inspect"; then
+    pass 'Approved manifest, API, Web, OCI labels, image IDs and repository digests agree'
+  else
+    record_failure 'Immutable release identity evidence is missing, malformed or inconsistent.'
+  fi
+}
+
+run_staging_health_checks() {
+  local http_port
+  local web_port
+  local api_port
+  local asset_path
+  local api_response
+  local web_response
+  local api_container_id
+  local web_container_id
 
   require_command docker
   require_command curl
-
+  require_command node
   load_compose_env
-  load_release_state_if_present
 
-  section "Compose Service Status"
+  if [ -n "$MANIFEST_OVERRIDE" ]; then
+    validate_config_path APPROVED_RELEASE_MANIFEST "$MANIFEST_OVERRIDE"
+    if [ "$MANIFEST_OVERRIDE" != "$APPROVED_RELEASE_MANIFEST" ]; then
+      fail 'Manifest CLI argument must exactly match APPROVED_RELEASE_MANIFEST in the protected environment file.'
+    fi
+  fi
+
+  section 'Compose Service Status'
   wait_for_service_health postgres 180
   wait_for_service_health redis 120
   wait_for_service_health api 180
   wait_for_service_health web 180
   wait_for_service_health nginx 120
-
-  if [ "$SHOW_COMPOSE_STATUS" = "yes" ]; then
+  if [ "$SHOW_COMPOSE_STATUS" = yes ]; then
     compose ps
   fi
 
-  HTTP_PORT="${STAGING_HTTP_PORT:-8080}"
-  WEB_PORT="${STAGING_WEB_PORT:-3100}"
-  API_PORT="${STAGING_API_PORT:-3101}"
+  http_port="${STAGING_HTTP_PORT:-8080}"
+  web_port="${STAGING_WEB_PORT:-3100}"
+  api_port="${STAGING_API_PORT:-3101}"
 
-  section "HTTP Checks"
-  probe_url "nginx root" "http://127.0.0.1:${HTTP_PORT}/" "200" "yes"
-  probe_url "nginx login" "http://127.0.0.1:${HTTP_PORT}/login" "200" "yes"
-  probe_url "web login" "http://127.0.0.1:${WEB_PORT}/login" "200" "yes"
-  probe_url "nginx api health" "http://127.0.0.1:${HTTP_PORT}/api/health" "200" "no"
-  if grep -q '"status":"ok"' "$LAST_BODY_FILE" 2>/dev/null; then
-    pass "nginx api health payload -> status=ok"
-  else
-    record_failure "nginx api health payload missing status=ok"
-  fi
+  section 'HTTP Checks'
+  probe_url 'nginx root' "http://127.0.0.1:${http_port}/" 200 yes nginx-root
+  probe_url 'nginx login' "http://127.0.0.1:${http_port}/login" 200 yes nginx-login
+  probe_url 'web login' "http://127.0.0.1:${web_port}/login" 200 yes web-login
 
-  probe_url "api health" "http://127.0.0.1:${API_PORT}/api/health" "200" "no"
-  if grep -q '"status":"ok"' "$LAST_BODY_FILE" 2>/dev/null; then
-    pass "api health payload -> status=ok"
-  else
-    record_failure "api health payload missing status=ok"
-  fi
+  probe_url 'nginx API health' "http://127.0.0.1:${http_port}/api/health" 200 no api-identity
+  api_response="$LAST_BODY_FILE"
+  probe_url 'direct API health' "http://127.0.0.1:${api_port}/api/health" 200 no api-direct
+  probe_url 'nginx Web build identity' "http://127.0.0.1:${http_port}/build-info" 200 no web-identity
+  web_response="$LAST_BODY_FILE"
+  probe_url 'direct Web build identity' "http://127.0.0.1:${web_port}/build-info" 200 no web-direct
 
-  probe_url "static asset source" "http://127.0.0.1:${HTTP_PORT}${STATIC_PROBE_PATH}" "200" "yes"
+  probe_url 'static asset source' "http://127.0.0.1:${http_port}${STATIC_PROBE_PATH}" 200 yes static-source
   asset_path="$(extract_static_asset "$LAST_BODY_FILE")"
   if [ -n "$asset_path" ]; then
-    probe_url "static asset" "http://127.0.0.1:${HTTP_PORT}${asset_path}" "200" "no"
+    probe_url 'static asset' "http://127.0.0.1:${http_port}${asset_path}" 200 no static-asset
   else
-    record_failure "static asset probe -> no asset path found in ${STATIC_PROBE_PATH}"
-  fi
-}
-
-run_production_service_checks() {
-  local remote_script
-  local line name status
-
-  # shellcheck source=/dev/null
-  . "$ROOT_DIR/scripts/deploy/gce-common.sh"
-  require_gcloud
-
-  remote_script="$(mktemp)"
-  cat >"$remote_script" <<'EOF'
-set -euo pipefail
-for svc in feishu-timeline-api feishu-timeline-web nginx postgresql redis-server; do
-  printf '%s=%s\n' "$svc" "$(systemctl is-active "$svc" || true)"
-done
-EOF
-
-  section "Remote Service Status"
-  while IFS= read -r line; do
-    [ -n "$line" ] || continue
-    name="${line%%=*}"
-    status="${line#*=}"
-    if [ "$status" = "active" ]; then
-      pass "$name -> $status"
-    else
-      record_failure "$name -> expected=active actual=${status:-<none>}"
-    fi
-  done < <(gce_run_remote_script "$remote_script")
-  rm -f "$remote_script"
-}
-
-run_production_http_checks() {
-  local asset_path
-
-  require_command curl
-
-  section "HTTP Checks"
-  probe_url "root" "${APP_BASE_URL}/" "200" "yes"
-  probe_url "login" "${APP_BASE_URL}/login" "200" "yes"
-  probe_url "dashboard" "${APP_BASE_URL}/dashboard" "200" "yes"
-  probe_url "projects" "${APP_BASE_URL}/projects" "200" "yes"
-  probe_url "api health" "${APP_BASE_URL}/api/health" "200" "no"
-  if grep -q '"status":"ok"' "$LAST_BODY_FILE" 2>/dev/null; then
-    pass "api health payload -> status=ok"
-  else
-    record_failure "api health payload missing status=ok"
+    record_failure "Static asset probe found no asset path in $STATIC_PROBE_PATH."
   fi
 
-  probe_url "static asset source" "${APP_BASE_URL}${STATIC_PROBE_PATH}" "200" "yes"
-  asset_path="$(extract_static_asset "$LAST_BODY_FILE")"
-  if [ -n "$asset_path" ]; then
-    probe_url "static asset" "${APP_BASE_URL}${asset_path}" "200" "no"
+  api_container_id="$(compose ps -q api || true)"
+  web_container_id="$(compose ps -q web || true)"
+  if [ -z "$api_container_id" ] || [ -z "$web_container_id" ]; then
+    record_failure 'API or Web container identity is missing.'
   else
-    record_failure "static asset probe -> no asset path found in ${STATIC_PROBE_PATH}"
+    verify_release_identity \
+      "$api_container_id" \
+      "$web_container_id" \
+      "$api_response" \
+      "$web_response"
   fi
 }
 
 print_summary() {
-  section "Failure Summary"
-
+  section 'Failure Summary'
   if [ "$FAILURES" -eq 0 ]; then
-    pass "No failures detected"
+    pass 'No failures detected'
     return 0
   fi
 
@@ -212,7 +243,6 @@ print_summary() {
   for item in "${FAILURE_SUMMARY[@]}"; do
     printf ' - %s\n' "$item" >&2
   done
-
   return 1
 }
 
@@ -221,12 +251,11 @@ case "$DEPLOY_TARGET" in
     run_staging_health_checks
     ;;
   production|prod)
-    run_production_service_checks
-    run_production_http_checks
+    record_failure 'Production verification is disabled until RC3 supplies the external root-owned OCI release controller.'
     ;;
   *)
-    printf '[ERROR] Unsupported DEPLOY_TARGET=%s\n' "$DEPLOY_TARGET" >&2
-    exit 1
+    printf '[ERROR] Unsupported DEPLOY_TARGET.\n' >&2
+    exit 64
     ;;
 esac
 

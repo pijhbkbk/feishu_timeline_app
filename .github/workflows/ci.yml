@@ -60,11 +60,50 @@ jobs:
       - name: Compose Config
         run: docker compose --env-file deploy/env/staging.env.example -f deploy/compose.staging.yml config >/tmp/compose-config.txt
 
+      - name: Compute Canonical Build Identity
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          build_source_commit="$(git rev-parse HEAD)"
+          build_source_tree="$(git rev-parse "${build_source_commit}^{tree}")"
+          build_release="ci-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          build_time="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+
+          node scripts/deploy/release-identity.mjs validate-identity \
+            --source-commit "$build_source_commit" \
+            --source-tree "$build_source_tree" \
+            --release "$build_release" \
+            --build-time "$build_time"
+
+          {
+            printf 'BUILD_SOURCE_COMMIT=%s\n' "$build_source_commit"
+            printf 'BUILD_SOURCE_TREE=%s\n' "$build_source_tree"
+            printf 'BUILD_RELEASE=%s\n' "$build_release"
+            printf 'BUILD_TIME=%s\n' "$build_time"
+          } >> "$GITHUB_ENV"
+
       - name: Build API Docker Image
-        run: docker build -t feishu-timeline-api:ci -f apps/api/Dockerfile .
+        run: |
+          docker build \
+            --build-arg BUILD_SOURCE_COMMIT="$BUILD_SOURCE_COMMIT" \
+            --build-arg BUILD_SOURCE_TREE="$BUILD_SOURCE_TREE" \
+            --build-arg BUILD_RELEASE="$BUILD_RELEASE" \
+            --build-arg BUILD_TIME="$BUILD_TIME" \
+            -t feishu-timeline-api:ci \
+            -f apps/api/Dockerfile \
+            .
 
       - name: Build Web Docker Image
-        run: docker build -t feishu-timeline-web:ci -f apps/web/Dockerfile .
+        run: |
+          docker build \
+            --build-arg BUILD_SOURCE_COMMIT="$BUILD_SOURCE_COMMIT" \
+            --build-arg BUILD_SOURCE_TREE="$BUILD_SOURCE_TREE" \
+            --build-arg BUILD_RELEASE="$BUILD_RELEASE" \
+            --build-arg BUILD_TIME="$BUILD_TIME" \
+            -t feishu-timeline-web:ci \
+            -f apps/web/Dockerfile \
+            .
 
       - name: Scan Production Container Images
         run: bash scripts/security/scan-production-images.sh feishu-timeline-api:ci feishu-timeline-web:ci
