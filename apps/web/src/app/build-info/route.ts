@@ -1,14 +1,18 @@
 import { NextResponse } from 'next/server';
 
+import {
+  createBuildInfoPayload,
+} from '../../lib/build-identity';
+
 export const dynamic = 'force-dynamic';
 
-export function GET() {
+function createBuildInfoResponse() {
+  const payload = createBuildInfoPayload();
+
   return NextResponse.json(
     {
-      service: 'feishu-timeline-web',
-      runtimeCommit: process.env.RUNTIME_COMMIT?.trim() || 'unknown',
-      buildTime: process.env.BUILD_TIME?.trim() || 'unknown',
-      release: process.env.RELEASE?.trim() || 'development',
+      ...payload,
+      runtimeCommit: payload.sourceCommit,
     },
     {
       headers: {
@@ -16,4 +20,8 @@ export function GET() {
       },
     },
   );
+}
+
+export function GET() {
+  return createBuildInfoResponse();
 }

@@ -5,6 +5,10 @@ x-api-runtime: &api-runtime
   DEPLOYMENT_ENV: staging
   HOST: 0.0.0.0
   PORT: 3001
+  EXPECTED_SOURCE_COMMIT: ${EXPECTED_SOURCE_COMMIT:?Set the approved full source commit}
+  EXPECTED_SOURCE_TREE: ${EXPECTED_SOURCE_TREE:?Set the approved full source tree}
+  EXPECTED_RELEASE: ${EXPECTED_RELEASE:?Set the approved release identifier}
+  EXPECTED_BUILD_TIME: ${EXPECTED_BUILD_TIME:?Set the approved canonical UTC build time}
   FRONTEND_URL: ${FRONTEND_URL:-http://localhost:8080}
   DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in the staging environment file}
   REDIS_URL: ${REDIS_URL:?Set REDIS_URL in the staging environment file}
@@ -67,12 +71,7 @@ x-api-runtime: &api-runtime
 
 services:
   postgres:
-    image: ${POSTGRES_IMAGE_REPO:-feishu-timeline-postgres}:${IMAGE_TAG:-local}
-    build:
-      context: ..
-      dockerfile: deploy/images/postgres/Dockerfile
-      args:
-        POSTGRES_BASE_IMAGE: ${POSTGRES_BASE_IMAGE:-postgres:16-alpine@sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777}
+    image: ${APPROVED_POSTGRES_IMAGE_REPOSITORY:?Set the approved PostgreSQL image repository}@sha256:${APPROVED_POSTGRES_IMAGE_DIGEST:?Set the approved PostgreSQL image digest}
     container_name: ${COMPOSE_PROJECT_NAME:-feishu-timeline-staging}-postgres
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-feishu_timeline}
@@ -89,7 +88,7 @@ services:
       retries: 10
 
   redis:
-    image: ${REDIS_IMAGE:-redis:7-alpine@sha256:6ab0b6e7381779332f97b8ca76193e45b0756f38d4c0dcda72dbb3c32061ab99}
+    image: ${APPROVED_REDIS_IMAGE_REPOSITORY:?Set the approved Redis image repository}@sha256:${APPROVED_REDIS_IMAGE_DIGEST:?Set the approved Redis image digest}
     container_name: ${COMPOSE_PROJECT_NAME:-feishu-timeline-staging}-redis
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in the staging environment file}
@@ -105,11 +104,7 @@ services:
       retries: 10
 
   api:
-    image: ${API_IMAGE_REPO:-feishu-timeline-api}:${IMAGE_TAG:-local}
-    build:
-      context: ..
-      dockerfile: apps/api/Dockerfile
-      target: runtime
+    image: ${APPROVED_API_IMAGE_REPOSITORY:?Set the approved API image repository}@sha256:${APPROVED_API_IMAGE_DIGEST:?Set the approved API image digest}
     container_name: ${COMPOSE_PROJECT_NAME:-feishu-timeline-staging}-api
     mem_limit: ${API_MEM_LIMIT:-768m}
     pids_limit: ${API_PIDS_LIMIT:-256}
@@ -136,11 +131,7 @@ services:
       retries: 10
 
   api-migrate:
-    image: ${API_OPS_IMAGE_REPO:-feishu-timeline-api-ops}:${IMAGE_TAG:-local}
-    build:
-      context: ..
-      dockerfile: apps/api/Dockerfile
-      target: ops
+    image: ${APPROVED_API_OPS_IMAGE_REPOSITORY:?Set the approved API operations image repository}@sha256:${APPROVED_API_OPS_IMAGE_DIGEST:?Set the approved API operations image digest}
     profiles: ["ops"]
     mem_limit: ${API_MEM_LIMIT:-768m}
     pids_limit: ${API_PIDS_LIMIT:-256}
@@ -154,11 +145,7 @@ services:
     command: ["/app/node_modules/.bin/prisma", "migrate", "deploy", "--schema", "prisma/schema.prisma"]
 
   api-seed:
-    image: ${API_OPS_IMAGE_REPO:-feishu-timeline-api-ops}:${IMAGE_TAG:-local}
-    build:
-      context: ..
-      dockerfile: apps/api/Dockerfile
-      target: ops
+    image: ${APPROVED_API_OPS_IMAGE_REPOSITORY:?Set the approved API operations image repository}@sha256:${APPROVED_API_OPS_IMAGE_DIGEST:?Set the approved API operations image digest}
     profiles: ["ops"]
     mem_limit: ${API_MEM_LIMIT:-768m}
     pids_limit: ${API_PIDS_LIMIT:-256}
@@ -174,25 +161,17 @@ services:
     command: ["/app/node_modules/.bin/tsx", "prisma/seed.ts"]
 
   web:
-    image: ${WEB_IMAGE_REPO:-feishu-timeline-web}:${IMAGE_TAG:-local}
-    build:
-      context: ..
-      dockerfile: apps/web/Dockerfile
-      target: runtime
-      args:
-        NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-轻卡新颜色开发项目管理系统}
-        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-/api}
-        NEXT_PUBLIC_ENABLE_MOCK_LOGIN: ${NEXT_PUBLIC_ENABLE_MOCK_LOGIN:-false}
-        NEXT_PUBLIC_UI_VERSION: ${NEXT_PUBLIC_UI_VERSION:-v1}
-        NEXT_PUBLIC_UI_DATA_MODE: ${NEXT_PUBLIC_UI_DATA_MODE:-real}
-        V1_FALLBACK_ENABLED: ${V1_FALLBACK_ENABLED:-true}
-        NEXT_PUBLIC_R26_V2_PROTOTYPE: ${NEXT_PUBLIC_R26_V2_PROTOTYPE:-false}
-        NEXT_PUBLIC_R26_V2_DATA_MODE: ${NEXT_PUBLIC_R26_V2_DATA_MODE:-prototype}
+    image: ${APPROVED_WEB_IMAGE_REPOSITORY:?Set the approved Web image repository}@sha256:${APPROVED_WEB_IMAGE_DIGEST:?Set the approved Web image digest}
     container_name: ${COMPOSE_PROJECT_NAME:-feishu-timeline-staging}-web
     environment:
       NODE_ENV: production
+      DEPLOYMENT_ENV: staging
       HOST: 0.0.0.0
       PORT: 3000
+      EXPECTED_SOURCE_COMMIT: ${EXPECTED_SOURCE_COMMIT:?Set the approved full source commit}
+      EXPECTED_SOURCE_TREE: ${EXPECTED_SOURCE_TREE:?Set the approved full source tree}
+      EXPECTED_RELEASE: ${EXPECTED_RELEASE:?Set the approved release identifier}
+      EXPECTED_BUILD_TIME: ${EXPECTED_BUILD_TIME:?Set the approved canonical UTC build time}
       NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-轻卡新颜色开发项目管理系统}
       NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-/api}
       NEXT_PUBLIC_ENABLE_MOCK_LOGIN: ${NEXT_PUBLIC_ENABLE_MOCK_LOGIN:-false}
@@ -212,14 +191,14 @@ services:
           "CMD",
           "node",
           "-e",
-          "require('node:http').get('http://127.0.0.1:3000/login',(response)=>process.exit(response.statusCode===200?0:1)).on('error',()=>process.exit(1))",
+          "require('node:http').get('http://127.0.0.1:3000/build-info',(response)=>process.exit(response.statusCode===200?0:1)).on('error',()=>process.exit(1))",
         ]
       interval: 15s
       timeout: 5s
       retries: 10
 
   nginx:
-    image: ${NGINX_IMAGE:-nginx:stable-alpine@sha256:ec664813a30459a8e7176315268a623f6b31abc370eeac51c7de81cd4ec4d451}
+    image: ${APPROVED_NGINX_IMAGE_REPOSITORY:?Set the approved Nginx image repository}@sha256:${APPROVED_NGINX_IMAGE_DIGEST:?Set the approved Nginx image digest}
     container_name: ${COMPOSE_PROJECT_NAME:-feishu-timeline-staging}-nginx
     depends_on:
       api:

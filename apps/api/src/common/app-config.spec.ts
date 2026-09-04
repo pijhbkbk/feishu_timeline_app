@@ -1,6 +1,45 @@
 import { describe, expect, it } from 'vitest';
 
-import { APP_ENV_FILE_PATHS, resolveAppConfig } from './app-config';
+import {
+  APP_ENV_FILE_PATHS,
+  resolveAppConfig as resolveAppConfigImplementation,
+} from './app-config';
+import {
+  LOCAL_DEVELOPMENT_BUILD_IDENTITY,
+  type BuildIdentity,
+} from './build-identity';
+
+const TEST_PROTECTED_BUILD_IDENTITY: BuildIdentity = Object.freeze({
+  sourceCommit: '0123456789abcdef0123456789abcdef01234567',
+  sourceTree: '89abcdef0123456789abcdef0123456789abcdef',
+  release: 'r27rc1-test',
+  buildTime: '2026-09-04T01:02:03Z',
+});
+const TEST_PROTECTED_EXPECTED_IDENTITY_ENV = {
+  EXPECTED_SOURCE_COMMIT: TEST_PROTECTED_BUILD_IDENTITY.sourceCommit,
+  EXPECTED_SOURCE_TREE: TEST_PROTECTED_BUILD_IDENTITY.sourceTree,
+  EXPECTED_RELEASE: TEST_PROTECTED_BUILD_IDENTITY.release,
+  EXPECTED_BUILD_TIME: TEST_PROTECTED_BUILD_IDENTITY.buildTime,
+} as const;
+
+function resolveAppConfig(env: NodeJS.ProcessEnv = {}) {
+  const nodeEnvironment = env.NODE_ENV?.trim().toLowerCase();
+  const deploymentEnvironment = env.DEPLOYMENT_ENV?.trim().toLowerCase();
+  const isProtectedEnvironment =
+    deploymentEnvironment === 'staging' ||
+    deploymentEnvironment === 'production' ||
+    (!deploymentEnvironment &&
+      (nodeEnvironment === 'staging' || nodeEnvironment === 'production'));
+
+  return resolveAppConfigImplementation(
+    isProtectedEnvironment
+      ? { ...TEST_PROTECTED_EXPECTED_IDENTITY_ENV, ...env }
+      : env,
+    isProtectedEnvironment
+      ? TEST_PROTECTED_BUILD_IDENTITY
+      : LOCAL_DEVELOPMENT_BUILD_IDENTITY,
+  );
+}
 
 const PROTECTED_DATA_ENV = {
   DATABASE_URL:
@@ -62,8 +101,10 @@ describe('resolveAppConfig', () => {
 
     expect(config.port).toBe(3001);
     expect(config.deploymentEnvironment).toBe('local');
-    expect(config.runtimeCommit).toBe('unknown');
-    expect(config.buildTime).toBe('unknown');
+    expect(config.sourceCommit).toBe('development');
+    expect(config.sourceTree).toBe('development');
+    expect(config.runtimeCommit).toBe('development');
+    expect(config.buildTime).toBe('1970-01-01T00:00:00Z');
     expect(config.release).toBe('development');
     expect(config.frontendUrl).toBe('http://localhost:3000');
     expect(config.redisUrl).toBe('redis://localhost:6379');
@@ -146,15 +187,79 @@ describe('resolveAppConfig', () => {
   });
 
   it('exposes only non-sensitive release identity metadata', () => {
-    const config = resolveAppConfig({
-      RUNTIME_COMMIT: '0123456789abcdef0123456789abcdef01234567',
-      BUILD_TIME: '2026-07-25T13:30:00Z',
-      RELEASE: 'r26-admin-controls',
-    });
+    const immutableIdentity: BuildIdentity = {
+      sourceCommit: '123456789abcdef0123456789abcdef012345678',
+      sourceTree: 'abcdef0123456789abcdef0123456789abcdef01',
+      buildTime: '2026-07-25T13:30:00Z',
+      release: 'r26-admin-controls',
+    };
+    const config = resolveAppConfigImplementation(
+      {
+        RUNTIME_COMMIT: 'ffffffffffffffffffffffffffffffffffffffff',
+        BUILD_TIME: '2099-01-01T00:00:00Z',
+        RELEASE: 'runtime-spoof',
+      },
+      immutableIdentity,
+    );
 
-    expect(config.runtimeCommit).toBe('0123456789abcdef0123456789abcdef01234567');
-    expect(config.buildTime).toBe('2026-07-25T13:30:00Z');
-    expect(config.release).toBe('r26-admin-controls');
+    expect(config.sourceCommit).toBe(immutableIdentity.sourceCommit);
+    expect(config.sourceTree).toBe(immutableIdentity.sourceTree);
+    expect(config.runtimeCommit).toBe(immutableIdentity.sourceCommit);
+    expect(config.buildTime).toBe(immutableIdentity.buildTime);
+    expect(config.release).toBe(immutableIdentity.release);
+  });
+
+  it('accepts a protected deployment only when immutable and expected identities match', () => {
+    const config = resolveAppConfigImplementation(
+      {
+        ...createProtectedEnvironment('staging'),
+        ...TEST_PROTECTED_EXPECTED_IDENTITY_ENV,
+      },
+      TEST_PROTECTED_BUILD_IDENTITY,
+    );
+
+    expect(config).toMatchObject({
+      deploymentEnvironment: 'staging',
+      sourceCommit: TEST_PROTECTED_BUILD_IDENTITY.sourceCommit,
+      sourceTree: TEST_PROTECTED_BUILD_IDENTITY.sourceTree,
+      runtimeCommit: TEST_PROTECTED_BUILD_IDENTITY.sourceCommit,
+      release: TEST_PROTECTED_BUILD_IDENTITY.release,
+      buildTime: TEST_PROTECTED_BUILD_IDENTITY.buildTime,
+    });
+  });
+
+  it('fails protected startup when the generated development identity is not replaced', () => {
+    expect(() =>
+      resolveAppConfigImplementation({
+        ...createProtectedEnvironment('staging'),
+        ...TEST_PROTECTED_EXPECTED_IDENTITY_ENV,
+      }),
+    ).toThrowError(/Immutable build identity\.sourceCommit/);
+  });
+
+  it('fails protected startup when immutable and expected identities differ', () => {
+    expect(() =>
+      resolveAppConfigImplementation(
+        {
+          ...createProtectedEnvironment('production'),
+          ...TEST_PROTECTED_EXPECTED_IDENTITY_ENV,
+          EXPECTED_RELEASE: 'r27rc1-other',
+        },
+        TEST_PROTECTED_BUILD_IDENTITY,
+      ),
+    ).toThrowError(/EXPECTED_RELEASE/);
+  });
+
+  it('rejects a local deployment declaration under production NODE_ENV', () => {
+    expect(() =>
+      resolveAppConfigImplementation(
+        {
+          NODE_ENV: 'production',
+          DEPLOYMENT_ENV: 'local',
+        },
+        LOCAL_DEVELOPMENT_BUILD_IDENTITY,
+      ),
+    ).toThrowError(/DEPLOYMENT_ENV=local/);
   });
 
   it('allows mock auth only when it is explicitly enabled outside production', () => {

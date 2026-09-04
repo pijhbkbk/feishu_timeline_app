@@ -3,11 +3,17 @@ import {
   FEISHU_CN_OAUTH_PROVIDER,
   type OAuthProvider,
 } from './feishu-oauth-provider';
+import {
+  resolveBuildIdentityDeploymentEnvironment,
+  resolveImmutableBuildIdentity,
+} from './build-identity';
 import { API_UPLOAD_MAX_CONCURRENT_REQUESTS } from './upload-security.constants';
 
 export type AppConfig = {
   nodeEnv: string;
   deploymentEnvironment: 'local' | 'staging' | 'production';
+  sourceCommit: string;
+  sourceTree: string;
   runtimeCommit: string;
   buildTime: string;
   release: string;
@@ -136,27 +142,6 @@ function resolveBoundedInteger(
   }
 
   return parsed;
-}
-
-function resolveDeploymentEnvironment(
-  value: string | undefined,
-  nodeEnv: string,
-): AppConfig['deploymentEnvironment'] {
-  const normalized = value?.trim().toLowerCase();
-
-  if (normalized === 'local' || normalized === 'staging' || normalized === 'production') {
-    return normalized;
-  }
-
-  if (normalized) {
-    throw new Error('DEPLOYMENT_ENV must be local, staging, or production.');
-  }
-
-  if (nodeEnv === 'production' || nodeEnv === 'staging') {
-    return nodeEnv;
-  }
-
-  return 'local';
 }
 
 function decodeUrlCredential(value: string) {
@@ -321,12 +306,15 @@ function assertProtectedFrontendUrl(
   return parsed.origin;
 }
 
-export function resolveAppConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
+export function resolveAppConfig(
+  env: NodeJS.ProcessEnv = process.env,
+  immutableBuildIdentity?: unknown,
+): AppConfig {
   const nodeEnv = env.NODE_ENV?.trim().toLowerCase() || 'development';
-  const deploymentEnvironment = resolveDeploymentEnvironment(
-    env.DEPLOYMENT_ENV,
-    nodeEnv,
-  );
+  const deploymentEnvironment = resolveBuildIdentityDeploymentEnvironment({
+    DEPLOYMENT_ENV: env.DEPLOYMENT_ENV,
+    NODE_ENV: nodeEnv,
+  });
   const isProtectedEnvironment =
     deploymentEnvironment === 'staging' || deploymentEnvironment === 'production';
   const databaseUrl = isProtectedEnvironment
@@ -561,12 +549,20 @@ export function resolveAppConfig(env: NodeJS.ProcessEnv = process.env): AppConfi
     );
   }
 
+  const buildIdentity = resolveImmutableBuildIdentity(
+    deploymentEnvironment,
+    env,
+    immutableBuildIdentity,
+  );
+
   const config: AppConfig = {
     nodeEnv,
     deploymentEnvironment,
-    runtimeCommit: env.RUNTIME_COMMIT?.trim() || 'unknown',
-    buildTime: env.BUILD_TIME?.trim() || 'unknown',
-    release: env.RELEASE?.trim() || 'development',
+    sourceCommit: buildIdentity.sourceCommit,
+    sourceTree: buildIdentity.sourceTree,
+    runtimeCommit: buildIdentity.sourceCommit,
+    buildTime: buildIdentity.buildTime,
+    release: buildIdentity.release,
     port: resolvePort(env.PORT, 3001),
     frontendUrl: env.FRONTEND_URL?.trim() ||
       (isProtectedEnvironment ? '' : 'http://localhost:3000'),

@@ -10,10 +10,6 @@ ROOT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 require_command docker
 
 load_compose_env
-load_release_state_if_present
-
-API_OPS_IMAGE_REPO="${API_OPS_IMAGE_REPO:-feishu-timeline-api-ops}"
-export API_OPS_IMAGE_REPO
 
 log "Running Prisma seed"
 compose run --rm api-seed

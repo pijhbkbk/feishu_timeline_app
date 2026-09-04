@@ -109,6 +109,134 @@ chmod 0755 "$FAKE_BIN/openssl"
 case_counter=0
 LAST_CASE_DIR=''
 
+LEGACY_DISABLED_EXIT=78
+LEGACY_DISABLED_DIAGNOSTIC='[ERROR] RC3 external root-owned controller has not been provided.'
+LEGACY_ENTRYPOINTS=(
+  scripts/deploy/gce-sync-and-build.sh
+  scripts/deploy/gce-redeploy.sh
+  scripts/deploy/gce-postgres-bootstrap.sh
+  scripts/deploy/backup-postgres.sh
+  scripts/deploy/ops-check.sh
+)
+LEGACY_FAKE_BIN="$TMP_DIR/legacy-fake-bin"
+mkdir -p "$LEGACY_FAKE_BIN"
+for sink_command in \
+  gcloud sudo systemctl docker git pnpm npm npx node curl \
+  tee install chown chmod ln; do
+  cat >"$LEGACY_FAKE_BIN/$sink_command" <<'SH'
+#!/usr/bin/env bash
+set -euo pipefail
+printf 'external_sink_called\n' >>"${LEGACY_SINK_LOG:?}"
+exit 99
+SH
+  chmod 0755 "$LEGACY_FAKE_BIN/$sink_command"
+done
+
+legacy_guard_prefix="$TMP_DIR/legacy-guard-prefix"
+cat >"$legacy_guard_prefix" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+printf '%s\n' '[ERROR] RC3 external root-owned controller has not been provided.' >&2
+exit 78
+EOF
+
+for legacy_script in "${LEGACY_ENTRYPOINTS[@]}"; do
+  cmp -s "$ROOT_DIR/$legacy_script" "$legacy_guard_prefix" \
+    || fail "$legacy_script is not the exact approved fail-closed stub"
+done
+
+assert_legacy_entrypoint_disabled() {
+  local script="$1"
+  local payload_kind="$2"
+  local case_dir
+  local marker
+  local dotenv_marker
+  local payload
+  local secret
+  local stderr_content
+  local rc=0
+
+  case_counter=$((case_counter + 1))
+  case_dir="$TMP_DIR/legacy-disabled-$case_counter"
+  marker="$case_dir/command-marker"
+  dotenv_marker="$case_dir/dotenv-marker"
+  secret="S001_SECRET_SENTINEL_${case_counter}_DO_NOT_LOG"
+  mkdir -p "$case_dir/app/apps/api" "$case_dir/app/apps/web"
+
+  case "$payload_kind" in
+    dollar-command) payload='$(touch '"$marker"')' ;;
+    backtick-command) payload='`touch '"$marker"'`' ;;
+    semicolon) payload="safe;touch $marker" ;;
+    newline) payload=$'safe\ntouch '"$marker" ;;
+    carriage-return) payload=$'safe\rtouch '"$marker" ;;
+    leading-dash) payload='-leading-dash' ;;
+    spaces) payload='value with spaces' ;;
+    single-quote) payload="value'tail" ;;
+    double-quote) payload='value"tail' ;;
+    traversal) payload='../../etc/passwd' ;;
+    absolute-path) payload='/etc/systemd/system/feishu-timeline.service' ;;
+    metacharacters) payload='value|&<>*?[]{}!' ;;
+    *) fail "unknown legacy payload kind: $payload_kind" ;;
+  esac
+
+  printf '%s\n' \
+    "DATABASE_URL=postgresql://user:${secret}@database.invalid/app" \
+    'S001_PAYLOAD=$(touch '"$dotenv_marker"')' \
+    >"$case_dir/app/apps/api/.env.production"
+  printf '%s\n' \
+    "S001_SECRET=$secret" \
+    'S001_PAYLOAD=$(touch '"$dotenv_marker"')' \
+    >"$case_dir/app/apps/web/.env.production"
+  : >"$case_dir/sink.log"
+
+  PATH="$LEGACY_FAKE_BIN:$FAKE_BIN:$PATH" \
+    LEGACY_SINK_LOG="$case_dir/sink.log" \
+    INSTANCE="$payload" \
+    APP_ROOT="$case_dir/app" \
+    DATABASE_URL="postgresql://user:${secret}@database.invalid/app" \
+    FEISHU_APP_SECRET="$secret" \
+    bash "$ROOT_DIR/$script" "LEGACY_INPUT=$payload" \
+    >"$case_dir/stdout" 2>"$case_dir/stderr" || rc=$?
+
+  [ "$rc" -eq "$LEGACY_DISABLED_EXIT" ] \
+    || fail "$script did not return the fixed disabled exit code for $payload_kind"
+  [ ! -s "$case_dir/stdout" ] \
+    || fail "$script emitted stdout while disabled for $payload_kind"
+  stderr_content="$(<"$case_dir/stderr")"
+  [ "$stderr_content" = "$LEGACY_DISABLED_DIAGNOSTIC" ] \
+    || fail "$script emitted a non-canonical diagnostic for $payload_kind"
+  [ ! -e "$marker" ] \
+    || fail "$script executed the $payload_kind command payload"
+  [ ! -e "$dotenv_marker" ] \
+    || fail "$script interpreted application dotenv as shell syntax"
+  [ ! -s "$case_dir/sink.log" ] \
+    || fail "$script invoked an external privileged or deployment sink"
+  if grep -F "$secret" "$case_dir/stdout" "$case_dir/stderr" >/dev/null; then
+    fail "$script exposed a secret in its disabled diagnostic"
+  fi
+}
+
+legacy_payload_kinds=(
+  dollar-command
+  backtick-command
+  semicolon
+  newline
+  carriage-return
+  leading-dash
+  spaces
+  single-quote
+  double-quote
+  traversal
+  absolute-path
+  metacharacters
+)
+for legacy_script in "${LEGACY_ENTRYPOINTS[@]}"; do
+  for payload_kind in "${legacy_payload_kinds[@]}"; do
+    assert_legacy_entrypoint_disabled "$legacy_script" "$payload_kind"
+  done
+done
+
 run_script() {
   local script="$1"
   local mode="$2"
@@ -150,8 +278,6 @@ run_script() {
 }
 
 SCRIPTS=(
-  'scripts/deploy/ops-check.sh:ops'
-  'scripts/deploy/backup-postgres.sh:backup'
   'scripts/deploy/check-http-errors.sh:http'
 )
 
@@ -185,21 +311,6 @@ for entry in "${SCRIPTS[@]}"; do
   run_script "$script" "$mode" 'ZONE=us west1-b' rejected
   run_script "$script" "$mode" 'GCE_TUNNEL_THROUGH_IAP=maybe' rejected
 done
-
-run_script 'scripts/deploy/ops-check.sh' ops 'APP_HOST=timeline.example.com' accepted
-run_script 'scripts/deploy/ops-check.sh' ops 'APP_HOST=x;command' rejected
-run_script 'scripts/deploy/ops-check.sh' ops 'DISK_WARN_PERCENT=0' rejected
-run_script 'scripts/deploy/ops-check.sh' ops 'DISK_WARN_PERCENT=101' rejected
-run_script 'scripts/deploy/ops-check.sh' ops 'MEMORY_WARN_MB=not-a-number' rejected
-
-run_script 'scripts/deploy/backup-postgres.sh' backup \
-  'BACKUP_ROOT=/var/backups/feishu-timeline-db' accepted
-grep -F "'/var/backups/feishu-timeline-db'" "$LAST_CASE_DIR/gcloud.log" >/dev/null \
-  || fail 'backup root was not transferred as a quoted remote positional argument'
-run_script 'scripts/deploy/backup-postgres.sh' backup \
-  'BACKUP_ROOT=/var/backups/../escape' rejected
-run_script 'scripts/deploy/backup-postgres.sh' backup 'RUN_RESTORE_DRILL=maybe' rejected
-run_script 'scripts/deploy/backup-postgres.sh' backup 'KEEP_DRILL_ARTIFACTS=maybe' rejected
 
 run_script 'scripts/deploy/check-http-errors.sh' http 'LINES=200' accepted
 run_script 'scripts/deploy/check-http-errors.sh' http 'LINES=0' rejected
@@ -262,13 +373,6 @@ run_gce_remote_source_validation() {
       ;;
   esac
 }
-
-run_gce_remote_source_validation \
-  scripts/deploy/gce-sync-and-build.sh accepted \
-  'REPO_URL=https://example.invalid/feishu-timeline.git'
-run_gce_remote_source_validation \
-  scripts/deploy/gce-postgres-bootstrap.sh accepted \
-  'DB_HOST=database.internal'
 
 sync_controlled_variables=(
   INSTANCE
@@ -334,18 +438,6 @@ for variable in "${postgres_controlled_variables[@]}"; do
       scripts/deploy/gce-postgres-bootstrap.sh rejected \
       "$variable=$payload" "$marker"
   done
-done
-
-for script in \
-  scripts/deploy/gce-sync-and-build.sh \
-  scripts/deploy/gce-postgres-bootstrap.sh; do
-  grep -F 'gce_run_remote_script_with_args' "$ROOT_DIR/$script" >/dev/null \
-    || fail "$script does not pass controlled values as remote positional arguments"
-  # Assert literal source patterns rather than expanding a test variable.
-  # shellcheck disable=SC2016
-  if grep -En 'ssh_gce "|--command "\$1"' "$ROOT_DIR/$script" >/dev/null; then
-    fail "$script still builds a remote Bash program through local interpolation"
-  fi
 done
 
 for script in "$ROOT_DIR"/scripts/deploy/gce-*.sh; do
@@ -445,8 +537,6 @@ grep -Fx 'FEISHU_AUTHORIZATION_ENDPOINT=https://accounts.feishu.cn/open-apis/aut
   || fail 'root production env template does not use the Feishu CN authorization endpoint'
 
 for script in \
-  scripts/deploy/ops-check.sh \
-  scripts/deploy/backup-postgres.sh \
   scripts/deploy/check-http-errors.sh \
   scripts/deploy/gce-bootstrap.sh; do
   awk '
@@ -577,34 +667,15 @@ done
 grep -F -- '--chown="$APP_USER:$APP_GROUP"' "$RESTORE_SCRIPT" >/dev/null \
   || fail 'restore_to_gcp does not scope application ownership to transferred repository files'
 
-# Assert the literal source text, not the test environment.
+# The RC1 deployment path consumes only the independently approved, digest-pinned
+# operations image. Repository-local image construction is disabled until RC3.
 # shellcheck disable=SC2016
-grep -F 'API_OPS_IMAGE_REPO="${API_OPS_IMAGE_REPO:-feishu-timeline-api-ops}"' \
-  "$ROOT_DIR/scripts/deploy/staging-up.sh" >/dev/null \
-  || fail 'staging-up does not define the separate API ops image repository'
-grep -F 'export API_IMAGE_REPO API_OPS_IMAGE_REPO WEB_IMAGE_REPO POSTGRES_IMAGE_REPO' \
-  "$ROOT_DIR/scripts/deploy/staging-up.sh" >/dev/null \
-  || fail 'staging-up does not export the API ops image repository to Compose'
-# Assert the literal source text, not the test environment.
-# shellcheck disable=SC2016
-grep -F '"${API_OPS_IMAGE_REPO}:${IMAGE_TAG}"' \
-  "$ROOT_DIR/scripts/deploy/staging-up.sh" >/dev/null \
-  || fail 'staging-up does not build or inspect the exact API ops tag'
-grep -F -- '--target ops' "$ROOT_DIR/scripts/deploy/staging-up.sh" >/dev/null \
-  || fail 'staging-up does not explicitly build the Dockerfile ops target'
-# Assert the literal source text, not the test environment.
-# shellcheck disable=SC2016
-grep -F 'API_OPS_IMAGE_ID=${API_OPS_IMAGE_ID}' \
-  "$ROOT_DIR/scripts/deploy/staging-up.sh" >/dev/null \
-  || fail 'staging-up does not record the immutable API ops image id'
-# Assert the literal Compose interpolation, not the test environment.
-# shellcheck disable=SC2016
-if [ "$(grep -Fc 'image: ${API_OPS_IMAGE_REPO:-feishu-timeline-api-ops}:${IMAGE_TAG:-local}' \
+if [ "$(grep -Fc 'image: ${APPROVED_API_OPS_IMAGE_REPOSITORY:?Set the approved API operations image repository}@sha256:${APPROVED_API_OPS_IMAGE_DIGEST:?Set the approved API operations image digest}' \
   "$ROOT_DIR/deploy/compose.staging.yml")" -ne 2 ]; then
-  fail 'Compose does not assign the separate API ops image to migrate and seed exactly twice'
+  fail 'Compose does not assign the approved API ops digest to migrate and seed exactly twice'
 fi
-if [ "$(grep -Fc '      target: ops' "$ROOT_DIR/deploy/compose.staging.yml")" -ne 2 ]; then
-  fail 'Compose does not bind both short-lived operations to the Dockerfile ops target'
+if grep -F '      target: ops' "$ROOT_DIR/deploy/compose.staging.yml" >/dev/null; then
+  fail 'Compose still permits repository-local API ops image construction'
 fi
 if [ "$(grep -Fc '    working_dir: /app' "$ROOT_DIR/deploy/compose.staging.yml")" -ne 2 ]; then
   fail 'Compose operations do not share the expected minimal /app layout'
@@ -620,13 +691,11 @@ grep -Fx '  apps/api-ops' \
   || fail 'the immutable company source allowlist omits the API ops package'
 
 for script in scripts/deploy/migrate.sh scripts/deploy/seed.sh; do
-  # Assert the literal source text, not the test environment.
-  # shellcheck disable=SC2016
-  grep -F 'API_OPS_IMAGE_REPO="${API_OPS_IMAGE_REPO:-feishu-timeline-api-ops}"' \
-    "$ROOT_DIR/$script" >/dev/null \
-    || fail "$script does not restore the API ops repository default"
-  grep -F 'export API_OPS_IMAGE_REPO' "$ROOT_DIR/$script" >/dev/null \
-    || fail "$script does not export the API ops repository to Compose"
+  grep -Fx 'load_compose_env' "$ROOT_DIR/$script" >/dev/null \
+    || fail "$script does not run the shared six-image preflight"
+  if grep -E 'API_OPS_IMAGE_REPO|load_release_state_if_present' "$ROOT_DIR/$script" >/dev/null; then
+    fail "$script still permits legacy release-state image selection"
+  fi
 done
 
 for variable in \
@@ -740,8 +809,52 @@ for directive in \
     || fail "gce-postcutover-hardening.sh omits download ingress control: $directive"
 done
 
+PREFLIGHT_SOURCE_COMMIT=1111111111111111111111111111111111111111
+PREFLIGHT_SOURCE_TREE=2222222222222222222222222222222222222222
+PREFLIGHT_RELEASE=r27rc1.security-test
+PREFLIGHT_BUILD_TIME=2026-09-04T05:30:00Z
+PREFLIGHT_API_REPOSITORY=registry.example.test/feishu/api
+PREFLIGHT_API_DIGEST=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+PREFLIGHT_API_IMAGE="$PREFLIGHT_API_REPOSITORY@sha256:$PREFLIGHT_API_DIGEST"
+PREFLIGHT_API_OPS_REPOSITORY=registry.example.test/feishu/api-ops
+PREFLIGHT_API_OPS_DIGEST=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+PREFLIGHT_API_OPS_IMAGE="$PREFLIGHT_API_OPS_REPOSITORY@sha256:$PREFLIGHT_API_OPS_DIGEST"
+PREFLIGHT_WEB_REPOSITORY=registry.example.test/feishu/web
+PREFLIGHT_WEB_DIGEST=cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+PREFLIGHT_WEB_IMAGE="$PREFLIGHT_WEB_REPOSITORY@sha256:$PREFLIGHT_WEB_DIGEST"
+PREFLIGHT_POSTGRES_REPOSITORY=registry.example.test/feishu/postgres
+PREFLIGHT_POSTGRES_DIGEST=dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd
+PREFLIGHT_POSTGRES_IMAGE="$PREFLIGHT_POSTGRES_REPOSITORY@sha256:$PREFLIGHT_POSTGRES_DIGEST"
+PREFLIGHT_REDIS_REPOSITORY=registry.example.test/feishu/redis
+PREFLIGHT_REDIS_DIGEST=eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
+PREFLIGHT_REDIS_IMAGE="$PREFLIGHT_REDIS_REPOSITORY@sha256:$PREFLIGHT_REDIS_DIGEST"
+PREFLIGHT_NGINX_REPOSITORY=registry.example.test/feishu/nginx
+PREFLIGHT_NGINX_DIGEST=ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+PREFLIGHT_NGINX_IMAGE="$PREFLIGHT_NGINX_REPOSITORY@sha256:$PREFLIGHT_NGINX_DIGEST"
+PREFLIGHT_MANIFEST="$TMP_DIR/preflight-release-manifest.json"
+printf '%s\n' \
+  '{"schemaVersion":1,"identity":{"sourceCommit":"1111111111111111111111111111111111111111","sourceTree":"2222222222222222222222222222222222222222","release":"r27rc1.security-test","buildTime":"2026-09-04T05:30:00Z"},"images":{"api":{"imageId":"sha256:4444444444444444444444444444444444444444444444444444444444444444","repositoryDigest":"registry.example.test/feishu/api@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"apiOps":{"imageId":"sha256:5555555555555555555555555555555555555555555555555555555555555555","repositoryDigest":"registry.example.test/feishu/api-ops@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},"web":{"imageId":"sha256:6666666666666666666666666666666666666666666666666666666666666666","repositoryDigest":"registry.example.test/feishu/web@sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"},"postgres":{"imageId":"sha256:7777777777777777777777777777777777777777777777777777777777777777","repositoryDigest":"registry.example.test/feishu/postgres@sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"},"redis":{"imageId":"sha256:8888888888888888888888888888888888888888888888888888888888888888","repositoryDigest":"registry.example.test/feishu/redis@sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"},"nginx":{"imageId":"sha256:9999999999999999999999999999999999999999999999999999999999999999","repositoryDigest":"registry.example.test/feishu/nginx@sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"}}}' \
+  >"$PREFLIGHT_MANIFEST"
+
 preflight_base=(
   'DEPLOYMENT_ENV=staging'
+  "APPROVED_RELEASE_MANIFEST=$PREFLIGHT_MANIFEST"
+  "APPROVED_API_IMAGE_REPOSITORY=$PREFLIGHT_API_REPOSITORY"
+  "APPROVED_API_IMAGE_DIGEST=$PREFLIGHT_API_DIGEST"
+  "APPROVED_API_OPS_IMAGE_REPOSITORY=$PREFLIGHT_API_OPS_REPOSITORY"
+  "APPROVED_API_OPS_IMAGE_DIGEST=$PREFLIGHT_API_OPS_DIGEST"
+  "APPROVED_WEB_IMAGE_REPOSITORY=$PREFLIGHT_WEB_REPOSITORY"
+  "APPROVED_WEB_IMAGE_DIGEST=$PREFLIGHT_WEB_DIGEST"
+  "APPROVED_POSTGRES_IMAGE_REPOSITORY=$PREFLIGHT_POSTGRES_REPOSITORY"
+  "APPROVED_POSTGRES_IMAGE_DIGEST=$PREFLIGHT_POSTGRES_DIGEST"
+  "APPROVED_REDIS_IMAGE_REPOSITORY=$PREFLIGHT_REDIS_REPOSITORY"
+  "APPROVED_REDIS_IMAGE_DIGEST=$PREFLIGHT_REDIS_DIGEST"
+  "APPROVED_NGINX_IMAGE_REPOSITORY=$PREFLIGHT_NGINX_REPOSITORY"
+  "APPROVED_NGINX_IMAGE_DIGEST=$PREFLIGHT_NGINX_DIGEST"
+  "EXPECTED_SOURCE_COMMIT=$PREFLIGHT_SOURCE_COMMIT"
+  "EXPECTED_SOURCE_TREE=$PREFLIGHT_SOURCE_TREE"
+  "EXPECTED_RELEASE=$PREFLIGHT_RELEASE"
+  "EXPECTED_BUILD_TIME=$PREFLIGHT_BUILD_TIME"
   'AUTH_MOCK_ENABLED=false'
   'NEXT_PUBLIC_ENABLE_MOCK_LOGIN=false'
   'POSTGRES_USER=postgres'
@@ -843,14 +956,6 @@ if run_staging_preflight \
 fi
 
 PINNED_NODE_IMAGE='node:24-alpine@sha256:d32cdf619f63fe0471182d08996dd516c6275bb5fd31ae06e55a570bd9e1ad43'
-grep -F "NODE_IMAGE=\"\${NODE_IMAGE:-$PINNED_NODE_IMAGE}\"" \
-  "$ROOT_DIR/scripts/deploy/staging-up.sh" >/dev/null \
-  || fail 'staging-up does not default NODE_IMAGE to the Dockerfile-pinned digest'
-# Assert the literal source text, not the test environment.
-# shellcheck disable=SC2016
-grep -F 'validate_digest_pinned_image NODE_IMAGE "$NODE_IMAGE"' \
-  "$ROOT_DIR/scripts/deploy/staging-up.sh" >/dev/null \
-  || fail 'staging-up does not validate NODE_IMAGE before Docker builds'
 
 run_pinned_image_validation() {
   local expected="$1"
@@ -886,40 +991,10 @@ for unsafe_node_image in \
   run_pinned_image_validation rejected NODE_IMAGE "$unsafe_node_image"
 done
 
-assert_staging_image_guard() {
-  local label="$1"
-  local pinned_image="$2"
-  local mutable_image="${pinned_image%@sha256:*}"
-  local malicious_image="${mutable_image};command@sha256:${pinned_image##*@sha256:}"
-
-  # Assert the literal source text, not the test environment.
-  grep -F "validate_digest_pinned_image $label \"\$$label\"" \
-    "$ROOT_DIR/scripts/deploy/staging-up.sh" >/dev/null \
-    || fail "staging-up does not validate $label before image use"
-  run_pinned_image_validation accepted "$label" "$pinned_image"
-  run_pinned_image_validation rejected "$label" "$mutable_image"
-  run_pinned_image_validation rejected "$label" "$malicious_image"
-}
-
-assert_staging_image_guard \
-  POSTGRES_BASE_IMAGE \
-  'postgres:16-alpine@sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777'
-assert_staging_image_guard \
-  REDIS_IMAGE \
-  'redis:7-alpine@sha256:6ab0b6e7381779332f97b8ca76193e45b0756f38d4c0dcda72dbb3c32061ab99'
-assert_staging_image_guard \
-  NGINX_IMAGE \
-  'nginx:stable-alpine@sha256:ec664813a30459a8e7176315268a623f6b31abc370eeac51c7de81cd4ec4d451'
-
-scan_call="$TMP_DIR/staging-image-scan-call.txt"
-awk '
-  /scripts\/security\/scan-production-images\.sh/ { capture = 1 }
-  capture { print }
-  capture && $0 !~ /\\[[:space:]]*$/ { exit }
-' "$ROOT_DIR/scripts/deploy/staging-up.sh" >"$scan_call"
-# Assert the literal scan argument, not the test environment.
-# shellcheck disable=SC2016
-grep -F '"${API_OPS_IMAGE_REPO}:${IMAGE_TAG}"' "$scan_call" >/dev/null \
-  || fail 'staging-up omits the production-reachable API ops image from the image scan'
+run_pinned_image_validation accepted RELEASE_IMAGE "$PREFLIGHT_API_IMAGE"
+run_pinned_image_validation rejected RELEASE_IMAGE \
+  'replace-with-approved-api@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+run_pinned_image_validation rejected RELEASE_IMAGE \
+  'registry.example.test/feishu/api@sha256:0000000000000000000000000000000000000000000000000000000000000000'
 
 printf 'PASS: deployment argument and bootstrap security tests\n'
