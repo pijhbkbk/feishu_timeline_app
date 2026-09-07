@@ -7416,3 +7416,14 @@ AWAITING_OWNER_REVIEW_V2
 - 环境：仅本轮专用 localhost / 临时 PostgreSQL 与 Redis，模拟登录；三个临时容器和本轮 Web/API 已关闭。未访问或部署 staging/production，未 push、main merge 或 tag；main 未改变。
 - 风险/下一决策：当前修复达到 CODE_IMPLEMENTED / LOCAL_VERIFIED；整个发布候选尚受 manifest 合同、Admin/Suppliers 现存同类锁路径、正式 source/image 证据、目标 platform 及迁移/恢复授权约束。未关闭新 Finding、未接受风险，不自动进入远端验收。产品状态 AWAITING_PRODUCT_OWNER_CONFIRMATION。
 - 回执与日志索引：[R27RC2_LOCAL_REPAIR_20260907.md](handoff/R27RC2_LOCAL_REPAIR_20260907.md)。原补丁、失败和成功日志、截图/网络及摘要在 /private/tmp/rc2-resume-20260907/。
+
+
+### R27RC2 Admin/Suppliers 与 manifest 本地候选收口（2026-09-07）
+
+- 授权与起点：所有者明确授权锁修复、manifest 合同、验证、独立审查和本地提交；从干净 d4ebd25152cb8c2991918ad2dc5fbe2c1c169dde 续接，未触碰原 main 工作树。
+- 产品：c37f8103e5be35cb951ab3f022ffee80add6038e；tree 25eb8f1352a8602d2a0c72438ab2b23fa74152c5。10 文件：Admin/Supplier 八处事务锁及直接测试，现有 manifest helper/测试/部署合同文档。既有补丁、legacy restore fail-closed、Web、依赖、schema/migration/CI 保留。
+- 验证：23 定向真实 PostgreSQL、151 受影响、API 全量 1320、HTTP 29 请求、manifest 18、原 health/shell 安全回归及 API lint/typecheck/build/Prisma PASS；独立只读 G4_DIFF PASS。原失败日志保留。Web 未变结果按绑定复用；正式页面 Placeholder 0。
+- Finding：唯一 Ledger 新增 R27-RC2-ADVISORY-001 与 R27-RC2-CURRENT-002，均 fixed_diff_verified；原七条历史原文保留，schema 未改，无风险接受或全量关闭。
+- 本机证据：test-results/r27rc2/local-candidate-closure-20260907-034253；上轮35项证据已持久保存并核验于 local-repair-20260907，未提交原始日志。API 和本轮两个临时容器已清理。
+- 状态：CODE_IMPLEMENTED / LOCAL_VERIFIED，仅本轮本地阻断清除。正式 source/image、目标 platform/不可变镜像、外部恢复控制器、Reviews 生产索引方案、具体环境/真实飞书及负责人验收仍未完成。无远端查询/push/main merge/tag/部署，staging/production 未访问，AWAITING_PRODUCT_OWNER_CONFIRMATION。
+- 完整身份、逐锁覆盖、证据与外部输入：[本轮收口回执](handoff/R27RC2_LOCAL_CANDIDATE_CLOSURE_20260907.md)。本条与回执/Finding 为产品之后独立 evidence commit，不回写提交自身身份。

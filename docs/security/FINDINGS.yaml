@@ -669,6 +669,339 @@
         {"at": "2026-08-18T01:55:36Z", "transition": "fixed_diff_verified->fixed_full_verified", "actor": "R27AD standalone API G3", "reason": "Standalone API G3 passed on exact HEAD 14d9fe62550fd6487c8633937f511ab80e2a81ea and tree 516b66916bae8fd4dd05975ee9b7766c89dbceaf; API lint, typecheck, canonical full test and build passed; 124 test files and 1196 tests passed, 0 failed and 0 skipped; all three D015 relevant test files executed."},
         {"at": "2026-08-18T02:05:36Z", "transition": "fixed_full_verified->closed", "actor": "R27AE closure recorder", "reason": "Closure was recorded after exact-identity targeted, affected-regression, independent G4_DIFF V3 and standalone API G3 evidence all passed. Historical migration and release/deployment blockers remain separate; production deployment was not authorized."}
       ]
+    },
+    {
+      "id": "R27-RC2-ADVISORY-001",
+      "title": "Admin/Suppliers advisory lock void results abort service writes",
+      "status": "fixed_diff_verified",
+      "severity": "medium",
+      "confidence": "high",
+      "classification": "pre_existing",
+      "cwe": null,
+      "source": {
+        "type": "manual",
+        "report_path": "docs/handoff/R27RC2_LOCAL_CANDIDATE_CLOSURE_20260907.md",
+        "binding": {
+          "commit": "d4ebd25152cb8c2991918ad2dc5fbe2c1c169dde",
+          "tree": "bc1758844081f99333fed7be6a216775d0df0220",
+          "tool_name": "local Node/Vitest execution",
+          "tool_version": "Node 24.14.0; Vitest 3.2.7; Prisma 6.19.3",
+          "command": "Baseline real PostgreSQL representative service writes",
+          "environment": "Isolated local rc2_closure; no staging/production access. See execution-results.json for command context.",
+          "result_sha256": "15c23504bd42bb19d421cde748094dd8db8d99e62d40effa2e64aa0c72875370",
+          "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app-r27rc2-repair/test-results/r27rc2/local-candidate-closure-20260907-034253/before-fix.log",
+          "config_sha256": "9186715db8a3fb724b2d856067bb69f320204beb4027b8672a0f2b263503d962",
+          "recorded_at": "2026-09-07T05:02:24Z"
+        }
+      },
+      "scope": {
+        "component": "Admin/Suppliers service transaction locks",
+        "affected_files": [
+          "apps/api/src/modules/admin/admin-control-center.organization-concurrency.spec.ts",
+          "apps/api/src/modules/admin/admin-control-center.saved-view-bounds.spec.ts",
+          "apps/api/src/modules/admin/admin-control-center.service.ts",
+          "apps/api/src/modules/admin/admin-control-center.user-status.spec.ts",
+          "apps/api/src/modules/admin/admin-supplier-locks.postgres.integration.spec.ts",
+          "apps/api/src/modules/suppliers/suppliers.mutation-integrity.spec.ts",
+          "apps/api/src/modules/suppliers/suppliers.service.ts"
+        ],
+        "entry_points": [
+          "POST /api/admin/saved-views",
+          "PATCH /api/admin/projects/:id/basic-info",
+          "POST /api/admin/users/:id/status-change",
+          "POST /api/admin/organization/departments",
+          "POST /api/suppliers",
+          "PATCH /api/suppliers/:id"
+        ],
+        "trust_boundary": "Authenticated service writes crossing Prisma/PostgreSQL transaction and concurrent-state boundaries."
+      },
+      "evidence": {
+        "reachable": true,
+        "production_exposed": null,
+        "reproduction_path": "Three baseline normal service paths fail Prisma P2010 on void; eight source sites share root cause. 23 fixed real-DB cases trace every site and observe distinct PIDs/blockers; 29 HTTP requests cover guards and service writes.",
+        "proof_gap": "Production exposure not inspected; no G4_FULL/security clearance or real Feishu/environment acceptance asserted."
+      },
+      "root_cause_cluster": "PRISMA_POSTGRES_ADVISORY_VOID_DESERIALIZATION",
+      "security_invariants": [
+        "SEC-004",
+        "SEC-015"
+      ],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
+      "fix": {
+        "task_id": "R27RC2_LOCAL_CANDIDATE_CLOSURE",
+        "branch": "security/r27rc2-candidate-repair",
+        "commit": "c37f8103e5be35cb951ab3f022ffee80add6038e",
+        "tree": "25eb8f1352a8602d2a0c72438ab2b23fa74152c5",
+        "changed_files": [
+          "apps/api/src/modules/admin/admin-control-center.organization-concurrency.spec.ts",
+          "apps/api/src/modules/admin/admin-control-center.saved-view-bounds.spec.ts",
+          "apps/api/src/modules/admin/admin-control-center.service.ts",
+          "apps/api/src/modules/admin/admin-control-center.user-status.spec.ts",
+          "apps/api/src/modules/admin/admin-supplier-locks.postgres.integration.spec.ts",
+          "apps/api/src/modules/suppliers/suppliers.mutation-integrity.spec.ts",
+          "apps/api/src/modules/suppliers/suppliers.service.ts"
+        ]
+      },
+      "verification": {
+        "targeted": {
+          "status": "pass",
+          "binding": {
+            "commit": "c37f8103e5be35cb951ab3f022ffee80add6038e",
+            "tree": "25eb8f1352a8602d2a0c72438ab2b23fa74152c5",
+            "tool_name": "local Node/Vitest execution",
+            "tool_version": "Node 24.14.0; Vitest 3.2.7; Prisma 6.19.3",
+            "command": "vitest run --cache=false with explicit task PostgreSQL test URLs",
+            "environment": "Isolated local rc2_closure; no staging/production access. See execution-results.json for command context.",
+            "result_sha256": "92cfc4897f717d5aadf88de7e4c8d0c99ec86e0efe73caf31ea8aba75d1f3cf9",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app-r27rc2-repair/test-results/r27rc2/local-candidate-closure-20260907-034253/api-full.log",
+            "config_sha256": "9186715db8a3fb724b2d856067bb69f320204beb4027b8672a0f2b263503d962",
+            "recorded_at": "2026-09-07T05:02:24Z"
+          },
+          "notes": "1320 total PASS includes final 23 Admin/Suppliers real-DB cases; no DB skip"
+        },
+        "affected_regression": {
+          "status": "pass",
+          "binding": {
+            "commit": "c37f8103e5be35cb951ab3f022ffee80add6038e",
+            "tree": "25eb8f1352a8602d2a0c72438ab2b23fa74152c5",
+            "tool_name": "local Node/Vitest execution",
+            "tool_version": "Node 24.14.0; Vitest 3.2.7; Prisma 6.19.3",
+            "command": "Recorded applicable API and manifest consumer regressions",
+            "environment": "Isolated local rc2_closure; no staging/production access. See execution-results.json for command context.",
+            "result_sha256": "6879cc42ce46304106d5d02862894201ea0c9c0dba5c4093e7f3e2aa901d2c50",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app-r27rc2-repair/test-results/r27rc2/local-candidate-closure-20260907-034253/execution-results.json",
+            "config_sha256": "9186715db8a3fb724b2d856067bb69f320204beb4027b8672a0f2b263503d962",
+            "recorded_at": "2026-09-07T05:02:24Z"
+          },
+          "notes": "API 1320, HTTP 29, manifest 18, health/shell, lint/typecheck/build/Prisma PASS; unchanged Web results reused explicitly."
+        },
+        "diff_review": {
+          "status": "pass",
+          "binding": {
+            "commit": "c37f8103e5be35cb951ab3f022ffee80add6038e",
+            "tree": "25eb8f1352a8602d2a0c72438ab2b23fa74152c5",
+            "tool_name": "Codex independent read-only context",
+            "tool_version": "native collaboration interface; model version not exposed",
+            "command": "Review exact ten-file content manifest and corresponding logs",
+            "environment": "Isolated local rc2_closure; no staging/production access. See execution-results.json for command context.",
+            "result_sha256": "6235ba49e0171f802410d2136f046c6602ec5e9b612b76e4779c32356c0aca9b",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app-r27rc2-repair/test-results/r27rc2/local-candidate-closure-20260907-034253/independent-review.json",
+            "config_sha256": "9186715db8a3fb724b2d856067bb69f320204beb4027b8672a0f2b263503d962",
+            "recorded_at": "2026-09-07T05:02:24Z"
+          },
+          "notes": "Independent /root/independent_review; exact ten-file digest matches committed product. No organization approval implied."
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Applicable local API checks passed; full security review, formal exact-candidate source/image evidence and external acceptance not executed. Not eligible for fixed_full_verified/closed."
+        }
+      },
+      "history": [
+        {
+          "at": "2026-09-07T05:02:24Z",
+          "transition": "null->candidate",
+          "actor": "Codex main executor (local evidence registration)",
+          "reason": "Locally register observed current issue; preserve all seven existing historical records."
+        },
+        {
+          "at": "2026-09-07T05:02:24Z",
+          "transition": "candidate->confirmed",
+          "actor": "Codex main executor (local evidence registration)",
+          "reason": "Baseline execution and bounded source/consumer review confirm current behavior."
+        },
+        {
+          "at": "2026-09-07T05:02:24Z",
+          "transition": "confirmed->accepted_for_fix",
+          "actor": "Codex main executor (local evidence registration)",
+          "reason": "Owner explicitly authorized Admin/Suppliers, manifest contract, validation, independent review and local commits."
+        },
+        {
+          "at": "2026-09-07T05:02:24Z",
+          "transition": "accepted_for_fix->in_progress",
+          "actor": "Codex main executor (local evidence registration)",
+          "reason": "Apply minimal authorized repair preserving runtime/security boundaries."
+        },
+        {
+          "at": "2026-09-07T05:02:24Z",
+          "transition": "in_progress->fixed_target_verified",
+          "actor": "Codex main executor (local evidence registration)",
+          "reason": "Final local applicable regression passes; exact source identity bound to product checkpoint."
+        },
+        {
+          "at": "2026-09-07T05:02:24Z",
+          "transition": "fixed_target_verified->fixed_diff_verified",
+          "actor": "/root/independent_review",
+          "reason": "Independent read-only final diff review PASS; no release approval or Finding closure."
+        }
+      ],
+      "closure": null
+    },
+    {
+      "id": "R27-RC2-CURRENT-002",
+      "title": "Runtime and candidate evidence manifest contract conflict (source R27RC2-CURRENT-002)",
+      "status": "fixed_diff_verified",
+      "severity": "medium",
+      "confidence": "high",
+      "classification": "pre_existing",
+      "cwe": null,
+      "source": {
+        "type": "manual",
+        "report_path": "docs/handoff/R27RC2_LOCAL_CANDIDATE_CLOSURE_20260907.md",
+        "binding": {
+          "commit": "d4ebd25152cb8c2991918ad2dc5fbe2c1c169dde",
+          "tree": "bc1758844081f99333fed7be6a216775d0df0220",
+          "tool_name": "local Node/Vitest execution",
+          "tool_version": "Node 24.14.0; Vitest 3.2.7; Prisma 6.19.3",
+          "command": "Baseline runtime rich-field rejection",
+          "environment": "Isolated local rc2_closure; no staging/production access. See execution-results.json for command context.",
+          "result_sha256": "3de5556ef3ae3e7ff56cdf3c00d6581aaf538f657a2f484629420ecc182326e8",
+          "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app-r27rc2-repair/test-results/r27rc2/local-candidate-closure-20260907-034253/manifest-before.log",
+          "config_sha256": "9186715db8a3fb724b2d856067bb69f320204beb4027b8672a0f2b263503d962",
+          "recorded_at": "2026-09-07T05:02:24Z"
+        }
+      },
+      "scope": {
+        "component": "release identity and candidate evidence",
+        "affected_files": [
+          "docs/STAGING_DEPLOYMENT.md",
+          "scripts/deploy/release-identity.mjs",
+          "scripts/deploy/tests/release-identity.test.mjs"
+        ],
+        "entry_points": [
+          "generate-candidate-evidence",
+          "verify-candidate-evidence",
+          "validate-manifest",
+          "validate-approval",
+          "verify-evidence"
+        ],
+        "trust_boundary": "Audited candidate facts to immutable runtime/image identity; does not grant root or deployment authority."
+      },
+      "evidence": {
+        "reachable": true,
+        "production_exposed": null,
+        "reproduction_path": "At d4ebd25 strict runtime v1 rejects required rich fields. Original external report R27RC2-CURRENT-002 is referenced in the handoff; canonical ID is schema-compatible R27-RC2-CURRENT-002, not a second status source.",
+        "proof_gap": "No target-platform images or formal source/image scan artifacts issued; G4_FULL and external acceptance remain pending."
+      },
+      "root_cause_cluster": "RUNTIME_RICH_MANIFEST_CONTRACT_DRIFT",
+      "security_invariants": [
+        "SEC-017",
+        "SEC-021"
+      ],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
+      "fix": {
+        "task_id": "R27RC2_LOCAL_CANDIDATE_CLOSURE",
+        "branch": "security/r27rc2-candidate-repair",
+        "commit": "c37f8103e5be35cb951ab3f022ffee80add6038e",
+        "tree": "25eb8f1352a8602d2a0c72438ab2b23fa74152c5",
+        "changed_files": [
+          "docs/STAGING_DEPLOYMENT.md",
+          "scripts/deploy/release-identity.mjs",
+          "scripts/deploy/tests/release-identity.test.mjs"
+        ]
+      },
+      "verification": {
+        "targeted": {
+          "status": "pass",
+          "binding": {
+            "commit": "c37f8103e5be35cb951ab3f022ffee80add6038e",
+            "tree": "25eb8f1352a8602d2a0c72438ab2b23fa74152c5",
+            "tool_name": "local Node/Vitest execution",
+            "tool_version": "Node 24.14.0; Vitest 3.2.7; Prisma 6.19.3",
+            "command": "node --test scripts/deploy/tests/release-identity.test.mjs",
+            "environment": "Isolated local rc2_closure; no staging/production access. See execution-results.json for command context.",
+            "result_sha256": "89f25b836661a369648a2b78ab506a0c3d7842dfb86da70d4e6700da6b907295",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app-r27rc2-repair/test-results/r27rc2/local-candidate-closure-20260907-034253/manifest.log",
+            "config_sha256": "9186715db8a3fb724b2d856067bb69f320204beb4027b8672a0f2b263503d962",
+            "recorded_at": "2026-09-07T05:02:24Z"
+          },
+          "notes": "18 manifest tests PASS"
+        },
+        "affected_regression": {
+          "status": "pass",
+          "binding": {
+            "commit": "c37f8103e5be35cb951ab3f022ffee80add6038e",
+            "tree": "25eb8f1352a8602d2a0c72438ab2b23fa74152c5",
+            "tool_name": "local Node/Vitest execution",
+            "tool_version": "Node 24.14.0; Vitest 3.2.7; Prisma 6.19.3",
+            "command": "Recorded applicable API and manifest consumer regressions",
+            "environment": "Isolated local rc2_closure; no staging/production access. See execution-results.json for command context.",
+            "result_sha256": "6879cc42ce46304106d5d02862894201ea0c9c0dba5c4093e7f3e2aa901d2c50",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app-r27rc2-repair/test-results/r27rc2/local-candidate-closure-20260907-034253/execution-results.json",
+            "config_sha256": "9186715db8a3fb724b2d856067bb69f320204beb4027b8672a0f2b263503d962",
+            "recorded_at": "2026-09-07T05:02:24Z"
+          },
+          "notes": "API 1320, HTTP 29, manifest 18, health/shell, lint/typecheck/build/Prisma PASS; unchanged Web results reused explicitly."
+        },
+        "diff_review": {
+          "status": "pass",
+          "binding": {
+            "commit": "c37f8103e5be35cb951ab3f022ffee80add6038e",
+            "tree": "25eb8f1352a8602d2a0c72438ab2b23fa74152c5",
+            "tool_name": "Codex independent read-only context",
+            "tool_version": "native collaboration interface; model version not exposed",
+            "command": "Review exact ten-file content manifest and corresponding logs",
+            "environment": "Isolated local rc2_closure; no staging/production access. See execution-results.json for command context.",
+            "result_sha256": "6235ba49e0171f802410d2136f046c6602ec5e9b612b76e4779c32356c0aca9b",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app-r27rc2-repair/test-results/r27rc2/local-candidate-closure-20260907-034253/independent-review.json",
+            "config_sha256": "9186715db8a3fb724b2d856067bb69f320204beb4027b8672a0f2b263503d962",
+            "recorded_at": "2026-09-07T05:02:24Z"
+          },
+          "notes": "Independent /root/independent_review; exact ten-file digest matches committed product. No organization approval implied."
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Applicable local API checks passed; full security review, formal exact-candidate source/image evidence and external acceptance not executed. Not eligible for fixed_full_verified/closed."
+        }
+      },
+      "history": [
+        {
+          "at": "2026-09-07T05:02:24Z",
+          "transition": "null->candidate",
+          "actor": "Codex main executor (local evidence registration)",
+          "reason": "Locally register observed current issue; preserve all seven existing historical records."
+        },
+        {
+          "at": "2026-09-07T05:02:24Z",
+          "transition": "candidate->confirmed",
+          "actor": "Codex main executor (local evidence registration)",
+          "reason": "Baseline execution and bounded source/consumer review confirm current behavior."
+        },
+        {
+          "at": "2026-09-07T05:02:24Z",
+          "transition": "confirmed->accepted_for_fix",
+          "actor": "Codex main executor (local evidence registration)",
+          "reason": "Owner explicitly authorized Admin/Suppliers, manifest contract, validation, independent review and local commits."
+        },
+        {
+          "at": "2026-09-07T05:02:24Z",
+          "transition": "accepted_for_fix->in_progress",
+          "actor": "Codex main executor (local evidence registration)",
+          "reason": "Apply minimal authorized repair preserving runtime/security boundaries."
+        },
+        {
+          "at": "2026-09-07T05:02:24Z",
+          "transition": "in_progress->fixed_target_verified",
+          "actor": "Codex main executor (local evidence registration)",
+          "reason": "Final local applicable regression passes; exact source identity bound to product checkpoint."
+        },
+        {
+          "at": "2026-09-07T05:02:24Z",
+          "transition": "fixed_target_verified->fixed_diff_verified",
+          "actor": "/root/independent_review",
+          "reason": "Independent read-only final diff review PASS; no release approval or Finding closure."
+        }
+      ],
+      "closure": null
     }
   ]
 }
