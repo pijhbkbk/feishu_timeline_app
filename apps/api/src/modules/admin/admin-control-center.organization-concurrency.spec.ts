@@ -174,8 +174,6 @@ describe('AdminControlCenterService organization concurrency integrity', () => {
     const tx = baseTransaction();
     tx.$queryRaw = vi
       .fn()
-      .mockResolvedValueOnce([{ locked: true }])
-      .mockResolvedValueOnce([{ locked: true }])
       .mockResolvedValueOnce([
         { id: parent.id, parentId: existing.id, depth: 1, cycle: false },
         { id: existing.id, parentId: parent.id, depth: 2, cycle: false },

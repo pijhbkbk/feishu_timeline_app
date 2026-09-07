@@ -29,6 +29,7 @@ function createHarness() {
   const tx = {
     adminSavedView,
     $queryRaw: vi.fn().mockResolvedValue([{ locked: 1 }]),
+    $executeRaw: vi.fn().mockResolvedValue(0),
   };
   const prisma = {
     ...tx,

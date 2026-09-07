@@ -2,6 +2,11 @@
 
 import {
   chmodSync,
+  constants,
+  openSync,
+  closeSync,
+  fstatSync,
+  readSync,
   lstatSync,
   readFileSync,
   realpathSync,
@@ -9,6 +14,7 @@ import {
   rmSync,
   writeFileSync,
 } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { basename, dirname, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -191,6 +197,132 @@ export function validateReleaseManifest(value) {
     nginx: validateImageIdentity(value.images.nginx, 'release manifest.images.nginx'),
   });
   return Object.freeze({ schemaVersion: 1, identity, images });
+}
+
+
+// Runtime v1 stays small. This separate envelope binds review artifacts to it;
+// neither a generated envelope nor a successful consistency check grants approval.
+const CANDIDATE_CHECKS = ['g3', 'g4Diff', 'g4Full', 'secrets', 'sast', 'sca', 'images'];
+const MAX_ARTIFACT_BYTES = 16 * 1024 * 1024;
+
+function sha256(bytes) {
+  return createHash('sha256').update(bytes).digest('hex');
+}
+
+function validateArtifactReference(value, context) {
+  assertion(isPlainObject(value), `${context} must be an object.`);
+  assertExactKeys(value, ['path', 'sha256'], context);
+  assertString(value.path, `${context}.path`, 512);
+  assertion(value.path.split('/').every((part) => /^[A-Za-z0-9_.-]+$/.test(part) && part !== '.' && part !== '..'),
+    `${context}.path must be a clean relative artifact path.`);
+  assertion(typeof value.sha256 === 'string' && IMAGE_DIGEST_RE.test(value.sha256), `${context}.sha256 must be lowercase SHA-256.`);
+  return Object.freeze({ path: value.path, sha256: value.sha256 });
+}
+
+export function releaseManifestSha256(value) {
+  return sha256(JSON.stringify(validateReleaseManifest(value)));
+}
+
+export function validateCandidateEvidenceManifest(value) {
+  assertion(isPlainObject(value), 'candidate evidence manifest must be an object.');
+  assertExactKeys(value, ['schemaVersion', 'kind', 'identity', 'runtimeManifestSha256', 'parentCommit', 'targetPlatform', 'platformEvidence', 'checks'], 'candidate evidence manifest');
+  assertion(value.schemaVersion === 1 && value.kind === 'candidate-evidence', 'unsupported candidate evidence kind or version.');
+  const identity = validateBuildIdentity(value.identity, 'candidate evidence identity');
+  assertion(typeof value.runtimeManifestSha256 === 'string' && IMAGE_DIGEST_RE.test(value.runtimeManifestSha256), 'runtimeManifestSha256 must be lowercase SHA-256.');
+  assertion(typeof value.parentCommit === 'string' && FULL_GIT_OBJECT_RE.test(value.parentCommit) && !/^0{40}$/.test(value.parentCommit), 'parentCommit must be a full non-placeholder Git id.');
+  assertion(value.targetPlatform === null || ['linux/amd64', 'linux/arm64'].includes(value.targetPlatform), 'unsupported targetPlatform.');
+  const platformEvidence = value.platformEvidence === null ? null : validateArtifactReference(value.platformEvidence, 'platformEvidence');
+  assertion(isPlainObject(value.checks), 'candidate evidence checks must be an object.');
+  assertExactKeys(value.checks, CANDIDATE_CHECKS, 'candidate evidence checks');
+  const checks = Object.fromEntries(CANDIDATE_CHECKS.map((name) => {
+    const check = value.checks[name];
+    assertion(isPlainObject(check), `${name} check must be an object.`);
+    assertExactKeys(check, ['status', 'artifact'], `${name} check`);
+    assertion(['PASS', 'FAIL', 'NOT_RUN'].includes(check.status), `${name} check status is invalid.`);
+    if (check.status === 'NOT_RUN') {
+      assertion(check.artifact === null, `${name} NOT_RUN must have no artifact.`);
+      return [name, Object.freeze({ status: 'NOT_RUN', artifact: null })];
+    }
+    return [name, Object.freeze({ status: check.status, artifact: validateArtifactReference(check.artifact, `${name} artifact`) })];
+  }));
+  return Object.freeze({ schemaVersion: 1, kind: 'candidate-evidence', identity,
+    runtimeManifestSha256: value.runtimeManifestSha256, parentCommit: value.parentCommit,
+    targetPlatform: value.targetPlatform, platformEvidence, checks: Object.freeze(checks) });
+}
+
+export function candidateEvidenceSha256(value) {
+  return sha256(JSON.stringify(validateCandidateEvidenceManifest(value)));
+}
+
+export function generateCandidateEvidence({ manifest, details }) {
+  const runtime = validateReleaseManifest(manifest);
+  assertion(isPlainObject(details), 'candidate evidence details must be an object.');
+  assertExactKeys(details, ['parentCommit', 'targetPlatform', 'platformEvidence', 'checks'], 'candidate evidence details');
+  return validateCandidateEvidenceManifest({ schemaVersion: 1, kind: 'candidate-evidence',
+    identity: runtime.identity, runtimeManifestSha256: releaseManifestSha256(runtime), ...details });
+}
+
+function readBoundArtifact(root, reference) {
+  // Resolve every component. O_NOFOLLOW and the fd size check also protect the
+  // final open; use an immutable, trusted local evidence directory during review.
+  const base = realpathSync(root);
+  assertion(lstatSync(base).isDirectory(), 'evidence root must be a directory.');
+  const parts = reference.path.split('/');
+  let path = base;
+  for (const [index, part] of parts.entries()) {
+    path = resolve(path, part);
+    const stat = lstatSync(path);
+    assertion(!stat.isSymbolicLink(), 'evidence artifact must not traverse a symlink.');
+    assertion(index === parts.length - 1 ? stat.isFile() : stat.isDirectory(), 'evidence artifact must be a regular file within directories.');
+  }
+  const descriptor = openSync(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+  try {
+    const stat = fstatSync(descriptor);
+    assertion(stat.isFile() && stat.size > 0 && stat.size <= MAX_ARTIFACT_BYTES, 'evidence artifact has an invalid type or size.');
+    const buffer = Buffer.alloc(stat.size + 1);
+    let length = 0;
+    while (length < buffer.length) {
+      const count = readSync(descriptor, buffer, length, buffer.length - length, null);
+      if (count === 0) break;
+      length += count;
+    }
+    const bytes = buffer.subarray(0, length);
+    assertion(bytes.length === stat.size && bytes.length <= MAX_ARTIFACT_BYTES, 'evidence artifact changed size during reading.');
+    assertion(sha256(bytes) === reference.sha256, 'evidence artifact SHA-256 mismatch.');
+    return bytes;
+  } finally {
+    closeSync(descriptor);
+  }
+}
+
+export function verifyCandidateEvidence({ manifest, evidence, expectedIdentity, expectedEvidenceSha256, evidenceRoot }) {
+  const runtime = validateReleaseManifest(manifest);
+  const candidate = validateCandidateEvidenceManifest(evidence);
+  assertSameIdentity(runtime.identity, validateBuildIdentity(expectedIdentity), 'expected identity');
+  assertSameIdentity(runtime.identity, candidate.identity, 'candidate evidence identity');
+  assertion(candidate.runtimeManifestSha256 === releaseManifestSha256(runtime), 'candidate runtime manifest SHA-256 mismatch.');
+  assertion(typeof expectedEvidenceSha256 === 'string' && IMAGE_DIGEST_RE.test(expectedEvidenceSha256) &&
+    candidateEvidenceSha256(candidate) === expectedEvidenceSha256, 'external candidate evidence SHA-256 mismatch.');
+  assertion(candidate.targetPlatform !== null && candidate.platformEvidence !== null, 'target platform and image platform evidence are required.');
+  for (const name of CANDIDATE_CHECKS) {
+    assertion(candidate.checks[name].status === 'PASS', `${name} is not PASS; candidate evidence is incomplete.`);
+    readBoundArtifact(evidenceRoot, candidate.checks[name].artifact);
+  }
+  const platformBytes = readBoundArtifact(evidenceRoot, candidate.platformEvidence);
+  assertion(platformBytes.length <= MAX_JSON_BYTES, 'platform evidence exceeds JSON size limit.');
+  let imageInspects;
+  try { imageInspects = JSON.parse(platformBytes.toString('utf8')); }
+  catch { throw new Error('platform evidence must contain valid JSON.'); }
+  assertion(isPlainObject(imageInspects), 'platform evidence must contain image inspections.');
+  assertExactKeys(imageInspects, IMAGE_KEYS, 'platform image inspections');
+  for (const name of IMAGE_KEYS) {
+    verifyImageEvidence({ name, approved: runtime.images[name], repositoryDigest: runtime.images[name].repositoryDigest,
+      imageInspect: imageInspects[name], identity: runtime.identity, verifyBuildLabels: ['api', 'apiOps', 'web'].includes(name) });
+    const inspected = firstInspectObject(imageInspects[name], name);
+    assertion(`${inspected.Os}/${inspected.Architecture}` === candidate.targetPlatform,
+      `${name} inspected platform does not match targetPlatform.`);
+  }
+  return candidate;
 }
 
 export function validateReleaseApproval({
@@ -532,6 +664,33 @@ function runCli(argv) {
   if (command === 'validate-manifest') {
     const options = parseOptions(rest, new Set(['--manifest']));
     validateReleaseManifest(readJsonFile(options['--manifest'], 'release manifest'));
+    return;
+  }
+
+
+  if (command === 'generate-candidate-evidence') {
+    const options = parseOptions(rest, new Set(['--manifest', '--details']));
+    const candidate = generateCandidateEvidence({
+      manifest: readJsonFile(options['--manifest'], 'release manifest'),
+      details: readJsonFile(options['--details'], 'candidate evidence details'),
+    });
+    process.stdout.write(`${JSON.stringify(candidate, null, 2)}\n`);
+    return;
+  }
+
+  if (command === 'candidate-evidence-sha256') {
+    const options = parseOptions(rest, new Set(['--evidence']));
+    process.stdout.write(`${candidateEvidenceSha256(readJsonFile(options['--evidence'], 'candidate evidence manifest'))}\n`);
+    return;
+  }
+
+  if (command === 'verify-candidate-evidence') {
+    const options = parseOptions(rest, new Set(['--manifest', '--evidence', '--evidence-root', '--expected-evidence-sha256',
+      '--expected-source-commit', '--expected-source-tree', '--expected-release', '--expected-build-time']));
+    verifyCandidateEvidence({ manifest: readJsonFile(options['--manifest'], 'release manifest'),
+      evidence: readJsonFile(options['--evidence'], 'candidate evidence manifest'),
+      evidenceRoot: options['--evidence-root'], expectedEvidenceSha256: options['--expected-evidence-sha256'],
+      expectedIdentity: identityFromOptions(options, 'expected-') });
     return;
   }
 

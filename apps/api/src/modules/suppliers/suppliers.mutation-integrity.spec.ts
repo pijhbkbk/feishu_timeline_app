@@ -79,7 +79,7 @@ function createMutationHarness(options: {
   let transactionTail = Promise.resolve();
 
   const tx = {
-    $queryRaw: vi.fn().mockResolvedValue([{ locked: true }]),
+    $executeRaw: vi.fn().mockResolvedValue(0),
     supplier: {
       count: vi.fn().mockImplementation(() =>
         Promise.resolve(options.catalogCount ?? suppliers.length),
@@ -394,7 +394,7 @@ describe('SuppliersService mutation integrity', () => {
       releaseBoth = resolve;
     });
     const tx = {
-      $queryRaw: vi.fn().mockResolvedValue([{ locked: true }]),
+      $executeRaw: vi.fn().mockResolvedValue(0),
       supplier: {
         findUnique: vi.fn().mockImplementation(() => Promise.resolve({ ...initial })),
         updateMany: vi.fn().mockImplementation(async ({ where, data }: {

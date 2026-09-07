@@ -333,7 +333,7 @@ export class SuppliersService {
     actorUserId: string,
     idempotencyKey: string,
   ) {
-    await tx.$queryRaw(Prisma.sql`
+    await tx.$executeRaw(Prisma.sql`
       SELECT pg_advisory_xact_lock(
         hashtext('feishu-timeline:supplier-command'),
         hashtext(${`${actorUserId}:${idempotencyKey}`})
@@ -345,7 +345,7 @@ export class SuppliersService {
     tx: Prisma.TransactionClient,
     actorUserId: string,
   ) {
-    await tx.$queryRaw(Prisma.sql`
+    await tx.$executeRaw(Prisma.sql`
       SELECT pg_advisory_xact_lock(
         hashtext('feishu-timeline:supplier-mutation'),
         hashtext(${actorUserId})
@@ -354,7 +354,7 @@ export class SuppliersService {
   }
 
   private async lockSupplierCatalog(tx: Prisma.TransactionClient) {
-    await tx.$queryRaw(Prisma.sql`
+    await tx.$executeRaw(Prisma.sql`
       SELECT pg_advisory_xact_lock(
         hashtext('feishu-timeline:supplier-catalog'),
         hashtext('global')

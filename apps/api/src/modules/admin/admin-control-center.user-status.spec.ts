@@ -25,7 +25,7 @@ describe('AdminControlCenterService user status security boundary', () => {
   let commandRequests: Map<string, CommandRow>;
   let lockTails: Map<string, Promise<void>>;
 
-  const queryRaw = vi.fn();
+  const executeRaw = vi.fn();
   const userFindUnique = vi.fn(
     async ({ where }: { where: { id: string } }) => {
       const user = users.get(where.id);
@@ -81,7 +81,7 @@ describe('AdminControlCenterService user status security boundary', () => {
   );
 
   type TestTransaction = {
-    $queryRaw: (query: { values?: unknown[] }) => Promise<Array<{ locked: boolean }>>;
+    $executeRaw: (query: { values?: unknown[] }) => Promise<number>;
     user: {
       findUnique: typeof userFindUnique;
       count: typeof userCount;
@@ -105,8 +105,8 @@ describe('AdminControlCenterService user status security boundary', () => {
           release: () => void;
         }> = [];
         const client: TestTransaction = {
-          $queryRaw: async (query) => {
-            queryRaw(query);
+          $executeRaw: async (query) => {
+            executeRaw(query);
             const key = JSON.stringify(query.values ?? []);
             const previous = lockTails.get(key) ?? Promise.resolve();
             let release!: () => void;
@@ -116,7 +116,7 @@ describe('AdminControlCenterService user status security boundary', () => {
             lockTails.set(key, tail);
             await previous;
             heldLocks.push({ key, tail, release });
-            return [{ locked: true }];
+            return 0;
           },
           user: {
             findUnique: userFindUnique,
@@ -278,7 +278,7 @@ describe('AdminControlCenterService user status security boundary', () => {
   });
 
   function systemAdministratorLockCalls() {
-    return queryRaw.mock.calls.filter(([query]) =>
+    return executeRaw.mock.calls.filter(([query]) =>
       (query as { values?: unknown[] }).values?.includes(
         'feishu-timeline:system-administrator-mutation',
       ),

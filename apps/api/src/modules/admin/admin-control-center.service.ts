@@ -1430,8 +1430,8 @@ export class AdminControlCenterService {
     const { value: config, bytes: configBytes } =
       this.normalizeAdminSavedViewConfig(input.config);
     return this.prisma.$transaction(async (tx) => {
-      await tx.$queryRaw(
-        Prisma.sql`SELECT pg_advisory_xact_lock(hashtext(${'feishu-timeline:admin-saved-view'}), hashtext(${actor.id})) AS "locked"`,
+      await tx.$executeRaw(
+        Prisma.sql`SELECT pg_advisory_xact_lock(hashtext(${'feishu-timeline:admin-saved-view'}), hashtext(${actor.id}))`,
       );
 
       const key = {
@@ -4072,8 +4072,8 @@ export class AdminControlCenterService {
   }
 
   private async lockSystemAdministratorMutation(tx: Prisma.TransactionClient) {
-    await tx.$queryRaw(
-      Prisma.sql`SELECT pg_advisory_xact_lock(hashtext(${'feishu-timeline:system-administrator-mutation'})) AS "locked"`,
+    await tx.$executeRaw(
+      Prisma.sql`SELECT pg_advisory_xact_lock(hashtext(${'feishu-timeline:system-administrator-mutation'}))`,
     );
   }
 
@@ -4081,8 +4081,8 @@ export class AdminControlCenterService {
     tx: Prisma.TransactionClient,
     idempotencyKey: string,
   ) {
-    await tx.$queryRaw(
-      Prisma.sql`SELECT pg_advisory_xact_lock(hashtext(${'feishu-timeline:admin-command'}), hashtext(${idempotencyKey})) AS "locked"`,
+    await tx.$executeRaw(
+      Prisma.sql`SELECT pg_advisory_xact_lock(hashtext(${'feishu-timeline:admin-command'}), hashtext(${idempotencyKey}))`,
     );
   }
 
@@ -4090,16 +4090,16 @@ export class AdminControlCenterService {
     tx: Prisma.TransactionClient,
     projectId: string,
   ) {
-    await tx.$queryRaw(
-      Prisma.sql`SELECT pg_advisory_xact_lock(hashtext(${'feishu-timeline:admin-project-mutation'}), hashtext(${projectId})) AS "locked"`,
+    await tx.$executeRaw(
+      Prisma.sql`SELECT pg_advisory_xact_lock(hashtext(${'feishu-timeline:admin-project-mutation'}), hashtext(${projectId}))`,
     );
   }
 
   private async lockAdminDepartmentHierarchyMutation(
     tx: Prisma.TransactionClient,
   ) {
-    await tx.$queryRaw(
-      Prisma.sql`SELECT pg_advisory_xact_lock(hashtext(${'feishu-timeline:admin-department-hierarchy'})) AS "locked"`,
+    await tx.$executeRaw(
+      Prisma.sql`SELECT pg_advisory_xact_lock(hashtext(${'feishu-timeline:admin-department-hierarchy'}))`,
     );
   }
 
