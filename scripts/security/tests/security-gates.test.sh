@@ -356,6 +356,20 @@ grep -Fx 'TOOL_ERROR' "$TMP_DIR/secrets-tool-error/gitleaks-current.status" >/de
 grep -Fx 'TOOL_ERROR' "$TMP_DIR/secrets-tool-error/gitleaks-history.status" >/dev/null \
   || fail 'history Gitleaks tool failure status was not recorded'
 
+grep -Fx "HEAD baseline commit: $(git -C "$ROOT_DIR" rev-parse HEAD)" "$TMP_DIR/secrets-tool-error.md" >/dev/null \
+  || fail 'secrets report does not bind the full source commit'
+grep -Fx "HEAD baseline tree: $(git -C "$ROOT_DIR" rev-parse HEAD^{tree})" "$TMP_DIR/secrets-tool-error.md" >/dev/null \
+  || fail 'secrets report does not bind the full source tree'
+grep -Fx 'Execution mode: native' "$TMP_DIR/secrets-tool-error.md" >/dev/null \
+  || fail 'native execution mode is missing from secrets report'
+grep -Fx 'Scanner: `native Gitleaks 8.30.1`' "$TMP_DIR/secrets-tool-error.md" >/dev/null \
+  || fail 'native scanner was misreported as a Docker image'
+[ -s "$TMP_DIR/secrets-tool-error/current-tree-sha256.txt" ] \
+  || fail 'current scan snapshot content manifest is missing'
+expected_snapshot_hash="$(node -e "const fs=require('node:fs');process.stdout.write(require('node:crypto').createHash('sha256').update(fs.readFileSync(process.argv[1])).digest('hex'))" "$TMP_DIR/secrets-tool-error/current-tree-sha256.txt")"
+grep -Fx "Current candidate snapshot SHA-256: $expected_snapshot_hash" "$TMP_DIR/secrets-tool-error.md" >/dev/null \
+  || fail 'current scan snapshot digest does not match the file content manifest'
+
 cat >"$fake_bin/gitleaks" <<'SH'
 #!/usr/bin/env bash
 if [ "${1:-}" = "version" ]; then
