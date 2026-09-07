@@ -1,4 +1,4 @@
-# Codex Governance Architecture v2.1
+# Codex Governance Architecture v3
 
 ## 1. 目标
 
@@ -22,7 +22,7 @@ immutable baseline
 
 1. 根 `AGENTS.md`：永久业务、安全、Git、授权和验证原则；不保存 R27 专属状态。
 2. 目录 `AGENTS.md` / `SECURITY.md`：特定模块的信任边界、允许模式和目标命令。
-3. `docs/templates/TASK_CONTRACT.md`：一次任务的 scope、权限、Gate、模型、预算和停止条件。
+3. `docs/templates/TASK_CONTRACT.md`：可选五项任务约定；自然语言明确授权有效。
 4. `docs/security/FINDINGS.yaml`：唯一 Finding Ledger。
 5. `docs/security/FINDINGS.schema.yaml`：Draft 2020-12 可校验结构 schema。
 6. `docs/gates/VERIFICATION_GATES.md`：G0、G1、G2、G3、G4_DIFF、G4_COMPONENT、G4_FULL、G5。
@@ -86,16 +86,9 @@ PRODUCTION_ACCESS_ALLOWED
 - Public 例外只允许审计过的 auth bootstrap/callback、非敏感 health/readiness 或批准只读元数据。
 - 例外精确到 method + path，并记录 owner、依据、review date、资源边界和负向测试。
 
-## 8. 模型与预算
+## 8. 模型与协作
 
-统一枚举：
-
-```text
-MAX_MODEL: gpt-5.6-terra | gpt-5.6-sol
-MAX_REASONING: low | medium | high | xhigh | ultra
-```
-
-默认 `gpt-5.6-terra / medium`；复杂安全根因可提高到 `gpt-5.6-sol / high|xhigh`。Ultra、subagents、G4_COMPONENT 和 G4_FULL 必须有批准 ID、理由、并发、discovery、tool-call、wall-clock 和周额度占比上限。
+模型/推理遵循所有者选择和实际配置，不写死型号白名单。任务允许时可使用有界只读子任务调查和独立审查；同一 worktree 单一代码写入者。记录实际可获得的资源限制，不编造额度。组件/全仓扫描继续要求明确范围、方法、权限和预算，平台与组织限制不因规则修改解除。
 
 ## 9. Handoff 与 Ledger
 
@@ -103,16 +96,9 @@ MAX_REASONING: low | medium | high | xhigh | ultra
 - `READ_ONLY` / `SECURITY_REVIEW` 默认不写 handoff。
 - `docs/EXECUTION_LEDGER.md` 只记录里程碑、Gate、baseline、commit 或风险结论；旧“每轮必更新/CONTINUE/Next Round”模板标为历史非规范内容。
 
-## 10. R27 当前实施顺序
+## 10. 当前执行入口
 
-1. R27B governance 修订并通过 owner review；
-2. 在批准后形成治理 commit；
-3. 建立唯一 integration branch；
-4. Reviews、Samples、StandardBoards 逐组迁移和独立 G4_DIFF；
-5. clean candidate 上执行批准的 G3；
-6. 组件审查后，在最终 immutable commit 上执行一次 G4_FULL；
-7. 最后进入获准的 staging/private-cloud G5；
-8. main、production、tag 保持独立授权。
+从 `docs/EXECUTION_LEDGER.md` 的最近有效任务和实际 Git/补丁状态恢复；旧 R27B 阶段序列是历史，不强迫重做或回退。获准完整任务持续完成修复、目标/受影响验证、候选质量和独立审查。远端、部署、main、production、tag 保持具体授权边界。
 
 ## 11. 文件清单
 

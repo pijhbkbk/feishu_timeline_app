@@ -7393,3 +7393,15 @@ AWAITING_OWNER_REVIEW_V2
   本任务不自动修改 Samples。
 - 环境：未访问 staging/production；main、tag、production 均未改变；产品负责人尚未对部署或
   产品路径给出 `PRODUCT_OWNER_ACCEPTED`。
+
+
+### R27RC2 目标式规则整合与现场恢复（2026-09-07）
+
+- 输入：所有者本轮请求及 Downloads 中 R27_RESTART_PROMPT.md / AGENTS.candidate.md；候选稿用于增量整合，未直接覆盖根规则。
+- 现场：feishu_timeline_app-r27rc2-repair / security/r27rc2-candidate-repair；基线 38ccd95ae95835806e92b530b17fd50f88166efd。六个既有产品补丁在治理阶段逐文件 SHA-256 不变；原 patch SHA-256 为 fed2bc365cd6c2feab9cebb5b825fff0e1e14a8ace79d1e35653a022960d7831，备份与逐文件摘要在 /private/tmp/rc2-resume-20260907/。
+- 改动：AGENTS.md、治理 architecture、verification gates、三个任务模板、security 上下文；替换模型白名单、机械文件/命令字段门槛、强制另开会话和无条件全局停止。业务/安全不变量、实际平台/组织限制、Git 与环境独立授权保留；补充真实脚本与观察入口。目标树无 STANDARD_EXECUTION_PROFILE 或目录 override，不创建重复入口。
+- 验证：git diff --check PASS；独立只读审查 /root/independent_review 最初发现作者自审豁免残留，删除后复核 PASS。七文档最终 diff SHA-256 52eab939e2288ae9bdc332c5887ee9a8bc0bbdbce2cda25308f1838882a5ca18。原产品六文件未改变。
+- 上下文：当前任务的直接用户指令已明确授权目标式执行，主任务已实际读取更新后的规则；不声称会话启动时的 AGENTS 自动重载。继续工作不依赖修改全局配置或额外工具权限；新会话仍须从目标目录加载。
+- 实际进展：已找到原 RC2 BLOCKER_REPORT；其中 E2E 缺幂等键是实证，后续项目锁日志缺失，不冒充已有复现。新隔离 PostgreSQL 已应用现有 36 migrations；初次容器目录权限问题已修正。
+- 下一步：继续原修复及创建项目的直接流程锁调用链，补真实数据库回归与最终独立审查。manifest/schema 契约与目标平台未决，未关闭 Finding。
+- 环境与授权：本轮仅本地，允许显式 stage/分开 checkpoint，禁止 push/main merge/tag/远端/staging/production；产品状态 AWAITING_PRODUCT_OWNER_CONFIRMATION。

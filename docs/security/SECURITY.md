@@ -123,8 +123,8 @@ closed
 - `G4_DIFF`：exact patch/commit/branch，只读；默认独立任务或审查者。
 - `G4_COMPONENT`：明确目录/组件，只读；需要固定 scope、授权和预算。
 - `G4_FULL`：clean immutable commit，全仓只读；需要 full-scan 高成本批准和预算上限。
-- Security scan、triage、patch、independent verification、full regression 和 release 分开执行。
-- 扫描任务不自动修复；接受 finding 后另开 `SECURITY_FIX`。
+- Security scan、triage、patch、independent verification、full regression 和 release 分清证据职责；获准完整修复可在同一主任务内闭环，独立验证须由另一只读上下文完成。
+- 纯扫描任务不自动修复；所有者已授权实施的同根因修复无需另开会话，远端与 release 仍需具体权限。
 - 局部 PASS 不得表述为全源 0C/0H/0M 或 security clearance。
 
 ## 10. 默认排除与授权

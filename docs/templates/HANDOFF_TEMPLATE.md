@@ -1,70 +1,15 @@
-# Task Handoff v2
+# 恢复交接
 
-> 只有 Task Contract 设置 `HANDOFF_REQUIRED=true` 时才创建或更新本文件。
-> `READ_ONLY` 与 `SECURITY_REVIEW` 默认不写 handoff；其最终审查输出即可作为本次交付。
+仅在跨会话、恢复或必要 blocker 持久化时使用，由 docs/EXECUTION_LEDGER.md 引用；不建立第二状态源。只读审查默认在对话输出，明确获准的非运行证据文件可记录简短结果。
 
-## Identity
+- 目标与授权边界：
+- 实际 worktree / branch / HEAD：
+- 已有补丁保护依据与治理/产品 checkpoint：
+- 已完成与关键决定：
+- 验证、独立审查结果及日志位置：
+- 仍有效的证据及因变更失效的部分：
+- 剩余风险、缺失输入与各自阻断的动作：
+- 下一具体动作与需所有者决定的事项：
+- staging / production / main / tag / 产品确认状态（未执行如实记录）：
 
-- Task ID:
-- Repository:
-- Worktree:
-- Branch:
-- Baseline commit:
-- HEAD / working-tree identity:
-- Git status:
-- Change class:
-
-## Authorization snapshot
-
-- Stage allowed:
-- Commit allowed:
-- Push allowed:
-- Main merge allowed:
-- Tag allowed:
-- Deployment allowed:
-- Staging access allowed:
-- Production access allowed:
-
-## Objective and scope
-
-- Objective:
-- Allowed files:
-- Forbidden files:
-- Finding IDs / root-cause cluster:
-- Security invariants:
-
-## Completed
-
-- Changes:
-- Decisions:
-- Gates executed:
-- Evidence identity:
-
-## Not completed
-
-- Blockers:
-- Proof gaps:
-- New findings recorded but not handled:
-- High-cost Gates deliberately not run:
-
-## Frozen decisions / do not regress
-
-- ...
-
-## Exact next step
-
-- One next task only.
-
-## Stop state
-
-```text
-HANDOFF_READY=<PASS|FAIL>
-SOURCE_CHANGE=<YES|NO>
-STAGE_EXECUTED=<YES|NO>
-COMMIT_CREATED=<YES|NO>
-PUSH_EXECUTED=<YES|NO>
-MAIN_MERGED=<YES|NO>
-TAG_CHANGED=<YES|NO>
-DEPLOYMENT=<NOT_AUTHORIZED|NOT_EXECUTED|...>
-STOP
-```
+恢复后按当前现场续接，不重做治理审计，不覆盖未知修改，不把文档变化当作应用验证自动失效。

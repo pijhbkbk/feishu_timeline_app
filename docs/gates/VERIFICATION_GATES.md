@@ -1,4 +1,4 @@
-# Verification Gates v2
+# Verification Gates v3
 
 ## 1. 目的
 
@@ -6,7 +6,7 @@
 
 ## 2. 唯一 Gate 标识
 
-Task Contract 中只允许：
+沿用以下验证标识；自然语言任务授权同样有效，无须为了执行已授权工作补齐模板字段：
 
 ```text
 G0
@@ -39,13 +39,13 @@ G5
 - `DOCS_ONLY`：G0–G1。
 - `LOCAL_CODE`：G0–G2。
 - `SECURITY_REVIEW`：G0 + 明确的 `G4_DIFF` / `G4_COMPONENT` / `G4_FULL`；默认只读。
-- `SECURITY_FIX`：G0–G2；随后由独立 `SECURITY_REVIEW` 执行 `G4_DIFF`。
+- `SECURITY_FIX`：G0–G2；随后由独立只读上下文执行 `G4_DIFF`，可作为同一获准任务的子任务。
 - `SCHEMA_OR_DEPENDENCY`：经批准的 G0–G3 与必要安全子 Gate。
 - `RELEASE`：只有逐项授权后才进入 G5。
 
 ## 3. Gate 不授予操作权限
 
-下列权限必须在 Task Contract 中分别为 true，Gate 本身不蕴含这些权限：
+下列权限须由所有者分别明确授权，可在一次任务中同时给出；模板中的布尔字段仅为记录方式，Gate 本身不授予权限：
 
 ```text
 STAGE_ALLOWED
@@ -68,34 +68,9 @@ FULL_SCAN_ALLOWED
 
 ## 4. G0 — Preflight
 
-必须记录：
+核对实际仓库、worktree、分支、HEAD、索引、dirty patch 来源、目标范围、权限、预算及敏感排除。历史记录是线索，不强迫当前现场回退。
 
-```text
-repository
-worktree
-branch
-HEAD
-baseline commit
-git status
-change class
-allowed/forbidden files
-allowed/forbidden commands
-allowed gates
-Git permissions
-environment permissions
-model/budget limits
-sensitive exclusions
-```
-
-如与 Task Contract 或 handoff 不一致：
-
-```text
-DRIFT_DETECTED
-NO_SOURCE_CHANGE
-STOP
-```
-
-不得自动 reset、stash、clean、checkout、prune、切换 baseline 或读取未获准的 untracked 文件。
+已授权且来源明确的补丁继续使用并保护；未知或冲突修改只阻断受影响动作。解释漂移，不自动 reset、stash、clean、checkout、prune、切基线或读取未获准媒体。
 
 ## 5. G1 — Targeted Verification
 
@@ -122,12 +97,12 @@ G1 不默认运行全仓测试、build、Playwright、Semgrep、Docker 或环境
 
 ## 7. G3 — Approved Batch or Milestone Quality Gate
 
-G3 只有在以下任一条件满足且 Task Contract 明确列出 `G3`、填写 `G3_REASON` 时运行：
+以下情形在任务已授权本地候选/批次验证时可由执行者选择 G3，无需另开任务或补字段；记录影响分析与必要性：
 
 1. 产品负责人批准的安全修复批次闭合；
 2. 明确的里程碑 candidate 准备进入下一层 Gate；
 3. schema、dependency、lockfile、共享 auth/authorization guard、共享契约或基础设施控制平面发生变化；
-4. 最终 evidence commit 前的批准全仓回归。
+4. 相关运行输入改变后需要更新候选验证；纯 evidence commit 本身不触发。
 
 以下情况**不触发 G3**：
 
@@ -138,7 +113,7 @@ G3 只有在以下任一条件满足且 Task Contract 明确列出 `G3`、填写
 - 只读 security review；
 - 为了满足旧“每轮全量验证”模板。
 
-G3 的具体命令由 Task Contract 给出，通常从 lint、typecheck、必要 unit/integration/E2E、Web/API build、Prisma validate 中选择。`pnpm install` 仅在依赖/lockfile/workspace 变化、环境缺失或明确授权时运行。
+G3 的具体命令从仓库脚本和 CI 确认，按任务范围选择，通常从 lint、typecheck、必要 unit/integration/E2E、Web/API build、Prisma validate 中选择。`pnpm install` 仅在依赖/lockfile/workspace 变化、环境缺失或明确授权时运行。
 
 ## 8. G4_DIFF — Exact Change Security Review
 
@@ -151,26 +126,21 @@ G3 的具体命令由 Task Contract 给出，通常从 lint、typecheck、必要
 默认模式：
 
 ```text
-G4_DIFF_REVIEW_MODE=SEPARATE_TASK
+G4_DIFF_REVIEW_MODE=SEPARATE_REVIEW_CONTEXT
 ```
 
-也可使用 `SEPARATE_REVIEWER`。以下情况必须独立：
+可使用只读子任务、独立任务或其他获准审查者；同一作者上下文不构成独立审查。以下情况必须独立：
 
 - Critical/High finding；
 - 认证、授权、Session/Cookie、Secret、文件上传/下载、外部调用、部署、root/特权和供应链边界；
 - 修改公共 security control plane；
 - patch 作者的同一会话已经出现两次失败或范围漂移。
 
-`SAME_TASK_APPROVED` 只允许 Medium/Low 的局部 hardening，并必须：
-
-- `INDEPENDENT_REVIEW_REQUIRED=false`；
-- 填写 `INDEPENDENCE_WAIVER_REASON`；
-- 由产品负责人明确批准；
-- 审查阶段保持只读，不在审查过程中继续无边界修改。
+所有安全修复的最终 diff 均由另一只读上下文审查，不以 Medium/Low 为由豁免独立性。同一主任务中的只读子任务可满足上下文独立；作者自审不可。无法取得第二上下文时保留 `REVIEW_PENDING`。
 
 ### 8.3 结果
 
-输出 finding 是否关闭、是否引入回归、proof gap、未审查范围和精确 evidence identity。Review 不授予 stage/commit 权限。
+输出 finding 是否关闭、是否引入回归、proof gap、未审查范围和精确 evidence identity。Review 不授予 stage/commit 权限；所有者已授权的 checkpoint 可先保存，但不代表审查通过。无第二上下文保留 REVIEW_PENDING。
 
 ## 9. G4_COMPONENT — Bounded Component Scan
 
@@ -205,21 +175,7 @@ HIGH_COST_APPROVAL_REASON is non-null
 budget/concurrency limits are explicit
 ```
 
-最低预算字段：
-
-```text
-MAX_MODEL
-MAX_REASONING
-ULTRA_ALLOWED
-SUBAGENTS_ALLOWED
-MAX_SUBAGENTS
-MAX_PARALLELISM
-MAX_DISCOVERY_PASSES
-MAX_TOOL_CALLS
-MAX_WALL_CLOCK_MINUTES
-MAX_WEEKLY_BUDGET_PERCENT
-STOP_AFTER_NO_NEW_FINDINGS
-```
+预算应明确实际范围、方法、并发和终点；模型与推理设置使用实际配置，不维护型号白名单，不要求无法获取的周额度比例。全仓扫描的明确授权和组织准入要求仍须满足。
 
 - 全仓扫描只读；
 - 不得在同一任务自动修复；
@@ -269,12 +225,12 @@ result/log SHA-256
 - 仅文档变化：不使源码测试/build/scan 失效；
 - 局部模块变化：只使相关 G1/G2/G4_DIFF 失效；
 - shared guard/schema/dependency/config 变化：先影响分析，再由 Contract 决定 G3/G4_COMPONENT；
-- 最终 evidence commit：按批准计划运行一次最终 Gate；
+- 最终 evidence commit：复用未改变的应用输入证据；相关代码或环境变化则更新对应验证；
 - 工具失败：记录 `BLOCKED_TOOLING`，不得解释为 PASS。
 
 ## 13. 两次失败停止
 
-同一命令、环境和失败原因连续两次后停止。下一次尝试至少改变一项：
+同一命令、环境和失败原因连续两次后暂停受影响动作，继续其他获准且独立的工作。下一次尝试至少改变一项：
 
 - 已修复且可解释的根因；
 - 工具版本或安装状态；
