@@ -174,6 +174,7 @@ function createService(options: {
           async (
             callback: (client: {
               $queryRaw: ReturnType<typeof vi.fn>;
+              $executeRaw: ReturnType<typeof vi.fn>;
               workflowTask: {
                 findUnique: ReturnType<typeof vi.fn>;
               };
@@ -181,6 +182,7 @@ function createService(options: {
           ) =>
             callback({
               $queryRaw: vi.fn().mockResolvedValue([{ locked: true }]),
+              $executeRaw: vi.fn().mockResolvedValue(0),
               workflowTask: {
                 findUnique: vi
                   .fn()

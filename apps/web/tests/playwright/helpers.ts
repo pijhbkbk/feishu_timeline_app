@@ -40,6 +40,9 @@ type ProjectSummary = {
 export async function loginAsProjectManager(page: Page) {
   const username = `r13_pm_${Date.now()}`;
   const response = await page.request.post(`${API_BASE_URL}/auth/mock-login`, {
+    headers: {
+      origin: new URL(process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:3000').origin,
+    },
     data: {
       username,
       name: 'R13 项目经理',

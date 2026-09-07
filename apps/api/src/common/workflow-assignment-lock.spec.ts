@@ -36,9 +36,9 @@ describe('workflow assignment mutation coordination', () => {
   it('locks unique project/node targets in stable order', async () => {
     const queries: Array<{ values?: unknown[] }> = [];
     const tx = {
-      $queryRaw: vi.fn(async (query: { values?: unknown[] }) => {
+      $executeRaw: vi.fn(async (query: { values?: unknown[] }) => {
         queries.push(query);
-        return [{ locked: true }];
+        return 0;
       }),
     };
 

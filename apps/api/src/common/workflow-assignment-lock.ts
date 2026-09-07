@@ -35,12 +35,12 @@ export async function lockWorkflowAssignmentTargets(
   );
 
   for (const target of stableTargets) {
-    await tx.$queryRaw(
+    await tx.$executeRaw(
       Prisma.sql`
         SELECT pg_advisory_xact_lock(
           hashtext(${WORKFLOW_ASSIGNMENT_LOCK_NAMESPACE}),
           hashtext(${`${target.projectId}:${target.nodeCode}`})
-        ) AS "locked"
+        )
       `,
     );
   }

@@ -177,7 +177,7 @@ describe('AttachmentStorageQuotaService', () => {
 
     expect(harness.events).toEqual(['advisory']);
     expect(
-      harness.tx.$queryRaw.mock.invocationCallOrder[0],
+      harness.tx.$executeRaw.mock.invocationCallOrder[0],
     ).toBeLessThan(
       harness.tx.attachmentStorageReservation.updateMany.mock.invocationCallOrder[0] ?? 0,
     );
@@ -576,9 +576,9 @@ function createTransaction(
 ) {
   let aggregateIndex = 0;
   return {
-    $queryRaw: vi.fn(async () => {
+    $executeRaw: vi.fn(async () => {
       events.push('advisory');
-      return [{ locked: true }];
+      return 0;
     }),
     attachmentStorageReservation: {
       aggregate: vi.fn(async ({ where }: { where: Record<string, unknown> }) => {

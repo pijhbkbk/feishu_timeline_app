@@ -1216,9 +1216,12 @@ export class ProjectsService {
     actorUserId: string,
     idempotencyKey: string,
   ) {
-    await tx.$queryRaw(
-      Prisma.sql`SELECT pg_advisory_xact_lock(hashtext(${'feishu-timeline:project-create'}), hashtext(${`${actorUserId}:${idempotencyKey}`})) AS "locked"`,
-    );
+    await tx.$executeRaw`
+      SELECT pg_advisory_xact_lock(
+        hashtext(${'feishu-timeline:project-create'}),
+        hashtext(${`${actorUserId}:${idempotencyKey}`})
+      )
+    `;
   }
 
   private isUniqueConstraintError(error: unknown) {

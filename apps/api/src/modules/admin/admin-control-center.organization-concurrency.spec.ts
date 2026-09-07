@@ -384,6 +384,7 @@ describe('AdminControlCenterService organization concurrency integrity', () => {
   function baseTransaction() {
     return {
       $queryRaw: vi.fn(async () => [{ locked: true }]),
+      $executeRaw: vi.fn().mockResolvedValue(0),
       adminCommandRequest: {
         findUnique: vi.fn(async () => null),
         create: vi.fn(async () => ({ id: 'command' })),

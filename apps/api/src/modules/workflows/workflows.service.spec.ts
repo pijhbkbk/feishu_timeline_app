@@ -269,6 +269,7 @@ describe('WorkflowsService', () => {
   function createTransitionExecutor() {
     return {
       $queryRaw: vi.fn().mockResolvedValue([{ locked: true }]),
+      $executeRaw: vi.fn().mockResolvedValue(0),
       workflowTask: {
         updateMany: vi.fn().mockResolvedValue({ count: 1 }),
         findUniqueOrThrow: vi.fn().mockImplementation(({ where }) =>
@@ -704,6 +705,7 @@ describe('WorkflowsService', () => {
     const { service, workflowDeadlineService, notificationQueueService } = createService();
     const tx = {
       $queryRaw: vi.fn().mockResolvedValue([{ locked: true }]),
+      $executeRaw: vi.fn().mockResolvedValue(0),
       projectNodeAssignment: {
         findUnique: vi.fn().mockResolvedValue(null),
       },

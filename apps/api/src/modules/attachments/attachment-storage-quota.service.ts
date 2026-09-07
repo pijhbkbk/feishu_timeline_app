@@ -327,11 +327,11 @@ export class AttachmentStorageQuotaService
         100,
       );
       const claimed = await this.prisma.$transaction(async (tx) => {
-        await tx.$queryRaw(
+        await tx.$executeRaw(
           Prisma.sql`
             SELECT pg_advisory_xact_lock(
               hashtext(${RECONCILIATION_LOCK_NAMESPACE})
-            ) AS "locked"
+            )
           `,
         );
         const candidates = await tx.attachmentStorageReservation.findMany({
@@ -631,11 +631,11 @@ export class AttachmentStorageQuotaService
   }
 
   private async lockQuotaAdmission(tx: Prisma.TransactionClient) {
-    await tx.$queryRaw(
+    await tx.$executeRaw(
       Prisma.sql`
         SELECT pg_advisory_xact_lock(
           hashtext(${QUOTA_LOCK_NAMESPACE})
-        ) AS "locked"
+        )
       `,
     );
   }

@@ -386,6 +386,7 @@ describe('R26MemberAssignmentService security and command gates', () => {
   it('returns 409 semantics for a stale member-assignment version', async () => {
     const tx = {
       $queryRaw: vi.fn().mockResolvedValue([{ locked: true }]),
+      $executeRaw: vi.fn().mockResolvedValue(0),
       project: {
         findUnique: vi
           .fn()
@@ -450,6 +451,7 @@ describe('R26MemberAssignmentService security and command gates', () => {
   it('uses project-scoped task lookup to block cross-project assignment IDOR', async () => {
     const tx = {
       $queryRaw: vi.fn().mockResolvedValue([{ locked: true }]),
+      $executeRaw: vi.fn().mockResolvedValue(0),
       project: {
         findUnique: vi.fn().mockResolvedValue(project()),
         updateMany: vi.fn().mockResolvedValue({ count: 1 }),
@@ -501,6 +503,7 @@ describe('R26MemberAssignmentService security and command gates', () => {
   it('never reassigns a completed task', async () => {
     const tx = {
       $queryRaw: vi.fn().mockResolvedValue([{ locked: true }]),
+      $executeRaw: vi.fn().mockResolvedValue(0),
       project: {
         findUnique: vi.fn().mockResolvedValue(project()),
         updateMany: vi.fn().mockResolvedValue({ count: 1 }),
@@ -554,6 +557,7 @@ describe('R26MemberAssignmentService security and command gates', () => {
   it('requires explicit confirmation and a reason before reassigning an in-progress task', async () => {
     const tx = {
       $queryRaw: vi.fn().mockResolvedValue([{ locked: true }]),
+      $executeRaw: vi.fn().mockResolvedValue(0),
       project: {
         findUnique: vi.fn().mockResolvedValue(project()),
         updateMany: vi.fn().mockResolvedValue({ count: 1 }),
@@ -612,6 +616,7 @@ describe('R26MemberAssignmentService security and command gates', () => {
   it('requires active tasks to be transferred before removing a member', async () => {
     const tx = {
       $queryRaw: vi.fn().mockResolvedValue([{ locked: true }]),
+      $executeRaw: vi.fn().mockResolvedValue(0),
       project: {
         findUnique: vi.fn().mockResolvedValue(project()),
         updateMany: vi.fn().mockResolvedValue({ count: 1 }),

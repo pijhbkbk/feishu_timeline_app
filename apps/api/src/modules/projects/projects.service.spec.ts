@@ -106,7 +106,7 @@ function createService() {
     create: vi.fn().mockResolvedValue({ id: 'command-1' }),
   };
   const tx = {
-    $queryRaw: vi.fn().mockResolvedValue([{ locked: true }]),
+    $executeRaw: vi.fn().mockResolvedValue(0),
     projectCreateCommandRequest,
     user: {
       findFirst: vi.fn(),
@@ -234,6 +234,14 @@ describe('ProjectsService', () => {
       }),
     );
     expect(activityLogsService.createWithExecutor).toHaveBeenCalledTimes(2);
+    expect(tx.$executeRaw).toHaveBeenCalledTimes(1);
+    const lockCallOrder = tx.$executeRaw.mock.invocationCallOrder[0]!;
+    expect(lockCallOrder).toBeLessThan(
+      tx.user.findFirst.mock.invocationCallOrder[0]!,
+    );
+    expect(lockCallOrder).toBeLessThan(
+      tx.project.create.mock.invocationCallOrder[0]!,
+    );
     expect(tx.project.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         code: expect.stringMatching(/^PRJ-\d{8}-[A-F0-9]{8}$/),
@@ -247,6 +255,18 @@ describe('ProjectsService', () => {
       paintSupplier: '阿克苏诺贝尔',
       currentWorkflowInstance: { id: 'wf-1' },
     });
+  });
+
+  it('uses parameterized raw execution for the transaction-scoped project-create lock', () => {
+    const lockSource = projectsServiceSource.slice(
+      projectsServiceSource.indexOf('private async lockProjectCreateCommand('),
+      projectsServiceSource.indexOf('private isUniqueConstraintError('),
+    );
+
+    expect(lockSource).toContain('await tx.$executeRaw`');
+    expect(lockSource).toContain("hashtext(${'feishu-timeline:project-create'})");
+    expect(lockSource).toContain('hashtext(${`${actorUserId}:${idempotencyKey}`})');
+    expect(lockSource).not.toMatch(/\$(?:queryRaw|queryRawUnsafe|executeRawUnsafe)/);
   });
 
   it('拒绝白名单以外的涂料供应商', async () => {

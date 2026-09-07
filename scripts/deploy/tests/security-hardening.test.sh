@@ -567,105 +567,221 @@ for script in \
 done
 
 RESTORE_SCRIPT="$ROOT_DIR/scripts/migration/restore_to_gcp.sh"
+RESTORE_DISABLED_EXIT=78
+RESTORE_DISABLED_DIAGNOSTIC='[ERROR] Legacy repository-controlled GCP restore path is disabled; an approved external root-owned, digest-bound controller is required.'
+RESTORE_FAKE_BIN="$TMP_DIR/restore-fake-bin"
+RESTORE_EXPECTED_STUB="$TMP_DIR/restore-expected-stub"
+RESTORE_EXPECTED_STDERR="$TMP_DIR/restore-expected-stderr"
 restore_case_counter=0
 
-run_restore_validation() {
-  local expected="$1"
-  local override="$2"
-  local rejected_label="${3:-}"
-  local marker="${4:-}"
+mkdir -p "$RESTORE_FAKE_BIN"
+for sink_command in \
+  sudo systemctl service nginx tee install git docker gcloud curl wget ssh scp rsync \
+  pnpm npm npx node corepack tar pg_restore psql find sort stat cp mv rm mkdir touch ln \
+  chown chmod mktemp; do
+  cat >"$RESTORE_FAKE_BIN/$sink_command" <<'SH'
+#!/usr/bin/env bash
+set -euo pipefail
+printf 'external_sink_called:%s\n' "${0##*/}" >>"${RESTORE_SINK_LOG:?}"
+exit 99
+SH
+  chmod 0755 "$RESTORE_FAKE_BIN/$sink_command"
+done
+
+cat >"$RESTORE_EXPECTED_STUB" <<'EOF'
+#!/bin/bash -p
+
+builtin printf '%s\n' '[ERROR] Legacy repository-controlled GCP restore path is disabled; an approved external root-owned, digest-bound controller is required.' >&2
+builtin exit 78
+EOF
+printf '%s\n' "$RESTORE_DISABLED_DIAGNOSTIC" >"$RESTORE_EXPECTED_STDERR"
+
+cmp -s "$RESTORE_SCRIPT" "$RESTORE_EXPECTED_STUB" \
+  || fail 'restore_to_gcp.sh is not the exact approved fail-closed stub'
+[ -x "$RESTORE_SCRIPT" ] \
+  || fail 'restore_to_gcp.sh is no longer executable'
+if grep -En \
+  '(^|[[:space:]/])(sudo|systemctl|service|nginx|tee|install|git|docker|gcloud|curl|wget|ssh|scp|rsync|pnpm|npm|npx|node|corepack|tar|pg_restore|psql|find|sort|stat|cp|mv|rm|mkdir|touch|ln|chown|chmod|mktemp|source|eval)([[:space:]/]|$)|/etc|checkout|fetch|reload|restart|VALIDATION_ONLY|RESTORE_' \
+  "$RESTORE_SCRIPT" >/dev/null; then
+  fail 'restore_to_gcp.sh still contains a prohibited operation or legacy mode'
+fi
+
+assert_restore_entrypoint_disabled() {
+  local case_name="$1"
   local case_dir
+  local watch_dir
+  local marker
+  local dotenv_marker
+  local input_env
+  local payload='safe-input'
+  local repository_value='https://example.invalid/feishu-timeline.git'
+  local ref_value='refs/heads/main'
+  local secret
+  local validation_mode=no
+  local privileged_mode=no
+  local side_effect_count
+  local -a script_args=()
   local rc=0
 
   restore_case_counter=$((restore_case_counter + 1))
-  case_dir="$TMP_DIR/restore-case-$restore_case_counter"
-  mkdir -p "$case_dir"
+  case_dir="$TMP_DIR/restore-disabled-$restore_case_counter"
+  watch_dir="$case_dir/watch"
+  marker="$watch_dir/command-marker"
+  dotenv_marker="$watch_dir/dotenv-marker"
+  input_env="$case_dir/untrusted.env"
+  secret="S001_RESTORE_SECRET_${restore_case_counter}_DO_NOT_LOG"
+  mkdir -p "$watch_dir"
 
-  env \
-    RESTORE_VALIDATE_ONLY=yes \
-    REPO_STAGE_DIR="$case_dir/repo-stage" \
-    GIT_REPO_URL='https://example.invalid/feishu-timeline.git' \
-    "$override" \
-    bash "$RESTORE_SCRIPT" >"$case_dir/stdout" 2>"$case_dir/stderr" || rc=$?
-
-  case "$expected" in
-    accepted)
-      [ "$rc" -eq 0 ] || fail "restore validation rejected safe configuration: $override"
-      grep -F 'VALIDATION_ONLY=PASS' "$case_dir/stdout" >/dev/null \
-        || fail 'restore validation did not emit its non-mutating success marker'
+  case "$case_name" in
+    no-arguments)
+      payload=''
       ;;
-    rejected)
-      [ "$rc" -ne 0 ] || fail "restore validation accepted unsafe configuration: $override"
-      grep -F "[ERROR] Invalid controlled path: $rejected_label" "$case_dir/stderr" >/dev/null \
-        || fail "restore validation did not reject $rejected_label before command execution: $override"
-      if [ -n "$marker" ] && [ -e "$marker" ]; then
-        fail "restore validation executed an injected command: $override"
-      fi
+    arbitrary-repository)
+      repository_value='ssh://attacker.invalid/example/repository.git'
+      payload="$repository_value"
+      script_args=("$repository_value")
+      ;;
+    arbitrary-ref)
+      ref_value='refs/heads/unapproved-candidate'
+      payload="$ref_value"
+      script_args=("$ref_value")
+      ;;
+    dollar-command)
+      payload='$(touch '"$marker"')'
+      script_args=("$payload")
+      ;;
+    backtick-command)
+      payload='`touch '"$marker"'`'
+      script_args=("$payload")
+      ;;
+    semicolon)
+      payload="safe;touch $marker"
+      script_args=("$payload")
+      ;;
+    embedded-newline)
+      payload=$'safe\ntouch '"$marker"
+      script_args=("$payload")
+      ;;
+    leading-dash)
+      payload='--unapproved-legacy-mode'
+      script_args=("$payload")
+      ;;
+    path-traversal)
+      payload='../../etc/passwd'
+      script_args=("$payload")
+      ;;
+    absolute-path)
+      payload="$watch_dir/absolute-target"
+      script_args=("$payload")
+      ;;
+    secret-like)
+      payload="$secret"
+      script_args=("$payload")
+      ;;
+    validation-only)
+      validation_mode=yes
+      payload='VALIDATION_ONLY=yes'
+      script_args=("$payload")
+      ;;
+    privileged-modes)
+      privileged_mode=yes
+      payload='APPLY_SYSTEM_CONFIG=yes'
+      script_args=("$payload")
       ;;
     *)
-      fail "unknown restore validation expectation: $expected"
+      fail "unknown restore disabled case: $case_name"
       ;;
   esac
+
+  printf '%s\n' \
+    "FEISHU_APP_SECRET=$secret" \
+    'RESTORE_TEST_PAYLOAD=$(touch '"$dotenv_marker"')' \
+    >"$input_env"
+  : >"$case_dir/sink.log"
+
+  (
+    builtin() {
+      printf 'exported_builtin_function_executed\n'
+      return 0
+    }
+    export -f builtin
+
+    /usr/bin/env \
+    PATH="$RESTORE_FAKE_BIN:$PATH" \
+    BASH_ENV="$input_env" \
+    ENV="$input_env" \
+    SHELLOPTS=xtrace \
+    PS4="${secret}:" \
+    RESTORE_SINK_LOG="$case_dir/sink.log" \
+    TMPDIR="$watch_dir" \
+    GIT_REPO_URL="$repository_value" \
+    GIT_REF="$ref_value" \
+    REPO_STAGE_DIR="$watch_dir/repo-stage" \
+    APP_ROOT="$watch_dir/app" \
+    API_DIR="$watch_dir/app/apps/api" \
+    WEB_DIR="$watch_dir/app/apps/web" \
+    OBJECT_STORAGE_DIR="$watch_dir/object-storage" \
+    CONFIG_REVIEW_DIR="$watch_dir/config-review" \
+    PRIMARY_API_ENV_SOURCE="$input_env" \
+    PRIMARY_WEB_ENV_SOURCE="$input_env" \
+    EXTRA_ENV_SOURCE_DIR="$watch_dir/extra-env" \
+    DATABASE_RESTORE_FILE="$watch_dir/database.dump" \
+    OBJECT_STORAGE_ARCHIVE="$watch_dir/object-storage.tar.gz" \
+    PRIMARY_API_ENV_TARGET="$watch_dir/api.env.production" \
+    PRIMARY_WEB_ENV_TARGET="$watch_dir/web.env.production" \
+    DATABASE_URL="postgresql://user:${secret}@database.invalid/app" \
+    FEISHU_APP_SECRET="$secret" \
+    RESTORE_VALIDATE_ONLY="$validation_mode" \
+    VALIDATION_ONLY="$validation_mode" \
+    RESTORE_PRIMARY_ENV="$privileged_mode" \
+    RESTORE_EXTRA_ENV="$privileged_mode" \
+    RESTORE_OBJECT_STORAGE="$privileged_mode" \
+    RESTORE_DATABASE="$privileged_mode" \
+    REQUIRE_CONFIRM_RESTORE="$privileged_mode" \
+    APPLY_SYSTEM_CONFIG="$privileged_mode" \
+    ENABLE_TIMELINE_SITE="$privileged_mode" \
+    ENABLE_ROOT_PLACEHOLDER_SITE="$privileged_mode" \
+    ENABLE_SERVICES="$privileged_mode" \
+    START_SERVICES="$privileged_mode" \
+    RELOAD_NGINX="$privileged_mode" \
+    "$RESTORE_SCRIPT" ${script_args[@]+"${script_args[@]}"}
+  ) >"$case_dir/stdout" 2>"$case_dir/stderr" || rc=$?
+
+  [ "$rc" -eq "$RESTORE_DISABLED_EXIT" ] \
+    || fail "restore_to_gcp.sh did not return exit 78 for $case_name"
+  [ ! -s "$case_dir/stdout" ] \
+    || fail "restore_to_gcp.sh emitted stdout for $case_name"
+  cmp -s "$case_dir/stderr" "$RESTORE_EXPECTED_STDERR" \
+    || fail "restore_to_gcp.sh emitted a non-canonical diagnostic for $case_name"
+  [ ! -s "$case_dir/sink.log" ] \
+    || fail "restore_to_gcp.sh executed an external command for $case_name"
+  side_effect_count="$(find "$watch_dir" -mindepth 1 -print | wc -l | tr -d ' ')"
+  [ "$side_effect_count" -eq 0 ] \
+    || fail "restore_to_gcp.sh wrote to the filesystem for $case_name"
+  [ ! -e "$marker" ] && [ ! -e "$dotenv_marker" ] \
+    || fail "restore_to_gcp.sh executed supplied content for $case_name"
+  if { [ -n "$payload" ] && grep -F -- "$payload" "$case_dir/stdout" "$case_dir/stderr"; } \
+    || grep -F -- "$secret" "$case_dir/stdout" "$case_dir/stderr"; then
+    fail "restore_to_gcp.sh revealed supplied input for $case_name"
+  fi
 }
 
-run_restore_validation accepted 'APP_HOME=/home/feishu'
-
-marker="$TMP_DIR/restore-single-quote"
-run_restore_validation rejected "APP_HOME=/home/feishu';touch $marker;#" APP_HOME "$marker"
-
-marker="$TMP_DIR/restore-semicolon"
-run_restore_validation rejected "APP_HOME=/home/feishu;touch $marker" APP_HOME "$marker"
-
-marker="$TMP_DIR/restore-dollar-command"
-# The literal command substitution is the attack payload.
-# shellcheck disable=SC2016
-run_restore_validation rejected 'APP_HOME=/home/feishu/$(touch '"$marker"')' APP_HOME "$marker"
-
-marker="$TMP_DIR/restore-backtick-command"
-run_restore_validation rejected 'APP_HOME=/home/feishu/`touch '"$marker"'`' APP_HOME "$marker"
-
-marker="$TMP_DIR/restore-newline-command"
-run_restore_validation rejected $'APP_HOME=/home/feishu\ntouch '"$marker" APP_HOME "$marker"
-
-for controlled_path_override in \
-  'COREPACK_HOME=/home/feishu/.cache/node/corepack;command' \
-  'APP_RUNTIME_PATH=/usr/local/bin:/usr/bin;command' \
-  'APP_ROOT=/opt/feishu_timeline_app;command' \
-  'API_DIR=/opt/feishu_timeline_app/apps/api;command' \
-  'WEB_DIR=/opt/feishu_timeline_app/apps/web;command'; do
-  controlled_path_label="${controlled_path_override%%=*}"
-  run_restore_validation rejected "$controlled_path_override" "$controlled_path_label"
+for restore_case in \
+  no-arguments \
+  arbitrary-repository \
+  arbitrary-ref \
+  dollar-command \
+  backtick-command \
+  semicolon \
+  embedded-newline \
+  leading-dash \
+  path-traversal \
+  absolute-path \
+  secret-like \
+  validation-only \
+  privileged-modes; do
+  assert_restore_entrypoint_disabled "$restore_case"
 done
-
-run_restore_validation rejected 'APP_HOME=-leading-dash' APP_HOME
-overlong_restore_path="/$(printf 'a%.0s' {1..513})"
-run_restore_validation rejected "APP_HOME=$overlong_restore_path" APP_HOME
-
-if grep -En '\$\*|bash[[:space:]]+-lc' "$RESTORE_SCRIPT" >/dev/null; then
-  fail 'restore_to_gcp still reparses a flattened command string'
-fi
-if grep -En 'run_as_app[[:space:]]+"' "$RESTORE_SCRIPT" >/dev/null; then
-  fail 'restore_to_gcp still interpolates controlled values into Bash source text'
-fi
-grep -F "This file is an explicitly trusted, root-controlled shell configuration boundary." \
-  "$RESTORE_SCRIPT" >/dev/null \
-  || fail 'restore_to_gcp does not document the trusted .env.production execution boundary'
-# Assert the literal source text, not the test environment.
-# shellcheck disable=SC2016
-if grep -F 'chown -R "$APP_USER:$APP_GROUP" "$APP_ROOT"' \
-  "$RESTORE_SCRIPT" >/dev/null; then
-  fail 'restore_to_gcp recursively changes ownership of trusted production env files'
-fi
-for trusted_env_exclusion in \
-  "--exclude 'apps/api/.env.production'" \
-  "--exclude 'apps/web/.env.production'"; do
-  grep -F -- "$trusted_env_exclusion" "$RESTORE_SCRIPT" >/dev/null \
-    || fail "restore_to_gcp does not preserve trusted env ownership: $trusted_env_exclusion"
-done
-# Assert the literal source text, not the test environment.
-# shellcheck disable=SC2016
-grep -F -- '--chown="$APP_USER:$APP_GROUP"' "$RESTORE_SCRIPT" >/dev/null \
-  || fail 'restore_to_gcp does not scope application ownership to transferred repository files'
 
 # The RC1 deployment path consumes only the independently approved, digest-pinned
 # operations image. Repository-local image construction is disabled until RC3.

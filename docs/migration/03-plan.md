@@ -1,6 +1,8 @@
 # 迁移计划
 
-更新时间：2026-04-09
+更新时间：2026-09-07
+
+当前状态：`MIGRATION_BLOCKED`。旧 `restore_to_gcp.sh` 已失败关闭，固定退出 78，不再执行恢复、构建或特权安装。以下旧部署事实仅作规划参考，不构成执行授权；新恢复流程须使用经批准的外部 root-owned、不可变摘要绑定控制器，并另行通过环境验收。
 
 本轮迁移采用“兼容旧机行为优先”的策略：
 
@@ -108,48 +110,13 @@
 1. 本轮“多站点共存”主要体现在 `server_name`、站点职责、systemd 服务命名和目录边界上
 2. `/srv/apps/...` 之类目录重构只作为后续优化方向，不是本轮强制方案
 
-## 4. 将当前项目恢复到新机
+## 4. 将当前项目恢复到新机（当前阻断）
 
-目标：在新机恢复出与旧机行为尽量一致的可运行状态，然后让它承接 `timeline.all-too-well.com`。
+`scripts/migration/restore_to_gcp.sh` 已禁用；包括 validate-only、旧环境开关和参数形式在内均不能恢复旧执行路径。不得通过移除 stub 或从旧提交取回脚本绕过阻断。
 
-执行顺序：
+恢复前仍需明确批准：目标仓库与完整 commit/tree、外部可信控制器及受保护的逐文件摘要、数据库恢复与回滚方案、目标环境和具体操作。应用用户可写的源码、依赖安装或构建产物不得成为 root 安装 systemd/Nginx 配置的信任依据。
 
-1. 审查并执行：
-   - [`restore_to_gcp.sh`](/Users/lixiaochen/Downloads/feishu_timeline_app/scripts/migration/restore_to_gcp.sh)
-2. 代码目录恢复到：
-   - `/opt/feishu_timeline_app`
-3. 运行时 env 优先恢复到：
-   - `/opt/feishu_timeline_app/apps/api/.env.production`
-   - `/opt/feishu_timeline_app/apps/web/.env.production`
-4. 可选恢复旧机附带 env 文件
-5. 可选恢复：
-   - PostgreSQL
-   - `/opt/feishu_timeline_app/var/object-storage`
-6. 构建阶段不直接复用仓库当前 `start` 脚本
-   - 原因是 `apps/api/package.json` 和 `apps/web/package.json` 的 `start` 都显式依赖 `.env.example`
-7. 脚本实际采用的构建方式是：
-   - `pnpm install --frozen-lockfile`
-   - `pnpm --filter @feishu-timeline/shared build`
-   - API：`pnpm exec prisma generate` + `pnpm exec tsc -p tsconfig.build.json`
-   - Web：`pnpm exec next build`
-8. 恢复脚本在构建前会只清理构建产物：
-   - `apps/api/dist`
-   - `apps/web/.next`
-   - 不会删除 env、代码或 `var/object-storage`
-9. 恢复脚本会在真正构建前做两项上线前校验：
-   - 以 `feishu` 用户身份验证 `node` / `pnpm` 在 `HOME=/home/feishu` 下可执行
-   - 用 API 的 `.env.production` + `WorkingDirectory=/opt/feishu_timeline_app/apps/api` 计算 object-storage 实际解析路径，并要求它等于 `/opt/feishu_timeline_app/var/object-storage`
-10. 只有在人工确认后，才打开：
-   - `RESTORE_PRIMARY_ENV=yes`
-   - `RESTORE_EXTRA_ENV=yes`
-   - `RESTORE_OBJECT_STORAGE=yes`
-   - `RESTORE_DATABASE=yes REQUIRE_CONFIRM_RESTORE=yes`
-   - `APPLY_SYSTEM_CONFIG=yes`
-   - `ENABLE_TIMELINE_SITE=yes`
-   - `ENABLE_ROOT_PLACEHOLDER_SITE=yes`
-   - `ENABLE_SERVICES=yes`
-   - `START_SERVICES=yes`
-   - `RELOAD_NGINX=yes`
+本 RC2 本地修复不提供替代生产恢复入口；控制器与迁移环境验收未完成前不执行恢复或切流。下节检查只在另行授权且受信任恢复已完成后适用。
 
 ## 5. 验证 `timeline.all-too-well.com`
 

@@ -2,8 +2,16 @@ import 'reflect-metadata';
 
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
-import { ProjectMemberType, ProjectPriority, ProjectStatus } from '@prisma/client';
-import { describe, expect, it, vi } from 'vitest';
+import { randomUUID } from 'node:crypto';
+import {
+  Prisma,
+  PrismaClient,
+  ProjectMemberType,
+  ProjectPriority,
+  ProjectStatus,
+  UserStatus,
+} from '@prisma/client';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { CreateProjectDto } from './dto/create-project.dto';
@@ -155,7 +163,7 @@ function createHarness() {
   };
 
   const tx = {
-    $queryRaw: vi.fn().mockResolvedValue([{ locked: true }]),
+    $executeRaw: vi.fn().mockResolvedValue(0),
     projectCreateCommandRequest: commandStore,
     user: {
       findFirst: vi.fn().mockResolvedValue({
@@ -269,7 +277,7 @@ describe('ProjectsService create idempotency', () => {
     expect(workflowsService.initializeProjectWorkflow).toHaveBeenCalledTimes(1);
     expect(activityLogsService.createWithExecutor).toHaveBeenCalledTimes(2);
     expect(commands).toHaveLength(1);
-    expect(tx.$queryRaw).toHaveBeenCalledTimes(2);
+    expect(tx.$executeRaw).toHaveBeenCalledTimes(2);
   });
 
   it('uses a canonical payload hash and rejects changed payload under the same key', async () => {
@@ -356,3 +364,252 @@ describe('ProjectsService create idempotency', () => {
     expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 });
+
+const projectsPostgresTestDatabaseUrl =
+  process.env.PROJECTS_POSTGRES_TEST_DATABASE_URL;
+const projectCreateLockNamespace = 'feishu-timeline:project-create';
+
+type ProjectLockService = {
+  lockProjectCreateCommand(
+    tx: Prisma.TransactionClient,
+    actorUserId: string,
+    idempotencyKey: string,
+  ): Promise<void>;
+};
+
+function acquireProjectCreateLock(
+  service: ProjectsService,
+  tx: Prisma.TransactionClient,
+  actorUserId: string,
+  idempotencyKey: string,
+) {
+  return (service as unknown as ProjectLockService).lockProjectCreateCommand(
+    tx,
+    actorUserId,
+    idempotencyKey,
+  );
+}
+
+async function tryProjectCreateLock(
+  tx: Prisma.TransactionClient,
+  actorUserId: string,
+  idempotencyKey: string,
+) {
+  const rows = await tx.$queryRaw<Array<{ acquired: boolean }>>(Prisma.sql`
+    SELECT pg_try_advisory_xact_lock(
+      hashtext(${projectCreateLockNamespace}),
+      hashtext(${`${actorUserId}:${idempotencyKey}`})
+    ) AS "acquired"
+  `);
+
+  return rows[0]?.acquired ?? false;
+}
+
+if (projectsPostgresTestDatabaseUrl) {
+  describe.sequential('ProjectsService PostgreSQL project-create lock', () => {
+    let prisma: PrismaClient;
+    let secondConnection: PrismaClient;
+    const fixtureRunId = randomUUID().slice(0, 8);
+
+    function createPostgresService() {
+      return new ProjectsService(
+        prisma as never,
+        {
+          initializeProjectWorkflow: vi.fn().mockImplementation(
+            (_tx: Prisma.TransactionClient, input: { projectId: string }) =>
+              Promise.resolve({
+                instance: {
+                  id: `workflow-${input.projectId}`,
+                  currentNodeCode: 'PROJECT_INITIATION',
+                },
+                task: { id: `task-${input.projectId}` },
+              }),
+          ),
+          getCurrentNodeName: vi.fn().mockReturnValue('项目立项'),
+        } as never,
+        {
+          createWithExecutor: vi.fn().mockResolvedValue(undefined),
+        } as never,
+        {
+          assertProjectAccessWithDefaultClient: vi.fn().mockResolvedValue(undefined),
+          assertProjectAccess: vi.fn().mockResolvedValue(undefined),
+        } as never,
+      );
+    }
+
+    beforeAll(async () => {
+      prisma = new PrismaClient({
+        datasources: { db: { url: projectsPostgresTestDatabaseUrl } },
+      });
+      secondConnection = new PrismaClient({
+        datasources: { db: { url: projectsPostgresTestDatabaseUrl } },
+      });
+      await Promise.all([prisma.$connect(), secondConnection.$connect()]);
+    });
+
+    afterAll(async () => {
+      await Promise.all([prisma.$disconnect(), secondConnection.$disconnect()]);
+    });
+
+    it('executes the blocking lock without P2010 and continues with a write and read', async () => {
+      const service = createPostgresService();
+      const userId = `r27rc2-lock-user-${fixtureRunId}`;
+      const username = `r27rc2_lock_user_${fixtureRunId}`;
+
+      await prisma.user.deleteMany({ where: { id: userId } });
+      try {
+        await expect(
+          prisma.$transaction(async (tx) => {
+            await acquireProjectCreateLock(
+              service,
+              tx,
+              userId,
+              `connector-${fixtureRunId}`,
+            );
+            await tx.user.create({
+              data: {
+                id: userId,
+                username,
+                name: 'R27 RC2 锁连接器测试',
+              },
+            });
+            return tx.user.findUnique({ where: { id: userId } });
+          }),
+        ).resolves.toMatchObject({ id: userId, username });
+
+        await expect(
+          prisma.user.findUnique({ where: { id: userId } }),
+        ).resolves.toMatchObject({ id: userId });
+      } finally {
+        await prisma.user.deleteMany({ where: { id: userId } });
+      }
+    });
+
+    it('serializes the same key and releases it after commit and rollback', async () => {
+      const service = createPostgresService();
+      const actorUserId = `r27rc2-lock-actor-${fixtureRunId}`;
+      const commitKey = `serialization-${fixtureRunId}`;
+      let markHolderReady!: () => void;
+      let rejectHolderReady!: (error: unknown) => void;
+      let releaseHolder!: () => void;
+      const holderReady = new Promise<void>((resolve, reject) => {
+        markHolderReady = resolve;
+        rejectHolderReady = reject;
+      });
+      const holderRelease = new Promise<void>((resolve) => {
+        releaseHolder = resolve;
+      });
+      const holder = prisma.$transaction(async (tx) => {
+        try {
+          await acquireProjectCreateLock(service, tx, actorUserId, commitKey);
+          markHolderReady();
+        } catch (error) {
+          rejectHolderReady(error);
+          throw error;
+        }
+        await holderRelease;
+      });
+
+      await holderReady;
+      try {
+        await expect(
+          secondConnection.$transaction((tx) =>
+            tryProjectCreateLock(tx, actorUserId, commitKey),
+          ),
+        ).resolves.toBe(false);
+      } finally {
+        releaseHolder();
+        await holder;
+      }
+
+      await expect(
+        secondConnection.$transaction((tx) =>
+          tryProjectCreateLock(tx, actorUserId, commitKey),
+        ),
+      ).resolves.toBe(true);
+
+      const rollbackKey = `rollback-${fixtureRunId}`;
+      await expect(
+        prisma.$transaction(async (tx) => {
+          await acquireProjectCreateLock(service, tx, actorUserId, rollbackKey);
+          throw new Error('intentional project-lock rollback');
+        }),
+      ).rejects.toThrow('intentional project-lock rollback');
+      await expect(
+        secondConnection.$transaction((tx) =>
+          tryProjectCreateLock(tx, actorUserId, rollbackKey),
+        ),
+      ).resolves.toBe(true);
+    });
+
+    it('creates and persists a project through the repaired transaction', async () => {
+      const service = createPostgresService();
+      const userId = `r27rc2-project-user-${fixtureRunId}`;
+      const username = `r27rc2_project_user_${fixtureRunId}`;
+      const projectCode = `R27RC2-${fixtureRunId.toUpperCase()}`;
+      const idempotencyKey = `project-create:postgres-${fixtureRunId}`;
+      const postgresActor: AuthenticatedUser = {
+        id: userId,
+        username,
+        name: 'R27 RC2 项目经理',
+        email: null,
+        departmentId: null,
+        departmentName: null,
+        isSystemAdmin: false,
+        authSource: 'mock',
+        roleCodes: ['project_manager'],
+        permissionCodes: ['project.write'],
+      };
+
+      await prisma.project.deleteMany({ where: { code: projectCode } });
+      await prisma.user.deleteMany({ where: { id: userId } });
+      try {
+        await prisma.user.create({
+          data: {
+            id: userId,
+            username,
+            name: postgresActor.name,
+            status: UserStatus.ACTIVE,
+          },
+        });
+
+        const result = await service.createProject(
+          {
+            code: projectCode,
+            name: 'R27 RC2 PostgreSQL 项目创建',
+            ownerUserId: userId,
+            members: [],
+          },
+          postgresActor,
+          idempotencyKey,
+        );
+
+        expect(result).toMatchObject({
+          code: projectCode,
+          name: 'R27 RC2 PostgreSQL 项目创建',
+          idempotentReplay: false,
+        });
+        if (!('id' in result) || typeof result.id !== 'string') {
+          throw new Error('Project creation must return a persisted project id.');
+        }
+        const resultProjectId = result.id;
+        const persisted = await prisma.project.findUnique({
+          where: { id: resultProjectId },
+        });
+        const command = await prisma.projectCreateCommandRequest.findUnique({
+          where: {
+            actorUserId_idempotencyKey: {
+              actorUserId: userId,
+              idempotencyKey,
+            },
+          },
+        });
+        expect(persisted).toMatchObject({ id: resultProjectId, code: projectCode });
+        expect(command).toMatchObject({ projectId: resultProjectId });
+      } finally {
+        await prisma.project.deleteMany({ where: { code: projectCode } });
+        await prisma.user.deleteMany({ where: { id: userId } });
+      }
+    });
+  });
+}
