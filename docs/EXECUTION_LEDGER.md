@@ -7427,3 +7427,14 @@ AWAITING_OWNER_REVIEW_V2
 - 本机证据：test-results/r27rc2/local-candidate-closure-20260907-034253；上轮35项证据已持久保存并核验于 local-repair-20260907，未提交原始日志。API 和本轮两个临时容器已清理。
 - 状态：CODE_IMPLEMENTED / LOCAL_VERIFIED，仅本轮本地阻断清除。正式 source/image、目标 platform/不可变镜像、外部恢复控制器、Reviews 生产索引方案、具体环境/真实飞书及负责人验收仍未完成。无远端查询/push/main merge/tag/部署，staging/production 未访问，AWAITING_PRODUCT_OWNER_CONFIRMATION。
 - 完整身份、逐锁覆盖、证据与外部输入：[本轮收口回执](handoff/R27RC2_LOCAL_CANDIDATE_CLOSURE_20260907.md)。本条与回执/Finding 为产品之后独立 evidence commit，不回写提交自身身份。
+
+
+### R27RC2 离线制品准备与数据演练（2026-09-07）
+
+- 起点：干净 c7054a7d2511d71ffbef7e05268758cc2ee74110；已核对相对 c37f8103 只有证据文档。用户授权本地准备/修复/审查/提交，禁止新增联网、安装、远端、上传或部署。
+- 工具修复 checkpoint：314b6523259a6f646915debccc85a2226ba40c79，tree f2953a484f0fcd145590088a6e42707b45863940。两文件修正 Gitleaks native 来源、完整 HEAD 基线与实际扫描快照摘要；独立只读审查及现有安全回归 PASS。应用、依赖、schema/migration、CI 与 Finding 原文不变。
+- 实作：干净新提交上 Gitleaks 当前输入/完整本地历史 PASS（267 commits）；旧库 Trivy 生产/全依赖预检零条目，明确不代替当前正式 SCA；Compose 仅解析 PASS。真实 Prisma 26→27→36 升级、六附件五扫描状态/配额、关键内容/约束/权限、升级前后两个空库恢复及对象hash验证 PASS；只是合成演练，篡改仅证明摘要不同，未验证外部恢复消费者拒绝。
+- 原始错误与审查澄清保留；本机96项证据在 test-results/r27rc2/release-artifact-preparation-20260907，摘要索引已核验。两份合成 custom dump 与对象保留，本轮专用断网 PostgreSQL 已清理。
+- 未完成：未知批准目标 platform，固定 Node 基底本地缺失，未构建/运行新镜像；正式 Semgrep/pnpm audit/镜像扫描和远端 CI 未执行。没有真实 runtime/registry digest；控制器、Reviews 生产索引、具体预发环境与真实飞书/负责人验收仍待输入。
+- 下一步：先提出限定 origin/提交的远端只读配置与自动部署副作用核查，再决定 codex/r27rc2-artifact-validation 验证分支的非强制 push；当前 CI 无完整报告保存与六镜像覆盖，不把绿色作业当发布候选就绪。详见 [本轮回执](handoff/R27RC2_RELEASE_ARTIFACT_PREPARATION_20260907.md)。
+- 边界：无远端动作、上传、main/tag 变化、部署或真实用户验收。此记录是后续独立 evidence commit，应用产品 checkpoint 仍为 c37f8103e5be35cb951ab3f022ffee80add6038e。
