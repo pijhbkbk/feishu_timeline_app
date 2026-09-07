@@ -7405,3 +7405,14 @@ AWAITING_OWNER_REVIEW_V2
 - 实际进展：已找到原 RC2 BLOCKER_REPORT；其中 E2E 缺幂等键是实证，后续项目锁日志缺失，不冒充已有复现。新隔离 PostgreSQL 已应用现有 36 migrations；初次容器目录权限问题已修正。
 - 下一步：继续原修复及创建项目的直接流程锁调用链，补真实数据库回归与最终独立审查。manifest/schema 契约与目标平台未决，未关闭 Finding。
 - 环境与授权：本轮仅本地，允许显式 stage/分开 checkpoint，禁止 push/main merge/tag/远端/staging/production；产品状态 AWAITING_PRODUCT_OWNER_CONFIRMATION。
+
+
+### R27RC2 本地修复与独立审查 checkpoint（2026-09-07）
+
+- 目标/输入：续接实际修复树的六文件 dirty patch，完成项目创建、直接流程锁和附件上传链路的真实本地修复；不重启历史盘点。
+- 治理 checkpoint：69c1012a39c0a9977fc442e0b035b203af587997；产品 checkpoint：080453967581ef03872e1b2d130fe9d75d86fc85，tree b5c65c522384643528482053b91ab2c13387e05f。本条和回执为后续独立 evidence commit，不改变应用源码身份。
+- 范围/文件：21 个产品修复及直接测试/迁移说明文件，详见产品 commit；没有依赖、schema、migration 或 CI 修改。六文件原 patch 已保存，治理阶段字节不变；产品阶段只续改其中两份测试，另四份仍字节不变。
+- 执行/验收：根 lint/typecheck、Web 287 测试、最终 API 1284 测试、Web/API build、Prisma validate、部署安全脚本回归 PASS。真实 PostgreSQL 36 migrations 与项目/附件并发测试实际执行；HTTP 主链路及 Chrome 创建/刷新/列表/时间线 PASS。最终独立只读 G4_DIFF PASS。原始 Placeholder 命中 10（全部白名单测试），正式页面 0。
+- 环境：仅本轮专用 localhost / 临时 PostgreSQL 与 Redis，模拟登录；三个临时容器和本轮 Web/API 已关闭。未访问或部署 staging/production，未 push、main merge 或 tag；main 未改变。
+- 风险/下一决策：当前修复达到 CODE_IMPLEMENTED / LOCAL_VERIFIED；整个发布候选尚受 manifest 合同、Admin/Suppliers 现存同类锁路径、正式 source/image 证据、目标 platform 及迁移/恢复授权约束。未关闭新 Finding、未接受风险，不自动进入远端验收。产品状态 AWAITING_PRODUCT_OWNER_CONFIRMATION。
+- 回执与日志索引：[R27RC2_LOCAL_REPAIR_20260907.md](handoff/R27RC2_LOCAL_REPAIR_20260907.md)。原补丁、失败和成功日志、截图/网络及摘要在 /private/tmp/rc2-resume-20260907/。
