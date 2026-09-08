@@ -4,7 +4,12 @@ ARG BUILD_SOURCE_TREE
 ARG BUILD_RELEASE
 ARG BUILD_TIME
 
-FROM ${NODE_IMAGE} AS base
+FROM ${NODE_IMAGE} AS openssl-base
+
+# Alpine 3.24 security revisions; Node's embedded OpenSSL is a separate input.
+RUN apk add --no-cache libcrypto3=3.5.8-r0 libssl3=3.5.8-r0
+
+FROM openssl-base AS base
 
 ENV PNPM_HOME=/pnpm
 ENV PATH="${PNPM_HOME}:${PATH}"
@@ -55,7 +60,7 @@ RUN pnpm --filter @feishu-timeline/api-ops deploy --prod /out/api-ops \
   && cd /out/api-ops \
   && ./node_modules/.bin/prisma generate --schema prisma/schema.prisma
 
-FROM ${NODE_IMAGE} AS ops
+FROM openssl-base AS ops
 
 ARG BUILD_SOURCE_COMMIT
 ARG BUILD_SOURCE_TREE
@@ -85,7 +90,7 @@ USER node
 
 CMD ["./node_modules/.bin/prisma", "--help"]
 
-FROM ${NODE_IMAGE} AS runtime
+FROM openssl-base AS runtime
 
 ARG BUILD_SOURCE_COMMIT
 ARG BUILD_SOURCE_TREE
