@@ -68,7 +68,7 @@ if (role === 'api') {
     native = 'Prisma musl engine query and transaction';
   } finally { await db.$disconnect(); }
 } else {
-  const sharp = require('sharp');
+  const sharp = createRequire(require.resolve('next/package.json'))('sharp');
   const output = await sharp({ create: { width: 2, height: 2, channels: 3, background: 'white' } }).resize(1, 1).png().toBuffer();
   const metadata = await sharp(output).metadata();
   assert.equal(metadata.width, 1); assert.equal(metadata.height, 1);
