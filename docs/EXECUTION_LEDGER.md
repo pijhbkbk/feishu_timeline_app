@@ -7438,3 +7438,15 @@ AWAITING_OWNER_REVIEW_V2
 - 未完成：未知批准目标 platform，固定 Node 基底本地缺失，未构建/运行新镜像；正式 Semgrep/pnpm audit/镜像扫描和远端 CI 未执行。没有真实 runtime/registry digest；控制器、Reviews 生产索引、具体预发环境与真实飞书/负责人验收仍待输入。
 - 下一步：先提出限定 origin/提交的远端只读配置与自动部署副作用核查，再决定 codex/r27rc2-artifact-validation 验证分支的非强制 push；当前 CI 无完整报告保存与六镜像覆盖，不把绿色作业当发布候选就绪。详见 [本轮回执](handoff/R27RC2_RELEASE_ARTIFACT_PREPARATION_20260907.md)。
 - 边界：无远端动作、上传、main/tag 变化、部署或真实用户验收。此记录是后续独立 evidence commit，应用产品 checkpoint 仍为 c37f8103e5be35cb951ab3f022ffee80add6038e。
+
+
+### R27RC2 CI 证据输出本地候选（2026-09-08）
+
+- 输入/授权：所有者转交《补齐管理可见性并完成 CI 证据输出》；从干净 7922fca317c473c9fd26ca582984bfb9f5e20ae1 续接。只读定向远端查询及本地实现/审查/提交；前轮四份未提交只读证据保留。
+- source candidate：5a388095726d1b53fe79e379e1f3665d4a310a5d；tree 608f69ba5aacbb5e67359eabe2a62752424c05ba；锁文件 SHA-256 9186715db8a3fb724b2d856067bb69f320204beb4027b8672a0f2b263503d962 未变。相对原 314b6523 仅新增四个 CI/报告/测试文件差异及既有证据文档；本条和主回执在独立 evidence commit。
+- 改动：ci.yml、run-sca.sh、新 ci-evidence.mjs 及其测试；12份脱敏 JSON 白名单、官方固定 upload-artifact SHA、7天拟留存、实际 source/runner/build/tool 元数据、显式非生产 linux/amd64。原触发器、权限、checkout、dispatch-only Playwright 保持；未改业务、依赖/schema/migrations、基础镜像或 Finding。
+- 验证：node 合成20/20、安全脚本受影响回归、语法/YAML/条件/固定 Action 输入/定向 lint/diff 检查 PASS；独立 G4_DIFF 首轮 Semgrep 严重度 P2 修复后 PASS，最终四文件摘要与提交一致。未运行真实扫描/CI/镜像构建、数据库或重跑1320业务测试；Placeholder raw10测试白名单/正式0。
+- 只读观察：2026-09-08 04:47:44 UTC main 仍为 41b4b166c587692e6f0fb9536dca2e1aab646c70，拟用 codex/r27rc2-artifact-validation ref 当时不存在；管理页缺现有登录，未重复匿名受限查询。Node/Postgres固定 manifest 各查询一次均 digest verification failed，平台可用性未证实，保留引用。
+- 风险/下一决定：需现有管理身份或脱敏 hooks/Apps/Actions/适用规则证据，以及公开候选/必要历史、报告可见性批准后，才提出合并受限执行请求。动态规则摘要、逐镜像 DB/新鲜度、六镜像/真实环境及原独立部署条件未解决。
+- 状态：CODE_IMPLEMENTED / LOCAL_VERIFIED（CI补丁）/ G4_DIFF_PASS；MANAGEMENT_VISIBILITY_PENDING / CI_NOT_EXECUTED / NOT_DEPLOYED；无push、远端上传、main/tag变化、staging/production访问，AWAITING_PRODUCT_OWNER_CONFIRMATION。
+- 单一主回执：[R27RC2_CI_EVIDENCE_READINESS_20260908.md](handoff/R27RC2_CI_EVIDENCE_READINESS_20260908.md)；本地必要日志/摘要索引在 test-results/r27rc2/ci-evidence-readiness-20260908/evidence-index.json，未提交原始证据。
