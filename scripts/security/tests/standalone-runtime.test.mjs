@@ -12,6 +12,12 @@ import { setTimeout as delay } from 'node:timers/promises';
 const root = fileURLToPath(new URL('../../../', import.meta.url));
 
 test('production standalone works without build-tree dependency fallback', { timeout: 60000 }, async () => {
+  // These four non-secret expectations must match the identity generated before build.
+  const expected = Object.fromEntries(['EXPECTED_SOURCE_COMMIT', 'EXPECTED_SOURCE_TREE', 'EXPECTED_RELEASE', 'EXPECTED_BUILD_TIME']
+    .map((key) => {
+      assert.ok(process.env[key], `${key} must be supplied for the production runtime test`);
+      return [key, process.env[key]];
+    }));
   const runtime = await mkdtemp(path.join(os.tmpdir(), 'rc2-standalone-test-'));
   let child;
   let exited;
@@ -26,7 +32,7 @@ test('production standalone works without build-tree dependency fallback', { tim
     await new Promise((resolve) => reservation.close(resolve));
     child = spawn(process.execPath, ['apps/web/server.js'], {
       cwd: runtime,
-      env: { PATH: process.env.PATH, HOSTNAME: '127.0.0.1', PORT: String(port), NODE_ENV: 'production', NEXT_TELEMETRY_DISABLED: '1' },
+      env: { ...expected, PATH: process.env.PATH, HOSTNAME: '127.0.0.1', PORT: String(port), NODE_ENV: 'production', NEXT_TELEMETRY_DISABLED: '1' },
       stdio: ['ignore', 'ignore', 'pipe'],
     });
     let stderr = '';
@@ -51,7 +57,10 @@ test('production standalone works without build-tree dependency fallback', { tim
     const metadata = await fetch(new URL('/build-info', origin), { redirect: 'manual' });
     assert.equal(metadata.status, 200, stderr);
     const info = await metadata.json();
-    assert.match(info.runtimeCommit, /^[0-9a-f]{40}$/);
+    assert.equal(info.runtimeCommit, expected.EXPECTED_SOURCE_COMMIT);
+    assert.equal(info.sourceTree, expected.EXPECTED_SOURCE_TREE);
+    assert.equal(info.release, expected.EXPECTED_RELEASE);
+    assert.equal(info.buildTime, expected.EXPECTED_BUILD_TIME);
     const login = await fetch(new URL('/login', origin), { redirect: 'manual' });
     assert.equal(login.status, 200);
     const html = await login.text();
