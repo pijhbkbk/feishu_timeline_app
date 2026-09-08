@@ -34,7 +34,8 @@ if [[ ! "$LINES" =~ ^[0-9]{1,6}$ ]] \
   || [ "$LINES" -lt 1 ] || [ "$LINES" -gt 100000 ]; then
   fail 'LINES must be an integer from 1 through 100000.'
 fi
-case "$FOLLOW" in yes|no) ;; *) fail 'FOLLOW must be yes or no.' ;; esac
+case "$FOLLOW" in
+  yes|no) ;; *) fail 'FOLLOW must be yes or no.' ;; esac
 
 case "$TARGET" in
   api|web|nginx|redis|all) ;;
@@ -43,7 +44,7 @@ esac
 
 REMOTE_SCRIPT="$(mktemp /tmp/r27a-gce-log-tail-remote.XXXXXX)"
 trap 'rm -f -- "$REMOTE_SCRIPT"' EXIT
-cat >"$REMOTE_SCRIPT" <<'REMOTE_SCRIPT_EOF'
+cat >"$REMOTE_SCRIPT" <<'REMOTESCRIPTEOF'
 #!/usr/bin/env bash
 set -euo pipefail
 TARGET="$1"
@@ -80,7 +81,7 @@ if [ "${#nginx_files[@]}" -gt 0 ]; then
     fi
   done
 fi
-REMOTE_SCRIPT_EOF
+REMOTESCRIPTEOF
 chmod 0700 "$REMOTE_SCRIPT"
 log "Reading $TARGET logs on $INSTANCE"
 gce_run_remote_script_with_args "$REMOTE_SCRIPT" "$TARGET" "$LINES" "$FOLLOW"

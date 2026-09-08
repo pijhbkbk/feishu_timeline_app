@@ -51,9 +51,12 @@ for resource_name in "$STATIC_IP_NAME" "$WEB_TAG"; do
     fail 'Google Cloud resource names must be safe lowercase RFC 1035 names.'
   fi
 done
-case "$RESERVE_STATIC_IP" in yes|no) ;; *) fail 'RESERVE_STATIC_IP must be yes or no.' ;; esac
-case "$INSTALL_CERTBOT" in auto|yes|no) ;; *) fail 'INSTALL_CERTBOT must be auto, yes or no.' ;; esac
-case "$FORCE_CERTBOT" in yes|no) ;; *) fail 'FORCE_CERTBOT must be yes or no.' ;; esac
+case "$RESERVE_STATIC_IP" in
+  yes|no) ;; *) fail 'RESERVE_STATIC_IP must be yes or no.' ;; esac
+case "$INSTALL_CERTBOT" in
+  auto|yes|no) ;; *) fail 'INSTALL_CERTBOT must be auto, yes or no.' ;; esac
+case "$FORCE_CERTBOT" in
+  yes|no) ;; *) fail 'FORCE_CERTBOT must be yes or no.' ;; esac
 if [ -n "$CERTBOT_EMAIL" ] \
   && { [ "${#CERTBOT_EMAIL}" -gt 254 ] \
     || [[ ! "$CERTBOT_EMAIL" =~ ^[A-Za-z0-9.!#$%\&\'*+/=?^_\`{|}~-]+@[A-Za-z0-9.-]+$ ]]; }; then
@@ -141,7 +144,8 @@ NETWORK_URL="$(gcloud compute instances describe "$INSTANCE" --project="$PROJECT
 NETWORK="${NETWORK_URL##*/}"
 [ "${#PUBLIC_IP}" -le 45 ] && [[ "$PUBLIC_IP" =~ ^[0-9A-Fa-f:.]+$ ]] \
   || fail 'gcloud returned an invalid public IP address.'
-case "$NETWORK_TIER" in PREMIUM|STANDARD) ;; *) fail 'gcloud returned an invalid network tier.' ;; esac
+case "$NETWORK_TIER" in
+  PREMIUM|STANDARD) ;; *) fail 'gcloud returned an invalid network tier.' ;; esac
 if [ "${#NETWORK}" -gt 63 ] \
   || [[ ! "$NETWORK" =~ ^[a-z]([a-z0-9-]{0,61}[a-z0-9])?$ ]]; then
   fail 'gcloud returned an invalid network name.'
@@ -166,7 +170,7 @@ log "Region: $REGION"
 log "Public IP: $PUBLIC_IP"
 log "Network: $NETWORK"
 log "Network tier: $NETWORK_TIER"
-log "Current tags: ${CURRENT_TAGS:-<none>}"
+log "Current tags: ${CURRENT_TAGS:-"<none>"}"
 
 if [ -z "$STATIC_IP_BINDING" ]; then
   if [ "$RESERVE_STATIC_IP" = "yes" ]; then
@@ -251,11 +255,11 @@ WWW_DNS_ANSWERS="$(query_public_dns "$WWW_DOMAIN")"
 APP_DNS_ANSWERS="$(query_public_dns "$APP_HOST")"
 
 log "Public DNS A answers for $ROOT_DOMAIN:"
-printf '%s\n' "${ROOT_DNS_ANSWERS:-<none>}"
+printf '%s\n' "${ROOT_DNS_ANSWERS:-"<none>"}"
 log "Public DNS A answers for $WWW_DOMAIN:"
-printf '%s\n' "${WWW_DNS_ANSWERS:-<none>}"
+printf '%s\n' "${WWW_DNS_ANSWERS:-"<none>"}"
 log "Public DNS A answers for $APP_HOST:"
-printf '%s\n' "${APP_DNS_ANSWERS:-<none>}"
+printf '%s\n' "${APP_DNS_ANSWERS:-"<none>"}"
 
 ROOT_DIRECT_TO_ORIGIN=no
 WWW_DIRECT_TO_ORIGIN=no
@@ -273,7 +277,7 @@ cleanup_remote_scripts() {
 }
 trap cleanup_remote_scripts EXIT
 
-cat >"$REMOTE_CONFIGURE_SCRIPT" <<'REMOTE_CONFIGURE_EOF'
+cat >"$REMOTE_CONFIGURE_SCRIPT" <<'REMOTECONFIGUREEOF'
 #!/usr/bin/env bash
 set -euo pipefail
 PLACEHOLDER_DIR="$1"
@@ -324,14 +328,14 @@ printf '%s\n' '--- www host ---'
 curl -I --max-time 5 -H "Host: $WWW_DOMAIN" http://127.0.0.1 || true
 printf '%s\n' '--- timeline host ---'
 curl -I --max-time 5 -H "Host: $APP_HOST" http://127.0.0.1 || true
-REMOTE_CONFIGURE_EOF
+REMOTECONFIGUREEOF
 chmod 0700 "$REMOTE_CONFIGURE_SCRIPT"
 gce_run_remote_script_with_args \
   "$REMOTE_CONFIGURE_SCRIPT" \
   "$PLACEHOLDER_DIR" "$PLACEHOLDER_HTML_B64" "$TIMELINE_B64" "$ROOT_B64" \
   "$ROOT_DOMAIN" "$WWW_DOMAIN" "$APP_HOST"
 
-cat >"$REMOTE_CERTBOT_SCRIPT" <<'REMOTE_CERTBOT_EOF'
+cat >"$REMOTE_CERTBOT_SCRIPT" <<'REMOTECERTBOTEOF'
 #!/usr/bin/env bash
 set -euo pipefail
 ACTION="$1"
@@ -364,7 +368,7 @@ case "$ACTION" in
     ;;
   *) exit 64 ;;
 esac
-REMOTE_CERTBOT_EOF
+REMOTECERTBOTEOF
 chmod 0700 "$REMOTE_CERTBOT_SCRIPT"
 
 HAS_CERTBOT="$(gce_ssh 'if command -v certbot >/dev/null 2>&1; then echo yes; else echo no; fi')"
@@ -433,8 +437,8 @@ fi
 
 log "Summary:"
 log "  public_ip=$PUBLIC_IP"
-log "  static_ip=${STATIC_IP_BINDING:-<ephemeral>}"
-log "  current_tags=${CURRENT_TAGS:-<none>}"
+log "  static_ip=${STATIC_IP_BINDING:-"<ephemeral>"}"
+log "  current_tags=${CURRENT_TAGS:-"<none>"}"
 log "  root_direct_to_origin=$ROOT_DIRECT_TO_ORIGIN"
 log "  www_direct_to_origin=$WWW_DIRECT_TO_ORIGIN"
 log "  certbot_ready=$CERTBOT_READY"

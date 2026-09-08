@@ -219,6 +219,8 @@ async function verifyAuthenticatedRequests() {
 }
 
 async function assertUnauthenticatedBoundary() {
+  // R27RC2-CI-SAST-LOOPBACK-001: literal loopback probe; no credentials or remote target.
+  // nosemgrep: typescript.react.security.react-insecure-request.react-insecure-request
   const response = await fetch('http://127.0.0.1:8080/api/projects', {
     redirect: 'manual',
     signal: AbortSignal.timeout(10_000),
@@ -230,7 +232,10 @@ async function assertUnauthenticatedBoundary() {
 }
 
 async function createGetOnlyOpenApi() {
+  // R27RC2-CI-SAST-LOOPBACK-001: literal loopback probe; no credentials or remote target.
+  // nosemgrep: typescript.react.security.react-insecure-request.react-insecure-request
   const response = await fetch('http://127.0.0.1:8080/api/docs-json', {
+    redirect: 'manual',
     signal: AbortSignal.timeout(20_000),
   });
   if (!response.ok) throw new Error(`OpenAPI retrieval failed with ${response.status}.`);

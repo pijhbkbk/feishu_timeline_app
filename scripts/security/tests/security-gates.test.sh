@@ -191,6 +191,31 @@ if SECURITY_REPORT_DIR="$TMP_DIR/unsafe-report" \
   fail 'development eval-source-map artifact was accepted'
 fi
 
+# Hidden standalone dependencies, server output and maps are shipped too.
+for artifact_path in \
+  'server/app.js' 'static/chunks/app.js.map' \
+  'standalone/node_modules/.pnpm/vendor/node_modules/vendor/index.cjs'; do
+  mkdir -p "$(dirname "$safe_build/$artifact_path")"
+  printf '//# sourceURL=webpack-internal:///synthetic-test\n' >"$safe_build/$artifact_path"
+  artifact_rc=0
+  SECURITY_REPORT_DIR="$TMP_DIR/complete-artifact-report" \
+    "$ROOT_DIR/scripts/security/check-production-build-artifacts.sh" "$safe_build" \
+    >/dev/null 2>&1 || artifact_rc=$?
+  [ "$artifact_rc" -eq 1 ] || fail "shipped artifact was not rejected: $artifact_path"
+  rm "$safe_build/$artifact_path"
+done
+mkdir -p "$TMP_DIR/scanner-failure-bin"
+for failed_tool in find grep; do
+  printf '#!/usr/bin/env bash\nexit 2\n' >"$TMP_DIR/scanner-failure-bin/$failed_tool"
+  chmod +x "$TMP_DIR/scanner-failure-bin/$failed_tool"
+  artifact_rc=0
+  PATH="$TMP_DIR/scanner-failure-bin:$PATH" SECURITY_REPORT_DIR="$TMP_DIR/tool-error-report" \
+    "$ROOT_DIR/scripts/security/check-production-build-artifacts.sh" "$safe_build" \
+    >/dev/null 2>&1 || artifact_rc=$?
+  [ "$artifact_rc" -eq 2 ] || fail "artifact $failed_tool error did not fail closed"
+  rm "$TMP_DIR/scanner-failure-bin/$failed_tool"
+done
+
 cat >"$TMP_DIR/semgrep-pass.json" <<'JSON'
 {"results":[],"errors":[]}
 JSON
@@ -693,3 +718,5 @@ grep -Fx 'TOOL_ERROR' "$TMP_DIR/zap-tool-error-run/zap-baseline.status" >/dev/nu
   || fail 'stale ZAP JSON report survived a failed scan'
 
 printf 'PASS: security gate regression tests\n'
+
+node --test "$ROOT_DIR/scripts/security/tests/r24b-loopback.test.mjs"

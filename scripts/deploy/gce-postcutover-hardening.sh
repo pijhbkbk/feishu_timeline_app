@@ -65,7 +65,8 @@ fi
 if [ "$EXPECTED_FEISHU_REDIRECT_URI" != "${PUBLIC_APP_URL}${FEISHU_CALLBACK_PATH}" ]; then
   fail 'EXPECTED_FEISHU_REDIRECT_URI must match the configured origin and callback path.'
 fi
-case "$INSTALL_CERTBOT" in auto|yes|no) ;; *) fail 'INSTALL_CERTBOT must be auto, yes or no.' ;; esac
+case "$INSTALL_CERTBOT" in
+  auto|yes|no) ;; *) fail 'INSTALL_CERTBOT must be auto, yes or no.' ;; esac
 TIMELINE_BOOTSTRAP_TEMPLATE="$ROOT_DIR/deploy/nginx/feishu-timeline.conf"
 [ -f "$TIMELINE_BOOTSTRAP_TEMPLATE" ] || fail "Missing $TIMELINE_BOOTSTRAP_TEMPLATE"
 
@@ -78,11 +79,11 @@ APP_DNS="$(query_public_dns "$APP_HOST")"
 
 log "Public IP: $PUBLIC_IP"
 log "Root DNS answers:"
-printf '%s\n' "${ROOT_DNS:-<none>}"
+printf '%s\n' "${ROOT_DNS:-"<none>"}"
 log "WWW DNS answers:"
-printf '%s\n' "${WWW_DNS:-<none>}"
+printf '%s\n' "${WWW_DNS:-"<none>"}"
 log "Timeline DNS answers:"
-printf '%s\n' "${APP_DNS:-<none>}"
+printf '%s\n' "${APP_DNS:-"<none>"}"
 
 answers_include_ip "$ROOT_DNS" "$PUBLIC_IP" || fail "$ROOT_DOMAIN does not resolve directly to $PUBLIC_IP"
 answers_include_ip "$WWW_DNS" "$PUBLIC_IP" || fail "$WWW_DOMAIN does not resolve directly to $PUBLIC_IP"
@@ -248,7 +249,7 @@ EOF
 log "Applying post-cutover hardening on $INSTANCE"
 REMOTE_SCRIPT="$(mktemp /tmp/r27a-gce-postcutover-remote.XXXXXX)"
 trap 'rm -f -- "$REMOTE_SCRIPT"' EXIT
-cat >"$REMOTE_SCRIPT" <<'REMOTE_SCRIPT_EOF'
+cat >"$REMOTE_SCRIPT" <<'REMOTESCRIPTEOF'
 #!/usr/bin/env bash
 set -euo pipefail
 APP_ROOT="$1"
@@ -412,7 +413,7 @@ curl -fsSI --max-time 10 --resolve "$APP_HOST:443:127.0.0.1" "https://$APP_HOST/
 
 echo backup_dir=$backup_dir
 sudo certbot certificates | sed -n '1,120p'
-REMOTE_SCRIPT_EOF
+REMOTESCRIPTEOF
 chmod 0700 "$REMOTE_SCRIPT"
 gce_run_remote_script_with_args \
   "$REMOTE_SCRIPT" \

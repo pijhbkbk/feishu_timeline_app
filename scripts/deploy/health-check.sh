@@ -88,12 +88,12 @@ probe_url() {
     curl_args+=(-L --max-redirs 5)
   fi
   result="$(curl "${curl_args[@]}" "$url" 2>/dev/null || true)"
-  code="${result%%|*}"
-  final_url="${result#*|}"
+  code="${result%%\|*}"
+  final_url="${result#*\|}"
   if [ "$code" = "$expected_code" ]; then
     pass "$name -> code=$code url=${final_url:-$url}"
   else
-    record_failure "$name -> expected=$expected_code actual=${code:-<none>} url=${final_url:-$url}"
+    record_failure "$name -> expected=$expected_code actual=${code:-"<none>"} url=${final_url:-$url}"
     [ -f "$body_file" ] || printf '{}\n' >"$body_file"
   fi
   LAST_BODY_FILE="$body_file"

@@ -85,8 +85,8 @@ probe_http() {
     /usr/bin/curl -k -sS -L --max-redirs 5 --max-time 20 -o /dev/null \
       -w '%{http_code}|%{url_effective}' "$url" || true
   )"
-  PROBE_FINAL_CODE="${final_result%%|*}"
-  PROBE_FINAL_URL="${final_result#*|}"
+  PROBE_FINAL_CODE="${final_result%%\|*}"
+  PROBE_FINAL_URL="${final_result#*\|}"
 }
 
 json_field() {
@@ -195,7 +195,7 @@ probe_http "http://${ROOT_DOMAIN}/"
 if [[ "${PROBE_DIRECT_CODE:-}" =~ ^30[18]$ ]] && [ "${PROBE_LOCATION:-}" = "https://${ROOT_DOMAIN}/" ]; then
   add_result "http://${ROOT_DOMAIN}/" "301/308 -> https://${ROOT_DOMAIN}/" "code=${PROBE_DIRECT_CODE} location=${PROBE_LOCATION}" "PASS"
 else
-  add_result "http://${ROOT_DOMAIN}/" "301/308 -> https://${ROOT_DOMAIN}/" "code=${PROBE_DIRECT_CODE:-<none>} location=${PROBE_LOCATION:-<none>}" "FAIL"
+  add_result "http://${ROOT_DOMAIN}/" "301/308 -> https://${ROOT_DOMAIN}/" "code=${PROBE_DIRECT_CODE:-"<none>"} location=${PROBE_LOCATION:-"<none>"}" "FAIL"
 fi
 
 probe_http "https://${ROOT_DOMAIN}/"
@@ -203,7 +203,7 @@ root_hsts="$(header_field "$PROBE_HEAD" "Strict-Transport-Security")"
 if [ "${PROBE_FINAL_CODE:-}" = "200" ] && [ "${PROBE_FINAL_URL:-}" = "https://${ROOT_DOMAIN}/" ] && grep -F "timeline.all-too-well.com" "$PROBE_BODY" >/dev/null 2>&1; then
   add_result "https://${ROOT_DOMAIN}/" "200 placeholder" "code=${PROBE_FINAL_CODE} url=${PROBE_FINAL_URL}" "PASS"
 else
-  add_result "https://${ROOT_DOMAIN}/" "200 placeholder" "code=${PROBE_FINAL_CODE:-<none>} url=${PROBE_FINAL_URL:-<none>}" "FAIL"
+  add_result "https://${ROOT_DOMAIN}/" "200 placeholder" "code=${PROBE_FINAL_CODE:-"<none>"} url=${PROBE_FINAL_URL:-"<none>"}" "FAIL"
 fi
 if [ -n "$root_hsts" ]; then
   add_result "https://${ROOT_DOMAIN}/ HSTS" "present" "$root_hsts" "PASS"
@@ -215,21 +215,21 @@ probe_http "http://${WWW_DOMAIN}/"
 if [[ "${PROBE_DIRECT_CODE:-}" =~ ^30[18]$ ]] && [ "${PROBE_LOCATION:-}" = "https://${ROOT_DOMAIN}/" ]; then
   add_result "http://${WWW_DOMAIN}/" "301/308 -> https://${ROOT_DOMAIN}/" "code=${PROBE_DIRECT_CODE} location=${PROBE_LOCATION}" "PASS"
 else
-  add_result "http://${WWW_DOMAIN}/" "301/308 -> https://${ROOT_DOMAIN}/" "code=${PROBE_DIRECT_CODE:-<none>} location=${PROBE_LOCATION:-<none>}" "FAIL"
+  add_result "http://${WWW_DOMAIN}/" "301/308 -> https://${ROOT_DOMAIN}/" "code=${PROBE_DIRECT_CODE:-"<none>"} location=${PROBE_LOCATION:-"<none>"}" "FAIL"
 fi
 
 probe_http "https://${WWW_DOMAIN}/"
 if [[ "${PROBE_DIRECT_CODE:-}" =~ ^30[18]$ ]] && [ "${PROBE_LOCATION:-}" = "https://${ROOT_DOMAIN}/" ]; then
   add_result "https://${WWW_DOMAIN}/" "301/308 -> https://${ROOT_DOMAIN}/" "code=${PROBE_DIRECT_CODE} location=${PROBE_LOCATION}" "PASS"
 else
-  add_result "https://${WWW_DOMAIN}/" "301/308 -> https://${ROOT_DOMAIN}/" "code=${PROBE_DIRECT_CODE:-<none>} location=${PROBE_LOCATION:-<none>}" "FAIL"
+  add_result "https://${WWW_DOMAIN}/" "301/308 -> https://${ROOT_DOMAIN}/" "code=${PROBE_DIRECT_CODE:-"<none>"} location=${PROBE_LOCATION:-"<none>"}" "FAIL"
 fi
 
 probe_http "http://${APP_HOST}/"
 if [[ "${PROBE_DIRECT_CODE:-}" =~ ^30[18]$ ]] && [ "${PROBE_LOCATION:-}" = "https://${APP_HOST}/" ]; then
   add_result "http://${APP_HOST}/" "301/308 -> https://${APP_HOST}/" "code=${PROBE_DIRECT_CODE} location=${PROBE_LOCATION}" "PASS"
 else
-  add_result "http://${APP_HOST}/" "301/308 -> https://${APP_HOST}/" "code=${PROBE_DIRECT_CODE:-<none>} location=${PROBE_LOCATION:-<none>}" "FAIL"
+  add_result "http://${APP_HOST}/" "301/308 -> https://${APP_HOST}/" "code=${PROBE_DIRECT_CODE:-"<none>"} location=${PROBE_LOCATION:-"<none>"}" "FAIL"
 fi
 
 probe_http "https://${APP_HOST}/"
@@ -237,7 +237,7 @@ app_hsts="$(header_field "$PROBE_HEAD" "Strict-Transport-Security")"
 if [ "${PROBE_DIRECT_CODE:-}" = "307" ] && [ "${PROBE_LOCATION:-}" = "/dashboard" ] && [ "${PROBE_FINAL_CODE:-}" = "200" ] && [ "${PROBE_FINAL_URL:-}" = "https://${APP_HOST}/dashboard" ]; then
   add_result "https://${APP_HOST}/" "307 -> /dashboard, final 200" "direct=${PROBE_DIRECT_CODE} final=${PROBE_FINAL_CODE} url=${PROBE_FINAL_URL}" "PASS"
 else
-  add_result "https://${APP_HOST}/" "307 -> /dashboard, final 200" "direct=${PROBE_DIRECT_CODE:-<none>} final=${PROBE_FINAL_CODE:-<none>} url=${PROBE_FINAL_URL:-<none>}" "FAIL"
+  add_result "https://${APP_HOST}/" "307 -> /dashboard, final 200" "direct=${PROBE_DIRECT_CODE:-"<none>"} final=${PROBE_FINAL_CODE:-"<none>"} url=${PROBE_FINAL_URL:-"<none>"}" "FAIL"
 fi
 if [ -n "$app_hsts" ]; then
   add_result "https://${APP_HOST}/ HSTS" "present" "$app_hsts" "PASS"
@@ -250,7 +250,7 @@ for path in /login /dashboard /projects; do
   if [ "${PROBE_FINAL_CODE:-}" = "200" ] && [ "${PROBE_FINAL_URL:-}" = "https://${APP_HOST}${path}" ]; then
     add_result "https://${APP_HOST}${path}" "200" "code=${PROBE_FINAL_CODE} url=${PROBE_FINAL_URL}" "PASS"
   else
-    add_result "https://${APP_HOST}${path}" "200" "code=${PROBE_FINAL_CODE:-<none>} url=${PROBE_FINAL_URL:-<none>}" "FAIL"
+    add_result "https://${APP_HOST}${path}" "200" "code=${PROBE_FINAL_CODE:-"<none>"} url=${PROBE_FINAL_URL:-"<none>"}" "FAIL"
   fi
 done
 
@@ -268,7 +268,7 @@ if [ "${PROBE_FINAL_CODE:-}" = "200" ] &&
   [ "$health_release" != "development" ]; then
   add_result "https://${APP_HOST}/api/health" "200 status=ok runtime=${EXPECTED_RUNTIME_COMMIT}" "code=${PROBE_FINAL_CODE} status=${health_status} runtime=${health_runtime_commit} buildTime=${health_build_time} release=${health_release}" "PASS"
 else
-  add_result "https://${APP_HOST}/api/health" "200 status=ok runtime=${EXPECTED_RUNTIME_COMMIT:-<required>}" "code=${PROBE_FINAL_CODE:-<none>} status=${health_status:-<none>} runtime=${health_runtime_commit:-<missing>} buildTime=${health_build_time:-<missing>} release=${health_release:-<missing>}" "FAIL"
+  add_result "https://${APP_HOST}/api/health" "200 status=ok runtime=${EXPECTED_RUNTIME_COMMIT:-"<required>"}" "code=${PROBE_FINAL_CODE:-"<none>"} status=${health_status:-"<none>"} runtime=${health_runtime_commit:-"<missing>"} buildTime=${health_build_time:-"<missing>"} release=${health_release:-"<missing>"}" "FAIL"
 fi
 
 probe_http "https://${APP_HOST}/build-info"
@@ -283,7 +283,7 @@ if [ "${PROBE_FINAL_CODE:-}" = "200" ] &&
   [ "$web_release" != "development" ]; then
   add_result "https://${APP_HOST}/build-info" "200 runtime=${EXPECTED_RUNTIME_COMMIT}" "code=${PROBE_FINAL_CODE} runtime=${web_runtime_commit} buildTime=${web_build_time} release=${web_release}" "PASS"
 else
-  add_result "https://${APP_HOST}/build-info" "200 runtime=${EXPECTED_RUNTIME_COMMIT:-<required>}" "code=${PROBE_FINAL_CODE:-<none>} runtime=${web_runtime_commit:-<missing>} buildTime=${web_build_time:-<missing>} release=${web_release:-<missing>}" "FAIL"
+  add_result "https://${APP_HOST}/build-info" "200 runtime=${EXPECTED_RUNTIME_COMMIT:-"<required>"}" "code=${PROBE_FINAL_CODE:-"<none>"} runtime=${web_runtime_commit:-"<missing>"} buildTime=${web_build_time:-"<missing>"} release=${web_release:-"<missing>"}" "FAIL"
 fi
 
 probe_http "https://${APP_HOST}/api/auth/session"
@@ -293,7 +293,7 @@ session_feishu_enabled="$(json_field "$PROBE_BODY" feishuEnabled)"
 if [ "${PROBE_FINAL_CODE:-}" = "200" ] && [ "$session_authenticated" = "false" ] && [ "$session_mock_enabled" = "false" ] && [ "$session_feishu_enabled" = "true" ]; then
   add_result "https://${APP_HOST}/api/auth/session" "authenticated=false, mockEnabled=false, feishuEnabled=true" "code=${PROBE_FINAL_CODE} authenticated=${session_authenticated} mockEnabled=${session_mock_enabled} feishuEnabled=${session_feishu_enabled}" "PASS"
 else
-  add_result "https://${APP_HOST}/api/auth/session" "authenticated=false, mockEnabled=false, feishuEnabled=true" "code=${PROBE_FINAL_CODE:-<none>} authenticated=${session_authenticated:-<none>} mockEnabled=${session_mock_enabled:-<none>} feishuEnabled=${session_feishu_enabled:-<none>}" "FAIL"
+  add_result "https://${APP_HOST}/api/auth/session" "authenticated=false, mockEnabled=false, feishuEnabled=true" "code=${PROBE_FINAL_CODE:-"<none>"} authenticated=${session_authenticated:-"<none>"} mockEnabled=${session_mock_enabled:-"<none>"} feishuEnabled=${session_feishu_enabled:-"<none>"}" "FAIL"
 fi
 
 probe_http "https://${APP_HOST}/api/auth/feishu/start"
@@ -314,7 +314,7 @@ else
   add_result \
     "https://${APP_HOST}/api/auth/feishu/start" \
     "302 -> Feishu CN; callback=${APP_HOST}/login/callback" \
-    "code=${PROBE_DIRECT_CODE:-<none>} authorization=${oauth_host:-<none>}${oauth_path:-} callback=${oauth_callback_host:-<none>}${oauth_callback_path:-}" \
+    "code=${PROBE_DIRECT_CODE:-"<none>"} authorization=${oauth_host:-"<none>"}${oauth_path:-} callback=${oauth_callback_host:-"<none>"}${oauth_callback_path:-}" \
     "FAIL"
 fi
 
@@ -420,7 +420,7 @@ for key in service_api service_web service_nginx service_postgresql service_redi
   if [ "$value" = "active" ]; then
     add_result "$key" "active" "$value" "PASS"
   else
-    add_result "$key" "active" "${value:-<missing>}" "FAIL"
+    add_result "$key" "active" "${value:-"<missing>"}" "FAIL"
   fi
 done
 
@@ -428,7 +428,7 @@ runtime_commit="$(remote_value runtime_commit)"
 if [ -n "$EXPECTED_RUNTIME_COMMIT" ] && [ "$runtime_commit" = "$EXPECTED_RUNTIME_COMMIT" ]; then
   add_result "server runtime commit" "$EXPECTED_RUNTIME_COMMIT" "$runtime_commit" "PASS"
 else
-  add_result "server runtime commit" "${EXPECTED_RUNTIME_COMMIT:-<required>}" "${runtime_commit:-<missing>}" "FAIL"
+  add_result "server runtime commit" "${EXPECTED_RUNTIME_COMMIT:-"<required>"}" "${runtime_commit:-"<missing>"}" "FAIL"
 fi
 
 for key in admin_route_real admin_web_source admin_api_source; do
@@ -436,7 +436,7 @@ for key in admin_route_real admin_web_source admin_api_source; do
   if [ "$value" = "yes" ]; then
     add_result "$key" "yes" "$value" "PASS"
   else
-    add_result "$key" "yes" "${value:-<missing>}" "FAIL"
+    add_result "$key" "yes" "${value:-"<missing>"}" "FAIL"
   fi
 done
 
@@ -444,112 +444,112 @@ admin_placeholder_build_count="$(remote_value admin_placeholder_build_count)"
 if [ "$admin_placeholder_build_count" = "0" ]; then
   add_result "admin placeholder build scan" "0" "$admin_placeholder_build_count" "PASS"
 else
-  add_result "admin placeholder build scan" "0" "${admin_placeholder_build_count:-<missing>}" "FAIL"
+  add_result "admin placeholder build scan" "0" "${admin_placeholder_build_count:-"<missing>"}" "FAIL"
 fi
 
 postgres_ready="$(remote_value postgres_ready)"
 if [ "$postgres_ready" = "yes" ]; then
   add_result "postgres_ready" "yes" "$postgres_ready" "PASS"
 else
-  add_result "postgres_ready" "yes" "${postgres_ready:-<missing>}" "FAIL"
+  add_result "postgres_ready" "yes" "${postgres_ready:-"<missing>"}" "FAIL"
 fi
 
 redis_ping="$(remote_value redis_ping)"
 if [ "$redis_ping" = "PONG" ]; then
   add_result "redis_ping" "PONG" "$redis_ping" "PASS"
 else
-  add_result "redis_ping" "PONG" "${redis_ping:-<missing>}" "FAIL"
+  add_result "redis_ping" "PONG" "${redis_ping:-"<missing>"}" "FAIL"
 fi
 
 nginx_test="$(remote_value nginx_test)"
 if [ "$nginx_test" = "ok" ]; then
   add_result "nginx_test" "ok" "$nginx_test" "PASS"
 else
-  add_result "nginx_test" "ok" "${nginx_test:-<missing>}" "FAIL"
+  add_result "nginx_test" "ok" "${nginx_test:-"<missing>"}" "FAIL"
 fi
 
 api_env_mode="$(remote_value env_api_mode)"
 if [ "$api_env_mode" = "600" ]; then
   add_result "env_api_mode" "600" "$api_env_mode" "PASS"
 else
-  add_result "env_api_mode" "600" "${api_env_mode:-<missing>}" "FAIL"
+  add_result "env_api_mode" "600" "${api_env_mode:-"<missing>"}" "FAIL"
 fi
 
 web_env_mode="$(remote_value env_web_mode)"
 if [ "$web_env_mode" = "600" ]; then
   add_result "env_web_mode" "600" "$web_env_mode" "PASS"
 else
-  add_result "env_web_mode" "600" "${web_env_mode:-<missing>}" "FAIL"
+  add_result "env_web_mode" "600" "${web_env_mode:-"<missing>"}" "FAIL"
 fi
 
 deployment_environment="$(remote_value value_DEPLOYMENT_ENV)"
 if [ "$deployment_environment" = "production" ]; then
   add_result "env_DEPLOYMENT_ENV" "production" "$deployment_environment" "PASS"
 else
-  add_result "env_DEPLOYMENT_ENV" "production" "${deployment_environment:-<missing>}" "FAIL"
+  add_result "env_DEPLOYMENT_ENV" "production" "${deployment_environment:-"<missing>"}" "FAIL"
 fi
 
 frontend_url="$(remote_value value_FRONTEND_URL)"
 if [ "$frontend_url" = "https://${APP_HOST}" ]; then
   add_result "env_FRONTEND_URL" "https://${APP_HOST}" "$frontend_url" "PASS"
 else
-  add_result "env_FRONTEND_URL" "https://${APP_HOST}" "${frontend_url:-<missing>}" "FAIL"
+  add_result "env_FRONTEND_URL" "https://${APP_HOST}" "${frontend_url:-"<missing>"}" "FAIL"
 fi
 
 oauth_provider="$(remote_value value_OAUTH_PROVIDER)"
 if [ "$oauth_provider" = "feishu-cn" ]; then
   add_result "env_OAUTH_PROVIDER" "feishu-cn" "$oauth_provider" "PASS"
 else
-  add_result "env_OAUTH_PROVIDER" "feishu-cn" "${oauth_provider:-<missing>}" "FAIL"
+  add_result "env_OAUTH_PROVIDER" "feishu-cn" "${oauth_provider:-"<missing>"}" "FAIL"
 fi
 
 feishu_redirect_uri="$(remote_value value_FEISHU_REDIRECT_URI)"
 if [ "$feishu_redirect_uri" = "https://${APP_HOST}/login/callback" ]; then
   add_result "env_FEISHU_REDIRECT_URI" "https://${APP_HOST}/login/callback" "$feishu_redirect_uri" "PASS"
 else
-  add_result "env_FEISHU_REDIRECT_URI" "https://${APP_HOST}/login/callback" "${feishu_redirect_uri:-<missing>}" "FAIL"
+  add_result "env_FEISHU_REDIRECT_URI" "https://${APP_HOST}/login/callback" "${feishu_redirect_uri:-"<missing>"}" "FAIL"
 fi
 
 auth_mock_enabled="$(remote_value value_AUTH_MOCK_ENABLED)"
 if [ "$auth_mock_enabled" = "false" ]; then
   add_result "env_AUTH_MOCK_ENABLED" "false" "$auth_mock_enabled" "PASS"
 else
-  add_result "env_AUTH_MOCK_ENABLED" "false" "${auth_mock_enabled:-<missing>}" "FAIL"
+  add_result "env_AUTH_MOCK_ENABLED" "false" "${auth_mock_enabled:-"<missing>"}" "FAIL"
 fi
 
 feishu_endpoint="$(remote_value value_FEISHU_AUTHORIZATION_ENDPOINT)"
 if [ "$feishu_endpoint" = "https://accounts.feishu.cn/open-apis/authen/v1/index" ]; then
   add_result "env_FEISHU_AUTHORIZATION_ENDPOINT" "Feishu CN accounts host" "$feishu_endpoint" "PASS"
 else
-  add_result "env_FEISHU_AUTHORIZATION_ENDPOINT" "Feishu CN accounts host" "${feishu_endpoint:-<missing>}" "FAIL"
+  add_result "env_FEISHU_AUTHORIZATION_ENDPOINT" "Feishu CN accounts host" "${feishu_endpoint:-"<missing>"}" "FAIL"
 fi
 
 redis_url_state="$(remote_value env_REDIS_URL)"
 if [ "$redis_url_state" = "set" ]; then
   add_result "env_REDIS_URL" "set" "$redis_url_state" "PASS"
 else
-  add_result "env_REDIS_URL" "set" "${redis_url_state:-<missing>}" "FAIL"
+  add_result "env_REDIS_URL" "set" "${redis_url_state:-"<missing>"}" "FAIL"
 fi
 
 database_url_state="$(remote_value env_DATABASE_URL)"
 if [ "$database_url_state" = "set" ]; then
   add_result "env_DATABASE_URL" "set" "$database_url_state" "PASS"
 else
-  add_result "env_DATABASE_URL" "set" "${database_url_state:-<missing>}" "FAIL"
+  add_result "env_DATABASE_URL" "set" "${database_url_state:-"<missing>"}" "FAIL"
 fi
 
 api_app_id_placeholder="$(remote_value placeholder_FEISHU_APP_ID)"
 if [ "$api_app_id_placeholder" = "false" ]; then
   add_result "env_FEISHU_APP_ID" "not example placeholder" "$api_app_id_placeholder" "PASS"
 else
-  add_result "env_FEISHU_APP_ID" "not example placeholder" "${api_app_id_placeholder:-<missing>}" "FAIL"
+  add_result "env_FEISHU_APP_ID" "not example placeholder" "${api_app_id_placeholder:-"<missing>"}" "FAIL"
 fi
 
 api_app_secret_placeholder="$(remote_value placeholder_FEISHU_APP_SECRET)"
 if [ "$api_app_secret_placeholder" = "false" ]; then
   add_result "env_FEISHU_APP_SECRET" "not example placeholder" "$api_app_secret_placeholder" "PASS"
 else
-  add_result "env_FEISHU_APP_SECRET" "not example placeholder" "${api_app_secret_placeholder:-<missing>}" "FAIL"
+  add_result "env_FEISHU_APP_SECRET" "not example placeholder" "${api_app_secret_placeholder:-"<missing>"}" "FAIL"
 fi
 
 print_section "结论"

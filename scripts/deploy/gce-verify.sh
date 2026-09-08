@@ -21,7 +21,7 @@ fi
 
 REMOTE_SCRIPT="$(mktemp /tmp/r27a-gce-verify-remote.XXXXXX)"
 trap 'rm -f -- "$REMOTE_SCRIPT"' EXIT
-cat >"$REMOTE_SCRIPT" <<'REMOTE_SCRIPT_EOF'
+cat >"$REMOTE_SCRIPT" <<'REMOTESCRIPTEOF'
 #!/usr/bin/env bash
 set -euo pipefail
 
@@ -46,7 +46,7 @@ echo '--- nginx host web ---'
 curl -I -H "Host: $APP_HOST" http://127.0.0.1/ || true
 echo '--- nginx host api ---'
 curl -I -H "Host: $APP_HOST" http://127.0.0.1/api/health || true
-REMOTE_SCRIPT_EOF
+REMOTESCRIPTEOF
 
 chmod 0700 "$REMOTE_SCRIPT"
 gce_run_remote_script_with_args "$REMOTE_SCRIPT" "$APP_HOST"

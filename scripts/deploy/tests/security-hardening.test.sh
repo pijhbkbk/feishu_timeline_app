@@ -975,6 +975,8 @@ preflight_base=(
   'NEXT_PUBLIC_ENABLE_MOCK_LOGIN=false'
   'POSTGRES_USER=postgres'
   'POSTGRES_PASSWORD=R27aPostgresPassword_2026'
+  # R27RC2-CI-SAST-FIXTURE-001: synthetic static-validator input; never used to connect.
+  # nosemgrep: generic.secrets.security.detected-username-and-password-in-uri.detected-username-and-password-in-uri
   'DATABASE_URL=postgresql://postgres:R27aPostgresPassword_2026@postgres:5432/feishu_timeline?schema=public'
   'REDIS_PASSWORD=R27aRedisPassword_2026'
   'REDIS_URL=redis://:R27aRedisPassword_2026@redis:6379'
@@ -1008,10 +1010,13 @@ run_staging_preflight() {
 run_staging_preflight >/dev/null \
   || fail 'staging preflight rejected a complete protected configuration'
 
+# R27RC2-CI-SAST-FIXTURE-001: rejected synthetic local URL, static validator only.
+# nosemgrep: generic.secrets.security.detected-username-and-password-in-uri.detected-username-and-password-in-uri
+invalid_local_database='DATABASE_URL=postgresql://postgres:R27aPostgresPassword_2026@localhost:5432/feishu_timeline'
 for invalid_override in \
   'DEPLOYMENT_ENV=production' \
   'DATABASE_URL=' \
-  'DATABASE_URL=postgresql://postgres:R27aPostgresPassword_2026@localhost:5432/feishu_timeline' \
+  "$invalid_local_database" \
   'REDIS_URL=' \
   'MALWARE_SCANNER_PROVIDER=' \
   'MALWARE_SCANNER_PROVIDER=local-eicar' \

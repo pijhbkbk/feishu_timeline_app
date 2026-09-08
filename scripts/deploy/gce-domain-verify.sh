@@ -84,7 +84,7 @@ echo
 log "remote nginx and services"
 REMOTE_SCRIPT="$(mktemp /tmp/r27a-gce-domain-verify-remote.XXXXXX)"
 trap 'rm -f -- "$REMOTE_SCRIPT"' EXIT
-cat >"$REMOTE_SCRIPT" <<'REMOTE_SCRIPT_EOF'
+cat >"$REMOTE_SCRIPT" <<'REMOTESCRIPTEOF'
 #!/usr/bin/env bash
 set -euo pipefail
 ROOT_DOMAIN="$1"
@@ -108,7 +108,7 @@ echo '--- certbot ---'
 command -v certbot || true
 systemctl status certbot.timer --no-pager -l || true
 systemctl list-timers --all | grep -i certbot || true
-REMOTE_SCRIPT_EOF
+REMOTESCRIPTEOF
 chmod 0700 "$REMOTE_SCRIPT"
 gce_run_remote_script_with_args "$REMOTE_SCRIPT" "$ROOT_DOMAIN" "$WWW_DOMAIN" "$APP_HOST"
 echo

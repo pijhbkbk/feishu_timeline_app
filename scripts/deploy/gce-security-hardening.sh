@@ -13,8 +13,10 @@ ROOT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 # shellcheck source=scripts/deploy/gce-common.sh
 . "$ROOT_DIR/scripts/deploy/gce-common.sh"
 validate_gce_connection_parameters
-case "$RUN_POSTCUTOVER_HARDENING" in yes|no) ;; *) fail 'RUN_POSTCUTOVER_HARDENING must be yes or no.' ;; esac
-case "$INSTALL_FAIL2BAN" in yes|no) ;; *) fail 'INSTALL_FAIL2BAN must be yes or no.' ;; esac
+case "$RUN_POSTCUTOVER_HARDENING" in
+  yes|no) ;; *) fail 'RUN_POSTCUTOVER_HARDENING must be yes or no.' ;; esac
+case "$INSTALL_FAIL2BAN" in
+  yes|no) ;; *) fail 'INSTALL_FAIL2BAN must be yes or no.' ;; esac
 
 if [ "$RUN_POSTCUTOVER_HARDENING" = "yes" ]; then
   log "Re-applying post-cutover Nginx hardening"
@@ -24,7 +26,7 @@ fi
 log "Applying SSH, systemd and host-level hardening on $INSTANCE"
 REMOTE_SCRIPT="$(mktemp /tmp/r27a-gce-security-hardening-remote.XXXXXX)"
 trap 'rm -f -- "$REMOTE_SCRIPT"' EXIT
-cat >"$REMOTE_SCRIPT" <<'REMOTE_SCRIPT_EOF'
+cat >"$REMOTE_SCRIPT" <<'REMOTESCRIPTEOF'
 #!/usr/bin/env bash
 set -euo pipefail
 INSTALL_FAIL2BAN="$1"
@@ -154,6 +156,6 @@ curl -k -I https://timeline.all-too-well.com | grep -i '^strict-transport-securi
 curl -k -I https://all-too-well.com | grep -i '^strict-transport-security:' >/dev/null
 echo backup_dir=$backup_dir
 sudo sshd -T | egrep 'permitrootlogin|passwordauthentication|kbdinteractiveauthentication|pubkeyauthentication|maxauthtries|x11forwarding|allowagentforwarding|allowtcpforwarding|logingracetime'
-REMOTE_SCRIPT_EOF
+REMOTESCRIPTEOF
 chmod 0700 "$REMOTE_SCRIPT"
 gce_run_remote_script_with_args "$REMOTE_SCRIPT" "$INSTALL_FAIL2BAN"

@@ -48,7 +48,13 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   outputFileTracingRoot: path.join(currentDir, '../../'),
   outputFileTracingExcludes: {
-    'next-server': ['**/node_modules/typescript/**/*'],
+    'next-server': [
+      '**/node_modules/typescript/**/*',
+      // standalone forces production/isDev:false. Do not trace its unreachable
+      // development server/bundler (which brings eval-source-map build tools).
+      '**/next/dist/server/dev/next-dev-server.js',
+      '**/next/dist/server/lib/router-utils/setup-dev-bundler.js',
+    ],
     '*': ['../../node_modules/typescript/**/*'],
   },
   eslint: {
