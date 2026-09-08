@@ -23,17 +23,18 @@ for (const name of ['libcrypto3', 'libssl3']) {
 const key = randomBytes(32);
 const iv = randomBytes(12);
 const plaintext = Buffer.from('isolated runtime crypto regression');
-const cipher = createCipheriv('aes-256-gcm', key, iv);
+const cipher = createCipheriv('aes-256-gcm', key, iv, { authTagLength: 16 });
 const encrypted = Buffer.concat([cipher.update(plaintext), cipher.final()]);
 const tag = cipher.getAuthTag();
 function decrypt(authTag) {
-  const decipher = createDecipheriv('aes-256-gcm', key, iv);
+  const decipher = createDecipheriv('aes-256-gcm', key, iv, { authTagLength: 16 });
   decipher.setAuthTag(authTag);
   return Buffer.concat([decipher.update(encrypted), decipher.final()]);
 }
 assert.deepEqual(decrypt(tag), plaintext);
 const badTag = Buffer.from(tag); badTag[0] ^= 1;
 assert.throws(() => decrypt(badTag));
+assert.throws(() => decrypt(tag.subarray(0, 8)));
 const cert = readFileSync('/tmp/rc2-tls/cert.pem');
 const server = createServer({ key: readFileSync('/tmp/rc2-tls/key.pem'), cert }, (socket) => socket.end('verified'));
 await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
