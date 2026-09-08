@@ -18,74 +18,70 @@ jobs:
 
     steps:
       - name: Checkout
+        id: checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           persist-credentials: false
 
       - name: Setup pnpm
+        id: pnpm
         uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
         with:
           version: 9.15.4
 
       - name: Setup Node.js
+        id: node
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24
           cache: pnpm
 
+      - name: Initialize CI evidence and validate execution platform
+        id: evidence_init
+        env:
+          CI_RUNNER_ENVIRONMENT: ${{ runner.environment }}
+        run: node scripts/security/ci-evidence.mjs init "$GITHUB_JOB"
+
       - name: Install dependencies
+        id: install
         run: pnpm install --frozen-lockfile
 
       - name: Lint
+        id: lint
         run: pnpm lint
 
       - name: Typecheck
+        id: typecheck
         run: pnpm typecheck
 
       - name: Test
+        id: tests
         run: pnpm test
 
       - name: Build Web
+        id: web_build
         run: pnpm --filter @feishu-timeline/web build
 
       - name: Reject Development Build Artifacts
+        id: production_build
         run: bash scripts/security/check-production-build-artifacts.sh
 
       - name: Build API
+        id: api_build
         run: pnpm --filter @feishu-timeline/api build
 
       - name: Prisma Validate
+        id: prisma
         run: pnpm --filter @feishu-timeline/api prisma:validate
 
       - name: Compose Config
+        id: compose
         run: docker compose --env-file deploy/env/staging.env.example -f deploy/compose.staging.yml config >/tmp/compose-config.txt
 
-      - name: Compute Canonical Build Identity
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          build_source_commit="$(git rev-parse HEAD)"
-          build_source_tree="$(git rev-parse "${build_source_commit}^{tree}")"
-          build_release="ci-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
-          build_time="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
-
-          node scripts/deploy/release-identity.mjs validate-identity \
-            --source-commit "$build_source_commit" \
-            --source-tree "$build_source_tree" \
-            --release "$build_release" \
-            --build-time "$build_time"
-
-          {
-            printf 'BUILD_SOURCE_COMMIT=%s\n' "$build_source_commit"
-            printf 'BUILD_SOURCE_TREE=%s\n' "$build_source_tree"
-            printf 'BUILD_RELEASE=%s\n' "$build_release"
-            printf 'BUILD_TIME=%s\n' "$build_time"
-          } >> "$GITHUB_ENV"
-
       - name: Build API Docker Image
+        id: api_image
         run: |
-          docker build \
+          docker build --platform linux/amd64 \
             --build-arg BUILD_SOURCE_COMMIT="$BUILD_SOURCE_COMMIT" \
             --build-arg BUILD_SOURCE_TREE="$BUILD_SOURCE_TREE" \
             --build-arg BUILD_RELEASE="$BUILD_RELEASE" \
@@ -95,8 +91,9 @@ jobs:
             .
 
       - name: Build Web Docker Image
+        id: web_image
         run: |
-          docker build \
+          docker build --platform linux/amd64 \
             --build-arg BUILD_SOURCE_COMMIT="$BUILD_SOURCE_COMMIT" \
             --build-arg BUILD_SOURCE_TREE="$BUILD_SOURCE_TREE" \
             --build-arg BUILD_RELEASE="$BUILD_RELEASE" \
@@ -106,45 +103,110 @@ jobs:
             .
 
       - name: Scan Production Container Images
+        id: images
         run: bash scripts/security/scan-production-images.sh feishu-timeline-api:ci feishu-timeline-web:ci
+
+      - name: Collect redacted CI evidence
+        id: evidence
+        if: always()
+        env:
+          CI_STEP_RESULTS: ${{ toJSON(steps) }}
+        run: node scripts/security/ci-evidence.mjs collect "$GITHUB_JOB"
+
+      - name: Retain redacted CI evidence
+        if: ${{ always() && steps.evidence.outputs.ready == 'true' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7; verified 2026-09-08
+        with:
+          name: ci-evidence-verify-${{ github.run_id }}-${{ github.run_attempt }}
+          retention-days: 7
+          if-no-files-found: error
+          include-hidden-files: false
+          overwrite: false
+          path: |
+            reports/ci-public/verify/metadata.json
+            reports/ci-public/verify/checks.json
+            reports/ci-public/verify/production-build.json
+            reports/ci-public/verify/image-api.json
+            reports/ci-public/verify/image-web.json
 
   security-source:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout Full History
+        id: checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 0
           persist-credentials: false
 
       - name: Setup pnpm
+        id: pnpm
         uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
         with:
           version: 9.15.4
 
       - name: Setup Node.js
+        id: node
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24
           cache: pnpm
 
+      - name: Initialize CI evidence and validate execution platform
+        id: evidence_init
+        env:
+          CI_RUNNER_ENVIRONMENT: ${{ runner.environment }}
+        run: node scripts/security/ci-evidence.mjs init "$GITHUB_JOB"
+
       - name: Install dependencies
+        id: install
         run: pnpm install --frozen-lockfile
 
       - name: Test Security Gates
-        run: bash scripts/security/tests/security-gates.test.sh
+        id: security_gates
+        run: |
+          bash scripts/security/tests/security-gates.test.sh
+          node --test scripts/security/tests/ci-evidence.test.mjs
 
       - name: Secrets — Current Tree and Git History
+        id: secrets
         run: bash scripts/security/run-secrets-scan.sh
 
       - name: SAST — Authored Candidate Sources Only
-        if: always()
+        id: sast
+        if: ${{ always() && steps.evidence_init.outcome == 'success' }}
         run: bash scripts/security/run-sast.sh
 
       - name: SCA — Production Dependencies Only
-        if: always()
+        id: sca
+        if: ${{ always() && steps.evidence_init.outcome == 'success' }}
         run: bash scripts/security/run-sca.sh
+
+      - name: Collect redacted CI evidence
+        id: evidence
+        if: always()
+        env:
+          CI_STEP_RESULTS: ${{ toJSON(steps) }}
+        run: node scripts/security/ci-evidence.mjs collect "$GITHUB_JOB"
+
+      - name: Retain redacted CI evidence
+        if: ${{ always() && steps.evidence.outputs.ready == 'true' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7; verified 2026-09-08
+        with:
+          name: ci-evidence-security-source-${{ github.run_id }}-${{ github.run_attempt }}
+          retention-days: 7
+          if-no-files-found: error
+          include-hidden-files: false
+          overwrite: false
+          path: |
+            reports/ci-public/security-source/metadata.json
+            reports/ci-public/security-source/checks.json
+            reports/ci-public/security-source/gitleaks-current.json
+            reports/ci-public/security-source/gitleaks-history.json
+            reports/ci-public/security-source/semgrep.json
+            reports/ci-public/security-source/sca-all.json
+            reports/ci-public/security-source/sca-production.json
 
   playwright-smoke:
     if: github.event_name == 'workflow_dispatch'
