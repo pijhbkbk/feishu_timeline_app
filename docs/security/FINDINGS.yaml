@@ -1002,6 +1002,998 @@
         }
       ],
       "closure": null
+    },
+    {
+      "id": "R27-RC2-CI-WEB-001",
+      "title": "Production trace includes unused dev build tools; hidden pnpm files inconsistently checked",
+      "status": "fixed_diff_verified",
+      "severity": "medium",
+      "confidence": "high",
+      "classification": "pre_existing",
+      "cwe": null,
+      "source": {
+        "type": "manual",
+        "report_path": "test-results/r27rc2/first-ci-failure-repair-20260908/baseline-all-matches.txt",
+        "binding": {
+          "commit": "5a388095726d1b53fe79e379e1f3665d4a310a5d",
+          "tree": "608f69ba5aacbb5e67359eabe2a62752424c05ba",
+          "tool_name": "local baseline reproduction",
+          "tool_version": "Node 24.14.0; pnpm 9.15.4; Semgrep 1.169.0 as applicable",
+          "command": "First CI source-equivalent reproduction; original remote run 34191540314 attempt1 preserved",
+          "environment": "Local isolated synthetic build/test inputs; native darwin/arm64, Semgrep linux/arm64; original rule sources metrics off; no remote CI/deployment. Source-file reuse described in candidate-evidence-binding.json.",
+          "result_sha256": "bf575fa3cd795ac1e65fdbad22c8cef6a3d960e5df0b12aba626f272274272e1",
+          "log_path": "test-results/r27rc2/first-ci-failure-repair-20260908/baseline-all-matches.txt",
+          "config_sha256": "9186715db8a3fb724b2d856067bb69f320204beb4027b8672a0f2b263503d962",
+          "recorded_at": "2026-09-08T06:42:46Z"
+        }
+      },
+      "scope": {
+        "component": "production trace and artifact gate",
+        "affected_files": [
+          "apps/web/next.config.ts",
+          "scripts/security/check-production-build-artifacts.sh",
+          "scripts/security/tests/security-gates.test.sh",
+          "scripts/security/tests/standalone-runtime.test.mjs"
+        ],
+        "entry_points": [
+          "first push CI source/build gates"
+        ],
+        "trust_boundary": "Authored candidate and synthetic tests to immutable build and security evidence"
+      },
+      "evidence": {
+        "reachable": true,
+        "production_exposed": null,
+        "reproduction_path": "Next trace pulled development-only entry points. Native rg skipped hidden pnpm files while fallback scan found two dev tools. Exclude exact next-dev-server and setup-dev-bundler entries; complete scanner remains fail closed. Narrow trace preserves shared hot-reloader types.",
+        "proof_gap": "No new remote CI; local source fix does not establish release/deployment/product acceptance."
+      },
+      "root_cause_cluster": "PRODUCTION_TRACE_AND_ARTIFACT_GATE",
+      "security_invariants": [],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
+      "fix": {
+        "task_id": "R27RC2_FIRST_REMOTE_CI_FAILURE_REPAIR_BATCH",
+        "branch": "security/r27rc2-candidate-repair",
+        "commit": "84a153884bea9d59ec56ef4e6ce3ada4b2144854",
+        "tree": "1647b6b00922bda0a39211f95070c65985ee20db",
+        "changed_files": [
+          "apps/web/next.config.ts",
+          "scripts/security/check-production-build-artifacts.sh",
+          "scripts/security/tests/security-gates.test.sh",
+          "scripts/security/tests/standalone-runtime.test.mjs"
+        ]
+      },
+      "verification": {
+        "targeted": {
+          "status": "pass",
+          "binding": {
+            "commit": "84a153884bea9d59ec56ef4e6ce3ada4b2144854",
+            "tree": "1647b6b00922bda0a39211f95070c65985ee20db",
+            "tool_name": "local targeted gate",
+            "tool_version": "Node 24.14.0; pnpm 9.15.4; Semgrep 1.169.0 as applicable",
+            "command": "R27RC2_FIRST_REMOTE_CI_FAILURE_REPAIR",
+            "environment": "Local isolated synthetic build/test inputs; native darwin/arm64, Semgrep linux/arm64; original rule sources metrics off; no remote CI/deployment. Source-file reuse described in candidate-evidence-binding.json.",
+            "result_sha256": "3e95164bd812c946eb87c204ae6fc6df079e0e60fd0e7345bc32bae08fa73c0c",
+            "log_path": "test-results/r27rc2/first-ci-failure-repair-20260908/final-identity-standalone.log",
+            "config_sha256": "5e7450da9c82bfe96390a9be4198ebc784e5e858e17c5fc5ed71ce33713e3f2c",
+            "recorded_at": "2026-09-08T06:42:46Z"
+          },
+          "notes": "Next trace pulled development-only entry points. Native rg skipped hidden pnpm files while fallback scan found two dev tools. Exclude exact next-dev-server and setup-dev-bundler entries; complete scanner remains fail closed. Narrow trace preserves shared hot-reloader types."
+        },
+        "affected_regression": {
+          "status": "pass",
+          "binding": {
+            "commit": "84a153884bea9d59ec56ef4e6ce3ada4b2144854",
+            "tree": "1647b6b00922bda0a39211f95070c65985ee20db",
+            "tool_name": "pnpm and local gates",
+            "tool_version": "Node 24.14.0; pnpm 9.15.4; Semgrep 1.169.0 as applicable",
+            "command": "Approved affected gates; latest Web and shell evidence supersedes earlier intermediate inputs",
+            "environment": "Local isolated synthetic build/test inputs; native darwin/arm64, Semgrep linux/arm64; original rule sources metrics off; no remote CI/deployment. Source-file reuse described in candidate-evidence-binding.json.",
+            "result_sha256": "268ea05c4d1ef1b100c33e57a13ce3a0bc5269a138f3f558f240009dfcc3bfab",
+            "log_path": "test-results/r27rc2/first-ci-failure-repair-20260908/quality-results.json",
+            "config_sha256": "5e7450da9c82bfe96390a9be4198ebc784e5e858e17c5fc5ed71ce33713e3f2c",
+            "recorded_at": "2026-09-08T06:42:46Z"
+          },
+          "notes": "App tests1567pass/30DBskip; frozen lock, actual qs parents/forms, SCA all/prod0, shell regression pass; see main report for input-specific reuse."
+        },
+        "diff_review": {
+          "status": "pass",
+          "binding": {
+            "commit": "84a153884bea9d59ec56ef4e6ce3ada4b2144854",
+            "tree": "1647b6b00922bda0a39211f95070c65985ee20db",
+            "tool_name": "Independent read-only Codex context",
+            "tool_version": "Node 24.14.0; pnpm 9.15.4; Semgrep 1.169.0 as applicable",
+            "command": "18-file exact diff plus single test amendment",
+            "environment": "Local isolated synthetic build/test inputs; native darwin/arm64, Semgrep linux/arm64; original rule sources metrics off; no remote CI/deployment. Source-file reuse described in candidate-evidence-binding.json.",
+            "result_sha256": "c5c8c01ccdfd902357323e999713cd1f4a9e29e9ae0ae867988aba0123a37bfa",
+            "log_path": "test-results/r27rc2/first-ci-failure-repair-20260908/independent-review.md",
+            "config_sha256": "5e7450da9c82bfe96390a9be4198ebc784e5e858e17c5fc5ed71ce33713e3f2c",
+            "recorded_at": "2026-09-08T06:42:46Z"
+          },
+          "notes": "Separate reviewer /root/failure_repair_review; no organization approval implied."
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Remote revalidation and release/target-environment acceptance are not performed. No full security clearance."
+        }
+      },
+      "history": [
+        {
+          "at": "2026-09-08T06:42:46Z",
+          "transition": "null->candidate",
+          "actor": "Codex local failure repair",
+          "reason": "Register first CI/local reproduction in the existing unique ledger."
+        },
+        {
+          "at": "2026-09-08T06:42:46Z",
+          "transition": "candidate->confirmed",
+          "actor": "Codex local failure repair",
+          "reason": "Next trace pulled development-only entry points. Native rg skipped hidden pnpm files while fallback scan found two dev tools. Exclude exact next-dev-server and setup-dev-bundler entries; complete scanner remains fail closed. Narrow trace preserves shared hot-reloader types."
+        },
+        {
+          "at": "2026-09-08T06:42:46Z",
+          "transition": "confirmed->accepted_for_fix",
+          "actor": "Codex local failure repair",
+          "reason": "Next trace pulled development-only entry points. Native rg skipped hidden pnpm files while fallback scan found two dev tools. Exclude exact next-dev-server and setup-dev-bundler entries; complete scanner remains fail closed. Narrow trace preserves shared hot-reloader types."
+        },
+        {
+          "at": "2026-09-08T06:42:46Z",
+          "transition": "accepted_for_fix->in_progress",
+          "actor": "Codex local failure repair",
+          "reason": "Next trace pulled development-only entry points. Native rg skipped hidden pnpm files while fallback scan found two dev tools. Exclude exact next-dev-server and setup-dev-bundler entries; complete scanner remains fail closed. Narrow trace preserves shared hot-reloader types."
+        },
+        {
+          "at": "2026-09-08T06:42:46Z",
+          "transition": "in_progress->fixed_target_verified",
+          "actor": "Codex local failure repair",
+          "reason": "Next trace pulled development-only entry points. Native rg skipped hidden pnpm files while fallback scan found two dev tools. Exclude exact next-dev-server and setup-dev-bundler entries; complete scanner remains fail closed. Narrow trace preserves shared hot-reloader types."
+        },
+        {
+          "at": "2026-09-08T06:42:46Z",
+          "transition": "fixed_target_verified->fixed_diff_verified",
+          "actor": "/root/failure_repair_review",
+          "reason": "Next trace pulled development-only entry points. Native rg skipped hidden pnpm files while fallback scan found two dev tools. Exclude exact next-dev-server and setup-dev-bundler entries; complete scanner remains fail closed. Narrow trace preserves shared hot-reloader types."
+        }
+      ],
+      "closure": null
+    },
+    {
+      "id": "R27-RC2-CI-PARSER-001",
+      "title": "Eight legal Bash sources fail Semgrep 1.169.0 parser",
+      "status": "fixed_diff_verified",
+      "severity": "medium",
+      "confidence": "high",
+      "classification": "pre_existing",
+      "cwe": null,
+      "source": {
+        "type": "sast",
+        "report_path": "test-results/r27rc2/first-ci-failure-repair-20260908/baseline-sast/semgrep.json",
+        "binding": {
+          "commit": "5a388095726d1b53fe79e379e1f3665d4a310a5d",
+          "tree": "608f69ba5aacbb5e67359eabe2a62752424c05ba",
+          "tool_name": "local baseline reproduction",
+          "tool_version": "Node 24.14.0; pnpm 9.15.4; Semgrep 1.169.0 as applicable",
+          "command": "First CI source-equivalent reproduction; original remote run 34191540314 attempt1 preserved",
+          "environment": "Local isolated synthetic build/test inputs; native darwin/arm64, Semgrep linux/arm64; original rule sources metrics off; no remote CI/deployment. Source-file reuse described in candidate-evidence-binding.json.",
+          "result_sha256": "6f883f6817494d96202921bbab407d06b6f6c9bf474648ba81f434c7e3e877f1",
+          "log_path": "test-results/r27rc2/first-ci-failure-repair-20260908/baseline-sast/semgrep.json",
+          "config_sha256": "9186715db8a3fb724b2d856067bb69f320204beb4027b8672a0f2b263503d962",
+          "recorded_at": "2026-09-08T06:42:46Z"
+        }
+      },
+      "scope": {
+        "component": "Bash parser coverage",
+        "affected_files": [
+          "scripts/deploy/gce-domain-verify.sh",
+          "scripts/deploy/gce-log-tail.sh",
+          "scripts/deploy/gce-network-and-https.sh",
+          "scripts/deploy/gce-postcutover-hardening.sh",
+          "scripts/deploy/gce-production-acceptance.sh",
+          "scripts/deploy/gce-security-hardening.sh",
+          "scripts/deploy/gce-verify.sh",
+          "scripts/deploy/health-check.sh"
+        ],
+        "entry_points": [
+          "first push CI source/build gates"
+        ],
+        "trust_boundary": "Authored candidate and synthetic tests to immutable build and security evidence"
+      },
+      "evidence": {
+        "reachable": true,
+        "production_exposed": null,
+        "reproduction_path": "bash -n passes original eight. Four parser compatibility forms (case line break, quoted heredoc delimiter spelling, literal pipe escaping, quoted default text) changed with exact heredoc-body and parameter-output equivalence. Final all-target scan has zero errors; scanner/config/targets/evaluator unchanged.",
+        "proof_gap": "No new remote CI; local source fix does not establish release/deployment/product acceptance."
+      },
+      "root_cause_cluster": "BASH_PARSER_COVERAGE",
+      "security_invariants": [],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
+      "fix": {
+        "task_id": "R27RC2_FIRST_REMOTE_CI_FAILURE_REPAIR_BATCH",
+        "branch": "security/r27rc2-candidate-repair",
+        "commit": "84a153884bea9d59ec56ef4e6ce3ada4b2144854",
+        "tree": "1647b6b00922bda0a39211f95070c65985ee20db",
+        "changed_files": [
+          "scripts/deploy/gce-domain-verify.sh",
+          "scripts/deploy/gce-log-tail.sh",
+          "scripts/deploy/gce-network-and-https.sh",
+          "scripts/deploy/gce-postcutover-hardening.sh",
+          "scripts/deploy/gce-production-acceptance.sh",
+          "scripts/deploy/gce-security-hardening.sh",
+          "scripts/deploy/gce-verify.sh",
+          "scripts/deploy/health-check.sh"
+        ]
+      },
+      "verification": {
+        "targeted": {
+          "status": "pass",
+          "binding": {
+            "commit": "84a153884bea9d59ec56ef4e6ce3ada4b2144854",
+            "tree": "1647b6b00922bda0a39211f95070c65985ee20db",
+            "tool_name": "local targeted gate",
+            "tool_version": "Node 24.14.0; pnpm 9.15.4; Semgrep 1.169.0 as applicable",
+            "command": "R27RC2_FIRST_REMOTE_CI_FAILURE_REPAIR",
+            "environment": "Local isolated synthetic build/test inputs; native darwin/arm64, Semgrep linux/arm64; original rule sources metrics off; no remote CI/deployment. Source-file reuse described in candidate-evidence-binding.json.",
+            "result_sha256": "fce275eff319e12af5bd458d9b296eee7926087ea59d7e7b033d1815f8daba10",
+            "log_path": "test-results/r27rc2/first-ci-failure-repair-20260908/final-sast-complete/semgrep.json",
+            "config_sha256": "5e7450da9c82bfe96390a9be4198ebc784e5e858e17c5fc5ed71ce33713e3f2c",
+            "recorded_at": "2026-09-08T06:42:46Z"
+          },
+          "notes": "bash -n passes original eight. Four parser compatibility forms (case line break, quoted heredoc delimiter spelling, literal pipe escaping, quoted default text) changed with exact heredoc-body and parameter-output equivalence. Final all-target scan has zero errors; scanner/config/targets/evaluator unchanged."
+        },
+        "affected_regression": {
+          "status": "pass",
+          "binding": {
+            "commit": "84a153884bea9d59ec56ef4e6ce3ada4b2144854",
+            "tree": "1647b6b00922bda0a39211f95070c65985ee20db",
+            "tool_name": "pnpm and local gates",
+            "tool_version": "Node 24.14.0; pnpm 9.15.4; Semgrep 1.169.0 as applicable",
+            "command": "Approved affected gates; latest Web and shell evidence supersedes earlier intermediate inputs",
+            "environment": "Local isolated synthetic build/test inputs; native darwin/arm64, Semgrep linux/arm64; original rule sources metrics off; no remote CI/deployment. Source-file reuse described in candidate-evidence-binding.json.",
+            "result_sha256": "268ea05c4d1ef1b100c33e57a13ce3a0bc5269a138f3f558f240009dfcc3bfab",
+            "log_path": "test-results/r27rc2/first-ci-failure-repair-20260908/quality-results.json",
+            "config_sha256": "5e7450da9c82bfe96390a9be4198ebc784e5e858e17c5fc5ed71ce33713e3f2c",
+            "recorded_at": "2026-09-08T06:42:46Z"
+          },
+          "notes": "App tests1567pass/30DBskip; frozen lock, actual qs parents/forms, SCA all/prod0, shell regression pass; see main report for input-specific reuse."
+        },
+        "diff_review": {
+          "status": "pass",
+          "binding": {
+            "commit": "84a153884bea9d59ec56ef4e6ce3ada4b2144854",
+            "tree": "1647b6b00922bda0a39211f95070c65985ee20db",
+            "tool_name": "Independent read-only Codex context",
+            "tool_version": "Node 24.14.0; pnpm 9.15.4; Semgrep 1.169.0 as applicable",
+            "command": "18-file exact diff plus single test amendment",
+            "environment": "Local isolated synthetic build/test inputs; native darwin/arm64, Semgrep linux/arm64; original rule sources metrics off; no remote CI/deployment. Source-file reuse described in candidate-evidence-binding.json.",
+            "result_sha256": "c5c8c01ccdfd902357323e999713cd1f4a9e29e9ae0ae867988aba0123a37bfa",
+            "log_path": "test-results/r27rc2/first-ci-failure-repair-20260908/independent-review.md",
+            "config_sha256": "5e7450da9c82bfe96390a9be4198ebc784e5e858e17c5fc5ed71ce33713e3f2c",
+            "recorded_at": "2026-09-08T06:42:46Z"
+          },
+          "notes": "Separate reviewer /root/failure_repair_review; no organization approval implied."
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Remote revalidation and release/target-environment acceptance are not performed. No full security clearance."
+        }
+      },
+      "history": [
+        {
+          "at": "2026-09-08T06:42:46Z",
+          "transition": "null->candidate",
+          "actor": "Codex local failure repair",
+          "reason": "Register first CI/local reproduction in the existing unique ledger."
+        },
+        {
+          "at": "2026-09-08T06:42:46Z",
+          "transition": "candidate->confirmed",
+          "actor": "Codex local failure repair",
+          "reason": "bash -n passes original eight. Four parser compatibility forms (case line break, quoted heredoc delimiter spelling, literal pipe escaping, quoted default text) changed with exact heredoc-body and parameter-output equivalence. Final all-target scan has zero errors; scanner/config/targets/evaluator unchanged."
+        },
+        {
+          "at": "2026-09-08T06:42:46Z",
+          "transition": "confirmed->accepted_for_fix",
+          "actor": "Codex local failure repair",
+          "reason": "bash -n passes original eight. Four parser compatibility forms (case line break, quoted heredoc delimiter spelling, literal pipe escaping, quoted default text) changed with exact heredoc-body and parameter-output equivalence. Final all-target scan has zero errors; scanner/config/targets/evaluator unchanged."
+        },
+        {
+          "at": "2026-09-08T06:42:46Z",
+          "transition": "accepted_for_fix->in_progress",
+          "actor": "Codex local failure repair",
+          "reason": "bash -n passes original eight. Four parser compatibility forms (case line break, quoted heredoc delimiter spelling, literal pipe escaping, quoted default text) changed with exact heredoc-body and parameter-output equivalence. Final all-target scan has zero errors; scanner/config/targets/evaluator unchanged."
+        },
+        {
+          "at": "2026-09-08T06:42:46Z",
+          "transition": "in_progress->fixed_target_verified",
+          "actor": "Codex local failure repair",
+          "reason": "bash -n passes original eight. Four parser compatibility forms (case line break, quoted heredoc delimiter spelling, literal pipe escaping, quoted default text) changed with exact heredoc-body and parameter-output equivalence. Final all-target scan has zero errors; scanner/config/targets/evaluator unchanged."
+        },
+        {
+          "at": "2026-09-08T06:42:46Z",
+          "transition": "fixed_target_verified->fixed_diff_verified",
+          "actor": "/root/failure_repair_review",
+          "reason": "bash -n passes original eight. Four parser compatibility forms (case line break, quoted heredoc delimiter spelling, literal pipe escaping, quoted default text) changed with exact heredoc-body and parameter-output equivalence. Final all-target scan has zero errors; scanner/config/targets/evaluator unchanged."
+        }
+      ],
+      "closure": null
+    },
+    {
+      "id": "R27-RC2-CI-SAST-FIXTURE-001",
+      "title": "Synthetic validator URI fixtures trigger secret rule (code alias R27RC2-CI-SAST-FIXTURE-001)",
+      "status": "false_positive",
+      "severity": "medium",
+      "confidence": "high",
+      "classification": "false_positive",
+      "cwe": null,
+      "source": {
+        "type": "sast",
+        "report_path": "test-results/r27rc2/first-ci-failure-repair-20260908/baseline-sast/semgrep.json",
+        "binding": {
+          "commit": "5a388095726d1b53fe79e379e1f3665d4a310a5d",
+          "tree": "608f69ba5aacbb5e67359eabe2a62752424c05ba",
+          "tool_name": "local baseline reproduction",
+          "tool_version": "Node 24.14.0; pnpm 9.15.4; Semgrep 1.169.0 as applicable",
+          "command": "First CI source-equivalent reproduction; original remote run 34191540314 attempt1 preserved",
+          "environment": "Local isolated synthetic build/test inputs; native darwin/arm64, Semgrep linux/arm64; original rule sources metrics off; no remote CI/deployment. Source-file reuse described in candidate-evidence-binding.json.",
+          "result_sha256": "6f883f6817494d96202921bbab407d06b6f6c9bf474648ba81f434c7e3e877f1",
+          "log_path": "test-results/r27rc2/first-ci-failure-repair-20260908/baseline-sast/semgrep.json",
+          "config_sha256": "9186715db8a3fb724b2d856067bb69f320204beb4027b8672a0f2b263503d962",
+          "recorded_at": "2026-09-08T06:42:46Z"
+        }
+      },
+      "scope": {
+        "component": "synthetic validator fixtures",
+        "affected_files": [
+          "scripts/deploy/tests/security-hardening.test.sh"
+        ],
+        "entry_points": [
+          "first push CI source/build gates"
+        ],
+        "trust_boundary": "Authored candidate and synthetic tests to immutable build and security evidence"
+      },
+      "evidence": {
+        "reachable": false,
+        "production_exposed": false,
+        "reproduction_path": "Two synthetic constant database URLs are passed only to static validate_staging_security_env in a controlled test; no connection uses them. Original rule: generic.secrets.security.detected-username-and-password-in-uri.detected-username-and-password-in-uri, ERROR, original lines 978/1014. Exact annotations only; removing annotations still detects both.",
+        "proof_gap": "No new remote CI; local source fix does not establish release/deployment/product acceptance."
+      },
+      "root_cause_cluster": "SYNTHETIC_VALIDATOR_FIXTURES",
+      "security_invariants": [],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": "Two synthetic constant database URLs are passed only to static validate_staging_security_env in a controlled test; no connection uses them. Original rule: generic.secrets.security.detected-username-and-password-in-uri.detected-username-and-password-in-uri, ERROR, original lines 978/1014. Exact annotations only; removing annotations still detects both.",
+        "risk_acceptance": null
+      },
+      "fix": {
+        "task_id": "R27RC2_FIRST_REMOTE_CI_FAILURE_REPAIR_BATCH",
+        "branch": "security/r27rc2-candidate-repair",
+        "commit": "84a153884bea9d59ec56ef4e6ce3ada4b2144854",
+        "tree": "1647b6b00922bda0a39211f95070c65985ee20db",
+        "changed_files": [
+          "scripts/deploy/tests/security-hardening.test.sh"
+        ]
+      },
+      "verification": {
+        "targeted": {
+          "status": "pass",
+          "binding": {
+            "commit": "84a153884bea9d59ec56ef4e6ce3ada4b2144854",
+            "tree": "1647b6b00922bda0a39211f95070c65985ee20db",
+            "tool_name": "local targeted gate",
+            "tool_version": "Node 24.14.0; pnpm 9.15.4; Semgrep 1.169.0 as applicable",
+            "command": "R27RC2_FIRST_REMOTE_CI_FAILURE_REPAIR",
+            "environment": "Local isolated synthetic build/test inputs; native darwin/arm64, Semgrep linux/arm64; original rule sources metrics off; no remote CI/deployment. Source-file reuse described in candidate-evidence-binding.json.",
+            "result_sha256": "f0fa22098734078e43bc1428b2bafde43b7989010a2db6b22d33f95a24e5ed7f",
+            "log_path": "test-results/r27rc2/first-ci-failure-repair-20260908/finding-regression-verified.json",
+            "config_sha256": "5e7450da9c82bfe96390a9be4198ebc784e5e858e17c5fc5ed71ce33713e3f2c",
+            "recorded_at": "2026-09-08T06:42:46Z"
+          },
+          "notes": "Two synthetic constant database URLs are passed only to static validate_staging_security_env in a controlled test; no connection uses them. Original rule: generic.secrets.security.detected-username-and-password-in-uri.detected-username-and-password-in-uri, ERROR, original lines 978/1014. Exact annotations only; removing annotations still detects both."
+        },
+        "affected_regression": {
+          "status": "pass",
+          "binding": {
+            "commit": "84a153884bea9d59ec56ef4e6ce3ada4b2144854",
+            "tree": "1647b6b00922bda0a39211f95070c65985ee20db",
+            "tool_name": "pnpm and local gates",
+            "tool_version": "Node 24.14.0; pnpm 9.15.4; Semgrep 1.169.0 as applicable",
+            "command": "Approved affected gates; latest Web and shell evidence supersedes earlier intermediate inputs",
+            "environment": "Local isolated synthetic build/test inputs; native darwin/arm64, Semgrep linux/arm64; original rule sources metrics off; no remote CI/deployment. Source-file reuse described in candidate-evidence-binding.json.",
+            "result_sha256": "268ea05c4d1ef1b100c33e57a13ce3a0bc5269a138f3f558f240009dfcc3bfab",
+            "log_path": "test-results/r27rc2/first-ci-failure-repair-20260908/quality-results.json",
+            "config_sha256": "5e7450da9c82bfe96390a9be4198ebc784e5e858e17c5fc5ed71ce33713e3f2c",
+            "recorded_at": "2026-09-08T06:42:46Z"
+          },
+          "notes": "App tests1567pass/30DBskip; frozen lock, actual qs parents/forms, SCA all/prod0, shell regression pass; see main report for input-specific reuse."
+        },
+        "diff_review": {
+          "status": "pass",
+          "binding": {
+            "commit": "84a153884bea9d59ec56ef4e6ce3ada4b2144854",
+            "tree": "1647b6b00922bda0a39211f95070c65985ee20db",
+            "tool_name": "Independent read-only Codex context",
+            "tool_version": "Node 24.14.0; pnpm 9.15.4; Semgrep 1.169.0 as applicable",
+            "command": "18-file exact diff plus single test amendment",
+            "environment": "Local isolated synthetic build/test inputs; native darwin/arm64, Semgrep linux/arm64; original rule sources metrics off; no remote CI/deployment. Source-file reuse described in candidate-evidence-binding.json.",
+            "result_sha256": "c5c8c01ccdfd902357323e999713cd1f4a9e29e9ae0ae867988aba0123a37bfa",
+            "log_path": "test-results/r27rc2/first-ci-failure-repair-20260908/independent-review.md",
+            "config_sha256": "5e7450da9c82bfe96390a9be4198ebc784e5e858e17c5fc5ed71ce33713e3f2c",
+            "recorded_at": "2026-09-08T06:42:46Z"
+          },
+          "notes": "Separate reviewer /root/failure_repair_review; no organization approval implied."
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Remote revalidation and release/target-environment acceptance are not performed. No full security clearance."
+        }
+      },
+      "history": [
+        {
+          "at": "2026-09-08T06:42:46Z",
+          "transition": "null->candidate",
+          "actor": "Codex local failure repair",
+          "reason": "Register first CI/local reproduction in the existing unique ledger."
+        },
+        {
+          "at": "2026-09-08T06:42:46Z",
+          "transition": "candidate->false_positive",
+          "actor": "Codex local failure repair",
+          "reason": "Two synthetic constant database URLs are passed only to static validate_staging_security_env in a controlled test; no connection uses them. Original rule: generic.secrets.security.detected-username-and-password-in-uri.detected-username-and-password-in-uri, ERROR, original lines 978/1014. Exact annotations only; removing annotations still detects both."
+        }
+      ],
+      "closure": null
+    },
+    {
+      "id": "R27-RC2-CI-SAST-LOOPBACK-001",
+      "title": "Fixed credential-free loopback probes trigger HTTP rule (code alias R27RC2-CI-SAST-LOOPBACK-001)",
+      "status": "false_positive",
+      "severity": "medium",
+      "confidence": "high",
+      "classification": "false_positive",
+      "cwe": null,
+      "source": {
+        "type": "sast",
+        "report_path": "test-results/r27rc2/first-ci-failure-repair-20260908/baseline-sast/semgrep.json",
+        "binding": {
+          "commit": "5a388095726d1b53fe79e379e1f3665d4a310a5d",
+          "tree": "608f69ba5aacbb5e67359eabe2a62752424c05ba",
+          "tool_name": "local baseline reproduction",
+          "tool_version": "Node 24.14.0; pnpm 9.15.4; Semgrep 1.169.0 as applicable",
+          "command": "First CI source-equivalent reproduction; original remote run 34191540314 attempt1 preserved",
+          "environment": "Local isolated synthetic build/test inputs; native darwin/arm64, Semgrep linux/arm64; original rule sources metrics off; no remote CI/deployment. Source-file reuse described in candidate-evidence-binding.json.",
+          "result_sha256": "6f883f6817494d96202921bbab407d06b6f6c9bf474648ba81f434c7e3e877f1",
+          "log_path": "test-results/r27rc2/first-ci-failure-repair-20260908/baseline-sast/semgrep.json",
+          "config_sha256": "9186715db8a3fb724b2d856067bb69f320204beb4027b8672a0f2b263503d962",
+          "recorded_at": "2026-09-08T06:42:46Z"
+        }
+      },
+      "scope": {
+        "component": "local loopback probes",
+        "affected_files": [
+          "scripts/security/r24b-zap-orchestrator.mjs",
+          "scripts/security/tests/r24b-loopback.test.mjs"
+        ],
+        "entry_points": [
+          "first push CI source/build gates"
+        ],
+        "trust_boundary": "Authored candidate and synthetic tests to immutable build and security evidence"
+      },
+      "evidence": {
+        "reachable": false,
+        "production_exposed": false,
+        "reproduction_path": "Original lines 222/233 use literal 127.0.0.1:8080 without credentials; rule typescript.react.security.react-insecure-request.react-insecure-request is ERROR. OpenAPI probe now also uses manual redirects, so both probes reject redirects; exact annotations preserve every other rule/site. No ZAP run executed. Removing annotations still detects both.",
+        "proof_gap": "No new remote CI; local source fix does not establish release/deployment/product acceptance."
+      },
+      "root_cause_cluster": "LOCAL_LOOPBACK_PROBES",
+      "security_invariants": [],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": "Original lines 222/233 use literal 127.0.0.1:8080 without credentials; rule typescript.react.security.react-insecure-request.react-insecure-request is ERROR. OpenAPI probe now also uses manual redirects, so both probes reject redirects; exact annotations preserve every other rule/site. No ZAP run executed. Removing annotations still detects both.",
+        "risk_acceptance": null
+      },
+      "fix": {
+        "task_id": "R27RC2_FIRST_REMOTE_CI_FAILURE_REPAIR_BATCH",
+        "branch": "security/r27rc2-candidate-repair",
+        "commit": "84a153884bea9d59ec56ef4e6ce3ada4b2144854",
+        "tree": "1647b6b00922bda0a39211f95070c65985ee20db",
+        "changed_files": [
+          "scripts/security/r24b-zap-orchestrator.mjs",
+          "scripts/security/tests/r24b-loopback.test.mjs"
+        ]
+      },
+      "verification": {
+        "targeted": {
+          "status": "pass",
+          "binding": {
+            "commit": "84a153884bea9d59ec56ef4e6ce3ada4b2144854",
+            "tree": "1647b6b00922bda0a39211f95070c65985ee20db",
+            "tool_name": "local targeted gate",
+            "tool_version": "Node 24.14.0; pnpm 9.15.4; Semgrep 1.169.0 as applicable",
+            "command": "R27RC2_FIRST_REMOTE_CI_FAILURE_REPAIR",
+            "environment": "Local isolated synthetic build/test inputs; native darwin/arm64, Semgrep linux/arm64; original rule sources metrics off; no remote CI/deployment. Source-file reuse described in candidate-evidence-binding.json.",
+            "result_sha256": "f0fa22098734078e43bc1428b2bafde43b7989010a2db6b22d33f95a24e5ed7f",
+            "log_path": "test-results/r27rc2/first-ci-failure-repair-20260908/finding-regression-verified.json",
+            "config_sha256": "5e7450da9c82bfe96390a9be4198ebc784e5e858e17c5fc5ed71ce33713e3f2c",
+            "recorded_at": "2026-09-08T06:42:46Z"
+          },
+          "notes": "Original lines 222/233 use literal 127.0.0.1:8080 without credentials; rule typescript.react.security.react-insecure-request.react-insecure-request is ERROR. OpenAPI probe now also uses manual redirects, so both probes reject redirects; exact annotations preserve every other rule/site. No ZAP run executed. Removing annotations still detects both."
+        },
+        "affected_regression": {
+          "status": "pass",
+          "binding": {
+            "commit": "84a153884bea9d59ec56ef4e6ce3ada4b2144854",
+            "tree": "1647b6b00922bda0a39211f95070c65985ee20db",
+            "tool_name": "pnpm and local gates",
+            "tool_version": "Node 24.14.0; pnpm 9.15.4; Semgrep 1.169.0 as applicable",
+            "command": "Approved affected gates; latest Web and shell evidence supersedes earlier intermediate inputs",
+            "environment": "Local isolated synthetic build/test inputs; native darwin/arm64, Semgrep linux/arm64; original rule sources metrics off; no remote CI/deployment. Source-file reuse described in candidate-evidence-binding.json.",
+            "result_sha256": "268ea05c4d1ef1b100c33e57a13ce3a0bc5269a138f3f558f240009dfcc3bfab",
+            "log_path": "test-results/r27rc2/first-ci-failure-repair-20260908/quality-results.json",
+            "config_sha256": "5e7450da9c82bfe96390a9be4198ebc784e5e858e17c5fc5ed71ce33713e3f2c",
+            "recorded_at": "2026-09-08T06:42:46Z"
+          },
+          "notes": "App tests1567pass/30DBskip; frozen lock, actual qs parents/forms, SCA all/prod0, shell regression pass; see main report for input-specific reuse."
+        },
+        "diff_review": {
+          "status": "pass",
+          "binding": {
+            "commit": "84a153884bea9d59ec56ef4e6ce3ada4b2144854",
+            "tree": "1647b6b00922bda0a39211f95070c65985ee20db",
+            "tool_name": "Independent read-only Codex context",
+            "tool_version": "Node 24.14.0; pnpm 9.15.4; Semgrep 1.169.0 as applicable",
+            "command": "18-file exact diff plus single test amendment",
+            "environment": "Local isolated synthetic build/test inputs; native darwin/arm64, Semgrep linux/arm64; original rule sources metrics off; no remote CI/deployment. Source-file reuse described in candidate-evidence-binding.json.",
+            "result_sha256": "c5c8c01ccdfd902357323e999713cd1f4a9e29e9ae0ae867988aba0123a37bfa",
+            "log_path": "test-results/r27rc2/first-ci-failure-repair-20260908/independent-review.md",
+            "config_sha256": "5e7450da9c82bfe96390a9be4198ebc784e5e858e17c5fc5ed71ce33713e3f2c",
+            "recorded_at": "2026-09-08T06:42:46Z"
+          },
+          "notes": "Separate reviewer /root/failure_repair_review; no organization approval implied."
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Remote revalidation and release/target-environment acceptance are not performed. No full security clearance."
+        }
+      },
+      "history": [
+        {
+          "at": "2026-09-08T06:42:46Z",
+          "transition": "null->candidate",
+          "actor": "Codex local failure repair",
+          "reason": "Register first CI/local reproduction in the existing unique ledger."
+        },
+        {
+          "at": "2026-09-08T06:42:46Z",
+          "transition": "candidate->false_positive",
+          "actor": "Codex local failure repair",
+          "reason": "Original lines 222/233 use literal 127.0.0.1:8080 without credentials; rule typescript.react.security.react-insecure-request.react-insecure-request is ERROR. OpenAPI probe now also uses manual redirects, so both probes reject redirects; exact annotations preserve every other rule/site. No ZAP run executed. Removing annotations still detects both."
+        }
+      ],
+      "closure": null
+    },
+    {
+      "id": "R27-RC2-CI-QS-001",
+      "title": "qs GHSA-x5fp-wj9c-mxmx in production dependency graph",
+      "status": "fixed_diff_verified",
+      "severity": "medium",
+      "confidence": "high",
+      "classification": "pre_existing",
+      "cwe": null,
+      "source": {
+        "type": "sca",
+        "report_path": "test-results/r27rc2/first-ci-failure-repair-20260908/baseline-qs-tests.log",
+        "binding": {
+          "commit": "5a388095726d1b53fe79e379e1f3665d4a310a5d",
+          "tree": "608f69ba5aacbb5e67359eabe2a62752424c05ba",
+          "tool_name": "local baseline reproduction",
+          "tool_version": "Node 24.14.0; pnpm 9.15.4; Semgrep 1.169.0 as applicable",
+          "command": "First CI source-equivalent reproduction; original remote run 34191540314 attempt1 preserved",
+          "environment": "Local isolated synthetic build/test inputs; native darwin/arm64, Semgrep linux/arm64; original rule sources metrics off; no remote CI/deployment. Source-file reuse described in candidate-evidence-binding.json.",
+          "result_sha256": "22eba2edbb2fe709c7da0b981adafac346ef35723e9250411f65ce772bbdf217",
+          "log_path": "test-results/r27rc2/first-ci-failure-repair-20260908/baseline-qs-tests.log",
+          "config_sha256": "9186715db8a3fb724b2d856067bb69f320204beb4027b8672a0f2b263503d962",
+          "recorded_at": "2026-09-08T06:42:46Z"
+        }
+      },
+      "scope": {
+        "component": "production transitive qs",
+        "affected_files": [
+          "package.json",
+          "pnpm-lock.yaml",
+          "apps/api/test/security/qs-regression.spec.ts"
+        ],
+        "entry_points": [
+          "first push CI source/build gates"
+        ],
+        "trust_boundary": "Authored candidate and synthetic tests to immutable build and security evidence"
+      },
+      "evidence": {
+        "reachable": true,
+        "production_exposed": null,
+        "reproduction_path": "qs 6.15.3 allows comma bracket arrays past arrayLimit; fixed6.16.0. Express5.2.1 (^6.14.0) and body-parser2.3.0 (^6.15.2), 8 production paths, scoped exact-parent overrides. Old finite regression fails; fixed parent-resolved tests pass. Application comma:true sink not confirmed; valid supply-chain finding not dismissed. Official GHSA-x5fp-wj9c-mxmx.",
+        "proof_gap": "No new remote CI; local source fix does not establish release/deployment/product acceptance."
+      },
+      "root_cause_cluster": "PRODUCTION_TRANSITIVE_QS",
+      "security_invariants": [],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
+      "fix": {
+        "task_id": "R27RC2_FIRST_REMOTE_CI_FAILURE_REPAIR_BATCH",
+        "branch": "security/r27rc2-candidate-repair",
+        "commit": "84a153884bea9d59ec56ef4e6ce3ada4b2144854",
+        "tree": "1647b6b00922bda0a39211f95070c65985ee20db",
+        "changed_files": [
+          "package.json",
+          "pnpm-lock.yaml",
+          "apps/api/test/security/qs-regression.spec.ts"
+        ]
+      },
+      "verification": {
+        "targeted": {
+          "status": "pass",
+          "binding": {
+            "commit": "84a153884bea9d59ec56ef4e6ce3ada4b2144854",
+            "tree": "1647b6b00922bda0a39211f95070c65985ee20db",
+            "tool_name": "local targeted gate",
+            "tool_version": "Node 24.14.0; pnpm 9.15.4; Semgrep 1.169.0 as applicable",
+            "command": "R27RC2_FIRST_REMOTE_CI_FAILURE_REPAIR",
+            "environment": "Local isolated synthetic build/test inputs; native darwin/arm64, Semgrep linux/arm64; original rule sources metrics off; no remote CI/deployment. Source-file reuse described in candidate-evidence-binding.json.",
+            "result_sha256": "16f4b054617a8e772c42cbc3200fd2eb76570b7753daed628ed1b3999a5cd74d",
+            "log_path": "test-results/r27rc2/first-ci-failure-repair-20260908/final-sca/pnpm-audit.json",
+            "config_sha256": "5e7450da9c82bfe96390a9be4198ebc784e5e858e17c5fc5ed71ce33713e3f2c",
+            "recorded_at": "2026-09-08T06:42:46Z"
+          },
+          "notes": "qs 6.15.3 allows comma bracket arrays past arrayLimit; fixed6.16.0. Express5.2.1 (^6.14.0) and body-parser2.3.0 (^6.15.2), 8 production paths, scoped exact-parent overrides. Old finite regression fails; fixed parent-resolved tests pass. Application comma:true sink not confirmed; valid supply-chain finding not dismissed. Official GHSA-x5fp-wj9c-mxmx."
+        },
+        "affected_regression": {
+          "status": "pass",
+          "binding": {
+            "commit": "84a153884bea9d59ec56ef4e6ce3ada4b2144854",
+            "tree": "1647b6b00922bda0a39211f95070c65985ee20db",
+            "tool_name": "pnpm and local gates",
+            "tool_version": "Node 24.14.0; pnpm 9.15.4; Semgrep 1.169.0 as applicable",
+            "command": "Approved affected gates; latest Web and shell evidence supersedes earlier intermediate inputs",
+            "environment": "Local isolated synthetic build/test inputs; native darwin/arm64, Semgrep linux/arm64; original rule sources metrics off; no remote CI/deployment. Source-file reuse described in candidate-evidence-binding.json.",
+            "result_sha256": "268ea05c4d1ef1b100c33e57a13ce3a0bc5269a138f3f558f240009dfcc3bfab",
+            "log_path": "test-results/r27rc2/first-ci-failure-repair-20260908/quality-results.json",
+            "config_sha256": "5e7450da9c82bfe96390a9be4198ebc784e5e858e17c5fc5ed71ce33713e3f2c",
+            "recorded_at": "2026-09-08T06:42:46Z"
+          },
+          "notes": "App tests1567pass/30DBskip; frozen lock, actual qs parents/forms, SCA all/prod0, shell regression pass; see main report for input-specific reuse."
+        },
+        "diff_review": {
+          "status": "pass",
+          "binding": {
+            "commit": "84a153884bea9d59ec56ef4e6ce3ada4b2144854",
+            "tree": "1647b6b00922bda0a39211f95070c65985ee20db",
+            "tool_name": "Independent read-only Codex context",
+            "tool_version": "Node 24.14.0; pnpm 9.15.4; Semgrep 1.169.0 as applicable",
+            "command": "18-file exact diff plus single test amendment",
+            "environment": "Local isolated synthetic build/test inputs; native darwin/arm64, Semgrep linux/arm64; original rule sources metrics off; no remote CI/deployment. Source-file reuse described in candidate-evidence-binding.json.",
+            "result_sha256": "c5c8c01ccdfd902357323e999713cd1f4a9e29e9ae0ae867988aba0123a37bfa",
+            "log_path": "test-results/r27rc2/first-ci-failure-repair-20260908/independent-review.md",
+            "config_sha256": "5e7450da9c82bfe96390a9be4198ebc784e5e858e17c5fc5ed71ce33713e3f2c",
+            "recorded_at": "2026-09-08T06:42:46Z"
+          },
+          "notes": "Separate reviewer /root/failure_repair_review; no organization approval implied."
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Remote revalidation and release/target-environment acceptance are not performed. No full security clearance."
+        }
+      },
+      "history": [
+        {
+          "at": "2026-09-08T06:42:46Z",
+          "transition": "null->candidate",
+          "actor": "Codex local failure repair",
+          "reason": "Register first CI/local reproduction in the existing unique ledger."
+        },
+        {
+          "at": "2026-09-08T06:42:46Z",
+          "transition": "candidate->confirmed",
+          "actor": "Codex local failure repair",
+          "reason": "qs 6.15.3 allows comma bracket arrays past arrayLimit; fixed6.16.0. Express5.2.1 (^6.14.0) and body-parser2.3.0 (^6.15.2), 8 production paths, scoped exact-parent overrides. Old finite regression fails; fixed parent-resolved tests pass. Application comma:true sink not confirmed; valid supply-chain finding not dismissed. Official GHSA-x5fp-wj9c-mxmx."
+        },
+        {
+          "at": "2026-09-08T06:42:46Z",
+          "transition": "confirmed->accepted_for_fix",
+          "actor": "Codex local failure repair",
+          "reason": "qs 6.15.3 allows comma bracket arrays past arrayLimit; fixed6.16.0. Express5.2.1 (^6.14.0) and body-parser2.3.0 (^6.15.2), 8 production paths, scoped exact-parent overrides. Old finite regression fails; fixed parent-resolved tests pass. Application comma:true sink not confirmed; valid supply-chain finding not dismissed. Official GHSA-x5fp-wj9c-mxmx."
+        },
+        {
+          "at": "2026-09-08T06:42:46Z",
+          "transition": "accepted_for_fix->in_progress",
+          "actor": "Codex local failure repair",
+          "reason": "qs 6.15.3 allows comma bracket arrays past arrayLimit; fixed6.16.0. Express5.2.1 (^6.14.0) and body-parser2.3.0 (^6.15.2), 8 production paths, scoped exact-parent overrides. Old finite regression fails; fixed parent-resolved tests pass. Application comma:true sink not confirmed; valid supply-chain finding not dismissed. Official GHSA-x5fp-wj9c-mxmx."
+        },
+        {
+          "at": "2026-09-08T06:42:46Z",
+          "transition": "in_progress->fixed_target_verified",
+          "actor": "Codex local failure repair",
+          "reason": "qs 6.15.3 allows comma bracket arrays past arrayLimit; fixed6.16.0. Express5.2.1 (^6.14.0) and body-parser2.3.0 (^6.15.2), 8 production paths, scoped exact-parent overrides. Old finite regression fails; fixed parent-resolved tests pass. Application comma:true sink not confirmed; valid supply-chain finding not dismissed. Official GHSA-x5fp-wj9c-mxmx."
+        },
+        {
+          "at": "2026-09-08T06:42:46Z",
+          "transition": "fixed_target_verified->fixed_diff_verified",
+          "actor": "/root/failure_repair_review",
+          "reason": "qs 6.15.3 allows comma bracket arrays past arrayLimit; fixed6.16.0. Express5.2.1 (^6.14.0) and body-parser2.3.0 (^6.15.2), 8 production paths, scoped exact-parent overrides. Old finite regression fails; fixed parent-resolved tests pass. Application comma:true sink not confirmed; valid supply-chain finding not dismissed. Official GHSA-x5fp-wj9c-mxmx."
+        }
+      ],
+      "closure": null
+    },
+    {
+      "id": "R27-RC2-CI-QS-002",
+      "title": "qs GHSA-4mjr-xmp4-gh2g in production dependency graph",
+      "status": "fixed_diff_verified",
+      "severity": "medium",
+      "confidence": "high",
+      "classification": "pre_existing",
+      "cwe": null,
+      "source": {
+        "type": "sca",
+        "report_path": "test-results/r27rc2/first-ci-failure-repair-20260908/baseline-qs-tests.log",
+        "binding": {
+          "commit": "5a388095726d1b53fe79e379e1f3665d4a310a5d",
+          "tree": "608f69ba5aacbb5e67359eabe2a62752424c05ba",
+          "tool_name": "local baseline reproduction",
+          "tool_version": "Node 24.14.0; pnpm 9.15.4; Semgrep 1.169.0 as applicable",
+          "command": "First CI source-equivalent reproduction; original remote run 34191540314 attempt1 preserved",
+          "environment": "Local isolated synthetic build/test inputs; native darwin/arm64, Semgrep linux/arm64; original rule sources metrics off; no remote CI/deployment. Source-file reuse described in candidate-evidence-binding.json.",
+          "result_sha256": "22eba2edbb2fe709c7da0b981adafac346ef35723e9250411f65ce772bbdf217",
+          "log_path": "test-results/r27rc2/first-ci-failure-repair-20260908/baseline-qs-tests.log",
+          "config_sha256": "9186715db8a3fb724b2d856067bb69f320204beb4027b8672a0f2b263503d962",
+          "recorded_at": "2026-09-08T06:42:46Z"
+        }
+      },
+      "scope": {
+        "component": "production transitive qs",
+        "affected_files": [
+          "package.json",
+          "pnpm-lock.yaml",
+          "apps/api/test/security/qs-regression.spec.ts"
+        ],
+        "entry_points": [
+          "first push CI source/build gates"
+        ],
+        "trust_boundary": "Authored candidate and synthetic tests to immutable build and security evidence"
+      },
+      "evidence": {
+        "reachable": true,
+        "production_exposed": null,
+        "reproduction_path": "qs 6.15.3 parse/stringify constructor.isBuffer TypeError; fixed6.16.0. Same2 direct parents/8 prod paths as QS-001, distinct advisory. Old finite regression fails; fixed actual-parent parse/stringify tests and real Express nested forms/limits pass. Application stringify sink not confirmed. Official GHSA-4mjr-xmp4-gh2g.",
+        "proof_gap": "No new remote CI; local source fix does not establish release/deployment/product acceptance."
+      },
+      "root_cause_cluster": "PRODUCTION_TRANSITIVE_QS",
+      "security_invariants": [],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
+      "fix": {
+        "task_id": "R27RC2_FIRST_REMOTE_CI_FAILURE_REPAIR_BATCH",
+        "branch": "security/r27rc2-candidate-repair",
+        "commit": "84a153884bea9d59ec56ef4e6ce3ada4b2144854",
+        "tree": "1647b6b00922bda0a39211f95070c65985ee20db",
+        "changed_files": [
+          "package.json",
+          "pnpm-lock.yaml",
+          "apps/api/test/security/qs-regression.spec.ts"
+        ]
+      },
+      "verification": {
+        "targeted": {
+          "status": "pass",
+          "binding": {
+            "commit": "84a153884bea9d59ec56ef4e6ce3ada4b2144854",
+            "tree": "1647b6b00922bda0a39211f95070c65985ee20db",
+            "tool_name": "local targeted gate",
+            "tool_version": "Node 24.14.0; pnpm 9.15.4; Semgrep 1.169.0 as applicable",
+            "command": "R27RC2_FIRST_REMOTE_CI_FAILURE_REPAIR",
+            "environment": "Local isolated synthetic build/test inputs; native darwin/arm64, Semgrep linux/arm64; original rule sources metrics off; no remote CI/deployment. Source-file reuse described in candidate-evidence-binding.json.",
+            "result_sha256": "8c4b08739b58fd222c7878a8fc44559aa4f1c8bd4cf9a454d451314c14cdac9e",
+            "log_path": "test-results/r27rc2/first-ci-failure-repair-20260908/final-sca/pnpm-audit-all.json",
+            "config_sha256": "5e7450da9c82bfe96390a9be4198ebc784e5e858e17c5fc5ed71ce33713e3f2c",
+            "recorded_at": "2026-09-08T06:42:46Z"
+          },
+          "notes": "qs 6.15.3 parse/stringify constructor.isBuffer TypeError; fixed6.16.0. Same2 direct parents/8 prod paths as QS-001, distinct advisory. Old finite regression fails; fixed actual-parent parse/stringify tests and real Express nested forms/limits pass. Application stringify sink not confirmed. Official GHSA-4mjr-xmp4-gh2g."
+        },
+        "affected_regression": {
+          "status": "pass",
+          "binding": {
+            "commit": "84a153884bea9d59ec56ef4e6ce3ada4b2144854",
+            "tree": "1647b6b00922bda0a39211f95070c65985ee20db",
+            "tool_name": "pnpm and local gates",
+            "tool_version": "Node 24.14.0; pnpm 9.15.4; Semgrep 1.169.0 as applicable",
+            "command": "Approved affected gates; latest Web and shell evidence supersedes earlier intermediate inputs",
+            "environment": "Local isolated synthetic build/test inputs; native darwin/arm64, Semgrep linux/arm64; original rule sources metrics off; no remote CI/deployment. Source-file reuse described in candidate-evidence-binding.json.",
+            "result_sha256": "268ea05c4d1ef1b100c33e57a13ce3a0bc5269a138f3f558f240009dfcc3bfab",
+            "log_path": "test-results/r27rc2/first-ci-failure-repair-20260908/quality-results.json",
+            "config_sha256": "5e7450da9c82bfe96390a9be4198ebc784e5e858e17c5fc5ed71ce33713e3f2c",
+            "recorded_at": "2026-09-08T06:42:46Z"
+          },
+          "notes": "App tests1567pass/30DBskip; frozen lock, actual qs parents/forms, SCA all/prod0, shell regression pass; see main report for input-specific reuse."
+        },
+        "diff_review": {
+          "status": "pass",
+          "binding": {
+            "commit": "84a153884bea9d59ec56ef4e6ce3ada4b2144854",
+            "tree": "1647b6b00922bda0a39211f95070c65985ee20db",
+            "tool_name": "Independent read-only Codex context",
+            "tool_version": "Node 24.14.0; pnpm 9.15.4; Semgrep 1.169.0 as applicable",
+            "command": "18-file exact diff plus single test amendment",
+            "environment": "Local isolated synthetic build/test inputs; native darwin/arm64, Semgrep linux/arm64; original rule sources metrics off; no remote CI/deployment. Source-file reuse described in candidate-evidence-binding.json.",
+            "result_sha256": "c5c8c01ccdfd902357323e999713cd1f4a9e29e9ae0ae867988aba0123a37bfa",
+            "log_path": "test-results/r27rc2/first-ci-failure-repair-20260908/independent-review.md",
+            "config_sha256": "5e7450da9c82bfe96390a9be4198ebc784e5e858e17c5fc5ed71ce33713e3f2c",
+            "recorded_at": "2026-09-08T06:42:46Z"
+          },
+          "notes": "Separate reviewer /root/failure_repair_review; no organization approval implied."
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Remote revalidation and release/target-environment acceptance are not performed. No full security clearance."
+        }
+      },
+      "history": [
+        {
+          "at": "2026-09-08T06:42:46Z",
+          "transition": "null->candidate",
+          "actor": "Codex local failure repair",
+          "reason": "Register first CI/local reproduction in the existing unique ledger."
+        },
+        {
+          "at": "2026-09-08T06:42:46Z",
+          "transition": "candidate->confirmed",
+          "actor": "Codex local failure repair",
+          "reason": "qs 6.15.3 parse/stringify constructor.isBuffer TypeError; fixed6.16.0. Same2 direct parents/8 prod paths as QS-001, distinct advisory. Old finite regression fails; fixed actual-parent parse/stringify tests and real Express nested forms/limits pass. Application stringify sink not confirmed. Official GHSA-4mjr-xmp4-gh2g."
+        },
+        {
+          "at": "2026-09-08T06:42:46Z",
+          "transition": "confirmed->accepted_for_fix",
+          "actor": "Codex local failure repair",
+          "reason": "qs 6.15.3 parse/stringify constructor.isBuffer TypeError; fixed6.16.0. Same2 direct parents/8 prod paths as QS-001, distinct advisory. Old finite regression fails; fixed actual-parent parse/stringify tests and real Express nested forms/limits pass. Application stringify sink not confirmed. Official GHSA-4mjr-xmp4-gh2g."
+        },
+        {
+          "at": "2026-09-08T06:42:46Z",
+          "transition": "accepted_for_fix->in_progress",
+          "actor": "Codex local failure repair",
+          "reason": "qs 6.15.3 parse/stringify constructor.isBuffer TypeError; fixed6.16.0. Same2 direct parents/8 prod paths as QS-001, distinct advisory. Old finite regression fails; fixed actual-parent parse/stringify tests and real Express nested forms/limits pass. Application stringify sink not confirmed. Official GHSA-4mjr-xmp4-gh2g."
+        },
+        {
+          "at": "2026-09-08T06:42:46Z",
+          "transition": "in_progress->fixed_target_verified",
+          "actor": "Codex local failure repair",
+          "reason": "qs 6.15.3 parse/stringify constructor.isBuffer TypeError; fixed6.16.0. Same2 direct parents/8 prod paths as QS-001, distinct advisory. Old finite regression fails; fixed actual-parent parse/stringify tests and real Express nested forms/limits pass. Application stringify sink not confirmed. Official GHSA-4mjr-xmp4-gh2g."
+        },
+        {
+          "at": "2026-09-08T06:42:46Z",
+          "transition": "fixed_target_verified->fixed_diff_verified",
+          "actor": "/root/failure_repair_review",
+          "reason": "qs 6.15.3 parse/stringify constructor.isBuffer TypeError; fixed6.16.0. Same2 direct parents/8 prod paths as QS-001, distinct advisory. Old finite regression fails; fixed actual-parent parse/stringify tests and real Express nested forms/limits pass. Application stringify sink not confirmed. Official GHSA-4mjr-xmp4-gh2g."
+        }
+      ],
+      "closure": null
+    },
+    {
+      "id": "R27-RC2-CI-IMAGE-001",
+      "title": "Pinned Node Alpine image carries OpenSSL findings discovered by first completed image scan",
+      "status": "confirmed",
+      "severity": "high",
+      "confidence": "high",
+      "classification": "pre_existing",
+      "cwe": null,
+      "source": {
+        "type": "sca",
+        "report_path": "test-results/r27rc2/first-ci-failure-repair-20260908/image-scan-result.json",
+        "binding": {
+          "commit": "84a153884bea9d59ec56ef4e6ce3ada4b2144854",
+          "tree": "1647b6b00922bda0a39211f95070c65985ee20db",
+          "tool_name": "Trivy",
+          "tool_version": "0.72.0; DBv2 updated2026-09-08T01:14:11.072075664Z",
+          "command": "bash scripts/security/scan-production-images.sh feishu-timeline-api:rc2-repair-84a153884bea feishu-timeline-web:rc2-repair-84a153884bea",
+          "environment": "Local Docker29.5.2; exact linux/amd64 candidate images; vulnerability scan only; no registry push or deployment.",
+          "result_sha256": "79dd642b467355e644fdbaad84fa7bf9c22cd64088cd41d55db5a1921992b985",
+          "log_path": "test-results/r27rc2/first-ci-failure-repair-20260908/image-scan-result.json",
+          "config_sha256": "5e7450da9c82bfe96390a9be4198ebc784e5e858e17c5fc5ed71ce33713e3f2c",
+          "recorded_at": "2026-09-08T06:46:15Z"
+        }
+      },
+      "scope": {
+        "component": "Node24 Alpine runtime libcrypto3/libssl3",
+        "affected_files": [
+          "apps/api/Dockerfile",
+          "apps/web/Dockerfile"
+        ],
+        "entry_points": [
+          "scan-production-images.sh on final local images"
+        ],
+        "trust_boundary": "Immutable base OS crypto libraries within API/Web runtime artifacts"
+      },
+      "evidence": {
+        "reachable": null,
+        "production_exposed": null,
+        "reproduction_path": "Both immutable local candidate images contain libcrypto3/libssl3 3.5.7-r0. Each image has20 package findings (HIGH2/MEDIUM6/LOW12), same10 CVEs across2packages/2images. Trivy reports fixed3.5.8-r0. No tool error or missing report; image gate remains blocked. CVEs: CVE-2026-14456,CVE-2026-14457,CVE-2026-18798,CVE-2026-54874,CVE-2026-63072,CVE-2026-63073,CVE-2026-63074,CVE-2026-63075,CVE-2026-63076,CVE-2026-75803",
+        "proof_gap": "Installed-package advisory match confirmed; exploitability and actual production runtime not inspected. Base-image remediation outside this three-failure repair batch remains unapproved; no risk acceptance."
+      },
+      "root_cause_cluster": "PINNED_NODE_ALPINE_OPENSSL_3_5_7",
+      "security_invariants": [],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
+      "fix": {
+        "task_id": null,
+        "branch": null,
+        "commit": null,
+        "tree": null,
+        "changed_files": []
+      },
+      "verification": {
+        "targeted": {
+          "status": "fail",
+          "binding": {
+            "commit": "84a153884bea9d59ec56ef4e6ce3ada4b2144854",
+            "tree": "1647b6b00922bda0a39211f95070c65985ee20db",
+            "tool_name": "Trivy",
+            "tool_version": "0.72.0; DBv2 updated2026-09-08T01:14:11.072075664Z",
+            "command": "bash scripts/security/scan-production-images.sh feishu-timeline-api:rc2-repair-84a153884bea feishu-timeline-web:rc2-repair-84a153884bea",
+            "environment": "Local Docker29.5.2; exact linux/amd64 candidate images; vulnerability scan only; no registry push or deployment.",
+            "result_sha256": "79dd642b467355e644fdbaad84fa7bf9c22cd64088cd41d55db5a1921992b985",
+            "log_path": "test-results/r27rc2/first-ci-failure-repair-20260908/image-scan-result.json",
+            "config_sha256": "5e7450da9c82bfe96390a9be4198ebc784e5e858e17c5fc5ed71ce33713e3f2c",
+            "recorded_at": "2026-09-08T06:46:15Z"
+          },
+          "notes": "Both immutable local candidate images contain libcrypto3/libssl3 3.5.7-r0. Each image has20 package findings (HIGH2/MEDIUM6/LOW12), same10 CVEs across2packages/2images. Trivy reports fixed3.5.8-r0. No tool error or missing report; image gate remains blocked. CVEs: CVE-2026-14456,CVE-2026-14457,CVE-2026-18798,CVE-2026-54874,CVE-2026-63072,CVE-2026-63073,CVE-2026-63074,CVE-2026-63075,CVE-2026-63076,CVE-2026-75803"
+        },
+        "affected_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "No base-image fix performed."
+        },
+        "diff_review": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Existing source diff independently reviewed; no remediation diff for this new image finding."
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "RELEASE_NOT_READY; image scan blocked; no new remote CI."
+        }
+      },
+      "history": [
+        {
+          "at": "2026-09-08T06:46:15Z",
+          "transition": "null->candidate",
+          "actor": "Codex local image verification",
+          "reason": "Record new observed findings in the existing unique Ledger."
+        },
+        {
+          "at": "2026-09-08T06:46:15Z",
+          "transition": "candidate->confirmed",
+          "actor": "Codex local image verification",
+          "reason": "Both immutable local candidate images contain libcrypto3/libssl3 3.5.7-r0. Each image has20 package findings (HIGH2/MEDIUM6/LOW12), same10 CVEs across2packages/2images. Trivy reports fixed3.5.8-r0. No tool error or missing report; image gate remains blocked. CVEs: CVE-2026-14456,CVE-2026-14457,CVE-2026-18798,CVE-2026-54874,CVE-2026-63072,CVE-2026-63073,CVE-2026-63074,CVE-2026-63075,CVE-2026-63076,CVE-2026-75803"
+        }
+      ],
+      "closure": null
     }
   ]
 }

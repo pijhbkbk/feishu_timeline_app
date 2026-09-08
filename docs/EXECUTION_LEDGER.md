@@ -7450,3 +7450,25 @@ AWAITING_OWNER_REVIEW_V2
 - 风险/下一决定：需现有管理身份或脱敏 hooks/Apps/Actions/适用规则证据，以及公开候选/必要历史、报告可见性批准后，才提出合并受限执行请求。动态规则摘要、逐镜像 DB/新鲜度、六镜像/真实环境及原独立部署条件未解决。
 - 状态：CODE_IMPLEMENTED / LOCAL_VERIFIED（CI补丁）/ G4_DIFF_PASS；MANAGEMENT_VISIBILITY_PENDING / CI_NOT_EXECUTED / NOT_DEPLOYED；无push、远端上传、main/tag变化、staging/production访问，AWAITING_PRODUCT_OWNER_CONFIRMATION。
 - 单一主回执：[R27RC2_CI_EVIDENCE_READINESS_20260908.md](handoff/R27RC2_CI_EVIDENCE_READINESS_20260908.md)；本地必要日志/摘要索引在 test-results/r27rc2/ci-evidence-readiness-20260908/evidence-index.json，未提交原始证据。
+
+
+### R27RC2 第一次真实远端 CI（2026-09-08）
+
+- 授权/输入：所有者明确批准精确候选及必要历史公开、唯一 validation ref 一次正常 push、既有 CI 网络/日志/cache/12 JSON artifact 和本地结果取回；禁止重跑、其他远端写入及部署。Vercel NONE_OBSERVED_IN_AUTHORIZED_VISIBLE_SCOPE 直接复用。
+- Final preflight：原 source 5a388095726d1b53fe79e379e1f3665d4a310a5d / tree 608f69ba5aacbb5e67359eabe2a62752424c05ba、四文件与锁文件绑定未变；Node原固定index和linux/amd64子manifest均经官方registry正常TLS/字节摘要验证，无源码修复。Postgres仍DEPLOYMENT_PREREQUISITE_PENDING。
+- 实际写入：只向 refs/heads/codex/r27rc2-artifact-validation 正常推送原 source 一次，pre-push守卫拒绝已存在ref；没有推evidence HEAD。推前ref不存在，推后等于候选，main/default仍41b4b166c587692e6f0fb9536dca2e1aab646c70。
+- 实际CI：[run 34191540314](https://github.com/pijhbkbk/feishu_timeline_app/actions/runs/34191540314)，push/attempt1，05:40:41–05:44:21 UTC，failure；verify failure，security-source failure，playwright-smoke skipped。只观察到这一workflow/三个预期checks，deployment记录0。
+- 正式结果：Secrets当前树/历史均PASS零发现；Web构建成功但生产产物eval-source-map检查FAIL，API/Docker/镜像扫描随之skipped；Semgrep4 findings+8 tool errors；全/生产SCA均qs6.15.3的同两条中危公告。未弱化检查、改依赖、rerun或第二次push。
+- 取回验证：两个artifact合计12 JSON已下载；ZIP摘要、白名单、SHA/tree/lock/run/job/step outcome与GitHub一致，身份校验0错误；actual github-hosted ubuntu24 image20260831.293.1、x64、Docker28.0.4 linux/amd64、Node24.20.0。必要可见失败日志已保存；完整归档/raw下载被浏览器客户端阻止，8个Semgrep错误明细及部分ruleId不可得，未伪造补齐。
+- 下一步/结束：只针对本次三个真实失败方向处理；镜像证据需后续另行获准CI。本轮结束，不进入staging/production，不新建产品提交；release FIRST_REMOTE_CI_FAILED / RELEASE_NOT_READY / NOT_DEPLOYED，产品AWAITING_PRODUCT_OWNER_CONFIRMATION。main/tag不变，无路由变更，未重跑Placeholder（此前正式0仅历史观察）。
+- 唯一主回执：[R27RC2_FIRST_REMOTE_CI_EXECUTION_20260908.md](handoff/R27RC2_FIRST_REMOTE_CI_EXECUTION_20260908.md)；29项本地证据及摘要索引在test-results/r27rc2/first-remote-ci-20260908/，原始证据不暂存/提交/上传。
+
+## 2026-09-08 — R27RC2 first remote CI failure repair
+
+- Scope: owner-authorized local three-direction failure repair, targeted downloads/build/scans, independent read-only review and local commits; no second push/CI, settings or deployment.
+- Source: `84a153884bea9d59ec56ef4e6ce3ada4b2144854`; tree `1647b6b00922bda0a39211f95070c65985ee20db`; lock SHA256 `5e7450da9c82bfe96390a9be4198ebc784e5e858e17c5fc5ed71ce33713e3f2c`. Prior source checkpoint `c216bd8938db81239f07738cf343917ae8dd8ca2`; subsequent commit only supplies explicit expected identity to the new runtime test.
+- Implemented: exact Next development-entry tracing exclusions with complete fail-closed artifact scanning; equivalent Bash parser compatibility in eight existing scripts; four independently justified precise SAST annotations and loopback redirect rejection; qs6.16.0 only for its two actual compatible parent versions; regression tests. AGENTS/CI/evaluator/upload boundaries unchanged.
+- Verified: frozen install, lint/typecheck, Web287 + API1280 tests passed /30 DB tests skipped, Web/API builds and Prisma validate, security/deploy/CI-evidence gates, SAST664 targets0 findings/errors plus final one-file affected scan, all/prod SCA0 findings, exact-identity native standalone, final API/Web linux/amd64 image builds, API actual qs6.16.0 and Web offline image runtime. Independent main+incremental source reviews have no blocking source comments.
+- New blocker: final Trivy image scans each report20 OpenSSL package findings (High2/Medium6/Low12), same10 CVEs across both images; libcrypto3/libssl3 3.5.7-r0, scanner fixed3.5.8-r0. Tool errors0. No risk acceptance/base-image update performed. `R27-RC2-CI-IMAGE-001` remains confirmed in unique Finding Ledger; six original repair/triage records also added without changing nine historical records.
+- Evidence: first run34191540314 attempt1 and all29 original indexed hashes preserved. This batch index `test-results/r27rc2/first-ci-failure-repair-20260908/evidence-index.json`; full source/commands/platform/build/rule/DB/result binding recorded. Main receipt `docs/handoff/R27RC2_FIRST_REMOTE_CI_FAILURE_REPAIR_20260908.md` contains failure matrix and held exact FF/CI request.
+- State: `RELEASE_NOT_READY / IMAGE_SCAN_BLOCKED / REMOTE_REVALIDATION_PENDING`. Main/tag/staging/production unchanged/unexecuted; product confirmation pending. Next: minimal authorized base-artifact repair before new candidate CI; original once-only push grant is exhausted. PostgreSQL deployment prerequisite remains pending and was not used to block source/build checks.
