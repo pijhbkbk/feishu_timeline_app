@@ -7482,3 +7482,13 @@ AWAITING_OWNER_REVIEW_V2
 - Independent G4_DIFF approves partial system remediation only. Node embedded3.5.7 remains, at least75803 patch absent in current official24 source; no official complete applicability closure. Unique finding R27-RC2-CI-IMAGE-001 stays in_progress; RELEASE_NOT_READY.
 - Evidence: `docs/handoff/R27RC2_IMAGE_OPENSSL_REMEDIATION_20260908.md`, local `test-results/r27rc2/image-openssl-remediation-20260908/evidence-index.json`. Previous161 local evidence files preserved. No push/CI/settings/deployment. Future FF request condition not met; original first-push permission not reused.
 - New direct test SAST initially found missing GCM tag length; fixed explicit16 and short-tag negative assertion. Final pinned offline scan0 findings/0 errors;8c final images and affected checks rebuilt/rerun, intermediate6dd failure/review preserved.
+
+
+## R27RC2 Node 内嵌 OpenSSL 适用性（2026-09-09）
+
+- 用户明确转交附件，限本地官方输入/现有镜像/外置测试/独立只读审查；无远端写入或部署。
+- source/test candidate `e0b20a69522edd4dc76ee3b3219badda7166acbd` / tree `fa64715929aed610ae2714482db0b881ba2f367d`；只新增一份外置测试，实际两镜像 runtime 仍 `8c265959f2dcca272d59ca9cbe8f9ae7b821019d`。
+- 十项 CVE 在精确 API/Web/current config 内均不适用，不能声称内嵌3.5.7已打补丁；系统40实例修复及原263文件证据保持。
+- 两镜像各24组/80个认证负向通过，原Semgrep定向0 findings/0 errors，语法与独立G4通过；唯一Finding `R27-RC2-CI-IMAGE-001`推进fixed_diff_verified，未closed/未风险接受。
+- 主回执：`docs/handoff/R27RC2_NODE_EMBEDDED_OPENSSL_APPLICABILITY_20260909.md`；本地结果索引：`test-results/r27rc2/node-embedded-openssl-applicability-20260909/evidence-index.json`。
+- 准备新的唯一验证ref FF/CI请求但不执行；当前RELEASE_NOT_READY / REMOTE_REVALIDATION_PENDING。staging/production/main/tag未改变，产品确认未获得。

@@ -1894,7 +1894,7 @@
     {
       "id": "R27-RC2-CI-IMAGE-001",
       "title": "Pinned Node Alpine image carries OpenSSL findings discovered by first completed image scan",
-      "status": "in_progress",
+      "status": "fixed_diff_verified",
       "severity": "high",
       "confidence": "high",
       "classification": "pre_existing",
@@ -1920,7 +1920,8 @@
         "affected_files": [
           "apps/api/Dockerfile",
           "apps/web/Dockerfile",
-          "scripts/security/tests/image-crypto-runtime.mjs"
+          "scripts/security/tests/image-crypto-runtime.mjs",
+          "scripts/security/tests/node-embedded-openssl-applicability.mjs"
         ],
         "entry_points": [
           "scan-production-images.sh on final local images"
@@ -1928,10 +1929,10 @@
         "trust_boundary": "Immutable base OS crypto libraries within API/Web runtime artifacts"
       },
       "evidence": {
-        "reachable": null,
+        "reachable": false,
         "production_exposed": null,
         "reproduction_path": "Both immutable local candidate images contain libcrypto3/libssl3 3.5.7-r0. Each image has20 package findings (HIGH2/MEDIUM6/LOW12), same10 CVEs across2packages/2images. Trivy reports fixed3.5.8-r0. No tool error or missing report; image gate remains blocked. CVEs: CVE-2026-14456,CVE-2026-14457,CVE-2026-18798,CVE-2026-54874,CVE-2026-63072,CVE-2026-63073,CVE-2026-63074,CVE-2026-63075,CVE-2026-63076,CVE-2026-75803",
-        "proof_gap": "Forty original system package instances cleared by exact3.5.8-r0 revisions; actual Node24.19 embedded OpenSSL3.5.7 remains statically linked. Official24.19/24.20 source lacks at leastCVE-2026-75803 patch; application exploitability not asserted and full applicability evidence unresolved. No risk acceptance. See current sole handoff and local evidence index."
+        "proof_gap": "No remaining applicability gap for the ten CVEs within exact API/Web images, shipped native modules and verified execution configuration. Embedded3.5.7 vulnerable code remains; no patch/risk-acceptance claim. Source/test candidate e0b20a69522edd4dc76ee3b3219badda7166acbd differs only in external test from prior evidence HEAD. Full/remote revalidation and other role artifacts remain pending; new provider/native/datasource/config changes require reassessment. See docs/handoff/R27RC2_NODE_EMBEDDED_OPENSSL_APPLICABILITY_20260909.md."
       },
       "root_cause_cluster": "PINNED_NODE_ALPINE_OPENSSL_3_5_7",
       "security_invariants": [],
@@ -1955,18 +1956,18 @@
         "targeted": {
           "status": "pass",
           "binding": {
-            "commit": "8c265959f2dcca272d59ca9cbe8f9ae7b821019d",
-            "tree": "033a780976332652ca2b21801863ceab086772bd",
-            "tool_name": "Trivy",
-            "tool_version": "0.72.0; DBv2 updated2026-09-08T01:14:11.072075664Z",
-            "command": "Original scan-production-images.sh on old API/Web then new API/Web",
-            "environment": "Local Linux/amd64 final API/Web images, Docker Desktop arm64 engine; isolated synthetic resources only; no remote CI or deployment.",
-            "result_sha256": "41873a39cfab876ebfffd708628bee1b209992212f46af797e09c1d13cb4c1ac",
-            "log_path": "test-results/r27rc2/image-openssl-remediation-20260908/image-scan-result.json",
+            "commit": "e0b20a69522edd4dc76ee3b3219badda7166acbd",
+            "tree": "fa64715929aed610ae2714482db0b881ba2f367d",
+            "tool_name": "Node/Docker and exact-source applicability analysis",
+            "tool_version": "24.19.0 / embedded OpenSSL3.5.7",
+            "command": "External node-embedded-openssl-applicability.mjs on each immutable image; binary/source/native/TLS/provider per-CVE trace",
+            "environment": "Local Docker Desktop arm64 engine, exact existing API/Web linux/amd64 images with runtime8c265959f2dcca272d59ca9cbe8f9ae7b821019d; Node24.19.0 embedded3.5.7; network-none tests; no remote CI or deployment.",
+            "result_sha256": "51784dec0c0c35cf9729de66665f8f9541daafc4f89b917ed7fb47e77bd6811a",
+            "log_path": "test-results/r27rc2/node-embedded-openssl-applicability-20260909/applicability-result.json",
             "config_sha256": "5e7450da9c82bfe96390a9be4198ebc784e5e858e17c5fc5ed71ce33713e3f2c",
-            "recorded_at": "2026-09-08T07:38:55.872056+00:00"
+            "recorded_at": "2026-09-09T01:00:48.145829+00:00"
           },
-          "notes": "Final OS+language scans each0 findings; old baselines each20. Aggregate exit1 preserved for old images. Partial system package remediation only; embedded Node not closed."
+          "notes": "Ten scoped non-applicability decisions, not embedded patches. Both images24 groups PASS,80 authentication negatives each. Prior system40 instances/Trivy0 reports preserved at image-openssl-remediation-20260908/image-scan-result.json with original aggregate old-baseline exit1. New test original Semgrep0 findings/0 errors."
         },
         "affected_regression": {
           "status": "pass",
@@ -1987,23 +1988,23 @@
         "diff_review": {
           "status": "pass",
           "binding": {
-            "commit": "8c265959f2dcca272d59ca9cbe8f9ae7b821019d",
-            "tree": "033a780976332652ca2b21801863ceab086772bd",
+            "commit": "e0b20a69522edd4dc76ee3b3219badda7166acbd",
+            "tree": "fa64715929aed610ae2714482db0b881ba2f367d",
             "tool_name": "Independent read-only reviewer",
-            "tool_version": "openssl_official_review",
-            "command": "G4_DIFF exact final8c265959f2dcca272d59ca9cbe8f9ae7b821019d versus8d237fe240c345b14a6461d125352f7a91b4081f",
-            "environment": "Local Linux/amd64 final API/Web images, Docker Desktop arm64 engine; isolated synthetic resources only; no remote CI or deployment.",
-            "result_sha256": "a5bb384734b586f86cc9c059e5513f13e1558144a7d5b388ffa02a3712b4eaf9",
-            "log_path": "test-results/r27rc2/image-openssl-remediation-20260908/g4-final-review.json",
+            "tool_version": "node_applicability_review",
+            "command": "G4_DIFF candidate e0b20a69522edd4dc76ee3b3219badda7166acbd external test plus bounded exact-image applicability evidence",
+            "environment": "Local Docker Desktop arm64 engine, exact existing API/Web linux/amd64 images with runtime8c265959f2dcca272d59ca9cbe8f9ae7b821019d; Node24.19.0 embedded3.5.7; network-none tests; no remote CI or deployment.",
+            "result_sha256": "37535ad5e95bb5227cf77af3d4f5ee190c2cb5e357753942d61ba73e095dd65c",
+            "log_path": "test-results/r27rc2/node-embedded-openssl-applicability-20260909/review/g4-test-diff-review.json",
             "config_sha256": "5e7450da9c82bfe96390a9be4198ebc784e5e858e17c5fc5ed71ce33713e3f2c",
-            "recorded_at": "2026-09-08T07:38:55.872056+00:00"
+            "recorded_at": "2026-09-09T01:00:48.145829+00:00"
           },
-          "notes": "G4_DIFF_PASS_FOR_PARTIAL_SYSTEM_OPENSSL_REMEDIATION. Overall BLOCKED_NODE_EMBEDDED_OPENSSL; no risk acceptance or security closure."
+          "notes": "Final external test diff and double-image evidence verified independently. Final receipt/ledger/applicability review is additionally recorded in test-results/r27rc2/node-embedded-openssl-applicability-20260909/review/g4-final-review.json and the evidence index. No human approval or full security clearance claimed."
         },
         "full_regression": {
           "status": "pending",
           "binding": null,
-          "notes": "Node embedded OpenSSL unresolved; no remote revalidation, staging, production or product-owner acceptance. Not release ready."
+          "notes": "Embedded applicability resolved within current exact-image/config scope; no new full or remote CI revalidation. Existing unchanged-runtime regression reused. Staging/production/product acceptance remain outside this task; RELEASE_NOT_READY."
         }
       },
       "history": [
@@ -2030,6 +2031,18 @@
           "transition": "accepted_for_fix->in_progress",
           "actor": "Codex local remediation with independent read-only review",
           "reason": "Authorized two-package same-branch fix clears40 original OS instances, both images build/run/scan pass. Official embedded Node3.5.7 patch/applicability gap keeps finding open; no risk acceptance."
+        },
+        {
+          "at": "2026-09-09T01:00:48.145829+00:00",
+          "transition": "in_progress->fixed_target_verified",
+          "actor": "Codex local applicability verification with independent node_applicability_review",
+          "reason": "Original system40-instance repair retained; ten embedded CVEs are not applicable to exact currently shipped API/Web paths and configuration, supported by provenance/source/native/TLS/provider evidence and both-image authentication tests."
+        },
+        {
+          "at": "2026-09-09T01:00:48.145829+00:00",
+          "transition": "fixed_target_verified->fixed_diff_verified",
+          "actor": "Codex local applicability verification with independent node_applicability_review",
+          "reason": "Independent read-only context verified final external test diff, native loading boundary and applicability evidence; no risk acceptance or claim that embedded code is patched; full/remote checks remain pending."
         }
       ],
       "closure": null
