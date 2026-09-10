@@ -29,12 +29,30 @@
       "source": {
         "type": "diff_scan",
         "report_path": "codex-thread://019ffdaf-221f-7f50-85ad-cc5446dadb85/turn/019ffdaf-80cc-7b50-a8da-746b3c9c425b/item/item-3",
-        "binding": {"commit": "f952ec049a6aa5f4f51461f67172ed7872d13bf5", "tree": "5785ff1885f564f15be02117132f14cb5cf5fea4", "tool_name": "Codex independent G4_DIFF review", "tool_version": "gpt-5.6-sol", "command": "R27D_REVIEWS_INDEPENDENT_G4_DIFF_REVIEW", "environment": "local read-only worktree; reviewed working diff SHA-256 25948cbf4b6867c645d201f64e95350c73f338ec52da6d82cefccfa331b5d10c", "result_sha256": "beec529c109208701ebd37c185d2e81c952497371ec1aca5cbc46fdd346e6549", "log_path": "codex-thread://019ffdaf-221f-7f50-85ad-cc5446dadb85/turn/019ffdaf-80cc-7b50-a8da-746b3c9c425b/item/item-3", "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db", "recorded_at": "2026-08-14T00:52:55Z"}
+        "binding": {
+          "commit": "f952ec049a6aa5f4f51461f67172ed7872d13bf5",
+          "tree": "5785ff1885f564f15be02117132f14cb5cf5fea4",
+          "tool_name": "Codex independent G4_DIFF review",
+          "tool_version": "gpt-5.6-sol",
+          "command": "R27D_REVIEWS_INDEPENDENT_G4_DIFF_REVIEW",
+          "environment": "local read-only worktree; reviewed working diff SHA-256 25948cbf4b6867c645d201f64e95350c73f338ec52da6d82cefccfa331b5d10c",
+          "result_sha256": "beec529c109208701ebd37c185d2e81c952497371ec1aca5cbc46fdd346e6549",
+          "log_path": "codex-thread://019ffdaf-221f-7f50-85ad-cc5446dadb85/turn/019ffdaf-80cc-7b50-a8da-746b3c9c425b/item/item-3",
+          "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db",
+          "recorded_at": "2026-08-14T00:52:55Z"
+        }
       },
       "scope": {
         "component": "Reviews workspace persisted-source admission",
-        "affected_files": ["apps/api/src/modules/reviews/reviews.service.ts", "apps/api/prisma/schema.prisma"],
-        "entry_points": ["getCabinReviewWorkspace", "getConsistencyReviewWorkspace", "getVisualDeltaReviewWorkspace"],
+        "affected_files": [
+          "apps/api/src/modules/reviews/reviews.service.ts",
+          "apps/api/prisma/schema.prisma"
+        ],
+        "entry_points": [
+          "getCabinReviewWorkspace",
+          "getConsistencyReviewWorkspace",
+          "getVisualDeltaReviewWorkspace"
+        ],
         "trust_boundary": "Persisted ReviewRecord and reviewer text crossing from PostgreSQL into Node workspace responses"
       },
       "evidence": {
@@ -44,8 +62,15 @@
         "proof_gap": null
       },
       "root_cause_cluster": "REVIEWS_BOUNDED_SNAPSHOT_ORPHAN_FINALIZE",
-      "security_invariants": ["SEC-009", "SEC-010"],
-      "disposition": {"duplicate_of": null, "false_positive_reason": null, "risk_acceptance": null},
+      "security_invariants": [
+        "SEC-009",
+        "SEC-010"
+      ],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
       "fix": {
         "task_id": "R27D_REVIEWS_BOUNDARY_MINIMAL_FIX",
         "branch": "security/r27-integration-v2",
@@ -62,22 +87,66 @@
       "verification": {
         "targeted": {
           "status": "pass",
-          "binding": {"commit": "2ad18e31a52d2e89617601a0dc29eab07aca0b87", "tree": "0fdfb94eb30b4757907e38c72dd4e0e7bd1a6990", "tool_name": "Codex R27D Reviews boundary verification", "tool_version": "gpt-5.6-sol; pnpm 9.15.4; Vitest 3.2.6; Prisma 6.19.3", "command": "R27D_REVIEWS_BOUNDARY_MINIMAL_FIX Phase 5: diff check, three-file ESLint, and 90 targeted/static tests", "environment": "local isolated worktree; exact five-file diff SHA-256 a9684768bfa6cc6f4b098b9e2a478c0bb1b0b9c71c5b2605400b9e30fe114800 later committed unchanged", "result_sha256": "51f7a67a689f6adb69577877d69d4f774207453eec1f2c9018eda7447f3e859b", "log_path": "codex-thread://019ffee2-6ec3-74c0-9df2-7e82ddafce77/turn/019ffee5-912a-76d1-8596-f0dfe6796a4b/item/item-58", "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db", "recorded_at": "2026-08-14T06:55:06Z"},
+          "binding": {
+            "commit": "2ad18e31a52d2e89617601a0dc29eab07aca0b87",
+            "tree": "0fdfb94eb30b4757907e38c72dd4e0e7bd1a6990",
+            "tool_name": "Codex R27D Reviews boundary verification",
+            "tool_version": "gpt-5.6-sol; pnpm 9.15.4; Vitest 3.2.6; Prisma 6.19.3",
+            "command": "R27D_REVIEWS_BOUNDARY_MINIMAL_FIX Phase 5: diff check, three-file ESLint, and 90 targeted/static tests",
+            "environment": "local isolated worktree; exact five-file diff SHA-256 a9684768bfa6cc6f4b098b9e2a478c0bb1b0b9c71c5b2605400b9e30fe114800 later committed unchanged",
+            "result_sha256": "51f7a67a689f6adb69577877d69d4f774207453eec1f2c9018eda7447f3e859b",
+            "log_path": "codex-thread://019ffee2-6ec3-74c0-9df2-7e82ddafce77/turn/019ffee5-912a-76d1-8596-f0dfe6796a4b/item/item-58",
+            "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db",
+            "recorded_at": "2026-08-14T06:55:06Z"
+          },
           "notes": "G1 result artifact SHA-256 51f7a67a689f6adb69577877d69d4f774207453eec1f2c9018eda7447f3e859b."
         },
         "affected_regression": {
           "status": "pass",
-          "binding": {"commit": "2ad18e31a52d2e89617601a0dc29eab07aca0b87", "tree": "0fdfb94eb30b4757907e38c72dd4e0e7bd1a6990", "tool_name": "Codex R27D Reviews boundary verification", "tool_version": "gpt-5.6-sol; pnpm 9.15.4; Vitest 3.2.6; TypeScript 5.9.3", "command": "R27D_REVIEWS_BOUNDARY_MINIMAL_FIX Phase 6: seven Reviews test files, 128 tests, targeted ESLint, and API typecheck", "environment": "local isolated worktree; exact five-file diff SHA-256 a9684768bfa6cc6f4b098b9e2a478c0bb1b0b9c71c5b2605400b9e30fe114800 later committed unchanged", "result_sha256": "51f7a67a689f6adb69577877d69d4f774207453eec1f2c9018eda7447f3e859b", "log_path": "codex-thread://019ffee2-6ec3-74c0-9df2-7e82ddafce77/turn/019ffee5-912a-76d1-8596-f0dfe6796a4b/item/item-58", "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db", "recorded_at": "2026-08-14T06:55:06Z"},
+          "binding": {
+            "commit": "2ad18e31a52d2e89617601a0dc29eab07aca0b87",
+            "tree": "0fdfb94eb30b4757907e38c72dd4e0e7bd1a6990",
+            "tool_name": "Codex R27D Reviews boundary verification",
+            "tool_version": "gpt-5.6-sol; pnpm 9.15.4; Vitest 3.2.6; TypeScript 5.9.3",
+            "command": "R27D_REVIEWS_BOUNDARY_MINIMAL_FIX Phase 6: seven Reviews test files, 128 tests, targeted ESLint, and API typecheck",
+            "environment": "local isolated worktree; exact five-file diff SHA-256 a9684768bfa6cc6f4b098b9e2a478c0bb1b0b9c71c5b2605400b9e30fe114800 later committed unchanged",
+            "result_sha256": "51f7a67a689f6adb69577877d69d4f774207453eec1f2c9018eda7447f3e859b",
+            "log_path": "codex-thread://019ffee2-6ec3-74c0-9df2-7e82ddafce77/turn/019ffee5-912a-76d1-8596-f0dfe6796a4b/item/item-58",
+            "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db",
+            "recorded_at": "2026-08-14T06:55:06Z"
+          },
           "notes": "G2 result artifact SHA-256 51f7a67a689f6adb69577877d69d4f774207453eec1f2c9018eda7447f3e859b."
         },
         "diff_review": {
           "status": "pass",
-          "binding": {"commit": "2ad18e31a52d2e89617601a0dc29eab07aca0b87", "tree": "0fdfb94eb30b4757907e38c72dd4e0e7bd1a6990", "tool_name": "Codex independent G4_DIFF evidence closure", "tool_version": "gpt-5.6-sol", "command": "R27D_REVIEWS_G4_EVIDENCE_CLOSURE_CORRECTED", "environment": "local read-only exact five-file identity; static G4 reused after PostgreSQL evidence manifest correction", "result_sha256": "b934e4a4336dc3ebc81b126722a863cb46d72b9c138a97b24bb1a39843525d33", "log_path": "codex-thread://019fff16-293a-7ce0-8bcf-8d352fd58bc1/turn/019fff84-e083-7cb0-bcc2-769fc145e7dd/item/item-26", "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db", "recorded_at": "2026-08-14T09:10:10Z"},
+          "binding": {
+            "commit": "2ad18e31a52d2e89617601a0dc29eab07aca0b87",
+            "tree": "0fdfb94eb30b4757907e38c72dd4e0e7bd1a6990",
+            "tool_name": "Codex independent G4_DIFF evidence closure",
+            "tool_version": "gpt-5.6-sol",
+            "command": "R27D_REVIEWS_G4_EVIDENCE_CLOSURE_CORRECTED",
+            "environment": "local read-only exact five-file identity; static G4 reused after PostgreSQL evidence manifest correction",
+            "result_sha256": "b934e4a4336dc3ebc81b126722a863cb46d72b9c138a97b24bb1a39843525d33",
+            "log_path": "codex-thread://019fff16-293a-7ce0-8bcf-8d352fd58bc1/turn/019fff84-e083-7cb0-bcc2-769fc145e7dd/item/item-26",
+            "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db",
+            "recorded_at": "2026-08-14T09:10:10Z"
+          },
           "notes": "G4 result artifact SHA-256 b934e4a4336dc3ebc81b126722a863cb46d72b9c138a97b24bb1a39843525d33; reviewed diff SHA-256 a9684768bfa6cc6f4b098b9e2a478c0bb1b0b9c71c5b2605400b9e30fe114800."
         },
         "full_regression": {
           "status": "pass",
-          "binding": {"commit": "2ad18e31a52d2e89617601a0dc29eab07aca0b87", "tree": "0fdfb94eb30b4757907e38c72dd4e0e7bd1a6990", "tool_name": "Codex R27D Reviews schema G3", "tool_version": "gpt-5.6-sol; pnpm 9.15.4; Vitest 3.2.6; Prisma 6.19.3", "command": "R27D_REVIEWS_BOUNDARY_MINIMAL_FIX Phase 7: 36 migrations, second deploy, migration/index checks, PostgreSQL 15/15, API typecheck, and API build", "environment": "isolated disposable PostgreSQL; exact five-file diff SHA-256 a9684768bfa6cc6f4b098b9e2a478c0bb1b0b9c71c5b2605400b9e30fe114800 later committed unchanged", "result_sha256": "51f7a67a689f6adb69577877d69d4f774207453eec1f2c9018eda7447f3e859b", "log_path": "codex-thread://019ffee2-6ec3-74c0-9df2-7e82ddafce77/turn/019ffee5-912a-76d1-8596-f0dfe6796a4b/item/item-58", "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db", "recorded_at": "2026-08-14T06:55:06Z"},
+          "binding": {
+            "commit": "2ad18e31a52d2e89617601a0dc29eab07aca0b87",
+            "tree": "0fdfb94eb30b4757907e38c72dd4e0e7bd1a6990",
+            "tool_name": "Codex R27D Reviews schema G3",
+            "tool_version": "gpt-5.6-sol; pnpm 9.15.4; Vitest 3.2.6; Prisma 6.19.3",
+            "command": "R27D_REVIEWS_BOUNDARY_MINIMAL_FIX Phase 7: 36 migrations, second deploy, migration/index checks, PostgreSQL 15/15, API typecheck, and API build",
+            "environment": "isolated disposable PostgreSQL; exact five-file diff SHA-256 a9684768bfa6cc6f4b098b9e2a478c0bb1b0b9c71c5b2605400b9e30fe114800 later committed unchanged",
+            "result_sha256": "51f7a67a689f6adb69577877d69d4f774207453eec1f2c9018eda7447f3e859b",
+            "log_path": "codex-thread://019ffee2-6ec3-74c0-9df2-7e82ddafce77/turn/019ffee5-912a-76d1-8596-f0dfe6796a4b/item/item-58",
+            "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db",
+            "recorded_at": "2026-08-14T06:55:06Z"
+          },
           "notes": "G3 result artifact SHA-256 51f7a67a689f6adb69577877d69d4f774207453eec1f2c9018eda7447f3e859b. Production online-index strategy remains required before deployment."
         }
       },
@@ -85,17 +154,68 @@
         "closed_by": "R27D_REVIEWS_G4_EVIDENCE_CLOSURE_CORRECTED",
         "closed_at": "2026-08-14T09:10:10Z",
         "criterion": "G1, G2, G3 and independent G4_DIFF passed; PostgreSQL execution was proven by JSON SHA-256 9c01532c104625548872b94e42baeabb8b1f2eb52fa046aec7f2f37139f6ff53 and log SHA-256 a43237ba4d405e6a07e70a8d42338d0ba27b53003c06385957fdf369f41f6473. Production deployment remains blocked until an approved online-index or maintenance-window strategy exists.",
-        "binding": {"commit": "2ad18e31a52d2e89617601a0dc29eab07aca0b87", "tree": "0fdfb94eb30b4757907e38c72dd4e0e7bd1a6990", "tool_name": "R27D PostgreSQL boundary integration evidence replay", "tool_version": "PostgreSQL 16.14; Vitest 3.2.6; Prisma 6.19.3", "command": "env DATABASE_URL=<REDACTED_TEST_DATABASE_URL> REVIEWS_POSTGRES_TEST_DATABASE_URL=<REDACTED_TEST_DATABASE_URL> pnpm exec vitest run src/modules/reviews/reviews.postgres-boundary.integration.spec.ts --reporter=verbose", "environment": "isolated disposable local PostgreSQL; 15 passed, 0 failed, 0 skipped; database removed", "result_sha256": "9c01532c104625548872b94e42baeabb8b1f2eb52fa046aec7f2f37139f6ff53", "log_path": "/Users/lixiaochen/Downloads/R27D_REVIEWS_POSTGRES_EVIDENCE_20260814T073052Z.json", "config_sha256": "1479327555c1dcc05a7d6fd075f1b2f85e409be0acbddb41a6f8e814330ce4b4", "recorded_at": "2026-08-14T07:40:38.402Z"}
+        "binding": {
+          "commit": "2ad18e31a52d2e89617601a0dc29eab07aca0b87",
+          "tree": "0fdfb94eb30b4757907e38c72dd4e0e7bd1a6990",
+          "tool_name": "R27D PostgreSQL boundary integration evidence replay",
+          "tool_version": "PostgreSQL 16.14; Vitest 3.2.6; Prisma 6.19.3",
+          "command": "env DATABASE_URL=<REDACTED_TEST_DATABASE_URL> REVIEWS_POSTGRES_TEST_DATABASE_URL=<REDACTED_TEST_DATABASE_URL> pnpm exec vitest run src/modules/reviews/reviews.postgres-boundary.integration.spec.ts --reporter=verbose",
+          "environment": "isolated disposable local PostgreSQL; 15 passed, 0 failed, 0 skipped; database removed",
+          "result_sha256": "9c01532c104625548872b94e42baeabb8b1f2eb52fa046aec7f2f37139f6ff53",
+          "log_path": "/Users/lixiaochen/Downloads/R27D_REVIEWS_POSTGRES_EVIDENCE_20260814T073052Z.json",
+          "config_sha256": "1479327555c1dcc05a7d6fd075f1b2f85e409be0acbddb41a6f8e814330ce4b4",
+          "recorded_at": "2026-08-14T07:40:38.402Z"
+        }
       },
       "history": [
-        {"at": "2026-08-14T00:52:55Z", "transition": "null->candidate", "actor": "Codex independent reviewer", "reason": "Independent exact-diff review identified the reachable persisted-source resource boundary gap."},
-        {"at": "2026-08-14T00:52:55Z", "transition": "candidate->confirmed", "actor": "Codex independent reviewer", "reason": "Confirmed Medium CWE-400 with high confidence across all three Reviews workspaces."},
-        {"at": "2026-08-14T06:11:25Z", "transition": "confirmed->accepted_for_fix", "actor": "R27D remediation task owner", "reason": "Approved PATH_B schema-assisted local refactor and exact five-file scope."},
-        {"at": "2026-08-14T06:11:25Z", "transition": "accepted_for_fix->in_progress", "actor": "Codex remediation agent", "reason": "Started bounded snapshot, persisted-source admission, index, and regression implementation."},
-        {"at": "2026-08-14T06:55:06Z", "transition": "in_progress->fixed_target_verified", "actor": "Codex remediation agent", "reason": "G1 and G2 passed on the exact final five-file identity."},
-        {"at": "2026-08-14T09:10:10Z", "transition": "fixed_target_verified->fixed_diff_verified", "actor": "Codex independent reviewer", "reason": "Independent G4_DIFF passed after corrected evidence closure."},
-        {"at": "2026-08-14T09:10:10Z", "transition": "fixed_diff_verified->fixed_full_verified", "actor": "Codex independent reviewer", "reason": "Reused exact-identity G3 and PostgreSQL execution evidence without rerunning gates."},
-        {"at": "2026-08-14T09:10:10Z", "transition": "fixed_full_verified->closed", "actor": "Codex independent reviewer", "reason": "Closure criteria met; production online-index strategy retained as a deployment blocker."}
+        {
+          "at": "2026-08-14T00:52:55Z",
+          "transition": "null->candidate",
+          "actor": "Codex independent reviewer",
+          "reason": "Independent exact-diff review identified the reachable persisted-source resource boundary gap."
+        },
+        {
+          "at": "2026-08-14T00:52:55Z",
+          "transition": "candidate->confirmed",
+          "actor": "Codex independent reviewer",
+          "reason": "Confirmed Medium CWE-400 with high confidence across all three Reviews workspaces."
+        },
+        {
+          "at": "2026-08-14T06:11:25Z",
+          "transition": "confirmed->accepted_for_fix",
+          "actor": "R27D remediation task owner",
+          "reason": "Approved PATH_B schema-assisted local refactor and exact five-file scope."
+        },
+        {
+          "at": "2026-08-14T06:11:25Z",
+          "transition": "accepted_for_fix->in_progress",
+          "actor": "Codex remediation agent",
+          "reason": "Started bounded snapshot, persisted-source admission, index, and regression implementation."
+        },
+        {
+          "at": "2026-08-14T06:55:06Z",
+          "transition": "in_progress->fixed_target_verified",
+          "actor": "Codex remediation agent",
+          "reason": "G1 and G2 passed on the exact final five-file identity."
+        },
+        {
+          "at": "2026-08-14T09:10:10Z",
+          "transition": "fixed_target_verified->fixed_diff_verified",
+          "actor": "Codex independent reviewer",
+          "reason": "Independent G4_DIFF passed after corrected evidence closure."
+        },
+        {
+          "at": "2026-08-14T09:10:10Z",
+          "transition": "fixed_diff_verified->fixed_full_verified",
+          "actor": "Codex independent reviewer",
+          "reason": "Reused exact-identity G3 and PostgreSQL execution evidence without rerunning gates."
+        },
+        {
+          "at": "2026-08-14T09:10:10Z",
+          "transition": "fixed_full_verified->closed",
+          "actor": "Codex independent reviewer",
+          "reason": "Closure criteria met; production online-index strategy retained as a deployment blocker."
+        }
       ]
     },
     {
@@ -109,12 +229,31 @@
       "source": {
         "type": "diff_scan",
         "report_path": "codex-thread://019ffdaf-221f-7f50-85ad-cc5446dadb85/turn/019ffdaf-80cc-7b50-a8da-746b3c9c425b/item/item-3",
-        "binding": {"commit": "f952ec049a6aa5f4f51461f67172ed7872d13bf5", "tree": "5785ff1885f564f15be02117132f14cb5cf5fea4", "tool_name": "Codex independent G4_DIFF review", "tool_version": "gpt-5.6-sol", "command": "R27D_REVIEWS_INDEPENDENT_G4_DIFF_REVIEW", "environment": "local read-only worktree; reviewed working diff SHA-256 25948cbf4b6867c645d201f64e95350c73f338ec52da6d82cefccfa331b5d10c", "result_sha256": "beec529c109208701ebd37c185d2e81c952497371ec1aca5cbc46fdd346e6549", "log_path": "codex-thread://019ffdaf-221f-7f50-85ad-cc5446dadb85/turn/019ffdaf-80cc-7b50-a8da-746b3c9c425b/item/item-3", "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db", "recorded_at": "2026-08-14T00:52:55Z"}
+        "binding": {
+          "commit": "f952ec049a6aa5f4f51461f67172ed7872d13bf5",
+          "tree": "5785ff1885f564f15be02117132f14cb5cf5fea4",
+          "tool_name": "Codex independent G4_DIFF review",
+          "tool_version": "gpt-5.6-sol",
+          "command": "R27D_REVIEWS_INDEPENDENT_G4_DIFF_REVIEW",
+          "environment": "local read-only worktree; reviewed working diff SHA-256 25948cbf4b6867c645d201f64e95350c73f338ec52da6d82cefccfa331b5d10c",
+          "result_sha256": "beec529c109208701ebd37c185d2e81c952497371ec1aca5cbc46fdd346e6549",
+          "log_path": "codex-thread://019ffdaf-221f-7f50-85ad-cc5446dadb85/turn/019ffdaf-80cc-7b50-a8da-746b3c9c425b/item/item-3",
+          "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db",
+          "recorded_at": "2026-08-14T00:52:55Z"
+        }
       },
       "scope": {
         "component": "Reviews attachment preflight and finalize conflict handling",
-        "affected_files": ["apps/api/src/modules/reviews/reviews.service.ts", "apps/api/src/modules/attachments/attachments.service.ts"],
-        "entry_points": ["uploadCabinReviewAttachment", "uploadConsistencyReviewAttachment", "uploadVisualDeltaReviewAttachment", "createReviewAttachmentFinalizeHook"],
+        "affected_files": [
+          "apps/api/src/modules/reviews/reviews.service.ts",
+          "apps/api/src/modules/attachments/attachments.service.ts"
+        ],
+        "entry_points": [
+          "uploadCabinReviewAttachment",
+          "uploadConsistencyReviewAttachment",
+          "uploadVisualDeltaReviewAttachment",
+          "createReviewAttachmentFinalizeHook"
+        ],
         "trust_boundary": "Authorized Review attachment requests crossing into quota, object storage, scanning, promotion, and domain binding side effects"
       },
       "evidence": {
@@ -124,8 +263,14 @@
         "proof_gap": null
       },
       "root_cause_cluster": "REVIEWS_BOUNDED_SNAPSHOT_ORPHAN_FINALIZE",
-      "security_invariants": ["SEC-009"],
-      "disposition": {"duplicate_of": null, "false_positive_reason": null, "risk_acceptance": null},
+      "security_invariants": [
+        "SEC-009"
+      ],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
       "fix": {
         "task_id": "R27D_REVIEWS_BOUNDARY_MINIMAL_FIX",
         "branch": "security/r27-integration-v2",
@@ -142,22 +287,66 @@
       "verification": {
         "targeted": {
           "status": "pass",
-          "binding": {"commit": "2ad18e31a52d2e89617601a0dc29eab07aca0b87", "tree": "0fdfb94eb30b4757907e38c72dd4e0e7bd1a6990", "tool_name": "Codex R27D Reviews boundary verification", "tool_version": "gpt-5.6-sol; pnpm 9.15.4; Vitest 3.2.6; Prisma 6.19.3", "command": "R27D_REVIEWS_BOUNDARY_MINIMAL_FIX Phase 5: diff check, three-file ESLint, and 90 targeted/static tests", "environment": "local isolated worktree; exact five-file diff SHA-256 a9684768bfa6cc6f4b098b9e2a478c0bb1b0b9c71c5b2605400b9e30fe114800 later committed unchanged", "result_sha256": "51f7a67a689f6adb69577877d69d4f774207453eec1f2c9018eda7447f3e859b", "log_path": "codex-thread://019ffee2-6ec3-74c0-9df2-7e82ddafce77/turn/019ffee5-912a-76d1-8596-f0dfe6796a4b/item/item-58", "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db", "recorded_at": "2026-08-14T06:55:06Z"},
+          "binding": {
+            "commit": "2ad18e31a52d2e89617601a0dc29eab07aca0b87",
+            "tree": "0fdfb94eb30b4757907e38c72dd4e0e7bd1a6990",
+            "tool_name": "Codex R27D Reviews boundary verification",
+            "tool_version": "gpt-5.6-sol; pnpm 9.15.4; Vitest 3.2.6; Prisma 6.19.3",
+            "command": "R27D_REVIEWS_BOUNDARY_MINIMAL_FIX Phase 5: diff check, three-file ESLint, and 90 targeted/static tests",
+            "environment": "local isolated worktree; exact five-file diff SHA-256 a9684768bfa6cc6f4b098b9e2a478c0bb1b0b9c71c5b2605400b9e30fe114800 later committed unchanged",
+            "result_sha256": "51f7a67a689f6adb69577877d69d4f774207453eec1f2c9018eda7447f3e859b",
+            "log_path": "codex-thread://019ffee2-6ec3-74c0-9df2-7e82ddafce77/turn/019ffee5-912a-76d1-8596-f0dfe6796a4b/item/item-58",
+            "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db",
+            "recorded_at": "2026-08-14T06:55:06Z"
+          },
           "notes": "G1 result artifact SHA-256 51f7a67a689f6adb69577877d69d4f774207453eec1f2c9018eda7447f3e859b."
         },
         "affected_regression": {
           "status": "pass",
-          "binding": {"commit": "2ad18e31a52d2e89617601a0dc29eab07aca0b87", "tree": "0fdfb94eb30b4757907e38c72dd4e0e7bd1a6990", "tool_name": "Codex R27D Reviews boundary verification", "tool_version": "gpt-5.6-sol; pnpm 9.15.4; Vitest 3.2.6; TypeScript 5.9.3", "command": "R27D_REVIEWS_BOUNDARY_MINIMAL_FIX Phase 6: seven Reviews test files, 128 tests, targeted ESLint, and API typecheck", "environment": "local isolated worktree; exact five-file diff SHA-256 a9684768bfa6cc6f4b098b9e2a478c0bb1b0b9c71c5b2605400b9e30fe114800 later committed unchanged", "result_sha256": "51f7a67a689f6adb69577877d69d4f774207453eec1f2c9018eda7447f3e859b", "log_path": "codex-thread://019ffee2-6ec3-74c0-9df2-7e82ddafce77/turn/019ffee5-912a-76d1-8596-f0dfe6796a4b/item/item-58", "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db", "recorded_at": "2026-08-14T06:55:06Z"},
+          "binding": {
+            "commit": "2ad18e31a52d2e89617601a0dc29eab07aca0b87",
+            "tree": "0fdfb94eb30b4757907e38c72dd4e0e7bd1a6990",
+            "tool_name": "Codex R27D Reviews boundary verification",
+            "tool_version": "gpt-5.6-sol; pnpm 9.15.4; Vitest 3.2.6; TypeScript 5.9.3",
+            "command": "R27D_REVIEWS_BOUNDARY_MINIMAL_FIX Phase 6: seven Reviews test files, 128 tests, targeted ESLint, and API typecheck",
+            "environment": "local isolated worktree; exact five-file diff SHA-256 a9684768bfa6cc6f4b098b9e2a478c0bb1b0b9c71c5b2605400b9e30fe114800 later committed unchanged",
+            "result_sha256": "51f7a67a689f6adb69577877d69d4f774207453eec1f2c9018eda7447f3e859b",
+            "log_path": "codex-thread://019ffee2-6ec3-74c0-9df2-7e82ddafce77/turn/019ffee5-912a-76d1-8596-f0dfe6796a4b/item/item-58",
+            "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db",
+            "recorded_at": "2026-08-14T06:55:06Z"
+          },
           "notes": "G2 result artifact SHA-256 51f7a67a689f6adb69577877d69d4f774207453eec1f2c9018eda7447f3e859b."
         },
         "diff_review": {
           "status": "pass",
-          "binding": {"commit": "2ad18e31a52d2e89617601a0dc29eab07aca0b87", "tree": "0fdfb94eb30b4757907e38c72dd4e0e7bd1a6990", "tool_name": "Codex independent G4_DIFF evidence closure", "tool_version": "gpt-5.6-sol", "command": "R27D_REVIEWS_G4_EVIDENCE_CLOSURE_CORRECTED", "environment": "local read-only exact five-file identity; static G4 reused after PostgreSQL evidence manifest correction", "result_sha256": "b934e4a4336dc3ebc81b126722a863cb46d72b9c138a97b24bb1a39843525d33", "log_path": "codex-thread://019fff16-293a-7ce0-8bcf-8d352fd58bc1/turn/019fff84-e083-7cb0-bcc2-769fc145e7dd/item/item-26", "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db", "recorded_at": "2026-08-14T09:10:10Z"},
+          "binding": {
+            "commit": "2ad18e31a52d2e89617601a0dc29eab07aca0b87",
+            "tree": "0fdfb94eb30b4757907e38c72dd4e0e7bd1a6990",
+            "tool_name": "Codex independent G4_DIFF evidence closure",
+            "tool_version": "gpt-5.6-sol",
+            "command": "R27D_REVIEWS_G4_EVIDENCE_CLOSURE_CORRECTED",
+            "environment": "local read-only exact five-file identity; static G4 reused after PostgreSQL evidence manifest correction",
+            "result_sha256": "b934e4a4336dc3ebc81b126722a863cb46d72b9c138a97b24bb1a39843525d33",
+            "log_path": "codex-thread://019fff16-293a-7ce0-8bcf-8d352fd58bc1/turn/019fff84-e083-7cb0-bcc2-769fc145e7dd/item/item-26",
+            "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db",
+            "recorded_at": "2026-08-14T09:10:10Z"
+          },
           "notes": "G4 result artifact SHA-256 b934e4a4336dc3ebc81b126722a863cb46d72b9c138a97b24bb1a39843525d33; reviewed diff SHA-256 a9684768bfa6cc6f4b098b9e2a478c0bb1b0b9c71c5b2605400b9e30fe114800."
         },
         "full_regression": {
           "status": "pass",
-          "binding": {"commit": "2ad18e31a52d2e89617601a0dc29eab07aca0b87", "tree": "0fdfb94eb30b4757907e38c72dd4e0e7bd1a6990", "tool_name": "Codex R27D Reviews schema G3", "tool_version": "gpt-5.6-sol; pnpm 9.15.4; Vitest 3.2.6; Prisma 6.19.3", "command": "R27D_REVIEWS_BOUNDARY_MINIMAL_FIX Phase 7: 36 migrations, second deploy, migration/index checks, PostgreSQL 15/15, API typecheck, and API build", "environment": "isolated disposable PostgreSQL; exact five-file diff SHA-256 a9684768bfa6cc6f4b098b9e2a478c0bb1b0b9c71c5b2605400b9e30fe114800 later committed unchanged", "result_sha256": "51f7a67a689f6adb69577877d69d4f774207453eec1f2c9018eda7447f3e859b", "log_path": "codex-thread://019ffee2-6ec3-74c0-9df2-7e82ddafce77/turn/019ffee5-912a-76d1-8596-f0dfe6796a4b/item/item-58", "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db", "recorded_at": "2026-08-14T06:55:06Z"},
+          "binding": {
+            "commit": "2ad18e31a52d2e89617601a0dc29eab07aca0b87",
+            "tree": "0fdfb94eb30b4757907e38c72dd4e0e7bd1a6990",
+            "tool_name": "Codex R27D Reviews schema G3",
+            "tool_version": "gpt-5.6-sol; pnpm 9.15.4; Vitest 3.2.6; Prisma 6.19.3",
+            "command": "R27D_REVIEWS_BOUNDARY_MINIMAL_FIX Phase 7: 36 migrations, second deploy, migration/index checks, PostgreSQL 15/15, API typecheck, and API build",
+            "environment": "isolated disposable PostgreSQL; exact five-file diff SHA-256 a9684768bfa6cc6f4b098b9e2a478c0bb1b0b9c71c5b2605400b9e30fe114800 later committed unchanged",
+            "result_sha256": "51f7a67a689f6adb69577877d69d4f774207453eec1f2c9018eda7447f3e859b",
+            "log_path": "codex-thread://019ffee2-6ec3-74c0-9df2-7e82ddafce77/turn/019ffee5-912a-76d1-8596-f0dfe6796a4b/item/item-58",
+            "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db",
+            "recorded_at": "2026-08-14T06:55:06Z"
+          },
           "notes": "G3 result artifact SHA-256 51f7a67a689f6adb69577877d69d4f774207453eec1f2c9018eda7447f3e859b. Production online-index strategy remains required before deployment."
         }
       },
@@ -165,17 +354,68 @@
         "closed_by": "R27D_REVIEWS_G4_EVIDENCE_CLOSURE_CORRECTED",
         "closed_at": "2026-08-14T09:10:10Z",
         "criterion": "G1, G2, G3 and independent G4_DIFF passed; PostgreSQL execution was proven by JSON SHA-256 9c01532c104625548872b94e42baeabb8b1f2f37139f6ff53 and log SHA-256 a43237ba4d405e6a07e70a8d42338d0ba27b53003c06385957fdf369f41f6473. Production deployment remains blocked until an approved online-index or maintenance-window strategy exists.",
-        "binding": {"commit": "2ad18e31a52d2e89617601a0dc29eab07aca0b87", "tree": "0fdfb94eb30b4757907e38c72dd4e0e7bd1a6990", "tool_name": "R27D PostgreSQL boundary integration evidence replay", "tool_version": "PostgreSQL 16.14; Vitest 3.2.6; Prisma 6.19.3", "command": "env DATABASE_URL=<REDACTED_TEST_DATABASE_URL> REVIEWS_POSTGRES_TEST_DATABASE_URL=<REDACTED_TEST_DATABASE_URL> pnpm exec vitest run src/modules/reviews/reviews.postgres-boundary.integration.spec.ts --reporter=verbose", "environment": "isolated disposable local PostgreSQL; 15 passed, 0 failed, 0 skipped; database removed", "result_sha256": "9c01532c104625548872b94e42baeabb8b1f2eb52fa046aec7f2f37139f6ff53", "log_path": "/Users/lixiaochen/Downloads/R27D_REVIEWS_POSTGRES_EVIDENCE_20260814T073052Z.json", "config_sha256": "1479327555c1dcc05a7d6fd075f1b2f85e409be0acbddb41a6f8e814330ce4b4", "recorded_at": "2026-08-14T07:40:38.402Z"}
+        "binding": {
+          "commit": "2ad18e31a52d2e89617601a0dc29eab07aca0b87",
+          "tree": "0fdfb94eb30b4757907e38c72dd4e0e7bd1a6990",
+          "tool_name": "R27D PostgreSQL boundary integration evidence replay",
+          "tool_version": "PostgreSQL 16.14; Vitest 3.2.6; Prisma 6.19.3",
+          "command": "env DATABASE_URL=<REDACTED_TEST_DATABASE_URL> REVIEWS_POSTGRES_TEST_DATABASE_URL=<REDACTED_TEST_DATABASE_URL> pnpm exec vitest run src/modules/reviews/reviews.postgres-boundary.integration.spec.ts --reporter=verbose",
+          "environment": "isolated disposable local PostgreSQL; 15 passed, 0 failed, 0 skipped; database removed",
+          "result_sha256": "9c01532c104625548872b94e42baeabb8b1f2eb52fa046aec7f2f37139f6ff53",
+          "log_path": "/Users/lixiaochen/Downloads/R27D_REVIEWS_POSTGRES_EVIDENCE_20260814T073052Z.json",
+          "config_sha256": "1479327555c1dcc05a7d6fd075f1b2f85e409be0acbddb41a6f8e814330ce4b4",
+          "recorded_at": "2026-08-14T07:40:38.402Z"
+        }
       },
       "history": [
-        {"at": "2026-08-14T00:52:55Z", "transition": "null->candidate", "actor": "Codex independent reviewer", "reason": "Independent exact-diff review identified deterministic admission occurring after attachment side effects."},
-        {"at": "2026-08-14T00:52:55Z", "transition": "candidate->confirmed", "actor": "Codex independent reviewer", "reason": "Confirmed Medium CWE-400/CWE-703 behavior with high confidence across all three Review attachment entry points."},
-        {"at": "2026-08-14T06:11:25Z", "transition": "confirmed->accepted_for_fix", "actor": "R27D remediation task owner", "reason": "Approved PATH_B schema-assisted local refactor and exact five-file scope."},
-        {"at": "2026-08-14T06:11:25Z", "transition": "accepted_for_fix->in_progress", "actor": "Codex remediation agent", "reason": "Started pre-storage admission, orphan-reviewer rejection, finalize recheck, and regression implementation."},
-        {"at": "2026-08-14T06:55:06Z", "transition": "in_progress->fixed_target_verified", "actor": "Codex remediation agent", "reason": "G1 and G2 passed on the exact final five-file identity."},
-        {"at": "2026-08-14T09:10:10Z", "transition": "fixed_target_verified->fixed_diff_verified", "actor": "Codex independent reviewer", "reason": "Independent G4_DIFF passed after corrected evidence closure."},
-        {"at": "2026-08-14T09:10:10Z", "transition": "fixed_diff_verified->fixed_full_verified", "actor": "Codex independent reviewer", "reason": "Reused exact-identity G3 and PostgreSQL execution evidence without rerunning gates."},
-        {"at": "2026-08-14T09:10:10Z", "transition": "fixed_full_verified->closed", "actor": "Codex independent reviewer", "reason": "Closure criteria met; production online-index strategy retained as a deployment blocker."}
+        {
+          "at": "2026-08-14T00:52:55Z",
+          "transition": "null->candidate",
+          "actor": "Codex independent reviewer",
+          "reason": "Independent exact-diff review identified deterministic admission occurring after attachment side effects."
+        },
+        {
+          "at": "2026-08-14T00:52:55Z",
+          "transition": "candidate->confirmed",
+          "actor": "Codex independent reviewer",
+          "reason": "Confirmed Medium CWE-400/CWE-703 behavior with high confidence across all three Review attachment entry points."
+        },
+        {
+          "at": "2026-08-14T06:11:25Z",
+          "transition": "confirmed->accepted_for_fix",
+          "actor": "R27D remediation task owner",
+          "reason": "Approved PATH_B schema-assisted local refactor and exact five-file scope."
+        },
+        {
+          "at": "2026-08-14T06:11:25Z",
+          "transition": "accepted_for_fix->in_progress",
+          "actor": "Codex remediation agent",
+          "reason": "Started pre-storage admission, orphan-reviewer rejection, finalize recheck, and regression implementation."
+        },
+        {
+          "at": "2026-08-14T06:55:06Z",
+          "transition": "in_progress->fixed_target_verified",
+          "actor": "Codex remediation agent",
+          "reason": "G1 and G2 passed on the exact final five-file identity."
+        },
+        {
+          "at": "2026-08-14T09:10:10Z",
+          "transition": "fixed_target_verified->fixed_diff_verified",
+          "actor": "Codex independent reviewer",
+          "reason": "Independent G4_DIFF passed after corrected evidence closure."
+        },
+        {
+          "at": "2026-08-14T09:10:10Z",
+          "transition": "fixed_diff_verified->fixed_full_verified",
+          "actor": "Codex independent reviewer",
+          "reason": "Reused exact-identity G3 and PostgreSQL execution evidence without rerunning gates."
+        },
+        {
+          "at": "2026-08-14T09:10:10Z",
+          "transition": "fixed_full_verified->closed",
+          "actor": "Codex independent reviewer",
+          "reason": "Closure criteria met; production online-index strategy retained as a deployment blocker."
+        }
       ]
     },
     {
@@ -189,12 +429,32 @@
       "source": {
         "type": "manual",
         "report_path": "/Users/lixiaochen/Downloads/R27E_SAMPLES_LEDGER_EVIDENCE_20260816T034824Z/source.json",
-        "binding": {"commit": "3cb95fe5ee3ba7ee05a40ec7fa66baa5bee64cc0", "tree": "c3fc89e9ffcf964316e2b1f5aae09a06faf868cd", "tool_name": "Codex bounded Samples remediation intake", "tool_version": "gpt-5.6-terra", "command": "R27E_SAMPLES_CANDIDATE_MIGRATION_AND_REMEDIATION", "environment": "local isolated integration worktree; source candidate patch SHA-256 91acefa6f5c046d6aa8c306880cf858d297b9e32fd0467c1186af8bf7dd9536c", "result_sha256": "6f4b373341d9951d0ce66bf2833417332938c3a803247fafb107a7f0583f5c7e", "log_path": "/Users/lixiaochen/Downloads/R27E_SAMPLES_LEDGER_EVIDENCE_20260816T034824Z/source.json", "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db", "recorded_at": "2026-08-16T03:48:24Z"}
+        "binding": {
+          "commit": "3cb95fe5ee3ba7ee05a40ec7fa66baa5bee64cc0",
+          "tree": "c3fc89e9ffcf964316e2b1f5aae09a06faf868cd",
+          "tool_name": "Codex bounded Samples remediation intake",
+          "tool_version": "gpt-5.6-terra",
+          "command": "R27E_SAMPLES_CANDIDATE_MIGRATION_AND_REMEDIATION",
+          "environment": "local isolated integration worktree; source candidate patch SHA-256 91acefa6f5c046d6aa8c306880cf858d297b9e32fd0467c1186af8bf7dd9536c",
+          "result_sha256": "6f4b373341d9951d0ce66bf2833417332938c3a803247fafb107a7f0583f5c7e",
+          "log_path": "/Users/lixiaochen/Downloads/R27E_SAMPLES_LEDGER_EVIDENCE_20260816T034824Z/source.json",
+          "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db",
+          "recorded_at": "2026-08-16T03:48:24Z"
+        }
       },
       "scope": {
         "component": "Samples persisted SampleRecord admission across buildWorkspace, buildSampleDetail, preflightSampleImageUpload, toConfirmationSummary, and toSampleAuditSnapshot",
-        "affected_files": ["apps/api/src/modules/samples/samples.service.ts"],
-        "entry_points": ["getWorkspace", "getSampleDetail", "createSample", "updateSample", "uploadSampleImage", "submitConfirmation"],
+        "affected_files": [
+          "apps/api/src/modules/samples/samples.service.ts"
+        ],
+        "entry_points": [
+          "getWorkspace",
+          "getSampleDetail",
+          "createSample",
+          "updateSample",
+          "uploadSampleImage",
+          "submitConfirmation"
+        ],
         "trust_boundary": "Persisted SampleRecord values from PostgreSQL or legacy internal Service callers crossing into Samples read, write, audit, attachment, and confirmation processing"
       },
       "evidence": {
@@ -204,8 +464,14 @@
         "proof_gap": "Production exposure was not established because production access and deployed-row inspection were not authorized for this task."
       },
       "root_cause_cluster": "SAMPLES_PERSISTED_SOURCE_AND_ATTACHMENT_QUERY_BOUNDS",
-      "security_invariants": ["SEC-009"],
-      "disposition": {"duplicate_of": null, "false_positive_reason": null, "risk_acceptance": null},
+      "security_invariants": [
+        "SEC-009"
+      ],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
       "fix": {
         "task_id": "R27E_SAMPLES_CANDIDATE_MIGRATION_AND_REMEDIATION",
         "branch": "security/r27-integration-v2",
@@ -219,22 +485,66 @@
       "verification": {
         "targeted": {
           "status": "pass",
-          "binding": {"commit": "e675ecf8d2bbfb9fd65c16ca0cd1823f9620182f", "tree": "d9bbf579a8f6fd8d95b2f1124d95f0a9bb9e15b2", "tool_name": "Codex Samples remediation G1", "tool_version": "gpt-5.6-terra", "command": "R27E_SAMPLES_CANDIDATE_MIGRATION_AND_REMEDIATION G1", "environment": "local isolated integration worktree; 49/49 resource-bounds tests, targeted ESLint, and diff checks passed; exact final diff SHA-256 1eab5e2aaaf9cb6e54cbffc8fe56c35480f6dbd9a38b5c90120cc2af1c365f45", "result_sha256": "47ecdf8ded8c82ed1e1f2339d79c2dbe8f6e82dd0cd023e9798467aecbe914ae", "log_path": "/Users/lixiaochen/Downloads/R27E_SAMPLES_LEDGER_EVIDENCE_20260816T034824Z/g1.json", "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db", "recorded_at": "2026-08-16T03:48:24Z"},
+          "binding": {
+            "commit": "e675ecf8d2bbfb9fd65c16ca0cd1823f9620182f",
+            "tree": "d9bbf579a8f6fd8d95b2f1124d95f0a9bb9e15b2",
+            "tool_name": "Codex Samples remediation G1",
+            "tool_version": "gpt-5.6-terra",
+            "command": "R27E_SAMPLES_CANDIDATE_MIGRATION_AND_REMEDIATION G1",
+            "environment": "local isolated integration worktree; 49/49 resource-bounds tests, targeted ESLint, and diff checks passed; exact final diff SHA-256 1eab5e2aaaf9cb6e54cbffc8fe56c35480f6dbd9a38b5c90120cc2af1c365f45",
+            "result_sha256": "47ecdf8ded8c82ed1e1f2339d79c2dbe8f6e82dd0cd023e9798467aecbe914ae",
+            "log_path": "/Users/lixiaochen/Downloads/R27E_SAMPLES_LEDGER_EVIDENCE_20260816T034824Z/g1.json",
+            "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db",
+            "recorded_at": "2026-08-16T03:48:24Z"
+          },
           "notes": "G1 evidence records 49/49 resource-bounds tests, targeted ESLint, and diff checks as pass."
         },
         "affected_regression": {
           "status": "pass",
-          "binding": {"commit": "e675ecf8d2bbfb9fd65c16ca0cd1823f9620182f", "tree": "d9bbf579a8f6fd8d95b2f1124d95f0a9bb9e15b2", "tool_name": "Codex Samples remediation G2", "tool_version": "gpt-5.6-terra", "command": "R27E_SAMPLES_CANDIDATE_MIGRATION_AND_REMEDIATION G2", "environment": "local isolated integration worktree; 3 directly affected Samples specs, 65/65 tests, Samples module lint, and API typecheck passed; exact final diff SHA-256 1eab5e2aaaf9cb6e54cbffc8fe56c35480f6dbd9a38b5c90120cc2af1c365f45", "result_sha256": "872e33875ca06df03437912ff32f4c1b041c1d41064d65de94481cd1c2e5990a", "log_path": "/Users/lixiaochen/Downloads/R27E_SAMPLES_LEDGER_EVIDENCE_20260816T034824Z/g2.json", "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db", "recorded_at": "2026-08-16T03:48:24Z"},
+          "binding": {
+            "commit": "e675ecf8d2bbfb9fd65c16ca0cd1823f9620182f",
+            "tree": "d9bbf579a8f6fd8d95b2f1124d95f0a9bb9e15b2",
+            "tool_name": "Codex Samples remediation G2",
+            "tool_version": "gpt-5.6-terra",
+            "command": "R27E_SAMPLES_CANDIDATE_MIGRATION_AND_REMEDIATION G2",
+            "environment": "local isolated integration worktree; 3 directly affected Samples specs, 65/65 tests, Samples module lint, and API typecheck passed; exact final diff SHA-256 1eab5e2aaaf9cb6e54cbffc8fe56c35480f6dbd9a38b5c90120cc2af1c365f45",
+            "result_sha256": "872e33875ca06df03437912ff32f4c1b041c1d41064d65de94481cd1c2e5990a",
+            "log_path": "/Users/lixiaochen/Downloads/R27E_SAMPLES_LEDGER_EVIDENCE_20260816T034824Z/g2.json",
+            "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db",
+            "recorded_at": "2026-08-16T03:48:24Z"
+          },
           "notes": "G2 evidence records three directly affected Samples specs, 65/65 tests, module lint, and API typecheck as pass."
         },
         "diff_review": {
           "status": "pass",
-          "binding": {"commit": "e675ecf8d2bbfb9fd65c16ca0cd1823f9620182f", "tree": "d9bbf579a8f6fd8d95b2f1124d95f0a9bb9e15b2", "tool_name": "Codex independent G4_DIFF review", "tool_version": "gpt-5.6-sol", "command": "R27E_SAMPLES_INDEPENDENT_G4_DIFF_REVIEW", "environment": "local read-only exact two-file identity; reviewed diff SHA-256 1eab5e2aaaf9cb6e54cbffc8fe56c35480f6dbd9a38b5c90120cc2af1c365f45", "result_sha256": "7b4d939da267357cf2d66fe6100eff4dc9e9e9c3b7670b5b1f4c745863cf1b4c", "log_path": "/Users/lixiaochen/Downloads/R27E_SAMPLES_LEDGER_EVIDENCE_20260816T034824Z/g4.json", "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db", "recorded_at": "2026-08-16T03:48:24Z"},
+          "binding": {
+            "commit": "e675ecf8d2bbfb9fd65c16ca0cd1823f9620182f",
+            "tree": "d9bbf579a8f6fd8d95b2f1124d95f0a9bb9e15b2",
+            "tool_name": "Codex independent G4_DIFF review",
+            "tool_version": "gpt-5.6-sol",
+            "command": "R27E_SAMPLES_INDEPENDENT_G4_DIFF_REVIEW",
+            "environment": "local read-only exact two-file identity; reviewed diff SHA-256 1eab5e2aaaf9cb6e54cbffc8fe56c35480f6dbd9a38b5c90120cc2af1c365f45",
+            "result_sha256": "7b4d939da267357cf2d66fe6100eff4dc9e9e9c3b7670b5b1f4c745863cf1b4c",
+            "log_path": "/Users/lixiaochen/Downloads/R27E_SAMPLES_LEDGER_EVIDENCE_20260816T034824Z/g4.json",
+            "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db",
+            "recorded_at": "2026-08-16T03:48:24Z"
+          },
           "notes": "Independent G4_DIFF closed both diff-review findings with zero confirmed Critical, High, or Medium residual findings."
         },
         "full_regression": {
           "status": "pass",
-          "binding": {"commit": "7df281e74c8bbe0e927865c822e725604a2dd2da", "tree": "7e908e8a0727ba16f5f9a59d7f1d0c9ac5935b43", "tool_name": "Codex approved Samples and StandardBoards batch G3", "tool_version": "Node v24.14.0; pnpm 9.15.4; repository-defined API scripts", "command": "R27FG_SAMPLES_STANDARDBOARDS_BATCH_G3", "environment": "local clean integration worktree; API lint, typecheck, Prisma validate, 124 test files and 1128 tests, and API build passed; 0 failed and 0 skipped", "result_sha256": "5382f5e55d9c2d1ae9bc08eeba6955b596d6351eb144bd4ca280a0b8660d77af", "log_path": "/Users/lixiaochen/Downloads/R27FG_BATCH_G3_EVIDENCE_/g3-summary.json", "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db", "recorded_at": "2026-08-16T13:05:42Z"},
+          "binding": {
+            "commit": "7df281e74c8bbe0e927865c822e725604a2dd2da",
+            "tree": "7e908e8a0727ba16f5f9a59d7f1d0c9ac5935b43",
+            "tool_name": "Codex approved Samples and StandardBoards batch G3",
+            "tool_version": "Node v24.14.0; pnpm 9.15.4; repository-defined API scripts",
+            "command": "R27FG_SAMPLES_STANDARDBOARDS_BATCH_G3",
+            "environment": "local clean integration worktree; API lint, typecheck, Prisma validate, 124 test files and 1128 tests, and API build passed; 0 failed and 0 skipped",
+            "result_sha256": "5382f5e55d9c2d1ae9bc08eeba6955b596d6351eb144bd4ca280a0b8660d77af",
+            "log_path": "/Users/lixiaochen/Downloads/R27FG_BATCH_G3_EVIDENCE_/g3-summary.json",
+            "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db",
+            "recorded_at": "2026-08-16T13:05:42Z"
+          },
           "notes": "This is the approved Samples + StandardBoards batch G3. API lint, typecheck, Prisma validate, full API tests, and API build passed: 124 test files and 1128 tests passed, with 0 failed and 0 skipped. This G3 does not constitute production deployment approval."
         }
       },
@@ -242,17 +552,68 @@
         "closed_by": "R27FG_SAMPLES_STANDARDBOARDS_BATCH_LEDGER_CLOSURE",
         "closed_at": "2026-08-16T13:05:42Z",
         "criterion": "Targeted verification passed; affected regression passed; independent G4_DIFF passed; approved Samples + StandardBoards batch G3 passed with exact summary SHA-256 5382f5e55d9c2d1ae9bc08eeba6955b596d6351eb144bd4ca280a0b8660d77af. This closure does not constitute production deployment approval; the Reviews production online-index or maintenance-window strategy blocker remains in effect.",
-        "binding": {"commit": "7df281e74c8bbe0e927865c822e725604a2dd2da", "tree": "7e908e8a0727ba16f5f9a59d7f1d0c9ac5935b43", "tool_name": "R27FG Samples and StandardBoards batch G3 evidence", "tool_version": "Node v24.14.0; pnpm 9.15.4", "command": "R27FG_SAMPLES_STANDARDBOARDS_BATCH_G3", "environment": "local clean integration worktree; 124 test files, 1128 tests, 0 failed, 0 skipped; no repository modification", "result_sha256": "5382f5e55d9c2d1ae9bc08eeba6955b596d6351eb144bd4ca280a0b8660d77af", "log_path": "/Users/lixiaochen/Downloads/R27FG_BATCH_G3_EVIDENCE_/g3-summary.json", "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db", "recorded_at": "2026-08-16T13:05:42Z"}
+        "binding": {
+          "commit": "7df281e74c8bbe0e927865c822e725604a2dd2da",
+          "tree": "7e908e8a0727ba16f5f9a59d7f1d0c9ac5935b43",
+          "tool_name": "R27FG Samples and StandardBoards batch G3 evidence",
+          "tool_version": "Node v24.14.0; pnpm 9.15.4",
+          "command": "R27FG_SAMPLES_STANDARDBOARDS_BATCH_G3",
+          "environment": "local clean integration worktree; 124 test files, 1128 tests, 0 failed, 0 skipped; no repository modification",
+          "result_sha256": "5382f5e55d9c2d1ae9bc08eeba6955b596d6351eb144bd4ca280a0b8660d77af",
+          "log_path": "/Users/lixiaochen/Downloads/R27FG_BATCH_G3_EVIDENCE_/g3-summary.json",
+          "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db",
+          "recorded_at": "2026-08-16T13:05:42Z"
+        }
       },
       "history": [
-        {"at": "2026-08-16T03:48:24Z", "transition": "null->candidate", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact task evidence: the bounded Samples remediation intake identified the persisted sampleName resource-admission candidate."},
-        {"at": "2026-08-16T03:48:24Z", "transition": "candidate->confirmed", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact task evidence: the candidate was confirmed as a reachable Medium CWE-400 persisted-source boundary issue with high confidence."},
-        {"at": "2026-08-16T03:48:24Z", "transition": "confirmed->accepted_for_fix", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact task evidence: the confirmed finding was accepted for the bounded two-file Samples fix."},
-        {"at": "2026-08-16T03:48:24Z", "transition": "accepted_for_fix->in_progress", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact task evidence: implementation proceeded on the exact two-file Samples remediation scope."},
-        {"at": "2026-08-16T03:48:24Z", "transition": "in_progress->fixed_target_verified", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact task evidence: G1 targeted verification and G2 affected regression passed on the exact fix identity."},
-        {"at": "2026-08-16T03:48:24Z", "transition": "fixed_target_verified->fixed_diff_verified", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact task evidence: independent G4_DIFF passed on the exact two-file diff; no batch G3/full regression or closure is recorded."},
-        {"at": "2026-08-16T13:05:42Z", "transition": "fixed_diff_verified->fixed_full_verified", "actor": "R27FG approved batch G3 verifier", "reason": "Approved Samples and StandardBoards batch G3 passed on exact integration commit 7df281e74c8bbe0e927865c822e725604a2dd2da with 124 test files and 1128 tests passing, 0 failed and 0 skipped."},
-        {"at": "2026-08-16T13:05:42Z", "transition": "fixed_full_verified->closed", "actor": "R27FG batch closure task", "reason": "Targeted verification, affected regression, independent G4_DIFF and approved batch G3 all passed on bound evidence; no Critical, High or Medium finding remains in this finding scope."}
+        {
+          "at": "2026-08-16T03:48:24Z",
+          "transition": "null->candidate",
+          "actor": "Codex retrospective ledger recorder",
+          "reason": "Retrospective recording from exact task evidence: the bounded Samples remediation intake identified the persisted sampleName resource-admission candidate."
+        },
+        {
+          "at": "2026-08-16T03:48:24Z",
+          "transition": "candidate->confirmed",
+          "actor": "Codex retrospective ledger recorder",
+          "reason": "Retrospective recording from exact task evidence: the candidate was confirmed as a reachable Medium CWE-400 persisted-source boundary issue with high confidence."
+        },
+        {
+          "at": "2026-08-16T03:48:24Z",
+          "transition": "confirmed->accepted_for_fix",
+          "actor": "Codex retrospective ledger recorder",
+          "reason": "Retrospective recording from exact task evidence: the confirmed finding was accepted for the bounded two-file Samples fix."
+        },
+        {
+          "at": "2026-08-16T03:48:24Z",
+          "transition": "accepted_for_fix->in_progress",
+          "actor": "Codex retrospective ledger recorder",
+          "reason": "Retrospective recording from exact task evidence: implementation proceeded on the exact two-file Samples remediation scope."
+        },
+        {
+          "at": "2026-08-16T03:48:24Z",
+          "transition": "in_progress->fixed_target_verified",
+          "actor": "Codex retrospective ledger recorder",
+          "reason": "Retrospective recording from exact task evidence: G1 targeted verification and G2 affected regression passed on the exact fix identity."
+        },
+        {
+          "at": "2026-08-16T03:48:24Z",
+          "transition": "fixed_target_verified->fixed_diff_verified",
+          "actor": "Codex retrospective ledger recorder",
+          "reason": "Retrospective recording from exact task evidence: independent G4_DIFF passed on the exact two-file diff; no batch G3/full regression or closure is recorded."
+        },
+        {
+          "at": "2026-08-16T13:05:42Z",
+          "transition": "fixed_diff_verified->fixed_full_verified",
+          "actor": "R27FG approved batch G3 verifier",
+          "reason": "Approved Samples and StandardBoards batch G3 passed on exact integration commit 7df281e74c8bbe0e927865c822e725604a2dd2da with 124 test files and 1128 tests passing, 0 failed and 0 skipped."
+        },
+        {
+          "at": "2026-08-16T13:05:42Z",
+          "transition": "fixed_full_verified->closed",
+          "actor": "R27FG batch closure task",
+          "reason": "Targeted verification, affected regression, independent G4_DIFF and approved batch G3 all passed on bound evidence; no Critical, High or Medium finding remains in this finding scope."
+        }
       ]
     },
     {
@@ -266,12 +627,30 @@
       "source": {
         "type": "manual",
         "report_path": "/Users/lixiaochen/Downloads/R27E_SAMPLES_LEDGER_EVIDENCE_20260816T034824Z/source.json",
-        "binding": {"commit": "3cb95fe5ee3ba7ee05a40ec7fa66baa5bee64cc0", "tree": "c3fc89e9ffcf964316e2b1f5aae09a06faf868cd", "tool_name": "Codex bounded Samples remediation intake", "tool_version": "gpt-5.6-terra", "command": "R27E_SAMPLES_CANDIDATE_MIGRATION_AND_REMEDIATION", "environment": "local isolated integration worktree; source candidate patch SHA-256 91acefa6f5c046d6aa8c306880cf858d297b9e32fd0467c1186af8bf7dd9536c", "result_sha256": "6f4b373341d9951d0ce66bf2833417332938c3a803247fafb107a7f0583f5c7e", "log_path": "/Users/lixiaochen/Downloads/R27E_SAMPLES_LEDGER_EVIDENCE_20260816T034824Z/source.json", "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db", "recorded_at": "2026-08-16T03:48:24Z"}
+        "binding": {
+          "commit": "3cb95fe5ee3ba7ee05a40ec7fa66baa5bee64cc0",
+          "tree": "c3fc89e9ffcf964316e2b1f5aae09a06faf868cd",
+          "tool_name": "Codex bounded Samples remediation intake",
+          "tool_version": "gpt-5.6-terra",
+          "command": "R27E_SAMPLES_CANDIDATE_MIGRATION_AND_REMEDIATION",
+          "environment": "local isolated integration worktree; source candidate patch SHA-256 91acefa6f5c046d6aa8c306880cf858d297b9e32fd0467c1186af8bf7dd9536c",
+          "result_sha256": "6f4b373341d9951d0ce66bf2833417332938c3a803247fafb107a7f0583f5c7e",
+          "log_path": "/Users/lixiaochen/Downloads/R27E_SAMPLES_LEDGER_EVIDENCE_20260816T034824Z/source.json",
+          "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db",
+          "recorded_at": "2026-08-16T03:48:24Z"
+        }
       },
       "scope": {
         "component": "Samples workspace attachment summary in buildWorkspace and getSampleAttachmentStats",
-        "affected_files": ["apps/api/src/modules/samples/samples.service.ts"],
-        "entry_points": ["getWorkspace", "submitConfirmation", "buildWorkspace", "getSampleAttachmentStats"],
+        "affected_files": [
+          "apps/api/src/modules/samples/samples.service.ts"
+        ],
+        "entry_points": [
+          "getWorkspace",
+          "submitConfirmation",
+          "buildWorkspace",
+          "getSampleAttachmentStats"
+        ],
         "trust_boundary": "CLEAN SAMPLE attachment rows crossing from PostgreSQL into workspace imageCount and latestImageAttachmentId aggregation"
       },
       "evidence": {
@@ -281,8 +660,14 @@
         "proof_gap": "Production exposure was not established because production access and deployed-row inspection were not authorized for this task."
       },
       "root_cause_cluster": "SAMPLES_PERSISTED_SOURCE_AND_ATTACHMENT_QUERY_BOUNDS",
-      "security_invariants": ["SEC-010"],
-      "disposition": {"duplicate_of": null, "false_positive_reason": null, "risk_acceptance": null},
+      "security_invariants": [
+        "SEC-010"
+      ],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
       "fix": {
         "task_id": "R27E_SAMPLES_CANDIDATE_MIGRATION_AND_REMEDIATION",
         "branch": "security/r27-integration-v2",
@@ -296,22 +681,66 @@
       "verification": {
         "targeted": {
           "status": "pass",
-          "binding": {"commit": "e675ecf8d2bbfb9fd65c16ca0cd1823f9620182f", "tree": "d9bbf579a8f6fd8d95b2f1124d95f0a9bb9e15b2", "tool_name": "Codex Samples remediation G1", "tool_version": "gpt-5.6-terra", "command": "R27E_SAMPLES_CANDIDATE_MIGRATION_AND_REMEDIATION G1", "environment": "local isolated integration worktree; 49/49 resource-bounds tests, targeted ESLint, and diff checks passed; exact final diff SHA-256 1eab5e2aaaf9cb6e54cbffc8fe56c35480f6dbd9a38b5c90120cc2af1c365f45", "result_sha256": "47ecdf8ded8c82ed1e1f2339d79c2dbe8f6e82dd0cd023e9798467aecbe914ae", "log_path": "/Users/lixiaochen/Downloads/R27E_SAMPLES_LEDGER_EVIDENCE_20260816T034824Z/g1.json", "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db", "recorded_at": "2026-08-16T03:48:24Z"},
+          "binding": {
+            "commit": "e675ecf8d2bbfb9fd65c16ca0cd1823f9620182f",
+            "tree": "d9bbf579a8f6fd8d95b2f1124d95f0a9bb9e15b2",
+            "tool_name": "Codex Samples remediation G1",
+            "tool_version": "gpt-5.6-terra",
+            "command": "R27E_SAMPLES_CANDIDATE_MIGRATION_AND_REMEDIATION G1",
+            "environment": "local isolated integration worktree; 49/49 resource-bounds tests, targeted ESLint, and diff checks passed; exact final diff SHA-256 1eab5e2aaaf9cb6e54cbffc8fe56c35480f6dbd9a38b5c90120cc2af1c365f45",
+            "result_sha256": "47ecdf8ded8c82ed1e1f2339d79c2dbe8f6e82dd0cd023e9798467aecbe914ae",
+            "log_path": "/Users/lixiaochen/Downloads/R27E_SAMPLES_LEDGER_EVIDENCE_20260816T034824Z/g1.json",
+            "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db",
+            "recorded_at": "2026-08-16T03:48:24Z"
+          },
           "notes": "G1 evidence records 49/49 resource-bounds tests, targeted ESLint, and diff checks as pass."
         },
         "affected_regression": {
           "status": "pass",
-          "binding": {"commit": "e675ecf8d2bbfb9fd65c16ca0cd1823f9620182f", "tree": "d9bbf579a8f6fd8d95b2f1124d95f0a9bb9e15b2", "tool_name": "Codex Samples remediation G2", "tool_version": "gpt-5.6-terra", "command": "R27E_SAMPLES_CANDIDATE_MIGRATION_AND_REMEDIATION G2", "environment": "local isolated integration worktree; 3 directly affected Samples specs, 65/65 tests, Samples module lint, and API typecheck passed; exact final diff SHA-256 1eab5e2aaaf9cb6e54cbffc8fe56c35480f6dbd9a38b5c90120cc2af1c365f45", "result_sha256": "872e33875ca06df03437912ff32f4c1b041c1d41064d65de94481cd1c2e5990a", "log_path": "/Users/lixiaochen/Downloads/R27E_SAMPLES_LEDGER_EVIDENCE_20260816T034824Z/g2.json", "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db", "recorded_at": "2026-08-16T03:48:24Z"},
+          "binding": {
+            "commit": "e675ecf8d2bbfb9fd65c16ca0cd1823f9620182f",
+            "tree": "d9bbf579a8f6fd8d95b2f1124d95f0a9bb9e15b2",
+            "tool_name": "Codex Samples remediation G2",
+            "tool_version": "gpt-5.6-terra",
+            "command": "R27E_SAMPLES_CANDIDATE_MIGRATION_AND_REMEDIATION G2",
+            "environment": "local isolated integration worktree; 3 directly affected Samples specs, 65/65 tests, Samples module lint, and API typecheck passed; exact final diff SHA-256 1eab5e2aaaf9cb6e54cbffc8fe56c35480f6dbd9a38b5c90120cc2af1c365f45",
+            "result_sha256": "872e33875ca06df03437912ff32f4c1b041c1d41064d65de94481cd1c2e5990a",
+            "log_path": "/Users/lixiaochen/Downloads/R27E_SAMPLES_LEDGER_EVIDENCE_20260816T034824Z/g2.json",
+            "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db",
+            "recorded_at": "2026-08-16T03:48:24Z"
+          },
           "notes": "G2 evidence records three directly affected Samples specs, 65/65 tests, module lint, and API typecheck as pass."
         },
         "diff_review": {
           "status": "pass",
-          "binding": {"commit": "e675ecf8d2bbfb9fd65c16ca0cd1823f9620182f", "tree": "d9bbf579a8f6fd8d95b2f1124d95f0a9bb9e15b2", "tool_name": "Codex independent G4_DIFF review", "tool_version": "gpt-5.6-sol", "command": "R27E_SAMPLES_INDEPENDENT_G4_DIFF_REVIEW", "environment": "local read-only exact two-file identity; reviewed diff SHA-256 1eab5e2aaaf9cb6e54cbffc8fe56c35480f6dbd9a38b5c90120cc2af1c365f45", "result_sha256": "7b4d939da267357cf2d66fe6100eff4dc9e9e9c3b7670b5b1f4c745863cf1b4c", "log_path": "/Users/lixiaochen/Downloads/R27E_SAMPLES_LEDGER_EVIDENCE_20260816T034824Z/g4.json", "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db", "recorded_at": "2026-08-16T03:48:24Z"},
+          "binding": {
+            "commit": "e675ecf8d2bbfb9fd65c16ca0cd1823f9620182f",
+            "tree": "d9bbf579a8f6fd8d95b2f1124d95f0a9bb9e15b2",
+            "tool_name": "Codex independent G4_DIFF review",
+            "tool_version": "gpt-5.6-sol",
+            "command": "R27E_SAMPLES_INDEPENDENT_G4_DIFF_REVIEW",
+            "environment": "local read-only exact two-file identity; reviewed diff SHA-256 1eab5e2aaaf9cb6e54cbffc8fe56c35480f6dbd9a38b5c90120cc2af1c365f45",
+            "result_sha256": "7b4d939da267357cf2d66fe6100eff4dc9e9e9c3b7670b5b1f4c745863cf1b4c",
+            "log_path": "/Users/lixiaochen/Downloads/R27E_SAMPLES_LEDGER_EVIDENCE_20260816T034824Z/g4.json",
+            "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db",
+            "recorded_at": "2026-08-16T03:48:24Z"
+          },
           "notes": "Independent G4_DIFF closed both diff-review findings with zero confirmed Critical, High, or Medium residual findings."
         },
         "full_regression": {
           "status": "pass",
-          "binding": {"commit": "7df281e74c8bbe0e927865c822e725604a2dd2da", "tree": "7e908e8a0727ba16f5f9a59d7f1d0c9ac5935b43", "tool_name": "Codex approved Samples and StandardBoards batch G3", "tool_version": "Node v24.14.0; pnpm 9.15.4; repository-defined API scripts", "command": "R27FG_SAMPLES_STANDARDBOARDS_BATCH_G3", "environment": "local clean integration worktree; API lint, typecheck, Prisma validate, 124 test files and 1128 tests, and API build passed; 0 failed and 0 skipped", "result_sha256": "5382f5e55d9c2d1ae9bc08eeba6955b596d6351eb144bd4ca280a0b8660d77af", "log_path": "/Users/lixiaochen/Downloads/R27FG_BATCH_G3_EVIDENCE_/g3-summary.json", "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db", "recorded_at": "2026-08-16T13:05:42Z"},
+          "binding": {
+            "commit": "7df281e74c8bbe0e927865c822e725604a2dd2da",
+            "tree": "7e908e8a0727ba16f5f9a59d7f1d0c9ac5935b43",
+            "tool_name": "Codex approved Samples and StandardBoards batch G3",
+            "tool_version": "Node v24.14.0; pnpm 9.15.4; repository-defined API scripts",
+            "command": "R27FG_SAMPLES_STANDARDBOARDS_BATCH_G3",
+            "environment": "local clean integration worktree; API lint, typecheck, Prisma validate, 124 test files and 1128 tests, and API build passed; 0 failed and 0 skipped",
+            "result_sha256": "5382f5e55d9c2d1ae9bc08eeba6955b596d6351eb144bd4ca280a0b8660d77af",
+            "log_path": "/Users/lixiaochen/Downloads/R27FG_BATCH_G3_EVIDENCE_/g3-summary.json",
+            "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db",
+            "recorded_at": "2026-08-16T13:05:42Z"
+          },
           "notes": "This is the approved Samples + StandardBoards batch G3. API lint, typecheck, Prisma validate, full API tests, and API build passed: 124 test files and 1128 tests passed, with 0 failed and 0 skipped. This G3 does not constitute production deployment approval."
         }
       },
@@ -319,17 +748,68 @@
         "closed_by": "R27FG_SAMPLES_STANDARDBOARDS_BATCH_LEDGER_CLOSURE",
         "closed_at": "2026-08-16T13:05:42Z",
         "criterion": "Targeted verification passed; affected regression passed; independent G4_DIFF passed; approved Samples + StandardBoards batch G3 passed with exact summary SHA-256 5382f5e55d9c2d1ae9bc08eeba6955b596d6351eb144bd4ca280a0b8660d77af. This closure does not constitute production deployment approval; the Reviews production online-index or maintenance-window strategy blocker remains in effect.",
-        "binding": {"commit": "7df281e74c8bbe0e927865c822e725604a2dd2da", "tree": "7e908e8a0727ba16f5f9a59d7f1d0c9ac5935b43", "tool_name": "R27FG Samples and StandardBoards batch G3 evidence", "tool_version": "Node v24.14.0; pnpm 9.15.4", "command": "R27FG_SAMPLES_STANDARDBOARDS_BATCH_G3", "environment": "local clean integration worktree; 124 test files, 1128 tests, 0 failed, 0 skipped; no repository modification", "result_sha256": "5382f5e55d9c2d1ae9bc08eeba6955b596d6351eb144bd4ca280a0b8660d77af", "log_path": "/Users/lixiaochen/Downloads/R27FG_BATCH_G3_EVIDENCE_/g3-summary.json", "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db", "recorded_at": "2026-08-16T13:05:42Z"}
+        "binding": {
+          "commit": "7df281e74c8bbe0e927865c822e725604a2dd2da",
+          "tree": "7e908e8a0727ba16f5f9a59d7f1d0c9ac5935b43",
+          "tool_name": "R27FG Samples and StandardBoards batch G3 evidence",
+          "tool_version": "Node v24.14.0; pnpm 9.15.4",
+          "command": "R27FG_SAMPLES_STANDARDBOARDS_BATCH_G3",
+          "environment": "local clean integration worktree; 124 test files, 1128 tests, 0 failed, 0 skipped; no repository modification",
+          "result_sha256": "5382f5e55d9c2d1ae9bc08eeba6955b596d6351eb144bd4ca280a0b8660d77af",
+          "log_path": "/Users/lixiaochen/Downloads/R27FG_BATCH_G3_EVIDENCE_/g3-summary.json",
+          "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db",
+          "recorded_at": "2026-08-16T13:05:42Z"
+        }
       },
       "history": [
-        {"at": "2026-08-16T03:48:24Z", "transition": "null->candidate", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact task evidence: the bounded Samples remediation intake identified the unbounded attachment-ID aggregation candidate."},
-        {"at": "2026-08-16T03:48:24Z", "transition": "candidate->confirmed", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact task evidence: the candidate was confirmed as a reachable Medium CWE-400 attachment-query resource issue with high confidence."},
-        {"at": "2026-08-16T03:48:24Z", "transition": "confirmed->accepted_for_fix", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact task evidence: the confirmed finding was accepted for the bounded two-file Samples fix."},
-        {"at": "2026-08-16T03:48:24Z", "transition": "accepted_for_fix->in_progress", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact task evidence: implementation proceeded on the exact two-file Samples remediation scope."},
-        {"at": "2026-08-16T03:48:24Z", "transition": "in_progress->fixed_target_verified", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact task evidence: G1 targeted verification and G2 affected regression passed on the exact fix identity."},
-        {"at": "2026-08-16T03:48:24Z", "transition": "fixed_target_verified->fixed_diff_verified", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact task evidence: independent G4_DIFF passed on the exact two-file diff; no batch G3/full regression or closure is recorded."},
-        {"at": "2026-08-16T13:05:42Z", "transition": "fixed_diff_verified->fixed_full_verified", "actor": "R27FG approved batch G3 verifier", "reason": "Approved Samples and StandardBoards batch G3 passed on exact integration commit 7df281e74c8bbe0e927865c822e725604a2dd2da with 124 test files and 1128 tests passing, 0 failed and 0 skipped."},
-        {"at": "2026-08-16T13:05:42Z", "transition": "fixed_full_verified->closed", "actor": "R27FG batch closure task", "reason": "Targeted verification, affected regression, independent G4_DIFF and approved batch G3 all passed on bound evidence; no Critical, High or Medium finding remains in this finding scope."}
+        {
+          "at": "2026-08-16T03:48:24Z",
+          "transition": "null->candidate",
+          "actor": "Codex retrospective ledger recorder",
+          "reason": "Retrospective recording from exact task evidence: the bounded Samples remediation intake identified the unbounded attachment-ID aggregation candidate."
+        },
+        {
+          "at": "2026-08-16T03:48:24Z",
+          "transition": "candidate->confirmed",
+          "actor": "Codex retrospective ledger recorder",
+          "reason": "Retrospective recording from exact task evidence: the candidate was confirmed as a reachable Medium CWE-400 attachment-query resource issue with high confidence."
+        },
+        {
+          "at": "2026-08-16T03:48:24Z",
+          "transition": "confirmed->accepted_for_fix",
+          "actor": "Codex retrospective ledger recorder",
+          "reason": "Retrospective recording from exact task evidence: the confirmed finding was accepted for the bounded two-file Samples fix."
+        },
+        {
+          "at": "2026-08-16T03:48:24Z",
+          "transition": "accepted_for_fix->in_progress",
+          "actor": "Codex retrospective ledger recorder",
+          "reason": "Retrospective recording from exact task evidence: implementation proceeded on the exact two-file Samples remediation scope."
+        },
+        {
+          "at": "2026-08-16T03:48:24Z",
+          "transition": "in_progress->fixed_target_verified",
+          "actor": "Codex retrospective ledger recorder",
+          "reason": "Retrospective recording from exact task evidence: G1 targeted verification and G2 affected regression passed on the exact fix identity."
+        },
+        {
+          "at": "2026-08-16T03:48:24Z",
+          "transition": "fixed_target_verified->fixed_diff_verified",
+          "actor": "Codex retrospective ledger recorder",
+          "reason": "Retrospective recording from exact task evidence: independent G4_DIFF passed on the exact two-file diff; no batch G3/full regression or closure is recorded."
+        },
+        {
+          "at": "2026-08-16T13:05:42Z",
+          "transition": "fixed_diff_verified->fixed_full_verified",
+          "actor": "R27FG approved batch G3 verifier",
+          "reason": "Approved Samples and StandardBoards batch G3 passed on exact integration commit 7df281e74c8bbe0e927865c822e725604a2dd2da with 124 test files and 1128 tests passing, 0 failed and 0 skipped."
+        },
+        {
+          "at": "2026-08-16T13:05:42Z",
+          "transition": "fixed_full_verified->closed",
+          "actor": "R27FG batch closure task",
+          "reason": "Targeted verification, affected regression, independent G4_DIFF and approved batch G3 all passed on bound evidence; no Critical, High or Medium finding remains in this finding scope."
+        }
       ]
     },
     {
@@ -343,11 +823,24 @@
       "source": {
         "type": "manual",
         "report_path": "/Users/lixiaochen/Downloads/R27F_STANDARDBOARDS_LEDGER_EVIDENCE_20260816T120352Z/source.json",
-        "binding": {"commit": "1d8969b7ffba46490354fcedcf369f5526b92372", "tree": "5f3cca094b9a001606443c03569685c23090a203", "tool_name": "Codex bounded StandardBoards remediation intake", "tool_version": "gpt-5.6-terra", "command": "R27F_STANDARDBOARDS_CANDIDATE_MIGRATION_AND_REMEDIATION", "environment": "local isolated integration worktree; source candidate patch SHA-256 9f0bdb5066b9588f3d90e0b003965af4c4e49ae9e5828bc670e052221dd00c42", "result_sha256": "821ddb5b2f13e875701e61576603989451ceaea368b7ccc25320773522cc7749", "log_path": "/Users/lixiaochen/Downloads/R27F_STANDARDBOARDS_LEDGER_EVIDENCE_20260816T120352Z/source.json", "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db", "recorded_at": "2026-08-16T12:03:52Z"}
+        "binding": {
+          "commit": "1d8969b7ffba46490354fcedcf369f5526b92372",
+          "tree": "5f3cca094b9a001606443c03569685c23090a203",
+          "tool_name": "Codex bounded StandardBoards remediation intake",
+          "tool_version": "gpt-5.6-terra",
+          "command": "R27F_STANDARDBOARDS_CANDIDATE_MIGRATION_AND_REMEDIATION",
+          "environment": "local isolated integration worktree; source candidate patch SHA-256 9f0bdb5066b9588f3d90e0b003965af4c4e49ae9e5828bc670e052221dd00c42",
+          "result_sha256": "821ddb5b2f13e875701e61576603989451ceaea368b7ccc25320773522cc7749",
+          "log_path": "/Users/lixiaochen/Downloads/R27F_STANDARDBOARDS_LEDGER_EVIDENCE_20260816T120352Z/source.json",
+          "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db",
+          "recorded_at": "2026-08-16T12:03:52Z"
+        }
       },
       "scope": {
         "component": "StandardBoards persisted-source admission and audit construction in getBoardOrThrow, assertPersistedStandardBoardAdmission, assertSampleReference, toStandardBoardAuditSnapshot, and toColorBoardDetailUpdateAuditSnapshot",
-        "affected_files": ["apps/api/src/modules/standard-boards/standard-boards.service.ts"],
+        "affected_files": [
+          "apps/api/src/modules/standard-boards/standard-boards.service.ts"
+        ],
         "entry_points": [
           "createStandardBoard",
           "updateStandardBoard",
@@ -368,8 +861,14 @@
         "proof_gap": "Production exposure was not established because production access and deployed-row inspection were not authorized for this task."
       },
       "root_cause_cluster": "STANDARDBOARDS_LEGACY_AUDIT_AND_ADMISSION_BOUNDS",
-      "security_invariants": ["SEC-009"],
-      "disposition": {"duplicate_of": null, "false_positive_reason": null, "risk_acceptance": null},
+      "security_invariants": [
+        "SEC-009"
+      ],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
       "fix": {
         "task_id": "R27F_STANDARDBOARDS_CANDIDATE_MIGRATION_AND_REMEDIATION",
         "branch": "security/r27-integration-v2",
@@ -383,22 +882,66 @@
       "verification": {
         "targeted": {
           "status": "pass",
-          "binding": {"commit": "e18c9e8ac6961a05bf2c055f8ae69610c4eb2afc", "tree": "d7264f03ef8f85a2cd637b7ea75435e581f0d3c8", "tool_name": "Codex R27F StandardBoards targeted verification", "tool_version": "gpt-5.6-terra", "command": "R27F_STANDARDBOARDS_CANDIDATE_MIGRATION_AND_REMEDIATION G1", "environment": "local isolated exact two-file diff SHA-256 49715db1d7c7a499cd2a2cb292dc992ba58fb74f0f0072658517928f5f2ad29f", "result_sha256": "d5c274548933c096e59038bf2bc76277105ea22f9bfe9e44adb929ba30ce2e39", "log_path": "/Users/lixiaochen/Downloads/R27F_STANDARDBOARDS_LEDGER_EVIDENCE_20260816T120352Z/g1.json", "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db", "recorded_at": "2026-08-16T12:03:52Z"},
+          "binding": {
+            "commit": "e18c9e8ac6961a05bf2c055f8ae69610c4eb2afc",
+            "tree": "d7264f03ef8f85a2cd637b7ea75435e581f0d3c8",
+            "tool_name": "Codex R27F StandardBoards targeted verification",
+            "tool_version": "gpt-5.6-terra",
+            "command": "R27F_STANDARDBOARDS_CANDIDATE_MIGRATION_AND_REMEDIATION G1",
+            "environment": "local isolated exact two-file diff SHA-256 49715db1d7c7a499cd2a2cb292dc992ba58fb74f0f0072658517928f5f2ad29f",
+            "result_sha256": "d5c274548933c096e59038bf2bc76277105ea22f9bfe9e44adb929ba30ce2e39",
+            "log_path": "/Users/lixiaochen/Downloads/R27F_STANDARDBOARDS_LEDGER_EVIDENCE_20260816T120352Z/g1.json",
+            "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db",
+            "recorded_at": "2026-08-16T12:03:52Z"
+          },
           "notes": "G1 targeted verification passed on the exact StandardBoards two-file fix identity; no unprovided test count is recorded."
         },
         "affected_regression": {
           "status": "pass",
-          "binding": {"commit": "e18c9e8ac6961a05bf2c055f8ae69610c4eb2afc", "tree": "d7264f03ef8f85a2cd637b7ea75435e581f0d3c8", "tool_name": "Codex R27F StandardBoards affected regression", "tool_version": "gpt-5.6-terra", "command": "R27F_STANDARDBOARDS_CANDIDATE_MIGRATION_AND_REMEDIATION G2", "environment": "local isolated exact two-file diff SHA-256 49715db1d7c7a499cd2a2cb292dc992ba58fb74f0f0072658517928f5f2ad29f", "result_sha256": "bde29c190a2bbabc8d312c571e3584595e25d0c34b48d556b63512d1e325a290", "log_path": "/Users/lixiaochen/Downloads/R27F_STANDARDBOARDS_LEDGER_EVIDENCE_20260816T120352Z/g2.json", "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db", "recorded_at": "2026-08-16T12:03:52Z"},
+          "binding": {
+            "commit": "e18c9e8ac6961a05bf2c055f8ae69610c4eb2afc",
+            "tree": "d7264f03ef8f85a2cd637b7ea75435e581f0d3c8",
+            "tool_name": "Codex R27F StandardBoards affected regression",
+            "tool_version": "gpt-5.6-terra",
+            "command": "R27F_STANDARDBOARDS_CANDIDATE_MIGRATION_AND_REMEDIATION G2",
+            "environment": "local isolated exact two-file diff SHA-256 49715db1d7c7a499cd2a2cb292dc992ba58fb74f0f0072658517928f5f2ad29f",
+            "result_sha256": "bde29c190a2bbabc8d312c571e3584595e25d0c34b48d556b63512d1e325a290",
+            "log_path": "/Users/lixiaochen/Downloads/R27F_STANDARDBOARDS_LEDGER_EVIDENCE_20260816T120352Z/g2.json",
+            "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db",
+            "recorded_at": "2026-08-16T12:03:52Z"
+          },
           "notes": "G2 affected regression passed for the directly affected StandardBoards scope; no unprovided test count is recorded."
         },
         "diff_review": {
           "status": "pass",
-          "binding": {"commit": "e18c9e8ac6961a05bf2c055f8ae69610c4eb2afc", "tree": "d7264f03ef8f85a2cd637b7ea75435e581f0d3c8", "tool_name": "Codex independent StandardBoards G4_DIFF review", "tool_version": "gpt-5.6-sol", "command": "R27F_STANDARDBOARDS_INDEPENDENT_G4_DIFF_REVIEW", "environment": "local read-only exact two-file identity; reviewed diff SHA-256 49715db1d7c7a499cd2a2cb292dc992ba58fb74f0f0072658517928f5f2ad29f", "result_sha256": "ca770b64c4ad673d3dfeeaebedffff6a88f72da91e1ddc6f9356238e7721c579", "log_path": "/Users/lixiaochen/Downloads/R27F_STANDARDBOARDS_LEDGER_EVIDENCE_20260816T120352Z/g4.json", "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db", "recorded_at": "2026-08-16T12:03:52Z"},
+          "binding": {
+            "commit": "e18c9e8ac6961a05bf2c055f8ae69610c4eb2afc",
+            "tree": "d7264f03ef8f85a2cd637b7ea75435e581f0d3c8",
+            "tool_name": "Codex independent StandardBoards G4_DIFF review",
+            "tool_version": "gpt-5.6-sol",
+            "command": "R27F_STANDARDBOARDS_INDEPENDENT_G4_DIFF_REVIEW",
+            "environment": "local read-only exact two-file identity; reviewed diff SHA-256 49715db1d7c7a499cd2a2cb292dc992ba58fb74f0f0072658517928f5f2ad29f",
+            "result_sha256": "ca770b64c4ad673d3dfeeaebedffff6a88f72da91e1ddc6f9356238e7721c579",
+            "log_path": "/Users/lixiaochen/Downloads/R27F_STANDARDBOARDS_LEDGER_EVIDENCE_20260816T120352Z/g4.json",
+            "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db",
+            "recorded_at": "2026-08-16T12:03:52Z"
+          },
           "notes": "Independent G4_DIFF passed and closed both task-local review findings on the exact two-file diff; Ledger closure remains deferred."
         },
         "full_regression": {
           "status": "pass",
-          "binding": {"commit": "7df281e74c8bbe0e927865c822e725604a2dd2da", "tree": "7e908e8a0727ba16f5f9a59d7f1d0c9ac5935b43", "tool_name": "Codex approved Samples and StandardBoards batch G3", "tool_version": "Node v24.14.0; pnpm 9.15.4; repository-defined API scripts", "command": "R27FG_SAMPLES_STANDARDBOARDS_BATCH_G3", "environment": "local clean integration worktree; API lint, typecheck, Prisma validate, 124 test files and 1128 tests, and API build passed; 0 failed and 0 skipped", "result_sha256": "5382f5e55d9c2d1ae9bc08eeba6955b596d6351eb144bd4ca280a0b8660d77af", "log_path": "/Users/lixiaochen/Downloads/R27FG_BATCH_G3_EVIDENCE_/g3-summary.json", "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db", "recorded_at": "2026-08-16T13:05:42Z"},
+          "binding": {
+            "commit": "7df281e74c8bbe0e927865c822e725604a2dd2da",
+            "tree": "7e908e8a0727ba16f5f9a59d7f1d0c9ac5935b43",
+            "tool_name": "Codex approved Samples and StandardBoards batch G3",
+            "tool_version": "Node v24.14.0; pnpm 9.15.4; repository-defined API scripts",
+            "command": "R27FG_SAMPLES_STANDARDBOARDS_BATCH_G3",
+            "environment": "local clean integration worktree; API lint, typecheck, Prisma validate, 124 test files and 1128 tests, and API build passed; 0 failed and 0 skipped",
+            "result_sha256": "5382f5e55d9c2d1ae9bc08eeba6955b596d6351eb144bd4ca280a0b8660d77af",
+            "log_path": "/Users/lixiaochen/Downloads/R27FG_BATCH_G3_EVIDENCE_/g3-summary.json",
+            "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db",
+            "recorded_at": "2026-08-16T13:05:42Z"
+          },
           "notes": "This is the approved Samples + StandardBoards batch G3. API lint, typecheck, Prisma validate, full API tests, and API build passed: 124 test files and 1128 tests passed, with 0 failed and 0 skipped. This G3 does not constitute production deployment approval."
         }
       },
@@ -406,17 +949,68 @@
         "closed_by": "R27FG_SAMPLES_STANDARDBOARDS_BATCH_LEDGER_CLOSURE",
         "closed_at": "2026-08-16T13:05:42Z",
         "criterion": "Targeted verification passed; affected regression passed; independent G4_DIFF passed; approved Samples + StandardBoards batch G3 passed with exact summary SHA-256 5382f5e55d9c2d1ae9bc08eeba6955b596d6351eb144bd4ca280a0b8660d77af. This closure does not constitute production deployment approval; the Reviews production online-index or maintenance-window strategy blocker remains in effect.",
-        "binding": {"commit": "7df281e74c8bbe0e927865c822e725604a2dd2da", "tree": "7e908e8a0727ba16f5f9a59d7f1d0c9ac5935b43", "tool_name": "R27FG Samples and StandardBoards batch G3 evidence", "tool_version": "Node v24.14.0; pnpm 9.15.4", "command": "R27FG_SAMPLES_STANDARDBOARDS_BATCH_G3", "environment": "local clean integration worktree; 124 test files, 1128 tests, 0 failed, 0 skipped; no repository modification", "result_sha256": "5382f5e55d9c2d1ae9bc08eeba6955b596d6351eb144bd4ca280a0b8660d77af", "log_path": "/Users/lixiaochen/Downloads/R27FG_BATCH_G3_EVIDENCE_/g3-summary.json", "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db", "recorded_at": "2026-08-16T13:05:42Z"}
+        "binding": {
+          "commit": "7df281e74c8bbe0e927865c822e725604a2dd2da",
+          "tree": "7e908e8a0727ba16f5f9a59d7f1d0c9ac5935b43",
+          "tool_name": "R27FG Samples and StandardBoards batch G3 evidence",
+          "tool_version": "Node v24.14.0; pnpm 9.15.4",
+          "command": "R27FG_SAMPLES_STANDARDBOARDS_BATCH_G3",
+          "environment": "local clean integration worktree; 124 test files, 1128 tests, 0 failed, 0 skipped; no repository modification",
+          "result_sha256": "5382f5e55d9c2d1ae9bc08eeba6955b596d6351eb144bd4ca280a0b8660d77af",
+          "log_path": "/Users/lixiaochen/Downloads/R27FG_BATCH_G3_EVIDENCE_/g3-summary.json",
+          "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db",
+          "recorded_at": "2026-08-16T13:05:42Z"
+        }
       },
       "history": [
-        {"at": "2026-08-16T12:03:52Z", "transition": "null->candidate", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact R27F StandardBoards task and source evidence: persisted sources reaching normalization or audit construction before resource admission were identified as a candidate."},
-        {"at": "2026-08-16T12:03:52Z", "transition": "candidate->confirmed", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact R27F task evidence: the candidate was confirmed as a reachable Medium CWE-400 and SEC-009 persisted-source boundary issue with high confidence."},
-        {"at": "2026-08-16T12:03:52Z", "transition": "confirmed->accepted_for_fix", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact R27F authorization and task evidence: the confirmed finding was accepted for the bounded two-file StandardBoards fix."},
-        {"at": "2026-08-16T12:03:52Z", "transition": "accepted_for_fix->in_progress", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact R27F task evidence: remediation proceeded on the authorized StandardBoards service and resource-bounds spec scope."},
-        {"at": "2026-08-16T12:03:52Z", "transition": "in_progress->fixed_target_verified", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact R27F task and commit evidence: targeted verification and affected regression passed on commit e18c9e8ac6961a05bf2c055f8ae69610c4eb2afc."},
-        {"at": "2026-08-16T12:03:52Z", "transition": "fixed_target_verified->fixed_diff_verified", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact R27F independent review and commit evidence: G4_DIFF passed on the two-file fix; no Samples+StandardBoards batch G3/full regression or closure is recorded."},
-        {"at": "2026-08-16T13:05:42Z", "transition": "fixed_diff_verified->fixed_full_verified", "actor": "R27FG approved batch G3 verifier", "reason": "Approved Samples and StandardBoards batch G3 passed on exact integration commit 7df281e74c8bbe0e927865c822e725604a2dd2da with 124 test files and 1128 tests passing, 0 failed and 0 skipped."},
-        {"at": "2026-08-16T13:05:42Z", "transition": "fixed_full_verified->closed", "actor": "R27FG batch closure task", "reason": "Targeted verification, affected regression, independent G4_DIFF and approved batch G3 all passed on bound evidence; no Critical, High or Medium finding remains in this finding scope."}
+        {
+          "at": "2026-08-16T12:03:52Z",
+          "transition": "null->candidate",
+          "actor": "Codex retrospective ledger recorder",
+          "reason": "Retrospective recording from exact R27F StandardBoards task and source evidence: persisted sources reaching normalization or audit construction before resource admission were identified as a candidate."
+        },
+        {
+          "at": "2026-08-16T12:03:52Z",
+          "transition": "candidate->confirmed",
+          "actor": "Codex retrospective ledger recorder",
+          "reason": "Retrospective recording from exact R27F task evidence: the candidate was confirmed as a reachable Medium CWE-400 and SEC-009 persisted-source boundary issue with high confidence."
+        },
+        {
+          "at": "2026-08-16T12:03:52Z",
+          "transition": "confirmed->accepted_for_fix",
+          "actor": "Codex retrospective ledger recorder",
+          "reason": "Retrospective recording from exact R27F authorization and task evidence: the confirmed finding was accepted for the bounded two-file StandardBoards fix."
+        },
+        {
+          "at": "2026-08-16T12:03:52Z",
+          "transition": "accepted_for_fix->in_progress",
+          "actor": "Codex retrospective ledger recorder",
+          "reason": "Retrospective recording from exact R27F task evidence: remediation proceeded on the authorized StandardBoards service and resource-bounds spec scope."
+        },
+        {
+          "at": "2026-08-16T12:03:52Z",
+          "transition": "in_progress->fixed_target_verified",
+          "actor": "Codex retrospective ledger recorder",
+          "reason": "Retrospective recording from exact R27F task and commit evidence: targeted verification and affected regression passed on commit e18c9e8ac6961a05bf2c055f8ae69610c4eb2afc."
+        },
+        {
+          "at": "2026-08-16T12:03:52Z",
+          "transition": "fixed_target_verified->fixed_diff_verified",
+          "actor": "Codex retrospective ledger recorder",
+          "reason": "Retrospective recording from exact R27F independent review and commit evidence: G4_DIFF passed on the two-file fix; no Samples+StandardBoards batch G3/full regression or closure is recorded."
+        },
+        {
+          "at": "2026-08-16T13:05:42Z",
+          "transition": "fixed_diff_verified->fixed_full_verified",
+          "actor": "R27FG approved batch G3 verifier",
+          "reason": "Approved Samples and StandardBoards batch G3 passed on exact integration commit 7df281e74c8bbe0e927865c822e725604a2dd2da with 124 test files and 1128 tests passing, 0 failed and 0 skipped."
+        },
+        {
+          "at": "2026-08-16T13:05:42Z",
+          "transition": "fixed_full_verified->closed",
+          "actor": "R27FG batch closure task",
+          "reason": "Targeted verification, affected regression, independent G4_DIFF and approved batch G3 all passed on bound evidence; no Critical, High or Medium finding remains in this finding scope."
+        }
       ]
     },
     {
@@ -430,11 +1024,24 @@
       "source": {
         "type": "manual",
         "report_path": "/Users/lixiaochen/Downloads/R27F_STANDARDBOARDS_LEDGER_EVIDENCE_20260816T120352Z/source.json",
-        "binding": {"commit": "1d8969b7ffba46490354fcedcf369f5526b92372", "tree": "5f3cca094b9a001606443c03569685c23090a203", "tool_name": "Codex bounded StandardBoards remediation intake", "tool_version": "gpt-5.6-terra", "command": "R27F_STANDARDBOARDS_CANDIDATE_MIGRATION_AND_REMEDIATION", "environment": "local isolated integration worktree; source candidate patch SHA-256 9f0bdb5066b9588f3d90e0b003965af4c4e49ae9e5828bc670e052221dd00c42", "result_sha256": "821ddb5b2f13e875701e61576603989451ceaea368b7ccc25320773522cc7749", "log_path": "/Users/lixiaochen/Downloads/R27F_STANDARDBOARDS_LEDGER_EVIDENCE_20260816T120352Z/source.json", "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db", "recorded_at": "2026-08-16T12:03:52Z"}
+        "binding": {
+          "commit": "1d8969b7ffba46490354fcedcf369f5526b92372",
+          "tree": "5f3cca094b9a001606443c03569685c23090a203",
+          "tool_name": "Codex bounded StandardBoards remediation intake",
+          "tool_version": "gpt-5.6-terra",
+          "command": "R27F_STANDARDBOARDS_CANDIDATE_MIGRATION_AND_REMEDIATION",
+          "environment": "local isolated integration worktree; source candidate patch SHA-256 9f0bdb5066b9588f3d90e0b003965af4c4e49ae9e5828bc670e052221dd00c42",
+          "result_sha256": "821ddb5b2f13e875701e61576603989451ceaea368b7ccc25320773522cc7749",
+          "log_path": "/Users/lixiaochen/Downloads/R27F_STANDARDBOARDS_LEDGER_EVIDENCE_20260816T120352Z/source.json",
+          "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db",
+          "recorded_at": "2026-08-16T12:03:52Z"
+        }
       },
       "scope": {
         "component": "StandardBoards context admission in buildWorkspace, buildColorBoardDetailUpdateWorkspace, getStandardBoardContext, getColorBoardDetailUpdateContext, bounded reference loaders, and loadAdmittedDistributionRecords",
-        "affected_files": ["apps/api/src/modules/standard-boards/standard-boards.service.ts"],
+        "affected_files": [
+          "apps/api/src/modules/standard-boards/standard-boards.service.ts"
+        ],
         "entry_points": [
           "getWorkspace",
           "getCurrentBoard",
@@ -458,8 +1065,14 @@
         "proof_gap": "Production exposure was not established because production access and deployed-row inspection were not authorized for this task."
       },
       "root_cause_cluster": "STANDARDBOARDS_LEGACY_AUDIT_AND_ADMISSION_BOUNDS",
-      "security_invariants": ["SEC-010"],
-      "disposition": {"duplicate_of": null, "false_positive_reason": null, "risk_acceptance": null},
+      "security_invariants": [
+        "SEC-010"
+      ],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
       "fix": {
         "task_id": "R27F_STANDARDBOARDS_CANDIDATE_MIGRATION_AND_REMEDIATION",
         "branch": "security/r27-integration-v2",
@@ -473,22 +1086,66 @@
       "verification": {
         "targeted": {
           "status": "pass",
-          "binding": {"commit": "e18c9e8ac6961a05bf2c055f8ae69610c4eb2afc", "tree": "d7264f03ef8f85a2cd637b7ea75435e581f0d3c8", "tool_name": "Codex R27F StandardBoards targeted verification", "tool_version": "gpt-5.6-terra", "command": "R27F_STANDARDBOARDS_CANDIDATE_MIGRATION_AND_REMEDIATION G1", "environment": "local isolated exact two-file diff SHA-256 49715db1d7c7a499cd2a2cb292dc992ba58fb74f0f0072658517928f5f2ad29f", "result_sha256": "d5c274548933c096e59038bf2bc76277105ea22f9bfe9e44adb929ba30ce2e39", "log_path": "/Users/lixiaochen/Downloads/R27F_STANDARDBOARDS_LEDGER_EVIDENCE_20260816T120352Z/g1.json", "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db", "recorded_at": "2026-08-16T12:03:52Z"},
+          "binding": {
+            "commit": "e18c9e8ac6961a05bf2c055f8ae69610c4eb2afc",
+            "tree": "d7264f03ef8f85a2cd637b7ea75435e581f0d3c8",
+            "tool_name": "Codex R27F StandardBoards targeted verification",
+            "tool_version": "gpt-5.6-terra",
+            "command": "R27F_STANDARDBOARDS_CANDIDATE_MIGRATION_AND_REMEDIATION G1",
+            "environment": "local isolated exact two-file diff SHA-256 49715db1d7c7a499cd2a2cb292dc992ba58fb74f0f0072658517928f5f2ad29f",
+            "result_sha256": "d5c274548933c096e59038bf2bc76277105ea22f9bfe9e44adb929ba30ce2e39",
+            "log_path": "/Users/lixiaochen/Downloads/R27F_STANDARDBOARDS_LEDGER_EVIDENCE_20260816T120352Z/g1.json",
+            "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db",
+            "recorded_at": "2026-08-16T12:03:52Z"
+          },
           "notes": "G1 targeted verification passed on the exact StandardBoards two-file fix identity; no unprovided test count is recorded."
         },
         "affected_regression": {
           "status": "pass",
-          "binding": {"commit": "e18c9e8ac6961a05bf2c055f8ae69610c4eb2afc", "tree": "d7264f03ef8f85a2cd637b7ea75435e581f0d3c8", "tool_name": "Codex R27F StandardBoards affected regression", "tool_version": "gpt-5.6-terra", "command": "R27F_STANDARDBOARDS_CANDIDATE_MIGRATION_AND_REMEDIATION G2", "environment": "local isolated exact two-file diff SHA-256 49715db1d7c7a499cd2a2cb292dc992ba58fb74f0f0072658517928f5f2ad29f", "result_sha256": "bde29c190a2bbabc8d312c571e3584595e25d0c34b48d556b63512d1e325a290", "log_path": "/Users/lixiaochen/Downloads/R27F_STANDARDBOARDS_LEDGER_EVIDENCE_20260816T120352Z/g2.json", "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db", "recorded_at": "2026-08-16T12:03:52Z"},
+          "binding": {
+            "commit": "e18c9e8ac6961a05bf2c055f8ae69610c4eb2afc",
+            "tree": "d7264f03ef8f85a2cd637b7ea75435e581f0d3c8",
+            "tool_name": "Codex R27F StandardBoards affected regression",
+            "tool_version": "gpt-5.6-terra",
+            "command": "R27F_STANDARDBOARDS_CANDIDATE_MIGRATION_AND_REMEDIATION G2",
+            "environment": "local isolated exact two-file diff SHA-256 49715db1d7c7a499cd2a2cb292dc992ba58fb74f0f0072658517928f5f2ad29f",
+            "result_sha256": "bde29c190a2bbabc8d312c571e3584595e25d0c34b48d556b63512d1e325a290",
+            "log_path": "/Users/lixiaochen/Downloads/R27F_STANDARDBOARDS_LEDGER_EVIDENCE_20260816T120352Z/g2.json",
+            "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db",
+            "recorded_at": "2026-08-16T12:03:52Z"
+          },
           "notes": "G2 affected regression passed for the directly affected StandardBoards scope; no unprovided test count is recorded."
         },
         "diff_review": {
           "status": "pass",
-          "binding": {"commit": "e18c9e8ac6961a05bf2c055f8ae69610c4eb2afc", "tree": "d7264f03ef8f85a2cd637b7ea75435e581f0d3c8", "tool_name": "Codex independent StandardBoards G4_DIFF review", "tool_version": "gpt-5.6-sol", "command": "R27F_STANDARDBOARDS_INDEPENDENT_G4_DIFF_REVIEW", "environment": "local read-only exact two-file identity; reviewed diff SHA-256 49715db1d7c7a499cd2a2cb292dc992ba58fb74f0f0072658517928f5f2ad29f", "result_sha256": "ca770b64c4ad673d3dfeeaebedffff6a88f72da91e1ddc6f9356238e7721c579", "log_path": "/Users/lixiaochen/Downloads/R27F_STANDARDBOARDS_LEDGER_EVIDENCE_20260816T120352Z/g4.json", "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db", "recorded_at": "2026-08-16T12:03:52Z"},
+          "binding": {
+            "commit": "e18c9e8ac6961a05bf2c055f8ae69610c4eb2afc",
+            "tree": "d7264f03ef8f85a2cd637b7ea75435e581f0d3c8",
+            "tool_name": "Codex independent StandardBoards G4_DIFF review",
+            "tool_version": "gpt-5.6-sol",
+            "command": "R27F_STANDARDBOARDS_INDEPENDENT_G4_DIFF_REVIEW",
+            "environment": "local read-only exact two-file identity; reviewed diff SHA-256 49715db1d7c7a499cd2a2cb292dc992ba58fb74f0f0072658517928f5f2ad29f",
+            "result_sha256": "ca770b64c4ad673d3dfeeaebedffff6a88f72da91e1ddc6f9356238e7721c579",
+            "log_path": "/Users/lixiaochen/Downloads/R27F_STANDARDBOARDS_LEDGER_EVIDENCE_20260816T120352Z/g4.json",
+            "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db",
+            "recorded_at": "2026-08-16T12:03:52Z"
+          },
           "notes": "Independent G4_DIFF passed and closed both task-local review findings on the exact two-file diff; Ledger closure remains deferred."
         },
         "full_regression": {
           "status": "pass",
-          "binding": {"commit": "7df281e74c8bbe0e927865c822e725604a2dd2da", "tree": "7e908e8a0727ba16f5f9a59d7f1d0c9ac5935b43", "tool_name": "Codex approved Samples and StandardBoards batch G3", "tool_version": "Node v24.14.0; pnpm 9.15.4; repository-defined API scripts", "command": "R27FG_SAMPLES_STANDARDBOARDS_BATCH_G3", "environment": "local clean integration worktree; API lint, typecheck, Prisma validate, 124 test files and 1128 tests, and API build passed; 0 failed and 0 skipped", "result_sha256": "5382f5e55d9c2d1ae9bc08eeba6955b596d6351eb144bd4ca280a0b8660d77af", "log_path": "/Users/lixiaochen/Downloads/R27FG_BATCH_G3_EVIDENCE_/g3-summary.json", "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db", "recorded_at": "2026-08-16T13:05:42Z"},
+          "binding": {
+            "commit": "7df281e74c8bbe0e927865c822e725604a2dd2da",
+            "tree": "7e908e8a0727ba16f5f9a59d7f1d0c9ac5935b43",
+            "tool_name": "Codex approved Samples and StandardBoards batch G3",
+            "tool_version": "Node v24.14.0; pnpm 9.15.4; repository-defined API scripts",
+            "command": "R27FG_SAMPLES_STANDARDBOARDS_BATCH_G3",
+            "environment": "local clean integration worktree; API lint, typecheck, Prisma validate, 124 test files and 1128 tests, and API build passed; 0 failed and 0 skipped",
+            "result_sha256": "5382f5e55d9c2d1ae9bc08eeba6955b596d6351eb144bd4ca280a0b8660d77af",
+            "log_path": "/Users/lixiaochen/Downloads/R27FG_BATCH_G3_EVIDENCE_/g3-summary.json",
+            "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db",
+            "recorded_at": "2026-08-16T13:05:42Z"
+          },
           "notes": "This is the approved Samples + StandardBoards batch G3. API lint, typecheck, Prisma validate, full API tests, and API build passed: 124 test files and 1128 tests passed, with 0 failed and 0 skipped. This G3 does not constitute production deployment approval."
         }
       },
@@ -496,17 +1153,68 @@
         "closed_by": "R27FG_SAMPLES_STANDARDBOARDS_BATCH_LEDGER_CLOSURE",
         "closed_at": "2026-08-16T13:05:42Z",
         "criterion": "Targeted verification passed; affected regression passed; independent G4_DIFF passed; approved Samples + StandardBoards batch G3 passed with exact summary SHA-256 5382f5e55d9c2d1ae9bc08eeba6955b596d6351eb144bd4ca280a0b8660d77af. This closure does not constitute production deployment approval; the Reviews production online-index or maintenance-window strategy blocker remains in effect.",
-        "binding": {"commit": "7df281e74c8bbe0e927865c822e725604a2dd2da", "tree": "7e908e8a0727ba16f5f9a59d7f1d0c9ac5935b43", "tool_name": "R27FG Samples and StandardBoards batch G3 evidence", "tool_version": "Node v24.14.0; pnpm 9.15.4", "command": "R27FG_SAMPLES_STANDARDBOARDS_BATCH_G3", "environment": "local clean integration worktree; 124 test files, 1128 tests, 0 failed, 0 skipped; no repository modification", "result_sha256": "5382f5e55d9c2d1ae9bc08eeba6955b596d6351eb144bd4ca280a0b8660d77af", "log_path": "/Users/lixiaochen/Downloads/R27FG_BATCH_G3_EVIDENCE_/g3-summary.json", "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db", "recorded_at": "2026-08-16T13:05:42Z"}
+        "binding": {
+          "commit": "7df281e74c8bbe0e927865c822e725604a2dd2da",
+          "tree": "7e908e8a0727ba16f5f9a59d7f1d0c9ac5935b43",
+          "tool_name": "R27FG Samples and StandardBoards batch G3 evidence",
+          "tool_version": "Node v24.14.0; pnpm 9.15.4",
+          "command": "R27FG_SAMPLES_STANDARDBOARDS_BATCH_G3",
+          "environment": "local clean integration worktree; 124 test files, 1128 tests, 0 failed, 0 skipped; no repository modification",
+          "result_sha256": "5382f5e55d9c2d1ae9bc08eeba6955b596d6351eb144bd4ca280a0b8660d77af",
+          "log_path": "/Users/lixiaochen/Downloads/R27FG_BATCH_G3_EVIDENCE_/g3-summary.json",
+          "config_sha256": "d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db",
+          "recorded_at": "2026-08-16T13:05:42Z"
+        }
       },
       "history": [
-        {"at": "2026-08-16T12:03:52Z", "transition": "null->candidate", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact R27F StandardBoards task and source evidence: admission materializing unbounded context before a bounded decision was identified as a candidate."},
-        {"at": "2026-08-16T12:03:52Z", "transition": "candidate->confirmed", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact R27F task evidence: the candidate was confirmed as a reachable Medium CWE-400 and SEC-010 context-materialization issue with high confidence."},
-        {"at": "2026-08-16T12:03:52Z", "transition": "confirmed->accepted_for_fix", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact R27F authorization and task evidence: the confirmed finding was accepted for the bounded two-file StandardBoards fix."},
-        {"at": "2026-08-16T12:03:52Z", "transition": "accepted_for_fix->in_progress", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact R27F task evidence: remediation proceeded on the authorized StandardBoards service and resource-bounds spec scope."},
-        {"at": "2026-08-16T12:03:52Z", "transition": "in_progress->fixed_target_verified", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact R27F task and commit evidence: targeted verification and affected regression passed on commit e18c9e8ac6961a05bf2c055f8ae69610c4eb2afc."},
-        {"at": "2026-08-16T12:03:52Z", "transition": "fixed_target_verified->fixed_diff_verified", "actor": "Codex retrospective ledger recorder", "reason": "Retrospective recording from exact R27F independent review and commit evidence: G4_DIFF passed on the two-file fix; no Samples+StandardBoards batch G3/full regression or closure is recorded."},
-        {"at": "2026-08-16T13:05:42Z", "transition": "fixed_diff_verified->fixed_full_verified", "actor": "R27FG approved batch G3 verifier", "reason": "Approved Samples and StandardBoards batch G3 passed on exact integration commit 7df281e74c8bbe0e927865c822e725604a2dd2da with 124 test files and 1128 tests passing, 0 failed and 0 skipped."},
-        {"at": "2026-08-16T13:05:42Z", "transition": "fixed_full_verified->closed", "actor": "R27FG batch closure task", "reason": "Targeted verification, affected regression, independent G4_DIFF and approved batch G3 all passed on bound evidence; no Critical, High or Medium finding remains in this finding scope."}
+        {
+          "at": "2026-08-16T12:03:52Z",
+          "transition": "null->candidate",
+          "actor": "Codex retrospective ledger recorder",
+          "reason": "Retrospective recording from exact R27F StandardBoards task and source evidence: admission materializing unbounded context before a bounded decision was identified as a candidate."
+        },
+        {
+          "at": "2026-08-16T12:03:52Z",
+          "transition": "candidate->confirmed",
+          "actor": "Codex retrospective ledger recorder",
+          "reason": "Retrospective recording from exact R27F task evidence: the candidate was confirmed as a reachable Medium CWE-400 and SEC-010 context-materialization issue with high confidence."
+        },
+        {
+          "at": "2026-08-16T12:03:52Z",
+          "transition": "confirmed->accepted_for_fix",
+          "actor": "Codex retrospective ledger recorder",
+          "reason": "Retrospective recording from exact R27F authorization and task evidence: the confirmed finding was accepted for the bounded two-file StandardBoards fix."
+        },
+        {
+          "at": "2026-08-16T12:03:52Z",
+          "transition": "accepted_for_fix->in_progress",
+          "actor": "Codex retrospective ledger recorder",
+          "reason": "Retrospective recording from exact R27F task evidence: remediation proceeded on the authorized StandardBoards service and resource-bounds spec scope."
+        },
+        {
+          "at": "2026-08-16T12:03:52Z",
+          "transition": "in_progress->fixed_target_verified",
+          "actor": "Codex retrospective ledger recorder",
+          "reason": "Retrospective recording from exact R27F task and commit evidence: targeted verification and affected regression passed on commit e18c9e8ac6961a05bf2c055f8ae69610c4eb2afc."
+        },
+        {
+          "at": "2026-08-16T12:03:52Z",
+          "transition": "fixed_target_verified->fixed_diff_verified",
+          "actor": "Codex retrospective ledger recorder",
+          "reason": "Retrospective recording from exact R27F independent review and commit evidence: G4_DIFF passed on the two-file fix; no Samples+StandardBoards batch G3/full regression or closure is recorded."
+        },
+        {
+          "at": "2026-08-16T13:05:42Z",
+          "transition": "fixed_diff_verified->fixed_full_verified",
+          "actor": "R27FG approved batch G3 verifier",
+          "reason": "Approved Samples and StandardBoards batch G3 passed on exact integration commit 7df281e74c8bbe0e927865c822e725604a2dd2da with 124 test files and 1128 tests passing, 0 failed and 0 skipped."
+        },
+        {
+          "at": "2026-08-16T13:05:42Z",
+          "transition": "fixed_full_verified->closed",
+          "actor": "R27FG batch closure task",
+          "reason": "Targeted verification, affected regression, independent G4_DIFF and approved batch G3 all passed on bound evidence; no Critical, High or Medium finding remains in this finding scope."
+        }
       ]
     },
     {
@@ -559,8 +1267,15 @@
         "proof_gap": "Live Redis/DB contents were not inspected; actual retained unsafe payload or row presence is unproven. Redis ACL, external purge, and durability policy are outside the confirmation scope."
       },
       "root_cause_cluster": "NOTIFICATION_LINKPATH_DOWNSTREAM_TRUST_BOUNDARIES_LACK_REVALIDATION",
-      "security_invariants": ["SEC-009", "SEC-013"],
-      "disposition": {"duplicate_of": null, "false_positive_reason": null, "risk_acceptance": null},
+      "security_invariants": [
+        "SEC-009",
+        "SEC-013"
+      ],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
       "fix": {
         "task_id": "R27V_D015_NOTIFICATION_LINKPATH_SECURITY_FIX",
         "branch": "security/r27-integration-v2",
@@ -660,14 +1375,54 @@
         }
       },
       "history": [
-        {"at": "2026-08-17T07:02:14Z", "transition": "null->candidate", "actor": "R27R current bounded reverification", "reason": "Corrected-scope current-state verification found downstream notification linkPath trust boundaries without runtime revalidation and requested independent confirmation."},
-        {"at": "2026-08-17T07:02:14Z", "transition": "candidate->confirmed", "actor": "R27S independent reviewer", "reason": "Independent review confirmed a reachable Low CWE-601/CWE-20 issue through legacy Redis jobs, Notification persistence, API read models, and clickable Web navigation on exact commit 28a672fee90cb55d1ee76c3b67aca5ab75a57f8b."},
-        {"at": "2026-08-18T01:32:21Z", "transition": "confirmed->accepted_for_fix", "actor": "R27T remediation architecture decision", "reason": "Approved PATH_A_API_SHARED_RULES_NO_SCHEMA with one pure shared linkPath rule, exact seven-file scope, no Schema, no Migration and no Web change."},
-        {"at": "2026-08-18T01:32:21Z", "transition": "accepted_for_fix->in_progress", "actor": "R27V remediation agent", "reason": "Started bounded remediation of queue ingress, post-deserialization admission, pre-persistence final admission and persisted-read sanitization."},
-        {"at": "2026-08-18T01:32:21Z", "transition": "in_progress->fixed_target_verified", "actor": "R27Z remediation verifier", "reason": "Final G1 and G2 passed on the exact seven-file identity later committed unchanged as ac27b737265172a016fe750d77cf70ad4b193ebb; 110 tests passed, 0 failed, 0 skipped, and API typecheck passed. The transition time records Ledger binding, not test execution."},
-        {"at": "2026-08-18T01:32:21Z", "transition": "fixed_target_verified->fixed_diff_verified", "actor": "R27AA independent reviewer", "reason": "Independent G4_DIFF V3 passed on review diff fd3403555af7ec7ad9870d9c3494fc711472ec4dc580eacd1db4f54024f152ee; R27W-D015-001 and R27Y-INFO-001 were closed, with no Critical, High, Medium or Low finding remaining. The transition time records Ledger binding."},
-        {"at": "2026-08-18T01:55:36Z", "transition": "fixed_diff_verified->fixed_full_verified", "actor": "R27AD standalone API G3", "reason": "Standalone API G3 passed on exact HEAD 14d9fe62550fd6487c8633937f511ab80e2a81ea and tree 516b66916bae8fd4dd05975ee9b7766c89dbceaf; API lint, typecheck, canonical full test and build passed; 124 test files and 1196 tests passed, 0 failed and 0 skipped; all three D015 relevant test files executed."},
-        {"at": "2026-08-18T02:05:36Z", "transition": "fixed_full_verified->closed", "actor": "R27AE closure recorder", "reason": "Closure was recorded after exact-identity targeted, affected-regression, independent G4_DIFF V3 and standalone API G3 evidence all passed. Historical migration and release/deployment blockers remain separate; production deployment was not authorized."}
+        {
+          "at": "2026-08-17T07:02:14Z",
+          "transition": "null->candidate",
+          "actor": "R27R current bounded reverification",
+          "reason": "Corrected-scope current-state verification found downstream notification linkPath trust boundaries without runtime revalidation and requested independent confirmation."
+        },
+        {
+          "at": "2026-08-17T07:02:14Z",
+          "transition": "candidate->confirmed",
+          "actor": "R27S independent reviewer",
+          "reason": "Independent review confirmed a reachable Low CWE-601/CWE-20 issue through legacy Redis jobs, Notification persistence, API read models, and clickable Web navigation on exact commit 28a672fee90cb55d1ee76c3b67aca5ab75a57f8b."
+        },
+        {
+          "at": "2026-08-18T01:32:21Z",
+          "transition": "confirmed->accepted_for_fix",
+          "actor": "R27T remediation architecture decision",
+          "reason": "Approved PATH_A_API_SHARED_RULES_NO_SCHEMA with one pure shared linkPath rule, exact seven-file scope, no Schema, no Migration and no Web change."
+        },
+        {
+          "at": "2026-08-18T01:32:21Z",
+          "transition": "accepted_for_fix->in_progress",
+          "actor": "R27V remediation agent",
+          "reason": "Started bounded remediation of queue ingress, post-deserialization admission, pre-persistence final admission and persisted-read sanitization."
+        },
+        {
+          "at": "2026-08-18T01:32:21Z",
+          "transition": "in_progress->fixed_target_verified",
+          "actor": "R27Z remediation verifier",
+          "reason": "Final G1 and G2 passed on the exact seven-file identity later committed unchanged as ac27b737265172a016fe750d77cf70ad4b193ebb; 110 tests passed, 0 failed, 0 skipped, and API typecheck passed. The transition time records Ledger binding, not test execution."
+        },
+        {
+          "at": "2026-08-18T01:32:21Z",
+          "transition": "fixed_target_verified->fixed_diff_verified",
+          "actor": "R27AA independent reviewer",
+          "reason": "Independent G4_DIFF V3 passed on review diff fd3403555af7ec7ad9870d9c3494fc711472ec4dc580eacd1db4f54024f152ee; R27W-D015-001 and R27Y-INFO-001 were closed, with no Critical, High, Medium or Low finding remaining. The transition time records Ledger binding."
+        },
+        {
+          "at": "2026-08-18T01:55:36Z",
+          "transition": "fixed_diff_verified->fixed_full_verified",
+          "actor": "R27AD standalone API G3",
+          "reason": "Standalone API G3 passed on exact HEAD 14d9fe62550fd6487c8633937f511ab80e2a81ea and tree 516b66916bae8fd4dd05975ee9b7766c89dbceaf; API lint, typecheck, canonical full test and build passed; 124 test files and 1196 tests passed, 0 failed and 0 skipped; all three D015 relevant test files executed."
+        },
+        {
+          "at": "2026-08-18T02:05:36Z",
+          "transition": "fixed_full_verified->closed",
+          "actor": "R27AE closure recorder",
+          "reason": "Closure was recorded after exact-identity targeted, affected-regression, independent G4_DIFF V3 and standalone API G3 evidence all passed. Historical migration and release/deployment blockers remain separate; production deployment was not authorized."
+        }
       ]
     },
     {
@@ -2043,6 +2798,1750 @@
           "transition": "fixed_target_verified->fixed_diff_verified",
           "actor": "Codex local applicability verification with independent node_applicability_review",
           "reason": "Independent read-only context verified final external test diff, native loading boundary and applicability evidence; no risk acceptance or claim that embedded code is patched; full/remote checks remain pending."
+        }
+      ],
+      "closure": null
+    },
+    {
+      "id": "R27-RELEASE-P293-QW3H-JR36",
+      "title": "Next.js: Unauthenticated Remote Code Execution on windows-hosted servers",
+      "status": "in_progress",
+      "severity": "critical",
+      "confidence": "high",
+      "classification": "pre_existing",
+      "cwe": null,
+      "source": {
+        "type": "sca",
+        "report_path": "test-results/r27rc2/production-release-20260910/sca-baseline.json",
+        "binding": {
+          "commit": "7783480457c41d64d7c73ba519bf396197c501ee",
+          "tree": "e04d68a95b781098a1f8bceb850b5cc8b5e05d03",
+          "tool_name": "pnpm audit",
+          "tool_version": "9.15.4",
+          "command": "pnpm audit --audit-level low --json",
+          "environment": "Candidate dependency graph; advisory registry only, no production payloads",
+          "result_sha256": "32672eacf8f46cb11dad83e8597b6d717dcde4284a70d9926e5991639bb10140",
+          "log_path": "test-results/r27rc2/production-release-20260910/sca-baseline.json",
+          "config_sha256": "5e7450da9c82bfe96390a9be4198ebc784e5e858e17c5fc5ed71ce33713e3f2c",
+          "recorded_at": "2026-09-10T12:36:03Z"
+        }
+      },
+      "scope": {
+        "component": "next",
+        "affected_files": [
+          "package.json",
+          "pnpm-lock.yaml",
+          "apps/web/package.json"
+        ],
+        "entry_points": [
+          "https://github.com/advisories/GHSA-p293-qw3h-jr36"
+        ],
+        "trust_boundary": "Dependency graph used by production API/Web or isolated build/test tooling"
+      },
+      "evidence": {
+        "reachable": null,
+        "production_exposed": null,
+        "reproduction_path": "Immutable baseline SCA confirms 15.5.21 in affected range >=13.4.0 <15.5.24; fixed >=15.5.24. No exploit sent to production.",
+        "proof_gap": "Exact updated dependency graph, target regression, full candidate and final images await validation. Package alert does not alone establish production exploitability."
+      },
+      "root_cause_cluster": "GHSA-p293-qw3h-jr36",
+      "security_invariants": [],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
+      "fix": {
+        "task_id": "R27_PRODUCTION_RELEASE_20260910",
+        "branch": "security/r27rc2-candidate-repair",
+        "commit": null,
+        "tree": null,
+        "changed_files": [
+          "package.json",
+          "pnpm-lock.yaml",
+          "apps/web/package.json"
+        ]
+      },
+      "verification": {
+        "targeted": {
+          "status": "pending",
+          "binding": null,
+          "notes": "New advisory requires updated evidence."
+        },
+        "affected_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "New advisory requires updated evidence."
+        },
+        "diff_review": {
+          "status": "pending",
+          "binding": null,
+          "notes": "New advisory requires updated evidence."
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "New advisory requires updated evidence."
+        }
+      },
+      "history": [
+        {
+          "at": "2026-09-10T12:36:03Z",
+          "transition": "null->candidate",
+          "actor": "Codex fresh release scan",
+          "reason": "GHSA-p293-qw3h-jr36 reported by registry."
+        },
+        {
+          "at": "2026-09-10T12:36:03Z",
+          "transition": "candidate->in_progress",
+          "actor": "Codex",
+          "reason": "Owner authorized all medium/high remediation before production release; upgrading to patched dependency."
+        }
+      ],
+      "closure": null
+    },
+    {
+      "id": "R27-RELEASE-82FW-GWWQ-J7X9",
+      "title": "Vitest: Path Traversal / Arbitrary File Read via @vitest/mocker Redirect Mock",
+      "status": "in_progress",
+      "severity": "medium",
+      "confidence": "high",
+      "classification": "pre_existing",
+      "cwe": null,
+      "source": {
+        "type": "sca",
+        "report_path": "test-results/r27rc2/production-release-20260910/sca-baseline.json",
+        "binding": {
+          "commit": "7783480457c41d64d7c73ba519bf396197c501ee",
+          "tree": "e04d68a95b781098a1f8bceb850b5cc8b5e05d03",
+          "tool_name": "pnpm audit",
+          "tool_version": "9.15.4",
+          "command": "pnpm audit --audit-level low --json",
+          "environment": "Candidate dependency graph; advisory registry only, no production payloads",
+          "result_sha256": "32672eacf8f46cb11dad83e8597b6d717dcde4284a70d9926e5991639bb10140",
+          "log_path": "test-results/r27rc2/production-release-20260910/sca-baseline.json",
+          "config_sha256": "5e7450da9c82bfe96390a9be4198ebc784e5e858e17c5fc5ed71ce33713e3f2c",
+          "recorded_at": "2026-09-10T12:36:03Z"
+        }
+      },
+      "scope": {
+        "component": "vitest",
+        "affected_files": [
+          "package.json",
+          "pnpm-lock.yaml",
+          "apps/web/package.json",
+          "apps/api/package.json"
+        ],
+        "entry_points": [
+          "https://github.com/advisories/GHSA-82fw-gwwq-j7x9"
+        ],
+        "trust_boundary": "Dependency graph used by production API/Web or isolated build/test tooling"
+      },
+      "evidence": {
+        "reachable": null,
+        "production_exposed": null,
+        "reproduction_path": "Immutable baseline SCA confirms 3.2.7 in affected range >=2.1.0 <4.1.11; fixed >=4.1.11. No exploit sent to production.",
+        "proof_gap": "Exact updated dependency graph, target regression, full candidate and final images await validation. Package alert does not alone establish production exploitability."
+      },
+      "root_cause_cluster": "GHSA-82fw-gwwq-j7x9",
+      "security_invariants": [],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
+      "fix": {
+        "task_id": "R27_PRODUCTION_RELEASE_20260910",
+        "branch": "security/r27rc2-candidate-repair",
+        "commit": null,
+        "tree": null,
+        "changed_files": [
+          "package.json",
+          "pnpm-lock.yaml",
+          "apps/web/package.json",
+          "apps/api/package.json"
+        ]
+      },
+      "verification": {
+        "targeted": {
+          "status": "pending",
+          "binding": null,
+          "notes": "New advisory requires updated evidence."
+        },
+        "affected_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "New advisory requires updated evidence."
+        },
+        "diff_review": {
+          "status": "pending",
+          "binding": null,
+          "notes": "New advisory requires updated evidence."
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "New advisory requires updated evidence."
+        }
+      },
+      "history": [
+        {
+          "at": "2026-09-10T12:36:03Z",
+          "transition": "null->candidate",
+          "actor": "Codex fresh release scan",
+          "reason": "GHSA-82fw-gwwq-j7x9 reported by registry."
+        },
+        {
+          "at": "2026-09-10T12:36:03Z",
+          "transition": "candidate->in_progress",
+          "actor": "Codex",
+          "reason": "Owner authorized all medium/high remediation before production release; upgrading to patched dependency."
+        }
+      ],
+      "closure": null
+    },
+    {
+      "id": "R27-RELEASE-RGJ7-G3M4-5G8C",
+      "title": "sharp: Vulnerabilities in libheif: GHSA-g89c-p67h-r497 and GHSA-2jg2-4ch7-h545",
+      "status": "in_progress",
+      "severity": "high",
+      "confidence": "high",
+      "classification": "pre_existing",
+      "cwe": null,
+      "source": {
+        "type": "sca",
+        "report_path": "test-results/r27rc2/production-release-20260910/sca-baseline.json",
+        "binding": {
+          "commit": "7783480457c41d64d7c73ba519bf396197c501ee",
+          "tree": "e04d68a95b781098a1f8bceb850b5cc8b5e05d03",
+          "tool_name": "pnpm audit",
+          "tool_version": "9.15.4",
+          "command": "pnpm audit --audit-level low --json",
+          "environment": "Candidate dependency graph; advisory registry only, no production payloads",
+          "result_sha256": "32672eacf8f46cb11dad83e8597b6d717dcde4284a70d9926e5991639bb10140",
+          "log_path": "test-results/r27rc2/production-release-20260910/sca-baseline.json",
+          "config_sha256": "5e7450da9c82bfe96390a9be4198ebc784e5e858e17c5fc5ed71ce33713e3f2c",
+          "recorded_at": "2026-09-10T12:36:03Z"
+        }
+      },
+      "scope": {
+        "component": "sharp",
+        "affected_files": [
+          "package.json",
+          "pnpm-lock.yaml"
+        ],
+        "entry_points": [
+          "https://github.com/advisories/GHSA-rgj7-g3m4-5g8c"
+        ],
+        "trust_boundary": "Dependency graph used by production API/Web or isolated build/test tooling"
+      },
+      "evidence": {
+        "reachable": null,
+        "production_exposed": null,
+        "reproduction_path": "Immutable baseline SCA confirms 0.35.0 in affected range <0.35.4; fixed >=0.35.4. No exploit sent to production.",
+        "proof_gap": "Exact updated dependency graph, target regression, full candidate and final images await validation. Package alert does not alone establish production exploitability."
+      },
+      "root_cause_cluster": "GHSA-rgj7-g3m4-5g8c",
+      "security_invariants": [],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
+      "fix": {
+        "task_id": "R27_PRODUCTION_RELEASE_20260910",
+        "branch": "security/r27rc2-candidate-repair",
+        "commit": null,
+        "tree": null,
+        "changed_files": [
+          "package.json",
+          "pnpm-lock.yaml"
+        ]
+      },
+      "verification": {
+        "targeted": {
+          "status": "pending",
+          "binding": null,
+          "notes": "New advisory requires updated evidence."
+        },
+        "affected_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "New advisory requires updated evidence."
+        },
+        "diff_review": {
+          "status": "pending",
+          "binding": null,
+          "notes": "New advisory requires updated evidence."
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "New advisory requires updated evidence."
+        }
+      },
+      "history": [
+        {
+          "at": "2026-09-10T12:36:03Z",
+          "transition": "null->candidate",
+          "actor": "Codex fresh release scan",
+          "reason": "GHSA-rgj7-g3m4-5g8c reported by registry."
+        },
+        {
+          "at": "2026-09-10T12:36:03Z",
+          "transition": "candidate->in_progress",
+          "actor": "Codex",
+          "reason": "Owner authorized all medium/high remediation before production release; upgrading to patched dependency."
+        }
+      ],
+      "closure": null
+    },
+    {
+      "id": "R27-RELEASE-2XP9-VWFH-VXW4",
+      "title": "Next.js: Unauthenticated Remote Code Execution in Image Optimization API when AVIF files are used",
+      "status": "in_progress",
+      "severity": "critical",
+      "confidence": "high",
+      "classification": "pre_existing",
+      "cwe": null,
+      "source": {
+        "type": "sca",
+        "report_path": "test-results/r27rc2/production-release-20260910/sca-baseline.json",
+        "binding": {
+          "commit": "7783480457c41d64d7c73ba519bf396197c501ee",
+          "tree": "e04d68a95b781098a1f8bceb850b5cc8b5e05d03",
+          "tool_name": "pnpm audit",
+          "tool_version": "9.15.4",
+          "command": "pnpm audit --audit-level low --json",
+          "environment": "Candidate dependency graph; advisory registry only, no production payloads",
+          "result_sha256": "32672eacf8f46cb11dad83e8597b6d717dcde4284a70d9926e5991639bb10140",
+          "log_path": "test-results/r27rc2/production-release-20260910/sca-baseline.json",
+          "config_sha256": "5e7450da9c82bfe96390a9be4198ebc784e5e858e17c5fc5ed71ce33713e3f2c",
+          "recorded_at": "2026-09-10T12:36:03Z"
+        }
+      },
+      "scope": {
+        "component": "next",
+        "affected_files": [
+          "package.json",
+          "pnpm-lock.yaml",
+          "apps/web/package.json"
+        ],
+        "entry_points": [
+          "https://github.com/advisories/GHSA-2xp9-vwfh-vxw4"
+        ],
+        "trust_boundary": "Dependency graph used by production API/Web or isolated build/test tooling"
+      },
+      "evidence": {
+        "reachable": null,
+        "production_exposed": null,
+        "reproduction_path": "Immutable baseline SCA confirms 15.5.21 in affected range >=10.0.0 <15.5.24; fixed >=15.5.24. No exploit sent to production.",
+        "proof_gap": "Exact updated dependency graph, target regression, full candidate and final images await validation. Package alert does not alone establish production exploitability."
+      },
+      "root_cause_cluster": "GHSA-2xp9-vwfh-vxw4",
+      "security_invariants": [],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
+      "fix": {
+        "task_id": "R27_PRODUCTION_RELEASE_20260910",
+        "branch": "security/r27rc2-candidate-repair",
+        "commit": null,
+        "tree": null,
+        "changed_files": [
+          "package.json",
+          "pnpm-lock.yaml",
+          "apps/web/package.json"
+        ]
+      },
+      "verification": {
+        "targeted": {
+          "status": "pending",
+          "binding": null,
+          "notes": "New advisory requires updated evidence."
+        },
+        "affected_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "New advisory requires updated evidence."
+        },
+        "diff_review": {
+          "status": "pending",
+          "binding": null,
+          "notes": "New advisory requires updated evidence."
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "New advisory requires updated evidence."
+        }
+      },
+      "history": [
+        {
+          "at": "2026-09-10T12:36:03Z",
+          "transition": "null->candidate",
+          "actor": "Codex fresh release scan",
+          "reason": "GHSA-2xp9-vwfh-vxw4 reported by registry."
+        },
+        {
+          "at": "2026-09-10T12:36:03Z",
+          "transition": "candidate->in_progress",
+          "actor": "Codex",
+          "reason": "Owner authorized all medium/high remediation before production release; upgrading to patched dependency."
+        }
+      ],
+      "closure": null
+    },
+    {
+      "id": "R27-RELEASE-WC9G-MQFW-JRWM",
+      "title": "multer vulnerable to Denial of Service via crafted multipart field names",
+      "status": "in_progress",
+      "severity": "high",
+      "confidence": "high",
+      "classification": "pre_existing",
+      "cwe": null,
+      "source": {
+        "type": "sca",
+        "report_path": "test-results/r27rc2/production-release-20260910/sca-baseline.json",
+        "binding": {
+          "commit": "7783480457c41d64d7c73ba519bf396197c501ee",
+          "tree": "e04d68a95b781098a1f8bceb850b5cc8b5e05d03",
+          "tool_name": "pnpm audit",
+          "tool_version": "9.15.4",
+          "command": "pnpm audit --audit-level low --json",
+          "environment": "Candidate dependency graph; advisory registry only, no production payloads",
+          "result_sha256": "32672eacf8f46cb11dad83e8597b6d717dcde4284a70d9926e5991639bb10140",
+          "log_path": "test-results/r27rc2/production-release-20260910/sca-baseline.json",
+          "config_sha256": "5e7450da9c82bfe96390a9be4198ebc784e5e858e17c5fc5ed71ce33713e3f2c",
+          "recorded_at": "2026-09-10T12:36:03Z"
+        }
+      },
+      "scope": {
+        "component": "multer",
+        "affected_files": [
+          "package.json",
+          "pnpm-lock.yaml",
+          "apps/api/src/common/file-upload-options.ts",
+          "apps/api/src/common/file-upload-options.spec.ts"
+        ],
+        "entry_points": [
+          "https://github.com/advisories/GHSA-wc9g-mqfw-jrwm"
+        ],
+        "trust_boundary": "Dependency graph used by production API/Web or isolated build/test tooling"
+      },
+      "evidence": {
+        "reachable": null,
+        "production_exposed": null,
+        "reproduction_path": "Immutable baseline SCA confirms 2.2.0 in affected range <2.3.0; fixed >=2.3.0. No exploit sent to production.",
+        "proof_gap": "Exact updated dependency graph, target regression, full candidate and final images await validation. Package alert does not alone establish production exploitability."
+      },
+      "root_cause_cluster": "GHSA-wc9g-mqfw-jrwm",
+      "security_invariants": [],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
+      "fix": {
+        "task_id": "R27_PRODUCTION_RELEASE_20260910",
+        "branch": "security/r27rc2-candidate-repair",
+        "commit": null,
+        "tree": null,
+        "changed_files": [
+          "package.json",
+          "pnpm-lock.yaml",
+          "apps/api/src/common/file-upload-options.ts",
+          "apps/api/src/common/file-upload-options.spec.ts"
+        ]
+      },
+      "verification": {
+        "targeted": {
+          "status": "pending",
+          "binding": null,
+          "notes": "New advisory requires updated evidence."
+        },
+        "affected_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "New advisory requires updated evidence."
+        },
+        "diff_review": {
+          "status": "pending",
+          "binding": null,
+          "notes": "New advisory requires updated evidence."
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "New advisory requires updated evidence."
+        }
+      },
+      "history": [
+        {
+          "at": "2026-09-10T12:36:03Z",
+          "transition": "null->candidate",
+          "actor": "Codex fresh release scan",
+          "reason": "GHSA-wc9g-mqfw-jrwm reported by registry."
+        },
+        {
+          "at": "2026-09-10T12:36:03Z",
+          "transition": "candidate->in_progress",
+          "actor": "Codex",
+          "reason": "Owner authorized all medium/high remediation before production release; upgrading to patched dependency."
+        }
+      ],
+      "closure": null
+    },
+    {
+      "id": "R27-RELEASE-QFVM-CV95-JQJF",
+      "title": "multer vulnerable to Denial of Service via file descriptor leak on aborted uploads",
+      "status": "in_progress",
+      "severity": "high",
+      "confidence": "high",
+      "classification": "pre_existing",
+      "cwe": null,
+      "source": {
+        "type": "sca",
+        "report_path": "test-results/r27rc2/production-release-20260910/sca-baseline.json",
+        "binding": {
+          "commit": "7783480457c41d64d7c73ba519bf396197c501ee",
+          "tree": "e04d68a95b781098a1f8bceb850b5cc8b5e05d03",
+          "tool_name": "pnpm audit",
+          "tool_version": "9.15.4",
+          "command": "pnpm audit --audit-level low --json",
+          "environment": "Candidate dependency graph; advisory registry only, no production payloads",
+          "result_sha256": "32672eacf8f46cb11dad83e8597b6d717dcde4284a70d9926e5991639bb10140",
+          "log_path": "test-results/r27rc2/production-release-20260910/sca-baseline.json",
+          "config_sha256": "5e7450da9c82bfe96390a9be4198ebc784e5e858e17c5fc5ed71ce33713e3f2c",
+          "recorded_at": "2026-09-10T12:36:03Z"
+        }
+      },
+      "scope": {
+        "component": "multer",
+        "affected_files": [
+          "package.json",
+          "pnpm-lock.yaml",
+          "apps/api/src/common/file-upload-options.ts",
+          "apps/api/src/common/file-upload-options.spec.ts"
+        ],
+        "entry_points": [
+          "https://github.com/advisories/GHSA-qfvm-cv95-jqjf"
+        ],
+        "trust_boundary": "Dependency graph used by production API/Web or isolated build/test tooling"
+      },
+      "evidence": {
+        "reachable": null,
+        "production_exposed": null,
+        "reproduction_path": "Immutable baseline SCA confirms 2.2.0 in affected range =2.2.0; fixed >=2.3.0. No exploit sent to production.",
+        "proof_gap": "Exact updated dependency graph, target regression, full candidate and final images await validation. Package alert does not alone establish production exploitability."
+      },
+      "root_cause_cluster": "GHSA-qfvm-cv95-jqjf",
+      "security_invariants": [],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
+      "fix": {
+        "task_id": "R27_PRODUCTION_RELEASE_20260910",
+        "branch": "security/r27rc2-candidate-repair",
+        "commit": null,
+        "tree": null,
+        "changed_files": [
+          "package.json",
+          "pnpm-lock.yaml",
+          "apps/api/src/common/file-upload-options.ts",
+          "apps/api/src/common/file-upload-options.spec.ts"
+        ]
+      },
+      "verification": {
+        "targeted": {
+          "status": "pending",
+          "binding": null,
+          "notes": "New advisory requires updated evidence."
+        },
+        "affected_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "New advisory requires updated evidence."
+        },
+        "diff_review": {
+          "status": "pending",
+          "binding": null,
+          "notes": "New advisory requires updated evidence."
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "New advisory requires updated evidence."
+        }
+      },
+      "history": [
+        {
+          "at": "2026-09-10T12:36:03Z",
+          "transition": "null->candidate",
+          "actor": "Codex fresh release scan",
+          "reason": "GHSA-qfvm-cv95-jqjf reported by registry."
+        },
+        {
+          "at": "2026-09-10T12:36:03Z",
+          "transition": "candidate->in_progress",
+          "actor": "Codex",
+          "reason": "Owner authorized all medium/high remediation before production release; upgrading to patched dependency."
+        }
+      ],
+      "closure": null
+    },
+    {
+      "id": "R27-RELEASE-QVFW-J98X-7Q72",
+      "title": "multer vulnerable to file size limit bypass via async fileFilter race condition",
+      "status": "in_progress",
+      "severity": "low",
+      "confidence": "high",
+      "classification": "pre_existing",
+      "cwe": null,
+      "source": {
+        "type": "sca",
+        "report_path": "test-results/r27rc2/production-release-20260910/sca-baseline.json",
+        "binding": {
+          "commit": "7783480457c41d64d7c73ba519bf396197c501ee",
+          "tree": "e04d68a95b781098a1f8bceb850b5cc8b5e05d03",
+          "tool_name": "pnpm audit",
+          "tool_version": "9.15.4",
+          "command": "pnpm audit --audit-level low --json",
+          "environment": "Candidate dependency graph; advisory registry only, no production payloads",
+          "result_sha256": "32672eacf8f46cb11dad83e8597b6d717dcde4284a70d9926e5991639bb10140",
+          "log_path": "test-results/r27rc2/production-release-20260910/sca-baseline.json",
+          "config_sha256": "5e7450da9c82bfe96390a9be4198ebc784e5e858e17c5fc5ed71ce33713e3f2c",
+          "recorded_at": "2026-09-10T12:36:03Z"
+        }
+      },
+      "scope": {
+        "component": "multer",
+        "affected_files": [
+          "package.json",
+          "pnpm-lock.yaml",
+          "apps/api/src/common/file-upload-options.ts",
+          "apps/api/src/common/file-upload-options.spec.ts"
+        ],
+        "entry_points": [
+          "https://github.com/advisories/GHSA-qvfw-j98x-7q72"
+        ],
+        "trust_boundary": "Dependency graph used by production API/Web or isolated build/test tooling"
+      },
+      "evidence": {
+        "reachable": null,
+        "production_exposed": null,
+        "reproduction_path": "Immutable baseline SCA confirms 2.2.0 in affected range <2.3.0; fixed >=2.3.0. No exploit sent to production.",
+        "proof_gap": "Exact updated dependency graph, target regression, full candidate and final images await validation. Package alert does not alone establish production exploitability."
+      },
+      "root_cause_cluster": "GHSA-qvfw-j98x-7q72",
+      "security_invariants": [],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
+      "fix": {
+        "task_id": "R27_PRODUCTION_RELEASE_20260910",
+        "branch": "security/r27rc2-candidate-repair",
+        "commit": null,
+        "tree": null,
+        "changed_files": [
+          "package.json",
+          "pnpm-lock.yaml",
+          "apps/api/src/common/file-upload-options.ts",
+          "apps/api/src/common/file-upload-options.spec.ts"
+        ]
+      },
+      "verification": {
+        "targeted": {
+          "status": "pending",
+          "binding": null,
+          "notes": "New advisory requires updated evidence."
+        },
+        "affected_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "New advisory requires updated evidence."
+        },
+        "diff_review": {
+          "status": "pending",
+          "binding": null,
+          "notes": "New advisory requires updated evidence."
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "New advisory requires updated evidence."
+        }
+      },
+      "history": [
+        {
+          "at": "2026-09-10T12:36:03Z",
+          "transition": "null->candidate",
+          "actor": "Codex fresh release scan",
+          "reason": "GHSA-qvfw-j98x-7q72 reported by registry."
+        },
+        {
+          "at": "2026-09-10T12:36:03Z",
+          "transition": "candidate->in_progress",
+          "actor": "Codex",
+          "reason": "Owner authorized all medium/high remediation before production release; upgrading to patched dependency."
+        }
+      ],
+      "closure": null
+    },
+    {
+      "id": "R27-RELEASE-535W-7CP7-47Q4",
+      "title": "multer vulnerable to Denial of Service via oversized array index in field names",
+      "status": "in_progress",
+      "severity": "high",
+      "confidence": "high",
+      "classification": "pre_existing",
+      "cwe": null,
+      "source": {
+        "type": "sca",
+        "report_path": "test-results/r27rc2/production-release-20260910/sca-baseline.json",
+        "binding": {
+          "commit": "7783480457c41d64d7c73ba519bf396197c501ee",
+          "tree": "e04d68a95b781098a1f8bceb850b5cc8b5e05d03",
+          "tool_name": "pnpm audit",
+          "tool_version": "9.15.4",
+          "command": "pnpm audit --audit-level low --json",
+          "environment": "Candidate dependency graph; advisory registry only, no production payloads",
+          "result_sha256": "32672eacf8f46cb11dad83e8597b6d717dcde4284a70d9926e5991639bb10140",
+          "log_path": "test-results/r27rc2/production-release-20260910/sca-baseline.json",
+          "config_sha256": "5e7450da9c82bfe96390a9be4198ebc784e5e858e17c5fc5ed71ce33713e3f2c",
+          "recorded_at": "2026-09-10T12:36:03Z"
+        }
+      },
+      "scope": {
+        "component": "multer",
+        "affected_files": [
+          "package.json",
+          "pnpm-lock.yaml",
+          "apps/api/src/common/file-upload-options.ts",
+          "apps/api/src/common/file-upload-options.spec.ts"
+        ],
+        "entry_points": [
+          "https://github.com/advisories/GHSA-535w-7cp7-47q4"
+        ],
+        "trust_boundary": "Dependency graph used by production API/Web or isolated build/test tooling"
+      },
+      "evidence": {
+        "reachable": null,
+        "production_exposed": null,
+        "reproduction_path": "Immutable baseline SCA confirms 2.2.0 in affected range <2.3.0; fixed >=2.3.0. No exploit sent to production.",
+        "proof_gap": "Exact updated dependency graph, target regression, full candidate and final images await validation. Package alert does not alone establish production exploitability."
+      },
+      "root_cause_cluster": "GHSA-535w-7cp7-47q4",
+      "security_invariants": [],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
+      "fix": {
+        "task_id": "R27_PRODUCTION_RELEASE_20260910",
+        "branch": "security/r27rc2-candidate-repair",
+        "commit": null,
+        "tree": null,
+        "changed_files": [
+          "package.json",
+          "pnpm-lock.yaml",
+          "apps/api/src/common/file-upload-options.ts",
+          "apps/api/src/common/file-upload-options.spec.ts"
+        ]
+      },
+      "verification": {
+        "targeted": {
+          "status": "pending",
+          "binding": null,
+          "notes": "New advisory requires updated evidence."
+        },
+        "affected_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "New advisory requires updated evidence."
+        },
+        "diff_review": {
+          "status": "pending",
+          "binding": null,
+          "notes": "New advisory requires updated evidence."
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "New advisory requires updated evidence."
+        }
+      },
+      "history": [
+        {
+          "at": "2026-09-10T12:36:03Z",
+          "transition": "null->candidate",
+          "actor": "Codex fresh release scan",
+          "reason": "GHSA-535w-7cp7-47q4 reported by registry."
+        },
+        {
+          "at": "2026-09-10T12:36:03Z",
+          "transition": "candidate->in_progress",
+          "actor": "Codex",
+          "reason": "Owner authorized all medium/high remediation before production release; upgrading to patched dependency."
+        }
+      ],
+      "closure": null
+    },
+    {
+      "id": "R27-SCANNER-ZIP-LIMIT-001",
+      "title": "ClamAV ZIP member truncation can return clean without an exceeds-limit alert",
+      "status": "in_progress",
+      "severity": "high",
+      "confidence": "high",
+      "classification": "pre_existing",
+      "cwe": "CWE-693",
+      "source": {
+        "type": "manual",
+        "report_path": "/private/tmp/rc2-production-20260910/evidence/scanner-stream-regression.log",
+        "binding": {
+          "commit": "8172cba77db286c75a54d35db3f49a22b37de1b8",
+          "tree": "928fd27f18e72b2639a8f17deeaddb355f55bbde",
+          "tool_name": "bounded INSTREAM regression and official source review",
+          "tool_version": "ClamAV 1.4.6",
+          "command": "synthetic scanner-stream-regression; official unzip.c review",
+          "environment": "isolated private scanner, synthetic files only, official image sha256:aeac907bb9445b12c1dd76f9283415272d8dcd596d402245ed13729d7181bb8a",
+          "result_sha256": "0d5f9f563d969224247a9b58317a2b196f4f4036250cd116f53858e3c9d629aa",
+          "log_path": "/private/tmp/rc2-production-20260910/evidence/scanner-stream-regression.log",
+          "config_sha256": null,
+          "recorded_at": "2026-09-10T20:48:00Z"
+        }
+      },
+      "scope": {
+        "component": "ClamAV ZIP decompression bounds",
+        "affected_files": [
+          "scripts/security/clamav/zip-limit-alert.patch",
+          "scripts/security/clamav/source.json",
+          "apps/api/src/modules/attachments/malware-scanner.service.ts",
+          "apps/api/src/modules/attachments/malware-scanner.service.spec.ts"
+        ],
+        "entry_points": [
+          "ClamAV INSTREAM ZIP parsing"
+        ],
+        "trust_boundary": "Untrusted uploaded archive content entering the scanner clean/rejected verdict"
+      },
+      "evidence": {
+        "reachable": true,
+        "production_exposed": false,
+        "reproduction_path": "Synthetic ZIP with a 21MiB actual decompressed member returned stream: OK under MaxFileSize20M and AlertExceedsMax=yes. Official source silently truncates four decoding paths. No real attachment used this scanner.",
+        "proof_gap": "Original benign stream regression passes on isolated ZIP-patched image sha256:78b90ba544eda28b709074021110fd5a4e658ac1e8b237b67c9d05a00e90fa5a; full compression-path/attachment-state/final-artifact verification and upstream resource-test disposition remain pending."
+      },
+      "root_cause_cluster": "CLAMAV_ZIP_SILENT_MAXFILESIZE_TRUNCATION",
+      "security_invariants": [],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
+      "fix": {
+        "task_id": "R27_PRODUCTION_RELEASE_20260910",
+        "branch": "security/r27rc2-candidate-repair",
+        "commit": null,
+        "tree": null,
+        "changed_files": [
+          "scripts/security/clamav/zip-limit-alert.patch",
+          "scripts/security/clamav/source.json",
+          "apps/api/src/modules/attachments/malware-scanner.service.ts",
+          "apps/api/src/modules/attachments/malware-scanner.service.spec.ts"
+        ]
+      },
+      "verification": {
+        "targeted": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Patch static review and API classification regression recorded in execution ledger; final engine artifact verification remains pending."
+        },
+        "affected_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Patch static review and API classification regression recorded in execution ledger; final engine artifact verification remains pending."
+        },
+        "diff_review": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Patch static review and API classification regression recorded in execution ledger; final engine artifact verification remains pending."
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Patch static review and API classification regression recorded in execution ledger; final engine artifact verification remains pending."
+        }
+      },
+      "history": [
+        {
+          "at": "2026-09-10T20:48:00Z",
+          "transition": "null->in_progress",
+          "actor": "Codex",
+          "reason": "Confirmed synthetic failure; owner delegate approved minimal engine patch, no risk acceptance or weakened limit."
+        }
+      ],
+      "closure": null
+    },
+    {
+      "id": "R27-HOST-KERNEL-001",
+      "title": "Installed production GCP kernel requires supported security update",
+      "status": "in_progress",
+      "severity": "high",
+      "confidence": "high",
+      "classification": "pre_existing",
+      "cwe": "CWE-1104",
+      "source": {
+        "type": "manual",
+        "report_path": "/private/tmp/rc2-production-20260910/evidence/production-kernel-features.json.log",
+        "binding": {
+          "commit": "7d339e05b56a3b5c28bd1693c9e9b0485023bf8b",
+          "tree": "a13165ae70a37203f988eaa6c52c368933673c12",
+          "tool_name": "bounded host inventory and isolated maintenance validation",
+          "tool_version": "2026-09-10",
+          "command": "read-only inventory; controlled synthetic validation",
+          "environment": "existing GCE production inventory plus separate synthetic validation VM; commit/tree identify local assessment checkpoint, not deployed host binaries",
+          "result_sha256": "6410c700d208d9116cc093dd93e9eeb9d9464e21ee8a90bed9b600cd882c4ef3",
+          "log_path": "/private/tmp/rc2-production-20260910/evidence/production-kernel-features.json.log",
+          "config_sha256": null,
+          "recorded_at": "2026-09-10T21:24:00Z"
+        }
+      },
+      "scope": {
+        "component": "Kernel and boot configuration",
+        "affected_files": [],
+        "entry_points": [
+          "Kernel and boot configuration"
+        ],
+        "trust_boundary": "Host or scanner runtime security boundary"
+      },
+      "evidence": {
+        "reachable": false,
+        "production_exposed": false,
+        "reproduction_path": "Original runtime remains 6.8.0-1053-gcp. Host SCA found applicable fixes beyond installed/runtime versions; approved Jammy 5.15 LTS route was tested on an isolated VM.",
+        "proof_gap": "Production update, persistent module mitigation, post-boot identity and remaining host CVE applicability triage pending. Reachability booleans do not assert global non-applicability; no exploit was attempted."
+      },
+      "root_cause_cluster": "R27-HOST-KERNEL-001",
+      "security_invariants": [],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
+      "fix": {
+        "task_id": "R27_PRODUCTION_RELEASE_20260910",
+        "branch": "security/r27rc2-candidate-repair",
+        "commit": null,
+        "tree": null,
+        "changed_files": []
+      },
+      "verification": {
+        "targeted": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Production update, persistent module mitigation, post-boot identity and remaining host CVE applicability triage pending."
+        },
+        "affected_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Production update, persistent module mitigation, post-boot identity and remaining host CVE applicability triage pending."
+        },
+        "diff_review": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Production update, persistent module mitigation, post-boot identity and remaining host CVE applicability triage pending."
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Production update, persistent module mitigation, post-boot identity and remaining host CVE applicability triage pending."
+        }
+      },
+      "history": [
+        {
+          "at": "2026-09-10T21:24:00Z",
+          "transition": "null->in_progress",
+          "actor": "Codex",
+          "reason": "Original runtime remains 6.8.0-1053-gcp. Host SCA found applicable fixes beyond installed/runtime versions; approved Jammy 5.15 LTS route was tested on an isolated VM."
+        }
+      ],
+      "closure": null
+    },
+    {
+      "id": "R27-HOST-SCTP-001",
+      "title": "CVE-2026-64564: unused vulnerable SCTP module remains autoloadable",
+      "status": "in_progress",
+      "severity": "critical",
+      "confidence": "high",
+      "classification": "pre_existing",
+      "cwe": "CWE-416",
+      "source": {
+        "type": "manual",
+        "report_path": "/private/tmp/rc2-production-20260910/evidence/production-kernel-features.json.log",
+        "binding": {
+          "commit": "7d339e05b56a3b5c28bd1693c9e9b0485023bf8b",
+          "tree": "a13165ae70a37203f988eaa6c52c368933673c12",
+          "tool_name": "bounded host inventory and isolated maintenance validation",
+          "tool_version": "2026-09-10",
+          "command": "read-only inventory; controlled synthetic validation",
+          "environment": "existing GCE production inventory plus separate synthetic validation VM; commit/tree identify local assessment checkpoint, not deployed host binaries",
+          "result_sha256": "6410c700d208d9116cc093dd93e9eeb9d9464e21ee8a90bed9b600cd882c4ef3",
+          "log_path": "/private/tmp/rc2-production-20260910/evidence/production-kernel-features.json.log",
+          "config_sha256": null,
+          "recorded_at": "2026-09-10T21:24:00Z"
+        }
+      },
+      "scope": {
+        "component": "Kernel SCTP",
+        "affected_files": [],
+        "entry_points": [
+          "Kernel SCTP"
+        ],
+        "trust_boundary": "Host or scanner runtime security boundary"
+      },
+      "evidence": {
+        "reachable": false,
+        "production_exposed": false,
+        "reproduction_path": "CONFIG_IP_SCTP=m, currently unloaded, but modprobe dry run permits loading. Canonical recommends install sctp /bin/false and initramfs update when unused.",
+        "proof_gap": "Temporary host deny and initrd inclusion verified; production mitigation and reboot proof pending. Reachability booleans do not assert global non-applicability; no exploit was attempted."
+      },
+      "root_cause_cluster": "R27-HOST-SCTP-001",
+      "security_invariants": [],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
+      "fix": {
+        "task_id": "R27_PRODUCTION_RELEASE_20260910",
+        "branch": "security/r27rc2-candidate-repair",
+        "commit": null,
+        "tree": null,
+        "changed_files": []
+      },
+      "verification": {
+        "targeted": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Temporary host deny and initrd inclusion verified; production mitigation and reboot proof pending."
+        },
+        "affected_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Temporary host deny and initrd inclusion verified; production mitigation and reboot proof pending."
+        },
+        "diff_review": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Temporary host deny and initrd inclusion verified; production mitigation and reboot proof pending."
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Temporary host deny and initrd inclusion verified; production mitigation and reboot proof pending."
+        }
+      },
+      "history": [
+        {
+          "at": "2026-09-10T21:24:00Z",
+          "transition": "null->in_progress",
+          "actor": "Codex",
+          "reason": "CONFIG_IP_SCTP=m, currently unloaded, but modprobe dry run permits loading. Canonical recommends install sctp /bin/false and initramfs update when unused."
+        }
+      ],
+      "closure": null
+    },
+    {
+      "id": "R27-HOST-NFSD-001",
+      "title": "CVE-2026-53398: unused vulnerable NFSD module remains autoloadable",
+      "status": "in_progress",
+      "severity": "critical",
+      "confidence": "high",
+      "classification": "pre_existing",
+      "cwe": "CWE-457",
+      "source": {
+        "type": "manual",
+        "report_path": "/private/tmp/rc2-production-20260910/evidence/production-kernel-features.json.log",
+        "binding": {
+          "commit": "7d339e05b56a3b5c28bd1693c9e9b0485023bf8b",
+          "tree": "a13165ae70a37203f988eaa6c52c368933673c12",
+          "tool_name": "bounded host inventory and isolated maintenance validation",
+          "tool_version": "2026-09-10",
+          "command": "read-only inventory; controlled synthetic validation",
+          "environment": "existing GCE production inventory plus separate synthetic validation VM; commit/tree identify local assessment checkpoint, not deployed host binaries",
+          "result_sha256": "6410c700d208d9116cc093dd93e9eeb9d9464e21ee8a90bed9b600cd882c4ef3",
+          "log_path": "/private/tmp/rc2-production-20260910/evidence/production-kernel-features.json.log",
+          "config_sha256": null,
+          "recorded_at": "2026-09-10T21:24:00Z"
+        }
+      },
+      "scope": {
+        "component": "Kernel NFSD",
+        "affected_files": [],
+        "entry_points": [
+          "Kernel NFSD"
+        ],
+        "trust_boundary": "Host or scanner runtime security boundary"
+      },
+      "evidence": {
+        "reachable": false,
+        "production_exposed": false,
+        "reproduction_path": "CONFIG_NFSD=m, unloaded, no NFS mounts/server. Existing configuration does not persistently block module loading.",
+        "proof_gap": "Temporary deny validated; production mitigation and applicability review pending. No active NFS exposure was observed. Reachability booleans do not assert global non-applicability; no exploit was attempted."
+      },
+      "root_cause_cluster": "R27-HOST-NFSD-001",
+      "security_invariants": [],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
+      "fix": {
+        "task_id": "R27_PRODUCTION_RELEASE_20260910",
+        "branch": "security/r27rc2-candidate-repair",
+        "commit": null,
+        "tree": null,
+        "changed_files": []
+      },
+      "verification": {
+        "targeted": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Temporary deny validated; production mitigation and applicability review pending. No active NFS exposure was observed."
+        },
+        "affected_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Temporary deny validated; production mitigation and applicability review pending. No active NFS exposure was observed."
+        },
+        "diff_review": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Temporary deny validated; production mitigation and applicability review pending. No active NFS exposure was observed."
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Temporary deny validated; production mitigation and applicability review pending. No active NFS exposure was observed."
+        }
+      },
+      "history": [
+        {
+          "at": "2026-09-10T21:24:00Z",
+          "transition": "null->in_progress",
+          "actor": "Codex",
+          "reason": "CONFIG_NFSD=m, unloaded, no NFS mounts/server. Existing configuration does not persistently block module loading."
+        }
+      ],
+      "closure": null
+    },
+    {
+      "id": "R27-HOST-NGINX-001",
+      "title": "CVE-2026-42533: Ubuntu NGINX fix reverted; replacement requires compatibility proof",
+      "status": "in_progress",
+      "severity": "high",
+      "confidence": "high",
+      "classification": "pre_existing",
+      "cwe": "CWE-787",
+      "source": {
+        "type": "manual",
+        "report_path": "/private/tmp/rc2-production-20260910/evidence/production-nginx-module-inventory.log",
+        "binding": {
+          "commit": "7d339e05b56a3b5c28bd1693c9e9b0485023bf8b",
+          "tree": "a13165ae70a37203f988eaa6c52c368933673c12",
+          "tool_name": "bounded host inventory and isolated maintenance validation",
+          "tool_version": "2026-09-10",
+          "command": "read-only inventory; controlled synthetic validation",
+          "environment": "existing GCE production inventory plus separate synthetic validation VM; commit/tree identify local assessment checkpoint, not deployed host binaries",
+          "result_sha256": "f0fdb3bd0276b0da6460faf893ccdf868d39bd5d4d29b0970d39d0b8b7b5de7b",
+          "log_path": "/private/tmp/rc2-production-20260910/evidence/production-nginx-module-inventory.log",
+          "config_sha256": null,
+          "recorded_at": "2026-09-10T21:24:00Z"
+        }
+      },
+      "scope": {
+        "component": "Host NGINX",
+        "affected_files": [],
+        "entry_points": [
+          "Host NGINX"
+        ],
+        "trust_boundary": "Host or scanner runtime security boundary"
+      },
+      "evidence": {
+        "reachable": true,
+        "production_exposed": true,
+        "reproduction_path": "Installed 1.18.0-6ubuntu14.20 remains vulnerable according to current Canonical status. No map directive found in bounded inventory; this alone does not establish full non-applicability.",
+        "proof_gap": "Signed upstream 1.31.5 package verified. Synthetic migration, complete effective production configuration compatibility and actual process replacement pending. Reachability booleans do not assert global non-applicability; no exploit was attempted."
+      },
+      "root_cause_cluster": "R27-HOST-NGINX-001",
+      "security_invariants": [],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
+      "fix": {
+        "task_id": "R27_PRODUCTION_RELEASE_20260910",
+        "branch": "security/r27rc2-candidate-repair",
+        "commit": null,
+        "tree": null,
+        "changed_files": []
+      },
+      "verification": {
+        "targeted": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Signed upstream 1.31.5 package verified. Synthetic migration, complete effective production configuration compatibility and actual process replacement pending."
+        },
+        "affected_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Signed upstream 1.31.5 package verified. Synthetic migration, complete effective production configuration compatibility and actual process replacement pending."
+        },
+        "diff_review": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Signed upstream 1.31.5 package verified. Synthetic migration, complete effective production configuration compatibility and actual process replacement pending."
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Signed upstream 1.31.5 package verified. Synthetic migration, complete effective production configuration compatibility and actual process replacement pending."
+        }
+      },
+      "history": [
+        {
+          "at": "2026-09-10T21:24:00Z",
+          "transition": "null->in_progress",
+          "actor": "Codex",
+          "reason": "Installed 1.18.0-6ubuntu14.20 remains vulnerable according to current Canonical status. No map directive found in bounded inventory; this alone does not establish full non-applicability."
+        }
+      ],
+      "closure": null
+    },
+    {
+      "id": "R27-HOST-DOCKER-001",
+      "title": "CVE-2026-17106: original Docker runtime predates fixed release",
+      "status": "in_progress",
+      "severity": "high",
+      "confidence": "high",
+      "classification": "pre_existing",
+      "cwe": "CWE-1104",
+      "source": {
+        "type": "manual",
+        "report_path": "/private/tmp/rc2-production-20260910/evidence/validation-default-boot-final.log",
+        "binding": {
+          "commit": "7d339e05b56a3b5c28bd1693c9e9b0485023bf8b",
+          "tree": "a13165ae70a37203f988eaa6c52c368933673c12",
+          "tool_name": "bounded host inventory and isolated maintenance validation",
+          "tool_version": "2026-09-10",
+          "command": "read-only inventory; controlled synthetic validation",
+          "environment": "existing GCE production inventory plus separate synthetic validation VM; commit/tree identify local assessment checkpoint, not deployed host binaries",
+          "result_sha256": "ee498a881232a15eeae360a38fe056c19991b7b793be06a4ff988d4e0587a2c8",
+          "log_path": "/private/tmp/rc2-production-20260910/evidence/validation-default-boot-final.log",
+          "config_sha256": null,
+          "recorded_at": "2026-09-10T21:24:00Z"
+        }
+      },
+      "scope": {
+        "component": "Docker daemon",
+        "affected_files": [],
+        "entry_points": [
+          "Docker daemon"
+        ],
+        "trust_boundary": "Host or scanner runtime security boundary"
+      },
+      "evidence": {
+        "reachable": false,
+        "production_exposed": false,
+        "reproduction_path": "Original host remains Docker 29.6; isolated upgrade to 29.8 passed storage, network, container identity and application persistence validation.",
+        "proof_gap": "Original host maintenance/upgrade and co-hosted application persistence proof pending. Reachability booleans do not assert global non-applicability; no exploit was attempted."
+      },
+      "root_cause_cluster": "R27-HOST-DOCKER-001",
+      "security_invariants": [],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
+      "fix": {
+        "task_id": "R27_PRODUCTION_RELEASE_20260910",
+        "branch": "security/r27rc2-candidate-repair",
+        "commit": null,
+        "tree": null,
+        "changed_files": []
+      },
+      "verification": {
+        "targeted": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Original host maintenance/upgrade and co-hosted application persistence proof pending."
+        },
+        "affected_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Original host maintenance/upgrade and co-hosted application persistence proof pending."
+        },
+        "diff_review": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Original host maintenance/upgrade and co-hosted application persistence proof pending."
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Original host maintenance/upgrade and co-hosted application persistence proof pending."
+        }
+      },
+      "history": [
+        {
+          "at": "2026-09-10T21:24:00Z",
+          "transition": "null->in_progress",
+          "actor": "Codex",
+          "reason": "Original host remains Docker 29.6; isolated upgrade to 29.8 passed storage, network, container identity and application persistence validation."
+        }
+      ],
+      "closure": null
+    },
+    {
+      "id": "R27-HOST-REDIS-001",
+      "title": "Host Redis 6.0.16 requires exposure and security-update disposition",
+      "status": "in_progress",
+      "severity": "high",
+      "confidence": "high",
+      "classification": "pre_existing",
+      "cwe": "CWE-1104",
+      "source": {
+        "type": "manual",
+        "report_path": "/private/tmp/rc2-production-20260910/evidence/validation-default-boot-final.log",
+        "binding": {
+          "commit": "7d339e05b56a3b5c28bd1693c9e9b0485023bf8b",
+          "tree": "a13165ae70a37203f988eaa6c52c368933673c12",
+          "tool_name": "bounded host inventory and isolated maintenance validation",
+          "tool_version": "2026-09-10",
+          "command": "read-only inventory; controlled synthetic validation",
+          "environment": "existing GCE production inventory plus separate synthetic validation VM; commit/tree identify local assessment checkpoint, not deployed host binaries",
+          "result_sha256": "ee498a881232a15eeae360a38fe056c19991b7b793be06a4ff988d4e0587a2c8",
+          "log_path": "/private/tmp/rc2-production-20260910/evidence/validation-default-boot-final.log",
+          "config_sha256": null,
+          "recorded_at": "2026-09-10T21:24:00Z"
+        }
+      },
+      "scope": {
+        "component": "Host Redis",
+        "affected_files": [],
+        "entry_points": [
+          "Host Redis"
+        ],
+        "trust_boundary": "Host or scanner runtime security boundary"
+      },
+      "evidence": {
+        "reachable": false,
+        "production_exposed": false,
+        "reproduction_path": "Host Redis remains 6.0.16 on loopback. Dedicated authenticated candidate Redis is verified in isolation, but moving one application does not fix or classify the remaining host service.",
+        "proof_gap": "Determine all host clients and remaining use; apply supported fix or prove removal/disabled exposure without losing unrelated data. CVE-2025-49844/CVE-2024-31449 status requires exact vendor binding. Reachability booleans do not assert global non-applicability; no exploit was attempted."
+      },
+      "root_cause_cluster": "R27-HOST-REDIS-001",
+      "security_invariants": [],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
+      "fix": {
+        "task_id": "R27_PRODUCTION_RELEASE_20260910",
+        "branch": "security/r27rc2-candidate-repair",
+        "commit": null,
+        "tree": null,
+        "changed_files": []
+      },
+      "verification": {
+        "targeted": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Determine all host clients and remaining use; apply supported fix or prove removal/disabled exposure without losing unrelated data. CVE-2025-49844/CVE-2024-31449 status requires exact vendor binding."
+        },
+        "affected_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Determine all host clients and remaining use; apply supported fix or prove removal/disabled exposure without losing unrelated data. CVE-2025-49844/CVE-2024-31449 status requires exact vendor binding."
+        },
+        "diff_review": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Determine all host clients and remaining use; apply supported fix or prove removal/disabled exposure without losing unrelated data. CVE-2025-49844/CVE-2024-31449 status requires exact vendor binding."
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Determine all host clients and remaining use; apply supported fix or prove removal/disabled exposure without losing unrelated data. CVE-2025-49844/CVE-2024-31449 status requires exact vendor binding."
+        }
+      },
+      "history": [
+        {
+          "at": "2026-09-10T21:24:00Z",
+          "transition": "null->in_progress",
+          "actor": "Codex",
+          "reason": "Host Redis remains 6.0.16 on loopback. Dedicated authenticated candidate Redis is verified in isolation, but moving one application does not fix or classify the remaining host service."
+        }
+      ],
+      "closure": null
+    },
+    {
+      "id": "R27-SCANNER-LISTENER-001",
+      "title": "ClamAV listener FD copies can be closed again after reuse",
+      "status": "in_progress",
+      "severity": "medium",
+      "confidence": "high",
+      "classification": "pre_existing",
+      "cwe": "CWE-664",
+      "source": {
+        "type": "manual",
+        "report_path": "/private/tmp/rc2-production-20260910/evidence/clamav-debug-clamd-result.log",
+        "binding": {
+          "commit": "7d339e05b56a3b5c28bd1693c9e9b0485023bf8b",
+          "tree": "a13165ae70a37203f988eaa6c52c368933673c12",
+          "tool_name": "bounded host inventory and isolated maintenance validation",
+          "tool_version": "2026-09-10",
+          "command": "read-only inventory; controlled synthetic validation",
+          "environment": "existing GCE production inventory plus separate synthetic validation VM; commit/tree identify local assessment checkpoint, not deployed host binaries",
+          "result_sha256": "14951c3a42e02519c2d9cfbd44e931cbce1d5e22d1e29a703003f6a51d4f48df",
+          "log_path": "/private/tmp/rc2-production-20260910/evidence/clamav-debug-clamd-result.log",
+          "config_sha256": null,
+          "recorded_at": "2026-09-10T21:24:00Z"
+        }
+      },
+      "scope": {
+        "component": "ClamAV listener ownership",
+        "affected_files": [],
+        "entry_points": [
+          "ClamAV listener ownership"
+        ],
+        "trust_boundary": "Host or scanner runtime security boundary"
+      },
+      "evidence": {
+        "reachable": false,
+        "production_exposed": false,
+        "reproduction_path": "Exact upstream source and debug-symbol original test identify close in acceptloop followed by stale shutdown/close in recvloop/main. Poll error path also closes only a copy.",
+        "proof_gap": "Minimal ownership patch independently reviewed and compiling; original tests remain FAIL until actual result. No production attachment scanner used this image. Reachability booleans do not assert global non-applicability; no exploit was attempted."
+      },
+      "root_cause_cluster": "R27-SCANNER-LISTENER-001",
+      "security_invariants": [],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
+      "fix": {
+        "task_id": "R27_PRODUCTION_RELEASE_20260910",
+        "branch": "security/r27rc2-candidate-repair",
+        "commit": null,
+        "tree": null,
+        "changed_files": []
+      },
+      "verification": {
+        "targeted": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Minimal ownership patch independently reviewed and compiling; original tests remain FAIL until actual result. No production attachment scanner used this image."
+        },
+        "affected_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Minimal ownership patch independently reviewed and compiling; original tests remain FAIL until actual result. No production attachment scanner used this image."
+        },
+        "diff_review": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Minimal ownership patch independently reviewed and compiling; original tests remain FAIL until actual result. No production attachment scanner used this image."
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Minimal ownership patch independently reviewed and compiling; original tests remain FAIL until actual result. No production attachment scanner used this image."
+        }
+      },
+      "history": [
+        {
+          "at": "2026-09-10T21:24:00Z",
+          "transition": "null->in_progress",
+          "actor": "Codex",
+          "reason": "Exact upstream source and debug-symbol original test identify close in acceptloop followed by stale shutdown/close in recvloop/main. Poll error path also closes only a copy."
+        }
+      ],
+      "closure": null
+    },
+    {
+      "id": "R27-SCANNER-CDIFF-001",
+      "title": "ClamAV C/Rust CDIFF input descriptor has conflicting close ownership",
+      "status": "candidate",
+      "severity": "medium",
+      "confidence": "high",
+      "classification": "pre_existing",
+      "cwe": "CWE-664",
+      "source": {
+        "type": "manual",
+        "report_path": "/private/tmp/rc2-production-20260910/evidence/clamav-remaining-debug-full.log",
+        "binding": {
+          "commit": "d536a3258c3829a79cb37012f2d2f81fa376379c",
+          "tree": "6689542524ee196f55811226cad1c9cfa4b9ea4b",
+          "tool_name": "ClamAV upstream Valgrind / Trivy source dependency review",
+          "tool_version": "Valgrind 3.25.1 / Trivy 0.72.0",
+          "command": "Original upstream regression or offline Cargo lockfile scan",
+          "environment": "Isolated public ClamAV 1.4.6 candidate; commit/tree identify assessment checkpoint, not production deployment",
+          "result_sha256": "6d8eab3fd116bc4db2268d6e72ea4a88a47329c7d6af5785b9d87058557dcf22",
+          "log_path": "/private/tmp/rc2-production-20260910/evidence/clamav-remaining-debug-full.log",
+          "config_sha256": null,
+          "recorded_at": "2026-09-10T21:53:54Z"
+        }
+      },
+      "scope": {
+        "component": "ClamAV libclamav_rust/src/cdiff.rs",
+        "affected_files": [
+          "scripts/security/clamav/source.json"
+        ],
+        "entry_points": [
+          "libclamav_rust/src/cdiff.rs"
+        ],
+        "trust_boundary": "Untrusted input to isolated attachment scanner or signed database patch updater"
+      },
+      "evidence": {
+        "reachable": false,
+        "production_exposed": false,
+        "reproduction_path": "Exact old Rust wrapper creates an owning File from the caller fd; the three C callers close it again. Original Valgrind reports the close conflict. Minimal borrowed-wrapper patch is under original upstream regression.",
+        "proof_gap": "Minimal wrapper compiled; original sigtool_valgrind now PASS (36.26s). Original freshclam retains six failures from distinct validation-child cleanup; Rust regression pending. No Windows runtime claim, no final image or production deployment."
+      },
+      "root_cause_cluster": "R27-SCANNER-CDIFF-001",
+      "security_invariants": [],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
+      "fix": {
+        "task_id": "R27_PRODUCTION_RELEASE_20260910",
+        "branch": "security/r27rc2-candidate-repair",
+        "commit": null,
+        "tree": null,
+        "changed_files": []
+      },
+      "verification": {
+        "targeted": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Exact old Rust wrapper creates an owning File from the caller fd; the three C callers close it again. Original Valgrind reports the close conflict. Minimal borrowed-wrapper patch is under original upstream regression."
+        },
+        "affected_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Exact old Rust wrapper creates an owning File from the caller fd; the three C callers close it again. Original Valgrind reports the close conflict. Minimal borrowed-wrapper patch is under original upstream regression."
+        },
+        "diff_review": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Exact old Rust wrapper creates an owning File from the caller fd; the three C callers close it again. Original Valgrind reports the close conflict. Minimal borrowed-wrapper patch is under original upstream regression."
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Exact old Rust wrapper creates an owning File from the caller fd; the three C callers close it again. Original Valgrind reports the close conflict. Minimal borrowed-wrapper patch is under original upstream regression."
+        }
+      },
+      "history": [
+        {
+          "at": "2026-09-10T21:53:54Z",
+          "transition": "null->candidate",
+          "actor": "Codex",
+          "reason": "New finding admitted now; no existing history rewritten. Exact old Rust wrapper creates an owning File from the caller fd; the three C callers close it again. Original Valgrind reports the close conflict. Minimal borrowed-wrapper patch is under original upstream regression."
+        }
+      ],
+      "closure": null
+    },
+    {
+      "id": "R27-SCANNER-ONENOTE-001",
+      "title": "OneNote dependency version matches CVE-2026-46671; reachability under review",
+      "status": "false_positive",
+      "severity": "medium",
+      "confidence": "high",
+      "classification": "pre_existing",
+      "cwe": "CWE-22",
+      "source": {
+        "type": "manual",
+        "report_path": "/private/tmp/rc2-clamav-source-sca/output/report.json",
+        "binding": {
+          "commit": "d536a3258c3829a79cb37012f2d2f81fa376379c",
+          "tree": "6689542524ee196f55811226cad1c9cfa4b9ea4b",
+          "tool_name": "ClamAV upstream Valgrind / Trivy source dependency review",
+          "tool_version": "Valgrind 3.25.1 / Trivy 0.72.0",
+          "command": "Original upstream regression or offline Cargo lockfile scan",
+          "environment": "Isolated public ClamAV 1.4.6 candidate; commit/tree identify assessment checkpoint, not production deployment",
+          "result_sha256": "da8c8e2e9b76aae9b66a7a199fcdadb1bb460e6e8a01c8d88a6d0621a4ce3200",
+          "log_path": "/private/tmp/rc2-clamav-source-sca/output/report.json",
+          "config_sha256": null,
+          "recorded_at": "2026-09-10T21:53:54Z"
+        }
+      },
+      "scope": {
+        "component": "ClamAV libclamav_rust/src/onenote.rs",
+        "affected_files": [
+          "scripts/security/clamav/source.json"
+        ],
+        "entry_points": [
+          "libclamav_rust/src/onenote.rs"
+        ],
+        "trust_boundary": "Untrusted input to isolated attachment scanner or signed database patch updater"
+      },
+      "evidence": {
+        "reachable": false,
+        "production_exposed": false,
+        "reproduction_path": "Raw Trivy source scan still reports one medium OneNote package hit and one low rand hit across 196 packages. Exact reachable code and artifact were reviewed independently; only the specific OneNote notebook path is non-applicable.",
+        "proof_gap": "No remaining path/source/r3 artifact binding gap for this CVE. This disposition excludes other vulnerabilities, other callers/builds and future parser changes. New scanner is not published or deployed to production. Evidence: scanner-r3-checkpoint.json; clamav-r3-archive-identity.json. Reopen if inputs or invocation paths change."
+      },
+      "root_cause_cluster": "R27-SCANNER-ONENOTE-001",
+      "security_invariants": [],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": "CVE-2026-46671 remains a real version-range hit in onenote_parser 0.3.1, but its notebook directory-traversal path is unreachable in this exact ClamAV section-buffer integration. Independent source closure covers scan_onenote -> OneNote::from_bytes -> parse_section_buffer -> section/store parsing, including byte fallback and extracted buffers; no notebook filesystem path or separate OneNote CLI. Signed archive comparison and runtime libclamav hash bind the reviewed source to r3 OCI manifest sha256:17130f6532928a5b4b1272fc5129e5f2639850c0d8086879c516649d32fc8ae6. This is path non-applicability, not a patched dependency, removed component, zero raw SCA finding count or risk acceptance.",
+        "risk_acceptance": null
+      },
+      "fix": {
+        "task_id": "R27_PRODUCTION_RELEASE_20260910",
+        "branch": "security/r27rc2-candidate-repair",
+        "commit": null,
+        "tree": null,
+        "changed_files": []
+      },
+      "verification": {
+        "targeted": {
+          "status": "pending",
+          "binding": null,
+          "notes": "CVE-2026-46671 remains a real version-range hit in onenote_parser 0.3.1, but its notebook directory-traversal path is unreachable in this exact ClamAV section-buffer integration. Independent source closure covers scan_onenote -> OneNote::from_bytes -> parse_section_buffer -> section/store parsing, including byte fallback and extracted buffers; no notebook filesystem path or separate OneNote CLI. Signed archive comparison and runtime libclamav hash bind the reviewed source to r3 OCI manifest sha256:17130f6532928a5b4b1272fc5129e5f2639850c0d8086879c516649d32fc8ae6. This is path non-applicability, not a patched dependency, removed component, zero raw SCA finding count or risk acceptance. Exact evidence index: /private/tmp/rc2-production-20260910/evidence/scanner-r3-checkpoint.json."
+        },
+        "affected_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "CVE-2026-46671 remains a real version-range hit in onenote_parser 0.3.1, but its notebook directory-traversal path is unreachable in this exact ClamAV section-buffer integration. Independent source closure covers scan_onenote -> OneNote::from_bytes -> parse_section_buffer -> section/store parsing, including byte fallback and extracted buffers; no notebook filesystem path or separate OneNote CLI. Signed archive comparison and runtime libclamav hash bind the reviewed source to r3 OCI manifest sha256:17130f6532928a5b4b1272fc5129e5f2639850c0d8086879c516649d32fc8ae6. This is path non-applicability, not a patched dependency, removed component, zero raw SCA finding count or risk acceptance. Exact evidence index: /private/tmp/rc2-production-20260910/evidence/scanner-r3-checkpoint.json."
+        },
+        "diff_review": {
+          "status": "pending",
+          "binding": null,
+          "notes": "CVE-2026-46671 remains a real version-range hit in onenote_parser 0.3.1, but its notebook directory-traversal path is unreachable in this exact ClamAV section-buffer integration. Independent source closure covers scan_onenote -> OneNote::from_bytes -> parse_section_buffer -> section/store parsing, including byte fallback and extracted buffers; no notebook filesystem path or separate OneNote CLI. Signed archive comparison and runtime libclamav hash bind the reviewed source to r3 OCI manifest sha256:17130f6532928a5b4b1272fc5129e5f2639850c0d8086879c516649d32fc8ae6. This is path non-applicability, not a patched dependency, removed component, zero raw SCA finding count or risk acceptance. Exact evidence index: /private/tmp/rc2-production-20260910/evidence/scanner-r3-checkpoint.json."
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Trivy recognizes 196 Cargo packages and flags onenote_parser 0.3.1. Exact ClamAV wrapper calls parse_section_buffer; vendored parser and final artifact reachability review remain pending. Do not count a version hit alone as exploitable."
+        }
+      },
+      "history": [
+        {
+          "at": "2026-09-10T21:53:54Z",
+          "transition": "null->candidate",
+          "actor": "Codex",
+          "reason": "New finding admitted now; no existing history rewritten. Trivy recognizes 196 Cargo packages and flags onenote_parser 0.3.1. Exact ClamAV wrapper calls parse_section_buffer; vendored parser and final artifact reachability review remain pending. Do not count a version hit alone as exploitable."
+        },
+        {
+          "at": "2026-09-10T22:34:27Z",
+          "transition": "candidate->false_positive",
+          "actor": "Codex with independent read-only release_gap_review",
+          "reason": "CVE-2026-46671 remains a real version-range hit in onenote_parser 0.3.1, but its notebook directory-traversal path is unreachable in this exact ClamAV section-buffer integration. Independent source closure covers scan_onenote -> OneNote::from_bytes -> parse_section_buffer -> section/store parsing, including byte fallback and extracted buffers; no notebook filesystem path or separate OneNote CLI. Signed archive comparison and runtime libclamav hash bind the reviewed source to r3 OCI manifest sha256:17130f6532928a5b4b1272fc5129e5f2639850c0d8086879c516649d32fc8ae6. This is path non-applicability, not a patched dependency, removed component, zero raw SCA finding count or risk acceptance."
+        }
+      ],
+      "closure": null
+    },
+    {
+      "id": "R27-SCANNER-FRESHNESS-001",
+      "title": "Scanner accepted stale loaded signatures and unbound scan metadata",
+      "status": "candidate",
+      "severity": "medium",
+      "confidence": "high",
+      "classification": "pre_existing",
+      "cwe": "CWE-693",
+      "source": {
+        "type": "manual",
+        "report_path": "/private/tmp/rc2-production-20260910/evidence/api-scanner-freshness-before.log",
+        "binding": {
+          "commit": "d536a3258c3829a79cb37012f2d2f81fa376379c",
+          "tree": "6689542524ee196f55811226cad1c9cfa4b9ea4b",
+          "tool_name": "Vitest",
+          "tool_version": "4.1.11",
+          "command": "vitest run malware-scanner.service.spec.ts -t ClamAV loaded signature freshness",
+          "environment": "Local API unit regression; production application source at assessment checkpoint, added regression tests only",
+          "result_sha256": "4c94f77ce52ca695e95edc59d955132956e3894a6358afb2351e5aa96c848840",
+          "log_path": "/private/tmp/rc2-production-20260910/evidence/api-scanner-freshness-before.log",
+          "config_sha256": null,
+          "recorded_at": "2026-09-10T22:13:13Z"
+        }
+      },
+      "scope": {
+        "component": "API attachment malware scanner",
+        "affected_files": [
+          "apps/api/src/modules/attachments/malware-scanner.service.ts",
+          "apps/api/src/common/app-config.ts",
+          "scripts/deploy/gce-release-identity.mjs"
+        ],
+        "entry_points": [
+          "ConfiguredMalwareScanner.scan"
+        ],
+        "trust_boundary": "Uploaded attachments require a current loaded official signature database"
+      },
+      "evidence": {
+        "reachable": true,
+        "production_exposed": false,
+        "reproduction_path": "Twelve pre-fix unit cases demonstrate stale/invalid/changed signatures accepted and absent post-scan identity validation.",
+        "proof_gap": "Local fix 241d8b41742c750501f0f853ee5e7d682fe9d617: strict UTC loaded timestamp, configured 1..48 hours, pre/post identity and single monotonic deadline. 147 target/affected PASS; API1310 PASS/30 DB skipped. Actual compiled client/r3 integration PASS; real application services plus isolated PostgreSQL14 verify CLEAN download, limit REJECTED with SCAN_LIMIT_EXCEEDED, SCAN_ERROR on unavailability, binary purge, scope denial and audit persistence. This does not test HTTP/auth middleware or browser. Immutable remote application publication and production deployment remain pending."
+      },
+      "root_cause_cluster": "R27-SCANNER-FRESHNESS-001",
+      "security_invariants": [],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
+      "fix": {
+        "task_id": "R27_PRODUCTION_RELEASE_20260910",
+        "branch": "security/r27rc2-candidate-repair",
+        "commit": "241d8b41742c750501f0f853ee5e7d682fe9d617",
+        "tree": "e73513c94490d1cf8aee6b19ff4cc496c5739584",
+        "changed_files": [
+          "apps/api/src/modules/attachments/malware-scanner.service.ts",
+          "apps/api/src/common/app-config.ts",
+          "scripts/deploy/gce-release-identity.mjs"
+        ]
+      },
+      "verification": {
+        "targeted": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Tests and independent review completed locally; final artifact binding and deployment remain pending. See execution ledger for exact counts and hashes."
+        },
+        "affected_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Tests and independent review completed locally; final artifact binding and deployment remain pending. See execution ledger for exact counts and hashes."
+        },
+        "diff_review": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Tests and independent review completed locally; final artifact binding and deployment remain pending. See execution ledger for exact counts and hashes."
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Tests and independent review completed locally; final artifact binding and deployment remain pending. See execution ledger for exact counts and hashes."
+        }
+      },
+      "history": [
+        {
+          "at": "2026-09-10T22:13:13Z",
+          "transition": "null->candidate",
+          "actor": "Codex",
+          "reason": "New candidate admitted with original failure and local repair evidence; no existing finding history rewritten."
         }
       ],
       "closure": null
