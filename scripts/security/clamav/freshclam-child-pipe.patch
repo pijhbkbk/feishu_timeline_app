@@ -1,0 +1,24 @@
+--- a/freshclam/freshclam.c
++++ b/freshclam/freshclam.c
+@@ -346,12 +346,18 @@
+                     close(pipefd[0]);
+ 
+                     /* Redirect stderr to the pipe for the parent process */
+-                    if (dup2(pipefd[1], 2) == -1) {
++                    if (dup2(pipefd[1], STDERR_FILENO) == -1) {
+                         logg(LOGG_WARNING, "dup2() call to redirect stderr to pipe failed: %s\n", strerror(errno));
++                        close(pipefd[1]);
++                        exit(FC_ETESTFAIL);
+                     }
+-
+-                    /* Test the database */
++                    if (pipefd[1] != STDERR_FILENO) {
++                        close(pipefd[1]);
++                    }
++
++                    /* Test the database, then flush and close the child's pipe. */
+                     status = fc_test_database(dbFilename, fc_context->bBytecodeEnabled);
++                    fclose(stderr);
+                     exit(status);
+                 }
+                 default: {
