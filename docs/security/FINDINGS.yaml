@@ -4494,7 +4494,7 @@
         "reachable": true,
         "production_exposed": false,
         "reproduction_path": "Twelve pre-fix unit cases demonstrate stale/invalid/changed signatures accepted and absent post-scan identity validation.",
-        "proof_gap": "Local fix 241d8b41742c750501f0f853ee5e7d682fe9d617: strict UTC loaded timestamp, configured 1..48 hours, pre/post identity and single monotonic deadline. 147 target/affected PASS; API1310 PASS/30 DB skipped. Actual compiled client/r3 integration PASS; real application services plus isolated PostgreSQL14 verify CLEAN download, limit REJECTED with SCAN_LIMIT_EXCEEDED, SCAN_ERROR on unavailability, binary purge, scope denial and audit persistence. This does not test HTTP/auth middleware or browser. Immutable remote application publication and production deployment remain pending."
+        "proof_gap": "Local fix 0e03b47b70d932b57541f8c5a8892d9071149f4c adds one numbered IDSESSION socket for VERSION/INSTREAM/VERSION, no reconnect, bounded close and fresh-age recheck after close. Two pre-fix real TCP failures and final-close age failure preserved. 45 focused and 1323 API cases PASS; 30 DB cases remain skipped in full suite. Exact compiled client plus r3 and separate PostgreSQL14 attachment persistence PASS. Independent final diff PASS. Remote publication, updater installation and production acceptance remain pending. No all-security-clearance claim."
       },
       "root_cause_cluster": "R27-SCANNER-FRESHNESS-001",
       "security_invariants": [],
@@ -4506,29 +4506,63 @@
       "fix": {
         "task_id": "R27_PRODUCTION_RELEASE_20260910",
         "branch": "security/r27rc2-candidate-repair",
-        "commit": "241d8b41742c750501f0f853ee5e7d682fe9d617",
-        "tree": "e73513c94490d1cf8aee6b19ff4cc496c5739584",
+        "commit": "0e03b47b70d932b57541f8c5a8892d9071149f4c",
+        "tree": "75fd844b4e4486746385a47756377aa82fb5f3b1",
         "changed_files": [
           "apps/api/src/modules/attachments/malware-scanner.service.ts",
           "apps/api/src/common/app-config.ts",
-          "scripts/deploy/gce-release-identity.mjs"
+          "scripts/deploy/gce-release-identity.mjs",
+          "apps/api/src/modules/attachments/clamav-session.ts"
         ]
       },
       "verification": {
         "targeted": {
-          "status": "pending",
-          "binding": null,
-          "notes": "Tests and independent review completed locally; final artifact binding and deployment remain pending. See execution ledger for exact counts and hashes."
+          "status": "pass",
+          "binding": {
+            "commit": "0e03b47b70d932b57541f8c5a8892d9071149f4c",
+            "tree": "75fd844b4e4486746385a47756377aa82fb5f3b1",
+            "tool_name": "Vitest",
+            "tool_version": "4.1.11",
+            "command": "pnpm --filter @feishu-timeline/api exec vitest run src/modules/attachments/malware-scanner.service.spec.ts",
+            "environment": "Local isolated synthetic API tests; PostgreSQL14 and exact r3 only where separately stated. No production deployment.",
+            "result_sha256": "f142a8d5855243cf7c806c927d43aa72f09334eb71a1d80adee1d673ebda5270",
+            "log_path": "/private/tmp/rc2-production-20260910/evidence/api-session-transport-boundaries.log",
+            "config_sha256": null,
+            "recorded_at": "2026-09-10T22:53:36Z"
+          },
+          "notes": "45/45; includes original pre-fix failures, numbered session, response fragmentation, real write backpressure, END reset/garbage, total deadline and signature expiration after close."
         },
         "affected_regression": {
-          "status": "pending",
-          "binding": null,
-          "notes": "Tests and independent review completed locally; final artifact binding and deployment remain pending. See execution ledger for exact counts and hashes."
+          "status": "pass",
+          "binding": {
+            "commit": "0e03b47b70d932b57541f8c5a8892d9071149f4c",
+            "tree": "75fd844b4e4486746385a47756377aa82fb5f3b1",
+            "tool_name": "Vitest",
+            "tool_version": "4.1.11",
+            "command": "pnpm --filter @feishu-timeline/api test",
+            "environment": "Local isolated synthetic API tests; PostgreSQL14 and exact r3 only where separately stated. No production deployment.",
+            "result_sha256": "69602f0756a18392625dac46c817500108c52bca530f83c36ddb724162ccc666",
+            "log_path": "/private/tmp/rc2-production-20260910/evidence/api-session-final-test.log",
+            "config_sha256": null,
+            "recorded_at": "2026-09-10T22:53:36Z"
+          },
+          "notes": "1323 passed; 30 existing database cases skipped, not counted as pass. Additional real PostgreSQL14/r3 persisted attachment test in attachment-persistence-v3/result.json passed all five groups."
         },
         "diff_review": {
-          "status": "pending",
-          "binding": null,
-          "notes": "Tests and independent review completed locally; final artifact binding and deployment remain pending. See execution ledger for exact counts and hashes."
+          "status": "pass",
+          "binding": {
+            "commit": "0e03b47b70d932b57541f8c5a8892d9071149f4c",
+            "tree": "75fd844b4e4486746385a47756377aa82fb5f3b1",
+            "tool_name": "Independent Codex review",
+            "tool_version": "session 2026-09-10",
+            "command": "Independent read-only exact three-file review by release_gap_review",
+            "environment": "Local isolated synthetic API tests; PostgreSQL14 and exact r3 only where separately stated. No production deployment.",
+            "result_sha256": "70d0eaa6ed47ad60270fab43085571730994fab7cb021c897a7ee50fee2930bb",
+            "log_path": "/private/tmp/rc2-production-20260910/evidence/single-session-checkpoint.json",
+            "config_sha256": null,
+            "recorded_at": "2026-09-10T22:53:36Z"
+          },
+          "notes": "release_gap_review G4_DIFF PASS; final age-after-close P2 fixed. Only trailing whitespace removed from reviewed service afterward."
         },
         "full_regression": {
           "status": "pending",
