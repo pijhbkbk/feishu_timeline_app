@@ -7492,3 +7492,15 @@ AWAITING_OWNER_REVIEW_V2
 - 两镜像各24组/80个认证负向通过，原Semgrep定向0 findings/0 errors，语法与独立G4通过；唯一Finding `R27-RC2-CI-IMAGE-001`推进fixed_diff_verified，未closed/未风险接受。
 - 主回执：`docs/handoff/R27RC2_NODE_EMBEDDED_OPENSSL_APPLICABILITY_20260909.md`；本地结果索引：`test-results/r27rc2/node-embedded-openssl-applicability-20260909/evidence-index.json`。
 - 准备新的唯一验证ref FF/CI请求但不执行；当前RELEASE_NOT_READY / REMOTE_REVALIDATION_PENDING。staging/production/main/tag未改变，产品确认未获得。
+
+
+## R27RC2 部署准备续接（2026-09-10）
+
+- 用户目标：持续修复至可安全部署；已授权的本地调查、实现、验证和可回滚检查点持续执行。实际起点为 repair 工作树 a116c374c1603b1cd2d19f5a5d79a0a0f290eb56，未从八月旧树重做。
+- 源码检查点 defd47d80ca2cf9568a02c50c0acbfa89eff57e5 / tree 1ef3bfcd47746ed048c114dce31accb2476af72b：恢复材料 verify-and-snapshot、17项直接测试、真实隔离恢复演练及使用说明。四文件；没有业务、schema/migration、依赖、CI或部署禁用入口改变。
+- 目标与受影响验证：17/17、真实断网PG恢复/篡改拒绝/完整行和对象/外键PASS；独立G4_DIFF PASS；固定Semgrep覆盖三个新增mjs、0finding/0error；manifest和部署安全回归PASS。必需安装/lint/typecheck/test/两端build/Prisma均exit0；Web287、API1280 PASS/30 SKIPPED，跳过不冒充实库执行。
+- 制品：从e0b20a69522edd4dc76ee3b3219badda7166acbd构建本地linux/amd64 API-ops，inspect Id sha256:b0c6b3621c8e8d0271f2402225e33397a6246569360d244d6087c31281e718fa；Trivy新鲜库0漏洞。新镜像在断网空PG真实应用36迁移、checksum、重复deploy及有效Reviews索引PASS。不是registry发布/目标平台验收。
+- 只读远端：validation 5a388095726d1b53fe79e379e1f3665d4a310a5d、main 41b4b166c587692e6f0fb9536dca2e1aab646c70。未push/触发CI/main merge/tag/部署；精确公开推送与目标环境问题仍待所有者回复。
+- 原始失败与最终证据保存在test-results/r27rc2/deployment-readiness-20260910/，不提交上传。源码与证据提交分开。Placeholder正式0/raw10测试白名单；真实环境路由均未验收，临时容器已清理。
+- 风险/下一步：远端CI、明确预发URL/平台/隔离资源、完整制品digest、受信控制器安装/实际恢复、Reviews窗口、真实Feishu/角色/附件与负责人验收未完成。GPT-6 Pro已作通用技术咨询，不代替所有者/组织批准。
+- 单一回执：[R27RC2_DEPLOYMENT_READINESS_20260910.md](handoff/R27RC2_DEPLOYMENT_READINESS_20260910.md)。当前 LOCAL_VERIFIED / NOT_DEPLOYED / RELEASE_NOT_READY / AWAITING_PRODUCT_OWNER_CONFIRMATION。
