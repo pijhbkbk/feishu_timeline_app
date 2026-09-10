@@ -800,3 +800,6 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
     process.exitCode = 1;
   }
 }
+
+// Shared strict primitives for the explicit GCE hybrid verifier; v1 stays unchanged.
+export { validateImageIdentity, validateArtifactReference, readBoundArtifact, verifyImageEvidence, buildIdentityFromResponse };
