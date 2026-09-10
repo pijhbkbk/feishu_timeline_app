@@ -128,7 +128,7 @@ function createHarness() {
         .mockResolvedValue({ id: 'project-1' }),
     } as never,
   );
-  vi.spyOn(service as never, 'buildSampleDetail' as never).mockResolvedValue({} as never);
+  vi.spyOn(service as unknown as { buildSampleDetail: (...args: unknown[]) => Promise<unknown> }, 'buildSampleDetail').mockResolvedValue({} as never);
 
   return { service, prisma, tx, attachments };
 }
@@ -369,8 +369,8 @@ function createConcurrentSampleWriteHarness() {
         .mockResolvedValue({ id: 'project-1' }),
     } as never,
   );
-  vi.spyOn(service as never, 'buildSampleDetail' as never).mockResolvedValue({} as never);
-  vi.spyOn(service as never, 'buildWorkspace' as never).mockResolvedValue({} as never);
+  vi.spyOn(service as unknown as { buildSampleDetail: (...args: unknown[]) => Promise<unknown> }, 'buildSampleDetail').mockResolvedValue({} as never);
+  vi.spyOn(service as unknown as { buildWorkspace: (...args: unknown[]) => Promise<unknown> }, 'buildWorkspace').mockResolvedValue({} as never);
 
   return {
     service,

@@ -498,7 +498,7 @@ const domainCases: DomainCase[] = [
         projectAccess as never,
       ),
     stubWorkspace: (service) => {
-      vi.spyOn(service as never, 'buildWorkspace' as never).mockResolvedValue({} as never);
+      vi.spyOn(service as unknown as { buildWorkspace: (...args: unknown[]) => Promise<unknown> }, 'buildWorkspace').mockResolvedValue({} as never);
     },
     create: (service, actor) =>
       (service as PaintProcurementsService).createProcurement(
@@ -590,7 +590,7 @@ const domainCases: DomainCase[] = [
         projectAccess as never,
       ),
     stubWorkspace: (service) => {
-      vi.spyOn(service as never, 'buildWorkspace' as never).mockResolvedValue({} as never);
+      vi.spyOn(service as unknown as { buildWorkspace: (...args: unknown[]) => Promise<unknown> }, 'buildWorkspace').mockResolvedValue({} as never);
     },
     create: (service, actor) =>
       (service as FeesService).createFee(
@@ -693,10 +693,7 @@ const domainCases: DomainCase[] = [
         projectAccess as never,
       ),
     stubWorkspace: (service) => {
-      vi.spyOn(
-        service as never,
-        'buildScheduleWorkspace' as never,
-      ).mockResolvedValue({} as never);
+      vi.spyOn(service as unknown as { buildScheduleWorkspace: (...args: unknown[]) => Promise<unknown> }, 'buildScheduleWorkspace').mockResolvedValue({} as never);
     },
     create: (service, actor) =>
       (service as ProductionPlansService).createSchedulePlan(

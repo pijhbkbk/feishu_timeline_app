@@ -117,6 +117,7 @@ describe('secure single-file upload policy', () => {
         fieldSize: 1024,
         headerPairs: 20,
         fieldNestingDepth: 0,
+        fieldArrayIndexLimit: 0,
       },
     });
     expect(API_UPLOAD_MAX_FILE_SIZE_BYTES).toBe(ATTACHMENT_MAX_FILE_SIZE_BYTES);
@@ -400,6 +401,84 @@ describe('secure single-file upload transport enforcement', () => {
     expect(response.ok).toBe(false);
     expect(response.status).toBe(400);
     expect(uploadHandler).not.toHaveBeenCalled();
+  });
+
+  it('accepts a file exactly at the documented 20 MiB boundary', async () => {
+    const form = new FormData();
+    form.append('file', new Blob([new Uint8Array(API_UPLOAD_MAX_FILE_SIZE_BYTES)]), 'boundary.bin');
+    const response = await fetch(baseUrl, {
+      method: 'POST', headers: { 'x-probe-actor': 'exact-boundary' }, body: form,
+    });
+    expect(response.status).toBe(201);
+    expect(await response.json()).toEqual({ size: API_UPLOAD_MAX_FILE_SIZE_BYTES, originalName: 'boundary.bin' });
+  });
+
+  it('rejects oversized numeric fields and remains usable without downstream work', async () => {
+    uploadHandler.mockClear();
+    scannerProbe.mockClear();
+    storageProbe.mockClear();
+    databaseProbe.mockClear();
+    const form = new FormData();
+    form.append('metadata[4294967295]', 'blocked');
+    form.append('metadata[name]', 'blocked');
+    form.append('file', new Blob(['synthetic']), 'small.bin');
+    const headers = { 'x-probe-actor': 'numeric-field-boundary' };
+    const response = await fetch(baseUrl, { method: 'POST', headers, body: form });
+    expect(response.status).toBe(400);
+    await response.body?.cancel();
+    for (const probe of [uploadHandler, scannerProbe, storageProbe, databaseProbe]) {
+      expect(probe).not.toHaveBeenCalled();
+    }
+    const valid = new FormData();
+    valid.append('file', new Blob(['synthetic']), 'small.bin');
+    const nextResponse = await fetch(baseUrl, { method: 'POST', headers, body: valid });
+    expect(nextResponse.status).toBe(201);
+    await nextResponse.body?.cancel();
+    expect(uploadHandler).toHaveBeenCalledTimes(1);
+  });
+
+  it('releases parser resources when an upload disconnects before its final boundary', async () => {
+    uploadHandler.mockClear();
+    const server = app.getHttpServer();
+    const acquire = vi.spyOn(app.get(UploadAdmissionService), 'acquire');
+    let observeRequest!: () => void;
+    const received = new Promise<void>((resolve) => { observeRequest = resolve; });
+    server.once('request', observeRequest);
+    const request = httpRequest(baseUrl, {
+      method: 'POST',
+      headers: {
+        'x-probe-actor': 'parser-disconnect',
+        'content-type': 'multipart/form-data; boundary=disconnect-boundary',
+      },
+    });
+    request.on('error', () => { /* An intentionally disconnected synthetic client. */ });
+    try {
+      request.write('--disconnect-boundary\r\nContent-Disposition: form-data; name="file"; filename="partial.bin"\r\nContent-Type: application/octet-stream\r\n\r\npartial');
+      let receiveTimer: ReturnType<typeof setTimeout> | undefined;
+      try {
+        await Promise.race([received, new Promise<never>((_, reject) => {
+          receiveTimer = setTimeout(() => reject(new Error('Synthetic upload was not received')), 2000);
+        })]);
+      } finally {
+        clearTimeout(receiveTimer);
+      }
+      await vi.waitFor(() => expect(acquire).toHaveBeenCalledTimes(1));
+      request.destroy();
+      await vi.waitFor(async () => {
+        const valid = new FormData();
+        valid.append('file', new Blob(['synthetic']), 'recovered.bin');
+        const response = await fetch(baseUrl, {
+          method: 'POST', headers: { 'x-probe-actor': 'parser-disconnect' }, body: valid,
+        });
+        await response.body?.cancel();
+        expect(response.status).toBe(201);
+      }, { timeout: 2000, interval: 100 });
+      expect(uploadHandler).toHaveBeenCalledTimes(1);
+    } finally {
+      request.destroy();
+      acquire.mockRestore();
+      server.removeListener('request', observeRequest);
+    }
   });
 
   it('restores UTF-8 multipart filenames before the controller', async () => {

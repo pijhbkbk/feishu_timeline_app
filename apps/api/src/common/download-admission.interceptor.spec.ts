@@ -25,7 +25,7 @@ describe('download admission HTTP lifecycle', () => {
   it('requires both HTTP terminal and source settlement and releases exactly once', () => {
     const request = new EventEmitter();
     const response = new EventEmitter() as EventEmitter & { writableFinished?: boolean };
-    const source = new EventEmitter() as EventEmitter & { destroy: ReturnType<typeof vi.fn> };
+    const source = new EventEmitter() as EventEmitter & { destroy: ReturnType<typeof vi.fn<() => void>> };
     source.destroy = vi.fn();
     const release = vi.fn();
     const lifecycle = bindDownloadAdmissionLeaseToHttpLifecycle(
@@ -45,7 +45,7 @@ describe('download admission HTTP lifecycle', () => {
   it('destroys a late source after abort and waits for its close before release', () => {
     const request = new EventEmitter();
     const response = new EventEmitter() as EventEmitter & { writableFinished?: boolean };
-    const source = new EventEmitter() as EventEmitter & { destroy: ReturnType<typeof vi.fn> };
+    const source = new EventEmitter() as EventEmitter & { destroy: ReturnType<typeof vi.fn<() => void>> };
     source.destroy = vi.fn();
     const release = vi.fn();
     const lifecycle = bindDownloadAdmissionLeaseToHttpLifecycle(
@@ -68,7 +68,7 @@ describe('download admission HTTP lifecycle', () => {
     const source = new EventEmitter() as EventEmitter & {
       closed?: boolean;
       destroyed?: boolean;
-      destroy: ReturnType<typeof vi.fn>;
+      destroy: ReturnType<typeof vi.fn<() => void>>;
     };
     source.destroyed = true;
     source.closed = false;
@@ -92,7 +92,7 @@ describe('download admission HTTP lifecycle', () => {
     const response = new EventEmitter() as EventEmitter & { writableFinished?: boolean };
     const source = new EventEmitter() as EventEmitter & {
       destroyed?: boolean;
-      destroy: ReturnType<typeof vi.fn>;
+      destroy: ReturnType<typeof vi.fn<() => void>>;
     };
     source.destroyed = false;
     source.destroy = vi.fn(() => {

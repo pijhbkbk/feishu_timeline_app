@@ -26,6 +26,7 @@ type FileInterceptorOptions = NonNullable<Parameters<typeof FileInterceptor>[1]>
 type MulterOptionsWithFieldNestingLimit = Omit<FileInterceptorOptions, 'limits'> & {
   readonly limits: NonNullable<FileInterceptorOptions['limits']> & {
     readonly fieldNestingDepth: number;
+    readonly fieldArrayIndexLimit: number;
   };
 };
 
@@ -103,6 +104,7 @@ export const SECURE_SINGLE_FILE_UPLOAD_OPTIONS = Object.freeze({
     fieldSize: 1024,
     headerPairs: 20,
     fieldNestingDepth: 0,
+    fieldArrayIndexLimit: 0,
   }),
 }) satisfies MulterOptionsWithFieldNestingLimit;
 
@@ -161,8 +163,8 @@ export function SecureSingleFileInterceptor(fieldName: string): Type<NestInterce
       } catch (error) {
         admissionLifecycle.markDownstreamWorkSettled();
 
-        if (isFieldNestingLimitError(error)) {
-          throw new BadRequestException('上传表单字段不允许嵌套。');
+        if (isMultipartInputError(error)) {
+          throw new BadRequestException('上传表单字段或文件流无效。');
         }
 
         throw error;
@@ -185,11 +187,12 @@ export function normalizeMultipartOriginalFileName(fileName: string) {
   return decoded.includes('\uFFFD') ? fileName.normalize('NFC') : decoded.normalize('NFC');
 }
 
-function isFieldNestingLimitError(error: unknown) {
+function isMultipartInputError(error: unknown) {
   return (
     typeof error === 'object' &&
     error !== null &&
     'code' in error &&
-    error.code === 'LIMIT_FIELD_NESTING'
+    typeof error.code === 'string' &&
+    ['LIMIT_FIELD_NESTING', 'LIMIT_FIELD_ARRAY_INDEX', 'INVALID_FIELD_NAME', 'STREAM_DESTROYED'].includes(error.code)
   );
 }

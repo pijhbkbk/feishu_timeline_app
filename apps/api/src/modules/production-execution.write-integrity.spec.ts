@@ -113,8 +113,8 @@ function createMassHarness() {
     workflows as never,
     { assertProjectAccessWithDefaultClient: vi.fn().mockResolvedValue(undefined) } as never,
   );
-  vi.spyOn(service as never, 'buildWorkspace' as never).mockResolvedValue({} as never);
-  vi.spyOn(service as never, 'getUserOrThrow' as never).mockResolvedValue(undefined as never);
+  vi.spyOn(service as unknown as { buildWorkspace: (...args: unknown[]) => Promise<unknown> }, 'buildWorkspace').mockResolvedValue({} as never);
+  vi.spyOn(service as unknown as { getUserOrThrow: (...args: unknown[]) => Promise<unknown> }, 'getUserOrThrow').mockResolvedValue(undefined as never);
 
   return { service, tx, activityLogs, workflows };
 }
@@ -177,10 +177,10 @@ function createPilotHarness() {
     workflows as never,
     { assertProjectAccessWithDefaultClient: vi.fn().mockResolvedValue(undefined) } as never,
   );
-  vi.spyOn(service as never, 'buildFirstProductionPlanWorkspace' as never).mockResolvedValue(
+  vi.spyOn(service as unknown as { buildFirstProductionPlanWorkspace: (...args: unknown[]) => Promise<unknown> }, 'buildFirstProductionPlanWorkspace').mockResolvedValue(
     {} as never,
   );
-  vi.spyOn(service as never, 'buildTrialProductionWorkspace' as never).mockResolvedValue(
+  vi.spyOn(service as unknown as { buildTrialProductionWorkspace: (...args: unknown[]) => Promise<unknown> }, 'buildTrialProductionWorkspace').mockResolvedValue(
     {} as never,
   );
 
@@ -191,13 +191,13 @@ describe('production execution finalized-write integrity', () => {
   it('rejects a mass-production create after the exact workflow task became terminal', async () => {
     const { service, tx, activityLogs } = createMassHarness();
     tx.$queryRaw.mockResolvedValue([]);
-    vi.spyOn(service as never, 'getMassProductionContext' as never).mockResolvedValue({
+    vi.spyOn(service as unknown as { getMassProductionContext: (...args: unknown[]) => Promise<unknown> }, 'getMassProductionContext').mockResolvedValue({
       project: { id: 'project-1' },
       activeTask: activeTask('mass-task-1', WorkflowNodeCode.MASS_PRODUCTION),
       schedulePlanCompleted: true,
       items: [],
     } as never);
-    vi.spyOn(service as never, 'startTaskIfNeeded' as never).mockResolvedValue(
+    vi.spyOn(service as unknown as { startTaskIfNeeded: (...args: unknown[]) => Promise<unknown> }, 'startTaskIfNeeded').mockResolvedValue(
       undefined as never,
     );
 
@@ -214,13 +214,13 @@ describe('production execution finalized-write integrity', () => {
     tx.$queryRaw
       .mockResolvedValueOnce([{ id: massRecord.id }])
       .mockResolvedValueOnce([{ id: 'mass-task-1' }]);
-    vi.spyOn(service as never, 'getMassProductionContext' as never).mockResolvedValue({
+    vi.spyOn(service as unknown as { getMassProductionContext: (...args: unknown[]) => Promise<unknown> }, 'getMassProductionContext').mockResolvedValue({
       project: { id: 'project-1' },
       activeTask: activeTask('mass-task-1', WorkflowNodeCode.MASS_PRODUCTION),
       schedulePlanCompleted: true,
       items: [massRecord],
     } as never);
-    vi.spyOn(service as never, 'getRecordOrThrow' as never).mockResolvedValue(
+    vi.spyOn(service as unknown as { getRecordOrThrow: (...args: unknown[]) => Promise<unknown> }, 'getRecordOrThrow').mockResolvedValue(
       massRecord as never,
     );
 
@@ -245,16 +245,16 @@ describe('production execution finalized-write integrity', () => {
     tx.$queryRaw
       .mockResolvedValueOnce([{ id: massRecord.id }])
       .mockResolvedValueOnce([{ id: 'mass-task-1' }]);
-    vi.spyOn(service as never, 'getMassProductionContext' as never).mockResolvedValue({
+    vi.spyOn(service as unknown as { getMassProductionContext: (...args: unknown[]) => Promise<unknown> }, 'getMassProductionContext').mockResolvedValue({
       project: { id: 'project-1' },
       activeTask: activeTask('mass-task-1', WorkflowNodeCode.MASS_PRODUCTION),
       schedulePlanCompleted: true,
       items: [massRecord],
     } as never);
-    vi.spyOn(service as never, 'getRecordOrThrow' as never).mockResolvedValue(
+    vi.spyOn(service as unknown as { getRecordOrThrow: (...args: unknown[]) => Promise<unknown> }, 'getRecordOrThrow').mockResolvedValue(
       massRecord as never,
     );
-    vi.spyOn(service as never, 'startTaskIfNeeded' as never).mockResolvedValue(
+    vi.spyOn(service as unknown as { startTaskIfNeeded: (...args: unknown[]) => Promise<unknown> }, 'startTaskIfNeeded').mockResolvedValue(
       undefined as never,
     );
 
@@ -278,16 +278,13 @@ describe('production execution finalized-write integrity', () => {
     tx.$queryRaw
       .mockResolvedValueOnce([{ id: trialRecord.id }])
       .mockResolvedValueOnce([]);
-    vi.spyOn(service as never, 'getTrialProductionContext' as never).mockResolvedValue({
+    vi.spyOn(service as unknown as { getTrialProductionContext: (...args: unknown[]) => Promise<unknown> }, 'getTrialProductionContext').mockResolvedValue({
       project: { id: 'project-1' },
       activeTask: activeTask('trial-task-1', WorkflowNodeCode.TRIAL_PRODUCTION),
       firstPlanTaskCompleted: true,
       items: [trialRecord],
     } as never);
-    vi.spyOn(
-      service as never,
-      'getTrialProductionForMutationOrThrow' as never,
-    ).mockResolvedValue(trialRecord as never);
+    vi.spyOn(service as unknown as { getTrialProductionForMutationOrThrow: (...args: unknown[]) => Promise<unknown> }, 'getTrialProductionForMutationOrThrow').mockResolvedValue(trialRecord as never);
 
     await expect(
       service.addTrialProductionIssue(
@@ -326,13 +323,13 @@ describe('production execution finalized-write integrity', () => {
     tx.$queryRaw
       .mockResolvedValueOnce([{ id: record.id }])
       .mockResolvedValueOnce([{ id: 'mass-task-1' }]);
-    vi.spyOn(service as never, 'getMassProductionContext' as never).mockResolvedValue({
+    vi.spyOn(service as unknown as { getMassProductionContext: (...args: unknown[]) => Promise<unknown> }, 'getMassProductionContext').mockResolvedValue({
       project: { id: 'project-1' },
       activeTask: activeTask('mass-task-1', WorkflowNodeCode.MASS_PRODUCTION),
       schedulePlanCompleted: true,
       items: [record],
     } as never);
-    vi.spyOn(service as never, 'getRecordOrThrow' as never).mockResolvedValue(
+    vi.spyOn(service as unknown as { getRecordOrThrow: (...args: unknown[]) => Promise<unknown> }, 'getRecordOrThrow').mockResolvedValue(
       record as never,
     );
 
@@ -394,7 +391,7 @@ describe('production execution finalized-write integrity', () => {
     tx.$queryRaw
       .mockResolvedValueOnce([{ id: firstPlanRecord.id }])
       .mockResolvedValueOnce([{ id: 'first-plan-task-1' }]);
-    vi.spyOn(service as never, 'getFirstProductionPlanContext' as never).mockResolvedValue({
+    vi.spyOn(service as unknown as { getFirstProductionPlanContext: (...args: unknown[]) => Promise<unknown> }, 'getFirstProductionPlanContext').mockResolvedValue({
       project: { id: 'project-1' },
       activeTask: activeTask(
         'first-plan-task-1',
@@ -403,10 +400,10 @@ describe('production execution finalized-write integrity', () => {
       procurementCompleted: true,
       items: [firstPlanRecord],
     } as never);
-    vi.spyOn(service as never, 'getFirstProductionPlanOrThrow' as never).mockResolvedValue(
+    vi.spyOn(service as unknown as { getFirstProductionPlanOrThrow: (...args: unknown[]) => Promise<unknown> }, 'getFirstProductionPlanOrThrow').mockResolvedValue(
       firstPlanRecord as never,
     );
-    vi.spyOn(service as never, 'getUserOrThrow' as never).mockResolvedValue(
+    vi.spyOn(service as unknown as { getUserOrThrow: (...args: unknown[]) => Promise<unknown> }, 'getUserOrThrow').mockResolvedValue(
       undefined as never,
     );
 
@@ -445,7 +442,7 @@ describe('production execution finalized-write integrity', () => {
     tx.$queryRaw
       .mockResolvedValueOnce([{ id: confirmedPlan.id }])
       .mockResolvedValueOnce([{ id: 'first-plan-task-1' }]);
-    vi.spyOn(service as never, 'getFirstProductionPlanContext' as never).mockResolvedValue({
+    vi.spyOn(service as unknown as { getFirstProductionPlanContext: (...args: unknown[]) => Promise<unknown> }, 'getFirstProductionPlanContext').mockResolvedValue({
       project: { id: 'project-1' },
       activeTask: activeTask(
         'first-plan-task-1',
@@ -500,17 +497,14 @@ describe('production execution finalized-write integrity', () => {
     tx.$queryRaw
       .mockResolvedValueOnce([{ id: trialRecord.id }])
       .mockResolvedValueOnce([{ id: 'trial-task-1' }]);
-    vi.spyOn(service as never, 'getTrialProductionContext' as never).mockResolvedValue({
+    vi.spyOn(service as unknown as { getTrialProductionContext: (...args: unknown[]) => Promise<unknown> }, 'getTrialProductionContext').mockResolvedValue({
       project: { id: 'project-1' },
       activeTask: activeTask('trial-task-1', WorkflowNodeCode.TRIAL_PRODUCTION),
       firstPlanTaskCompleted: true,
       items: [trialRecord],
     } as never);
-    vi.spyOn(
-      service as never,
-      'getTrialProductionForMutationOrThrow' as never,
-    ).mockResolvedValue(trialRecord as never);
-    vi.spyOn(service as never, 'assertValidTrialProductionPlan' as never).mockResolvedValue(
+    vi.spyOn(service as unknown as { getTrialProductionForMutationOrThrow: (...args: unknown[]) => Promise<unknown> }, 'getTrialProductionForMutationOrThrow').mockResolvedValue(trialRecord as never);
+    vi.spyOn(service as unknown as { assertValidTrialProductionPlan: (...args: unknown[]) => Promise<unknown> }, 'assertValidTrialProductionPlan').mockResolvedValue(
       undefined as never,
     );
 

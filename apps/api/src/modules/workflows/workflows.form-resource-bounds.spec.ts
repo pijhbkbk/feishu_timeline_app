@@ -67,8 +67,8 @@ function createHarness(options: { recentAuditCount?: number } = {}) {
     { ensureMonthlyReviewPlan: vi.fn() } as never,
     projectAccessService as never,
   );
-  vi.spyOn(service as never, 'getTaskOrThrow').mockResolvedValue({ ...task } as never);
-  vi.spyOn(service as never, 'buildTaskDetailResponse').mockResolvedValue({
+  vi.spyOn(service as unknown as { getTaskOrThrow: (...args: unknown[]) => Promise<unknown> }, 'getTaskOrThrow').mockResolvedValue({ ...task } as never);
+  vi.spyOn(service as unknown as { buildTaskDetailResponse: (...args: unknown[]) => Promise<unknown> }, 'buildTaskDetailResponse').mockResolvedValue({
     task: { id: task.id },
   } as never);
 

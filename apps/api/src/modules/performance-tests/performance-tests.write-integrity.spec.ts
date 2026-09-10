@@ -317,7 +317,7 @@ function createHarness(mode: 'update' | 'create' | 'happy') {
       assertProjectAccessWithDefaultClient: vi.fn().mockResolvedValue({ id: 'project-1' }),
     } as never,
   );
-  vi.spyOn(service as never, 'buildWorkspace' as never).mockResolvedValue({} as never);
+  vi.spyOn(service as unknown as { buildWorkspace: (...args: unknown[]) => Promise<unknown> }, 'buildWorkspace').mockResolvedValue({} as never);
 
   return {
     service,
