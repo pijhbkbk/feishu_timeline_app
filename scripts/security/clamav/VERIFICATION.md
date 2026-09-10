@@ -1,0 +1,11 @@
+# ClamAV candidate verification scope
+
+Official 1.4.6 source identity and signer are recorded in `source.json`. Apply the combined patch exactly once; individual patches are retained for review. The release manifest must bind the combined patch SHA256, not just the ZIP patch. Preserve upstream source and licensing notices with any derived distribution.
+
+The ZIP-only candidate image `sha256:78b90ba544eda28b709074021110fd5a4e658ac1e8b237b67c9d05a00e90fa5a` passes the original bounded INSTREAM regression: clean, EICAR, exact 20 MiB, compressed 21 MiB member rejected with `Heuristics.Limits.Exceeded.MaxFileSize FOUND`, then clean recovery. The original unmodified image returned OK for that oversized member. This test does not cover every archive algorithm, forged metadata, recursion, total limits, or final attachment persistence.
+
+The listener patch invalidates the owning array and poll view before closing a listener, covering normal accept-thread exit and its explicit poll error close. Poll array index is not used as an ownership index. Original socket-array readers occur before thread creation or after join. PING success now closes its own client socket. Exact original `clamd_valgrind` passes after both resource fixes with unchanged assertions and exact musl debug symbols (135.50 seconds). Initial U/P failure and the intermediate 14-pass/1-fail result are retained in the execution evidence.
+
+This patch is not a claim that every ClamAV descriptor lifecycle is fixed. Upstream PR https://github.com/Cisco-Talos/clamav/pull/1570 covers part of normal cleanup. Public Pro review identifies additional startup-error and systemd activation considerations. The target candidate uses Linux/amd64, clamd-created TCP/Unix listeners, foreground mode and no systemd socket activation. Activation and other platform behavior must not be reported as tested. The original freshclam, sigtool and libclamav Valgrind suite failures retain their separate disposition; clamd passing does not waive them.
+
+The combined final runtime image, all required bounded archive cases, real API-to-attachment-state verification, ongoing signature freshness enforcement, final image scanning and release publication remain pending. Existing published application images still refer to the earlier runtime commit; none of this document asserts production deployment.

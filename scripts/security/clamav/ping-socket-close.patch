@@ -1,0 +1,10 @@
+--- a/clamdscan/client.c
++++ b/clamdscan/client.c
+@@ -232,6 +232,7 @@
+                     logg(LOGG_INFO, "PONG\n");
+                 }
+                 ret = 0;
++                closesocket(sockd);
+                 goto done;
+             }
+         }

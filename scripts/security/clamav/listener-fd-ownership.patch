@@ -1,0 +1,95 @@
+--- a/clamd/server-th.c
++++ b/clamd/server-th.c
+@@ -504,6 +504,8 @@
+     int commandtimeout;
+     int syncpipe_wake_recv[2];
+     int syncpipe_wake_accept[2];
++    int *listener_fds;
++    unsigned listener_count;
+ };
+ 
+ #define ACCEPTDATA_INIT(mutex1, mutex2)                                               \
+@@ -511,8 +513,26 @@
+         FDS_INIT(mutex1), FDS_INIT(mutex2), PTHREAD_COND_INITIALIZER, 0, 0, {-1, -1}, \
+         {                                                                             \
+             -1, -1                                                                    \
+-        }                                                                             \
+-    }
++        }, NULL, 0                                                                    \
++    }
++
++/* The accept thread owns listener closure after it starts.  Invalidate the
++ * original array before close so later cleanup cannot act on a reused number.
++ * The caller only reads this array before thread creation or after join. */
++static void close_accept_fd(struct acceptdata *data, struct fd_buf *buf)
++{
++    int fd = buf->fd;
++    unsigned i;
++    if (fd < 0)
++        return;
++    for (i = 0; i < data->listener_count; i++) {
++        if (data->listener_fds[i] == fd)
++            data->listener_fds[i] = -1;
++    }
++    buf->fd = -1;
++    shutdown(fd, 2);
++    closesocket(fd);
++}
+ 
+ static void *acceptloop_th(void *arg)
+ {
+@@ -562,9 +582,7 @@
+ #endif
+             if (buf->got_newdata == -1) {
+                 logg(LOGG_DEBUG_NV, "Acceptloop closed FD: %d\n", buf->fd);
+-                shutdown(buf->fd, 2);
+-                closesocket(buf->fd);
+-                buf->fd = -1;
++                close_accept_fd(data, buf);
+                 continue;
+             }
+ 
+@@ -651,8 +669,7 @@
+             if (fds->buf[i].fd == -1)
+                 continue;
+             logg(LOGG_DEBUG_NV, "Shutdown: closed fd %d\n", fds->buf[i].fd);
+-            shutdown(fds->buf[i].fd, 2);
+-            closesocket(fds->buf[i].fd);
++            close_accept_fd(data, &fds->buf[i]);
+         }
+     }
+ 
+@@ -1551,6 +1568,8 @@
+         exit(-1);
+     }
+ 
++    acceptdata.listener_fds = socketds;
++    acceptdata.listener_count = nsockets;
+     if (pthread_create(&accept_th, NULL, acceptloop_th, &acceptdata)) {
+         logg(LOGG_ERROR, "pthread_create failed\n");
+         exit(-1);
+@@ -1831,8 +1850,10 @@
+     if (sd_listen_fds(0) == 0) {
+         /* only close the sockets, when not using systemd socket activation */
+         logg(LOGG_DEBUG, "Shutting down the main socket%s.\n", (nsockets > 1) ? "s" : "");
+-        for (i = 0; i < nsockets; i++)
+-            shutdown(socketds[i], 2);
++        for (i = 0; i < nsockets; i++) {
++            if (socketds[i] >= 0)
++                shutdown(socketds[i], 2);
++        }
+     }
+ 
+     if ((opt = optget(opts, "PidFile"))->enabled) {
+--- a/clamd/clamd.c
++++ b/clamd/clamd.c
+@@ -859,7 +859,8 @@
+         logg(LOGG_DEBUG, "Closing the main socket%s.\n", (nlsockets > 1) ? "s" : "");
+ 
+         for (i = 0; i < nlsockets; i++) {
+-            closesocket(lsockets[i]);
++            if (lsockets[i] >= 0)
++                closesocket(lsockets[i]);
+         }
+ #ifndef _WIN32
+         if (nlsockets && localsock) {
