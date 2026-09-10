@@ -31,7 +31,7 @@ function manifest() {
 function options(evidenceRoot) {
   const m = validateGceReleaseManifest(manifest());
   const inspect = im => [{ Id: im.imageId, RepoDigests: [im.repositoryDigest], Os: 'linux', Architecture: 'amd64', Config: { Labels: { 'org.opencontainers.image.revision': identity.sourceCommit, 'org.opencontainers.image.version': identity.release, 'org.opencontainers.image.created': identity.buildTime, 'com.feishu-timeline.source-tree': identity.sourceTree } } }];
-  const container = im => [{ Image: im.imageId, Config: { Image: im.repositoryDigest }, State: { Running: true } }];
+  const container = im => [{ Image: im.imageId, Config: { Image: im.repositoryDigest, Env: ['TZ=UTC', 'CLAMAV_MAX_SIGNATURE_AGE_HOURS=24'] }, State: { Running: true } }];
   const host = value => ({ active: true, packageName: value.packageName, packageVersion: value.packageVersion, architecture: value.architecture, runtimeVersion: value.runtimeVersion, packageBinarySha256: value.binarySha256, runningBinarySha256: value.binarySha256, configSha256: value.configSha256 });
   const scanner = m.externalServices.clamav;
   return {
@@ -87,6 +87,12 @@ const runtimeMutations = {
   'wrong host config': o => { o.observation.hostComponents.postgres.configSha256 = 'd'.repeat(64); },
   'inactive host service': o => { o.observation.hostComponents.postgres.active = false; },
   'scanner wrong image': o => { o.observation.scanner.containerInspect[0].Image = `sha256:${'d'.repeat(64)}`; },
+  'scanner timezone missing': o => { o.observation.scanner.containerInspect[0].Config.Env = []; },
+  'scanner timezone wrong': o => { o.observation.scanner.containerInspect[0].Config.Env = ['TZ=Asia/Shanghai']; },
+  'scanner timezone duplicated': o => { o.observation.scanner.containerInspect[0].Config.Env = ['TZ=UTC', 'TZ=UTC']; },
+  'API signature age policy missing': o => { o.observation.containerInspects.api[0].Config.Env = []; },
+  'API signature age policy wider': o => { o.observation.containerInspects.api[0].Config.Env = ['CLAMAV_MAX_SIGNATURE_AGE_HOURS=48']; },
+  'API signature age policy duplicated': o => { o.observation.containerInspects.api[0].Config.Env = ['CLAMAV_MAX_SIGNATURE_AGE_HOURS=24', 'CLAMAV_MAX_SIGNATURE_AGE_HOURS=24']; },
   'scanner stopped': o => { o.observation.scanner.containerInspect[0].State.Running = false; },
   'scanner outdated signatures': o => { o.observation.scanner.signatures.updatedAt = '2026-09-01T12:00:00Z'; },
   'scanner failed real probe': o => { o.observation.scanner.scanProbePassed = false; },

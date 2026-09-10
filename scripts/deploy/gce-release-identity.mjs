@@ -157,6 +157,14 @@ export function verifyGceRuntime(options) {
   same(node(actual.node), expected.node, 'scanner node');
   verifyImageEvidence({ name: 'clamav', approved: expected.image, repositoryDigest: expected.image.repositoryDigest, imageInspect: options.scannerImageInspect, containerInspect: actual.containerInspect, verifyBuildLabels: false });
   check(actual.containerInspect[0].State?.Running === true, 'scanner not running');
+  const requireUniqueEnv = (inspect, key, expectedValue) => {
+    const values = inspect[0].Config?.Env;
+    check(Array.isArray(values), `${key}: missing runtime environment`);
+    const matches = values.filter(value => typeof value === 'string' && value.startsWith(`${key}=`));
+    check(matches.length === 1 && matches[0] === `${key}=${expectedValue}`, `${key}: runtime policy mismatch`);
+  };
+  requireUniqueEnv(actual.containerInspect, 'TZ', 'UTC');
+  requireUniqueEnv(observation.containerInspects.api, 'CLAMAV_MAX_SIGNATURE_AGE_HOURS', String(expected.signaturePolicy.maxAgeHours));
   for (const key of ['source', 'configuration', 'channel']) same(actual[key], expected[key], `scanner ${key}`);
   object(actual.signatures, ['official', 'tested', 'loaded', 'updatedAt'], 'observed signatures');
   check(actual.signatures.official === true && actual.signatures.tested === true && actual.signatures.loaded === true && actual.scanProbePassed === true, 'scanner validation incomplete');

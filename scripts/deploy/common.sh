@@ -85,6 +85,7 @@ COMPOSE_ENV_ALLOWED_KEYS=(
   CLAMAV_HOST
   CLAMAV_PORT
   CLAMAV_TIMEOUT_MS
+  CLAMAV_MAX_SIGNATURE_AGE_HOURS
   UPLOAD_ADMISSION_GLOBAL_LIMIT
   UPLOAD_ADMISSION_PER_ACTOR_LIMIT
   UPLOAD_ADMISSION_PER_TARGET_LIMIT
@@ -375,6 +376,11 @@ validate_staging_security_env() {
     || [ "$CLAMAV_TIMEOUT_MS" -lt 1000 ] \
     || [ "$CLAMAV_TIMEOUT_MS" -gt 60000 ]; then
     fail "CLAMAV_TIMEOUT_MS must be an integer from 1000 through 60000."
+  fi
+
+  if [[ ! "${CLAMAV_MAX_SIGNATURE_AGE_HOURS:-48}" =~ ^[1-9][0-9]*$ ]] \
+    || [ "${CLAMAV_MAX_SIGNATURE_AGE_HOURS:-48}" -gt 48 ]; then
+    fail "CLAMAV_MAX_SIGNATURE_AGE_HOURS must be an integer from 1 through 48."
   fi
 
   if [[ ! "${UPLOAD_ADMISSION_GLOBAL_LIMIT:-}" =~ ^[1-4]$ ]]; then

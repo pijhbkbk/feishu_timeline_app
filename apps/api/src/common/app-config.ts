@@ -62,6 +62,7 @@ export type AppConfig = {
   malwareScannerHost: string;
   malwareScannerPort: number;
   malwareScannerTimeoutMs: number;
+  malwareScannerMaxSignatureAgeHours: number;
   uploadAdmissionGlobalLimit: number;
   uploadAdmissionPerActorLimit: number;
   uploadAdmissionPerTargetLimit: number;
@@ -645,6 +646,9 @@ export function resolveAppConfig(
       65535,
     ),
     malwareScannerTimeoutMs,
+    malwareScannerMaxSignatureAgeHours: resolveBoundedInteger(
+      'CLAMAV_MAX_SIGNATURE_AGE_HOURS', env.CLAMAV_MAX_SIGNATURE_AGE_HOURS, 48, 1, 48,
+    ),
     uploadAdmissionGlobalLimit: resolveBoundedInteger(
       'UPLOAD_ADMISSION_GLOBAL_LIMIT',
       env.UPLOAD_ADMISSION_GLOBAL_LIMIT,

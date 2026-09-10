@@ -134,6 +134,7 @@ describe('resolveAppConfig', () => {
     expect(config.malwareScannerHost).toBe('');
     expect(config.malwareScannerPort).toBe(3310);
     expect(config.malwareScannerTimeoutMs).toBe(15000);
+    expect(config.malwareScannerMaxSignatureAgeHours).toBe(48);
     expect(config.uploadAdmissionGlobalLimit).toBe(4);
     expect(config.uploadAdmissionPerActorLimit).toBe(2);
     expect(config.uploadAdmissionPerTargetLimit).toBe(3);
@@ -466,6 +467,15 @@ describe('resolveAppConfig', () => {
       ).toThrowError(/CLAMAV_HOST/);
     },
   );
+
+  it.each(['0', '49', '-1', '1.5', 'NaN', 'Infinity'])('rejects invalid signature age policy %s', (value) => {
+    expect(() => resolveAppConfig({ CLAMAV_MAX_SIGNATURE_AGE_HOURS: value }))
+      .toThrowError(/CLAMAV_MAX_SIGNATURE_AGE_HOURS/);
+  });
+
+  it.each([1, 24, 48])('preserves approved signature age policy %s', (hours) => {
+    expect(resolveAppConfig({ CLAMAV_MAX_SIGNATURE_AGE_HOURS: String(hours) }).malwareScannerMaxSignatureAgeHours).toBe(hours);
+  });
 
   it('rejects unsupported scanner providers and invalid ClamAV limits', () => {
     expect(() =>
