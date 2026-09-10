@@ -26,7 +26,8 @@ COPY apps/api-ops/package.json apps/api-ops/package.json
 COPY apps/web/package.json apps/web/package.json
 COPY packages/shared/package.json packages/shared/package.json
 
-RUN pnpm install --frozen-lockfile
+COPY scripts/deploy/prefetch-next.mjs scripts/deploy/prefetch-next.mjs
+RUN node scripts/deploy/prefetch-next.mjs && pnpm install --frozen-lockfile
 
 FROM deps AS build
 

@@ -73,6 +73,14 @@ if (role === 'api') {
   const output = await sharp({ create: { width: 2, height: 2, channels: 3, background: 'white' } }).resize(1, 1).png().toBuffer();
   const metadata = await sharp(output).metadata();
   assert.equal(metadata.width, 1); assert.equal(metadata.height, 1);
-  native = { sharp: sharp.versions.sharp, vips: sharp.versions.vips };
+  assert.equal(sharp.versions.sharp, '0.35.4');
+  const heif = sharp.versions.heif?.split('.').map(Number);
+  assert.ok(heif && (heif[0] > 1 || (heif[0] === 1 && (heif[1] > 23 || (heif[1] === 23 && heif[2] >= 2)))), 'libheif must include the AVIF decoder security fix');
+  const avif = await sharp(output).avif().toBuffer();
+  const decoded = await sharp(avif).resize(2, 2).png().toBuffer();
+  const avifMetadata = await sharp(decoded).metadata();
+  assert.equal(avifMetadata.width, 2); assert.equal(avifMetadata.height, 2);
+  await assert.rejects(sharp(avif.subarray(0, 24)).png().toBuffer());
+  native = { sharp: sharp.versions.sharp, vips: sharp.versions.vips, heif: sharp.versions.heif, avif: 'encode, decode, resize and truncated input rejection' };
 }
 console.log(JSON.stringify({ status: 'PASS', role, node: process.version, embeddedOpenSSL: process.versions.openssl, sharedOpenSSL: process.config.variables.node_shared_openssl, systemOpenSSL: '3.5.8-r0', platform: `${process.platform}/${process.arch}`, uid: process.getuid(), crypto: 'GCM roundtrip and tamper rejection', tls: 'trusted localhost accepted; wrong hostname and untrusted CA rejected', native }));
