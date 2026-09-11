@@ -31,11 +31,15 @@ export class SessionStoreService {
   ) {}
 
   async setJson<T>(key: string, value: T, ttlSeconds: number) {
+    this.validateKey(key);
     const serialized = JSON.stringify(value);
+    if (typeof serialized !== 'string' || Buffer.byteLength(serialized, 'utf8') > 4_096) {
+      throw new ServiceUnavailableException('认证存储数据超出限制。');
+    }
     const client = await this.getRedisClient();
 
     if (client) {
-      await client.set(key, serialized, 'EX', ttlSeconds);
+      await this.redisService.execute((redis) => redis.set(key, serialized, 'EX', ttlSeconds));
       return;
     }
 
@@ -43,10 +47,11 @@ export class SessionStoreService {
   }
 
   async getJson<T>(key: string): Promise<T | null> {
+    this.validateKey(key);
     const client = await this.getRedisClient();
 
     if (client) {
-      const value = await client.get(key);
+      const value = await this.redisService.execute((redis) => redis.get(key));
       return value ? (JSON.parse(value) as T) : null;
     }
 
@@ -65,10 +70,16 @@ export class SessionStoreService {
   }
 
   async consumeJson<T>(key: string): Promise<T | null> {
+    this.validateKey(key);
     const client = await this.getRedisClient();
 
     if (client) {
-      const result = await client.multi().get(key).del(key).exec();
+      const result = await this.redisService.execute((redis) =>
+        redis.multi().get(key).del(key).exec(),
+      );
+      if (!result || result.length !== 2 || result.some(([error]) => error !== null)) {
+        throw new ServiceUnavailableException('认证服务暂时不可用，请稍后重试。');
+      }
       const value = result?.[0]?.[1];
 
       return typeof value === 'string' ? (JSON.parse(value) as T) : null;
@@ -85,10 +96,11 @@ export class SessionStoreService {
   }
 
   async delete(key: string) {
+    this.validateKey(key);
     const client = await this.getRedisClient();
 
     if (client) {
-      await client.del(key);
+      await this.redisService.execute((redis) => redis.del(key));
       return;
     }
 
@@ -96,14 +108,12 @@ export class SessionStoreService {
   }
 
   async incrementWithTtl(key: string, ttlSeconds: number) {
+    this.validateKey(key);
     const client = await this.getRedisClient();
 
     if (client) {
-      const result = await client.eval(
-        AUTH_RATE_LIMIT_LUA,
-        1,
-        key,
-        String(ttlSeconds),
+      const result = await this.redisService.execute((redis) =>
+        redis.eval(AUTH_RATE_LIMIT_LUA, 1, key, String(ttlSeconds)),
       );
       const count = Number(result);
 
@@ -123,6 +133,12 @@ export class SessionStoreService {
     this.writeMemoryEntry(key, JSON.stringify(nextCount), ttlSeconds);
 
     return nextCount;
+  }
+
+  private validateKey(key: string) {
+    if (typeof key !== 'string' || Buffer.byteLength(key, 'utf8') > 256) {
+      throw new ServiceUnavailableException('认证存储数据超出限制。');
+    }
   }
 
   private async getRedisClient(): Promise<Redis | null> {

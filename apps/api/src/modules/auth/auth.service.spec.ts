@@ -307,6 +307,15 @@ describe('AuthService Feishu OAuth state', () => {
     );
   });
 
+  it.each(['not-a-session', 'x'.repeat(8192), '雪'.repeat(512)])(
+    'rejects malformed session tokens before Redis lookup', async (token) => {
+      const { service, sessionStoreService, usersService } = createAuthService();
+      await expect(service.getAuthenticatedUserFromSessionToken(token)).resolves.toBeNull();
+      expect(sessionStoreService.getJson).not.toHaveBeenCalled();
+      expect(usersService.getAuthenticatedUser).not.toHaveBeenCalled();
+    },
+  );
+
   it('expires old sessions and deletes the server-side record', async () => {
     const { service, sessionStoreService, usersService } = createAuthService();
     sessionStoreService.getJson.mockResolvedValue({
@@ -316,8 +325,8 @@ describe('AuthService Feishu OAuth state', () => {
       expiresAt: '2026-07-16T00:00:01.000Z',
     });
 
-    await expect(service.getAuthenticatedUserFromSessionToken('expired')).resolves.toBeNull();
-    expect(sessionStoreService.delete).toHaveBeenCalledWith('auth:session:expired');
+    await expect(service.getAuthenticatedUserFromSessionToken('8dcfdac1-2a27-46df-bd09-ec35ea84ccdb')).resolves.toBeNull();
+    expect(sessionStoreService.delete).toHaveBeenCalledWith('auth:session:8dcfdac1-2a27-46df-bd09-ec35ea84ccdb');
     expect(usersService.getAuthenticatedUser).not.toHaveBeenCalled();
   });
 

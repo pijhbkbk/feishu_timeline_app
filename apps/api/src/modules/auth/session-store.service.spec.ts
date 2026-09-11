@@ -24,6 +24,7 @@ function createService(options: {
   };
   const redisService = {
     getClient: vi.fn(() => redisClient),
+    execute: vi.fn((handler: (client: typeof redisClient) => Promise<unknown>) => handler(redisClient)),
   };
   const configService = {
     get: vi.fn((key: string) =>
@@ -43,6 +44,27 @@ afterEach(() => {
 });
 
 describe('SessionStoreService security boundaries', () => {
+  it('rejects consumption when the transaction reports an error instead of returning reusable state', async () => {
+    const { service, redisClient } = createService({ nodeEnv: 'production', redisStatus: 'ready' });
+    const transaction = {
+      get: vi.fn().mockReturnThis(),
+      del: vi.fn().mockReturnThis(),
+      exec: vi.fn().mockResolvedValue([[null, '{"state":"test"}'], [new Error('denied'), null]]),
+    };
+    redisClient.multi.mockReturnValue(transaction);
+    await expect(service.consumeJson('state:test')).rejects.toBeInstanceOf(ServiceUnavailableException);
+    expect(transaction.del).toHaveBeenCalledWith('state:test');
+  });
+
+  it('rejects oversized keys and values before the Redis call or fallback allocation', async () => {
+    const { service, redisClient } = createService({ nodeEnv: 'production', redisStatus: 'ready' });
+    await expect(service.getJson('雪'.repeat(86))).rejects.toBeInstanceOf(ServiceUnavailableException);
+    await expect(service.setJson('session:test', { value: '雪'.repeat(1400) }, 60))
+      .rejects.toBeInstanceOf(ServiceUnavailableException);
+    expect(redisClient.get).not.toHaveBeenCalled();
+    expect(redisClient.set).not.toHaveBeenCalled();
+  });
+
   it('fails closed instead of allocating memory when Redis is unavailable in production', async () => {
     const { service } = createService({ nodeEnv: 'production', redisStatus: 'end' });
 

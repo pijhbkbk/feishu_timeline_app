@@ -59,6 +59,10 @@ export class AuthService {
   ) {}
 
   async getAuthenticatedUserFromSessionToken(sessionToken: string) {
+    if (typeof sessionToken !== 'string' || !SESSION_TOKEN_PATTERN.test(sessionToken)) {
+      return null;
+    }
+
     const session = await this.sessionStoreService.getJson<AuthSessionPayload>(
       this.getSessionStorageKey(sessionToken),
     );
