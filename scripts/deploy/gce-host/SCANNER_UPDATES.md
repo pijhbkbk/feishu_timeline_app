@@ -11,3 +11,30 @@ Public GPT-6 Pro review selects serial updates every six hours and controlled co
 - Account for FreshClam TestDatabases memory separately from clamd. Their existing separate 3 GiB bounds require the dedicated 8 GiB host; avoid simultaneous verification tools or dual clamd generations. Enforce one updater, bounded runtime, cleanup of its own container, least privilege, no extra capabilities, read-only runtime and only a dedicated candidate signature area writable.
 
 Remaining implementation prerequisites: final published immutable image, independently authorized root controller, owned timer/service and failure/activation state, exact unit tests and real update/no-change/failure/cold-activation validation. No signature-freshness or update-health claim should be based only on FreshClam exit 0 or RELOADING. Official references: https://raw.githubusercontent.com/Cisco-Talos/clamav/clamav-1.4.6/docs/man/clamd.8.in and https://docs.clamav.net/manual/Signatures.html.
+
+
+## Implemented policy; host integration pending
+
+`scanner_update_policy.py` implements the reviewed cold-activation decision policy.
+`test_scanner_update_policy.py` has25 passing fake-host tests, including partial
+candidate download, process exit before cleanup, retention when exit cannot be
+proved, persistent per-database version floors, same-byte metadata consistency,
+and signature-age boundaries after slow verification, approval and cleanup.
+Independent read-only policy review passed. These tests do not perform official
+signature verification, Docker/systemd control, locking or real engine activation.
+
+The host adapter must persist version floors independently of admission approval;
+`None` is valid only for a never-initialized store. Losing a previously initialized
+floor must fail closed. Its root-owned state/configuration, lock, pinned image,
+complete immutable database set, actual runtime identity and ingress effects still
+need implementation and independent verification. No component here authorizes
+its own execution as root.
+
+The reviewed admission design uses the system-provided systemd-socket-proxyd,
+limited to8 connections and loopback, forwarding to a private Unix socket. Only
+the controller may open its socket unit after validation. The proxy may use socket
+activation; clamd must not. Both proxy socket and service must stop and all in-flight
+connections must end before stopping the old clamd. Units must have no boot or
+restart path that activates clamd or opens admission without controller approval.
+This design is not installed; any watchdog must share the same serialization and
+cannot permit a stale updater to reopen after a failure.
