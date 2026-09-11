@@ -4579,6 +4579,1854 @@
         }
       ],
       "closure": null
+    },
+    {
+      "id": "R27-HOST-PKG-BIND9_LIBS-001",
+      "title": "bind9-libs: 2 unreviewed host CVE alerts",
+      "status": "candidate",
+      "severity": "medium",
+      "confidence": "high",
+      "classification": "pre_existing",
+      "cwe": null,
+      "source": {
+        "type": "sca",
+        "report_path": "/private/tmp/rc2-host-scan-20260910/output/report.json",
+        "binding": {
+          "commit": "3068d81ab91c2fdf940f2ceba74552083a33865c",
+          "tree": "19dcba645485f76aee29562b55125f35a2e4bdda",
+          "tool_name": "Trivy source report inventory import",
+          "tool_version": "0.72.0",
+          "command": "Read existing host report; group by exact installed source package and CVE; no rescan or exploit",
+          "environment": "Existing GCE host package inventory; commit/tree identify assessment source checkpoint, not production runtime or package binaries",
+          "result_sha256": "a2162ab9f775dbd32c8f45e1680809466c64c197faea360f5bcc1a2dab159971",
+          "log_path": "/private/tmp/rc2-host-scan-20260910/output/report.json",
+          "config_sha256": null,
+          "recorded_at": "2026-09-10T23:22:23Z"
+        }
+      },
+      "scope": {
+        "component": "Host source package bind9-libs",
+        "affected_files": [],
+        "entry_points": [
+          "libdns-export1110@1:9.11.19+dfsg-2.1ubuntu3",
+          "libisc-export1105@1:9.11.19+dfsg-2.1ubuntu3"
+        ],
+        "trust_boundary": "Potential host tool or library input; exact exploit reachability not yet established"
+      },
+      "evidence": {
+        "reachable": null,
+        "production_exposed": null,
+        "reproduction_path": "Installed package metadata matches existing scanner report: CVE-2026-3039, CVE-2026-5946. Exact package versions and raw CVSS in /private/tmp/rc2-production-20260910/evidence/host-unreviewed-package-alert-index.json. No exploitation attempted.",
+        "proof_gap": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+      },
+      "root_cause_cluster": null,
+      "security_invariants": [],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
+      "fix": {
+        "task_id": "R27_PRODUCTION_RELEASE_20260910",
+        "branch": "security/r27rc2-candidate-repair",
+        "commit": null,
+        "tree": null,
+        "changed_files": []
+      },
+      "verification": {
+        "targeted": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        },
+        "affected_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        },
+        "diff_review": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        }
+      },
+      "history": [
+        {
+          "at": "2026-09-10T23:22:23Z",
+          "transition": "null->candidate",
+          "actor": "Codex",
+          "reason": "New current-time registration of previously unreviewed alerts from an existing report; no historical transition inferred or rewritten.",
+          "binding": {
+            "commit": "3068d81ab91c2fdf940f2ceba74552083a33865c",
+            "tree": "19dcba645485f76aee29562b55125f35a2e4bdda",
+            "tool_name": "Trivy source report inventory import",
+            "tool_version": "0.72.0",
+            "command": "Read existing host report; group by exact installed source package and CVE; no rescan or exploit",
+            "environment": "Existing GCE host package inventory; commit/tree identify assessment source checkpoint, not production runtime or package binaries",
+            "result_sha256": "a2162ab9f775dbd32c8f45e1680809466c64c197faea360f5bcc1a2dab159971",
+            "log_path": "/private/tmp/rc2-host-scan-20260910/output/report.json",
+            "config_sha256": null,
+            "recorded_at": "2026-09-10T23:22:23Z"
+          }
+        }
+      ],
+      "closure": null
+    },
+    {
+      "id": "R27-HOST-PKG-BINUTILS-001",
+      "title": "binutils: 3 unreviewed host CVE alerts",
+      "status": "candidate",
+      "severity": "medium",
+      "confidence": "high",
+      "classification": "pre_existing",
+      "cwe": null,
+      "source": {
+        "type": "sca",
+        "report_path": "/private/tmp/rc2-host-scan-20260910/output/report.json",
+        "binding": {
+          "commit": "3068d81ab91c2fdf940f2ceba74552083a33865c",
+          "tree": "19dcba645485f76aee29562b55125f35a2e4bdda",
+          "tool_name": "Trivy source report inventory import",
+          "tool_version": "0.72.0",
+          "command": "Read existing host report; group by exact installed source package and CVE; no rescan or exploit",
+          "environment": "Existing GCE host package inventory; commit/tree identify assessment source checkpoint, not production runtime or package binaries",
+          "result_sha256": "a2162ab9f775dbd32c8f45e1680809466c64c197faea360f5bcc1a2dab159971",
+          "log_path": "/private/tmp/rc2-host-scan-20260910/output/report.json",
+          "config_sha256": null,
+          "recorded_at": "2026-09-10T23:22:23Z"
+        }
+      },
+      "scope": {
+        "component": "Host source package binutils",
+        "affected_files": [],
+        "entry_points": [
+          "binutils-common@2.38-4ubuntu2.12",
+          "binutils-x86-64-linux-gnu@2.38-4ubuntu2.12",
+          "binutils@2.38-4ubuntu2.12",
+          "libbinutils@2.38-4ubuntu2.12",
+          "libctf-nobfd0@2.38-4ubuntu2.12",
+          "libctf0@2.38-4ubuntu2.12"
+        ],
+        "trust_boundary": "Potential host tool or library input; exact exploit reachability not yet established"
+      },
+      "evidence": {
+        "reachable": null,
+        "production_exposed": null,
+        "reproduction_path": "Installed package metadata matches existing scanner report: CVE-2025-69645, CVE-2025-69651, CVE-2025-69652. Exact package versions and raw CVSS in /private/tmp/rc2-production-20260910/evidence/host-unreviewed-package-alert-index.json. No exploitation attempted.",
+        "proof_gap": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+      },
+      "root_cause_cluster": null,
+      "security_invariants": [],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
+      "fix": {
+        "task_id": "R27_PRODUCTION_RELEASE_20260910",
+        "branch": "security/r27rc2-candidate-repair",
+        "commit": null,
+        "tree": null,
+        "changed_files": []
+      },
+      "verification": {
+        "targeted": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        },
+        "affected_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        },
+        "diff_review": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        }
+      },
+      "history": [
+        {
+          "at": "2026-09-10T23:22:23Z",
+          "transition": "null->candidate",
+          "actor": "Codex",
+          "reason": "New current-time registration of previously unreviewed alerts from an existing report; no historical transition inferred or rewritten.",
+          "binding": {
+            "commit": "3068d81ab91c2fdf940f2ceba74552083a33865c",
+            "tree": "19dcba645485f76aee29562b55125f35a2e4bdda",
+            "tool_name": "Trivy source report inventory import",
+            "tool_version": "0.72.0",
+            "command": "Read existing host report; group by exact installed source package and CVE; no rescan or exploit",
+            "environment": "Existing GCE host package inventory; commit/tree identify assessment source checkpoint, not production runtime or package binaries",
+            "result_sha256": "a2162ab9f775dbd32c8f45e1680809466c64c197faea360f5bcc1a2dab159971",
+            "log_path": "/private/tmp/rc2-host-scan-20260910/output/report.json",
+            "config_sha256": null,
+            "recorded_at": "2026-09-10T23:22:23Z"
+          }
+        }
+      ],
+      "closure": null
+    },
+    {
+      "id": "R27-HOST-PKG-BUSYBOX-001",
+      "title": "busybox: 4 unreviewed host CVE alerts",
+      "status": "candidate",
+      "severity": "medium",
+      "confidence": "high",
+      "classification": "pre_existing",
+      "cwe": null,
+      "source": {
+        "type": "sca",
+        "report_path": "/private/tmp/rc2-host-scan-20260910/output/report.json",
+        "binding": {
+          "commit": "3068d81ab91c2fdf940f2ceba74552083a33865c",
+          "tree": "19dcba645485f76aee29562b55125f35a2e4bdda",
+          "tool_name": "Trivy source report inventory import",
+          "tool_version": "0.72.0",
+          "command": "Read existing host report; group by exact installed source package and CVE; no rescan or exploit",
+          "environment": "Existing GCE host package inventory; commit/tree identify assessment source checkpoint, not production runtime or package binaries",
+          "result_sha256": "a2162ab9f775dbd32c8f45e1680809466c64c197faea360f5bcc1a2dab159971",
+          "log_path": "/private/tmp/rc2-host-scan-20260910/output/report.json",
+          "config_sha256": null,
+          "recorded_at": "2026-09-10T23:22:23Z"
+        }
+      },
+      "scope": {
+        "component": "Host source package busybox",
+        "affected_files": [],
+        "entry_points": [
+          "busybox-initramfs@1:1.30.1-7ubuntu3.1"
+        ],
+        "trust_boundary": "Potential host tool or library input; exact exploit reachability not yet established"
+      },
+      "evidence": {
+        "reachable": null,
+        "production_exposed": null,
+        "reproduction_path": "Installed package metadata matches existing scanner report: CVE-2023-42366, CVE-2024-58251, CVE-2025-46394, CVE-2025-60876. Exact package versions and raw CVSS in /private/tmp/rc2-production-20260910/evidence/host-unreviewed-package-alert-index.json. No exploitation attempted.",
+        "proof_gap": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+      },
+      "root_cause_cluster": null,
+      "security_invariants": [],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
+      "fix": {
+        "task_id": "R27_PRODUCTION_RELEASE_20260910",
+        "branch": "security/r27rc2-candidate-repair",
+        "commit": null,
+        "tree": null,
+        "changed_files": []
+      },
+      "verification": {
+        "targeted": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        },
+        "affected_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        },
+        "diff_review": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        }
+      },
+      "history": [
+        {
+          "at": "2026-09-10T23:22:23Z",
+          "transition": "null->candidate",
+          "actor": "Codex",
+          "reason": "New current-time registration of previously unreviewed alerts from an existing report; no historical transition inferred or rewritten.",
+          "binding": {
+            "commit": "3068d81ab91c2fdf940f2ceba74552083a33865c",
+            "tree": "19dcba645485f76aee29562b55125f35a2e4bdda",
+            "tool_name": "Trivy source report inventory import",
+            "tool_version": "0.72.0",
+            "command": "Read existing host report; group by exact installed source package and CVE; no rescan or exploit",
+            "environment": "Existing GCE host package inventory; commit/tree identify assessment source checkpoint, not production runtime or package binaries",
+            "result_sha256": "a2162ab9f775dbd32c8f45e1680809466c64c197faea360f5bcc1a2dab159971",
+            "log_path": "/private/tmp/rc2-host-scan-20260910/output/report.json",
+            "config_sha256": null,
+            "recorded_at": "2026-09-10T23:22:23Z"
+          }
+        }
+      ],
+      "closure": null
+    },
+    {
+      "id": "R27-HOST-PKG-CPIO-001",
+      "title": "cpio: 1 unreviewed host CVE alerts",
+      "status": "candidate",
+      "severity": "medium",
+      "confidence": "high",
+      "classification": "pre_existing",
+      "cwe": null,
+      "source": {
+        "type": "sca",
+        "report_path": "/private/tmp/rc2-host-scan-20260910/output/report.json",
+        "binding": {
+          "commit": "3068d81ab91c2fdf940f2ceba74552083a33865c",
+          "tree": "19dcba645485f76aee29562b55125f35a2e4bdda",
+          "tool_name": "Trivy source report inventory import",
+          "tool_version": "0.72.0",
+          "command": "Read existing host report; group by exact installed source package and CVE; no rescan or exploit",
+          "environment": "Existing GCE host package inventory; commit/tree identify assessment source checkpoint, not production runtime or package binaries",
+          "result_sha256": "a2162ab9f775dbd32c8f45e1680809466c64c197faea360f5bcc1a2dab159971",
+          "log_path": "/private/tmp/rc2-host-scan-20260910/output/report.json",
+          "config_sha256": null,
+          "recorded_at": "2026-09-10T23:22:23Z"
+        }
+      },
+      "scope": {
+        "component": "Host source package cpio",
+        "affected_files": [],
+        "entry_points": [
+          "cpio@2.13+dfsg-7ubuntu0.2"
+        ],
+        "trust_boundary": "Potential host tool or library input; exact exploit reachability not yet established"
+      },
+      "evidence": {
+        "reachable": null,
+        "production_exposed": null,
+        "reproduction_path": "Installed package metadata matches existing scanner report: CVE-2023-7216. Exact package versions and raw CVSS in /private/tmp/rc2-production-20260910/evidence/host-unreviewed-package-alert-index.json. No exploitation attempted.",
+        "proof_gap": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+      },
+      "root_cause_cluster": null,
+      "security_invariants": [],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
+      "fix": {
+        "task_id": "R27_PRODUCTION_RELEASE_20260910",
+        "branch": "security/r27rc2-candidate-repair",
+        "commit": null,
+        "tree": null,
+        "changed_files": []
+      },
+      "verification": {
+        "targeted": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        },
+        "affected_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        },
+        "diff_review": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        }
+      },
+      "history": [
+        {
+          "at": "2026-09-10T23:22:23Z",
+          "transition": "null->candidate",
+          "actor": "Codex",
+          "reason": "New current-time registration of previously unreviewed alerts from an existing report; no historical transition inferred or rewritten.",
+          "binding": {
+            "commit": "3068d81ab91c2fdf940f2ceba74552083a33865c",
+            "tree": "19dcba645485f76aee29562b55125f35a2e4bdda",
+            "tool_name": "Trivy source report inventory import",
+            "tool_version": "0.72.0",
+            "command": "Read existing host report; group by exact installed source package and CVE; no rescan or exploit",
+            "environment": "Existing GCE host package inventory; commit/tree identify assessment source checkpoint, not production runtime or package binaries",
+            "result_sha256": "a2162ab9f775dbd32c8f45e1680809466c64c197faea360f5bcc1a2dab159971",
+            "log_path": "/private/tmp/rc2-host-scan-20260910/output/report.json",
+            "config_sha256": null,
+            "recorded_at": "2026-09-10T23:22:23Z"
+          }
+        }
+      ],
+      "closure": null
+    },
+    {
+      "id": "R27-HOST-PKG-EFIVAR-001",
+      "title": "efivar: 1 unreviewed host CVE alerts",
+      "status": "candidate",
+      "severity": "medium",
+      "confidence": "high",
+      "classification": "pre_existing",
+      "cwe": null,
+      "source": {
+        "type": "sca",
+        "report_path": "/private/tmp/rc2-host-scan-20260910/output/report.json",
+        "binding": {
+          "commit": "3068d81ab91c2fdf940f2ceba74552083a33865c",
+          "tree": "19dcba645485f76aee29562b55125f35a2e4bdda",
+          "tool_name": "Trivy source report inventory import",
+          "tool_version": "0.72.0",
+          "command": "Read existing host report; group by exact installed source package and CVE; no rescan or exploit",
+          "environment": "Existing GCE host package inventory; commit/tree identify assessment source checkpoint, not production runtime or package binaries",
+          "result_sha256": "a2162ab9f775dbd32c8f45e1680809466c64c197faea360f5bcc1a2dab159971",
+          "log_path": "/private/tmp/rc2-host-scan-20260910/output/report.json",
+          "config_sha256": null,
+          "recorded_at": "2026-09-10T23:22:23Z"
+        }
+      },
+      "scope": {
+        "component": "Host source package efivar",
+        "affected_files": [],
+        "entry_points": [
+          "libefiboot1@37-6ubuntu2",
+          "libefivar1@37-6ubuntu2"
+        ],
+        "trust_boundary": "Potential host tool or library input; exact exploit reachability not yet established"
+      },
+      "evidence": {
+        "reachable": null,
+        "production_exposed": null,
+        "reproduction_path": "Installed package metadata matches existing scanner report: CVE-2026-6862. Exact package versions and raw CVSS in /private/tmp/rc2-production-20260910/evidence/host-unreviewed-package-alert-index.json. No exploitation attempted.",
+        "proof_gap": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+      },
+      "root_cause_cluster": null,
+      "security_invariants": [],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
+      "fix": {
+        "task_id": "R27_PRODUCTION_RELEASE_20260910",
+        "branch": "security/r27rc2-candidate-repair",
+        "commit": null,
+        "tree": null,
+        "changed_files": []
+      },
+      "verification": {
+        "targeted": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        },
+        "affected_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        },
+        "diff_review": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        }
+      },
+      "history": [
+        {
+          "at": "2026-09-10T23:22:23Z",
+          "transition": "null->candidate",
+          "actor": "Codex",
+          "reason": "New current-time registration of previously unreviewed alerts from an existing report; no historical transition inferred or rewritten.",
+          "binding": {
+            "commit": "3068d81ab91c2fdf940f2ceba74552083a33865c",
+            "tree": "19dcba645485f76aee29562b55125f35a2e4bdda",
+            "tool_name": "Trivy source report inventory import",
+            "tool_version": "0.72.0",
+            "command": "Read existing host report; group by exact installed source package and CVE; no rescan or exploit",
+            "environment": "Existing GCE host package inventory; commit/tree identify assessment source checkpoint, not production runtime or package binaries",
+            "result_sha256": "a2162ab9f775dbd32c8f45e1680809466c64c197faea360f5bcc1a2dab159971",
+            "log_path": "/private/tmp/rc2-host-scan-20260910/output/report.json",
+            "config_sha256": null,
+            "recorded_at": "2026-09-10T23:22:23Z"
+          }
+        }
+      ],
+      "closure": null
+    },
+    {
+      "id": "R27-HOST-PKG-EXPAT-001",
+      "title": "expat: 24 unreviewed host CVE alerts",
+      "status": "candidate",
+      "severity": "medium",
+      "confidence": "high",
+      "classification": "pre_existing",
+      "cwe": null,
+      "source": {
+        "type": "sca",
+        "report_path": "/private/tmp/rc2-host-scan-20260910/output/report.json",
+        "binding": {
+          "commit": "3068d81ab91c2fdf940f2ceba74552083a33865c",
+          "tree": "19dcba645485f76aee29562b55125f35a2e4bdda",
+          "tool_name": "Trivy source report inventory import",
+          "tool_version": "0.72.0",
+          "command": "Read existing host report; group by exact installed source package and CVE; no rescan or exploit",
+          "environment": "Existing GCE host package inventory; commit/tree identify assessment source checkpoint, not production runtime or package binaries",
+          "result_sha256": "a2162ab9f775dbd32c8f45e1680809466c64c197faea360f5bcc1a2dab159971",
+          "log_path": "/private/tmp/rc2-host-scan-20260910/output/report.json",
+          "config_sha256": null,
+          "recorded_at": "2026-09-10T23:22:23Z"
+        }
+      },
+      "scope": {
+        "component": "Host source package expat",
+        "affected_files": [],
+        "entry_points": [
+          "libexpat1@2.4.7-1ubuntu0.7"
+        ],
+        "trust_boundary": "Potential host tool or library input; exact exploit reachability not yet established"
+      },
+      "evidence": {
+        "reachable": null,
+        "production_exposed": null,
+        "reproduction_path": "Installed package metadata matches existing scanner report: CVE-2025-59375, CVE-2025-66382, CVE-2026-32776, CVE-2026-32777, CVE-2026-32778, CVE-2026-41080, CVE-2026-45186, CVE-2026-50219, CVE-2026-56131, CVE-2026-56132, CVE-2026-56403, CVE-2026-56404, CVE-2026-56405, CVE-2026-56406, CVE-2026-56407, CVE-2026-56408, CVE-2026-56409, CVE-2026-56410, CVE-2026-56411, CVE-2026-56412, CVE-2026-66046, CVE-2026-72522, CVE-2026-76641, CVE-2026-76957. Exact package versions and raw CVSS in /private/tmp/rc2-production-20260910/evidence/host-unreviewed-package-alert-index.json. No exploitation attempted.",
+        "proof_gap": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+      },
+      "root_cause_cluster": null,
+      "security_invariants": [],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
+      "fix": {
+        "task_id": "R27_PRODUCTION_RELEASE_20260910",
+        "branch": "security/r27rc2-candidate-repair",
+        "commit": null,
+        "tree": null,
+        "changed_files": []
+      },
+      "verification": {
+        "targeted": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        },
+        "affected_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        },
+        "diff_review": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        }
+      },
+      "history": [
+        {
+          "at": "2026-09-10T23:22:23Z",
+          "transition": "null->candidate",
+          "actor": "Codex",
+          "reason": "New current-time registration of previously unreviewed alerts from an existing report; no historical transition inferred or rewritten.",
+          "binding": {
+            "commit": "3068d81ab91c2fdf940f2ceba74552083a33865c",
+            "tree": "19dcba645485f76aee29562b55125f35a2e4bdda",
+            "tool_name": "Trivy source report inventory import",
+            "tool_version": "0.72.0",
+            "command": "Read existing host report; group by exact installed source package and CVE; no rescan or exploit",
+            "environment": "Existing GCE host package inventory; commit/tree identify assessment source checkpoint, not production runtime or package binaries",
+            "result_sha256": "a2162ab9f775dbd32c8f45e1680809466c64c197faea360f5bcc1a2dab159971",
+            "log_path": "/private/tmp/rc2-host-scan-20260910/output/report.json",
+            "config_sha256": null,
+            "recorded_at": "2026-09-10T23:22:23Z"
+          }
+        }
+      ],
+      "closure": null
+    },
+    {
+      "id": "R27-HOST-PKG-GIT-001",
+      "title": "git: 1 unreviewed host CVE alerts",
+      "status": "candidate",
+      "severity": "medium",
+      "confidence": "high",
+      "classification": "pre_existing",
+      "cwe": null,
+      "source": {
+        "type": "sca",
+        "report_path": "/private/tmp/rc2-host-scan-20260910/output/report.json",
+        "binding": {
+          "commit": "3068d81ab91c2fdf940f2ceba74552083a33865c",
+          "tree": "19dcba645485f76aee29562b55125f35a2e4bdda",
+          "tool_name": "Trivy source report inventory import",
+          "tool_version": "0.72.0",
+          "command": "Read existing host report; group by exact installed source package and CVE; no rescan or exploit",
+          "environment": "Existing GCE host package inventory; commit/tree identify assessment source checkpoint, not production runtime or package binaries",
+          "result_sha256": "a2162ab9f775dbd32c8f45e1680809466c64c197faea360f5bcc1a2dab159971",
+          "log_path": "/private/tmp/rc2-host-scan-20260910/output/report.json",
+          "config_sha256": null,
+          "recorded_at": "2026-09-10T23:22:23Z"
+        }
+      },
+      "scope": {
+        "component": "Host source package git",
+        "affected_files": [],
+        "entry_points": [
+          "git-man@1:2.34.1-1ubuntu1.17",
+          "git@1:2.34.1-1ubuntu1.17"
+        ],
+        "trust_boundary": "Potential host tool or library input; exact exploit reachability not yet established"
+      },
+      "evidence": {
+        "reachable": null,
+        "production_exposed": null,
+        "reproduction_path": "Installed package metadata matches existing scanner report: CVE-2024-52005. Exact package versions and raw CVSS in /private/tmp/rc2-production-20260910/evidence/host-unreviewed-package-alert-index.json. No exploitation attempted.",
+        "proof_gap": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+      },
+      "root_cause_cluster": null,
+      "security_invariants": [],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
+      "fix": {
+        "task_id": "R27_PRODUCTION_RELEASE_20260910",
+        "branch": "security/r27rc2-candidate-repair",
+        "commit": null,
+        "tree": null,
+        "changed_files": []
+      },
+      "verification": {
+        "targeted": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        },
+        "affected_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        },
+        "diff_review": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        }
+      },
+      "history": [
+        {
+          "at": "2026-09-10T23:22:23Z",
+          "transition": "null->candidate",
+          "actor": "Codex",
+          "reason": "New current-time registration of previously unreviewed alerts from an existing report; no historical transition inferred or rewritten.",
+          "binding": {
+            "commit": "3068d81ab91c2fdf940f2ceba74552083a33865c",
+            "tree": "19dcba645485f76aee29562b55125f35a2e4bdda",
+            "tool_name": "Trivy source report inventory import",
+            "tool_version": "0.72.0",
+            "command": "Read existing host report; group by exact installed source package and CVE; no rescan or exploit",
+            "environment": "Existing GCE host package inventory; commit/tree identify assessment source checkpoint, not production runtime or package binaries",
+            "result_sha256": "a2162ab9f775dbd32c8f45e1680809466c64c197faea360f5bcc1a2dab159971",
+            "log_path": "/private/tmp/rc2-host-scan-20260910/output/report.json",
+            "config_sha256": null,
+            "recorded_at": "2026-09-10T23:22:23Z"
+          }
+        }
+      ],
+      "closure": null
+    },
+    {
+      "id": "R27-HOST-PKG-GLIB2_0-001",
+      "title": "glib2.0: 9 unreviewed host CVE alerts",
+      "status": "candidate",
+      "severity": "medium",
+      "confidence": "high",
+      "classification": "pre_existing",
+      "cwe": null,
+      "source": {
+        "type": "sca",
+        "report_path": "/private/tmp/rc2-host-scan-20260910/output/report.json",
+        "binding": {
+          "commit": "3068d81ab91c2fdf940f2ceba74552083a33865c",
+          "tree": "19dcba645485f76aee29562b55125f35a2e4bdda",
+          "tool_name": "Trivy source report inventory import",
+          "tool_version": "0.72.0",
+          "command": "Read existing host report; group by exact installed source package and CVE; no rescan or exploit",
+          "environment": "Existing GCE host package inventory; commit/tree identify assessment source checkpoint, not production runtime or package binaries",
+          "result_sha256": "a2162ab9f775dbd32c8f45e1680809466c64c197faea360f5bcc1a2dab159971",
+          "log_path": "/private/tmp/rc2-host-scan-20260910/output/report.json",
+          "config_sha256": null,
+          "recorded_at": "2026-09-10T23:22:23Z"
+        }
+      },
+      "scope": {
+        "component": "Host source package glib2.0",
+        "affected_files": [],
+        "entry_points": [
+          "libglib2.0-0@2.72.4-0ubuntu2.9",
+          "libglib2.0-data@2.72.4-0ubuntu2.9"
+        ],
+        "trust_boundary": "Potential host tool or library input; exact exploit reachability not yet established"
+      },
+      "evidence": {
+        "reachable": null,
+        "production_exposed": null,
+        "reproduction_path": "Installed package metadata matches existing scanner report: CVE-2026-15588, CVE-2026-16118, CVE-2026-58010, CVE-2026-58011, CVE-2026-58012, CVE-2026-58013, CVE-2026-58014, CVE-2026-58015, CVE-2026-58016. Exact package versions and raw CVSS in /private/tmp/rc2-production-20260910/evidence/host-unreviewed-package-alert-index.json. No exploitation attempted.",
+        "proof_gap": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+      },
+      "root_cause_cluster": null,
+      "security_invariants": [],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
+      "fix": {
+        "task_id": "R27_PRODUCTION_RELEASE_20260910",
+        "branch": "security/r27rc2-candidate-repair",
+        "commit": null,
+        "tree": null,
+        "changed_files": []
+      },
+      "verification": {
+        "targeted": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        },
+        "affected_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        },
+        "diff_review": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        }
+      },
+      "history": [
+        {
+          "at": "2026-09-10T23:22:23Z",
+          "transition": "null->candidate",
+          "actor": "Codex",
+          "reason": "New current-time registration of previously unreviewed alerts from an existing report; no historical transition inferred or rewritten.",
+          "binding": {
+            "commit": "3068d81ab91c2fdf940f2ceba74552083a33865c",
+            "tree": "19dcba645485f76aee29562b55125f35a2e4bdda",
+            "tool_name": "Trivy source report inventory import",
+            "tool_version": "0.72.0",
+            "command": "Read existing host report; group by exact installed source package and CVE; no rescan or exploit",
+            "environment": "Existing GCE host package inventory; commit/tree identify assessment source checkpoint, not production runtime or package binaries",
+            "result_sha256": "a2162ab9f775dbd32c8f45e1680809466c64c197faea360f5bcc1a2dab159971",
+            "log_path": "/private/tmp/rc2-host-scan-20260910/output/report.json",
+            "config_sha256": null,
+            "recorded_at": "2026-09-10T23:22:23Z"
+          }
+        }
+      ],
+      "closure": null
+    },
+    {
+      "id": "R27-HOST-PKG-GLIBC-001",
+      "title": "glibc: 1 unreviewed host CVE alerts",
+      "status": "candidate",
+      "severity": "medium",
+      "confidence": "high",
+      "classification": "pre_existing",
+      "cwe": null,
+      "source": {
+        "type": "sca",
+        "report_path": "/private/tmp/rc2-host-scan-20260910/output/report.json",
+        "binding": {
+          "commit": "3068d81ab91c2fdf940f2ceba74552083a33865c",
+          "tree": "19dcba645485f76aee29562b55125f35a2e4bdda",
+          "tool_name": "Trivy source report inventory import",
+          "tool_version": "0.72.0",
+          "command": "Read existing host report; group by exact installed source package and CVE; no rescan or exploit",
+          "environment": "Existing GCE host package inventory; commit/tree identify assessment source checkpoint, not production runtime or package binaries",
+          "result_sha256": "a2162ab9f775dbd32c8f45e1680809466c64c197faea360f5bcc1a2dab159971",
+          "log_path": "/private/tmp/rc2-host-scan-20260910/output/report.json",
+          "config_sha256": null,
+          "recorded_at": "2026-09-10T23:22:23Z"
+        }
+      },
+      "scope": {
+        "component": "Host source package glibc",
+        "affected_files": [],
+        "entry_points": [
+          "libc-bin@2.35-0ubuntu3.15",
+          "libc-dev-bin@2.35-0ubuntu3.15",
+          "libc-devtools@2.35-0ubuntu3.15",
+          "libc6-dev@2.35-0ubuntu3.15",
+          "libc6@2.35-0ubuntu3.15",
+          "locales@2.35-0ubuntu3.15"
+        ],
+        "trust_boundary": "Potential host tool or library input; exact exploit reachability not yet established"
+      },
+      "evidence": {
+        "reachable": null,
+        "production_exposed": null,
+        "reproduction_path": "Installed package metadata matches existing scanner report: CVE-2026-18374. Exact package versions and raw CVSS in /private/tmp/rc2-production-20260910/evidence/host-unreviewed-package-alert-index.json. No exploitation attempted.",
+        "proof_gap": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+      },
+      "root_cause_cluster": null,
+      "security_invariants": [],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
+      "fix": {
+        "task_id": "R27_PRODUCTION_RELEASE_20260910",
+        "branch": "security/r27rc2-candidate-repair",
+        "commit": null,
+        "tree": null,
+        "changed_files": []
+      },
+      "verification": {
+        "targeted": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        },
+        "affected_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        },
+        "diff_review": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        }
+      },
+      "history": [
+        {
+          "at": "2026-09-10T23:22:23Z",
+          "transition": "null->candidate",
+          "actor": "Codex",
+          "reason": "New current-time registration of previously unreviewed alerts from an existing report; no historical transition inferred or rewritten.",
+          "binding": {
+            "commit": "3068d81ab91c2fdf940f2ceba74552083a33865c",
+            "tree": "19dcba645485f76aee29562b55125f35a2e4bdda",
+            "tool_name": "Trivy source report inventory import",
+            "tool_version": "0.72.0",
+            "command": "Read existing host report; group by exact installed source package and CVE; no rescan or exploit",
+            "environment": "Existing GCE host package inventory; commit/tree identify assessment source checkpoint, not production runtime or package binaries",
+            "result_sha256": "a2162ab9f775dbd32c8f45e1680809466c64c197faea360f5bcc1a2dab159971",
+            "log_path": "/private/tmp/rc2-host-scan-20260910/output/report.json",
+            "config_sha256": null,
+            "recorded_at": "2026-09-10T23:22:23Z"
+          }
+        }
+      ],
+      "closure": null
+    },
+    {
+      "id": "R27-HOST-PKG-ISC_DHCP-001",
+      "title": "isc-dhcp: 1 unreviewed host CVE alerts",
+      "status": "candidate",
+      "severity": "medium",
+      "confidence": "high",
+      "classification": "pre_existing",
+      "cwe": null,
+      "source": {
+        "type": "sca",
+        "report_path": "/private/tmp/rc2-host-scan-20260910/output/report.json",
+        "binding": {
+          "commit": "3068d81ab91c2fdf940f2ceba74552083a33865c",
+          "tree": "19dcba645485f76aee29562b55125f35a2e4bdda",
+          "tool_name": "Trivy source report inventory import",
+          "tool_version": "0.72.0",
+          "command": "Read existing host report; group by exact installed source package and CVE; no rescan or exploit",
+          "environment": "Existing GCE host package inventory; commit/tree identify assessment source checkpoint, not production runtime or package binaries",
+          "result_sha256": "a2162ab9f775dbd32c8f45e1680809466c64c197faea360f5bcc1a2dab159971",
+          "log_path": "/private/tmp/rc2-host-scan-20260910/output/report.json",
+          "config_sha256": null,
+          "recorded_at": "2026-09-10T23:22:23Z"
+        }
+      },
+      "scope": {
+        "component": "Host source package isc-dhcp",
+        "affected_files": [],
+        "entry_points": [
+          "isc-dhcp-client@4.4.1-2.3ubuntu2.4",
+          "isc-dhcp-common@4.4.1-2.3ubuntu2.4"
+        ],
+        "trust_boundary": "Potential host tool or library input; exact exploit reachability not yet established"
+      },
+      "evidence": {
+        "reachable": null,
+        "production_exposed": null,
+        "reproduction_path": "Installed package metadata matches existing scanner report: CVE-2026-18103. Exact package versions and raw CVSS in /private/tmp/rc2-production-20260910/evidence/host-unreviewed-package-alert-index.json. No exploitation attempted.",
+        "proof_gap": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+      },
+      "root_cause_cluster": null,
+      "security_invariants": [],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
+      "fix": {
+        "task_id": "R27_PRODUCTION_RELEASE_20260910",
+        "branch": "security/r27rc2-candidate-repair",
+        "commit": null,
+        "tree": null,
+        "changed_files": []
+      },
+      "verification": {
+        "targeted": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        },
+        "affected_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        },
+        "diff_review": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        }
+      },
+      "history": [
+        {
+          "at": "2026-09-10T23:22:23Z",
+          "transition": "null->candidate",
+          "actor": "Codex",
+          "reason": "New current-time registration of previously unreviewed alerts from an existing report; no historical transition inferred or rewritten.",
+          "binding": {
+            "commit": "3068d81ab91c2fdf940f2ceba74552083a33865c",
+            "tree": "19dcba645485f76aee29562b55125f35a2e4bdda",
+            "tool_name": "Trivy source report inventory import",
+            "tool_version": "0.72.0",
+            "command": "Read existing host report; group by exact installed source package and CVE; no rescan or exploit",
+            "environment": "Existing GCE host package inventory; commit/tree identify assessment source checkpoint, not production runtime or package binaries",
+            "result_sha256": "a2162ab9f775dbd32c8f45e1680809466c64c197faea360f5bcc1a2dab159971",
+            "log_path": "/private/tmp/rc2-host-scan-20260910/output/report.json",
+            "config_sha256": null,
+            "recorded_at": "2026-09-10T23:22:23Z"
+          }
+        }
+      ],
+      "closure": null
+    },
+    {
+      "id": "R27-HOST-PKG-JQ-001",
+      "title": "jq: 5 unreviewed host CVE alerts",
+      "status": "candidate",
+      "severity": "medium",
+      "confidence": "high",
+      "classification": "pre_existing",
+      "cwe": null,
+      "source": {
+        "type": "sca",
+        "report_path": "/private/tmp/rc2-host-scan-20260910/output/report.json",
+        "binding": {
+          "commit": "3068d81ab91c2fdf940f2ceba74552083a33865c",
+          "tree": "19dcba645485f76aee29562b55125f35a2e4bdda",
+          "tool_name": "Trivy source report inventory import",
+          "tool_version": "0.72.0",
+          "command": "Read existing host report; group by exact installed source package and CVE; no rescan or exploit",
+          "environment": "Existing GCE host package inventory; commit/tree identify assessment source checkpoint, not production runtime or package binaries",
+          "result_sha256": "a2162ab9f775dbd32c8f45e1680809466c64c197faea360f5bcc1a2dab159971",
+          "log_path": "/private/tmp/rc2-host-scan-20260910/output/report.json",
+          "config_sha256": null,
+          "recorded_at": "2026-09-10T23:22:23Z"
+        }
+      },
+      "scope": {
+        "component": "Host source package jq",
+        "affected_files": [],
+        "entry_points": [
+          "jq@1.6-2.1ubuntu3.2",
+          "libjq1@1.6-2.1ubuntu3.2"
+        ],
+        "trust_boundary": "Potential host tool or library input; exact exploit reachability not yet established"
+      },
+      "evidence": {
+        "reachable": null,
+        "production_exposed": null,
+        "reproduction_path": "Installed package metadata matches existing scanner report: CVE-2026-41256, CVE-2026-41257, CVE-2026-43895, CVE-2026-43896, CVE-2026-44777. Exact package versions and raw CVSS in /private/tmp/rc2-production-20260910/evidence/host-unreviewed-package-alert-index.json. No exploitation attempted.",
+        "proof_gap": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+      },
+      "root_cause_cluster": null,
+      "security_invariants": [],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
+      "fix": {
+        "task_id": "R27_PRODUCTION_RELEASE_20260910",
+        "branch": "security/r27rc2-candidate-repair",
+        "commit": null,
+        "tree": null,
+        "changed_files": []
+      },
+      "verification": {
+        "targeted": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        },
+        "affected_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        },
+        "diff_review": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        }
+      },
+      "history": [
+        {
+          "at": "2026-09-10T23:22:23Z",
+          "transition": "null->candidate",
+          "actor": "Codex",
+          "reason": "New current-time registration of previously unreviewed alerts from an existing report; no historical transition inferred or rewritten.",
+          "binding": {
+            "commit": "3068d81ab91c2fdf940f2ceba74552083a33865c",
+            "tree": "19dcba645485f76aee29562b55125f35a2e4bdda",
+            "tool_name": "Trivy source report inventory import",
+            "tool_version": "0.72.0",
+            "command": "Read existing host report; group by exact installed source package and CVE; no rescan or exploit",
+            "environment": "Existing GCE host package inventory; commit/tree identify assessment source checkpoint, not production runtime or package binaries",
+            "result_sha256": "a2162ab9f775dbd32c8f45e1680809466c64c197faea360f5bcc1a2dab159971",
+            "log_path": "/private/tmp/rc2-host-scan-20260910/output/report.json",
+            "config_sha256": null,
+            "recorded_at": "2026-09-10T23:22:23Z"
+          }
+        }
+      ],
+      "closure": null
+    },
+    {
+      "id": "R27-HOST-PKG-LIBXSLT-001",
+      "title": "libxslt: 1 unreviewed host CVE alerts",
+      "status": "candidate",
+      "severity": "medium",
+      "confidence": "high",
+      "classification": "pre_existing",
+      "cwe": null,
+      "source": {
+        "type": "sca",
+        "report_path": "/private/tmp/rc2-host-scan-20260910/output/report.json",
+        "binding": {
+          "commit": "3068d81ab91c2fdf940f2ceba74552083a33865c",
+          "tree": "19dcba645485f76aee29562b55125f35a2e4bdda",
+          "tool_name": "Trivy source report inventory import",
+          "tool_version": "0.72.0",
+          "command": "Read existing host report; group by exact installed source package and CVE; no rescan or exploit",
+          "environment": "Existing GCE host package inventory; commit/tree identify assessment source checkpoint, not production runtime or package binaries",
+          "result_sha256": "a2162ab9f775dbd32c8f45e1680809466c64c197faea360f5bcc1a2dab159971",
+          "log_path": "/private/tmp/rc2-host-scan-20260910/output/report.json",
+          "config_sha256": null,
+          "recorded_at": "2026-09-10T23:22:23Z"
+        }
+      },
+      "scope": {
+        "component": "Host source package libxslt",
+        "affected_files": [],
+        "entry_points": [
+          "libxslt1.1@1.1.34-4ubuntu0.22.04.5"
+        ],
+        "trust_boundary": "Potential host tool or library input; exact exploit reachability not yet established"
+      },
+      "evidence": {
+        "reachable": null,
+        "production_exposed": null,
+        "reproduction_path": "Installed package metadata matches existing scanner report: CVE-2025-10911. Exact package versions and raw CVSS in /private/tmp/rc2-production-20260910/evidence/host-unreviewed-package-alert-index.json. No exploitation attempted.",
+        "proof_gap": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+      },
+      "root_cause_cluster": null,
+      "security_invariants": [],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
+      "fix": {
+        "task_id": "R27_PRODUCTION_RELEASE_20260910",
+        "branch": "security/r27rc2-candidate-repair",
+        "commit": null,
+        "tree": null,
+        "changed_files": []
+      },
+      "verification": {
+        "targeted": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        },
+        "affected_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        },
+        "diff_review": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        }
+      },
+      "history": [
+        {
+          "at": "2026-09-10T23:22:23Z",
+          "transition": "null->candidate",
+          "actor": "Codex",
+          "reason": "New current-time registration of previously unreviewed alerts from an existing report; no historical transition inferred or rewritten.",
+          "binding": {
+            "commit": "3068d81ab91c2fdf940f2ceba74552083a33865c",
+            "tree": "19dcba645485f76aee29562b55125f35a2e4bdda",
+            "tool_name": "Trivy source report inventory import",
+            "tool_version": "0.72.0",
+            "command": "Read existing host report; group by exact installed source package and CVE; no rescan or exploit",
+            "environment": "Existing GCE host package inventory; commit/tree identify assessment source checkpoint, not production runtime or package binaries",
+            "result_sha256": "a2162ab9f775dbd32c8f45e1680809466c64c197faea360f5bcc1a2dab159971",
+            "log_path": "/private/tmp/rc2-host-scan-20260910/output/report.json",
+            "config_sha256": null,
+            "recorded_at": "2026-09-10T23:22:23Z"
+          }
+        }
+      ],
+      "closure": null
+    },
+    {
+      "id": "R27-HOST-PKG-LMDB-001",
+      "title": "lmdb: 1 unreviewed host CVE alerts",
+      "status": "candidate",
+      "severity": "medium",
+      "confidence": "high",
+      "classification": "pre_existing",
+      "cwe": null,
+      "source": {
+        "type": "sca",
+        "report_path": "/private/tmp/rc2-host-scan-20260910/output/report.json",
+        "binding": {
+          "commit": "3068d81ab91c2fdf940f2ceba74552083a33865c",
+          "tree": "19dcba645485f76aee29562b55125f35a2e4bdda",
+          "tool_name": "Trivy source report inventory import",
+          "tool_version": "0.72.0",
+          "command": "Read existing host report; group by exact installed source package and CVE; no rescan or exploit",
+          "environment": "Existing GCE host package inventory; commit/tree identify assessment source checkpoint, not production runtime or package binaries",
+          "result_sha256": "a2162ab9f775dbd32c8f45e1680809466c64c197faea360f5bcc1a2dab159971",
+          "log_path": "/private/tmp/rc2-host-scan-20260910/output/report.json",
+          "config_sha256": null,
+          "recorded_at": "2026-09-10T23:22:23Z"
+        }
+      },
+      "scope": {
+        "component": "Host source package lmdb",
+        "affected_files": [],
+        "entry_points": [
+          "liblmdb0@0.9.24-1build2"
+        ],
+        "trust_boundary": "Potential host tool or library input; exact exploit reachability not yet established"
+      },
+      "evidence": {
+        "reachable": null,
+        "production_exposed": null,
+        "reproduction_path": "Installed package metadata matches existing scanner report: CVE-2026-22185. Exact package versions and raw CVSS in /private/tmp/rc2-production-20260910/evidence/host-unreviewed-package-alert-index.json. No exploitation attempted.",
+        "proof_gap": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+      },
+      "root_cause_cluster": null,
+      "security_invariants": [],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
+      "fix": {
+        "task_id": "R27_PRODUCTION_RELEASE_20260910",
+        "branch": "security/r27rc2-candidate-repair",
+        "commit": null,
+        "tree": null,
+        "changed_files": []
+      },
+      "verification": {
+        "targeted": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        },
+        "affected_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        },
+        "diff_review": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        }
+      },
+      "history": [
+        {
+          "at": "2026-09-10T23:22:23Z",
+          "transition": "null->candidate",
+          "actor": "Codex",
+          "reason": "New current-time registration of previously unreviewed alerts from an existing report; no historical transition inferred or rewritten.",
+          "binding": {
+            "commit": "3068d81ab91c2fdf940f2ceba74552083a33865c",
+            "tree": "19dcba645485f76aee29562b55125f35a2e4bdda",
+            "tool_name": "Trivy source report inventory import",
+            "tool_version": "0.72.0",
+            "command": "Read existing host report; group by exact installed source package and CVE; no rescan or exploit",
+            "environment": "Existing GCE host package inventory; commit/tree identify assessment source checkpoint, not production runtime or package binaries",
+            "result_sha256": "a2162ab9f775dbd32c8f45e1680809466c64c197faea360f5bcc1a2dab159971",
+            "log_path": "/private/tmp/rc2-host-scan-20260910/output/report.json",
+            "config_sha256": null,
+            "recorded_at": "2026-09-10T23:22:23Z"
+          }
+        }
+      ],
+      "closure": null
+    },
+    {
+      "id": "R27-HOST-PKG-LVM2-001",
+      "title": "lvm2: 1 unreviewed host CVE alerts",
+      "status": "candidate",
+      "severity": "medium",
+      "confidence": "high",
+      "classification": "pre_existing",
+      "cwe": null,
+      "source": {
+        "type": "sca",
+        "report_path": "/private/tmp/rc2-host-scan-20260910/output/report.json",
+        "binding": {
+          "commit": "3068d81ab91c2fdf940f2ceba74552083a33865c",
+          "tree": "19dcba645485f76aee29562b55125f35a2e4bdda",
+          "tool_name": "Trivy source report inventory import",
+          "tool_version": "0.72.0",
+          "command": "Read existing host report; group by exact installed source package and CVE; no rescan or exploit",
+          "environment": "Existing GCE host package inventory; commit/tree identify assessment source checkpoint, not production runtime or package binaries",
+          "result_sha256": "a2162ab9f775dbd32c8f45e1680809466c64c197faea360f5bcc1a2dab159971",
+          "log_path": "/private/tmp/rc2-host-scan-20260910/output/report.json",
+          "config_sha256": null,
+          "recorded_at": "2026-09-10T23:22:23Z"
+        }
+      },
+      "scope": {
+        "component": "Host source package lvm2",
+        "affected_files": [],
+        "entry_points": [
+          "dmeventd@2:1.02.175-2.1ubuntu5",
+          "dmsetup@2:1.02.175-2.1ubuntu5",
+          "libdevmapper-event1.02.1@2:1.02.175-2.1ubuntu5",
+          "libdevmapper1.02.1@2:1.02.175-2.1ubuntu5",
+          "liblvm2cmd2.03@2.03.11-2.1ubuntu5",
+          "lvm2@2.03.11-2.1ubuntu5"
+        ],
+        "trust_boundary": "Potential host tool or library input; exact exploit reachability not yet established"
+      },
+      "evidence": {
+        "reachable": null,
+        "production_exposed": null,
+        "reproduction_path": "Installed package metadata matches existing scanner report: CVE-2026-19617. Exact package versions and raw CVSS in /private/tmp/rc2-production-20260910/evidence/host-unreviewed-package-alert-index.json. No exploitation attempted.",
+        "proof_gap": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+      },
+      "root_cause_cluster": null,
+      "security_invariants": [],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
+      "fix": {
+        "task_id": "R27_PRODUCTION_RELEASE_20260910",
+        "branch": "security/r27rc2-candidate-repair",
+        "commit": null,
+        "tree": null,
+        "changed_files": []
+      },
+      "verification": {
+        "targeted": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        },
+        "affected_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        },
+        "diff_review": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        }
+      },
+      "history": [
+        {
+          "at": "2026-09-10T23:22:23Z",
+          "transition": "null->candidate",
+          "actor": "Codex",
+          "reason": "New current-time registration of previously unreviewed alerts from an existing report; no historical transition inferred or rewritten.",
+          "binding": {
+            "commit": "3068d81ab91c2fdf940f2ceba74552083a33865c",
+            "tree": "19dcba645485f76aee29562b55125f35a2e4bdda",
+            "tool_name": "Trivy source report inventory import",
+            "tool_version": "0.72.0",
+            "command": "Read existing host report; group by exact installed source package and CVE; no rescan or exploit",
+            "environment": "Existing GCE host package inventory; commit/tree identify assessment source checkpoint, not production runtime or package binaries",
+            "result_sha256": "a2162ab9f775dbd32c8f45e1680809466c64c197faea360f5bcc1a2dab159971",
+            "log_path": "/private/tmp/rc2-host-scan-20260910/output/report.json",
+            "config_sha256": null,
+            "recorded_at": "2026-09-10T23:22:23Z"
+          }
+        }
+      ],
+      "closure": null
+    },
+    {
+      "id": "R27-HOST-PKG-OPENSSH-001",
+      "title": "openssh: 1 unreviewed host CVE alerts",
+      "status": "candidate",
+      "severity": "medium",
+      "confidence": "high",
+      "classification": "pre_existing",
+      "cwe": null,
+      "source": {
+        "type": "sca",
+        "report_path": "/private/tmp/rc2-host-scan-20260910/output/report.json",
+        "binding": {
+          "commit": "3068d81ab91c2fdf940f2ceba74552083a33865c",
+          "tree": "19dcba645485f76aee29562b55125f35a2e4bdda",
+          "tool_name": "Trivy source report inventory import",
+          "tool_version": "0.72.0",
+          "command": "Read existing host report; group by exact installed source package and CVE; no rescan or exploit",
+          "environment": "Existing GCE host package inventory; commit/tree identify assessment source checkpoint, not production runtime or package binaries",
+          "result_sha256": "a2162ab9f775dbd32c8f45e1680809466c64c197faea360f5bcc1a2dab159971",
+          "log_path": "/private/tmp/rc2-host-scan-20260910/output/report.json",
+          "config_sha256": null,
+          "recorded_at": "2026-09-10T23:22:23Z"
+        }
+      },
+      "scope": {
+        "component": "Host source package openssh",
+        "affected_files": [],
+        "entry_points": [
+          "openssh-client@1:8.9p1-3ubuntu0.17",
+          "openssh-server@1:8.9p1-3ubuntu0.17",
+          "openssh-sftp-server@1:8.9p1-3ubuntu0.17"
+        ],
+        "trust_boundary": "Potential host tool or library input; exact exploit reachability not yet established"
+      },
+      "evidence": {
+        "reachable": null,
+        "production_exposed": null,
+        "reproduction_path": "Installed package metadata matches existing scanner report: CVE-2026-55655. Exact package versions and raw CVSS in /private/tmp/rc2-production-20260910/evidence/host-unreviewed-package-alert-index.json. No exploitation attempted.",
+        "proof_gap": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+      },
+      "root_cause_cluster": null,
+      "security_invariants": [],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
+      "fix": {
+        "task_id": "R27_PRODUCTION_RELEASE_20260910",
+        "branch": "security/r27rc2-candidate-repair",
+        "commit": null,
+        "tree": null,
+        "changed_files": []
+      },
+      "verification": {
+        "targeted": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        },
+        "affected_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        },
+        "diff_review": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        }
+      },
+      "history": [
+        {
+          "at": "2026-09-10T23:22:23Z",
+          "transition": "null->candidate",
+          "actor": "Codex",
+          "reason": "New current-time registration of previously unreviewed alerts from an existing report; no historical transition inferred or rewritten.",
+          "binding": {
+            "commit": "3068d81ab91c2fdf940f2ceba74552083a33865c",
+            "tree": "19dcba645485f76aee29562b55125f35a2e4bdda",
+            "tool_name": "Trivy source report inventory import",
+            "tool_version": "0.72.0",
+            "command": "Read existing host report; group by exact installed source package and CVE; no rescan or exploit",
+            "environment": "Existing GCE host package inventory; commit/tree identify assessment source checkpoint, not production runtime or package binaries",
+            "result_sha256": "a2162ab9f775dbd32c8f45e1680809466c64c197faea360f5bcc1a2dab159971",
+            "log_path": "/private/tmp/rc2-host-scan-20260910/output/report.json",
+            "config_sha256": null,
+            "recorded_at": "2026-09-10T23:22:23Z"
+          }
+        }
+      ],
+      "closure": null
+    },
+    {
+      "id": "R27-HOST-PKG-SQLITE3-001",
+      "title": "sqlite3: 1 unreviewed host CVE alerts",
+      "status": "candidate",
+      "severity": "medium",
+      "confidence": "high",
+      "classification": "pre_existing",
+      "cwe": null,
+      "source": {
+        "type": "sca",
+        "report_path": "/private/tmp/rc2-host-scan-20260910/output/report.json",
+        "binding": {
+          "commit": "3068d81ab91c2fdf940f2ceba74552083a33865c",
+          "tree": "19dcba645485f76aee29562b55125f35a2e4bdda",
+          "tool_name": "Trivy source report inventory import",
+          "tool_version": "0.72.0",
+          "command": "Read existing host report; group by exact installed source package and CVE; no rescan or exploit",
+          "environment": "Existing GCE host package inventory; commit/tree identify assessment source checkpoint, not production runtime or package binaries",
+          "result_sha256": "a2162ab9f775dbd32c8f45e1680809466c64c197faea360f5bcc1a2dab159971",
+          "log_path": "/private/tmp/rc2-host-scan-20260910/output/report.json",
+          "config_sha256": null,
+          "recorded_at": "2026-09-10T23:22:23Z"
+        }
+      },
+      "scope": {
+        "component": "Host source package sqlite3",
+        "affected_files": [],
+        "entry_points": [
+          "libsqlite3-0@3.37.2-2ubuntu0.7",
+          "sqlite3@3.37.2-2ubuntu0.7"
+        ],
+        "trust_boundary": "Potential host tool or library input; exact exploit reachability not yet established"
+      },
+      "evidence": {
+        "reachable": null,
+        "production_exposed": null,
+        "reproduction_path": "Installed package metadata matches existing scanner report: CVE-2026-39113. Exact package versions and raw CVSS in /private/tmp/rc2-production-20260910/evidence/host-unreviewed-package-alert-index.json. No exploitation attempted.",
+        "proof_gap": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+      },
+      "root_cause_cluster": null,
+      "security_invariants": [],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
+      "fix": {
+        "task_id": "R27_PRODUCTION_RELEASE_20260910",
+        "branch": "security/r27rc2-candidate-repair",
+        "commit": null,
+        "tree": null,
+        "changed_files": []
+      },
+      "verification": {
+        "targeted": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        },
+        "affected_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        },
+        "diff_review": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        }
+      },
+      "history": [
+        {
+          "at": "2026-09-10T23:22:23Z",
+          "transition": "null->candidate",
+          "actor": "Codex",
+          "reason": "New current-time registration of previously unreviewed alerts from an existing report; no historical transition inferred or rewritten.",
+          "binding": {
+            "commit": "3068d81ab91c2fdf940f2ceba74552083a33865c",
+            "tree": "19dcba645485f76aee29562b55125f35a2e4bdda",
+            "tool_name": "Trivy source report inventory import",
+            "tool_version": "0.72.0",
+            "command": "Read existing host report; group by exact installed source package and CVE; no rescan or exploit",
+            "environment": "Existing GCE host package inventory; commit/tree identify assessment source checkpoint, not production runtime or package binaries",
+            "result_sha256": "a2162ab9f775dbd32c8f45e1680809466c64c197faea360f5bcc1a2dab159971",
+            "log_path": "/private/tmp/rc2-host-scan-20260910/output/report.json",
+            "config_sha256": null,
+            "recorded_at": "2026-09-10T23:22:23Z"
+          }
+        }
+      ],
+      "closure": null
+    },
+    {
+      "id": "R27-HOST-PKG-TAR-001",
+      "title": "tar: 2 unreviewed host CVE alerts",
+      "status": "candidate",
+      "severity": "medium",
+      "confidence": "high",
+      "classification": "pre_existing",
+      "cwe": null,
+      "source": {
+        "type": "sca",
+        "report_path": "/private/tmp/rc2-host-scan-20260910/output/report.json",
+        "binding": {
+          "commit": "3068d81ab91c2fdf940f2ceba74552083a33865c",
+          "tree": "19dcba645485f76aee29562b55125f35a2e4bdda",
+          "tool_name": "Trivy source report inventory import",
+          "tool_version": "0.72.0",
+          "command": "Read existing host report; group by exact installed source package and CVE; no rescan or exploit",
+          "environment": "Existing GCE host package inventory; commit/tree identify assessment source checkpoint, not production runtime or package binaries",
+          "result_sha256": "a2162ab9f775dbd32c8f45e1680809466c64c197faea360f5bcc1a2dab159971",
+          "log_path": "/private/tmp/rc2-host-scan-20260910/output/report.json",
+          "config_sha256": null,
+          "recorded_at": "2026-09-10T23:22:23Z"
+        }
+      },
+      "scope": {
+        "component": "Host source package tar",
+        "affected_files": [],
+        "entry_points": [
+          "tar@1.34+dfsg-1ubuntu0.1.22.04.6"
+        ],
+        "trust_boundary": "Potential host tool or library input; exact exploit reachability not yet established"
+      },
+      "evidence": {
+        "reachable": null,
+        "production_exposed": null,
+        "reproduction_path": "Installed package metadata matches existing scanner report: CVE-2026-18477, CVE-2026-18508. Exact package versions and raw CVSS in /private/tmp/rc2-production-20260910/evidence/host-unreviewed-package-alert-index.json. No exploitation attempted.",
+        "proof_gap": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+      },
+      "root_cause_cluster": null,
+      "security_invariants": [],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
+      "fix": {
+        "task_id": "R27_PRODUCTION_RELEASE_20260910",
+        "branch": "security/r27rc2-candidate-repair",
+        "commit": null,
+        "tree": null,
+        "changed_files": []
+      },
+      "verification": {
+        "targeted": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        },
+        "affected_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        },
+        "diff_review": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        }
+      },
+      "history": [
+        {
+          "at": "2026-09-10T23:22:23Z",
+          "transition": "null->candidate",
+          "actor": "Codex",
+          "reason": "New current-time registration of previously unreviewed alerts from an existing report; no historical transition inferred or rewritten.",
+          "binding": {
+            "commit": "3068d81ab91c2fdf940f2ceba74552083a33865c",
+            "tree": "19dcba645485f76aee29562b55125f35a2e4bdda",
+            "tool_name": "Trivy source report inventory import",
+            "tool_version": "0.72.0",
+            "command": "Read existing host report; group by exact installed source package and CVE; no rescan or exploit",
+            "environment": "Existing GCE host package inventory; commit/tree identify assessment source checkpoint, not production runtime or package binaries",
+            "result_sha256": "a2162ab9f775dbd32c8f45e1680809466c64c197faea360f5bcc1a2dab159971",
+            "log_path": "/private/tmp/rc2-host-scan-20260910/output/report.json",
+            "config_sha256": null,
+            "recorded_at": "2026-09-10T23:22:23Z"
+          }
+        }
+      ],
+      "closure": null
+    },
+    {
+      "id": "R27-HOST-PKG-VIM-001",
+      "title": "vim: 2 unreviewed host CVE alerts",
+      "status": "candidate",
+      "severity": "medium",
+      "confidence": "high",
+      "classification": "pre_existing",
+      "cwe": null,
+      "source": {
+        "type": "sca",
+        "report_path": "/private/tmp/rc2-host-scan-20260910/output/report.json",
+        "binding": {
+          "commit": "3068d81ab91c2fdf940f2ceba74552083a33865c",
+          "tree": "19dcba645485f76aee29562b55125f35a2e4bdda",
+          "tool_name": "Trivy source report inventory import",
+          "tool_version": "0.72.0",
+          "command": "Read existing host report; group by exact installed source package and CVE; no rescan or exploit",
+          "environment": "Existing GCE host package inventory; commit/tree identify assessment source checkpoint, not production runtime or package binaries",
+          "result_sha256": "a2162ab9f775dbd32c8f45e1680809466c64c197faea360f5bcc1a2dab159971",
+          "log_path": "/private/tmp/rc2-host-scan-20260910/output/report.json",
+          "config_sha256": null,
+          "recorded_at": "2026-09-10T23:22:23Z"
+        }
+      },
+      "scope": {
+        "component": "Host source package vim",
+        "affected_files": [],
+        "entry_points": [
+          "xxd@2:8.2.3995-1ubuntu2.36"
+        ],
+        "trust_boundary": "Potential host tool or library input; exact exploit reachability not yet established"
+      },
+      "evidence": {
+        "reachable": null,
+        "production_exposed": null,
+        "reproduction_path": "Installed package metadata matches existing scanner report: CVE-2026-51400, CVE-2026-51401. Exact package versions and raw CVSS in /private/tmp/rc2-production-20260910/evidence/host-unreviewed-package-alert-index.json. No exploitation attempted.",
+        "proof_gap": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+      },
+      "root_cause_cluster": null,
+      "security_invariants": [],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
+      "fix": {
+        "task_id": "R27_PRODUCTION_RELEASE_20260910",
+        "branch": "security/r27rc2-candidate-repair",
+        "commit": null,
+        "tree": null,
+        "changed_files": []
+      },
+      "verification": {
+        "targeted": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        },
+        "affected_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        },
+        "diff_review": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        }
+      },
+      "history": [
+        {
+          "at": "2026-09-10T23:22:23Z",
+          "transition": "null->candidate",
+          "actor": "Codex",
+          "reason": "New current-time registration of previously unreviewed alerts from an existing report; no historical transition inferred or rewritten.",
+          "binding": {
+            "commit": "3068d81ab91c2fdf940f2ceba74552083a33865c",
+            "tree": "19dcba645485f76aee29562b55125f35a2e4bdda",
+            "tool_name": "Trivy source report inventory import",
+            "tool_version": "0.72.0",
+            "command": "Read existing host report; group by exact installed source package and CVE; no rescan or exploit",
+            "environment": "Existing GCE host package inventory; commit/tree identify assessment source checkpoint, not production runtime or package binaries",
+            "result_sha256": "a2162ab9f775dbd32c8f45e1680809466c64c197faea360f5bcc1a2dab159971",
+            "log_path": "/private/tmp/rc2-host-scan-20260910/output/report.json",
+            "config_sha256": null,
+            "recorded_at": "2026-09-10T23:22:23Z"
+          }
+        }
+      ],
+      "closure": null
+    },
+    {
+      "id": "R27-HOST-PKG-WGET-001",
+      "title": "wget: 1 unreviewed host CVE alerts",
+      "status": "candidate",
+      "severity": "medium",
+      "confidence": "high",
+      "classification": "pre_existing",
+      "cwe": null,
+      "source": {
+        "type": "sca",
+        "report_path": "/private/tmp/rc2-host-scan-20260910/output/report.json",
+        "binding": {
+          "commit": "3068d81ab91c2fdf940f2ceba74552083a33865c",
+          "tree": "19dcba645485f76aee29562b55125f35a2e4bdda",
+          "tool_name": "Trivy source report inventory import",
+          "tool_version": "0.72.0",
+          "command": "Read existing host report; group by exact installed source package and CVE; no rescan or exploit",
+          "environment": "Existing GCE host package inventory; commit/tree identify assessment source checkpoint, not production runtime or package binaries",
+          "result_sha256": "a2162ab9f775dbd32c8f45e1680809466c64c197faea360f5bcc1a2dab159971",
+          "log_path": "/private/tmp/rc2-host-scan-20260910/output/report.json",
+          "config_sha256": null,
+          "recorded_at": "2026-09-10T23:22:23Z"
+        }
+      },
+      "scope": {
+        "component": "Host source package wget",
+        "affected_files": [],
+        "entry_points": [
+          "wget@1.21.2-2ubuntu1.5"
+        ],
+        "trust_boundary": "Potential host tool or library input; exact exploit reachability not yet established"
+      },
+      "evidence": {
+        "reachable": null,
+        "production_exposed": null,
+        "reproduction_path": "Installed package metadata matches existing scanner report: CVE-2021-31879. Exact package versions and raw CVSS in /private/tmp/rc2-production-20260910/evidence/host-unreviewed-package-alert-index.json. No exploitation attempted.",
+        "proof_gap": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+      },
+      "root_cause_cluster": null,
+      "security_invariants": [],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
+      "fix": {
+        "task_id": "R27_PRODUCTION_RELEASE_20260910",
+        "branch": "security/r27rc2-candidate-repair",
+        "commit": null,
+        "tree": null,
+        "changed_files": []
+      },
+      "verification": {
+        "targeted": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        },
+        "affected_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        },
+        "diff_review": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Per-CVE vendor status, exact binary/build, consumers, untrusted-input paths and durable remediation remain unverified. Raw Ubuntu severity is retained; other CVSS scores are preserved in the evidence index. No detection, consumer absence, loopback or missing fixed version grants non-applicability."
+        }
+      },
+      "history": [
+        {
+          "at": "2026-09-10T23:22:23Z",
+          "transition": "null->candidate",
+          "actor": "Codex",
+          "reason": "New current-time registration of previously unreviewed alerts from an existing report; no historical transition inferred or rewritten.",
+          "binding": {
+            "commit": "3068d81ab91c2fdf940f2ceba74552083a33865c",
+            "tree": "19dcba645485f76aee29562b55125f35a2e4bdda",
+            "tool_name": "Trivy source report inventory import",
+            "tool_version": "0.72.0",
+            "command": "Read existing host report; group by exact installed source package and CVE; no rescan or exploit",
+            "environment": "Existing GCE host package inventory; commit/tree identify assessment source checkpoint, not production runtime or package binaries",
+            "result_sha256": "a2162ab9f775dbd32c8f45e1680809466c64c197faea360f5bcc1a2dab159971",
+            "log_path": "/private/tmp/rc2-host-scan-20260910/output/report.json",
+            "config_sha256": null,
+            "recorded_at": "2026-09-10T23:22:23Z"
+          }
+        }
+      ],
+      "closure": null
     }
   ]
 }
