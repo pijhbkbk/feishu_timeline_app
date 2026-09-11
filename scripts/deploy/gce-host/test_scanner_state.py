@@ -1,6 +1,7 @@
 """Real temporary filesystem tests; no services, database engine or root execution."""
 import json
 import os
+import stat
 from pathlib import Path
 import tempfile
 import unittest
@@ -22,7 +23,11 @@ class StateTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix='scanner-state-test-')
         self.path = Path(self.temp.name)
-        os.chmod(self.path, 0o700)
+        # TemporaryDirectory creates a private directory; verify that contract
+        # instead of repairing its permissions before the trust check.
+        info = self.path.stat()
+        self.assertEqual(stat.S_IMODE(info.st_mode), 0o700)
+        self.assertEqual(info.st_uid, os.geteuid())
         self.state = self.path / 'state.json'
         self.write(State(0, None, None).encode())
         self.lock = self.path / 'operation.lock'
