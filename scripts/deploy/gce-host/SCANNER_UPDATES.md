@@ -38,3 +38,38 @@ connections must end before stopping the old clamd. Units must have no boot or
 restart path that activates clamd or opens admission without controller approval.
 This design is not installed; any watchdog must share the same serialization and
 cannot permit a stale updater to reopen after a failure.
+
+
+## Durable state component; host integration still pending
+
+`scanner_state.py` adds a bounded persistent state component with a separate,
+pre-existing operation lock and one atomic JSON commit containing both the version
+floor and approval. Revocation preserves the floor. A missing state or lock is an
+error, never an invitation to initialize. Only revision0 may have no floor;
+revoking that pristine state is a no-op. Any later missing floor fails closed.
+Files must be private regular single-link files, opened relative to a trusted
+directory FD without following symlinks. Reads reject malformed, duplicate-key,
+unknown-field and oversized state. Writes handle short writes, fsync the new file,
+replace it, then fsync its directory. A failure after replacement is an uncertain
+commit and must not be reported as success or reverted to an older floor.
+
+The15 tests use real temporary files and locks, including missing/corrupt state,
+symlinks/hardlinks/FIFO, concurrent controllers, lock replacement, write/rename/
+fsync failures, version rollback and revocation/reopen. Independent review and
+Linux testing are recorded in the execution ledger. They do not simulate power
+loss, run a scanner, or install a root controller.
+
+The adapter must securely open the entire ancestor chain and enforce owner UID0;
+the UID argument exists for unprivileged isolated tests and must not come from
+application configuration. It must bind approval to the host boot, exact process,
+pinned artifacts and immutable database directory, revalidate all proofs under
+the lock before opening ingress, and close ingress on uncertain persistence.
+Lock contention means another owner is active: a second invocation must not mutate
+admission outside that lock. A watchdog needs coordinated cancellation of the
+active updater before taking over; it cannot merely race a stale updater.
+
+This state component trusts root and storage integrity. A revision counter does
+not detect restoration of an entire previously valid disk snapshot. Disaster
+recovery must compare the restored state against independently retained highest
+version evidence. No external monotonic counter or snapshot rollback guarantee
+is claimed. Runtime must never provision or reset the initial state automatically.
