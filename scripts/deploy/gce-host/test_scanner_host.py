@@ -1,5 +1,6 @@
 import copy
 import datetime
+import json
 import os
 from pathlib import Path
 import subprocess
@@ -16,6 +17,7 @@ class RuntimeIdentityTests(unittest.TestCase):
     def setUp(self):
         self.host = adapter.LinuxHost.__new__(adapter.LinuxHost)
         self.host.config_hash = 'a' * 64
+        self.host.security_profile = {'defaultAction': 'SCMP_ACT_ERRNO', 'syscalls': []}
         signed = int(datetime.datetime(2026, 9, 12, 6, tzinfo=datetime.timezone.utc).timestamp())
         self.files = tuple(DatabaseFile(name + '.cvd', 'b' * 64, 512, 20) for name in ('main', 'daily', 'bytecode'))
         self.expected = RunningSet(VerifiedSet(self.files, 20, signed), 'boot:container:pid:start', adapter.IMAGE, 'a' * 64)
@@ -27,7 +29,7 @@ class RuntimeIdentityTests(unittest.TestCase):
                                     'Privileged': False, 'PidMode': '', 'Memory': 3 * 1024 ** 3,
                                     'MemorySwap': 3 * 1024 ** 3, 'NanoCpus': 1500000000, 'PidsLimit': 128,
                                     'Tmpfs': {'/tmp': 'rw,noexec,nosuid,size=128m'},
-                                    'SecurityOpt': ['no-new-privileges', 'seccomp=' + str(adapter.CONFIG / 'seccomp-amd64.json')]},
+                                    'SecurityOpt': ['no-new-privileges', 'seccomp=' + json.dumps(self.host.security_profile)]},
                      'Mounts': [
                          {'Type': 'bind', 'Source': str(adapter.CONFIG / 'clamd.conf'), 'Destination': '/etc/clamav/clamd.conf', 'RW': False},
                          {'Type': 'bind', 'Source': str(adapter.BASE / 'sets' / ('c' * 32)), 'Destination': '/var/lib/clamav', 'RW': False},
@@ -64,6 +66,22 @@ class RuntimeIdentityTests(unittest.TestCase):
 
     def test_extra_capabilities_rejected(self):
         self.item['HostConfig']['CapAdd'] = ['SYS_ADMIN']
+        with self.assertRaises(UpdateFailure):
+            self.verify()
+
+    def test_docker_json_seccomp_matches_independent_of_whitespace(self):
+        self.item['HostConfig']['SecurityOpt'][1] = 'seccomp=' + json.dumps(self.host.security_profile, indent=2)
+        self.assertEqual(self.verify(), self.expected)
+
+    def test_unconfined_or_changed_seccomp_rejected(self):
+        for value in ['seccomp=unconfined', 'seccomp=' + str(adapter.CONFIG / 'seccomp-amd64.json'),
+                      'seccomp=' + json.dumps({'defaultAction': 'SCMP_ACT_ALLOW', 'syscalls': []})]:
+            self.item['HostConfig']['SecurityOpt'][1] = value
+            with self.assertRaises(UpdateFailure):
+                self.verify()
+
+    def test_extra_security_option_rejected(self):
+        self.item['HostConfig']['SecurityOpt'].append('apparmor=unconfined')
         with self.assertRaises(UpdateFailure):
             self.verify()
 
@@ -108,6 +126,14 @@ class RuntimeIdentityTests(unittest.TestCase):
 
 
 class LifecycleTests(unittest.TestCase):
+    def test_loaded_identity_failure_is_not_hidden_as_readiness_timeout(self):
+        host = adapter.LinuxHost.__new__(adapter.LinuxHost)
+        with patch.object(host, 'verify_active', side_effect=UpdateFailure('Scanner isolation differs')), \
+             patch.object(adapter.time, 'sleep') as sleep:
+            with self.assertRaisesRegex(UpdateFailure, 'Scanner isolation differs'):
+                host.verify_loaded(object())
+            sleep.assert_not_called()
+
     def test_open_starts_socket_and_probes_only_after_approval_and_identity(self):
         host = adapter.LinuxHost.__new__(adapter.LinuxHost)
         host.store = MagicMock()

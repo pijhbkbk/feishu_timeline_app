@@ -186,6 +186,21 @@ def bounded_entries(path, maximum):
     return entries
 
 
+def security_options_match(options, profile):
+    # Docker CLI replaces a seccomp pathname with the JSON it sends to the daemon.
+    # Compare the installed, hash-pinned profile content, never a pathname/string hint.
+    if (not isinstance(options, list) or len(options) != 2 or
+            'no-new-privileges' not in options):
+        return False
+    selected = [value for value in options if isinstance(value, str) and value.startswith('seccomp=')]
+    if len(selected) != 1 or len(selected[0]) > 1024 * 1024:
+        return False
+    try:
+        return json.loads(selected[0][len('seccomp='):]) == profile
+    except (ValueError, RecursionError):
+        return False
+
+
 def engine_command(payload):
     with socket.socket(socket.AF_UNIX) as stream:
         stream.settimeout(10)
@@ -238,6 +253,10 @@ class LinuxHost:
             fd = secure_dir(directory)
             os.close(fd)
         require(file_hash(CONFIG / 'seccomp-amd64.json', 1024 * 1024)[0] == SECCOMP_SHA, 'Seccomp identity differs')
+        with (CONFIG / 'seccomp-amd64.json').open('rb') as stream:
+            profile = stream.read(1024 * 1024 + 1)
+        require(hashlib.sha256(profile).hexdigest() == SECCOMP_SHA, 'Seccomp bytes changed during read')
+        self.security_profile = json.loads(profile)
         self.config_hash = file_hash(CONFIG / 'clamd.conf', 16384)[0]
         self.freshclam_hash = file_hash(CONFIG / 'freshclam.conf', 16384)[0]
         require(json.loads(docker('image', 'inspect', IMAGE))[0]['Id'] == IMAGE, 'Pinned scanner image unavailable')
@@ -261,7 +280,7 @@ class LinuxHost:
         require(not host['Privileged'] and not host['CapAdd'] and not host['PidMode'] and
                 host['Memory'] == 3 * 1024 ** 3 and host['MemorySwap'] == 3 * 1024 ** 3 and
                 host['NanoCpus'] == 1500000000 and host['PidsLimit'] == 128 and
-                set(host['SecurityOpt']) == {'no-new-privileges', 'seccomp=' + str(CONFIG / 'seccomp-amd64.json')},
+                security_options_match(host['SecurityOpt'], self.security_profile),
                 'Scanner resource/security configuration differs')
         require(item['Config']['Entrypoint'] == ['/usr/sbin/clamd'] and
                 item['Config']['Cmd'] == ['--config-file=/etc/clamav/clamd.conf'], 'Scanner command differs')
@@ -425,7 +444,10 @@ class LinuxHost:
                 response = engine_command(b'zINSTREAM\0' + struct.pack('!I', len(payload)) + payload + struct.pack('!I', 0))
                 require(response == b'stream: OK', 'Scanner clean probe failed')
                 return self.verify_active(expected)
-            except (OSError, UpdateFailure):
+            except OSError:
+                # A missing/not-yet-listening socket is transient during cold load.
+                # Identity, isolation or protocol failures must retain their cause
+                # and fail immediately; waiting cannot repair those properties.
                 item = owned_container(ENGINE)
                 require(item and item['State']['Running'] and process_identity(item) == expected.process_start_identity,
                         'Candidate engine exited or changed')
