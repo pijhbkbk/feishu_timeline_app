@@ -1,0 +1,144 @@
+{
+  "runtimeCommit": "1767dbb5eeb30cc57835081de761e1eccb8fac8b",
+  "sourceTree": "199cb837b6dd7682eda61928e108be397498236b",
+  "release": "native-auth-20260912-1767dbb5eeb3",
+  "buildTime": "2026-09-12T11:49:49Z",
+  "ruleCommit": "de8005a5c7f8226febb9bfd17e561e26e32489f9",
+  "implementationCommit": "5daaf7f2e722e47f3384a57fd09fd4ed3f7f7f4f",
+  "nodeVersion": "24.14.0",
+  "pnpmVersion": "9.15.4",
+  "lockfileSha256": "ea28806c28563889a2a80f32545c335a2b7726cfc970b466d019977f241b03da",
+  "migrationSha256": "e591655d32a0cd94f29eefa58cbe9343fe19b7022825e9d442968389de5895fe",
+  "nativeAndRedisFocusedTests": 26,
+  "finalHttpRequests": 32,
+  "projectScopeHttpRequests": 14,
+  "latestWebUnitTests": 288,
+  "earlierFullApiUnitTests": 1332,
+  "earlierOptionalApiSkipped": 43,
+  "dependencyAuditReportedVulnerabilities": {
+    "info": 0,
+    "low": 0,
+    "moderate": 0,
+    "high": 0,
+    "critical": 0
+  },
+  "formalPlaceholderMatches": 0,
+  "testPlaceholderAllowlistLines": 10,
+  "independentReviews": [
+    "FOCUSED_SECURITY_DIFF_REVIEW_PASS on native-account diff",
+    "FOCUSED_DIFF_REVIEW_PASS on final Redis/initializer follow-up"
+  ],
+  "status": [
+    "CODE_IMPLEMENTED",
+    "TARGETED_LOCAL_VERIFICATION_PASS",
+    "LOCAL_BROWSER_PARTIAL",
+    "NOT_DEPLOYED",
+    "AWAITING_PRODUCT_OWNER_CONFIRMATION"
+  ],
+  "productionWritesPerformed": false,
+  "mainChanged": false,
+  "tagsChanged": false,
+  "publicSourcePushPerformed": false,
+  "logsAndArtifacts": [
+    {
+      "path": "/private/tmp/timeline-native-auth-integration-r4.log",
+      "bytes": 238,
+      "sha256": "3ef7b48431ca93deda44fde591afaa7a10bf189100df42f767826eb62b082463"
+    },
+    {
+      "path": "/private/tmp/timeline-native-http-final.log",
+      "bytes": 170,
+      "sha256": "8a38d0abda03caca437e93e7e1e4602fbef5ee28f9322d8b96487d6f29b046ce"
+    },
+    {
+      "path": "/private/tmp/timeline-native-project-scope.log",
+      "bytes": 431,
+      "sha256": "ba45b1bb7110d1435446a4897a58b3c9d4c367f88793fff3a11a083bcbb825f5"
+    },
+    {
+      "path": "/private/tmp/timeline-native-cli-regression-before.log",
+      "bytes": 2560,
+      "sha256": "b81712305c78a90973f6ca7befb5d9aaf8992ba7cbc6034ad53cbc8dc3564680"
+    },
+    {
+      "path": "/private/tmp/timeline-native-cli-regression-after.log",
+      "bytes": 238,
+      "sha256": "abe734c2dd3c7351e5dc28aa7c59d546ce4971c74e380effb11e9e8ba2f3af32"
+    },
+    {
+      "path": "/private/tmp/timeline-native-lint-final.log",
+      "bytes": 641,
+      "sha256": "226e245ac9490cbf487281ba2f8c41466900df19a49a2928a69141a07d145228"
+    },
+    {
+      "path": "/private/tmp/timeline-native-types-final.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/private/tmp/timeline-native-final-api-build.log",
+      "bytes": 878,
+      "sha256": "fb3ae90e7c320dd68116a66f2aa7cc120f1e31318d19c1f07c31f9a8b47ab71c"
+    },
+    {
+      "path": "/private/tmp/timeline-native-final-web-build.log",
+      "bytes": 6988,
+      "sha256": "bf48b5e52bc1a29746ad1ee5999b55c93d4121cf341818ea5c14009e0e9f92d7"
+    },
+    {
+      "path": "/private/tmp/timeline-native-final-api-image-build.log",
+      "bytes": 8158,
+      "sha256": "e6407e4436b6f315db4f8a7058d127a50935339918590d822a9e07b8f5667967"
+    },
+    {
+      "path": "/private/tmp/timeline-native-final-web-image-build.log",
+      "bytes": 14187,
+      "sha256": "7e9e40c751e0d8cf4bf7bbbc7a5a07dc12fc8765eaf7a9287176719d26d9f01e"
+    },
+    {
+      "path": "/private/tmp/timeline-native-final-ops-image-build.log",
+      "bytes": 5592,
+      "sha256": "5f53665eb40aa153744b052711d0b9242e391f2a4a96b1463338e978f4b56b84"
+    },
+    {
+      "path": "/private/tmp/timeline-native-web-tests.log",
+      "bytes": 353,
+      "sha256": "2d89b59df20823b857953682ecb68b28052839292164a11e056cc1f088cb4767"
+    },
+    {
+      "path": "/private/tmp/timeline-native-unit-tests.log",
+      "bytes": 17012,
+      "sha256": "02777ce7124f9397dce1f7ea28b57a42c473385bcd3bec5dab466de310f04138"
+    },
+    {
+      "path": "/private/tmp/timeline-native-migration-roundtrip.log",
+      "bytes": 543,
+      "sha256": "a8cfe5ce0c989e9472580609255a2a07fbf976c581c8a46a47965f99b6d7f8a9"
+    },
+    {
+      "path": "/private/tmp/timeline-native-placeholder-final.txt",
+      "bytes": 1367,
+      "sha256": "a29799746ad2c72b837f1093e9283e5a110b1c1c0cc575bc3659f163b6fd2061"
+    },
+    {
+      "path": "/private/tmp/timeline-native-dependency-audit.json",
+      "bytes": 310,
+      "sha256": "c9f0e9185431421442e29dac6fd3549505bb2679751687ef7bf938c3ea0992ad"
+    },
+    {
+      "path": "/private/tmp/timeline-native-bundle-verify.log",
+      "bytes": 209,
+      "sha256": "21b433261136f6576624bd7fe5d12de2806915deee9db3f17d81fa81f8e1523f"
+    },
+    {
+      "path": "/private/tmp/timeline-native-1767dbb.bundle",
+      "bytes": 30092557,
+      "sha256": "e7b258cbac85cd2a1a7a71cbd86c0212feebbbbee5f4ae8328ba4f30b3d14e1e"
+    },
+    {
+      "path": "/private/tmp/timeline-native-1767dbb-source.tar",
+      "bytes": 44584960,
+      "sha256": "d704ee372ab0cfa94ba6d420eaacce83bdbd3f144a1d78430c5279c1cc2cf609"
+    }
+  ]
+}

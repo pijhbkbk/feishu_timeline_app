@@ -7681,3 +7681,77 @@ BLOCKER_REPORT: Public-source push remains rejected by platform automatic review
 - Runtime application artifacts88cb53607ad77aa5d1d559e01731988f68e26c3b remain available and previously tested. Production last verified535041bb25f21d548d863d07b35e3e952b0aeb2c at https://timeline.all-too-well.com; new repair NOT_DEPLOYED. Staging URL/commit/path and production browser acceptance NOT_EXECUTED. Remaining host findings, scanner integration, consistent backups/recovery and exact-domain acceptance remain open. Product state AWAITING_PRODUCT_OWNER_CONFIRMATION.
 
 - Final workflow/documentation independent review PASS; reviewer separately reran50/50 tests and verified Linux evidence reports UID1001. Existing CI evidence collector regression20/20 PASS. These are component checks; this new checkpoint has not yet run remote CI at record time.
+
+
+### 2026-09-11 — Continuous release resumed from 94ff09f1
+
+- Owner explicitly continued the existing fix/publication/deployment/short-maintenance delegation. The attached R27 execution file is direction, not execution evidence or platform authorization. No other-application private source/config/image export is attempted; only synthetic compatibility and original-container recovery remain in scope.
+- Actual repair tree started clean at94ff09f1ddaee6296e4e7775b41a05e88d7124c2. CI34555256934/push/attempt1 completed FAILURE: verify SUCCESS, security-source SAST BLOCKED by one insecure-file-permissions finding at test_scanner_state.py:25. Both actual redacted artifacts were downloaded, metadata identities checked and archive SHA256 values matched GitHub. Original finding and failed run retained under /private/tmp/r27-continue-94ff/ci.
+- Independent review verified the numeric permission rule flags a redundant chmod0700 on an already-private TemporaryDirectory. New test source12e75baab067b2d7188d524968259e0b8c427697 removes that redundant operation and directly asserts private0700 mode/current UID; negative permissions/ownership/link/state tests remain. Reviewed file SHA256bdba1d6b60c7500796c83e63759a635f824a7dc1716ceb53387b5865887e2604; independent50/50 PASS, CI evidence20/20 PASS; unchanged pinned Semgrep1.169.0 and three rule packs scan the fixed file with0 findings/0 errors.
+- Required install/lint/typecheck/test/Web build/API build/Prisma validate all exit0; Web287 PASS, API1332 PASS/33 existing optional skips (not counted as executed integration tests). Clean single-file source commit pushed by normal FF to codex/r27rc2-artifact-validation; new matching CI34571803229 is in progress at this checkpoint. No old-SHA rerun or force push. New immutable amd64 API/ops/Web builds are in progress; no publication/scan result claimed yet.
+- Fresh production Web/API and server HEAD remain535041bb25f21d548d863d07b35e3e952b0aeb2c at https://timeline.all-too-well.com. Kernel6.8.0-1066-gcp, Docker29.6/containerd2.2.5, Nginx1.18.0-6ubuntu14.20, Redis5:6.0.16-1ubuntu1.1, PG14.24 are actual running versions. Approved5.15/Docker29.8/containerd2.3.5/Nginx1.31.5 combination has retained synthetic rehearsal evidence but is NOT installed on original host. Latest restricted host checkpoint /private/tmp/rc2-production-20260910/evidence/host-risk-followup-94ff09f-checkpoint.json binds five new read-only records; no host package/service write occurred.
+- r3 scanner patch/artifact evidence remains hash-valid. Actual scanner adapter and actual recovery controller are being implemented in separate temporary workspaces, not installed or accepted. Existing pure policy/state tests and non-root restore rehearsal do not prove those effects. Another application's running/healthy state and recent persistent-file mtime do not prove sql.js memory durability; existing save/normal-stop entry information was requested for the eventual maintenance window, without requesting private source. This pauses only dependent host shutdown.
+- A real browser reached official Feishu QR sign-in from the production domain. Owner scan is necessary; no authenticated path or new-build acceptance claimed. A candidate staging subdomain was checked and has authoritative NXDOMAIN; no staging URL was invented or DNS changed. Independent exact-HTTPS entry remains to be established.
+- main remains41b4b166c587692e6f0fb9536dca2e1aab646c70 and existing tags unchanged. Production no migration/cutover/new runtime, staging NOT_DEPLOYED, product AWAITING_PRODUCT_OWNER_CONFIRMATION. Historical finding records/schema errors are not rewritten or normalized. Continue source CI/artifacts, remaining exact host applicability, scanner/recovery integration and isolated acceptance; do not ask again for abstract deployment approval.
+
+
+### 2026-09-12 — 本地离线目标规则最小更新
+
+- 本次用户明确要求最小目标规则更新（DOCS_ONLY）；任务书与粘贴建议用于理解目标，不把其中 M1–M4 实施指令自动视为本轮代码修改授权。
+- 当前目标为正式本地原生认证、本地目录/岗位/权限和离线运行；替换强制真实飞书与继续 GCE 的冲突要求，暂停云端推进，不停止或删除既有服务。业务、安全、数据不变量及历史风险/验收事实保留。
+- 新认证、授权、会话和迁移须有新验证与最终独立安全差异审查；未受影响的修复按输入及环境适用性依据复用。本轮没有重新授予任何历史安全 PASS 或关闭 finding。
+- 分层检查：两个工作树各只有根 AGENTS.md；包含隐藏/忽略目录的文件名扫描未发现 apps、packages、Prisma、scripts、deploy、docs 等目录的 AGENTS.override.md 或下层 AGENTS.md（排除依赖、Git 元数据和生成产物）。实际 CODEX_HOME 为 /Users/lixiaochen/.codex，全局 AGENTS.md 为空，未发现全局 override、自定义 project_doc_fallback_filenames 或项目 .codex/config.toml；未修改全局配置/权限。两个根规则均小于默认 32 KiB 发现上限。
+- 分层依据：[OpenAI 官方 AGENTS.md 文档](https://learn.chatgpt.com/docs/agent-configuration/agents-md)。核对同目录 override 优先、下层覆盖及备用文件；没有启动新 Codex 会话冒充重新加载证明。
+- 已执行：git worktree list --porcelain、git status --porcelain=v1 -uall、git rev-parse HEAD、git diff --check、rg --files --hidden --no-ignore 的规则文件发现，以及必需 Placeholder 扫描。文档差异/Markdown 结构检查 PASS；Git refs/index、业务/数据不变量原段落、全局指令/配置摘要与修改前相同，业务源码/schema/迁移/依赖无差异。
+- 验证范围仅文档；未运行 pnpm install/lint/typecheck/test/build/prisma:validate 或 G3/G4/G5，不安装依赖，不执行数据库、浏览器登录、部署或远端 CI。未提交、未推送；原有未提交台账完整保留。
+
+- 起点及最终源码 HEAD：12e75baab067b2d7188d524968259e0b8c427697；工作树 /Users/lixiaochen/Downloads/feishu_timeline_app-r27rc2-repair，分支 security/r27rc2-candidate-repair；原有 12 行未提交台账完整保留。
+- 改动文件：AGENTS.md、README.md、docs/gates/VERIFICATION_GATES.md、docs/EXECUTION_LEDGER.md。同步入口主目录的 AGENTS.md、README.md、docs/EXECUTION_LEDGER.md；未迁移整个治理版本、未更改 Finding schema/ledger/历史报告，也未将主目录旧源码覆盖到本树。
+- Placeholder 扫描原始 10 行，全为既有测试（7 条 getByPlaceholder、3 条拒绝骨架文案的负向断言），本次明确列入白名单：/private/tmp/local-offline-rules-20260912/repair-placeholder-test-whitelist.txt。正式源码匹配 0；这不是浏览器验收。主目录仍有 4 处占位路由，见其台账，不能混为同一产品版本。
+- 变更前文档与检查明细：/private/tmp/local-offline-rules-20260912。风险/下一决策：认证代码、账号/旧身份迁移及离线包尚未在本轮实现，旧 OAuth、构建和扫描 PASS 不能替代新边界验证。后续以真实最新修复源码实施本地身份主链路，再验证受影响安全与断网运行；本次不自动启动 M1–M4 或恢复云端推进。
+
+| 交付项 | 本轮事实 |
+|---|---|
+| 1 代码是否实现 | 应用代码未修改；仅目标规则更新 |
+| 2 本地测试 | 文档检查 PASS；应用测试与离线验收未执行 |
+| 3 staging URL | 未执行、未指定新验收地址 |
+| 4 staging runtime commit | 未读取/未部署 |
+| 5 staging 用户路径 | 未执行 |
+| 6 production 是否改变 | 本次未改变，未访问远端 |
+| 7 production runtime commit | 未读取，不沿用历史值冒充当前值 |
+| 8 production 用户路径 | 未执行 |
+| 9 main 是否改变 | ref/历史未改变；入口 main 工作区有未提交文档 |
+| 10 tag 是否改变 | 未改变 |
+| 11 产品负责人确认 | 未取得本地版 PRODUCT_OWNER_ACCEPTED |
+| 12 未完成路由 | 本地注册/登录/岗位与账号生命周期尚未在本轮实现，精确新路由待实现确定 |
+| 13 Placeholder 数量 | 本树正式源码 0、测试白名单 10 行；入口主目录旧占位路由 4 处 |
+| 14 当前准确状态 | DOCS_ONLY / RULES_UPDATED / NOT_DEPLOYED / AWAITING_PRODUCT_OWNER_CONFIRMATION |
+
+### 2026-09-12 — GCE 原生账号目标实施 checkpoint（未部署）
+
+- 最新明确目标取代上一个 DOCS_ONLY/本地离线阶段：在 `https://timeline.all-too-well.com` 使用本系统账号，移除第三方登录前提。完整离线包暂不作为本期验收门禁。最小同步 AGENTS/README/gates 的冲突目标；未修改全局平台权限，模型不代理用户或平台授权。
+- 从最新修复源码 `12e75baab067b2d7188d524968259e0b8c427697` 创建隔离工作树 `/private/tmp/timeline-native-auth-20260912`，分支 `codex/native-account-auth`。主目录 main 和原修复工作树的源码、既有未提交记录及用户媒体完整保留；不向公开 GitHub 自动推送新实现。
+- 实现原生注册/密码登录、岗位意向、本人改密、一次性恢复、主机管理员初始化/准确内部 ID 绑定；新增 LocalCredential/AuthInitialization 与 User 认证版本字段，采用 additive migration。旧 OAuth 入口停用、适配器不注册外部身份能力；新通知只进入已有 IN_APP 持久化路径，不伪造飞书已发送记录。账号管理与正式 V2 导航接入中。
+- 安全边界：注册不授角色/项目；Argon2id 固定 64 MiB/3/1、有界并发；密码/恢复码不进入 AdminCommandRequest 的持久化输入摘要或结果；所有旧 OAuth 和生产 mock 会话拒绝；改密/恢复/停用/配置变化通过 authVersion 撤销；保护最后一个实际有密码的启用管理员。运行说明：`docs/NATIVE_ACCOUNT_OPERATIONS.md`。
+- 独立只读审查提出“个人拒绝仍消耗全站额度”和“恢复签发时操作者版本未持行锁”两个有效意见，已修正并增加真实行锁/限速回归；角色权限修改也接入新管理员版本检查。此 checkpoint 最终差异仍待复核，不将初审意见处理等同 G4 PASS。
+- 依赖锁定 argon2 0.44.0，仅增加对应依赖树；已从可信注册表按锁安装。初次离线缺包及 Prisma 缓存权限错误经明确环境修正解决。初次普通沙箱测试禁止监听本机端口，重新在允许本机监听的环境执行，未删/跳过目标断言；两个新测试夹具问题和显式控制字符 lint 问题已修正。
+- 已有验证：完整迁移链 37 项在独立本机 PostgreSQL 成功；首轮 native PG/密码测试 16 PASS；修正后的原生 PG/限速/密码批次 16 PASS，包含 FOR SHARE 与并发撤销屏障。真实本机 HTTP 32 请求 PASS，覆盖 Origin/DTO/登录/轮换/改密/退出/岗位权限/旧入口。基线 schema 合成迁移与迁移前后 pg_dump/restore PASS，新增密码表未自动接管旧用户。后续 UI 文案与类型夹具修正需相应复测。
+- 全量一次重跑：Web 287 PASS；API 1332 PASS、43 条独立环境专用用例 skip（不计通过）；新 PostgreSQL 测试另行显式运行。Web/API 本机 build 曾 PASS，尚非最终固定提交制品。检查日志位于 `/private/tmp/timeline-native-*.log`，合成迁移证据位于本机临时目录；无生产备份/凭据写入仓库。
+- 生产只读事实（2026-09-12T11:04:35Z）：HTTPS `/api/health` 与 `/build-info` 均 200，Web/API runtime `535041bb25f21d548d863d07b35e3e952b0aeb2c`，buildTime `2026-08-09T06:49:11Z`，release `r26-admin-535041bb25f2`。本次未部署/迁移/seed，未改 production/main/tag；宿主 HEAD/当前运行拓扑没有取得新证据。
+- 访问 blocker：GCE IAP SSH 两次在 banner 前超时，第二次有限 ConnectTimeout/ConnectionAttempts/BatchMode，exit 255。有效网络规则允许 IAP 来源到 tcp22，未返回上层 DENY；只读资料提示 Fail2ban 1h 封禁可能影响 IAP，但尚未证实。暂停重复 SSH，不开放公网22、不重启整机、不影响其他应用。已询问是否存在可用管理会话，同时继续本地工作。
+- 模型咨询：浏览器扩展方式多次工具连接失败，改用受支持的 Chrome 原生界面后可用；页面明确显示 6 Pro。自动审批拒绝私有技术摘要的外发，未发送该摘要；改为不包含本项目数据的通用 IAP 排障问题，已提交给 6 Pro，等待建议。意见不构成真实授权或部署证据。
+- 当前状态：`IMPLEMENTATION_IN_PROGRESS / LOCAL_CHECKS_IN_PROGRESS / REVIEW_PENDING / NOT_DEPLOYED / AWAITING_PRODUCT_OWNER_CONFIRMATION`。staging 未部署、浏览器正式用户路径未验收；不能使用旧 OAuth、旧生产健康或本机测试结果冒充本期网站交付。
+
+
+### 2026-09-12 — 原生账号固定候选与本机验证（生产管理连接阻塞）
+
+- 最小规则提交 `de8005a`；主体实现 `5daaf7f2e722e47f3384a57fd09fd4ed3f7f7f4f`；最终修复/运行候选 `1767dbb5eeb30cc57835081de761e1eccb8fac8b`，tree `199cb837b6dd7682eda61928e108be397498236b`。最终 diff 两轮独立只读 focused PASS，未将其扩大为全仓安全清关。
+- 实际 CLI 发现未连接 Redis 清理时新建连接而不退出：回归修复前4 FAIL、修复后14 PASS。修复保留有界 graceful quit，并始终断开；首次管理员初始化在已有管理员时必须指定旧内部 ID。真实已构建 CLI 验证重复初始化/不安全密码文件拒绝、旧身份绑定保留属性；最终制品两进程初始化竞态仅一个成功，均正常退出。
+- 最终新 PostgreSQL/认证/Redis批次26 PASS；最终API实际认证32请求 PASS；新增项目范围14请求 PASS（未授权所有者拒绝、本项目允许、跨项目读写与列表隔离、拒绝后数据和审计不变、管理员目录只读）。完整37项迁移及基线身份/业务外键的迁移前后备份恢复已有PASS，最终schema/migration未变按摘要复用。
+- 最终lint/API类型/Prisma validate、干净提交Web/API构建和三个Linux镜像构建PASS；断网只读非root镜像Argon2实际验证PASS。Web最近288 PASS；实现阶段API完整1332 PASS及43个独立环境skip明确保留，后续变更按目标回归覆盖。同一lockfile依赖audit各级0，非全仓/镜像清关。正式源码Placeholder0、测试白名单10行。
+- 本机最终Web/API于11:59 UTC均报告完整`1767dbb…`与相同tree/release/buildTime；仅loopback合成环境。浏览器在前一Web源码相同候选上完成普通账号登录/岗位/刷新与重启持久性/退出、管理员密码登录进入工作台；账号菜单后浏览器控制工具无法继续，完整账号管理浏览器、三档布局、最终候选浏览器复验保留待办。详见更新后的路由矩阵，不声称整组页面完成。
+- 生产11:55 UTC经系统TLS信任库读取health/build-info均200，仍运行`535041bb25f21d548d863d07b35e3e952b0aeb2c`。本轮无生产命令/备份/迁移/seed/切换，无main/tag变更，无公开源码推送。已准备本机私有候选bundle，尚未传输；server HEAD和当前宿主拓扑未验证。
+- IAP SSH两次banner前超时；云端有效防火墙允许，但已有日志/监控未能补足guest证据。GPT‑6 Pro通用咨询已完成，未提供可绕过主机证据的新办法。私有技术摘要被自动审批拒绝且未发送；仅发送无私有项目内容的通用问题。未把模型当作授权者，未改全局权限/云访问配置，未盲目重启或影响同机其他应用。
+- 下一项外部依赖：可用的既有主机管理通路或管理方的SSH监听、服务、限流/封禁日志证据。恢复后核对实际旧环境、备份恢复、私有发布控制器与扫描/配额、准确旧管理员绑定，再受控部署精确域名验证。此前停用的特权脚本不得直接绕过。等待外部输入期间已完成可独立完成的候选与本机验证工作。
+- 证据提交独立于运行提交。记录、hash、镜像身份、日志索引及真实限制见 `docs/acceptance/NATIVE_ACCOUNTS_20260912/README.md` 和 `verification.json`。
+- 当前准确状态：`CODE_IMPLEMENTED / TARGETED_LOCAL_VERIFICATION_PASS / LOCAL_BROWSER_PARTIAL / NOT_DEPLOYED / AWAITING_PRODUCT_OWNER_CONFIRMATION`。staging未部署/URL未建立/runtime未读取/用户路径未执行；production新用户路径未执行；产品负责人未确认。main/tag未改变。全部本轮生产路由未完成，正式源码占位0。

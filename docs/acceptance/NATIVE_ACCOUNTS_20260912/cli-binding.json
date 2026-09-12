@@ -1,0 +1,11 @@
+{
+  "baseCommit": "5daaf7f2e722e47f3384a57fd09fd4ed3f7f7f4f",
+  "patch": "Redis shutdown + precise administrator initialization",
+  "environment": "isolated-loopback-only",
+  "reinitialization": "REJECTED_NO_MUTATION",
+  "unsafePasswordFile": "REJECTED_NO_MUTATION",
+  "bind": "PASS",
+  "identityRoleDepartmentLegacyPreserved": true,
+  "authVersionIncremented": true,
+  "allProcessesExitedBefore20Seconds": true
+}
