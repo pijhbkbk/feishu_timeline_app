@@ -11,8 +11,14 @@
 ## 1. 产品、架构与目录
 
 - 系统：轻卡新颜色开发项目管理系统。
+- 正式身份能力改为本系统用户名密码认证、本地用户目录、岗位与权限管理；飞书、Google 等第三方身份不再是注册、登录或业务操作的前提。本地认证不是 mock 或鉴权 bypass。
+- 当前阶段在现有 GCE 的 `https://timeline.all-too-well.com` 交付原生账号版；本机用于开发和隔离验证。此最新目标替换此前“只交付本地离线版/暂停云端推进”；完整离线安装包暂不作为本期交付门禁。Google 仅为部署基础设施，不是应用身份提供方。
+- 用户已授权本项目必要的源码/依赖/迁移变更、隔离测试、独立技术审查、提交与本人服务器上的受控备份、发布、迁移和复测；不需为这些已授权工程步骤反复确认。不向公开仓库自动披露新源码，不影响同机其他应用。模型咨询只能提供技术意见，不能替代用户、平台权限或产品负责人实际验收，不修改全局平台权限。
+- 上述原生账号目标明确替换旧轮次、交接和任务中的“必须真实飞书登录”及与本期网站目标冲突的旧要求；历史事实、未关闭风险和仍适用的业务/安全门禁保留，不改写旧验收结论，不重建治理体系或修改全局平台权限。工作前核对相关目录的 `AGENTS.md`、`AGENTS.override.md` 和已配置的备用指令文件。
+- 本期正式制品须在没有第三方身份凭据、关闭所有 mock 登录时验证注册/密码登录、业务、退出、重启和恢复；移除飞书 OAuth/JSAPI 登录入口及外部身份依赖。最终验收必须在上述精确 HTTPS 域名完成，本机结果不能代替网站已更新。
+- 本地 profile 默认仅向 loopback 暴露入口并使用隔离数据与本地持久化服务；纯 HTTP 例外仅限显式 loopback-only 模式，保留 Origin/CSRF 限制。局域网/私有云共享访问必须 HTTPS，不扩大 Cookie 例外，不修改全机安全设置。
 - 架构：模块化单体；未经架构决策记录和产品负责人明确授权，不拆微服务，不引入通用 BPM 引擎。
-- 技术栈：Next.js + TypeScript、NestJS + Prisma、PostgreSQL、Redis、对象存储、飞书登录与 H5 JSAPI。
+- 技术栈：Next.js + TypeScript、NestJS + Prisma、PostgreSQL、Redis、本地持久化对象存储；身份与目录由本系统管理，旧飞书代码仅按迁移需要隔离保留。
 - 主要目录：`apps/web`、`apps/api`、`packages/shared`、`apps/api/prisma`。
 - 已批准产品语义和当前轮次约束由 round/handoff/Task Contract 声明，不复制到永久根规则。
 
@@ -29,10 +35,10 @@
 
 ## 3. 永久安全不变量
 
-- 生产认证和关键安全配置必须 fail closed；生产不得启用 mock login、测试 bypass 或默认管理员捷径。
-- 所有业务写接口必须认证，且不得通过 public allowlist 豁免。Public 例外仅限经审计的认证 bootstrap/callback、非敏感 health/readiness 或批准的只读公共元数据；每项精确到 HTTP method + path，并记录依据、责任人和复核日期。
+- 正式认证（包括本地离线版）和关键安全配置必须 fail closed；不得启用 mock login、测试 bypass 或默认管理员捷径。岗位选择不等于正式角色或项目授权，不得自授管理员或累加历史岗位权限。
+- 所有业务写接口必须认证，且不得通过 public allowlist 豁免。Public 例外仅限经审计的认证入口（含本地注册/登录/恢复）、非敏感 health/readiness 或批准的只读公共元数据；每项精确到 HTTP method + path，并记录依据、责任人和复核日期。
 - 所有对象级读写必须验证角色、项目/部门/资源范围或所有权，防止 IDOR。
-- Session、Cookie、OAuth state、CSRF/CORS 和登出失效由统一认证边界控制；凭证型 CORS 不得使用通配 Origin。
+- Session、Cookie、CSRF/CORS 和登出失效由统一认证边界控制；凭证型 CORS 不得使用通配 Origin。隔离保留的旧 OAuth 代码仍须保护 state，但不在离线制品中激活。
 - 用户输入、legacy 数据、分页、聚合、上传、下载、日志和外部调用必须有长度、数量、字节、时间和并发边界。
 - 列表使用有界分页、sentinel 和按需 detail；禁止先全量 materialize、聚合或嵌套后再 slice。
 - 上传校验大小、扩展名、MIME、文件魔数和安全对象 key；危险内容 quarantine/scan，下载重新鉴权并遵守扫描状态。
@@ -50,7 +56,7 @@
 - 未经授权，不执行 `git reset --hard`、`git clean -fd`、worktree prune、删除分支、改写历史或复用隔离路径。
 - 多 Agent 不得并发修改同一 worktree；第三方模型只在批准的独立 `git clone --no-hardlinks` 中工作，不携带媒体、Secret、凭证或生产数据。
 - 安全证据、扫描和部署结论绑定 full commit、tree、lockfile、工具版本、命令、环境和结果 hash。dirty tree、局部 PASS 或不同 commit 不能冒充最终证据。
-- 禁止部署 dirty、未提交、未推送或远端不可解析的提交。
+- 禁止交付 dirty 或未提交代码构建的版本。本地离线交付从干净、已提交的本地不可变 commit 构建，记录 source/tree 与制品摘要，不要求推送或远端可解析；远端部署仍须已推送且远端可解析。
 
 ## 5. 目标式执行与授权边界
 
@@ -82,6 +88,8 @@
 
 ## 8. 验证复用与失败处理
 
+- 新认证、权限和身份迁移必须取得对应的新验证：管理员初始化、注册/密码登录、限速、改密/恢复、会话轮换与撤销、CSRF/Origin、岗位自授与跨项目越权负向、保留内部用户 ID/历史作者/业务外键的迁移与备份恢复；按第 7 节独立审查最终安全差异。旧 OAuth PASS 不证明新密码登录安全；旧强制跳飞书断言替换为本地身份合同，并验证旧入口不激活。
+- 未受影响的业务修复按上述证据身份及适用性依据复用；不机械重跑全部历史。身份变化不放宽状态机、鉴权、并发/幂等、配额、审计、附件隔离和扫描安全要求。
 - 按相关源码、测试、锁文件、配置、工具链及环境绑定证据；相关输入未变可复用，哪些输入改变就重跑受影响检查。文档/evidence commit 不自动使应用验证失效。
 - 发布候选、共享认证、schema、依赖与构建配置重要变化先影响分析再充分验证；不能把旧源码的 PASS 冒充当前候选结果。
 - 失败先区分实现、测试、环境、权限和证据原因；同因两次后暂停受影响动作，保留简短 blocker。在有可验证的新根因修复、输入或方案后才能重试，不换命令包装绕过拒绝。
@@ -121,4 +129,4 @@
 - Codex 不得自行宣布产品验收，也不得使用“全部完成”“没有漏洞”“已经上线”等超证据结论。
 
 - 环境验收记录精确 URL/hostname、数据库、完整 runtime commit、Web/API 构建与镜像 tag/digest、upstream、部署时间，并保存浏览器截图、Network、console 和交互证据；版本须与目标服务器及预期 commit 一致。
-- 产品负责人未明确 `PRODUCT_OWNER_ACCEPTED` 时，产品状态为 `AWAITING_PRODUCT_OWNER_CONFIRMATION`。远端不可访问或未授权时留下未验证，不用 localhost 替代。
+- 产品负责人未明确 `PRODUCT_OWNER_ACCEPTED` 时，产品状态为 `AWAITING_PRODUCT_OWNER_CONFIRMATION`。本地离线版在明确记录的本机 URL/hostname 验收并保留上述证据，remote commit 标为不适用；不能以本地结果证明公网改变。远端恢复发布时仍须在精确目标域名验收，不可访问或未授权则保留未验证。
