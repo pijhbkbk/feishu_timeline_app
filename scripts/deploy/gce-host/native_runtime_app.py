@@ -205,6 +205,10 @@ def validate_container(component, item, image):
 
 
 def prepare_start(component):
+    state_directory()
+    from native_cutover import committed_value, present
+    if present(ROOT / 'cutover-pending.json') or present(ROOT / 'cutover-committed.json'):
+        committed_value()
     validate_files()
     ready = backup.read_json(ROOT / 'prepared.json')
     require(ready.get('runtimeCommit') == COMMIT and ready.get('database') == migration.DATABASE and

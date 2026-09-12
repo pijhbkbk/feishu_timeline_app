@@ -1,7 +1,7 @@
 [Unit]
 Description=Native account application web
-Requires=timeline-native-network.service docker.service
-After=timeline-native-network.service docker.service
+Requires=timeline-native-cutover-recover.service timeline-native-network.service docker.service
+After=timeline-native-cutover-recover.service timeline-native-network.service docker.service
 StartLimitIntervalSec=300
 StartLimitBurst=5
 

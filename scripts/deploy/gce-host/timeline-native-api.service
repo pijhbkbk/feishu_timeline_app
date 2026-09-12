@@ -1,7 +1,7 @@
 [Unit]
 Description=Native account application api
-Requires=timeline-native-network.service docker.service timeline-native-redis.service timeline-native-pg.socket timeline-native-scanner-proxy.socket
-After=timeline-native-network.service docker.service timeline-native-redis.service timeline-native-pg.socket timeline-native-scanner-proxy.socket
+Requires=timeline-native-cutover-recover.service timeline-native-network.service docker.service timeline-native-redis.service timeline-native-pg.socket timeline-native-scanner-proxy.socket
+After=timeline-native-cutover-recover.service timeline-native-network.service docker.service timeline-native-redis.service timeline-native-pg.socket timeline-native-scanner-proxy.socket
 StartLimitIntervalSec=300
 StartLimitBurst=5
 

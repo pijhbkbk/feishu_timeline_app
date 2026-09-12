@@ -1,0 +1,22 @@
+[Unit]
+Description=Bounded native web production proxy
+Requires=timeline-native-cutover-recover.service timeline-native-web.service
+After=timeline-native-cutover-recover.service timeline-native-web.service
+
+[Service]
+ExecStartPre=+/usr/bin/python3 -I /usr/local/lib/timeline-native-ops/native_cutover.py check-committed
+ExecStart=/usr/lib/systemd/systemd-socket-proxyd --connections-max=64 172.30.45.2:3000
+DynamicUser=yes
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+RestrictAddressFamilies=AF_INET AF_UNIX
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryMax=64M
+TasksMax=16
+LimitNOFILE=256
+TimeoutStopSec=15

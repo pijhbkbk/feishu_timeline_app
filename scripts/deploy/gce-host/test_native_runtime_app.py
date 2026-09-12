@@ -56,10 +56,10 @@ class RuntimeBoundaryTests(unittest.TestCase):
             self.assertEqual(value[key],expected);self.assertEqual(web[key],expected)
 
     def test_unprepared_or_damaged_configuration_cannot_create_container(self):
-        with patch.object(app,'validate_files',side_effect=backup.Failure('bad env')),patch.object(app,'docker') as docker:
+        with patch.object(app,'state_directory'),patch.object(app,'validate_files',side_effect=backup.Failure('bad env')),patch.object(app,'docker') as docker:
             with self.assertRaises(backup.Failure):app.prepare_start('api')
             docker.assert_not_called()
-        with patch.object(app,'validate_files'),patch.object(backup,'read_json',return_value={}),patch.object(app,'docker') as docker:
+        with patch.object(app,'state_directory'),patch.object(app,'validate_files'),patch.object(backup,'read_json',return_value={}),patch.object(app,'docker') as docker:
             with self.assertRaises(backup.Failure):app.prepare_start('api')
             docker.assert_not_called()
 
