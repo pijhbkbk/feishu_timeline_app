@@ -137,7 +137,10 @@ def preflight():
             if item['Name'] == name:
                 continue
             require(item.get('Options', {}).get('com.docker.network.bridge.name') != bridge, 'Bridge already owned')
-            for entry in item.get('IPAM', {}).get('Config', []):
+            ranges = item.get('IPAM', {}).get('Config')
+            builtin_without_subnet = (item['Name'], item['Driver']) in {('host', 'host'), ('none', 'null')}
+            require(isinstance(ranges, list) or (ranges is None and builtin_without_subnet), 'Network address inventory malformed')
+            for entry in ranges or []:
                 if entry.get('Subnet'):
                     other = ipaddress.ip_network(entry['Subnet'])
                     require(other.version != 4 or not ipaddress.ip_network(subnet).overlaps(other), 'Network range overlaps')

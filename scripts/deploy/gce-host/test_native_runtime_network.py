@@ -17,6 +17,16 @@ def item(spec):
 
 
 class IsolationTests(unittest.TestCase):
+    def test_builtin_host_and_none_have_observed_null_ipam_without_overlap(self):
+        builtins = [{'Name': name, 'Driver': driver, 'Options': {}, 'IPAM': {'Driver': 'default', 'Config': None}}
+                    for name, driver in [('host', 'host'), ('none', 'null')]]
+        with patch.object(network, 'network_inventory', return_value=builtins), patch.object(network, 'run', return_value=b'[]'):
+            self.assertEqual(network.preflight(), builtins)
+        builtins[0]['Driver'] = 'bridge'
+        with patch.object(network, 'network_inventory', return_value=builtins), patch.object(network, 'run', return_value=b'[]'):
+            with self.assertRaisesRegex(backup.Failure, 'inventory malformed'):
+                network.preflight()
+
     def test_existing_network_cannot_silently_weaken_isolation(self):
         spec = network.NETWORKS[0]
         valid = item(spec)
