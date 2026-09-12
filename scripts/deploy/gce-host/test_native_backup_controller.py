@@ -8,6 +8,35 @@ from unittest.mock import patch
 import native_backup_controller as backup
 
 
+class RestoreFingerprintTests(unittest.TestCase):
+    def setUp(self):
+        from copy import deepcopy
+        self.receipt={'source':'feishu_timeline_restore_c38c57da','tableCount':52}
+        self.expected={'tables':{str(n):{'rows':0,'sha256':'a'*64} for n in range(52)},
+                       'sequences':{},'schemaSha256':backup.NATIVE_SCHEMA_PAIR[0]}
+        self.actual=deepcopy(self.expected);self.actual['schemaSha256']=backup.NATIVE_SCHEMA_PAIR[1]
+
+    def test_exact_match_and_only_reviewed_direction_are_distinct(self):
+        self.assertEqual(backup.compare_restored_fingerprints(self.expected,self.expected,self.receipt),{'mode':'exact'})
+        proof=backup.compare_restored_fingerprints(self.expected,self.actual,self.receipt)
+        self.assertEqual(proof['mode'],'reviewed-schema-equivalence')
+        self.assertTrue(proof['allTableContentsAndSequencesExact'])
+        with self.assertRaises(backup.Failure):backup.compare_restored_fingerprints(self.actual,self.expected,self.receipt)
+
+    def test_any_data_sequence_source_or_unknown_schema_change_is_rejected(self):
+        from copy import deepcopy
+        cases=[]
+        changed=deepcopy(self.actual);changed['tables']['0']['rows']=1;cases.append((changed,self.receipt))
+        changed=deepcopy(self.actual);changed['tables']['0']['sha256']='b'*64;cases.append((changed,self.receipt))
+        changed=deepcopy(self.actual);changed['sequences']['sequence']='1|t';cases.append((changed,self.receipt))
+        changed=deepcopy(self.actual);changed['schemaSha256']='c'*64;cases.append((changed,self.receipt))
+        cases.append((self.actual,{**self.receipt,'source':'feishu_timeline'}))
+        cases.append((self.actual,{**self.receipt,'tableCount':51}))
+        for actual,receipt in cases:
+            with self.subTest(actual=actual,receipt=receipt),self.assertRaises(backup.Failure):
+                backup.compare_restored_fingerprints(self.expected,actual,receipt)
+
+
 class FileBoundaryTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
