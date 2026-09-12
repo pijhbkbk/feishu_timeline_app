@@ -54,10 +54,12 @@ def docker(*args, timeout=45):
 
 
 def inspect(name):
-    result = subprocess.run(['/usr/bin/docker', 'inspect', name], env=backup.ENV, cwd='/', capture_output=True, timeout=20)
+    result = subprocess.run(['/usr/bin/docker', 'container', 'inspect', name], env=backup.ENV, cwd='/', capture_output=True, timeout=20)
     require(len(result.stdout) < 128 * 1024 and len(result.stderr) < 4096, 'Unexpected Docker output size')
     if result.returncode:
-        require(result.returncode == 1 and b'No such' in result.stderr, 'Docker inspection failed')
+        require(result.returncode == 1 and result.stdout.strip() == b'[]' and
+                result.stderr.strip() == ('Error response from daemon: No such container: ' + name).encode(),
+                'Docker inspection failed')
         return None
     values = json.loads(result.stdout)
     require(len(values) == 1, 'Unexpected Docker state')

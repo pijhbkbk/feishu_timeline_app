@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 import unittest
+from subprocess import CompletedProcess
 from unittest.mock import patch
 
 import native_migration_probe as probe
@@ -39,6 +40,21 @@ class ProjectionTests(unittest.TestCase):
 
 
 class RecoveryTests(unittest.TestCase):
+    def test_missing_container_uses_container_specific_observed_response(self):
+        result = CompletedProcess([], 1, b'[]\n', ('Error response from daemon: No such container: ' + probe.CONTAINER + '\n').encode())
+        with patch.object(probe.subprocess, 'run', return_value=result) as run:
+            self.assertIsNone(probe.inspect(probe.CONTAINER))
+        self.assertEqual(run.call_args.args[0], ['/usr/bin/docker', 'container', 'inspect', probe.CONTAINER])
+
+    def test_other_docker_failures_are_never_treated_as_missing(self):
+        for code, out, error in [(1, b'[]', b'permission denied'), (125, b'[]', b'No such container'),
+                                 (1, b'[]', b'error: no such object: timeline-native-migration-probe\n'),
+                                 (1, b'[]', b'Error response from daemon: No such container: another\n'),
+                                 (1, b'[{}]', ('Error response from daemon: No such container: ' + probe.CONTAINER).encode())]:
+            with self.subTest(error=error), patch.object(probe.subprocess, 'run', return_value=CompletedProcess([], code, out, error)):
+                with self.assertRaises(backup.Failure):
+                    probe.inspect(probe.CONTAINER)
+
     def test_manifest_interruption_has_prior_journal_and_runs_recovery(self):
         receipt = {'database': probe.DATABASE, 'role': probe.ROLE, 'databaseAndObjectsVerified': True,
                    'manifestSha256': '691880a21aceb71992e78762b0082bc37a73d8a656b025a84b5d1adc283989f0'}
