@@ -7775,3 +7775,9 @@ BLOCKER_REPORT: Public-source push remains rejected by platform automatic review
 - 已完成可独立的候选、目标验证、差异审查、迁移/合成恢复、Linux构建与本机浏览器证据。剩余主机拓扑/生产备份迁移/准确旧管理员绑定/部署切换/精确HTTPS验收需要真实管理通路；浏览器新凭据和授权操作的尚未执行项继续保留，不扩大PASS。
 - 下一方案：取得已有可用管理会话或SSH监听/服务/故障窗口封禁日志后，按新证据做具体修复，再继续既定受控发布。需要外部输入，不要求重复开发/发布授权；不要在聊天发送密码或密钥。
 - 目标状态 `BLOCKED`；实现状态 `CODE_IMPLEMENTED / TARGETED_LOCAL_VERIFICATION_PASS / LOCAL_BROWSER_PARTIAL / NOT_DEPLOYED / AWAITING_PRODUCT_OWNER_CONFIRMATION`。staging地址/版本/路径未执行，生产未改变且新路径未验收，main/tag未改变，产品负责人未确认，所有本轮生产路由待验收，正式源码Placeholder0。当前复核见 `docs/acceptance/NATIVE_ACCOUNTS_20260912/blocked-audit.json`。
+
+### 2026-09-12 13:34 UTC — Safari管理入口恢复审计
+
+- 用户登录Safari后完成只读订阅查询，控制台可访问。随后恢复网站目标时，启动Cloud Shell的操作被自动审批拒绝：审核认为新管理会话超出了最近“只读查询订阅”的范围。操作未执行；已明确解释审核原因并提出具体确认请求，尚未收到回复，没有借CLI/其他入口绕过该拒绝。
+- 前一恢复回合分类为无进展：仅确认控制台仍停留在账单页面，未取得授权或活跃管理句柄。本回合只读核对仍显示Activate Cloud Shell；三个连续恢复回合保持同一待确认障碍，目标再次标记 `BLOCKED`。自动续行不视为确认，GPT‑6 Pro不代替用户或工具审批。
+- 应用运行候选仍为 `1767dbb5eeb30cc57835081de761e1eccb8fac8b`，已有本地验证/浏览器证据未改变；本回合未部署/迁移、未改main/tag、未进行产品验收。恢复条件及原SSH障碍分别记在 `docs/acceptance/NATIVE_ACCOUNTS_20260912/blocked-audit.json`；不提交账户付款信息或凭据。

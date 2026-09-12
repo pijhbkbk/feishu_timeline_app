@@ -53,6 +53,8 @@ CLI 真实退出测试发现未使用的 lazy Redis 客户端在关闭时启动�
 
 ## 发布阻塞与恢复条件
 
+13:34 UTC恢复后复核：用户已登录Safari谷歌云控制台，订阅只读查询完成；尝试启动Cloud Shell被自动审批拒绝，理由是创建云管理会话超出了最近“只读查询订阅”的范围。启动未执行，未换入口绕过拒绝。具体确认请求已提出，尚无回复；三个连续恢复回合后控制台仍显示Activate Cloud Shell，没有已启动终端，目标再次标记 `BLOCKED`。需要用户对该具体管理入口明确确认后继续。此状态及此前主机连接证据分别保存在 [blocked-audit.json](blocked-audit.json)，不把控制台登录或账单可用当作服务器SSH恢复证明。
+
 第三个连续目标回合于 12:34 UTC 复核同一访问障碍：当前任务无附加终端，本机无 SSH/gcloud/sftp/autossh 管理进程，正常 TLS 读取公开 Web/API 仍是旧版本。上一回合是完成浏览器证据提交的实质进展；本回合未取得可执行主机修复的新输入。复核见 [blocked-audit.json](blocked-audit.json)。此前 SSH 失败的精确主机原因仍未知，不能据此认定 Fail2ban 或 sshd 故障。
 
 GCE IAP SSH 两次在协议 banner 前超时，尚未进入用户密钥认证；未执行远端命令。有效 NIC 防火墙允许 IAP tcp22，未见明确云端拒绝。已有云日志在失败窗口无匹配，不能证明主机无故障或已采集 sshd/Fail2ban 日志；监控读取也超时。Fail2ban 是未证实的候选原因。未开放端口、修改 IAM/metadata、重置密钥、重启 VM 或影响同机其他应用。
