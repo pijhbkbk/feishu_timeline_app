@@ -1,0 +1,25 @@
+[Unit]
+Description=Close restored-copy migration credentials after interruption
+After=postgresql.service docker.service timeline-native-backup-recover.service
+Requires=postgresql.service
+Wants=docker.service
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+ExecStart=/usr/bin/python3 -I /usr/local/lib/timeline-native-ops/native_migration_probe.py recover
+TimeoutStartSec=180
+TimeoutStopSec=30
+KillMode=control-group
+UMask=0077
+MemoryMax=256M
+TasksMax=64
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=full
+ReadWritePaths=/var/lib/timeline-native-migration-probe
+
+[Install]
+WantedBy=multi-user.target
