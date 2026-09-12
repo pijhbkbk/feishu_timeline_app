@@ -115,3 +115,23 @@ Next.js production build（`http://127.0.0.1:3100`），不能替代目标环境
 | `/build-info`、`/api/health` | Web metadata / HealthController | GET 相同路径 | public | 与固定候选完整 SHA/tree/release 一致 | 最终本机两个响应均 200 且身份一致；不单独证明产品完成 | LOCAL_METADATA_PASS |
 
 正式源码 Placeholder 0；测试白名单10行。登录/注册/恢复表单、账号目录与个人账号页的1440/1024/390三档已有17张截图及可保存网络/控制台证据；尚未覆盖全部路由和受控写入，整组路由不得标记 PASS。详见 [浏览器清单](NATIVE_ACCOUNTS_20260912/browser/manifest.json) 与 [候选证据与阻塞](NATIVE_ACCOUNTS_20260912/README.md)。
+
+
+## 2026-09-13 原生账号正式域名切换记录
+
+当前运行提交 `f2da3629e13b2653aae8879c98992877d5ef4170`；正式切换时间 `2026-09-12T17:38:51+00:00`。原有本机及历史飞书截图仍保留其原范围。当前Mac锁屏，正式域名浏览器截图、Network、console与交互待解锁后取得；HTTP验证不替代页面验收。
+
+| 精确URL | Route component | API endpoints | Required role | Expected data/action | 当前证据 | 浏览器结论 |
+|---|---|---|---|---|---|---|
+| https://timeline.all-too-well.com/login | LoginPage | POST /api/auth/login、register、recover；GET session | public | 原生账号登录/注册/恢复，无第三方登录按钮 | 正式密码登录/Origin负向/退出HTTP PASS；尚无正式页面截图 | PENDING_MAC_UNLOCK |
+| https://timeline.all-too-well.com/login/callback | LoginCallbackClient | 不交换第三方身份 | public | 旧登录入口停用，返回原生登录 | 旧OAuth发起HTTP410且无跳转；页面待验收 | PENDING_MAC_UNLOCK |
+| https://timeline.all-too-well.com/account | AccountPage | session、auth/job、auth/password | native authenticated | 岗位意向、密码管理和权限状态 | 本机页面与新HTTP/数据库测试按既有证据范围保留 | PENDING_MAC_UNLOCK |
+| https://timeline.all-too-well.com/dashboard | V2Shell / Dashboard | session、dashboard | 授权角色 | 原管理员查看真实工作台 | 正式原管理员会话/身份HTTP PASS | PENDING_MAC_UNLOCK |
+| https://timeline.all-too-well.com/projects | V2Shell / Projects | session、projects | project.read及数据范围 | 读取迁移保留项目 | 正式管理员项目读取200，未认证401；迁移项目与历史保留 | PENDING_MAC_UNLOCK |
+| https://timeline.all-too-well.com/admin/accounts | AccountsPage | GET /api/auth/accounts；POST recovery | isSystemAdmin | 原生账号目录/凭据状态与恢复管理 | 正式目录读取200、原管理员账号匹配；截图与交互待验收 | PENDING_MAC_UNLOCK |
+| https://timeline.all-too-well.com/v2/admin/accounts | AccountsPage alias | 同上 | isSystemAdmin | 显式别名路径一致 | 源码/本机构建验证；正式别名页面待验收 | PENDING_MAC_UNLOCK |
+| https://timeline.all-too-well.com/admin/organization | AdminControlCenter | admin/organization及预览/命令 | system.manage及受限管理员动作 | 用户、岗位、部门和正式授权 | 新身份权限/并发负向的既有真实PG证据保留；正式配置交互待验收 | PENDING_MAC_UNLOCK |
+| https://timeline.all-too-well.com/build-info | Web metadata | 同URL | public | f2da完整版本/release/buildTime | 实际HTTPS200且准确身份 | HTTP_PASS / NOT_PRODUCT_ACCEPTANCE |
+| https://timeline.all-too-well.com/api/health | HealthController | 同URL | public | f2da完整版本/release/buildTime | 实际HTTPS200且准确身份 | HTTP_PASS / NOT_PRODUCT_ACCEPTANCE |
+
+当前源码Placeholder扫描：正式源码0，测试白名单10行（7个getByPlaceholder、3个禁止占位断言），与未改动Web源码相符。产品负责人未确认，整组生产页面不能标记PASS。

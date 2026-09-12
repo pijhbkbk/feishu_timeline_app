@@ -1,0 +1,338 @@
+{
+  "checkedAt": "2026-09-12T16:49:31.337213+00:00",
+  "status": "DEPLOYMENT_PREPARATION_IN_PROGRESS",
+  "authorization": "User explicitly authorized current Cloud Shell access, necessary session API use, server checks, backup, native migration, deployment, verification, and temporary-access cleanup.",
+  "managementAccess": "Both VMs reachable through authorized Cloud Shell IAP using existing VM keys; known host identities verified. No VM management keys replaced.",
+  "temporaryCloudShellAccess": "Active for this authorized delivery; cleanup still required. No additional OAuth token forwarded by the assistant.",
+  "runtimeCandidate": "f2da3629e13b2653aae8879c98992877d5ef4170",
+  "runtimeTree": "435fd8f66beef2760ce02388b0948cea35cee55e",
+  "controllerCommit": "f231659f989ad445fb22807314a44daf0a9f786a",
+  "controllerSha256": "53a047f4e69876f7a1373f57a725f04811c489b0446b2b8b988571f9dfbe06ed",
+  "proxyFixVerification": {
+    "targetTestsPassed": 59,
+    "lint": "PASS",
+    "typecheck": "PASS",
+    "independentDiffReview": "PASS"
+  },
+  "controllerVerification": {
+    "targetTestsPassed": 22,
+    "independentDiffReview": "PASS",
+    "realPostgresUncommittedCreateRecovery": "PASS; close waited 3.32 seconds behind creator transaction"
+  },
+  "privateRegistry": {
+    "projectDisplayName": "My Project 92644",
+    "resource": "projects/axial-acrobat-492709-r7/locations/us-west1/repositories/feishu-timeline",
+    "currentPrincipalHasOwnerRole": true,
+    "publicIamBinding": false,
+    "uploadReview": "Initial upload was rejected for missing ownership evidence; project/repository/IAM readback established owner/private state, subsequent approved upload succeeded."
+  },
+  "images": [
+    {
+      "component": "api",
+      "tag": "us-west1-docker.pkg.dev/axial-acrobat-492709-r7/feishu-timeline/api:native-f2da3629e13b2653",
+      "imageId": "sha256:e1325e8263713bfb8fc13da4aeaa0521d77617a859fc8d86d6d4157468e3e370",
+      "repositoryDigests": [
+        "timeline-native-api@sha256:e1325e8263713bfb8fc13da4aeaa0521d77617a859fc8d86d6d4157468e3e370",
+        "us-west1-docker.pkg.dev/axial-acrobat-492709-r7/feishu-timeline/api@sha256:e1325e8263713bfb8fc13da4aeaa0521d77617a859fc8d86d6d4157468e3e370"
+      ]
+    },
+    {
+      "component": "web",
+      "tag": "us-west1-docker.pkg.dev/axial-acrobat-492709-r7/feishu-timeline/web:native-f2da3629e13b2653",
+      "imageId": "sha256:4d08266d5e6763da3072c895e124a1d71f2926ae7f161942ea8560b512df2d31",
+      "repositoryDigests": [
+        "timeline-native-web@sha256:4d08266d5e6763da3072c895e124a1d71f2926ae7f161942ea8560b512df2d31",
+        "us-west1-docker.pkg.dev/axial-acrobat-492709-r7/feishu-timeline/web@sha256:4d08266d5e6763da3072c895e124a1d71f2926ae7f161942ea8560b512df2d31"
+      ]
+    },
+    {
+      "component": "ops",
+      "tag": "us-west1-docker.pkg.dev/axial-acrobat-492709-r7/feishu-timeline/api-ops:native-f2da3629e13b2653",
+      "imageId": "sha256:9a86c2c82b9b098e4b03cb90b81e33e3be948b106570f458675d28631ed430c2",
+      "repositoryDigests": [
+        "timeline-native-ops@sha256:9a86c2c82b9b098e4b03cb90b81e33e3be948b106570f458675d28631ed430c2",
+        "us-west1-docker.pkg.dev/axial-acrobat-492709-r7/feishu-timeline/api-ops@sha256:9a86c2c82b9b098e4b03cb90b81e33e3be948b106570f458675d28631ed430c2"
+      ]
+    }
+  ],
+  "backup": {
+    "id": "20260912T144907Z-9b8c486b",
+    "manifestSha256": "691880a21aceb71992e78762b0082bc37a73d8a656b025a84b5d1adc283989f0",
+    "fingerprintsSha256": "bb9622d63a6cf85b5101efdff92c2d8ee713321ef5e76f1c2c56912c0a102848",
+    "tables": 46,
+    "objects": 0,
+    "snapshotSeconds": 17.426,
+    "restoreSeconds": 5.786,
+    "restoredDatabase": "feishu_timeline_restore_c38c57da",
+    "restoredRole": "timeline_restore_c38c57da",
+    "dataSchemaSequenceObjectComparison": "PASS",
+    "sourceServiceRecovered": true,
+    "temporaryRestoreLoginClosed": true,
+    "backupsLocation": "Private root-owned host directory; no backup or credentials copied into this repository."
+  },
+  "sourceRuntime": "535041bb25f21d548d863d07b35e3e952b0aeb2c",
+  "productionRuntimeChanged": false,
+  "originalBusinessDataChanged": false,
+  "productionHostOperationalChanges": [
+    "Root-owned approved backup controller and recovery unit",
+    "Dedicated restricted restore OS identity",
+    "Private consistent backup",
+    "Separate restored database and NOLOGIN role"
+  ],
+  "remaining": [
+    "Scanner cold activation host adapter and fresh verified signatures",
+    "Final release controller/network/configuration",
+    "Private immutable source receiver",
+    "Migrations and exact old administrator binding on candidate database",
+    "Fresh final backup and cutover",
+    "Exact-domain browser acceptance and owner confirmation",
+    "Temporary Cloud Shell key and connection cleanup"
+  ],
+  "productState": "AWAITING_PRODUCT_OWNER_CONFIRMATION",
+  "privateSource": {
+    "remote": "ssh://lixiaochen@instance-20260408-091840/home/lixiaochen/timeline-native-delivery/source.git",
+    "ref": "refs/heads/codex/native-account-release",
+    "runtimeCommit": "f2da3629e13b2653aae8879c98992877d5ef4170",
+    "push": "PASS; actual git push created remote branch",
+    "directoryMode": "0700",
+    "publicDisclosure": false
+  },
+  "scannerPreparation": {
+    "initialControllerCommit": "926403f04a309ab6e1567dd08f99da9bb5b848d8",
+    "currentControllerCommit": "36a5fb1dea637924b69794bdb65478921d112134",
+    "installedHostSha256": "753e45c9384574f8e53038760325d741b02cfd24595ed5393f69155b3b1a606e",
+    "installedInitializerSha256": "d7f81629365af4a6e7aed8f3025db67cdadb899dc2ad739ccbd57c707fe3dc64",
+    "installerSha256": "46ecbc10f90c332940497dd2bddfaaea7be0d25327b1373dd1d8012884496051",
+    "independentReviews": "PASS: controller, initializer/payload, root cause diff",
+    "testsPassed": 81,
+    "realInitialization": "PASS; 20.609 seconds; verified 3 historical official databases, floor 28119, approval null; legacy unit masked and both prior endpoints closed",
+    "firstRefresh": "FAIL_CLOSED; official download/signature verification completed, admission rejected because Docker stores expanded seccomp JSON and adapter compared pathname; engine stopped, unapproved files retained",
+    "rootCauseEvidence": "Actual stopped r3 Docker SecurityOpt stores JSON equivalent to installed pinned seccomp profile; serialized value SHA256 46461955b1be3e22f2ae8c5b8f12d132075ca10c0ae78b44e55150202dbea7e1",
+    "correction": "Compare actual Docker JSON with independently hash-pinned root profile; retain NNP and exact option set. Identity failures no longer hidden as readiness timeout. Single installed module updated atomically under operation lock.",
+    "secondRefresh": "PASS; COLD_ACTIVATION_VERIFIED; daily 28121 signedAt1789194281",
+    "functional": {
+      "status": "PASS",
+      "version": "ClamAV 1.4.6/28121/Sat Sep 12 06:24:41 2026",
+      "clean": "stream: OK",
+      "eicar": "stream: Eicar-Test-Signature FOUND",
+      "oldPort3311Closed": true,
+      "onlyLoopbackAdmission": true,
+      "checkAndRefreshTimersEnabled": true,
+      "processStartIdentity": "f02378bc-201e-46cf-a5e0-e330ccdd8f59:24195320a4a449178123a6e1a74dd0263ffea0749d045b9036f143dd281988d5:284746:17972604"
+    }
+  },
+  "networkInventory": {
+    "gcpSubnetReadback": "PASS; all primary ranges inspected, no secondary ranges returned",
+    "proposedNativeNetworks": [
+      "172.30.44.0/29",
+      "172.30.45.0/29"
+    ],
+    "overlapWithExistingGcpOrDockerRanges": false,
+    "created": true,
+    "existingScannerRouteOverlap": "Resolved by exact scanner /32 host route; other Docker networks unchanged"
+  },
+  "applicationVmImagePull": {
+    "status": "PASS",
+    "commit": "f2da3629e13b2653aae8879c98992877d5ef4170",
+    "components": [
+      "api-ops",
+      "api",
+      "web"
+    ],
+    "repositoryDigestsAndAmd64Verified": true,
+    "vmExistingReadOnlyServiceAccount": true,
+    "temporaryDockerAuthenticationDirectory": "/run/timeline-native-pulls/docker-auth-28eokqaa",
+    "temporaryDockerAuthenticationRemoved": true,
+    "imagesRun": false
+  },
+  "migrationRehearsal": {
+    "status": "PASS",
+    "database": "feishu_timeline_restore_c38c57da",
+    "runtimeCommit": "f2da3629e13b2653aae8879c98992877d5ef4170",
+    "controllerSha256": "375ce24629be5f40cfe106ebea736a3c69d8f4b23ea3f77b141f9b90cc351dab",
+    "migrationsBefore": 26,
+    "migrationsAfter": 37,
+    "oldTablesCompared": 46,
+    "totalTables": 52,
+    "oldColumnsUnchanged": true,
+    "users": 12,
+    "projects": 1,
+    "auditLogs": 49,
+    "attachments": 0,
+    "nativeCredentials": 0,
+    "roleClosed": true,
+    "productionChanged": false,
+    "runtimeSeconds": 23.449,
+    "initialFailure": "Generic Docker inspect lowercase missing-object response rejected before any journal or DB change; fixed via strict container-specific missing response; 33 tests and independent review PASS"
+  },
+  "scannerInterruption": {
+    "faultScriptSha256": "feff0fb58873ca8da9e1815c10863dcd1d0f45ec3baa0d5c4e364b2018d736d5",
+    "realLockMarker": true,
+    "execMainCode": 2,
+    "execMainStatus": 9,
+    "serviceResult": "signal",
+    "heldConnectionClosed": true,
+    "newConnectionsRefused": true,
+    "approvalAndFloorUnchanged": true,
+    "normalRefresh": "VERIFIED_UNCHANGED",
+    "refreshTime": 1789228418,
+    "postFaultPing": "PONG",
+    "sameProcessVerified": true,
+    "timersActive": true
+  },
+  "privateSourceReadback": {
+    "commit": "f2da3629e13b2653aae8879c98992877d5ef4170",
+    "ref": "refs/heads/codex/native-account-release",
+    "verified": true
+  },
+  "networkFoundation": {
+    "status": "PASS",
+    "controllerSha256": "d85f6a2ff101c1180b56b059b313571b38f84ddbeca8c1b213f2a20a96020807",
+    "nftSha256": "31ceb4c0f7a1a334930551592bd85742af0bdfdbe4a3805c9910598f5b5fb822",
+    "namespaceCasesPassed": 11,
+    "namespaceScriptSha256": "e0b7c8acb3a6d7714307c81d0699d68fa7c825b27c479d900473221e5a9b6eac",
+    "hostNetworkService": "active/success",
+    "internalNetworks": [
+      "timeline-native-api",
+      "timeline-native-web"
+    ],
+    "scannerHostRoute": "172.27.227.2/32 via 10.138.0.1 dev ens4",
+    "initialFailure": "Built-in host/none IPAM.Config=null rejected before mutation; exact built-in compatibility fix independently reviewed and passed",
+    "actualDockerIngressProof": {
+      "status": "PASS",
+      "scriptSha256": "5d57d24f0763d29d1fa062640a428c0a3480e2c74327f1df06d320912f81a61d",
+      "engineVersion": "29.6.0",
+      "loopbackSocketProxy": true,
+      "dockerPublishesNativePorts": false,
+      "trustedPeer": "172.30.44.1",
+      "pgHandshake": true,
+      "scannerCleanAndEicar": true,
+      "forbiddenPathsUnavailable": true,
+      "unrelatedWorkloadHealthy": true,
+      "probeContainersAndProxyRemoved": true,
+      "initialFailure": "internal-only Docker network ignored -p; preserved isolation and verified host socket proxy instead"
+    }
+  },
+  "scannerApplicationTunnel": {
+    "applicationKeyCreated": true,
+    "privateKeyStayedOnApplicationHost": true,
+    "publicKeySha256": "84c9df60701c6fde028784ee7ced01801711381463215f8e7a34fd515afff30d",
+    "authorizedEntrySha256": "c89f06b826b8dea2630fe568d0d3c3531a46c3f3f2be04e5f152daae72e573a2",
+    "sourceRestricted": true,
+    "destination": "scanner loopback3310 only",
+    "unitsInstalled": true,
+    "unitsValidation": "PASS after systemd249 CREDENTIALS_DIRECTORY correction",
+    "connectionVerified": true,
+    "serviceSha256": "299543593dffa8f526595d3a94daa94bf1b96c316cada77cbf9081fa097e0d6b",
+    "interruptionTest": {
+      "scriptSha256": "048fa6a0cf4dc44587c61dc9ca151487445d9a25dd647e656d3ad92c8978b370",
+      "heldStreamClosed": true,
+      "newConnectionsRefusedDuringOutage": true,
+      "newPidAndRestartCounterProved": true,
+      "automaticRecoveryPing": "PONG"
+    }
+  },
+  "nativeRedisPreparation": {
+    "officialImage": "redis@sha256:ff02b58f971e7d7d156a1267e283fcbbeee91773b6aa36c49dac28ecfe28eadf",
+    "versionSelected": "7.4.11",
+    "architecture": "amd64",
+    "pulled": true,
+    "started": true,
+    "reasonForNewVersion": "Project development pin is7.4.9;7.4.10/11 security fixes apply",
+    "configuration": "AOF fsync always/no truncated load/noeviction/named limited ACL/data64MiB/container256MiB/notificationQueue256",
+    "controllerSha256": "e21b6e15c3a50c345f60f8c31f65c7bbfe245a77ffacf2403568bffd54a8cbbc",
+    "independentReview": "PASS",
+    "realTest": {
+      "scriptSha256": "b5af65200c6672d502c96ad2d507a8f48bf9fe7836a92d9f259d01b7e4cb1e09",
+      "aclAndAuthentication": "PASS",
+      "notificationLuaAndDedupe": "PASS",
+      "noEvictionPressure": "PASS after101 bounded512KiB fill attempts",
+      "processCrashRestarts": 2,
+      "confirmedRevocationAndRateStatePreserved": true,
+      "hostPowerLossTested": false,
+      "syntheticKeysCleaned": true,
+      "oldRedisChanged": false
+    }
+  },
+  "pending": [
+    "Install reviewed application/database-scope controllers and verify role boundary",
+    "Bind exact existing administrator on migrated copy and verify candidate health/preservation",
+    "Fresh source and native backups with one-way cutover recovery",
+    "Exact-domain browser acceptance and owner confirmation",
+    "Temporary Cloud Shell access cleanup"
+  ],
+  "nativeAdministratorPreparation": {
+    "status": "PASS",
+    "existingInternalUserIdPreserved": true,
+    "username": "lixiaochen",
+    "originalUsers": 12,
+    "nativeCredentials": 1,
+    "auditRowsAfterBootstrap": 50,
+    "passwordExported": true,
+    "initialMissingExpectedMetadataFailure": {
+      "copyUnchanged": true,
+      "rootCauseFixed": true,
+      "resumeSucceeded": true
+    },
+    "fullPreparedDatabaseFingerprintSaved": true,
+    "passwordDelivery": "Owner Mac private0600 file; contents not recorded"
+  },
+  "databaseRoleScope": {
+    "status": "PASS",
+    "candidateDatabaseAllowed": true,
+    "originalAndPostgresDatabasesDenied": true,
+    "incorrectPasswordDenied": true,
+    "priorHbaRulesRetained": true
+  },
+  "candidatePrivateStartup": {
+    "status": "PASS",
+    "runtimeCommit": "f2da3629e13b2653aae8879c98992877d5ef4170",
+    "apiAndWebIdentityVerified": true,
+    "completePreparedDatabaseFingerprintUnchanged": true,
+    "candidateStoppedAndRoleClosed": true,
+    "publicIngressChanged": false
+  },
+  "cutoverPreparation": {
+    "operationsCommit": "f027f4d82204e431e228653e674eb27513e2e806",
+    "privateRemoteRefVerified": true,
+    "nativeTests": 85,
+    "independentControllerAndInstallerReviews": "PASS",
+    "installedControllerSha256": "9f7f65d208eb3ce0c3838bafdc7dd33a8f81e1d95da6e05a219b48f753cfd5a5",
+    "actualSystemd249GraphVerify": "PASS",
+    "bootRecoveryEnabled": true,
+    "precommitInterruptionRehearsal": "PASS",
+    "productionSwitched": true,
+    "fixedSchemaComparisonInstalled": "5bfda36db359474f5ef218ab3d2b103fbd2acefea49757fcac25494ce3a3874d",
+    "nativeSnapshotAndIndependentRestore": "PASS",
+    "nativeSnapshot": "20260912T173618Z-2482ea2b",
+    "interruptionInvocationId": "82a2c6b274a14d24ae10b292e9bb9cdc",
+    "interruptionExecMainCode": 2,
+    "interruptionExecMainStatus": 9,
+    "automaticRecovery": "PRECOMMIT_OLD_RUNTIME_RESTORED",
+    "exactPendingSha256": "0dbedc3aa9c19b8f3e65ae36d2f8c4e317dcb66b1b00fc08c96cd863a65a5ceb",
+    "reconciliation": "PASS_PENDING_PRESERVED_AS_EVIDENCE",
+    "wholeHostRebootTested": false,
+    "productionPromotion": "PASS",
+    "committedAt": "2026-09-12T17:38:51+00:00",
+    "runtimeProof": "production-runtime.json",
+    "exactDomainHttp": "production-http.json",
+    "exactDomainSessionRestart": "production-session-restart.json",
+    "macPublicHttpReadback": "public-http-readback.json",
+    "browserAcceptance": "PENDING_MAC_UNLOCK"
+  },
+  "currentStatus": "PRODUCTION_RUNTIME_SWITCHED / EXACT_DOMAIN_HTTP_AND_RESTART_PASS / DEPLOYMENT_UNVERIFIED / AWAITING_PRODUCT_OWNER_CONFIRMATION",
+  "temporaryAccessCleanup": {
+    "temporaryCloudShellSshKeyAbsent": true,
+    "applicationManagementMasterClosed": true,
+    "scannerManagementMasterClosed": true,
+    "apiAuthorizationGrantedByAssistant": false,
+    "apiAuthorizationExpiresAt": null,
+    "permanentApplicationScannerCredentialRetained": true,
+    "ownerAccessFileDeliveredPrivately": true,
+    "credentialsPrinted": false
+  },
+  "remainingWork": [
+    "Exact-domain browser screenshots/network/console and user interactions after Mac unlock",
+    "Product-owner acceptance"
+  ]
+}

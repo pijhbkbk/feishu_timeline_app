@@ -1,0 +1,87 @@
+{
+  "runtimeProof": "PASS",
+  "environment": "production",
+  "url": "https://timeline.all-too-well.com",
+  "hostname": "timeline.all-too-well.com",
+  "runtimeCommit": "f2da3629e13b2653aae8879c98992877d5ef4170",
+  "runtimeTree": "435fd8f66beef2760ce02388b0948cea35cee55e",
+  "release": "native-auth-20260912-f2da3629e13b",
+  "buildTime": "2026-09-12T14:22:42Z",
+  "committedAt": "2026-09-12T17:38:51+00:00",
+  "releaseCheckout": "/home/lixiaochen/timeline-native-delivery/releases/f2da3629e13b2653aae8879c98992877d5ef4170",
+  "targetCheckoutHead": "f2da3629e13b2653aae8879c98992877d5ef4170",
+  "database": "feishu_timeline_restore_c38c57da",
+  "migrationCount": 37,
+  "images": {
+    "api": {
+      "image": "us-west1-docker.pkg.dev/axial-acrobat-492709-r7/feishu-timeline/api@sha256:e1325e8263713bfb8fc13da4aeaa0521d77617a859fc8d86d6d4157468e3e370",
+      "imageId": "sha256:e1325e8263713bfb8fc13da4aeaa0521d77617a859fc8d86d6d4157468e3e370",
+      "running": true,
+      "containerAddress": "172.30.44.2:3001"
+    },
+    "web": {
+      "image": "us-west1-docker.pkg.dev/axial-acrobat-492709-r7/feishu-timeline/web@sha256:4d08266d5e6763da3072c895e124a1d71f2926ae7f161942ea8560b512df2d31",
+      "imageId": "sha256:4d08266d5e6763da3072c895e124a1d71f2926ae7f161942ea8560b512df2d31",
+      "running": true,
+      "containerAddress": "172.30.45.2:3000"
+    }
+  },
+  "units": {
+    "feishu-timeline-api.service": {
+      "active": "inactive",
+      "enabled": "disabled"
+    },
+    "feishu-timeline-web.service": {
+      "active": "inactive",
+      "enabled": "disabled"
+    },
+    "timeline-native-api.service": {
+      "active": "active",
+      "enabled": "enabled"
+    },
+    "timeline-native-web.service": {
+      "active": "active",
+      "enabled": "enabled"
+    },
+    "timeline-native-api-ingress.socket": {
+      "active": "active",
+      "enabled": "enabled"
+    },
+    "timeline-native-web-ingress.socket": {
+      "active": "active",
+      "enabled": "enabled"
+    },
+    "timeline-native-api-ingress.service": {
+      "active": "active",
+      "enabled": "static"
+    },
+    "timeline-native-web-ingress.service": {
+      "active": "active",
+      "enabled": "static"
+    }
+  },
+  "nginxUpstreams": {
+    "web": "127.0.0.1:3000",
+    "api": "127.0.0.1:3001"
+  },
+  "oldDatabaseUnchangedAndRoleClosed": true,
+  "scannerReachable": true,
+  "unrelatedWorkloadHealthy": true,
+  "sourceBackup": {
+    "backup": "20260912T173840Z-b8d3a4d9",
+    "fingerprintsSha256": "bb9622d63a6cf85b5101efdff92c2d8ee713321ef5e76f1c2c56912c0a102848",
+    "manifestSha256": "59ef8b90b7e277ab2014f5e427d35803b31b17112d2908b4779399bb24ee0b0e",
+    "objectCount": 0,
+    "source": "feishu_timeline",
+    "tableCount": 46
+  },
+  "nativeBackup": {
+    "backup": "20260912T173618Z-2482ea2b",
+    "fingerprintsSha256": "1207304f33bb3e6fa5d6d6453e630fb05f2efd4a889ee34a0c05999bbbaa29b7",
+    "manifestSha256": "8f8efab5325f14fb85d1242a2d1ab980ef8feee1185539055a353807fab02797",
+    "objectCount": 0,
+    "source": "feishu_timeline_restore_c38c57da",
+    "tableCount": 52
+  },
+  "exactDomainBrowserAcceptance": "PENDING_MAC_LOCKED"
+}

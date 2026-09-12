@@ -1,3 +1,21 @@
+# 当前交付状态（2026-09-13）
+
+正式域名 `https://timeline.all-too-well.com` 已在 `2026-09-12T17:38:51+00:00` 完成原生账号运行时切换。前后端运行提交 `f2da3629e13b2653aae8879c98992877d5ef4170`，tree `435fd8f66beef2760ce02388b0948cea35cee55e`，release `native-auth-20260912-f2da3629e13b`，buildTime `2026-09-12T14:22:42Z`。
+
+实际HTTPS接口与进程重启验证 PASS：既有管理员密码登录、内部用户ID保留、项目与账号读取、Secure/HttpOnly/SameSite Cookie、无认证及Origin负向、旧飞书410/mock403、退出后401；见 [production-http.json](production-http.json)。API重启后会话保持；退出后Redis和API联合重启仍401，见 [production-session-restart.json](production-session-restart.json)。从本机正常TLS读取的登录HTML及对应新脚本均200，见 [public-http-readback.json](public-http-readback.json)。旧数据库完整指纹不变并关闭旧应用角色，两个旧服务停用，镜像/迁移/入口/扫描器及同机无关应用最终证据见 [production-runtime.json](production-runtime.json)。新原生库是完成37项迁移的 `feishu_timeline_restore_c38c57da`。
+
+真实原始备份恢复、原生账号库独立恢复和提交前SIGKILL自动恢复均通过；唯一PG约束格式等价例外使用固定完整schema摘要对，表内容及序列仍严格相等，详见 [schema-restore-equivalence.json](schema-restore-equivalence.json) 和 [完整差异](schema-restore-equivalence.diff)。运维85项测试及各安全差异独立复核通过。部署过程和固定镜像证据见 [deployment-preparation.json](deployment-preparation.json)。
+
+Mac锁屏导致真实浏览器通道不可用，用户已被请求解锁。实际域名页面、浏览器Network/console/截图和交互仍待完成，产品负责人未确认。准确状态：`CODE_IMPLEMENTED / LOCAL_VERIFIED / PRODUCTION_RUNTIME_SWITCHED / EXACT_DOMAIN_HTTP_PASS / DEPLOYMENT_UNVERIFIED / AWAITING_PRODUCT_OWNER_CONFIRMATION`。staging未执行，main/tag未改变。不能把接口PASS当作浏览器或产品验收PASS。
+
+初始管理员用户名 `lixiaochen`，凭据已独占写入本机Downloads的私人0600文件，密码未进入源码、证据或对话。临时Cloud Shell公钥已删除并读回确认，两条管理主连接已关闭；本轮未新授予Cloud Shell OAuth凭据，见 [temporary-access-cleanup.json](temporary-access-cleanup.json)。固定本轮、含已授权重启操作的HTTP检查原始代码归档于 reviewed-checks，摘要与实测版本一致；它们不是例行维护任务。
+
+---
+
+# 切换前验证与访问障碍的历史记录
+
+下述条目保留各自记录时的候选版本和状态；当前状态以上述交付记录及新证据为准。
+
 # 原生账号候选验证记录
 
 状态：`CODE_IMPLEMENTED / TARGETED_LOCAL_VERIFICATION_PASS / LOCAL_BROWSER_PARTIAL / NOT_DEPLOYED / AWAITING_PRODUCT_OWNER_CONFIRMATION`。
@@ -53,6 +71,8 @@ CLI 真实退出测试发现未使用的 lazy Redis 客户端在关闭时启动�
 
 ## 发布阻塞与恢复条件
 
+13:58 UTC新进展：用户明确批准启动Cloud Shell，并另行批准临时加入本机公钥用于工具版本检查、检查后删除。只读云接口确认目标项目计费启用、计费账号有效、两台VM与Cloud Shell均RUNNING。Safari终端连接反复中断，独立页面空白；临时SSH方式经一次公钥API 500及官方两字段格式修正后连接成功，`gcloud version`返回SDK 583.0.0。临时公钥已删除并经API读回确认不存在。没有向Cloud Shell传送OAuth凭据，没有连接目标VM或执行生产操作。将该连接用于服务器排障和既定发布的具体范围确认已提出，尚待回复。此前13:34的启动审批障碍属于历史，已被后续启动授权解除；详细阶段记录见 [blocked-audit.json](blocked-audit.json)。
+
 13:34 UTC恢复后复核：用户已登录Safari谷歌云控制台，订阅只读查询完成；尝试启动Cloud Shell被自动审批拒绝，理由是创建云管理会话超出了最近“只读查询订阅”的范围。启动未执行，未换入口绕过拒绝。具体确认请求已提出，尚无回复；三个连续恢复回合后控制台仍显示Activate Cloud Shell，没有已启动终端，目标再次标记 `BLOCKED`。需要用户对该具体管理入口明确确认后继续。此状态及此前主机连接证据分别保存在 [blocked-audit.json](blocked-audit.json)，不把控制台登录或账单可用当作服务器SSH恢复证明。
 
 第三个连续目标回合于 12:34 UTC 复核同一访问障碍：当前任务无附加终端，本机无 SSH/gcloud/sftp/autossh 管理进程，正常 TLS 读取公开 Web/API 仍是旧版本。上一回合是完成浏览器证据提交的实质进展；本回合未取得可执行主机修复的新输入。复核见 [blocked-audit.json](blocked-audit.json)。此前 SSH 失败的精确主机原因仍未知，不能据此认定 Fail2ban 或 sshd 故障。
@@ -64,3 +84,10 @@ GCE IAP SSH 两次在协议 banner 前超时，尚未进入用户密钥认证；
 恢复发布需要已有可用主机管理入口或管理方的 SSH 监听、服务状态和故障窗口日志。连接恢复后依次核对实际拓扑/旧版本与迁移、应用专属备份及恢复、私有不可变提交接收、扫描器/配额与现有特权发布控制器、准确旧管理员绑定、受控切换、精确 HTTPS 域名原生登录与业务/审计复测。旧停用发布脚本不得直接绕过；主机检查未完成前不能标记 DEPLOYMENT_READY。
 
 staging 未部署/未验收；生产新账号版未部署/未验收；main/tag 未改变；未取得 `PRODUCT_OWNER_ACCEPTED`。
+
+
+### 2026-09-12 14:52 UTC：管理访问恢复，真实备份/恢复通过
+
+用户已明确授权Cloud Shell用于完整交付及结束清理，两个VM的既有SSH通路均已恢复。当前运行候选升级为 `f2da3629e13b2653aae8879c98992877d5ef4170`（可信容器代理的客户端限速地址修正，59项目标检查、lint、类型和独立复核通过）；三个固定镜像已上传本人项目的既有私有仓库。
+
+独立备份控制器提交 `f231659f989ad445fb22807314a44daf0a9f786a` 经22项测试、真实PG未提交角色创建/收口并发验证和独立复核后安装。实际备份及新库恢复均成功，46表的数据与完整结构/序列/迁移记录、0附件对象一致；原API已恢复，恢复角色已关闭登录。原业务数据与网站运行版本未切换，主分支/tag未改。扫描器与发布步骤仍在进行，未达到DEPLOYED或产品验收。当前证据见 [deployment-preparation.json](deployment-preparation.json)，早先访问/审批blocker只保留为历史。
