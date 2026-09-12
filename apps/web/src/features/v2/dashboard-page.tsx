@@ -155,7 +155,7 @@ function RealDashboardPage() {
       <RealDataState
         loading={loading}
         error={error}
-        label="正在读取当前飞书用户与工作台事实…"
+        label="正在读取当前账号与工作台事实…"
       />
     );
   }

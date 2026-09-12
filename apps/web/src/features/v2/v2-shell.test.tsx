@@ -13,6 +13,7 @@ const { pathnameState, authState } = vi.hoisted(() => ({
       isSystemAdmin: true,
     } as {
       id: string;
+      authSource?: string;
       name: string;
       departmentName: string | null;
       roleCodes: string[];
@@ -129,7 +130,7 @@ describe('V2 account menu', () => {
     expect(html).not.toContain('进展提交');
   });
 
-  it('does not render protected navigation or business data before Feishu login', () => {
+  it('does not render protected navigation or business data before native login', () => {
     authState.user = null;
     authState.isAuthenticated = false;
 
@@ -140,10 +141,18 @@ describe('V2 account menu', () => {
     );
 
     expect(html).toContain('data-testid="r26-auth-redirect"');
-    expect(html).toContain('正在打开飞书登录');
+    expect(html).toContain('正在打开账号登录');
     expect(html).not.toContain('V2 主导航');
     expect(html).not.toContain('受保护的业务页面');
     expect(html).not.toContain('真实数据暂时不可用');
+  });
+
+  it('keeps a native account without granted roles in the account approval flow', () => {
+    authState.user = { id: 'new-user', name: '待授权', departmentName: null, roleCodes: [], isSystemAdmin: false, authSource: 'local' };
+    const html = renderToStaticMarkup(<V2Shell><p>受保护的业务页面</p></V2Shell>);
+    expect(html).toContain('账号尚未分配正式角色');
+    expect(html).not.toContain('V2 主导航');
+    expect(html).not.toContain('受保护的业务页面');
   });
 
   it('shows an authentication-specific retry when the session service fails', () => {

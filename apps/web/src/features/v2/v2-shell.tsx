@@ -37,13 +37,15 @@ export function V2Shell({ children }: { children: React.ReactNode }) {
     logout,
   } = useAuth();
   const { enabled: realDataEnabled, viewer } = useR26RealData();
-  const navItems = baseNavItems;
+  const pendingAuthorization = user?.authSource === 'local' && !user.isSystemAdmin && user.roleCodes.length === 0;
+  const navItems = baseNavItems.filter(item => item.label !== '系统管理' || user?.isSystemAdmin || user?.roleCodes.includes('admin'));
 
   useEffect(() => {
+    if (!isAuthLoading && pendingAuthorization) { window.location.replace('/account'); return; }
     if (!isAuthLoading && !isAuthenticated && !authError) {
       window.location.replace('/login');
     }
-  }, [authError, isAuthenticated, isAuthLoading]);
+  }, [authError, isAuthenticated, isAuthLoading, pendingAuthorization]);
 
   function showStaticMessage(message: string) {
     setToast(message);
@@ -71,7 +73,7 @@ export function V2Shell({ children }: { children: React.ReactNode }) {
     }
   }
 
-  if (isAuthLoading || !isAuthenticated) {
+  if (isAuthLoading || !isAuthenticated || pendingAuthorization) {
     return (
       <div className="r26-app">
         <main className="r26-main">
@@ -93,9 +95,9 @@ export function V2Shell({ children }: { children: React.ReactNode }) {
                   ? '登录服务暂时不可用'
                   : isAuthLoading
                     ? '正在验证登录状态…'
-                    : '正在打开飞书登录…'}
+                    : pendingAuthorization ? '正在打开账号授权状态…' : '正在打开账号登录…'}
               </strong>
-              <p>{authError ?? '未检测到有效会话，即将进入飞书安全登录。'}</p>
+              <p>{authError ?? (pendingAuthorization ? '账号尚未分配正式角色，请联系管理员确认。' : '未检测到有效会话，即将进入系统账号登录。')}</p>
               {authError ? (
                 <button
                   type="button"
@@ -174,7 +176,7 @@ export function V2Shell({ children }: { children: React.ReactNode }) {
                   <span>
                     {viewer?.departmentName ??
                       user?.departmentName ??
-                      (realDataEnabled ? '组织部门待同步' : '采购部')}
+                      (realDataEnabled ? '尚未分配部门' : '采购部')}
                   </span>
                   <small>
                     {viewer?.roleLabel ??
@@ -183,6 +185,8 @@ export function V2Shell({ children }: { children: React.ReactNode }) {
                       '当前账号'}
                   </small>
                 </div>
+                <Link href="/account" role="menuitem">我的账号</Link>
+                {user?.isSystemAdmin ? <Link href="/admin/accounts" role="menuitem">账号管理</Link> : null}
                 <button
                   type="button"
                   role="menuitem"

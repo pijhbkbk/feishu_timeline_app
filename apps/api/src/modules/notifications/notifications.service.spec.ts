@@ -302,10 +302,8 @@ describe('NotificationsService', () => {
           update: expect.objectContaining({ linkPath }),
         }),
       );
-      expect(prisma.notification.create).toHaveBeenCalledWith({
-        data: expect.objectContaining({ linkPath }),
-      });
-      expect(feishuMessagesService.sendNotification).toHaveBeenCalledTimes(1);
+      expect(prisma.notification.create).not.toHaveBeenCalled();
+      expect(feishuMessagesService.sendNotification).not.toHaveBeenCalled();
     },
   );
 
@@ -543,6 +541,6 @@ describe('NotificationsService', () => {
     });
 
     expect(prisma.notification.upsert).toHaveBeenCalled();
-    expect(feishuMessagesService.sendNotification).toHaveBeenCalled();
+    expect(feishuMessagesService.sendNotification).not.toHaveBeenCalled();
   });
 });

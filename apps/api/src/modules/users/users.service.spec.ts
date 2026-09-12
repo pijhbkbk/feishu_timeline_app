@@ -56,6 +56,7 @@ describe('UsersService', () => {
             {
               role: {
                 code: 'viewer',
+                status: 'ACTIVE',
                 rolePermissions: [{ permissionCode: 'project.read' }],
               },
             },

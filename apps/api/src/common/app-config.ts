@@ -1,5 +1,4 @@
 import {
-  assertFeishuCnOAuthProvider,
   FEISHU_CN_OAUTH_PROVIDER,
   type OAuthProvider,
 } from './feishu-oauth-provider';
@@ -808,38 +807,10 @@ export function resolveAppConfig(
     );
   }
 
-  assertFeishuCnOAuthProvider({
-    oauthProvider: config.oauthProvider,
-    authorizationEndpoint: config.feishuAuthorizationEndpoint,
-    tokenEndpoint: config.feishuTokenEndpoint,
-    userInfoEndpoint: config.feishuUserInfoEndpoint,
-    apiBaseUrl: config.feishuApiBaseUrl,
-  });
-
-  if (config.deploymentEnvironment === 'production') {
-    const expectedFrontendUrl = 'https://timeline.all-too-well.com';
-    const expectedRedirectUri = `${expectedFrontendUrl}/login/callback`;
-    const configuredFrontendUrl = config.frontendUrl;
-    const configuredRedirectUri = new URL(config.feishuRedirectUri).toString();
-
-    if (configuredFrontendUrl !== expectedFrontendUrl) {
-      throw new Error(
-        'FRONTEND_URL must be https://timeline.all-too-well.com in production.',
-      );
-    }
-
-    if (configuredRedirectUri !== expectedRedirectUri) {
-      throw new Error('FEISHU_REDIRECT_URI must be the approved production callback.');
-    }
-
-    if (
-      !config.feishuAppId.trim() ||
-      !config.feishuAppSecret.trim() ||
-      config.feishuAppId === 'your_feishu_app_id' ||
-      config.feishuAppSecret === 'your_feishu_app_secret'
-    ) {
-      throw new Error('Feishu production credentials must be configured.');
-    }
+  // Native accounts are the only production identity provider. Stale Feishu
+  // variables never enable OAuth or become a startup requirement.
+  if (config.deploymentEnvironment === 'production' && config.frontendUrl !== 'https://timeline.all-too-well.com') {
+    throw new Error('FRONTEND_URL must be https://timeline.all-too-well.com in production.');
   }
 
   if (isProtectedEnvironment) {

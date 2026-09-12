@@ -71,12 +71,18 @@ export class AuthService {
       return null;
     }
 
-    if (new Date(session.expiresAt).getTime() <= Date.now()) {
+    const expires = new Date(session.expiresAt).getTime();
+    if (!Number.isFinite(expires) || expires <= Date.now() ||
+        typeof session.userId !== 'string' || session.userId.length > 64 ||
+        (session.authSource !== 'local' && !(session.authSource === 'mock' && this.isMockEnabled())) ||
+        (session.authSource === 'local' && (!Number.isSafeInteger(session.authVersion) || (session.authVersion ?? -1) < 0))) {
       await this.sessionStoreService.delete(this.getSessionStorageKey(sessionToken));
       return null;
     }
 
-    return this.usersService.getAuthenticatedUser(session.userId, session.authSource);
+    const user = await this.usersService.getAuthenticatedUser(session.userId, session.authSource);
+    if (session.authSource === 'local' && user?.authVersion !== session.authVersion) return null;
+    return user;
   }
 
   async getSessionResponse(sessionToken?: string | null): Promise<SessionResponse> {
@@ -87,9 +93,18 @@ export class AuthService {
     return {
       authenticated: user !== null,
       mockEnabled: this.isMockEnabled(),
-      feishuEnabled: this.feishuAuthAdapter.isConfigured(),
+      feishuEnabled: false,
+      localEnabled: true,
       user,
     };
+  }
+
+  async createNativeSession(userId: string, authVersion: number, oldToken: string | undefined, response: Response) {
+    if (oldToken && SESSION_TOKEN_PATTERN.test(oldToken)) {
+      await this.sessionStoreService.delete(this.getSessionStorageKey(oldToken));
+    }
+    await this.createSessionAndWriteCookie(userId, 'local', response, authVersion);
+    return this.getSessionResponseFromUserId(userId, 'local');
   }
 
   async loginWithMock(input: MockLoginInput, response: Response) {
@@ -209,6 +224,7 @@ export class AuthService {
     userId: string,
     authSource: AuthSource,
     response: Response,
+    authVersion?: number,
   ) {
     const now = new Date();
     const sessionTtlSeconds = this.configService.get<number>('sessionTtlSeconds') ?? 28800;
@@ -219,6 +235,7 @@ export class AuthService {
       authSource,
       createdAt: now.toISOString(),
       expiresAt: expiresAt.toISOString(),
+      ...(authVersion === undefined ? {} : { authVersion }),
     };
 
     await this.sessionStoreService.setJson(
@@ -278,7 +295,8 @@ export class AuthService {
     return {
       authenticated: true,
       mockEnabled: this.isMockEnabled(),
-      feishuEnabled: this.feishuAuthAdapter.isConfigured(),
+      feishuEnabled: false,
+      localEnabled: true,
       user,
     };
   }

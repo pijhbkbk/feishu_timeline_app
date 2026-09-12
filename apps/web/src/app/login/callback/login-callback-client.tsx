@@ -1,64 +1,7 @@
 'use client';
-
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
-
-import { useAuth } from '../../../components/auth-provider';
+import React from 'react';
 
 export function LoginCallbackClient() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const { completeFeishuLogin } = useAuth();
-  const [error, setError] = useState<string | null>(null);
-  const hasHandledRef = useRef(false);
-
-  useEffect(() => {
-    if (hasHandledRef.current) {
-      return;
-    }
-
-    const code = searchParams.get('code');
-    const state = searchParams.get('state');
-
-    if (!code) {
-      setError('缺少飞书登录回调参数 code。');
-      return;
-    }
-
-    hasHandledRef.current = true;
-    window.history.replaceState(null, '', '/login/callback');
-    void completeFeishuLogin({ code, state })
-      .then(() => {
-        router.replace('/projects');
-      })
-      .catch((callbackError) => {
-        setError(
-          callbackError instanceof Error ? callbackError.message : '飞书登录回调处理失败。',
-        );
-      });
-  }, [completeFeishuLogin, router, searchParams]);
-
-  if (error) {
-    return (
-      <section className="page-card">
-        <p className="eyebrow">登录回调</p>
-        <h1>飞书登录未完成</h1>
-        <p>{error}</p>
-        <div className="page-actions">
-          <Link href="/login" className="button button-primary">
-            返回登录
-          </Link>
-        </div>
-      </section>
-    );
-  }
-
-  return (
-    <section className="page-card">
-      <p className="eyebrow">登录回调</p>
-      <h1>正在建立系统会话</h1>
-      <p>系统正在处理飞书回调并写入本系统会话，请稍候。</p>
-    </section>
-  );
+  return <section className="page-card"><h1>登录方式已更新</h1><p>第三方登录入口已停用，请使用本系统用户名和密码。</p><Link className="button button-primary" href="/login">前往账号登录</Link></section>;
 }

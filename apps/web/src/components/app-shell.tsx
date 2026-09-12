@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import type { MouseEvent, PropsWithChildren } from 'react';
+import type { PropsWithChildren } from 'react';
 
 import { FRONTEND_ROLE_OPTIONS } from '../lib/auth-client';
 import {
@@ -17,7 +17,7 @@ import { StatePanel } from './state-panel';
 
 export function AppShell({ children }: PropsWithChildren) {
   const pathname = usePathname();
-  const { user, isAuthenticated, isLoading, feishuEnabled, startFeishuLogin, logout } = useAuth();
+  const { user, isAuthenticated, isLoading, logout } = useAuth();
   const appName = process.env.NEXT_PUBLIC_APP_NAME ?? '轻卡新颜色开发项目管理系统';
   const isAuthRoute = pathname.startsWith('/login');
   const isPublicRoute = isAuthRoute || pathname === '/guide';
@@ -26,7 +26,8 @@ export function AppShell({ children }: PropsWithChildren) {
   const isAdminRoute =
     (pathname === '/admin' || pathname.startsWith('/admin/')) && !isColorDatabaseRoute;
   const hasAdminAccess = Boolean(user && (user.isSystemAdmin || user.roleCodes.includes('admin')));
-  const topNav = filterNavItems(topNavigationItems, user);
+  const pendingAuthorization = user?.authSource === 'local' && !user.isSystemAdmin && user.roleCodes.length === 0;
+  const topNav = pendingAuthorization ? [] : filterNavItems(topNavigationItems, user);
   const projectSegments = pathname.split('/').filter(Boolean);
   const projectId =
     projectSegments[0] === 'projects' &&
@@ -42,17 +43,6 @@ export function AppShell({ children }: PropsWithChildren) {
     : /^\/admin\/(projects|tasks|organization|assignments|permissions|audit-logs)$/.test(pathname)
       ? filterNavItems(getAdminSectionItems(), user)
       : [];
-
-  function handleLoginClick(event: MouseEvent<HTMLAnchorElement>) {
-    if (!feishuEnabled) {
-      return;
-    }
-
-    event.preventDefault();
-    void startFeishuLogin().catch(() => {
-      window.location.href = '/login';
-    });
-  }
 
   const guardedContent =
     !isLoading && isAuthenticated && isAdminRoute && !hasAdminAccess ? (
@@ -72,7 +62,7 @@ export function AppShell({ children }: PropsWithChildren) {
           title="请先登录"
           description="前端仅做登录态提示，真正的权限校验仍由后端接口完成。"
           actions={
-            <Link href="/login" className="button button-primary" onClick={handleLoginClick}>
+            <Link href="/login" className="button button-primary">
               前往登录
             </Link>
           }
@@ -121,6 +111,8 @@ export function AppShell({ children }: PropsWithChildren) {
                   <strong>{user.name}</strong>
                   <span>{user.departmentName ?? '未分配部门'}</span>
                   <small>{formatRoleCodes(user.roleCodes)}</small>
+                  <Link href="/account">我的账号</Link>
+                  {user.isSystemAdmin ? <Link href="/admin/accounts">账号管理</Link> : null}
                   {user.isSystemAdmin || user.roleCodes.includes('admin') ? (
                     <Link href="/admin">后台管理</Link>
                   ) : null}
@@ -131,8 +123,7 @@ export function AppShell({ children }: PropsWithChildren) {
               <Link
                 href="/login"
                 className="r22-login-link"
-                onClick={handleLoginClick}
-                data-testid="header-feishu-login"
+                data-testid="header-native-login"
               >
                 登录
               </Link>

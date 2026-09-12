@@ -1,3 +1,4 @@
+import { normalizeLoginName } from '../auth/native-auth.rules';
 import { createHash } from 'node:crypto';
 
 import {
@@ -705,6 +706,7 @@ export class AdminControlCenterService {
         take: pageSize,
         orderBy: [{ status: 'asc' }, { name: 'asc' }],
         include: {
+          localCredential: { select: { passwordHash: true } },
           department: { select: { id: true, code: true, name: true } },
           userRoles: {
             include: { role: { select: { id: true, code: true, name: true } } },
@@ -734,7 +736,8 @@ export class AdminControlCenterService {
         department: user.department,
         roles: user.userRoles.map((row) => row.role),
         status: user.status,
-        canLogin: user.status === UserStatus.ACTIVE,
+        canLogin: user.status === UserStatus.ACTIVE && Boolean(user.localCredential?.passwordHash),
+        hasCredential: Boolean(user.localCredential),
         projectCount: user._count.projectMembers,
         taskCount: user._count.assignedWorkflowTasks,
         lastLoginAt: null,
@@ -1282,6 +1285,8 @@ export class AdminControlCenterService {
       input,
       actor,
       execute: async (tx) => {
+        await this.lockSystemAdministratorMutation(tx);
+        await this.assertNativeAdministratorActor(tx, actor);
         const role = await tx.role.findUnique({
           where: { id: roleId },
           include: { rolePermissions: true },
@@ -2393,6 +2398,7 @@ export class AdminControlCenterService {
       actor,
       execute: async (tx) => {
         await this.lockSystemAdministratorMutation(tx);
+        await this.assertNativeAdministratorActor(tx, actor);
         const user = await tx.user.findUnique({ where: { id: userId } });
         if (!user) {
           throw new NotFoundException('用户不存在。');
@@ -2421,13 +2427,14 @@ export class AdminControlCenterService {
             });
           }
         }
+        if (user.isSystemAdmin && input.status !== UserStatus.ACTIVE) await this.assertNativeAdministratorRemains(tx, user.id);
         this.assertDateVersion(user.updatedAt, input.expectedVersion, '用户');
         const claimed = await tx.user.updateMany({
           where: {
             id: userId,
             updatedAt: user.updatedAt,
           },
-          data: { status: input.status },
+          data: { status: input.status, authVersion: { increment: 1 } },
         });
         if (claimed.count !== 1) {
           throw new ConflictException({
@@ -2511,7 +2518,7 @@ export class AdminControlCenterService {
         where: {
           ...(userId ? { id: { not: userId } } : {}),
           OR: [
-            { username: input.username.trim() },
+            { username: { equals: input.username.trim(), mode: 'insensitive' } },
             ...(input.email?.trim() ? [{ email: input.email.trim() }] : []),
             ...(input.mobile?.trim() ? [{ mobile: input.mobile.trim() }] : []),
           ],
@@ -2605,6 +2612,7 @@ export class AdminControlCenterService {
       actor,
       execute: async (tx) => {
         await this.lockSystemAdministratorMutation(tx);
+        await this.assertNativeAdministratorActor(tx, actor);
         const existing = userId
           ? await tx.user.findUnique({
               where: { id: userId },
@@ -2613,6 +2621,10 @@ export class AdminControlCenterService {
           : null;
         if (userId && !existing) throw new NotFoundException('用户不存在。');
         if (existing) this.assertDateVersion(existing.updatedAt, input.expectedVersion ?? '', '用户');
+        const nativeCredential = existing ? await tx.localCredential.findUnique({ where: { userId: existing.id }, select: { userId: true } }) : null;
+        const username = nativeCredential || !existing ? normalizeLoginName(input.username) : input.username.trim();
+        await tx.$executeRaw(Prisma.sql`SELECT pg_advisory_xact_lock(hashtext(${'native-login-name'}), hashtext(${username.toLowerCase()}))`);
+        if (existing?.isSystemAdmin && (input.status !== UserStatus.ACTIVE || !input.isSystemAdmin)) await this.assertNativeAdministratorRemains(tx, existing.id);
 
         const [department, roles, duplicate, activeTaskCount, activeSuperAdminCount, ledDepartmentCount] = await Promise.all([
           input.departmentId
@@ -2623,7 +2635,7 @@ export class AdminControlCenterService {
             where: {
               ...(userId ? { id: { not: userId } } : {}),
               OR: [
-                { username: input.username.trim() },
+                { username: { equals: input.username.trim(), mode: 'insensitive' } },
                 ...(input.email?.trim() ? [{ email: input.email.trim() }] : []),
                 ...(input.mobile?.trim() ? [{ mobile: input.mobile.trim() }] : []),
               ],
@@ -2662,10 +2674,10 @@ export class AdminControlCenterService {
               updatedAt: existing.updatedAt,
             },
             data: {
-              username: input.username.trim(), name: input.name.trim(),
+              username, name: input.name.trim(),
               email: input.email?.trim() || null, mobile: input.mobile?.trim() || null,
               departmentId: input.departmentId || null, status: input.status,
-              isSystemAdmin: input.isSystemAdmin,
+              isSystemAdmin: input.isSystemAdmin, authVersion: { increment: 1 },
             },
           });
           if (claimed.count !== 1) {
@@ -2684,12 +2696,17 @@ export class AdminControlCenterService {
         } else {
           user = await tx.user.create({
             data: {
-              username: input.username.trim(), name: input.name.trim(),
+              username, name: input.name.trim(),
               email: input.email?.trim() || null, mobile: input.mobile?.trim() || null,
               departmentId: input.departmentId || null, status: input.status,
               isSystemAdmin: input.isSystemAdmin,
             },
           });
+        }
+        if (nativeCredential) {
+          const loginName = normalizeLoginName(input.username);
+          await tx.localCredential.update({ where: { userId: user.id }, data: { loginName, resetTokenHash: null, resetExpiresAt: null, resetVersion: null } });
+          if (user.username !== loginName) user = await tx.user.update({ where: { id: user.id }, data: { username: loginName } });
         }
         await tx.userRole.deleteMany({ where: { userId: user.id } });
         if (input.roleIds.length) {
@@ -4069,6 +4086,30 @@ export class AdminControlCenterService {
     if (!actor.isSystemAdmin) {
       throw new ForbiddenException('只有超级管理员可以修改系统管理配置。');
     }
+  }
+
+  private async assertNativeAdministratorActor(tx: Prisma.TransactionClient, actor: AuthenticatedUser) {
+    if (actor.authSource !== 'local') return; // Mock sessions are confined to explicit development profiles.
+    await tx.$queryRaw(Prisma.sql`SELECT id FROM users WHERE id = ${actor.id} FOR SHARE`);
+    const current = await tx.user.findUnique({ where: { id: actor.id } });
+    if (!current || current.status !== UserStatus.ACTIVE || current.authVersion !== actor.authVersion || current.isSystemAdmin !== actor.isSystemAdmin) {
+      throw new ForbiddenException('管理员登录状态已变化，请重新登录。');
+    }
+    if (!current.isSystemAdmin) {
+      const [adminRole, managementPermission] = await Promise.all([
+        tx.userRole.findFirst({ where: { userId: actor.id, role: { code: 'admin', status: 'ACTIVE' } }, select: { userId: true } }),
+        tx.userRole.findFirst({ where: { userId: actor.id, role: { status: 'ACTIVE', rolePermissions: { some: { permissionCode: 'system.manage' } } } }, select: { userId: true } }),
+      ]);
+      if (!adminRole || !managementPermission) throw new ForbiddenException('当前后台管理权限已撤销。');
+    }
+  }
+
+  private async assertNativeAdministratorRemains(tx: Prisma.TransactionClient, userId: string) {
+    const credential = await tx.localCredential.findUnique({ where: { userId }, select: { passwordHash: true } });
+    if (!credential?.passwordHash) return;
+    const available = await tx.user.count({ where: { isSystemAdmin: true, status: UserStatus.ACTIVE,
+      localCredential: { is: { passwordHash: { not: null } } } } });
+    if (available <= 1) throw new ConflictException('系统必须至少保留一个可用密码登录的启用管理员。');
   }
 
   private async lockSystemAdministratorMutation(tx: Prisma.TransactionClient) {

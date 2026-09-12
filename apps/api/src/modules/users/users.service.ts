@@ -424,12 +424,16 @@ export class UsersService {
       departmentName: user.department?.name ?? null,
       isSystemAdmin: user.isSystemAdmin,
       authSource,
+      authVersion: user.authVersion,
+      requestedJob: user.requestedJob,
+      onboardingCompleted: user.onboardingCompleted,
       roleCodes: user.userRoles
+        .filter((userRole) => userRole.role.status === 'ACTIVE')
         .map((userRole) => userRole.role.code)
         .filter((roleCode): roleCode is RoleCode => roleCode in ROLE_LABELS),
       permissionCodes: [
         ...new Set(
-          user.userRoles.flatMap((userRole) =>
+          user.userRoles.filter((userRole) => userRole.role.status === 'ACTIVE').flatMap((userRole) =>
             userRole.role.rolePermissions.map((permission) => permission.permissionCode),
           ),
         ),

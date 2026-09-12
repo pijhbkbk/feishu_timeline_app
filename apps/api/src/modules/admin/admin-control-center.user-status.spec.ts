@@ -81,6 +81,7 @@ describe('AdminControlCenterService user status security boundary', () => {
   );
 
   type TestTransaction = {
+    localCredential: { findUnique: () => Promise<null> };
     $executeRaw: (query: { values?: unknown[] }) => Promise<number>;
     user: {
       findUnique: typeof userFindUnique;
@@ -105,6 +106,7 @@ describe('AdminControlCenterService user status security boundary', () => {
           release: () => void;
         }> = [];
         const client: TestTransaction = {
+          localCredential: { findUnique: async () => null },
           $executeRaw: async (query) => {
             executeRaw(query);
             const key = JSON.stringify(query.values ?? []);

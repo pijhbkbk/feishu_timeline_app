@@ -316,7 +316,7 @@ export class NotificationsService {
     const admittedInput = { ...input, linkPath };
 
     await this.upsertInAppNotification(admittedInput);
-    await this.deliverMockFeishu(admittedInput);
+    // Native accounts receive durable in-app notifications only. Historical channel records remain intact.
   }
 
   private async upsertInAppNotification(input: PersistedNotificationInput) {

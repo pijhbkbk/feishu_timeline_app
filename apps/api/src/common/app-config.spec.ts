@@ -308,49 +308,14 @@ describe('resolveAppConfig', () => {
     },
   );
 
-  it('pins production OAuth to the approved HTTPS callback and credentials', () => {
-    expect(() =>
-      resolveAppConfig({
-        ...createProtectedEnvironment('production'),
-        FEISHU_REDIRECT_URI: 'https://attacker.example/callback',
-      }),
-    ).toThrowError('FEISHU_REDIRECT_URI must be the approved production callback.');
-
-    expect(
-      resolveAppConfig(
-        createProtectedEnvironment('production'),
-      ).feishuRedirectUri,
-    ).toBe('https://timeline.all-too-well.com/login/callback');
-  });
-
-  it('accepts only the approved Feishu CN provider and authorization endpoint', () => {
-    for (const endpoint of [
-      'http://open.feishu.cn/open-apis/authen/v1/index',
-      'https://open.feishu.cn.attacker.example/open-apis/authen/v1/index',
-      'https://open.feishu.cn/open-apis/authen/v1/index?next=https://attacker.example',
-      'https://open.feishu.cn/open-apis/authen/v1/index',
-      'https://accounts.larksuite.com/open-apis/authen/v1/index',
-    ]) {
-      expect(() =>
-        resolveAppConfig({ FEISHU_AUTHORIZATION_ENDPOINT: endpoint }),
-      ).toThrowError(
-        'FEISHU_AUTHORIZATION_ENDPOINT must use the approved Feishu CN endpoint.',
-      );
-    }
-
-    expect(() =>
-      resolveAppConfig({
-        OAUTH_PROVIDER: 'lark',
-      }),
-    ).toThrowError('OAUTH_PROVIDER must be feishu-cn.');
-
-    expect(
-      resolveAppConfig({
-        OAUTH_PROVIDER: 'feishu-cn',
-        FEISHU_AUTHORIZATION_ENDPOINT:
-          'https://accounts.feishu.cn/open-apis/authen/v1/index',
-      }).feishuAuthorizationEndpoint,
-    ).toBe('https://accounts.feishu.cn/open-apis/authen/v1/index');
+  it('boots native production identity without third-party credentials or callback configuration', () => {
+    const env = createProtectedEnvironment('production');
+    delete env.FEISHU_APP_ID;
+    delete env.FEISHU_APP_SECRET;
+    delete env.FEISHU_REDIRECT_URI;
+    expect(resolveAppConfig(env).frontendUrl).toBe('https://timeline.all-too-well.com');
+    // Retired provider configuration cannot activate an identity adapter.
+    expect(() => resolveAppConfig({ ...env, OAUTH_PROVIDER: 'unused', FEISHU_AUTHORIZATION_ENDPOINT: 'https://unused.invalid/' })).not.toThrow();
   });
 
   it('allows an explicit staging deployment to use its registered local callback', () => {
@@ -375,29 +340,6 @@ describe('resolveAppConfig', () => {
       'FRONTEND_URL must be https://timeline.all-too-well.com in production.',
     );
 
-    expect(() =>
-      resolveAppConfig({
-        NODE_ENV: 'production',
-        DEPLOYMENT_ENV: 'production',
-        ...PROTECTED_DATA_ENV,
-        ...PROTECTED_SCANNER_ENV,
-        FRONTEND_URL: 'https://timeline.all-too-well.com',
-        FEISHU_REDIRECT_URI: 'https://timeline.all-too-well.com/login/callback',
-      }),
-    ).toThrowError('Feishu production credentials must be configured.');
-
-    expect(() =>
-      resolveAppConfig({
-        NODE_ENV: 'production',
-        DEPLOYMENT_ENV: 'production',
-        ...PROTECTED_DATA_ENV,
-        ...PROTECTED_SCANNER_ENV,
-        FRONTEND_URL: 'https://timeline.all-too-well.com',
-        FEISHU_REDIRECT_URI: 'https://timeline.all-too-well.com/login/callback',
-        FEISHU_APP_ID: 'your_feishu_app_id',
-        FEISHU_APP_SECRET: 'your_feishu_app_secret',
-      }),
-    ).toThrowError('Feishu production credentials must be configured.');
   });
 
   it.each(['staging', 'production'] as const)(

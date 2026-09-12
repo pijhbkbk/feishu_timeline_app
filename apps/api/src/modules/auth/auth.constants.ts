@@ -4,7 +4,7 @@ export const PUBLIC_ROUTE_KEY = 'public-route';
 export const ROLE_METADATA_KEY = 'role-metadata';
 export const PERMISSION_METADATA_KEY = 'permission-metadata';
 
-export const AUTH_SOURCES = ['mock', 'feishu'] as const;
+export const AUTH_SOURCES = ['local', 'mock', 'feishu'] as const;
 
 export type AuthSource = (typeof AUTH_SOURCES)[number];
 

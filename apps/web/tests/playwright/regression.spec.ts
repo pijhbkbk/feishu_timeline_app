@@ -11,107 +11,28 @@ import {
   loginAsProjectManager,
 } from './helpers';
 
-test('login entry opens Feishu directly without an intermediate choice page', async ({ page }) => {
-  let startRequestCount = 0;
-
-  page.on('request', (request) => {
-    if (new URL(request.url()).pathname === '/api/auth/feishu/start') {
-      startRequestCount += 1;
-    }
+test('native login entry offers password registration and never starts external OAuth', async ({ page }) => {
+  const externalIdentityRequests: string[] = [];
+  page.on('request', request => {
+    const url = new URL(request.url());
+    if (url.pathname.startsWith('/api/auth/feishu') || /feishu\.cn|larksuite\.com/.test(url.hostname)) externalIdentityRequests.push(request.url());
   });
-  await page.route('**/api/auth/session', async (route) => {
-    await route.fulfill({
-      contentType: 'application/json',
-      body: JSON.stringify({
-        authenticated: false,
-        mockEnabled: false,
-        feishuEnabled: true,
-        user: null,
-      }),
-    });
-  });
-  await page.route('**/api/auth/feishu/start', async (route) => {
-    await route.fulfill({
-      status: 302,
-      headers: {
-        Location:
-          'https://accounts.feishu.cn/open-apis/authen/v1/index?app_id=test&response_type=code&redirect_uri=http%3A%2F%2Flocalhost%3A3000%2Flogin%2Fcallback&state=00000000-0000-4000-8000-000000000001',
-      },
-    });
-  });
-  await page.route('https://accounts.feishu.cn/**', async (route) => {
-    await route.fulfill({
-      contentType: 'text/html; charset=utf-8',
-      body: '<!doctype html><html><body><h1>飞书登录二维码</h1></body></html>',
-    });
-  });
-
-  await page.goto('/dashboard');
-  await page.getByTestId('header-feishu-login').click();
-
-  await expect(page).toHaveURL((url) => {
-    return (
-      url.hostname === 'accounts.feishu.cn' &&
-      url.pathname === '/open-apis/authen/v1/index'
-    );
-  });
-  expect(startRequestCount).toBe(1);
-
+  await page.route('**/api/auth/session', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify({ authenticated: false, localEnabled: true, mockEnabled: false, feishuEnabled: false, user: null }) }));
   await page.goto('/login');
-
-  await expect(page).toHaveURL((url) => {
-    return (
-      url.hostname === 'accounts.feishu.cn' &&
-      url.pathname === '/open-apis/authen/v1/index'
-    );
-  });
-  expect(startRequestCount).toBe(2);
+  await expect(page.getByRole('heading', { name: '登录系统' })).toBeVisible();
+  await expect(page.getByLabel('用户名', { exact: false })).toBeVisible();
+  await expect(page.getByLabel('密码', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: '注册账号' }).click();
+  await expect(page.getByRole('heading', { name: '创建账号' })).toBeVisible();
+  await expect(page.getByLabel('确认密码')).toBeVisible();
+  expect(externalIdentityRequests).toEqual([]);
 });
 
-test('unauthenticated V2 business routes redirect directly to Feishu login', async ({ page }) => {
-  let startRequestCount = 0;
-
-  page.on('request', (request) => {
-    if (new URL(request.url()).pathname === '/api/auth/feishu/start') {
-      startRequestCount += 1;
-    }
-  });
-  await page.route('**/api/auth/session', async (route) => {
-    await route.fulfill({
-      contentType: 'application/json',
-      body: JSON.stringify({
-        authenticated: false,
-        mockEnabled: false,
-        feishuEnabled: true,
-        user: null,
-      }),
-    });
-  });
-  await page.route('**/api/auth/feishu/start', async (route) => {
-    await route.fulfill({
-      status: 302,
-      headers: {
-        Location:
-          'https://accounts.feishu.cn/open-apis/authen/v1/index?app_id=test&response_type=code&redirect_uri=http%3A%2F%2Flocalhost%3A3000%2Flogin%2Fcallback&state=00000000-0000-4000-8000-000000000002',
-      },
-    });
-  });
-  await page.route('https://accounts.feishu.cn/**', async (route) => {
-    await route.fulfill({
-      contentType: 'text/html; charset=utf-8',
-      body: '<!doctype html><html><body><h1>飞书登录二维码</h1></body></html>',
-    });
-  });
-
+test('unauthenticated V2 routes lead to the native account form', async ({ page }) => {
+  await page.route('**/api/auth/session', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify({ authenticated: false, localEnabled: true, mockEnabled: false, feishuEnabled: false, user: null }) }));
   await page.goto('/v2/projects');
-
-  await expect(page).toHaveURL((url) => {
-    return (
-      url.hostname === 'accounts.feishu.cn' &&
-      url.pathname === '/open-apis/authen/v1/index'
-    );
-  });
-  expect(startRequestCount).toBe(1);
+  await expect(page).toHaveURL(url => url.pathname === '/login');
+  await expect(page.getByRole('heading', { name: '登录系统' })).toBeVisible();
   expect(await page.getByText('真实数据暂时不可用').count()).toBe(0);
 });
 

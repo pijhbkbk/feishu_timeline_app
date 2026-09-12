@@ -19,7 +19,9 @@ export type SessionUser = {
   departmentId: string | null;
   departmentName: string | null;
   isSystemAdmin: boolean;
-  authSource: 'mock' | 'feishu';
+  authSource: 'local' | 'mock' | 'feishu';
+  requestedJob?: string | null;
+  onboardingCompleted?: boolean;
   roleCodes: FrontendRoleCode[];
   permissionCodes?: string[];
 };
@@ -28,6 +30,7 @@ export type SessionResponse = {
   authenticated: boolean;
   mockEnabled: boolean;
   feishuEnabled: boolean;
+  localEnabled?: boolean;
   user: SessionUser | null;
 };
 
