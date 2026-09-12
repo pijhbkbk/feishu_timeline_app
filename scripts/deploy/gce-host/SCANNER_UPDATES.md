@@ -73,3 +73,38 @@ not detect restoration of an entire previously valid disk snapshot. Disaster
 recovery must compare the restored state against independently retained highest
 version evidence. No external monotonic counter or snapshot rollback guarantee
 is claimed. Runtime must never provision or reset the initial state automatically.
+
+## Native-account release: reviewed host adapter and one-time initialization
+
+The earlier policy/state-only boundary is superseded for implementation by
+`scanner_host.py`, the native scanner config and systemd units, and
+`scanner_initialize.py`. They must be installed as independently hash-pinned,
+root-owned bytes outside a checkout. Source diff review and installer/initializer
+review passed; 77 targeted tests passed. Installation and actual engine evidence
+are tracked separately in the native-account execution ledger.
+
+The fixed adapter validates the complete frozen database set, official signatures,
+read-only mounts, constrained pinned image, host boot/process identity, UTC loaded
+VERSION metadata and age before approval/admission. It closes 300 seconds before
+the 48-hour age limit to cover periodic check and shutdown latency. Runtime checks
+and updates share the existing state lock. Bounded subprocess output, explicit
+FreshClam 1.4.6 error classes and cold activation prevent a failed verification
+from silently retaining admission. A failed or killed check has a separate locked
+closure action; a successful refresh can recover approval-before-opening crashes.
+
+The one-time initializer is restricted to the identified scanner host, two exact
+legacy container identities and the exact legacy unit hash. It stops both old
+listeners, saves the unit atomically, masks its supervisor, and verifies a separate
+root-owned copy of the three historical official databases. That copy establishes
+only the persistent version floor: approval is null. Initialization is exclusive
+and never resets a missing or existing runtime floor. Its transient operation must
+have `ExecStopPost` invoking installed `scanner_initialize.py recover-legacy`; the
+same recovery has a boot unit enabled before initialization. Recovery only closes
+the exact old endpoints and cannot initialize or activate the new engine.
+
+No unit automatically starts clamd. Only the serialized refresh may download,
+verify, cold-start, approve and open the private Unix-socket proxy. The check and
+refresh timers are enabled only after real first activation and host verification.
+Missing state/lock is an error. Restoring an entire historical disk snapshot still
+requires comparing the floor with independent retained evidence; no stronger
+anti-snapshot-rollback property is claimed.

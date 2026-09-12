@@ -1,0 +1,24 @@
+[Unit]
+Description=Close exact legacy scanner endpoints after interrupted installation
+After=docker.service
+Requires=docker.service
+Before=timeline-clamd.service
+ConditionPathExists=/var/lib/timeline-native-scanner/initialize.lock
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+ExecStart=/usr/bin/python3 -I /usr/local/lib/timeline-native-scanner/scanner_initialize.py recover-legacy
+TimeoutStartSec=180
+TimeoutStopSec=30
+KillMode=control-group
+UMask=0077
+MemoryMax=256M
+TasksMax=32
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

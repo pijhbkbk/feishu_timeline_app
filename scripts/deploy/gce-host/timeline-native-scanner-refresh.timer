@@ -1,0 +1,12 @@
+[Unit]
+Description=Serial official scanner database refresh
+
+[Timer]
+OnBootSec=2min
+OnCalendar=*-*-* 00,06,12,18:00:00
+RandomizedDelaySec=15min
+Persistent=true
+Unit=timeline-native-scanner-refresh.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,11 @@
+[Unit]
+Description=Periodic scanner admission validation
+
+[Timer]
+OnBootSec=30s
+OnUnitActiveSec=60s
+AccuracySec=1s
+Unit=timeline-native-scanner-check.service
+
+[Install]
+WantedBy=timers.target
