@@ -1,0 +1,18 @@
+[Unit]
+Description=Close an interrupted native candidate check before boot
+Requires=postgresql.service
+Wants=docker.service
+After=postgresql.service docker.service timeline-native-preparation-recover.service
+Before=timeline-native-network.service timeline-native-api.service timeline-native-web.service timeline-native-cutover-recover.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 -I /usr/local/lib/timeline-native-ops/native_candidate_check.py cleanup
+RemainAfterExit=yes
+TimeoutStartSec=120
+UMask=0077
+MemoryMax=256M
+TasksMax=64
+
+[Install]
+WantedBy=multi-user.target
