@@ -23,6 +23,20 @@ beforeEach(() => {
 });
 
 describe('Redis admission', () => {
+  it.each(['wait', 'connecting', 'reconnecting', 'end'])('closes a %s client without starting a connection during shutdown', async (status) => {
+    redisMock.status = status;
+    await createService().onModuleDestroy();
+    expect(redisMock.quit).not.toHaveBeenCalled();
+    expect(redisMock.connect).not.toHaveBeenCalled();
+    if (status !== 'end') expect(redisMock.disconnect).toHaveBeenCalledOnce();
+  });
+
+  it('disconnects even when a ready client rejects graceful shutdown', async () => {
+    redisMock.quit.mockRejectedValueOnce(new Error('shutdown timeout'));
+    await expect(createService().onModuleDestroy()).rejects.toThrow('shutdown timeout');
+    expect(redisMock.disconnect).toHaveBeenCalledOnce();
+  });
+
   it('rejects excess concurrent operations before dispatch and recovers capacity', async () => {
     const service = createService();
     let release!: () => void;

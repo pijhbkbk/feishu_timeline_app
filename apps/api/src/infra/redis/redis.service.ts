@@ -47,6 +47,12 @@ export class RedisService implements OnModuleDestroy {
       return;
     }
 
-    await this.client.quit();
+    try {
+      // QUIT on an unused lazy client starts a new connection. With the offline
+      // queue disabled that command rejects while leaving the connection alive.
+      if (this.client.status === 'ready') await this.client.quit();
+    } finally {
+      this.client.disconnect();
+    }
   }
 }

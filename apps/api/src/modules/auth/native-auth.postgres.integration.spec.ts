@@ -64,6 +64,9 @@ describe.skipIf(!databaseUrl).sequential('native identity real PostgreSQL bounda
   it('serializes first administrator initialization and preserves exact legacy identity and audit foreign keys', async () => {
     const legacy = await prisma.user.create({ data: { username: `legacy-${runId}`, name: '历史测试管理员', isSystemAdmin: true, feishuOpenId: `ou-test-${runId}` } });
     const audit = await prisma.auditLog.create({ data: { actorUserId: legacy.id, targetType: 'USER', targetId: legacy.id, action: 'TEST_BEFORE_MIGRATION', summary: 'Synthetic identity preservation fixture' } });
+    await expect(service.initializeAdministrator({ username: `unbound-${runId}`, name: '未绑定测试管理员', password })).rejects.toBeInstanceOf(ConflictException);
+    expect(await prisma.user.count({ where: { isSystemAdmin: true } })).toBe(1);
+    expect(await prisma.authInitialization.count()).toBe(0);
     const results = await Promise.allSettled([
       service.initializeAdministrator({ username: `admin-${runId}`, name: '测试管理员', password, existingUserId: legacy.id }),
       service.initializeAdministrator({ username: `admin-other-${runId}`, name: '测试管理员二', password, existingUserId: legacy.id }),

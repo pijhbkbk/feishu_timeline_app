@@ -197,6 +197,9 @@ export class NativeAuthService {
       if (await tx.authInitialization.findUnique({ where: { id: NATIVE_BOOTSTRAP_ID } })) {
         throw new ConflictException('原生管理员已初始化，不允许重复初始化或接管。');
       }
+      if (!input.existingUserId && await tx.user.count({ where: { isSystemAdmin: true } })) {
+        throw new ConflictException('已有系统管理员，必须指定其准确内部 ID，不允许另建初始化账号。');
+      }
       await this.lockLoginName(tx, username);
       await this.assertLoginNameAvailable(tx, username, input.existingUserId);
       const existing = input.existingUserId ? await tx.user.findUnique({ where: { id: input.existingUserId } }) : null;
