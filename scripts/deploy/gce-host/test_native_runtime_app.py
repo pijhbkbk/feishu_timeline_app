@@ -26,7 +26,7 @@ def fixture(component):
 
 class RuntimeBoundaryTests(unittest.TestCase):
     def test_host_access_or_credential_and_mount_injection_rejected(self):
-        with patch.object(app,'environment_bytes',return_value=b'APP_TEST=bounded\n'):
+        with patch.object(app,'environment_bytes',return_value=b'APP_TEST=bounded\n'),patch.object(app,'web_environment_bytes',return_value=b''):
             for component in ('api','web'):
                 image,item=fixture(component);app.validate_container(component,item,image)
                 for section,key,bad in [('HostConfig','NetworkMode','host'),('HostConfig','Privileged',True),
@@ -49,6 +49,11 @@ class RuntimeBoundaryTests(unittest.TestCase):
         self.assertEqual(value['AUTH_MOCK_ENABLED'],'false')
         self.assertFalse(any(key.startswith(('FEISHU_','GOOGLE_')) for key in value))
         self.assertEqual(value['NOTIFICATION_REDIS_QUEUE_MAX_JOBS'],'256')
+        self.assertEqual(value['EXPECTED_SOURCE_COMMIT'],app.COMMIT)
+        self.assertEqual(value['EXPECTED_SOURCE_TREE'],app.TREE)
+        web=dict(line.split('=',1) for line in app.web_environment_bytes().decode().splitlines())
+        for key,expected in [('EXPECTED_SOURCE_COMMIT',app.COMMIT),('EXPECTED_SOURCE_TREE',app.TREE),('EXPECTED_RELEASE',app.RELEASE),('EXPECTED_BUILD_TIME',app.BUILD_TIME)]:
+            self.assertEqual(value[key],expected);self.assertEqual(web[key],expected)
 
     def test_unprepared_or_damaged_configuration_cannot_create_container(self):
         with patch.object(app,'validate_files',side_effect=backup.Failure('bad env')),patch.object(app,'docker') as docker:
@@ -80,6 +85,40 @@ class RuntimeBoundaryTests(unittest.TestCase):
              patch.object(backup,'write_private') as write:
             with self.assertRaises(backup.Failure):app.prepare()
             role.assert_not_called();write.assert_not_called()
+
+    def test_resume_rejects_another_administrator_before_reading_password(self):
+        wrong={'runtimeCommit':app.COMMIT,'database':app.migration.DATABASE,'administratorId':'different-user-id'}
+        with patch.object(backup,'read_json',return_value=wrong),patch.object(backup,'read_file') as read:
+            with self.assertRaises(backup.Failure):app.validate_resume('existing-admin-id')
+            read.assert_not_called()
+
+    def test_resume_preserves_existing_private_material(self):
+        pending={'runtimeCommit':app.COMMIT,'database':app.migration.DATABASE,'administratorId':'existing-admin-id'}
+        with patch.object(backup,'read_json',return_value=pending),patch.object(backup,'read_file',return_value=b'x'*32+b'\n') as read,\
+             patch.object(app.Path,'iterdir',return_value=iter([])),patch.object(backup,'write_private') as write:
+            app.validate_resume('existing-admin-id')
+            read.assert_called_once_with(app.ROOT/'admin.password',512,owner=1000);write.assert_not_called()
+
+    def test_existing_native_credential_prevents_reinitialization(self):
+        previous={'migrations':[],'candidate':[],'tables':{'users':{'columns':['id'],'projection':{'count':12}}}}
+        complete={'runtimeCommit':app.COMMIT,'oldColumnsUnchanged':True,'nativeCredentials':0}
+        with patch.object(backup,'read_json',side_effect=[complete,previous]),patch.object(app.migration,'projection',return_value={'count':12}),\
+             patch.object(app.migration,'tables',return_value={'users'}|app.migration.NEW_TABLES),patch.object(app.migration,'migration_rows',return_value=[]),\
+             patch.object(app.migration,'query',side_effect=lambda q:'1' if 'local_credentials' in q else '0'):
+            with self.assertRaisesRegex(backup.Failure,'already used'):app.verify_migrated_copy()
+
+    def test_resume_does_not_recreate_password_environment_or_objects(self):
+        previous={'tables':{'users':{'columns':['id','username','updatedAt']}}}
+        with patch.object(app,'state_directory'),patch.object(app.database_scope,'verify'),\
+             patch.object(app.Path,'exists',side_effect=[True,False]),patch.object(app,'inspect',return_value=None),patch.object(app,'image_identity'),\
+             patch.object(app,'verify_migrated_copy',return_value=previous),patch.object(backup,'sql',side_effect=['t','0','0']),\
+             patch.object(backup,'read_json',return_value={'objectCount':0,'databaseAndObjectsVerified':True}),\
+             patch.object(app.Path,'iterdir',side_effect=lambda:iter([])),patch.object(app.migration,'query',side_effect=['existing-admin-id','0','1','0']),\
+             patch.object(app.migration,'projection'),patch.object(app,'scoped_projection'),patch.object(app,'validate_resume') as resume,\
+             patch.object(app,'validate_files'),patch.object(backup,'write_private') as write,patch.object(app.Path,'mkdir') as mkdir,\
+             patch.object(backup,'role_change',side_effect=backup.Failure('stop before opening role')),patch.object(app,'recover_preparation'):
+            with self.assertRaisesRegex(backup.Failure,'before opening role'):app.prepare(resume=True)
+            resume.assert_called_once_with('existing-admin-id');write.assert_not_called();mkdir.assert_not_called()
 
     def test_database_recovery_targets_only_verified_copy_and_keeps_journal(self):
         # A journal with any other database is rejected before ALTER ROLE or Docker.

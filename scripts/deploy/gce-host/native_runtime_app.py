@@ -109,6 +109,7 @@ def stop(component, remove=False):
 def fixed_environment(credentials, redis_password):
     return {
         'NODE_ENV': 'production', 'DEPLOYMENT_ENV': 'production', 'PORT': '3001',
+        'EXPECTED_SOURCE_COMMIT': COMMIT, 'EXPECTED_SOURCE_TREE': TREE, 'EXPECTED_RELEASE': RELEASE, 'EXPECTED_BUILD_TIME': BUILD_TIME,
         'FRONTEND_URL': 'https://timeline.all-too-well.com', 'AUTH_MOCK_ENABLED': 'false',
         'NATIVE_AUTH_TRUSTED_PROXY_IP': '172.30.44.1',
         'DATABASE_URL': 'postgresql://' + migration.ROLE + ':' + quote(credentials['password'], safe='') +
@@ -140,10 +141,18 @@ def environment_bytes():
     return ''.join(key + '=' + value + '\n' for key, value in fixed_environment(credentials, password).items()).encode()
 
 
+def web_environment_bytes():
+    values = {'NODE_ENV': 'production', 'DEPLOYMENT_ENV': 'production', 'HOSTNAME': '0.0.0.0', 'PORT': '3000',
+              'EXPECTED_SOURCE_COMMIT': COMMIT, 'EXPECTED_SOURCE_TREE': TREE, 'EXPECTED_RELEASE': RELEASE,
+              'EXPECTED_BUILD_TIME': BUILD_TIME, 'V1_FALLBACK_ENABLED': 'false'}
+    return ''.join(k + '=' + v + '\n' for k, v in values.items()).encode()
+
+
 def validate_files():
     state_directory()
     database_scope.verify()
     require(backup.read_file(ROOT / 'api.env', 16384, owner=0) == environment_bytes(), 'Application environment differs')
+    require(backup.read_file(ROOT / 'web.env', 4096, owner=0) == web_environment_bytes(), 'Web environment differs')
     obj = (ROOT / 'objects').lstat()
     require(stat.S_ISDIR(obj.st_mode) and obj.st_uid == 1000 and obj.st_gid == 1000 and stat.S_IMODE(obj.st_mode) == 0o700,
             'Object storage directory differs')
@@ -157,12 +166,11 @@ def arguments(component):
             '--memory=' + ('1024m' if component == 'api' else '512m'), '--memory-swap=' + ('1024m' if component == 'api' else '512m'),
             '--cpus=' + ('1.0' if api else '0.75'), '--pids-limit=128', '--ulimit=nofile=1024:1024', '--restart=no',
             '--log-opt=max-size=2m', '--log-opt=max-file=3', '--tmpfs=/tmp:rw,noexec,nosuid,size=64m']
-    if api:
-        args += ['--env-file=' + str(ROOT / 'api.env')]
+    args += ['--env-file=' + str(ROOT / ('api.env' if api else 'web.env'))]
     if component == 'api':
         args += ['--mount=type=bind,src=' + str(ROOT / 'objects') + ',dst=/app/var/object-storage']
     if component == 'init':
-        args += ['--mount=type=bind,src=' + str(ROOT / 'admin.password') + ',dst=/run/admin.password,readonly']
+        args += ['--no-healthcheck', '--mount=type=bind,src=' + str(ROOT / 'admin.password') + ',dst=/run/admin.password,readonly']
     return args
 
 
@@ -188,8 +196,7 @@ def validate_container(component, item, image):
             host['Tmpfs'] == {'/tmp': 'rw,noexec,nosuid,size=64m'}, 'Application mounts differ')
     actual_env = dict(entry.split('=', 1) for entry in cfg['Env'])
     expected_env = dict(entry.split('=', 1) for entry in image['Config']['Env'])
-    if api:
-        expected_env.update(dict(line.split('=', 1) for line in environment_bytes().decode().splitlines()))
+    expected_env.update(dict(line.split('=', 1) for line in (environment_bytes() if api else web_environment_bytes()).decode().splitlines()))
     require(actual_env == expected_env, 'Application environment identity differs')
     networks = item['NetworkSettings']['Networks']
     require(set(networks) == {expected_network} and
@@ -238,10 +245,18 @@ def scoped_projection(table, columns, clause):
     return {'count': int(count), 'sha256': digest}
 
 
-def prepare():
+def validate_resume(user_id):
+    pending = {'runtimeCommit': COMMIT, 'database': migration.DATABASE, 'administratorId': user_id}
+    require(backup.read_json(ROOT / 'preparation-pending.json') == pending, 'Resume administrator identity differs')
+    password = backup.read_file(ROOT / 'admin.password', 512, owner=1000)
+    require(re.fullmatch(rb'[A-Za-z0-9_-]{32}\n', password), 'Resume password file differs')
+    require(list((ROOT / 'objects').iterdir()) == [], 'Resume objects changed')
+
+
+def prepare(resume=False):
     state_directory()
     database_scope.verify()
-    require(not (ROOT / 'preparation-pending.json').exists() and not (ROOT / 'prepared.json').exists(), 'Do not overwrite preparation state')
+    require((ROOT / 'preparation-pending.json').exists() is resume and not (ROOT / 'prepared.json').exists(), 'Preparation state requires explicit reconciliation')
     require(all(inspect(c) is None for c in ('api', 'web', 'init')), 'Prior application containers retained')
     image_identity('api'); image_identity('web')
     previous = verify_migrated_copy()
@@ -261,13 +276,19 @@ def prepare():
     stable_users = migration.projection('users', [c for c in user_columns if c not in ('username', 'updatedAt')])
     other_users = scoped_projection('users', user_columns, " WHERE id<>'" + user_id + "'")
     require(migration.query("SELECT count(*) FROM public.audit_logs WHERE action='NATIVE_ADMIN_INITIALIZED';") == '0', 'Prior native initialization audit present')
-    backup.write_json(ROOT / 'preparation-pending.json', {'runtimeCommit': COMMIT, 'database': migration.DATABASE, 'administratorId': user_id})
+    pending = {'runtimeCommit': COMMIT, 'database': migration.DATABASE, 'administratorId': user_id}
+    if resume:
+        validate_resume(user_id)
+    else:
+        backup.write_json(ROOT / 'preparation-pending.json', pending)
     try:
-        backup.write_private(ROOT / 'api.env', environment_bytes())
-        backup.write_private(ROOT / 'admin.password', (secrets.token_urlsafe(24) + '\n').encode())
-        os.chown(ROOT / 'admin.password', 1000, 1000)
-        objects = ROOT / 'objects'; objects.mkdir(mode=0o700); os.chown(objects, 1000, 1000); objects.chmod(0o700)
-        backup.fsync_dir(ROOT)
+        if not resume:
+            backup.write_private(ROOT / 'api.env', environment_bytes())
+            backup.write_private(ROOT / 'web.env', web_environment_bytes())
+            backup.write_private(ROOT / 'admin.password', (secrets.token_urlsafe(24) + '\n').encode())
+            os.chown(ROOT / 'admin.password', 1000, 1000)
+            objects = ROOT / 'objects'; objects.mkdir(mode=0o700); os.chown(objects, 1000, 1000); objects.chmod(0o700)
+            backup.fsync_dir(ROOT)
         validate_files()
         backup.role_change('ALTER ROLE ' + migration.identifier(migration.ROLE) + ' LOGIN CONNECTION LIMIT 12;')
         docker(*arguments('init'), IMAGES['api'], 'node', 'dist/cli/native-account.js', 'initialize', '--username', 'lixiaochen',
@@ -321,9 +342,10 @@ def main():
     require(os.geteuid() == 0 and socket.gethostname() == 'instance-20260408-091840' and Path(__file__).parent == INSTALLED,
             'Use reviewed installed controller on intended host')
     action = sys.argv[1:]
-    if action in [['prepare'], ['recover-preparation']]:
+    if action in [['prepare'], ['resume-preparation'], ['recover-preparation']]:
         with backup.locked():
-            (prepare if action == ['prepare'] else recover_preparation)()
+            if action == ['recover-preparation']: recover_preparation()
+            else: prepare(resume=action == ['resume-preparation'])
         return
     require(len(action) == 2 and action[0] in ('start', 'stop') and action[1] in ('api', 'web'), 'Unsupported runtime action')
     component = action[1]
