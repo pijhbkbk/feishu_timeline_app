@@ -2,7 +2,7 @@
 
 状态：`CODE_IMPLEMENTED / TARGETED_LOCAL_VERIFICATION_PASS / LOCAL_BROWSER_PARTIAL / NOT_DEPLOYED / AWAITING_PRODUCT_OWNER_CONFIRMATION`。
 
-本阶段目标为 `https://timeline.all-too-well.com`。截至 2026-09-12 11:55 UTC，公开 Web/API 仍运行 `535041bb25f21d548d863d07b35e3e952b0aeb2c`；本次没有生产写入、迁移、服务切换或用户路径验收。
+本阶段目标为 `https://timeline.all-too-well.com`。截至 2026-09-12 12:34 UTC，公开 Web/API 仍运行 `535041bb25f21d548d863d07b35e3e952b0aeb2c`；本次没有生产写入、迁移、服务切换或用户路径验收。目标因生产管理连接不可用标记 `BLOCKED`，候选实现和已有验证保留，未缩小网站交付目标。
 
 ## 候选身份
 
@@ -52,6 +52,8 @@ CLI 真实退出测试发现未使用的 lazy Redis 客户端在关闭时启动�
 注册/新密码/恢复的浏览器提交、管理员正式角色/部门/项目配置、完整流程/评审/附件写入浏览器验收以及生产所有新身份路径仍待完成。相关 HTTP/数据库验证已取得，但不代替浏览器交互或产品负责人确认。整体仍为 `LOCAL_BROWSER_PARTIAL`。
 
 ## 发布阻塞与恢复条件
+
+第三个连续目标回合于 12:34 UTC 复核同一访问障碍：当前任务无附加终端，本机无 SSH/gcloud/sftp/autossh 管理进程，正常 TLS 读取公开 Web/API 仍是旧版本。上一回合是完成浏览器证据提交的实质进展；本回合未取得可执行主机修复的新输入。复核见 [blocked-audit.json](blocked-audit.json)。此前 SSH 失败的精确主机原因仍未知，不能据此认定 Fail2ban 或 sshd 故障。
 
 GCE IAP SSH 两次在协议 banner 前超时，尚未进入用户密钥认证；未执行远端命令。有效 NIC 防火墙允许 IAP tcp22，未见明确云端拒绝。已有云日志在失败窗口无匹配，不能证明主机无故障或已采集 sshd/Fail2ban 日志；监控读取也超时。Fail2ban 是未证实的候选原因。未开放端口、修改 IAM/metadata、重置密钥、重启 VM 或影响同机其他应用。
 

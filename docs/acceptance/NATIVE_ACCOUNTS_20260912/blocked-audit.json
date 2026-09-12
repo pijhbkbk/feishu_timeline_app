@@ -1,0 +1,46 @@
+{
+  "checkedAt": "2026-09-12T12:34:04.960083+00:00",
+  "productionWritesPerformed": false,
+  "localManagementProcesses": [],
+  "api": {
+    "url": "https://timeline.all-too-well.com/api/health",
+    "exitCode": 0,
+    "metadata": {
+      "status": "ok",
+      "service": "feishu-timeline-api",
+      "nodeEnv": "production",
+      "runtimeCommit": "535041bb25f21d548d863d07b35e3e952b0aeb2c",
+      "buildTime": "2026-08-09T06:49:11Z",
+      "release": "r26-admin-535041bb25f2",
+      "timestamp": "2026-09-12T12:34:06.039Z"
+    }
+  },
+  "web": {
+    "url": "https://timeline.all-too-well.com/build-info",
+    "exitCode": 0,
+    "metadata": {
+      "service": "feishu-timeline-web",
+      "runtimeCommit": "535041bb25f21d548d863d07b35e3e952b0aeb2c",
+      "buildTime": "2026-08-09T06:49:11Z",
+      "release": "r26-admin-535041bb25f2"
+    }
+  },
+  "goalTurnClassification": "previous turn made concrete progress by committing final browser evidence; this turn revalidated the same management-access blocker",
+  "sameBlockerConsecutiveGoalTurns": 3,
+  "currentThreadTerminal": "No attached app terminal session",
+  "runtimeCandidate": "1767dbb5eeb30cc57835081de761e1eccb8fac8b",
+  "status": "BLOCKED",
+  "scope": "production management access, backup/migration/deployment and precise HTTPS native-user acceptance",
+  "rootCause": "Unknown guest-side cause; two prior IAP SSH attempts timed out before protocol banner. No current evidence identifies sshd, Fail2ban, listener, or host load as the cause.",
+  "safeActionsExhausted": [
+    "Final candidate source/builds/images, new auth/permissions/migration/CLI/HTTP tests and independent focused review preserved.",
+    "Final local browser layout/search/GET/console evidence committed separately.",
+    "Public production metadata rechecked using normal TLS validation.",
+    "Current thread terminal and local management processes checked; none available.",
+    "Generic GPT-6 Pro diagnostic consultation completed without private project disclosure."
+  ],
+  "resumeRequires": "Existing usable host management entry/session, or fresh guest SSH listener/service/ban logs enabling a specific supported fix. No secrets should be sent in chat.",
+  "sshRetriedThisTurn": false,
+  "mainChanged": false,
+  "tagsChanged": false
+}

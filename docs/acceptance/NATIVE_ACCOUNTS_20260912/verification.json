@@ -154,5 +154,8 @@
     "consoleAdvisories": 1,
     "status": "LOCAL_BROWSER_PARTIAL",
     "runtimeRecheckedAt": "2026-09-12T12:30:28Z"
-  }
+  },
+  "goalStatus": "BLOCKED",
+  "blockedAudit": "blocked-audit.json",
+  "productionRecheckedAt": "2026-09-12T12:34:04.960083+00:00"
 }
