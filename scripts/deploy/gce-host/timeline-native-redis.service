@@ -1,0 +1,22 @@
+[Unit]
+Description=Private authenticated native application Redis
+Requires=timeline-native-network.service docker.service
+After=timeline-native-network.service docker.service
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 -I /usr/local/lib/timeline-native-ops/native_runtime_redis.py start
+ExecStop=/usr/bin/python3 -I /usr/local/lib/timeline-native-ops/native_runtime_redis.py stop
+ExecStopPost=/usr/bin/python3 -I /usr/local/lib/timeline-native-ops/native_runtime_redis.py stop
+Restart=on-failure
+RestartSec=10
+UMask=0077
+TimeoutStopSec=60
+MemoryMax=128M
+TasksMax=64
+KillMode=control-group
+
+[Install]
+WantedBy=multi-user.target
