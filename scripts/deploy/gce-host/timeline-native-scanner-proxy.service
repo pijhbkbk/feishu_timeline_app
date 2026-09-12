@@ -1,0 +1,22 @@
+[Unit]
+Description=Bounded native API scanner loopback proxy
+Requires=timeline-native-network.service
+Wants=timeline-native-tunnel.service
+After=timeline-native-network.service timeline-native-tunnel.service
+
+[Service]
+ExecStart=/usr/lib/systemd/systemd-socket-proxyd --connections-max=8 127.0.0.1:23310
+DynamicUser=yes
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+RestrictAddressFamilies=AF_INET AF_UNIX
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryMax=64M
+TasksMax=16
+LimitNOFILE=64
+TimeoutStopSec=15

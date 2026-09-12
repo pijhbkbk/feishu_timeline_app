@@ -1,7 +1,7 @@
 [Unit]
 Description=Install reviewed isolated native application networks
 Requires=docker.service
-After=docker.service network-online.target
+After=docker.service network-online.target timeline-native-backup-recover.service timeline-native-migration-probe-recover.service
 Wants=network-online.target
 Before=timeline-native-pg.socket timeline-native-scanner-proxy.socket timeline-native-tunnel.service
 
