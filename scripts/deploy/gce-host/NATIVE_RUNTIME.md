@@ -51,3 +51,23 @@ Candidate ports13000/13301 are local-only preflight endpoints. Final production
 keeps the already approved Nginx upstream127.0.0.1:3000/3001 by stopping the old
 services and binding the same immutable new images to these ports. Exact-domain
 browser acceptance and product-owner confirmation remain separate release gates.
+
+Actual Docker29.6 internal-only networks ignore host port publishing. Production
+therefore uses loopback systemd socket proxies to the fixed API/Web addresses;
+Docker publishes no native port. The real probe verified PG/scanner access,
+clean/EICAR classification, forbidden destinations, the proxy's bridge source
+address, and complete probe cleanup without affecting another host workload.
+
+Before giving the restored-copy password to the API, `native_database_scope.py`
+adds only that exact role's HBA allow/deny rules, preserving every pre-existing
+rule byte. Each startup checks the actual HBA path and effective new-connection
+rejection for the old and maintenance databases. The installer verifies proper
+password access to the intended copy, rejection of the wrong password, and role
+closure. Recovery never depends on Docker being available to close PostgreSQL.
+
+`native_runtime_app.py prepare` preserves the owner's existing internal user ID,
+uses the official native CLI to set a host-generated private password, and checks
+old user/business/audit projections. It records a complete post-initialization
+fingerprint before any API background job starts. Final cutover must stop the
+candidate and compare that fingerprint again. Preparation only affects the
+already restored database; it does not open a public ingress or switch Nginx.
