@@ -8,7 +8,7 @@ StartLimitIntervalSec=0
 Type=simple
 DynamicUser=yes
 LoadCredential=scanner_key:/etc/timeline-native-runtime/scanner_key
-ExecStart=/usr/bin/ssh -N -T -F /dev/null -o BatchMode=yes -o IdentitiesOnly=yes -o IdentityAgent=none -o StrictHostKeyChecking=yes -o UserKnownHostsFile=/etc/timeline-native-runtime/scanner_known_hosts -o GlobalKnownHostsFile=/dev/null -o UpdateHostKeys=no -o ExitOnForwardFailure=yes -o ConnectTimeout=20 -o ConnectionAttempts=1 -o ServerAliveInterval=15 -o ServerAliveCountMax=3 -i %d/scanner_key -L 127.0.0.1:23310:127.0.0.1:3310 timeline-scan-tunnel@172.27.227.2
+ExecStart=/usr/bin/ssh -N -T -F /dev/null -o BatchMode=yes -o IdentitiesOnly=yes -o IdentityAgent=none -o StrictHostKeyChecking=yes -o UserKnownHostsFile=/etc/timeline-native-runtime/scanner_known_hosts -o GlobalKnownHostsFile=/dev/null -o UpdateHostKeys=no -o ExitOnForwardFailure=yes -o ConnectTimeout=20 -o ConnectionAttempts=1 -o ServerAliveInterval=15 -o ServerAliveCountMax=3 -i ${CREDENTIALS_DIRECTORY}/scanner_key -L 127.0.0.1:23310:127.0.0.1:3310 timeline-scan-tunnel@172.27.227.2
 Restart=always
 RestartSec=10
 NoNewPrivileges=yes
