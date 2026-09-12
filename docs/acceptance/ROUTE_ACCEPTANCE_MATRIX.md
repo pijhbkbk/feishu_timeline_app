@@ -102,16 +102,16 @@ Next.js production build（`http://127.0.0.1:3100`），不能替代目标环境
 
 ## 2026-09-12 原生账号候选（历史 OAuth PASS 不适用于本轮）
 
-运行候选 `1767dbb5eeb30cc57835081de761e1eccb8fac8b`；本机 `http://127.0.0.1:3350`。下表浏览器观察来自 Web 源码相同的前一候选 `5daaf7f…`，最终候选 Web/API 运行身份和 HTTP 检查另有记录。生产 `https://timeline.all-too-well.com` 本次未部署，仍为旧 `535041bb…`。所有本轮生产用户路径均 NOT_EXECUTED，不能沿用上表历史 OAuth PASS。
+运行候选 `1767dbb5eeb30cc57835081de761e1eccb8fac8b`；本机 `http://127.0.0.1:3350`。2026-09-12 本机 Chrome Incognito 已对最终候选复验登录与下述页面；前一候选 `5daaf7f…` 的普通账号岗位/重启观察按未变化源码明确复用，不能冒充最终全部重跑。12:30 UTC Web/API 元数据再次一致，记录见 `NATIVE_ACCOUNTS_20260912/browser/runtime-after-browser.json`。生产 `https://timeline.all-too-well.com` 本次未部署，11:55 UTC只读仍为旧 `535041bb…`。所有本轮生产用户路径均 NOT_EXECUTED，不能沿用上表历史 OAuth PASS。
 
 | URL（本机；生产同路径未部署） | Route component | API endpoints | Required role | Expected data/action | Screenshot / browser result | 本轮状态 |
 |---|---|---|---|---|---|---|
-| `/login` | LoginPage | POST `/api/auth/login`、`register`、`recover`；GET `session` | public | 原生登录、注册、一次性恢复；无第三方入口 | 本任务 Chrome 截图；登录普通/合成管理员成功，注册/恢复表单已观察；凭据提交另有 HTTP 证据 | LOCAL_BROWSER_PARTIAL |
+| `/login` | LoginPage | POST `/api/auth/login`、`register`、`recover`；GET `session` | public | 原生登录、注册、一次性恢复；无第三方入口 | 最终合成管理员登录成功；login/register/recover 各三档 PNG 见浏览器清单；新凭据提交另有 HTTP 证据 | LOCAL_BROWSER_PARTIAL |
 | `/login/callback` | LoginCallbackClient | 无外部身份交换 | public | 旧入口停用并引导返回登录 | 源码/构建检查；本轮浏览器未执行 | NOT_ACCEPTED |
-| `/account` | AccountPage + AppShell | GET `session`；POST `/auth/job`、`/auth/password` | native authenticated | 岗位仅为意向，刷新保留；改密撤销旧会话 | 本任务 Chrome 截图；岗位/刷新/重启/退出已观察；改密 HTTP PASS，浏览器提交未执行 | LOCAL_BROWSER_PARTIAL |
+| `/account` | AccountPage + AppShell | GET `session`；POST `/auth/job`、`/auth/password` | native authenticated | 岗位仅为意向，刷新保留；改密撤销旧会话 | 最终三档 PNG 及手机底部截图，控制台保留一条用户名自动填充建议、无应用异常；此前岗位/重启/退出观察按依据复用；改密 HTTP PASS，浏览器提交未执行 | LOCAL_BROWSER_PARTIAL |
 | `/dashboard`、`/projects` | V2Shell + 既有业务页 | GET `session`、业务 API | 后端角色及项目范围 | 未授权进入账号页；授权用户查看真实数据 | 合成管理员登录进入真实空工作台；项目范围 14 HTTP 请求 PASS；完整业务写入浏览器待办 | LOCAL_BROWSER_PARTIAL |
-| `/admin/accounts`、`/v2/admin/accounts` | AccountsPage | GET `/api/auth/accounts`；POST `/api/auth/accounts/:id/recovery` | isSystemAdmin | 有界搜索/原生凭据状态/一次性恢复码 | HTTP 管理员目录读取 PASS、普通账号拒绝；菜单后控制工具无响应，页面浏览器未完成 | NOT_ACCEPTED |
+| `/admin/accounts`、`/v2/admin/accounts` | AccountsPage | GET `/api/auth/accounts`；POST `/api/auth/accounts/:id/recovery` | isSystemAdmin | 有界搜索/原生凭据状态/一次性恢复码 | 最终正式 `/admin/accounts` 搜索命中/空结果、三档 PNG、刷新后23个200 GET的脱敏HAR；普通账号拒绝有既有观察和HTTP证据；恢复签发和显式别名路由浏览器未执行 | LOCAL_BROWSER_PARTIAL |
 | `/admin/organization` | 既有 AdminControlCenter | GET `/api/admin/organization`；既有预览/命令接口 | system.manage + 受限系统管理员动作 | 原生可登录状态、角色/部门/项目授权，保留旧 ID 并撤销旧会话 | HTTP 读取及真实 PostgreSQL 权限/并发负向 PASS；浏览器配置待办 | NOT_ACCEPTED |
 | `/build-info`、`/api/health` | Web metadata / HealthController | GET 相同路径 | public | 与固定候选完整 SHA/tree/release 一致 | 最终本机两个响应均 200 且身份一致；不单独证明产品完成 | LOCAL_METADATA_PASS |
 
-正式源码 Placeholder 0；测试白名单10行。1440/1024/390三档和可保存的完整浏览器证据未完成，整组路由不得标记 PASS。详见 [候选证据与阻塞](NATIVE_ACCOUNTS_20260912/README.md)。
+正式源码 Placeholder 0；测试白名单10行。登录/注册/恢复表单、账号目录与个人账号页的1440/1024/390三档已有17张截图及可保存网络/控制台证据；尚未覆盖全部路由和受控写入，整组路由不得标记 PASS。详见 [浏览器清单](NATIVE_ACCOUNTS_20260912/browser/manifest.json) 与 [候选证据与阻塞](NATIVE_ACCOUNTS_20260912/README.md)。

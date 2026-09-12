@@ -7755,3 +7755,14 @@ BLOCKER_REPORT: Public-source push remains rejected by platform automatic review
 - 下一项外部依赖：可用的既有主机管理通路或管理方的SSH监听、服务、限流/封禁日志证据。恢复后核对实际旧环境、备份恢复、私有发布控制器与扫描/配额、准确旧管理员绑定，再受控部署精确域名验证。此前停用的特权脚本不得直接绕过。等待外部输入期间已完成可独立完成的候选与本机验证工作。
 - 证据提交独立于运行提交。记录、hash、镜像身份、日志索引及真实限制见 `docs/acceptance/NATIVE_ACCOUNTS_20260912/README.md` 和 `verification.json`。
 - 当前准确状态：`CODE_IMPLEMENTED / TARGETED_LOCAL_VERIFICATION_PASS / LOCAL_BROWSER_PARTIAL / NOT_DEPLOYED / AWAITING_PRODUCT_OWNER_CONFIRMATION`。staging未部署/URL未建立/runtime未读取/用户路径未执行；production新用户路径未执行；产品负责人未确认。main/tag未改变。全部本轮生产路由未完成，正式源码占位0。
+
+### 2026-09-12 — 最终原生账号候选浏览器证据补齐（生产未部署）
+
+- 应用源码/运行提交仍为 `1767dbb5eeb30cc57835081de761e1eccb8fac8b`，本轮只增补证据。干净构建工作树未改变，未重跑不受影响的应用测试；之前目标验证及复用边界保留。
+- 本机 Chrome 原生界面与独立 Incognito 窗口已恢复可用；合成管理员完成真实密码登录并进入工作台、账号目录和个人账号页。登录/注册/恢复表单、账号目录、个人账号页检查 1440/1024/390 CSS 宽度，保存 17 张页面 PNG，逐一检查像素尺寸和 SHA256；手机个人账号底部操作可正常滚动到达。
+- 账号搜索命中合成用户并显示“采购专员意向/尚未分配正式角色”，无匹配时显示明确空状态。禁用缓存刷新账号目录，23 个同源 GET 全部 200；会话为 local 身份且 Feishu/mock 关闭，工作台数据来自隔离数据库。
+- 浏览器保存脱敏 HAR，检查无会话 Cookie、授权/CSRF 头、cookies 数组、非 GET 和请求体。个人账号控制台 All levels 保留一条用户名字段自动填充/可访问性建议，无应用异常；不把默认过滤提示或未展开的目录 possible improvement 写成零问题。
+- 12:30 UTC 再读本机 Web/API 元数据均为准确候选 SHA/tree/release；首次普通沙箱读取被本机网络权限拒绝，经工具审批允许只读 loopback 后成功，未修改全局权限。证据入口：`docs/acceptance/NATIVE_ACCOUNTS_20260912/browser/manifest.json`；README、verification.json 和路由矩阵同步更新。
+- 浏览器注册/新密码/恢复提交、正式授权配置和完整业务写入仍未验收；真实 HTTP/PG 结果不能代替这些交互。生产管理连接仍无新恢复条件；当前任务没有附加终端，主机未发现已建立的 TCP22 连接，未第三次盲试 IAP、修改防火墙或重启 VM。
+- staging URL/runtime/用户路径未执行；生产未改变，最近只读 runtime `535041bb25f21d548d863d07b35e3e952b0aeb2c`（11:55 UTC），新用户路径未执行；main/tag未改变；产品负责人未确认；生产本轮路由全部待验收，正式源码Placeholder仍0。
+- 状态仍为 `CODE_IMPLEMENTED / TARGETED_LOCAL_VERIFICATION_PASS / LOCAL_BROWSER_PARTIAL / NOT_DEPLOYED / AWAITING_PRODUCT_OWNER_CONFIRMATION`。恢复发布需要已有可用管理入口或 SSH 服务/监听/封禁日志的新证据；模型意见不代表用户、平台或产品批准。

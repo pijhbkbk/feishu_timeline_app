@@ -140,5 +140,19 @@
       "bytes": 44584960,
       "sha256": "d704ee372ab0cfa94ba6d420eaacce83bdbd3f144a1d78430c5279c1cc2cf609"
     }
-  ]
+  ],
+  "finalBrowserEvidence": {
+    "manifest": "browser/manifest.json",
+    "screenshots": 17,
+    "cssWidths": [
+      390,
+      1024,
+      1440
+    ],
+    "sanitizedGetRequests": 23,
+    "consoleApplicationExceptionsObserved": 0,
+    "consoleAdvisories": 1,
+    "status": "LOCAL_BROWSER_PARTIAL",
+    "runtimeRecheckedAt": "2026-09-12T12:30:28Z"
+  }
 }
