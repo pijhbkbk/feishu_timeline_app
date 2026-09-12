@@ -318,6 +318,15 @@ describe('resolveAppConfig', () => {
     expect(() => resolveAppConfig({ ...env, OAUTH_PROVIDER: 'unused', FEISHU_AUTHORIZATION_ENDPOINT: 'https://unused.invalid/' })).not.toThrow();
   });
 
+  it('accepts only one exact configured native authentication proxy in production', () => {
+    const env = createProtectedEnvironment('production');
+    expect(resolveAppConfig(env).nativeAuthTrustedProxyIp).toBeUndefined();
+    expect(resolveAppConfig({ ...env, NATIVE_AUTH_TRUSTED_PROXY_IP: '172.30.44.1' }).nativeAuthTrustedProxyIp).toBe('172.30.44.1');
+    for (const value of ['172.30.44.0/24', '172.30.44.1,172.30.44.2', '203.0.113.8']) {
+      expect(() => resolveAppConfig({ ...env, NATIVE_AUTH_TRUSTED_PROXY_IP: value })).toThrow('one exact private IPv4');
+    }
+  });
+
   it('allows an explicit staging deployment to use its registered local callback', () => {
     const config = resolveAppConfig({
       ...createProtectedEnvironment('staging'),

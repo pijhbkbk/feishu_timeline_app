@@ -7,6 +7,7 @@ import {
   resolveImmutableBuildIdentity,
 } from './build-identity';
 import { API_UPLOAD_MAX_CONCURRENT_REQUESTS } from './upload-security.constants';
+import { resolveNativeAuthTrustedProxyIp } from './native-auth-client';
 
 export type AppConfig = {
   nodeEnv: string;
@@ -35,6 +36,7 @@ export type AppConfig = {
   supplierMutationMaxRequests: number;
   supplierMutationWindowMs: number;
   authMockEnabled: boolean;
+  nativeAuthTrustedProxyIp?: string | undefined;
   sessionCookieName: string;
   sessionTtlSeconds: number;
   objectStorageProvider: 'local';
@@ -613,6 +615,7 @@ export function resolveAppConfig(
     supplierMutationMaxRequests,
     supplierMutationWindowMs,
     authMockEnabled: resolveBoolean(env.AUTH_MOCK_ENABLED, false),
+    nativeAuthTrustedProxyIp: resolveNativeAuthTrustedProxyIp(env.NATIVE_AUTH_TRUSTED_PROXY_IP),
     sessionCookieName: env.SESSION_COOKIE_NAME ?? 'ft_session',
     sessionTtlSeconds: resolvePort(env.SESSION_TTL_SECONDS, 28800),
     objectStorageProvider: objectStorageProviderValue,

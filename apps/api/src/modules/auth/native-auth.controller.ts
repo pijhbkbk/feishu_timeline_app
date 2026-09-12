@@ -2,6 +2,8 @@ import { Body, Controller, Get, HttpCode, Param, Post, Query, Req, Res } from '@
 import { ConfigService } from '@nestjs/config';
 import type { Response } from 'express';
 
+import { nativeAuthClientAddress } from '../../common/native-auth-client';
+
 import { AuthService } from './auth.service';
 import type { AuthenticatedRequest, AuthenticatedUser } from './auth.types';
 import { CurrentUser } from './current-user.decorator';
@@ -60,10 +62,7 @@ export class NativeAuthController {
   }
 
   private client(request: AuthenticatedRequest) {
-    // Only trust the header from the local reverse proxy; public API sockets must never be exposed.
-    const peer = request.socket.remoteAddress;
-    const isProxy = peer === '127.0.0.1' || peer === '::1' || peer === '::ffff:127.0.0.1';
-    const header = request.headers['x-real-ip'];
-    return isProxy && typeof header === 'string' ? header.slice(0, 128) : (peer || 'unknown');
+    return nativeAuthClientAddress(request.socket.remoteAddress, request.headers['x-real-ip'],
+      this.config.get<string>('nativeAuthTrustedProxyIp'));
   }
 }
