@@ -206,6 +206,9 @@ def recover():
         # Closing the old role comes before container/Docker operations.
         close_old_role();stop_units(OLD)
         systemctl('disable',*OLD)
+        from native_release import recover_pending, ingress_ready
+        recover_pending()
+        ingress_ready()
         no_old_journals();app.validate_files();release_checkout()
         backup.role_change('ALTER ROLE "'+ROLE+'" LOGIN CONNECTION LIMIT 12;')
         systemctl('enable',*APPS,*SOCKETS)
@@ -233,6 +236,7 @@ def recover():
 
 
 def check_health(public=False):
+    identity=app.runtime_identity()
     opener=urllib.request.build_opener(urllib.request.ProxyHandler({}))
     urls=['http://127.0.0.1:3001/api/health','http://127.0.0.1:3000/build-info'] if public else ['http://172.30.44.2:3001/api/health','http://172.30.45.2:3000/build-info']
     for url in urls:
@@ -241,7 +245,8 @@ def check_health(public=False):
             try:
                 with opener.open(url,timeout=4) as response:
                     raw=response.read(16385);require(len(raw)<=16384,'Health response oversized');value=json.loads(raw)
-                    require(value['runtimeCommit']==COMMIT and value['release']==app.RELEASE and value['buildTime']==app.BUILD_TIME,'Runtime identity differs')
+                    require(value['runtimeCommit']==identity['commit'] and value['sourceTree']==identity['tree'] and
+                            value['release']==identity['release'] and value['buildTime']==identity['buildTime'],'Runtime identity differs')
                 break
             except (OSError,ValueError,KeyError,backup.Failure):time.sleep(1)
         else: raise backup.Failure('New runtime health unavailable')
@@ -331,7 +336,11 @@ def main():
     app.state_directory()
     action=sys.argv[1]
     if action=='check-legacy': check_legacy();return
-    if action=='check-committed': committed_value();return
+    if action=='check-committed':
+        committed_value()
+        from native_release import ingress_ready
+        ingress_ready()
+        return
     if action=='precommit-recovery-check':
         with backup.locked(): promote(recovery_check=True)
         raise backup.Failure('Recovery check returned unexpectedly')

@@ -66,12 +66,20 @@ def docker(*args):
     return run(['/usr/bin/docker', *args])
 
 
-def image_identity(component):
-    image = json.loads(docker('image', 'inspect', IMAGES[component]))[0]
+def runtime_identity():
+    # Initial migration/preparation constants above remain historical identities.
+    from native_release import current
+    return current()
+
+
+def image_identity(component, identity=None):
+    identity = runtime_identity() if identity is None else identity
+    images = identity['images']
+    image = json.loads(docker('image', 'inspect', images[component]))[0]
     labels = image['Config']['Labels']
-    require(IMAGES[component] in image['RepoDigests'] and image['Architecture'] == 'amd64' and image['Os'] == 'linux' and
-            labels['org.opencontainers.image.revision'] == COMMIT and labels['com.feishu-timeline.source-tree'] == TREE and
-            labels['org.opencontainers.image.version'] == RELEASE and labels['org.opencontainers.image.created'] == BUILD_TIME,
+    require(images[component] in image['RepoDigests'] and image['Architecture'] == 'amd64' and image['Os'] == 'linux' and
+            labels['org.opencontainers.image.revision'] == identity['commit'] and labels['com.feishu-timeline.source-tree'] == identity['tree'] and
+            labels['org.opencontainers.image.version'] == identity['release'] and labels['org.opencontainers.image.created'] == identity['buildTime'],
             'Application artifact identity differs')
     return image
 
@@ -82,12 +90,14 @@ def name(component):
 
 
 def inspect(component):
+    from native_release import known_images
     names = docker('container', 'ls', '-a', '--filter', 'name=^' + name(component) + '$', '--format', '{{.ID}}').decode().splitlines()
     require(len(names) <= 1, 'Ambiguous application container')
     if not names:
         return None
     item = json.loads(docker('container', 'inspect', name(component)))[0]
-    require(item['Name'] == '/' + name(component) and item['Config']['Image'] == IMAGES['api' if component == 'init' else component] and
+    allowed = {IMAGES['api']} if component == 'init' else known_images(component)
+    require(item['Name'] == '/' + name(component) and item['Config']['Image'] in allowed and
             item['Config'].get('Labels', {}).get('com.timeline.native.service') == component + '-v1', 'Unowned application container')
     return item
 
@@ -106,10 +116,12 @@ def stop(component, remove=False):
         require(inspect(component) is None, 'Application removal unproved')
 
 
-def fixed_environment(credentials, redis_password):
+def fixed_environment(credentials, redis_password, identity=None):
+    identity = runtime_identity() if identity is None else identity
     return {
         'NODE_ENV': 'production', 'DEPLOYMENT_ENV': 'production', 'PORT': '3001',
-        'EXPECTED_SOURCE_COMMIT': COMMIT, 'EXPECTED_SOURCE_TREE': TREE, 'EXPECTED_RELEASE': RELEASE, 'EXPECTED_BUILD_TIME': BUILD_TIME,
+        'EXPECTED_SOURCE_COMMIT': identity['commit'], 'EXPECTED_SOURCE_TREE': identity['tree'],
+        'EXPECTED_RELEASE': identity['release'], 'EXPECTED_BUILD_TIME': identity['buildTime'],
         'FRONTEND_URL': 'https://timeline.all-too-well.com', 'AUTH_MOCK_ENABLED': 'false',
         'NATIVE_AUTH_TRUSTED_PROXY_IP': '172.30.44.1',
         'DATABASE_URL': 'postgresql://' + migration.ROLE + ':' + quote(credentials['password'], safe='') +
@@ -131,31 +143,37 @@ def fixed_environment(credentials, redis_password):
     }
 
 
-def environment_bytes():
+def environment_bytes(identity=None):
     credentials = backup.read_json(migration.RESTORE / 'credentials.json')
     require(set(credentials) == {'database', 'role', 'password'} and credentials['database'] == migration.DATABASE and
             credentials['role'] == migration.ROLE and isinstance(credentials['password'], str) and
             re.fullmatch(r'[A-Za-z0-9_-]{40,100}', credentials['password']), 'Candidate credential identity differs')
     redis.validate_files()
     password = backup.read_json(redis.ROOT / 'redis-credentials.json')['password']
-    return ''.join(key + '=' + value + '\n' for key, value in fixed_environment(credentials, password).items()).encode()
+    return ''.join(key + '=' + value + '\n' for key, value in fixed_environment(credentials, password, identity).items()).encode()
 
 
-def web_environment_bytes():
+def web_environment_bytes(identity=None):
+    identity = runtime_identity() if identity is None else identity
     values = {'NODE_ENV': 'production', 'DEPLOYMENT_ENV': 'production', 'HOSTNAME': '0.0.0.0', 'PORT': '3000',
-              'EXPECTED_SOURCE_COMMIT': COMMIT, 'EXPECTED_SOURCE_TREE': TREE, 'EXPECTED_RELEASE': RELEASE,
-              'EXPECTED_BUILD_TIME': BUILD_TIME, 'V1_FALLBACK_ENABLED': 'false'}
+              'EXPECTED_SOURCE_COMMIT': identity['commit'], 'EXPECTED_SOURCE_TREE': identity['tree'], 'EXPECTED_RELEASE': identity['release'],
+              'EXPECTED_BUILD_TIME': identity['buildTime'], 'V1_FALLBACK_ENABLED': 'false'}
     return ''.join(k + '=' + v + '\n' for k, v in values.items()).encode()
 
 
 def validate_files():
     state_directory()
     database_scope.verify()
-    require(backup.read_file(ROOT / 'api.env', 16384, owner=0) == environment_bytes(), 'Application environment differs')
-    require(backup.read_file(ROOT / 'web.env', 4096, owner=0) == web_environment_bytes(), 'Web environment differs')
+    require(backup.read_file(environment_path('api'), 16384, owner=0) == environment_bytes(), 'Application environment differs')
+    require(backup.read_file(environment_path('web'), 4096, owner=0) == web_environment_bytes(), 'Web environment differs')
     obj = (ROOT / 'objects').lstat()
     require(stat.S_ISDIR(obj.st_mode) and obj.st_uid == 1000 and obj.st_gid == 1000 and stat.S_IMODE(obj.st_mode) == 0o700,
             'Object storage directory differs')
+
+
+def environment_path(component):
+    from native_release import environment_path as selected_path
+    return selected_path(component)
 
 
 def arguments(component):
@@ -166,7 +184,7 @@ def arguments(component):
             '--memory=' + ('1024m' if component == 'api' else '512m'), '--memory-swap=' + ('1024m' if component == 'api' else '512m'),
             '--cpus=' + ('1.0' if api else '0.75'), '--pids-limit=128', '--ulimit=nofile=1024:1024', '--restart=no',
             '--log-opt=max-size=2m', '--log-opt=max-file=3', '--tmpfs=/tmp:rw,noexec,nosuid,size=64m']
-    args += ['--env-file=' + str(ROOT / ('api.env' if api else 'web.env'))]
+    args += ['--env-file=' + str(environment_path('api' if api else 'web'))]
     if component == 'api':
         args += ['--mount=type=bind,src=' + str(ROOT / 'objects') + ',dst=/app/var/object-storage']
     if component == 'init':
@@ -216,7 +234,7 @@ def prepare_start(component):
     image = image_identity(component)
     item = inspect(component)
     if item is None:
-        docker(*arguments(component), IMAGES[component])
+        docker(*arguments(component), runtime_identity()['images'][component])
         item = inspect(component)
     require(item is not None, 'Application creation unproved')
     validate_container(component, item, image)
