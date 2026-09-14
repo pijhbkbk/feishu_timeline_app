@@ -1,4 +1,24 @@
-# 当前交付状态（2026-09-13）
+# 当前交付状态（2026-09-14）
+
+精确网站 `https://timeline.all-too-well.com` 在 `2026-09-14T01:56:49.490849+00:00` 完成程序更新，当前 Web/API、镜像和干净服务器源码副本的运行提交均为 `6c70a897ec7643f4681616d801481765aaa8f7bc`，tree `042c502720078f6f546931bf34c5396cb910c9fd`，release `native-auth-20260914-6c70a897ec76`，buildTime `2026-09-14T01:01:20Z`。运维提交另记为 `3ebcc84097f7a2c78d382f39afce79eff22ce58a`，证据提交不作为程序版本。
+
+本次修复实际 Chrome 登录页报告的 HTML pattern Unicode Sets 语法错误。修复前 `/v` 回归失败，修复后定向8项、完整Web290项/58文件、lint、typecheck、Web构建及最终断网只读镜像的实际HTML约束检查通过；API源码、迁移、依赖未变，177个API编译文件仅构建元数据改变，按依据复用原生认证/权限/迁移既有验证。Docker中冻结依赖安装及两镜像构建通过；本机离线安装命令停在交互提示，不能算通过。正式源码Placeholder0，测试白名单10行。详见 [修复与制品证据](release-6c70-preparation.json)。
+
+服务器实机中断演练通过：在固定更新检查点准确SIGKILL后，监督器自动恢复上一原生版本，原有登录会话随后仍能读取同一内部用户；全部52张表内容、结构和序列不变。正式更新后上述全部数据仍相同，保留37项迁移和原库保护；没有重做管理员初始化、数据库迁移或业务数据恢复。原始原库/原生库备份恢复证据按不变范围保留，未宣称新增全主机断电试验。见 [中断恢复](production-release-recovery-6c70.json) 和 [最终运行证据](production-runtime-6c70.json)。
+
+最终正常TLS的27次网站请求通过：新运行版本原管理员密码登录、项目和用户目录、Secure/HttpOnly/SameSite会话、Origin负向、旧飞书410/mock403、退出后401、新登录HTML及9个静态脚本可读取。所有验证会话均已退出；见 [正式HTTPS验证](production-http-6c70.json)。首次升级观察器在实际成功之后因systemd回收已结束单元的InvocationID而断言失败；保留失败事实，通过固定调用日志、PID1成功结束事件和实际运行端只读复核补齐证据，没有再次更新。不能声称已验证旧会话跨正式升级继续可读；这次只实际验证了跨中断恢复和修正版的新登录。
+
+密码认证、安全边界、发布控制器及安装/演练/更新脚本的最终变更均完成独立审查。最后一份只读运行证据脚本的额外独立复核因两个审查上下文均遇模型容量错误未完成；其实际结果按读取内容记录，不冒充另一份审查或全仓安全清关。此前审批拒绝上传API镜像，在补充同一目标私有仓库、项目所有权及无公开IAM授权证据后获准，未改换公开目的地。
+
+用户解锁后，Chrome曾真实显示原生登录/注册/恢复入口；随后浏览器控制出现连接及屏幕采集故障。一次浏览器输入未被证明准确的登录尝试返回401，而同一私人凭据的独立HTTPS登录均200；没有据此归因密码错误。当前修正版尚缺真实浏览器刷新、登录后路由、Network/console、截图与交互的完整证据，详见 [浏览器实际观察与阻碍](browser-resume-20260914.md)。用户的手动登录结果询问仍待回复；产品负责人未明确接受。
+
+当前准确状态：`CODE_IMPLEMENTED / LOCAL_VERIFIED / PRODUCTION_RUNTIME_SWITCHED / EXACT_DOMAIN_HTTP_PASS / DEPLOYMENT_UNVERIFIED / AWAITING_PRODUCT_OWNER_CONFIRMATION`。staging没有URL/运行版本或用户路径验收；main及tag未改变。原生登录、旧callback停用页、个人账号、工作台/项目、账号目录及别名、组织授权的生产浏览器验收均未完成，不能将整组路由标记PASS。
+
+当前项目计费已启用，关联账号My Billing Account处于开启状态；这是2026-09-14实际Cloud Billing API读数，不提供余额、具体套餐或续费日期结论，见 [计费状态](cloud-billing-20260914.json)。本轮临时Cloud Shell公钥已删除并读回确认，管理连接已关闭，本机与服务器本轮镜像认证已删除；没有新转发Cloud Shell OAuth，也未退出用户原有云登录或删除应用扫描密钥，见 [访问清理](temporary-access-cleanup-20260914.json)。管理员用户名仍为 `lixiaochen`；私人密码文件保存在本机Downloads，未写入证据或对话。
+
+---
+
+# 2026-09-13 切换历史记录
 
 正式域名 `https://timeline.all-too-well.com` 已在 `2026-09-12T17:38:51+00:00` 完成原生账号运行时切换。前后端运行提交 `f2da3629e13b2653aae8879c98992877d5ef4170`，tree `435fd8f66beef2760ce02388b0948cea35cee55e`，release `native-auth-20260912-f2da3629e13b`，buildTime `2026-09-12T14:22:42Z`。
 

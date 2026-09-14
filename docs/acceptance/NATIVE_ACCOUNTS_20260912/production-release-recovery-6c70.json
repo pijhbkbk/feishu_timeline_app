@@ -1,0 +1,21 @@
+{
+  "fixedProgramInterruptionRecovery": "PASS",
+  "signal": "SIGKILL",
+  "checkpointRuntimeCommit": "6c70a897ec7643f4681616d801481765aaa8f7bc",
+  "recoveredRuntimeCommit": "f2da3629e13b2653aae8879c98992877d5ef4170",
+  "automaticRecovery": true,
+  "databaseRestored": false,
+  "initialMigrationReplayed": false,
+  "allDatabaseFingerprintsUnchanged": true,
+  "changedTables": [],
+  "schemaUnchanged": true,
+  "sequenceStateUnchanged": true,
+  "publicUpstreamHealth": "PASS",
+  "fullHostRebootTested": false,
+  "invocationId": "052a043bb6b44429b6861b313695e8d3",
+  "baselineSha256": "89bd3b02302c14ab5cc6e00b3cf82c16d20cc84152425c36deabd03cd2dd085a",
+  "checkpointStateSha256": "d3bfb7496037ad947c68b8ce9fceee1c09e2c0db6aeaaee42e8af07292b113e9",
+  "execStopPostSucceeded": true,
+  "existingOwnerSessionReadAfterAutomaticRecovery": "HTTP_200_SAME_INTERNAL_ID",
+  "sessionReadAfterActualUpgrade": "NOT_EXECUTED_OBSERVER_FAILED_THEN_LOGGED_OUT"
+}

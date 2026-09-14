@@ -7862,3 +7862,18 @@ BLOCKER_REPORT: Public-source push remains rejected by platform automatic review
 - Owner Mac normal-TLS GETs returned correct Web/API versions and actual native login HTML plus current login JS chunk, all200. This is HTTP/static-artifact evidence only; Mac remains locked and no actual browser rendering/network/console/interaction is claimed.
 - Both temporary management SSH masters closed, current Cloud Shell public key removed and API readback confirmed absent. No additional OAuth authorization was granted by this task; permanent app-to-scanner key retained as required runtime dependency. Cleanup evidence saved without secrets.
 - Current state: CODE_IMPLEMENTED / LOCAL_VERIFIED / PRODUCTION_RUNTIME_SWITCHED / EXACT_DOMAIN_HTTP_AND_RESTART_PASS / DEPLOYMENT_UNVERIFIED / AWAITING_PRODUCT_OWNER_CONFIRMATION. Production changed to f2da; staging URL/version/path unexecuted; main and tags unchanged. Pending formal user routes: login/callback/account/dashboard/projects/admin accounts aliases/admin organization. Runtime sourcePlaceholder0;10 explicit test-only matches. Remaining external input: user unlocks Mac for browser acceptance, then product-owner confirmation. No current server fault or repeat permission requirement.
+
+
+### 2026-09-14 — 原生账号登录格式修复及固定程序更新
+
+- 目标仍为精确 `https://timeline.all-too-well.com`；本轮规则未扩大，不重建治理体系或修改全局权限。原工作树未知媒体/既有改动保持，实施工作树 `/private/tmp/timeline-native-auth-20260912`，分支 `codex/native-account-auth`。
+- 实际Chrome发现username pattern的Unicode Sets语法错误，修复提交 `6c70a897ec7643f4681616d801481765aaa8f7bc`；仅该表单及回归变更，API/schema/依赖未变。定向8项、Web290项/58文件、Web lint/typecheck/build、最终镜像断网只读HTML与模式验证通过，生产占位源码0/测试白名单10。API177个编译文件只改变构建身份，未受影响验证明确复用；不把本机离线安装交互提示或旧OAuth测试计PASS。
+- 固定程序升级/回退控制器运维提交 `3ebcc84097f7a2c78d382f39afce79eff22ce58a`，独立99测试及安全审查PASS；安装、演练、更新调用脚本最终独立审查PASS。只推送本人服务器已有私有Git及镜像仓库，目标所有权/私有IAM补证后API上传审批通过。main/tag未改变。
+- 真实SIGKILL演练自动恢复f2da原生版，原登录会话随后me200且同内部ID；全部52表/schema/序列不变。正式6c70更新同样不改数据/37项迁移，不重跑初始化或数据库恢复。程序切换时间 `2026-09-14T01:56:49.490849+00:00`，Web/API/镜像/干净server HEAD均6c70，Nginx仍127.0.0.1:3000/3001；DB为 `feishu_timeline_restore_c38c57da`。旧库保护、扫描器及无关应用读取通过。
+- 更新观察器在实际成功后因systemd GC清空成功单元InvocationID而失败，未生成虚假PASS或重复更新。固定invocation日志及实际运行数据补齐只读证明；这份追加证据脚本的额外复审因两个审查上下文容量错误不可用，未计独立PASS。原控制器安全审查结论不受影响。
+- 最终正常TLS网站27请求PASS：版本一致、原生管理员/项目/目录、Cookie、Origin、旧OAuth410/mock403、退出401、新表单及静态脚本。跨正式升级旧会话可读检查未执行（观察器失败后退出）；不得混为跨中断恢复会话PASS。
+- 本机非系统Python缺CA及首次SSH外层35秒超时分别诊断后恢复：系统CA正常验证；Cloud Shell到VM SSH横幅1.48秒、API可用，外层90秒后预检确认先前指令未达/无状态文件。没有降低TLS、主机密钥或网络安全。
+- 所有临时验证会话退出；本轮Cloud Shell公钥/管理连接和两端专属Docker认证清理确认。用户现有云登录及固定应用扫描连接保留。Cloud Billing当前账号开启、项目计费启用。
+- 精确域名Chrome曾渲染原生登录但随后控制连接故障；修正版多路由截图/Network/console/交互仍待完成。已询问用户手动登录结果，尚未答复/接受。staging URL/commit/path未执行，production实际改变但浏览器路径未验收，main/tag未改变，产品未确认。
+- 证据入口 `docs/acceptance/NATIVE_ACCOUNTS_20260912/README.md` 及 `production-runtime-6c70.json`、`production-http-6c70.json`、`production-release-recovery-6c70.json`、`release-6c70-preparation.json`、`temporary-access-cleanup-20260914.json`；路由矩阵同步更新。
+- 状态：`CODE_IMPLEMENTED / LOCAL_VERIFIED / PRODUCTION_RUNTIME_SWITCHED / EXACT_DOMAIN_HTTP_PASS / DEPLOYMENT_UNVERIFIED / AWAITING_PRODUCT_OWNER_CONFIRMATION`。

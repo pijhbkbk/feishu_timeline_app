@@ -1,0 +1,81 @@
+{
+  "runtimeProof": "PASS",
+  "environment": "production",
+  "url": "https://timeline.all-too-well.com",
+  "hostname": "timeline.all-too-well.com",
+  "runtimeCommit": "6c70a897ec7643f4681616d801481765aaa8f7bc",
+  "runtimeTree": "042c502720078f6f546931bf34c5396cb910c9fd",
+  "release": "native-auth-20260914-6c70a897ec76",
+  "buildTime": "2026-09-14T01:01:20Z",
+  "deploymentTime": "2026-09-14T01:56:49.490849+00:00",
+  "updateInvocationId": "eda408d91239469294d684e40f758b15",
+  "journalControllerCompletion": true,
+  "journalSupervisorSuccessfulExit": true,
+  "systemdGarbageCollectedInactiveUnitProperties": true,
+  "updateRepeated": false,
+  "runtimeCheckout": "/home/lixiaochen/timeline-native-delivery/releases/6c70a897ec7643f4681616d801481765aaa8f7bc",
+  "targetCheckoutHead": "6c70a897ec7643f4681616d801481765aaa8f7bc",
+  "database": "feishu_timeline_restore_c38c57da",
+  "migrationCount": 37,
+  "all52TableContentsSchemaAndSequencesUnchanged": true,
+  "databaseRestored": false,
+  "initialMigrationReplayed": false,
+  "oldDatabaseUnchangedAndRoleClosed": true,
+  "images": {
+    "api": {
+      "repositoryDigest": "us-west1-docker.pkg.dev/axial-acrobat-492709-r7/feishu-timeline/api@sha256:196a3631af5fcf76bffbfeb0651c290cfeeb7fd2adedad927e1bdf3c44556a22",
+      "imageId": "sha256:196a3631af5fcf76bffbfeb0651c290cfeeb7fd2adedad927e1bdf3c44556a22",
+      "runtimeCommit": "6c70a897ec7643f4681616d801481765aaa8f7bc",
+      "running": true
+    },
+    "web": {
+      "repositoryDigest": "us-west1-docker.pkg.dev/axial-acrobat-492709-r7/feishu-timeline/web@sha256:502308afb6c5a9fadc2f603fc0e99319a60ecf6108f56633ddc8b80ca050c5bc",
+      "imageId": "sha256:502308afb6c5a9fadc2f603fc0e99319a60ecf6108f56633ddc8b80ca050c5bc",
+      "runtimeCommit": "6c70a897ec7643f4681616d801481765aaa8f7bc",
+      "running": true
+    }
+  },
+  "units": {
+    "feishu-timeline-api.service": {
+      "active": "inactive",
+      "enabled": "disabled"
+    },
+    "feishu-timeline-web.service": {
+      "active": "inactive",
+      "enabled": "disabled"
+    },
+    "timeline-native-api.service": {
+      "active": "active",
+      "enabled": "enabled"
+    },
+    "timeline-native-web.service": {
+      "active": "active",
+      "enabled": "enabled"
+    },
+    "timeline-native-api-ingress.socket": {
+      "active": "active",
+      "enabled": "enabled"
+    },
+    "timeline-native-web-ingress.socket": {
+      "active": "active",
+      "enabled": "enabled"
+    },
+    "timeline-native-api-ingress.service": {
+      "active": "active",
+      "enabled": "static"
+    },
+    "timeline-native-web-ingress.service": {
+      "active": "active",
+      "enabled": "static"
+    }
+  },
+  "nginxUpstreams": {
+    "web": "127.0.0.1:3000",
+    "api": "127.0.0.1:3001"
+  },
+  "scannerReachable": true,
+  "scannerVersion": "ClamAV 1.4.6/28122/Sun Sep 13 06:26:25 2026",
+  "unrelatedWorkloadHealthy": true,
+  "exactDomainBrowserAcceptance": "PENDING_BROWSER_CONNECTION",
+  "productOwnerAcceptance": "AWAITING_PRODUCT_OWNER_CONFIRMATION"
+}

@@ -1,5 +1,28 @@
 # Route Acceptance Matrix
 
+## 当前状态：2026-09-14 原生账号修正版
+
+生产精确域名 `https://timeline.all-too-well.com`，Web/API/server checkout均为 `6c70a897ec7643f4681616d801481765aaa8f7bc`。程序切换时间 `2026-09-14T01:56:49.490849+00:00`；身份、镜像和数据库见 [实际运行证明](NATIVE_ACCOUNTS_20260912/production-runtime-6c70.json)。本轮27次HTTPS验证通过，但当前浏览器控制连接不可用，不能替代交互验收。用户解锁后的旧版Chrome原生表单观察及后续连接失败见 [浏览器记录](NATIVE_ACCOUNTS_20260912/browser-resume-20260914.md)。新版本1440/1024/390截图、刷新持久性、浏览器Network/console和登录后操作仍待取得；未获得产品负责人确认。
+
+| 精确URL | Route component | API endpoints | Required role | Expected data/action | 新版证据/截图 | 浏览器结论 |
+|---|---|---|---|---|---|---|
+| https://timeline.all-too-well.com/login | LoginPage | POST auth/login、register、recover；GET auth/session | public | 原生登录/注册/恢复；格式约束兼容Unicode Sets | 新版HTML模式与9静态脚本200；原管理员登录HTTP200；无新版浏览器截图 | PENDING_BROWSER_CONNECTION |
+| https://timeline.all-too-well.com/login/callback | LoginCallbackClient | 无第三方身份交换 | public | 旧登录退役，引导返回原生登录 | 旧OAuth发起410、无Location；页面未复验 | PENDING_BROWSER_CONNECTION |
+| https://timeline.all-too-well.com/account | AccountPage | session、auth/job、auth/password | native authenticated | 岗位意向、改密、权限状态 | 既有本机/真实PG验证按未变代码保留；新版生产操作未执行 | PENDING_BROWSER_CONNECTION |
+| https://timeline.all-too-well.com/dashboard | V2Shell / Dashboard | session、dashboard | 授权角色 | 原管理员进入真实工作台 | 原生身份与会话HTTPS200；新版浏览器路径未执行 | PENDING_BROWSER_CONNECTION |
+| https://timeline.all-too-well.com/projects | V2Shell / Projects | session、projects | project.read及数据范围 | 读取既有项目与历史 | 正式项目读取200；更新前后全部业务表不变；新版截图未取得 | PENDING_BROWSER_CONNECTION |
+| https://timeline.all-too-well.com/admin/accounts | AccountsPage | GET auth/accounts；POST recovery | isSystemAdmin | 账号目录、凭据状态及恢复 | 正式目录200、既有管理员可登录匹配；页面操作未执行 | PENDING_BROWSER_CONNECTION |
+| https://timeline.all-too-well.com/v2/admin/accounts | AccountsPage alias | 同正式目录 | isSystemAdmin | 显式别名一致 | 源码/构建；生产别名未操作 | PENDING_BROWSER_CONNECTION |
+| https://timeline.all-too-well.com/admin/organization | AdminControlCenter | admin/organization及预览/命令 | system.manage及受限管理员动作 | 保留旧ID，正式部门/岗位/项目授权 | 新身份权限负向的原验证按依据保留；新版配置操作未执行 | PENDING_BROWSER_CONNECTION |
+| https://timeline.all-too-well.com/build-info | Web metadata | 同URL | public | 精确6c70 SHA/tree/release/time | 新版HTTPS200，完整身份匹配；不是产品验收 | HTTP_PASS |
+| https://timeline.all-too-well.com/api/health | HealthController | 同URL | public | 与Web及server版本一致 | 新版HTTPS200，完整身份匹配；不是产品验收 | HTTP_PASS |
+
+正式源码Placeholder0，测试白名单10。staging没有URL/版本/用户路径验收；main/tag未改变。整组生产页面保持 `DEPLOYMENT_UNVERIFIED / AWAITING_PRODUCT_OWNER_CONFIRMATION`。以下历史记录保留其时间与环境，不作为本轮浏览器PASS。
+
+---
+
+## 2026-08-09 及后续历史记录
+
 更新时间：2026-08-09
 
 生产环境：`https://timeline.all-too-well.com`
