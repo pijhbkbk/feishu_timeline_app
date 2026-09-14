@@ -7877,3 +7877,13 @@ BLOCKER_REPORT: Public-source push remains rejected by platform automatic review
 - 精确域名Chrome曾渲染原生登录但随后控制连接故障；修正版多路由截图/Network/console/交互仍待完成。已询问用户手动登录结果，尚未答复/接受。staging URL/commit/path未执行，production实际改变但浏览器路径未验收，main/tag未改变，产品未确认。
 - 证据入口 `docs/acceptance/NATIVE_ACCOUNTS_20260912/README.md` 及 `production-runtime-6c70.json`、`production-http-6c70.json`、`production-release-recovery-6c70.json`、`release-6c70-preparation.json`、`temporary-access-cleanup-20260914.json`；路由矩阵同步更新。
 - 状态：`CODE_IMPLEMENTED / LOCAL_VERIFIED / PRODUCTION_RUNTIME_SWITCHED / EXACT_DOMAIN_HTTP_PASS / DEPLOYMENT_UNVERIFIED / AWAITING_PRODUCT_OWNER_CONFIRMATION`。
+
+
+### 2026-09-14 10:56 — 用户确认原生账号进入正式工作台
+
+- 用户回复“可以进入工作台”并附Safari截图；接受范围仅原生账号登录→工作台，记为 `USER_CONFIRMED_NATIVE_LOGIN_DASHBOARD`，不替代全部管理/业务验收。
+- 同一浏览器会话随后读取原有项目（1项、10/18）、个人账号、原生账号目录及用户名搜索、组织人员页面；版本页正文确认运行6c70。没有改密码、创建用户/项目、配置权限或退出用户会话。
+- 新观察：无当前待办时工作台使用“当前还没有项目”文案，与原有项目存在不一致；源码canCreateProject分支并未检查项目总数。记录开放UI问题，本次未修改代码或部署。用户提供的图片在对话可见，但指定Desktop源文件未找到，不声称本地PNG副本/摘要已保存。
+- 本次代码无变更，本地测试未重跑（既有结果保留）；staging URL/runtime/path均未执行；production本次未改变，运行 `6c70a897ec7643f4681616d801481765aaa8f7bc`；用户确认登录路径，其他读取为实际浏览器观察；main/tag未变。
+- 未完成：工作台空状态提示、注册/恢复/改密/授权写入浏览器验收、完整Network/console和响应式矩阵、callback/别名；正式Placeholder维持上次源码扫描0，本次未改源码。精确状态 `PRODUCTION_BROWSER_PARTIAL / USER_CONFIRMED_NATIVE_LOGIN_DASHBOARD`；整个产品尚未获接受。
+- 证据：`docs/acceptance/NATIVE_ACCOUNTS_20260912/owner-browser-confirmation-20260914.json`；README/路由矩阵同步更新。临时云访问仍保持已清理。

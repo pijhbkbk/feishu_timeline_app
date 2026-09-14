@@ -1,6 +1,13 @@
 # Route Acceptance Matrix
 
-## 当前状态：2026-09-14 原生账号修正版
+## 最新用户确认（2026-09-14 10:56）
+
+用户已确认正式原生账号可以登录并进入工作台，附Safari截图。限定范围 `USER_CONFIRMED_NATIVE_LOGIN_DASHBOARD`。随后浏览器实际读取 `/projects`（原项目10/18）、`/account`、`/admin/accounts`（用户名搜索命中）、组织人员页面；`/build-info` 正文显示6c70完整版本。上述路由更新为 `BROWSER_READ_OBSERVED`，登录至工作台更新为 `USER_CONFIRMED`，不代表写操作/全路由验收。详见 [本次证据](NATIVE_ACCOUNTS_20260912/owner-browser-confirmation-20260914.json)。
+
+工作台“当前还没有项目”与项目列表一条项目不一致，保留开放UI问题。注册/恢复/改密/正式授权写入、完整Network/console和响应式矩阵、别名与callback仍待验收。以下之前的连接失败记录保留历史范围；本次未改变运行程序、数据库、main或tag。
+
+
+## 10:56用户确认之前的状态：2026-09-14 原生账号修正版
 
 生产精确域名 `https://timeline.all-too-well.com`，Web/API/server checkout均为 `6c70a897ec7643f4681616d801481765aaa8f7bc`。程序切换时间 `2026-09-14T01:56:49.490849+00:00`；身份、镜像和数据库见 [实际运行证明](NATIVE_ACCOUNTS_20260912/production-runtime-6c70.json)。本轮27次HTTPS验证通过，但当前浏览器控制连接不可用，不能替代交互验收。用户解锁后的旧版Chrome原生表单观察及后续连接失败见 [浏览器记录](NATIVE_ACCOUNTS_20260912/browser-resume-20260914.md)。新版本1440/1024/390截图、刷新持久性、浏览器Network/console和登录后操作仍待取得；未获得产品负责人确认。
 
