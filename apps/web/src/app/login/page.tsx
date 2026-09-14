@@ -52,7 +52,7 @@ export default function LoginPage() {
     {error && <FeedbackBanner variant="error" title="操作未成功" message={error} />}
     {notice && <FeedbackBanner variant="success" title="操作成功" message={notice} />}
     <form key={mode} onSubmit={event => void submit(event)} className="native-auth-form">
-      {mode !== 'recover' && <label>用户名<input name="username" autoComplete="username" required minLength={3} maxLength={64} pattern="[A-Za-z0-9][A-Za-z0-9._-]{2,63}" disabled={busy} /><span className="muted">3–64 位字母、数字、点、下划线或连字符</span></label>}
+      {mode !== 'recover' && <label>用户名<input name="username" autoComplete="username" required minLength={3} maxLength={64} pattern={'[A-Za-z0-9][A-Za-z0-9._\\-]{2,63}'} disabled={busy} /><span className="muted">3–64 位字母、数字、点、下划线或连字符</span></label>}
       {mode === 'register' && <label>姓名<input name="name" autoComplete="name" required maxLength={80} disabled={busy} /></label>}
       {mode === 'recover' && <label>一次性恢复码<input name="token" autoComplete="off" required minLength={43} maxLength={43} disabled={busy} /></label>}
       <label>{mode === 'recover' ? '新密码' : '密码'}<input name="password" type="password" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} required minLength={mode === 'login' ? 1 : 15} maxLength={256} disabled={busy} /></label>
