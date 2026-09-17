@@ -10,6 +10,7 @@ export type BackgroundWriter = {
 export async function drainWriters(server: Server, writers: BackgroundWriter[], timeoutMs = 45000) {
   for (const writer of writers) writer.beginShutdown();
   let timer: ReturnType<typeof setTimeout> | undefined;
+  let idleConnections: ReturnType<typeof setInterval> | undefined;
   const timeout = new Promise<never>((_resolve, reject) => {
     timer = setTimeout(() => reject(new Error('Application write drain timed out')), timeoutMs);
   });
@@ -17,11 +18,14 @@ export async function drainWriters(server: Server, writers: BackgroundWriter[], 
   try {
     await Promise.race([
       (async () => {
+        // Accepted requests can become idle after close()'s initial idle sweep.
+        // Close only those completed keep-alive connections, never active writes.
+        idleConnections = setInterval(() => server.closeIdleConnections(), 25);
         await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
         while (!cancelled && writers.some(writer => !writer.isShutdownIdle())) {
           await new Promise(resolve => setTimeout(resolve, 10));
         }
       })(), timeout,
     ]);
-  } finally { cancelled = true; clearTimeout(timer); }
+  } finally { cancelled = true; clearTimeout(timer); clearInterval(idleConnections); }
 }
