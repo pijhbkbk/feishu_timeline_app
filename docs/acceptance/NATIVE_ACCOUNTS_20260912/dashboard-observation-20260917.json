@@ -1,0 +1,50 @@
+{
+  "checkedAt": "2026-09-17T06:13:52.525034+00:00",
+  "environment": "production",
+  "url": "https://timeline.all-too-well.com",
+  "runtimeCommit": "6c70a897ec7643f4681616d801481765aaa8f7bc",
+  "release": "native-auth-20260914-6c70a897ec76",
+  "sameActorAcrossLoginDashboardProjects": true,
+  "nativeIdentity": "local",
+  "dashboardHasCurrentTask": false,
+  "dashboardVisibleProjects": 1,
+  "projectListTotal": 1,
+  "projectListReturnedCount": 1,
+  "pageSize": 1,
+  "requestScope": "Existing owner read-only, own verification session",
+  "productionDataOrPermissionsChanged": false,
+  "browserObservation": "Safari redirects to native login; previous owner confirmation retained",
+  "verificationSessionLoggedOut": true,
+  "requests": [
+    {
+      "method": "GET",
+      "path": "/api/health",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/build-info",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/login",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/dashboard",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/projects?page=1&pageSize=1",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/logout",
+      "status": 200
+    }
+  ]
+}
