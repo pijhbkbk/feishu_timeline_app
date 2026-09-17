@@ -86,3 +86,21 @@
 独立静态复核确认：仅导出 `compareFingerprints` 供回归调用，并在既有 schema 相等/历史例外之外增加源 `3f933e582eab518c24e308cb9991e1f5fab16c310eee10f041e38746cb76b4c0` → 目标 `175721348d4d09345618dcec49699b70d2cc13ee7298e3c78bfd6ebdc9fd52c6` 的组合。方向、完整 hash 及范围与获批材料一致。表和 sequence 的严格相等检查仍先执行；未知 schema、反向组合、manifest 身份、角色、事务、对象摘要、会话及签名门禁没有被放宽。回归代码覆盖该匹配、反向、改变源/目标、表内容摘要、额外表及 sequence 变化拒绝。限定静态范围未见新增阻断。
 
 作者报告新增回归先失败再修复，最终 5/5；主任务报告集成 `f23b29b` 后独立实际重跑 5/5。本审查者没有执行这些测试、数据库恢复或此前被拦截的实验，以上执行来源明确分开。原失败恢复保留为 FAIL，不追认通过；之后全新目标的预演和最终候选恢复须另取实际证据。
+
+
+## 最终冻结制品只读复核
+
+本节检查实际文件字节与保存的非敏感镜像回读，结论为 `LOCAL_ARTIFACT_INTEGRITY_VERIFIED`。runtime 为 `c5aed415cd17e6e8a21b422a4c5c92b4b924e091`，tree 为 `830e562f5ec56e99d7fc0b04432fc056dd772254`，release 为 `native-portable-20260917-c5aed415cd17`，buildTime 为 `2026-09-17T08:04:51Z`。本节证据另行提交，不包含在该冻结 runtime 中。
+
+实际读取 `/private/tmp/timeline-portable-delivery-c5aed415cd17/software`，确认目录只有 manifest 和其列出的七个文件，七项 SHA-256 全部一致。冻结 detached clone 和主任务 clone 均为上述 commit/tree、工作树干净。`source.tar` 与该 clean clone 的 `git archive` 输出字节 SHA 完全相同。精确摘要及方法边界见相邻 `final-artifact-review-c5aed41.json`。
+
+`images.tar` 共 77 个归档条目，72 个内容 blob 全部重新计算 SHA-256 与名称一致；从顶层六个镜像递归检查 OCI index、manifest、config、layer 和 attestation 描述符，大小均匹配，引用的 72 个 blob 全部存在，无缺失。兼容 Docker 清单包含相同六个可执行 config/layer 集合，均为 Linux/amd64。API/Web/Ops 包内 config 的 commit、tree、release、buildTime 标签与软件清单和构建记录完全匹配；基础设施三个镜像身份也一致。此处没有解包执行、加载或启动镜像，也没有重新计算 layer 的解压后 diff_id，因此仅报告实际做过的压缩字节、引用闭合和身份检查。
+
+补充 `corresponding-source` 六个文件的实际摘要全部匹配，其 ClamAV 官方源码及项目 patch 摘要与扫描镜像的标签一致。补充清单保留的 `sourceCommit=13131ee...` 是原有材料的历史来源标记，不能当作当前应用源码；当前应用源码由上文 c5aed41 的 source.tar 证明。原有验证文档保留其自身历史边界，本次没有重做 ClamAV 构建或历史 suite。
+
+主任务随后提供实际 push 回读 `/private/tmp/timeline-pushed-images-c5aed415cd17.json`。本审查者核对 API/Web 的完整 registry repo@digest、tag 和本地制品对应 digest 一致，记录如下：
+
+- API：`us-west1-docker.pkg.dev/axial-acrobat-492709-r7/feishu-timeline/api@sha256:40544930b329416679f24ebc6dd2354e24beaec9d8490b9edbdbda5e0f71d192`。
+- Web：`us-west1-docker.pkg.dev/axial-acrobat-492709-r7/feishu-timeline/web@sha256:774419239cea09f8d341fd29ed34361b47012c720bafbe7a3a5ef0d60ffa187b`。
+
+上述 registry 操作由主任务执行；本审查者只比较其保存的实际回读，未用本地 ImageID 冒充独立 registry 查询，也未声称 Ops 已上传。离线 B 首次证书路径失败、后续安装/恢复、A3 业务路径以及最终目标域名发布均不在本次文件审查范围，须分别保存真实结果。本审查没有访问生产、改变 main/tag 或取得产品负责人确认；不将此文件完整性结论称为部署或产品验收完成。
