@@ -44,6 +44,7 @@ export function validateManifest(m) {
 }
 function software(dir,load=false) {
   const m=validateManifest(json(read(path.join(dir,'manifest.json'),1024*1024)));
+  need(m.files&&Object.keys(m.files).sort().join()===['portable.mjs','data.mjs','proxy.mjs','THIRD_PARTY_NOTICES','source.tar','images.tar'].sort().join(),'Incomplete software file manifest');
   for(const [name,digest]of Object.entries(m.files)) {
     need(/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(name)&&/^[a-f0-9]{64}$/.test(digest),'Invalid software file');
     need(shaFile(path.join(dir,name))===digest,'Software checksum differs: '+name);
@@ -240,9 +241,9 @@ function initialize(s,passwordFile,username,name) {
 function importSignatures(s,source) {
   const names=fs.readdirSync(source).sort();need(JSON.stringify(names)===JSON.stringify(['bytecode.cvd','daily.cvd','main.cvd']),'Import exactly the three official signed CVD databases');
   const oldFile=path.join(s.root,'signature-receipt.json');const old=fs.existsSync(oldFile)?json(read(oldFile,16384,true)):undefined;
-  const dir=path.join(s.root,'signatures');const records=[];const candidates=[];
+  const dir=path.join(s.root,'signatures');const records=[];const candidates=[];let signatureBytes=0;
   for(const name of names) {
-    const raw=read(path.join(source,name),512*1024**2);need(raw.length>=512,'Truncated signature');const fields=raw.subarray(0,512).toString('ascii').trim().split(':');
+    const raw=read(path.join(source,name),512*1024**2);need(raw.length>=512&&(signatureBytes+=raw.length)<=1024**3,'Signature set outside size bounds');const fields=raw.subarray(0,512).toString('ascii').trim().split(':');
     need(fields.length===9&&fields[0]==='ClamAV-VDB'&&/^\d+$/.test(fields[2])&&/^\d+$/.test(fields[8]),'Malformed signed header');
     const version=Number(fields[2]);const signedAt=Number(fields[8]);need(!old||version>=old.files.find(x=>x.name===name).version,'Signature downgrade refused');
     if(name==='daily.cvd')need(Date.now()/1000-signedAt>=0&&Date.now()/1000-signedAt<48*3600,'Daily signatures must be younger than 48 hours');
@@ -259,6 +260,9 @@ async function main(args) {
   if(op==='pack'&&a.length===2)return pack(path.resolve(a[0]),path.resolve(a[1]));
   if(op==='init'&&a.length===5)return init(path.resolve(a[0]),path.resolve(a[1]),a[2],path.resolve(a[3]),path.resolve(a[4]));
   need(a[0],'Missing instance directory');const s=instance(path.resolve(a[0]));
+  const lock=path.join(s.root,'operation.lock');const fd=fs.openSync(lock,'wx',0o600);
+  try {
+  fs.writeFileSync(fd,JSON.stringify({pid:process.pid,operation:op}));
   // Missing images are a hard error. Runtime never pulls, installs npm, or contacts cloud identity.
   for(const image of Object.values(s.m.images))inspect(image);
   if(op==='install'&&a.length===1)return install(s);
@@ -270,5 +274,6 @@ async function main(args) {
   if(op==='restore'&&a.length===3)return restore(s,path.resolve(a[1]),path.resolve(a[2]));
   if(op==='import-signatures'&&a.length===2)return importSignatures(s,path.resolve(a[1]));
   throw new Error('Unsupported operation/arguments. Commands: pack, init, install, initialize, start, stop, status, backup, restore, import-signatures.');
+  } finally {fs.closeSync(fd);fs.unlinkSync(lock);}
 }
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url))main(process.argv.slice(2)).catch(error=>{console.error(error.message);process.exitCode=1;});
