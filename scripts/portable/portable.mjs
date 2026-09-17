@@ -68,6 +68,7 @@ function pack(specFile,out) {
   const repo=path.resolve(HERE,'../..');
   need(command('git',['-C',repo,'status','--porcelain','--untracked-files=no']).length===0,'Package only committed clean source');
   need(command('git',['-C',repo,'rev-parse','HEAD']).toString().trim()===spec.commit,'Package source HEAD and images differ');
+  need(command('git',['-C',repo,'rev-parse',spec.commit+'^{tree}']).toString().trim()===spec.tree,'Package source tree and image metadata differ');
   privateDir(out);
   for(const name of ['portable.mjs','data.mjs','proxy.mjs','tunnel.mjs'])write(path.join(out,name),read(path.join(HERE,name)),0o644);
   write(path.join(out,'THIRD_PARTY_NOTICES'),read(path.join(repo,'THIRD_PARTY_NOTICES')),0o644);
