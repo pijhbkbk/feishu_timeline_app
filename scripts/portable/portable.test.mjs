@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import {test} from 'node:test';
-import {validateManifest,decryptBackup} from './portable.mjs';
+import {validateManifest,decryptBackup,validateSignatureFloor,mergeSignatureFloors} from './portable.mjs';
 const m={version:1,commit:'a'.repeat(40),tree:'b'.repeat(40),architecture:'amd64',postgresMajor:14,release:'portable-test',buildTime:'2026-09-17T00:00:00Z',images:Object.fromEntries(['api','web','ops','postgres','redis','scanner'].map(k=>[k,'sha256:'+'c'.repeat(64)]))};
 test('manifest rejects mutable or incomplete images and database major changes',()=>{
   assert.equal(validateManifest(m),m);
@@ -17,4 +17,12 @@ test('encrypted restoration rejects wrong keys, tampering and truncation before 
   assert.throws(()=>decryptBackup(raw,crypto.randomBytes(32)));
   const corrupt=Buffer.from(raw);corrupt[corrupt.length-1]^=1;assert.throws(()=>decryptBackup(corrupt,key));
   assert.throws(()=>decryptBackup(raw.subarray(0,raw.length-1),key));
+});
+test('signature restoration carries exact version floors without lowering existing minima',()=>{
+  const source={'bytecode.cvd':339,'daily.cvd':28125,'main.cvd':63};
+  const local={'bytecode.cvd':338,'daily.cvd':28126,'main.cvd':62};
+  assert.deepEqual(mergeSignatureFloors(source,local),{'bytecode.cvd':339,'daily.cvd':28126,'main.cvd':63});
+  assert.deepEqual(mergeSignatureFloors(),{'bytecode.cvd':0,'daily.cvd':0,'main.cvd':0});
+  for(const value of [undefined,null,[],{}, {...source,'daily.cvd':-1},{...source,'daily.cvd':1.5},{...source,'daily.cvd':Number.MAX_SAFE_INTEGER+1},{...source,'daily.cvd':'28125'},{...source,other:1}])assert.throws(()=>validateSignatureFloor(value));
+  const {['daily.cvd']:_,...missing}=source;assert.throws(()=>validateSignatureFloor(missing));
 });

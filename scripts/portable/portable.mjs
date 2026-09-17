@@ -11,6 +11,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const MAX = 640 * 1024 ** 2;
 const ID = /^sha256:[a-f0-9]{64}$/;
 const NAMES = ['api','web','ops','postgres','redis','scanner'];
+const SIGNATURE_NAMES = ['bytecode.cvd','daily.cvd','main.cvd'];
 const hash = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
 function need(ok, message) { if (!ok) throw new Error(message); }
 function command(bin,args,input,limit=MAX) {
@@ -32,6 +33,31 @@ function rename(from,to) {fs.renameSync(from,to);syncDir(path.dirname(to));}
 function writeJson(file,value) {write(file,JSON.stringify(value,null,2)+'\n');}
 function privateDir(dir) {fs.mkdirSync(dir,{mode:0o700});}
 function assertDir(dir) {const s=fs.lstatSync(dir);need(s.isDirectory()&&!s.isSymbolicLink()&&s.uid===process.getuid()&&(s.mode&0o077)===0,'Private owned directory required');}
+export function validateSignatureFloor(value) {
+  need(value&&typeof value==='object'&&!Array.isArray(value)&&Object.keys(value).sort().join()===SIGNATURE_NAMES.join(),'Signature floor must contain exactly the three official databases');
+  need(Object.values(value).every(version=>Number.isSafeInteger(version)&&version>=0),'Signature floor versions must be nonnegative safe integers');
+  return value;
+}
+export function mergeSignatureFloors(...values) {
+  const result=Object.fromEntries(SIGNATURE_NAMES.map(name=>[name,0]));
+  for(const value of values){validateSignatureFloor(value);for(const name of SIGNATURE_NAMES)result[name]=Math.max(result[name],value[name]);}
+  return result;
+}
+function signatureFloor(s) {
+  const values=[];const floorFile=path.join(s.root,'signature-floor.json');
+  if(fs.existsSync(floorFile))values.push(validateSignatureFloor(json(read(floorFile,16384,true))));
+  const receiptFile=path.join(s.root,'signature-receipt.json');
+  if(fs.existsSync(receiptFile)){
+    const receipt=json(read(receiptFile,16384,true));
+    need(Array.isArray(receipt.files)&&receipt.files.length===3&&receipt.files.map(item=>item.name).sort().join()===SIGNATURE_NAMES.join(),'Signature receipt versions are incomplete');
+    values.push(validateSignatureFloor(Object.fromEntries(receipt.files.map(item=>[item.name,item.version]))));
+  }
+  return mergeSignatureFloors(...values);
+}
+function persistSignatureFloor(s,value) {
+  validateSignatureFloor(value);const dest=path.join(s.root,'signature-floor.json');const temp=dest+'.'+crypto.randomBytes(6).toString('hex');
+  writeJson(temp,value);rename(temp,dest);
+}
 function inspect(image) {need(ID.test(image),'Image must be full immutable local ID'); return json(docker(['image','inspect',image]))[0];}
 function shaFile(file) {
   const h=crypto.createHash('sha256'); const fd=fs.openSync(file,fs.constants.O_RDONLY|fs.constants.O_NOFOLLOW); const b=Buffer.alloc(1024*1024);
@@ -228,7 +254,7 @@ function backup(s,out,keyFile) {
     need(dump.length<=64*1024**2&&dump.subarray(0,5).toString()==='PGDMP','Invalid database dump');
     const objects=helper(s,'objects-read');checkAttachmentObjects(s,objects,true);const queue=helper(s,'queue-read');
     need(JSON.stringify(before)===JSON.stringify(fingerprint(s,true)),'Database changed while frozen');
-    const body=Buffer.from(JSON.stringify({version:1,softwareSha256:hash(JSON.stringify(s.m)),commit:s.m.commit,postgresMajor:14,createdAt:new Date().toISOString(),database:{bytes:dump.toString('base64'),sha256:hash(dump)},fingerprints:before,objects,queue}));
+    const body=Buffer.from(JSON.stringify({version:2,softwareSha256:hash(JSON.stringify(s.m)),commit:s.m.commit,postgresMajor:14,createdAt:new Date().toISOString(),signatureFloor:signatureFloor(s),database:{bytes:dump.toString('base64'),sha256:hash(dump)},fingerprints:before,objects,queue}));
     need(body.length<=MAX,'Backup exceeds bound');const key=read(keyFile,32,true);need(key.length===32,'Backup key must be 32 random bytes');
     const nonce=crypto.randomBytes(12);const cipher=crypto.createCipheriv('aes-256-gcm',key,nonce);cipher.setAAD(Buffer.from('timeline-portable-backup-v1'));
     const encrypted=Buffer.concat([cipher.update(body),cipher.final()]);write(out,Buffer.concat([Buffer.from('TLPBK001'),nonce,cipher.getAuthTag(),encrypted]));
@@ -242,10 +268,14 @@ export function decryptBackup(raw,key) {
 }
 function restore(s,file,keyFile) {
   assertStopped(s);const b=decryptBackup(read(file,MAX+36,true),read(keyFile,32,true));
-  need(b.version===1&&b.commit===s.m.commit&&b.postgresMajor===14&&b.softwareSha256===hash(JSON.stringify(s.m)),'Restore requires the exact same software manifest, images and PG major');
+  need(b.version===2&&b.commit===s.m.commit&&b.postgresMajor===14&&b.softwareSha256===hash(JSON.stringify(s.m)),'Restore requires backup version 2, the exact same software manifest, images and PG major');
+  const minimum=mergeSignatureFloors(signatureFloor(s),validateSignatureFloor(b.signatureFloor));
   const dump=Buffer.from(b.database.bytes,'base64');need(dump.length<=64*1024**2&&hash(dump)===b.database.sha256&&dump.subarray(0,5).toString()==='PGDMP','Database checksum differs');
   storage(s);newDatabase(s);
   try {
+    // Restoring a floor never installs signatures or invents a signed timestamp.
+    // Stop the scanner before raising the durable minimum, even on later failure.
+    compose(s,['stop','--timeout','30','scanner']);persistSignatureFloor(s,minimum);
     appPostgres(s,'pg_restore',['--exit-on-error','--single-transaction','--no-owner','--no-privileges','--dbname=timeline'],dump);
     compareFingerprints(b.fingerprints,fingerprint(s));
     checkAttachmentObjects(s,b.objects);
@@ -281,13 +311,13 @@ function initialize(s,passwordFile,username,name) {
 }
 function importSignatures(s,source) {
   const names=fs.readdirSync(source).sort();need(JSON.stringify(names)===JSON.stringify(['bytecode.cvd','daily.cvd','main.cvd']),'Import exactly the three official signed CVD databases');
-  const oldFile=path.join(s.root,'signature-receipt.json');const old=fs.existsSync(oldFile)?json(read(oldFile,16384,true)):undefined;
+  const oldFile=path.join(s.root,'signature-receipt.json');const minimum=signatureFloor(s);
   const generation='signatures-'+crypto.randomBytes(12).toString('hex');const dir=path.join(s.root,generation);privateDir(dir);fs.chmodSync(dir,0o755);
   const records=[];let signatureBytes=0;
   for(const name of names) {
     const raw=read(path.join(source,name),512*1024**2);need(raw.length>=512&&(signatureBytes+=raw.length)<=1024**3,'Signature set outside size bounds');const fields=raw.subarray(0,512).toString('ascii').trim().split(':');
     need(fields.length===9&&fields[0]==='ClamAV-VDB'&&/^\d+$/.test(fields[2])&&/^\d+$/.test(fields[8]),'Malformed signed header');
-    const version=Number(fields[2]);const signedAt=Number(fields[8]);need(!old||version>=old.files.find(x=>x.name===name).version,'Signature downgrade refused');
+    const version=Number(fields[2]);const signedAt=Number(fields[8]);need(Number.isSafeInteger(version)&&version>=minimum[name],'Signature downgrade refused');
     if(name==='daily.cvd')need(Date.now()/1000-signedAt>=0&&Date.now()/1000-signedAt<48*3600,'Daily signatures must be younger than 48 hours');
     // Freeze the exact cached bytes first. Never verify the mutable input path.
     const frozen=path.join(dir,name);write(frozen,raw,0o444);
@@ -295,6 +325,7 @@ function importSignatures(s,source) {
     need(output.includes('Verification OK')&&shaFile(frozen)===hash(raw),'Official signature verification failed');records.push({name,version,signedAt,sha256:hash(raw),size:raw.length});
   }
   compose(s,['stop','--timeout','30','scanner']);
+  persistSignatureFloor(s,mergeSignatureFloors(minimum,Object.fromEntries(records.map(item=>[item.name,item.version]))));
   // One generation is the unit of activation. The durable floor/receipt advances
   // before replacing compose configuration; a crash between these writes leaves
   // a detectable mismatch and cannot start the scanner. Old generations remain.
@@ -306,13 +337,14 @@ function importSignatures(s,source) {
   console.log(JSON.stringify({officialSignaturesVerified:true,maxAgeHours:48,versions:records.map(x=>({name:x.name,version:x.version})),scanner:'stopped; explicit start activates imported set'}));
 }
 function validateActiveSignatures(s) {
+  const minimum=signatureFloor(s);
   const record=json(read(path.join(s.root,'signature-receipt.json'),16384,true));
   need(/^signatures-[a-f0-9]{24}$/.test(record.generation)&&record.maxAgeHours===48&&record.files.length===3,'Signature generation metadata rejected');
   const dir=path.join(s.root,record.generation);const names=['bytecode.cvd','daily.cvd','main.cvd'];
   need(fs.readdirSync(dir).sort().join()===names.join()&&record.files.map(f=>f.name).sort().join()===names.join(),'Signature generation is incomplete');
   for(const item of record.files) {
     const raw=read(path.join(dir,item.name),512*1024**2);const fields=raw.subarray(0,512).toString('ascii').trim().split(':');
-    need(raw.length===item.size&&hash(raw)===item.sha256&&Number(fields[2])===item.version&&Number(fields[8])===item.signedAt,'Signature generation changed');
+    need(raw.length===item.size&&hash(raw)===item.sha256&&Number(fields[2])===item.version&&Number(fields[8])===item.signedAt&&item.version>=minimum[item.name],'Signature generation changed or fell below the restored floor');
     if(item.name==='daily.cvd')need(Date.now()/1000-item.signedAt>=0&&Date.now()/1000-item.signedAt<48*3600,'Signatures are stale');
   }
   const config=json(read(path.join(s.root,'compose.json'),65536,true));
