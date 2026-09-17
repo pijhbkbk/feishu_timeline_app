@@ -176,7 +176,7 @@ function RealDashboardPage() {
         <span>任务、材料、阻塞和流程状态由业务系统实时更新。</span>
       </div>
       <PageIntro
-        eyebrow={`${viewer.roleLabel} · ${viewer.departmentName ?? '组织部门待同步'}`}
+        eyebrow={`${viewer.roleLabel} · ${viewer.departmentName ?? '尚未分配部门'}`}
         title={`${viewer.name}，今天先处理最重要的一项。`}
         description={
           currentTask
@@ -254,9 +254,7 @@ function RealDashboardPage() {
         <section className="r26-empty-state">
           <strong>当前没有待处理工序</strong>
           <p>
-            {canCreateProject
-              ? '当前还没有项目。新建第一个项目后，系统会自动初始化开发流程。'
-              : '项目和权限数据已经连接成功，可从项目列表继续查看。'}
+            当前账号没有待处理工序，可以查看可见项目的最近动态。
           </p>
           <div className="r26-empty-state__actions">
             {canCreateProject ? (

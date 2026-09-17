@@ -39,7 +39,8 @@ describe('DashboardService', () => {
         count: vi.fn().mockResolvedValue(1),
       },
       project: {
-        findMany: vi.fn().mockResolvedValue([{ id: 'project-1' }, { id: 'project-2' }]),
+        findMany: vi.fn().mockRejectedValue(new Error('unbounded project ID read')),
+        count: vi.fn().mockResolvedValue(2),
       },
       auditLog: {
         findMany: vi.fn().mockResolvedValue([]),
@@ -61,6 +62,16 @@ describe('DashboardService', () => {
         pendingReviewTasks: 1,
         pendingMaterialTasks: 0,
         waitingOnOthersTasks: 1,
+      },
+    });
+    expect(prisma.project.findMany).not.toHaveBeenCalled();
+    expect(prisma.project.count).toHaveBeenCalledWith({
+      where: {
+        OR: [
+          { ownerUserId: 'user-1' },
+          { members: { some: { userId: 'user-1' } } },
+          { workflowTasks: { some: { assigneeUserId: 'user-1' } } },
+        ],
       },
     });
   });

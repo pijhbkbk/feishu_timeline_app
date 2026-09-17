@@ -56,7 +56,7 @@ export class DashboardService {
       dueTodayTaskCount,
       pendingReviewTaskCount,
       waitingOnOthersTaskCount,
-      projectRows,
+      visibleProjectCount,
       activities,
     ] =
       await Promise.all([
@@ -130,9 +130,8 @@ export class DashboardService {
             workflowTask: assignedWhere,
           },
         }),
-        this.prisma.project.findMany({
+        this.prisma.project.count({
           where: visibleProjectWhere,
-          select: { id: true },
         }),
         this.prisma.auditLog.findMany({
           where: {
@@ -261,7 +260,7 @@ export class DashboardService {
         activeTasks: activeTaskCount,
         dueTodayTasks: dueTodayTaskCount,
         overdueTasks: overdueTaskCount,
-        visibleProjects: projectRows.length,
+        visibleProjects: visibleProjectCount,
         pendingReviewTasks: pendingReviewTaskCount,
         pendingMaterialTasks: pendingMaterialTaskCount,
         waitingOnOthersTasks: waitingOnOthersTaskCount,
