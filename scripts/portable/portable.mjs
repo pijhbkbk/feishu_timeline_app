@@ -43,11 +43,12 @@ export function mergeSignatureFloors(...values) {
   for(const value of values){validateSignatureFloor(value);for(const name of SIGNATURE_NAMES)result[name]=Math.max(result[name],value[name]);}
   return result;
 }
-function signatureFloor(s) {
+function nodeExists(file) {try{fs.lstatSync(file);return true;}catch(error){if(error.code==='ENOENT')return false;throw error;}}
+export function signatureFloor(s) {
   const values=[];const floorFile=path.join(s.root,'signature-floor.json');
-  if(fs.existsSync(floorFile))values.push(validateSignatureFloor(json(read(floorFile,16384,true))));
+  if(nodeExists(floorFile))values.push(validateSignatureFloor(json(read(floorFile,16384,true))));
   const receiptFile=path.join(s.root,'signature-receipt.json');
-  if(fs.existsSync(receiptFile)){
+  if(nodeExists(receiptFile)){
     const receipt=json(read(receiptFile,16384,true));
     need(Array.isArray(receipt.files)&&receipt.files.length===3&&receipt.files.map(item=>item.name).sort().join()===SIGNATURE_NAMES.join(),'Signature receipt versions are incomplete');
     values.push(validateSignatureFloor(Object.fromEntries(receipt.files.map(item=>[item.name,item.version]))));
