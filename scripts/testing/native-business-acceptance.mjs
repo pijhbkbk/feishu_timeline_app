@@ -67,6 +67,7 @@ catch (error) {
 assert.equal(state.syntheticOnly, true);
 const evidence = { syntheticOnly: true, mode, runtimeCommit: null, startedAt: new Date().toISOString(), requests: [], checks: [] };
 const cookies = new Map();
+const observedActors = new Map();
 if (portable) assert.equal(manifest.username, 'portable-admin');
 const admin = { username: portable ? manifest.username : 'synthetic-a2-admin', id: manifest.adminUserId ?? state.adminId, password: (await readFile(passwordFile, 'utf8')).trim() };
 async function persist() {
@@ -118,7 +119,13 @@ async function login(key) {
   const raw = result.response.headers.get('set-cookie');
   assert.match(raw, /HttpOnly/i); assert.match(raw, /SameSite=Lax/i); assert.match(raw, /Secure/i);
   cookies.set(key, raw.split(';')[0]);
+  observedActors.set(key, authorizationSnapshot(data.user));
   return data.user;
+}
+function authorizationSnapshot(actor) {
+  return { id: actor.id, username: actor.username, isSystemAdmin: actor.isSystemAdmin,
+    departmentId: actor.departmentId ?? null, requestedJob: actor.requestedJob ?? null,
+    roleCodes: [...actor.roleCodes].sort(), permissionCodes: [...actor.permissionCodes].sort() };
 }
 async function step(name, action) {
   if (mode === 'workflow') name = `return-path:${name}`;
@@ -500,9 +507,10 @@ try {
   }
   if (mode === 'restore') {
     assert.ok(['https://localhost:3452', 'https://localhost:9444'].includes(api));
-    for (const key of ['purchaser', 'engineer', 'outsider']) {
+    assert.ok(state.sourceAuthorization, 'Source readback must capture the exact granted authorization.');
+    for (const key of ['admin', 'purchaser', 'engineer', 'outsider']) {
       const actor = expectStatus(await request('/auth/me', { actor: key }), 200, 'restored identity');
-      assert.equal(actor.id, state.accounts[key].id);
+      assert.deepEqual(authorizationSnapshot(actor), state.sourceAuthorization[key], 'restored role, permission, department, and canonical identity must match source');
     }
     for (const project of Object.values(state.projects)) expectStatus(await request(`/projects/${project.id}`), 200, 'restored project');
     if (!state.attachment) throw new Error('Restoration must include the actually scanned source attachment.');
@@ -522,6 +530,7 @@ try {
       expectStatus(await request(`/projects/${project.id}`), 200, `read project ${name}`);
     }
     state.finalDatabaseCounts = dbRead('Promise.all([p.user.count(),p.project.count(),p.workflowTask.count(),p.attachment.count(),p.notification.count(),p.auditLog.count()]).then(([users,projects,tasks,attachments,notifications,audit])=>({users,projects,tasks,attachments,notifications,audit}))');
+    state.sourceAuthorization = Object.fromEntries(observedActors);
     state.sourceBusinessSnapshot = representativeBusinessSnapshot();
     evidence.checks.push({ name: 'authenticated-readback', status: 'PASS', counts: state.finalDatabaseCounts, snapshotSha256: createHash('sha256').update(JSON.stringify(state.sourceBusinessSnapshot)).digest('hex') });
   }
