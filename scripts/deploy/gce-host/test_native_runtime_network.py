@@ -1,6 +1,7 @@
 import copy
 import json
 import unittest
+import sys
 from unittest.mock import patch
 import native_runtime_network as network
 import native_backup_controller as backup
@@ -75,9 +76,16 @@ class IsolationTests(unittest.TestCase):
                 network.main()
             firewall.assert_not_called(); networks.assert_not_called()
 
+    def test_extended_deadline_cannot_apply_to_unrelated_commands(self):
+        for args, timeout in [(['/bin/true'], 80), (['/usr/bin/systemctl', 'stop', 'other.service'], 110),
+                              (['/usr/bin/docker', 'stop', '--time=65', 'not-a-container-id'], 80), (['/bin/true'], 1000)]:
+            with self.subTest(args=args, timeout=timeout), patch.object(network.subprocess, 'Popen') as popen:
+                with self.assertRaises(backup.Failure): network.run(args, timeout=timeout)
+                popen.assert_not_called()
+
     def test_streaming_output_bound_reaps_large_writer(self):
         with self.assertRaisesRegex(backup.Failure, 'output exceeds bound'):
-            network.run(['/usr/bin/python3', '-I', '-c', "import os; os.write(1,b'x'*2000000)"])
+            network.run([sys.executable, '-I', '-c', "import os; os.write(1,b'x'*2000000)"])
 
     def test_conflicting_specific_route_never_replaced(self):
         with patch.object(network, 'run', return_value=json.dumps([{'dst': '172.27.227.2', 'dev': 'br-unrelated'}]).encode()) as run:

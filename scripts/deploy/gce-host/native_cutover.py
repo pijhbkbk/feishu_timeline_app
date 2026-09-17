@@ -61,7 +61,9 @@ def check_legacy():
     if present(PENDING): pending_value()
 
 
-def systemctl(*args): return app.run(['/usr/bin/systemctl',*args])
+def systemctl(*args):
+    limits = {'timeout': 110} if args == ('stop', 'timeline-native-api.service') else {}
+    return app.run(['/usr/bin/systemctl', *args], **limits)
 
 
 def unit_state(unit):

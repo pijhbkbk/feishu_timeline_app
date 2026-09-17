@@ -1,4 +1,4 @@
-"""Fixed f2da -> 6c70 native-program update; never reinitialize or restore data."""
+"""Fixed committed 6c70 program upgrade; never initialize, migrate or restore data."""
 import os
 from pathlib import Path
 import stat
@@ -24,20 +24,19 @@ import native_backup_controller as backup
 
 ROOT = Path('/var/lib/timeline-native-app')
 STATE = ROOT / 'release-6c70-state.json'
-CHECKPOINT = ROOT / 'release-6c70-checkpoint.json'
-OLD = 'f2da3629e13b2653aae8879c98992877d5ef4170'
-NEW = '6c70a897ec7643f4681616d801481765aaa8f7bc'
+CHECKPOINT = ROOT / 'release-20260917-checkpoint.json'
+OLD = '6c70a897ec7643f4681616d801481765aaa8f7bc'
 REGISTRY = 'us-west1-docker.pkg.dev/axial-acrobat-492709-r7/feishu-timeline/'
+from native_release_target import TARGET
+NEW = TARGET['commit'] if TARGET else None
 VERSIONS = {
-    OLD: {'commit': OLD, 'tree': '435fd8f66beef2760ce02388b0948cea35cee55e',
-          'release': 'native-auth-20260912-f2da3629e13b', 'buildTime': '2026-09-12T14:22:42Z',
-          'images': {'api': REGISTRY + 'api@sha256:e1325e8263713bfb8fc13da4aeaa0521d77617a859fc8d86d6d4157468e3e370',
-                     'web': REGISTRY + 'web@sha256:4d08266d5e6763da3072c895e124a1d71f2926ae7f161942ea8560b512df2d31'}},
-    NEW: {'commit': NEW, 'tree': '042c502720078f6f546931bf34c5396cb910c9fd',
+    OLD: {'commit': OLD, 'tree': '042c502720078f6f546931bf34c5396cb910c9fd',
           'release': 'native-auth-20260914-6c70a897ec76', 'buildTime': '2026-09-14T01:01:20Z',
           'images': {'api': REGISTRY + 'api@sha256:196a3631af5fcf76bffbfeb0651c290cfeeb7fd2adedad927e1bdf3c44556a22',
                      'web': REGISTRY + 'web@sha256:502308afb6c5a9fadc2f603fc0e99319a60ecf6108f56633ddc8b80ca050c5bc'}},
 }
+if TARGET:
+    VERSIONS[NEW] = {key: TARGET[key] for key in ('commit', 'tree', 'release', 'buildTime', 'images')}
 require = backup.require
 
 
@@ -68,8 +67,7 @@ def present(path):
 
 
 def state():
-    if not present(STATE):
-        return {'version': 1, 'active': OLD, 'committed': OLD, 'pending': False}
+    require(present(STATE), 'Committed 6c70 release state is required; initialization fallback is forbidden')
     value = backup.read_json(STATE)
     require(type(value) is dict and set(value) == {'version', 'active', 'committed', 'pending'} and
             type(value['version']) is int and value['version'] == 1 and type(value['pending']) is bool and
@@ -92,7 +90,7 @@ def environment_path(component, commit=None):
     require(component in ('api', 'web'), 'Unsupported environment component')
     commit = state()['active'] if commit is None else commit
     require(commit in VERSIONS, 'Unknown environment version')
-    return ROOT / (component + ('.env' if commit == OLD else '-6c70.env'))
+    return ROOT / (component + ('-6c70.env' if commit == OLD else '-20260917.env'))
 
 
 def replace_state(value):
@@ -121,19 +119,54 @@ def verify_checkout(commit):
     require(git('rev-parse', 'HEAD') == commit and git('rev-parse', 'HEAD^{tree}') == VERSIONS[commit]['tree'] and
             git('status', '--porcelain') == '', 'Release checkout is not the fixed clean source')
     if commit == NEW:
-        require(git('diff', '--name-only', OLD, NEW, '--', 'apps/api', 'apps/api-ops', 'packages/shared',
-                    'pnpm-lock.yaml', 'package.json', 'apps/web/package.json', 'apps/web/Dockerfile',
-                    'pnpm-workspace.yaml') == '', 'Database/API/dependency compatibility changed')
+        require_target()
+        # The immutable tree binds every byte. This additional explicit scope gate
+        # rejects unreviewed runtime/dependency/schema drift without pretending the API is unchanged.
+        guarded = ('apps/api', 'apps/api-ops', 'packages/shared', 'pnpm-lock.yaml', 'package.json',
+                   'apps/web/package.json', 'apps/web/Dockerfile', 'pnpm-workspace.yaml')
+        changed = git('diff', '--name-only', OLD, NEW, '--', *guarded).splitlines()
+        require(changed == sorted(TARGET['approvedRuntimeChanges']), 'Unreviewed runtime source change')
+        for relative, digest in TARGET['approvedRuntimeChanges'].items():
+            require((relative.startswith('apps/api/src/') or relative in ('apps/api/package.json', 'apps/api/prisma/seed.ts')) and '..' not in Path(relative).parts,
+                    'Schema/dependency change is not allowed for this program-only release')
+            raw = backup.command(['/usr/bin/git', '-C', str(root), '-c', 'core.hooksPath=/dev/null',
+                                  'show', NEW + ':' + relative], user='lixiaochen')
+            require(backup.sha(raw) == digest, 'Approved runtime source digest differs')
+            if relative == 'apps/api/package.json':
+                prior = backup.command(['/usr/bin/git', '-C', str(root), '-c', 'core.hooksPath=/dev/null',
+                                        'show', OLD + ':' + relative], user='lixiaochen')
+                before, after = json.loads(prior), json.loads(raw)
+                before.pop('scripts', None); after.pop('scripts', None)
+                require(before == after, 'API package change exceeds approved CLI script registration')
+
+
+def require_target():
+    require(type(TARGET) is dict and set(TARGET) == {'commit', 'tree', 'release', 'buildTime', 'images', 'approvedRuntimeChanges'},
+            'Final reviewed release identity is not fixed')
+    require(re.fullmatch(r'[a-f0-9]{40}', TARGET['commit']) and TARGET['commit'] != OLD and
+            re.fullmatch(r'[a-f0-9]{40}', TARGET['tree']) and
+            re.fullmatch(r'[A-Za-z0-9._-]{1,100}', TARGET['release']) and
+            re.fullmatch(r'2026-09-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z', TARGET['buildTime']),
+            'Final source/build metadata is invalid')
+    require(set(TARGET['images']) == {'api', 'web'}, 'Final image pair is incomplete')
+    for component, reference in TARGET['images'].items():
+        require(re.fullmatch(re.escape(REGISTRY + component + '@sha256:') + r'[a-f0-9]{64}', reference),
+                'Final repository digest is not fixed')
+    require(type(TARGET['approvedRuntimeChanges']) is dict and TARGET['approvedRuntimeChanges'],
+            'Explicit reviewed API change set is required')
+    require(all(re.fullmatch(r'[a-f0-9]{64}', value) for value in TARGET['approvedRuntimeChanges'].values()),
+            'Approved source digest missing')
 
 
 def ingress_ready():
     value = state()
     require(not value['pending'], 'Program release is pending; ingress must stay closed')
-    if value['active'] != OLD:
-        verify_checkout(value['active'])
+    verify_checkout(value['active'])
 
 
-def stage_environment(commit=NEW):
+def stage_environment(commit=None):
+    commit = NEW if commit is None else commit
+    require_target()
     import native_runtime_app as app
     identity = VERSIONS[commit]
     for component in ('api', 'web'):
@@ -147,12 +180,25 @@ def stage_environment(commit=NEW):
         require(backup.read_file(path, 16384, owner=0) == raw, 'Staged release environment differs')
 
 
-def close_program():
+def close_program(require_drained=False):
     import native_cutover as cutover
     import native_runtime_app as app
+    before = app.inspect('api') if require_drained else None
     cutover.stop_units(cutover.SOCKETS + cutover.PROXIES + cutover.APPS)
+    final = app.inspect('api') if require_drained else None
+    supports_drain = bool(before and NEW in VERSIONS and before['Config']['Image'] == VERSIONS[NEW]['images']['api'])
+    was_running = bool(before and before['State']['Running'])
+    if require_drained and was_running and supports_drain:
+        require(final and final['Id'] == before['Id'] and not final['State']['Running'] and
+                final['State']['Pid'] == 0 and final['State']['ExitCode'] == 0 and not final['State']['OOMKilled'],
+                'Native API drain failed or was force-killed; no consistent-release backup claimed')
+    observation = {'apiWasRunning': was_running, 'apiDrainSupported': supports_drain,
+                   'apiExitCode': final['State']['ExitCode'] if final else None,
+                   'apiGracefulDrainVerified': bool(was_running and supports_drain and final and final['State']['ExitCode'] == 0),
+                   'legacyApiFreezeOnly': bool(was_running and not supports_drain)}
     for component in ('api', 'web'):
         app.stop(component, remove=True)
+    return observation
 
 
 def recover_pending_unlocked():
@@ -185,12 +231,14 @@ def verify_running():
         app.validate_container(component, item, app.image_identity(component))
 
 
-def checkpoint():
+def checkpoint(protection):
     invocation = os.environ.get('INVOCATION_ID', '')
     require(re.fullmatch(r'[a-f0-9]{32}', invocation), 'Supervised invocation required')
     require(not present(CHECKPOINT), 'Recovery checkpoint already retained')
     backup.write_json(CHECKPOINT, {'invocationId': invocation, 'pid': os.getpid(),
-                                  'releaseStateSha256': backup.sha(backup.read_file(STATE, 4096, owner=0))})
+                                  'releaseStateSha256': backup.sha(backup.read_file(STATE, 4096, owner=0)),
+                                  'protectedBackup': protection['backup'],
+                                  'protectionReceiptSha256': backup.sha(backup.read_file(backup.ROOT / protection['backup'] / 'snapshot-complete.json', 4096, owner=0))})
     print(json.dumps({'nativeProgramRecoveryCheckpoint': True, 'invocationId': invocation}), flush=True)
     time.sleep(60)
     raise backup.Failure('Recovery checkpoint expired')
@@ -199,6 +247,7 @@ def checkpoint():
 def update(rehearse=False, rollback=False):
     import native_runtime_app as app
     import native_cutover as cutover
+    require_target()
     previous, target = (NEW, OLD) if rollback else (OLD, NEW)
     with backup.locked():
         cutover.committed_value()
@@ -217,22 +266,28 @@ def update(rehearse=False, rollback=False):
                 app.inspect(component)
         stage_environment(target)
         replace_state({'version': 1, 'active': previous, 'committed': previous, 'pending': True})
-        close_program()
+        quiescence = close_program(require_drained=True)
+        from native_release_backup import protect, resume_dependencies
+        protection = protect(previous, quiescence)
         replace_state({'version': 1, 'active': target, 'committed': previous, 'pending': True})
         app.validate_files()
         if rehearse:
-            checkpoint()
+            checkpoint(protection)
+        resume_dependencies()
     # App startup may itself require the shared operation lock. Never wait for it under that lock.
     cutover.systemctl('--no-block', 'start', *cutover.APPS)
     cutover.check_health()
     with backup.locked():
         require(state() == {'version': 1, 'active': target, 'committed': previous, 'pending': True}, 'Release intent changed')
         verify_running()
+        from native_release_backup import verify_protection
+        verify_protection(protection)
         replace_state({'version': 1, 'active': target, 'committed': target, 'pending': False})
     cutover.systemctl('--no-block', 'start', *cutover.SOCKETS)
     cutover.check_health(public=True)
     print(json.dumps({'nativeProgramUpdated': True, 'runtimeCommit': target,
-                      'databaseRestored': False, 'initialMigrationReplayed': False}), flush=True)
+                      'databaseRestored': False, 'initialMigrationReplayed': False,
+                      'protectedBackup': protection['backup']}), flush=True)
 
 
 def recover():
