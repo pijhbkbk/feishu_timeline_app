@@ -18,7 +18,8 @@
     "prisma:validate": "dotenv -e .env.example -- prisma validate --schema prisma/schema.prisma",
     "prisma:migrate": "dotenv -e .env.example -- prisma migrate dev --schema prisma/schema.prisma",
     "prisma:seed": "dotenv -e .env.example -- tsx prisma/seed.ts",
-    "account": "node dist/cli/native-account.js"
+    "account": "node dist/cli/native-account.js",
+    "catalog": "node dist/cli/native-catalog.js"
   },
   "dependencies": {
     "@nestjs/common": "^11.1.28",
