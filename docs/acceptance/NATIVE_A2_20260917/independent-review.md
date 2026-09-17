@@ -122,3 +122,12 @@
 静态核对冻结 c5 脚本确认原顺序先合法下载附件，再比较源历史。API 的下载成功路径在返回内容前追加 `ATTACHMENT_DOWNLOADED`，与已保存差异的解释一致。外部验证 clone 的 `5422d9ae66274fb88d86d254ed3c1293f9684347` 只把同一组 snapshot 存在检查及 deepEqual 断言移到 restore 分支首次下载之前，增加两行解释注释。移除这两条移动语句和注释后，其余文件字节与冻结脚本完全相同；没有过滤审计、删字段、改选定项目或减弱授权/下载摘要/权限拒绝/新写断言。
 
 原脚本 SHA-256 为 `c21571ebdc959c52fc06ecfdd19865ef67bc26184849ae2629b9418f2f5c6dd1`；更正后的外部 fixture SHA-256 为 `10e1a86f429539905893bda23fc78012851720ee41410f0efbc0306b0c043653`。冻结软件与 runtime c5 保持不变，fixture 单独记录版本。限定静态范围未见阻断；原失败目标和 FAIL 证据必须保留，以又一新空目标执行首次历史比较及后续下载/业务检查，不能将旧失败追认 PASS。作者报告语法检查通过，本审查未执行它，也未执行新的恢复或业务操作；新空目标的实际结果尚待执行者另行保存。
+
+
+## Rosetta B 代理 profile 与后续外部验证工具
+
+只读审查外部 `environment-overrides/rosetta-proxy-profile.mjs`，SHA-256 `8ee33f5e258319855cee0ae3147e6a0944cd3984923d74c154ece87b5aa511e8`。工具限制两个固定 B root、Linux/ARM 和实际 Rosetta interpreter、私有 owned root/文件、c5 与精确 API 镜像、localhost:9444、internal network、指定三项只读挂载，以及停止/不存在的 proxy。修改后将两个字段还原再 deepEqual 全配置，确保只把 proxy 内存 128m 改为 512m 并加入健康探针；不修改冻结软件/API/数据库。探针使用 127.0.0.1:8443、SNI localhost、Host localhost:9444、自有 CA、TLS>=1.2，要求状态 200 与精确 runtime commit，限制五秒与 32KB，不禁用证书校验。原件/记录私有保存、配置临时写入 fsync 后 rename；记录先于激活，单独存在不能证明应用成功，半途中断应保留调查而不盲重跑。限定静态范围未见阻断。
+
+外部 `validation-tools/portable-B-readwrite.mjs` 的审查 SHA 为 `f052ad342a501b1f7bb6d2e9546e7ce4cad5610219b555046c86436e19394da3`。固定 B 私有合成 state/manifest/确认、实例、实际镜像与 runtime 环境；写入仅向恢复验证 PASS 后创建的合成项目上传固定 PNG，并核对 CLEAN、ClamAV 引擎、摘要和作者，再下载比对摘要、读取 CSV。认证补充检查保留 Origin 403、旧 OAuth 410、停用账号 401、恢复字段清空；明确本轮不再次测试已经过期的旧恢复码。真实旧码在有效期内拒绝的证据必须使用其先前准确环境/时刻，不能以此次字段读取冒充重测。上传/下载会新增正常记录，必须在首次恢复历史快照比较完成后执行。
+
+已阅读作者保存的 OOM blocker（SHA `2108d6b6e16135243684b2d3a085bde4c8dc423e711c1bc418f5e325646847fd`）：proxy 128MiB、OOMKilled=true、退出 137，业务 fixture 在 health/login 后 fetch 失败。此为作者动态记录，原 FAIL 保留。作者后续报告应用 profile、HTTP/新附件/重启验证通过，相关 verification-C 动态证据由执行者另行整理；本审查没有操作 B、运行上述外部工具、读取秘密或独立复跑，不把静态结论标为动态 PASS。

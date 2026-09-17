@@ -36,3 +36,16 @@
 首次临时比较器在抽取 heredoc 后额外加了一行换行，导致 install 文本相等断言失败；修正审查比较器后原始模板字节完全相同，未修改被审源码或软件包。该诊断保留在相邻 `final-ops-identity-review-d16dc78.json`，不是生产或 controller 动态测试结果。
 
 作者保存的最终本机记录报告 119 个 controller 测试及 7 脚本 shell/内嵌 Python 语法检查通过，脚本执行和生产访问均为 false；本审查者未重跑这 119 个测试。早先 rebind preflight 中的 `AWAITING_ACTUAL_PUSH_READBACK` 保留为推送前历史，不作当前摘要证据。限定增量范围未见剩余静态阻断，状态为 `FINAL_OPS_IDENTITY_STATIC_REVIEW_COMPLETE`；实际远端 ref 回读、备份、中断恢复演练、目标 URL 浏览器与产品确认仍分别由后续实测证明，不能用本节代替。
+
+
+## 实际 socket 字段差异与 bf2cf83 原子修补
+
+已只读检查主任务保存的实际失败和单元形状记录：d16 演练在保护备份目录建立前失败，state/API/Web 回到 `6c70a897ec7643f4681616d801481765aaa8f7bc`。两个固定 ingress socket 的实际 `systemctl show` 不含 MainPID，原 helper 直接索引导致 KeyError；原失败仍为 FAIL，不将监督器恢复旧程序称为新演练通过。本审查没有访问生产。
+
+修复后的 `native_release_backup.py` SHA 为 `e1c7b96aaf7318080223280bdbfc97c1601a2b8036f9a4ccbcc2f3b400548c6e`：仅精确 `cutover.SOCKETS` 成员允许 MainPID 键缺失，空串或非零仍拒绝；APPS/PROXIES 保持显式 MainPID='0'，所有单元仍要求 inactive 与显式 ControlPID='0'。容器、数据库客户端/预备事务、NOLOGIN 和 Redis clean-stop 门禁未变。新增真实字段形状正向及七项负向在进入 SQL 前拒绝的回归代码已静态复核，未执行。
+
+最终 Ops `bf2cf83a0bd172a6e9360d5e7f3533912a062813` 的独立修补仅接受已安装 d16 及旧安装 journal 的精确字节，固定目标主机/root 可信目录、全部旧依赖/unit 摘要、稳定 committed 6c70/no pending/no checkpoint、三个 release 单元 idle 且 FragmentPath/DropInPaths/NeedDaemonReload 正确。双非阻塞锁覆盖重新核对、原件保留、helper 替换和安装 journal 单一摘要更新；意图、两个原件、两个正式替换及完成记录均经过临时文件完整 fsync 后原子激活，中断残留不成为权威文件，重入只接受原/新精确状态。不重新启动、恢复数据库、清空 journal 或 reset 失败单元。本次静态未见上述有界路径剩余阻断。
+
+实际旧安装回读文件 SHA `8fb7f3d77fbf1f5c717cc7fb8f1072dd29dc5fc4eb77d61758717f36265ad3a9` 中，helper `78b9299b...` 和安装 journal `52fd69be...` 与生成器重建值一致。新 release manifest 为 `bac905b93e2e54b3a40a2ace75dfdc683885161636fedd04c0cb71586197e7a6`，独立 repair manifest 为 `1c1bc79c0c9b6f6870e063a7e6c66d662dade27103ff086b8e6603d9bb4c8fb0`；七个 release 与一个 repair 脚本逐字节匹配最终模板及固定替换，两个 driver 的摘要与保存记录一致，固定 bf2/c5、IAP 目标，单步失败停止、无自动重试。两 driver 仍使用 assert，调用应为普通非优化 Python（建议 -I，不带 -O）。身份详情见相邻 JSON。首次独立重建比较器用不同字典插入顺序造成文本不等，按实际生成器顺序修正后精确匹配，未修改被审文件。
+
+作者报告 126 个本机测试通过，包括六个写入点的半写/完整写后中断及重入、四类 guard 和 unit 合同；文件原子操作为本机真实临时文件，root/生产进程调用仍是替身。本审查者没有执行这些测试、导入控制器或运行修补/发布脚本。此次只提供技术审查，按主任务既有授权使用独立 repair 路径；旧通用 install 不应用于此已安装状态。修补安装、一次新的实际演练及其结果仍需另记，冻结应用 runtime c5 未变。
