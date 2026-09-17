@@ -275,7 +275,7 @@ function initialize(s,passwordFile,username,name) {
   need(/^[A-Za-z0-9][A-Za-z0-9._-]{2,63}$/.test(username),'Invalid username');const bytes=read(passwordFile,512,true);need(bytes.length>=15,'Password file too short');
   // stdin is copied into the short-lived container's private tmpfs by UID 1000,
   // so the existing CLI ownership checks remain intact on Linux and Docker Desktop.
-  const code="const fs=require('node:fs');fs.writeFileSync('/tmp/admin.password',fs.readFileSync(0),{mode:0o600,flag:'wx'});process.argv=[process.execPath,'dist/cli/native-account.js','initialize','--username',process.argv[1],'--name',process.argv[2],'--password-file','/tmp/admin.password'];require('./dist/cli/native-account.js');";
+  const code="const fs=require('node:fs');fs.writeFileSync('/tmp/admin.password',fs.readFileSync(0),{mode:0o600,flag:'wx'});require('node:child_process').execFileSync(process.execPath,['dist/cli/native-account.js','initialize','--username',process.argv[1],'--name',process.argv[2],'--password-file','/tmp/admin.password'],{stdio:'inherit'});";
   const out=compose(s,['run','--rm','--no-deps','-T','--entrypoint','node','api','-e',code,username,name],bytes);console.log(out.toString().trim());
 }
 function importSignatures(s,source) {
