@@ -220,11 +220,14 @@ function fingerprint(s,backup=false) {
   need(Buffer.byteLength(schema)<=4*1024**2,'Schema exceeds bound');
   return {tables,sequences,schemaSha256:hash(schema)};
 }
-function compareFingerprints(expected,actual) {
+export function compareFingerprints(expected,actual) {
   need(JSON.stringify(expected.tables)===JSON.stringify(actual.tables)&&JSON.stringify(expected.sequences)===JSON.stringify(actual.sequences),'Restored table or sequence fingerprint differs');
   // Existing native PG14 restore proof: pg_restore reparses one nested CHECK AND;
   // only this exact whole-schema pair is allowed, never arbitrary normalization.
-  need(expected.schemaSha256===actual.schemaSha256||(expected.schemaSha256==='6574ca8373f287ba29217f064bd3b78ce45f6c091123360d104e9e4701cb78ec'&&actual.schemaSha256==='fd8912cccd930ef950fecd0d60511787786e3a3bca79c54ffeac1dfed90b1589'),'Restored schema fingerprint differs');
+  // The second directed pair was explicitly approved by the user on 2026-09-17
+  // after review of the complete dumps: only the same six CHECK comparisons'
+  // AND grouping differs. No other source/target hash combination is accepted.
+  need(expected.schemaSha256===actual.schemaSha256||(expected.schemaSha256==='6574ca8373f287ba29217f064bd3b78ce45f6c091123360d104e9e4701cb78ec'&&actual.schemaSha256==='fd8912cccd930ef950fecd0d60511787786e3a3bca79c54ffeac1dfed90b1589')||(expected.schemaSha256==='3f933e582eab518c24e308cb9991e1f5fab16c310eee10f041e38746cb76b4c0'&&actual.schemaSha256==='175721348d4d09345618dcec49699b70d2cc13ee7298e3c78bfd6ebdc9fd52c6'),'Restored schema fingerprint differs');
 }
 function checkAttachmentObjects(s,objects,backup=false) {
   const files=new Map(objects.map(item=>[item.path,item]));

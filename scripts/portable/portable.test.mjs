@@ -4,8 +4,20 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {test} from 'node:test';
-import {validateManifest,decryptBackup,validateSignatureFloor,mergeSignatureFloors,signatureFloor} from './portable.mjs';
+import {validateManifest,decryptBackup,validateSignatureFloor,mergeSignatureFloors,signatureFloor,compareFingerprints} from './portable.mjs';
 const m={version:1,commit:'a'.repeat(40),tree:'b'.repeat(40),architecture:'amd64',postgresMajor:14,release:'portable-test',buildTime:'2026-09-17T00:00:00Z',images:Object.fromEntries(['api','web','ops','postgres','redis','scanner'].map(k=>[k,'sha256:'+'c'.repeat(64)]))};
+test('schema comparison accepts only the approved directed pair and preserves table and sequence checks',()=>{
+  const source={tables:{example:{count:1,sha256:'a'.repeat(64)}},sequences:{example_id_seq:'1|t'},schemaSha256:'3f933e582eab518c24e308cb9991e1f5fab16c310eee10f041e38746cb76b4c0'};
+  const restored={...source,schemaSha256:'175721348d4d09345618dcec49699b70d2cc13ee7298e3c78bfd6ebdc9fd52c6'};
+  assert.doesNotThrow(()=>compareFingerprints(source,source));
+  assert.doesNotThrow(()=>compareFingerprints(source,restored));
+  assert.throws(()=>compareFingerprints(restored,source),/schema fingerprint differs/);
+  assert.throws(()=>compareFingerprints(source,{...restored,schemaSha256:'d'.repeat(64)}),/schema fingerprint differs/);
+  assert.throws(()=>compareFingerprints({...source,schemaSha256:'e'.repeat(64)},restored),/schema fingerprint differs/);
+  assert.throws(()=>compareFingerprints(source,{...restored,tables:{example:{count:1,sha256:'b'.repeat(64)}}}),/table or sequence fingerprint differs/);
+  assert.throws(()=>compareFingerprints(source,{...restored,tables:{...source.tables,extra:{count:0,sha256:'c'.repeat(64)}}}),/table or sequence fingerprint differs/);
+  assert.throws(()=>compareFingerprints(source,{...restored,sequences:{example_id_seq:'2|t'}}),/table or sequence fingerprint differs/);
+});
 test('manifest rejects mutable or incomplete images and database major changes',()=>{
   assert.equal(validateManifest(m),m);
   assert.throws(()=>validateManifest({...m,images:{...m.images,api:'app:latest'}}));
