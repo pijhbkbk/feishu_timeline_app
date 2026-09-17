@@ -11,6 +11,7 @@ import { createSameOriginMutationGuard } from './common/same-origin.middleware';
 import { drainWriters } from './common/graceful-shutdown';
 import { NotificationQueueService } from './modules/queue/notification-queue.service';
 import { AttachmentStorageQuotaService } from './modules/attachments/attachment-storage-quota.service';
+import { RequestDrainInterceptor } from './common/request-drain.interceptor';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -23,6 +24,8 @@ async function bootstrap() {
   app.setGlobalPrefix('api');
   app.use(cookieParser());
   app.use(createSameOriginMutationGuard(frontendUrl));
+  const requestDrain = new RequestDrainInterceptor();
+  app.useGlobalInterceptors(requestDrain);
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -62,7 +65,7 @@ async function bootstrap() {
     shuttingDown = true;
     void (async () => {
       try {
-        await drainWriters(app.getHttpServer(), [app.get(NotificationQueueService), app.get(AttachmentStorageQuotaService)]);
+        await drainWriters(app.getHttpServer(), [requestDrain, app.get(NotificationQueueService), app.get(AttachmentStorageQuotaService)]);
         await app.close();
         process.exit(0);
       } catch {
