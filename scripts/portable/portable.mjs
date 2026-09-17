@@ -136,8 +136,15 @@ function init(packageDir,root,origin,certFile,keyFile) {
 }
 export function databaseCommand(tool,args,backup=false) {
   need(['psql','pg_dump','pg_restore'].includes(tool),'Unsupported PostgreSQL tool');
-  return ['/bin/sh','-c','IFS= read -r PGPASSWORD || exit 1; export PGPASSWORD; exec "$@"','portable-pg',tool,'-h','127.0.0.1','-U',backup?'timeline_backup':'timeline_app',...args];
+  return ['/bin/sh','-c','IFS= read -r PGPASSWORD || exit 1; export PGPASSWORD; PGOPTIONS="-c search_path=pg_catalog,public"; export PGOPTIONS; exec "$@"','portable-pg',tool,'-h','127.0.0.1','-U',backup?'timeline_backup':'timeline_app',...args];
 }
+export function adminDatabaseCommand(db='postgres') {
+  need(['postgres','timeline'].includes(db),'Unsupported administrator database');
+  // Connection options override database/role defaults before any query runs.
+  // A restored database owner can otherwise set search_path to malicious views.
+  return ['env','PGOPTIONS=-c search_path=pg_catalog','psql','-X','-qAt','-v','ON_ERROR_STOP=1','-d',db,'-U','postgres'];
+}
+export const subscriptionCheckSql="SELECT pg_catalog.count(*) FROM pg_catalog.pg_subscription WHERE subdbid=(SELECT oid FROM pg_catalog.pg_database WHERE datname='timeline');";
 function appPostgres(s,tool,args,input=Buffer.alloc(0),backup=false) {
   const secret=json(read(path.join(s.root,'secrets.json'),8192,true));const password=backup?secret.backup:secret.database;need(/^[a-f0-9]{64}$/.test(password),'Invalid database credential');
   const bytes=Buffer.isBuffer(input)?input:Buffer.from(input);
@@ -148,7 +155,7 @@ function appPostgres(s,tool,args,input=Buffer.alloc(0),backup=false) {
 }
 function sql(s,query,db='timeline',role=true) {
   const args=['-X','-qAt','-v','ON_ERROR_STOP=1','-d',db];
-  return (role?appPostgres(s,'psql',args,query,role==='backup'):compose(s,['exec','-T','postgres','psql',...args,'-U','postgres'],query)).toString().trim();
+  return (role?appPostgres(s,'psql',args,query,role==='backup'):compose(s,['exec','-T','postgres',...adminDatabaseCommand(db)],query)).toString().trim();
 }
 function storage(s) {
   compose(s,['up','-d','--pull','never','postgres','redis']);
@@ -156,7 +163,7 @@ function storage(s) {
   throw new Error('PostgreSQL startup timeout');
 }
 function newDatabase(s) {
-  need(sql(s,"SELECT count(*) FROM pg_database WHERE datname='timeline';",'postgres',false)==='0','Restore/install requires a fresh target database');
+  need(sql(s,"SELECT pg_catalog.count(*) FROM pg_catalog.pg_database WHERE datname='timeline';",'postgres',false)==='0','Restore/install requires a fresh target database');
   const secret=json(read(path.join(s.root,'secrets.json'),8192,true));
   need(/^[a-f0-9]{64}$/.test(secret.database),'Invalid database credential');
   need(/^[a-f0-9]{64}$/.test(secret.backup),'Invalid backup credential');
@@ -210,10 +217,10 @@ function backup(s,out,keyFile) {
   need(stopped.ExitCode===0&&!stopped.OOMKilled,'API did not prove graceful write drain; backup refused');
   sql(s,'ALTER ROLE timeline_app NOLOGIN;','postgres',false);
   try {
-    sql(s,"SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname='timeline' AND pid<>pg_backend_pid();",'postgres',false);
-    need(sql(s,"SELECT count(*) FROM pg_stat_activity WHERE datname='timeline';",'postgres',false)==='0','Database writers remain');
-    need(sql(s,"SELECT count(*) FROM pg_prepared_xacts WHERE database='timeline';",'postgres',false)==='0','Prepared transactions present');
-    need(sql(s,'SELECT count(*) FROM pg_subscription;','timeline',false)==='0','Subscriptions unsupported');
+    sql(s,"SELECT pg_catalog.pg_terminate_backend(pid) FROM pg_catalog.pg_stat_activity WHERE datname='timeline' AND pid<>pg_catalog.pg_backend_pid();",'postgres',false);
+    need(sql(s,"SELECT pg_catalog.count(*) FROM pg_catalog.pg_stat_activity WHERE datname='timeline';",'postgres',false)==='0','Database writers remain');
+    need(sql(s,"SELECT pg_catalog.count(*) FROM pg_catalog.pg_prepared_xacts WHERE database='timeline';",'postgres',false)==='0','Prepared transactions present');
+    need(sql(s,subscriptionCheckSql,'postgres',false)==='0','Subscriptions unsupported');
     need(Number(sql(s,'SELECT pg_database_size(current_database());','timeline','backup'))<=64*1024**2,'Database exceeds supported 64 MiB');
     const before=fingerprint(s,true);
     const dump=appPostgres(s,'pg_dump',['--format=custom','--no-owner','--no-privileges','timeline'],undefined,true);

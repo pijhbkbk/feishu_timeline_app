@@ -22,7 +22,11 @@ test('loopback TLS works through an exec control channel while the only containe
     run(['run','-d','--name',name+'-target','--pull=never','--platform','linux/amd64','--network',name,'--network-alias','web','--network-alias','api','--read-only','--cap-drop=ALL','--memory','128m','--entrypoint','node',image,'-e',code]);
     run(['run','-d','--name',name+'-proxy-1','--label','com.timeline.portable.instance='+name,'--pull=never','--platform','linux/amd64','--network',name,'--read-only','--cap-drop=ALL','--memory','128m','--user',`${process.getuid()}:${process.getgid()}`,'--env','PUBLIC_ORIGIN='+origin,'--mount',`type=bind,source=${path.join(here,'proxy.mjs')},target=/portable/proxy.mjs,readonly`,'--mount',`type=bind,source=${path.join(root,'tls.crt')},target=/run/tls.crt,readonly`,'--mount',`type=bind,source=${path.join(root,'tls.key')},target=/run/tls.key,readonly`,'--entrypoint','node',image,'/portable/proxy.mjs']);
     assert.equal(JSON.parse(control('start')).ready,true);
-    const value=await new Promise((resolve,reject)=>{const request=https.get(origin+'/api/probe',{family:4,ca:fs.readFileSync(path.join(root,'tls.crt'))},response=>{let raw='';response.on('data',b=>raw+=b);response.on('end',()=>{try{assert.equal(response.statusCode,200);resolve(JSON.parse(raw));}catch(error){reject(error);}});});request.on('error',reject);});
+    const probe=()=>new Promise((resolve,reject)=>{const request=https.get(origin+'/api/probe',{family:4,ca:fs.readFileSync(path.join(root,'tls.crt')),timeout:1000},response=>{let raw='';response.on('data',b=>raw+=b);response.on('end',()=>{try{assert.equal(response.statusCode,200);resolve(JSON.parse(raw));}catch(error){reject(error);}});});request.on('error',reject);request.on('timeout',()=>request.destroy(new Error('TLS probe timed out')));});
+    // Container Running and the control listener do not imply proxy/API listen
+    // readiness. Exercise the real, certificate-verified TLS path with a bound.
+    let value,lastError;for(let i=0;i<30;i++){try{value=await probe();break;}catch(error){lastError=error;await new Promise(r=>setTimeout(r,250));}}
+    assert.ok(value,'Real TLS readiness did not complete: '+lastError?.message);
     assert.deepEqual(value,{synthetic:true,path:'/api/probe'});
     const blocked="const s=require('node:net').connect(443,'1.1.1.1');s.on('connect',()=>process.exit(1));s.on('error',()=>process.exit(0));s.setTimeout(1000,()=>{s.destroy();process.exit(0)});";
     run(['exec',name+'-proxy-1','node','-e',blocked]);
