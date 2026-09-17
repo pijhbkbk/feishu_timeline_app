@@ -1,6 +1,8 @@
 # 固定 GCE 原生程序更新工程（本地工程）
 
-这是从已提交 `6c70a897ec7643f4681616d801481765aaa8f7bc` 更新程序的运维源码；不重新初始化账号、执行 migration、恢复数据库或回到初始 f2da。Ops commit 与最终 runtime commit 分开记录。最终目标已按主任务实际不可变构建/私有推送读回固定在 `native_release_target.py`：runtime `13131ee5425017b31ccf77741798a8dc37dbc936`、tree `14001bed5b79c89f2bed9289932adbf876f8d03d`、buildTime `2026-09-17T06:59:30Z`、release `native-portable-20260917-13131ee54250`；API RepoDigest `872e6b8d0800546f51a986ddf03e0b5d2d65c250fa4911b95549c3774a72fc91`、Web RepoDigest `b7b86f39893dce2e49a6f90f6f655e63cd0a4c4043735a5d0cb18ca9592a17e5`。没有把未读回的Image ID当仓库摘要。
+这是从已提交 `6c70a897ec7643f4681616d801481765aaa8f7bc` 更新程序的运维源码；不重新初始化账号、执行 migration、恢复数据库或回到初始 f2da。Ops commit 与最终 runtime commit 分开记录。最终目标已按主任务实际不可变构建/私有推送读回固定在 `native_release_target.py`：runtime `c5aed415cd17e6e8a21b422a4c5c92b4b924e091`、tree `830e562f5ec56e99d7fc0b04432fc056dd772254`、buildTime `2026-09-17T08:04:51Z`、release `native-portable-20260917-c5aed415cd17`；API RepoDigest `40544930b329416679f24ebc6dd2354e24beaec9d8490b9edbdbda5e0f71d192`、Web RepoDigest `774419239cea09f8d341fd29ed34361b47012c720bafbe7a3a5ef0d60ffa187b`。没有把未读回的Image ID当仓库摘要。
+
+先前绑定 `13131ee5425017b31ccf77741798a8dc37dbc936` 的 d71/9eb 准备包已暂停，不得执行。本次仅重绑定最终身份；相对该准备候选，应用源码及依赖无变化，17项批准文件摘要保持一致。实际镜像 RepoDigest 依据本轮私有推送后的回读记录；最终 Ops ref 尚需主任务推送并回读。
 
 主任务于 2026-09-17 06:51:59Z 经既有 IAP 只读证实：原 `release-6c70-state.json` version1、active=committed=6c70、pending=false，旧控制器摘要、镜像、clean checkout、API/Web运行元数据、入口及扫描器符合旧记录。该只读结果没有给本分任务生产写操作事实；本分任务没有访问或修改生产。
 

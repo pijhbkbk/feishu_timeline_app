@@ -3,12 +3,12 @@
 RepoDigests were read back by the parent task on 2026-09-17. Operations source
 and runtime source have separate commits; never replace these values at runtime.
 """
-TARGET = {'commit': '13131ee5425017b31ccf77741798a8dc37dbc936',
- 'tree': '14001bed5b79c89f2bed9289932adbf876f8d03d',
- 'release': 'native-portable-20260917-13131ee54250',
- 'buildTime': '2026-09-17T06:59:30Z',
- 'images': {'api': 'us-west1-docker.pkg.dev/axial-acrobat-492709-r7/feishu-timeline/api@sha256:872e6b8d0800546f51a986ddf03e0b5d2d65c250fa4911b95549c3774a72fc91',
-            'web': 'us-west1-docker.pkg.dev/axial-acrobat-492709-r7/feishu-timeline/web@sha256:b7b86f39893dce2e49a6f90f6f655e63cd0a4c4043735a5d0cb18ca9592a17e5'},
+TARGET = {'commit': 'c5aed415cd17e6e8a21b422a4c5c92b4b924e091',
+ 'tree': '830e562f5ec56e99d7fc0b04432fc056dd772254',
+ 'release': 'native-portable-20260917-c5aed415cd17',
+ 'buildTime': '2026-09-17T08:04:51Z',
+ 'images': {'api': 'us-west1-docker.pkg.dev/axial-acrobat-492709-r7/feishu-timeline/api@sha256:40544930b329416679f24ebc6dd2354e24beaec9d8490b9edbdbda5e0f71d192',
+            'web': 'us-west1-docker.pkg.dev/axial-acrobat-492709-r7/feishu-timeline/web@sha256:774419239cea09f8d341fd29ed34361b47012c720bafbe7a3a5ef0d60ffa187b'},
  'approvedRuntimeChanges': {'apps/api/package.json': 'a650662f78c91cf45845ea66d67c3dea0d1aeafea46a05697916d52273bcc124',
                             'apps/api/prisma/seed.ts': 'c68ccdd053ee7cc2c26a553c3f21c0617af20b173e15e59253d7a27b8f901a7d',
                             'apps/api/src/cli/native-catalog.ts': 'ad41d766c9ed4178a0422296f29f4a2291e316be194af170dda6b3f8e1579bff',
