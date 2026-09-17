@@ -1,0 +1,39 @@
+{
+  "scope": "Read-only AST literal and SHA comparisons; no imports, shell script execution, production access or attack experiments",
+  "operationsCommit": "d16dc78cae8ef67f24c0530f2705e2f81f27236c",
+  "runtimeCommit": "c5aed415cd17e6e8a21b422a4c5c92b4b924e091",
+  "bundleManifestSha256": "dda79f493a4c9f9a29025da02a3c04c7c9e0130120239c332ad3a79bc950f318",
+  "approvedRuntimePathsMatched": 17,
+  "scriptsMatched": 7,
+  "payloadFilesMatched": 10,
+  "templateRenderMatched": 7,
+  "registryDigestsMatched": [
+    "api",
+    "web"
+  ],
+  "productionExecutedByReviewer": false,
+  "authorReportedControllerTests": 119,
+  "independentlyRerunControllerTests": 0,
+  "reviewDiagnostic": "First ad hoc static template comparator added an extra newline and failed install equality; correcting extraction comparison matched exact template bytes without any source/bundle edit. Not a production or controller test execution.",
+  "scripts": {
+    "timeline-native-release-install-20260917.sh": "41280de415a2cb7611eb4c666ddf281c1ff898f3c96874487484b4fc963596e7",
+    "timeline-native-release-checkout-20260917.sh": "6fe677eea854f24f99451cc6b870febc1a2c3886a6628293ce5c5f8e11cc4a8c",
+    "timeline-native-release-pull-20260917.sh": "4e3daa58217d91e5792d6bdcb2eee4edb1cefef40510ca4c6325a3229171e1cc",
+    "timeline-native-release-rehearse-20260917.sh": "e70d69c9c0b2774fdc785d51cd1569c3dc4499e8ad5d7781aa26cb3b6794dc7c",
+    "timeline-native-release-update-20260917.sh": "de3bfb60965c67b9ea14f60b10ff7e9ac63e16b84c91f8f0e6a9f2ae1542991e",
+    "timeline-native-release-proof-20260917.sh": "6756abc9839f280f028418a569fec7590c20421e4d0dccfb8acaa349d9c1defb",
+    "timeline-native-release-rollback-20260917.sh": "cd9a3c1c8b88dc728b6d451b01a602a2b6f635474613743f4a2be73a1750742d"
+  },
+  "payloadHashes": {
+    "native_release_target.py": "206eb354ef49598ab46d387573b562decccda8553f21713f1dec22c2fd3f71f0",
+    "native_release_backup.py": "78b9299b5550997d2d939c5b2fc0205b6bd7e0ca620163771a061aede37e8f1a",
+    "native_runtime_network.py": "1777805fe945e862fb72946598766b6961b07cc22e6e8f98acfa9db0cd0de246",
+    "native_runtime_app.py": "6143c96c4e8b93a10344e0263485fa6970faa14279c3e122f97465bc24bbd365",
+    "native_cutover.py": "4fcaa6b688b40fc9965a36461f3cc9e7ccc2560be9b217b720560cdae348869c",
+    "native_release.py": "1362de39eaa1892883d356b28f70f989e86ed2e1af848874a85f5f5aac7766a3",
+    "timeline-native-api.service": "a5600c9b4f98c4a8852cb3e79ab395033fc685bd235e87277689f4da364412d1",
+    "timeline-native-release.service": "78c12a115c07fa06dc3b2ecfbe3bdccaa7e2f4dfa71031b223426934eac768aa",
+    "timeline-native-release-check.service": "b6a95ff98b6f269549044a702cffccf3d1835a81b432e2dc561aca05e2174c43",
+    "timeline-native-release-rollback.service": "47f0dd19deadaeccaf3e0c5ad81eaefe178a5972560650f05ec102f3f222ff7b"
+  }
+}

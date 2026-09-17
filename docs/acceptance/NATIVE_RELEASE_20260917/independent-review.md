@@ -25,3 +25,14 @@
 作者报告最终本机 controller 单测 119 项通过，以及较早生成包的摘要/语法检查；这些是作者动态或语法结果。测试中的 systemd、Docker、PostgreSQL 和生产进程调用使用替身，部分中断测试使用真实本机临时文件；不是生产演练，也不是本审查者独立动态复验。本次未复跑、未访问生产，不把此前被自动内容安全检查拦截的审查 turn 计为 PASS。
 
 后续仍须固定新 runtime/RepoDigest/Ops commit、重新生成并核对发布包，按既有监督器执行实际备份及中断恢复演练，再分别验证精确域名浏览器与产品负责人操作。staging/production/main/tag 未因本证据提交改变，产品确认仍待主任务取得。
+
+
+## 最终 c5aed41 / d16dc78 身份绑定
+
+只读增量审查 Ops `d16dc78cae8ef67f24c0530f2705e2f81f27236c`，工作树干净；相对上述 `9eb83f4` 仅修改固定 TARGET 与 README，没有新增执行逻辑。TARGET 现固定 runtime `c5aed415cd17e6e8a21b422a4c5c92b4b924e091`、tree `830e562f5ec56e99d7fc0b04432fc056dd772254`、release `native-portable-20260917-c5aed415cd17`、buildTime `2026-09-17T08:04:51Z`，与已核对的实际软件包一致。API/Web 的完整 RepoDigest 与主任务实际 push 回读逐项相同；未将旧 13131ee 包或本地标签当作此新身份。
+
+实际读取 `/private/tmp/timeline-native-release-bundle-d16dc78`，manifest SHA-256 为 `dda79f493a4c9f9a29025da02a3c04c7c9e0130120239c332ad3a79bc950f318`。独立逐字节/AST literal 比较确认：17 个批准 runtime 路径 SHA 与最终冻结源码一致；7 个脚本 SHA、10 个内嵌 payload 的 SHA 和原文与 clean Ops 文件一致；7 个脚本内容与该 Ops commit 的模板及固定 literal 替换完全相同。安装旧单元摘要与指定 c33 源码一致；checkout 内 Ops commit、安装目标 commit、pull 镜像身份及各 driver 的依赖摘要也互相绑定。没有导入或执行控制器/生成器/发布脚本。
+
+首次临时比较器在抽取 heredoc 后额外加了一行换行，导致 install 文本相等断言失败；修正审查比较器后原始模板字节完全相同，未修改被审源码或软件包。该诊断保留在相邻 `final-ops-identity-review-d16dc78.json`，不是生产或 controller 动态测试结果。
+
+作者保存的最终本机记录报告 119 个 controller 测试及 7 脚本 shell/内嵌 Python 语法检查通过，脚本执行和生产访问均为 false；本审查者未重跑这 119 个测试。早先 rebind preflight 中的 `AWAITING_ACTUAL_PUSH_READBACK` 保留为推送前历史，不作当前摘要证据。限定增量范围未见剩余静态阻断，状态为 `FINAL_OPS_IDENTITY_STATIC_REVIEW_COMPLETE`；实际远端 ref 回读、备份、中断恢复演练、目标 URL 浏览器与产品确认仍分别由后续实测证明，不能用本节代替。
