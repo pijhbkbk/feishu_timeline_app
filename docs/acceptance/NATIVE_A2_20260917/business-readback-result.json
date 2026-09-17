@@ -1,0 +1,85 @@
+{
+  "syntheticOnly": true,
+  "mode": "readback",
+  "runtimeCommit": "6c70a897ec7643f4681616d801481765aaa8f7bc",
+  "startedAt": "2026-09-17T06:47:19.681Z",
+  "requests": [
+    {
+      "method": "GET",
+      "path": "/health",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/projects/cmu55i3l70025of01g9qay5fm",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/projects/cmu55i4n7002mof01aqzylzu9",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/projects/cmu55u3m50093of01j9ifldrz",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/auth/logout",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/auth/logout",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/auth/logout",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/auth/logout",
+      "status": 200
+    }
+  ],
+  "checks": [
+    {
+      "name": "authenticated-readback",
+      "status": "PASS",
+      "counts": {
+        "users": 5,
+        "projects": 3,
+        "tasks": 16,
+        "attachments": 6,
+        "notifications": 6,
+        "audit": 158
+      },
+      "snapshotSha256": "2e907603a050f9c16eadff6c0e10466a7a34f9007717549487f28b5d800f3184"
+    }
+  ],
+  "status": "PASS",
+  "completedAt": "2026-09-17T06:47:23.484Z"
+}

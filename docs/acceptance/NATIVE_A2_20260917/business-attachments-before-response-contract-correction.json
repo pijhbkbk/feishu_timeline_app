@@ -1,0 +1,64 @@
+{
+  "syntheticOnly": true,
+  "mode": "attachments",
+  "runtimeCommit": "6c70a897ec7643f4681616d801481765aaa8f7bc",
+  "startedAt": "2026-09-17T06:33:52.011Z",
+  "requests": [
+    {
+      "method": "GET",
+      "path": "/health",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/projects/cmu55i3l70025of01g9qay5fm/attachments/upload",
+      "status": 201
+    },
+    {
+      "method": "POST",
+      "path": "/auth/logout",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/auth/logout",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/auth/logout",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/auth/logout",
+      "status": 200
+    }
+  ],
+  "checks": [],
+  "status": "FAIL",
+  "failure": {
+    "type": "AssertionError",
+    "message": "Expected values to be strictly equal:\n+ actual - expected\n\n+ undefined\n- 'clamav'\n"
+  }
+}

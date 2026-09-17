@@ -1,0 +1,102 @@
+{
+  "syntheticOnly": true,
+  "mode": "attachments",
+  "runtimeCommit": "6c70a897ec7643f4681616d801481765aaa8f7bc",
+  "startedAt": "2026-09-17T06:39:30.876Z",
+  "requests": [
+    {
+      "method": "GET",
+      "path": "/health",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/projects/cmu55i3l70025of01g9qay5fm/attachments/upload",
+      "status": 503
+    },
+    {
+      "method": "GET",
+      "path": "/attachments/cmu55mu2s005nof014o1qjh1f/content",
+      "status": 403
+    },
+    {
+      "method": "GET",
+      "path": "/attachments/cmu55t80u008dof01vh6ciklq/content",
+      "status": 403
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/auth/logout",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/auth/logout",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/auth/logout",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/auth/logout",
+      "status": 200
+    }
+  ],
+  "checks": [
+    {
+      "name": "actual-clam-scan-download-and-attachment-idor",
+      "status": "REUSED_SAME_SYNTHETIC_RUN",
+      "originalTime": "2026-09-17T06:34:32.410Z"
+    },
+    {
+      "name": "real-clam-eicar-docx-rejected-with-persisted-verdict",
+      "status": "REUSED_SAME_SYNTHETIC_RUN",
+      "originalTime": "2026-09-17T06:37:49.222Z"
+    },
+    {
+      "name": "scanner-outage-response",
+      "status": "OBSERVED",
+      "httpStatus": 503
+    },
+    {
+      "name": "scanner-unavailable-persists-error-and-blocks-download-login-survives",
+      "status": "PASS",
+      "completedAt": "2026-09-17T06:39:39.309Z"
+    }
+  ],
+  "status": "PASS",
+  "completedAt": "2026-09-17T06:39:39.311Z"
+}

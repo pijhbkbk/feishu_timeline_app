@@ -1,0 +1,182 @@
+{
+  "syntheticOnly": true,
+  "mode": "rates",
+  "runtimeCommit": "6c70a897ec7643f4681616d801481765aaa8f7bc",
+  "startedAt": "2026-09-17T06:43:47.814Z",
+  "requests": [
+    {
+      "method": "GET",
+      "path": "/health",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/auth/register",
+      "status": 429
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 401
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 401
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 401
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 401
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 401
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 401
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 401
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 401
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 401
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 401
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 429
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 429
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 429
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 429
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 429
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 429
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 429
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 429
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 429
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 429
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 429
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 429
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 429
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 429
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 429
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 429
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 429
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 429
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 429
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 429
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 429
+    }
+  ],
+  "checks": [
+    {
+      "name": "real-HTTP-Redis-registration-login-rate-limits",
+      "status": "PASS",
+      "loginRefusals": 21
+    }
+  ],
+  "status": "PASS",
+  "completedAt": "2026-09-17T06:43:51.699Z"
+}
