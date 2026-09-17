@@ -51,3 +51,37 @@ This is component evidence only. It does not establish portable-image installati
 complete offline operation, restoration, deployed production identity, browser
 acceptance or independent security review. The parent delivery must bind the
 integrated immutable candidate and complete those separate checks.
+
+## Independent bounded review — 2026-09-17
+
+Reviewer: the separate portable-recovery agent. Reviewed catalog implementation
+commit `1d8ff6d41e71fb202ef433c58c458c355a3dca2e` read-only in
+`/private/tmp/timeline-native-catalog-20260917`, including the initializer, CLI,
+complete seed extraction diff, unit tests and PostgreSQL integration tests.
+
+No blocking finding was identified within this review's scope: the initializer
+locks every Prisma application table together with the native-administrator
+advisory lock; refuses populated business/account/configuration/audit tables and
+changed migration reference rows; preserves migration IDs and permissions; and
+writes the catalog and its audit record in one transaction. The new path creates
+no users or user-role assignments. A populated restored database fails the same
+fresh-install checks; the portable restore path does not invoke this CLI.
+
+The reviewer independently executed a TypeScript AST extraction comparison of
+the pre-change seed against `base-catalog.ts`. All eight declaration/function
+bodies matched exactly: `baseRoles`, `defaultProcessTemplate`,
+`rolePermissionMap`, `workflowNodes`, `projectStatusItems`, `systemParameters`,
+`businessDivisionDepartments` and `buildWorkCalendarEntries`. The function's
+`export` modifier was excluded from that comparison; initializer text was
+otherwise compared without normalization. The extracted calendar years remain
+`[2026, 2027]`.
+
+The reviewer did **not** independently rerun the 15 PostgreSQL integration cases;
+their PASS results above remain the component author's executed evidence. The
+reviewer's separate preliminary portable installation did execute the compiled
+catalog CLI successfully against a fresh synthetic database using application
+candidate `13131ee5425017b31ccf77741798a8dc37dbc936`. That result is preliminary
+installation evidence, not final-package or independent-machine restoration
+acceptance. The later recovery attempt remains blocked by the separately recorded
+schema-fingerprint mismatch; this review does not waive that check or establish
+production or product acceptance.
