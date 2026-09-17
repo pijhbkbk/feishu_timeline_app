@@ -1,0 +1,16 @@
+{
+  "status": "PASS",
+  "baselineCommit": "12e75baab067b2d7188d524968259e0b8c427697",
+  "migration": "20260912190000_native_accounts",
+  "syntheticOnly": true,
+  "historicalRelations": [
+    "user identity",
+    "project owner",
+    "workflow actor",
+    "review author",
+    "attachment uploader",
+    "audit actor"
+  ],
+  "backupSha256": "000e04cd33f1e9f99c171991493617da50bb4d88f1ee9665c4a1862932b78f7b",
+  "migrationSha256": "e591655d32a0cd94f29eefa58cbe9343fe19b7022825e9d442968389de5895fe"
+}

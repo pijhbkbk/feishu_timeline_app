@@ -1,0 +1,122 @@
+{
+  "syntheticOnly": true,
+  "mode": "workflow",
+  "runtimeCommit": "6c70a897ec7643f4681616d801481765aaa8f7bc",
+  "startedAt": "2026-09-17T06:43:19.151Z",
+  "requests": [
+    {
+      "method": "GET",
+      "path": "/health",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/notifications/my?pageSize=50",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/notifications/cmu55ua2z00cpof01wz2ououv/mark-read",
+      "status": 404
+    },
+    {
+      "method": "POST",
+      "path": "/notifications/cmu55ua2z00cpof01wz2ououv/mark-read",
+      "status": 201
+    },
+    {
+      "method": "POST",
+      "path": "/notifications/cmu55ua2z00cpof01wz2ououv/mark-read",
+      "status": 201
+    },
+    {
+      "method": "GET",
+      "path": "/projects/cmu55u3m50093of01j9ifldrz/logs",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/auth/logout",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/auth/logout",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/auth/logout",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/auth/logout",
+      "status": 200
+    }
+  ],
+  "checks": [
+    {
+      "name": "return-path:workflow-initiation-native-admin",
+      "status": "REUSED_SAME_SYNTHETIC_RUN",
+      "originalTime": "2026-09-17T06:40:15.322Z"
+    },
+    {
+      "name": "return-path:workflow-report-native-engineer",
+      "status": "REUSED_SAME_SYNTHETIC_RUN",
+      "originalTime": "2026-09-17T06:40:17.009Z"
+    },
+    {
+      "name": "return-path:workflow-paint-first-submission",
+      "status": "REUSED_SAME_SYNTHETIC_RUN",
+      "originalTime": "2026-09-17T06:40:18.511Z"
+    },
+    {
+      "name": "return-path:workflow-sample-return-retains-history",
+      "status": "REUSED_SAME_SYNTHETIC_RUN",
+      "originalTime": "2026-09-17T06:40:20.009Z"
+    },
+    {
+      "name": "return-path:workflow-paint-resubmission",
+      "status": "REUSED_SAME_SYNTHETIC_RUN",
+      "originalTime": "2026-09-17T06:40:21.538Z"
+    },
+    {
+      "name": "return-path:workflow-sample-approval-after-real-image-scan",
+      "status": "REUSED_SAME_SYNTHETIC_RUN",
+      "originalTime": "2026-09-17T06:40:23.066Z"
+    },
+    {
+      "name": "return-path:workflow-procurement-native-purchaser",
+      "status": "REUSED_SAME_SYNTHETIC_RUN",
+      "originalTime": "2026-09-17T06:40:24.637Z"
+    },
+    {
+      "name": "return-path:real-notifications-and-audit-readback",
+      "status": "PASS",
+      "completedAt": "2026-09-17T06:43:24.248Z"
+    }
+  ],
+  "status": "PASS",
+  "completedAt": "2026-09-17T06:43:24.249Z"
+}
