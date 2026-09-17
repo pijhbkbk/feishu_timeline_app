@@ -17,6 +17,43 @@ import native_runtime_redis as redis
 
 
 class ReleaseProtectionTests(unittest.TestCase):
+    def test_real_systemd_socket_shape_has_no_main_pid(self):
+        # Production systemctl show exposes ControlPID for socket units, but
+        # MainPID belongs to their paired service. Keep each service explicit.
+        def unit_state(unit):
+            value = {'ActiveState': 'inactive', 'ControlPID': '0'}
+            if unit not in cutover.SOCKETS:
+                value['MainPID'] = '0'
+            return value
+        stopped = {'State': {'Running': False, 'Pid': 0, 'ExitCode': 0, 'OOMKilled': False}}
+        with patch.object(cutover, 'unit_state', side_effect=unit_state), \
+                patch.object(app, 'inspect', return_value=None), \
+                patch.object(backup, 'sql', side_effect=['0', '0', 't']), \
+                patch.object(redis, 'inspect', return_value=stopped):
+            protection.assert_frozen()
+
+    def test_socket_shape_exception_does_not_accept_missing_service_pid_or_live_writers(self):
+        cases = [(cutover.APPS[0], {'ActiveState': 'inactive', 'ControlPID': '0'}),
+                 (cutover.PROXIES[0], {'ActiveState': 'inactive', 'ControlPID': '0'}),
+                 (cutover.SOCKETS[0], {'ActiveState': 'inactive', 'MainPID': '23', 'ControlPID': '0'}),
+                 (cutover.SOCKETS[0], {'ActiveState': 'inactive'}),
+                 (cutover.SOCKETS[0], {'ActiveState': 'inactive', 'ControlPID': '23'}),
+                 (cutover.SOCKETS[0], {'ActiveState': 'active', 'ControlPID': '0'}),
+                 (cutover.APPS[0], {'ActiveState': 'inactive', 'MainPID': '0'})]
+        for affected, invalid in cases:
+            def unit_state(unit):
+                if unit == affected:
+                    return invalid
+                value = {'ActiveState': 'inactive', 'ControlPID': '0'}
+                if unit not in cutover.SOCKETS:
+                    value['MainPID'] = '0'
+                return value
+            with self.subTest(unit=affected, value=invalid), \
+                    patch.object(cutover, 'unit_state', side_effect=unit_state), patch.object(backup, 'sql') as sql:
+                with self.assertRaisesRegex(backup.Failure, 'writer/ingress'):
+                    protection.assert_frozen()
+                sql.assert_not_called()
+
     def test_requires_durable_previous_commit_before_any_closure(self):
         for value in [None, {'version': 1, 'active': release.OLD, 'committed': release.OLD, 'pending': False},
                       {'version': 1, 'active': 'different', 'committed': release.OLD, 'pending': True}]:

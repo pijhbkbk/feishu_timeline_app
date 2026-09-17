@@ -23,7 +23,10 @@ REDIS_UNIT = 'timeline-native-redis.service'
 def assert_frozen():
     for unit in cutover.APPS + cutover.SOCKETS + cutover.PROXIES:
         value = cutover.unit_state(unit)
-        require(value['ActiveState'] == 'inactive' and value['MainPID'] == '0' and value['ControlPID'] == '0',
+        # systemd socket units expose ControlPID but no MainPID; their paired
+        # proxy service is checked separately and must expose MainPID=0.
+        main_stopped = value.get('MainPID') == '0' or (unit in cutover.SOCKETS and 'MainPID' not in value)
+        require(value.get('ActiveState') == 'inactive' and main_stopped and value.get('ControlPID') == '0',
                 'Native application writer/ingress remains active')
     require(all(app.inspect(component) is None for component in ('api', 'web')), 'Native application container remains')
     require(backup.sql("SELECT count(*) FROM pg_catalog.pg_stat_activity WHERE datname='" + cutover.DATABASE + "';") == '0',
