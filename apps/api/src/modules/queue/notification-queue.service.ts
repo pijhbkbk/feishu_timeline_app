@@ -85,6 +85,7 @@ export class NotificationQueueService implements OnModuleInit, OnModuleDestroy {
   private isOverdueScanProcessing = false;
   private isDueReminderScanProcessing = false;
   private isMonthlyReviewScanProcessing = false;
+  private stopping = false;
   private nextMemoryDedupeSweepAt = 0;
 
   constructor(
@@ -127,6 +128,7 @@ export class NotificationQueueService implements OnModuleInit, OnModuleDestroy {
   }
 
   onModuleDestroy() {
+    this.stopping = true;
     if (this.workerTimer) {
       clearInterval(this.workerTimer);
     }
@@ -138,6 +140,15 @@ export class NotificationQueueService implements OnModuleInit, OnModuleDestroy {
     if (this.monthlyReviewScanTimer) {
       clearInterval(this.monthlyReviewScanTimer);
     }
+  }
+
+  /** Stop timers before HTTP drain; an already dequeued job must finish/requeue. */
+  beginShutdown() { this.onModuleDestroy(); }
+
+  isShutdownIdle() {
+    return !this.isProcessing && !this.isOverdueScanProcessing &&
+      !this.isDueReminderScanProcessing && !this.isMonthlyReviewScanProcessing &&
+      this.memoryQueue.length === 0;
   }
 
   async enqueue(input: NotificationQueueJobInput) {
@@ -306,7 +317,7 @@ export class NotificationQueueService implements OnModuleInit, OnModuleDestroy {
   }
 
   async processPendingJobs() {
-    if (this.isProcessing) {
+    if (this.stopping || this.isProcessing) {
       return { processed: 0 };
     }
 
@@ -315,7 +326,7 @@ export class NotificationQueueService implements OnModuleInit, OnModuleDestroy {
     let inspected = 0;
 
     try {
-      while (inspected < 20) {
+      while (!this.stopping && inspected < 20) {
         const dequeued = await this.dequeue();
 
         if (dequeued.kind === 'empty') {
@@ -359,7 +370,7 @@ export class NotificationQueueService implements OnModuleInit, OnModuleDestroy {
   }
 
   async processOverdueScan() {
-    if (this.isOverdueScanProcessing) {
+    if (this.stopping || this.isOverdueScanProcessing) {
       return this.skippedScanResult();
     }
 
@@ -475,7 +486,7 @@ export class NotificationQueueService implements OnModuleInit, OnModuleDestroy {
   }
 
   async processDueReminderScan(now = new Date()) {
-    if (this.isDueReminderScanProcessing) {
+    if (this.stopping || this.isDueReminderScanProcessing) {
       return this.skippedScanResult();
     }
 
@@ -598,7 +609,7 @@ export class NotificationQueueService implements OnModuleInit, OnModuleDestroy {
   }
 
   async processMonthlyReviewSchedule(now = new Date()) {
-    if (this.isMonthlyReviewScanProcessing) {
+    if (this.stopping || this.isMonthlyReviewScanProcessing) {
       return {
         ...this.skippedScanResult(),
         markedOverdue: 0,

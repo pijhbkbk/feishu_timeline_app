@@ -55,6 +55,7 @@ export class AttachmentStorageQuotaService
   private readonly logger = new Logger(AttachmentStorageQuotaService.name);
   private reconcileTimer: ReturnType<typeof setInterval> | null = null;
   private reconciliationInFlight = false;
+  private stopping = false;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -77,11 +78,16 @@ export class AttachmentStorageQuotaService
   }
 
   onModuleDestroy() {
+    this.stopping = true;
     if (this.reconcileTimer) {
       clearInterval(this.reconcileTimer);
       this.reconcileTimer = null;
     }
   }
+
+  beginShutdown() { this.onModuleDestroy(); }
+
+  isShutdownIdle() { return !this.reconciliationInFlight; }
 
   async reserve(input: ReserveAttachmentStorageInput) {
     if (!Number.isSafeInteger(input.bytes) || input.bytes <= 0) {
@@ -315,7 +321,7 @@ export class AttachmentStorageQuotaService
   }
 
   async reconcileExpiredReservations() {
-    if (this.reconciliationInFlight) {
+    if (this.stopping || this.reconciliationInFlight) {
       return { claimed: 0, purged: 0, retained: 0, failed: 0 };
     }
     this.reconciliationInFlight = true;

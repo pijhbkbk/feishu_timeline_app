@@ -140,6 +140,30 @@ afterEach(() => {
 });
 
 describe('NotificationQueueService', () => {
+  it('finishes an in-flight dequeued notification before becoming snapshot-idle, without dequeuing another', async () => {
+    const {service,notificationsService,redisQueue}=createService();
+    let finish!: () => void;
+    notificationsService.processQueuedNotification.mockImplementationOnce(()=>new Promise(resolve=>{finish=()=>resolve({skipped:false});}));
+    await service.enqueue(systemNotification('first'));
+    await service.enqueue(systemNotification('second'));
+    const processing=service.processPendingJobs();
+    await vi.waitFor(()=>expect(notificationsService.processQueuedNotification).toHaveBeenCalledOnce());
+    service.beginShutdown();
+    expect(service.isShutdownIdle()).toBe(false);
+    finish();await processing;
+    expect(service.isShutdownIdle()).toBe(true);
+    expect(redisQueue).toHaveLength(1);
+    expect(await service.processPendingJobs()).toEqual({processed:0});
+    expect(redisQueue).toHaveLength(1);
+  });
+
+  it('refuses a portable snapshot when unpersisted fallback jobs remain in memory', async () => {
+    const {service}=createService({redisFails:true});
+    await service.enqueue(systemNotification('not durable'));
+    service.beginShutdown();
+    expect(service.isShutdownIdle()).toBe(false);
+  });
+
   const normalizedLengthExpansionRawPath = `/a${' '.repeat(683)}b`;
 
   const systemNotification = (content = '请查看系统消息。') => ({

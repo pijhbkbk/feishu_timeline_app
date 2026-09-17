@@ -8,6 +8,9 @@ import cookieParser from 'cookie-parser';
 
 import { AppModule } from './app.module';
 import { createSameOriginMutationGuard } from './common/same-origin.middleware';
+import { drainWriters } from './common/graceful-shutdown';
+import { NotificationQueueService } from './modules/queue/notification-queue.service';
+import { AttachmentStorageQuotaService } from './modules/attachments/attachment-storage-quota.service';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -52,6 +55,24 @@ async function bootstrap() {
   });
 
   await app.listen(port, host);
+
+  let shuttingDown = false;
+  const shutdown = () => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    void (async () => {
+      try {
+        await drainWriters(app.getHttpServer(), [app.get(NotificationQueueService), app.get(AttachmentStorageQuotaService)]);
+        await app.close();
+        process.exit(0);
+      } catch {
+        Logger.error('eventType=api_shutdown result=write_drain_unverified', 'Bootstrap');
+        process.exit(1);
+      }
+    })();
+  };
+  process.on('SIGTERM', shutdown);
+  process.on('SIGINT', shutdown);
 
   Logger.log('eventType=api_bootstrap result=listening', 'Bootstrap');
 }
