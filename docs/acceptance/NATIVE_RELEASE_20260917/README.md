@@ -19,7 +19,7 @@
 
 1. `checkout`：以既有lixiaochen用户核实私有VM上精确runtime/ops refs后，创建或核实0700不可变checkout；不移动旧refs/main/tag。
 2. `pull`：只拉固定私有registry RepoDigest，核对架构与四项标签；临时registry认证材料在finally删除。
-3. `install`：root可信内嵌payload与SHA，不从低权限checkout导入代码；校验所有旧依赖摘要，保留旧控制器/units；journal/helper/保留原件均完整临时文件fsync后原子激活，原子替换支持写中中断续装，安装不启动发布或修改state。
+3. `install`：root可信内嵌payload与SHA，不从低权限checkout导入代码；校验所有旧依赖摘要，保留旧控制器/units；journal/helper/保留原件均完整临时文件fsync后原子激活，原子替换支持写中中断续装，按新network兼容层→app→cutover→release顺序避免写中断时新调用者使用旧接口；安装不启动发布或修改state。
 4. `rehearse`：备份完成、程序关闭、新版本pending后，在绑定的systemd invocation/PID/checkpoint执行受控SIGKILL；核实监督器自动回到6c70、备份/数据不变。不是整机重启证明。
 5. `update`：必须有同目标的实际演练证明。固定systemd单元执行更新，结合controller日志和PID1成功退出记录证明完成，保留对应备份引用。
 6. `rollback`：明确从稳定最终版本退回稳定6c70，仅程序，不恢复数据库。
@@ -36,6 +36,6 @@ python3 scripts/deploy/gce-host/build_native_release_bundle.py \
 
 ## 本地验证与范围
 
-`python3 -m unittest discover -s scripts/deploy/gce-host -p 'test_native_*.py'`：118项通过，包括既有备份/迁移边界以及新增程序升级、缺状态拒绝、数据变动拒绝、专用范围、异常Redis出口、19个安装写入点分别在半写及完整持久化之后中断的真实本机文件续装。生产进程/systemd/Docker/PG调用均为测试边界替身；不是在生产或第二台主机上实际演练。原历史两个测试的fixture由隐式f2da缺状态改为显式6c70；有界输出测试使用当前Python解释器避免触碰本机Xcode许可，断言未减弱。
+`python3 -m unittest discover -s scripts/deploy/gce-host -p 'test_native_*.py'`：119项通过，包括既有备份/迁移边界以及新增程序升级、缺状态拒绝、数据变动拒绝、专用范围、异常Redis出口、19个安装写入点分别在半写及完整持久化之后中断的真实本机文件续装。生产进程/systemd/Docker/PG调用均为测试边界替身；不是在生产或第二台主机上实际演练。原历史两个测试的fixture由隐式f2da缺状态改为显式6c70；有界输出测试使用当前Python解释器避免触碰本机Xcode许可，断言未减弱。
 
 独立安全审查由fresh_catalog执行，只静态审查，未新增或执行攻击复现。最终常量已固定；生成包摘要、实际生产演练与浏览器记录在完成时另附，未执行不得记PASS。

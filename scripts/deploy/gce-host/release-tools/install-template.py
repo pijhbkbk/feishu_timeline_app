@@ -93,7 +93,7 @@ def main():
     for path in (OPS, ROOT, UNITS):
         directory(path)
     require(stat.S_IMODE(ROOT.stat().st_mode) == 0o700, 'App state directory must remain private')
-    names = ('native_release_target.py', 'native_release_backup.py', 'native_release.py', 'native_runtime_app.py', 'native_runtime_network.py', 'native_cutover.py', 'timeline-native-api.service',
+    names = ('native_release_target.py', 'native_release_backup.py', 'native_runtime_network.py', 'native_runtime_app.py', 'native_cutover.py', 'native_release.py', 'timeline-native-api.service',
              'timeline-native-release.service', 'timeline-native-release-check.service', 'timeline-native-release-rollback.service')
     require(type(PAYLOAD) is dict and set(PAYLOAD) == set(names), 'Incomplete fixed installer')
     require(isinstance(TARGET_ID, str) and len(TARGET_ID) == 40 and TARGET_ID != BASE, 'Target not finalized')

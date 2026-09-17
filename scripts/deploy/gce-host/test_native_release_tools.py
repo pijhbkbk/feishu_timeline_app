@@ -73,6 +73,11 @@ class ReleaseInstallerTests(unittest.TestCase):
                 self.assertEqual((state / 'saved/native_release.py').read_bytes(), old_module)
                 self.assertEqual(json.loads(state_file.read_text()), stable)
 
+    def test_install_order_keeps_old_and_new_wrapper_callers_compatible(self):
+        self.assertLess(bundle.NAMES.index('native_runtime_network.py'), bundle.NAMES.index('native_runtime_app.py'))
+        self.assertLess(bundle.NAMES.index('native_runtime_network.py'), bundle.NAMES.index('native_cutover.py'))
+        self.assertLess(bundle.NAMES.index('native_cutover.py'), bundle.NAMES.index('native_release.py'))
+
     def test_templates_reject_ambiguous_replacements(self):
         with self.assertRaisesRegex(RuntimeError, 'Unambiguous'):
             bundle.render('driver-template.py', {'NOT_A_TEMPLATE_FIELD': 'fixture'})

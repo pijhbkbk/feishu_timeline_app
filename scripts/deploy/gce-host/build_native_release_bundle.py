@@ -21,7 +21,7 @@ EXPECTED = {
     'native_runtime_network.py': 'd85f6a2ff101c1180b56b059b313571b38f84ddbeca8c1b213f2a20a96020807',
     'native_runtime_redis.py': 'e21b6e15c3a50c345f60f8c31f65c7bbfe245a77ffacf2403568bffd54a8cbbc',
 }
-NAMES = ('native_release_target.py', 'native_release_backup.py', 'native_release.py', 'native_runtime_app.py', 'native_runtime_network.py', 'native_cutover.py', 'timeline-native-api.service',
+NAMES = ('native_release_target.py', 'native_release_backup.py', 'native_runtime_network.py', 'native_runtime_app.py', 'native_cutover.py', 'native_release.py', 'timeline-native-api.service',
          'timeline-native-release.service', 'timeline-native-release-check.service', 'timeline-native-release-rollback.service')
 
 
