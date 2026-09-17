@@ -120,7 +120,7 @@ function init(packageDir,root,origin,certFile,keyFile) {
   const dataMount=path.join(root,'software','data.mjs')+':/portable/data.mjs:ro';
   const app={...hardened,image:m.images.api,user:'1000:1000',environment,volumes:['objects:/app/var/object-storage',dataMount],mem_limit:'1024m'};
   const services={
-    postgres:{...base,image:m.images.postgres,environment:{POSTGRES_PASSWORD:secrets.admin,POSTGRES_DB:'postgres'},volumes:['database:/var/lib/postgresql/data'],mem_limit:'512m',healthcheck:{test:['CMD','pg_isready','-U','postgres'],interval:'2s',timeout:'2s',retries:30}},
+    postgres:{...base,image:m.images.postgres,environment:{POSTGRES_PASSWORD:secrets.admin,POSTGRES_DB:'postgres',POSTGRES_INITDB_ARGS:'--auth-host=scram-sha-256 --auth-local=trust'},volumes:['database:/var/lib/postgresql/data'],mem_limit:'512m',healthcheck:{test:['CMD','pg_isready','-h','127.0.0.1','-U','postgres'],interval:'2s',timeout:'2s',retries:30}},
     redis:{...hardened,image:m.images.redis,user:'999:999',command:['redis-server','--appendonly','yes','--appendfsync','always','--aof-load-truncated','no','--maxmemory','64mb','--maxmemory-policy','noeviction','--requirepass',secrets.redis],volumes:['redis:/data'],mem_limit:'256m'},
     api:app,
     helper:{...app,profiles:['ops'],entrypoint:['node'],command:['/portable/data.mjs']},
@@ -152,7 +152,7 @@ function sql(s,query,db='timeline',role=true) {
 }
 function storage(s) {
   compose(s,['up','-d','--pull','never','postgres','redis']);
-  for(let i=0;i<30;i++){try{sql(s,'SELECT 1;','postgres',false);return;}catch{Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0,0,1000);}}
+  for(let i=0;i<30;i++){try{compose(s,['exec','-T','postgres','pg_isready','-h','127.0.0.1','-U','postgres']);sql(s,'SELECT 1;','postgres',false);return;}catch{Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0,0,1000);}}
   throw new Error('PostgreSQL startup timeout');
 }
 function newDatabase(s) {
@@ -167,6 +167,9 @@ function newDatabase(s) {
   sql(s,'GRANT CONNECT ON DATABASE timeline TO timeline_backup;','postgres',false);
   sql(s,'REVOKE ALL ON SCHEMA public FROM PUBLIC; GRANT ALL ON SCHEMA public TO timeline_app;','timeline',false);
   sql(s,'GRANT USAGE ON SCHEMA public TO timeline_backup; ALTER DEFAULT PRIVILEGES FOR ROLE timeline_app IN SCHEMA public GRANT SELECT ON TABLES TO timeline_backup; ALTER DEFAULT PRIVILEGES FOR ROLE timeline_app IN SCHEMA public GRANT SELECT ON SEQUENCES TO timeline_backup;','timeline',false);
+  let wrongPasswordRejected=false;
+  try{compose(s,['exec','-T','postgres',...databaseCommand('psql',['-X','-qAt','-v','ON_ERROR_STOP=1','-d','timeline'])],'deliberately-incorrect-password\nSELECT 1;');}catch{wrongPasswordRejected=true;}
+  need(wrongPasswordRejected&&sql(s,'SELECT session_user,current_user;')==='timeline_app|timeline_app','Target must authenticate the actual unprivileged account');
 }
 function helper(s,op,input) {return json(compose(s,['run','--rm','--no-deps','-T','helper','/portable/data.mjs',op],input===undefined?undefined:JSON.stringify(input)));}
 function fingerprint(s,backup=false) {
