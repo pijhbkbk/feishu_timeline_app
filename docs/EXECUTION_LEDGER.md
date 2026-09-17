@@ -7887,3 +7887,13 @@ BLOCKER_REPORT: Public-source push remains rejected by platform automatic review
 - 本次代码无变更，本地测试未重跑（既有结果保留）；staging URL/runtime/path均未执行；production本次未改变，运行 `6c70a897ec7643f4681616d801481765aaa8f7bc`；用户确认登录路径，其他读取为实际浏览器观察；main/tag未变。
 - 未完成：工作台空状态提示、注册/恢复/改密/授权写入浏览器验收、完整Network/console和响应式矩阵、callback/别名；正式Placeholder维持上次源码扫描0，本次未改源码。精确状态 `PRODUCTION_BROWSER_PARTIAL / USER_CONFIRMED_NATIVE_LOGIN_DASHBOARD`；整个产品尚未获接受。
 - 证据：`docs/acceptance/NATIVE_ACCOUNTS_20260912/owner-browser-confirmation-20260914.json`；README/路由矩阵同步更新。临时云访问仍保持已清理。
+
+### 2026-09-17 — 原生业务验收与可携带恢复实施中
+
+- 所有者明确采用 `NATIVE_AUTH_ACCEPTANCE_AND_PORTABLE_RECOVERY.md`；正式业务、离线软件、合成异机恢复分别验收。原 main 及未知修改/媒体保留；隔离 clone `codex/native-portable-recovery` 从现有原生源码 c33c1bd 续接。当前短交接：`docs/handoff/NATIVE_PORTABLE_20260917.md`。
+- 正式域名复现无待办误报无项目，同一用户仪表盘可见项目数及列表 total 均 1。修复 d6004cd 保留数据权限和空态，定向 Web 27/API 13 通过。13131ee 候选全套 Web 297/API 1353 通过，另 60 项明确 SKIPPED；冻结依赖、类型、lint、构建、Prisma 检查已执行。生产占位源码 0，测试白名单 10。
+- 合成账号与业务验收覆盖真实注册、岗位和正式角色区分、角色分配、停用、改密/恢复、最后管理员、跨项目拒绝、代表性 RETURN 流程、扫描/附件/审计，完整范围与失败记录见 `docs/acceptance/NATIVE_A2_20260917/README.md`。不以此证明最终包或独立断网恢复。
+- 可携带工具增加空库业务目录、受限身份恢复、正常写入排空、加密 app-only 备份、签名冻结验签与镜像/source tree 身份校验。独立审查发现问题均按证据修复；最后 namespace 审查只取得静态结论，平台拦截的动态实验不计 PASS。真实初始化预演发现子进程加载问题，070390a 修复后实际通过，故旧 13131ee 包不是最终交付。
+- 独立 B 虚拟机已准备并实际拒绝公网、旧服务器及元数据访问，镜像/容器初始均 0；尚未导入最终包。预演 A2 真实 PNG 扫描下载、正常停写备份通过；首次恢复数据/序列一致，schema 同一 CHECK 的括号重组造成严格拒绝。精确摘要等价补丁被自动审批拒绝，未应用或绕过；独立静态完整 diff 仅确认语义，等待具体变更授权，不把恢复写 PASS。
+- 06:51:59Z 生产只读证明实际 checkout、Web/API/镜像、状态均 6c70a897ec7643f4681616d801481765aaa8f7bc，无 pending。13131ee 源码/镜像已预备上传现有私有库但未运行；后续 Ops 更新已暂停待最终同版本包。无生产数据导出、DNS/main/tag 改动或新付费资源；专属镜像上传认证已清理，原有用户凭据保留。
+- 当前：`CODE_IMPLEMENTED / LOCAL_VERIFICATION_IN_PROGRESS / PORTABLE_RESTORE_BLOCKED_ON_REVIEWED_SCHEMA_DIFFERENCE / PRODUCTION_UNCHANGED / AWAITING_PRODUCT_OWNER_CONFIRMATION`。staging/最终包/独立恢复/新正式路由验收未完成；此前所有者原生登录→工作台确认继续有效。
