@@ -34,4 +34,18 @@
 - 已按控制命令停止本轮 11 个专用容器，保留卷和失败库；API 退出 0/无 OOM，TLS proxy 的退出 137/无 OOM 如实保留，不等同于所有进程优雅退出。v2 备份制作时 queue=0；其后非空队列留在已停止的 A2 卷中，最终测试须重新备份。现有本机任务源码分支与暂停的 Ops 分支已保存回原项目；Ops `9eb83f414597909e43bc351ac71791615c895b49` 仍绑定旧候选 13131ee，禁止执行，必须在最终冻结后重新固定镜像身份。
 - 下一步：完成独立审查整改，集成准确候选并构建同版本镜像；合成账号/角色/业务/附件写入与越权负向；受保护备份→干净 B→断公网启动/登录/文件完整性/新写入/再备份恢复。生产更新须采用既有受控路径和精确候选，随后在正式 URL 复验。
 
-当前：实现与验证进行中；staging 无已验收 URL/commit/path；production 本轮未改变；完整产品确认、离线交付、独立恢复均未完成。
+## 最新覆盖状态：2026-09-17 08:25Z
+
+以上为准备过程，以下是当前执行入口，不将旧失败改成通过。
+
+- 所有者批准的单一有方向 schema 摘要对已通过正常工具审批实施，精确匹配、反向及其他数据差异拒绝共 5 项回归通过；独立静态复核完成。
+- 最终不可变 runtime：`c5aed415cd17e6e8a21b422a4c5c92b4b924e091`，tree `830e562f5ec56e99d7fc0b04432fc056dd772254`，buildTime `2026-09-17T08:04:51Z`，release `native-portable-20260917-c5aed415cd17`。API `sha256:40544930b329416679f24ebc6dd2354e24beaec9d8490b9edbdbda5e0f71d192`，Web `sha256:774419239cea09f8d341fd29ed34361b47012c720bafbe7a3a5ef0d60ffa187b`，Ops `sha256:bc47eab26f3de164a4cca805453b467fa88922944ca6bdae240a2a8bceda614f`，全部 linux/amd64。
+- 三镜像最终构建完成。本人现有私有 Git 分支和 API/Web 私有 registry 已实际回读为 c5；专用上传认证目录已删除。应用/依赖/锁文件相对 13131ee 未变，相关全套检查按此依据复用；最终便携脚本及真实链路另行执行。
+- 最终软件 `/private/tmp/timeline-portable-delivery-c5aed415cd17/software`，7 文件摘要、clean git archive、六镜像和 72 个 OCI blob 闭合已独立核对。`corresponding-source` 内 13131ee 仅为未变扫描器源码补充的历史采集来源，不能写成最终应用身份；已有说明文件。最终材料仍须持久保存到原项目私有 var。
+- A3 `https://localhost:3450`、实例 `timeline-portable-bba6c545a4fd` 从最终包空库安装、业务目录及管理员初始化通过。auth/projects/identity/attachments/workflow/readback 六模式 253 请求通过，真实恶意附件拒绝、RETURN/重提/扫描/APPROVE/采购与后续工序通过。快照为 4 用户/3 项目/13 任务/3 附件/10 通知/94 审计，后续恢复边界专用合成账号另计。非敏感证据在交付根 `verification-A3`。
+- 独立 B 首次加载最终包前仍镜像/容器 0；实际主机出口拒绝证明保留。冷重启清空 `/tmp` 内预置证书，导致一次 init 在建配置前失败，未创建业务库/用户。改用持久 guest home 后 init 和官方签名导入成功，未 seed/initialize；不得复用失败临时目录。
+- B 持久目录 `/home/lixiaochen.guest/timeline-delivery-c5aed415cd17/instance`，实例 `timeline-portable-a3b3ea9b6993`，`https://localhost:9444`。08:24:42Z 六镜像明确 inspect 为最终 manifest，官方签名 floor 339/28125/63，尚无 install/restore 标记。A3 随后开始会话/未使用恢复码边界准备和加密备份。portable_recovery 当前独占 B 写操作，root 不并发写 B；等待真实恢复、新写、重启、第二备份恢复证据。
+- 最终发布 Ops `d16dc78cae8ef67f24c0530f2705e2f81f27236c`，固定包 `/private/tmp/timeline-native-release-bundle-d16dc78`，manifest SHA `dda79f493a4c9f9a29025da02a3c04c7c9e0130120239c332ad3a79bc950f318`。119 项实际回归通过；最终身份/17源码 SHA/7脚本及10 payload 独立静态复核通过。旧 13131ee 运维包禁止执行。先持久保存/私有推送及只读预检，C 通过后再受控备份/中断恢复演练/程序更新。
+- 生产仍为 6c70，尚未执行本次更新，main/tag 未变。真实浏览器已打开正式原生登录页准备复验。最终 exact-domain 浏览器、独立恢复和完整产品接受仍待完成；不可将 253 HTTP 请求或软件包核对冒充这些结论。
+
+当前：`CODE_IMPLEMENTED / FINAL_BUILD_AND_A3_HTTP_PASS / INDEPENDENT_RESTORE_IN_PROGRESS / PRODUCTION_UNCHANGED / AWAITING_PRODUCT_OWNER_CONFIRMATION`。staging URL 为上述两个明确本机 HTTPS 地址，不代表远端 staging 或产品接受。
