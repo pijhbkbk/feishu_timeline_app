@@ -78,3 +78,11 @@
 只读审查 `/private/tmp/timeline-b-preserve-firewall-order-20260917.py` 及其引用的既有安装文件。脚本通过固定 LIMA_HOME/实例进入 `lima-timeline-recovery-b`，远端再次核对 hostname/root/原策略摘要；只为 IPv4/IPv6 的 `DOCKER-USER` 添加到既有本任务拒绝链的 hook，不删除现有规则，不修改 Mac。Docker 官方说明 `DOCKER-USER` 在 `DOCKER-FORWARD` / `DOCKER` 之前处理，与此处修正规则顺序的机制一致。[官方说明](https://docs.docker.com/engine/network/firewall-iptables/)
 
 在主任务声明的空镜像、自有拒绝链已存在的隔离 B 前提下，未见本脚本静态阻断。保留旧文件使用独占创建与 fsync，并非临时 rename；中断会停止但可能需人工核查残留，不宣称任意中断自动续装。本审查者未执行脚本、冷重启或出口探测；链存在的静态文本不等于持久阻断的动态 PASS。
+
+## 用户明确批准后的精确 schema 例外
+
+用户随后明确批准 `schema-exception-proposal.md` 所述这一项有向完整双哈希例外。作者通过正常工具应用并提交 `68dd91b62030267f4ecbaab229c483ab96f582f7`，tree `3712801aa9f5a216a7fb41bfa3865e98c763c887`；本次未再收到拒绝，不将用户授权表述为覆盖平台限制。
+
+独立静态复核确认：仅导出 `compareFingerprints` 供回归调用，并在既有 schema 相等/历史例外之外增加源 `3f933e582eab518c24e308cb9991e1f5fab16c310eee10f041e38746cb76b4c0` → 目标 `175721348d4d09345618dcec49699b70d2cc13ee7298e3c78bfd6ebdc9fd52c6` 的组合。方向、完整 hash 及范围与获批材料一致。表和 sequence 的严格相等检查仍先执行；未知 schema、反向组合、manifest 身份、角色、事务、对象摘要、会话及签名门禁没有被放宽。回归代码覆盖该匹配、反向、改变源/目标、表内容摘要、额外表及 sequence 变化拒绝。限定静态范围未见新增阻断。
+
+作者报告新增回归先失败再修复，最终 5/5；主任务报告集成 `f23b29b` 后独立实际重跑 5/5。本审查者没有执行这些测试、数据库恢复或此前被拦截的实验，以上执行来源明确分开。原失败恢复保留为 FAIL，不追认通过；之后全新目标的预演和最终候选恢复须另取实际证据。
