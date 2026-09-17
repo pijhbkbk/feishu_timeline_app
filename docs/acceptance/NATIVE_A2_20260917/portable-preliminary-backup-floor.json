@@ -1,0 +1,10 @@
+{
+  "encryptedFloorVerified": true,
+  "signatureFloor": {
+    "bytecode.cvd": 339,
+    "daily.cvd": 28125,
+    "main.cvd": 63
+  },
+  "backupElapsedMs": 52192,
+  "preliminary": true
+}

@@ -1,0 +1,11 @@
+{
+  "preliminary": true,
+  "independentVm": false,
+  "persistentKeys": 2,
+  "nonemptyQueue": true,
+  "bytesExact": true,
+  "absoluteExpiryPreserved": true,
+  "sessionsCopied": false,
+  "restoredDedupeRefusesSecondJob": true,
+  "toolCommit": "2846bc6bfe7243539cfefa06929520c51b3a7997"
+}

@@ -7897,3 +7897,5 @@ BLOCKER_REPORT: Public-source push remains rejected by platform automatic review
 - 独立 B 虚拟机已准备并实际拒绝公网、旧服务器及元数据访问，镜像/容器初始均 0；尚未导入最终包。预演 A2 真实 PNG 扫描下载、正常停写备份通过；首次恢复数据/序列一致，schema 同一 CHECK 的括号重组造成严格拒绝。精确摘要等价补丁被自动审批拒绝，未应用或绕过；独立静态完整 diff 仅确认语义，等待具体变更授权，不把恢复写 PASS。
 - 06:51:59Z 生产只读证明实际 checkout、Web/API/镜像、状态均 6c70a897ec7643f4681616d801481765aaa8f7bc，无 pending。13131ee 源码/镜像已预备上传现有私有库但未运行；后续 Ops 更新已暂停待最终同版本包。无生产数据导出、DNS/main/tag 改动或新付费资源；专属镜像上传认证已清理，原有用户凭据保留。
 - 当前：`CODE_IMPLEMENTED / LOCAL_VERIFICATION_IN_PROGRESS / PORTABLE_RESTORE_BLOCKED_ON_REVIEWED_SCHEMA_DIFFERENCE / PRODUCTION_UNCHANGED / AWAITING_PRODUCT_OWNER_CONFIRMATION`。staging/最终包/独立恢复/新正式路由验收未完成；此前所有者原生登录→工作台确认继续有效。
+- 后续不受阻工作：签名 floor 补强集成 dc9d4c8，最终独立静态证据 1d433a6；真实官方导入、较低版本拒绝、v2 密文携带 floor、非空持久队列/去重字节及 TTL 编解码通过，单元 4/4。独立 B 修正 Docker 重启规则顺序后再次冷启动，主机公网/源服务器/元数据出口拒绝、镜像/容器仍 0；完成后正常停止保留磁盘。细节及来源在现有 A2 README，不声称独立应用恢复已通过。
+- schema 精确例外已形成完整可审阅方案并询问所有者，批准尚未到达，未应用或重试。预演密文、秘密、非敏感证据已分别持久保存到本项目 ignored var 私有目录；源码保存在独立任务分支，不改 main 或用户工作树。

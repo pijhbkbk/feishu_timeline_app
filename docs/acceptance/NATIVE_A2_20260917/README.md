@@ -48,3 +48,15 @@ NATIVE_BUSINESS_TEST_CONFIRM=synthetic-only-20260917 node scripts/testing/native
 使用 `NATIVE_BUSINESS_TEST_MANIFEST` 指向 `/private/tmp/` 或 Linux `/tmp/` 内 0600、当前用户所有、非符号链接 manifest；manifest 指定 `syntheticOnly: true`、`purpose: timeline-portable-isolated`、随机 `timeline-portable-<12 hex>` 实例、API 容器名/镜像 ID、`database: timeline`、精确运行 commit、CA 文件、独立 0600 密码文件、`username: portable-admin`。A 仅批准 `https://localhost:3450`，B 为 `https://localhost:3452` 或 `https://localhost:9444`。必须以 `NODE_EXTRA_CA_CERTS` 注入交付 CA，不关闭 TLS 验证。API 还必须实际具备目的和实例标签、关闭 mock、无第三方身份凭据并使用真实 Clam 48h 策略。
 
 A 运行上列模式，用真实账号和业务产生源数据；冻结备份前最后运行 readback。`business-state.json` **含合成密码**，只通过受保护材料复制到 B 的 manifest 同目录，绝不提交 Git/普通证据/软件包。B 仅运行 `restore`：原密码重新登录、ID与角色、项目/任务/作者/附件/审计代表性快照、文件摘要和越权拒绝匹配，然后新写一个合成项目并重读。不在 B 注册、seed 或初始化管理员。全量表/对象、会话撤销、独立断网、重启/二次恢复仍由工作包 C 另证。
+
+## 便携工具预演补充：独立恢复尚未通过
+
+应用预演镜像为 `13131ee5425017b31ccf77741798a8dc37dbc936`；随后工具修复至作者 `2846bc6bfe7243539cfefa06929520c51b3a7997`（主任务集成 `dc9d4c8`）。软件包与后续工具修复身份不同，这些是集成预检，不是最终同版本交付。
+
+- 实际空库安装、业务目录、修正后的管理员初始化、HTTPS 原生登录与合成项目、PNG 官方扫描及逐字节下载通过。52 表/1 对象的 v2 加密备份耗时 52,192ms；API 先正常退出且无 OOM。`portable-preliminary-backup-floor.json` 仅记录解密检查确认版本下限随密文保存，不含密钥/账号哈希。
+- `portable-signature-floor-negative.json`：在独立无账号夹具设置 daily 下限 28126，再导入真实官方 28125 被拒，未激活收据、未降低版本。实际官方 339/28125/63 导入通过，既有官方签名及 48h 要求保留。主任务在集成后另运行便携单元 4 项，4 PASS、0 SKIPPED。
+- `portable-preliminary-queue-codec.json`：正式通知服务在合成 A 生成非空站内任务和去重键；仅向另一个专用 Redis 导入导出，2 个键字节相同、绝对到期时间保留、重复任务被拒、没有复制会话。不是完整数据库恢复、实际消费或独立 B 验收。
+- `portable-b-prerequisites-coldboot.json`：独立 Ubuntu VM 冷重启后仍无镜像/容器/云凭据，Node 24.14.0、Docker 29.5.2、Compose 5.5.1 可用；公网/旧服务器/元数据三个 TCP 检查均被拒。首次重启发现 Docker 调整 FORWARD 顺序，按 [Docker 官方 DOCKER-USER 机制](https://docs.docker.com/engine/network/firewall-iptables/) 补强后再冷重启实测。未装最终包，不能由主机探针宣称最终应用或容器出口已验收。
+- 恢复预检仍在严格 schema 指纹处 FAIL：全量行/序列匹配，完整结构仅同一 CHECK 的 AND 括号重组。新增精确摘要例外被自动审批拒绝，未应用/未换路径绕过；独立静态语义审查不能替代许可。失败目标保持 NOLOGIN，具体方案已询问所有者，等待答复。
+
+加密合成备份、秘密和非敏感证据分别保存在主项目忽略的 `var/native-portable-delivery-20260917/` 私有子目录；不是生产备份或最终软件包。独立 B 已停止保留磁盘，后续须用最终包首次加载，继续全链路及原网站验收。
