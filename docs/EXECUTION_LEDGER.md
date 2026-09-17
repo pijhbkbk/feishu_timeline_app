@@ -7899,3 +7899,8 @@ BLOCKER_REPORT: Public-source push remains rejected by platform automatic review
 - 当前：`CODE_IMPLEMENTED / LOCAL_VERIFICATION_IN_PROGRESS / PORTABLE_RESTORE_BLOCKED_ON_REVIEWED_SCHEMA_DIFFERENCE / PRODUCTION_UNCHANGED / AWAITING_PRODUCT_OWNER_CONFIRMATION`。staging/最终包/独立恢复/新正式路由验收未完成；此前所有者原生登录→工作台确认继续有效。
 - 后续不受阻工作：签名 floor 补强集成 dc9d4c8，最终独立静态证据 1d433a6；真实官方导入、较低版本拒绝、v2 密文携带 floor、非空持久队列/去重字节及 TTL 编解码通过，单元 4/4。独立 B 修正 Docker 重启规则顺序后再次冷启动，主机公网/源服务器/元数据出口拒绝、镜像/容器仍 0；完成后正常停止保留磁盘。细节及来源在现有 A2 README，不声称独立应用恢复已通过。
 - schema 精确例外已形成完整可审阅方案并询问所有者，批准尚未到达，未应用或重试。预演密文、秘密、非敏感证据已分别持久保存到本项目 ignored var 私有目录；源码保存在独立任务分支，不改 main 或用户工作树。
+
+### 2026-09-17 — 所有者批准精确结构校验例外，恢复实施继续
+
+- 所有者明确回复“批准这一项精确例外”，对应已保存并独立核对的单一有方向 schema 摘要对：`3f933e582eab518c24e308cb9991e1f5fab16c310eee10f041e38746cb76b4c0` → `175721348d4d09345618dcec49699b70d2cc13ee7298e3c78bfd6ebdc9fd52c6`。批准不包括任意 SQL 归一化或其他摘要组合，不降低全量行、序列、对象、身份及角色门禁，不修改旧失败证据。
+- 使用正常工具审批实施，新增匹配/反向/其他结构及数据差异拒绝回归并独立复核；随后仅以合成备份恢复到新空预演目标，原失败库保留，独立 B 仍等待最终包首次装入。最终同版本包、真实独立恢复及正式域名发布仍需实际通过，不因批准直接变更状态为 PASS。
