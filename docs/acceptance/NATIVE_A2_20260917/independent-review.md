@@ -104,3 +104,12 @@
 - Web：`us-west1-docker.pkg.dev/axial-acrobat-492709-r7/feishu-timeline/web@sha256:774419239cea09f8d341fd29ed34361b47012c720bafbe7a3a5ef0d60ffa187b`。
 
 上述 registry 操作由主任务执行；本审查者只比较其保存的实际回读，未用本地 ImageID 冒充独立 registry 查询，也未声称 Ops 已上传。离线 B 首次证书路径失败、后续安装/恢复、A3 业务路径以及最终目标域名发布均不在本次文件审查范围，须分别保存真实结果。本审查没有访问生产、改变 main/tag 或取得产品负责人确认；不将此文件完整性结论称为部署或产品验收完成。
+
+
+## 外部合成恢复边界 fixture 只读复核
+
+作者提供的外部辅助文件 `portable-boundary-fixture.mjs`，最终 SHA-256 为 `3ac850e8260fd4818348ff0b8e312d5ed39de07c2b6dcc744388d32919c192db`，不属于冻结 runtime。仅静态阅读，未执行。它要求显式合成确认、固定 purpose/实例名/容器标签、镜像与 runtime 身份、本地认证 mock 关闭、指定数据库及 48 小时签名配置；prepare/stage-queue 仅 `https://localhost:3450`，verify/queue-readback 仅 `https://localhost:9444`。临时账号采用合成前缀及随机值，队列操作固定该合成管理员和明确的合成 dedupe key。
+
+恢复码检查先断言旧未使用 token 仍在原 expiresAt 内，再断言 401，并只读确认三个 reset 字段清空；之后为同一用户创建新恢复码并恢复登录。它不会把自然超过 30 分钟当作旧码撤销通过。另比较四个账号完整授权声明和停用账号拒绝登录；队列写入前核对源 API 已停止、退出 0 且未 OOM，经既有 enqueueOnce 写入非空队列并重复去重；目标检查一条通知、空队列、正去重 TTL 且绝对到期时间未延长。这些是断言设计，不是本审查者的动态 PASS。
+
+初次审查发现私有文件检查没有同时约束其目录，保存也直接打开路径。作者在外部 fixture 中补充当前用户持有的私有非 symlink 目录检查；保存改为 O_NOFOLLOW，取得 fd 后验证普通文件、当前 UID、单链接和私有模式，验证后才截断、写入和 fsync。最终上述 SHA 的两处修正已复核；限定静态范围未见剩余阻断。作者报告实际 A 目录为 0700 及语法检查通过；本审查者未读取 secret 状态或执行 A/B 业务，真实恢复结果须另记。
