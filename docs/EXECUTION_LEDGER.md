@@ -7911,3 +7911,13 @@ BLOCKER_REPORT: Public-source push remains rejected by platform automatic review
 - 最终软件包七文件、源码归档、六镜像及 72 OCI 内容块独立只读核对通过。A3 在该版本真实空库安装/目录/管理员初始化，六模式 253 HTTP 请求覆盖原生权限、业务、真实附件扫描、RETURN/重提/APPROVE和再读取，全部通过；源码、锁文件未变的旧质量结果按明确依据复用，60 SKIPPED 仍不计通过。
 - B 真实独立 VM 已断网，首次最终加载前缓存为零。一次 init 因 VM 重启清空临时 TLS 文件失败；改用持久 guest home 后配置与官方签名导入成功，六镜像身份逐一核对，未 seed/初始化业务库。08:25Z 起进行 A→B 加密恢复与会话边界测试，尚未报告 C 通过。
 - 最终 Ops `d16dc78cae8ef67f24c0530f2705e2f81f27236c` 的 119 回归和独立静态身份核对通过，七脚本固定包绑定最终 c5；仅准备私有推送及只读检查，未安装或更新生产。生产仍 6c70，main/tag/其他应用未变；登录→工作台的既有用户确认保留，完整产品未接受。
+
+### 2026-09-17 09:10Z — 独立恢复推进及首次发布演练失败
+
+- 最终 c5 software/corresponding-source 共 15 文件逐一复制后校验，已保存原项目私有 `var/native-portable-delivery-20260917/final-c5aed415cd17`；三份官方签名单独保存。main/tag 和用户未知差异不变。
+- 独立 B 首次 QEMU PostgreSQL 启动失败，改用宿主已安装 Rosetta 的 VM 局部设置，特殊系统共享 `/mnt/lima-rosetta` 明确记录；没有用户文件共享或全局安装/信任变更。实际全量 52 表、2 对象、非空队列恢复通过。08:39:59Z B1 在源恢复码尚未过期时验证旧会话/旧码拒绝、内部身份/授权保留和新恢复正常。
+- 两个后续问题均保留原失败：历史断言之前合法下载增加审计（只调整外部测试顺序、不改完整断言）；新目标 proxy 128 MiB OOM（独立审查后外部 B profile 只调 512 MiB 与真正 TLS 健康检查）。实际恢复历史比对、新项目写读、扫描/下载同摘要/CSV、断公网与旧服务器、队列只执行一次及应用重启均通过。VM 冷重启和第二备份恢复仍在执行，不称 C 整体通过。
+- 用户无法暂时处理本机证书提示，后提供 Safari 警告截图；`https://localhost:9444/login` 浏览器 NOT_ACCEPTED。没有工具绕过或全机信任修改，此条件只暂停该浏览器验收。
+- 修订推进顺序：B 的 ARM 测试环境配置问题与现有原生 GCE 发布路径独立，A3 最终链路 253 请求已通过，故先授权安装已审查 Ops 控制器并演练，不等待 C 全部结束；正式程序更新仍须实际备份/演练门禁。
+- 08:54Z d16 控制器实际安装，生产文件已改变但程序仍 6c70。08:58:34—08:59:52Z 首次 rehearsal 因 socket 不含 MainPID 而 KeyError，备份创建/checkpoint 前失败；自动恢复稳定 6c70，09:01:40Z 正常 TLS API 200。没有本轮保护备份、不报演练 PASS。只读真实属性与本地 RED 回归确认根因；限定修复通过 121 回归和静态复核，精确已安装 d16→新 helper 的原子补丁待独立审查。不得第三次盲试或直接 update。
+- 当前源码/依赖未变，正式 Placeholder 0/测试白名单10。staging URL A3 `https://localhost:3450`、B `https://localhost:9444`，同 c5；production `https://timeline.all-too-well.com` 仍 `6c70a897ec7643f4681616d801481765aaa8f7bc`，新页面未验收；产品整体未确认。
