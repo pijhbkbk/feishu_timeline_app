@@ -1,0 +1,562 @@
+{
+  "recordType": "SANITIZED_PRODUCTION_OPERATIONS_EVIDENCE",
+  "runtimeCommit": "c5aed415cd17e6e8a21b422a4c5c92b4b924e091",
+  "runtimeTree": "830e562f5ec56e99d7fc0b04432fc056dd772254",
+  "operationsCommit": "bf2cf83a0bd172a6e9360d5e7f3533912a062813",
+  "initialOperationsCommit": "d16dc78cae8ef67f24c0530f2705e2f81f27236c",
+  "independentStaticReviewCommit": "335b2591243786453a2a5cf94c962da71553b3c9",
+  "evidenceScope": "Server operations only; root task owns exact-domain browser and product acceptance",
+  "environment": {
+    "name": "production",
+    "url": "https://timeline.all-too-well.com",
+    "hostname": "timeline.all-too-well.com",
+    "database": "feishu_timeline_restore_c38c57da",
+    "buildTime": "2026-09-17T08:04:51Z",
+    "release": "native-portable-20260917-c5aed415cd17",
+    "images": {
+      "api": "us-west1-docker.pkg.dev/axial-acrobat-492709-r7/feishu-timeline/api@sha256:40544930b329416679f24ebc6dd2354e24beaec9d8490b9edbdbda5e0f71d192",
+      "web": "us-west1-docker.pkg.dev/axial-acrobat-492709-r7/feishu-timeline/web@sha256:774419239cea09f8d341fd29ed34361b47012c720bafbe7a3a5ef0d60ffa187b"
+    },
+    "nginxUpstreams": {
+      "api": "127.0.0.1:3001",
+      "web": "127.0.0.1:3000"
+    },
+    "deploymentTime": "2026-09-17T09:27:01.821805+00:00"
+  },
+  "testEvidence": {
+    "nativeControllerSuitePassed": 126,
+    "sourceBoundary": "bf2cf83",
+    "kind": "Local mocked privileged boundaries plus real temporary-file atomic writes",
+    "socketShapeRegression": "Actual missing MainPID shape reproduced RED KeyError, then GREEN",
+    "atomicPatchWritePoints": 6,
+    "interruptionsPerWritePoint": [
+      "mid-write",
+      "after-complete-write"
+    ],
+    "independentReviewKind": "Static only; reviewer did not run the tests"
+  },
+  "steps": {
+    "checkout": {
+      "step": "checkout",
+      "operationsCommit": "d16dc78cae8ef67f24c0530f2705e2f81f27236c",
+      "runtimeCommit": "c5aed415cd17e6e8a21b422a4c5c92b4b924e091",
+      "manifestSha256": "dda79f493a4c9f9a29025da02a3c04c7c9e0130120239c332ad3a79bc950f318",
+      "scriptSha256": "6fe677eea854f24f99451cc6b870febc1a2c3886a6628293ce5c5f8e11cc4a8c",
+      "startedAt": "20260917T083927536653Z",
+      "exitCode": 0,
+      "transportTimedOut": false,
+      "stdout.txtSha256": "4171a802f07ed2ef712cb840447d6beea07b238af975da1f0de6e8b8235663d7",
+      "stderr.txtSha256": "24602f21b2b5212b27c344901fdbfc522a5350019aa6b0a5d9777355aba8474e",
+      "privateRecordReference": "timeline-release-step-d16dc78-checkout-20260917T083927536653Z/result.json",
+      "resultSha256": "d5496f2b2153bc8299d876bb178f146cda1df35b28ef18a425c5c3de64d326e1"
+    },
+    "pull": {
+      "step": "pull",
+      "operationsCommit": "d16dc78cae8ef67f24c0530f2705e2f81f27236c",
+      "runtimeCommit": "c5aed415cd17e6e8a21b422a4c5c92b4b924e091",
+      "manifestSha256": "dda79f493a4c9f9a29025da02a3c04c7c9e0130120239c332ad3a79bc950f318",
+      "scriptSha256": "4e3daa58217d91e5792d6bdcb2eee4edb1cefef40510ca4c6325a3229171e1cc",
+      "startedAt": "20260917T084025312477Z",
+      "exitCode": 0,
+      "transportTimedOut": false,
+      "stdout.txtSha256": "175918cc46c7a06c6f90572e4bd31e6b2f9fd819fb3e9420fb7125a385664cf9",
+      "stderr.txtSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "privateRecordReference": "timeline-release-step-d16dc78-pull-20260917T084025312477Z/result.json",
+      "resultSha256": "39ec92e11c63827b4832b813be9fb6e7193a855d9960eaeae5a4302175ace668"
+    },
+    "install": {
+      "step": "install",
+      "operationsCommit": "d16dc78cae8ef67f24c0530f2705e2f81f27236c",
+      "runtimeCommit": "c5aed415cd17e6e8a21b422a4c5c92b4b924e091",
+      "manifestSha256": "dda79f493a4c9f9a29025da02a3c04c7c9e0130120239c332ad3a79bc950f318",
+      "scriptSha256": "41280de415a2cb7611eb4c666ddf281c1ff898f3c96874487484b4fc963596e7",
+      "startedAt": "20260917T085420631236Z",
+      "exitCode": 0,
+      "transportTimedOut": false,
+      "stdout.txtSha256": "3f42ed51889d14570bfa0a0376ef652afa4a970219dd56f024121c12bfaf6c53",
+      "stderr.txtSha256": "06293e5d56ce36617ca935b3779959921c310be07698746fcf7a23530b5fbc1f",
+      "privateRecordReference": "timeline-release-step-d16dc78-install-20260917T085420631236Z/result.json",
+      "resultSha256": "3d1e50b77f68939ba1276f1974a9a26636956888d16a78d59681c3cbc535c3dc"
+    },
+    "firstRehearsalFailed": {
+      "step": "rehearse",
+      "operationsCommit": "d16dc78cae8ef67f24c0530f2705e2f81f27236c",
+      "runtimeCommit": "c5aed415cd17e6e8a21b422a4c5c92b4b924e091",
+      "manifestSha256": "dda79f493a4c9f9a29025da02a3c04c7c9e0130120239c332ad3a79bc950f318",
+      "scriptSha256": "e70d69c9c0b2774fdc785d51cd1569c3dc4499e8ad5d7781aa26cb3b6794dc7c",
+      "startedAt": "20260917T085802012514Z",
+      "exitCode": 1,
+      "transportTimedOut": false,
+      "stdout.txtSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr.txtSha256": "4f3359bc277e532eb8e66c5ab4b564341f42815338c1b45c89a27b1cec562035",
+      "privateRecordReference": "timeline-release-step-d16dc78-rehearse-20260917T085802012514Z/result.json",
+      "resultSha256": "72622bc28da31e2be51778fe832ae3335be9523dabb270dfc6f7c6a7fe124d65"
+    },
+    "socketRepair": {
+      "step": "socket-fix",
+      "operationsCommit": "bf2cf83a0bd172a6e9360d5e7f3533912a062813",
+      "runtimeCommit": "c5aed415cd17e6e8a21b422a4c5c92b4b924e091",
+      "manifestSha256": "1c1bc79c0c9b6f6870e063a7e6c66d662dade27103ff086b8e6603d9bb4c8fb0",
+      "scriptSha256": "2926516a274dd4268087f360f73082f299a79f43a534ba2c290f2980ce70a8fb",
+      "startedAt": "20260917T091831211652Z",
+      "exitCode": 0,
+      "transportTimedOut": false,
+      "stdout.txtSha256": "785ce879dbc22e37bd439c9a7dd11a9a0dd9f338f9a4b6a2f2f9899235bdef4d",
+      "stderr.txtSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "privateRecordReference": "timeline-release-step-bf2cf83-socket-fix-20260917T091831211652Z/result.json",
+      "resultSha256": "01815f896dcd17880fc5ddacf8001fe3584a54052df4b70672617e3522f8c590"
+    },
+    "correctedRehearsal": {
+      "step": "rehearse",
+      "operationsCommit": "bf2cf83a0bd172a6e9360d5e7f3533912a062813",
+      "runtimeCommit": "c5aed415cd17e6e8a21b422a4c5c92b4b924e091",
+      "manifestSha256": "bac905b93e2e54b3a40a2ace75dfdc683885161636fedd04c0cb71586197e7a6",
+      "scriptSha256": "b2bbaff5227dc244a4dbd83d7c332d99f2d3a98615731dcbef90b154ff5e216e",
+      "startedAt": "20260917T092053171044Z",
+      "exitCode": 0,
+      "transportTimedOut": false,
+      "stdout.txtSha256": "5fd6bfab851e0e4efc0760bcfdb45e15e1c5273694648cf22dd635da188f338e",
+      "stderr.txtSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "privateRecordReference": "timeline-release-step-bf2cf83-rehearse-20260917T092053171044Z/result.json",
+      "resultSha256": "52da68ca35416a36264d2a0fd9b7a43aeaa069954b0afd0759ff3016de504491"
+    },
+    "update": {
+      "step": "update",
+      "operationsCommit": "bf2cf83a0bd172a6e9360d5e7f3533912a062813",
+      "runtimeCommit": "c5aed415cd17e6e8a21b422a4c5c92b4b924e091",
+      "manifestSha256": "bac905b93e2e54b3a40a2ace75dfdc683885161636fedd04c0cb71586197e7a6",
+      "scriptSha256": "04fe93f2e96f8da28cb07397eed6eaff15835e4c44366abfd2d9a60bedeb962e",
+      "startedAt": "20260917T092520196735Z",
+      "exitCode": 0,
+      "transportTimedOut": false,
+      "stdout.txtSha256": "94304c2474453601a97c76ff65044c6ef57a36de9ffb4f6e492496e53f736d5f",
+      "stderr.txtSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "privateRecordReference": "timeline-release-step-bf2cf83-update-20260917T092520196735Z/result.json",
+      "resultSha256": "30ab81198e854182eaed07441020283c12e3c3ebe4a9ee5994cf0f64a6523199"
+    },
+    "proof": {
+      "step": "proof",
+      "operationsCommit": "bf2cf83a0bd172a6e9360d5e7f3533912a062813",
+      "runtimeCommit": "c5aed415cd17e6e8a21b422a4c5c92b4b924e091",
+      "manifestSha256": "bac905b93e2e54b3a40a2ace75dfdc683885161636fedd04c0cb71586197e7a6",
+      "scriptSha256": "cd81b34a9d3664c063f5dc4aa7cae82bce629d58d5cac2c12fcddc4d11918bb6",
+      "startedAt": "20260917T092721189936Z",
+      "exitCode": 0,
+      "transportTimedOut": false,
+      "stdout.txtSha256": "aaea50d6ccc325af5df35433d6b28b471bc7eb8d946fb2f8192df515f5e3b620",
+      "stderr.txtSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "privateRecordReference": "timeline-release-step-bf2cf83-proof-20260917T092721189936Z/result.json",
+      "resultSha256": "3f1ffc9207a687f52867a8c30fb9c6aabb67bf24dd12a37725334058abf747f1"
+    }
+  },
+  "retainedFirstFailure": {
+    "status": "FAIL",
+    "reason": "KeyError from absent MainPID on fixed systemd socket units",
+    "checkpointCreated": false,
+    "controlledSigkillExecuted": false,
+    "newProtectedBackupCreated": false,
+    "invocationId": "8611860cee4a42e9a064b757ba20e8ed",
+    "execMainCode": "1",
+    "execMainStatus": "1",
+    "supervisorRecoveryExitStatus": 0,
+    "recoveredState": {
+      "active": "6c70a897ec7643f4681616d801481765aaa8f7bc",
+      "committed": "6c70a897ec7643f4681616d801481765aaa8f7bc",
+      "pending": false,
+      "version": 1
+    },
+    "databaseRestored": false,
+    "initialMigrationReplayed": false
+  },
+  "correctedRehearsal": {
+    "recoveryProof": {
+      "allDatabaseFingerprintsUnchanged": true,
+      "base": "6c70a897ec7643f4681616d801481765aaa8f7bc",
+      "checkpointStateSha256": "edb6cb9a2b7763937f98e279fd313e995352ae8920794bcd57a958bc08808ff5",
+      "databaseRestored": false,
+      "fullHostRebootTested": false,
+      "initialMigrationReplayed": false,
+      "invocationId": "60da2ab6eb8d4569ae2025e92ed29a53",
+      "protectedBackup": "20260917T092220Z-2bbb186c",
+      "recovery": "PASS",
+      "target": "c5aed415cd17e6e8a21b422a4c5c92b4b924e091"
+    },
+    "apiShutdownObservation": {
+      "apiDrainSupported": false,
+      "apiExitCode": 137,
+      "apiGracefulDrainVerified": false,
+      "apiWasRunning": true,
+      "legacyApiFreezeOnly": true
+    },
+    "protectedBackupReceipt": {
+      "backup": "20260917T092220Z-2bbb186c",
+      "database": "feishu_timeline_restore_c38c57da",
+      "databaseRestored": false,
+      "fingerprintsSha256": "73230863b5c67707ae5e3e4422e29b353bcab7c3daaf26c0ac8f2db7093fd2de",
+      "manifestSha256": "9f2185a9f9c36c52ce3e0b0d338b3a99ba162c9e3eff7e008275e050ce3e2d55",
+      "migrationExecuted": false,
+      "objectCount": 0,
+      "redisFileCount": 3,
+      "runtimeCommit": "6c70a897ec7643f4681616d801481765aaa8f7bc",
+      "tableCount": 52
+    },
+    "protectedBackupMetadata": {
+      "mode": "0o700",
+      "databaseDumpSize": 277587,
+      "objectCount": 0,
+      "redisFileCount": 3
+    },
+    "ingressUnitTimes": {
+      "timeline-native-api-ingress.socket": {
+        "InactiveEnterTimestamp": "Thu 2026-09-17 09:21:03 UTC",
+        "ActiveEnterTimestamp": "Thu 2026-09-17 09:22:29 UTC"
+      },
+      "timeline-native-web-ingress.socket": {
+        "InactiveEnterTimestamp": "Thu 2026-09-17 09:21:03 UTC",
+        "ActiveEnterTimestamp": "Thu 2026-09-17 09:22:29 UTC"
+      }
+    },
+    "httpsObservationWindows": {
+      "https://timeline.all-too-well.com/api/health": {
+        "firstObserved502": {
+          "startedAt": "2026-09-17T09:21:11.919559+00:00",
+          "url": "https://timeline.all-too-well.com/api/health",
+          "curlExitCode": 0,
+          "httpStatus": 502,
+          "tlsVerifyResult": 0,
+          "metadataReadable": false,
+          "durationSeconds": 2.411,
+          "completedAt": "2026-09-17T09:21:14.330608+00:00"
+        },
+        "lastObserved502": {
+          "startedAt": "2026-09-17T09:22:35.182869+00:00",
+          "url": "https://timeline.all-too-well.com/api/health",
+          "curlExitCode": 0,
+          "httpStatus": 502,
+          "tlsVerifyResult": 0,
+          "metadataReadable": false,
+          "durationSeconds": 7.522,
+          "completedAt": "2026-09-17T09:22:42.704513+00:00"
+        },
+        "firstRecovered200": {
+          "startedAt": "2026-09-17T09:22:48.097684+00:00",
+          "url": "https://timeline.all-too-well.com/api/health",
+          "curlExitCode": 0,
+          "httpStatus": 200,
+          "tlsVerifyResult": 0,
+          "runtimeCommit": "6c70a897ec7643f4681616d801481765aaa8f7bc",
+          "durationSeconds": 3.983,
+          "completedAt": "2026-09-17T09:22:52.080524+00:00"
+        },
+        "nonHttpTransportFailures": 4
+      },
+      "https://timeline.all-too-well.com/build-info": {
+        "firstObserved502": {
+          "startedAt": "2026-09-17T09:21:06.115097+00:00",
+          "url": "https://timeline.all-too-well.com/build-info",
+          "curlExitCode": 0,
+          "httpStatus": 502,
+          "tlsVerifyResult": 0,
+          "metadataReadable": false,
+          "durationSeconds": 2.799,
+          "completedAt": "2026-09-17T09:21:08.914330+00:00"
+        },
+        "lastObserved502": {
+          "startedAt": "2026-09-17T09:22:25.079857+00:00",
+          "url": "https://timeline.all-too-well.com/build-info",
+          "curlExitCode": 0,
+          "httpStatus": 502,
+          "tlsVerifyResult": 0,
+          "metadataReadable": false,
+          "durationSeconds": 7.098,
+          "completedAt": "2026-09-17T09:22:32.177663+00:00"
+        },
+        "firstRecovered200": {
+          "startedAt": "2026-09-17T09:22:42.704625+00:00",
+          "url": "https://timeline.all-too-well.com/build-info",
+          "curlExitCode": 0,
+          "httpStatus": 200,
+          "tlsVerifyResult": 0,
+          "runtimeCommit": "6c70a897ec7643f4681616d801481765aaa8f7bc",
+          "durationSeconds": 2.388,
+          "completedAt": "2026-09-17T09:22:45.092471+00:00"
+        },
+        "nonHttpTransportFailures": 3
+      }
+    }
+  },
+  "update": {
+    "proof": {
+      "browserAcceptance": "PENDING",
+      "completedAt": "2026-09-17T09:27:01.821805+00:00",
+      "database": "feishu_timeline_restore_c38c57da",
+      "databaseRestored": false,
+      "initialMigrationReplayed": false,
+      "invocationId": "d90f54e8e8f445fbae143b3319c5c3de",
+      "operation": "update",
+      "previousCommit": "6c70a897ec7643f4681616d801481765aaa8f7bc",
+      "protectedBackup": "20260917T092643Z-3d9c4f8a",
+      "release": "PASS",
+      "runtimeCommit": "c5aed415cd17e6e8a21b422a4c5c92b4b924e091"
+    },
+    "verifiedState": {
+      "active": "c5aed415cd17e6e8a21b422a4c5c92b4b924e091",
+      "committed": "c5aed415cd17e6e8a21b422a4c5c92b4b924e091",
+      "pending": false,
+      "version": 1
+    },
+    "apiMetadata": {
+      "runtimeCommit": "c5aed415cd17e6e8a21b422a4c5c92b4b924e091",
+      "sourceTree": "830e562f5ec56e99d7fc0b04432fc056dd772254",
+      "release": "native-portable-20260917-c5aed415cd17",
+      "buildTime": "2026-09-17T08:04:51Z"
+    },
+    "webMetadata": {
+      "runtimeCommit": "c5aed415cd17e6e8a21b422a4c5c92b4b924e091",
+      "sourceTree": "830e562f5ec56e99d7fc0b04432fc056dd772254",
+      "release": "native-portable-20260917-c5aed415cd17",
+      "buildTime": "2026-09-17T08:04:51Z"
+    },
+    "serverCheckout": {
+      "path": "/home/lixiaochen/timeline-native-delivery/releases/c5aed415cd17e6e8a21b422a4c5c92b4b924e091",
+      "head": "c5aed415cd17e6e8a21b422a4c5c92b4b924e091",
+      "clean": true
+    },
+    "apiShutdownObservation": {
+      "apiDrainSupported": false,
+      "apiExitCode": 137,
+      "apiGracefulDrainVerified": false,
+      "apiWasRunning": true,
+      "legacyApiFreezeOnly": true
+    },
+    "protectedBackupReceipt": {
+      "backup": "20260917T092643Z-3d9c4f8a",
+      "database": "feishu_timeline_restore_c38c57da",
+      "databaseRestored": false,
+      "fingerprintsSha256": "73230863b5c67707ae5e3e4422e29b353bcab7c3daaf26c0ac8f2db7093fd2de",
+      "manifestSha256": "12d96af08eeaecabcf12e06ec9ed6855e64d3705d1af87d3e4f4ad15fb65f123",
+      "migrationExecuted": false,
+      "objectCount": 0,
+      "redisFileCount": 3,
+      "runtimeCommit": "6c70a897ec7643f4681616d801481765aaa8f7bc",
+      "tableCount": 52
+    },
+    "migrationMetadata": {
+      "database": "feishu_timeline_restore_c38c57da",
+      "completedCount": 37,
+      "matchesFixedRuntimeMigrationFiles": true,
+      "unfinishedNotRolledBackCount": 0,
+      "queryReadOnly": true,
+      "migrationExecuted": false,
+      "actualRecordCount": 37
+    },
+    "ingressUnitTimes": {
+      "timeline-native-api-ingress.socket": {
+        "InactiveEnterTimestamp": "Thu 2026-09-17 09:25:32 UTC",
+        "ActiveEnterTimestamp": "Thu 2026-09-17 09:27:00 UTC"
+      },
+      "timeline-native-web-ingress.socket": {
+        "InactiveEnterTimestamp": "Thu 2026-09-17 09:25:32 UTC",
+        "ActiveEnterTimestamp": "Thu 2026-09-17 09:27:00 UTC"
+      }
+    },
+    "httpsObservationWindows": {
+      "https://timeline.all-too-well.com/api/health": {
+        "firstObserved502": {
+          "startedAt": "2026-09-17T09:25:37.600092+00:00",
+          "url": "https://timeline.all-too-well.com/api/health",
+          "curlExitCode": 0,
+          "httpStatus": 502,
+          "tlsVerifyResult": 0,
+          "metadataReadable": false,
+          "durationSeconds": 3.483,
+          "completedAt": "2026-09-17T09:25:41.083373+00:00"
+        },
+        "lastObserved502": {
+          "startedAt": "2026-09-17T09:26:31.486432+00:00",
+          "url": "https://timeline.all-too-well.com/api/health",
+          "curlExitCode": 0,
+          "httpStatus": 502,
+          "tlsVerifyResult": 0,
+          "metadataReadable": false,
+          "durationSeconds": 5.558,
+          "completedAt": "2026-09-17T09:26:37.044046+00:00"
+        },
+        "firstObservedFinal200": {
+          "startedAt": "2026-09-17T09:27:08.201769+00:00",
+          "url": "https://timeline.all-too-well.com/api/health",
+          "curlExitCode": 0,
+          "httpStatus": 200,
+          "tlsVerifyResult": 0,
+          "runtimeCommit": "c5aed415cd17e6e8a21b422a4c5c92b4b924e091",
+          "durationSeconds": 2.284,
+          "completedAt": "2026-09-17T09:27:10.485514+00:00"
+        },
+        "lastObservedFinal200": {
+          "startedAt": "2026-09-17T09:29:51.859723+00:00",
+          "url": "https://timeline.all-too-well.com/api/health",
+          "curlExitCode": 0,
+          "httpStatus": 200,
+          "tlsVerifyResult": 0,
+          "runtimeCommit": "c5aed415cd17e6e8a21b422a4c5c92b4b924e091",
+          "durationSeconds": 5.031,
+          "completedAt": "2026-09-17T09:29:56.890960+00:00"
+        },
+        "nonHttpTransportFailureCount": 7
+      },
+      "https://timeline.all-too-well.com/build-info": {
+        "firstObserved502": {
+          "startedAt": "2026-09-17T09:25:41.083466+00:00",
+          "url": "https://timeline.all-too-well.com/build-info",
+          "curlExitCode": 0,
+          "httpStatus": 502,
+          "tlsVerifyResult": 0,
+          "metadataReadable": false,
+          "durationSeconds": 4.826,
+          "completedAt": "2026-09-17T09:25:45.909774+00:00"
+        },
+        "lastObserved502": {
+          "startedAt": "2026-09-17T09:26:50.080486+00:00",
+          "url": "https://timeline.all-too-well.com/build-info",
+          "curlExitCode": 0,
+          "httpStatus": 502,
+          "tlsVerifyResult": 0,
+          "metadataReadable": false,
+          "durationSeconds": 5.146,
+          "completedAt": "2026-09-17T09:26:55.226157+00:00"
+        },
+        "firstObservedFinal200": {
+          "startedAt": "2026-09-17T09:27:03.247357+00:00",
+          "url": "https://timeline.all-too-well.com/build-info",
+          "curlExitCode": 0,
+          "httpStatus": 200,
+          "tlsVerifyResult": 0,
+          "runtimeCommit": "c5aed415cd17e6e8a21b422a4c5c92b4b924e091",
+          "durationSeconds": 1.949,
+          "completedAt": "2026-09-17T09:27:05.196543+00:00"
+        },
+        "lastObservedFinal200": {
+          "startedAt": "2026-09-17T09:30:07.705273+00:00",
+          "url": "https://timeline.all-too-well.com/build-info",
+          "curlExitCode": 0,
+          "httpStatus": 200,
+          "tlsVerifyResult": 0,
+          "runtimeCommit": "c5aed415cd17e6e8a21b422a4c5c92b4b924e091",
+          "durationSeconds": 5.358,
+          "completedAt": "2026-09-17T09:30:13.063110+00:00"
+        },
+        "nonHttpTransportFailureCount": 9
+      }
+    },
+    "httpsObserverEvidence": {
+      "privateRecordReference": "observations.jsonl",
+      "sha256": "ce0c129996e4eec5320f8b464f788ba89a7a1eca1a5898659d659dd75fa2692f"
+    }
+  },
+  "currentReadOnlyVerification": {
+    "operation": "READ_ONLY_CURRENT_HTTPS_AND_OWN_OBSERVER_CLEANUP_CHECK",
+    "recordedAt": "2026-09-18T00:19:19.276116+00:00",
+    "liveOwnedObservers": [],
+    "stopMarkers": {
+      "timeline-rehearsal-https-observer-bf2cf83": true,
+      "timeline-rehearsal-curl-observer-bf2cf83": true,
+      "timeline-update-curl-observer-bf2cf83": true
+    },
+    "https": [
+      {
+        "url": "https://timeline.all-too-well.com/api/health",
+        "requestStartedAt": "2026-09-18T00:19:19.278151+00:00",
+        "requestCompletedAt": "2026-09-18T00:19:21.705611+00:00",
+        "curlExitCode": 0,
+        "httpStatus": 200,
+        "tlsVerifyResult": 0,
+        "metadata": {
+          "runtimeCommit": "c5aed415cd17e6e8a21b422a4c5c92b4b924e091",
+          "sourceTree": "830e562f5ec56e99d7fc0b04432fc056dd772254",
+          "release": "native-portable-20260917-c5aed415cd17",
+          "buildTime": "2026-09-17T08:04:51Z"
+        },
+        "validated": true
+      },
+      {
+        "url": "https://timeline.all-too-well.com/build-info",
+        "requestStartedAt": "2026-09-18T00:19:21.705711+00:00",
+        "requestCompletedAt": "2026-09-18T00:19:23.806846+00:00",
+        "curlExitCode": 0,
+        "httpStatus": 200,
+        "tlsVerifyResult": 0,
+        "metadata": {
+          "runtimeCommit": "c5aed415cd17e6e8a21b422a4c5c92b4b924e091",
+          "sourceTree": "830e562f5ec56e99d7fc0b04432fc056dd772254",
+          "release": "native-portable-20260917-c5aed415cd17",
+          "buildTime": "2026-09-17T08:04:51Z"
+        },
+        "validated": true
+      }
+    ],
+    "historicalRegistryPullAuthCleanup": {
+      "recordedAt": "2026-09-17T08:41:14.864161+00:00",
+      "temporaryRegistryAuthDirectoryCount": 0,
+      "evidenceSha256": "18e568bea5a6ac8c20070350a12cb23901e49389332dee3bfacd219ce4fee084",
+      "requeriedToday": false
+    },
+    "sshAccess": {
+      "method": "Existing strict IAP SSH and existing user key",
+      "temporarySshKeysCreatedByThisOpsSubtask": false,
+      "existingUserCredentialsModified": false
+    },
+    "allChecksPassed": true
+  },
+  "rawRecordDigests": {
+    "timeline-production-prepared-d16dc78.json": {
+      "privateRecordReference": "timeline-production-prepared-d16dc78.json",
+      "sha256": "18e568bea5a6ac8c20070350a12cb23901e49389332dee3bfacd219ce4fee084"
+    },
+    "timeline-production-install-verified-d16dc78.json": {
+      "privateRecordReference": "timeline-production-install-verified-d16dc78.json",
+      "sha256": "8fb7f3d77fbf1f5c717cc7fb8f1072dd29dc5fc4eb77d61758717f36265ad3a9"
+    },
+    "timeline-production-rehearse-failure-d16dc78.json": {
+      "privateRecordReference": "timeline-production-rehearse-failure-d16dc78.json",
+      "sha256": "a61b6472229f39bb33f9b3186b5347ab8e55819ada96cb51e406e5ab20dd5be9"
+    },
+    "timeline-production-socket-shape-d16dc78.json": {
+      "privateRecordReference": "timeline-production-socket-shape-d16dc78.json",
+      "sha256": "627601464691a971605ca0cdf244549ab345fd2112ae8b8f1754b92a2b05506c"
+    },
+    "timeline-production-patched-bf2cf83.json": {
+      "privateRecordReference": "timeline-production-patched-bf2cf83.json",
+      "sha256": "d2878883b272e0140c9871ee072d12e6f23bfbae6544bd4fe189de942708d6d8"
+    },
+    "timeline-production-rehearse-readback-bf2cf83.json": {
+      "privateRecordReference": "timeline-production-rehearse-readback-bf2cf83.json",
+      "sha256": "6946b11e9afa315a3f4375f16eb5bdd44fba677a5402be03a5e99a8c1f53af05"
+    },
+    "timeline-production-final-bf2cf83.json": {
+      "privateRecordReference": "timeline-production-final-bf2cf83.json",
+      "sha256": "f20607550bd98a08933beefe6087e41ea5dd0c2b657122a91c16dce644fc7225"
+    },
+    "timeline-ops-evidence-current-check-20260918.json": {
+      "privateRecordReference": "timeline-ops-evidence-current-check-20260918.json",
+      "sha256": "c56b05e36042eba8542907b27f3c0b7b77a00ea21615ab4bac1a419ea1d9daed"
+    }
+  },
+  "limitations": {
+    "legacyApiExitCode": 137,
+    "legacyApiGracefulDrainVerified": false,
+    "legacyApiFreezeOnly": true,
+    "fullHostRebootTested": false,
+    "httpPollingTimestampsAreObservationBounds": true,
+    "clientTransportFailuresAreNotCountedAsHttpDowntime": true,
+    "browserAcceptance": "Delegated to root task; not performed by this Ops subtask",
+    "productOwnerAcceptance": "AWAITING_PRODUCT_OWNER_CONFIRMATION"
+  },
+  "gitScope": {
+    "privateRuntimeRef": "refs/heads/codex/native-portable-release-20260917",
+    "privateOperationsRef": "refs/heads/codex/native-portable-ops-20260917",
+    "allOtherPrivateRefsUnchangedAfterOpsPush": true,
+    "mainChangedByThisSubtask": false,
+    "tagChangedByThisSubtask": false
+  },
+  "productionMutationsOn20260918": false
+}
