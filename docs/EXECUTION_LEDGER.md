@@ -7896,3 +7896,11 @@ BLOCKER_REPORT: Public-source push remains rejected by platform automatic review
 - 11个运维测试模块129项本地PASS；12种本地写入/原子激活中断恢复、旧proof拒用及权限/状态负向通过。这些是本地合成测试，不是生产演练。
 - `TARGET=None`：6fd因根任务真实HTTP隐式类型转换失败已撤回，最终新candidate与RepoDigest待提供；当前包不可生成/发布，独立静态审查待完成。
 - 详情及日志摘要见 `docs/acceptance/NATIVE_LOGIN_RELEASE_20260918/OPERATIONS_CONTINUATION.md` 与 `operations-continuation-preliminary.json`。main/tag/生产由本子任务保持不变。
+
+
+## 原生登录体验版本：固定541 Ops包准备（2026-09-18）
+
+- 最终 runtime `541b3dfff682aa29b49a96b251f0a084903c981a`、tree `bc65d7145a498066556f2abc8d8619a6643dc325`，经根任务实际私有RepoDigest回读绑定，Ops源码提交 `0f4980733d6c1265f0677904a5aa4e3ac94776bc`。此前6fd候选撤回记录保留。
+- 本轮20项API/Web差异精确SHA已固定，无schema/依赖变化；根任务新现场preflight与14个controller/unit原始摘要逐项一致。绑定后129项本地运维测试PASS，7脚本语法/字面量/2个payload SHA核对PASS。
+- 固定包 `/private/tmp/timeline-native-login-release-bundle-0f49807`，manifest SHA256 `578a38e3840efffdf4722ab32bdca0d9578577cdfc520d0387a97c0164cb5f3f`。根任务已审接续逻辑，本轮最终身份与包待其最终审查；本子任务未执行SSH、push或生产步骤。
+- 详情见 `docs/acceptance/NATIVE_LOGIN_RELEASE_20260918/operations-final-binding-541b3dfff682.json`。当前仅 FIXED_PACKAGE_PREPARED / FINAL_PACKAGE_REVIEW_PENDING，不能声称新网站交付。
