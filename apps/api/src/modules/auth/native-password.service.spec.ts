@@ -3,6 +3,7 @@ import { NativePasswordService } from './native-password.service';
 import { normalizeLoginName, validateNativePassword } from './native-auth.rules';
 import { ValidationPipe } from '@nestjs/common';
 import { NativeLoginDto, NativePasswordChangeDto, NativeRecoveryDto, NativeRegisterDto } from './dto/native-auth.dto';
+import { AdminUserConfigurationPreviewDto } from '../admin/dto/admin-control-center.dto';
 
 describe('native credential validation and actual Argon2', () => {
   it('normalizes usernames without accepting ambiguous or oversized names', () => {
@@ -20,7 +21,7 @@ describe('native credential validation and actual Argon2', () => {
     }
   });
   it('enforces eight characters for new-password DTOs while login remains compatible and identifiers stay strings', async () => {
-    const pipe = new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true });
+    const pipe = new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true, transformOptions: { enableImplicitConversion: true } });
     for (const metatype of [NativePasswordChangeDto, NativeRecoveryDto]) {
       const input = metatype === NativePasswordChangeDto ? { currentPassword: 'legacy' } : { token: 'a'.repeat(43) };
       await expect(pipe.transform({ ...input, newPassword: 'riveroak' }, { type: 'body', metatype })).resolves.toBeDefined();
@@ -28,6 +29,26 @@ describe('native credential validation and actual Argon2', () => {
     }
     await expect(pipe.transform({ username: '001234', password: 'legacy' }, { type: 'body', metatype: NativeLoginDto })).resolves.toMatchObject({ username: '001234' });
     await expect(pipe.transform({ username: 1234, password: 'riveroak', name: '测试' }, { type: 'body', metatype: NativeRegisterDto })).rejects.toThrow();
+  });
+  it('preserves raw employee-number types at the production pipe in authentication and account configuration', async () => {
+    // Vitest's transform does not emit tsc's design:type metadata. Reproduce it
+    // so this regression exercises the implicit conversion used by main.ts.
+    for (const dto of [NativeLoginDto, AdminUserConfigurationPreviewDto]) {
+      Reflect.defineMetadata('design:type', String, dto.prototype, 'username');
+    }
+    const pipe = new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true, transformOptions: { enableImplicitConversion: true } });
+    for (const [metatype, fields] of [
+      [NativeLoginDto, { password: 'legacy' }],
+      [NativeRegisterDto, { password: 'riveroak', name: '测试' }],
+      [AdminUserConfigurationPreviewDto, { name: '测试', status: 'ACTIVE', isSystemAdmin: false, roleIds: [], reason: '合成工号类型验证' }],
+    ] as const) {
+      for (const username of ['001234', '1234', 'Legacy.User_01']) {
+        await expect(pipe.transform({ ...fields, username }, { type: 'body', metatype })).resolves.toMatchObject({ username });
+      }
+      for (const username of [1234, true, null, ['001234'], { value: '001234' }]) {
+        await expect(pipe.transform({ ...fields, username }, { type: 'body', metatype })).rejects.toThrow();
+      }
+    }
   });
   it('preserves exact Unicode and spaces and rejects short, excessive, common, or control-bearing passwords', () => {
     expect(validateNativePassword('  星空河流森林海洋山峦晨光微风阳光  ')).toBe('  星空河流森林海洋山峦晨光微风阳光  ');

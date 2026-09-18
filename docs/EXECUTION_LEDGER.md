@@ -7940,3 +7940,9 @@ BLOCKER_REPORT: Public-source push remains rejected by platform automatic review
 - 已执行 `pnpm install --frozen-lockfile`、lint、typecheck、test、Web/API build、Prisma validate；Web309/API1355通过，通用命令61项SKIPPED不计通过。真实新建 PostgreSQL 13项另行通过，覆盖旧ID/历史作者、初始化及注册/改密/恢复/主机绑定8通过7拒绝、长旧密码、前导零区分、重复拒绝、权限与会话边界。Portable普通测试5通过2跳过。完整日志在本轮私有证据目录，后续统一持久化。
 - 工具阶段保留真实失败：离线依赖缓存缺包后正常冻结安装通过；Prisma缓存时间戳受沙箱限制后授权运行通过；新测试库临时初始化服务重启竞态导致createdb中断，改为最终TCP服务就绪后准确续建通过。未删除失败记录或重用生产数据。
 - 独立静态差异审查未发现阻断，最终提交与真实浏览器/HTTP证据待绑定。当前只有 `CODE_IMPLEMENTED / LOCAL_CHECKS_PASS`，候选尚未部署；production仍c5，原账号生产复验及两档真实截图待执行。main/tag未改变，产品状态 `AWAITING_PRODUCT_OWNER_CONFIRMATION`。正式源码Placeholder0，10条测试白名单不变。
+
+#### 固定候选真实 HTTP 发现并修正工号隐式转换
+
+- 6fd49d9a606ee357347ad7aaad5751c23e6e3260 的固定镜像在隔离真实 HTTP 中把 JSON 数字工号注册为字符串（201而非400），因此撤回该发布候选；仅已上传到本人私有制品库，未在生产安装或运行。失败库、镜像、7请求记录和退出证据保留。该次实际 CLI 初始化7拒绝/8接受成立，但不代表整个候选通过。
+- 根因：正式 `main.ts` 启用 implicit conversion 且 tsc 生成 design:type；Vitest 未生成该元数据，旧单元结果未覆盖此差异。原检查日志保持原执行事实，不继续作为类型边界通过证明。修复只在认证工号和管理员账号配置工号 DTO 保留原输入类型再做 IsString；注册/正式保存继承相同规则，不改全局转换、内部用户ID、账号匹配、权限和业务数据。新测试显式模拟正式元数据；独立增量审查无阻断。
+- 修正后 API lint/typecheck/build、1356项测试通过（61跳过），新增定向8项通过。最初新增管理员测试缺必填业务字段而失败，补完整合成输入后通过，失败日志保留。待新不可变镜像在全新 HTTP 测试库复验；生产仍c5。
