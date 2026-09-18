@@ -187,3 +187,22 @@ Production `https://timeline.all-too-well.com`，runtime `c5aed415cd17e6e8a21b42
 捕获console warn/error为0；工具不提供独立pageerror流，不扩大解释。旧fullPage拼接异常不作视觉判据；用viewport图及最终稳定login图。自己的浏览器会话已退出，未更改用户Safari会话。账号名称含历史mock前缀只是保留旧作者/关系，mock登录接口实际403，不能据历史名称推导登录旁路。
 
 受控写入/越权/并发/恢复/扫描的技术结果来自同c5隔离A3（253HTTP）和独立B（21+22HTTP等分项）；没有为验收推进生产真实项目。用户先前明确接受“原生登录→工作台”继续有效，整个产品未获PRODUCT_OWNER_ACCEPTED。上述READ_PASS只代表所列读取路径，整组含写入UI的路由不标整体PASS。本机 https://localhost:9444/login 仍因用户暂缓证书处理NOT_ACCEPTED。正式Placeholder0，10条测试白名单按未变源码复用。
+
+
+## 2026-09-18 登录体验/工号/8字符产品策略（最终541）
+
+Runtime `541b3dfff682aa29b49a96b251f0a084903c981a`，正式更新03:40:16Z。环境/镜像/数据库/来源和独立技术结果见[NATIVE_LOGIN_EXPERIENCE_20260918](NATIVE_LOGIN_EXPERIENCE_20260918/README.md)。截图均在该记录的私有screenshots目录，SHA256清单已提交。以下PASS仅对应本轮具体检查，不代替产品负责人接受。
+
+| 精确URL/模式 | Component | API | Required role | 数据与实际动作 | Screenshot | 本轮结果 |
+|---|---|---|---|---|---|---|
+| https://timeline.all-too-well.com/login 登录 | LoginPage/AppShell | auth/login、auth/session | public | 工号/请输入工号；原长密码登录、进入工作台、退出后硬刷新 | production-login-{1440,390}.png | 登录与两档布局PASS |
+| 同精确/login 注册模式 | LoginPage | auth/register | public | 次要链接打开同440px/16px表单；真实8/7设置在隔离HTTP/PG/CLI完成 | production-register-{1440,390}.png | UI布局PASS；生产注册提交未执行 |
+| 同精确/login 恢复模式 | LoginPage | auth/recover | public + recovery token | 次要链接打开同窄表单，新密码8字符；隔离真实恢复8/7与撤销通过 | production-recover-{1440,390}.png | UI布局PASS；生产恢复提交未执行 |
+| https://timeline.all-too-well.com/login/callback | LoginCallbackClient | 不交换第三方身份 | public | 工号文案、440px卡片和返回链接可见 | production-callback-1440.png | 读取/布局PASS；最终点击后目标导航未观察 |
+| https://timeline.all-too-well.com/account | AccountPage | auth/session、auth/password | native authenticated | 原lixiaochen显示工号，改密8字符提示；未输入新凭据 | production-original-account-1440.png | 读取/标签PASS；改密UI提交未执行 |
+| https://timeline.all-too-well.com/admin/accounts | AccountsPage | auth/accounts（含搜索） | system admin | 原12目录；工号搜索命中原人且角色保持 | production-accounts-search-1440.png | 读取/搜索PASS；恢复签发UI未执行 |
+| https://timeline.all-too-well.com/admin/organization | AdminControlCenter | admin/organization；配置写入未执行 | system.manage | 打开新增表单核对工号与请输入工号后取消，未保存 | production-organization-label-1440.png | 标签PASS；配置写UI未执行 |
+| https://timeline.all-too-well.com/dashboard | V2 Dashboard | auth/session、v2/dashboard | 授权原管理员 | 登录到达，刷新保持，无待办正确提示 | production-original-account-dashboard-1440.png | 读取回归PASS |
+| https://timeline.all-too-well.com/projects | V2 Projects | v2/projects | project.read与scope | 原1项目10/18可读，工作区保持原宽度，无业务写 | production-original-projects-1440.png | 读取/宽度回归PASS |
+
+本轮未改的显式/v2/admin/accounts别名不额外重跑，其既有c5映射证据按源码未变复用，不冒称541重新截图。仅两档为所有者本轮要求，未机械重跑历史全三档。正式Placeholder0，10条测试白名单；所有者本次接受尚待确认。

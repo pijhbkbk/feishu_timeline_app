@@ -7946,3 +7946,14 @@ BLOCKER_REPORT: Public-source push remains rejected by platform automatic review
 - 6fd49d9a606ee357347ad7aaad5751c23e6e3260 的固定镜像在隔离真实 HTTP 中把 JSON 数字工号注册为字符串（201而非400），因此撤回该发布候选；仅已上传到本人私有制品库，未在生产安装或运行。失败库、镜像、7请求记录和退出证据保留。该次实际 CLI 初始化7拒绝/8接受成立，但不代表整个候选通过。
 - 根因：正式 `main.ts` 启用 implicit conversion 且 tsc 生成 design:type；Vitest 未生成该元数据，旧单元结果未覆盖此差异。原检查日志保持原执行事实，不继续作为类型边界通过证明。修复只在认证工号和管理员账号配置工号 DTO 保留原输入类型再做 IsString；注册/正式保存继承相同规则，不改全局转换、内部用户ID、账号匹配、权限和业务数据。新测试显式模拟正式元数据；独立增量审查无阻断。
 - 修正后 API lint/typecheck/build、1356项测试通过（61跳过），新增定向8项通过。最初新增管理员测试缺必填业务字段而失败，补完整合成输入后通过，失败日志保留。待新不可变镜像在全新 HTTP 测试库复验；生产仍c5。
+
+
+### 2026-09-18 03:52Z — 所有者登录修正正式运行与实际复验
+
+- 最终runtime `541b3dfff682aa29b49a96b251f0a084903c981a` / tree `bc65d7145a498066556f2abc8d8619a6643dc325`；私有远端ref可解析，固定API/Web镜像于`2026-09-18T03:40:16.918106+00:00`在精确`https://timeline.all-too-well.com`更新。运行端HEAD、镜像、Web/API元数据一致；Nginx保持3000/3001、数据库`feishu_timeline_restore_c38c57da`保持52表37迁移，无seed/DB恢复或项目写入。
+- 新版实际编译4 DTO/32断言及全新隔离48 HTTP通过，证明工号非字符串拒绝、前导零区分、8字符设置/登录、7字符拒绝、短弱口令拒绝、旧长密码、权限及会话/限流边界。CLI初始化/绑定8通过7拒绝、旧c5实际校验器读取新版8字符哈希通过。最终Web309/API1356通过、通用61跳过不计PASS；独立真实PG13通过，portable5通过2跳过。最终差异/证据/固定调用器独立静态审查通过；不存在独立重跑的虚假声明。
+- 固定Ops`0f4980733d6c1265f0677904a5aa4e3ac94776bc`129回归通过。真实SIGKILL演练自动恢复c5，正常退出0且全表不变；正式更新正常保护备份后切541。备份`20260918T033846Z-8de19b91`及`20260918T033959Z-3198b06e`保留；全部6步骤实际exit0，最终只读身份/清理再次确认。
+- 精确正式域名18项正常TLS检查通过，原`lixiaochen`未改长密码登录及浏览器进入/刷新工作台成功，原项目1/进度10/18、账号12保持。登录/注册/恢复桌面卡片440px、390px手机内容区域两侧16px，两档6截图通过；工作区宽度不受认证选择器影响。个人账号、目录搜索与组织配置表单标签显示工号；组织表单取消未提交。callback卡片440px及原生返回链接可见，点击后目标页未再观察，不计返回导航PASS。
+- 浏览器实际API/静态资源清单保存，响应状态由独立HTTPS记录提供，不冒称HAR；console warn/error0，独立pageerror流不可用。新凭据UI提交未执行，8/7设置来自真实合成HTTP/CLI。全部自有验证会话退出、临时tab关闭；本轮4个合成容器正常停止、卷/失败证据保留，3350代理停止。两端临时registry认证清理；无新增Cloud Shell key或OAuth授权，不撤销用户现有凭据。
+- 新策略是产品决策，不宣称NIST15合规。撤回6fd、预览EXPECTED缺失及原工具失败均保留。未重启全仓治理或重发旧离线包，原main/tag/用户脏修改不变。
+- 详细14项状态与环境身份：[本轮交付证据](acceptance/NATIVE_LOGIN_EXPERIENCE_20260918/README.md)。本机隔离URL`http://127.0.0.1:3350/login`同541（验证后停止），无远端staging。正式Placeholder0/测试白名单10。当前`CODE_IMPLEMENTED / LOCAL_VERIFIED / PRODUCTION_DEPLOYED / AWAITING_PRODUCT_OWNER_CONFIRMATION`，运行commit与随后证据commit分开；不得宣布整个产品接受。
