@@ -206,3 +206,22 @@ Runtime `541b3dfff682aa29b49a96b251f0a084903c981a`，正式更新03:40:16Z。环
 | https://timeline.all-too-well.com/projects | V2 Projects | v2/projects | project.read与scope | 原1项目10/18可读，工作区保持原宽度，无业务写 | production-original-projects-1440.png | 读取/宽度回归PASS |
 
 本轮未改的显式/v2/admin/accounts别名不额外重跑，其既有c5映射证据按源码未变复用，不冒称541重新截图。仅两档为所有者本轮要求，未机械重跑历史全三档。正式Placeholder0，10条测试白名单；所有者本次接受尚待确认。
+
+## 2026-09-18 指定管理员、登录首页与账号安全（最终22aac）
+
+运行 `22aac0a1b9fe975f60d599f8dbe7be20bcbca1b1`；正式2026-09-18T08:40:11.588218Z。状态及摘要见 [机器结果](NATIVE_OWNER_HOME_20260918/result.json)。截图位于私有 `var/owner-admin-delivery-20260918/screenshots`；production为精确正式hostname，local仅代表 `http://127.0.0.1:3350` 隔离环境。旧路由未重复创建，旧内嵌改密REMOVED，资料路由REPLACED，V2业务页STILL_ACTIVE。
+
+| 精确URL | Component | API | Role | 数据/动作 | Screenshot | 本轮结果 |
+|---|---|---|---|---|---|---|
+| https://timeline.all-too-well.com/login | LoginPage / PasswordField / auth-navigation | auth/login、auth/session | public | 所有者原账号原密码从退出状态正常登录→dashboard | production-login-{desktop,mobile}.png | OWNER_CONFIRMED，真实路径与布局PASS |
+| https://timeline.all-too-well.com/dashboard | RealDashboard / V2Shell | v2/dashboard、auth/session | 已授予角色；admin附管理视图 | 登录到达、刷新保持，项目/账号/组织/权限链接真实可用 | production-admin-workspace-{desktop,mobile}.png | 正式读取与管理员路径PASS |
+| https://timeline.all-too-well.com/account | AccountPage / AppShell | auth/session | authenticated | 头像主动进入姓名/工号/真实角色/组织，无默认密码表单 | production-account-{desktop,mobile}.png | 正式读取与布局PASS |
+| https://timeline.all-too-well.com/account/security | AccountSecurityPage | auth/session；auth/password仅隔离HTTP提交 | authenticated | 主动二级入口；480px/16px、48px输入、8–128及显示切换 | production-security-{desktop,mobile}.png | 读取布局PASS；浏览器改密提交NOT_EXECUTED |
+| https://timeline.all-too-well.com/admin/accounts | AccountsPage | auth/accounts | system administrator | 指定账号真实admin；读取未签发恢复码 | production-authenticated-browser.json资源及观察记录 | 读取PASS；生产写入未执行 |
+| https://timeline.all-too-well.com/admin/organization | AdminControlCenter | admin/organization | system.manage | 实际13账号及角色，未修改其他账号 | 同上 | 读取PASS |
+| https://timeline.all-too-well.com/admin/permissions | AdminControlCenter | admin/permissions | system.manage | 后端实际角色权限矩阵 | 同上 | 读取PASS |
+| https://timeline.all-too-well.com/projects | ProjectsPage | v2/projects | project.read/scope | 原1项目10/18，无业务写入 | production-projects-desktop.png | 读取/历史保护PASS |
+| http://127.0.0.1:3350/pending-access | PendingAccessPage | auth/session、auth/job | ordinary unassigned | 普通正常登录及直接后台URL均到受限页；管理员不被待分配阻挡 | local-pending-desktop.png | 隔离PASS；生产普通账号UI未执行 |
+| http://127.0.0.1:3350/login 注册/恢复模式 | LoginPage | auth/register、auth/recover（真实HTTP另列） | public | 窄卡片、次要入口，8/7/长密码与恢复撤销由隔离HTTP验证 | local-{register,recover}-{desktop,mobile}.png | 隔离布局PASS；UI凭据提交未执行 |
+
+普通同名/角色参数/浏览器字段/直接管理URL负向，岗位项目授权与撤销、8/7/长密码、主机grant幂等和最小恢复见分项记录。正式没有修改真实密码或项目；第二次正式手动退出再登录未重复，合成循环通过。正式Placeholder0/测试白名单10；用户已确认指定登录路径，不等于所有路由写操作或完整产品接受。

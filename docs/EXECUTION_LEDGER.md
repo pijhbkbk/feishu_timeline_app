@@ -7965,3 +7965,12 @@ BLOCKER_REPORT: Public-source push remains rejected by platform automatic review
 - 登录统一按真实权限进入工作台或待分配页；显式同源深链做路由权限检查，项目读权限经后端验证。资料与二级安全页分开；管理员工作台复用既有管理入口。登录/注册/恢复 440px，账号安全 480px，手机至少16px；宽业务工作区保持。密码显示/隐藏与自动填充保留，8–128 产品策略未变，不把岗位登记当强制改密。
 - 本地冻结安装、lint/typecheck、Web/API build、Prisma validate 通过；常规 API1369通过/62跳过（跳过不计通过），独立真实 PostgreSQL14通过，portable6通过。保留账号布局 RED3、lint控制字符规则失败、新增导航测试类型推断失败及修正后结果。独立审查发现项目创建深链权限键不一致，改为真实 project.write + admin/project_manager 合同并补正负向。
 - 离线软件源码归档改为构建输入和通用操作说明白名单，排除历史交付/账号记录；真实备份与软件分开。其真实 git archive 回归通过。最终镜像、HTTP/浏览器、最小恢复和受控发布尚待新固定版本验证，本条不宣称生产已更新或产品已接受。
+
+### 2026-09-18 — 指定管理员、工作首页及窄表单正式交付收尾（22aac）
+
+- runtime `22aac0a1b9fe975f60d599f8dbe7be20bcbca1b1` / tree `0e067cbf0c99b9ee8a297054a4c60ccc78083f0b`；Ops `f77d958de05df59dd43c02fc1ed5e16a7317ca6a`。私有远端、运行端HEAD、Web/API元数据和两镜像一致，正式域名 `https://timeline.all-too-well.com` 于 `2026-09-18T08:40:11.588218+00:00` 更新。六步真实exit0；SIGKILL恢复演练与正常排空保护备份通过，52表37迁移保持，无seed/恢复或真实项目写入。
+- 指定原账号经唯一内部ID/凭据/历史审计定位，root受控CLI授权真实管理员成功；重复相同计划ALREADY_APPLIED。仅目标authVersion递增，凭据/历史用户/项目成员与进度不变；正式原项目仍1个、10/18。精确身份与审计引用仅保存私有交付，不加入通用软件初始化。
+- 冻结安装、lint/typecheck、Web/API build、Prisma validate PASS；Web328/API1369 PASS，62 SKIPPED不计通过；真实PG14、portable6、Ops134 PASS。实际镜像密码48 HTTP、维护重放24项、岗位项目隔离12 HTTP及空PG最小恢复PASS。原始RED/工具失败保留。应用最终差异、维护调用器及Ops最终固定脚本独立只读审查通过，未声称独立重跑测试或新增远端CI。
+- 所有者亲自输入原密码，从退出状态正常登录，并回复“已直接进入管理员工作台”。正式浏览器复核管理员视图、刷新保持、管理账号/组织/权限真实读取、资料与主动安全入口；桌面1440/手机390真实截图，安全480px/手机两侧16px且输入48px。正常登录无改密表单。console warn/error0，资源/API请求清单留证；无独立pageerror流或完整HAR。没有再要求所有者重复第二次登录；合成账号退出再登录通过。
+- 同22aac离线软件7载荷、6镜像与1094源码成员核对，真实身份/历史交付排除；最小恢复保留管理员且初始化拒绝覆盖。没有升级旧独立VM或重复全量异机演练。浏览器新凭据提交未执行，HTTP/CLI真实边界单列，不修改所有者密码。隔离服务停止、临时registry凭据清理；保留用户工作台。
+- 唯一主要回执位于私有 ignored `var/owner-admin-delivery-20260918/RECEIPT.md`。非敏感身份/测试/截图摘要见 `docs/acceptance/NATIVE_OWNER_HOME_20260918/result.json`，具体路由矩阵已追加。本机 `http://127.0.0.1:3350` 验证后停止，无远端staging；main/tag未变，正式Placeholder0/测试10。当前 CODE_IMPLEMENTED / LOCAL_VERIFIED / PRODUCTION_DEPLOYED；本轮登录路径OWNER_CONFIRMED，完整产品仍AWAITING_PRODUCT_OWNER_CONFIRMATION。随后证据commit不改变运行commit。
