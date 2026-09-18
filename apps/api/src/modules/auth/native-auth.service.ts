@@ -15,6 +15,7 @@ import {
 } from './native-auth.rules';
 import { NativePasswordService } from './native-password.service';
 import { SessionStoreService } from './session-store.service';
+import { validateHostAdministratorPlan } from './host-administrator-plan';
 
 const FAILURE = '工号或密码不正确，或账号暂不可用。';
 const RESET_FAILURE = '恢复码无效或已过期，请联系管理员。';
@@ -242,6 +243,67 @@ export class NativeAuthService {
       await tx.user.update({ where: { id: userId }, data: { username, authVersion: { increment: 1 } } });
       await this.audit(tx, null, userId, 'NATIVE_HOST_CREDENTIAL_BOUND');
       return { userId, username };
+    });
+  }
+
+  // No HTTP route. The protected host CLI is the only caller; this additional
+  // boundary also rejects accidental invocation inside the non-root API process.
+  async grantAdministratorFromHost(input: unknown) {
+    if (process.getuid?.() !== 0) throw new ForbiddenException('管理员维护只允许由受保护的主机 root 操作执行。');
+    const plan = validateHostAdministratorPlan(input);
+    const planDigest = this.tokenHash(JSON.stringify(plan));
+    return this.prisma.$transaction(async tx => {
+      await this.lockAdministrator(tx);
+      await this.lockLoginName(tx, plan.expectedLoginName);
+      await this.lockUser(tx, plan.userId);
+      const previous = await tx.auditLog.findFirst({ where: {
+        action: 'NATIVE_HOST_ADMIN_GRANTED', metadata: { path: ['maintenanceId'], equals: plan.maintenanceId },
+      } });
+      if (previous && (previous.targetId !== plan.userId ||
+          (previous.metadata as Record<string, unknown> | null)?.planDigest !== planDigest)) {
+        throw new ConflictException('维护编号已用于不同计划，不允许重用。');
+      }
+      const user = await tx.user.findUnique({ where: { id: plan.userId }, include: {
+        localCredential: { select: { userId: true, loginName: true } },
+        userRoles: { include: { role: { select: { code: true, status: true } } } },
+      } });
+      if (previous) {
+        // A recorded grant is never re-applied, even if it was later revoked.
+        const stillGranted = user?.status === UserStatus.ACTIVE && user.isSystemAdmin &&
+          user.userRoles.some(row => row.role.code === 'admin' && row.role.status === 'ACTIVE');
+        return { userId: plan.userId, auditId: previous.id, changed: false,
+          status: stillGranted ? 'ALREADY_APPLIED' : 'ALREADY_APPLIED_PRIVILEGE_REVOKED' };
+      }
+      if (!user || user.status !== UserStatus.ACTIVE || user.username !== plan.expectedLoginName ||
+          user.name !== plan.expectedName || user.localCredential?.userId !== user.id ||
+          user.localCredential.loginName !== plan.expectedLoginName) {
+        throw new ConflictException('明确内部 ID 与预期账号身份不一致；停止主机授权。');
+      }
+      const roleIds = user.userRoles.map(row => row.roleId).sort();
+      if (user.updatedAt.toISOString() !== plan.expectedUpdatedAt || user.authVersion !== plan.expectedAuthVersion ||
+          user.isSystemAdmin !== plan.expectedIsSystemAdmin || JSON.stringify(roleIds) !== JSON.stringify(plan.expectedRoleIds)) {
+        throw new ConflictException('账号或权限已发生变化；请重新核验现场。');
+      }
+      const [matches, usableCredential, adminRole] = await Promise.all([
+        tx.user.count({ where: { username: { equals: plan.expectedLoginName, mode: 'insensitive' } } }),
+        tx.localCredential.count({ where: { userId: user.id, loginName: plan.expectedLoginName, passwordHash: { not: null } } }),
+        tx.role.findUnique({ where: { code: 'admin' } }),
+      ]);
+      if (matches !== 1 || usableCredential !== 1 || !adminRole || adminRole.status !== 'ACTIVE') {
+        throw new ConflictException('账号不唯一、凭据不可用或管理员角色未启用；停止主机授权。');
+      }
+      const changed = !user.isSystemAdmin || !roleIds.includes(adminRole.id);
+      if (changed) {
+        await tx.userRole.upsert({ where: { userId_roleId: { userId: user.id, roleId: adminRole.id } },
+          create: { userId: user.id, roleId: adminRole.id }, update: {} });
+        await tx.user.update({ where: { id: user.id }, data: { isSystemAdmin: true, authVersion: { increment: 1 } } });
+      }
+      const audit = await this.audit(tx, null, user.id, 'NATIVE_HOST_ADMIN_GRANTED', {
+        source: 'HOST_MAINTENANCE', maintenanceId: plan.maintenanceId, planDigest, reason: plan.reason, changed,
+        before: { isSystemAdmin: user.isSystemAdmin, authVersion: user.authVersion, roleIds },
+        after: { isSystemAdmin: true, authVersion: user.authVersion + (changed ? 1 : 0), roleIds: [...new Set([...roleIds, adminRole.id])].sort() },
+      });
+      return { userId: user.id, auditId: audit.id, changed, status: changed ? 'APPLIED' : 'ALREADY_AUTHORIZED' };
     });
   }
 

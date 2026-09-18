@@ -90,6 +90,15 @@ function imageMetadata(m) {
   }
   need(docker(['run','--rm','--pull=never','--network=none',m.images.postgres,'postgres','--version']).toString().includes('PostgreSQL) 14.'),'PostgreSQL 14 required');
 }
+// Ship buildable source and generic operating instructions, not delivery evidence
+// or historical operational records that may contain real account identifiers.
+export const softwareSourcePaths = [
+  '.dockerignore', '.editorconfig', '.env.example', '.env.production.example',
+  '.gitignore', '.gitleaks.toml', 'LICENSE', 'THIRD_PARTY_NOTICES',
+  'apps', 'packages', 'deploy', 'scripts', 'docker-compose.yml',
+  'eslint.config.mjs', 'package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml',
+  'tsconfig.base.json', 'docs/NATIVE_ACCOUNT_OPERATIONS.md',
+];
 function pack(specFile,out) {
   const spec=validateManifest(json(read(specFile,32768))); imageMetadata(spec);
   const repo=path.resolve(HERE,'../..');
@@ -100,7 +109,7 @@ function pack(specFile,out) {
   for(const name of ['portable.mjs','data.mjs','proxy.mjs','tunnel.mjs'])write(path.join(out,name),read(path.join(HERE,name)),0o644);
   write(path.join(out,'THIRD_PARTY_NOTICES'),read(path.join(repo,'THIRD_PARTY_NOTICES')),0o644);
   const fd=fs.openSync(path.join(out,'source.tar'), 'wx',0o600);
-  try{execFileSync('git',['-C',repo,'archive',spec.commit],{stdio:['ignore',fd,'pipe']});}finally{fs.closeSync(fd);}
+  try{execFileSync('git',['-C',repo,'archive',spec.commit,'--',...softwareSourcePaths],{stdio:['ignore',fd,'pipe']});}finally{fs.closeSync(fd);}
   docker(['save','--output',path.join(out,'images.tar'),...new Set(Object.values(spec.images))]);
   fs.chmodSync(path.join(out,'images.tar'),0o600);
   const files={};for(const name of fs.readdirSync(out))files[name]=shaFile(path.join(out,name));

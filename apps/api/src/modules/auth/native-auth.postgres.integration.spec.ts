@@ -54,6 +54,48 @@ describe.skipIf(!databaseUrl).sequential('native identity real PostgreSQL bounda
   });
   afterAll(async () => { await prisma.$disconnect(); });
 
+  it('grants only an exact existing host-authorized identity, keeps credentials/history, and revokes only its old sessions', async () => {
+    // Synthetic fixture only. Actual root/file protections are also exercised by the packaged CLI.
+    const uid = vi.spyOn(process, 'getuid').mockReturnValue(0);
+    try {
+      const adminRole = await prisma.role.upsert({ where: { code: 'admin' }, create: { code: 'admin', name: '系统管理员' }, update: {} });
+      await service.register({ username: `host-target-${runId}`, name: '合成同名人员', password }, 'host-fixture');
+      await service.register({ username: `host-other-${runId}`, name: '合成同名人员', password }, 'host-other');
+      const target = await prisma.user.findUniqueOrThrow({ where: { username: `host-target-${runId}` } });
+      const other = await prisma.user.findUniqueOrThrow({ where: { username: `host-other-${runId}` } });
+      const credential = await prisma.localCredential.findUniqueOrThrow({ where: { userId: target.id } });
+      const old = await login(target.username); const unrelated = await login(other.username);
+      const oldAudit = await prisma.auditLog.create({ data: { actorUserId: target.id, targetType: 'USER', targetId: target.id, action: 'SYNTHETIC_HISTORY_BEFORE_GRANT' } });
+      const plan = { maintenanceId: randomUUID(), userId: target.id, expectedLoginName: target.username, expectedName: target.name, expectedUpdatedAt: target.updatedAt.toISOString(), expectedAuthVersion: target.authVersion, expectedIsSystemAdmin: false, expectedRoleIds: [], reason: '隔离合成指定身份授权' };
+      for (const patch of [{ userId: 'missing' }, { expectedLoginName: other.username }, { expectedName: '另一人' }, { expectedAuthVersion: 99 }, { expectedUpdatedAt: '2000-01-01T00:00:00.000Z' }, { expectedRoleIds: [adminRole.id] }]) {
+        await expect(service.grantAdministratorFromHost({ ...plan, ...patch })).rejects.toThrow();
+      }
+      await prisma.role.update({ where: { id: adminRole.id }, data: { status: 'INACTIVE' } });
+      await expect(service.grantAdministratorFromHost(plan)).rejects.toThrow();
+      await prisma.role.update({ where: { id: adminRole.id }, data: { status: 'ACTIVE' } });
+      const results = await Promise.all([service.grantAdministratorFromHost(plan), service.grantAdministratorFromHost(plan)]);
+      expect(results.map(value => value.status).sort()).toEqual(['ALREADY_APPLIED', 'APPLIED']);
+      expect(new Set(results.map(value => value.auditId)).size).toBe(1);
+      expect(await prisma.localCredential.findUniqueOrThrow({ where: { userId: target.id } })).toEqual(credential);
+      expect(await auth.getAuthenticatedUserFromSessionToken(old.token)).toBeNull();
+      expect((await auth.getAuthenticatedUserFromSessionToken(unrelated.token))?.id).toBe(other.id);
+      expect((await login(target.username)).result.user).toMatchObject({ id: target.id, isSystemAdmin: true, roleCodes: ['admin'], authVersion: 1, onboardingCompleted: false });
+      expect((await actor(other.id)).isSystemAdmin).toBe(false);
+      expect((await prisma.auditLog.findUniqueOrThrow({ where: { id: oldAudit.id } })).actorUserId).toBe(target.id);
+      const audit = await prisma.auditLog.findUniqueOrThrow({ where: { id: results[0]!.auditId } });
+      expect(audit.actorUserId).toBeNull(); expect(audit.metadata).toMatchObject({ source: 'HOST_MAINTENANCE' });
+      expect(JSON.stringify(audit)).not.toContain(credential.passwordHash!);
+      await expect(service.grantAdministratorFromHost({ ...plan, reason: '更改了同一维护编号的计划' })).rejects.toThrow();
+      // Restore-style new initialization cannot replace an existing administrator.
+      await expect(service.initializeAdministrator({ username: 'should-not-reseed', name: '不应覆盖', password })).rejects.toThrow();
+      await prisma.userRole.delete({ where: { userId_roleId: { userId: target.id, roleId: adminRole.id } } });
+      await prisma.user.update({ where: { id: target.id }, data: { isSystemAdmin: false, authVersion: { increment: 1 } } });
+      expect((await service.grantAdministratorFromHost(plan)).status).toBe('ALREADY_APPLIED_PRIVILEGE_REVOKED');
+      expect((await actor(target.id)).isSystemAdmin).toBe(false);
+      expect(await prisma.userRole.count({ where: { userId: target.id } })).toBe(0);
+    } finally { uid.mockRestore(); }
+  });
+
   it('rejects privilege injection at the real global DTO validation boundary', async () => {
     const pipe = new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true });
     for (const field of ['roleCodes', 'isSystemAdmin', 'departmentId', 'authVersion', 'userId', 'feishuOpenId']) {

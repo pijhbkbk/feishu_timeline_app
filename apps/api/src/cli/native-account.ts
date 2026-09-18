@@ -14,9 +14,22 @@ import { RedisModule } from '../infra/redis/redis.module';
 import { AuthModule } from '../modules/auth/auth.module';
 import { NativeAuthService } from '../modules/auth/native-auth.service';
 import { NATIVE_PASSWORD_MIN_LENGTH } from '../modules/auth/native-auth.rules';
+import { validateHostAdministratorPlan } from '../modules/auth/host-administrator-plan';
 
 @Module({ imports: [ConfigModule.forRoot({ isGlobal: true, load: [appConfig], envFilePath: [...APP_ENV_FILE_PATHS] }), PrismaModule, RedisModule, AuthModule] })
 class NativeAccountCliModule {}
+
+async function grantPlanFromFile(path: string) {
+  if (process.getuid?.() !== 0) throw new Error('管理员维护需要主机 root。');
+  const file = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+  try {
+    const stat = await file.stat();
+    if (!stat.isFile() || stat.nlink !== 1 || stat.uid !== 0 || (stat.mode & 0o777) !== 0o600 || stat.size < 2 || stat.size > 4096) {
+      throw new Error('维护计划必须为 root 持有的独立0600普通文件。');
+    }
+    return validateHostAdministratorPlan(JSON.parse(await file.readFile('utf8')) as unknown);
+  } finally { await file.close(); }
+}
 
 async function passwordFromFile(path: string) {
   const file = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW);
@@ -47,6 +60,16 @@ async function passwordFromTerminal() {
 async function main() {
   const args = process.argv.slice(2);
   const command = args.shift();
+  if (command === 'grant-administrator') {
+    if (args.length !== 2 || args[0] !== '--grant-file' || !args[1]) throw new Error('需要受保护的 --grant-file。');
+    const plan = await grantPlanFromFile(args[1]);
+    const app = await NestFactory.createApplicationContext(NativeAccountCliModule, { logger: false });
+    try {
+      const result = await app.get(NativeAuthService).grantAdministratorFromHost(plan);
+      process.stdout.write(JSON.stringify(result) + '\n');
+    } finally { await app.get(PrismaService).$disconnect(); await app.close(); }
+    return;
+  }
   const values = new Map<string, string>();
   for (let i = 0; i < args.length; i += 2) {
     const key = args[i]; const value = args[i + 1];
@@ -73,6 +96,6 @@ async function main() {
 
 void main().catch(() => {
   // Never print raw database errors or credential-bearing inputs.
-  process.stderr.write('账号初始化/绑定失败；请检查命令、现有账号状态及受保护配置。未输出任何凭据。\n');
+  process.stderr.write('账号初始化/绑定/维护失败；请检查命令、现有账号状态及受保护配置。未输出任何凭据。\n');
   process.exitCode = 1;
 });

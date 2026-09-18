@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import type { PropsWithChildren } from 'react';
 
 import { FRONTEND_ROLE_OPTIONS } from '../lib/auth-client';
+import { loginHref } from '../lib/auth-navigation';
 import {
   filterNavItems,
   getAdminSectionItems,
@@ -62,7 +63,7 @@ export function AppShell({ children }: PropsWithChildren) {
           title="请先登录"
           description="前端仅做登录态提示，真正的权限校验仍由后端接口完成。"
           actions={
-            <Link href="/login" className="button button-primary">
+            <Link href={loginHref(pathname)} className="button button-primary">
               前往登录
             </Link>
           }
@@ -112,6 +113,7 @@ export function AppShell({ children }: PropsWithChildren) {
                   <span>{user.departmentName ?? '未分配部门'}</span>
                   <small>{formatRoleCodes(user.roleCodes)}</small>
                   <Link href="/account">我的账号</Link>
+                  <Link href="/account/security">账号安全</Link>
                   {user.isSystemAdmin ? <Link href="/admin/accounts">账号管理</Link> : null}
                   {user.isSystemAdmin || user.roleCodes.includes('admin') ? (
                     <Link href="/admin">后台管理</Link>
@@ -132,7 +134,7 @@ export function AppShell({ children }: PropsWithChildren) {
         </div>
       </header>
 
-      <main className={`content r22-content${isAuthRoute ? ' native-auth-content' : ''}`}>
+      <main className={`content r22-content${isAuthRoute ? ' native-auth-content' : pathname === '/account' || pathname.startsWith('/account/') || pathname === '/pending-access' ? ' native-account-content' : ''}`}>
         {contextNav.length > 0 ? (
           <nav className="context-nav r22-context-nav" aria-label="当前工作区导航">
             {contextNav.map((item) => (

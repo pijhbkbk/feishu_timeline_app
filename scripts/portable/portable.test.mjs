@@ -4,7 +4,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {test} from 'node:test';
-import {validateManifest,decryptBackup,validateSignatureFloor,mergeSignatureFloors,signatureFloor,compareFingerprints} from './portable.mjs';
+import {execFileSync} from 'node:child_process';
+import {validateManifest,decryptBackup,validateSignatureFloor,mergeSignatureFloors,signatureFloor,compareFingerprints,softwareSourcePaths} from './portable.mjs';
 const m={version:1,commit:'a'.repeat(40),tree:'b'.repeat(40),architecture:'amd64',postgresMajor:14,release:'portable-test',buildTime:'2026-09-17T00:00:00Z',images:Object.fromEntries(['api','web','ops','postgres','redis','scanner'].map(k=>[k,'sha256:'+'c'.repeat(64)]))};
 test('schema comparison accepts only the approved directed pair and preserves table and sequence checks',()=>{
   const source={tables:{example:{count:1,sha256:'a'.repeat(64)}},sequences:{example_id_seq:'1|t'},schemaSha256:'3f933e582eab518c24e308cb9991e1f5fab16c310eee10f041e38746cb76b4c0'};
@@ -54,4 +55,26 @@ test('missing signature metadata differs from malformed files and dangling links
     fs.unlinkSync(receipt);fs.unlinkSync(floor);fs.symlinkSync(path.join(root,'absent'),floor);assert.throws(()=>signatureFloor({root}));
     fs.unlinkSync(floor);fs.writeFileSync(receipt,JSON.stringify({files:[{name:'main.cvd',version:63}]}),{mode:0o600});assert.throws(()=>signatureFloor({root}));
   }finally{fs.rmSync(root,{recursive:true});}
+});
+
+test('software source archive includes build inputs and generic instructions, excludes account evidence',()=>{
+  const root=fs.mkdtempSync(path.join(os.tmpdir(),'portable-source-scope-'));
+  const git=(...args)=>execFileSync('git',['-C',root,...args]);
+  try {
+    git('init','--quiet');
+    for(const item of softwareSourcePaths) {
+      const file=['apps','packages','deploy','scripts'].includes(item)?path.join(item,'synthetic.txt'):item;
+      fs.mkdirSync(path.dirname(path.join(root,file)),{recursive:true});fs.writeFileSync(path.join(root,file),'build source');
+    }
+    fs.mkdirSync(path.join(root,'docs/acceptance'),{recursive:true});
+    fs.writeFileSync(path.join(root,'docs/acceptance/private-account.json'),'synthetic-private-record');
+    fs.mkdirSync(path.join(root,'reports'));fs.writeFileSync(path.join(root,'reports/account.json'),'synthetic-private-record');
+    git('add','--',...softwareSourcePaths,'docs/acceptance/private-account.json','reports/account.json');
+    git('-c','user.name=Archive Test','-c','user.email=archive@example.invalid','commit','--quiet','-m','synthetic archive fixture');
+    const archive=git('archive','HEAD','--',...softwareSourcePaths);
+    const listing=execFileSync('tar',['-tf','-'],{input:archive}).toString();
+    assert.match(listing,/apps\/synthetic.txt/);assert.match(listing,/docs\/NATIVE_ACCOUNT_OPERATIONS.md/);
+    assert.doesNotMatch(listing,/acceptance|reports|private-account/);
+    assert.equal(archive.includes(Buffer.from('synthetic-private-record')),false);
+  } finally { fs.rmSync(root,{recursive:true}); }
 });

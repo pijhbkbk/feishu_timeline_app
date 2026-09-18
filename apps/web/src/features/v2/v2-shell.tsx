@@ -7,6 +7,7 @@ import { useEffect, useState, type MouseEvent } from 'react';
 
 import { useAuth } from '../../components/auth-provider';
 import { isTopNavigationItemActive } from '../../lib/navigation';
+import { loginHref, needsAssignment } from '../../lib/auth-navigation';
 import { isProductionV2Ui, toProductHref } from './production-ui';
 import { useR26RealData } from './r26-real-data-context';
 
@@ -37,15 +38,15 @@ export function V2Shell({ children }: { children: React.ReactNode }) {
     logout,
   } = useAuth();
   const { enabled: realDataEnabled, viewer } = useR26RealData();
-  const pendingAuthorization = user?.authSource === 'local' && !user.isSystemAdmin && user.roleCodes.length === 0;
+  const pendingAuthorization = Boolean(user && needsAssignment(user));
   const navItems = baseNavItems.filter(item => item.label !== '系统管理' || user?.isSystemAdmin || user?.roleCodes.includes('admin'));
 
   useEffect(() => {
-    if (!isAuthLoading && pendingAuthorization) { window.location.replace('/account'); return; }
+    if (!isAuthLoading && pendingAuthorization) { window.location.replace('/pending-access'); return; }
     if (!isAuthLoading && !isAuthenticated && !authError) {
-      window.location.replace('/login');
+      window.location.replace(loginHref(pathname, window.location.search));
     }
-  }, [authError, isAuthenticated, isAuthLoading, pendingAuthorization]);
+  }, [authError, isAuthenticated, isAuthLoading, pendingAuthorization, pathname]);
 
   function showStaticMessage(message: string) {
     setToast(message);
@@ -186,6 +187,7 @@ export function V2Shell({ children }: { children: React.ReactNode }) {
                   </small>
                 </div>
                 <Link href="/account" role="menuitem">我的账号</Link>
+                <Link href="/account/security" role="menuitem">账号安全</Link>
                 {user?.isSystemAdmin ? <Link href="/admin/accounts" role="menuitem">账号管理</Link> : null}
                 <button
                   type="button"

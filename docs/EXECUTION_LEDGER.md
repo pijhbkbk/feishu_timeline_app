@@ -7957,3 +7957,11 @@ BLOCKER_REPORT: Public-source push remains rejected by platform automatic review
 - 浏览器实际API/静态资源清单保存，响应状态由独立HTTPS记录提供，不冒称HAR；console warn/error0，独立pageerror流不可用。新凭据UI提交未执行，8/7设置来自真实合成HTTP/CLI。全部自有验证会话退出、临时tab关闭；本轮4个合成容器正常停止、卷/失败证据保留，3350代理停止。两端临时registry认证清理；无新增Cloud Shell key或OAuth授权，不撤销用户现有凭据。
 - 新策略是产品决策，不宣称NIST15合规。撤回6fd、预览EXPECTED缺失及原工具失败均保留。未重启全仓治理或重发旧离线包，原main/tag/用户脏修改不变。
 - 详细14项状态与环境身份：[本轮交付证据](acceptance/NATIVE_LOGIN_EXPERIENCE_20260918/README.md)。本机隔离URL`http://127.0.0.1:3350/login`同541（验证后停止），无远端staging。正式Placeholder0/测试白名单10。当前`CODE_IMPLEMENTED / LOCAL_VERIFIED / PRODUCTION_DEPLOYED / AWAITING_PRODUCT_OWNER_CONFIRMATION`，运行commit与随后证据commit分开；不得宣布整个产品接受。
+
+### 2026-09-18 — 指定已有账号管理员、登录首页及账号安全修正（候选）
+
+- 延续实际 b352 交付工作树及正式运行 541b3dfff682；本轮分支 codex/owner-admin-home-20260918，不改 main/tag、治理或其他应用。只读核对确认指定工号唯一匹配原生凭据及其注册/登录审计；现有旧管理员是另一个内部账号，保留双方身份和原项目历史，不合并或重置密码。真实标识和维护计划仅保存在受保护证据中，不进入软件包。
+- 根因分开处理：目标账号缺正式管理员标记/角色；前端登录和守卫以岗位登记/空角色默认送账号页；账号页同时显示改密和岗位申请；账号通用卡片过宽。新增 root 双层保护、精确内部 ID+预期身份/版本/角色集的 CLI 维护，事务授予已有 admin 角色并定向递增 authVersion，主机审计和维护 UUID 幂等，撤销后的旧计划不会重授。无新增公开提权接口、schema、业务或凭据写入。
+- 登录统一按真实权限进入工作台或待分配页；显式同源深链做路由权限检查，项目读权限经后端验证。资料与二级安全页分开；管理员工作台复用既有管理入口。登录/注册/恢复 440px，账号安全 480px，手机至少16px；宽业务工作区保持。密码显示/隐藏与自动填充保留，8–128 产品策略未变，不把岗位登记当强制改密。
+- 本地冻结安装、lint/typecheck、Web/API build、Prisma validate 通过；常规 API1369通过/62跳过（跳过不计通过），独立真实 PostgreSQL14通过，portable6通过。保留账号布局 RED3、lint控制字符规则失败、新增导航测试类型推断失败及修正后结果。独立审查发现项目创建深链权限键不一致，改为真实 project.write + admin/project_manager 合同并补正负向。
+- 离线软件源码归档改为构建输入和通用操作说明白名单，排除历史交付/账号记录；真实备份与软件分开。其真实 git archive 回归通过。最终镜像、HTTP/浏览器、最小恢复和受控发布尚待新固定版本验证，本条不宣称生产已更新或产品已接受。

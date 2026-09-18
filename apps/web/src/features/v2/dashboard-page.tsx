@@ -185,6 +185,19 @@ function RealDashboardPage() {
         }
       />
 
+      {viewer.roleCodes.includes('admin') && (viewer.isSystemAdmin || viewer.permissionCodes.includes('system.manage')) && (
+        <section className="r26-card native-admin-workspace" aria-label="管理员工作台">
+          <h2>管理员工作台</h2>
+          <p>查看项目概况，管理用户、组织和正式授权。</p>
+          <div className="native-admin-links">
+            <Link href="/projects">项目概况</Link>
+            {viewer.isSystemAdmin && <Link href="/admin/accounts">账号与待处理授权</Link>}
+            <Link href="/admin/organization">组织与岗位</Link>
+            <Link href="/admin/permissions">角色与权限</Link>
+          </div>
+        </section>
+      )}
+
       {currentTask ? (
         <section className="r26-current-task">
           <div className="r26-current-task__main">
