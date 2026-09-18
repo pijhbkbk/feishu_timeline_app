@@ -1,4 +1,4 @@
-"""Generated installer template: the generator replaces only fixed literal maps."""
+"""Fixed c5 continuation: install a separate target, atomically switch one controller."""
 import hashlib
 import json
 import os
@@ -16,9 +16,10 @@ TARGET_ID = None
 OPS = Path('/usr/local/lib/timeline-native-ops')
 ROOT = Path('/var/lib/timeline-native-app')
 UNITS = Path('/etc/systemd/system')
-SAVED = ROOT / 'controllers-before-20260917'
-JOURNAL = ROOT / 'controller-install-20260917.json'
-BASE = '6c70a897ec7643f4681616d801481765aaa8f7bc'
+SAVED = ROOT / 'controllers-before-login-20260918'
+JOURNAL = ROOT / 'controller-install-login-20260918.json'
+BASE = 'c5aed415cd17e6e8a21b422a4c5c92b4b924e091'
+TARGET_MODULE = 'native_release_target_20260918.py'
 ENV = {'PATH': '/usr/sbin:/usr/bin:/sbin:/bin', 'LANG': 'C.UTF-8'}
 
 
@@ -77,7 +78,7 @@ def write(path, raw, mode):
 def activate_new(path, raw, mode):
     # A crash during write/fsync leaves only an unreferenced temporary file.
     # The authoritative path is installed only after complete durable bytes.
-    temporary = path.parent / ('.install-20260917-' + secrets.token_hex(12))
+    temporary = path.parent / ('.install-login-20260918-' + secrets.token_hex(12))
     write(temporary, raw, mode)
     require(not exists(path), 'New authoritative file unexpectedly appeared')
     os.replace(temporary, path)
@@ -88,13 +89,29 @@ def exists(path):
     return os.path.lexists(path)
 
 
+def idle_release_units():
+    # Preserve failed historical invocations; never reset-failed or start units.
+    for unit in ('timeline-native-release.service', 'timeline-native-release-check.service',
+                 'timeline-native-release-rollback.service'):
+        raw = subprocess.run(['/usr/bin/systemctl', 'show', unit, '--property=FragmentPath',
+                              '--property=DropInPaths', '--property=NeedDaemonReload',
+                              '--property=MainPID', '--property=ControlPID', '--property=ActiveState'],
+                             env=ENV, check=True, stdout=subprocess.PIPE, timeout=20).stdout
+        require(len(raw) <= 8192, 'Unit state exceeds bound')
+        value = dict(line.split('=', 1) for line in raw.decode().splitlines() if '=' in line)
+        require(value.get('FragmentPath') == str(UNITS / unit) and value.get('DropInPaths') == '' and
+                value.get('NeedDaemonReload') == 'no' and value.get('MainPID') == '0' and
+                value.get('ControlPID') == '0' and value.get('ActiveState') in ('inactive', 'failed'),
+                'Release unit is not safely idle')
+
+
 def main():
     require(os.geteuid() == 0 and socket.gethostname() == 'instance-20260408-091840', 'Wrong host or identity')
     for path in (OPS, ROOT, UNITS):
         directory(path)
     require(stat.S_IMODE(ROOT.stat().st_mode) == 0o700, 'App state directory must remain private')
-    names = ('native_release_target.py', 'native_release_backup.py', 'native_runtime_network.py', 'native_runtime_app.py', 'native_cutover.py', 'native_release.py', 'timeline-native-api.service',
-             'timeline-native-release.service', 'timeline-native-release-check.service', 'timeline-native-release-rollback.service')
+    names = (TARGET_MODULE, 'native_release.py')
+    replaced = ('native_release.py',)
     require(type(PAYLOAD) is dict and set(PAYLOAD) == set(names), 'Incomplete fixed installer')
     require(isinstance(TARGET_ID, str) and len(TARGET_ID) == 40 and TARGET_ID != BASE, 'Target not finalized')
     for name, value in PAYLOAD.items():
@@ -104,12 +121,13 @@ def main():
     # Trusted dependencies are never loaded from the transferred checkout.
     for name, expected in EXPECTED.items():
         allowed = {expected}
-        if name in ('native_release.py', 'native_runtime_app.py', 'native_runtime_network.py', 'native_cutover.py'):
+        if name in replaced:
             allowed.add(PAYLOAD[name]['sha256'])
         require(digest(read(OPS / name)) in allowed, 'Existing controller differs: ' + name)
-    for name in ('native_release_target.py', 'native_release_backup.py'):
-        if exists(OPS / name):
-            require(digest(read(OPS / name)) == PAYLOAD[name]['sha256'], 'Existing new helper differs')
+    if exists(OPS / TARGET_MODULE):
+        require(digest(read(OPS / TARGET_MODULE)) == PAYLOAD[TARGET_MODULE]['sha256'], 'Existing new target differs')
+    for name, expected in EXPECTED_UNITS.items():
+        require(digest(read(UNITS / name)) == expected, 'Installed unit differs')
     sys.path.insert(0, str(OPS))
     import native_backup_controller as backup
     # Same lock as all existing backup/cutover operations; installer cannot run beside a release.
@@ -120,7 +138,11 @@ def main():
         fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
         with backup.locked():
             stable = {'version': 1, 'active': BASE, 'committed': BASE, 'pending': False}
-            require(backup.read_json(ROOT / 'release-6c70-state.json') == stable, 'Installer requires committed 6c70')
+            require(backup.read_json(ROOT / 'release-6c70-state.json') == stable, 'Installer requires committed c5')
+            require(not any(exists(ROOT / ('release-login-20260918-' + suffix)) for suffix in
+                            ('checkpoint.json', 'recovery-proof.json', 'update-proof.json', 'rollback-proof.json')),
+                    'Login release already attempted; retained proof requires inspection')
+            idle_release_units()
             subprocess.run(['/usr/bin/python3', '-I', str(OPS / 'native_cutover.py'), 'check-committed'], env=ENV, check=True, timeout=40)
             journal = {'version': 1, 'target': TARGET_ID, 'base': BASE,
                        'expectedControllers': EXPECTED, 'expectedUnits': EXPECTED_UNITS,
@@ -128,7 +150,7 @@ def main():
             if exists(JOURNAL):
                 require(backup.read_json(JOURNAL) == journal, 'Different interrupted installer exists')
                 if not exists(SAVED):
-                    require(all(digest(read(OPS / name)) == EXPECTED[name] for name in ('native_release.py', 'native_runtime_app.py', 'native_runtime_network.py', 'native_cutover.py')), 'Missing originals after controller replacement')
+                    require(all(digest(read(OPS / name)) == EXPECTED[name] for name in replaced), 'Missing originals after controller replacement')
                     require(all(digest(read(UNITS / name)) == expected for name, expected in EXPECTED_UNITS.items()), 'Missing originals after unit replacement')
                     SAVED.mkdir(mode=0o700); sync(ROOT)
                 directory(SAVED)
@@ -136,17 +158,16 @@ def main():
             else:
                 require(not exists(SAVED), 'Unjournaled prior controller directory exists')
                 # No file can be partly upgraded before a durable journal.
-                require(all(digest(read(OPS / name)) == EXPECTED[name] for name in ('native_release.py', 'native_runtime_app.py', 'native_runtime_network.py', 'native_cutover.py')), 'New controller without installer journal')
+                require(all(digest(read(OPS / name)) == EXPECTED[name] for name in replaced), 'New controller without installer journal')
                 for name, expected in EXPECTED_UNITS.items():
                     require(digest(read(UNITS / name)) == expected, 'Original unit differs')
-                for name in ('native_release_target.py', 'native_release_backup.py'):
-                    require(not exists(OPS / name), 'Unexpected preexisting helper')
+                require(not exists(OPS / TARGET_MODULE), 'Unjournaled new target')
                 # Journal first; an interruption before mkdir can be resumed deliberately.
                 activate_new(JOURNAL, (json.dumps(journal, sort_keys=True, separators=(',', ':')) + '\n').encode(), 0o600)
                 SAVED.mkdir(mode=0o700); sync(ROOT)
             for name in names:
-                destination = (OPS if name.endswith('.py') else UNITS) / name
-                prior = EXPECTED.get(name) if name.endswith('.py') else EXPECTED_UNITS.get(name)
+                destination = OPS / name
+                prior = EXPECTED.get(name)
                 raw = PAYLOAD[name]['text'].encode()
                 if prior is not None:
                     current = read(destination)
@@ -159,7 +180,7 @@ def main():
                         activate_new(saved, current, 0o600)
                     if current == raw:
                         continue
-                    temporary = destination.parent / ('.install-20260917-' + secrets.token_hex(12))
+                    temporary = destination.parent / ('.install-login-20260918-' + secrets.token_hex(12))
                     write(temporary, raw, 0o644)
                     require(read(destination) == current, 'Controller changed during replacement')
                     os.replace(temporary, destination); sync(destination.parent)
@@ -168,8 +189,13 @@ def main():
                 else:
                     activate_new(destination, raw, 0o644)
                 require(read(destination) == raw, 'Installed payload differs')
-            subprocess.run(['/usr/bin/systemd-analyze', 'verify', *[str(UNITS / n) for n in names if n.endswith('.service')]], env=ENV, check=True, timeout=30)
-            subprocess.run(['/usr/bin/systemctl', 'daemon-reload'], env=ENV, check=True, timeout=20)
+            # No unit/dependency is rewritten and no daemon reload is necessary.
+            for name, expected in EXPECTED.items():
+                if name not in replaced:
+                    require(digest(read(OPS / name)) == expected, 'Unchanged dependency changed')
+            for name, expected in EXPECTED_UNITS.items():
+                require(digest(read(UNITS / name)) == expected, 'Unchanged unit changed')
+            idle_release_units()
             subprocess.run(['/usr/bin/python3', '-I', str(OPS / 'native_cutover.py'), 'check-committed'], env=ENV, check=True, timeout=40)
             require(backup.read_json(ROOT / 'release-6c70-state.json') == stable, 'Installer changed runtime state')
     finally:

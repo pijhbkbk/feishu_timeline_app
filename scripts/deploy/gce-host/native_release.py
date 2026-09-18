@@ -1,4 +1,4 @@
-"""Fixed committed 6c70 program upgrade; never initialize, migrate or restore data."""
+"""Fixed committed c5 login-policy upgrade; never initialize, migrate or restore data."""
 import os
 from pathlib import Path
 import stat
@@ -24,16 +24,18 @@ import native_backup_controller as backup
 
 ROOT = Path('/var/lib/timeline-native-app')
 STATE = ROOT / 'release-6c70-state.json'
-CHECKPOINT = ROOT / 'release-20260917-checkpoint.json'
-OLD = '6c70a897ec7643f4681616d801481765aaa8f7bc'
+CHECKPOINT = ROOT / 'release-login-20260918-checkpoint.json'
+OLD = 'c5aed415cd17e6e8a21b422a4c5c92b4b924e091'
 REGISTRY = 'us-west1-docker.pkg.dev/axial-acrobat-492709-r7/feishu-timeline/'
-from native_release_target import TARGET
+# A new immutable module is installed before this controller is atomically replaced.
+# The previous controller continues reading its retained 20260917 target throughout.
+from native_release_target_20260918 import TARGET
 NEW = TARGET['commit'] if TARGET else None
 VERSIONS = {
-    OLD: {'commit': OLD, 'tree': '042c502720078f6f546931bf34c5396cb910c9fd',
-          'release': 'native-auth-20260914-6c70a897ec76', 'buildTime': '2026-09-14T01:01:20Z',
-          'images': {'api': REGISTRY + 'api@sha256:196a3631af5fcf76bffbfeb0651c290cfeeb7fd2adedad927e1bdf3c44556a22',
-                     'web': REGISTRY + 'web@sha256:502308afb6c5a9fadc2f603fc0e99319a60ecf6108f56633ddc8b80ca050c5bc'}},
+    OLD: {'commit': OLD, 'tree': '830e562f5ec56e99d7fc0b04432fc056dd772254',
+          'release': 'native-portable-20260917-c5aed415cd17', 'buildTime': '2026-09-17T08:04:51Z',
+          'images': {'api': REGISTRY + 'api@sha256:40544930b329416679f24ebc6dd2354e24beaec9d8490b9edbdbda5e0f71d192',
+                     'web': REGISTRY + 'web@sha256:774419239cea09f8d341fd29ed34361b47012c720bafbe7a3a5ef0d60ffa187b'}},
 }
 if TARGET:
     VERSIONS[NEW] = {key: TARGET[key] for key in ('commit', 'tree', 'release', 'buildTime', 'images')}
@@ -67,7 +69,7 @@ def present(path):
 
 
 def state():
-    require(present(STATE), 'Committed 6c70 release state is required; initialization fallback is forbidden')
+    require(present(STATE), 'Committed c5 release state is required; initialization fallback is forbidden')
     value = backup.read_json(STATE)
     require(type(value) is dict and set(value) == {'version', 'active', 'committed', 'pending'} and
             type(value['version']) is int and value['version'] == 1 and type(value['pending']) is bool and
@@ -90,7 +92,7 @@ def environment_path(component, commit=None):
     require(component in ('api', 'web'), 'Unsupported environment component')
     commit = state()['active'] if commit is None else commit
     require(commit in VERSIONS, 'Unknown environment version')
-    return ROOT / (component + ('-6c70.env' if commit == OLD else '-20260917.env'))
+    return ROOT / (component + ('-20260917.env' if commit == OLD else '-login-20260918.env'))
 
 
 def replace_state(value):
@@ -122,22 +124,16 @@ def verify_checkout(commit):
         require_target()
         # The immutable tree binds every byte. This additional explicit scope gate
         # rejects unreviewed runtime/dependency/schema drift without pretending the API is unchanged.
-        guarded = ('apps/api', 'apps/api-ops', 'packages/shared', 'pnpm-lock.yaml', 'package.json',
-                   'apps/web/package.json', 'apps/web/Dockerfile', 'pnpm-workspace.yaml')
+        guarded = ('apps/api', 'apps/api-ops', 'apps/web', 'packages/shared',
+                   'pnpm-lock.yaml', 'package.json', 'pnpm-workspace.yaml')
         changed = git('diff', '--name-only', OLD, NEW, '--', *guarded).splitlines()
         require(changed == sorted(TARGET['approvedRuntimeChanges']), 'Unreviewed runtime source change')
         for relative, digest in TARGET['approvedRuntimeChanges'].items():
-            require((relative.startswith('apps/api/src/') or relative in ('apps/api/package.json', 'apps/api/prisma/seed.ts')) and '..' not in Path(relative).parts,
+            require(relative.startswith(('apps/api/src/', 'apps/web/src/')) and '..' not in Path(relative).parts,
                     'Schema/dependency change is not allowed for this program-only release')
             raw = backup.command(['/usr/bin/git', '-C', str(root), '-c', 'core.hooksPath=/dev/null',
                                   'show', NEW + ':' + relative], user='lixiaochen')
             require(backup.sha(raw) == digest, 'Approved runtime source digest differs')
-            if relative == 'apps/api/package.json':
-                prior = backup.command(['/usr/bin/git', '-C', str(root), '-c', 'core.hooksPath=/dev/null',
-                                        'show', OLD + ':' + relative], user='lixiaochen')
-                before, after = json.loads(prior), json.loads(raw)
-                before.pop('scripts', None); after.pop('scripts', None)
-                require(before == after, 'API package change exceeds approved CLI script registration')
 
 
 def require_target():
@@ -153,7 +149,7 @@ def require_target():
         require(re.fullmatch(re.escape(REGISTRY + component + '@sha256:') + r'[a-f0-9]{64}', reference),
                 'Final repository digest is not fixed')
     require(type(TARGET['approvedRuntimeChanges']) is dict and TARGET['approvedRuntimeChanges'],
-            'Explicit reviewed API change set is required')
+            'Explicit reviewed API/Web change set is required')
     require(all(re.fullmatch(r'[a-f0-9]{64}', value) for value in TARGET['approvedRuntimeChanges'].values()),
             'Approved source digest missing')
 
@@ -186,16 +182,19 @@ def close_program(require_drained=False):
     before = app.inspect('api') if require_drained else None
     cutover.stop_units(cutover.SOCKETS + cutover.PROXIES + cutover.APPS)
     final = app.inspect('api') if require_drained else None
-    supports_drain = bool(before and NEW in VERSIONS and before['Config']['Image'] == VERSIONS[NEW]['images']['api'])
+    # Both the fixed c5 baseline and this candidate contain the reviewed drain.
+    # Never downgrade c5 to the historical legacy-exit exemption when NEW changes.
+    supports_drain = bool(before and before['Config']['Image'] in known_images('api'))
     was_running = bool(before and before['State']['Running'])
-    if require_drained and was_running and supports_drain:
+    if require_drained and was_running:
+        require(supports_drain, 'Unreviewed native API drain capability; no release backup claimed')
         require(final and final['Id'] == before['Id'] and not final['State']['Running'] and
                 final['State']['Pid'] == 0 and final['State']['ExitCode'] == 0 and not final['State']['OOMKilled'],
                 'Native API drain failed or was force-killed; no consistent-release backup claimed')
     observation = {'apiWasRunning': was_running, 'apiDrainSupported': supports_drain,
                    'apiExitCode': final['State']['ExitCode'] if final else None,
                    'apiGracefulDrainVerified': bool(was_running and supports_drain and final and final['State']['ExitCode'] == 0),
-                   'legacyApiFreezeOnly': bool(was_running and not supports_drain)}
+                   'legacyApiFreezeOnly': False}
     for component in ('api', 'web'):
         app.stop(component, remove=True)
     return observation

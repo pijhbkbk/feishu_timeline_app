@@ -126,6 +126,17 @@ class ReleaseBoundaryTests(unittest.TestCase):
             with self.assertRaisesRegex(backup.Failure, 'Unknown'):
                 release.state()
 
+    def test_only_c5_is_the_existing_stable_origin_and_preserves_v1_state(self):
+        self.assertEqual(release.OLD, 'c5aed415cd17e6e8a21b422a4c5c92b4b924e091')
+        self.assertEqual(release.STATE.name, 'release-6c70-state.json')
+        with patch.object(release, 'present', return_value=True), patch.object(backup, 'read_json', return_value=stable()):
+            self.assertEqual(release.state(), stable())
+            self.assertEqual(release.current()['commit'], release.OLD)
+        prior = '6c70a897ec7643f4681616d801481765aaa8f7bc'
+        with patch.object(release, 'present', return_value=True), patch.object(backup, 'read_json', return_value=stable(prior)):
+            with self.assertRaisesRegex(backup.Failure, 'Unknown'):
+                release.state()
+
     def test_unknown_or_inconsistent_state_fails_closed(self):
         invalid = [None, [], {**stable(), 'active': []}, {**stable(), 'active': 'unknown'},
                    {**stable(), 'version': True}, {**stable(), 'pending': 1},
@@ -150,10 +161,12 @@ class ReleaseBoundaryTests(unittest.TestCase):
     def test_new_environment_changes_only_metadata_and_preserves_private_paths(self):
         with patch.object(release, 'state', return_value=stable()):
             old = app.fixed_environment({'password': 'fixture-db'}, 'fixture-redis')
-        with patch.object(release, 'state', return_value=stable(release.NEW)):
-            new = app.fixed_environment({'password': 'fixture-db'}, 'fixture-redis')
             self.assertEqual(release.environment_path('api'), app.ROOT / 'api-20260917.env')
             self.assertEqual(release.environment_path('web'), app.ROOT / 'web-20260917.env')
+        with patch.object(release, 'state', return_value=stable(release.NEW)):
+            new = app.fixed_environment({'password': 'fixture-db'}, 'fixture-redis')
+            self.assertEqual(release.environment_path('api'), app.ROOT / 'api-login-20260918.env')
+            self.assertEqual(release.environment_path('web'), app.ROOT / 'web-login-20260918.env')
         changed = {key for key in old if old[key] != new[key]}
         self.assertEqual(changed, {'EXPECTED_SOURCE_COMMIT', 'EXPECTED_SOURCE_TREE', 'EXPECTED_RELEASE', 'EXPECTED_BUILD_TIME'})
         self.assertEqual(app.COMMIT, 'f2da3629e13b2653aae8879c98992877d5ef4170')
@@ -191,9 +204,14 @@ class ReleaseBoundaryTests(unittest.TestCase):
     def test_reviewed_api_scope_cannot_allow_schema_or_dependency_changes(self):
         cases = [
             ('apps/api/src/main.ts', b'// reviewed drain\n', None, True),
+            ('apps/web/src/app/login/page.tsx', b'// reviewed login\n', None, True),
             ('apps/api/prisma/schema.prisma', b'// changed schema\n', None, False),
-            ('apps/api/package.json', b'{"dependencies":{"p":"1"},"scripts":{"catalog":"node catalog"}}', b'{"dependencies":{"p":"1"},"scripts":{}}', True),
+            ('apps/api/prisma/seed.ts', b'// no seed change\n', None, False),
+            ('apps/api/package.json', b'{"dependencies":{"p":"1"},"scripts":{"catalog":"node catalog"}}', b'{"dependencies":{"p":"1"},"scripts":{}}', False),
             ('apps/api/package.json', b'{"dependencies":{"p":"2"},"scripts":{}}', b'{"dependencies":{"p":"1"},"scripts":{}}', False),
+            ('apps/web/package.json', b'{"dependencies":{"p":"2"}}', None, False),
+            ('apps/api/Dockerfile', b'FROM unreviewed\n', None, False),
+            ('apps/api/src/../prisma/schema.prisma', b'// rejected path\n', None, False),
         ]
         for name, contents, before, accepted in cases:
             target = {**release.TARGET, 'approvedRuntimeChanges': {name: hashlib.sha256(contents).hexdigest()}}
@@ -207,8 +225,8 @@ class ReleaseBoundaryTests(unittest.TestCase):
                 else:
                     with self.assertRaises(backup.Failure): release.verify_checkout(release.NEW)
 
-    def test_new_api_force_kill_never_becomes_a_successful_drain_or_backup_point(self):
-        before = {'Id': 'owned-api', 'Config': {'Image': release.VERSIONS[release.NEW]['images']['api']},
+    def assert_drain_boundary(self, commit):
+        before = {'Id': 'owned-api', 'Config': {'Image': release.VERSIONS[commit]['images']['api']},
                   'State': {'Running': True, 'Pid': 100}}
         for code in (1, 137, 143):
             final = {**before, 'State': {'Running': False, 'Pid': 0, 'ExitCode': code, 'OOMKilled': False}}
@@ -221,15 +239,22 @@ class ReleaseBoundaryTests(unittest.TestCase):
         with patch.object(app, 'inspect', side_effect=[before, final]), patch.object(cutover, 'stop_units'), patch.object(app, 'stop'):
             result = release.close_program(require_drained=True)
             self.assertTrue(result['apiGracefulDrainVerified'])
+            self.assertFalse(result['legacyApiFreezeOnly'])
 
-    def test_legacy_api_exit_is_recorded_as_freeze_not_new_drain_proof(self):
-        before = {'Id': 'owned-api', 'Config': {'Image': release.VERSIONS[release.OLD]['images']['api']},
+    def test_new_api_force_kill_never_becomes_a_successful_drain_or_backup_point(self):
+        self.assert_drain_boundary(release.NEW)
+
+    def test_c5_api_also_requires_actual_graceful_exit_without_legacy_exemption(self):
+        self.assert_drain_boundary(release.OLD)
+
+    def test_unknown_drain_capability_never_becomes_a_successful_backup_point(self):
+        before = {'Id': 'owned-api', 'Config': {'Image': 'unreviewed-api'},
                   'State': {'Running': True, 'Pid': 100}}
         final = {**before, 'State': {'Running': False, 'Pid': 0, 'ExitCode': 143, 'OOMKilled': False}}
-        with patch.object(app, 'inspect', side_effect=[before, final]), patch.object(cutover, 'stop_units'), patch.object(app, 'stop'):
-            result = release.close_program(require_drained=True)
-            self.assertFalse(result['apiGracefulDrainVerified']); self.assertTrue(result['legacyApiFreezeOnly'])
-            self.assertEqual(result['apiExitCode'], 143)
+        with patch.object(app, 'inspect', side_effect=[before, final]), patch.object(cutover, 'stop_units'), patch.object(app, 'stop') as remove:
+            with self.assertRaisesRegex(backup.Failure, 'Unreviewed native API drain'):
+                release.close_program(require_drained=True)
+            remove.assert_not_called()
 
     def test_committed_new_program_is_not_rolled_back(self):
         with patch.object(release, 'state', return_value=stable(release.NEW)), \
