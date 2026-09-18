@@ -16,7 +16,7 @@ MODE = None
 OPS = Path('/usr/local/lib/timeline-native-ops')
 ROOT = Path('/var/lib/timeline-native-app')
 UNITS = Path('/etc/systemd/system')
-PREFIX = 'release-login-20260918-'
+PREFIX = 'release-owner-20260918-'
 
 
 def require(value, reason):
@@ -92,7 +92,7 @@ def main():
     if MODE == 'rehearse':
         unit = 'timeline-native-release-check.service'
         prior = fixed_unit(unit)
-        require(release.state() == stable(release.OLD), 'Rehearsal requires stable c5')
+        require(release.state() == stable(release.OLD), 'Rehearsal requires stable 541')
         require(not release.present(release.CHECKPOINT), 'Previous checkpoint retained; no repeated rehearsal')
         cutover.systemctl('--no-block', 'start', unit)
         until = time.monotonic() + 540

@@ -126,8 +126,8 @@ class ReleaseBoundaryTests(unittest.TestCase):
             with self.assertRaisesRegex(backup.Failure, 'Unknown'):
                 release.state()
 
-    def test_only_c5_is_the_existing_stable_origin_and_preserves_v1_state(self):
-        self.assertEqual(release.OLD, 'c5aed415cd17e6e8a21b422a4c5c92b4b924e091')
+    def test_only_541_is_the_existing_stable_origin_and_preserves_v1_state(self):
+        self.assertEqual(release.OLD, '541b3dfff682aa29b49a96b251f0a084903c981a')
         self.assertEqual(release.STATE.name, 'release-6c70-state.json')
         with patch.object(release, 'present', return_value=True), patch.object(backup, 'read_json', return_value=stable()):
             self.assertEqual(release.state(), stable())
@@ -138,7 +138,7 @@ class ReleaseBoundaryTests(unittest.TestCase):
                 release.state()
 
     def test_unknown_or_inconsistent_state_fails_closed(self):
-        invalid = [None, [], {**stable(), 'active': []}, {**stable(), 'active': 'unknown'},
+        invalid = [stable('c5aed415cd17e6e8a21b422a4c5c92b4b924e091'), None, [], {**stable(), 'active': []}, {**stable(), 'active': 'unknown'},
                    {**stable(), 'version': True}, {**stable(), 'pending': 1},
                    {**stable(), 'extra': 'field'}, {**stable(), 'active': release.NEW},
                    {**stable(), 'committed': 'unknown'}]
@@ -161,12 +161,12 @@ class ReleaseBoundaryTests(unittest.TestCase):
     def test_new_environment_changes_only_metadata_and_preserves_private_paths(self):
         with patch.object(release, 'state', return_value=stable()):
             old = app.fixed_environment({'password': 'fixture-db'}, 'fixture-redis')
-            self.assertEqual(release.environment_path('api'), app.ROOT / 'api-20260917.env')
-            self.assertEqual(release.environment_path('web'), app.ROOT / 'web-20260917.env')
-        with patch.object(release, 'state', return_value=stable(release.NEW)):
-            new = app.fixed_environment({'password': 'fixture-db'}, 'fixture-redis')
             self.assertEqual(release.environment_path('api'), app.ROOT / 'api-login-20260918.env')
             self.assertEqual(release.environment_path('web'), app.ROOT / 'web-login-20260918.env')
+        with patch.object(release, 'state', return_value=stable(release.NEW)):
+            new = app.fixed_environment({'password': 'fixture-db'}, 'fixture-redis')
+            self.assertEqual(release.environment_path('api'), app.ROOT / 'api-owner-20260918.env')
+            self.assertEqual(release.environment_path('web'), app.ROOT / 'web-owner-20260918.env')
         changed = {key for key in old if old[key] != new[key]}
         self.assertEqual(changed, {'EXPECTED_SOURCE_COMMIT', 'EXPECTED_SOURCE_TREE', 'EXPECTED_RELEASE', 'EXPECTED_BUILD_TIME'})
         self.assertEqual(app.COMMIT, 'f2da3629e13b2653aae8879c98992877d5ef4170')
@@ -244,7 +244,7 @@ class ReleaseBoundaryTests(unittest.TestCase):
     def test_new_api_force_kill_never_becomes_a_successful_drain_or_backup_point(self):
         self.assert_drain_boundary(release.NEW)
 
-    def test_c5_api_also_requires_actual_graceful_exit_without_legacy_exemption(self):
+    def test_541_api_also_requires_actual_graceful_exit_without_legacy_exemption(self):
         self.assert_drain_boundary(release.OLD)
 
     def test_unknown_drain_capability_never_becomes_a_successful_backup_point(self):

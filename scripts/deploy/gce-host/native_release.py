@@ -1,4 +1,4 @@
-"""Fixed committed c5 login-policy upgrade; never initialize, migrate or restore data."""
+"""Fixed committed 541 owner-account upgrade; never initialize, migrate or restore data."""
 import os
 from pathlib import Path
 import stat
@@ -24,18 +24,18 @@ import native_backup_controller as backup
 
 ROOT = Path('/var/lib/timeline-native-app')
 STATE = ROOT / 'release-6c70-state.json'
-CHECKPOINT = ROOT / 'release-login-20260918-checkpoint.json'
-OLD = 'c5aed415cd17e6e8a21b422a4c5c92b4b924e091'
+CHECKPOINT = ROOT / 'release-owner-20260918-checkpoint.json'
+OLD = '541b3dfff682aa29b49a96b251f0a084903c981a'
 REGISTRY = 'us-west1-docker.pkg.dev/axial-acrobat-492709-r7/feishu-timeline/'
 # A new immutable module is installed before this controller is atomically replaced.
-# The previous controller continues reading its retained 20260917 target throughout.
-from native_release_target_20260918 import TARGET
+# The previous controller continues reading its retained login-20260918 target throughout.
+from native_release_target_owner_20260918 import TARGET
 NEW = TARGET['commit'] if TARGET else None
 VERSIONS = {
-    OLD: {'commit': OLD, 'tree': '830e562f5ec56e99d7fc0b04432fc056dd772254',
-          'release': 'native-portable-20260917-c5aed415cd17', 'buildTime': '2026-09-17T08:04:51Z',
-          'images': {'api': REGISTRY + 'api@sha256:40544930b329416679f24ebc6dd2354e24beaec9d8490b9edbdbda5e0f71d192',
-                     'web': REGISTRY + 'web@sha256:774419239cea09f8d341fd29ed34361b47012c720bafbe7a3a5ef0d60ffa187b'}},
+    OLD: {'commit': OLD, 'tree': 'bc65d7145a498066556f2abc8d8619a6643dc325',
+          'release': 'native-login-20260918-541b3dfff682', 'buildTime': '2026-09-18T03:23:33Z',
+          'images': {'api': REGISTRY + 'api@sha256:558a873483641df75dde47b5b39dcc21087c397ae19f364ef03c820b2a52430f',
+                     'web': REGISTRY + 'web@sha256:7cc7ad6328a3e318e5a34af21e56d4840279ba698365ee51661cd3d23050f26f'}},
 }
 if TARGET:
     VERSIONS[NEW] = {key: TARGET[key] for key in ('commit', 'tree', 'release', 'buildTime', 'images')}
@@ -69,7 +69,7 @@ def present(path):
 
 
 def state():
-    require(present(STATE), 'Committed c5 release state is required; initialization fallback is forbidden')
+    require(present(STATE), 'Committed 541 release state is required; initialization fallback is forbidden')
     value = backup.read_json(STATE)
     require(type(value) is dict and set(value) == {'version', 'active', 'committed', 'pending'} and
             type(value['version']) is int and value['version'] == 1 and type(value['pending']) is bool and
@@ -92,7 +92,7 @@ def environment_path(component, commit=None):
     require(component in ('api', 'web'), 'Unsupported environment component')
     commit = state()['active'] if commit is None else commit
     require(commit in VERSIONS, 'Unknown environment version')
-    return ROOT / (component + ('-20260917.env' if commit == OLD else '-login-20260918.env'))
+    return ROOT / (component + ('-login-20260918.env' if commit == OLD else '-owner-20260918.env'))
 
 
 def replace_state(value):
@@ -182,8 +182,8 @@ def close_program(require_drained=False):
     before = app.inspect('api') if require_drained else None
     cutover.stop_units(cutover.SOCKETS + cutover.PROXIES + cutover.APPS)
     final = app.inspect('api') if require_drained else None
-    # Both the fixed c5 baseline and this candidate contain the reviewed drain.
-    # Never downgrade c5 to the historical legacy-exit exemption when NEW changes.
+    # Both the fixed 541 baseline and this candidate contain the reviewed drain.
+    # Never downgrade 541 to the historical legacy-exit exemption when NEW changes.
     supports_drain = bool(before and before['Config']['Image'] in known_images('api'))
     was_running = bool(before and before['State']['Running'])
     if require_drained and was_running:

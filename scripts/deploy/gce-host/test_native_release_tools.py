@@ -29,9 +29,9 @@ class ReleaseInstallerTests(unittest.TestCase):
             # Use both real controller generations, including their actual imports,
             # so interruption tests detect a c5-disappearing mixed-install state.
             old_module = subprocess.check_output(['git', '-C', str(bundle.HERE), 'show',
-                'bf2cf83a0bd172a6e9360d5e7f3533912a062813:scripts/deploy/gce-host/native_release.py'])
-            old_target = (bundle.HERE / 'native_release_target.py').read_bytes()
-            previous = {'native_release.py': old_module, 'native_release_target.py': old_target}
+                '0f4980733d6c1265f0677904a5aa4e3ac94776bc:scripts/deploy/gce-host/native_release.py'])
+            old_target = (bundle.HERE / 'native_release_target_20260918.py').read_bytes()
+            previous = {'native_release.py': old_module, 'native_release_target_20260918.py': old_target, 'native_release_target.py': (bundle.HERE / 'native_release_target.py').read_bytes()}
             for name, raw in previous.items(): (ops / name).write_bytes(raw); (ops / name).chmod(0o644)
             unit_raw = b'[Service]\nType=oneshot\n'
             for name in bundle.EXPECTED_UNITS:
@@ -42,7 +42,8 @@ class ReleaseInstallerTests(unittest.TestCase):
             history = ('controller-install-20260917.json', 'controller-socket-fix-20260917.json',
                        'controller-socket-fix-20260917-complete.json', 'release-20260917-checkpoint.json',
                        'release-20260917-recovery-proof.json', 'release-20260917-update-proof.json',
-                       'api-20260917.env', 'web-20260917.env')
+                       'api-login-20260918.env', 'web-login-20260918.env',
+                       'controller-install-login-20260918.json', 'release-login-20260918-recovery-proof.json', 'release-login-20260918-update-proof.json')
             for name in history: (state / name).write_bytes(b'synthetic retained history\n')
             payload = {name: {'text': (bundle.HERE / name).read_text()} for name in bundle.NAMES}
             target = {'commit': 'a' * 40, 'tree': 'b' * 40, 'release': 'synthetic-only',
@@ -66,7 +67,7 @@ class ReleaseInstallerTests(unittest.TestCase):
             stack.enter_context(patch.object(backup, 'read_json', side_effect=lambda path: json.loads(path.read_text())))
             stack.enter_context(patch('builtins.print'))
             def current():
-                names = ('native_release_target', 'native_release_target_20260918')
+                names = ('native_release_target', 'native_release_target_20260918', 'native_release_target_owner_20260918')
                 saved = {n: sys.modules.pop(n, None) for n in names}
                 sys.path.insert(0, str(ops))
                 try:
@@ -74,8 +75,8 @@ class ReleaseInstallerTests(unittest.TestCase):
                     module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
                     module.ROOT = state; module.STATE = state_file
                     self.assertEqual(module.current()['commit'], installer.BASE)
-                    self.assertEqual(module.environment_path('api'), state / 'api-20260917.env')
-                    self.assertEqual(module.environment_path('web'), state / 'web-20260917.env')
+                    self.assertEqual(module.environment_path('api'), state / 'api-login-20260918.env')
+                    self.assertEqual(module.environment_path('web'), state / 'web-login-20260918.env')
                     return module
                 finally:
                     sys.path.remove(str(ops))
@@ -95,7 +96,7 @@ class ReleaseInstallerTests(unittest.TestCase):
         for name in history: self.assertEqual((installer.ROOT / name).read_bytes(), b'synthetic retained history\n')
         for name, item in installer.PAYLOAD.items(): self.assertEqual((installer.OPS / name).read_text(), item['text'])
 
-    def test_each_partial_or_durable_write_interruption_keeps_c5_and_resumes(self):
+    def test_each_partial_or_durable_write_interruption_keeps_541_and_resumes(self):
         for point in range(1, 5):
             for partial in (False, True):
                 with self.subTest(point=point, partial=partial), self.fixture() as (installer, state_file, stable, old_module, current, history):
@@ -114,7 +115,7 @@ class ReleaseInstallerTests(unittest.TestCase):
                     installer.main(); installer.main()
                     self.assert_retained(installer, state_file, stable, old_module, history)
 
-    def test_each_atomic_activation_interruption_keeps_c5_and_resumes(self):
+    def test_each_atomic_activation_interruption_keeps_541_and_resumes(self):
         for point in range(1, 5):
             with self.subTest(point=point), self.fixture() as (installer, state_file, stable, old_module, current, history):
                 replace = installer.os.replace; count = 0
@@ -135,7 +136,7 @@ class ReleaseInstallerTests(unittest.TestCase):
                 if mode == 'pending': state_file.write_text(json.dumps({**stable, 'pending': True}))
                 elif mode in ('6c70', 'unknown'):
                     state_file.write_text(json.dumps({**stable, 'active': mode, 'committed': mode}))
-                else: (installer.ROOT / ('release-login-20260918-' + mode)).write_text('{}')
+                else: (installer.ROOT / ('release-owner-20260918-' + mode)).write_text('{}')
                 with patch.object(installer, 'write') as write:
                     with self.assertRaises(RuntimeError): installer.main()
                     write.assert_not_called()
@@ -156,7 +157,7 @@ class ReleaseInstallerTests(unittest.TestCase):
                     write.assert_not_called()
 
     def test_only_target_then_controller_are_installed(self):
-        self.assertEqual(bundle.NAMES, ('native_release_target_20260918.py', 'native_release.py'))
+        self.assertEqual(bundle.NAMES, ('native_release_target_owner_20260918.py', 'native_release.py'))
         self.assertIn('native_release_target.py', bundle.EXPECTED)
         self.assertIn('native_release_backup.py', bundle.EXPECTED)
 
@@ -179,17 +180,17 @@ class ReleaseInstallerTests(unittest.TestCase):
     def test_recovery_and_update_use_fresh_proof_namespace(self):
         spec = importlib.util.spec_from_file_location('fixed_driver_test', bundle.HERE / 'release-tools/driver-template.py')
         module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
-        self.assertEqual(module.PREFIX, 'release-login-20260918-')
-        self.assertEqual(bundle.release.CHECKPOINT.name, 'release-login-20260918-checkpoint.json')
+        self.assertEqual(module.PREFIX, 'release-owner-20260918-')
+        self.assertEqual(bundle.release.CHECKPOINT.name, 'release-owner-20260918-checkpoint.json')
         # Keep this binding explicit: the old PASS cannot satisfy this driver's reads.
-        self.assertNotEqual(module.PREFIX, 'release-20260917-')
+        self.assertNotEqual(module.PREFIX, 'release-login-20260918-')
 
     def test_actual_driver_cannot_use_previous_release_proof_or_start_a_unit(self):
         spec = importlib.util.spec_from_file_location('proof_driver_test', bundle.HERE / 'release-tools/driver-template.py')
         module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
         import native_cutover as cutover
-        for mode, old_name, wanted in [('update', 'release-20260917-recovery-proof.json', 'recovery-proof.json'),
-                                       ('proof', 'release-20260917-update-proof.json', 'update-proof.json')]:
+        for mode, old_name, wanted in [('update', 'release-login-20260918-recovery-proof.json', 'recovery-proof.json'),
+                                       ('proof', 'release-login-20260918-update-proof.json', 'update-proof.json')]:
             with self.subTest(mode=mode), tempfile.TemporaryDirectory() as directory, ExitStack() as stack:
                 root = Path(directory)
                 # Even a historical proof mentioning the intended pair cannot be
@@ -208,7 +209,7 @@ class ReleaseInstallerTests(unittest.TestCase):
                 stack.enter_context(patch.object(backup, 'read_json', side_effect=read))
                 start = stack.enter_context(patch.object(cutover, 'systemctl'))
                 with self.assertRaises(FileNotFoundError): module.main()
-                self.assertEqual(calls, [root / ('release-login-20260918-' + wanted)])
+                self.assertEqual(calls, [root / ('release-owner-20260918-' + wanted)])
                 start.assert_not_called()
 
     def test_templates_reject_ambiguous_replacements(self):

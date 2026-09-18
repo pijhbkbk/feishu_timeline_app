@@ -1,4 +1,4 @@
-"""Fixed c5 continuation: install a separate target, atomically switch one controller."""
+"""Fixed 541 continuation: install a separate target, atomically switch one controller."""
 import hashlib
 import json
 import os
@@ -16,10 +16,10 @@ TARGET_ID = None
 OPS = Path('/usr/local/lib/timeline-native-ops')
 ROOT = Path('/var/lib/timeline-native-app')
 UNITS = Path('/etc/systemd/system')
-SAVED = ROOT / 'controllers-before-login-20260918'
-JOURNAL = ROOT / 'controller-install-login-20260918.json'
-BASE = 'c5aed415cd17e6e8a21b422a4c5c92b4b924e091'
-TARGET_MODULE = 'native_release_target_20260918.py'
+SAVED = ROOT / 'controllers-before-owner-20260918'
+JOURNAL = ROOT / 'controller-install-owner-20260918.json'
+BASE = '541b3dfff682aa29b49a96b251f0a084903c981a'
+TARGET_MODULE = 'native_release_target_owner_20260918.py'
 ENV = {'PATH': '/usr/sbin:/usr/bin:/sbin:/bin', 'LANG': 'C.UTF-8'}
 
 
@@ -78,7 +78,7 @@ def write(path, raw, mode):
 def activate_new(path, raw, mode):
     # A crash during write/fsync leaves only an unreferenced temporary file.
     # The authoritative path is installed only after complete durable bytes.
-    temporary = path.parent / ('.install-login-20260918-' + secrets.token_hex(12))
+    temporary = path.parent / ('.install-owner-20260918-' + secrets.token_hex(12))
     write(temporary, raw, mode)
     require(not exists(path), 'New authoritative file unexpectedly appeared')
     os.replace(temporary, path)
@@ -138,8 +138,8 @@ def main():
         fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
         with backup.locked():
             stable = {'version': 1, 'active': BASE, 'committed': BASE, 'pending': False}
-            require(backup.read_json(ROOT / 'release-6c70-state.json') == stable, 'Installer requires committed c5')
-            require(not any(exists(ROOT / ('release-login-20260918-' + suffix)) for suffix in
+            require(backup.read_json(ROOT / 'release-6c70-state.json') == stable, 'Installer requires committed 541')
+            require(not any(exists(ROOT / ('release-owner-20260918-' + suffix)) for suffix in
                             ('checkpoint.json', 'recovery-proof.json', 'update-proof.json', 'rollback-proof.json')),
                     'Login release already attempted; retained proof requires inspection')
             idle_release_units()
@@ -180,7 +180,7 @@ def main():
                         activate_new(saved, current, 0o600)
                     if current == raw:
                         continue
-                    temporary = destination.parent / ('.install-login-20260918-' + secrets.token_hex(12))
+                    temporary = destination.parent / ('.install-owner-20260918-' + secrets.token_hex(12))
                     write(temporary, raw, 0o644)
                     require(read(destination) == current, 'Controller changed during replacement')
                     os.replace(temporary, destination); sync(destination.parent)

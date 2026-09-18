@@ -8,8 +8,8 @@ import subprocess
 
 IDENTITY = None
 OPERATIONS_COMMIT = None
-RUNTIME_REF = 'refs/heads/codex/native-login-release-20260918'
-OPERATIONS_REF = 'refs/heads/codex/native-login-ops-20260918'
+RUNTIME_REF = 'refs/heads/codex/native-owner-release-20260918'
+OPERATIONS_REF = 'refs/heads/codex/native-owner-ops-20260918'
 BASE = Path('/home/lixiaochen/timeline-native-delivery')
 
 

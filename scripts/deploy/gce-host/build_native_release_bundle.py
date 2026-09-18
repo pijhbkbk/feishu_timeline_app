@@ -12,7 +12,8 @@ import native_release as release
 
 HERE = Path(__file__).resolve().parent
 EXPECTED = {
-    'native_release.py': '1362de39eaa1892883d356b28f70f989e86ed2e1af848874a85f5f5aac7766a3',
+    'native_release_target_20260918.py': '9c1e432ba68333d7e05ab4a671e981c52826e9a5851452490f73f495f9cb4356',
+    'native_release.py': '89346ed68e7d1fd9591893a01e0eca5490d95818674f6ef6b40a4cc35f38abe1',
     'native_release_target.py': '206eb354ef49598ab46d387573b562decccda8553f21713f1dec22c2fd3f71f0',
     'native_release_backup.py': 'e1c7b96aaf7318080223280bdbfc97c1601a2b8036f9a4ccbcc2f3b400548c6e',
     'native_runtime_app.py': '6143c96c4e8b93a10344e0263485fa6970faa14279c3e122f97465bc24bbd365',
@@ -31,7 +32,7 @@ EXPECTED_UNITS = {
 }
 # Existing helpers and units are verified, never rewritten. The single live
 # controller switch comes last, after its separately named target is durable.
-NAMES = ('native_release_target_20260918.py', 'native_release.py')
+NAMES = ('native_release_target_owner_20260918.py', 'native_release.py')
 
 
 def sha(raw):
@@ -58,7 +59,7 @@ def build(output, operations_commit):
         raise RuntimeError('Generate only from the exact clean committed operations source')
     output.mkdir(mode=0o700, parents=False, exist_ok=False)
     payload = {name: {'sha256': sha((HERE / name).read_bytes()), 'text': (HERE / name).read_text()} for name in NAMES}
-    # These fixed digests came from the actual bf2 install/readback. Refuse an
+    # These fixed digests came from the actual 0f498 install/readback. Refuse an
     # accidentally edited dependency even though only two files are transferred.
     for name, expected in {**EXPECTED, **EXPECTED_UNITS}.items():
         if name not in NAMES and sha((HERE / name).read_bytes()) != expected:
@@ -70,12 +71,12 @@ def build(output, operations_commit):
     fixed = {**EXPECTED, **{name: value['sha256'] for name, value in payload.items() if name.endswith('.py')}}
     for mode in ('rehearse', 'update', 'proof', 'rollback'):
         scripts[mode] = render('driver-template.py', {'EXPECTED': fixed, 'EXPECTED_UNITS': EXPECTED_UNITS, 'MODE': mode})
-    manifest = {'purpose': 'fixed-c5-login-program-upgrade', 'operationsCommit': operations_commit,
+    manifest = {'purpose': 'fixed-541-owner-account-upgrade', 'operationsCommit': operations_commit,
                 'runtimeIdentity': release.TARGET, 'productionExecuted': False,
                 'priorControllerHashesFromReadOnlyPreflight': EXPECTED,
                 'unchangedUnitHashes': EXPECTED_UNITS, 'scripts': {}}
     for mode, source in scripts.items():
-        name = 'timeline-native-login-release-' + mode + '-20260918.sh'
+        name = 'timeline-native-owner-release-' + mode + '-20260918.sh'
         (output / name).write_text(source); (output / name).chmod(0o600)
         manifest['scripts'][name] = sha(source.encode())
     (output / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
