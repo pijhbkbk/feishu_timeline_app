@@ -7921,3 +7921,13 @@ BLOCKER_REPORT: Public-source push remains rejected by platform automatic review
 - 修订推进顺序：B 的 ARM 测试环境配置问题与现有原生 GCE 发布路径独立，A3 最终链路 253 请求已通过，故先授权安装已审查 Ops 控制器并演练，不等待 C 全部结束；正式程序更新仍须实际备份/演练门禁。
 - 08:54Z d16 控制器实际安装，生产文件已改变但程序仍 6c70。08:58:34—08:59:52Z 首次 rehearsal 因 socket 不含 MainPID 而 KeyError，备份创建/checkpoint 前失败；自动恢复稳定 6c70，09:01:40Z 正常 TLS API 200。没有本轮保护备份、不报演练 PASS。只读真实属性与本地 RED 回归确认根因；限定修复通过 121 回归和静态复核，精确已安装 d16→新 helper 的原子补丁待独立审查。不得第三次盲试或直接 update。
 - 当前源码/依赖未变，正式 Placeholder 0/测试白名单10。staging URL A3 `https://localhost:3450`、B `https://localhost:9444`，同 c5；production `https://timeline.all-too-well.com` 仍 `6c70a897ec7643f4681616d801481765aaa8f7bc`，新页面未验收；产品整体未确认。
+
+
+### 2026-09-18 — c5正式浏览器、独立恢复与持久交付收尾
+
+- 生产已于09-17 09:27:01.821805Z从6c70更新固定c5，Ops bf2。首次socket属性失败保留，126测试/静态审查后精确原子修补，唯一重演与真实SIGKILL恢复通过；一次update/proof成功。52表指纹、37迁移checksum、镜像/server HEAD/公开元数据/Nginx一致。两份服务器保护备份保留；旧API137为冻结而非优雅排空，未演练生产整机重启。见NATIVE_RELEASE_20260917真实记录。
+- 正常TLS18项原生认证/读取/Origin/旧OAuth/mock/退出验证PASS，09-18元数据再次200/c5。09-18正式浏览器登录→修复工作台/原项目1项10/18→账号/目录搜索/组织/别名→旧回调停用/退出刷新实际通过；工作台三档无横向溢出，捕获warn/error0。同源请求和静态资源清单已保存；不提供完整浏览器状态HAR，HTTP状态另有独立证据。JSON元数据页客户端阻止保留、未绕过。截图fullPage拼接异常不作视觉证据，以viewport及稳定登录截图为准。
+- 独立B实际A→B52表2对象恢复、未过期旧恢复码/会话无效、授权历史保留、新项目和真实扫描/导出、应用及整VM冷重启通过。第二备份到空目标52表3对象、22HTTP、新写入跨恢复/队列单次去重通过；最终B2运行，09-18一次status exit0六服务running。独立审查核对61项摘要/52tar成员/7测试工具及1环境工具，静态审查不称再次独立执行。
+- 已把固定软件/扫描器源码、分开的合成加密备份/秘密、执行过的命令、B profile、A3/C及生产证明持久保存ignored var；旧61证据未变。新官方daily28126只完成下载和离线签名验证，单独准备未激活；原28125于09-18 06:24:23Z到期，48小时策略不变。现有证据依据复用，不重复运行源码未变的测试；60SKIPPED仍未通过。
+- 更新同一短交接及路由矩阵，不扩治理体系。原main41b4b16/tag/脏修改及用户媒体未变，runtime和evidence分开。本轮没有新云资源、生产DB恢复/seed/迁移、真实项目推进、DNS/全局权限变更；浏览器自己的验证会话退出，原Safari会话不变。临时访问清理按实际日期记录。
+- 当前代码/技术验证已完成，production c5已部署且原生读取路径通过；全部产品仍AWAITING_PRODUCT_OWNER_CONFIRMATION。本机9444浏览器因用户暂缓证书处理NOT_ACCEPTED；注册/改密/恢复/授权UI实际提交仍待人工，隔离HTTP不替代。staging仅A3 https://localhost:3450（已停）和B https://localhost:9444（运行）同c5；无远端staging。源码Placeholder0/测试白名单10，main/tag未改变。

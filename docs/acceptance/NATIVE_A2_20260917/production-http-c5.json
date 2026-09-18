@@ -1,0 +1,136 @@
+{
+  "checkedAt": "2026-09-17T09:30:53.210673+00:00",
+  "environment": "production",
+  "url": "https://timeline.all-too-well.com",
+  "runtimeCommit": "c5aed415cd17e6e8a21b422a4c5c92b4b924e091",
+  "result": "PASS",
+  "errorType": null,
+  "failedCheck": null,
+  "checks": {
+    "metadata": {
+      "/api/health": {
+        "runtimeCommit": "c5aed415cd17e6e8a21b422a4c5c92b4b924e091",
+        "sourceTree": "830e562f5ec56e99d7fc0b04432fc056dd772254",
+        "release": "native-portable-20260917-c5aed415cd17",
+        "buildTime": "2026-09-17T08:04:51Z"
+      },
+      "/build-info": {
+        "runtimeCommit": "c5aed415cd17e6e8a21b422a4c5c92b4b924e091",
+        "sourceTree": "830e562f5ec56e99d7fc0b04432fc056dd772254",
+        "release": "native-portable-20260917-c5aed415cd17",
+        "buildTime": "2026-09-17T08:04:51Z"
+      }
+    },
+    "sameActorAcrossNativeLoginDashboardProjects": true,
+    "dashboardHasCurrentTask": false,
+    "dashboardVisibleProjects": 1,
+    "projectListTotal": 1,
+    "projectReturnedCount": 1,
+    "sampleProgressText": [
+      "10 / 18"
+    ],
+    "nativeAccountDirectoryCount": 12,
+    "nativeLogin": true,
+    "secureSessionCookie": true,
+    "retiredIdentityEntrypointsClosed": true,
+    "originNegative": true,
+    "logoutRevocation": true
+  },
+  "requests": [
+    {
+      "method": "GET",
+      "path": "/api/health",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/build-info",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/me",
+      "status": 401
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/login",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/me",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/dashboard",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/projects?page=1&pageSize=1",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/accounts",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/organization",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/feishu/start",
+      "status": 410
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/feishu/login-url",
+      "status": 410
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/feishu/callback",
+      "status": 410
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/mock-login",
+      "status": 403
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/logout",
+      "status": 403
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/me",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/logout",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/me",
+      "status": 401
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/logout",
+      "status": 200
+    }
+  ],
+  "allIssuedVerificationSessionsLoggedOut": true,
+  "businessWrites": false,
+  "permissionsChanged": false,
+  "credentialsRecorded": false,
+  "browserAcceptance": "SEPARATE_REQUIRED"
+}

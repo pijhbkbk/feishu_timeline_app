@@ -165,3 +165,25 @@ Next.js production build（`http://127.0.0.1:3100`），不能替代目标环境
 | https://timeline.all-too-well.com/api/health | HealthController | 同URL | public | f2da完整版本/release/buildTime | 实际HTTPS200且准确身份 | HTTP_PASS / NOT_PRODUCT_ACCEPTANCE |
 
 当前源码Placeholder扫描：正式源码0，测试白名单10行（7个getByPlaceholder、3个禁止占位断言），与未改动Web源码相符。产品负责人未确认，整组生产页面不能标记PASS。
+
+
+## 2026-09-18 固定c5正式域名验收（替代旧待解锁状态，历史不改写）
+
+Production `https://timeline.all-too-well.com`，runtime `c5aed415cd17e6e8a21b422a4c5c92b4b924e091`；2026-09-17 09:27:01.821805Z更新。身份/构建/数据库/上游见[实际运维记录](NATIVE_RELEASE_20260917/PRODUCTION_OPERATIONS_RESULT_20260918.md)。截图位于私有交付目录 `verification/browser-20260918`；摘要及观察到的API见[本轮清单](NATIVE_A2_20260917/production-browser-20260918.json)。页面请求清单是真实观察，无浏览器响应状态HAR；[18项正常TLS状态检查](NATIVE_A2_20260917/production-http-c5.json)分开保留。
+
+| 精确URL | Route component | API endpoints | Required role | 实际数据/操作 | Screenshot / browser result | 本轮状态 |
+|---|---|---|---|---|---|---|
+| https://timeline.all-too-well.com/login | LoginPage | POST auth/login；GET auth/session | public | 原用户名密码登录到工作台；退出刷新为原生登录，无第三方入口 | login-final-390-viewport.png；其余两档见清单 | 原生登录/退出PASS；注册/恢复UI提交未执行 |
+| https://timeline.all-too-well.com/login/callback | LoginCallbackClient | 无第三方交换 | public | 显示旧入口停用，点击返回账号登录 | callback-{1440,1024,390}-viewport.png | BROWSER_PASS |
+| https://timeline.all-too-well.com/dashboard | V2 DashboardPage/V2Shell | GET auth/session、v2/dashboard | 已授权原管理员 | 无待办正确提示；刷新保持；打开原项目列表 | dashboard-{1440,1024,390}-viewport.png | 修复BROWSER_PASS；无横向溢出 |
+| https://timeline.all-too-well.com/projects | V2 Projects | GET v2/projects、auth/session | project.read及范围 | 1项目，10/18；刷新和打开详情 | projects-1440-viewport.png；原项目详情截图/DOM | READ_PATH_PASS；未写真实业务 |
+| https://timeline.all-too-well.com/account | AccountPage/AppShell | GET auth/session；写auth/password未执行 | native authenticated | 本地账号身份、改密表单、管理入口可见 | account-{1440,1024,390}-viewport.png | READ_PATH_PASS；改密提交待人工 |
+| https://timeline.all-too-well.com/admin/accounts | AccountsPage | GET auth/accounts（含搜索） | isSystemAdmin | 12历史账号、原密码账号状态；搜索命中/空结果/刷新 | accounts-*-viewport.png、search DOM | READ_SEARCH_PASS；恢复签发UI未执行 |
+| https://timeline.all-too-well.com/v2/admin/accounts | AccountsPage alias | GET auth/accounts、auth/session | isSystemAdmin | 与正式目录一致的真实12行 | accounts-alias-{1440,1024,390}-viewport.png | READ_ALIAS_PASS |
+| https://timeline.all-too-well.com/admin/organization | AdminControlCenter | GET admin/organization、auth/session | system.manage | 12人员、原生凭据标记及角色可见 | organization-1440-viewport.png | READ_PATH_PASS；授权写UI未执行 |
+| https://timeline.all-too-well.com/build-info | Web metadata | GET同路径 | public | 实际正常TLS200/c5，浏览器JSON导航被客户端阻止，原页面未改变 | server/HTTP记录 | HTTP_METADATA_PASS；不冒称浏览器正文通过 |
+| https://timeline.all-too-well.com/api/health | HealthController | GET同路径 | public | 实际正常TLS200/c5，Web/API/server身份一致 | server/HTTP记录 | HTTP_METADATA_PASS |
+
+捕获console warn/error为0；工具不提供独立pageerror流，不扩大解释。旧fullPage拼接异常不作视觉判据；用viewport图及最终稳定login图。自己的浏览器会话已退出，未更改用户Safari会话。账号名称含历史mock前缀只是保留旧作者/关系，mock登录接口实际403，不能据历史名称推导登录旁路。
+
+受控写入/越权/并发/恢复/扫描的技术结果来自同c5隔离A3（253HTTP）和独立B（21+22HTTP等分项）；没有为验收推进生产真实项目。用户先前明确接受“原生登录→工作台”继续有效，整个产品未获PRODUCT_OWNER_ACCEPTED。上述READ_PASS只代表所列读取路径，整组含写入UI的路由不标整体PASS。本机 https://localhost:9444/login 仍因用户暂缓证书处理NOT_ACCEPTED。正式Placeholder0，10条测试白名单按未变源码复用。
