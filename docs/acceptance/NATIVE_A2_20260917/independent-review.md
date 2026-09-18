@@ -131,3 +131,26 @@
 外部 `validation-tools/portable-B-readwrite.mjs` 的审查 SHA 为 `f052ad342a501b1f7bb6d2e9546e7ce4cad5610219b555046c86436e19394da3`。固定 B 私有合成 state/manifest/确认、实例、实际镜像与 runtime 环境；写入仅向恢复验证 PASS 后创建的合成项目上传固定 PNG，并核对 CLEAN、ClamAV 引擎、摘要和作者，再下载比对摘要、读取 CSV。认证补充检查保留 Origin 403、旧 OAuth 410、停用账号 401、恢复字段清空；明确本轮不再次测试已经过期的旧恢复码。真实旧码在有效期内拒绝的证据必须使用其先前准确环境/时刻，不能以此次字段读取冒充重测。上传/下载会新增正常记录，必须在首次恢复历史快照比较完成后执行。
 
 已阅读作者保存的 OOM blocker（SHA `2108d6b6e16135243684b2d3a085bde4c8dc423e711c1bc418f5e325646847fd`）：proxy 128MiB、OOMKilled=true、退出 137，业务 fixture 在 health/login 后 fetch 失败。此为作者动态记录，原 FAIL 保留。作者后续报告应用 profile、HTTP/新附件/重启验证通过，相关 verification-C 动态证据由执行者另行整理；本审查没有操作 B、运行上述外部工具、读取秘密或独立复跑，不把静态结论标为动态 PASS。
+
+## 最终 C 脱敏证据独立审计
+
+作者确认材料写完后，本审查只读取最终交付的 `verification-C`、单独的环境/验证工具及运行手册。实际重新计算 `FILE-INDEX.json` 列出的 61 个文件的长度与 SHA-256，全部一致；索引 SHA 为 `bfb14008742084c74133d1cb48c73a54b7973bc4cbf28fc4893f865f6918d881`。`evidence-export.tar` 的 52 项均为安全 basename 的普通文件，逐项字节与 `records` 一致；7 个外部验证工具及 1 个环境工具也与其独立 manifest 一致。未解压执行、访问 VM/生产、读取密文/密码/私有状态或重新运行业务。计算结果和明确限制见 `final-C-evidence-audit.json`。
+
+这批保存证据与“限定平台下的本地技术验证”结论一致，未见需阻断该限定结论的矛盾；以下动态结果全部来自执行者的保存记录，不是本审查者重新运行：
+
+| 边界 | 核对结果与准确归属 |
+| --- | --- |
+| 最终身份 | 09:18:31.789Z 记录的最终实例 `timeline-portable-f22b433b00ca`，URL `https://localhost:9444`，数据库 `timeline`。API/Web 均为冻结 c5aed415 全 commit、830e562f 全 tree、08:04:51Z 构建及对应 release；实际容器镜像与前述六镜像包一致。该观察中只有此实例运行，其余记录实例已停。 |
+| 两次备份恢复 | A 备份 `ba682678…` 为 52 表/2 个对象，B 备份 `46c032bd…` 为 52 表/3 个对象；两次新目标恢复 receipt 均为 pre-reset 指纹匹配、session boundary reset、seed=false。第一次仅使用获批有向 schema 双 hash；第二次源 schema 已为恢复后的值，走相等比较。完整表/序列/对象结论依据冻结门禁、摘要和执行者 receipt，本审查不冒充独立数据库逐行重算。 |
+| 账号和历史 | 绑定的外部 fixture 在首次下载前保留完整代表性快照比较，并将四账号 ID、用户名、管理员标记、岗位、部门和完整角色/权限集合逐项与源 `/auth/me` 比较；B 为 21 请求、repeat 为 22 请求的实际 PASS。初始代表性历史为 3 项目/13 任务/2 确认/3 附件元数据/45 审计；它不等于全库所有字段指纹。 |
+| 未过期旧码 | 仅 B1 `timeline-portable-a25d7e123469` 的 08:39:59.063Z 结果支持旧会话拒绝、未使用恢复码拒绝及新恢复保持 ID；原到期为 08:55:32.720Z，时序成立。后续 verified/repeat 明确没有重测已过期旧码，不能借其 PASS 替代此项。 |
+| 新写、重启与再恢复 | verified 实例新项目及 PNG 实际上传 201，CLEAN/ClamAV daily 28125，下载 200 且 SHA 相同，CSV 200。正常应用 stop 完成后 start，再登录/项目/PNG/导出成功；保存的 VM stop/start 时间、最终 boot ID 和之后同一数据读回支持冷重启路径。B 二次备份后 repeat 既能读原附件及 B 新 PNG，也成功再建项目。 |
+| 队列与单实例 | A 备份包含 job+dedupe 两项，B 消费后为通知 1、待消费 0；B 二次备份仅保留一个 dedupe，repeat 仍通知 1、待消费 0。绑定工具确实断言正 TTL 且绝对到期不超过源私有记录加 2000ms；本审查未读取该私有期望值，故不宣称独立精确毫秒复算。最终旧实例 API 均退出 0；停机 proxy 的 137 不能混写为 API 排空失败或当前 OOM。 |
+| 签名与外部依赖 | floor/receipt 保留 bytecode339、daily28125、main63；repeat 的新代际只改变 scanner mount，最终配置清单与其记录对应。daily 官方签名时间仍为 2026-09-16T06:24:23Z，48 小时规则未改；这里只确认测试当时有效，不承诺以后持续新鲜。 |
+| 断网和环境 | 重启前后及 repeat 记录均为 guest 对三个固定 IPv4 目标连接拒绝、API 容器不可达，同时保存 IPv4/IPv6 OUTPUT 与 DOCKER-USER 拒绝链及 internal network。工具对这些具体目标做连接测试，并核对唯一 virtiofs 为 Rosetta 系统共享；不将其写成独立穷尽网络审计。适用平台仅已记录 Ubuntu ARM64/VZ、现有 Rosetta、4 CPU/6GiB 和独立 proxy 512MiB/TLS 探针 profile。 |
+
+软件 manifest 原文件 SHA 为 `668be91c…`，备份 `softwareSha256` 为 `266a4941…`，二者不是矛盾：冻结工具对解析后的 manifest 执行 `JSON.stringify` 再 hash。本审查独立按同一无空白序列化重算，得到两份备份记录中的完整 `266a4941c49640c3e1ca6084b0df3d3ea07275988c959393b80cd5576c48c687`。
+
+四类原失败仍独立保留：QEMU PostgreSQL 首次启动失败、B1 下载先于历史审计比较失败、128MiB proxy OOM、正常 stop 未完成时的 start 被锁拒绝。后一次 start 的时间晚于 stop 成功结束，没有将 exit1 追认 PASS。外部 fixture 和环境覆盖单独绑定摘要；被冻结 c5 源码、镜像与软件包未为本次证据调整。源码和数据上限、手册中的独立秘密/加密业务/软件分类也保持可辨。
+
+本 61 文件审计不包括主任务另存的“最初空 Docker daemon”准备证据和 A3 源端全部阶段，不能从镜像列表推断未读的准备操作。浏览器视觉仍标为 `PENDING_USER_CERTIFICATE_HANDLING`，产品负责人验收未声明；公网生产、main 和 tag 的状态由主任务另取实际证据。本次仅提交证据文件，不改变运行制品或环境，也不重试此前被自动内容安全检查拦截的动态实验。

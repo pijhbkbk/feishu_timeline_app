@@ -1,0 +1,142 @@
+{
+  "scope": "Independent read-only audit of saved sanitized author execution evidence; no VM, database, secret state, ciphertext, production access or test execution.",
+  "runtimeCommit": "c5aed415cd17e6e8a21b422a4c5c92b4b924e091",
+  "sourceTree": "830e562f5ec56e99d7fc0b04432fc056dd772254",
+  "status": "SAVED_EVIDENCE_CONSISTENT_WITH_BOUNDED_LOCAL_VERIFICATION",
+  "evidenceRoot": "/private/tmp/timeline-portable-delivery-c5aed415cd17/verification-C",
+  "fileIndexSha256": "bfb14008742084c74133d1cb48c73a54b7973bc4cbf28fc4893f865f6918d881",
+  "fileCount": 61,
+  "allIndexedBytesAndSizesMatch": true,
+  "tarRegularBasenameMembersCompared": 52,
+  "tarMemberBytesEqualRecords": true,
+  "checkedFiles": [
+    "A3-backup-timing.json",
+    "README.md",
+    "backup-metadata.json",
+    "cold-boot-record.json",
+    "evidence-export.tar",
+    "final-configuration-inventory.json",
+    "initial-qemu-postgres-failure.log",
+    "proxy-oom-blocker.json",
+    "records/B-A-to-B-business-restore-result.json",
+    "records/B-B-auth-boundary-1789635918241-result.json",
+    "records/B-B-read-1789636073787-result.json",
+    "records/B-B-read-1789636231115-result.json",
+    "records/B-B-write-1789635873222-result.json",
+    "records/B-before-proxy-fix-business-restore-result.json",
+    "records/B-boundary-queue-readback-result.json",
+    "records/B-business-readback-result.json",
+    "records/B-business-restore-result.json",
+    "records/B-environment-proof-1789635957958.json",
+    "records/B-environment-proof-1789636256040.json",
+    "records/B-untouched-before-proxy-fix.json",
+    "records/B1-boundary-queue-readback-result.json",
+    "records/B1-boundary-verify-result.json",
+    "records/B1-business-restore-result.json",
+    "records/application-restart-after-stop-timing.json",
+    "records/application-restart-timing.json",
+    "records/application-stop-timing.json",
+    "records/b-ready.json",
+    "records/cold-boot-application-start-timing.json",
+    "records/evidence-manifest.json",
+    "records/final-runtime.json",
+    "records/instance-repeat-restore-complete.json",
+    "records/instance-repeat-rosetta-proxy-profile.json",
+    "records/instance-repeat-signature-floor.json",
+    "records/instance-repeat-signature-receipt.json",
+    "records/instance-rosetta-restore-complete.json",
+    "records/instance-rosetta-signature-floor.json",
+    "records/instance-rosetta-signature-receipt.json",
+    "records/instance-verified-proxy-profile-readback.json",
+    "records/instance-verified-restore-complete.json",
+    "records/instance-verified-rosetta-proxy-profile.json",
+    "records/instance-verified-signature-floor.json",
+    "records/instance-verified-signature-receipt.json",
+    "records/post-rosetta-environment.json",
+    "records/pre-cold-boot-stop-timing.json",
+    "records/repeat-B-auth-boundary-1789636631328-result.json",
+    "records/repeat-B-read-1789636587715-result.json",
+    "records/repeat-boundary-queue-readback-result.json",
+    "records/repeat-business-restore-result.json",
+    "records/repeat-environment-proof-1789636606228.json",
+    "records/repeat-init-timing.json",
+    "records/repeat-restore-timing.json",
+    "records/repeat-signatures-timing.json",
+    "records/repeat-start-timing.json",
+    "records/restore-http-first-failure-diff.json",
+    "records/restore-rosetta-timing.json",
+    "records/restore-timing.json",
+    "records/restore-verified-timing.json",
+    "records/second-backup-timing.json",
+    "records/start-rosetta-timing.json",
+    "records/start-verified-profile-timing.json",
+    "source-authorization-and-token-window.json"
+  ],
+  "helpers": {
+    "validation-tools": {
+      "manifestSha256": "d9cc4dd578f37bece7395576bfb12acce197e4d39c2b7a8a683970c53a3b48de",
+      "filesChecked": {
+        "native-business-acceptance-after-audit-fix.mjs": "10e1a86f429539905893bda23fc78012851720ee41410f0efbc0306b0c043653",
+        "portable-boundary-fixture.mjs": "3ac850e8260fd4818348ff0b8e312d5ed39de07c2b6dcc744388d32919c192db",
+        "time-command.mjs": "9f0454d5116b28430918c3e7d3b34ea94568501bbe8a7724f08ffbaddbc486c8",
+        "check-untouched-business.mjs": "29f8a7460b4feadc9cdd68adfb240c18d281da92f01bd50d18cf5a0c44dabf5d",
+        "portable-B-readwrite.mjs": "f052ad342a501b1f7bb6d2e9546e7ce4cad5610219b555046c86436e19394da3",
+        "B-environment-proof.mjs": "444d1c75cd64b40c5de536932639264d1cce65f8b427fcdcb97fbc6974f2b1a5",
+        "collect-C-evidence.mjs": "9194b964d9ea919f8563620e56849312d5b22e8d51cc2c096d68be0f12e39a00"
+      }
+    },
+    "environment-overrides": {
+      "manifestSha256": "bd73fe8a4600841638a7ba5deff912c1d0298b460b9f2fc2b6216cb43e1d3928",
+      "filesChecked": {
+        "rosetta-proxy-profile.mjs": "8ee33f5e258319855cee0ae3147e6a0944cd3984923d74c154ece87b5aa511e8"
+      }
+    }
+  },
+  "softwareManifestByteSha256": "668be91c5e692713ac837ff0e6d32db5b2a32da6ccefdc4ef086a8414371b344",
+  "softwareManifestJsonStringifySha256": "266a4941c49640c3e1ca6084b0df3d3ea07275988c959393b80cd5576c48c687",
+  "backupManifestHashExplanation": "Portable backup/restore hashes JSON.stringify(parsed manifest), not pretty-printed file bytes; recomputed digest matches both saved backup metadata summaries.",
+  "finalAuthorObservation": {
+    "time": "2026-09-17T09:18:31.789Z",
+    "instance": "timeline-portable-f22b433b00ca",
+    "origin": "https://localhost:9444",
+    "database": "timeline",
+    "webApiIdentityConsistent": true,
+    "runningContainers": 6,
+    "allOtherRecordedInstancesStopped": true,
+    "priorApiExitCodes": {
+      "timeline-portable-e65e7d978beb": 0,
+      "timeline-portable-a25d7e123469": 0
+    },
+    "bootId": "e59d36b5-e6e6-44b1-90d8-a0cc5a10a895"
+  },
+  "liveRecoveryTokenEvidence": {
+    "instance": "timeline-portable-a25d7e123469",
+    "rejectedAt": "2026-09-17T08:39:59.063Z",
+    "originalExpiresAt": "2026-09-17T08:55:32.720Z",
+    "withinOriginalLifetime": true,
+    "notAttributedToLaterInstances": true
+  },
+  "supportingDocuments": {
+    "PORTABLE-RECOVERY-RUNBOOK.md": "2abce009fc0978de34ace1642c1d4c0f0163750d9314175d5a8f678bbd3503dd",
+    "EXECUTED-COMMANDS.md": "746e3765e34f48742b6fb36429302da92f8eb6ccbe346a95379ae533b2d04377",
+    "MATERIAL-INDEX.json": "a41c5d41841b2ae9139eb3f833f38c727437150fde3aa699a3502410ac3f8c66"
+  },
+  "limitations": [
+    "Dynamic results are author executions; this reviewer checked saved artifacts and bound assertion code, did not independently recompute database/object fingerprints.",
+    "Full table, sequence and object equivalence is supported by backup metadata, restore receipts and previously reviewed frozen restore gates. Representative HTTP snapshot covers selected business fields and cannot alone substitute for full fingerprints.",
+    "Queue script asserts exactly one notification, no pending job, positive TTL and current-time-plus-TTL no greater than protected source expiry plus 2000ms. Original private source expiry was not read; no independent exact-millisecond recalculation is claimed.",
+    "Egress probes covered three fixed IPv4 addresses from guest and API container; saved IPv4 and IPv6 firewall rules and internal Docker network were also checked. This is not an independent exhaustive network audit.",
+    "Cold VM restart is supported by saved control timestamps, final boot ID and subsequent native login/data reads; reviewer did not observe live hypervisor state.",
+    "Cold empty-daemon preparation and all A3 source phase details are referenced by author but are outside this 61-file audit; do not infer those checks from image listing.",
+    "Bounded Ubuntu ARM64/VZ with existing Rosetta, private loopback HTTPS and separate proxy profile only. QEMU failure and proxy OOM retained. No universal offline host compatibility claim.",
+    "Browser visual, product-owner acceptance and production deployment are not established by this audit."
+  ],
+  "productionHttpPreparation": {
+    "path": "/private/tmp/timeline-final-production-http-c5.py",
+    "sha256": "75f90a8281190edf4b2f27459a23f3b973e3d82522abdb431fb50fc887979ea3",
+    "review": "STATIC_ONLY",
+    "executedByThisReviewer": false,
+    "credentialFileReadByThisReviewer": false,
+    "separateActualResultOwnedBy": "root"
+  }
+}

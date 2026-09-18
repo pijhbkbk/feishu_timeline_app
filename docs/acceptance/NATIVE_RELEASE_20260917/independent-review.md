@@ -49,3 +49,9 @@
 实际旧安装回读文件 SHA `8fb7f3d77fbf1f5c717cc7fb8f1072dd29dc5fc4eb77d61758717f36265ad3a9` 中，helper `78b9299b...` 和安装 journal `52fd69be...` 与生成器重建值一致。新 release manifest 为 `bac905b93e2e54b3a40a2ace75dfdc683885161636fedd04c0cb71586197e7a6`，独立 repair manifest 为 `1c1bc79c0c9b6f6870e063a7e6c66d662dade27103ff086b8e6603d9bb4c8fb0`；七个 release 与一个 repair 脚本逐字节匹配最终模板及固定替换，两个 driver 的摘要与保存记录一致，固定 bf2/c5、IAP 目标，单步失败停止、无自动重试。两 driver 仍使用 assert，调用应为普通非优化 Python（建议 -I，不带 -O）。身份详情见相邻 JSON。首次独立重建比较器用不同字典插入顺序造成文本不等，按实际生成器顺序修正后精确匹配，未修改被审文件。
 
 作者报告 126 个本机测试通过，包括六个写入点的半写/完整写后中断及重入、四类 guard 和 unit 合同；文件原子操作为本机真实临时文件，root/生产进程调用仍是替身。本审查者没有执行这些测试、导入控制器或运行修补/发布脚本。此次只提供技术审查，按主任务既有授权使用独立 repair 路径；旧通用 install 不应用于此已安装状态。修补安装、一次新的实际演练及其结果仍需另记，冻结应用 runtime c5 未变。
+
+## 精确生产 URL HTTP 验证脚本的静态范围
+
+只读审查 `/private/tmp/timeline-final-production-http-c5.py`，SHA-256 `75f90a8281190edf4b2f27459a23f3b973e3d82522abdb431fb50fc887979ea3`。脚本固定 `https://timeline.all-too-well.com`，先核对 API/Web 的 c5 commit/tree/release/build 后才读取既有私有交付凭据；禁止代理和重定向，保留系统 CA 与 hostname 校验，并限制请求超时/响应长度。凭据文件要求 NOFOLLOW、普通文件、当前 UID、单链接和私有权限，内容不输出且不从浏览器读取。操作限既有管理员登录、只读目录/工作台/项目、已关闭 mock/旧 OAuth/Origin 负向，以及自己发行会话的退出和撤销检查；无业务创建或权限修改。结果只保留身份、状态、计数和必要数值，异常不打印响应体或 Cookie；finally 尝试退出本次会话。输出采用独占创建，现有输出时应先调查，不能盲重跑。
+
+限定静态范围未见阻断。本审查者没有执行脚本、读取凭据或访问生产；主任务后续报告实际 HTTP 结果通过并已退出会话，该动态记录需另附其来源，不能使用本节静态准备代替。脚本自身明确浏览器验收须另行完成，亦不代表产品负责人接受。
