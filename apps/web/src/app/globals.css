@@ -4054,7 +4054,7 @@ body {
   }
 }
 
-.native-auth-card { max-width: 520px; margin: 32px auto; }
+.native-auth-card { max-width: 440px; margin: 32px auto; }
 .native-account-card { max-width: 800px; margin: 24px auto; }
 .native-auth-form { display: grid; gap: 16px; margin: 24px 0; }
 .native-auth-form label { display: grid; gap: 8px; font-weight: 600; }

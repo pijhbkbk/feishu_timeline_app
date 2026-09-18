@@ -132,7 +132,7 @@ export function AppShell({ children }: PropsWithChildren) {
         </div>
       </header>
 
-      <main className="content r22-content">
+      <main className={`content r22-content${isAuthRoute ? ' native-auth-content' : ''}`}>
         {contextNav.length > 0 ? (
           <nav className="context-nav r22-context-nav" aria-label="当前工作区导航">
             {contextNav.map((item) => (

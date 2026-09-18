@@ -67,9 +67,10 @@ describe.skipIf(!databaseUrl).sequential('native identity real PostgreSQL bounda
     await expect(service.initializeAdministrator({ username: `unbound-${runId}`, name: '未绑定测试管理员', password })).rejects.toBeInstanceOf(ConflictException);
     expect(await prisma.user.count({ where: { isSystemAdmin: true } })).toBe(1);
     expect(await prisma.authInitialization.count()).toBe(0);
+    await expect(service.initializeAdministrator({ username: `admin-${runId}`, name: '测试管理员', password: 'riveroa', existingUserId: legacy.id })).rejects.toThrow();
     const results = await Promise.allSettled([
-      service.initializeAdministrator({ username: `admin-${runId}`, name: '测试管理员', password, existingUserId: legacy.id }),
-      service.initializeAdministrator({ username: `admin-other-${runId}`, name: '测试管理员二', password, existingUserId: legacy.id }),
+      service.initializeAdministrator({ username: `admin-${runId}`, name: '测试管理员', password: 'riveroak', existingUserId: legacy.id }),
+      service.initializeAdministrator({ username: `admin-other-${runId}`, name: '测试管理员二', password: 'riveroak', existingUserId: legacy.id }),
     ]);
     expect(results.filter(r => r.status === 'fulfilled')).toHaveLength(1);
     expect(results.filter(r => r.status === 'rejected')).toHaveLength(1);
@@ -79,8 +80,38 @@ describe.skipIf(!databaseUrl).sequential('native identity real PostgreSQL bounda
     expect(await prisma.authInitialization.count()).toBe(1);
     admin = await actor(legacy.id);
     expect(admin.isSystemAdmin).toBe(true);
-    await login(admin.username);
+    await login(admin.username, 'riveroak');
     await expect(service.initializeAdministrator({ username: `admin-late-${runId}`, name: '测试', password })).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it('keeps leading-zero employee numbers distinct and applies 8/7 boundaries to registration, change, recovery and host binding', async () => {
+    await expect(service.register({ username: '001234', name: '前导零测试', password: 'riveroa' }, 'policy-short')).rejects.toThrow();
+    await expect(service.register({ username: '001234', name: '前导零测试', password: 'password' }, 'policy-weak')).rejects.toThrow();
+    await service.register({ username: '001234', name: '前导零测试', password: 'riveroak' }, 'policy-register');
+    await service.register({ username: '1234', name: '非前导零测试', password }, 'policy-long');
+    const zero = await prisma.user.findUniqueOrThrow({ where: { username: '001234' }, include: { userRoles: true, projectMembers: true } });
+    const long = await prisma.user.findUniqueOrThrow({ where: { username: '1234' } });
+    expect(zero.id).not.toBe(long.id);
+    expect(zero).toMatchObject({ username: '001234', isSystemAdmin: false, departmentId: null, userRoles: [], projectMembers: [] });
+    await expect(service.register({ username: '001234', name: '不得认领', password }, 'policy-duplicate')).rejects.toBeInstanceOf(ConflictException);
+    const old = await login('001234', 'riveroak');
+    let user = await actor(zero.id);
+    await expect(service.changePassword(user, { currentPassword: 'riveroak', newPassword: 'meadowa' }, 'policy-change-short')).rejects.toThrow();
+    expect(await auth.getAuthenticatedUserFromSessionToken(old.token)).not.toBeNull();
+    await service.changePassword(user, { currentPassword: 'riveroak', newPassword: 'meadoway' }, 'policy-change');
+    expect(await auth.getAuthenticatedUserFromSessionToken(old.token)).toBeNull();
+    await login('001234', 'meadoway');
+    const recovery = await service.issueRecovery(admin, zero.id, 'policy-recovery');
+    await expect(service.recover({ token: recovery.token, newPassword: 'cedarba' }, 'policy-recover-short')).rejects.toThrow();
+    await service.recover({ token: recovery.token, newPassword: 'cedarbay' }, 'policy-recover');
+    await login('001234', 'cedarbay');
+    await expect(service.bindFromHost(zero.id, zero.username, 'mapleru')).rejects.toThrow();
+    await service.bindFromHost(zero.id, zero.username, 'maplerun');
+    await login('001234', 'maplerun');
+    const stillLong = await login('1234', password);
+    expect(stillLong.result.user?.id).toBe(long.id);
+    user = await actor(zero.id);
+    expect(user).toMatchObject({ id: zero.id, username: '001234', isSystemAdmin: false, roleCodes: [], permissionCodes: [] });
   });
 
   it('admits one case-insensitive registration with no roles, department, or project memberships', async () => {

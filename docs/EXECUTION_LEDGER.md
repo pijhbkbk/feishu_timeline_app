@@ -7931,3 +7931,12 @@ BLOCKER_REPORT: Public-source push remains rejected by platform automatic review
 - 已把固定软件/扫描器源码、分开的合成加密备份/秘密、执行过的命令、B profile、A3/C及生产证明持久保存ignored var；旧61证据未变。新官方daily28126只完成下载和离线签名验证，单独准备未激活；原28125于09-18 06:24:23Z到期，48小时策略不变。现有证据依据复用，不重复运行源码未变的测试；60SKIPPED仍未通过。
 - 更新同一短交接及路由矩阵，不扩治理体系。原main41b4b16/tag/脏修改及用户媒体未变，runtime和evidence分开。本轮没有新云资源、生产DB恢复/seed/迁移、真实项目推进、DNS/全局权限变更；浏览器自己的验证会话退出，原Safari会话不变。临时访问清理按实际日期记录。
 - 当前代码/技术验证已完成，production c5已部署且原生读取路径通过；全部产品仍AWAITING_PRODUCT_OWNER_CONFIRMATION。本机9444浏览器因用户暂缓证书处理NOT_ACCEPTED；注册/改密/恢复/授权UI实际提交仍待人工，隔离HTTP不替代。staging仅A3 https://localhost:3450（已停）和B https://localhost:9444（运行）同c5；无远端staging。源码Placeholder0/测试白名单10，main/tag未改变。
+
+### 2026-09-18 — 所有者登录体验及密码策略修正（候选冻结前）
+
+- 本轮仅处理所有者最新反馈：登录/注册/恢复共用浅色居中 440px 卡片、手机两侧至少 16px、次要入口；用户可见登录标识为“工号”。认证布局限定于 `/login*`，项目工作区与业务规则不变。原 main 脏修改保留，实施分支 `codex/login-experience-20260918` 基线 `1034b38f055690cc912f331e8f47924c792a196d`；相关目录无新增覆盖指令，不改治理或全局权限。
+- 原生产 `/login` 在 1440px 浏览器实测卡片 1376px，根因是通用 `.r22-shell .page-card` 覆盖认证宽度。失败截图及新增工号、8字符边界 RED 证据保留；修复认证选择器优先级，未改全局项目宽度。
+- 新设密码最低 8 Unicode 码点由服务、改密/恢复 DTO、Web 提交、CLI/portable 文件检查共同执行；保留原登录验证、Argon2id 参数、长密码、限流、弱口令检查并补短常见弱口令。此为产品策略调整，不声称符合 NIST 单因素 15 字符要求。工号继续使用字符串，`001234` 与 `1234` 不合并；不改内部 ID、历史关系或授予权限，无 schema/依赖变更。
+- 已执行 `pnpm install --frozen-lockfile`、lint、typecheck、test、Web/API build、Prisma validate；Web309/API1355通过，通用命令61项SKIPPED不计通过。真实新建 PostgreSQL 13项另行通过，覆盖旧ID/历史作者、初始化及注册/改密/恢复/主机绑定8通过7拒绝、长旧密码、前导零区分、重复拒绝、权限与会话边界。Portable普通测试5通过2跳过。完整日志在本轮私有证据目录，后续统一持久化。
+- 工具阶段保留真实失败：离线依赖缓存缺包后正常冻结安装通过；Prisma缓存时间戳受沙箱限制后授权运行通过；新测试库临时初始化服务重启竞态导致createdb中断，改为最终TCP服务就绪后准确续建通过。未删除失败记录或重用生产数据。
+- 独立静态差异审查未发现阻断，最终提交与真实浏览器/HTTP证据待绑定。当前只有 `CODE_IMPLEMENTED / LOCAL_CHECKS_PASS`，候选尚未部署；production仍c5，原账号生产复验及两档真实截图待执行。main/tag未改变，产品状态 `AWAITING_PRODUCT_OWNER_CONFIRMATION`。正式源码Placeholder0，10条测试白名单不变。

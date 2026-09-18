@@ -43,7 +43,7 @@ export default function AccountsPage() {
     <p>查看新注册账号与岗位意向，前往组织管理分配正式角色、部门及项目范围。岗位意向不会自动授予权限。</p>
     <p><Link href="/admin/organization">组织与权限管理</Link> · <Link href="/account">我的账号</Link></p>
     <form className="native-auth-form" onSubmit={event => { event.preventDefault(); void load(query); }}>
-      <label>搜索姓名或用户名<input value={query} onChange={event => setQuery(event.target.value)} maxLength={80} /></label>
+      <label>搜索姓名或工号<input value={query} onChange={event => setQuery(event.target.value)} maxLength={80} /></label>
       <button className="button button-primary" disabled={loading}>搜索账号</button>
     </form>
     {error ? <p role="alert">{error}</p> : null}

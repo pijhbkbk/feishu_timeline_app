@@ -16,7 +16,7 @@ import {
 import { NativePasswordService } from './native-password.service';
 import { SessionStoreService } from './session-store.service';
 
-const FAILURE = '用户名或密码不正确，或账号暂不可用。';
+const FAILURE = '工号或密码不正确，或账号暂不可用。';
 const RESET_FAILURE = '恢复码无效或已过期，请联系管理员。';
 
 @Injectable()
@@ -250,7 +250,7 @@ export class NativeAuthService {
       tx.user.findFirst({ where: { username: { equals: username, mode: 'insensitive' }, ...(exceptUserId ? { id: { not: exceptUserId } } : {}) }, select: { id: true } }),
       tx.localCredential.findFirst({ where: { loginName: username, ...(exceptUserId ? { userId: { not: exceptUserId } } : {}) }, select: { userId: true } }),
     ]);
-    if (user || credential) throw new ConflictException('用户名已被使用，请选择其他用户名。');
+    if (user || credential) throw new ConflictException('工号已被使用，请选择其他工号。');
   }
 
   private async assertCurrentActor(tx: Prisma.TransactionClient, actor: AuthenticatedUser) {
@@ -284,7 +284,7 @@ export class NativeAuthService {
     return tx.auditLog.create({ data: { actorUserId, targetType: AuditTargetType.USER, targetId: userId, action, summary: action, ...(metadata ? { metadata } : {}) } });
   }
   private rethrowConflict(error: unknown): never {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') throw new ConflictException('用户名已被使用，请选择其他用户名。');
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') throw new ConflictException('工号已被使用，请选择其他工号。');
     throw error;
   }
 }

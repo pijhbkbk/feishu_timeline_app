@@ -5,6 +5,7 @@ import React, { useEffect, useState, type FormEvent } from 'react';
 import { useAuth } from '../../components/auth-provider';
 import { FeedbackBanner } from '../../components/feedback-banner';
 import { apiRequest } from '../../lib/auth-client';
+import { assertNewPasswordLength, NATIVE_PASSWORD_HELP, NATIVE_PASSWORD_MIN_LENGTH } from '../../lib/native-password-policy';
 
 type Mode = 'login' | 'register' | 'recover';
 
@@ -29,10 +30,11 @@ export default function LoginPage() {
     const password = String(data.get('password') ?? '');
     setBusy(true); setError(null); setNotice(null);
     try {
+      if (mode !== 'login') assertNewPasswordLength(password);
       if (mode === 'register') {
         if (password !== data.get('confirmPassword')) throw new Error('两次密码不一致。');
         await apiRequest('/auth/register', { method: 'POST', body: { username, password, name: String(data.get('name') ?? '') } });
-        form.reset(); setMode('login'); setNotice('账号已创建，请使用用户名和密码登录。');
+        form.reset(); setMode('login'); setNotice('账号已创建，请使用工号和密码登录。');
       } else if (mode === 'recover') {
         if (password !== data.get('confirmPassword')) throw new Error('两次密码不一致。');
         await apiRequest('/auth/recover', { method: 'POST', body: { token: String(data.get('token') ?? ''), newPassword: password } });
@@ -52,16 +54,16 @@ export default function LoginPage() {
     {error && <FeedbackBanner variant="error" title="操作未成功" message={error} />}
     {notice && <FeedbackBanner variant="success" title="操作成功" message={notice} />}
     <form key={mode} onSubmit={event => void submit(event)} className="native-auth-form">
-      {mode !== 'recover' && <label>用户名<input name="username" autoComplete="username" required minLength={3} maxLength={64} pattern={'[A-Za-z0-9][A-Za-z0-9._\\-]{2,63}'} disabled={busy} /><span className="muted">3–64 位字母、数字、点、下划线或连字符</span></label>}
+      {mode !== 'recover' && <label>工号<input name="username" type="text" placeholder="请输入工号" autoComplete="username" required minLength={3} maxLength={64} pattern={'[A-Za-z0-9][A-Za-z0-9._\\-]{2,63}'} disabled={busy} /><span className="muted">3–64 位字母、数字、点、下划线或连字符</span></label>}
       {mode === 'register' && <label>姓名<input name="name" autoComplete="name" required maxLength={80} disabled={busy} /></label>}
       {mode === 'recover' && <label>一次性恢复码<input name="token" autoComplete="off" required minLength={43} maxLength={43} disabled={busy} /></label>}
-      <label>{mode === 'recover' ? '新密码' : '密码'}<input name="password" type="password" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} required minLength={mode === 'login' ? 1 : 15} maxLength={256} disabled={busy} /></label>
-      {mode !== 'login' && <><p className="muted">15–128 个字符，可使用空格和较长口令。</p><label>确认密码<input name="confirmPassword" type="password" autoComplete="new-password" required maxLength={256} disabled={busy} /></label></>}
+      <label>{mode === 'recover' ? '新密码' : '密码'}<input name="password" type="password" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} required minLength={mode === 'login' ? 1 : NATIVE_PASSWORD_MIN_LENGTH} maxLength={256} disabled={busy} /></label>
+      {mode !== 'login' && <><p className="muted">{NATIVE_PASSWORD_HELP}</p><label>确认密码<input name="confirmPassword" type="password" autoComplete="new-password" required minLength={NATIVE_PASSWORD_MIN_LENGTH} maxLength={256} disabled={busy} /></label></>}
       <button className="button button-primary" type="submit" disabled={busy || isLoading}>{busy ? '正在处理…' : mode === 'login' ? '登录' : mode === 'register' ? '创建账号' : '更新密码'}</button>
     </form>
-    <div className="page-actions">
-      {mode !== 'login' && <button type="button" className="button" disabled={busy} onClick={() => switchMode('login')}>返回登录</button>}
-      {mode === 'login' && <><button type="button" className="button" onClick={() => switchMode('register')}>注册账号</button><button type="button" className="button" onClick={() => switchMode('recover')}>忘记密码</button></>}
+    <div className="native-auth-links">
+      {mode !== 'login' && <button type="button" className="native-auth-link" disabled={busy} onClick={() => switchMode('login')}>返回登录</button>}
+      {mode === 'login' && <><button type="button" className="native-auth-link" disabled={busy} onClick={() => switchMode('register')}>注册账号</button><button type="button" className="native-auth-link" disabled={busy} onClick={() => switchMode('recover')}>忘记密码</button></>}
     </div>
   </section>;
 }

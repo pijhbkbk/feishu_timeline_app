@@ -540,7 +540,7 @@ export function getRouteContext(pathname: string): RouteContext {
   if (pathname.startsWith('/login')) {
     return {
       title: '登录',
-      description: '本系统用户名密码登录与会话建立入口。',
+      description: '本系统工号密码登录与会话建立入口。',
       eyebrow: '身份认证',
     };
   }

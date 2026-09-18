@@ -1156,6 +1156,36 @@ a {
   box-shadow: var(--r22-shadow);
 }
 
+/* Authentication forms have their own width; project workspaces keep theirs. */
+.r22-shell .native-auth-content {
+  width: calc(100% - 32px);
+  min-height: calc(100svh - 96px);
+  align-content: center;
+}
+.r22-shell .page-card.native-auth-card {
+  width: 100%;
+  max-width: 440px;
+  margin: 24px auto;
+  padding: 28px;
+}
+.native-auth-links { display: flex; justify-content: space-between; gap: 24px; }
+.native-auth-link {
+  border: 0;
+  padding: 8px 0;
+  background: transparent;
+  color: var(--r22-brand);
+  font: inherit;
+  font-size: 14px;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  cursor: pointer;
+}
+.native-auth-link:focus-visible { outline: 2px solid var(--r22-brand); outline-offset: 4px; }
+.native-auth-link:disabled { opacity: .5; cursor: default; }
+@media (max-width: 600px) {
+  .r22-shell .page-card.native-auth-card { margin: 12px auto; padding: 24px; }
+}
+
 .r22-shell .page-stack {
   width: 100%;
   max-width: var(--r22-content);

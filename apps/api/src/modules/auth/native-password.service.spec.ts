@@ -1,11 +1,33 @@
 import { describe, expect, it } from 'vitest';
 import { NativePasswordService } from './native-password.service';
 import { normalizeLoginName, validateNativePassword } from './native-auth.rules';
+import { ValidationPipe } from '@nestjs/common';
+import { NativeLoginDto, NativePasswordChangeDto, NativeRecoveryDto, NativeRegisterDto } from './dto/native-auth.dto';
 
 describe('native credential validation and actual Argon2', () => {
   it('normalizes usernames without accepting ambiguous or oversized names', () => {
     expect(normalizeLoginName(' Example.User_01 ')).toBe('example.user_01');
+    expect(normalizeLoginName('001234')).toBe('001234');
+    expect(normalizeLoginName('001234')).not.toBe(normalizeLoginName('1234'));
     for (const value of ['ab', '测试用户', 'аdministrator', '-admin', 'a'.repeat(65), 'a/b', null]) expect(() => normalizeLoginName(value)).toThrow();
+  });
+  it('accepts eight non-weak code points without a character-class requirement and rejects seven', () => {
+    for (const value of ['riveroak', '桦林映着晴空湖水', '🌳🌿🌾🌻🌺🌼🌷🌹', 'Long existing native password 2026!']) {
+      expect(validateNativePassword(value)).toBe(value);
+    }
+    for (const value of ['riveroa', '桦林映着晴空湖', '🌳🌿🌾🌻🌺🌼🌷', 'password', '12345678', 'qwertyuiop', 'password123']) {
+      expect(() => validateNativePassword(value)).toThrow();
+    }
+  });
+  it('enforces eight characters for new-password DTOs while login remains compatible and identifiers stay strings', async () => {
+    const pipe = new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true });
+    for (const metatype of [NativePasswordChangeDto, NativeRecoveryDto]) {
+      const input = metatype === NativePasswordChangeDto ? { currentPassword: 'legacy' } : { token: 'a'.repeat(43) };
+      await expect(pipe.transform({ ...input, newPassword: 'riveroak' }, { type: 'body', metatype })).resolves.toBeDefined();
+      await expect(pipe.transform({ ...input, newPassword: 'riveroa' }, { type: 'body', metatype })).rejects.toThrow();
+    }
+    await expect(pipe.transform({ username: '001234', password: 'legacy' }, { type: 'body', metatype: NativeLoginDto })).resolves.toMatchObject({ username: '001234' });
+    await expect(pipe.transform({ username: 1234, password: 'riveroak', name: '测试' }, { type: 'body', metatype: NativeRegisterDto })).rejects.toThrow();
   });
   it('preserves exact Unicode and spaces and rejects short, excessive, common, or control-bearing passwords', () => {
     expect(validateNativePassword('  星空河流森林海洋山峦晨光微风阳光  ')).toBe('  星空河流森林海洋山峦晨光微风阳光  ');

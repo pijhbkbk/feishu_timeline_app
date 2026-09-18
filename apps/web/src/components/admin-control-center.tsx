@@ -1042,7 +1042,7 @@ function AdminEditDialog({ state, onClose, onSuccess }: { state: Exclude<DialogS
             </> : null}
             {state.kind === 'organizationUser' ? <>
               <div className="admin-cc-assignment-node-summary"><span>{state.mode === 'create' ? '新增人员' : '编辑人员'}</span><strong>{String(form.name) || '未命名用户'}</strong><small>账号配置保留原用户 ID 和历史记录；本地凭据通过注册或主机绑定建立，角色需在这里正式授权。</small></div>
-              <Field label="登录名"><input required value={String(form.username)} onChange={(event) => { const value = event.currentTarget.value; setForm((current) => ({ ...current, username: value })); setPreview(null); }} /></Field>
+              <Field label="工号"><input type="text" placeholder="请输入工号" required value={String(form.username)} onChange={(event) => { const value = event.currentTarget.value; setForm((current) => ({ ...current, username: value })); setPreview(null); }} /></Field>
               <Field label="姓名"><input required value={String(form.name)} onChange={(event) => { const value = event.currentTarget.value; setForm((current) => ({ ...current, name: value })); setPreview(null); }} /></Field>
               <Field label="邮箱"><input type="email" value={String(form.email)} onChange={(event) => { const value = event.currentTarget.value; setForm((current) => ({ ...current, email: value })); setPreview(null); }} /></Field>
               <Field label="手机号"><input value={String(form.mobile)} onChange={(event) => { const value = event.currentTarget.value; setForm((current) => ({ ...current, mobile: value })); setPreview(null); }} /></Field>

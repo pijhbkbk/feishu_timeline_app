@@ -13,6 +13,7 @@ import { PrismaService } from '../infra/prisma/prisma.service';
 import { RedisModule } from '../infra/redis/redis.module';
 import { AuthModule } from '../modules/auth/auth.module';
 import { NativeAuthService } from '../modules/auth/native-auth.service';
+import { NATIVE_PASSWORD_MIN_LENGTH } from '../modules/auth/native-auth.rules';
 
 @Module({ imports: [ConfigModule.forRoot({ isGlobal: true, load: [appConfig], envFilePath: [...APP_ENV_FILE_PATHS] }), PrismaModule, RedisModule, AuthModule] })
 class NativeAccountCliModule {}
@@ -21,8 +22,8 @@ async function passwordFromFile(path: string) {
   const file = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW);
   try {
     const stat = await file.stat();
-    if (!stat.isFile() || stat.nlink !== 1 || (stat.mode & 0o077) !== 0 || stat.uid !== process.getuid?.() || stat.size < 15 || stat.size > 512) {
-      throw new Error('密码文件必须由当前用户持有、仅本人可读、是独立普通文件且为 15–512 字节。');
+    if (!stat.isFile() || stat.nlink !== 1 || (stat.mode & 0o077) !== 0 || stat.uid !== process.getuid?.() || stat.size < NATIVE_PASSWORD_MIN_LENGTH || stat.size > 512) {
+      throw new Error('密码文件必须由当前用户持有、仅本人可读、是独立普通文件且为 8–512 字节。');
     }
     return (await file.readFile('utf8')).replace(/\r?\n$/, '');
   } finally { await file.close(); }

@@ -2545,7 +2545,7 @@ export class AdminControlCenterService {
     if (input.isSystemAdmin && !roles.some((role) => role.code === 'admin')) {
       conflicts.push('超级管理员必须同时拥有管理员角色。');
     }
-    if (duplicate) conflicts.push(`登录名、邮箱或手机号与用户“${duplicate.name}”重复。`);
+    if (duplicate) conflicts.push(`工号、邮箱或手机号与用户“${duplicate.name}”重复。`);
     if (userId === actor.id && (input.status !== UserStatus.ACTIVE || !input.isSystemAdmin)) {
       conflicts.push('不能停用当前账号或移除当前账号的超级管理员权限。');
     }
@@ -2658,7 +2658,7 @@ export class AdminControlCenterService {
         if (input.departmentId && !department) transactionConflicts.push('所选部门不存在或已停用。');
         if (roles.length !== new Set(input.roleIds).size || roles.some((role) => role.status !== 'ACTIVE')) transactionConflicts.push('所选角色不存在或已停用。');
         if (input.isSystemAdmin && !roles.some((role) => role.code === 'admin')) transactionConflicts.push('超级管理员必须同时拥有管理员角色。');
-        if (duplicate) transactionConflicts.push('登录名、邮箱或手机号已被其他用户使用。');
+        if (duplicate) transactionConflicts.push('工号、邮箱或手机号已被其他用户使用。');
         if (userId === actor.id && (input.status !== UserStatus.ACTIVE || !input.isSystemAdmin)) transactionConflicts.push('不能停用当前账号或移除当前账号的超级管理员权限。');
         if (existing?.isSystemAdmin && existing.status === UserStatus.ACTIVE && activeSuperAdminCount <= 1 && (input.status !== UserStatus.ACTIVE || !input.isSystemAdmin)) transactionConflicts.push('系统必须至少保留一个启用中的超级管理员。');
         if (input.status !== UserStatus.ACTIVE && ledDepartmentCount > 0) transactionConflicts.push('该用户仍是部门负责人，请先调整部门负责人。');
