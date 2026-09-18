@@ -1,0 +1,93 @@
+{
+  "scope": "LOCAL_OPERATIONS_CONTINUATION_ONLY",
+  "codeCommit": "b4bb33453d66e94adfa8eec013a11e223b26e35e",
+  "productionBase": {
+    "commit": "c5aed415cd17e6e8a21b422a4c5c92b4b924e091",
+    "tree": "830e562f5ec56e99d7fc0b04432fc056dd772254",
+    "release": "native-portable-20260917-c5aed415cd17",
+    "buildTime": "2026-09-17T08:04:51Z",
+    "images": {
+      "api": "us-west1-docker.pkg.dev/axial-acrobat-492709-r7/feishu-timeline/api@sha256:40544930b329416679f24ebc6dd2354e24beaec9d8490b9edbdbda5e0f71d192",
+      "web": "us-west1-docker.pkg.dev/axial-acrobat-492709-r7/feishu-timeline/web@sha256:774419239cea09f8d341fd29ed34361b47012c720bafbe7a3a5ef0d60ffa187b"
+    }
+  },
+  "targetIdentityFinalized": false,
+  "newRegistryDigests": null,
+  "priorProductionRecord": {
+    "path": "/private/tmp/timeline-production-final-bf2cf83.json",
+    "sha256": "f20607550bd98a08933beefe6087e41ea5dd0c2b657122a91c16dce644fc7225",
+    "newRemoteReadPerformed": false
+  },
+  "unchangedDependencyHashes": {
+    "native_release_target.py": "206eb354ef49598ab46d387573b562decccda8553f21713f1dec22c2fd3f71f0",
+    "native_release_backup.py": "e1c7b96aaf7318080223280bdbfc97c1601a2b8036f9a4ccbcc2f3b400548c6e",
+    "native_runtime_app.py": "6143c96c4e8b93a10344e0263485fa6970faa14279c3e122f97465bc24bbd365",
+    "native_backup_controller.py": "5bfda36db359474f5ef218ab3d2b103fbd2acefea49757fcac25494ce3a3874d",
+    "native_cutover.py": "4fcaa6b688b40fc9965a36461f3cc9e7ccc2560be9b217b720560cdae348869c",
+    "native_database_scope.py": "e44fad1b0554569e215d7e3ea3bf3d1ab2c11a35c62a14949c7d05900cc76dcc",
+    "native_migration_probe.py": "375ce24629be5f40cfe106ebea736a3c69d8f4b23ea3f77b141f9b90cc351dab",
+    "native_runtime_network.py": "1777805fe945e862fb72946598766b6961b07cc22e6e8f98acfa9db0cd0de246",
+    "native_runtime_redis.py": "e21b6e15c3a50c345f60f8c31f65c7bbfe245a77ffacf2403568bffd54a8cbbc",
+    "timeline-native-api.service": "a5600c9b4f98c4a8852cb3e79ab395033fc685bd235e87277689f4da364412d1",
+    "timeline-native-release.service": "78c12a115c07fa06dc3b2ecfbe3bdccaa7e2f4dfa71031b223426934eac768aa",
+    "timeline-native-release-check.service": "b6a95ff98b6f269549044a702cffccf3d1835a81b432e2dc561aca05e2174c43",
+    "timeline-native-release-rollback.service": "47f0dd19deadaeccaf3e0c5ad81eaefe178a5972560650f05ec102f3f222ff7b"
+  },
+  "tests": {
+    "result": "PASS",
+    "count": 129,
+    "exitCode": 0,
+    "python": "3.12.7",
+    "modules": [
+      "test_native_release",
+      "test_native_release_tools",
+      "test_native_release_backup",
+      "test_native_runtime_app",
+      "test_native_runtime_network",
+      "test_native_cutover",
+      "test_native_release_socket_patch",
+      "test_native_backup_controller",
+      "test_native_database_scope",
+      "test_native_migration_probe",
+      "test_native_runtime_redis"
+    ],
+    "rawLogPath": "/private/tmp/timeline-login-ops-tests-20260918-attempt2.log",
+    "rawLogSha256": "a46fc3b43d40c81c7c57ec0684bb4bc71dd0e298562bf85d47224f12732cbf89",
+    "interruptionMethod": "local controlled exceptions and real temporary-file writes; no production SIGKILL"
+  },
+  "newInstalledPayloadNames": [
+    "native_release_target_20260918.py",
+    "native_release.py"
+  ],
+  "reviewStatus": "INDEPENDENT_REVIEW_PENDING",
+  "productionAccessPerformed": false,
+  "productionChanged": false,
+  "pushPerformed": false,
+  "mainChanged": false,
+  "tagChanged": false,
+  "comparedHistoricalCommit": "6fd49d9a606ee357347ad7aaad5751c23e6e3260",
+  "comparedHistoricalTree": "e2b5894d5206750b76b12fe51746181c58a864a0",
+  "historicalRuntimeSourceHashes": {
+    "apps/api/src/cli/native-account.ts": "bf818da8d9438b2bfc0baf4e2aa1eaa916e8d4cb611634dc316d5a4efdf6d6cf",
+    "apps/api/src/modules/admin/admin-control-center.service.ts": "b41ef486c49ada42a4e4c85de8df20612b22500652899be001a632559d92ab39",
+    "apps/api/src/modules/auth/dto/native-auth.dto.ts": "04efd252a5c6321bb14d01688e7200d4bc57231f355becab7d7d961b90e0c9d8",
+    "apps/api/src/modules/auth/native-auth.postgres.integration.spec.ts": "fb880ec8d9430e36ef1961a57853c85676fe80bf841e45e17e2343bcca23b969",
+    "apps/api/src/modules/auth/native-auth.rules.ts": "2ba258195c5fa1096defae84f2a66aefedce4771f27f9a0a868728baa0b50257",
+    "apps/api/src/modules/auth/native-auth.service.ts": "c1801013a3a7ce2fd334afb6ca281d9c59d9127f17e2384dd8e8820f26989b12",
+    "apps/api/src/modules/auth/native-password.service.spec.ts": "b5bec8a74a94196c879b354b468505e916ab2960b90608e054aa3aff4ff458f6",
+    "apps/web/src/app/account/page.tsx": "4a4e51aad7d0c4e09137cd15ee8eabdfb916a46c28a1d6addb4d1e3557e16b97",
+    "apps/web/src/app/admin/accounts/page.tsx": "3ea0fe06d4585fbda06acd0e8be66d698dac2fc2c03222d31350896a507fe00e",
+    "apps/web/src/app/globals.css": "409201b844d0ca72097976e103a558d4627041af4f09d893cb4dbdd62cf17659",
+    "apps/web/src/app/login/callback/login-callback-client.tsx": "8eb31b3033d117de5fc999764c64a83c38701810a166f2fa8050a9962ec5a653",
+    "apps/web/src/app/login/page.tsx": "d27f76c6e38a8665c8204d6f8617dbd8d67f75ba875f751a234c58d201745db9",
+    "apps/web/src/app/login/username-pattern.test.tsx": "35a6415b686386ac742a167c4540746cdd69bfbb8443d3589a9b7ebeeef23996",
+    "apps/web/src/app/r22.css": "ad2ee844dc2c4ed66fe9a1d5cd930e84ebc406762ca603a9ac8de2126fd867b6",
+    "apps/web/src/components/admin-control-center.tsx": "16491807e78877e1fae6e05a8d06ec24095516a607d9dc80daa09f7b5fd96218",
+    "apps/web/src/components/app-shell.tsx": "2e2112608b95c35e73cb1ec8e4a224e412730cb5067c6055b3122e7851af2205",
+    "apps/web/src/lib/native-password-policy.test.ts": "fc7a1f034258da3aa3326397131538416ecfb8b8c2750cfe74e399fab3ed0117",
+    "apps/web/src/lib/native-password-policy.ts": "0e9863a37540487cf51afbee371b65c6d5f3f1078dd237cdcce43ba796b97f25",
+    "apps/web/src/lib/navigation.ts": "3866fc09c29b2117c675d964ba183e92f15ad8187f53c1e9c6f9d33a01a85fc3"
+  },
+  "candidateStatus": "6fd_WITHDRAWN_GLOBAL_IMPLICIT_CONVERSION_HTTP_FAILURE",
+  "finalCandidateCommit": null
+}

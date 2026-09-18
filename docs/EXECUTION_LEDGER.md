@@ -7887,3 +7887,12 @@ BLOCKER_REPORT: Public-source push remains rejected by platform automatic review
 - 本次代码无变更，本地测试未重跑（既有结果保留）；staging URL/runtime/path均未执行；production本次未改变，运行 `6c70a897ec7643f4681616d801481765aaa8f7bc`；用户确认登录路径，其他读取为实际浏览器观察；main/tag未变。
 - 未完成：工作台空状态提示、注册/恢复/改密/授权写入浏览器验收、完整Network/console和响应式矩阵、callback/别名；正式Placeholder维持上次源码扫描0，本次未改源码。精确状态 `PRODUCTION_BROWSER_PARTIAL / USER_CONFIRMED_NATIVE_LOGIN_DASHBOARD`；整个产品尚未获接受。
 - 证据：`docs/acceptance/NATIVE_ACCOUNTS_20260912/owner-browser-confirmation-20260914.json`；README/路由矩阵同步更新。临时云访问仍保持已清理。
+
+
+## 原生登录体验版本：独立 Ops 接续准备（2026-09-18）
+
+- 所有者新工作包由根任务实施；本子任务仅在独立 `/private/tmp/timeline-login-release-ops-20260918` 准备 c5 后续固定发布控制器。源码提交 `b4bb33453d66e94adfa8eec013a11e223b26e35e`，未连接生产、推送或发布。
+- 安装范围仅一个新目标模块与原子替换发布控制器；保留原 v1 状态、c5 回退、所有旧原件/备份/收据、PG/Redis/对象保护。固定9项Python依赖和4个unit保持原字节，双方API均要求真实优雅退出。
+- 11个运维测试模块129项本地PASS；12种本地写入/原子激活中断恢复、旧proof拒用及权限/状态负向通过。这些是本地合成测试，不是生产演练。
+- `TARGET=None`：6fd因根任务真实HTTP隐式类型转换失败已撤回，最终新candidate与RepoDigest待提供；当前包不可生成/发布，独立静态审查待完成。
+- 详情及日志摘要见 `docs/acceptance/NATIVE_LOGIN_RELEASE_20260918/OPERATIONS_CONTINUATION.md` 与 `operations-continuation-preliminary.json`。main/tag/生产由本子任务保持不变。
