@@ -1,3 +1,4 @@
+import { assertTeamTaskById, withProjectWrite } from '../../common/team-authorization';
 import {
   BadRequestException,
   ConflictException,
@@ -90,8 +91,8 @@ export class MassProductionsService {
     this.assertActorCanManage(actor);
     const input = this.parseWriteInput(rawInput);
 
-    await this.prisma.$transaction(async (tx) => {
-      const context = await this.lockActiveTaskAndGetContext(tx, projectId);
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
+      const context = await this.lockActiveTaskAndGetContext(tx, actor, projectId);
       this.assertRecordCapacity(context.items, true);
       await this.getUserOrThrow(tx, input.ownerId);
       await this.startTaskIfNeeded(tx, context.activeTask!, actor, '批量生产已开始准备。');
@@ -140,10 +141,10 @@ export class MassProductionsService {
     this.assertActorCanManage(actor);
     const input = this.parseWriteInput(rawInput);
 
-    await this.prisma.$transaction(async (tx) => {
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
       await this.lockRecordRow(tx, projectId, recordId);
       const record = await this.getRecordOrThrow(tx, projectId, recordId);
-      await this.lockActiveTaskAndGetContext(tx, projectId);
+      await this.lockActiveTaskAndGetContext(tx, actor, projectId);
 
       if (!canEditMassProductionRecord(record.status)) {
         throw new BadRequestException('当前批量生产记录状态不允许编辑。');
@@ -202,10 +203,10 @@ export class MassProductionsService {
     await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     this.assertActorCanManage(actor);
 
-    await this.prisma.$transaction(async (tx) => {
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
       await this.lockRecordRow(tx, projectId, recordId);
       const record = await this.getRecordOrThrow(tx, projectId, recordId);
-      const context = await this.lockActiveTaskAndGetContext(tx, projectId);
+      const context = await this.lockActiveTaskAndGetContext(tx, actor, projectId);
 
       if (!canStartMassProductionRecord(record.status)) {
         throw new BadRequestException('当前批量生产记录状态不允许开始。');
@@ -258,10 +259,10 @@ export class MassProductionsService {
     await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     this.assertActorCanManage(actor);
 
-    await this.prisma.$transaction(async (tx) => {
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
       await this.lockRecordRow(tx, projectId, recordId);
       const record = await this.getRecordOrThrow(tx, projectId, recordId);
-      await this.lockActiveTaskAndGetContext(tx, projectId);
+      await this.lockActiveTaskAndGetContext(tx, actor, projectId);
 
       if (!canCompleteMassProductionRecord(record.status)) {
         throw new BadRequestException('当前批量生产记录状态不允许完成。');
@@ -316,10 +317,10 @@ export class MassProductionsService {
     await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     this.assertActorCanManage(actor);
 
-    await this.prisma.$transaction(async (tx) => {
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
       await this.lockRecordRow(tx, projectId, recordId);
       const record = await this.getRecordOrThrow(tx, projectId, recordId);
-      await this.lockActiveTaskAndGetContext(tx, projectId);
+      await this.lockActiveTaskAndGetContext(tx, actor, projectId);
 
       if (!canCancelMassProductionRecord(record.status)) {
         throw new BadRequestException('当前批量生产记录状态不允许取消。');
@@ -365,8 +366,8 @@ export class MassProductionsService {
     await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     this.assertActorCanManage(actor);
 
-    await this.prisma.$transaction(async (tx) => {
-      const context = await this.lockActiveTaskAndGetContext(tx, projectId);
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
+      const context = await this.lockActiveTaskAndGetContext(tx, actor, projectId);
 
       if (!context.activeTask) {
         throw new BadRequestException('当前没有可完成的批量生产任务。');
@@ -493,6 +494,7 @@ export class MassProductionsService {
 
   private async lockActiveTaskAndGetContext(
     tx: Prisma.TransactionClient,
+    actor: AuthenticatedUser,
     projectId: string,
   ) {
     const lockedTasks = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
@@ -515,6 +517,7 @@ export class MassProductionsService {
     if (context.activeTask?.id !== lockedTaskId) {
       this.throwStateChanged();
     }
+    await assertTeamTaskById(tx, context.activeTask!.id, actor);
     return context;
   }
 

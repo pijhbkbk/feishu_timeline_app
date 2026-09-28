@@ -1,3 +1,4 @@
+import { installTeamAuthorizationFixture } from '../../test-support/team-authorization.fixture';
 import {
   AttachmentScanStatus,
   AttachmentTargetType,
@@ -17,7 +18,9 @@ import { ReviewsService } from './reviews.service';
 const actorId = 'reviewer-1';
 const actor = {
   id: actorId,
-  roleCodes: ['project_manager'],
+  authVersion: 1,
+  authSource: 'local',
+  roleCodes: ['reviewer', 'quality_engineer'],
   permissionCodes: ['project.read', 'review.execute'],
   isSystemAdmin: false,
 } as never;
@@ -40,6 +43,15 @@ const project = {
   plannedEndDate: null,
 };
 
+
+function monthlyPlanRow(taskCount = 12) { return { id: 'plan-exact', status: 'ACTIVE', frequency: 'MONTHLY', totalCount: 12, taskCount, validCount: Math.min(taskCount, 12) }; }
+
+function visualLockTx(queryRaw: unknown) {
+  return { $queryRaw: queryRaw, workflowTask: { findUnique: vi.fn().mockResolvedValue({
+    id: 'task-current', projectId: project.id, nodeCode: WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW,
+    isActive: true, status: 'IN_PROGRESS', assigneeUserId: actorId,
+  }) } };
+}
 function reviewRecord(
   id: string,
   reviewType: ReviewType = ReviewType.CAB_REVIEW,
@@ -128,6 +140,7 @@ function workspaceDb(input?: {
     .mockResolvedValue(input?.attachmentRows ?? []);
   const queryRaw = vi.fn(async (query: { strings?: readonly string[] }) => {
     const sql = query.strings?.join('') ?? '';
+    if (sql.includes('monthly_plan_integrity')) return [monthlyPlanRow()];
     if (sql.includes('CHAR_LENGTH')) {
       return sourceQuery(query);
     }
@@ -178,6 +191,7 @@ function nonCreateWriteHarness(input: {
   const create = vi.fn().mockResolvedValue(reviewRecord('created'));
   const queryRaw = vi.fn(async (query: { strings?: readonly string[] }) => {
     const sql = query.strings?.join('') ?? '';
+    if (sql.includes('monthly_plan_integrity')) return [monthlyPlanRow()];
     if (sql.includes('FOR UPDATE')) {
       return [{ id: sql.includes('workflow_tasks') ? 'task-CAB_REVIEW' : 'review-1' }];
     }
@@ -233,9 +247,10 @@ function nonCreateWriteHarness(input: {
   const transaction = vi.fn(
     async (
       executor: (client: typeof tx | typeof workspaceTx) => Promise<unknown>,
-      options?: unknown,
-    ) => executor(options ? workspaceTx : tx),
+      options?: { isolationLevel?: string },
+    ) => executor(options?.isolationLevel === 'RepeatableRead' ? workspaceTx : tx),
   );
+  installTeamAuthorizationFixture(tx, [actor], id => id === 'task-CAB_REVIEW' ? { id, projectId: project.id, nodeCode: 'CAB_REVIEW', assigneeUserId: actorId, isActive: true, status: 'IN_PROGRESS' } : null);
   const prisma = {
     project: { findUnique: vi.fn().mockResolvedValue(project) },
     workflowTask: { findFirst: vi.fn().mockResolvedValue(null) },
@@ -421,6 +436,7 @@ function workspaceSourceAdmissionHarness(input: {
   });
   const queryRaw = vi.fn(async (query: RawSqlQuery) => {
     const sql = sqlText(query);
+    if (sql.includes('monthly_plan_integrity')) return [monthlyPlanRow()];
     if (sql.includes('CHAR_LENGTH')) {
       return sourceQuery(query);
     }
@@ -498,6 +514,7 @@ function uploadAdmissionHarness(
   const finalizeAttempt = vi.fn();
   const queryRaw = vi.fn(async (query: RawSqlQuery) => {
     const sql = sqlText(query);
+    if (sql.includes('monthly_plan_integrity')) return [monthlyPlanRow(pipelineStarted ? options.finalizeVisualPeriodCount ?? options.visualPeriodCount ?? 12 : options.visualPeriodCount ?? 12)];
     if (sql.includes('FOR UPDATE')) {
       const phase = pipelineStarted ? 'finalize' : 'preflight';
       const target = sql.includes('workflow_tasks')
@@ -621,6 +638,12 @@ function uploadAdmissionHarness(
       return { id: 'attachment-new', fileName: reviewAttachmentFile.originalname };
     },
   );
+  installTeamAuthorizationFixture(tx, [actor], id => id === taskId ? { id, projectId: project.id, nodeCode: config.nodeCode, assigneeUserId: actorId, isActive: true, status: 'IN_PROGRESS' } : null);
+  Object.assign(tx, { recurringTask: {
+    findFirst: vi.fn().mockResolvedValue({ id: 'period-current' }),
+    findUniqueOrThrow: vi.fn().mockResolvedValue({ id: 'period-current', projectId: project.id, recurringPlanId: 'plan-exact',
+      periodIndex: 1, reviewerId: actorId, plannedDate: new Date('2026-08-01T00:00:00Z'), status: 'PENDING' }),
+  } });
   const prisma = {
     $queryRaw: queryRaw,
     reviewRecord: { findFirst: recordLookup },
@@ -699,6 +722,7 @@ function legacyPublicWriteHarness(
   const activityCreate = vi.fn().mockResolvedValue(undefined);
   const queryRaw = vi.fn(async (query: { strings?: readonly string[] }) => {
     const sql = query.strings?.join('') ?? '';
+    if (sql.includes('monthly_plan_integrity')) return [monthlyPlanRow()];
     if (sql.includes('FOR UPDATE')) {
       return [{ id: sql.includes('workflow_tasks') ? taskId : 'review-legacy' }];
     }
@@ -745,6 +769,9 @@ function legacyPublicWriteHarness(
       findUniqueOrThrow: vi.fn().mockResolvedValue({ totalCount: 12 }),
     },
   };
+  installTeamAuthorizationFixture(tx, [actor], id => id === taskId ? { id, projectId: project.id, nodeCode: config.nodeCode, assigneeUserId: actorId, isActive: true, status: 'IN_PROGRESS' } : null);
+  Object.assign(tx.recurringTask, { findUniqueOrThrow: vi.fn().mockResolvedValue({ id: 'period-current', projectId: project.id,
+    recurringPlanId: 'plan-exact', periodIndex: 1, reviewerId: actorId, plannedDate: new Date('2026-08-01T00:00:00Z'), status: 'PENDING' }) });
   const prisma = {
     $transaction: vi.fn(
       async (executor: (client: typeof tx) => Promise<unknown>) => executor(tx),
@@ -1048,7 +1075,7 @@ describe('ReviewsService resource bounds', () => {
     {
       label: 'thirteenth plan period',
       options: { visualPeriodCount: 13 },
-      code: 'VISUAL_DELTA_REVIEW_PERIOD_LIMIT_EXCEEDED',
+      code: 'MONTHLY_REVIEW_PLAN_INVALID',
     },
   ])(
     'visual upload rejects $label before starting attachment storage',
@@ -1246,6 +1273,7 @@ describe('ReviewsService resource bounds', () => {
         },
       };
       const rootWorkspace = workspaceDb();
+      installTeamAuthorizationFixture(tx, [actor]);
       const prisma = {
         ...rootWorkspace.db,
         $transaction: vi.fn(
@@ -1342,6 +1370,7 @@ describe('ReviewsService resource bounds', () => {
       const rows = selectedIds.map((id) => reviewRecord(id, reviewType));
       const queryRaw = vi.fn(async (query: RawSqlQuery) => {
         const sql = sqlText(query);
+        if (sql.includes('monthly_plan_integrity')) return [monthlyPlanRow()];
         if (sql.includes('CHAR_LENGTH')) {
           return [];
         }
@@ -1438,7 +1467,7 @@ describe('ReviewsService resource bounds', () => {
     expect(harness.recurringPlanFindMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
-          sourceWorkflowTaskId: { in: ['task-current'] },
+          projectId: project.id, sourceNodeCode: WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW,
         }),
         select: expect.objectContaining({
           tasks: expect.objectContaining({ take: 13 }),
@@ -1458,7 +1487,7 @@ describe('ReviewsService resource bounds', () => {
     };
     const currentTask = {
       id: 'current-pending',
-      recurringPlanId: 'current-plan',
+      projectId: project.id, recurringPlanId: 'plan-current', reviewerId: actorId, plannedDate: new Date('2026-08-01T00:00:00Z'),
       status: RecurringTaskStatus.PENDING,
     };
     const findFirst = vi.fn(async (args: {
@@ -1475,10 +1504,11 @@ describe('ReviewsService resource bounds', () => {
     await expect(
       Reflect.get(service, 'getVisualDeltaRecurringTaskForDate').call(
         service,
-        { recurringTask: { findFirst } },
+        { $queryRaw: vi.fn().mockResolvedValue([{ id: currentTask.id }]), recurringTask: { findFirst, findUniqueOrThrow: vi.fn().mockResolvedValue(currentTask) } },
         project.id,
         'plan-current',
         new Date('2026-08-11T00:00:00.000Z'),
+        actor,
       ),
     ).resolves.toEqual(currentTask);
     expect(findFirst).toHaveBeenCalledWith(
@@ -1491,41 +1521,21 @@ describe('ReviewsService resource bounds', () => {
     );
   });
 
-  it('keys visual completion by workflow task and month without cross-plan or old-month pollution', async () => {
+  it('keeps project month completion through a task rework without mixing different months', async () => {
     const rows = [
       reviewRecord('review-old', ReviewType.VISUAL_COLOR_DIFFERENCE_REVIEW, {
         workflowTaskId: 'task-old',
-        reviewPeriod: '2026-08',
+        reviewPeriod: '2026-07',
       }),
       reviewRecord('review-current', ReviewType.VISUAL_COLOR_DIFFERENCE_REVIEW, {
         workflowTaskId: 'task-current',
         reviewPeriod: '2026-08',
       }),
     ];
-    const recurringPlans = [
-      {
-        sourceWorkflowTaskId: 'task-old',
-        tasks: [
-          {
-            status: RecurringTaskStatus.COMPLETED,
-            plannedDate: new Date('2026-08-01T00:00:00.000Z'),
-          },
-        ],
-      },
-      {
-        sourceWorkflowTaskId: 'task-current',
-        tasks: [
-          {
-            status: RecurringTaskStatus.COMPLETED,
-            plannedDate: new Date('2026-07-01T00:00:00.000Z'),
-          },
-          {
-            status: RecurringTaskStatus.PENDING,
-            plannedDate: new Date('2026-08-01T00:00:00.000Z'),
-          },
-        ],
-      },
-    ];
+    const recurringPlans = [{ sourceWorkflowTaskId: 'task-old', tasks: [
+      { status: RecurringTaskStatus.COMPLETED, plannedDate: new Date('2026-07-01T00:00:00Z') },
+      { status: RecurringTaskStatus.PENDING, plannedDate: new Date('2026-08-01T00:00:00Z') },
+    ] }];
     const harness = workspaceDb({ reviews: rows, recurringPlans });
     const { service } = createService(harness.db);
 
@@ -1542,7 +1552,7 @@ describe('ReviewsService resource bounds', () => {
     expect(harness.recurringFindMany).not.toHaveBeenCalled();
   });
 
-  it('accepts more than 12 visual periods in aggregate when every bound plan has at most 12', async () => {
+  it('rejects multiple historical project plans even when each has fewer than twelve periods', async () => {
     const rows = [
       reviewRecord('review-old', ReviewType.VISUAL_COLOR_DIFFERENCE_REVIEW, {
         workflowTaskId: 'task-old',
@@ -1576,7 +1586,7 @@ describe('ReviewsService resource bounds', () => {
         harness.db,
         project.id,
       ),
-    ).resolves.toMatchObject({ items: expect.any(Array) });
+    ).rejects.toMatchObject({ response: { code: 'VISUAL_DELTA_REVIEW_PLAN_IDENTITY_CONFLICT' } });
     expect(harness.recurringPlanFindMany).toHaveBeenCalledTimes(1);
   });
 
@@ -1588,6 +1598,7 @@ describe('ReviewsService resource bounds', () => {
     }) => {
       queries.push(query);
       const sql = query.strings?.join('') ?? '';
+      if (sql.includes('monthly_plan_integrity')) return [monthlyPlanRow(13)];
       if (sql.includes('workflow_tasks') && sql.includes('FOR UPDATE')) {
         return [{ id: 'task-current' }];
       }
@@ -1611,20 +1622,20 @@ describe('ReviewsService resource bounds', () => {
 
     await expect(
       internals.lockVisualDeltaReviewWriteState(
-        { $queryRaw: queryRaw },
+        visualLockTx(queryRaw),
         project.id,
         actor,
       ),
     ).rejects.toMatchObject({
-      response: { code: 'VISUAL_DELTA_REVIEW_PERIOD_LIMIT_EXCEEDED' },
+      response: { code: 'MONTHLY_REVIEW_PLAN_INVALID' },
     });
-    expect(queries).toHaveLength(3);
+    expect(queries).toHaveLength(4);
     expect(queries[0]!.strings?.join('')).toContain('workflow_tasks');
-    expect(queries[1]!.strings?.join('')).toContain('recurring_plans');
-    expect(queries[2]!.strings?.join('')).toContain('recurring_tasks');
-    expect(queries[2]!.values).toEqual(
-      expect.arrayContaining([project.id, 'plan-exact', 13]),
-    );
+    expect(queries[1]!.strings?.join('')).toContain('workflow_tasks');
+    expect(queries[2]!.strings?.join('')).toContain('recurring_plans');
+    expect(queries[3]!.strings?.join('')).toContain('recurring_tasks');
+    expect(queries[3]!.strings?.join('')).toContain('LIMIT 13');
+    expect(queries[3]!.values).toContain(project.id);
   });
 
   it.each([
@@ -1640,6 +1651,7 @@ describe('ReviewsService resource bounds', () => {
     const afterLockWrite = vi.fn();
     const queryRaw = vi.fn(async (query: { strings?: readonly string[] }) => {
       const sql = query.strings?.join('') ?? '';
+      if (sql.includes('monthly_plan_integrity')) return [monthlyPlanRow(13)];
       if (sql.includes('workflow_tasks') && sql.includes('FOR UPDATE')) {
         return [{ id: 'task-current' }];
       }
@@ -1662,7 +1674,7 @@ describe('ReviewsService resource bounds', () => {
     await expect(
       (async () => {
         await internals.lockVisualDeltaReviewWriteState(
-          { $queryRaw: queryRaw },
+          visualLockTx(queryRaw),
           project.id,
           actor,
         );
@@ -1685,6 +1697,7 @@ describe('ReviewsService resource bounds', () => {
     }) => {
       queries.push(query);
       const sql = query.strings?.join('') ?? '';
+      if (sql.includes('monthly_plan_integrity')) return [monthlyPlanRow()];
       if (sql.includes('workflow_tasks') && sql.includes('FOR UPDATE')) {
         return [{ id: 'task-current' }];
       }
@@ -1706,7 +1719,7 @@ describe('ReviewsService resource bounds', () => {
 
     await expect(
       internals.lockVisualDeltaReviewWriteState(
-        { $queryRaw: queryRaw },
+        visualLockTx(queryRaw),
         project.id,
         actor,
       ),
@@ -1724,7 +1737,7 @@ describe('ReviewsService resource bounds', () => {
       ]),
     );
     const planCapacityQuery = queries.find((query) =>
-      query.strings?.join('').includes('recurring_tasks'),
+      query.strings?.join('').includes('FROM "recurring_tasks"'),
     );
     expect(planCapacityQuery?.values).toEqual(
       expect.arrayContaining([project.id, 'plan-exact', 13]),
@@ -1750,6 +1763,7 @@ describe('ReviewsService resource bounds', () => {
           }),
         },
       };
+      installTeamAuthorizationFixture(tx, [actor]);
       const prisma = {
         $transaction: vi.fn(
           async (executor: (client: typeof tx) => Promise<unknown>) => executor(tx),
@@ -1777,6 +1791,7 @@ describe('ReviewsService resource bounds', () => {
         project.id,
         'plan-exact',
         expect.any(Date),
+        actor,
       );
     },
   );
@@ -1812,6 +1827,10 @@ describe('ReviewsService resource bounds', () => {
       },
       recurringPlan: { findUniqueOrThrow: planFind },
     };
+    installTeamAuthorizationFixture(tx, [actor]);
+    Object.assign(tx, { $queryRaw: vi.fn().mockResolvedValue([{ id: 'period-current' }]) });
+    Object.assign(tx.recurringTask, { findUniqueOrThrow: vi.fn().mockResolvedValue({ id: 'period-current', projectId: project.id,
+      recurringPlanId: 'plan-exact', periodIndex: 1, reviewerId: actorId, plannedDate: new Date('2026-08-01T00:00:00Z'), status: 'PENDING' }) });
     const prisma = {
       $transaction: vi.fn(
         async (executor: (client: typeof tx) => Promise<unknown>) => executor(tx),
@@ -2064,6 +2083,7 @@ describe('ReviewsService resource bounds', () => {
       }) => {
         queries.push(query);
         const sql = query.strings?.join('') ?? '';
+        if (sql.includes('monthly_plan_integrity')) return [monthlyPlanRow()];
         if (sql.includes('FOR UPDATE')) {
           return [{ id: sql.includes('workflow_tasks') ? 'task-current' : 'review-1' }];
         }
@@ -2083,7 +2103,7 @@ describe('ReviewsService resource bounds', () => {
 
       await expect(
         internals[lockMethod](
-          { $queryRaw: queryRaw },
+          visualLockTx(queryRaw),
           project.id,
           actor,
           'review-1',
@@ -2124,6 +2144,7 @@ describe('ReviewsService resource bounds', () => {
     const updateMany = vi.fn().mockResolvedValue({ count: 1 });
     const queryRaw = vi.fn(async (query: { strings?: readonly string[] }) => {
       const sql = query.strings?.join('') ?? '';
+      if (sql.includes('monthly_plan_integrity')) return [monthlyPlanRow(13)];
       if (sql.includes('FOR UPDATE')) {
         return [{ id: sql.includes('workflow_tasks') ? 'task-current' : 'review-1' }];
       }
@@ -2159,6 +2180,10 @@ describe('ReviewsService resource bounds', () => {
       },
     };
     const { service } = createService();
+    installTeamAuthorizationFixture(tx, [actor], id => id === 'task-current' ? {
+      id, projectId: project.id, nodeCode: WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW,
+      assigneeUserId: actorId, isActive: true, status: 'IN_PROGRESS',
+    } : null);
     const finalize = Reflect.get(
       service,
       'createReviewAttachmentFinalizeHook',
@@ -2178,7 +2203,7 @@ describe('ReviewsService resource bounds', () => {
     ).rejects.toMatchObject({
       response: {
         code: 'ATTACHMENT_TARGET_STATE_CHANGED',
-        reasonCode: 'VISUAL_DELTA_REVIEW_PERIOD_LIMIT_EXCEEDED',
+        reasonCode: 'MONTHLY_REVIEW_PLAN_INVALID',
       },
     });
     expect(updateMany).not.toHaveBeenCalled();
@@ -2199,6 +2224,7 @@ describe('ReviewsService resource bounds', () => {
     const updateMany = vi.fn().mockResolvedValue({ count: 1 });
     const queryRaw = vi.fn(async (query: { strings?: readonly string[] }) => {
       const sql = query.strings?.join('') ?? '';
+      if (sql.includes('monthly_plan_integrity')) return [monthlyPlanRow()];
       if (sql.includes('FOR UPDATE')) {
         return [{ id: sql.includes('workflow_tasks') ? 'task-current' : 'review-1' }];
       }
@@ -2237,6 +2263,10 @@ describe('ReviewsService resource bounds', () => {
       },
     };
     const { service } = createService();
+    installTeamAuthorizationFixture(tx, [actor], id => id === 'task-current' ? {
+      id, projectId: project.id, nodeCode: WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW,
+      assigneeUserId: actorId, isActive: true, status: 'IN_PROGRESS',
+    } : null);
     const finalize = Reflect.get(
       service,
       'createReviewAttachmentFinalizeHook',

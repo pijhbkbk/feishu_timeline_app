@@ -1,3 +1,4 @@
+import { withSystemProjectWrite } from '../../common/team-authorization';
 import {
   BadRequestException,
   Injectable,
@@ -681,11 +682,15 @@ export class NotificationQueueService implements OnModuleInit, OnModuleDestroy {
         const uncertainOverdueIdSet = new Set<string>();
 
         if (overdueIds.length > 0) {
-          const updateResult = await this.prisma.recurringTask.updateMany({
+          const updateResult = { count: 0 };
+          const projects = [...new Set(batch.filter(task => overdueIds.includes(task.id)).map(task => task.projectId))].sort();
+          for (const projectId of projects) {
+            const result = await withSystemProjectWrite(this.prisma, projectId, tx => tx.recurringTask.updateMany({
             where: {
               id: {
-                in: overdueIds,
+                in: batch.filter(task => task.projectId === projectId && overdueIds.includes(task.id)).map(task => task.id),
               },
+              projectId,
               dueAt: {
                 lt: now,
               },
@@ -699,7 +704,9 @@ export class NotificationQueueService implements OnModuleInit, OnModuleDestroy {
             data: {
               status: RecurringTaskStatus.OVERDUE,
             },
-          });
+            }));
+            updateResult.count += result.count;
+          }
           markedOverdue += updateResult.count;
 
           if (updateResult.count === overdueIds.length) {

@@ -1,3 +1,4 @@
+import { assertTeamTaskById, withProjectWrite } from '../../common/team-authorization';
 import {
   BadRequestException,
   ConflictException,
@@ -323,9 +324,9 @@ export class StandardBoardsService {
     this.assertActorCanManage(actor);
     const input = this.parseBoardWriteInput(rawInput);
 
-    await this.prisma.$transaction(async (tx) => {
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
       const lockedTaskId = await this.lockActiveTaskForWrite(
-        tx,
+        tx, actor,
         projectId,
         WorkflowNodeCode.STANDARD_BOARD_PRODUCTION,
       );
@@ -374,9 +375,9 @@ export class StandardBoardsService {
     this.assertActorCanManage(actor);
     const input = this.parseBoardWriteInput(rawInput);
 
-    await this.prisma.$transaction(async (tx) => {
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
       const lockedTaskId = await this.lockActiveTaskForWrite(
-        tx,
+        tx, actor,
         projectId,
         WorkflowNodeCode.STANDARD_BOARD_PRODUCTION,
       );
@@ -439,9 +440,9 @@ export class StandardBoardsService {
     await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     this.assertActorCanManage(actor);
 
-    await this.prisma.$transaction(async (tx) => {
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
       const lockedTaskId = await this.lockActiveTaskForWrite(
-        tx,
+        tx, actor,
         projectId,
         WorkflowNodeCode.STANDARD_BOARD_PRODUCTION,
       );
@@ -515,9 +516,9 @@ export class StandardBoardsService {
     this.assertActorCanManage(actor);
     const input = this.parseIssueBoardInput(rawInput);
 
-    await this.prisma.$transaction(async (tx) => {
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
       const lockedTaskId = await this.lockActiveTaskForWrite(
-        tx,
+        tx, actor,
         projectId,
         WorkflowNodeCode.STANDARD_BOARD_PRODUCTION,
       );
@@ -574,9 +575,9 @@ export class StandardBoardsService {
     this.assertActorCanManage(actor);
     const input = this.parseDistributionWriteInput(rawInput);
 
-    await this.prisma.$transaction(async (tx) => {
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
       const lockedTaskId = await this.lockActiveTaskForWrite(
-        tx,
+        tx, actor,
         projectId,
         WorkflowNodeCode.STANDARD_BOARD_PRODUCTION,
       );
@@ -638,9 +639,9 @@ export class StandardBoardsService {
     this.assertActorCanManage(actor);
     const input = this.parseColorBoardDetailUpdateWriteInput(rawInput);
 
-    await this.prisma.$transaction(async (tx) => {
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
       const lockedTaskId = await this.lockActiveTaskForWrite(
-        tx,
+        tx, actor,
         projectId,
         WorkflowNodeCode.BOARD_DETAIL_UPDATE,
       );
@@ -686,9 +687,9 @@ export class StandardBoardsService {
     await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     this.assertActorCanManage(actor);
 
-    await this.prisma.$transaction(async (tx) => {
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
       const lockedTaskId = await this.lockActiveTaskForWrite(
-        tx,
+        tx, actor,
         projectId,
         WorkflowNodeCode.STANDARD_BOARD_PRODUCTION,
       );
@@ -742,9 +743,9 @@ export class StandardBoardsService {
     await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     this.assertActorCanManage(actor);
 
-    await this.prisma.$transaction(async (tx) => {
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
       const lockedTaskId = await this.lockActiveTaskForWrite(
-        tx,
+        tx, actor,
         projectId,
         WorkflowNodeCode.BOARD_DETAIL_UPDATE,
       );
@@ -814,9 +815,9 @@ export class StandardBoardsService {
   ) {
     this.assertActorCanManage(actor);
 
-    await this.prisma.$transaction(async (tx) => {
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
       const lockedTaskId = await this.lockActiveTaskForWrite(
-        tx,
+        tx, actor,
         projectId,
         WorkflowNodeCode.STANDARD_BOARD_PRODUCTION,
       );
@@ -858,6 +859,7 @@ export class StandardBoardsService {
 
   private async lockActiveTaskForWrite(
     tx: Prisma.TransactionClient,
+    actor: AuthenticatedUser,
     projectId: string,
     nodeCode: WorkflowNodeCode,
   ) {
@@ -878,6 +880,7 @@ export class StandardBoardsService {
         message: '工序状态已更新，请刷新后再提交标准板数据。',
       });
     }
+    await assertTeamTaskById(tx, taskId, actor);
     return taskId;
   }
 

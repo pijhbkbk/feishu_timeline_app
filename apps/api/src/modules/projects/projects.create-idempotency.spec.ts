@@ -13,6 +13,7 @@ import {
 } from '@prisma/client';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
+import { installTeamAuthorizationFixture } from '../../test-support/team-authorization.fixture';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { ProjectsService } from './projects.service';
@@ -25,7 +26,8 @@ const actor: AuthenticatedUser = {
   departmentId: 'department-1',
   departmentName: '项目管理部',
   isSystemAdmin: false,
-  authSource: 'mock',
+  authSource: 'local',
+  authVersion: 1,
   roleCodes: ['project_manager'],
   permissionCodes: ['project.write'],
 };
@@ -192,6 +194,7 @@ function createHarness() {
     },
   };
 
+  installTeamAuthorizationFixture(tx, [{ ...actor, authVersion: 1 }]);
   const prisma = {
     ...tx,
     $transaction: vi.fn(<T>(callback: (client: typeof tx) => Promise<T>) => {
@@ -277,7 +280,7 @@ describe('ProjectsService create idempotency', () => {
     expect(workflowsService.initializeProjectWorkflow).toHaveBeenCalledTimes(1);
     expect(activityLogsService.createWithExecutor).toHaveBeenCalledTimes(2);
     expect(commands).toHaveLength(1);
-    expect(tx.$executeRaw).toHaveBeenCalledTimes(2);
+    expect(tx.$executeRaw.mock.calls.filter((args) => args[1] === projectCreateLockNamespace)).toHaveLength(2);
   });
 
   it('uses a canonical payload hash and rejects changed payload under the same key', async () => {
@@ -556,7 +559,8 @@ if (projectsPostgresTestDatabaseUrl) {
         departmentId: null,
         departmentName: null,
         isSystemAdmin: false,
-        authSource: 'mock',
+        authSource: 'local',
+  authVersion: 1,
         roleCodes: ['project_manager'],
         permissionCodes: ['project.write'],
       };

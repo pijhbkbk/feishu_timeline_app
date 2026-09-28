@@ -114,9 +114,9 @@ export function AppShell({ children }: PropsWithChildren) {
                   <small>{formatRoleCodes(user.roleCodes)}</small>
                   <Link href="/account">我的账号</Link>
                   <Link href="/account/security">账号安全</Link>
-                  {user.isSystemAdmin ? <Link href="/admin/accounts">账号管理</Link> : null}
+                  {user.isSystemAdmin ? <Link href="/admin/people">人员</Link> : null}
                   {user.isSystemAdmin || user.roleCodes.includes('admin') ? (
-                    <Link href="/admin">后台管理</Link>
+                    <Link href="/admin">管理设置</Link>
                   ) : null}
                   <button type="button" onClick={() => void logout()}>退出登录</button>
                 </div>

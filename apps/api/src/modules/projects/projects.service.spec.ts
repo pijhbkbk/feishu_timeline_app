@@ -6,6 +6,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 
+import { installTeamAuthorizationFixture } from '../../test-support/team-authorization.fixture';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { ProjectsService } from './projects.service';
 
@@ -22,7 +23,8 @@ const actor: AuthenticatedUser = {
   departmentId: 'dept-pmo',
   departmentName: '项目管理部',
   isSystemAdmin: false,
-  authSource: 'mock',
+  authSource: 'local',
+  authVersion: 1,
   roleCodes: ['project_manager'],
 };
 
@@ -123,6 +125,7 @@ function createService() {
     },
   };
 
+  installTeamAuthorizationFixture(tx, [{ ...actor, authVersion: 1 }]);
   const prisma = {
     projectCreateCommandRequest,
     $transaction: vi.fn(async (executor: (client: typeof tx) => Promise<unknown>) => executor(tx)),
@@ -234,8 +237,8 @@ describe('ProjectsService', () => {
       }),
     );
     expect(activityLogsService.createWithExecutor).toHaveBeenCalledTimes(2);
-    expect(tx.$executeRaw).toHaveBeenCalledTimes(1);
-    const lockCallOrder = tx.$executeRaw.mock.invocationCallOrder[0]!;
+    expect(tx.$executeRaw).toHaveBeenCalledTimes(2);
+    const lockCallOrder = tx.$executeRaw.mock.invocationCallOrder[1]!;
     expect(lockCallOrder).toBeLessThan(
       tx.user.findFirst.mock.invocationCallOrder[0]!,
     );

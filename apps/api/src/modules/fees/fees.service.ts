@@ -1,3 +1,4 @@
+import { assertTeamTaskById, withProjectWrite } from '../../common/team-authorization';
 import {
   BadRequestException,
   ConflictException,
@@ -85,8 +86,8 @@ export class FeesService {
     );
     const input = this.parseWriteInput(rawInput);
 
-    await this.prisma.$transaction(async (tx) => {
-      const context = await this.lockActiveFeeTaskAndGetContext(tx, projectId);
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
+      const context = await this.lockActiveFeeTaskAndGetContext(tx, actor, projectId);
       this.assertFeeRecordCapacity(context.records, true);
       await this.assertFixedFeeAmount(tx, input.amount);
 
@@ -142,10 +143,10 @@ export class FeesService {
     );
     const input = this.parseWriteInput(rawInput);
 
-    await this.prisma.$transaction(async (tx) => {
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
       await this.lockFeeRow(tx, projectId, feeId);
       const feeRecord = await this.getFeeOrThrow(tx, projectId, feeId);
-      await this.lockActiveFeeTaskAndGetContext(tx, projectId);
+      await this.lockActiveFeeTaskAndGetContext(tx, actor, projectId);
       await this.assertFixedFeeAmount(tx, input.amount);
 
       if (!canEditDevelopmentFee(feeRecord.payStatus)) {
@@ -248,8 +249,8 @@ export class FeesService {
       'workflow.transition',
     );
 
-    await this.prisma.$transaction(async (tx) => {
-      const context = await this.lockActiveFeeTaskAndGetContext(tx, projectId);
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
+      const context = await this.lockActiveFeeTaskAndGetContext(tx, actor, projectId);
 
       if (!context.activeTask) {
         throw new BadRequestException('当前没有可完成的颜色开发收费任务。');
@@ -310,10 +311,10 @@ export class FeesService {
       'workflow.transition',
     );
 
-    await this.prisma.$transaction(async (tx) => {
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
       await this.lockFeeRow(tx, projectId, feeId);
       const feeRecord = await this.getFeeOrThrow(tx, projectId, feeId);
-      const context = await this.lockActiveFeeTaskAndGetContext(tx, projectId);
+      const context = await this.lockActiveFeeTaskAndGetContext(tx, actor, projectId);
       const nextStatus = getDevelopmentFeeStatusTransitionTarget(feeRecord.payStatus, action);
 
       if (!nextStatus) {
@@ -452,6 +453,7 @@ export class FeesService {
 
   private async lockActiveFeeTaskAndGetContext(
     tx: Prisma.TransactionClient,
+    actor: AuthenticatedUser,
     projectId: string,
   ) {
     const lockedTasks = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
@@ -474,6 +476,7 @@ export class FeesService {
     if (context.activeTask?.id !== lockedTaskId) {
       this.throwFeeStateChanged();
     }
+    await assertTeamTaskById(tx, context.activeTask!.id, actor);
     return context;
   }
 

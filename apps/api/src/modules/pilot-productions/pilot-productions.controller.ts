@@ -17,7 +17,7 @@ import { PilotProductionsService } from './pilot-productions.service';
 export class PilotProductionsController {
   constructor(private readonly pilotProductionsService: PilotProductionsService) {}
 
-  @Roles('admin', 'project_manager', 'process_engineer', 'quality_engineer')
+  @Roles('production_operator', 'admin', 'project_manager', 'process_engineer', 'quality_engineer')
   @Permissions('project.read')
   @Get('projects/:projectId/first-production-plans')
   getFirstProductionPlanWorkspace(
@@ -27,7 +27,7 @@ export class PilotProductionsController {
     return this.pilotProductionsService.getFirstProductionPlanWorkspace(projectId, actor);
   }
 
-  @Roles('admin', 'project_manager', 'process_engineer')
+  @Roles('production_operator', 'admin', 'project_manager', 'process_engineer')
   @Permissions('workflow.transition')
   @Post('projects/:projectId/first-production-plans')
   createFirstProductionPlan(
@@ -38,7 +38,7 @@ export class PilotProductionsController {
     return this.pilotProductionsService.createFirstProductionPlan(projectId, body, actor);
   }
 
-  @Roles('admin', 'project_manager', 'process_engineer')
+  @Roles('production_operator', 'admin', 'project_manager', 'process_engineer')
   @Permissions('workflow.transition')
   @Patch('projects/:projectId/first-production-plans/:planId')
   updateFirstProductionPlan(
@@ -55,7 +55,7 @@ export class PilotProductionsController {
     );
   }
 
-  @Roles('admin', 'project_manager', 'process_engineer')
+  @Roles('production_operator', 'admin', 'project_manager', 'process_engineer')
   @Permissions('workflow.transition')
   @Post('projects/:projectId/first-production-plans/:planId/confirm')
   confirmFirstProductionPlan(
@@ -66,7 +66,7 @@ export class PilotProductionsController {
     return this.pilotProductionsService.confirmFirstProductionPlan(projectId, planId, actor);
   }
 
-  @Roles('admin', 'project_manager', 'process_engineer')
+  @Roles('production_operator', 'admin', 'project_manager', 'process_engineer')
   @Permissions('workflow.transition')
   @Post('projects/:projectId/first-production-plans/complete-task')
   completeFirstProductionPlanTask(
@@ -76,7 +76,7 @@ export class PilotProductionsController {
     return this.pilotProductionsService.completeFirstProductionPlanTask(projectId, actor);
   }
 
-  @Roles('admin', 'project_manager', 'process_engineer', 'quality_engineer')
+  @Roles('production_operator', 'admin', 'project_manager', 'process_engineer', 'quality_engineer')
   @Permissions('project.read')
   @Get('projects/:projectId/trial-productions')
   getTrialProductionWorkspace(
@@ -86,7 +86,7 @@ export class PilotProductionsController {
     return this.pilotProductionsService.getTrialProductionWorkspace(projectId, actor);
   }
 
-  @Roles('admin', 'project_manager', 'process_engineer', 'quality_engineer')
+  @Roles('production_operator', 'admin', 'project_manager', 'process_engineer', 'quality_engineer')
   @Permissions('project.read')
   @Get('projects/:projectId/trial-productions/:trialId')
   getTrialProductionDetail(
@@ -97,7 +97,7 @@ export class PilotProductionsController {
     return this.pilotProductionsService.getTrialProductionDetail(projectId, trialId, actor);
   }
 
-  @Roles('admin', 'project_manager', 'process_engineer')
+  @Roles('production_operator', 'admin', 'project_manager', 'process_engineer')
   @Permissions('workflow.transition')
   @Post('projects/:projectId/trial-productions')
   createTrialProduction(
@@ -108,7 +108,7 @@ export class PilotProductionsController {
     return this.pilotProductionsService.createTrialProduction(projectId, body, actor);
   }
 
-  @Roles('admin', 'project_manager', 'process_engineer')
+  @Roles('production_operator', 'admin', 'project_manager', 'process_engineer')
   @Permissions('workflow.transition')
   @Patch('projects/:projectId/trial-productions/:trialId')
   updateTrialProduction(
@@ -125,7 +125,7 @@ export class PilotProductionsController {
     );
   }
 
-  @Roles('admin', 'project_manager', 'process_engineer')
+  @Roles('production_operator', 'admin', 'project_manager', 'process_engineer')
   @Permissions('workflow.transition')
   @Post('projects/:projectId/trial-productions/:trialId/add-issue')
   addTrialProductionIssue(
@@ -142,7 +142,7 @@ export class PilotProductionsController {
     );
   }
 
-  @Roles('admin', 'project_manager', 'process_engineer')
+  @Roles('production_operator', 'admin', 'project_manager', 'process_engineer')
   @Permissions('workflow.transition')
   @Post('projects/:projectId/trial-productions/:trialId/complete')
   completeTrialProductionRecord(
@@ -153,7 +153,7 @@ export class PilotProductionsController {
     return this.pilotProductionsService.completeTrialProductionRecord(projectId, trialId, actor);
   }
 
-  @Roles('admin', 'project_manager', 'process_engineer')
+  @Roles('production_operator', 'admin', 'project_manager', 'process_engineer')
   @Permissions('workflow.transition')
   @Post('projects/:projectId/trial-productions/complete-task')
   completeTrialProductionTask(

@@ -9,8 +9,11 @@ import { WorkflowRecurringService } from './workflow-recurring.service';
 
 function createDb() {
   return {
+    $executeRaw: vi.fn().mockResolvedValue(0),
+    $queryRaw: vi.fn().mockResolvedValue([{ id: 'plan-existing', status: 'ACTIVE', frequency: 'MONTHLY', totalCount: 12, taskCount: 12, validCount: 12 }]),
+    user: { findMany: vi.fn().mockResolvedValue([{ id: 'reviewer-1', departmentId: null }]) },
     recurringPlan: {
-      findFirst: vi.fn().mockResolvedValue(null),
+      findMany: vi.fn().mockResolvedValue([]),
       create: vi.fn().mockResolvedValue({
         id: 'plan-1',
         projectId: 'project-1',
@@ -38,7 +41,7 @@ function createDb() {
 }
 
 describe('WorkflowRecurringService', () => {
-  it('creates 12 monthly review tasks from the configured total count', async () => {
+  it('creates 12 monthly review tasks with fixed quality-role assignment', async () => {
     const service = new WorkflowRecurringService();
     const db = createDb();
 
@@ -73,10 +76,11 @@ describe('WorkflowRecurringService', () => {
   it('reuses an existing monthly review plan without creating duplicates', async () => {
     const service = new WorkflowRecurringService();
     const db = createDb();
-    db.recurringPlan.findFirst.mockResolvedValue({
+    db.recurringPlan.findMany.mockResolvedValue([{
       id: 'plan-existing',
       planCode: 'RPLAN-EXISTING',
-    });
+      totalCount: 12, status: RecurringPlanStatus.ACTIVE,
+    }]);
 
     const result = await service.ensureMonthlyReviewPlan(db as never, {
       projectId: 'project-1',
@@ -90,6 +94,7 @@ describe('WorkflowRecurringService', () => {
       plan: {
         id: 'plan-existing',
         planCode: 'RPLAN-EXISTING',
+        totalCount: 12, status: RecurringPlanStatus.ACTIVE,
       },
       generatedTaskCount: 12,
       plannedDates: [],

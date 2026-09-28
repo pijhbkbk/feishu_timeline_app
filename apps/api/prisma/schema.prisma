@@ -528,6 +528,8 @@ model Role {
   isSystem        Boolean          @default(true)
   userRoles       UserRole[]
   rolePermissions RolePermission[]
+  workflowTasks   WorkflowTask[] @relation("WorkflowRequiredRole")
+  recurringTasks  RecurringTask[] @relation("RecurringRequiredRole")
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
 
@@ -929,6 +931,9 @@ model WorkflowTask {
   isPrimary            Boolean              @default(true)
   isActive             Boolean              @default(true)
   assigneeUserId       String?
+  requiredRoleCode     String?
+  assignmentEpoch      Int                  @default(0)
+  requiredRole         Role?                @relation("WorkflowRequiredRole", fields: [requiredRoleCode], references: [code], onDelete: Restrict)
   assigneeDepartmentId String?
   dueAt                DateTime?
   manualDueAt          DateTime?
@@ -962,6 +967,7 @@ model WorkflowTask {
 
   @@index([workflowInstanceId, status])
   @@index([projectId, nodeCode, status])
+  @@index([requiredRoleCode, isActive, status, assigneeUserId])
   @@index([assigneeUserId, status])
   @@index([assigneeDepartmentId, status])
   @@index([projectId, nodeCode, isPrimary, isActive])
@@ -1085,6 +1091,9 @@ model RecurringTask {
   dueAt           DateTime?
   completedAt     DateTime?
   reviewerId      String?
+  requiredRoleCode String?
+  assignmentEpoch Int @default(0)
+  requiredRole    Role? @relation("RecurringRequiredRole", fields: [requiredRoleCode], references: [code], onDelete: Restrict)
   status          RecurringTaskStatus @default(PENDING)
   result          ReviewResult        @default(PENDING)
   comment         String?
@@ -1095,6 +1104,7 @@ model RecurringTask {
 
   @@unique([recurringPlanId, periodIndex])
   @@index([projectId, status])
+  @@index([requiredRoleCode, status, plannedDate])
   @@index([reviewerId, status])
   @@map("recurring_tasks")
 }

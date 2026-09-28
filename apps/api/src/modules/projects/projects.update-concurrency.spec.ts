@@ -7,6 +7,7 @@ import {
 import { validate } from 'class-validator';
 import { describe, expect, it, vi } from 'vitest';
 
+import { installTeamAuthorizationFixture } from '../../test-support/team-authorization.fixture';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { UpdateProjectDto } from './dto/update-project.dto';
 import { ProjectsService } from './projects.service';
@@ -19,7 +20,8 @@ const actor: AuthenticatedUser = {
   departmentId: 'dept-old',
   departmentName: '原部门',
   isSystemAdmin: false,
-  authSource: 'mock',
+  authSource: 'local',
+  authVersion: 1,
   roleCodes: ['project_manager'],
   permissionCodes: ['project.write'],
 };
@@ -68,6 +70,7 @@ function createService(
   tx: Record<string, unknown>,
   readState: () => ProjectRow,
 ) {
+  installTeamAuthorizationFixture(tx, [{ ...actor, authVersion: 1 }]);
   const activityLogsService = {
     createWithExecutor: vi.fn(async () => ({ id: 'audit-1' })),
   };

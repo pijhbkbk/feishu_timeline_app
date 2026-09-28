@@ -11,10 +11,12 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 
+import { installTeamAuthorizationFixture } from '../../test-support/team-authorization.fixture';
+
 import { PerformanceTestsService } from './performance-tests.service';
 
 const actor = {
-  id: 'quality-engineer-1',
+  id: 'quality-engineer-1', authSource: 'local', authVersion: 1,
   roleCodes: ['quality_engineer'],
   permissionCodes: ['project.read', 'workflow.transition'],
   isSystemAdmin: false,
@@ -51,7 +53,7 @@ const activeTask = {
   status: WorkflowTaskStatus.IN_PROGRESS,
   isPrimary: true,
   isActive: true,
-  assigneeUserId: null,
+  assigneeUserId: 'quality-engineer-1',
   assigneeDepartmentId: null,
   assigneeUser: null,
   assigneeDepartment: null,
@@ -97,6 +99,15 @@ function createService(input?: {
   attachments?: Record<string, unknown>;
   workflows?: Record<string, unknown>;
 }) {
+  const db = input?.prisma as Record<string, any> | undefined;
+  if (db?.$transaction) {
+    const transaction = db.$transaction;
+    const configured = new WeakSet<object>();
+    db.$transaction = vi.fn((operation: (tx: any) => unknown, options?: unknown) => transaction((tx: Record<string, any>) => {
+      if (!configured.has(tx)) { installTeamAuthorizationFixture(tx, [actor], () => activeTask); configured.add(tx); }
+      return operation(tx);
+    }, options));
+  }
   return new PerformanceTestsService(
     (input?.prisma ?? {}) as never,
     (input?.activityLogs ?? {}) as never,
@@ -444,6 +455,7 @@ describe('PerformanceTestsService resource bounds', () => {
         },
       ),
     };
+    installTeamAuthorizationFixture(tx, [actor], () => activeTask);
     const service = createService();
     Reflect.set(
       service,
@@ -459,7 +471,7 @@ describe('PerformanceTestsService resource bounds', () => {
     const context = await Reflect.get(
       service,
       'lockPerformanceCompletionContext',
-    ).call(service, tx, 'project-1');
+    ).call(service, tx, actor, 'project-1');
 
     expect(context.records).toHaveLength(100);
     const performanceQueries = rawQueries.filter((query) =>
@@ -490,6 +502,7 @@ describe('PerformanceTestsService resource bounds', () => {
           : [{ id: activeTask.id }];
       }),
     };
+    installTeamAuthorizationFixture(tx, [actor], () => activeTask);
     const service = createService();
     Reflect.set(
       service,
@@ -506,6 +519,7 @@ describe('PerformanceTestsService resource bounds', () => {
       Reflect.get(service, 'lockPerformanceCompletionContext').call(
         service,
         tx,
+        actor,
         'project-1',
       ),
     ).resolves.toMatchObject({ records });

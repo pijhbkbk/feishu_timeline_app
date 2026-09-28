@@ -9,10 +9,12 @@ import {
 } from '@prisma/client';
 import { describe, expect, it, vi } from 'vitest';
 
+import { installTeamAuthorizationFixture } from '../../test-support/team-authorization.fixture';
+
 import { PerformanceTestsService } from './performance-tests.service';
 
 const actor = {
-  id: 'quality-engineer-1',
+  id: 'quality-engineer-1', authSource: 'local', authVersion: 1,
   roleCodes: ['quality_engineer'],
   permissionCodes: ['project.read', 'workflow.transition'],
   isSystemAdmin: false,
@@ -59,7 +61,7 @@ function createHarness(mode: 'update' | 'create' | 'happy') {
     status: WorkflowTaskStatus.IN_PROGRESS as WorkflowTaskStatus,
     isPrimary: true,
     isActive: true,
-    assigneeUserId: null,
+    assigneeUserId: actorId,
     assigneeDepartmentId: null,
     assigneeUser: null,
     assigneeDepartment: null,
@@ -280,6 +282,7 @@ function createHarness(mode: 'update' | 'create' | 'happy') {
             findFirst: vi.fn().mockResolvedValue({ id: actorId }),
           },
         };
+        installTeamAuthorizationFixture(tx, [actor], () => task);
         return executor(tx);
       },
     ),

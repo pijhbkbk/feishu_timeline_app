@@ -9,6 +9,7 @@ import {
 } from '@prisma/client';
 
 import type { AuthenticatedUser } from '../auth/auth.types';
+import { installTeamAuthorizationFixture } from '../../test-support/team-authorization.fixture';
 import { WorkflowsService } from './workflows.service';
 
 const actor: AuthenticatedUser = {
@@ -19,8 +20,9 @@ const actor: AuthenticatedUser = {
   departmentId: 'dept-1',
   departmentName: '项目管理部',
   isSystemAdmin: false,
-  authSource: 'mock',
-  roleCodes: ['project_manager'],
+  authSource: 'local',
+  authVersion: 1,
+  roleCodes: ['reviewer'],
 };
 
 function createService() {
@@ -112,9 +114,6 @@ describe('WorkflowsService', () => {
     vi.spyOn(service as any, 'syncWorkflowState').mockResolvedValue({
       currentNodeCode: WorkflowNodeCode.SAMPLE_COLOR_CONFIRMATION,
     });
-    vi.spyOn(service as any, 'enqueueWorkflowNotifications').mockResolvedValue(
-      undefined,
-    );
     vi.spyOn(service as any, 'getProjectWorkflowByInstance').mockResolvedValue({
       workflowInstance: { id: 'wf-1' },
     });
@@ -136,6 +135,8 @@ describe('WorkflowsService', () => {
         count: vi.fn().mockResolvedValue(0),
       },
     };
+    Object.assign(tx, { $queryRaw: vi.fn().mockResolvedValue([{ locked: true }]) });
+    installTeamAuthorizationFixture(tx, [{ ...actor, authVersion: 1 }], () => staleTask);
     prisma.$transaction.mockImplementation(
       async (callback: (executor: typeof tx) => Promise<unknown>) => callback(tx),
     );
@@ -184,6 +185,8 @@ describe('WorkflowsService', () => {
         count: vi.fn().mockResolvedValue(0),
       },
     };
+    Object.assign(tx, { $queryRaw: vi.fn().mockResolvedValue([{ locked: true }]) });
+    installTeamAuthorizationFixture(tx, [{ ...actor, authVersion: 1 }], () => currentTask);
     prisma.$transaction.mockImplementation(
       async (callback: (executor: typeof tx) => Promise<unknown>) => callback(tx),
     );
@@ -343,6 +346,7 @@ describe('WorkflowsService', () => {
   it('keeps generic START as the only public transition delegated to the executor', async () => {
     const { service, prisma } = createService();
     const tx = { workflowTask: {} };
+    installTeamAuthorizationFixture(tx, [{ ...actor, authVersion: 1 }], () => sampleColorConfirmationTask);
     prisma.$transaction.mockImplementation(async (callback) => callback(tx));
     const executor = vi
       .spyOn(service, 'transitionTaskWithExecutor')
@@ -505,99 +509,37 @@ describe('WorkflowsService', () => {
     },
   );
 
-  it('enforces the plan A task-operation matrix', () => {
-    const { service } = createService();
-    const makeActor = (
-      id: string,
-      roleCodes: AuthenticatedUser['roleCodes'],
-    ): AuthenticatedUser => ({
-      ...actor,
-      id,
-      isSystemAdmin: roleCodes.includes('admin'),
-      roleCodes,
-    });
-    const ordinaryTask = {
-      nodeCode: WorkflowNodeCode.PAINT_DEVELOPMENT,
-      nodeName: '涂料开发',
-      assigneeUserId: 'owner-1',
-    };
-    const reviewTask = {
-      nodeCode: WorkflowNodeCode.CAB_REVIEW,
-      nodeName: '驾驶室评审',
-      assigneeUserId: 'manager-1',
-    };
-    const feeTask = {
-      nodeCode: WorkflowNodeCode.DEVELOPMENT_ACCEPTANCE,
-      nodeName: '颜色开发收费',
-      assigneeUserId: 'manager-1',
-    };
-    const exitTask = {
-      nodeCode: WorkflowNodeCode.PROJECT_CLOSED,
-      nodeName: '颜色退出',
-      assigneeUserId: 'process-1',
-    };
+  it.each([
+    [WorkflowNodeCode.PAINT_DEVELOPMENT, 'owner-1', 'owner-1', ['process_engineer'], true],
+    [WorkflowNodeCode.PAINT_DEVELOPMENT, 'owner-1', 'manager-1', ['project_manager'], false],
+    [WorkflowNodeCode.PAINT_DEVELOPMENT, 'owner-1', 'admin-1', ['admin'], false],
+    [WorkflowNodeCode.CAB_REVIEW, 'manager-1', 'reviewer-1', ['reviewer'], false],
+    [WorkflowNodeCode.CAB_REVIEW, 'reviewer-1', 'reviewer-1', ['reviewer'], true],
+    [WorkflowNodeCode.CAB_REVIEW, null, 'reviewer-1', ['reviewer'], false],
+    [WorkflowNodeCode.DEVELOPMENT_ACCEPTANCE, 'manager-1', 'finance-1', ['finance'], false],
+    [WorkflowNodeCode.DEVELOPMENT_ACCEPTANCE, 'finance-1', 'finance-1', ['finance'], true],
+    [WorkflowNodeCode.DEVELOPMENT_ACCEPTANCE, 'manager-1', 'manager-1', ['project_manager'], false],
+    [WorkflowNodeCode.PROJECT_CLOSED, 'process-1', 'admin-1', ['admin'], false],
+    [WorkflowNodeCode.PROJECT_CLOSED, 'process-1', 'process-1', ['process_engineer'], false],
+    [WorkflowNodeCode.PROJECT_CLOSED, 'manager-1', 'manager-1', ['project_manager'], true],
+  ] as const)('requires the fixed role and exact claim for %s (owner %s, actor %s)',
+    (nodeCode, assigneeUserId, id, roleCodes, allowed) => {
+      const { service } = createService();
+      const operation = () => (service as any).assertActorCanOperateTask(
+        { nodeCode, nodeName: nodeCode, assigneeUserId },
+        { ...actor, id, isSystemAdmin: roleCodes.includes('admin' as never), roleCodes: [...roleCodes] },
+      );
+      if (allowed) expect(operation).not.toThrow();
+      else expect(operation).toThrow(ForbiddenException);
+    },
+  );
 
-    expect(() =>
-      (service as any).assertActorCanOperateTask(
-        ordinaryTask,
-        makeActor('owner-1', ['process_engineer']),
-      ),
-    ).not.toThrow();
-    expect(() =>
-      (service as any).assertActorCanOperateTask(
-        ordinaryTask,
-        makeActor('manager-1', ['project_manager']),
-      ),
-    ).not.toThrow();
-    expect(() =>
-      (service as any).assertActorCanOperateTask(
-        ordinaryTask,
-        makeActor('admin-1', ['admin']),
-      ),
-    ).toThrow(ForbiddenException);
-    expect(() =>
-      (service as any).assertActorCanOperateTask(
-        reviewTask,
-        makeActor('reviewer-1', ['reviewer']),
-        'designated-review',
-      ),
-    ).not.toThrow();
-    expect(() =>
-      (service as any).assertActorCanOperateTask(
-        reviewTask,
-        makeActor('reviewer-1', ['reviewer']),
-      ),
-    ).toThrow(ForbiddenException);
-    expect(() =>
-      (service as any).assertActorCanOperateTask(
-        { ...reviewTask, assigneeUserId: 'reviewer-1' },
-        makeActor('reviewer-1', ['reviewer']),
-      ),
-    ).toThrow(ForbiddenException);
-    expect(() =>
-      (service as any).assertActorCanOperateTask(
-        feeTask,
-        makeActor('finance-1', ['finance']),
-      ),
-    ).not.toThrow();
-    expect(() =>
-      (service as any).assertActorCanOperateTask(
-        feeTask,
-        makeActor('manager-1', ['project_manager']),
-      ),
-    ).toThrow(ForbiddenException);
-    expect(() =>
-      (service as any).assertActorCanOperateTask(
-        exitTask,
-        makeActor('admin-1', ['admin']),
-      ),
-    ).not.toThrow();
-    expect(() =>
-      (service as any).assertActorCanOperateTask(
-        exitTask,
-        makeActor('process-1', ['process_engineer']),
-      ),
-    ).toThrow(ForbiddenException);
+  it('does not let designated-review bypass a CAB task claim', () => {
+    const { service } = createService();
+    expect(() => (service as any).assertActorCanOperateTask(
+      { nodeCode: WorkflowNodeCode.CAB_REVIEW, nodeName: '驾驶室评审', assigneeUserId: 'another-reviewer' },
+      actor, 'designated-review',
+    )).toThrow(ForbiddenException);
   });
 
   it('blocks generic completion of pilot nodes without domain records', async () => {
@@ -631,11 +573,12 @@ describe('WorkflowsService', () => {
   it('blocks generic completion of the monthly review node before all periods finish', async () => {
     const { service } = createService();
     const tx = {
+      $queryRaw: vi.fn().mockResolvedValue([{ id: 'plan-1', status: 'ACTIVE', frequency: 'MONTHLY', totalCount: 12, taskCount: 12, validCount: 12 }]),
       recurringPlan: {
-        findFirst: vi.fn().mockResolvedValue({
+        findMany: vi.fn().mockResolvedValue([{
           id: 'plan-1',
           totalCount: 12,
-        }),
+        }]),
       },
       recurringTask: {
         count: vi.fn().mockResolvedValue(1),
@@ -645,6 +588,7 @@ describe('WorkflowsService', () => {
     await expect(
       (service as any).assertMonthlyReviewPeriodsCompleted(tx, {
         id: 'task-17',
+        projectId: 'project-1',
         nodeCode: WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW,
         nodeName: '整车色差一致性评审',
       }),
@@ -655,6 +599,7 @@ describe('WorkflowsService', () => {
     await expect(
       (service as any).assertMonthlyReviewPeriodsCompleted(tx, {
         id: 'task-17',
+        projectId: 'project-1',
         nodeCode: WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW,
         nodeName: '整车色差一致性评审',
       }),
@@ -709,6 +654,13 @@ describe('WorkflowsService', () => {
       projectNodeAssignment: {
         findUnique: vi.fn().mockResolvedValue(null),
       },
+      user: {
+        count: vi.fn().mockResolvedValue(1),
+        findMany: vi.fn().mockImplementation(({ where }) => Promise.resolve(
+          where.AND?.[1]?.id?.gt ? [] : [{ id: 'owner-1', departmentId: null }],
+        )),
+      },
+      notification: { createMany: vi.fn().mockResolvedValue({ count: 1 }) },
       workflowInstance: {
         create: vi.fn().mockResolvedValue({
           id: 'wf-1',
@@ -723,6 +675,8 @@ describe('WorkflowsService', () => {
         }),
       },
       workflowTask: {
+        findUniqueOrThrow: vi.fn().mockResolvedValue({ id: 'task-1', projectId: 'project-1',
+          nodeCode: WorkflowNodeCode.PROJECT_INITIATION, nodeName: '项目立项', assigneeUserId: 'owner-1', assignmentEpoch: 0 }),
         create: vi.fn().mockResolvedValue({
           id: 'task-1',
         }),
@@ -763,16 +717,18 @@ describe('WorkflowsService', () => {
         }),
       }),
     );
-    expect(notificationQueueService.enqueueTaskNotification).toHaveBeenCalledWith(
-      'task-1',
-      expect.anything(),
-      actor.id,
-    );
+    expect(tx.notification.createMany).toHaveBeenCalledWith(expect.objectContaining({
+      data: [expect.objectContaining({ userId: 'owner-1', projectId: 'project-1', taskId: 'task-1',
+        sendChannel: 'IN_APP', sendStatus: 'SENT', dedupeKey: 'team-task:task-1:0:owner-1' })],
+      skipDuplicates: true,
+    }));
+    expect(notificationQueueService.enqueueTaskNotification).not.toHaveBeenCalled();
   });
 
   it('creates a new round task on reject with rework metadata', async () => {
     const { service, workflowDeadlineService } = createService();
     const tx = {
+      user: { findMany: vi.fn().mockResolvedValue([{ id: 'process-1', departmentId: null }]) },
       projectNodeAssignment: {
         findUnique: vi.fn().mockResolvedValue(null),
       },
@@ -875,7 +831,6 @@ describe('WorkflowsService', () => {
         projectId: 'project-1',
         sourceWorkflowTaskId: 'task-17',
         startAt: new Date('2026-04-19T08:00:00.000Z'),
-        reviewerId: 'process-1',
       },
     );
   });

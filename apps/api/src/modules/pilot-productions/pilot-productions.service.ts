@@ -1,3 +1,4 @@
+import { assertTeamTaskById, withProjectWrite } from '../../common/team-authorization';
 import {
   BadRequestException,
   ConflictException,
@@ -181,8 +182,8 @@ export class PilotProductionsService {
     this.assertActorCanManage(actor);
     const input = this.parseFirstProductionPlanWriteInput(rawInput);
 
-    await this.prisma.$transaction(async (tx) => {
-      const context = await this.lockFirstProductionPlanTaskAndGetContext(tx, projectId);
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
+      const context = await this.lockFirstProductionPlanTaskAndGetContext(tx, actor, projectId);
       this.assertFirstProductionPlanCapacity(context.items, true);
       await this.getUserOrThrow(tx, input.ownerId);
 
@@ -229,10 +230,10 @@ export class PilotProductionsService {
     this.assertActorCanManage(actor);
     const input = this.parseFirstProductionPlanWriteInput(rawInput);
 
-    await this.prisma.$transaction(async (tx) => {
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
       await this.lockFirstProductionPlanRow(tx, projectId, planId);
       const plan = await this.getFirstProductionPlanOrThrow(tx, projectId, planId);
-      await this.lockFirstProductionPlanTaskAndGetContext(tx, projectId);
+      await this.lockFirstProductionPlanTaskAndGetContext(tx, actor, projectId);
 
       if (!canEditFirstProductionPlan(plan.status)) {
         throw new BadRequestException('已确认的首台计划不允许编辑。');
@@ -290,10 +291,10 @@ export class PilotProductionsService {
     await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     this.assertActorCanManage(actor);
 
-    await this.prisma.$transaction(async (tx) => {
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
       await this.lockFirstProductionPlanRow(tx, projectId, planId);
       const plan = await this.getFirstProductionPlanOrThrow(tx, projectId, planId);
-      await this.lockFirstProductionPlanTaskAndGetContext(tx, projectId);
+      await this.lockFirstProductionPlanTaskAndGetContext(tx, actor, projectId);
 
       if (!canConfirmFirstProductionPlan(plan.status)) {
         throw new BadRequestException('当前首台计划状态不允许确认。');
@@ -344,10 +345,10 @@ export class PilotProductionsService {
     await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     this.assertActorCanManage(actor);
 
-    await this.prisma.$transaction(async (tx) => {
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
       await this.lockFirstProductionPlanRows(tx, projectId);
       const context = await this.lockFirstProductionPlanTaskAndGetContext(
-        tx,
+        tx, actor,
         projectId,
       );
 
@@ -426,8 +427,8 @@ export class PilotProductionsService {
     this.assertActorCanManage(actor);
     const input = this.parseTrialProductionWriteInput(rawInput);
 
-    await this.prisma.$transaction(async (tx) => {
-      const context = await this.lockTrialProductionTaskAndGetContext(tx, projectId);
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
+      const context = await this.lockTrialProductionTaskAndGetContext(tx, actor, projectId);
       this.assertTrialProductionCapacity(context.items, true);
       await this.assertValidTrialProductionPlan(tx, projectId, input.productionPlanId);
       await this.assertUniqueVehicleNo(tx, projectId, input.vehicleNo);
@@ -473,14 +474,14 @@ export class PilotProductionsService {
     this.assertActorCanManage(actor);
     const input = this.parseTrialProductionWriteInput(rawInput);
 
-    await this.prisma.$transaction(async (tx) => {
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
       await this.lockTrialProductionRow(tx, projectId, trialId);
       const trial = await this.getTrialProductionForMutationOrThrow(
         tx,
         projectId,
         trialId,
       );
-      await this.lockTrialProductionTaskAndGetContext(tx, projectId);
+      await this.lockTrialProductionTaskAndGetContext(tx, actor, projectId);
       this.assertTrialProductionIssueCount(trial._count.issues, false);
 
       if (!canEditTrialProduction(trial.status)) {
@@ -548,14 +549,14 @@ export class PilotProductionsService {
     this.assertActorCanManage(actor);
     const input = this.parseTrialIssueWriteInput(rawInput);
 
-    await this.prisma.$transaction(async (tx) => {
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
       await this.lockTrialProductionRow(tx, projectId, trialId);
       const trial = await this.getTrialProductionForMutationOrThrow(
         tx,
         projectId,
         trialId,
       );
-      await this.lockTrialProductionTaskAndGetContext(tx, projectId);
+      await this.lockTrialProductionTaskAndGetContext(tx, actor, projectId);
       this.assertTrialProductionIssueCount(trial._count.issues, true);
 
       if (!canEditTrialProduction(trial.status)) {
@@ -600,14 +601,14 @@ export class PilotProductionsService {
     await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     this.assertActorCanManage(actor);
 
-    await this.prisma.$transaction(async (tx) => {
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
       await this.lockTrialProductionRow(tx, projectId, trialId);
       const trial = await this.getTrialProductionForMutationOrThrow(
         tx,
         projectId,
         trialId,
       );
-      await this.lockTrialProductionTaskAndGetContext(tx, projectId);
+      await this.lockTrialProductionTaskAndGetContext(tx, actor, projectId);
 
       if (!canEditTrialProduction(trial.status)) {
         throw new BadRequestException('当前试制记录状态不允许完成。');
@@ -670,8 +671,8 @@ export class PilotProductionsService {
     await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     this.assertActorCanManage(actor);
 
-    await this.prisma.$transaction(async (tx) => {
-      const context = await this.lockTrialProductionTaskAndGetContext(tx, projectId);
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
+      const context = await this.lockTrialProductionTaskAndGetContext(tx, actor, projectId);
 
       if (!context.activeTask) {
         throw new BadRequestException('当前没有可完成的样车试制任务。');
@@ -905,6 +906,7 @@ export class PilotProductionsService {
 
   private async lockFirstProductionPlanTaskAndGetContext(
     tx: Prisma.TransactionClient,
+    actor: AuthenticatedUser,
     projectId: string,
   ) {
     const lockedTasks = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
@@ -927,11 +929,13 @@ export class PilotProductionsService {
     if (context.activeTask?.id !== lockedTaskId) {
       this.throwPilotProductionStateChanged();
     }
+    await assertTeamTaskById(tx, context.activeTask!.id, actor);
     return context;
   }
 
   private async lockTrialProductionTaskAndGetContext(
     tx: Prisma.TransactionClient,
+    actor: AuthenticatedUser,
     projectId: string,
   ) {
     const lockedTasks = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
@@ -954,6 +958,7 @@ export class PilotProductionsService {
     if (context.activeTask?.id !== lockedTaskId) {
       this.throwPilotProductionStateChanged();
     }
+    await assertTeamTaskById(tx, context.activeTask!.id, actor);
     return context;
   }
 

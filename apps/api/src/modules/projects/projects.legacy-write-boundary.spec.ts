@@ -1,6 +1,7 @@
 import { BadRequestException, GoneException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 
+import { installTeamAuthorizationFixture } from '../../test-support/team-authorization.fixture';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { ProjectsService } from './projects.service';
 
@@ -12,7 +13,8 @@ const actor: AuthenticatedUser = {
   departmentId: 'dept-1',
   departmentName: '项目部',
   isSystemAdmin: false,
-  authSource: 'mock',
+  authSource: 'local',
+  authVersion: 1,
   roleCodes: ['project_manager'],
   permissionCodes: ['project.write'],
 };
@@ -130,6 +132,7 @@ describe('ProjectsService legacy write boundary', () => {
         updateMany,
       },
     };
+    installTeamAuthorizationFixture(tx, [{ ...actor, authVersion: 1 }]);
     const prisma = {
       $transaction: vi.fn(
         async (callback: (executor: typeof tx) => Promise<unknown>) => callback(tx),

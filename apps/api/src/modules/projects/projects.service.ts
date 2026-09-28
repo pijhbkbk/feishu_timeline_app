@@ -1,3 +1,5 @@
+import { teamProjectScope } from '../../common/team-authorization';
+import { withTeamWrite, withProjectWrite } from '../../common/team-authorization';
 import {
   BadRequestException,
   ConflictException,
@@ -831,7 +833,7 @@ export class ProjectsService {
     }
 
     try {
-      return await this.prisma.$transaction(async (tx) => {
+      return await withTeamWrite(this.prisma, actor, async (tx) => {
         await this.lockProjectCreateCommand(tx, actor.id, idempotencyKey);
         const lockedReplay = await this.findProjectCreateCommandReplay(tx, commandInput);
         if (lockedReplay) {
@@ -935,7 +937,7 @@ export class ProjectsService {
   async updateProject(projectId: string, rawInput: unknown, actor: AuthenticatedUser) {
     const input = this.normalizeUpdateInput(rawInput);
 
-    return this.prisma.$transaction(async (tx) => {
+    return withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
       await this.projectAccessService.assertProjectAccess(tx, projectId, actor, 'project.write');
 
       const currentProject = await tx.project.findUnique({
@@ -1589,32 +1591,7 @@ export class ProjectsService {
   }
 
   private buildVisibleProjectWhere(actor: AuthenticatedUser): Prisma.ProjectWhereInput {
-    if (actor.isSystemAdmin || actor.roleCodes.includes('admin')) {
-      return {};
-    }
-
-    const scopeWhere: Prisma.ProjectWhereInput[] = [
-      {
-        ownerUserId: actor.id,
-      },
-      {
-        members: {
-          some: {
-            userId: actor.id,
-          },
-        },
-      },
-    ];
-
-    if (actor.departmentId) {
-      scopeWhere.push({
-        owningDepartmentId: actor.departmentId,
-      });
-    }
-
-    return {
-      OR: scopeWhere,
-    };
+    return teamProjectScope(actor);
   }
 
   private async findProjectDetailOrThrow(db: ProjectDbClient, projectId: string) {

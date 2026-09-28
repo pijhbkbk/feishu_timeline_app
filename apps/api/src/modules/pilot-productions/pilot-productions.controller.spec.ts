@@ -11,12 +11,12 @@ describe('PilotProductionsController RBAC metadata', () => {
 
     expect(
       Reflect.getMetadata(ROLE_METADATA_KEY, prototype.getFirstProductionPlanWorkspace),
-    ).toEqual(['admin', 'project_manager', 'process_engineer', 'quality_engineer']);
+    ).toEqual(['production_operator', 'admin', 'project_manager', 'process_engineer', 'quality_engineer']);
     expect(
       Reflect.getMetadata(ROLE_METADATA_KEY, prototype.createFirstProductionPlan),
-    ).toEqual(['admin', 'project_manager', 'process_engineer']);
+    ).toEqual(['production_operator', 'admin', 'project_manager', 'process_engineer']);
     expect(
       Reflect.getMetadata(ROLE_METADATA_KEY, prototype.completeTrialProductionTask),
-    ).toEqual(['admin', 'project_manager', 'process_engineer']);
+    ).toEqual(['production_operator', 'admin', 'project_manager', 'process_engineer']);
   });
 });

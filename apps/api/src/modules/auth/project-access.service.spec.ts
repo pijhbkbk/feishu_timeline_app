@@ -38,7 +38,7 @@ describe('ProjectAccessService', () => {
     });
   });
 
-  it('rejects users without scope even if they have permission', async () => {
+  it('allows authorized team readers without project membership', async () => {
     const prisma = {
       project: {
         findUnique: vi.fn().mockResolvedValue({
@@ -53,10 +53,11 @@ describe('ProjectAccessService', () => {
 
     await expect(
       service.assertProjectAccess(prisma as never, 'project-1', actor, 'project.read'),
-    ).rejects.toBeInstanceOf(ForbiddenException);
+    ).resolves.toMatchObject({ id: 'project-1' });
+    await expect(service.assertProjectAccess(prisma as never, 'project-1', { ...actor, roleCodes: [], permissionCodes: [] }, 'project.read')).rejects.toBeInstanceOf(ForbiddenException);
   });
 
-  it('allows auditors to read audit logs globally without granting global project access', async () => {
+  it('allows an auditor team reads when both read permissions are granted', async () => {
     const prisma = {
       project: {
         findUnique: vi.fn().mockResolvedValue({
@@ -80,7 +81,7 @@ describe('ProjectAccessService', () => {
     ).resolves.toMatchObject({ id: 'project-1' });
     await expect(
       service.assertProjectAccess(prisma as never, 'project-1', auditor, 'project.read'),
-    ).rejects.toBeInstanceOf(ForbiddenException);
+    ).resolves.toMatchObject({ id: 'project-1' });
   });
 
   it('does not let an ordinary admin bypass the editable permission matrix', async () => {

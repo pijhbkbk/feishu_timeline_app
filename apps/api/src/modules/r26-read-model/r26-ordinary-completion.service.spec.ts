@@ -12,6 +12,8 @@ import {
 } from '@prisma/client';
 import { describe, expect, it, vi } from 'vitest';
 
+import { installTeamAuthorizationFixture } from '../../test-support/team-authorization.fixture';
+
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { R26OrdinaryCompletionService } from './r26-ordinary-completion.service';
 
@@ -23,8 +25,8 @@ const owner: AuthenticatedUser = {
   departmentId: 'dept-pmo',
   departmentName: '项目管理部',
   isSystemAdmin: false,
-  authSource: 'feishu',
-  roleCodes: ['project_manager'],
+  authSource: 'local', authVersion: 1,
+  roleCodes: ['project_manager', 'purchaser', 'process_engineer', 'reviewer'],
   permissionCodes: ['project.read', 'workflow.transition'],
 };
 
@@ -191,6 +193,11 @@ function createService(options: {
             }),
         ),
   };
+  const originalTransaction = prisma.$transaction;
+  prisma.$transaction = vi.fn((operation: (tx: any) => unknown, options?: unknown) => (originalTransaction as any)((tx: any) => {
+    installTeamAuthorizationFixture(tx, [{ ...owner, authVersion: 1 }, { ...observer, authVersion: 1 }], () => loadedTask);
+    return operation(tx);
+  }, options));
   const projectAccess = {
     assertProjectAccess: vi.fn().mockResolvedValue({
       id: loadedTask.projectId,
@@ -388,6 +395,7 @@ describe('R26OrdinaryCompletionService Gate 3C1', () => {
       assigneeDepartment: { id: 'dept-purchase', name: '采购部' },
     };
     const tx = {
+      $queryRaw: vi.fn().mockResolvedValue([{ locked: true }]),
       workflowTask: {
         findUnique: vi.fn().mockResolvedValue(loadedTask),
         findUniqueOrThrow: vi.fn().mockResolvedValue({
@@ -434,6 +442,7 @@ describe('R26OrdinaryCompletionService Gate 3C1', () => {
         create: vi.fn().mockResolvedValue({ id: 'command-1' }),
       },
     };
+    installTeamAuthorizationFixture(tx, [{ ...owner, authVersion: 1 }], () => loadedTask);
     base.prisma.$transaction.mockImplementation(
       async (callback: (client: typeof tx) => Promise<unknown>) =>
         callback(tx),
@@ -581,14 +590,16 @@ describe('R26OrdinaryCompletionService Gate 3C1', () => {
 
     expect(preview.canComplete).toBe(false);
     expect(preview.blockingReasons).toContain(
-      '当前用户不是任务负责人或项目负责人。',
+      '当前用户须具备工序角色并领取该任务。',
     );
 
     const tx = {
+      $queryRaw: vi.fn().mockResolvedValue([{ locked: true }]),
       workflowTask: {
         findUnique: vi.fn().mockResolvedValue(loadedTask),
       },
     };
+    installTeamAuthorizationFixture(tx, [{ ...observer, authVersion: 1 }], () => loadedTask);
     prisma.$transaction.mockImplementation(
       async (
         callback: (client: typeof tx) => Promise<unknown>,

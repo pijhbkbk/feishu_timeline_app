@@ -1,3 +1,4 @@
+import { canOperateTeamTask, withProjectWrite } from '../../common/team-authorization';
 import {
   BadRequestException,
   ConflictException,
@@ -211,7 +212,7 @@ export class TasksService {
     }
 
     try {
-      const created = await this.prisma.$transaction(async (tx) => {
+      const created = await withProjectWrite(this.prisma, actor, { taskId }, async (tx) => {
         const lockedTasks = await tx.$queryRaw<LockedProgressTask[]>(Prisma.sql`
           SELECT
             "id",
@@ -537,26 +538,15 @@ export class TasksService {
   }
 
   private canViewTask(actor: AuthenticatedUser, assigneeUserId: string | null) {
-    return (
-      this.isAdmin(actor) ||
-      this.isProjectManager(actor) ||
-      assigneeUserId === actor.id
-    );
+    void assigneeUserId;
+    return actor.isSystemAdmin || (actor.permissionCodes ?? []).includes('project.read');
   }
 
   private canSubmitTaskProgress(
     actor: AuthenticatedUser,
     task: { nodeCode: WorkflowNodeCode; assigneeUserId: string | null },
   ) {
-    if (task.nodeCode === WorkflowNodeCode.DEVELOPMENT_ACCEPTANCE) {
-      return this.isAdmin(actor) || actor.roleCodes.includes('finance');
-    }
-
-    if (task.nodeCode === WorkflowNodeCode.PROJECT_CLOSED) {
-      return this.isAdmin(actor) || this.isProjectManager(actor);
-    }
-
-    return this.isProjectManager(actor) || task.assigneeUserId === actor.id;
+    return canOperateTeamTask(task, actor);
   }
 
   private async getProgressTaskOrThrow(

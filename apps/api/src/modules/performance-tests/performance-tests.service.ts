@@ -1,3 +1,4 @@
+import { assertTeamTaskById, withProjectWrite } from '../../common/team-authorization';
 import {
   BadRequestException,
   ConflictException,
@@ -110,8 +111,8 @@ export class PerformanceTestsService {
     this.assertActorCanManage(actor);
     const input = this.parseWriteInput(rawInput);
 
-    await this.prisma.$transaction(async (tx) => {
-      const { context } = await this.lockPerformanceWriteContext(tx, projectId);
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
+      const { context } = await this.lockPerformanceWriteContext(tx, actor, projectId);
       this.assertPerformanceTestCapacity(context.records, true);
 
       await this.assertUniqueTestCode(tx, projectId, input.testCode);
@@ -161,9 +162,9 @@ export class PerformanceTestsService {
     this.assertActorCanManage(actor);
     const input = this.parseWriteInput(rawInput);
 
-    await this.prisma.$transaction(async (tx) => {
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
       const { testRecord } = await this.lockPerformanceWriteContext(
-        tx,
+        tx, actor,
         projectId,
         testId,
       );
@@ -241,7 +242,8 @@ export class PerformanceTestsService {
       throw new BadRequestException('已提交的试验记录不允许再上传报告。');
     }
 
-    const attachment = await this.attachmentsService.createStoredAttachment({
+    await this.attachmentsService.createStoredAttachment({
+      actor,
       projectId,
       targetType: AttachmentTargetType.PERFORMANCE_TEST,
       targetId: testId,
@@ -251,27 +253,12 @@ export class PerformanceTestsService {
       summary: `上传性能试验报告 ${testRecord.testCode}`,
       replacesAttachmentId: testRecord.reportAttachmentId,
       finalizeDomainAttachment: this.createReportAttachmentFinalizeHook({
+        actor,
         projectId,
         testId,
         workflowTaskId: context.activeTask!.id,
         expectedAttachmentId: testRecord.reportAttachmentId,
       }),
-    });
-
-    await this.prisma.$transaction(async (tx) => {
-      await this.activityLogsService.createWithExecutor(tx, {
-        projectId,
-        actorUserId: actor.id,
-        targetType: AuditTargetType.PERFORMANCE_TEST,
-        targetId: testId,
-        action: 'PERFORMANCE_TEST_REPORT_ATTACHED',
-        nodeCode: WorkflowNodeCode.PERFORMANCE_TEST,
-        summary: `性能试验记录 ${testRecord.testCode} 已上传报告附件。`,
-        afterData: {
-          reportAttachmentId: attachment.id,
-          fileName: attachment.fileName,
-        },
-      });
     });
 
     return this.buildDetail(this.prisma, projectId, testId);
@@ -285,9 +272,9 @@ export class PerformanceTestsService {
     await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     this.assertActorCanManage(actor);
 
-    await this.prisma.$transaction(async (tx) => {
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
       const { testRecord } = await this.lockPerformanceWriteContext(
-        tx,
+        tx, actor,
         projectId,
         testId,
       );
@@ -353,8 +340,8 @@ export class PerformanceTestsService {
     await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     this.assertActorCanManage(actor);
 
-    await this.prisma.$transaction(async (tx) => {
-      const context = await this.lockPerformanceCompletionContext(tx, projectId);
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
+      const context = await this.lockPerformanceCompletionContext(tx, actor, projectId);
 
       if (!context.activeTask) {
         this.throwPerformanceTestStateChanged();
@@ -624,6 +611,7 @@ export class PerformanceTestsService {
 
   private async lockPerformanceWriteContext(
     tx: Prisma.TransactionClient,
+    actor: AuthenticatedUser,
     projectId: string,
     testId?: string,
   ) {
@@ -671,11 +659,13 @@ export class PerformanceTestsService {
       }
     }
 
+    await assertTeamTaskById(tx, context.activeTask!.id, actor);
     return { context, testRecord };
   }
 
   private async lockPerformanceCompletionContext(
     tx: Prisma.TransactionClient,
+    actor: AuthenticatedUser,
     projectId: string,
   ) {
     const candidateContext = await this.getPerformanceContext(tx, projectId);
@@ -711,10 +701,12 @@ export class PerformanceTestsService {
     } catch {
       this.throwPerformanceTestStateChanged();
     }
+    await assertTeamTaskById(tx, context.activeTask!.id, actor);
     return context;
   }
 
   private createReportAttachmentFinalizeHook(input: {
+    actor: AuthenticatedUser;
     projectId: string;
     testId: string;
     workflowTaskId: string;
@@ -745,6 +737,7 @@ export class PerformanceTestsService {
         this.throwAttachmentTargetStateChanged();
       }
 
+      await assertTeamTaskById(tx, input.workflowTaskId, input.actor);
       if (
         !(await this.lockWorkflowTaskRow(
           tx,
@@ -805,6 +798,12 @@ export class PerformanceTestsService {
       if (updated.count !== 1) {
         this.throwAttachmentTargetStateChanged();
       }
+      await this.activityLogsService.createWithExecutor(tx, {
+        projectId: input.projectId, actorUserId: input.actor.id,
+        targetType: AuditTargetType.PERFORMANCE_TEST, targetId: input.testId,
+        action: 'PERFORMANCE_TEST_REPORT_ATTACHED', nodeCode: WorkflowNodeCode.PERFORMANCE_TEST,
+        summary: '性能试验记录已上传报告附件。', afterData: { reportAttachmentId: context.attachmentId },
+      });
     };
   }
 

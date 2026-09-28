@@ -10,16 +10,19 @@ describe('MassProductionsController RBAC metadata', () => {
     const prototype = MassProductionsController.prototype;
 
     expect(Reflect.getMetadata(ROLE_METADATA_KEY, prototype.createRecord)).toEqual([
+      'production_operator',
       'admin',
       'project_manager',
       'process_engineer',
     ]);
     expect(Reflect.getMetadata(ROLE_METADATA_KEY, prototype.startRecord)).toEqual([
+      'production_operator',
       'admin',
       'project_manager',
       'process_engineer',
     ]);
     expect(Reflect.getMetadata(ROLE_METADATA_KEY, prototype.completeTask)).toEqual([
+      'production_operator',
       'admin',
       'project_manager',
       'process_engineer',

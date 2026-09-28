@@ -133,14 +133,14 @@ describe('AdminService simplified overview and color database', () => {
     expect(sql).toContain('c."numberingAttachmentId" IS NOT NULL');
   });
 
-  it('limits ordinary readers to projects they own, join or access through their department', async () => {
+  it('grants qualified team read access independently of historical project membership', async () => {
     mockCatalog([]);
 
     await service.getColorDatabase({}, {
       id: 'viewer-1',
       departmentId: 'department-1',
       isSystemAdmin: false,
-      roleCodes: ['viewer'],
+      roleCodes: ['viewer'], permissionCodes: ['project.read'],
     } as never);
 
     const statements = prisma.$queryRaw.mock.calls.map(([statement]) => statement as {
@@ -149,11 +149,11 @@ describe('AdminService simplified overview and color database', () => {
     });
     const sql = statements.map((statement) => statement.strings?.join('') ?? '').join('\n');
     const values = statements.flatMap((statement) => [...(statement.values ?? [])]);
-    expect(sql).toContain('p."ownerUserId" =');
-    expect(sql).toContain('FROM "project_members" scoped_member');
-    expect(sql).toContain('p."owningDepartmentId" =');
-    expect(values).toContain('viewer-1');
-    expect(values).toContain('department-1');
+    expect(sql).not.toContain('p."ownerUserId" =');
+    expect(sql).not.toContain('FROM "project_members" scoped_member');
+    expect(sql).not.toContain('p."owningDepartmentId" =');
+    expect(values).not.toContain('viewer-1');
+    expect(values).not.toContain('department-1');
   });
 
   it('pages controlled color ids in the database before loading only page archives', async () => {

@@ -1,3 +1,4 @@
+import { installTeamAuthorizationFixture } from '../test-support/team-authorization.fixture';
 import {
   DevelopmentFeeStatus,
   DevelopmentFeeType,
@@ -63,6 +64,8 @@ type DomainCase = {
   transitionAuditAction: string;
   cancelAuditAction: string;
   actor: {
+    authVersion: number;
+    authSource: 'local';
     id: string;
     roleCodes: string[];
     permissionCodes: string[];
@@ -145,7 +148,7 @@ function createDomainHarness(
     status: WorkflowTaskStatus.IN_PROGRESS,
     isActive: true,
     isPrimary: true,
-    assigneeUserId: null,
+    assigneeUserId: domain.actor.id,
     assigneeDepartmentId: null,
     assigneeUser: null,
     assigneeDepartment: null,
@@ -297,7 +300,7 @@ function createDomainHarness(
               await domainLock.acquire(owner);
               return currentRecord() ? [{ id: currentRecord()!.id }] : [];
             }
-            if (sql.includes('FROM "workflow_tasks"')) {
+            if (sql.includes('FROM "workflow_tasks"') || sql.includes('FROM workflow_tasks')) {
               if (transactionNumber === 2) secondOperationObserved.resolve();
               await taskLock.acquire(owner);
               return activeTask.isActive ? [{ id: activeTask.id }] : [];
@@ -368,6 +371,7 @@ function createDomainHarness(
           },
           [domain.modelName]: model,
         };
+        installTeamAuthorizationFixture(tx, [domain.actor], id => id === activeTask.id ? { ...activeTask } : null);
         transactionOwners.set(tx, owner);
         try {
           return await executor(tx);
@@ -465,6 +469,8 @@ const domainCases: DomainCase[] = [
     transitionAuditAction: 'PAINT_PROCUREMENT_ARRIVED',
     cancelAuditAction: 'PAINT_PROCUREMENT_CANCELLED',
     actor: {
+      authVersion: 1,
+      authSource: 'local',
       id: 'purchaser-1',
       roleCodes: ['purchaser'],
       permissionCodes: ['project.read', 'workflow.transition'],
@@ -554,6 +560,8 @@ const domainCases: DomainCase[] = [
     transitionAuditAction: 'DEVELOPMENT_FEE_PAID',
     cancelAuditAction: 'DEVELOPMENT_FEE_CANCELLED',
     actor: {
+      authVersion: 1,
+      authSource: 'local',
       id: 'finance-1',
       roleCodes: ['finance'],
       permissionCodes: ['project.read', 'workflow.transition'],
@@ -647,8 +655,10 @@ const domainCases: DomainCase[] = [
     transitionAuditAction: 'SCHEDULE_PLAN_CANCELLED',
     cancelAuditAction: 'SCHEDULE_PLAN_CANCELLED',
     actor: {
+      authVersion: 1,
+      authSource: 'local',
       id: 'process-1',
-      roleCodes: ['process_engineer'],
+      roleCodes: ['production_operator'],
       permissionCodes: ['project.read', 'workflow.transition'],
       isSystemAdmin: false,
     },
@@ -777,7 +787,7 @@ describe.each(domainCases)('$label concurrency integrity', (domain) => {
       'complete',
     );
     const completion = domain.complete(harness.service, domain.actor);
-    await harness.primaryPaused.promise;
+    await Promise.race([harness.primaryPaused.promise, completion.then(() => { throw new Error('Completion finished before test barrier'); })]);
     const create = domain.create(harness.service, domain.actor);
     await harness.secondOperationObserved.promise;
     harness.releasePrimary.resolve();

@@ -6,33 +6,35 @@ import {
 } from './navigation';
 
 const routeMatrix = [
-  ['/dashboard', '工作台'],
-  ['/v2/dashboard', '工作台'],
-  ['/projects', '项目列表'],
-  ['/projects/project-1', '项目列表'],
-  ['/projects/project-1/pilot-production', '项目列表'],
-  ['/v2/projects/project-1', '项目列表'],
-  ['/tasks', '我的任务'],
-  ['/tasks/pending', '我的任务'],
-  ['/v2/tasks', '我的任务'],
-  ['/progress?projectId=project-1&taskId=task-1', '我的任务'],
-  ['/v2/progress?projectId=project-1&taskId=task-1', '我的任务'],
-  ['/materials/upload?taskId=task-1', '我的任务'],
-  ['/admin', '系统管理'],
-  ['/admin/users', '系统管理'],
-  ['/admin/roles', '系统管理'],
-  ['/admin/audit-logs', '系统管理'],
-  ['/v2/admin', '系统管理'],
-  ['/v2/admin/audit-logs', '系统管理'],
+  ['/dashboard', '我的工作'],
+  ['/v2/dashboard', '我的工作'],
+  ['/projects', '颜色项目'],
+  ['/projects/project-1', '颜色项目'],
+  ['/projects/project-1/pilot-production', '颜色项目'],
+  ['/v2/projects/project-1', '颜色项目'],
+  ['/tasks', '我的工作'],
+  ['/tasks/pending', '我的工作'],
+  ['/v2/tasks', '我的工作'],
+  ['/progress?projectId=project-1&taskId=task-1', '我的工作'],
+  ['/v2/progress?projectId=project-1&taskId=task-1', '我的工作'],
+  ['/materials/upload?taskId=task-1', '我的工作'],
+  ['/admin', null],
+  ['/admin/users', '人员'],
+  ['/admin/people', '人员'],
+  ['/admin/organization', '人员'],
+  ['/v2/admin/people', '人员'],
+  ['/admin/roles', null],
+  ['/admin/audit-logs', null],
+  ['/v2/admin', null],
+  ['/v2/admin/audit-logs', null],
 ] as const;
 
 describe('top navigation route matrix', () => {
   it('uses the approved product names', () => {
     expect(topNavigationItems.map((item) => item.label)).toEqual([
-      '工作台',
-      '项目列表',
-      '我的任务',
-      '系统管理',
+      '我的工作',
+      '颜色项目',
+      '人员',
     ]);
   });
 
@@ -41,7 +43,7 @@ describe('top navigation route matrix', () => {
       isTopNavigationItemActive(pathname, item.href),
     );
 
-    expect(activeItems.map((item) => item.label)).toEqual([expectedLabel]);
+    expect(activeItems.map((item) => item.label)).toEqual(expectedLabel ? [expectedLabel] : []);
   });
 
   it('does not assign product navigation state to public routes', () => {

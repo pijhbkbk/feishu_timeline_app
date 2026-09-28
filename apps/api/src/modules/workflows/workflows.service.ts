@@ -1,3 +1,6 @@
+import { requireActiveMonthlyPlan } from '../../common/monthly-review-plan';
+import { assertTeamTaskOperator, withProjectWrite } from '../../common/team-authorization';
+import { notifyTeamTask, resolveTeamAssignment } from '../personnel/team-assignment';
 import {
   BadRequestException,
   ConflictException,
@@ -12,7 +15,6 @@ import {
   AuditTargetType,
   ColorExitSuggestion,
   DevelopmentFeeStatus,
-  NotificationType,
   ProductionPlanStatus,
   ProductionPlanType,
   ProjectAssignmentSource,
@@ -26,7 +28,7 @@ import {
   WorkflowInstanceStatus,
   WorkflowNodeCode,
   WorkflowTaskStatus,
-  type Prisma,
+  Prisma,
 } from '@prisma/client';
 import { createHash, randomUUID } from 'node:crypto';
 
@@ -193,11 +195,11 @@ export class WorkflowsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly activityLogsService: ActivityLogsService,
-    private readonly notificationQueueService: NotificationQueueService,
+    notificationQueueService: NotificationQueueService,
     private readonly workflowDeadlineService: WorkflowDeadlineService,
     private readonly workflowRecurringService: WorkflowRecurringService,
     private readonly projectAccessService: ProjectAccessService,
-  ) {}
+  ) { void notificationQueueService; }
 
   async initializeProjectWorkflow(
     tx: Prisma.TransactionClient,
@@ -210,14 +212,7 @@ export class WorkflowsService {
       nodeCode,
       startAt: now,
     });
-    const projectAssignment = await tx.projectNodeAssignment.findUnique({
-      where: {
-        projectId_nodeCode: {
-          projectId: input.projectId,
-          nodeCode,
-        },
-      },
-    });
+    const assignment = await resolveTeamAssignment(tx, nodeCode);
 
     const instance = await tx.workflowInstance.create({
       data: {
@@ -245,10 +240,7 @@ export class WorkflowsService {
         status: WorkflowTaskStatus.READY,
         isPrimary: true,
         isActive: true,
-        assigneeUserId:
-          projectAssignment?.ownerUserId ?? input.ownerUserId ?? null,
-        assigneeDepartmentId:
-          projectAssignment?.primaryDepartmentId ?? null,
+        ...assignment,
         dueAt: taskSchedule.dueAt,
         effectiveDueAt: taskSchedule.effectiveDueAt,
         overdueDays: 0,
@@ -258,11 +250,9 @@ export class WorkflowsService {
           templateCode: DEFAULT_WORKFLOW_TEMPLATE,
           templateVersion: DEFAULT_WORKFLOW_TEMPLATE_VERSION,
           nodeCode,
-          assignmentSource:
-            projectAssignment?.assignmentSource ?? 'TASK_OVERRIDE',
-          collaboratorUserIds:
-            projectAssignment?.collaboratorUserIds ?? [],
-          reviewerUserIds: projectAssignment?.reviewerUserIds ?? [],
+          assignmentSource: assignment.assigneeUserId ? 'SINGLE_ELIGIBLE_MEMBER' : 'UNASSIGNED',
+          requiredRoleCode: assignment.requiredRoleCode,
+          collaboratorUserIds: [], reviewerUserIds: [],
         },
       },
     });
@@ -279,15 +269,7 @@ export class WorkflowsService {
       },
     });
 
-    try {
-      await this.notificationQueueService.enqueueTaskNotification(
-        task.id,
-        NotificationType.TASK_ASSIGNED,
-        input.initiatedById,
-      );
-    } catch {
-      // Notification queue failures must not affect workflow initialization.
-    }
+    await notifyTeamTask(tx, task.id);
 
     return {
       instance,
@@ -303,10 +285,7 @@ export class WorkflowsService {
       'project.read',
     );
     const workflowInstance = await this.getWorkflowInstanceByProjectOrThrow(this.prisma, projectId);
-    await this.workflowDeadlineService.refreshWorkflowInstanceTaskDeadlines(
-      this.prisma,
-      workflowInstance.id,
-    );
+    // Reading the workflow must not mutate parallel task rows outside the project write lock.
     const tasks = await this.prisma.workflowTask.findMany({
       where: {
         workflowInstanceId: workflowInstance.id,
@@ -1099,7 +1078,8 @@ export class WorkflowsService {
   async saveTaskForm(taskId: string, actor: AuthenticatedUser, rawInput: unknown) {
     const input = this.parseFormSaveInput(rawInput);
 
-    return this.prisma.$transaction(async (tx) => {
+    return withProjectWrite(this.prisma, actor, { taskId }, async (tx) => {
+      await tx.$queryRaw(Prisma.sql`SELECT id FROM workflow_tasks WHERE id = ${taskId} FOR UPDATE`);
       const task = await this.getTaskOrThrow(tx, taskId);
 
       await this.projectAccessService.assertProjectAccess(
@@ -1311,7 +1291,7 @@ export class WorkflowsService {
       });
     }
 
-    return this.prisma.$transaction((tx) =>
+    return withProjectWrite(this.prisma, actor, { taskId }, (tx) =>
       this.transitionTaskWithExecutor(tx, taskId, action, actor, rawInput),
     );
   }
@@ -1326,6 +1306,7 @@ export class WorkflowsService {
     trustedOptions?: WorkflowTransitionTrustedOptions,
   ) {
     const input = this.parseActionInput(rawInput);
+    await tx.$queryRaw(Prisma.sql`SELECT id FROM workflow_tasks WHERE id = ${taskId} FOR UPDATE`);
     const task = await this.getTaskOrThrow(tx, taskId);
 
     await this.projectAccessService.assertProjectAccess(tx, task.projectId, actor, 'workflow.transition');
@@ -1508,7 +1489,7 @@ export class WorkflowsService {
       ...(input.metadata === undefined ? {} : { metadata: input.metadata }),
     });
 
-    await this.enqueueWorkflowNotifications(createdTasks, action, actor.id);
+    for (const createdTask of createdTasks) await notifyTeamTask(tx, createdTask.id);
 
     return this.getProjectWorkflowByInstance(tx, task.workflowInstanceId);
   }
@@ -1526,6 +1507,7 @@ export class WorkflowsService {
     templates: WorkflowTaskSpawnTemplate[],
     trustedAssignments?: WorkflowResolvedAssignment[],
   ) {
+    void trustedAssignments; // Assignment is always resolved from current team roles.
     const createdTasks: Prisma.WorkflowTaskGetPayload<{
       select: {
         id: true;
@@ -1562,18 +1544,7 @@ export class WorkflowsService {
         nodeCode: template.nodeCode,
         startAt: new Date(),
       });
-      const projectAssignment = await tx.projectNodeAssignment.findUnique({
-        where: {
-          projectId_nodeCode: {
-            projectId: sourceTask.projectId,
-            nodeCode: template.nodeCode,
-          },
-        },
-      });
-      const trustedAssignment = trustedAssignments?.find(
-        (assignment) => assignment.nodeCode === template.nodeCode,
-      );
-      const hasTrustedAssignment = trustedAssignment !== undefined;
+      const assignment = await resolveTeamAssignment(tx, template.nodeCode);
 
       const createdTask = await tx.workflowTask.create({
         data: {
@@ -1587,15 +1558,7 @@ export class WorkflowsService {
           status: WorkflowTaskStatus.READY,
           isPrimary,
           isActive: true,
-          assigneeUserId: hasTrustedAssignment
-            ? trustedAssignment.ownerUserId
-            : projectAssignment?.ownerUserId ??
-              sourceTask.project.ownerUserId ??
-              sourceTask.assigneeUserId ??
-              null,
-          assigneeDepartmentId: hasTrustedAssignment
-            ? trustedAssignment.primaryDepartmentId
-            : projectAssignment?.primaryDepartmentId ?? null,
+          ...assignment,
           dueAt: taskSchedule.dueAt,
           effectiveDueAt: taskSchedule.effectiveDueAt,
           overdueDays: 0,
@@ -1614,15 +1577,9 @@ export class WorkflowsService {
             fromTaskId: sourceTask.id,
             fromNodeCode: sourceTask.nodeCode,
             reason: template.reason,
-            assignmentSource: hasTrustedAssignment
-              ? trustedAssignment.assignmentSource
-              : projectAssignment?.assignmentSource ?? 'TASK_OVERRIDE',
-            collaboratorUserIds: hasTrustedAssignment
-              ? trustedAssignment.collaboratorUserIds
-              : projectAssignment?.collaboratorUserIds ?? [],
-            reviewerUserIds: hasTrustedAssignment
-              ? trustedAssignment.reviewerUserIds
-              : projectAssignment?.reviewerUserIds ?? [],
+            assignmentSource: assignment.assigneeUserId ? 'SINGLE_ELIGIBLE_MEMBER' : 'UNASSIGNED',
+            requiredRoleCode: assignment.requiredRoleCode,
+            collaboratorUserIds: [], reviewerUserIds: [],
             ...(taskSchedule.defaultChargeAmount
               ? { defaultChargeAmount: taskSchedule.defaultChargeAmount }
               : {}),
@@ -1655,33 +1612,6 @@ export class WorkflowsService {
     }
 
     return createdTasks;
-  }
-
-  private async enqueueWorkflowNotifications(
-    createdTasks: Array<{
-      id: string;
-      nodeCode: WorkflowNodeCode;
-      nodeName: string;
-      isPrimary: boolean;
-      taskRound: number;
-    }>,
-    action: WorkflowAction,
-    actorUserId: string,
-  ) {
-    for (const task of createdTasks) {
-      const type =
-        action === WorkflowAction.RETURN || action === WorkflowAction.REJECT
-          ? NotificationType.TASK_RETURNED
-          : getWorkflowNodeMeta(task.nodeCode).isReviewNode
-            ? NotificationType.REVIEW_PENDING
-            : NotificationType.TASK_ASSIGNED;
-
-      try {
-        await this.notificationQueueService.enqueueTaskNotification(task.id, type, actorUserId);
-      } catch {
-        // Notification queue failures must not affect workflow transitions.
-      }
-    }
   }
 
   private resolveNextTaskTemplates(
@@ -1921,28 +1851,13 @@ export class WorkflowsService {
 
   private async assertMonthlyReviewPeriodsCompleted(
     tx: Prisma.TransactionClient,
-    task: Pick<WorkflowTaskWithRelations, 'id' | 'nodeCode' | 'nodeName'>,
+    task: Pick<WorkflowTaskWithRelations, 'id' | 'projectId' | 'nodeCode' | 'nodeName'>,
   ) {
     if (task.nodeCode !== WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW) {
       return;
     }
 
-    const recurringPlan = await tx.recurringPlan.findFirst({
-      where: {
-        sourceWorkflowTaskId: task.id,
-        sourceNodeCode: WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW,
-      },
-      select: {
-        id: true,
-        totalCount: true,
-      },
-    });
-
-    if (!recurringPlan) {
-      throw new BadRequestException(
-        `${task.nodeName} 尚未生成月度评审计划，不能完成工序。`,
-      );
-    }
+    const recurringPlan = await requireActiveMonthlyPlan(tx, task.projectId);
 
     const completedPeriods = await tx.recurringTask.count({
       where: {
@@ -1963,65 +1878,12 @@ export class WorkflowsService {
     actor: AuthenticatedUser,
     authorizationSource?: WorkflowTransitionAuthorizationSource,
   ) {
-    const isAdmin = actor.isSystemAdmin || actor.roleCodes.includes('admin');
-    const isProjectManager = actor.roleCodes.includes('project_manager');
-    const isReviewNode =
-      task.nodeCode === WorkflowNodeCode.CAB_REVIEW ||
-      task.nodeCode === WorkflowNodeCode.COLOR_CONSISTENCY_REVIEW ||
-      task.nodeCode === WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW;
-
-    if (authorizationSource === 'r26-gate3c1') {
-      if (
-        isAdmin ||
-        isProjectManager ||
-        task.assigneeUserId === actor.id ||
-        task.project.ownerUserId === actor.id
-      ) {
-        return;
-      }
-
-      throw new ForbiddenException(
-        `${task.nodeName} 仅允许当前负责人或项目负责人完成。`,
-      );
-    }
-
-    if (authorizationSource === 'designated-review') {
-      if (isReviewNode) {
-        return;
-      }
-
-      throw new ForbiddenException('指定评审授权不适用于当前工序。');
-    }
-
-    if (task.nodeCode === WorkflowNodeCode.DEVELOPMENT_ACCEPTANCE) {
-      if (isAdmin || actor.roleCodes.includes('finance')) {
-        return;
-      }
-
-      throw new ForbiddenException('第 13 步财务确认仅允许财务确认人或管理员执行。');
-    }
-
-    if (task.nodeCode === WorkflowNodeCode.PROJECT_CLOSED) {
-      if (isAdmin || isProjectManager) {
-        return;
-      }
-
-      throw new ForbiddenException('第 18 步最终退出结论仅允许项目经理或管理员执行。');
-    }
-
-    if (isReviewNode) {
-      if (isProjectManager) {
-        return;
-      }
-
-      throw new ForbiddenException(`${task.nodeName} 仅允许指定评审人或项目经理执行。`);
-    }
-
-    if (isProjectManager || task.assigneeUserId === actor.id) {
+    if (authorizationSource === 'designated-review' && task.nodeCode === WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW) {
+      if (!actor.roleCodes.includes('quality_engineer')) throw new ForbiddenException('仅质量试验角色可签署月度评审。');
+      // ReviewsService has locked and validated the exact monthly assignee.
       return;
     }
-
-    throw new ForbiddenException(`${task.nodeName} 仅允许当前负责人或项目经理执行。`);
+    assertTeamTaskOperator(task, actor);
   }
 
   private async assertNoActiveTaskForNode(
@@ -3144,7 +3006,7 @@ export class WorkflowsService {
       projectId: sourceTask.projectId,
       sourceWorkflowTaskId: monthlyReviewTask.id,
       startAt: updatedTask.completedAt ?? new Date(),
-      reviewerId: sourceTask.assigneeUserId ?? sourceTask.project.ownerUserId ?? null,
+
     });
   }
 }

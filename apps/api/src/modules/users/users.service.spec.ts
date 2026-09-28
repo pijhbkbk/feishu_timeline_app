@@ -299,7 +299,7 @@ describe('UsersService', () => {
     },
   );
 
-  it('rejects a global directory request unless the actor has project.write', async () => {
+  it('rejects an unassigned account from the team directory', async () => {
     const prisma = {
       user: {
         findMany: vi.fn(),
@@ -307,11 +307,11 @@ describe('UsersService', () => {
     };
     const service = new UsersService(prisma as never);
 
-    await expect(service.getDirectory({}, viewer)).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(service.getDirectory({}, { ...viewer, roleCodes: [], permissionCodes: [] })).rejects.toBeInstanceOf(ForbiddenException);
     expect(prisma.user.findMany).not.toHaveBeenCalled();
   });
 
-  it('allows the explicit system administrator override but not an admin role without project.write', async () => {
+  it('allows the system administrator but rejects a role label without project.read', async () => {
     const prisma = {
       user: {
         findMany: vi.fn().mockResolvedValue([]),
@@ -333,7 +333,7 @@ describe('UsersService', () => {
       service.getDirectory({}, {
         ...viewer,
         id: 'ordinary-admin',
-        roleCodes: ['admin'],
+        roleCodes: ['admin'], permissionCodes: [],
       }),
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
@@ -374,6 +374,7 @@ describe('UsersService', () => {
     expect(prisma.user.findMany).toHaveBeenCalledWith({
       where: {
         status: UserStatus.ACTIVE,
+        localCredential: { isNot: null },
         name: {
           contains: '张三',
           mode: 'insensitive',
@@ -401,7 +402,7 @@ describe('UsersService', () => {
     expect(response[0]).not.toHaveProperty('roleCodes');
   });
 
-  it('limits a project directory to active members and the project owner after enforcing actor scope', async () => {
+  it('returns the bounded active native team directory after checking the project exists', async () => {
     const prisma = {
       project: {
         findUnique: vi.fn().mockResolvedValue({
@@ -421,34 +422,19 @@ describe('UsersService', () => {
       service.getDirectory({ projectId: 'project-1' }, viewer),
     ).resolves.toEqual([]);
 
-    expect(prisma.project.findUnique).toHaveBeenCalledWith({
-      where: { id: 'project-1' },
-      select: {
-        id: true,
-        ownerUserId: true,
-        owningDepartmentId: true,
-        members: {
-          where: { userId: 'viewer-1' },
-          select: { id: true },
-          take: 1,
-        },
-      },
-    });
+    expect(prisma.project.findUnique).toHaveBeenCalledWith({ where: { id: 'project-1' }, select: { id: true } });
     expect(prisma.user.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: {
           status: UserStatus.ACTIVE,
-          OR: [
-            { projectMembers: { some: { projectId: 'project-1' } } },
-            { ownedProjects: { some: { id: 'project-1' } } },
-          ],
+          localCredential: { isNot: null },
         },
         take: 50,
       }),
     );
   });
 
-  it('does not let project.read enumerate members outside the actor project scope', async () => {
+  it('does not let an unassigned account enumerate a project directory', async () => {
     const prisma = {
       project: {
         findUnique: vi.fn().mockResolvedValue({
@@ -465,7 +451,7 @@ describe('UsersService', () => {
     const service = new UsersService(prisma as never);
 
     await expect(
-      service.getDirectory({ projectId: 'project-1' }, viewer),
+      service.getDirectory({ projectId: 'project-1' }, { ...viewer, roleCodes: [], permissionCodes: [] }),
     ).rejects.toBeInstanceOf(ForbiddenException);
     expect(prisma.user.findMany).not.toHaveBeenCalled();
   });

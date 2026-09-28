@@ -1,3 +1,4 @@
+import { teamProjectScope } from '../../common/team-authorization';
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import {
   AttachmentScanStatus,
@@ -406,23 +407,8 @@ export class AdminService {
     actor?: AuthenticatedUser,
     selector?: { colorIds: string[] } | { exactColorId: string },
   ): Prisma.Sql {
-    const isAdministrator = Boolean(
-      actor && (actor.isSystemAdmin || actor.roleCodes.includes('admin')),
-    );
-    const projectScope = actor && !isAdministrator
-      ? Prisma.sql`(
-          p."ownerUserId" = ${actor.id}
-          OR EXISTS (
-            SELECT 1
-            FROM "project_members" scoped_member
-            WHERE scoped_member."projectId" = p."id"
-              AND scoped_member."userId" = ${actor.id}
-          )
-          ${actor.departmentId
-            ? Prisma.sql`OR p."owningDepartmentId" = ${actor.departmentId}`
-            : Prisma.empty}
-        )`
-      : Prisma.sql`TRUE`;
+    if (actor) teamProjectScope(actor);
+    const projectScope = Prisma.sql`TRUE`;
     const colorScope = selector
       ? 'exactColorId' in selector
         ? Prisma.sql`AND c."id" = ${selector.exactColorId}`
@@ -634,19 +620,7 @@ export class AdminService {
     actor: AuthenticatedUser | undefined,
     selector: { colorIds: string[]; take: number } | { exactColorId: string },
   ): Promise<ColorArchive[]> {
-    const isAdministrator = Boolean(
-      actor && (actor.isSystemAdmin || actor.roleCodes.includes('admin')),
-    );
-    const projectScope: Prisma.ProjectWhereInput | undefined =
-      actor && !isAdministrator
-        ? {
-            OR: [
-              { ownerUserId: actor.id },
-              { members: { some: { userId: actor.id } } },
-              ...(actor.departmentId ? [{ owningDepartmentId: actor.departmentId }] : []),
-            ],
-          }
-        : undefined;
+    const projectScope = actor ? teamProjectScope(actor) : undefined;
     if ('colorIds' in selector && selector.colorIds.length === 0) return [];
     const selectorWhere: Prisma.ColorWhereInput = 'exactColorId' in selector
       ? { id: selector.exactColorId }

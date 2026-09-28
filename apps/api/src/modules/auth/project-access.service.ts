@@ -38,36 +38,15 @@ export class ProjectAccessService {
       throw new NotFoundException('项目不存在。');
     }
 
-    if (actor.isSystemAdmin) {
-      return project;
+    // Authorized internal personnel share this team's projects. Membership and
+    // department remain historical metadata and never grant business signing.
+    const permissions = new Set(actor.permissionCodes ?? []);
+    if (!actor.isSystemAdmin && !permissions.has(requiredPermission)) {
+      throw new ForbiddenException('当前用户缺少项目权限，请联系管理员分配角色。');
     }
-
-    const permissionCodes = new Set(actor.permissionCodes ?? []);
-    if (!permissionCodes.has(requiredPermission)) {
-      throw new ForbiddenException('当前用户缺少项目权限。');
+    if (requiredPermission === 'project.write' && !actor.isSystemAdmin && !actor.roleCodes.includes('project_manager')) {
+      throw new ForbiddenException('仅项目协调人员可以维护项目。');
     }
-
-    // Ordinary administrator and auditor roles may have global data scope, but
-    // they still obey the editable permission matrix. Only the explicit
-    // isSystemAdmin flag is a permissionless safety override, matching
-    // PermissionsGuard.
-    if (actor.roleCodes.includes('admin')) {
-      return project;
-    }
-
-    if (requiredPermission === 'audit.read' && actor.roleCodes.includes('auditor')) {
-      return project;
-    }
-
-    const hasScope =
-      project.ownerUserId === actor.id ||
-      project.members.length > 0 ||
-      (Boolean(actor.departmentId) && actor.departmentId === project.owningDepartmentId);
-
-    if (!hasScope) {
-      throw new ForbiddenException('当前用户无权访问该项目。');
-    }
-
     return project;
   }
 

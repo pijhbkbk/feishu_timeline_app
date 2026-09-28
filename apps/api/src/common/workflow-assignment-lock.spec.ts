@@ -145,7 +145,7 @@ describe('workflow assignment mutation coordination', () => {
     expect(advisoryIndex).toBeLessThan(body.indexOf('createNextTasks'));
   });
 
-  it('locks the initial node before reading its configured assignment', () => {
+  it('locks the initial node before reading eligible business-role candidates', () => {
     const body = methodBody(
       workflowsSource,
       'initializeProjectWorkflow',
@@ -153,7 +153,7 @@ describe('workflow assignment mutation coordination', () => {
     );
     expect(body.indexOf('lockWorkflowAssignmentMutations')).toBeGreaterThanOrEqual(0);
     expect(body.indexOf('lockWorkflowAssignmentMutations')).toBeLessThan(
-      body.indexOf('projectNodeAssignment.findUnique'),
+      body.indexOf('resolveTeamAssignment'),
     );
     expect(body.indexOf('lockWorkflowAssignmentMutations')).toBeLessThan(
       body.indexOf('workflowTask.create'),

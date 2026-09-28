@@ -1,3 +1,4 @@
+import { withProjectWrite } from '../../common/team-authorization';
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import {
   AttachmentScanStatus,
@@ -199,7 +200,7 @@ export class RetrospectivesService {
     );
     const persistenceInput = this.toPersistenceInput(input);
 
-    await this.prisma.$transaction(async (tx) => {
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
       await this.lockRetrospectiveWriteScope(tx, projectId);
       const existing = await tx.projectRetrospective.findUnique({ where: { projectId } });
       if (existing?.status === ProjectRetrospectiveStatus.COMPLETED) {
@@ -237,7 +238,7 @@ export class RetrospectivesService {
     );
     const persistenceInput = this.toPersistenceInput(input);
 
-    await this.prisma.$transaction(async (tx) => {
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
       await this.lockRetrospectiveWriteScope(tx, projectId);
       const project = await tx.project.findUnique({
         where: { id: projectId },

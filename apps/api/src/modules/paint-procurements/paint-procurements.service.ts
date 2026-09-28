@@ -1,3 +1,4 @@
+import { assertTeamTaskById, withProjectWrite } from '../../common/team-authorization';
 import {
   BadRequestException,
   ConflictException,
@@ -93,8 +94,8 @@ export class PaintProcurementsService {
     this.assertActorCanManage(actor);
     const input = this.parseCreateInput(rawInput);
 
-    await this.prisma.$transaction(async (tx) => {
-      const context = await this.lockActiveProcurementTaskAndGetContext(tx, projectId);
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
+      const context = await this.lockActiveProcurementTaskAndGetContext(tx, actor, projectId);
       this.assertProcurementRecordCapacity(context.records, true);
       await this.getSupplierOrThrow(tx, input.supplierId);
       await this.assertUniqueProcurementCode(tx, projectId, input.procurementCode);
@@ -143,10 +144,10 @@ export class PaintProcurementsService {
     this.assertActorCanManage(actor);
     const input = this.parseUpdateInput(rawInput);
 
-    await this.prisma.$transaction(async (tx) => {
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
       await this.lockProcurementRow(tx, projectId, procurementId);
       const procurement = await this.getProcurementOrThrow(tx, projectId, procurementId);
-      await this.lockActiveProcurementTaskAndGetContext(tx, projectId);
+      await this.lockActiveProcurementTaskAndGetContext(tx, actor, projectId);
 
       if (!canEditPaintProcurement(procurement.status)) {
         throw new BadRequestException('已到货或已取消的采购记录不允许编辑。');
@@ -262,9 +263,9 @@ export class PaintProcurementsService {
     await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     this.assertActorCanManage(actor);
 
-    await this.prisma.$transaction(async (tx) => {
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
       const context = await this.lockActiveProcurementTaskAndGetContext(
-        tx,
+        tx, actor,
         projectId,
       );
 
@@ -334,10 +335,10 @@ export class PaintProcurementsService {
   ) {
     this.assertActorCanManage(actor);
 
-    await this.prisma.$transaction(async (tx) => {
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
       await this.lockProcurementRow(tx, projectId, procurementId);
       const procurement = await this.getProcurementOrThrow(tx, projectId, procurementId);
-      await this.lockActiveProcurementTaskAndGetContext(tx, projectId);
+      await this.lockActiveProcurementTaskAndGetContext(tx, actor, projectId);
       const nextStatus = getProcurementStatusTransitionTarget(procurement.status, action);
 
       if (!nextStatus) {
@@ -517,6 +518,7 @@ export class PaintProcurementsService {
 
   private async lockActiveProcurementTaskAndGetContext(
     tx: Prisma.TransactionClient,
+    actor: AuthenticatedUser,
     projectId: string,
   ) {
     const lockedTasks = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
@@ -539,6 +541,7 @@ export class PaintProcurementsService {
     if (context.activeTask?.id !== lockedTaskId) {
       this.throwProcurementStateChanged();
     }
+    await assertTeamTaskById(tx, context.activeTask!.id, actor);
     return context;
   }
 

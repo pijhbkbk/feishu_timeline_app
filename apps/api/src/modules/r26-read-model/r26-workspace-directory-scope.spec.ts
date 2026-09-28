@@ -147,7 +147,7 @@ describe('R26 workspace directory scope', () => {
     const harness = workspaceHarness();
     const response = await harness.service.getWorkspace('project-1', viewer);
 
-    expect(response.capabilities.manageMembers).toBe(true);
+    expect(response.capabilities.manageMembers).toBe(false);
     expect(response.organization.users).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ id: 'global-outsider' }),

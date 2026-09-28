@@ -1,3 +1,4 @@
+import { assertTeamTaskById, assertTeamTaskOperator, canOperateTeamTask, withProjectWrite, withSystemProjectWrite } from '../../common/team-authorization';
 import { createHash } from 'node:crypto';
 
 import {
@@ -12,7 +13,6 @@ import {
   AttachmentTargetType,
   AuditTargetType,
   Prisma,
-  ProjectMemberType,
   TaskBlockerStatus,
   UserStatus,
   WorkflowNodeCode,
@@ -196,8 +196,9 @@ export class R26ProgressMaterialService {
     if (replay) return replay;
 
     try {
-      return await this.prisma.$transaction(
+      return await withProjectWrite(this.prisma, actor, { taskId },
         async (tx) => {
+          await assertTeamTaskById(tx, task.id, actor);
           const duplicate = await tx.r26CommandRequest.findUnique({
             where: { idempotencyKey: input.idempotencyKey },
           });
@@ -305,8 +306,9 @@ export class R26ProgressMaterialService {
     if (replay) return replay;
 
     try {
-      return await this.prisma.$transaction(
+      return await withProjectWrite(this.prisma, actor, { taskId },
         async (tx) => {
+          await assertTeamTaskById(tx, task.id, actor);
           const current = await tx.r26ProgressDraft.findUnique({
             where: {
               workflowTaskId_authorUserId: {
@@ -397,8 +399,9 @@ export class R26ProgressMaterialService {
     }
 
     try {
-      const result = await this.prisma.$transaction(
+      const result = await withProjectWrite(this.prisma, actor, { taskId },
         async (tx) => {
+          await assertTeamTaskById(tx, task.id, actor);
           const lockedTask = await tx.workflowTask.findUnique({
             where: { id: task.id },
             select: {
@@ -695,58 +698,60 @@ export class R26ProgressMaterialService {
     );
     if (replay) return replay;
 
-    this.assertTaskCanReceiveProgress(task);
-    this.assertTaskVersion(task, input.taskVersion);
-
-    const replacement = replacementId
-      ? await this.prisma.attachment.findFirst({
+    let replacement: Awaited<ReturnType<Prisma.TransactionClient['attachment']['findFirst']>>;
+    try {
+      const reserved = await withProjectWrite(this.prisma, actor, { taskId }, async tx => {
+        const existing = await tx.r26CommandRequest.findUnique({ where: { idempotencyKey: input.idempotencyKey } });
+        if (existing) return { kind: 'replay' as const, result: this.replayCommand(existing, task, actor, action, requestHash) };
+        await assertTeamTaskById(tx, taskId, actor);
+        const current = await tx.workflowTask.findUniqueOrThrow({ where: { id: taskId }, select: { updatedAt: true, projectId: true } });
+        if (current.projectId !== task.projectId) throw new ConflictException('工序所属项目已变化。');
+        this.assertTaskVersion(current, input.taskVersion);
+        const replacement = replacementId
+          ? await tx.attachment.findFirst({
+              where: {
+                id: replacementId,
+                projectId: task.projectId,
+                entityType: AttachmentTargetType.WORKFLOW_TASK,
+                entityId: task.id,
+                isDeleted: false,
+              },
+            })
+          : null;
+        if (replacementId && !replacement) {
+          throw new NotFoundException('待替换材料不存在或不属于当前工序。');
+        }
+        if (
+          replacement?.materialType &&
+          replacement.materialType !== input.materialType
+        ) {
+          throw new BadRequestException('替换材料的类型必须与原材料一致。');
+        }
+        const activeSameType = await tx.attachment.findFirst({
           where: {
-            id: replacementId,
             projectId: task.projectId,
             entityType: AttachmentTargetType.WORKFLOW_TASK,
             entityId: task.id,
+            materialType: input.materialType,
             isDeleted: false,
+            scanStatus: AttachmentScanStatus.CLEAN,
           },
-        })
-      : null;
-    if (replacementId && !replacement) {
-      throw new NotFoundException('待替换材料不存在或不属于当前工序。');
-    }
-    if (
-      replacement?.materialType &&
-      replacement.materialType !== input.materialType
-    ) {
-      throw new BadRequestException('替换材料的类型必须与原材料一致。');
-    }
-    const activeSameType = await this.prisma.attachment.findFirst({
-      where: {
-        projectId: task.projectId,
-        entityType: AttachmentTargetType.WORKFLOW_TASK,
-        entityId: task.id,
-        materialType: input.materialType,
-        isDeleted: false,
-        scanStatus: AttachmentScanStatus.CLEAN,
-      },
-    });
-    if (activeSameType && activeSameType.id !== replacement?.id) {
-      throw new ConflictException({
-        code: 'MATERIAL_VERSION_REPLACEMENT_REQUIRED',
-        message: '该材料已有当前版本，请使用“替换版本”上传。',
-        attachmentId: activeSameType.id,
+        });
+        if (activeSameType && activeSameType.id !== replacement?.id) {
+          throw new ConflictException({
+            code: 'MATERIAL_VERSION_REPLACEMENT_REQUIRED',
+            message: '该材料已有当前版本，请使用“替换版本”上传。',
+            attachmentId: activeSameType.id,
+          });
+        }
+        await tx.r26CommandRequest.create({ data: {
+          projectId: task.projectId, actorUserId: actor.id,
+          idempotencyKey: input.idempotencyKey, action, requestHash, result: Prisma.JsonNull,
+        } });
+        return { kind: 'reserved' as const, replacement };
       });
-    }
-
-    try {
-      await this.prisma.r26CommandRequest.create({
-        data: {
-          projectId: task.projectId,
-          actorUserId: actor.id,
-          idempotencyKey: input.idempotencyKey,
-          action,
-          requestHash,
-          result: Prisma.JsonNull,
-        },
-      });
+      if (reserved.kind === 'replay') return reserved.result;
+      replacement = reserved.replacement;
     } catch (error) {
       if (this.isUniqueConstraintError(error)) {
         const duplicate = await this.prisma.r26CommandRequest.findUnique({
@@ -771,6 +776,7 @@ export class R26ProgressMaterialService {
 
     try {
       const attachment = await this.attachmentsService.createStoredAttachment({
+        actor,
         projectId: task.projectId,
         targetType: AttachmentTargetType.WORKFLOW_TASK,
         targetId: task.id,
@@ -782,7 +788,13 @@ export class R26ProgressMaterialService {
         summary: replacement
           ? `替换工序材料，生成 V${replacement.versionNo + 1}：${file.originalname}`
           : `上传工序材料：${file.originalname}`,
+        finalizeUploadResult: async (tx, stored) => {
+          const result = { action, requestId, idempotencyKey: input.idempotencyKey, idempotentReplay: false,
+            materialUploaded: true, attachment: stored, taskStatusChanged: false, workflowTransitioned: false };
+          await tx.r26CommandRequest.update({ where: { idempotencyKey: input.idempotencyKey }, data: { result: result as Prisma.InputJsonValue } });
+        },
         finalizeDomainAttachment: this.createMaterialAttachmentFinalizeHook({
+          actor,
           projectId: task.projectId,
           taskId: task.id,
           nodeCode: task.nodeCode,
@@ -802,18 +814,14 @@ export class R26ProgressMaterialService {
         taskStatusChanged: false,
         workflowTransitioned: false,
       };
-      await this.prisma.r26CommandRequest.update({
-        where: { idempotencyKey: input.idempotencyKey },
-        data: { result: result as Prisma.InputJsonValue },
-      });
       return result;
     } catch (error) {
-      await this.prisma.r26CommandRequest.deleteMany({
+      await withSystemProjectWrite(this.prisma, task.projectId, tx => tx.r26CommandRequest.deleteMany({
         where: {
           idempotencyKey: input.idempotencyKey,
           result: { equals: Prisma.JsonNull },
         },
-      });
+      }));
       throw error;
     }
   }
@@ -835,6 +843,7 @@ export class R26ProgressMaterialService {
   }
 
   private createMaterialAttachmentFinalizeHook(input: {
+    actor: AuthenticatedUser;
     projectId: string;
     taskId: string;
     nodeCode: WorkflowNodeCode;
@@ -854,6 +863,7 @@ export class R26ProgressMaterialService {
           id: true,
           projectId: true,
           nodeCode: true,
+          assigneeUserId: true,
           status: true,
           isActive: true,
           updatedAt: true,
@@ -870,6 +880,8 @@ export class R26ProgressMaterialService {
       ) {
         this.throwAttachmentTargetStateChanged();
       }
+
+      assertTeamTaskOperator(task, input.actor);
 
       if (input.replacementId) {
         if (
@@ -1079,26 +1091,7 @@ export class R26ProgressMaterialService {
   }
 
   private hasWritableTaskScope(task: Gate3BTask, actor: AuthenticatedUser) {
-    const nodeAssignment = task.project.nodeAssignments.find(
-      (item) => item.nodeCode === task.nodeCode,
-    );
-    const collaboratorIds = this.parseIdList(
-      nodeAssignment?.collaboratorUserIds,
-    );
-    const managerMember = task.project.members.some(
-      (member) =>
-        member.userId === actor.id &&
-        (member.memberType === ProjectMemberType.OWNER ||
-          member.memberType === ProjectMemberType.MANAGER),
-    );
-    return (
-      actor.isSystemAdmin ||
-      actor.roleCodes.includes('admin') ||
-      task.assigneeUserId === actor.id ||
-      task.project.ownerUserId === actor.id ||
-      managerMember ||
-      collaboratorIds.includes(actor.id)
-    );
+    return canOperateTeamTask(task, actor);
   }
 
   private assertActorCanWriteTask(

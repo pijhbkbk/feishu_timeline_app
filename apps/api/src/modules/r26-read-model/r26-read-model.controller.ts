@@ -1,7 +1,9 @@
+import { RetiredConfigurationGuard } from '../../common/retired-configuration.guard';
 import {
   BadRequestException,
   Body,
   Controller,
+  UseGuards,
   Delete,
   Get,
   Headers,
@@ -391,6 +393,7 @@ export class R26ReadModelController {
 
   @Permissions('project.read')
   @ApiOperation({ summary: 'R26 Gate 3A 成员或分工变更影响预览（不写入）' })
+  @UseGuards(RetiredConfigurationGuard)
   @Post('projects/:projectId/assignment-preview')
   previewAssignments(
     @Param('projectId') projectId: string,
@@ -406,6 +409,7 @@ export class R26ReadModelController {
 
   @Permissions('project.write')
   @ApiOperation({ summary: 'R26 Gate 3A 添加项目成员' })
+  @UseGuards(RetiredConfigurationGuard)
   @Post('projects/:projectId/members')
   async addMember(
     @Param('projectId') projectId: string,
@@ -425,6 +429,7 @@ export class R26ReadModelController {
 
   @Permissions('project.write')
   @ApiOperation({ summary: 'R26 Gate 3A 修改项目成员职责' })
+  @UseGuards(RetiredConfigurationGuard)
   @Patch('projects/:projectId/members/:userId')
   async updateMember(
     @Param('projectId') projectId: string,
@@ -446,6 +451,7 @@ export class R26ReadModelController {
 
   @Permissions('project.write')
   @ApiOperation({ summary: 'R26 Gate 3A 安全移出项目成员' })
+  @UseGuards(RetiredConfigurationGuard)
   @Delete('projects/:projectId/members/:userId')
   async removeMember(
     @Param('projectId') projectId: string,
@@ -467,6 +473,7 @@ export class R26ReadModelController {
 
   @Permissions('project.write')
   @ApiOperation({ summary: 'R26 Gate 3A 应用未来与未开始任务分配' })
+  @UseGuards(RetiredConfigurationGuard)
   @Post('projects/:projectId/assignments/apply')
   async applyAssignments(
     @Param('projectId') projectId: string,
@@ -486,6 +493,7 @@ export class R26ReadModelController {
 
   @Permissions('project.write')
   @ApiOperation({ summary: 'R26 Gate 3A 转交单个活跃工序任务' })
+  @UseGuards(RetiredConfigurationGuard)
   @Patch('projects/:projectId/tasks/:taskId/assignment')
   async transferTask(
     @Param('projectId') projectId: string,

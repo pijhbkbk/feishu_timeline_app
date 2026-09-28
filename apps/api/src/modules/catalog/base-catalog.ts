@@ -2,6 +2,7 @@ import { ProjectStatus, SystemParameterValueType, WorkflowDurationType, Workflow
 
 // Canonical approved business defaults, shared by demo seed and the fresh-only installer.
 export const baseRoles = [
+  { code: 'production_operator', name: '生产', description: '负责首台计划、排产与批量生产。' },
   {
     code: 'admin',
     name: '系统管理员',
@@ -57,6 +58,7 @@ export const defaultProcessTemplate = {
 } as const;
 
 export const rolePermissionMap = {
+  production_operator: ['project.read', 'workflow.transition', 'attachment.manage', 'dashboard.read'],
   admin: [
     'system.manage',
     'project.read',

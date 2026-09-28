@@ -26,7 +26,7 @@ export class ProductionPlansController {
     return this.productionPlansService.getScheduleWorkspace(projectId, actor);
   }
 
-  @Roles('admin', 'project_manager', 'process_engineer')
+  @Roles('production_operator', 'admin', 'project_manager', 'process_engineer')
   @Permissions('workflow.transition')
   @Post()
   createSchedulePlan(
@@ -37,7 +37,7 @@ export class ProductionPlansController {
     return this.productionPlansService.createSchedulePlan(projectId, body, actor);
   }
 
-  @Roles('admin', 'project_manager', 'process_engineer')
+  @Roles('production_operator', 'admin', 'project_manager', 'process_engineer')
   @Permissions('workflow.transition')
   @Patch(':planId')
   updateSchedulePlan(
@@ -49,7 +49,7 @@ export class ProductionPlansController {
     return this.productionPlansService.updateSchedulePlan(projectId, planId, body, actor);
   }
 
-  @Roles('admin', 'project_manager', 'process_engineer')
+  @Roles('production_operator', 'admin', 'project_manager', 'process_engineer')
   @Permissions('workflow.transition')
   @Post(':planId/confirm')
   confirmSchedulePlan(
@@ -60,7 +60,7 @@ export class ProductionPlansController {
     return this.productionPlansService.confirmSchedulePlan(projectId, planId, actor);
   }
 
-  @Roles('admin', 'project_manager', 'process_engineer')
+  @Roles('production_operator', 'admin', 'project_manager', 'process_engineer')
   @Permissions('workflow.transition')
   @Post(':planId/cancel')
   cancelSchedulePlan(
@@ -71,7 +71,7 @@ export class ProductionPlansController {
     return this.productionPlansService.cancelSchedulePlan(projectId, planId, actor);
   }
 
-  @Roles('admin', 'project_manager', 'process_engineer')
+  @Roles('production_operator', 'admin', 'project_manager', 'process_engineer')
   @Permissions('workflow.transition')
   @Post('complete-task')
   completeScheduleTask(

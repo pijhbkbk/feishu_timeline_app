@@ -19,10 +19,9 @@ type NavItem = {
 };
 
 const baseNavItems: NavItem[] = [
-  { label: '工作台', href: toProductHref('/v2/dashboard'), enabled: true },
-  { label: '项目列表', href: toProductHref('/v2/projects'), enabled: true },
-  { label: '我的任务', href: toProductHref('/v2/tasks'), enabled: true },
-  { label: '系统管理', href: toProductHref('/v2/admin'), enabled: true },
+  { label: '我的工作', href: toProductHref('/v2/dashboard'), enabled: true },
+  { label: '颜色项目', href: toProductHref('/v2/projects'), enabled: true },
+  { label: '人员', href: toProductHref('/v2/admin/people'), enabled: true },
 ];
 
 export function V2Shell({ children }: { children: React.ReactNode }) {
@@ -39,7 +38,7 @@ export function V2Shell({ children }: { children: React.ReactNode }) {
   } = useAuth();
   const { enabled: realDataEnabled, viewer } = useR26RealData();
   const pendingAuthorization = Boolean(user && needsAssignment(user));
-  const navItems = baseNavItems.filter(item => item.label !== '系统管理' || user?.isSystemAdmin || user?.roleCodes.includes('admin'));
+  const navItems = baseNavItems.filter(item => item.label !== '人员' || user?.isSystemAdmin || user?.roleCodes.includes('admin'));
 
   useEffect(() => {
     if (!isAuthLoading && pendingAuthorization) { window.location.replace('/pending-access'); return; }
@@ -186,9 +185,10 @@ export function V2Shell({ children }: { children: React.ReactNode }) {
                       '当前账号'}
                   </small>
                 </div>
-                <Link href="/account" role="menuitem">我的账号</Link>
+                <Link href="/account" role="menuitem">我的资料</Link>
                 <Link href="/account/security" role="menuitem">账号安全</Link>
-                {user?.isSystemAdmin ? <Link href="/admin/accounts" role="menuitem">账号管理</Link> : null}
+                {user?.isSystemAdmin ? <Link href="/admin" role="menuitem">管理设置</Link> : null}
+                {user?.isSystemAdmin ? <Link href="/admin/people" role="menuitem">人员</Link> : null}
                 <button
                   type="button"
                   role="menuitem"

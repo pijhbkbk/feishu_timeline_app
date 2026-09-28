@@ -25,7 +25,7 @@ const scopedActor: AuthenticatedUser = {
 };
 
 describe('R19 permission and IDOR security', () => {
-  it('rejects project access when projectId is enumerated outside the actor scope', async () => {
+  it('rejects project enumeration by an unassigned native account', async () => {
     const prisma = {
       project: {
         findUnique: vi.fn().mockResolvedValue({
@@ -39,7 +39,7 @@ describe('R19 permission and IDOR security', () => {
     const service = new ProjectAccessService(prisma as never);
 
     await expect(
-      service.assertProjectAccessWithDefaultClient('project-b', scopedActor, 'project.read'),
+      service.assertProjectAccessWithDefaultClient('project-b', { ...scopedActor, roleCodes: [], permissionCodes: [] }, 'project.read'),
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 

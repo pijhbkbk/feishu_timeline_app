@@ -1,3 +1,4 @@
+import { assertTeamTaskById, withProjectWrite } from '../../common/team-authorization';
 import {
   BadRequestException,
   ConflictException,
@@ -140,7 +141,7 @@ export class SamplesService {
     await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     const input = this.parseSampleWriteInput(rawInput);
 
-    return this.prisma.$transaction(async (tx) => {
+    return withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
       await this.getProjectOrThrow(tx, projectId);
       let lockedCurrentVersionId: string | null = null;
       if (input.createNewVersion) {
@@ -178,12 +179,12 @@ export class SamplesService {
             );
           }
           this.assertPersistedSampleRow(lockedCurrentVersion);
-          this.assertSampleWritable(lockedCurrentVersion);
+
           lockedCurrentVersionId = lockedCurrentVersion.id;
         }
       }
 
-      await this.lockActiveConfirmationTaskOrThrow(tx, projectId);
+      await this.lockActiveConfirmationTaskOrThrow(tx, actor, projectId, WorkflowNodeCode.PAINT_DEVELOPMENT);
       const projectSamples = await tx.sample.findMany({
         where: { projectId },
         orderBy: [
@@ -228,7 +229,7 @@ export class SamplesService {
             '当前样板版本已变化，请刷新后重试。',
           );
         }
-        this.assertSampleWritable(currentVersion);
+
         nextVersionNo = existingVersions[0]!.versionNo + 1;
         this.assertSampleVersion(nextVersionNo);
 
@@ -279,7 +280,7 @@ export class SamplesService {
         targetType: AuditTargetType.SAMPLE,
         targetId: createdSample.id,
         action: input.createNewVersion ? 'SAMPLE_VERSION_CREATED' : 'SAMPLE_CREATED',
-        nodeCode: WorkflowNodeCode.SAMPLE_COLOR_CONFIRMATION,
+        nodeCode: WorkflowNodeCode.PAINT_DEVELOPMENT,
         summary: `${createdSample.sampleNo} ${input.createNewVersion ? '新版本' : '样板'}已创建。`,
         afterData: this.toSampleAuditSnapshot(createdSample),
       });
@@ -297,12 +298,12 @@ export class SamplesService {
     await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     const input = this.parseSampleUpdateInput(rawInput);
 
-    return this.prisma.$transaction(async (tx) => {
+    return withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
       await this.lockSampleRow(tx, projectId, sampleId);
       const sample = await this.getSampleOrThrow(tx, projectId, sampleId);
       this.assertPersistedSampleRow(sample);
       this.assertSampleWritable(sample);
-      await this.lockActiveConfirmationTaskOrThrow(tx, projectId);
+      await this.lockActiveConfirmationTaskOrThrow(tx, actor, projectId, WorkflowNodeCode.PAINT_DEVELOPMENT);
 
       await this.assertProjectSampleRecordBounds(tx, projectId);
 
@@ -334,7 +335,7 @@ export class SamplesService {
         targetType: AuditTargetType.SAMPLE,
         targetId: sampleId,
         action: 'SAMPLE_UPDATED',
-        nodeCode: WorkflowNodeCode.SAMPLE_COLOR_CONFIRMATION,
+        nodeCode: WorkflowNodeCode.PAINT_DEVELOPMENT,
         summary: `${updatedSample.sampleNo} V${updatedSample.versionNo} 样板信息已更新。`,
         beforeData: this.toSampleAuditSnapshot(sample),
         afterData: this.toSampleAuditSnapshot(updatedSample),
@@ -359,6 +360,7 @@ export class SamplesService {
     const observedActiveTask = await this.getActiveConfirmationTaskOrThrow(
       this.prisma,
       projectId,
+      WorkflowNodeCode.PAINT_DEVELOPMENT,
     );
 
     if (!file) {
@@ -374,15 +376,17 @@ export class SamplesService {
       sampleId,
       observedSample,
       observedActiveTask,
+      actor,
     );
 
     const attachment = await this.attachmentsService.createStoredAttachment({
+      actor,
       projectId,
       targetType: AttachmentTargetType.SAMPLE,
       targetId: sampleId,
       file,
       uploadedById: actor.id,
-      nodeCode: WorkflowNodeCode.SAMPLE_COLOR_CONFIRMATION,
+      nodeCode: WorkflowNodeCode.PAINT_DEVELOPMENT,
       summary: `上传样板图片 ${preflight.sample.sampleNo} V${preflight.sample.versionNo}`,
       finalizeDomainAttachment: async (tx) => {
         if (!(await this.lockSampleRow(tx, projectId, sampleId))) {
@@ -399,6 +403,7 @@ export class SamplesService {
           this.throwAttachmentTargetStateChanged();
         }
 
+        await assertTeamTaskById(tx, preflight.taskId, actor);
         if (!(await this.lockWorkflowTaskRow(tx, projectId, preflight.taskId))) {
           this.throwAttachmentTargetStateChanged();
         }
@@ -406,7 +411,7 @@ export class SamplesService {
           where: {
             id: preflight.taskId,
             projectId,
-            nodeCode: WorkflowNodeCode.SAMPLE_COLOR_CONFIRMATION,
+            nodeCode: WorkflowNodeCode.PAINT_DEVELOPMENT,
             isActive: true,
           },
           select: { id: true },
@@ -433,7 +438,7 @@ export class SamplesService {
     await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     const input = this.parseConfirmationInput(rawInput);
 
-    return this.prisma.$transaction(async (tx) => {
+    return withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
       if (!(await this.lockSampleRow(tx, projectId, input.sampleId))) {
         throw new NotFoundException('样板不存在或已被删除。');
       }
@@ -441,7 +446,7 @@ export class SamplesService {
       this.assertPersistedSampleRow(sample);
       this.assertSampleWritable(sample);
       const activeTask = await this.lockActiveConfirmationTaskOrThrow(
-        tx,
+        tx, actor,
         projectId,
       );
       await this.assertProjectSampleRecordBounds(tx, projectId, activeTask.id);
@@ -542,6 +547,7 @@ export class SamplesService {
     sampleId: string,
     observedSample: SampleRecord,
     observedActiveTask: ActiveTaskRecord,
+    actor: AuthenticatedUser,
   ) {
     const transaction = (this.prisma as PrismaService & {
       $transaction?: PrismaService['$transaction'];
@@ -565,7 +571,7 @@ export class SamplesService {
       };
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    return withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
       if (!(await this.lockSampleRow(tx, projectId, sampleId))) {
         throw new NotFoundException('样板不存在或已被删除。');
       }
@@ -575,8 +581,9 @@ export class SamplesService {
       this.assertPersistedSampleRow(sample);
       this.assertSampleWritable(sample);
       const activeTask = await this.lockActiveConfirmationTaskOrThrow(
-        tx,
+        tx, actor,
         projectId,
+        WorkflowNodeCode.PAINT_DEVELOPMENT,
       );
       await this.assertProjectSampleRecordBounds(tx, projectId);
 
@@ -609,7 +616,7 @@ export class SamplesService {
 
   private async buildWorkspace(db: SamplesDbClient, projectId: string) {
     const project = await this.getProjectOrThrow(db, projectId);
-    const activeTask = await this.getActiveConfirmationTask(db, projectId);
+    const activeTask = await this.getActiveConfirmationTask(db, projectId, WorkflowNodeCode.PAINT_DEVELOPMENT) ?? await this.getActiveConfirmationTask(db, projectId);
     const allVersions = await db.sample.findMany({
       where: { projectId },
       orderBy: [
@@ -823,11 +830,11 @@ export class SamplesService {
     });
   }
 
-  private getActiveConfirmationTask(db: SamplesDbClient, projectId: string) {
+  private getActiveConfirmationTask(db: SamplesDbClient, projectId: string, nodeCode: WorkflowNodeCode = WorkflowNodeCode.SAMPLE_COLOR_CONFIRMATION) {
     return db.workflowTask.findFirst({
       where: {
         projectId,
-        nodeCode: WorkflowNodeCode.SAMPLE_COLOR_CONFIRMATION,
+        nodeCode,
         isActive: true,
       },
       include: {
@@ -845,11 +852,12 @@ export class SamplesService {
   private async getActiveConfirmationTaskOrThrow(
     db: SamplesDbClient,
     projectId: string,
+    nodeCode: WorkflowNodeCode = WorkflowNodeCode.SAMPLE_COLOR_CONFIRMATION,
   ) {
-    const activeTask = await this.getActiveConfirmationTask(db, projectId);
+    const activeTask = await this.getActiveConfirmationTask(db, projectId, nodeCode);
 
     if (!activeTask) {
-      throw new BadRequestException('当前项目没有活跃的样板颜色确认节点。');
+      throw new BadRequestException('当前项目没有对应的活跃样板工序。');
     }
 
     return activeTask;
@@ -857,21 +865,23 @@ export class SamplesService {
 
   private async lockActiveConfirmationTaskOrThrow(
     tx: Prisma.TransactionClient,
+    actor: AuthenticatedUser,
     projectId: string,
+    nodeCode: WorkflowNodeCode = WorkflowNodeCode.SAMPLE_COLOR_CONFIRMATION,
   ) {
-    const candidate = await this.getActiveConfirmationTask(tx, projectId);
+    const candidate = await this.getActiveConfirmationTask(tx, projectId, nodeCode);
     if (!candidate) {
-      throw new BadRequestException('当前项目没有活跃的样板颜色确认节点。');
+      throw new BadRequestException('当前项目没有对应的活跃样板工序。');
     }
     if (!(await this.lockWorkflowTaskRow(tx, projectId, candidate.id))) {
-      throw new BadRequestException('当前项目没有活跃的样板颜色确认节点。');
+      throw new BadRequestException('当前项目没有对应的活跃样板工序。');
     }
 
     const activeTask = await tx.workflowTask.findFirst({
       where: {
         id: candidate.id,
         projectId,
-        nodeCode: WorkflowNodeCode.SAMPLE_COLOR_CONFIRMATION,
+        nodeCode,
         isActive: true,
       },
       include: {
@@ -881,9 +891,10 @@ export class SamplesService {
       },
     });
     if (!activeTask) {
-      throw new BadRequestException('当前项目没有活跃的样板颜色确认节点。');
+      throw new BadRequestException('当前项目没有对应的活跃样板工序。');
     }
 
+    await assertTeamTaskById(tx, activeTask.id, actor);
     return activeTask;
   }
 

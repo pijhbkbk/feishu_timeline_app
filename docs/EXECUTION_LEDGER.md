@@ -7974,3 +7974,22 @@ BLOCKER_REPORT: Public-source push remains rejected by platform automatic review
 - 所有者亲自输入原密码，从退出状态正常登录，并回复“已直接进入管理员工作台”。正式浏览器复核管理员视图、刷新保持、管理账号/组织/权限真实读取、资料与主动安全入口；桌面1440/手机390真实截图，安全480px/手机两侧16px且输入48px。正常登录无改密表单。console warn/error0，资源/API请求清单留证；无独立pageerror流或完整HAR。没有再要求所有者重复第二次登录；合成账号退出再登录通过。
 - 同22aac离线软件7载荷、6镜像与1094源码成员核对，真实身份/历史交付排除；最小恢复保留管理员且初始化拒绝覆盖。没有升级旧独立VM或重复全量异机演练。浏览器新凭据提交未执行，HTTP/CLI真实边界单列，不修改所有者密码。隔离服务停止、临时registry凭据清理；保留用户工作台。
 - 唯一主要回执位于私有 ignored `var/owner-admin-delivery-20260918/RECEIPT.md`。非敏感身份/测试/截图摘要见 `docs/acceptance/NATIVE_OWNER_HOME_20260918/result.json`，具体路由矩阵已追加。本机 `http://127.0.0.1:3350` 验证后停止，无远端staging；main/tag未变，正式Placeholder0/测试10。当前 CODE_IMPLEMENTED / LOCAL_VERIFIED / PRODUCTION_DEPLOYED；本轮登录路径OWNER_CONFIRMED，完整产品仍AWAITING_PRODUCT_OWNER_CONFIRMATION。随后证据commit不改变运行commit。
+
+### 2026-09-22 — R28 PPT阶段目标实施中（未发布）
+
+- 用户授权在自有Mac/GCE完成PPT后台阶段目标及必要技术咨询。以最新b456e7675c3d391d8200e0ce295d9d3fcd55f691代码/发布证据为基线，隔离工作树/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree、分支codex/admin-role-workflow-20260922；原目录的未知/既有修改与用户附件保留。
+- 需求、按序M1–M4边界、模型咨询及当前检查事实见[本轮记录](rounds/R28.md)。人员入口/注册导航完成代码，固定角色队列和事务鉴权正在收口。两条Prisma migration已在全新合成PG重演；23项真实PG通过；Web331通过；首次API全量281失败正在按影响处理，不伪记PASS。
+- 尚未形成发布候选，不访问其他应用；production未改变，精确目标仍https://timeline.all-too-well.com、runtime22aac0a1b9fe975f60d599f8dbe7be20bcbca1b1。main/tag未改变；产品负责人未确认。M2、M3、M4与最终路由验收尚未通过，继续实施。
+
+### 2026-09-22 — R28 M2 中间全量回归通过，独立审查进行中
+
+- 同项目事务锁、资格变更边界和附件finalize恢复完成实现；GPT-6 Pro第二次意见已采纳，独立审查附件两项问题的修复已静态复核。真实PG人员/队列24项与附件5项分别通过，附件组对象存储/配额替身边界明确记录。
+- API当前全量1410通过、91跳过（不计PASS），类型检查通过；失败113项的中间结果及修正依据保留。Web331为M1未变化源码检查依据，未代替新工作台验收。证据与剩余范围见[R28](rounds/R28.md)。
+- 完整M2独立审查尚未返回；M3/M4继续待做，未形成干净不可变候选。精确生产域名/runtime、main、tag均未改变，不能宣布发布或产品通过。
+
+
+### 2026-09-28 — R28 重建工作树并继续 M3（未发布）
+
+- 旧临时工作树被系统清理；从原基线与本会话已识别源码修改重建到持久 `var/admin-worktree`，分支 `codex/admin-recovery-20260928`。未改原目录用户补丁、main 或生产。无旧完整树 hash，不宣称字节级完整恢复。
+- 冻结依赖、39 条迁移、API 1415 / Web 339、lint、两端构建和 Prisma 校验通过；95 项未配环境跳过不计 PASS。真实 PG 当前 33 项通过。新增月度办理页面正做增量回归。恢复/失败分类/咨询及剩余 M3–M4 见 [R28](rounds/R28.md)。
+- 检查点提交只保存工作；尚未固定可部署候选、远端发布或产品确认。准确状态 IN_PROGRESS / NOT_DEPLOYED / AWAITING_PRODUCT_OWNER_CONFIRMATION。

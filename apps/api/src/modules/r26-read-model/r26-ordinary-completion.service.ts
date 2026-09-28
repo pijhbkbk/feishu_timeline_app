@@ -1,3 +1,4 @@
+import { assertTeamTaskById, canOperateTeamTask, withProjectWrite } from '../../common/team-authorization';
 import { createHash } from 'node:crypto';
 
 import {
@@ -13,7 +14,6 @@ import {
   AuditTargetType,
   Prisma,
   ProjectAssignmentSource,
-  ProjectMemberType,
   TaskBlockerStatus,
   WorkflowAction,
   WorkflowInstanceStatus,
@@ -125,8 +125,9 @@ export class R26OrdinaryCompletionService {
     }
 
     try {
-      return await this.prisma.$transaction(
+      return await withProjectWrite(this.prisma, actor, { taskId },
         async (tx) => {
+          await assertTeamTaskById(tx, taskId, actor);
           const lockedTask = await this.loadTaskWithExecutor(
             tx,
             taskId,
@@ -407,8 +408,9 @@ export class R26OrdinaryCompletionService {
     }
 
     try {
-      return await this.prisma.$transaction(
+      return await withProjectWrite(this.prisma, actor, { taskId },
         async (tx) => {
+          await assertTeamTaskById(tx, taskId, actor);
           const lockedTask = await this.loadTaskWithExecutor(
             tx,
             taskId,
@@ -584,7 +586,7 @@ export class R26OrdinaryCompletionService {
             ProjectAssignmentSource.UNASSIGNED,
           unassignedReason:
             assignment?.unassignedReason ??
-            '没有符合 Gate 3A 规则的项目成员，负责人保持待分配。',
+            '对应业务角色暂无有效人员，请管理员分配角色。',
         };
       })
       .sort((left, right) => left.stepNumber - right.stepNumber);
@@ -606,7 +608,7 @@ export class R26OrdinaryCompletionService {
         ? ['当前流程不在运行中。']
         : []),
       ...(!actorCanComplete
-        ? ['当前用户不是任务负责人或项目负责人。']
+        ? ['当前用户须具备工序角色并领取该任务。']
         : []),
       ...inspection.form.missing.map(
         (field) => `必填表单缺少：${field.label}`,
@@ -1021,37 +1023,23 @@ export class R26OrdinaryCompletionService {
   private actorCanComplete(
     task: Pick<
       Gate3C1Task,
-      'assigneeUserId' | 'project'
+      'assigneeUserId' | 'project' | 'nodeCode'
     >,
     actor: AuthenticatedUser,
   ) {
-    const isManagerMember = task.project.members.some(
-      (member) =>
-        member.userId === actor.id &&
-        (member.memberType === ProjectMemberType.OWNER ||
-          member.memberType === ProjectMemberType.MANAGER),
-    );
-
-    return (
-      actor.isSystemAdmin ||
-      actor.roleCodes.includes('admin') ||
-      actor.roleCodes.includes('project_manager') ||
-      task.assigneeUserId === actor.id ||
-      task.project.ownerUserId === actor.id ||
-      isManagerMember
-    );
+    return canOperateTeamTask(task, actor);
   }
 
   private assertActorCanComplete(
     task: Pick<
       Gate3C1Task,
-      'assigneeUserId' | 'project' | 'nodeName'
+      'assigneeUserId' | 'project' | 'nodeCode' | 'nodeName'
     >,
     actor: AuthenticatedUser,
   ) {
     if (!this.actorCanComplete(task, actor)) {
       throw new ForbiddenException(
-        `${task.nodeName} 仅允许当前负责人或项目负责人完成。`,
+        `${task.nodeName} 仅允许具备对应业务角色的当前办理人完成。`,
       );
     }
   }

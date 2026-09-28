@@ -1,3 +1,5 @@
+import { authorizeGenericAttachmentTarget, lockGenericAttachmentMutation } from './attachment-team-policy';
+import { withProjectWrite, withSystemProjectWrite } from '../../common/team-authorization';
 import {
   BadRequestException,
   ConflictException,
@@ -52,6 +54,7 @@ type UploadedBinaryFile = {
 };
 
 type CreateStoredAttachmentInput = {
+  actor: AuthenticatedUser;
   projectId: string;
   targetType: AttachmentTargetType;
   targetId: string;
@@ -61,6 +64,7 @@ type CreateStoredAttachmentInput = {
   summary?: string;
   materialType?: string | null;
   replacesAttachmentId?: string | null;
+  finalizeUploadResult?: (tx: Prisma.TransactionClient, attachment: ReturnType<AttachmentsService['toAttachmentSummary']>) => Promise<void>;
   finalizeDomainAttachment?: (
     tx: Prisma.TransactionClient,
     context: {
@@ -263,6 +267,7 @@ export class AttachmentsService {
     }
 
     return this.createStoredAttachment({
+      actor,
       projectId,
       targetType: binding.entityType,
       targetId: binding.entityId,
@@ -289,11 +294,14 @@ export class AttachmentsService {
     const input = this.parseEntityBindingInput(rawInput, projectId);
     this.assertGenericMutationTargetAllowed(input.entityType);
 
-    return this.prisma.$transaction(async (tx) => {
+    return withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
+      await lockGenericAttachmentMutation(tx, projectId);
+      await tx.$queryRaw(Prisma.sql`SELECT id FROM attachments WHERE id = ${attachmentId} AND "projectId" = ${projectId} FOR UPDATE`);
       const attachment = await this.getAttachmentOrThrow(tx, projectId, attachmentId, false);
       this.assertGenericMutationTargetAllowed(attachment.entityType);
+      await authorizeGenericAttachmentTarget(tx, projectId, attachment.entityType, attachment.entityId, actor);
       this.assertAttachmentClean(attachment);
-      await this.assertEntityReference(tx, projectId, input.entityType, input.entityId);
+      await authorizeGenericAttachmentTarget(tx, projectId, input.entityType, input.entityId, actor);
 
       await this.clearDirectEntityReferenceIfNeeded(
         tx,
@@ -350,9 +358,14 @@ export class AttachmentsService {
       'attachment.manage',
     );
 
-    return this.prisma.$transaction(async (tx) => {
+    return withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
+      await lockGenericAttachmentMutation(tx, projectId);
+      await tx.$queryRaw(Prisma.sql`SELECT id FROM attachments WHERE id = ${attachmentId} AND "projectId" = ${projectId} FOR UPDATE`);
       const attachment = await this.getAttachmentOrThrow(tx, projectId, attachmentId, false);
       this.assertGenericMutationTargetAllowed(attachment.entityType);
+      await authorizeGenericAttachmentTarget(tx, projectId, attachment.entityType, attachment.entityId, actor);
+
+      await authorizeGenericAttachmentTarget(tx, projectId, AttachmentTargetType.PROJECT, projectId, actor);
 
       await this.clearDirectEntityReferenceIfNeeded(
         tx,
@@ -402,9 +415,12 @@ export class AttachmentsService {
       'attachment.manage',
     );
 
-    return this.prisma.$transaction(async (tx) => {
+    const result = await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
+      await lockGenericAttachmentMutation(tx, projectId);
+      await tx.$queryRaw(Prisma.sql`SELECT id FROM attachments WHERE id = ${attachmentId} AND "projectId" = ${projectId} FOR UPDATE`);
       const attachment = await this.getAttachmentOrThrow(tx, projectId, attachmentId, false);
       this.assertGenericMutationTargetAllowed(attachment.entityType);
+      await authorizeGenericAttachmentTarget(tx, projectId, attachment.entityType, attachment.entityId, actor);
 
       if (attachment.isDeleted) {
         throw new BadRequestException('附件已删除。');
@@ -427,11 +443,6 @@ export class AttachmentsService {
         include: ATTACHMENT_DETAIL_INCLUDE,
       });
 
-      await this.objectStorageService.markDeleted({
-        bucket: updated.bucket,
-        storageKey: updated.storageKey,
-      });
-
       await this.activityLogsService.createWithExecutor(tx, {
         projectId,
         actorUserId: actor.id,
@@ -448,8 +459,14 @@ export class AttachmentsService {
         projectId,
         [updated],
       );
-      return this.toAttachmentSummary(updated, entityLabels);
+      return { summary: this.toAttachmentSummary(updated, entityLabels), bucket: updated.bucket, storageKey: updated.storageKey };
     });
+    try {
+      await this.objectStorageService.markDeleted({ bucket: result.bucket, storageKey: result.storageKey });
+    } catch {
+      this.logger.error('Logical attachment deletion committed; storage lifecycle marking needs retry.');
+    }
+    return result.summary;
   }
 
   async downloadAttachment(
@@ -538,6 +555,7 @@ export class AttachmentsService {
   }
 
   async createStoredAttachment(input: CreateStoredAttachmentInput) {
+    if (input.uploadedById !== input.actor.id) throw new ForbiddenException('上传身份不匹配。');
     this.assertFile(input.file);
     this.assertDomainFinalizeHookPresent(input);
     await this.getProjectOrThrow(this.prisma, input.projectId);
@@ -556,6 +574,10 @@ export class AttachmentsService {
     ) {
       throw new BadRequestException('只能替换同一工序下的材料。');
     }
+
+    const genericTargetVersion = !DOMAIN_GOVERNED_ATTACHMENT_TARGET_TYPES.has(input.targetType)
+      ? await withProjectWrite(this.prisma, input.actor, { projectId: input.projectId }, tx => authorizeGenericAttachmentTarget(tx, input.projectId, input.targetType, input.targetId, input.actor))
+      : undefined;
 
     const extension = extname(input.file.originalname).toLowerCase();
     const safeName = this.sanitizeFileName(input.file.originalname);
@@ -596,7 +618,7 @@ export class AttachmentsService {
       );
     }
 
-    const pendingAttachment = await this.prisma.$transaction(async (tx) => {
+    const pendingAttachment = await withProjectWrite(this.prisma, input.actor, { projectId: input.projectId }, async (tx) => {
       const created = await tx.attachment.create({
         data: {
           projectId: input.projectId,
@@ -739,10 +761,23 @@ export class AttachmentsService {
       storageReservation.ownerToken,
     );
 
-    const attachment = await this.prisma.$transaction(async (tx) => {
+    const attachment = await withProjectWrite(this.prisma, input.actor, { projectId: input.projectId }, async (tx) => {
+      if (genericTargetVersion !== undefined) {
+        await authorizeGenericAttachmentTarget(tx, input.projectId, input.targetType, input.targetId, input.actor, genericTargetVersion);
+      }
       await input.finalizeDomainAttachment?.(tx, {
         attachmentId: pendingAttachment.id,
       });
+
+      if (replacement) {
+        await tx.$queryRaw(Prisma.sql`SELECT id FROM attachments WHERE id = ${replacement.id} AND "projectId" = ${input.projectId} FOR UPDATE`);
+        const currentReplacement = await this.getAttachmentOrThrow(tx, input.projectId, replacement.id, false);
+        if (currentReplacement.entityType !== replacement.entityType || currentReplacement.entityId !== replacement.entityId ||
+            currentReplacement.versionNo !== replacement.versionNo || currentReplacement.updatedAt.getTime() !== replacement.updatedAt.getTime()) {
+          throw new ConflictException('被替换附件已变化，请刷新后重试。');
+        }
+        this.assertAttachmentClean(currentReplacement);
+      }
 
       const updated = await tx.attachment.update({
         where: { id: pendingAttachment.id },
@@ -831,10 +866,13 @@ export class AttachmentsService {
         });
       }
 
-      return updated;
+      const labels = await this.buildEntityLabelMapForAttachments(tx, input.projectId, [updated]);
+      const summary = this.toAttachmentSummary(updated, labels);
+      await input.finalizeUploadResult?.(tx, summary);
+      return summary;
     }).catch(async (error: unknown) => {
-      const domainStateChanged = this.isAttachmentTargetStateChanged(error);
-      await this.recordFinalCommitFailureAndRelease(
+      const domainStateChanged = error instanceof ForbiddenException || error instanceof ConflictException || error instanceof NotFoundException || error instanceof BadRequestException;
+      const committed = await this.recordFinalCommitFailureAndRelease(
         pendingAttachment,
         input,
         scanResult,
@@ -844,6 +882,7 @@ export class AttachmentsService {
           : 'CLEAN_COMMIT_ERROR',
       );
 
+      if (committed) return committed;
       if (domainStateChanged) {
         throw error;
       }
@@ -854,18 +893,13 @@ export class AttachmentsService {
     });
 
     if (replacement) {
-      await this.objectStorageService.markDeleted({
-        bucket: replacement.bucket,
-        storageKey: replacement.storageKey,
-      });
+      try {
+        await this.objectStorageService.markDeleted({ bucket: replacement.bucket, storageKey: replacement.storageKey });
+      } catch {
+        this.logger.error('Attachment replacement committed; storage lifecycle marking needs retry.');
+      }
     }
-
-    const entityLabels = await this.buildEntityLabelMapForAttachments(
-      this.prisma,
-      input.projectId,
-      [attachment],
-    );
-    return this.toAttachmentSummary(attachment, entityLabels);
+    return attachment;
   }
 
   listTargetAttachments(
@@ -1179,22 +1213,6 @@ export class AttachmentsService {
       code: 'ATTACHMENT_DOMAIN_FINALIZE_HOOK_REQUIRED',
       message: '正式业务附件缺少领域终态校验，已拒绝写入。',
     });
-  }
-
-  private isAttachmentTargetStateChanged(
-    error: unknown,
-  ): error is ConflictException {
-    if (!(error instanceof ConflictException)) {
-      return false;
-    }
-
-    const response = error.getResponse();
-    return (
-      typeof response === 'object' &&
-      response !== null &&
-      'code' in response &&
-      response.code === 'ATTACHMENT_TARGET_STATE_CHANGED'
-    );
   }
 
   private assertFile(file: UploadedBinaryFile | undefined) {
@@ -1838,9 +1856,9 @@ export class AttachmentsService {
       scannedAt: Date;
     },
   ) {
-    await this.prisma.$transaction(async (tx) => {
+    await withSystemProjectWrite(this.prisma, input.projectId, async (tx) => {
       const updated = await tx.attachment.update({
-        where: { id: attachment.id },
+        where: { id: attachment.id, scanStatus: AttachmentScanStatus.PENDING_SCAN },
         data: {
           fileUrl: null,
           scanStatus,
@@ -1867,40 +1885,6 @@ export class AttachmentsService {
           scanStatus === AttachmentScanStatus.REJECTED
             ? '附件安全扫描未通过，文件未进入业务存储。'
             : '附件安全扫描异常，文件未进入业务存储。',
-        beforeData: this.toAttachmentAuditSnapshot(attachment),
-        afterData: this.toAttachmentAuditSnapshot(updated),
-      });
-    });
-  }
-
-  private async recordDomainCommitRejection(
-    attachment: AttachmentRecordLike,
-    input: CreateStoredAttachmentInput,
-    scanResult: MalwareScanResult,
-  ) {
-    await this.prisma.$transaction(async (tx) => {
-      const updated = await tx.attachment.update({
-        where: { id: attachment.id },
-        data: {
-          fileUrl: null,
-          scanStatus: AttachmentScanStatus.SCAN_ERROR,
-          scannerEngine: scanResult.engine,
-          scannerVersion: scanResult.engineVersion,
-          scannerSignatureVersion: scanResult.signatureVersion,
-          scanResultSummary: 'DOMAIN_COMMIT_REJECTED',
-          scannedAt: scanResult.scannedAt,
-        },
-        include: ATTACHMENT_DETAIL_INCLUDE,
-      });
-
-      await this.activityLogsService.createWithExecutor(tx, {
-        projectId: input.projectId,
-        actorUserId: input.uploadedById,
-        targetType: AuditTargetType.ATTACHMENT,
-        targetId: attachment.id,
-        action: 'ATTACHMENT_DOMAIN_COMMIT_REJECTED',
-        nodeCode: input.nodeCode ?? null,
-        summary: '附件扫描期间业务状态已变更，正式绑定已拒绝。',
         beforeData: this.toAttachmentAuditSnapshot(attachment),
         afterData: this.toAttachmentAuditSnapshot(updated),
       });
@@ -1949,37 +1933,47 @@ export class AttachmentsService {
     reservation: { id: string; ownerToken: string },
     reason: 'DOMAIN_COMMIT_REJECTED' | 'CLEAN_COMMIT_ERROR',
   ) {
-    const recordFailure =
-      reason === 'DOMAIN_COMMIT_REJECTED'
-        ? this.recordDomainCommitRejection(attachment, input, scanResult)
-        : this.recordScanFailure(
-            attachment,
-            input,
-            AttachmentScanStatus.SCAN_ERROR,
-            {
-              ...scanResult,
-              resultSummary: reason,
-            },
-          );
-    const [recordResult, purgeResult] = await Promise.allSettled([
-      recordFailure,
-      this.attachmentStorageQuotaService.purgeAndRelease({
-        reservationId: reservation.id,
-        expectedOwnerToken: reservation.ownerToken,
-        reason,
-      }),
-    ]);
-
-    if (recordResult.status === 'rejected') {
-      this.logger.error(
-        'eventType=attachment_commit_failure_audit result=reconciliation_required',
-      );
+    // COMMIT may have succeeded even when its acknowledgement was lost. A new
+    // transaction under the same project lock resolves that uncertainty before
+    // changing metadata or attempting binary cleanup.
+    let committed: ReturnType<AttachmentsService['toAttachmentSummary']> | null;
+    try {
+      committed = await withSystemProjectWrite(this.prisma, input.projectId, async tx => {
+        const current = await tx.attachment.findUnique({ where: { id: attachment.id }, include: ATTACHMENT_DETAIL_INCLUDE });
+        if (current?.scanStatus === AttachmentScanStatus.CLEAN) {
+          const labels = await this.buildEntityLabelMapForAttachments(tx, input.projectId, [current]);
+          return this.toAttachmentSummary(current, labels);
+        }
+        if (current?.scanStatus === AttachmentScanStatus.PENDING_SCAN) {
+          const updated = await tx.attachment.update({
+            where: { id: attachment.id, scanStatus: AttachmentScanStatus.PENDING_SCAN },
+            data: {
+              fileUrl: null, scanStatus: AttachmentScanStatus.SCAN_ERROR,
+              scannerEngine: scanResult.engine, scannerVersion: scanResult.engineVersion,
+              scannerSignatureVersion: scanResult.signatureVersion, scanResultSummary: reason,
+              scannedAt: scanResult.scannedAt,
+            }, include: ATTACHMENT_DETAIL_INCLUDE,
+          });
+          await this.activityLogsService.createWithExecutor(tx, {
+            projectId: input.projectId, actorUserId: input.uploadedById,
+            targetType: AuditTargetType.ATTACHMENT, targetId: attachment.id,
+            action: reason === 'DOMAIN_COMMIT_REJECTED' ? 'ATTACHMENT_DOMAIN_COMMIT_REJECTED' : 'ATTACHMENT_SCAN_ERROR',
+            nodeCode: input.nodeCode ?? null,
+            summary: reason === 'DOMAIN_COMMIT_REJECTED' ? '附件扫描期间业务状态已变更，正式绑定已拒绝。' : '附件安全状态保存失败，文件未进入业务存储。',
+            beforeData: this.toAttachmentAuditSnapshot(current), afterData: this.toAttachmentAuditSnapshot(updated),
+          });
+        }
+        return null;
+      });
+    } catch {
+      // If the database cannot resolve the result, leave the counted reservation
+      // to the existing reconciler; it checks retained state before removing bytes.
+      this.logger.error('eventType=attachment_commit_failure_audit result=reconciliation_required');
+      return null;
     }
-    if (purgeResult.status === 'rejected') {
-      this.logger.error(
-        'eventType=attachment_storage_release result=reconciliation_required',
-      );
-    }
+    if (committed) return committed;
+    await this.releaseReservedBinary(reservation.id, reservation.ownerToken, reason);
+    return null;
   }
 
   private async releaseReservedBinary(

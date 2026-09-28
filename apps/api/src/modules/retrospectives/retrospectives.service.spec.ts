@@ -1,3 +1,4 @@
+import { installTeamAuthorizationFixture } from '../../test-support/team-authorization.fixture';
 import { ProjectRetrospectiveStatus, ProjectStatus, WorkflowNodeCode } from '@prisma/client';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -6,6 +7,7 @@ import { RetrospectivesService } from './retrospectives.service';
 
 const actor = {
   id: 'project-manager-1',
+  authSource: 'local', authVersion: 1,
   roleCodes: ['project_manager'],
   permissionCodes: ['project.read', 'project.write'],
   isSystemAdmin: false,
@@ -140,6 +142,7 @@ function createHarness() {
     },
   };
 
+  installTeamAuthorizationFixture(tx, [actor]);
   const prisma = {
     project: {
       findUnique: vi.fn().mockResolvedValue({

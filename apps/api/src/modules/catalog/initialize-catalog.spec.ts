@@ -17,7 +17,8 @@ describe('fresh catalog reference checks', () => {
     expect(() => assertMigrationBaseline(migrationDepartments.map(row => ({ ...row, leadUserId: 'someone' })), migrationDepartments)).toThrow();
   });
   it('contains the existing complete catalog without assigning roles to any user', () => {
-    expect(baseRoles).toHaveLength(9);
+    expect(baseRoles).toHaveLength(10);
+    expect(rolePermissionMap.production_operator).toEqual(['project.read', 'workflow.transition', 'attachment.manage', 'dashboard.read']);
     expect(workflowNodes).toHaveLength(18);
     expect(new Set(workflowNodes.map(node => node.stepCode)).size).toBe(18);
     expect(workflowNodes.every(node => node.processTemplateCode === defaultProcessTemplate.code)).toBe(true);

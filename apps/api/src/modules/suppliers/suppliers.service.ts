@@ -1,3 +1,4 @@
+import { withTeamWrite } from '../../common/team-authorization';
 import { createHash } from 'node:crypto';
 
 import {
@@ -147,9 +148,9 @@ export class SuppliersService {
     if (replay) {
       return replay;
     }
-    await this.admitSupplierMutationAttempt(actor.id);
+    await this.admitSupplierMutationAttempt(actor);
 
-    return this.prisma.$transaction(async (tx) => {
+    return withTeamWrite(this.prisma, actor, async (tx) => {
       await this.lockSupplierCommand(tx, actor.id, idempotencyKey);
       const lockedReplay = await this.findSupplierCommandReplay(tx, commandInput);
       if (lockedReplay) {
@@ -242,9 +243,9 @@ export class SuppliersService {
     if (replay) {
       return replay;
     }
-    await this.admitSupplierMutationAttempt(actor.id);
+    await this.admitSupplierMutationAttempt(actor);
 
-    return this.prisma.$transaction(async (tx) => {
+    return withTeamWrite(this.prisma, actor, async (tx) => {
       await this.lockSupplierCommand(tx, actor.id, idempotencyKey);
       const lockedReplay = await this.findSupplierCommandReplay(tx, commandInput);
       if (lockedReplay) {
@@ -413,9 +414,9 @@ export class SuppliersService {
     };
   }
 
-  private async admitSupplierMutationAttempt(actorUserId: string) {
-    await this.prisma.$transaction(async (tx) => {
-      await this.reserveSupplierMutation(tx, actorUserId);
+  private async admitSupplierMutationAttempt(actor: AuthenticatedUser) {
+    await withTeamWrite(this.prisma, actor, async (tx) => {
+      await this.reserveSupplierMutation(tx, actor.id);
     });
   }
 
@@ -525,6 +526,10 @@ export class SuppliersService {
     actor: AuthenticatedUser,
     requiredPermission: 'project.read' | 'workflow.transition',
   ) {
+    if (requiredPermission === 'workflow.transition' && !actor.isSystemAdmin &&
+        !actor.roleCodes.some(role => role === 'purchaser' || role === 'project_manager')) {
+      throw new ForbiddenException('供应商目录由采购、项目协调或管理员维护。');
+    }
     if (actor.isSystemAdmin || actor.permissionCodes?.includes(requiredPermission)) {
       return;
     }

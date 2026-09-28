@@ -1,5 +1,5 @@
-import { DashboardWorkspace } from '../../components/dashboard-workspace';
+import { TeamWorkspace } from '../../features/team-work/team-workspace';
 
 export default function DashboardPage() {
-  return <DashboardWorkspace />;
+  return <TeamWorkspace />;
 }

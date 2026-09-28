@@ -97,7 +97,7 @@ describe('V2 account menu', () => {
     expect(html).toContain('李晓晨的账号信息');
   });
 
-  it('renders only the four retained product destinations', () => {
+  it('renders only the three product destinations', () => {
     const html = renderToStaticMarkup(
       <V2Shell>
         <p>页面内容</p>
@@ -108,13 +108,13 @@ describe('V2 account menu', () => {
     )?.[1];
 
     expect(primaryNavHtml).toBeDefined();
-    expect(primaryNavHtml?.match(/href="\/v2\/(?:dashboard|projects|tasks|admin)"/g)).toHaveLength(4);
+    expect(primaryNavHtml?.match(/href="\/v2\/(?:dashboard|projects|admin\/people)"/g)).toHaveLength(3);
     expect(primaryNavHtml?.match(/aria-current="page"/g)).toHaveLength(1);
     expect(primaryNavHtml).not.toContain('aria-disabled="true"');
     expect(primaryNavHtml).not.toContain('进展提交');
   });
 
-  it('maps the progress workflow to the retained task destination', () => {
+  it('maps the progress workflow to the my-work destination', () => {
     pathnameState.value = '/v2/progress';
 
     const html = renderToStaticMarkup(
@@ -124,7 +124,7 @@ describe('V2 account menu', () => {
     );
 
     expect(html).toContain(
-      'class="is-active" aria-current="page" aria-disabled="false" href="/v2/tasks"',
+      'class="is-active" aria-current="page" aria-disabled="false" href="/v2/dashboard"',
     );
     expect(html.match(/aria-current="page"/g)).toHaveLength(1);
     expect(html).not.toContain('进展提交');

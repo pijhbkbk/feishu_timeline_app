@@ -20,6 +20,7 @@ function createActor(): AuthenticatedUser {
     isSystemAdmin: false,
     authSource: 'mock',
     roleCodes: ['project_manager'],
+    permissionCodes: ['project.read'],
   };
 }
 
@@ -65,15 +66,7 @@ describe('DashboardService', () => {
       },
     });
     expect(prisma.project.findMany).not.toHaveBeenCalled();
-    expect(prisma.project.count).toHaveBeenCalledWith({
-      where: {
-        OR: [
-          { ownerUserId: 'user-1' },
-          { members: { some: { userId: 'user-1' } } },
-          { workflowTasks: { some: { assigneeUserId: 'user-1' } } },
-        ],
-      },
-    });
+    expect(prisma.project.count).toHaveBeenCalledWith({ where: {} });
   });
 
   it('aggregates overview statistics for current user scope', async () => {
@@ -119,9 +112,7 @@ describe('DashboardService', () => {
     expect(prisma.project.findMany).not.toHaveBeenCalled();
     expect(prisma.project.groupBy).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: expect.objectContaining({
-          OR: expect.any(Array),
-        }),
+        where: {},
         by: ['status'],
       }),
     );

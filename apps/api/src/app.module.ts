@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { PersonnelModule } from './modules/personnel/personnel.module';
 import { ConfigModule } from '@nestjs/config';
 
 import appConfig, { APP_ENV_FILE_PATHS } from './common/app-config';
@@ -40,6 +41,7 @@ import { WorkflowsModule } from './modules/workflows/workflows.module';
 
 @Module({
   imports: [
+    PersonnelModule,
     ConfigModule.forRoot({
       isGlobal: true,
       load: [appConfig],

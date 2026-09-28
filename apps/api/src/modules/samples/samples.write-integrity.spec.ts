@@ -7,14 +7,18 @@ import {
 } from '@prisma/client';
 import { describe, expect, it, vi } from 'vitest';
 
+import { installTeamAuthorizationFixture } from '../../test-support/team-authorization.fixture';
+
 import { SamplesService } from './samples.service';
 
 const actor = {
-  id: 'quality-member',
-  roleCodes: ['quality_engineer'],
+  id: 'process-member',
+  authSource: 'local', authVersion: 1,
+  roleCodes: ['process_engineer'],
   permissionCodes: ['project.read', 'workflow.transition', 'attachment.manage'],
   isSystemAdmin: false,
 } as never;
+const reviewer = { id: 'reviewer-member', authSource: 'local', authVersion: 1, roleCodes: ['reviewer'], permissionCodes: ['project.read', 'workflow.transition'], isSystemAdmin: false } as never;
 
 const imageFile = {
   originalname: 'sample.png',
@@ -51,12 +55,13 @@ function sampleRecord(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function activeConfirmationTask() {
+function activeDevelopmentTask() {
   return {
     id: 'sample-task-1',
     projectId: 'project-1',
     workflowInstanceId: 'workflow-1',
-    nodeCode: WorkflowNodeCode.SAMPLE_COLOR_CONFIRMATION,
+    nodeCode: WorkflowNodeCode.PAINT_DEVELOPMENT,
+    status: WorkflowTaskStatus.IN_PROGRESS, assigneeUserId: 'process-member',
     isActive: true,
   };
 }
@@ -73,9 +78,10 @@ type ConcurrentSampleRecord = Omit<
 };
 
 type ConcurrentTaskRecord = Omit<
-  ReturnType<typeof activeConfirmationTask>,
-  'isActive'
+  ReturnType<typeof activeDevelopmentTask>,
+  'isActive' | 'status' | 'nodeCode'
 > & {
+  nodeCode: WorkflowNodeCode;
   isActive: boolean;
   status: WorkflowTaskStatus;
 };
@@ -103,16 +109,13 @@ function createHarness() {
       findFirst: vi.fn(),
     },
   };
+  installTeamAuthorizationFixture(tx, [actor], () => activeDevelopmentTask());
   const prisma = {
     $transaction: vi.fn(async (executor: (client: typeof tx) => Promise<unknown>) =>
       executor(tx),
     ),
-    sample: {
-      findFirst: vi.fn(),
-    },
-    workflowTask: {
-      findFirst: vi.fn(),
-    },
+    sample: tx.sample,
+    workflowTask: tx.workflowTask,
   };
   const attachments = {
     createStoredAttachment: vi.fn().mockResolvedValue({ id: 'attachment-1' }),
@@ -169,6 +172,7 @@ function createRowLock() {
 }
 
 function createConcurrentSampleWriteHarness() {
+  const projectLock = createRowLock();
   const sampleLock = createRowLock();
   const taskLock = createRowLock();
   const submitReachedImageCheck = createDeferred<void>();
@@ -180,7 +184,8 @@ function createConcurrentSampleWriteHarness() {
   let imageCheckPaused = false;
   let samples: ConcurrentSampleRecord[] = [sampleRecord()];
   let activeTask: ConcurrentTaskRecord = {
-    ...activeConfirmationTask(),
+    ...activeDevelopmentTask(),
+    nodeCode: WorkflowNodeCode.SAMPLE_COLOR_CONFIRMATION, assigneeUserId: 'reviewer-member',
     status: WorkflowTaskStatus.IN_PROGRESS,
   };
 
@@ -193,6 +198,13 @@ function createConcurrentSampleWriteHarness() {
         lockSqlByTransaction.set(transactionNumber, lockSql);
 
         const tx = {
+          $executeRaw: vi.fn(async (query: { strings: readonly string[]; values: unknown[] }) => {
+            if (query.values.includes('team-project-write')) {
+              if (transactionNumber === 2) competingSampleLockAttempted.resolve();
+              await projectLock.acquire(owner);
+            }
+            return 0;
+          }),
           $queryRaw: vi.fn(async (query: { strings?: readonly string[] }) => {
             const sql = query.strings?.join('') ?? '';
             lockSql.push(sql);
@@ -314,6 +326,7 @@ function createConcurrentSampleWriteHarness() {
             upsert: vi.fn().mockResolvedValue({ id: 'confirmation-1' }),
           },
         };
+        installTeamAuthorizationFixture(tx, [actor, reviewer], () => activeTask);
         transactionOwners.set(tx, owner);
 
         try {
@@ -321,6 +334,7 @@ function createConcurrentSampleWriteHarness() {
         } finally {
           taskLock.release(owner);
           sampleLock.release(owner);
+          projectLock.release(owner);
         }
       },
     ),
@@ -390,7 +404,31 @@ function createConcurrentSampleWriteHarness() {
 }
 
 describe('SamplesService write-state integrity', () => {
-  it('rejects initial sample creation when no sample-confirmation task is active', async () => {
+  it.each([
+    ['wrong role for development', 'create', 'quality-member', ['quality_engineer'], 'process-member'],
+    ['unclaimed development', 'create', 'process-member', ['process_engineer'], null],
+    ['another development owner', 'create', 'process-member', ['process_engineer'], 'other-member'],
+    ['wrong role for confirmation', 'confirm', 'process-member', ['process_engineer'], 'process-member'],
+    ['another confirmation owner', 'confirm', 'reviewer-member', ['reviewer'], 'other-reviewer'],
+  ] as const)('rejects %s through the real task authorization helper', async (_label, operation, id, roleCodes, assigneeUserId) => {
+    const { service, tx, attachments } = createHarness();
+    const caller = { id, roleCodes: [...roleCodes], authSource: 'local' as const, authVersion: 1,
+      isSystemAdmin: false, permissionCodes: ['project.read', 'workflow.transition'] };
+    const task = { ...activeDevelopmentTask(), assigneeUserId,
+      nodeCode: operation === 'create' ? WorkflowNodeCode.PAINT_DEVELOPMENT : WorkflowNodeCode.SAMPLE_COLOR_CONFIRMATION };
+    tx.workflowTask.findFirst.mockResolvedValue(task);
+    tx.sample.findFirst.mockResolvedValue(sampleRecord());
+    installTeamAuthorizationFixture(tx, [caller], () => task);
+    const write = operation === 'create'
+      ? service.createSample('project-1', { sampleNo: 'S-001', sampleName: '样板', sampleType: 'PANEL', createNewVersion: false }, caller as never)
+      : service.submitConfirmation('project-1', { sampleId: 'sample-1', decision: SampleConfirmationDecision.APPROVE }, caller as never);
+    await expect(write).rejects.toMatchObject({ status: 403 });
+    expect(tx.sample.create).not.toHaveBeenCalled();
+    expect(tx.sample.update).not.toHaveBeenCalled();
+    expect(attachments.createStoredAttachment).not.toHaveBeenCalled();
+  });
+
+  it('rejects initial sample creation when no paint-development task is active', async () => {
     const { service, tx } = createHarness();
     tx.workflowTask.findFirst.mockResolvedValue(null);
     tx.sample.findMany.mockResolvedValue([]);
@@ -407,14 +445,14 @@ describe('SamplesService write-state integrity', () => {
         },
         actor,
       ),
-    ).rejects.toThrow('没有活跃的样板颜色确认节点');
+    ).rejects.toThrow('对应的活跃样板工序');
 
     expect(tx.sample.create).not.toHaveBeenCalled();
   });
 
-  it('rejects createNewVersion from a confirmed current version', async () => {
+  it('allows a fresh development task to create V2 while retaining confirmed V1 facts', async () => {
     const { service, tx } = createHarness();
-    tx.workflowTask.findFirst.mockResolvedValue(activeConfirmationTask());
+    tx.workflowTask.findFirst.mockResolvedValue(activeDevelopmentTask());
     const confirmedSample = sampleRecord({
       status: SampleStatus.CONFIRMED,
       confirmedAt: new Date(),
@@ -434,10 +472,12 @@ describe('SamplesService write-state integrity', () => {
         },
         actor,
       ),
-    ).rejects.toThrow('当前样板版本不允许修改');
+    ).resolves.toEqual({});
 
-    expect(tx.sample.updateMany).not.toHaveBeenCalled();
-    expect(tx.sample.create).not.toHaveBeenCalled();
+    expect(tx.sample.updateMany).toHaveBeenCalledWith(expect.objectContaining({ data: { isCurrent: false } }));
+    expect(tx.sample.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ versionNo: 2, status: SampleStatus.DRAFT }) }));
+    expect(confirmedSample.status).toBe(SampleStatus.CONFIRMED);
+    expect(confirmedSample.confirmedAt).toEqual(expect.any(Date));
   });
 
   it.each([
@@ -446,7 +486,7 @@ describe('SamplesService write-state integrity', () => {
     ['non-current', { isCurrent: false }],
   ])('rejects update of a %s sample', async (_label, overrides) => {
     const { service, tx } = createHarness();
-    tx.workflowTask.findFirst.mockResolvedValue(activeConfirmationTask());
+    tx.workflowTask.findFirst.mockResolvedValue(activeDevelopmentTask());
     tx.sample.findFirst.mockResolvedValue(sampleRecord(overrides));
 
     await expect(
@@ -461,7 +501,7 @@ describe('SamplesService write-state integrity', () => {
     expect(tx.sample.update).not.toHaveBeenCalled();
   });
 
-  it('rejects update when the sample-confirmation task is no longer active', async () => {
+  it('rejects update when the paint-development task is no longer active', async () => {
     const { service, tx } = createHarness();
     tx.workflowTask.findFirst.mockResolvedValue(null);
     tx.sample.findFirst.mockResolvedValue(sampleRecord());
@@ -473,7 +513,7 @@ describe('SamplesService write-state integrity', () => {
         { remark: '不应写入' },
         actor,
       ),
-    ).rejects.toThrow('没有活跃的样板颜色确认节点');
+    ).rejects.toThrow('对应的活跃样板工序');
 
     expect(tx.sample.update).not.toHaveBeenCalled();
   });
@@ -484,7 +524,7 @@ describe('SamplesService write-state integrity', () => {
     ['non-current', { isCurrent: false }],
   ])('rejects image upload for a %s sample', async (_label, overrides) => {
     const { service, prisma, attachments } = createHarness();
-    prisma.workflowTask.findFirst.mockResolvedValue(activeConfirmationTask());
+    prisma.workflowTask.findFirst.mockResolvedValue(activeDevelopmentTask());
     prisma.sample.findFirst.mockResolvedValue(sampleRecord(overrides));
 
     await expect(
@@ -494,14 +534,14 @@ describe('SamplesService write-state integrity', () => {
     expect(attachments.createStoredAttachment).not.toHaveBeenCalled();
   });
 
-  it('rejects image upload when the sample-confirmation task is no longer active', async () => {
+  it('rejects image upload when the paint-development task is no longer active', async () => {
     const { service, prisma, attachments } = createHarness();
     prisma.workflowTask.findFirst.mockResolvedValue(null);
     prisma.sample.findFirst.mockResolvedValue(sampleRecord());
 
     await expect(
       service.uploadSampleImage('project-1', 'sample-1', imageFile, actor),
-    ).rejects.toThrow('没有活跃的样板颜色确认节点');
+    ).rejects.toThrow('对应的活跃样板工序');
 
     expect(attachments.createStoredAttachment).not.toHaveBeenCalled();
   });
@@ -510,12 +550,10 @@ describe('SamplesService write-state integrity', () => {
     const { service, prisma, tx, attachments } = createHarness();
     const scanStarted = createDeferred<void>();
     const releaseScan = createDeferred<void>();
-    prisma.workflowTask.findFirst.mockResolvedValue(activeConfirmationTask());
+    prisma.workflowTask.findFirst.mockResolvedValue(activeDevelopmentTask());
     prisma.sample.findFirst.mockResolvedValue(sampleRecord());
-    tx.sample.findFirst.mockResolvedValue(
-      sampleRecord({ status: SampleStatus.CONFIRMED, confirmedAt: new Date() }),
-    );
-    tx.workflowTask.findFirst.mockResolvedValue(activeConfirmationTask());
+    tx.sample.findFirst.mockResolvedValue(sampleRecord());
+    tx.workflowTask.findFirst.mockResolvedValue(activeDevelopmentTask());
     attachments.createStoredAttachment.mockImplementation(async (input: any) => {
       scanStarted.resolve();
       await releaseScan.promise;
@@ -533,6 +571,7 @@ describe('SamplesService write-state integrity', () => {
       actor,
     );
     await scanStarted.promise;
+    tx.sample.findFirst.mockResolvedValue(sampleRecord({ status: SampleStatus.CONFIRMED, confirmedAt: new Date() }));
     releaseScan.resolve();
 
     await expect(upload).rejects.toMatchObject({
@@ -544,10 +583,10 @@ describe('SamplesService write-state integrity', () => {
 
   it('locks the sample before the active task and finalizes a writable image', async () => {
     const { service, prisma, tx, attachments } = createHarness();
-    prisma.workflowTask.findFirst.mockResolvedValue(activeConfirmationTask());
+    prisma.workflowTask.findFirst.mockResolvedValue(activeDevelopmentTask());
     prisma.sample.findFirst.mockResolvedValue(sampleRecord());
     tx.sample.findFirst.mockResolvedValue(sampleRecord());
-    tx.workflowTask.findFirst.mockResolvedValue(activeConfirmationTask());
+    tx.workflowTask.findFirst.mockResolvedValue(activeDevelopmentTask());
     attachments.createStoredAttachment.mockImplementation(async (input: any) => {
       await input.finalizeDomainAttachment(tx, {
         attachmentId: 'attachment-1',
@@ -590,7 +629,7 @@ describe('SamplesService write-state integrity', () => {
         decision: SampleConfirmationDecision.APPROVE,
         comment: '确认当前样板',
       },
-      actor,
+      reviewer,
     );
     await harness.submitReachedImageCheck.promise;
 
@@ -643,7 +682,7 @@ describe('SamplesService write-state integrity', () => {
         decision: SampleConfirmationDecision.APPROVE,
         comment: '确认当前样板',
       },
-      actor,
+      reviewer,
     );
     await harness.submitReachedImageCheck.promise;
 

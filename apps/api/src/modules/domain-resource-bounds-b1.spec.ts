@@ -2,12 +2,14 @@ import { DevelopmentFeeType, WorkflowNodeCode } from '@prisma/client';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
+import { installTeamAuthorizationFixture } from '../test-support/team-authorization.fixture';
 
 import { FeesService } from './fees/fees.service';
 import { PaintProcurementsService } from './paint-procurements/paint-procurements.service';
 import { ProductionPlansService } from './production-plans/production-plans.service';
 
 const actor = {
+  authSource: 'local', authVersion: 1,
   id: 'admin-1',
   roleCodes: ['admin'],
   permissionCodes: ['project.read', 'workflow.transition'],
@@ -59,6 +61,7 @@ function createCapacityDependencies() {
     paintProcurement: { create: vi.fn() },
     productionPlan: { create: vi.fn() },
   };
+  installTeamAuthorizationFixture(tx, [actor]);
   const transaction = vi.fn(
     async (executor: (client: typeof tx) => Promise<unknown>) => executor(tx),
   );

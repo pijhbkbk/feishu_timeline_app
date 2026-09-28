@@ -1,3 +1,4 @@
+import { installTeamAuthorizationFixture } from '../../test-support/team-authorization.fixture';
 import {
   ReviewResult,
   ReviewType,
@@ -11,8 +12,9 @@ import { describe, expect, it, vi } from 'vitest';
 import { ReviewsService } from './reviews.service';
 
 const actor = {
-  id: 'project-manager-1',
-  roleCodes: ['project_manager'],
+  id: 'reviewer-1',
+  authSource: 'local', authVersion: 1,
+  roleCodes: ['reviewer', 'quality_engineer'],
   permissionCodes: ['project.read', 'review.execute'],
   isSystemAdmin: false,
 } as never;
@@ -80,7 +82,7 @@ function createHarness(
     status: WorkflowTaskStatus.IN_PROGRESS as WorkflowTaskStatus,
     isPrimary: true,
     isActive: true,
-    assigneeUserId: null,
+    assigneeUserId: 'reviewer-1',
     assigneeDepartmentId: null,
     assigneeUser: null,
     assigneeDepartment: null,
@@ -153,6 +155,7 @@ function createHarness(
         const tx = {
           $queryRaw: vi.fn(async (query: { strings?: readonly string[] }) => {
             const sql = query.strings?.join('') ?? '';
+            if (sql.includes('monthly_plan_integrity')) return [{ id: task.id, status: 'ACTIVE', frequency: 'MONTHLY', totalCount: 12, taskCount: 12, validCount: 12 }];
             lockSql.push(sql);
             if (sql.includes('review_records')) {
               await pauseDelayedUpdate();
@@ -332,12 +335,15 @@ function createHarness(
             }),
           },
           recurringTask: {
+            findUniqueOrThrow: vi.fn().mockResolvedValue({ id: 'recurring-task-1', projectId: 'project-1',
+              reviewerId: 'reviewer-1', plannedDate: new Date('2026-08-11T00:00:00Z'), status: 'PENDING' }),
             findFirst: vi.fn().mockResolvedValue({
               id: 'recurring-task-1',
               status: 'PENDING',
             }),
           },
         };
+        installTeamAuthorizationFixture(tx, [actor], () => task);
         return executor(tx);
       },
     ),
@@ -395,6 +401,13 @@ function createHarness(
 }
 
 describe('ReviewsService finalized-write integrity', () => {
+  it('rejects a request to sign as another reviewer before a write', async () => {
+    const harness = createHarness('create');
+    await expect(harness.service.createCabinReview('project-1', reviewInput('reviewer-2', '他人签名'), actor))
+      .rejects.toMatchObject({ status: 403 });
+    expect(harness.getRecords()).toHaveLength(1);
+    expect(harness.getAudits()).toEqual([]);
+  });
   it('rejects a delayed review update after submit commits', async () => {
     const harness = createHarness('update');
     const delayedUpdate = harness.service
@@ -530,12 +543,12 @@ describe('ReviewsService finalized-write integrity', () => {
     ]);
   });
 
-  it('rejects a delayed different-reviewer create after task approval', async () => {
+  it('rejects a delayed same-signer create after task approval', async () => {
     const harness = createHarness('create');
     const delayedCreate = harness.service
       .createCabinReview(
         'project-1',
-        reviewInput('reviewer-2', '不应创建的新记录'),
+        reviewInput('reviewer-1', '不应创建的新记录'),
         actor,
       )
       .then(

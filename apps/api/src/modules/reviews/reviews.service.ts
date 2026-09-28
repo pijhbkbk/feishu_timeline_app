@@ -1,3 +1,5 @@
+import { requireActiveMonthlyPlan } from '../../common/monthly-review-plan';
+import { assertTeamTaskById, withProjectWrite } from '../../common/team-authorization';
 import {
   BadRequestException,
   ConflictException,
@@ -9,6 +11,7 @@ import {
   AttachmentScanStatus,
   AttachmentTargetType,
   AuditTargetType,
+  RecurringPlanStatus,
   RecurringTaskStatus,
   ReviewResult,
   ReviewType,
@@ -128,6 +131,7 @@ const REVIEW_ATTACHMENT_FINALIZE_CONFLICT_CODES = new Set([
   'REVIEW_ORPHAN_REVIEWER',
   'VISUAL_DELTA_REVIEW_PLAN_IDENTITY_CONFLICT',
   'VISUAL_DELTA_REVIEW_PERIOD_LIMIT_EXCEEDED',
+  'MONTHLY_REVIEW_PLAN_INVALID',
 ]);
 
 const CABIN_REVIEW_INCLUDE = {
@@ -174,7 +178,7 @@ export class ReviewsService {
     const input = this.parseReviewWriteInput(rawInput);
     this.assertActorCanAssignReviewer(actor, input.reviewerId);
 
-    await this.prisma.$transaction(async (tx) => {
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
       const { context } = await this.lockCabinReviewWriteState(
         tx,
         projectId,
@@ -241,7 +245,7 @@ export class ReviewsService {
     const input = this.parseReviewWriteInput(rawInput);
     this.assertActorCanAssignReviewer(actor, input.reviewerId);
 
-    await this.prisma.$transaction(async (tx) => {
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
       const { context, reviewRecord } = await this.lockCabinReviewWriteState(
         tx,
         projectId,
@@ -311,7 +315,8 @@ export class ReviewsService {
       assertWritable: (candidate) => this.assertWritableCabinReviewStage(candidate),
     });
 
-    const attachment = await this.attachmentsService.createStoredAttachment({
+    await this.attachmentsService.createStoredAttachment({
+      actor,
       projectId,
       targetType: AttachmentTargetType.REVIEW_RECORD,
       targetId: reviewId,
@@ -332,21 +337,6 @@ export class ReviewsService {
       }),
     });
 
-    await this.prisma.$transaction(async (tx) => {
-      await this.activityLogsService.createWithExecutor(tx, {
-        projectId,
-        actorUserId: actor.id,
-        targetType: AuditTargetType.REVIEW_RECORD,
-        targetId: reviewId,
-        action: 'CABIN_REVIEW_ATTACHMENT_UPLOADED',
-        nodeCode: WorkflowNodeCode.CAB_REVIEW,
-        summary: `驾驶室评审记录 ${reviewId} 已上传附件。`,
-        afterData: {
-          attachmentId: attachment.id,
-          fileName: attachment.fileName,
-        },
-      });
-    });
 
     return this.buildCabinReviewWorkspace(this.prisma, projectId);
   }
@@ -358,7 +348,7 @@ export class ReviewsService {
   ) {
     await this.assertActorCanManage(projectId, actor);
 
-    await this.prisma.$transaction(async (tx) => {
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
       const { reviewRecord } = await this.lockCabinReviewWriteState(
         tx,
         projectId,
@@ -413,7 +403,7 @@ export class ReviewsService {
   ) {
     await this.assertActorCanManage(projectId, actor);
 
-    await this.prisma.$transaction(async (tx) => {
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
       const { context, reviewRecord } = await this.lockCabinReviewWriteState(
         tx,
         projectId,
@@ -505,7 +495,7 @@ export class ReviewsService {
   ) {
     await this.assertActorCanManage(projectId, actor);
 
-    await this.prisma.$transaction(async (tx) => {
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
       const { context, reviewRecord } = await this.lockCabinReviewWriteState(
         tx,
         projectId,
@@ -593,7 +583,7 @@ export class ReviewsService {
     const input = this.parseReviewWriteInput(rawInput);
     this.assertActorCanAssignReviewer(actor, input.reviewerId);
 
-    await this.prisma.$transaction(async (tx) => {
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
       const { context } = await this.lockConsistencyReviewWriteState(
         tx,
         projectId,
@@ -647,7 +637,7 @@ export class ReviewsService {
     const input = this.parseReviewWriteInput(rawInput);
     this.assertActorCanAssignReviewer(actor, input.reviewerId);
 
-    await this.prisma.$transaction(async (tx) => {
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
       const { context, reviewRecord } =
         await this.lockConsistencyReviewWriteState(
           tx,
@@ -719,7 +709,8 @@ export class ReviewsService {
         this.assertWritableConsistencyReviewStage(candidate),
     });
 
-    const attachment = await this.attachmentsService.createStoredAttachment({
+    await this.attachmentsService.createStoredAttachment({
+      actor,
       projectId,
       targetType: AttachmentTargetType.REVIEW_RECORD,
       targetId: reviewId,
@@ -740,21 +731,6 @@ export class ReviewsService {
       }),
     });
 
-    await this.prisma.$transaction(async (tx) => {
-      await this.activityLogsService.createWithExecutor(tx, {
-        projectId,
-        actorUserId: actor.id,
-        targetType: AuditTargetType.REVIEW_RECORD,
-        targetId: reviewId,
-        action: 'CONSISTENCY_REVIEW_ATTACHMENT_UPLOADED',
-        nodeCode: WorkflowNodeCode.COLOR_CONSISTENCY_REVIEW,
-        summary: `颜色一致性评审记录 ${reviewId} 已上传附件。`,
-        afterData: {
-          attachmentId: attachment.id,
-          fileName: attachment.fileName,
-        },
-      });
-    });
 
     return this.buildConsistencyReviewWorkspace(this.prisma, projectId);
   }
@@ -766,7 +742,7 @@ export class ReviewsService {
   ) {
     await this.assertActorCanManage(projectId, actor);
 
-    await this.prisma.$transaction(async (tx) => {
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
       const { reviewRecord } = await this.lockConsistencyReviewWriteState(
         tx,
         projectId,
@@ -821,7 +797,7 @@ export class ReviewsService {
   ) {
     await this.assertActorCanManage(projectId, actor);
 
-    await this.prisma.$transaction(async (tx) => {
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
       const { context, reviewRecord } =
         await this.lockConsistencyReviewWriteState(
           tx,
@@ -906,7 +882,7 @@ export class ReviewsService {
   ) {
     await this.assertActorCanManage(projectId, actor);
 
-    await this.prisma.$transaction(async (tx) => {
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
       const { context, reviewRecord } =
         await this.lockConsistencyReviewWriteState(
           tx,
@@ -995,7 +971,7 @@ export class ReviewsService {
     const input = this.parseReviewWriteInput(rawInput);
     this.assertActorCanAssignReviewer(actor, input.reviewerId);
 
-    await this.prisma.$transaction(async (tx) => {
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
       const { context, recurringPlanId } = await this.lockVisualDeltaReviewWriteState(
         tx,
         projectId,
@@ -1012,6 +988,7 @@ export class ReviewsService {
         projectId,
         recurringPlanId,
         input.reviewDate,
+        actor,
       );
       await this.assertUniqueVisualReviewerPerPeriod(
         tx,
@@ -1061,7 +1038,7 @@ export class ReviewsService {
     const input = this.parseReviewWriteInput(rawInput);
     this.assertActorCanAssignReviewer(actor, input.reviewerId);
 
-    await this.prisma.$transaction(async (tx) => {
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
       const { context, reviewRecord, recurringPlanId } =
         await this.lockVisualDeltaReviewWriteState(
           tx,
@@ -1079,6 +1056,7 @@ export class ReviewsService {
         projectId,
         recurringPlanId,
         input.reviewDate,
+        actor,
       );
       await this.assertUniqueVisualReviewerPerPeriod(
         tx,
@@ -1141,7 +1119,8 @@ export class ReviewsService {
         this.assertWritableVisualDeltaReviewStage(candidate),
     });
 
-    const attachment = await this.attachmentsService.createStoredAttachment({
+    await this.attachmentsService.createStoredAttachment({
+      actor,
       projectId,
       targetType: AttachmentTargetType.REVIEW_RECORD,
       targetId: reviewId,
@@ -1162,21 +1141,6 @@ export class ReviewsService {
       }),
     });
 
-    await this.prisma.$transaction(async (tx) => {
-      await this.activityLogsService.createWithExecutor(tx, {
-        projectId,
-        actorUserId: actor.id,
-        targetType: AuditTargetType.REVIEW_RECORD,
-        targetId: reviewId,
-        action: 'VISUAL_DELTA_REVIEW_ATTACHMENT_UPLOADED',
-        nodeCode: WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW,
-        summary: `目视色差评审记录 ${reviewId} 已上传附件。`,
-        afterData: {
-          attachmentId: attachment.id,
-          fileName: attachment.fileName,
-        },
-      });
-    });
 
     return this.buildVisualDeltaReviewWorkspace(this.prisma, projectId);
   }
@@ -1188,7 +1152,7 @@ export class ReviewsService {
   ) {
     await this.assertActorCanManage(projectId, actor);
 
-    await this.prisma.$transaction(async (tx) => {
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
       const { reviewRecord } = await this.lockVisualDeltaReviewWriteState(
         tx,
         projectId,
@@ -1243,7 +1207,7 @@ export class ReviewsService {
   ) {
     await this.assertActorCanManage(projectId, actor);
 
-    await this.prisma.$transaction(async (tx) => {
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
       const { context, reviewRecord, recurringPlanId } =
         await this.lockVisualDeltaReviewWriteState(
           tx,
@@ -1280,6 +1244,7 @@ export class ReviewsService {
         projectId,
         recurringPlanId,
         updatedReview.reviewedAt!,
+        actor,
       );
 
       if (recurringTask.status === RecurringTaskStatus.COMPLETED) {
@@ -1410,7 +1375,7 @@ export class ReviewsService {
   ) {
     await this.assertActorCanManage(projectId, actor);
 
-    await this.prisma.$transaction(async (tx) => {
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
       const { context, reviewRecord } =
         await this.lockVisualDeltaReviewWriteState(
           tx,
@@ -1670,50 +1635,28 @@ export class ReviewsService {
           orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         }),
       ]);
-    const reviewTaskIds = [...new Set(items.map((item) => item.workflowTaskId))];
-    const recurringPlans = reviewTaskIds.length === 0
-      ? []
-      : await db.recurringPlan.findMany({
-          where: {
-            projectId,
-            sourceWorkflowTaskId: { in: reviewTaskIds },
-            sourceNodeCode: WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW,
-          },
-          select: {
-            sourceWorkflowTaskId: true,
-            tasks: {
-              select: {
-                status: true,
-                plannedDate: true,
-              },
-              orderBy: [{ periodIndex: 'asc' }, { id: 'asc' }],
-              take: VISUAL_DELTA_REVIEW_PERIOD_LIMIT + 1,
-            },
-          },
-          take: reviewTaskIds.length + 1,
-        });
-    const planTaskIds = new Set<string>();
+    const recurringPlans = await db.recurringPlan.findMany({
+      where: { projectId, sourceNodeCode: WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW },
+      select: {
+        status: true,
+        tasks: {
+          select: { id: true, periodIndex: true, periodLabel: true, status: true, plannedDate: true, dueAt: true, reviewerId: true },
+          orderBy: [{ periodIndex: 'asc' }, { id: 'asc' }],
+          take: VISUAL_DELTA_REVIEW_PERIOD_LIMIT + 1,
+        },
+      },
+      take: 2,
+    });
+    if (recurringPlans.length > 1) throw new ConflictException({
+      code: 'VISUAL_DELTA_REVIEW_PLAN_IDENTITY_CONFLICT',
+      message: '项目存在多个历史月度计划，请核对后再继续。',
+    });
     const completedReviewPeriods = new Set<string>();
     for (const recurringPlan of recurringPlans) {
-      if (
-        !recurringPlan.sourceWorkflowTaskId ||
-        planTaskIds.has(recurringPlan.sourceWorkflowTaskId)
-      ) {
-        throw new ConflictException({
-          code: 'VISUAL_DELTA_REVIEW_PLAN_IDENTITY_CONFLICT',
-          message: '目视色差评审任务关联了重复或无来源的月度计划。',
-        });
-      }
-      planTaskIds.add(recurringPlan.sourceWorkflowTaskId);
       this.assertVisualDeltaReviewPeriodCapacity(recurringPlan.tasks);
       for (const task of recurringPlan.tasks) {
         if (task.status === RecurringTaskStatus.COMPLETED) {
-          completedReviewPeriods.add(
-            this.getVisualDeltaCompletionKey(
-              recurringPlan.sourceWorkflowTaskId,
-              getMonthlyReviewPeriodKey(task.plannedDate),
-            ),
-          );
+          completedReviewPeriods.add(getMonthlyReviewPeriodKey(task.plannedDate));
         }
       }
     }
@@ -1726,6 +1669,8 @@ export class ReviewsService {
     return {
       project: this.toProjectSummary(project),
       massProductionCompleted,
+      monthlyPlanActive: recurringPlans[0]?.status === RecurringPlanStatus.ACTIVE,
+      recurringTasks: recurringPlans[0]?.tasks ?? [],
       activeTask: activeTask ? this.toWorkflowTaskSummary(activeTask) : null,
       downstreamTask: projectClosedTask
         ? this.toWorkflowTaskSummary(projectClosedTask)
@@ -1738,21 +1683,11 @@ export class ReviewsService {
         isPeriodCompleted: Boolean(
           item.reviewPeriod &&
             completedReviewPeriods.has(
-              this.getVisualDeltaCompletionKey(
-                item.workflowTaskId,
-                item.reviewPeriod,
-              ),
+              item.reviewPeriod,
             ),
         ),
       })),
     };
-  }
-
-  private getVisualDeltaCompletionKey(
-    workflowTaskId: string,
-    reviewPeriod: string,
-  ) {
-    return `${workflowTaskId}:${reviewPeriod}`;
   }
 
   private async assertReviewResourceAdmission(
@@ -1786,13 +1721,16 @@ export class ReviewsService {
     getContext: (tx: Prisma.TransactionClient) => Promise<TContext>;
     assertWritable: (context: TContext) => void;
   }) {
-    return this.prisma.$transaction(async (tx) => {
+    return withProjectWrite(this.prisma, input.actor, { projectId: input.projectId }, async (tx) => {
       const context = await input.getContext(tx);
       input.assertWritable(context);
       if (!context.activeTask) {
         this.throwReviewStateChanged();
       }
 
+      if (!(await this.lockReviewRecordRow(tx, input.projectId, input.reviewId))) {
+        this.throwReviewStateChanged();
+      }
       const reviewRecord = await tx.reviewRecord.findFirst({
         where: {
           id: input.reviewId,
@@ -1805,6 +1743,7 @@ export class ReviewsService {
           reviewerId: true,
           attachmentId: true,
           submittedAt: true,
+          reviewedAt: true,
         },
       });
       if (!reviewRecord) {
@@ -1814,21 +1753,7 @@ export class ReviewsService {
       this.assertActorCanManageReviewRecord(input.actor, reviewRecord.reviewerId);
       this.assertCurrentTaskEditable(reviewRecord, context.activeTask.id);
       this.assertDraftReviewRecord(reviewRecord);
-
-      if (
-        !(await this.lockReviewRecordRow(
-          tx,
-          input.projectId,
-          input.reviewId,
-        )) ||
-        !(await this.lockWorkflowTaskRow(
-          tx,
-          input.projectId,
-          context.activeTask.id,
-        ))
-      ) {
-        this.throwReviewStateChanged();
-      }
+      await this.assertReviewTaskOperator(tx, reviewRecord.workflowTaskId, input.actor, input.reviewType);
       if (
         reviewRecord.attachmentId &&
         !(await this.lockAttachmentRow(
@@ -1853,11 +1778,9 @@ export class ReviewsService {
         reviewRecord.reviewerId,
       );
       if (input.reviewType === ReviewType.VISUAL_COLOR_DIFFERENCE_REVIEW) {
-        await this.assertVisualDeltaAttachmentPlanAdmission(
-          tx,
-          input.projectId,
-          context.activeTask.id,
-        );
+        const plan = await this.assertVisualDeltaAttachmentPlanAdmission(tx, input.projectId, context.activeTask.id);
+        if (!reviewRecord.reviewedAt) throw new ConflictException('月度评审日期缺失。');
+        await this.getVisualDeltaRecurringTaskForDate(tx, input.projectId, plan.id, reviewRecord.reviewedAt, input.actor);
       }
 
       return {
@@ -1884,6 +1807,7 @@ export class ReviewsService {
       projectId,
       recurringPlan.id,
     );
+    return recurringPlan;
   }
 
   private async assertReviewCreateCapacity(
@@ -2292,22 +2216,22 @@ export class ReviewsService {
     actor: AuthenticatedUser,
     reviewerId: string,
   ) {
-    if (actor.roleCodes.includes('project_manager') || reviewerId === actor.id) {
+    if (reviewerId === actor.id) {
       return;
     }
 
-    throw new ForbiddenException('只有项目经理可指定其他评审人；评审人只能建立本人记录。');
+    throw new ForbiddenException('只能以本人身份建立或签署评审记录。');
   }
 
   private assertActorCanManageReviewRecord(
     actor: AuthenticatedUser,
     reviewerId: string | null,
   ) {
-    if (actor.roleCodes.includes('project_manager') || reviewerId === actor.id) {
+    if (reviewerId === actor.id) {
       return;
     }
 
-    throw new ForbiddenException('第 12/17 步评审仅允许指定评审人或项目经理操作。');
+    throw new ForbiddenException('只能办理本人签署的评审记录。');
   }
 
   private async getProjectOrThrow(db: ReviewsDbClient, projectId: string) {
@@ -2514,6 +2438,7 @@ export class ReviewsService {
     reviewId?: string,
   ) {
     return this.lockReviewWriteState(tx, projectId, {
+      actor,
       ...(reviewId ? { reviewId } : {}),
       reviewType: ReviewType.CAB_REVIEW,
       getContext: () => this.getCabinReviewContext(tx, projectId),
@@ -2530,6 +2455,7 @@ export class ReviewsService {
     reviewId?: string,
   ) {
     return this.lockReviewWriteState(tx, projectId, {
+      actor,
       ...(reviewId ? { reviewId } : {}),
       reviewType: ReviewType.COLOR_CONSISTENCY_REVIEW,
       getContext: () => this.getConsistencyReviewContext(tx, projectId),
@@ -2547,6 +2473,7 @@ export class ReviewsService {
     reviewId?: string,
   ) {
     const state = await this.lockReviewWriteState(tx, projectId, {
+      actor,
       ...(reviewId ? { reviewId } : {}),
       reviewType: ReviewType.VISUAL_COLOR_DIFFERENCE_REVIEW,
       getContext: () => this.getVisualDeltaReviewContext(tx, projectId),
@@ -2565,6 +2492,10 @@ export class ReviewsService {
       projectId,
       recurringPlan.id,
     );
+    if (state.reviewRecord) {
+      if (!state.reviewRecord.reviewedAt) throw new ConflictException('月度评审日期缺失。');
+      await this.getVisualDeltaRecurringTaskForDate(tx, projectId, recurringPlan.id, state.reviewRecord.reviewedAt, actor);
+    }
     return { ...state, recurringPlanId: recurringPlan.id };
   }
 
@@ -2574,6 +2505,7 @@ export class ReviewsService {
     tx: Prisma.TransactionClient,
     projectId: string,
     input: {
+      actor: AuthenticatedUser;
       reviewId?: string;
       reviewType: ReviewType;
       getContext: () => Promise<TContext>;
@@ -2623,6 +2555,7 @@ export class ReviewsService {
         input.reviewType,
       );
       this.assertPersistedReviewSourceBound(reviewRecord);
+      await this.assertReviewTaskOperator(tx, context.activeTask.id, input.actor, input.reviewType);
       return { context, reviewRecord };
     }
 
@@ -2646,7 +2579,20 @@ export class ReviewsService {
     } catch {
       this.throwReviewStateChanged();
     }
+    await this.assertReviewTaskOperator(tx, context.activeTask.id, input.actor, input.reviewType);
     return { context, reviewRecord: null };
+  }
+
+  private async assertReviewTaskOperator(tx: Prisma.TransactionClient, taskId: string, actor: AuthenticatedUser, reviewType: ReviewType) {
+    if (reviewType !== ReviewType.VISUAL_COLOR_DIFFERENCE_REVIEW) {
+      await assertTeamTaskById(tx, taskId, actor);
+      return;
+    }
+    await tx.$queryRaw(Prisma.sql`SELECT id FROM workflow_tasks WHERE id = ${taskId} FOR UPDATE`);
+    const task = await tx.workflowTask.findUnique({ where: { id: taskId }, select: { nodeCode: true, isActive: true } });
+    if (!task?.isActive || task.nodeCode !== WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW || !actor.roleCodes.includes('quality_engineer')) {
+      throw new ForbiddenException('仅质量试验角色可办理当前月度评审。');
+    }
   }
 
   private async resolveVisualDeltaRecurringPlan(
@@ -2658,7 +2604,7 @@ export class ReviewsService {
       SELECT recurring_plan."id"
       FROM "workflow_tasks" AS workflow_task
       INNER JOIN "recurring_plans" AS recurring_plan
-        ON recurring_plan."sourceWorkflowTaskId" = workflow_task."id"
+        ON recurring_plan."projectId" = workflow_task."projectId"
       WHERE workflow_task."id" = ${workflowTaskId}
         AND workflow_task."projectId" = ${projectId}
         AND recurring_plan."projectId" = ${projectId}
@@ -2674,6 +2620,7 @@ export class ReviewsService {
           : '当前目视色差评审任务关联了多个月度计划。',
       });
     }
+    await requireActiveMonthlyPlan(db, projectId, plans[0]!.id);
     return plans[0]!;
   }
 
@@ -2787,10 +2734,11 @@ export class ReviewsService {
   }
 
   private async getVisualDeltaRecurringTaskForDate(
-    db: ReviewsDbClient,
+    db: Prisma.TransactionClient,
     projectId: string,
     recurringPlanId: string,
     reviewDate: Date,
+    actor: AuthenticatedUser,
   ) {
     const { periodStart, periodEnd } = getMonthlyReviewPeriodRange(reviewDate);
     const recurringTask = await db.recurringTask.findFirst({
@@ -2811,7 +2759,15 @@ export class ReviewsService {
       throw new BadRequestException('评审日期未命中任何月度评审周期。');
     }
 
-    return recurringTask;
+    await db.$queryRaw(Prisma.sql`SELECT id FROM recurring_tasks WHERE id = ${recurringTask.id} FOR UPDATE`);
+    const current = await db.recurringTask.findUniqueOrThrow({ where: { id: recurringTask.id } });
+    if (!actor.roleCodes.includes('quality_engineer') || current.reviewerId !== actor.id) {
+      throw new ForbiddenException('请先领取本月质量评审任务；只能签署本人负责的月份。');
+    }
+    if (current.plannedDate > new Date() || !['PENDING', 'IN_PROGRESS', 'OVERDUE'].includes(current.status)) {
+      throw new ConflictException('本月任务尚未到期或已结束，不能修改评审结果。');
+    }
+    return current;
   }
 
   private async assertUniqueVisualReviewerPerPeriod(
@@ -2873,6 +2829,7 @@ export class ReviewsService {
           reviewerId: true,
           attachmentId: true,
           submittedAt: true,
+          reviewedAt: true,
         },
       });
       if (!lockedReview) {
@@ -2896,16 +2853,7 @@ export class ReviewsService {
         this.throwAttachmentTargetStateChanged();
       }
       this.assertActorCanManageReviewRecord(input.actor, lockedReview.reviewerId);
-
-      if (
-        !(await this.lockWorkflowTaskRow(
-          tx,
-          input.projectId,
-          input.workflowTaskId,
-        ))
-      ) {
-        this.throwAttachmentTargetStateChanged();
-      }
+      await this.assertReviewTaskOperator(tx, lockedReview.workflowTaskId, input.actor, input.reviewType);
       const activeTask = await tx.workflowTask.findFirst({
         where: {
           id: input.workflowTaskId,
@@ -2953,13 +2901,11 @@ export class ReviewsService {
         ),
       );
       if (input.reviewType === ReviewType.VISUAL_COLOR_DIFFERENCE_REVIEW) {
-        await this.translateReviewAttachmentFinalizeConflict(() =>
-          this.assertVisualDeltaAttachmentPlanAdmission(
-            tx,
-            input.projectId,
-            input.workflowTaskId,
-          ),
+        const plan = await this.translateReviewAttachmentFinalizeConflict(() =>
+          this.assertVisualDeltaAttachmentPlanAdmission(tx, input.projectId, input.workflowTaskId),
         );
+        if (!lockedReview.reviewedAt) this.throwAttachmentTargetStateChanged();
+        await this.getVisualDeltaRecurringTaskForDate(tx, input.projectId, plan.id, lockedReview.reviewedAt, input.actor);
       }
 
       const updated = await tx.reviewRecord.updateMany({
@@ -2977,6 +2923,15 @@ export class ReviewsService {
       if (updated.count !== 1) {
         this.throwAttachmentTargetStateChanged();
       }
+      const action = input.reviewType === ReviewType.CAB_REVIEW ? 'CABIN_REVIEW_ATTACHMENT_UPLOADED'
+        : input.reviewType === ReviewType.COLOR_CONSISTENCY_REVIEW ? 'CONSISTENCY_REVIEW_ATTACHMENT_UPLOADED'
+        : 'VISUAL_DELTA_REVIEW_ATTACHMENT_UPLOADED';
+      await this.activityLogsService.createWithExecutor(tx, {
+        projectId: input.projectId, actorUserId: input.actor.id,
+        targetType: AuditTargetType.REVIEW_RECORD, targetId: input.reviewId, action,
+        nodeCode: input.nodeCode, summary: '评审记录已上传附件。',
+        afterData: { attachmentId: context.attachmentId },
+      });
     };
   }
 

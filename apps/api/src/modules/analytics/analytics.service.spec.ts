@@ -72,6 +72,7 @@ describe('AnalyticsService bounded overview read model', () => {
       departmentId: 'department-1',
       isSystemAdmin: false,
       roleCodes: ['viewer'],
+      permissionCodes: ['project.read'],
     } as never);
 
     expect(result.projectOverview).toEqual({
@@ -136,7 +137,7 @@ describe('AnalyticsService bounded overview read model', () => {
     expect(sql).toContain('::"ReviewResult"');
     expect(sql).toContain('::"RecurringTaskStatus"');
     expect(sql).toContain('::"ColorExitSuggestion"');
-    expect(values).toContain('viewer-1');
-    expect(values).toContain('department-1');
+    expect(values).not.toContain('viewer-1');
+    expect(values).not.toContain('department-1');
   });
 });

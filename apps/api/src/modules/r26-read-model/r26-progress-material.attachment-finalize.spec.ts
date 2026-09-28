@@ -6,10 +6,13 @@ import {
 } from '@prisma/client';
 import { describe, expect, it, vi } from 'vitest';
 
+import { installTeamAuthorizationFixture } from '../../test-support/team-authorization.fixture';
+
 import { R26ProgressMaterialService } from './r26-progress-material.service';
 
 const actor = {
   id: 'assignee-1',
+  authSource: 'local', authVersion: 1,
   roleCodes: ['purchaser'],
   permissionCodes: ['project.read'],
   isSystemAdmin: false,
@@ -38,6 +41,7 @@ function createTask(overrides: Record<string, unknown> = {}) {
     nodeCode: WorkflowNodeCode.PAINT_PROCUREMENT,
     status: WorkflowTaskStatus.IN_PROGRESS,
     isActive: true,
+    assigneeUserId: 'assignee-1',
     updatedAt: initialTaskVersion,
     ...overrides,
   };
@@ -71,6 +75,7 @@ function createHarness(expectedScanCount = 1) {
     $queryRaw: vi.fn().mockResolvedValue([{ id: 'locked' }]),
     workflowTask: {
       findUnique: vi.fn(async () => currentTask),
+      findUniqueOrThrow: vi.fn(async () => currentTask),
       findFirst: vi.fn(async () => currentTask),
       updateMany: vi.fn(async (args: any) => {
         const expected = args.where.updatedAt as Date;
@@ -92,16 +97,21 @@ function createHarness(expectedScanCount = 1) {
       findFirst: vi.fn(async () => activeMaterial),
     },
   };
+  const commands = new Map<string, any>();
+  const commandDb = {
+    findUnique: vi.fn(async (args: any) => commands.get(args.where.idempotencyKey) ?? null),
+    create: vi.fn(async (args: any) => { commands.set(args.data.idempotencyKey, args.data); return args.data; }),
+    update: vi.fn(async (args: any) => { const record = { ...commands.get(args.where.idempotencyKey), ...args.data }; commands.set(args.where.idempotencyKey, record); return record; }),
+    deleteMany: vi.fn(async (args: any) => { commands.delete(args.where.idempotencyKey); return { count: 1 }; }),
+  };
+  Object.assign(tx, { r26CommandRequest: commandDb });
+  installTeamAuthorizationFixture(tx, [actor], () => currentTask);
   const prisma = {
+    $transaction: vi.fn(async (operation: (client: typeof tx) => Promise<unknown>) => runExclusive(() => operation(tx))),
     attachment: {
       findFirst: vi.fn().mockResolvedValue(null),
     },
-    r26CommandRequest: {
-      findUnique: vi.fn().mockResolvedValue(null),
-      create: vi.fn().mockResolvedValue({ id: 'command-1' }),
-      update: vi.fn().mockResolvedValue({ id: 'command-1' }),
-      deleteMany: vi.fn().mockResolvedValue({ count: 1 }),
-    },
+    r26CommandRequest: commandDb,
   };
   const attachments = {
     createStoredAttachment: vi.fn(async (input: any) => {
@@ -125,7 +135,9 @@ function createHarness(expectedScanCount = 1) {
           isDeleted: false,
           scanStatus: AttachmentScanStatus.CLEAN,
         };
-        return { id: attachmentId, fileName: file.originalname, versionNo: 1 };
+        const stored = { id: attachmentId, fileName: file.originalname, versionNo: 1 };
+        await input.finalizeUploadResult(tx, stored);
+        return stored;
       });
     }),
   };
@@ -245,6 +257,7 @@ describe('R26 material attachment scan-finalize integrity', () => {
       scanStatus: AttachmentScanStatus.CLEAN,
     });
     const finalize = (harness.service as any).createMaterialAttachmentFinalizeHook({
+      actor,
       projectId: 'project-1',
       taskId: 'task-1',
       nodeCode: WorkflowNodeCode.PAINT_PROCUREMENT,

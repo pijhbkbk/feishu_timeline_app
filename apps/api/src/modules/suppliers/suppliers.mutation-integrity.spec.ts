@@ -1,6 +1,8 @@
 import { SupplierStatus } from '@prisma/client';
 import { describe, expect, it, vi } from 'vitest';
 
+import { installTeamAuthorizationFixture } from '../../test-support/team-authorization.fixture';
+
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { SuppliersService } from './suppliers.service';
 
@@ -12,7 +14,7 @@ const actor: AuthenticatedUser = {
   departmentId: null,
   departmentName: null,
   isSystemAdmin: false,
-  authSource: 'mock',
+  authSource: 'local', authVersion: 1,
   roleCodes: ['purchaser'],
   permissionCodes: ['project.read', 'workflow.transition'],
 };
@@ -179,6 +181,7 @@ function createMutationHarness(options: {
     },
   };
 
+  installTeamAuthorizationFixture(tx, [{ ...actor, authVersion: 1 }, { ...actor, id: 'supplier-manager-2', authVersion: 1 }]);
   const prisma = {
     ...tx,
     $transaction: vi.fn(<T>(callback: (client: typeof tx) => Promise<T>) => {
@@ -422,6 +425,7 @@ describe('SuppliersService mutation integrity', () => {
         create: vi.fn().mockResolvedValue({ id: 'command-winner' }),
       },
     };
+    installTeamAuthorizationFixture(tx, [{ ...actor, authVersion: 1 }, { ...actor, id: 'supplier-manager-2', authVersion: 1 }]);
     const prisma = {
       supplierCommandRequest: tx.supplierCommandRequest,
       $transaction: vi.fn(<T>(callback: (client: typeof tx) => Promise<T>) => callback(tx)),

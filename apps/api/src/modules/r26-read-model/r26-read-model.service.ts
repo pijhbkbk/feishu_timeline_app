@@ -1,3 +1,4 @@
+import { teamAssignmentPreview } from '../personnel/team-assignment-preview';
 import { Injectable } from '@nestjs/common';
 import {
   ProjectMemberType,
@@ -294,16 +295,6 @@ export class R26ReadModelService {
       ...project,
       members: workspaceMembers,
     };
-    const assignmentByNode = new Map(
-      nodeAssignments.map((assignment) => [
-        assignment.nodeCode,
-        {
-          ...assignment,
-          collaboratorUserIds: this.parseUserIdList(assignment.collaboratorUserIds),
-          reviewerUserIds: this.parseUserIdList(assignment.reviewerUserIds),
-        } satisfies R26NodeAssignmentConfig,
-      ]),
-    );
     const latestTaskByNode = new Map<WorkflowNodeCode, (typeof tasks)[number]>();
 
     for (const task of tasks) {
@@ -318,16 +309,9 @@ export class R26ReadModelService {
       }
     }
 
-    const assignments = flowMap.nodes.map((node) =>
-      this.buildAssignmentPreview({
-        nodeCode: node.nodeCode,
-        task: latestTaskByNode.get(node.nodeCode) ?? null,
-        nodeAssignment: assignmentByNode.get(node.nodeCode) ?? null,
-        project: workspaceProject,
-        departments: directoryDepartments,
-        users: directoryUsers,
-      }),
-    );
+    const assignments = await Promise.all(flowMap.nodes.map(node =>
+      teamAssignmentPreview(this.prisma, node.nodeCode, latestTaskByNode.get(node.nodeCode) ?? null),
+    ));
     const currentAssignment = flowMap.currentStepCode
       ? assignments.find(
           (assignment) => assignment.nodeCode === flowMap.currentStepCode,
@@ -416,7 +400,7 @@ export class R26ReadModelService {
       capabilities: {
         gate: 'R26_GATE3C1',
         memberAssignmentVersion: project.memberAssignmentVersion,
-        manageMembers: canManageMembers,
+        manageMembers: false,
         progressWriteEnabled: true,
         workflowWriteEnabled: true,
         workflowWriteScope: 'ORDINARY_STEPS_1_TO_11',

@@ -3,29 +3,24 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../components/auth-provider';
-import { FeedbackBanner } from '../../components/feedback-banner';
-import { apiRequest } from '../../lib/auth-client';
 import { needsAssignment } from '../../lib/auth-navigation';
 
 export default function PendingAccessPage() {
   const { user, refreshSession } = useAuth();
   const router = useRouter();
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState('');
   useEffect(() => { if (user && !needsAssignment(user)) router.replace('/dashboard'); }, [user, router]);
   if (!user || !needsAssignment(user)) return null;
-  async function choose(job: 'purchaser' | 'process_engineer') {
-    setBusy(true); setError(null);
-    try { await apiRequest('/auth/job', { method: 'POST', body: { job } }); await refreshSession(); }
-    catch (failure) { setError(failure instanceof Error ? failure.message : '岗位提交失败。'); }
-    finally { setBusy(false); }
+  async function refresh() {
+    setBusy(true); setError('');
+    try { await refreshSession(); } catch { setError('暂时无法刷新授权状态，请稍后重试。'); } finally { setBusy(false); }
   }
   return <section className="page-card native-account-card">
-    <p className="eyebrow">工作台</p><h1>等待工作分配</h1>
+    <p className="eyebrow">人员已入库</p><h1>等待管理员分配角色</h1>
     <p>{user.name} · 工号：{user.username}</p>
-    <p>账号已就绪。正式岗位和项目范围由管理员分配，申请岗位不会自动获得权限。</p>
-    {error && <FeedbackBanner variant="error" title="操作未成功" message={error} />}
-    {user.onboardingCompleted === false ? <><h2>提交岗位意向</h2><div className="page-actions"><button className="button button-primary" disabled={busy} onClick={() => void choose('purchaser')}>采购人员</button><button className="button button-primary" disabled={busy} onClick={() => void choose('process_engineer')}>工艺人员</button></div></> : <p role="status">已提交{user.requestedJob === 'purchaser' ? '采购' : user.requestedJob === 'process_engineer' ? '工艺' : ''}岗位意向，请等待管理员确认。</p>}
-    <div className="page-actions"><button className="button" disabled={busy} onClick={() => void refreshSession()}>刷新授权状态</button><Link href="/account">我的账号</Link></div>
+    <p>注册已完成。管理员在人员表为你分配角色后，系统会显示可以处理的工作，无需再次提交申请。</p>
+    {error ? <p role="alert">{error}</p> : null}
+    <div className="page-actions"><button className="button button-primary" disabled={busy} onClick={() => void refresh()}>{busy ? '正在刷新…' : '刷新授权状态'}</button><Link href="/account">我的资料</Link></div>
   </section>;
 }

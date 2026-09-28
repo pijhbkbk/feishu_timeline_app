@@ -7,11 +7,13 @@ import {
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
+import { installTeamAuthorizationFixture } from '../test-support/team-authorization.fixture';
 
 import { MassProductionsService } from './mass-productions/mass-productions.service';
 import { PilotProductionsService } from './pilot-productions/pilot-productions.service';
 
 const actor = {
+  authSource: 'local', authVersion: 1,
   id: 'admin-1',
   roleCodes: ['admin'],
   permissionCodes: ['project.read', 'workflow.transition'],
@@ -66,6 +68,11 @@ function createParseDependencies() {
 }
 
 function createMassService(transaction: ReturnType<typeof vi.fn>) {
+  const original = transaction as (...args: any[]) => any;
+  transaction = vi.fn((operation: (tx: any) => unknown, options: unknown) => original((tx: any) => {
+    installTeamAuthorizationFixture(tx, [actor]);
+    return operation(tx);
+  }, options));
   return new MassProductionsService(
     { $transaction: transaction } as never,
     {} as never,
@@ -77,6 +84,11 @@ function createMassService(transaction: ReturnType<typeof vi.fn>) {
 }
 
 function createPilotService(transaction: ReturnType<typeof vi.fn>) {
+  const original = transaction as (...args: any[]) => any;
+  transaction = vi.fn((operation: (tx: any) => unknown, options: unknown) => original((tx: any) => {
+    installTeamAuthorizationFixture(tx, [actor]);
+    return operation(tx);
+  }, options));
   return new PilotProductionsService(
     { $transaction: transaction } as never,
     {} as never,
@@ -543,6 +555,7 @@ describe('bounded production execution inputs and reads', () => {
     const tx = {
       trialProduction: { create: vi.fn().mockResolvedValue(createdTrial) },
     };
+    installTeamAuthorizationFixture(tx, [actor]);
     const transaction = vi.fn(async (executor: (client: typeof tx) => unknown) =>
       executor(tx),
     );

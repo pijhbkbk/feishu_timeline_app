@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 
+import { installTeamAuthorizationFixture } from '../../test-support/team-authorization.fixture';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { TasksService } from './tasks.service';
 
@@ -24,7 +25,8 @@ function createActor(): AuthenticatedUser {
     departmentId: null,
     departmentName: null,
     isSystemAdmin: false,
-    authSource: 'mock',
+    authSource: 'local',
+    authVersion: 1,
     roleCodes: ['process_engineer'],
   };
 }
@@ -220,7 +222,7 @@ describe('TasksService', () => {
         nodeCode: WorkflowNodeCode.PAINT_DEVELOPMENT,
         assigneeUserId: 'other-user',
       }),
-    ).toBe(true);
+    ).toBe(false);
     expect(
       (service as any).canSubmitTaskProgress(administrator, {
         nodeCode: WorkflowNodeCode.PAINT_DEVELOPMENT,
@@ -232,13 +234,13 @@ describe('TasksService', () => {
         nodeCode: WorkflowNodeCode.DEVELOPMENT_ACCEPTANCE,
         assigneeUserId: 'other-user',
       }),
-    ).toBe(true);
+    ).toBe(false);
     expect(
       (service as any).canSubmitTaskProgress(administrator, {
         nodeCode: WorkflowNodeCode.PROJECT_CLOSED,
         assigneeUserId: 'other-user',
       }),
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it('returns overdue tasks for current user only', async () => {
@@ -351,6 +353,7 @@ describe('TasksService', () => {
         },
       ]),
     };
+    installTeamAuthorizationFixture(prisma, [{ ...createActor(), authVersion: 1 }], () => createTaskDetailRecord());
     const projectAccessService = {
       assertProjectAccessWithDefaultClient: vi.fn().mockResolvedValue(undefined),
       assertProjectAccess: vi.fn().mockResolvedValue(undefined),
@@ -427,9 +430,11 @@ describe('TasksService', () => {
         },
       ]),
     };
+    installTeamAuthorizationFixture(prisma, [{ ...createActor(), authVersion: 1 }], () => createTaskDetailRecord());
     prisma.$transaction.mockImplementation(
       async (callback: (tx: typeof prisma) => Promise<unknown>) => callback(prisma),
     );
+    installTeamAuthorizationFixture(prisma, [{ ...createActor(), authVersion: 1 }], () => createTaskDetailRecord());
     const projectAccessService = {
       assertProjectAccessWithDefaultClient: vi.fn().mockResolvedValue(undefined),
       assertProjectAccess: vi.fn().mockResolvedValue(undefined),
@@ -496,6 +501,7 @@ describe('TasksService', () => {
         },
       ]),
     };
+    installTeamAuthorizationFixture(prisma, [{ ...createActor(), authVersion: 1 }], () => createTaskDetailRecord());
     prisma.$transaction.mockImplementation(
       async (callback: (tx: typeof prisma) => Promise<unknown>) => callback(prisma),
     );

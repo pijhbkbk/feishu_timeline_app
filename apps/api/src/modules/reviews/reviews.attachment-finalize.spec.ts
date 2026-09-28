@@ -1,11 +1,13 @@
 import { ReviewType, WorkflowNodeCode } from '@prisma/client';
 import { describe, expect, it, vi } from 'vitest';
 
+import { installTeamAuthorizationFixture } from '../../test-support/team-authorization.fixture';
+
 import { ReviewsService } from './reviews.service';
 
 const actor = {
-  id: 'manager-1',
-  roleCodes: ['project_manager'],
+  id: 'reviewer-1', authSource: 'local', authVersion: 1,
+  roleCodes: ['reviewer'],
   permissionCodes: ['project.read', 'review.execute', 'attachment.manage'],
   isSystemAdmin: false,
 } as never;
@@ -34,6 +36,7 @@ function createReviewRecord(overrides: Record<string, unknown> = {}) {
     attachmentId: 'attachment-old',
     reviewType: ReviewType.CAB_REVIEW,
     submittedAt: null,
+    reviewedAt: new Date('2026-08-01T00:00:00Z'),
     ...overrides,
   };
 }
@@ -45,11 +48,15 @@ function createHarness(options: {
 } = {}) {
   const reviewType = options.reviewType ?? ReviewType.CAB_REVIEW;
   const nodeCode = options.nodeCode ?? WorkflowNodeCode.CAB_REVIEW;
+  const taskActor = nodeCode === WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW
+    ? { id: 'reviewer-1', roleCodes: ['quality_engineer'], authVersion: 1, isSystemAdmin: false, permissionCodes: ['project.read', 'review.execute', 'attachment.manage'] } as never : actor;
+  const period = { id: 'period-1', reviewerId: 'reviewer-1', plannedDate: new Date('2026-08-01T00:00:00Z'), status: 'PENDING' };
   const scanStarted = createDeferred<void>();
   const releaseScan = createDeferred<void>();
   let currentReview = createReviewRecord({ reviewType });
   const tx = {
-    $queryRaw: vi.fn().mockResolvedValue([{ id: 'locked' }]),
+    $queryRaw: vi.fn().mockImplementation(async (query) => query.strings?.join('').includes('monthly_plan_integrity')
+      ? [{ id: 'locked', status: 'ACTIVE', frequency: 'MONTHLY', totalCount: 12, taskCount: 12, validCount: 12 }] : [{ id: 'locked' }]),
     reviewRecord: {
       findFirst: vi.fn(async () => currentReview),
       updateMany: vi.fn().mockResolvedValue({ count: 1 }),
@@ -63,6 +70,7 @@ function createHarness(options: {
         isActive: true,
       }),
     },
+    recurringTask: { findFirst: vi.fn().mockResolvedValue(period), findUniqueOrThrow: vi.fn().mockResolvedValue(period) },
     attachment: {
       findFirst: vi.fn().mockResolvedValue({
         id: 'attachment-old',
@@ -74,6 +82,7 @@ function createHarness(options: {
       }),
     },
   };
+  installTeamAuthorizationFixture(tx, [taskActor], () => ({ id: 'task-1', projectId: 'project-1', nodeCode, assigneeUserId: 'reviewer-1', status: 'IN_PROGRESS', isActive: true }));
   const prisma = {
     $transaction: vi.fn(async (executor: (client: typeof tx) => Promise<unknown>) =>
       executor(tx),
@@ -116,6 +125,7 @@ function createHarness(options: {
   const internals = service as any;
 
   return {
+    actor: taskActor,
     service,
     internals,
     prisma,
@@ -216,7 +226,7 @@ describe('ReviewsService attachment scan-finalize integrity', () => {
       vi.spyOn(harness.internals, workspaceMethod).mockResolvedValue({ ok: true });
 
       await expect(
-        harness.internals[method]('project-1', 'review-1', file, actor),
+        harness.internals[method]('project-1', 'review-1', file, harness.actor),
       ).resolves.toEqual({ ok: true });
 
       expect(harness.attachments.createStoredAttachment).toHaveBeenCalledWith(

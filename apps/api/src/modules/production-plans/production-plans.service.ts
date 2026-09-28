@@ -1,3 +1,4 @@
+import { assertTeamTaskById, withProjectWrite } from '../../common/team-authorization';
 import {
   BadRequestException,
   ConflictException,
@@ -88,9 +89,9 @@ export class ProductionPlansService {
     this.assertActorCanManage(actor);
     const input = this.parseSchedulePlanWriteInput(rawInput);
 
-    await this.prisma.$transaction(async (tx) => {
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
       const context = await this.lockActiveScheduleTaskAndGetContext(
-        tx,
+        tx, actor,
         projectId,
       );
       this.assertSchedulePlanRecordCapacity(context.items, true);
@@ -140,10 +141,10 @@ export class ProductionPlansService {
     this.assertActorCanManage(actor);
     const input = this.parseSchedulePlanWriteInput(rawInput);
 
-    await this.prisma.$transaction(async (tx) => {
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
       await this.lockSchedulePlanRow(tx, projectId, planId);
       const plan = await this.getSchedulePlanOrThrow(tx, projectId, planId);
-      await this.lockActiveScheduleTaskAndGetContext(tx, projectId);
+      await this.lockActiveScheduleTaskAndGetContext(tx, actor, projectId);
 
       if (!canEditSchedulePlan(plan.status)) {
         throw new BadRequestException('已确认的排产计划不允许编辑。');
@@ -201,10 +202,10 @@ export class ProductionPlansService {
     await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     this.assertActorCanManage(actor);
 
-    await this.prisma.$transaction(async (tx) => {
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
       await this.lockSchedulePlanRow(tx, projectId, planId);
       const plan = await this.getSchedulePlanOrThrow(tx, projectId, planId);
-      await this.lockActiveScheduleTaskAndGetContext(tx, projectId);
+      await this.lockActiveScheduleTaskAndGetContext(tx, actor, projectId);
 
       if (!canConfirmSchedulePlan(plan.status)) {
         throw new BadRequestException('当前排产计划状态不允许确认。');
@@ -256,10 +257,10 @@ export class ProductionPlansService {
     await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     this.assertActorCanManage(actor);
 
-    await this.prisma.$transaction(async (tx) => {
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
       await this.lockSchedulePlanRow(tx, projectId, planId);
       const plan = await this.getSchedulePlanOrThrow(tx, projectId, planId);
-      await this.lockActiveScheduleTaskAndGetContext(tx, projectId);
+      await this.lockActiveScheduleTaskAndGetContext(tx, actor, projectId);
 
       if (!canCancelSchedulePlan(plan.status)) {
         throw new BadRequestException('当前排产计划状态不允许取消。');
@@ -305,9 +306,9 @@ export class ProductionPlansService {
     await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     this.assertActorCanManage(actor);
 
-    await this.prisma.$transaction(async (tx) => {
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
       const context = await this.lockActiveScheduleTaskAndGetContext(
-        tx,
+        tx, actor,
         projectId,
       );
 
@@ -439,6 +440,7 @@ export class ProductionPlansService {
 
   private async lockActiveScheduleTaskAndGetContext(
     tx: Prisma.TransactionClient,
+    actor: AuthenticatedUser,
     projectId: string,
   ) {
     const lockedTasks = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
@@ -461,6 +463,7 @@ export class ProductionPlansService {
     if (context.activeTask?.id !== lockedTaskId) {
       this.throwSchedulePlanStateChanged();
     }
+    await assertTeamTaskById(tx, context.activeTask!.id, actor);
     return context;
   }
 

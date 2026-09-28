@@ -1,3 +1,4 @@
+import { installTeamAuthorizationFixture } from '../../test-support/team-authorization.fixture';
 import { PerformanceTestStatus, WorkflowNodeCode } from '@prisma/client';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -5,6 +6,7 @@ import { PerformanceTestsService } from './performance-tests.service';
 
 const actor = {
   id: 'quality-1',
+  authSource: 'local', authVersion: 1,
   roleCodes: ['quality_engineer'],
   permissionCodes: ['project.read', 'workflow.transition', 'attachment.manage'],
   isSystemAdmin: false,
@@ -66,6 +68,7 @@ function createHarness(deferred = false) {
       }),
     },
   };
+  installTeamAuthorizationFixture(tx, [actor], () => ({ id: 'task-1', projectId: 'project-1', nodeCode: WorkflowNodeCode.PERFORMANCE_TEST, assigneeUserId: 'quality-1', isActive: true, status: 'IN_PROGRESS' }));
   const prisma = {
     $transaction: vi.fn(async (executor: (client: typeof tx) => Promise<unknown>) =>
       executor(tx),
@@ -187,7 +190,9 @@ describe('PerformanceTestsService attachment scan-finalize integrity', () => {
     expect(lockSql[0]).toContain('FOR UPDATE');
     expect(lockSql[1]).toContain('workflow_tasks');
     expect(lockSql[1]).toContain('FOR UPDATE');
-    expect(lockSql[2]).toContain('attachments');
-    expect(lockSql[2]).toContain('FOR UPDATE');
+    const attachmentLockIndex = lockSql.findIndex(sql => sql.includes('attachments'));
+    expect(attachmentLockIndex).toBeGreaterThan(1);
+    expect(lockSql[attachmentLockIndex]).toContain('FOR UPDATE');
+    expect(lockSql.slice(1, attachmentLockIndex).every(sql => sql.includes('workflow_tasks'))).toBe(true);
   });
 });

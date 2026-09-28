@@ -25,7 +25,7 @@ const reviewerUser: SessionUser = {
   departmentName: null,
   isSystemAdmin: false,
   authSource: 'mock',
-  roleCodes: ['reviewer'],
+  roleCodes: ['quality_engineer'],
 };
 
 const workspace: VisualDeltaReviewWorkspaceResponse = {
@@ -39,6 +39,8 @@ const workspace: VisualDeltaReviewWorkspaceResponse = {
     riskLevel: 'HIGH',
   },
   massProductionCompleted: true,
+  monthlyPlanActive: true,
+  recurringTasks: [{ id: 'month-1', periodIndex: 1, periodLabel: '2026-03', plannedDate: '2026-03-01T00:00:00Z', dueAt: null, reviewerId: 'user-1', status: 'PENDING' }],
   activeTask: {
     id: 'task-1',
     taskNo: 'TASK-001',

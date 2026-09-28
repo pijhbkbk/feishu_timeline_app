@@ -2,6 +2,7 @@ import { WorkflowInstanceStatus, WorkflowNodeCode, WorkflowTaskStatus } from '@p
 import { describe, expect, it, vi } from 'vitest';
 
 import type { AuthenticatedUser } from '../auth/auth.types';
+import { installTeamAuthorizationFixture } from '../../test-support/team-authorization.fixture';
 import { WorkflowsService } from './workflows.service';
 
 const actor: AuthenticatedUser = {
@@ -12,8 +13,9 @@ const actor: AuthenticatedUser = {
   departmentId: null,
   departmentName: null,
   isSystemAdmin: false,
-  authSource: 'mock',
-  roleCodes: ['project_manager'],
+  authSource: 'local',
+  authVersion: 1,
+  roleCodes: ['reviewer'],
   permissionCodes: ['workflow.transition'],
 };
 
@@ -40,6 +42,7 @@ const task = {
 
 function createHarness(options: { recentAuditCount?: number } = {}) {
   const tx = {
+    $queryRaw: vi.fn().mockResolvedValue([{ locked: true }]),
     workflowTask: {
       updateMany: vi.fn().mockResolvedValue({ count: 1 }),
     },
@@ -47,6 +50,7 @@ function createHarness(options: { recentAuditCount?: number } = {}) {
       count: vi.fn().mockResolvedValue(options.recentAuditCount ?? 0),
     },
   };
+  installTeamAuthorizationFixture(tx, [{ ...actor, authVersion: 1 }], () => task);
   const prisma = {
     $transaction: vi.fn(
       async <T>(callback: (executor: typeof tx) => Promise<T>) => callback(tx),

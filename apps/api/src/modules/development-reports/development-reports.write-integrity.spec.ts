@@ -1,3 +1,4 @@
+import { installTeamAuthorizationFixture } from '../../test-support/team-authorization.fixture';
 import {
   DevelopmentReportStatus,
   WorkflowNodeCode,
@@ -9,6 +10,7 @@ import { DevelopmentReportsService } from './development-reports.service';
 
 const actor = {
   id: 'project-manager-1',
+  authSource: 'local', authVersion: 1,
   roleCodes: ['project_manager'],
   permissionCodes: ['project.read', 'workflow.transition'],
   isSystemAdmin: false,
@@ -57,7 +59,7 @@ function createHarness() {
     status: WorkflowTaskStatus.IN_PROGRESS as WorkflowTaskStatus,
     isPrimary: true,
     isActive: true,
-    assigneeUserId: null,
+    assigneeUserId: 'project-manager-1',
     assigneeDepartmentId: null,
     assigneeUser: null,
     assigneeDepartment: null,
@@ -201,6 +203,7 @@ function createHarness() {
             ),
           },
         };
+        installTeamAuthorizationFixture(tx, [actor], () => task);
         return executor(tx);
       },
     ),

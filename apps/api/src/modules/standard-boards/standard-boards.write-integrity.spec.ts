@@ -1,6 +1,8 @@
 import { ConflictException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 
+import { installTeamAuthorizationFixture } from '../../test-support/team-authorization.fixture';
+
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { StandardBoardsService } from './standard-boards.service';
 
@@ -12,8 +14,8 @@ const actor: AuthenticatedUser = {
   departmentId: 'dept-1',
   departmentName: '质量部',
   isSystemAdmin: false,
-  authSource: 'mock',
-  roleCodes: ['quality_engineer'],
+  authSource: 'local', authVersion: 1,
+  roleCodes: ['process_engineer'],
   permissionCodes: ['workflow.transition'],
 };
 
@@ -27,6 +29,7 @@ function createHarness() {
       create: vi.fn().mockRejectedValue(new Error('unsafe detail write reached')),
     },
   };
+  installTeamAuthorizationFixture(tx, [{ ...actor, authVersion: 1 }], id => ({ id, projectId: 'project-1', nodeCode: 'STANDARD_BOARD_PRODUCTION', assigneeUserId: actor.id, status: 'IN_PROGRESS', isActive: true }));
   const prisma = {
     $transaction: vi.fn(
       async (callback: (executor: typeof tx) => Promise<unknown>) => callback(tx),

@@ -10,12 +10,15 @@ import {
 } from '@prisma/client';
 import { describe, expect, it, vi } from 'vitest';
 
+import { installTeamAuthorizationFixture } from '../test-support/team-authorization.fixture';
+
 import { MassProductionsService } from './mass-productions/mass-productions.service';
 import { PilotProductionsService } from './pilot-productions/pilot-productions.service';
 
 const actor = {
   id: 'process-user-1',
-  roleCodes: ['process_engineer'],
+  roleCodes: ['process_engineer', 'production_operator'],
+  authSource: 'local', authVersion: 1,
   permissionCodes: ['project.read', 'workflow.transition'],
   isSystemAdmin: false,
 } as never;
@@ -100,6 +103,9 @@ function createMassHarness() {
       findUniqueOrThrow: vi.fn().mockResolvedValue(massRecord),
     },
   };
+  installTeamAuthorizationFixture(tx, [actor], id => ({ id, projectId: 'project-1',
+    nodeCode: id.includes('trial') ? WorkflowNodeCode.TRIAL_PRODUCTION : id.includes('first') ? WorkflowNodeCode.FIRST_UNIT_PRODUCTION_PLAN : WorkflowNodeCode.MASS_PRODUCTION,
+    assigneeUserId: 'process-user-1', isActive: true, status: 'IN_PROGRESS' }));
   const prisma = {
     $transaction: vi.fn(
       async (callback: (executor: typeof tx) => Promise<unknown>) => callback(tx),
@@ -164,6 +170,9 @@ function createPilotHarness() {
       }),
     },
   };
+  installTeamAuthorizationFixture(tx, [actor], id => ({ id, projectId: 'project-1',
+    nodeCode: id.includes('trial') ? WorkflowNodeCode.TRIAL_PRODUCTION : id.includes('first') ? WorkflowNodeCode.FIRST_UNIT_PRODUCTION_PLAN : WorkflowNodeCode.MASS_PRODUCTION,
+    assigneeUserId: 'process-user-1', isActive: true, status: 'IN_PROGRESS' }));
   const prisma = {
     $transaction: vi.fn(
       async (callback: (executor: typeof tx) => Promise<unknown>) => callback(tx),

@@ -1,3 +1,4 @@
+import { teamProjectScope } from '../../common/team-authorization';
 import { Injectable } from '@nestjs/common';
 import {
   ColorExitSuggestion,
@@ -492,29 +493,8 @@ export class AnalyticsService {
   }
 
   private buildVisibleProjectSql(actor: AuthenticatedUser): Prisma.Sql {
-    if (actor.isSystemAdmin || actor.roleCodes.includes('admin')) {
-      return Prisma.sql`TRUE`;
-    }
-
-    const departmentScope = actor.departmentId
-      ? Prisma.sql`OR p."owningDepartmentId" = ${actor.departmentId}`
-      : Prisma.empty;
-
-    return Prisma.sql`(
-      p."ownerUserId" = ${actor.id}
-      OR EXISTS (
-        SELECT 1
-        FROM "project_members" pm
-        WHERE pm."projectId" = p."id" AND pm."userId" = ${actor.id}
-      )
-      OR EXISTS (
-        SELECT 1
-        FROM "workflow_tasks" visible_actor_task
-        WHERE visible_actor_task."projectId" = p."id"
-          AND visible_actor_task."assigneeUserId" = ${actor.id}
-      )
-      ${departmentScope}
-    )`;
+    teamProjectScope(actor);
+    return Prisma.sql`TRUE`;
   }
 
   private toNumber(value: AggregateNumber | null | undefined) {

@@ -9,6 +9,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { AttachmentsService } from './attachments.service';
+import { installTeamAuthorizationFixture } from '../../test-support/team-authorization.fixture';
 
 const actor: AuthenticatedUser = {
   id: 'user-1',
@@ -18,7 +19,8 @@ const actor: AuthenticatedUser = {
   departmentId: null,
   departmentName: null,
   isSystemAdmin: false,
-  authSource: 'mock',
+  authSource: 'local',
+  authVersion: 1,
   roleCodes: ['project_manager'],
   permissionCodes: ['project.read', 'attachment.manage'],
 };
@@ -77,9 +79,11 @@ function createAttachmentRecord(overrides: Record<string, unknown> = {}) {
 
 function createService() {
   const tx = {
+    $queryRaw: vi.fn().mockResolvedValue([]),
     attachment: {
       create: vi.fn(),
       update: vi.fn(),
+      findUnique: vi.fn(),
       findFirst: vi.fn(),
       findMany: vi.fn(),
     },
@@ -94,7 +98,7 @@ function createService() {
       findMany: vi.fn().mockResolvedValue([]),
     },
     project: {
-      findUnique: vi.fn(),
+      findUnique: vi.fn().mockResolvedValue({ id: 'project-1', code: 'PRJ-001', name: '示例项目', status: 'IN_PROGRESS' }),
     },
     workflowTask: {
       findFirst: vi.fn(),
@@ -120,6 +124,9 @@ function createService() {
       create: vi.fn(),
     },
   };
+
+  tx.attachment.findUnique.mockImplementation(() => tx.attachment.create.mock.results.at(-1)?.value ?? null);
+  installTeamAuthorizationFixture(tx, [{ ...actor, authVersion: 1 }]);
 
   const prisma = {
     $transaction: vi.fn(async (executor: (client: typeof tx) => Promise<unknown>) => executor(tx)),
@@ -301,6 +308,7 @@ describe('AttachmentsService', () => {
 
     await expect(
       service.createStoredAttachment({
+        actor,
         projectId: 'project-1',
         targetType: AttachmentTargetType.PROJECT,
         targetId: 'project-1',
@@ -328,6 +336,7 @@ describe('AttachmentsService', () => {
     const {
       service,
       prisma,
+      tx,
       attachmentStorageQuotaService,
       objectStorageService,
       malwareScanner,
@@ -346,6 +355,7 @@ describe('AttachmentsService', () => {
 
     await expect(
       service.createStoredAttachment({
+        actor,
         projectId: 'project-1',
         targetType: AttachmentTargetType.PROJECT,
         targetId: 'project-1',
@@ -361,13 +371,16 @@ describe('AttachmentsService', () => {
 
     expect(objectStorageService.upload).not.toHaveBeenCalled();
     expect(malwareScanner.scan).not.toHaveBeenCalled();
-    expect(prisma.$transaction).not.toHaveBeenCalled();
+    expect(prisma.$transaction).toHaveBeenCalledOnce(); // Authorization-only preflight.
+    expect(tx.attachment.create).not.toHaveBeenCalled();
+    expect(tx.attachment.update).not.toHaveBeenCalled();
   });
 
   it('keeps the reservation counted until a failed quarantine write is physically reconciled', async () => {
     const {
       service,
       prisma,
+      tx,
       objectStorageService,
       malwareScanner,
       attachmentStorageQuotaService,
@@ -384,6 +397,7 @@ describe('AttachmentsService', () => {
 
     await expect(
       service.createStoredAttachment({
+        actor,
         projectId: 'project-1',
         targetType: AttachmentTargetType.PROJECT,
         targetId: 'project-1',
@@ -403,7 +417,9 @@ describe('AttachmentsService', () => {
       reason: 'QUARANTINE_UPLOAD_FAILED',
     });
     expect(malwareScanner.scan).not.toHaveBeenCalled();
-    expect(prisma.$transaction).not.toHaveBeenCalled();
+    expect(prisma.$transaction).toHaveBeenCalledOnce(); // Authorization-only preflight.
+    expect(tx.attachment.create).not.toHaveBeenCalled();
+    expect(tx.attachment.update).not.toHaveBeenCalled();
   });
 
   it('creates attachment metadata successfully', async () => {
@@ -436,6 +452,7 @@ describe('AttachmentsService', () => {
     tx.attachment.update.mockResolvedValue(createAttachmentRecord());
 
     const result = await service.createStoredAttachment({
+        actor,
       projectId: 'project-1',
       targetType: AttachmentTargetType.PROJECT,
       targetId: 'project-1',
@@ -545,6 +562,7 @@ describe('AttachmentsService', () => {
 
     await expect(
       service.createStoredAttachment({
+        actor,
         projectId: 'project-1',
         targetType: AttachmentTargetType.PROJECT,
         targetId: 'project-1',
@@ -600,7 +618,7 @@ describe('AttachmentsService', () => {
     prisma.$transaction.mockImplementation(
       async (executor: (client: typeof tx) => Promise<unknown>) => {
         transactionCall += 1;
-        if (transactionCall === 2) {
+        if (transactionCall === 3) {
           throw new Error('scan failure transaction unavailable');
         }
         return executor(tx);
@@ -609,6 +627,7 @@ describe('AttachmentsService', () => {
 
     await expect(
       service.createStoredAttachment({
+        actor,
         projectId: 'project-1',
         targetType: AttachmentTargetType.PROJECT,
         targetId: 'project-1',
@@ -660,9 +679,11 @@ describe('AttachmentsService', () => {
     });
     prisma.reviewRecord.findFirst.mockResolvedValue({ id: 'review-1' });
     prisma.attachment.findFirst.mockResolvedValue(replacement);
+    tx.attachment.findFirst.mockResolvedValue(replacement);
     tx.attachment.create.mockResolvedValue(pending);
     tx.attachment.update.mockResolvedValue(clean);
     await service.createStoredAttachment({
+        actor,
       projectId: 'project-1',
       targetType: AttachmentTargetType.REVIEW_RECORD,
       targetId: 'review-1',
@@ -722,6 +743,7 @@ describe('AttachmentsService', () => {
 
     await expect(
       service.createStoredAttachment({
+        actor,
         projectId: 'project-1',
         targetType: AttachmentTargetType.PROJECT,
         targetId: 'project-1',
@@ -789,6 +811,7 @@ describe('AttachmentsService', () => {
 
     await expect(
       service.createStoredAttachment({
+        actor,
         projectId: 'project-1',
         targetType: AttachmentTargetType.PROJECT,
         targetId: 'project-1',
@@ -817,7 +840,7 @@ describe('AttachmentsService', () => {
   });
 
   it('purges quarantine when the pending database record cannot be created', async () => {
-    const { service, prisma, attachmentStorageQuotaService } = createService();
+    const { service, prisma, tx, attachmentStorageQuotaService } = createService();
     prisma.project.findUnique.mockResolvedValue({
       id: 'project-1',
       code: 'PRJ-001',
@@ -825,10 +848,11 @@ describe('AttachmentsService', () => {
       currentNodeCode: null,
       plannedEndDate: null,
     });
-    prisma.$transaction.mockRejectedValueOnce(new Error('database unavailable'));
+    tx.attachment.create.mockRejectedValueOnce(new Error('database unavailable'));
 
     await expect(
       service.createStoredAttachment({
+        actor,
         projectId: 'project-1',
         targetType: AttachmentTargetType.PROJECT,
         targetId: 'project-1',
@@ -878,6 +902,7 @@ describe('AttachmentsService', () => {
 
     await expect(
       service.createStoredAttachment({
+        actor,
         projectId: 'project-1',
         targetType: AttachmentTargetType.PROJECT,
         targetId: 'project-1',
@@ -931,7 +956,7 @@ describe('AttachmentsService', () => {
     prisma.$transaction.mockImplementation(
       async (executor: (client: typeof tx) => Promise<unknown>) => {
         transactionCall += 1;
-        if (transactionCall === 2) {
+        if (transactionCall === 3) {
           throw new Error('clean transaction failed');
         }
         return executor(tx);
@@ -940,6 +965,7 @@ describe('AttachmentsService', () => {
 
     await expect(
       service.createStoredAttachment({
+        actor,
         projectId: 'project-1',
         targetType: AttachmentTargetType.PROJECT,
         targetId: 'project-1',
@@ -998,6 +1024,7 @@ describe('AttachmentsService', () => {
 
       await expect(
         service.createStoredAttachment({
+        actor,
           projectId: 'project-1',
           targetType,
           targetId,
@@ -1050,6 +1077,7 @@ describe('AttachmentsService', () => {
     });
 
     await service.createStoredAttachment({
+        actor,
       projectId: 'project-1',
       targetType: AttachmentTargetType.REVIEW_RECORD,
       targetId: 'review-1',
@@ -1111,6 +1139,7 @@ describe('AttachmentsService', () => {
     });
     prisma.reviewRecord.findFirst.mockResolvedValue({ id: 'review-1' });
     prisma.attachment.findFirst.mockResolvedValue(replacement);
+    tx.attachment.findFirst.mockResolvedValue(replacement);
     tx.attachment.create.mockResolvedValue(pending);
     tx.attachment.update.mockResolvedValue(scanError);
     malwareScanner.scan.mockImplementation(async () => {
@@ -1127,6 +1156,7 @@ describe('AttachmentsService', () => {
     });
 
     const upload = service.createStoredAttachment({
+        actor,
       projectId: 'project-1',
       targetType: AttachmentTargetType.REVIEW_RECORD,
       targetId: 'review-1',
@@ -1172,7 +1202,7 @@ describe('AttachmentsService', () => {
     );
     expect(tx.attachment.update).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: pending.id },
+        where: { id: pending.id, scanStatus: AttachmentScanStatus.PENDING_SCAN },
         data: expect.objectContaining({
           scanStatus: AttachmentScanStatus.SCAN_ERROR,
           fileUrl: null,

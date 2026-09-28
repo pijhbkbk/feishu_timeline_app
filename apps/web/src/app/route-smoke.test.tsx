@@ -50,12 +50,11 @@ describe('route smoke', () => {
     const guideHtml = renderToStaticMarkup(<SystemGuidePage />);
 
     expect(topNavigationItems.map((item) => item.label)).toEqual([
-      '工作台',
-      '项目列表',
-      '我的任务',
-      '系统管理',
+      '我的工作',
+      '颜色项目',
+      '人员',
     ]);
-    expect(sidebarSections[0]?.items).toHaveLength(4);
+    expect(sidebarSections[0]?.items).toHaveLength(3);
     expect(guideHtml).toContain('轻卡定制颜色开发项目管理系统');
     expect(guideHtml).toContain('反映市场需求');
     expect(guideHtml).toContain('颜色退出');

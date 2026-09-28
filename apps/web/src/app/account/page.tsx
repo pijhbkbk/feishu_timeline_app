@@ -19,6 +19,6 @@ export default function AccountPage() {
       <div><dt>所属部门</dt><dd>{user.departmentName || '尚未分配'}</dd></div>
     </dl>
     <div className="page-actions"><Link href={defaultHome(user)} className="button button-primary">返回工作台</Link><Link href="/account/security" className="button">账号安全／修改密码</Link></div>
-    {user.isSystemAdmin && user.roleCodes.includes('admin') && <p><Link href="/admin/accounts">管理账号</Link> · <Link href="/admin/organization">组织与权限</Link></p>}
+    {user.isSystemAdmin && user.roleCodes.includes('admin') && <p><Link href="/admin/people">管理人员</Link></p>}
   </section>;
 }

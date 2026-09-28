@@ -11,6 +11,8 @@ import {
 } from '@prisma/client';
 import { describe, expect, it, vi } from 'vitest';
 
+import { installTeamAuthorizationFixture } from '../../test-support/team-authorization.fixture';
+
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { R26ProgressMaterialService } from './r26-progress-material.service';
 
@@ -22,7 +24,8 @@ const actor: AuthenticatedUser = {
   departmentId: 'dept-purchase',
   departmentName: '采购部',
   isSystemAdmin: false,
-  authSource: 'feishu',
+  authSource: 'local',
+  authVersion: 1,
   roleCodes: ['purchaser'],
   permissionCodes: [
     'project.read',
@@ -179,29 +182,10 @@ function createService(options: {
 } = {}) {
   const loadedTask = options.loadedTask ?? task();
   const tx = {
+    $queryRaw: vi.fn().mockResolvedValue([{ id: loadedTask.id }]),
     workflowTask: {
-      findUnique: vi
-        .fn()
-        .mockResolvedValueOnce({
-          id: loadedTask.id,
-          projectId: loadedTask.projectId,
-          nodeCode: loadedTask.nodeCode,
-          nodeName: loadedTask.nodeName,
-          status: loadedTask.status,
-          isActive: loadedTask.isActive,
-          updatedAt: loadedTask.updatedAt,
-          workflowInstance: {
-            currentNodeCode:
-              loadedTask.workflowInstance.currentNodeCode,
-          },
-        })
-        .mockResolvedValueOnce({
-          status: loadedTask.status,
-          workflowInstance: {
-            currentNodeCode:
-              loadedTask.workflowInstance.currentNodeCode,
-          },
-        }),
+      findUnique: vi.fn().mockResolvedValue(loadedTask),
+      findUniqueOrThrow: vi.fn().mockResolvedValue(loadedTask),
       count: vi.fn().mockResolvedValue(18),
       update: vi.fn(),
       updateMany: vi.fn(),
@@ -224,7 +208,9 @@ function createService(options: {
     r26CommandRequest: {
       findUnique: vi.fn().mockResolvedValue(null),
       create: vi.fn().mockResolvedValue({ id: 'command-1' }),
+      update: vi.fn(), deleteMany: vi.fn().mockResolvedValue({ count: 1 }),
     },
+    attachment: { findFirst: vi.fn().mockResolvedValue(null) },
   };
   const prisma = {
     workflowTask: {
@@ -260,6 +246,8 @@ function createService(options: {
           executor(tx)),
     ),
   };
+  tx.r26CommandRequest.deleteMany = prisma.r26CommandRequest.deleteMany;
+  installTeamAuthorizationFixture(tx, [{ ...actor, authVersion: 1 }], () => loadedTask);
   const projectAccess = {
     assertProjectAccessWithDefaultClient: vi.fn().mockResolvedValue({
       id: loadedTask.projectId,
@@ -369,6 +357,16 @@ function createMaterialReplayHarness(options: { replacement?: boolean } = {}) {
       deleteMany: vi.fn().mockResolvedValue({ count: 1 }),
     },
   };
+  const tx = { ...prisma, $queryRaw: vi.fn().mockResolvedValue([{ id: 'task-6' }]), workflowTask: {
+    findUnique: vi.fn(async () => currentTask), findUniqueOrThrow: vi.fn(async () => currentTask),
+  } };
+  installTeamAuthorizationFixture(tx, [{ ...actor, authVersion: 1 }], () => currentTask);
+  Object.assign(prisma, { $transaction: vi.fn(async (operation: (client: typeof tx) => Promise<unknown>) => operation(tx)) });
+  attachmentCreate.mockImplementation(async (input: any) => {
+    const stored = { id: replacement ? 'attachment-v3' : 'attachment-v1', fileName: replayMaterialFile.originalname, versionNo: replacement ? 3 : 1 };
+    await input.finalizeUploadResult(tx, stored);
+    return stored;
+  });
   const projectAccess = {
     assertProjectAccessWithDefaultClient: vi.fn().mockResolvedValue({
       id: 'project-1',
@@ -589,7 +587,7 @@ describe('R26 Gate 3B progress and material service', () => {
     expect(uploadCase.activityLogs.createWithExecutor).not.toHaveBeenCalled();
   });
 
-  it('lets an ordinary admin with workflow.transition write progress but not materials', async () => {
+  it('rejects progress and materials for an unqualified admin with workflow.transition', async () => {
     const noScopeTask = task({
       assigneeUserId: 'another-user',
       project: {
@@ -608,7 +606,8 @@ describe('R26 Gate 3B progress and material service', () => {
         ordinaryAdminProgressWriter,
         'request-progress-writer',
       ),
-    ).resolves.toMatchObject({ progressSubmitted: true });
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(progressCase.tx.taskProgressUpdate.create).not.toHaveBeenCalled();
 
     const materialCase = createService({ loadedTask: noScopeTask });
     await expect(
@@ -632,7 +631,7 @@ describe('R26 Gate 3B progress and material service', () => {
     expect(materialCase.attachmentCreate).not.toHaveBeenCalled();
   });
 
-  it('lets an ordinary admin with attachment.manage upload materials but not write progress', async () => {
+  it('rejects materials and progress for an unqualified admin with attachment.manage', async () => {
     const noScopeTask = task({
       assigneeUserId: 'another-user',
       project: {
@@ -671,11 +670,12 @@ describe('R26 Gate 3B progress and material service', () => {
         ordinaryAdminMaterialWriter,
         'request-material-writer',
       ),
-    ).resolves.toMatchObject({ materialUploaded: true });
-    expect(materialCase.attachmentCreate).toHaveBeenCalledTimes(1);
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(materialCase.attachmentCreate).not.toHaveBeenCalled();
+    expect(materialCase.prisma.r26CommandRequest.create).not.toHaveBeenCalled();
   });
 
-  it('keeps the system-administrator progress and material bypass independent from permission codes', async () => {
+  it('denies a system administrator business writes without the required role and claim', async () => {
     const noScopeTask = task({
       assigneeUserId: 'another-user',
       project: {
@@ -693,7 +693,8 @@ describe('R26 Gate 3B progress and material service', () => {
         permissionlessSystemAdmin,
         'request-system-admin-progress',
       ),
-    ).resolves.toMatchObject({ progressSubmitted: true });
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(progressCase.tx.taskProgressUpdate.create).not.toHaveBeenCalled();
 
     const materialCase = createService({ loadedTask: noScopeTask });
     await expect(
@@ -713,7 +714,8 @@ describe('R26 Gate 3B progress and material service', () => {
         permissionlessSystemAdmin,
         'request-system-admin-upload',
       ),
-    ).resolves.toMatchObject({ materialUploaded: true });
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(materialCase.attachmentCreate).not.toHaveBeenCalled();
   });
 
   it('requires the corresponding permission for assignees, owners and collaborators too', () => {
@@ -785,17 +787,17 @@ describe('R26 Gate 3B progress and material service', () => {
           ...scopedActor,
           permissionCodes: ['project.read', 'workflow.transition'],
         }).map((item) => item.action),
-      ).toEqual([
+      ).toEqual(scopedActor.id === scopedTask.assigneeUserId ? [
         'SAVE_PROGRESS_DRAFT',
         'DELETE_PROGRESS_DRAFT',
         'SUBMIT_PROGRESS',
-      ]);
+      ] : []);
       expect(
         getAvailableActions(scopedTask, {
           ...scopedActor,
           permissionCodes: ['project.read', 'attachment.manage'],
         }).map((item) => item.action),
-      ).toEqual(['UPLOAD_MATERIAL']);
+      ).toEqual(scopedActor.id === scopedTask.assigneeUserId ? ['UPLOAD_MATERIAL'] : []);
     }
   });
 

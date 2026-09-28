@@ -8,12 +8,15 @@ import {
 } from '@prisma/client';
 import { describe, expect, it, vi } from 'vitest';
 
+import { installTeamAuthorizationFixture } from '../../test-support/team-authorization.fixture';
+
 import { SamplesService } from './samples.service';
 
 const actorId = 'quality-engineer-1';
 const actor = {
   id: actorId,
-  roleCodes: ['quality_engineer'],
+  roleCodes: ['process_engineer', 'reviewer'],
+  authSource: 'local', authVersion: 1,
   permissionCodes: ['project.read', 'workflow.transition'],
   isSystemAdmin: false,
 } as never;
@@ -36,7 +39,7 @@ const activeTask = {
   status: 'IN_PROGRESS',
   taskRound: 1,
   isActive: true,
-  assigneeUserId: null,
+  assigneeUserId: actorId,
   assigneeDepartmentId: null,
   assigneeUser: null,
   assigneeDepartment: null,
@@ -157,6 +160,15 @@ function createService(input?: {
   attachments?: Record<string, unknown>;
   workflows?: Record<string, unknown>;
 }) {
+  const db = input?.prisma as Record<string, any> | undefined;
+  if (db?.$transaction) {
+    const transaction = db.$transaction;
+    const configured = new WeakSet<object>();
+    db.$transaction = vi.fn((operation: (tx: any) => unknown, options?: unknown) => transaction((tx: Record<string, any>) => {
+      if (!configured.has(tx)) { installTeamAuthorizationFixture(tx, [actor], () => activeTask); configured.add(tx); }
+      return operation(tx);
+    }, options));
+  }
   const listTargetAttachments = vi.fn();
   const toAttachmentSummary = vi.fn((attachment: { id: string }) => ({
     id: attachment.id,
@@ -907,6 +919,7 @@ describe('SamplesService resource bounds', () => {
             workflowTaskId: `old-task-${index}`,
           }));
         }
+        if (sql.includes('workflow_tasks')) return [{ id: activeTask.id }];
         events.push('final-samples');
         return [];
       }),
@@ -926,6 +939,7 @@ describe('SamplesService resource bounds', () => {
     const attachments = {
       createStoredAttachment: vi.fn().mockImplementation(async (input: any) => {
         events.push('scan-complete');
+        installTeamAuthorizationFixture(finalTx, [actor], () => activeTask);
         await input.finalizeDomainAttachment(finalTx);
         events.push('attachment-bound');
         return { id: 'attachment-1' };

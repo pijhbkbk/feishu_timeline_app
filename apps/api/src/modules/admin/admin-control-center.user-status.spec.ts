@@ -110,6 +110,7 @@ describe('AdminControlCenterService user status security boundary', () => {
           $executeRaw: async (query) => {
             executeRaw(query);
             const key = JSON.stringify(query.values ?? []);
+            if (heldLocks.some(held => held.key === key)) return 0; // PostgreSQL transaction locks are reentrant.
             const previous = lockTails.get(key) ?? Promise.resolve();
             let release!: () => void;
             const tail = new Promise<void>((resolve) => {
@@ -249,7 +250,7 @@ describe('AdminControlCenterService user status security boundary', () => {
     ).toHaveLength(1);
     expect(userUpdateMany).toHaveBeenCalledTimes(1);
     expect(activityLogsService.createWithExecutor).toHaveBeenCalledTimes(1);
-    expect(systemAdministratorLockCalls()).toHaveLength(2);
+    expect(systemAdministratorLockCalls()).toHaveLength(4);
   });
 
   it('replays two concurrent identical commands after one status write and audit', async () => {
@@ -276,7 +277,7 @@ describe('AdminControlCenterService user status security boundary', () => {
     expect(userUpdateMany).toHaveBeenCalledTimes(1);
     expect(activityLogsService.createWithExecutor).toHaveBeenCalledTimes(1);
     expect(commandCreate).toHaveBeenCalledTimes(1);
-    expect(systemAdministratorLockCalls()).toHaveLength(1);
+    expect(systemAdministratorLockCalls()).toHaveLength(3);
   });
 
   function systemAdministratorLockCalls() {

@@ -11,6 +11,8 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 
+import { installTeamAuthorizationFixture } from '../../test-support/team-authorization.fixture';
+
 import { StandardBoardsService } from './standard-boards.service';
 
 const actor = {
@@ -20,8 +22,8 @@ const actor = {
   email: null,
   departmentId: null,
   departmentName: null,
-  authSource: 'mock',
-  roleCodes: ['quality_engineer'],
+  authSource: 'local', authVersion: 1,
+  roleCodes: ['process_engineer'],
   permissionCodes: ['project.read', 'workflow.transition'],
   isSystemAdmin: false,
 } as never;
@@ -44,7 +46,7 @@ const standardBoardTask = {
   status: WorkflowTaskStatus.IN_PROGRESS,
   isPrimary: true,
   isActive: true,
-  assigneeUserId: null,
+  assigneeUserId: 'quality-engineer-1',
   assigneeDepartmentId: null,
   assigneeUser: null,
   assigneeDepartment: null,
@@ -194,6 +196,15 @@ function createService(input?: {
   activityLogs?: Record<string, unknown>;
   workflows?: Record<string, unknown>;
 }) {
+  const db = input?.prisma as Record<string, any> | undefined;
+  if (db?.$transaction) {
+    const transaction = db.$transaction;
+    const configured = new WeakSet<object>();
+    db.$transaction = vi.fn((operation: (tx: any) => unknown, options?: unknown) => transaction((tx: Record<string, any>) => {
+      if (!configured.has(tx)) { installTeamAuthorizationFixture(tx, [actor], id => id === detailTask.id ? detailTask : standardBoardTask); configured.add(tx); }
+      return operation(tx);
+    }, options));
+  }
   return new StandardBoardsService(
     (input?.prisma ?? {}) as never,
     (input?.activityLogs ?? { createWithExecutor: vi.fn() }) as never,
@@ -1147,7 +1158,7 @@ describe('StandardBoardsService resource bounds', () => {
       await expect(invoke(service)).rejects.toMatchObject({
         response: { code: 'STANDARD_BOARD_WORKSPACE_LIMIT_EXCEEDED' },
       });
-      expect(lock).toHaveBeenCalledWith(tx, project.id, nodeCode);
+      expect(lock).toHaveBeenCalledWith(tx, actor, project.id, nodeCode);
       expect(update).not.toHaveBeenCalled();
       expect(updateMany).not.toHaveBeenCalled();
       expect(workflows.transitionTaskWithExecutor).not.toHaveBeenCalled();
@@ -1619,7 +1630,7 @@ describe('StandardBoardsService resource bounds', () => {
       };
       const activityLogs = { createWithExecutor: vi.fn() };
       const service = createService({ prisma, activityLogs });
-      const lock = vi.fn(async (_tx, _projectId, actualNodeCode) => {
+      const lock = vi.fn(async (_tx, _actor, _projectId, actualNodeCode) => {
         events.push(`lock:${actualNodeCode}`);
         return context.activeTask.id;
       });
@@ -1635,7 +1646,7 @@ describe('StandardBoardsService resource bounds', () => {
       Reflect.set(service, 'buildWorkspace', vi.fn().mockResolvedValue({}));
 
       await expect(invoke(service)).rejects.toMatchObject({ response: { code } });
-      expect(lock).toHaveBeenCalledWith(tx, project.id, nodeCode);
+      expect(lock).toHaveBeenCalledWith(tx, actor, project.id, nodeCode);
       expect(events).toEqual([
         'transaction',
         `lock:${nodeCode}`,

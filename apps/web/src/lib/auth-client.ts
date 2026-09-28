@@ -6,6 +6,7 @@ export type FrontendRoleCode =
   | 'process_engineer'
   | 'quality_engineer'
   | 'purchaser'
+  | 'production_operator'
   | 'reviewer'
   | 'finance'
   | 'auditor'
@@ -49,11 +50,12 @@ export const FRONTEND_ROLE_OPTIONS: Array<{
   label: string;
 }> = [
   { code: 'admin', label: '系统管理员' },
-  { code: 'project_manager', label: '项目经理' },
-  { code: 'process_engineer', label: '工艺工程师' },
-  { code: 'quality_engineer', label: '质量工程师' },
-  { code: 'purchaser', label: '采购专员' },
-  { code: 'reviewer', label: '评审人' },
+  { code: 'project_manager', label: '项目协调' },
+  { code: 'process_engineer', label: '工艺' },
+  { code: 'quality_engineer', label: '质量试验' },
+  { code: 'purchaser', label: '采购' },
+  { code: 'production_operator', label: '生产' },
+  { code: 'reviewer', label: '评审' },
   { code: 'finance', label: '财务' },
   { code: 'auditor', label: '审计人员' },
   { code: 'viewer', label: '普通查看者' },

@@ -115,6 +115,7 @@ export class NativeAuthService {
     if (!valid || !credential) throw new UnauthorizedException(FAILURE);
     const passwordHash = await this.passwordService.hash(validateNativePassword(input.newPassword, credential.loginName));
     await this.prisma.$transaction(async (tx) => {
+      await this.lockAdministrator(tx);
       await this.lockUser(tx, actor.id);
       await this.assertCurrentActor(tx, actor);
       const updated = await tx.localCredential.updateMany({
@@ -174,6 +175,7 @@ export class NativeAuthService {
     }
     const passwordHash = await this.passwordService.hash(validateNativePassword(input.newPassword, credential.loginName));
     await this.prisma.$transaction(async (tx) => {
+      await this.lockAdministrator(tx);
       await this.lockUser(tx, credential.userId);
       const user = await tx.user.findUnique({ where: { id: credential.userId } });
       if (!user || user.status !== UserStatus.ACTIVE || user.authVersion !== credential.resetVersion) throw new UnauthorizedException(RESET_FAILURE);

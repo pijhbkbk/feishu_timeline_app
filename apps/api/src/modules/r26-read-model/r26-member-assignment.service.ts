@@ -1,3 +1,4 @@
+import { teamAssignmentPreview } from '../personnel/team-assignment-preview';
 import { createHash } from 'node:crypto';
 
 import {
@@ -1268,18 +1269,9 @@ export class R26MemberAssignmentService {
     projectId: string,
     nodeCodes: WorkflowNodeCode[],
   ) {
-    const state = await this.loadAssignmentState(db, projectId);
-    const selected = new Set(nodeCodes);
-
-    return Object.values(WorkflowNodeCode)
-      .filter((nodeCode) => selected.has(nodeCode))
-      .map((nodeCode) =>
-        this.resolveAssignmentForFuture(
-          state,
-          state.projectMembers,
-          nodeCode,
-        ),
-      );
+    // The caller has already checked the project. Project members are historical only.
+    void projectId;
+    return Promise.all([...new Set(nodeCodes)].map(nodeCode => teamAssignmentPreview(db, nodeCode)));
   }
 
   private resolveAssignments(

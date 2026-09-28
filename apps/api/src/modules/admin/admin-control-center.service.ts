@@ -1,3 +1,4 @@
+import { lockTeamAuthorization } from '../../common/team-authorization';
 import { normalizeLoginName } from '../auth/native-auth.rules';
 import { createHash } from 'node:crypto';
 
@@ -3985,6 +3986,8 @@ export class AdminControlCenterService {
 
     try {
       return await this.prisma.$transaction(async (tx) => {
+        await lockTeamAuthorization(tx, true);
+        await this.assertNativeAdministratorActor(tx, input.actor);
         await this.lockAdminCommandIdempotency(tx, idempotencyKey);
         const transactionReplay = await tx.adminCommandRequest.findUnique({
           where: { idempotencyKey },

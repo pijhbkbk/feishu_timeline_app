@@ -263,14 +263,7 @@ export class UsersService {
               },
             }
           : {}),
-        ...(query.projectId
-          ? {
-              OR: [
-                { projectMembers: { some: { projectId: query.projectId } } },
-                { ownedProjects: { some: { id: query.projectId } } },
-              ],
-            }
-          : {}),
+        localCredential: { isNot: null },
       },
       select: {
         id: true,
@@ -352,7 +345,7 @@ export class UsersService {
     const permissions = new Set(actor.permissionCodes ?? []);
 
     if (!projectId) {
-      if (actor.isSystemAdmin || permissions.has('project.write')) {
+      if (actor.isSystemAdmin || permissions.has('project.read')) {
         return;
       }
 
@@ -369,34 +362,9 @@ export class UsersService {
 
     const project = await this.prisma.project.findUnique({
       where: { id: projectId },
-      select: {
-        id: true,
-        ownerUserId: true,
-        owningDepartmentId: true,
-        members: {
-          where: { userId: actor.id },
-          select: { id: true },
-          take: 1,
-        },
-      },
+      select: { id: true },
     });
-
-    if (!project) {
-      throw new NotFoundException('项目不存在。');
-    }
-
-    if (actor.isSystemAdmin || actor.roleCodes.includes('admin')) {
-      return;
-    }
-
-    const hasScope =
-      project.ownerUserId === actor.id ||
-      project.members.length > 0 ||
-      (Boolean(actor.departmentId) && actor.departmentId === project.owningDepartmentId);
-
-    if (!hasScope) {
-      throw new ForbiddenException('当前用户无权访问该项目用户目录。');
-    }
+    if (!project) throw new NotFoundException('项目不存在。');
   }
 
   private toAuthenticatedUser(user: UserWithRelations, authSource: AuthSource): AuthenticatedUser {

@@ -1,3 +1,4 @@
+import { canOperateTeamTask, withProjectWrite } from '../../common/team-authorization';
 import {
   BadRequestException,
   ConflictException,
@@ -89,7 +90,7 @@ export class DevelopmentReportsService {
     await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     const input = this.parseWriteInput(rawInput);
 
-    return this.prisma.$transaction(async (tx) => {
+    return withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
       const project = await this.getProjectOrThrow(tx, projectId);
       const { activeTask, existingReport } =
         await this.lockDevelopmentReportWriteState(tx, projectId);
@@ -135,7 +136,7 @@ export class DevelopmentReportsService {
     await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     const input = this.parseWriteInput(rawInput);
 
-    return this.prisma.$transaction(async (tx) => {
+    return withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
       const project = await this.getProjectOrThrow(tx, projectId);
       const { activeTask, existingReport } =
         await this.lockDevelopmentReportWriteState(tx, projectId);
@@ -524,15 +525,7 @@ export class DevelopmentReportsService {
     task: DevelopmentReportTaskRecord,
     actor: AuthenticatedUser,
   ) {
-    if (actor.isSystemAdmin || actor.roleCodes.includes('admin') || actor.roleCodes.includes('project_manager')) {
-      return true;
-    }
-
-    if (!task.assigneeUserId) {
-      return true;
-    }
-
-    return task.assigneeUserId === actor.id;
+    return canOperateTeamTask(task, actor);
   }
 
   private toTaskSummary(task: DevelopmentReportTaskRecord) {

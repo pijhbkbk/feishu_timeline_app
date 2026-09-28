@@ -1,3 +1,4 @@
+import { assertTeamTaskById, withProjectWrite } from '../../common/team-authorization';
 import {
   BadRequestException,
   ConflictException,
@@ -100,14 +101,14 @@ export class ColorExitsService {
     this.assertActorCanManage(actor);
     const input = this.parseWriteInput(rawInput);
 
-    await this.prisma.$transaction(async (tx) => {
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
       await this.projectAccessService.assertProjectAccess(
         tx,
         projectId,
         actor,
         'workflow.transition',
       );
-      const lockedTaskId = await this.lockActiveTaskForWrite(tx, projectId);
+      const lockedTaskId = await this.lockActiveTaskForWrite(tx, actor, projectId);
       const context = await this.getContext(tx, projectId);
       this.assertLockedContextTask(context.activeTask, lockedTaskId);
       this.assertWritableStage(context);
@@ -166,14 +167,14 @@ export class ColorExitsService {
     this.assertActorCanManage(actor);
     const input = this.parseWriteInput(rawInput);
 
-    await this.prisma.$transaction(async (tx) => {
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
       await this.projectAccessService.assertProjectAccess(
         tx,
         projectId,
         actor,
         'workflow.transition',
       );
-      const lockedTaskId = await this.lockActiveTaskForWrite(tx, projectId);
+      const lockedTaskId = await this.lockActiveTaskForWrite(tx, actor, projectId);
       const context = await this.getContext(tx, projectId);
       this.assertLockedContextTask(context.activeTask, lockedTaskId);
       this.assertWritableStage(context);
@@ -229,14 +230,14 @@ export class ColorExitsService {
   ) {
     this.assertActorCanManage(actor);
 
-    await this.prisma.$transaction(async (tx) => {
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
       await this.projectAccessService.assertProjectAccess(
         tx,
         projectId,
         actor,
         'workflow.transition',
       );
-      const lockedTaskId = await this.lockActiveTaskForWrite(tx, projectId);
+      const lockedTaskId = await this.lockActiveTaskForWrite(tx, actor, projectId);
       const context = await this.getContext(tx, projectId);
       this.assertLockedContextTask(context.activeTask, lockedTaskId);
       this.assertWritableStage(context);
@@ -402,6 +403,7 @@ export class ColorExitsService {
 
   private async lockActiveTaskForWrite(
     tx: Prisma.TransactionClient,
+    actor: AuthenticatedUser,
     projectId: string,
   ) {
     const rows = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
@@ -421,6 +423,7 @@ export class ColorExitsService {
         message: '颜色退出工序状态已更新，请刷新后再提交。',
       });
     }
+    await assertTeamTaskById(tx, taskId, actor);
     return taskId;
   }
 

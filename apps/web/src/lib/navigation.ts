@@ -60,34 +60,9 @@ type AdminSectionMeta = {
 };
 
 export const topNavigationItems: NavItem[] = [
-  {
-    label: '工作台',
-    href: '/dashboard',
-    icon: '⌂',
-    description: '今天最应该推进的任务',
-  },
-  {
-    label: '项目列表',
-    href: '/projects',
-    icon: '▦',
-    description: '项目状态与流程工作区',
-    matchMode: 'prefix',
-  },
-  {
-    label: '我的任务',
-    href: '/tasks',
-    icon: '✓',
-    description: '个人任务中心',
-    matchMode: 'prefix',
-  },
-  {
-    label: '系统管理',
-    href: '/admin',
-    icon: '◌',
-    description: '用户、权限、流程参数和审计',
-    requiredRoles: ['admin'],
-    matchMode: 'prefix',
-  },
+  { label: '我的工作', href: '/dashboard', icon: '⌂', description: '当前待处理的工作' },
+  { label: '颜色项目', href: '/projects', icon: '▦', description: '颜色开发过程', matchMode: 'prefix' },
+  { label: '人员', href: '/admin/people', icon: '◌', requiredRoles: ['admin'], matchMode: 'prefix' },
 ];
 
 export function isTopNavigationItemActive(pathname: string, href: string) {
@@ -103,8 +78,9 @@ export function isTopNavigationItemActive(pathname: string, href: string) {
     );
   }
 
-  if (normalizedHref === '/tasks') {
+  if (normalizedHref === '/dashboard' || normalizedHref === '/tasks') {
     return (
+      (normalizedHref === '/dashboard' && normalizedPathname === '/dashboard') ||
       normalizedPathname === '/tasks' ||
       normalizedPathname.startsWith('/tasks/') ||
       normalizedPathname === '/progress' ||
@@ -113,6 +89,8 @@ export function isTopNavigationItemActive(pathname: string, href: string) {
       normalizedPathname.startsWith('/materials/')
     );
   }
+
+  if (normalizedHref === '/admin/people') return ['/admin/people', '/admin/accounts', '/admin/users', '/admin/organization'].includes(normalizedPathname);
 
   if (normalizedHref === '/admin') {
     return (

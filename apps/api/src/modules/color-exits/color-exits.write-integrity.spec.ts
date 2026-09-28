@@ -1,6 +1,7 @@
 import { ConflictException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 
+import { installTeamAuthorizationFixture } from '../../test-support/team-authorization.fixture';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { ColorExitsService } from './color-exits.service';
 
@@ -12,7 +13,8 @@ const actor: AuthenticatedUser = {
   departmentId: 'dept-1',
   departmentName: '项目部',
   isSystemAdmin: false,
-  authSource: 'mock',
+  authSource: 'local',
+  authVersion: 1,
   roleCodes: ['project_manager'],
   permissionCodes: ['workflow.transition'],
 };
@@ -26,6 +28,7 @@ describe('ColorExitsService write integrity', () => {
       $queryRaw: vi.fn().mockResolvedValue([]),
       colorExit: { update: unsafeUpdate },
     };
+    installTeamAuthorizationFixture(tx, [{ ...actor, authVersion: 1 }], () => ({ id: 'task-current', projectId: 'project-1', nodeCode: 'PROJECT_CLOSED', assigneeUserId: actor.id, status: 'IN_PROGRESS', isActive: true }));
     const prisma = {
       $transaction: vi.fn(
         async (callback: (executor: typeof tx) => Promise<unknown>) => callback(tx),
@@ -90,6 +93,7 @@ describe('ColorExitsService write integrity', () => {
       $queryRaw: vi.fn().mockResolvedValue([{ id: 'task-current' }]),
       colorExit: { update: unsafeUpdate },
     };
+    installTeamAuthorizationFixture(tx, [{ ...actor, authVersion: 1 }], () => ({ id: 'task-current', projectId: 'project-1', nodeCode: 'PROJECT_CLOSED', assigneeUserId: actor.id, status: 'IN_PROGRESS', isActive: true }));
     const prisma = {
       $transaction: vi.fn(
         async (callback: (executor: typeof tx) => Promise<unknown>) => callback(tx),

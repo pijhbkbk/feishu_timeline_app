@@ -16,6 +16,8 @@ function createService(options?: {
   const redisQueue: string[] = [];
 
   const prisma = {
+    $executeRaw: vi.fn().mockResolvedValue(0),
+    $transaction: vi.fn(async (callback) => callback(prisma)),
     workflowTask: {
       findMany: vi.fn(),
     },
@@ -1128,6 +1130,7 @@ describe('NotificationQueueService', () => {
     expect(prisma.recurringTask.updateMany).toHaveBeenCalledWith({
       where: {
         id: { in: ['recurring-task-raced-to-complete'] },
+        projectId: 'project-1',
         dueAt: { lt: now },
         status: {
           in: [
