@@ -94,6 +94,8 @@ export type ProjectListItem = {
   currentTaskOwnerId: string | null;
   currentTaskOwnerName: string | null;
   currentTaskDueAt: string | null;
+  currentRoleCode?: string | null;
+  earliestDueAt?: string | null;
   latestTaskUpdatedAt: string;
   stall: {
     nodeCode: WorkflowNodeCode | null;

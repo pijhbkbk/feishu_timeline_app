@@ -337,6 +337,7 @@ export class R26ReadModelService {
 
           return {
             ...node,
+            isActive: Boolean(task?.isActive && ['PENDING', 'READY', 'IN_PROGRESS', 'RETURNED'].includes(task.status)),
             primaryDepartment: assignment?.primaryDepartment ?? null,
             collaboratorDepartments: assignment?.collaboratorDepartments ?? [],
             suggestedOwner: assignment?.suggestedOwner ?? null,

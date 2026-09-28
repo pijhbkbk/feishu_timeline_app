@@ -660,7 +660,7 @@ describe('WorkflowsService', () => {
           where.AND?.[1]?.id?.gt ? [] : [{ id: 'owner-1', departmentId: null }],
         )),
       },
-      notification: { createMany: vi.fn().mockResolvedValue({ count: 1 }) },
+      notification: { createMany: vi.fn().mockResolvedValue({ count: 1 }), updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
       workflowInstance: {
         create: vi.fn().mockResolvedValue({
           id: 'wf-1',
@@ -719,7 +719,8 @@ describe('WorkflowsService', () => {
     );
     expect(tx.notification.createMany).toHaveBeenCalledWith(expect.objectContaining({
       data: [expect.objectContaining({ userId: 'owner-1', projectId: 'project-1', taskId: 'task-1',
-        sendChannel: 'IN_APP', sendStatus: 'SENT', dedupeKey: 'team-task:task-1:0:owner-1' })],
+        sendChannel: 'IN_APP', sendStatus: 'SENT', reminderKind: 'ACTIVATE', assignmentEpoch: 0,
+        stageTaskId: 'task-1', dedupeKey: 'ACTIVATE:ordinary:task-1:owner-1' })],
       skipDuplicates: true,
     }));
     expect(notificationQueueService.enqueueTaskNotification).not.toHaveBeenCalled();

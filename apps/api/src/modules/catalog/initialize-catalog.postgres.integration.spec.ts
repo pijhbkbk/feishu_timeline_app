@@ -57,9 +57,9 @@ describe.skipIf(!databaseUrl).sequential('fresh catalog isolated PostgreSQL boun
   it('creates the complete approved catalog, preserves migration IDs/values/times and creates no accounts or demo data', async () => {
     const original = await baseline();
     const result = await initializeCatalog(prisma);
-    expect(result).toMatchObject({ roles: 9, workflowNodes: 18, enumItems: 5, systemParameters: 4, departmentsPreserved: 6, calendarYears: [2026, 2027] });
-    expect(await prisma.role.findUnique({ where: { id: migrationAuditor.id } })).toEqual(original.roles[0]);
-    expect(await prisma.rolePermission.findMany({ where: { roleId: migrationAuditor.id }, orderBy: { id: 'asc' } })).toEqual(original.permissions);
+    expect(result).toMatchObject({ roles: 10, workflowNodes: 18, enumItems: 5, systemParameters: 4, departmentsPreserved: 6, calendarYears: [2026, 2027] });
+    expect(await prisma.role.findUnique({ where: { id: migrationAuditor.id } })).toEqual(original.roles.find(role => role.id === migrationAuditor.id));
+    expect(await prisma.rolePermission.findMany({ where: { roleId: migrationAuditor.id }, orderBy: { id: 'asc' } })).toEqual(original.permissions.filter(row => row.roleId === migrationAuditor.id));
     expect(await prisma.department.findMany({ orderBy: { id: 'asc' } })).toEqual(original.departments);
     for (const role of baseRoles) {
       const actual = await prisma.role.findUniqueOrThrow({ where: { code: role.code }, include: { rolePermissions: true } });
@@ -92,7 +92,7 @@ describe.skipIf(!databaseUrl).sequential('fresh catalog isolated PostgreSQL boun
     expect(results.filter(result => result.status === 'fulfilled')).toHaveLength(1);
     expect(results.filter(result => result.status === 'rejected')).toHaveLength(1);
     expect(await prisma.auditLog.count()).toBe(1);
-    expect(await prisma.role.count()).toBe(9);
+    expect(await prisma.role.count()).toBe(10);
   });
 
   it.each(['user', 'project', 'configuration', 'audit', 'supplier', 'credentials-and-notification', 'attachment'] as const)('rejects existing %s without changing any reference rows', async kind => {
@@ -126,14 +126,14 @@ describe.skipIf(!databaseUrl).sequential('fresh catalog isolated PostgreSQL boun
   it('refuses an unknown table instead of treating a different schema as a fresh install', async () => {
     await prisma.$executeRawUnsafe('CREATE TABLE unknown_configuration (value text NOT NULL)');
     await expect(initializeCatalog(prisma)).rejects.toThrow('schema must match');
-    expect(await prisma.role.count()).toBe(1);
+    expect(await prisma.role.count()).toBe(8);
     expect(await prisma.auditLog.count()).toBe(0);
   });
 
   it('refuses incomplete migration receipts before making any catalog writes', async () => {
     await prisma.$executeRawUnsafe("UPDATE _prisma_migrations SET finished_at = NULL WHERE migration_name = '20260912190000_native_accounts'");
     await expect(initializeCatalog(prisma)).rejects.toThrow('Complete migrations');
-    expect(await prisma.role.count()).toBe(1);
+    expect(await prisma.role.count()).toBe(8);
     expect(await prisma.auditLog.count()).toBe(0);
   });
 
@@ -167,7 +167,7 @@ describe.skipIf(!databaseUrl).sequential('fresh catalog isolated PostgreSQL boun
     await writer;
     expect(await result).toBe('rejected');
     expect(await prisma.user.count()).toBe(1);
-    expect(await prisma.role.count()).toBe(1);
+    expect(await prisma.role.count()).toBe(8);
   });
 
   it('takes the same administrator lock and sees an administrator mutation before touching the catalog', async () => {

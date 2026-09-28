@@ -98,7 +98,7 @@ function Workspace() {
         ...ordinary.items.map((item): WorkRow => ({ id: item.id, kind: 'ordinary', title: item.nodeName, detail: `第 ${item.taskRound} 轮`,
           projectId: item.project.id, projectName: item.project.name, projectCode: item.project.code, role: item.requiredRoleCode,
           owner: item.assigneeUserId, ...(item.assigneeUser ? { ownerName: item.assigneeUser.name } : {}), dueAt: item.effectiveDueAt ?? item.dueAt, status: item.status,
-          epoch: item.assignmentEpoch, href: `/projects/${encodeURIComponent(item.project.id)}?taskId=${encodeURIComponent(item.id)}` })),
+          epoch: item.assignmentEpoch, href: `/projects/${encodeURIComponent(item.project.id)}/tasks/${encodeURIComponent(item.id)}` })),
         ...monthly.items.map((item): WorkRow => ({ id: item.id, kind: 'monthly', title: `第 ${item.periodIndex} 月目视色差评审`, detail: item.periodLabel,
           projectId: item.projectId, projectName: item.projectName, projectCode: item.projectCode, role: 'quality_engineer', owner: item.reviewerId,
           dueAt: item.dueAt, status: item.status, epoch: item.assignmentEpoch,

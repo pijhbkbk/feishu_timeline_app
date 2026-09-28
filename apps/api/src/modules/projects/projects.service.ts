@@ -32,6 +32,7 @@ import type { AuthenticatedUser } from '../auth/auth.types';
 import { ProjectAccessService } from '../auth/project-access.service';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import { WorkflowsService } from '../workflows/workflows.service';
+import { NODE_BUSINESS_ROLES } from '../personnel/personnel.constants';
 import { WORKFLOW_NODE_META_MAP } from '../workflows/workflow-node.constants';
 import {
   PROJECT_CREATE_MEMBERS_MAX_COUNT,
@@ -232,6 +233,7 @@ export class ProjectsService {
               },
             },
             orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
+            take: 1,
           },
           workflowTasks: {
             where: {
@@ -244,6 +246,7 @@ export class ProjectsService {
               taskRound: true,
               isActive: true,
               dueAt: true,
+              effectiveDueAt: true,
               status: true,
               updatedAt: true,
               assigneeUser: {
@@ -266,6 +269,7 @@ export class ProjectsService {
               },
             },
             orderBy: [{ dueAt: 'asc' }, { updatedAt: 'desc' }],
+            take: 19,
           },
           taskBlockers: {
             where: { status: TaskBlockerStatus.OPEN },
@@ -1816,6 +1820,7 @@ export class ProjectsService {
             taskRound: true;
             isActive: true;
             dueAt: true;
+            effectiveDueAt: true;
             status: true;
             updatedAt: true;
             assigneeUser: {
@@ -1852,6 +1857,10 @@ export class ProjectsService {
       };
     }>,
   ) {
+    if (project.workflowTasks.length > 18) throw new ConflictException('项目活跃工序数量异常，请核对后重试。');
+    const openTasks = project.workflowTasks.filter(task => ['PENDING', 'READY', 'IN_PROGRESS', 'RETURNED'].includes(task.status));
+    const deadlines = openTasks.map(task => task.effectiveDueAt ?? task.dueAt).filter((value): value is Date => Boolean(value));
+    const earliestDueAt = deadlines.length ? new Date(Math.min(...deadlines.map(value => value.getTime()))) : null;
     const riskLevel = this.computeRiskLevel(project);
     const now = new Date();
     const currentTask =
@@ -1898,20 +1907,22 @@ export class ProjectsService {
       progressText: `${Math.min(18, Math.max(0, currentSequence))} / 18`,
       currentTaskId: currentTask?.id ?? null,
       currentTaskOwnerId: currentTask?.assigneeUser?.id ?? null,
-      currentTaskOwnerName: currentTask?.assigneeUser?.name ?? project.ownerUser?.name ?? null,
+      currentTaskOwnerName: currentTask?.assigneeUser?.name ?? null,
       currentTaskDepartmentName:
         currentTask?.assigneeDepartment?.name ??
         currentTask?.assigneeUser?.department?.name ??
         null,
-      currentTaskDueAt: this.serializeDate(currentTask?.dueAt ?? null),
-      latestTaskUpdatedAt: currentTask?.updatedAt.toISOString() ?? project.updatedAt.toISOString(),
+      currentRoleCode: currentTask ? NODE_BUSINESS_ROLES[currentTask.nodeCode] : null,
+      earliestDueAt: this.serializeDate(earliestDueAt),
+      currentTaskDueAt: this.serializeDate(currentTask?.effectiveDueAt ?? currentTask?.dueAt ?? null),
+      latestTaskUpdatedAt: new Date(Math.max(project.updatedAt.getTime(), ...project.workflowTasks.map(task => task.updatedAt.getTime()))).toISOString(),
       stall: blocker || overdueTask
         ? {
             nodeCode: currentTask?.nodeCode ?? project.currentNodeCode,
             nodeName: currentTask?.nodeName ?? this.workflowsService.getCurrentNodeName(project.currentNodeCode),
             days: stalledDays,
             reason: blocker?.description ?? '当前工序已超过计划完成时间。',
-            ownerName: currentTask?.assigneeUser?.name ?? project.ownerUser?.name ?? null,
+            ownerName: currentTask?.assigneeUser?.name ?? null,
             helperName: blocker?.helperUser?.name ?? null,
             expectedResolvedAt: this.serializeDate(blocker?.expectedResolvedAt ?? null),
           }

@@ -1,4 +1,5 @@
 import { requireActiveMonthlyPlan } from '../../common/monthly-review-plan';
+import { persistTaskReminder } from '../notifications/task-reminder.rules';
 import { ConflictException, ForbiddenException, HttpException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { createHash } from 'node:crypto';
@@ -179,11 +180,10 @@ export class TeamTasksService {
           nodeCode: 'VISUAL_COLOR_DIFFERENCE_REVIEW', action: transfer ? 'TEAM_MONTHLY_TASK_TRANSFERRED' : 'TEAM_MONTHLY_TASK_CLAIMED',
           beforeData: { reviewerId: task.reviewerId, assignmentEpoch: task.assignmentEpoch },
           afterData: { reviewerId: nextUserId, assignmentEpoch: task.assignmentEpoch + 1 }, metadata: { reason: input.reason?.trim() || '领取月度角色待办', periodIndex: task.periodIndex } } });
-        await tx.notification.create({ data: { userId: nextUserId, projectId: task.projectId, notificationType: 'TASK_ASSIGNED',
-          title: `第 ${task.periodIndex} 月目视色差评审`, content: '本月任务已由你负责，请在我的工作中处理。',
-          linkPath: `/monthly-reviews?projectId=${task.projectId}`, sendChannel: 'IN_APP', sendStatus: 'SENT',
-          dedupeKey: `team-monthly:${task.id}:${task.assignmentEpoch + 1}` } });
       }
+      await persistTaskReminder(tx, { kind: 'monthly', id: task.id, projectId: task.projectId,
+        stageTaskId: parents[0]!.id, epoch: task.assignmentEpoch + Number(changed), roleCode: 'quality_engineer',
+        ownerId: nextUserId, title: `第 ${task.periodIndex} 月目视色差评审`, dueAt: task.dueAt }, nextUserId, 'ACTIVATE', new Date());
       const result = { taskId, reviewerId: nextUserId, assignmentEpoch: task.assignmentEpoch + Number(changed), changed, replayed: false };
       await tx.r26CommandRequest.create({ data: { projectId: task.projectId, actorUserId: actor.id, idempotencyKey: key,
         action: transfer ? 'TEAM_MONTHLY_TASK_TRANSFERRED' : 'TEAM_MONTHLY_TASK_CLAIMED', requestHash, result } });

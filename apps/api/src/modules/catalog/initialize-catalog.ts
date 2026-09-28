@@ -20,6 +20,13 @@ export const migrationAuditorPermissions = [
   { id: 'plan-a-auditor-audit-read', roleId: migrationAuditor.id, permissionCode: 'audit.read', description: '读取全局审计日志' },
   { id: 'plan-a-auditor-dashboard-read', roleId: migrationAuditor.id, permissionCode: 'dashboard.read', description: '读取工作台汇总' },
 ];
+export const migrationBusinessRoles = [
+  ['project_manager', '项目协调'], ['process_engineer', '工艺'], ['purchaser', '采购'],
+  ['quality_engineer', '质量试验'], ['reviewer', '评审'], ['finance', '财务'],
+].map(([code, name]) => ({ id: `role_r28_${code}`, code: code!, name: name!, description: null as string | null, status: RoleStatus.ACTIVE, isSystem: true }))
+  .concat([{ id: 'role_production_operator_v1', code: 'production_operator', name: '生产', description: '负责首台计划、排产与批量生产。', status: RoleStatus.ACTIVE, isSystem: true }]);
+export const migrationProductionPermissions = ['project.read', 'workflow.transition', 'attachment.manage', 'dashboard.read']
+  .map(permissionCode => ({ id: `permission_production_${permissionCode.replace('.', '_')}`, roleId: 'role_production_operator_v1', permissionCode, description: null }));
 const migrationDepartmentIds = [
   'business_division_technology', 'business_division_cv_marketing', 'business_division_pv_marketing',
   'business_division_manufacturing', 'business_division_international', 'business_division_procurement',
@@ -72,14 +79,15 @@ export async function initializeCatalog(prisma: PrismaClient) {
       );
       if (!result || result.populated) throw new Error('Catalog initialization requires a fresh empty business database; restore and re-run are forbidden.');
     }
-    assertMigrationBaseline(await tx.role.findMany(), [migrationAuditor]);
-    assertMigrationBaseline(await tx.rolePermission.findMany(), migrationAuditorPermissions);
+    assertMigrationBaseline(await tx.role.findMany(), [migrationAuditor, ...migrationBusinessRoles]);
+    assertMigrationBaseline(await tx.rolePermission.findMany(), [...migrationAuditorPermissions, ...migrationProductionPermissions]);
     assertMigrationBaseline(await tx.department.findMany(), migrationDepartments);
 
     for (const role of baseRoles) {
       if (role.code === 'auditor') continue;
-      const created = await tx.role.create({ data: { ...role, status: RoleStatus.ACTIVE, isSystem: true } });
-      await tx.rolePermission.createMany({ data: rolePermissionMap[role.code].map(permissionCode => ({ roleId: created.id, permissionCode })) });
+      const created = migrationBusinessRoles.find(row => row.code === role.code)
+        ?? await tx.role.create({ data: { ...role, status: RoleStatus.ACTIVE, isSystem: true } });
+      await tx.rolePermission.createMany({ data: rolePermissionMap[role.code].map(permissionCode => ({ roleId: created.id, permissionCode })), skipDuplicates: true });
     }
     await tx.processTemplate.create({ data: { ...defaultProcessTemplate, status: ProcessTemplateStatus.ACTIVE, isDefault: true } });
     for (const node of workflowNodes) await tx.workflowNodeDefinition.create({ data: node });

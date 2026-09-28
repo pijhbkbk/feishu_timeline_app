@@ -1,3 +1,4 @@
+import React from 'react';
 import { VisualDeltaReviewWorkspace } from '../../../../components/visual-delta-review-workspace';
 
 type Props = { params: Promise<{ projectId: string }>; searchParams: Promise<{ recurringTaskId?: string }> };

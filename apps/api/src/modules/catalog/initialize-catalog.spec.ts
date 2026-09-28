@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { baseRoles, defaultProcessTemplate, rolePermissionMap, workflowNodes } from './base-catalog';
-import { assertMigrationBaseline, migrationAuditor, migrationAuditorPermissions, migrationDepartments } from './initialize-catalog';
+import { assertMigrationBaseline, migrationAuditor, migrationAuditorPermissions, migrationBusinessRoles, migrationProductionPermissions, migrationDepartments } from './initialize-catalog';
 
 describe('fresh catalog reference checks', () => {
   it('accepts the exact migrations baseline without treating dates as newly invented values', () => {
+    assertMigrationBaseline([migrationAuditor, ...migrationBusinessRoles], [migrationAuditor, ...migrationBusinessRoles]);
+    expect(migrationBusinessRoles).toHaveLength(7);
+    expect(migrationProductionPermissions.map(row => row.permissionCode)).toEqual(rolePermissionMap.production_operator);
     assertMigrationBaseline([{ ...migrationAuditor, createdAt: new Date(0) }], [migrationAuditor]);
     assertMigrationBaseline([...migrationAuditorPermissions].reverse(), migrationAuditorPermissions);
     assertMigrationBaseline(migrationDepartments, migrationDepartments);

@@ -213,6 +213,7 @@ function createService(options: {
     attachment: { findFirst: vi.fn().mockResolvedValue(null) },
   };
   const prisma = {
+    $queryRaw: vi.fn().mockResolvedValue([]),
     workflowTask: {
       findUnique: vi.fn().mockResolvedValue(loadedTask),
     },

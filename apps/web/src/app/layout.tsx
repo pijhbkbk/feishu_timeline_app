@@ -4,6 +4,8 @@ import type { ReactNode } from 'react';
 
 import { RootRuntime } from '../components/root-runtime';
 import './globals.css';
+import '../styles/r26-v2.css';
+import '../features/color-projects/color-projects.css';
 import './r22.css';
 import '../features/personnel/personnel.css';
 import '../features/team-work/team-work.css';

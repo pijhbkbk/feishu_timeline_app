@@ -92,7 +92,7 @@ export function canWriteVisualDeltaMonth(user: SessionUser | null, workspace: Vi
 
 export function canWriteVisualDeltaRecord(user: SessionUser | null, workspace: VisualDeltaReviewWorkspaceResponse, review: VisualDeltaReviewRecord) {
   const month = workspace.recurringTasks.find(task => task.plannedDate.slice(0, 7) === review.reviewPeriod);
-  return review.reviewerId === user?.id && !review.isPeriodCompleted && canWriteVisualDeltaMonth(user, workspace, month);
+  return review.workflowTaskId === workspace.activeTask?.id && review.reviewerId === user?.id && !review.isPeriodCompleted && canWriteVisualDeltaMonth(user, workspace, month);
 }
 
 const VISUAL_DELTA_REVIEW_CONCLUSION_LABELS: Record<

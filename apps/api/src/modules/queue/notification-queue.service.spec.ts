@@ -1,8 +1,9 @@
 import { Logger } from '@nestjs/common';
-import { NotificationType, RecurringTaskStatus, WorkflowTaskStatus } from '@prisma/client';
+import { NotificationType } from '@prisma/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { NotificationLinkPathValidationError } from '../notifications/notification-link-path.rules';
+import { TaskRemindersService } from '../notifications/task-reminders.service';
 import { NotificationQueueService } from './notification-queue.service';
 
 function createService(options?: {
@@ -913,276 +914,44 @@ describe('NotificationQueueService', () => {
     expect(notificationsService.processQueuedNotification).toHaveBeenCalledTimes(2);
   });
 
-  it('scans overdue tasks and enqueues reminders', async () => {
-    const { service, prisma, notificationsService } = createService({ redisFails: true });
-    prisma.workflowTask.findMany.mockResolvedValue([
-      {
-        id: 'task-1',
-        assigneeUserId: 'user-1',
-        dueAt: new Date('2026-03-18T12:00:00.000Z'),
-        status: WorkflowTaskStatus.IN_PROGRESS,
-      },
-    ]);
-    notificationsService.hasInAppNotificationDedupeKey.mockResolvedValue(new Set<string>());
-
-    const result = await service.processOverdueScan();
-
-    expect(result.scanned).toBe(1);
-    expect(result.enqueued).toBe(1);
+  // Scan pagination, deduplication, monthly CAS and restart coverage lives in
+  // task-reminders.service.spec.ts and task-reminders.postgres.integration.spec.ts.
+  it('routes overdue and due ticks to the durable ordinary scanner and monthly ticks separately', async () => {
+    const { service } = createService();
+    const scan = vi.spyOn(TaskRemindersService.prototype, 'scan').mockResolvedValue({ scanned: 1, enqueued: 1, skipped: false, hasMore: false, markedOverdue: 0 });
+    const now = new Date('2026-09-28T02:00:00Z');
+    await service.processOverdueScan(now); await service.processDueReminderScan(now); await service.processMonthlyReviewSchedule(now);
+    expect(scan.mock.calls).toEqual([['ordinary', now], ['ordinary', now], ['monthly', now]]);
   });
 
   it('allows only one in-flight invocation of the overdue scan', async () => {
-    let releaseQuery: ((value: never[]) => void) | undefined;
-    const pendingQuery = new Promise<never[]>((resolve) => {
-      releaseQuery = resolve;
+    const { service } = createService();
+    let release!: () => void;
+    const held = new Promise<void>(resolve => { release = resolve; });
+    const scan = vi.spyOn(TaskRemindersService.prototype, 'scan').mockImplementation(async () => {
+      await held; return { scanned: 0, enqueued: 0, skipped: false, hasMore: false, markedOverdue: 0 };
     });
-    const { service, prisma } = createService({ redisFails: true });
-    prisma.workflowTask.findMany.mockReturnValue(pendingQuery);
-
     const first = service.processOverdueScan();
-    const second = await service.processOverdueScan();
-
-    expect(second).toMatchObject({
-      scanned: 0,
-      enqueued: 0,
-      skipped: true,
-      reason: 'scan_in_progress',
-    });
-    expect(prisma.workflowTask.findMany).toHaveBeenCalledTimes(1);
-
-    releaseQuery?.([]);
-    await expect(first).resolves.toMatchObject({ scanned: 0, enqueued: 0 });
+    expect(await service.processOverdueScan()).toMatchObject({ skipped: true, reason: 'scan_in_progress' });
+    expect(scan).toHaveBeenCalledTimes(1);
+    release(); await expect(first).resolves.toMatchObject({ scanned: 0 });
   });
 
-  it('independently guards due-reminder and monthly-review scans in flight', async () => {
-    let releaseDueQuery: ((value: never[]) => void) | undefined;
-    let releaseMonthlyQuery: ((value: never[]) => void) | undefined;
-    const dueQuery = new Promise<never[]>((resolve) => {
-      releaseDueQuery = resolve;
+  it('independently guards due and monthly work and clears in-flight state after rejection', async () => {
+    const { service } = createService();
+    let release!: () => void;
+    const held = new Promise<void>(resolve => { release = resolve; });
+    const scan = vi.spyOn(TaskRemindersService.prototype, 'scan').mockImplementation(async () => {
+      await held; return { scanned: 0, enqueued: 0, skipped: false, hasMore: false, markedOverdue: 0 };
     });
-    const monthlyQuery = new Promise<never[]>((resolve) => {
-      releaseMonthlyQuery = resolve;
-    });
-    const { service, prisma } = createService({ redisFails: true });
-    prisma.workflowTask.findMany.mockReturnValue(dueQuery);
-    prisma.recurringTask.findMany.mockReturnValue(monthlyQuery);
-
-    const firstDue = service.processDueReminderScan();
-    const firstMonthly = service.processMonthlyReviewSchedule();
-    const secondDue = await service.processDueReminderScan();
-    const secondMonthly = await service.processMonthlyReviewSchedule();
-
-    expect(secondDue).toMatchObject({
-      scanned: 0,
-      enqueued: 0,
-      skipped: true,
-      reason: 'scan_in_progress',
-    });
-    expect(secondMonthly).toMatchObject({
-      scanned: 0,
-      markedOverdue: 0,
-      enqueued: 0,
-      skipped: true,
-      reason: 'scan_in_progress',
-    });
-    expect(prisma.workflowTask.findMany).toHaveBeenCalledTimes(1);
-    expect(prisma.recurringTask.findMany).toHaveBeenCalledTimes(1);
-
-    releaseDueQuery?.([]);
-    releaseMonthlyQuery?.([]);
-    await expect(firstDue).resolves.toMatchObject({ scanned: 0, enqueued: 0 });
-    await expect(firstMonthly).resolves.toMatchObject({
-      scanned: 0,
-      markedOverdue: 0,
-      enqueued: 0,
-    });
-  });
-
-  it('uses cursor batches and bounds both database rows and dedupe-key sets per scan', async () => {
-    const { service, prisma, notificationsService } = createService({
-      redisFails: true,
-      config: {
-        notificationScanBatchSize: 2,
-        notificationScanMaxItems: 3,
-      },
-    });
-    prisma.workflowTask.findMany
-      .mockResolvedValueOnce([
-        { id: 'task-1', assigneeUserId: 'user-1' },
-        { id: 'task-2', assigneeUserId: 'user-2' },
-      ])
-      .mockResolvedValueOnce([
-        { id: 'task-3', assigneeUserId: 'user-3' },
-      ]);
-
-    const result = await service.processOverdueScan();
-
-    expect(result).toMatchObject({ scanned: 3, enqueued: 3 });
-    expect(prisma.workflowTask.findMany).toHaveBeenCalledTimes(2);
-    expect(prisma.workflowTask.findMany.mock.calls[0]?.[0]).toMatchObject({
-      take: 2,
-      orderBy: { id: 'asc' },
-    });
-    expect(prisma.workflowTask.findMany.mock.calls[1]?.[0]).toMatchObject({
-      take: 1,
-      cursor: { id: 'task-2' },
-      skip: 1,
-      orderBy: { id: 'asc' },
-    });
-    for (const [keys] of notificationsService.hasInAppNotificationDedupeKey.mock.calls) {
-      expect(keys.length).toBeGreaterThan(0);
-      expect(keys.length).toBeLessThanOrEqual(2);
-    }
-  });
-
-  it('scans due-today tasks and enqueues due reminders', async () => {
-    const { service, prisma, notificationsService } = createService({ redisFails: true });
-    prisma.workflowTask.findMany.mockResolvedValue([
-      {
-        id: 'task-due-today',
-        projectId: 'project-1',
-        assigneeUserId: 'user-1',
-        nodeCode: 'PAINT_PROCUREMENT',
-        nodeName: '涂料采购',
-        dueAt: new Date('2026-03-19T12:00:00.000Z'),
-        status: WorkflowTaskStatus.READY,
-      },
-    ]);
-    notificationsService.hasInAppNotificationDedupeKey.mockResolvedValue(new Set<string>());
-
-    const result = await service.processDueReminderScan(
-      new Date('2026-03-19T08:00:00.000Z'),
-    );
-
-    expect(result.scanned).toBe(1);
-    expect(result.enqueued).toBe(1);
-  });
-
-  it('atomically deduplicates repeated due-reminder scans before jobs are consumed', async () => {
-    const { service, prisma, notificationsService } = createService();
-    prisma.workflowTask.findMany.mockResolvedValue([
-      {
-        id: 'task-due-today',
-        projectId: 'project-1',
-        assigneeUserId: 'user-1',
-        nodeCode: 'PAINT_PROCUREMENT',
-        nodeName: '涂料采购',
-        dueAt: new Date('2026-03-19T12:00:00.000Z'),
-        status: WorkflowTaskStatus.READY,
-      },
-    ]);
-    notificationsService.hasInAppNotificationDedupeKey.mockResolvedValue(new Set<string>());
-    const now = new Date('2026-03-19T08:00:00.000Z');
-
-    const first = await service.processDueReminderScan(now);
-    const second = await service.processDueReminderScan(now);
-
-    expect(first).toEqual({ scanned: 1, enqueued: 1 });
-    expect(second).toEqual({ scanned: 1, enqueued: 0 });
-  });
-
-  it('scans monthly recurring reviews and marks overdue instances', async () => {
-    const { service, prisma, notificationsService } = createService({ redisFails: true });
-    prisma.recurringTask.findMany.mockResolvedValue([
-      {
-        id: 'recurring-task-1',
-        projectId: 'project-1',
-        reviewerId: 'user-1',
-        periodLabel: '2026-03',
-        dueAt: new Date('2026-03-18T23:59:59.999Z'),
-        status: RecurringTaskStatus.PENDING,
-      },
-    ]);
-    prisma.recurringTask.updateMany.mockImplementation(async (query) => ({
-      count: query.where.id.in.length,
-    }));
-    notificationsService.hasInAppNotificationDedupeKey.mockResolvedValue(new Set<string>());
-
-    const result = await service.processMonthlyReviewSchedule(
-      new Date('2026-03-19T08:00:00.000Z'),
-    );
-
-    expect(result).toEqual({
-      scanned: 1,
-      markedOverdue: 1,
-      enqueued: 1,
-    });
-    expect(prisma.recurringTask.updateMany).toHaveBeenCalled();
-  });
-
-  it('does not overwrite a monthly review completed after the scan read', async () => {
-    const { service, prisma } = createService({ redisFails: true });
-    prisma.recurringTask.findMany.mockResolvedValue([
-      {
-        id: 'recurring-task-raced-to-complete',
-        projectId: 'project-1',
-        reviewerId: 'user-1',
-        periodLabel: '2026-03',
-        dueAt: new Date('2026-03-18T23:59:59.999Z'),
-        status: RecurringTaskStatus.PENDING,
-      },
-    ]);
-    prisma.recurringTask.updateMany.mockResolvedValue({ count: 0 });
-
-    const now = new Date('2026-03-19T08:00:00.000Z');
-    const result = await service.processMonthlyReviewSchedule(now);
-
-    expect(prisma.recurringTask.updateMany).toHaveBeenCalledWith({
-      where: {
-        id: { in: ['recurring-task-raced-to-complete'] },
-        projectId: 'project-1',
-        dueAt: { lt: now },
-        status: {
-          in: [
-            RecurringTaskStatus.PENDING,
-            RecurringTaskStatus.IN_PROGRESS,
-          ],
-        },
-      },
-      data: {
-        status: RecurringTaskStatus.OVERDUE,
-      },
-    });
-    expect(result.markedOverdue).toBe(0);
-    expect(result.enqueued).toBe(0);
-  });
-
-  it('bounds monthly-review updates and dedupe lookups to cursor batches', async () => {
-    const { service, prisma, notificationsService } = createService({
-      redisFails: true,
-      config: {
-        notificationScanBatchSize: 2,
-        notificationScanMaxItems: 3,
-      },
-    });
-    const monthlyTask = (id: string) => ({
-      id,
-      projectId: 'project-1',
-      reviewerId: `reviewer-${id}`,
-      periodLabel: '2026-03',
-      dueAt: new Date('2026-03-18T23:59:59.999Z'),
-      status: RecurringTaskStatus.PENDING,
-    });
-    prisma.recurringTask.findMany
-      .mockResolvedValueOnce([monthlyTask('task-1'), monthlyTask('task-2')])
-      .mockResolvedValueOnce([monthlyTask('task-3')]);
-    prisma.recurringTask.updateMany.mockImplementation(async (query) => ({
-      count: query.where.id.in.length,
-    }));
-
-    const result = await service.processMonthlyReviewSchedule(
-      new Date('2026-03-19T08:00:00.000Z'),
-    );
-
-    expect(result).toMatchObject({ scanned: 3, markedOverdue: 3, enqueued: 3 });
-    expect(prisma.recurringTask.findMany).toHaveBeenCalledTimes(2);
-    for (const [query] of prisma.recurringTask.updateMany.mock.calls) {
-      expect(query.where.id.in.length).toBeLessThanOrEqual(2);
-    }
-    for (const [keys] of notificationsService.hasInAppNotificationDedupeKey.mock.calls) {
-      expect(keys.length).toBeGreaterThan(0);
-      expect(keys.length).toBeLessThanOrEqual(2);
-    }
+    const firstDue = service.processDueReminderScan(); const firstMonthly = service.processMonthlyReviewSchedule();
+    expect(await service.processDueReminderScan()).toMatchObject({ skipped: true });
+    expect(await service.processMonthlyReviewSchedule()).toMatchObject({ skipped: true });
+    expect(scan).toHaveBeenCalledTimes(2);
+    release(); await Promise.all([firstDue, firstMonthly]);
+    scan.mockRejectedValueOnce(new Error('scan failed'));
+    await expect(service.processDueReminderScan()).rejects.toThrow('scan failed');
+    await expect(service.processDueReminderScan()).resolves.toMatchObject({ skipped: false });
   });
 
   it('catches scheduled Promise rejections without logging job data', async () => {

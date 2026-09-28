@@ -27,23 +27,21 @@ export async function notifyTeamTask(tx: Prisma.TransactionClient, taskId: strin
   if (task.nodeCode === 'VISUAL_COLOR_DIFFERENCE_REVIEW') return;
   const roleCode = NODE_BUSINESS_ROLES[task.nodeCode];
   const eligibleWhere = eligibleTeamUserWhere(roleCode);
-  const eligibleCount = await tx.user.count({ where: eligibleWhere });
-  const exception = eligibleCount === 0;
-  const where: Prisma.UserWhereInput = exception
-    ? { status: 'ACTIVE', isSystemAdmin: true, localCredential: { isNot: null } }
-    : task.assigneeUserId ? { ...eligibleWhere, id: task.assigneeUserId } : eligibleWhere;
+  const where: Prisma.UserWhereInput = task.assigneeUserId ? { ...eligibleWhere, id: task.assigneeUserId } : eligibleWhere;
   if (await tx.user.count({ where }) > 1000) throw new ConflictException('此角色通知人数超过 1000 人，请核对团队目录后重试。');
   let cursor = '';
   while (true) {
     const recipients = await tx.user.findMany({ where: { AND: [where, { id: { gt: cursor } }] }, take: 100, orderBy: { id: 'asc' }, select: { id: true } });
     if (!recipients.length) break;
     await tx.notification.createMany({ data: recipients.map(user => ({
-      userId: user.id, projectId: task.projectId, taskId: task.id, notificationType: exception ? 'SYSTEM_INFO' : 'TASK_ASSIGNED',
-      title: `${exception ? '无人负责' : task.assigneeUserId ? '待办' : '可领取'}：${task.nodeName}`,
-      content: exception ? '对应业务角色暂无有效人员，请在人员页分配角色。' : task.assigneeUserId ? '任务已分配给你，请在我的工作中处理。' : '角色队列有新任务，领取后即可办理。',
-      linkPath: '/dashboard', sendChannel: 'IN_APP', sendStatus: 'SENT',
-      dedupeKey: `team-task:${task.id}:${task.assignmentEpoch}:${user.id}`,
+      userId: user.id, projectId: task.projectId, taskId: task.id, notificationType: 'TASK_ASSIGNED', reminderKind: 'ACTIVATE', assignmentEpoch: task.assignmentEpoch, stageTaskId: task.id,
+      title: `${task.assigneeUserId ? '待办' : '可领取'}：${task.nodeName}`,
+      content: task.assigneeUserId ? '任务已分配给你，请在我的工作中处理。' : '角色队列有新任务，领取后即可办理。',
+      linkPath: `/projects/${task.projectId}/tasks/${task.id}`, sendChannel: 'IN_APP', sendStatus: 'SENT',
+      dedupeKey: `ACTIVATE:ordinary:${task.id}:${user.id}`,
     })), skipDuplicates: true });
+    await tx.notification.updateMany({ where: { sendChannel: 'IN_APP', dedupeKey: { in: recipients.map(user => `ACTIVATE:ordinary:${task.id}:${user.id}`) } },
+      data: { assignmentEpoch: task.assignmentEpoch, stageTaskId: task.id } });
     cursor = recipients.at(-1)!.id;
   }
 }

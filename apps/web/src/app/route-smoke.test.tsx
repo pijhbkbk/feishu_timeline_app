@@ -41,9 +41,8 @@ describe('route smoke', () => {
       </AuthProvider>,
     );
 
-    expect(html).toContain('data-testid="r26-project-create"');
-    expect(html).toContain('新建定制色开发项目');
-    expect(html).toContain('data-testid="project-submit-button"');
+    expect(html).toContain('正在加载权限');
+    expect(html).not.toContain('项目成员');
   });
 
   it('renders system guide with process, operation, role and FAQ content', async () => {

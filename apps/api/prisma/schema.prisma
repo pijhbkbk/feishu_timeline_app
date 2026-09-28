@@ -609,6 +609,7 @@ model Project {
   developmentFees          DevelopmentFee[]
   productionPlans          ProductionPlan[]
   attachments              Attachment[]
+  reminderItems            NotificationDigestItem[]
   notifications            Notification[]
   auditLogs                AuditLog[]
   adminCommandRequests     AdminCommandRequest[]
@@ -954,6 +955,9 @@ model WorkflowTask {
   developmentReport    DevelopmentReport?
   colorExit            ColorExit?
   sampleConfirmation   SampleConfirmation?
+  reminderStageNotifications Notification[] @relation("ReminderStage")
+  reminderItems NotificationDigestItem[] @relation("DigestWorkflowTask")
+  reminderStageItems NotificationDigestItem[] @relation("DigestStage")
   notifications        Notification[]
   fromTransitions      WorkflowTransition[] @relation("WorkflowTransitionFromTask")
   toTransitions        WorkflowTransition[] @relation("WorkflowTransitionToTask")
@@ -1098,6 +1102,8 @@ model RecurringTask {
   result          ReviewResult        @default(PENDING)
   comment         String?
   payload         Json?
+  reminderNotifications Notification[]
+  reminderItems NotificationDigestItem[]
   recurringPlan   RecurringPlan       @relation(fields: [recurringPlanId], references: [id], onDelete: Cascade)
   createdAt       DateTime            @default(now())
   updatedAt       DateTime            @updatedAt
@@ -1744,6 +1750,14 @@ model Notification {
   content          String
   linkPath         String?
   dedupeKey        String?
+  reminderKind     TaskReminderKind?
+  businessDate     String? @db.VarChar(10)
+  assignmentEpoch  Int?
+  stageTaskId      String?
+  recurringTaskId  String?
+  stageTask        WorkflowTask? @relation("ReminderStage", fields: [stageTaskId], references: [id], onDelete: Restrict)
+  recurringTask    RecurringTask? @relation(fields: [recurringTaskId], references: [id], onDelete: Restrict)
+  digestItems      NotificationDigestItem[]
   isRead           Boolean                 @default(false)
   readAt           DateTime?
   sendChannel      NotificationSendChannel @default(IN_APP)
@@ -1756,10 +1770,55 @@ model Notification {
   createdAt        DateTime                @default(now())
   updatedAt        DateTime                @updatedAt
 
+  @@index([stageTaskId])
+  @@index([recurringTaskId])
   @@unique([sendChannel, dedupeKey])
   @@index([userId, isRead, createdAt])
   @@index([projectId, createdAt])
   @@index([taskId, createdAt])
   @@index([notificationType, createdAt])
   @@map("notifications")
+}
+
+
+enum TaskReminderKind {
+  ACTIVATE
+  DUE_SOON
+  OVERDUE_DAY
+  LEGACY_TASK
+}
+
+model NotificationDigestItem {
+  id String @id @default(cuid())
+  notificationId String
+  taskKey String
+  projectId String
+  workflowTaskId String?
+  recurringTaskId String?
+  stageTaskId String
+  assignmentEpoch Int
+  notification Notification @relation(fields: [notificationId], references: [id], onDelete: Restrict)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  workflowTask WorkflowTask? @relation("DigestWorkflowTask", fields: [workflowTaskId], references: [id], onDelete: Restrict)
+  recurringTask RecurringTask? @relation(fields: [recurringTaskId], references: [id], onDelete: Restrict)
+  stageTask WorkflowTask @relation("DigestStage", fields: [stageTaskId], references: [id], onDelete: Restrict)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([notificationId, taskKey])
+  @@index([notificationId, id])
+  @@index([projectId])
+  @@index([workflowTaskId])
+  @@index([recurringTaskId])
+  @@index([stageTaskId])
+  @@map("notification_digest_items")
+}
+
+model ReminderScanState {
+  name String @id
+  cursor String @default("")
+  leaseToken String?
+  leaseUntil DateTime?
+  updatedAt DateTime @updatedAt
+  @@map("reminder_scan_states")
 }

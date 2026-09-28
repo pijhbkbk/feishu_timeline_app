@@ -8,6 +8,7 @@ import {
   VisualDeltaReviewHistory,
 } from './visual-delta-review-workspace';
 import {
+  canWriteVisualDeltaRecord,
   canShowVisualDeltaReviewApproveButton,
   canShowVisualDeltaReviewSubmitButton,
   getVisualDeltaReviewApprovalSuccessMessage,
@@ -90,6 +91,13 @@ const workspace: VisualDeltaReviewWorkspaceResponse = {
 };
 
 describe('VisualDeltaReviewWorkspace', () => {
+  it('keeps prior-stage records read-only after monthly rework', () => {
+    const old = { ...workspace.items[0]!, workflowTaskId: 'old-parent-17' };
+    expect(canWriteVisualDeltaRecord(reviewerUser, workspace, old)).toBe(false);
+    expect(canShowVisualDeltaReviewSubmitButton(reviewerUser, workspace, old)).toBe(false);
+    expect(canShowVisualDeltaReviewApproveButton(reviewerUser, workspace, { ...old, submittedAt: '2026-03-24T00:00:00Z' })).toBe(false);
+    expect(canWriteVisualDeltaRecord(reviewerUser, workspace, workspace.items[0]!)).toBe(true);
+  });
   it('renders visual delta review form fields', () => {
     const html = renderToStaticMarkup(
       <VisualDeltaReviewForm

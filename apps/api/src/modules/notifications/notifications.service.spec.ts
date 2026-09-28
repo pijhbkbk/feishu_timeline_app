@@ -32,6 +32,7 @@ const normalizedLengthExpansionRawPath = `/a${' '.repeat(683)}b`;
 
 function createService() {
   const prisma = {
+    $queryRaw: vi.fn().mockResolvedValue([{ unreadCount: 0 }]),
     notification: {
       count: vi.fn(),
       findMany: vi.fn(),
@@ -309,13 +310,13 @@ describe('NotificationsService', () => {
 
   it('degrades unsafe persisted links to null without changing pagination or writing back', async () => {
     const { service, prisma } = createService();
-    prisma.notification.count.mockResolvedValueOnce(3).mockResolvedValueOnce(2);
+    prisma.$queryRaw.mockResolvedValueOnce([{ total: 3, unreadCount: 2 }]);
     const persistedLinks = [
       'https://persisted-marker.example/path',
       '//persisted-marker.example/path',
       '/projects/project-1/workflow?tab=todo#item',
     ];
-    prisma.notification.findMany.mockResolvedValue(
+    prisma.$queryRaw.mockResolvedValueOnce(
       persistedLinks.map((linkPath, index) => ({
         id: `notification-${index + 1}`,
         projectId: 'project-1',
@@ -350,7 +351,7 @@ describe('NotificationsService', () => {
       '内容仍然可见',
       '内容仍然可见',
     ]);
-    expect(prisma.notification.findMany).toHaveBeenCalledTimes(1);
+    expect(prisma.$queryRaw).toHaveBeenCalledTimes(2);
     expect(prisma.notification.update).not.toHaveBeenCalled();
     expect(prisma.notification.updateMany).not.toHaveBeenCalled();
     expect(prisma.notification.upsert).not.toHaveBeenCalled();
@@ -367,14 +368,15 @@ describe('NotificationsService', () => {
         code: 'PAGINATION_PAGE_OUT_OF_RANGE',
       }),
     });
+    expect(prisma.$queryRaw).not.toHaveBeenCalled();
     expect(prisma.notification.count).not.toHaveBeenCalled();
     expect(prisma.notification.findMany).not.toHaveBeenCalled();
   });
 
   it('returns notifications scoped to current user', async () => {
     const { service, prisma } = createService();
-    prisma.notification.count.mockResolvedValueOnce(1).mockResolvedValueOnce(1);
-    prisma.notification.findMany.mockResolvedValue([
+    prisma.$queryRaw.mockResolvedValueOnce([{ total: 1, unreadCount: 1 }]);
+    prisma.$queryRaw.mockResolvedValueOnce([
       {
         id: 'notification-1',
         projectId: 'project-1',
@@ -393,14 +395,14 @@ describe('NotificationsService', () => {
     const result = await service.getMyNotifications({}, actor);
 
     expect(result.items).toHaveLength(1);
-    expect(prisma.notification.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: {
-          userId: 'user-1',
-          sendChannel: NotificationSendChannel.IN_APP,
-        },
-      }),
-    );
+    expect(prisma.$queryRaw).toHaveBeenCalledTimes(2);
+    for (const [query] of prisma.$queryRaw.mock.calls) {
+      expect(query.values).toContain(actor.id);
+      expect(query.text).toContain('n."userId" = $1');
+      expect(query.text).toContain(`n."sendChannel" = 'IN_APP'`);
+      expect(query.text).toContain('n."reminderKind"');
+    }
+
   });
 
   it('marks notification as read and writes audit log', async () => {
@@ -500,7 +502,7 @@ describe('NotificationsService', () => {
     });
   });
 
-  it('creates notifications successfully for queued task jobs', async () => {
+  it('retires legacy queued task jobs without bypassing the current role reminder checks', async () => {
     const { service, prisma, feishuMessagesService } = createService();
     prisma.workflowTask.findUnique.mockResolvedValue({
       id: 'task-1',
@@ -540,7 +542,8 @@ describe('NotificationsService', () => {
       availableAt: new Date().toISOString(),
     });
 
-    expect(prisma.notification.upsert).toHaveBeenCalled();
+    expect(prisma.notification.upsert).not.toHaveBeenCalled();
+    expect(prisma.workflowTask.findUnique).not.toHaveBeenCalled();
     expect(feishuMessagesService.sendNotification).not.toHaveBeenCalled();
   });
 });

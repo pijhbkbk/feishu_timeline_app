@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { NotificationLink } from '../features/team-work/notifications';
 import { usePathname } from 'next/navigation';
 import type { PropsWithChildren } from 'react';
 
@@ -39,7 +40,7 @@ export function AppShell({ children }: PropsWithChildren) {
     projectSegments[1] !== 'timeline-board'
       ? projectSegments[1]
       : null;
-  const contextNav = projectId
+  const contextNav = projectId && pathname !== `/projects/${projectId}`
     ? filterNavItems(getProjectSectionItems(projectId), user)
     : /^\/admin\/(projects|tasks|organization|assignments|permissions|audit-logs)$/.test(pathname)
       ? filterNavItems(getAdminSectionItems(), user)
@@ -101,6 +102,7 @@ export function AppShell({ children }: PropsWithChildren) {
           ) : null}
 
           <div className="r22-header-tools">
+            {!isAuthRoute ? <NotificationLink /> : null}
             {isLoading ? (
               <span className="r22-avatar r22-avatar-loading" aria-label="正在加载登录态" />
             ) : user ? (

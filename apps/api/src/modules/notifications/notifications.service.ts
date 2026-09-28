@@ -1,4 +1,6 @@
+import { visibleNotificationSql, visibleDigestItemSql } from './task-reminder.rules';
 import {
+  BadRequestException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -7,7 +9,7 @@ import {
   NotificationSendChannel,
   NotificationSendStatus,
   NotificationType,
-  type Prisma,
+  Prisma,
 } from '@prisma/client';
 
 import { PrismaService } from '../../infra/prisma/prisma.service';
@@ -67,47 +69,37 @@ export class NotificationsService {
     const page = normalizePage(rawQuery.page, 1);
     const pageSize = normalizePageSize(rawQuery.pageSize, 20);
 
-    const where: Prisma.NotificationWhereInput = {
-      userId: actor.id,
-      sendChannel: NotificationSendChannel.IN_APP,
-    };
-
-    const [total, unreadCount, items] = await Promise.all([
-      this.prisma.notification.count({ where }),
-      this.prisma.notification.count({
-        where: {
-          ...where,
-          isRead: false,
-        },
-      }),
-      this.prisma.notification.findMany({
-        where,
-        orderBy: [{ isRead: 'asc' }, { createdAt: 'desc' }],
-        skip: (page - 1) * pageSize,
-        take: pageSize,
-      }),
+    const visibility = visibleNotificationSql();
+    const scope = Prisma.sql`n."userId" = ${actor.id} AND n."sendChannel" = 'IN_APP' AND ${visibility}`;
+    const [counts, items] = await Promise.all([
+      this.prisma.$queryRaw<Array<{ total: number; unreadCount: number }>>(Prisma.sql`SELECT count(*)::int AS total, count(*) FILTER (WHERE NOT n."isRead")::int AS "unreadCount" FROM notifications n WHERE ${scope}`),
+      this.prisma.$queryRaw<Array<Prisma.NotificationGetPayload<Record<string, never>>>>(Prisma.sql`SELECT n.* FROM notifications n WHERE ${scope} ORDER BY n."isRead" ASC, n."createdAt" DESC, n.id DESC LIMIT ${pageSize} OFFSET ${(page - 1) * pageSize}`),
     ]);
-
-    return {
-      page,
-      pageSize,
-      total,
-      totalPages: Math.max(1, Math.ceil(total / pageSize)),
-      unreadCount,
-      items: items.map((item) => this.toNotificationItem(item)),
-    };
+    const total = counts[0]?.total ?? 0;
+    return { page, pageSize, total, totalPages: Math.max(1, Math.ceil(total / pageSize)), unreadCount: counts[0]?.unreadCount ?? 0,
+      items: items.map(item => this.toNotificationItem(item)) };
   }
 
   async getUnreadCount(actor: AuthenticatedUser) {
-    const unreadCount = await this.prisma.notification.count({
-      where: {
-        userId: actor.id,
-        sendChannel: NotificationSendChannel.IN_APP,
-        isRead: false,
-      },
-    });
+    const rows = await this.prisma.$queryRaw<Array<{ unreadCount: number }>>(Prisma.sql`SELECT count(*)::int AS "unreadCount" FROM notifications n
+      WHERE n."userId" = ${actor.id} AND n."sendChannel" = 'IN_APP' AND NOT n."isRead" AND ${visibleNotificationSql()}`);
+    return { unreadCount: rows[0]?.unreadCount ?? 0 };
+  }
 
-    return { unreadCount };
+  async getDigestItems(notificationId: string, after: string | undefined, actor: AuthenticatedUser) {
+    if (notificationId.length > 128 || (after?.length ?? 0) > 128) throw new BadRequestException('通知分页参数过长。');
+    const notification = await this.prisma.notification.findFirst({ where: { id: notificationId, userId: actor.id, reminderKind: 'OVERDUE_DAY', sendChannel: 'IN_APP' }, select: { id: true } });
+    if (!notification) throw new NotFoundException('通知不存在。');
+    const items = await this.prisma.$queryRaw<Array<{ id: string; projectId: string; projectCode: string; projectName: string; taskId: string; monthly: boolean; title: string; dueAt: Date | null }>>(Prisma.sql`
+      SELECT d.id, d."projectId", p.code AS "projectCode", p.name AS "projectName", COALESCE(d."workflowTaskId",d."recurringTaskId") AS "taskId",
+        (d."recurringTaskId" IS NOT NULL) AS monthly, COALESCE(t."nodeName", '第 ' || m."periodIndex" || ' 月目视色差评审') AS title,
+        COALESCE(t."effectiveDueAt",t."dueAt",m."dueAt") AS "dueAt"
+      FROM notification_digest_items d JOIN notifications n ON n.id = d."notificationId" JOIN projects p ON p.id = d."projectId"
+      LEFT JOIN workflow_tasks t ON t.id = d."workflowTaskId" LEFT JOIN recurring_tasks m ON m.id = d."recurringTaskId"
+      WHERE n.id = ${notification.id} AND n."userId" = ${actor.id} AND d.id > ${after ?? ''} AND ${visibleDigestItemSql()}
+      ORDER BY d.id ASC LIMIT 21`);
+    return { items: items.slice(0, 20).map(item => ({ ...item, dueAt: item.dueAt?.toISOString() ?? null,
+      linkPath: item.monthly ? `/projects/${item.projectId}/color-evaluation?recurringTaskId=${item.taskId}` : `/projects/${item.projectId}/tasks/${item.taskId}` })), nextCursor: items.length > 20 ? items[19]!.id : null };
   }
 
   async markRead(notificationId: string, actor: AuthenticatedUser) {
@@ -186,6 +178,8 @@ export class NotificationsService {
   }
 
   async processQueuedNotification(job: NotificationQueueJob) {
+    // Old queued work messages are retired; current role/stage-qualified scanners rebuild them.
+    if (job.taskId || (job.metadata && typeof job.metadata === 'object' && !Array.isArray(job.metadata) && 'recurringTaskId' in job.metadata)) return { skipped: true };
     switch (job.type) {
       case NotificationType.SYSTEM_INFO:
         return this.processSystemNotification(job);
@@ -492,6 +486,7 @@ export class NotificationsService {
       projectId: notification.projectId,
       taskId: notification.taskId,
       notificationType: notification.notificationType,
+      reminderKind: notification.reminderKind,
       title: notification.title,
       content: notification.content,
       linkPath: sanitizeNotificationLinkPathForRead(notification.linkPath),

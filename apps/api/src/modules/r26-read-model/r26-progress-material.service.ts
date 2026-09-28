@@ -73,6 +73,7 @@ export class R26ProgressMaterialService {
       progressUpdates,
       attachments,
       assistanceDepartments,
+      materialVersions,
     ] = await Promise.all([
       this.prisma.workflowNodeDefinition.findUnique({
         where: { nodeCode: task.nodeCode },
@@ -117,13 +118,17 @@ export class R26ProgressMaterialService {
           uploadedBy: { select: { id: true, name: true } },
         },
         orderBy: [{ versionNo: 'desc' }, { uploadedAt: 'desc' }],
+        take: 1001,
       }),
       this.prisma.department.findMany({
         where: { isActive: true },
         select: { id: true, name: true },
         orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+        take: 1001,
       }),
+      this.loadMaterialVersionPage(task),
     ]);
+    if (attachments.length > 1000 || assistanceDepartments.length > 1000) throw new ConflictException('工作单资料数量超出单次读取范围，请管理员核对。');
     const requiredMaterials = this.parseRequiredMaterials(
       definition?.requiredAttachments,
     );
@@ -147,7 +152,7 @@ export class R26ProgressMaterialService {
       progressHistory: progressUpdates.map((item) =>
         this.serializeProgress(item),
       ),
-      materials: materialView,
+      materials: { ...materialView, versions: materialVersions.items, versionsNextCursor: materialVersions.nextCursor },
       assistanceOptions: {
         users: this.uniquePeople([
           task.project.ownerUser,
@@ -840,6 +845,32 @@ export class R26ProgressMaterialService {
       actor,
       disposition,
     );
+  }
+
+  async getMaterialVersions(taskId: string, actor: AuthenticatedUser, after?: string) {
+    const task = await this.loadTaskOrThrow(taskId, actor);
+    return this.loadMaterialVersionPage(task, after);
+  }
+
+  private async loadMaterialVersionPage(task: { id: string; projectId: string }, after?: string) {
+    if ((after?.length ?? 0) > 128) throw new BadRequestException('材料分页参数过长。');
+    // Deleted uploads are history only when another version replaces them in the
+    // same task. Ordinary deletions must not become downloadable history.
+    const ids = await this.prisma.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+      SELECT a.id FROM attachments a WHERE a."projectId" = ${task.projectId}
+        AND a."targetType" = 'WORKFLOW_TASK' AND a."targetId" = ${task.id} AND a."scanStatus" = 'CLEAN'
+        AND (NOT a."isDeleted" OR EXISTS (SELECT 1 FROM attachments newer
+          WHERE newer."replacesAttachmentId" = a.id AND newer."projectId" = a."projectId"
+            AND newer."targetType" = a."targetType" AND newer."targetId" = a."targetId"))
+        ${after ? Prisma.sql`AND a.id < ${after}` : Prisma.empty}
+      ORDER BY a.id DESC LIMIT 31`);
+    const page = ids.slice(0, 30);
+    const attachments = page.length ? await this.prisma.attachment.findMany({
+      where: { id: { in: page.map(row => row.id) }, projectId: task.projectId, entityType: 'WORKFLOW_TASK', entityId: task.id, scanStatus: 'CLEAN' },
+      include: { uploadedBy: { select: { id: true, name: true } } }, orderBy: { id: 'desc' }, take: 30,
+    }) : [];
+    return { items: this.buildMaterialView(task.projectId, task.id, [], attachments).versions,
+      nextCursor: ids.length > 30 ? page[29]!.id : null };
   }
 
   private createMaterialAttachmentFinalizeHook(input: {

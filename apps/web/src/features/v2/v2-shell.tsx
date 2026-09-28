@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { NotificationLink } from '../team-work/notifications';
 import { usePathname } from 'next/navigation';
 import React from 'react';
 import { useEffect, useState, type MouseEvent } from 'react';
@@ -156,7 +157,7 @@ export function V2Shell({ children }: { children: React.ReactNode }) {
             })}
           </nav>
 
-          <div className="r26-header-tools">
+          <div className="r26-header-tools"><NotificationLink />
             <span className="r26-prototype-badge">
               {isProductionV2Ui()
                 ? '正式系统'

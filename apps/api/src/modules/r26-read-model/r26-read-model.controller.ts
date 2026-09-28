@@ -252,6 +252,12 @@ export class R26ReadModelController {
   }
 
   @Permissions('project.read')
+  @Get('tasks/:taskId/material-versions')
+  getMaterialVersions(@Param('taskId') taskId: string, @CurrentUser() actor: AuthenticatedUser, @Query('after') after?: string) {
+    return this.progressMaterialService.getMaterialVersions(taskId, actor, after);
+  }
+
+  @Permissions('project.read')
   @UseInterceptors(DownloadAdmissionInterceptor)
   @ApiOperation({ summary: 'R26 Gate 3B 查看当前或历史材料版本' })
   @Get('tasks/:taskId/materials/:attachmentId/content')

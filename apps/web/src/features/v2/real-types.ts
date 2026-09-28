@@ -142,6 +142,7 @@ export type R26ProjectsResponse = {
 };
 
 export type R26FlowMapNode = {
+  isActive?: boolean;
   taskId: string | null;
   stepCode: string;
   stepNumber: number;
@@ -612,6 +613,7 @@ export type R26ProgressMaterials = {
   }>;
   current: R26MaterialVersion[];
   versions: R26MaterialVersion[];
+  versionsNextCursor?: string | null;
   summary: {
     required: number;
     submitted: number;

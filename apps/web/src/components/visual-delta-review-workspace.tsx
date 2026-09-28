@@ -12,7 +12,7 @@ import {
   type VisualDeltaReviewFormInput, type VisualDeltaReviewRecord, type VisualDeltaReviewWorkspaceResponse,
 } from '../lib/visual-delta-reviews-client';
 import { getWorkflowTaskStatusLabel } from '../lib/workflows-client';
-import { type DirectoryUser, formatDate, getWorkflowNodeLabel } from '../lib/projects-client';
+import { type DirectoryUser, formatDate } from '../lib/projects-client';
 
 const EMPTY_FORM: VisualDeltaReviewFormInput = { reviewDate: '', reviewerId: '', reviewConclusion: 'APPROVED', comment: '', conditionNote: '', rejectReason: '' };
 
@@ -35,7 +35,7 @@ export function VisualDeltaReviewWorkspace({ projectId, recurringTaskId = '' }: 
   const records = month ? workspace?.items.filter(item => item.reviewPeriod === month.plannedDate.slice(0, 7)) ?? [] : [];
   const canWrite = Boolean(workspace && canWriteVisualDeltaMonth(user, workspace, month));
   const selectedReview = records.find(item => item.id === selectedReviewId) ?? records[0] ?? null;
-  const ownDraft = records.find(item => item.reviewerId === user?.id && !item.submittedAt);
+  const ownDraft = records.find(item => item.reviewerId === user?.id && item.workflowTaskId === workspace?.activeTask?.id && !item.submittedAt);
   const ownRecord = records.find(item => item.reviewerId === user?.id && item.workflowTaskId === workspace?.activeTask?.id);
   const defaultDate = month?.plannedDate.slice(0, 10) ?? '';
   useEffect(() => {
