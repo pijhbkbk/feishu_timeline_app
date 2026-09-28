@@ -4,6 +4,7 @@ import Link from 'next/link';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 import { useAuth } from './auth-provider';
+import { canUserOperateWorkflowTask } from '../lib/workflows-client';
 import {
   canManageSchedulePlans,
   canShowCompleteSchedulePlanTaskButton,
@@ -61,7 +62,7 @@ export function SchedulePlansWorkspace({
     void loadWorkspace({ initial: true });
   }, [projectId]);
 
-  const canManage = canManageSchedulePlans(user);
+  const canManage = canManageSchedulePlans(user) && Boolean(workspace?.activeTask && canUserOperateWorkflowTask(user, workspace.activeTask));
   const isReadOnly = !workspace?.activeTask;
   const highlights = workspace ? getSchedulePlansWorkspaceHighlights(workspace) : null;
 

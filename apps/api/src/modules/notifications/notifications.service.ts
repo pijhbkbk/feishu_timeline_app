@@ -1,3 +1,4 @@
+import { BusinessClock } from '../../common/business-clock';
 import { visibleNotificationSql, visibleDigestItemSql } from './task-reminder.rules';
 import {
   BadRequestException,
@@ -60,6 +61,7 @@ export class NotificationsService {
     private readonly prisma: PrismaService,
     private readonly activityLogsService: ActivityLogsService,
     private readonly feishuMessagesService: FeishuMessagesService,
+    private readonly businessClock: BusinessClock = new BusinessClock(),
   ) {}
 
   async getMyNotifications(
@@ -69,7 +71,7 @@ export class NotificationsService {
     const page = normalizePage(rawQuery.page, 1);
     const pageSize = normalizePageSize(rawQuery.pageSize, 20);
 
-    const visibility = visibleNotificationSql();
+    const visibility = visibleNotificationSql(this.businessClock.now());
     const scope = Prisma.sql`n."userId" = ${actor.id} AND n."sendChannel" = 'IN_APP' AND ${visibility}`;
     const [counts, items] = await Promise.all([
       this.prisma.$queryRaw<Array<{ total: number; unreadCount: number }>>(Prisma.sql`SELECT count(*)::int AS total, count(*) FILTER (WHERE NOT n."isRead")::int AS "unreadCount" FROM notifications n WHERE ${scope}`),
@@ -82,7 +84,7 @@ export class NotificationsService {
 
   async getUnreadCount(actor: AuthenticatedUser) {
     const rows = await this.prisma.$queryRaw<Array<{ unreadCount: number }>>(Prisma.sql`SELECT count(*)::int AS "unreadCount" FROM notifications n
-      WHERE n."userId" = ${actor.id} AND n."sendChannel" = 'IN_APP' AND NOT n."isRead" AND ${visibleNotificationSql()}`);
+      WHERE n."userId" = ${actor.id} AND n."sendChannel" = 'IN_APP' AND NOT n."isRead" AND ${visibleNotificationSql(this.businessClock.now())}`);
     return { unreadCount: rows[0]?.unreadCount ?? 0 };
   }
 
@@ -96,7 +98,7 @@ export class NotificationsService {
         COALESCE(t."effectiveDueAt",t."dueAt",m."dueAt") AS "dueAt"
       FROM notification_digest_items d JOIN notifications n ON n.id = d."notificationId" JOIN projects p ON p.id = d."projectId"
       LEFT JOIN workflow_tasks t ON t.id = d."workflowTaskId" LEFT JOIN recurring_tasks m ON m.id = d."recurringTaskId"
-      WHERE n.id = ${notification.id} AND n."userId" = ${actor.id} AND d.id > ${after ?? ''} AND ${visibleDigestItemSql()}
+      WHERE n.id = ${notification.id} AND n."userId" = ${actor.id} AND d.id > ${after ?? ''} AND ${visibleDigestItemSql(this.businessClock.now())}
       ORDER BY d.id ASC LIMIT 21`);
     return { items: items.slice(0, 20).map(item => ({ ...item, dueAt: item.dueAt?.toISOString() ?? null,
       linkPath: item.monthly ? `/projects/${item.projectId}/color-evaluation?recurringTaskId=${item.taskId}` : `/projects/${item.projectId}/tasks/${item.taskId}` })), nextCursor: items.length > 20 ? items[19]!.id : null };

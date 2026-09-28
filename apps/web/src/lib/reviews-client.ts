@@ -15,6 +15,7 @@ import {
   type WorkflowNodeCode,
 } from './projects-client';
 import {
+  canUserOperateWorkflowTask,
   getWorkflowTaskStatusLabel,
   type WorkflowTaskSummary,
 } from './workflows-client';
@@ -107,12 +108,7 @@ const CABIN_REVIEW_CONCLUSION_OPTIONS: Array<{
   { value: 'REJECTED', label: '驳回' },
 ];
 
-const CABIN_REVIEW_ROLE_CODES: FrontendRoleCode[] = [
-  'admin',
-  'project_manager',
-  'quality_engineer',
-  'reviewer',
-];
+const CABIN_REVIEW_ROLE_CODES: FrontendRoleCode[] = ['reviewer'];
 
 const CABIN_REVIEW_CONCLUSION_LABELS = Object.fromEntries(
   CABIN_REVIEW_CONCLUSION_OPTIONS.map((item) => [item.value, item.label]),
@@ -227,11 +223,10 @@ export function canManageCabinReviews(
   }
 
   if (reviewerId !== undefined) {
-    return user.roleCodes.includes('project_manager') || reviewerId === user.id;
+    return user.roleCodes.includes('reviewer') && reviewerId === user.id;
   }
 
   return (
-    user.isSystemAdmin ||
     CABIN_REVIEW_ROLE_CODES.some((roleCode) => user.roleCodes.includes(roleCode))
   );
 }
@@ -245,7 +240,7 @@ export function canShowCabinReviewSubmitButton(
     return false;
   }
 
-  return canManageCabinReviews(user, review.reviewerId);
+  return canManageCabinReviews(user, review.reviewerId) && canUserOperateWorkflowTask(user, workspace.activeTask) && review.workflowTaskId === workspace.activeTask.id;
 }
 
 export function canShowCabinReviewApproveButton(
@@ -264,7 +259,7 @@ export function canShowCabinReviewApproveButton(
     return false;
   }
 
-  return canManageCabinReviews(user, review.reviewerId);
+  return canManageCabinReviews(user, review.reviewerId) && canUserOperateWorkflowTask(user, workspace.activeTask) && review.workflowTaskId === workspace.activeTask.id;
 }
 
 export function canShowCabinReviewRejectButton(
@@ -280,7 +275,7 @@ export function canShowCabinReviewRejectButton(
     return false;
   }
 
-  return canManageCabinReviews(user, review.reviewerId);
+  return canManageCabinReviews(user, review.reviewerId) && canUserOperateWorkflowTask(user, workspace.activeTask) && review.workflowTaskId === workspace.activeTask.id;
 }
 
 export function getCabinReviewConclusionLabel(conclusion: CabinReviewConclusion) {

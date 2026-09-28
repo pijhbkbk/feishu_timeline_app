@@ -1,3 +1,4 @@
+import { BusinessClock } from '../../common/business-clock';
 import { Injectable, ConflictException } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { Prisma } from '@prisma/client';
@@ -13,12 +14,12 @@ const initialCursor = (): Cursor => ({ afterTask: '', currentTask: null, afterUs
 
 @Injectable()
 export class TaskRemindersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private readonly businessClock: BusinessClock = new BusinessClock()) {}
 
   /** A durable lease is acquired separately from business transactions. A crash replays
    * at most the last recipient; immutable keys and item uniqueness make that harmless.
    */
-  async scan(kind: 'ordinary' | 'monthly', now = new Date()) {
+  async scan(kind: 'ordinary' | 'monthly', now = this.businessClock.now()) {
     const name = `team-reminders:${kind}`; const token = randomUUID();
     await this.prisma.reminderScanState.createMany({ data: [{ name }], skipDuplicates: true });
     const lease = await this.prisma.reminderScanState.updateMany({ where: { name, OR: [{ leaseUntil: null }, { leaseUntil: { lt: new Date() } }] }, data: { leaseToken: token, leaseUntil: new Date(Date.now() + 60000) } });

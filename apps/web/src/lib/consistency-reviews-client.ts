@@ -11,6 +11,7 @@ import {
   type WorkflowNodeCode,
 } from './projects-client';
 import {
+  canUserOperateWorkflowTask,
   getWorkflowTaskStatusLabel,
   type WorkflowTaskSummary,
 } from './workflows-client';
@@ -78,12 +79,7 @@ export type ConsistencyReviewFormInput = {
   rejectReason: string;
 };
 
-const CONSISTENCY_REVIEW_ROLE_CODES: FrontendRoleCode[] = [
-  'admin',
-  'project_manager',
-  'quality_engineer',
-  'reviewer',
-];
+const CONSISTENCY_REVIEW_ROLE_CODES: FrontendRoleCode[] = ['reviewer'];
 
 const CONSISTENCY_REVIEW_CONCLUSION_LABELS: Record<
   ConsistencyReviewConclusion,
@@ -211,11 +207,10 @@ export function canManageConsistencyReviews(
   }
 
   if (reviewerId !== undefined) {
-    return user.roleCodes.includes('project_manager') || reviewerId === user.id;
+    return user.roleCodes.includes('reviewer') && reviewerId === user.id;
   }
 
   return (
-    user.isSystemAdmin ||
     CONSISTENCY_REVIEW_ROLE_CODES.some((roleCode) => user.roleCodes.includes(roleCode))
   );
 }
@@ -229,7 +224,7 @@ export function canShowConsistencyReviewSubmitButton(
     return false;
   }
 
-  return canManageConsistencyReviews(user, review.reviewerId);
+  return canManageConsistencyReviews(user, review.reviewerId) && canUserOperateWorkflowTask(user, workspace.activeTask) && review.workflowTaskId === workspace.activeTask.id;
 }
 
 export function canShowConsistencyReviewApproveButton(
@@ -248,7 +243,7 @@ export function canShowConsistencyReviewApproveButton(
     return false;
   }
 
-  return canManageConsistencyReviews(user, review.reviewerId);
+  return canManageConsistencyReviews(user, review.reviewerId) && canUserOperateWorkflowTask(user, workspace.activeTask) && review.workflowTaskId === workspace.activeTask.id;
 }
 
 export function canShowConsistencyReviewRejectButton(
@@ -264,7 +259,7 @@ export function canShowConsistencyReviewRejectButton(
     return false;
   }
 
-  return canManageConsistencyReviews(user, review.reviewerId);
+  return canManageConsistencyReviews(user, review.reviewerId) && canUserOperateWorkflowTask(user, workspace.activeTask) && review.workflowTaskId === workspace.activeTask.id;
 }
 
 export function getConsistencyReviewConclusionLabel(

@@ -1,4 +1,5 @@
-.people-workspace { width: 100%; max-width: 1200px; margin: 0 auto; padding: 28px; color: #1f304f; background: #fff; border: 1px solid #e0e7f2; border-radius: 16px; }
+.r22-content:has(.people-workspace) { grid-template-columns: minmax(0,1fr); }
+.people-workspace { min-width: 0; box-sizing: border-box; width: 100%; max-width: 1200px; margin: 0 auto; padding: 28px; color: #1f304f; background: #fff; border: 1px solid #e0e7f2; border-radius: 16px; }
 .people-heading,.people-toolbar,.people-actions,.people-pagination,.people-dialog header,.people-dialog footer { display:flex; align-items:center; justify-content:space-between; gap:16px; }
 .people-heading h1 { margin:0; font-size:30px; }.people-heading p,.people-secondary,.people-table small { color:#64748b; }.people-heading p { margin:8px 0 20px; }
 .people-toolbar { flex-wrap:wrap; margin:12px 0 20px; }.people-filters,.people-search,.people-role-tags { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }

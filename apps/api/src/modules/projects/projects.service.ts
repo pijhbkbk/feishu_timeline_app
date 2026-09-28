@@ -310,6 +310,12 @@ export class ProjectsService {
       const rightSequence = WORKFLOW_NODE_META_MAP[right.nodeCode]?.sequence ?? right.sequence;
       return leftSequence - rightSequence;
     });
+    const monthlyProjectIds = projects.filter(project => project.workflowTasks.some(task => task.isActive && task.nodeCode === WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW)).map(project => project.id);
+    const monthlyDates = monthlyProjectIds.length ? await this.prisma.recurringTask.groupBy({
+      by: ['projectId'], where: { projectId: { in: monthlyProjectIds }, status: { in: [RecurringTaskStatus.PENDING, RecurringTaskStatus.IN_PROGRESS, RecurringTaskStatus.OVERDUE] },
+        recurringPlan: { status: 'ACTIVE', sourceNodeCode: WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW } }, _min: { dueAt: true },
+    }) : [];
+    const monthlyDeadlines = new Map(monthlyDates.map(item => [item.projectId, item._min.dueAt]));
 
     return {
       page: query.page,
@@ -339,7 +345,7 @@ export class ProjectsService {
         name: WORKFLOW_NODE_META_MAP[definition.nodeCode]?.name ?? definition.name,
         sequence: WORKFLOW_NODE_META_MAP[definition.nodeCode]?.sequence ?? definition.sequence,
       })),
-      items: projects.map((project) => this.toProjectListItem(project)),
+      items: projects.map((project) => this.toProjectListItem(project, monthlyDeadlines.get(project.id))),
     };
   }
 
@@ -1856,10 +1862,11 @@ export class ProjectsService {
         };
       };
     }>,
+    monthlyDueAt?: Date | null,
   ) {
     if (project.workflowTasks.length > 18) throw new ConflictException('项目活跃工序数量异常，请核对后重试。');
     const openTasks = project.workflowTasks.filter(task => ['PENDING', 'READY', 'IN_PROGRESS', 'RETURNED'].includes(task.status));
-    const deadlines = openTasks.map(task => task.effectiveDueAt ?? task.dueAt).filter((value): value is Date => Boolean(value));
+    const deadlines = [...openTasks.map(task => task.effectiveDueAt ?? task.dueAt), monthlyDueAt].filter((value): value is Date => Boolean(value));
     const earliestDueAt = deadlines.length ? new Date(Math.min(...deadlines.map(value => value.getTime()))) : null;
     const riskLevel = this.computeRiskLevel(project);
     const now = new Date();

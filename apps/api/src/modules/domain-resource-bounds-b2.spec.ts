@@ -573,7 +573,7 @@ describe('bounded production execution inputs and reads', () => {
     Reflect.set(
       service,
       'lockTrialProductionTaskAndGetContext',
-      vi.fn().mockResolvedValue({ items: [] }),
+      vi.fn().mockResolvedValue({ items: [], activeTask: { id: 'trial-task-bounds' } }),
     );
     Reflect.set(service, 'assertValidTrialProductionPlan', vi.fn());
     Reflect.set(service, 'assertUniqueVehicleNo', vi.fn());

@@ -70,11 +70,7 @@ export type SchedulePlanFormInput = {
   note: string;
 };
 
-const SCHEDULE_PLAN_ROLE_CODES: FrontendRoleCode[] = [
-  'admin',
-  'project_manager',
-  'process_engineer',
-];
+const SCHEDULE_PLAN_ROLE_CODES: FrontendRoleCode[] = ['production_operator'];
 
 const SCHEDULE_PLAN_STATUS_LABELS: Record<SchedulePlanStatus, string> = {
   DRAFT: '草稿',
@@ -192,10 +188,6 @@ export function validateSchedulePlanForm(input: SchedulePlanFormInput) {
 export function canManageSchedulePlans(user: SessionUser | null) {
   if (!user) {
     return false;
-  }
-
-  if (user.isSystemAdmin || user.roleCodes.includes('admin')) {
-    return true;
   }
 
   return SCHEDULE_PLAN_ROLE_CODES.some((roleCode) => user.roleCodes.includes(roleCode));

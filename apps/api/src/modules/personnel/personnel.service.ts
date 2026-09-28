@@ -1,3 +1,4 @@
+import { BusinessClock } from '../../common/business-clock';
 import { BadRequestException, ConflictException, ForbiddenException, HttpException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { createHash } from 'node:crypto';
@@ -12,7 +13,7 @@ const pendingStatuses = ['PENDING', 'READY', 'IN_PROGRESS', 'RETURNED'] as const
 
 @Injectable()
 export class PersonnelService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private readonly businessClock: BusinessClock = new BusinessClock()) {}
 
   async list(actor: AuthenticatedUser, query: PersonnelQueryDto) {
     this.assertAdministrator(actor);
@@ -41,7 +42,7 @@ export class PersonnelService {
       SELECT t."reviewerId", count(*)::int AS count
       FROM recurring_tasks t JOIN recurring_plans plan ON plan.id = t."recurringPlanId"
       WHERE t."reviewerId" IN (${Prisma.join(page.map(user => user.id))})
-        AND t.status IN ('PENDING', 'IN_PROGRESS', 'OVERDUE') AND t."plannedDate" <= ${new Date()}
+        AND t.status IN ('PENDING', 'IN_PROGRESS', 'OVERDUE') AND t."plannedDate" <= ${this.businessClock.now()}
         AND plan.status = 'ACTIVE' AND plan."projectId" = t."projectId"
         AND EXISTS (SELECT 1 FROM workflow_tasks wt WHERE wt."projectId" = t."projectId"
           AND wt."nodeCode" = 'VISUAL_COLOR_DIFFERENCE_REVIEW' AND wt."isActive" = true

@@ -1,3 +1,5 @@
+import { BusinessClock } from '../../common/business-clock';
+import { isReworkTask, isTechnicalReworkTask, ancestorEvidenceIds } from '../../common/workflow-evidence';
 import { requireActiveMonthlyPlan } from '../../common/monthly-review-plan';
 import { assertTeamTaskById, withProjectWrite } from '../../common/team-authorization';
 import {
@@ -11,6 +13,8 @@ import {
   AttachmentScanStatus,
   AttachmentTargetType,
   AuditTargetType,
+  ProductionPlanType,
+  ProductionPlanStatus,
   RecurringPlanStatus,
   RecurringTaskStatus,
   ReviewResult,
@@ -158,6 +162,7 @@ export class ReviewsService {
     private readonly attachmentsService: AttachmentsService,
     private readonly workflowsService: WorkflowsService,
     private readonly projectAccessService: ProjectAccessService,
+    private readonly businessClock: BusinessClock = new BusinessClock(),
   ) {}
 
   async getCabinReviewWorkspace(projectId: string, actor: AuthenticatedUser) {
@@ -191,7 +196,9 @@ export class ReviewsService {
       );
       await this.assertReviewWriteInputPersistable(tx, input);
 
-      const trialProduction = await this.getLatestCompletedTrialProductionOrThrow(tx, projectId);
+      const trialIds = isReworkTask(context.activeTask!) ? await ancestorEvidenceIds(tx, context.activeTask!, WorkflowNodeCode.TRIAL_PRODUCTION) : undefined;
+      const planIds = isTechnicalReworkTask(context.activeTask!) ? await ancestorEvidenceIds(tx, context.activeTask!, WorkflowNodeCode.FIRST_UNIT_PRODUCTION_PLAN) : undefined;
+      const trialProduction = await this.getLatestCompletedTrialProductionOrThrow(tx, projectId, trialIds, planIds);
       const duplicatedReview = await tx.reviewRecord.findFirst({
         where: {
           workflowTaskId: context.activeTask!.id,
@@ -377,7 +384,7 @@ export class ReviewsService {
         tx,
         reviewRecord,
         {
-          submittedAt: new Date(),
+          submittedAt: this.businessClock.now(),
         },
       );
 
@@ -430,7 +437,7 @@ export class ReviewsService {
         {
           returnToNodeCode: null,
           rejectReason: null,
-          reviewedAt: reviewRecord.reviewedAt ?? new Date(),
+          reviewedAt: reviewRecord.reviewedAt ?? this.businessClock.now(),
         },
       );
 
@@ -771,7 +778,7 @@ export class ReviewsService {
         tx,
         reviewRecord,
         {
-          submittedAt: new Date(),
+          submittedAt: this.businessClock.now(),
         },
       );
 
@@ -825,7 +832,7 @@ export class ReviewsService {
         {
           returnToNodeCode: null,
           rejectReason: null,
-          reviewedAt: reviewRecord.reviewedAt ?? new Date(),
+          reviewedAt: reviewRecord.reviewedAt ?? this.businessClock.now(),
         },
       );
 
@@ -1181,7 +1188,7 @@ export class ReviewsService {
         tx,
         reviewRecord,
         {
-          submittedAt: new Date(),
+          submittedAt: this.businessClock.now(),
         },
       );
 
@@ -1235,7 +1242,7 @@ export class ReviewsService {
         {
           returnToNodeCode: null,
           rejectReason: null,
-          reviewedAt: reviewRecord.reviewedAt ?? new Date(),
+          reviewedAt: reviewRecord.reviewedAt ?? this.businessClock.now(),
         },
       );
 
@@ -1272,7 +1279,7 @@ export class ReviewsService {
         );
       }
 
-      const completedAt = new Date();
+      const completedAt = this.businessClock.now();
       const completed = await tx.recurringTask.updateMany({
         where: {
           id: recurringTask.id,
@@ -1669,6 +1676,7 @@ export class ReviewsService {
     return {
       project: this.toProjectSummary(project),
       massProductionCompleted,
+      businessTime: this.businessClock.now().toISOString(),
       monthlyPlanActive: recurringPlans[0]?.status === RecurringPlanStatus.ACTIVE,
       recurringTasks: recurringPlans[0]?.tasks ?? [],
       activeTask: activeTask ? this.toWorkflowTaskSummary(activeTask) : null,
@@ -2344,10 +2352,15 @@ export class ReviewsService {
   private async getLatestCompletedTrialProductionOrThrow(
     db: ReviewsDbClient,
     projectId: string,
+    trialIds?: string[],
+    planIds?: string[],
   ) {
     const trialProduction = await db.trialProduction.findFirst({
       where: {
         projectId,
+        ...(trialIds ? { id: { in: trialIds } } : {}),
+        ...(planIds ? { productionPlan: { id: { in: planIds }, planType: ProductionPlanType.FIRST_UNIT,
+          status: { in: [ProductionPlanStatus.PLANNED, ProductionPlanStatus.IN_PROGRESS, ProductionPlanStatus.COMPLETED] } } } : {}),
         status: {
           in: [TrialProductionStatus.PASSED, TrialProductionStatus.FAILED],
         },
@@ -2764,7 +2777,7 @@ export class ReviewsService {
     if (!actor.roleCodes.includes('quality_engineer') || current.reviewerId !== actor.id) {
       throw new ForbiddenException('请先领取本月质量评审任务；只能签署本人负责的月份。');
     }
-    if (current.plannedDate > new Date() || !['PENDING', 'IN_PROGRESS', 'OVERDUE'].includes(current.status)) {
+    if (current.plannedDate > this.businessClock.now() || !['PENDING', 'IN_PROGRESS', 'OVERDUE'].includes(current.status)) {
       throw new ConflictException('本月任务尚未到期或已结束，不能修改评审结果。');
     }
     return current;

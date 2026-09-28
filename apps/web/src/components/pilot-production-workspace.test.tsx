@@ -219,11 +219,12 @@ describe('PilotProductionWorkspace', () => {
   });
 
   it('controls complete button visibility and validation logic', () => {
-    expect(canShowCompleteFirstProductionPlanTaskButton(engineerUser, firstPlanWorkspace)).toBe(
+    expect(canShowCompleteFirstProductionPlanTaskButton(engineerUser, firstPlanWorkspace)).toBe(false);
+    expect(canShowCompleteFirstProductionPlanTaskButton({ ...engineerUser, roleCodes: ['production_operator'] }, firstPlanWorkspace)).toBe(
       true,
     );
     expect(
-      canShowCompleteFirstProductionPlanTaskButton(engineerUser, {
+      canShowCompleteFirstProductionPlanTaskButton({ ...engineerUser, roleCodes: ['production_operator'] }, {
         ...firstPlanWorkspace,
         canCompleteTask: false,
         completionIssue: '首台计划未确认时不能完成首台节点。',

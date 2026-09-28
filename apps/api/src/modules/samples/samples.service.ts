@@ -1,3 +1,4 @@
+import { isReworkTask, ancestorEvidenceIds } from '../../common/workflow-evidence';
 import { assertTeamTaskById, withProjectWrite } from '../../common/team-authorization';
 import {
   BadRequestException,
@@ -184,7 +185,7 @@ export class SamplesService {
         }
       }
 
-      await this.lockActiveConfirmationTaskOrThrow(tx, actor, projectId, WorkflowNodeCode.PAINT_DEVELOPMENT);
+      const evidenceTask = await this.lockActiveConfirmationTaskOrThrow(tx, actor, projectId, WorkflowNodeCode.PAINT_DEVELOPMENT);
       const projectSamples = await tx.sample.findMany({
         where: { projectId },
         orderBy: [
@@ -280,6 +281,7 @@ export class SamplesService {
         targetType: AuditTargetType.SAMPLE,
         targetId: createdSample.id,
         action: input.createNewVersion ? 'SAMPLE_VERSION_CREATED' : 'SAMPLE_CREATED',
+        metadata: { workflowTaskId: evidenceTask.id, evidenceKind: 'TASK_CREATED_RECORD' },
         nodeCode: WorkflowNodeCode.PAINT_DEVELOPMENT,
         summary: `${createdSample.sampleNo} ${input.createNewVersion ? '新版本' : '样板'}已创建。`,
         afterData: this.toSampleAuditSnapshot(createdSample),
@@ -449,6 +451,10 @@ export class SamplesService {
         tx, actor,
         projectId,
       );
+      if (input.decision === SampleConfirmationDecision.APPROVE && isReworkTask(activeTask) &&
+          !(await ancestorEvidenceIds(tx, activeTask, WorkflowNodeCode.PAINT_DEVELOPMENT)).includes(sample.id)) {
+        throw new BadRequestException('旧配方样板需复核，请选择本轮登记的样板，原签署记录保留。');
+      }
       await this.assertProjectSampleRecordBounds(tx, projectId, activeTask.id);
 
       const hasSampleImage = await this.hasCleanSampleImage(

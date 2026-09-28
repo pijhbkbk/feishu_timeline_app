@@ -4,6 +4,7 @@ import Link from 'next/link';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 import { useAuth } from './auth-provider';
+import { canUserOperateWorkflowTask } from '../lib/workflows-client';
 import {
   addTrialProductionIssue,
   canManagePilotProductions,
@@ -171,7 +172,8 @@ export function PilotProductionWorkspace({
     void loadSelectedTrialDetail(selectedTrialId);
   }, [projectId, selectedTrialId, trialWorkspace]);
 
-  const canManage = canManagePilotProductions(user);
+  const canManageFirstPlan = canManagePilotProductions(user, 'FIRST_UNIT_PRODUCTION_PLAN') && Boolean(firstPlanWorkspace?.activeTask && canUserOperateWorkflowTask(user, firstPlanWorkspace.activeTask));
+  const canManageTrial = canManagePilotProductions(user, 'TRIAL_PRODUCTION') && Boolean(trialWorkspace?.activeTask && canUserOperateWorkflowTask(user, trialWorkspace.activeTask));
   const selectedTrial =
     trialWorkspace?.items.find((item) => item.id === selectedTrialId) ?? null;
   const highlights =
@@ -625,7 +627,7 @@ export function PilotProductionWorkspace({
         <FirstProductionPlanForm
           value={planForm}
           ownerOptions={userOptions}
-          disabled={!canManage || firstPlanReadOnly || isSavingPlan}
+          disabled={!canManageFirstPlan || firstPlanReadOnly || isSavingPlan}
           submitLabel={editingPlanId ? '更新首台计划' : '新建首台计划'}
           onChange={setPlanForm}
           onSubmit={() => void handleSaveFirstPlan()}
@@ -642,7 +644,7 @@ export function PilotProductionWorkspace({
         </div>
         <FirstProductionPlanTable
           items={planRows}
-          canManage={canManage}
+          canManage={canManageFirstPlan}
           isReadOnly={firstPlanReadOnly}
           actingKey={actingKey}
           onEdit={prepareEditPlan}
@@ -666,7 +668,7 @@ export function PilotProductionWorkspace({
         <TrialProductionForm
           value={trialForm}
           planOptions={trialWorkspace.planOptions}
-          disabled={!canManage || trialReadOnly || isSavingTrial}
+          disabled={!canManageTrial || trialReadOnly || isSavingTrial}
           submitLabel={editingTrialId ? '更新试制记录' : '新建试制记录'}
           onChange={setTrialForm}
           onSubmit={() => void handleSaveTrial()}
@@ -684,7 +686,7 @@ export function PilotProductionWorkspace({
         <TrialProductionList
           items={trialRows}
           selectedTrialId={selectedTrialId}
-          canManage={canManage}
+          canManage={canManageTrial}
           isReadOnly={trialReadOnly}
           actingKey={actingKey}
           onSelect={setSelectedTrialId}
@@ -731,7 +733,7 @@ export function PilotProductionWorkspace({
               <label className="field">
                 <span>问题类型</span>
                 <input
-                  disabled={!canManage || trialReadOnly || actingKey === `add-issue:${selectedTrial.id}`}
+                  disabled={!canManageTrial || trialReadOnly || actingKey === `add-issue:${selectedTrial.id}`}
                   value={issueForm.issueType}
                   onChange={(event) =>
                     setIssueForm((current) => ({
@@ -744,7 +746,7 @@ export function PilotProductionWorkspace({
               <label className="field">
                 <span>严重度</span>
                 <select
-                  disabled={!canManage || trialReadOnly || actingKey === `add-issue:${selectedTrial.id}`}
+                  disabled={!canManageTrial || trialReadOnly || actingKey === `add-issue:${selectedTrial.id}`}
                   value={issueForm.severity}
                   onChange={(event) =>
                     setIssueForm((current) => ({
@@ -763,7 +765,7 @@ export function PilotProductionWorkspace({
               <label className="field">
                 <span>责任部门</span>
                 <input
-                  disabled={!canManage || trialReadOnly || actingKey === `add-issue:${selectedTrial.id}`}
+                  disabled={!canManageTrial || trialReadOnly || actingKey === `add-issue:${selectedTrial.id}`}
                   value={issueForm.responsibleDept}
                   onChange={(event) =>
                     setIssueForm((current) => ({
@@ -777,7 +779,7 @@ export function PilotProductionWorkspace({
                 <span>问题描述</span>
                 <textarea
                   rows={4}
-                  disabled={!canManage || trialReadOnly || actingKey === `add-issue:${selectedTrial.id}`}
+                  disabled={!canManageTrial || trialReadOnly || actingKey === `add-issue:${selectedTrial.id}`}
                   value={issueForm.description}
                   onChange={(event) =>
                     setIssueForm((current) => ({
@@ -791,7 +793,7 @@ export function PilotProductionWorkspace({
                 <button
                   type="submit"
                   className="button"
-                  disabled={!canManage || trialReadOnly || actingKey === `add-issue:${selectedTrial.id}`}
+                  disabled={!canManageTrial || trialReadOnly || actingKey === `add-issue:${selectedTrial.id}`}
                 >
                   {actingKey === `add-issue:${selectedTrial.id}` ? '处理中…' : '新增试制问题'}
                 </button>

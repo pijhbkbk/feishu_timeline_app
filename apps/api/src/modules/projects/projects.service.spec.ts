@@ -162,6 +162,26 @@ function createService() {
 }
 
 describe('ProjectsService', () => {
+  it('shows the next unfinished monthly deadline before the year-long parent deadline', () => {
+    const { service } = createService();
+    const parentDeadline = new Date('2027-09-28T00:00:00.000Z');
+    const monthDeadline = new Date('2026-10-28T00:00:00.000Z');
+    const project = {
+      ...createProjectRecord(),
+      currentNodeCode: 'VISUAL_COLOR_DIFFERENCE_REVIEW',
+      colors: [], taskBlockers: [],
+      workflowTasks: [{ id: 'monthly-parent', nodeCode: 'VISUAL_COLOR_DIFFERENCE_REVIEW',
+        nodeName: '月度检查', isActive: true, status: 'IN_PROGRESS', taskRound: 1,
+        dueAt: parentDeadline, effectiveDueAt: parentDeadline, updatedAt: new Date(),
+        assigneeUser: null, assigneeDepartment: null }],
+      _count: { members: 1, workflowTasks: 1 },
+    };
+    expect(service['toProjectListItem'](project as never, monthDeadline).earliestDueAt).toBe(monthDeadline.toISOString());
+    expect(service['toProjectListItem'](project as never, null).earliestDueAt).toBe(parentDeadline.toISOString());
+    project.workflowTasks[0]!.effectiveDueAt = new Date('2026-10-01T00:00:00.000Z');
+    expect(service['toProjectListItem'](project as never, monthDeadline).earliestDueAt).toBe('2026-10-01T00:00:00.000Z');
+  });
+
   it('counts only CLEAN non-deleted direct review attachments in the project timeline', () => {
     const timelineSource = projectsServiceSource.slice(
       projectsServiceSource.indexOf('async getProjectTimeline('),

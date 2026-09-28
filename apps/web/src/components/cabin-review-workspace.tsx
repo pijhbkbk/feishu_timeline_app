@@ -4,6 +4,7 @@ import Link from 'next/link';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 import { useAuth } from './auth-provider';
+import { canUserOperateWorkflowTask } from '../lib/workflows-client';
 import { FeedbackBanner } from './feedback-banner';
 import { StatePanel } from './state-panel';
 import {
@@ -86,7 +87,7 @@ export function CabinReviewWorkspace({
   const highlights = workspace ? getCabinReviewWorkspaceHighlights(workspace) : null;
   const selectedReview =
     workspace?.items.find((item) => item.id === selectedReviewId) ?? null;
-  const isReadOnly = !workspace?.activeTask;
+  const isReadOnly = !workspace?.activeTask || !canUserOperateWorkflowTask(user, workspace.activeTask);
   const decisionGuidance =
     form.reviewConclusion === 'REJECTED'
       ? '驳回时必须填写驳回原因，并在评审意见中明确整改要求与整改责任人。'
@@ -658,6 +659,7 @@ export function CabinReviewHistory({
                   <td>
                     <div className="task-actions">
                       {canManageCabinReviews(user, item.reviewerId) &&
+                      item.workflowTaskId === workspace.activeTask?.id &&
                       !isReadOnly &&
                       !item.submittedAt ? (
                         <>
@@ -729,7 +731,7 @@ export function CabinReviewHistory({
                           {actingKey === `reject:${item.id}` ? '处理中…' : '驳回'}
                         </button>
                       ) : null}
-                      {(!canManageCabinReviews(user, item.reviewerId) || isReadOnly) &&
+                      {(!canManageCabinReviews(user, item.reviewerId) || isReadOnly || item.workflowTaskId !== workspace.activeTask?.id) &&
                       !item.submittedAt ? (
                         <span className="muted">只读</span>
                       ) : null}

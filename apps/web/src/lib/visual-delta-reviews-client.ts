@@ -56,6 +56,7 @@ export type VisualDeltaReviewRecord = {
 };
 
 export type VisualDeltaReviewWorkspaceResponse = {
+  businessTime?: string;
   project: {
     id: string;
     code: string;
@@ -85,7 +86,7 @@ export type VisualDeltaReviewFormInput = {
 export type VisualDeltaMonth = { id: string; periodIndex: number; periodLabel: string; plannedDate: string;
   dueAt: string | null; reviewerId: string | null; status: string };
 
-export function canWriteVisualDeltaMonth(user: SessionUser | null, workspace: VisualDeltaReviewWorkspaceResponse, month: VisualDeltaMonth | undefined, now = Date.now()) {
+export function canWriteVisualDeltaMonth(user: SessionUser | null, workspace: VisualDeltaReviewWorkspaceResponse, month: VisualDeltaMonth | undefined, now = workspace.businessTime ? Date.parse(workspace.businessTime) : Date.now()) {
   return Boolean(user?.roleCodes.includes('quality_engineer') && workspace.activeTask && workspace.monthlyPlanActive && month &&
     month.reviewerId === user.id && ['PENDING', 'IN_PROGRESS', 'OVERDUE'].includes(month.status) && Date.parse(month.plannedDate) <= now);
 }

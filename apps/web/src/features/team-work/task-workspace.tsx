@@ -77,6 +77,8 @@ function TaskWorkForm({ projectId, taskId }: { projectId: string; taskId: string
   const canUpload = data.availableActions.some(item => item.action === 'UPLOAD_MATERIAL');
   return <section className="team-workspace task-workspace"><header className="work-heading"><div><h1>{data.task.stepName}</h1><p>{data.task.project.name} · 第 {data.task.roundNo} 轮 · {data.task.owner?.name || '待领取'}</p></div><Link href={`/projects/${encodeURIComponent(projectId)}?taskId=${encodeURIComponent(taskId)}`}>返回项目进度</Link></header>
     {error ? <p role="alert" className="error-text">{error}</p> : null}{notice ? <p role="status" className="work-notice">{notice}</p> : null}
+    {data.rework?.requiresReview ? <p role="status" className="work-notice">本轮技术结果已进入返工复核，保留原签署和材料供追溯，不能直接作为新轮次通过依据。</p> : null}
+    {data.rework?.isTechnicalRework ? <p className="work-notice">请登记本轮技术记录并补齐材料。原颜色编号、采购和收费事实保留。{data.rework.supersedesTaskId ? <Link href={`/projects/${encodeURIComponent(projectId)}/tasks/${encodeURIComponent(data.rework.supersedesTaskId)}`}>查看上一轮记录</Link> : null}</p> : null}
     <div className="work-overview">{business ? <Link className="button button-primary" href={business.href}>{business.label}</Link> : null}<Link className="button" href={`/projects/${encodeURIComponent(projectId)}?taskId=${encodeURIComponent(taskId)}`}>检查工序完成条件</Link><button className="work-link" disabled={Boolean(busy)} onClick={() => setRefresh(value => value + 1)}>刷新</button></div>
     {business ? <p>{business.guidance}</p> : null}
     {data.progressSubmissionEnabled ? <form className="page-card form-grid" onSubmit={save}><h2 className="field-full">填写工作进展</h2>

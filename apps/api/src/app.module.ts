@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { BusinessClockModule } from './common/business-clock';
 import { PersonnelModule } from './modules/personnel/personnel.module';
 import { ConfigModule } from '@nestjs/config';
 
@@ -41,6 +42,7 @@ import { WorkflowsModule } from './modules/workflows/workflows.module';
 
 @Module({
   imports: [
+    BusinessClockModule,
     PersonnelModule,
     ConfigModule.forRoot({
       isGlobal: true,

@@ -139,9 +139,10 @@ describe('MassProductionWorkspace', () => {
   });
 
   it('controls completion button logic and status display', () => {
-    expect(canShowCompleteMassProductionTaskButton(processEngineerUser, workspace)).toBe(true);
+    expect(canShowCompleteMassProductionTaskButton(processEngineerUser, workspace)).toBe(false);
+    expect(canShowCompleteMassProductionTaskButton({ ...processEngineerUser, roleCodes: ['production_operator'] }, workspace)).toBe(true);
     expect(
-      canShowCompleteMassProductionTaskButton(processEngineerUser, {
+      canShowCompleteMassProductionTaskButton({ ...processEngineerUser, roleCodes: ['production_operator'] }, {
         ...workspace,
         canCompleteTask: false,
         completionIssue: '没有已完成的批量生产记录，不能完成批量生产节点。',

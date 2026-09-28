@@ -82,7 +82,7 @@ export function VisualDeltaReviewWorkspace({ projectId, recurringTaskId = '' }: 
     {error ? <p role="alert" className="error-text">{error}</p> : null}{notice ? <p role="status" className="work-notice">{notice}</p> : null}
     {!month ? <p className="work-state">{recurringTaskId ? '未找到所选月度任务，请返回我的工作重新选择。' : '进入月度评审阶段后，将生成 12 个月份。'}</p> : <>
       <p>第 {month.periodIndex} 月 · {month.periodLabel}，计划日期 {formatDate(month.plannedDate)}，期限 {formatDate(month.dueAt)}。</p>
-      {!canWrite ? <p className="work-state">{month.status === 'COMPLETED' ? '本月已完成，评审记录保留可查。' : Date.parse(month.plannedDate) > Date.now() ? '本月尚未到办理日期。' : '仅在月度评审阶段，由已领取本月任务的质量试验人员办理。'} <Link href="/dashboard">打开我的工作</Link></p> :
+      {!canWrite ? <p className="work-state">{month.status === 'COMPLETED' ? '本月已完成，评审记录保留可查。' : Date.parse(month.plannedDate) > (workspace.businessTime ? Date.parse(workspace.businessTime) : Date.now()) ? '本月尚未到办理日期。' : '仅在月度评审阶段，由已领取本月任务的质量试验人员办理。'} <Link href="/dashboard">打开我的工作</Link></p> :
       <section className="page-card"><h2>{editingReviewId ? '编辑本月评审' : '填写本月评审'}</h2>
         {ownRecord && !editingReviewId ? <p>本月已有本人记录。{ownDraft ? <button className="button" disabled={Boolean(busy)} onClick={() => edit(ownDraft)}>继续填写</button> : '请在下方查看提交结果。'}</p> :
           <VisualDeltaReviewForm value={form} reviewerOptions={user ? [{ id: user.id, name: user.name, departmentId: user.departmentId, departmentName: user.departmentName }] : []}

@@ -523,6 +523,7 @@ export type R26TaskResponse = {
 };
 
 export type R26ProgressResponse = R26TaskResponse & {
+  rework?: { requiresReview: boolean; supersedesTaskId: string | null; isTechnicalRework: boolean };
   gate: 'R26_GATE3B';
   taskVersion: string;
   progressSubmissionEnabled: boolean;

@@ -309,7 +309,7 @@ export class ColorExitsService {
         WorkflowAction.COMPLETE,
         actor,
         {
-          comment: '颜色退出已完成，项目流程自动结束。',
+          comment: `颜色生命周期判断已完成（${completedRecord.finalDecision}），项目流程结束。`,
           metadata: {
             colorExitId: completedRecord.id,
             colorId: completedRecord.colorId,
@@ -329,7 +329,7 @@ export class ColorExitsService {
         },
       });
 
-      if (completedRecord.colorId) {
+      if (completedRecord.colorId && completedRecord.finalDecision === ColorExitSuggestion.EXIT) {
         const colorBefore = await tx.color.findUnique({
           where: { id: completedRecord.colorId },
           select: {
@@ -381,7 +381,7 @@ export class ColorExitsService {
         targetId: projectId,
         action: 'PROJECT_COMPLETED_BY_COLOR_EXIT',
         nodeCode: COLOR_EXIT_NODE_CODE,
-        summary: '颜色退出完成，项目已收尾。',
+        summary: `颜色生命周期判断已完成（${completedRecord.finalDecision}），项目已收尾。`,
         beforeData: projectBefore satisfies Prisma.InputJsonValue,
         afterData: projectAfter satisfies Prisma.InputJsonValue,
       });
@@ -393,7 +393,7 @@ export class ColorExitsService {
         targetId: completedRecord.id,
         action: 'COLOR_EXIT_COMPLETED',
         nodeCode: COLOR_EXIT_NODE_CODE,
-        summary: '颜色退出节点已完成。',
+        summary: `颜色生命周期判断已完成（${completedRecord.finalDecision}）。`,
         afterData: this.toColorExitAuditSnapshot(completedRecord),
       });
     });

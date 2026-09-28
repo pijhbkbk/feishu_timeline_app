@@ -1,3 +1,4 @@
+import { BusinessClock } from '../../common/business-clock';
 import { requireActiveMonthlyPlan } from '../../common/monthly-review-plan';
 import { persistTaskReminder } from '../notifications/task-reminder.rules';
 import { ConflictException, ForbiddenException, HttpException, Injectable, NotFoundException } from '@nestjs/common';
@@ -12,7 +13,7 @@ import type { TeamTaskCommandDto, TeamTaskQueryDto } from './team-task.dto';
 
 @Injectable()
 export class TeamTasksService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private readonly businessClock: BusinessClock = new BusinessClock()) {}
 
   private assertQueryScope(actor: AuthenticatedUser, query: TeamTaskQueryDto) {
     teamProjectScope(actor);
@@ -53,7 +54,7 @@ export class TeamTasksService {
       ...(view === 'mine' || view === 'completed' ? { assigneeUserId: query.assignee ?? actor.id,
         ...(view === 'mine' && !actor.isSystemAdmin ? { requiredRoleCode: { in: roleCodes } } : {}) }
         : view === 'available' ? { assigneeUserId: null, requiredRoleCode: { in: roleCodes }, requiredRole: { status: 'ACTIVE' } }
-          : view === 'overdue' ? { OR: [{ effectiveDueAt: { lt: new Date() } }, { effectiveDueAt: null, dueAt: { lt: new Date() } }] } : exceptionScope),
+          : view === 'overdue' ? { OR: [{ effectiveDueAt: { lt: this.businessClock.now() } }, { effectiveDueAt: null, dueAt: { lt: this.businessClock.now() } }] } : exceptionScope),
     };
     const items = await this.prisma.workflowTask.findMany({ where, take: 31, orderBy: { id: 'asc' },
       select: { id: true, nodeCode: true, nodeName: true, status: true, taskRound: true, requiredRoleCode: true,
@@ -121,7 +122,7 @@ export class TeamTasksService {
       WHERE u.id = t."reviewerId" AND u.status = 'ACTIVE' AND r.status = 'ACTIVE' AND r.code = 'quality_engineer')`;
     const scope = view === 'mine' || view === 'completed' ? Prisma.sql`t."reviewerId" = ${query.assignee ?? actor.id}`
       : view === 'available' ? Prisma.sql`t."reviewerId" IS NULL`
-        : view === 'overdue' ? Prisma.sql`t."dueAt" < ${new Date()}` : Prisma.sql`(t."reviewerId" IS NULL AND NOT ${eligible}) OR (t."reviewerId" IS NOT NULL AND NOT ${ownerEligible})`;
+        : view === 'overdue' ? Prisma.sql`t."dueAt" < ${this.businessClock.now()}` : Prisma.sql`(t."reviewerId" IS NULL AND NOT ${eligible}) OR (t."reviewerId" IS NOT NULL AND NOT ${ownerEligible})`;
     const items = await this.prisma.$queryRaw<Array<{ id: string; projectId: string; projectName: string; projectCode: string;
       periodIndex: number; periodLabel: string; plannedDate: Date; dueAt: Date | null; status: string;
       reviewerId: string | null; assignmentEpoch: number }>>(Prisma.sql`
@@ -129,7 +130,7 @@ export class TeamTasksService {
         t."plannedDate", t."dueAt", t.status, t."reviewerId", t."assignmentEpoch"
       FROM recurring_tasks t INNER JOIN projects p ON p.id = t."projectId"
       INNER JOIN recurring_plans plan ON plan.id = t."recurringPlanId"
-      WHERE ${view === 'completed' ? Prisma.sql`t.status = 'COMPLETED'` : Prisma.sql`t.status IN ('PENDING', 'IN_PROGRESS', 'OVERDUE') AND plan.status = 'ACTIVE' AND t."plannedDate" <= ${new Date()}`} AND (${scope})
+      WHERE ${view === 'completed' ? Prisma.sql`t.status = 'COMPLETED'` : Prisma.sql`t.status IN ('PENDING', 'IN_PROGRESS', 'OVERDUE') AND plan.status = 'ACTIVE' AND t."plannedDate" <= ${this.businessClock.now()}`} AND (${scope})
         ${query.projectId ? Prisma.sql`AND t."projectId" = ${query.projectId}` : Prisma.empty}
         ${(view === 'overdue' || view === 'exceptions') && query.assignee ? Prisma.sql`AND t."reviewerId" = ${query.assignee}` : Prisma.empty}
         ${query.after ? Prisma.sql`AND t.id > ${query.after}` : Prisma.empty}
@@ -168,7 +169,7 @@ export class TeamTasksService {
       const task = await tx.recurringTask.findUnique({ where: { id: taskId }, include: { recurringPlan: { select: { status: true } } } });
       if (!task) throw new NotFoundException('月度任务不存在。');
       await requireActiveMonthlyPlan(tx, task.projectId, task.recurringPlanId);
-      if (!OPEN_MONTHLY_TASK_STATUSES.includes(task.status as never) || task.plannedDate > new Date() || task.recurringPlan.status !== 'ACTIVE') throw new ConflictException('此月份尚未到期或已经结束。');
+      if (!OPEN_MONTHLY_TASK_STATUSES.includes(task.status as never) || task.plannedDate > this.businessClock.now() || task.recurringPlan.status !== 'ACTIVE') throw new ConflictException('此月份尚未到期或已经结束。');
       if (!await tx.workflowTask.findFirst({ where: { projectId: task.projectId, nodeCode: 'VISUAL_COLOR_DIFFERENCE_REVIEW', isActive: true }, select: { id: true } })) throw new ConflictException('项目当前尚未进入月度评审。');
       if (task.assignmentEpoch !== input.assignmentEpoch) throw new ConflictException('月度任务归属已变化，请刷新后重试。');
       if (!transfer && task.reviewerId && task.reviewerId !== actor.id) throw new ConflictException('此月份已由其他人员领取。');
@@ -183,7 +184,7 @@ export class TeamTasksService {
       }
       await persistTaskReminder(tx, { kind: 'monthly', id: task.id, projectId: task.projectId,
         stageTaskId: parents[0]!.id, epoch: task.assignmentEpoch + Number(changed), roleCode: 'quality_engineer',
-        ownerId: nextUserId, title: `第 ${task.periodIndex} 月目视色差评审`, dueAt: task.dueAt }, nextUserId, 'ACTIVATE', new Date());
+        ownerId: nextUserId, title: `第 ${task.periodIndex} 月目视色差评审`, dueAt: task.dueAt }, nextUserId, 'ACTIVATE', this.businessClock.now());
       const result = { taskId, reviewerId: nextUserId, assignmentEpoch: task.assignmentEpoch + Number(changed), changed, replayed: false };
       await tx.r26CommandRequest.create({ data: { projectId: task.projectId, actorUserId: actor.id, idempotencyKey: key,
         action: transfer ? 'TEAM_MONTHLY_TASK_TRANSFERRED' : 'TEAM_MONTHLY_TASK_CLAIMED', requestHash, result } });

@@ -48,15 +48,15 @@ function task(
   };
 }
 
-describe('plan A minimum permissions in the UI', () => {
-  it('shows ordinary workflow actions only to the assignee or project manager', () => {
+describe('fixed role and claimed task permissions in the UI', () => {
+  it('shows ordinary workflow actions only to the qualified assignee', () => {
     const ordinaryTask = task('PAINT_DEVELOPMENT', 'owner-1');
 
     expect(canUserOperateWorkflowTask(user('owner-1', 'process_engineer'), ordinaryTask)).toBe(
       true,
     );
     expect(canUserOperateWorkflowTask(user('manager-1', 'project_manager'), ordinaryTask)).toBe(
-      true,
+      false,
     );
     expect(canUserOperateWorkflowTask(user('admin-1', 'admin'), ordinaryTask)).toBe(false);
     expect(canUserOperateWorkflowTask(user('other-1', 'process_engineer'), ordinaryTask)).toBe(
@@ -64,13 +64,15 @@ describe('plan A minimum permissions in the UI', () => {
     );
   });
 
-  it('uses finance/admin for step 13 and project manager/admin for step 18', () => {
-    const feeTask = task('DEVELOPMENT_ACCEPTANCE', 'manager-1');
-    const exitTask = task('PROJECT_CLOSED', 'process-1');
+  it('uses claimed finance for step 13 and claimed project manager for step 18', () => {
+    const feeTask = task('DEVELOPMENT_ACCEPTANCE', 'finance-1');
+    const exitTask = task('PROJECT_CLOSED', 'manager-1');
 
     expect(canUserOperateWorkflowTask(user('finance-1', 'finance'), feeTask)).toBe(true);
     expect(canUserOperateWorkflowTask(user('manager-1', 'project_manager'), feeTask)).toBe(false);
-    expect(canUserOperateWorkflowTask(user('admin-1', 'admin'), exitTask)).toBe(true);
+    expect(canUserOperateWorkflowTask(user('admin-1', 'admin'), exitTask)).toBe(false);
+    expect(canUserOperateWorkflowTask(user('manager-1', 'project_manager'), exitTask)).toBe(true);
+    expect(canUserOperateWorkflowTask(user('other-finance', 'finance'), feeTask)).toBe(false);
     expect(canUserOperateWorkflowTask(user('process-1', 'process_engineer'), exitTask)).toBe(false);
     expect(canManageFees(user('manager-1', 'project_manager'))).toBe(false);
     expect(canManageFees(user('finance-1', 'finance'))).toBe(true);
@@ -78,19 +80,19 @@ describe('plan A minimum permissions in the UI', () => {
     expect(canManageColorExit(user('manager-1', 'project_manager'))).toBe(true);
   });
 
-  it('shows review record actions only to the designated reviewer or project manager', () => {
+  it('shows review record actions only to the qualified designated reviewer', () => {
     expect(canManageCabinReviews(user('reviewer-1', 'reviewer'), 'reviewer-1')).toBe(true);
     expect(canManageCabinReviews(user('reviewer-2', 'reviewer'), 'reviewer-1')).toBe(false);
-    expect(canManageCabinReviews(user('manager-1', 'project_manager'), 'reviewer-1')).toBe(true);
+    expect(canManageCabinReviews(user('manager-1', 'project_manager'), 'reviewer-1')).toBe(false);
     expect(canManageCabinReviews(user('admin-1', 'admin'), 'reviewer-1')).toBe(false);
   });
 
-  it('keeps designated reviewers on the review-record path instead of generic task actions', () => {
+  it('recognizes qualified reviewers while rejecting coordinator impersonation', () => {
     const reviewTask = task('CAB_REVIEW', 'reviewer-1');
 
-    expect(canUserOperateWorkflowTask(user('reviewer-1', 'reviewer'), reviewTask)).toBe(false);
+    expect(canUserOperateWorkflowTask(user('reviewer-1', 'reviewer'), reviewTask)).toBe(true);
     expect(canUserOperateWorkflowTask(user('manager-1', 'project_manager'), reviewTask)).toBe(
-      true,
+      false,
     );
   });
 });

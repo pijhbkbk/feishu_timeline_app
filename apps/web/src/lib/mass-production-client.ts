@@ -75,11 +75,7 @@ export type MassProductionFormInput = {
   status: MassProductionStatus;
 };
 
-const MASS_PRODUCTION_ROLE_CODES: FrontendRoleCode[] = [
-  'admin',
-  'project_manager',
-  'process_engineer',
-];
+const MASS_PRODUCTION_ROLE_CODES: FrontendRoleCode[] = ['production_operator'];
 
 const MASS_PRODUCTION_STATUS_LABELS: Record<MassProductionStatus, string> = {
   DRAFT: '草稿',
@@ -214,10 +210,6 @@ export function validateMassProductionForm(input: MassProductionFormInput) {
 export function canManageMassProductions(user: SessionUser | null) {
   if (!user) {
     return false;
-  }
-
-  if (user.isSystemAdmin || user.roleCodes.includes('admin')) {
-    return true;
   }
 
   return MASS_PRODUCTION_ROLE_CODES.some((roleCode) => user.roleCodes.includes(roleCode));

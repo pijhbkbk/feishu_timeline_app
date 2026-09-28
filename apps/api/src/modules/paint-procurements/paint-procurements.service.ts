@@ -125,6 +125,7 @@ export class PaintProcurementsService {
         targetType: AuditTargetType.PAINT_PROCUREMENT,
         targetId: createdRecord.id,
         action: 'PAINT_PROCUREMENT_CREATED',
+        metadata: { workflowTaskId: context.activeTask!.id, evidenceKind: 'TASK_CREATED_RECORD' },
         nodeCode: WorkflowNodeCode.PAINT_PROCUREMENT,
         summary: `创建采购记录 ${createdRecord.procurementCode}`,
         afterData: this.toProcurementAuditSnapshot(createdRecord),

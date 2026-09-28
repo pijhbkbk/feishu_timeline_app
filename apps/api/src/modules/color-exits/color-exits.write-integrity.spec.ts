@@ -20,6 +20,33 @@ const actor: AuthenticatedUser = {
 };
 
 describe('ColorExitsService write integrity', () => {
+  it.each(['EXIT', 'RETAIN', 'OBSERVE'] as const)('preserves the actual %s decision when closing the project', async finalDecision => {
+    const date = new Date('2026-09-28T00:00:00Z');
+    const record = { id: 'exit-1', workflowTaskId: 'task-exit', colorId: 'color-1', replacementColorId: null, operatorId: actor.id, exitDate: date, exitReason: '合成判断', statisticYear: 2026, annualOutput: 20, exitThreshold: 100, systemSuggestion: 'EXIT', finalDecision, effectiveDate: date, description: null, completedAt: null, createdAt: date, updatedAt: date };
+    const color = { id: 'color-1', code: 'C-01', name: '合成颜色', status: 'APPROVED', exitFlag: false, exitDate: null };
+    const task = { id: 'task-exit', projectId: 'project-1', nodeCode: 'PROJECT_CLOSED', assigneeUserId: actor.id, status: 'IN_PROGRESS', isActive: true };
+    const tx = {
+      $queryRaw: vi.fn().mockResolvedValue([{ id: task.id }]),
+      colorExit: { update: vi.fn().mockResolvedValue({ ...record, completedAt: date }) },
+      project: { findUniqueOrThrow: vi.fn().mockResolvedValue({ id: 'project-1', status: 'COMPLETED', currentNodeCode: 'PROJECT_CLOSED', actualEndDate: date, closedAt: date }) },
+      color: { findUnique: vi.fn().mockResolvedValue(color), update: vi.fn().mockImplementation(async ({ data }) => ({ ...color, ...data })) },
+    };
+    installTeamAuthorizationFixture(tx, [{ ...actor, authVersion: 1 }], () => task);
+    const audit = { createWithExecutor: vi.fn() }, workflow = { transitionTaskWithExecutor: vi.fn() };
+    const service = new ColorExitsService({ $transaction: async (callback: (tx: unknown) => unknown) => callback(tx) } as never, audit as never, workflow as never, { assertProjectAccess: vi.fn() } as never);
+    vi.spyOn(service as any, 'getContext').mockResolvedValue({ activeTask: task, visualDeltaApproved: true });
+    vi.spyOn(service as any, 'getExitRecordOrThrow').mockResolvedValue(record);
+    vi.spyOn(service as any, 'buildWorkspace').mockResolvedValue({});
+    await service.completeExitRecord('project-1', record.id, actor);
+    expect(workflow.transitionTaskWithExecutor).toHaveBeenCalledOnce();
+    expect(tx.colorExit.update).toHaveBeenCalledOnce();
+    if (finalDecision === 'EXIT') expect(tx.color.update).toHaveBeenCalledWith(expect.objectContaining({ data: { status: 'EXITED', exitFlag: true, exitDate: date } }));
+    else expect(tx.color.update).not.toHaveBeenCalled();
+    const statusAudits = audit.createWithExecutor.mock.calls.filter(([, row]) => row.action === 'COLOR_EXIT_STATUS_UPDATED');
+    expect(statusAudits).toHaveLength(finalDecision === 'EXIT' ? 1 : 0);
+    expect(audit.createWithExecutor).toHaveBeenCalledWith(tx, expect.objectContaining({ action: 'COLOR_EXIT_COMPLETED', afterData: expect.objectContaining({ finalDecision }) }));
+  });
+
   it('does not overwrite a completed exit record after the workflow task became terminal', async () => {
     const unsafeUpdate = vi
       .fn()

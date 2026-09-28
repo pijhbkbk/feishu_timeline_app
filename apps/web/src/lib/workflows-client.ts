@@ -484,30 +484,19 @@ export function canUserOperateWorkflowTask(
   user: SessionUser | null,
   task: WorkflowTaskSummary,
 ) {
-  if (!user) {
-    return false;
-  }
-
-  const isAdmin = user.isSystemAdmin || user.roleCodes.includes('admin');
-  const isProjectManager = user.roleCodes.includes('project_manager');
-
-  if (task.nodeCode === 'DEVELOPMENT_ACCEPTANCE') {
-    return isAdmin || user.roleCodes.includes('finance');
-  }
-
-  if (task.nodeCode === 'PROJECT_CLOSED') {
-    return isAdmin || isProjectManager;
-  }
-
-  if (
-    task.nodeCode === 'CAB_REVIEW' ||
-    task.nodeCode === 'COLOR_CONSISTENCY_REVIEW' ||
-    task.nodeCode === 'VISUAL_COLOR_DIFFERENCE_REVIEW'
-  ) {
-    return isProjectManager;
-  }
-
-  return isProjectManager || task.assigneeUserId === user.id;
+  if (!user || !task.isActive || !['PENDING', 'READY', 'IN_PROGRESS', 'RETURNED'].includes(task.status) || task.assigneeUserId !== user.id) return false;
+  const requiredRole: Record<WorkflowNodeCode, SessionUser['roleCodes'][number]> = {
+    PROJECT_INITIATION: 'project_manager', DEVELOPMENT_REPORT: 'project_manager',
+    PAINT_DEVELOPMENT: 'process_engineer', SAMPLE_COLOR_CONFIRMATION: 'reviewer',
+    COLOR_NUMBERING: 'process_engineer', PAINT_PROCUREMENT: 'purchaser',
+    STANDARD_BOARD_PRODUCTION: 'process_engineer', BOARD_DETAIL_UPDATE: 'process_engineer',
+    PERFORMANCE_TEST: 'quality_engineer', FIRST_UNIT_PRODUCTION_PLAN: 'production_operator',
+    TRIAL_PRODUCTION: 'process_engineer', CAB_REVIEW: 'reviewer',
+    DEVELOPMENT_ACCEPTANCE: 'finance', COLOR_CONSISTENCY_REVIEW: 'reviewer',
+    MASS_PRODUCTION_PLAN: 'production_operator', MASS_PRODUCTION: 'production_operator',
+    VISUAL_COLOR_DIFFERENCE_REVIEW: 'quality_engineer', PROJECT_CLOSED: 'project_manager',
+  };
+  return user.roleCodes.includes(requiredRole[task.nodeCode]);
 }
 
 export function formatWorkflowTaskTime(value: string | null | undefined) {

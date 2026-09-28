@@ -4,6 +4,7 @@ import Link from 'next/link';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 import { useAuth } from './auth-provider';
+import { canUserOperateWorkflowTask } from '../lib/workflows-client';
 import { FeedbackBanner } from './feedback-banner';
 import { StatePanel } from './state-panel';
 import {
@@ -87,7 +88,7 @@ export function ConsistencyReviewWorkspace({
   const selectedReview =
     workspace?.items.find((item) => item.id === selectedReviewId) ?? null;
   const latestReview = workspace?.items[0] ?? null;
-  const isReadOnly = !workspace?.activeTask;
+  const isReadOnly = !workspace?.activeTask || !canUserOperateWorkflowTask(user, workspace.activeTask);
   const decisionGuidance =
     form.reviewConclusion === 'REJECTED'
       ? '驳回时必须补充原因，后端会把流程退回到涂料开发并保留历史。'
@@ -645,6 +646,7 @@ export function ConsistencyReviewHistory({
                 <td>
                   <div className="task-actions">
                     {canManageConsistencyReviews(user, item.reviewerId) &&
+                    item.workflowTaskId === workspace.activeTask?.id &&
                     !isReadOnly &&
                     !item.submittedAt ? (
                       <>
@@ -715,7 +717,7 @@ export function ConsistencyReviewHistory({
                         {actingKey === `reject:${item.id}` ? '处理中…' : '驳回'}
                       </button>
                     ) : null}
-                    {(!canManageConsistencyReviews(user, item.reviewerId) || isReadOnly) &&
+                    {(!canManageConsistencyReviews(user, item.reviewerId) || isReadOnly || item.workflowTaskId !== workspace.activeTask?.id) &&
                     !item.submittedAt ? (
                       <span className="muted">只读</span>
                     ) : null}

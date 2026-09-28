@@ -137,9 +137,10 @@ describe('SchedulePlansWorkspace', () => {
   });
 
   it('controls completion button logic and exposes status badge labels', () => {
-    expect(canShowCompleteSchedulePlanTaskButton(processEngineerUser, workspace)).toBe(true);
+    expect(canShowCompleteSchedulePlanTaskButton(processEngineerUser, workspace)).toBe(false);
+    expect(canShowCompleteSchedulePlanTaskButton({ ...processEngineerUser, roleCodes: ['production_operator'] }, workspace)).toBe(true);
     expect(
-      canShowCompleteSchedulePlanTaskButton(processEngineerUser, {
+      canShowCompleteSchedulePlanTaskButton({ ...processEngineerUser, roleCodes: ['production_operator'] }, {
         ...workspace,
         canCompleteTask: false,
         completionIssue: '没有已确认的排产计划，不能完成排产节点。',

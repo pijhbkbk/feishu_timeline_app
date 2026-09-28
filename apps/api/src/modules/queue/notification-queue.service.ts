@@ -1,3 +1,4 @@
+import { BusinessClock } from '../../common/business-clock';
 import { TaskRemindersService } from '../notifications/task-reminders.service';
 import {
   BadRequestException,
@@ -92,6 +93,7 @@ export class NotificationQueueService implements OnModuleInit, OnModuleDestroy {
     private readonly redisService: RedisService,
     private readonly notificationsService: NotificationsService,
     private readonly configService: ConfigService,
+    private readonly businessClock: BusinessClock = new BusinessClock(),
   ) {}
 
   onModuleInit() {
@@ -368,24 +370,24 @@ export class NotificationQueueService implements OnModuleInit, OnModuleDestroy {
     return { processed };
   }
 
-  async processOverdueScan(now = new Date()) {
+  async processOverdueScan(now = this.businessClock.now()) {
     if (this.stopping || this.isOverdueScanProcessing) return this.skippedScanResult();
     this.isOverdueScanProcessing = true;
-    try { return await new TaskRemindersService(this.prisma).scan('ordinary', now); }
+    try { return await new TaskRemindersService(this.prisma, this.businessClock).scan('ordinary', now); }
     finally { this.isOverdueScanProcessing = false; }
   }
 
-  async processDueReminderScan(now = new Date()) {
+  async processDueReminderScan(now = this.businessClock.now()) {
     if (this.stopping || this.isDueReminderScanProcessing) return this.skippedScanResult();
     this.isDueReminderScanProcessing = true;
-    try { return await new TaskRemindersService(this.prisma).scan('ordinary', now); }
+    try { return await new TaskRemindersService(this.prisma, this.businessClock).scan('ordinary', now); }
     finally { this.isDueReminderScanProcessing = false; }
   }
 
-  async processMonthlyReviewSchedule(now = new Date()) {
+  async processMonthlyReviewSchedule(now = this.businessClock.now()) {
     if (this.stopping || this.isMonthlyReviewScanProcessing) return { ...this.skippedScanResult(), markedOverdue: 0 };
     this.isMonthlyReviewScanProcessing = true;
-    try { return await new TaskRemindersService(this.prisma).scan('monthly', now); }
+    try { return await new TaskRemindersService(this.prisma, this.businessClock).scan('monthly', now); }
     finally { this.isMonthlyReviewScanProcessing = false; }
   }
 

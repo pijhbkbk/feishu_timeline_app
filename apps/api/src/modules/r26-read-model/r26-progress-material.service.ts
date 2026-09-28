@@ -139,9 +139,16 @@ export class R26ProgressMaterialService {
       attachments,
     );
     const availableActions = this.getAvailableActions(task, actor);
+    const taskPayload = task.payload && typeof task.payload === 'object' && !Array.isArray(task.payload) ? task.payload : {};
+    const oldRework = taskPayload.rework && typeof taskPayload.rework === 'object' && !Array.isArray(taskPayload.rework) ? taskPayload.rework : {};
 
     return {
       gate: 'R26_GATE3B',
+      rework: {
+        requiresReview: oldRework.applicability === 'REQUIRES_REVIEW',
+        supersedesTaskId: typeof taskPayload.supersedesTaskId === 'string' ? taskPayload.supersedesTaskId : null,
+        isTechnicalRework: typeof taskPayload.technicalReworkSourceTaskId === 'string',
+      },
       taskVersion: task.updatedAt.toISOString(),
       progressSubmissionEnabled: availableActions.some(
         (action) => action.action === 'SUBMIT_PROGRESS',

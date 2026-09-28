@@ -161,11 +161,7 @@ export type TrialProductionIssueFormInput = {
   responsibleDept: string;
 };
 
-const PILOT_PRODUCTION_MANAGEMENT_ROLE_CODES: FrontendRoleCode[] = [
-  'admin',
-  'project_manager',
-  'process_engineer',
-];
+const PILOT_PRODUCTION_MANAGEMENT_ROLE_CODES: FrontendRoleCode[] = ['production_operator', 'process_engineer'];
 
 const FIRST_PRODUCTION_PLAN_STATUS_LABELS: Record<
   FirstProductionPlanStatus,
@@ -442,14 +438,12 @@ export function validateTrialProductionIssueForm(
   return null;
 }
 
-export function canManagePilotProductions(user: SessionUser | null) {
+export function canManagePilotProductions(user: SessionUser | null, nodeCode?: 'FIRST_UNIT_PRODUCTION_PLAN' | 'TRIAL_PRODUCTION') {
   if (!user) {
     return false;
   }
 
-  if (user.isSystemAdmin) {
-    return true;
-  }
+  if (nodeCode) return user.roleCodes.includes(nodeCode === 'FIRST_UNIT_PRODUCTION_PLAN' ? 'production_operator' : 'process_engineer');
 
   return user.roleCodes.some((roleCode) =>
     PILOT_PRODUCTION_MANAGEMENT_ROLE_CODES.includes(roleCode),
@@ -465,7 +459,7 @@ export function canShowCompleteFirstProductionPlanTaskButton(
   }
 
   return (
-    canManagePilotProductions(user) &&
+    canManagePilotProductions(user, workspace.activeTask.nodeCode === 'FIRST_UNIT_PRODUCTION_PLAN' ? 'FIRST_UNIT_PRODUCTION_PLAN' : 'TRIAL_PRODUCTION') &&
     canUserOperateWorkflowTask(user, workspace.activeTask)
   );
 }
@@ -479,7 +473,7 @@ export function canShowCompleteTrialProductionTaskButton(
   }
 
   return (
-    canManagePilotProductions(user) &&
+    canManagePilotProductions(user, workspace.activeTask.nodeCode === 'FIRST_UNIT_PRODUCTION_PLAN' ? 'FIRST_UNIT_PRODUCTION_PLAN' : 'TRIAL_PRODUCTION') &&
     canUserOperateWorkflowTask(user, workspace.activeTask)
   );
 }

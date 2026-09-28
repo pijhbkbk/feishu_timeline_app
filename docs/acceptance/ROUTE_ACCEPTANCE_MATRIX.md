@@ -225,3 +225,19 @@ Runtime `541b3dfff682aa29b49a96b251f0a084903c981a`，正式更新03:40:16Z。环
 | http://127.0.0.1:3350/login 注册/恢复模式 | LoginPage | auth/register、auth/recover（真实HTTP另列） | public | 窄卡片、次要入口，8/7/长密码与恢复撤销由隔离HTTP验证 | local-{register,recover}-{desktop,mobile}.png | 隔离布局PASS；UI凭据提交未执行 |
 
 普通同名/角色参数/浏览器字段/直接管理URL负向，岗位项目授权与撤销、8/7/长密码、主机grant幂等和最小恢复见分项记录。正式没有修改真实密码或项目；第二次正式手动退出再登录未重复，合成循环通过。正式Placeholder0/测试白名单10；用户已确认指定登录路径，不等于所有路由写操作或完整产品接受。
+
+
+## R28 2026-09-28 本地技术验证，正式域名待复验
+
+环境：local-development，http://127.0.0.1:3100；本机源码运行，非固定发布runtime。生产仍22aac，本组不宣称PRODUCTION_ACCEPTED。所有者确认未取得。
+
+| 路由 | 组件 | 真实API | 角色/数据 | 操作与浏览器结果 | 截图证据 | 状态 |
+|---|---|---|---|---|---|---|
+| /dashboard | features/team-work/team-workspace.tsx | /team-tasks | 已分配业务角色、真实队列 | 登录、已完成页签、进入项目；1440/1024/390通过 | test-results/r28-native-closed-chrome | LOCAL PASS / PROD PENDING |
+| /projects、/projects/:id | features/color-projects/color-projects.tsx、features/v2/real-workspace-page.tsx | /projects、/workflows/projects/:id | 真实A/B已关闭项目 | 列表、详情、任务入口、刷新 | 同上 | LOCAL PASS / PROD PENDING |
+| /projects/:id/tasks/:taskId | features/team-work/task-workspace | /v2/tasks/:id/progress-context、materials/history | 对应业务角色、历史任务/材料 | V1/V2 PDF真实下载200；写/幂等由HTTP主流程验证 | 同上 | LOCAL PASS / PROD PENDING |
+| /admin/people | features/people | /people | 管理员、合成人员 | 保存角色、刷新保持、三档布局 | test-results/r28-people-notifications-final | LOCAL PASS / PROD PENDING |
+| /projects/:id/production-plans | schedule-plans-workspace | /projects/:id/production-plans | 纯生产角色 | 登录后新建排产按钮可用，实际保存由HTTP主流程覆盖 | 同上/pure-production-plan.png | LOCAL PASS / PROD PENDING |
+| /notifications | features/team-work/notifications | /notifications | 已分配用户、持久提醒 | 全部已读后刷新仍0未读 | 同上/notifications-read.png | LOCAL PASS / PROD PENDING |
+
+上述截图根下按Playwright子目录保存。中间失败截图与日志保留；本地扫描器local-eicar不能代表正式ClamAV验证。M4需按实际组件路径与精确生产URL补齐矩阵和固定版本。

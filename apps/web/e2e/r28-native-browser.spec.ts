@@ -20,6 +20,7 @@ for (const width of [1440, 1024, 390]) {
     await page.getByRole('button', { name: '登录', exact: true }).click();
     await expect(page).toHaveURL(/\/dashboard$/);
     await expect(page.getByRole('heading', { name: '我的工作' })).toBeVisible();
+    await page.getByRole('button', { name: '已完成', exact: true }).click();
     await expect(page.getByText('合成 R28 A 定制色', { exact: false }).first()).toBeVisible();
     await page.screenshot({ path: info.outputPath(`work-${width}.png`), fullPage: true });
     await assertFits();
@@ -34,8 +35,12 @@ for (const width of [1440, 1024, 390]) {
     await expect(page.getByRole('button', { name: '记录', exact: true })).toBeVisible();
     await page.screenshot({ path: info.outputPath(`project-${width}.png`), fullPage: true });
     await assertFits();
-    await page.getByRole('link', { name: '打开工作单与材料' }).click();
-    await expect(page.getByRole('heading', { name: '填写工作进展' })).toBeVisible();
+    const workflowResponse = await page.request.get(`/api/workflows/projects/${state.projects.A}`);
+    expect(workflowResponse.status()).toBe(200);
+    const history = await workflowResponse.json();
+    const initial = history.taskHistory.find((task: { nodeCode: string }) => task.nodeCode === 'PROJECT_INITIATION');
+    await page.goto(`/projects/${state.projects.A}/tasks/${initial.id}`);
+    await expect(page.getByText('当前为查看模式。', { exact: false })).toBeVisible();
     await page.getByText(/材料与版本记录/).click();
     await expect(page.getByRole('link', { name: '合成立项V1.pdf', exact: true })).toBeVisible();
     await expect(page.getByRole('link', { name: '合成立项V2.pdf', exact: true }).last()).toBeVisible();
@@ -43,7 +48,7 @@ for (const width of [1440, 1024, 390]) {
     const content = page.waitForResponse(response => response.url().includes('/materials/') && response.url().includes('/content'));
     await page.getByRole('link', { name: '合成立项V1.pdf', exact: true }).click();
     const viewed = await content; expect(viewed.status()).toBe(200); expect(viewed.headers()['content-type']).toContain('application/pdf');
-    await page.goto(workUrl); await expect(page.getByRole('heading', { name: '填写工作进展' })).toBeVisible();
+    await page.goto(workUrl); await expect(page.getByText('当前为查看模式。', { exact: false })).toBeVisible();
     await page.getByText(/材料与版本记录/).click();
     await page.screenshot({ path: info.outputPath(`task-${width}.png`), fullPage: true });
     await assertFits();

@@ -143,6 +143,7 @@ export class PerformanceTestsService {
         targetType: AuditTargetType.PERFORMANCE_TEST,
         targetId: createdTest.id,
         action: 'PERFORMANCE_TEST_CREATED',
+        metadata: { workflowTaskId: context.activeTask!.id, evidenceKind: 'TASK_CREATED_RECORD' },
         nodeCode: WorkflowNodeCode.PERFORMANCE_TEST,
         summary: `创建性能试验记录 ${createdTest.testCode}`,
         afterData: this.toPerformanceTestAuditSnapshot(createdTest),

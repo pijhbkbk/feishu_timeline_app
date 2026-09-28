@@ -1,3 +1,4 @@
+import { isReworkTask, ancestorEvidenceIds, readEvidenceTask } from '../../common/workflow-evidence';
 import { assertTeamTaskById, withProjectWrite } from '../../common/team-authorization';
 import {
   BadRequestException,
@@ -356,6 +357,7 @@ export class StandardBoardsService {
         targetType: AuditTargetType.STANDARD_BOARD,
         targetId: board.id,
         action: 'STANDARD_BOARD_CREATED',
+        metadata: { workflowTaskId: context.activeTask!.id, evidenceKind: 'TASK_CREATED_RECORD' },
         nodeCode: WorkflowNodeCode.STANDARD_BOARD_PRODUCTION,
         summary: `创建标准板 ${board.boardCode} V${board.versionNo}`,
         afterData: this.toStandardBoardAuditSnapshot(board),
@@ -655,6 +657,14 @@ export class StandardBoardsService {
         input.standardBoardId,
         'IDENTITY',
       );
+      const evidenceTask = await readEvidenceTask(tx, projectId, lockedTaskId);
+      if (!evidenceTask) throw new ConflictException('本轮标准板明细任务不存在。');
+      if (isReworkTask(evidenceTask)) {
+        const ids = await ancestorEvidenceIds(tx, evidenceTask, WorkflowNodeCode.STANDARD_BOARD_PRODUCTION);
+        const current = await tx.standardBoard.findFirst({ where: { id: input.standardBoardId, projectId,
+          isCurrent: true, status: StandardBoardStatus.ISSUED }, select: { id: true } });
+        if (!current || !ids.includes(current.id)) throw new BadRequestException('返工后的明细必须关联本轮已下发的当前标准板，旧板记录保留。');
+      }
 
       const detailUpdate = await tx.colorBoardDetailUpdate.create({
         data: {
@@ -674,6 +684,7 @@ export class StandardBoardsService {
         targetType: AuditTargetType.STANDARD_BOARD,
         targetId: input.standardBoardId,
         action: 'COLOR_BOARD_DETAIL_UPDATE_CREATED',
+        metadata: { workflowTaskId: context.activeTask!.id, evidenceKind: 'TASK_CREATED_RECORD', evidenceRecordId: detailUpdate.id },
         nodeCode: WorkflowNodeCode.BOARD_DETAIL_UPDATE,
         summary: '新增色板明细更新记录。',
         afterData: this.toColorBoardDetailUpdateAuditSnapshot(detailUpdate),
@@ -1529,7 +1540,7 @@ export class StandardBoardsService {
           "standardBoard"."id" AS "id",
           LEFT(
             "standardBoard"."boardNo",
-            ${STANDARD_BOARD_CODE_MAX_CHARS + 1}
+            ${STANDARD_BOARD_CODE_MAX_CHARS + 1}::integer
           ) AS "boardCode",
           "standardBoard"."versionNo" AS "versionNo",
           "standardBoard"."status" AS "status"
@@ -1553,20 +1564,20 @@ export class StandardBoardsService {
         "standardBoard"."id" AS "id",
         LEFT(
           "standardBoard"."boardNo",
-          ${STANDARD_BOARD_CODE_MAX_CHARS + 1}
+          ${STANDARD_BOARD_CODE_MAX_CHARS + 1}::integer
         ) AS "boardCode",
         "standardBoard"."versionNo" AS "versionNo",
         LEFT(
           "standardBoard"."basedOnSampleId",
-          ${STANDARD_BOARD_ID_MAX_CHARS + 1}
+          ${STANDARD_BOARD_ID_MAX_CHARS + 1}::integer
         ) AS "basedOnSampleId",
         LEFT(
           "basedOnSample"."id",
-          ${STANDARD_BOARD_ID_MAX_CHARS + 1}
+          ${STANDARD_BOARD_ID_MAX_CHARS + 1}::integer
         ) AS "basedOnSampleRecordId",
         LEFT(
           "basedOnSample"."sampleNo",
-          ${STANDARD_BOARD_CODE_MAX_CHARS + 1}
+          ${STANDARD_BOARD_CODE_MAX_CHARS + 1}::integer
         ) AS "basedOnSampleNo",
         "standardBoard"."status" AS "status",
         "standardBoard"."isCurrent" AS "isCurrent",
@@ -1574,27 +1585,27 @@ export class StandardBoardsService {
         "standardBoard"."lastDistributedAt" AS "issuedAt",
         LEFT(
           "standardBoard"."issuedById",
-          ${STANDARD_BOARD_ID_MAX_CHARS + 1}
+          ${STANDARD_BOARD_ID_MAX_CHARS + 1}::integer
         ) AS "issuedById",
         LEFT(
           "issuedBy"."id",
-          ${STANDARD_BOARD_ID_MAX_CHARS + 1}
+          ${STANDARD_BOARD_ID_MAX_CHARS + 1}::integer
         ) AS "issuedByRecordId",
         LEFT(
           "issuedBy"."name",
-          ${STANDARD_BOARD_PERSON_MAX_CHARS + 1}
+          ${STANDARD_BOARD_PERSON_MAX_CHARS + 1}::integer
         ) AS "issuedByName",
         LEFT(
           "standardBoard"."recipientName",
-          ${STANDARD_BOARD_PERSON_MAX_CHARS + 1}
+          ${STANDARD_BOARD_PERSON_MAX_CHARS + 1}::integer
         ) AS "recipientName",
         LEFT(
           "standardBoard"."recipientDept",
-          ${STANDARD_BOARD_PERSON_MAX_CHARS + 1}
+          ${STANDARD_BOARD_PERSON_MAX_CHARS + 1}::integer
         ) AS "recipientDept",
         LEFT(
           "standardBoard"."remark",
-          ${STANDARD_BOARD_NOTE_MAX_CHARS + 1}
+          ${STANDARD_BOARD_NOTE_MAX_CHARS + 1}::integer
         ) AS "remark"
       FROM "standard_boards" AS "standardBoard"
       LEFT JOIN "samples" AS "basedOnSample"
@@ -1656,7 +1667,7 @@ export class StandardBoardsService {
           "sample"."id" AS "id",
           LEFT(
             "sample"."sampleNo",
-            ${STANDARD_BOARD_CODE_MAX_CHARS + 1}
+            ${STANDARD_BOARD_CODE_MAX_CHARS + 1}::integer
           ) AS "sampleNo"
         FROM "samples" AS "sample"
         WHERE "sample"."id" = ${sampleId}
