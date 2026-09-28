@@ -61,7 +61,13 @@ def protect(commit, quiescence=None):
     redis.stop()
     assert_frozen()
     before = backup.fingerprints(cutover.DATABASE, cutover.ROLE)
-    require(len(before['tables']) == 52, 'Native schema table inventory differs')
+    from native_release_r28_patch import TARGET as patch_target, record as patch_record
+    if commit == patch_target['base']:
+        require(patch_record()['phase'] == 'PREPARED', '41-schema backup requires program patch intent')
+        expected_tables = 54
+    else:
+        expected_tables = 52
+    require(len(before['tables']) == expected_tables, 'Native schema table inventory differs')
     name = datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%SZ-') + secrets.token_hex(4)
     folder = backup.ROOT / name
     folder.mkdir(mode=0o700)

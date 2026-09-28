@@ -7912,3 +7912,10 @@ BLOCKER_REPORT: Public-source push remains rejected by platform automatic review
 - 新增迁移日志、启动/恢复门禁、精确历史及交接验证、实际B0隔离恢复、固定安装器/驱动；原程序发布分支、旧控制器与收据保留。
 - 164项Ops回归、固定镜像升级/备份恢复、真实快照生成器及迁移中/开放写入后两类实际SIGKILL隔离验证通过；独立只读审查发现的恢复入口与快照主键问题已修复，最终只读复核无新的确定阻断。
 - 证据、适配边界、日志/工具摘要和剩余生产步骤见 `docs/acceptance/R28_OPS_20260928/README.md`。精确生产域名/PG14/systemd验证待执行，main/tag不变，产品负责人未确认。
+
+## R28 正式浏览器反馈：41→41 程序补丁准备（2026-09-28）
+
+- 初始29ed正式发布后，实际手机浏览器发现项目列表横向超宽、任务详情内部轨道溢出及历史部门标签问题。应用e917da56b9fca54a40635364e168fdb26a080fb1已固定构建并推送私有源与API/Web镜像；该补丁不改变API业务、schema、迁移或依赖。
+- 新控制器单独追加程序发布日志，固定原OPEN_41锚点不变，41→41只受控备份和程序替换，不执行迁移或任何数据恢复。启动/入口/恢复均检查新日志阶段及历史锚点；新程序写入后中断保留事实并关闭访问。
+- 最终组合40项测试及新增54表门禁通过；独立PG14四类实际SIGKILL（保护后、许可后启动前、新API写入后、OPEN_INTENT）通过；独立只读审查无确定阻断。真实固定镜像登录/人员/提醒/退出和三宽度项目详情正常点击通过。完整边界和日志见 `docs/acceptance/R28_UI_PATCH_20260928/README.md`。
+- 当前为CODE_IMPLEMENTED / LOCAL_VERIFIED / PATCH_NOT_DEPLOYED；下一步从干净Ops提交生成固定五脚本，私有推送后依次checkout/pull/install/update/proof，并在精确生产域名重新验收。main/tag未变，产品负责人未确认。

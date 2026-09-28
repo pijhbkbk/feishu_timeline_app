@@ -31,6 +31,7 @@ REGISTRY = 'us-west1-docker.pkg.dev/axial-acrobat-492709-r7/feishu-timeline/'
 # The previous controller continues reading its retained login-20260918 target throughout.
 from native_release_target_owner_20260918 import TARGET
 from native_release_target_r28 import TARGET as R28_TARGET
+from native_release_target_r28_patch import TARGET as PATCH_TARGET
 NEW = TARGET['commit'] if TARGET else None
 VERSIONS = {
     OLD: {'commit': OLD, 'tree': 'bc65d7145a498066556f2abc8d8619a6643dc325',
@@ -41,6 +42,7 @@ VERSIONS = {
 if TARGET:
     VERSIONS[NEW] = {key: TARGET[key] for key in ('commit', 'tree', 'release', 'buildTime', 'images')}
 VERSIONS[R28_TARGET['commit']] = {key: R28_TARGET[key] for key in ('commit', 'tree', 'release', 'buildTime', 'images')}
+VERSIONS[PATCH_TARGET['commit']] = {key: PATCH_TARGET[key] for key in ('commit', 'tree', 'release', 'buildTime', 'images')}
 require = backup.require
 
 
@@ -94,7 +96,7 @@ def environment_path(component, commit=None):
     require(component in ('api', 'web'), 'Unsupported environment component')
     commit = state()['active'] if commit is None else commit
     require(commit in VERSIONS, 'Unknown environment version')
-    suffix = '-r28-20260928.env' if commit == R28_TARGET['commit'] else '-login-20260918.env' if commit == OLD else '-owner-20260918.env'
+    suffix = '-r28-ui-patch-20260928.env' if commit == PATCH_TARGET['commit'] else '-r28-20260928.env' if commit == R28_TARGET['commit'] else '-login-20260918.env' if commit == OLD else '-owner-20260918.env'
     return ROOT / (component + suffix)
 
 
@@ -123,6 +125,17 @@ def verify_checkout(commit):
                               user='lixiaochen').decode().strip()
     require(git('rev-parse', 'HEAD') == commit and git('rev-parse', 'HEAD^{tree}') == VERSIONS[commit]['tree'] and
             git('status', '--porcelain') == '', 'Release checkout is not the fixed clean source')
+    if commit == PATCH_TARGET['commit']:
+        guarded = ('apps/api', 'apps/api-ops', 'apps/web', 'packages/shared',
+                   'pnpm-lock.yaml', 'package.json', 'pnpm-workspace.yaml')
+        changed = git('diff', '--name-only', PATCH_TARGET['base'], commit, '--', *guarded).splitlines()
+        require(changed == sorted(PATCH_TARGET['approvedRuntimeChanges']), 'Unreviewed program patch source change')
+        for relative, digest in PATCH_TARGET['approvedRuntimeChanges'].items():
+            require(relative.startswith(('apps/web/src/', 'apps/web/e2e/')) and '..' not in Path(relative).parts,
+                    'This patch permits only reviewed Web files')
+            raw = backup.command(['/usr/bin/git', '-C', str(root), '-c', 'core.hooksPath=/dev/null',
+                                  'show', commit + ':' + relative], user='lixiaochen')
+            require(backup.sha(raw) == digest, 'Approved patch source digest differs')
     if commit == R28_TARGET['commit']:
         guarded = ('apps/api', 'apps/api-ops', 'apps/web', 'packages/shared',
                    'pnpm-lock.yaml', 'package.json', 'pnpm-workspace.yaml')
@@ -170,8 +183,8 @@ def require_target():
 def ingress_ready():
     value = state()
     require(not value['pending'], 'Program release is pending; ingress must stay closed')
-    from native_release_r28 import assert_start
-    assert_start(value['active'])
+    from native_release_r28_patch import assert_start as assert_patch
+    assert_patch(value['active'], ingress=True)
     verify_checkout(value['active'])
 
 
@@ -217,23 +230,12 @@ def close_program(require_drained=False):
 
 def recover_pending_unlocked():
     """Called under the existing operation lock, before boot starts app units."""
-    from native_release_r28 import recover_guard
+    from native_release_r28_patch import recover_guard
     recover_guard()
-    value = state()
-    if not value['pending']:
-        return False
-    close_program()
-    previous = value['committed']
-    replace_state({'version': 1, 'active': previous, 'committed': previous, 'pending': False})
-    print(json.dumps({'nativeProgramRecovery': 'PREVIOUS_NATIVE_PROGRAM_SELECTED', 'runtimeCommit': previous,
-                      'databaseRestored': False, 'initialMigrationReplayed': False}), flush=True)
-    return True
+    return False
 
 
 def recover_pending():
-    from native_release_r28 import JOURNAL
-    if not present(STATE) and not present(JOURNAL):
-        return False
     # A failed second unit's ExecStopPost must not recover a still-live updater.
     # Nonblocking acquisition also avoids inversion with the shared backup lock.
     with operation():
@@ -334,8 +336,9 @@ def main():
                 require(not present(JOURNAL), 'R28 migration prohibits automatic rollback to old schema/program')
                 update(rollback=True)
             else:
-                from native_release_r28 import update as update_r28
-                update_r28(rehearse=sys.argv[1] == 'check-recovery')
+                require(sys.argv[1] == 'update', '41-schema program patch forbids old migration rehearsal')
+                from native_release_r28_patch import update as update_patch
+                update_patch()
 
 
 if __name__ == '__main__':
