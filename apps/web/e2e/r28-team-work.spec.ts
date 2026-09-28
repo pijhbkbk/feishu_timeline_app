@@ -9,6 +9,29 @@ async function session(page: Page, admin = false) {
 }
 const task = { id: 'task-1', nodeName: '质量试验', taskRound: 1, requiredRoleCode: 'quality_engineer', status: 'READY', assignmentEpoch: 0, assigneeUserId: null, assigneeUser: null, effectiveDueAt: null, dueAt: null, project: { id: 'project-1', code: 'SYNTHETIC-01', name: '合成颜色项目' } };
 
+test('project cards keep all six fields inside the visible list at phone, tablet and desktop widths', async ({ page }) => {
+  await session(page);
+  await page.route('**/api/projects?*', route => route.fulfill({ json: {
+    items: [{ id: 'project-1', name: '合成颜色项目', code: 'SYNTHETIC-01', vehicleModel: '轻卡', status: 'IN_PROGRESS',
+      currentNodeName: '首台生产计划', progressText: '10 / 18', currentRoleCode: 'production_operator',
+      currentTaskId: 'task-1', currentTaskOwnerName: null, latestTaskUpdatedAt: '2026-09-28T00:00:00Z', earliestDueAt: '2026-09-29T00:00:00Z' }],
+    nodeOptions: [], total: 1, page: 1, totalPages: 1,
+  } }));
+  await page.goto('/projects');
+  await expect(page.getByRole('link', { name: '合成颜色项目', exact: true })).toBeVisible();
+  for (const width of [1440, 1024, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    const bounds = await page.locator('.color-projects .work-table-wrap').evaluate(element => {
+      const outer = element.getBoundingClientRect();
+      return { left: outer.left, right: outer.right, clientWidth: element.clientWidth, scrollWidth: element.scrollWidth,
+        cells: Array.from(element.querySelectorAll('tbody td')).map(cell => { const box = cell.getBoundingClientRect(); return { left: box.left, right: box.right }; }) };
+    });
+    expect(bounds.cells).toHaveLength(6);
+    expect(bounds.scrollWidth).toBeLessThanOrEqual(bounds.clientWidth + 1);
+    for (const cell of bounds.cells) { expect(cell.left).toBeGreaterThanOrEqual(bounds.left); expect(cell.right).toBeLessThanOrEqual(bounds.right); }
+  }
+});
+
 test('slow claim preserves the newly selected tab and its data', async ({ page }) => {
   await session(page);
   const reads: string[] = [];

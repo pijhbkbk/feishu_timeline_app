@@ -3,6 +3,7 @@
 import {
   type SessionUser,
   apiRequest,
+  FRONTEND_ROLE_OPTIONS,
 } from './auth-client';
 import {
   formatDate,
@@ -480,12 +481,7 @@ export function isWorkflowTaskOverdue(task: WorkflowTaskSummary) {
   return new Date(task.dueAt).getTime() < Date.now();
 }
 
-export function canUserOperateWorkflowTask(
-  user: SessionUser | null,
-  task: WorkflowTaskSummary,
-) {
-  if (!user || !task.isActive || !['PENDING', 'READY', 'IN_PROGRESS', 'RETURNED'].includes(task.status) || task.assigneeUserId !== user.id) return false;
-  const requiredRole: Record<WorkflowNodeCode, SessionUser['roleCodes'][number]> = {
+const requiredRole: Record<WorkflowNodeCode, SessionUser['roleCodes'][number]> = {
     PROJECT_INITIATION: 'project_manager', DEVELOPMENT_REPORT: 'project_manager',
     PAINT_DEVELOPMENT: 'process_engineer', SAMPLE_COLOR_CONFIRMATION: 'reviewer',
     COLOR_NUMBERING: 'process_engineer', PAINT_PROCUREMENT: 'purchaser',
@@ -495,7 +491,18 @@ export function canUserOperateWorkflowTask(
     DEVELOPMENT_ACCEPTANCE: 'finance', COLOR_CONSISTENCY_REVIEW: 'reviewer',
     MASS_PRODUCTION_PLAN: 'production_operator', MASS_PRODUCTION: 'production_operator',
     VISUAL_COLOR_DIFFERENCE_REVIEW: 'quality_engineer', PROJECT_CLOSED: 'project_manager',
-  };
+};
+
+export function getWorkflowBusinessRoleLabel(nodeCode: string) {
+  if (!Object.hasOwn(requiredRole, nodeCode)) return '尚未匹配';
+  return FRONTEND_ROLE_OPTIONS.find(role => role.code === requiredRole[nodeCode as WorkflowNodeCode])?.label ?? '尚未匹配';
+}
+
+export function canUserOperateWorkflowTask(
+  user: SessionUser | null,
+  task: WorkflowTaskSummary,
+) {
+  if (!user || !task.isActive || !['PENDING', 'READY', 'IN_PROGRESS', 'RETURNED'].includes(task.status) || task.assigneeUserId !== user.id) return false;
   return user.roleCodes.includes(requiredRole[task.nodeCode]);
 }
 

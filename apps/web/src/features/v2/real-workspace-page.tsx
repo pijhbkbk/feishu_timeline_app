@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useAuth } from '../../components/auth-provider';
 import { AttachmentsWorkspace } from '../../components/attachments-workspace';
+import { getWorkflowBusinessRoleLabel } from '../../lib/workflows-client';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
@@ -579,7 +580,7 @@ function ProjectWorkspace({ projectId }: { projectId: string }) {
   );
 }
 
-function RealTaskDetail({
+export function RealTaskDetail({
   node,
   rawNode,
   task,
@@ -629,7 +630,7 @@ function RealTaskDetail({
                 (rawNode?.taskId ? rawNode.suggestedOwner?.name : null) ??
                 '负责人待分配',
             ],
-            ['主责角色', task?.department.name ?? rawNode?.primaryDepartment?.name ?? '尚未匹配'],
+            ['主责角色', getWorkflowBusinessRoleLabel(task?.nodeCode ?? node.code)],
             ['协同人', rawNode ? rawNode.collaborators.map((person) => person.name).join('、') || '无' : task?.collaborators.map((person) => person.name).join('、') || '无'],
             ['评审人', rawNode ? rawNode.reviewers.map((person) => person.name).join('、') || '无' : task?.approvers.map((person) => person.name).join('、') || '无'],
           ]} />
