@@ -203,6 +203,12 @@ def close_old_role():
 
 
 def recover():
+    # A durable migration intent takes precedence over historical cutover
+    # validation. Its guarded recovery closes writers even if old facts are bad.
+    import native_release_r28 as r28
+    if r28.present(r28.JOURNAL):
+        from native_release import recover_pending
+        recover_pending()
     if present(COMMITTED):
         committed_value()
         # Closing the old role comes before container/Docker operations.

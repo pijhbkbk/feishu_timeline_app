@@ -229,6 +229,8 @@ def validate_container(component, item, image):
 
 def prepare_start(component):
     state_directory()
+    from native_release_r28 import assert_start
+    assert_start(runtime_identity()['commit'])
     from native_cutover import committed_value, present
     if present(ROOT / 'cutover-pending.json') or present(ROOT / 'cutover-committed.json'):
         committed_value()

@@ -30,6 +30,7 @@ REGISTRY = 'us-west1-docker.pkg.dev/axial-acrobat-492709-r7/feishu-timeline/'
 # A new immutable module is installed before this controller is atomically replaced.
 # The previous controller continues reading its retained login-20260918 target throughout.
 from native_release_target_owner_20260918 import TARGET
+from native_release_target_r28 import TARGET as R28_TARGET
 NEW = TARGET['commit'] if TARGET else None
 VERSIONS = {
     OLD: {'commit': OLD, 'tree': 'bc65d7145a498066556f2abc8d8619a6643dc325',
@@ -39,6 +40,7 @@ VERSIONS = {
 }
 if TARGET:
     VERSIONS[NEW] = {key: TARGET[key] for key in ('commit', 'tree', 'release', 'buildTime', 'images')}
+VERSIONS[R28_TARGET['commit']] = {key: R28_TARGET[key] for key in ('commit', 'tree', 'release', 'buildTime', 'images')}
 require = backup.require
 
 
@@ -92,7 +94,8 @@ def environment_path(component, commit=None):
     require(component in ('api', 'web'), 'Unsupported environment component')
     commit = state()['active'] if commit is None else commit
     require(commit in VERSIONS, 'Unknown environment version')
-    return ROOT / (component + ('-login-20260918.env' if commit == OLD else '-owner-20260918.env'))
+    suffix = '-r28-20260928.env' if commit == R28_TARGET['commit'] else '-login-20260918.env' if commit == OLD else '-owner-20260918.env'
+    return ROOT / (component + suffix)
 
 
 def replace_state(value):
@@ -120,6 +123,16 @@ def verify_checkout(commit):
                               user='lixiaochen').decode().strip()
     require(git('rev-parse', 'HEAD') == commit and git('rev-parse', 'HEAD^{tree}') == VERSIONS[commit]['tree'] and
             git('status', '--porcelain') == '', 'Release checkout is not the fixed clean source')
+    if commit == R28_TARGET['commit']:
+        guarded = ('apps/api', 'apps/api-ops', 'apps/web', 'packages/shared',
+                   'pnpm-lock.yaml', 'package.json', 'pnpm-workspace.yaml')
+        changed = git('diff', '--name-only', R28_TARGET['base'], commit, '--', *guarded).splitlines()
+        require(changed == sorted(R28_TARGET['approvedRuntimeChanges']), 'Unreviewed R28 runtime change')
+        for relative, digest in R28_TARGET['approvedRuntimeChanges'].items():
+            require(not Path(relative).is_absolute() and '..' not in Path(relative).parts, 'Invalid R28 source path')
+            raw = backup.command(['/usr/bin/git', '-C', str(root), '-c', 'core.hooksPath=/dev/null',
+                                  'show', commit + ':' + relative], user='lixiaochen')
+            require(backup.sha(raw) == digest, 'Approved R28 source digest differs')
     if commit == NEW:
         require_target()
         # The immutable tree binds every byte. This additional explicit scope gate
@@ -157,6 +170,8 @@ def require_target():
 def ingress_ready():
     value = state()
     require(not value['pending'], 'Program release is pending; ingress must stay closed')
+    from native_release_r28 import assert_start
+    assert_start(value['active'])
     verify_checkout(value['active'])
 
 
@@ -202,6 +217,8 @@ def close_program(require_drained=False):
 
 def recover_pending_unlocked():
     """Called under the existing operation lock, before boot starts app units."""
+    from native_release_r28 import recover_guard
+    recover_guard()
     value = state()
     if not value['pending']:
         return False
@@ -214,7 +231,8 @@ def recover_pending_unlocked():
 
 
 def recover_pending():
-    if not present(STATE):
+    from native_release_r28 import JOURNAL
+    if not present(STATE) and not present(JOURNAL):
         return False
     # A failed second unit's ExecStopPost must not recover a still-live updater.
     # Nonblocking acquisition also avoids inversion with the shared backup lock.
@@ -230,11 +248,12 @@ def verify_running():
         app.validate_container(component, item, app.image_identity(component))
 
 
-def checkpoint(protection):
+def checkpoint(protection, path=None):
+    path = CHECKPOINT if path is None else path
     invocation = os.environ.get('INVOCATION_ID', '')
     require(re.fullmatch(r'[a-f0-9]{32}', invocation), 'Supervised invocation required')
-    require(not present(CHECKPOINT), 'Recovery checkpoint already retained')
-    backup.write_json(CHECKPOINT, {'invocationId': invocation, 'pid': os.getpid(),
+    require(not present(path), 'Recovery checkpoint already retained')
+    backup.write_json(path, {'invocationId': invocation, 'pid': os.getpid(),
                                   'releaseStateSha256': backup.sha(backup.read_file(STATE, 4096, owner=0)),
                                   'protectedBackup': protection['backup'],
                                   'protectionReceiptSha256': backup.sha(backup.read_file(backup.ROOT / protection['backup'] / 'snapshot-complete.json', 4096, owner=0))})
@@ -310,7 +329,13 @@ def main():
         recover()
     else:
         with operation():
-            update(rehearse=sys.argv[1] == 'check-recovery', rollback=sys.argv[1] == 'rollback')
+            if sys.argv[1] == 'rollback':
+                from native_release_r28 import JOURNAL
+                require(not present(JOURNAL), 'R28 migration prohibits automatic rollback to old schema/program')
+                update(rollback=True)
+            else:
+                from native_release_r28 import update as update_r28
+                update_r28(rehearse=sys.argv[1] == 'check-recovery')
 
 
 if __name__ == '__main__':

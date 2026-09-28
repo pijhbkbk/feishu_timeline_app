@@ -13,6 +13,7 @@ import native_runtime_app as app
 import native_cutover as cutover
 import native_backup_controller as backup
 import native_release_backup as protection
+import native_release_r28 as r28
 
 
 def stable(commit=release.OLD):
@@ -31,6 +32,9 @@ class ReleaseBoundaryTests(unittest.TestCase):
         for name in ('protect', 'resume_dependencies', 'verify_protection'):
             patcher = patch.object(protection, name, return_value={'backup': 'synthetic-fixture'})
             patcher.start(); self.addCleanup(patcher.stop)
+        # This class covers the preserved 37-migration, program-only branch.
+        # R28 tests exercise the real migration-state mismatch gate separately.
+        patcher = patch.object(r28, 'migration_state'); patcher.start(); self.addCleanup(patcher.stop)
 
     def test_live_operation_lock_blocks_competing_recovery_without_state_change(self):
         regular = backup.regular
@@ -57,11 +61,12 @@ class ReleaseBoundaryTests(unittest.TestCase):
                 patch.object(release, 'INSTALLED', Path(release.__file__).parent), \
                 patch.object(release.os, 'geteuid', return_value=0), \
                 patch.object(release.socket, 'gethostname', return_value='instance-20260408-091840'), \
-                patch.object(app, 'state_directory'), patch.object(release, 'update', side_effect=update):
+                patch.object(app, 'state_directory'), patch.object(release, 'update', side_effect=update), \
+                patch.object(r28, 'update', side_effect=update):
             for action in ('update', 'rollback'):
                 with patch.object(release.sys, 'argv', ['native_release.py', action]):
                     release.main()
-            self.assertEqual(observed, [{'rehearse': False, 'rollback': False}, {'rehearse': False, 'rollback': True}])
+            self.assertEqual(observed, [{'rehearse': False}, {'rollback': True}])
 
     def test_interrupted_rollback_restores_new_program_without_database_restore(self):
         pending = {'version': 1, 'active': release.OLD, 'committed': release.NEW, 'pending': True}
@@ -154,8 +159,10 @@ class ReleaseBoundaryTests(unittest.TestCase):
             with self.assertRaisesRegex(backup.Failure, 'pending'):
                 release.ingress_ready()
             verify.assert_not_called()
-        with patch.object(release, 'state', return_value=stable(release.NEW)), patch.object(release, 'verify_checkout') as verify:
+        with patch.object(release, 'state', return_value=stable(release.NEW)), patch.object(release, 'verify_checkout') as verify, \
+                patch.object(r28, 'assert_start') as schema:
             release.ingress_ready()
+            schema.assert_called_once_with(release.NEW)
             verify.assert_called_once_with(release.NEW)
 
     def test_new_environment_changes_only_metadata_and_preserves_private_paths(self):

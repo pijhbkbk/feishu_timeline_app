@@ -7904,3 +7904,11 @@ BLOCKER_REPORT: Public-source push remains rejected by platform automatic review
 - 本轮20项API/Web差异精确SHA已固定，无schema/依赖变化；根任务新现场preflight与14个controller/unit原始摘要逐项一致。绑定后129项本地运维测试PASS，7脚本语法/字面量/2个payload SHA核对PASS。
 - 固定包 `/private/tmp/timeline-native-login-release-bundle-0f49807`，manifest SHA256 `578a38e3840efffdf4722ab32bdca0d9578577cdfc520d0387a97c0164cb5f3f`。根任务已审接续逻辑，本轮最终身份与包待其最终审查；本子任务未执行SSH、push或生产步骤。
 - 详情见 `docs/acceptance/NATIVE_LOGIN_RELEASE_20260918/operations-final-binding-541b3dfff682.json`。当前仅 FIXED_PACKAGE_PREPARED / FINAL_PACKAGE_REVIEW_PENDING，不能声称新网站交付。
+
+
+## R28 后台与团队流程：固定迁移发布准备（2026-09-28）
+
+- 继续所有者自主上线目标，在独立 Ops 工作树基于 f77d958 准备固定 22aac→29ed14c、37→41 发布。应用候选及私有镜像已固定，尚未安装/执行本轮生产升级。
+- 新增迁移日志、启动/恢复门禁、精确历史及交接验证、实际B0隔离恢复、固定安装器/驱动；原程序发布分支、旧控制器与收据保留。
+- 164项Ops回归、固定镜像升级/备份恢复、真实快照生成器及迁移中/开放写入后两类实际SIGKILL隔离验证通过；独立只读审查发现的恢复入口与快照主键问题已修复，最终只读复核无新的确定阻断。
+- 证据、适配边界、日志/工具摘要和剩余生产步骤见 `docs/acceptance/R28_OPS_20260928/README.md`。精确生产域名/PG14/systemd验证待执行，main/tag不变，产品负责人未确认。
