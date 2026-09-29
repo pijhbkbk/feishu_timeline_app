@@ -8027,3 +8027,11 @@ BLOCKER_REPORT: Public-source push remains rejected by platform automatic review
 - 当前仅原29ed在正式运行；此页面补丁尚未发布，正式手机列表和详情仍需准确新commit复测。产品状态AWAITING_PRODUCT_OWNER_CONFIRMATION；main/tag未变，staging未发布，不将本机证据当作正式域名验收。
 
 - 后续加强viewport断言暴露手机内层网格问题，已停止盲试、记录BLOCKER_REPORT并咨询GPT-6 Pro；实际测量确认footer两列按钮撑开隐式auto列，限定本页面网格并手机按钮纵排后，9项浏览器回归（含真实API三宽布局、内部溢出、关闭按钮点击）全部通过。第一次未指定外部服务/第二次沙箱拒绝的运行未计测试PASS，日志保留。详见docs/acceptance/R28_MOBILE_DETAIL_BLOCKER.md。
+
+
+## 2026-09-29 M4 固定程序已切换，登录后页面待复查
+
+- 应用e917da56b9fca54a40635364e168fdb26a080fb1、运维9eb94093df6c15df3600f9ddeb22ea92c7db67af从干净提交和私有远端生成固定制品/五脚本。checkout/pull/install/update/proof全部通过；正式2026-09-29T00:57:22.219797Z切换e917，API/Web/target HEAD、摘要、Nginx和41迁移一致。
+- 新备份20260929T005653Z-891b4bb4、独立追加程序日志COMMITTED，原37→41锚点/原备份/验收审计保留，未执行迁移或任何数据恢复。发布前四项PG14实际中断与独立审查通过，边界详见新证据入口。
+- 公开登录三档、正常TLS元数据、未登录跳转、旧入口关闭、foreign Origin及停用账号拒登均PASS。原管理员跨日会话已失效，真实浏览器刷新到正式登录页；已请求所有者在浏览器登录，未索取/重设密码。登录后的项目卡片/详情手机修复等路径仍待准确版本复验。
+- 完整14项状态、运行身份和证据索引见 `docs/acceptance/R28_PRODUCTION_20260929/README.md`。当前PRODUCTION_RUNTIME_SWITCHED / EXACT_DOMAIN_PUBLIC_PATH_PASS / DEPLOYMENT_UNVERIFIED；整个产品仍AWAITING_PRODUCT_OWNER_CONFIRMATION。main/tag未改变，staging未执行。

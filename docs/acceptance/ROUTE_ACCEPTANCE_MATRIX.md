@@ -241,3 +241,26 @@ Runtime `541b3dfff682aa29b49a96b251f0a084903c981a`，正式更新03:40:16Z。环
 | /notifications | features/team-work/notifications | /notifications | 已分配用户、持久提醒 | 全部已读后刷新仍0未读 | 同上/notifications-read.png | LOCAL PASS / PROD PENDING |
 
 上述截图根下按Playwright子目录保存。中间失败截图与日志保留；本地扫描器local-eicar不能代表正式ClamAV验证。M4需按实际组件路径与精确生产URL补齐矩阵和固定版本。
+
+## R28 2026-09-29 正式程序e917：公开路径通过，登录后路径待复验
+
+环境production；精确URL均为 `https://timeline.all-too-well.com`，runtime `e917da56b9fca54a40635364e168fdb26a080fb1`，切换2026-09-29T00:57:22.219797Z。镜像/数据库/Nginx/source identity见[R28正式记录](R28_PRODUCTION_20260929/README.md)。产品负责人未确认；本机PASS及昨日29ed观察不冒称最终新版本页面PASS。
+
+| 精确URL | Route component | API endpoints | Required role | 预期数据与操作 | Screenshot / browser result | 本轮结果 |
+|---|---|---|---|---|---|---|
+| https://timeline.all-too-well.com/login | app/login/page、LoginPage | auth/session、auth/login | public | 原生登录；外部身份关闭；停用合成账号拒登 | 私有var/r28-patch-release/production-browser/login-{1440,1024,390}.png，public-browser.json有实际Network/status及pageerror | PUBLIC_BOUNDARY_PASS；原管理员成功登录待恢复 |
+| https://timeline.all-too-well.com/dashboard | features/team-work/team-workspace.tsx | team-tasks、v2/dashboard | 已授业务角色；管理汇总按管理员 | 普通/月度共享待办，读取、页签、领取/转派、刷新 | e917固定本机已验证；昨日29ed正式管理汇总观察保留；新正式截图待登录 | PENDING_AUTHENTICATED_RECHECK |
+| https://timeline.all-too-well.com/admin/people | features/personnel/personnel-workspace.tsx | people、people/:id | system.manage/管理员 | 真实分页人员、七角色、保存与再读取；合成账号停用审计 | 昨日29ed三档/停用/刷新及审计PASS；e917服务器只读确认停用事实保留；新页面待登录 | PENDING_AUTHENTICATED_RECHECK |
+| https://timeline.all-too-well.com/projects | features/color-projects/color-projects.tsx:ColorProjects | projects | project.read/团队范围 | 真实项目六字段、搜索/空态、三档卡片和打开详情 | 原29ed手机失败保留，e917固定本机PASS；正式未登录访问实际转/login | PENDING_MOBILE_FIX_RECHECK |
+| https://timeline.all-too-well.com/projects/new | features/color-projects/color-projects.tsx:NewColorProject | auth/session；POST projects | project.create/项目协调或管理员 | 基本信息表单、校验、幂等创建 | 隔离HTTP/浏览器创建覆盖；正式不为测试新建真实项目，表单读取待登录 | PENDING_AUTHENTICATED_RECHECK |
+| https://timeline.all-too-well.com/projects/cmrzz7z3k0001br11ep76ub1f | features/v2/real-workspace-page.tsx | v2/projects/:id/workspace、workflows/projects/:id | project.read/团队范围；写按固定角色+领取 | 原项目10/18、实际主责生产；三档详情不裁切、关闭点击、刷新 | 原29ed手机详情/角色失败保留；e917固定镜像本机三档PASS；真实刷新因过期会话转/login | PENDING_DETAIL_FIX_RECHECK |
+| 同上精确项目URL，资料页签 | 项目工作区与AttachmentWorkspace | attachments及项目业务实体目录 | 附件读取范围；写按管理/工序权限 | 真实材料/空态、过滤、版本和归属 | 昨日29ed材料0及真实请求观察保留；新正式页面待登录 | PENDING_AUTHENTICATED_RECHECK |
+| 同上精确项目URL，记录页签 | RealWorkspace projectRecords | v2/projects/:id/workspace | project.read/团队范围 | 历史事实可读、未被更新覆盖 | 隔离及数据库保全PASS；新正式页面待登录 | PENDING_AUTHENTICATED_RECHECK |
+| https://timeline.all-too-well.com/projects/cmrzz7z3k0001br11ep76ub1f/tasks/cms02wkmk000vbr6d3qsanep7 | features/team-work/task-workspace.tsx | v2/tasks/:id/progress-context、materials/history | project.read；写须对应角色并领取 | 真实首台生产计划工作单、材料/历史、只读与办理提示 | 本机真实API/材料PDF已验证；正式不推进真实工序，读取待登录 | PENDING_AUTHENTICATED_RECHECK |
+| https://timeline.all-too-well.com/notifications | features/team-work/notifications.tsx | notifications/my、unread-count、mark-read | 当前已认证用户 | 持久提醒、分页、已读刷新保持 | e917固定本机读取/退出通过；此前本机已读真实写入通过；正式待登录 | PENDING_AUTHENTICATED_RECHECK |
+| https://timeline.all-too-well.com/build-info | Web metadata | 同路径 | public | 实际e917/buildTime/release，正常TLS | public-metadata.json，HTTP200 | METADATA_PASS |
+| https://timeline.all-too-well.com/api/health | HealthController | 同路径 | public | API与Web/服务器HEAD一致 | public-metadata.json，HTTP200 | METADATA_PASS |
+
+R28导航与路由：旧工作台和项目列表REPLACED，项目详情STILL_ACTIVE并整合资料/记录，旧账号/组织管理入口LEGACY_ONLY（正式人员入口统一/admin/people），旧成员/节点配置/角色自定义写入REMOVED并由后端410拒绝。未新增切换产品版本的Feature Flag；NEXT_PUBLIC配置固定随镜像构建。
+
+本轮重新扫描正式Placeholder0、测试白名单10（7个getByPlaceholder及3个禁止占位断言）。未执行远端staging；main/tag未变。整个正式路由组不能标记PASS，等待原管理员恢复登录后继续实际页面验证及最终产品负责人确认。
