@@ -1,3 +1,4 @@
+import { isApprovedTeamMember, TEAM_BUSINESS_PERMISSIONS } from '../../common/team-membership';
 import {
   BadRequestException,
   ForbiddenException,
@@ -391,6 +392,7 @@ export class UsersService {
       departmentId: user.departmentId,
       departmentName: user.department?.name ?? null,
       isSystemAdmin: user.isSystemAdmin,
+      teamAccessApproved: user.teamAccessApproved,
       authSource,
       authVersion: user.authVersion,
       requestedJob: user.requestedJob,
@@ -400,6 +402,7 @@ export class UsersService {
         .map((userRole) => userRole.role.code)
         .filter((roleCode): roleCode is RoleCode => roleCode in ROLE_LABELS),
       permissionCodes: [
+        ...(isApprovedTeamMember({ authSource, isSystemAdmin: user.isSystemAdmin, teamAccessApproved: user.teamAccessApproved }) ? TEAM_BUSINESS_PERMISSIONS : []),
         ...new Set(
           user.userRoles.filter((userRole) => userRole.role.status === 'ACTIVE').flatMap((userRole) =>
             userRole.role.rolePermissions.map((permission) => permission.permissionCode),

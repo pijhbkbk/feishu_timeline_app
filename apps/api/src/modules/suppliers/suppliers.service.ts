@@ -1,10 +1,10 @@
+import { assertApprovedTeamMember } from '../../common/team-membership';
 import { withTeamWrite } from '../../common/team-authorization';
 import { createHash } from 'node:crypto';
 
 import {
   BadRequestException,
   ConflictException,
-  ForbiddenException,
   HttpException,
   Injectable,
   NotFoundException,
@@ -526,15 +526,8 @@ export class SuppliersService {
     actor: AuthenticatedUser,
     requiredPermission: 'project.read' | 'workflow.transition',
   ) {
-    if (requiredPermission === 'workflow.transition' && !actor.isSystemAdmin &&
-        !actor.roleCodes.some(role => role === 'purchaser' || role === 'project_manager')) {
-      throw new ForbiddenException('供应商目录由采购、项目协调或管理员维护。');
-    }
-    if (actor.isSystemAdmin || actor.permissionCodes?.includes(requiredPermission)) {
-      return;
-    }
-
-    throw new ForbiddenException('当前用户没有供应商目录操作权限。');
+    void requiredPermission;
+    assertApprovedTeamMember(actor);
   }
 
   private parseSupplierWriteInput(rawInput: unknown): SupplierWriteInput {

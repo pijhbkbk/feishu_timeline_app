@@ -773,7 +773,7 @@ export function RealTaskDetail({
   );
 }
 
-type CompletionPanelState = {
+export type CompletionPanelState = {
   preview: R26CompletionPreview | null;
   pending: boolean;
   error: string | null;
@@ -785,7 +785,7 @@ type CompletionPanelState = {
   success: R26OrdinaryCompletionCommand | null;
 };
 
-function CompletionDrawer({
+export function CompletionDrawer({
   task,
   state,
   onChange,

@@ -1,3 +1,4 @@
+import { assertApprovedTeamMember } from '../../common/team-membership';
 import { teamProjectScope } from '../../common/team-authorization';
 import { withTeamWrite, withProjectWrite } from '../../common/team-authorization';
 import {
@@ -828,6 +829,7 @@ export class ProjectsService {
     actor: AuthenticatedUser,
     rawIdempotencyKey?: string,
   ) {
+    assertApprovedTeamMember(actor);
     const idempotencyKey = this.parseProjectIdempotencyKey(rawIdempotencyKey);
     const input = this.normalizeCreateInput(rawInput, actor);
     const requestHash = this.hashProjectCreateCommand(input);
@@ -836,11 +838,6 @@ export class ProjectsService {
       idempotencyKey,
       requestHash,
     };
-
-    const replay = await this.findProjectCreateCommandReplay(this.prisma, commandInput);
-    if (replay) {
-      return replay;
-    }
 
     try {
       return await withTeamWrite(this.prisma, actor, async (tx) => {
@@ -857,7 +854,8 @@ export class ProjectsService {
             code: input.code ?? this.generateProjectCode(),
             name: input.name,
             description: input.description,
-            status: ProjectStatus.IN_PROGRESS,
+            status: ProjectStatus.DRAFT,
+            requiresApprovedReport: true,
             priority: input.priority,
             currentNodeCode: WorkflowNodeCode.PROJECT_INITIATION,
             owningDepartmentId: owner.departmentId ?? actor.departmentId ?? null,
@@ -932,10 +930,8 @@ export class ProjectsService {
       });
     } catch (error) {
       if (this.isUniqueConstraintError(error)) {
-        const winningReplay = await this.findProjectCreateCommandReplay(
-          this.prisma,
-          commandInput,
-        );
+        const winningReplay = await withTeamWrite(this.prisma, actor,
+          tx => this.findProjectCreateCommandReplay(tx, commandInput));
         if (winningReplay) {
           return winningReplay;
         }
@@ -1903,6 +1899,10 @@ export class ProjectsService {
       ownerUserId: project.ownerUserId,
       ownerName: project.ownerUser?.name ?? null,
       ownerDepartmentName: project.ownerUser?.department?.name ?? null,
+      approvedReportDate: this.serializeDate(project.approvedReportDate),
+      approvalReference: project.approvalReference,
+      approvedReportAttachmentId: project.approvedReportAttachmentId,
+      requiresApprovedReport: project.requiresApprovedReport,
       marketRegion: project.marketRegion,
       colorMarketingUnit: project.colorMarketingUnit,
       paintSupplier: project.paintSupplier,
@@ -1957,6 +1957,10 @@ export class ProjectsService {
       currentNodeCode: project.currentNodeCode,
       currentNodeName: this.workflowsService.getCurrentNodeName(project.currentNodeCode),
       targetDate: this.serializeDate(project.plannedEndDate),
+      approvedReportDate: this.serializeDate(project.approvedReportDate),
+      approvalReference: project.approvalReference,
+      approvedReportAttachmentId: project.approvedReportAttachmentId,
+      requiresApprovedReport: project.requiresApprovedReport,
       marketRegion: project.marketRegion,
       colorMarketingUnit: project.colorMarketingUnit,
       paintSupplier: project.paintSupplier,

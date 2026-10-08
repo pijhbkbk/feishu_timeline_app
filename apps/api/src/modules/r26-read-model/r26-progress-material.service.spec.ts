@@ -24,7 +24,7 @@ const actor: AuthenticatedUser = {
   departmentId: 'dept-purchase',
   departmentName: '采购部',
   isSystemAdmin: false,
-  authSource: 'local',
+  teamAccessApproved: true, authSource: 'local',
   authVersion: 1,
   roleCodes: ['purchaser'],
   permissionCodes: [
@@ -36,6 +36,7 @@ const actor: AuthenticatedUser = {
 
 const ordinaryAdminReadOnly: AuthenticatedUser = {
   ...actor,
+  teamAccessApproved: false,
   id: 'ordinary-admin-read-only',
   username: 'ordinary-admin-read-only',
   name: '仅有读取权限的普通管理员',
@@ -676,7 +677,7 @@ describe('R26 Gate 3B progress and material service', () => {
     expect(materialCase.prisma.r26CommandRequest.create).not.toHaveBeenCalled();
   });
 
-  it('denies a system administrator business writes without the required role and claim', async () => {
+  it('denies a forged system-administrator snapshot when current persisted authorization differs', async () => {
     const noScopeTask = task({
       assigneeUserId: 'another-user',
       project: {
@@ -719,7 +720,7 @@ describe('R26 Gate 3B progress and material service', () => {
     expect(materialCase.attachmentCreate).not.toHaveBeenCalled();
   });
 
-  it('requires the corresponding permission for assignees, owners and collaborators too', () => {
+  it('requires explicit admission and maps granted actions independent of project claim', () => {
     const { service } = createService();
     const getAvailableActions = (
       service as unknown as {
@@ -782,23 +783,23 @@ describe('R26 Gate 3B progress and material service', () => {
     ];
 
     for (const { scopedTask, scopedActor } of scopedActors) {
-      expect(getAvailableActions(scopedTask, scopedActor)).toEqual([]);
+      expect(getAvailableActions(scopedTask, { ...scopedActor, teamAccessApproved: false })).toEqual([]);
       expect(
         getAvailableActions(scopedTask, {
           ...scopedActor,
           permissionCodes: ['project.read', 'workflow.transition'],
         }).map((item) => item.action),
-      ).toEqual(scopedActor.id === scopedTask.assigneeUserId ? [
+      ).toEqual([
         'SAVE_PROGRESS_DRAFT',
         'DELETE_PROGRESS_DRAFT',
         'SUBMIT_PROGRESS',
-      ] : []);
+      ]);
       expect(
         getAvailableActions(scopedTask, {
           ...scopedActor,
           permissionCodes: ['project.read', 'attachment.manage'],
         }).map((item) => item.action),
-      ).toEqual(scopedActor.id === scopedTask.assigneeUserId ? ['UPLOAD_MATERIAL'] : []);
+      ).toEqual(['UPLOAD_MATERIAL']);
     }
   });
 
@@ -1047,7 +1048,7 @@ describe('R26 Gate 3B progress and material service', () => {
     expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 
-  it('keeps ordinary observers and cross-project actors read-only', async () => {
+  it('denies unapproved observers and project-access failures', async () => {
     const observerTask = task({
       assigneeUserId: 'another-user',
       project: {
@@ -1067,7 +1068,7 @@ describe('R26 Gate 3B progress and material service', () => {
       service.submitProgress(
         'task-6',
         submitInput,
-        actor,
+        { ...actor, teamAccessApproved: false },
         'request-observer',
       ),
     ).rejects.toBeInstanceOf(ForbiddenException);

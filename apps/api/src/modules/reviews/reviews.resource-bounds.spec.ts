@@ -19,7 +19,7 @@ const actorId = 'reviewer-1';
 const actor = {
   id: actorId,
   authVersion: 1,
-  authSource: 'local',
+  teamAccessApproved: true, authSource: 'local',
   roleCodes: ['reviewer', 'quality_engineer'],
   permissionCodes: ['project.read', 'review.execute'],
   isSystemAdmin: false,

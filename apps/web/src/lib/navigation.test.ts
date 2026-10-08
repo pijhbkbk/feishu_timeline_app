@@ -6,23 +6,27 @@ import {
 } from './navigation';
 
 const routeMatrix = [
-  ['/dashboard', '我的工作'],
-  ['/v2/dashboard', '我的工作'],
+  ['/dashboard', '工作台'],
+  ['/v2/dashboard', '工作台'],
   ['/projects', '颜色项目'],
   ['/projects/project-1', '颜色项目'],
   ['/projects/project-1/pilot-production', '颜色项目'],
   ['/v2/projects/project-1', '颜色项目'],
-  ['/tasks', '我的工作'],
-  ['/tasks/pending', '我的工作'],
-  ['/v2/tasks', '我的工作'],
-  ['/progress?projectId=project-1&taskId=task-1', '我的工作'],
-  ['/v2/progress?projectId=project-1&taskId=task-1', '我的工作'],
-  ['/materials/upload?taskId=task-1', '我的工作'],
+  ['/tasks', '工作台'],
+  ['/tasks/pending', '工作台'],
+  ['/v2/tasks', '工作台'],
+  ['/progress?projectId=project-1&taskId=task-1', '工作台'],
+  ['/v2/progress?projectId=project-1&taskId=task-1', '工作台'],
+  ['/materials/upload?taskId=task-1', '工作台'],
+  ['/admin/color-database', '颜色清单'],
+  ['/admin/color-database/color-1', '颜色清单'],
+  ['/monthly-reviews', '周评'],
+  ['/analytics', '产量统计'],
   ['/admin', null],
-  ['/admin/users', '人员'],
-  ['/admin/people', '人员'],
-  ['/admin/organization', '人员'],
-  ['/v2/admin/people', '人员'],
+  ['/admin/users', '人员库'],
+  ['/admin/people', '人员库'],
+  ['/admin/organization', '人员库'],
+  ['/v2/admin/people', '人员库'],
   ['/admin/roles', null],
   ['/admin/audit-logs', null],
   ['/v2/admin', null],
@@ -32,9 +36,12 @@ const routeMatrix = [
 describe('top navigation route matrix', () => {
   it('uses the approved product names', () => {
     expect(topNavigationItems.map((item) => item.label)).toEqual([
-      '我的工作',
+      '工作台',
       '颜色项目',
-      '人员',
+      '颜色清单',
+      '周评',
+      '产量统计',
+      '人员库',
     ]);
   });
 

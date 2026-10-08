@@ -1,12 +1,12 @@
 import { vi } from 'vitest';
 
-type Actor = { id: string; authVersion: number; isSystemAdmin: boolean; roleCodes: readonly string[]; permissionCodes?: readonly string[] };
+type Actor = { teamAccessApproved?: boolean; id: string; authVersion: number; isSystemAdmin: boolean; roleCodes: readonly string[]; permissionCodes?: readonly string[] };
 type Task = { id: string; nodeCode: string; assigneeUserId: string | null; isActive: boolean; status: string; projectId?: string };
 
 /** Supplies database state, never stubs the authorization functions themselves. */
 export function installTeamAuthorizationFixture(tx: Record<string, any>, actors: readonly Actor[], taskById: (id: string) => Task | null = () => null) {
   const users = new Map(actors.map(actor => [actor.id, {
-    id: actor.id, status: 'ACTIVE', authVersion: actor.authVersion, isSystemAdmin: actor.isSystemAdmin,
+    id: actor.id, status: 'ACTIVE', teamAccessApproved: actor.teamAccessApproved ?? false, authVersion: actor.authVersion, isSystemAdmin: actor.isSystemAdmin,
     userRoles: actor.roleCodes.map(code => ({ role: { code, rolePermissions: (actor.permissionCodes ?? []).map(permissionCode => ({ permissionCode })) } })),
   }]));
   const originalUser = tx.user?.findUnique?.bind(tx.user);

@@ -14,7 +14,7 @@ const actor: AuthenticatedUser = {
   departmentId: 'dept-1',
   departmentName: '质量部',
   isSystemAdmin: false,
-  authSource: 'local', authVersion: 1,
+  teamAccessApproved: true, authSource: 'local', authVersion: 1,
   roleCodes: ['process_engineer'],
   permissionCodes: ['workflow.transition'],
 };

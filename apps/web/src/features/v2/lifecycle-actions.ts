@@ -1,5 +1,3 @@
-import { toProductHref } from './production-ui';
-
 export type R26LifecycleAction = {
   slug:
     | 'cabin-review'
@@ -99,7 +97,7 @@ export function getR26LifecycleActionHref(
 ) {
   const action = getR26LifecycleActionByStep(stepNumber);
   return action
-    ? toProductHref(`/v2/projects/${encodeURIComponent(projectId)}/actions/${action.slug}`)
+    ? `/projects/${encodeURIComponent(projectId)}/actions/${action.slug}`
     : null;
 }
 

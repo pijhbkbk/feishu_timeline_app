@@ -24,9 +24,9 @@ describe('R26 Gate 3C2 / 3C3 lifecycle actions', () => {
     expect(getR26LifecycleActionByStep(11)).toBeNull();
   });
 
-  it('builds an encoded V2 route and rejects unknown actions', () => {
+  it('builds the canonical encoded route independently of legacy flags', () => {
     expect(getR26LifecycleActionHref('project / 1', 12)).toBe(
-      '/v2/projects/project%20%2F%201/actions/cabin-review',
+      '/projects/project%20%2F%201/actions/cabin-review',
     );
     expect(getR26LifecycleActionBySlug('unknown')).toBeNull();
   });

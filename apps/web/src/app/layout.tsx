@@ -9,6 +9,7 @@ import '../features/color-projects/color-projects.css';
 import './r22.css';
 import '../features/personnel/personnel.css';
 import '../features/team-work/team-work.css';
+import '../features/m1/theme.css';
 
 export const metadata: Metadata = {
   title: '轻卡新颜色开发项目管理系统',

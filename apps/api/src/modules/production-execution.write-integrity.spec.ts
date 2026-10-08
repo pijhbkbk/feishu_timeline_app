@@ -18,7 +18,7 @@ import { PilotProductionsService } from './pilot-productions/pilot-productions.s
 const actor = {
   id: 'process-user-1',
   roleCodes: ['process_engineer', 'production_operator'],
-  authSource: 'local', authVersion: 1,
+  teamAccessApproved: true, authSource: 'local', authVersion: 1,
   permissionCodes: ['project.read', 'workflow.transition'],
   isSystemAdmin: false,
 } as never;

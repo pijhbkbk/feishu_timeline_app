@@ -4,13 +4,14 @@ import { defaultHome, loginHref, resolveLoginDestination } from './auth-navigati
 const origin = 'https://app.example';
 const admin: SessionUser = { id: 'owner', username: '001234', name: '合成用户', email: null, departmentId: null, departmentName: null, authSource: 'local', isSystemAdmin: true, roleCodes: ['admin'], onboardingCompleted: false, requestedJob: 'process_engineer' };
 const pending: SessionUser = { ...admin, isSystemAdmin: false, roleCodes: [] };
-const member: SessionUser = { ...pending, roleCodes: ['process_engineer'], permissionCodes: ['project.read'] };
+const member: SessionUser = { ...pending, teamAccessApproved: true, roleCodes: ['process_engineer'], permissionCodes: ['project.read'] };
 const query = (value: string) => `?returnTo=${encodeURIComponent(value)}`;
 describe('native login destinations from authenticated permissions', () => {
   it('prioritizes real grants over stale job onboarding; never defaults to account security', () => {
     expect(defaultHome(admin)).toBe('/dashboard');
     expect(defaultHome(member)).toBe('/dashboard');
     expect(defaultHome(pending)).toBe('/pending-access');
+    expect(defaultHome({ ...pending, roleCodes: ['admin'] })).toBe('/pending-access');
     expect(defaultHome({ ...admin, roleCodes: [] })).toBe('/dashboard');
     expect(loginHref('/dashboard')).toBe('/login');
     expect(loginHref('/projects/project-a', '?taskId=task-a')).toBe('/login?returnTo=%2Fprojects%2Fproject-a%3FtaskId%3Dtask-a');
@@ -33,11 +34,11 @@ describe('native login destinations from authenticated permissions', () => {
     }
     expect(await resolveLoginDestination(admin, query('/admin/organization'), origin, vi.fn())).toBe('/admin/organization');
   });
-  it('returns project managers to creation only with the actual backend write permission', async () => {
-    const manager: SessionUser = { ...member, roleCodes: ['project_manager'], permissionCodes: ['project.write'] };
-    expect(await resolveLoginDestination(manager, query('/projects/new'), origin, vi.fn())).toBe('/projects/new');
-    expect(await resolveLoginDestination({ ...manager, permissionCodes: [] }, query('/projects/new'), origin, vi.fn())).toBe('/dashboard');
-    expect(await resolveLoginDestination({ ...member, permissionCodes: ['project.write'] }, query('/projects/new'), origin, vi.fn())).toBe('/dashboard');
+  it('allows approved department members to create without claiming an old role', async () => {
+    const approved: SessionUser = { ...member, roleCodes: [], permissionCodes: ['project.write'] };
+    expect(await resolveLoginDestination(approved, query('/projects/new'), origin, vi.fn())).toBe('/projects/new');
+    expect(await resolveLoginDestination({ ...member, teamAccessApproved: false, roleCodes: ['project_manager'], permissionCodes: ['project.write'] }, query('/projects/new'), origin, vi.fn())).toBe('/pending-access');
+    expect(await resolveLoginDestination({ ...pending, requestedJob: 'admin' }, query('/projects/new'), origin, vi.fn())).toBe('/pending-access');
     expect(await resolveLoginDestination(admin, query('/projects/new'), origin, vi.fn())).toBe('/projects/new');
   });
   it('preserves a project deep link only after server read permission succeeds', async () => {

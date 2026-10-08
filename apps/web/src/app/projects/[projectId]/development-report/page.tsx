@@ -1,15 +1,2 @@
-import { DevelopmentReportWorkspace } from '../../../../components/development-report-workspace';
-
-type DevelopmentReportPageProps = {
-  params: Promise<{
-    projectId: string;
-  }>;
-};
-
-export default async function DevelopmentReportPage({
-  params,
-}: DevelopmentReportPageProps) {
-  const { projectId } = await params;
-
-  return <DevelopmentReportWorkspace projectId={projectId} />;
-}
+import {M1RecordEntry} from '../../../../features/m1/record-entry';
+export default async function Page({params}:{params:Promise<{projectId:string}>}){const {projectId}=await params;return <M1RecordEntry projectId={projectId} kind="report"/>;}

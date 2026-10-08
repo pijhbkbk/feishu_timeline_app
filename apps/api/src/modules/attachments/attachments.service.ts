@@ -1,3 +1,4 @@
+import { assertApprovedTeamMember } from '../../common/team-membership';
 import { authorizeGenericAttachmentTarget, lockGenericAttachmentMutation } from './attachment-team-policy';
 import { withProjectWrite, withSystemProjectWrite } from '../../common/team-authorization';
 import {
@@ -31,7 +32,6 @@ import type { AuthenticatedUser } from '../auth/auth.types';
 import { ProjectAccessService } from '../auth/project-access.service';
 import { getCurrentNodeName } from '../workflows/workflow-node.constants';
 import {
-  ATTACHMENT_MANAGEMENT_ROLE_CODES,
   ATTACHMENT_MAX_FILE_SIZE_BYTES,
   canPreviewAttachmentMimeType,
   getAttachmentFileValidationIssue,
@@ -1172,21 +1172,7 @@ export class AttachmentsService {
   }
 
   private assertActorCanManage(actor: AuthenticatedUser) {
-    if (actor.isSystemAdmin) {
-      return;
-    }
-
-    if (
-      actor.roleCodes.some((roleCode) =>
-        ATTACHMENT_MANAGEMENT_ROLE_CODES.includes(
-          roleCode as (typeof ATTACHMENT_MANAGEMENT_ROLE_CODES)[number],
-        ),
-      )
-    ) {
-      return;
-    }
-
-    throw new BadRequestException('当前用户没有附件管理权限。');
+    assertApprovedTeamMember(actor);
   }
 
   private assertGenericMutationTargetAllowed(entityType: AttachmentTargetType) {

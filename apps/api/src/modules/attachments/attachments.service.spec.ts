@@ -19,7 +19,7 @@ const actor: AuthenticatedUser = {
   departmentId: null,
   departmentName: null,
   isSystemAdmin: false,
-  authSource: 'local',
+  teamAccessApproved: true, authSource: 'local',
   authVersion: 1,
   roleCodes: ['project_manager'],
   permissionCodes: ['project.read', 'attachment.manage'],

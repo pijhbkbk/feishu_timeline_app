@@ -12,7 +12,7 @@ import { R26ProgressMaterialService } from './r26-progress-material.service';
 
 const actor = {
   id: 'assignee-1',
-  authSource: 'local', authVersion: 1,
+  teamAccessApproved: true, authSource: 'local', authVersion: 1,
   roleCodes: ['purchaser'],
   permissionCodes: ['project.read'],
   isSystemAdmin: false,

@@ -13,7 +13,7 @@ const actor: AuthenticatedUser = {
   departmentId: null,
   departmentName: null,
   isSystemAdmin: false,
-  authSource: 'mock',
+  authSource: 'local', teamAccessApproved: true,
   roleCodes: ['purchaser'],
   permissionCodes: ['project.read', 'workflow.transition'],
 };

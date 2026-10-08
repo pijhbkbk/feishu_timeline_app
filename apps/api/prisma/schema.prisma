@@ -442,6 +442,7 @@ model User {
   departmentId                  String?
   status                        UserStatus                @default(ACTIVE)
   isSystemAdmin                 Boolean                   @default(false)
+  teamAccessApproved            Boolean                   @default(false)
   department                    Department?               @relation(fields: [departmentId], references: [id], onDelete: SetNull)
   ledDepartments                Department[]              @relation("DepartmentLead")
   authVersion                   Int                       @default(0)
@@ -568,6 +569,11 @@ model Project {
   id                       String                    @id @default(cuid())
   code                     String                    @unique
   name                     String
+  requiresApprovedReport   Boolean                   @default(false)
+  approvedReportDate       DateTime?
+  approvalReference        String?                   @db.VarChar(200)
+  approvedReportAttachmentId String?                 @unique
+  approvedReportAttachment Attachment?               @relation("ProjectApprovedReport", fields: [approvedReportAttachmentId], references: [id], onDelete: Restrict)
   description              String?
   status                   ProjectStatus             @default(DRAFT)
   priority                 ProjectPriority           @default(MEDIUM)
@@ -1256,6 +1262,10 @@ model SampleConfirmation {
   comment              String?
   confirmedById        String?
   confirmedAt          DateTime
+  actualConfirmedAt    DateTime?
+  confirmationParty    String?                    @db.VarChar(200)
+  confirmationAttachmentId String?                @db.VarChar(64)
+  confirmationAttachment Attachment?             @relation("SampleConfirmationMaterial", fields: [confirmationAttachmentId], references: [id], onDelete: Restrict)
   project              Project                    @relation(fields: [projectId], references: [id], onDelete: Cascade)
   sample               Sample                     @relation(fields: [sampleId], references: [id], onDelete: Cascade)
   workflowInstance     WorkflowInstance           @relation(fields: [workflowInstanceId], references: [id], onDelete: Cascade)
@@ -1619,6 +1629,8 @@ model ProductionPlan {
 }
 
 model Attachment {
+  approvedReportProject Project? @relation("ProjectApprovedReport")
+  sampleConfirmations SampleConfirmation[] @relation("SampleConfirmationMaterial")
   id                      String               @id @default(cuid())
   projectId               String
   entityType              AttachmentTargetType @map("targetType")

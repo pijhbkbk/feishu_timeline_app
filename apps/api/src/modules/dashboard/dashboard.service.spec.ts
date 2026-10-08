@@ -18,7 +18,7 @@ function createActor(): AuthenticatedUser {
     departmentId: null,
     departmentName: null,
     isSystemAdmin: false,
-    authSource: 'mock',
+    teamAccessApproved: true, authSource: 'local',
     roleCodes: ['project_manager'],
     permissionCodes: ['project.read'],
   };

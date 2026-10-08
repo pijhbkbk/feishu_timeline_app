@@ -22,7 +22,7 @@ const actor = {
   email: null,
   departmentId: null,
   departmentName: null,
-  authSource: 'local', authVersion: 1,
+  teamAccessApproved: true, authSource: 'local', authVersion: 1,
   roleCodes: ['process_engineer'],
   permissionCodes: ['project.read', 'workflow.transition'],
   isSystemAdmin: false,

@@ -10,7 +10,7 @@ import { DevelopmentReportsService } from './development-reports.service';
 
 const actor = {
   id: 'project-manager-1',
-  authSource: 'local', authVersion: 1,
+  teamAccessApproved: true, authSource: 'local', authVersion: 1,
   roleCodes: ['project_manager'],
   permissionCodes: ['project.read', 'workflow.transition'],
   isSystemAdmin: false,

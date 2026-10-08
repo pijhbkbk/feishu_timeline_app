@@ -87,44 +87,14 @@ const nextConfig: NextConfig = {
         ? [{ source: '/api/:path*', destination: 'http://localhost:3001/api/:path*' }]
         : [];
 
-    if (process.env.NEXT_PUBLIC_UI_VERSION !== 'v2') {
-      return developmentApiProxy;
-    }
-
-    return {
-      beforeFiles: [
-        ...developmentApiProxy,
-        { source: '/dashboard', destination: '/v2/dashboard' },
-        { source: '/projects', destination: '/v2/projects' },
-        {
-          source: '/projects/:projectId/actions/:action',
-          destination: '/v2/projects/:projectId/actions/:action',
-        },
-        {
-          source: '/projects/:projectId/retrospective',
-          destination: '/v2/projects/:projectId/retrospective',
-        },
-        {
-          source: '/projects/:projectId',
-          destination: '/v2/projects/:projectId',
-        },
-        { source: '/tasks', destination: '/v2/tasks' },
-        { source: '/materials', destination: '/v2/materials' },
-        {
-          source: '/admin/audit-logs',
-          destination: '/v2/admin/audit-logs',
-        },
-        {
-          source: '/admin/color-database/:colorId',
-          destination: '/v2/admin/color-database/:colorId',
-        },
-        {
-          source: '/admin/:section',
-          destination: '/v2/admin/:section',
-        },
-        { source: '/admin', destination: '/v2/admin' },
-      ],
-    };
+    // The formal routes have one implementation regardless of legacy build flags.
+    return developmentApiProxy;
+  },
+  async redirects() {
+    return [
+      { source: '/v2/:path*', destination: '/:path*', permanent: false },
+      { source: '/projects/flow-map', destination: '/dashboard', permanent: false },
+    ];
   },
 };
 

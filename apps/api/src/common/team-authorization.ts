@@ -1,9 +1,9 @@
+import { assertApprovedTeamMember, isApprovedTeamMember, TEAM_BUSINESS_PERMISSIONS } from './team-membership';
 import { ConflictException, ForbiddenException } from '@nestjs/common';
 import { Prisma, type WorkflowNodeCode } from '@prisma/client';
 import type { PrismaService } from '../infra/prisma/prisma.service';
 import type { AuthenticatedUser } from '../modules/auth/auth.types';
 import { NATIVE_ADMIN_LOCK } from '../modules/auth/native-auth.rules';
-import { NODE_BUSINESS_ROLES } from '../modules/personnel/personnel.constants';
 
 /** Acquire before project, assignment, task, idempotency or row locks. */
 export async function lockTeamAuthorization(tx: Prisma.TransactionClient, exclusive = false) {
@@ -18,16 +18,18 @@ export async function assertCurrentTeamActor(tx: Prisma.TransactionClient, actor
   // A separate statement after the lock sees a revocation that committed while
   // this request was waiting. The caller uses READ COMMITTED, never a stale snapshot.
   const current = await tx.user.findUnique({ where: { id: actor.id }, select: {
-    status: true, authVersion: true, isSystemAdmin: true,
+    status: true, authVersion: true, isSystemAdmin: true, teamAccessApproved: true,
     userRoles: { where: { role: { status: 'ACTIVE' } }, take: 32,
       select: { role: { select: { code: true, rolePermissions: { take: 64, select: { permissionCode: true } } } } } },
   } });
   if (!current || current.status !== 'ACTIVE' || current.authVersion !== actor.authVersion ||
-      current.isSystemAdmin !== actor.isSystemAdmin) {
+      current.isSystemAdmin !== actor.isSystemAdmin || Boolean(current.teamAccessApproved) !== Boolean(actor.teamAccessApproved)) {
     throw new ForbiddenException('登录或人员授权已变化，请重新登录。');
   }
+  assertApprovedTeamMember({ ...actor, teamAccessApproved: current.teamAccessApproved });
   const roles = new Set(current.userRoles.map(row => row.role.code));
   const permissions = new Set(current.userRoles.flatMap(row => row.role.rolePermissions.map(item => item.permissionCode)));
+  if (isApprovedTeamMember(actor)) for (const permission of TEAM_BUSINESS_PERMISSIONS) permissions.add(permission);
   if (actor.roleCodes.some(role => !roles.has(role)) || (actor.permissionCodes ?? []).some(permission => !permissions.has(permission))) {
     throw new ForbiddenException('角色权限已变化，请重新登录。');
   }
@@ -50,16 +52,13 @@ export function assertTeamTaskOperator(
   task: { nodeCode: WorkflowNodeCode; assigneeUserId: string | null },
   actor: AuthenticatedUser,
 ) {
-  if (!actor.roleCodes.includes(NODE_BUSINESS_ROLES[task.nodeCode])) {
-    throw new ForbiddenException('当前人员不具备此工序的业务角色。');
-  }
-  if (task.assigneeUserId !== actor.id) {
-    throw new ForbiddenException(task.assigneeUserId ? '此任务已由其他人员负责。' : '请先领取此角色的待办任务。');
-  }
+  void task;
+  assertApprovedTeamMember(actor);
 }
 
 export function canOperateTeamTask(task: { nodeCode: WorkflowNodeCode; assigneeUserId: string | null }, actor: AuthenticatedUser) {
-  return actor.roleCodes.includes(NODE_BUSINESS_ROLES[task.nodeCode]) && task.assigneeUserId === actor.id;
+  void task;
+  return isApprovedTeamMember(actor);
 }
 
 export async function assertTeamTaskById(tx: Prisma.TransactionClient, taskId: string, actor: AuthenticatedUser) {
@@ -73,9 +72,7 @@ export async function assertTeamTaskById(tx: Prisma.TransactionClient, taskId: s
 }
 
 export function teamProjectScope(actor: AuthenticatedUser): Prisma.ProjectWhereInput {
-  if (!actor.isSystemAdmin && !(actor.permissionCodes ?? []).includes('project.read')) {
-    throw new ForbiddenException('请等待管理员分配项目访问角色。');
-  }
+  assertApprovedTeamMember(actor);
   return {};
 }
 

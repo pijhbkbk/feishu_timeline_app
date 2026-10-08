@@ -16,7 +16,7 @@ const actorId = 'quality-engineer-1';
 const actor = {
   id: actorId,
   roleCodes: ['process_engineer', 'reviewer'],
-  authSource: 'local', authVersion: 1,
+  teamAccessApproved: true, authSource: 'local', authVersion: 1,
   permissionCodes: ['project.read', 'workflow.transition'],
   isSystemAdmin: false,
 } as never;
@@ -48,6 +48,7 @@ const activeTask = {
   startedAt: null,
   returnedAt: null,
   createdAt: new Date('2026-08-11T00:00:00.000Z'),
+  updatedAt: new Date('2026-08-11T00:00:00.000Z'),
 };
 
 const validCreateInput = {
@@ -61,6 +62,8 @@ const validCreateInput = {
 };
 
 const validConfirmationInput = {
+  taskId: activeTask.id, taskVersion: activeTask.updatedAt.toISOString(), idempotencyKey: 'confirm-test',
+  actualConfirmedAt: '2026-08-11', confirmationParty: '合成确认方', confirmationAttachmentId: 'attachment-1',
   sampleId: 'sample-1',
   decision: SampleConfirmationDecision.APPROVE,
   colorAssessment: '颜色符合要求',
@@ -165,7 +168,10 @@ function createService(input?: {
     const transaction = db.$transaction;
     const configured = new WeakSet<object>();
     db.$transaction = vi.fn((operation: (tx: any) => unknown, options?: unknown) => transaction((tx: Record<string, any>) => {
-      if (!configured.has(tx)) { installTeamAuthorizationFixture(tx, [actor], () => activeTask); configured.add(tx); }
+      if (!configured.has(tx)) {
+        tx.r26CommandRequest ??= { findUnique: vi.fn().mockResolvedValue(null), create: vi.fn() };
+        tx.project ??= { findUnique: vi.fn().mockResolvedValue(project) };
+        installTeamAuthorizationFixture(tx, [actor], () => activeTask); configured.add(tx); }
       return operation(tx);
     }, options));
   }
@@ -642,7 +648,7 @@ describe('SamplesService resource bounds', () => {
     expect(tx.sample.update).toHaveBeenCalledOnce();
   });
 
-  it('allows an existing confirmation upsert when both project counts are exactly 100', async () => {
+  it('creates the 100th confirmation without overwriting historical records', async () => {
     const current = sampleRecord();
     const tx = {
       $queryRaw: vi.fn(async (query: { strings: readonly string[] }) => {
@@ -652,10 +658,10 @@ describe('SamplesService resource bounds', () => {
             id: `sample-${index}`,
           }));
         }
-        return Array.from({ length: 100 }, (_, index) => ({
+        return Array.from({ length: 99 }, (_, index) => ({
           id: `confirmation-${index}`,
           workflowTaskId:
-            index === 0 ? activeTask.id : `old-task-${index}`,
+            `old-task-${index}`,
         }));
       }),
       sample: {
@@ -667,7 +673,7 @@ describe('SamplesService resource bounds', () => {
         }),
       },
       sampleConfirmation: {
-        upsert: vi.fn().mockResolvedValue({ id: 'confirmation-existing' }),
+        create: vi.fn().mockResolvedValue({ id: 'confirmation-existing' }),
       },
       attachment: {
         findFirst: vi.fn().mockResolvedValue({ id: 'attachment-1' }),
@@ -695,14 +701,14 @@ describe('SamplesService resource bounds', () => {
 
     await expect(
       service.submitConfirmation(project.id, validConfirmationInput, actor),
-    ).resolves.toEqual({ ok: true });
-    expect(tx.sampleConfirmation.upsert).toHaveBeenCalledOnce();
+    ).resolves.toEqual({ ok: true, idempotentReplay: false });
+    expect(tx.sampleConfirmation.create).toHaveBeenCalledOnce();
     expect(tx.sample.update).toHaveBeenCalledOnce();
     expect(activityLogs.createWithExecutor).toHaveBeenCalledOnce();
     expect(workflows.transitionTaskWithExecutor).toHaveBeenCalledOnce();
   });
 
-  it('rejects confirmation when the project sample sentinel is overflowed before upsert', async () => {
+  it('rejects confirmation when the project sample sentinel is overflowed before create', async () => {
     const current = sampleRecord();
     const tx = {
       $queryRaw: vi.fn(async (query: { strings: readonly string[] }) => {
@@ -718,7 +724,7 @@ describe('SamplesService resource bounds', () => {
         findFirst: vi.fn().mockResolvedValue(current),
         update: vi.fn(),
       },
-      sampleConfirmation: { upsert: vi.fn() },
+      sampleConfirmation: { create: vi.fn() },
       attachment: { findFirst: vi.fn() },
     };
     const prisma = {
@@ -741,7 +747,7 @@ describe('SamplesService resource bounds', () => {
     ).rejects.toMatchObject({
       response: { code: 'SAMPLE_RECORD_LIMIT_EXCEEDED' },
     });
-    expect(tx.sampleConfirmation.upsert).not.toHaveBeenCalled();
+    expect(tx.sampleConfirmation.create).not.toHaveBeenCalled();
     expect(tx.sample.update).not.toHaveBeenCalled();
     expect(activityLogs.createWithExecutor).not.toHaveBeenCalled();
     expect(workflows.transitionTaskWithExecutor).not.toHaveBeenCalled();
@@ -798,7 +804,7 @@ describe('SamplesService resource bounds', () => {
         findFirst: vi.fn().mockResolvedValue(current),
         update: vi.fn(),
       },
-      sampleConfirmation: { upsert: vi.fn() },
+      sampleConfirmation: { create: vi.fn() },
       attachment: { findFirst: vi.fn() },
     };
     const prisma = {
@@ -821,7 +827,7 @@ describe('SamplesService resource bounds', () => {
     ).rejects.toMatchObject({
       response: { code: 'SAMPLE_PERSISTED_ROW_OUT_OF_BOUNDS' },
     });
-    expect(tx.sampleConfirmation.upsert).not.toHaveBeenCalled();
+    expect(tx.sampleConfirmation.create).not.toHaveBeenCalled();
     expect(tx.sample.update).not.toHaveBeenCalled();
     expect(activityLogs.createWithExecutor).not.toHaveBeenCalled();
     expect(workflows.transitionTaskWithExecutor).not.toHaveBeenCalled();
@@ -1245,7 +1251,7 @@ describe('SamplesService resource bounds', () => {
         findFirst: vi.fn().mockResolvedValue(sampleRecord()),
         update: vi.fn(),
       },
-      sampleConfirmation: { upsert: vi.fn() },
+      sampleConfirmation: { create: vi.fn() },
       attachment: { findFirst: vi.fn() },
     };
     const prisma = {
@@ -1277,10 +1283,10 @@ describe('SamplesService resource bounds', () => {
     expect(rawQuery.mock.calls[0]?.[0]?.strings.join('')).toContain('LIMIT 101');
     expect(rawQuery.mock.calls[1]?.[0]?.strings.join('')).toContain('LIMIT 101');
     expect(tx.attachment.findFirst).not.toHaveBeenCalled();
-    expect(tx.sampleConfirmation.upsert).not.toHaveBeenCalled();
+    expect(tx.sampleConfirmation.create).not.toHaveBeenCalled();
   });
 
-  it('checks approval image existence with a project-scoped CLEAN findFirst instead of loading history', async () => {
+  it('checks confirmation material with exact project/task/purpose CLEAN lookup instead of loading history', async () => {
     const attachmentFindFirst = vi.fn().mockResolvedValue({ id: 'attachment-1' });
     const listTargetAttachments = vi.fn().mockRejectedValue(
       new Error('history query must not run'),
@@ -1297,7 +1303,7 @@ describe('SamplesService resource bounds', () => {
         ),
       },
       sampleConfirmation: {
-        upsert: vi.fn().mockResolvedValue({ id: 'confirmation-1' }),
+        create: vi.fn().mockResolvedValue({ id: 'confirmation-1' }),
       },
       attachment: { findFirst: attachmentFindFirst },
     };
@@ -1320,16 +1326,17 @@ describe('SamplesService resource bounds', () => {
 
     await expect(
       service.submitConfirmation(project.id, validConfirmationInput, actor),
-    ).resolves.toEqual({ ok: true });
+    ).resolves.toEqual({ ok: true, idempotentReplay: false });
     expect(attachmentFindFirst).toHaveBeenCalledWith({
       where: {
+        id: validConfirmationInput.confirmationAttachmentId,
         projectId: project.id,
-        entityType: AttachmentTargetType.SAMPLE,
-        entityId: 'sample-1',
+        entityType: AttachmentTargetType.WORKFLOW_TASK,
+        entityId: activeTask.id,
+        materialType: 'sample-confirmation-proof',
         isDeleted: false,
         scanStatus: AttachmentScanStatus.CLEAN,
       },
-      select: { id: true },
     });
     expect(listTargetAttachments).not.toHaveBeenCalled();
   });

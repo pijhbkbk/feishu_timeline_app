@@ -1,3 +1,4 @@
+import { assertApprovedTeamMember } from '../../common/team-membership';
 import { assertTeamTaskById, withProjectWrite } from '../../common/team-authorization';
 import {
   BadRequestException,
@@ -34,7 +35,6 @@ import {
   getSchedulePlanCompletionIssue,
   getSchedulePlanNodeCode,
   getSchedulePlanStageIssue,
-  SCHEDULE_PLAN_MANAGEMENT_ROLE_CODES,
 } from './production-plans.rules';
 
 type ProductionPlansDbClient = Prisma.TransactionClient | PrismaService;
@@ -507,21 +507,7 @@ export class ProductionPlansService {
   }
 
   private assertActorCanManage(actor: AuthenticatedUser) {
-    if (actor.isSystemAdmin) {
-      return;
-    }
-
-    if (
-      actor.roleCodes.some((roleCode) =>
-        SCHEDULE_PLAN_MANAGEMENT_ROLE_CODES.includes(
-          roleCode as (typeof SCHEDULE_PLAN_MANAGEMENT_ROLE_CODES)[number],
-        ),
-      )
-    ) {
-      return;
-    }
-
-    throw new BadRequestException('当前用户没有排产计划权限。');
+    assertApprovedTeamMember(actor);
   }
 
   private async getProjectOrThrow(db: ProductionPlansDbClient, projectId: string) {

@@ -13,12 +13,14 @@ import { SamplesService } from './samples.service';
 
 const actor = {
   id: 'process-member',
-  authSource: 'local', authVersion: 1,
+  teamAccessApproved: true, authSource: 'local', authVersion: 1,
   roleCodes: ['process_engineer'],
   permissionCodes: ['project.read', 'workflow.transition', 'attachment.manage'],
   isSystemAdmin: false,
 } as never;
-const reviewer = { id: 'reviewer-member', authSource: 'local', authVersion: 1, roleCodes: ['reviewer'], permissionCodes: ['project.read', 'workflow.transition'], isSystemAdmin: false } as never;
+const reviewer = { id: 'reviewer-member', teamAccessApproved: true, authSource: 'local', authVersion: 1, roleCodes: ['reviewer'], permissionCodes: ['project.read', 'workflow.transition'], isSystemAdmin: false } as never;
+
+const confirmationFacts = { taskId: 'sample-task-1', taskVersion: '2026-08-11T00:00:00.000Z', idempotencyKey: 'confirmation-test', actualConfirmedAt: '2026-08-11', confirmationParty: '合成确认方', confirmationAttachmentId: 'confirmation-file' };
 
 const imageFile = {
   originalname: 'sample.png',
@@ -63,6 +65,7 @@ function activeDevelopmentTask() {
     nodeCode: WorkflowNodeCode.PAINT_DEVELOPMENT,
     status: WorkflowTaskStatus.IN_PROGRESS, assigneeUserId: 'process-member',
     isActive: true,
+    updatedAt: new Date('2026-08-11T00:00:00.000Z'),
   };
 }
 
@@ -89,6 +92,7 @@ type ConcurrentTaskRecord = Omit<
 function createHarness() {
   const tx = {
     $queryRaw: vi.fn().mockResolvedValue([{ id: 'locked' }]),
+    r26CommandRequest: { findUnique: vi.fn().mockResolvedValue(null), create: vi.fn() },
     project: {
       findUnique: vi.fn().mockResolvedValue({
         id: 'project-1',
@@ -322,8 +326,13 @@ function createConcurrentSampleWriteHarness() {
               },
             ),
           },
+          r26CommandRequest: { findUnique: vi.fn().mockResolvedValue(null), create: vi.fn() },
+          attachment: { findFirst: vi.fn(async () => {
+            if (!imageCheckPaused) { imageCheckPaused = true; submitReachedImageCheck.resolve(); await releaseSubmitImageCheck.promise; }
+            return { id: confirmationFacts.confirmationAttachmentId };
+          }) },
           sampleConfirmation: {
-            upsert: vi.fn().mockResolvedValue({ id: 'confirmation-1' }),
+            create: vi.fn().mockResolvedValue({ id: 'confirmation-1' }),
           },
         };
         installTeamAuthorizationFixture(tx, [actor, reviewer], () => activeTask);
@@ -405,14 +414,14 @@ function createConcurrentSampleWriteHarness() {
 
 describe('SamplesService write-state integrity', () => {
   it.each([
-    ['wrong role for development', 'create', 'quality-member', ['quality_engineer'], 'process-member'],
+    ['unapproved legacy development role', 'create', 'quality-member', ['quality_engineer'], 'process-member'],
     ['unclaimed development', 'create', 'process-member', ['process_engineer'], null],
-    ['another development owner', 'create', 'process-member', ['process_engineer'], 'other-member'],
-    ['wrong role for confirmation', 'confirm', 'process-member', ['process_engineer'], 'process-member'],
-    ['another confirmation owner', 'confirm', 'reviewer-member', ['reviewer'], 'other-reviewer'],
+    ['unapproved development account', 'create', 'process-member', ['process_engineer'], 'other-member'],
+    ['unapproved legacy confirmation role', 'confirm', 'process-member', ['process_engineer'], 'process-member'],
+    ['unapproved confirmation account', 'confirm', 'reviewer-member', ['reviewer'], 'other-reviewer'],
   ] as const)('rejects %s through the real task authorization helper', async (_label, operation, id, roleCodes, assigneeUserId) => {
     const { service, tx, attachments } = createHarness();
-    const caller = { id, roleCodes: [...roleCodes], authSource: 'local' as const, authVersion: 1,
+    const caller = { teamAccessApproved: false, id, roleCodes: [...roleCodes], authSource: 'local' as const, authVersion: 1,
       isSystemAdmin: false, permissionCodes: ['project.read', 'workflow.transition'] };
     const task = { ...activeDevelopmentTask(), assigneeUserId,
       nodeCode: operation === 'create' ? WorkflowNodeCode.PAINT_DEVELOPMENT : WorkflowNodeCode.SAMPLE_COLOR_CONFIRMATION };
@@ -421,7 +430,7 @@ describe('SamplesService write-state integrity', () => {
     installTeamAuthorizationFixture(tx, [caller], () => task);
     const write = operation === 'create'
       ? service.createSample('project-1', { sampleNo: 'S-001', sampleName: '样板', sampleType: 'PANEL', createNewVersion: false }, caller as never)
-      : service.submitConfirmation('project-1', { sampleId: 'sample-1', decision: SampleConfirmationDecision.APPROVE }, caller as never);
+      : service.submitConfirmation('project-1', { ...confirmationFacts, sampleId: 'sample-1', decision: SampleConfirmationDecision.APPROVE }, caller as never);
     await expect(write).rejects.toMatchObject({ status: 403 });
     expect(tx.sample.create).not.toHaveBeenCalled();
     expect(tx.sample.update).not.toHaveBeenCalled();
@@ -472,7 +481,7 @@ describe('SamplesService write-state integrity', () => {
         },
         actor,
       ),
-    ).resolves.toEqual({});
+    ).resolves.toEqual({ idempotentReplay: false });
 
     expect(tx.sample.updateMany).toHaveBeenCalledWith(expect.objectContaining({ data: { isCurrent: false } }));
     expect(tx.sample.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ versionNo: 2, status: SampleStatus.DRAFT }) }));
@@ -625,6 +634,7 @@ describe('SamplesService write-state integrity', () => {
     const confirmation = harness.service.submitConfirmation(
       'project-1',
       {
+        ...confirmationFacts,
         sampleId: 'sample-1',
         decision: SampleConfirmationDecision.APPROVE,
         comment: '确认当前样板',
@@ -678,6 +688,7 @@ describe('SamplesService write-state integrity', () => {
     const confirmation = harness.service.submitConfirmation(
       'project-1',
       {
+        ...confirmationFacts,
         sampleId: 'sample-1',
         decision: SampleConfirmationDecision.APPROVE,
         comment: '确认当前样板',

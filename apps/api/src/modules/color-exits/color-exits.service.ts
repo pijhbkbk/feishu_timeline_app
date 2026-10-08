@@ -1,3 +1,4 @@
+import { assertApprovedTeamMember } from '../../common/team-membership';
 import { assertTeamTaskById, withProjectWrite } from '../../common/team-authorization';
 import {
   BadRequestException,
@@ -29,7 +30,6 @@ import {
 } from '../workflows/workflow-node.constants';
 import { WorkflowsService } from '../workflows/workflows.service';
 import {
-  COLOR_EXIT_MANAGEMENT_ROLE_CODES,
   getColorExitCompletionIssue,
   getColorExitSystemSuggestion,
   getColorExitStageIssue,
@@ -556,21 +556,7 @@ export class ColorExitsService {
   }
 
   private assertActorCanManage(actor: AuthenticatedUser) {
-    if (actor.isSystemAdmin) {
-      return;
-    }
-
-    if (
-      actor.roleCodes.some((roleCode) =>
-        COLOR_EXIT_MANAGEMENT_ROLE_CODES.includes(
-          roleCode as (typeof COLOR_EXIT_MANAGEMENT_ROLE_CODES)[number],
-        ),
-      )
-    ) {
-      return;
-    }
-
-    throw new BadRequestException('当前用户没有颜色退出权限。');
+    assertApprovedTeamMember(actor);
   }
 
   private async getProjectOrThrow(db: ColorExitsDbClient, projectId: string) {

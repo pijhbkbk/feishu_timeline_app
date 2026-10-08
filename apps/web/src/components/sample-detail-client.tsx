@@ -270,10 +270,10 @@ export function SampleDetailClient({
                   <strong>
                     {confirmation.sampleNo} / V{confirmation.sampleVersionNo}
                   </strong>
-                  <span>{formatDate(confirmation.confirmedAt)}</span>
+                  <span>{formatDate(confirmation.actualConfirmedAt ?? confirmation.confirmedAt)}</span>
                 </div>
                 <p className="timeline-comment">
-                  结果: {getSampleConfirmationDecisionLabel(confirmation.decision)} / 确认人:{' '}
+                  结果: {getSampleConfirmationDecisionLabel(confirmation.decision)} / 确认方: {confirmation.confirmationParty ?? '—'} / 录入人:{' '}
                   {confirmation.confirmedByName ?? '未知'}
                 </p>
                 <p className="muted">

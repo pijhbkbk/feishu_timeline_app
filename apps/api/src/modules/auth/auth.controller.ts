@@ -1,3 +1,4 @@
+import { AccountSelfService } from '../../common/team-membership';
 import {
   Body,
   Controller,
@@ -70,6 +71,7 @@ export class AuthController {
   }
 
   @Public()
+  @AccountSelfService()
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   async logout(
@@ -84,6 +86,7 @@ export class AuthController {
     return { success: true };
   }
 
+  @AccountSelfService()
   @Get('me')
   getMe(@CurrentUser() user: AuthenticatedUser) {
     return user;

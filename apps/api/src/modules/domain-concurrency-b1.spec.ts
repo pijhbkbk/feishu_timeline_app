@@ -66,6 +66,7 @@ type DomainCase = {
   actor: {
     authVersion: number;
     authSource: 'local';
+    teamAccessApproved: boolean;
     id: string;
     roleCodes: string[];
     permissionCodes: string[];
@@ -470,7 +471,7 @@ const domainCases: DomainCase[] = [
     cancelAuditAction: 'PAINT_PROCUREMENT_CANCELLED',
     actor: {
       authVersion: 1,
-      authSource: 'local',
+      teamAccessApproved: true, authSource: 'local',
       id: 'purchaser-1',
       roleCodes: ['purchaser'],
       permissionCodes: ['project.read', 'workflow.transition'],
@@ -561,7 +562,7 @@ const domainCases: DomainCase[] = [
     cancelAuditAction: 'DEVELOPMENT_FEE_CANCELLED',
     actor: {
       authVersion: 1,
-      authSource: 'local',
+      teamAccessApproved: true, authSource: 'local',
       id: 'finance-1',
       roleCodes: ['finance'],
       permissionCodes: ['project.read', 'workflow.transition'],
@@ -656,7 +657,7 @@ const domainCases: DomainCase[] = [
     cancelAuditAction: 'SCHEDULE_PLAN_CANCELLED',
     actor: {
       authVersion: 1,
-      authSource: 'local',
+      teamAccessApproved: true, authSource: 'local',
       id: 'process-1',
       roleCodes: ['production_operator'],
       permissionCodes: ['project.read', 'workflow.transition'],

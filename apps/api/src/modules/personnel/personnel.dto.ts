@@ -1,5 +1,5 @@
 import { Transform } from 'class-transformer';
-import { ArrayMaxSize, ArrayUnique, IsArray, IsIn, IsISO8601, IsOptional, IsString, IsUUID, MaxLength, ValidateIf } from 'class-validator';
+import { IsBoolean, ArrayMaxSize, ArrayUnique, IsArray, IsIn, IsISO8601, IsOptional, IsString, IsUUID, MaxLength, ValidateIf } from 'class-validator';
 import { BUSINESS_ROLE_CODES } from './personnel.constants';
 
 export class PersonnelQueryDto {
@@ -10,6 +10,7 @@ export class PersonnelQueryDto {
 }
 
 export class PersonnelChangeDto {
+  @ValidateIf((_object, value) => value !== undefined) @Transform(({ obj, key }) => obj[key]) @IsBoolean() teamAccessApproved?: boolean;
   @IsISO8601({ strict: true }) @MaxLength(32) expectedVersion!: string;
   @IsUUID('4') requestId!: string;
   @ValidateIf((_object, value) => value !== undefined) @IsArray() @ArrayMaxSize(7) @ArrayUnique()

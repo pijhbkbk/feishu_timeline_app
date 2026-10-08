@@ -13,7 +13,7 @@ import { ReviewsService } from './reviews.service';
 
 const actor = {
   id: 'reviewer-1',
-  authSource: 'local', authVersion: 1,
+  teamAccessApproved: true, authSource: 'local', authVersion: 1,
   roleCodes: ['reviewer', 'quality_engineer'],
   permissionCodes: ['project.read', 'review.execute'],
   isSystemAdmin: false,

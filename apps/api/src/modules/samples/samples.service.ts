@@ -1,4 +1,6 @@
-import { isReworkTask, ancestorEvidenceIds } from '../../common/workflow-evidence';
+import { isFutureBusinessDate } from '../../common/business-date';
+import { createHash } from 'node:crypto';
+import { isReworkTask, ancestorEvidenceIds, readEvidenceTask, taskEvidenceIds } from '../../common/workflow-evidence';
 import { assertTeamTaskById, withProjectWrite } from '../../common/team-authorization';
 import {
   BadRequestException,
@@ -41,6 +43,9 @@ type UploadedBinaryFile = {
 };
 
 type SampleWriteInput = {
+  taskId?: string;
+  taskVersion?: string;
+  idempotencyKey?: string;
   sampleNo: string;
   sampleName: string;
   sampleType: SampleType;
@@ -59,6 +64,12 @@ type SampleUpdateInput = {
 };
 
 type SampleConfirmationInput = {
+  taskId: string;
+  taskVersion: string;
+  idempotencyKey: string;
+  actualConfirmedAt: Date;
+  confirmationParty: string;
+  confirmationAttachmentId: string;
   sampleId: string;
   decision: SampleConfirmationDecision;
   colorAssessment: string | null;
@@ -120,9 +131,26 @@ export class SamplesService {
     private readonly projectAccessService: ProjectAccessService,
   ) {}
 
-  async getWorkspace(projectId: string, actor: AuthenticatedUser) {
+  async getWorkspace(projectId: string, actor: AuthenticatedUser, taskId?: string) {
     await this.assertProjectAccess(projectId, actor, 'project.read');
-    return this.buildWorkspace(this.prisma, projectId);
+    if (taskId === undefined) return this.buildWorkspace(this.prisma, projectId);
+    this.assertSampleId(taskId, '工序');
+    return this.prisma.$transaction(async tx => {
+      const task = await readEvidenceTask(tx, projectId, taskId);
+      if (!task || !(['PAINT_DEVELOPMENT', 'SAMPLE_COLOR_CONFIRMATION'] as WorkflowNodeCode[]).includes(task.nodeCode)) throw new NotFoundException('本项目样板工序不存在。');
+      const evidence = task.nodeCode === 'PAINT_DEVELOPMENT'
+        ? await taskEvidenceIds(tx, projectId, task.id)
+        : await ancestorEvidenceIds(tx, task, WorkflowNodeCode.PAINT_DEVELOPMENT);
+      const confirmations = await tx.sampleConfirmation.findMany({ where: { projectId, workflowTaskId: task.id }, include: { sample: true, confirmedBy: true }, orderBy: [{ confirmedAt: 'desc' }, { id: 'desc' }], take: SAMPLE_CONFIRMATION_RECORD_LIMIT + 1 });
+      this.assertSampleConfirmationCapacity(confirmations);
+      const ids = [...new Set([...evidence, ...confirmations.map(item => item.sampleId)])];
+      const samples = await tx.sample.findMany({ where: { projectId, id: { in: ids } }, orderBy: [{ createdAt: 'asc' }, { id: 'asc' }], take: SAMPLE_RECORD_LIMIT + 1 });
+      this.assertSampleRecordCapacity(samples, false); this.assertPersistedSampleRows(samples);
+      const workspace = await this.buildWorkspace(tx, projectId);
+      return { ...workspace, taskFacts: { taskId: task.id, nodeCode: task.nodeCode,
+        samples: samples.map(sample => ({ id: sample.id, sampleNo: sample.sampleNo, sampleName: sample.sampleName, versionNo: sample.versionNo, isCurrent: sample.isCurrent, sampleType: sample.sampleType, status: sample.status, location: sample.location, remark: sample.remark, producedAt: sample.producedAt?.toISOString() ?? null, confirmedAt: sample.confirmedAt?.toISOString() ?? null, createdAt: sample.createdAt.toISOString(), updatedAt: sample.updatedAt.toISOString() })),
+        confirmations: confirmations.map(item => this.toConfirmationSummary(item)) } };
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead });
   }
 
   async getSampleDetail(
@@ -141,9 +169,20 @@ export class SamplesService {
   ) {
     await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     const input = this.parseSampleWriteInput(rawInput);
+    const key = input.idempotencyKey ? `sample-create:${actor.id}:${input.idempotencyKey}` : null;
+    const hash = createHash('sha256').update(JSON.stringify({ projectId, ...input })).digest('hex');
 
     return withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
       await this.getProjectOrThrow(tx, projectId);
+      if (key) {
+        const previous = await tx.r26CommandRequest.findUnique({ where: { idempotencyKey: key } });
+        if (previous) {
+          if (previous.actorUserId !== actor.id || previous.projectId !== projectId || previous.requestHash !== hash) throw new ConflictException('请求编号已用于其他样板内容。');
+          return { ...(previous.result as Prisma.JsonObject), idempotentReplay: true };
+        }
+        const task = await tx.workflowTask.findFirst({ where: { id: input.taskId!, projectId, nodeCode: 'PAINT_DEVELOPMENT', isActive: true } });
+        if (!task || task.updatedAt.toISOString() !== input.taskVersion) throw new ConflictException('涂料开发工序已变化，请刷新后重试。');
+      }
       let lockedCurrentVersionId: string | null = null;
       if (input.createNewVersion) {
         const currentVersionCandidate = await tx.sample.findFirst({
@@ -287,7 +326,9 @@ export class SamplesService {
         afterData: this.toSampleAuditSnapshot(createdSample),
       });
 
-      return this.buildSampleDetail(tx, projectId, createdSample.id);
+      const result = await this.buildSampleDetail(tx, projectId, createdSample.id);
+      if (key) await tx.r26CommandRequest.create({ data: { projectId, actorUserId: actor.id, idempotencyKey: key, action: 'SAMPLE_CREATED', requestHash: hash, result: result as unknown as Prisma.InputJsonValue } });
+      return { ...result, idempotentReplay: false };
     });
   }
 
@@ -439,8 +480,15 @@ export class SamplesService {
   ) {
     await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     const input = this.parseConfirmationInput(rawInput);
+    const commandKey = `sample-confirmation:${actor.id}:${input.idempotencyKey}`;
+    const requestHash = createHash('sha256').update(JSON.stringify({ projectId, ...input })).digest('hex');
 
     return withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
+      const previous = await tx.r26CommandRequest.findUnique({ where: { idempotencyKey: commandKey } });
+      if (previous) {
+        if (previous.actorUserId !== actor.id || previous.projectId !== projectId || previous.requestHash !== requestHash) throw new ConflictException('请求编号已用于其他确认内容。');
+        return { ...(previous.result as Prisma.JsonObject), idempotentReplay: true };
+      }
       if (!(await this.lockSampleRow(tx, projectId, input.sampleId))) {
         throw new NotFoundException('样板不存在或已被删除。');
       }
@@ -451,31 +499,19 @@ export class SamplesService {
         tx, actor,
         projectId,
       );
-      if (input.decision === SampleConfirmationDecision.APPROVE && isReworkTask(activeTask) &&
+      if (activeTask.id !== input.taskId || activeTask.updatedAt.toISOString() !== input.taskVersion) throw new ConflictException('工序版本已变化，请刷新后重试；已填写内容仍保留。');
+      await this.assertProjectSampleRecordBounds(tx, projectId, activeTask.id);
+      const confirmationMaterial = await tx.attachment.findFirst({ where: { id: input.confirmationAttachmentId, projectId, entityType: 'WORKFLOW_TASK', entityId: activeTask.id, isDeleted: false, scanStatus: 'CLEAN', materialType: 'sample-confirmation-proof' } });
+      if (!confirmationMaterial) throw new BadRequestException('请先上传本轮确认单并等待安全扫描通过。');
+      const project = await this.getProjectOrThrow(tx, projectId);
+      if ((project.requiresApprovedReport || isReworkTask(activeTask)) &&
           !(await ancestorEvidenceIds(tx, activeTask, WorkflowNodeCode.PAINT_DEVELOPMENT)).includes(sample.id)) {
         throw new BadRequestException('旧配方样板需复核，请选择本轮登记的样板，原签署记录保留。');
       }
-      await this.assertProjectSampleRecordBounds(tx, projectId, activeTask.id);
-
-      const hasSampleImage = await this.hasCleanSampleImage(
-        tx,
-        projectId,
-        sample.id,
-      );
-
-      if (
-        input.decision === SampleConfirmationDecision.APPROVE &&
-        !hasSampleImage
-      ) {
-        throw new BadRequestException('样板确认通过前必须至少上传一张样板图片。');
-      }
 
       const now = new Date();
-      const confirmation = await tx.sampleConfirmation.upsert({
-        where: {
-          workflowTaskId: activeTask.id,
-        },
-        create: {
+      const confirmation = await tx.sampleConfirmation.create({
+        data: {
           projectId,
           sampleId: sample.id,
           workflowInstanceId: activeTask.workflowInstanceId,
@@ -486,15 +522,9 @@ export class SamplesService {
           comment: input.comment,
           confirmedById: actor.id,
           confirmedAt: now,
-        },
-        update: {
-          sampleId: sample.id,
-          decision: input.decision,
-          colorAssessment: input.colorAssessment,
-          appearanceAssessment: input.appearanceAssessment,
-          comment: input.comment,
-          confirmedById: actor.id,
-          confirmedAt: now,
+          actualConfirmedAt: input.actualConfirmedAt,
+          confirmationParty: input.confirmationParty,
+          confirmationAttachmentId: input.confirmationAttachmentId,
         },
       });
 
@@ -523,6 +553,9 @@ export class SamplesService {
         afterData: {
           confirmationId: confirmation.id,
           workflowTaskId: activeTask.id,
+          actualConfirmedAt: input.actualConfirmedAt.toISOString(),
+          confirmationParty: input.confirmationParty,
+          confirmationAttachmentId: input.confirmationAttachmentId,
           decision: input.decision,
           sampleStatus: nextStatus,
         },
@@ -544,7 +577,9 @@ export class SamplesService {
         },
       );
 
-      return this.buildWorkspace(tx, projectId);
+      const result = await this.buildWorkspace(tx, projectId);
+      await tx.r26CommandRequest.create({ data: { projectId, actorUserId: actor.id, idempotencyKey: commandKey, action: 'SAMPLE_CONFIRMATION_SUBMITTED', requestHash, result: result as unknown as Prisma.InputJsonValue } });
+      return { ...result, idempotentReplay: false };
     });
   }
 
@@ -811,6 +846,7 @@ export class SamplesService {
         name: true,
         currentNodeCode: true,
         plannedEndDate: true,
+        requiresApprovedReport: true,
       },
     }).then((project) => {
       if (!project) {
@@ -1179,6 +1215,7 @@ export class SamplesService {
     return {
       id: task.id,
       taskNo: task.taskNo,
+      taskVersion: task.updatedAt.toISOString(),
       nodeCode: task.nodeCode,
       nodeName: task.nodeName,
       status: task.status,
@@ -1210,11 +1247,16 @@ export class SamplesService {
       sampleNo: confirmation.sample.sampleNo,
       sampleName: confirmation.sample.sampleName,
       sampleVersionNo: confirmation.sample.versionNo,
+      taskId: confirmation.workflowTaskId,
       decision: confirmation.decision,
       colorAssessment: confirmation.colorAssessment,
       appearanceAssessment: confirmation.appearanceAssessment,
       comment: confirmation.comment,
       confirmedByName: confirmation.confirmedBy?.name ?? null,
+      confirmedById: confirmation.confirmedById,
+      actualConfirmedAt: confirmation.actualConfirmedAt?.toISOString() ?? null,
+      confirmationParty: confirmation.confirmationParty,
+      confirmationAttachmentId: confirmation.confirmationAttachmentId,
       confirmedAt: confirmation.confirmedAt.toISOString(),
       createdAt: confirmation.createdAt.toISOString(),
     };
@@ -1239,7 +1281,16 @@ export class SamplesService {
       this.assertSampleText(remark, '备注', SAMPLE_REMARK_MAX_CHARS);
     }
 
+    const taskId = this.parseOptionalString(input.taskId);
+    const taskVersion = this.parseOptionalString(input.taskVersion);
+    const idempotencyKey = this.parseOptionalString(input.idempotencyKey);
+    if ((taskId || taskVersion || idempotencyKey) && (!taskId || !taskVersion || !idempotencyKey)) throw new BadRequestException('工序、版本与请求编号必须一起提交。');
+    if (taskId) this.assertSampleId(taskId, '工序');
+    if (idempotencyKey && !/^[A-Za-z0-9._:-]{1,128}$/.test(idempotencyKey)) throw new BadRequestException('请求编号不合法。');
+    if (taskVersion && (!/^\d{4}-\d{2}-\d{2}T/.test(taskVersion) || !Number.isFinite(new Date(taskVersion).getTime()) || new Date(taskVersion).toISOString() !== taskVersion)) throw new BadRequestException('工序版本不合法。');
+    if (producedAt && isFutureBusinessDate(input.producedAt as string, producedAt)) throw new BadRequestException('实际制作日期不能晚于今天。');
     const normalized = {
+      ...(taskId ? { taskId, taskVersion: taskVersion!, idempotencyKey: idempotencyKey! } : {}),
       sampleNo,
       sampleName,
       sampleType:
@@ -1279,6 +1330,7 @@ export class SamplesService {
       this.assertSampleText(remark, '备注', SAMPLE_REMARK_MAX_CHARS);
     }
 
+    if (producedAt && isFutureBusinessDate(input.producedAt as string, producedAt)) throw new BadRequestException('实际制作日期不能晚于今天。');
     const normalized = {
       ...(sampleName ? { sampleName } : {}),
       ...(sampleType ? { sampleType } : {}),
@@ -1332,7 +1384,21 @@ export class SamplesService {
       );
     }
 
+    const taskId = this.parseRequiredString(input.taskId, 'taskId');
+    const taskVersion = this.parseRequiredString(input.taskVersion, 'taskVersion');
+    const idempotencyKey = this.parseRequiredString(input.idempotencyKey, 'idempotencyKey');
+    const actualDate = this.parseRequiredString(input.actualConfirmedAt, 'actualConfirmedAt');
+    const confirmationParty = this.parseRequiredString(input.confirmationParty, 'confirmationParty');
+    const confirmationAttachmentId = this.parseRequiredString(input.confirmationAttachmentId, 'confirmationAttachmentId');
+    this.assertSampleId(taskId, '工序'); this.assertSampleId(confirmationAttachmentId, '确认单');
+    if (!/^[A-Za-z0-9._:-]{1,128}$/.test(idempotencyKey)) throw new BadRequestException('请求编号不合法。');
+    const versionDate = new Date(taskVersion);
+    const actualConfirmedAt = new Date(actualDate);
+    if (!/^\d{4}-\d{2}-\d{2}T/.test(taskVersion) || !Number.isFinite(versionDate.getTime()) || versionDate.toISOString() !== taskVersion) throw new BadRequestException('工序版本不合法。');
+    if (!/^\d{4}-\d{2}-\d{2}(T.*)?$/.test(actualDate) || !Number.isFinite(actualConfirmedAt.getTime()) || actualConfirmedAt.toISOString().slice(0, 10) !== actualDate.slice(0, 10) || isFutureBusinessDate(actualDate, actualConfirmedAt)) throw new BadRequestException('实际确认日期不合法或晚于今天。');
+    this.assertSampleText(confirmationParty, '实际确认方', 200);
     const normalized = {
+      taskId, taskVersion, idempotencyKey, actualConfirmedAt, confirmationParty, confirmationAttachmentId,
       sampleId,
       decision,
       colorAssessment,
@@ -1571,7 +1637,7 @@ export class SamplesService {
 
     const value = new Date(rawValue);
 
-    if (Number.isNaN(value.getTime())) {
+    if (!/^\d{4}-\d{2}-\d{2}(T.*)?$/.test(rawValue) || Number.isNaN(value.getTime()) || value.toISOString().slice(0, 10) !== rawValue.slice(0, 10)) {
       throw new BadRequestException('日期格式不正确。');
     }
 

@@ -1,3 +1,4 @@
+import { ApprovedReportDto, ApprovedReportService } from './approved-report.service';
 import { Body, Controller, Get, Headers, Param, Patch, Post, Put, Query } from '@nestjs/common';
 import { ApiCookieAuth, ApiHeader, ApiOperation, ApiTags } from '@nestjs/swagger';
 
@@ -15,7 +16,13 @@ import { ProjectsService } from './projects.service';
 @ApiCookieAuth('ft_session')
 @Controller('projects')
 export class ProjectsController {
-  constructor(private readonly projectsService: ProjectsService) {}
+  constructor(private readonly projectsService: ProjectsService, private readonly approvedReports?: ApprovedReportService) {}
+
+  @Permissions('project.write')
+  @Post(':projectId/approved-report')
+  registerApprovedReport(@Param('projectId') projectId: string, @Body() body: ApprovedReportDto, @CurrentUser() actor: AuthenticatedUser) {
+    return this.approvedReports!.register(projectId, body, actor);
+  }
 
   @Permissions('project.read')
   @ApiOperation({ summary: '获取项目列表' })

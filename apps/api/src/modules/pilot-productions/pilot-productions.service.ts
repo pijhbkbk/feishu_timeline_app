@@ -1,3 +1,4 @@
+import { assertApprovedTeamMember } from '../../common/team-membership';
 import { assertTeamTaskById, withProjectWrite } from '../../common/team-authorization';
 import {
   BadRequestException,
@@ -39,7 +40,6 @@ import {
   getTrialProductionStageIssue,
   getTrialProductionStatusAfterComplete,
   getTrialRecordCompletionIssue,
-  PILOT_PRODUCTION_MANAGEMENT_ROLE_CODES,
 } from './pilot-productions.rules';
 
 type PilotProductionsDbClient = Prisma.TransactionClient | PrismaService;
@@ -1050,21 +1050,7 @@ export class PilotProductionsService {
   }
 
   private assertActorCanManage(actor: AuthenticatedUser) {
-    if (actor.isSystemAdmin) {
-      return;
-    }
-
-    if (
-      actor.roleCodes.some((roleCode) =>
-        PILOT_PRODUCTION_MANAGEMENT_ROLE_CODES.includes(
-          roleCode as (typeof PILOT_PRODUCTION_MANAGEMENT_ROLE_CODES)[number],
-        ),
-      )
-    ) {
-      return;
-    }
-
-    throw new BadRequestException('当前用户没有首台生产计划/样车试制管理权限。');
+    assertApprovedTeamMember(actor);
   }
 
   private async getProjectOrThrow(db: PilotProductionsDbClient, projectId: string) {

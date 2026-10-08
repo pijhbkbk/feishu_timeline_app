@@ -1,3 +1,4 @@
+import { assertApprovedTeamMember } from '../../common/team-membership';
 import { assertTeamTaskById, withProjectWrite } from '../../common/team-authorization';
 import {
   BadRequestException,
@@ -28,7 +29,6 @@ import {
 import { WorkflowsService } from '../workflows/workflows.service';
 import {
   canEditDevelopmentFee,
-  FEE_MANAGEMENT_ROLE_CODES,
   getDevelopmentFeeAmountIssue,
   getDevelopmentFeeCompletionIssue,
   getDevelopmentFeeNodeCode,
@@ -554,21 +554,7 @@ export class FeesService {
   }
 
   private assertActorCanManage(actor: AuthenticatedUser) {
-    if (actor.isSystemAdmin) {
-      return;
-    }
-
-    if (
-      actor.roleCodes.some((roleCode) =>
-        FEE_MANAGEMENT_ROLE_CODES.includes(
-          roleCode as (typeof FEE_MANAGEMENT_ROLE_CODES)[number],
-        ),
-      )
-    ) {
-      return;
-    }
-
-    throw new BadRequestException('当前用户没有颜色开发收费权限。');
+    assertApprovedTeamMember(actor);
   }
 
   private async getProjectOrThrow(db: FeesDbClient, projectId: string) {

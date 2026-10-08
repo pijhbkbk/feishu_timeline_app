@@ -20,7 +20,7 @@ const actor: AuthenticatedUser = {
   departmentId: 'dept-old',
   departmentName: '原部门',
   isSystemAdmin: false,
-  authSource: 'local',
+  teamAccessApproved: true, authSource: 'local',
   authVersion: 1,
   roleCodes: ['project_manager'],
   permissionCodes: ['project.write'],

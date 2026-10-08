@@ -1,6 +1,9 @@
 'use client';
 
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
+import { M1TaskCompletion } from '../m1/task-completion';
+import { nodeReturnHref } from '../m1/context';
 import React, { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useAuth } from '../../components/auth-provider';
 import { API_BASE_URL, apiRequest } from '../../lib/auth-client';
@@ -14,6 +17,8 @@ export function TaskWorkspace({ projectId, taskId }: { projectId: string; taskId
 }
 function TaskWorkForm({ projectId, taskId }: { projectId: string; taskId: string }) {
   const { user } = useAuth();
+  const search = useSearchParams();
+  const returnHref = nodeReturnHref(projectId, taskId, search.toString());
   const [data, setData] = useState<R26ProgressResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -75,11 +80,11 @@ function TaskWorkForm({ projectId, taskId }: { projectId: string; taskId: string
   if (!data) return <section className="team-workspace"><p role="alert">{error || '工作单未能加载。'}</p><button className="button" onClick={() => setRefresh(value => value + 1)}>重新加载</button></section>;
   const business = getR26BusinessRecordAction(data.task.nodeCode, projectId);
   const canUpload = data.availableActions.some(item => item.action === 'UPLOAD_MATERIAL');
-  return <section className="team-workspace task-workspace"><header className="work-heading"><div><h1>{data.task.stepName}</h1><p>{data.task.project.name} · 第 {data.task.roundNo} 轮 · {data.task.owner?.name || '待领取'}</p></div><Link href={`/projects/${encodeURIComponent(projectId)}?taskId=${encodeURIComponent(taskId)}`}>返回项目进度</Link></header>
+  return <section className="team-workspace task-workspace"><header className="work-heading"><div><h1>{data.task.stepName}</h1><p>{data.task.project.name} · 第 {data.task.roundNo} 轮 · {data.task.owner?.name || '待领取'}</p></div><Link href={returnHref}>返回来源页面</Link></header>
     {error ? <p role="alert" className="error-text">{error}</p> : null}{notice ? <p role="status" className="work-notice">{notice}</p> : null}
     {data.rework?.requiresReview ? <p role="status" className="work-notice">本轮技术结果已进入返工复核，保留原签署和材料供追溯，不能直接作为新轮次通过依据。</p> : null}
     {data.rework?.isTechnicalRework ? <p className="work-notice">请登记本轮技术记录并补齐材料。原颜色编号、采购和收费事实保留。{data.rework.supersedesTaskId ? <Link href={`/projects/${encodeURIComponent(projectId)}/tasks/${encodeURIComponent(data.rework.supersedesTaskId)}`}>查看上一轮记录</Link> : null}</p> : null}
-    <div className="work-overview">{business ? <Link className="button button-primary" href={business.href}>{business.label}</Link> : null}<Link className="button" href={`/projects/${encodeURIComponent(projectId)}?taskId=${encodeURIComponent(taskId)}`}>检查工序完成条件</Link><button className="work-link" disabled={Boolean(busy)} onClick={() => setRefresh(value => value + 1)}>刷新</button></div>
+    <div className="work-overview">{business ? <Link className="button button-primary" href={business.href}>{business.label}</Link> : null}<M1TaskCompletion task={data.task} onUpdated={() => setRefresh(value => value + 1)} /><button className="work-link" disabled={Boolean(busy)} onClick={() => setRefresh(value => value + 1)}>刷新</button></div>
     {business ? <p>{business.guidance}</p> : null}
     {data.progressSubmissionEnabled ? <form className="page-card form-grid" onSubmit={save}><h2 className="field-full">填写工作进展</h2>
       <label className="field"><span>本次状态</span><select disabled={Boolean(busy)} value={form.progressStatus} onChange={event => setForm({ ...form, progressStatus: event.target.value as R26ProgressStatus })}>{Object.entries(progressLabels).map(([key, label]) => <option value={key} key={key}>{label}</option>)}</select></label>

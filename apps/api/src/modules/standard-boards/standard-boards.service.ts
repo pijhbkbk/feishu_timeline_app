@@ -1,3 +1,4 @@
+import { assertApprovedTeamMember } from '../../common/team-membership';
 import { isReworkTask, ancestorEvidenceIds, readEvidenceTask } from '../../common/workflow-evidence';
 import { assertTeamTaskById, withProjectWrite } from '../../common/team-authorization';
 import {
@@ -1431,20 +1432,8 @@ export class StandardBoardsService {
       '操作人姓名',
       STANDARD_BOARD_PERSON_MAX_CHARS,
     );
-    if (
-      actor.isSystemAdmin ||
-      actor.roleCodes.some(
-        (roleCode) =>
-          roleCode === 'admin' ||
-          roleCode === 'project_manager' ||
-          roleCode === 'process_engineer' ||
-          roleCode === 'quality_engineer',
-      )
-    ) {
-      return;
-    }
 
-    throw new BadRequestException('当前用户没有标准板管理权限。');
+    assertApprovedTeamMember(actor);
   }
 
   private async getProjectOrThrow(db: StandardBoardsDbClient, projectId: string) {

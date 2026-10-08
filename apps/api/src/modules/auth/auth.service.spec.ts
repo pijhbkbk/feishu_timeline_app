@@ -416,7 +416,7 @@ describe('AuthService Feishu OAuth state', () => {
     const { service, response, configService } = createAuthService();
     const controller = new AuthController(service, configService as never);
     const reflector = {
-      getAllAndOverride: vi.fn().mockReturnValue(false),
+      getAllAndOverride: vi.fn((key: string) => key === 'account-self-service'),
     };
     const guard = new SessionAuthGuard(
       reflector as never,

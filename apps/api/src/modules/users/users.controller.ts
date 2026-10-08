@@ -1,3 +1,4 @@
+import { AccountSelfService } from '../../common/team-membership';
 import { Controller, Get, Query } from '@nestjs/common';
 
 import { CurrentUser } from '../auth/current-user.decorator';
@@ -11,6 +12,7 @@ import { UsersService } from './users.service';
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
+  @AccountSelfService()
   @Get('me')
   getMe(@CurrentUser() user: AuthenticatedUser) {
     return user;

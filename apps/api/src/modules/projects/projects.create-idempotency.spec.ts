@@ -26,7 +26,7 @@ const actor: AuthenticatedUser = {
   departmentId: 'department-1',
   departmentName: '项目管理部',
   isSystemAdmin: false,
-  authSource: 'local',
+  teamAccessApproved: true, authSource: 'local',
   authVersion: 1,
   roleCodes: ['project_manager'],
   permissionCodes: ['project.write'],
@@ -326,7 +326,6 @@ describe('ProjectsService create idempotency', () => {
     const winner = commands[0];
     expect(winner).toBeDefined();
     prisma.projectCreateCommandRequest.findUnique
-      .mockResolvedValueOnce(null)
       .mockImplementationOnce(() => Promise.resolve(winner));
     prisma.$transaction.mockRejectedValueOnce(
       Object.assign(new Error('unique command'), { code: 'P2002' }),
@@ -559,7 +558,7 @@ if (projectsPostgresTestDatabaseUrl) {
         departmentId: null,
         departmentName: null,
         isSystemAdmin: false,
-        authSource: 'local',
+        teamAccessApproved: true, authSource: 'local',
   authVersion: 1,
         roleCodes: ['project_manager'],
         permissionCodes: ['project.write'],

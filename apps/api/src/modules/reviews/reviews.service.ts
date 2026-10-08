@@ -1,3 +1,4 @@
+import { isApprovedTeamMember } from '../../common/team-membership';
 import { BusinessClock } from '../../common/business-clock';
 import { isReworkTask, isTechnicalReworkTask, ancestorEvidenceIds } from '../../common/workflow-evidence';
 import { requireActiveMonthlyPlan } from '../../common/monthly-review-plan';
@@ -2603,8 +2604,8 @@ export class ReviewsService {
     }
     await tx.$queryRaw(Prisma.sql`SELECT id FROM workflow_tasks WHERE id = ${taskId} FOR UPDATE`);
     const task = await tx.workflowTask.findUnique({ where: { id: taskId }, select: { nodeCode: true, isActive: true } });
-    if (!task?.isActive || task.nodeCode !== WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW || !actor.roleCodes.includes('quality_engineer')) {
-      throw new ForbiddenException('仅质量试验角色可办理当前月度评审。');
+    if (!task?.isActive || task.nodeCode !== WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW || !isApprovedTeamMember(actor)) {
+      throw new ForbiddenException('账号尚未获准办理本部门评审。');
     }
   }
 
@@ -2774,8 +2775,8 @@ export class ReviewsService {
 
     await db.$queryRaw(Prisma.sql`SELECT id FROM recurring_tasks WHERE id = ${recurringTask.id} FOR UPDATE`);
     const current = await db.recurringTask.findUniqueOrThrow({ where: { id: recurringTask.id } });
-    if (!actor.roleCodes.includes('quality_engineer') || current.reviewerId !== actor.id) {
-      throw new ForbiddenException('请先领取本月质量评审任务；只能签署本人负责的月份。');
+    if (!isApprovedTeamMember(actor)) {
+      throw new ForbiddenException('账号尚未获准办理本部门评审。');
     }
     if (current.plannedDate > this.businessClock.now() || !['PENDING', 'IN_PROGRESS', 'OVERDUE'].includes(current.status)) {
       throw new ConflictException('本月任务尚未到期或已结束，不能修改评审结果。');

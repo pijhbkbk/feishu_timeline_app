@@ -5,6 +5,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
@@ -32,8 +33,9 @@ export class SamplesController {
   getWorkspace(
     @Param('projectId') projectId: string,
     @CurrentUser() actor: AuthenticatedUser,
+    @Query('taskId') taskId?: string,
   ) {
-    return this.samplesService.getWorkspace(projectId, actor);
+    return this.samplesService.getWorkspace(projectId, actor, taskId);
   }
 
   @Roles('admin', 'project_manager', 'process_engineer', 'quality_engineer', 'reviewer')

@@ -13,7 +13,7 @@ const actor: AuthenticatedUser = {
   departmentId: null,
   departmentName: null,
   isSystemAdmin: false,
-  authSource: 'local',
+  teamAccessApproved: true, authSource: 'local',
   authVersion: 1,
   roleCodes: ['reviewer'],
   permissionCodes: ['workflow.transition'],

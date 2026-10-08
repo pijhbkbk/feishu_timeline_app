@@ -20,7 +20,7 @@ const actor: AuthenticatedUser = {
   departmentId: 'dept-1',
   departmentName: '项目管理部',
   isSystemAdmin: false,
-  authSource: 'local',
+  teamAccessApproved: true, authSource: 'local',
   authVersion: 1,
   roleCodes: ['reviewer'],
 };
@@ -522,23 +522,23 @@ describe('WorkflowsService', () => {
     [WorkflowNodeCode.PROJECT_CLOSED, 'process-1', 'admin-1', ['admin'], false],
     [WorkflowNodeCode.PROJECT_CLOSED, 'process-1', 'process-1', ['process_engineer'], false],
     [WorkflowNodeCode.PROJECT_CLOSED, 'manager-1', 'manager-1', ['project_manager'], true],
-  ] as const)('requires the fixed role and exact claim for %s (owner %s, actor %s)',
+  ] as const)('uses explicit admission independent of legacy role/claim for %s (owner %s, actor %s)',
     (nodeCode, assigneeUserId, id, roleCodes, allowed) => {
       const { service } = createService();
       const operation = () => (service as any).assertActorCanOperateTask(
         { nodeCode, nodeName: nodeCode, assigneeUserId },
-        { ...actor, id, isSystemAdmin: roleCodes.includes('admin' as never), roleCodes: [...roleCodes] },
+        { ...actor, id, teamAccessApproved: allowed, isSystemAdmin: false, roleCodes: [...roleCodes] },
       );
       if (allowed) expect(operation).not.toThrow();
       else expect(operation).toThrow(ForbiddenException);
     },
   );
 
-  it('does not let designated-review bypass a CAB task claim', () => {
+  it('does not let designated-review bypass team admission', () => {
     const { service } = createService();
     expect(() => (service as any).assertActorCanOperateTask(
       { nodeCode: WorkflowNodeCode.CAB_REVIEW, nodeName: '驾驶室评审', assigneeUserId: 'another-reviewer' },
-      actor, 'designated-review',
+      { ...actor, teamAccessApproved: false }, 'designated-review',
     )).toThrow(ForbiddenException);
   });
 

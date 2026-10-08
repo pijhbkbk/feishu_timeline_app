@@ -29,7 +29,7 @@ export class PersonnelService {
     };
     const users = await this.prisma.user.findMany({
       where, take: 31, orderBy: { id: 'asc' },
-      select: { id: true, username: true, name: true, status: true, isSystemAdmin: true, updatedAt: true,
+      select: { id: true, username: true, name: true, status: true, isSystemAdmin: true, teamAccessApproved: true, updatedAt: true,
         localCredential: { select: { userId: true } },
         userRoles: { take: 16, select: { role: { select: { code: true, name: true, status: true } } } },
         _count: { select: { assignedWorkflowTasks: { where: { nodeCode: { not: 'VISUAL_COLOR_DIFFERENCE_REVIEW' }, isActive: true, status: { in: [...pendingStatuses] } } } } },
@@ -63,10 +63,11 @@ export class PersonnelService {
 
   async change(actor: AuthenticatedUser, userId: string, input: PersonnelChangeDto) {
     this.assertAdministrator(actor);
-    if (!userId || userId.length > 64 || !input.reason.trim() || (input.roleCodes === undefined && input.status === undefined)) {
+    if (!userId || userId.length > 64 || !input.reason.trim() || (input.roleCodes === undefined && input.status === undefined && input.teamAccessApproved === undefined)) {
       throw new BadRequestException('请选择角色或账号状态，并填写操作原因。');
     }
     if (input.roleCodes === null || input.status === null) throw new BadRequestException('角色和状态不能为 null。');
+    if (input.teamAccessApproved !== undefined && typeof input.teamAccessApproved !== 'boolean') throw new BadRequestException('人员准入必须是明确的布尔值。');
     const selected = input.roleCodes === undefined ? undefined : [...new Set(input.roleCodes)].sort();
     if (selected?.some(code => !BUSINESS_ROLE_CODES.includes(code))) throw new BadRequestException('只能分配预置业务角色。');
     const key = `personnel:${actor.id}:${input.requestId}`;
@@ -100,19 +101,19 @@ export class PersonnelService {
       const beforeRoles = target.userRoles.map(row => row.role.code).filter(code => BUSINESS_ROLE_CODES.includes(code)).sort();
       const roles = selected === undefined ? [] : await tx.role.findMany({ where: { code: { in: selected }, status: 'ACTIVE' }, take: 7, select: { id: true, code: true } });
       if (selected && roles.length !== selected.length) throw new ConflictException('所选业务角色尚未启用，请刷新后重试。');
-      const changed = (selected !== undefined && JSON.stringify(selected) !== JSON.stringify(beforeRoles)) || (input.status !== undefined && input.status !== target.status);
+      const changed = (input.teamAccessApproved !== undefined && input.teamAccessApproved !== target.teamAccessApproved) || (selected !== undefined && JSON.stringify(selected) !== JSON.stringify(beforeRoles)) || (input.status !== undefined && input.status !== target.status);
       if (changed) {
         if (selected !== undefined) {
           await tx.userRole.deleteMany({ where: { userId, role: { code: { in: BUSINESS_ROLE_CODES } } } });
           if (roles.length) await tx.userRole.createMany({ data: roles.map(role => ({ userId, roleId: role.id })) });
         }
-        await tx.user.update({ where: { id: userId }, data: { ...(input.status ? { status: input.status } : {}), authVersion: { increment: 1 }, onboardingCompleted: true } });
+        await tx.user.update({ where: { id: userId }, data: { ...(input.teamAccessApproved !== undefined ? { teamAccessApproved: input.teamAccessApproved } : {}), ...(input.status ? { status: input.status } : {}), authVersion: { increment: 1 }, onboardingCompleted: true } });
         await reconcileTeamAssignments(tx, { actorUserId: actor.id, affectedUserId: userId,
           roleCodes: [...beforeRoles, ...(selected ?? [])], reason: input.reason.trim() });
         await tx.auditLog.create({ data: {
           actorUserId: actor.id, targetType: 'USER', targetId: userId, action: 'PERSONNEL_CHANGED',
-          beforeData: { roleCodes: beforeRoles, status: target.status },
-          afterData: { roleCodes: selected ?? beforeRoles, status: input.status ?? target.status },
+          beforeData: { roleCodes: beforeRoles, status: target.status, teamAccessApproved: target.teamAccessApproved },
+          afterData: { roleCodes: selected ?? beforeRoles, status: input.status ?? target.status, teamAccessApproved: input.teamAccessApproved ?? target.teamAccessApproved },
           metadata: { reason: input.reason.trim(), requestId: input.requestId },
         } });
       }

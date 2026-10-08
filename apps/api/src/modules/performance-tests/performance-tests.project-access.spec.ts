@@ -108,7 +108,7 @@ describe('PerformanceTestsService project-scoped attachment access', () => {
           buffer: Buffer.from('%PDF-1.7'),
         },
         {
-          id: 'quality-member',
+          id: 'quality-member', authSource: 'local', teamAccessApproved: true,
           roleCodes: ['quality_engineer'],
           permissionCodes: ['project.read', 'workflow.transition', 'attachment.manage'],
           isSystemAdmin: false,

@@ -18,6 +18,7 @@ export type AuthenticatedUser = {
   departmentId: string | null;
   departmentName: string | null;
   isSystemAdmin: boolean;
+  teamAccessApproved?: boolean;
   authSource: AuthSource;
   roleCodes: RoleCode[];
   permissionCodes?: string[];

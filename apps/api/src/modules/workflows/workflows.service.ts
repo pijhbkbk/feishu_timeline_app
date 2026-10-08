@@ -1,3 +1,4 @@
+import { assertApprovedTeamMember } from '../../common/team-membership';
 import { isReworkTask, isTechnicalReworkTask, taskEvidenceIds, ancestorEvidenceIds } from '../../common/workflow-evidence';
 import { BusinessClock } from '../../common/business-clock';
 import { requireActiveMonthlyPlan } from '../../common/monthly-review-plan';
@@ -6,7 +7,6 @@ import { notifyTeamTask, resolveTeamAssignment } from '../personnel/team-assignm
 import {
   BadRequestException,
   ConflictException,
-  ForbiddenException,
   HttpException,
   Injectable,
   NotFoundException,
@@ -1344,6 +1344,16 @@ export class WorkflowsService {
       }
     }
 
+    if ((isWorkflowCompletionAction(action) || action === WorkflowAction.APPROVE) &&
+        task.project.requiresApprovedReport && !task.project.approvedReportAttachmentId) {
+      throw new BadRequestException('请先登记已获批开发报告及扫描通过的报告材料。');
+    }
+
+    if (task.project.requiresApprovedReport && task.nodeCode === WorkflowNodeCode.SAMPLE_COLOR_CONFIRMATION && action === WorkflowAction.APPROVE &&
+        !(await tx.sampleConfirmation.findUnique({ where: { workflowTaskId: task.id }, select: { id: true } }))) {
+      throw new BadRequestException('请通过样板确认记录提交实际日期、确认方和确认材料。');
+    }
+
     if (isWorkflowCompletionAction(action)) {
       await this.assertRequiredMaterialsSubmitted(tx, task);
       await this.assertPilotProductionRecordsSubmitted(tx, task);
@@ -1919,7 +1929,7 @@ export class WorkflowsService {
 
   private async getTechnicalReworkCompletionIssues(tx: Prisma.TransactionClient,
     task: Pick<WorkflowTaskWithRelations, 'id' | 'workflowInstanceId' | 'nodeCode' | 'nodeName' | 'projectId' | 'payload'>) {
-    if (!isReworkTask(task)) return [];
+    if (!isReworkTask(task) && task.nodeCode !== WorkflowNodeCode.PAINT_DEVELOPMENT) return [];
     const ids = await taskEvidenceIds(tx, task.projectId, task.id);
     const where = { projectId: task.projectId, id: { in: ids } }, select = { id: true } as const;
     let record: { id: string } | null | undefined;
@@ -1975,8 +1985,8 @@ export class WorkflowsService {
     authorizationSource?: WorkflowTransitionAuthorizationSource,
   ) {
     if (authorizationSource === 'designated-review' && task.nodeCode === WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW) {
-      if (!actor.roleCodes.includes('quality_engineer')) throw new ForbiddenException('仅质量试验角色可签署月度评审。');
-      // ReviewsService has locked and validated the exact monthly assignee.
+      assertApprovedTeamMember(actor);
+      // ReviewsService has locked and validated the exact monthly period and its state.
       return;
     }
     assertTeamTaskOperator(task, actor);

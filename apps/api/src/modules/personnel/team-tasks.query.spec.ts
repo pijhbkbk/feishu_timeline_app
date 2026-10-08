@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { TeamTasksService } from './team-tasks.service';
 
-const purchaser = { id: 'person-one', roleCodes: ['purchaser'], permissionCodes: ['project.read'], isSystemAdmin: false } as AuthenticatedUser;
+const purchaser = { teamAccessApproved: true, authSource: 'local', id: 'person-one', roleCodes: ['purchaser'], permissionCodes: ['project.read'], isSystemAdmin: false } as AuthenticatedUser;
 const admin = { ...purchaser, id: 'administrator', isSystemAdmin: true, roleCodes: [] };
 function fixture() {
   const db = { workflowTask: { findMany: vi.fn().mockResolvedValue([]) }, $queryRaw: vi.fn().mockResolvedValue([]) };
@@ -37,9 +37,9 @@ describe('team work queue query boundaries', () => {
     expect(query.values).toContain('person-two');
     expect(query.strings.join('?')).toContain('AND t."reviewerId" =');
   });
-  it('denies roleless access even to completed history', async () => {
+  it('denies unapproved access even to completed history', async () => {
     const { service } = fixture();
-    const unassigned = { ...purchaser, roleCodes: [], permissionCodes: [] };
+    const unassigned = { ...purchaser, teamAccessApproved: false, roleCodes: [], permissionCodes: [] };
     await expect(service.list(unassigned, { view: 'completed' })).rejects.toMatchObject({ status: 403 });
     await expect(service.listMonthly(unassigned, { view: 'completed' })).rejects.toMatchObject({ status: 403 });
   });

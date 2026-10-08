@@ -23,7 +23,7 @@ const actor: AuthenticatedUser = {
   departmentId: 'dept-pmo',
   departmentName: '项目管理部',
   isSystemAdmin: false,
-  authSource: 'local',
+  teamAccessApproved: true, authSource: 'local',
   authVersion: 1,
   roleCodes: ['project_manager'],
 };

@@ -1,3 +1,4 @@
+import { assertApprovedTeamMember } from '../../common/team-membership';
 import { assertTeamTaskById, withProjectWrite } from '../../common/team-authorization';
 import {
   BadRequestException,
@@ -35,7 +36,6 @@ import {
   getMassProductionCompletionIssue,
   getMassProductionNodeCode,
   getMassProductionStageIssue,
-  MASS_PRODUCTION_MANAGEMENT_ROLE_CODES,
 } from './mass-productions.rules';
 
 type MassProductionDbClient = Prisma.TransactionClient | PrismaService;
@@ -561,21 +561,7 @@ export class MassProductionsService {
   }
 
   private assertActorCanManage(actor: AuthenticatedUser) {
-    if (actor.isSystemAdmin) {
-      return;
-    }
-
-    if (
-      actor.roleCodes.some((roleCode) =>
-        MASS_PRODUCTION_MANAGEMENT_ROLE_CODES.includes(
-          roleCode as (typeof MASS_PRODUCTION_MANAGEMENT_ROLE_CODES)[number],
-        ),
-      )
-    ) {
-      return;
-    }
-
-    throw new BadRequestException('当前用户没有批量生产权限。');
+    assertApprovedTeamMember(actor);
   }
 
   private async getProjectOrThrow(db: MassProductionDbClient, projectId: string) {

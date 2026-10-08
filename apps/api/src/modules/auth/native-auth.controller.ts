@@ -1,3 +1,4 @@
+import { AccountSelfService } from '../../common/team-membership';
 import { Body, Controller, GoneException, Get, HttpCode, Param, Post, Query, Req, Res } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Response } from 'express';
@@ -26,12 +27,14 @@ export class NativeAuthController {
     return this.native.login(body, this.client(request), this.sessionToken(request), response);
   }
 
+  @AccountSelfService()
   @Post('job') @HttpCode(200)
   chooseJob(@CurrentUser() actor: AuthenticatedUser, @Body() body: NativeJobDto) {
     void actor; void body;
     throw new GoneException('岗位申请已停用，请由管理员在人员表分配角色。');
   }
 
+  @AccountSelfService()
   @Post('password') @HttpCode(200)
   async changePassword(@CurrentUser() actor: AuthenticatedUser, @Body() body: NativePasswordChangeDto,
     @Req() request: AuthenticatedRequest, @Res({ passthrough: true }) response: Response) {

@@ -240,6 +240,7 @@ export class DevelopmentReportsService {
         currentNodeName: getCurrentNodeName(project.currentNodeCode),
         targetDate: project.plannedEndDate?.toISOString() ?? null,
       },
+      approvalFacts: project.approvedReportAttachmentId ? { approvedReportDate: project.approvedReportDate?.toISOString() ?? null, approvalReference: project.approvalReference, reportAttachmentId: project.approvedReportAttachmentId, demandSource: latestReport?.demandSource ?? null } : null,
       activeTask: activeTask ? this.toTaskSummary(activeTask) : null,
       currentReport: currentReport ? this.toReportSummary(currentReport) : null,
       latestReport: latestReport ? this.toReportSummary(latestReport) : null,
@@ -338,6 +339,9 @@ export class DevelopmentReportsService {
         name: true,
         currentNodeCode: true,
         plannedEndDate: true,
+        approvedReportDate: true,
+        approvalReference: true,
+        approvedReportAttachmentId: true,
       },
     });
 

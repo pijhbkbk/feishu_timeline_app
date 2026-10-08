@@ -16,7 +16,7 @@ import { installTeamAuthorizationFixture } from '../../test-support/team-authori
 import { PerformanceTestsService } from './performance-tests.service';
 
 const actor = {
-  id: 'quality-engineer-1', authSource: 'local', authVersion: 1,
+  id: 'quality-engineer-1', teamAccessApproved: true, authSource: 'local', authVersion: 1,
   roleCodes: ['quality_engineer'],
   permissionCodes: ['project.read', 'workflow.transition'],
   isSystemAdmin: false,

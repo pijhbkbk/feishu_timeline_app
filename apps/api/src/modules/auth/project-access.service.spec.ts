@@ -12,7 +12,7 @@ const actor: AuthenticatedUser = {
   departmentId: 'dept-pmo',
   departmentName: '项目管理部',
   isSystemAdmin: false,
-  authSource: 'mock',
+  teamAccessApproved: true, authSource: 'local',
   roleCodes: ['project_manager'],
   permissionCodes: ['project.read', 'attachment.manage'],
 };
@@ -54,7 +54,7 @@ describe('ProjectAccessService', () => {
     await expect(
       service.assertProjectAccess(prisma as never, 'project-1', actor, 'project.read'),
     ).resolves.toMatchObject({ id: 'project-1' });
-    await expect(service.assertProjectAccess(prisma as never, 'project-1', { ...actor, roleCodes: [], permissionCodes: [] }, 'project.read')).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(service.assertProjectAccess(prisma as never, 'project-1', { ...actor, teamAccessApproved: false, roleCodes: [], permissionCodes: [] }, 'project.read')).rejects.toBeInstanceOf(ForbiddenException);
   });
 
   it('allows an auditor team reads when both read permissions are granted', async () => {
@@ -84,7 +84,7 @@ describe('ProjectAccessService', () => {
     ).resolves.toMatchObject({ id: 'project-1' });
   });
 
-  it('does not let an ordinary admin bypass the editable permission matrix', async () => {
+  it('does not admit a legacy admin role without explicit team approval', async () => {
     const prisma = {
       project: {
         findUnique: vi.fn().mockResolvedValue({
@@ -100,7 +100,7 @@ describe('ProjectAccessService', () => {
       ...actor,
       id: 'ordinary-admin',
       roleCodes: ['admin'],
-      permissionCodes: ['project.read'],
+      teamAccessApproved: false, permissionCodes: ['project.read'],
     };
 
     await expect(
@@ -142,7 +142,7 @@ describe('ProjectAccessService', () => {
     ).resolves.toMatchObject({ id: 'project-1' });
   });
 
-  it('requires audit.read in the editable matrix before granting auditor global scope', async () => {
+  it('rejects an unapproved legacy auditor regardless of read role', async () => {
     const prisma = {
       project: {
         findUnique: vi.fn().mockResolvedValue({
@@ -158,7 +158,7 @@ describe('ProjectAccessService', () => {
       ...actor,
       id: 'auditor-without-permission',
       roleCodes: ['auditor'],
-      permissionCodes: ['project.read'],
+      teamAccessApproved: false, permissionCodes: ['project.read'],
     };
 
     await expect(

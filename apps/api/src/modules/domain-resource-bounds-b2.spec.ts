@@ -13,7 +13,7 @@ import { MassProductionsService } from './mass-productions/mass-productions.serv
 import { PilotProductionsService } from './pilot-productions/pilot-productions.service';
 
 const actor = {
-  authSource: 'local', authVersion: 1,
+  teamAccessApproved: true, authSource: 'local', authVersion: 1,
   id: 'admin-1',
   roleCodes: ['admin'],
   permissionCodes: ['project.read', 'workflow.transition'],

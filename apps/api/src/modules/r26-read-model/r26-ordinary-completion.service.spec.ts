@@ -25,13 +25,14 @@ const owner: AuthenticatedUser = {
   departmentId: 'dept-pmo',
   departmentName: '项目管理部',
   isSystemAdmin: false,
-  authSource: 'local', authVersion: 1,
+  teamAccessApproved: true, authSource: 'local', authVersion: 1,
   roleCodes: ['project_manager', 'purchaser', 'process_engineer', 'reviewer'],
   permissionCodes: ['project.read', 'workflow.transition'],
 };
 
 const observer: AuthenticatedUser = {
   ...owner,
+  teamAccessApproved: false,
   id: 'observer-1',
   username: 'observer',
   name: '普通观察者',

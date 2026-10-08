@@ -68,7 +68,7 @@ describe('AnalyticsService bounded overview read model', () => {
       .mockResolvedValueOnce([{ totalRecords: 9n, recordedCount: 7n }]);
 
     const result = await service.getOverview({
-      id: 'viewer-1',
+      id: 'viewer-1', authSource: 'local', teamAccessApproved: true,
       departmentId: 'department-1',
       isSystemAdmin: false,
       roleCodes: ['viewer'],

@@ -140,7 +140,7 @@ describe('AdminService simplified overview and color database', () => {
       id: 'viewer-1',
       departmentId: 'department-1',
       isSystemAdmin: false,
-      roleCodes: ['viewer'], permissionCodes: ['project.read'],
+      roleCodes: ['viewer'], permissionCodes: ['project.read'], authSource: 'local', teamAccessApproved: true,
     } as never);
 
     const statements = prisma.$queryRaw.mock.calls.map(([statement]) => statement as {

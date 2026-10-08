@@ -5,6 +5,7 @@ import { PermissionsGuard } from './permissions.guard';
 
 function createContext(input: {
   permissionCodes?: string[];
+  teamAccessApproved?: boolean;
   isSystemAdmin?: boolean;
   roleCodes?: string[];
 }) {
@@ -19,7 +20,8 @@ function createContext(input: {
           departmentId: null,
           departmentName: null,
           isSystemAdmin: input.isSystemAdmin ?? false,
-          authSource: 'mock',
+          authSource: 'local',
+          teamAccessApproved: input.teamAccessApproved ?? false,
           roleCodes: input.roleCodes ?? ['project_manager'],
           permissionCodes: input.permissionCodes ?? [],
         },
@@ -41,7 +43,7 @@ describe('PermissionsGuard', () => {
     const guard = new PermissionsGuard(reflector as never);
 
     expect(
-      guard.canActivate(createContext({ permissionCodes: ['attachment.manage'] })),
+      guard.canActivate(createContext({ teamAccessApproved: true, permissionCodes: ['attachment.manage'] })),
     ).toBe(true);
   });
 

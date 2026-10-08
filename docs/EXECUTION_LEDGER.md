@@ -8035,3 +8035,8 @@ BLOCKER_REPORT: Public-source push remains rejected by platform automatic review
 - 新备份20260929T005653Z-891b4bb4、独立追加程序日志COMMITTED，原37→41锚点/原备份/验收审计保留，未执行迁移或任何数据恢复。发布前四项PG14实际中断与独立审查通过，边界详见新证据入口。
 - 公开登录三档、正常TLS元数据、未登录跳转、旧入口关闭、foreign Origin及停用账号拒登均PASS。原管理员跨日会话已失效，真实浏览器刷新到正式登录页；已请求所有者在浏览器登录，未索取/重设密码。登录后的项目卡片/详情手机修复等路径仍待准确版本复验。
 - 完整14项状态、运行身份和证据索引见 `docs/acceptance/R28_PRODUCTION_20260929/README.md`。当前PRODUCTION_RUNTIME_SWITCHED / EXACT_DOMAIN_PUBLIC_PATH_PASS / DEPLOYMENT_UNVERIFIED；整个产品仍AWAITING_PRODUCT_OWNER_CONFIRMATION。main/tag未改变，staging未执行。
+
+
+## 2026-10-08 SINGLE_DEPARTMENT_UI_M1 开始
+
+从本工作树 `79a6b0f87d892f064505df4e6719896994e3f698` 续接，本轮分支 `codex/single-department-ui-m1`。本地隔离预览的最新范围、旧岗位/领取要求替换和验收路径追加于 `docs/rounds/R28.md`。附件14页校验及重点视觉检查完成；源码/浏览器/上传尚未验收，不复用旧PASS冒充本轮结果。main/tag/production不改变。

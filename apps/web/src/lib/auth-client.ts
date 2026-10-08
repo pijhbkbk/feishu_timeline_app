@@ -20,6 +20,7 @@ export type SessionUser = {
   departmentId: string | null;
   departmentName: string | null;
   isSystemAdmin: boolean;
+  teamAccessApproved?: boolean;
   authSource: 'local' | 'mock' | 'feishu';
   requestedJob?: string | null;
   onboardingCompleted?: boolean;
@@ -137,6 +138,9 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}) 
       cache: 'no-store',
     });
   } catch (requestError) {
+    if (requestError instanceof Error && ['TimeoutError', 'AbortError'].includes(requestError.name)) {
+      throw new Error('请求等待超时，请读取最新结果后重试。已填写内容仍保留。', { cause: requestError });
+    }
     throw new Error(
       normalizeApiErrorMessage(
         requestError instanceof Error ? requestError.message : undefined,
@@ -165,10 +169,14 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}) 
         : undefined;
     const message = normalizeApiErrorMessage(rawMessage, response.status);
 
-    throw new Error(message);
+    throw new ApiRequestError(message, response.status);
   }
 
   return data as T;
+}
+
+export class ApiRequestError extends Error {
+  constructor(message: string, public readonly status: number) { super(message); this.name = 'ApiRequestError'; }
 }
 
 function getStatusMessage(status?: number) {
@@ -182,7 +190,20 @@ function getStatusMessage(status?: number) {
     case 404:
       return '请求的数据不存在或已被删除。';
     case 409:
-      return '数据状态冲突，请刷新后重试。';
+      return '记录已被更新，请读取最新状态后重试。';
+    case 413:
+      return '文件过大，请选择符合大小限制的材料。';
+    case 415:
+      return '不支持该文件类型，请选择合规材料。';
+    case 422:
+      return '材料未通过安全检查，请更换文件。';
+    case 429:
+      return '操作过于频繁，请稍后重试。';
+    case 502:
+    case 503:
+      return '服务暂时不可用，请稍后重试。';
+    case 504:
+      return '请求超时，请检查保存结果后重试。';
     default:
       return '操作失败，请稍后重试。';
   }

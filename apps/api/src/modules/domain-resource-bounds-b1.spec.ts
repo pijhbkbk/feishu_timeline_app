@@ -9,7 +9,7 @@ import { PaintProcurementsService } from './paint-procurements/paint-procurement
 import { ProductionPlansService } from './production-plans/production-plans.service';
 
 const actor = {
-  authSource: 'local', authVersion: 1,
+  teamAccessApproved: true, authSource: 'local', authVersion: 1,
   id: 'admin-1',
   roleCodes: ['admin'],
   permissionCodes: ['project.read', 'workflow.transition'],

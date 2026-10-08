@@ -14,7 +14,7 @@ const actor: AuthenticatedUser = {
   departmentId: null,
   departmentName: null,
   isSystemAdmin: false,
-  authSource: 'local', authVersion: 1,
+  teamAccessApproved: true, authSource: 'local', authVersion: 1,
   roleCodes: ['purchaser'],
   permissionCodes: ['project.read', 'workflow.transition'],
 };

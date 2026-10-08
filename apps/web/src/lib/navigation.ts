@@ -60,9 +60,12 @@ type AdminSectionMeta = {
 };
 
 export const topNavigationItems: NavItem[] = [
-  { label: '我的工作', href: '/dashboard', icon: '⌂', description: '当前待处理的工作' },
-  { label: '颜色项目', href: '/projects', icon: '▦', description: '颜色开发过程', matchMode: 'prefix' },
-  { label: '人员', href: '/admin/people', icon: '◌', requiredRoles: ['admin'], matchMode: 'prefix' },
+  { label: '工作台', href: '/dashboard' },
+  { label: '颜色项目', href: '/projects', matchMode: 'prefix' },
+  { label: '颜色清单', href: '/admin/color-database', matchMode: 'prefix' },
+  { label: '周评', href: '/monthly-reviews' },
+  { label: '产量统计', href: '/analytics' },
+  { label: '人员库', href: '/admin/people', matchMode: 'prefix' },
 ];
 
 export function isTopNavigationItemActive(pathname: string, href: string) {
@@ -90,7 +93,8 @@ export function isTopNavigationItemActive(pathname: string, href: string) {
     );
   }
 
-  if (normalizedHref === '/admin/people') return ['/admin/people', '/admin/accounts', '/admin/users', '/admin/organization'].includes(normalizedPathname);
+  if (normalizedHref === '/admin/people') return ['/admin/people', '/admin/accounts', '/admin/users', '/admin/organization'].some(path => normalizedPathname === path || normalizedPathname.startsWith(`${path}/`));
+  if (normalizedHref === '/admin/color-database') return normalizedPathname === normalizedHref || normalizedPathname.startsWith(`${normalizedHref}/`);
 
   if (normalizedHref === '/admin') {
     return (
@@ -343,6 +347,8 @@ export function canAccessNavItem(item: NavItem, user: SessionUser | null) {
   if (user.isSystemAdmin || user.roleCodes.includes('admin')) {
     return true;
   }
+
+  if (user.teamAccessApproved && item.href.startsWith('/projects/')) return true;
 
   return item.requiredRoles.some((role) => user.roleCodes.includes(role));
 }

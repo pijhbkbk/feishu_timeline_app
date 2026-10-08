@@ -13,7 +13,7 @@ const actor: AuthenticatedUser = {
   departmentId: 'dept-1',
   departmentName: '项目部',
   isSystemAdmin: false,
-  authSource: 'local',
+  teamAccessApproved: true, authSource: 'local',
   authVersion: 1,
   roleCodes: ['project_manager'],
   permissionCodes: ['workflow.transition'],

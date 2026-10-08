@@ -25,7 +25,7 @@ function createActor(): AuthenticatedUser {
     departmentId: null,
     departmentName: null,
     isSystemAdmin: false,
-    authSource: 'local',
+    teamAccessApproved: true, authSource: 'local',
     authVersion: 1,
     roleCodes: ['process_engineer'],
   };
@@ -200,7 +200,7 @@ describe('TasksService', () => {
     expect(prisma.workflowTask.findUnique).toHaveBeenCalledTimes(2);
   });
 
-  it('limits progress submission to assignee or project manager, with critical-node overrides', () => {
+  it('allows admitted team progress without legacy roles or exact claim', () => {
     const service = new TasksService({} as never, {} as never, {} as never);
     const projectManager = { ...createActor(), id: 'manager-1', roleCodes: ['project_manager'] as const };
     const administrator = {
@@ -222,25 +222,26 @@ describe('TasksService', () => {
         nodeCode: WorkflowNodeCode.PAINT_DEVELOPMENT,
         assigneeUserId: 'other-user',
       }),
-    ).toBe(false);
+    ).toBe(true);
     expect(
       (service as any).canSubmitTaskProgress(administrator, {
         nodeCode: WorkflowNodeCode.PAINT_DEVELOPMENT,
         assigneeUserId: 'other-user',
       }),
-    ).toBe(false);
+    ).toBe(true);
     expect(
       (service as any).canSubmitTaskProgress(finance, {
         nodeCode: WorkflowNodeCode.DEVELOPMENT_ACCEPTANCE,
         assigneeUserId: 'other-user',
       }),
-    ).toBe(false);
+    ).toBe(true);
     expect(
       (service as any).canSubmitTaskProgress(administrator, {
         nodeCode: WorkflowNodeCode.PROJECT_CLOSED,
         assigneeUserId: 'other-user',
       }),
-    ).toBe(false);
+    ).toBe(true);
+    expect((service as any).canSubmitTaskProgress({ ...createActor(), teamAccessApproved: false }, { nodeCode: WorkflowNodeCode.PAINT_DEVELOPMENT, assigneeUserId: 'user-1' })).toBe(false);
   });
 
   it('returns overdue tasks for current user only', async () => {
@@ -526,7 +527,7 @@ describe('TasksService', () => {
         },
         createActor(),
       ),
-    ).rejects.toBeInstanceOf(ForbiddenException);
+    ).rejects.toBeInstanceOf(ConflictException);
 
     expect(create).not.toHaveBeenCalled();
   });

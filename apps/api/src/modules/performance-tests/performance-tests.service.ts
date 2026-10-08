@@ -1,3 +1,4 @@
+import { assertApprovedTeamMember } from '../../common/team-membership';
 import { assertTeamTaskById, withProjectWrite } from '../../common/team-authorization';
 import {
   BadRequestException,
@@ -554,20 +555,7 @@ export class PerformanceTestsService {
   }
 
   private assertActorCanManage(actor: AuthenticatedUser) {
-    if (
-      actor.isSystemAdmin ||
-      actor.roleCodes.some(
-        (roleCode) =>
-          roleCode === 'admin' ||
-          roleCode === 'project_manager' ||
-          roleCode === 'process_engineer' ||
-          roleCode === 'quality_engineer',
-      )
-    ) {
-      return;
-    }
-
-    throw new BadRequestException('当前用户没有性能试验管理权限。');
+    assertApprovedTeamMember(actor);
   }
 
   private async getProjectOrThrow(db: PerformanceTestsDbClient, projectId: string) {

@@ -12,7 +12,7 @@ const readOnlyActor: AuthenticatedUser = {
   departmentId: null,
   departmentName: null,
   isSystemAdmin: false,
-  authSource: 'mock',
+  authSource: 'local', teamAccessApproved: false,
   roleCodes: ['admin'],
   permissionCodes: [],
 };
@@ -66,7 +66,7 @@ describe('SuppliersService permission matrix', () => {
     },
   );
 
-  it('keeps system administrators as the only permissionless supplier override', async () => {
+  it('allows the explicit native system administrator without legacy roles', async () => {
     const { service, prisma } = createHarness();
     const systemAdmin: AuthenticatedUser = {
       ...readOnlyActor,

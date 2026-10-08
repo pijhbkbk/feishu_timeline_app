@@ -6,7 +6,7 @@ import { installTeamAuthorizationFixture } from '../../test-support/team-authori
 import { ReviewsService } from './reviews.service';
 
 const actor = {
-  id: 'reviewer-1', authSource: 'local', authVersion: 1,
+  id: 'reviewer-1', teamAccessApproved: true, authSource: 'local', authVersion: 1,
   roleCodes: ['reviewer'],
   permissionCodes: ['project.read', 'review.execute', 'attachment.manage'],
   isSystemAdmin: false,
@@ -49,7 +49,7 @@ function createHarness(options: {
   const reviewType = options.reviewType ?? ReviewType.CAB_REVIEW;
   const nodeCode = options.nodeCode ?? WorkflowNodeCode.CAB_REVIEW;
   const taskActor = nodeCode === WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW
-    ? { id: 'reviewer-1', roleCodes: ['quality_engineer'], authVersion: 1, isSystemAdmin: false, permissionCodes: ['project.read', 'review.execute', 'attachment.manage'] } as never : actor;
+    ? { id: 'reviewer-1', authSource: 'local', teamAccessApproved: true, roleCodes: ['quality_engineer'], authVersion: 1, isSystemAdmin: false, permissionCodes: ['project.read', 'review.execute', 'attachment.manage'] } as never : actor;
   const period = { id: 'period-1', reviewerId: 'reviewer-1', plannedDate: new Date('2026-08-01T00:00:00Z'), status: 'PENDING' };
   const scanStarted = createDeferred<void>();
   const releaseScan = createDeferred<void>();
