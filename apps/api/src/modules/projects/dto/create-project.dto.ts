@@ -21,6 +21,30 @@ import {
 } from '../project.constants';
 
 export class CreateProjectDto {
+  @ApiPropertyOptional({ enum: ['NEW', 'EXISTING'], description: '建立候选颜色或关联准确的已有颜色' })
+  @IsOptional()
+  @IsIn(['NEW', 'EXISTING'])
+  colorMode?: 'NEW' | 'EXISTING';
+
+  @ApiPropertyOptional({ description: '颜色名称；与项目名称分别保存' })
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(200)
+  colorName?: string;
+
+  @ApiPropertyOptional({ description: '明确选择的生产基地 ID', nullable: true })
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  productionBaseId?: string | null;
+
+  @ApiPropertyOptional({ description: '准确的已有颜色 ID；新建时为空', nullable: true })
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  existingColorId?: string | null;
+
   @ApiPropertyOptional({ description: '兼容字段；未传入时由服务端生成内部项目编号' })
   @IsOptional()
   @IsString()

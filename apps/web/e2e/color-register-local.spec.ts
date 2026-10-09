@@ -80,7 +80,7 @@ async function persist(name: string, value: unknown, info: TestInfo) {
 }
 async function filter(page: Page, search = '', baseId = '') {
   await page.getByLabel('颜色或色板', { exact: true }).fill(search);
-  await page.getByLabel('生产基地', { exact: true }).selectOption(baseId);
+  await page.getByRole('combobox', { name: '生产基地', exact: true }).selectOption(baseId);
   const loaded = page.waitForResponse(response => new URL(response.url()).pathname === '/api/color-register' && response.status() === 200);
   await page.getByRole('button', { name: '查询', exact: true }).click();
   await loaded;
@@ -179,7 +179,7 @@ test('Color register: real source base isolation, hue identity, explicit notes a
   await expect(page.locator('.m1-notice[role=status]')).toContainText('并已重新读取确认');
 
   await page.getByRole('button', { name: '查看全部工作表与待核对记录', exact: true }).click();
-  await expect(page.getByLabel('工作表', { exact: true }).locator('option')).toHaveCount(12);
+  await expect(page.getByRole('combobox', { name: '工作表', exact: true }).locator('option')).toHaveCount(12);
   const source = await get(page, '/color-register/sources?pageSize=1', evidence.network);
   expect(source.total).toBe(1166); expect(source.batches[0].metadata.sheetNames).toHaveLength(11);
   const sheets: Array<{ name: string; rows: number }> = [];
@@ -206,9 +206,9 @@ test('Color register: real source base isolation, hue identity, explicit notes a
 
 async function createProject(page: Page, options: { name: string; baseId: string; existingId?: string; date: string }, network: Network[]) {
   await page.goto('/projects/new?from=dashboard');
-  await page.getByLabel('生产基地', { exact: true }).selectOption(options.baseId);
+  await page.getByRole('combobox', { name: '生产基地', exact: true }).selectOption(options.baseId);
   if (options.existingId) {
-    await page.getByLabel('建立方式', { exact: true }).selectOption('EXISTING');
+    await page.getByRole('combobox', { name: '建立方式', exact: true }).selectOption('EXISTING');
     await page.getByLabel('查找已有颜色', { exact: true }).fill(options.name);
     await expect(page.getByRole('radio')).toHaveCount(1);
     const exact = await get<List>(page, `/color-register?baseId=${options.baseId}&search=${encodeURIComponent(options.name)}&pageSize=20`, network);
@@ -288,7 +288,7 @@ test('Color register: approved report to one atomic board standard, candidate id
   await expect(form.getByRole('button', { name: '保存并加入颜色清单', exact: true })).toBeEnabled();
   await form.getByLabel('色板编号', { exact: true }).fill(`合成灰绿/CR-${run}`);
   const sample = before.sampleOptions.find((item: { sampleNo: string }) => item.sampleNo === `CR-${run}`);
-  expect(sample).toBeTruthy(); await form.getByLabel('关联样板', { exact: true }).selectOption(sample.id);
+  expect(sample).toBeTruthy(); await form.getByRole('combobox', { name: '关联样板', exact: true }).selectOption(sample.id);
   await form.getByLabel('制作日期', { exact: true }).fill(date);
   await form.getByLabel('制作单位', { exact: true }).fill('隔离验收合成制作单位');
   await form.getByLabel('漆种', { exact: true }).fill('合成金属漆');
@@ -391,4 +391,68 @@ test('Color register: unapproved account negative, empty query and explicitly in
   await expect(page.locator('.cr-table tbody tr').first()).toBeVisible();
   expect(evidence.errors).toEqual([]);
   await persist('register-boundary-browser.json', { expectedCommit, origin, deniedRead: deniedRead.status(), deniedWrite: deniedWrite.status(), emptyQuery: 'real API with no matching rows', errorInjection: { status: 503, purpose: 'error-state UX only', consoleErrors: evidence.consoleErrors.slice(beforeError) }, network: evidence.network, pageErrors: evidence.errors }, info);
+});
+
+
+test('Color register: history pagination protects an unsaved correction', async ({ page }, info) => {
+  test.setTimeout(120000);
+  const evidence = monitor(page); const a = await accounts();
+  await login(page, a.memberB!); await identify(page, info);
+  const previous = JSON.parse(await readFile(path.join(runtime!, 'pagination-fixture.json'), 'utf8'));
+  let detail = await get<Detail>(page, `/color-register/${previous.colorId}`, evidence.network);
+  while (detail.versionsTotal < 21) {
+    const current = detail.versions[0]!;
+    await post(page, `/color-register/${detail.id}/standards`, { operationId: randomUUID(), expectedRevision: detail.revision,
+      boardCode: current.boardCode, technicalData: { measurements: current.measurements, conditions: current.conditions,
+        originalControlLimits: current.originalControlLimits, manufacturer: current.manufacturer, paintType: current.paintType,
+        measurementDate: current.measurementDate, issueDate: current.issueDate, expiryDate: current.expiryDate,
+        changeSummary: `合成分页回归版本 ${detail.versionsTotal + 1}` } }, evidence.network);
+    detail = await get<Detail>(page, `/color-register/${previous.colorId}`, evidence.network);
+  }
+  await page.goto(`/admin/color-database?colorId=${detail.id}`);
+  const dialog = page.getByRole('dialog');
+  await dialog.getByRole('button', { name: '更正标准并保留历史', exact: true }).click();
+  await dialog.getByLabel('更正原因', { exact: true }).fill('合成未保存更正草稿，翻页不得丢失');
+  await page.screenshot({ path: info.outputPath('history-unsaved-before-page.png'), fullPage: true });
+  await expect(dialog.getByRole('button', { name: '下一页版本', exact: true })).toBeDisabled();
+  await expect(dialog.getByLabel('更正原因', { exact: true })).toHaveValue('合成未保存更正草稿，翻页不得丢失');
+  page.once('dialog', dialog => dialog.accept());
+  await dialog.getByRole('button', { name: '取消更正', exact: true }).click();
+  await dialog.getByRole('button', { name: '下一页版本', exact: true }).click();
+  await expect(dialog).toContainText('版本第 2 / 2 页');
+  await dialog.getByRole('button', { name: '上一页版本', exact: true }).click();
+  await expect(dialog).toContainText('版本第 1 / 2 页');
+  expect(evidence.errors).toEqual([]); expect(evidence.consoleErrors).toEqual([]);
+  await persist('register-pagination-browser.json', { expectedCommit, origin, colorId: detail.id, versions: detail.versionsTotal, draftProtected: true, network: evidence.network, errors: evidence.errors }, info);
+});
+
+
+test('Color register: existing project explicitly links the exact identity and preserves its author', async ({ page }, info) => {
+  const evidence = monitor(page); const a = await accounts();
+  await login(page, a.memberB!); await identify(page, info);
+  const fixture = JSON.parse(await readFile(path.join(runtime!, 'legacy-link-fixture.json'), 'utf8'));
+  const prior = JSON.parse(await readFile(path.join(runtime!, 'register-project-browser.json'), 'utf8'));
+  const color = await get<Detail>(page, `/color-register/${prior.colorId}`, evidence.network);
+  const before = await get(page, `/projects/${fixture.projectId}`, evidence.network);
+  expect(before.primaryColorId).toBeNull();
+  await page.goto(`/projects/${fixture.projectId}/standard-boards`);
+  const form = page.locator('section.page-card').filter({ has: page.getByRole('heading', { name: '核对现有项目的颜色身份', exact: true }) });
+  await form.getByRole('combobox', { name: '生产基地', exact: true }).selectOption(color.base!.id);
+  await form.getByLabel('查找已有颜色', { exact: true }).fill(color.name);
+  await expect(form.getByRole('radio')).toHaveCount(1); await form.getByRole('radio').check();
+  await form.getByRole('checkbox').check();
+  const request = page.waitForRequest(req => req.method() === 'POST' && new URL(req.url()).pathname === `/api/projects/${fixture.projectId}/color-link`);
+  await form.getByRole('button', { name: '保存颜色关联', exact: true }).click();
+  const body = (await request).postDataJSON();
+  await expect(page.getByRole('heading', { name: '核对现有项目的颜色身份', exact: true })).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByText(`关联颜色：${color.name} · ${color.base!.name}`, { exact: true })).toBeVisible();
+  const after = await get(page, `/projects/${fixture.projectId}`, evidence.network);
+  expect(after.id).toBe(before.id); expect(after.ownerUserId).toBe(before.ownerUserId); expect(after.name).toBe(before.name); expect(after.createdAt).toBe(before.createdAt); expect(after.primaryColorId).toBe(color.id);
+  expect((await post(page, `/projects/${fixture.projectId}/color-link`, body, evidence.network)).idempotentReplay).toBe(true);
+  const final = await get<Detail>(page, `/color-register/${color.id}`, evidence.network);
+  expect(final.versions).toEqual(color.versions); expect(final.revision).toBe(color.revision);
+  expect(final.projects.map(item => item.id)).toContain(fixture.projectId);
+  await screenshot(page, info, 'existing-project-linked', 1440);
+  await persist('register-existing-link-browser.json', { expectedCommit, origin, projectId: fixture.projectId, colorId: color.id, identityAndAuthorPreserved: true, network: evidence.network, errors: evidence.errors }, info);
 });

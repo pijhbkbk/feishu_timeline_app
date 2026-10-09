@@ -18,7 +18,7 @@ export default defineConfig({
   reporter: [['line'], ['html', { open: 'never', outputFolder: path.join(process.env.COLOR_REGISTER_RUNTIME_ROOT, 'browser-report') }]],
   use: {
     baseURL: 'http://127.0.0.1:3360',
-    headless: true,
+    headless: true, actionTimeout: 15000, navigationTimeout: 30000,
     trace: 'off', video: 'off', screenshot: 'only-on-failure',
     ...(process.env.PLAYWRIGHT_EXECUTABLE_PATH ? { launchOptions: { executablePath: process.env.PLAYWRIGHT_EXECUTABLE_PATH } } : {}),
   },
