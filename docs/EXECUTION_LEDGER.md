@@ -8059,3 +8059,16 @@ BLOCKER_REPORT: Public-source push remains rejected by platform automatic review
 - 下一步决策：本机Chrome真实M1供负责人操作确认；Safari剩余证据可在屏幕捕获恢复后补验，不自行宣布产品通过、不自动进入下一轮、不部署正式网站。当前CODE_IMPLEMENTED / BUILD_COMPLETE / LOCAL_CHROME_VERIFIED / SAFARI_PARTIALLY_VERIFIED / NOT_DEPLOYED_TO_PRODUCTION / AWAITING_PRODUCT_OWNER_CONFIRMATION。远端staging未执行，production未改变且本轮runtime未现场读取，main=41b4b166c587692e6f0fb9536dca2e1aab646c70/tag未改变；强制14项完整列于验收README。
 
 - 补充证据：登录/新建/原03四档、未准入1440/390共14图及单图溢出检查取得；补充助手两次分别因控件定位、把确认审批状态APPROVED误期待为COMPLETED而FAIL后停止，未改产品或记录。两次FAIL不计PASS，原04另有独立主链通过证据，详见SUPPLEMENTAL_FINAL_CAPTURE_BLOCKER.md。
+
+
+## 2026-10-09 COLOR_REGISTER_LINK_M1 本机可操作交付
+
+- 目标/范围：用户实际《制造中心商用车颜色清单明细.xlsx》接入现有颜色清单；基地/备注独立、保留所有表/原行/空值/条件/控制限与来源，候选项目→07事务加入清单，准确既有颜色和项目关联，版本固定引用，生产粒度防重复；单部门同等业务管理权限和安全保留，不重建平台、不恢复多角色审批、不执行未确认关闭。
+- 输入/现场：原附件SHA256 34ab4145cc004c7b712bf5431b9f169d2e6f0e3d8b8922a389e722d264c836e7。起点c4077e74b81be3be5294b0ff827532d42ce7b4b9；原m1_http20合成项目/0颜色/42迁移，仅作隔离基线，未读取生产库。所有来源原文及对象留ignored私有目录，不进入公开仓库/CI。
+- 改动：runtime `3ace9626dbf88ccca68c16d11faa55ab9f1765dc`、分支codex/color-register-integration。107个累积文件以git diff清单为准：Prisma schema及20261009020000增量迁移、color-register域/CLI、共享标准解析、07原子保存/版本发放/工作流守卫、项目显式主色/既有身份关联、评审版本、生产聚合、既有路由UI/权限合同与测试、受控工作簿解析。只有根任务写正式源码，独立上下文只读审查及私有提案。
+- 命令：pnpm install --frozen-lockfile、pnpm lint、pnpm typecheck、pnpm test、pnpm --filter @feishu-timeline/web build、pnpm --filter @feishu-timeline/api build、pnpm --filter @feishu-timeline/api prisma:validate；真实PG专属vitest15+9+3、解析19、42项来源核对、固定git archive构建、原生Chrome5、同文件CLI replay、快照备份恢复与重启。具体入口/日志和版本在docs/acceptance/COLOR_REGISTER_LINK_M1/README.md。
+- 结果：89来源颜色（23/14/16/21/15基地）、1166行/19297格保全，155测量/39 Lab缺值不补零；122明确产量行/1464事实，53产量行待核对。新汉玉白共色相/分资料、SD蓝独立，其他同名不自动同标准。新建候选无正式编号/月，07保存入清单仅一次，V2保留V1，评审/发放不改旧版，既有项目/作者不重建。
+- 验证：Web422、API1496PASS/148SKIPPED；PG27PASS、解析19PASS；双构建/lint/typecheck/Prisma PASS；Chrome最终5PASS18.1s，三宽真实数据和写读回，正常console/pageerror0，错误态503显式注入；独立G4_DIFF REVIEWED。前序全量与PG按不变后端/schema/依赖复用，后续布局增量重跑Web422及双构建。跳过不算PASS。
+- 环境：http://127.0.0.1:3360，Web3362/API3361，color_register_v2及43迁移，专属Redis DB3/ClamAV/LOCAL对象。Web/API元数据与不可变runtime相等，最终制品摘要一致；59表恢复与45对象恢复PASS，重启读回PASS。原3350、production、main=41b4b166c587692e6f0fb9536dca2e1aab646c70、4tag未改变；没有推送或访问远端。
+- 失败留痕：首次导入契约错配隔离库留存，DTO漏字段红绿、手机隐藏标签/旧表格撑宽修复、编辑分页保护、测试等待URL/可访问文本框定位、备份预检旧库名修正。未删除断言、审计或旧历史，未放宽CSP；修复证据详见回执。Placeholder运行0/测试白名单10。
+- 风险/下一步：53条产量归属待业务核对；有不明确历史的旧项目不自动关联；Safari/完整评审批转/完整统计重做/关闭规则不声称本轮浏览器通过。目标本机主链可操作，产品仍AWAITING_PRODUCT_OWNER_CONFIRMATION；等待负责人核对，不自动进入新轮次或生产发布。

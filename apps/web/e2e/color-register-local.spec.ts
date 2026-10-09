@@ -307,6 +307,8 @@ test('Color register: approved report to one atomic board standard, candidate id
   await form.getByLabel('版本说明', { exact: true }).fill('隔离验收合成初始标准');
   await form.getByLabel('制板备注', { exact: true }).fill('入清单与量产许可分开核验。');
   for (const width of [1440, 1024, 390]) await screenshot(page, info, 'board-standard-draft', width, width === 390 ? 844 : 900);
+  await form.getByRole('button', { name: '保存并加入颜色清单', exact: true }).scrollIntoViewIfNeeded();
+  await screenshot(page, info, 'board-standard-mobile-save', 390, 844);
   await page.setViewportSize({ width: 1440, height: 900 });
   const publicationRequest = page.waitForRequest(request => request.method() === 'POST' && request.url().endsWith('/standard-boards/save-and-publish'));
   await form.getByRole('button', { name: '保存并加入颜色清单', exact: true }).click();
@@ -347,6 +349,8 @@ test('Color register: approved report to one atomic board standard, candidate id
   const unchangedBoard = await get(page, `/projects/${projectId}/standard-boards`, evidence.network);
   expect(unchangedBoard.items[0].colorVersionId).toBe(published.currentStandardVersionId);
   for (const width of [1440, 1024, 390]) await screenshot(page, info, 'register-correction-history', width, width === 390 ? 844 : 900);
+  await page.getByRole('dialog').getByText('版本 1', { exact: true }).scrollIntoViewIfNeeded();
+  await screenshot(page, info, 'register-mobile-history', 390, 844);
   await page.getByRole('button', { name: '关闭', exact: true }).click();
   const beforeExisting = await get<List>(page, `/color-register?search=${encodeURIComponent(name)}&pageSize=20`, evidence.network);
   const linked = await createProject(page, { name, baseId: base.id, existingId: colorId, date }, evidence.network);
@@ -413,10 +417,10 @@ test('Color register: history pagination protects an unsaved correction', async 
   await page.goto(`/admin/color-database?colorId=${detail.id}`);
   const dialog = page.getByRole('dialog');
   await dialog.getByRole('button', { name: '更正标准并保留历史', exact: true }).click();
-  await dialog.getByLabel('更正原因', { exact: true }).fill('合成未保存更正草稿，翻页不得丢失');
-  await page.screenshot({ path: info.outputPath('history-unsaved-before-page.png'), fullPage: true });
+  await dialog.getByRole('textbox', { name: '更正原因', exact: true }).fill('合成未保存更正草稿，翻页不得丢失');
+  await page.screenshot({ path: info.outputPath('history-unsaved-before-page.png'), fullPage: false });
   await expect(dialog.getByRole('button', { name: '下一页版本', exact: true })).toBeDisabled();
-  await expect(dialog.getByLabel('更正原因', { exact: true })).toHaveValue('合成未保存更正草稿，翻页不得丢失');
+  await expect(dialog.getByRole('textbox', { name: '更正原因', exact: true })).toHaveValue('合成未保存更正草稿，翻页不得丢失');
   page.once('dialog', dialog => dialog.accept());
   await dialog.getByRole('button', { name: '取消更正', exact: true }).click();
   await dialog.getByRole('button', { name: '下一页版本', exact: true }).click();

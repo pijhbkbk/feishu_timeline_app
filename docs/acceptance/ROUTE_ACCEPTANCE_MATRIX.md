@@ -302,3 +302,36 @@ API列省略统一/api前缀。获准成员指原生ACTIVE且teamAccessApproved=
 - 本轮没有同名新旧导航并存。公共开关默认值、本地构建值、远端未读取状态、读取时机与回退方式见M1回执开关表。
 - Safari仅原生登录/地图/已存确认/材料内容/关闭/返回URL有证据；全写链与最终重登刷新未完成，见Safari回执。WebDriver UNAVAILABLE与屏幕捕获失败不计PASS；没有用WebKit替代。
 - 全部本机证据不证明https://timeline.all-too-well.com改变。远端staging/production未执行；产品状态AWAITING_PRODUCT_OWNER_CONFIRMATION。
+
+
+## 2026-10-09 COLOR_REGISTER_LINK_M1 — 3360本机隔离验收
+
+统一身份：runtime `3ace9626dbf88ccca68c16d11faa55ab9f1765dc`，API/Web均同值。数据库color_register_v2，真实原表+明确合成验收记录，未访问生产。required role均为本地原生、已准入单部门成员（测试账号无岗位角色、非管理员）；未准入读写403。本节PASS是技术操作结果，产品仍待负责人确认。
+
+| 精确URL | route component / 状态 | API endpoints | expected data / action | screenshot | browser result / PASS-FAIL |
+| --- | --- | --- | --- | --- | --- |
+| http://127.0.0.1:3360/admin/color-database | AdminColorDatabaseR26→ColorRegisterWorkspace / REPLACED | GET /api/color-register、/:id、/sources；PATCH /notes；POST /:id/standards | 默认基地/备注，89来源记录，分基地/SD筛选、11表来源、备注复制粘贴保存刷新、空/错误态，标准更正保留旧版 | [清单](/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/color-register-runtime/browser-results/color-register-local-Color-2cd1e-licit-notes-and-source-rows/source-shandong-blue-1440.png)、[手机](/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/color-register-runtime/browser-results/color-register-local-Color-2cd1e-licit-notes-and-source-rows/source-standard-detail-390.png) | PASS：真实200/写入读回、三宽、无pageerror；503明确注入 |
+| http://127.0.0.1:3360/projects/new | NewColorProject及ProjectColorPicker / STILL_ACTIVE并扩展 | GET /api/color-register；POST /api/projects；POST /api/v2/tasks/:id/materials；POST /api/projects/:id/approved-report | 已获批报告真实扫描；NEW候选缺编号/月份，EXISTING准确颜色+基地不重复创建 | [新建页三档](/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/color-register-runtime/final-route-captures/new-project-1440.png)；完整Network见register-project-browser.json | PASS：两个建立方式、真实上传CLEAN、准确primaryColorId |
+| http://127.0.0.1:3360/projects/cmv0j2z7h00669k740g05m4nn/standard-boards | StandardBoardsWorkspace+BoardStandardPublishForm / STILL_ACTIVE并扩展 | GET /api/projects/:id/standard-boards；POST /save-and-publish；GET /api/color-register/:id | 原子保存节点/标准/清单；同色身份；重复不新增；刷新保留，非量产许可 | [1440](/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/color-register-runtime/browser-results/color-register-local-Color-83998-n-history-and-existing-link/board-standard-draft-1440.png)、[390保存](/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/color-register-runtime/browser-results/color-register-local-Color-83998-n-history-and-existing-link/board-standard-mobile-save-390.png) | PASS：三宽、仅1板/1清单、幂等、V1→V2旧版保留 |
+| http://127.0.0.1:3360/projects/cmv0ietkv00019kbso8u82lyf/standard-boards | ExistingProjectColorLink / STILL_ACTIVE并扩展 | GET/POST /api/projects/:id/color-link；GET /api/color-register/:id | 精确基地+颜色确认关联，刷新保持、原ID/名称/作者/创建时间不变、重复不重绑 | [关联后](/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/color-register-runtime/browser-results/color-register-local-Color-93b5f-ty-and-preserves-its-author/existing-project-linked-1440.png) | PASS：普通另一成员操作，准确读回及幂等 |
+| http://127.0.0.1:3360/dashboard?project=cmv0j2z7h00669k740g05m4nn ；[03实际记录](http://127.0.0.1:3360/projects/cmv0j2z7h00669k740g05m4nn/tasks/cmv0j2zu7007b9k74m99v3khi?from=dashboard&tab=flow) / [04实际确认](http://127.0.0.1:3360/projects/cmv0j2z7h00669k740g05m4nn/tasks/cmv0j310v007p9k74xccstz7q?from=dashboard&tab=flow) | M1Dashboard/TaskProgress / STILL_ACTIVE | GET /api/v2/projects/:id/workspace；GET/POST /api/v2/tasks/:id；POST /samples、/materials | 合成已批报告→03制样→04真实确认材料，为07提供真实前序；颜色身份准确 | [03三档](/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/color-register-runtime/final-route-captures/sample-fact-1440.png)、[04三档](/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/color-register-runtime/final-route-captures/confirmation-fact-1440.png)；写入Network见register-project-browser.json | PASS：本轮真实业务前序API与浏览器操作；非全18节点再验 |
+
+### 其他受影响读取/资格帮助函数与版本选择器
+
+以下保留正式路由，变化为显式primaryColorId读取或单部门资格、评审版本选择。其API/组件/PG回归通过，**不声称这些路由的完整业务浏览器路径已经验收**；截图/浏览器结果为未执行（非PASS），原页面继续STILL_ACTIVE。scope为本轮最小关联及受影响回归，不将此组计成多页面“完成”。
+
+| URL（统一http://127.0.0.1:3360） | component | API | expected data/action | screenshot / browser |
+| --- | --- | --- | --- | --- |
+| /projects/:id/reviews | ProjectReviewsWorkspace→CabinReviewWorkspace/ConsistencyReviewWorkspace | /api/projects/:id/reviews/cabin、consistency | 标准选项精确到已下发版本；保留作者/历史；真实PG已证一致性评审V1固定 | 未执行完整浏览器；PG/单元PASS |
+| /projects/:id/color-evaluation | VisualDeltaReviewWorkspace | /api/projects/:id/reviews/visual-delta | 评审绑定标准版本，准入成员资格，状态机保持 | 未执行完整浏览器；单元PASS |
+| /projects/:id/paint-procurement | PaintProcurementWorkspace | /api/projects/:id/paint-procurements | 同部门资格；采购完成激活07 | 页面未验；本轮真实API采购/到货/完成PASS |
+| /projects/:id/fees | FeesWorkspace | /api/projects/:id/fees | 同部门资格、状态限制保持 | 未执行完整浏览器；单元PASS |
+| /projects/:id/performance-tests | PerformanceTestsWorkspace | /api/projects/:id/performance-tests | 同部门资格、状态限制保持 | 未执行完整浏览器；单元PASS |
+| /projects/:id/production-plans | SchedulePlansWorkspace | /api/projects/:id/production-plans/schedule | 同部门资格、准确信息读取 | 未执行完整浏览器；单元PASS |
+| /projects/:id/pilot-production | PilotProductionWorkspace | /api/projects/:id/first-production-plans、trial-productions | 同部门资格、状态限制保持 | 未执行完整浏览器；单元PASS |
+| /projects/:id/mass-production | MassProductionWorkspace | /api/projects/:id/mass-production | 同部门资格；颜色/基地/实际生产月份口径 | 未执行完整浏览器；聚合PG/单元PASS |
+| /projects/:id/color-exit | ColorExitWorkspace | /api/projects/:id/color-exit | 资格帮助函数改同部门；关闭业务规则不扩展、不自动执行 | 本轮业务验收排除、未执行 |
+| /projects/:id/workflow、/attachments、/materials | 既有Workflow/Attachments workspace | /api/projects/:id/workflow、attachments | 同部门资格及显式身份读取，附件安全不变 | 受影响单元回归；本轮材料实际上传作为前序PASS；非整页完成 |
+| /projects/:id、/projects、/admin/projects、/retrospective | 既有项目/管理/回顾呈现 | 既有projects/dashboard/retrospective读API | 显式primaryColor优先，不从同名或遗留数组猜测；管理员仍需独立权限 | 单元回归，未声明完整页面浏览器验收 |
+
+旧颜色清单实现 REPLACED；/v2/admin/color-database 共用同一包装组件、没有第二套导航或开关分流，兼容URL本轮未单独浏览器验收。LEGACY_ONLY页面保持原关闭入口设置。正式Placeholder0，测试白名单10。单元、PG和本机浏览器均不证明远端staging/production改变。
