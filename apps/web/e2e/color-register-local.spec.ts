@@ -88,7 +88,7 @@ async function filter(page: Page, search = '', baseId = '') {
 }
 async function screenshot(page: Page, info: TestInfo, label: string, width: number, height = 900) {
   await page.setViewportSize({ width, height });
-  await page.screenshot({ path: info.outputPath(`${label}-${width}.png`), fullPage: true });
+  await page.screenshot({ path: info.outputPath(`${label}-${width}.png`), fullPage: false });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), `${label} viewport ${width} must not overflow the page`).toBe(true);
 }
 
@@ -258,6 +258,7 @@ test('Color register: approved report to one atomic board standard, candidate id
   await page.getByRole('button', { name: '保存并返回', exact: true }).click();
   await expect(page).toHaveURL(new RegExp(`/dashboard\\?project=${projectId}&taskId=`));
   await page.locator('[data-node-code="SAMPLE_COLOR_CONFIRMATION"]').click();
+  await expect(page).toHaveURL(new RegExp(`/projects/${projectId}/tasks/[^/?]+`));
   const confirmTaskId = new URL(page.url()).pathname.split('/').at(-1)!;
   await page.getByLabel('实际确认日期', { exact: true }).fill(date);
   await page.getByLabel('确认方', { exact: true }).fill('合成客户技术方');

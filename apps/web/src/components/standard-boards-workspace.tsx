@@ -374,7 +374,7 @@ export function StandardBoardsWorkspace({
   }
 
   return (
-    <div className="page-stack">
+    <div className="page-stack cr-board-workspace">
       <section className="page-card">
         <div className="section-header">
           <div>
