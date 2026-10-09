@@ -23,8 +23,9 @@ const engineerUser: SessionUser = {
   departmentId: null,
   departmentName: null,
   isSystemAdmin: false,
-  authSource: 'mock',
-  roleCodes: ['process_engineer'],
+  authSource: 'local',
+  teamAccessApproved: true,
+  roleCodes: [],
 };
 
 const workspace: StandardBoardWorkspaceResponse = {

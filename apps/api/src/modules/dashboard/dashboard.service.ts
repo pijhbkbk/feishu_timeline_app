@@ -1,3 +1,4 @@
+import { PROJECT_DISPLAY_COLOR_SELECT, resolveProjectDisplayColor } from '../../common/project-display-color';
 import { teamProjectScope } from '../../common/team-authorization';
 import { Injectable } from '@nestjs/common';
 import {
@@ -429,22 +430,11 @@ export class DashboardService {
             },
           },
         },
+        primaryColor: { select: PROJECT_DISPLAY_COLOR_SELECT },
         colors: {
-          select: {
-            id: true,
-            code: true,
-            name: true,
-            isPrimary: true,
-            status: true,
-            numberingTaskId: true,
-            numberedById: true,
-            numberedAt: true,
-            numberingAttachmentId: true,
-            numberingAttachment: {
-              select: { scanStatus: true, isDeleted: true },
-            },
-          },
-          orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
+          select: PROJECT_DISPLAY_COLOR_SELECT,
+          orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }, { id: 'asc' }],
+          take: 1,
         },
         workflowTasks: {
           include: {
@@ -545,12 +535,12 @@ export class DashboardService {
             name: true,
           },
         },
+        primaryColorId: true,
+        primaryColor: { select: PROJECT_DISPLAY_COLOR_SELECT },
         colors: {
-          select: {
-            name: true,
-            isPrimary: true,
-          },
-          orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
+          select: PROJECT_DISPLAY_COLOR_SELECT,
+          orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }, { id: 'asc' }],
+          take: 1,
         },
       },
       orderBy: [{ updatedAt: 'desc' }],
@@ -596,7 +586,7 @@ export class DashboardService {
           projectId: plan.projectId,
           projectCode: project?.code ?? '',
           projectName: project?.name ?? '未知项目',
-          colorName: project?.colors[0]?.name ?? '未关联颜色',
+          colorName: resolveProjectDisplayColor(project)?.name ?? '未关联颜色',
           ownerName: project?.ownerUser?.name ?? '未分配',
           currentNodeCode: project?.currentNodeCode ?? null,
           currentNodeName: getCurrentNodeName(project?.currentNodeCode) ?? '未开始',
@@ -880,22 +870,8 @@ export class DashboardService {
             };
           };
         };
-        colors: {
-          select: {
-            id: true;
-            code: true;
-            name: true;
-            isPrimary: true;
-            status: true;
-            numberingTaskId: true;
-            numberedById: true;
-            numberedAt: true;
-            numberingAttachmentId: true;
-            numberingAttachment: {
-              select: { scanStatus: true; isDeleted: true };
-            };
-          };
-        };
+        primaryColor: { select: typeof PROJECT_DISPLAY_COLOR_SELECT };
+        colors: { select: typeof PROJECT_DISPLAY_COLOR_SELECT };
         workflowTasks: {
           include: {
             assigneeUser: {
@@ -977,7 +953,7 @@ export class DashboardService {
       };
     });
     const completedNodeCount = nodes.filter((node) => node.timelineStatus === 'COMPLETED').length;
-    const color = project.colors[0] ?? null;
+    const color = resolveProjectDisplayColor(project);
 
     return {
       projectId: project.id,

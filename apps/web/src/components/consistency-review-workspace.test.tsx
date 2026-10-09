@@ -1,3 +1,4 @@
+import { canManageConsistencyReviews } from '../lib/consistency-reviews-client';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
@@ -22,7 +23,8 @@ const reviewerUser: SessionUser = {
   departmentId: null,
   departmentName: null,
   isSystemAdmin: false,
-  authSource: 'mock',
+  authSource: 'local',
+  teamAccessApproved: true,
   roleCodes: ['reviewer'],
 };
 
@@ -160,5 +162,17 @@ describe('ConsistencyReviewWorkspace', () => {
     );
 
     expect(html).toContain('驳回');
+  });
+});
+
+describe('single-department review admission', () => {
+  it('allows an approved member without a legacy review role, while retaining own-signature rules', () => {
+    const member = { ...reviewerUser, roleCodes: [] };
+    expect(canManageConsistencyReviews(member, member.id)).toBe(true);
+    expect(canManageConsistencyReviews(member, 'another-author')).toBe(false);
+  });
+  it('does not admit an unapproved account through a legacy role', () => {
+    expect(canManageConsistencyReviews({ ...reviewerUser, teamAccessApproved: false })).toBe(false);
+    expect(canManageConsistencyReviews({ ...reviewerUser, authSource: 'mock' })).toBe(false);
   });
 });

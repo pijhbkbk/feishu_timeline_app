@@ -1,5 +1,8 @@
 'use client';
 
+import { ReviewStandardSelect } from './review-standard-select';
+import { reviewStandardLabel, type ReviewStandardOptions } from '../lib/review-standard-version';
+
 import Link from 'next/link';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
@@ -373,6 +376,8 @@ export function ConsistencyReviewWorkspace({
             message={decisionGuidance}
           />
           <ConsistencyReviewForm
+            standardOptions={workspace}
+            standardLocked={Boolean(editingReviewId)}
             value={form}
             reviewerOptions={reviewerOptions}
             disabled={!canManage || isReadOnly || isSaving}
@@ -439,6 +444,8 @@ export function ConsistencyReviewWorkspace({
 
 export function ConsistencyReviewForm({
   value,
+  standardOptions = {},
+  standardLocked = false,
   reviewerOptions,
   disabled,
   submitLabel,
@@ -446,6 +453,8 @@ export function ConsistencyReviewForm({
   onSubmit,
 }: {
   value: ConsistencyReviewFormInput;
+  standardOptions?: ReviewStandardOptions;
+  standardLocked?: boolean;
   reviewerOptions: DirectoryUser[];
   disabled: boolean;
   submitLabel: string;
@@ -490,6 +499,10 @@ export function ConsistencyReviewForm({
           </div>
         </div>
       </div>
+      <ReviewStandardSelect value={value.standardVersionId ?? ''}
+        onChange={standardVersionId => onChange({ ...value, standardVersionId })}
+        options={standardOptions.eligibleStandardVersions} required={standardOptions.standardVersionRequired}
+        hasMore={standardOptions.standardVersionsHasMore} locked={standardLocked} disabled={disabled} />
       <label className="field">
         <span>评审日期</span>
         <input
@@ -609,6 +622,7 @@ export function ConsistencyReviewHistory({
         <thead>
           <tr>
             <th>评审日期</th>
+            <th>标准版本</th>
             <th>评审人</th>
             <th>结论</th>
             <th>状态</th>
@@ -620,7 +634,7 @@ export function ConsistencyReviewHistory({
         <tbody>
           {items.length === 0 ? (
             <tr>
-              <td colSpan={7}>
+              <td colSpan={8}>
                 <StatePanel
                   compact
                   title="暂无一致性评审记录"
@@ -636,6 +650,7 @@ export function ConsistencyReviewHistory({
                 onClick={() => onSelect(item.id)}
               >
                 <td>{formatDate(item.reviewDate)}</td>
+                <td>{reviewStandardLabel(item.standardVersion)}</td>
                 <td>{item.reviewerName ?? '未指定'}</td>
                 <td>
                   <ReviewConclusionBadge conclusion={item.reviewConclusion} />
@@ -758,6 +773,7 @@ export function ConsistencyReviewDetail({
         <div className="detail-item">
           <span>评审日期</span>
           <strong>{formatDate(review.reviewDate)}</strong>
+          <span>{reviewStandardLabel(review.standardVersion)}</span>
         </div>
         <div className="detail-item">
           <span>最近结论</span>

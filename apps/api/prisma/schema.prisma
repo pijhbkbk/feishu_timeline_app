@@ -72,6 +72,84 @@ enum ColorVersionStatus {
   ARCHIVED
 }
 
+enum ColorRegisterStatus {
+  CANDIDATE
+  LISTED
+  PENDING_REVIEW
+}
+
+model ProductionBase {
+  id        String  @id @default(cuid())
+  code      String  @unique @db.VarChar(64)
+  name      String  @db.VarChar(200)
+  colors    Color[]
+  productionFacts ColorProductionFact[]
+  @@map("production_bases")
+}
+
+model HueStandard {
+  id        String  @id @default(cuid())
+  name      String  @db.VarChar(200)
+  basis     String  @db.VarChar(1000)
+  colors    Color[]
+  @@map("hue_standards")
+}
+
+model ColorImportBatch {
+  id             String @id @default(cuid())
+  sha256         String @unique @db.VarChar(64)
+  fileName       String @db.VarChar(255)
+  byteSize       Int
+  objectKey      String @db.VarChar(512)
+  parserVersion  String @db.VarChar(100)
+  importedById   String
+  importedBy     User @relation(fields: [importedById], references: [id], onDelete: Restrict)
+  sheetCount     Int
+  rowCount       Int
+  colorCount     Int
+  metadata       Json
+  createdAt      DateTime @default(now())
+  rows           ColorImportRow[]
+  @@map("color_import_batches")
+}
+
+model ColorImportRow {
+  id             String @id @default(cuid())
+  batchId        String
+  sheetName      String @db.VarChar(200)
+  rowNumber      Int
+  kind           String @db.VarChar(100)
+  status         String @db.VarChar(40)
+  rawCells       Json
+  normalization  Json?
+  colorId        String?
+  batch          ColorImportBatch @relation(fields: [batchId], references: [id], onDelete: Restrict)
+  color          Color? @relation(fields: [colorId], references: [id], onDelete: Restrict)
+  productionFacts ColorProductionFact[]
+  @@unique([batchId, sheetName, rowNumber])
+  @@index([colorId])
+  @@index([batchId, status, sheetName, rowNumber])
+  @@map("color_import_rows")
+}
+
+model ColorProductionFact {
+  id               String @id @default(cuid())
+  colorId          String
+  productionBaseId String
+  month            String @db.VarChar(7)
+  metricScope      String @db.VarChar(200)
+  quantity         Decimal? @db.Decimal(18, 3)
+  sourceRowId      String?
+  sourceCell       String? @db.VarChar(32)
+  revision         Int @default(1)
+  color            Color @relation(fields: [colorId], references: [id], onDelete: Restrict)
+  productionBase   ProductionBase @relation(fields: [productionBaseId], references: [id], onDelete: Restrict)
+  sourceRow        ColorImportRow? @relation(fields: [sourceRowId], references: [id], onDelete: Restrict)
+  @@unique([colorId, productionBaseId, month, metricScope])
+  @@index([productionBaseId, month, metricScope])
+  @@map("color_production_facts")
+}
+
 enum WorkflowNodeCode {
   PROJECT_INITIATION
   DEVELOPMENT_REPORT
@@ -431,6 +509,7 @@ model Department {
 }
 
 model User {
+  colorImports                  ColorImportBatch[]
   id                            String                    @id @default(cuid())
   username                      String                    @unique
   name                          String
@@ -567,6 +646,8 @@ model UserRole {
 
 model Project {
   id                       String                    @id @default(cuid())
+  primaryColorId           String?
+  primaryColor             Color?                    @relation("ProjectPrimaryColor", fields: [primaryColorId], references: [id], onDelete: Restrict)
   code                     String                    @unique
   name                     String
   requiresApprovedReport   Boolean                   @default(false)
@@ -628,6 +709,7 @@ model Project {
   @@index([status, currentNodeCode])
   @@index([owningDepartmentId, status])
   @@index([ownerUserId, status])
+  @@index([primaryColorId])
   @@map("projects")
 }
 
@@ -742,7 +824,21 @@ model ProjectCreateCommandRequest {
 
 model Color {
   id                    String             @id @default(cuid())
-  projectId             String
+  projectId             String?
+  linkedProjects        Project[]          @relation("ProjectPrimaryColor")
+  productionBaseId      String?
+  productionBase        ProductionBase?    @relation(fields: [productionBaseId], references: [id], onDelete: Restrict)
+  hueStandardId         String?
+  hueStandard           HueStandard?       @relation(fields: [hueStandardId], references: [id], onDelete: Restrict)
+  registerStatus        ColorRegisterStatus @default(PENDING_REVIEW)
+  registerMonth         String?            @db.VarChar(7)
+  registeredAt          DateTime?
+  manufacturer          String?            @db.VarChar(200)
+  paintType             String?            @db.VarChar(200)
+  registerNote          String?            @db.VarChar(4000)
+  registerRevision      Int                @default(1)
+  sourceRows            ColorImportRow[]
+  productionFacts       ColorProductionFact[]
   code                  String?            @unique
   name                  String
   description           String?
@@ -754,7 +850,7 @@ model Color {
   numberedById          String?
   numberedAt            DateTime?
   numberingAttachmentId String?            @unique
-  project               Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project               Project?           @relation(fields: [projectId], references: [id], onDelete: SetNull)
   numberingTask         WorkflowTask?      @relation("ColorNumberingTask", fields: [numberingTaskId], references: [id], onDelete: SetNull)
   numberedBy            User?              @relation("ColorNumberingOperator", fields: [numberedById], references: [id], onDelete: SetNull)
   numberingAttachment   Attachment?        @relation("ColorNumberingAttachment", fields: [numberingAttachmentId], references: [id], onDelete: SetNull)
@@ -768,7 +864,9 @@ model Color {
   createdAt             DateTime           @default(now())
   updatedAt             DateTime           @updatedAt
 
-  @@unique([projectId, name])
+  @@index([projectId, name])
+  @@index([productionBaseId, registerStatus, id])
+  @@index([hueStandardId])
   @@index([projectId, status])
   @@index([exitFlag, exitDate])
   @@index([numberedById, numberedAt])
@@ -786,6 +884,10 @@ model ColorVersion {
   technicalData     Json?
   createdById       String?
   confirmedAt       DateTime?
+  publishedAt       DateTime?
+  boardCode         String?            @db.VarChar(128)
+  sourceReference   Json?
+  reviewRecords     ReviewRecord[]
   color             Color              @relation(fields: [colorId], references: [id], onDelete: Cascade)
   createdBy         User?              @relation("ColorVersionCreator", fields: [createdById], references: [id], onDelete: SetNull)
   samples           Sample[]
@@ -1533,6 +1635,8 @@ model ReviewRecord {
   projectId         String
   workflowTaskId    String
   trialProductionId String?
+  standardVersionId String?
+  standardVersion   ColorVersion?     @relation(fields: [standardVersionId], references: [id], onDelete: Restrict)
   reviewerId        String?
   attachmentId      String?           @unique
   reviewType        ReviewType
@@ -1559,6 +1663,7 @@ model ReviewRecord {
   @@index([trialProductionId])
   @@index([reviewerId, reviewedAt])
   @@index([returnToNodeCode])
+  @@index([standardVersionId])
   @@map("review_records")
 }
 

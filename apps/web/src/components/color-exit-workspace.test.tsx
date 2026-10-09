@@ -24,8 +24,9 @@ const processEngineerUser: SessionUser = {
   departmentId: null,
   departmentName: null,
   isSystemAdmin: false,
-  authSource: 'mock',
-  roleCodes: ['process_engineer'],
+  authSource: 'local',
+  teamAccessApproved: true,
+  roleCodes: [],
 };
 
 const projectManagerUser: SessionUser = {
@@ -152,7 +153,7 @@ describe('ColorExitWorkspace', () => {
 
   it('controls complete button visibility and validation', () => {
     expect(
-      canShowCompleteColorExitButton(processEngineerUser, workspace, workspace.items[0]!),
+      canShowCompleteColorExitButton({ ...processEngineerUser, teamAccessApproved: false }, workspace, workspace.items[0]!),
     ).toBe(false);
     expect(
       canShowCompleteColorExitButton(projectManagerUser, workspace, workspace.items[0]!),

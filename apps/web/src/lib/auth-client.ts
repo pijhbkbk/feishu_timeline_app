@@ -28,6 +28,13 @@ export type SessionUser = {
   permissionCodes?: string[];
 };
 
+export function isApprovedTeamUser(user: SessionUser | null | undefined): user is SessionUser {
+  return Boolean(
+    user?.authSource === 'local' &&
+    (user.isSystemAdmin === true || user.teamAccessApproved === true),
+  );
+}
+
 export type SessionResponse = {
   authenticated: boolean;
   mockEnabled: boolean;

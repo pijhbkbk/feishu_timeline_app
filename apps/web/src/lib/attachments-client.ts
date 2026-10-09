@@ -1,6 +1,6 @@
 'use client';
 
-import { API_BASE_URL, apiRequest, type FrontendRoleCode, type SessionUser } from './auth-client';
+import { isApprovedTeamUser, API_BASE_URL, apiRequest, type SessionUser } from './auth-client';
 import { formatDate, type WorkflowNodeCode } from './projects-client';
 
 export type AttachmentEntityType =
@@ -124,16 +124,6 @@ export type TaskMaterialUploadInput = {
   taskVersion: string;
   replacesAttachmentId?: string;
 };
-
-const ATTACHMENT_MANAGEMENT_ROLE_CODES: FrontendRoleCode[] = [
-  'admin',
-  'project_manager',
-  'process_engineer',
-  'quality_engineer',
-  'purchaser',
-  'reviewer',
-  'finance',
-];
 
 const DOMAIN_GOVERNED_ATTACHMENT_ENTITY_TYPES = new Set<AttachmentEntityType>([
   'SAMPLE',
@@ -280,15 +270,7 @@ export function deleteProjectAttachment(projectId: string, attachmentId: string)
 }
 
 export function canManageProjectAttachments(user: SessionUser | null) {
-  if (!user) {
-    return false;
-  }
-
-  if (user.isSystemAdmin || user.roleCodes.includes('admin')) {
-    return true;
-  }
-
-  return ATTACHMENT_MANAGEMENT_ROLE_CODES.some((roleCode) => user.roleCodes.includes(roleCode));
+  return isApprovedTeamUser(user);
 }
 
 export function canMutateAttachmentInGenericWorkspace(

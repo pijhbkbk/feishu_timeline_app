@@ -1,3 +1,4 @@
+import { PROJECT_DISPLAY_COLOR_SELECT, resolveProjectDisplayColor, projectColorSearchWhere, assertLinkedProjectColorNameUnchanged } from '../../common/project-display-color';
 import { lockTeamAuthorization } from '../../common/team-authorization';
 import { normalizeLoginName } from '../auth/native-auth.rules';
 import { createHash } from 'node:crypto';
@@ -158,28 +159,7 @@ export class AdminControlCenterService {
               { name: { contains: search, mode: 'insensitive' } },
               { code: { contains: search, mode: 'insensitive' } },
               { vehicleModel: { contains: search, mode: 'insensitive' } },
-              {
-                colors: {
-                  some: {
-                    OR: [
-                      { name: { contains: search, mode: 'insensitive' } },
-                      {
-                        code: { contains: search, mode: 'insensitive' },
-                        numberingTaskId: { not: null },
-                        numberedById: { not: null },
-                        numberedAt: { not: null },
-                        numberingAttachmentId: { not: null },
-                        numberingAttachment: {
-                          is: {
-                            isDeleted: false,
-                            scanStatus: AttachmentScanStatus.CLEAN,
-                          },
-                        },
-                      },
-                    ],
-                  },
-                },
-              },
+              projectColorSearchWhere(search),
             ],
           }
         : {}),
@@ -195,22 +175,11 @@ export class AdminControlCenterService {
         include: {
           ownerUser: { select: { id: true, name: true } },
           owningDepartment: { select: { id: true, name: true } },
+          primaryColor: { select: PROJECT_DISPLAY_COLOR_SELECT },
           colors: {
-            orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
+            select: PROJECT_DISPLAY_COLOR_SELECT,
+            orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }, { id: 'asc' }],
             take: 1,
-            select: {
-              id: true,
-              name: true,
-              code: true,
-              status: true,
-              numberingTaskId: true,
-              numberedById: true,
-              numberedAt: true,
-              numberingAttachmentId: true,
-              numberingAttachment: {
-                select: { scanStatus: true, isDeleted: true },
-              },
-            },
           },
           workflowTasks: {
             include: {
@@ -286,10 +255,10 @@ export class AdminControlCenterService {
           code: project.code,
           name: project.name,
           vehicleModel: project.vehicleModel,
-          color: project.colors[0]
+          color: resolveProjectDisplayColor(project)
             ? {
-                ...project.colors[0],
-                code: getControlledColorNumber(project.colors[0]),
+                ...resolveProjectDisplayColor(project),
+                code: getControlledColorNumber(resolveProjectDisplayColor(project)),
               }
             : null,
           owner: project.ownerUser,
@@ -344,20 +313,11 @@ export class AdminControlCenterService {
           project: {
             include: {
               ownerUser: { select: { id: true, name: true } },
+              primaryColor: { select: PROJECT_DISPLAY_COLOR_SELECT },
               colors: {
-                orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
+                select: PROJECT_DISPLAY_COLOR_SELECT,
+                orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }, { id: 'asc' }],
                 take: 1,
-                select: {
-                  name: true,
-                  code: true,
-                  numberingTaskId: true,
-                  numberedById: true,
-                  numberedAt: true,
-                  numberingAttachmentId: true,
-                  numberingAttachment: {
-                    select: { scanStatus: true, isDeleted: true },
-                  },
-                },
               },
             },
           },
@@ -446,8 +406,8 @@ export class AdminControlCenterService {
             code: task.project.code,
             name: task.project.name,
             vehicleModel: task.project.vehicleModel,
-            colorName: task.project.colors[0]?.name ?? null,
-            colorCode: getControlledColorNumber(task.project.colors[0]),
+            colorName: resolveProjectDisplayColor(task.project)?.name ?? null,
+            colorCode: getControlledColorNumber(resolveProjectDisplayColor(task.project)),
             status: task.project.status,
             owner: task.project.ownerUser,
           },
@@ -2304,7 +2264,9 @@ export class AdminControlCenterService {
         const project = await tx.project.findUnique({
           where: { id: projectId },
           include: {
+            primaryColor: { select: PROJECT_DISPLAY_COLOR_SELECT },
             colors: {
+              select: PROJECT_DISPLAY_COLOR_SELECT,
               orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
               take: 1,
             },
@@ -2313,6 +2275,7 @@ export class AdminControlCenterService {
         if (!project) {
           throw new NotFoundException('项目不存在。');
         }
+        assertLinkedProjectColorNameUnchanged(project, input.colorName);
         this.assertDateVersion(project.updatedAt, input.expectedVersion, '项目');
         const updated = await this.claimAdminProjectMutation(tx, project, {
           ...(input.name !== undefined ? { name: input.name.trim() } : {}),
@@ -2337,7 +2300,7 @@ export class AdminControlCenterService {
               }
             : {}),
         });
-        if (input.colorName !== undefined && project.colors[0]) {
+        if (!project.primaryColorId && input.colorName !== undefined && project.colors[0]) {
           await tx.color.update({
             where: { id: project.colors[0].id },
             data: { name: input.colorName?.trim() || project.colors[0].name },
@@ -2355,7 +2318,7 @@ export class AdminControlCenterService {
             name: project.name,
             vehicleModel: project.vehicleModel,
             description: project.description,
-            colorName: project.colors[0]?.name ?? null,
+            colorName: resolveProjectDisplayColor(project)?.name ?? null,
             plannedStartDate: this.iso(project.plannedStartDate),
             plannedEndDate: this.iso(project.plannedEndDate),
           },
@@ -2363,7 +2326,9 @@ export class AdminControlCenterService {
             name: updated.name,
             vehicleModel: updated.vehicleModel,
             description: updated.description,
-            colorName: input.colorName ?? project.colors[0]?.name ?? null,
+            colorName: project.primaryColorId
+              ? resolveProjectDisplayColor(project)?.name ?? null
+              : input.colorName?.trim() || project.colors[0]?.name || null,
             plannedStartDate: this.iso(updated.plannedStartDate),
             plannedEndDate: this.iso(updated.plannedEndDate),
           },

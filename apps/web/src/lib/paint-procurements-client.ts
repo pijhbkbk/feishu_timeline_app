@@ -1,8 +1,8 @@
 'use client';
 
 import {
+  isApprovedTeamUser,
   apiRequest,
-  type FrontendRoleCode,
   type SessionUser,
 } from './auth-client';
 import {
@@ -119,12 +119,6 @@ export const PROCUREMENT_STATUS_OPTIONS: Array<{
 const PROCUREMENT_STATUS_LABELS = Object.fromEntries(
   PROCUREMENT_STATUS_OPTIONS.map((item) => [item.value, item.label]),
 ) as Record<ProcurementStatus, string>;
-
-const PROCUREMENT_ALLOWED_ROLE_CODES: FrontendRoleCode[] = [
-  'admin',
-  'project_manager',
-  'purchaser',
-];
 
 export async function fetchPaintProcurementWorkspace(projectId: string) {
   return apiRequest<PaintProcurementWorkspaceResponse>(
@@ -290,17 +284,7 @@ export function validateSupplierForm(input: SupplierFormInput) {
 }
 
 export function canManagePaintProcurement(user: SessionUser | null) {
-  if (!user) {
-    return false;
-  }
-
-  if (user.isSystemAdmin) {
-    return true;
-  }
-
-  return user.roleCodes.some((roleCode) =>
-    PROCUREMENT_ALLOWED_ROLE_CODES.includes(roleCode),
-  );
+  return isApprovedTeamUser(user);
 }
 
 export function canShowCompleteProcurementTaskButton(

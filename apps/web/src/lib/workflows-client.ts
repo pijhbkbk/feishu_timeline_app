@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  isApprovedTeamUser,
   type SessionUser,
   apiRequest,
   FRONTEND_ROLE_OPTIONS,
@@ -502,8 +503,8 @@ export function canUserOperateWorkflowTask(
   user: SessionUser | null,
   task: WorkflowTaskSummary,
 ) {
-  if (!user || !task.isActive || !['PENDING', 'READY', 'IN_PROGRESS', 'RETURNED'].includes(task.status) || task.assigneeUserId !== user.id) return false;
-  return user.roleCodes.includes(requiredRole[task.nodeCode]);
+  if (!user || !task.isActive || !['PENDING', 'READY', 'IN_PROGRESS', 'RETURNED'].includes(task.status)) return false;
+  return isApprovedTeamUser(user);
 }
 
 export function formatWorkflowTaskTime(value: string | null | undefined) {

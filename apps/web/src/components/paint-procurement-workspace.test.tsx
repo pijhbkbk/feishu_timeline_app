@@ -95,8 +95,9 @@ const purchaserUser: SessionUser = {
   departmentId: null,
   departmentName: null,
   isSystemAdmin: false,
-  authSource: 'mock',
-  roleCodes: ['purchaser'],
+  authSource: 'local',
+  teamAccessApproved: true,
+  roleCodes: [],
 };
 
 describe('PaintProcurementWorkspace', () => {
@@ -170,7 +171,8 @@ describe('PaintProcurementWorkspace', () => {
         {
           ...purchaserUser,
           id: 'user-2',
-          roleCodes: ['quality_engineer'],
+          teamAccessApproved: false,
+          roleCodes: ['purchaser'],
         },
         baseWorkspace,
       ),

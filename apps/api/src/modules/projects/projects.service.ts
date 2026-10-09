@@ -1,3 +1,5 @@
+import { PROJECT_DISPLAY_COLOR_SELECT, resolveProjectDisplayColor, projectColorSearchWhere } from '../../common/project-display-color';
+import { assignProjectColor, normalizeProjectColorInput, type ProjectColorInput } from '../../common/project-color';
 import { assertApprovedTeamMember } from '../../common/team-membership';
 import { teamProjectScope } from '../../common/team-authorization';
 import { withTeamWrite, withProjectWrite } from '../../common/team-authorization';
@@ -65,7 +67,7 @@ type ProjectListQuery = {
   dateTo?: Date;
 };
 
-type CreateProjectInput = {
+type CreateProjectInput = ProjectColorInput & {
   code: string | null;
   name: string;
   description: string | null;
@@ -95,6 +97,8 @@ type UpdateProjectInput = {
 
 type ProjectRecord = Prisma.ProjectGetPayload<{
   include: {
+    primaryColor: { select: typeof PROJECT_DISPLAY_COLOR_SELECT };
+    colors: { select: typeof PROJECT_DISPLAY_COLOR_SELECT };
     ownerUser: {
       include: {
         department: true;
@@ -220,20 +224,10 @@ export class ProjectsService {
             },
           },
           owningDepartment: true,
+          primaryColor: { select: PROJECT_DISPLAY_COLOR_SELECT },
           colors: {
-            select: {
-              name: true,
-              code: true,
-              isPrimary: true,
-              numberingTaskId: true,
-              numberedById: true,
-              numberedAt: true,
-              numberingAttachmentId: true,
-              numberingAttachment: {
-                select: { scanStatus: true, isDeleted: true },
-              },
-            },
-            orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
+            select: PROJECT_DISPLAY_COLOR_SELECT,
+            orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }, { id: 'asc' }],
             take: 1,
           },
           workflowTasks: {
@@ -480,8 +474,11 @@ export class ProjectsService {
             },
           },
           owningDepartment: true,
+          primaryColor: { select: PROJECT_DISPLAY_COLOR_SELECT },
           colors: {
-            orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
+            select: PROJECT_DISPLAY_COLOR_SELECT,
+            orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }, { id: 'asc' }],
+            take: 1,
           },
         },
       }),
@@ -662,7 +659,7 @@ export class ProjectsService {
         priority: project.priority,
         currentNodeCode: project.currentNodeCode,
         currentNodeName: this.workflowsService.getCurrentNodeName(project.currentNodeCode),
-        colorName: project.colors[0]?.name ?? '未关联颜色',
+        colorName: resolveProjectDisplayColor(project)?.name ?? '未关联颜色',
         ownerName: project.ownerUser?.name ?? '未分配',
         ownerDepartmentName: project.ownerUser?.department?.name ?? project.owningDepartment?.name ?? null,
         plannedEndDate: this.serializeDate(project.plannedEndDate),
@@ -872,6 +869,8 @@ export class ProjectsService {
           },
         });
 
+        const color = await assignProjectColor(tx, project.id, input);
+
         const createdMembers = await this.replaceMembersInTx(tx, {
           projectId: project.id,
           ownerUserId: owner.id,
@@ -894,6 +893,7 @@ export class ProjectsService {
           summary: `创建项目 ${project.name}`,
           afterData: {
             project: this.toProjectAuditSnapshot(project),
+            color: { id: color.id, name: color.name, productionBaseId: color.productionBaseId, mode: input.colorMode, registerStatus: color.registerStatus },
             members: this.toMemberAuditSnapshot(createdMembers),
           },
         });
@@ -1073,6 +1073,7 @@ export class ProjectsService {
     const input = this.asRecord(rawInput, 'Invalid project payload.');
     const code = this.parseOptionalString(input.code) ?? null;
     const name = this.parseRequiredString(input.name, 'name');
+    const colorInput = normalizeProjectColorInput(input, name);
     const description = this.parseNullableString(input.description);
     const priority =
       this.parseOptionalEnum(input.priority, PROJECT_PRIORITY_VALUES, 'priority') ??
@@ -1095,6 +1096,7 @@ export class ProjectsService {
     this.assertCreateMemberLimit(members, ownerUserId);
 
     return {
+      ...colorInput,
       code,
       name,
       description,
@@ -1140,6 +1142,10 @@ export class ProjectsService {
       );
     const canonicalPayload = {
       action: PROJECT_CREATE_ACTION,
+      colorMode: input.colorMode,
+      colorName: input.colorName,
+      productionBaseId: input.productionBaseId,
+      existingColorId: input.existingColorId,
       code: input.code,
       name: input.name,
       description: input.description,
@@ -1441,28 +1447,7 @@ export class ProjectsService {
         OR: [
           { code: { contains: query.keyword, mode: 'insensitive' } },
           { name: { contains: query.keyword, mode: 'insensitive' } },
-          {
-            colors: {
-              some: {
-                OR: [
-                  { name: { contains: query.keyword, mode: 'insensitive' } },
-                  {
-                    code: { contains: query.keyword, mode: 'insensitive' },
-                    numberingTaskId: { not: null },
-                    numberedById: { not: null },
-                    numberedAt: { not: null },
-                    numberingAttachmentId: { not: null },
-                    numberingAttachment: {
-                      is: {
-                        isDeleted: false,
-                        scanStatus: AttachmentScanStatus.CLEAN,
-                      },
-                    },
-                  },
-                ],
-              },
-            },
-          },
+          projectColorSearchWhere(query.keyword),
         ],
       });
     }
@@ -1604,6 +1589,12 @@ export class ProjectsService {
     const project = await db.project.findUnique({
       where: { id: projectId },
       include: {
+        primaryColor: { select: PROJECT_DISPLAY_COLOR_SELECT },
+        colors: {
+          select: PROJECT_DISPLAY_COLOR_SELECT,
+          orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }, { id: 'asc' }],
+          take: 1,
+        },
         ownerUser: {
           include: {
             department: true,
@@ -1800,20 +1791,8 @@ export class ProjectsService {
           };
         };
         owningDepartment: true;
-        colors: {
-          select: {
-            name: true;
-            code: true;
-            isPrimary: true;
-            numberingTaskId: true;
-            numberedById: true;
-            numberedAt: true;
-            numberingAttachmentId: true;
-            numberingAttachment: {
-              select: { scanStatus: true; isDeleted: true };
-            };
-          };
-        };
+        primaryColor: { select: typeof PROJECT_DISPLAY_COLOR_SELECT };
+        colors: { select: typeof PROJECT_DISPLAY_COLOR_SELECT };
         workflowTasks: {
           select: {
             id: true;
@@ -1890,8 +1869,8 @@ export class ProjectsService {
       id: project.id,
       code: project.code,
       name: project.name,
-      colorName: project.colors[0]?.name ?? null,
-      colorCode: getControlledColorNumber(project.colors[0]),
+      colorName: resolveProjectDisplayColor(project)?.name ?? null,
+      colorCode: getControlledColorNumber(resolveProjectDisplayColor(project)),
       status: project.status,
       priority: project.priority,
       currentNodeCode: project.currentNodeCode,
@@ -1948,6 +1927,12 @@ export class ProjectsService {
 
     return {
       id: project.id,
+      primaryColorId: project.primaryColorId,
+      colorId: resolveProjectDisplayColor(project)?.id ?? null,
+      colorName: resolveProjectDisplayColor(project)?.name ?? null,
+      colorCode: getControlledColorNumber(resolveProjectDisplayColor(project)),
+      productionBaseId: resolveProjectDisplayColor(project)?.productionBaseId ?? null,
+      productionBaseName: resolveProjectDisplayColor(project)?.productionBase?.name ?? null,
       code: project.code,
       name: project.name,
       description: project.description,

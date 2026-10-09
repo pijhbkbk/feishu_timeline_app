@@ -177,7 +177,10 @@ function createHarness() {
         where: { id: { in: string[] } };
       }) => Promise.resolve(where.id.in.map((id) => ({ id })))),
     },
+    hueStandard: { create: vi.fn().mockResolvedValue({ id: 'candidate-hue' }) },
+    color: { create: vi.fn().mockResolvedValue({ id: 'candidate-color', name: '候选颜色', productionBaseId: null, registerStatus: 'CANDIDATE' }) },
     project: {
+      update: vi.fn().mockResolvedValue({ primaryColorId: 'candidate-color' }),
       create: vi.fn().mockImplementation(() => {
         const record = projectRecord(`project-${projects.length + 1}`);
         projects.push(record);

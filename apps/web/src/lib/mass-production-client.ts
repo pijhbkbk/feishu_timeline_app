@@ -1,8 +1,8 @@
 'use client';
 
 import {
+  isApprovedTeamUser,
   apiRequest,
-  type FrontendRoleCode,
   type SessionUser,
 } from './auth-client';
 import {
@@ -75,7 +75,6 @@ export type MassProductionFormInput = {
   status: MassProductionStatus;
 };
 
-const MASS_PRODUCTION_ROLE_CODES: FrontendRoleCode[] = ['production_operator'];
 
 const MASS_PRODUCTION_STATUS_LABELS: Record<MassProductionStatus, string> = {
   DRAFT: '草稿',
@@ -208,11 +207,7 @@ export function validateMassProductionForm(input: MassProductionFormInput) {
 }
 
 export function canManageMassProductions(user: SessionUser | null) {
-  if (!user) {
-    return false;
-  }
-
-  return MASS_PRODUCTION_ROLE_CODES.some((roleCode) => user.roleCodes.includes(roleCode));
+  return isApprovedTeamUser(user);
 }
 
 export function canShowCompleteMassProductionTaskButton(

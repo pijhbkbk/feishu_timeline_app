@@ -24,8 +24,9 @@ const engineerUser: SessionUser = {
   departmentId: null,
   departmentName: null,
   isSystemAdmin: false,
-  authSource: 'mock',
-  roleCodes: ['process_engineer'],
+  authSource: 'local',
+  teamAccessApproved: true,
+  roleCodes: [],
 };
 
 const firstPlanWorkspace: FirstProductionPlanWorkspaceResponse = {
@@ -219,12 +220,12 @@ describe('PilotProductionWorkspace', () => {
   });
 
   it('controls complete button visibility and validation logic', () => {
-    expect(canShowCompleteFirstProductionPlanTaskButton(engineerUser, firstPlanWorkspace)).toBe(false);
-    expect(canShowCompleteFirstProductionPlanTaskButton({ ...engineerUser, roleCodes: ['production_operator'] }, firstPlanWorkspace)).toBe(
+    expect(canShowCompleteFirstProductionPlanTaskButton({ ...engineerUser, teamAccessApproved: false }, firstPlanWorkspace)).toBe(false);
+    expect(canShowCompleteFirstProductionPlanTaskButton(engineerUser, firstPlanWorkspace)).toBe(
       true,
     );
     expect(
-      canShowCompleteFirstProductionPlanTaskButton({ ...engineerUser, roleCodes: ['production_operator'] }, {
+      canShowCompleteFirstProductionPlanTaskButton(engineerUser, {
         ...firstPlanWorkspace,
         canCompleteTask: false,
         completionIssue: '首台计划未确认时不能完成首台节点。',

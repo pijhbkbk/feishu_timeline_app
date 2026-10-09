@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ColorRegisterModule } from './modules/color-register/color-register.module';
 import { BusinessClockModule } from './common/business-clock';
 import { PersonnelModule } from './modules/personnel/personnel.module';
 import { ConfigModule } from '@nestjs/config';
@@ -42,6 +43,7 @@ import { WorkflowsModule } from './modules/workflows/workflows.module';
 
 @Module({
   imports: [
+    ColorRegisterModule,
     BusinessClockModule,
     PersonnelModule,
     ConfigModule.forRoot({

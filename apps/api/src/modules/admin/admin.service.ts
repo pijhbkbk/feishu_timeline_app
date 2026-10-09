@@ -804,7 +804,8 @@ export class AdminService {
         !color.numberingAttachment.isDeleted
           ? color.code
           : null;
-      if (!controlledCode) continue;
+      // This legacy archive requires an actual development project. Historical imports use the shared register.
+      if (!controlledCode || !color.project) continue;
       const key = (
         `code:${controlledCode}`
       ).toLocaleLowerCase('zh-CN');

@@ -1,6 +1,8 @@
 'use client';
 
-import { apiRequest, type FrontendRoleCode, type SessionUser } from './auth-client';
+import type { ReviewStandardOptions, ReviewStandardVersion } from './review-standard-version';
+
+import { isApprovedTeamUser, apiRequest, type SessionUser } from './auth-client';
 import {
   fetchUserDirectory,
   formatDate,
@@ -35,6 +37,8 @@ export type AttachmentSummary = {
 };
 
 export type ConsistencyReviewRecord = {
+  standardVersionId?: string | null;
+  standardVersion?: ReviewStandardVersion | null;
   id: string;
   workflowTaskId: string;
   reviewType: 'COLOR_CONSISTENCY_REVIEW';
@@ -54,7 +58,7 @@ export type ConsistencyReviewRecord = {
   attachmentHistory: AttachmentSummary[];
 };
 
-export type ConsistencyReviewWorkspaceResponse = {
+export type ConsistencyReviewWorkspaceResponse = ReviewStandardOptions & {
   project: {
     id: string;
     code: string;
@@ -71,6 +75,7 @@ export type ConsistencyReviewWorkspaceResponse = {
 };
 
 export type ConsistencyReviewFormInput = {
+  standardVersionId?: string;
   reviewDate: string;
   reviewerId: string;
   reviewConclusion: ConsistencyReviewConclusion;
@@ -78,8 +83,6 @@ export type ConsistencyReviewFormInput = {
   conditionNote: string;
   rejectReason: string;
 };
-
-const CONSISTENCY_REVIEW_ROLE_CODES: FrontendRoleCode[] = ['reviewer'];
 
 const CONSISTENCY_REVIEW_CONCLUSION_LABELS: Record<
   ConsistencyReviewConclusion,
@@ -202,17 +205,7 @@ export function canManageConsistencyReviews(
   user: SessionUser | null,
   reviewerId?: string | null,
 ) {
-  if (!user) {
-    return false;
-  }
-
-  if (reviewerId !== undefined) {
-    return user.roleCodes.includes('reviewer') && reviewerId === user.id;
-  }
-
-  return (
-    CONSISTENCY_REVIEW_ROLE_CODES.some((roleCode) => user.roleCodes.includes(roleCode))
-  );
+  return isApprovedTeamUser(user) && (reviewerId === undefined || reviewerId === user.id);
 }
 
 export function canShowConsistencyReviewSubmitButton(
@@ -288,6 +281,7 @@ export function toConsistencyReviewFormInput(
   review: ConsistencyReviewRecord,
 ): ConsistencyReviewFormInput {
   return {
+    standardVersionId: review.standardVersionId ?? '',
     reviewDate: review.reviewDate ? review.reviewDate.slice(0, 10) : '',
     reviewerId: review.reviewerId,
     reviewConclusion: review.reviewConclusion,
@@ -310,6 +304,7 @@ export function getDefaultConsistencyReviewerId(
 
 function toConsistencyReviewPayload(input: ConsistencyReviewFormInput) {
   return {
+    standardVersionId: input.standardVersionId || null,
     reviewDate: input.reviewDate,
     reviewerId: input.reviewerId,
     reviewConclusion: input.reviewConclusion,

@@ -1,3 +1,4 @@
+import { REVIEW_STANDARD_SELECT, assertReviewStandardUnchanged, loadReviewStandardOptions, parseReviewStandardVersionId, requireReviewStandardVersion } from './review-standard-version';
 import { isApprovedTeamMember } from '../../common/team-membership';
 import { BusinessClock } from '../../common/business-clock';
 import { isReworkTask, isTechnicalReworkTask, ancestorEvidenceIds } from '../../common/workflow-evidence';
@@ -66,6 +67,7 @@ type UploadedBinaryFile = {
 type ReviewWriteConclusion = (typeof CABIN_REVIEW_ALLOWED_RESULTS)[number];
 
 type CabinReviewWriteInput = {
+  standardVersionId: string | null;
   reviewDate: Date;
   reviewerId: string;
   reviewConclusion: ReviewWriteConclusion;
@@ -140,6 +142,7 @@ const REVIEW_ATTACHMENT_FINALIZE_CONFLICT_CODES = new Set([
 ]);
 
 const CABIN_REVIEW_INCLUDE = {
+  standardVersion: { select: REVIEW_STANDARD_SELECT },
   reviewer: true,
   attachment: true,
   trialProduction: true,
@@ -212,9 +215,11 @@ export class ReviewsService {
         throw new BadRequestException('当前评审任务下，该评审人已存在记录。');
       }
 
+      const standardVersionId = await requireReviewStandardVersion(tx, context.project, context.activeTask!, input.standardVersionId);
       const reviewRecord = await tx.reviewRecord.create({
         data: {
           projectId,
+          standardVersionId,
           workflowTaskId: context.activeTask!.id,
           trialProductionId: trialProduction.id,
           reviewerId: input.reviewerId,
@@ -264,6 +269,7 @@ export class ReviewsService {
         this.throwReviewStateChanged();
       }
       this.assertDraftReviewRecordForLockedWrite(reviewRecord);
+      assertReviewStandardUnchanged(reviewRecord.standardVersionId, input.standardVersionId);
       await this.assertReviewWriteInputPersistable(tx, input);
       await this.assertUniqueReviewerPerTask(
         tx,
@@ -605,9 +611,11 @@ export class ReviewsService {
       await this.assertReviewWriteInputPersistable(tx, input);
       await this.assertUniqueReviewerPerTask(tx, context.activeTask!.id, input.reviewerId);
 
+      const standardVersionId = await requireReviewStandardVersion(tx, context.project, context.activeTask!, input.standardVersionId);
       const reviewRecord = await tx.reviewRecord.create({
         data: {
           projectId,
+          standardVersionId,
           workflowTaskId: context.activeTask!.id,
           reviewerId: input.reviewerId,
           reviewType: ReviewType.COLOR_CONSISTENCY_REVIEW,
@@ -657,6 +665,7 @@ export class ReviewsService {
         this.throwReviewStateChanged();
       }
       this.assertDraftReviewRecordForLockedWrite(reviewRecord);
+      assertReviewStandardUnchanged(reviewRecord.standardVersionId, input.standardVersionId);
       await this.assertReviewWriteInputPersistable(tx, input);
       await this.assertUniqueReviewerPerTask(
         tx,
@@ -1005,9 +1014,11 @@ export class ReviewsService {
         input.reviewDate,
       );
 
+      const standardVersionId = await requireReviewStandardVersion(tx, context.project, context.activeTask!, input.standardVersionId);
       const reviewRecord = await tx.reviewRecord.create({
         data: {
           projectId,
+          standardVersionId,
           workflowTaskId: context.activeTask!.id,
           reviewerId: input.reviewerId,
           reviewType: ReviewType.VISUAL_COLOR_DIFFERENCE_REVIEW,
@@ -1058,6 +1069,7 @@ export class ReviewsService {
         this.throwReviewStateChanged();
       }
       this.assertDraftReviewRecordForLockedWrite(reviewRecord);
+      assertReviewStandardUnchanged(reviewRecord.standardVersionId, input.standardVersionId);
       await this.assertReviewWriteInputPersistable(tx, input);
       await this.getVisualDeltaRecurringTaskForDate(
         tx,
@@ -1517,6 +1529,7 @@ export class ReviewsService {
 
     return {
       project: this.toProjectSummary(project),
+      ...await loadReviewStandardOptions(db, project, activeTask),
       trialProductionCompleted,
       activeTask: activeTask ? this.toWorkflowTaskSummary(activeTask) : null,
       downstreamTasks: {
@@ -1586,6 +1599,7 @@ export class ReviewsService {
 
     return {
       project: this.toProjectSummary(project),
+      ...await loadReviewStandardOptions(db, project, activeTask),
       cabinReviewCompleted,
       activeTask: activeTask ? this.toWorkflowTaskSummary(activeTask) : null,
       downstreamTask: schedulePlanTask
@@ -1676,6 +1690,7 @@ export class ReviewsService {
 
     return {
       project: this.toProjectSummary(project),
+      ...await loadReviewStandardOptions(db, project, activeTask),
       massProductionCompleted,
       businessTime: this.businessClock.now().toISOString(),
       monthlyPlanActive: recurringPlans[0]?.status === RecurringPlanStatus.ACTIVE,
@@ -2248,6 +2263,7 @@ export class ReviewsService {
       where: { id: projectId },
       select: {
         id: true,
+        primaryColorId: true,
         code: true,
         name: true,
         priority: true,
@@ -3136,6 +3152,7 @@ export class ReviewsService {
     }
 
     const normalized = {
+      standardVersionId: parseReviewStandardVersionId(input.standardVersionId),
       reviewerId,
       reviewConclusion,
       comment,
@@ -3252,6 +3269,8 @@ export class ReviewsService {
   ) {
     return {
       id: reviewRecord.id,
+      standardVersionId: reviewRecord.standardVersionId ?? null,
+      standardVersion: reviewRecord.standardVersion ?? null,
       workflowTaskId: reviewRecord.workflowTaskId,
       reviewType: reviewRecord.reviewType,
       reviewPeriod: reviewRecord.reviewPeriod,
@@ -3305,6 +3324,7 @@ export class ReviewsService {
 
     return {
       id: reviewRecord.id,
+      standardVersionId: reviewRecord.standardVersionId ?? null,
       workflowTaskId: reviewRecord.workflowTaskId,
       reviewType: reviewRecord.reviewType,
       reviewConclusion: reviewRecord.result,

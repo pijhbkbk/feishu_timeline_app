@@ -39,6 +39,17 @@ export class StandardBoardsController {
 
   @Roles('admin', 'project_manager', 'process_engineer', 'quality_engineer')
   @Permissions('workflow.transition')
+  @Post('projects/:projectId/standard-boards/save-and-publish')
+  saveAndPublish(
+    @Param('projectId') projectId: string,
+    @Body() body: unknown,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.standardBoardsService.saveAndPublish(projectId, body, actor);
+  }
+
+  @Roles('admin', 'project_manager', 'process_engineer', 'quality_engineer')
+  @Permissions('workflow.transition')
   @Post('projects/:projectId/standard-boards')
   createStandardBoard(
     @Param('projectId') projectId: string,

@@ -773,6 +773,7 @@ export class R26OrdinaryCompletionService {
             id: true,
             name: true,
             ownerUserId: true,
+            primaryColorId: true,
             members: {
               where: { userId: actor.id },
               select: {
@@ -808,7 +809,10 @@ export class R26OrdinaryCompletionService {
     const normalizedCode = this.normalizeColorNumber(
       submittedColorNumber,
     );
-    const projectColors = await db.color.findMany({
+    const linkedColor = task.project.primaryColorId
+      ? await db.color.findUnique({ where: { id: task.project.primaryColorId }, select: { id: true, code: true, name: true, isPrimary: true, numberingTaskId: true } })
+      : null;
+    const projectColors = linkedColor ? [linkedColor] : await db.color.findMany({
       where: { projectId: task.projectId },
       select: {
         id: true,
@@ -898,10 +902,12 @@ export class R26OrdinaryCompletionService {
       ...(ambiguousTarget
         ? ['项目存在多个颜色但未唯一指定主颜色，无法安全写入颜色编号。']
         : []),
-      ...(targetColor?.numberingTaskId &&
-      targetColor.numberingTaskId !== task.id
-        ? ['当前主颜色已由另一项第 05 步任务生成正式编号。']
+      ...(targetColor?.code && normalizedCode && this.normalizeColorNumber(targetColor.code) !== normalizedCode
+        ? ['已关联颜色已有正式编号，不能在本项目中覆盖历史编号。']
         : []),
+      ...(!targetColor?.code && targetColor?.numberingTaskId && targetColor.numberingTaskId !== task.id
+        ? ['已关联颜色的历史取号记录需要核对，不能覆盖。'] : []),
+      ...(task.project.primaryColorId && !linkedColor ? ['项目关联的颜色不存在，请先核对颜色身份。'] : []),
     ];
     const numberDetails = [
       ...(!normalizedCode ? ['颜色编号为必填项'] : []),
@@ -962,6 +968,17 @@ export class R26OrdinaryCompletionService {
       });
     }
 
+    if (preview.targetColor) {
+      await tx.$queryRaw(Prisma.sql`SELECT id FROM colors WHERE id = ${preview.targetColor.id} FOR UPDATE`);
+      const existing = await tx.color.findUniqueOrThrow({ where: { id: preview.targetColor.id }, include: { numberedBy: { select: { id: true, name: true } } } });
+      if (existing.code) {
+        if (this.normalizeColorNumber(existing.code) !== preview.normalizedCode) throw new ConflictException('已关联颜色编号已变化，不得覆盖历史。');
+        await tx.project.update({ where: { id: task.projectId }, data: { primaryColorId: existing.id } });
+        return { colorId: existing.id, code: existing.code, numberingTaskId: existing.numberingTaskId,
+          numberedBy: existing.numberedBy, numberedAt: existing.numberedAt?.toISOString() ?? null,
+          confirmationAttachment: preview.confirmationAttachment, retainedExistingNumber: true };
+      }
+    }
     const numberedAt = new Date();
     const data = {
       code: preview.normalizedCode,
@@ -982,12 +999,14 @@ export class R26OrdinaryCompletionService {
             projectId: task.projectId,
             name: task.project.name,
             description: '由第 05 步新颜色取号生成。',
+            registerStatus: 'CANDIDATE',
             isPrimary: true,
             ...data,
           },
           select: { id: true, code: true },
         });
 
+    await tx.project.update({ where: { id: task.projectId }, data: { primaryColorId: color.id } });
     return {
       colorId: color.id,
       code: color.code,

@@ -1,3 +1,4 @@
+import { canManageVisualDeltaReviews } from '../lib/visual-delta-reviews-client';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
@@ -25,7 +26,8 @@ const reviewerUser: SessionUser = {
   departmentId: null,
   departmentName: null,
   isSystemAdmin: false,
-  authSource: 'mock',
+  authSource: 'local',
+  teamAccessApproved: true,
   roleCodes: ['quality_engineer'],
 };
 
@@ -212,5 +214,17 @@ describe('VisualDeltaReviewWorkspace', () => {
 
     expect(html).toContain('已完成');
     expect(html).not.toContain('>通过</button>');
+  });
+});
+
+describe('single-department review admission', () => {
+  it('allows an approved member without a legacy review role, while retaining own-signature rules', () => {
+    const member = { ...reviewerUser, roleCodes: [] };
+    expect(canManageVisualDeltaReviews(member, member.id)).toBe(true);
+    expect(canManageVisualDeltaReviews(member, 'another-author')).toBe(false);
+  });
+  it('does not admit an unapproved account through a legacy role', () => {
+    expect(canManageVisualDeltaReviews({ ...reviewerUser, teamAccessApproved: false })).toBe(false);
+    expect(canManageVisualDeltaReviews({ ...reviewerUser, authSource: 'mock' })).toBe(false);
   });
 });

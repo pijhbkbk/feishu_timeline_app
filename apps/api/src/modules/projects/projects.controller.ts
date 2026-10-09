@@ -1,3 +1,4 @@
+import { ProjectColorLinkService } from './project-color-link.service';
 import { ApprovedReportDto, ApprovedReportService } from './approved-report.service';
 import { Body, Controller, Get, Headers, Param, Patch, Post, Put, Query } from '@nestjs/common';
 import { ApiCookieAuth, ApiHeader, ApiOperation, ApiTags } from '@nestjs/swagger';
@@ -16,7 +17,19 @@ import { ProjectsService } from './projects.service';
 @ApiCookieAuth('ft_session')
 @Controller('projects')
 export class ProjectsController {
-  constructor(private readonly projectsService: ProjectsService, private readonly approvedReports?: ApprovedReportService) {}
+  constructor(private readonly projectsService: ProjectsService, private readonly approvedReports?: ApprovedReportService, private readonly colorLinks?: ProjectColorLinkService) {}
+
+  @Permissions('project.read')
+  @Get(':projectId/color-link')
+  getColorLinkContext(@Param('projectId') projectId: string, @CurrentUser() actor: AuthenticatedUser) {
+    return this.colorLinks!.context(projectId, actor);
+  }
+
+  @Permissions('project.write')
+  @Post(':projectId/color-link')
+  linkColor(@Param('projectId') projectId: string, @Body() body: unknown, @CurrentUser() actor: AuthenticatedUser) {
+    return this.colorLinks!.link(projectId, body, actor);
+  }
 
   @Permissions('project.write')
   @Post(':projectId/approved-report')

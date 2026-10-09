@@ -1,5 +1,8 @@
 'use client';
 
+import { ReviewStandardSelect } from './review-standard-select';
+import { reviewStandardLabel, type ReviewStandardOptions } from '../lib/review-standard-version';
+
 import Link from 'next/link';
 import React, { useEffect, useRef, useState } from 'react';
 import { useAuth } from './auth-provider';
@@ -82,10 +85,10 @@ export function VisualDeltaReviewWorkspace({ projectId, recurringTaskId = '' }: 
     {error ? <p role="alert" className="error-text">{error}</p> : null}{notice ? <p role="status" className="work-notice">{notice}</p> : null}
     {!month ? <p className="work-state">{recurringTaskId ? '未找到所选月度任务，请返回我的工作重新选择。' : '进入月度评审阶段后，将生成 12 个月份。'}</p> : <>
       <p>第 {month.periodIndex} 月 · {month.periodLabel}，计划日期 {formatDate(month.plannedDate)}，期限 {formatDate(month.dueAt)}。</p>
-      {!canWrite ? <p className="work-state">{month.status === 'COMPLETED' ? '本月已完成，评审记录保留可查。' : Date.parse(month.plannedDate) > (workspace.businessTime ? Date.parse(workspace.businessTime) : Date.now()) ? '本月尚未到办理日期。' : '仅在月度评审阶段，由已领取本月任务的质量试验人员办理。'} <Link href="/dashboard">打开我的工作</Link></p> :
+      {!canWrite ? <p className="work-state">{month.status === 'COMPLETED' ? '本月已完成，评审记录保留可查。' : Date.parse(month.plannedDate) > (workspace.businessTime ? Date.parse(workspace.businessTime) : Date.now()) ? '本月尚未到办理日期。' : '仅在月度评审阶段，由已领取本月任务的部门成员办理。'} <Link href="/dashboard">打开我的工作</Link></p> :
       <section className="page-card"><h2>{editingReviewId ? '编辑本月评审' : '填写本月评审'}</h2>
         {ownRecord && !editingReviewId ? <p>本月已有本人记录。{ownDraft ? <button className="button" disabled={Boolean(busy)} onClick={() => edit(ownDraft)}>继续填写</button> : '请在下方查看提交结果。'}</p> :
-          <VisualDeltaReviewForm value={form} reviewerOptions={user ? [{ id: user.id, name: user.name, departmentId: user.departmentId, departmentName: user.departmentName }] : []}
+          <VisualDeltaReviewForm standardOptions={workspace} standardLocked={Boolean(editingReviewId)} value={form} reviewerOptions={user ? [{ id: user.id, name: user.name, departmentId: user.departmentId, departmentName: user.departmentName }] : []}
             disabled={Boolean(busy)} submitLabel={busy === 'save' ? '正在保存…' : '保存评审记录'} onChange={setForm} onSubmit={save} />}
       </section>}
       <section className="page-card"><h2>本月记录与附件</h2><VisualDeltaReviewHistory user={user} items={records} selectedReviewId={selectedReview?.id ?? null} isReadOnly={!canWrite}
@@ -101,6 +104,8 @@ export function VisualDeltaReviewWorkspace({ projectId, recurringTaskId = '' }: 
 
 export function VisualDeltaReviewForm({
   value,
+  standardOptions = {},
+  standardLocked = false,
   reviewerOptions,
   disabled,
   submitLabel,
@@ -108,6 +113,8 @@ export function VisualDeltaReviewForm({
   onSubmit,
 }: {
   value: VisualDeltaReviewFormInput;
+  standardOptions?: ReviewStandardOptions;
+  standardLocked?: boolean;
   reviewerOptions: DirectoryUser[];
   disabled: boolean;
   submitLabel: string;
@@ -122,6 +129,10 @@ export function VisualDeltaReviewForm({
         onSubmit();
       }}
     >
+      <ReviewStandardSelect value={value.standardVersionId ?? ''}
+        onChange={standardVersionId => onChange({ ...value, standardVersionId })}
+        options={standardOptions.eligibleStandardVersions} required={standardOptions.standardVersionRequired}
+        hasMore={standardOptions.standardVersionsHasMore} locked={standardLocked} disabled={disabled} />
       <label className="field">
         <span>评审日期</span>
         <input
@@ -236,6 +247,7 @@ export function VisualDeltaReviewHistory({
         <thead>
           <tr>
             <th>评审日期</th>
+            <th>标准版本</th>
             <th>评审人</th>
             <th>结论</th>
             <th>状态</th>
@@ -247,7 +259,7 @@ export function VisualDeltaReviewHistory({
         <tbody>
           {items.length === 0 ? (
             <tr>
-              <td colSpan={7}>
+              <td colSpan={8}>
                 <div className="empty-state">
                   <strong>暂无目视色差评审记录</strong>
                   <p>批量生产完成并激活目视色差评审任务后，可在这里创建记录。</p>
@@ -262,6 +274,7 @@ export function VisualDeltaReviewHistory({
                 onClick={() => onSelect(item.id)}
               >
                 <td>{formatDate(item.reviewDate)}</td>
+                <td>{reviewStandardLabel(item.standardVersion)}</td>
                 <td>{item.reviewerName ?? '未指定'}</td>
                 <td>
                   <ReviewResultBadge conclusion={item.reviewConclusion} />
@@ -379,6 +392,7 @@ export function VisualDeltaReviewDetail({
         <div className="metadata-item">
           <span>评审时间</span>
           <strong>{formatDate(review.reviewDate)}</strong>
+          <span>{reviewStandardLabel(review.standardVersion)}</span>
         </div>
         <div className="metadata-item">
           <span>评审人</span>

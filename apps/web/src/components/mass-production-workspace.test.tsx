@@ -22,8 +22,9 @@ const processEngineerUser: SessionUser = {
   departmentId: null,
   departmentName: null,
   isSystemAdmin: false,
-  authSource: 'mock',
-  roleCodes: ['process_engineer'],
+  authSource: 'local',
+  teamAccessApproved: true,
+  roleCodes: [],
 };
 
 const workspace: MassProductionWorkspaceResponse = {
@@ -139,10 +140,10 @@ describe('MassProductionWorkspace', () => {
   });
 
   it('controls completion button logic and status display', () => {
-    expect(canShowCompleteMassProductionTaskButton(processEngineerUser, workspace)).toBe(false);
-    expect(canShowCompleteMassProductionTaskButton({ ...processEngineerUser, roleCodes: ['production_operator'] }, workspace)).toBe(true);
+    expect(canShowCompleteMassProductionTaskButton({ ...processEngineerUser, teamAccessApproved: false }, workspace)).toBe(false);
+    expect(canShowCompleteMassProductionTaskButton(processEngineerUser, workspace)).toBe(true);
     expect(
-      canShowCompleteMassProductionTaskButton({ ...processEngineerUser, roleCodes: ['production_operator'] }, {
+      canShowCompleteMassProductionTaskButton(processEngineerUser, {
         ...workspace,
         canCompleteTask: false,
         completionIssue: '没有已完成的批量生产记录，不能完成批量生产节点。',

@@ -1,5 +1,6 @@
 'use client';
 
+import { ProjectColorPicker, type ProjectColorChoice } from '../color-register/project-color-picker';
 import { displayColorName } from '../m1/color-name';
 import { M1FilePicker } from '../m1/file-picker';
 
@@ -123,6 +124,7 @@ function NewColorProjectForm() {
   const query = useSearchParams();
   const returnHref = query.get('from') === 'dashboard' ? '/dashboard' : projectListHref(query);
   const [form, setForm] = useState({ name: '', vehicleModel: '', description: '', plannedStartDate: '', approvedReportDate: '', approvalReference: '', demandSource: '' });
+  const [colorChoice, setColorChoice] = useState<ProjectColorChoice>({ colorMode: 'NEW', colorName: '', productionBaseId: '', existingColorId: '' });
   const [file, setFile] = useState<File | null>(null);
   const [draft, setDraft] = useState<ProjectDetail | null>(null);
   const [attachment, setAttachment] = useState<ProjectAttachmentSummary | null>(null);
@@ -133,10 +135,11 @@ function NewColorProjectForm() {
   const uploadRequest = useRef<{ fingerprint: string; key: string; version: string; path: string; replacesAttachmentId: string | null } | null>(null);
   const reportRequest = useRef<{ fingerprint: string; key: string; body: Record<string, unknown> } | null>(null);
   const pending = useRef(false);
-  const allowLeave = useProjectUnsavedChanges(Object.values(form).some(Boolean) || Boolean(file));
+  const allowLeave = useProjectUnsavedChanges(Object.values(form).some(Boolean) || Boolean(file) || Boolean(colorChoice.productionBaseId || colorChoice.existingColorId));
   async function submit(event: FormEvent) {
     event.preventDefault(); if (pending.current) return;
     if (!form.name.trim()) { setError('请填写颜色名称。'); return; }
+    if (!colorChoice.productionBaseId || (colorChoice.colorMode === 'EXISTING' && !colorChoice.existingColorId)) { setError('请先选择生产基地，并核对已有颜色记录。'); return; }
     if (!form.approvedReportDate || !form.approvalReference.trim() || !form.demandSource.trim()) { setError('请填写批准日期、批准依据和需求来源。'); return; }
     if (!file && !attachment) { setError('请选择已获批的新颜色开发报告。'); return; }
     pending.current = true; setBusy(true); setError('');
@@ -144,7 +147,7 @@ function NewColorProjectForm() {
       let project = draft;
       if (!project) {
         setPhase('正在创建项目…');
-        const body = { name: form.name.trim(), priority: 'MEDIUM', vehicleModel: form.vehicleModel.trim() || null, description: form.description.trim() || null, plannedStartDate: form.plannedStartDate || null };
+        const body = { ...colorChoice, colorName: form.name.trim(), name: form.name.trim(), priority: 'MEDIUM', vehicleModel: form.vehicleModel.trim() || null, description: form.description.trim() || null, plannedStartDate: form.plannedStartDate || null };
         const serialized = JSON.stringify(body);
         if (createRequest.current?.body !== serialized) createRequest.current = { body: serialized, key: crypto.randomUUID() };
         project = await apiRequest<ProjectDetail>('/projects', { method: 'POST', headers: { 'Idempotency-Key': createRequest.current.key }, body, signal: AbortSignal.timeout(30000) });
@@ -211,7 +214,8 @@ function NewColorProjectForm() {
     <nav className="m1-breadcrumb m1-project-breadcrumb" aria-label="面包屑"><Link href={returnHref} aria-label="返回来源页面"><M1Icon name="back" /></Link><span>颜色项目</span><span aria-hidden="true">/</span><span>新建项目</span></nav>
     <header className="m1-heading m1-project-heading"><h1>新建颜色项目</h1>{draft ? <span className="m1-badge m1-project-status m1-project-status-warning">项目草稿 · {draft.code}</span> : null}</header>
     <form className="m1-card m1-project-card m1-project-form" onSubmit={event => void submit(event)}>
-      <label className="m1-project-field m1-project-field-full"><span>颜色名称</span><input required autoComplete="off" maxLength={128} disabled={busy || Boolean(draft)} value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} /></label>
+      <ProjectColorPicker value={colorChoice} disabled={busy || Boolean(draft)} onChange={next => { setColorChoice(next); setForm(current => ({ ...current, name: next.colorName })); }} />
+      <label className="m1-project-field m1-project-field-full"><span>颜色名称</span><input required autoComplete="off" maxLength={200} disabled={busy || Boolean(draft) || colorChoice.colorMode === 'EXISTING'} value={form.name} onChange={event => { setForm({ ...form, name: event.target.value }); setColorChoice({ ...colorChoice, colorName: event.target.value }); }} /></label>
       <label className="m1-project-field"><span>适用车型</span><input maxLength={64} disabled={busy || Boolean(draft)} value={form.vehicleModel} onChange={event => setForm({ ...form, vehicleModel: event.target.value })} /></label>
       <label className="m1-project-field"><span>计划开始日期</span><input type="date" disabled={busy || Boolean(draft)} value={form.plannedStartDate} onChange={event => setForm({ ...form, plannedStartDate: event.target.value })} /></label>
       <label className="m1-project-field m1-project-field-full"><span>需求说明</span><textarea rows={3} maxLength={2000} disabled={busy || Boolean(draft)} value={form.description} onChange={event => setForm({ ...form, description: event.target.value })} /></label>

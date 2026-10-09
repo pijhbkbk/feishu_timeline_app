@@ -1,3 +1,4 @@
+import { PROJECT_DISPLAY_COLOR_SELECT, resolveProjectDisplayColor } from '../../common/project-display-color';
 import { withProjectWrite } from '../../common/team-authorization';
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import {
@@ -51,20 +52,11 @@ export class RetrospectivesService {
         where: { id: projectId },
         include: {
           ownerUser: { select: { id: true, name: true } },
+          primaryColor: { select: PROJECT_DISPLAY_COLOR_SELECT },
           colors: {
-            select: {
-              name: true,
-              code: true,
-              isPrimary: true,
-              numberingTaskId: true,
-              numberedById: true,
-              numberedAt: true,
-              numberingAttachmentId: true,
-              numberingAttachment: {
-                select: { scanStatus: true, isDeleted: true },
-              },
-            },
-            orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
+            select: PROJECT_DISPLAY_COLOR_SELECT,
+            orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }, { id: 'asc' }],
+            take: 1,
           },
         },
       }),
@@ -140,8 +132,8 @@ export class RetrospectivesService {
         id: project.id,
         code: project.code,
         name: project.name,
-        colorName: project.colors[0]?.name ?? null,
-        colorCode: getControlledColorNumber(project.colors[0]),
+        colorName: resolveProjectDisplayColor(project)?.name ?? null,
+        colorCode: getControlledColorNumber(resolveProjectDisplayColor(project)),
         status: project.status,
         ownerName: project.ownerUser?.name ?? null,
         currentNodeCode: project.currentNodeCode,

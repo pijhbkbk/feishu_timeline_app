@@ -117,7 +117,10 @@ function createService() {
     project: {
       create: vi.fn(),
       findUnique: vi.fn(),
+      update: vi.fn().mockResolvedValue({ id: 'project-1' }),
     },
+    hueStandard: { create: vi.fn().mockResolvedValue({ id: 'candidate-hue' }) },
+    color: { create: vi.fn().mockResolvedValue({ id: 'candidate-color', name: '演示项目', productionBaseId: null, registerStatus: 'CANDIDATE' }) },
     projectMember: {
       deleteMany: vi.fn(),
       createMany: vi.fn(),
@@ -162,6 +165,20 @@ function createService() {
 }
 
 describe('ProjectsService', () => {
+  it('uses the explicit color identity and base in project list and workspace detail', () => {
+    const { service } = createService();
+    const color = { id: 'imported-base-color', name: '历史颜色', code: null, productionBaseId: 'base-shandong', productionBase: { id: 'base-shandong', name: '山东' } };
+    const project = { ...createProjectRecord(), primaryColorId: color.id, primaryColor: color,
+      colors: [{ id: 'legacy-color', name: '其他颜色' }], workflowTasks: [], taskBlockers: [] };
+    expect(service['toProjectListItem'](project as never).colorName).toBe('历史颜色');
+    expect(service['toProjectDetail'](project as never)).toMatchObject({
+      primaryColorId: color.id, colorId: color.id, colorName: '历史颜色', productionBaseId: 'base-shandong', productionBaseName: '山东',
+    });
+    project.primaryColor = null as never;
+    expect(service['toProjectListItem'](project as never).colorName).toBeNull();
+    expect(service['toProjectDetail'](project as never).colorId).toBeNull();
+  });
+
   it('shows the next unfinished monthly deadline before the year-long parent deadline', () => {
     const { service } = createService();
     const parentDeadline = new Date('2027-09-28T00:00:00.000Z');
@@ -272,6 +289,10 @@ describe('ProjectsService', () => {
         paintSupplier: '阿克苏诺贝尔',
       }),
     });
+    expect(tx.color.create).toHaveBeenCalledWith({ data: expect.objectContaining({
+      projectId: 'project-1', registerStatus: 'CANDIDATE', code: null, registerMonth: null,
+    }) });
+    expect(tx.project.update).toHaveBeenCalledWith({ where: { id: 'project-1' }, data: { primaryColorId: 'candidate-color' } });
     expect(result).toMatchObject({
       code: 'PRJ-001',
       colorMarketingUnit: '商用车营销事业部',

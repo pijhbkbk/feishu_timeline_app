@@ -335,8 +335,8 @@ describe('StandardBoardsService resource bounds', () => {
   });
 
   it.each([
-    ['parseBoardWriteInput', validBoardInput, 'boardCode', 'B'.repeat(65)],
-    ['parseBoardWriteInput', validBoardInput, 'boardCode', 'SB / 001'],
+    ['parseBoardWriteInput', validBoardInput, 'boardCode', 'B'.repeat(129)],
+    ['parseBoardWriteInput', validBoardInput, 'boardCode', 'SB\u0001001'],
     ['parseBoardWriteInput', validBoardInput, 'basedOnSampleId', 's'.repeat(65)],
     ['parseBoardWriteInput', validBoardInput, 'basedOnSampleId', 'sample / 1'],
     ['parseBoardWriteInput', validBoardInput, 'remark', 'R'.repeat(4_001)],
@@ -1332,7 +1332,7 @@ describe('StandardBoardsService resource bounds', () => {
         vi.fn().mockResolvedValue({
           ...boardRecord(),
           status,
-          boardCode: 'B'.repeat(65),
+          boardCode: 'B'.repeat(129),
         }),
       );
       Reflect.set(service, 'buildWorkspace', vi.fn());
@@ -1355,7 +1355,7 @@ describe('StandardBoardsService resource bounds', () => {
       $queryRaw: vi.fn().mockResolvedValue([
         {
           id: 'standard-board-1',
-          boardCode: 'B'.repeat(65),
+          boardCode: 'B'.repeat(129),
           versionNo: 1,
           status: StandardBoardStatus.ISSUED,
         },
@@ -1453,7 +1453,7 @@ describe('StandardBoardsService resource bounds', () => {
       $queryRaw: vi.fn().mockResolvedValue([
         {
           id: 'standard-board-1',
-          boardCode: 'B'.repeat(65),
+          boardCode: 'B'.repeat(129),
           versionNo: 1,
           status: StandardBoardStatus.ISSUED,
         },

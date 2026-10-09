@@ -1,8 +1,8 @@
 'use client';
 
 import {
+  isApprovedTeamUser,
   apiRequest,
-  type FrontendRoleCode,
   type SessionUser,
 } from './auth-client';
 import {
@@ -69,8 +69,6 @@ export type SchedulePlanFormInput = {
   batchNo: string;
   note: string;
 };
-
-const SCHEDULE_PLAN_ROLE_CODES: FrontendRoleCode[] = ['production_operator'];
 
 const SCHEDULE_PLAN_STATUS_LABELS: Record<SchedulePlanStatus, string> = {
   DRAFT: '草稿',
@@ -186,11 +184,7 @@ export function validateSchedulePlanForm(input: SchedulePlanFormInput) {
 }
 
 export function canManageSchedulePlans(user: SessionUser | null) {
-  if (!user) {
-    return false;
-  }
-
-  return SCHEDULE_PLAN_ROLE_CODES.some((roleCode) => user.roleCodes.includes(roleCode));
+  return isApprovedTeamUser(user);
 }
 
 export function canShowCompleteSchedulePlanTaskButton(

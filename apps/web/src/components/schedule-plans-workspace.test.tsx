@@ -22,8 +22,9 @@ const processEngineerUser: SessionUser = {
   departmentId: null,
   departmentName: null,
   isSystemAdmin: false,
-  authSource: 'mock',
-  roleCodes: ['process_engineer'],
+  authSource: 'local',
+  teamAccessApproved: true,
+  roleCodes: [],
 };
 
 const workspace: SchedulePlansWorkspaceResponse = {
@@ -137,10 +138,10 @@ describe('SchedulePlansWorkspace', () => {
   });
 
   it('controls completion button logic and exposes status badge labels', () => {
-    expect(canShowCompleteSchedulePlanTaskButton(processEngineerUser, workspace)).toBe(false);
-    expect(canShowCompleteSchedulePlanTaskButton({ ...processEngineerUser, roleCodes: ['production_operator'] }, workspace)).toBe(true);
+    expect(canShowCompleteSchedulePlanTaskButton({ ...processEngineerUser, teamAccessApproved: false }, workspace)).toBe(false);
+    expect(canShowCompleteSchedulePlanTaskButton(processEngineerUser, workspace)).toBe(true);
     expect(
-      canShowCompleteSchedulePlanTaskButton({ ...processEngineerUser, roleCodes: ['production_operator'] }, {
+      canShowCompleteSchedulePlanTaskButton(processEngineerUser, {
         ...workspace,
         canCompleteTask: false,
         completionIssue: '没有已确认的排产计划，不能完成排产节点。',

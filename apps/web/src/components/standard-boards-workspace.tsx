@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { BoardStandardPublishForm } from '../features/color-register/board-standard-publish-form';
 import React, { useEffect, useRef, useState } from 'react';
 
 import { useAuth } from './auth-provider';
@@ -366,8 +367,8 @@ export function StandardBoardsWorkspace({
     return (
       <section className="page-card">
         <p className="eyebrow">标准板</p>
-        <h1>正在加载标准板模块…</h1>
-        <p>标准板版本、下发记录和色板明细更新状态正在同步。</p>
+        <h1>{error ? '标准板数据读取失败' : '正在加载标准板模块…'}</h1>
+        {error ? <><p role="alert">{error}</p><button className="button button-secondary" type="button" onClick={() => void loadWorkspace({ initial: true })}>重试</button></> : <p role="status">标准板版本、下发记录和色板明细更新状态正在同步。</p>}
       </section>
     );
   }
@@ -433,7 +434,9 @@ export function StandardBoardsWorkspace({
         ) : null}
       </section>
 
-      {error ? <p className="error-text">{error}</p> : null}
+      <BoardStandardPublishForm key={projectId} projectId={projectId} workspace={workspace} canManage={canManage} onSaved={next => { setWorkspace(next); setSelectedBoardId(next.currentBoard?.id ?? null); }} />
+
+      {error ? <p className="error-text" role="alert">{error}</p> : null}
       {successMessage ? <p className="success-text">{successMessage}</p> : null}
 
       <section className="page-card">
@@ -470,7 +473,7 @@ export function StandardBoardsWorkspace({
         ) : null}
       </section>
 
-      <section className="page-card">
+      {!workspace.project.primaryColor || editingBoardId ? <section className="page-card">
         <div className="section-header">
           <div>
             <p className="eyebrow">标准板表单</p>
@@ -491,7 +494,7 @@ export function StandardBoardsWorkspace({
           onChange={setBoardForm}
           onSubmit={() => void handleSaveBoard()}
         />
-      </section>
+      </section> : null}
 
       <section className="page-card">
         <div className="section-header">

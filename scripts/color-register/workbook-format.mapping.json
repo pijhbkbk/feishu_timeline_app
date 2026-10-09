@@ -1,0 +1,833 @@
+{
+  "schemaVersion": "color-register-source-map-v1",
+  "baseSections": [
+    {
+      "sheet": "新港本部",
+      "base": "XINGANG",
+      "section": "常规色",
+      "title": 1,
+      "header": 2,
+      "start": 4,
+      "end": 25,
+      "fields": {
+        "serial": "A",
+        "colorName": "B",
+        "colorCode": "C",
+        "manufacturer": "D",
+        "issueDate": "E",
+        "applicableCab": "F",
+        "paintType": "G",
+        "expiryDate": "H",
+        "revisionProgress": "Q",
+        "remark": "R"
+      },
+      "angle": "I",
+      "lab": [
+        "J",
+        "K",
+        "L"
+      ],
+      "limits": {
+        "deltaL": "M",
+        "deltaA": "N",
+        "deltaB": "O",
+        "deltaE": "P"
+      },
+      "expectedHeaders": {
+        "A2": "序号",
+        "B2": "名称",
+        "C2": "编号",
+        "D2": "制作单位",
+        "E2": "发放日期",
+        "F2": "对应驾驶室",
+        "G2": "涂料类型",
+        "H2": "有效期",
+        "I2": "D65/10°",
+        "J2": "L*",
+        "K2": "a*",
+        "L2": "b*",
+        "Q2": "修订进度",
+        "R2": "备注"
+      }
+    },
+    {
+      "sheet": "新港本部",
+      "base": "XINGANG",
+      "section": "定制色",
+      "title": 27,
+      "header": 28,
+      "start": 30,
+      "end": 44,
+      "fields": {
+        "serial": "A",
+        "colorName": "B",
+        "colorCode": "C",
+        "manufacturer": "D",
+        "issueDate": "E",
+        "applicableCab": "F",
+        "paintType": "G",
+        "expiryDate": "H",
+        "remark": "Q",
+        "marketingUnit": "R"
+      },
+      "angle": "I",
+      "lab": [
+        "J",
+        "K",
+        "L"
+      ],
+      "limits": {
+        "deltaL": "M",
+        "deltaA": "N",
+        "deltaB": "O",
+        "deltaE": "P"
+      },
+      "expectedHeaders": {
+        "A28": "序号",
+        "B28": "名称",
+        "C28": "色板编号",
+        "D28": "制作单位",
+        "E28": "发放日期",
+        "F28": "对应驾驶室",
+        "G28": "涂料类型",
+        "H28": "有效期",
+        "I28": "D65/10°",
+        "J28": "L*",
+        "K28": "a*",
+        "L28": "b*",
+        "Q28": "备注",
+        "R28": "颜色营销单位"
+      }
+    },
+    {
+      "sheet": "安徽阜阳",
+      "base": "FUYANG",
+      "section": null,
+      "title": 1,
+      "header": 2,
+      "start": 4,
+      "end": 31,
+      "fields": {
+        "serial": "A",
+        "colorName": "B",
+        "colorCode": "C",
+        "manufacturer": "D",
+        "issueDate": "E",
+        "expiryDate": "F",
+        "applicableCab": "G",
+        "paintType": "H",
+        "remark": "Q"
+      },
+      "angle": "I",
+      "lab": [
+        "J",
+        "K",
+        "L"
+      ],
+      "limits": {
+        "deltaL": "M",
+        "deltaA": "N",
+        "deltaB": "O",
+        "deltaE": "P"
+      },
+      "expectedHeaders": {
+        "A2": "序号",
+        "B2": "名称",
+        "C2": "色板编号",
+        "D2": "制作单位",
+        "E2": "发放时间",
+        "F2": "有效期/年",
+        "G2": "对应驾驶室",
+        "H2": "涂料类型",
+        "I2": "D65/10°",
+        "J2": "L*",
+        "K2": "a*",
+        "L2": "b*",
+        "Q2": "备注\n（取消/更新）"
+      }
+    },
+    {
+      "sheet": "山东青州",
+      "base": "QINGZHOU",
+      "section": null,
+      "title": 1,
+      "header": 2,
+      "start": 4,
+      "end": 29,
+      "fields": {
+        "serial": "A",
+        "colorName": "B",
+        "colorCode": "C",
+        "manufacturer": "D",
+        "issueDate": "E",
+        "expiryDate": "F",
+        "applicableCab": "G",
+        "paintType": "H",
+        "remark": "N"
+      },
+      "angle": "I",
+      "lab": [
+        "J",
+        "K",
+        "L"
+      ],
+      "limits": {
+        "deltaE": "M"
+      },
+      "expectedHeaders": {
+        "A2": "序号",
+        "B2": "名称",
+        "C2": "编号",
+        "D2": "制作单位",
+        "E2": "发放日期",
+        "F2": "有效期",
+        "G2": "对应驾驶室",
+        "H2": "涂料类型",
+        "I2": "D65/10°",
+        "J2": "L*",
+        "K2": "a*",
+        "L2": "b*",
+        "N2": "备注"
+      }
+    },
+    {
+      "sheet": "四川遂宁",
+      "base": "SUINING",
+      "section": null,
+      "title": 1,
+      "header": 2,
+      "start": 4,
+      "end": 46,
+      "fields": {
+        "serial": "A",
+        "colorName": "B",
+        "colorCode": "C",
+        "manufacturer": "D",
+        "boardQuantity": "E",
+        "issueDate": "F",
+        "expiryDate": "G",
+        "applicableCab": "H",
+        "paintType": "I",
+        "remark": "O"
+      },
+      "angle": "J",
+      "lab": [
+        "K",
+        "L",
+        "M"
+      ],
+      "limits": {
+        "deltaE": "N"
+      },
+      "expectedHeaders": {
+        "A2": "序号",
+        "B2": "名称",
+        "C2": "编号",
+        "D2": "制作单位",
+        "E2": "色板数量",
+        "F2": "发放日期",
+        "G2": "到期日期",
+        "H2": "对应驾驶室",
+        "I2": "涂料类型",
+        "J2": "D65/10°",
+        "K2": "L*",
+        "L2": "a*",
+        "M2": "b*",
+        "O2": "备注"
+      }
+    },
+    {
+      "sheet": "同大涂装",
+      "base": "TONGDA",
+      "section": "货箱",
+      "title": 1,
+      "header": 2,
+      "start": 3,
+      "end": 15,
+      "fields": {
+        "serial": "A",
+        "colorName": "B",
+        "colorCode": "C",
+        "manufacturer": "D",
+        "issueDate": "E",
+        "applicableCab": "F",
+        "paintType": "G"
+      },
+      "angle": "H",
+      "lab": [
+        "I",
+        "J",
+        "K"
+      ],
+      "limits": {
+        "deltaE": "L"
+      },
+      "expectedHeaders": {
+        "A2": "序号",
+        "B2": "名称",
+        "C2": "编号",
+        "D2": "制作单位",
+        "E2": "发放日期",
+        "F2": "对应驾驶室",
+        "G2": "涂料类型",
+        "H2": "D65/10°",
+        "I2": "L*",
+        "J2": "a*",
+        "K2": "b*"
+      }
+    },
+    {
+      "sheet": "同大涂装",
+      "base": "TONGDA",
+      "section": "VAN",
+      "title": 17,
+      "header": 18,
+      "start": 20,
+      "end": 27,
+      "fields": {
+        "serial": "A",
+        "colorName": "B",
+        "colorCode": "C",
+        "manufacturer": "D",
+        "issueDate": "E",
+        "applicableCab": "F",
+        "paintType": "G"
+      },
+      "angle": "H",
+      "lab": [
+        "I",
+        "J",
+        "K"
+      ],
+      "limits": {
+        "deltaL": "L",
+        "deltaA": "M",
+        "deltaB": "N",
+        "deltaE": "O"
+      },
+      "expectedHeaders": {
+        "A18": "序号",
+        "B18": "名称",
+        "C18": "编号",
+        "D18": "制作单位",
+        "E18": "发放日期",
+        "F18": "对应驾驶室",
+        "G18": "涂料类型",
+        "H18": "D65/10°",
+        "I18": "L*",
+        "J18": "a*",
+        "K18": "b*"
+      }
+    }
+  ],
+  "hueRules": [
+    {
+      "id": "hue-shared-xinhanyubai",
+      "exactName": "新汉玉白",
+      "bases": [
+        "新港本部",
+        "山东青州",
+        "四川遂宁"
+      ]
+    }
+  ],
+  "lifecycleRemarkMarkers": [
+    "更新",
+    "建议取消"
+  ],
+  "crossBaseReferenceMarkers": [
+    "同新港本部标准"
+  ],
+  "entitySections": [
+    {
+      "kind": "masterUnitCandidates",
+      "sheet": "商用车颜色主控单位",
+      "start": 4,
+      "end": 48,
+      "fields": {
+        "serial": "A",
+        "colorName": "B",
+        "controllingUnit": "C",
+        "otherUnit1": "D",
+        "otherUnit2": "E",
+        "otherUnit3": "F",
+        "quantity": "G",
+        "category": "H"
+      },
+      "contextCells": {
+        "periodLabel": "G3",
+        "sourcePolicyNote": "A2"
+      },
+      "reviewFlags": [
+        "PERIOD_LABEL_REQUIRES_FORMULA_RANGE_REVIEW"
+      ]
+    },
+    {
+      "kind": "recipientDirectoryCandidates",
+      "sheet": "新港色板领取名单",
+      "section": "新港轻卡",
+      "start": 4,
+      "end": 17,
+      "fields": {
+        "serial": "A",
+        "unit": "B",
+        "quantity": "C",
+        "recipient": "D"
+      }
+    },
+    {
+      "kind": "recipientDirectoryCandidates",
+      "sheet": "新港色板领取名单",
+      "section": "封闭式物流车",
+      "start": 4,
+      "end": 8,
+      "fields": {
+        "serial": "F",
+        "unit": "G",
+        "quantity": "H",
+        "recipient": "I"
+      }
+    },
+    {
+      "kind": "supplierDirectoryCandidates",
+      "sheet": "外饰件供应商",
+      "section": "新港轻卡外饰件",
+      "start": 3,
+      "end": 20,
+      "fields": {
+        "serial": "A",
+        "name": "B",
+        "remark": "C"
+      }
+    },
+    {
+      "kind": "supplierDirectoryCandidates",
+      "sheet": "外饰件供应商",
+      "section": "VAN车",
+      "start": 2,
+      "end": 4,
+      "fields": {
+        "name": "E"
+      }
+    },
+    {
+      "kind": "supplierDirectoryCandidates",
+      "sheet": "外饰件供应商",
+      "section": "合肥重卡外饰件",
+      "start": 3,
+      "end": 11,
+      "fields": {
+        "serial": "G",
+        "name": "H",
+        "code": "I"
+      }
+    },
+    {
+      "kind": "distributionCandidates",
+      "sheet": "新港色板发放记录",
+      "start": 2,
+      "end": 104,
+      "fields": {
+        "colorName": "A",
+        "boardDate": "B",
+        "recipient": "C",
+        "unit": "D",
+        "receiptTime": "E",
+        "quantity": "F"
+      },
+      "dateFields": [
+        "boardDate",
+        "receiptTime"
+      ],
+      "requiredSourceFields": [
+        "boardDate",
+        "recipient",
+        "unit",
+        "receiptTime",
+        "quantity"
+      ],
+      "dateOrder": [
+        "boardDate",
+        "receiptTime"
+      ]
+    },
+    {
+      "kind": "crossingMonthlyAggregateCandidates",
+      "sheet": "2025年颜色产量",
+      "start": 106,
+      "end": 117,
+      "fields": {
+        "month": "A",
+        "quantity": "B"
+      },
+      "contextCells": {
+        "sectionTitle": "A105",
+        "grandMonthTotal": "B118",
+        "grandColorTotal": "D122"
+      },
+      "reviewFlags": [
+        "PARALLEL_AGGREGATES_NOT_MONTH_BY_COLOR",
+        "DO_NOT_SUM_WITH_INCLUDED_TOTAL"
+      ]
+    },
+    {
+      "kind": "crossingColorAggregateCandidates",
+      "sheet": "2025年颜色产量",
+      "start": 106,
+      "end": 121,
+      "fields": {
+        "colorName": "C",
+        "quantity": "D"
+      },
+      "contextCells": {
+        "sectionTitle": "A105",
+        "grandMonthTotal": "B118",
+        "grandColorTotal": "D122"
+      },
+      "reviewFlags": [
+        "PARALLEL_AGGREGATES_NOT_MONTH_BY_COLOR",
+        "DO_NOT_SUM_WITH_INCLUDED_TOTAL"
+      ]
+    }
+  ],
+  "productionSections": [
+    {
+      "sheet": "2025年颜色产量",
+      "year": 2025,
+      "base": "XINGANG",
+      "header": 1,
+      "start": 2,
+      "end": 32,
+      "totalRow": 33,
+      "nameColumn": "A",
+      "monthColumns": [
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G",
+        "H",
+        "I",
+        "J",
+        "K",
+        "L",
+        "M"
+      ],
+      "totalColumns": [
+        "N"
+      ],
+      "expectedHeaders": {
+        "B1": "1月",
+        "C1": "2月",
+        "D1": "3月",
+        "E1": "4月",
+        "F1": "5月",
+        "G1": "6月",
+        "H1": "7月",
+        "I1": "8月",
+        "J1": "9月",
+        "K1": "10月",
+        "L1": "11月",
+        "M1": "12月",
+        "N1": "总计"
+      }
+    },
+    {
+      "sheet": "2025年颜色产量",
+      "year": 2025,
+      "base": "QINGZHOU",
+      "header": 35,
+      "start": 36,
+      "end": 51,
+      "totalRow": 52,
+      "nameColumn": "A",
+      "monthColumns": [
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G",
+        "H",
+        "I",
+        "J",
+        "K",
+        "L",
+        "M"
+      ],
+      "totalColumns": [
+        "N"
+      ],
+      "expectedHeaders": {
+        "B35": "1月",
+        "C35": "2月",
+        "D35": "3月",
+        "E35": "4月",
+        "F35": "5月",
+        "G35": "6月",
+        "H35": "7月",
+        "I35": "8月",
+        "J35": "9月",
+        "K35": "10月",
+        "L35": "11月",
+        "M35": "12月",
+        "N35": "合计"
+      }
+    },
+    {
+      "sheet": "2025年颜色产量",
+      "year": 2025,
+      "base": "SUINING",
+      "header": 54,
+      "start": 55,
+      "end": 77,
+      "totalRow": 78,
+      "nameColumn": "A",
+      "monthColumns": [
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G",
+        "H",
+        "I",
+        "J",
+        "K",
+        "L",
+        "M"
+      ],
+      "totalColumns": [
+        "N"
+      ],
+      "expectedHeaders": {
+        "B54": "1月",
+        "C54": "2月",
+        "D54": "3月",
+        "E54": "4月",
+        "F54": "5月",
+        "G54": "6月",
+        "H54": "7月",
+        "I54": "8月",
+        "J54": "9月",
+        "K54": "10月",
+        "L54": "11月",
+        "M54": "12月",
+        "N54": "合计"
+      }
+    },
+    {
+      "sheet": "2025年颜色产量",
+      "year": 2025,
+      "base": "FUYANG",
+      "header": 81,
+      "start": 82,
+      "end": 102,
+      "totalRow": 103,
+      "nameColumn": "A",
+      "monthColumns": [
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G",
+        "H",
+        "I",
+        "J",
+        "K",
+        "L",
+        "M"
+      ],
+      "totalColumns": [
+        "N",
+        "O"
+      ],
+      "expectedHeaders": {
+        "B81": "1月",
+        "C81": "2月",
+        "D81": "3月",
+        "E81": "4月",
+        "F81": "5月",
+        "G81": "6月",
+        "H81": "7月",
+        "I81": "8月",
+        "J81": "9月",
+        "K81": "10月",
+        "L81": "11月",
+        "M81": "12月",
+        "N81": "合计（不含跨越）",
+        "O81": "合计（含跨越）"
+      }
+    },
+    {
+      "sheet": "2026年颜色产量",
+      "year": 2026,
+      "base": "XINGANG",
+      "header": 1,
+      "start": 2,
+      "end": 28,
+      "totalRow": 29,
+      "nameColumn": "A",
+      "monthColumns": [
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G",
+        "H",
+        "I",
+        "J",
+        "K",
+        "L",
+        "M"
+      ],
+      "totalColumns": [
+        "N"
+      ],
+      "expectedHeaders": {
+        "B1": "1月",
+        "C1": "2月",
+        "D1": "3月",
+        "E1": "4月",
+        "F1": "5月",
+        "G1": "6月",
+        "H1": "7月",
+        "I1": "8月",
+        "J1": "9月",
+        "K1": "10月",
+        "L1": "11月",
+        "M1": "12月",
+        "N1": "总计"
+      }
+    },
+    {
+      "sheet": "2026年颜色产量",
+      "year": 2026,
+      "base": "QINGZHOU",
+      "header": 31,
+      "start": 32,
+      "end": 46,
+      "totalRow": 47,
+      "nameColumn": "A",
+      "monthColumns": [
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G",
+        "H",
+        "I",
+        "J",
+        "K",
+        "L",
+        "M"
+      ],
+      "totalColumns": [
+        "N"
+      ],
+      "expectedHeaders": {
+        "B31": "1月",
+        "C31": "2月",
+        "D31": "3月",
+        "E31": "4月",
+        "F31": "5月",
+        "G31": "6月",
+        "H31": "7月",
+        "I31": "8月",
+        "J31": "9月",
+        "K31": "10月",
+        "L31": "11月",
+        "M31": "12月",
+        "N31": "合计"
+      }
+    },
+    {
+      "sheet": "2026年颜色产量",
+      "year": 2026,
+      "base": "SUINING",
+      "header": 49,
+      "start": 50,
+      "end": 73,
+      "totalRow": 74,
+      "nameColumn": "A",
+      "monthColumns": [
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G",
+        "H",
+        "I",
+        "J",
+        "K",
+        "L",
+        "M"
+      ],
+      "totalColumns": [
+        "N"
+      ],
+      "expectedHeaders": {
+        "B49": "1月",
+        "C49": "2月",
+        "D49": "3月",
+        "E49": "4月",
+        "F49": "5月",
+        "G49": "6月",
+        "H49": "7月",
+        "I49": "8月",
+        "J49": "9月",
+        "K49": "10月",
+        "L49": "11月",
+        "M49": "12月",
+        "N49": "合计"
+      }
+    },
+    {
+      "sheet": "2026年颜色产量",
+      "year": 2026,
+      "base": "FUYANG",
+      "header": 77,
+      "start": 78,
+      "end": 95,
+      "totalRow": 96,
+      "nameColumn": "A",
+      "monthColumns": [
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G",
+        "H",
+        "I",
+        "J",
+        "K",
+        "L",
+        "M"
+      ],
+      "totalColumns": [
+        "N"
+      ],
+      "expectedHeaders": {
+        "B77": "1月",
+        "C77": "2月",
+        "D77": "3月",
+        "E77": "4月",
+        "F77": "5月",
+        "G77": "6月",
+        "H77": "7月",
+        "I77": "8月",
+        "J77": "9月",
+        "K77": "10月",
+        "L77": "11月",
+        "M77": "12月",
+        "N77": "合计"
+      }
+    }
+  ]
+}

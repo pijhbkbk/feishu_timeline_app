@@ -1,8 +1,8 @@
 'use client';
 
 import {
+  isApprovedTeamUser,
   apiRequest,
-  type FrontendRoleCode,
   type SessionUser,
 } from './auth-client';
 import {
@@ -160,8 +160,6 @@ export type TrialProductionIssueFormInput = {
   severity: TrialProductionIssueSeverity;
   responsibleDept: string;
 };
-
-const PILOT_PRODUCTION_MANAGEMENT_ROLE_CODES: FrontendRoleCode[] = ['production_operator', 'process_engineer'];
 
 const FIRST_PRODUCTION_PLAN_STATUS_LABELS: Record<
   FirstProductionPlanStatus,
@@ -439,15 +437,9 @@ export function validateTrialProductionIssueForm(
 }
 
 export function canManagePilotProductions(user: SessionUser | null, nodeCode?: 'FIRST_UNIT_PRODUCTION_PLAN' | 'TRIAL_PRODUCTION') {
-  if (!user) {
-    return false;
-  }
-
-  if (nodeCode) return user.roleCodes.includes(nodeCode === 'FIRST_UNIT_PRODUCTION_PLAN' ? 'production_operator' : 'process_engineer');
-
-  return user.roleCodes.some((roleCode) =>
-    PILOT_PRODUCTION_MANAGEMENT_ROLE_CODES.includes(roleCode),
-  );
+  // Both node types use team access; retain the argument for existing callers.
+  void nodeCode;
+  return isApprovedTeamUser(user);
 }
 
 export function canShowCompleteFirstProductionPlanTaskButton(

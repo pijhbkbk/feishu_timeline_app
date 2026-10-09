@@ -1,3 +1,4 @@
+import { ProjectColorLinkService } from './project-color-link.service';
 import { ApprovedReportService } from './approved-report.service';
 import { Module } from '@nestjs/common';
 
@@ -10,7 +11,7 @@ import { ProjectsService } from './projects.service';
 @Module({
   imports: [AuthModule, WorkflowsModule, ActivityLogsModule],
   controllers: [ProjectsController],
-  providers: [ProjectsService, ApprovedReportService],
+  providers: [ProjectsService, ApprovedReportService, ProjectColorLinkService],
   exports: [ProjectsService],
 })
 export class ProjectsModule {}

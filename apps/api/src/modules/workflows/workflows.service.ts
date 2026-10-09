@@ -1,3 +1,4 @@
+import { PROJECT_DISPLAY_COLOR_SELECT, resolveProjectDisplayColor } from '../../common/project-display-color';
 import { assertApprovedTeamMember } from '../../common/team-membership';
 import { isReworkTask, isTechnicalReworkTask, taskEvidenceIds, ancestorEvidenceIds } from '../../common/workflow-evidence';
 import { BusinessClock } from '../../common/business-clock';
@@ -571,13 +572,11 @@ export class WorkflowsService {
               },
             },
             owningDepartment: true,
+            primaryColor: { select: PROJECT_DISPLAY_COLOR_SELECT },
             colors: {
-              include: {
-                numberingAttachment: {
-                  select: { scanStatus: true, isDeleted: true },
-                },
-              },
-              orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
+              select: PROJECT_DISPLAY_COLOR_SELECT,
+              orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }, { id: 'asc' }],
+              take: 1,
             },
             members: {
               include: {
@@ -807,7 +806,7 @@ export class WorkflowsService {
     });
 
     const now = this.businessClock.now();
-    const primaryColor = detailedTask.project.colors[0] ?? null;
+    const primaryColor = resolveProjectDisplayColor(detailedTask.project);
     const latestReview = reviewRecords[0] ?? null;
     const latestFlowOperator =
       transitions[0]?.operatorUser?.name ?? auditLogs[0]?.actorUser?.name ?? null;
@@ -1246,6 +1245,7 @@ export class WorkflowsService {
     const domainBlockingReasons = [
       ...await this.getPilotProductionCompletionIssues(tx, task),
       ...await this.getTechnicalReworkCompletionIssues(tx, task),
+      ...await this.getRegisterStandardCompletionIssues(tx, task),
     ];
 
     return {
@@ -1357,6 +1357,8 @@ export class WorkflowsService {
     if (isWorkflowCompletionAction(action)) {
       await this.assertRequiredMaterialsSubmitted(tx, task);
       await this.assertPilotProductionRecordsSubmitted(tx, task);
+      const registerIssues = await this.getRegisterStandardCompletionIssues(tx, task);
+      if (registerIssues[0]) throw new BadRequestException(registerIssues[0]);
       const reworkIssues = await this.getTechnicalReworkCompletionIssues(tx, task);
       if (reworkIssues.length) throw new BadRequestException(reworkIssues[0]);
     }
@@ -1925,6 +1927,13 @@ export class WorkflowsService {
     }
 
     return issues;
+  }
+
+  private async getRegisterStandardCompletionIssues(tx: Prisma.TransactionClient, task: Pick<WorkflowTaskWithRelations, 'nodeCode' | 'projectId' | 'project'>) {
+    if (task.nodeCode !== WorkflowNodeCode.STANDARD_BOARD_PRODUCTION || !task.project.primaryColorId) return [];
+    const board = await tx.standardBoard.findFirst({ where: { projectId: task.projectId, isCurrent: true, status: 'ISSUED',
+      colorId: task.project.primaryColorId, colorVersion: { colorId: task.project.primaryColorId } }, select: { id: true } });
+    return board ? [] : ['请先保存并加入颜色清单，再下发引用本项目准确颜色标准版本的当前标准板。'];
   }
 
   private async getTechnicalReworkCompletionIssues(tx: Prisma.TransactionClient,

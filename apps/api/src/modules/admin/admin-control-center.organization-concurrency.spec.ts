@@ -31,6 +31,40 @@ describe('AdminControlCenterService organization concurrency integrity', () => {
     permissionCodes: ['system.manage'],
   } satisfies AuthenticatedUser;
 
+  it('rejects a register color rename before a project or color write', async () => {
+    const project = { ...mutableProject(), primaryColorId: 'linked-color', primaryColor: { id: 'linked-color', name: '原表颜色' } };
+    const tx = baseTransaction();
+    Object.assign(tx, {
+      project: { findUnique: vi.fn(async () => project), updateMany: vi.fn(async () => ({ count: 1 })) },
+      color: { update: vi.fn() },
+    });
+    const logs = activityLogMock();
+    await expect(serviceWith(tx, logs).updateProjectBasicInfo(project.id, {
+      expectedVersion: version.toISOString(), name: '项目可改', colorName: '错误改名', reason: '核对身份', idempotencyKey: 'reject-shared-color-rename',
+    }, actor, 'identity-guard')).rejects.toThrow('项目已关联颜色清单');
+    expect(tx.project.updateMany).not.toHaveBeenCalled();
+    expect(tx.color.update).not.toHaveBeenCalled();
+    expect(logs.createWithExecutor).not.toHaveBeenCalled();
+  });
+
+  it('permits a project title edit with the linked color unchanged and leaves both color identities untouched', async () => {
+    const project = { ...mutableProject(), primaryColorId: 'linked-color', primaryColor: { id: 'linked-color', name: '原表颜色' } };
+    const tx = baseTransaction();
+    Object.assign(tx, {
+      project: { findUnique: vi.fn(async () => project), updateMany: vi.fn(async () => ({ count: 1 })) },
+      color: { update: vi.fn() },
+    });
+    const logs = activityLogMock();
+    await serviceWith(tx, logs).updateProjectBasicInfo(project.id, {
+      expectedVersion: version.toISOString(), name: '项目可改', colorName: '原表颜色', reason: '核对身份', idempotencyKey: 'retain-shared-color-name',
+    }, actor, 'identity-guard');
+    expect(tx.project.updateMany).toHaveBeenCalled();
+    expect(tx.color.update).not.toHaveBeenCalled();
+    expect(logs.createWithExecutor).toHaveBeenCalledWith(tx, expect.objectContaining({
+      beforeData: expect.objectContaining({ colorName: '原表颜色' }), afterData: expect.objectContaining({ colorName: '原表颜色' }),
+    }));
+  });
+
   it('rejects a stale project version claim before changing its color or auditing', async () => {
     const project = mutableProject();
     const tx = baseTransaction();

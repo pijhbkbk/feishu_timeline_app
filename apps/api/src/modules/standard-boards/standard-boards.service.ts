@@ -1,3 +1,6 @@
+import { createHash } from 'node:crypto';
+import { isFutureBusinessDate } from '../../common/business-date';
+import { appendColorStandard, parseColorTechnicalData, parseRegisterMonth } from '../../common/color-standard';
 import { assertApprovedTeamMember } from '../../common/team-membership';
 import { isReworkTask, ancestorEvidenceIds, readEvidenceTask } from '../../common/workflow-evidence';
 import { assertTeamTaskById, withProjectWrite } from '../../common/team-authorization';
@@ -83,16 +86,20 @@ const COLOR_BOARD_DETAIL_UPDATE_LIMIT = 100;
 const STANDARD_BOARD_SAMPLE_OPTION_LIMIT = 100;
 const STANDARD_BOARD_MAX_PAYLOAD_BYTES = 16 * 1024;
 const STANDARD_BOARD_ID_MAX_CHARS = 64;
-const STANDARD_BOARD_CODE_MAX_CHARS = 64;
+const STANDARD_BOARD_CODE_MAX_CHARS = 128;
+const STANDARD_BOARD_SAMPLE_CODE_MAX_CHARS = 64;
 const STANDARD_BOARD_PERSON_MAX_CHARS = 200;
 const STANDARD_BOARD_NOTE_MAX_CHARS = 4_000;
 const STANDARD_BOARD_VERSION_MAX = 2_147_483_647;
 const STANDARD_BOARD_ID_PATTERN = /^[A-Za-z0-9_-]+$/;
-const STANDARD_BOARD_CODE_PATTERN = /^[A-Za-z0-9._-]+$/;
+// eslint-disable-next-line no-control-regex -- Preserve ordinary board labels while explicitly rejecting control characters.
+const STANDARD_BOARD_CODE_PATTERN = /^[^\u0000-\u001f\u007f]+$/u;
 const POSITIVE_DECIMAL_INTEGER_PATTERN = /^[1-9]\d*$/;
 
 const STANDARD_BOARD_SUMMARY_SELECT = {
   id: true,
+  colorId: true,
+  colorVersionId: true,
   boardCode: true,
   versionNo: true,
   basedOnSampleId: true,
@@ -123,6 +130,8 @@ const STANDARD_BOARD_SUMMARY_SELECT = {
 
 const STANDARD_BOARD_AUDIT_SELECT = {
   id: true,
+  colorId: true,
+  colorVersionId: true,
   boardCode: true,
   versionNo: true,
   basedOnSampleId: true,
@@ -317,6 +326,63 @@ export class StandardBoardsService {
     return this.buildColorBoardDetailUpdateWorkspace(this.prisma, projectId);
   }
 
+  async saveAndPublish(projectId: string, rawInput: unknown, actor: AuthenticatedUser) {
+    await this.assertProjectAccess(projectId, actor, 'workflow.transition');
+    this.assertActorCanManage(actor);
+    const input = this.parsePublishInput(rawInput);
+    const key = `color-standard-publish:${actor.id}:${input.idempotencyKey}`;
+    const hash = createHash('sha256').update(JSON.stringify({ projectId, ...input })).digest('hex');
+    return withProjectWrite(this.prisma, actor, { projectId }, async tx => {
+      await tx.$executeRaw(Prisma.sql`SELECT pg_advisory_xact_lock(hashtext(${'color-standard-publish-command'}), hashtext(${key}))`);
+      const previous = await tx.r26CommandRequest.findUnique({ where: { idempotencyKey: key } });
+      if (previous) {
+        if (previous.actorUserId !== actor.id || previous.projectId !== projectId || previous.requestHash !== hash) throw new ConflictException('请求编号已用于其他内容。');
+        return { ...(previous.result as Prisma.JsonObject), idempotentReplay: true };
+      }
+      const lockedTaskId = await this.lockActiveTaskForWrite(tx, actor, projectId, WorkflowNodeCode.STANDARD_BOARD_PRODUCTION);
+      const context = await this.getStandardBoardContext(tx, projectId);
+      this.assertLockedContextTask(context.activeTask, lockedTaskId);
+      this.assertWritableStandardBoardStage(context);
+      this.assertStandardBoardCapacity(context.boards, true);
+      const task = await tx.workflowTask.findUniqueOrThrow({ where: { id: lockedTaskId }, select: { id: true, updatedAt: true, payload: true } });
+      if (task.id !== input.taskId || task.updatedAt.toISOString() !== input.taskVersion) throw new ConflictException({ code: 'STALE_TASK_VERSION', message: '制板工序已变化，请刷新后重新核对。' });
+      await this.assertSampleReference(tx, projectId, input.basedOnSampleId);
+      const project = await tx.project.findUniqueOrThrow({ where: { id: projectId }, select: { primaryColorId: true } });
+      if (!project.primaryColorId) throw new BadRequestException('项目尚未核对并关联准确的颜色身份。');
+      const payload = task.payload === null ? {} : task.payload;
+      if (typeof payload !== 'object' || Array.isArray(payload) || Buffer.byteLength(JSON.stringify(payload), 'utf8') > 32 * 1024) throw new ConflictException('原工序记录格式需要核对，未修改任何记录。');
+      const published = await appendColorStandard(tx, { colorId: project.primaryColorId, expectedRevision: input.expectedColorRevision,
+        actorId: actor.id, boardCode: input.boardCode, technicalData: input.technicalData, registerMonth: input.registerMonth,
+        sourceReference: { projectId, workflowTaskId: task.id, origin: 'STANDARD_BOARD_PRODUCTION' } });
+      const maximum = await tx.standardBoard.aggregate({ where: { projectId, boardCode: input.boardCode }, _max: { versionNo: true } });
+      const boardVersion = (maximum._max.versionNo ?? 0) + 1;
+      if (boardVersion > STANDARD_BOARD_VERSION_MAX) throw new ConflictException('标准板版本数量超出上限。');
+      await tx.standardBoard.updateMany({ where: { projectId, isCurrent: true }, data: { isCurrent: false } });
+      const board = await tx.standardBoard.create({ data: { projectId, colorId: published.color.id, colorVersionId: published.version.id,
+        boardCode: input.boardCode, versionNo: boardVersion, status: StandardBoardStatus.CREATED, isCurrent: true,
+        basedOnSampleId: input.basedOnSampleId, remark: input.remark, producedAt: input.producedAt }, select: STANDARD_BOARD_AUDIT_SELECT });
+      const nodeRecord = { boardId: board.id, colorId: published.color.id, colorVersionId: published.version.id, standardVersionNo: published.version.versionNo };
+      const updatedTask = await tx.workflowTask.update({ where: { id: task.id }, data: {
+        payload: { ...payload, colorRegisterStandard: nodeRecord }, updatedAt: new Date(Math.max(Date.now(), task.updatedAt.getTime() + 1)),
+      }, select: { updatedAt: true } });
+      await this.activityLogsService.createWithExecutor(tx, { projectId, actorUserId: actor.id, targetType: AuditTargetType.STANDARD_BOARD,
+        targetId: board.id, action: 'STANDARD_BOARD_CREATED', nodeCode: WorkflowNodeCode.STANDARD_BOARD_PRODUCTION,
+        metadata: { workflowTaskId: task.id, evidenceKind: 'TASK_CREATED_RECORD', ...nodeRecord },
+        summary: `保存标准板 ${board.boardCode} V${board.versionNo} 并加入颜色清单`, afterData: { ...this.toStandardBoardAuditSnapshot(board), ...nodeRecord } });
+      await tx.auditLog.create({ data: { projectId, actorUserId: actor.id, targetType: AuditTargetType.COLOR,
+        targetId: published.color.id, action: 'COLOR_STANDARD_PUBLISHED', nodeCode: WorkflowNodeCode.STANDARD_BOARD_PRODUCTION,
+        summary: '制板标准以新版本进入颜色清单，保留既有标准及量产审批状态',
+        beforeData: { registerStatus: published.previousColor.registerStatus, registerRevision: published.previousColor.registerRevision },
+        afterData: { ...nodeRecord, registerStatus: published.color.registerStatus, registerRevision: published.color.registerRevision },
+      } });
+      const result = { projectId, ...nodeRecord, registerRevision: published.color.registerRevision,
+        taskVersion: updatedTask.updatedAt.toISOString(), idempotentReplay: false };
+      await tx.r26CommandRequest.create({ data: { projectId, actorUserId: actor.id, idempotencyKey: key,
+        action: 'STANDARD_BOARD_SAVE_AND_PUBLISH', requestHash: hash, result } });
+      return result;
+    });
+  }
+
   async createStandardBoard(
     projectId: string,
     rawInput: unknown,
@@ -338,6 +404,9 @@ export class StandardBoardsService {
       this.assertStandardBoardCapacity(context.boards, true);
       await this.assertSampleReference(tx, projectId, input.basedOnSampleId);
       await this.assertUniqueBoardVersion(tx, projectId, input.boardCode, input.versionNo);
+
+      const linked = await tx.project.findUnique({ where: { id: projectId }, select: { primaryColorId: true } });
+      if (linked?.primaryColorId) throw new BadRequestException('此项目已关联颜色，请使用“保存并加入颜色清单”建立标准版本。');
 
       const hasCurrentBoard = context.boards.some((board) => board.isCurrent);
       const board = await tx.standardBoard.create({
@@ -390,6 +459,9 @@ export class StandardBoardsService {
       const board = await this.getBoardOrThrow(tx, projectId, boardId);
       this.assertPersistedStandardBoardAuditSource(board);
 
+      if (board.colorVersionId && (board.boardCode !== input.boardCode || board.versionNo !== input.versionNo || board.basedOnSampleId !== input.basedOnSampleId)) {
+        throw new ConflictException('已入清单的标准板身份不能编辑，请保存新的标准版本。');
+      }
       if (!canEditStandardBoard(board.status)) {
         throw new BadRequestException('已下发或已归档的标准板不允许编辑。');
       }
@@ -539,6 +611,7 @@ export class StandardBoardsService {
         throw new BadRequestException('当前标准板状态不允许标记为已下发。');
       }
 
+      await this.assertBoardStandardForProject(tx, projectId, boardId);
       const issuedBoard = await tx.standardBoard.update({
         where: { id: boardId },
         data: {
@@ -598,6 +671,7 @@ export class StandardBoardsService {
       if (board.status !== StandardBoardStatus.ISSUED) {
         throw new BadRequestException('仅已下发的标准板才能添加下发记录。');
       }
+      await this.assertBoardStandardForProject(tx, projectId, boardId);
       const distributionRecord = await tx.boardDistributionRecord.create({
         data: {
           projectId,
@@ -713,6 +787,7 @@ export class StandardBoardsService {
         throw new BadRequestException('当前没有可完成的标准板制作、下发任务。');
       }
 
+      await this.assertBoardStandardForProject(tx, projectId);
       const completionIssue = getStandardBoardCompletionIssue(context.boards);
 
       if (completionIssue) {
@@ -1020,6 +1095,7 @@ export class StandardBoardsService {
         currentNodeName: getCurrentNodeName(project.currentNodeCode),
         targetDate: project.plannedEndDate?.toISOString() ?? null,
         riskLevel: project.priority,
+        primaryColor: project.primaryColor,
       },
       procurementCompleted,
       activeStandardBoardTask: standardBoardTask
@@ -1123,6 +1199,7 @@ export class StandardBoardsService {
         currentNodeName: getCurrentNodeName(project.currentNodeCode),
         targetDate: project.plannedEndDate?.toISOString() ?? null,
         riskLevel: project.priority,
+        primaryColor: project.primaryColor,
       },
       activeTask: activeTask ? this.toWorkflowTaskSummary(activeTask) : null,
       canCompleteTask: Boolean(activeTask) && completionIssue === null,
@@ -1139,6 +1216,17 @@ export class StandardBoardsService {
         this.toColorBoardDetailUpdateSummary(updateRecord),
       ),
     };
+  }
+
+  private async assertBoardStandardForProject(db: StandardBoardsDbClient, projectId: string, boardId?: string) {
+    const project = await db.project.findUnique({ where: { id: projectId }, select: { primaryColorId: true } });
+    if (!project) throw new NotFoundException('项目不存在。');
+    if (!project.primaryColorId) return; // Unlinked historical projects retain their original workflow contract.
+    const board = await db.standardBoard.findFirst({ where: { projectId,
+      ...(boardId ? { id: boardId } : { isCurrent: true, status: StandardBoardStatus.ISSUED }),
+      colorId: project.primaryColorId, colorVersion: { colorId: project.primaryColorId },
+    }, select: { id: true } });
+    if (!board) throw new BadRequestException('标准板须引用本项目准确颜色的标准版本，请先保存并加入颜色清单。');
   }
 
   private async getStandardBoardContext(
@@ -1446,6 +1534,7 @@ export class StandardBoardsService {
         priority: true,
         currentNodeCode: true,
         plannedEndDate: true,
+        primaryColor: { select: { id: true, name: true, code: true, productionBase: { select: { id: true, name: true } }, productionBaseId: true, registerRevision: true, registerStatus: true, registerMonth: true } },
       },
     });
 
@@ -1566,7 +1655,7 @@ export class StandardBoardsService {
         ) AS "basedOnSampleRecordId",
         LEFT(
           "basedOnSample"."sampleNo",
-          ${STANDARD_BOARD_CODE_MAX_CHARS + 1}::integer
+          ${STANDARD_BOARD_SAMPLE_CODE_MAX_CHARS + 1}::integer
         ) AS "basedOnSampleNo",
         "standardBoard"."status" AS "status",
         "standardBoard"."isCurrent" AS "isCurrent",
@@ -1656,7 +1745,7 @@ export class StandardBoardsService {
           "sample"."id" AS "id",
           LEFT(
             "sample"."sampleNo",
-            ${STANDARD_BOARD_CODE_MAX_CHARS + 1}::integer
+            ${STANDARD_BOARD_SAMPLE_CODE_MAX_CHARS + 1}::integer
           ) AS "sampleNo"
         FROM "samples" AS "sample"
         WHERE "sample"."id" = ${sampleId}
@@ -1670,7 +1759,7 @@ export class StandardBoardsService {
       throw new BadRequestException('关联样板不存在。');
     }
     this.assertStandardBoardId(sample.id, '关联样板');
-    this.assertStandardBoardCode(sample.sampleNo, '样板编号');
+    this.assertSampleCode(sample.sampleNo);
   }
 
   private async assertUniqueBoardVersion(
@@ -1762,6 +1851,40 @@ export class StandardBoardsService {
     });
 
     return Boolean(completedTask);
+  }
+
+  private parsePublishInput(rawInput: unknown) {
+    if (!rawInput || typeof rawInput !== 'object' || Array.isArray(rawInput)) throw new BadRequestException('制板标定数据格式不正确。');
+    const input = rawInput as Record<string, unknown>;
+    const allowed = new Set(['taskId', 'taskVersion', 'expectedColorRevision', 'idempotencyKey', 'boardCode', 'basedOnSampleId', 'remark', 'producedAt', 'registerMonth', 'technicalData']);
+    if (Object.keys(input).some(key => !allowed.has(key))) throw new BadRequestException('制板标定数据包含不支持的字段。');
+    const taskId = typeof input.taskId === 'string' ? input.taskId : '';
+    this.assertStandardBoardId(taskId, '制板工序');
+    if (typeof input.taskVersion !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(input.taskVersion) || !Number.isFinite(new Date(input.taskVersion).getTime())) throw new BadRequestException('制板工序版本不正确。');
+    if (!Number.isInteger(input.expectedColorRevision) || (input.expectedColorRevision as number) < 1 || (input.expectedColorRevision as number) > STANDARD_BOARD_VERSION_MAX) throw new BadRequestException('颜色版本不正确。');
+    const idempotencyKey = typeof input.idempotencyKey === 'string' ? input.idempotencyKey : '';
+    if (!/^[A-Za-z0-9._:-]{1,128}$/.test(idempotencyKey)) throw new BadRequestException('保存请求编号不正确。');
+    const boardCode = typeof input.boardCode === 'string' ? input.boardCode.trim() : '';
+    this.assertStandardBoardCode(boardCode, '标准板编号');
+    if (input.basedOnSampleId !== undefined && input.basedOnSampleId !== null && typeof input.basedOnSampleId !== 'string') throw new BadRequestException('关联样板格式不正确。');
+    const basedOnSampleId = typeof input.basedOnSampleId === 'string' && input.basedOnSampleId ? input.basedOnSampleId : null;
+    if (basedOnSampleId) this.assertStandardBoardId(basedOnSampleId, '关联样板');
+    if (input.remark !== undefined && input.remark !== null && typeof input.remark !== 'string') throw new BadRequestException('标准板备注格式不正确。');
+    const remark = typeof input.remark === 'string' ? input.remark : null;
+    if (remark !== null) this.assertStandardBoardText(remark, '标准板备注', STANDARD_BOARD_NOTE_MAX_CHARS);
+    let producedAt: Date | null = null;
+    if (input.producedAt !== undefined && input.producedAt !== null && input.producedAt !== '') {
+      if (typeof input.producedAt !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(input.producedAt)) throw new BadRequestException('制作日期须为 YYYY-MM-DD 或空值。');
+      const calendarDate = new Date(`${input.producedAt}T00:00:00.000Z`);
+      if (!Number.isFinite(calendarDate.getTime()) || calendarDate.toISOString().slice(0, 10) !== input.producedAt) throw new BadRequestException('制作日期不正确。');
+      producedAt = new Date(`${input.producedAt}T00:00:00.000+08:00`);
+      if (isFutureBusinessDate(input.producedAt, producedAt)) throw new BadRequestException('制作日期不能晚于上海业务日。');
+    }
+    const normalized = { taskId, taskVersion: input.taskVersion, expectedColorRevision: input.expectedColorRevision as number,
+      idempotencyKey, boardCode, basedOnSampleId, remark, producedAt, registerMonth: parseRegisterMonth(input.registerMonth),
+      technicalData: parseColorTechnicalData(input.technicalData) };
+    if (Buffer.byteLength(JSON.stringify(normalized), 'utf8') > 24 * 1024) throw new BadRequestException('制板标定数据过大。');
+    return normalized;
   }
 
   private parseBoardWriteInput(rawInput: unknown): StandardBoardWriteInput {
@@ -2017,8 +2140,14 @@ export class StandardBoardsService {
       !STANDARD_BOARD_CODE_PATTERN.test(value)
     ) {
       this.throwStandardBoardInputOutOfBounds(
-        `${label}仅允许 1～${STANDARD_BOARD_CODE_MAX_CHARS} 位字母、数字、点、下划线或连字符。`,
+        `${label}仅允许 1～${STANDARD_BOARD_CODE_MAX_CHARS} 位普通文字，不得包含控制字符。`,
       );
+    }
+  }
+
+  private assertSampleCode(value: string) {
+    if (value.length > STANDARD_BOARD_SAMPLE_CODE_MAX_CHARS || !/^[A-Za-z0-9._-]+$/.test(value)) {
+      this.throwStandardBoardInputOutOfBounds('样板编号仅允许 1～64 位字母、数字、点、下划线或连字符。');
     }
   }
 
@@ -2110,6 +2239,8 @@ export class StandardBoardsService {
   ) {
     return {
       id: board.id,
+      colorId: board.colorId,
+      colorVersionId: board.colorVersionId,
       boardCode: board.boardCode,
       versionNo: board.versionNo,
       basedOnSampleId: board.basedOnSampleId,
@@ -2228,10 +2359,7 @@ export class StandardBoardsService {
     }
     if (board.basedOnSample) {
       this.assertStandardBoardId(board.basedOnSample.id, '关联样板');
-      this.assertStandardBoardCode(
-        board.basedOnSample.sampleNo,
-        '样板编号',
-      );
+      this.assertSampleCode(board.basedOnSample.sampleNo);
     }
     if (board.issuedById) {
       this.assertStandardBoardId(board.issuedById, '下发人');

@@ -1,6 +1,8 @@
 'use client';
 
-import { apiRequest, type SessionUser } from './auth-client';
+import type { ReviewStandardOptions, ReviewStandardVersion } from './review-standard-version';
+
+import { isApprovedTeamUser, apiRequest, type SessionUser } from './auth-client';
 import {
   fetchUserDirectory,
   formatDate,
@@ -34,6 +36,8 @@ export type AttachmentSummary = {
 };
 
 export type VisualDeltaReviewRecord = {
+  standardVersionId?: string | null;
+  standardVersion?: ReviewStandardVersion | null;
   id: string;
   workflowTaskId: string;
   reviewType: 'VISUAL_COLOR_DIFFERENCE_REVIEW';
@@ -55,7 +59,7 @@ export type VisualDeltaReviewRecord = {
   attachmentHistory: AttachmentSummary[];
 };
 
-export type VisualDeltaReviewWorkspaceResponse = {
+export type VisualDeltaReviewWorkspaceResponse = ReviewStandardOptions & {
   businessTime?: string;
   project: {
     id: string;
@@ -75,6 +79,7 @@ export type VisualDeltaReviewWorkspaceResponse = {
 };
 
 export type VisualDeltaReviewFormInput = {
+  standardVersionId?: string;
   reviewDate: string;
   reviewerId: string;
   reviewConclusion: VisualDeltaReviewConclusion;
@@ -87,8 +92,8 @@ export type VisualDeltaMonth = { id: string; periodIndex: number; periodLabel: s
   dueAt: string | null; reviewerId: string | null; status: string };
 
 export function canWriteVisualDeltaMonth(user: SessionUser | null, workspace: VisualDeltaReviewWorkspaceResponse, month: VisualDeltaMonth | undefined, now = workspace.businessTime ? Date.parse(workspace.businessTime) : Date.now()) {
-  return Boolean(user?.roleCodes.includes('quality_engineer') && workspace.activeTask && workspace.monthlyPlanActive && month &&
-    month.reviewerId === user.id && ['PENDING', 'IN_PROGRESS', 'OVERDUE'].includes(month.status) && Date.parse(month.plannedDate) <= now);
+  return Boolean(canManageVisualDeltaReviews(user) && workspace.activeTask && workspace.monthlyPlanActive && month &&
+    month.reviewerId === user?.id && ['PENDING', 'IN_PROGRESS', 'OVERDUE'].includes(month.status) && Date.parse(month.plannedDate) <= now);
 }
 
 export function canWriteVisualDeltaRecord(user: SessionUser | null, workspace: VisualDeltaReviewWorkspaceResponse, review: VisualDeltaReviewRecord) {
@@ -217,7 +222,7 @@ export function canManageVisualDeltaReviews(
   user: SessionUser | null,
   reviewerId?: string | null,
 ) {
-  return Boolean(user?.roleCodes.includes('quality_engineer') && (reviewerId === undefined || reviewerId === user.id));
+  return isApprovedTeamUser(user) && (reviewerId === undefined || reviewerId === user.id);
 }
 
 export function canShowVisualDeltaReviewSubmitButton(
@@ -301,6 +306,7 @@ export function toVisualDeltaReviewFormInput(
   review: VisualDeltaReviewRecord,
 ): VisualDeltaReviewFormInput {
   return {
+    standardVersionId: review.standardVersionId ?? '',
     reviewDate: review.reviewDate ? review.reviewDate.slice(0, 10) : '',
     reviewerId: review.reviewerId,
     reviewConclusion: review.reviewConclusion,
@@ -323,6 +329,7 @@ export function getDefaultVisualDeltaReviewerId(
 
 function toVisualDeltaReviewPayload(input: VisualDeltaReviewFormInput) {
   return {
+    standardVersionId: input.standardVersionId || null,
     reviewDate: input.reviewDate,
     reviewerId: input.reviewerId,
     reviewConclusion: input.reviewConclusion,

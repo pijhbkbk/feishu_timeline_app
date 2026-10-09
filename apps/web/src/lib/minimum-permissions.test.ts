@@ -1,12 +1,21 @@
 import { describe, expect, it } from 'vitest';
 
-import type { FrontendRoleCode, SessionUser } from './auth-client';
+import { isApprovedTeamUser, type SessionUser } from './auth-client';
+import { canManageProjectAttachments } from './attachments-client';
 import { canManageColorExit } from './color-exits-client';
+import { canManageConsistencyReviews } from './consistency-reviews-client';
 import { canManageFees } from './fees-client';
+import { canManageMassProductions } from './mass-production-client';
+import { canManagePaintProcurement } from './paint-procurements-client';
+import { canManagePerformanceTests } from './performance-tests-client';
+import { canManagePilotProductions } from './pilot-productions-client';
+import { canManageSchedulePlans } from './production-plans-client';
 import { canManageCabinReviews } from './reviews-client';
+import { canManageStandardBoards } from './standard-boards-client';
+import { canManageVisualDeltaReviews } from './visual-delta-reviews-client';
 import { canUserOperateWorkflowTask, type WorkflowTaskSummary } from './workflows-client';
 
-function user(id: string, roleCode: FrontendRoleCode): SessionUser {
+function user(id: string, overrides: Partial<SessionUser> = {}): SessionUser {
   return {
     id,
     username: id,
@@ -14,9 +23,11 @@ function user(id: string, roleCode: FrontendRoleCode): SessionUser {
     email: null,
     departmentId: 'dept-1',
     departmentName: '部门',
-    isSystemAdmin: roleCode === 'admin',
-    authSource: 'mock',
-    roleCodes: [roleCode],
+    isSystemAdmin: false,
+    teamAccessApproved: true,
+    authSource: 'local',
+    roleCodes: [],
+    ...overrides,
   };
 }
 
@@ -48,51 +59,71 @@ function task(
   };
 }
 
-describe('fixed role and claimed task permissions in the UI', () => {
-  it('shows ordinary workflow actions only to the qualified assignee', () => {
+const businessManagers = [
+  ['attachments', canManageProjectAttachments],
+  ['color exit', canManageColorExit],
+  ['fees', canManageFees],
+  ['mass production', canManageMassProductions],
+  ['paint procurement', canManagePaintProcurement],
+  ['performance tests', canManagePerformanceTests],
+  ['pilot production', canManagePilotProductions],
+  ['schedule plans', canManageSchedulePlans],
+  ['standard boards', canManageStandardBoards],
+  ['cabin review', canManageCabinReviews],
+  ['visual delta review', canManageVisualDeltaReviews],
+  ['consistency review', canManageConsistencyReviews],
+] as const;
+
+describe('single-department business access in the UI', () => {
+  it('requires a local approved team identity without inferring approval from roles', () => {
+    expect(isApprovedTeamUser(user('member'))).toBe(true);
+    expect(isApprovedTeamUser(user('admin', { isSystemAdmin: true, teamAccessApproved: false }))).toBe(true);
+    expect(isApprovedTeamUser(null)).toBe(false);
+    expect(isApprovedTeamUser(undefined)).toBe(false);
+    expect(isApprovedTeamUser(user('legacy-admin', { teamAccessApproved: false, roleCodes: ['admin'] }))).toBe(false);
+    const pending = user('pending');
+    delete pending.teamAccessApproved;
+    expect(isApprovedTeamUser(pending)).toBe(false);
+    expect(isApprovedTeamUser(user('mock', { authSource: 'mock', isSystemAdmin: true }))).toBe(false);
+    expect(isApprovedTeamUser(user('feishu', { authSource: 'feishu', isSystemAdmin: true }))).toBe(false);
+  });
+
+  it.each(businessManagers)('%s uses the same approved-team boundary', (_name, canManage) => {
+    expect(canManage(user('member'))).toBe(true);
+    expect(canManage(user('admin', { isSystemAdmin: true, teamAccessApproved: false }))).toBe(true);
+    expect(canManage(null)).toBe(false);
+    expect(canManage(user('pending', {
+      teamAccessApproved: false,
+      roleCodes: ['admin', 'project_manager', 'process_engineer', 'quality_engineer', 'purchaser', 'production_operator', 'reviewer', 'finance'],
+    }))).toBe(false);
+    expect(canManage(user('mock', { authSource: 'mock', isSystemAdmin: true }))).toBe(false);
+    expect(canManage(user('feishu', { authSource: 'feishu' }))).toBe(false);
+  });
+
+  it('allows approved team members to operate active ordinary nodes regardless of old assignee or role', () => {
     const ordinaryTask = task('PAINT_DEVELOPMENT', 'owner-1');
-
-    expect(canUserOperateWorkflowTask(user('owner-1', 'process_engineer'), ordinaryTask)).toBe(
-      true,
-    );
-    expect(canUserOperateWorkflowTask(user('manager-1', 'project_manager'), ordinaryTask)).toBe(
-      false,
-    );
-    expect(canUserOperateWorkflowTask(user('admin-1', 'admin'), ordinaryTask)).toBe(false);
-    expect(canUserOperateWorkflowTask(user('other-1', 'process_engineer'), ordinaryTask)).toBe(
-      false,
-    );
+    expect(canUserOperateWorkflowTask(user('owner-1'), ordinaryTask)).toBe(true);
+    expect(canUserOperateWorkflowTask(user('member-2'), ordinaryTask)).toBe(true);
+    expect(canUserOperateWorkflowTask(user('pending', { teamAccessApproved: false, roleCodes: ['process_engineer'] }), ordinaryTask)).toBe(false);
+    expect(canUserOperateWorkflowTask(user('mock', { authSource: 'mock', isSystemAdmin: true }), ordinaryTask)).toBe(false);
   });
 
-  it('uses claimed finance for step 13 and claimed project manager for step 18', () => {
-    const feeTask = task('DEVELOPMENT_ACCEPTANCE', 'finance-1');
-    const exitTask = task('PROJECT_CLOSED', 'manager-1');
-
-    expect(canUserOperateWorkflowTask(user('finance-1', 'finance'), feeTask)).toBe(true);
-    expect(canUserOperateWorkflowTask(user('manager-1', 'project_manager'), feeTask)).toBe(false);
-    expect(canUserOperateWorkflowTask(user('admin-1', 'admin'), exitTask)).toBe(false);
-    expect(canUserOperateWorkflowTask(user('manager-1', 'project_manager'), exitTask)).toBe(true);
-    expect(canUserOperateWorkflowTask(user('other-finance', 'finance'), feeTask)).toBe(false);
-    expect(canUserOperateWorkflowTask(user('process-1', 'process_engineer'), exitTask)).toBe(false);
-    expect(canManageFees(user('manager-1', 'project_manager'))).toBe(false);
-    expect(canManageFees(user('finance-1', 'finance'))).toBe(true);
-    expect(canManageColorExit(user('process-1', 'process_engineer'))).toBe(false);
-    expect(canManageColorExit(user('manager-1', 'project_manager'))).toBe(true);
+  it('keeps fee and color-exit work available to approved members without restoring old fixed roles', () => {
+    expect(canUserOperateWorkflowTask(user('member'), task('DEVELOPMENT_ACCEPTANCE', 'finance-1'))).toBe(true);
+    expect(canUserOperateWorkflowTask(user('member'), task('PROJECT_CLOSED', 'manager-1'))).toBe(true);
+    expect(canManageFees(user('pending', { teamAccessApproved: false, roleCodes: ['finance'] }))).toBe(false);
+    expect(canManageColorExit(user('pending', { teamAccessApproved: false, roleCodes: ['project_manager'] }))).toBe(false);
   });
 
-  it('shows review record actions only to the qualified designated reviewer', () => {
-    expect(canManageCabinReviews(user('reviewer-1', 'reviewer'), 'reviewer-1')).toBe(true);
-    expect(canManageCabinReviews(user('reviewer-2', 'reviewer'), 'reviewer-1')).toBe(false);
-    expect(canManageCabinReviews(user('manager-1', 'project_manager'), 'reviewer-1')).toBe(false);
-    expect(canManageCabinReviews(user('admin-1', 'admin'), 'reviewer-1')).toBe(false);
-  });
-
-  it('recognizes qualified reviewers while rejecting coordinator impersonation', () => {
-    const reviewTask = task('CAB_REVIEW', 'reviewer-1');
-
-    expect(canUserOperateWorkflowTask(user('reviewer-1', 'reviewer'), reviewTask)).toBe(true);
-    expect(canUserOperateWorkflowTask(user('manager-1', 'project_manager'), reviewTask)).toBe(
-      false,
-    );
+  it.each([
+    ['cabin', canManageCabinReviews],
+    ['visual delta', canManageVisualDeltaReviews],
+    ['consistency', canManageConsistencyReviews],
+  ] as const)('%s review keeps the designated member signature', (_name, canManage) => {
+    expect(canManage(user('reviewer-1'), 'reviewer-1')).toBe(true);
+    expect(canManage(user('reviewer-2'), 'reviewer-1')).toBe(false);
+    expect(canManage(user('admin', { isSystemAdmin: true }), 'reviewer-1')).toBe(false);
+    expect(canManage(user('reviewer-1'), null)).toBe(false);
+    expect(canManage(user('reviewer-1', { teamAccessApproved: false, roleCodes: ['reviewer'] }), 'reviewer-1')).toBe(false);
   });
 });

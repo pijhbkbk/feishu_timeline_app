@@ -410,6 +410,7 @@ describe('R26OrdinaryCompletionService Gate 3C1', () => {
           .mockResolvedValueOnce([createdTask]),
       },
       color: {
+        findUniqueOrThrow: vi.fn().mockResolvedValue({ id: 'color-target', code: null, numberedAt: null, numberedById: null }),
         findMany: vi.fn().mockResolvedValue([
           {
             id: 'color-target',
@@ -434,6 +435,7 @@ describe('R26OrdinaryCompletionService Gate 3C1', () => {
         update: vi.fn().mockResolvedValue({ commandVersion: 9 }),
       },
       project: {
+        update: vi.fn().mockResolvedValue({ primaryColorId: 'color-target' }),
         findUniqueOrThrow: vi.fn().mockResolvedValue({
           id: loadedTask.projectId,
           currentNodeCode: WorkflowNodeCode.PAINT_PROCUREMENT,
