@@ -1,0 +1,77 @@
+{
+  "checkedAt": "2026-10-09T00:26:31.424Z",
+  "origin": "http://127.0.0.1:3350",
+  "proxySourceSha256": "0145871180f852bb6b01c323ecd18582b65ff75df14de0cb476024cb866d68e0",
+  "scope": "Dedicated loopback preview only; no credentials, environment values, cookies, response bodies or private headers recorded.",
+  "checks": [
+    {
+      "name": "source_listener_is_exact_loopback",
+      "pass": true,
+      "evidence": {
+        "port": 3350,
+        "host": "127.0.0.1"
+      }
+    },
+    {
+      "name": "source_web_removes_only_upgrade_directive",
+      "pass": true,
+      "evidence": {
+        "remainingDirectiveNames": [
+          "default-src",
+          "script-src",
+          "object-src",
+          "frame-ancestors",
+          "form-action",
+          "connect-src"
+        ],
+        "upstreamPort": 3352
+      }
+    },
+    {
+      "name": "source_origin_is_unchanged_forwarded_host_removed",
+      "pass": true,
+      "evidence": {
+        "originPreserved": true,
+        "forwardedHostRemoved": true
+      }
+    },
+    {
+      "name": "source_safari_log_has_only_safe_fields",
+      "pass": true,
+      "evidence": {
+        "keys": [
+          "browser",
+          "method",
+          "path",
+          "status",
+          "time"
+        ],
+        "queryExcluded": true
+      }
+    },
+    {
+      "name": "source_api_policy_unchanged",
+      "pass": true,
+      "evidence": {
+        "upstreamPort": 3351,
+        "upgradeRetained": true
+      }
+    },
+    {
+      "name": "source_wrong_host_rejected_before_upstream",
+      "pass": true,
+      "evidence": {
+        "status": 400
+      }
+    },
+    {
+      "name": "source_nonloopback_does_not_relax_csp",
+      "pass": true,
+      "evidence": {
+        "upgradeRetained": true
+      }
+    }
+  ],
+  "httpStatus": "NOT_EXECUTED",
+  "status": "SOURCE_BOUNDARY_PASS_HTTP_NOT_EXECUTED"
+}

@@ -1,0 +1,24 @@
+{
+  "checkedAtUtc": "2026-10-09T00:37:25.581274+00:00",
+  "runtimeCommit": "a0769e7808ace84a05a36bed6c0edc2e81d097c6",
+  "reviewers": [
+    {
+      "agent": "backend_audit",
+      "scope": "Backend admission, business dates, author preservation, stale versions, attachment scope, migration, PostgreSQL evidence",
+      "result": "Prior final read-only code review closed identified issues; final PG8 receipt preserves original combined-run fixture failures."
+    },
+    {
+      "agent": "design_reference",
+      "scope": "Reference PDF/PPTX pages2/3/4/5/6/14; nineteen primary route images, four widths, long filename/errors",
+      "result": "No identified P1/P2 in final reviewed main-path images. Archive history normalized filename remains P3; existing people-directory blue rows recorded as scope-limited visual difference."
+    },
+    {
+      "agent": "infra_audit",
+      "scope": "Final frontend/history/StrictMode boundaries; loopback proxy source and final report/manifest/links",
+      "result": "No newly identified blocking claim mismatch; corrected1024x800 and7source+7HTTP count. Pending-access screenshot later captured by root; supplemental helper failures separately preserved; no further shared code edits."
+    }
+  ],
+  "executionAttribution": "Independent read-only reviews are technical opinions, not user acceptance. Root executed final browser/HTTP and secret-value checks.",
+  "productOwnerAccepted": false,
+  "reviewerNotTestExecutor": true
+}

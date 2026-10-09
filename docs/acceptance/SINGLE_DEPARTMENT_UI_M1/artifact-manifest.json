@@ -1,0 +1,105 @@
+{
+  "schemaVersion": 1,
+  "kind": "local-m1-committed-artifact",
+  "status": "BUILD_COMPLETE",
+  "identity": {
+    "sourceCommit": "a0769e7808ace84a05a36bed6c0edc2e81d097c6",
+    "sourceTree": "5ac61815e1f9f7430ccd903da0f21b669f0fb184",
+    "release": "m1-a0769e7808ac",
+    "buildTime": "2026-10-08T09:13:39Z"
+  },
+  "source": {
+    "method": "git archive",
+    "archiveSha256": "910318f34f88e21377ac816504eefe2e899321431793f908c0bc9d224374c970",
+    "dirtyWorktreeIncluded": false,
+    "trackedSourceUnchangedExcept": [
+      "apps/api/src/common/build-identity.generated.ts",
+      "apps/web/src/lib/build-identity.generated.ts"
+    ]
+  },
+  "dependencyLockSha256": "ea28806c28563889a2a80f32545c335a2b7726cfc970b466d019977f241b03da",
+  "tools": {
+    "node": "v24.14.0",
+    "pnpm": "9.15.4"
+  },
+  "buildCommands": [
+    [
+      "pnpm",
+      "install",
+      "--frozen-lockfile"
+    ],
+    [
+      "pnpm",
+      "--filter",
+      "@feishu-timeline/shared",
+      "build"
+    ],
+    [
+      "pnpm",
+      "--filter",
+      "@feishu-timeline/api",
+      "build"
+    ],
+    [
+      "pnpm",
+      "--filter",
+      "@feishu-timeline/web",
+      "build"
+    ]
+  ],
+  "publicBuildConfiguration": {
+    "NEXT_PUBLIC_API_BASE_URL": "/api",
+    "NEXT_PUBLIC_UI_VERSION": "v2",
+    "NEXT_PUBLIC_UI_DATA_MODE": "real",
+    "NEXT_PUBLIC_ENABLE_MOCK_LOGIN": "false",
+    "V1_FALLBACK_ENABLED": "false"
+  },
+  "compiledIdentityVerification": {
+    "compiledApiIdentity": {
+      "sourceCommit": "a0769e7808ace84a05a36bed6c0edc2e81d097c6",
+      "sourceTree": "5ac61815e1f9f7430ccd903da0f21b669f0fb184",
+      "release": "m1-a0769e7808ac",
+      "buildTime": "2026-10-08T09:13:39Z"
+    },
+    "compiledWebIdentity": {
+      "sourceCommit": "a0769e7808ace84a05a36bed6c0edc2e81d097c6",
+      "sourceTree": "5ac61815e1f9f7430ccd903da0f21b669f0fb184",
+      "release": "m1-a0769e7808ac",
+      "buildTime": "2026-10-08T09:13:39Z"
+    },
+    "runtimeCommit": "a0769e7808ace84a05a36bed6c0edc2e81d097c6"
+  },
+  "artifacts": {
+    "api": {
+      "root": "apps/api/dist",
+      "excludedPaths": [],
+      "entries": 205,
+      "regularFiles": 205,
+      "totalBytes": 2302462,
+      "sha256": "aebcb5b158d221d81825cb9f76ca418b34eb85c75c794cd219b6d31f6207a1b0"
+    },
+    "web": {
+      "root": "apps/web/.next",
+      "excludedPaths": [
+        "cache"
+      ],
+      "entries": 1798,
+      "regularFiles": 1780,
+      "totalBytes": 52806833,
+      "sha256": "9115183b59c6477e380078d21db54d811c3f135a4b110c0a9106c3f0deee84ed"
+    },
+    "shared": {
+      "root": "packages/shared/dist",
+      "excludedPaths": [],
+      "entries": 3,
+      "regularFiles": 3,
+      "totalBytes": 1103,
+      "sha256": "1907bc933f547407ae20051e9985a039bd273b7e0e37a706011db6a71913061a"
+    }
+  },
+  "webBuildId": "ofjD9sSSPc8TW2P9nHACi",
+  "digestMethod": "SHA-256 of canonical UTF-8 JSON file inventory (sorted paths and keys; compact separators). Web excludes .next/cache. Individual inventories reside in .m1-build/*-files.json.",
+  "runtimeServiceStarted": false,
+  "runtimeIdentityVerifiedOverHttp": false,
+  "containerImages": "Not built; local compiled artifacts only."
+}

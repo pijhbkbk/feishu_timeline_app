@@ -1,0 +1,506 @@
+{
+  "kind": "supplemental-real-browser-read-evidence",
+  "status": "FAIL",
+  "origin": "http://127.0.0.1:3350",
+  "projectId": "cmuzblrjd00039kdr1xsn8bzr",
+  "paintTaskId": "cmuzblu3j00159kdrgyqn083x",
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "requiredViewports": [
+    {
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "width": 1024,
+      "height": 800
+    },
+    {
+      "width": 390,
+      "height": 844
+    }
+  ],
+  "browserChannel": "installed Google Chrome, headed, fresh isolated context",
+  "authWritesOnly": true,
+  "businessWritesPerformed": false,
+  "network": [
+    {
+      "phase": "identity",
+      "path": "/build-info",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "phase": "identity",
+      "path": "/api/health",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "phase": "login-readonly",
+      "path": "/api/auth/session",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "phase": "unapproved",
+      "path": "/api/auth/session",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "phase": "unapproved",
+      "path": "/api/auth/login",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "phase": "unapproved",
+      "path": "/api/notifications/unread-count",
+      "method": "GET",
+      "status": 403
+    },
+    {
+      "phase": "unapproved",
+      "path": "/api/auth/session",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "phase": "unapproved",
+      "path": "/api/projects",
+      "method": "GET",
+      "status": 403
+    },
+    {
+      "phase": "logout",
+      "path": "/api/auth/logout",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "phase": "logout",
+      "path": "/api/auth/session",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "phase": "approved-login",
+      "path": "/api/auth/session",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "phase": "approved-login",
+      "path": "/api/auth/login",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "phase": "approved-login",
+      "path": "/api/auth/session",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "phase": "new-project-readonly",
+      "path": "/api/auth/session",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "phase": "new-project-readonly",
+      "path": "/api/notifications/unread-count",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "phase": "original-completed-paint",
+      "path": "/api/v2/tasks/cmuzblu3j00159kdrgyqn083x/progress-context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "phase": "original-completed-paint",
+      "path": "/api/projects/cmuzblrjd00039kdr1xsn8bzr/samples",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "phase": "original-completed-paint",
+      "path": "/api/auth/session",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "phase": "original-completed-paint",
+      "path": "/api/notifications/unread-count",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "phase": "original-completed-paint",
+      "path": "/api/v2/tasks/cmuzblu3j00159kdrgyqn083x/progress-context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "phase": "original-completed-paint",
+      "path": "/api/projects/cmuzblrjd00039kdr1xsn8bzr/samples",
+      "method": "GET",
+      "status": 200
+    }
+  ],
+  "console": [
+    {
+      "phase": "unapproved",
+      "type": "error",
+      "message": "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "expectedAuthorizationDenial": true
+    },
+    {
+      "phase": "unapproved",
+      "type": "error",
+      "message": "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "expectedAuthorizationDenial": true
+    }
+  ],
+  "pageErrors": [],
+  "requestFailures": [
+    {
+      "phase": "login-readonly",
+      "method": "GET",
+      "path": "/dashboard",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "phase": "unapproved",
+      "method": "GET",
+      "path": "/pending-access",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "phase": "unapproved",
+      "method": "GET",
+      "path": "/notifications",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "phase": "unapproved",
+      "method": "GET",
+      "path": "/account",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "phase": "approved-login",
+      "method": "GET",
+      "path": "/projects",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "phase": "approved-login",
+      "method": "GET",
+      "path": "/admin/color-database",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "phase": "approved-login",
+      "method": "GET",
+      "path": "/monthly-reviews",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "phase": "approved-login",
+      "method": "GET",
+      "path": "/analytics",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "phase": "approved-login",
+      "method": "GET",
+      "path": "/admin/people",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "phase": "new-project-readonly",
+      "method": "GET",
+      "path": "/api/notifications/unread-count",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "phase": "new-project-readonly",
+      "method": "GET",
+      "path": "/dashboard",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "phase": "new-project-readonly",
+      "method": "GET",
+      "path": "/projects",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "phase": "new-project-readonly",
+      "method": "GET",
+      "path": "/admin/color-database",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "phase": "new-project-readonly",
+      "method": "GET",
+      "path": "/monthly-reviews",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "phase": "new-project-readonly",
+      "method": "GET",
+      "path": "/analytics",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "phase": "original-completed-paint",
+      "method": "GET",
+      "path": "/dashboard",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "phase": "original-completed-paint",
+      "method": "GET",
+      "path": "/projects",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "phase": "original-completed-paint",
+      "method": "GET",
+      "path": "/admin/color-database",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "phase": "original-completed-paint",
+      "method": "GET",
+      "path": "/monthly-reviews",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "phase": "original-completed-paint",
+      "method": "GET",
+      "path": "/analytics",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "phase": "original-completed-paint",
+      "method": "GET",
+      "path": "/admin/people",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "phase": "original-completed-paint",
+      "method": "GET",
+      "path": "/notifications",
+      "error": "net::ERR_ABORTED"
+    }
+  ],
+  "blockedWrites": [],
+  "captures": [
+    {
+      "name": "login-empty-form-1440x900",
+      "url": "http://127.0.0.1:3350/login",
+      "screenshot": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/m1-evidence/final-supplement/2026-10-09T00-40-42-923Z/login-empty-form-1440x900.png",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "dimensions": {
+        "viewportWidth": 1440,
+        "documentWidth": 1440,
+        "bodyWidth": 1440
+      },
+      "horizontalOverflow": 0,
+      "horizontalOverflowPass": true,
+      "credentialsFilled": false
+    },
+    {
+      "name": "login-empty-form-1280x800",
+      "url": "http://127.0.0.1:3350/login",
+      "screenshot": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/m1-evidence/final-supplement/2026-10-09T00-40-42-923Z/login-empty-form-1280x800.png",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "dimensions": {
+        "viewportWidth": 1280,
+        "documentWidth": 1280,
+        "bodyWidth": 1280
+      },
+      "horizontalOverflow": 0,
+      "horizontalOverflowPass": true,
+      "credentialsFilled": false
+    },
+    {
+      "name": "login-empty-form-1024x800",
+      "url": "http://127.0.0.1:3350/login",
+      "screenshot": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/m1-evidence/final-supplement/2026-10-09T00-40-42-923Z/login-empty-form-1024x800.png",
+      "viewport": {
+        "width": 1024,
+        "height": 800
+      },
+      "dimensions": {
+        "viewportWidth": 1024,
+        "documentWidth": 1024,
+        "bodyWidth": 1024
+      },
+      "horizontalOverflow": 0,
+      "horizontalOverflowPass": true,
+      "credentialsFilled": false
+    },
+    {
+      "name": "login-empty-form-390x844",
+      "url": "http://127.0.0.1:3350/login",
+      "screenshot": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/m1-evidence/final-supplement/2026-10-09T00-40-42-923Z/login-empty-form-390x844.png",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "dimensions": {
+        "viewportWidth": 390,
+        "documentWidth": 390,
+        "bodyWidth": 390
+      },
+      "horizontalOverflow": 0,
+      "horizontalOverflowPass": true,
+      "credentialsFilled": false
+    },
+    {
+      "name": "pending-access-1440x900",
+      "url": "http://127.0.0.1:3350/pending-access",
+      "screenshot": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/m1-evidence/final-supplement/2026-10-09T00-40-42-923Z/pending-access-1440x900.png",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "dimensions": {
+        "viewportWidth": 1440,
+        "documentWidth": 1440,
+        "bodyWidth": 1440
+      },
+      "horizontalOverflow": 0,
+      "horizontalOverflowPass": true,
+      "accountKind": "unapproved synthetic member",
+      "businessGet": {
+        "path": "/api/projects",
+        "status": 403
+      }
+    },
+    {
+      "name": "pending-access-390x844",
+      "url": "http://127.0.0.1:3350/pending-access",
+      "screenshot": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/m1-evidence/final-supplement/2026-10-09T00-40-42-923Z/pending-access-390x844.png",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "dimensions": {
+        "viewportWidth": 390,
+        "documentWidth": 390,
+        "bodyWidth": 390
+      },
+      "horizontalOverflow": 0,
+      "horizontalOverflowPass": true,
+      "accountKind": "unapproved synthetic member",
+      "businessGet": {
+        "path": "/api/projects",
+        "status": 403
+      }
+    },
+    {
+      "name": "new-project-empty-form-1440x900",
+      "url": "http://127.0.0.1:3350/projects/new?from=dashboard",
+      "screenshot": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/m1-evidence/final-supplement/2026-10-09T00-40-42-923Z/new-project-empty-form-1440x900.png",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "dimensions": {
+        "viewportWidth": 1440,
+        "documentWidth": 1425,
+        "bodyWidth": 1425
+      },
+      "horizontalOverflow": -15,
+      "horizontalOverflowPass": true,
+      "formOnly": true,
+      "formSubmitted": false
+    },
+    {
+      "name": "new-project-empty-form-1280x800",
+      "url": "http://127.0.0.1:3350/projects/new?from=dashboard",
+      "screenshot": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/m1-evidence/final-supplement/2026-10-09T00-40-42-923Z/new-project-empty-form-1280x800.png",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "dimensions": {
+        "viewportWidth": 1280,
+        "documentWidth": 1265,
+        "bodyWidth": 1265
+      },
+      "horizontalOverflow": -15,
+      "horizontalOverflowPass": true,
+      "formOnly": true,
+      "formSubmitted": false
+    },
+    {
+      "name": "new-project-empty-form-1024x800",
+      "url": "http://127.0.0.1:3350/projects/new?from=dashboard",
+      "screenshot": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/m1-evidence/final-supplement/2026-10-09T00-40-42-923Z/new-project-empty-form-1024x800.png",
+      "viewport": {
+        "width": 1024,
+        "height": 800
+      },
+      "dimensions": {
+        "viewportWidth": 1024,
+        "documentWidth": 1009,
+        "bodyWidth": 1009
+      },
+      "horizontalOverflow": -15,
+      "horizontalOverflowPass": true,
+      "formOnly": true,
+      "formSubmitted": false
+    },
+    {
+      "name": "new-project-empty-form-390x844",
+      "url": "http://127.0.0.1:3350/projects/new?from=dashboard",
+      "screenshot": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/m1-evidence/final-supplement/2026-10-09T00-40-42-923Z/new-project-empty-form-390x844.png",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "dimensions": {
+        "viewportWidth": 390,
+        "documentWidth": 375,
+        "bodyWidth": 375
+      },
+      "horizontalOverflow": -15,
+      "horizontalOverflowPass": true,
+      "formOnly": true,
+      "formSubmitted": false
+    }
+  ],
+  "startedAt": "2026-10-09T00:40:42.928Z",
+  "browserVersion": "154.0.8037.99",
+  "identity": {
+    "runtimeCommit": "a0769e7808ace84a05a36bed6c0edc2e81d097c6",
+    "sourceTree": "5ac61815e1f9f7430ccd903da0f21b669f0fb184",
+    "release": "m1-a0769e7808ac",
+    "buildTime": "2026-10-08T09:13:39Z"
+  },
+  "logoutVerified": true,
+  "failedPhase": "original-completed-paint",
+  "failure": "expect(locator).toHaveValue(expected) failed\n\nLocator: getByLabel('制样记录', { exact: true })\nExpected: \"合成试验制样，已保留实际制作事实。\"\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"to.have.value\" with timeout 5000ms\n  - waiting for getByLabel('制样记录', { exact: true })\n",
+  "completedAt": "2026-10-09T00:40:59.506Z"
+}

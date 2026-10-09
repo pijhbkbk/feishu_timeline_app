@@ -264,3 +264,41 @@ Runtime `541b3dfff682aa29b49a96b251f0a084903c981a`，正式更新03:40:16Z。环
 R28导航与路由：旧工作台和项目列表REPLACED，项目详情STILL_ACTIVE并整合资料/记录，旧账号/组织管理入口LEGACY_ONLY（正式人员入口统一/admin/people），旧成员/节点配置/角色自定义写入REMOVED并由后端410拒绝。未新增切换产品版本的Feature Flag；NEXT_PUBLIC配置固定随镜像构建。
 
 本轮重新扫描正式Placeholder0、测试白名单10（7个getByPlaceholder及3个禁止占位断言）。未执行远端staging；main/tag未变。整个正式路由组不能标记PASS，等待原管理员恢复登录后继续实际页面验证及最终产品负责人确认。
+
+
+## 2026-10-09 SINGLE_DEPARTMENT_UI_M1 本机增量
+
+本表追加，不改写此前正式网站结论。environment=isolated-local-synthetic；hostname=127.0.0.1；数据库m1_http；runtime code commit=`a0769e7808ace84a05a36bed6c0edc2e81d097c6`。本机3350同源代理→Web3352/API3351，构建与配置身份见 [M1回执](SINGLE_DEPARTMENT_UI_M1/README.md)。PASS表示所列浏览器技术检查，不等于PRODUCT_OWNER_ACCEPTED。
+
+主截图和原始项目来自10月8日不可变版本2PASS；10月9日相同版本、最终本机代理配置下再次2PASS/exit0，新增项目及网络见 `SINGLE_DEPARTMENT_UI_M1/local-runtime-final.json` 和 `browser-receipt-resumed.json`，新截图在 `var/m1-evidence/screenshots-resumed`。原项目、截图、恢复和Safari局部复核保持可追溯，不把不同运行合并为同一次执行。
+
+API列省略统一/api前缀。获准成员指原生ACTIVE且teamAccessApproved=true，普通成员没有系统管理员权。
+
+| 精确URL | route component | API endpoints | required role / expected data | expected action | screenshot | browser result / PASS-FAIL |
+| --- | --- | --- | --- | --- | --- | --- |
+| [/login](http://127.0.0.1:3350/login) | `app/login/page.tsx` | `POST /auth/login; GET /auth/session` | 未登录／合成获准、错误密码、停用 | 登录进工作台，错误/停用拒绝 | [实际截图](/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/m1-evidence/screenshots/02-login-1440.png) | PASS（Chrome）；Safari登录PASS |
+| [/pending-access](http://127.0.0.1:3350/pending-access) | `app/pending-access/page.tsx` | `GET /auth/session; GET /projects/:id→403` | 已登录但teamAccessApproved=false | 未准入业务403，不自授 | [实际截图](/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/m1-evidence/final-supplement/2026-10-09T00-42-41-815Z/pending-access-1440x900.png) | PASS（Chrome未准入403）；补拍1440/390通过，助手最终另一步FAIL见报告 |
+| [/dashboard?project=cmuzblrjd00039kdr1xsn8bzr&taskId=cmuzblvyr002t9kdrg1muwczs](http://127.0.0.1:3350/dashboard?project=cmuzblrjd00039kdr1xsn8bzr&taskId=cmuzblvyr002t9kdrg1muwczs) | `app/dashboard/page.tsx → M1Dashboard / M1FlowMap` | `GET /projects?pageSize=50; GET /v2/projects/:id/workspace` | 获准普通成员；真实双颜色/18节点 | 切换颜色不串；进入确认、保存返回同颜色/节点 | [实际截图](/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/m1-evidence/screenshots/03-dashboard-1440.png) | PASS（Chrome）；四宽见对照；Safari读取及返回URL PASS |
+| [/projects?keyword=%E5%90%88%E6%88%90%E7%81%B0%E7%BB%BF](http://127.0.0.1:3350/projects?keyword=%E5%90%88%E6%88%90%E7%81%B0%E7%BB%BF) | `app/projects/page.tsx → ColorProjects` | `GET /projects` | 获准普通成员；真实分页/筛选项目行 | 筛选→进入项目→取消返回保留参数，前进后退保留脏态 | [实际截图](/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/m1-evidence/screenshots/04-projects-1440.png) | PASS（Chrome）；四宽见对照 |
+| [/projects/new?from=dashboard](http://127.0.0.1:3350/projects/new?from=dashboard) | `app/projects/new/page.tsx → NewColorProject` | `POST /projects; GET /v2/tasks/:id/progress-context; POST /v2/tasks/:id/materials; POST /projects/:id/approved-report` | 获准普通成员；合成已批PDF/实际日期/批准依据 | 真实建项上传扫描登记01/02，不直接改库 | [实际截图](/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/m1-evidence/supplemental/new-project.png) | PASS（Chrome）；两个项目建成、取消脏态检查 |
+| [/projects/cmuzblrjd00039kdr1xsn8bzr?tab=flow](http://127.0.0.1:3350/projects/cmuzblrjd00039kdr1xsn8bzr?tab=flow) | `app/projects/[projectId]/page.tsx → ColorProjectOverview` | `GET /projects/:id; GET /v2/projects/:id/workspace` | 获准普通成员；真实项目/材料/审计 | 查看同一状态图、进入任务和来源返回 | [实际截图](/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/m1-evidence/screenshots/05-overview-1440.png) | PASS（Chrome）；四宽见对照 |
+| [/projects/cmuzblrjd00039kdr1xsn8bzr/tasks/cmuzblu3j00159kdrgyqn083x?from=dashboard](http://127.0.0.1:3350/projects/cmuzblrjd00039kdr1xsn8bzr/tasks/cmuzblu3j00159kdrgyqn083x?from=dashboard) | `app/projects/[projectId]/tasks/[taskId]/page.tsx → M1NodeWorkspace/M1Record 03` | `GET /v2/tasks/:id/progress-context; GET /projects/:id/samples?taskId=:id; POST /projects/:id/samples; POST /v2/tasks/:id/complete` | 获准普通成员；实际日期/样板编号/本轮事实 | 记录并完成真实制样，刷新读回 | [实际截图](/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/m1-evidence/supplemental/03-saved-paint-record.png) | PASS（Chrome） |
+| [/projects/cmuzblrjd00039kdr1xsn8bzr/tasks/cmuzblvyr002t9kdrg1muwczs?from=dashboard&tab=flow](http://127.0.0.1:3350/projects/cmuzblrjd00039kdr1xsn8bzr/tasks/cmuzblvyr002t9kdrg1muwczs?from=dashboard&tab=flow) | `同上 → M1Record 04` | `GET task progress-context/samples; POST task materials/versions; POST /projects/:id/samples/confirm; GET attachment content/logs` | 两名获准普通成员；真实确认材料V1/V2 | CLEAN→预览/下载→保存→返回→刷新/重登；409保留输入；幂等无重复；原作者审计 | [实际截图](/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/m1-evidence/screenshots/06-confirmation-1440.png) | PASS（Chrome）；Safari事实/材料读取、关闭与返回URL PASS，完整写链未验 |
+| [/projects/cmuzblrjd00039kdr1xsn8bzr/tasks/cmuzblvyr002t9kdrg1muwczs](http://127.0.0.1:3350/projects/cmuzblrjd00039kdr1xsn8bzr/tasks/cmuzblvyr002t9kdrg1muwczs) | `同一正式task route` | `同一task/sample API` | 获准成员；无来源直接深链 | 取消返回所属项目；有来源恢复上下文；失效登录提示 | [实际截图](/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/m1-evidence/screenshots/06-saved-1440.png) | PASS（Chrome） |
+| [/admin/people](http://127.0.0.1:3350/admin/people) | `app/admin/people/page.tsx → PeopleEntry` | `GET /users/directory` | 获准普通成员只读；系统管理员保留管理边界 | 真实目录可读、不露管理设置死入口 | [实际截图](/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/m1-evidence/screenshots/14-people-directory.png) | PASS（Chrome只读目录）；完整管理生命周期未扩展 |
+| [/admin/color-database](http://127.0.0.1:3350/admin/color-database) | `既有颜色目录route；STILL_ACTIVE` | `GET /auth/session；本轮补充未证明完整目录数据请求` | 获准成员 | 导航可达既有颜色数据库 | [实际截图](/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/m1-evidence/supplemental/color-library.png) | PASS仅入口；完整业务未验 |
+| [/monthly-reviews](http://127.0.0.1:3350/monthly-reviews) | `既有月度评审route；STILL_ACTIVE` | `GET /dashboard/monthly-review-board` | 获准成员；真实月度总览 | 周评导航进入既有月度页，HTTP200 | [实际截图](/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/m1-evidence/supplemental/weekly-entry.png) | PASS仅既有入口；完整周评未实现 |
+| [/analytics](http://127.0.0.1:3350/analytics) | `既有数据中心route；STILL_ACTIVE` | `GET /analytics/overview` | 获准成员；真实overview | 产量统计导航进入既有数据中心，HTTP200 | [实际截图](/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/m1-evidence/supplemental/statistics.png) | PASS仅既有入口；完整产量统计未实现 |
+
+### 兼容入口、保留组件和未执行边界
+
+- `/v2/dashboard?project=cmuzblrjd00039kdr1xsn8bzr`、`/projects/flow-map`：REPLACED；真实Chrome重定向到正式工作台PASS。
+- `/projects/cmuzblrjd00039kdr1xsn8bzr/overview`、`/flow-map`：REPLACED；同项目`?tab=flow`，真实Chrome PASS。
+- `/projects/cmuzblrjd00039kdr1xsn8bzr/development-report`、`/samples`：REPLACED；服务端真实workspace选实际任务并转正式task，真实Chrome PASS。
+- `/projects/:id/actions/:action`：STILL_ACTIVE兼容，源码受控落到真实对象，未声称本轮逐一浏览器操作所有action。
+- `/legacy/...`及保留旧呈现：LEGACY_ONLY；本地V1_FALLBACK_ENABLED=false；正式路由不依赖UI_VERSION rewrite，未运行旧全站验收。
+- 其他节点工作单、审计、材料：STILL_ACTIVE；保留现有真实功能和状态机，本轮没有冒称所有18节点业务均重新推演一遍。
+- 空态/错误/会话/冲突/文件拒绝：主链及定向回归分别覆盖；503明确为UI故障注入。原始Placeholder命中10个测试白名单，运行源码0。
+- 本轮没有同名新旧导航并存。公共开关默认值、本地构建值、远端未读取状态、读取时机与回退方式见M1回执开关表。
+- Safari仅原生登录/地图/已存确认/材料内容/关闭/返回URL有证据；全写链与最终重登刷新未完成，见Safari回执。WebDriver UNAVAILABLE与屏幕捕获失败不计PASS；没有用WebKit替代。
+- 全部本机证据不证明https://timeline.all-too-well.com改变。远端staging/production未执行；产品状态AWAITING_PRODUCT_OWNER_CONFIRMATION。

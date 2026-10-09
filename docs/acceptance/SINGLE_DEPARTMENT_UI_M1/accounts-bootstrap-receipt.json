@@ -1,0 +1,330 @@
+{
+  "origin": "http://127.0.0.1:3350",
+  "startedAt": "2026-10-08T08:33:51.149Z",
+  "syntheticOnly": true,
+  "csrfMechanism": "Exact Origin enforcement; this application has no CSRF-token endpoint",
+  "steps": [
+    {
+      "label": "missing_origin_rejected",
+      "method": "POST",
+      "path": "/api/auth/login",
+      "status": 403,
+      "expected": [
+        403
+      ],
+      "pass": true
+    },
+    {
+      "label": "administrator_login",
+      "method": "POST",
+      "path": "/api/auth/login",
+      "status": 200,
+      "expected": [
+        200
+      ],
+      "pass": true
+    },
+    {
+      "label": "administrator_identity",
+      "method": "GET",
+      "path": "/api/auth/me",
+      "status": 200,
+      "expected": [
+        200
+      ],
+      "pass": true
+    },
+    {
+      "label": "memberA_lookup",
+      "method": "GET",
+      "path": "/api/people",
+      "status": 200,
+      "expected": [
+        200
+      ],
+      "pass": true
+    },
+    {
+      "label": "memberA_register",
+      "method": "POST",
+      "path": "/api/auth/register",
+      "status": 201,
+      "expected": [
+        201
+      ],
+      "pass": true
+    },
+    {
+      "label": "memberA_registered_lookup",
+      "method": "GET",
+      "path": "/api/people",
+      "status": 200,
+      "expected": [
+        200
+      ],
+      "pass": true
+    },
+    {
+      "label": "memberA_controlled_admission",
+      "method": "PATCH",
+      "path": "/api/people/cmuza54he00029kurpykwm55y",
+      "status": 200,
+      "expected": [
+        200
+      ],
+      "pass": true
+    },
+    {
+      "label": "memberA_readback",
+      "method": "GET",
+      "path": "/api/people",
+      "status": 200,
+      "expected": [
+        200
+      ],
+      "pass": true
+    },
+    {
+      "label": "memberA_password_login",
+      "method": "POST",
+      "path": "/api/auth/login",
+      "status": 200,
+      "expected": [
+        200
+      ],
+      "pass": true
+    },
+    {
+      "label": "memberA_business_access",
+      "method": "GET",
+      "path": "/api/projects",
+      "status": 200,
+      "expected": [
+        200
+      ],
+      "pass": true
+    },
+    {
+      "label": "memberB_lookup",
+      "method": "GET",
+      "path": "/api/people",
+      "status": 200,
+      "expected": [
+        200
+      ],
+      "pass": true
+    },
+    {
+      "label": "memberB_register",
+      "method": "POST",
+      "path": "/api/auth/register",
+      "status": 201,
+      "expected": [
+        201
+      ],
+      "pass": true
+    },
+    {
+      "label": "memberB_registered_lookup",
+      "method": "GET",
+      "path": "/api/people",
+      "status": 200,
+      "expected": [
+        200
+      ],
+      "pass": true
+    },
+    {
+      "label": "memberB_controlled_admission",
+      "method": "PATCH",
+      "path": "/api/people/cmuza54vb000b9kurr5v6586u",
+      "status": 200,
+      "expected": [
+        200
+      ],
+      "pass": true
+    },
+    {
+      "label": "memberB_readback",
+      "method": "GET",
+      "path": "/api/people",
+      "status": 200,
+      "expected": [
+        200
+      ],
+      "pass": true
+    },
+    {
+      "label": "memberB_password_login",
+      "method": "POST",
+      "path": "/api/auth/login",
+      "status": 200,
+      "expected": [
+        200
+      ],
+      "pass": true
+    },
+    {
+      "label": "memberB_business_access",
+      "method": "GET",
+      "path": "/api/projects",
+      "status": 200,
+      "expected": [
+        200
+      ],
+      "pass": true
+    },
+    {
+      "label": "unapproved_lookup",
+      "method": "GET",
+      "path": "/api/people",
+      "status": 200,
+      "expected": [
+        200
+      ],
+      "pass": true
+    },
+    {
+      "label": "unapproved_register",
+      "method": "POST",
+      "path": "/api/auth/register",
+      "status": 201,
+      "expected": [
+        201
+      ],
+      "pass": true
+    },
+    {
+      "label": "unapproved_registered_lookup",
+      "method": "GET",
+      "path": "/api/people",
+      "status": 200,
+      "expected": [
+        200
+      ],
+      "pass": true
+    },
+    {
+      "label": "unapproved_password_login",
+      "method": "POST",
+      "path": "/api/auth/login",
+      "status": 200,
+      "expected": [
+        200
+      ],
+      "pass": true
+    },
+    {
+      "label": "unapproved_business_access",
+      "method": "GET",
+      "path": "/api/projects",
+      "status": 403,
+      "expected": [
+        403
+      ],
+      "pass": true
+    },
+    {
+      "label": "disabled_lookup",
+      "method": "GET",
+      "path": "/api/people",
+      "status": 200,
+      "expected": [
+        200
+      ],
+      "pass": true
+    },
+    {
+      "label": "disabled_register",
+      "method": "POST",
+      "path": "/api/auth/register",
+      "status": 201,
+      "expected": [
+        201
+      ],
+      "pass": true
+    },
+    {
+      "label": "disabled_registered_lookup",
+      "method": "GET",
+      "path": "/api/people",
+      "status": 200,
+      "expected": [
+        200
+      ],
+      "pass": true
+    },
+    {
+      "label": "disabled_controlled_admission",
+      "method": "PATCH",
+      "path": "/api/people/cmuza55gl000p9kuryvu3lpuj",
+      "status": 200,
+      "expected": [
+        200
+      ],
+      "pass": true
+    },
+    {
+      "label": "disabled_readback",
+      "method": "GET",
+      "path": "/api/people",
+      "status": 200,
+      "expected": [
+        200
+      ],
+      "pass": true
+    },
+    {
+      "label": "disabled_password_login",
+      "method": "POST",
+      "path": "/api/auth/login",
+      "status": 401,
+      "expected": [
+        401
+      ],
+      "pass": true
+    },
+    {
+      "label": "administrator_logout",
+      "method": "POST",
+      "path": "/api/auth/logout",
+      "status": 200,
+      "expected": [
+        200
+      ],
+      "pass": true
+    },
+    {
+      "label": "memberA_logout",
+      "method": "POST",
+      "path": "/api/auth/logout",
+      "status": 200,
+      "expected": [
+        200
+      ],
+      "pass": true
+    },
+    {
+      "label": "memberB_logout",
+      "method": "POST",
+      "path": "/api/auth/logout",
+      "status": 200,
+      "expected": [
+        200
+      ],
+      "pass": true
+    },
+    {
+      "label": "unapproved_logout",
+      "method": "POST",
+      "path": "/api/auth/logout",
+      "status": 200,
+      "expected": [
+        200
+      ],
+      "pass": true
+    }
+  ],
+  "complete": true,
+  "finishedAt": "2026-10-08T08:33:53.075Z"
+}

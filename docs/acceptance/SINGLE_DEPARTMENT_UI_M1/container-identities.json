@@ -1,0 +1,47 @@
+[
+  {
+    "container": "timeline-m1-20261008-postgres",
+    "imageId": "sha256:3b36dd7df1337107cef7502b1e3e94c971483ae87498a9310d25c60fba08cfc9",
+    "imageTag": "3b36dd7df133",
+    "startedAt": "2026-10-08T08:28:17.163829042Z",
+    "ports": {
+      "5432/tcp": [
+        {
+          "HostIp": "127.0.0.1",
+          "HostPort": "55438"
+        }
+      ]
+    },
+    "purpose": "SINGLE_DEPARTMENT_UI_M1"
+  },
+  {
+    "container": "timeline-m1-20261008-redis",
+    "imageId": "sha256:6ab0b6e7381779332f97b8ca76193e45b0756f38d4c0dcda72dbb3c32061ab99",
+    "imageTag": "redis:7-alpine",
+    "startedAt": "2026-10-08T08:28:17.410101084Z",
+    "ports": {
+      "6379/tcp": [
+        {
+          "HostIp": "127.0.0.1",
+          "HostPort": "56398"
+        }
+      ]
+    },
+    "purpose": "SINGLE_DEPARTMENT_UI_M1"
+  },
+  {
+    "container": "timeline-m1-20261008-scanner",
+    "imageId": "sha256:17130f6532928a5b4b1272fc5129e5f2639850c0d8086879c516649d32fc8ae6",
+    "imageTag": "timeline-clamav-candidate:r3",
+    "startedAt": "2026-10-08T09:11:10.15294122Z",
+    "ports": {
+      "3310/tcp": [
+        {
+          "HostIp": "127.0.0.1",
+          "HostPort": "53318"
+        }
+      ]
+    },
+    "purpose": "SINGLE_DEPARTMENT_UI_M1"
+  }
+]

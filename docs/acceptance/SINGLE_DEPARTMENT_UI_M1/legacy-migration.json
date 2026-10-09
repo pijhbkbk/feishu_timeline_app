@@ -1,0 +1,31 @@
+{
+  "status": "PASS",
+  "environment": "isolated-loopback",
+  "database": "m1_backend",
+  "schema": "m1_legacy_1791448751018",
+  "baseMigrations": 41,
+  "newMigration": "20261008090000_single_department_m1",
+  "rows": {
+    "users": 1,
+    "local_credentials": 1,
+    "roles": 9,
+    "user_roles": 1,
+    "projects": 1,
+    "workflow_instances": 1,
+    "workflow_tasks": 1,
+    "samples": 1,
+    "sample_confirmations": 1,
+    "attachments": 1,
+    "audit_logs": 1
+  },
+  "preservedSnapshotSha256": "186774754f95400de824c1efa1fb5694be872133818e539f7e333fc9001ab714",
+  "checks": [
+    "all pre-existing columns exactly preserved",
+    "credential hash and authVersion unchanged",
+    "internal user IDs and author/project/sample/task foreign keys unchanged",
+    "legacy valid progress and scan status preserved",
+    "legacy role does not grant admission",
+    "historical actual dates and materials remain null rather than fabricated"
+  ],
+  "fixtureDirectory": "/private/tmp/m1-migration-fixture-N7wp1W"
+}

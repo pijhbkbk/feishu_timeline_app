@@ -1,0 +1,7 @@
+{
+  "browser": "Safari",
+  "steps": [],
+  "checkedAt": "2026-10-08T08:43:37.016Z",
+  "status": "UNAVAILABLE",
+  "reason": "Could not create a session: You must enable 'Allow remote automation' in the Developer section of Safari Settings to control Safari via WebDriver."
+}

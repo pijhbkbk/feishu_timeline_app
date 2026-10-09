@@ -1,0 +1,628 @@
+{
+  "expectedCommit": "a0769e7808ace84a05a36bed6c0edc2e81d097c6",
+  "browser": "154.0.8037.98",
+  "network": [
+    {
+      "method": "GET",
+      "path": "/api/auth/session",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/session",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/login",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications/unread-count",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/session",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications/unread-count",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/projects",
+      "status": 201
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/projects/cmv087gvv00549kzwcqfkqsdn/workspace",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/tasks/cmv087gwj00599kzw5vgf6o14/progress-context",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/tasks/cmv087gwj00599kzw5vgf6o14/materials",
+      "status": 201
+    },
+    {
+      "method": "GET",
+      "path": "/api/projects/cmv087gvv00549kzwcqfkqsdn/attachments/cmv087hch005m9kzwd845ussh",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/tasks/cmv087gwj00599kzw5vgf6o14",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/projects/cmv087gvv00549kzwcqfkqsdn/approved-report",
+      "status": 201
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/session",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications/unread-count",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/projects",
+      "status": 201
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/projects/cmv087hqj006e9kzwh7897glr/workspace",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/tasks/cmv087hqv006j9kzw50yxjbu8/progress-context",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/tasks/cmv087hqv006j9kzw50yxjbu8/materials",
+      "status": 201
+    },
+    {
+      "method": "GET",
+      "path": "/api/projects/cmv087hqj006e9kzwh7897glr/attachments/cmv087hvu006w9kzw6a0c7g64",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/tasks/cmv087hqv006j9kzw50yxjbu8",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/projects/cmv087hqj006e9kzwh7897glr/approved-report",
+      "status": 201
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/session",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications/unread-count",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/projects",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/projects/cmv087gvv00549kzwcqfkqsdn/workspace",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/projects",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/projects/cmv087hqj006e9kzwh7897glr/workspace",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/projects",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/projects/cmv087gvv00549kzwcqfkqsdn/workspace",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/tasks/cmv087hld00669kzwn1y6a3br/progress-context",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/projects/cmv087gvv00549kzwcqfkqsdn/samples",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/projects/cmv087gvv00549kzwcqfkqsdn/samples",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/projects/cmv087gvv00549kzwcqfkqsdn/samples",
+      "status": 201
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/tasks/cmv087hld00669kzwn1y6a3br/progress-context",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/tasks/cmv087hld00669kzwn1y6a3br/complete",
+      "status": 201
+    },
+    {
+      "method": "GET",
+      "path": "/api/projects",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/projects/cmv087gvv00549kzwcqfkqsdn/workspace",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/tasks/cmv087jgd007u9kzwb1xn8haf/progress-context",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/projects/cmv087gvv00549kzwcqfkqsdn/samples",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/v2/tasks/cmv087jgd007u9kzwb1xn8haf/materials",
+      "status": 201
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/tasks/cmv087jgd007u9kzwb1xn8haf/progress-context",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/projects/cmv087gvv00549kzwcqfkqsdn/samples",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/tasks/cmv087jgd007u9kzwb1xn8haf/materials/cmv087k3d00879kzwew63cdw3/content",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/projects/cmv087gvv00549kzwcqfkqsdn/samples/confirm",
+      "status": 409
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/tasks/cmv087jgd007u9kzwb1xn8haf/progress-context",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/projects/cmv087gvv00549kzwcqfkqsdn/samples",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/projects/cmv087gvv00549kzwcqfkqsdn/samples/confirm",
+      "status": 201
+    },
+    {
+      "method": "GET",
+      "path": "/api/projects",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/projects/cmv087gvv00549kzwcqfkqsdn/workspace",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/session",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications/unread-count",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/projects",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/projects/cmv087gvv00549kzwcqfkqsdn/workspace",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/session",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/projects",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications/unread-count",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/session",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications/unread-count",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/projects/cmv087gvv00549kzwcqfkqsdn",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/projects/cmv087gvv00549kzwcqfkqsdn/workspace",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/session",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications/unread-count",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/tasks/cmv087jgd007u9kzwb1xn8haf/progress-context",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/projects/cmv087gvv00549kzwcqfkqsdn/samples",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/session",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications/unread-count",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/projects",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/projects/cmv087gvv00549kzwcqfkqsdn/workspace",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/session",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications/unread-count",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/projects",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/session",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/projects/cmv087gvv00549kzwcqfkqsdn",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications/unread-count",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/projects/cmv087gvv00549kzwcqfkqsdn/workspace",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/session",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications/unread-count",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/tasks/cmv087jgd007u9kzwb1xn8haf/progress-context",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/projects/cmv087gvv00549kzwcqfkqsdn/samples",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/session",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications/unread-count",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/projects",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/projects/cmv087gvv00549kzwcqfkqsdn/workspace",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/session",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications/unread-count",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/projects",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/session",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/projects/cmv087gvv00549kzwcqfkqsdn",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications/unread-count",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/projects/cmv087gvv00549kzwcqfkqsdn/workspace",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/session",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications/unread-count",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/tasks/cmv087jgd007u9kzwb1xn8haf/progress-context",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/projects/cmv087gvv00549kzwcqfkqsdn/samples",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/session",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications/unread-count",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/projects",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/projects/cmv087gvv00549kzwcqfkqsdn/workspace",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/session",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications/unread-count",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/projects",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/session",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/projects/cmv087gvv00549kzwcqfkqsdn",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications/unread-count",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/projects/cmv087gvv00549kzwcqfkqsdn/workspace",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/session",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications/unread-count",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/tasks/cmv087jgd007u9kzwb1xn8haf/progress-context",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/projects/cmv087gvv00549kzwcqfkqsdn/samples",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/session",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/login",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications/unread-count",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/projects",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/session",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/tasks/cmv087jgd007u9kzwb1xn8haf/progress-context",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications/unread-count",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/projects/cmv087gvv00549kzwcqfkqsdn/samples",
+      "status": 200
+    }
+  ],
+  "errors": [],
+  "staticResources": [
+    "/_next/static/css/f63270a51b67843d.css",
+    "/_next/static/css/73f821eff035914f.css",
+    "/_next/static/css/dcc7c46d3d3ab2a5.css",
+    "/_next/static/css/95afe53b616e04c6.css",
+    "/_next/static/css/9fb7deaf80d1da69.css",
+    "/_next/static/chunks/webpack-ceeb2ef4d4867010.js",
+    "/_next/static/chunks/main-app-84446f589a425266.js",
+    "/_next/static/chunks/app/login/page-726482883e96558d.js",
+    "/_next/static/chunks/2098-e0bdc0b5bae3a17f.js",
+    "/_next/static/chunks/8952-925f8aa49a42589e.js",
+    "/_next/static/chunks/1600-2d161de47998ac17.js",
+    "/_next/static/chunks/74956ec5-69b26496179c6e6d.js",
+    "/_next/static/chunks/app/layout-5fdae2d6f1e52336.js",
+    "/_next/static/chunks/4960-6d787b1ebf1918a9.js",
+    "/_next/static/chunks/app/dashboard/page-4bc3777565ad87ef.js",
+    "/_next/static/chunks/5385-646e776424763751.js",
+    "/_next/static/chunks/app/projects/new/page-0628ba41c02d679c.js",
+    "/_next/static/chunks/9621-33e4e9327108f244.js",
+    "/_next/static/chunks/5033-73904ced2ac8a818.js",
+    "/_next/static/chunks/app/projects/%5BprojectId%5D/page-a48eb7e0f6ee737a.js",
+    "/_next/static/chunks/6642-00cfe998293e3afa.js",
+    "/_next/static/chunks/app/projects/%5BprojectId%5D/tasks/%5BtaskId%5D/page-b4e5f4292e95f85a.js",
+    "/_next/static/chunks/5673-ec23a73a2511a7a5.js",
+    "/_next/static/chunks/app/projects/page-6243222629fc768f.js"
+  ],
+  "font": {
+    "family": "-apple-system, \"system-ui\", \"SF Pro Display\", \"SF Pro Text\", \"PingFang SC\", \"Microsoft YaHei\", \"Helvetica Neue\", Arial, sans-serif",
+    "status": "loaded",
+    "pixelRatio": 1
+  }
+}

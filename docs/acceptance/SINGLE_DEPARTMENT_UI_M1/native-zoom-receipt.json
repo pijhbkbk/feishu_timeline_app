@@ -1,0 +1,18 @@
+{
+  "checkedAt": "2026-10-08T09:23:51.876909+00:00",
+  "url": "http://127.0.0.1:3350/login",
+  "runtimeCommit": "a0769e7808ace84a05a36bed6c0edc2e81d097c6",
+  "method": "Chrome native keyboard shortcut through cua App, browser toolbar confirms 150%",
+  "before": {
+    "devicePixelRatio": 2,
+    "innerWidth": 1440
+  },
+  "after": {
+    "devicePixelRatio": 3,
+    "innerWidth": 960,
+    "horizontalOverflow": false
+  },
+  "screenshot": "cua_repl screenshot in conversation, login at native 150%",
+  "restoredTo": "100%",
+  "scope": "Native browser zoom verified on login; dashboard content zoom separately verified at CSS 150%, not represented as native browser zoom."
+}
