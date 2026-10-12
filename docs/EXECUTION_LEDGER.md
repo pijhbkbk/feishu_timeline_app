@@ -8072,3 +8072,16 @@ BLOCKER_REPORT: Public-source push remains rejected by platform automatic review
 - 环境：http://127.0.0.1:3360，Web3362/API3361，color_register_v2及43迁移，专属Redis DB3/ClamAV/LOCAL对象。Web/API元数据与不可变runtime相等，最终制品摘要一致；59表恢复与45对象恢复PASS，重启读回PASS。原3350、production、main=41b4b166c587692e6f0fb9536dca2e1aab646c70、4tag未改变；没有推送或访问远端。
 - 失败留痕：首次导入契约错配隔离库留存，DTO漏字段红绿、手机隐藏标签/旧表格撑宽修复、编辑分页保护、测试等待URL/可访问文本框定位、备份预检旧库名修正。未删除断言、审计或旧历史，未放宽CSP；修复证据详见回执。Placeholder运行0/测试白名单10。
 - 风险/下一步：53条产量归属待业务核对；有不明确历史的旧项目不自动关联；Safari/完整评审批转/完整统计重做/关闭规则不声称本轮浏览器通过。目标本机主链可操作，产品仍AWAITING_PRODUCT_OWNER_CONFIRMATION；等待负责人核对，不自动进入新轮次或生产发布。
+
+
+## 2026-10-12 · R28补充 COLOR_CATALOG_SHEET_INTEGRATION_01 本地表格接入
+
+- 目标/范围：按用户确认的任务书接通现有颜色清单与本机 Personal Sheets，完成本地验证；不推进新轮次、生产发布或独立颜色建档。
+- 输入：任务书和轻卡颜色清单工作台参考图；业务基线218dbc2b73b3f946fee239b340d3aba6e382029c；Personal Sheets实际路径/版本与源码复用见[DELIVERY.md](/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/docs/acceptance/COLOR_CATALOG_SHEET_INTEGRATION_01/DELIVERY.md)。原目录用户补丁保持不变。
+- 改动：29个运行文件，runtime `5bc1d10e5aea498612d63fd7637107282af7b040`，tree e1c40c10a8f9a4be4d791a87962dbd1659ff1104，分支codex/color-catalog-sheet-integration。新增业务表格适配、5字段批量保存/版本/幂等/审计、XLSX模板往返与普通文件预览、四份固定Univer/样式依赖补丁及必要回归。原详情提取复用，既有建项流程保留。无schema/migration或治理规则变更。精确文件清单可由基线至runtime的git diff取得。
+- 命令：pnpm install、pnpm lint、pnpm typecheck、pnpm test、Web/API/shared固定提交构建、Prisma validate；真实隔离PostgreSQL目标回归；专用Chrome四场景；制品摘要复核、来源对照和重启。具体命令/日志摘要见交付文档，原始日志在ignored var/color-sheet-runtime。
+- 验证：Web461PASS/80文件；API1520PASS/157SKIPPED（跳过不计通过）；PG21PASS；最终Chrome4PASS/50.4秒。全仓检查后只有前端事件/菜单/文字粘贴修正，依适用源码及环境复用未变后端验证，相关Web/浏览器/lint/typecheck及固定双构建再验。真实输入/多格粘贴/文本日期/复制/保存撤销/排序ID/模板/no-op/非法批次/双账号409/越权403/未知响应幂等通过。正常路径console/pageerror0；预期负向单列。
+- 环境：精确URL http://127.0.0.1:3370/admin/color-database，DB color_catalog_sheet_20261012，43迁移，Redis DB4；本机代理Web3372/API3371，无Nginx和构建镜像，元数据同runtime。最终Web BUILD_ID L3BA4qCbCnXk6qnUrLD91；完整摘要和启动时间在runtime-evidence.json。原3350/3360、production均不改变。
+- 数据：当前97记录包含89来源和既有/本轮合成记录；89来源ID/版本及业务字段保持，写入只限3条专用合成记录。项目27/流程任务111不增；累计合成保存审计69条含前序候选验证，重启前后记录/审计/来源哈希相同。
+- 审查/失败：独立只读复核后端、未知保存结果、ZIP实际解压预算、引擎事件、nonce/文字粘贴及最终共享菜单。失败、暂停与新修复依据见BLOCKER_REPORT.md；未删除断言、审计或旧结果。正式Placeholder0，12处测试白名单命中。
+- 风险/下一决策：至多加载500条、普通xlsx仅映射预览、草稿与个人视图不持久化；原生Excel/WPS、Safari、真实触摸未验证。主颜色清单技术路径LOCAL_VERIFIED，v2别名未单独浏览器验；负责人尚未PRODUCT_OWNER_ACCEPTED。staging/production未执行、main/tag未改、无push；当前CODE_IMPLEMENTED / LOCAL_VERIFIED / NOT_DEPLOYED_TO_PRODUCTION / AWAITING_PRODUCT_OWNER_CONFIRMATION。

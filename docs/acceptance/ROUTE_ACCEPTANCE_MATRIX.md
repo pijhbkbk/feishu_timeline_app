@@ -335,3 +335,19 @@ API列省略统一/api前缀。获准成员指原生ACTIVE且teamAccessApproved=
 | /projects/:id、/projects、/admin/projects、/retrospective | 既有项目/管理/回顾呈现 | 既有projects/dashboard/retrospective读API | 显式primaryColor优先，不从同名或遗留数组猜测；管理员仍需独立权限 | 单元回归，未声明完整页面浏览器验收 |
 
 旧颜色清单实现 REPLACED；/v2/admin/color-database 共用同一包装组件、没有第二套导航或开关分流，兼容URL本轮未单独浏览器验收。LEGACY_ONLY页面保持原关闭入口设置。正式Placeholder0，测试白名单10。单元、PG和本机浏览器均不证明远端staging/production改变。
+
+
+## 2026-10-12 COLOR_CATALOG_SHEET_INTEGRATION_01 — 3370本地隔离验证
+
+统一身份：runtime `5bc1d10e5aea498612d63fd7637107282af7b040`；API/Web同值，DB color_catalog_sheet_20261012、43迁移。只读来源89条，含既有与本轮合成记录总97条。表中PASS是技术操作结果，产品仍AWAITING_PRODUCT_OWNER_CONFIRMATION；不改写3360的历史验收。
+
+| 精确URL | route component / 旧实现状态 | API endpoints | required role / expected data | expected action | screenshot | browser result |
+| --- | --- | --- | --- | --- | --- | --- |
+| http://127.0.0.1:3370/admin/color-database | app/admin/color-database/page.tsx → AdminColorDatabaseR26 → ColorRegisterWorkspace；旧清单网格REPLACED，兼容包装STILL_ACTIVE，原详情提取复用STILL_ACTIVE | GET /api/color-register（含facets）、/:id、/sources；PATCH /api/color-register/sheet | 本地原生获准单部门成员；沿用project.read/write；97条服务端记录及真实来源、颜色版本 | 画布编辑、批量粘贴、保存/撤销/版本冲突、原详情读回、刷新、模板导出导回、普通表格预览；无隐式项目 | [主表与详情](/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/color-sheet-runtime/visual-1791796581799/source-main-detail-1440.png) / [模板预览](/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/color-sheet-runtime/browser-evidence/1791796501856308000/results/color-sheet-local-Syntheti-33b80--XLSX-and-responsive-detail/template-import-preview-1440.png) | PASS：Chrome最终四场景、四档宽度；正常console/pageerror0；负责人待确认 |
+| http://127.0.0.1:3370/projects/new | app/projects/new/page.tsx → NewColorProject；STILL_ACTIVE，本轮无业务改动 | 保留既有projects业务API；本轮只验证导航进入，不发POST建项 | 获准成员；沿用原项目创建页面 | 点击“新建颜色项目”到准确URL且显示原表单；CREATE_RECORD=EXISTING_FLOW_ONLY | 未新增独立截图；主场景包含导航断言与Network证据 | PASS仅既有入口；不宣称本轮再次验证整套新建流程 |
+| http://127.0.0.1:3370/v2/admin/color-database | app/v2/admin/color-database/page.tsx → 同一AdminColorDatabaseR26；STILL_ACTIVE兼容别名 | 同一颜色清单API | 同一原生权限边界 | 兼容入口共用同一页面，无另套导航 | 未执行 | NOT_VERIFIED，本轮正式用户路径为/admin/color-database |
+
+- 未新增feature flag，不按角色/环境装载另一套清单；原route wrapper仅复用同一实现。
+- 四档来源记录截图、模板/只读错误/空态/409、Network/console、数据库/重启证据与精确身份见[DELIVERY.md](/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/docs/acceptance/COLOR_CATALOG_SHEET_INTEGRATION_01/DELIVERY.md)。浏览器证据目录var/color-sheet-runtime/browser-evidence/1791796501856308000。
+- 正式Placeholder0；扫描12处测试白名单命中，非产品占位。原始错误/未完成加载截图不作为最终视觉证据。
+- 人员/周评/统计不在本轮范围；Safari/原生Excel/WPS/真实移动触摸未验。本机结果不证明任何远端更新，staging/production/main/tag未改变。
