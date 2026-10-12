@@ -3,6 +3,14 @@ import { CatalogSheetModel } from './sheet-model';
 import type { RegisterRow } from './client';
 const row = (id: string, base = '基地甲'): RegisterRow => ({ id, colorId:id, name:'同名蓝', base:{id:base,name:base}, formalCode:'001', manufacturer:'制作甲', paintType:'漆甲', boardCode:'0001', registerMonth:'2026-10', registerStatus:'LISTED', productionApprovalStatus:'UNKNOWN', note:'原值', revision:1, currentStandardVersionId:'v1', sourceSummary:'原始来源' });
 describe('catalog drafts and versioned undo', () => {
+  it('uses the same text limits as template preview and the business API', () => {
+    const model = new CatalogSheetModel([row('a')]);
+    const manufacturer = '厂'.repeat(200), paintType = '漆'.repeat(200);
+    model.apply([{ id:'a', field:'note', value:'备'.repeat(4000) }, { id:'a', field:'manufacturer', value:manufacturer }, { id:'a', field:'paintType', value:paintType }]);
+    expect(model.errors([paintType], [manufacturer])).toEqual([]);
+    model.apply([{ id:'a', field:'note', value:'备'.repeat(4001) }]);
+    expect(model.errors([paintType], [manufacturer])[0]?.field).toBe('note');
+  });
   it('invalidates saved undo when a later conflict refresh discovers someone else changed that row', () => {
     const model = new CatalogSheetModel([row('a'), row('b')]);
     model.apply([{id:'b', field:'note', value:'我的已保存值'}]);

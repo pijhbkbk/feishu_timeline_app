@@ -1,0 +1,20 @@
+--- a/dist/index.mjs
++++ b/dist/index.mjs
+@@ -3,6 +3,7 @@
+   if (!code || typeof document == 'undefined') return
+   let head = document.head || document.getElementsByTagName('head')[0]
+   let style = document.createElement('style')
++  style.nonce = document.querySelector('script[nonce]')?.nonce || ''
+   style.type = 'text/css'
+   head.appendChild(style)
+   ;style.styleSheet ? (style.styleSheet.cssText = code) : style.appendChild(document.createTextNode(code))
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -3,6 +3,7 @@
+   if (!code || typeof document == 'undefined') return
+   let head = document.head || document.getElementsByTagName('head')[0]
+   let style = document.createElement('style')
++  style.nonce = document.querySelector('script[nonce]')?.nonce || ''
+   style.type = 'text/css'
+   head.appendChild(style)
+   ;style.styleSheet ? (style.styleSheet.cssText = code) : style.appendChild(document.createTextNode(code))

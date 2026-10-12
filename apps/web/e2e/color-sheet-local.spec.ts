@@ -120,16 +120,36 @@ async function probeCanvas(page: Page) {
   await page.addInitScript(() => {
     const target = window as ProbeWindow;
     target.__colorSheetCanvasProbe = {};
+    type Cached = { text: string; x: number; y: number; width: number; fontSize: number; at: number };
+    const caches = new WeakMap<object, Map<string, Cached>>();
+    const remember = (context: CanvasRenderingContext2D, value: Cached) => {
+      let entries = caches.get(context.canvas); if (!entries) { entries = new Map(); caches.set(context.canvas, entries); }
+      entries.set(value.text, value);
+      if (context.canvas instanceof HTMLCanvasElement && context.canvas.closest('[data-testid="business-sheet"]')) {
+        const rect = context.canvas.getBoundingClientRect();
+        if (rect.width && rect.height) target.__colorSheetCanvasProbe![value.text] = { ...value, canvas: context.canvas, ratioX: value.x / context.canvas.width, ratioY: value.y / context.canvas.height };
+      }
+    };
     const original = CanvasRenderingContext2D.prototype.fillText;
     CanvasRenderingContext2D.prototype.fillText = function (text, x, y, maxWidth) {
-      if (this.canvas instanceof HTMLCanvasElement && this.canvas.closest('[data-testid="business-sheet"]')) {
-        const rect = this.canvas.getBoundingClientRect();
-        if (rect.width && rect.height && text.length < 2000) {
-          const point = this.getTransform().transformPoint({ x, y });
-          target.__colorSheetCanvasProbe![text] = { text, canvas: this.canvas, ratioX: point.x / this.canvas.width, ratioY: point.y / this.canvas.height, x: rect.x, y: rect.y, width: this.measureText(text).width, fontSize: Number(/([\d.]+)px/.exec(this.font)?.[1] ?? 13), at: performance.now() };
-        }
+      if (text.length < 2000) {
+        const point = this.getTransform().transformPoint({ x, y });
+        remember(this, { text, x: point.x, y: point.y, width: this.measureText(text).width, fontSize: Number(/([\d.]+)px/.exec(this.font)?.[1] ?? 13), at: performance.now() });
       }
       return maxWidth === undefined ? original.call(this, text, x, y) : original.call(this, text, x, y, maxWidth);
+    };
+    // Univer paints text into detached tile caches, then blits those tiles onto
+    // the visible canvas. Follow only those actual draw operations.
+    const originalDraw = CanvasRenderingContext2D.prototype.drawImage;
+    CanvasRenderingContext2D.prototype.drawImage = function (source: CanvasImageSource, ...coords: number[]) {
+      Reflect.apply(originalDraw, this, [source, ...coords]);
+      const entries = caches.get(source); if (!entries || !(source instanceof HTMLCanvasElement)) return;
+      const [sx, sy, sw, sh, dx, dy, dw, dh] = coords.length === 8 ? coords : [0, 0, source.width, source.height, coords[0]!, coords[1]!, coords[2] ?? source.width, coords[3] ?? source.height];
+      for (const entry of [...entries.values()]) {
+        if (entry.x < sx! || entry.x > sx! + sw! || entry.y < sy! || entry.y > sy! + sh!) continue;
+        const point = this.getTransform().transformPoint({ x: dx! + (entry.x - sx!) * dw! / sw!, y: dy! + (entry.y - sy!) * dh! / sh! });
+        remember(this, { ...entry, x: point.x, y: point.y });
+      }
     };
   });
 }
@@ -227,6 +247,14 @@ test('Synthetic color sheet: actual canvas, clipboard batch, undo, sorted ID, XL
   await login(page, a.memberA!); await identify(page, info);
   const sourceBefore = await sourceFingerprint(page, data);
   await context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: ORIGIN });
+  await page.goto('/admin/color-database');
+  await expect(page.getByTestId('business-sheet')).toBeVisible();
+  await expect(page.locator('.cs-engine-loading')).toHaveCount(0, { timeout: 60000 });
+  await expect(page.getByRole('complementary', { name: '记录详情' })).toContainText('来源行');
+  await screenshot(page, info, 'source-records-main-and-detail', 1440);
+  await page.getByRole('link', { name: '新建颜色项目', exact: true }).click();
+  await expect(page).toHaveURL(/\/projects\/new$/);
+  await expect(page.getByRole('heading', { name: '新建颜色项目', exact: true })).toBeVisible();
   await openSheet(page, data);
   const originalDetails = await Promise.all(data.rows.map(row => detail(page, row.id)));
   const first = data.rows[0]!, original = await detail(page, first.id);
@@ -414,4 +442,46 @@ test('Synthetic color sheet: visible two-account conflict, controlled-field API 
   expect(events.guardErrors).toEqual([]); expect(events.errors).toEqual([]);
   // Keep expected failing API network messages in the evidence; reject unrelated errors.
   expect(events.consoleErrors.filter(entry => !(entry.url.startsWith(ORIGIN + '/api/color-register/sheet') && /Failed to load resource/.test(entry.text)))).toEqual([]);
+});
+
+test('Synthetic color sheet: lost save response preserves a later reversion and retries the same command', async ({ page, context }, info) => {
+  const data = await fixture(), a = await accounts(), events = observe(page);
+  await guardWrites(context, data, events); await probeCanvas(page); await login(page, a.memberA!); await identify(page, info); await openSheet(page, data);
+  const row = data.rows[0]!, before = await detail(page, row.id);
+  await editCanvas(page, row, `请求已落库但响应丢失 ${data.runId}`);
+  let command: SheetCommand | undefined;
+  await page.route('**/api/color-register/sheet', async route => {
+    const body = route.request().postDataJSON() as SheetCommand;
+    expect(body.items).toHaveLength(1); expect(body.items[0]!.id).toBe(row.id); command = body;
+    const response = await route.fetch(); expect(response.status()).toBe(200);
+    await route.abort('failed');
+  }, { times: 1 });
+  await page.getByRole('button', { name: '保存修改', exact: true }).click();
+  await expect(page.getByRole('button', { name: '核实上次保存结果', exact: true })).toBeEnabled();
+  expect((await detail(page, row.id)).revision).toBe(before.revision + 1);
+  await page.getByLabel('当前单元格', { exact: true }).fill(before.note ?? '');
+  const replayResponse = page.waitForResponse(response => response.request().method() === 'PATCH' && new URL(response.url()).pathname === '/api/color-register/sheet');
+  await page.getByRole('button', { name: '核实上次保存结果', exact: true }).click();
+  expect((await replayResponse).status()).toBe(200);
+  expect(events.writeCommands.at(-1)).toEqual(command);
+  await expect(page.getByRole('button', { name: '保存修改', exact: true })).toBeEnabled();
+  await expect(page.getByLabel('当前单元格', { exact: true })).toHaveValue(before.note ?? '');
+  expect((await detail(page, row.id)).revision).toBe(before.revision + 1);
+  await save(page);
+  expect(await detail(page, row.id)).toMatchObject({ note: before.note, revision: before.revision + 2 });
+  expect(events.guardErrors).toEqual([]); expect(events.errors).toEqual([]);
+});
+
+test('Spreadsheet styling keeps the existing nonce-only style policy', async ({ page }) => {
+  const response = await page.goto('/login');
+  expect(response?.headers()['content-security-policy']).toMatch(/style-src-elem 'self' 'nonce-/);
+  const result = await page.evaluate(async () => {
+    const node = document.createElement('div'); node.id = 'color-sheet-csp-negative'; document.body.appendChild(node);
+    const original = getComputedStyle(node).color;
+    const violation = new Promise<string>(resolve => document.addEventListener('securitypolicyviolation', event => resolve(event.effectiveDirective), { once: true }));
+    const style = document.createElement('style'); style.textContent = '#color-sheet-csp-negative { color: rgb(1, 2, 3) !important; }'; document.head.appendChild(style);
+    const directive = await violation, after = getComputedStyle(node).color;
+    style.remove(); node.remove(); return { directive, original, after };
+  });
+  expect(result.directive).toBe('style-src-elem'); expect(result.after).toBe(result.original);
 });

@@ -75,7 +75,7 @@ export class CatalogSheetModel {
       const row = this.rows.get(patch.id)!;
       let message = '';
       if (value !== null && typeof value !== 'string') message = '只接受明确的文字值';
-      else if (value && value.length > (field === 'note' ? 2000 : field === 'registerMonth' ? 7 : 128)) message = '内容超长';
+      else if (value && value.length > (field === 'note' ? 4000 : field === 'registerMonth' ? 7 : field === 'boardCode' ? 128 : 200)) message = '内容超长';
       else if (value?.startsWith('=')) message = '不接受公式，请输入明确业务值';
       else if (field === 'registerMonth' && value && !/^\d{4}-(0[1-9]|1[0-2])$/.test(value)) message = '使用 YYYY-MM 格式';
       else if (field === 'paintType' && value && value !== row.paintType && !paintTypes.includes(value)) message = '请选择已有漆种';

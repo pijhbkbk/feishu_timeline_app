@@ -1,5 +1,5 @@
 import ExcelJS from 'exceljs';
-import { strFromU8, unzipSync } from 'fflate';
+import { Inflate, strFromU8, zipSync } from 'fflate';
 
 /**
  * Adapted from Personal Sheets src/formats/zip.ts and src/formats/xlsx.ts
@@ -94,7 +94,7 @@ export function inspectCatalogArchive(bytes: Uint8Array): Record<string, Uint8Ar
   const directoryStart = position;
   const directorySize = view.getUint32(end + 12, true);
   if (!count || count > CATALOG_XLSX_LIMITS.zipEntries || count !== view.getUint16(end + 8, true) || position + directorySize !== end) throw new Error('Excel 归档目录或文件数量超限。');
-  const entries = new Map<string, { size: number; crc: number }>();
+  const entries = new Map<string, { size: number; crc: number; method: number; contentStart: number; compressed: number }>();
   const decoder = new TextDecoder('utf-8', { fatal: true });
   let expanded = 0;
   for (let index = 0; index < count; index++) {
@@ -112,17 +112,33 @@ export function inspectCatalogArchive(bytes: Uint8Array): Record<string, Uint8Ar
     const contentStart = localOffset + 30 + localNameLength + localExtraLength;
     if (contentStart + compressed > directoryStart || decoder.decode(bytes.subarray(localOffset + 30, localOffset + 30 + localNameLength)) !== name || view.getUint16(localOffset + 8, true) !== method || view.getUint16(localOffset + 6, true) !== flags) throw new Error('Excel 归档目录与内容不一致。');
     if ((expanded += size) > CATALOG_XLSX_LIMITS.expandedBytes || (compressed > 0 && size / compressed > 2000)) throw new Error('Excel 解压后超过 20 MiB 或压缩比例异常。');
-    entries.set(name, { size, crc: view.getUint32(position + 16, true) });
+    entries.set(name, { size, crc: view.getUint32(position + 16, true), method, contentStart, compressed });
     position = next;
   }
   if (position !== end) throw new Error('Excel 归档目录长度不一致。');
-  const files = unzipSync(bytes, { filter(entry) {
-    if (entries.get(entry.name)?.size !== entry.originalSize) throw new Error('Excel 归档解压大小不一致。');
-    return true;
-  } });
+  const files: Record<string, Uint8Array> = Object.create(null) as Record<string, Uint8Array>;
+  let actualExpanded = 0;
   for (const [name, entry] of entries) {
-    const file = files[name];
-    if (!file || file.length !== entry.size || crc32(file) !== entry.crc) throw new Error('Excel 归档字节校验失败。');
+    const compressed = bytes.subarray(entry.contentStart, entry.contentStart + entry.compressed);
+    const chunks: Uint8Array[] = []; let length = 0;
+    const accept = (chunk: Uint8Array) => {
+      length += chunk.length; actualExpanded += chunk.length;
+      if (length > entry.size || actualExpanded > CATALOG_XLSX_LIMITS.expandedBytes) throw new Error('Excel 实际解压大小超出声明或 20 MiB 上限。');
+      chunks.push(chunk);
+    };
+    if (entry.method === 0) accept(compressed);
+    else {
+      // Never allocate from an untrusted declared size or inflate an entire
+      // compressed file before checking its real output length.
+      const stream = new Inflate(chunk => accept(chunk));
+      if (!compressed.length) stream.push(compressed, true);
+      for (let offset = 0; offset < compressed.length; offset += 1024) stream.push(compressed.subarray(offset, offset + 1024), offset + 1024 >= compressed.length);
+    }
+    if (length !== entry.size) throw new Error('Excel 归档解压大小不一致。');
+    const file = new Uint8Array(length); let offset = 0;
+    for (const chunk of chunks) { file.set(chunk, offset); offset += chunk.length; }
+    if (crc32(file) !== entry.crc) throw new Error('Excel 归档字节校验失败。');
+    files[name] = file;
     if (/\.(?:xml|rels)$/i.test(name) && /<!DOCTYPE|<!ENTITY/i.test(strFromU8(file))) throw new Error('Excel XML 不允许外部实体。');
   }
   if (!files['[Content_Types].xml'] || !files['xl/workbook.xml']) throw new Error('请选择 .xlsx 工作簿文件。');
@@ -168,7 +184,10 @@ export async function readCatalogWorkbook(bytes: Uint8Array, fileName = '颜色�
   inspectSheetBounds(files);
   const workbook = new ExcelJS.Workbook();
   // ExcelJS declares a Buffer-like argument; Uint8Array is its supported browser input.
-  await workbook.xlsx.load(bytes as unknown as Parameters<typeof workbook.xlsx.load>[0]);
+  // Only hand the bounded, verified contents to the second parser. It must not
+  // reinterpret an original archive with conflicting size or offset metadata.
+  const verifiedArchive = zipSync(files, { level: 0 });
+  await workbook.xlsx.load(verifiedArchive as unknown as Parameters<typeof workbook.xlsx.load>[0]);
   const marker = workbook.getWorksheet(METADATA_SHEET)?.getCell('A1').value;
   const template = marker === TEMPLATE_MARKER;
   const sheets: CatalogImportSheet[] = [];

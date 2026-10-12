@@ -4,6 +4,7 @@ import { CellValueType, CommandType, LifecycleStages, type ICellData, type IWork
 import { createUniver, LocaleType, mergeLocales } from '@univerjs/presets';
 import { UniverSheetsCorePreset, UniverFormulaEnginePlugin, UniverSheetsFormulaPlugin, UniverSheetsFormulaUIPlugin } from '@univerjs/preset-sheets-core';
 import CoreZhCN from '@univerjs/preset-sheets-core/locales/zh-CN';
+import { setNonce } from 'get-nonce';
 import { BusinessSheetModel, VALUE_MUTATION, allowedSheetMutation, forbiddenSheetCommand, type BusinessSheetChange, type BusinessSheetColumn, type BusinessSheetRow, type BusinessSheetUpdate } from './runtime-model';
 import '@univerjs/preset-sheets-core/lib/index.css';
 
@@ -69,6 +70,7 @@ function textCell(value: string | null, header = false): ICellData {
 }
 
 export function createBusinessSheet(options: BusinessSheetOptions): BusinessSheetRuntime {
+  setNonce(document.querySelector<HTMLScriptElement>('script[nonce]')?.nonce ?? '');
   const model = new BusinessSheetModel(options.rows, options.columns);
   const workbookId = `business-sheet-${crypto.randomUUID()}`;
   const data: IObjectMatrixPrimitiveType<ICellData> = { 0: {} };
@@ -92,9 +94,12 @@ export function createBusinessSheet(options: BusinessSheetOptions): BusinessShee
     menu: Object.fromEntries(hiddenCommands.map(id => [id, { hidden: true }])),
   });
   // CorePreset retains formula service dependencies, but no worker or formula execution is enabled.
-  preset.plugins = preset.plugins.filter(entry => (Array.isArray(entry) ? entry[0] : entry) !== UniverSheetsFormulaUIPlugin).map(entry => {
+  preset.plugins = preset.plugins.filter(entry => {
     const plugin = Array.isArray(entry) ? entry[0] : entry;
-    if (plugin !== UniverFormulaEnginePlugin && plugin !== UniverSheetsFormulaPlugin) return entry;
+    return plugin !== UniverSheetsFormulaPlugin && plugin !== UniverSheetsFormulaUIPlugin;
+  }).map(entry => {
+    const plugin = Array.isArray(entry) ? entry[0] : entry;
+    if (plugin !== UniverFormulaEnginePlugin) return entry;
     return [plugin, { ...(Array.isArray(entry) ? entry[1] : {}), notExecuteFormula: true }];
   });
   const { univer, univerAPI } = createUniver({ locale: LocaleType.ZH_CN, locales: { [LocaleType.ZH_CN]: mergeLocales(CoreZhCN) }, presets: [preset] });
