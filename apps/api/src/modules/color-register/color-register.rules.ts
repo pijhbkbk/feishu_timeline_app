@@ -1,6 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 import { createHash } from 'node:crypto';
 import { Prisma } from '@prisma/client';
+import { parseRegisterMonth } from '../../common/color-standard';
 
 export function object(value: unknown, label = '输入'): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new BadRequestException(`${label}格式不正确。`);
@@ -50,4 +51,53 @@ export function parseNotes(raw: unknown) {
   if (new Set(items.map(item => item.id)).size !== items.length) throw new BadRequestException('同一记录不能重复提交。');
   if (Buffer.byteLength(JSON.stringify(items)) > 256 * 1024) throw new BadRequestException('备注内容过大。');
   return { operationId, items };
+}
+
+
+const SHEET_FIELDS = new Set(['note', 'boardCode', 'manufacturer', 'paintType', 'registerMonth']);
+export type RegisterSheetChanges = Partial<{ note: string | null; boardCode: string | null; manufacturer: string | null; paintType: string | null; registerMonth: string | null }>;
+function onlyFields(input: Record<string, unknown>, allowed: ReadonlySet<string>, label: string) {
+  const unsupported = Object.keys(input).find(key => !allowed.has(key));
+  if (unsupported) throw new BadRequestException({ code: 'COLOR_REGISTER_FIELD_ERROR', message: `${label}包含只读或不支持的字段。`, field: unsupported });
+}
+export function parseSheetChanges(raw: unknown) {
+  const body = object(raw);
+  onlyFields(body, new Set(['operationId', 'reason', 'items']), '保存请求');
+  const operationId = identity(body.operationId, '操作标识');
+  const reason = textField(body.reason, '标准更正原因', 1000)?.trim() || null;
+  if (!Array.isArray(body.items) || !body.items.length || body.items.length > 50) throw new BadRequestException('一次可保存 1–50 条颜色记录。');
+  const items = body.items.map(value => {
+    const item = object(value);
+    onlyFields(item, new Set(['id', 'expectedRevision', 'changes']), '记录');
+    const id = identity(item.id);
+    const expectedRevision = positiveInt(item.expectedRevision, '记录版本');
+    const input = object(item.changes, '字段改动');
+    try {
+      onlyFields(input, SHEET_FIELDS, '字段改动');
+      if (!Object.keys(input).length) throw new BadRequestException('请提供需要保存的字段。');
+      const changes: RegisterSheetChanges = {};
+      for (const field of ['note', 'boardCode', 'manufacturer', 'paintType', 'registerMonth'] as const) {
+        if (!Object.hasOwn(input, field)) continue;
+        // An omitted field differs from an explicit null; undefined is not a business value.
+        if (input[field] === undefined) throw new BadRequestException({ message: '字段值不正确。', field });
+        try {
+          if (field === 'registerMonth') changes[field] = parseRegisterMonth(input[field]) ?? null;
+          else changes[field] = textField(input[field], field === 'note' ? '备注' : field === 'boardCode' ? '色板编号' : field === 'manufacturer' ? '制作单位' : '漆种', field === 'note' ? 4000 : field === 'boardCode' ? 128 : 200);
+        } catch (error) {
+          if (error instanceof BadRequestException) throw new BadRequestException({ code: 'COLOR_REGISTER_FIELD_ERROR', message: error.message, field });
+          throw error;
+        }
+      }
+      return { id, expectedRevision, changes };
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        const response = error.getResponse();
+        throw new BadRequestException({ ...(typeof response === 'object' ? response : { message: response }), colorId: id });
+      }
+      throw error;
+    }
+  }).sort((a, b) => a.id.localeCompare(b.id));
+  if (new Set(items.map(item => item.id)).size !== items.length) throw new BadRequestException('同一记录不能重复提交。');
+  if (Buffer.byteLength(JSON.stringify({ items, reason })) > 256 * 1024) throw new BadRequestException('保存内容过大。');
+  return { operationId, reason, items };
 }

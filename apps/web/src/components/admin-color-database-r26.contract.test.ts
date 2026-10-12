@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
+import { SHEET_COLUMNS } from '../features/color-register/sheet-model';
 
 const dashboardSource = readFileSync(new URL('./admin-dashboard-r22.tsx', import.meta.url), 'utf8');
 const manageSource = readFileSync(new URL('./admin-manage-r26.tsx', import.meta.url), 'utf8');
@@ -38,7 +39,8 @@ describe('R26 simplified admin and color archive contracts', () => {
   it('uses existing attachment reads without exposing a second upload entry', () => {
     expect(databaseSource).toContain('<ColorRegisterWorkspace />');
     expect(registerSource).toContain('生产基地');
-    expect(registerSource).toContain('备注');
+    expect(registerSource).toContain('SHEET_COLUMNS.map');
+    expect(SHEET_COLUMNS.map(column => column.label)).toContain('备注');
     expect(registerClient).toContain('/color-register');
     expect(archiveSource).toContain('文件仍存放于原附件系统');
     expect(archiveSource).toContain('历史版本');

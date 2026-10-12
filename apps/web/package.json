@@ -16,6 +16,11 @@
     "playwright:test:raw": "pnpm exec playwright test"
   },
   "dependencies": {
+    "@univerjs/core": "1.0.4",
+    "@univerjs/preset-sheets-core": "1.0.4",
+    "@univerjs/presets": "1.0.4",
+    "exceljs": "4.4.0",
+    "fflate": "0.8.3",
     "next": "^15.5.24",
     "react": "^19.2.6",
     "react-dom": "^19.2.6"

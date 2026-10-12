@@ -1,250 +1,196 @@
 'use client';
-
 import Link from 'next/link';
-import { SourceWorkbook } from './source-workbook';
-import { StandardCorrection } from './standard-correction';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../../components/auth-provider';
 import { ApiRequestError } from '../../lib/auth-client';
 import { M1Icon } from '../m1/icon';
 import { useProjectUnsavedChanges } from '../m1/use-unsaved';
-import { fetchRegister, fetchRegisterDetail, saveRegisterNotes, type RegisterDetail, type RegisterFilters, type RegisterJson, type RegisterList, type RegisterNoteChange, type RegisterRow, type RegisterSource, type RegisterStandardVersion } from './client';
-import { parseRegisterNotePaste, productionStatusLabel, registerRowsToTsv, registerStatusLabel } from './clipboard';
+import { fetchRegisterDetail, type RegisterDetail, type RegisterRow } from './client';
+import { CatalogSheetModel, EDITABLE_FIELDS, SHEET_COLUMNS, editable, type SheetChange, type SheetPatch } from './sheet-model';
+import { readCatalog, saveCatalog, type SheetFacets } from './sheet-client';
+import { registerStatusLabel } from './clipboard';
+import { RegisterDetails } from './register-details';
+import { SourceWorkbook } from './source-workbook';
+import { SheetImport } from './sheet-import';
+import { prepareDisplayFonts } from '../business-sheet/display-fonts';
+import type { BusinessSheetRuntime } from '../business-sheet/runtime';
+import './sheet-workspace.css';
 
-const EMPTY_FILTERS: RegisterFilters = { search: '', baseId: '', status: '' };
-type Drafts = Record<string, RegisterNoteChange>;
+const initialFilters = { search: '', base: '', paint: '', status: '' };
+function message(cause: unknown) { return cause instanceof Error ? cause.message : '操作失败，请重试。'; }
+function displayValue(row: RegisterRow, field: string) { if (field === 'baseName') return row.base?.name ?? ''; if (field === 'registerStatus') return registerStatusLabel(row.registerStatus); return String(row[field as keyof RegisterRow] ?? ''); }
 
 export function ColorRegisterWorkspace() {
   const { user } = useAuth();
-  const [filters, setFilters] = useState<RegisterFilters>(EMPTY_FILTERS);
-  const [applied, setApplied] = useState<RegisterFilters>(EMPTY_FILTERS);
-  const [page, setPage] = useState(1);
-  const [data, setData] = useState<RegisterList | null>(null);
-  const [facets, setFacets] = useState<RegisterList['facets']>({ bases: [], statuses: [] });
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [notice, setNotice] = useState('');
-  const [refresh, setRefresh] = useState(0);
-  const [drafts, setDrafts] = useState<Drafts>({});
-  const [saving, setSaving] = useState(false);
-  const [copyFallback, setCopyFallback] = useState('');
-  const [pasteOpen, setPasteOpen] = useState(false);
-  const [detailId, setDetailId] = useState<string | null>(null);
-  useEffect(() => {
-    const id = new URLSearchParams(window.location.search).get('colorId');
-    if (id && /^[A-Za-z0-9_-]{1,128}$/.test(id)) setDetailId(id);
-  }, []);
-  const [conflicted, setConflicted] = useState(false);
-  const pending = useRef(false);
-  const request = useRef<{ fingerprint: string; key: string } | null>(null);
-  const savedExpected = useRef<RegisterNoteChange[] | null>(null);
-  const dirtyCount = Object.keys(drafts).length;
-  const allowLeave = useProjectUnsavedChanges(dirtyCount > 0 || pasteOpen);
   const canEdit = Boolean(user?.isSystemAdmin || user?.teamAccessApproved);
-  const conflicts = (data?.items ?? []).filter(row => drafts[row.id] && drafts[row.id]!.expectedRevision !== row.revision);
-  const missingDrafts = data ? Object.values(drafts).filter(draft => !data.items.some(row => row.id === draft.id)) : [];
+  const model = useRef<CatalogSheetModel | null>(null);
+  const runtime = useRef<BusinessSheetRuntime | null>(null);
+  const loadSequence = useRef(0);
+  const host = useRef<HTMLDivElement>(null);
+  const [epoch, setEpoch] = useState(0); const [tick, setTick] = useState(0);
+  const [loading, setLoading] = useState(true); const [saving, setSaving] = useState(false); const savingRef = useRef(false);
+  const [error, setError] = useState(''); const [notice, setNotice] = useState('');
+  const [facets, setFacets] = useState<SheetFacets>({ bases: [], statuses: [] }); const [total, setTotal] = useState(0);
+  const [filters, setFilters] = useState(initialFilters); const [sort, setSort] = useState('name:asc');
+  const [selected, setSelected] = useState<string | null>(null); const [activeField, setActiveField] = useState('note');
+  const [panel, setPanel] = useState(true); const [detail, setDetail] = useState<RegisterDetail | null>(null); const [detailError, setDetailError] = useState('');
+  const [fullDetail, setFullDetail] = useState(false); const [importOpen, setImportOpen] = useState(false);
+  const [reason, setReason] = useState(''); const [engineReady, setEngineReady] = useState(false);
+  const retry = useRef<{ fingerprint: string; operationId: string } | null>(null);
+  const unconfirmed = useRef<{ items: SheetPatch[]; operationId: string; reason: string } | null>(null);
+  const [uncertain, setUncertain] = useState(false);
+  const patches = model.current?.patches() ?? [];
+  const dirty = patches.length > 0 || uncertain;
+  useProjectUnsavedChanges(dirty || saving || importOpen);
+  const paintTypes = facets.paintTypes ?? [...new Set([...model.current?.rows.values() ?? []].map(row => row.paintType).filter((x): x is string => Boolean(x)))];
+  const manufacturers = facets.manufacturers ?? [...new Set([...model.current?.rows.values() ?? []].map(row => row.manufacturer).filter((x): x is string => Boolean(x)))];
+  const errors = model.current?.errors(paintTypes, manufacturers) ?? [];
+  const conflicts = model.current?.conflicts() ?? [];
+  const standardEdits = patches.some(patch => Object.keys(patch.changes).some(field => field !== 'note'));
+  const bump = () => setTick(value => value + 1);
 
-  useEffect(() => {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15000);
-    let active = true;
+  const load = useCallback(async (signal: AbortSignal) => {
+    const sequence = ++loadSequence.current;
     setLoading(true); setError('');
-    void fetchRegister({ ...applied, page, pageSize: 25 }, controller.signal)
-      .then(result => {
-        if (!active) return;
-        setData(result); setFacets(result.facets);
-        if (savedExpected.current) {
-          const expected = savedExpected.current;
-          const confirmed = expected.every(change => result.items.some(row => row.id === change.id && row.note === change.note));
-          savedExpected.current = null;
-          if (confirmed) setNotice(`已保存 ${expected.length} 条备注，并已重新读取确认。`);
-          else { setNotice(''); setError('保存请求已成功，但最新读回结果与提交内容不同，请核对当前记录。'); }
-        }
-      })
-      .catch(cause => { if (active) setError(errorMessage(cause)); })
-      .finally(() => { clearTimeout(timeout); if (active) setLoading(false); });
-    return () => { active = false; clearTimeout(timeout); controller.abort(); };
-  }, [applied, page, refresh]);
-
-  function discardForNavigation() {
-    if (dirtyCount && !window.confirm('有未保存的备注，确定放弃这些修改？')) return false;
-    setDrafts({}); request.current = null; savedExpected.current = null; setConflicted(false); setNotice(''); setCopyFallback('');
-    return true;
-  }
-  function applyFilters(event: React.FormEvent) {
-    event.preventDefault(); if (saving || !discardForNavigation()) return;
-    setData(null); setPage(1); setApplied({ ...filters, search: filters.search.trim() });
-  }
-  function resetFilters() {
-    if (saving || !discardForNavigation()) return;
-    setData(null); setFilters(EMPTY_FILTERS); setApplied(EMPTY_FILTERS); setPage(1); setRefresh(value => value + 1);
-  }
-  function changePage(nextPage: number) {
-    if (saving || !discardForNavigation()) return;
-    setData(null); setPage(nextPage);
-  }
-  function changeNote(row: RegisterRow, text: string) {
-    setNotice('');
-    setDrafts(current => {
-      const next = { ...current };
-      if (text === (row.note ?? '')) delete next[row.id];
-      else next[row.id] = { id: row.id, expectedRevision: current[row.id]?.expectedRevision ?? row.revision, note: text || null };
-      return next;
-    });
-  }
-  async function saveNotes() {
-    if (pending.current || !dirtyCount || conflicts.length || missingDrafts.length) return;
-    pending.current = true; setSaving(true); setError(''); setNotice('');
-    const changes = Object.values(drafts).sort((left, right) => left.id.localeCompare(right.id));
-    const fingerprint = JSON.stringify(changes);
-    if (request.current?.fingerprint !== fingerprint) request.current = { fingerprint, key: crypto.randomUUID() };
     try {
-      await saveRegisterNotes(changes, request.current.key);
-      setDrafts({}); request.current = null; setConflicted(false); allowLeave();
-      savedExpected.current = changes;
-      setNotice(`已保存 ${changes.length} 条备注，正在读取保存结果。`);
-      setRefresh(value => value + 1);
+      const data = await readCatalog(signal); if (sequence !== loadSequence.current) return;
+      model.current = new CatalogSheetModel(data.items); setFacets(data.facets); setTotal(data.total);
+      const requested = new URLSearchParams(window.location.search).get('colorId');
+      setSelected(current => data.items.some(row => row.id === (current ?? requested)) ? current ?? requested : data.items[0]?.id ?? null);
+      retry.current = null; setEpoch(value => value + 1); setNotice('已读取服务器记录');
+    } catch (cause) { if (sequence === loadSequence.current) setError(message(cause)); }
+    finally { if (sequence === loadSequence.current) setLoading(false); }
+  }, []);
+  useEffect(() => { const controller = new AbortController(); void load(controller.signal); return () => controller.abort(); }, [load]);
+  async function changeView(change: () => void) { await runtime.current?.finishEditing(); change(); }
+  const reload = () => { if (unconfirmed.current) { setError('上次保存结果尚未确认，请先核实结果，再重新读取。'); return; } if (savingRef.current || (dirty && !window.confirm('重新读取将放弃未保存内容，是否继续？'))) return; void load(AbortSignal.timeout(30000)); };
+  const visible = useMemo(() => {
+    const rows = [...model.current?.rows.values() ?? []];
+    const query = filters.search.trim().toLocaleLowerCase();
+    const [key, direction] = sort.split(':');
+    return rows.filter(row => (!query || [row.name, row.formalCode, row.boardCode].some(value => value?.toLocaleLowerCase().includes(query))) && (!filters.base || row.base?.id === filters.base) && (!filters.paint || row.paintType === filters.paint) && (!filters.status || row.registerStatus === filters.status))
+      .sort((a, b) => (displayValue(a, key!).localeCompare(displayValue(b, key!), 'zh-CN') || a.id.localeCompare(b.id)) * (direction === 'desc' ? -1 : 1));
+    // Save acknowledgements do not reorder a sheet while someone is editing it.
+  }, [epoch, filters, sort]);
+  const handlers = useRef<{ changes: (changes: SheetChange[]) => void; undo: () => void; redo: () => void }>({ changes: () => {}, undo: () => {}, redo: () => {} });
+  function applyChanges(changes: SheetChange[]) {
+    if (!canEdit || loading || !model.current) return;
+    try { model.current.apply(changes); setNotice(''); setError(''); bump(); }
+    catch (cause) { setError(message(cause)); runtime.current?.updateValues(changes.map(change => ({ ...change, value: displayValue(model.current!.display(change.id), change.field) }))); }
+  }
+  function history(action: 'undo' | 'redo') { if (!model.current || loading || savingRef.current) return; try { const changes = model.current[action](); runtime.current?.updateValues(changes); setNotice(changes.length ? '变更已放入待保存内容，保存后才写入业务记录。' : ''); bump(); } catch (cause) { setError(message(cause)); } }
+  handlers.current = { changes: applyChanges, undo: () => history('undo'), redo: () => history('redo') };
+  useEffect(() => {
+    if (!host.current || !model.current || !visible.length) return;
+    let stopped = false; let instance: BusinessSheetRuntime | null = null; setEngineReady(false);
+    void import('../business-sheet/runtime').then(async ({ createBusinessSheet }) => {
+      await prepareDisplayFonts();
+      if (stopped || !host.current || !model.current) return;
+      instance = createBusinessSheet({ container: host.current, columns: SHEET_COLUMNS, rows: visible.map(row => ({ id: row.id, values: SHEET_COLUMNS.map(column => displayValue(model.current!.display(row.id), column.key)), editable: SHEET_COLUMNS.map(column => canEdit && editable(row, column.key)) })),
+        onChanges: changes => handlers.current.changes(changes), onSelection: (id, _row, col) => { setSelected(id); setActiveField(SHEET_COLUMNS[col]?.key ?? 'note'); },
+        onError: setError, onUndo: () => handlers.current.undo(), onRedo: () => handlers.current.redo() });
+      runtime.current = instance; await instance.ready; if (!stopped) setEngineReady(true);
+    }).catch(cause => { if (!stopped) setError(`表格未能加载：${message(cause)}`); });
+    return () => { stopped = true; instance?.dispose(); if (runtime.current === instance) runtime.current = null; };
+  }, [visible, canEdit]);
+  useEffect(() => {
+    if (!selected || !panel) return;
+    const controller = new AbortController(); setDetail(null); setDetailError('');
+    void fetchRegisterDetail(selected, 1, controller.signal).then(value => { if (!controller.signal.aborted) setDetail(value); }).catch(cause => { if (!controller.signal.aborted) setDetailError(message(cause)); });
+    return () => controller.abort();
+  }, [selected, panel, epoch, notice]);
+  useEffect(() => { const close = (event: KeyboardEvent) => { if (event.key === 'Escape') setPanel(false); }; window.addEventListener('keydown', close); return () => window.removeEventListener('keydown', close); }, []);
+
+  async function save() {
+    if (!model.current || savingRef.current) return;
+    await runtime.current?.finishEditing();
+    if (savingRef.current || loading) return;
+    const current = model.current;
+    if (unconfirmed.current) {
+      savingRef.current = true; setSaving(true); setError('');
+      const request = unconfirmed.current;
+      try {
+        const result = await saveCatalog(request.items, request.operationId, request.reason);
+        current.confirm(result.items, request.items); unconfirmed.current = null; setUncertain(false); retry.current = null;
+        runtime.current?.updateValues(result.items.flatMap(row => EDITABLE_FIELDS.map(field => ({ id: row.id, field, value: current.display(row.id)[field] }))));
+        setNotice(`已核实上次保存结果；${current.patches().length} 条新编辑仍待保存。`); bump();
+      } catch (cause) {
+        if (cause instanceof ApiRequestError && [400, 401, 403, 404, 409, 422].includes(cause.status)) {
+          unconfirmed.current = null; setUncertain(false); retry.current = null;
+          if (cause.status === 409) {
+            try { const latest = await readCatalog(AbortSignal.timeout(30000)); current.latest(latest.items); runtime.current?.updateValues([...current.rows.keys()].flatMap(id => SHEET_COLUMNS.map(column => ({ id, field: column.key, value: displayValue(current.display(id), column.key) })))); } catch { /* Keep the original draft for explicit reload. */ }
+          }
+          setError(`上次请求已明确拒绝：${message(cause)}。输入已保留，请核对后重新保存。`); bump();
+        } else setError(`尚未确认上次保存：${message(cause)}。原请求及新增编辑继续保留，请重试核实。`);
+      }
+      finally { savingRef.current = false; setSaving(false); }
+      return;
+    }
+    const input = current.patches();
+    if (!input.length || current.errors(paintTypes, manufacturers).length || current.conflicts().length) { bump(); return; }
+    if (input.some(patch => Object.keys(patch.changes).some(field => field !== 'note')) && !reason.trim()) { setError('请填写标准更正原因，再保存色板相关字段。'); return; }
+    savingRef.current = true; setSaving(true); setError(''); setNotice(''); let done = 0;
+    try {
+      for (let offset = 0; offset < input.length; offset += 50) {
+        const batch = input.slice(offset, offset + 50); const fingerprint = JSON.stringify({ batch, reason });
+        if (retry.current?.fingerprint !== fingerprint) retry.current = { fingerprint, operationId: crypto.randomUUID() };
+        unconfirmed.current = { items: batch, operationId: retry.current.operationId, reason }; setUncertain(true);
+        const result = await saveCatalog(batch, retry.current.operationId, reason);
+        current.confirm(result.items, batch); unconfirmed.current = null; setUncertain(false); retry.current = null; done += batch.length;
+        const normalization: SheetChange[] = result.items.flatMap(row => EDITABLE_FIELDS.map(field => ({ id: row.id, field, value: current.display(row.id)[field] })));
+        runtime.current?.updateValues(normalization); bump();
+      }
+      setNotice(`已保存 ${done} 条记录${current.patches().length ? '；请求期间的新编辑仍待保存' : '，服务器已确认'}。`);
     } catch (cause) {
-      setError(errorMessage(cause));
-      if (cause instanceof ApiRequestError && cause.status === 409) setConflicted(true);
-    } finally { pending.current = false; setSaving(false); }
+      if (cause instanceof ApiRequestError && [400, 401, 403, 404, 409, 422].includes(cause.status)) { unconfirmed.current = null; setUncertain(false); }
+      setError(`${message(cause)} 已成功 ${done} 条；本批及后续 ${input.length - done} 条未确认，内容已保留。`);
+      if (cause instanceof ApiRequestError && cause.status === 409) {
+        retry.current = null;
+        try { const latest = await readCatalog(AbortSignal.timeout(30000)); current.latest(latest.items); runtime.current?.updateValues([...current.rows.keys()].flatMap(id => SHEET_COLUMNS.map(column => ({ id, field: column.key, value: displayValue(current.display(id), column.key) })))); } catch { /* Drafts remain available even when conflict reload fails. */ }
+      }
+      bump();
+    } finally { savingRef.current = false; setSaving(false); }
   }
-  async function copyCurrentPage() {
-    if (!data) return;
-    const text = registerRowsToTsv(data.items);
-    setError(''); setCopyFallback('');
+  async function exportFile() {
+    setError('');
     try {
-      await navigator.clipboard.writeText(text);
-      setNotice('已复制当前页已保存的数据，可粘贴到表格；修改备注后连同表头粘贴回来。');
-    } catch { setCopyFallback(text); }
+      const { exportCatalogTemplate } = await import('./sheet-exchange');
+      const bytes = await exportCatalogTemplate(visible.map(row => model.current!.rows.get(row.id)!));
+      const url = URL.createObjectURL(new Blob([new Uint8Array(bytes)], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+      const link = document.createElement('a'); link.href = url; link.download = '颜色清单-系统模板.xlsx'; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setNotice(`已导出当前筛选的 ${visible.length} 条已保存记录；待保存编辑未导出。`);
+    } catch (cause) { setError(message(cause)); }
   }
-  function adoptLatest(row: RegisterRow) {
-    setDrafts(current => { const next = { ...current }; delete next[row.id]; return next; });
-  }
-  function keepDraft(row: RegisterRow) {
-    setDrafts(current => current[row.id] ? { ...current, [row.id]: { ...current[row.id]!, expectedRevision: row.revision } } : current);
-  }
-
-  return <section className="cr-workspace" data-testid="color-register-page" data-source="database">
+  function resolve(id: string, keep: boolean) { model.current!.resolve(id, keep); const row = model.current!.display(id); runtime.current?.updateValues(EDITABLE_FIELDS.map(field => ({ id, field, value: row[field] }))); retry.current = null; bump(); }
+  const selectedRow = selected && model.current?.rows.has(selected) ? model.current.display(selected) : null;
+  const activeEditable = Boolean(canEdit && !loading && selectedRow && editable(selectedRow, activeField));
+  const activeValue = selectedRow ? displayValue(selectedRow, activeField) : '';
+  const activeOptions = activeField === 'manufacturer' ? manufacturers : activeField === 'paintType' ? paintTypes : null;
+  function editActive(value: string) { if (!selected) return; const changes = [{ id: selected, field: activeField, value: value || null }]; applyChanges(changes); runtime.current?.updateValues(changes); }
+  void tick;
+  return <section className="cr-workspace cs-workspace" data-testid="color-register-page" data-source="database">
     <nav className="m1-breadcrumb" aria-label="面包屑"><Link href="/dashboard" aria-label="返回工作台"><M1Icon name="back" /></Link><span>颜色清单</span></nav>
-    <header className="m1-heading cr-heading">
-      <div><h1>颜色清单</h1><p>按生产基地查看颜色、色板与历史标准。</p></div>
-      <div className="m1-button-group"><button className="m1-button" type="button" disabled={loading || saving} onClick={() => { if (discardForNavigation()) setRefresh(value => value + 1); }}><M1Icon name="refresh" />刷新</button><Link href="/projects/new" className="m1-button m1-primary">新建颜色项目</Link></div>
-    </header>
-
-    <section className="m1-card cr-list-card" aria-label="颜色清单查询">
-      <form className="cr-filters" onSubmit={applyFilters}>
-        <label className="cr-search"><span>颜色或色板</span><input type="search" value={filters.search} maxLength={100} placeholder="颜色名称 / 正式编号 / 色板编号" onChange={event => setFilters(current => ({ ...current, search: event.target.value }))} /></label>
-        <label><span>生产基地</span><select value={filters.baseId} onChange={event => setFilters(current => ({ ...current, baseId: event.target.value }))}><option value="">全部基地</option>{facets.bases.map(base => <option key={base.id} value={base.id}>{base.name}</option>)}</select></label>
-        <label><span>清单状态</span><select value={filters.status} onChange={event => setFilters(current => ({ ...current, status: event.target.value }))}><option value="">全部状态</option>{facets.statuses.map(status => <option key={status} value={status}>{registerStatusLabel(status)}</option>)}</select></label>
-        <div className="m1-button-group"><button type="submit" className="m1-button m1-primary" disabled={saving}>查询</button><button type="button" className="m1-button" disabled={saving} onClick={resetFilters}>重置</button></div>
-      </form>
-      <div className="cr-toolbar"><p>{data ? <><strong>{data.total}</strong> 条颜色与基地记录</> : '颜色与基地记录'}</p><div className="m1-button-group"><button type="button" className="m1-button" disabled={!data?.items.length || loading || saving} onClick={() => void copyCurrentPage()}>复制当前页</button>{canEdit ? <button type="button" className="m1-button" disabled={!data?.items.length || loading || saving} onClick={() => setPasteOpen(true)}>粘贴备注</button> : null}</div></div>
-      {data?.importSummary ? <details className="cr-import-summary"><summary>来源核对 · {data.importSummary.fileName}</summary><p>{data.importSummary.sheetCount} 个工作表 · {data.importSummary.rowCount} 条来源行 · {data.importSummary.colorCount} 条颜色记录 · {data.importSummary.pendingRowCount} 条来源行待核对</p><p>文件指纹：<code>{data.importSummary.sha256}</code></p></details> : null}
-
-      {notice ? <p className="m1-notice" role="status">{notice}</p> : null}
-      {error ? <div className="m1-error" role="alert"><p>{error}</p>{conflicted ? <button type="button" className="m1-button" disabled={loading || saving} onClick={() => setRefresh(value => value + 1)}>读取最新备注并比较</button> : <button type="button" className="m1-button" disabled={loading || saving} onClick={() => setRefresh(value => value + 1)}>重新读取</button>}</div> : null}
-      {copyFallback ? <div className="cr-copy-fallback"><label htmlFor="cr-copy-text">浏览器未允许自动复制。选中下方内容后复制。</label><textarea id="cr-copy-text" readOnly value={copyFallback} onFocus={event => event.target.select()} rows={5} /><button type="button" className="m1-button" onClick={() => setCopyFallback('')}>收起</button></div> : null}
-      {dirtyCount ? <div className="cr-save-bar"><span>{dirtyCount} 条备注尚未保存{conflicts.length ? `，其中 ${conflicts.length} 条需先处理冲突` : ''}{missingDrafts.length ? `；${missingDrafts.length} 条记录已不在当前结果中，请放弃修改后重新查询` : ''}</span><div className="m1-button-group"><button type="button" className="m1-button" disabled={saving} onClick={discardForNavigation}>放弃修改</button><button type="button" className="m1-button m1-primary" disabled={saving || loading || conflicts.length > 0 || missingDrafts.length > 0} onClick={() => void saveNotes()}>{saving ? '正在保存…' : '保存备注'}</button></div></div> : null}
-      {loading ? <p className="cr-loading" role="status">正在读取清单…</p> : null}
-      {!loading && data?.items.length === 0 ? <div className="m1-state"><h2>没有符合条件的颜色记录</h2><button type="button" className="m1-button" onClick={resetFilters}>清除筛选</button></div> : null}
-      {data?.items.length ? <>
-        <div className="cr-table-scroll" role="region" aria-label="颜色清单，可横向滚动查看全部列" tabIndex={0} aria-busy={loading}>
-          <table className="cr-table"><caption className="cr-sr-only">每行保留独立颜色与生产基地身份。空值显示为横线；备注修改后需点击保存。</caption><thead><tr><th scope="col">颜色名称</th><th scope="col">生产基地</th><th scope="col">备注</th><th scope="col">色板编号</th><th scope="col">制作单位</th><th scope="col">漆种</th><th scope="col">正式编号</th><th scope="col">入清单月份</th><th scope="col">清单状态</th><th scope="col">量产状态</th><th scope="col">标准与来源</th></tr></thead>
-            <tbody>{data.items.map(row => {
-              const draft = drafts[row.id]; const conflict = draft && draft.expectedRevision !== row.revision;
-              return <tr key={row.id} data-record-id={row.id} className={draft ? 'cr-row-dirty' : undefined}>
-                <th scope="row"><button type="button" className="cr-name" onClick={() => setDetailId(row.id)}>{row.name ?? '名称待核对'}</button>{row.sourceSummary ? <span className="cr-source-hint">{row.sourceSummary}</span> : null}</th>
-                <td>{row.base?.name ?? <span className="cr-pending">待核对</span>}</td>
-                <td className="cr-note-cell">{canEdit ? <><label className="cr-sr-only" htmlFor={`cr-note-${row.id}`}>{row.name ?? '待核对颜色'} · {row.base?.name ?? '基地待核对'}的备注</label><textarea id={`cr-note-${row.id}`} rows={2} maxLength={2000} value={draft ? draft.note ?? '' : row.note ?? ''} disabled={saving || loading} onChange={event => changeNote(row, event.target.value)} aria-describedby={conflict ? `cr-conflict-${row.id}` : undefined} />{conflict ? <div id={`cr-conflict-${row.id}`} className="cr-conflict"><p>服务器备注：{row.note === null ? '空值' : row.note}</p><button type="button" onClick={() => adoptLatest(row)}>使用服务器备注</button><button type="button" onClick={() => keepDraft(row)}>保留我的修改</button></div> : draft ? <span className="cr-note-state">未保存</span> : null}</> : <span className="cr-note-value">{empty(row.note)}</span>}</td>
-                <td>{empty(row.boardCode)}</td><td>{empty(row.manufacturer)}</td><td>{empty(row.paintType)}</td><td>{empty(row.formalCode)}</td><td>{empty(row.registerMonth)}</td><td><span className={`m1-badge ${row.registerStatus === 'PENDING_REVIEW' ? 'warning' : ''}`}>{registerStatusLabel(row.registerStatus)}</span></td><td>{productionStatusLabel(row.productionApprovalStatus)}</td><td><button type="button" className="m1-button" onClick={() => setDetailId(row.id)}>查看详情</button></td>
-              </tr>;
-            })}</tbody>
-          </table>
-        </div>
-        <footer className="cr-pagination"><span>第 {data.page} / {Math.max(1, data.totalPages)} 页 · 每页 {data.pageSize} 条</span><div className="m1-button-group"><button type="button" className="m1-button" disabled={data.page <= 1 || loading || saving} onClick={() => changePage(page - 1)}>上一页</button><button type="button" className="m1-button" disabled={data.page >= data.totalPages || loading || saving} onClick={() => changePage(page + 1)}>下一页</button></div></footer>
-      </> : null}
-    </section>
-    <SourceWorkbook />
-    {pasteOpen && data ? <NotePasteDialog rows={data.items} drafts={drafts} onClose={() => setPasteOpen(false)} onApply={changes => { setDrafts(current => ({ ...current, ...Object.fromEntries(changes.map(change => [change.id, change])) })); setPasteOpen(false); setNotice(`已放入 ${changes.length} 条备注草稿，请核对后点击“保存备注”。`); }} /> : null}
-    {detailId ? <RegisterDetails id={detailId} onClose={() => setDetailId(null)} /> : null}
+    <header className="cs-heading"><div><h1>颜色清单</h1><p>按生产基地维护颜色、色板与历史标准。</p></div><div className="cs-actions"><span role="status" className={`cs-save-state ${dirty || error ? 'pending' : ''}`}>{saving ? '保存中…' : conflicts.length ? '版本冲突' : error || errors.length ? '需处理' : dirty ? `${patches.length} 条待保存` : loading ? '读取中…' : '已同步'}</span><button className="m1-button" onClick={() => setImportOpen(true)} disabled={loading || saving}><M1Icon name="upload" />导入 Excel</button><button className="m1-button" disabled={loading || !visible.length} onClick={() => void exportFile()}>导出 Excel</button><Link href="/projects/new" className="m1-button m1-primary">新建颜色项目</Link></div></header>
+    <div className="cs-filters"><label className="cs-search"><span className="cr-sr-only">搜索颜色、编号或色板</span><input type="search" maxLength={100} placeholder="搜索颜色、编号或色板" value={filters.search} onChange={e => { const value = e.target.value; void changeView(() => setFilters(x => ({ ...x, search: value }))); }} /></label><select aria-label="生产基地筛选" value={filters.base} onChange={e => { const value = e.target.value; void changeView(() => setFilters(x => ({ ...x, base: value }))); }}><option value="">全部基地</option>{facets.bases.map(base => <option key={base.id} value={base.id}>{base.name}</option>)}</select><select aria-label="漆种筛选" value={filters.paint} onChange={e => { const value = e.target.value; void changeView(() => setFilters(x => ({ ...x, paint: value }))); }}><option value="">全部漆种</option>{paintTypes.map(value => <option key={value}>{value}</option>)}</select><select aria-label="清单状态筛选" value={filters.status} onChange={e => { const value = e.target.value; void changeView(() => setFilters(x => ({ ...x, status: value }))); }}><option value="">全部状态</option>{facets.statuses.map(value => <option key={value} value={value}>{registerStatusLabel(value)}</option>)}</select><button className="m1-button" onClick={() => void changeView(() => setFilters(initialFilters))}>重置</button></div>
+    {error ? <div className="m1-error" role="alert">{error}<button className="m1-button" onClick={reload} disabled={saving}>重新读取</button></div> : null}
+    {errors.length ? <div className="m1-error" role="alert">{errors.slice(0, 8).map(item => <p key={`${item.id}:${item.field}`}>{item.message}<button onClick={() => runtime.current?.selectCell(item.id, item.field)}>定位</button></p>)}{errors.length > 8 ? <p>另有 {errors.length - 8} 项错误。</p> : null}</div> : null}
+    {conflicts.length ? <div className="cs-conflicts" role="alert"><h2>记录已被其他成员修改</h2><p>核对服务器当前值与本次输入，再选择重新编辑；不会自动覆盖。</p>{conflicts.map(patch => <div key={patch.id}><strong>{model.current!.rows.get(patch.id)!.name}</strong>{Object.entries(patch.changes).map(([field, value]) => <p key={field}>{SHEET_COLUMNS.find(column => column.key === field)?.label}：服务器「{displayValue(model.current!.rows.get(patch.id)!, field) || '空'}」 → 本次「{value ?? '空'}」</p>)}<button className="m1-button" onClick={() => resolve(patch.id, false)}>采用服务器值</button><button className="m1-button" onClick={() => resolve(patch.id, true)}>保留输入并重新编辑</button></div>)}</div> : null}
+    {dirty ? <div className="cs-save-bar"><span>{uncertain ? '上次保存结果待核实 · ' : ''}{patches.length} 条记录待保存{standardEdits ? ' · 标准修改将追加历史版本' : ''}</span>{standardEdits ? <input aria-label="标准更正原因" placeholder="填写标准更正原因" maxLength={500} value={reason} onChange={e => setReason(e.target.value)} /> : null}<button className="m1-button m1-primary" disabled={saving || (!uncertain && (!!errors.length || !!conflicts.length))} onClick={() => void save()}>{saving ? '保存中…' : uncertain ? '核实上次保存结果' : '保存修改'}</button></div> : null}
+    {total > (model.current?.rows.size ?? 0) ? <p className="m1-notice">当前载入前 {model.current?.rows.size} 条，共 {total} 条。筛选和导出仅覆盖已载入记录。</p> : null}
+    <div className={`cs-content ${panel && selectedRow ? 'with-detail' : ''}`}>
+      <div className="cs-sheet">
+        <div className="cs-tools"><button className="m1-button" title="撤销；保存过的修改将作为反向变更再次保存" disabled={loading || saving || !model.current?.undoStack.length} onClick={() => history('undo')}>撤销</button><button className="m1-button" disabled={loading || saving || !model.current?.redoStack.length} onClick={() => history('redo')}>重做</button><select aria-label="整行排序" value={sort} onChange={e => { const value = e.target.value; void changeView(() => setSort(value)); }}><option value="name:asc">颜色名称 · 升序</option><option value="name:desc">颜色名称 · 降序</option><option value="baseName:asc">生产基地 · 升序</option><option value="boardCode:asc">色板编号 · 升序</option></select><span className="cs-tool-spacer" /><button className="m1-button" disabled={loading || saving} onClick={reload}><M1Icon name="refresh" />刷新</button><button className="m1-button" onClick={() => setPanel(value => !value)}>{panel ? '收起详情' : '记录详情'}</button></div>
+        {selectedRow ? <div className="cs-cell-editor"><label htmlFor="cs-active-cell">{SHEET_COLUMNS.find(column => column.key === activeField)?.label ?? '单元格'}{activeEditable ? '' : ' · 只读'}</label>{activeOptions && activeEditable ? <select id="cs-active-cell" aria-label="当前单元格" value={activeValue} onChange={e => editActive(e.target.value)}><option value="">清空</option>{[...new Set([activeValue, ...activeOptions])].filter(Boolean).map(value => <option key={value}>{value}</option>)}</select> : <input id="cs-active-cell" aria-label="当前单元格" value={activeValue} readOnly={!activeEditable} maxLength={activeField === 'note' ? 2000 : 128} onChange={e => editActive(e.target.value)} />}</div> : null}
+        {loading && !visible.length ? <div className="cs-state" role="status">正在读取颜色记录…</div> : !visible.length ? <div className="cs-state"><h2>没有符合条件的颜色记录</h2><button className="m1-button" onClick={() => void changeView(() => setFilters(initialFilters))}>清除筛选</button></div> : <div className="cs-engine-wrap"><div ref={host} className="cs-engine" aria-label="颜色清单在线表格" data-testid="business-sheet" />{!engineReady || loading ? <div className="cs-engine-loading" role="status">{loading ? '正在读取颜色记录…' : '正在加载在线表格…'}</div> : null}</div>}
+        <footer className="cs-statusbar"><strong>颜色清单</strong><span>{visible.length} 条记录{selectedRow ? ` · ${selectedRow.name ?? '当前记录'}` : ''}</span><span>{notice || (dirty ? '编辑尚未保存' : '服务器数据')}</span></footer>
+      </div>
+      {panel && selectedRow ? <aside className="cs-detail" aria-label="记录详情"><header><h2>记录详情</h2><button aria-label="关闭记录详情" onClick={() => setPanel(false)}><M1Icon name="close" /></button></header><h3>{selectedRow.name}<span className="m1-badge">{selectedRow.base?.name ?? '基地待核对'}</span></h3><h4>基本信息</h4><dl>{SHEET_COLUMNS.slice(0, 9).map(column => <div key={column.key}><dt>{column.label}</dt><dd>{displayValue(selectedRow, column.key) || '—'}</dd></div>)}</dl>{detailError ? <p className="m1-error">{detailError}</p> : null}<h4>来源记录</h4>{detail ? detail.sources.length ? detail.sources.slice(0, 3).map((source, index) => <div className="cs-source" key={index}><M1Icon name="file" /><div><strong>{source.fileName}</strong><p>工作表：{source.sheetName}</p><p>来源行：{source.rowNumbers.join('、')}</p></div></div>) : <p>由系统项目建立</p> : <p>正在读取来源…</p>}<h4>关联项目</h4>{detail?.projects.length ? detail.projects.map(project => <Link className="cs-project-link" key={project.id} href={`/projects/${encodeURIComponent(project.id)}`}>{project.name}<M1Icon name="next" /></Link>) : <p>暂无已确认关联</p>}<button className="m1-button cs-detail-more" onClick={() => setFullDetail(true)} disabled={dirty || saving}><M1Icon name="file" />查看业务详情与历史</button><p className="cs-detail-note">名称、基地、正式编号和状态由原业务流程维护。标准更正不会授予量产许可。</p></aside> : null}
+    </div>
+    <details className="cs-source-browser"><summary>历史来源工作簿与核对</summary><SourceWorkbook /></details>
+    {fullDetail && selected ? <RegisterDetails id={selected} onClose={() => { setFullDetail(false); if (!dirty) reload(); }} /> : null}
+    {importOpen && model.current ? <SheetImport rows={[...model.current.rows.values()]} dirty={dirty} onClose={() => setImportOpen(false)} onApply={(items: SheetPatch[]) => {
+      const changes = items.flatMap(item => Object.entries(item.changes).map(([field, value]) => ({ id: item.id, field, value: value ?? null })));
+      applyChanges(changes); runtime.current?.updateValues(changes); setImportOpen(false); setNotice(`已放入 ${items.length} 条待保存记录，请核对并保存。`);
+    }} /> : null}
   </section>;
 }
-
-function NotePasteDialog({ rows, drafts, onClose, onApply }: { rows: RegisterRow[]; drafts: Drafts; onClose: () => void; onApply: (changes: RegisterNoteChange[]) => void }) {
-  const dialog = useRef<HTMLDialogElement>(null);
-  const [text, setText] = useState('');
-  const [error, setError] = useState('');
-  const [preview, setPreview] = useState<RegisterNoteChange[]>([]);
-  useEffect(() => { dialog.current?.showModal(); }, []);
-  function parse() {
-    try {
-      if (rows.some(row => drafts[row.id] && drafts[row.id]!.expectedRevision !== row.revision)) throw new Error('请先处理已有备注冲突，再粘贴新的修改。');
-      setPreview(parseRegisterNotePaste(text, rows.map(row => drafts[row.id] ? { ...row, note: drafts[row.id]!.note } : row))); setError('');
-    }
-    catch (cause) { setPreview([]); setError(errorMessage(cause)); }
-  }
-  return <dialog className="m1-modal cr-dialog" ref={dialog} aria-labelledby="cr-paste-title" onCancel={onClose} onClose={onClose}>
-    <header><h2 id="cr-paste-title">粘贴备注</h2><button type="button" className="m1-button" onClick={onClose}>取消</button></header>
-    <p>将表头、清单记录ID、记录版本和备注一起粘贴。只修改当前页备注，颜色、基地和标准关联保持原值。</p>
-    <label className="cr-paste-label" htmlFor="cr-paste-text">表格内容</label><textarea id="cr-paste-text" className="cr-paste-text" value={text} maxLength={262144} onChange={event => { setText(event.target.value); setPreview([]); setError(''); }} rows={7} autoFocus />
-    {error ? <p className="m1-error" role="alert">{error}</p> : null}
-    <button type="button" className="m1-button" onClick={parse} disabled={!text}>预览变更</button>
-    {preview.length ? <><div className="cr-table-scroll"><table className="cr-preview-table"><caption>{preview.length} 条备注变更</caption><thead><tr><th>颜色 / 基地</th><th>当前备注</th><th>粘贴后的备注</th></tr></thead><tbody>{preview.map(change => {
-      const row = rows.find(candidate => candidate.id === change.id)!;
-      return <tr key={change.id}><th>{row.name ?? '名称待核对'} / {row.base?.name ?? '基地待核对'}</th><td>{empty(drafts[row.id] ? drafts[row.id]!.note : row.note)}</td><td>{empty(change.note)}</td></tr>;
-    })}</tbody></table></div><footer className="cr-dialog-actions"><span>放入草稿后，点击清单中的“保存备注”才会写入。</span><button type="button" className="m1-button m1-primary" onClick={() => onApply(preview)}>放入备注草稿</button></footer></> : null}
-  </dialog>;
-}
-
-function RegisterDetails({ id, onClose }: { id: string; onClose: () => void }) {
-  const dialog = useRef<HTMLDialogElement>(null);
-  const [data, setData] = useState<RegisterDetail | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [refresh, setRefresh] = useState(0);
-  const [versionsPage, setVersionsPage] = useState(1);
-  const [correcting, setCorrecting] = useState(false);
-  function close() { if (!correcting || window.confirm("放弃未保存的标准更正并关闭？")) onClose(); }
-  useEffect(() => { dialog.current?.showModal(); }, []);
-  useEffect(() => {
-    const controller = new AbortController(); const timeout = setTimeout(() => controller.abort(), 15000); let active = true;
-    setLoading(true); setError('');
-    void fetchRegisterDetail(id, versionsPage, controller.signal).then(result => { if (active) setData(result); }).catch(cause => { if (active) setError(errorMessage(cause)); }).finally(() => { clearTimeout(timeout); if (active) setLoading(false); });
-    return () => { active = false; clearTimeout(timeout); controller.abort(); };
-  }, [id, refresh, versionsPage]);
-  return <dialog className="m1-modal cr-dialog" ref={dialog} aria-labelledby="cr-detail-title" onCancel={event => { event.preventDefault(); close(); }} onClose={onClose}>
-    <header><h2 id="cr-detail-title">{data?.name ?? '颜色记录'} · 标准与来源</h2><button type="button" className="m1-button" onClick={close}>关闭</button></header>
-    {loading ? <p role="status">正在读取标准和来源…</p> : error ? <div className="m1-error" role="alert"><p>{error}</p><button type="button" className="m1-button" onClick={() => setRefresh(value => value + 1)}>重新读取</button></div> : data ? <>
-      <dl className="cr-detail-summary"><div><dt>生产基地</dt><dd>{data.base?.name ?? '待核对'}</dd></div><div><dt>颜色名称</dt><dd>{empty(data.name)}</dd></div><div><dt>统一色相标准</dt><dd>{data.hueStandard?.name ?? '尚未明确关联'}</dd></div><div><dt>正式编号</dt><dd>{empty(data.formalCode)}</dd></div><div><dt>入清单月份</dt><dd>{empty(data.registerMonth)}</dd></div><div><dt>清单状态</dt><dd>{registerStatusLabel(data.registerStatus)}</dd></div><div><dt>量产状态</dt><dd>{productionStatusLabel(data.productionApprovalStatus)}</dd></div><div className="cr-full-width"><dt>备注</dt><dd>{empty(data.note)}</dd></div></dl>
-      {data.pendingReasons.length ? <section className="cr-pending-panel"><h3>待核对事项</h3><ul>{data.pendingReasons.map((reason, index) => <li key={`${index}:${reason}`}>{reason}</li>)}</ul></section> : null}
-      <section className="cr-detail-section"><h3>色板标准与历史版本</h3>{data.versions.length ? data.versions.map(version => <StandardVersion key={version.id} version={version} current={data.currentStandardVersionId === version.id} />) : <p>尚未建立色板标准。候选颜色不作为正式生产标准。</p>}{data.versionsTotalPages > 1 ? <nav className="cr-pagination" aria-label="标准版本分页"><span>版本第 {data.versionsPage} / {data.versionsTotalPages} 页 · 共 {data.versionsTotal} 个版本</span><div className="m1-button-group"><button type="button" className="m1-button" disabled={data.versionsPage <= 1 || loading || correcting} onClick={() => setVersionsPage(value => value - 1)}>上一页版本</button><button type="button" className="m1-button" disabled={data.versionsPage >= data.versionsTotalPages || loading || correcting} onClick={() => setVersionsPage(value => value + 1)}>下一页版本</button></div></nav> : null}</section>
-      <StandardCorrection key={`${data.id}:${data.revision}`} detail={data} onEditingChange={setCorrecting} onSaved={() => { setVersionsPage(1); setRefresh(value => value + 1); }} />
-      <section className="cr-detail-section"><h3>系统批量生产</h3><p>按本颜色、基地及生产日期月份汇总已完成记录。与原表口径分开呈现，不相加。</p>{data.systemProduction.items.length ? <div className="cr-table-scroll"><table className="cr-measurements"><thead><tr><th>月份</th><th>统计口径</th><th>实际数量</th><th>记录数</th></tr></thead><tbody>{data.systemProduction.items.map(fact => <tr key={fact.month}><td>{fact.month}</td><td>{fact.metricScope}</td><td>{fact.unknownQuantityCount ? `待核对（${fact.unknownQuantityCount} 条缺数量）` : empty(fact.quantity)}</td><td>{fact.recordCount}</td></tr>)}</tbody></table></div> : <p>尚无已关联的完成批量生产记录。</p>}{data.systemProduction.undatedRecordCount ? <p>{data.systemProduction.undatedRecordCount} 条记录缺少生产日期，未推算月份。</p> : null}{data.systemProduction.hasMore ? <p>显示最近 120 个月份，其他记录仍在对应项目中保留。</p> : null}</section>
-      <section className="cr-detail-section"><h3>产量记录</h3><p>按颜色、基地、月份与原口径保留；空值表示未记录，汇总行不重复计入。</p>{data.production.length ? <div className="cr-table-scroll"><table className="cr-measurements"><thead><tr><th>月份</th><th>原统计口径</th><th>原数量</th><th>来源单元格</th></tr></thead><tbody>{data.production.map(fact => <tr key={fact.id}><td>{fact.month}</td><td>{fact.metricScope}</td><td>{empty(fact.quantity)}</td><td>{empty(fact.sourceCell)}</td></tr>)}</tbody></table></div> : <p>没有已明确关联的产量；未关联原行可在来源核对中查看。</p>}{data.production.length === data.productionLimit ? <p>显示最近 {data.productionLimit} 条，其他原始月份仍保留在来源工作表。</p> : null}</section>
-      <section className="cr-detail-section"><h3>来源记录</h3>{data.sources.length ? data.sources.map((source, index) => <SourceRecord key={`${source.sheetName}:${source.rowNumbers.join(',')}:${index}`} source={source} provenance={data.provenance.filter(row => row.fileName === source.fileName && row.sheetName === source.sheetName && source.rowNumbers.includes(row.rowNumber))} />) : <p>由系统项目建立，未导入历史工作表。</p>}</section>
-      {data.projects.length ? <section className="cr-detail-section"><h3>关联项目</h3><ul className="cr-project-links">{data.projects.map(project => <li key={project.id}><Link href={`/projects/${encodeURIComponent(project.id)}`}>{project.name}</Link></li>)}</ul></section> : null}
-    </> : null}
-  </dialog>;
-}
-
-function StandardVersion({ version, current }: { version: RegisterStandardVersion; current: boolean }) {
-  return <details className="cr-version" open={current}><summary><strong>版本 {version.versionNo}</strong><span>{current ? '当前标准' : '历史标准'}</span><span>{version.boardCode ?? '色板编号未记录'}</span></summary>
-    <dl className="cr-detail-summary"><div><dt>制作单位</dt><dd>{empty(version.manufacturer)}</dd></div><div><dt>漆种</dt><dd>{empty(version.paintType)}</dd></div><div><dt>测量日期</dt><dd>{empty(version.measurementDate)}</dd></div><div><dt>原制板 / 发出日期</dt><dd>{empty(version.issueDate)}</dd></div><div><dt>原有效期限</dt><dd>{empty(version.expiryDate)}</dd></div><div><dt>系统记录时间</dt><dd>{dateLabel(version.createdAt)}</dd></div></dl>
-    <div className="cr-table-scroll"><table className="cr-measurements"><caption>多角度测量值</caption><thead><tr><th>角度</th><th>L</th><th>a</th><th>b</th></tr></thead><tbody>{version.measurements.length ? version.measurements.map((measurement, index) => <tr key={`${index}:${measurement.angle}`}><th>{measurement.angle ?? '原表未标明'}</th><td>{empty(measurement.l)}</td><td>{empty(measurement.a)}</td><td>{empty(measurement.b)}</td></tr>) : <tr><td colSpan={4}>原记录未提供测量值。</td></tr>}</tbody></table></div>
-    <div className="cr-standard-facts"><section><h4>测量条件</h4><JsonValue value={version.conditions} /></section><section><h4>原控制限</h4><JsonValue value={version.originalControlLimits} /></section></div>
-    {version.changeSummary ? <p>更正说明：{version.changeSummary}</p> : null}
-    {version.source ? <p className="cr-version-source">来源：{version.source.fileName} / {version.source.sheetName} / 第 {version.source.rowNumbers.join('、')} 行</p> : null}
-  </details>;
-}
-
-function SourceRecord({ source, provenance }: { source: RegisterSource; provenance: RegisterDetail['provenance'] }) {
-  return <details className="cr-source"><summary>{source.fileName} · {source.sheetName} · 第 {source.rowNumbers.join('、')} 行</summary>{provenance.map(row => <section className="cr-source-row" key={row.rowNumber}><h4>原表第 {row.rowNumber} 行</h4><JsonValue value={row.rawCells} /></section>)}</details>;
-}
-function JsonValue({ value }: { value: RegisterJson }) {
-  if (value === null) return <span className="cr-empty">空值</span>;
-  return <pre className="cr-json">{typeof value === 'string' ? value || '空字符串' : JSON.stringify(value, null, 2)}</pre>;
-}
-function empty(value: string | number | null) { return value === null ? <span className="cr-empty" aria-label="未记录">—</span> : value === '' ? <span className="cr-empty">空字符串</span> : String(value); }
-function dateLabel(value: string) { const parsed = new Date(value); return Number.isNaN(parsed.valueOf()) ? value : parsed.toLocaleString('zh-CN', { hour12: false }); }
-function errorMessage(error: unknown) { return error instanceof Error ? error.message : '读取失败，请重试。'; }

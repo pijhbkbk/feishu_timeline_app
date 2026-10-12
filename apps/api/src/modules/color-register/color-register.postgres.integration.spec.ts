@@ -357,4 +357,102 @@ describe.skipIf(!databaseUrl).sequential('color register PostgreSQL boundaries',
     expect(await db.r26CommandRequest.count({ where: { projectId: project.id } })).toBe(0);
   });
 
+  it('saves sheet fields through an appended standard, preserving Chinese/zero prefixes/history/source and unrelated identity', async () => {
+    const color = await colorAt('合成标准乙', 2);
+    const before = await db.color.findUniqueOrThrow({ where: { id: color.id } });
+    const latest = await db.colorVersion.findFirstOrThrow({ where: { colorId: color.id }, orderBy: { versionNo: 'desc' } });
+    const other = await colorAt('合成标准甲', 3);
+    const counts = { projects: await db.project.count(), workflows: await db.workflowTask.count(), audits: await auditCount('COLOR_REGISTER_SHEET_SAVED') };
+    const command = { operationId: operationId(), reason: '合成标准校核，保留全部测量和来源', items: [{ id: color.id, expectedRevision: before.registerRevision,
+      changes: { note: '中文多行\n保留备注', boardCode: '000001-中', manufacturer: other.manufacturer, paintType: other.paintType, registerMonth: '2026-01' } }] };
+    const result = await service.saveSheet(command, actorB);
+    expect(result.items[0]).toMatchObject({ id: color.id, name: before.name, base: { id: before.productionBaseId }, note: command.items[0]!.changes.note,
+      boardCode: '000001-中', manufacturer: other.manufacturer, paintType: other.paintType, registerMonth: '2026-01', revision: before.registerRevision + 1 });
+    const current = await db.colorVersion.findFirstOrThrow({ where: { colorId: color.id }, orderBy: { versionNo: 'desc' } });
+    expect(current.versionNo).toBe(latest.versionNo + 1);
+    expect(current.technicalData).toEqual({ ...(latest.technicalData as Prisma.JsonObject), manufacturer: other.manufacturer, paintType: other.paintType, changeSummary: command.reason });
+    expect(current.sourceReference).toEqual(latest.sourceReference);
+    expect(await db.colorVersion.findUniqueOrThrow({ where: { id: latest.id } })).toEqual(latest);
+    expect(await db.color.findUniqueOrThrow({ where: { id: color.id } })).toMatchObject({ name: before.name, hueStandardId: before.hueStandardId, projectId: before.projectId, code: before.code, productionBaseId: before.productionBaseId });
+    const refreshed = await new ColorRegisterService(prisma()).detail(color.id, {}, actorA);
+    expect(refreshed).toMatchObject(result.items[0]!);
+    expect(await service.saveSheet(command, actorB)).toEqual(result);
+    const noOp = await service.saveSheet({ ...command, operationId: operationId(), reason: undefined, items: [{ ...command.items[0]!, expectedRevision: result.items[0]!.revision }] }, actorB);
+    expect(noOp).toEqual(result);
+    expect(await auditCount('COLOR_REGISTER_SHEET_SAVED')).toBe(counts.audits + 1);
+    expect(await db.project.count()).toBe(counts.projects); expect(await db.workflowTask.count()).toBe(counts.workflows);
+    const filtered = await service.list({ paintType: other.paintType }, actorA);
+    expect(filtered.items.every(item => item.paintType === other.paintType)).toBe(true);
+    expect(filtered.facets.paintTypes).toContain(other.paintType);
+    expect(filtered.facets.manufacturers).toContain(other.manufacturer);
+  });
+
+  it('atomically rejects a later invalid dictionary value and requires a reason only for actual standard changes', async () => {
+    const colors = (await Promise.all([colorAt('合成标准甲', 3), colorAt('合成标准乙', 2)])).sort((a, b) => a.id.localeCompare(b.id));
+    const before = await ownCounts();
+    const command = { operationId: operationId(), reason: '合成批次', items: [
+      { id: colors[0]!.id, expectedRevision: colors[0]!.registerRevision, changes: { note: '这项也应回滚' } },
+      { id: colors[1]!.id, expectedRevision: colors[1]!.registerRevision, changes: { manufacturer: `不存在制作单位-${run}` } },
+    ] };
+    await expect(service.saveSheet(command, actorA)).rejects.toMatchObject({ status: 400, response: { colorId: colors[1]!.id, field: 'manufacturer' } });
+    expect(await ownCounts()).toEqual(before);
+    for (const color of colors) expect(await db.color.findUniqueOrThrow({ where: { id: color.id } })).toMatchObject({ registerNote: color.registerNote, registerRevision: color.registerRevision });
+    expect(await commandCount(command.operationId)).toBe(0);
+    await expect(service.saveSheet({ operationId: operationId(), items: [{ id: colors[0]!.id, expectedRevision: colors[0]!.registerRevision, changes: { boardCode: 'requires-reason' } }] }, actorA)).rejects.toMatchObject({ status: 400, response: { field: 'reason' } });
+  });
+
+  it('rejects unapproved or revoked writers and controlled fields without mutating a row', async () => {
+    const color = await colorAt('合成标准乙', 2); const before = await ownCounts();
+    const command = { operationId: operationId(), items: [{ id: color.id, expectedRevision: color.registerRevision, changes: { note: '不可写入' } }] };
+    await expect(service.saveSheet(command, outsider)).rejects.toMatchObject({ status: 403 });
+    for (const field of ['name', 'productionBaseId', 'formalCode', 'registerStatus', 'sourceReference']) {
+      await expect(service.saveSheet({ ...command, items: [{ ...command.items[0]!, changes: { [field]: 'forged' } }] }, actorA)).rejects.toMatchObject({ status: 400 });
+    }
+    await db.user.update({ where: { id: actorB.id }, data: { teamAccessApproved: false } });
+    try { await expect(service.saveSheet(command, actorB)).rejects.toMatchObject({ status: 403 }); }
+    finally { await db.user.update({ where: { id: actorB.id }, data: { teamAccessApproved: true } }); }
+    expect(await ownCounts()).toEqual(before);
+  });
+
+  it('does not promote candidates or pending-review records via table edits', async () => {
+    const base = await colorAt('合成标准乙', 2);
+    for (const registerStatus of ['CANDIDATE', 'PENDING_REVIEW'] as const) {
+      const color = await db.color.create({ data: { name: `合成不可推进-${registerStatus}-${run}`, productionBaseId: base.productionBaseId, registerStatus } });
+      directColors.push(color.id);
+      await expect(service.saveSheet({ operationId: operationId(), reason: '不应推进', items: [{ id: color.id, expectedRevision: 1, changes: { boardCode: 'bad' } }] }, actorA)).rejects.toMatchObject({ status: 400, response: { colorId: color.id } });
+      expect(await db.color.findUniqueOrThrow({ where: { id: color.id } })).toEqual(color);
+      expect(await db.colorVersion.count({ where: { colorId: color.id } })).toBe(0);
+      expect((await service.saveSheet({ operationId: operationId(), items: [{ id: color.id, expectedRevision: 1, changes: { note: '备注仍可合法保存' } }] }, actorA)).items[0]).toMatchObject({ registerStatus, revision: 2 });
+    }
+  });
+
+  it('serializes sheet retries, returns current values for stale writes, and uses CAS for saved undo', async () => {
+    const color = await colorAt('合成标准乙', 2);
+    const command = { operationId: operationId(), items: [{ id: color.id, expectedRevision: color.registerRevision, changes: { note: '保存后可撤销' } }] };
+    const beforeAudits = await auditCount('COLOR_REGISTER_SHEET_SAVED');
+    const results = await Promise.all([service.saveSheet(command, actorA), service.saveSheet(command, actorA)]);
+    expect(results[0]).toEqual(results[1]); expect(await auditCount('COLOR_REGISTER_SHEET_SAVED')).toBe(beforeAudits + 1);
+    await expect(service.saveSheet({ ...command, operationId: operationId() }, actorB)).rejects.toMatchObject({ status: 409, response: { colorId: color.id, current: { note: '保存后可撤销', revision: color.registerRevision + 1 } } });
+    await expect(service.saveSheet({ ...command, items: [{ ...command.items[0]!, changes: { note: '更改已使用操作内容' } }] }, actorA)).rejects.toMatchObject({ status: 409 });
+    const undo = await service.saveSheet({ operationId: operationId(), items: [{ id: color.id, expectedRevision: results[0]!.items[0]!.revision, changes: { note: color.registerNote } }] }, actorA);
+    expect(undo.items[0]).toMatchObject({ note: color.registerNote, revision: color.registerRevision + 2 });
+    const outcomes = await Promise.allSettled([actorA, actorB].map((actor, i) => service.saveSheet({ operationId: operationId(), items: [{ id: color.id, expectedRevision: undo.items[0]!.revision, changes: { note: `新的并发值-${i}` } }] }, actor)));
+    expect(outcomes.filter(item => item.status === 'fulfilled')).toHaveLength(1);
+    expect(outcomes.filter(item => item.status === 'rejected')).toHaveLength(1);
+    await expect(service.saveSheet({ operationId: operationId(), items: [{ id: color.id, expectedRevision: undo.items[0]!.revision, changes: { note: '旧撤销不可覆盖他人' } }] }, actorA)).rejects.toMatchObject({ status: 409 });
+  });
+
+  it('rolls back a sheet standard and note if its real audit insertion fails', async () => {
+    const color = await colorAt('合成标准乙', 2);
+    const before = await db.color.findUniqueOrThrow({ where: { id: color.id } });
+    const versions = await db.colorVersion.findMany({ where: { colorId: color.id }, orderBy: { versionNo: 'asc' } });
+    const failed = failAfterAudit('COLOR_REGISTER_SHEET_SAVED');
+    const command = { operationId: operationId(), reason: '合成事务故障', items: [{ id: color.id, expectedRevision: color.registerRevision, changes: { boardCode: 'rollback-board', note: 'rollback-note', manufacturer: null, paintType: null, registerMonth: null } }] };
+    await expect(new ColorRegisterService(failed.client).saveSheet(command, actorA)).rejects.toThrow('SYNTHETIC_FAILURE_AFTER_AUDIT_INSERT');
+    expect(failed.reached()).toBe(1);
+    expect(await db.color.findUniqueOrThrow({ where: { id: color.id } })).toEqual(before);
+    expect(await db.colorVersion.findMany({ where: { colorId: color.id }, orderBy: { versionNo: 'asc' } })).toEqual(versions);
+    expect(await commandCount(command.operationId)).toBe(0);
+  });
+
 });

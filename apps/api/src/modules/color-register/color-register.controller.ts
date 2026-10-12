@@ -11,6 +11,8 @@ export class ColorRegisterController {
   list(@Query() query: Record<string, unknown>, @CurrentUser() actor: AuthenticatedUser) { return this.service.list(query, actor); }
   @Get('sources') @Permissions('project.read')
   sources(@Query() query: Record<string, unknown>, @CurrentUser() actor: AuthenticatedUser) { return this.service.sources(query, actor); }
+  @Patch('sheet') @Permissions('project.write')
+  sheet(@Body() body: unknown, @CurrentUser() actor: AuthenticatedUser) { return this.service.saveSheet(body, actor); }
   @Patch('notes') @Permissions('project.write')
   notes(@Body() body: unknown, @CurrentUser() actor: AuthenticatedUser) { return this.service.saveNotes(body, actor); }
   @Get(':id') @Permissions('project.read')
