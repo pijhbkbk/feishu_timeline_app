@@ -190,7 +190,7 @@ export function ColorRegisterWorkspace() {
     </div>
     <details className="cs-source-browser"><summary>历史来源工作簿与核对</summary><SourceWorkbook /></details>
     {fullDetail && selected ? <RegisterDetails id={selected} onClose={() => { setFullDetail(false); if (!dirty) reload(); }} /> : null}
-    {importOpen && model.current ? <SheetImport rows={[...model.current.rows.values()]} dirty={dirty} onClose={() => setImportOpen(false)} onApply={(items: SheetPatch[]) => {
+    {importOpen && model.current ? <SheetImport rows={[...model.current.rows.values()]} dirty={dirty} paintTypes={paintTypes} manufacturers={manufacturers} onClose={() => setImportOpen(false)} onApply={(items: SheetPatch[]) => {
       const changes = items.flatMap(item => Object.entries(item.changes).map(([field, value]) => ({ id: item.id, field, value: value ?? null })));
       applyChanges(changes); runtime.current?.updateValues(changes); setImportOpen(false); setNotice(`已放入 ${items.length} 条待保存记录，请核对并保存。`);
     }} /> : null}

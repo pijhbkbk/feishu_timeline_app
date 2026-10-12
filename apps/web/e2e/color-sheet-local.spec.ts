@@ -316,6 +316,17 @@ test('Synthetic color sheet: actual canvas, clipboard batch, undo, sorted ID, XL
   await dialog.getByRole('button', { name: '关闭', exact: true }).click();
   expect((await detail(page, top.id)).note).toBe(importNote);
   expect((await detail(page, bottom.id)).note).toBe(sortedNote);
+  const ordinary = new ExcelJS.Workbook(), ordinarySheet = ordinary.addWorksheet('普通清单');
+  ordinarySheet.addRow(['颜色名称', '生产基地', '色板编号']);
+  ordinarySheet.addRow(['普通表格待处理颜色', top.baseName, '000000789']);
+  const ordinaryFile = info.outputPath('ordinary-preview-only.xlsx'); await ordinary.xlsx.writeFile(ordinaryFile);
+  dialog = await importPreview(page, ordinaryFile);
+  await expect(dialog.locator('.cs-import-counts')).toContainText('待处理 1');
+  await expect(dialog.locator('.cs-import-table')).toContainText('普通表格待处理颜色');
+  await expect(dialog.locator('.cs-import-table')).toContainText('000000789');
+  await expect(dialog.getByRole('button', { name: '应用到待保存内容', exact: true })).toBeDisabled();
+  await screenshot(page, info, 'ordinary-mapping-preview-only', 1440);
+  await dialog.getByRole('button', { name: '关闭', exact: true }).click();
   for (const originalDetail of originalDetails) {
     const finalDetail = await detail(page, originalDetail.id);
     expect(finalDetail).toMatchObject({ name: originalDetail.name, base: originalDetail.base, formalCode: originalDetail.formalCode, registerStatus: originalDetail.registerStatus, productionApprovalStatus: originalDetail.productionApprovalStatus, projects: originalDetail.projects, sources: originalDetail.sources });

@@ -6,7 +6,7 @@ import type { CatalogColumnMapping, CatalogEditableField, CatalogField, CatalogI
 
 const fields: Array<[CatalogField, string]> = [['id','记录ID'],['revision','记录版本'],['name','颜色名称'],['baseName','生产基地'],['note','备注'],['boardCode','色板编号'],['manufacturer','制作单位'],['paintType','漆种'],['formalCode','正式编号'],['registerMonth','入清单月份'],['registerStatus','清单状态'],['sourceSummary','来源信息']];
 const clearable: Array<[CatalogEditableField, string]> = [['note','备注'],['boardCode','色板编号'],['manufacturer','制作单位'],['paintType','漆种'],['registerMonth','入清单月份']];
-export function SheetImport({ rows, dirty, onClose, onApply }: { rows: RegisterRow[]; dirty: boolean; onClose: () => void; onApply: (items: SheetPatch[]) => void }) {
+export function SheetImport({ rows, dirty, paintTypes, manufacturers, onClose, onApply }: { rows: RegisterRow[]; dirty: boolean; paintTypes: string[]; manufacturers: string[]; onClose: () => void; onApply: (items: SheetPatch[]) => void }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [workbook, setWorkbook] = useState<CatalogImportWorkbook | null>(null); const [sheetId, setSheetId] = useState('');
   const [headerRow, setHeaderRow] = useState(1); const [mapping, setMapping] = useState<CatalogColumnMapping>({});
@@ -25,7 +25,7 @@ export function SheetImport({ rows, dirty, onClose, onApply }: { rows: RegisterR
   async function configure(id: string, row: number) { setSheetId(id); setHeaderRow(row); setPreview(null); if (workbook) { const exchange = await import('./sheet-exchange'); const sheet = workbook.sheets.find(item => item.id === id); if (sheet) setMapping(exchange.suggestCatalogMapping(sheet, row)); } }
   async function inspect() {
     if (!workbook) return; setBusy(true); setError('');
-    try { const exchange = await import('./sheet-exchange'); setPreview(exchange.previewCatalogImport(workbook, { sheetId, headerRow, mapping, clearBlankFields }, rows)); }
+    try { const exchange = await import('./sheet-exchange'); setPreview(exchange.previewCatalogImport(workbook, { sheetId, headerRow, mapping, clearBlankFields, paintTypes, manufacturers }, rows)); }
     catch (cause) { setError(cause instanceof Error ? cause.message : '无法预览。'); } finally { setBusy(false); }
   }
   const sheet = workbook?.sheets.find(item => item.id === sheetId); const headers = sheet?.rows[headerRow - 1] ?? [];
@@ -41,7 +41,7 @@ export function SheetImport({ rows, dirty, onClose, onApply }: { rows: RegisterR
       <button className="m1-button" disabled={busy} onClick={() => void inspect()}>预览变更</button>
       {preview ? <><div className="cs-import-counts" role="status"><span>新增 {preview.counts.added}</span><span>更新 {preview.counts.updated}</span><span>不变 {preview.counts.unchanged}</span><span>错误 {preview.counts.errors}</span><span>冲突 {preview.counts.conflicts}</span><span>待处理 {preview.counts.pending}</span></div>
         {preview.errors.length ? <div className="m1-error" role="alert">{preview.errors.slice(0, 8).map((issue, index) => <p key={index}>第 {issue.row} 行：{issue.message}</p>)}</div> : null}
-        <div className="cs-import-scroll"><table className="cs-import-table"><thead><tr><th>原表行</th><th>结果</th><th>实际变化</th></tr></thead><tbody>{preview.records.slice(0, 200).map(record => <tr key={record.row}><td>{record.row}</td><td>{({ update:'更新',unchanged:'不变',error:'错误',conflict:'冲突',pending:'待处理' })[record.status]}<small>{record.message}</small></td><td>{record.diffs.length ? record.diffs.map(diff => <p key={diff.field}>{diff.label}：{diff.before ?? '空'} → {diff.after ?? '空'}</p>) : '—'}{record.errors.map((issue, index) => <p key={index}>{issue.message}</p>)}</td></tr>)}</tbody></table></div>
+        <div className="cs-import-scroll"><table className="cs-import-table"><thead><tr><th>原表行</th><th>结果</th><th>映射内容 / 实际变化</th></tr></thead><tbody>{preview.records.slice(0, 200).map(record => <tr key={record.row}><td>{record.row}</td><td>{({ update:'更新',unchanged:'不变',error:'错误',conflict:'冲突',pending:'待处理' })[record.status]}<small>{record.message}</small></td><td>{record.diffs.length ? record.diffs.map(diff => <p key={diff.field}>{diff.label}：{diff.before ?? '空'} → {diff.after ?? '空'}</p>) : record.status === 'pending' ? Object.entries(record.values).map(([field, value]) => <p key={field}>{fields.find(([key]) => key === field)?.[1] ?? field}：{value ?? '空'}</p>) : '—'}{record.errors.map((issue, index) => <p key={index}>{issue.message}</p>)}</td></tr>)}</tbody></table></div>
         {preview.records.length > 200 ? <p>预览显示前 200 行；全部 {preview.records.length} 行均已校验。</p> : null}
         {preview.requiresReason ? <p>标准字段修改在正式保存前须填写更正原因，并追加历史版本。</p> : null}
         {dirty ? <p className="m1-notice">请先保存或放弃工作区现有编辑，再应用导入，避免覆盖待保存内容。</p> : null}
