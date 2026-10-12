@@ -46,6 +46,7 @@ const commandNames = [
 ];
 const sheetCommands = new Set(commandNames.map(id => `sheet.command.${id}`));
 const hiddenCommands = [
+  'ui.operation.activate-format-painter', 'ui.operation.continuous-format-painter',
   'sheet.command.set-once-format-painter', 'sheet.command.set-infinite-format-painter', 'sheet.command.apply-format-painter',
   'formula-ui.operation.insert-function', 'formula-ui.operation.more-functions', 'formula.command.insert-function',
   ...['common', 'financial', 'logical', 'text', 'date', 'lookup', 'math', 'statistical', 'engineering', 'information', 'database'].map(category => `formula-ui.operation.insert-function.${category}`),
@@ -130,6 +131,7 @@ export function createBusinessSheet(options: BusinessSheetOptions): BusinessShee
         reject(event, '业务清单不允许更改结构、局部排序或执行公式。'); return;
       }
       if (event.type === CommandType.OPERATION && /^sheet\.formula-embedding-editor\.__INTERNAL_EDITOR__DOCS_NORMAL\.[\w-]{4}$/.test(event.id)) return;
+      if (['ui.operation.activate-format-painter', 'ui.operation.continuous-format-painter'].includes(event.id)) { reject(event, '此格式操作未在业务清单开放。'); return; }
       if (/^(?:formula\.command\.|formula-ui\.operation\.(?:insert-function|more-functions))/.test(event.id)) { reject(event, '业务清单不支持公式，请输入文本。'); return; }
       if (forbiddenSheetCommand(event.id) || (event.type === CommandType.COMMAND && event.id.startsWith('sheet.command.') && !sheetCommands.has(event.id))) {
         reject(event, '请使用清单筛选和排序；此操作不适用于业务记录。');

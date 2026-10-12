@@ -255,6 +255,7 @@ test('Synthetic color sheet: actual canvas, clipboard batch, undo, sorted ID, XL
   await page.goto('/admin/color-database');
   await expect(page.getByTestId('business-sheet')).toBeVisible();
   await expect(page.locator('.cs-engine-loading')).toHaveCount(0, { timeout: 60000 });
+  await expect(page.getByRole('button', { name: '格式刷', exact: true })).toHaveCount(0);
   await expect(page.getByRole('complementary', { name: '记录详情' })).toContainText('来源行');
   await screenshot(page, info, 'source-records-main-and-detail', 1440);
   await page.getByPlaceholder('搜索颜色、编号或色板', { exact: true }).fill(`不存在的筛选_${runLabel}`);
