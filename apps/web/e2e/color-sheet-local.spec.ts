@@ -192,6 +192,7 @@ async function selectCanvas(page: Page, row: FixtureRow) {
 async function editCanvas(page: Page, row: FixtureRow, value: string) {
   const point = await selectCanvas(page, row);
   await page.mouse.dblclick(point.x, point.y);
+  await expect(page.locator('[id="__editor___INTERNAL_EDITOR__DOCS_NORMAL"][contenteditable="true"]')).toBeFocused();
   await page.keyboard.press(`${modifier}+A`);
   await page.keyboard.insertText(value);
   await page.keyboard.press('Enter');

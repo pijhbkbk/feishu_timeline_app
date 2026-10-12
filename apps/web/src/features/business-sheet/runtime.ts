@@ -2,7 +2,7 @@
 
 import { CellValueType, CommandType, LifecycleStages, type ICellData, type IWorkbookData, type IObjectMatrixPrimitiveType } from '@univerjs/core';
 import { createUniver, LocaleType, mergeLocales } from '@univerjs/presets';
-import { UniverSheetsCorePreset, UniverFormulaEnginePlugin, UniverSheetsFormulaPlugin, UniverSheetsFormulaUIPlugin } from '@univerjs/preset-sheets-core';
+import { UniverSheetsCorePreset } from '@univerjs/preset-sheets-core';
 import CoreZhCN from '@univerjs/preset-sheets-core/locales/zh-CN';
 import { setNonce } from 'get-nonce';
 import { BusinessSheetModel, VALUE_MUTATION, allowedSheetMutation, forbiddenSheetCommand, type BusinessSheetChange, type BusinessSheetColumn, type BusinessSheetRow, type BusinessSheetUpdate } from './runtime-model';
@@ -46,6 +46,7 @@ const commandNames = [
 ];
 const sheetCommands = new Set(commandNames.map(id => `sheet.command.${id}`));
 const hiddenCommands = [
+  'formula-ui.operation.insert-function', 'formula-ui.operation.more-functions', 'formula.command.insert-function',
   'univer.command.undo', 'univer.command.redo', 'sheet.command.insert-sheet', 'sheet.command.remove-sheet',
   'sheet.command.insert-row', 'sheet.command.insert-col', 'sheet.command.remove-row', 'sheet.command.remove-col',
   'sheet.command.insert-row-before', 'sheet.command.insert-row-after', 'sheet.command.insert-col-before', 'sheet.command.insert-col-after',
@@ -66,7 +67,7 @@ const hiddenCommands = [
 
 function textCell(value: string | null, header = false): ICellData {
   return { v: value, t: CellValueType.STRING, f: null, p: null,
-    s: { ff: 'PingFang SC', fs: 13, n: { pattern: '@' }, ...(header ? { bl: 1, bg: { rgb: '#edf3ee' }, cl: { rgb: '#264c3b' } } : {}) } };
+    s: { ff: 'PingFang SC', fs: 11, bl: header ? 1 : 0, n: { pattern: '@' }, ...(header ? { bg: { rgb: '#edf3ee' }, cl: { rgb: '#264c3b' } } : {}) } };
 }
 
 export function createBusinessSheet(options: BusinessSheetOptions): BusinessSheetRuntime {
@@ -89,19 +90,13 @@ export function createBusinessSheet(options: BusinessSheetOptions): BusinessShee
     } },
   };
   const preset = UniverSheetsCorePreset({ container: options.container, header: true, toolbar: true,
-    formulaBar: false, disableAutoFocus: true,
+    formulaBar: false,
     footer: { sheetBar: false, statisticBar: false, menus: false, zoomSlider: true },
     menu: Object.fromEntries(hiddenCommands.map(id => [id, { hidden: true }])),
   });
-  // CorePreset retains formula service dependencies, but no worker or formula execution is enabled.
-  preset.plugins = preset.plugins.filter(entry => {
-    const plugin = Array.isArray(entry) ? entry[0] : entry;
-    return plugin !== UniverSheetsFormulaPlugin && plugin !== UniverSheetsFormulaUIPlugin;
-  }).map(entry => {
-    const plugin = Array.isArray(entry) ? entry[0] : entry;
-    if (plugin !== UniverFormulaEnginePlugin) return entry;
-    return [plugin, { ...(Array.isArray(entry) ? entry[1] : {}), notExecuteFormula: true }];
-  });
+  // The core preset supplies its normal text editor through the formula UI.
+  // Keep those editor dependencies; the value boundary rejects formulas before
+  // they can enter the workbook or a business save.
   const { univer, univerAPI } = createUniver({ locale: LocaleType.ZH_CN, locales: { [LocaleType.ZH_CN]: mergeLocales(CoreZhCN) }, presets: [preset] });
   let disposed = false; let silent = 0; let editing: { row: number; col: number } | null = null;
   let resolveReady!: () => void;
@@ -126,17 +121,20 @@ export function createBusinessSheet(options: BusinessSheetOptions): BusinessShee
         if (event.params?.unitId !== workbookId || event.params?.subUnitId !== SHEET_ID) return;
         const checked = model.validate(event.params.cellValue);
         if (checked.error) reject(event, checked.error);
+        else if ((event.options?.fromFormula || event.options?.applyFormulaCalculationResult) && checked.changes.length) reject(event, '公式结果不能改写业务单元格。');
         return;
       }
       if (event.type === CommandType.MUTATION && /^(?:sheet|sheets)\./.test(event.id) && !allowedSheetMutation(event.id)) {
         reject(event, '业务清单不允许更改结构、局部排序或执行公式。'); return;
       }
+      if (event.type === CommandType.OPERATION && /^sheet\.formula-embedding-editor\.__INTERNAL_EDITOR__DOCS_NORMAL\.[\w-]{4}$/.test(event.id)) return;
+      if (/^(?:formula\.command\.|formula-ui\.operation\.(?:insert-function|more-functions))/.test(event.id)) { reject(event, '业务清单不支持公式，请输入文本。'); return; }
       if (forbiddenSheetCommand(event.id) || (event.type === CommandType.COMMAND && event.id.startsWith('sheet.command.') && !sheetCommands.has(event.id))) {
         reject(event, '请使用清单筛选和排序；此操作不适用于业务记录。');
       }
     }));
     subscriptions.push(univerAPI.addEvent(univerAPI.Event.CommandExecuted, event => {
-      if (silent || disposed || event.id !== VALUE_MUTATION || event.params?.unitId !== workbookId || event.params?.subUnitId !== SHEET_ID) return;
+      if (silent || disposed || event.options?.fromFormula || event.options?.applyFormulaCalculationResult || event.id !== VALUE_MUTATION || event.params?.unitId !== workbookId || event.params?.subUnitId !== SHEET_ID) return;
       const checked = model.validate(event.params.cellValue);
       if (checked.error || !checked.changes.length) return;
       model.apply(checked.changes); options.onChanges(checked.changes);
