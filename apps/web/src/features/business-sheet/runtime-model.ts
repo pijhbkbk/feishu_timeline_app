@@ -70,7 +70,7 @@ export class BusinessSheetModel {
         if (!/^(0|[1-9]\d*)$/.test(colKey) || row > this.rows.length || col >= this.columns.length) return reject('不能在业务记录范围之外输入。');
         if (raw !== null && !record(raw)) return reject('单元格内容无效。');
         const patch: CellPatch = raw;
-        if (patch && Object.keys(patch).some(key => !['v', 't', 's', 'p', 'f', 'si', 'ref', 'ft', 'fd'].includes(key))) return reject('单元格包含不支持的内容。');
+        if (patch && (Object.keys(patch).some(key => !['v', 't', 's', 'p', 'f', 'si', 'ref', 'ft', 'fd', 'custom'].includes(key)) || (patch.custom !== undefined && patch.custom !== null))) return reject('单元格包含不支持的内容。');
         if (patch && ['f', 'si', 'ref', 'ft', 'fd'].some(key => patch[key] !== undefined && patch[key] !== null && patch[key] !== '')) return reject('业务清单不支持公式，请输入文本。');
         if (patch && own(patch, 'p') && patch.p === null && !own(patch, 'v')) return reject('不能仅移除单元格正文。');
         let next = this.value(row, col); let hasValue = patch === null;

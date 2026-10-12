@@ -118,7 +118,8 @@ export function ColorRegisterWorkspace() {
         runtime.current?.updateValues(result.items.flatMap(row => EDITABLE_FIELDS.map(field => ({ id: row.id, field, value: current.display(row.id)[field] }))));
         setNotice(`已核实上次保存结果；${current.patches().length} 条新编辑仍待保存。`); bump();
       } catch (cause) {
-        if (cause instanceof ApiRequestError && [400, 401, 403, 404, 409, 422].includes(cause.status)) {
+        // Authentication and route failures during a replay cannot establish whether the original command committed.
+        if (cause instanceof ApiRequestError && [400, 409, 422].includes(cause.status)) {
           unconfirmed.current = null; setUncertain(false); retry.current = null;
           if (cause.status === 409) {
             try { const latest = await readCatalog(AbortSignal.timeout(30000)); current.latest(latest.items); runtime.current?.updateValues([...current.rows.keys()].flatMap(id => SHEET_COLUMNS.map(column => ({ id, field: column.key, value: displayValue(current.display(id), column.key) })))); } catch { /* Keep the original draft for explicit reload. */ }

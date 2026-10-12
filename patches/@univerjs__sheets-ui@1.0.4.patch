@@ -1,0 +1,28 @@
+--- a/lib/es/index.js
++++ b/lib/es/index.js
+@@ -12917,7 +12917,10 @@
+ 			p: null
+ 		} } };
+ 		else {
+-			const pattern = getNumfmtParseValueFilter(text, parseOptions);
++			const worksheet = workbook && workbook.getSheetBySheetId(subUnitId);
++			const targetStyle = worksheet && worksheet.getCellStyle(range.rows[0], range.cols[0]);
++			const isTextCell = targetStyle && targetStyle.n && targetStyle.n.pattern === "@";
++			const pattern = isTextCell ? null : getNumfmtParseValueFilter(text, parseOptions);
+ 			if (pattern === null || pattern === void 0 ? void 0 : pattern.z) cellValue = { [range.rows[0]]: { [range.cols[0]]: {
+ 				v: pattern.v,
+ 				s: { n: { pattern: pattern.z } },
+--- a/lib/cjs/index.js
++++ b/lib/cjs/index.js
+@@ -12918,7 +12918,10 @@
+ 			p: null
+ 		} } };
+ 		else {
+-			const pattern = (0, _univerjs_core.getNumfmtParseValueFilter)(text, parseOptions);
++			const worksheet = workbook && workbook.getSheetBySheetId(subUnitId);
++			const targetStyle = worksheet && worksheet.getCellStyle(range.rows[0], range.cols[0]);
++			const isTextCell = targetStyle && targetStyle.n && targetStyle.n.pattern === "@";
++			const pattern = isTextCell ? null : (0, _univerjs_core.getNumfmtParseValueFilter)(text, parseOptions);
+ 			if (pattern === null || pattern === void 0 ? void 0 : pattern.z) cellValue = { [range.rows[0]]: { [range.cols[0]]: {
+ 				v: pattern.v,
+ 				s: { n: { pattern: pattern.z } },

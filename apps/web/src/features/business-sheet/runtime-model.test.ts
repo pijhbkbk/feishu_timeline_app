@@ -35,6 +35,8 @@ describe('business sheet identity and mutation boundary', () => {
     expect(result.error).toBeNull(); model.apply(result.changes);
     expect(model.value(1, 1)).toBe('0'); expect(model.value(2, 1)).toBe('甲\n乙');
     expect(model.validate({ 1: { 1: null } }).changes[0]?.value).toBeNull();
+    expect(model.validate({ 1: { 1: { v:null, p:null, f:null, si:null, custom:null } } }).changes[0]?.value).toBeNull();
+    expect(model.validate({ 1: { 1: { v:'值', custom:{ recordId:'forged' } } } }).error).toBeTruthy();
   });
   it('rejects structural mutations and commands including sort/move/insert/merge', () => {
     for (const action of ['insert-row', 'move-range', 'reorder-range', 'set-worksheet-row-count', 'add-worksheet-merge']) expect(allowedSheetMutation(`sheet.mutation.${action}`)).toBe(false);

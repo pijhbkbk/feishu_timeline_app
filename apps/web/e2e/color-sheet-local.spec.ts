@@ -253,6 +253,12 @@ test('Synthetic color sheet: actual canvas, clipboard batch, undo, sorted ID, XL
   await expect(page.locator('.cs-engine-loading')).toHaveCount(0, { timeout: 60000 });
   await expect(page.getByRole('complementary', { name: '记录详情' })).toContainText('来源行');
   await screenshot(page, info, 'source-records-main-and-detail', 1440);
+  await page.getByPlaceholder('搜索颜色、编号或色板', { exact: true }).fill(`不存在的筛选_${data.runId}`);
+  await expect(page.getByRole('heading', { name: '没有符合条件的颜色记录', exact: true })).toBeVisible();
+  await screenshot(page, info, 'empty-filter-state', 1280);
+  await page.getByRole('button', { name: '清除筛选', exact: true }).click();
+  await expect(page.locator('.cs-engine-loading')).toHaveCount(0, { timeout: 60000 });
+  await page.setViewportSize({ width: 1440, height: 900 });
   await page.getByRole('link', { name: '新建颜色项目', exact: true }).click();
   await expect(page).toHaveURL(/\/projects\/new$/);
   await expect(page.getByRole('heading', { name: '新建颜色项目', exact: true })).toBeVisible();
@@ -267,6 +273,27 @@ test('Synthetic color sheet: actual canvas, clipboard batch, undo, sorted ID, XL
   await page.getByRole('button', { name: '撤销', exact: true }).click(); await save(page);
   const undone = await detail(page, first.id);
   expect(undone.note).toBe(original.note); expect(undone.revision).toBe(saved.revision + 1);
+
+  // Native Delete must clear the business value, and saved undo must create a new revision.
+  await selectCanvas(page, first);
+  await page.keyboard.press('Delete');
+  await expect(page.locator('.cs-save-bar')).toBeVisible();
+  await save(page);
+  const cleared = await detail(page, first.id);
+  expect(cleared.note).toBeNull(); expect(cleared.revision).toBe(undone.revision + 1);
+  await page.getByRole('button', { name: '撤销', exact: true }).click(); await save(page);
+  expect((await detail(page, first.id)).note).toBe(original.note);
+
+  // Single-cell paste must honor the text column instead of coercing a date to an Excel serial.
+  await selectCanvas(page, first);
+  await page.evaluate(() => navigator.clipboard.writeText('2026-10'));
+  await page.keyboard.press(`${modifier}+V`);
+  await expect(page.getByRole('button', { name: '保存修改', exact: true })).toBeEnabled();
+  await save(page); expect((await detail(page, first.id)).note).toBe('2026-10');
+  await selectCanvas(page, first); await page.keyboard.press(`${modifier}+C`);
+  await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe('2026-10');
+  await page.getByRole('button', { name: '撤销', exact: true }).click(); await save(page);
+  expect((await detail(page, first.id)).note).toBe(original.note);
 
   // Clear source-order assumptions: determine the two visible rows from real canvas text.
   const positions = await Promise.all(data.rows.map(async row => ({ row, position: await sample(page, row.baseName) })));
@@ -461,6 +488,19 @@ test('Synthetic color sheet: lost save response preserves a later reversion and 
   await expect(page.getByRole('button', { name: '核实上次保存结果', exact: true })).toBeEnabled();
   expect((await detail(page, row.id)).revision).toBe(before.revision + 1);
   await page.getByLabel('当前单元格', { exact: true }).fill(before.note ?? '');
+  // Explicit negative-response injection: an auth rejection of the retry says
+  // nothing about the already committed original command.
+  for (const status of [401, 403]) {
+    await page.route('**/api/color-register/sheet', async route => {
+      expect(route.request().postDataJSON()).toEqual(command);
+      await route.fulfill({ status, contentType: 'application/json', body: JSON.stringify({ message: status === 401 ? 'Unauthorized' : 'Forbidden' }) });
+    }, { times: 1 });
+    await page.getByRole('button', { name: '核实上次保存结果', exact: true }).click();
+    await expect(page.getByRole('alert')).toContainText('尚未确认上次保存');
+    await expect(page.getByRole('button', { name: '核实上次保存结果', exact: true })).toBeEnabled();
+    await expect(page.getByLabel('当前单元格', { exact: true })).toHaveValue(before.note ?? '');
+    expect((await detail(page, row.id)).revision).toBe(before.revision + 1);
+  }
   const replayResponse = page.waitForResponse(response => response.request().method() === 'PATCH' && new URL(response.url()).pathname === '/api/color-register/sheet');
   await page.getByRole('button', { name: '核实上次保存结果', exact: true }).click();
   expect((await replayResponse).status()).toBe(200);

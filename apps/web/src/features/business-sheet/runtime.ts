@@ -47,6 +47,7 @@ const commandNames = [
 const sheetCommands = new Set(commandNames.map(id => `sheet.command.${id}`));
 const hiddenCommands = [
   'formula-ui.operation.insert-function', 'formula-ui.operation.more-functions', 'formula.command.insert-function',
+  ...['common', 'financial', 'logical', 'text', 'date', 'lookup', 'math', 'statistical', 'engineering', 'information', 'database'].map(category => `formula-ui.operation.insert-function.${category}`),
   'univer.command.undo', 'univer.command.redo', 'sheet.command.insert-sheet', 'sheet.command.remove-sheet',
   'sheet.command.insert-row', 'sheet.command.insert-col', 'sheet.command.remove-row', 'sheet.command.remove-col',
   'sheet.command.insert-row-before', 'sheet.command.insert-row-after', 'sheet.command.insert-col-before', 'sheet.command.insert-col-after',
@@ -89,7 +90,7 @@ export function createBusinessSheet(options: BusinessSheetOptions): BusinessShee
       freeze: { xSplit: Math.min(2, model.columns.length), ySplit: 1, startRow: 1, startColumn: Math.min(2, model.columns.length) },
     } },
   };
-  const preset = UniverSheetsCorePreset({ container: options.container, header: true, toolbar: true,
+  const preset = UniverSheetsCorePreset({ container: options.container, header: true, toolbar: true, ribbonType: 'simple',
     formulaBar: false,
     footer: { sheetBar: false, statisticBar: false, menus: false, zoomSlider: true },
     menu: Object.fromEntries(hiddenCommands.map(id => [id, { hidden: true }])),
@@ -146,8 +147,10 @@ export function createBusinessSheet(options: BusinessSheetOptions): BusinessShee
     subscriptions.push(univerAPI.addEvent(univerAPI.Event.SheetEditEnded, () => { editing = null; }));
     subscriptions.push(univerAPI.addEvent(univerAPI.Event.SelectionChanged, event => {
       const range = event.selections[0]; if (!range) return;
-      const identity = model.identity(range.startRow, range.startColumn);
-      if (identity) options.onSelection(identity.id, range.startRow, range.startColumn);
+      const active = worksheet.getActiveCell();
+      const row = active?.getRow() ?? range.startRow, col = active?.getColumn() ?? range.startColumn;
+      const identity = model.identity(row, col);
+      if (identity) options.onSelection(identity.id, row, col);
     }));
     const keyboard = (event: KeyboardEvent) => {
       if (!(event.metaKey || event.ctrlKey) || event.altKey) return;
