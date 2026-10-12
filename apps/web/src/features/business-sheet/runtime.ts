@@ -29,7 +29,7 @@ export interface BusinessSheetRuntime {
 const SHEET_ID = 'business-records';
 const commandNames = [
   'set-range-values', 'clear-selection-content', 'clear-selection-format', 'clear-selection-all',
-  'set-style', 'set-border', 'set-border-color', 'set-border-style', 'set-background-color',
+  'set-style', 'set-border', 'set-border-position', 'set-border-color', 'set-border-style', 'set-background-color',
   'set-font-family', 'set-font-size', 'set-bold', 'set-italic', 'set-underline', 'set-overline', 'set-stroke',
   'set-text-color', 'set-text-wrap', 'set-horizontal-text-align', 'set-vertical-text-align',
   'set-range-bold', 'set-range-italic', 'set-range-underline', 'set-range-stroke',
@@ -40,7 +40,7 @@ const commandNames = [
   'set-zoom-ratio', 'set-zoom-ratio-from-toolbar', 'change-zoom-ratio',
   'select-range', 'select-all', 'move-selection', 'move-selection-enter-tab', 'expand-selection',
   'scroll-to-cell', 'scroll-view', 'scroll-view-reset', 'set-scroll-relative',
-  'copy-down', 'copy-right', 'paste-value', 'paste-format', 'paste-col-width', 'paste-besides-border', 'optional-paste',
+  'copy-down', 'copy-right', 'auto-fill', 'refill', 'paste-by-short-key', 'paste-value', 'paste-format', 'paste-col-width', 'paste-besides-border', 'optional-paste',
   'set-worksheet-activate', 'toggle-gridlines', 'set-gridlines-color',
 ];
 const sheetCommands = new Set(commandNames.map(id => `sheet.command.${id}`));
@@ -108,6 +108,10 @@ export function createBusinessSheet(options: BusinessSheetOptions): BusinessShee
     const worksheet = workbook.getActiveSheet();
     if (univerAPI.getCurrentLifecycleStage() >= LifecycleStages.Steady) resolveReady();
     const reject = (event: { cancel?: boolean }, message: string) => { event.cancel = true; options.onError(message); };
+    // Univer omits undo/redo from BeforeCommandExecute; always route them through
+    // record-scoped business history instead of its internal workbook snapshots.
+    subscriptions.push(univerAPI.addEvent(univerAPI.Event.BeforeUndo, event => { event.cancel = true; options.onUndo?.(); }));
+    subscriptions.push(univerAPI.addEvent(univerAPI.Event.BeforeRedo, event => { event.cancel = true; options.onRedo?.(); }));
     subscriptions.push(univerAPI.addEvent(univerAPI.Event.BeforeCommandExecute, event => {
       if (silent || disposed) return;
       if (event.id === 'univer.command.undo' || event.id === 'univer.command.redo') {
