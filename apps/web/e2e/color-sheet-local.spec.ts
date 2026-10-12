@@ -244,6 +244,7 @@ test.afterEach(async ({ page }, info) => {
 test('Synthetic color sheet: actual canvas, clipboard batch, undo, sorted ID, XLSX and responsive detail', async ({ page, context }, info) => {
   test.setTimeout(240000);
   const data = await fixture(), a = await accounts(), events = observe(page);
+  const runLabel = `${data.runId}-${Date.now()}`;
   await guardWrites(context, data, events); await probeCanvas(page);
   await login(page, a.memberA!); await identify(page, info);
   const sourceBefore = await sourceFingerprint(page, data);
@@ -253,7 +254,7 @@ test('Synthetic color sheet: actual canvas, clipboard batch, undo, sorted ID, XL
   await expect(page.locator('.cs-engine-loading')).toHaveCount(0, { timeout: 60000 });
   await expect(page.getByRole('complementary', { name: '记录详情' })).toContainText('来源行');
   await screenshot(page, info, 'source-records-main-and-detail', 1440);
-  await page.getByPlaceholder('搜索颜色、编号或色板', { exact: true }).fill(`不存在的筛选_${data.runId}`);
+  await page.getByPlaceholder('搜索颜色、编号或色板', { exact: true }).fill(`不存在的筛选_${runLabel}`);
   await expect(page.getByRole('heading', { name: '没有符合条件的颜色记录', exact: true })).toBeVisible();
   await screenshot(page, info, 'empty-filter-state', 1280);
   await page.getByRole('button', { name: '清除筛选', exact: true }).click();
@@ -265,7 +266,7 @@ test('Synthetic color sheet: actual canvas, clipboard batch, undo, sorted ID, XL
   await openSheet(page, data);
   const originalDetails = await Promise.all(data.rows.map(row => detail(page, row.id)));
   const first = data.rows[0]!, original = await detail(page, first.id);
-  const note = `合成画布编辑 ${data.runId} 中文 ΔE ≤ 1.0`;
+  const note = `合成画布编辑 ${runLabel} 中文 ΔE ≤ 1.0`;
   await editCanvas(page, first, note); await save(page);
   const saved = await detail(page, first.id);
   expect(saved.note).toBe(note); expect(saved.revision).toBe(original.revision + 1);
@@ -300,12 +301,13 @@ test('Synthetic color sheet: actual canvas, clipboard batch, undo, sorted ID, XL
   positions.sort((left, right) => left.position.y - right.position.y);
   const top = positions[0]!.row, bottom = positions[1]!.row;
   await selectCanvas(page, top);
-  const batchNotes = [`合成粘贴第一行 ${data.runId}`, `合成粘贴第二行 ${data.runId}`];
-  const codes = ['0001234567890123456789', '0009876543210987654321'];
+  const batchNotes = [`合成粘贴第一行 ${runLabel}`, `合成粘贴第二行 ${runLabel}`];
+  const suffix = Date.now().toString().slice(-6);
+  const codes = [`00012345678901${suffix}`, `00098765432109${suffix}`];
   await page.evaluate(text => navigator.clipboard.writeText(text), `${batchNotes[0]}\t${codes[0]}\n${batchNotes[1]}\t${codes[1]}`);
   await page.keyboard.press(`${modifier}+V`);
   await expect(page.locator('.cs-save-bar')).toContainText('2 条记录待保存');
-  await save(page, `合成浏览器验收更正 ${data.runId}`);
+  await save(page, `合成浏览器验收更正 ${runLabel}`);
   const topAfter = await detail(page, top.id), bottomAfter = await detail(page, bottom.id);
   expect(topAfter).toMatchObject({ note: batchNotes[0], boardCode: codes[0] });
   expect(bottomAfter).toMatchObject({ note: batchNotes[1], boardCode: codes[1] });
@@ -317,7 +319,7 @@ test('Synthetic color sheet: actual canvas, clipboard batch, undo, sorted ID, XL
   await page.evaluate(() => { (window as ProbeWindow).__colorSheetCanvasProbe = {}; });
   await page.getByRole('combobox', { name: '整行排序', exact: true }).selectOption('baseName:asc');
   await expect(page.locator('.cs-engine-loading')).toHaveCount(0);
-  const sortedNote = `合成排序后正确记录 ${data.runId}`;
+  const sortedNote = `合成排序后正确记录 ${runLabel}`;
   await editCanvas(page, bottom, sortedNote); await save(page);
   expect((await detail(page, bottom.id)).note).toBe(sortedNote);
   expect((await detail(page, top.id)).note).toBe(batchNotes[0]);
@@ -340,7 +342,7 @@ test('Synthetic color sheet: actual canvas, clipboard batch, undo, sorted ID, XL
   expect(idCol).toBeGreaterThan(0); expect(sheet.getColumn(idCol).hidden).toBe(true);
   const target = [2, 3].find(index => sheet.getCell(index, idCol).value === top.id)!;
   expect(target).toBeTruthy(); expect(sheet.getCell(target, codeCol).value).toBe(codes[0]);
-  const importNote = `合成模板导回 ${data.runId}`;
+  const importNote = `合成模板导回 ${runLabel}`;
   sheet.getCell(target, noteCol).value = importNote;
   const edited = info.outputPath('system-template-edited.xlsx'); await workbook.xlsx.writeFile(edited);
   let dialog = await importPreview(page, edited);

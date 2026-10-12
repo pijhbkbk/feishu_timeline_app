@@ -145,13 +145,15 @@ export function createBusinessSheet(options: BusinessSheetOptions): BusinessShee
     }));
     subscriptions.push(univerAPI.addEvent(univerAPI.Event.SheetEditStarted, event => { editing = { row: event.row, col: event.column }; }));
     subscriptions.push(univerAPI.addEvent(univerAPI.Event.SheetEditEnded, () => { editing = null; }));
-    subscriptions.push(univerAPI.addEvent(univerAPI.Event.SelectionChanged, event => {
-      const range = event.selections[0]; if (!range) return;
-      const active = worksheet.getActiveCell();
-      const row = active?.getRow() ?? range.startRow, col = active?.getColumn() ?? range.startColumn;
+    const notifySelection = () => {
+      const active = worksheet.getActiveCell(); if (!active || disposed) return;
+      const row = active.getRow(), col = active.getColumn();
       const identity = model.identity(row, col);
       if (identity) options.onSelection(identity.id, row, col);
-    }));
+    };
+    // Subscribe on the workbook's global selection service. The 1.0.4 UI event
+    // bridge looks up this service on the renderer, where it is not registered.
+    subscriptions.push(workbook.onSelectionChange(notifySelection));
     const keyboard = (event: KeyboardEvent) => {
       if (!(event.metaKey || event.ctrlKey) || event.altKey) return;
       const key = event.key.toLowerCase();
@@ -186,7 +188,7 @@ export function createBusinessSheet(options: BusinessSheetOptions): BusinessShee
         } finally { silent -= 1; }
       },
       finishEditing: async () => { if (!disposed && workbook.isCellEditing()) await workbook.endEditingAsync(true); },
-      selectCell: (id, field) => { const position = model.position(id, field); if (position && !disposed) worksheet.setActiveRange(worksheet.getRange(position.row, position.col, 1, 1)); },
+      selectCell: (id, field) => { const position = model.position(id, field); if (position && !disposed) { worksheet.setActiveRange(worksheet.getRange(position.row, position.col, 1, 1)); notifySelection(); } },
       dispose,
     };
   } catch (error) {

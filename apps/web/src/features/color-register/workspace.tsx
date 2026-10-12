@@ -33,6 +33,7 @@ export function ColorRegisterWorkspace() {
   const [facets, setFacets] = useState<SheetFacets>({ bases: [], statuses: [] }); const [total, setTotal] = useState(0);
   const [filters, setFilters] = useState(initialFilters); const [sort, setSort] = useState('name:asc');
   const [selected, setSelected] = useState<string | null>(null); const [activeField, setActiveField] = useState('note');
+  const selection = useRef({ id: selected, field: activeField }); selection.current = { id: selected, field: activeField };
   const [panel, setPanel] = useState(true); const [detail, setDetail] = useState<RegisterDetail | null>(null); const [detailError, setDetailError] = useState('');
   const [fullDetail, setFullDetail] = useState(false); const [importOpen, setImportOpen] = useState(false);
   const [reason, setReason] = useState(''); const [engineReady, setEngineReady] = useState(false);
@@ -56,7 +57,7 @@ export function ColorRegisterWorkspace() {
       const data = await readCatalog(signal); if (sequence !== loadSequence.current) return;
       model.current = new CatalogSheetModel(data.items); setFacets(data.facets); setTotal(data.total);
       const requested = new URLSearchParams(window.location.search).get('colorId');
-      setSelected(current => data.items.some(row => row.id === (current ?? requested)) ? current ?? requested : data.items[0]?.id ?? null);
+      setSelected(current => data.items.some(row => row.id === (current ?? requested)) ? current ?? requested : null);
       retry.current = null; setEpoch(value => value + 1); setNotice('已读取服务器记录');
     } catch (cause) { if (sequence === loadSequence.current) setError(message(cause)); }
     finally { if (sequence === loadSequence.current) setLoading(false); }
@@ -92,7 +93,11 @@ export function ColorRegisterWorkspace() {
       instance = createBusinessSheet({ container: host.current, columns: SHEET_COLUMNS, rows: visible.map(row => ({ id: row.id, values: SHEET_COLUMNS.map(column => displayValue(model.current!.display(row.id), column.key)), editable: SHEET_COLUMNS.map(column => canEdit && editable(row, column.key)) })),
         onChanges: changes => handlers.current.changes(changes), onSelection: (id, _row, col) => { setSelected(id); setActiveField(SHEET_COLUMNS[col]?.key ?? 'note'); },
         onError: setError, onUndo: () => handlers.current.undo(), onRedo: () => handlers.current.redo() });
-      runtime.current = instance; await instance.ready; if (!stopped) setEngineReady(true);
+      runtime.current = instance; await instance.ready;
+      if (!stopped) {
+        const initial = visible.find(row => row.id === selection.current.id) ?? visible[0]!;
+        instance.selectCell(initial.id, selection.current.field); setEngineReady(true);
+      }
     }).catch(cause => { if (!stopped) setError(`表格未能加载：${message(cause)}`); });
     return () => { stopped = true; instance?.dispose(); if (runtime.current === instance) runtime.current = null; };
   }, [visible, canEdit]);
