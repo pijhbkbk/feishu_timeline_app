@@ -46,6 +46,7 @@ const commandNames = [
 ];
 const sheetCommands = new Set(commandNames.map(id => `sheet.command.${id}`));
 const hiddenCommands = [
+  'sheet.command.set-once-format-painter', 'sheet.command.set-infinite-format-painter', 'sheet.command.apply-format-painter',
   'formula-ui.operation.insert-function', 'formula-ui.operation.more-functions', 'formula.command.insert-function',
   ...['common', 'financial', 'logical', 'text', 'date', 'lookup', 'math', 'statistical', 'engineering', 'information', 'database'].map(category => `formula-ui.operation.insert-function.${category}`),
   'univer.command.undo', 'univer.command.redo', 'sheet.command.insert-sheet', 'sheet.command.remove-sheet',

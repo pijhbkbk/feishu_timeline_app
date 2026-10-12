@@ -214,6 +214,9 @@ async function save(page: Page, reason?: string) {
 async function screenshot(page: Page, info: TestInfo, name: string, width: number) {
   await page.setViewportSize({ width, height: width === 390 ? 844 : width === 1280 ? 800 : 900 });
   await expect(page.locator('.cs-engine-loading')).toHaveCount(0);
+  await page.locator('.cs-detail').evaluateAll(elements => elements.forEach(element => { element.scrollTop = 0; }));
+  await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+  await expect(page.getByRole('navigation', { name: '主导航', exact: true })).toHaveCount(1);
   await page.screenshot({ path: info.outputPath(`${name}-${width}.png`), fullPage: width === 390 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `No outer-page overflow at ${width}`).toBe(true);
 }
@@ -478,7 +481,7 @@ test('Synthetic color sheet: lost save response preserves a later reversion and 
   const data = await fixture(), a = await accounts(), events = observe(page);
   await guardWrites(context, data, events); await probeCanvas(page); await login(page, a.memberA!); await identify(page, info); await openSheet(page, data);
   const row = data.rows[0]!, before = await detail(page, row.id);
-  await editCanvas(page, row, `请求已落库但响应丢失 ${data.runId}`);
+  await editCanvas(page, row, `请求已落库但响应丢失 ${data.runId}-${Date.now()}`);
   let command: SheetCommand | undefined;
   await page.route('**/api/color-register/sheet', async route => {
     const body = route.request().postDataJSON() as SheetCommand;
@@ -498,7 +501,7 @@ test('Synthetic color sheet: lost save response preserves a later reversion and 
       await route.fulfill({ status, contentType: 'application/json', body: JSON.stringify({ message: status === 401 ? 'Unauthorized' : 'Forbidden' }) });
     }, { times: 1 });
     await page.getByRole('button', { name: '核实上次保存结果', exact: true }).click();
-    await expect(page.getByRole('alert')).toContainText('尚未确认上次保存');
+    await expect(page.getByTestId('color-register-page').getByRole('alert')).toContainText('尚未确认上次保存');
     await expect(page.getByRole('button', { name: '核实上次保存结果', exact: true })).toBeEnabled();
     await expect(page.getByLabel('当前单元格', { exact: true })).toHaveValue(before.note ?? '');
     expect((await detail(page, row.id)).revision).toBe(before.revision + 1);
