@@ -35,7 +35,7 @@ export function ColorRegisterWorkspace() {
   const [filters, setFilters] = useState(initialFilters); const [sort, setSort] = useState('name:asc');
   const [selected, setSelected] = useState<string | null>(null); const [activeField, setActiveField] = useState('note');
   const [panel, setPanel] = useState(true); const [detail, setDetail] = useState<RegisterDetail | null>(null); const [detailError, setDetailError] = useState('');
-  const [fullDetail, setFullDetail] = useState(false); const [importOpen, setImportOpen] = useState(false);
+  const [detailTargetId, setDetailTargetId] = useState<string | null>(null); const [importOpen, setImportOpen] = useState(false);
   const [reason, setReason] = useState(''); const [engineReady, setEngineReady] = useState(false);
   const retry = useRef<{ fingerprint: string; operationId: string } | null>(null);
   const unconfirmed = useRef<{ items: SheetPatch[]; operationId: string; reason: string } | null>(null);
@@ -69,7 +69,7 @@ export function ColorRegisterWorkspace() {
   async function changeView(change: () => void) { await runtime.current?.finishEditing(); change(); }
   const reload = async () => { await runtime.current?.finishEditing(); if (unconfirmed.current) { setError('上次保存结果尚未确认，请先核实结果，再重新读取。'); return; } if (savingRef.current || ((model.current?.patches().length ?? 0) > 0 && !window.confirm('重新读取将放弃未保存内容，是否继续？'))) return; void load(AbortSignal.timeout(30000)); };
   async function openImport() { await runtime.current?.finishEditing(); if (model.current?.patches().length || unconfirmed.current || savingRef.current || imageState.pending) { setError('请先确认当前文字和图片保存结果，再导入。'); return; } setImportOpen(true); }
-  async function openDetails() { await runtime.current?.finishEditing(); if (model.current?.patches().length || unconfirmed.current || savingRef.current) { setError('请先保存或处理待保存内容，再打开业务详情。'); return; } setFullDetail(true); }
+  async function openDetails() { const targetId = selected; if (!targetId) return; await runtime.current?.finishEditing(); if (model.current?.patches().length || unconfirmed.current || savingRef.current) { setError('请先保存或处理待保存内容，再打开业务详情。'); return; } setDetailTargetId(targetId); }
   const visible = useMemo(() => {
     const rows = [...model.current?.rows.values() ?? []];
     const query = filters.search.trim().toLocaleLowerCase();
@@ -194,7 +194,7 @@ export function ColorRegisterWorkspace() {
       {panel && selectedRow ? <aside className="cs-detail" aria-label="记录详情"><header><h2>记录详情</h2><button aria-label="关闭记录详情" onClick={() => setPanel(false)}><M1Icon name="close" /></button></header><h3>{selectedRow.name}<span className="m1-badge">{selectedRow.base?.name ?? '基地待核对'}</span></h3><h4>基本信息</h4><dl>{SHEET_COLUMNS.filter(column => column.key !== 'photos').slice(0, 9).map(column => <div key={column.key}><dt>{column.label}</dt><dd>{displayValue(selectedRow, column.key) || '—'}</dd></div>)}</dl>{detailError ? <p className="m1-error">{detailError}</p> : null}<SheetImagePanel state={imageState} recordId={selectedRow.id} recordName={selectedRow.name ?? "当前记录"} disabled={!canEdit} /><h4>来源记录</h4>{detail ? detail.sources.length ? detail.sources.slice(0, 3).map((source, index) => <div className="cs-source" key={index}><M1Icon name="file" /><div><strong>{source.fileName}</strong><p>工作表：{source.sheetName}</p><p>来源行：{source.rowNumbers.join('、')}</p></div></div>) : <p>由系统项目建立</p> : <p>正在读取来源…</p>}<h4>关联项目</h4>{detail?.projects.length ? detail.projects.map(project => <Link className="cs-project-link" key={project.id} href={`/projects/${encodeURIComponent(project.id)}`}>{project.name}<M1Icon name="next" /></Link>) : <p>暂无已确认关联</p>}<button className="m1-button cs-detail-more" onClick={() => void openDetails()} disabled={dirty || saving}><M1Icon name="file" />查看业务详情与历史</button><p className="cs-detail-note">名称、基地、正式编号和状态由原业务流程维护。标准更正不会授予量产许可。</p></aside> : null}
     </div>
     <details className="cs-source-browser"><summary>历史来源工作簿与核对</summary><SourceWorkbook /></details>
-    {fullDetail && selected ? <RegisterDetails id={selected} onClose={() => { setFullDetail(false); if (!dirty) reload(); }} /> : null}
+    {detailTargetId ? <RegisterDetails id={detailTargetId} onClose={() => { setDetailTargetId(null); if (!dirty) reload(); }} /> : null}
     {importOpen && model.current ? <ColorImageSheetImport rows={[...model.current.rows.values()]} images={imageState.images} paintTypes={paintTypes} manufacturers={manufacturers} onClose={() => setImportOpen(false)} onSaved={async () => { await load(AbortSignal.timeout(30000)); await imageState.reload(); }} /> : null}
   </section>;
 }
