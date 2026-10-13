@@ -101,11 +101,13 @@ export function createBusinessSheet(options: BusinessSheetOptions): BusinessShee
   const ready = new Promise<void>(resolve => { resolveReady = resolve; });
   const subscriptions: Array<{ dispose: () => void }> = [];
   try {
-    subscriptions.push(univerAPI.addEvent(univerAPI.Event.LifeCycleChanged, event => { if (event.stage >= LifecycleStages.Steady) resolveReady(); }));
+    // Editing, clipboard, layout and drawing controllers are installed at Rendered.
+    // Steady deliberately delays optional menus; do not block the business view on it.
+    subscriptions.push(univerAPI.addEvent(univerAPI.Event.LifeCycleChanged, event => { if (event.stage >= LifecycleStages.Rendered) resolveReady(); }));
     const workbook = univerAPI.createWorkbook(snapshot);
     const worksheet = workbook.getActiveSheet();
     const imageController = bindRuntimeImages(univerAPI, workbook, model, options.container, options.imageActions ?? { add: () => options.onError('请使用记录照片入口。'), change: () => {}, remove: () => {}, requestFiles: () => options.onError('请使用记录照片入口。') }, run => { silent++; try { return run(); } finally { silent--; } }, options.onError, imageIo);
-    if (univerAPI.getCurrentLifecycleStage() >= LifecycleStages.Steady) resolveReady();
+    if (univerAPI.getCurrentLifecycleStage() >= LifecycleStages.Rendered) resolveReady();
     const reject = (event: { cancel?: boolean }, message: string) => { event.cancel = true; options.onError(message); };
     // Univer omits undo/redo from BeforeCommandExecute; always route them through
     // record-scoped business history instead of its internal workbook snapshots.
