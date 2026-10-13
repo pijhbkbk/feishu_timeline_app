@@ -1,6 +1,16 @@
 --- a/lib/es/index.js
 +++ b/lib/es/index.js
-@@ -12917,7 +12917,10 @@
+@@ -4096,7 +4096,8 @@
+ 	return true;
+ }
+ function convertTextToTable(text) {
+-	const rows = text.trim().split("\n");
++	// Preserve TSV blank cells and whitespace; only discard one terminal record separator.
++	const rows = text.replace(/\r\n?/g, "\n").replace(/\n$/, "").split("\n");
+ 	let html = "<table>";
+ 	rows.forEach((row) => {
+ 		const columns = row.split("	");
+@@ -12917,7 +12918,10 @@
  			p: null
  		} } };
  		else {
@@ -14,7 +24,17 @@
  				s: { n: { pattern: pattern.z } },
 --- a/lib/cjs/index.js
 +++ b/lib/cjs/index.js
-@@ -12918,7 +12918,10 @@
+@@ -4097,7 +4097,8 @@
+ 	return true;
+ }
+ function convertTextToTable(text) {
+-	const rows = text.trim().split("\n");
++	// Preserve TSV blank cells and whitespace; only discard one terminal record separator.
++	const rows = text.replace(/\r\n?/g, "\n").replace(/\n$/, "").split("\n");
+ 	let html = "<table>";
+ 	rows.forEach((row) => {
+ 		const columns = row.split("	");
+@@ -12918,7 +12919,10 @@
  			p: null
  		} } };
  		else {
