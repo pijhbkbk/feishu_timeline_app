@@ -93,7 +93,7 @@ export type VisualDeltaMonth = { id: string; periodIndex: number; periodLabel: s
 
 export function canWriteVisualDeltaMonth(user: SessionUser | null, workspace: VisualDeltaReviewWorkspaceResponse, month: VisualDeltaMonth | undefined, now = workspace.businessTime ? Date.parse(workspace.businessTime) : Date.now()) {
   return Boolean(canManageVisualDeltaReviews(user) && workspace.activeTask && workspace.monthlyPlanActive && month &&
-    month.reviewerId === user?.id && ['PENDING', 'IN_PROGRESS', 'OVERDUE'].includes(month.status) && Date.parse(month.plannedDate) <= now);
+    ['PENDING', 'IN_PROGRESS', 'OVERDUE'].includes(month.status) && Date.parse(month.plannedDate) <= now);
 }
 
 export function canWriteVisualDeltaRecord(user: SessionUser | null, workspace: VisualDeltaReviewWorkspaceResponse, review: VisualDeltaReviewRecord) {

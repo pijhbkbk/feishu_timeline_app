@@ -143,4 +143,40 @@ describe('compound reading 10-column business view', () => {
     expect(s.snapshot.measurements[0]!.methodLabel).toBe('原方法');
   });
 
+  it('replays an unknown parent save unchanged before saving a later undo for all siblings', async () => {
+    const s = setup(), server = fixture();
+    const receipts = new Map<string, BatchResult>();
+    const calls: Array<{ operationId: string; request: ReturnType<typeof updateItems> }> = [];
+    const queue = new RecordSheetSaveQueue(s.model, { batchSize: 1, delayMs: 60000, onState: () => undefined, save: async (patches, operationId) => {
+      const request = updateItems(buildRows(s.snapshot, 'reading'), patches);
+      calls.push({ operationId, request });
+      let result = receipts.get(operationId);
+      if (!result) {
+        result = { activityId: 'activity', revision: server.activity.revision + 1, items: request.map(item => {
+          const original = server.measurements.find(row => row.id === item.id)!;
+          expect(item.expectedRevision).toBe(original.revision);
+          return { ...original, ...item.values, revision: original.revision + 1, entity: item.entity } as Fact & { entity: typeof item.entity };
+        }) };
+        acknowledge(server, result); receipts.set(operationId, result);
+        if (calls.length === 1) throw new Error('server committed; response lost');
+      }
+      acknowledge(s.snapshot, result);
+      const rows = buildRows(s.snapshot, 'reading'), ids = new Set(patches.map(patch => patch.id));
+      return { rows: rows.filter(row => ids.has(row.id)), relatedRows: rows.filter(row => !ids.has(row.id) && row.meta!.measurementId === 'group-0') };
+    } });
+    try {
+      s.edit([{ id: 'reading-0-0', field: 'methodLabel', value: '新方法' }]);
+      await queue.flush(); expect(queue.state.status).toBe('uncertain');
+      s.model.undo(); queue.changed(); expect(s.model.dirtyCount).toBe(0);
+      await queue.retry();
+      expect(calls[1]).toEqual(calls[0]);
+      expect(s.model.dirtyCount).toBe(3);
+      for (const row of s.rows.filter(row => row.meta!.measurementId === 'group-0')) expect(s.model.value(row.id, 'methodLabel')).toBe('原方法');
+      await queue.flush();
+      expect(calls[2]!.operationId).not.toBe(calls[0]!.operationId);
+      expect(server.measurements[0]!.methodLabel).toBe('原方法');
+      expect(s.model.dirtyCount).toBe(0); expect(queue.state.status).toBe('saved');
+    } finally { queue.dispose(); }
+  });
+
 });

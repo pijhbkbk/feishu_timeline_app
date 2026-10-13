@@ -9,6 +9,7 @@ import {
   VisualDeltaReviewHistory,
 } from './visual-delta-review-workspace';
 import {
+  canWriteVisualDeltaMonth,
   canWriteVisualDeltaRecord,
   canShowVisualDeltaReviewApproveButton,
   canShowVisualDeltaReviewSubmitButton,
@@ -226,5 +227,61 @@ describe('single-department review admission', () => {
   it('does not admit an unapproved account through a legacy role', () => {
     expect(canManageVisualDeltaReviews({ ...reviewerUser, teamAccessApproved: false })).toBe(false);
     expect(canManageVisualDeltaReviews({ ...reviewerUser, authSource: 'mock' })).toBe(false);
+  });
+});
+
+
+describe('M1 monthly admission matches current server rules', () => {
+  const member: SessionUser = { ...reviewerUser, roleCodes: [] };
+  const now = '2026-03-25T00:00:00.000Z';
+  const withMonthOwner = (reviewerId: string | null): VisualDeltaReviewWorkspaceResponse => ({
+    ...workspace, businessTime: now,
+    recurringTasks: [{ ...workspace.recurringTasks[0]!, reviewerId }],
+  });
+
+  it.each([null, 'historical-other-owner'])('allows an admitted member’s own draft when the month owner is %s', owner => {
+    const current = withMonthOwner(owner), month = current.recurringTasks[0]!, own = current.items[0]!;
+    expect(canWriteVisualDeltaMonth(member, current, month)).toBe(true);
+    expect(canWriteVisualDeltaRecord(member, current, own)).toBe(true);
+    expect(canShowVisualDeltaReviewSubmitButton(member, current, own)).toBe(true);
+    expect(canShowVisualDeltaReviewApproveButton(member, current, { ...own, submittedAt: now })).toBe(true);
+    const html = renderToStaticMarkup(<VisualDeltaReviewHistory user={member} items={[own]}
+      selectedReviewId={own.id} isReadOnly={!canWriteVisualDeltaMonth(member, current, month)}
+      workspace={current} actingKey={null} isUploading={false} onSelect={() => undefined}
+      onEdit={() => undefined} onSubmitReview={() => undefined} onApproveReview={() => undefined}
+      onRejectReview={() => undefined} onUploadAttachment={() => undefined} />);
+    expect(html).toContain('>提交</button>');
+  });
+
+  it('retains own-signature checks for ordinary members and administrators', () => {
+    const current = withMonthOwner(null), other = { ...current.items[0]!, reviewerId: 'another-author' };
+    for (const actor of [member, { ...member, isSystemAdmin: true }]) {
+      expect(canWriteVisualDeltaRecord(actor, current, other)).toBe(false);
+      expect(canShowVisualDeltaReviewSubmitButton(actor, current, other)).toBe(false);
+      expect(canShowVisualDeltaReviewApproveButton(actor, current, { ...other, submittedAt: now })).toBe(false);
+      const html = renderToStaticMarkup(<VisualDeltaReviewHistory user={actor} items={[other]}
+        selectedReviewId={other.id} isReadOnly={false} workspace={current} actingKey={null}
+        isUploading={false} onSelect={() => undefined} onEdit={() => undefined}
+        onSubmitReview={() => undefined} onApproveReview={() => undefined}
+        onRejectReview={() => undefined} onUploadAttachment={() => undefined} />);
+      expect(html).not.toMatch(/<button\b[^>]*>(?:编辑|提交|通过|驳回)<\/button>|<input\b[^>]*type="file"/);
+    }
+  });
+
+  it('retains admission, current stage, active plan, date and completed-period boundaries', () => {
+    const current = withMonthOwner(null), month = current.recurringTasks[0]!, own = current.items[0]!;
+    for (const actor of [null, { ...member, teamAccessApproved: false }, { ...member, authSource: 'mock' as const }]) {
+      expect(canWriteVisualDeltaMonth(actor, current, month)).toBe(false);
+    }
+    expect(canWriteVisualDeltaMonth(member, { ...current, activeTask: null }, month)).toBe(false);
+    expect(canWriteVisualDeltaMonth(member, { ...current, monthlyPlanActive: false }, month)).toBe(false);
+    expect(canWriteVisualDeltaMonth(member, current, undefined)).toBe(false);
+    expect(canWriteVisualDeltaMonth(member, current, { ...month, plannedDate: '2026-04-01T00:00:00Z' })).toBe(false);
+    for (const status of ['COMPLETED', 'CANCELLED']) expect(canWriteVisualDeltaMonth(member, current, { ...month, status })).toBe(false);
+    expect(canWriteVisualDeltaRecord(member, current, { ...own, workflowTaskId: 'previous-17-parent' })).toBe(false);
+    expect(canWriteVisualDeltaRecord(member, current, { ...own, isPeriodCompleted: true })).toBe(false);
+    expect(canShowVisualDeltaReviewSubmitButton(member, current, { ...own, submittedAt: now })).toBe(false);
+    expect(canShowVisualDeltaReviewApproveButton(member, current, own)).toBe(false);
+    expect(canShowVisualDeltaReviewApproveButton(member, current, { ...own, submittedAt: now, reviewConclusion: 'REJECTED' })).toBe(false);
   });
 });

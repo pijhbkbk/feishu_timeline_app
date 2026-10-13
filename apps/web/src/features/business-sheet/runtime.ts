@@ -5,13 +5,14 @@ import { createUniver, LocaleType, mergeLocales } from '@univerjs/presets';
 import { UniverSheetsCorePreset } from '@univerjs/preset-sheets-core';
 import CoreZhCN from '@univerjs/preset-sheets-core/locales/zh-CN';
 import { setNonce } from 'get-nonce';
-import { BusinessSheetModel, VALUE_MUTATION, allowedSheetMutation, forbiddenSheetCommand, type BusinessSheetChange, type BusinessSheetColumn, type BusinessSheetRow, type BusinessSheetUpdate } from './runtime-model';
+import { BusinessSheetModel, VALUE_MUTATION, allowedSheetMutation, type BusinessSheetChange, type BusinessSheetColumn, type BusinessSheetRow, type BusinessSheetUpdate } from './runtime-model';
 import '@univerjs/preset-sheets-core/lib/index.css';
 import '@univerjs/preset-sheets-drawing/lib/index.css';
 import DrawingZhCN from '@univerjs/preset-sheets-drawing/locales/zh-CN';
 import { RecordImageIo, createRecordDrawingPreset } from './drawing-preset';
 import { bindRuntimeImages, drawingCommands, type RuntimeImageActions } from './runtime-images';
 import type { SheetImage } from './image-client';
+import { blockedSheetCommand } from './runtime-command-policy';
 
 export type { BusinessSheetChange, BusinessSheetColumn, BusinessSheetRow, BusinessSheetUpdate } from './runtime-model';
 export interface BusinessSheetOptions {
@@ -38,23 +39,6 @@ export interface BusinessSheetRuntime {
 }
 
 const SHEET_ID = 'business-records';
-const commandNames = [
-  'set-range-values', 'clear-selection-content', 'clear-selection-format', 'clear-selection-all',
-  'set-style', 'set-border', 'set-border-position', 'set-border-color', 'set-border-style', 'set-background-color',
-  'set-font-family', 'set-font-size', 'set-bold', 'set-italic', 'set-underline', 'set-overline', 'set-stroke',
-  'set-text-color', 'set-text-wrap', 'set-horizontal-text-align', 'set-vertical-text-align',
-  'set-range-bold', 'set-range-italic', 'set-range-underline', 'set-range-stroke',
-  'set-range-fontsize', 'set-range-font-increase', 'set-range-font-decrease', 'set-range-font-family',
-  'set-range-text-color', 'reset-range-text-color', 'set-worksheet-col-width', 'set-col-auto-width',
-  'set-row-height', 'set-row-is-auto-height', 'set-frozen', 'cancel-frozen', 'set-selection-frozen',
-  'set-row-frozen', 'set-col-frozen', 'set-first-row-frozen', 'set-first-column-frozen',
-  'set-zoom-ratio', 'set-zoom-ratio-from-toolbar', 'change-zoom-ratio',
-  'select-range', 'select-all', 'move-selection', 'move-selection-enter-tab', 'expand-selection',
-  'scroll-to-cell', 'scroll-view', 'scroll-view-reset', 'set-scroll-relative',
-  'copy-down', 'copy-right', 'auto-fill', 'refill', 'paste-by-short-key', 'paste-value', 'paste-format', 'paste-col-width', 'paste-besides-border', 'optional-paste',
-  'set-worksheet-activate', 'toggle-gridlines', 'set-gridlines-color',
-];
-const sheetCommands = new Set(commandNames.map(id => `sheet.command.${id}`));
 const hiddenCommands = [
   'ui.operation.activate-format-painter', 'ui.operation.continuous-format-painter',
   'sheet.command.set-once-format-painter', 'sheet.command.set-infinite-format-painter', 'sheet.command.apply-format-painter',
@@ -147,7 +131,7 @@ export function createBusinessSheet(options: BusinessSheetOptions): BusinessShee
       if (event.type === CommandType.OPERATION && /^sheet\.formula-embedding-editor\.__INTERNAL_EDITOR__DOCS_NORMAL\.[\w-]{4}$/.test(event.id)) return;
       if (['ui.operation.activate-format-painter', 'ui.operation.continuous-format-painter'].includes(event.id)) { reject(event, '此格式操作未在业务清单开放。'); return; }
       if (/^(?:formula\.command\.|formula-ui\.operation\.(?:insert-function|more-functions))/.test(event.id)) { reject(event, '业务清单不支持公式，请输入文本。'); return; }
-      if (forbiddenSheetCommand(event.id) || (event.type === CommandType.COMMAND && event.id.startsWith('sheet.command.') && !sheetCommands.has(event.id))) {
+      if (blockedSheetCommand(event.id, event.type === CommandType.COMMAND)) {
         reject(event, '请使用清单筛选和排序；此操作不适用于业务记录。');
       }
     }));
