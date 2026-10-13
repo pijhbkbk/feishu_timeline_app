@@ -12,7 +12,6 @@ import DrawingZhCN from '@univerjs/preset-sheets-drawing/locales/zh-CN';
 import { RecordImageIo, createRecordDrawingPreset } from './drawing-preset';
 import { bindRuntimeImages, drawingCommands, type RuntimeImageActions } from './runtime-images';
 import type { SheetImage } from './image-client';
-import { API_BASE_URL } from '../../lib/auth-client';
 
 export type { BusinessSheetChange, BusinessSheetColumn, BusinessSheetRow, BusinessSheetUpdate } from './runtime-model';
 export interface BusinessSheetOptions {
@@ -109,11 +108,7 @@ export function createBusinessSheet(options: BusinessSheetOptions): BusinessShee
   // The core preset supplies its normal text editor through the formula UI.
   // Keep those editor dependencies; the value boundary rejects formulas before
   // they can enter the workbook or a business save.
-  const imageIo = new RecordImageIo({ onError: options.onError, thumbnail: async (id, { signal }) => {
-    const response = await fetch(`${API_BASE_URL}/sheet-images/${encodeURIComponent(id)}/thumbnail`, { credentials: 'include', cache: 'no-store', signal });
-    if (!response.ok) throw new Error('图片读取失败。');
-    const url = URL.createObjectURL(await response.blob()); return { url, release: () => URL.revokeObjectURL(url) };
-  } });
+  const imageIo = new RecordImageIo(options.onError);
   const { univer, univerAPI } = createUniver({ locale: LocaleType.ZH_CN, locales: { [LocaleType.ZH_CN]: mergeLocales(CoreZhCN, DrawingZhCN) }, presets: [preset, createRecordDrawingPreset(imageIo)] });
   let disposed = false; let silent = 0; let editing: { row: number; col: number } | null = null;
   let resolveReady!: () => void;
@@ -123,7 +118,7 @@ export function createBusinessSheet(options: BusinessSheetOptions): BusinessShee
     subscriptions.push(univerAPI.addEvent(univerAPI.Event.LifeCycleChanged, event => { if (event.stage >= LifecycleStages.Steady) resolveReady(); }));
     const workbook = univerAPI.createWorkbook(snapshot);
     const worksheet = workbook.getActiveSheet();
-    const imageController = bindRuntimeImages(univerAPI, workbook, model, options.container, options.imageActions ?? { add: () => options.onError('请使用记录照片入口。'), change: () => {}, remove: () => {}, requestFiles: () => options.onError('请使用记录照片入口。') }, run => { silent++; try { return run(); } finally { silent--; } }, options.onError);
+    const imageController = bindRuntimeImages(univerAPI, workbook, model, options.container, options.imageActions ?? { add: () => options.onError('请使用记录照片入口。'), change: () => {}, remove: () => {}, requestFiles: () => options.onError('请使用记录照片入口。') }, run => { silent++; try { return run(); } finally { silent--; } }, options.onError, imageIo);
     if (univerAPI.getCurrentLifecycleStage() >= LifecycleStages.Steady) resolveReady();
     const reject = (event: { cancel?: boolean }, message: string) => { event.cancel = true; options.onError(message); };
     // Univer omits undo/redo from BeforeCommandExecute; always route them through

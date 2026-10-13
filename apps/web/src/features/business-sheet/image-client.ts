@@ -41,7 +41,23 @@ export async function deleteSheetImage(image: SheetImage, operationId: string) {
   const result = await apiRequest<{ image: SheetImage }>(`/sheet-images/${image.id}`, { method: 'DELETE', body: { operationId, expectedRevision: image.revision } }); return result.image;
 }
 export async function imageBytes(image: SheetImage, signal?: AbortSignal) {
-  const response = await fetch(`${API_BASE_URL}${image.contentUrl}`, { credentials: 'include', cache: 'no-store', ...(signal ? { signal } : {}) });
+  let response: Response;
+  // Export/import verification can read more originals than the ordinary
+  // attachment budget allows in one minute. Honor the server's explicit wait;
+  // never widen that budget or retry an authorization/error response blindly.
+  for (let attempt = 0; ; attempt++) {
+    response = await fetch(`${API_BASE_URL}${image.contentUrl}`, { credentials: 'include', cache: 'no-store', ...(signal ? { signal } : {}) });
+    const after = response.headers.get('retry-after');
+    const seconds = after !== null && /^\d+$/.test(after) ? Number(after) : NaN;
+    if (response.status !== 429 || attempt >= 2 || !Number.isFinite(seconds) || seconds < 1 || seconds > 300) break;
+    await response.body?.cancel();
+    await new Promise<void>((resolve, reject) => {
+      if (signal?.aborted) { reject(signal.reason); return; }
+      const abort = () => { clearTimeout(timer); signal?.removeEventListener('abort', abort); reject(signal?.reason); };
+      const timer = setTimeout(() => { signal?.removeEventListener('abort', abort); resolve(); }, seconds * 1000 + 100);
+      signal?.addEventListener('abort', abort, { once: true });
+    });
+  }
   if (!response.ok) throw new ApiRequestError('图片原件读取失败，请检查访问权限或重新登录。', response.status);
   const bytes = new Uint8Array(await response.arrayBuffer());
   if (bytes.length > 5 * 1024 * 1024) throw new Error('图片超过导出限制。');

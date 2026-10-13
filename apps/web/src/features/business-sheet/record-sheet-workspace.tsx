@@ -19,6 +19,8 @@ export function RecordSheetWorkspace<TMeta = unknown, TImages = unknown>(props: 
   const selectedRef = useRef<string | null>(null), composing = useRef(false);
   const [selectedId, setSelectedId] = useState<string | null>(null), [activeField, setActiveField] = useState(props.columns[0]?.key ?? '');
   const [viewEpoch, setViewEpoch] = useState(0), [tick, setTick] = useState(0), [loading, setLoading] = useState(true), [engineReady, setEngineReady] = useState(false);
+  const externalActive = useRef(false);
+  const [externalPending, setExternalPending] = useState('');
   const [error, setError] = useState(''), [query, setQuery] = useState(''), [search, setSearch] = useState('');
   const [sort, setSort] = useState<{ field: string; descending: boolean } | null>(null);
   const [saveState, setSaveState] = useState<RecordSaveSnapshot>({ status: 'idle', message: '', confirmed: 0, pending: 0 });
@@ -55,7 +57,7 @@ export function RecordSheetWorkspace<TMeta = unknown, TImages = unknown>(props: 
         delayMs: current.current.autosaveMs ?? 300,
         save: (items, operationId) => current.current.save(items, operationId),
         onState: state => { if (mounted.current) { setSaveState(state); bump(); } },
-        onConfirmed: updates => { runtimeRef.current?.updateValues(updates); bump(); },
+        onConfirmed: (updates, rows) => { runtimeRef.current?.updateValues(updates); current.current.onRowsLoaded?.(rows); bump(); },
         onConflict: loadLatest,
       });
       saver.current.resume();
@@ -110,13 +112,16 @@ export function RecordSheetWorkspace<TMeta = unknown, TImages = unknown>(props: 
     } catch (cause) { setError(explain(cause)); }
   };
   const changeView = async (update: () => void) => { try { await runtimeRef.current?.finishEditing(); update(); } catch (cause) { setError(explain(cause)); } };
-  const externalAction = async (action: () => unknown) => {
+  const externalAction = async (action: () => unknown, pendingLabel: string) => {
+    if (externalActive.current) return;
+    externalActive.current = true; setExternalPending(pendingLabel);
     try {
       await runtimeRef.current?.finishEditing();
       await saver.current?.flush();
       if (model.current?.dirtyCount || saver.current?.busy || saver.current?.uncertain) throw new Error('请先处理或保存当前修改，再执行此操作。');
       await action();
     } catch (cause) { setError(explain(cause)); }
+    finally { externalActive.current = false; if (mounted.current) setExternalPending(''); }
   };
   const context: RecordWorkspaceContext<TMeta> = { selected, runtimeRef, status: saveState.status, dirtyCount: model.current?.dirtyCount ?? 0, loading, refresh, retry, edit };
   const errors = model.current?.errors() ?? [], conflicts = model.current?.conflicts() ?? [];
@@ -124,10 +129,11 @@ export function RecordSheetWorkspace<TMeta = unknown, TImages = unknown>(props: 
   void tick;
   return <section className="cs-workspace record-sheet-workspace" aria-label={props.title}>
     <header className="cs-heading"><h1>{props.title}</h1><div className="cs-actions"><span role="status">{statusText[saveState.status]}{context.dirtyCount ? ` · ${context.dirtyCount} 条` : ''}</span>
-      {props.onImport ? <button className="m1-button" disabled={loading} onClick={() => void externalAction(() => props.onImport?.(context))}>导入 Excel</button> : null}
-      {props.onExport ? <button className="m1-button" disabled={loading || !visibleIds.length} onClick={() => void externalAction(() => props.onExport?.(visibleIds.map(id => model.current!.rows.get(id)!), context))}>导出 Excel</button> : null}
-      {props.onCreate ? <button className="m1-button m1-primary" disabled={loading} onClick={() => void externalAction(() => props.onCreate?.(context))}>新增记录</button> : null}
+      {props.onImport ? <button className="m1-button" disabled={loading || !!externalPending} onClick={() => void externalAction(() => props.onImport?.(context), '正在准备导入…')}>导入 Excel</button> : null}
+      {props.onExport ? <button className="m1-button" disabled={loading || !!externalPending || !visibleIds.length} onClick={() => void externalAction(() => props.onExport?.(visibleIds.map(id => model.current!.rows.get(id)!), context), '正在导出文字与图片，请稍候…')}>导出 Excel</button> : null}
+      {props.onCreate ? <button className="m1-button m1-primary" disabled={loading || !!externalPending} onClick={() => void externalAction(() => props.onCreate?.(context), '正在准备新增记录…')}>新增记录</button> : null}
     </div></header>
+    {externalPending ? <p role="status">{externalPending}</p> : null}
     {props.slots?.header?.(context)}
     <div className="cs-filters"><label>搜索<input type="search" value={query} maxLength={100} onCompositionStart={() => { composing.current = true; }} onCompositionEnd={event => { composing.current = false; const value = event.currentTarget.value; void changeView(() => setSearch(value)); }} onChange={event => { const value = event.target.value; setQuery(value); if (!composing.current) void changeView(() => setSearch(value)); }} /></label>
       <label>整行排序<select aria-label="排序字段" value={sort?.field ?? ''} onChange={event => { const value = event.target.value; void changeView(() => setSort(value ? { field: value, descending: false } : null)); }}><option value="">默认顺序</option>{columns.map(column => <option key={column.key} value={column.key}>{column.label}</option>)}</select></label>

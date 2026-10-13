@@ -26,3 +26,20 @@ async function main() {
   console.log(JSON.stringify({ result: 'PASS', assertions: count, coverage: ['serial batches', 'in-flight edits', '300ms default / test debounce coalescing', 'uncertain retry operation ID', 'replay auth does not discard operation', '409 current server value', 'explicit conflict resolution', 'invalid input not sent', 'dispose no late callbacks'] }, null, 2));
 }
 it('serializes saves and preserves uncertain operations, conflicts and disposal', main);
+
+it('publishes canonical revisions and metadata to the import adapter while newer edits remain only drafts', async () => {
+  const person = (id: string, revision: number, mobile: string): RecordSheetRow<{ marker: string }> => ({ id, revision, values: { name: '同名人员', mobile }, editable: ['name', 'mobile'], meta: { marker: `${id}:${revision}` } });
+  const model = new RecordSheetModel([person('a', 1, '0001'), person('b', 1, '0002')]);
+  const first = deferred<RecordSheetRow<{ marker: string }>[]>(); let calls = 0;
+  let adapterRows: readonly RecordSheetRow<{ marker: string }>[] = [...model.rows.values()];
+  const queue = new RecordSheetSaveQueue(model, { onState: () => {}, onConfirmed: (_updates, rows) => { adapterRows = rows; }, save: async items => ++calls === 1 ? first.promise : [person('a', 3, items[0]!.changes.mobile!)] });
+  try {
+    model.apply([{ id: 'a', field: 'mobile', value: '0001234567890123456789' }]); const saving = queue.flush();
+    model.apply([{ id: 'a', field: 'mobile', value: '0009876543210987654321' }]); first.resolve([person('a', 2, '0001234567890123456789')]); await saving;
+    assert.deepEqual(adapterRows.find(row => row.id === 'a'), person('a', 2, '0001234567890123456789'));
+    assert.equal(model.value('a', 'mobile'), '0009876543210987654321');
+    await queue.flush();
+    const exported = [...model.rows.values()];
+    assert.deepEqual(adapterRows, exported); assert.equal(adapterRows.find(row => row.id === 'a')!.revision, 3); assert.equal(adapterRows.find(row => row.id === 'b')!.revision, 1);
+  } finally { queue.dispose(); }
+});

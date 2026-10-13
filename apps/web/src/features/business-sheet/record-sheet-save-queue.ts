@@ -4,7 +4,7 @@ export interface RecordSaveSnapshot { status: RecordSaveState; message: string; 
 export interface RecordSaveQueueOptions<TMeta> {
   save(items: RecordSheetPatch[], operationId: string): Promise<RecordSheetRow<TMeta>[]>;
   onState(state: RecordSaveSnapshot): void;
-  onConfirmed?(updates: RecordSheetChange[]): void;
+  onConfirmed?(updates: RecordSheetChange[], rows: readonly RecordSheetRow<TMeta>[]): void;
   onConflict?(): Promise<void>;
   delayMs?: number;
   batchSize?: number;
@@ -57,7 +57,7 @@ export class RecordSheetSaveQueue<TMeta = unknown> {
         if (this.disposed) return;
         const updates = this.model.confirm(saved, batch);
         this.unconfirmed = null; this.attempts = 0; this.confirmed += saved.length;
-        this.options.onConfirmed?.(updates);
+        this.options.onConfirmed?.(updates, [...this.model.rows.values()]);
         this.emit(this.model.dirtyCount ? 'pending' : 'saved');
       } catch (error) {
         if (this.disposed) return;

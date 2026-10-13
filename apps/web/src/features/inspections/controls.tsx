@@ -11,13 +11,13 @@ export function RemoteChoice({label,value,onSelect,load,disabled=false}:{label:s
 /** An ambiguous network result keeps exactly the original body/idempotency key for retry. */
 export function useCommand(){
  const[pending,setPending]=useState(false),[error,setError]=useState(''),[uncertain,setUncertain]=useState(false);
- const running=useRef(false);
+ const running=useRef(false),everAmbiguous=useRef(false);
  const current=useRef<{path:string;method:'POST'|'PATCH';body:Record<string,unknown>}|null>(null);
  const send=async<T,>(path:string,body:Record<string,unknown>,method:'POST'|'PATCH'='POST'):Promise<T|null>=>{
   if(running.current)return null;running.current=true;setPending(true);setError('');
   const request=current.current??{path,method,body:{...body,operationId:crypto.randomUUID()}};current.current=request;
-  try{const result=await apiRequest<T>(request.path,{method:request.method,body:request.body,signal:AbortSignal.timeout(30000)});current.current=null;setUncertain(false);return result;}
-  catch(cause){const definitive=cause instanceof ApiRequestError&&[400,401,403,404,409,422].includes(cause.status);if(definitive){current.current=null;setUncertain(false);}else setUncertain(true);setError(`${message(cause)}${definitive?'，输入已保留。':'。保存结果尚未确认；重试将复用同一请求，不会重复新增。'}`);return null;}
+  try{const result=await apiRequest<T>(request.path,{method:request.method,body:request.body,signal:AbortSignal.timeout(30000)});current.current=null;everAmbiguous.current=false;setUncertain(false);return result;}
+  catch(cause){const definitive=!everAmbiguous.current&&cause instanceof ApiRequestError&&[400,401,403,404,409,422].includes(cause.status);if(definitive){current.current=null;setUncertain(false);}else {everAmbiguous.current=true;setUncertain(true);}setError(`${message(cause)}${definitive?'，输入已保留。':'。保存结果尚未确认；重试将复用同一请求，不会重复新增。'}`);return null;}
   finally{running.current=false;setPending(false);}
  };
  return{pending,error,uncertain,send,locked:pending||uncertain};

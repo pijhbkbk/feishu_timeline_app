@@ -4,6 +4,7 @@ import type { FWorkbook } from '@univerjs/sheets/facade';
 import { SheetDrawingAnchorType } from '@univerjs/sheets-drawing';
 import '@univerjs/sheets-drawing/facade';
 import type { BusinessSheetModel } from './runtime-model';
+import type { RecordImageIo } from './drawing-preset';
 import type { ImageLayout, SheetImage } from './image-client';
 export interface RuntimeImageActions {
   add(files: File[], recordId: string): void;
@@ -12,7 +13,7 @@ export interface RuntimeImageActions {
   requestFiles(): void;
 }
 export const drawingCommands = new Set(['sheet.command.move-drawing', 'sheet.command.set-sheet-image', 'sheet.command.set-drawing-placement', 'sheet.command.remove-sheet-image', 'sheet.command.delete-drawing', 'sheet.mutation.set-drawing-apply', 'sheet.operation.clear-drawing-transformer', 'sheet.operation.edit-sheet-image', 'sidebar.operation.sheet-image']);
-export function bindRuntimeImages(api: FUniver, workbook: FWorkbook, model: BusinessSheetModel, container: HTMLElement, actions: RuntimeImageActions, silence: <T>(run: () => T) => T, onError: (message: string) => void) {
+export function bindRuntimeImages(api: FUniver, workbook: FWorkbook, model: BusinessSheetModel, container: HTMLElement, actions: RuntimeImageActions, silence: <T>(run: () => T) => T, onError: (message: string) => void, imageIo: Pick<RecordImageIo, 'getImage' | 'retain' | 'onRetry'>) {
   const sheet = workbook.getActiveSheet();
   let images: readonly SheetImage[] = [], internal = 0, generation = 0, disposed = false, frame = 0;
   const rendered = new Map<string, string>();
@@ -32,12 +33,17 @@ export function bindRuntimeImages(api: FUniver, workbook: FWorkbook, model: Busi
     });
     mutate(() => sheet.deleteImages(sheet.getImages().filter(image => !visible.some(value => value.id === image.getId()))));
     const visibleIds = new Set(visible.map(image => image.id));
+    imageIo.retain(visibleIds);
     for (const id of rendered.keys()) if (!visibleIds.has(id)) rendered.delete(id);
     for (const image of visible) {
       if (disposed || generation !== version) return;
       const position = model.position(image.recordId, image.fieldKey)!;
       const signature = `${image.revision}:${position.row}:${position.col}:${sheet.getRowHeight(position.row)}:${sheet.getColumnWidth(position.col)}`;
       if (rendered.get(image.id) === signature && sheet.getImageById(image.id)) continue;
+      // Do not register an unreadable drawing: Univer retries missing image
+      // shapes during every repaint. Failed reads wait for explicit UI retry.
+      try { await imageIo.getImage(image.id); } catch { continue; }
+      if (disposed || generation !== version) return;
       const factor = image.mode === 'CELL' ? Math.min(1, (sheet.getRowHeight(position.row) - 8) / image.height, (sheet.getColumnWidth(position.col) - 8) / image.width) : 1;
       const data = await sheet.newOverGridImage().setSource(image.id, ImageSourceType.UUID).setRow(position.row).setColumn(position.col)
         .setRowOffset(image.mode === 'CELL' ? 4 : image.offsetY).setColumnOffset(image.mode === 'CELL' ? 4 : image.offsetX)
@@ -49,6 +55,7 @@ export function bindRuntimeImages(api: FUniver, workbook: FWorkbook, model: Busi
     }
   }
   const redraw = () => { if (frame || disposed) return; frame = requestAnimationFrame(() => { frame = 0; void render().catch(cause => onError(cause instanceof Error ? cause.message : '图片显示失败')); }); };
+  const unsubscribeRetry = imageIo.onRetry(redraw);
   const subscriptions = [
     api.addEvent(api.Event.Scroll, event => { if (event.workbook.getId() === workbook.getId()) redraw(); }),
     api.addEvent(api.Event.CommandExecuted, event => { if (/set-worksheet-col-width|set-worksheet-row-height|set-frozen/.test(event.id)) redraw(); }),
@@ -94,5 +101,5 @@ export function bindRuntimeImages(api: FUniver, workbook: FWorkbook, model: Busi
     if (!target) onError('请先选择记录，再粘贴截图。'); else actions.add(files, target.id);
   };
   container.addEventListener('paste', paste, true);
-  return { render, dispose() { disposed = true; generation++; cancelAnimationFrame(frame); container.removeEventListener('paste', paste, true); subscriptions.forEach(value => value.dispose()); images = []; rendered.clear(); } };
+  return { render, dispose() { disposed = true; generation++; unsubscribeRetry(); cancelAnimationFrame(frame); container.removeEventListener('paste', paste, true); subscriptions.forEach(value => value.dispose()); images = []; rendered.clear(); } };
 }
