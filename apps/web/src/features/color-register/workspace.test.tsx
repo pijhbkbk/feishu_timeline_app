@@ -107,3 +107,60 @@ describe('color detail target during native editor completion', () => {
     expect(detailsButton().props.disabled).toBe(true); expect(api.saveCatalog).not.toHaveBeenCalled();
   });
 });
+
+function saveButton() { return elements(tree).find(item => item.type === 'button' && ['保存修改', '核实上次保存结果'].includes(text(item.props.children as ReactNode)))!; }
+function pending<T>() { let resolve!: (value: T) => void; let reject!: (cause: unknown) => void; const promise = new Promise<T>((yes, no) => { resolve = yes; reject = no; }); return { promise, resolve, reject }; }
+function displayedNote() { return elements(tree).find(item => item.type === 'input' && item.props.id === 'cs-active-cell')?.props.value; }
+
+describe('autosave while a later native edit is still open', () => {
+  it('saves only the previous committed draft without ending or moving the next native edit, then saves its full value at the new revision', async () => {
+    const first = pending<{ items: RegisterRow[] }>(); const second = pending<{ items: RegisterRow[] }>();
+    api.saveCatalog.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise);
+    await flush();
+    canvas().onChanges([{ id: 'a', field: 'note', value: 'previous committed value' }]); await flush();
+    // The user has already re-opened the cell and typed only a prefix. Native
+    // text is deliberately not a model change until the user commits it.
+    finish.mockImplementation(async () => { canvas().onChanges([{ id: 'a', field: 'note', value: 'BASELINE' }]); canvas().onSelection('b', 2, 2); });
+    await vi.advanceTimersByTimeAsync(350); await flush();
+    expect(finish).not.toHaveBeenCalled(); expect(canvas().selection.id).toBe('a');
+    expect(api.saveCatalog).toHaveBeenCalledTimes(1);
+    expect(api.saveCatalog.mock.calls[0]?.[0]).toEqual([{ id: 'a', expectedRevision: 1, changes: { note: 'previous committed value' } }]);
+    canvas().onChanges([{ id: 'a', field: 'note', value: 'BASELINE_032_中文' }]); await flush();
+    first.resolve({ items: [{ ...row('a', '基地甲'), note: 'previous committed value', revision: 2 }] }); await flush();
+    expect(displayedNote()).toBe('BASELINE_032_中文');
+    await vi.advanceTimersByTimeAsync(350); await flush();
+    expect(finish).not.toHaveBeenCalled(); expect(api.saveCatalog).toHaveBeenCalledTimes(2);
+    expect(api.saveCatalog.mock.calls[1]?.[0]).toEqual([{ id: 'a', expectedRevision: 2, changes: { note: 'BASELINE_032_中文' } }]);
+    second.resolve({ items: [{ ...row('a', '基地甲'), note: 'BASELINE_032_中文', revision: 3 }] }); await flush();
+    expect(text(tree)).toContain('已同步'); expect(displayedNote()).toBe('BASELINE_032_中文');
+  });
+  it('still finishes a native edit before an explicit Save and snapshots the completed value', async () => {
+    api.saveCatalog.mockResolvedValue({ items: [{ ...row('a', '基地甲'), note: 'full native value', revision: 2 }] });
+    await flush(); canvas().onChanges([{ id: 'a', field: 'note', value: 'previous draft' }]); await flush();
+    finish.mockImplementation(async () => { canvas().onChanges([{ id: 'a', field: 'note', value: 'full native value' }]); canvas().onSelection('b', 2, 2); });
+    (saveButton().props.onClick as () => void)(); await flush();
+    expect(finish).toHaveBeenCalledOnce(); expect(canvas().selection.id).toBe('b');
+    expect(api.saveCatalog.mock.calls[0]?.[0]).toEqual([{ id: 'a', expectedRevision: 1, changes: { note: 'full native value' } }]);
+    await vi.advanceTimersByTimeAsync(350); await flush(); expect(api.saveCatalog).toHaveBeenCalledOnce();
+  });
+  it('retains an unknown original request and newer draft, and resumes automatic saving only after the exact request is confirmed', async () => {
+    const replay = pending<{ items: RegisterRow[] }>();
+    api.saveCatalog.mockRejectedValueOnce(new Error('response lost')).mockReturnValueOnce(replay.promise).mockResolvedValueOnce({ items: [{ ...row('a', '基地甲'), note: 'later full value', revision: 3 }] });
+    await flush(); canvas().onChanges([{ id: 'a', field: 'note', value: 'original committed value' }]); await flush();
+    await vi.advanceTimersByTimeAsync(350); await flush();
+    expect(finish).not.toHaveBeenCalled(); const original = api.saveCatalog.mock.calls[0];
+    expect(text(tree)).toContain('上次保存结果待核实');
+    canvas().onChanges([{ id: 'a', field: 'note', value: 'later full value' }]); await flush();
+    await vi.advanceTimersByTimeAsync(1000); await flush(); expect(api.saveCatalog).toHaveBeenCalledOnce();
+    // The explicit Verify button may finish the native editor; it must still
+    // replay the original request and operation ID, never the newer draft.
+    finish.mockResolvedValue(undefined);
+    (saveButton().props.onClick as () => void)(); await flush();
+    expect(finish).toHaveBeenCalledOnce(); expect(api.saveCatalog.mock.calls[1]).toEqual(original);
+    replay.resolve({ items: [{ ...row('a', '基地甲'), note: 'original committed value', revision: 2 }] }); await flush();
+    expect(displayedNote()).toBe('later full value');
+    await vi.advanceTimersByTimeAsync(350); await flush();
+    expect(api.saveCatalog.mock.calls[2]?.[0]).toEqual([{ id: 'a', expectedRevision: 2, changes: { note: 'later full value' } }]);
+    expect(api.saveCatalog.mock.calls[2]?.[1]).not.toBe(original?.[1]); expect(finish).toHaveBeenCalledOnce();
+  });
+});

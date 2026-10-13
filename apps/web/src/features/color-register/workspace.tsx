@@ -99,9 +99,11 @@ export function ColorRegisterWorkspace() {
   }, [selected, panel, epoch, notice]);
   useEffect(() => { const close = (event: KeyboardEvent) => { if (event.key === 'Escape') setPanel(false); }; window.addEventListener('keydown', close); return () => window.removeEventListener('keydown', close); }, []);
 
-  async function save() {
+  async function save(finishNativeEdit = true) {
     if (!model.current || savingRef.current) return;
-    await runtime.current?.finishEditing();
+    // Automatic saving sends committed cells without ending a newer native edit.
+    // Explicit Save/Verify still finishes the editor before taking its snapshot.
+    if (finishNativeEdit) await runtime.current?.finishEditing();
     if (savingRef.current || loading) return;
     const current = model.current;
     if (unconfirmed.current) {
@@ -153,7 +155,7 @@ export function ColorRegisterWorkspace() {
   const saveAction = useRef(save); saveAction.current = save;
   useEffect(() => {
     if (loading || saving || error || uncertain || !patches.length || errors.length || conflicts.length || (standardEdits && !reason.trim())) return;
-    const timer = window.setTimeout(() => { void saveAction.current(); }, 350);
+    const timer = window.setTimeout(() => { void saveAction.current(false); }, 350);
     return () => window.clearTimeout(timer);
   }, [tick, loading, saving, error, uncertain, patches.length, errors.length, conflicts.length, standardEdits, reason]);
   async function exportFile() {
