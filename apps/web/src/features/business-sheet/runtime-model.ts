@@ -65,7 +65,7 @@ export class BusinessSheetModel {
     }
   }
   /** Validate every cell before applying any cell. This also guards clipboard/fill/undo mutations. */
-  validate(matrix: unknown): ValidatedMutation {
+  validate(matrix: unknown, includeUnchangedEditable = false): ValidatedMutation {
     const reject = (error: string): ValidatedMutation => ({ changes: [], error });
     if (!record(matrix)) return reject('不能清空整张业务清单。');
     const changes: BusinessSheetChange[] = []; let count = 0;
@@ -96,7 +96,7 @@ export class BusinessSheetModel {
         if (hasValue && next !== null && [...next].some(char => char.charCodeAt(0) < 32 && !['\t', '\n', '\r'].includes(char))) return reject('单元格包含不支持的控制字符。');
         if (hasValue && next !== null && next.length > 32767) return reject('单元格文本过长。');
         if (hasValue && next === '') next = null;
-        if (hasValue && next !== this.value(row, col)) {
+        if (hasValue && (next !== this.value(row, col) || includeUnchangedEditable && this.editable(row, col))) {
           if (!this.editable(row, col)) return reject(row === 0 ? '表头不能修改。' : '所选内容含只读字段，未保存任何修改。');
           const identity = this.identity(row, col)!;
           changes.push({ ...identity, value: next });

@@ -1,6 +1,7 @@
 'use client';
 import React,{useEffect,useRef,useState}from'react';
-import{apiRequest,ApiRequestError}from'../../lib/auth-client';
+import{apiRequest}from'../../lib/auth-client';
+import{inspectionCommandRejected}from'./command-rejection';
 import type{Choice,ChoicePage}from'./client';
 export function message(cause:unknown){return cause instanceof Error?cause.message:'操作失败，请重试。';}
 export function RemoteChoice({label,value,onSelect,load,disabled=false}:{label:string;value:Choice|null;onSelect:(value:Choice)=>void;load:(search:string,cursor:string|null,signal:AbortSignal)=>Promise<ChoicePage>;disabled?:boolean}){
@@ -17,7 +18,7 @@ export function useCommand(){
   if(running.current)return null;running.current=true;setPending(true);setError('');
   const request=current.current??{path,method,body:{...body,operationId:crypto.randomUUID()}};current.current=request;
   try{const result=await apiRequest<T>(request.path,{method:request.method,body:request.body,signal:AbortSignal.timeout(30000)});current.current=null;everAmbiguous.current=false;setUncertain(false);return result;}
-  catch(cause){const definitive=!everAmbiguous.current&&cause instanceof ApiRequestError&&[400,401,403,404,409,422].includes(cause.status);if(definitive){current.current=null;setUncertain(false);}else {everAmbiguous.current=true;setUncertain(true);}setError(`${message(cause)}${definitive?'，输入已保留。':'。保存结果尚未确认；重试将复用同一请求，不会重复新增。'}`);return null;}
+  catch(cause){const definitive=inspectionCommandRejected(cause,everAmbiguous.current);if(definitive){current.current=null;everAmbiguous.current=false;setUncertain(false);}else {everAmbiguous.current=true;setUncertain(true);}setError(`${message(cause)}${definitive?'，输入已保留。':'。保存结果尚未确认；重试将复用同一请求，不会重复新增。'}`);return null;}
   finally{running.current=false;setPending(false);}
  };
  return{pending,error,uncertain,send,locked:pending||uncertain};

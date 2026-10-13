@@ -28,6 +28,7 @@ export function BusinessSheetCanvas(props: BusinessSheetCanvasProps) {
       const value = current.current; loadedRows.current = value.rows;
       instance = createBusinessSheet({ container: host.current, rows: value.rows, columns: value.columns,
         onChanges: changes => current.current.onChanges(changes),
+        ...(value.onBeforeChanges ? { onBeforeChanges: (changes: Parameters<NonNullable<BusinessSheetOptions['onBeforeChanges']>>[0]) => current.current.onBeforeChanges?.(changes) } : {}),
         onSelection: (...args) => current.current.onSelection(...args),
         onError: error => current.current.onError(error),
         onUndo: () => current.current.onUndo?.(), onRedo: () => current.current.onRedo?.(),

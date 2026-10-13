@@ -2,10 +2,12 @@ import type { ComponentType, MutableRefObject, ReactNode } from 'react';
 import type { BusinessSheetRuntime, BusinessSheetRow } from './runtime';
 import type { BusinessSheetCanvasProps } from './canvas';
 export type RecordSheetValue = string | null;
-export interface RecordSheetRow<TMeta = unknown> { id: string; revision: number; values: Record<string, RecordSheetValue>; editable: readonly string[]; meta?: TMeta }
+export interface RecordSheetRow<TMeta = unknown> { id: string; revision: number; values: Record<string, RecordSheetValue>; editable: readonly string[]; meta?: TMeta; dependencies?: Readonly<Record<string, number>> }
 export interface RecordSheetColumn { key: string; label: string; width: number }
 export interface RecordSheetChange { id: string; field: string; value: RecordSheetValue }
-export interface RecordSheetPatch { id: string; expectedRevision: number; changes: Record<string, RecordSheetValue> }
+export interface RecordSheetPatch { id: string; expectedRevision: number; changes: Record<string, RecordSheetValue>; expectedDependencies?: Readonly<Record<string, number>> }
+/** Related rows acknowledge shared parent facts; their own fact revision must remain unchanged. */
+export type RecordSheetSaveResult<TMeta = unknown> = RecordSheetRow<TMeta>[] | { rows: RecordSheetRow<TMeta>[]; relatedRows: RecordSheetRow<TMeta>[] };
 export interface RecordSheetIssue { id: string; field: string; message: string }
 export interface RecordSheetConflict { id: string; missing: boolean; expectedRevision: number; currentRevision: number; fields: { field: string; server: RecordSheetValue; desired: RecordSheetValue }[] }
 export type RecordSheetRuntime = BusinessSheetRuntime;
@@ -21,7 +23,9 @@ export interface RecordSheetWorkspaceProps<TMeta = unknown, TImages = unknown> {
   /** Complete authorized view. If paged, adapter must show exact scope/total and
    * not treat a page refresh as deletion of a record outside this page. */
   load(signal: AbortSignal): Promise<RecordSheetRow<TMeta>[]>;
-  save(items: RecordSheetPatch[], operationId: string): Promise<RecordSheetRow<TMeta>[]>;
+  save(items: RecordSheetPatch[], operationId: string): Promise<RecordSheetSaveResult<TMeta>>;
+  /** Domain preflight runs before any cell changes; shared-fact edits may expand to loaded siblings. */
+  normalizeChanges?(changes: readonly RecordSheetChange[], rows: ReadonlyMap<string, RecordSheetRow<TMeta>>): readonly RecordSheetChange[];
   validate?(row: RecordSheetRow<TMeta>, field: string, value: RecordSheetValue): string | undefined;
   searchText?(row: RecordSheetRow<TMeta>): string;
   /** Inject existing shared BusinessSheetCanvas; no second Univer implementation. */

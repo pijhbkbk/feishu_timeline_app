@@ -19,6 +19,8 @@ export interface BusinessSheetOptions {
   rows: BusinessSheetRow[];
   columns: BusinessSheetColumn[];
   onChanges: (changes: BusinessSheetChange[]) => void;
+  /** Optional domain check includes unchanged editable cells in the same mutation. */
+  onBeforeChanges?: (changes: readonly BusinessSheetChange[]) => void;
   onSelection: (id: string, row: number, col: number) => void;
   onError: (message: string) => void;
   onUndo?: () => void;
@@ -133,9 +135,10 @@ export function createBusinessSheet(options: BusinessSheetOptions): BusinessShee
       }
       if (event.id === VALUE_MUTATION) {
         if (event.params?.unitId !== workbookId || event.params?.subUnitId !== SHEET_ID) return;
-        const checked = model.validate(event.params.cellValue);
+        const checked = model.validate(event.params.cellValue, Boolean(options.onBeforeChanges));
         if (checked.error) reject(event, checked.error);
         else if ((event.options?.fromFormula || event.options?.applyFormulaCalculationResult) && checked.changes.length) reject(event, '公式结果不能改写业务单元格。');
+        else if (checked.changes.length && options.onBeforeChanges) { try { options.onBeforeChanges(checked.changes); } catch (cause) { reject(event, cause instanceof Error ? cause.message : '本次输入存在关联字段冲突，未应用。'); } }
         return;
       }
       if (event.type === CommandType.MUTATION && /^(?:sheet|sheets)\./.test(event.id) && !allowedSheetMutation(event.id)) {
@@ -150,7 +153,7 @@ export function createBusinessSheet(options: BusinessSheetOptions): BusinessShee
     }));
     subscriptions.push(univerAPI.addEvent(univerAPI.Event.CommandExecuted, event => {
       if (silent || disposed || event.options?.fromFormula || event.options?.applyFormulaCalculationResult || event.id !== VALUE_MUTATION || event.params?.unitId !== workbookId || event.params?.subUnitId !== SHEET_ID) return;
-      const checked = model.validate(event.params.cellValue);
+      const checked = model.validate(event.params.cellValue, Boolean(options.onBeforeChanges));
       if (checked.error || !checked.changes.length) return;
       model.apply(checked.changes); options.onChanges(checked.changes);
     }));

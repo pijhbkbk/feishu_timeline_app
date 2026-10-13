@@ -1,8 +1,8 @@
 import { RecordSheetModel, type RecordSaveBatch } from './record-sheet-model';
-import type { RecordSaveState, RecordSheetChange, RecordSheetPatch, RecordSheetRow } from './record-sheet-types';
+import type { RecordSaveState, RecordSheetChange, RecordSheetPatch, RecordSheetRow, RecordSheetSaveResult } from './record-sheet-types';
 export interface RecordSaveSnapshot { status: RecordSaveState; message: string; confirmed: number; pending: number; operationId?: string }
 export interface RecordSaveQueueOptions<TMeta> {
-  save(items: RecordSheetPatch[], operationId: string): Promise<RecordSheetRow<TMeta>[]>;
+  save(items: RecordSheetPatch[], operationId: string): Promise<RecordSheetSaveResult<TMeta>>;
   onState(state: RecordSaveSnapshot): void;
   onConfirmed?(updates: RecordSheetChange[], rows: readonly RecordSheetRow<TMeta>[]): void;
   onConflict?(): Promise<void>;
@@ -53,9 +53,11 @@ export class RecordSheetSaveQueue<TMeta = unknown> {
     this.emit('saving');
     const run = async () => {
       try {
-        const saved = await this.options.save(batch.items, batch.operationId);
+        const result = await this.options.save(batch.items, batch.operationId);
+        const saved = Array.isArray(result) ? result : result.rows;
+        const related = Array.isArray(result) ? [] : result.relatedRows;
         if (this.disposed) return;
-        const updates = this.model.confirm(saved, batch);
+        const updates = this.model.confirm(saved, batch, related);
         this.unconfirmed = null; this.attempts = 0; this.confirmed += saved.length;
         this.options.onConfirmed?.(updates, [...this.model.rows.values()]);
         this.emit(this.model.dirtyCount ? 'pending' : 'saved');
