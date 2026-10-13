@@ -9,6 +9,7 @@ type CellPatch = Record<string, unknown> | null;
 const own = (value: object, key: string) => Object.prototype.hasOwnProperty.call(value, key);
 const record = (value: unknown): value is Record<string, unknown> => value !== null && typeof value === 'object' && !Array.isArray(value);
 export const VALUE_MUTATION = 'sheet.mutation.set-range-values';
+export const BUSINESS_SHEET_MAX_ROWS = 2000;
 const FORMAT_MUTATIONS = new Set([
   'sheet.mutation.set-worksheet-col-width', 'sheet.mutation.set-worksheet-row-height',
   'sheet.mutation.set-worksheet-row-is-auto-height', 'sheet.mutation.set-worksheet-row-auto-height',
@@ -22,21 +23,28 @@ export function forbiddenSheetCommand(id: string): boolean {
 
 export class BusinessSheetModel {
   readonly columns: readonly BusinessSheetColumn[];
-  readonly rows: BusinessSheetRow[];
+  rows: BusinessSheetRow[] = [];
   private readonly rowById = new Map<string, number>();
   private readonly colByKey = new Map<string, number>();
   constructor(rows: BusinessSheetRow[], columns: BusinessSheetColumn[]) {
-    if (!columns.length || columns.length > 100 || rows.length > 500) throw new Error('清单一次最多显示 500 行和 100 列。');
+    if (!columns.length || columns.length > 100) throw new Error('清单一次最多显示 100 列。');
     this.columns = columns.map(value => ({ ...value }));
     columns.forEach((column, index) => {
       if (!column.key || this.colByKey.has(column.key)) throw new Error('清单字段必须唯一。');
       this.colByKey.set(column.key, index);
     });
-    this.rows = rows.map((row, index) => {
-      if (!row.id || this.rowById.has(row.id) || row.values.length !== columns.length || row.editable.length !== columns.length) throw new Error('清单记录身份或字段数量无效。');
-      this.rowById.set(row.id, index + 1);
+    this.replaceRows(rows);
+  }
+  replaceRows(rows: BusinessSheetRow[]) {
+    if (rows.length > BUSINESS_SHEET_MAX_ROWS) throw new Error(`清单一次最多显示 ${BUSINESS_SHEET_MAX_ROWS} 行。`);
+    const positions = new Map<string, number>();
+    const next = rows.map((row, index) => {
+      if (!row.id || positions.has(row.id) || row.values.length !== this.columns.length || row.editable.length !== this.columns.length) throw new Error('清单记录身份或字段数量无效。');
+      positions.set(row.id, index + 1);
       return { ...row, values: [...row.values], editable: [...row.editable] };
     });
+    this.rows = next; this.rowById.clear();
+    positions.forEach((value, key) => this.rowById.set(key, value));
   }
   position(id: string, field: string): CellPosition | null {
     const row = this.rowById.get(id); const col = this.colByKey.get(field);

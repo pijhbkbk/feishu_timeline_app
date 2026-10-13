@@ -248,6 +248,48 @@ function createService() {
   };
 }
 
+describe('null-project sheet attachment pipeline', () => {
+  const png = Buffer.from('89504e470d0a1a0a00000000', 'hex');
+  const file = { originalname: 'synthetic.png', mimetype: 'image/png', size: png.length, buffer: png };
+  function setup() {
+    const harness = createService();
+    Object.assign(harness.prisma, { personProfile: { findUnique: vi.fn().mockResolvedValue({ id: 'person-1' }) } });
+    Object.assign(harness.tx, { personProfile: { findUnique: vi.fn().mockResolvedValue({ id: 'person-1' }) } });
+    const pending = createAttachmentRecord({ projectId: null, entityType: 'SHEET_PERSON', entityId: 'person-1', scanStatus: 'PENDING_SCAN', mimeType: 'image/png' });
+    harness.tx.attachment.create.mockResolvedValue(pending);
+    harness.tx.attachment.update.mockResolvedValue({ ...pending, scanStatus: 'CLEAN' });
+    return { ...harness, pending };
+  }
+  it('keeps quarantine, scan, quota retain, domain bind and null-project audit in the original pipeline', async () => {
+    const h = setup(); const bind = vi.fn(), result = vi.fn();
+    const saved = await h.service.createStoredAttachment({ actor, uploadedById: actor.id, projectId: null, targetType: 'SHEET_PERSON', targetId: 'person-1', file, finalizeDomainAttachment: bind, finalizeUploadResult: result });
+    expect(saved).toMatchObject({ projectId: null, contentUrl: '/attachments/attachment-1/content', downloadUrl: '/attachments/attachment-1/content?disposition=attachment' });
+    expect(h.prisma.project.findUnique).not.toHaveBeenCalled(); expect(h.projectAccessService.assertProjectAccessWithDefaultClient).not.toHaveBeenCalled();
+    expect(h.objectStorageService.upload).toHaveBeenCalledTimes(1); expect(h.malwareScanner.scan).toHaveBeenCalledTimes(1); expect(h.objectStorageService.promote).toHaveBeenCalledTimes(1);
+    expect(h.attachmentStorageQuotaService.reserve).toHaveBeenCalledWith(expect.objectContaining({ projectId: null, targetType: 'SHEET_PERSON' }));
+    expect(h.attachmentStorageQuotaService.markRetainedWithExecutor).toHaveBeenCalledTimes(1); expect(bind).toHaveBeenCalledTimes(1); expect(result).toHaveBeenCalledTimes(1);
+    expect(h.activityLogsService.createWithExecutor.mock.calls.every(([, input]) => input.projectId === null)).toBe(true);
+  });
+  it.each(['PROJECT', 'SAMPLE'] as const)('rejects a null project for legacy target %s before storage', async targetType => {
+    const h = setup();
+    await expect(h.service.createStoredAttachment({ actor, uploadedById: actor.id, projectId: null, targetType, targetId: 'person-1', file, finalizeDomainAttachment: vi.fn(), finalizeUploadResult: vi.fn() })).rejects.toMatchObject({ status: 400 });
+    expect(h.objectStorageService.upload).not.toHaveBeenCalled();
+  });
+  it('requires full domain hooks for null-project sheets and rejects a sheet type through project upload', async () => {
+    const h = setup();
+    await expect(h.service.createStoredAttachment({ actor, uploadedById: actor.id, projectId: null, targetType: 'SHEET_PERSON', targetId: 'person-1', file })).rejects.toMatchObject({ status: 400 });
+    await expect(h.service.createStoredAttachment({ actor, uploadedById: actor.id, projectId: 'project-1', targetType: 'SHEET_PERSON', targetId: 'person-1', file, finalizeDomainAttachment: vi.fn(), finalizeUploadResult: vi.fn() })).rejects.toMatchObject({ status: 400 });
+    expect(h.objectStorageService.upload).not.toHaveBeenCalled();
+  });
+  it('does not expose a clean null-project attachment without its live business image binding', async () => {
+    const h = setup();
+    h.prisma.attachment.findUnique.mockResolvedValue({ ...h.pending, scanStatus: 'CLEAN' });
+    Object.assign(h.prisma, { sheetImage: { findFirst: vi.fn().mockResolvedValue(null) } });
+    await expect(h.service.getAttachmentContent('attachment-1', actor)).rejects.toMatchObject({ status: 404 });
+    expect(h.objectStorageService.openDownload).not.toHaveBeenCalled(); expect(h.projectAccessService.assertProjectAccessWithDefaultClient).not.toHaveBeenCalled();
+  });
+});
+
 describe('AttachmentsService', () => {
   it('bounds the workspace attachment page and entity selector materialization', async () => {
     const { service, prisma } = createService();

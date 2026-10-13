@@ -1,3 +1,4 @@
+import { PERSON_PRESENTATION_SELECT } from '../persons/person-profile-read';
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { UserStatus } from '@prisma/client';
 import { describe, expect, it, vi } from 'vitest';
@@ -368,6 +369,7 @@ describe('UsersService', () => {
         name: '张三',
         departmentId: 'dept-pmo',
         departmentName: '项目管理部',
+        personId: null, position: null,
       },
     ]);
 
@@ -375,22 +377,23 @@ describe('UsersService', () => {
       where: {
         status: UserStatus.ACTIVE,
         localCredential: { isNot: null },
-        name: {
-          contains: '张三',
-          mode: 'insensitive',
-        },
+        OR: [
+          { personProfile: { is: { name: { contains: '张三', mode: 'insensitive' } } } },
+          { personProfile: { is: null }, name: { contains: '张三', mode: 'insensitive' } },
+        ],
       },
       select: {
         id: true,
         name: true,
         departmentId: true,
+        personProfile: { select: PERSON_PRESENTATION_SELECT },
         department: {
           select: {
             name: true,
           },
         },
       },
-      orderBy: [{ name: 'asc' }, { id: 'asc' }],
+      orderBy: { id: 'asc' },
       take: 50,
       cursor: { id: 'user-1' },
       skip: 1,

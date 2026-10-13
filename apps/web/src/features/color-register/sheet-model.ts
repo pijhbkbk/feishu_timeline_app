@@ -12,6 +12,7 @@ export const SHEET_COLUMNS = [
   { key: 'manufacturer', label: '制作单位', width: 150 }, { key: 'paintType', label: '漆种', width: 150 },
   { key: 'formalCode', label: '正式编号', width: 135 }, { key: 'registerMonth', label: '入清单月份', width: 130 },
   { key: 'registerStatus', label: '清单状态', width: 120 }, { key: 'sourceSummary', label: '来源', width: 360 },
+  { key: 'photos', label: '照片', width: 140 },
 ];
 export function isSheetField(field: string): field is SheetField { return (EDITABLE_FIELDS as readonly string[]).includes(field); }
 function values(row: RegisterRow): Values { return Object.fromEntries(EDITABLE_FIELDS.map(field => [field, row[field]])) as Values; }
@@ -24,6 +25,14 @@ export class CatalogSheetModel {
   expected = new Map<string, number>();
   undoStack: History[] = [];
   redoStack: History[] = [];
+  private readonly dirtyIds = new Set<string>();
+  private patchCache: SheetPatch[] | null = [];
+  private track(id: string) {
+    const row = this.rows.get(id)!;
+    if (EDITABLE_FIELDS.some(field => this.desired.get(id)![field] !== row[field])) this.dirtyIds.add(id);
+    else this.dirtyIds.delete(id);
+    this.patchCache = null;
+  }
   constructor(rows: RegisterRow[]) { rows.forEach(row => { this.rows.set(row.id, row); this.desired.set(row.id, values(row)); this.expected.set(row.id, row.revision); }); }
   display(id: string): RegisterRow { return { ...this.rows.get(id)!, ...this.desired.get(id)! }; }
   apply(changes: SheetChange[], recordHistory = true) {
@@ -35,23 +44,28 @@ export class CatalogSheetModel {
       if (before !== change.value) history.push({ ...change, field: change.field, before, after: change.value });
     }
     history.forEach(change => { this.desired.get(change.id)![change.field] = change.after; });
+    new Set(history.map(change => change.id)).forEach(id => this.track(id));
     if (recordHistory && history.length) { this.undoStack.push(history); this.redoStack = []; }
   }
   undo(): SheetChange[] { const entry = this.undoStack.pop(); if (!entry) return []; const changes = entry.map(x => ({ id: x.id, field: x.field, value: x.before })); this.apply(changes, false); this.redoStack.push(entry); return changes; }
   redo(): SheetChange[] { const entry = this.redoStack.pop(); if (!entry) return []; const changes = entry.map(x => ({ id: x.id, field: x.field, value: x.after })); this.apply(changes, false); this.undoStack.push(entry); return changes; }
   patches(): SheetPatch[] {
-    return [...this.rows.values()].flatMap(row => {
-      const changes = Object.fromEntries(EDITABLE_FIELDS.filter(field => this.desired.get(row.id)![field] !== row[field]).map(field => [field, this.desired.get(row.id)![field]]));
-      return Object.keys(changes).length ? [{ id: row.id, expectedRevision: this.expected.get(row.id)!, changes }] : [];
+    if (this.patchCache) return this.patchCache;
+    this.patchCache = [...this.dirtyIds].map(id => {
+      const row = this.rows.get(id)!;
+      const changes = Object.fromEntries(EDITABLE_FIELDS.filter(field => this.desired.get(id)![field] !== row[field]).map(field => [field, this.desired.get(id)![field]]));
+      return { id, expectedRevision: this.expected.get(id)!, changes };
     });
+    return this.patchCache;
   }
+
   confirm(saved: RegisterRow[], submitted: SheetPatch[]) {
     // Preserve edits made while a request was in flight, including reverting to the old value.
     for (const row of saved) {
       const patch = submitted.find(x => x.id === row.id); const desired = this.desired.get(row.id);
       if (!patch || !desired) continue;
       for (const field of EDITABLE_FIELDS) if (Object.hasOwn(patch.changes, field) && desired[field] === patch.changes[field]) desired[field] = row[field];
-      this.rows.set(row.id, row); this.expected.set(row.id, row.revision);
+      this.rows.set(row.id, row); this.expected.set(row.id, row.revision); this.track(row.id);
     }
   }
   latest(rows: RegisterRow[]) {
@@ -65,9 +79,10 @@ export class CatalogSheetModel {
       const draft = drafts.get(row.id);
       this.rows.set(row.id, row); this.desired.set(row.id, { ...values(row), ...draft?.changes });
       if (!draft) this.expected.set(row.id, row.revision);
+      this.track(row.id);
     }
   }
-  resolve(id: string, keep: boolean) { const row = this.rows.get(id)!; if (!keep) this.desired.set(id, values(row)); this.expected.set(id, row.revision); this.undoStack = []; this.redoStack = []; }
+  resolve(id: string, keep: boolean) { const row = this.rows.get(id)!; if (!keep) this.desired.set(id, values(row)); this.expected.set(id, row.revision); this.track(id); this.undoStack = []; this.redoStack = []; }
   conflicts() { return this.patches().filter(patch => this.rows.get(patch.id)!.revision !== patch.expectedRevision); }
   errors(paintTypes: string[], manufacturers: string[]) {
     return this.patches().flatMap(patch => Object.entries(patch.changes).flatMap(([field, value]) => {

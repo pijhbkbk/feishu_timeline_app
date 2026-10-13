@@ -208,6 +208,7 @@ function nonCreateWriteHarness(input: {
     return [];
   });
   const tx = {
+      inspectionActivity: { findUnique: vi.fn().mockResolvedValue(null) },
     $queryRaw: queryRaw,
     project: { findUnique: vi.fn().mockResolvedValue(project) },
     workflowTask: {
@@ -590,6 +591,7 @@ function uploadAdmissionHarness(
     pipelineStarted ? finalizedReview : currentReview,
   );
   const tx = {
+      inspectionActivity: { findUnique: vi.fn().mockResolvedValue(null) },
     $queryRaw: queryRaw,
     reviewRecord: {
       findFirst: recordLookup,
@@ -738,6 +740,7 @@ function legacyPublicWriteHarness(
     return [];
   });
   const tx = {
+      inspectionActivity: { findUnique: vi.fn().mockResolvedValue(null) },
     $queryRaw: queryRaw,
     project: { findUnique: vi.fn().mockResolvedValue(project) },
     workflowTask: { findFirst: vi.fn().mockResolvedValue(null) },
@@ -1255,6 +1258,7 @@ describe('ReviewsService resource bounds', () => {
       });
       const create = vi.fn().mockResolvedValue(reviewRecord('created', reviewType));
       const tx = {
+      inspectionActivity: { findUnique: vi.fn().mockResolvedValue(null) },
         $queryRaw: capacityQuery,
         reviewRecord: {
           findFirst: vi.fn().mockResolvedValue(null),
@@ -1381,6 +1385,7 @@ describe('ReviewsService resource bounds', () => {
       });
       const reviewFindMany = vi.fn().mockResolvedValue(rows);
       const tx = {
+      inspectionActivity: { findUnique: vi.fn().mockResolvedValue(null) },
         project: { findUnique: vi.fn().mockResolvedValue(project) },
         workflowTask: { findFirst: vi.fn().mockResolvedValue(null) },
         trialProduction: { findFirst: vi.fn().mockResolvedValue(null) },
@@ -1754,6 +1759,7 @@ describe('ReviewsService resource bounds', () => {
         { workflowTaskId: 'task-current' },
       );
       const tx = {
+      inspectionActivity: { findUnique: vi.fn().mockResolvedValue(null) },
         $queryRaw: vi.fn().mockResolvedValue([]),
         user: {
           findUnique: vi.fn().mockResolvedValue({
@@ -1816,6 +1822,7 @@ describe('ReviewsService resource bounds', () => {
     const recurringCount = vi.fn().mockResolvedValue(1);
     const planFind = vi.fn().mockResolvedValue({ totalCount: 12 });
     const tx = {
+      inspectionActivity: { findUnique: vi.fn().mockResolvedValue(null) },
       reviewRecord: {
         updateMany: reviewUpdate,
         findFirst: vi.fn().mockResolvedValue(currentReview),
@@ -2163,6 +2170,7 @@ describe('ReviewsService resource bounds', () => {
       return [];
     });
     const tx = {
+      inspectionActivity: { findUnique: vi.fn().mockResolvedValue(null) },
       $queryRaw: queryRaw,
       reviewRecord: {
         findFirst: vi.fn().mockResolvedValue({
@@ -2243,6 +2251,7 @@ describe('ReviewsService resource bounds', () => {
       return [];
     });
     const tx = {
+      inspectionActivity: { findUnique: vi.fn().mockResolvedValue(null) },
       $queryRaw: queryRaw,
       reviewRecord: {
         findFirst: vi.fn().mockResolvedValue({

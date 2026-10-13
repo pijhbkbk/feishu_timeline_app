@@ -1,3 +1,4 @@
+import { PERSON_PRESENTATION_SELECT, personPresentation } from '../persons/person-profile-read';
 import { isApprovedTeamMember, TEAM_BUSINESS_PERMISSIONS } from '../../common/team-membership';
 import {
   BadRequestException,
@@ -23,6 +24,7 @@ import type { UserDirectoryQueryDto } from './dto/user-directory-query.dto';
 type UserWithRelations = Prisma.UserGetPayload<{
   include: {
     department: true;
+    personProfile: { select: typeof PERSON_PRESENTATION_SELECT };
     userRoles: {
       include: {
         role: {
@@ -57,6 +59,7 @@ export class UsersService {
       where: { id: userId },
       include: {
         department: true,
+        personProfile: { select: PERSON_PRESENTATION_SELECT },
         userRoles: {
           include: {
             role: {
@@ -258,10 +261,10 @@ export class UsersService {
         status: UserStatus.ACTIVE,
         ...(query.q
           ? {
-              name: {
-                contains: query.q,
-                mode: 'insensitive',
-              },
+              OR: [
+                { personProfile: { is: { name: { contains: query.q, mode: 'insensitive' } } } },
+                { personProfile: { is: null }, name: { contains: query.q, mode: 'insensitive' } },
+              ],
             }
           : {}),
         localCredential: { isNot: null },
@@ -270,13 +273,14 @@ export class UsersService {
         id: true,
         name: true,
         departmentId: true,
+        personProfile: { select: PERSON_PRESENTATION_SELECT },
         department: {
           select: {
             name: true,
           },
         },
       },
-      orderBy: [{ name: 'asc' }, { id: 'asc' }],
+      orderBy: { id: 'asc' },
       take: query.take,
       ...(query.cursor
         ? {
@@ -286,12 +290,7 @@ export class UsersService {
         : {}),
     });
 
-    return users.map((user) => ({
-      id: user.id,
-      name: user.name,
-      departmentId: user.departmentId,
-      departmentName: user.department?.name ?? null,
-    }));
+    return users.map(personPresentation);
   }
 
   private normalizeDirectoryQuery(rawQuery: UserDirectoryQueryDto): NormalizedDirectoryQuery {
@@ -369,14 +368,15 @@ export class UsersService {
   }
 
   private toAuthenticatedUser(user: UserWithRelations, authSource: AuthSource): AuthenticatedUser {
+    const presentation = personPresentation(user);
     if (AUTHENTICATED_USERS_HAVE_FULL_ACCESS) {
       return {
         id: user.id,
         username: user.username,
-        name: user.name,
+        name: presentation.name,
         email: user.email,
-        departmentId: user.departmentId,
-        departmentName: user.department?.name ?? null,
+        departmentId: presentation.departmentId,
+        departmentName: presentation.departmentName,
         isSystemAdmin: true,
         authSource,
         roleCodes: ['admin'],
@@ -387,10 +387,10 @@ export class UsersService {
     return {
       id: user.id,
       username: user.username,
-      name: user.name,
+      name: presentation.name,
       email: user.email,
-      departmentId: user.departmentId,
-      departmentName: user.department?.name ?? null,
+      departmentId: presentation.departmentId,
+      departmentName: presentation.departmentName,
       isSystemAdmin: user.isSystemAdmin,
       teamAccessApproved: user.teamAccessApproved,
       authSource,

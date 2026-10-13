@@ -41,6 +41,13 @@ describe('native login destinations from authenticated permissions', () => {
     expect(await resolveLoginDestination({ ...pending, requestedJob: 'admin' }, query('/projects/new'), origin, vi.fn())).toBe('/pending-access');
     expect(await resolveLoginDestination(admin, query('/projects/new'), origin, vi.fn())).toBe('/projects/new');
   });
+  it('returns approved staff to shared business sheets while protecting account permissions', async () => {
+    for (const path of ['/admin/people', '/admin/color-database', '/inspections', '/production']) {
+      expect(await resolveLoginDestination(member, query(path), origin, vi.fn())).toBe(path);
+      expect(await resolveLoginDestination(pending, query(path), origin, vi.fn())).toBe('/pending-access');
+    }
+    expect(await resolveLoginDestination(member, query('/admin/people/permissions'), origin, vi.fn())).toBe('/dashboard');
+  });
   it('preserves a project deep link only after server read permission succeeds', async () => {
     const allowed = vi.fn(async () => true);
     expect(await resolveLoginDestination(member, query('/projects/project-a?taskId=task-a'), origin, allowed)).toBe('/projects/project-a?taskId=task-a');

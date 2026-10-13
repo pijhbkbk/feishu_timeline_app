@@ -1,6 +1,7 @@
+import { authorizeSheetAttachmentTarget, isSheetTarget, lockSheetAttachmentTarget } from './sheet-attachment-policy';
 import { assertApprovedTeamMember } from '../../common/team-membership';
 import { authorizeGenericAttachmentTarget, lockGenericAttachmentMutation } from './attachment-team-policy';
-import { withProjectWrite, withSystemProjectWrite } from '../../common/team-authorization';
+import { withProjectWrite, withSystemProjectWrite, withTeamWrite, lockTeamAuthorization } from '../../common/team-authorization';
 import {
   BadRequestException,
   ConflictException,
@@ -55,7 +56,7 @@ type UploadedBinaryFile = {
 
 type CreateStoredAttachmentInput = {
   actor: AuthenticatedUser;
-  projectId: string;
+  projectId: string | null;
   targetType: AttachmentTargetType;
   targetId: string;
   file: UploadedBinaryFile;
@@ -83,7 +84,7 @@ type AttachmentListFilters = {
 
 type AttachmentRecordLike = {
   id: string;
-  projectId: string;
+  projectId: string | null;
   entityType: AttachmentTargetType;
   entityId: string;
   bucket: string;
@@ -500,11 +501,13 @@ export class AttachmentsService {
       throw new NotFoundException('附件不存在。');
     }
 
-    await this.projectAccessService.assertProjectAccessWithDefaultClient(
-      attachment.projectId,
-      actor,
-      'project.read',
-    );
+    if (attachment.projectId === null) {
+      await authorizeSheetAttachmentTarget(this.prisma, attachment.entityType, attachment.entityId, actor, this.projectAccessService);
+      const image = await this.prisma.sheetImage.findFirst({ where: { attachmentId: attachment.id, isDeleted: false, targetType: attachment.entityType, recordId: attachment.entityId }, select: { id: true } });
+      if (!image) throw new NotFoundException('图片业务关联不存在。');
+    } else {
+      await this.projectAccessService.assertProjectAccessWithDefaultClient(attachment.projectId, actor, 'project.read');
+    }
 
     return this.readAttachmentBinary(attachment, actor, rawDisposition);
   }
@@ -558,8 +561,14 @@ export class AttachmentsService {
     if (input.uploadedById !== input.actor.id) throw new ForbiddenException('上传身份不匹配。');
     this.assertFile(input.file);
     this.assertDomainFinalizeHookPresent(input);
-    await this.getProjectOrThrow(this.prisma, input.projectId);
-    await this.assertEntityReference(this.prisma, input.projectId, input.targetType, input.targetId);
+    if (input.projectId === null) {
+      if (!isSheetTarget(input.targetType) || !input.finalizeDomainAttachment || !input.finalizeUploadResult || input.replacesAttachmentId) throw new BadRequestException('无项目附件仅允许经过完整表格图片绑定流程创建。');
+      await authorizeSheetAttachmentTarget(this.prisma, input.targetType, input.targetId, input.actor, this.projectAccessService);
+    } else {
+      if (isSheetTarget(input.targetType)) throw new BadRequestException('表格图片必须使用业务记录归属。');
+      await this.getProjectOrThrow(this.prisma, input.projectId);
+      await this.assertEntityReference(this.prisma, input.projectId, input.targetType, input.targetId);
+    }
     const replacement = input.replacesAttachmentId
       ? await this.getAttachmentOrThrow(
           this.prisma,
@@ -575,8 +584,8 @@ export class AttachmentsService {
       throw new BadRequestException('只能替换同一工序下的材料。');
     }
 
-    const genericTargetVersion = !DOMAIN_GOVERNED_ATTACHMENT_TARGET_TYPES.has(input.targetType)
-      ? await withProjectWrite(this.prisma, input.actor, { projectId: input.projectId }, tx => authorizeGenericAttachmentTarget(tx, input.projectId, input.targetType, input.targetId, input.actor))
+    const genericTargetVersion = input.projectId !== null && !DOMAIN_GOVERNED_ATTACHMENT_TARGET_TYPES.has(input.targetType)
+      ? await withProjectWrite(this.prisma, input.actor, { projectId: input.projectId }, tx => authorizeGenericAttachmentTarget(tx, input.projectId!, input.targetType, input.targetId, input.actor))
       : undefined;
 
     const extension = extname(input.file.originalname).toLowerCase();
@@ -618,7 +627,7 @@ export class AttachmentsService {
       );
     }
 
-    const pendingAttachment = await withProjectWrite(this.prisma, input.actor, { projectId: input.projectId }, async (tx) => {
+    const pendingAttachment = await this.withAttachmentWrite(input, async (tx) => {
       const created = await tx.attachment.create({
         data: {
           projectId: input.projectId,
@@ -761,8 +770,8 @@ export class AttachmentsService {
       storageReservation.ownerToken,
     );
 
-    const attachment = await withProjectWrite(this.prisma, input.actor, { projectId: input.projectId }, async (tx) => {
-      if (genericTargetVersion !== undefined) {
+    const attachment = await this.withAttachmentWrite(input, async (tx) => {
+      if (genericTargetVersion !== undefined && input.projectId !== null) {
         await authorizeGenericAttachmentTarget(tx, input.projectId, input.targetType, input.targetId, input.actor, genericTargetVersion);
       }
       await input.finalizeDomainAttachment?.(tx, {
@@ -866,7 +875,7 @@ export class AttachmentsService {
         });
       }
 
-      const labels = await this.buildEntityLabelMapForAttachments(tx, input.projectId, [updated]);
+      const labels = input.projectId === null ? undefined : await this.buildEntityLabelMapForAttachments(tx, input.projectId, [updated]);
       const summary = this.toAttachmentSummary(updated, labels);
       await input.finalizeUploadResult?.(tx, summary);
       return summary;
@@ -959,10 +968,10 @@ export class AttachmentsService {
       replacesAttachmentId: attachment.replacesAttachmentId,
       contentUrl: fileUrl,
       downloadUrl: canDownload
-        ? `/projects/${attachment.projectId}/attachments/${attachment.id}/download`
+        ? attachment.projectId === null ? `/attachments/${attachment.id}/content?disposition=attachment` : `/projects/${attachment.projectId}/attachments/${attachment.id}/download`
         : null,
       previewUrl: canDownload && canPreviewAttachmentMimeType(attachment.mimeType)
-        ? `/projects/${attachment.projectId}/attachments/${attachment.id}/download?disposition=inline`
+        ? attachment.projectId === null ? `/attachments/${attachment.id}/content?disposition=inline` : `/projects/${attachment.projectId}/attachments/${attachment.id}/download?disposition=inline`
         : null,
       canPreview: canDownload && canPreviewAttachmentMimeType(attachment.mimeType),
       uploadedById: attachment.uploadedById,
@@ -1252,7 +1261,7 @@ export class AttachmentsService {
 
   private async getAttachmentOrThrow(
     db: AttachmentDbClient,
-    projectId: string,
+    projectId: string | null,
     attachmentId: string,
     includeDeleted: boolean,
   ) {
@@ -1842,7 +1851,7 @@ export class AttachmentsService {
       scannedAt: Date;
     },
   ) {
-    await withSystemProjectWrite(this.prisma, input.projectId, async (tx) => {
+    await this.withSystemAttachmentWrite(input, async (tx) => {
       const updated = await tx.attachment.update({
         where: { id: attachment.id, scanStatus: AttachmentScanStatus.PENDING_SCAN },
         data: {
@@ -1924,10 +1933,10 @@ export class AttachmentsService {
     // changing metadata or attempting binary cleanup.
     let committed: ReturnType<AttachmentsService['toAttachmentSummary']> | null;
     try {
-      committed = await withSystemProjectWrite(this.prisma, input.projectId, async tx => {
+      committed = await this.withSystemAttachmentWrite(input, async tx => {
         const current = await tx.attachment.findUnique({ where: { id: attachment.id }, include: ATTACHMENT_DETAIL_INCLUDE });
         if (current?.scanStatus === AttachmentScanStatus.CLEAN) {
-          const labels = await this.buildEntityLabelMapForAttachments(tx, input.projectId, [current]);
+          const labels = input.projectId === null ? undefined : await this.buildEntityLabelMapForAttachments(tx, input.projectId, [current]);
           return this.toAttachmentSummary(current, labels);
         }
         if (current?.scanStatus === AttachmentScanStatus.PENDING_SCAN) {
@@ -1980,13 +1989,33 @@ export class AttachmentsService {
     }
   }
 
+  private withAttachmentWrite<T>(input: CreateStoredAttachmentInput, execute: (tx: Prisma.TransactionClient) => Promise<T>) {
+    if (input.projectId !== null) return withProjectWrite(this.prisma, input.actor, { projectId: input.projectId }, execute);
+    return withTeamWrite(this.prisma, input.actor, async tx => {
+      await authorizeSheetAttachmentTarget(tx, input.targetType, input.targetId, input.actor, this.projectAccessService, true);
+      await lockSheetAttachmentTarget(tx, input.targetType, input.targetId);
+      return execute(tx);
+    });
+  }
+
+  // Internal failure/unknown-commit resolution must still work after actor
+  // revocation or review submission; it cannot confer a new domain binding.
+  private withSystemAttachmentWrite<T>(input: CreateStoredAttachmentInput, execute: (tx: Prisma.TransactionClient) => Promise<T>) {
+    if (input.projectId !== null) return withSystemProjectWrite(this.prisma, input.projectId, execute);
+    return this.prisma.$transaction(async tx => {
+      await lockTeamAuthorization(tx);
+      await lockSheetAttachmentTarget(tx, input.targetType, input.targetId);
+      return execute(tx);
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted });
+  }
+
   private buildStorageKey(
-    projectId: string,
+    projectId: string | null,
     entityType: AttachmentTargetType,
     entityId: string,
     extension: string,
   ) {
-    return `${projectId}/${entityType.toLowerCase()}/${entityId}/${Date.now()}-${randomUUID()}${extension}`;
+    return `${projectId ?? "sheet-records"}/${entityType.toLowerCase()}/${entityId}/${Date.now()}-${randomUUID()}${extension}`;
   }
 
   private sanitizeFileName(fileName: string) {

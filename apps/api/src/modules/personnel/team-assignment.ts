@@ -1,3 +1,4 @@
+import { PERSON_PRESENTATION_SELECT, personPresentation } from '../persons/person-profile-read';
 import { ConflictException } from '@nestjs/common';
 import { Prisma, type WorkflowNodeCode, type WorkflowTask } from '@prisma/client';
 import { BUSINESS_ROLE_CODES, NODE_BUSINESS_ROLES, type BusinessRoleCode } from './personnel.constants';
@@ -14,9 +15,9 @@ export function eligibleTeamUserWhere(roleCode: string): Prisma.UserWhereInput {
 export async function resolveTeamAssignment(tx: Prisma.TransactionClient, nodeCode: WorkflowNodeCode) {
   const requiredRoleCode = NODE_BUSINESS_ROLES[nodeCode];
   const candidates = await tx.user.findMany({ where: eligibleTeamUserWhere(requiredRoleCode),
-    take: 2, orderBy: { id: 'asc' }, select: { id: true, departmentId: true } });
+    take: 2, orderBy: { id: 'asc' }, select: { id: true, name: true, departmentId: true, personProfile: { select: PERSON_PRESENTATION_SELECT } } });
   return { requiredRoleCode, assigneeUserId: candidates.length === 1 ? candidates[0]!.id : null,
-    assigneeDepartmentId: candidates.length === 1 ? candidates[0]!.departmentId : null };
+    assigneeDepartmentId: candidates.length === 1 ? personPresentation(candidates[0]!).departmentId : null };
 }
 
 export async function notifyTeamTask(tx: Prisma.TransactionClient, taskId: string) {

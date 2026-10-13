@@ -153,6 +153,7 @@ function createHarness(
           }
         };
         const tx = {
+          inspectionActivity: { findUnique: vi.fn().mockResolvedValue(null) },
           $queryRaw: vi.fn(async (query: { strings?: readonly string[] }) => {
             const sql = query.strings?.join('') ?? '';
             if (sql.includes('monthly_plan_integrity')) return [{ id: task.id, status: 'ACTIVE', frequency: 'MONTHLY', totalCount: 12, taskCount: 12, validCount: 12 }];

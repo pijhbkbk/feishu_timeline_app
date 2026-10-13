@@ -7,6 +7,12 @@ import CoreZhCN from '@univerjs/preset-sheets-core/locales/zh-CN';
 import { setNonce } from 'get-nonce';
 import { BusinessSheetModel, VALUE_MUTATION, allowedSheetMutation, forbiddenSheetCommand, type BusinessSheetChange, type BusinessSheetColumn, type BusinessSheetRow, type BusinessSheetUpdate } from './runtime-model';
 import '@univerjs/preset-sheets-core/lib/index.css';
+import '@univerjs/preset-sheets-drawing/lib/index.css';
+import DrawingZhCN from '@univerjs/preset-sheets-drawing/locales/zh-CN';
+import { RecordImageIo, createRecordDrawingPreset } from './drawing-preset';
+import { bindRuntimeImages, drawingCommands, type RuntimeImageActions } from './runtime-images';
+import type { SheetImage } from './image-client';
+import { API_BASE_URL } from '../../lib/auth-client';
 
 export type { BusinessSheetChange, BusinessSheetColumn, BusinessSheetRow, BusinessSheetUpdate } from './runtime-model';
 export interface BusinessSheetOptions {
@@ -18,9 +24,12 @@ export interface BusinessSheetOptions {
   onError: (message: string) => void;
   onUndo?: () => void;
   onRedo?: () => void;
+  imageActions?: RuntimeImageActions;
 }
 export interface BusinessSheetRuntime {
   ready: Promise<void>;
+  setImages: (images: readonly SheetImage[]) => Promise<void>;
+  replaceRows: (rows: BusinessSheetRow[]) => Promise<void>;
   updateValues: (changes: BusinessSheetUpdate[]) => void;
   finishEditing: () => Promise<void>;
   selectCell: (id: string, field: string) => void;
@@ -100,7 +109,12 @@ export function createBusinessSheet(options: BusinessSheetOptions): BusinessShee
   // The core preset supplies its normal text editor through the formula UI.
   // Keep those editor dependencies; the value boundary rejects formulas before
   // they can enter the workbook or a business save.
-  const { univer, univerAPI } = createUniver({ locale: LocaleType.ZH_CN, locales: { [LocaleType.ZH_CN]: mergeLocales(CoreZhCN) }, presets: [preset] });
+  const imageIo = new RecordImageIo({ onError: options.onError, thumbnail: async (id, { signal }) => {
+    const response = await fetch(`${API_BASE_URL}/sheet-images/${encodeURIComponent(id)}/thumbnail`, { credentials: 'include', cache: 'no-store', signal });
+    if (!response.ok) throw new Error('图片读取失败。');
+    const url = URL.createObjectURL(await response.blob()); return { url, release: () => URL.revokeObjectURL(url) };
+  } });
+  const { univer, univerAPI } = createUniver({ locale: LocaleType.ZH_CN, locales: { [LocaleType.ZH_CN]: mergeLocales(CoreZhCN, DrawingZhCN) }, presets: [preset, createRecordDrawingPreset(imageIo)] });
   let disposed = false; let silent = 0; let editing: { row: number; col: number } | null = null;
   let resolveReady!: () => void;
   const ready = new Promise<void>(resolve => { resolveReady = resolve; });
@@ -109,6 +123,7 @@ export function createBusinessSheet(options: BusinessSheetOptions): BusinessShee
     subscriptions.push(univerAPI.addEvent(univerAPI.Event.LifeCycleChanged, event => { if (event.stage >= LifecycleStages.Steady) resolveReady(); }));
     const workbook = univerAPI.createWorkbook(snapshot);
     const worksheet = workbook.getActiveSheet();
+    const imageController = bindRuntimeImages(univerAPI, workbook, model, options.container, options.imageActions ?? { add: () => options.onError('请使用记录照片入口。'), change: () => {}, remove: () => {}, requestFiles: () => options.onError('请使用记录照片入口。') }, run => { silent++; try { return run(); } finally { silent--; } }, options.onError);
     if (univerAPI.getCurrentLifecycleStage() >= LifecycleStages.Steady) resolveReady();
     const reject = (event: { cancel?: boolean }, message: string) => { event.cancel = true; options.onError(message); };
     // Univer omits undo/redo from BeforeCommandExecute; always route them through
@@ -117,6 +132,7 @@ export function createBusinessSheet(options: BusinessSheetOptions): BusinessShee
     subscriptions.push(univerAPI.addEvent(univerAPI.Event.BeforeRedo, event => { event.cancel = true; options.onRedo?.(); }));
     subscriptions.push(univerAPI.addEvent(univerAPI.Event.BeforeCommandExecute, event => {
       if (silent || disposed) return;
+      if (drawingCommands.has(event.id)) return;
       if (event.id === 'univer.command.undo' || event.id === 'univer.command.redo') {
         event.cancel = true; (event.id.endsWith('undo') ? options.onUndo : options.onRedo)?.(); return;
       }
@@ -168,10 +184,33 @@ export function createBusinessSheet(options: BusinessSheetOptions): BusinessShee
     const dispose = () => {
       if (disposed) return; disposed = true; resolveReady();
       options.container.removeEventListener('keydown', keyboard, true);
-      subscriptions.forEach(item => item.dispose()); univer.dispose();
+      subscriptions.forEach(item => item.dispose()); imageController.dispose(); imageIo.dispose(); univer.dispose();
     };
     return {
       ready,
+      setImages: async images => { await ready; if (!disposed) await imageController.render(images); },
+      replaceRows: async rows => {
+        await ready;
+        if (disposed) return;
+        if (workbook.isCellEditing()) await workbook.endEditingAsync(true);
+        // Validate identities before any display mutation. A view change only
+        // replaces the positional projection, never a business value or revision.
+        const next = new BusinessSheetModel(rows, options.columns);
+        const previous = model.rows.length;
+        const values: IObjectMatrixPrimitiveType<ICellData> = {};
+        for (let row = 0; row < Math.max(previous, rows.length); row++) {
+          values[row + 1] = {};
+          options.columns.forEach((_column, col) => { values[row + 1]![col] = textCell(next.rows[row]?.values[col] ?? null); });
+        }
+        silent += 1;
+        try {
+          worksheet.setRowCount(Math.max(2, previous + 1, rows.length + 1));
+          univerAPI.syncExecuteCommand(VALUE_MUTATION, { unitId: workbookId, subUnitId: SHEET_ID, cellValue: values });
+          model.replaceRows(rows);
+          worksheet.setRowCount(Math.max(2, rows.length + 1));
+        } finally { silent -= 1; }
+        await imageController.render();
+      },
       updateValues: changes => {
         if (disposed) return;
         const accepted: BusinessSheetChange[] = []; const values: IObjectMatrixPrimitiveType<ICellData> = {};
@@ -195,6 +234,6 @@ export function createBusinessSheet(options: BusinessSheetOptions): BusinessShee
       dispose,
     };
   } catch (error) {
-    resolveReady(); subscriptions.forEach(item => item.dispose()); univer.dispose(); throw error;
+    resolveReady(); subscriptions.forEach(item => item.dispose()); imageIo.dispose(); univer.dispose(); throw error;
   }
 }

@@ -1,3 +1,4 @@
+import { PERSON_PRESENTATION_SELECT, personPresentation } from '../persons/person-profile-read';
 import { PROJECT_DISPLAY_COLOR_SELECT, resolveProjectDisplayColor } from '../../common/project-display-color';
 import { assertApprovedTeamMember } from '../../common/team-membership';
 import { isReworkTask, isTechnicalReworkTask, taskEvidenceIds, ancestorEvidenceIds } from '../../common/workflow-evidence';
@@ -109,7 +110,7 @@ type WorkflowTaskWithRelations = Prisma.WorkflowTaskGetPayload<{
   include: {
     workflowInstance: true;
     project: true;
-    assigneeUser: true;
+    assigneeUser: { include: { personProfile: { select: typeof PERSON_PRESENTATION_SELECT } } };
     assigneeDepartment: true;
   };
 }>;
@@ -295,7 +296,7 @@ export class WorkflowsService {
         workflowInstanceId: workflowInstance.id,
       },
       include: {
-        assigneeUser: true,
+        assigneeUser: { include: { personProfile: { select: PERSON_PRESENTATION_SELECT } } },
         assigneeDepartment: true,
       },
       orderBy: [
@@ -402,7 +403,7 @@ export class WorkflowsService {
           isActive: true,
         },
         include: {
-          assigneeUser: true,
+          assigneeUser: { include: { personProfile: { select: PERSON_PRESENTATION_SELECT } } },
           assigneeDepartment: true,
         },
         orderBy: [
@@ -560,6 +561,7 @@ export class WorkflowsService {
         workflowInstance: true,
         assigneeUser: {
           include: {
+            personProfile: { select: PERSON_PRESENTATION_SELECT },
             department: true,
           },
         },
@@ -568,6 +570,7 @@ export class WorkflowsService {
           include: {
             ownerUser: {
               include: {
+                personProfile: { select: PERSON_PRESENTATION_SELECT },
                 department: true,
               },
             },
@@ -582,6 +585,7 @@ export class WorkflowsService {
               include: {
                 user: {
                   include: {
+                    personProfile: { select: PERSON_PRESENTATION_SELECT },
                     department: true,
                   },
                 },
@@ -723,7 +727,7 @@ export class WorkflowsService {
           nodeCode: detailedTask.nodeCode,
         },
         include: {
-          assigneeUser: true,
+          assigneeUser: { include: { personProfile: { select: PERSON_PRESENTATION_SELECT } } },
           assigneeDepartment: true,
         },
         orderBy: [{ taskRound: 'asc' }, { createdAt: 'asc' }],
@@ -846,42 +850,29 @@ export class WorkflowsService {
       nodeType: getWorkflowNodeMeta(detailedTask.nodeCode).isPrimaryTask ? 'MAINLINE' : 'PARALLEL',
       roundNo: detailedTask.taskRound,
       owner: detailedTask.assigneeUser
-        ? {
-            id: detailedTask.assigneeUser.id,
-            name: detailedTask.assigneeUser.name,
-            departmentId: detailedTask.assigneeUser.departmentId,
-            departmentName: detailedTask.assigneeUser.department?.name ?? null,
-          }
+        ? this.currentPersonSummary(detailedTask.assigneeUser)
         : detailedTask.project.ownerUser
-          ? {
-              id: detailedTask.project.ownerUser.id,
-              name: detailedTask.project.ownerUser.name,
-              departmentId: detailedTask.project.ownerUser.departmentId,
-              departmentName: detailedTask.project.ownerUser.department?.name ?? null,
-            }
+          ? this.currentPersonSummary(detailedTask.project.ownerUser)
           : null,
       collaborators: detailedTask.project.members
         .filter((member) => member.memberType !== 'OWNER' && member.memberType !== 'REVIEWER')
         .map((member) => ({
-          id: member.user.id,
-          name: member.user.name,
+          ...this.currentPersonSummary(member.user),
           memberType: member.memberType,
-          departmentId: member.user.departmentId,
-          departmentName: member.user.department?.name ?? null,
         })),
       approvers: this.buildTaskApprovers(detailedTask.project.members, reviewRecords),
       department: {
         id:
           detailedTask.assigneeDepartmentId ??
-          detailedTask.assigneeUser?.departmentId ??
+          (detailedTask.assigneeUser ? personPresentation(detailedTask.assigneeUser).departmentId : null) ??
           detailedTask.project.owningDepartmentId ??
-          detailedTask.project.ownerUser?.departmentId ??
+          (detailedTask.project.ownerUser ? personPresentation(detailedTask.project.ownerUser).departmentId : null) ??
           null,
         name:
           detailedTask.assigneeDepartment?.name ??
-          detailedTask.assigneeUser?.department?.name ??
+          (detailedTask.assigneeUser ? personPresentation(detailedTask.assigneeUser).departmentName : null) ??
           detailedTask.project.owningDepartment?.name ??
-          detailedTask.project.ownerUser?.department?.name ??
+          (detailedTask.project.ownerUser ? personPresentation(detailedTask.project.ownerUser).departmentName : null) ??
           null,
       },
       deadline: detailedTask.dueAt?.toISOString() ?? null,
@@ -909,7 +900,7 @@ export class WorkflowsService {
         rejectReason: latestReview?.rejectReason ?? null,
         conditionNote: latestReview?.conditionNote ?? null,
         reworkRequirement: latestReview?.conditionNote ?? latestReview?.comment ?? null,
-        reworkOwnerName: detailedTask.assigneeUser?.name ?? null,
+        reworkOwnerName: detailedTask.assigneeUser ? personPresentation(detailedTask.assigneeUser).name : null,
         reviewPassAt: detailedTask.reviewPassAt?.toISOString() ?? latestReview?.reviewedAt?.toISOString() ?? null,
         historyRounds: taskRounds.map((round) => ({
           taskId: round.id,
@@ -1059,7 +1050,7 @@ export class WorkflowsService {
         nodeCode: task.nodeCode,
       },
       include: {
-        assigneeUser: true,
+        assigneeUser: { include: { personProfile: { select: PERSON_PRESENTATION_SELECT } } },
         assigneeDepartment: true,
       },
       orderBy: [
@@ -2129,7 +2120,7 @@ export class WorkflowsService {
       include: {
         workflowInstance: true,
         project: true,
-        assigneeUser: true,
+        assigneeUser: { include: { personProfile: { select: PERSON_PRESENTATION_SELECT } } },
         assigneeDepartment: true,
       },
     });
@@ -2182,7 +2173,7 @@ export class WorkflowsService {
         workflowInstanceId,
       },
       include: {
-        assigneeUser: true,
+        assigneeUser: { include: { personProfile: { select: PERSON_PRESENTATION_SELECT } } },
         assigneeDepartment: true,
       },
       orderBy: [
@@ -2377,17 +2368,15 @@ export class WorkflowsService {
     }
   }
 
+  private currentPersonSummary(user: Parameters<typeof personPresentation>[0]) {
+    const { id, name, departmentId, departmentName } = personPresentation(user);
+    return { id, name, departmentId, departmentName };
+  }
+
   private buildTaskApprovers(
     members: Array<{
       memberType: string;
-      user: {
-        id: string;
-        name: string;
-        departmentId: string | null;
-        department?: {
-          name: string;
-        } | null;
-      };
+      user: Parameters<typeof personPresentation>[0];
     }>,
     reviewRecords: Array<{
       reviewerId: string | null;
@@ -2408,21 +2397,18 @@ export class WorkflowsService {
       departmentName: string | null;
     }>();
 
+    const currentReviewerIds = new Set<string>();
     for (const member of members) {
       if (member.memberType !== 'REVIEWER') {
         continue;
       }
 
-      approvers.set(member.user.id, {
-        id: member.user.id,
-        name: member.user.name,
-        departmentId: member.user.departmentId,
-        departmentName: member.user.department?.name ?? null,
-      });
+      currentReviewerIds.add(member.user.id);
+      approvers.set(member.user.id, this.currentPersonSummary(member.user));
     }
 
     for (const review of reviewRecords) {
-      if (!review.reviewerId || !review.reviewer) {
+      if (!review.reviewerId || !review.reviewer || currentReviewerIds.has(review.reviewerId)) {
         continue;
       }
 
@@ -2700,7 +2686,7 @@ export class WorkflowsService {
   private toWorkflowTaskSummary(
     task: Prisma.WorkflowTaskGetPayload<{
       include: {
-        assigneeUser: true;
+        assigneeUser: { include: { personProfile: { select: typeof PERSON_PRESENTATION_SELECT } } };
         assigneeDepartment: true;
       };
     }>,
@@ -2715,7 +2701,7 @@ export class WorkflowsService {
       isPrimary: task.isPrimary,
       isActive: task.isActive,
       assigneeUserId: task.assigneeUserId,
-      assigneeUserName: task.assigneeUser?.name ?? null,
+      assigneeUserName: task.assigneeUser ? personPresentation(task.assigneeUser).name : null,
       assigneeDepartmentId: task.assigneeDepartmentId,
       assigneeDepartmentName: task.assigneeDepartment?.name ?? null,
       dueAt: task.dueAt?.toISOString() ?? null,

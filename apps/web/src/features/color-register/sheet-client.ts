@@ -6,9 +6,11 @@ export type SheetFacets = RegisterList['facets'] & { paintTypes?: string[]; manu
 export async function readCatalog(signal: AbortSignal) {
   const first = await fetchRegister({ search: '', baseId: '', status: '', page: 1, pageSize: 50 }, signal);
   const items = [...first.items];
-  for (let page = 2; page <= Math.min(first.totalPages, 10); page++) {
-    const result = await fetchRegister({ search: '', baseId: '', status: '', page, pageSize: 50 }, signal);
-    items.push(...result.items);
+  // Four bounded reads in parallel; no per-cell requests and no unbounded scan.
+  for (let page = 2; page <= Math.min(first.totalPages, 40); page += 4) {
+    const pages = Array.from({ length: Math.min(4, Math.min(first.totalPages, 40) - page + 1) }, (_, index) => page + index);
+    const results = await Promise.all(pages.map(number => fetchRegister({ search: '', baseId: '', status: '', page: number, pageSize: 50 }, signal)));
+    results.forEach(result => items.push(...result.items));
   }
   // Stable IDs also protect against a list shifting while bounded pages are read.
   if (new Set(items.map(row => row.id)).size !== items.length) throw new Error('读取期间清单发生变化，请重新读取。');

@@ -79,6 +79,7 @@ enum ColorRegisterStatus {
 }
 
 model ProductionBase {
+  inspectionActivities InspectionActivity[]
   id        String  @id @default(cuid())
   code      String  @unique @db.VarChar(64)
   name      String  @db.VarChar(200)
@@ -133,6 +134,7 @@ model ColorImportRow {
 }
 
 model ColorProductionFact {
+  originalSource Json?
   id               String @id @default(cuid())
   colorId          String
   productionBaseId String
@@ -397,6 +399,10 @@ enum ProductionPlanStatus {
 }
 
 enum AttachmentTargetType {
+  SHEET_COLOR
+  SHEET_PERSON
+  SHEET_INSPECTION
+  SHEET_PRODUCTION
   PROJECT
   COLOR
   COLOR_VERSION
@@ -458,6 +464,7 @@ enum SampleConfirmationDecision {
 }
 
 enum AuditTargetType {
+  PERSON_PROFILE
   PROJECT
   COLOR
   COLOR_EXIT
@@ -482,6 +489,7 @@ enum AuditTargetType {
 }
 
 model Department {
+  personProfiles PersonProfile[]
   id                     String                    @id @default(cuid())
   code                   String                    @unique
   name                   String
@@ -509,6 +517,9 @@ model Department {
 }
 
 model User {
+  uploadedSheetImages SheetImage[] @relation("SheetImageUploader")
+  inspectionActivitiesCreated InspectionActivity[] @relation("InspectionActivityCreator")
+  personProfile PersonProfile?
   colorImports                  ColorImportBatch[]
   id                            String                    @id @default(cuid())
   username                      String                    @unique
@@ -645,6 +656,7 @@ model UserRole {
 }
 
 model Project {
+  inspectionActivities InspectionActivity[]
   id                       String                    @id @default(cuid())
   primaryColorId           String?
   primaryColor             Color?                    @relation("ProjectPrimaryColor", fields: [primaryColorId], references: [id], onDelete: Restrict)
@@ -823,6 +835,7 @@ model ProjectCreateCommandRequest {
 }
 
 model Color {
+  inspectionOccurrences InspectionOccurrence[]
   id                    String             @id @default(cuid())
   projectId             String?
   linkedProjects        Project[]          @relation("ProjectPrimaryColor")
@@ -874,6 +887,7 @@ model Color {
 }
 
 model ColorVersion {
+  inspectionMeasurements InspectionMeasurement[]
   id                String             @id @default(cuid())
   colorId           String
   versionNo         Int
@@ -1193,6 +1207,7 @@ model RecurringPlan {
 }
 
 model RecurringTask {
+  inspectionActivities InspectionActivity[]
   id              String              @id @default(cuid())
   recurringPlanId String
   projectId       String
@@ -1319,6 +1334,7 @@ model WorkflowTransition {
 }
 
 model Sample {
+  inspectionObjects InspectionObject[]
   id                  String               @id @default(cuid())
   projectId           String
   colorId             String?
@@ -1631,6 +1647,7 @@ model TrialProductionIssue {
 }
 
 model ReviewRecord {
+  inspectionActivity InspectionActivity?
   id                String            @id @default(cuid())
   projectId         String
   workflowTaskId    String
@@ -1737,7 +1754,7 @@ model Attachment {
   approvedReportProject Project? @relation("ProjectApprovedReport")
   sampleConfirmations SampleConfirmation[] @relation("SampleConfirmationMaterial")
   id                      String               @id @default(cuid())
-  projectId               String
+  projectId               String?
   entityType              AttachmentTargetType @map("targetType")
   entityId                String               @map("targetId")
   bucket                  String
@@ -1763,7 +1780,7 @@ model Attachment {
   isDeleted               Boolean              @default(false)
   deletedAt               DateTime?
   deletedById             String?
-  project                 Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project                 Project?              @relation(fields: [projectId], references: [id], onDelete: Cascade)
   uploadedBy              User?                @relation("AttachmentUploader", fields: [uploadedById], references: [id], onDelete: SetNull)
   deletedBy               User?                @relation("AttachmentDeleter", fields: [deletedById], references: [id], onDelete: SetNull)
   performanceTestReport   PerformanceTest?     @relation("PerformanceTestReport")
@@ -1783,12 +1800,13 @@ model Attachment {
   @@index([replacesAttachmentId])
   @@index([scanStatus, uploadedAt])
   @@map("attachments")
+  sheetImage SheetImage?
 }
 
 model AttachmentStorageReservation {
   id                   String                @id @default(cuid())
   attachmentId         String?               @unique
-  projectId            String
+  projectId            String?
   actorUserId          String?
   targetType           AttachmentTargetType
   targetId             String
@@ -1938,4 +1956,185 @@ model ReminderScanState {
   leaseUntil DateTime?
   updatedAt DateTime @updatedAt
   @@map("reminder_scan_states")
+}
+
+model PersonProfile {
+  importKey String? @unique @db.VarChar(64)
+  originalSource Json?
+  inspectionParticipations InspectionParticipant[]
+  id           String      @id @default(cuid())
+  userId       String?     @unique
+  name         String      @db.VarChar(100)
+  departmentId String?
+  position     String?     @db.VarChar(100)
+  email        String?     @db.VarChar(160)
+  mobile       String?     @db.VarChar(32)
+  note         String?     @db.VarChar(2000)
+  isActive     Boolean     @default(true)
+  revision     Int         @default(1)
+  user         User?       @relation(fields: [userId], references: [id], onDelete: Restrict)
+  department   Department? @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@index([departmentId, isActive, id])
+  @@index([name, id])
+  @@map("person_profiles")
+}
+
+enum InspectionObjectKind {
+  VEHICLE
+  SAMPLE
+}
+enum InspectionConclusion {
+  PENDING
+  PASS
+  FAIL
+}
+model InspectionActivity {
+  id               String @id @default(cuid())
+  activityDate     DateTime @db.Date
+  productionBaseId String
+  batchLabel       String? @db.VarChar(200)
+  note             String? @db.VarChar(4000)
+  revision         Int @default(1)
+  createdById      String
+  projectId        String?
+  recurringTaskId  String?
+  reviewRecordId   String? @unique
+  productionBase   ProductionBase @relation(fields: [productionBaseId], references: [id], onDelete: Restrict)
+  createdBy        User @relation("InspectionActivityCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  project          Project? @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  recurringTask    RecurringTask? @relation(fields: [recurringTaskId], references: [id], onDelete: Restrict)
+  reviewRecord     ReviewRecord? @relation(fields: [reviewRecordId], references: [id], onDelete: Restrict)
+  participants     InspectionParticipant[]
+  occurrences      InspectionOccurrence[]
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  @@index([productionBaseId, activityDate, id])
+  @@index([projectId, recurringTaskId])
+  @@map("inspection_activities")
+}
+model InspectionParticipant {
+  activityId String
+  personId String
+  activity InspectionActivity @relation(fields: [activityId], references: [id], onDelete: Restrict)
+  person PersonProfile @relation(fields: [personId], references: [id], onDelete: Restrict)
+  @@id([activityId, personId])
+  @@index([personId])
+  @@map("inspection_participants")
+}
+model InspectionObject {
+  id String @id @default(cuid())
+  objectKind InspectionObjectKind
+  objectCode String @unique @db.VarChar(128)
+  vin String? @unique @db.VarChar(32)
+  vehicleModel String? @db.VarChar(200)
+  vehicleClass String? @db.VarChar(100)
+  sampleId String? @unique
+  sample Sample? @relation(fields: [sampleId], references: [id], onDelete: Restrict)
+  revision Int @default(1)
+  occurrences InspectionOccurrence[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([objectKind, id])
+  @@map("inspection_objects")
+}
+model InspectionOccurrence {
+  originalSource Json?
+  id String @id @default(cuid())
+  activityId String
+  objectId String
+  colorId String
+  overallConclusion InspectionConclusion @default(PENDING)
+  visualConclusion String? @db.VarChar(2000)
+  handlingOpinion String? @db.VarChar(2000)
+  note String? @db.VarChar(4000)
+  revision Int @default(1)
+  activity InspectionActivity @relation(fields: [activityId], references: [id], onDelete: Restrict)
+  object InspectionObject @relation(fields: [objectId], references: [id], onDelete: Restrict)
+  color Color @relation(fields: [colorId], references: [id], onDelete: Restrict)
+  measurements InspectionMeasurement[]
+  defects InspectionDefect[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([activityId, objectId])
+  @@index([colorId, activityId])
+  @@map("inspection_occurrences")
+}
+model InspectionMeasurement {
+  id String @id @default(cuid())
+  occurrenceId String
+  pointLabel String @db.VarChar(200)
+  groupLabel String @db.VarChar(200)
+  standardVersionId String?
+  instrumentLabel String? @db.VarChar(200)
+  methodLabel String? @db.VarChar(200)
+  originalCriteria String? @db.VarChar(2000)
+  conclusion InspectionConclusion @default(PENDING)
+  revision Int @default(1)
+  occurrence InspectionOccurrence @relation(fields: [occurrenceId], references: [id], onDelete: Restrict)
+  standardVersion ColorVersion? @relation(fields: [standardVersionId], references: [id], onDelete: Restrict)
+  readings InspectionReading[]
+  defects InspectionDefect[]
+  @@unique([occurrenceId, pointLabel, groupLabel])
+  @@index([standardVersionId])
+  @@map("inspection_measurements")
+}
+model InspectionReading {
+  id String @id @default(cuid())
+  measurementId String
+  angleLabel String @db.VarChar(100)
+  lValue Decimal? @db.Decimal(14,6)
+  aValue Decimal? @db.Decimal(14,6)
+  bValue Decimal? @db.Decimal(14,6)
+  deltaE Decimal? @db.Decimal(14,6)
+  note String? @db.VarChar(2000)
+  revision Int @default(1)
+  measurement InspectionMeasurement @relation(fields: [measurementId], references: [id], onDelete: Restrict)
+  @@unique([measurementId, angleLabel])
+  @@map("inspection_readings")
+}
+model InspectionDefect {
+  id String @id @default(cuid())
+  occurrenceId String
+  measurementId String?
+  description String @db.VarChar(2000)
+  severityLabel String? @db.VarChar(100)
+  handlingOpinion String? @db.VarChar(2000)
+  revision Int @default(1)
+  occurrence InspectionOccurrence @relation(fields: [occurrenceId], references: [id], onDelete: Restrict)
+  measurement InspectionMeasurement? @relation(fields: [measurementId], references: [id], onDelete: Restrict)
+  @@index([occurrenceId])
+  @@index([measurementId])
+  @@map("inspection_defects")
+}
+
+model SheetImage {
+  id             String               @id @default(uuid()) @db.Uuid
+  attachmentId   String               @unique
+  targetType     AttachmentTargetType
+  recordId       String
+  fieldKey       String               @db.VarChar(64)
+  mode           String               @default("CELL") @db.VarChar(16)
+  offsetX        Int                  @default(0)
+  offsetY        Int                  @default(0)
+  width          Int
+  height         Int
+  pixelWidth     Int
+  pixelHeight    Int
+  revision       Int                  @default(1)
+  actorUserId    String
+  operationId    String               @db.VarChar(128)
+  uploadHash     String               @db.VarChar(64)
+  isDeleted      Boolean              @default(false)
+  deletedAt      DateTime?
+  attachment     Attachment           @relation(fields: [attachmentId], references: [id], onDelete: Restrict)
+  actorUser      User                 @relation("SheetImageUploader", fields: [actorUserId], references: [id], onDelete: Restrict)
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
+  @@unique([actorUserId, operationId])
+  @@index([targetType, recordId, isDeleted, id])
+  @@map("sheet_images")
 }

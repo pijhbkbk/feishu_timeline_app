@@ -76,3 +76,9 @@
 @media(max-width:1350px){.cs-heading{align-items:flex-start}.cs-heading>div:first-child{display:block}.cs-heading p{margin-top:8px}.cs-content.with-detail{grid-template-columns:minmax(0,1fr) 270px}.cs-actions .m1-button{padding:10px}.cs-detail{padding:14px}}
 @media(max-width:1050px){.cs-heading{flex-wrap:wrap}.cs-actions{width:100%}.cs-save-state{margin-right:auto}.cs-filters{grid-template-columns:minmax(150px,2fr) repeat(3,minmax(90px,1fr)) auto}.cs-filters select{padding:8px}.cs-content.with-detail{grid-template-columns:minmax(0,1fr) 255px}.cs-tools{flex-wrap:wrap}.cs-engine-wrap{height:480px}.cs-detail{max-height:610px}}
 @media(max-width:700px){.cs-heading h1{font-size:27px}.cs-heading p{font-size:13px}.cs-actions{gap:7px}.cs-actions .m1-button{font-size:12px;padding:9px 7px}.cs-save-state{width:100%;padding:0}.cs-filters{grid-template-columns:repeat(2,minmax(0,1fr))}.cs-search{grid-column:1/-1}.cs-content.with-detail{grid-template-columns:minmax(0,1fr)}.cs-detail{max-height:550px}.cs-engine-wrap{height:480px}.cs-save-bar{flex-wrap:wrap}.cs-save-bar input{flex-basis:100%}.cs-statusbar{gap:6px}.cs-statusbar span:last-child{margin-left:0}.cs-import-mapping{grid-template-columns:1fr}.cs-cell-editor label{min-width:65px}}
+
+.cs-empty-overlay { position: absolute; inset: 0; display: grid; place-content: center; gap: 16px; background: #fff; text-align: center; }
+.sheet-form-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; padding: 18px 0; }
+.sheet-form-fields label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+.sheet-form-fields input, .sheet-form-fields select, .sheet-form-fields textarea { border: 1px solid #d9e1da; padding: 9px 11px; border-radius: 5px; background: white; color: #20352a; }
+@media (max-width: 600px) { .sheet-form-fields { grid-template-columns: 1fr; } }

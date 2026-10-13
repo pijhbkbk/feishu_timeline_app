@@ -38,6 +38,7 @@ const EXPECTED_SECURED_UPLOAD_CONTROLLERS = [
   'modules/reviews/reviews.controller.ts',
   'modules/reviews/reviews.controller.ts',
   'modules/samples/samples.controller.ts',
+  'modules/sheet-images/sheet-images.controller.ts',
 ];
 
 const scannerProbe = vi.fn();

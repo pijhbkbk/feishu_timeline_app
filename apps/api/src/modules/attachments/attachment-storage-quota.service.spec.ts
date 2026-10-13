@@ -21,6 +21,18 @@ const quotaConfig = new Map<string, number>([
 ]);
 
 describe('AttachmentStorageQuotaService', () => {
+  it('charges all null-project sheet images to the same bounded project quota', async () => {
+    const harness = createHarness({ project: usage(790, 1) });
+    await expect(harness.service.reserve({ ...reservationInput(128), projectId: null, targetType: 'SHEET_PERSON', targetId: 'person-1' })).rejects.toMatchObject({ response: expect.objectContaining({ code: 'ATTACHMENT_STORAGE_QUOTA_EXCEEDED', scope: 'PROJECT' }) });
+    expect(harness.tx.attachmentStorageReservation.aggregate).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ projectId: null }) }));
+    expect(harness.tx.attachmentStorageReservation.create).not.toHaveBeenCalled();
+  });
+  it('rejects mixing legacy targets with null project and sheet targets with a project', async () => {
+    const harness = createHarness();
+    await expect(harness.service.reserve({ ...reservationInput(128), projectId: null })).rejects.toThrow('SCOPE_INVALID');
+    await expect(harness.service.reserve({ ...reservationInput(128), targetType: 'SHEET_COLOR' })).rejects.toThrow('SCOPE_INVALID');
+    expect(harness.prisma.$transaction).not.toHaveBeenCalled();
+  });
   it('starts one bounded reconciliation pass immediately instead of waiting for the first interval', async () => {
     const harness = createHarness();
     const reconcile = vi

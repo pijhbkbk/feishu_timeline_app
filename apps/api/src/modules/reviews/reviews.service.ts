@@ -1,3 +1,4 @@
+import { assertInspectionReviewLink } from '../inspections/inspection-review-link';
 import { REVIEW_STANDARD_SELECT, assertReviewStandardUnchanged, loadReviewStandardOptions, parseReviewStandardVersionId, requireReviewStandardVersion } from './review-standard-version';
 import { isApprovedTeamMember } from '../../common/team-membership';
 import { BusinessClock } from '../../common/business-clock';
@@ -1070,6 +1071,7 @@ export class ReviewsService {
       }
       this.assertDraftReviewRecordForLockedWrite(reviewRecord);
       assertReviewStandardUnchanged(reviewRecord.standardVersionId, input.standardVersionId);
+      await assertInspectionReviewLink(tx, { reviewId, projectId, reviewedAt: input.reviewDate, standardVersionId: input.standardVersionId });
       await this.assertReviewWriteInputPersistable(tx, input);
       await this.getVisualDeltaRecurringTaskForDate(
         tx,
@@ -1184,6 +1186,7 @@ export class ReviewsService {
       }
       this.assertDraftReviewRecordForLockedWrite(reviewRecord);
 
+      await assertInspectionReviewLink(tx, { reviewId, projectId, reviewedAt: reviewRecord.reviewedAt, standardVersionId: reviewRecord.standardVersionId });
       const submitIssue = getCabinReviewSubmitIssue({
         reviewDate: reviewRecord.reviewedAt,
         reviewerId: reviewRecord.reviewerId,
@@ -1239,6 +1242,7 @@ export class ReviewsService {
         this.throwReviewStateChanged();
       }
 
+      await assertInspectionReviewLink(tx, { reviewId, projectId, reviewedAt: reviewRecord.reviewedAt, standardVersionId: reviewRecord.standardVersionId });
       const approveIssue = getCabinReviewApproveIssue({
         reviewConclusion: reviewRecord.result,
         submittedAt: reviewRecord.submittedAt,
@@ -1407,6 +1411,7 @@ export class ReviewsService {
         this.throwReviewStateChanged();
       }
 
+      await assertInspectionReviewLink(tx, { reviewId, projectId, reviewedAt: reviewRecord.reviewedAt, standardVersionId: reviewRecord.standardVersionId });
       const rejectIssue = getCabinReviewRejectIssue({
         reviewConclusion: reviewRecord.result,
         submittedAt: reviewRecord.submittedAt,

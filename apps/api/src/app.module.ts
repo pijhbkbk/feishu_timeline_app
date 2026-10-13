@@ -1,3 +1,7 @@
+import { SheetImagesModule } from './modules/sheet-images/sheet-images.module';
+import { ProductionFactsModule } from './modules/production-facts/production-facts.module';
+import { InspectionsModule } from './modules/inspections/inspections.module';
+import { PersonsModule } from './modules/persons/persons.module';
 import { Module } from '@nestjs/common';
 import { ColorRegisterModule } from './modules/color-register/color-register.module';
 import { BusinessClockModule } from './common/business-clock';
@@ -44,6 +48,10 @@ import { WorkflowsModule } from './modules/workflows/workflows.module';
 @Module({
   imports: [
     ColorRegisterModule,
+    PersonsModule,
+    SheetImagesModule,
+    ProductionFactsModule,
+    InspectionsModule,
     BusinessClockModule,
     PersonnelModule,
     ConfigModule.forRoot({

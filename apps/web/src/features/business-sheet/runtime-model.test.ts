@@ -13,6 +13,21 @@ describe('business sheet identity and mutation boundary', () => {
     expect(after.position('color-b', 'note')).toEqual({ row: 2, col: 1 });
     expect(after.validate({ 2: { 1: { v: '按身份保存' } } }).changes).toEqual([{ id: 'color-b', field: 'note', value: '按身份保存' }]);
   });
+  it('replaces a bounded visible row mapping without retaining filtered identities', () => {
+    const model = new BusinessSheetModel(rows, columns);
+    model.replaceRows([rows[1]!]);
+    expect(model.position('color-b', 'note')).toBeNull();
+    expect(model.validate({ 1: { 1: { v: '只改可见记录' } } }).changes).toEqual([{ id: 'color-a', field: 'note', value: '只改可见记录' }]);
+    expect(model.validate({ 2: { 1: { v: '隐藏记录' } } }).error).toBeTruthy();
+    model.replaceRows([]);
+    expect(model.identity(1, 1)).toBeNull();
+  });
+  it('supports the required 1000 by 20 bounded business dataset', () => {
+    const fields = Array.from({ length: 20 }, (_, i) => ({ key: `field${i}`, label: `字段${i}`, width: 120 }));
+    const thousand = Array.from({ length: 1000 }, (_, i) => ({ id: `record${i}`, values: fields.map(() => null), editable: fields.map(() => true) }));
+    const model = new BusinessSheetModel(thousand, fields);
+    expect(model.identity(1000, 19)).toEqual({ id: 'record999', field: 'field19' });
+  });
   it('rejects a mixed writable/readonly paste atomically without changing the model', () => {
     const model = new BusinessSheetModel(rows, columns);
     const result = model.validate({ 1: { 1: { v: '合法' } }, 2: { 0: { v: '越权修改名称' } } });

@@ -1,3 +1,4 @@
+import { PERSON_PRESENTATION_SELECT, personPresentation } from '../persons/person-profile-read';
 import { ProjectAssignmentSource, type Prisma, type WorkflowNodeCode } from '@prisma/client';
 import type { R26AssignmentPreview, R26AssignmentTask } from '../r26-read-model/r26-assignment.resolver';
 import { getWorkflowNodeMeta } from '../workflows/workflow-node.constants';
@@ -10,9 +11,9 @@ export async function teamAssignmentPreview(db: Prisma.TransactionClient, nodeCo
   const role = BUSINESS_ROLES.find(item => item.code === code)!;
   const meta = getWorkflowNodeMeta(nodeCode);
   const candidates = await db.user.findMany({ where: eligibleTeamUserWhere(code), take: 2, orderBy: { id: 'asc' },
-    select: { id: true, name: true, departmentId: true, department: { select: { name: true } } } });
+    select: { id: true, name: true, departmentId: true, personProfile: { select: PERSON_PRESENTATION_SELECT }, department: { select: { name: true } } } });
   const owner = task ? task.assigneeUser : candidates.length === 1 ? candidates[0]! : null;
-  const suggestedOwner = owner ? { id: owner.id, name: owner.name, departmentId: owner.departmentId, departmentName: owner.department?.name ?? null } : null;
+  const suggestedOwner = owner ? personPresentation(owner) : null;
   return {
     nodeCode, stepNumber: meta.sequence / 10, stepName: meta.name,
     taskId: task?.id ?? null, taskStatus: task?.status ?? null,

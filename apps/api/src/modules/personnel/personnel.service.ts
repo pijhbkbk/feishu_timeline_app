@@ -1,3 +1,4 @@
+import { PERSON_PRESENTATION_SELECT, personPresentation } from '../persons/person-profile-read';
 import { BusinessClock } from '../../common/business-clock';
 import { BadRequestException, ConflictException, ForbiddenException, HttpException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
@@ -20,7 +21,7 @@ export class PersonnelService {
     const q = query.q?.trim();
     const where: Prisma.UserWhereInput = {
       ...(query.roleCode ? { AND: [{ status: 'ACTIVE', localCredential: { isNot: null }, userRoles: { some: { role: { code: query.roleCode, status: 'ACTIVE' } } } }] } : {}),
-      ...(q ? { OR: [{ name: { contains: q, mode: 'insensitive' } }, { username: { contains: q, mode: 'insensitive' } }] } : {}),
+      ...(q ? { OR: [{ personProfile: { is: { name: { contains: q, mode: 'insensitive' } } } }, { personProfile: { is: null }, name: { contains: q, mode: 'insensitive' } }, { username: { contains: q, mode: 'insensitive' } }] } : {}),
       ...(query.after ? { id: { gt: query.after } } : {}),
       ...(query.filter === 'active' ? { status: 'ACTIVE' } : {}),
       ...(query.filter === 'inactive' ? { status: { not: 'ACTIVE' } } : {}),
@@ -30,6 +31,7 @@ export class PersonnelService {
     const users = await this.prisma.user.findMany({
       where, take: 31, orderBy: { id: 'asc' },
       select: { id: true, username: true, name: true, status: true, isSystemAdmin: true, teamAccessApproved: true, updatedAt: true,
+        departmentId: true, department: { select: { name: true } }, personProfile: { select: PERSON_PRESENTATION_SELECT },
         localCredential: { select: { userId: true } },
         userRoles: { take: 16, select: { role: { select: { code: true, name: true, status: true } } } },
         _count: { select: { assignedWorkflowTasks: { where: { nodeCode: { not: 'VISUAL_COLOR_DIFFERENCE_REVIEW' }, isActive: true, status: { in: [...pendingStatuses] } } } } },
@@ -54,7 +56,7 @@ export class PersonnelService {
       roles: BUSINESS_ROLES,
       nextCursor: users.length > 30 ? users[29]!.id : null,
       items: page.map(({ localCredential, userRoles, _count, ...user }) => ({
-        ...user, hasCredential: Boolean(localCredential), version: user.updatedAt.toISOString(),
+        ...user, ...personPresentation(user), personProfile: undefined, hasCredential: Boolean(localCredential), version: user.updatedAt.toISOString(),
         pendingTaskCount: _count.assignedWorkflowTasks + (monthlyByUser.get(user.id) ?? 0),
         roles: userRoles.map(({ role }) => ({ ...role, name: BUSINESS_ROLES.find(option => option.code === role.code)?.name ?? role.name })),
       })),

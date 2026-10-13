@@ -63,8 +63,8 @@ export const topNavigationItems: NavItem[] = [
   { label: '工作台', href: '/dashboard' },
   { label: '颜色项目', href: '/projects', matchMode: 'prefix' },
   { label: '颜色清单', href: '/admin/color-database', matchMode: 'prefix' },
-  { label: '周评', href: '/monthly-reviews' },
-  { label: '产量统计', href: '/analytics' },
+  { label: '评审记录', href: '/inspections' },
+  { label: '产量统计', href: '/production' },
   { label: '人员库', href: '/admin/people', matchMode: 'prefix' },
 ];
 
@@ -430,6 +430,8 @@ export function getRouteContext(pathname: string): RouteContext {
     };
   }
 
+  if (pathname === '/inspections') return { title: '检验与评审记录', description: '记录实际车辆、样件、测量及现场照片，按明确关联办理月度评审。', eyebrow: '检验事实' };
+  if (pathname === '/production') return { title: '产量统计', description: '维护基地与颜色的实际月度产量，按同一份事实汇总统计。', eyebrow: '生产事实' };
   if (pathname === '/monthly-reviews') {
     return {
       title: '整车色差一致性评审台账',

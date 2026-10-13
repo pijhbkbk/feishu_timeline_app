@@ -17,6 +17,7 @@ import {
 } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 
+import { isSheetTarget } from './sheet-attachment-policy';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { ObjectStorageService } from '../../infra/storage/object-storage.service';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
@@ -32,7 +33,7 @@ const RECONCILIATION_LOCK_NAMESPACE =
   'feishu-timeline:attachment-storage-reconciliation:v1';
 
 type ReserveAttachmentStorageInput = {
-  projectId: string;
+  projectId: string | null;
   actorUserId: string;
   targetType: AttachmentTargetType;
   targetId: string;
@@ -90,6 +91,9 @@ export class AttachmentStorageQuotaService
   isShutdownIdle() { return !this.reconciliationInFlight; }
 
   async reserve(input: ReserveAttachmentStorageInput) {
+    if ((input.projectId === null) !== isSheetTarget(input.targetType)) throw new Error('ATTACHMENT_PROJECT_TARGET_SCOPE_INVALID');
+    // All null-project sheet records intentionally share the existing project
+    // quota; never multiply the allowance by per-record IDs.
     if (!Number.isSafeInteger(input.bytes) || input.bytes <= 0) {
       throw new HttpException(
         {
@@ -419,7 +423,7 @@ export class AttachmentStorageQuotaService
     reservation: {
       id: string;
       attachmentId: string | null;
-      projectId: string;
+      projectId: string | null;
       actorUserId: string | null;
       bucket: string;
       quarantineStorageKey: string;
@@ -515,7 +519,7 @@ export class AttachmentStorageQuotaService
     reservation: {
       id: string;
       attachmentId: string | null;
-      projectId: string;
+      projectId: string | null;
       actorUserId: string | null;
       bucket: string;
       quarantineStorageKey: string;
@@ -566,7 +570,7 @@ export class AttachmentStorageQuotaService
     reservation: {
       id: string;
       attachmentId: string | null;
-      projectId: string;
+      projectId: string | null;
       actorUserId: string | null;
       ownerToken: string;
     },

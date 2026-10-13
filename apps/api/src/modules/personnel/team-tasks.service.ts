@@ -1,3 +1,4 @@
+import { PERSON_PRESENTATION_SELECT, personPresentation } from '../persons/person-profile-read';
 import { BusinessClock } from '../../common/business-clock';
 import { requireActiveMonthlyPlan } from '../../common/monthly-review-plan';
 import { persistTaskReminder } from '../notifications/task-reminder.rules';
@@ -89,12 +90,12 @@ export class TeamTasksService {
       if (!task.isActive || !OPEN_TEAM_TASK_STATUSES.includes(task.status as never)) throw new ConflictException('任务已结束，不能领取或转派。');
       if (task.assignmentEpoch !== input.assignmentEpoch) throw new ConflictException('任务归属已变化，请刷新后重试。');
       if (!transfer && task.assigneeUserId && task.assigneeUserId !== actor.id) throw new ConflictException('任务已被其他人员领取。');
-      const assignee = await tx.user.findFirst({ where: { id: nextUserId, ...eligibleTeamUserWhere(roleCode) }, select: { id: true, departmentId: true } });
+      const assignee = await tx.user.findFirst({ where: { id: nextUserId, ...eligibleTeamUserWhere(roleCode) }, select: { id: true, name: true, departmentId: true, personProfile: { select: PERSON_PRESENTATION_SELECT } } });
       if (!assignee) throw new ForbiddenException('接收人须已启用并具备对应业务角色和本地账号。');
       const changed = task.assigneeUserId !== nextUserId;
       if (changed) {
         await tx.workflowTask.update({ where: { id: task.id }, data: { assigneeUserId: nextUserId,
-          assigneeDepartmentId: assignee.departmentId, requiredRoleCode: roleCode, assignmentEpoch: { increment: 1 } } });
+          assigneeDepartmentId: personPresentation(assignee).departmentId, requiredRoleCode: roleCode, assignmentEpoch: { increment: 1 } } });
         await recordTeamAssignment(tx, { task, assigneeUserId: nextUserId, actorUserId: actor.id,
           action: transfer ? 'TEAM_TASK_TRANSFERRED' : 'TEAM_TASK_CLAIMED', reason: input.reason?.trim() || '领取角色待办' });
       }

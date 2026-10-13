@@ -1,3 +1,4 @@
+import { PERSON_PRESENTATION_SELECT, personPresentation } from '../persons/person-profile-read';
 import { PROJECT_DISPLAY_COLOR_SELECT, resolveProjectDisplayColor, projectColorSearchWhere } from '../../common/project-display-color';
 import { assignProjectColor, normalizeProjectColorInput, type ProjectColorInput } from '../../common/project-color';
 import { assertApprovedTeamMember } from '../../common/team-membership';
@@ -101,6 +102,7 @@ type ProjectRecord = Prisma.ProjectGetPayload<{
     colors: { select: typeof PROJECT_DISPLAY_COLOR_SELECT };
     ownerUser: {
       include: {
+        personProfile: { select: typeof PERSON_PRESENTATION_SELECT };
         department: true;
       };
     };
@@ -109,6 +111,7 @@ type ProjectRecord = Prisma.ProjectGetPayload<{
       include: {
         user: {
           include: {
+            personProfile: { select: typeof PERSON_PRESENTATION_SELECT };
             department: true;
             userRoles: {
               include: {
@@ -220,6 +223,7 @@ export class ProjectsService {
         include: {
           ownerUser: {
             include: {
+              personProfile: { select: PERSON_PRESENTATION_SELECT },
               department: true,
             },
           },
@@ -246,6 +250,8 @@ export class ProjectsService {
               updatedAt: true,
               assigneeUser: {
                 select: {
+                  personProfile: { select: PERSON_PRESENTATION_SELECT },
+                  departmentId: true,
                   id: true,
                   name: true,
                   department: {
@@ -383,6 +389,8 @@ export class ProjectsService {
         include: {
           assigneeUser: {
             select: {
+              personProfile: { select: PERSON_PRESENTATION_SELECT },
+              departmentId: true,
               id: true,
               name: true,
             },
@@ -470,6 +478,7 @@ export class ProjectsService {
         include: {
           ownerUser: {
             include: {
+              personProfile: { select: PERSON_PRESENTATION_SELECT },
               department: true,
             },
           },
@@ -489,6 +498,7 @@ export class ProjectsService {
         include: {
           assigneeUser: {
             include: {
+              personProfile: { select: PERSON_PRESENTATION_SELECT },
               department: true,
             },
           },
@@ -622,8 +632,8 @@ export class ProjectsService {
           task?.returnedAt?.toISOString() ??
           null,
         responsibleDepartment:
-          task?.assigneeDepartment?.name ?? task?.assigneeUser?.department?.name ?? null,
-        ownerName: task?.assigneeUser?.name ?? null,
+          task?.assigneeDepartment?.name ?? (task?.assigneeUser ? personPresentation(task.assigneeUser).departmentName : null),
+        ownerName: (task?.assigneeUser ? personPresentation(task.assigneeUser).name : null),
         output:
           nodeReviews.length > 0
             ? `评审记录 ${nodeReviews.length} 条`
@@ -660,8 +670,8 @@ export class ProjectsService {
         currentNodeCode: project.currentNodeCode,
         currentNodeName: this.workflowsService.getCurrentNodeName(project.currentNodeCode),
         colorName: resolveProjectDisplayColor(project)?.name ?? '未关联颜色',
-        ownerName: project.ownerUser?.name ?? '未分配',
-        ownerDepartmentName: project.ownerUser?.department?.name ?? project.owningDepartment?.name ?? null,
+        ownerName: project.ownerUser ? personPresentation(project.ownerUser).name : '未分配',
+        ownerDepartmentName: (project.ownerUser ? personPresentation(project.ownerUser).departmentName : null) ?? project.owningDepartment?.name ?? null,
         plannedEndDate: this.serializeDate(project.plannedEndDate),
         progressPercent: Math.round((completedNodeCount / this.getOrderedWorkflowNodeCodes().length) * 100),
       },
@@ -1471,7 +1481,10 @@ export class ProjectsService {
           {
             ownerUser: {
               is: {
-                departmentId: query.ownerDepartmentId,
+                OR: [
+                  { personProfile: { is: { departmentId: query.ownerDepartmentId } } },
+                  { personProfile: { is: null }, departmentId: query.ownerDepartmentId },
+                ],
               },
             },
           },
@@ -1597,6 +1610,7 @@ export class ProjectsService {
         },
         ownerUser: {
           include: {
+            personProfile: { select: PERSON_PRESENTATION_SELECT },
             department: true,
           },
         },
@@ -1605,6 +1619,7 @@ export class ProjectsService {
           include: {
             user: {
               include: {
+                personProfile: { select: PERSON_PRESENTATION_SELECT },
                 department: true,
                 userRoles: {
                   include: {
@@ -1787,6 +1802,7 @@ export class ProjectsService {
       include: {
         ownerUser: {
           include: {
+            personProfile: { select: typeof PERSON_PRESENTATION_SELECT };
             department: true;
           };
         };
@@ -1806,6 +1822,8 @@ export class ProjectsService {
             updatedAt: true;
             assigneeUser: {
               select: {
+                personProfile: { select: typeof PERSON_PRESENTATION_SELECT };
+                departmentId: true;
                 id: true;
                 name: true;
                 department: {
@@ -1876,8 +1894,8 @@ export class ProjectsService {
       currentNodeCode: project.currentNodeCode,
       currentNodeName: this.workflowsService.getCurrentNodeName(project.currentNodeCode),
       ownerUserId: project.ownerUserId,
-      ownerName: project.ownerUser?.name ?? null,
-      ownerDepartmentName: project.ownerUser?.department?.name ?? null,
+      ownerName: project.ownerUser ? personPresentation(project.ownerUser).name : null,
+      ownerDepartmentName: project.ownerUser ? personPresentation(project.ownerUser).departmentName : null,
       approvedReportDate: this.serializeDate(project.approvedReportDate),
       approvalReference: project.approvalReference,
       approvedReportAttachmentId: project.approvedReportAttachmentId,
@@ -1893,10 +1911,10 @@ export class ProjectsService {
       progressText: `${Math.min(18, Math.max(0, currentSequence))} / 18`,
       currentTaskId: currentTask?.id ?? null,
       currentTaskOwnerId: currentTask?.assigneeUser?.id ?? null,
-      currentTaskOwnerName: currentTask?.assigneeUser?.name ?? null,
+      currentTaskOwnerName: currentTask?.assigneeUser ? personPresentation(currentTask.assigneeUser).name : null,
       currentTaskDepartmentName:
         currentTask?.assigneeDepartment?.name ??
-        currentTask?.assigneeUser?.department?.name ??
+        (currentTask?.assigneeUser ? personPresentation(currentTask.assigneeUser).departmentName : null) ??
         null,
       currentRoleCode: currentTask ? NODE_BUSINESS_ROLES[currentTask.nodeCode] : null,
       earliestDueAt: this.serializeDate(earliestDueAt),
@@ -1908,7 +1926,7 @@ export class ProjectsService {
             nodeName: currentTask?.nodeName ?? this.workflowsService.getCurrentNodeName(project.currentNodeCode),
             days: stalledDays,
             reason: blocker?.description ?? '当前工序已超过计划完成时间。',
-            ownerName: currentTask?.assigneeUser?.name ?? null,
+            ownerName: currentTask?.assigneeUser ? personPresentation(currentTask.assigneeUser).name : null,
             helperName: blocker?.helperUser?.name ?? null,
             expectedResolvedAt: this.serializeDate(blocker?.expectedResolvedAt ?? null),
           }
@@ -1951,7 +1969,7 @@ export class ProjectsService {
       paintSupplier: project.paintSupplier,
       vehicleModel: project.vehicleModel,
       ownerUserId: project.ownerUserId,
-      ownerName: project.ownerUser?.name ?? null,
+      ownerName: project.ownerUser ? personPresentation(project.ownerUser).name : null,
       owningDepartmentId: project.owningDepartmentId,
       owningDepartmentName: project.owningDepartment?.name ?? null,
       plannedStartDate: this.serializeDate(project.plannedStartDate),
@@ -1979,9 +1997,9 @@ export class ProjectsService {
       members: project.members.map((member) => ({
         id: member.id,
         userId: member.userId,
-        name: member.user.name,
+        name: personPresentation(member.user).name,
         email: member.user.email,
-        departmentName: member.user.department?.name ?? null,
+        departmentName: personPresentation(member.user).departmentName,
         memberType: member.memberType,
         title: member.title,
         isPrimary: member.isPrimary,
@@ -1996,6 +2014,8 @@ export class ProjectsService {
       include: {
         assigneeUser: {
           select: {
+            personProfile: { select: typeof PERSON_PRESENTATION_SELECT };
+            departmentId: true;
             id: true;
             name: true;
           };
@@ -2021,7 +2041,7 @@ export class ProjectsService {
       isActive: task.isActive,
       overdueDays: task.overdueDays,
       assigneeUserId: task.assigneeUserId,
-      assigneeUserName: task.assigneeUser?.name ?? null,
+      assigneeUserName: task.assigneeUser ? personPresentation(task.assigneeUser).name : null,
       assigneeDepartmentId: task.assigneeDepartmentId,
       assigneeDepartmentName: task.assigneeDepartment?.name ?? null,
       dueAt: this.serializeDate(task.dueAt),

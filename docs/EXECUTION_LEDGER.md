@@ -8085,3 +8085,12 @@ BLOCKER_REPORT: Public-source push remains rejected by platform automatic review
 - 数据：当前97记录包含89来源和既有/本轮合成记录；89来源ID/版本及业务字段保持，写入只限3条专用合成记录。项目27/流程任务111不增；累计合成保存审计69条含前序候选验证，重启前后记录/审计/来源哈希相同。
 - 审查/失败：独立只读复核后端、未知保存结果、ZIP实际解压预算、引擎事件、nonce/文字粘贴及最终共享菜单。失败、暂停与新修复依据见BLOCKER_REPORT.md；未删除断言、审计或旧结果。正式Placeholder0，12处测试白名单命中。
 - 风险/下一决策：至多加载500条、普通xlsx仅映射预览、草稿与个人视图不持久化；原生Excel/WPS、Safari、真实触摸未验证。主颜色清单技术路径LOCAL_VERIFIED，v2别名未单独浏览器验；负责人尚未PRODUCT_OWNER_ACCEPTED。staging/production未执行、main/tag未改、无push；当前CODE_IMPLEMENTED / LOCAL_VERIFIED / NOT_DEPLOYED_TO_PRODUCTION / AWAITING_PRODUCT_OWNER_CONFIRMATION。
+
+## 2026-10-13 · R28 补充 LIGHT_TRUCK_SHEETS_INTEGRATION_02_04 实施检查点
+
+- 所有者统一任务要求连续完成共用表格修复、三条图片入口、人员/检验/产量业务接入及真实普通员工本地验收。当前分支 `codex/light-truck-sheets-02-04`；原目录用户修改保留；production/main/tag 不变。
+- 旧 3370 正式构建基线：普通员工排序 5 次 3476–3884 ms；2 条可见记录仍反复重建画布。新实现复用单一运行实例并局部同步，待新构建实测。基线私有证据 `var/light-truck-sheets-02-04/baseline-evidence/`。
+- 已实现稳定 recordId/fieldKey、带 CAS/幂等与审计的人员档案、检验四层事实、月度实际产量、共用图片资源/缩略图/上传扫描/布局保存/Excel 嵌图交换。当前人员展示桥接现有任务/项目，保留账号资格和历史事实。迁移 202610130001–005。
+- 独立只读审查提出并修复参与资格、统计快照、图片重试顺序/迟到读取、替换布局参数、未知导入结果等问题；图片后端审查未发现确定 P1/P2，补充竞态验证仍进行中。
+- 隔离环境：`http://127.0.0.1:3380`（待启动），API3381/Web3382，PostgreSQL `light_truck_sheets_20261013`，RedisDB5，独立对象目录与 ClamAV53319；原3370保持运行。真实扫描 preflight clean/EICAR PASS。
+- 本检查点是源码保存，不是本地验收结论。所有页面、图片与性能均须最终不可变构建重新验证；按原任务持续推进。报告目录 `docs/acceptance/LIGHT_TRUCK_SHEETS_INTEGRATION_02_04/`。

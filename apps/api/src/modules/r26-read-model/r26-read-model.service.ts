@@ -1,3 +1,4 @@
+import { PERSON_PRESENTATION_SELECT, personPresentation } from '../persons/person-profile-read';
 import { teamAssignmentPreview } from '../personnel/team-assignment-preview';
 import { Injectable } from '@nestjs/common';
 import {
@@ -115,6 +116,7 @@ export class R26ReadModelService {
           payload: true,
           assigneeUser: {
             select: {
+              personProfile: { select: PERSON_PRESENTATION_SELECT },
               id: true,
               name: true,
               departmentId: true,
@@ -216,6 +218,7 @@ export class R26ReadModelService {
     const queriedUsers = await this.prisma.user.findMany({
       where: userWhere,
       select: {
+        personProfile: { select: PERSON_PRESENTATION_SELECT },
         id: true,
         name: true,
         status: true,
@@ -233,8 +236,9 @@ export class R26ReadModelService {
             user.status === UserStatus.ACTIVE),
     );
     for (const user of users) {
-      if (user.departmentId) {
-        explicitlyRelatedDepartmentIds.add(user.departmentId);
+      const departmentId = personPresentation(user).departmentId;
+      if (departmentId) {
+        explicitlyRelatedDepartmentIds.add(departmentId);
       }
     }
 
@@ -271,12 +275,10 @@ export class R26ReadModelService {
         path: department.path,
       }),
     );
-    const directoryUsers: R26DirectoryUser[] = users.map((user) => ({
-      id: user.id,
-      name: user.name,
-      departmentId: user.departmentId,
-      departmentName: user.department?.name ?? null,
-    }));
+    const directoryUsers: R26DirectoryUser[] = users.map((user) => {
+      const { id, name, departmentId, departmentName } = personPresentation(user);
+      return { id, name, departmentId, departmentName };
+    });
     const visibleUserIds = new Set(directoryUsers.map((user) => user.id));
     const workspaceMembers: WorkspaceProjectMember[] = project.members
       .filter(
@@ -373,7 +375,7 @@ export class R26ReadModelService {
           activeUserCount: users.filter(
             (user) =>
               user.status === UserStatus.ACTIVE &&
-              user.departmentId === department.id,
+              personPresentation(user).departmentId === department.id,
           ).length,
         })),
         users: directoryUsers.map((user) => ({
@@ -510,6 +512,7 @@ export class R26ReadModelService {
           },
           assigneeUser: {
             select: {
+              personProfile: { select: PERSON_PRESENTATION_SELECT },
               id: true,
               name: true,
               departmentId: true,
@@ -524,24 +527,26 @@ export class R26ReadModelService {
         },
       }),
     ]);
+    const currentOwner = assignment?.assigneeUser
+      ? personPresentation(assignment.assigneeUser)
+      : null;
     const explicitDepartment =
       assignment?.assigneeDepartment ??
-      assignment?.assigneeUser?.department ??
-      null;
+      (currentOwner?.departmentId
+        ? { id: currentOwner.departmentId, name: currentOwner.departmentName }
+        : null);
     const departmentRule = assignment
       ? R26_ASSIGNMENT_RULES[assignment.nodeCode].primaryDepartment
       : null;
 
     return {
       ...task,
-      owner: assignment?.assigneeUser
+      owner: currentOwner
         ? {
-            id: assignment.assigneeUser.id,
-            name: assignment.assigneeUser.name,
-            departmentId:
-              assignment.assigneeUser.departmentId,
-            departmentName:
-              assignment.assigneeUser.department?.name ?? null,
+            id: currentOwner.id,
+            name: currentOwner.name,
+            departmentId: currentOwner.departmentId,
+            departmentName: currentOwner.departmentName,
           }
         : null,
       department: explicitDepartment
