@@ -200,3 +200,4 @@ ALTER TABLE "inspection_defects" ADD CONSTRAINT "inspection_defects_occurrenceId
 
 -- AddForeignKey
 ALTER TABLE "inspection_defects" ADD CONSTRAINT "inspection_defects_measurementId_fkey" FOREIGN KEY ("measurementId") REFERENCES "inspection_measurements"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
