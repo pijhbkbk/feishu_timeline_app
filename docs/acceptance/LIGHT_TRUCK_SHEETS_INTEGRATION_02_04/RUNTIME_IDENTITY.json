@@ -1,0 +1,21 @@
+{
+  "environment": "isolated local",
+  "checkedAt": "2026-10-14T00:54:17.783011+00:00",
+  "expectedCommit": "9ed0502b9e97e543dc5beea00998b5edc0bb0e67",
+  "results": [
+    {
+      "url": "http://127.0.0.1:3380/api/health",
+      "status": 200,
+      "runtimeCommit": "9ed0502b9e97e543dc5beea00998b5edc0bb0e67",
+      "buildTime": "2026-10-13T08:31:30Z",
+      "release": "color-register-9ed0502b9e97"
+    },
+    {
+      "url": "http://127.0.0.1:3380/build-info",
+      "status": 200,
+      "runtimeCommit": "9ed0502b9e97e543dc5beea00998b5edc0bb0e67",
+      "buildTime": "2026-10-13T08:31:30Z",
+      "release": "color-register-9ed0502b9e97"
+    }
+  ]
+}

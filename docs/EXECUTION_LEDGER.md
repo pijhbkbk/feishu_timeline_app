@@ -8175,3 +8175,19 @@ BLOCKER_REPORT: Public-source push remains rejected by platform automatic review
 - 数据库003回执SHA32452ba385087b9affad18c64d7a5ce232b02479ba16240ec4116da61b89d7ca恰与保留的原始实施提案一致。正式003为46b7b30da9e513fd319fa03691400545500ca9ffac640d72b2817239a7ec8341。双独立只读核对确认原文件8551bytes，正式8550bytes，严格old_applied == formal + 一个LF；首提交前整理文件丢了末尾空行，SQL/DDL完全相同。
 - 本次仅恢复003源码精确已应用字节，不改数据库迁移回执、不新增DDL、不修改业务/认证/图片/依赖代码。新的不可变构建用于明确修正后的恢复验证；此前两次失败保持，不执行第三次盲跑。该格式恢复无新增模型迁移，Prisma校验与源适用性核对后继续恢复及最终只读回读；其余68技术结果按应用源码逐字节相等复用。
 - 生产/main/tag未改变，SYSTEM_IME和产品负责人仍未验证/确认。
+
+
+## 2026-10-14 · LIGHT_TRUCK_SHEETS_INTEGRATION_02_04 本地交付与最终证据归档
+
+- 目标/范围：按统一任务完成共享表格修复、颜色回归、本地上传/截图粘贴/含图XLSX、人员/检验/月度流程/产量贯通，以及普通已准入员工真实UI输入、服务端保存和重开验证。本轮沿R28既有原生账号与M1业务边界，不改生产身份/全局权限，不跳转新的产品轮次。
+- 输入：用户统一任务书、颜色参考图、项目AGENTS/R28历史规则；业务工程在本工作树，Personal原工程只读，比较用隔离副本。正式应用源码已在2173及后续修复commit中保存，最终runtime/source为9ed0502b9e97e543dc5beea00998b5edc0bb0e67，制品sourceTree492c42d17720c1569b7d0373c68cb93ee327ae67。9ed相对68只有已应用003迁移末尾LF及账本，应用代码字节相等。
+- 改动文件：本次归档只更新docs/acceptance/LIGHT_TRUCK_SHEETS_INTEGRATION_02_04内DELIVERY、UI_ACCEPTANCE、PERFORMANCE、BLOCKER_REPORT及明确的脱敏证据/独立审查摘要，并追加ROUTE_ACCEPTANCE_MATRIX和本ledger；不把账号、env、Cookie、Session、原始trace、数据库dump或对象备份提交Git。runtime code commit与本次docs-only evidence commit分开记录。
+- 已执行工程门禁：不可变9ed `pnpm install --frozen-lockfile`，shared/API/Web生产构建及Prisma validate通过；全仓lint/typecheck、Web94文件563测试、24项安装依赖文本粘贴回归按精确未变源码适用；API1621 PASS/185 SKIPPED，8份真实PG日志28 PASS，48迁移已应用含本期5份。SKIPPED不计PASS。完整命令/原始日志与源适用性见DELIVERY和独立报告，不机械重复未受影响测试。
+- 本地真实操作：68八交互、原生自动保存输入专项、50快速输入、首次图片失响应同op恢复/替换、10模块循环后真实图片和文本剪贴板均通过；a53人员/产量/颜色模板、a6a检验/月度流程按未变源精确复用，保留原runtime不重标。检查/写入均经正常UI；服务端GET/数据库只作事实核对与隔离准备，不替代用户输入。
+- 最终性能：1000×27真实读数列、1000×23台次/30图，冷1836.420/暖1409.240ms，50选择p95 43.590ms、50键p95 54.720ms，单条含防抖保存max515.985ms；五次100×10批量本地max69.875ms、整批保存max1623.695ms（单列），5排序/筛选、20滚轮、10次往返通过。Personal含图排序400保留原限制，不扩展修改原工程。
+- 恢复：两个前置失败保留；修正完整JSON协议/恢复003原LF后实际恢复到新库xe7b2ca498d31。原严格schema字符串比较的唯一数组cast表示差异保留FAIL；随后只读、精确等价检查68表/136对象/112CLEAN/5迁移PASS。未改变迁移回执、未再次恢复、未重建旧snapshot，未切恢复库应用登录。
+- 最终重开：`python3 var/light-truck-sheets-02-04/run-readback.py`，9ed实际run1791938988977234000，1 PASS/51.2s。正常登录后5组proof完整、颜色19图全解码、1440/1280/1024/390各全ID+首图，236浏览器API响应全200，业务写/page/console/blocked全0，来源89指纹不变。独立核查proof/SHA，root目视1440/390及照片实际截图。原两回读FAIL与IO中断/并发429无故障恢复证据的边界保留。
+- 运行身份：isolated local，http://127.0.0.1:3380，DB light_truck_sheets_20261013，Node同源代理→Web3382/API3381，2026-10-13T09:04:32.366624Z启动。API health与Web build-info于2026-10-14T00:54:17Z实际均回9ed、buildTime2026-10-13T08:31:30Z、release color-register-9ed0502b9e97。Web BUILD_ID rFFp9MNTrCAFZTphUKHKo；制品SHA详DELIVERY。无镜像/Nginx，本机remote commit不适用。
+- Placeholder扫描：本轮要求的rg扫描总12，全部明确测试/fixture白名单，运行实现0；git diff --check通过。环境证据不等于生产或产品通过。
+- 风险/未完成验证：SYSTEM_IME因工具两次策略拒绝NOT_VERIFIED；Excel产量历史副本44格2图部分通过、检验超时，整体Office NOT_VERIFIED；当前M1无旧领取/改派UI，不编造操作。未保存草稿仅当前页面内存，高级Excel图片效果不保证原样。
+- 最终决策：IMPLEMENTATION=COMPLETE，已列技术路径LOCAL_VERIFIED，ACCEPTANCE=NOT_FULLY_VERIFIED，AWAITING_PRODUCT_OWNER_CONFIRMATION。不推进生产/staging或下一轮；production/main/tag未改变，main仍41b4b166c587692e6f0fb9536dca2e1aab646c70。原始失败完整保留，未将未执行或SKIPPED改为PASS。

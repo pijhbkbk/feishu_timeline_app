@@ -351,3 +351,36 @@ API列省略统一/api前缀。获准成员指原生ACTIVE且teamAccessApproved=
 - 四档来源记录截图、模板/只读错误/空态/409、Network/console、数据库/重启证据与精确身份见[DELIVERY.md](/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/docs/acceptance/COLOR_CATALOG_SHEET_INTEGRATION_01/DELIVERY.md)。浏览器证据目录var/color-sheet-runtime/browser-evidence/1791796501856308000。
 - 正式Placeholder0；扫描12处测试白名单命中，非产品占位。原始错误/未完成加载截图不作为最终视觉证据。
 - 人员/周评/统计不在本轮范围；Safari/原生Excel/WPS/真实移动触摸未验。本机结果不证明任何远端更新，staging/production/main/tag未改变。
+
+
+## LIGHT_TRUCK_SHEETS_INTEGRATION_02_04 — 最终本地路由记录
+
+本记录追加到现有矩阵，保留历史生产验收结论。精确环境为 `http://127.0.0.1:3380`（hostname `127.0.0.1`，隔离数据库 `light_truck_sheets_20261013`），最终只读回读 runtime commit=`9ed0502b9e97e543dc5beea00998b5edc0bb0e67`；V8 `68acd102bc8f88fa7bf88aea099ccc7d74cbde28`仍是下述写入/交互/性能的实际运行版本。V9仅003迁移末尾LF及账本变化，数据库/对象恢复复核与重启后四模块只读回读均PASS。制品/启动/备份身份见[交付记录](./LIGHT_TRUCK_SHEETS_INTEGRATION_02_04/DELIVERY.md)，逐阶段证据见[UI验收](./LIGHT_TRUCK_SHEETS_INTEGRATION_02_04/UI_ACCEPTANCE.md)，性能见[性能记录](./LIGHT_TRUCK_SHEETS_INTEGRATION_02_04/PERFORMANCE.md)。下表的PASS只覆盖明确列出的实际操作，不能替代产品负责人确认。
+
+**V9最终四模块回读及颜色1440/1280/1024/390已PASS：1791938988977234000，51.2s。** 数据库/对象只读恢复复核已PASS（68表、136对象、112CLEAN哈希、5迁移，原失败保留）；没有恢复库应用切换或登录，不替代浏览器回读。 68acd原生交互8/8、自动保存专项、连续输入比较、首次图绑定恢复、剪贴板生命周期和1000行/30图性能均已PASS。完整操作验收=`NOT_FULLY_VERIFIED`（SYSTEM_IME未验证）；Office补充验证未齐。产品负责人状态=`AWAITING_PRODUCT_OWNER_CONFIRMATION`。正式运行源码Placeholder=0；12个匹配均在测试白名单，含r20-fixtures.ts。
+
+| 精确URL | 正式组件 | 实际API | 必需权限 | 数据和正常UI操作 | 旧入口状态 | 浏览器结果 |
+| --- | --- | --- | --- | --- | --- | --- |
+| `http://127.0.0.1:3380/admin/color-database` | `apps/web/src/app/admin/color-database/page.tsx` → `AdminColorDatabaseR26` → `features/color-register/workspace.tsx::ColorRegisterWorkspace` | GET `/api/color-register`、`/sources`、`/:id`；PATCH `/api/color-register/sheet`；原详情POST `/:id/standards`与PATCH `/notes`；共用图片API | 真实local账号、获准部门成员；`project.read`/`project.write`，服务端再次检查当前准入、字段、revision和幂等 | 两条同名异基地稳定ID；原生输入/粘贴/填充/排序/筛选/undo、真实冲突、原详情、图片与系统/普通模板；来源89保持 | **REPLACED**：业务表格接管正式入口；原详情/来源查询 **STILL_ACTIVE** | 68原生8/8含4全页重开、自动保存1/1、连续50输入1/1、T11 1/1、十轮剪贴板1/1全部PASS；a53颜色模板1/1按无关变更复用。当前目标19图=16既有+本轮新增3。V9最终两ID/19图完整解码与四档尺寸回读PASS；尺寸逐档只解码首图并核对全19 ID |
+| `http://127.0.0.1:3380/admin/people` | `apps/web/src/app/admin/people/page.tsx` → `features/personnel/people-entry.tsx::PeopleEntry` → `features/person-sheet/person-workspace.tsx::PersonSheetWorkspace` | GET `/api/persons`、`/:id`；POST `/api/persons`；PATCH `/api/persons/sheet`；GET `/api/users/directory`核对无自动建账号 | 真实local获准成员；service `assertApprovedTeamMember` / `withTeamWrite`重校验；关联账号/资格的管理仍是独立管理员路径 | 同名ID、前导零长电话、无账号导入、关联名称在原职责页读回、未知结果同op仅一档案；岗位文字不授权限 | **REPLACED**：人员库业务入口；原账号/资格管理 **STILL_ACTIVE** | a53 3/3 PASS，首次例刷新两长电话可见。V9最终5记录新contextR PASS，含恢复原名、未知创建与两长电话；与旧a53写入证据分开 |
+| `http://127.0.0.1:3380/inspections` | `apps/web/src/app/inspections/page.tsx` → `features/inspections/workspace.tsx::InspectionsWorkspace` | GET `/api/inspections/activities`、`/activities/:id`、`/activities/:id/rows`、`/objects`、`/statistics`；POST `/objects`、`/activities`；PATCH `/activities/:id`、`/activities/:id/batch`；POST `/activities/:id/review-link`；原项目visual-delta submit/approve | 获准成员，`project.read`/`project.write`；显式关联须`review.execute`及项目/目标月权限，已提交锁定；原本人签署/有效任务日期状态仍强制 | 2台次/4组/12角度、2+1图；总体pending/PASS/FAIL独立于角度；事实保存不推进月评，显式关联后原页提交/通过仅目标月变 | **REPLACED**：检验业务入口；原项目月度评审页/服务 **STILL_ACTIVE** | a6a 3/3完整I/S/R PASS按明确源码差异复用；68最终1000×27/1000×23/30图性能1/1 PASS，5次100行GET。V9另完成2/4/12/3图及月度锁定回读PASS；性能R仅采样模块返回，不是全1000行重启读回 |
+| `http://127.0.0.1:3380/production` | `apps/web/src/app/production/page.tsx` → `features/production-sheet/workspace.tsx::ProductionSheetWorkspace` | GET `/api/production-facts`、`/statistics`、`/sources`、`/:id`；PATCH `/api/production-facts/batch` | 获准成员，`project.read`/`project.write`；业务grain唯一、revision/op与整批原子在服务端检查 | 月/颜色/基地canonical总量；2029-07最终26，null/0分开；2029-10总量100与40/60明细及重复总量拒绝双计；历史来源单列 | **REPLACED**：产量表格入口；原颜色详情读同事实/历史来源 **STILL_ACTIVE** | a53完整业务1/1及跨文件1/1 I/S/R PASS；主记录9+两图刷新，跨文件100整页重开。V9最终逐项核对5事实+canonical共6条、null/0、26/100及两图，R PASS |
+
+共用图片API：GET/POST `/api/sheet-images`，PATCH `/api/sheet-images/:id/layout`，DELETE `/api/sheet-images/:id`，GET `/api/sheet-images/:id/thumbnail`，GET `/api/attachments/:id/content`。目标依次为颜色、人员、检验台次Occurrence、产量事实的稳定ID；服务端在内容读取/上传/最终绑定/布局时检查实体、项目/部门授权及检验提交锁。不是前端直接写文件表或业务关联。
+
+V9最终回读的历史尝试保留FAIL：`1791882314279074000`因脚本未滚入惰性照片即等待img；`1791884341445594000`前三模块及颜色两ID、三个桌面尺寸已观测，390阶段出现两次网络IO暂停与两次下载并发429（Retry-After1）。没有产品数据写入，整体回读门禁不因此判PASS。修正候选按DOM顺序完整照片R一次、各尺寸完整ID集合和首图实际解码，保留全部metadata与错误门禁；随后1791938988977234000全程clean PASS（236请求、业务写0、page/console/guard0），不倒改旧FAIL。
+
+Office口径：历史01284产量文件在真实Excel中部分PASS，检验文件打开超时，整体`OFFICE_NOT_VERIFIED`；最新导出文件未取得完整办公软件复核。系统内含图模板往返PASS不等于Excel/WPS/LibreOffice兼容性全部通过。
+
+### 已执行尺寸和精确截图
+
+以下证据路径以仓库 `var/light-truck-sheets-02-04/` 为起点。viewport与fullPage图片高度分开，不能把截图高度等同窗口高度。
+
+| 路由 | 尺寸与实际版本 | 截图 |
+| --- | --- | --- |
+| 颜色清单 | V9：1440×900、1280×800、1024×900、390×844只读布局；旧68 T04还包含1024实际交互 | `final-readback-evidence/1791938988977234000/results/readonly-readback-最终重启后普通员工只读重开：人员稳定记录、检验月度锁定、产量26与100、颜色和照片/color-final-readonly-{1440,1280,1024,390}.png`，每档另有`-photos-visible.png`；19图完整解码在同run正常回读阶段，布局每档只解码首图 |
+| 人员库 | a53：1440×900、1024×900、390×844 | `person-evidence/1791875967743046000/results/person-Ordinary-worker-two-95b3b--update-and-unlinked-import/person-stable-id-{1440,1024,390}.png` |
+| 检验 | a6a：1440×900、1024×900、390×844；68性能1440×900 | `inspection-evidence/1791875015462608000/results/inspection-普通员工从-UI-创建-2-台次-4-测量组-12-角度，3-张照片、总体结论和含图模板回读/inspection-{1440,1024,390}.png`；`compound-performance-evidence/1791879554116987000/results/compound-performance-1000--164e8--5-successful-100x10-pastes/{reading-1000x27-100x10,occurrence-1000x23-30-images}.png` |
+| 产量 | a53：1440×900、1280×800、1024×900、390×844 | `production-evidence/1791876002772823000/results/production-Ordinary-member-4f16a-o-and-image-XLSX-round-trip/production-canonical-and-separate-sources-{1440,1280,1024,390}.png` |
+
+a6a→a53仅TSV末尾空白依赖修复，a53→68仅颜色自动保存/对应回归，未改变非颜色JSON/XLSX业务、API、共享runtime、CSS或图片代码。旧尺寸证据保留原commit，不冒充68重新执行；68颜色受影响回归已实跑。68→V9只恢复003已应用字节的末尾LF并更新账本，没有应用逻辑/SQL语义改变；旧浏览器结果保留68标识，不重标为V9。最终readback首次1791880141641001000为harness ESM加载失败、零测试启动，修正测试包配置及惰性照片观察后，9ed的1791938988977234000已有新只读回读PASS；旧写入/性能记录不重标9ed。生产/staging远端发布、main/tag在本轮本地验收中未改变；具体14项交付状态由[交付记录](./LIGHT_TRUCK_SHEETS_INTEGRATION_02_04/DELIVERY.md)统一记录。

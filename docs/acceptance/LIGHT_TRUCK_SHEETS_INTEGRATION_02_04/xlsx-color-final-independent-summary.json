@@ -1,0 +1,2515 @@
+{
+  "method": "Independent Python stdlib ZIP/XML plus Pillow image verify; no ExcelJS/application parser, no edits, no office UI compatibility claim",
+  "files": [
+    {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/color-template-evidence/1791878099967285000/results/color-template-current-col-81b3a--ordinary-name-base-mapping/color-current-after.xlsx",
+      "bytes": 809480,
+      "sha256": "21df010e9663c70f6a8fd3ee2c6113a4ac5cc730602d940d11630cb39e9e64da",
+      "zipEntryCount": 40,
+      "expandedBytes": 895310,
+      "sheets": [
+        {
+          "name": "颜色清单",
+          "state": "visible",
+          "part": "xl/worksheets/sheet1.xml",
+          "dimension": "A1:M3",
+          "populatedRows": 3,
+          "cells": 32,
+          "header": {
+            "A1": "记录ID",
+            "B1": "记录版本",
+            "C1": "颜色名称",
+            "D1": "生产基地",
+            "E1": "备注",
+            "F1": "色板编号",
+            "G1": "制作单位",
+            "H1": "漆种",
+            "I1": "正式编号",
+            "J1": "入清单月份",
+            "K1": "清单状态",
+            "L1": "来源",
+            "M1": "照片"
+          },
+          "hiddenColumns": [
+            {
+              "min": "1",
+              "max": "1"
+            },
+            {
+              "min": "2",
+              "max": "2"
+            }
+          ],
+          "formulaCells": 0,
+          "duplicateNonemptyFirstColumnValues": 0
+        },
+        {
+          "name": "_业务模板",
+          "state": "veryHidden",
+          "part": "xl/worksheets/sheet2.xml",
+          "dimension": "A1:B2",
+          "populatedRows": 2,
+          "cells": 3,
+          "header": {
+            "A1": "LIGHT_TRUCK_BUSINESS_SHEET_V1",
+            "B1": "color-catalog"
+          },
+          "hiddenColumns": [],
+          "formulaCells": 0,
+          "duplicateNonemptyFirstColumnValues": 0
+        },
+        {
+          "name": "_业务图片",
+          "state": "veryHidden",
+          "part": "xl/worksheets/sheet3.xml",
+          "dimension": "A1:C16",
+          "populatedRows": 16,
+          "cells": 48,
+          "header": {
+            "A1": "imageId",
+            "B1": "recordId",
+            "C1": "sha256"
+          },
+          "hiddenColumns": [],
+          "formulaCells": 0,
+          "duplicateNonemptyFirstColumnValues": 0
+        }
+      ],
+      "mediaCount": 15,
+      "drawingPictureCount": 15,
+      "media": [
+        {
+          "part": "xl/media/image1.png",
+          "bytes": 334,
+          "sha256": "d9e22f6c9d1a3eaa5cfefa5125c016bf4256db63350c737232c7daf4c0bf90c3",
+          "format": "PNG",
+          "width": 97,
+          "height": 65,
+          "mode": "RGBA",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image2.png",
+          "bytes": 334,
+          "sha256": "d9e22f6c9d1a3eaa5cfefa5125c016bf4256db63350c737232c7daf4c0bf90c3",
+          "format": "PNG",
+          "width": 97,
+          "height": 65,
+          "mode": "RGBA",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image3.png",
+          "bytes": 49100,
+          "sha256": "6b59328b8ec9f9fb361b3a04a47c6f41039f68e9023cd5f7719d537247449d6b",
+          "format": "PNG",
+          "width": 1070,
+          "height": 535,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image4.png",
+          "bytes": 29981,
+          "sha256": "350bdc42228c9f2881100592fa004518e7d13f9bd74bbbc5ff863796983cc046",
+          "format": "PNG",
+          "width": 121,
+          "height": 87,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image5.png",
+          "bytes": 27678,
+          "sha256": "83c86b02e6ffe41af643ee4d35b1a838e2f9ce629a4b7b8d3d77cec8c24d1e0d",
+          "format": "PNG",
+          "width": 117,
+          "height": 83,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image6.jpeg",
+          "bytes": 140899,
+          "sha256": "2f0210c0b601ab1c1f45e02b19cbf056f4a3e9dcf06443ddda46c8a40d80ed43",
+          "format": "JPEG",
+          "width": 1920,
+          "height": 1080,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image7.png",
+          "bytes": 52428,
+          "sha256": "35066548f6ad49bff31d9f2ad39033a436bb478951b3149c45d5831999b073ce",
+          "format": "PNG",
+          "width": 1070,
+          "height": 535,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image8.png",
+          "bytes": 25600,
+          "sha256": "64e426087232a33f0cd1c041b085258ab587d99a4418793b97cc600f1542968c",
+          "format": "PNG",
+          "width": 115,
+          "height": 79,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image9.png",
+          "bytes": 334,
+          "sha256": "d9e22f6c9d1a3eaa5cfefa5125c016bf4256db63350c737232c7daf4c0bf90c3",
+          "format": "PNG",
+          "width": 97,
+          "height": 65,
+          "mode": "RGBA",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image10.png",
+          "bytes": 52030,
+          "sha256": "8cd833dca0c859997877aea96770d0d8030ebb029b43e905d24ecc6fea4b517c",
+          "format": "PNG",
+          "width": 1070,
+          "height": 535,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image11.jpeg",
+          "bytes": 140899,
+          "sha256": "2f0210c0b601ab1c1f45e02b19cbf056f4a3e9dcf06443ddda46c8a40d80ed43",
+          "format": "JPEG",
+          "width": 1920,
+          "height": 1080,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image12.png",
+          "bytes": 52428,
+          "sha256": "35066548f6ad49bff31d9f2ad39033a436bb478951b3149c45d5831999b073ce",
+          "format": "PNG",
+          "width": 1070,
+          "height": 535,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image13.jpeg",
+          "bytes": 140899,
+          "sha256": "2f0210c0b601ab1c1f45e02b19cbf056f4a3e9dcf06443ddda46c8a40d80ed43",
+          "format": "JPEG",
+          "width": 1920,
+          "height": 1080,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image14.jpeg",
+          "bytes": 140899,
+          "sha256": "2f0210c0b601ab1c1f45e02b19cbf056f4a3e9dcf06443ddda46c8a40d80ed43",
+          "format": "JPEG",
+          "width": 1920,
+          "height": 1080,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image15.png",
+          "bytes": 334,
+          "sha256": "d9e22f6c9d1a3eaa5cfefa5125c016bf4256db63350c737232c7daf4c0bf90c3",
+          "format": "PNG",
+          "width": 97,
+          "height": 65,
+          "mode": "RGBA",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        }
+      ],
+      "pictures": [
+        {
+          "sheet": "颜色清单",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image1.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "12",
+              "colOff": "38100",
+              "row": "1",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "颜色清单",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image2.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "12",
+              "colOff": "762000",
+              "row": "1",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "颜色清单",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image3.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "13",
+              "colOff": "104775",
+              "row": "1",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "颜色清单",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image4.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "14",
+              "colOff": "218980",
+              "row": "1",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "颜色清单",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image5.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "15",
+              "colOff": "333185",
+              "row": "1",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "颜色清单",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image6.jpeg",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "16",
+              "colOff": "447389",
+              "row": "1",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "颜色清单",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image7.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "17",
+              "colOff": "561594",
+              "row": "1",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "颜色清单",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image8.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "12",
+              "colOff": "38100",
+              "row": "1",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "2286000",
+              "cy": "1524000"
+            }
+          }
+        },
+        {
+          "sheet": "颜色清单",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image9.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "20",
+              "colOff": "180308",
+              "row": "1",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "颜色清单",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image10.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "21",
+              "colOff": "294513",
+              "row": "1",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "颜色清单",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image11.jpeg",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "22",
+              "colOff": "408718",
+              "row": "1",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "颜色清单",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image12.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "23",
+              "colOff": "522923",
+              "row": "1",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "颜色清单",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image13.jpeg",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "25",
+              "colOff": "27432",
+              "row": "1",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "颜色清单",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image14.jpeg",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "26",
+              "colOff": "141637",
+              "row": "1",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "颜色清单",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image15.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "27",
+              "colOff": "255842",
+              "row": "1",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        }
+      ],
+      "imageMetadata": [
+        {
+          "imageId": "00882d9e-321f-41ab-bee8-709768abc24f",
+          "recordId": "cmv4yz2hv00019kagrknto6m3",
+          "sha256": "d9e22f6c9d1a3eaa5cfefa5125c016bf4256db63350c737232c7daf4c0bf90c3"
+        },
+        {
+          "imageId": "0325ea22-f8ff-47de-adf8-e1d565470ab3",
+          "recordId": "cmv4yz2hv00019kagrknto6m3",
+          "sha256": "d9e22f6c9d1a3eaa5cfefa5125c016bf4256db63350c737232c7daf4c0bf90c3"
+        },
+        {
+          "imageId": "13acf7cd-b57b-4605-95b1-af5114497ed3",
+          "recordId": "cmv4yz2hv00019kagrknto6m3",
+          "sha256": "6b59328b8ec9f9fb361b3a04a47c6f41039f68e9023cd5f7719d537247449d6b"
+        },
+        {
+          "imageId": "16d56eb3-da6a-44e1-89e7-a1eaa2262454",
+          "recordId": "cmv4yz2hv00019kagrknto6m3",
+          "sha256": "350bdc42228c9f2881100592fa004518e7d13f9bd74bbbc5ff863796983cc046"
+        },
+        {
+          "imageId": "1fd5a79a-51f4-432b-a333-3c385d638d8f",
+          "recordId": "cmv4yz2hv00019kagrknto6m3",
+          "sha256": "83c86b02e6ffe41af643ee4d35b1a838e2f9ce629a4b7b8d3d77cec8c24d1e0d"
+        },
+        {
+          "imageId": "217a0b27-832e-4f98-982a-b86f482115fc",
+          "recordId": "cmv4yz2hv00019kagrknto6m3",
+          "sha256": "2f0210c0b601ab1c1f45e02b19cbf056f4a3e9dcf06443ddda46c8a40d80ed43"
+        },
+        {
+          "imageId": "233a736a-600e-442a-92d1-0e160139b223",
+          "recordId": "cmv4yz2hv00019kagrknto6m3",
+          "sha256": "35066548f6ad49bff31d9f2ad39033a436bb478951b3149c45d5831999b073ce"
+        },
+        {
+          "imageId": "31ad732e-35a3-4813-912b-7056be1f2b1c",
+          "recordId": "cmv4yz2hv00019kagrknto6m3",
+          "sha256": "64e426087232a33f0cd1c041b085258ab587d99a4418793b97cc600f1542968c"
+        },
+        {
+          "imageId": "3fe439fc-57c9-48cd-91f6-4bedf4407208",
+          "recordId": "cmv4yz2hv00019kagrknto6m3",
+          "sha256": "d9e22f6c9d1a3eaa5cfefa5125c016bf4256db63350c737232c7daf4c0bf90c3"
+        },
+        {
+          "imageId": "6d642cad-f322-4457-a517-9fa6cbb07649",
+          "recordId": "cmv4yz2hv00019kagrknto6m3",
+          "sha256": "8cd833dca0c859997877aea96770d0d8030ebb029b43e905d24ecc6fea4b517c"
+        },
+        {
+          "imageId": "8b60a29c-d872-4755-84a7-b60fc213ada7",
+          "recordId": "cmv4yz2hv00019kagrknto6m3",
+          "sha256": "2f0210c0b601ab1c1f45e02b19cbf056f4a3e9dcf06443ddda46c8a40d80ed43"
+        },
+        {
+          "imageId": "b09cbeb5-6ef9-4d73-863e-24b5274281f4",
+          "recordId": "cmv4yz2hv00019kagrknto6m3",
+          "sha256": "35066548f6ad49bff31d9f2ad39033a436bb478951b3149c45d5831999b073ce"
+        },
+        {
+          "imageId": "b9cce55a-2725-4d7b-83e9-e06702c4dd7f",
+          "recordId": "cmv4yz2hv00019kagrknto6m3",
+          "sha256": "2f0210c0b601ab1c1f45e02b19cbf056f4a3e9dcf06443ddda46c8a40d80ed43"
+        },
+        {
+          "imageId": "cfac3fb1-0554-4ce0-8a29-a33168c26e34",
+          "recordId": "cmv4yz2hv00019kagrknto6m3",
+          "sha256": "2f0210c0b601ab1c1f45e02b19cbf056f4a3e9dcf06443ddda46c8a40d80ed43"
+        },
+        {
+          "imageId": "eab56419-c7af-4d84-8a37-acf4f860dca5",
+          "recordId": "cmv4yz2hv00019kagrknto6m3",
+          "sha256": "d9e22f6c9d1a3eaa5cfefa5125c016bf4256db63350c737232c7daf4c0bf90c3"
+        }
+      ],
+      "allMetadataHashesPresent": true,
+      "externalRelations": 0,
+      "specialImageParts": []
+    },
+    {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/color-template-evidence/1791878099967285000/results/color-template-current-col-81b3a--ordinary-name-base-mapping/color-current-before.xlsx",
+      "bytes": 809475,
+      "sha256": "f2db9ef693d713db15895157df61590cd80a12287ccca297dfdd8228aa1339e6",
+      "zipEntryCount": 40,
+      "expandedBytes": 895297,
+      "sheets": [
+        {
+          "name": "颜色清单",
+          "state": "visible",
+          "part": "xl/worksheets/sheet1.xml",
+          "dimension": "A1:M3",
+          "populatedRows": 3,
+          "cells": 32,
+          "header": {
+            "A1": "记录ID",
+            "B1": "记录版本",
+            "C1": "颜色名称",
+            "D1": "生产基地",
+            "E1": "备注",
+            "F1": "色板编号",
+            "G1": "制作单位",
+            "H1": "漆种",
+            "I1": "正式编号",
+            "J1": "入清单月份",
+            "K1": "清单状态",
+            "L1": "来源",
+            "M1": "照片"
+          },
+          "hiddenColumns": [
+            {
+              "min": "1",
+              "max": "1"
+            },
+            {
+              "min": "2",
+              "max": "2"
+            }
+          ],
+          "formulaCells": 0,
+          "duplicateNonemptyFirstColumnValues": 0
+        },
+        {
+          "name": "_业务模板",
+          "state": "veryHidden",
+          "part": "xl/worksheets/sheet2.xml",
+          "dimension": "A1:B2",
+          "populatedRows": 2,
+          "cells": 3,
+          "header": {
+            "A1": "LIGHT_TRUCK_BUSINESS_SHEET_V1",
+            "B1": "color-catalog"
+          },
+          "hiddenColumns": [],
+          "formulaCells": 0,
+          "duplicateNonemptyFirstColumnValues": 0
+        },
+        {
+          "name": "_业务图片",
+          "state": "veryHidden",
+          "part": "xl/worksheets/sheet3.xml",
+          "dimension": "A1:C16",
+          "populatedRows": 16,
+          "cells": 48,
+          "header": {
+            "A1": "imageId",
+            "B1": "recordId",
+            "C1": "sha256"
+          },
+          "hiddenColumns": [],
+          "formulaCells": 0,
+          "duplicateNonemptyFirstColumnValues": 0
+        }
+      ],
+      "mediaCount": 15,
+      "drawingPictureCount": 15,
+      "media": [
+        {
+          "part": "xl/media/image1.png",
+          "bytes": 334,
+          "sha256": "d9e22f6c9d1a3eaa5cfefa5125c016bf4256db63350c737232c7daf4c0bf90c3",
+          "format": "PNG",
+          "width": 97,
+          "height": 65,
+          "mode": "RGBA",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image2.png",
+          "bytes": 334,
+          "sha256": "d9e22f6c9d1a3eaa5cfefa5125c016bf4256db63350c737232c7daf4c0bf90c3",
+          "format": "PNG",
+          "width": 97,
+          "height": 65,
+          "mode": "RGBA",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image3.png",
+          "bytes": 49100,
+          "sha256": "6b59328b8ec9f9fb361b3a04a47c6f41039f68e9023cd5f7719d537247449d6b",
+          "format": "PNG",
+          "width": 1070,
+          "height": 535,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image4.png",
+          "bytes": 29981,
+          "sha256": "350bdc42228c9f2881100592fa004518e7d13f9bd74bbbc5ff863796983cc046",
+          "format": "PNG",
+          "width": 121,
+          "height": 87,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image5.png",
+          "bytes": 27678,
+          "sha256": "83c86b02e6ffe41af643ee4d35b1a838e2f9ce629a4b7b8d3d77cec8c24d1e0d",
+          "format": "PNG",
+          "width": 117,
+          "height": 83,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image6.jpeg",
+          "bytes": 140899,
+          "sha256": "2f0210c0b601ab1c1f45e02b19cbf056f4a3e9dcf06443ddda46c8a40d80ed43",
+          "format": "JPEG",
+          "width": 1920,
+          "height": 1080,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image7.png",
+          "bytes": 52428,
+          "sha256": "35066548f6ad49bff31d9f2ad39033a436bb478951b3149c45d5831999b073ce",
+          "format": "PNG",
+          "width": 1070,
+          "height": 535,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image8.png",
+          "bytes": 25600,
+          "sha256": "64e426087232a33f0cd1c041b085258ab587d99a4418793b97cc600f1542968c",
+          "format": "PNG",
+          "width": 115,
+          "height": 79,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image9.png",
+          "bytes": 334,
+          "sha256": "d9e22f6c9d1a3eaa5cfefa5125c016bf4256db63350c737232c7daf4c0bf90c3",
+          "format": "PNG",
+          "width": 97,
+          "height": 65,
+          "mode": "RGBA",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image10.png",
+          "bytes": 52030,
+          "sha256": "8cd833dca0c859997877aea96770d0d8030ebb029b43e905d24ecc6fea4b517c",
+          "format": "PNG",
+          "width": 1070,
+          "height": 535,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image11.jpeg",
+          "bytes": 140899,
+          "sha256": "2f0210c0b601ab1c1f45e02b19cbf056f4a3e9dcf06443ddda46c8a40d80ed43",
+          "format": "JPEG",
+          "width": 1920,
+          "height": 1080,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image12.png",
+          "bytes": 52428,
+          "sha256": "35066548f6ad49bff31d9f2ad39033a436bb478951b3149c45d5831999b073ce",
+          "format": "PNG",
+          "width": 1070,
+          "height": 535,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image13.jpeg",
+          "bytes": 140899,
+          "sha256": "2f0210c0b601ab1c1f45e02b19cbf056f4a3e9dcf06443ddda46c8a40d80ed43",
+          "format": "JPEG",
+          "width": 1920,
+          "height": 1080,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image14.jpeg",
+          "bytes": 140899,
+          "sha256": "2f0210c0b601ab1c1f45e02b19cbf056f4a3e9dcf06443ddda46c8a40d80ed43",
+          "format": "JPEG",
+          "width": 1920,
+          "height": 1080,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image15.png",
+          "bytes": 334,
+          "sha256": "d9e22f6c9d1a3eaa5cfefa5125c016bf4256db63350c737232c7daf4c0bf90c3",
+          "format": "PNG",
+          "width": 97,
+          "height": 65,
+          "mode": "RGBA",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        }
+      ],
+      "pictures": [
+        {
+          "sheet": "颜色清单",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image1.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "12",
+              "colOff": "38100",
+              "row": "1",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "颜色清单",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image2.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "12",
+              "colOff": "762000",
+              "row": "1",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "颜色清单",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image3.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "13",
+              "colOff": "104775",
+              "row": "1",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "颜色清单",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image4.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "14",
+              "colOff": "218980",
+              "row": "1",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "颜色清单",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image5.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "15",
+              "colOff": "333185",
+              "row": "1",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "颜色清单",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image6.jpeg",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "16",
+              "colOff": "447389",
+              "row": "1",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "颜色清单",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image7.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "17",
+              "colOff": "561594",
+              "row": "1",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "颜色清单",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image8.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "12",
+              "colOff": "38100",
+              "row": "1",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "2286000",
+              "cy": "1524000"
+            }
+          }
+        },
+        {
+          "sheet": "颜色清单",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image9.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "20",
+              "colOff": "180308",
+              "row": "1",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "颜色清单",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image10.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "21",
+              "colOff": "294513",
+              "row": "1",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "颜色清单",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image11.jpeg",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "22",
+              "colOff": "408718",
+              "row": "1",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "颜色清单",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image12.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "23",
+              "colOff": "522923",
+              "row": "1",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "颜色清单",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image13.jpeg",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "25",
+              "colOff": "27432",
+              "row": "1",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "颜色清单",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image14.jpeg",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "26",
+              "colOff": "141637",
+              "row": "1",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "颜色清单",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image15.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "27",
+              "colOff": "255842",
+              "row": "1",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        }
+      ],
+      "imageMetadata": [
+        {
+          "imageId": "00882d9e-321f-41ab-bee8-709768abc24f",
+          "recordId": "cmv4yz2hv00019kagrknto6m3",
+          "sha256": "d9e22f6c9d1a3eaa5cfefa5125c016bf4256db63350c737232c7daf4c0bf90c3"
+        },
+        {
+          "imageId": "0325ea22-f8ff-47de-adf8-e1d565470ab3",
+          "recordId": "cmv4yz2hv00019kagrknto6m3",
+          "sha256": "d9e22f6c9d1a3eaa5cfefa5125c016bf4256db63350c737232c7daf4c0bf90c3"
+        },
+        {
+          "imageId": "13acf7cd-b57b-4605-95b1-af5114497ed3",
+          "recordId": "cmv4yz2hv00019kagrknto6m3",
+          "sha256": "6b59328b8ec9f9fb361b3a04a47c6f41039f68e9023cd5f7719d537247449d6b"
+        },
+        {
+          "imageId": "16d56eb3-da6a-44e1-89e7-a1eaa2262454",
+          "recordId": "cmv4yz2hv00019kagrknto6m3",
+          "sha256": "350bdc42228c9f2881100592fa004518e7d13f9bd74bbbc5ff863796983cc046"
+        },
+        {
+          "imageId": "1fd5a79a-51f4-432b-a333-3c385d638d8f",
+          "recordId": "cmv4yz2hv00019kagrknto6m3",
+          "sha256": "83c86b02e6ffe41af643ee4d35b1a838e2f9ce629a4b7b8d3d77cec8c24d1e0d"
+        },
+        {
+          "imageId": "217a0b27-832e-4f98-982a-b86f482115fc",
+          "recordId": "cmv4yz2hv00019kagrknto6m3",
+          "sha256": "2f0210c0b601ab1c1f45e02b19cbf056f4a3e9dcf06443ddda46c8a40d80ed43"
+        },
+        {
+          "imageId": "233a736a-600e-442a-92d1-0e160139b223",
+          "recordId": "cmv4yz2hv00019kagrknto6m3",
+          "sha256": "35066548f6ad49bff31d9f2ad39033a436bb478951b3149c45d5831999b073ce"
+        },
+        {
+          "imageId": "31ad732e-35a3-4813-912b-7056be1f2b1c",
+          "recordId": "cmv4yz2hv00019kagrknto6m3",
+          "sha256": "64e426087232a33f0cd1c041b085258ab587d99a4418793b97cc600f1542968c"
+        },
+        {
+          "imageId": "3fe439fc-57c9-48cd-91f6-4bedf4407208",
+          "recordId": "cmv4yz2hv00019kagrknto6m3",
+          "sha256": "d9e22f6c9d1a3eaa5cfefa5125c016bf4256db63350c737232c7daf4c0bf90c3"
+        },
+        {
+          "imageId": "6d642cad-f322-4457-a517-9fa6cbb07649",
+          "recordId": "cmv4yz2hv00019kagrknto6m3",
+          "sha256": "8cd833dca0c859997877aea96770d0d8030ebb029b43e905d24ecc6fea4b517c"
+        },
+        {
+          "imageId": "8b60a29c-d872-4755-84a7-b60fc213ada7",
+          "recordId": "cmv4yz2hv00019kagrknto6m3",
+          "sha256": "2f0210c0b601ab1c1f45e02b19cbf056f4a3e9dcf06443ddda46c8a40d80ed43"
+        },
+        {
+          "imageId": "b09cbeb5-6ef9-4d73-863e-24b5274281f4",
+          "recordId": "cmv4yz2hv00019kagrknto6m3",
+          "sha256": "35066548f6ad49bff31d9f2ad39033a436bb478951b3149c45d5831999b073ce"
+        },
+        {
+          "imageId": "b9cce55a-2725-4d7b-83e9-e06702c4dd7f",
+          "recordId": "cmv4yz2hv00019kagrknto6m3",
+          "sha256": "2f0210c0b601ab1c1f45e02b19cbf056f4a3e9dcf06443ddda46c8a40d80ed43"
+        },
+        {
+          "imageId": "cfac3fb1-0554-4ce0-8a29-a33168c26e34",
+          "recordId": "cmv4yz2hv00019kagrknto6m3",
+          "sha256": "2f0210c0b601ab1c1f45e02b19cbf056f4a3e9dcf06443ddda46c8a40d80ed43"
+        },
+        {
+          "imageId": "eab56419-c7af-4d84-8a37-acf4f860dca5",
+          "recordId": "cmv4yz2hv00019kagrknto6m3",
+          "sha256": "d9e22f6c9d1a3eaa5cfefa5125c016bf4256db63350c737232c7daf4c0bf90c3"
+        }
+      ],
+      "allMetadataHashesPresent": true,
+      "externalRelations": 0,
+      "specialImageParts": []
+    },
+    {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/color-template-evidence/1791878099967285000/results/color-template-current-col-81b3a--ordinary-name-base-mapping/color-ordinary-missing-base.xlsx",
+      "bytes": 6566,
+      "sha256": "32046675a9b7a0136f2bbfbf03c0408461643ebc64f0ed3ffcc6d902c9da706e",
+      "zipEntryCount": 16,
+      "expandedBytes": 15502,
+      "sheets": [
+        {
+          "name": "普通颜色台账",
+          "state": "visible",
+          "part": "xl/worksheets/sheet1.xml",
+          "dimension": "A1:B2",
+          "populatedRows": 2,
+          "cells": 4,
+          "header": {
+            "A1": "颜色名称",
+            "B1": "备注"
+          },
+          "hiddenColumns": [],
+          "formulaCells": 0,
+          "duplicateNonemptyFirstColumnValues": 0
+        }
+      ],
+      "mediaCount": 0,
+      "drawingPictureCount": 0,
+      "media": [],
+      "pictures": [],
+      "imageMetadata": [],
+      "allMetadataHashesPresent": true,
+      "externalRelations": 0,
+      "specialImageParts": []
+    },
+    {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/color-template-evidence/1791878099967285000/results/color-template-current-col-81b3a--ordinary-name-base-mapping/color-ordinary-name-base.xlsx",
+      "bytes": 6604,
+      "sha256": "1c13f4030af3de736c40deec102928dc43860cb2c229183b3d593c5ce5a39a78",
+      "zipEntryCount": 16,
+      "expandedBytes": 15617,
+      "sheets": [
+        {
+          "name": "普通颜色台账",
+          "state": "visible",
+          "part": "xl/worksheets/sheet1.xml",
+          "dimension": "A1:C2",
+          "populatedRows": 2,
+          "cells": 6,
+          "header": {
+            "A1": "颜色名称",
+            "B1": "生产基地",
+            "C1": "备注"
+          },
+          "hiddenColumns": [],
+          "formulaCells": 0,
+          "duplicateNonemptyFirstColumnValues": 0
+        }
+      ],
+      "mediaCount": 0,
+      "drawingPictureCount": 0,
+      "media": [],
+      "pictures": [],
+      "imageMetadata": [],
+      "allMetadataHashesPresent": true,
+      "externalRelations": 0,
+      "specialImageParts": []
+    },
+    {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/color-template-evidence/1791878099967285000/results/color-template-current-col-81b3a--ordinary-name-base-mapping/color-readonly-name.xlsx",
+      "bytes": 809574,
+      "sha256": "12c3cfe6433a1b956b2ba9da0cfd96e27da29407d12053e2dacf5a84f7d39a69",
+      "zipEntryCount": 40,
+      "expandedBytes": 895547,
+      "sheets": [
+        {
+          "name": "颜色清单",
+          "state": "visible",
+          "part": "xl/worksheets/sheet1.xml",
+          "dimension": "A1:M3",
+          "populatedRows": 3,
+          "cells": 32,
+          "header": {
+            "A1": "记录ID",
+            "B1": "记录版本",
+            "C1": "颜色名称",
+            "D1": "生产基地",
+            "E1": "备注",
+            "F1": "色板编号",
+            "G1": "制作单位",
+            "H1": "漆种",
+            "I1": "正式编号",
+            "J1": "入清单月份",
+            "K1": "清单状态",
+            "L1": "来源",
+            "M1": "照片"
+          },
+          "hiddenColumns": [
+            {
+              "min": "1",
+              "max": "1"
+            },
+            {
+              "min": "2",
+              "max": "2"
+            }
+          ],
+          "formulaCells": 0,
+          "duplicateNonemptyFirstColumnValues": 0
+        },
+        {
+          "name": "_业务模板",
+          "state": "veryHidden",
+          "part": "xl/worksheets/sheet2.xml",
+          "dimension": "A1:B2",
+          "populatedRows": 2,
+          "cells": 3,
+          "header": {
+            "A1": "LIGHT_TRUCK_BUSINESS_SHEET_V1",
+            "B1": "color-catalog"
+          },
+          "hiddenColumns": [],
+          "formulaCells": 0,
+          "duplicateNonemptyFirstColumnValues": 0
+        },
+        {
+          "name": "_业务图片",
+          "state": "veryHidden",
+          "part": "xl/worksheets/sheet3.xml",
+          "dimension": "A1:C16",
+          "populatedRows": 16,
+          "cells": 48,
+          "header": {
+            "A1": "imageId",
+            "B1": "recordId",
+            "C1": "sha256"
+          },
+          "hiddenColumns": [],
+          "formulaCells": 0,
+          "duplicateNonemptyFirstColumnValues": 0
+        }
+      ],
+      "mediaCount": 15,
+      "drawingPictureCount": 15,
+      "media": [
+        {
+          "part": "xl/media/image1.png",
+          "bytes": 334,
+          "sha256": "d9e22f6c9d1a3eaa5cfefa5125c016bf4256db63350c737232c7daf4c0bf90c3",
+          "format": "PNG",
+          "width": 97,
+          "height": 65,
+          "mode": "RGBA",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image2.png",
+          "bytes": 334,
+          "sha256": "d9e22f6c9d1a3eaa5cfefa5125c016bf4256db63350c737232c7daf4c0bf90c3",
+          "format": "PNG",
+          "width": 97,
+          "height": 65,
+          "mode": "RGBA",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image3.png",
+          "bytes": 49100,
+          "sha256": "6b59328b8ec9f9fb361b3a04a47c6f41039f68e9023cd5f7719d537247449d6b",
+          "format": "PNG",
+          "width": 1070,
+          "height": 535,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image4.png",
+          "bytes": 29981,
+          "sha256": "350bdc42228c9f2881100592fa004518e7d13f9bd74bbbc5ff863796983cc046",
+          "format": "PNG",
+          "width": 121,
+          "height": 87,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image5.png",
+          "bytes": 27678,
+          "sha256": "83c86b02e6ffe41af643ee4d35b1a838e2f9ce629a4b7b8d3d77cec8c24d1e0d",
+          "format": "PNG",
+          "width": 117,
+          "height": 83,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image6.jpeg",
+          "bytes": 140899,
+          "sha256": "2f0210c0b601ab1c1f45e02b19cbf056f4a3e9dcf06443ddda46c8a40d80ed43",
+          "format": "JPEG",
+          "width": 1920,
+          "height": 1080,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image7.png",
+          "bytes": 52428,
+          "sha256": "35066548f6ad49bff31d9f2ad39033a436bb478951b3149c45d5831999b073ce",
+          "format": "PNG",
+          "width": 1070,
+          "height": 535,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image8.png",
+          "bytes": 25600,
+          "sha256": "64e426087232a33f0cd1c041b085258ab587d99a4418793b97cc600f1542968c",
+          "format": "PNG",
+          "width": 115,
+          "height": 79,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image9.png",
+          "bytes": 334,
+          "sha256": "d9e22f6c9d1a3eaa5cfefa5125c016bf4256db63350c737232c7daf4c0bf90c3",
+          "format": "PNG",
+          "width": 97,
+          "height": 65,
+          "mode": "RGBA",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image10.png",
+          "bytes": 52030,
+          "sha256": "8cd833dca0c859997877aea96770d0d8030ebb029b43e905d24ecc6fea4b517c",
+          "format": "PNG",
+          "width": 1070,
+          "height": 535,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image11.jpeg",
+          "bytes": 140899,
+          "sha256": "2f0210c0b601ab1c1f45e02b19cbf056f4a3e9dcf06443ddda46c8a40d80ed43",
+          "format": "JPEG",
+          "width": 1920,
+          "height": 1080,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image12.png",
+          "bytes": 52428,
+          "sha256": "35066548f6ad49bff31d9f2ad39033a436bb478951b3149c45d5831999b073ce",
+          "format": "PNG",
+          "width": 1070,
+          "height": 535,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image13.jpeg",
+          "bytes": 140899,
+          "sha256": "2f0210c0b601ab1c1f45e02b19cbf056f4a3e9dcf06443ddda46c8a40d80ed43",
+          "format": "JPEG",
+          "width": 1920,
+          "height": 1080,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image14.jpeg",
+          "bytes": 140899,
+          "sha256": "2f0210c0b601ab1c1f45e02b19cbf056f4a3e9dcf06443ddda46c8a40d80ed43",
+          "format": "JPEG",
+          "width": 1920,
+          "height": 1080,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image15.png",
+          "bytes": 334,
+          "sha256": "d9e22f6c9d1a3eaa5cfefa5125c016bf4256db63350c737232c7daf4c0bf90c3",
+          "format": "PNG",
+          "width": 97,
+          "height": 65,
+          "mode": "RGBA",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        }
+      ],
+      "pictures": [
+        {
+          "sheet": "颜色清单",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image1.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "12",
+              "colOff": "38100",
+              "row": "1",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "颜色清单",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image2.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "12",
+              "colOff": "762000",
+              "row": "1",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "颜色清单",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image3.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "13",
+              "colOff": "104775",
+              "row": "1",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "颜色清单",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image4.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "14",
+              "colOff": "218980",
+              "row": "1",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "颜色清单",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image5.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "15",
+              "colOff": "333185",
+              "row": "1",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "颜色清单",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image6.jpeg",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "16",
+              "colOff": "447389",
+              "row": "1",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "颜色清单",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image7.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "17",
+              "colOff": "561594",
+              "row": "1",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "颜色清单",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image8.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "12",
+              "colOff": "38100",
+              "row": "1",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "2286000",
+              "cy": "1524000"
+            }
+          }
+        },
+        {
+          "sheet": "颜色清单",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image9.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "20",
+              "colOff": "180308",
+              "row": "1",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "颜色清单",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image10.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "21",
+              "colOff": "294513",
+              "row": "1",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "颜色清单",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image11.jpeg",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "22",
+              "colOff": "408718",
+              "row": "1",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "颜色清单",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image12.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "23",
+              "colOff": "522923",
+              "row": "1",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "颜色清单",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image13.jpeg",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "25",
+              "colOff": "27432",
+              "row": "1",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "颜色清单",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image14.jpeg",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "26",
+              "colOff": "141637",
+              "row": "1",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "颜色清单",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image15.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "27",
+              "colOff": "255842",
+              "row": "1",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        }
+      ],
+      "imageMetadata": [
+        {
+          "imageId": "00882d9e-321f-41ab-bee8-709768abc24f",
+          "recordId": "cmv4yz2hv00019kagrknto6m3",
+          "sha256": "d9e22f6c9d1a3eaa5cfefa5125c016bf4256db63350c737232c7daf4c0bf90c3"
+        },
+        {
+          "imageId": "0325ea22-f8ff-47de-adf8-e1d565470ab3",
+          "recordId": "cmv4yz2hv00019kagrknto6m3",
+          "sha256": "d9e22f6c9d1a3eaa5cfefa5125c016bf4256db63350c737232c7daf4c0bf90c3"
+        },
+        {
+          "imageId": "13acf7cd-b57b-4605-95b1-af5114497ed3",
+          "recordId": "cmv4yz2hv00019kagrknto6m3",
+          "sha256": "6b59328b8ec9f9fb361b3a04a47c6f41039f68e9023cd5f7719d537247449d6b"
+        },
+        {
+          "imageId": "16d56eb3-da6a-44e1-89e7-a1eaa2262454",
+          "recordId": "cmv4yz2hv00019kagrknto6m3",
+          "sha256": "350bdc42228c9f2881100592fa004518e7d13f9bd74bbbc5ff863796983cc046"
+        },
+        {
+          "imageId": "1fd5a79a-51f4-432b-a333-3c385d638d8f",
+          "recordId": "cmv4yz2hv00019kagrknto6m3",
+          "sha256": "83c86b02e6ffe41af643ee4d35b1a838e2f9ce629a4b7b8d3d77cec8c24d1e0d"
+        },
+        {
+          "imageId": "217a0b27-832e-4f98-982a-b86f482115fc",
+          "recordId": "cmv4yz2hv00019kagrknto6m3",
+          "sha256": "2f0210c0b601ab1c1f45e02b19cbf056f4a3e9dcf06443ddda46c8a40d80ed43"
+        },
+        {
+          "imageId": "233a736a-600e-442a-92d1-0e160139b223",
+          "recordId": "cmv4yz2hv00019kagrknto6m3",
+          "sha256": "35066548f6ad49bff31d9f2ad39033a436bb478951b3149c45d5831999b073ce"
+        },
+        {
+          "imageId": "31ad732e-35a3-4813-912b-7056be1f2b1c",
+          "recordId": "cmv4yz2hv00019kagrknto6m3",
+          "sha256": "64e426087232a33f0cd1c041b085258ab587d99a4418793b97cc600f1542968c"
+        },
+        {
+          "imageId": "3fe439fc-57c9-48cd-91f6-4bedf4407208",
+          "recordId": "cmv4yz2hv00019kagrknto6m3",
+          "sha256": "d9e22f6c9d1a3eaa5cfefa5125c016bf4256db63350c737232c7daf4c0bf90c3"
+        },
+        {
+          "imageId": "6d642cad-f322-4457-a517-9fa6cbb07649",
+          "recordId": "cmv4yz2hv00019kagrknto6m3",
+          "sha256": "8cd833dca0c859997877aea96770d0d8030ebb029b43e905d24ecc6fea4b517c"
+        },
+        {
+          "imageId": "8b60a29c-d872-4755-84a7-b60fc213ada7",
+          "recordId": "cmv4yz2hv00019kagrknto6m3",
+          "sha256": "2f0210c0b601ab1c1f45e02b19cbf056f4a3e9dcf06443ddda46c8a40d80ed43"
+        },
+        {
+          "imageId": "b09cbeb5-6ef9-4d73-863e-24b5274281f4",
+          "recordId": "cmv4yz2hv00019kagrknto6m3",
+          "sha256": "35066548f6ad49bff31d9f2ad39033a436bb478951b3149c45d5831999b073ce"
+        },
+        {
+          "imageId": "b9cce55a-2725-4d7b-83e9-e06702c4dd7f",
+          "recordId": "cmv4yz2hv00019kagrknto6m3",
+          "sha256": "2f0210c0b601ab1c1f45e02b19cbf056f4a3e9dcf06443ddda46c8a40d80ed43"
+        },
+        {
+          "imageId": "cfac3fb1-0554-4ce0-8a29-a33168c26e34",
+          "recordId": "cmv4yz2hv00019kagrknto6m3",
+          "sha256": "2f0210c0b601ab1c1f45e02b19cbf056f4a3e9dcf06443ddda46c8a40d80ed43"
+        },
+        {
+          "imageId": "eab56419-c7af-4d84-8a37-acf4f860dca5",
+          "recordId": "cmv4yz2hv00019kagrknto6m3",
+          "sha256": "d9e22f6c9d1a3eaa5cfefa5125c016bf4256db63350c737232c7daf4c0bf90c3"
+        }
+      ],
+      "allMetadataHashesPresent": true,
+      "externalRelations": 0,
+      "specialImageParts": []
+    },
+    {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/color-template-evidence/1791878099967285000/results/color-template-current-col-81b3a--ordinary-name-base-mapping/color-update-note.xlsx",
+      "bytes": 809565,
+      "sha256": "77312ad48b70b181e9d787dd97ffd1c1496ea47e5e280675607b5ec3a1cb51ac",
+      "zipEntryCount": 40,
+      "expandedBytes": 895510,
+      "sheets": [
+        {
+          "name": "颜色清单",
+          "state": "visible",
+          "part": "xl/worksheets/sheet1.xml",
+          "dimension": "A1:M3",
+          "populatedRows": 3,
+          "cells": 32,
+          "header": {
+            "A1": "记录ID",
+            "B1": "记录版本",
+            "C1": "颜色名称",
+            "D1": "生产基地",
+            "E1": "备注",
+            "F1": "色板编号",
+            "G1": "制作单位",
+            "H1": "漆种",
+            "I1": "正式编号",
+            "J1": "入清单月份",
+            "K1": "清单状态",
+            "L1": "来源",
+            "M1": "照片"
+          },
+          "hiddenColumns": [
+            {
+              "min": "1",
+              "max": "1"
+            },
+            {
+              "min": "2",
+              "max": "2"
+            }
+          ],
+          "formulaCells": 0,
+          "duplicateNonemptyFirstColumnValues": 0
+        },
+        {
+          "name": "_业务模板",
+          "state": "veryHidden",
+          "part": "xl/worksheets/sheet2.xml",
+          "dimension": "A1:B2",
+          "populatedRows": 2,
+          "cells": 3,
+          "header": {
+            "A1": "LIGHT_TRUCK_BUSINESS_SHEET_V1",
+            "B1": "color-catalog"
+          },
+          "hiddenColumns": [],
+          "formulaCells": 0,
+          "duplicateNonemptyFirstColumnValues": 0
+        },
+        {
+          "name": "_业务图片",
+          "state": "veryHidden",
+          "part": "xl/worksheets/sheet3.xml",
+          "dimension": "A1:C16",
+          "populatedRows": 16,
+          "cells": 48,
+          "header": {
+            "A1": "imageId",
+            "B1": "recordId",
+            "C1": "sha256"
+          },
+          "hiddenColumns": [],
+          "formulaCells": 0,
+          "duplicateNonemptyFirstColumnValues": 0
+        }
+      ],
+      "mediaCount": 15,
+      "drawingPictureCount": 15,
+      "media": [
+        {
+          "part": "xl/media/image1.png",
+          "bytes": 334,
+          "sha256": "d9e22f6c9d1a3eaa5cfefa5125c016bf4256db63350c737232c7daf4c0bf90c3",
+          "format": "PNG",
+          "width": 97,
+          "height": 65,
+          "mode": "RGBA",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image2.png",
+          "bytes": 334,
+          "sha256": "d9e22f6c9d1a3eaa5cfefa5125c016bf4256db63350c737232c7daf4c0bf90c3",
+          "format": "PNG",
+          "width": 97,
+          "height": 65,
+          "mode": "RGBA",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image3.png",
+          "bytes": 49100,
+          "sha256": "6b59328b8ec9f9fb361b3a04a47c6f41039f68e9023cd5f7719d537247449d6b",
+          "format": "PNG",
+          "width": 1070,
+          "height": 535,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image4.png",
+          "bytes": 29981,
+          "sha256": "350bdc42228c9f2881100592fa004518e7d13f9bd74bbbc5ff863796983cc046",
+          "format": "PNG",
+          "width": 121,
+          "height": 87,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image5.png",
+          "bytes": 27678,
+          "sha256": "83c86b02e6ffe41af643ee4d35b1a838e2f9ce629a4b7b8d3d77cec8c24d1e0d",
+          "format": "PNG",
+          "width": 117,
+          "height": 83,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image6.jpeg",
+          "bytes": 140899,
+          "sha256": "2f0210c0b601ab1c1f45e02b19cbf056f4a3e9dcf06443ddda46c8a40d80ed43",
+          "format": "JPEG",
+          "width": 1920,
+          "height": 1080,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image7.png",
+          "bytes": 52428,
+          "sha256": "35066548f6ad49bff31d9f2ad39033a436bb478951b3149c45d5831999b073ce",
+          "format": "PNG",
+          "width": 1070,
+          "height": 535,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image8.png",
+          "bytes": 25600,
+          "sha256": "64e426087232a33f0cd1c041b085258ab587d99a4418793b97cc600f1542968c",
+          "format": "PNG",
+          "width": 115,
+          "height": 79,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image9.png",
+          "bytes": 334,
+          "sha256": "d9e22f6c9d1a3eaa5cfefa5125c016bf4256db63350c737232c7daf4c0bf90c3",
+          "format": "PNG",
+          "width": 97,
+          "height": 65,
+          "mode": "RGBA",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image10.png",
+          "bytes": 52030,
+          "sha256": "8cd833dca0c859997877aea96770d0d8030ebb029b43e905d24ecc6fea4b517c",
+          "format": "PNG",
+          "width": 1070,
+          "height": 535,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image11.jpeg",
+          "bytes": 140899,
+          "sha256": "2f0210c0b601ab1c1f45e02b19cbf056f4a3e9dcf06443ddda46c8a40d80ed43",
+          "format": "JPEG",
+          "width": 1920,
+          "height": 1080,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image12.png",
+          "bytes": 52428,
+          "sha256": "35066548f6ad49bff31d9f2ad39033a436bb478951b3149c45d5831999b073ce",
+          "format": "PNG",
+          "width": 1070,
+          "height": 535,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image13.jpeg",
+          "bytes": 140899,
+          "sha256": "2f0210c0b601ab1c1f45e02b19cbf056f4a3e9dcf06443ddda46c8a40d80ed43",
+          "format": "JPEG",
+          "width": 1920,
+          "height": 1080,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image14.jpeg",
+          "bytes": 140899,
+          "sha256": "2f0210c0b601ab1c1f45e02b19cbf056f4a3e9dcf06443ddda46c8a40d80ed43",
+          "format": "JPEG",
+          "width": 1920,
+          "height": 1080,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image15.png",
+          "bytes": 334,
+          "sha256": "d9e22f6c9d1a3eaa5cfefa5125c016bf4256db63350c737232c7daf4c0bf90c3",
+          "format": "PNG",
+          "width": 97,
+          "height": 65,
+          "mode": "RGBA",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        }
+      ],
+      "pictures": [
+        {
+          "sheet": "颜色清单",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image1.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "12",
+              "colOff": "38100",
+              "row": "1",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "颜色清单",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image2.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "12",
+              "colOff": "762000",
+              "row": "1",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "颜色清单",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image3.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "13",
+              "colOff": "104775",
+              "row": "1",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "颜色清单",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image4.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "14",
+              "colOff": "218980",
+              "row": "1",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "颜色清单",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image5.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "15",
+              "colOff": "333185",
+              "row": "1",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "颜色清单",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image6.jpeg",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "16",
+              "colOff": "447389",
+              "row": "1",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "颜色清单",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image7.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "17",
+              "colOff": "561594",
+              "row": "1",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "颜色清单",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image8.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "12",
+              "colOff": "38100",
+              "row": "1",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "2286000",
+              "cy": "1524000"
+            }
+          }
+        },
+        {
+          "sheet": "颜色清单",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image9.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "20",
+              "colOff": "180308",
+              "row": "1",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "颜色清单",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image10.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "21",
+              "colOff": "294513",
+              "row": "1",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "颜色清单",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image11.jpeg",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "22",
+              "colOff": "408718",
+              "row": "1",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "颜色清单",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image12.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "23",
+              "colOff": "522923",
+              "row": "1",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "颜色清单",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image13.jpeg",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "25",
+              "colOff": "27432",
+              "row": "1",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "颜色清单",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image14.jpeg",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "26",
+              "colOff": "141637",
+              "row": "1",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "颜色清单",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image15.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "27",
+              "colOff": "255842",
+              "row": "1",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        }
+      ],
+      "imageMetadata": [
+        {
+          "imageId": "00882d9e-321f-41ab-bee8-709768abc24f",
+          "recordId": "cmv4yz2hv00019kagrknto6m3",
+          "sha256": "d9e22f6c9d1a3eaa5cfefa5125c016bf4256db63350c737232c7daf4c0bf90c3"
+        },
+        {
+          "imageId": "0325ea22-f8ff-47de-adf8-e1d565470ab3",
+          "recordId": "cmv4yz2hv00019kagrknto6m3",
+          "sha256": "d9e22f6c9d1a3eaa5cfefa5125c016bf4256db63350c737232c7daf4c0bf90c3"
+        },
+        {
+          "imageId": "13acf7cd-b57b-4605-95b1-af5114497ed3",
+          "recordId": "cmv4yz2hv00019kagrknto6m3",
+          "sha256": "6b59328b8ec9f9fb361b3a04a47c6f41039f68e9023cd5f7719d537247449d6b"
+        },
+        {
+          "imageId": "16d56eb3-da6a-44e1-89e7-a1eaa2262454",
+          "recordId": "cmv4yz2hv00019kagrknto6m3",
+          "sha256": "350bdc42228c9f2881100592fa004518e7d13f9bd74bbbc5ff863796983cc046"
+        },
+        {
+          "imageId": "1fd5a79a-51f4-432b-a333-3c385d638d8f",
+          "recordId": "cmv4yz2hv00019kagrknto6m3",
+          "sha256": "83c86b02e6ffe41af643ee4d35b1a838e2f9ce629a4b7b8d3d77cec8c24d1e0d"
+        },
+        {
+          "imageId": "217a0b27-832e-4f98-982a-b86f482115fc",
+          "recordId": "cmv4yz2hv00019kagrknto6m3",
+          "sha256": "2f0210c0b601ab1c1f45e02b19cbf056f4a3e9dcf06443ddda46c8a40d80ed43"
+        },
+        {
+          "imageId": "233a736a-600e-442a-92d1-0e160139b223",
+          "recordId": "cmv4yz2hv00019kagrknto6m3",
+          "sha256": "35066548f6ad49bff31d9f2ad39033a436bb478951b3149c45d5831999b073ce"
+        },
+        {
+          "imageId": "31ad732e-35a3-4813-912b-7056be1f2b1c",
+          "recordId": "cmv4yz2hv00019kagrknto6m3",
+          "sha256": "64e426087232a33f0cd1c041b085258ab587d99a4418793b97cc600f1542968c"
+        },
+        {
+          "imageId": "3fe439fc-57c9-48cd-91f6-4bedf4407208",
+          "recordId": "cmv4yz2hv00019kagrknto6m3",
+          "sha256": "d9e22f6c9d1a3eaa5cfefa5125c016bf4256db63350c737232c7daf4c0bf90c3"
+        },
+        {
+          "imageId": "6d642cad-f322-4457-a517-9fa6cbb07649",
+          "recordId": "cmv4yz2hv00019kagrknto6m3",
+          "sha256": "8cd833dca0c859997877aea96770d0d8030ebb029b43e905d24ecc6fea4b517c"
+        },
+        {
+          "imageId": "8b60a29c-d872-4755-84a7-b60fc213ada7",
+          "recordId": "cmv4yz2hv00019kagrknto6m3",
+          "sha256": "2f0210c0b601ab1c1f45e02b19cbf056f4a3e9dcf06443ddda46c8a40d80ed43"
+        },
+        {
+          "imageId": "b09cbeb5-6ef9-4d73-863e-24b5274281f4",
+          "recordId": "cmv4yz2hv00019kagrknto6m3",
+          "sha256": "35066548f6ad49bff31d9f2ad39033a436bb478951b3149c45d5831999b073ce"
+        },
+        {
+          "imageId": "b9cce55a-2725-4d7b-83e9-e06702c4dd7f",
+          "recordId": "cmv4yz2hv00019kagrknto6m3",
+          "sha256": "2f0210c0b601ab1c1f45e02b19cbf056f4a3e9dcf06443ddda46c8a40d80ed43"
+        },
+        {
+          "imageId": "cfac3fb1-0554-4ce0-8a29-a33168c26e34",
+          "recordId": "cmv4yz2hv00019kagrknto6m3",
+          "sha256": "2f0210c0b601ab1c1f45e02b19cbf056f4a3e9dcf06443ddda46c8a40d80ed43"
+        },
+        {
+          "imageId": "eab56419-c7af-4d84-8a37-acf4f860dca5",
+          "recordId": "cmv4yz2hv00019kagrknto6m3",
+          "sha256": "d9e22f6c9d1a3eaa5cfefa5125c016bf4256db63350c737232c7daf4c0bf90c3"
+        }
+      ],
+      "allMetadataHashesPresent": true,
+      "externalRelations": 0,
+      "specialImageParts": []
+    }
+  ],
+  "standaloneImageEvidence": []
+}
