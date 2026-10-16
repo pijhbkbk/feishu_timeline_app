@@ -8337,3 +8337,7 @@ main ref与tag未改变。这里仅追加指针，保留原有未提交交接文
 - 详情、来源提交、兼容边界、验证适用性和未执行环境见 [PROJECT_CONSOLIDATION_20261016](acceptance/PROJECT_CONSOLIDATION_20261016.md)。本记录提交时 GitHub/main 待推送合并，最终状态由远端和根 main 回读固定；本轮不访问 staging/production、不重做产品路由验收，产品状态仍 AWAITING_PRODUCT_OWNER_CONFIRMATION。
 - 磁盘清理只针对核对后的本项目闲置环境与可重建依赖/构建缓存；数据库卷、附件、备份、原始验收证据及历史源码保留。清理实际回收量与最终 Docker 状态由本机收据及本轮最终报告记录，不用目录逻辑大小代替磁盘实际增量。
 - GitHub 首轮并行 push / PR verify 在浅 checkout 缺少固定历史控制器的同一原因上失败（279 测试、119 errors），与本机完整历史结果区分；按明确根因补齐 verify 的 fetch-depth: 0 后重新验证，未跳过测试或更改断言。远端 CI 结果绑定新的 PR head。
+- CI 修复提交 `26c027e340a3fa94bb3134f3fd40fb65e6962ef7` 的远端 install/lint/typecheck/tests/Web build/API build/Prisma/Compose 全部成功；API 镜像因固定 OpenSSL 3.5.8-r0 在当次 Alpine 索引不可用而失败，后续 Web 镜像/扫描 SKIPPED。security-source 保留 FAIL：45 个已研判凭据候选、6 个 SAST 上下文候选及 3 工具错误、8 条生产依赖版本命中（1 Critical/2 High/5 Medium）；未改依赖或豁免来制造通过，候选导入建议见上述报告，未授予风险接受。
+- PR #2 已经 GitHub 正常合并，merge `fd4834986926770bb1959fcaee936e8c663844f9`，根目录已同步 main=origin/main；没有绕过 GitHub required checks 或改变保护规则。准确状态 MAIN_MERGED / NOT_RELEASE_READY / NOT_DEPLOYED。后续本轮收据只修改文档，应用及验证输入不变；生产/tag/产品确认均未改变。
+- 磁盘阶段已执行：4 个本项目旧验证容器停止；仅移除独立复核的 21 release / 6 旧工作树中 178 个依赖/构建目录（逻辑约43.434GiB）。45,817 保留源码文件哈希未变，独立清理后复核 PASS；根目录当前依赖、源码、真实env、数据库卷、对象、runtime、备份和验收证据保留。项目根目录 du 从46.45降至8.08GiB；即时删除收据释放22.30GiB，后续整机可用空间约64.47GiB（初始约35.63GiB）。Docker旧构建缓存另报告回收1.07GB，不与共享层重复计数；62容器/111镜像/64卷保留，运行0。清理收据SHA256与限制见上述报告。
+- 下一决策：后续开发统一使用根工作区；历史副本源码与Git提交可恢复，缓存需重建。现有依赖安全命中、扫描器错误及Alpine固定系统包不可用继续作为发布阻断，另行按唯一Finding Ledger研判和修复；本轮源码集中、main合并和缓存减负不赋予产品/安全/部署验收通过。
