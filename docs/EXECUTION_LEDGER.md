@@ -7681,3 +7681,48 @@ BLOCKER_REPORT: Public-source push remains rejected by platform automatic review
 - Runtime application artifacts88cb53607ad77aa5d1d559e01731988f68e26c3b remain available and previously tested. Production last verified535041bb25f21d548d863d07b35e3e952b0aeb2c at https://timeline.all-too-well.com; new repair NOT_DEPLOYED. Staging URL/commit/path and production browser acceptance NOT_EXECUTED. Remaining host findings, scanner integration, consistent backups/recovery and exact-domain acceptance remain open. Product state AWAITING_PRODUCT_OWNER_CONFIRMATION.
 
 - Final workflow/documentation independent review PASS; reviewer separately reran50/50 tests and verified Linux evidence reports UID1001. Existing CI evidence collector regression20/20 PASS. These are component checks; this new checkpoint has not yet run remote CI at record time.
+
+
+### 2026-09-11 — Continuous release resumed from 94ff09f1
+
+- Owner explicitly continued the existing fix/publication/deployment/short-maintenance delegation. The attached R27 execution file is direction, not execution evidence or platform authorization. No other-application private source/config/image export is attempted; only synthetic compatibility and original-container recovery remain in scope.
+- Actual repair tree started clean at94ff09f1ddaee6296e4e7775b41a05e88d7124c2. CI34555256934/push/attempt1 completed FAILURE: verify SUCCESS, security-source SAST BLOCKED by one insecure-file-permissions finding at test_scanner_state.py:25. Both actual redacted artifacts were downloaded, metadata identities checked and archive SHA256 values matched GitHub. Original finding and failed run retained under /private/tmp/r27-continue-94ff/ci.
+- Independent review verified the numeric permission rule flags a redundant chmod0700 on an already-private TemporaryDirectory. New test source12e75baab067b2d7188d524968259e0b8c427697 removes that redundant operation and directly asserts private0700 mode/current UID; negative permissions/ownership/link/state tests remain. Reviewed file SHA256bdba1d6b60c7500796c83e63759a635f824a7dc1716ceb53387b5865887e2604; independent50/50 PASS, CI evidence20/20 PASS; unchanged pinned Semgrep1.169.0 and three rule packs scan the fixed file with0 findings/0 errors.
+- Required install/lint/typecheck/test/Web build/API build/Prisma validate all exit0; Web287 PASS, API1332 PASS/33 existing optional skips (not counted as executed integration tests). Clean single-file source commit pushed by normal FF to codex/r27rc2-artifact-validation; new matching CI34571803229 is in progress at this checkpoint. No old-SHA rerun or force push. New immutable amd64 API/ops/Web builds are in progress; no publication/scan result claimed yet.
+- Fresh production Web/API and server HEAD remain535041bb25f21d548d863d07b35e3e952b0aeb2c at https://timeline.all-too-well.com. Kernel6.8.0-1066-gcp, Docker29.6/containerd2.2.5, Nginx1.18.0-6ubuntu14.20, Redis5:6.0.16-1ubuntu1.1, PG14.24 are actual running versions. Approved5.15/Docker29.8/containerd2.3.5/Nginx1.31.5 combination has retained synthetic rehearsal evidence but is NOT installed on original host. Latest restricted host checkpoint /private/tmp/rc2-production-20260910/evidence/host-risk-followup-94ff09f-checkpoint.json binds five new read-only records; no host package/service write occurred.
+- r3 scanner patch/artifact evidence remains hash-valid. Actual scanner adapter and actual recovery controller are being implemented in separate temporary workspaces, not installed or accepted. Existing pure policy/state tests and non-root restore rehearsal do not prove those effects. Another application's running/healthy state and recent persistent-file mtime do not prove sql.js memory durability; existing save/normal-stop entry information was requested for the eventual maintenance window, without requesting private source. This pauses only dependent host shutdown.
+- A real browser reached official Feishu QR sign-in from the production domain. Owner scan is necessary; no authenticated path or new-build acceptance claimed. A candidate staging subdomain was checked and has authoritative NXDOMAIN; no staging URL was invented or DNS changed. Independent exact-HTTPS entry remains to be established.
+- main remains41b4b166c587692e6f0fb9536dca2e1aab646c70 and existing tags unchanged. Production no migration/cutover/new runtime, staging NOT_DEPLOYED, product AWAITING_PRODUCT_OWNER_CONFIRMATION. Historical finding records/schema errors are not rewritten or normalized. Continue source CI/artifacts, remaining exact host applicability, scanner/recovery integration and isolated acceptance; do not ask again for abstract deployment approval.
+
+
+### 2026-09-12 — 本地离线目标规则最小更新
+
+- 本次用户明确要求最小目标规则更新（DOCS_ONLY）；任务书与粘贴建议用于理解目标，不把其中 M1–M4 实施指令自动视为本轮代码修改授权。
+- 当前目标为正式本地原生认证、本地目录/岗位/权限和离线运行；替换强制真实飞书与继续 GCE 的冲突要求，暂停云端推进，不停止或删除既有服务。业务、安全、数据不变量及历史风险/验收事实保留。
+- 新认证、授权、会话和迁移须有新验证与最终独立安全差异审查；未受影响的修复按输入及环境适用性依据复用。本轮没有重新授予任何历史安全 PASS 或关闭 finding。
+- 分层检查：两个工作树各只有根 AGENTS.md；包含隐藏/忽略目录的文件名扫描未发现 apps、packages、Prisma、scripts、deploy、docs 等目录的 AGENTS.override.md 或下层 AGENTS.md（排除依赖、Git 元数据和生成产物）。实际 CODEX_HOME 为 /Users/lixiaochen/.codex，全局 AGENTS.md 为空，未发现全局 override、自定义 project_doc_fallback_filenames 或项目 .codex/config.toml；未修改全局配置/权限。两个根规则均小于默认 32 KiB 发现上限。
+- 分层依据：[OpenAI 官方 AGENTS.md 文档](https://learn.chatgpt.com/docs/agent-configuration/agents-md)。核对同目录 override 优先、下层覆盖及备用文件；没有启动新 Codex 会话冒充重新加载证明。
+- 已执行：git worktree list --porcelain、git status --porcelain=v1 -uall、git rev-parse HEAD、git diff --check、rg --files --hidden --no-ignore 的规则文件发现，以及必需 Placeholder 扫描。文档差异/Markdown 结构检查 PASS；Git refs/index、业务/数据不变量原段落、全局指令/配置摘要与修改前相同，业务源码/schema/迁移/依赖无差异。
+- 验证范围仅文档；未运行 pnpm install/lint/typecheck/test/build/prisma:validate 或 G3/G4/G5，不安装依赖，不执行数据库、浏览器登录、部署或远端 CI。未提交、未推送；原有未提交台账完整保留。
+
+- 起点及最终源码 HEAD：12e75baab067b2d7188d524968259e0b8c427697；工作树 /Users/lixiaochen/Downloads/feishu_timeline_app-r27rc2-repair，分支 security/r27rc2-candidate-repair；原有 12 行未提交台账完整保留。
+- 改动文件：AGENTS.md、README.md、docs/gates/VERIFICATION_GATES.md、docs/EXECUTION_LEDGER.md。同步入口主目录的 AGENTS.md、README.md、docs/EXECUTION_LEDGER.md；未迁移整个治理版本、未更改 Finding schema/ledger/历史报告，也未将主目录旧源码覆盖到本树。
+- Placeholder 扫描原始 10 行，全为既有测试（7 条 getByPlaceholder、3 条拒绝骨架文案的负向断言），本次明确列入白名单：/private/tmp/local-offline-rules-20260912/repair-placeholder-test-whitelist.txt。正式源码匹配 0；这不是浏览器验收。主目录仍有 4 处占位路由，见其台账，不能混为同一产品版本。
+- 变更前文档与检查明细：/private/tmp/local-offline-rules-20260912。风险/下一决策：认证代码、账号/旧身份迁移及离线包尚未在本轮实现，旧 OAuth、构建和扫描 PASS 不能替代新边界验证。后续以真实最新修复源码实施本地身份主链路，再验证受影响安全与断网运行；本次不自动启动 M1–M4 或恢复云端推进。
+
+| 交付项 | 本轮事实 |
+|---|---|
+| 1 代码是否实现 | 应用代码未修改；仅目标规则更新 |
+| 2 本地测试 | 文档检查 PASS；应用测试与离线验收未执行 |
+| 3 staging URL | 未执行、未指定新验收地址 |
+| 4 staging runtime commit | 未读取/未部署 |
+| 5 staging 用户路径 | 未执行 |
+| 6 production 是否改变 | 本次未改变，未访问远端 |
+| 7 production runtime commit | 未读取，不沿用历史值冒充当前值 |
+| 8 production 用户路径 | 未执行 |
+| 9 main 是否改变 | ref/历史未改变；入口 main 工作区有未提交文档 |
+| 10 tag 是否改变 | 未改变 |
+| 11 产品负责人确认 | 未取得本地版 PRODUCT_OWNER_ACCEPTED |
+| 12 未完成路由 | 本地注册/登录/岗位与账号生命周期尚未在本轮实现，精确新路由待实现确定 |
+| 13 Placeholder 数量 | 本树正式源码 0、测试白名单 10 行；入口主目录旧占位路由 4 处 |
+| 14 当前准确状态 | DOCS_ONLY / RULES_UPDATED / NOT_DEPLOYED / AWAITING_PRODUCT_OWNER_CONFIRMATION |

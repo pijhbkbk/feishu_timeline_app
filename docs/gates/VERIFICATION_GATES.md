@@ -196,14 +196,14 @@ DEPLOYMENT_ALLOWED=true
 - stage/commit/push/main merge/tag 是否获得对应授权；
 - 目标为 staging 时：`STAGING_ACCESS_ALLOWED=true`；
 - 目标为 production 时：`PRODUCTION_ACCESS_ALLOWED=true`；
-- 部署 commit clean、不可变、已推送且远端可解析；
+- 部署 commit clean、已提交且不可变；本地离线交付绑定本地 source/tree 与制品摘要，推送与 remote commit 不适用；远端部署仍须已推送且远端可解析；
 - 构建/镜像 tag、digest、runtime metadata；
 - migration、Nginx/upstream、精确 URL/hostname；
 - 浏览器 Network/console、真实操作、刷新后持久性；
 - 目标角色与负向权限；
 - 产品负责人确认。
 
-普通修复不得为满足旧模板而访问 staging/production。
+本期已获用户授权交付 GCE 原生账号版，精确目标为 `https://timeline.all-too-well.com`；须保留适用发布证据、真实原生登录/角色负向验证与产品负责人确认。远端不可变提交可由本人服务器的私有 Git 接收并解析，不要求向公开 GitHub 披露源码；普通修复不得据此访问其他环境。
 
 ## 12. 证据缓存与失效
 
