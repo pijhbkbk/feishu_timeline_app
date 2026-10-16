@@ -1,15 +1,34 @@
 import 'reflect-metadata';
 
 import { RequestMethod } from '@nestjs/common';
-import { METHOD_METADATA, PATH_METADATA } from '@nestjs/common/constants';
+import {
+  INTERCEPTORS_METADATA,
+  METHOD_METADATA,
+  PATH_METADATA,
+} from '@nestjs/common/constants';
 import { WorkflowNodeCode } from '@prisma/client';
 import { describe, expect, it } from 'vitest';
 
 import { PERMISSION_METADATA_KEY } from '../auth/auth.constants';
+import { DownloadAdmissionInterceptor } from '../../common/download-admission.interceptor';
 import { R26_ASSIGNMENT_RULES } from './r26-assignment.rules';
 import { R26ReadModelController } from './r26-read-model.controller';
 
 describe('R26ReadModelController Gate 3C1 contract', () => {
+  it('guards the historical material content stream with download admission', () => {
+    expect(
+      Reflect.getMetadata(
+        INTERCEPTORS_METADATA,
+        R26ReadModelController.prototype.getMaterialVersionContent,
+      ),
+    ).toContain(DownloadAdmissionInterceptor);
+    expect(
+      Reflect.getMetadata(
+        PERMISSION_METADATA_KEY,
+        R26ReadModelController.prototype.getMaterialVersionContent,
+      ),
+    ).toEqual(['project.read']);
+  });
   it('keeps the Gate 2 view-model handlers GET-only', () => {
     const prototype = R26ReadModelController.prototype;
     const handlerNames = [
@@ -33,8 +52,18 @@ describe('R26ReadModelController Gate 3C1 contract', () => {
 
   it('keeps the approved Gate 3A member and assignment write routes', () => {
     const prototype = R26ReadModelController.prototype;
-    const handlers = [
-      ['previewAssignments', RequestMethod.POST, 'projects/:projectId/assignment-preview'],
+    const previewHandler = prototype.previewAssignments;
+    expect(Reflect.getMetadata(METHOD_METADATA, previewHandler)).toBe(
+      RequestMethod.POST,
+    );
+    expect(Reflect.getMetadata(PATH_METADATA, previewHandler)).toBe(
+      'projects/:projectId/assignment-preview',
+    );
+    expect(
+      Reflect.getMetadata(PERMISSION_METADATA_KEY, previewHandler),
+    ).toEqual(['project.read']);
+
+    const writeHandlers = [
       ['addMember', RequestMethod.POST, 'projects/:projectId/members'],
       ['updateMember', RequestMethod.PATCH, 'projects/:projectId/members/:userId'],
       ['removeMember', RequestMethod.DELETE, 'projects/:projectId/members/:userId'],
@@ -42,24 +71,26 @@ describe('R26ReadModelController Gate 3C1 contract', () => {
       ['transferTask', RequestMethod.PATCH, 'projects/:projectId/tasks/:taskId/assignment'],
     ] as const;
 
-    for (const [handlerName, method, path] of handlers) {
+    for (const [handlerName, method, path] of writeHandlers) {
       const handler = prototype[handlerName];
       expect(Reflect.getMetadata(METHOD_METADATA, handler)).toBe(method);
       expect(Reflect.getMetadata(PATH_METADATA, handler)).toBe(path);
       expect(Reflect.getMetadata(PERMISSION_METADATA_KEY, handler)).toEqual([
-        'project.read',
+        'project.write',
       ]);
     }
 
     expect(Object.getOwnPropertyNames(prototype)).not.toContain('transitionWorkflow');
   });
 
-  it('opens only Gate 3B draft, progress and material writes without workflow transition', () => {
+  it('splits Gate 3B progress and material writes by the editable permission matrix', () => {
     const prototype = R26ReadModelController.prototype;
-    const handlers = [
+    const progressHandlers = [
       ['saveProgressDraft', RequestMethod.PUT, 'tasks/:taskId/progress-draft'],
       ['deleteProgressDraft', RequestMethod.DELETE, 'tasks/:taskId/progress-draft'],
       ['submitProgress', RequestMethod.POST, 'tasks/:taskId/progress-updates'],
+    ] as const;
+    const materialHandlers = [
       ['uploadMaterial', RequestMethod.POST, 'tasks/:taskId/materials'],
       [
         'uploadMaterialVersion',
@@ -68,12 +99,21 @@ describe('R26ReadModelController Gate 3C1 contract', () => {
       ],
     ] as const;
 
-    for (const [handlerName, method, path] of handlers) {
+    for (const [handlerName, method, path] of progressHandlers) {
       const handler = prototype[handlerName];
       expect(Reflect.getMetadata(METHOD_METADATA, handler)).toBe(method);
       expect(Reflect.getMetadata(PATH_METADATA, handler)).toBe(path);
       expect(Reflect.getMetadata(PERMISSION_METADATA_KEY, handler)).toEqual([
-        'project.read',
+        'workflow.transition',
+      ]);
+    }
+
+    for (const [handlerName, method, path] of materialHandlers) {
+      const handler = prototype[handlerName];
+      expect(Reflect.getMetadata(METHOD_METADATA, handler)).toBe(method);
+      expect(Reflect.getMetadata(PATH_METADATA, handler)).toBe(path);
+      expect(Reflect.getMetadata(PERMISSION_METADATA_KEY, handler)).toEqual([
+        'attachment.manage',
       ]);
     }
 

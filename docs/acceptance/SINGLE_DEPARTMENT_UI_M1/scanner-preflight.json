@@ -1,0 +1,12 @@
+{
+  "checkedAt": "2026-10-08T09:12:01.161135+00:00",
+  "engine": "ClamAV 1.4.6",
+  "signatureVersion": "28147",
+  "signatureTimestamp": "2026-10-08T06:24:12+00:00",
+  "ageHours": 2.797,
+  "freshUnder48Hours": true,
+  "cleanResponse": "stream: OK",
+  "eicarResponse": "stream: Eicar-Test-Signature FOUND",
+  "preflightOnly": true,
+  "applicationUploadNotYetProven": true
+}

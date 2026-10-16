@@ -6,22 +6,18 @@ export function createSameOriginMutationGuard(frontendUrl: string) {
   const allowedOrigin = normalizeOrigin(frontendUrl);
 
   return (request: Request, response: Response, next: NextFunction) => {
-    if (SAFE_HTTP_METHODS.has(request.method.toUpperCase()) || !allowedOrigin) {
+    if (SAFE_HTTP_METHODS.has(request.method.toUpperCase())) {
       next();
       return;
     }
 
     const requestOrigin = request.headers.origin;
 
-    // Non-browser service calls may omit Origin. Browser form/fetch submissions
-    // include it, while SameSite=Lax prevents authenticated cross-site POSTs
-    // from silently supplying the session cookie.
-    if (requestOrigin === undefined) {
-      next();
-      return;
-    }
-
-    if (typeof requestOrigin === 'string' && normalizeOrigin(requestOrigin) === allowedOrigin) {
+    if (
+      allowedOrigin &&
+      typeof requestOrigin === 'string' &&
+      normalizeOrigin(requestOrigin) === allowedOrigin
+    ) {
       next();
       return;
     }

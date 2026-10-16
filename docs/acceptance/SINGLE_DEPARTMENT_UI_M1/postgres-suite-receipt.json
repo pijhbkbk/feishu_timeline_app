@@ -1,0 +1,66 @@
+{
+  "kind": "extracted-suite-evidence-not-a-new-test-run",
+  "sourceLog": "/private/tmp/timeline-m1-pg-v2.json",
+  "sourceLogSha256": "e699ff4718eafae8eb7054609fe5a08d29800a75e0fe6c952c1a290ac3544fda",
+  "command": "M1_REPO=/private/tmp/timeline-m1-backend python3 /private/tmp/timeline-m1-runtime/runtime.py backend-exec pnpm exec vitest run src/common/single-department.postgres.integration.spec.ts src/common/single-department-m1.spec.ts --reporter=json --outputFile=/private/tmp/timeline-m1-pg-v2.json",
+  "workingDirectory": "/private/tmp/timeline-m1-backend",
+  "executionDirectory": "/private/tmp/timeline-m1-backend/apps/api",
+  "database": "m1_backend",
+  "host": "127.0.0.1:55438",
+  "postgresSuite": {
+    "status": "passed",
+    "passed": 8,
+    "failed": 0,
+    "skipped": 0,
+    "tests": [
+      {
+        "name": "single department real PostgreSQL never grants admission to an account merely created in the existing directory",
+        "status": "passed",
+        "durationMs": 2.3088330000000497
+      },
+      {
+        "name": "single department real PostgreSQL creates a draft with a real 01 task and blocks direct completion before approved report facts",
+        "status": "passed",
+        "durationMs": 69.46175000000005
+      },
+      {
+        "name": "single department real PostgreSQL rejects stale versions and foreign attachment ids before any transition",
+        "status": "passed",
+        "durationMs": 24.223250000000007
+      },
+      {
+        "name": "single department real PostgreSQL registers real report facts through 01 and 02 and replays without duplicated history",
+        "status": "passed",
+        "durationMs": 94.78658300000006
+      },
+      {
+        "name": "single department real PostgreSQL requires actual 03 sample facts and serializes duplicate sample creation",
+        "status": "passed",
+        "durationMs": 413.1740000000001
+      },
+      {
+        "name": "single department real PostgreSQL requires current clean confirmation material and preserves data on a stale write",
+        "status": "passed",
+        "durationMs": 39.75570800000014
+      },
+      {
+        "name": "single department real PostgreSQL records another admitted author, actual date and material, with no duplicate parallel tasks on replay",
+        "status": "passed",
+        "durationMs": 126.54300000000012
+      },
+      {
+        "name": "single department real PostgreSQL revokes admission without changing identity, historical authors or project foreign keys",
+        "status": "passed",
+        "durationMs": 39.01887499999998
+      }
+    ]
+  },
+  "originalCombinedRun": {
+    "numTotalTests": 36,
+    "numPassedTests": 33,
+    "numFailedTests": 3,
+    "numPendingTests": 0
+  },
+  "combinedRunNote": "The same invocation had three failures in newly added unit fixtures lacking persisted sample fields. The PostgreSQL suite itself passed all eight cases. The unit fixtures were subsequently completed; the final full API run passed 1450 cases and skipped 124. This extraction preserves the original combined-run failures.",
+  "finalFullApiLog": "/private/tmp/timeline-m1-api-final.json"
+}

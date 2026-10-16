@@ -1,5 +1,3 @@
-import { ProjectsPage } from '../../../features/v2/projects-page';
-
-export default function Page() {
-  return <ProjectsPage />;
-}
+import React from 'react';
+import { ColorProjects } from '../../../features/color-projects/color-projects';
+export default function Page() { return <ColorProjects />; }

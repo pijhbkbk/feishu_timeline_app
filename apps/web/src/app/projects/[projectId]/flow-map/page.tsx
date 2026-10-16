@@ -1,13 +1,2 @@
-import { FlowMapWorkspace } from '../../../../components/flow-map-workspace';
-
-type ProjectFlowMapPageProps = {
-  params: Promise<{
-    projectId: string;
-  }>;
-};
-
-export default async function ProjectFlowMapPage({ params }: ProjectFlowMapPageProps) {
-  const { projectId } = await params;
-
-  return <FlowMapWorkspace projectId={projectId} />;
-}
+import { redirect } from 'next/navigation';
+export default async function Page({params}:{params:Promise<{projectId:string}>}) { const {projectId}=await params; redirect(`/projects/${encodeURIComponent(projectId)}?tab=flow`); }

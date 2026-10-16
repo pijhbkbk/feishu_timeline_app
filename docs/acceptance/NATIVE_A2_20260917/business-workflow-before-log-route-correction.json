@@ -1,0 +1,380 @@
+{
+  "syntheticOnly": true,
+  "mode": "workflow",
+  "runtimeCommit": "6c70a897ec7643f4681616d801481765aaa8f7bc",
+  "startedAt": "2026-09-17T06:40:12.101Z",
+  "requests": [
+    {
+      "method": "GET",
+      "path": "/health",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/projects",
+      "status": 201
+    },
+    {
+      "method": "GET",
+      "path": "/v2/projects/cmu55u3m50093of01j9ifldrz/workspace",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/v2/projects/cmu55u3m50093of01j9ifldrz/members",
+      "status": 201
+    },
+    {
+      "method": "GET",
+      "path": "/v2/projects/cmu55u3m50093of01j9ifldrz/workspace",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/v2/projects/cmu55u3m50093of01j9ifldrz/members",
+      "status": 201
+    },
+    {
+      "method": "GET",
+      "path": "/workflows/projects/cmu55u3m50093of01j9ifldrz",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/v2/tasks/cmu55u3mi0098of014aobolkk/completion-preview",
+      "status": 201
+    },
+    {
+      "method": "POST",
+      "path": "/v2/tasks/cmu55u3mi0098of014aobolkk/complete",
+      "status": 201
+    },
+    {
+      "method": "POST",
+      "path": "/v2/tasks/cmu55u3mi0098of014aobolkk/complete",
+      "status": 201
+    },
+    {
+      "method": "GET",
+      "path": "/workflows/projects/cmu55u3m50093of01j9ifldrz",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/v2/projects/cmu55u3m50093of01j9ifldrz/workspace",
+      "status": 200
+    },
+    {
+      "method": "PATCH",
+      "path": "/v2/projects/cmu55u3m50093of01j9ifldrz/tasks/cmu55u4v1009wof01zqo6490d/assignment",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/workflows/tasks/cmu55u4v1009wof01zqo6490d/start",
+      "status": 403
+    },
+    {
+      "method": "GET",
+      "path": "/workflows/projects/cmu55u3m50093of01j9ifldrz",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/v2/tasks/cmu55u4v1009wof01zqo6490d/completion-preview",
+      "status": 201
+    },
+    {
+      "method": "POST",
+      "path": "/v2/tasks/cmu55u4v1009wof01zqo6490d/complete",
+      "status": 201
+    },
+    {
+      "method": "POST",
+      "path": "/v2/tasks/cmu55u4v1009wof01zqo6490d/complete",
+      "status": 201
+    },
+    {
+      "method": "GET",
+      "path": "/workflows/projects/cmu55u3m50093of01j9ifldrz",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/v2/projects/cmu55u3m50093of01j9ifldrz/workspace",
+      "status": 200
+    },
+    {
+      "method": "PATCH",
+      "path": "/v2/projects/cmu55u3m50093of01j9ifldrz/tasks/cmu55u64m00aaof012fjzvy71/assignment",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/v2/tasks/cmu55u64m00aaof012fjzvy71/completion-preview",
+      "status": 201
+    },
+    {
+      "method": "POST",
+      "path": "/v2/tasks/cmu55u64m00aaof012fjzvy71/complete",
+      "status": 201
+    },
+    {
+      "method": "POST",
+      "path": "/v2/tasks/cmu55u64m00aaof012fjzvy71/complete",
+      "status": 201
+    },
+    {
+      "method": "GET",
+      "path": "/workflows/projects/cmu55u3m50093of01j9ifldrz",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/v2/projects/cmu55u3m50093of01j9ifldrz/workspace",
+      "status": 200
+    },
+    {
+      "method": "PATCH",
+      "path": "/v2/projects/cmu55u3m50093of01j9ifldrz/tasks/cmu55u7d900aoof01swmsxre4/assignment",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/projects/cmu55u3m50093of01j9ifldrz/samples",
+      "status": 201
+    },
+    {
+      "method": "POST",
+      "path": "/projects/cmu55u3m50093of01j9ifldrz/samples/confirm",
+      "status": 201
+    },
+    {
+      "method": "GET",
+      "path": "/workflows/projects/cmu55u3m50093of01j9ifldrz",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/workflows/projects/cmu55u3m50093of01j9ifldrz",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/v2/projects/cmu55u3m50093of01j9ifldrz/workspace",
+      "status": 200
+    },
+    {
+      "method": "PATCH",
+      "path": "/v2/projects/cmu55u3m50093of01j9ifldrz/tasks/cmu55u7p700baof01s61c93f5/assignment",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/workflows/tasks/cmu55u7p700baof01s61c93f5/form",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/workflows/projects/cmu55u3m50093of01j9ifldrz",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/v2/tasks/cmu55u7p700baof01s61c93f5/completion-preview",
+      "status": 201
+    },
+    {
+      "method": "POST",
+      "path": "/v2/tasks/cmu55u7p700baof01s61c93f5/complete",
+      "status": 201
+    },
+    {
+      "method": "POST",
+      "path": "/v2/tasks/cmu55u7p700baof01s61c93f5/complete",
+      "status": 201
+    },
+    {
+      "method": "GET",
+      "path": "/workflows/projects/cmu55u3m50093of01j9ifldrz",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/v2/projects/cmu55u3m50093of01j9ifldrz/workspace",
+      "status": 200
+    },
+    {
+      "method": "PATCH",
+      "path": "/v2/projects/cmu55u3m50093of01j9ifldrz/tasks/cmu55u9os00boof0143jijnb4/assignment",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/projects/cmu55u3m50093of01j9ifldrz/samples/cmu55u7nu00b2of0163ypuie7/images",
+      "status": 201
+    },
+    {
+      "method": "POST",
+      "path": "/projects/cmu55u3m50093of01j9ifldrz/samples/confirm",
+      "status": 403
+    },
+    {
+      "method": "POST",
+      "path": "/projects/cmu55u3m50093of01j9ifldrz/samples/confirm",
+      "status": 201
+    },
+    {
+      "method": "GET",
+      "path": "/workflows/projects/cmu55u3m50093of01j9ifldrz",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/v2/projects/cmu55u3m50093of01j9ifldrz/workspace",
+      "status": 200
+    },
+    {
+      "method": "PATCH",
+      "path": "/v2/projects/cmu55u3m50093of01j9ifldrz/tasks/cmu55ua1e00cfof01w9ocm08y/assignment",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/workflows/tasks/cmu55ua1e00cfof01w9ocm08y/start",
+      "status": 403
+    },
+    {
+      "method": "GET",
+      "path": "/workflows/projects/cmu55u3m50093of01j9ifldrz",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/v2/tasks/cmu55ua1e00cfof01w9ocm08y/completion-preview",
+      "status": 201
+    },
+    {
+      "method": "POST",
+      "path": "/v2/tasks/cmu55ua1e00cfof01w9ocm08y/complete",
+      "status": 201
+    },
+    {
+      "method": "POST",
+      "path": "/v2/tasks/cmu55ua1e00cfof01w9ocm08y/complete",
+      "status": 201
+    },
+    {
+      "method": "GET",
+      "path": "/workflows/projects/cmu55u3m50093of01j9ifldrz",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/notifications/my?pageSize=50",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/notifications/cmu55ua3600crof01qqpjdk0l/mark-read",
+      "status": 404
+    },
+    {
+      "method": "POST",
+      "path": "/notifications/cmu55ua3600crof01qqpjdk0l/mark-read",
+      "status": 201
+    },
+    {
+      "method": "POST",
+      "path": "/notifications/cmu55ua3600crof01qqpjdk0l/mark-read",
+      "status": 201
+    },
+    {
+      "method": "GET",
+      "path": "/activity-logs?projectId=cmu55u3m50093of01j9ifldrz",
+      "status": 404
+    },
+    {
+      "method": "POST",
+      "path": "/auth/logout",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/auth/logout",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/auth/logout",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/auth/logout",
+      "status": 200
+    }
+  ],
+  "checks": [
+    {
+      "name": "return-path:workflow-initiation-native-admin",
+      "status": "PASS",
+      "completedAt": "2026-09-17T06:40:15.322Z"
+    },
+    {
+      "name": "return-path:workflow-report-native-engineer",
+      "status": "PASS",
+      "completedAt": "2026-09-17T06:40:17.009Z"
+    },
+    {
+      "name": "return-path:workflow-paint-first-submission",
+      "status": "PASS",
+      "completedAt": "2026-09-17T06:40:18.511Z"
+    },
+    {
+      "name": "return-path:workflow-sample-return-retains-history",
+      "status": "PASS",
+      "completedAt": "2026-09-17T06:40:20.009Z"
+    },
+    {
+      "name": "return-path:workflow-paint-resubmission",
+      "status": "PASS",
+      "completedAt": "2026-09-17T06:40:21.538Z"
+    },
+    {
+      "name": "return-path:workflow-sample-approval-after-real-image-scan",
+      "status": "PASS",
+      "completedAt": "2026-09-17T06:40:23.066Z"
+    },
+    {
+      "name": "return-path:workflow-procurement-native-purchaser",
+      "status": "PASS",
+      "completedAt": "2026-09-17T06:40:24.637Z"
+    }
+  ],
+  "status": "FAIL",
+  "failure": {
+    "type": "AssertionError",
+    "message": "audit HTTP readback: unexpected HTTP status\n\n404 !== 200\n"
+  }
+}

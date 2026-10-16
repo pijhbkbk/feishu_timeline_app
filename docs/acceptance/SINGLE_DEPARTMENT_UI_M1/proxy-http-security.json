@@ -1,0 +1,305 @@
+{
+  "checkedAt": "2026-10-09T00:28:37.279Z",
+  "origin": "http://127.0.0.1:3350",
+  "proxySourceSha256": "0145871180f852bb6b01c323ecd18582b65ff75df14de0cb476024cb866d68e0",
+  "scope": "Dedicated loopback preview only; no credentials, environment values, cookies, response bodies or private headers recorded.",
+  "checks": [
+    {
+      "name": "source_listener_is_exact_loopback",
+      "pass": true,
+      "evidence": {
+        "port": 3350,
+        "host": "127.0.0.1"
+      }
+    },
+    {
+      "name": "source_web_removes_only_upgrade_directive",
+      "pass": true,
+      "evidence": {
+        "remainingDirectiveNames": [
+          "default-src",
+          "script-src",
+          "object-src",
+          "frame-ancestors",
+          "form-action",
+          "connect-src"
+        ],
+        "upstreamPort": 3352
+      }
+    },
+    {
+      "name": "source_origin_is_unchanged_forwarded_host_removed",
+      "pass": true,
+      "evidence": {
+        "originPreserved": true,
+        "forwardedHostRemoved": true
+      }
+    },
+    {
+      "name": "source_safari_log_has_only_safe_fields",
+      "pass": true,
+      "evidence": {
+        "keys": [
+          "browser",
+          "method",
+          "path",
+          "status",
+          "time"
+        ],
+        "queryExcluded": true
+      }
+    },
+    {
+      "name": "source_api_policy_unchanged",
+      "pass": true,
+      "evidence": {
+        "upstreamPort": 3351,
+        "upgradeRetained": true
+      }
+    },
+    {
+      "name": "source_wrong_host_rejected_before_upstream",
+      "pass": true,
+      "evidence": {
+        "status": 400
+      }
+    },
+    {
+      "name": "source_nonloopback_does_not_relax_csp",
+      "pass": true,
+      "evidence": {
+        "upgradeRetained": true
+      }
+    },
+    {
+      "name": "http_login_both_200",
+      "pass": true,
+      "evidence": {
+        "proxy": 200,
+        "direct": 200
+      }
+    },
+    {
+      "name": "http_csp_only_upgrade_removed_after_nonce_normalization",
+      "pass": true,
+      "evidence": {
+        "proxyCsp": [
+          "default-src 'self'",
+          "base-uri 'self'",
+          "object-src 'none'",
+          "frame-ancestors 'none'",
+          "form-action 'self'",
+          "img-src 'self' data: blob:",
+          "font-src 'self' data:",
+          "style-src-elem 'self' 'nonce-[per-response]'",
+          "style-src-attr 'unsafe-inline'",
+          "script-src 'self' 'nonce-[per-response]' 'strict-dynamic'",
+          "script-src-attr 'none'",
+          "connect-src 'self'",
+          "worker-src 'self' blob:"
+        ],
+        "directCsp": [
+          "default-src 'self'",
+          "base-uri 'self'",
+          "object-src 'none'",
+          "frame-ancestors 'none'",
+          "form-action 'self'",
+          "img-src 'self' data: blob:",
+          "font-src 'self' data:",
+          "style-src-elem 'self' 'nonce-[per-response]'",
+          "style-src-attr 'unsafe-inline'",
+          "script-src 'self' 'nonce-[per-response]' 'strict-dynamic'",
+          "script-src-attr 'none'",
+          "connect-src 'self'",
+          "worker-src 'self' blob:",
+          "upgrade-insecure-requests"
+        ],
+        "nonceComparison": "per-response nonce normalized, not compared as equal values"
+      }
+    },
+    {
+      "name": "http_single_csp_no_meta_csp",
+      "pass": true,
+      "evidence": {
+        "proxyHeaderCount": 1,
+        "directHeaderCount": 1,
+        "proxyMetaCsp": false
+      }
+    },
+    {
+      "name": "http_other_web_security_headers_equal",
+      "pass": true,
+      "evidence": {
+        "x-frame-options": {
+          "proxy": "DENY",
+          "direct": "DENY"
+        },
+        "x-content-type-options": {
+          "proxy": "nosniff",
+          "direct": "nosniff"
+        },
+        "cross-origin-opener-policy": {
+          "proxy": "same-origin",
+          "direct": "same-origin"
+        },
+        "cross-origin-embedder-policy": {
+          "proxy": "credentialless",
+          "direct": "credentialless"
+        },
+        "cross-origin-resource-policy": {
+          "proxy": "same-origin",
+          "direct": "same-origin"
+        },
+        "strict-transport-security": {
+          "proxy": "max-age=31536000; includeSubDomains",
+          "direct": "max-age=31536000; includeSubDomains"
+        },
+        "referrer-policy": {
+          "proxy": "strict-origin-when-cross-origin",
+          "direct": "strict-origin-when-cross-origin"
+        },
+        "permissions-policy": {
+          "proxy": "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
+          "direct": "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+        }
+      }
+    },
+    {
+      "name": "http_api_security_headers_unchanged",
+      "pass": true,
+      "evidence": {
+        "proxyStatus": 200,
+        "directStatus": 200,
+        "headers": {
+          "content-security-policy": {
+            "proxy": "",
+            "direct": ""
+          },
+          "x-frame-options": {
+            "proxy": "",
+            "direct": ""
+          },
+          "x-content-type-options": {
+            "proxy": "",
+            "direct": ""
+          },
+          "cross-origin-opener-policy": {
+            "proxy": "",
+            "direct": ""
+          },
+          "cross-origin-embedder-policy": {
+            "proxy": "",
+            "direct": ""
+          },
+          "cross-origin-resource-policy": {
+            "proxy": "",
+            "direct": ""
+          },
+          "strict-transport-security": {
+            "proxy": "",
+            "direct": ""
+          },
+          "referrer-policy": {
+            "proxy": "",
+            "direct": ""
+          },
+          "permissions-policy": {
+            "proxy": "",
+            "direct": ""
+          }
+        }
+      }
+    },
+    {
+      "name": "http_wrong_host_and_protocol_relative_path_rejected",
+      "pass": true,
+      "evidence": {
+        "wrongHost": 400,
+        "protocolRelativePath": 400
+      }
+    },
+    {
+      "name": "http_login_static_assets_available",
+      "pass": true,
+      "evidence": [
+        {
+          "path": "/_next/static/css/f63270a51b67843d.css",
+          "status": 200,
+          "contentType": "text/css; charset=UTF-8"
+        },
+        {
+          "path": "/_next/static/css/dcc7c46d3d3ab2a5.css",
+          "status": 200,
+          "contentType": "text/css; charset=UTF-8"
+        },
+        {
+          "path": "/_next/static/css/73f821eff035914f.css",
+          "status": 200,
+          "contentType": "text/css; charset=UTF-8"
+        },
+        {
+          "path": "/_next/static/css/9fb7deaf80d1da69.css",
+          "status": 200,
+          "contentType": "text/css; charset=UTF-8"
+        },
+        {
+          "path": "/_next/static/css/95afe53b616e04c6.css",
+          "status": 200,
+          "contentType": "text/css; charset=UTF-8"
+        },
+        {
+          "path": "/_next/static/chunks/webpack-ceeb2ef4d4867010.js",
+          "status": 200,
+          "contentType": "application/javascript; charset=UTF-8"
+        },
+        {
+          "path": "/_next/static/chunks/74956ec5-69b26496179c6e6d.js",
+          "status": 200,
+          "contentType": "application/javascript; charset=UTF-8"
+        },
+        {
+          "path": "/_next/static/chunks/4960-6d787b1ebf1918a9.js",
+          "status": 200,
+          "contentType": "application/javascript; charset=UTF-8"
+        },
+        {
+          "path": "/_next/static/chunks/main-app-84446f589a425266.js",
+          "status": 200,
+          "contentType": "application/javascript; charset=UTF-8"
+        },
+        {
+          "path": "/_next/static/chunks/app/login/page-726482883e96558d.js",
+          "status": 200,
+          "contentType": "application/javascript; charset=UTF-8"
+        },
+        {
+          "path": "/_next/static/chunks/2098-e0bdc0b5bae3a17f.js",
+          "status": 200,
+          "contentType": "application/javascript; charset=UTF-8"
+        },
+        {
+          "path": "/_next/static/chunks/8952-925f8aa49a42589e.js",
+          "status": 200,
+          "contentType": "application/javascript; charset=UTF-8"
+        },
+        {
+          "path": "/_next/static/chunks/1600-2d161de47998ac17.js",
+          "status": 200,
+          "contentType": "application/javascript; charset=UTF-8"
+        },
+        {
+          "path": "/_next/static/chunks/app/layout-5fdae2d6f1e52336.js",
+          "status": 200,
+          "contentType": "application/javascript; charset=UTF-8"
+        },
+        {
+          "path": "/_next/static/chunks/polyfills-42372ed130431b0a.js",
+          "status": 200,
+          "contentType": "application/javascript; charset=UTF-8"
+        }
+      ]
+    }
+  ],
+  "httpStatus": "EXECUTED",
+  "status": "LOCAL_HTTP_SECURITY_COMPARISON_PASS"
+}

@@ -1,6 +1,6 @@
 'use client';
 
-import { apiRequest, type SessionUser } from './auth-client';
+import { isApprovedTeamUser, apiRequest, type SessionUser } from './auth-client';
 import { fetchUserDirectory, formatDate, getProjectPriorityLabel, getWorkflowNodeLabel, type DirectoryUser, type ProjectPriority, type WorkflowNodeCode } from './projects-client';
 import { canUserOperateWorkflowTask, getWorkflowTaskStatusLabel, type WorkflowTaskSummary } from './workflows-client';
 
@@ -209,8 +209,8 @@ export async function completePerformanceTestTask(projectId: string) {
   );
 }
 
-export async function fetchPerformanceTestPageOptions() {
-  return fetchUserDirectory();
+export async function fetchPerformanceTestPageOptions(projectId: string) {
+  return fetchUserDirectory({ projectId });
 }
 
 export function getPerformanceTestItemLabel(item: PerformanceTestItem) {
@@ -262,21 +262,7 @@ export function validatePerformanceTestForm(input: PerformanceTestFormInput) {
 }
 
 export function canManagePerformanceTests(user: SessionUser | null) {
-  if (!user) {
-    return false;
-  }
-
-  if (user.isSystemAdmin) {
-    return true;
-  }
-
-  return user.roleCodes.some(
-    (roleCode) =>
-      roleCode === 'admin' ||
-      roleCode === 'project_manager' ||
-      roleCode === 'process_engineer' ||
-      roleCode === 'quality_engineer',
-  );
+  return isApprovedTeamUser(user);
 }
 
 export function canShowCompletePerformanceTestTaskButton(

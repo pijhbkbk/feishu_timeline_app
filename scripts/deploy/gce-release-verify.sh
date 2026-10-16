@@ -12,18 +12,22 @@ WWW_DOMAIN="${WWW_DOMAIN:-www.${ROOT_DOMAIN}}"
 APP_ROOT="${APP_ROOT:-/opt/feishu_timeline_app}"
 GCE_TUNNEL_THROUGH_IAP="${GCE_TUNNEL_THROUGH_IAP:-no}"
 
-log() {
-  printf '[INFO] %s\n' "$*"
-}
-
-ssh_gce() {
-  if [ "$GCE_TUNNEL_THROUGH_IAP" = "yes" ]; then
-    gcloud compute ssh "$INSTANCE" --project="$PROJECT" --zone="$ZONE" --tunnel-through-iap --command "$1"
-    return
+ROOT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
+# shellcheck source=scripts/deploy/gce-common.sh
+. "$ROOT_DIR/scripts/deploy/gce-common.sh"
+validate_gce_connection_parameters
+for domain in "$APP_HOST" "$ROOT_DOMAIN" "$WWW_DOMAIN"; do
+  if [ "${#domain}" -gt 253 ] \
+    || [[ ! "$domain" =~ ^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$ ]] \
+    || [[ "$domain" != *.* ]]; then
+    fail 'All configured domains must be valid DNS hostnames.'
   fi
-
-  gcloud compute ssh "$INSTANCE" --project="$PROJECT" --zone="$ZONE" --command "$1"
-}
+done
+if [ "${#APP_ROOT}" -gt 256 ] \
+  || [[ ! "$APP_ROOT" =~ ^/[A-Za-z0-9._/-]+$ ]] \
+  || [[ "$APP_ROOT" =~ (^|/)\.\.?(/|$) ]]; then
+  fail 'APP_ROOT must be an absolute normalized path.'
+fi
 
 query_dns() {
   local domain="$1"
@@ -34,6 +38,8 @@ query_dns() {
 }
 
 PUBLIC_IP="$(gcloud compute instances describe "$INSTANCE" --project="$PROJECT" --zone="$ZONE" --format='get(networkInterfaces[0].accessConfigs[0].natIP)')"
+[ "${#PUBLIC_IP}" -le 45 ] && [[ "$PUBLIC_IP" =~ ^[0-9A-Fa-f:.]+$ ]] \
+  || fail 'gcloud returned an invalid public IP address.'
 
 log "Public IP: $PUBLIC_IP"
 for domain in "$ROOT_DOMAIN" "$WWW_DOMAIN" "$APP_HOST"; do
@@ -61,7 +67,16 @@ for domain in "$ROOT_DOMAIN" "$APP_HOST"; do
 done
 
 log "Remote verification"
-ssh_gce "set -euo pipefail
+REMOTE_SCRIPT="$(mktemp /tmp/r27a-gce-release-verify-remote.XXXXXX)"
+trap 'rm -f -- "$REMOTE_SCRIPT"' EXIT
+cat >"$REMOTE_SCRIPT" <<'REMOTE_SCRIPT_EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+ROOT_DOMAIN="$1"
+WWW_DOMAIN="$2"
+APP_HOST="$3"
+APP_ROOT="$4"
+export APP_HOST APP_ROOT
 echo '--- systemd ---'
 systemctl is-active feishu-timeline-api
 systemctl is-active feishu-timeline-web
@@ -107,7 +122,8 @@ assert response.status == 302, f'expected 302, got {response.status}'
 assert authorization.scheme == 'https'
 assert authorization.netloc == 'accounts.feishu.cn'
 assert authorization.path == '/open-apis/authen/v1/index'
-assert callback.netloc == 'timeline.all-too-well.com'
+import os
+assert callback.netloc == os.environ['APP_HOST']
 assert callback.path == '/login/callback'
 
 # Never print the authorization query: it contains app_id and the one-time OAuth state.
@@ -118,61 +134,48 @@ print(
 )
 PY
 echo '--- origin https probes ---'
-curl -k -I --max-time 10 --resolve '$ROOT_DOMAIN:443:127.0.0.1' https://$ROOT_DOMAIN/ || true
+curl -k -I --max-time 10 --resolve "$ROOT_DOMAIN:443:127.0.0.1" "https://$ROOT_DOMAIN/" || true
 echo '---'
-curl -k -I --max-time 10 --resolve '$WWW_DOMAIN:443:127.0.0.1' https://$WWW_DOMAIN/ || true
+curl -k -I --max-time 10 --resolve "$WWW_DOMAIN:443:127.0.0.1" "https://$WWW_DOMAIN/" || true
 echo '---'
-curl -k -I --max-time 10 --resolve '$APP_HOST:443:127.0.0.1' https://$APP_HOST/ || true
+curl -k -I --max-time 10 --resolve "$APP_HOST:443:127.0.0.1" "https://$APP_HOST/" || true
 echo '--- env ---'
-python3 - <<'PY'
-from pathlib import Path
-import shlex
-keys = {
-    Path('$APP_ROOT/apps/api/.env.production'): [
-        'DEPLOYMENT_ENV',
-        'FRONTEND_URL',
-        'FEISHU_REDIRECT_URI',
-        'OAUTH_PROVIDER',
-        'FEISHU_AUTHORIZATION_ENDPOINT',
-        'AUTH_MOCK_ENABLED',
-        'FEISHU_APP_ID',
-        'FEISHU_APP_SECRET',
-        'DATABASE_URL',
-        'REDIS_URL',
-    ],
-    Path('$APP_ROOT/apps/web/.env.production'): ['NEXT_PUBLIC_API_BASE_URL', 'NEXT_PUBLIC_ENABLE_MOCK_LOGIN', 'NEXT_PUBLIC_UI_VERSION', 'NEXT_PUBLIC_UI_DATA_MODE', 'V1_FALLBACK_ENABLED'],
-}
-for path, names in keys.items():
-    print(f'[{path}]')
-    if not path.exists():
-      print('missing')
-      continue
-    data = {}
-    for line in path.read_text().splitlines():
-      s = line.strip()
-      if not s or s.startswith('#') or '=' not in s:
-        continue
-      k, v = s.split('=', 1)
-      try:
-        parsed = shlex.split(v)
-        data[k] = parsed[0] if parsed else ''
-      except ValueError:
-        data[k] = v
-    for name in names:
-      value = data.get(name, '')
-      if value:
-        if name in {'DEPLOYMENT_ENV', 'FRONTEND_URL', 'FEISHU_REDIRECT_URI', 'OAUTH_PROVIDER', 'FEISHU_AUTHORIZATION_ENDPOINT', 'AUTH_MOCK_ENABLED', 'NEXT_PUBLIC_API_BASE_URL', 'NEXT_PUBLIC_ENABLE_MOCK_LOGIN', 'NEXT_PUBLIC_UI_VERSION', 'NEXT_PUBLIC_UI_DATA_MODE', 'V1_FALLBACK_ENABLED'}:
-          print(f'{name}=<set:{value}>')
-        elif name in {'FEISHU_APP_ID', 'FEISHU_APP_SECRET'} and value in {'your_feishu_app_id', 'your_feishu_app_secret'}:
-          print(f'{name}=<placeholder>')
-        else:
-          print(f'{name}=<set>')
-      else:
-        print(f'{name}=<missing>')
-    print()
-PY
+dotenv_data_tool=/usr/local/libexec/feishu-timeline/dotenv-data
+api_env_file=/etc/feishu-timeline/api.env
+web_env_file=/etc/feishu-timeline/web.env
+sudo /usr/bin/python3 -I "$dotenv_data_tool" validate --profile api "$api_env_file"
+sudo /usr/bin/python3 -I "$dotenv_data_tool" validate --profile web "$web_env_file"
+printf '[%s]\n' "$api_env_file"
+for name in DEPLOYMENT_ENV FRONTEND_URL FEISHU_REDIRECT_URI OAUTH_PROVIDER FEISHU_AUTHORIZATION_ENDPOINT AUTH_MOCK_ENABLED FEISHU_APP_ID FEISHU_APP_SECRET DATABASE_URL REDIS_URL; do
+  value="$(sudo /usr/bin/python3 -I "$dotenv_data_tool" get --profile api "$api_env_file" "$name" 2>/dev/null || true)"
+  if [ -z "$value" ]; then
+    printf '%s=<missing>\n' "$name"
+  elif [ "$name" = FEISHU_APP_ID ] && [ "$value" = your_feishu_app_id ] \
+    || [ "$name" = FEISHU_APP_SECRET ] && [ "$value" = your_feishu_app_secret ]; then
+    printf '%s=<placeholder>\n' "$name"
+  else
+    case "$name" in
+      DEPLOYMENT_ENV|FRONTEND_URL|FEISHU_REDIRECT_URI|OAUTH_PROVIDER|FEISHU_AUTHORIZATION_ENDPOINT|AUTH_MOCK_ENABLED)
+        printf '%s=<set:%s>\n' "$name" "$value"
+        ;;
+      *) printf '%s=<set>\n' "$name" ;;
+    esac
+  fi
+done
+printf '[%s]\n' "$web_env_file"
+for name in NEXT_PUBLIC_API_BASE_URL NEXT_PUBLIC_ENABLE_MOCK_LOGIN NEXT_PUBLIC_UI_VERSION NEXT_PUBLIC_UI_DATA_MODE V1_FALLBACK_ENABLED; do
+  value="$(sudo /usr/bin/python3 -I "$dotenv_data_tool" get --profile web "$web_env_file" "$name" 2>/dev/null || true)"
+  if [ -n "$value" ]; then
+    printf '%s=<set:%s>\n' "$name" "$value"
+  else
+    printf '%s=<missing>\n' "$name"
+  fi
+done
 echo '--- certbot ---'
 sudo certbot certificates | sed -n '1,120p'
 echo '--- recent api log warnings ---'
 journalctl -u feishu-timeline-api -n 120 --no-pager | grep -E 'ECONNREFUSED|WARN|ERROR' || true
-"
+REMOTE_SCRIPT_EOF
+chmod 0700 "$REMOTE_SCRIPT"
+gce_run_remote_script_with_args \
+  "$REMOTE_SCRIPT" "$ROOT_DOMAIN" "$WWW_DOMAIN" "$APP_HOST" "$APP_ROOT"

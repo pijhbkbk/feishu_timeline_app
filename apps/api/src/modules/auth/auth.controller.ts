@@ -1,3 +1,4 @@
+import { AccountSelfService } from '../../common/team-membership';
 import {
   Body,
   Controller,
@@ -7,13 +8,12 @@ import {
   Post,
   Req,
   Res,
-  ServiceUnavailableException,
+  GoneException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Response } from 'express';
 
 import { CurrentUser } from './current-user.decorator';
-import { getFeishuOAuthStateCookieName } from './auth.constants';
 import { Public } from './public.decorator';
 import type { AuthenticatedRequest, AuthenticatedUser } from './auth.types';
 import { AuthService } from './auth.service';
@@ -22,11 +22,6 @@ type MockLoginBody = {
   username?: unknown;
   name?: unknown;
   roleCodes?: unknown;
-};
-
-type FeishuCallbackBody = {
-  code: unknown;
-  state?: unknown;
 };
 
 @Controller('auth')
@@ -39,10 +34,9 @@ export class AuthController {
   @Public()
   @Get('session')
   async getSession(@Req() request: AuthenticatedRequest) {
-    const cookieName = this.configService.get<string>('sessionCookieName') ?? 'ft_session';
-    const sessionToken = request.cookies?.[cookieName];
-
-    return this.authService.getSessionResponse(sessionToken);
+    return this.authService.getSessionResponse(
+      this.getSessionTokenFromCookie(request),
+    );
   }
 
   @Public()
@@ -60,79 +54,49 @@ export class AuthController {
     @Req() request: AuthenticatedRequest,
     @Res() response: Response,
   ) {
-    const result = await this.authService.getFeishuLoginUrl(
-      response,
-      this.getAuthClientIdentifier(request),
-    );
-
-    if (!result.enabled || !result.loginUrl) {
-      throw new ServiceUnavailableException('飞书登录未配置。');
-    }
-
-    response.redirect(HttpStatus.FOUND, result.loginUrl);
+    void request; void response;
+    throw new GoneException('第三方登录入口已移除，请使用系统账号。');
   }
 
   @Public()
   @Get('feishu/login-url')
-  async getFeishuLoginUrl(
-    @Req() request: AuthenticatedRequest,
-    @Res({ passthrough: true }) response: Response,
-  ) {
-    return this.authService.getFeishuLoginUrl(
-      response,
-      this.getAuthClientIdentifier(request),
-    );
+  async getFeishuLoginUrl() {
+    throw new GoneException('第三方登录入口已移除，请使用系统账号。');
   }
 
   @Public()
   @Post('feishu/callback')
-  async feishuCallback(
-    @Body() body: FeishuCallbackBody,
-    @Req() request: AuthenticatedRequest,
-    @Res({ passthrough: true }) response: Response,
-  ) {
-    const stateCookieName =
-      typeof body.state === 'string'
-        ? getFeishuOAuthStateCookieName(body.state)
-        : null;
-    const browserState = stateCookieName
-      ? request.cookies?.[stateCookieName]
-      : undefined;
-
-    return this.authService.loginWithFeishu(
-      body,
-      browserState,
-      response,
-      this.getAuthClientIdentifier(request),
-    );
+  async feishuCallback() {
+    throw new GoneException('第三方登录入口已移除，请使用系统账号。');
   }
 
   @Public()
+  @AccountSelfService()
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   async logout(
     @Req() request: AuthenticatedRequest,
     @Res({ passthrough: true }) response: Response,
   ) {
-    await this.authService.logout(request.sessionToken, response);
+    await this.authService.logout(
+      this.getSessionTokenFromCookie(request),
+      response,
+    );
 
     return { success: true };
   }
 
+  @AccountSelfService()
   @Get('me')
   getMe(@CurrentUser() user: AuthenticatedUser) {
     return user;
   }
 
-  private getAuthClientIdentifier(request: AuthenticatedRequest) {
-    // The production Nginx configuration overwrites X-Real-IP and the API port is
-    // loopback-only. Direct local/test traffic falls back to the socket address.
-    const proxyClientIp = request.headers['x-real-ip'];
+  private getSessionTokenFromCookie(request: AuthenticatedRequest) {
+    const cookieName = this.configService.get<string>('sessionCookieName') ?? 'ft_session';
+    const sessionToken = request.cookies?.[cookieName];
 
-    if (typeof proxyClientIp === 'string' && proxyClientIp.trim()) {
-      return proxyClientIp.trim().slice(0, 128);
-    }
-
-    return request.ip || request.socket.remoteAddress || 'unknown';
+    return typeof sessionToken === 'string' ? sessionToken : undefined;
   }
+
 }

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 import { useAuth } from './auth-provider';
+import { canUserOperateWorkflowTask } from '../lib/workflows-client';
 import {
   addTrialProductionIssue,
   canManagePilotProductions,
@@ -17,6 +18,7 @@ import {
   createTrialProduction,
   fetchFirstProductionPlanWorkspace,
   fetchPilotProductionPageOptions,
+  fetchTrialProductionDetail,
   fetchTrialProductionWorkspace,
   getDefaultProductionOwnerId,
   getDefaultTrialPlanId,
@@ -38,8 +40,9 @@ import {
   type FirstProductionPlanWorkspaceResponse,
   type TrialProductionFormInput,
   type TrialProductionIssueFormInput,
-  type TrialProductionRecord,
+  type TrialProductionDetailRecord,
   type TrialProductionStatus,
+  type TrialProductionWorkspaceRecord,
   type TrialProductionWorkspaceResponse,
 } from '../lib/pilot-productions-client';
 import { type DirectoryUser, formatDate } from '../lib/projects-client';
@@ -77,11 +80,27 @@ const EMPTY_TRIAL_PRODUCTION_ISSUE_FORM: TrialProductionIssueFormInput = {
   responsibleDept: '',
 };
 
+export function shouldApplyTrialDetailResponse(input: {
+  requestId: number;
+  latestRequestId: number;
+  requestedTrialId: string;
+  selectedTrialId: string | null;
+  responseTrialId: string;
+}) {
+  return (
+    input.requestId === input.latestRequestId &&
+    input.requestedTrialId === input.selectedTrialId &&
+    input.responseTrialId === input.requestedTrialId
+  );
+}
+
 export function PilotProductionWorkspace({
   projectId,
 }: PilotProductionWorkspaceProps) {
   const { user } = useAuth();
   const requestIdRef = useRef(0);
+  const detailRequestIdRef = useRef(0);
+  const selectedTrialIdRef = useRef<string | null>(null);
   const [firstPlanWorkspace, setFirstPlanWorkspace] =
     useState<FirstProductionPlanWorkspaceResponse | null>(null);
   const [trialWorkspace, setTrialWorkspace] =
@@ -96,6 +115,10 @@ export function PilotProductionWorkspace({
   const [issueForm, setIssueForm] =
     useState<TrialProductionIssueFormInput>(EMPTY_TRIAL_PRODUCTION_ISSUE_FORM);
   const [selectedTrialId, setSelectedTrialId] = useState<string | null>(null);
+  const [selectedTrialDetail, setSelectedTrialDetail] =
+    useState<TrialProductionDetailRecord | null>(null);
+  const [isTrialDetailLoading, setIsTrialDetailLoading] = useState(false);
+  const [trialDetailError, setTrialDetailError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isSavingPlan, setIsSavingPlan] = useState(false);
@@ -105,6 +128,11 @@ export function PilotProductionWorkspace({
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   useEffect(() => {
+    detailRequestIdRef.current += 1;
+    selectedTrialIdRef.current = null;
+    setSelectedTrialId(null);
+    setSelectedTrialDetail(null);
+    setTrialDetailError(null);
     void loadWorkspaces({ initial: true });
   }, [projectId]);
 
@@ -124,7 +152,28 @@ export function PilotProductionWorkspace({
     }
   }, [trialWorkspace, selectedTrialId]);
 
-  const canManage = canManagePilotProductions(user);
+  useEffect(() => {
+    selectedTrialIdRef.current = selectedTrialId;
+    const selectedExists =
+      trialWorkspace?.project.id === projectId &&
+      Boolean(
+        selectedTrialId &&
+          trialWorkspace.items.some((item) => item.id === selectedTrialId),
+      );
+
+    if (!selectedTrialId || !selectedExists) {
+      detailRequestIdRef.current += 1;
+      setSelectedTrialDetail(null);
+      setIsTrialDetailLoading(false);
+      setTrialDetailError(null);
+      return;
+    }
+
+    void loadSelectedTrialDetail(selectedTrialId);
+  }, [projectId, selectedTrialId, trialWorkspace]);
+
+  const canManageFirstPlan = canManagePilotProductions(user, 'FIRST_UNIT_PRODUCTION_PLAN') && Boolean(firstPlanWorkspace?.activeTask && canUserOperateWorkflowTask(user, firstPlanWorkspace.activeTask));
+  const canManageTrial = canManagePilotProductions(user, 'TRIAL_PRODUCTION') && Boolean(trialWorkspace?.activeTask && canUserOperateWorkflowTask(user, trialWorkspace.activeTask));
   const selectedTrial =
     trialWorkspace?.items.find((item) => item.id === selectedTrialId) ?? null;
   const highlights =
@@ -164,6 +213,58 @@ export function PilotProductionWorkspace({
     [firstPlanWorkspace, highlights, trialWorkspace],
   );
 
+  async function loadSelectedTrialDetail(trialId: string) {
+    const requestId = ++detailRequestIdRef.current;
+    setIsTrialDetailLoading(true);
+    setTrialDetailError(null);
+    setSelectedTrialDetail((current) => (current?.id === trialId ? current : null));
+
+    try {
+      const detail = await fetchTrialProductionDetail(projectId, trialId);
+      if (
+        !shouldApplyTrialDetailResponse({
+          requestId,
+          latestRequestId: detailRequestIdRef.current,
+          requestedTrialId: trialId,
+          selectedTrialId: selectedTrialIdRef.current,
+          responseTrialId: detail.id,
+        })
+      ) {
+        return;
+      }
+
+      setSelectedTrialDetail(detail);
+    } catch (detailError) {
+      if (
+        !shouldApplyTrialDetailResponse({
+          requestId,
+          latestRequestId: detailRequestIdRef.current,
+          requestedTrialId: trialId,
+          selectedTrialId: selectedTrialIdRef.current,
+          responseTrialId: trialId,
+        })
+      ) {
+        return;
+      }
+      setSelectedTrialDetail(null);
+      setTrialDetailError(
+        detailError instanceof Error ? detailError.message : '试制问题详情加载失败。',
+      );
+    } finally {
+      if (
+        shouldApplyTrialDetailResponse({
+          requestId,
+          latestRequestId: detailRequestIdRef.current,
+          requestedTrialId: trialId,
+          selectedTrialId: selectedTrialIdRef.current,
+          responseTrialId: trialId,
+        })
+      ) {
+        setIsTrialDetailLoading(false);
+      }
+    }
+  }
+
   async function loadWorkspaces(options?: { initial?: boolean }) {
     const requestId = ++requestIdRef.current;
 
@@ -179,7 +280,7 @@ export function PilotProductionWorkspace({
       const [nextFirstPlanWorkspace, nextTrialWorkspace, nextUsers] = await Promise.all([
         fetchFirstProductionPlanWorkspace(projectId),
         fetchTrialProductionWorkspace(projectId),
-        fetchPilotProductionPageOptions(),
+        fetchPilotProductionPageOptions(projectId),
       ]);
 
       if (requestId !== requestIdRef.current) {
@@ -344,7 +445,7 @@ export function PilotProductionWorkspace({
 
   async function handleTrialAction(
     action: 'COMPLETE_RECORD' | 'COMPLETE_TASK',
-    trial?: TrialProductionRecord,
+    trial?: TrialProductionWorkspaceRecord,
   ) {
     const key =
       action === 'COMPLETE_RECORD' && trial
@@ -392,7 +493,7 @@ export function PilotProductionWorkspace({
     });
   }
 
-  function prepareEditTrial(trial: TrialProductionRecord) {
+  function prepareEditTrial(trial: TrialProductionWorkspaceRecord) {
     setEditingTrialId(trial.id);
     setSelectedTrialId(trial.id);
     setTrialForm({
@@ -526,7 +627,7 @@ export function PilotProductionWorkspace({
         <FirstProductionPlanForm
           value={planForm}
           ownerOptions={userOptions}
-          disabled={!canManage || firstPlanReadOnly || isSavingPlan}
+          disabled={!canManageFirstPlan || firstPlanReadOnly || isSavingPlan}
           submitLabel={editingPlanId ? '更新首台计划' : '新建首台计划'}
           onChange={setPlanForm}
           onSubmit={() => void handleSaveFirstPlan()}
@@ -543,7 +644,7 @@ export function PilotProductionWorkspace({
         </div>
         <FirstProductionPlanTable
           items={planRows}
-          canManage={canManage}
+          canManage={canManageFirstPlan}
           isReadOnly={firstPlanReadOnly}
           actingKey={actingKey}
           onEdit={prepareEditPlan}
@@ -567,7 +668,7 @@ export function PilotProductionWorkspace({
         <TrialProductionForm
           value={trialForm}
           planOptions={trialWorkspace.planOptions}
-          disabled={!canManage || trialReadOnly || isSavingTrial}
+          disabled={!canManageTrial || trialReadOnly || isSavingTrial}
           submitLabel={editingTrialId ? '更新试制记录' : '新建试制记录'}
           onChange={setTrialForm}
           onSubmit={() => void handleSaveTrial()}
@@ -585,7 +686,7 @@ export function PilotProductionWorkspace({
         <TrialProductionList
           items={trialRows}
           selectedTrialId={selectedTrialId}
-          canManage={canManage}
+          canManage={canManageTrial}
           isReadOnly={trialReadOnly}
           actingKey={actingKey}
           onSelect={setSelectedTrialId}
@@ -632,7 +733,7 @@ export function PilotProductionWorkspace({
               <label className="field">
                 <span>问题类型</span>
                 <input
-                  disabled={!canManage || trialReadOnly || actingKey === `add-issue:${selectedTrial.id}`}
+                  disabled={!canManageTrial || trialReadOnly || actingKey === `add-issue:${selectedTrial.id}`}
                   value={issueForm.issueType}
                   onChange={(event) =>
                     setIssueForm((current) => ({
@@ -645,7 +746,7 @@ export function PilotProductionWorkspace({
               <label className="field">
                 <span>严重度</span>
                 <select
-                  disabled={!canManage || trialReadOnly || actingKey === `add-issue:${selectedTrial.id}`}
+                  disabled={!canManageTrial || trialReadOnly || actingKey === `add-issue:${selectedTrial.id}`}
                   value={issueForm.severity}
                   onChange={(event) =>
                     setIssueForm((current) => ({
@@ -664,7 +765,7 @@ export function PilotProductionWorkspace({
               <label className="field">
                 <span>责任部门</span>
                 <input
-                  disabled={!canManage || trialReadOnly || actingKey === `add-issue:${selectedTrial.id}`}
+                  disabled={!canManageTrial || trialReadOnly || actingKey === `add-issue:${selectedTrial.id}`}
                   value={issueForm.responsibleDept}
                   onChange={(event) =>
                     setIssueForm((current) => ({
@@ -678,7 +779,7 @@ export function PilotProductionWorkspace({
                 <span>问题描述</span>
                 <textarea
                   rows={4}
-                  disabled={!canManage || trialReadOnly || actingKey === `add-issue:${selectedTrial.id}`}
+                  disabled={!canManageTrial || trialReadOnly || actingKey === `add-issue:${selectedTrial.id}`}
                   value={issueForm.description}
                   onChange={(event) =>
                     setIssueForm((current) => ({
@@ -692,13 +793,21 @@ export function PilotProductionWorkspace({
                 <button
                   type="submit"
                   className="button"
-                  disabled={!canManage || trialReadOnly || actingKey === `add-issue:${selectedTrial.id}`}
+                  disabled={!canManageTrial || trialReadOnly || actingKey === `add-issue:${selectedTrial.id}`}
                 >
                   {actingKey === `add-issue:${selectedTrial.id}` ? '处理中…' : '新增试制问题'}
                 </button>
               </div>
             </form>
-            <TrialIssueList items={selectedTrial.issues} />
+            {trialDetailError ? <p className="error-text">{trialDetailError}</p> : null}
+            {isTrialDetailLoading ? (
+              <p className="muted">正在加载试制问题详情…</p>
+            ) : null}
+            {!isTrialDetailLoading &&
+            !trialDetailError &&
+            selectedTrialDetail?.id === selectedTrial.id ? (
+              <TrialIssueList items={selectedTrialDetail.issues} />
+            ) : null}
           </div>
         ) : (
           <div className="empty-state">
@@ -1037,14 +1146,14 @@ export function TrialProductionList({
   onEdit,
   onCompleteRecord,
 }: {
-  items: TrialProductionRecord[];
+  items: TrialProductionWorkspaceRecord[];
   selectedTrialId: string | null;
   canManage: boolean;
   isReadOnly: boolean;
   actingKey: string | null;
   onSelect: (trialId: string) => void;
-  onEdit: (trial: TrialProductionRecord) => void;
-  onCompleteRecord: (trial: TrialProductionRecord) => void;
+  onEdit: (trial: TrialProductionWorkspaceRecord) => void;
+  onCompleteRecord: (trial: TrialProductionWorkspaceRecord) => void;
 }) {
   return (
     <div className="table-shell">
@@ -1086,7 +1195,7 @@ export function TrialProductionList({
                 <td>
                   <TrialStatusBadge status={item.status} />
                 </td>
-                <td>{item.issues.length}</td>
+                <td>{item.issueCount}</td>
                 <td>
                   <div className="task-actions">
                     {canManage && !isReadOnly ? (
@@ -1136,7 +1245,7 @@ export function TrialProductionList({
 export function TrialIssueList({
   items,
 }: {
-  items: TrialProductionRecord['issues'];
+  items: TrialProductionDetailRecord['issues'];
 }) {
   return (
     <div className="table-shell">

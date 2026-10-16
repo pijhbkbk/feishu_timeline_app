@@ -1,10 +1,13 @@
 import { readFileSync } from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
+import { SHEET_COLUMNS } from '../features/color-register/sheet-model';
 
 const dashboardSource = readFileSync(new URL('./admin-dashboard-r22.tsx', import.meta.url), 'utf8');
 const manageSource = readFileSync(new URL('./admin-manage-r26.tsx', import.meta.url), 'utf8');
 const databaseSource = readFileSync(new URL('./admin-color-database-r26.tsx', import.meta.url), 'utf8');
+const registerSource = readFileSync(new URL('../features/color-register/workspace.tsx', import.meta.url), 'utf8');
+const registerClient = readFileSync(new URL('../features/color-register/client.ts', import.meta.url), 'utf8');
 const archiveSource = readFileSync(new URL('./admin-color-archive-r26.tsx', import.meta.url), 'utf8');
 const clientSource = readFileSync(new URL('../lib/admin-client.ts', import.meta.url), 'utf8');
 const cssSource = readFileSync(new URL('../app/r22.css', import.meta.url), 'utf8');
@@ -34,8 +37,11 @@ describe('R26 simplified admin and color archive contracts', () => {
   });
 
   it('uses existing attachment reads without exposing a second upload entry', () => {
-    expect(databaseSource).toContain('搜索颜色名称、颜色编号、车型或项目编号');
-    expect(databaseSource).toContain('材料直接引用现有附件记录，未复制文件');
+    expect(databaseSource).toContain('<ColorRegisterWorkspace />');
+    expect(registerSource).toContain('生产基地');
+    expect(registerSource).toContain('SHEET_COLUMNS.map');
+    expect(SHEET_COLUMNS.map(column => column.label)).toContain('备注');
+    expect(registerClient).toContain('/color-register');
     expect(archiveSource).toContain('文件仍存放于原附件系统');
     expect(archiveSource).toContain('历史版本');
     expect(databaseSource).not.toContain('上传材料');

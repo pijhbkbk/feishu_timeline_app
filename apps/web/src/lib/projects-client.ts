@@ -1,6 +1,6 @@
 'use client';
 
-import { apiRequest, type FrontendRoleCode } from './auth-client';
+import { apiRequest } from './auth-client';
 import {
   COLOR_EXIT_SUGGESTION_LABELS,
   PROJECT_MEMBER_TYPE_LABELS,
@@ -56,12 +56,16 @@ export type WorkflowNodeCode =
 
 export type DirectoryUser = {
   id: string;
-  username: string;
   name: string;
-  email: string | null;
   departmentId: string | null;
   departmentName: string | null;
-  roleCodes: FrontendRoleCode[];
+};
+
+export type UserDirectoryQuery = {
+  projectId?: string;
+  q?: string;
+  take?: number;
+  cursor?: string;
 };
 
 export type ProjectListItem = {
@@ -90,6 +94,8 @@ export type ProjectListItem = {
   currentTaskOwnerId: string | null;
   currentTaskOwnerName: string | null;
   currentTaskDueAt: string | null;
+  currentRoleCode?: string | null;
+  earliestDueAt?: string | null;
   latestTaskUpdatedAt: string;
   stall: {
     nodeCode: WorkflowNodeCode | null;
@@ -367,6 +373,19 @@ export type ProjectWritePayload = {
   members?: ProjectMemberInput[];
 };
 
+export type ProjectUpdatePayload = {
+  expectedVersion: string;
+  name?: string;
+  description?: string | null;
+  priority?: ProjectPriority;
+  marketRegion?: string | null;
+  colorMarketingUnit?: string | null;
+  paintSupplier?: ProjectPaintSupplier | null;
+  vehicleModel?: string | null;
+  plannedStartDate?: string | null;
+  plannedEndDate?: string | null;
+};
+
 export const PROJECT_STATUS_OPTIONS: Array<{ value: ProjectStatus; label: string }> = [
   { value: 'DRAFT', label: PROJECT_STATUS_LABELS.DRAFT },
   { value: 'IN_PROGRESS', label: PROJECT_STATUS_LABELS.IN_PROGRESS },
@@ -479,31 +498,42 @@ export function fetchProjectFlowMap(projectId: string) {
   return apiRequest<ProjectFlowMapResponse>(`/projects/${projectId}/flow-map`);
 }
 
-export function createProject(payload: ProjectWritePayload) {
+export function createProject(
+  payload: ProjectWritePayload,
+  idempotencyKey = crypto.randomUUID(),
+) {
   return apiRequest<ProjectDetail>('/projects', {
     method: 'POST',
+    headers: {
+      'Idempotency-Key': idempotencyKey,
+    },
     body: payload,
   });
 }
 
-export function updateProject(projectId: string, payload: ProjectWritePayload) {
+export function updateProject(projectId: string, payload: ProjectUpdatePayload) {
   return apiRequest<ProjectDetail>(`/projects/${projectId}`, {
     method: 'PATCH',
     body: payload,
   });
 }
 
-export function replaceProjectMembers(projectId: string, members: ProjectMemberInput[]) {
-  return apiRequest<ProjectDetail>(`/projects/${projectId}/members`, {
-    method: 'PUT',
-    body: {
-      members,
-    },
-  });
-}
+export function fetchUserDirectory(query: UserDirectoryQuery = {}) {
+  const params = new URLSearchParams();
+  const projectId = query.projectId?.trim();
+  const keyword = query.q?.trim();
+  const cursor = query.cursor?.trim();
+  const take =
+    Number.isInteger(query.take) && Number(query.take) >= 1
+      ? Math.min(Number(query.take), 50)
+      : 50;
 
-export function fetchUserDirectory() {
-  return apiRequest<DirectoryUser[]>('/users/directory');
+  if (projectId) params.set('projectId', projectId);
+  if (keyword) params.set('q', keyword);
+  params.set('take', String(take));
+  if (cursor) params.set('cursor', cursor);
+
+  return apiRequest<DirectoryUser[]>(`/users/directory?${params.toString()}`);
 }
 
 export function getProjectStatusLabel(status: ProjectStatus) {

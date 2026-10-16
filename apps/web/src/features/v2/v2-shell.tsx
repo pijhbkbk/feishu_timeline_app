@@ -1,12 +1,14 @@
 'use client';
 
 import Link from 'next/link';
+import { NotificationLink } from '../team-work/notifications';
 import { usePathname } from 'next/navigation';
 import React from 'react';
 import { useEffect, useState, type MouseEvent } from 'react';
 
 import { useAuth } from '../../components/auth-provider';
 import { isTopNavigationItemActive } from '../../lib/navigation';
+import { loginHref, needsAssignment } from '../../lib/auth-navigation';
 import { isProductionV2Ui, toProductHref } from './production-ui';
 import { useR26RealData } from './r26-real-data-context';
 
@@ -18,10 +20,9 @@ type NavItem = {
 };
 
 const baseNavItems: NavItem[] = [
-  { label: '工作台', href: toProductHref('/v2/dashboard'), enabled: true },
-  { label: '项目列表', href: toProductHref('/v2/projects'), enabled: true },
-  { label: '我的任务', href: toProductHref('/v2/tasks'), enabled: true },
-  { label: '系统管理', href: toProductHref('/v2/admin'), enabled: true },
+  { label: '我的工作', href: toProductHref('/v2/dashboard'), enabled: true },
+  { label: '颜色项目', href: toProductHref('/v2/projects'), enabled: true },
+  { label: '人员', href: toProductHref('/v2/admin/people'), enabled: true },
 ];
 
 export function V2Shell({ children }: { children: React.ReactNode }) {
@@ -37,13 +38,15 @@ export function V2Shell({ children }: { children: React.ReactNode }) {
     logout,
   } = useAuth();
   const { enabled: realDataEnabled, viewer } = useR26RealData();
-  const navItems = baseNavItems;
+  const pendingAuthorization = Boolean(user && needsAssignment(user));
+  const navItems = baseNavItems.filter(item => item.label !== '人员' || user?.isSystemAdmin || user?.roleCodes.includes('admin'));
 
   useEffect(() => {
+    if (!isAuthLoading && pendingAuthorization) { window.location.replace('/pending-access'); return; }
     if (!isAuthLoading && !isAuthenticated && !authError) {
-      window.location.replace('/login');
+      window.location.replace(loginHref(pathname, window.location.search));
     }
-  }, [authError, isAuthenticated, isAuthLoading]);
+  }, [authError, isAuthenticated, isAuthLoading, pendingAuthorization, pathname]);
 
   function showStaticMessage(message: string) {
     setToast(message);
@@ -71,7 +74,7 @@ export function V2Shell({ children }: { children: React.ReactNode }) {
     }
   }
 
-  if (isAuthLoading || !isAuthenticated) {
+  if (isAuthLoading || !isAuthenticated || pendingAuthorization) {
     return (
       <div className="r26-app">
         <main className="r26-main">
@@ -93,9 +96,9 @@ export function V2Shell({ children }: { children: React.ReactNode }) {
                   ? '登录服务暂时不可用'
                   : isAuthLoading
                     ? '正在验证登录状态…'
-                    : '正在打开飞书登录…'}
+                    : pendingAuthorization ? '正在打开账号授权状态…' : '正在打开账号登录…'}
               </strong>
-              <p>{authError ?? '未检测到有效会话，即将进入飞书安全登录。'}</p>
+              <p>{authError ?? (pendingAuthorization ? '账号尚未分配正式角色，请联系管理员确认。' : '未检测到有效会话，即将进入系统账号登录。')}</p>
               {authError ? (
                 <button
                   type="button"
@@ -154,7 +157,7 @@ export function V2Shell({ children }: { children: React.ReactNode }) {
             })}
           </nav>
 
-          <div className="r26-header-tools">
+          <div className="r26-header-tools"><NotificationLink />
             <span className="r26-prototype-badge">
               {isProductionV2Ui()
                 ? '正式系统'
@@ -174,7 +177,7 @@ export function V2Shell({ children }: { children: React.ReactNode }) {
                   <span>
                     {viewer?.departmentName ??
                       user?.departmentName ??
-                      (realDataEnabled ? '组织部门待同步' : '采购部')}
+                      (realDataEnabled ? '尚未分配部门' : '采购部')}
                   </span>
                   <small>
                     {viewer?.roleLabel ??
@@ -183,6 +186,10 @@ export function V2Shell({ children }: { children: React.ReactNode }) {
                       '当前账号'}
                   </small>
                 </div>
+                <Link href="/account" role="menuitem">我的资料</Link>
+                <Link href="/account/security" role="menuitem">账号安全</Link>
+                {user?.isSystemAdmin ? <Link href="/admin" role="menuitem">管理设置</Link> : null}
+                {user?.isSystemAdmin ? <Link href="/admin/people" role="menuitem">人员</Link> : null}
                 <button
                   type="button"
                   role="menuitem"

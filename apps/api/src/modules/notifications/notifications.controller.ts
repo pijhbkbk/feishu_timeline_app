@@ -27,6 +27,11 @@ export class NotificationsController {
     return this.notificationsService.getUnreadCount(actor);
   }
 
+  @Get(':notificationId/items')
+  getDigestItems(@Param('notificationId') id: string, @Query('after') after: string | undefined, @CurrentUser() actor: AuthenticatedUser) {
+    return this.notificationsService.getDigestItems(id, after, actor);
+  }
+
   @Post(':notificationId/mark-read')
   markRead(
     @Param('notificationId') notificationId: string,

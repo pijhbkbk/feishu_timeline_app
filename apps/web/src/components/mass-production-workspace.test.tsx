@@ -22,8 +22,9 @@ const processEngineerUser: SessionUser = {
   departmentId: null,
   departmentName: null,
   isSystemAdmin: false,
-  authSource: 'mock',
-  roleCodes: ['process_engineer'],
+  authSource: 'local',
+  teamAccessApproved: true,
+  roleCodes: [],
 };
 
 const workspace: MassProductionWorkspaceResponse = {
@@ -102,12 +103,9 @@ describe('MassProductionWorkspace', () => {
         ownerOptions={[
           {
             id: 'user-1',
-            username: 'process',
             name: '工艺工程师',
-            email: null,
             departmentId: null,
             departmentName: null,
-            roleCodes: ['process_engineer'],
           },
         ]}
         disabled={false}
@@ -142,6 +140,7 @@ describe('MassProductionWorkspace', () => {
   });
 
   it('controls completion button logic and status display', () => {
+    expect(canShowCompleteMassProductionTaskButton({ ...processEngineerUser, teamAccessApproved: false }, workspace)).toBe(false);
     expect(canShowCompleteMassProductionTaskButton(processEngineerUser, workspace)).toBe(true);
     expect(
       canShowCompleteMassProductionTaskButton(processEngineerUser, {

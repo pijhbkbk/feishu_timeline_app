@@ -1,6 +1,8 @@
 # 迁移检查清单
 
-更新时间：2026-04-09
+更新时间：2026-09-07
+
+当前状态：`MIGRATION_BLOCKED`。旧 `restore_to_gcp.sh` 已固定失败关闭（退出 78）；本清单不授权执行历史恢复路径。下面环境检查仅在受信任替代控制器、具体版本、数据恢复与回滚方案获批后适用。
 
 ## 1. 迁移前检查项
 
@@ -22,7 +24,11 @@
 - [ ] 已确认 object-storage 路径解析仍存在待核对不一致
 - [ ] 已确认回滚策略是“只回切 timeline 子域名”
 
-## 2. 恢复后检查项
+## 2. 恢复准入与恢复后检查项
+
+- [ ] 已批准外部 root-owned、不可变 digest 绑定的恢复控制器；不从应用用户可写目录提升特权配置
+- [ ] 已确认旧 restore_to_gcp.sh 保持禁用，未通过旧 ref 或调用方式绕过
+- [ ] 已批准精确目标环境、完整 commit/tree、数据库恢复与回滚方案
 
 - [ ] 新机已完成 [`bootstrap_gcp.sh`](/Users/lixiaochen/Downloads/feishu_timeline_app/scripts/migration/bootstrap_gcp.sh)
 - [ ] `/opt/feishu_timeline_app` 已存在
@@ -33,7 +39,7 @@
 - [ ] `/opt/feishu_timeline_app/var/object-storage` 已恢复
 - [ ] `apps/api/.env.production` 推导出的 object-storage 解析路径已确认等于 `/opt/feishu_timeline_app/var/object-storage`
 - [ ] 已抽样验证历史附件文件存在
-- [ ] 新机代码版本已与目标 Git ref 一致
+- [ ] 新机代码版本已与批准的完整不可变 commit/tree 一致
 - [ ] `pnpm install --frozen-lockfile` 已完成
 - [ ] `pnpm --filter @feishu-timeline/shared build` 已完成
 - [ ] API 的 `pnpm exec prisma generate` 与 `pnpm exec tsc -p tsconfig.build.json` 已完成

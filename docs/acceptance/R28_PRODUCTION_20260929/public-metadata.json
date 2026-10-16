@@ -1,0 +1,28 @@
+{
+  "/api/health": {
+    "status": 200,
+    "metadata": {
+      "status": "ok",
+      "service": "feishu-timeline-api",
+      "nodeEnv": "production",
+      "sourceCommit": "e917da56b9fca54a40635364e168fdb26a080fb1",
+      "sourceTree": "e3aa410f5211da19f01263c9adc106895d61b896",
+      "runtimeCommit": "e917da56b9fca54a40635364e168fdb26a080fb1",
+      "release": "r28-ui-patch-20260928-e917da56b9fc",
+      "buildTime": "2026-09-28T10:48:42Z",
+      "timestamp": "2026-09-29T00:59:50.525Z"
+    }
+  },
+  "/build-info": {
+    "status": 200,
+    "metadata": {
+      "service": "feishu-timeline-web",
+      "sourceCommit": "e917da56b9fca54a40635364e168fdb26a080fb1",
+      "sourceTree": "e3aa410f5211da19f01263c9adc106895d61b896",
+      "runtimeCommit": "e917da56b9fca54a40635364e168fdb26a080fb1",
+      "release": "r28-ui-patch-20260928-e917da56b9fc",
+      "buildTime": "2026-09-28T10:48:42Z"
+    }
+  },
+  "checkedAt": "2026-09-29T00:59:52.772904+00:00"
+}

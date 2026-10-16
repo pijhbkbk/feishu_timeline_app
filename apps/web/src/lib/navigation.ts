@@ -60,33 +60,12 @@ type AdminSectionMeta = {
 };
 
 export const topNavigationItems: NavItem[] = [
-  {
-    label: '工作台',
-    href: '/dashboard',
-    icon: '⌂',
-    description: '今天最应该推进的任务',
-  },
-  {
-    label: '项目列表',
-    href: '/projects',
-    icon: '▦',
-    description: '项目状态与流程工作区',
-    matchMode: 'prefix',
-  },
-  {
-    label: '我的任务',
-    href: '/tasks',
-    icon: '✓',
-    description: '个人任务中心',
-    matchMode: 'prefix',
-  },
-  {
-    label: '系统管理',
-    href: '/admin',
-    icon: '◌',
-    description: '用户、权限、流程参数和审计',
-    matchMode: 'prefix',
-  },
+  { label: '工作台', href: '/dashboard' },
+  { label: '颜色项目', href: '/projects', matchMode: 'prefix' },
+  { label: '颜色清单', href: '/admin/color-database', matchMode: 'prefix' },
+  { label: '评审记录', href: '/inspections' },
+  { label: '产量统计', href: '/production' },
+  { label: '人员库', href: '/admin/people', matchMode: 'prefix' },
 ];
 
 export function isTopNavigationItemActive(pathname: string, href: string) {
@@ -102,8 +81,9 @@ export function isTopNavigationItemActive(pathname: string, href: string) {
     );
   }
 
-  if (normalizedHref === '/tasks') {
+  if (normalizedHref === '/dashboard' || normalizedHref === '/tasks') {
     return (
+      (normalizedHref === '/dashboard' && normalizedPathname === '/dashboard') ||
       normalizedPathname === '/tasks' ||
       normalizedPathname.startsWith('/tasks/') ||
       normalizedPathname === '/progress' ||
@@ -112,6 +92,9 @@ export function isTopNavigationItemActive(pathname: string, href: string) {
       normalizedPathname.startsWith('/materials/')
     );
   }
+
+  if (normalizedHref === '/admin/people') return ['/admin/people', '/admin/accounts', '/admin/users', '/admin/organization'].some(path => normalizedPathname === path || normalizedPathname.startsWith(`${path}/`));
+  if (normalizedHref === '/admin/color-database') return normalizedPathname === normalizedHref || normalizedPathname.startsWith(`${normalizedHref}/`);
 
   if (normalizedHref === '/admin') {
     return (
@@ -365,6 +348,8 @@ export function canAccessNavItem(item: NavItem, user: SessionUser | null) {
     return true;
   }
 
+  if (user.teamAccessApproved && item.href.startsWith('/projects/')) return true;
+
   return item.requiredRoles.some((role) => user.roleCodes.includes(role));
 }
 
@@ -445,6 +430,8 @@ export function getRouteContext(pathname: string): RouteContext {
     };
   }
 
+  if (pathname === '/inspections') return { title: '检验与评审记录', description: '记录实际车辆、样件、测量及现场照片，按明确关联办理月度评审。', eyebrow: '检验事实' };
+  if (pathname === '/production') return { title: '产量统计', description: '维护基地与颜色的实际月度产量，按同一份事实汇总统计。', eyebrow: '生产事实' };
   if (pathname === '/monthly-reviews') {
     return {
       title: '整车色差一致性评审台账',
@@ -539,7 +526,7 @@ export function getRouteContext(pathname: string): RouteContext {
   if (pathname.startsWith('/login')) {
     return {
       title: '登录',
-      description: '飞书认证与本系统会话建立入口。',
+      description: '本系统工号密码登录与会话建立入口。',
       eyebrow: '身份认证',
     };
   }

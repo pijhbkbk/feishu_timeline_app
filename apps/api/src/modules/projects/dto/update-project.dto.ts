@@ -1,10 +1,17 @@
-import { ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { ProjectPriority } from '@prisma/client';
 import { IsDateString, IsEnum, IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
 
 import { PROJECT_PAINT_SUPPLIER_VALUES } from '../project.constants';
 
 export class UpdateProjectDto {
+  @ApiProperty({
+    description: '客户端读取到的项目 updatedAt，用于防止并发覆盖',
+    format: 'date-time',
+  })
+  @IsDateString()
+  expectedVersion!: string;
+
   @ApiPropertyOptional({ description: '项目名称' })
   @IsOptional()
   @IsString()
@@ -48,12 +55,6 @@ export class UpdateProjectDto {
   @IsString()
   @MaxLength(64)
   vehicleModel?: string | null;
-
-  @ApiPropertyOptional({ description: '项目负责人用户 ID' })
-  @IsOptional()
-  @IsString()
-  @MaxLength(64)
-  ownerUserId?: string;
 
   @ApiPropertyOptional({ description: '计划开始日期', format: 'date-time', nullable: true })
   @IsOptional()

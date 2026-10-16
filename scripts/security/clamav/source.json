@@ -1,0 +1,44 @@
+{
+  "upstreamVersion": "1.4.6",
+  "sourceUrl": "https://www.clamav.net/downloads/production/clamav-1.4.6.tar.gz",
+  "sourceSha256": "06dbc7adf96e2f6a27c548a841ce83c95360d1e121b106a6f7cf56f282a3c61b",
+  "signerFingerprint": "5BADCA2665EF59DCF8A23D8B707F0DB480836771",
+  "officialImage": "clamav/clamav@sha256:aeac907bb9445b12c1dd76f9283415272d8dcd596d402245ed13729d7181bb8a",
+  "patchSha256": "fe9cd766461ca42012cedee06071715edbc47082739855bb6fe6494424db205a",
+  "originalUnzipSha256": "16e585e55b10fa5827dd582d0a65074989f3f73f6eabaf026b03c79c82afe249",
+  "patchedUnzipSha256": "64f1e215340f4a5635aa084111f1a2530daba3bf695b2545c5807e2b94c3b2b4",
+  "license": "GPL-2.0-only (ClamAV source); preserve upstream license notices",
+  "scope": "Project-maintained ZIP MaxFileSize alert and listener/PING/CDIFF/validation-child resource ownership patches; not an official unmodified ClamAV image",
+  "patchFile": "clamav-1.4.6-timeline.patch",
+  "patches": [
+    {
+      "file": "zip-limit-alert.patch",
+      "sha256": "f9926cf7d7ddd6780d27e0f6e2d79ded937bc033fd47445818b3f46896772f19"
+    },
+    {
+      "file": "listener-fd-ownership.patch",
+      "sha256": "0eb1062161453f34a3c1a22c3ecc4b8e822f848a22e9f827aad93727da760f90"
+    },
+    {
+      "file": "ping-socket-close.patch",
+      "sha256": "e0ae09ddeb92fe0abd53d17ef6bc1e90ec22a4ffaeb04325b2372e77ded26245"
+    },
+    {
+      "file": "cdiff-borrowed-fd.patch",
+      "sha256": "b654139311799c4515a9acbf9501bb30c360bfd278366fd986cc96a07d2c5bef"
+    },
+    {
+      "file": "freshclam-child-pipe.patch",
+      "sha256": "96bca8f5f839058cefb64d901203e211d59ff5ee702b6efc87df23480d803d74"
+    }
+  ],
+  "patchedFiles": {
+    "clamd/clamd.c": "92a5a91cb363f2415ea002f29e3cc31f2090304750076b40602e7c97c380e0ef",
+    "clamd/server-th.c": "19398d3a715a7909bd9b47cc83bebfff0167e3d8b816bea3e6e02aa37bcc52dc",
+    "clamdscan/client.c": "60820d9f101ab77ef7db46137fe7c93833f78f10a5aab48e3ec7ebf05b892397",
+    "libclamav_rust/src/cdiff.rs": "091082fafaebe00c164975f009904696f49c69a542ec6ee36bb588dcd91b6c3e",
+    "freshclam/freshclam.c": "8d0dfe322b47a1ada82249053f8c444f1796bfd22b08640a2f2bd0b6171591fa"
+  },
+  "originalCdiffSha256": "1fb682905f97cea843825f2098760efe98085ad7fad658e549061d3ff502b2f8",
+  "originalFreshclamSha256": "84b89a93185f1c4bc919f5b21863c8e5d7ae21d73853aef0062cb94c056f7baf"
+}

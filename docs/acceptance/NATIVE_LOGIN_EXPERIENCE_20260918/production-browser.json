@@ -1,0 +1,251 @@
+{
+  "checkedAt": "2026-09-18T03:52:10.811Z",
+  "environment": "production",
+  "origin": "https://timeline.all-too-well.com",
+  "runtimeCommit": "541b3dfff682aa29b49a96b251f0a084903c981a",
+  "identityEvidence": "production-http-final.json and production-final-readback.json",
+  "screenshots": [
+    {
+      "card": {
+        "left": 500,
+        "right": 500,
+        "width": 440
+      },
+      "labels": [
+        "工号3–64 位字母、数字、点、下划线或连字符",
+        "密码"
+      ],
+      "overflow": false,
+      "title": "登录系统",
+      "viewport": {
+        "height": 1000,
+        "width": 1440
+      },
+      "url": "https://timeline.all-too-well.com/login",
+      "file": "../screenshots/production-login-1440.png"
+    },
+    {
+      "card": {
+        "left": 500,
+        "right": 500,
+        "width": 440
+      },
+      "labels": [
+        "工号3–64 位字母、数字、点、下划线或连字符",
+        "姓名",
+        "密码",
+        "确认密码"
+      ],
+      "overflow": false,
+      "title": "创建账号",
+      "viewport": {
+        "height": 1000,
+        "width": 1440
+      },
+      "url": "https://timeline.all-too-well.com/login",
+      "file": "../screenshots/production-register-1440.png"
+    },
+    {
+      "card": {
+        "left": 16,
+        "right": 16,
+        "width": 343
+      },
+      "labels": [
+        "工号3–64 位字母、数字、点、下划线或连字符",
+        "姓名",
+        "密码",
+        "确认密码"
+      ],
+      "overflow": false,
+      "title": "创建账号",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "url": "https://timeline.all-too-well.com/login",
+      "file": "../screenshots/production-register-390.png"
+    },
+    {
+      "card": {
+        "left": 16,
+        "right": 16,
+        "width": 358
+      },
+      "labels": [
+        "工号3–64 位字母、数字、点、下划线或连字符",
+        "密码"
+      ],
+      "overflow": false,
+      "title": "登录系统",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "url": "https://timeline.all-too-well.com/login",
+      "file": "../screenshots/production-login-390.png"
+    },
+    {
+      "card": {
+        "left": 16,
+        "right": 16,
+        "width": 358
+      },
+      "labels": [
+        "一次性恢复码",
+        "新密码",
+        "确认密码"
+      ],
+      "overflow": false,
+      "title": "重置密码",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "url": "https://timeline.all-too-well.com/login",
+      "file": "../screenshots/production-recover-390.png"
+    },
+    {
+      "card": {
+        "left": 500,
+        "right": 500,
+        "width": 440
+      },
+      "labels": [
+        "一次性恢复码",
+        "新密码",
+        "确认密码"
+      ],
+      "overflow": false,
+      "title": "重置密码",
+      "viewport": {
+        "height": 1000,
+        "width": 1440
+      },
+      "url": "https://timeline.all-too-well.com/login",
+      "file": "../screenshots/production-recover-1440.png"
+    },
+    {
+      "card": null,
+      "labels": [],
+      "overflow": false,
+      "title": "李晓晨，今天先处理最重要的一项。",
+      "viewport": {
+        "height": 1000,
+        "width": 1440
+      },
+      "url": "https://timeline.all-too-well.com/dashboard",
+      "file": "../screenshots/production-original-account-dashboard-1440.png"
+    },
+    {
+      "card": null,
+      "labels": [],
+      "overflow": false,
+      "viewport": {
+        "height": 1000,
+        "width": 1440
+      },
+      "url": "https://timeline.all-too-well.com/projects",
+      "file": "../screenshots/production-original-projects-1440.png"
+    },
+    {
+      "card": null,
+      "labels": [
+        "当前密码",
+        "新密码",
+        "确认新密码"
+      ],
+      "overflow": false,
+      "title": "我的账号",
+      "viewport": {
+        "height": 1000,
+        "width": 1440
+      },
+      "url": "https://timeline.all-too-well.com/account",
+      "file": "../screenshots/production-original-account-1440.png"
+    },
+    {
+      "card": null,
+      "labels": [
+        "搜索姓名或工号"
+      ],
+      "overflow": false,
+      "title": "账号管理",
+      "viewport": {
+        "height": 1000,
+        "width": 1440
+      },
+      "url": "https://timeline.all-too-well.com/admin/accounts",
+      "file": "../screenshots/production-accounts-search-1440.png"
+    },
+    {
+      "card": null,
+      "labels": [
+        "搜索",
+        "工号",
+        "姓名",
+        "邮箱",
+        "手机号",
+        "所属部门未归属部门总部 · HQ项目管理部 · PMO工艺开发部 · PROCESS质量验证部 · QUALITY采购部 · PURCHASING财务部 · FINANCE评审委员会 · REVIEW营销公司 · CUSTOM_7A01049DB031EB7B技术中心 · BU_TECHNOLOGY商用车营销事业部 · BU_COMMERCIAL_VEHICLE_MARKETING乘用车营销事业部 · BU_PASSENGER_VEHICLE_MARKETING制造中心 · BU_MANUFACTURING国际事业部 · BU_INTERNATIONAL采购中心 · BU_PROCUREMENT",
+        "用户状态启用停用锁定",
+        "审计人员auditor · 系统角色",
+        "工艺工程师process_engineer · 系统角色",
+        "普通查看者viewer · 系统角色",
+        "系统管理员admin · 系统角色",
+        "评审人reviewer · 系统角色",
+        "财务finance · 系统角色",
+        "质量工程师quality_engineer · 系统角色",
+        "采购专员purchaser · 系统角色",
+        "项目经理project_manager · 系统角色",
+        "授予超级管理员权限",
+        "变更原因"
+      ],
+      "overflow": false,
+      "title": "组织与人员",
+      "viewport": {
+        "height": 1000,
+        "width": 1440
+      },
+      "url": "https://timeline.all-too-well.com/admin/organization",
+      "file": "../screenshots/production-organization-label-1440.png"
+    },
+    {
+      "card": {
+        "left": 500,
+        "right": 500,
+        "width": 440
+      },
+      "labels": [],
+      "overflow": false,
+      "title": "登录方式已更新",
+      "viewport": {
+        "height": 1000,
+        "width": 1440
+      },
+      "url": "https://timeline.all-too-well.com/login/callback",
+      "file": "../screenshots/production-callback-1440.png"
+    }
+  ],
+  "interactions": {
+    "originalAccountUnchangedLongPasswordLogin": true,
+    "dashboardRefreshAuthenticated": true,
+    "originalProjectsRead": true,
+    "accountDisplaysOriginalIdentifierAsEmployeeNumber": true,
+    "originalAccountSearch": true,
+    "organizationEmployeeNumberLabel": true,
+    "organizationFormCancelledWithoutSaving": true,
+    "logoutThenHardRefreshLogin": true,
+    "legacyCallbackReturnsToNativeLogin": "NOT_VERIFIED_AFTER_CLICK",
+    "legacyCallbackRendersNativeLoginLink": true
+  },
+  "productionCredentialsChanged": false,
+  "businessWrites": false,
+  "permissionWrites": false,
+  "agentSessionLoggedOut": true,
+  "userSafariSessionUntouched": true,
+  "observedNetwork": "pageAssets resource/request inventory only; HTTP statuses separately in production-http-final.json; no browser response HAR available",
+  "consoleWarnErrorCount": 0,
+  "independentPageErrorStream": "UNAVAILABLE",
+  "newCredentialBrowserSubmission": "NOT_EXECUTED; actual isolated HTTP/CLI setting and rejection verified separately",
+  "productStatus": "AWAITING_PRODUCT_OWNER_CONFIRMATION"
+}

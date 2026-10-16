@@ -1,0 +1,31 @@
+{
+  "runtimeCommit": "a0769e7808ace84a05a36bed6c0edc2e81d097c6",
+  "browser": "Native macOS Safari 27; CUA App, not WebKit",
+  "status": "PARTIAL_NATIVE_SMOKE_PASS",
+  "dates": [
+    "2026-10-08",
+    "2026-10-09"
+  ],
+  "url": "http://127.0.0.1:3350",
+  "passed": [
+    "Fresh login URL loaded warm-white UI and script hydration; CSS and JS HTTP 200",
+    "Native password login reached /dashboard",
+    "All 18 workflow nodes and branch/rework relations visible in accessibility tree",
+    "Opened original saved confirmation; actual date 2026-10-07, party 合成客户技术方, approved result and original author read back",
+    "Current V2 scanned material fetched with HTTP 200 and real blob download link shown",
+    "Preview closed on Oct9 and original record retained",
+    "Return navigated to exact dashboard project/task query",
+    "Expired overnight session explicitly rejected business reads and refresh requested login",
+    "Canonical /login loaded styled and enabled after expiry"
+  ],
+  "notExecutedOrIncomplete": [
+    "New-project and upload/save end-to-end in Safari; covered by Chrome, not relabeled Safari",
+    "Final Safari re-login/refresh after expiry interrupted by repeated ScreenCaptureKit -3811 capture failure",
+    "Safari console extraction and full viewport matrix unavailable through native UI"
+  ],
+  "initialFailure": "Unstyled nonhydrating original login page; initial two reload attempts failed; preserved in SAFARI_LOCAL_PREVIEW_BLOCKER.md",
+  "adaptation": "Exact-loopback non-API proxy removes only CSP upgrade-insecure-requests; direct production Web policy unchanged; fresh query page succeeds. Why two earlier reloads stayed stale is not proven.",
+  "screenshots": "Native screenshots in conversation; filesystem screenshots are actual Chrome and not relabeled Safari",
+  "webkitSubstitution": false,
+  "globalSafariSettingsChanged": false
+}

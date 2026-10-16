@@ -1,0 +1,40 @@
+{
+  "result": "PASS",
+  "observedFrom": "owner Mac with normal TLS; HTTP only, not a browser rendering claim",
+  "records": [
+    {
+      "url": "https://timeline.all-too-well.com/api/health",
+      "status": 200,
+      "responseSha256": "ad18caa757c6896cda510bdfc360d0d0a0ac459704cba721eefa70746ece4d33",
+      "metadata": {
+        "runtimeCommit": "f2da3629e13b2653aae8879c98992877d5ef4170",
+        "release": "native-auth-20260912-f2da3629e13b",
+        "buildTime": "2026-09-12T14:22:42Z"
+      }
+    },
+    {
+      "url": "https://timeline.all-too-well.com/build-info",
+      "status": 200,
+      "responseSha256": "ad5e90dca6e6dff8d29935dbeff14544aea6a68e2b431c9a649e85b18b7a1944",
+      "metadata": {
+        "runtimeCommit": "f2da3629e13b2653aae8879c98992877d5ef4170",
+        "release": "native-auth-20260912-f2da3629e13b",
+        "buildTime": "2026-09-12T14:22:42Z"
+      }
+    },
+    {
+      "url": "https://timeline.all-too-well.com/login",
+      "status": 200,
+      "responseSha256": "7075cac362b22020d5beb1694c33f8abbcfbc2209e304518b51882ebf10d8490"
+    },
+    {
+      "url": "https://timeline.all-too-well.com/_next/static/chunks/app/login/page-68f6685d2653770f.js",
+      "status": 200,
+      "responseSha256": "328a3b3160d2fc0c4f592672e4594fe61a349f3551c67fb6fc12a08b776bd41d"
+    }
+  ],
+  "nativeUsernameInputInHtml": true,
+  "passwordInputInHtml": true,
+  "nativeLoginTextInHtml": true,
+  "loginPageJavascriptRetrieved": true
+}

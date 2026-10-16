@@ -1,3 +1,4 @@
+import { assertTeamTaskById, canOperateTeamTask, withProjectWrite } from '../../common/team-authorization';
 import { createHash } from 'node:crypto';
 
 import {
@@ -8,11 +9,11 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
+  AttachmentScanStatus,
   AttachmentTargetType,
   AuditTargetType,
   Prisma,
   ProjectAssignmentSource,
-  ProjectMemberType,
   TaskBlockerStatus,
   WorkflowAction,
   WorkflowInstanceStatus,
@@ -20,6 +21,7 @@ import {
 } from '@prisma/client';
 
 import { PrismaService } from '../../infra/prisma/prisma.service';
+import { lockWorkflowAssignmentMutations } from '../../common/workflow-assignment-lock';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { ProjectAccessService } from '../auth/project-access.service';
@@ -123,8 +125,9 @@ export class R26OrdinaryCompletionService {
     }
 
     try {
-      return await this.prisma.$transaction(
+      return await withProjectWrite(this.prisma, actor, { taskId },
         async (tx) => {
+          await assertTeamTaskById(tx, taskId, actor);
           const lockedTask = await this.loadTaskWithExecutor(
             tx,
             taskId,
@@ -133,6 +136,21 @@ export class R26OrdinaryCompletionService {
           this.assertGate3C1Node(lockedTask);
           this.assertTaskVersion(lockedTask, input.taskVersion);
           this.assertActorCanComplete(lockedTask, actor);
+          if (!input.acknowledgedConsequences) {
+            throw new BadRequestException('必须确认推进影响后才能完成工序。');
+          }
+          const action = this.resolveCompletionAction(
+            lockedTask.nodeCode,
+          );
+          const nextTemplates = getWorkflowNextTaskTemplates(
+            lockedTask.nodeCode,
+            action,
+          );
+          await lockWorkflowAssignmentMutations(
+            tx,
+            lockedTask.projectId,
+            nextTemplates.map((template) => template.nodeCode),
+          );
           const preview = await this.buildCompletionPreview(
             tx,
             lockedTask,
@@ -146,10 +164,6 @@ export class R26OrdinaryCompletionService {
               blockingReasons: preview.blockingReasons,
             });
           }
-          if (!input.acknowledgedConsequences) {
-            throw new BadRequestException('必须确认推进影响后才能完成工序。');
-          }
-
           const beforeTaskIds = new Set(
             (
               await tx.workflowTask.findMany({
@@ -159,9 +173,6 @@ export class R26OrdinaryCompletionService {
                 select: { id: true },
               })
             ).map((item) => item.id),
-          );
-          const action = this.resolveCompletionAction(
-            lockedTask.nodeCode,
           );
           const trustedAssignments =
             this.toWorkflowAssignments(preview.nextTasks);
@@ -397,8 +408,9 @@ export class R26OrdinaryCompletionService {
     }
 
     try {
-      return await this.prisma.$transaction(
+      return await withProjectWrite(this.prisma, actor, { taskId },
         async (tx) => {
+          await assertTeamTaskById(tx, taskId, actor);
           const lockedTask = await this.loadTaskWithExecutor(
             tx,
             taskId,
@@ -574,7 +586,7 @@ export class R26OrdinaryCompletionService {
             ProjectAssignmentSource.UNASSIGNED,
           unassignedReason:
             assignment?.unassignedReason ??
-            '没有符合 Gate 3A 规则的项目成员，负责人保持待分配。',
+            '对应业务角色暂无有效人员，请管理员分配角色。',
         };
       })
       .sort((left, right) => left.stepNumber - right.stepNumber);
@@ -596,7 +608,7 @@ export class R26OrdinaryCompletionService {
         ? ['当前流程不在运行中。']
         : []),
       ...(!actorCanComplete
-        ? ['当前用户不是任务负责人或项目负责人。']
+        ? ['当前用户须具备工序角色并领取该任务。']
         : []),
       ...inspection.form.missing.map(
         (field) => `必填表单缺少：${field.label}`,
@@ -761,6 +773,7 @@ export class R26OrdinaryCompletionService {
             id: true,
             name: true,
             ownerUserId: true,
+            primaryColorId: true,
             members: {
               where: { userId: actor.id },
               select: {
@@ -796,7 +809,10 @@ export class R26OrdinaryCompletionService {
     const normalizedCode = this.normalizeColorNumber(
       submittedColorNumber,
     );
-    const projectColors = await db.color.findMany({
+    const linkedColor = task.project.primaryColorId
+      ? await db.color.findUnique({ where: { id: task.project.primaryColorId }, select: { id: true, code: true, name: true, isPrimary: true, numberingTaskId: true } })
+      : null;
+    const projectColors = linkedColor ? [linkedColor] : await db.color.findMany({
       where: { projectId: task.projectId },
       select: {
         id: true,
@@ -823,6 +839,7 @@ export class R26OrdinaryCompletionService {
           entityType: AttachmentTargetType.WORKFLOW_TASK,
           entityId: task.id,
           isDeleted: false,
+          scanStatus: AttachmentScanStatus.CLEAN,
           OR: [
             { materialType: COLOR_NUMBERING_MATERIAL_ID },
             { materialType: COLOR_NUMBERING_MATERIAL_NAME },
@@ -885,10 +902,12 @@ export class R26OrdinaryCompletionService {
       ...(ambiguousTarget
         ? ['项目存在多个颜色但未唯一指定主颜色，无法安全写入颜色编号。']
         : []),
-      ...(targetColor?.numberingTaskId &&
-      targetColor.numberingTaskId !== task.id
-        ? ['当前主颜色已由另一项第 05 步任务生成正式编号。']
+      ...(targetColor?.code && normalizedCode && this.normalizeColorNumber(targetColor.code) !== normalizedCode
+        ? ['已关联颜色已有正式编号，不能在本项目中覆盖历史编号。']
         : []),
+      ...(!targetColor?.code && targetColor?.numberingTaskId && targetColor.numberingTaskId !== task.id
+        ? ['已关联颜色的历史取号记录需要核对，不能覆盖。'] : []),
+      ...(task.project.primaryColorId && !linkedColor ? ['项目关联的颜色不存在，请先核对颜色身份。'] : []),
     ];
     const numberDetails = [
       ...(!normalizedCode ? ['颜色编号为必填项'] : []),
@@ -949,6 +968,17 @@ export class R26OrdinaryCompletionService {
       });
     }
 
+    if (preview.targetColor) {
+      await tx.$queryRaw(Prisma.sql`SELECT id FROM colors WHERE id = ${preview.targetColor.id} FOR UPDATE`);
+      const existing = await tx.color.findUniqueOrThrow({ where: { id: preview.targetColor.id }, include: { numberedBy: { select: { id: true, name: true } } } });
+      if (existing.code) {
+        if (this.normalizeColorNumber(existing.code) !== preview.normalizedCode) throw new ConflictException('已关联颜色编号已变化，不得覆盖历史。');
+        await tx.project.update({ where: { id: task.projectId }, data: { primaryColorId: existing.id } });
+        return { colorId: existing.id, code: existing.code, numberingTaskId: existing.numberingTaskId,
+          numberedBy: existing.numberedBy, numberedAt: existing.numberedAt?.toISOString() ?? null,
+          confirmationAttachment: preview.confirmationAttachment, retainedExistingNumber: true };
+      }
+    }
     const numberedAt = new Date();
     const data = {
       code: preview.normalizedCode,
@@ -969,12 +999,14 @@ export class R26OrdinaryCompletionService {
             projectId: task.projectId,
             name: task.project.name,
             description: '由第 05 步新颜色取号生成。',
+            registerStatus: 'CANDIDATE',
             isPrimary: true,
             ...data,
           },
           select: { id: true, code: true },
         });
 
+    await tx.project.update({ where: { id: task.projectId }, data: { primaryColorId: color.id } });
     return {
       colorId: color.id,
       code: color.code,
@@ -1010,37 +1042,23 @@ export class R26OrdinaryCompletionService {
   private actorCanComplete(
     task: Pick<
       Gate3C1Task,
-      'assigneeUserId' | 'project'
+      'assigneeUserId' | 'project' | 'nodeCode'
     >,
     actor: AuthenticatedUser,
   ) {
-    const isManagerMember = task.project.members.some(
-      (member) =>
-        member.userId === actor.id &&
-        (member.memberType === ProjectMemberType.OWNER ||
-          member.memberType === ProjectMemberType.MANAGER),
-    );
-
-    return (
-      actor.isSystemAdmin ||
-      actor.roleCodes.includes('admin') ||
-      actor.roleCodes.includes('project_manager') ||
-      task.assigneeUserId === actor.id ||
-      task.project.ownerUserId === actor.id ||
-      isManagerMember
-    );
+    return canOperateTeamTask(task, actor);
   }
 
   private assertActorCanComplete(
     task: Pick<
       Gate3C1Task,
-      'assigneeUserId' | 'project' | 'nodeName'
+      'assigneeUserId' | 'project' | 'nodeCode' | 'nodeName'
     >,
     actor: AuthenticatedUser,
   ) {
     if (!this.actorCanComplete(task, actor)) {
       throw new ForbiddenException(
-        `${task.nodeName} 仅允许当前负责人或项目负责人完成。`,
+        `${task.nodeName} 仅允许具备对应业务角色的当前办理人完成。`,
       );
     }
   }

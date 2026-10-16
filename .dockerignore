@@ -12,6 +12,7 @@ var
 tmp
 reports
 **/reports
+security/sbom
 docs
 test-results
 **/test-results

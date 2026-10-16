@@ -10,12 +10,17 @@ import { ProjectAccessService } from './project-access.service';
 import { RolesGuard } from './roles.guard';
 import { SessionAuthGuard } from './session-auth.guard';
 import { SessionStoreService } from './session-store.service';
+import { NativeAuthController } from './native-auth.controller';
+import { NativeAuthService } from './native-auth.service';
+import { NativePasswordService } from './native-password.service';
 
 @Module({
   imports: [FeishuModule, UsersModule],
-  controllers: [AuthController],
+  controllers: [AuthController, NativeAuthController],
   providers: [
     AuthService,
+    NativeAuthService,
+    NativePasswordService,
     PermissionsGuard,
     ProjectAccessService,
     SessionStoreService,
@@ -32,6 +37,6 @@ import { SessionStoreService } from './session-store.service';
       useClass: PermissionsGuard,
     },
   ],
-  exports: [AuthService, ProjectAccessService],
+  exports: [AuthService, NativeAuthService, ProjectAccessService],
 })
 export class AuthModule {}

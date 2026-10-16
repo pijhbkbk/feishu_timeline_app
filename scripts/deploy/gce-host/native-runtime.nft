@@ -1,0 +1,17 @@
+table inet timeline_native_runtime {
+  comment "timeline-native-runtime-v1";
+  chain input {
+    type filter hook input priority -10; policy accept;
+    iifname { "br-tln-api", "br-tln-web" } ct state established,related accept
+    iifname "br-tln-api" ip saddr 172.30.44.2 ip daddr 172.30.44.1 tcp dport { 16432, 13310 } accept
+    iifname { "br-tln-api", "br-tln-web" } drop
+    ip daddr 172.30.44.1 tcp dport { 16432, 13310 } drop
+  }
+  chain forward {
+    type filter hook forward priority -10; policy accept;
+    iifname "br-tln-api" oifname "br-tln-api" accept
+    iifname "br-tln-web" oifname "br-tln-web" accept
+    iifname { "br-tln-api", "br-tln-web" } drop
+    oifname { "br-tln-api", "br-tln-web" } drop
+  }
+}

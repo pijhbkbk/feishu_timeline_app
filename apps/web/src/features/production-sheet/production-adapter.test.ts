@@ -1,0 +1,36 @@
+import { it } from 'vitest';
+import assert from 'node:assert/strict';
+import { emptyProductionFilters, finalizeProductionImports, parseProductionQuantity, prepareProductionImport, productionQuery, productionRow, productionUpdates, validateProduction, type ProductionFact } from './production-adapter';
+import type { ExchangeInput } from '../business-sheet/record-exchange';
+it('validates production grain, identity, quantities and Excel roundtrip commands', () => {
+const fact: ProductionFact = { id: 'fact-a', colorId: 'color-a', colorName: '同名蓝', colorCode: 'COL-A', baseId: 'base-a', baseName: '甲基地', month: '2026-10', quantity: '10', unit: '台', revision: 2, metricScope: 'MONTHLY_ACTUAL_TOTAL_V1', metricScopeLabel: '月度实际总量（全车型，不分产线和班次）', rowKind: 'MONTH_TOTAL', editable: true, originalSource: null };
+const context = { facts: new Map([[fact.id, fact]]), colors: [{ id: 'color-a', name: '同名蓝', base: { id: 'base-a', name: '甲基地' } }, { id: 'color-b', name: '同名蓝', base: { id: 'base-b', name: '乙基地' } }], chosenBaseId: 'base-a', chosenColorId: 'color-a' };
+const input = (values: Record<string, string | null>, options: Partial<ExchangeInput> = {}): ExchangeInput => ({ row: 2, clientId: 'draft-2', id: fact.id, revision: 2, values, source: { fileName: '测试.xlsx', sheetName: '月度产量', rowNumbers: [2], fileHash: 'a'.repeat(64) }, errors: [], ...options });
+let count = 0; const eq = (a: unknown, b: unknown) => { assert.deepEqual(a, b); count++; }; const throws = (fn: () => unknown) => { assert.throws(fn); count++; };
+eq(parseProductionQuantity(null), null); eq(parseProductionQuantity(''), null); eq(parseProductionQuantity('0'), 0); eq(parseProductionQuantity('0008'), 8);
+for (const value of ['-1', '1.5', '1e3', '1000000001', 'Infinity', '=1+1']) throws(() => parseProductionQuantity(value));
+eq(productionUpdates([{ id: fact.id, expectedRevision: 2, changes: { quantity: '8' } }]), [{ kind: 'update', id: 'fact-a', expectedRevision: 2, quantity: 8 }]);
+throws(() => productionUpdates([{ id: fact.id, expectedRevision: 2, changes: { quantity: '8', month: '2026-09' } }]));
+eq(productionRow(fact).editable, ['quantity']); eq(productionRow(fact, false).editable, []); eq(productionRow({ ...fact, quantity: null }).values.quantity, null);
+eq(validateProduction(productionRow(fact), 'quantity', '8'), undefined); assert(validateProduction(productionRow(fact), 'month', '2026-09')); count++;
+eq(prepareProductionImport(input({ quantity: '8' }), [], context).data, { kind: 'update', id: 'fact-a', expectedRevision: 2, quantity: 8 });
+eq(prepareProductionImport(input({ quantity: null }), [], context).status, 'unchanged'); eq(prepareProductionImport(input({ quantity: null }), ['quantity'], context).data, { kind: 'update', id: 'fact-a', expectedRevision: 2, quantity: null });
+eq(prepareProductionImport(input({ quantity: '10' }), [], context).status, 'unchanged'); eq(prepareProductionImport(input({ quantity: '8', month: '2026-09' }), [], context).status, 'error');
+eq(prepareProductionImport(input({ quantity: '8' }, { id: 'not-authorized' }), [], context).status, 'error'); eq(prepareProductionImport(input({ quantity: '8' }, { revision: 1 }), [], context).status, 'error');
+eq(prepareProductionImport(input({ quantity: '8', photos: 'https://example.invalid/x.png' }), [], context).status, 'error');
+const newInput = input({ month: '2026-11', quantity: '8', rowKind: 'MONTH_TOTAL' }, { id: null, revision: null });
+const created = prepareProductionImport(newInput, [], context); eq(created.status, 'create'); eq((created.data as { colorId: string }).colorId, 'color-a');
+eq(prepareProductionImport(input({ month: '2026-11', quantity: '8' }, { id: null, revision: null }), [], context).status, 'error');
+eq(prepareProductionImport(input({ ...newInput.values, rowKind: '合计' }, { id: null, revision: null }), [], context).status, 'error');
+eq(prepareProductionImport(input({ ...newInput.values, month: '2026-10' }, { id: null, revision: null }), [], context).status, 'error');
+eq(prepareProductionImport(input({ ...newInput.values, colorId: 'color-b' }, { id: null, revision: null }), [], context).status, 'error');
+eq(prepareProductionImport(input({ ...newInput.values, colorName: '其他颜色' }, { id: null, revision: null }), [], context).status, 'error');
+eq(prepareProductionImport(newInput, [], { ...context, chosenBaseId: '', chosenColorId: '' }).status, 'error');
+for (const values of [{ unit: '吨' }, { scope: '车间班次' }, { sourceSummary: '伪造来源' }, { colorCode: '未知编号' }] as Record<string, string | null>[]) eq(prepareProductionImport({ ...newInput, values: { ...newInput.values, ...values } }, [], context).status, 'error');
+eq(finalizeProductionImports([created, { ...created, input: { ...created.input, clientId: 'draft-3' } }]).map(plan => plan.status), ['error', 'error']);
+eq(finalizeProductionImports([created]).map(plan => plan.status), ['create']);
+eq(productionQuery({ ...emptyProductionFilters, baseId: 'base-a', fromMonth: '2026-10', toMonth: '2026-10' }).toString(), 'baseId=base-a&fromMonth=2026-10&toMonth=2026-10');
+throws(() => productionQuery({ ...emptyProductionFilters, fromMonth: '2026-13' })); throws(() => productionQuery({ ...emptyProductionFilters, fromMonth: '2026-10', toMonth: '2026-09' }));
+console.log(JSON.stringify({ result: 'PASS', assertions: count, coverage: ['null differs from zero', 'bounded integer quantities', '10 to 8 keeps fact ID', 'only quantity writes', 'blank ignored / explicit clear', 'no-op import', 'protected fields', 'unknown ID no create fallback', 'revision conflict', 'explicit new monthly total grain', 'same-name colors use chosen stable IDs', 'duplicate grain', 'summary rows rejected', 'month filters'] }, null, 2));
+
+});

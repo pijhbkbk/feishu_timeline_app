@@ -1,12 +1,13 @@
 import { Module } from '@nestjs/common';
 
 import { ActivityLogsModule } from '../activity-logs/activity-logs.module';
+import { AuthModule } from '../auth/auth.module';
 import { WorkflowsModule } from '../workflows/workflows.module';
 import { MassProductionsController } from './mass-productions.controller';
 import { MassProductionsService } from './mass-productions.service';
 
 @Module({
-  imports: [ActivityLogsModule, WorkflowsModule],
+  imports: [ActivityLogsModule, AuthModule, WorkflowsModule],
   controllers: [MassProductionsController],
   providers: [MassProductionsService],
   exports: [MassProductionsService],

@@ -50,7 +50,10 @@ describe('R26 administrator control center contracts', () => {
     expect(componentSource).not.toContain('已创建骨架');
     expect(componentSource).not.toContain('流程模板');
     expect(componentSource).not.toContain('基础字典');
-    expect(rewriteSource).toContain("source: '/admin/:section'");
+    // Formal routes no longer depend on NEXT_PUBLIC_UI_VERSION rewrites.
+    expect(rewriteSource).not.toContain("source: '/admin/:section'");
+    const formalAdminRoute = readFileSync(new URL('../app/admin/[section]/page.tsx', import.meta.url), 'utf8');
+    expect(formalAdminRoute).toContain('AdminControlCenter');
   });
 
   it('centers every icon-only close control without font-glyph offsets', () => {

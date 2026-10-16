@@ -1,0 +1,93 @@
+{
+  "scope": "actual exact-domain HTTP requests; not browser interaction",
+  "url": "https://timeline.all-too-well.com",
+  "runtimeCommit": "f2da3629e13b2653aae8879c98992877d5ef4170",
+  "helperSha256": "a73b592517f2403f011070b223cc3b193bc6cf641fd91b9d4137270b9a054012",
+  "result": "PASS",
+  "existingOwnerIdPreserved": true,
+  "secureHttpOnlySameSiteSessionCookie": true,
+  "allIssuedTestSessionsLoggedOut": true,
+  "credentialsRecorded": false,
+  "requests": [
+    {
+      "method": "GET",
+      "path": "/api/health",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/build-info",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/me",
+      "status": 401
+    },
+    {
+      "method": "GET",
+      "path": "/api/projects",
+      "status": 401
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/login",
+      "status": 403
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/login",
+      "status": 403
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/login",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/me",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/projects",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/accounts",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/feishu/start",
+      "status": 410
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/feishu/login-url",
+      "status": 410
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/mock-login",
+      "status": 403
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/logout",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/me",
+      "status": 401
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/logout",
+      "status": 200
+    }
+  ]
+}

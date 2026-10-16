@@ -5,6 +5,7 @@ import {
   getTaskRouteSegment,
   isWorkflowTaskOverdue,
   matchesTaskMode,
+  normalizePage,
 } from './tasks.rules';
 
 describe('tasks.rules', () => {
@@ -26,5 +27,22 @@ describe('tasks.rules', () => {
     expect(getTaskRouteSegment(WorkflowNodeCode.COLOR_CONSISTENCY_REVIEW)).toBe('reviews');
     expect(getTaskRouteSegment(WorkflowNodeCode.MASS_PRODUCTION)).toBe('mass-production');
   });
-});
 
+  it.each(['101', '10000000', '9007199254740992'])(
+    'rejects an unsafe pagination page before it can become a deep database offset: %s',
+    (rawPage) => {
+      expect(() => normalizePage(rawPage, 1)).toThrowError(
+        expect.objectContaining({
+          response: expect.objectContaining({
+            code: 'PAGINATION_PAGE_OUT_OF_RANGE',
+          }),
+        }),
+      );
+    },
+  );
+
+  it('keeps the supported page boundary and the legacy nonnumeric fallback', () => {
+    expect(normalizePage('100', 1)).toBe(100);
+    expect(normalizePage('invalid', 1)).toBe(1);
+  });
+});

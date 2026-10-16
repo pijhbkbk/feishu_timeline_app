@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 import { SecureSingleFileInterceptor } from '../../common/file-upload-options';
 import { CurrentUser } from '../auth/current-user.decorator';
+import { Permissions } from '../auth/permissions.decorator';
 import { Roles } from '../auth/roles.decorator';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { PerformanceTestsService } from './performance-tests.service';
@@ -28,21 +29,28 @@ export class PerformanceTestsController {
   ) {}
 
   @Roles('admin', 'project_manager', 'process_engineer', 'quality_engineer')
+  @Permissions('project.read')
   @Get()
-  getWorkspace(@Param('projectId') projectId: string) {
-    return this.performanceTestsService.getWorkspace(projectId);
+  getWorkspace(
+    @Param('projectId') projectId: string,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.performanceTestsService.getWorkspace(projectId, actor);
   }
 
   @Roles('admin', 'project_manager', 'process_engineer', 'quality_engineer')
+  @Permissions('project.read')
   @Get(':testId')
   getDetail(
     @Param('projectId') projectId: string,
     @Param('testId') testId: string,
+    @CurrentUser() actor: AuthenticatedUser,
   ) {
-    return this.performanceTestsService.getDetail(projectId, testId);
+    return this.performanceTestsService.getDetail(projectId, testId, actor);
   }
 
   @Roles('admin', 'project_manager', 'process_engineer', 'quality_engineer')
+  @Permissions('workflow.transition')
   @Post()
   createTest(
     @Param('projectId') projectId: string,
@@ -53,6 +61,7 @@ export class PerformanceTestsController {
   }
 
   @Roles('admin', 'project_manager', 'process_engineer', 'quality_engineer')
+  @Permissions('workflow.transition')
   @Patch(':testId')
   updateTest(
     @Param('projectId') projectId: string,
@@ -64,6 +73,7 @@ export class PerformanceTestsController {
   }
 
   @Roles('admin', 'project_manager', 'process_engineer', 'quality_engineer')
+  @Permissions('attachment.manage')
   @UseInterceptors(SecureSingleFileInterceptor('file'))
   @Post(':testId/report')
   uploadReport(
@@ -76,6 +86,7 @@ export class PerformanceTestsController {
   }
 
   @Roles('admin', 'project_manager', 'process_engineer', 'quality_engineer')
+  @Permissions('workflow.transition')
   @Post(':testId/submit')
   submitTest(
     @Param('projectId') projectId: string,
@@ -86,6 +97,7 @@ export class PerformanceTestsController {
   }
 
   @Roles('admin', 'project_manager', 'process_engineer', 'quality_engineer')
+  @Permissions('workflow.transition')
   @Post('complete-task')
   completeTask(
     @Param('projectId') projectId: string,

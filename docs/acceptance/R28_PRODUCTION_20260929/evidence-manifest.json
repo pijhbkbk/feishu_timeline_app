@@ -1,0 +1,256 @@
+{
+  "runtimeCommit": "e917da56b9fca54a40635364e168fdb26a080fb1",
+  "files": [
+    {
+      "path": "var/r28-verification/m4-patch-dev-web-final-v2.log",
+      "sha256": "0d353cece1dd94c03d2963d1949c080f4ed7ed7bd8d40dfec75f87c13164ad37",
+      "bytes": 31211
+    },
+    {
+      "path": "var/r28-verification/m4-patch-dev-web-final.log",
+      "sha256": "da89f9f4c81a7cc549c956180249e3842effa5695391a3eeee1a647f0d37bdb1",
+      "bytes": 266
+    },
+    {
+      "path": "var/r28-verification/m4-patch-dev-web-v2.log",
+      "sha256": "45c535799eedc97ea1c88ab4cb285be36f26bec45d72467286e4ebad6de81742",
+      "bytes": 5387
+    },
+    {
+      "path": "var/r28-verification/m4-patch-dev-web.log",
+      "sha256": "b6d387639e5fdee32496b291ecb08dd06a057af7c95e8e0d21ed9ff249c2c505",
+      "bytes": 2985
+    },
+    {
+      "path": "var/r28-verification/m4-patch-fixed-browser.log",
+      "sha256": "2af88548d8e588da5a0bd6c3638abc8b38d6b7b3a215867d9a567a3964f8d1a7",
+      "bytes": 126
+    },
+    {
+      "path": "var/r28-verification/m4-patch-fixed-layout.log",
+      "sha256": "7cbe97daeb648748bed192de81b6b6d6a7158243ab48cec7c75521e95f6b931f",
+      "bytes": 138
+    },
+    {
+      "path": "var/r28-verification/m4-patch-fixed-local-switch.log",
+      "sha256": "cc9ab0fde85dfb2a412b370537bb63eaf6ba98c55806ddfb623d06720f93a64d",
+      "bytes": 90
+    },
+    {
+      "path": "var/r28-verification/m4-patch-image-api.log",
+      "sha256": "ec98da5eb1f2a46653243818d29603f4bc2a494e07cf394f099d4b1b36e2620d",
+      "bytes": 9839
+    },
+    {
+      "path": "var/r28-verification/m4-patch-image-publish.log",
+      "sha256": "bf69e1bc2e231a732baa82e528494d8b9afb892d570b564fc590a21d7b2eb3ed",
+      "bytes": 36039
+    },
+    {
+      "path": "var/r28-verification/m4-patch-image-web.log",
+      "sha256": "82abcaf5e640f51f47d937e5029acc68dfa57165649654fcff94e49a7b1bd8d6",
+      "bytes": 17303
+    },
+    {
+      "path": "var/r28-verification/m4-patch-install-boundaries.log",
+      "sha256": "451af1f43adade84f0c65971bc7e1103d9cd74803aec508d42a3a9d5329e1812",
+      "bytes": 101
+    },
+    {
+      "path": "var/r28-verification/m4-patch-install-unit-v1.log",
+      "sha256": "3ba14421105a13431f21984ee45ea8a507041e3548f96c568d3052eb70a2678e",
+      "bytes": 97124
+    },
+    {
+      "path": "var/r28-verification/m4-patch-install-unit-v2.log",
+      "sha256": "ac702d638b925938bb9b87b5843b6db102565a519d39c4b0577a8ecfde220244",
+      "bytes": 106
+    },
+    {
+      "path": "var/r28-verification/m4-patch-interruption-setup.log",
+      "sha256": "8b0e4dabaa314050eaaf4d1c0791dd3b1dd1bf4b62822b7da34237289dcd8720",
+      "bytes": 76
+    },
+    {
+      "path": "var/r28-verification/m4-patch-kill-after-write.log",
+      "sha256": "d0316cf33417b78bdae6c361438858abc274ffe3a7c6ca3199319a4c9e2103d3",
+      "bytes": 527
+    },
+    {
+      "path": "var/r28-verification/m4-patch-kill-intent-before-start.log",
+      "sha256": "a37b5f62d38b62191ce4f43a8a4881e1258e9cf7e097325391c1435a9d0403f1",
+      "bytes": 536
+    },
+    {
+      "path": "var/r28-verification/m4-patch-kill-open-intent.log",
+      "sha256": "d3ff8f16af0c9c5505eb4414e904c230c45edb18e8c5d3d7be852887be76af45",
+      "bytes": 527
+    },
+    {
+      "path": "var/r28-verification/m4-patch-kill-protected.log",
+      "sha256": "314316998df69613a78c00da739ef8949cac50e9d915bf858da84d30a6a9acd9",
+      "bytes": 526
+    },
+    {
+      "path": "var/r28-verification/m4-patch-layout-diagnostic.log",
+      "sha256": "fa46f4cd4caa2919b15590396594c33792e3c7688cc1c80f1ed8406e9247923f",
+      "bytes": 15465
+    },
+    {
+      "path": "var/r28-verification/m4-patch-lint.log",
+      "sha256": "b0ae258c2f629d7d809fee72c6eb6217399330728cc47e1e1af26c6fb3a3f5de",
+      "bytes": 737
+    },
+    {
+      "path": "var/r28-verification/m4-patch-native-final-v2.log",
+      "sha256": "0f8e50213bd247a2274b03331d33ae02f1be21bde88382abc1ceb383c74e3e69",
+      "bytes": 6118
+    },
+    {
+      "path": "var/r28-verification/m4-patch-native-final-v3.log",
+      "sha256": "3f83abc5f80a935562938d708b78caeb245a8959ec6ec84959c0c1a89db4521f",
+      "bytes": 3276
+    },
+    {
+      "path": "var/r28-verification/m4-patch-native-final-v4.log",
+      "sha256": "4b5f12e2d05dd840322811da4d6879de221344e9811ce0421f12ae3c62c675fd",
+      "bytes": 4724
+    },
+    {
+      "path": "var/r28-verification/m4-patch-native-final.log",
+      "sha256": "496ed391842199bdb4d3af118ae752c9a16916d6291ddb06cf443fb3c879bc4e",
+      "bytes": 2915
+    },
+    {
+      "path": "var/r28-verification/m4-patch-native-layout.log",
+      "sha256": "7cbe97daeb648748bed192de81b6b6d6a7158243ab48cec7c75521e95f6b931f",
+      "bytes": 138
+    },
+    {
+      "path": "var/r28-verification/m4-patch-native-regression.log",
+      "sha256": "7985664a4b77ed4a1832f0fc6c260d7eef729b7bf5c64b55c7b3c296e27658a7",
+      "bytes": 532
+    },
+    {
+      "path": "var/r28-verification/m4-patch-native-root-cause.log",
+      "sha256": "ddd1e3595bc69322eaca032a869d77644433a46d52746aaa95d19136b168f7c1",
+      "bytes": 1523
+    },
+    {
+      "path": "var/r28-verification/m4-patch-ops-final-incremental.log",
+      "sha256": "5f7929fe582a70591866e85574352170ae1e624884dba01e67f68748c00a9aab",
+      "bytes": 350
+    },
+    {
+      "path": "var/r28-verification/m4-patch-ops-final-unit.log",
+      "sha256": "610d98155e0683d2d905abd08c8925d82e9811ed67591965c652edaec3e6282e",
+      "bytes": 376
+    },
+    {
+      "path": "var/r28-verification/m4-patch-ops-unit-v1.log",
+      "sha256": "d9e4c2ec7b131dd0c715bed6c9e7701479f66e89fa4a01618ee4e7994648d49c",
+      "bytes": 7188
+    },
+    {
+      "path": "var/r28-verification/m4-patch-ops-unit-v2.log",
+      "sha256": "80794b4b0d25c272399c6b569d48b7d04ae255351163c2a9add5b522517b3552",
+      "bytes": 7188
+    },
+    {
+      "path": "var/r28-verification/m4-patch-ops-unit-v3.log",
+      "sha256": "dabd1e3d91cc2073a762ad3bf94bcb928fd3c73cdc5dd07f56a51b8f2bf76280",
+      "bytes": 348
+    },
+    {
+      "path": "var/r28-verification/m4-patch-private-ops-push.log",
+      "sha256": "e3bf95fa7b2510a41e65d9cd15563d90469439ec91044d5e55210bc4ada9323a",
+      "bytes": 344
+    },
+    {
+      "path": "var/r28-verification/m4-patch-private-source-push.log",
+      "sha256": "1c0ebe2cf31d32d2418f6f4c1beeb0179aee47c7a3e328853112c1744a6da7d2",
+      "bytes": 348
+    },
+    {
+      "path": "var/r28-verification/m4-patch-production-readback.log",
+      "sha256": "7e650e59a97bfdabe21880a957c1870f59f96f497bc518e9440f5d086ad22933",
+      "bytes": 6054
+    },
+    {
+      "path": "var/r28-verification/m4-patch-public-browser.log",
+      "sha256": "f699ecdd2b20542428409ae21546acf85aace8b9eb22ead6810ba29794d7f227",
+      "bytes": 133
+    },
+    {
+      "path": "var/r28-verification/m4-patch-server-checkout.log",
+      "sha256": "72a029dfa26f8921ef48c4253b9240068fc693e1ebf05a956257dca65fa14e2d",
+      "bytes": 819
+    },
+    {
+      "path": "var/r28-verification/m4-patch-server-install.log",
+      "sha256": "fa64577b0f806a024acc5e63648fc08bf2a2859c10fa2ff95562e645a804a590",
+      "bytes": 390
+    },
+    {
+      "path": "var/r28-verification/m4-patch-server-proof.log",
+      "sha256": "5c18fc5a3867bafacdeffff3a97453907214ef1bf2ae364044dc5fcde00a4ea5",
+      "bytes": 1221
+    },
+    {
+      "path": "var/r28-verification/m4-patch-server-pull.log",
+      "sha256": "f2b29e52046a28c79c74ff7b75a62cc887e7a90314ca2a1d595598899d3f469d",
+      "bytes": 913
+    },
+    {
+      "path": "var/r28-verification/m4-patch-server-update.log",
+      "sha256": "1ad1ebced602620ced22af8bca77ef20ba067b4e688bb72e714cff2de7337d67",
+      "bytes": 648
+    },
+    {
+      "path": "var/r28-verification/m4-patch-typecheck.log",
+      "sha256": "e1b711f4918071b41d94bfb1681e83184f6aaba2fc6f4a4cd5edc276dc940083",
+      "bytes": 1464
+    },
+    {
+      "path": "var/r28-verification/m4-patch-ui-regression.log",
+      "sha256": "28f525ad12c0f566ff4d813ee1645a05af8b56d2f7004f1a1c08dc49e190f5a9",
+      "bytes": 1397
+    },
+    {
+      "path": "var/r28-verification/m4-patch-unaffected-boundaries.log",
+      "sha256": "df8a73287a659e691dec2f084372def87151eabddbe4674828289aa76a3dd3c9",
+      "bytes": 117
+    },
+    {
+      "path": "var/r28-verification/m4-patch-web-build-final.log",
+      "sha256": "5e190d2d7bfa6ece531beacd84244bf88a283aeafdb27a3532d3d820313f050c",
+      "bytes": 9893
+    },
+    {
+      "path": "var/r28-verification/m4-patch-web-build.log",
+      "sha256": "5cab48d92ff8219f1173413e5032f6e38c060fa5b9e6bfd08238a15a08837703",
+      "bytes": 9893
+    },
+    {
+      "path": "var/r28-verification/m4-patch-web-unit.log",
+      "sha256": "0fd858fc2a49ff376192369b41cb38e21085ae8a49537ec53c4f472fbb1c7ae9",
+      "bytes": 401
+    },
+    {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/r28-patch-release/production-browser/login-1024.png",
+      "sha256": "e0b258274ee89c0a1d537a5cedf46762b982310542a98500e7c5f383f6e8aa7d",
+      "bytes": 45354
+    },
+    {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/r28-patch-release/production-browser/login-1440.png",
+      "sha256": "50cc51a65716d325b42c62545154379195b9f4ca0ec90b1c99d866666d311e96",
+      "bytes": 49339
+    },
+    {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/r28-patch-release/production-browser/login-390.png",
+      "sha256": "b56853c4f9ff158cd590950206bb569818122872e614aee9bd74a33eddaacc0d",
+      "bytes": 37922
+    }
+  ],
+  "rawLogsCommitted": false
+}

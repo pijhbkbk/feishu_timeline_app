@@ -1,5 +1,8 @@
+import { assertApprovedTeamMember } from '../../common/team-membership';
+import { assertTeamTaskById, withProjectWrite } from '../../common/team-authorization';
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -27,7 +30,6 @@ import {
 } from '../workflows/workflow-node.constants';
 import { WorkflowsService } from '../workflows/workflows.service';
 import {
-  COLOR_EXIT_MANAGEMENT_ROLE_CODES,
   getColorExitCompletionIssue,
   getColorExitSystemSuggestion,
   getColorExitStageIssue,
@@ -55,8 +57,20 @@ const COLOR_EXIT_INCLUDE = {
       assigneeDepartment: true,
     },
   },
-  color: true,
-  replacementColor: true,
+  color: {
+    include: {
+      numberingAttachment: {
+        select: { scanStatus: true, isDeleted: true },
+      },
+    },
+  },
+  replacementColor: {
+    include: {
+      numberingAttachment: {
+        select: { scanStatus: true, isDeleted: true },
+      },
+    },
+  },
   operator: true,
 } satisfies Prisma.ColorExitInclude;
 
@@ -87,14 +101,16 @@ export class ColorExitsService {
     this.assertActorCanManage(actor);
     const input = this.parseWriteInput(rawInput);
 
-    await this.prisma.$transaction(async (tx) => {
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
       await this.projectAccessService.assertProjectAccess(
         tx,
         projectId,
         actor,
         'workflow.transition',
       );
+      const lockedTaskId = await this.lockActiveTaskForWrite(tx, actor, projectId);
       const context = await this.getContext(tx, projectId);
+      this.assertLockedContextTask(context.activeTask, lockedTaskId);
       this.assertWritableStage(context);
 
       if (context.activeRecord) {
@@ -151,14 +167,16 @@ export class ColorExitsService {
     this.assertActorCanManage(actor);
     const input = this.parseWriteInput(rawInput);
 
-    await this.prisma.$transaction(async (tx) => {
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
       await this.projectAccessService.assertProjectAccess(
         tx,
         projectId,
         actor,
         'workflow.transition',
       );
+      const lockedTaskId = await this.lockActiveTaskForWrite(tx, actor, projectId);
       const context = await this.getContext(tx, projectId);
+      this.assertLockedContextTask(context.activeTask, lockedTaskId);
       this.assertWritableStage(context);
       const record = await this.getExitRecordOrThrow(tx, projectId, exitId);
       this.assertEditableRecord(record, context.activeTask!.id);
@@ -212,14 +230,16 @@ export class ColorExitsService {
   ) {
     this.assertActorCanManage(actor);
 
-    await this.prisma.$transaction(async (tx) => {
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
       await this.projectAccessService.assertProjectAccess(
         tx,
         projectId,
         actor,
         'workflow.transition',
       );
+      const lockedTaskId = await this.lockActiveTaskForWrite(tx, actor, projectId);
       const context = await this.getContext(tx, projectId);
+      this.assertLockedContextTask(context.activeTask, lockedTaskId);
       this.assertWritableStage(context);
       const record = await this.getExitRecordOrThrow(tx, projectId, exitId);
       this.assertEditableRecord(record, context.activeTask!.id);
@@ -289,7 +309,7 @@ export class ColorExitsService {
         WorkflowAction.COMPLETE,
         actor,
         {
-          comment: '颜色退出已完成，项目流程自动结束。',
+          comment: `颜色生命周期判断已完成（${completedRecord.finalDecision}），项目流程结束。`,
           metadata: {
             colorExitId: completedRecord.id,
             colorId: completedRecord.colorId,
@@ -309,7 +329,7 @@ export class ColorExitsService {
         },
       });
 
-      if (completedRecord.colorId) {
+      if (completedRecord.colorId && completedRecord.finalDecision === ColorExitSuggestion.EXIT) {
         const colorBefore = await tx.color.findUnique({
           where: { id: completedRecord.colorId },
           select: {
@@ -361,7 +381,7 @@ export class ColorExitsService {
         targetId: projectId,
         action: 'PROJECT_COMPLETED_BY_COLOR_EXIT',
         nodeCode: COLOR_EXIT_NODE_CODE,
-        summary: '颜色退出完成，项目已收尾。',
+        summary: `颜色生命周期判断已完成（${completedRecord.finalDecision}），项目已收尾。`,
         beforeData: projectBefore satisfies Prisma.InputJsonValue,
         afterData: projectAfter satisfies Prisma.InputJsonValue,
       });
@@ -373,12 +393,50 @@ export class ColorExitsService {
         targetId: completedRecord.id,
         action: 'COLOR_EXIT_COMPLETED',
         nodeCode: COLOR_EXIT_NODE_CODE,
-        summary: '颜色退出节点已完成。',
+        summary: `颜色生命周期判断已完成（${completedRecord.finalDecision}）。`,
         afterData: this.toColorExitAuditSnapshot(completedRecord),
       });
     });
 
     return this.buildWorkspace(this.prisma, projectId);
+  }
+
+  private async lockActiveTaskForWrite(
+    tx: Prisma.TransactionClient,
+    actor: AuthenticatedUser,
+    projectId: string,
+  ) {
+    const rows = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+      SELECT "id"
+      FROM "workflow_tasks"
+      WHERE "projectId" = ${projectId}
+        AND "nodeCode" = ${COLOR_EXIT_NODE_CODE}::"WorkflowNodeCode"
+        AND "isActive" = true
+      ORDER BY "createdAt" DESC, "taskRound" DESC
+      LIMIT 1
+      FOR UPDATE
+    `);
+    const taskId = rows[0]?.id;
+    if (!taskId) {
+      throw new ConflictException({
+        code: 'DOMAIN_STAGE_CHANGED',
+        message: '颜色退出工序状态已更新，请刷新后再提交。',
+      });
+    }
+    await assertTeamTaskById(tx, taskId, actor);
+    return taskId;
+  }
+
+  private assertLockedContextTask(
+    activeTask: { id: string } | null,
+    lockedTaskId: string,
+  ) {
+    if (activeTask?.id !== lockedTaskId) {
+      throw new ConflictException({
+        code: 'DOMAIN_STAGE_CHANGED',
+        message: '颜色退出工序状态已更新，请刷新后再提交。',
+      });
+    }
   }
 
   private async buildWorkspace(db: ColorExitsDbClient, projectId: string) {
@@ -498,21 +556,7 @@ export class ColorExitsService {
   }
 
   private assertActorCanManage(actor: AuthenticatedUser) {
-    if (actor.isSystemAdmin) {
-      return;
-    }
-
-    if (
-      actor.roleCodes.some((roleCode) =>
-        COLOR_EXIT_MANAGEMENT_ROLE_CODES.includes(
-          roleCode as (typeof COLOR_EXIT_MANAGEMENT_ROLE_CODES)[number],
-        ),
-      )
-    ) {
-      return;
-    }
-
-    throw new BadRequestException('当前用户没有颜色退出权限。');
+    assertApprovedTeamMember(actor);
   }
 
   private async getProjectOrThrow(db: ColorExitsDbClient, projectId: string) {
@@ -586,6 +630,9 @@ export class ColorExitsService {
         numberedById: true,
         numberedAt: true,
         numberingAttachmentId: true,
+        numberingAttachment: {
+          select: { scanStatus: true, isDeleted: true },
+        },
       },
       orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
     });
@@ -604,6 +651,9 @@ export class ColorExitsService {
         numberedById: true,
         numberedAt: true,
         numberingAttachmentId: true,
+        numberingAttachment: {
+          select: { scanStatus: true, isDeleted: true },
+        },
       },
       orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
     });

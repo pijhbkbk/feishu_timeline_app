@@ -8,6 +8,10 @@ import cookieParser from 'cookie-parser';
 
 import { AppModule } from './app.module';
 import { createSameOriginMutationGuard } from './common/same-origin.middleware';
+import { drainWriters } from './common/graceful-shutdown';
+import { NotificationQueueService } from './modules/queue/notification-queue.service';
+import { AttachmentStorageQuotaService } from './modules/attachments/attachment-storage-quota.service';
+import { RequestDrainInterceptor } from './common/request-drain.interceptor';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -15,12 +19,13 @@ async function bootstrap() {
   const port = configService.get<number>('port') ?? 3001;
   const nodeEnv = configService.get<string>('nodeEnv') ?? process.env.NODE_ENV ?? 'development';
   const host = process.env.HOST?.trim() || (nodeEnv === 'production' ? '127.0.0.1' : '0.0.0.0');
-  const frontendUrl =
-    process.env.FRONTEND_URL?.trim() || (nodeEnv === 'production' ? '' : 'http://localhost:3000');
+  const frontendUrl = configService.get<string>('frontendUrl') ?? 'http://localhost:3000';
 
   app.setGlobalPrefix('api');
   app.use(cookieParser());
   app.use(createSameOriginMutationGuard(frontendUrl));
+  const requestDrain = new RequestDrainInterceptor();
+  app.useGlobalInterceptors(requestDrain);
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -32,17 +37,10 @@ async function bootstrap() {
     }),
   );
 
-  if (frontendUrl) {
-    app.enableCors({
-      origin: frontendUrl,
-      credentials: true,
-    });
-  } else {
-    Logger.warn(
-      'FRONTEND_URL is not configured. Production API expects same-origin requests.',
-      'Bootstrap',
-    );
-  }
+  app.enableCors({
+    origin: frontendUrl,
+    credentials: true,
+  });
 
   const swaggerConfig = new DocumentBuilder()
     .setTitle('Feishu Timeline API')
@@ -61,7 +59,25 @@ async function bootstrap() {
 
   await app.listen(port, host);
 
-  Logger.log(`API server listening on http://${host}:${port}/api`, 'Bootstrap');
+  let shuttingDown = false;
+  const shutdown = () => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    void (async () => {
+      try {
+        await drainWriters(app.getHttpServer(), [requestDrain, app.get(NotificationQueueService), app.get(AttachmentStorageQuotaService)]);
+        await app.close();
+        process.exit(0);
+      } catch {
+        Logger.error('eventType=api_shutdown result=write_drain_unverified', 'Bootstrap');
+        process.exit(1);
+      }
+    })();
+  };
+  process.on('SIGTERM', shutdown);
+  process.on('SIGINT', shutdown);
+
+  Logger.log('eventType=api_bootstrap result=listening', 'Bootstrap');
 }
 
 void bootstrap();

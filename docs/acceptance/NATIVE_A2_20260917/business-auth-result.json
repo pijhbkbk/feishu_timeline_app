@@ -1,0 +1,432 @@
+{
+  "syntheticOnly": true,
+  "mode": "auth",
+  "runtimeCommit": "6c70a897ec7643f4681616d801481765aaa8f7bc",
+  "startedAt": "2026-09-17T06:30:30.565Z",
+  "requests": [
+    {
+      "method": "GET",
+      "path": "/health",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/auth/register",
+      "status": 201
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/auth/job",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/projects",
+      "status": 403
+    },
+    {
+      "method": "GET",
+      "path": "/v2/dashboard",
+      "status": 403
+    },
+    {
+      "method": "GET",
+      "path": "/admin/organization",
+      "status": 403
+    },
+    {
+      "method": "GET",
+      "path": "/admin/tasks/export",
+      "status": 403
+    },
+    {
+      "method": "GET",
+      "path": "/auth/accounts",
+      "status": 403
+    },
+    {
+      "method": "POST",
+      "path": "/auth/accounts/another/recovery",
+      "status": 403
+    },
+    {
+      "method": "POST",
+      "path": "/auth/register",
+      "status": 201
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/auth/job",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/projects",
+      "status": 403
+    },
+    {
+      "method": "GET",
+      "path": "/v2/dashboard",
+      "status": 403
+    },
+    {
+      "method": "GET",
+      "path": "/admin/organization",
+      "status": 403
+    },
+    {
+      "method": "GET",
+      "path": "/admin/tasks/export",
+      "status": 403
+    },
+    {
+      "method": "GET",
+      "path": "/auth/accounts",
+      "status": 403
+    },
+    {
+      "method": "POST",
+      "path": "/auth/accounts/another/recovery",
+      "status": 403
+    },
+    {
+      "method": "POST",
+      "path": "/auth/register",
+      "status": 201
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/auth/job",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/projects",
+      "status": 403
+    },
+    {
+      "method": "GET",
+      "path": "/v2/dashboard",
+      "status": 403
+    },
+    {
+      "method": "GET",
+      "path": "/admin/organization",
+      "status": 403
+    },
+    {
+      "method": "GET",
+      "path": "/admin/tasks/export",
+      "status": 403
+    },
+    {
+      "method": "GET",
+      "path": "/auth/accounts",
+      "status": 403
+    },
+    {
+      "method": "POST",
+      "path": "/auth/accounts/another/recovery",
+      "status": 403
+    },
+    {
+      "method": "GET",
+      "path": "/admin/organization?tab=users&search=synthetic-a2-purchaser",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/admin/permissions",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/admin/organization/users/cmu55hn9c0002of01xhtu2aww/preview",
+      "status": 201
+    },
+    {
+      "method": "POST",
+      "path": "/admin/organization/users/cmu55hn9c0002of01xhtu2aww",
+      "status": 201
+    },
+    {
+      "method": "POST",
+      "path": "/admin/organization/users/cmu55hn9c0002of01xhtu2aww",
+      "status": 201
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/admin/organization?tab=users&search=synthetic-a2-engineer",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/admin/permissions",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/admin/organization/users/cmu55hnk10009of01rhsuzjw5/preview",
+      "status": 201
+    },
+    {
+      "method": "POST",
+      "path": "/admin/organization/users/cmu55hnk10009of01rhsuzjw5",
+      "status": 201
+    },
+    {
+      "method": "POST",
+      "path": "/admin/organization/users/cmu55hnk10009of01rhsuzjw5",
+      "status": 201
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/admin/organization?tab=users&search=synthetic-a2-outsider",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/admin/permissions",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/admin/organization/users/cmu55hntz000gof01xwdu11y2/preview",
+      "status": 201
+    },
+    {
+      "method": "POST",
+      "path": "/admin/organization/users/cmu55hntz000gof01xwdu11y2",
+      "status": 201
+    },
+    {
+      "method": "POST",
+      "path": "/admin/organization/users/cmu55hntz000gof01xwdu11y2",
+      "status": 201
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/admin/organization?tab=users&search=synthetic-a2-outsider",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/admin/users/cmu55hntz000gof01xwdu11y2/status-change",
+      "status": 201
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "status": 401
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 401
+    },
+    {
+      "method": "GET",
+      "path": "/admin/organization?tab=users&search=synthetic-a2-outsider",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/admin/users/cmu55hntz000gof01xwdu11y2/status-change",
+      "status": 201
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "status": 401
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/auth/password",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "status": 401
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 401
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/auth/accounts/cmu55hntz000gof01xwdu11y2/recovery",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "status": 401
+    },
+    {
+      "method": "POST",
+      "path": "/auth/recover",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/auth/recover",
+      "status": 401
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/auth/accounts/cmu55hliu0000of9n8na7fe0m/recovery",
+      "status": 409
+    },
+    {
+      "method": "GET",
+      "path": "/admin/organization?tab=users&search=synthetic-a2-admin",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/admin/users/cmu55hliu0000of9n8na7fe0m/status-change",
+      "status": 400
+    },
+    {
+      "method": "GET",
+      "path": "/admin/organization?tab=users&search=synthetic-a2-admin",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/admin/organization/users/cmu55hliu0000of9n8na7fe0m",
+      "status": 409
+    },
+    {
+      "method": "GET",
+      "path": "/admin/organization?tab=users&search=synthetic-a2-admin",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/auth/logout",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/auth/logout",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/auth/logout",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/auth/logout",
+      "status": 200
+    }
+  ],
+  "checks": [
+    {
+      "name": "registration-job-intent-no-grants",
+      "status": "PASS",
+      "completedAt": "2026-09-17T06:30:33.411Z"
+    },
+    {
+      "name": "administrator-grants-exact-roles",
+      "status": "PASS",
+      "completedAt": "2026-09-17T06:30:34.760Z"
+    },
+    {
+      "name": "disable-enable-old-session-not-revived",
+      "status": "PASS",
+      "completedAt": "2026-09-17T06:30:35.588Z"
+    },
+    {
+      "name": "password-change-and-one-use-admin-recovery",
+      "status": "PASS",
+      "completedAt": "2026-09-17T06:30:37.923Z"
+    },
+    {
+      "name": "last-native-administrator-protected",
+      "status": "PASS",
+      "completedAt": "2026-09-17T06:30:38.003Z"
+    }
+  ],
+  "status": "PASS",
+  "completedAt": "2026-09-17T06:30:38.004Z"
+}

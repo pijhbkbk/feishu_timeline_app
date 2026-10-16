@@ -12,7 +12,6 @@ import {
 } from 'react';
 
 import {
-  API_BASE_URL,
   apiRequest,
   type FrontendRoleCode,
   type SessionResponse,
@@ -32,8 +31,7 @@ type AuthContextValue = {
     name?: string;
     roleCodes?: FrontendRoleCode[];
   }) => Promise<void>;
-  startFeishuLogin: () => Promise<void>;
-  completeFeishuLogin: (input: { code: string; state?: string | null }) => Promise<void>;
+  loginWithPassword: (input: { username: string; password: string }) => Promise<SessionUser>;
   logout: () => Promise<void>;
 };
 
@@ -88,26 +86,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
     applySession(session);
   }
 
-  async function startFeishuLogin() {
+  async function loginWithPassword(input: { username: string; password: string }) {
     setError(null);
-    window.location.assign(`${API_BASE_URL}/auth/feishu/start`);
-  }
-
-  async function completeFeishuLogin(input: { code: string; state?: string | null }) {
-    setError(null);
-
-    await apiRequest<SessionResponse>('/auth/feishu/callback', {
-      method: 'POST',
-      body: input,
-    });
-
-    const session = await apiRequest<SessionResponse>('/auth/session');
-
-    if (!session.authenticated || !session.user) {
-      throw new Error('飞书登录完成，但系统会话未建立。请检查 Cookie 或跨域配置。');
-    }
-
+    const session = await apiRequest<SessionResponse>('/auth/login', { method: 'POST', body: input });
+    if (!session.authenticated || !session.user) throw new Error('未能建立登录会话，请重试。');
     applySession(session);
+    return session.user;
   }
 
   async function logout() {
@@ -140,8 +124,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     feishuEnabled,
     refreshSession,
     loginWithMock,
-    startFeishuLogin,
-    completeFeishuLogin,
+    loginWithPassword,
     logout,
   };
 

@@ -1,23 +1,32 @@
+import { RetiredConfigurationGuard } from '../../common/retired-configuration.guard';
 import {
   BadRequestException,
   Body,
   Controller,
+  UseGuards,
   Delete,
   Get,
   Headers,
+  Logger,
   Param,
   Patch,
   Post,
   Put,
   Query,
   Res,
+  ServiceUnavailableException,
   UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
 import { ApiCookieAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
 
+import { DownloadAdmissionInterceptor } from '../../common/download-admission.interceptor';
 import { SecureSingleFileInterceptor } from '../../common/file-upload-options';
+import {
+  closeDownloadStream,
+  createSecureDownloadStreamableFile,
+} from '../../common/secure-download-streamable-file';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { Permissions } from '../auth/permissions.decorator';
 import type { AuthenticatedUser } from '../auth/auth.types';
@@ -55,6 +64,8 @@ type UploadedBinaryFile = {
 @ApiCookieAuth('ft_session')
 @Controller('v2')
 export class R26ReadModelController {
+  private readonly logger = new Logger(R26ReadModelController.name);
+
   constructor(
     private readonly service: R26ReadModelService,
     private readonly memberAssignmentService: R26MemberAssignmentService,
@@ -131,7 +142,7 @@ export class R26ReadModelController {
     return this.progressMaterialService.getProgressHistory(taskId, actor);
   }
 
-  @Permissions('project.read')
+  @Permissions('workflow.transition')
   @ApiOperation({ summary: 'R26 Gate 3B 保存进展草稿' })
   @Put('tasks/:taskId/progress-draft')
   saveProgressDraft(
@@ -150,7 +161,7 @@ export class R26ReadModelController {
     );
   }
 
-  @Permissions('project.read')
+  @Permissions('workflow.transition')
   @ApiOperation({ summary: 'R26 Gate 3B 删除本人进展草稿' })
   @Delete('tasks/:taskId/progress-draft')
   deleteProgressDraft(
@@ -169,7 +180,7 @@ export class R26ReadModelController {
     );
   }
 
-  @Permissions('project.read')
+  @Permissions('workflow.transition')
   @ApiOperation({ summary: 'R26 Gate 3B 提交正式进展（不推进流程）' })
   @Post('tasks/:taskId/progress-updates')
   submitProgress(
@@ -188,7 +199,7 @@ export class R26ReadModelController {
     );
   }
 
-  @Permissions('project.read')
+  @Permissions('attachment.manage')
   @UseInterceptors(SecureSingleFileInterceptor('file'))
   @ApiOperation({ summary: 'R26 Gate 3B 上传工序材料 V1' })
   @Post('tasks/:taskId/materials')
@@ -210,7 +221,7 @@ export class R26ReadModelController {
     );
   }
 
-  @Permissions('project.read')
+  @Permissions('attachment.manage')
   @UseInterceptors(SecureSingleFileInterceptor('file'))
   @ApiOperation({ summary: 'R26 Gate 3B 替换工序材料并创建新版本' })
   @Post('tasks/:taskId/materials/:attachmentId/versions')
@@ -241,6 +252,13 @@ export class R26ReadModelController {
   }
 
   @Permissions('project.read')
+  @Get('tasks/:taskId/material-versions')
+  getMaterialVersions(@Param('taskId') taskId: string, @CurrentUser() actor: AuthenticatedUser, @Query('after') after?: string) {
+    return this.progressMaterialService.getMaterialVersions(taskId, actor, after);
+  }
+
+  @Permissions('project.read')
+  @UseInterceptors(DownloadAdmissionInterceptor)
   @ApiOperation({ summary: 'R26 Gate 3B 查看当前或历史材料版本' })
   @Get('tasks/:taskId/materials/:attachmentId/content')
   async getMaterialVersionContent(
@@ -248,7 +266,7 @@ export class R26ReadModelController {
     @Param('attachmentId') attachmentId: string,
     @Query('disposition') disposition: string | undefined,
     @CurrentUser() actor: AuthenticatedUser,
-    @Res() response: Response,
+    @Res({ passthrough: true }) response: Response,
   ) {
     const content =
       await this.progressMaterialService.getHistoricalMaterialContent(
@@ -257,19 +275,35 @@ export class R26ReadModelController {
         actor,
         disposition,
       );
-    response.setHeader('Content-Type', content.contentType);
-    response.setHeader('X-Content-Type-Options', 'nosniff');
-    response.setHeader('Cache-Control', 'private, no-store');
-    response.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
-    response.setHeader(
-      'Content-Security-Policy',
-      "sandbox; default-src 'none'",
-    );
-    response.setHeader(
-      'Content-Disposition',
-      `${content.disposition}; filename*=UTF-8''${encodeURIComponent(content.fileName)}`,
-    );
-    response.send(content.buffer);
+    try {
+      response.setHeader('Content-Type', content.contentType);
+      response.setHeader('X-Content-Type-Options', 'nosniff');
+      response.setHeader('Cache-Control', 'private, no-store');
+      response.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
+      response.setHeader(
+        'Content-Security-Policy',
+        "sandbox; default-src 'none'",
+      );
+      response.setHeader(
+        'Content-Disposition',
+        `${content.disposition}; filename*=UTF-8''${encodeURIComponent(content.fileName).replace(
+          /['()*]/g,
+          (character) => `%${character.charCodeAt(0).toString(16).toUpperCase()}`,
+        )}`,
+      );
+      response.setHeader('Content-Length', String(content.contentLength));
+      response.setHeader('X-Accel-Buffering', 'no');
+      return createSecureDownloadStreamableFile(
+        content.stream,
+        () => this.logger.error('eventType=material_download_stream result=terminated'),
+      );
+    } catch {
+      await closeDownloadStream(content.stream);
+      this.logger.error(
+        'eventType=material_download_response_setup result=failed',
+      );
+      throw new ServiceUnavailableException('附件内容暂不可用。');
+    }
   }
 
   @Permissions('workflow.transition')
@@ -365,6 +399,7 @@ export class R26ReadModelController {
 
   @Permissions('project.read')
   @ApiOperation({ summary: 'R26 Gate 3A 成员或分工变更影响预览（不写入）' })
+  @UseGuards(RetiredConfigurationGuard)
   @Post('projects/:projectId/assignment-preview')
   previewAssignments(
     @Param('projectId') projectId: string,
@@ -378,8 +413,9 @@ export class R26ReadModelController {
     );
   }
 
-  @Permissions('project.read')
+  @Permissions('project.write')
   @ApiOperation({ summary: 'R26 Gate 3A 添加项目成员' })
+  @UseGuards(RetiredConfigurationGuard)
   @Post('projects/:projectId/members')
   async addMember(
     @Param('projectId') projectId: string,
@@ -397,8 +433,9 @@ export class R26ReadModelController {
     return { command, workspace };
   }
 
-  @Permissions('project.read')
+  @Permissions('project.write')
   @ApiOperation({ summary: 'R26 Gate 3A 修改项目成员职责' })
+  @UseGuards(RetiredConfigurationGuard)
   @Patch('projects/:projectId/members/:userId')
   async updateMember(
     @Param('projectId') projectId: string,
@@ -418,8 +455,9 @@ export class R26ReadModelController {
     return { command, workspace };
   }
 
-  @Permissions('project.read')
+  @Permissions('project.write')
   @ApiOperation({ summary: 'R26 Gate 3A 安全移出项目成员' })
+  @UseGuards(RetiredConfigurationGuard)
   @Delete('projects/:projectId/members/:userId')
   async removeMember(
     @Param('projectId') projectId: string,
@@ -439,8 +477,9 @@ export class R26ReadModelController {
     return { command, workspace };
   }
 
-  @Permissions('project.read')
+  @Permissions('project.write')
   @ApiOperation({ summary: 'R26 Gate 3A 应用未来与未开始任务分配' })
+  @UseGuards(RetiredConfigurationGuard)
   @Post('projects/:projectId/assignments/apply')
   async applyAssignments(
     @Param('projectId') projectId: string,
@@ -458,8 +497,9 @@ export class R26ReadModelController {
     return { command, workspace };
   }
 
-  @Permissions('project.read')
+  @Permissions('project.write')
   @ApiOperation({ summary: 'R26 Gate 3A 转交单个活跃工序任务' })
+  @UseGuards(RetiredConfigurationGuard)
   @Patch('projects/:projectId/tasks/:taskId/assignment')
   async transferTask(
     @Param('projectId') projectId: string,

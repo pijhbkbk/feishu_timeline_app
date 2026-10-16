@@ -1,0 +1,16 @@
+{
+  "runtimeCommit": "f2da3629e13b2653aae8879c98992877d5ef4170",
+  "sourceDatabase": "feishu_timeline_restore_c38c57da",
+  "verificationDatabase": "feishu_timeline_restore_29589be2",
+  "sourceSchemaSha256": "6574ca8373f287ba29217f064bd3b78ce45f6c091123360d104e9e4701cb78ec",
+  "restoredSchemaSha256": "fd8912cccd930ef950fecd0d60511787786e3a3bca79c54ffeac1dfed90b1589",
+  "all52TableRowsAndContentsExact": true,
+  "allSequencesExact": true,
+  "soleSchemaDifference": "trial_production_issues_text_bounds_check: first nested AND group flattened by PostgreSQL parser; identical column casts, predicates and bounds, all other schema bytes identical",
+  "realPredicateBoundaryCombinations": 343,
+  "predicateMismatches": 0,
+  "nullAndUnicodeIncluded": true,
+  "failedRestoreRoleClosed": true,
+  "failedRestoreEvidencePreserved": true,
+  "productionChanged": false
+}

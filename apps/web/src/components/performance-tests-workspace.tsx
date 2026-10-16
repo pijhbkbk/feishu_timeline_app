@@ -133,7 +133,7 @@ export function PerformanceTestsWorkspace({
     try {
       const [workspaceResponse, users] = await Promise.all([
         fetchPerformanceTestsWorkspace(projectId),
-        fetchPerformanceTestPageOptions(),
+        fetchPerformanceTestPageOptions(projectId),
       ]);
 
       if (requestId !== requestIdRef.current) {

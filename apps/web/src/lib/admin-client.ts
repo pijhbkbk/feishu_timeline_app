@@ -30,6 +30,7 @@ export type AdminColorArchiveSummary = {
   suppliers: string[];
   projects: Array<{ id: string; code: string; name: string; status: string }>;
   firstProject: { id: string; code: string; name: string };
+  materialsHasMore: boolean;
   materialCount: number;
   coveredSteps: number;
   completenessPercent: number;

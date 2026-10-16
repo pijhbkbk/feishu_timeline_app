@@ -1,5 +1,41 @@
 # Staging 部署文档
 
+## RC2 当前合同与执行边界
+
+本节是当前 manifest 合同；下方 R09 命令说明为历史部署背景。当前仓库内 activation、rollback、legacy restore 入口保持 fail-closed，不能用本文开启部署。实际切换仍需经批准的外部 root-owned / digest-bound 控制器、明确环境和数据库/回滚授权。
+
+`scripts/deploy/release-identity.mjs` 是生成与校验的共同入口：
+
+- **Runtime manifest v1** 严格包含 `schemaVersion: 1`、`identity` 和六项 `images`。identity 为 `sourceCommit/sourceTree/release/buildTime`；images 为 `api/apiOps/web/postgres/redis/nginx`，每项包含 `imageId/repositoryDigest`。原 `validate-manifest`、`validate-approval`、`verify-evidence` 和启动/health 消费保持不变，不接受额外审计字段。
+- **Candidate evidence v1** 使用 `kind: candidate-evidence` 区分，包含相同 identity、`runtimeManifestSha256`、`parentCommit`、`targetPlatform`、`platformEvidence`、`checks`。它用于发布前审查材料一致性检查，不作为应用启动依赖，不能替代 runtime manifest。
+- `runtimeManifestSha256` 是严格校验后、由工具固定字段顺序返回的 runtime JSON 的 UTF-8 SHA-256。candidate 的外部固定摘要同样由严格规范化 JSON 计算；空格和输入键顺序不改变身份，内容变化会改变摘要。审查材料提交不修改应用 sourceCommit/sourceTree。
+- `targetPlatform` 接受 `linux/amd64`、`linux/arm64`；缺少目标环境依据时为 `null`，不得代入开发机架构。`platformEvidence` 是相对路径与原始文件 SHA-256 的引用，文件内容是六项 Docker image inspect 数组的对象。验证每个 imageId、repositoryDigest、API/API-ops/Web 的 OCI identity labels，以及全部六项 `Os/Architecture` 与目标平台相同。当前 CI 没有显式固定 CPU/platform；本次源码合同修复未生成真实镜像或实际发布 manifest。
+- `checks` 固定包含 `g3/g4Diff/g4Full/secrets/sast/sca/images`。每项为 `{status, artifact}`；状态为 `PASS/FAIL/NOT_RUN`。PASS/FAIL 必须引用实际结果文件 `{path, sha256}`；NOT_RUN 必须为 `artifact: null`。平台材料缺少时允许记录 `null`。生成器允许这样的未完成记录，完整校验拒绝它们。
+- 结果文件必须在可信且校验期间不可变的本地证据目录内，路径不得为绝对路径、包含 `..`、经过 symlink 或指向特殊文件；每项上限 16 MiB，平台 JSON 上限 1 MiB。文件摘要绑定原始字节。外部审查者仍须检查报告是否来自要求的工具、对应确切候选、结论是否成立；工具不把报告中的 PASS 声明变成组织批准或扫描执行证明。
+
+先准备 runtime manifest 和 details JSON。details 只包含 `parentCommit/targetPlatform/platformEvidence/checks`；身份及 runtime 摘要由共同生成器补入。以下是操作形式，必须先取得真实材料：
+
+```bash
+node scripts/deploy/release-identity.mjs generate-candidate-evidence \
+  --manifest runtime.json --details candidate-details.json > candidate-evidence.json
+node scripts/deploy/release-identity.mjs candidate-evidence-sha256 \
+  --evidence candidate-evidence.json
+```
+
+第二条命令只输出待审材料的内容身份。由独立、可信的审查/批准记录固定它；消费时 `--expected-evidence-sha256` 必须来自该外部记录，禁止临时从待验文件算出同值再当作已批准。消费形式：
+
+```bash
+node scripts/deploy/release-identity.mjs verify-candidate-evidence \
+  --manifest runtime.json --evidence candidate-evidence.json --evidence-root /trusted/evidence \
+  --expected-evidence-sha256 "$REVIEWED_EVIDENCE_SHA256" \
+  --expected-source-commit "$EXPECTED_SOURCE_COMMIT" --expected-source-tree "$EXPECTED_SOURCE_TREE" \
+  --expected-release "$EXPECTED_RELEASE" --expected-build-time "$EXPECTED_BUILD_TIME"
+```
+
+成功表示 identity、runtime 内容、外部摘要、七类材料和镜像平台相互一致；仍不是发布授权。无真实平台/镜像/正式扫描时保留未完成，不输出完整候选 PASS。单元和 shell 测试中的合成 manifest 只证明代码合同，不是实际环境证据。
+
+本地回归入口：`node --test scripts/deploy/tests/release-identity.test.mjs`、`bash scripts/deploy/tests/release-identity-health.test.sh`、`bash scripts/deploy/tests/security-hardening.test.sh`。
+
 ## 目标
 
 R09 的 staging 方案以 Docker Compose 为中心，提供：

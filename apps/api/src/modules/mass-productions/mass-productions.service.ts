@@ -1,5 +1,8 @@
+import { assertApprovedTeamMember } from '../../common/team-membership';
+import { assertTeamTaskById, withProjectWrite } from '../../common/team-authorization';
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -18,6 +21,7 @@ import { randomUUID } from 'node:crypto';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import type { AuthenticatedUser } from '../auth/auth.types';
+import { ProjectAccessService } from '../auth/project-access.service';
 import {
   getAllowedWorkflowActions,
   getCurrentNodeName,
@@ -32,7 +36,6 @@ import {
   getMassProductionCompletionIssue,
   getMassProductionNodeCode,
   getMassProductionStageIssue,
-  MASS_PRODUCTION_MANAGEMENT_ROLE_CODES,
 } from './mass-productions.rules';
 
 type MassProductionDbClient = Prisma.TransactionClient | PrismaService;
@@ -49,6 +52,15 @@ type MassProductionWriteInput = {
 };
 
 const MASS_PRODUCTION_NODE_CODE = getMassProductionNodeCode();
+const MASS_PRODUCTION_RECORD_LIMIT = 100;
+const MASS_PRODUCTION_MAX_PAYLOAD_BYTES = 16 * 1024;
+const MASS_PRODUCTION_ID_MAX_CHARS = 64;
+const MASS_PRODUCTION_CODE_MAX_CHARS = 64;
+const MASS_PRODUCTION_NAME_MAX_CHARS = 200;
+const MASS_PRODUCTION_NOTE_MAX_CHARS = 4_000;
+const MASS_PRODUCTION_MAX_QUANTITY = 2_147_483_647;
+const MASS_PRODUCTION_ID_PATTERN = /^[A-Za-z0-9_-]+$/;
+const MASS_PRODUCTION_CODE_PATTERN = /^[A-Za-z0-9._-]+$/;
 
 const MASS_PRODUCTION_INCLUDE = {
   owner: true,
@@ -62,9 +74,11 @@ export class MassProductionsService {
     private readonly prisma: PrismaService,
     private readonly activityLogsService: ActivityLogsService,
     private readonly workflowsService: WorkflowsService,
+    private readonly projectAccessService: ProjectAccessService,
   ) {}
 
-  getWorkspace(projectId: string) {
+  async getWorkspace(projectId: string, actor: AuthenticatedUser) {
+    await this.assertProjectAccess(projectId, actor, 'project.read');
     return this.buildWorkspace(this.prisma, projectId);
   }
 
@@ -73,12 +87,13 @@ export class MassProductionsService {
     rawInput: unknown,
     actor: AuthenticatedUser,
   ) {
+    await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     this.assertActorCanManage(actor);
     const input = this.parseWriteInput(rawInput);
 
-    await this.prisma.$transaction(async (tx) => {
-      const context = await this.getMassProductionContext(tx, projectId);
-      this.assertWritableStage(context);
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
+      const context = await this.lockActiveTaskAndGetContext(tx, actor, projectId);
+      this.assertRecordCapacity(context.items, true);
       await this.getUserOrThrow(tx, input.ownerId);
       await this.startTaskIfNeeded(tx, context.activeTask!, actor, '批量生产已开始准备。');
 
@@ -122,13 +137,14 @@ export class MassProductionsService {
     rawInput: unknown,
     actor: AuthenticatedUser,
   ) {
+    await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     this.assertActorCanManage(actor);
     const input = this.parseWriteInput(rawInput);
 
-    await this.prisma.$transaction(async (tx) => {
-      const context = await this.getMassProductionContext(tx, projectId);
-      this.assertWritableStage(context);
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
+      await this.lockRecordRow(tx, projectId, recordId);
       const record = await this.getRecordOrThrow(tx, projectId, recordId);
+      await this.lockActiveTaskAndGetContext(tx, actor, projectId);
 
       if (!canEditMassProductionRecord(record.status)) {
         throw new BadRequestException('当前批量生产记录状态不允许编辑。');
@@ -136,8 +152,14 @@ export class MassProductionsService {
 
       await this.getUserOrThrow(tx, input.ownerId);
 
-      const updatedRecord = await tx.productionPlan.update({
-        where: { id: recordId },
+      const claimed = await tx.productionPlan.updateMany({
+        where: {
+          id: recordId,
+          projectId,
+          planType: ProductionPlanType.MASS_PRODUCTION,
+          status: record.status,
+          updatedAt: record.updatedAt,
+        },
         data: {
           ownerId: input.ownerId,
           quantity: input.plannedQuantity,
@@ -148,6 +170,12 @@ export class MassProductionsService {
           batchNo: input.batchNo,
           remark: input.exceptionNote,
         },
+      });
+      if (claimed.count !== 1) {
+        this.throwStateChanged();
+      }
+      const updatedRecord = await tx.productionPlan.findUniqueOrThrow({
+        where: { id: recordId },
         include: MASS_PRODUCTION_INCLUDE,
       });
 
@@ -172,12 +200,13 @@ export class MassProductionsService {
     recordId: string,
     actor: AuthenticatedUser,
   ) {
+    await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     this.assertActorCanManage(actor);
 
-    await this.prisma.$transaction(async (tx) => {
-      const context = await this.getMassProductionContext(tx, projectId);
-      this.assertWritableStage(context);
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
+      await this.lockRecordRow(tx, projectId, recordId);
       const record = await this.getRecordOrThrow(tx, projectId, recordId);
+      const context = await this.lockActiveTaskAndGetContext(tx, actor, projectId);
 
       if (!canStartMassProductionRecord(record.status)) {
         throw new BadRequestException('当前批量生产记录状态不允许开始。');
@@ -185,12 +214,24 @@ export class MassProductionsService {
 
       await this.startTaskIfNeeded(tx, context.activeTask!, actor, '批量生产任务已开始执行。');
 
-      const startedRecord = await tx.productionPlan.update({
-        where: { id: recordId },
+      const claimed = await tx.productionPlan.updateMany({
+        where: {
+          id: recordId,
+          projectId,
+          planType: ProductionPlanType.MASS_PRODUCTION,
+          status: record.status,
+          updatedAt: record.updatedAt,
+        },
         data: {
           status: ProductionPlanStatus.IN_PROGRESS,
           actualStartAt: record.actualStartAt ?? new Date(),
         },
+      });
+      if (claimed.count !== 1) {
+        this.throwStateChanged();
+      }
+      const startedRecord = await tx.productionPlan.findUniqueOrThrow({
+        where: { id: recordId },
         include: MASS_PRODUCTION_INCLUDE,
       });
 
@@ -215,12 +256,13 @@ export class MassProductionsService {
     recordId: string,
     actor: AuthenticatedUser,
   ) {
+    await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     this.assertActorCanManage(actor);
 
-    await this.prisma.$transaction(async (tx) => {
-      const context = await this.getMassProductionContext(tx, projectId);
-      this.assertWritableStage(context);
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
+      await this.lockRecordRow(tx, projectId, recordId);
       const record = await this.getRecordOrThrow(tx, projectId, recordId);
+      await this.lockActiveTaskAndGetContext(tx, actor, projectId);
 
       if (!canCompleteMassProductionRecord(record.status)) {
         throw new BadRequestException('当前批量生产记录状态不允许完成。');
@@ -230,12 +272,24 @@ export class MassProductionsService {
         throw new BadRequestException('完成批量生产前必须填写大于 0 的实际数量。');
       }
 
-      const completedRecord = await tx.productionPlan.update({
-        where: { id: recordId },
+      const claimed = await tx.productionPlan.updateMany({
+        where: {
+          id: recordId,
+          projectId,
+          planType: ProductionPlanType.MASS_PRODUCTION,
+          status: record.status,
+          updatedAt: record.updatedAt,
+        },
         data: {
           status: ProductionPlanStatus.COMPLETED,
           actualEndAt: new Date(),
         },
+      });
+      if (claimed.count !== 1) {
+        this.throwStateChanged();
+      }
+      const completedRecord = await tx.productionPlan.findUniqueOrThrow({
+        where: { id: recordId },
         include: MASS_PRODUCTION_INCLUDE,
       });
 
@@ -260,22 +314,35 @@ export class MassProductionsService {
     recordId: string,
     actor: AuthenticatedUser,
   ) {
+    await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     this.assertActorCanManage(actor);
 
-    await this.prisma.$transaction(async (tx) => {
-      const context = await this.getMassProductionContext(tx, projectId);
-      this.assertWritableStage(context);
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
+      await this.lockRecordRow(tx, projectId, recordId);
       const record = await this.getRecordOrThrow(tx, projectId, recordId);
+      await this.lockActiveTaskAndGetContext(tx, actor, projectId);
 
       if (!canCancelMassProductionRecord(record.status)) {
         throw new BadRequestException('当前批量生产记录状态不允许取消。');
       }
 
-      const cancelledRecord = await tx.productionPlan.update({
-        where: { id: recordId },
+      const claimed = await tx.productionPlan.updateMany({
+        where: {
+          id: recordId,
+          projectId,
+          planType: ProductionPlanType.MASS_PRODUCTION,
+          status: record.status,
+          updatedAt: record.updatedAt,
+        },
         data: {
           status: ProductionPlanStatus.CANCELLED,
         },
+      });
+      if (claimed.count !== 1) {
+        this.throwStateChanged();
+      }
+      const cancelledRecord = await tx.productionPlan.findUniqueOrThrow({
+        where: { id: recordId },
         include: MASS_PRODUCTION_INCLUDE,
       });
 
@@ -296,11 +363,11 @@ export class MassProductionsService {
   }
 
   async completeTask(projectId: string, actor: AuthenticatedUser) {
+    await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     this.assertActorCanManage(actor);
 
-    await this.prisma.$transaction(async (tx) => {
-      const context = await this.getMassProductionContext(tx, projectId);
-      this.assertWritableStage(context);
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
+      const context = await this.lockActiveTaskAndGetContext(tx, actor, projectId);
 
       if (!context.activeTask) {
         throw new BadRequestException('当前没有可完成的批量生产任务。');
@@ -341,6 +408,18 @@ export class MassProductionsService {
     return this.buildWorkspace(this.prisma, projectId);
   }
 
+  private assertProjectAccess(
+    projectId: string,
+    actor: AuthenticatedUser,
+    requiredPermission: 'project.read' | 'workflow.transition',
+  ) {
+    return this.projectAccessService.assertProjectAccessWithDefaultClient(
+      projectId,
+      actor,
+      requiredPermission,
+    );
+  }
+
   private async buildWorkspace(db: MassProductionDbClient, projectId: string) {
     const project = await this.getProjectOrThrow(db, projectId);
     const [activeTask, downstreamVisualReviewTask, schedulePlanCompleted, items] =
@@ -359,8 +438,11 @@ export class MassProductionsService {
           },
           include: MASS_PRODUCTION_INCLUDE,
           orderBy: [{ createdAt: 'desc' }],
+          take: MASS_PRODUCTION_RECORD_LIMIT + 1,
         }),
       ]);
+
+    this.assertRecordCapacity(items, false);
 
     return {
       project: this.toProjectSummary(project),
@@ -396,8 +478,11 @@ export class MassProductionsService {
           id: true,
           status: true,
         },
+        take: MASS_PRODUCTION_RECORD_LIMIT + 1,
       }),
     ]);
+
+    this.assertRecordCapacity(items, false);
 
     return {
       project,
@@ -405,6 +490,60 @@ export class MassProductionsService {
       schedulePlanCompleted,
       items,
     };
+  }
+
+  private async lockActiveTaskAndGetContext(
+    tx: Prisma.TransactionClient,
+    actor: AuthenticatedUser,
+    projectId: string,
+  ) {
+    const lockedTasks = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+      SELECT "id"
+      FROM "workflow_tasks"
+      WHERE "projectId" = ${projectId}
+        AND "nodeCode" = ${MASS_PRODUCTION_NODE_CODE}::"WorkflowNodeCode"
+        AND "isActive" = true
+      ORDER BY "createdAt" DESC, "taskRound" DESC
+      LIMIT 1
+      FOR UPDATE
+    `);
+    const lockedTaskId = lockedTasks[0]?.id;
+    if (!lockedTaskId) {
+      this.throwStateChanged();
+    }
+
+    const context = await this.getMassProductionContext(tx, projectId);
+    this.assertWritableStage(context);
+    if (context.activeTask?.id !== lockedTaskId) {
+      this.throwStateChanged();
+    }
+    await assertTeamTaskById(tx, context.activeTask!.id, actor);
+    return context;
+  }
+
+  private async lockRecordRow(
+    tx: Prisma.TransactionClient,
+    projectId: string,
+    recordId: string,
+  ) {
+    const rows = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+      SELECT "id"
+      FROM "production_plans"
+      WHERE "id" = ${recordId}
+        AND "projectId" = ${projectId}
+        AND "planType" = ${ProductionPlanType.MASS_PRODUCTION}::"ProductionPlanType"
+      FOR UPDATE
+    `);
+    if (rows.length !== 1) {
+      throw new NotFoundException('批量生产记录不存在。');
+    }
+  }
+
+  private throwStateChanged(): never {
+    throw new ConflictException({
+      code: 'MASS_PRODUCTION_STATE_CHANGED',
+      message: '批量生产记录或流程状态已变更，请刷新后重试。',
+    });
   }
 
   private assertWritableStage(context: {
@@ -422,21 +561,7 @@ export class MassProductionsService {
   }
 
   private assertActorCanManage(actor: AuthenticatedUser) {
-    if (actor.isSystemAdmin) {
-      return;
-    }
-
-    if (
-      actor.roleCodes.some((roleCode) =>
-        MASS_PRODUCTION_MANAGEMENT_ROLE_CODES.includes(
-          roleCode as (typeof MASS_PRODUCTION_MANAGEMENT_ROLE_CODES)[number],
-        ),
-      )
-    ) {
-      return;
-    }
-
-    throw new BadRequestException('当前用户没有批量生产权限。');
+    assertApprovedTeamMember(actor);
   }
 
   private async getProjectOrThrow(db: MassProductionDbClient, projectId: string) {
@@ -600,18 +725,40 @@ export class MassProductionsService {
       throw new BadRequestException('生产批次不能为空。');
     }
 
-    if (!Number.isInteger(plannedQuantity) || plannedQuantity <= 0) {
-      throw new BadRequestException('计划数量必须是大于 0 的整数。');
+    if (
+      !Number.isSafeInteger(plannedQuantity) ||
+      plannedQuantity <= 0 ||
+      plannedQuantity > MASS_PRODUCTION_MAX_QUANTITY
+    ) {
+      this.throwInputOutOfBounds(
+        `计划数量必须为 1～${MASS_PRODUCTION_MAX_QUANTITY} 的整数。`,
+      );
     }
 
     if (
       actualQuantity !== null &&
-      (!Number.isInteger(actualQuantity) || actualQuantity < 0)
+      (!Number.isSafeInteger(actualQuantity) ||
+        actualQuantity < 0 ||
+        actualQuantity > MASS_PRODUCTION_MAX_QUANTITY)
     ) {
-      throw new BadRequestException('实际数量必须是大于等于 0 的整数。');
+      this.throwInputOutOfBounds(
+        `实际数量必须为 0～${MASS_PRODUCTION_MAX_QUANTITY} 的整数。`,
+      );
     }
 
-    return {
+    this.assertTextBound(workshop, '车间', MASS_PRODUCTION_NAME_MAX_CHARS);
+    this.assertTextBound(lineName, '生产线', MASS_PRODUCTION_NAME_MAX_CHARS);
+    this.assertId(ownerId, '责任人');
+    this.assertCode(batchNo, '生产批次');
+    if (exceptionNote) {
+      this.assertTextBound(
+        exceptionNote,
+        '异常说明',
+        MASS_PRODUCTION_NOTE_MAX_CHARS,
+      );
+    }
+
+    const normalized = {
       workshop,
       lineName,
       ownerId,
@@ -621,6 +768,60 @@ export class MassProductionsService {
       actualQuantity,
       productionDate: this.parseDate(input.productionDate, '生产日期'),
     };
+    if (
+      Buffer.byteLength(JSON.stringify(normalized), 'utf8') >
+      MASS_PRODUCTION_MAX_PAYLOAD_BYTES
+    ) {
+      this.throwInputOutOfBounds(
+        `批量生产记录不得超过 ${MASS_PRODUCTION_MAX_PAYLOAD_BYTES} 字节。`,
+      );
+    }
+    return normalized;
+  }
+
+  private assertRecordCapacity(items: readonly unknown[], forCreate: boolean) {
+    if (
+      items.length > MASS_PRODUCTION_RECORD_LIMIT ||
+      (forCreate && items.length >= MASS_PRODUCTION_RECORD_LIMIT)
+    ) {
+      throw new ConflictException({
+        code: 'MASS_PRODUCTION_RECORD_LIMIT_EXCEEDED',
+        message: `每个项目最多保留 ${MASS_PRODUCTION_RECORD_LIMIT} 条批量生产记录。`,
+      });
+    }
+  }
+
+  private assertTextBound(value: string, label: string, maxChars: number) {
+    if (value.length > maxChars) {
+      this.throwInputOutOfBounds(`${label}不得超过 ${maxChars} 个字符。`);
+    }
+  }
+
+  private assertId(value: string, label: string) {
+    if (
+      value.length > MASS_PRODUCTION_ID_MAX_CHARS ||
+      !MASS_PRODUCTION_ID_PATTERN.test(value)
+    ) {
+      this.throwInputOutOfBounds(`${label}标识不合法。`);
+    }
+  }
+
+  private assertCode(value: string, label: string) {
+    if (
+      value.length > MASS_PRODUCTION_CODE_MAX_CHARS ||
+      !MASS_PRODUCTION_CODE_PATTERN.test(value)
+    ) {
+      this.throwInputOutOfBounds(
+        `${label}仅允许 1～${MASS_PRODUCTION_CODE_MAX_CHARS} 位字母、数字、点、下划线或连字符。`,
+      );
+    }
+  }
+
+  private throwInputOutOfBounds(message: string): never {
+    throw new BadRequestException({
+      code: 'MASS_PRODUCTION_INPUT_OUT_OF_BOUNDS',
+      message,
+    });
   }
 
   private parseDate(value: unknown, label: string) {

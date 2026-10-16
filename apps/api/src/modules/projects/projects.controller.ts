@@ -1,5 +1,7 @@
-import { Body, Controller, Get, Param, Patch, Post, Put, Query } from '@nestjs/common';
-import { ApiCookieAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ProjectColorLinkService } from './project-color-link.service';
+import { ApprovedReportDto, ApprovedReportService } from './approved-report.service';
+import { Body, Controller, Get, Headers, Param, Patch, Post, Put, Query } from '@nestjs/common';
+import { ApiCookieAuth, ApiHeader, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { CurrentUser } from '../auth/current-user.decorator';
 import { Permissions } from '../auth/permissions.decorator';
@@ -15,7 +17,25 @@ import { ProjectsService } from './projects.service';
 @ApiCookieAuth('ft_session')
 @Controller('projects')
 export class ProjectsController {
-  constructor(private readonly projectsService: ProjectsService) {}
+  constructor(private readonly projectsService: ProjectsService, private readonly approvedReports?: ApprovedReportService, private readonly colorLinks?: ProjectColorLinkService) {}
+
+  @Permissions('project.read')
+  @Get(':projectId/color-link')
+  getColorLinkContext(@Param('projectId') projectId: string, @CurrentUser() actor: AuthenticatedUser) {
+    return this.colorLinks!.context(projectId, actor);
+  }
+
+  @Permissions('project.write')
+  @Post(':projectId/color-link')
+  linkColor(@Param('projectId') projectId: string, @Body() body: unknown, @CurrentUser() actor: AuthenticatedUser) {
+    return this.colorLinks!.link(projectId, body, actor);
+  }
+
+  @Permissions('project.write')
+  @Post(':projectId/approved-report')
+  registerApprovedReport(@Param('projectId') projectId: string, @Body() body: ApprovedReportDto, @CurrentUser() actor: AuthenticatedUser) {
+    return this.approvedReports!.register(projectId, body, actor);
+  }
 
   @Permissions('project.read')
   @ApiOperation({ summary: '获取项目列表' })
@@ -69,10 +89,19 @@ export class ProjectsController {
     summary: '创建项目',
     description: '项目编号未传入时由服务端生成；项目创建后由服务端初始化流程实例。',
   })
+  @ApiHeader({
+    name: 'Idempotency-Key',
+    required: true,
+    description: '每次显式创建尝试使用一个新的 1-128 位安全幂等键；网络重试复用原键。',
+  })
   @Roles('admin', 'project_manager')
   @Post()
-  createProject(@Body() body: CreateProjectDto, @CurrentUser() actor: AuthenticatedUser) {
-    return this.projectsService.createProject(body, actor);
+  createProject(
+    @Body() body: CreateProjectDto,
+    @CurrentUser() actor: AuthenticatedUser,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+  ) {
+    return this.projectsService.createProject(body, actor, idempotencyKey);
   }
 
   @Permissions('project.write')
@@ -92,8 +121,9 @@ export class ProjectsController {
 
   @Permissions('project.write')
   @ApiOperation({
-    summary: '替换项目成员',
-    description: '该接口会整体替换当前成员列表，而不是增量追加。',
+    summary: '已停用：替换项目成员',
+    description: '成员变更必须使用 /api/v2/projects/:projectId/members 的版本化命令接口。',
+    deprecated: true,
   })
   @Roles('admin', 'project_manager')
   @Put(':projectId/members')

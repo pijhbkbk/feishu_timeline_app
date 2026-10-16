@@ -2,7 +2,7 @@ import 'reflect-metadata';
 
 import { describe, expect, it } from 'vitest';
 
-import { ROLE_METADATA_KEY } from '../auth/auth.constants';
+import { PERMISSION_METADATA_KEY, ROLE_METADATA_KEY } from '../auth/auth.constants';
 import { SuppliersController } from './suppliers.controller';
 
 describe('SuppliersController RBAC metadata', () => {
@@ -23,6 +23,15 @@ describe('SuppliersController RBAC metadata', () => {
       'admin',
       'project_manager',
       'purchaser',
+    ]);
+    expect(Reflect.getMetadata(PERMISSION_METADATA_KEY, prototype.listSuppliers)).toEqual([
+      'project.read',
+    ]);
+    expect(Reflect.getMetadata(PERMISSION_METADATA_KEY, prototype.createSupplier)).toEqual([
+      'workflow.transition',
+    ]);
+    expect(Reflect.getMetadata(PERMISSION_METADATA_KEY, prototype.updateSupplier)).toEqual([
+      'workflow.transition',
     ]);
   });
 });

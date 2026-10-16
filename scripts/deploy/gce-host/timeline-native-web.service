@@ -1,0 +1,22 @@
+[Unit]
+Description=Native account application web
+Requires=timeline-native-cutover-recover.service timeline-native-network.service docker.service
+After=timeline-native-cutover-recover.service timeline-native-network.service docker.service
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 -I /usr/local/lib/timeline-native-ops/native_runtime_app.py start web
+ExecStop=/usr/bin/python3 -I /usr/local/lib/timeline-native-ops/native_runtime_app.py stop web
+ExecStopPost=/usr/bin/python3 -I /usr/local/lib/timeline-native-ops/native_runtime_app.py stop web
+Restart=on-failure
+RestartSec=10
+UMask=0077
+TimeoutStopSec=60
+MemoryMax=128M
+TasksMax=64
+KillMode=control-group
+
+[Install]
+WantedBy=multi-user.target

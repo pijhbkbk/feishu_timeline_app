@@ -1,0 +1,2736 @@
+{
+  "method": "Independent Python stdlib ZIP/XML plus Pillow image verify; no ExcelJS/application parser, no edits, no office UI compatibility claim",
+  "files": [
+    {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/person-evidence/1791875967743046000/results/person-Ordinary-worker-lin-1bb7c-ority-or-historical-records/linked-profile.xlsx",
+      "bytes": 8652,
+      "sha256": "279800786a06519e4f63c3a0a0603d4e9add0d32f9c15ea77460a7f744e93653",
+      "zipEntryCount": 18,
+      "expandedBytes": 20717,
+      "sheets": [
+        {
+          "name": "人员库",
+          "state": "visible",
+          "part": "xl/worksheets/sheet1.xml",
+          "dimension": "A1:M2",
+          "populatedRows": 2,
+          "cells": 22,
+          "header": {
+            "A1": "记录ID",
+            "B1": "记录版本",
+            "C1": "姓名",
+            "D1": "部门",
+            "E1": "岗位说明",
+            "F1": "电话",
+            "G1": "邮箱",
+            "H1": "启用状态",
+            "I1": "关联账号",
+            "J1": "业务资格",
+            "K1": "备注",
+            "L1": "照片",
+            "M1": "导入来源"
+          },
+          "hiddenColumns": [
+            {
+              "min": "1",
+              "max": "1"
+            },
+            {
+              "min": "2",
+              "max": "2"
+            }
+          ],
+          "formulaCells": 0,
+          "duplicateNonemptyFirstColumnValues": 0
+        },
+        {
+          "name": "_业务模板",
+          "state": "veryHidden",
+          "part": "xl/worksheets/sheet2.xml",
+          "dimension": "A1:B2",
+          "populatedRows": 2,
+          "cells": 3,
+          "header": {
+            "A1": "LIGHT_TRUCK_BUSINESS_SHEET_V1",
+            "B1": "personnel"
+          },
+          "hiddenColumns": [],
+          "formulaCells": 0,
+          "duplicateNonemptyFirstColumnValues": 0
+        },
+        {
+          "name": "_业务图片",
+          "state": "veryHidden",
+          "part": "xl/worksheets/sheet3.xml",
+          "dimension": "A1:C1",
+          "populatedRows": 1,
+          "cells": 3,
+          "header": {
+            "A1": "imageId",
+            "B1": "recordId",
+            "C1": "sha256"
+          },
+          "hiddenColumns": [],
+          "formulaCells": 0,
+          "duplicateNonemptyFirstColumnValues": 0
+        }
+      ],
+      "mediaCount": 0,
+      "drawingPictureCount": 0,
+      "media": [],
+      "pictures": [],
+      "imageMetadata": [],
+      "allMetadataHashesPresent": true,
+      "externalRelations": 0,
+      "specialImageParts": []
+    },
+    {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/person-evidence/1791875967743046000/results/person-Ordinary-worker-lin-1bb7c-ority-or-historical-records/linked-readonly-import.xlsx",
+      "bytes": 8745,
+      "sha256": "4c0ddfc4db25db363a522b5f6d28df63ca18cc2a76da923ce7d67489a8299202",
+      "zipEntryCount": 18,
+      "expandedBytes": 20926,
+      "sheets": [
+        {
+          "name": "人员库",
+          "state": "visible",
+          "part": "xl/worksheets/sheet1.xml",
+          "dimension": "A1:M2",
+          "populatedRows": 2,
+          "cells": 22,
+          "header": {
+            "A1": "记录ID",
+            "B1": "记录版本",
+            "C1": "姓名",
+            "D1": "部门",
+            "E1": "岗位说明",
+            "F1": "电话",
+            "G1": "邮箱",
+            "H1": "启用状态",
+            "I1": "关联账号",
+            "J1": "业务资格",
+            "K1": "备注",
+            "L1": "照片",
+            "M1": "导入来源"
+          },
+          "hiddenColumns": [
+            {
+              "min": "1",
+              "max": "1"
+            },
+            {
+              "min": "2",
+              "max": "2"
+            }
+          ],
+          "formulaCells": 0,
+          "duplicateNonemptyFirstColumnValues": 0
+        },
+        {
+          "name": "_业务模板",
+          "state": "veryHidden",
+          "part": "xl/worksheets/sheet2.xml",
+          "dimension": "A1:B2",
+          "populatedRows": 2,
+          "cells": 3,
+          "header": {
+            "A1": "LIGHT_TRUCK_BUSINESS_SHEET_V1",
+            "B1": "personnel"
+          },
+          "hiddenColumns": [],
+          "formulaCells": 0,
+          "duplicateNonemptyFirstColumnValues": 0
+        },
+        {
+          "name": "_业务图片",
+          "state": "veryHidden",
+          "part": "xl/worksheets/sheet3.xml",
+          "dimension": "A1:C1",
+          "populatedRows": 1,
+          "cells": 3,
+          "header": {
+            "A1": "imageId",
+            "B1": "recordId",
+            "C1": "sha256"
+          },
+          "hiddenColumns": [],
+          "formulaCells": 0,
+          "duplicateNonemptyFirstColumnValues": 0
+        }
+      ],
+      "mediaCount": 0,
+      "drawingPictureCount": 0,
+      "media": [],
+      "pictures": [],
+      "imageMetadata": [],
+      "allMetadataHashesPresent": true,
+      "externalRelations": 0,
+      "specialImageParts": []
+    },
+    {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/person-evidence/1791875967743046000/results/person-Ordinary-worker-two-95b3b--update-and-unlinked-import/people-before.xlsx",
+      "bytes": 8734,
+      "sha256": "55f58d8eaefc4d2516714b45c5e38ee2014287b8d4bed99d7a5d003809b76049",
+      "zipEntryCount": 18,
+      "expandedBytes": 21202,
+      "sheets": [
+        {
+          "name": "人员库",
+          "state": "visible",
+          "part": "xl/worksheets/sheet1.xml",
+          "dimension": "A1:M3",
+          "populatedRows": 3,
+          "cells": 31,
+          "header": {
+            "A1": "记录ID",
+            "B1": "记录版本",
+            "C1": "姓名",
+            "D1": "部门",
+            "E1": "岗位说明",
+            "F1": "电话",
+            "G1": "邮箱",
+            "H1": "启用状态",
+            "I1": "关联账号",
+            "J1": "业务资格",
+            "K1": "备注",
+            "L1": "照片",
+            "M1": "导入来源"
+          },
+          "hiddenColumns": [
+            {
+              "min": "1",
+              "max": "1"
+            },
+            {
+              "min": "2",
+              "max": "2"
+            }
+          ],
+          "formulaCells": 0,
+          "duplicateNonemptyFirstColumnValues": 0
+        },
+        {
+          "name": "_业务模板",
+          "state": "veryHidden",
+          "part": "xl/worksheets/sheet2.xml",
+          "dimension": "A1:B2",
+          "populatedRows": 2,
+          "cells": 3,
+          "header": {
+            "A1": "LIGHT_TRUCK_BUSINESS_SHEET_V1",
+            "B1": "personnel"
+          },
+          "hiddenColumns": [],
+          "formulaCells": 0,
+          "duplicateNonemptyFirstColumnValues": 0
+        },
+        {
+          "name": "_业务图片",
+          "state": "veryHidden",
+          "part": "xl/worksheets/sheet3.xml",
+          "dimension": "A1:C1",
+          "populatedRows": 1,
+          "cells": 3,
+          "header": {
+            "A1": "imageId",
+            "B1": "recordId",
+            "C1": "sha256"
+          },
+          "hiddenColumns": [],
+          "formulaCells": 0,
+          "duplicateNonemptyFirstColumnValues": 0
+        }
+      ],
+      "mediaCount": 0,
+      "drawingPictureCount": 0,
+      "media": [],
+      "pictures": [],
+      "imageMetadata": [],
+      "allMetadataHashesPresent": true,
+      "externalRelations": 0,
+      "specialImageParts": []
+    },
+    {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/person-evidence/1791875967743046000/results/person-Ordinary-worker-two-95b3b--update-and-unlinked-import/people-new-source.xlsx",
+      "bytes": 6593,
+      "sha256": "3859459ee01113fcb264fa288a400c97e1619e1ac0712aa0000adb12c2ef17bf",
+      "zipEntryCount": 16,
+      "expandedBytes": 15637,
+      "sheets": [
+        {
+          "name": "人员",
+          "state": "visible",
+          "part": "xl/worksheets/sheet1.xml",
+          "dimension": "A1:C2",
+          "populatedRows": 2,
+          "cells": 6,
+          "header": {
+            "A1": "姓名",
+            "B1": "部门",
+            "C1": "岗位说明"
+          },
+          "hiddenColumns": [],
+          "formulaCells": 0,
+          "duplicateNonemptyFirstColumnValues": 0
+        }
+      ],
+      "mediaCount": 0,
+      "drawingPictureCount": 0,
+      "media": [],
+      "pictures": [],
+      "imageMetadata": [],
+      "allMetadataHashesPresent": true,
+      "externalRelations": 0,
+      "specialImageParts": []
+    },
+    {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/person-evidence/1791875967743046000/results/person-Ordinary-worker-two-95b3b--update-and-unlinked-import/people-update-by-id.xlsx",
+      "bytes": 8822,
+      "sha256": "d82bbdd8805090874345a000817ffd991985ab185b95f2beaf6fd68b9f5b9da1",
+      "zipEntryCount": 18,
+      "expandedBytes": 21398,
+      "sheets": [
+        {
+          "name": "人员库",
+          "state": "visible",
+          "part": "xl/worksheets/sheet1.xml",
+          "dimension": "A1:M3",
+          "populatedRows": 3,
+          "cells": 31,
+          "header": {
+            "A1": "记录ID",
+            "B1": "记录版本",
+            "C1": "姓名",
+            "D1": "部门",
+            "E1": "岗位说明",
+            "F1": "电话",
+            "G1": "邮箱",
+            "H1": "启用状态",
+            "I1": "关联账号",
+            "J1": "业务资格",
+            "K1": "备注",
+            "L1": "照片",
+            "M1": "导入来源"
+          },
+          "hiddenColumns": [
+            {
+              "min": "1",
+              "max": "1"
+            },
+            {
+              "min": "2",
+              "max": "2"
+            }
+          ],
+          "formulaCells": 0,
+          "duplicateNonemptyFirstColumnValues": 0
+        },
+        {
+          "name": "_业务模板",
+          "state": "veryHidden",
+          "part": "xl/worksheets/sheet2.xml",
+          "dimension": "A1:B2",
+          "populatedRows": 2,
+          "cells": 3,
+          "header": {
+            "A1": "LIGHT_TRUCK_BUSINESS_SHEET_V1",
+            "B1": "personnel"
+          },
+          "hiddenColumns": [],
+          "formulaCells": 0,
+          "duplicateNonemptyFirstColumnValues": 0
+        },
+        {
+          "name": "_业务图片",
+          "state": "veryHidden",
+          "part": "xl/worksheets/sheet3.xml",
+          "dimension": "A1:C1",
+          "populatedRows": 1,
+          "cells": 3,
+          "header": {
+            "A1": "imageId",
+            "B1": "recordId",
+            "C1": "sha256"
+          },
+          "hiddenColumns": [],
+          "formulaCells": 0,
+          "duplicateNonemptyFirstColumnValues": 0
+        }
+      ],
+      "mediaCount": 0,
+      "drawingPictureCount": 0,
+      "media": [],
+      "pictures": [],
+      "imageMetadata": [],
+      "allMetadataHashesPresent": true,
+      "externalRelations": 0,
+      "specialImageParts": []
+    },
+    {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/production-evidence/1791876002772823000/results/production-Ordinary-member-4f16a-o-and-image-XLSX-round-trip/duplicate-unknown-total.xlsx",
+      "bytes": 6730,
+      "sha256": "78b454ea29f3d3df2f9343ec367356edd0bc06f21732e422a4eaaf6bb5777709",
+      "zipEntryCount": 16,
+      "expandedBytes": 16402,
+      "sheets": [
+        {
+          "name": "错误来源",
+          "state": "visible",
+          "part": "xl/worksheets/sheet1.xml",
+          "dimension": "A1:E5",
+          "populatedRows": 5,
+          "cells": 25,
+          "header": {
+            "A1": "颜色记录ID",
+            "B1": "基地ID",
+            "C1": "业务月份",
+            "D1": "实际总量",
+            "E1": "行类型"
+          },
+          "hiddenColumns": [],
+          "formulaCells": 0,
+          "duplicateNonemptyFirstColumnValues": 2
+        }
+      ],
+      "mediaCount": 0,
+      "drawingPictureCount": 0,
+      "media": [],
+      "pictures": [],
+      "imageMetadata": [],
+      "allMetadataHashesPresent": true,
+      "externalRelations": 0,
+      "specialImageParts": []
+    },
+    {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/production-evidence/1791876002772823000/results/production-Ordinary-member-4f16a-o-and-image-XLSX-round-trip/monthly-after-import-with-image.xlsx",
+      "bytes": 11291,
+      "sha256": "c583c50d03ec2e46311ccf2e6466b445c483f4cc52d73e42671330645c461570",
+      "zipEntryCount": 27,
+      "expandedBytes": 25172,
+      "sheets": [
+        {
+          "name": "月度产量",
+          "state": "visible",
+          "part": "xl/worksheets/sheet1.xml",
+          "dimension": "A1:K4",
+          "populatedRows": 4,
+          "cells": 35,
+          "header": {
+            "A1": "记录ID",
+            "B1": "记录版本",
+            "C1": "业务月份",
+            "D1": "生产基地",
+            "E1": "颜色名称",
+            "F1": "颜色编号",
+            "G1": "实际总量",
+            "H1": "单位",
+            "I1": "统计口径",
+            "J1": "照片",
+            "K1": "导入来源"
+          },
+          "hiddenColumns": [
+            {
+              "min": "1",
+              "max": "1"
+            },
+            {
+              "min": "2",
+              "max": "2"
+            }
+          ],
+          "formulaCells": 0,
+          "duplicateNonemptyFirstColumnValues": 0
+        },
+        {
+          "name": "_业务模板",
+          "state": "veryHidden",
+          "part": "xl/worksheets/sheet2.xml",
+          "dimension": "A1:B2",
+          "populatedRows": 2,
+          "cells": 3,
+          "header": {
+            "A1": "LIGHT_TRUCK_BUSINESS_SHEET_V1",
+            "B1": "production"
+          },
+          "hiddenColumns": [],
+          "formulaCells": 0,
+          "duplicateNonemptyFirstColumnValues": 0
+        },
+        {
+          "name": "_业务图片",
+          "state": "veryHidden",
+          "part": "xl/worksheets/sheet3.xml",
+          "dimension": "A1:C3",
+          "populatedRows": 3,
+          "cells": 9,
+          "header": {
+            "A1": "imageId",
+            "B1": "recordId",
+            "C1": "sha256"
+          },
+          "hiddenColumns": [],
+          "formulaCells": 0,
+          "duplicateNonemptyFirstColumnValues": 0
+        }
+      ],
+      "mediaCount": 2,
+      "drawingPictureCount": 2,
+      "media": [
+        {
+          "part": "xl/media/image1.png",
+          "bytes": 102,
+          "sha256": "6479d6c2f6641422108ce6fb3de476f30c44b38a80761b4ad718900979f9d780",
+          "format": "PNG",
+          "width": 16,
+          "height": 16,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image2.jpeg",
+          "bytes": 278,
+          "sha256": "55031a3e296481d7292e35a056dbaee719022a6692b6a9e970faaa0912b29185",
+          "format": "JPEG",
+          "width": 48,
+          "height": 32,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        }
+      ],
+      "pictures": [
+        {
+          "sheet": "月度产量",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image1.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "9",
+              "colOff": "38100",
+              "row": "1",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "月度产量",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image2.jpeg",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "9",
+              "colOff": "38100",
+              "row": "2",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        }
+      ],
+      "imageMetadata": [
+        {
+          "imageId": "2d1d5d0d-b8d2-4ae1-a454-685b6ad2c9b3",
+          "recordId": "cmv6cpjz1008h9k2y0x9zm7nw",
+          "sha256": "6479d6c2f6641422108ce6fb3de476f30c44b38a80761b4ad718900979f9d780"
+        },
+        {
+          "imageId": "62e3382c-a70c-4670-9859-8a68a774d91f",
+          "recordId": "cmv6cpk7r008n9k2yth3yab5h",
+          "sha256": "55031a3e296481d7292e35a056dbaee719022a6692b6a9e970faaa0912b29185"
+        }
+      ],
+      "allMetadataHashesPresent": true,
+      "externalRelations": 0,
+      "specialImageParts": []
+    },
+    {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/production-evidence/1791876002772823000/results/production-Ordinary-member-4f16a-o-and-image-XLSX-round-trip/monthly-before-import.xlsx",
+      "bytes": 8759,
+      "sha256": "c289557f29013c33c6def8b413d56b634f24942e700c9ea8b6247090d5375bca",
+      "zipEntryCount": 18,
+      "expandedBytes": 21262,
+      "sheets": [
+        {
+          "name": "月度产量",
+          "state": "visible",
+          "part": "xl/worksheets/sheet1.xml",
+          "dimension": "A1:K4",
+          "populatedRows": 4,
+          "cells": 35,
+          "header": {
+            "A1": "记录ID",
+            "B1": "记录版本",
+            "C1": "业务月份",
+            "D1": "生产基地",
+            "E1": "颜色名称",
+            "F1": "颜色编号",
+            "G1": "实际总量",
+            "H1": "单位",
+            "I1": "统计口径",
+            "J1": "照片",
+            "K1": "导入来源"
+          },
+          "hiddenColumns": [
+            {
+              "min": "1",
+              "max": "1"
+            },
+            {
+              "min": "2",
+              "max": "2"
+            }
+          ],
+          "formulaCells": 0,
+          "duplicateNonemptyFirstColumnValues": 0
+        },
+        {
+          "name": "_业务模板",
+          "state": "veryHidden",
+          "part": "xl/worksheets/sheet2.xml",
+          "dimension": "A1:B2",
+          "populatedRows": 2,
+          "cells": 3,
+          "header": {
+            "A1": "LIGHT_TRUCK_BUSINESS_SHEET_V1",
+            "B1": "production"
+          },
+          "hiddenColumns": [],
+          "formulaCells": 0,
+          "duplicateNonemptyFirstColumnValues": 0
+        },
+        {
+          "name": "_业务图片",
+          "state": "veryHidden",
+          "part": "xl/worksheets/sheet3.xml",
+          "dimension": "A1:C1",
+          "populatedRows": 1,
+          "cells": 3,
+          "header": {
+            "A1": "imageId",
+            "B1": "recordId",
+            "C1": "sha256"
+          },
+          "hiddenColumns": [],
+          "formulaCells": 0,
+          "duplicateNonemptyFirstColumnValues": 0
+        }
+      ],
+      "mediaCount": 0,
+      "drawingPictureCount": 0,
+      "media": [],
+      "pictures": [],
+      "imageMetadata": [],
+      "allMetadataHashesPresent": true,
+      "externalRelations": 0,
+      "specialImageParts": []
+    },
+    {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/production-evidence/1791876002772823000/results/production-Ordinary-member-4f16a-o-and-image-XLSX-round-trip/monthly-cross-row-png-pending-owner.xlsx",
+      "bytes": 11947,
+      "sha256": "2e48212a8989423b115d7b67264906f8c7f4a1c269e7a6f2338a1ed07df7b9b9",
+      "zipEntryCount": 28,
+      "expandedBytes": 27001,
+      "sheets": [
+        {
+          "name": "月度产量",
+          "state": "visible",
+          "part": "xl/worksheets/sheet1.xml",
+          "dimension": "A1:K4",
+          "populatedRows": 4,
+          "cells": 35,
+          "header": {
+            "A1": "记录ID",
+            "B1": "记录版本",
+            "C1": "业务月份",
+            "D1": "生产基地",
+            "E1": "颜色名称",
+            "F1": "颜色编号",
+            "G1": "实际总量",
+            "H1": "单位",
+            "I1": "统计口径",
+            "J1": "照片",
+            "K1": "导入来源"
+          },
+          "hiddenColumns": [
+            {
+              "min": "1",
+              "max": "1"
+            },
+            {
+              "min": "2",
+              "max": "2"
+            }
+          ],
+          "formulaCells": 0,
+          "duplicateNonemptyFirstColumnValues": 0
+        },
+        {
+          "name": "_业务模板",
+          "state": "veryHidden",
+          "part": "xl/worksheets/sheet2.xml",
+          "dimension": "A1:B2",
+          "populatedRows": 2,
+          "cells": 3,
+          "header": {
+            "A1": "LIGHT_TRUCK_BUSINESS_SHEET_V1",
+            "B1": "production"
+          },
+          "hiddenColumns": [],
+          "formulaCells": 0,
+          "duplicateNonemptyFirstColumnValues": 0
+        },
+        {
+          "name": "_业务图片",
+          "state": "veryHidden",
+          "part": "xl/worksheets/sheet3.xml",
+          "dimension": "A1:C3",
+          "populatedRows": 3,
+          "cells": 9,
+          "header": {
+            "A1": "imageId",
+            "B1": "recordId",
+            "C1": "sha256"
+          },
+          "hiddenColumns": [],
+          "formulaCells": 0,
+          "duplicateNonemptyFirstColumnValues": 0
+        }
+      ],
+      "mediaCount": 3,
+      "drawingPictureCount": 3,
+      "media": [
+        {
+          "part": "xl/media/image1.png",
+          "bytes": 102,
+          "sha256": "6479d6c2f6641422108ce6fb3de476f30c44b38a80761b4ad718900979f9d780",
+          "format": "PNG",
+          "width": 16,
+          "height": 16,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image2.jpeg",
+          "bytes": 278,
+          "sha256": "55031a3e296481d7292e35a056dbaee719022a6692b6a9e970faaa0912b29185",
+          "format": "JPEG",
+          "width": 48,
+          "height": 32,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image3.png",
+          "bytes": 530,
+          "sha256": "771c915d2c681d94c6d19c9fe59276606ac2bc72bab8fbd7ae94be0199cf8caa",
+          "format": "PNG",
+          "width": 96,
+          "height": 180,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        }
+      ],
+      "pictures": [
+        {
+          "sheet": "月度产量",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image1.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "9",
+              "colOff": "38100",
+              "row": "1",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "月度产量",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image2.jpeg",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "9",
+              "colOff": "38100",
+              "row": "2",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "月度产量",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "twoCellAnchor",
+          "media": "xl/media/image3.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "9",
+              "colOff": "0",
+              "row": "1",
+              "rowOff": "0"
+            },
+            "to": {
+              "col": "10",
+              "colOff": "0",
+              "row": "3",
+              "rowOff": "0"
+            }
+          }
+        }
+      ],
+      "imageMetadata": [
+        {
+          "imageId": "2d1d5d0d-b8d2-4ae1-a454-685b6ad2c9b3",
+          "recordId": "cmv6cpjz1008h9k2y0x9zm7nw",
+          "sha256": "6479d6c2f6641422108ce6fb3de476f30c44b38a80761b4ad718900979f9d780"
+        },
+        {
+          "imageId": "62e3382c-a70c-4670-9859-8a68a774d91f",
+          "recordId": "cmv6cpk7r008n9k2yth3yab5h",
+          "sha256": "55031a3e296481d7292e35a056dbaee719022a6692b6a9e970faaa0912b29185"
+        }
+      ],
+      "allMetadataHashesPresent": true,
+      "externalRelations": 0,
+      "specialImageParts": []
+    },
+    {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/production-evidence/1791876002772823000/results/production-Ordinary-member-4f16a-o-and-image-XLSX-round-trip/monthly-update-with-image.xlsx",
+      "bytes": 11162,
+      "sha256": "3fbda851dec41d7cad092471b384c933ea41d9a6e95c95f5fd0c3547f0d5e006",
+      "zipEntryCount": 27,
+      "expandedBytes": 24811,
+      "sheets": [
+        {
+          "name": "月度产量",
+          "state": "visible",
+          "part": "xl/worksheets/sheet1.xml",
+          "dimension": "A1:K4",
+          "populatedRows": 4,
+          "cells": 35,
+          "header": {
+            "A1": "记录ID",
+            "B1": "记录版本",
+            "C1": "业务月份",
+            "D1": "生产基地",
+            "E1": "颜色名称",
+            "F1": "颜色编号",
+            "G1": "实际总量",
+            "H1": "单位",
+            "I1": "统计口径",
+            "J1": "照片",
+            "K1": "导入来源"
+          },
+          "hiddenColumns": [
+            {
+              "min": "1",
+              "max": "1"
+            },
+            {
+              "min": "2",
+              "max": "2"
+            }
+          ],
+          "formulaCells": 0,
+          "duplicateNonemptyFirstColumnValues": 0
+        },
+        {
+          "name": "_业务模板",
+          "state": "veryHidden",
+          "part": "xl/worksheets/sheet2.xml",
+          "dimension": "A1:B2",
+          "populatedRows": 2,
+          "cells": 3,
+          "header": {
+            "A1": "LIGHT_TRUCK_BUSINESS_SHEET_V1",
+            "B1": "production"
+          },
+          "hiddenColumns": [],
+          "formulaCells": 0,
+          "duplicateNonemptyFirstColumnValues": 0
+        },
+        {
+          "name": "_业务图片",
+          "state": "veryHidden",
+          "part": "xl/worksheets/sheet3.xml",
+          "dimension": "A1:C1",
+          "populatedRows": 1,
+          "cells": 3,
+          "header": {
+            "A1": "imageId",
+            "B1": "recordId",
+            "C1": "sha256"
+          },
+          "hiddenColumns": [],
+          "formulaCells": 0,
+          "duplicateNonemptyFirstColumnValues": 0
+        }
+      ],
+      "mediaCount": 2,
+      "drawingPictureCount": 2,
+      "media": [
+        {
+          "part": "xl/media/image1.png",
+          "bytes": 102,
+          "sha256": "6479d6c2f6641422108ce6fb3de476f30c44b38a80761b4ad718900979f9d780",
+          "format": "PNG",
+          "width": 16,
+          "height": 16,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image2.jpeg",
+          "bytes": 278,
+          "sha256": "55031a3e296481d7292e35a056dbaee719022a6692b6a9e970faaa0912b29185",
+          "format": "JPEG",
+          "width": 48,
+          "height": 32,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        }
+      ],
+      "pictures": [
+        {
+          "sheet": "月度产量",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image1.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "9",
+              "colOff": "0",
+              "row": "1",
+              "rowOff": "0"
+            },
+            "ext": {
+              "cx": "381000",
+              "cy": "285750"
+            }
+          }
+        },
+        {
+          "sheet": "月度产量",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image2.jpeg",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "9",
+              "colOff": "0",
+              "row": "2",
+              "rowOff": "0"
+            },
+            "ext": {
+              "cx": "381000",
+              "cy": "285750"
+            }
+          }
+        }
+      ],
+      "imageMetadata": [],
+      "allMetadataHashesPresent": true,
+      "externalRelations": 0,
+      "specialImageParts": []
+    },
+    {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/production-evidence/1791876019800970000/results/production-Cross-file-prod-a775d--40-and-60-from-later-files/source-A-month-total-100.xlsx",
+      "bytes": 6645,
+      "sha256": "6682ec3f374587a3f3419566823244d84971b1f2e7f8c907971549c8dd8e8d81",
+      "zipEntryCount": 16,
+      "expandedBytes": 15788,
+      "sheets": [
+        {
+          "name": "A全月总量",
+          "state": "visible",
+          "part": "xl/worksheets/sheet1.xml",
+          "dimension": "A1:E2",
+          "populatedRows": 2,
+          "cells": 10,
+          "header": {
+            "A1": "颜色记录ID",
+            "B1": "基地ID",
+            "C1": "业务月份",
+            "D1": "实际总量",
+            "E1": "行类型"
+          },
+          "hiddenColumns": [],
+          "formulaCells": 0,
+          "duplicateNonemptyFirstColumnValues": 0
+        }
+      ],
+      "mediaCount": 0,
+      "drawingPictureCount": 0,
+      "media": [],
+      "pictures": [],
+      "imageMetadata": [],
+      "allMetadataHashesPresent": true,
+      "externalRelations": 0,
+      "specialImageParts": []
+    },
+    {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/production-evidence/1791876019800970000/results/production-Cross-file-prod-a775d--40-and-60-from-later-files/source-B-covered-details-40-60.xlsx",
+      "bytes": 6669,
+      "sha256": "925e2318237dc20116eb666b0ecb058f634b042e4effc01163ea1737d1752bfc",
+      "zipEntryCount": 16,
+      "expandedBytes": 15976,
+      "sheets": [
+        {
+          "name": "B同范围明细",
+          "state": "visible",
+          "part": "xl/worksheets/sheet1.xml",
+          "dimension": "A1:E3",
+          "populatedRows": 3,
+          "cells": 15,
+          "header": {
+            "A1": "颜色记录ID",
+            "B1": "基地ID",
+            "C1": "业务月份",
+            "D1": "实际总量",
+            "E1": "行类型"
+          },
+          "hiddenColumns": [],
+          "formulaCells": 0,
+          "duplicateNonemptyFirstColumnValues": 1
+        }
+      ],
+      "mediaCount": 0,
+      "drawingPictureCount": 0,
+      "media": [],
+      "pictures": [],
+      "imageMetadata": [],
+      "allMetadataHashesPresent": true,
+      "externalRelations": 0,
+      "specialImageParts": []
+    },
+    {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/production-evidence/1791876019800970000/results/production-Cross-file-prod-a775d--40-and-60-from-later-files/source-C-overlapping-month-totals-40-60.xlsx",
+      "bytes": 6695,
+      "sha256": "deedec3774fabc38f5aea71fa5db2c72a4e02df73029739ef94278d51e880869",
+      "zipEntryCount": 16,
+      "expandedBytes": 15993,
+      "sheets": [
+        {
+          "name": "C同范围误报总量",
+          "state": "visible",
+          "part": "xl/worksheets/sheet1.xml",
+          "dimension": "A1:E3",
+          "populatedRows": 3,
+          "cells": 15,
+          "header": {
+            "A1": "颜色记录ID",
+            "B1": "基地ID",
+            "C1": "业务月份",
+            "D1": "实际总量",
+            "E1": "行类型"
+          },
+          "hiddenColumns": [],
+          "formulaCells": 0,
+          "duplicateNonemptyFirstColumnValues": 1
+        }
+      ],
+      "mediaCount": 0,
+      "drawingPictureCount": 0,
+      "media": [],
+      "pictures": [],
+      "imageMetadata": [],
+      "allMetadataHashesPresent": true,
+      "externalRelations": 0,
+      "specialImageParts": []
+    },
+    {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/inspection-evidence/1791875015462608000/results/inspection-普通员工从-UI-创建-2-台次-4-测量组-12-角度，3-张照片、总体结论和含图模板回读/inspection-template-note-update.xlsx",
+      "bytes": 12273,
+      "sha256": "9970114d91ae0d9d957fe309bb17a45e6ba5ca671c458910ac4db2d20cab1ef1",
+      "zipEntryCount": 28,
+      "expandedBytes": 29403,
+      "sheets": [
+        {
+          "name": "车辆与样件台次",
+          "state": "visible",
+          "part": "xl/worksheets/sheet1.xml",
+          "dimension": "A1:AD3",
+          "populatedRows": 3,
+          "cells": 67,
+          "header": {
+            "A1": "记录ID",
+            "B1": "记录版本",
+            "C1": "检验日期",
+            "D1": "生产基地",
+            "E1": "批次说明",
+            "F1": "车辆 / 样件编号",
+            "G1": "对象类型",
+            "H1": "VIN",
+            "I1": "车型",
+            "J1": "车辆分类",
+            "K1": "颜色名称",
+            "L1": "正式颜色编号",
+            "M1": "参照色板",
+            "N1": "参与人员",
+            "O1": "对象总体结论",
+            "P1": "目视结论",
+            "Q1": "处理意见",
+            "R1": "备注",
+            "S1": "测量组数",
+            "T1": "角度读数数",
+            "U1": "缺陷条数",
+            "V1": "对象照片",
+            "W1": "来源文件",
+            "X1": "来源工作表",
+            "Y1": "来源行号",
+            "Z1": "对象ID",
+            "AA1": "颜色记录ID",
+            "AB1": "检验台次ID",
+            "AC1": "测量组ID",
+            "AD1": "标准版本ID"
+          },
+          "hiddenColumns": [
+            {
+              "min": "1",
+              "max": "1"
+            },
+            {
+              "min": "2",
+              "max": "2"
+            }
+          ],
+          "formulaCells": 0,
+          "duplicateNonemptyFirstColumnValues": 0
+        },
+        {
+          "name": "_业务模板",
+          "state": "veryHidden",
+          "part": "xl/worksheets/sheet2.xml",
+          "dimension": "A1:B2",
+          "populatedRows": 2,
+          "cells": 3,
+          "header": {
+            "A1": "LIGHT_TRUCK_BUSINESS_SHEET_V1",
+            "B1": "inspection-occurrence"
+          },
+          "hiddenColumns": [],
+          "formulaCells": 0,
+          "duplicateNonemptyFirstColumnValues": 0
+        },
+        {
+          "name": "_业务图片",
+          "state": "veryHidden",
+          "part": "xl/worksheets/sheet3.xml",
+          "dimension": "A1:C4",
+          "populatedRows": 4,
+          "cells": 12,
+          "header": {
+            "A1": "imageId",
+            "B1": "recordId",
+            "C1": "sha256"
+          },
+          "hiddenColumns": [],
+          "formulaCells": 0,
+          "duplicateNonemptyFirstColumnValues": 0
+        }
+      ],
+      "mediaCount": 3,
+      "drawingPictureCount": 3,
+      "media": [
+        {
+          "part": "xl/media/image1.png",
+          "bytes": 153,
+          "sha256": "94d25315435280e4f9a58766a9173ef3c52736b4d6f07331898db5862403882a",
+          "format": "PNG",
+          "width": 48,
+          "height": 33,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": [
+            "fixture-object-1-image-0.png"
+          ]
+        },
+        {
+          "part": "xl/media/image2.png",
+          "bytes": 152,
+          "sha256": "61010a94fd1e8f0a442eace7078e9b1511135d1ad34e761801d02e03a1dbb44e",
+          "format": "PNG",
+          "width": 48,
+          "height": 32,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": [
+            "fixture-object-0-image-0.png"
+          ]
+        },
+        {
+          "part": "xl/media/image3.png",
+          "bytes": 149,
+          "sha256": "b5a262b9d13a72550b232621221ca47c1f27b53c9c4b363594f8ca8a66f3f269",
+          "format": "PNG",
+          "width": 49,
+          "height": 32,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": [
+            "fixture-object-0-image-1.png"
+          ]
+        }
+      ],
+      "pictures": [
+        {
+          "sheet": "车辆与样件台次",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image1.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "21",
+              "colOff": "38100",
+              "row": "2",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "车辆与样件台次",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image2.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "21",
+              "colOff": "38100",
+              "row": "1",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "车辆与样件台次",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image3.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "21",
+              "colOff": "762000",
+              "row": "1",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        }
+      ],
+      "imageMetadata": [
+        {
+          "imageId": "7b1ab558-ea06-492e-b8d2-5cf1af3c2702",
+          "recordId": "cmv6c4j9b009b9ktgxexthhfc",
+          "sha256": "94d25315435280e4f9a58766a9173ef3c52736b4d6f07331898db5862403882a"
+        },
+        {
+          "imageId": "ab8d2681-c3e7-49ec-941c-fb1b558492d0",
+          "recordId": "cmv6c4ibd008z9ktgwihf4y7x",
+          "sha256": "61010a94fd1e8f0a442eace7078e9b1511135d1ad34e761801d02e03a1dbb44e"
+        },
+        {
+          "imageId": "f2ba57eb-0f6e-4840-8892-008a48c0181b",
+          "recordId": "cmv6c4ibd008z9ktgwihf4y7x",
+          "sha256": "b5a262b9d13a72550b232621221ca47c1f27b53c9c4b363594f8ca8a66f3f269"
+        }
+      ],
+      "allMetadataHashesPresent": true,
+      "externalRelations": 0,
+      "specialImageParts": []
+    },
+    {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/inspection-evidence/1791875015462608000/results/inspection-普通员工从-UI-创建-2-台次-4-测量组-12-角度，3-张照片、总体结论和含图模板回读/inspection-with-three-photos.xlsx",
+      "bytes": 12169,
+      "sha256": "d041f66f9d9ecd8a48e4036729e38a01c57e8ac6f94f0c1d208a611b2d96b86c",
+      "zipEntryCount": 28,
+      "expandedBytes": 29092,
+      "sheets": [
+        {
+          "name": "车辆与样件台次",
+          "state": "visible",
+          "part": "xl/worksheets/sheet1.xml",
+          "dimension": "A1:AD3",
+          "populatedRows": 3,
+          "cells": 66,
+          "header": {
+            "A1": "记录ID",
+            "B1": "记录版本",
+            "C1": "检验日期",
+            "D1": "生产基地",
+            "E1": "批次说明",
+            "F1": "车辆 / 样件编号",
+            "G1": "对象类型",
+            "H1": "VIN",
+            "I1": "车型",
+            "J1": "车辆分类",
+            "K1": "颜色名称",
+            "L1": "正式颜色编号",
+            "M1": "参照色板",
+            "N1": "参与人员",
+            "O1": "对象总体结论",
+            "P1": "目视结论",
+            "Q1": "处理意见",
+            "R1": "备注",
+            "S1": "测量组数",
+            "T1": "角度读数数",
+            "U1": "缺陷条数",
+            "V1": "对象照片",
+            "W1": "来源文件",
+            "X1": "来源工作表",
+            "Y1": "来源行号",
+            "Z1": "对象ID",
+            "AA1": "颜色记录ID",
+            "AB1": "检验台次ID",
+            "AC1": "测量组ID",
+            "AD1": "标准版本ID"
+          },
+          "hiddenColumns": [
+            {
+              "min": "1",
+              "max": "1"
+            },
+            {
+              "min": "2",
+              "max": "2"
+            }
+          ],
+          "formulaCells": 0,
+          "duplicateNonemptyFirstColumnValues": 0
+        },
+        {
+          "name": "_业务模板",
+          "state": "veryHidden",
+          "part": "xl/worksheets/sheet2.xml",
+          "dimension": "A1:B2",
+          "populatedRows": 2,
+          "cells": 3,
+          "header": {
+            "A1": "LIGHT_TRUCK_BUSINESS_SHEET_V1",
+            "B1": "inspection-occurrence"
+          },
+          "hiddenColumns": [],
+          "formulaCells": 0,
+          "duplicateNonemptyFirstColumnValues": 0
+        },
+        {
+          "name": "_业务图片",
+          "state": "veryHidden",
+          "part": "xl/worksheets/sheet3.xml",
+          "dimension": "A1:C4",
+          "populatedRows": 4,
+          "cells": 12,
+          "header": {
+            "A1": "imageId",
+            "B1": "recordId",
+            "C1": "sha256"
+          },
+          "hiddenColumns": [],
+          "formulaCells": 0,
+          "duplicateNonemptyFirstColumnValues": 0
+        }
+      ],
+      "mediaCount": 3,
+      "drawingPictureCount": 3,
+      "media": [
+        {
+          "part": "xl/media/image1.png",
+          "bytes": 153,
+          "sha256": "94d25315435280e4f9a58766a9173ef3c52736b4d6f07331898db5862403882a",
+          "format": "PNG",
+          "width": 48,
+          "height": 33,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": [
+            "fixture-object-1-image-0.png"
+          ]
+        },
+        {
+          "part": "xl/media/image2.png",
+          "bytes": 152,
+          "sha256": "61010a94fd1e8f0a442eace7078e9b1511135d1ad34e761801d02e03a1dbb44e",
+          "format": "PNG",
+          "width": 48,
+          "height": 32,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": [
+            "fixture-object-0-image-0.png"
+          ]
+        },
+        {
+          "part": "xl/media/image3.png",
+          "bytes": 149,
+          "sha256": "b5a262b9d13a72550b232621221ca47c1f27b53c9c4b363594f8ca8a66f3f269",
+          "format": "PNG",
+          "width": 49,
+          "height": 32,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": [
+            "fixture-object-0-image-1.png"
+          ]
+        }
+      ],
+      "pictures": [
+        {
+          "sheet": "车辆与样件台次",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image1.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "21",
+              "colOff": "38100",
+              "row": "2",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "车辆与样件台次",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image2.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "21",
+              "colOff": "38100",
+              "row": "1",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "车辆与样件台次",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image3.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "21",
+              "colOff": "762000",
+              "row": "1",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        }
+      ],
+      "imageMetadata": [
+        {
+          "imageId": "7b1ab558-ea06-492e-b8d2-5cf1af3c2702",
+          "recordId": "cmv6c4j9b009b9ktgxexthhfc",
+          "sha256": "94d25315435280e4f9a58766a9173ef3c52736b4d6f07331898db5862403882a"
+        },
+        {
+          "imageId": "ab8d2681-c3e7-49ec-941c-fb1b558492d0",
+          "recordId": "cmv6c4ibd008z9ktgwihf4y7x",
+          "sha256": "61010a94fd1e8f0a442eace7078e9b1511135d1ad34e761801d02e03a1dbb44e"
+        },
+        {
+          "imageId": "f2ba57eb-0f6e-4840-8892-008a48c0181b",
+          "recordId": "cmv6c4ibd008z9ktgwihf4y7x",
+          "sha256": "b5a262b9d13a72550b232621221ca47c1f27b53c9c4b363594f8ca8a66f3f269"
+        }
+      ],
+      "allMetadataHashesPresent": true,
+      "externalRelations": 0,
+      "specialImageParts": []
+    },
+    {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/compound-performance-evidence/1791877773130224000/results/compound-performance-1000--164e8--5-successful-100x10-pastes/personal-comparison-input.xlsx",
+      "bytes": 137544,
+      "sha256": "b356b248aed31b5d9f3f42dcc73221dca4db7a01944bb540f70291fa9f86a977",
+      "zipEntryCount": 55,
+      "expandedBytes": 1282117,
+      "sheets": [
+        {
+          "name": "车辆与样件台次",
+          "state": "visible",
+          "part": "xl/worksheets/sheet1.xml",
+          "dimension": "A1:AD1001",
+          "populatedRows": 1001,
+          "cells": 21030,
+          "header": {
+            "A1": "记录ID",
+            "B1": "记录版本",
+            "C1": "检验日期",
+            "D1": "生产基地",
+            "E1": "批次说明",
+            "F1": "车辆 / 样件编号",
+            "G1": "对象类型",
+            "H1": "VIN",
+            "I1": "车型",
+            "J1": "车辆分类",
+            "K1": "颜色名称",
+            "L1": "正式颜色编号",
+            "M1": "参照色板",
+            "N1": "参与人员",
+            "O1": "对象总体结论",
+            "P1": "目视结论",
+            "Q1": "处理意见",
+            "R1": "备注",
+            "S1": "测量组数",
+            "T1": "角度读数数",
+            "U1": "缺陷条数",
+            "V1": "对象照片",
+            "W1": "来源文件",
+            "X1": "来源工作表",
+            "Y1": "来源行号",
+            "Z1": "对象ID",
+            "AA1": "颜色记录ID",
+            "AB1": "检验台次ID",
+            "AC1": "测量组ID",
+            "AD1": "标准版本ID"
+          },
+          "hiddenColumns": [
+            {
+              "min": "1",
+              "max": "1"
+            },
+            {
+              "min": "2",
+              "max": "2"
+            }
+          ],
+          "formulaCells": 0,
+          "duplicateNonemptyFirstColumnValues": 0
+        },
+        {
+          "name": "_业务模板",
+          "state": "veryHidden",
+          "part": "xl/worksheets/sheet2.xml",
+          "dimension": "A1:B2",
+          "populatedRows": 2,
+          "cells": 3,
+          "header": {
+            "A1": "LIGHT_TRUCK_BUSINESS_SHEET_V1",
+            "B1": "inspection-occurrence"
+          },
+          "hiddenColumns": [],
+          "formulaCells": 0,
+          "duplicateNonemptyFirstColumnValues": 0
+        },
+        {
+          "name": "_业务图片",
+          "state": "veryHidden",
+          "part": "xl/worksheets/sheet3.xml",
+          "dimension": "A1:C31",
+          "populatedRows": 31,
+          "cells": 93,
+          "header": {
+            "A1": "imageId",
+            "B1": "recordId",
+            "C1": "sha256"
+          },
+          "hiddenColumns": [],
+          "formulaCells": 0,
+          "duplicateNonemptyFirstColumnValues": 0
+        }
+      ],
+      "mediaCount": 30,
+      "drawingPictureCount": 30,
+      "media": [
+        {
+          "part": "xl/media/image1.png",
+          "bytes": 4807,
+          "sha256": "9081b5da5dcdd08356c55772615510e8e4c0e233f683a391f0462207ad0543a1",
+          "format": "PNG",
+          "width": 640,
+          "height": 400,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image2.png",
+          "bytes": 4807,
+          "sha256": "a56572ec0bfbf7a6b21c803b51b0af709b46263e2e315e8e3ad7c650d5594312",
+          "format": "PNG",
+          "width": 640,
+          "height": 400,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image3.png",
+          "bytes": 4807,
+          "sha256": "3d8fe5b995d8f1e34861e920ee3de6321d76477ad2478179480361a7249ef903",
+          "format": "PNG",
+          "width": 640,
+          "height": 400,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image4.png",
+          "bytes": 4806,
+          "sha256": "29d0d67141c838c3096bb7c10145a3ef22c9f6df66e268c30ac073533ac4406d",
+          "format": "PNG",
+          "width": 640,
+          "height": 400,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image5.png",
+          "bytes": 4807,
+          "sha256": "57a376a79cb9b44ecf229e8c8387859f84505560451d0d1725f5752515346040",
+          "format": "PNG",
+          "width": 640,
+          "height": 400,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image6.png",
+          "bytes": 4807,
+          "sha256": "68515034c8fd734e49764cdec24225fee90c11a86c3594801219e34f83dc2748",
+          "format": "PNG",
+          "width": 640,
+          "height": 400,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image7.png",
+          "bytes": 4807,
+          "sha256": "d2396fd302ebdfe314f500d769507cbb7a716464a3f5116cb5902769d407ef26",
+          "format": "PNG",
+          "width": 640,
+          "height": 400,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image8.png",
+          "bytes": 4807,
+          "sha256": "06e93f0e380edbbe5cb84673873ae5517e07b63a2daf72b6f32ac3884ae98a8e",
+          "format": "PNG",
+          "width": 640,
+          "height": 400,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image9.png",
+          "bytes": 4804,
+          "sha256": "345a5585759303c988a1ae157c92e603464912479c9a9f28d9d3b28c242ab7a8",
+          "format": "PNG",
+          "width": 640,
+          "height": 400,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image10.png",
+          "bytes": 4807,
+          "sha256": "6dbe102516a2f19929e84b8d4d7ff81e8c6ac227aeaa96a5b2a070ab9ec89e75",
+          "format": "PNG",
+          "width": 640,
+          "height": 400,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image11.png",
+          "bytes": 4807,
+          "sha256": "8ba67f075ca0c77b67ca0399ab3084230ec438ac5a0bda9b84c54020f512f072",
+          "format": "PNG",
+          "width": 640,
+          "height": 400,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image12.png",
+          "bytes": 4806,
+          "sha256": "e9e453db0a1198b4bae494509e660e511aa2ff9da932e339409a2b8b1e9e9d91",
+          "format": "PNG",
+          "width": 640,
+          "height": 400,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image13.png",
+          "bytes": 4806,
+          "sha256": "cdf758432b045f2e7e065eb2692678902cc258fc74958c005bb84a6c7460cd73",
+          "format": "PNG",
+          "width": 640,
+          "height": 400,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image14.png",
+          "bytes": 4807,
+          "sha256": "603b0ad8c06fff9eb6cb6dd6cd79b59d2d73c6933fc820eb090c28c79984656b",
+          "format": "PNG",
+          "width": 640,
+          "height": 400,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image15.png",
+          "bytes": 4807,
+          "sha256": "169583f516bf5a6da2d72f28eb1bfbc01125234c8e0ece152df02aa5fbc9f459",
+          "format": "PNG",
+          "width": 640,
+          "height": 400,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image16.png",
+          "bytes": 4807,
+          "sha256": "f2d1381b0fe2377efe26977731635d9d7cdf629e60980875d117ed39becdaf2c",
+          "format": "PNG",
+          "width": 640,
+          "height": 400,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image17.png",
+          "bytes": 4807,
+          "sha256": "9a8e4cef12bec69ab3948252893b84f9e0117a9f1e4d30f382b3c0ac06d166fd",
+          "format": "PNG",
+          "width": 640,
+          "height": 400,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image18.png",
+          "bytes": 4807,
+          "sha256": "3d55816eaceaeb8a14c35c5f5db174941fa2d119ca13a77130e8d30770788f84",
+          "format": "PNG",
+          "width": 640,
+          "height": 400,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image19.png",
+          "bytes": 4807,
+          "sha256": "8475c616fb58266be64530a81e186a598caaf0d45ba3e3fa11d38c78475ad299",
+          "format": "PNG",
+          "width": 640,
+          "height": 400,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image20.png",
+          "bytes": 4807,
+          "sha256": "ff176c9d8bd4e093127cea453e5fc00ff643da37bac340965e0ec897482f013c",
+          "format": "PNG",
+          "width": 640,
+          "height": 400,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image21.png",
+          "bytes": 4807,
+          "sha256": "126ac4934faafc29a4373c3076576001fe70dccae933777b99edd1301483ef65",
+          "format": "PNG",
+          "width": 640,
+          "height": 400,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image22.png",
+          "bytes": 4806,
+          "sha256": "e687ebe9d9f76337df433c3346df14ce32a2923298a9b1786d15ce4a902f131d",
+          "format": "PNG",
+          "width": 640,
+          "height": 400,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image23.png",
+          "bytes": 4807,
+          "sha256": "03cded96ddbadc88e7cfbe153b35834ed56f0701a5ab244f146d9e48bd697be9",
+          "format": "PNG",
+          "width": 640,
+          "height": 400,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image24.png",
+          "bytes": 4807,
+          "sha256": "e9ceef6ee6dc698be760f4e41f2da9e634047f058181958a327b4e82b3c06b2a",
+          "format": "PNG",
+          "width": 640,
+          "height": 400,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image25.png",
+          "bytes": 4807,
+          "sha256": "6283cbf5d60eb1a8ddcded8346ad1edfa860ba73885e1870c0581fc22419bfe2",
+          "format": "PNG",
+          "width": 640,
+          "height": 400,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image26.png",
+          "bytes": 4807,
+          "sha256": "7c189bd3d5eb1542710425bb017cf36c313f3621a12e510b7cd20e467694fa11",
+          "format": "PNG",
+          "width": 640,
+          "height": 400,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image27.png",
+          "bytes": 4806,
+          "sha256": "b5c4811ee1b498b16f6aef71436b216dfd167ddf5f60f346072d04304dcde63d",
+          "format": "PNG",
+          "width": 640,
+          "height": 400,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image28.png",
+          "bytes": 4806,
+          "sha256": "a6ddc3e952c2ee3c01ce75cec49f24e0161c77fdd4be63233b9bda3075f0cfd0",
+          "format": "PNG",
+          "width": 640,
+          "height": 400,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image29.png",
+          "bytes": 4806,
+          "sha256": "aa628f09836b20d81083f2d7d1100fe4e2a2fcfe045ceeea2691680ae82219a1",
+          "format": "PNG",
+          "width": 640,
+          "height": 400,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        },
+        {
+          "part": "xl/media/image30.png",
+          "bytes": 4806,
+          "sha256": "0868df35a7a1cdb4fb0db92b0f19339bad16d00410ca776270b6cdce500f256a",
+          "format": "PNG",
+          "width": 640,
+          "height": 400,
+          "mode": "RGB",
+          "independentPillowVerify": true,
+          "sameDirectoryOriginalMatches": []
+        }
+      ],
+      "pictures": [
+        {
+          "sheet": "车辆与样件台次",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image1.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "21",
+              "colOff": "38100",
+              "row": "2",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "车辆与样件台次",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image2.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "21",
+              "colOff": "38100",
+              "row": "1",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "车辆与样件台次",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image3.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "21",
+              "colOff": "38100",
+              "row": "14",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "车辆与样件台次",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image4.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "21",
+              "colOff": "38100",
+              "row": "24",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "车辆与样件台次",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image5.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "21",
+              "colOff": "38100",
+              "row": "19",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "车辆与样件台次",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image6.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "21",
+              "colOff": "38100",
+              "row": "18",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "车辆与样件台次",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image7.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "21",
+              "colOff": "38100",
+              "row": "16",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "车辆与样件台次",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image8.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "21",
+              "colOff": "38100",
+              "row": "7",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "车辆与样件台次",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image9.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "21",
+              "colOff": "38100",
+              "row": "21",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "车辆与样件台次",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image10.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "21",
+              "colOff": "38100",
+              "row": "13",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "车辆与样件台次",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image11.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "21",
+              "colOff": "38100",
+              "row": "8",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "车辆与样件台次",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image12.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "21",
+              "colOff": "38100",
+              "row": "22",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "车辆与样件台次",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image13.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "21",
+              "colOff": "38100",
+              "row": "20",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "车辆与样件台次",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image14.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "21",
+              "colOff": "38100",
+              "row": "23",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "车辆与样件台次",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image15.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "21",
+              "colOff": "38100",
+              "row": "29",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "车辆与样件台次",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image16.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "21",
+              "colOff": "38100",
+              "row": "11",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "车辆与样件台次",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image17.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "21",
+              "colOff": "38100",
+              "row": "15",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "车辆与样件台次",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image18.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "21",
+              "colOff": "38100",
+              "row": "9",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "车辆与样件台次",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image19.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "21",
+              "colOff": "38100",
+              "row": "4",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "车辆与样件台次",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image20.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "21",
+              "colOff": "38100",
+              "row": "5",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "车辆与样件台次",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image21.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "21",
+              "colOff": "38100",
+              "row": "3",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "车辆与样件台次",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image22.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "21",
+              "colOff": "38100",
+              "row": "27",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "车辆与样件台次",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image23.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "21",
+              "colOff": "38100",
+              "row": "6",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "车辆与样件台次",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image24.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "21",
+              "colOff": "38100",
+              "row": "12",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "车辆与样件台次",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image25.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "21",
+              "colOff": "38100",
+              "row": "10",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "车辆与样件台次",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image26.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "21",
+              "colOff": "38100",
+              "row": "17",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "车辆与样件台次",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image27.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "21",
+              "colOff": "38100",
+              "row": "26",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "车辆与样件台次",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image28.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "21",
+              "colOff": "38100",
+              "row": "25",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "车辆与样件台次",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image29.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "21",
+              "colOff": "38100",
+              "row": "28",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        },
+        {
+          "sheet": "车辆与样件台次",
+          "part": "xl/drawings/drawing1.xml",
+          "kind": "oneCellAnchor",
+          "media": "xl/media/image30.png",
+          "external": false,
+          "geometry": {
+            "from": {
+              "col": "21",
+              "colOff": "38100",
+              "row": "30",
+              "rowOff": "38100"
+            },
+            "ext": {
+              "cx": "685800",
+              "cy": "495300"
+            }
+          }
+        }
+      ],
+      "imageMetadata": [
+        {
+          "imageId": "0818ed1b-a87b-4b1c-a692-cb6e6ae1b079",
+          "recordId": "cmv67n34c04y79k9650b8a683",
+          "sha256": "9081b5da5dcdd08356c55772615510e8e4c0e233f683a391f0462207ad0543a1"
+        },
+        {
+          "imageId": "0d148974-a1f4-4115-85c8-d82ccc08dc8a",
+          "recordId": "cmv67n34704y39k96gcezc4b3",
+          "sha256": "a56572ec0bfbf7a6b21c803b51b0af709b46263e2e315e8e3ad7c650d5594312"
+        },
+        {
+          "imageId": "2474fd4a-1e92-41b4-8ac0-84c92a9fcf2c",
+          "recordId": "cmv67n35e04zj9k96qatxo3pl",
+          "sha256": "3d8fe5b995d8f1e34861e920ee3de6321d76477ad2478179480361a7249ef903"
+        },
+        {
+          "imageId": "29379064-c6e0-4299-9a69-cf3c1b2053be",
+          "recordId": "cmv67n369050n9k96s57q94oh",
+          "sha256": "29d0d67141c838c3096bb7c10145a3ef22c9f6df66e268c30ac073533ac4406d"
+        },
+        {
+          "imageId": "2a66d2f0-4578-4d58-b199-0bf9848cd501",
+          "recordId": "cmv67n35u05039k96dpc1qjld",
+          "sha256": "57a376a79cb9b44ecf229e8c8387859f84505560451d0d1725f5752515346040"
+        },
+        {
+          "imageId": "33e37987-7120-4060-9465-b4d23474a455",
+          "recordId": "cmv67n35q04zz9k96yhfgnfuz",
+          "sha256": "68515034c8fd734e49764cdec24225fee90c11a86c3594801219e34f83dc2748"
+        },
+        {
+          "imageId": "4021a885-448d-4a3d-a209-d469463a8d35",
+          "recordId": "cmv67n35k04zr9k96sk0vijcu",
+          "sha256": "d2396fd302ebdfe314f500d769507cbb7a716464a3f5116cb5902769d407ef26"
+        },
+        {
+          "imageId": "408b1741-afdf-4139-9ac1-b606a7475822",
+          "recordId": "cmv67n34s04yr9k969kd91ufw",
+          "sha256": "06e93f0e380edbbe5cb84673873ae5517e07b63a2daf72b6f32ac3884ae98a8e"
+        },
+        {
+          "imageId": "4afb556b-1d63-4e55-8ad3-b409966d6909",
+          "recordId": "cmv67n35z050b9k9696rxeb0r",
+          "sha256": "345a5585759303c988a1ae157c92e603464912479c9a9f28d9d3b28c242ab7a8"
+        },
+        {
+          "imageId": "69d959e3-53da-4070-b189-0625fb67dcc9",
+          "recordId": "cmv67n35b04zf9k96ity5lh9u",
+          "sha256": "6dbe102516a2f19929e84b8d4d7ff81e8c6ac227aeaa96a5b2a070ab9ec89e75"
+        },
+        {
+          "imageId": "76e25bea-2884-425f-8d91-9f7e53d79bfe",
+          "recordId": "cmv67n34v04yv9k96erbp4628",
+          "sha256": "8ba67f075ca0c77b67ca0399ab3084230ec438ac5a0bda9b84c54020f512f072"
+        },
+        {
+          "imageId": "7e0aecd5-2c13-4ac6-a1ff-5c7e637c617c",
+          "recordId": "cmv67n362050f9k96wm779lra",
+          "sha256": "e9e453db0a1198b4bae494509e660e511aa2ff9da932e339409a2b8b1e9e9d91"
+        },
+        {
+          "imageId": "7e999f88-8ee4-4b90-871f-75c4d72a8fe6",
+          "recordId": "cmv67n35w05079k96t84cd7hx",
+          "sha256": "cdf758432b045f2e7e065eb2692678902cc258fc74958c005bb84a6c7460cd73"
+        },
+        {
+          "imageId": "811eff01-1898-439b-b932-a41218968d38",
+          "recordId": "cmv67n365050j9k96pj7wiwwm",
+          "sha256": "603b0ad8c06fff9eb6cb6dd6cd79b59d2d73c6933fc820eb090c28c79984656b"
+        },
+        {
+          "imageId": "933c140c-302f-402a-8bd8-0aba720d75d1",
+          "recordId": "cmv67n36n05179k96c06plvky",
+          "sha256": "169583f516bf5a6da2d72f28eb1bfbc01125234c8e0ece152df02aa5fbc9f459"
+        },
+        {
+          "imageId": "941946bf-898d-4211-8c5f-78d6e1be0dd7",
+          "recordId": "cmv67n35404z79k96we2aog78",
+          "sha256": "f2d1381b0fe2377efe26977731635d9d7cdf629e60980875d117ed39becdaf2c"
+        },
+        {
+          "imageId": "9a5b5948-68ea-4fd0-9e59-d6b93194ed26",
+          "recordId": "cmv67n35h04zn9k96yxrqin0l",
+          "sha256": "9a8e4cef12bec69ab3948252893b84f9e0117a9f1e4d30f382b3c0ac06d166fd"
+        },
+        {
+          "imageId": "a527eab3-c97a-4c20-aaa5-e246228b4f98",
+          "recordId": "cmv67n34y04yz9k96mz776fhh",
+          "sha256": "3d55816eaceaeb8a14c35c5f5db174941fa2d119ca13a77130e8d30770788f84"
+        },
+        {
+          "imageId": "ae848190-f6ba-4d1b-a382-2112a8eb9943",
+          "recordId": "cmv67n34j04yf9k96wlh2olio",
+          "sha256": "8475c616fb58266be64530a81e186a598caaf0d45ba3e3fa11d38c78475ad299"
+        },
+        {
+          "imageId": "b2b96aaf-19f9-4f4a-9532-0ade6df5f7cd",
+          "recordId": "cmv67n34m04yj9k96ecvfu24g",
+          "sha256": "ff176c9d8bd4e093127cea453e5fc00ff643da37bac340965e0ec897482f013c"
+        },
+        {
+          "imageId": "c5e5c646-680d-4202-a4a5-cf557400c1c5",
+          "recordId": "cmv67n34g04yb9k96iwq3kwk0",
+          "sha256": "126ac4934faafc29a4373c3076576001fe70dccae933777b99edd1301483ef65"
+        },
+        {
+          "imageId": "c8fe74f6-3a43-4293-ad81-d5a78842e861",
+          "recordId": "cmv67n36h050z9k96dpknfz8w",
+          "sha256": "e687ebe9d9f76337df433c3346df14ce32a2923298a9b1786d15ce4a902f131d"
+        },
+        {
+          "imageId": "c9ffd876-ca2f-4763-a73f-23e7a75704a9",
+          "recordId": "cmv67n34p04yn9k96m6xexntw",
+          "sha256": "03cded96ddbadc88e7cfbe153b35834ed56f0701a5ab244f146d9e48bd697be9"
+        },
+        {
+          "imageId": "cb7d3f00-387c-42d7-b886-8b7bed5d7bb5",
+          "recordId": "cmv67n35704zb9k96h5an8lv4",
+          "sha256": "e9ceef6ee6dc698be760f4e41f2da9e634047f058181958a327b4e82b3c06b2a"
+        },
+        {
+          "imageId": "d1c471a9-9b7e-4202-86ad-5bfd61a272e3",
+          "recordId": "cmv67n35104z39k96qchtc17z",
+          "sha256": "6283cbf5d60eb1a8ddcded8346ad1edfa860ba73885e1870c0581fc22419bfe2"
+        },
+        {
+          "imageId": "d929450c-1c65-464a-b986-aa1b427a4f6b",
+          "recordId": "cmv67n35n04zv9k96sdheu7qj",
+          "sha256": "7c189bd3d5eb1542710425bb017cf36c313f3621a12e510b7cd20e467694fa11"
+        },
+        {
+          "imageId": "df3cf0fd-bd47-4d36-a970-8e9495843ea8",
+          "recordId": "cmv67n36e050v9k96xd6x1mac",
+          "sha256": "b5c4811ee1b498b16f6aef71436b216dfd167ddf5f60f346072d04304dcde63d"
+        },
+        {
+          "imageId": "dfe0e591-eba5-41c3-ac3c-b8263c62f732",
+          "recordId": "cmv67n36b050r9k96us9f9syj",
+          "sha256": "a6ddc3e952c2ee3c01ce75cec49f24e0161c77fdd4be63233b9bda3075f0cfd0"
+        },
+        {
+          "imageId": "e297ec46-c2a7-4f1a-bf74-a1c0c87b0c72",
+          "recordId": "cmv67n36k05139k96t18l70o4",
+          "sha256": "aa628f09836b20d81083f2d7d1100fe4e2a2fcfe045ceeea2691680ae82219a1"
+        },
+        {
+          "imageId": "f1eddba9-8576-4b57-9b52-c07e14955705",
+          "recordId": "cmv67n36q051b9k96m67e99zg",
+          "sha256": "0868df35a7a1cdb4fb0db92b0f19339bad16d00410ca776270b6cdce500f256a"
+        }
+      ],
+      "allMetadataHashesPresent": true,
+      "externalRelations": 0,
+      "specialImageParts": []
+    }
+  ],
+  "standaloneImageEvidence": [
+    {
+      "proofPath": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/clipboard-evidence/1791877359577672000/clipboard-results/clipboard-PNG-and-JPEG-fil-10e13-l-bytes-owner-and-reopening/clipboard-image-proof.json",
+      "origin": "http://127.0.0.1:3380",
+      "runtimeCommit": "a53e7f8dbc179f46984981b0ca4cb6d26a0324fa",
+      "browserEvidence": {
+        "trustedPaste": true,
+        "clipboardPermissionCondition": "Temporary read/write grants for preparation, cleared before native paste",
+        "newBrowserContextVerified": true,
+        "textPasteAfterImage": {
+          "value": "图片后文字粘贴-1791877403767",
+          "nativeShortcut": true,
+          "serverAndNewContext": true
+        },
+        "decodedScreenshot": {
+          "width": 1070,
+          "height": 535,
+          "sha256": "28373ecabe9fcc9d3b141d54c11bdd8bfdb3d26f603b8b5099193c8214ac68db"
+        },
+        "decodedClipboard": {
+          "width": 1070,
+          "height": 535,
+          "sha256": "28373ecabe9fcc9d3b141d54c11bdd8bfdb3d26f603b8b5099193c8214ac68db"
+        },
+        "clipboardPasteSha256": "6b59328b8ec9f9fb361b3a04a47c6f41039f68e9023cd5f7719d537247449d6b"
+      },
+      "scope": "Independent local PNG/JPEG bytes only; pasted server original is not saved beside this evidence, its hash/new-context validation remains browser evidence",
+      "files": [
+        {
+          "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/clipboard-evidence/1791877359577672000/clipboard-results/clipboard-PNG-and-JPEG-fil-10e13-l-bytes-owner-and-reopening/transparent-image.png",
+          "bytes": 334,
+          "sha256": "d9e22f6c9d1a3eaa5cfefa5125c016bf4256db63350c737232c7daf4c0bf90c3",
+          "format": "PNG",
+          "width": 97,
+          "height": 65,
+          "mode": "RGBA",
+          "rgbaSha256": "2b9c8d1ba7fce9d038e5819c2c5a59c2c1f7c4b9b8f07eaa84ee1ad9dfdb15fe",
+          "independentPillowVerify": true,
+          "matchesBrowserSourceHash": true
+        },
+        {
+          "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/clipboard-evidence/1791877359577672000/clipboard-results/clipboard-PNG-and-JPEG-fil-10e13-l-bytes-owner-and-reopening/local-image.jpeg",
+          "bytes": 140899,
+          "sha256": "2f0210c0b601ab1c1f45e02b19cbf056f4a3e9dcf06443ddda46c8a40d80ed43",
+          "format": "JPEG",
+          "width": 1920,
+          "height": 1080,
+          "mode": "RGB",
+          "rgbaSha256": "0862d5cbec533caff5f209220ebd924c453590c12573e483a45ed44d2331dac9",
+          "independentPillowVerify": true,
+          "matchesBrowserSourceHash": true
+        },
+        {
+          "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/clipboard-evidence/1791877359577672000/clipboard-results/clipboard-PNG-and-JPEG-fil-10e13-l-bytes-owner-and-reopening/clipboard-source-screenshot.png",
+          "bytes": 38147,
+          "sha256": "245808779d066bf00045861673cb7f635e21daab90a30c7cf66b256a4311a25b",
+          "format": "PNG",
+          "width": 1070,
+          "height": 535,
+          "mode": "RGB",
+          "rgbaSha256": "28373ecabe9fcc9d3b141d54c11bdd8bfdb3d26f603b8b5099193c8214ac68db",
+          "independentPillowVerify": true,
+          "matchesBrowserSourceHash": true,
+          "matchesBrowserDecodedPixels": true
+        },
+        {
+          "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/clipboard-evidence/1791877359577672000/clipboard-results/clipboard-PNG-and-JPEG-fil-10e13-l-bytes-owner-and-reopening/actual-clipboard-paste.png",
+          "bytes": 49100,
+          "sha256": "6b59328b8ec9f9fb361b3a04a47c6f41039f68e9023cd5f7719d537247449d6b",
+          "format": "PNG",
+          "width": 1070,
+          "height": 535,
+          "mode": "RGB",
+          "rgbaSha256": "28373ecabe9fcc9d3b141d54c11bdd8bfdb3d26f603b8b5099193c8214ac68db",
+          "independentPillowVerify": true,
+          "matchesBrowserSourceHash": true,
+          "matchesBrowserDecodedPixels": true
+        }
+      ]
+    }
+  ]
+}

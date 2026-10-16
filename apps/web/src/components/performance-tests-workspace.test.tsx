@@ -22,8 +22,9 @@ const testerUser: SessionUser = {
   departmentId: null,
   departmentName: null,
   isSystemAdmin: false,
-  authSource: 'mock',
-  roleCodes: ['quality_engineer'],
+  authSource: 'local',
+  teamAccessApproved: true,
+  roleCodes: [],
 };
 
 const workspace: PerformanceTestsWorkspaceResponse = {
@@ -122,12 +123,9 @@ describe('PerformanceTestsWorkspace', () => {
         testerOptions={[
           {
             id: 'user-1',
-            username: 'qa',
             name: '质量工程师',
-            email: null,
             departmentId: null,
             departmentName: null,
-            roleCodes: ['quality_engineer'],
           },
         ]}
         disabled={false}

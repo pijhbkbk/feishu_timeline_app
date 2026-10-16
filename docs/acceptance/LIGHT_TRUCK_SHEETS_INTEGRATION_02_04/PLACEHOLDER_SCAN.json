@@ -1,0 +1,23 @@
+{
+  "runtimeCodeCommit": "9ed0502b9e97e543dc5beea00998b5edc0bb0e67",
+  "mainCommit": "41b4b166c587692e6f0fb9536dca2e1aab646c70",
+  "totalMatches": 12,
+  "runtimeSourceMatches": 0,
+  "testWhitelist": [
+    "apps/web/e2e/color-sheet-local.spec.ts:176",
+    "apps/web/e2e/color-sheet-local.spec.ts:261",
+    "apps/web/e2e/r26-admin-dashboard-color-database.spec.ts:126",
+    "apps/web/tests/playwright/r16-create-project.spec.ts:80",
+    "apps/web/tests/playwright/regression.spec.ts:88",
+    "apps/web/tests/playwright/r20-fixtures.ts:372",
+    "apps/web/tests/playwright/r20-ui-quality.spec.ts:45",
+    "apps/web/tests/playwright/r16-business-flow.spec.ts:81",
+    "apps/web/e2e/r17-timeline-node-interaction.spec.ts:28",
+    "apps/web/e2e/r25a-admin-audit.spec.ts:49",
+    "apps/web/src/components/admin-control-center.contract.test.ts:50",
+    "apps/web/src/components/admin-audit-workspace-r25a.test.tsx:22"
+  ],
+  "runtimeMatches": [],
+  "scanSha256": "8222b6a6932f6db31903b65ee1d68805540ed8db35b19dcd36213f32188191a0",
+  "claim": "Only test selectors, helper selectors or forbidden-placeholder negative assertions; no runtime matches."
+}

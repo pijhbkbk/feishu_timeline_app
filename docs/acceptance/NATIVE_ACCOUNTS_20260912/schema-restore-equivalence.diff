@@ -1,0 +1,9 @@
+--- native-source-schema
++++ native-restored-schema
+@@ -1617,5 +1617,5 @@
+     "createdAt" timestamp(3) without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+     "updatedAt" timestamp(3) without time zone NOT NULL,
+-    CONSTRAINT trial_production_issues_text_bounds_check CHECK ((((char_length(("issueType")::text) >= 1) AND (char_length(("issueType")::text) <= 500)) AND ((char_length((description)::text) >= 1) AND (char_length((description)::text) <= 4000)) AND ((char_length(("responsibleDept")::text) >= 1) AND (char_length(("responsibleDept")::text) <= 500))))
++    CONSTRAINT trial_production_issues_text_bounds_check CHECK (((char_length(("issueType")::text) >= 1) AND (char_length(("issueType")::text) <= 500) AND ((char_length((description)::text) >= 1) AND (char_length((description)::text) <= 4000)) AND ((char_length(("responsibleDept")::text) >= 1) AND (char_length(("responsibleDept")::text) <= 500))))
+ );
+ 

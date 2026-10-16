@@ -1,3 +1,4 @@
+import { BusinessClock } from '../../common/business-clock';
 import { Injectable } from '@nestjs/common';
 import {
   WorkflowDurationType,
@@ -30,6 +31,8 @@ export type WorkflowRuntimeNodeDefinition = {
 
 @Injectable()
 export class WorkflowDeadlineService {
+  constructor(private readonly businessClock: BusinessClock = new BusinessClock()) {}
+
   async getNodeRuntimeDefinition(
     db: WorkflowDbClient,
     nodeCode: WorkflowNodeCode,
@@ -83,7 +86,7 @@ export class WorkflowDeadlineService {
   async refreshWorkflowInstanceTaskDeadlines(
     db: WorkflowDbClient,
     workflowInstanceId: string,
-    now = new Date(),
+    now = this.businessClock.now(),
   ) {
     const tasks = await db.workflowTask.findMany({
       where: {
@@ -128,7 +131,7 @@ export class WorkflowDeadlineService {
     };
   }
 
-  getOverdueDays(dueAt: Date | null, now = new Date()) {
+  getOverdueDays(dueAt: Date | null, now = this.businessClock.now()) {
     if (!dueAt) {
       return 0;
     }

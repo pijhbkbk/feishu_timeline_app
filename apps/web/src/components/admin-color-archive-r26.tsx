@@ -77,6 +77,11 @@ export function AdminColorArchiveR26({ colorId }: { colorId: string }) {
               <div><h2>生命周期材料</h2><p>文件仍存放于原附件系统，这里只建立可追溯的归档视图。</p></div>
               <strong>{data.materialCount} 份</strong>
             </div>
+            {data.materialsHasMore ? (
+              <div className="r26-admin-home__error" role="status">
+                <span>材料较多，当前仅显示最近 500 份；归档总数为 {data.materialCount} 份。</span>
+              </div>
+            ) : null}
             {data.stages.map((stage) => (
               <details key={stage.key} open={stage.materials.length > 0}>
                 <summary><span>{stage.title}<small>第 {stage.stepRange} 步</small></span><strong>{stage.materials.length} 份</strong></summary>

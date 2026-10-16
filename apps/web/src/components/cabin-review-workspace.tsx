@@ -1,9 +1,13 @@
 'use client';
 
+import { ReviewStandardSelect } from './review-standard-select';
+import { reviewStandardLabel, type ReviewStandardOptions } from '../lib/review-standard-version';
+
 import Link from 'next/link';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 import { useAuth } from './auth-provider';
+import { canUserOperateWorkflowTask } from '../lib/workflows-client';
 import { FeedbackBanner } from './feedback-banner';
 import { StatePanel } from './state-panel';
 import {
@@ -86,7 +90,7 @@ export function CabinReviewWorkspace({
   const highlights = workspace ? getCabinReviewWorkspaceHighlights(workspace) : null;
   const selectedReview =
     workspace?.items.find((item) => item.id === selectedReviewId) ?? null;
-  const isReadOnly = !workspace?.activeTask;
+  const isReadOnly = !workspace?.activeTask || !canUserOperateWorkflowTask(user, workspace.activeTask);
   const decisionGuidance =
     form.reviewConclusion === 'REJECTED'
       ? '驳回时必须填写驳回原因，并在评审意见中明确整改要求与整改责任人。'
@@ -130,28 +134,14 @@ export function CabinReviewWorkspace({
     try {
       const [workspaceResponse, users] = await Promise.all([
         fetchCabinReviewWorkspace(projectId),
-        fetchCabinReviewPageOptions(),
+        fetchCabinReviewPageOptions(projectId),
       ]);
 
       if (requestId !== requestIdRef.current) {
         return;
       }
 
-      const availableUsers =
-        user && !users.some((item) => item.id === user.id)
-          ? [
-              {
-                id: user.id,
-                username: user.username,
-                name: user.name,
-                email: user.email,
-                departmentId: user.departmentId,
-                departmentName: user.departmentName,
-                roleCodes: user.roleCodes,
-              },
-              ...users,
-            ]
-          : users;
+      const availableUsers = users;
       setWorkspace(workspaceResponse);
       setReviewerOptions(availableUsers);
       setForm((current) => ({
@@ -385,6 +375,8 @@ export function CabinReviewWorkspace({
             message={decisionGuidance}
           />
           <CabinReviewForm
+            standardOptions={workspace}
+            standardLocked={Boolean(editingReviewId)}
             value={form}
             reviewerOptions={reviewerOptions}
             disabled={!canManage || isReadOnly || isSaving}
@@ -452,6 +444,8 @@ export function CabinReviewWorkspace({
 
 export function CabinReviewForm({
   value,
+  standardOptions = {},
+  standardLocked = false,
   reviewerOptions,
   disabled,
   submitLabel,
@@ -459,6 +453,8 @@ export function CabinReviewForm({
   onSubmit,
 }: {
   value: CabinReviewFormInput;
+  standardOptions?: ReviewStandardOptions;
+  standardLocked?: boolean;
   reviewerOptions: DirectoryUser[];
   disabled: boolean;
   submitLabel: string;
@@ -503,6 +499,10 @@ export function CabinReviewForm({
           </div>
         </div>
       </div>
+      <ReviewStandardSelect value={value.standardVersionId ?? ''}
+        onChange={standardVersionId => onChange({ ...value, standardVersionId })}
+        options={standardOptions.eligibleStandardVersions} required={standardOptions.standardVersionRequired}
+        hasMore={standardOptions.standardVersionsHasMore} locked={standardLocked} disabled={disabled} />
       <label className="field">
         <span>评审日期</span>
         <input
@@ -635,6 +635,7 @@ export function CabinReviewHistory({
           <thead>
             <tr>
               <th>评审日期</th>
+            <th>标准版本</th>
               <th>评审人</th>
               <th>结论</th>
               <th>状态</th>
@@ -646,7 +647,7 @@ export function CabinReviewHistory({
           <tbody>
             {items.length === 0 ? (
               <tr>
-                <td colSpan={7}>
+                <td colSpan={8}>
                   <StatePanel
                     compact
                     title="暂无驾驶室评审记录"
@@ -662,6 +663,7 @@ export function CabinReviewHistory({
                   onClick={() => onSelect(item.id)}
                 >
                   <td>{formatDate(item.reviewDate)}</td>
+                <td>{reviewStandardLabel(item.standardVersion)}</td>
                   <td>{item.reviewerName ?? '未指定'}</td>
                   <td>
                     <ReviewConclusionBadge conclusion={item.reviewConclusion} />
@@ -672,6 +674,7 @@ export function CabinReviewHistory({
                   <td>
                     <div className="task-actions">
                       {canManageCabinReviews(user, item.reviewerId) &&
+                      item.workflowTaskId === workspace.activeTask?.id &&
                       !isReadOnly &&
                       !item.submittedAt ? (
                         <>
@@ -743,7 +746,7 @@ export function CabinReviewHistory({
                           {actingKey === `reject:${item.id}` ? '处理中…' : '驳回'}
                         </button>
                       ) : null}
-                      {(!canManageCabinReviews(user, item.reviewerId) || isReadOnly) &&
+                      {(!canManageCabinReviews(user, item.reviewerId) || isReadOnly || item.workflowTaskId !== workspace.activeTask?.id) &&
                       !item.submittedAt ? (
                         <span className="muted">只读</span>
                       ) : null}
@@ -764,6 +767,7 @@ export function CabinReviewHistory({
             >
               <div className="timeline-header">
                 <strong>{formatDate(item.reviewDate)}</strong>
+                <span>{reviewStandardLabel(item.standardVersion)}</span>
                 <ReviewConclusionBadge conclusion={item.reviewConclusion} />
               </div>
               <p className="muted">
@@ -809,6 +813,7 @@ export function CabinReviewDetail({
         <div className="detail-item">
           <span>评审日期</span>
           <strong>{formatDate(review.reviewDate)}</strong>
+          <span>{reviewStandardLabel(review.standardVersion)}</span>
         </div>
         <div className="detail-item">
           <span>评审结论</span>

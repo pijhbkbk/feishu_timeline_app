@@ -18,7 +18,8 @@ const supportedSections = new Set<AdminControlSection>([
 ]);
 
 const legacyRedirects: Record<string, string> = {
-  users: 'organization',
+  users: 'people',
+  organization: 'people',
   roles: 'permissions',
 };
 

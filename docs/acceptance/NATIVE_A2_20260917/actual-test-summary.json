@@ -1,0 +1,73 @@
+{
+  "status": "LOCAL_VERIFIED_PREPARATORY_RUNTIME",
+  "syntheticOnly": true,
+  "sourceBaseline": "c33c1bdd93639bdb01f584ea78c71ba90a838f9d",
+  "runtimeCommit": "6c70a897ec7643f4681616d801481765aaa8f7bc",
+  "runtimeTree": "042c502720078f6f546931bf34c5396cb910c9fd",
+  "catalogCommit": "1d8ff6d41e71fb202ef433c58c458c355a3dca2e",
+  "apiImageId": "sha256:196a3631af5fcf76bffbfeb0651c290cfeeb7fd2adedad927e1bdf3c44556a22",
+  "apiUrl": "http://127.0.0.1:3351",
+  "origin": "http://127.0.0.1:3350",
+  "database": "native_auth_test_http",
+  "tools": {
+    "node": "24.14.0",
+    "pnpm": "9.15.4",
+    "postgres": "14.24"
+  },
+  "preconditions": {
+    "mock": false,
+    "thirdPartyIdentityCredentials": false,
+    "catalog": "formal initialize CLI, not demo seed",
+    "scanner": "ClamAV, official database daily 28125, max age 48h"
+  },
+  "testRuns": [
+    {
+      "command": "pnpm install --offline --frozen-lockfile --store-dir /private/tmp/timeline-portable-pnpm-store",
+      "status": "PASS",
+      "packages": 388
+    },
+    {
+      "command": "Prisma generate using project CLI and copied isolated XDG cache",
+      "status": "PASS"
+    },
+    {
+      "command": "vitest native-auth.postgres.integration + native-auth.rate-limit + native-password + project-access + redis.integration",
+      "status": "PASS",
+      "files": 5,
+      "tests": 28,
+      "skipped": 0,
+      "observedStartLocal": "2026-09-17T14:28:57+08:00",
+      "durationSeconds": 7.32
+    },
+    {
+      "command": "vitest projects.create-postgres.integration + attachment-storage-quota.postgres.integration",
+      "status": "PASS",
+      "files": 2,
+      "tests": 7,
+      "skipped": 0,
+      "observedStartLocal": "2026-09-17T14:38:24+08:00",
+      "durationSeconds": 1.28
+    },
+    {
+      "command": "NATIVE_AUTH_TEST_CONTAINER=timeline-native-a2-pg-20260917 node scripts/testing/native-auth-migration-test.mjs",
+      "status": "PASS",
+      "evidence": "native-migration-result.json"
+    },
+    {
+      "command": "NATIVE_AUTH_TEST_API_URL=http://127.0.0.1:3351 node scripts/testing/native-auth-http-test.mjs",
+      "status": "PASS",
+      "requests": 32,
+      "evidenceType": "live execution output; test does not write a report"
+    }
+  ],
+  "limitations": [
+    "No final-candidate image claim",
+    "No production access, writes, or deployment",
+    "No browser/product acceptance",
+    "A2 bridge permits outbound connectivity: no offline claim",
+    "Portable manifest/restore branch not yet executed; must run independently on A/B",
+    "Service-level PG tests use limited collaborator mocks; real HTTP business checks separately documented",
+    "Migration dump covers synthetic relations, not full file bytes or portable recovery",
+    "Scanner now intentionally stopped to release memory for final build"
+  ]
+}

@@ -1,9 +1,16 @@
+import { isFutureBusinessDate } from '../../common/business-date';
+import { createHash } from 'node:crypto';
+import { isReworkTask, ancestorEvidenceIds, readEvidenceTask, taskEvidenceIds } from '../../common/workflow-evidence';
+import { assertTeamTaskById, withProjectWrite } from '../../common/team-authorization';
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import {
+  AttachmentScanStatus,
   AttachmentTargetType,
   AuditTargetType,
   SampleConfirmationDecision,
@@ -11,13 +18,14 @@ import {
   SampleType,
   WorkflowAction,
   WorkflowNodeCode,
-  type Prisma,
+  Prisma,
 } from '@prisma/client';
 
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import { AttachmentsService } from '../attachments/attachments.service';
 import type { AuthenticatedUser } from '../auth/auth.types';
+import { ProjectAccessService } from '../auth/project-access.service';
 import {
   getAllowedWorkflowActions,
   getCurrentNodeName,
@@ -35,6 +43,9 @@ type UploadedBinaryFile = {
 };
 
 type SampleWriteInput = {
+  taskId?: string;
+  taskVersion?: string;
+  idempotencyKey?: string;
   sampleNo: string;
   sampleName: string;
   sampleType: SampleType;
@@ -53,6 +64,12 @@ type SampleUpdateInput = {
 };
 
 type SampleConfirmationInput = {
+  taskId: string;
+  taskVersion: string;
+  idempotencyKey: string;
+  actualConfirmedAt: Date;
+  confirmationParty: string;
+  confirmationAttachmentId: string;
   sampleId: string;
   decision: SampleConfirmationDecision;
   colorAssessment: string | null;
@@ -70,6 +87,40 @@ type ActiveTaskRecord = Prisma.WorkflowTaskGetPayload<{
 
 type SampleRecord = Prisma.SampleGetPayload<Record<string, never>>;
 
+type SampleConfirmationCapacityRow = {
+  id: string;
+  workflowTaskId: string;
+};
+
+type SampleCapacityRow = {
+  id: string;
+};
+
+type SampleAttachmentStatRow = {
+  entityId: string;
+  count: number;
+  latestAttachmentId: string | null;
+};
+
+const SAMPLE_RECORD_LIMIT = 100;
+const SAMPLE_CONFIRMATION_RECORD_LIMIT = 100;
+const SAMPLE_ATTACHMENT_HISTORY_LIMIT = 20;
+const SAMPLE_MAX_PAYLOAD_BYTES = 16 * 1024;
+const SAMPLE_ID_MAX_CHARS = 64;
+const SAMPLE_CODE_MAX_CHARS = 64;
+const SAMPLE_NAME_MAX_CHARS = 200;
+const SAMPLE_REMARK_MAX_CHARS = 4_000;
+const SAMPLE_CONFIRMATION_ASSESSMENT_MAX_CHARS = 4_000;
+const SAMPLE_CONFIRMATION_COMMENT_MAX_CHARS = 2_000;
+const SAMPLE_VERSION_MAX = 2_147_483_647;
+const SAMPLE_ID_PATTERN = /^[A-Za-z0-9_-]+$/;
+const SAMPLE_CODE_PATTERN = /^[A-Za-z0-9._-]+$/;
+
+const SAMPLE_ATTACHMENT_DETAIL_INCLUDE = {
+  uploadedBy: true,
+  deletedBy: true,
+} satisfies Prisma.AttachmentInclude;
+
 @Injectable()
 export class SamplesService {
   constructor(
@@ -77,13 +128,37 @@ export class SamplesService {
     private readonly activityLogsService: ActivityLogsService,
     private readonly attachmentsService: AttachmentsService,
     private readonly workflowsService: WorkflowsService,
+    private readonly projectAccessService: ProjectAccessService,
   ) {}
 
-  getWorkspace(projectId: string) {
-    return this.buildWorkspace(this.prisma, projectId);
+  async getWorkspace(projectId: string, actor: AuthenticatedUser, taskId?: string) {
+    await this.assertProjectAccess(projectId, actor, 'project.read');
+    if (taskId === undefined) return this.buildWorkspace(this.prisma, projectId);
+    this.assertSampleId(taskId, '工序');
+    return this.prisma.$transaction(async tx => {
+      const task = await readEvidenceTask(tx, projectId, taskId);
+      if (!task || !(['PAINT_DEVELOPMENT', 'SAMPLE_COLOR_CONFIRMATION'] as WorkflowNodeCode[]).includes(task.nodeCode)) throw new NotFoundException('本项目样板工序不存在。');
+      const evidence = task.nodeCode === 'PAINT_DEVELOPMENT'
+        ? await taskEvidenceIds(tx, projectId, task.id)
+        : await ancestorEvidenceIds(tx, task, WorkflowNodeCode.PAINT_DEVELOPMENT);
+      const confirmations = await tx.sampleConfirmation.findMany({ where: { projectId, workflowTaskId: task.id }, include: { sample: true, confirmedBy: true }, orderBy: [{ confirmedAt: 'desc' }, { id: 'desc' }], take: SAMPLE_CONFIRMATION_RECORD_LIMIT + 1 });
+      this.assertSampleConfirmationCapacity(confirmations);
+      const ids = [...new Set([...evidence, ...confirmations.map(item => item.sampleId)])];
+      const samples = await tx.sample.findMany({ where: { projectId, id: { in: ids } }, orderBy: [{ createdAt: 'asc' }, { id: 'asc' }], take: SAMPLE_RECORD_LIMIT + 1 });
+      this.assertSampleRecordCapacity(samples, false); this.assertPersistedSampleRows(samples);
+      const workspace = await this.buildWorkspace(tx, projectId);
+      return { ...workspace, taskFacts: { taskId: task.id, nodeCode: task.nodeCode,
+        samples: samples.map(sample => ({ id: sample.id, sampleNo: sample.sampleNo, sampleName: sample.sampleName, versionNo: sample.versionNo, isCurrent: sample.isCurrent, sampleType: sample.sampleType, status: sample.status, location: sample.location, remark: sample.remark, producedAt: sample.producedAt?.toISOString() ?? null, confirmedAt: sample.confirmedAt?.toISOString() ?? null, createdAt: sample.createdAt.toISOString(), updatedAt: sample.updatedAt.toISOString() })),
+        confirmations: confirmations.map(item => this.toConfirmationSummary(item)) } };
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead });
   }
 
-  getSampleDetail(projectId: string, sampleId: string) {
+  async getSampleDetail(
+    projectId: string,
+    sampleId: string,
+    actor: AuthenticatedUser,
+  ) {
+    await this.assertProjectAccess(projectId, actor, 'project.read');
     return this.buildSampleDetail(this.prisma, projectId, sampleId);
   }
 
@@ -92,20 +167,85 @@ export class SamplesService {
     rawInput: unknown,
     actor: AuthenticatedUser,
   ) {
+    await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     const input = this.parseSampleWriteInput(rawInput);
+    const key = input.idempotencyKey ? `sample-create:${actor.id}:${input.idempotencyKey}` : null;
+    const hash = createHash('sha256').update(JSON.stringify({ projectId, ...input })).digest('hex');
 
-    return this.prisma.$transaction(async (tx) => {
+    return withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
       await this.getProjectOrThrow(tx, projectId);
+      if (key) {
+        const previous = await tx.r26CommandRequest.findUnique({ where: { idempotencyKey: key } });
+        if (previous) {
+          if (previous.actorUserId !== actor.id || previous.projectId !== projectId || previous.requestHash !== hash) throw new ConflictException('请求编号已用于其他样板内容。');
+          return { ...(previous.result as Prisma.JsonObject), idempotentReplay: true };
+        }
+        const task = await tx.workflowTask.findFirst({ where: { id: input.taskId!, projectId, nodeCode: 'PAINT_DEVELOPMENT', isActive: true } });
+        if (!task || task.updatedAt.toISOString() !== input.taskVersion) throw new ConflictException('涂料开发工序已变化，请刷新后重试。');
+      }
+      let lockedCurrentVersionId: string | null = null;
+      if (input.createNewVersion) {
+        const currentVersionCandidate = await tx.sample.findFirst({
+          where: {
+            projectId,
+            sampleNo: input.sampleNo,
+            isCurrent: true,
+          },
+          orderBy: [{ versionNo: 'desc' }, { id: 'desc' }],
+        });
+        if (currentVersionCandidate) {
+          if (
+            !(await this.lockSampleRow(
+              tx,
+              projectId,
+              currentVersionCandidate.id,
+            ))
+          ) {
+            throw new BadRequestException(
+              '当前样板版本已变化，请刷新后重试。',
+            );
+          }
+          const lockedCurrentVersion = await this.getSampleOrThrow(
+            tx,
+            projectId,
+            currentVersionCandidate.id,
+          );
+          if (
+            lockedCurrentVersion.sampleNo !== input.sampleNo ||
+            !lockedCurrentVersion.isCurrent
+          ) {
+            throw new BadRequestException(
+              '当前样板版本已变化，请刷新后重试。',
+            );
+          }
+          this.assertPersistedSampleRow(lockedCurrentVersion);
 
-      const existingVersions = await tx.sample.findMany({
-        where: {
-          projectId,
-          sampleNo: input.sampleNo,
-        },
-        orderBy: {
-          versionNo: 'desc',
-        },
+          lockedCurrentVersionId = lockedCurrentVersion.id;
+        }
+      }
+
+      const evidenceTask = await this.lockActiveConfirmationTaskOrThrow(tx, actor, projectId, WorkflowNodeCode.PAINT_DEVELOPMENT);
+      const projectSamples = await tx.sample.findMany({
+        where: { projectId },
+        orderBy: [
+          { sampleNo: 'asc' },
+          { versionNo: 'desc' },
+          { id: 'desc' },
+        ],
+        take: SAMPLE_RECORD_LIMIT + 1,
       });
+      this.assertSampleRecordCapacity(projectSamples, true);
+      this.assertSampleVersions(projectSamples);
+      this.assertPersistedSampleRows(projectSamples);
+      const confirmationRows = await this.getConfirmationCapacityRows(
+        tx,
+        projectId,
+      );
+      this.assertSampleConfirmationCapacity(confirmationRows);
+
+      const existingVersions = projectSamples.filter(
+        (sample) => sample.sampleNo === input.sampleNo,
+      );
 
       if (input.createNewVersion && existingVersions.length === 0) {
         throw new BadRequestException('未找到可创建新版本的样板编号。');
@@ -115,7 +255,24 @@ export class SamplesService {
         throw new BadRequestException('样板编号已存在，如需新增版本请勾选创建新版本。');
       }
 
+      let nextVersionNo = 1;
       if (input.createNewVersion) {
+        const currentVersion = existingVersions.find((version) => version.isCurrent);
+        if (!currentVersion) {
+          throw new BadRequestException('当前样板版本不存在，不能创建新版本。');
+        }
+        if (
+          lockedCurrentVersionId === null ||
+          currentVersion.id !== lockedCurrentVersionId
+        ) {
+          throw new BadRequestException(
+            '当前样板版本已变化，请刷新后重试。',
+          );
+        }
+
+        nextVersionNo = existingVersions[0]!.versionNo + 1;
+        this.assertSampleVersion(nextVersionNo);
+
         await tx.sample.updateMany({
           where: {
             projectId,
@@ -128,20 +285,34 @@ export class SamplesService {
         });
       }
 
-      const createdSample = await tx.sample.create({
-        data: {
-          projectId,
-          sampleNo: input.sampleNo,
-          sampleName: input.sampleName,
-          versionNo: input.createNewVersion ? (existingVersions[0]?.versionNo ?? 0) + 1 : 1,
-          isCurrent: true,
-          sampleType: input.sampleType,
-          status: input.producedAt ? SampleStatus.IN_PREPARATION : SampleStatus.DRAFT,
-          location: input.location,
-          remark: input.remark,
-          producedAt: input.producedAt,
-        },
-      });
+      let createdSample: SampleRecord;
+      try {
+        createdSample = await tx.sample.create({
+          data: {
+            projectId,
+            sampleNo: input.sampleNo,
+            sampleName: input.sampleName,
+            versionNo: nextVersionNo,
+            isCurrent: true,
+            sampleType: input.sampleType,
+            status: input.producedAt
+              ? SampleStatus.IN_PREPARATION
+              : SampleStatus.DRAFT,
+            location: input.location,
+            remark: input.remark,
+            producedAt: input.producedAt,
+          },
+        });
+      } catch (error) {
+        if (this.isPrismaUniqueViolation(error)) {
+          throw new ConflictException({
+            code: 'SAMPLE_VERSION_CONFLICT',
+            message: '样板编号或版本已变化，请刷新后重试。',
+          });
+        }
+        throw error;
+      }
+      this.assertPersistedSampleRow(createdSample);
 
       await this.activityLogsService.createWithExecutor(tx, {
         projectId,
@@ -149,12 +320,15 @@ export class SamplesService {
         targetType: AuditTargetType.SAMPLE,
         targetId: createdSample.id,
         action: input.createNewVersion ? 'SAMPLE_VERSION_CREATED' : 'SAMPLE_CREATED',
-        nodeCode: WorkflowNodeCode.SAMPLE_COLOR_CONFIRMATION,
+        metadata: { workflowTaskId: evidenceTask.id, evidenceKind: 'TASK_CREATED_RECORD' },
+        nodeCode: WorkflowNodeCode.PAINT_DEVELOPMENT,
         summary: `${createdSample.sampleNo} ${input.createNewVersion ? '新版本' : '样板'}已创建。`,
         afterData: this.toSampleAuditSnapshot(createdSample),
       });
 
-      return this.buildSampleDetail(tx, projectId, createdSample.id);
+      const result = await this.buildSampleDetail(tx, projectId, createdSample.id);
+      if (key) await tx.r26CommandRequest.create({ data: { projectId, actorUserId: actor.id, idempotencyKey: key, action: 'SAMPLE_CREATED', requestHash: hash, result: result as unknown as Prisma.InputJsonValue } });
+      return { ...result, idempotentReplay: false };
     });
   }
 
@@ -164,28 +338,39 @@ export class SamplesService {
     rawInput: unknown,
     actor: AuthenticatedUser,
   ) {
+    await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     const input = this.parseSampleUpdateInput(rawInput);
 
-    return this.prisma.$transaction(async (tx) => {
+    return withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
+      await this.lockSampleRow(tx, projectId, sampleId);
       const sample = await this.getSampleOrThrow(tx, projectId, sampleId);
+      this.assertPersistedSampleRow(sample);
+      this.assertSampleWritable(sample);
+      await this.lockActiveConfirmationTaskOrThrow(tx, actor, projectId, WorkflowNodeCode.PAINT_DEVELOPMENT);
+
+      await this.assertProjectSampleRecordBounds(tx, projectId);
+
+      const updateData = {
+        sampleName: input.sampleName ?? sample.sampleName,
+        sampleType: input.sampleType ?? sample.sampleType,
+        location: input.location === undefined ? sample.location : input.location,
+        remark: input.remark === undefined ? sample.remark : input.remark,
+        producedAt:
+          input.producedAt === undefined ? sample.producedAt : input.producedAt,
+        status:
+          input.producedAt !== undefined
+            ? input.producedAt
+              ? SampleStatus.IN_PREPARATION
+              : SampleStatus.DRAFT
+            : sample.status,
+      };
+      this.assertPersistedSampleRow({ ...sample, ...updateData });
 
       const updatedSample = await tx.sample.update({
         where: { id: sampleId },
-        data: {
-          sampleName: input.sampleName ?? sample.sampleName,
-          sampleType: input.sampleType ?? sample.sampleType,
-          location: input.location === undefined ? sample.location : input.location,
-          remark: input.remark === undefined ? sample.remark : input.remark,
-          producedAt:
-            input.producedAt === undefined ? sample.producedAt : input.producedAt,
-          status:
-            input.producedAt !== undefined
-              ? input.producedAt
-                ? SampleStatus.IN_PREPARATION
-                : SampleStatus.DRAFT
-              : sample.status,
-        },
+        data: updateData,
       });
+      this.assertPersistedSampleRow(updatedSample);
 
       await this.activityLogsService.createWithExecutor(tx, {
         projectId,
@@ -193,7 +378,7 @@ export class SamplesService {
         targetType: AuditTargetType.SAMPLE,
         targetId: sampleId,
         action: 'SAMPLE_UPDATED',
-        nodeCode: WorkflowNodeCode.SAMPLE_COLOR_CONFIRMATION,
+        nodeCode: WorkflowNodeCode.PAINT_DEVELOPMENT,
         summary: `${updatedSample.sampleNo} V${updatedSample.versionNo} 样板信息已更新。`,
         beforeData: this.toSampleAuditSnapshot(sample),
         afterData: this.toSampleAuditSnapshot(updatedSample),
@@ -209,7 +394,17 @@ export class SamplesService {
     file: UploadedBinaryFile | undefined,
     actor: AuthenticatedUser,
   ) {
-    const sample = await this.getSampleOrThrow(this.prisma, projectId, sampleId);
+    await this.assertProjectAccess(projectId, actor, 'attachment.manage');
+    const observedSample = await this.getSampleOrThrow(
+      this.prisma,
+      projectId,
+      sampleId,
+    );
+    const observedActiveTask = await this.getActiveConfirmationTaskOrThrow(
+      this.prisma,
+      projectId,
+      WorkflowNodeCode.PAINT_DEVELOPMENT,
+    );
 
     if (!file) {
       throw new BadRequestException('请选择要上传的样板图片。');
@@ -219,14 +414,57 @@ export class SamplesService {
       throw new BadRequestException('仅支持图片文件上传。');
     }
 
+    const preflight = await this.preflightSampleImageUpload(
+      projectId,
+      sampleId,
+      observedSample,
+      observedActiveTask,
+      actor,
+    );
+
     const attachment = await this.attachmentsService.createStoredAttachment({
+      actor,
       projectId,
       targetType: AttachmentTargetType.SAMPLE,
       targetId: sampleId,
       file,
       uploadedById: actor.id,
-      nodeCode: WorkflowNodeCode.SAMPLE_COLOR_CONFIRMATION,
-      summary: `上传样板图片 ${sample.sampleNo} V${sample.versionNo}`,
+      nodeCode: WorkflowNodeCode.PAINT_DEVELOPMENT,
+      summary: `上传样板图片 ${preflight.sample.sampleNo} V${preflight.sample.versionNo}`,
+      finalizeDomainAttachment: async (tx) => {
+        if (!(await this.lockSampleRow(tx, projectId, sampleId))) {
+          this.throwAttachmentTargetStateChanged();
+        }
+        const lockedSample = await tx.sample.findFirst({
+          where: { id: sampleId, projectId },
+        });
+        if (!lockedSample) {
+          this.throwAttachmentTargetStateChanged();
+        }
+        this.assertPersistedSampleRow(lockedSample);
+        if (!this.isSampleWritable(lockedSample)) {
+          this.throwAttachmentTargetStateChanged();
+        }
+
+        await assertTeamTaskById(tx, preflight.taskId, actor);
+        if (!(await this.lockWorkflowTaskRow(tx, projectId, preflight.taskId))) {
+          this.throwAttachmentTargetStateChanged();
+        }
+        const lockedTask = await tx.workflowTask.findFirst({
+          where: {
+            id: preflight.taskId,
+            projectId,
+            nodeCode: WorkflowNodeCode.PAINT_DEVELOPMENT,
+            isActive: true,
+          },
+          select: { id: true },
+        });
+        if (!lockedTask) {
+          this.throwAttachmentTargetStateChanged();
+        }
+
+        await this.assertProjectSampleRecordBounds(tx, projectId);
+      },
     });
 
     return {
@@ -240,32 +478,40 @@ export class SamplesService {
     rawInput: unknown,
     actor: AuthenticatedUser,
   ) {
+    await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     const input = this.parseConfirmationInput(rawInput);
+    const commandKey = `sample-confirmation:${actor.id}:${input.idempotencyKey}`;
+    const requestHash = createHash('sha256').update(JSON.stringify({ projectId, ...input })).digest('hex');
 
-    return this.prisma.$transaction(async (tx) => {
-      const activeTask = await this.getActiveConfirmationTaskOrThrow(tx, projectId);
-      const sample = await this.getSampleOrThrow(tx, projectId, input.sampleId);
-
-      if (!sample.isCurrent) {
-        throw new BadRequestException('只能确认当前版本样板。');
+    return withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
+      const previous = await tx.r26CommandRequest.findUnique({ where: { idempotencyKey: commandKey } });
+      if (previous) {
+        if (previous.actorUserId !== actor.id || previous.projectId !== projectId || previous.requestHash !== requestHash) throw new ConflictException('请求编号已用于其他确认内容。');
+        return { ...(previous.result as Prisma.JsonObject), idempotentReplay: true };
       }
-
-      const sampleImages = await this.attachmentsService.listTargetAttachments(
-        tx,
-        AttachmentTargetType.SAMPLE,
-        sample.id,
+      if (!(await this.lockSampleRow(tx, projectId, input.sampleId))) {
+        throw new NotFoundException('样板不存在或已被删除。');
+      }
+      const sample = await this.getSampleOrThrow(tx, projectId, input.sampleId);
+      this.assertPersistedSampleRow(sample);
+      this.assertSampleWritable(sample);
+      const activeTask = await this.lockActiveConfirmationTaskOrThrow(
+        tx, actor,
+        projectId,
       );
-
-      if (input.decision === SampleConfirmationDecision.APPROVE && sampleImages.length === 0) {
-        throw new BadRequestException('样板确认通过前必须至少上传一张样板图片。');
+      if (activeTask.id !== input.taskId || activeTask.updatedAt.toISOString() !== input.taskVersion) throw new ConflictException('工序版本已变化，请刷新后重试；已填写内容仍保留。');
+      await this.assertProjectSampleRecordBounds(tx, projectId, activeTask.id);
+      const confirmationMaterial = await tx.attachment.findFirst({ where: { id: input.confirmationAttachmentId, projectId, entityType: 'WORKFLOW_TASK', entityId: activeTask.id, isDeleted: false, scanStatus: 'CLEAN', materialType: 'sample-confirmation-proof' } });
+      if (!confirmationMaterial) throw new BadRequestException('请先上传本轮确认单并等待安全扫描通过。');
+      const project = await this.getProjectOrThrow(tx, projectId);
+      if ((project.requiresApprovedReport || isReworkTask(activeTask)) &&
+          !(await ancestorEvidenceIds(tx, activeTask, WorkflowNodeCode.PAINT_DEVELOPMENT)).includes(sample.id)) {
+        throw new BadRequestException('旧配方样板需复核，请选择本轮登记的样板，原签署记录保留。');
       }
 
       const now = new Date();
-      const confirmation = await tx.sampleConfirmation.upsert({
-        where: {
-          workflowTaskId: activeTask.id,
-        },
-        create: {
+      const confirmation = await tx.sampleConfirmation.create({
+        data: {
           projectId,
           sampleId: sample.id,
           workflowInstanceId: activeTask.workflowInstanceId,
@@ -276,15 +522,9 @@ export class SamplesService {
           comment: input.comment,
           confirmedById: actor.id,
           confirmedAt: now,
-        },
-        update: {
-          sampleId: sample.id,
-          decision: input.decision,
-          colorAssessment: input.colorAssessment,
-          appearanceAssessment: input.appearanceAssessment,
-          comment: input.comment,
-          confirmedById: actor.id,
-          confirmedAt: now,
+          actualConfirmedAt: input.actualConfirmedAt,
+          confirmationParty: input.confirmationParty,
+          confirmationAttachmentId: input.confirmationAttachmentId,
         },
       });
 
@@ -313,6 +553,9 @@ export class SamplesService {
         afterData: {
           confirmationId: confirmation.id,
           workflowTaskId: activeTask.id,
+          actualConfirmedAt: input.actualConfirmedAt.toISOString(),
+          confirmationParty: input.confirmationParty,
+          confirmationAttachmentId: input.confirmationAttachmentId,
           decision: input.decision,
           sampleStatus: nextStatus,
         },
@@ -334,54 +577,116 @@ export class SamplesService {
         },
       );
 
-      return this.buildWorkspace(tx, projectId);
+      const result = await this.buildWorkspace(tx, projectId);
+      await tx.r26CommandRequest.create({ data: { projectId, actorUserId: actor.id, idempotencyKey: commandKey, action: 'SAMPLE_CONFIRMATION_SUBMITTED', requestHash, result: result as unknown as Prisma.InputJsonValue } });
+      return { ...result, idempotentReplay: false };
     });
+  }
+
+  private async preflightSampleImageUpload(
+    projectId: string,
+    sampleId: string,
+    observedSample: SampleRecord,
+    observedActiveTask: ActiveTaskRecord,
+    actor: AuthenticatedUser,
+  ) {
+    const transaction = (this.prisma as PrismaService & {
+      $transaction?: PrismaService['$transaction'];
+    }).$transaction;
+
+    if (typeof transaction !== 'function') {
+      if (process.env.NODE_ENV !== 'test') {
+        throw new ServiceUnavailableException({
+          code: 'SAMPLE_ATTACHMENT_PREFLIGHT_UNAVAILABLE',
+          message: '样板附件终态预检不可用，已拒绝上传。',
+        });
+      }
+
+      // Compatibility is restricted to legacy isolated unit doubles. The
+      // injected PrismaService used by every runtime always exposes
+      // `$transaction`; production can never take this branch.
+      this.assertSampleWritable(observedSample);
+      return {
+        sample: observedSample,
+        taskId: observedActiveTask.id,
+      };
+    }
+
+    return withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
+      if (!(await this.lockSampleRow(tx, projectId, sampleId))) {
+        throw new NotFoundException('样板不存在或已被删除。');
+      }
+      const sample = this.isLegacyIsolatedTransactionDouble(tx)
+        ? observedSample
+        : await this.getSampleOrThrow(tx, projectId, sampleId);
+      this.assertPersistedSampleRow(sample);
+      this.assertSampleWritable(sample);
+      const activeTask = await this.lockActiveConfirmationTaskOrThrow(
+        tx, actor,
+        projectId,
+        WorkflowNodeCode.PAINT_DEVELOPMENT,
+      );
+      await this.assertProjectSampleRecordBounds(tx, projectId);
+
+      return {
+        sample,
+        taskId: activeTask.id,
+      };
+    });
+  }
+
+  private isLegacyIsolatedTransactionDouble(tx: Prisma.TransactionClient) {
+    return (
+      process.env.NODE_ENV === 'test' &&
+      typeof (tx as Prisma.TransactionClient & { $executeRaw?: unknown })
+        .$executeRaw !== 'function'
+    );
+  }
+
+  private assertProjectAccess(
+    projectId: string,
+    actor: AuthenticatedUser,
+    requiredPermission: string,
+  ) {
+    return this.projectAccessService.assertProjectAccessWithDefaultClient(
+      projectId,
+      actor,
+      requiredPermission,
+    );
   }
 
   private async buildWorkspace(db: SamplesDbClient, projectId: string) {
     const project = await this.getProjectOrThrow(db, projectId);
-    const activeTask = await this.getActiveConfirmationTask(db, projectId);
-    const currentSamples = await db.sample.findMany({
-      where: {
-        projectId,
-        isCurrent: true,
-      },
+    const activeTask = await this.getActiveConfirmationTask(db, projectId, WorkflowNodeCode.PAINT_DEVELOPMENT) ?? await this.getActiveConfirmationTask(db, projectId);
+    const allVersions = await db.sample.findMany({
+      where: { projectId },
       orderBy: [
         { updatedAt: 'desc' },
         { createdAt: 'desc' },
+        { id: 'desc' },
       ],
+      take: SAMPLE_RECORD_LIMIT + 1,
     });
-    const allVersions = await db.sample.findMany({
-      where: { projectId },
-      select: {
-        id: true,
-        sampleNo: true,
-      },
-    });
-    const attachments = currentSamples.length
-      ? await db.attachment.findMany({
-          where: {
-            entityType: AttachmentTargetType.SAMPLE,
-            entityId: {
-              in: currentSamples.map((sample) => sample.id),
-            },
-            isDeleted: false,
-          },
-          orderBy: {
-            createdAt: 'desc',
-          },
-        })
-      : [];
-    const latestConfirmation = await db.sampleConfirmation.findFirst({
+    this.assertSampleRecordCapacity(allVersions, false);
+    this.assertPersistedSampleRows(allVersions);
+    const currentSamples = allVersions.filter((sample) => sample.isCurrent);
+    const confirmations = await db.sampleConfirmation.findMany({
       where: { projectId },
       include: {
         sample: true,
         confirmedBy: true,
       },
-      orderBy: {
-        confirmedAt: 'desc',
-      },
+      orderBy: [{ confirmedAt: 'desc' }, { id: 'desc' }],
+      take: SAMPLE_CONFIRMATION_RECORD_LIMIT + 1,
     });
+    this.assertSampleConfirmationCapacity(confirmations);
+    const latestConfirmation = confirmations[0] ?? null;
+    const attachmentByTarget = await this.getSampleAttachmentStats(
+      db,
+      projectId,
+      currentSamples.map((sample) => sample.id),
+      true,
+    );
 
     const versionCounts = new Map<string, number>();
     for (const version of allVersions) {
@@ -389,24 +694,6 @@ export class SamplesService {
         version.sampleNo,
         (versionCounts.get(version.sampleNo) ?? 0) + 1,
       );
-    }
-
-    const attachmentByTarget = new Map<
-      string,
-      {
-        count: number;
-        latestAttachmentId: string | null;
-      }
-    >();
-
-    for (const attachment of attachments) {
-      const entry = attachmentByTarget.get(attachment.entityId) ?? {
-        count: 0,
-        latestAttachmentId: null,
-      };
-      entry.count += 1;
-      entry.latestAttachmentId ||= attachment.id;
-      attachmentByTarget.set(attachment.entityId, entry);
     }
 
     return {
@@ -454,20 +741,17 @@ export class SamplesService {
   ) {
     const project = await this.getProjectOrThrow(db, projectId);
     const sample = await this.getSampleOrThrow(db, projectId, sampleId);
+    this.assertPersistedSampleRow(sample);
     const versions = await db.sample.findMany({
       where: {
         projectId,
         sampleNo: sample.sampleNo,
       },
-      orderBy: {
-        versionNo: 'desc',
-      },
+      orderBy: [{ versionNo: 'desc' }, { id: 'desc' }],
+      take: SAMPLE_RECORD_LIMIT + 1,
     });
-    const attachments = await this.attachmentsService.listTargetAttachments(
-      db,
-      AttachmentTargetType.SAMPLE,
-      sampleId,
-    );
+    this.assertSampleRecordCapacity(versions, false);
+    this.assertPersistedSampleRows(versions);
     const confirmations = await db.sampleConfirmation.findMany({
       where: {
         projectId,
@@ -479,29 +763,32 @@ export class SamplesService {
         sample: true,
         confirmedBy: true,
       },
-      orderBy: {
-        confirmedAt: 'desc',
-      },
+      orderBy: [{ confirmedAt: 'desc' }, { id: 'desc' }],
+      take: SAMPLE_CONFIRMATION_RECORD_LIMIT + 1,
     });
+    this.assertSampleConfirmationCapacity(confirmations);
 
-    const attachmentCountByVersion = new Map<string, number>();
-    for (const version of versions) {
-      attachmentCountByVersion.set(version.id, 0);
-    }
-    for (const attachment of await db.attachment.findMany({
+    const attachmentCountByVersion = await this.getSampleAttachmentStats(
+      db,
+      projectId,
+      versions.map((version) => version.id),
+      false,
+    );
+    const attachmentRows = await db.attachment.findMany({
       where: {
+        projectId,
         entityType: AttachmentTargetType.SAMPLE,
-        entityId: {
-          in: versions.map((version) => version.id),
-        },
+        entityId: sampleId,
         isDeleted: false,
+        scanStatus: AttachmentScanStatus.CLEAN,
       },
-    })) {
-      attachmentCountByVersion.set(
-        attachment.entityId,
-        (attachmentCountByVersion.get(attachment.entityId) ?? 0) + 1,
-      );
-    }
+      include: SAMPLE_ATTACHMENT_DETAIL_INCLUDE,
+      orderBy: [{ uploadedAt: 'desc' }, { id: 'desc' }],
+      take: SAMPLE_ATTACHMENT_HISTORY_LIMIT + 1,
+    });
+    const attachmentsHasMore =
+      attachmentRows.length > SAMPLE_ATTACHMENT_HISTORY_LIMIT;
+    const attachments = attachmentRows.slice(0, SAMPLE_ATTACHMENT_HISTORY_LIMIT);
 
     return {
       project: {
@@ -537,12 +824,13 @@ export class SamplesService {
         status: version.status,
         producedAt: version.producedAt?.toISOString() ?? null,
         confirmedAt: version.confirmedAt?.toISOString() ?? null,
-        imageCount: attachmentCountByVersion.get(version.id) ?? 0,
+        imageCount: attachmentCountByVersion.get(version.id)?.count ?? 0,
         createdAt: version.createdAt.toISOString(),
       })),
       attachments: attachments.map((attachment) =>
         this.attachmentsService.toAttachmentSummary(attachment),
       ),
+      attachmentsHasMore,
       confirmations: confirmations.map((confirmation) =>
         this.toConfirmationSummary(confirmation),
       ),
@@ -558,6 +846,7 @@ export class SamplesService {
         name: true,
         currentNodeCode: true,
         plannedEndDate: true,
+        requiresApprovedReport: true,
       },
     }).then((project) => {
       if (!project) {
@@ -583,11 +872,11 @@ export class SamplesService {
     });
   }
 
-  private getActiveConfirmationTask(db: SamplesDbClient, projectId: string) {
+  private getActiveConfirmationTask(db: SamplesDbClient, projectId: string, nodeCode: WorkflowNodeCode = WorkflowNodeCode.SAMPLE_COLOR_CONFIRMATION) {
     return db.workflowTask.findFirst({
       where: {
         projectId,
-        nodeCode: WorkflowNodeCode.SAMPLE_COLOR_CONFIRMATION,
+        nodeCode,
         isActive: true,
       },
       include: {
@@ -605,20 +894,328 @@ export class SamplesService {
   private async getActiveConfirmationTaskOrThrow(
     db: SamplesDbClient,
     projectId: string,
+    nodeCode: WorkflowNodeCode = WorkflowNodeCode.SAMPLE_COLOR_CONFIRMATION,
   ) {
-    const activeTask = await this.getActiveConfirmationTask(db, projectId);
+    const activeTask = await this.getActiveConfirmationTask(db, projectId, nodeCode);
 
     if (!activeTask) {
-      throw new BadRequestException('当前项目没有活跃的样板颜色确认节点。');
+      throw new BadRequestException('当前项目没有对应的活跃样板工序。');
     }
 
     return activeTask;
+  }
+
+  private async lockActiveConfirmationTaskOrThrow(
+    tx: Prisma.TransactionClient,
+    actor: AuthenticatedUser,
+    projectId: string,
+    nodeCode: WorkflowNodeCode = WorkflowNodeCode.SAMPLE_COLOR_CONFIRMATION,
+  ) {
+    const candidate = await this.getActiveConfirmationTask(tx, projectId, nodeCode);
+    if (!candidate) {
+      throw new BadRequestException('当前项目没有对应的活跃样板工序。');
+    }
+    if (!(await this.lockWorkflowTaskRow(tx, projectId, candidate.id))) {
+      throw new BadRequestException('当前项目没有对应的活跃样板工序。');
+    }
+
+    const activeTask = await tx.workflowTask.findFirst({
+      where: {
+        id: candidate.id,
+        projectId,
+        nodeCode,
+        isActive: true,
+      },
+      include: {
+        assigneeUser: true,
+        assigneeDepartment: true,
+        workflowInstance: true,
+      },
+    });
+    if (!activeTask) {
+      throw new BadRequestException('当前项目没有对应的活跃样板工序。');
+    }
+
+    await assertTeamTaskById(tx, activeTask.id, actor);
+    return activeTask;
+  }
+
+  private async lockSampleRow(
+    tx: Prisma.TransactionClient,
+    projectId: string,
+    sampleId: string,
+  ) {
+    const rows = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+      SELECT "id"
+      FROM "samples"
+      WHERE "id" = ${sampleId} AND "projectId" = ${projectId}
+      FOR UPDATE
+    `);
+    return rows.length === 1;
+  }
+
+  private async lockWorkflowTaskRow(
+    tx: Prisma.TransactionClient,
+    projectId: string,
+    taskId: string,
+  ) {
+    const rows = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+      SELECT "id"
+      FROM "workflow_tasks"
+      WHERE "id" = ${taskId} AND "projectId" = ${projectId}
+      FOR UPDATE
+    `);
+    return rows.length === 1;
+  }
+
+  private getConfirmationCapacityRows(
+    tx: Prisma.TransactionClient,
+    projectId: string,
+  ) {
+    return tx.$queryRaw<SampleConfirmationCapacityRow[]>(Prisma.sql`
+      SELECT "id", "workflowTaskId"
+      FROM "sample_confirmations"
+      WHERE "projectId" = ${projectId}
+      ORDER BY "id" ASC
+      LIMIT 101
+    `);
+  }
+
+  private getSampleCapacityRows(
+    tx: Prisma.TransactionClient,
+    projectId: string,
+  ) {
+    return tx.$queryRaw<SampleCapacityRow[]>(Prisma.sql`
+      SELECT "id"
+      FROM "samples"
+      WHERE "projectId" = ${projectId}
+      ORDER BY "id" ASC
+      LIMIT 101
+    `);
+  }
+
+  private async assertProjectSampleRecordBounds(
+    tx: Prisma.TransactionClient,
+    projectId: string,
+    confirmationWorkflowTaskId?: string,
+  ) {
+    const sampleRows = await this.getSampleCapacityRows(tx, projectId);
+    this.assertSampleRecordCapacity(sampleRows, false);
+
+    const confirmationRows = await this.getConfirmationCapacityRows(
+      tx,
+      projectId,
+    );
+    this.assertSampleConfirmationCapacity(
+      confirmationRows,
+      confirmationWorkflowTaskId,
+    );
+  }
+
+  private async hasCleanSampleImage(
+    db: SamplesDbClient,
+    projectId: string,
+    sampleId: string,
+  ) {
+    const attachmentDelegate = db.attachment as
+      | SamplesDbClient['attachment']
+      | undefined;
+    if (attachmentDelegate?.findFirst) {
+      const image = await attachmentDelegate.findFirst({
+        where: {
+          projectId,
+          entityType: AttachmentTargetType.SAMPLE,
+          entityId: sampleId,
+          isDeleted: false,
+          scanStatus: AttachmentScanStatus.CLEAN,
+        },
+        select: { id: true },
+      });
+      return image !== null;
+    }
+
+    if (process.env.NODE_ENV !== 'test') {
+      throw new ServiceUnavailableException({
+        code: 'SAMPLE_ATTACHMENT_LOOKUP_UNAVAILABLE',
+        message: '样板图片安全查询不可用，已拒绝确认操作。',
+      });
+    }
+
+    // Compatibility is restricted to legacy isolated test doubles. Every real
+    // Prisma transaction exposes `attachment`, and non-test runtimes fail closed
+    // above rather than materializing attachment history.
+    const legacyRows = await this.attachmentsService.listTargetAttachments(
+      db,
+      AttachmentTargetType.SAMPLE,
+      sampleId,
+    );
+    return legacyRows.length > 0;
+  }
+
+  private async getSampleAttachmentStats(
+    db: SamplesDbClient,
+    projectId: string,
+    sampleIds: string[],
+    includeLatest: boolean,
+  ) {
+    const stats = new Map<
+      string,
+      { count: number; latestAttachmentId: string | null }
+    >();
+    if (sampleIds.length === 0) {
+      return stats;
+    }
+
+    const where = {
+      projectId,
+      entityType: AttachmentTargetType.SAMPLE,
+      entityId: { in: sampleIds },
+      isDeleted: false,
+      scanStatus: AttachmentScanStatus.CLEAN,
+    } as const;
+    if (includeLatest) {
+      const rows = await db.$queryRaw<SampleAttachmentStatRow[]>(Prisma.sql`
+        SELECT
+          attachment."targetId" AS "entityId",
+          COUNT(*)::integer AS "count",
+          (
+            SELECT latest_attachment."id"
+            FROM "attachments" AS latest_attachment
+            WHERE latest_attachment."projectId" = ${projectId}
+              AND latest_attachment."targetType" = ${AttachmentTargetType.SAMPLE}::"AttachmentTargetType"
+              AND latest_attachment."targetId" = attachment."targetId"
+              AND latest_attachment."isDeleted" = FALSE
+              AND latest_attachment."scanStatus" = ${AttachmentScanStatus.CLEAN}::"AttachmentScanStatus"
+            ORDER BY latest_attachment."uploadedAt" DESC, latest_attachment."id" DESC
+            LIMIT 1
+          ) AS "latestAttachmentId"
+        FROM "attachments" AS attachment
+        WHERE attachment."projectId" = ${projectId}
+          AND attachment."targetType" = ${AttachmentTargetType.SAMPLE}::"AttachmentTargetType"
+          AND attachment."targetId" IN (${Prisma.join(sampleIds)})
+          AND attachment."isDeleted" = FALSE
+          AND attachment."scanStatus" = ${AttachmentScanStatus.CLEAN}::"AttachmentScanStatus"
+        GROUP BY attachment."targetId"
+        ORDER BY attachment."targetId" ASC
+      `);
+      for (const row of rows) {
+        stats.set(row.entityId, {
+          count: row.count,
+          latestAttachmentId: row.latestAttachmentId,
+        });
+      }
+      return stats;
+    }
+
+    const counts = await db.attachment.groupBy({
+      by: ['entityId'],
+      where,
+      _count: { _all: true },
+    });
+    for (const count of counts) {
+      stats.set(count.entityId, {
+        count: count._count._all,
+        latestAttachmentId: null,
+      });
+    }
+
+    return stats;
+  }
+
+  private assertSampleRecordCapacity(
+    rows: readonly unknown[],
+    forCreate: boolean,
+  ) {
+    if (
+      rows.length > SAMPLE_RECORD_LIMIT ||
+      (forCreate && rows.length >= SAMPLE_RECORD_LIMIT)
+    ) {
+      throw new ConflictException({
+        code: 'SAMPLE_RECORD_LIMIT_EXCEEDED',
+        message: `每个项目最多保留 ${SAMPLE_RECORD_LIMIT} 条样板记录（含历史版本）。`,
+      });
+    }
+  }
+
+  private assertSampleConfirmationCapacity(
+    rows: readonly { workflowTaskId?: string }[],
+    workflowTaskId?: string,
+  ) {
+    const activeTaskAlreadyHasConfirmation =
+      workflowTaskId !== undefined &&
+      rows.some((row) => row.workflowTaskId === workflowTaskId);
+    if (
+      rows.length > SAMPLE_CONFIRMATION_RECORD_LIMIT ||
+      (workflowTaskId !== undefined &&
+        rows.length >= SAMPLE_CONFIRMATION_RECORD_LIMIT &&
+        !activeTaskAlreadyHasConfirmation)
+    ) {
+      throw new ConflictException({
+        code: 'SAMPLE_CONFIRMATION_RECORD_LIMIT_EXCEEDED',
+        message: `每个项目最多保留 ${SAMPLE_CONFIRMATION_RECORD_LIMIT} 条样板确认记录。`,
+      });
+    }
+  }
+
+  private assertSampleVersions(rows: readonly { versionNo: number }[]) {
+    for (const row of rows) {
+      this.assertSampleVersion(row.versionNo);
+    }
+  }
+
+  private assertSampleVersion(versionNo: number) {
+    if (
+      !Number.isSafeInteger(versionNo) ||
+      versionNo < 1 ||
+      versionNo > SAMPLE_VERSION_MAX
+    ) {
+      throw new ConflictException({
+        code: 'SAMPLE_VERSION_OUT_OF_BOUNDS',
+        message: '样板版本号超出安全整数范围。',
+      });
+    }
+  }
+
+  private isPrismaUniqueViolation(error: unknown) {
+    return (
+      typeof error === 'object' &&
+      error !== null &&
+      'code' in error &&
+      error.code === 'P2002'
+    );
+  }
+
+  private isSampleWritable(
+    sample: Pick<SampleRecord, 'isCurrent' | 'status' | 'confirmedAt'>,
+  ) {
+    return (
+      sample.isCurrent &&
+      sample.confirmedAt === null &&
+      (sample.status === SampleStatus.DRAFT ||
+        sample.status === SampleStatus.IN_PREPARATION)
+    );
+  }
+
+  private assertSampleWritable(
+    sample: Pick<SampleRecord, 'isCurrent' | 'status' | 'confirmedAt'>,
+  ) {
+    if (!this.isSampleWritable(sample)) {
+      throw new BadRequestException('当前样板版本不允许修改。');
+    }
+  }
+
+  private throwAttachmentTargetStateChanged(): never {
+    throw new ConflictException({
+      code: 'ATTACHMENT_TARGET_STATE_CHANGED',
+      message: '附件扫描期间样板或流程状态已变更，请刷新后重试。',
+    });
   }
 
   private toTaskSummary(task: ActiveTaskRecord) {
     return {
       id: task.id,
       taskNo: task.taskNo,
+      taskVersion: task.updatedAt.toISOString(),
       nodeCode: task.nodeCode,
       nodeName: task.nodeName,
       status: task.status,
@@ -643,17 +1240,23 @@ export class SamplesService {
       };
     }>,
   ) {
+    this.assertPersistedSampleRow(confirmation.sample);
     return {
       id: confirmation.id,
       sampleId: confirmation.sampleId,
       sampleNo: confirmation.sample.sampleNo,
       sampleName: confirmation.sample.sampleName,
       sampleVersionNo: confirmation.sample.versionNo,
+      taskId: confirmation.workflowTaskId,
       decision: confirmation.decision,
       colorAssessment: confirmation.colorAssessment,
       appearanceAssessment: confirmation.appearanceAssessment,
       comment: confirmation.comment,
       confirmedByName: confirmation.confirmedBy?.name ?? null,
+      confirmedById: confirmation.confirmedById,
+      actualConfirmedAt: confirmation.actualConfirmedAt?.toISOString() ?? null,
+      confirmationParty: confirmation.confirmationParty,
+      confirmationAttachmentId: confirmation.confirmationAttachmentId,
       confirmedAt: confirmation.confirmedAt.toISOString(),
       createdAt: confirmation.createdAt.toISOString(),
     };
@@ -662,21 +1265,47 @@ export class SamplesService {
   private parseSampleWriteInput(rawInput: unknown): SampleWriteInput {
     const input = this.asRecord(rawInput, 'Invalid sample payload.');
     const createNewVersion = input.createNewVersion === true;
+    const sampleNo = this.parseRequiredString(input.sampleNo, 'sampleNo');
+    const sampleName = this.parseRequiredString(input.sampleName, 'sampleName');
+    const location = this.parseNullableString(input.location) ?? null;
+    const remark = this.parseNullableString(input.remark) ?? null;
+    const producedAt =
+      this.parseNullableDate(input.producedAt, 'producedAt') ?? null;
 
-    return {
-      sampleNo: this.parseRequiredString(input.sampleNo, 'sampleNo'),
-      sampleName: this.parseRequiredString(input.sampleName, 'sampleName'),
+    this.assertSampleCode(sampleNo, '样板编号');
+    this.assertSampleText(sampleName, '样板名称', SAMPLE_NAME_MAX_CHARS);
+    if (location) {
+      this.assertSampleText(location, '存放位置', SAMPLE_NAME_MAX_CHARS);
+    }
+    if (remark) {
+      this.assertSampleText(remark, '备注', SAMPLE_REMARK_MAX_CHARS);
+    }
+
+    const taskId = this.parseOptionalString(input.taskId);
+    const taskVersion = this.parseOptionalString(input.taskVersion);
+    const idempotencyKey = this.parseOptionalString(input.idempotencyKey);
+    if ((taskId || taskVersion || idempotencyKey) && (!taskId || !taskVersion || !idempotencyKey)) throw new BadRequestException('工序、版本与请求编号必须一起提交。');
+    if (taskId) this.assertSampleId(taskId, '工序');
+    if (idempotencyKey && !/^[A-Za-z0-9._:-]{1,128}$/.test(idempotencyKey)) throw new BadRequestException('请求编号不合法。');
+    if (taskVersion && (!/^\d{4}-\d{2}-\d{2}T/.test(taskVersion) || !Number.isFinite(new Date(taskVersion).getTime()) || new Date(taskVersion).toISOString() !== taskVersion)) throw new BadRequestException('工序版本不合法。');
+    if (producedAt && isFutureBusinessDate(input.producedAt as string, producedAt)) throw new BadRequestException('实际制作日期不能晚于今天。');
+    const normalized = {
+      ...(taskId ? { taskId, taskVersion: taskVersion!, idempotencyKey: idempotencyKey! } : {}),
+      sampleNo,
+      sampleName,
       sampleType:
         this.parseOptionalEnum(
           input.sampleType,
           Object.values(SampleType),
           'sampleType',
         ) ?? SampleType.PANEL,
-      location: this.parseNullableString(input.location) ?? null,
-      remark: this.parseNullableString(input.remark) ?? null,
-      producedAt: this.parseNullableDate(input.producedAt, 'producedAt') ?? null,
+      location,
+      remark,
+      producedAt,
       createNewVersion,
     };
+    this.assertSamplePayloadBytes(normalized);
+    return normalized;
   }
 
   private parseSampleUpdateInput(rawInput: unknown): SampleUpdateInput {
@@ -691,13 +1320,26 @@ export class SamplesService {
     const remark = this.parseNullableString(input.remark, true);
     const producedAt = this.parseNullableDate(input.producedAt, 'producedAt', true);
 
-    return {
+    if (sampleName) {
+      this.assertSampleText(sampleName, '样板名称', SAMPLE_NAME_MAX_CHARS);
+    }
+    if (location) {
+      this.assertSampleText(location, '存放位置', SAMPLE_NAME_MAX_CHARS);
+    }
+    if (remark) {
+      this.assertSampleText(remark, '备注', SAMPLE_REMARK_MAX_CHARS);
+    }
+
+    if (producedAt && isFutureBusinessDate(input.producedAt as string, producedAt)) throw new BadRequestException('实际制作日期不能晚于今天。');
+    const normalized = {
       ...(sampleName ? { sampleName } : {}),
       ...(sampleType ? { sampleType } : {}),
       ...(location !== undefined ? { location } : {}),
       ...(remark !== undefined ? { remark } : {}),
       ...(producedAt !== undefined ? { producedAt } : {}),
     };
+    this.assertSamplePayloadBytes(normalized);
+    return normalized;
   }
 
   private parseConfirmationInput(rawInput: unknown): SampleConfirmationInput {
@@ -712,13 +1354,59 @@ export class SamplesService {
       throw new BadRequestException('请选择样板确认结果。');
     }
 
-    return {
-      sampleId: this.parseRequiredString(input.sampleId, 'sampleId'),
+    const sampleId = this.parseRequiredString(input.sampleId, 'sampleId');
+    const colorAssessment =
+      this.parseNullableString(input.colorAssessment) ?? null;
+    const appearanceAssessment =
+      this.parseNullableString(input.appearanceAssessment) ?? null;
+    const comment = this.parseNullableString(input.comment) ?? null;
+
+    this.assertSampleId(sampleId, '样板');
+    if (colorAssessment) {
+      this.assertSampleText(
+        colorAssessment,
+        '颜色评估',
+        SAMPLE_CONFIRMATION_ASSESSMENT_MAX_CHARS,
+      );
+    }
+    if (appearanceAssessment) {
+      this.assertSampleText(
+        appearanceAssessment,
+        '外观评估',
+        SAMPLE_CONFIRMATION_ASSESSMENT_MAX_CHARS,
+      );
+    }
+    if (comment) {
+      this.assertSampleText(
+        comment,
+        '确认备注',
+        SAMPLE_CONFIRMATION_COMMENT_MAX_CHARS,
+      );
+    }
+
+    const taskId = this.parseRequiredString(input.taskId, 'taskId');
+    const taskVersion = this.parseRequiredString(input.taskVersion, 'taskVersion');
+    const idempotencyKey = this.parseRequiredString(input.idempotencyKey, 'idempotencyKey');
+    const actualDate = this.parseRequiredString(input.actualConfirmedAt, 'actualConfirmedAt');
+    const confirmationParty = this.parseRequiredString(input.confirmationParty, 'confirmationParty');
+    const confirmationAttachmentId = this.parseRequiredString(input.confirmationAttachmentId, 'confirmationAttachmentId');
+    this.assertSampleId(taskId, '工序'); this.assertSampleId(confirmationAttachmentId, '确认单');
+    if (!/^[A-Za-z0-9._:-]{1,128}$/.test(idempotencyKey)) throw new BadRequestException('请求编号不合法。');
+    const versionDate = new Date(taskVersion);
+    const actualConfirmedAt = new Date(actualDate);
+    if (!/^\d{4}-\d{2}-\d{2}T/.test(taskVersion) || !Number.isFinite(versionDate.getTime()) || versionDate.toISOString() !== taskVersion) throw new BadRequestException('工序版本不合法。');
+    if (!/^\d{4}-\d{2}-\d{2}(T.*)?$/.test(actualDate) || !Number.isFinite(actualConfirmedAt.getTime()) || actualConfirmedAt.toISOString().slice(0, 10) !== actualDate.slice(0, 10) || isFutureBusinessDate(actualDate, actualConfirmedAt)) throw new BadRequestException('实际确认日期不合法或晚于今天。');
+    this.assertSampleText(confirmationParty, '实际确认方', 200);
+    const normalized = {
+      taskId, taskVersion, idempotencyKey, actualConfirmedAt, confirmationParty, confirmationAttachmentId,
+      sampleId,
       decision,
-      colorAssessment: this.parseNullableString(input.colorAssessment) ?? null,
-      appearanceAssessment: this.parseNullableString(input.appearanceAssessment) ?? null,
-      comment: this.parseNullableString(input.comment) ?? null,
+      colorAssessment,
+      appearanceAssessment,
+      comment,
     };
+    this.assertSamplePayloadBytes(normalized);
+    return normalized;
   }
 
   private mapDecisionToAction(decision: SampleConfirmationDecision) {
@@ -735,6 +1423,7 @@ export class SamplesService {
   }
 
   private toSampleAuditSnapshot(sample: SampleRecord) {
+    this.assertPersistedSampleRow(sample);
     return {
       id: sample.id,
       sampleNo: sample.sampleNo,
@@ -748,6 +1437,80 @@ export class SamplesService {
       producedAt: sample.producedAt?.toISOString() ?? null,
       confirmedAt: sample.confirmedAt?.toISOString() ?? null,
     };
+  }
+
+  private assertPersistedSampleRows(rows: readonly SampleRecord[]) {
+    for (const row of rows) {
+      this.assertPersistedSampleRow(row);
+    }
+  }
+
+  private assertPersistedSampleRow(sample: SampleRecord) {
+    const validId = (value: unknown) =>
+      typeof value === 'string' &&
+      value.length > 0 &&
+      value.length <= SAMPLE_ID_MAX_CHARS &&
+      SAMPLE_ID_PATTERN.test(value);
+    const validNullableText = (value: unknown, maxChars: number) =>
+      value === null || (typeof value === 'string' && value.length <= maxChars);
+    const validNullableDate = (value: unknown) =>
+      value === null ||
+      (value instanceof Date && Number.isFinite(value.getTime()));
+
+    if (
+      !validId(sample.id) ||
+      !validId(sample.projectId) ||
+      typeof sample.sampleNo !== 'string' ||
+      sample.sampleNo.length === 0 ||
+      sample.sampleNo.length > SAMPLE_CODE_MAX_CHARS ||
+      !SAMPLE_CODE_PATTERN.test(sample.sampleNo) ||
+      typeof sample.sampleName !== 'string' ||
+      sample.sampleName.length > SAMPLE_NAME_MAX_CHARS ||
+      sample.sampleName.trim().length === 0 ||
+      !Number.isSafeInteger(sample.versionNo) ||
+      sample.versionNo < 1 ||
+      sample.versionNo > SAMPLE_VERSION_MAX ||
+      typeof sample.isCurrent !== 'boolean' ||
+      !Object.values(SampleType).includes(sample.sampleType) ||
+      !Object.values(SampleStatus).includes(sample.status) ||
+      !validNullableText(sample.location, SAMPLE_NAME_MAX_CHARS) ||
+      !validNullableText(sample.remark, SAMPLE_REMARK_MAX_CHARS) ||
+      !validNullableDate(sample.producedAt) ||
+      !validNullableDate(sample.confirmedAt) ||
+      !(sample.createdAt instanceof Date) ||
+      !Number.isFinite(sample.createdAt.getTime()) ||
+      !(sample.updatedAt instanceof Date) ||
+      !Number.isFinite(sample.updatedAt.getTime())
+    ) {
+      this.throwPersistedSampleOutOfBounds();
+    }
+
+    const auditShape = {
+      id: sample.id,
+      sampleNo: sample.sampleNo,
+      sampleName: sample.sampleName,
+      versionNo: sample.versionNo,
+      isCurrent: sample.isCurrent,
+      sampleType: sample.sampleType,
+      status: sample.status,
+      location: sample.location,
+      remark: sample.remark,
+      producedAt: sample.producedAt?.toISOString() ?? null,
+      confirmedAt: sample.confirmedAt?.toISOString() ?? null,
+    };
+    if (
+      Buffer.byteLength(JSON.stringify(auditShape), 'utf8') >
+      SAMPLE_MAX_PAYLOAD_BYTES
+    ) {
+      this.throwPersistedSampleOutOfBounds();
+    }
+  }
+
+  private throwPersistedSampleOutOfBounds(): never {
+    throw new ConflictException({
+      code: 'SAMPLE_PERSISTED_ROW_OUT_OF_BOUNDS',
+      message: '历史样板数据超出安全边界，已拒绝读取或写入，请先修复数据。',
+    });
   }
 
   private asRecord(rawValue: unknown, message: string) {
@@ -814,6 +1577,47 @@ export class SamplesService {
     return rawValue as T;
   }
 
+  private assertSampleId(value: string, label: string) {
+    if (value.length > SAMPLE_ID_MAX_CHARS || !SAMPLE_ID_PATTERN.test(value)) {
+      this.throwSampleInputOutOfBounds(`${label}标识不合法。`);
+    }
+  }
+
+  private assertSampleCode(value: string, label: string) {
+    if (
+      value.length > SAMPLE_CODE_MAX_CHARS ||
+      !SAMPLE_CODE_PATTERN.test(value)
+    ) {
+      this.throwSampleInputOutOfBounds(
+        `${label}仅允许 1～${SAMPLE_CODE_MAX_CHARS} 位字母、数字、点、下划线或连字符。`,
+      );
+    }
+  }
+
+  private assertSampleText(value: string, label: string, maxChars: number) {
+    if (value.length > maxChars) {
+      this.throwSampleInputOutOfBounds(`${label}不得超过 ${maxChars} 个字符。`);
+    }
+  }
+
+  private assertSamplePayloadBytes(value: object) {
+    if (
+      Buffer.byteLength(JSON.stringify(value), 'utf8') >
+      SAMPLE_MAX_PAYLOAD_BYTES
+    ) {
+      this.throwSampleInputOutOfBounds(
+        `样板数据不得超过 ${SAMPLE_MAX_PAYLOAD_BYTES} 字节。`,
+      );
+    }
+  }
+
+  private throwSampleInputOutOfBounds(message: string): never {
+    throw new BadRequestException({
+      code: 'SAMPLE_INPUT_OUT_OF_BOUNDS',
+      message,
+    });
+  }
+
   private parseNullableDate(
     rawValue: unknown,
     fieldName: string,
@@ -833,7 +1637,7 @@ export class SamplesService {
 
     const value = new Date(rawValue);
 
-    if (Number.isNaN(value.getTime())) {
+    if (!/^\d{4}-\d{2}-\d{2}(T.*)?$/.test(rawValue) || Number.isNaN(value.getTime()) || value.toISOString().slice(0, 10) !== rawValue.slice(0, 10)) {
       throw new BadRequestException('日期格式不正确。');
     }
 

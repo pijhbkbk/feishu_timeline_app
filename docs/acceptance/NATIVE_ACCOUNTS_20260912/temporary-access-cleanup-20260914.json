@@ -1,0 +1,11 @@
+{
+  "temporarySshKeyAbsent": true,
+  "apiAuthorizationGranted": false,
+  "apiAuthorizationExpiresAt": null,
+  "managementControlSocketAbsent": true,
+  "localTaskRegistryCredentialsRemoved": true,
+  "serverTaskRegistryCredentialsRemoved": true,
+  "cleanedAt": "2026-09-14T02:33:27.975462+00:00",
+  "existingUserCloudLoginRetained": true,
+  "applicationScannerKeyRetained": true
+}

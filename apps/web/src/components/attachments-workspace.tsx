@@ -7,6 +7,7 @@ import { useAuth } from './auth-provider';
 import {
   bindProjectAttachment,
   canManageProjectAttachments,
+  canMutateAttachmentInGenericWorkspace,
   deleteProjectAttachment,
   fetchAttachmentsWorkspace,
   formatAttachmentSize,
@@ -15,7 +16,9 @@ import {
   getAttachmentEntityTypeLabel,
   getAttachmentPreviewKind,
   getAttachmentPreviewUrl,
+  getAttachmentScanStatusLabel,
   getEntityItemsForType,
+  GENERIC_ATTACHMENT_DOMAIN_WORKSPACE_MESSAGE,
   unbindProjectAttachment,
   uploadProjectAttachment,
   validateAttachmentBindInput,
@@ -50,6 +53,11 @@ export function AttachmentsWorkspace({
 }: AttachmentsWorkspaceProps) {
   const { user } = useAuth();
   const requestIdRef = useRef(0);
+  const initialMutationEntityType = canMutateAttachmentInGenericWorkspace(
+    initialFilters?.entityType,
+  )
+    ? (initialFilters?.entityType as AttachmentEntityType)
+    : 'PROJECT';
   const [workspace, setWorkspace] = useState<AttachmentWorkspaceResponse | null>(null);
   const [filters, setFilters] = useState<AttachmentWorkspaceFilters>({
     entityType: initialFilters?.entityType ?? '',
@@ -57,8 +65,11 @@ export function AttachmentsWorkspace({
     includeDeleted: initialFilters?.includeDeleted ?? false,
   });
   const [uploadForm, setUploadForm] = useState<UploadFormState>({
-    entityType: initialFilters?.entityType ?? 'PROJECT',
-    entityId: initialFilters?.entityId ?? projectId,
+    entityType: initialMutationEntityType,
+    entityId:
+      initialMutationEntityType === 'PROJECT'
+        ? projectId
+        : (initialFilters?.entityId ?? ''),
     file: null,
   });
   const [selectedAttachmentId, setSelectedAttachmentId] = useState<string | null>(null);
@@ -101,9 +112,15 @@ export function AttachmentsWorkspace({
     const selectedAttachment =
       workspace.items.find((item) => item.id === selectedAttachmentId) ?? null;
 
+    const nextEntityType = canMutateAttachmentInGenericWorkspace(
+      selectedAttachment?.entityType,
+    )
+      ? selectedAttachment!.entityType
+      : 'PROJECT';
+
     setBindForm({
-      entityType: selectedAttachment?.entityType ?? 'PROJECT',
-      entityId: selectedAttachment?.entityId ?? projectId,
+      entityType: nextEntityType,
+      entityId: nextEntityType === 'PROJECT' ? projectId : selectedAttachment!.entityId,
     });
   }, [projectId, selectedAttachmentId, workspace]);
 
@@ -146,6 +163,7 @@ export function AttachmentsWorkspace({
 
   async function loadWorkspace(options?: {
     initial?: boolean;
+    append?: boolean;
     nextSelectedAttachmentId?: string | null;
     nextFilters?: AttachmentWorkspaceFilters;
   }) {
@@ -167,9 +185,16 @@ export function AttachmentsWorkspace({
         return;
       }
 
-      setWorkspace(response);
+      const nextWorkspace =
+        options?.append && workspace
+          ? {
+              ...response,
+              items: [...workspace.items, ...response.items],
+            }
+          : response;
+      setWorkspace(nextWorkspace);
 
-      if (options?.nextFilters) {
+      if (options?.nextFilters && !options.append) {
         setFilters(effectiveFilters);
       }
 
@@ -177,17 +202,24 @@ export function AttachmentsWorkspace({
         setSelectedAttachmentId(options.nextSelectedAttachmentId);
       }
 
-      setUploadForm((current) => ({
-        ...current,
-        entityId:
-          current.entityType === 'PROJECT'
-            ? projectId
-            : current.entityId && getEntityItemsForType(response, current.entityType).some(
-                (item) => item.id === current.entityId,
-              )
-              ? current.entityId
-              : (getEntityItemsForType(response, current.entityType)[0]?.id ?? ''),
-      }));
+      setUploadForm((current) => {
+        const entityType = canMutateAttachmentInGenericWorkspace(current.entityType)
+          ? current.entityType
+          : 'PROJECT';
+
+        return {
+          ...current,
+          entityType,
+          entityId:
+            entityType === 'PROJECT'
+              ? projectId
+              : current.entityId && getEntityItemsForType(nextWorkspace, entityType).some(
+                  (item) => item.id === current.entityId,
+                )
+                ? current.entityId
+                : (getEntityItemsForType(nextWorkspace, entityType)[0]?.id ?? ''),
+        };
+      });
     } catch (loadError) {
       if (requestId !== requestIdRef.current) {
         return;
@@ -200,6 +232,21 @@ export function AttachmentsWorkspace({
         setIsRefreshing(false);
       }
     }
+  }
+
+  async function loadNextPage() {
+    const nextCursor = workspace?.pageInfo?.nextCursor;
+    if (!nextCursor || !workspace.pageInfo?.hasMore) {
+      return;
+    }
+    await loadWorkspace({
+      append: true,
+      nextFilters: {
+        ...filters,
+        cursor: nextCursor,
+        pageSize: workspace.pageInfo.pageSize,
+      },
+    });
   }
 
   async function handleUpload() {
@@ -246,6 +293,11 @@ export function AttachmentsWorkspace({
       return;
     }
 
+    if (!canMutateAttachmentInGenericWorkspace(selectedAttachment.entityType)) {
+      setError(GENERIC_ATTACHMENT_DOMAIN_WORKSPACE_MESSAGE);
+      return;
+    }
+
     const validationMessage = validateAttachmentBindInput(bindForm);
 
     if (validationMessage) {
@@ -283,6 +335,11 @@ export function AttachmentsWorkspace({
       return;
     }
 
+    if (!canMutateAttachmentInGenericWorkspace(selectedAttachment.entityType)) {
+      setError(GENERIC_ATTACHMENT_DOMAIN_WORKSPACE_MESSAGE);
+      return;
+    }
+
     setActingKey(`unbind:${selectedAttachment.id}`);
     setError(null);
     setSuccessMessage(null);
@@ -299,6 +356,11 @@ export function AttachmentsWorkspace({
   }
 
   async function handleDelete(attachment: ProjectAttachmentSummary) {
+    if (!canMutateAttachmentInGenericWorkspace(attachment.entityType)) {
+      setError(GENERIC_ATTACHMENT_DOMAIN_WORKSPACE_MESSAGE);
+      return;
+    }
+
     setActingKey(`delete:${attachment.id}`);
     setError(null);
     setSuccessMessage(null);
@@ -381,6 +443,11 @@ export function AttachmentsWorkspace({
           onChange={setFilters}
           onApply={() => void loadWorkspace({ nextFilters: filters })}
         />
+        {workspace.entityOptionsHasMore ? (
+          <p className="muted">
+            归属实体候选已按类型限制为前 100 项；请先选择具体类型和对象后再筛选。
+          </p>
+        ) : null}
       </section>
 
       <section className="page-card">
@@ -421,6 +488,18 @@ export function AttachmentsWorkspace({
           onDelete={(attachment) => void handleDelete(attachment)}
           mode={mode}
         />
+        {workspace.pageInfo?.hasMore ? (
+          <div className="inline-actions">
+            <button
+              type="button"
+              className="button button-secondary"
+              disabled={isRefreshing}
+              onClick={() => void loadNextPage()}
+            >
+              {isRefreshing ? '加载中…' : '加载更多'}
+            </button>
+          </div>
+        ) : null}
       </section>
 
       <section className="page-card">
@@ -535,6 +614,10 @@ export function AttachmentUploader({
   onUpload: () => void;
   mode?: 'attachments' | 'materials';
 }) {
+  const mutationEntityOptions = workspace.entityOptions.filter((option) =>
+    canMutateAttachmentInGenericWorkspace(option.entityType),
+  );
+
   return (
     <div className="form-grid">
       <label className="field">
@@ -555,7 +638,7 @@ export function AttachmentUploader({
             })
           }
         >
-          {workspace.entityOptions.map((option) => (
+          {mutationEntityOptions.map((option) => (
             <option key={option.entityType} value={option.entityType}>
               {option.label}
             </option>
@@ -675,7 +758,7 @@ export function AttachmentList({
                   <td>{formatAttachmentSize(attachment.fileSize)}</td>
                   <td>{attachment.uploadedByName ?? '未知'}</td>
                   <td>{formatAttachmentTime(attachment.uploadedAt)}</td>
-                  <td>有效</td>
+                  <td>{getAttachmentScanStatusLabel(attachment.scanStatus)}</td>
                   <td>
                     <AttachmentActionMenu
                       attachment={attachment}
@@ -729,6 +812,8 @@ export function AttachmentPreviewPanel({
   const previewKind = getAttachmentPreviewKind(attachment);
   const previewUrl = getAttachmentPreviewUrl(attachment);
   const downloadUrl = getAttachmentDownloadUrl(attachment);
+  const scanStatusLabel = getAttachmentScanStatusLabel(attachment.scanStatus);
+  const canMutateHere = canMutateAttachmentInGenericWorkspace(attachment.entityType);
 
   return (
     <div className="page-stack compact">
@@ -746,8 +831,8 @@ export function AttachmentPreviewPanel({
           <strong>{attachment.mimeType}</strong>
         </div>
         <div className="metadata-item">
-          <span>审核状态</span>
-          <strong>{attachment.isDeleted ? '已退回或删除' : '有效'}</strong>
+          <span>安全扫描状态</span>
+          <strong>{attachment.isDeleted ? '已退回或删除' : scanStatusLabel}</strong>
         </div>
       </div>
 
@@ -755,6 +840,8 @@ export function AttachmentPreviewPanel({
         <h3>文件预览</h3>
         {attachment.isDeleted ? (
           <p>{mode === 'materials' ? '已退回或删除材料不提供在线预览。' : '已删除附件不提供在线预览。'}</p>
+        ) : !attachment.canDownload ? (
+          <p>{scanStatusLabel}；通过安全扫描前不能预览、下载或绑定到业务对象。</p>
         ) : previewKind === 'image' && previewUrl ? (
           <img
             src={previewUrl}
@@ -773,7 +860,7 @@ export function AttachmentPreviewPanel({
       </div>
 
       <div className="inline-actions">
-        {!attachment.isDeleted ? (
+        {!attachment.isDeleted && attachment.canDownload && downloadUrl ? (
           <a
             href={downloadUrl}
             className="button button-secondary"
@@ -792,11 +879,21 @@ export function AttachmentPreviewPanel({
 
       <div className="detail-block">
         <h3>{mode === 'materials' ? '归属关系' : '绑定关系'}</h3>
-        <div className="form-grid">
+        {!canMutateHere ? (
+          <p>
+            {GENERIC_ATTACHMENT_DOMAIN_WORKSPACE_MESSAGE}{' '}
+            <Link href={buildDomainWorkspaceHref(projectId, attachment)}>
+              打开对应工作区
+            </Link>
+          </p>
+        ) : !attachment.canDownload || attachment.isDeleted ? (
+          <p>{scanStatusLabel}；当前文件不能更新业务绑定。</p>
+        ) : (
+          <div className="form-grid">
           <label className="field">
             <span>绑定类型</span>
             <select
-              disabled={!canManage || attachment.isDeleted}
+              disabled={!canManage}
               value={bindForm.entityType}
               onChange={(event) =>
                 onBindFormChange({
@@ -806,10 +903,7 @@ export function AttachmentPreviewPanel({
               }
             >
               <option value="PROJECT">项目</option>
-              <option value="SAMPLE">样板</option>
               <option value="STANDARD_BOARD">标准板</option>
-              <option value="PERFORMANCE_TEST">性能试验</option>
-              <option value="REVIEW_RECORD">评审记录</option>
               <option value="NEW_COLOR_REPORT">开发报告</option>
               <option value="TRIAL_PRODUCTION">样车试制</option>
             </select>
@@ -817,7 +911,7 @@ export function AttachmentPreviewPanel({
           <label className="field">
             <span>绑定实体</span>
             <select
-              disabled={!canManage || attachment.isDeleted || bindForm.entityType === 'PROJECT'}
+              disabled={!canManage || bindForm.entityType === 'PROJECT'}
               value={bindForm.entityId}
               onChange={(event) =>
                 onBindFormChange({
@@ -842,7 +936,7 @@ export function AttachmentPreviewPanel({
             <button
               type="button"
               className="button button-secondary"
-              disabled={!canManage || attachment.isDeleted || actingKey === `bind:${attachment.id}`}
+              disabled={!canManage || actingKey === `bind:${attachment.id}`}
               onClick={onBind}
             >
               {actingKey === `bind:${attachment.id}` ? '绑定中…' : '更新绑定'}
@@ -854,7 +948,6 @@ export function AttachmentPreviewPanel({
               className="button button-secondary"
               disabled={
                 !canManage ||
-                attachment.isDeleted ||
                 attachment.entityType === 'PROJECT' ||
                 actingKey === `unbind:${attachment.id}`
               }
@@ -867,7 +960,8 @@ export function AttachmentPreviewPanel({
                   : '解绑为项目附件'}
             </button>
           </div>
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -880,6 +974,25 @@ function buildAttachmentEntityHref(
 ) {
   const section = mode === 'materials' ? 'materials' : 'attachments';
   return `/projects/${projectId}/${section}?entityType=${attachment.entityType}&entityId=${attachment.entityId}`;
+}
+
+function buildDomainWorkspaceHref(
+  projectId: string,
+  attachment: Pick<ProjectAttachmentSummary, 'entityType' | 'entityId'>,
+) {
+  if (attachment.entityType === 'SAMPLE') {
+    return `/projects/${projectId}/samples/${attachment.entityId}`;
+  }
+
+  if (attachment.entityType === 'REVIEW_RECORD') {
+    return `/projects/${projectId}/reviews`;
+  }
+
+  if (attachment.entityType === 'PERFORMANCE_TEST') {
+    return `/projects/${projectId}/performance-tests`;
+  }
+
+  return `/v2/projects/${projectId}?taskId=${encodeURIComponent(attachment.entityId)}`;
 }
 
 export function AttachmentEntityBadge({
@@ -903,16 +1016,20 @@ export function AttachmentActionMenu({
 }) {
   return (
     <div className="task-actions">
-      <a
-        href={getAttachmentDownloadUrl(attachment)}
-        className="button button-secondary button-small"
-        target="_blank"
-        rel="noreferrer"
-        onClick={(event) => event.stopPropagation()}
-      >
-        下载
-      </a>
-      {canManage && !attachment.isDeleted ? (
+      {attachment.canDownload && getAttachmentDownloadUrl(attachment) ? (
+        <a
+          href={getAttachmentDownloadUrl(attachment) ?? undefined}
+          className="button button-secondary button-small"
+          target="_blank"
+          rel="noreferrer"
+          onClick={(event) => event.stopPropagation()}
+        >
+          下载
+        </a>
+      ) : null}
+      {canManage &&
+      !attachment.isDeleted &&
+      canMutateAttachmentInGenericWorkspace(attachment.entityType) ? (
         <button
           type="button"
           className="button button-secondary button-small"

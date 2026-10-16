@@ -8,6 +8,9 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '../../..');
 const API_BASE_URL = process.env.E2E_API_URL ?? 'http://127.0.0.1:3001/api';
 const WEB_BASE_URL = process.env.E2E_WEB_URL ?? 'http://127.0.0.1:3000';
+const MUTATION_ORIGIN = new URL(
+  process.env.E2E_FRONTEND_ORIGIN ?? process.env.FRONTEND_URL ?? 'http://localhost:3000',
+).origin;
 const START_TIMEOUT_MS = Number(process.env.E2E_START_TIMEOUT_MS ?? '180000');
 
 class CookieJar {
@@ -143,9 +146,13 @@ async function ensureServer(label, readyUrl, args) {
 async function fetchWithCookies(url, jar, init = {}) {
   const headers = new Headers(init.headers ?? {});
   const cookieHeader = jar?.toHeader();
+  const method = (init.method ?? 'GET').toUpperCase();
 
   if (cookieHeader) {
     headers.set('cookie', cookieHeader);
+  }
+  if (!['GET', 'HEAD', 'OPTIONS'].includes(method) && !headers.has('origin')) {
+    headers.set('origin', MUTATION_ORIGIN);
   }
 
   const response = await fetch(url, {
@@ -216,18 +223,104 @@ function getActiveTask(workflow, nodeCode, isPrimary) {
   );
 }
 
-async function transitionTask(jar, taskId, action, body = {}) {
-  return requestJson(`/workflows/tasks/${taskId}/${action}`, jar, {
+async function postJson(path, jar, body, headers = {}) {
+  return requestJson(path, jar, {
     method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-    },
+    headers: { 'content-type': 'application/json', ...headers },
     body: JSON.stringify(body),
   });
 }
 
+async function transitionTask(jar, taskId, action, body = {}) {
+  const context = await requestJson(`/workflows/tasks/${taskId}`, jar);
+  const projectId = context.project.id;
+  const nodeCode = context.task.nodeCode;
+
+  if (nodeCode === 'CAB_REVIEW' || nodeCode === 'COLOR_CONSISTENCY_REVIEW') {
+    assert(['approve', 'reject'].includes(action), '评审必须明确通过或驳回。');
+    const actor = await requestJson('/auth/me', jar);
+    const kind = nodeCode === 'CAB_REVIEW' ? 'cabin' : 'consistency';
+    const path = `/projects/${projectId}/reviews/${kind}`;
+    const workspace = await postJson(path, jar, {
+      reviewDate: new Date().toISOString(),
+      reviewerId: actor.id,
+      reviewConclusion: action === 'reject' ? 'REJECTED' : 'APPROVED',
+      comment: body.comment ?? 'RC2 E2E 评审资料与试制结果已核对。',
+      ...(action === 'reject' ? { rejectReason: body.comment } : {}),
+    });
+    const review = workspace.items.find(
+      (item) => item.workflowTaskId === taskId && item.reviewerId === actor.id,
+    );
+    assert(review?.id, '评审创建后未返回本轮评审记录。');
+    const attachment = new FormData();
+    attachment.set('file', new Blob(['%PDF-1.4\n% RC2 local review fixture\n'], {
+      type: 'application/pdf',
+    }), 'rc2-review.pdf');
+    await requestJson(`${path}/${review.id}/attachment`, jar, {
+      method: 'POST', body: attachment,
+    });
+    await requestJson(`${path}/${review.id}/submit`, jar, { method: 'POST' });
+    await requestJson(`${path}/${review.id}/${action}`, jar, { method: 'POST' });
+    const reread = await requestJson(path, jar);
+    const savedReview = reread.items.find((item) => item.id === review.id);
+    assert(savedReview?.submittedAt, '提交后的评审记录必须可重新读取。');
+    assert(savedReview.reviewConclusion === review.reviewConclusion, '评审结论未保存。');
+  } else if (nodeCode === 'MASS_PRODUCTION_PLAN' || nodeCode === 'MASS_PRODUCTION') {
+    assert(action === 'complete', '生产记录只支持完成动作。');
+    const actor = await requestJson('/auth/me', jar);
+    const isPlan = nodeCode === 'MASS_PRODUCTION_PLAN';
+    const path = `/projects/${projectId}/${isPlan ? 'production-plans/schedule' : 'mass-production'}`;
+    const workspace = await postJson(path, jar, {
+      ...(isPlan
+        ? { planDate: new Date().toISOString() }
+        : { productionDate: new Date().toISOString(), actualQuantity: 1 }),
+      plannedQuantity: 1,
+      workshop: '总装一车间',
+      lineName: 'RC2 E2E 量产线',
+      ownerId: actor.id,
+      batchNo: `RC2-${randomUUID()}`,
+    });
+    const recordId = workspace.items[0]?.id;
+    assert(recordId, '生产记录创建后未返回 ID。');
+    await requestJson(`${path}/${recordId}/${isPlan ? 'confirm' : 'start'}`, jar, {
+      method: 'POST',
+    });
+    if (!isPlan) {
+      await requestJson(`${path}/${recordId}/complete`, jar, { method: 'POST' });
+    }
+    await requestJson(`${path}/complete-task`, jar, { method: 'POST' });
+  } else {
+    assert(['complete', 'approve'].includes(action), '普通工序不能使用评审驳回动作。');
+    // Keep the generic bypass closed; the supported command must enforce its preview/version contract.
+    const denied = await fetchWithCookies(`${API_BASE_URL}/workflows/tasks/${taskId}/${action}`, jar, {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}',
+    });
+    const denial = await denied.json();
+    assert(denied.status === 400 && denial.code === 'GENERIC_TERMINAL_TRANSITION_DISABLED',
+      '通用终态入口必须继续拒绝绕过业务门禁。');
+    const unchanged = await requestJson(`/workflows/tasks/${taskId}`, jar);
+    assert(unchanged.task.updatedAt === context.task.updatedAt &&
+      unchanged.task.status === context.task.status, '被拒绝的通用动作不得改变任务。');
+    const taskVersion = context.task.updatedAt;
+    const preview = await postJson(`/v2/tasks/${taskId}/completion-preview`, jar, { taskVersion });
+    assert(preview.canComplete, `工序完成预览被阻断: ${JSON.stringify(preview.blockingReasons)}`);
+    const idempotencyKey = randomUUID();
+    await postJson(`/v2/tasks/${taskId}/complete`, jar, {
+      taskVersion,
+      completionReason: 'RC2 E2E 已核对工序资料和后续影响。',
+      acknowledgedConsequences: true,
+      idempotencyKey,
+    }, { 'Idempotency-Key': idempotencyKey });
+  }
+
+  return requestJson(`/workflows/projects/${projectId}`, jar);
+}
+
 async function completeFirstProductionPlan(jar, projectId) {
-  const users = await requestJson('/users/directory', jar);
+  const users = await requestJson(
+    `/users/directory?projectId=${encodeURIComponent(projectId)}&take=50`,
+    jar,
+  );
   const ownerId = users[0]?.id;
 
   assert(ownerId, '首台计划 E2E 未找到可用责任人。');
@@ -327,10 +420,12 @@ async function main() {
     }
 
     const financeSession = await loginAs(['finance'], `r08_finance_${Date.now()}`);
+    const financeCreateIdempotencyKey = randomUUID();
     const financeCreate = fetchWithCookies(`${API_BASE_URL}/projects`, financeSession.jar, {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
+        'Idempotency-Key': financeCreateIdempotencyKey,
       },
       body: JSON.stringify({
         code: `R08-LEAST-PRIVILEGE-${Date.now()}`,
@@ -339,10 +434,12 @@ async function main() {
     });
     await expectStatus(financeCreate, 403, '财务用户不应具备项目创建权限');
 
+    const anonymousCreateIdempotencyKey = randomUUID();
     const anonymousCreate = fetchWithCookies(`${API_BASE_URL}/projects`, null, {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
+        'Idempotency-Key': anonymousCreateIdempotencyKey,
       },
       body: JSON.stringify({
         code: `R08-ANONYMOUS-${Date.now()}`,
@@ -354,10 +451,20 @@ async function main() {
 
     const managerSession = await loginAs(['project_manager'], `r08_manager_${Date.now()}`);
     const projectCode = `R08-E2E-${Date.now()}-${randomUUID().slice(0, 6).toUpperCase()}`;
+    const managerCreateIdempotencyKey = randomUUID();
+    assert(
+      new Set([
+        financeCreateIdempotencyKey,
+        anonymousCreateIdempotencyKey,
+        managerCreateIdempotencyKey,
+      ]).size === 3,
+      '独立项目创建操作必须使用不同的幂等键。',
+    );
     const project = await requestJson('/projects', managerSession.jar, {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
+        'Idempotency-Key': managerCreateIdempotencyKey,
       },
       body: JSON.stringify({
         code: projectCode,

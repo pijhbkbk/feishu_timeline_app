@@ -1,5 +1,8 @@
+import { assertApprovedTeamMember } from '../../common/team-membership';
+import { assertTeamTaskById, withProjectWrite } from '../../common/team-authorization';
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -14,6 +17,7 @@ import {
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import type { AuthenticatedUser } from '../auth/auth.types';
+import { ProjectAccessService } from '../auth/project-access.service';
 import {
   getAllowedWorkflowActions,
   getCurrentNodeName,
@@ -57,6 +61,16 @@ const PAINT_PROCUREMENT_DOWNSTREAM_NODES = [
   WorkflowNodeCode.PERFORMANCE_TEST,
   WorkflowNodeCode.STANDARD_BOARD_PRODUCTION,
 ] as const;
+const PAINT_PROCUREMENT_RECORD_LIMIT = 100;
+const PAINT_PROCUREMENT_MAX_PAYLOAD_BYTES = 16 * 1024;
+const PAINT_PROCUREMENT_ID_MAX_CHARS = 64;
+const PAINT_PROCUREMENT_CODE_MAX_CHARS = 64;
+const PAINT_PROCUREMENT_NAME_MAX_CHARS = 200;
+const PAINT_PROCUREMENT_UNIT_MAX_CHARS = 32;
+const PAINT_PROCUREMENT_NOTE_MAX_CHARS = 4_000;
+const PAINT_PROCUREMENT_DECIMAL_PATTERN = /^(?:0|[1-9]\d{0,14})(?:\.\d{1,3})?$/;
+const PAINT_PROCUREMENT_ID_PATTERN = /^[A-Za-z0-9_-]+$/;
+const PAINT_PROCUREMENT_CODE_PATTERN = /^[A-Za-z0-9._-]+$/;
 
 @Injectable()
 export class PaintProcurementsService {
@@ -64,9 +78,11 @@ export class PaintProcurementsService {
     private readonly prisma: PrismaService,
     private readonly activityLogsService: ActivityLogsService,
     private readonly workflowsService: WorkflowsService,
+    private readonly projectAccessService: ProjectAccessService,
   ) {}
 
-  getWorkspace(projectId: string) {
+  async getWorkspace(projectId: string, actor: AuthenticatedUser) {
+    await this.assertProjectAccess(projectId, actor, 'project.read');
     return this.buildWorkspace(this.prisma, projectId);
   }
 
@@ -75,12 +91,13 @@ export class PaintProcurementsService {
     rawInput: unknown,
     actor: AuthenticatedUser,
   ) {
+    await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     this.assertActorCanManage(actor);
     const input = this.parseCreateInput(rawInput);
 
-    await this.prisma.$transaction(async (tx) => {
-      const context = await this.getProcurementContextOrThrow(tx, projectId);
-      this.assertWritableProcurementStage(context);
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
+      const context = await this.lockActiveProcurementTaskAndGetContext(tx, actor, projectId);
+      this.assertProcurementRecordCapacity(context.records, true);
       await this.getSupplierOrThrow(tx, input.supplierId);
       await this.assertUniqueProcurementCode(tx, projectId, input.procurementCode);
 
@@ -109,6 +126,7 @@ export class PaintProcurementsService {
         targetType: AuditTargetType.PAINT_PROCUREMENT,
         targetId: createdRecord.id,
         action: 'PAINT_PROCUREMENT_CREATED',
+        metadata: { workflowTaskId: context.activeTask!.id, evidenceKind: 'TASK_CREATED_RECORD' },
         nodeCode: WorkflowNodeCode.PAINT_PROCUREMENT,
         summary: `创建采购记录 ${createdRecord.procurementCode}`,
         afterData: this.toProcurementAuditSnapshot(createdRecord),
@@ -124,13 +142,14 @@ export class PaintProcurementsService {
     rawInput: unknown,
     actor: AuthenticatedUser,
   ) {
+    await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     this.assertActorCanManage(actor);
     const input = this.parseUpdateInput(rawInput);
 
-    await this.prisma.$transaction(async (tx) => {
-      const context = await this.getProcurementContextOrThrow(tx, projectId);
-      this.assertWritableProcurementStage(context);
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
+      await this.lockProcurementRow(tx, projectId, procurementId);
       const procurement = await this.getProcurementOrThrow(tx, projectId, procurementId);
+      await this.lockActiveProcurementTaskAndGetContext(tx, actor, projectId);
 
       if (!canEditPaintProcurement(procurement.status)) {
         throw new BadRequestException('已到货或已取消的采购记录不允许编辑。');
@@ -152,8 +171,13 @@ export class PaintProcurementsService {
         );
       }
 
-      const updatedRecord = await tx.paintProcurement.update({
-        where: { id: procurementId },
+      const claimed = await tx.paintProcurement.updateMany({
+        where: {
+          id: procurementId,
+          projectId,
+          status: procurement.status,
+          updatedAt: procurement.updatedAt,
+        },
         data: {
           ...(input.supplierId ? { supplierId: input.supplierId } : {}),
           ...(input.procurementCode ? { procurementCode: input.procurementCode } : {}),
@@ -164,9 +188,13 @@ export class PaintProcurementsService {
           ...(input.arrivalDate ? { arrivalDate: input.arrivalDate } : {}),
           ...(input.note !== undefined ? { note: input.note } : {}),
         },
-        include: {
-          supplier: true,
-        },
+      });
+      if (claimed.count !== 1) {
+        this.throwProcurementStateChanged();
+      }
+      const updatedRecord = await tx.paintProcurement.findUniqueOrThrow({
+        where: { id: procurementId },
+        include: { supplier: true },
       });
 
       await this.activityLogsService.createWithExecutor(tx, {
@@ -190,6 +218,7 @@ export class PaintProcurementsService {
     procurementId: string,
     actor: AuthenticatedUser,
   ) {
+    await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     return this.transitionProcurementStatus(
       projectId,
       procurementId,
@@ -205,6 +234,7 @@ export class PaintProcurementsService {
     procurementId: string,
     actor: AuthenticatedUser,
   ) {
+    await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     return this.transitionProcurementStatus(
       projectId,
       procurementId,
@@ -220,6 +250,7 @@ export class PaintProcurementsService {
     procurementId: string,
     actor: AuthenticatedUser,
   ) {
+    await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     return this.transitionProcurementStatus(
       projectId,
       procurementId,
@@ -231,11 +262,14 @@ export class PaintProcurementsService {
   }
 
   async completeTask(projectId: string, actor: AuthenticatedUser) {
+    await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     this.assertActorCanManage(actor);
 
-    await this.prisma.$transaction(async (tx) => {
-      const context = await this.getProcurementContextOrThrow(tx, projectId);
-      this.assertWritableProcurementStage(context);
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
+      const context = await this.lockActiveProcurementTaskAndGetContext(
+        tx, actor,
+        projectId,
+      );
 
       if (!context.activeTask) {
         throw new BadRequestException('当前没有可完成的涂料采购任务。');
@@ -281,6 +315,18 @@ export class PaintProcurementsService {
     return this.buildWorkspace(this.prisma, projectId);
   }
 
+  private assertProjectAccess(
+    projectId: string,
+    actor: AuthenticatedUser,
+    requiredPermission: 'project.read' | 'workflow.transition',
+  ) {
+    return this.projectAccessService.assertProjectAccessWithDefaultClient(
+      projectId,
+      actor,
+      requiredPermission,
+    );
+  }
+
   private async transitionProcurementStatus(
     projectId: string,
     procurementId: string,
@@ -291,10 +337,10 @@ export class PaintProcurementsService {
   ) {
     this.assertActorCanManage(actor);
 
-    await this.prisma.$transaction(async (tx) => {
-      const context = await this.getProcurementContextOrThrow(tx, projectId);
-      this.assertWritableProcurementStage(context);
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
+      await this.lockProcurementRow(tx, projectId, procurementId);
       const procurement = await this.getProcurementOrThrow(tx, projectId, procurementId);
+      await this.lockActiveProcurementTaskAndGetContext(tx, actor, projectId);
       const nextStatus = getProcurementStatusTransitionTarget(procurement.status, action);
 
       if (!nextStatus) {
@@ -302,8 +348,13 @@ export class PaintProcurementsService {
       }
 
       const now = new Date();
-      const updatedRecord = await tx.paintProcurement.update({
-        where: { id: procurementId },
+      const claimed = await tx.paintProcurement.updateMany({
+        where: {
+          id: procurementId,
+          projectId,
+          status: procurement.status,
+          updatedAt: procurement.updatedAt,
+        },
         data: {
           status: nextStatus,
           ...(action === 'ORDER' ? { orderedAt: now } : {}),
@@ -312,9 +363,13 @@ export class PaintProcurementsService {
             : {}),
           ...(action === 'CANCEL' ? { cancelledAt: now } : {}),
         },
-        include: {
-          supplier: true,
-        },
+      });
+      if (claimed.count !== 1) {
+        this.throwProcurementStateChanged();
+      }
+      const updatedRecord = await tx.paintProcurement.findUniqueOrThrow({
+        where: { id: procurementId },
+        include: { supplier: true },
       });
 
       await this.activityLogsService.createWithExecutor(tx, {
@@ -350,36 +405,45 @@ export class PaintProcurementsService {
           { updatedAt: 'desc' },
           { createdAt: 'desc' },
         ],
+        take: PAINT_PROCUREMENT_RECORD_LIMIT + 1,
       }),
       db.supplier.findMany({
         orderBy: [
           { status: 'asc' },
           { supplierName: 'asc' },
+          { id: 'asc' },
         ],
+        take: 100,
       }),
       this.getActiveProcurementTask(db, projectId),
-      db.workflowTask.findMany({
-        where: {
-          projectId,
-          nodeCode: {
-            in: [...PAINT_PROCUREMENT_DOWNSTREAM_NODES],
-          },
-        },
-        include: {
-          assigneeUser: true,
-          assigneeDepartment: true,
-        },
-        orderBy: [
-          { createdAt: 'desc' },
-          { taskRound: 'desc' },
-        ],
-      }),
+      Promise.all(
+        PAINT_PROCUREMENT_DOWNSTREAM_NODES.map((nodeCode) =>
+          db.workflowTask.findFirst({
+            where: {
+              projectId,
+              nodeCode,
+            },
+            include: {
+              assigneeUser: true,
+              assigneeDepartment: true,
+            },
+            orderBy: [
+              { createdAt: 'desc' },
+              { taskRound: 'desc' },
+            ],
+          }),
+        ),
+      ),
     ]);
+    this.assertProcurementRecordCapacity(records, false);
 
-    const downstreamTaskMap = new Map<WorkflowNodeCode, (typeof downstreamTasks)[number]>();
+    const downstreamTaskMap = new Map<
+      WorkflowNodeCode,
+      NonNullable<(typeof downstreamTasks)[number]>
+    >();
 
     for (const task of downstreamTasks) {
-      if (!downstreamTaskMap.has(task.nodeCode)) {
+      if (task) {
         downstreamTaskMap.set(task.nodeCode, task);
       }
     }
@@ -441,14 +505,69 @@ export class PaintProcurementsService {
         where: {
           projectId,
         },
+        take: PAINT_PROCUREMENT_RECORD_LIMIT + 1,
       }),
     ]);
+
+    this.assertProcurementRecordCapacity(records, false);
 
     return {
       project,
       activeTask,
       records,
     };
+  }
+
+  private async lockActiveProcurementTaskAndGetContext(
+    tx: Prisma.TransactionClient,
+    actor: AuthenticatedUser,
+    projectId: string,
+  ) {
+    const lockedTasks = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+      SELECT "id"
+      FROM "workflow_tasks"
+      WHERE "projectId" = ${projectId}
+        AND "nodeCode" = ${WorkflowNodeCode.PAINT_PROCUREMENT}::"WorkflowNodeCode"
+        AND "isActive" = true
+      ORDER BY "createdAt" DESC, "taskRound" DESC
+      LIMIT 1
+      FOR UPDATE
+    `);
+    const lockedTaskId = lockedTasks[0]?.id;
+    if (!lockedTaskId) {
+      this.throwProcurementStateChanged();
+    }
+
+    const context = await this.getProcurementContextOrThrow(tx, projectId);
+    this.assertWritableProcurementStage(context);
+    if (context.activeTask?.id !== lockedTaskId) {
+      this.throwProcurementStateChanged();
+    }
+    await assertTeamTaskById(tx, context.activeTask!.id, actor);
+    return context;
+  }
+
+  private async lockProcurementRow(
+    tx: Prisma.TransactionClient,
+    projectId: string,
+    procurementId: string,
+  ) {
+    const rows = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+      SELECT "id"
+      FROM "paint_procurements"
+      WHERE "id" = ${procurementId} AND "projectId" = ${projectId}
+      FOR UPDATE
+    `);
+    if (rows.length !== 1) {
+      throw new NotFoundException('采购记录不存在。');
+    }
+  }
+
+  private throwProcurementStateChanged(): never {
+    throw new ConflictException({
+      code: 'PAINT_PROCUREMENT_STATE_CHANGED',
+      message: '采购记录或流程状态已变更，请刷新后重试。',
+    });
   }
 
   private assertWritableProcurementStage(context: {
@@ -470,19 +589,7 @@ export class PaintProcurementsService {
   }
 
   private assertActorCanManage(actor: AuthenticatedUser) {
-    if (
-      actor.isSystemAdmin ||
-      actor.roleCodes.some(
-        (roleCode) =>
-          roleCode === 'admin' ||
-          roleCode === 'project_manager' ||
-          roleCode === 'purchaser',
-      )
-    ) {
-      return;
-    }
-
-    throw new BadRequestException('当前用户没有采购管理权限。');
+    assertApprovedTeamMember(actor);
   }
 
   private async getProjectOrThrow(db: PaintProcurementDbClient, projectId: string) {
@@ -631,7 +738,16 @@ export class PaintProcurementsService {
       throw new BadRequestException('单位不能为空。');
     }
 
-    return {
+    this.assertProcurementId(supplierId, '供应商');
+    this.assertProcurementCode(procurementCode, '采购单号');
+    this.assertProcurementText(materialName, '物料名称', PAINT_PROCUREMENT_NAME_MAX_CHARS);
+    this.assertProcurementCode(batchNo, '批次号');
+    this.assertProcurementText(unit, '单位', PAINT_PROCUREMENT_UNIT_MAX_CHARS);
+    if (note) {
+      this.assertProcurementText(note, '备注', PAINT_PROCUREMENT_NOTE_MAX_CHARS);
+    }
+
+    const normalized = {
       supplierId,
       procurementCode,
       materialName,
@@ -641,6 +757,8 @@ export class PaintProcurementsService {
       arrivalDate,
       note,
     };
+    this.assertProcurementPayloadBytes(normalized);
+    return normalized;
   }
 
   private parseUpdateInput(rawInput: unknown): PaintProcurementUpdateInput {
@@ -697,7 +815,20 @@ export class PaintProcurementsService {
       throw new BadRequestException('至少提交一个要更新的字段。');
     }
 
-    return {
+    if (supplierId) this.assertProcurementId(supplierId, '供应商');
+    if (procurementCode) this.assertProcurementCode(procurementCode, '采购单号');
+    if (materialName) {
+      this.assertProcurementText(
+        materialName,
+        '物料名称',
+        PAINT_PROCUREMENT_NAME_MAX_CHARS,
+      );
+    }
+    if (batchNo) this.assertProcurementCode(batchNo, '批次号');
+    if (unit) this.assertProcurementText(unit, '单位', PAINT_PROCUREMENT_UNIT_MAX_CHARS);
+    if (note) this.assertProcurementText(note, '备注', PAINT_PROCUREMENT_NOTE_MAX_CHARS);
+
+    const normalized = {
       ...(supplierId ? { supplierId } : {}),
       ...(procurementCode ? { procurementCode } : {}),
       ...(materialName ? { materialName } : {}),
@@ -707,6 +838,8 @@ export class PaintProcurementsService {
       ...(arrivalDate ? { arrivalDate } : {}),
       ...(note !== undefined ? { note } : {}),
     };
+    this.assertProcurementPayloadBytes(normalized);
+    return normalized;
   }
 
   private parseDecimal(value: unknown, label: string) {
@@ -720,13 +853,72 @@ export class PaintProcurementsService {
       throw new BadRequestException(`${label}不能为空。`);
     }
 
-    const parsedValue = Number(normalizedValue);
-
-    if (!Number.isFinite(parsedValue) || parsedValue <= 0) {
-      throw new BadRequestException(`${label}必须大于 0。`);
+    if (
+      !PAINT_PROCUREMENT_DECIMAL_PATTERN.test(normalizedValue) ||
+      new Prisma.Decimal(normalizedValue).lessThanOrEqualTo(0)
+    ) {
+      this.throwProcurementInputOutOfBounds(
+        `${label}必须为大于 0 且最多 15 位整数、3 位小数的数值。`,
+      );
     }
 
     return new Prisma.Decimal(normalizedValue);
+  }
+
+  private assertProcurementRecordCapacity(records: readonly unknown[], forCreate: boolean) {
+    if (
+      records.length > PAINT_PROCUREMENT_RECORD_LIMIT ||
+      (forCreate && records.length >= PAINT_PROCUREMENT_RECORD_LIMIT)
+    ) {
+      throw new ConflictException({
+        code: 'PAINT_PROCUREMENT_RECORD_LIMIT_EXCEEDED',
+        message: `每个项目最多保留 ${PAINT_PROCUREMENT_RECORD_LIMIT} 条采购记录。`,
+      });
+    }
+  }
+
+  private assertProcurementId(value: string, label: string) {
+    if (
+      value.length > PAINT_PROCUREMENT_ID_MAX_CHARS ||
+      !PAINT_PROCUREMENT_ID_PATTERN.test(value)
+    ) {
+      this.throwProcurementInputOutOfBounds(`${label}标识不合法。`);
+    }
+  }
+
+  private assertProcurementCode(value: string, label: string) {
+    if (
+      value.length > PAINT_PROCUREMENT_CODE_MAX_CHARS ||
+      !PAINT_PROCUREMENT_CODE_PATTERN.test(value)
+    ) {
+      this.throwProcurementInputOutOfBounds(
+        `${label}仅允许 1～${PAINT_PROCUREMENT_CODE_MAX_CHARS} 位字母、数字、点、下划线或连字符。`,
+      );
+    }
+  }
+
+  private assertProcurementText(value: string, label: string, maxChars: number) {
+    if (value.length > maxChars) {
+      this.throwProcurementInputOutOfBounds(`${label}不得超过 ${maxChars} 个字符。`);
+    }
+  }
+
+  private assertProcurementPayloadBytes(value: object) {
+    if (
+      Buffer.byteLength(JSON.stringify(value), 'utf8') >
+      PAINT_PROCUREMENT_MAX_PAYLOAD_BYTES
+    ) {
+      this.throwProcurementInputOutOfBounds(
+        `采购记录不得超过 ${PAINT_PROCUREMENT_MAX_PAYLOAD_BYTES} 字节。`,
+      );
+    }
+  }
+
+  private throwProcurementInputOutOfBounds(message: string): never {
+    throw new BadRequestException({
+      code: 'PAINT_PROCUREMENT_INPUT_OUT_OF_BOUNDS',
+      message,
+    });
   }
 
   private parseDate(value: unknown, label: string) {
@@ -753,6 +945,8 @@ export class PaintProcurementsService {
       contactName: supplier.contactName,
       contactPhone: supplier.contactPhone,
       status: supplier.status,
+      createdAt: supplier.createdAt.toISOString(),
+      updatedAt: supplier.updatedAt.toISOString(),
     };
   }
 

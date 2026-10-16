@@ -1,0 +1,22 @@
+[Unit]
+Description=Native account application api
+Requires=timeline-native-cutover-recover.service timeline-native-network.service docker.service timeline-native-redis.service timeline-native-pg.socket timeline-native-scanner-proxy.socket
+After=timeline-native-cutover-recover.service timeline-native-network.service docker.service timeline-native-redis.service timeline-native-pg.socket timeline-native-scanner-proxy.socket
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 -I /usr/local/lib/timeline-native-ops/native_runtime_app.py start api
+ExecStop=/usr/bin/python3 -I /usr/local/lib/timeline-native-ops/native_runtime_app.py stop api
+ExecStopPost=/usr/bin/python3 -I /usr/local/lib/timeline-native-ops/native_runtime_app.py stop api
+Restart=on-failure
+RestartSec=10
+UMask=0077
+TimeoutStopSec=90
+MemoryMax=128M
+TasksMax=64
+KillMode=control-group
+
+[Install]
+WantedBy=multi-user.target

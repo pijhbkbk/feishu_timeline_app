@@ -1,0 +1,21 @@
+[Unit]
+Description=Bounded native API PostgreSQL loopback proxy
+Requires=timeline-native-network.service
+After=timeline-native-network.service postgresql.service
+
+[Service]
+ExecStart=/usr/lib/systemd/systemd-socket-proxyd --connections-max=32 127.0.0.1:5432
+DynamicUser=yes
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+RestrictAddressFamilies=AF_INET AF_UNIX
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryMax=64M
+TasksMax=16
+LimitNOFILE=128
+TimeoutStopSec=15

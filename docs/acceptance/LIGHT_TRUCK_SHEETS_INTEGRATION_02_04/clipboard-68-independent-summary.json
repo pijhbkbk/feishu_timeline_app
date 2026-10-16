@@ -1,0 +1,85 @@
+{
+  "method": "Independent Python stdlib ZIP/XML plus Pillow image verify; no ExcelJS/application parser, no edits, no office UI compatibility claim",
+  "files": [],
+  "standaloneImageEvidence": [
+    {
+      "proofPath": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/clipboard-evidence/1791879230973373000/clipboard-results/clipboard-PNG-and-JPEG-fil-10e13-l-bytes-owner-and-reopening/clipboard-image-proof.json",
+      "origin": "http://127.0.0.1:3380",
+      "runtimeCommit": "68acd102bc8f88fa7bf88aea099ccc7d74cbde28",
+      "browserEvidence": {
+        "trustedPaste": true,
+        "clipboardPermissionCondition": "Temporary read/write grants for preparation, cleared before native paste",
+        "newBrowserContextVerified": true,
+        "textPasteAfterImage": {
+          "value": "图片后文字粘贴-1791879275814",
+          "nativeShortcut": true,
+          "serverAndNewContext": true
+        },
+        "decodedScreenshot": {
+          "width": 1070,
+          "height": 535,
+          "sha256": "7042509bfb2f9d7657e1307094e8987e1f909199ed3d9ddaa25a5e6825d0b94c"
+        },
+        "decodedClipboard": {
+          "width": 1070,
+          "height": 535,
+          "sha256": "7042509bfb2f9d7657e1307094e8987e1f909199ed3d9ddaa25a5e6825d0b94c"
+        },
+        "clipboardPasteSha256": "585ed54b2ac6d0718480e2380a7ea47124815d906e9d84b1a5a047f2d97f6cd3"
+      },
+      "scope": "Independent local PNG/JPEG bytes only; pasted server original is not saved beside this evidence, its hash/new-context validation remains browser evidence",
+      "files": [
+        {
+          "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/clipboard-evidence/1791879230973373000/clipboard-results/clipboard-PNG-and-JPEG-fil-10e13-l-bytes-owner-and-reopening/transparent-image.png",
+          "bytes": 334,
+          "sha256": "d9e22f6c9d1a3eaa5cfefa5125c016bf4256db63350c737232c7daf4c0bf90c3",
+          "format": "PNG",
+          "width": 97,
+          "height": 65,
+          "mode": "RGBA",
+          "rgbaSha256": "2b9c8d1ba7fce9d038e5819c2c5a59c2c1f7c4b9b8f07eaa84ee1ad9dfdb15fe",
+          "independentPillowVerify": true,
+          "matchesBrowserSourceHash": true
+        },
+        {
+          "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/clipboard-evidence/1791879230973373000/clipboard-results/clipboard-PNG-and-JPEG-fil-10e13-l-bytes-owner-and-reopening/local-image.jpeg",
+          "bytes": 140899,
+          "sha256": "2f0210c0b601ab1c1f45e02b19cbf056f4a3e9dcf06443ddda46c8a40d80ed43",
+          "format": "JPEG",
+          "width": 1920,
+          "height": 1080,
+          "mode": "RGB",
+          "rgbaSha256": "0862d5cbec533caff5f209220ebd924c453590c12573e483a45ed44d2331dac9",
+          "independentPillowVerify": true,
+          "matchesBrowserSourceHash": true
+        },
+        {
+          "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/clipboard-evidence/1791879230973373000/clipboard-results/clipboard-PNG-and-JPEG-fil-10e13-l-bytes-owner-and-reopening/clipboard-source-screenshot.png",
+          "bytes": 39581,
+          "sha256": "d14b7ddbbf354245bf09bce205c7c67d18dd7f6609246fb6d4917d976cf2d612",
+          "format": "PNG",
+          "width": 1070,
+          "height": 535,
+          "mode": "RGB",
+          "rgbaSha256": "7042509bfb2f9d7657e1307094e8987e1f909199ed3d9ddaa25a5e6825d0b94c",
+          "independentPillowVerify": true,
+          "matchesBrowserSourceHash": true,
+          "matchesBrowserDecodedPixels": true
+        },
+        {
+          "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/clipboard-evidence/1791879230973373000/clipboard-results/clipboard-PNG-and-JPEG-fil-10e13-l-bytes-owner-and-reopening/actual-clipboard-paste.png",
+          "bytes": 50336,
+          "sha256": "585ed54b2ac6d0718480e2380a7ea47124815d906e9d84b1a5a047f2d97f6cd3",
+          "format": "PNG",
+          "width": 1070,
+          "height": 535,
+          "mode": "RGB",
+          "rgbaSha256": "7042509bfb2f9d7657e1307094e8987e1f909199ed3d9ddaa25a5e6825d0b94c",
+          "independentPillowVerify": true,
+          "matchesBrowserSourceHash": true,
+          "matchesBrowserDecodedPixels": true
+        }
+      ]
+    }
+  ]
+}

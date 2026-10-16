@@ -4,11 +4,17 @@ import type { ReactNode } from 'react';
 
 import { RootRuntime } from '../components/root-runtime';
 import './globals.css';
+import '../styles/r26-v2.css';
+import '../features/color-projects/color-projects.css';
 import './r22.css';
+import '../features/personnel/personnel.css';
+import '../features/team-work/team-work.css';
+import '../features/m1/theme.css';
+import '../features/color-register/register.css';
 
 export const metadata: Metadata = {
   title: '轻卡新颜色开发项目管理系统',
-  description: 'MVP skeleton for the light truck new color development management system.',
+  description: '轻卡定制色项目、固定流程、角色待办和开发资料管理。',
 };
 
 type RootLayoutProps = {

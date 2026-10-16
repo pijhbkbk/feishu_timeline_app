@@ -7,20 +7,18 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-User=__APP_USER__
-WorkingDirectory=/opt/feishu_timeline_app/apps/api
-EnvironmentFile=/opt/feishu_timeline_app/apps/api/.env.production
-Environment=NODE_ENV=production
+User=__API_RUNTIME_USER__
+Group=__API_RUNTIME_GROUP__
+WorkingDirectory=/opt/feishu_timeline_app/current/apps/api
 Environment=PATH=/usr/local/bin:/usr/bin:/bin
-Environment=EXPECTED_OBJECT_STORAGE_DIR=/opt/feishu_timeline_app/var/object-storage
-ExecStartPre=/usr/bin/test -f /opt/feishu_timeline_app/apps/api/dist/main.js
-ExecStartPre=/usr/bin/env bash -lc 'command -v node >/dev/null && node -v >/dev/null'
-ExecStartPre=/usr/bin/env bash -lc 'resolved="$(node -p '\''require("node:path").resolve(process.cwd(), process.env.OBJECT_STORAGE_LOCAL_ROOT || "var/object-storage")'\'')" && echo "Resolved object-storage path: $resolved" && [ "$resolved" = "${EXPECTED_OBJECT_STORAGE_DIR:?}" ]'
-ExecStartPre=/usr/bin/env bash -lc 'resolved="$(node -p '\''require("node:path").resolve(process.cwd(), process.env.OBJECT_STORAGE_LOCAL_ROOT || "var/object-storage")'\'')" && [ -d "$resolved" ] && [ -w "$resolved" ]'
+ExecStartPre=/usr/bin/python3 -I /usr/local/libexec/feishu-timeline/dotenv-data validate --profile api /etc/feishu-timeline/api.env
+ExecStartPre=/usr/bin/test -f /opt/feishu_timeline_app/current/apps/api/dist/main.js
+ExecStartPre=/usr/bin/node --version
+ExecStartPre=/usr/bin/python3 -I /usr/local/libexec/feishu-timeline/dotenv-data exec --profile api /etc/feishu-timeline/api.env -- /usr/bin/node -e "const { accessSync, constants } = require('node:fs'); const { resolve } = require('node:path'); const expected = '/opt/feishu_timeline_app/var/object-storage'; const actual = resolve(process.cwd(), process.env.OBJECT_STORAGE_LOCAL_ROOT || 'var/object-storage'); if (actual !== expected) process.exit(2); accessSync(actual, constants.R_OK | constants.W_OK);"
 # TODO: The old host used WorkingDirectory=/opt/feishu_timeline_app/apps/api, but
 # the confirmed attachment directory is /opt/feishu_timeline_app/var/object-storage.
 # Verify object-storage path resolution in code and env before changing either path.
-ExecStart=/usr/bin/env node /opt/feishu_timeline_app/apps/api/dist/main.js
+ExecStart=/usr/bin/python3 -I /usr/local/libexec/feishu-timeline/dotenv-data exec --profile api /etc/feishu-timeline/api.env -- /usr/bin/node /opt/feishu_timeline_app/current/apps/api/dist/main.js
 Restart=always
 RestartSec=5
 SyslogIdentifier=feishu-timeline-api
@@ -31,7 +29,10 @@ ProtectControlGroups=true
 ProtectKernelModules=true
 ProtectKernelTunables=true
 ProtectHostname=true
-ProtectSystem=full
+ProtectSystem=strict
+ProtectHome=true
+ProtectProc=invisible
+ReadOnlyPaths=/opt/feishu_timeline_app/releases
 ReadWritePaths=/opt/feishu_timeline_app/var/object-storage
 RestrictSUIDSGID=true
 RestrictNamespaces=true
@@ -39,6 +40,8 @@ RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
 LockPersonality=true
 UMask=0027
 LimitNOFILE=65535
+MemoryMax=768M
+TasksMax=256
 
 [Install]
 WantedBy=multi-user.target

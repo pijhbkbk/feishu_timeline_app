@@ -1,0 +1,12 @@
+{
+  "runtimeCodeCommit": "a0769e7808ace84a05a36bed6c0edc2e81d097c6",
+  "mainAndTagsUnchanged": true,
+  "refs": [
+    "41b4b166c587692e6f0fb9536dca2e1aab646c70 refs/heads/main",
+    "740dab9d28e5308a860310a95390639b234246ba refs/tags/v1.0.0",
+    "afea8c7d5a492127a0b7709958806df0c07f52be refs/tags/v1.1.0-rc.1",
+    "dfd03b5fb0a5107093433bdcc1f1b3beeb98c9bd refs/tags/v1.1.0-rc.2",
+    "b552e79f153bc339758d9841964d27f86c433553 refs/tags/v1.1.0-rc.3"
+  ],
+  "remoteAccess": "not performed"
+}

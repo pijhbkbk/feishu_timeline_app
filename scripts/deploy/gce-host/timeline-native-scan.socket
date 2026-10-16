@@ -1,0 +1,9 @@
+[Unit]
+Description=Approved local scanner admission
+
+[Socket]
+ListenStream=127.0.0.1:3310
+Accept=no
+Backlog=8
+Service=timeline-native-scan.service
+

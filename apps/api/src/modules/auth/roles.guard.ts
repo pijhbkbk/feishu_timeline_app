@@ -1,3 +1,4 @@
+import { isApprovedTeamMember } from '../../common/team-membership';
 import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 
@@ -34,7 +35,7 @@ export class RolesGuard implements CanActivate {
       throw new ForbiddenException('请先登录后再操作。');
     }
 
-    if (user.roleCodes.includes('admin')) {
+    if (isApprovedTeamMember(user)) {
       return true;
     }
 

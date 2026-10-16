@@ -1,0 +1,215 @@
+--- a/libclamav/unzip.c
++++ b/libclamav/unzip.c
+@@ -122,6 +122,7 @@
+     int out_file, ret = CL_CLEAN;
+     int res        = 1;
+     size_t written = 0;
++    bool exceeded_maxfilesize = false;
+ 
+     if (tmpd) {
+         if (ctx->engine->keeptmp && (NULL != original_filename)) {
+@@ -155,6 +156,7 @@
+             }
+             if (res == 1) {
+                 if (ctx->engine->maxfilesize && csize > ctx->engine->maxfilesize) {
++                    exceeded_maxfilesize = true;
+                     cli_dbgmsg("cli_unzip: trimming output size to maxfilesize (%lu)\n",
+                                (long unsigned int)ctx->engine->maxfilesize);
+                     csize = ctx->engine->maxfilesize;
+@@ -220,6 +222,7 @@
+                 if (*avail_out != sizeof(obuf)) {
+                     written += sizeof(obuf) - (*avail_out);
+                     if (ctx->engine->maxfilesize && written > ctx->engine->maxfilesize) {
++                        exceeded_maxfilesize = true;
+                         cli_dbgmsg("cli_unzip: trimming output size to maxfilesize (%lu)\n", (long unsigned int)ctx->engine->maxfilesize);
+                         res = Z_STREAM_END;
+                         break;
+@@ -262,6 +265,7 @@
+                 if (strm.avail_out != sizeof(obuf)) {
+                     written += sizeof(obuf) - strm.avail_out;
+                     if (ctx->engine->maxfilesize && written > ctx->engine->maxfilesize) {
++                        exceeded_maxfilesize = true;
+                         cli_dbgmsg("cli_unzip: trimming output size to maxfilesize (%lu)\n", (unsigned long int)ctx->engine->maxfilesize);
+                         res = BZ_STREAM_END;
+                         break;
+@@ -297,6 +301,7 @@
+                 if (strm.avail_out != sizeof(obuf)) {
+                     written += sizeof(obuf) - strm.avail_out;
+                     if (ctx->engine->maxfilesize && written > ctx->engine->maxfilesize) {
++                        exceeded_maxfilesize = true;
+                         cli_dbgmsg("cli_unzip: trimming output size to maxfilesize (%lu)\n", (unsigned long int)ctx->engine->maxfilesize);
+                         res = 0;
+                         break;
+@@ -342,6 +347,14 @@
+             break;
+     }
+ 
++    /* A truncated member is not a complete clean scan. Keep decoder teardown
++     * above, record the configured limit alert, and skip the scan/cache callback. */
++    if (exceeded_maxfilesize && SCAN_HEURISTIC_EXCEEDS_MAX) {
++        cli_append_potentially_unwanted_if_heur_exceedsmax(ctx, "Heuristics.Limits.Exceeded.MaxFileSize");
++        if (ret == CL_CLEAN) ret = CL_EMAXSIZE;
++        goto cleanup;
++    }
++
+     if (!res) {
+         (*num_files_unzipped)++;
+         cli_dbgmsg("cli_unzip: extracted to %s\n", tempfile);
+@@ -359,6 +372,7 @@
+         return ret;
+     }
+ 
++cleanup:
+     close(out_file);
+     if (!ctx->engine->keeptmp)
+         if (cli_unlink(tempfile)) ret = CL_EUNLINK;
+--- a/clamd/server-th.c
++++ b/clamd/server-th.c
+@@ -504,6 +504,8 @@
+     int commandtimeout;
+     int syncpipe_wake_recv[2];
+     int syncpipe_wake_accept[2];
++    int *listener_fds;
++    unsigned listener_count;
+ };
+ 
+ #define ACCEPTDATA_INIT(mutex1, mutex2)                                               \
+@@ -511,8 +513,26 @@
+         FDS_INIT(mutex1), FDS_INIT(mutex2), PTHREAD_COND_INITIALIZER, 0, 0, {-1, -1}, \
+         {                                                                             \
+             -1, -1                                                                    \
+-        }                                                                             \
+-    }
++        }, NULL, 0                                                                    \
++    }
++
++/* The accept thread owns listener closure after it starts.  Invalidate the
++ * original array before close so later cleanup cannot act on a reused number.
++ * The caller only reads this array before thread creation or after join. */
++static void close_accept_fd(struct acceptdata *data, struct fd_buf *buf)
++{
++    int fd = buf->fd;
++    unsigned i;
++    if (fd < 0)
++        return;
++    for (i = 0; i < data->listener_count; i++) {
++        if (data->listener_fds[i] == fd)
++            data->listener_fds[i] = -1;
++    }
++    buf->fd = -1;
++    shutdown(fd, 2);
++    closesocket(fd);
++}
+ 
+ static void *acceptloop_th(void *arg)
+ {
+@@ -562,9 +582,7 @@
+ #endif
+             if (buf->got_newdata == -1) {
+                 logg(LOGG_DEBUG_NV, "Acceptloop closed FD: %d\n", buf->fd);
+-                shutdown(buf->fd, 2);
+-                closesocket(buf->fd);
+-                buf->fd = -1;
++                close_accept_fd(data, buf);
+                 continue;
+             }
+ 
+@@ -651,8 +669,7 @@
+             if (fds->buf[i].fd == -1)
+                 continue;
+             logg(LOGG_DEBUG_NV, "Shutdown: closed fd %d\n", fds->buf[i].fd);
+-            shutdown(fds->buf[i].fd, 2);
+-            closesocket(fds->buf[i].fd);
++            close_accept_fd(data, &fds->buf[i]);
+         }
+     }
+ 
+@@ -1551,6 +1568,8 @@
+         exit(-1);
+     }
+ 
++    acceptdata.listener_fds = socketds;
++    acceptdata.listener_count = nsockets;
+     if (pthread_create(&accept_th, NULL, acceptloop_th, &acceptdata)) {
+         logg(LOGG_ERROR, "pthread_create failed\n");
+         exit(-1);
+@@ -1831,8 +1850,10 @@
+     if (sd_listen_fds(0) == 0) {
+         /* only close the sockets, when not using systemd socket activation */
+         logg(LOGG_DEBUG, "Shutting down the main socket%s.\n", (nsockets > 1) ? "s" : "");
+-        for (i = 0; i < nsockets; i++)
+-            shutdown(socketds[i], 2);
++        for (i = 0; i < nsockets; i++) {
++            if (socketds[i] >= 0)
++                shutdown(socketds[i], 2);
++        }
+     }
+ 
+     if ((opt = optget(opts, "PidFile"))->enabled) {
+--- a/clamd/clamd.c
++++ b/clamd/clamd.c
+@@ -859,7 +859,8 @@
+         logg(LOGG_DEBUG, "Closing the main socket%s.\n", (nlsockets > 1) ? "s" : "");
+ 
+         for (i = 0; i < nlsockets; i++) {
+-            closesocket(lsockets[i]);
++            if (lsockets[i] >= 0)
++                closesocket(lsockets[i]);
+         }
+ #ifndef _WIN32
+         if (nlsockets && localsock) {
+--- a/clamdscan/client.c
++++ b/clamdscan/client.c
+@@ -232,6 +232,7 @@
+                     logg(LOGG_INFO, "PONG\n");
+                 }
+                 ret = 0;
++                closesocket(sockd);
+                 goto done;
+             }
+         }
+--- a/libclamav_rust/src/cdiff.rs
++++ b/libclamav_rust/src/cdiff.rs
+@@ -571,7 +571,7 @@
+     Ok(())
+ }
+ 
+-/// This function is only meant to be called from sigtool.c
++/// Called by sigtool and freshclam; the C caller retains ownership of fd.
+ #[export_name = "cdiff_apply"]
+ pub extern "C" fn _cdiff_apply(fd: i32, mode: u16) -> i32 {
+     debug!(
+@@ -585,7 +585,8 @@
+         ApplyMode::Script
+     };
+ 
+-    let mut file = util::file_from_fd_or_handle(fd);
++    // Borrow the underlying descriptor; C callers close it after this returns.
++    let mut file = std::mem::ManuallyDrop::new(util::file_from_fd_or_handle(fd));
+ 
+     if let Err(e) = cdiff_apply(&mut file, mode) {
+         error!("{}", e);
+--- a/freshclam/freshclam.c
++++ b/freshclam/freshclam.c
+@@ -346,12 +346,18 @@
+                     close(pipefd[0]);
+ 
+                     /* Redirect stderr to the pipe for the parent process */
+-                    if (dup2(pipefd[1], 2) == -1) {
++                    if (dup2(pipefd[1], STDERR_FILENO) == -1) {
+                         logg(LOGG_WARNING, "dup2() call to redirect stderr to pipe failed: %s\n", strerror(errno));
++                        close(pipefd[1]);
++                        exit(FC_ETESTFAIL);
+                     }
+-
+-                    /* Test the database */
++                    if (pipefd[1] != STDERR_FILENO) {
++                        close(pipefd[1]);
++                    }
++
++                    /* Test the database, then flush and close the child's pipe. */
+                     status = fc_test_database(dbFilename, fc_context->bBytecodeEnabled);
++                    fclose(stderr);
+                     exit(status);
+                 }
+                 default: {

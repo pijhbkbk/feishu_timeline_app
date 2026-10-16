@@ -1,0 +1,1310 @@
+[
+  {
+    "label": "I03",
+    "runDirectory": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791872210848154000",
+    "runLog": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791872210848154000/run.log",
+    "tests": [
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791872210848154000/results/interactions-T03-actual-fi-491f7-ity-business-detail-rereads/sanitized-browser-events.json",
+        "runtimeCommit": "0ec1ad48d3c3aa2bf109be2d351c50579636cc89",
+        "origin": "http://127.0.0.1:3380",
+        "title": "T03 actual fill handle, whole-record sort and filtered-row identity; business detail rereads",
+        "status": "passed",
+        "pageErrorCount": 0,
+        "consoleErrorCount": 0,
+        "guardErrorCount": 0
+      }
+    ]
+  },
+  {
+    "label": "I04-05",
+    "runDirectory": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791871849898152000",
+    "runLog": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791871849898152000/run.log",
+    "tests": [
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791871849898152000/results/interactions-T04-native-co-a1d9c-reserve-the-selected-record/sanitized-browser-events.json",
+        "runtimeCommit": "0ec1ad48d3c3aa2bf109be2d351c50579636cc89",
+        "origin": "http://127.0.0.1:3380",
+        "title": "T04 native column resize, freeze menu, scroll, sidebar and viewport preserve the selected record",
+        "status": "passed",
+        "pageErrorCount": 0,
+        "consoleErrorCount": 0,
+        "guardErrorCount": 0
+      },
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791871849898152000/results/interactions-T05-unsaved-u-4b7b8-e-new-revisions-across-sort/sanitized-browser-events.json",
+        "runtimeCommit": "0ec1ad48d3c3aa2bf109be2d351c50579636cc89",
+        "origin": "http://127.0.0.1:3380",
+        "title": "T05 unsaved undo/redo and saved reversal write new revisions across sort",
+        "status": "passed",
+        "pageErrorCount": 0,
+        "consoleErrorCount": 0,
+        "guardErrorCount": 0
+      },
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791871849898152000/results/interactions-T02-invalid-e-91156-ed-undo-restores-every-cell/sanitized-browser-events.json",
+        "runtimeCommit": "0ec1ad48d3c3aa2bf109be2d351c50579636cc89",
+        "origin": "http://127.0.0.1:3380",
+        "title": "T02 invalid enum in real 2x4 paste keeps the whole batch unsaved; undo restores every cell",
+        "status": "failed",
+        "pageErrorCount": 0,
+        "consoleErrorCount": 0,
+        "guardErrorCount": 0
+      }
+    ]
+  },
+  {
+    "label": "I02-07",
+    "runDirectory": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791871974631809000",
+    "runLog": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791871974631809000/run.log",
+    "tests": [
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791871974631809000/results/interactions-T05-T07-anoth-bd650-rwriting-the-newer-revision/sanitized-browser-events.json",
+        "runtimeCommit": "0ec1ad48d3c3aa2bf109be2d351c50579636cc89",
+        "origin": "http://127.0.0.1:3380",
+        "title": "T05/T07 another authorized writer prevents saved undo from overwriting the newer revision",
+        "status": "failed",
+        "pageErrorCount": 0,
+        "consoleErrorCount": 1,
+        "guardErrorCount": 0
+      },
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791871974631809000/results/interactions-T02-invalid-e-91156-ed-undo-restores-every-cell/sanitized-browser-events.json",
+        "runtimeCommit": "0ec1ad48d3c3aa2bf109be2d351c50579636cc89",
+        "origin": "http://127.0.0.1:3380",
+        "title": "T02 invalid enum in real 2x4 paste keeps the whole batch unsaved; undo restores every cell",
+        "status": "passed",
+        "pageErrorCount": 0,
+        "consoleErrorCount": 0,
+        "guardErrorCount": 0
+      }
+    ]
+  },
+  {
+    "label": "I07B-RED",
+    "runDirectory": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791872357402274000",
+    "runLog": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791872357402274000/run.log",
+    "tests": [
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791872357402274000/results/interactions-T07b-native-e-ab3d2-lly-requested-detail-record/sanitized-browser-events.json",
+        "runtimeCommit": "0ec1ad48d3c3aa2bf109be2d351c50579636cc89",
+        "origin": "http://127.0.0.1:3380",
+        "title": "T07b native editor completion keeps the originally requested detail record",
+        "status": "failed",
+        "pageErrorCount": 0,
+        "consoleErrorCount": 0,
+        "guardErrorCount": 0
+      }
+    ]
+  },
+  {
+    "label": "INS",
+    "runDirectory": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/inspection-evidence/1791870856951546000",
+    "runLog": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/inspection-evidence/1791870856951546000/run.log",
+    "tests": [
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/inspection-evidence/1791870856951546000/results/inspection-独立第17步夹具：UI-显式关联、原流程提交与通过只完成目标月，其余月份不变/sanitized-inspection-events.json",
+        "runtimeCommit": "01284c37353c04efff09d1c75502d7b888cf640c",
+        "origin": "http://127.0.0.1:3380",
+        "title": "独立第17步夹具：UI 显式关联、原流程提交与通过只完成目标月，其余月份不变",
+        "status": "passed",
+        "pageErrorCount": 0,
+        "consoleErrorCount": 0,
+        "guardErrorCount": 0
+      },
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/inspection-evidence/1791870856951546000/results/inspection-普通员工：活动已创建但响应丢失，401-与-403-后仍用同一操作核实且仅一份活动/sanitized-inspection-events.json",
+        "runtimeCommit": "01284c37353c04efff09d1c75502d7b888cf640c",
+        "origin": "http://127.0.0.1:3380",
+        "title": "普通员工：活动已创建但响应丢失，401 与 403 后仍用同一操作核实且仅一份活动",
+        "status": "passed",
+        "pageErrorCount": 0,
+        "consoleErrorCount": 3,
+        "guardErrorCount": 0
+      },
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/inspection-evidence/1791870856951546000/results/inspection-普通员工从-UI-创建-2-台次-4-测量组-12-角度，3-张照片、总体结论和含图模板回读/sanitized-inspection-events.json",
+        "runtimeCommit": "01284c37353c04efff09d1c75502d7b888cf640c",
+        "origin": "http://127.0.0.1:3380",
+        "title": "普通员工从 UI 创建 2 台次 / 4 测量组 / 12 角度，3 张照片、总体结论和含图模板回读",
+        "status": "passed",
+        "pageErrorCount": 0,
+        "consoleErrorCount": 0,
+        "guardErrorCount": 0
+      }
+    ]
+  },
+  {
+    "label": "CLIP",
+    "runDirectory": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/clipboard-evidence/1791871553428549000",
+    "runLog": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/clipboard-evidence/1791871553428549000/run.log",
+    "tests": [
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/clipboard-evidence/1791871553428549000/clipboard-results/clipboard-PNG-and-JPEG-fil-10e13-l-bytes-owner-and-reopening/sanitized-browser-events.json",
+        "runtimeCommit": "01284c37353c04efff09d1c75502d7b888cf640c",
+        "origin": "http://127.0.0.1:3380",
+        "title": null,
+        "status": "passed",
+        "pageErrorCount": 0,
+        "consoleErrorCount": 0,
+        "guardErrorCount": 0
+      }
+    ]
+  },
+  {
+    "label": "PERSON",
+    "runDirectory": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/person-evidence/1791869553231314000",
+    "runLog": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/person-evidence/1791869553231314000/run.log",
+    "tests": [
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/person-evidence/1791869553231314000/results/person-Ordinary-worker-lin-1bb7c-ority-or-historical-records/sanitized-person-events.json",
+        "runtimeCommit": "897d71e23a49ff625def2f1c61ceb3f2140fe798",
+        "origin": "http://127.0.0.1:3380",
+        "title": "Ordinary worker: linked profile rename flows to existing responsibility without changing account authority or historical records",
+        "status": "passed",
+        "pageErrorCount": 0,
+        "consoleErrorCount": 0,
+        "guardErrorCount": 0
+      },
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/person-evidence/1791869553231314000/results/person-Ordinary-worker-two-95b3b--update-and-unlinked-import/sanitized-person-events.json",
+        "runtimeCommit": "897d71e23a49ff625def2f1c61ceb3f2140fe798",
+        "origin": "http://127.0.0.1:3380",
+        "title": "Ordinary worker: two same-name profiles retain IDs through native edits, clipboard, template update, and unlinked import",
+        "status": "passed",
+        "pageErrorCount": 0,
+        "consoleErrorCount": 0,
+        "guardErrorCount": 0
+      },
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/person-evidence/1791869553231314000/results/person-Ordinary-worker-a-l-947c3-401-and-403-replay-failures/sanitized-person-events.json",
+        "runtimeCommit": "897d71e23a49ff625def2f1c61ceb3f2140fe798",
+        "origin": "http://127.0.0.1:3380",
+        "title": "Ordinary worker: a lost create response retains the same operation through 401 and 403 replay failures",
+        "status": "passed",
+        "pageErrorCount": 0,
+        "consoleErrorCount": 3,
+        "guardErrorCount": 0
+      }
+    ]
+  },
+  {
+    "label": "PROD",
+    "runDirectory": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/production-evidence/1791871160765482000",
+    "runLog": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/production-evidence/1791871160765482000/run.log",
+    "tests": [
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/production-evidence/1791871160765482000/results/production-Ordinary-member-4f16a-o-and-image-XLSX-round-trip/sanitized-production-events.json",
+        "runtimeCommit": "01284c37353c04efff09d1c75502d7b888cf640c",
+        "origin": "http://127.0.0.1:3380",
+        "title": "Ordinary member: monthly totals use stable records, canvas CAS, unknown vs zero, and image XLSX round trip",
+        "status": "passed",
+        "pageErrorCount": 0,
+        "consoleErrorCount": 0,
+        "guardErrorCount": 0
+      }
+    ]
+  },
+  {
+    "label": "QUAL",
+    "runDirectory": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/qualification-evidence/1791871027865790000",
+    "runLog": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/qualification-evidence/1791871027865790000/run.log",
+    "tests": [
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/qualification-evidence/1791871027865790000/results/qualification-当前-M1：两个有效账号冲突、管理员停用影响档案和候选、失效旧页面拒绝且恢复不改历史/qualification-evidence.json",
+        "runtimeCommit": "01284c37353c04efff09d1c75502d7b888cf640c",
+        "origin": "http://127.0.0.1:3380",
+        "title": null,
+        "status": null,
+        "pageErrorCount": 0,
+        "consoleErrorCount": 3,
+        "guardErrorCount": 0
+      }
+    ]
+  },
+  {
+    "label": "SNAP",
+    "runDirectory": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/snapshot-smoke-evidence/1791872465631888000",
+    "runLog": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/snapshot-smoke-evidence/1791872465631888000/run.log",
+    "tests": [
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/snapshot-smoke-evidence/1791872465631888000/results/snapshot-smoke-已完成月度关联活动：只读切层复用、提交锁定、显式刷新全量重读且原事实不变/snapshot-reuse-smoke.json",
+        "runtimeCommit": "0ec1ad48d3c3aa2bf109be2d351c50579636cc89",
+        "origin": "http://127.0.0.1:3380",
+        "title": null,
+        "status": null,
+        "pageErrorCount": 0,
+        "consoleErrorCount": 0,
+        "guardErrorCount": 0
+      }
+    ]
+  },
+  {
+    "label": "IMG1",
+    "runDirectory": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/images-regression-evidence/1791866889362945000",
+    "runLog": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/images-regression-evidence/1791866889362945000/run.log",
+    "tests": [
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/images-regression-evidence/1791866889362945000/image-results/images-regression-replacem-38304-ter-the-new-upload-confirms/sanitized-browser-events.json",
+        "runtimeCommit": "2173ac425173dfc9cfdcd0bf0577b06a1db4130e",
+        "origin": "http://127.0.0.1:3380",
+        "title": "replacement uses only layout fields, keeps the owner and removes the old image only after the new upload confirms",
+        "status": "passed",
+        "pageErrorCount": 0,
+        "consoleErrorCount": 4,
+        "guardErrorCount": 0
+      },
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/images-regression-evidence/1791866889362945000/image-results/images-regression-two-loca-a11f5-th-the-same-owner-and-bytes/sanitized-browser-events.json",
+        "runtimeCommit": "2173ac425173dfc9cfdcd0bf0577b06a1db4130e",
+        "origin": "http://127.0.0.1:3380",
+        "title": "two local images persist through panel close, route reopen and reload with the same owner and bytes",
+        "status": "passed",
+        "pageErrorCount": 0,
+        "consoleErrorCount": 10,
+        "guardErrorCount": 0
+      }
+    ]
+  },
+  {
+    "label": "IMG2",
+    "runDirectory": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/images-regression-evidence/1791870112643982000",
+    "runLog": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/images-regression-evidence/1791870112643982000/run.log",
+    "tests": [
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/images-regression-evidence/1791870112643982000/image-results/images-regression-lost-res-2f881--use-the-confirmed-revision/sanitized-browser-events.json",
+        "runtimeCommit": "897d71e23a49ff625def2f1c61ceb3f2140fe798",
+        "origin": "http://127.0.0.1:3380",
+        "title": "lost response A blocks later drag B; retry preserves A payload and lets B use the confirmed revision",
+        "status": "passed",
+        "pageErrorCount": 0,
+        "consoleErrorCount": 1,
+        "guardErrorCount": 0
+      },
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/images-regression-evidence/1791870112643982000/image-results/images-regression-a-delaye-3c929-e-a-newer-successful-upload/sanitized-browser-events.json",
+        "runtimeCommit": "897d71e23a49ff625def2f1c61ceb3f2140fe798",
+        "origin": "http://127.0.0.1:3380",
+        "title": "a delayed old GET cannot erase a newer successful upload",
+        "status": "passed",
+        "pageErrorCount": 0,
+        "consoleErrorCount": 0,
+        "guardErrorCount": 0
+      },
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/images-regression-evidence/1791870112643982000/image-results/images-regression-real-can-59dc3-g-record-and-field-identity/sanitized-browser-events.json",
+        "runtimeCommit": "897d71e23a49ff625def2f1c61ceb3f2140fe798",
+        "origin": "http://127.0.0.1:3380",
+        "title": "real canvas drag can save negative horizontal offset while keeping record and field identity",
+        "status": "passed",
+        "pageErrorCount": 0,
+        "consoleErrorCount": 0,
+        "guardErrorCount": 0
+      }
+    ]
+  },
+  {
+    "label": "IMG3",
+    "runDirectory": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/images-regression-evidence/1791870359494520000",
+    "runLog": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/images-regression-evidence/1791870359494520000/run.log",
+    "tests": [
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/images-regression-evidence/1791870359494520000/image-results/images-regression-injected-ffe99-es-the-appropriate-recovery/sanitized-browser-events.json",
+        "runtimeCommit": "897d71e23a49ff625def2f1c61ceb3f2140fe798",
+        "origin": "http://127.0.0.1:3380",
+        "title": "injected 409 retains the local image operation and exposes the appropriate recovery",
+        "status": "passed",
+        "pageErrorCount": 0,
+        "consoleErrorCount": 1,
+        "guardErrorCount": 0
+      },
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/images-regression-evidence/1791870359494520000/image-results/images-regression-continue-18e5e-mains-a-second-unsaved-edit/sanitized-browser-events.json",
+        "runtimeCommit": "897d71e23a49ff625def2f1c61ceb3f2140fe798",
+        "origin": "http://127.0.0.1:3380",
+        "title": "continued typing while a text save response is held remains a second unsaved edit",
+        "status": "passed",
+        "pageErrorCount": 0,
+        "consoleErrorCount": 0,
+        "guardErrorCount": 0
+      },
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/images-regression-evidence/1791870359494520000/image-results/images-regression-injected-1a539-es-the-appropriate-recovery/sanitized-browser-events.json",
+        "runtimeCommit": "897d71e23a49ff625def2f1c61ceb3f2140fe798",
+        "origin": "http://127.0.0.1:3380",
+        "title": "injected 422 retains the local image operation and exposes the appropriate recovery",
+        "status": "passed",
+        "pageErrorCount": 0,
+        "consoleErrorCount": 1,
+        "guardErrorCount": 0
+      },
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/images-regression-evidence/1791870359494520000/image-results/images-regression-injected-f4572-es-the-appropriate-recovery/sanitized-browser-events.json",
+        "runtimeCommit": "897d71e23a49ff625def2f1c61ceb3f2140fe798",
+        "origin": "http://127.0.0.1:3380",
+        "title": "injected 403 retains the local image operation and exposes the appropriate recovery",
+        "status": "passed",
+        "pageErrorCount": 0,
+        "consoleErrorCount": 1,
+        "guardErrorCount": 0
+      }
+    ]
+  },
+  {
+    "label": "PERF-RED",
+    "runDirectory": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/compound-performance-evidence/1791870438833917000",
+    "runLog": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/compound-performance-evidence/1791870438833917000/run.log",
+    "tests": [
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/compound-performance-evidence/1791870438833917000/results/compound-performance-1000--164e8--5-successful-100x10-pastes/performance-partial.json",
+        "runtimeCommit": "897d71e23a49ff625def2f1c61ceb3f2140fe798",
+        "origin": "http://127.0.0.1:3380",
+        "title": null,
+        "status": "failed",
+        "pageErrorCount": 0,
+        "consoleErrorCount": 0,
+        "guardErrorCount": 0
+      }
+    ],
+    "loadMs": [
+      {
+        "kind": "cold-after-explicit-cache-clear",
+        "navigationToEditableReadingMs": 4671.879999995232,
+        "requestCount": 83
+      },
+      {
+        "kind": "warm-second-navigation",
+        "navigationToEditableReadingMs": 4790.47000002861,
+        "requestCount": 106
+      }
+    ],
+    "successfulPasteCount": 5,
+    "sampleCounts": {
+      "select-": 50,
+      "key-": 50,
+      "sort-": 5,
+      "filter-": 5,
+      "paste10-": 5
+    }
+  },
+  {
+    "label": "I07-FIX25A",
+    "runDirectory": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791872900447381000",
+    "runLog": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791872900447381000/run.log",
+    "tests": [
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791872900447381000/results/interactions-T05-T07-anoth-bd650-rwriting-the-newer-revision/sanitized-browser-events.json",
+        "runtimeCommit": "25a944edcf85aa22ce36913299ceba7f4df4683a",
+        "origin": "http://127.0.0.1:3380",
+        "title": "T05/T07 another authorized writer prevents saved undo from overwriting the newer revision",
+        "status": "passed",
+        "pageErrorCount": 0,
+        "consoleErrorCount": 1,
+        "guardErrorCount": 0
+      },
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791872900447381000/results/interactions-T07b-native-e-ab3d2-lly-requested-detail-record/sanitized-browser-events.json",
+        "runtimeCommit": "25a944edcf85aa22ce36913299ceba7f4df4683a",
+        "origin": "http://127.0.0.1:3380",
+        "title": "T07b native editor completion keeps the originally requested detail record",
+        "status": "passed",
+        "pageErrorCount": 0,
+        "consoleErrorCount": 0,
+        "guardErrorCount": 0
+      }
+    ],
+    "proofFiles": [
+      "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791872900447381000/results/interactions-T05-T07-anoth-bd650-rwriting-the-newer-revision/T05-T07-other-session.json",
+      "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791872900447381000/results/interactions-T05-T07-anoth-bd650-rwriting-the-newer-revision/source-read-only-comparison.json",
+      "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791872900447381000/results/interactions-T07b-native-e-ab3d2-lly-requested-detail-record/T07b-detail-target.json",
+      "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791872900447381000/results/interactions-T07b-native-e-ab3d2-lly-requested-detail-record/source-read-only-comparison.json"
+    ],
+    "runSummary": [
+      "2 passed (19.7s)"
+    ]
+  },
+  {
+    "label": "COLOR-TEMPLATE25A",
+    "runDirectory": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/color-template-evidence/1791872966075052000",
+    "runLog": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/color-template-evidence/1791872966075052000/run.log",
+    "tests": [],
+    "proofFiles": [],
+    "runSummary": [
+      "1 passed (1.3m)"
+    ]
+  },
+  {
+    "label": "CLIP-LIFE25A",
+    "runDirectory": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/clipboard-evidence/1791873310574554000",
+    "runLog": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/clipboard-evidence/1791873310574554000/run.log",
+    "tests": [
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/clipboard-evidence/1791873310574554000/clipboard-results/clipboard-PNG-and-JPEG-fil-10e13-l-bytes-owner-and-reopening/sanitized-browser-events.json",
+        "runtimeCommit": "25a944edcf85aa22ce36913299ceba7f4df4683a",
+        "origin": "http://127.0.0.1:3380",
+        "title": null,
+        "status": "passed",
+        "pageErrorCount": 0,
+        "consoleErrorCount": 0,
+        "guardErrorCount": 0
+      }
+    ],
+    "proofFiles": [
+      "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/clipboard-evidence/1791873310574554000/clipboard-results/clipboard-PNG-and-JPEG-fil-10e13-l-bytes-owner-and-reopening/clipboard-image-proof.json",
+      "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/clipboard-evidence/1791873310574554000/clipboard-results/clipboard-PNG-and-JPEG-fil-10e13-l-bytes-owner-and-reopening/source-read-only-comparison.json"
+    ],
+    "runSummary": [
+      "1 passed (3.0m)"
+    ]
+  },
+  {
+    "label": "COLOR-COMP25A",
+    "runDirectory": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/color-comparison-evidence/1791873513724044000",
+    "runLog": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/color-comparison-evidence/1791873513724044000/run.log",
+    "tests": [
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/color-comparison-evidence/1791873513724044000/results/color-comparison-After-int-03313-worker-interaction-baseline/sanitized-browser-events.json",
+        "runtimeCommit": "25a944edcf85aa22ce36913299ceba7f4df4683a",
+        "origin": "http://127.0.0.1:3380",
+        "title": "After integration fixes: real ordinary-worker interaction baseline",
+        "status": "passed",
+        "pageErrorCount": 0,
+        "consoleErrorCount": 0,
+        "guardErrorCount": 0
+      }
+    ],
+    "proofFiles": [],
+    "runSummary": [
+      "1 passed (47.2s)"
+    ]
+  },
+  {
+    "label": "PERF25A-RED",
+    "runDirectory": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/compound-performance-evidence/1791873579498243000",
+    "runLog": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/compound-performance-evidence/1791873579498243000/run.log",
+    "tests": [],
+    "proofFiles": [
+      "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/compound-performance-evidence/1791873579498243000/results/compound-performance-1000--164e8--5-successful-100x10-pastes/integrated-compound-performance.json",
+      "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/compound-performance-evidence/1791873579498243000/results/compound-performance-1000--164e8--5-successful-100x10-pastes/performance-partial.json"
+    ],
+    "runSummary": [
+      "1 failed"
+    ]
+  },
+  {
+    "label": "I03-I04A6A",
+    "runDirectory": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791874700544643000",
+    "runLog": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791874700544643000/run.log",
+    "tests": [
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791874700544643000/results/interactions-T03-actual-fi-491f7-ity-business-detail-rereads/sanitized-browser-events.json",
+        "runtimeCommit": "a6a2dc67042202bbde163acfafdf825fc923f06f",
+        "origin": "http://127.0.0.1:3380",
+        "title": "T03 actual fill handle, whole-record sort and filtered-row identity; business detail rereads",
+        "status": "passed",
+        "pageErrorCount": 0,
+        "consoleErrorCount": 0,
+        "guardErrorCount": 0
+      },
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791874700544643000/results/interactions-T04-native-co-a1d9c-reserve-the-selected-record/sanitized-browser-events.json",
+        "runtimeCommit": "a6a2dc67042202bbde163acfafdf825fc923f06f",
+        "origin": "http://127.0.0.1:3380",
+        "title": "T04 native column resize, freeze menu, scroll, sidebar and viewport preserve the selected record",
+        "status": "failed",
+        "pageErrorCount": 0,
+        "consoleErrorCount": 0,
+        "guardErrorCount": 0
+      }
+    ],
+    "proofFiles": [
+      "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791874700544643000/results/interactions-T03-actual-fi-491f7-ity-business-detail-rereads/source-read-only-comparison.json"
+    ],
+    "runSummary": [
+      "1 failed",
+      "6 did not run",
+      "1 passed (16.1s)"
+    ]
+  },
+  {
+    "label": "I01-I02-I05-I07A6A",
+    "runDirectory": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791874792980028000",
+    "runLog": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791874792980028000/run.log",
+    "tests": [
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791874792980028000/results/interactions-T01-gap-nativ-ee936-lected-IDs-and-saved-values/sanitized-browser-events.json",
+        "runtimeCommit": "a6a2dc67042202bbde163acfafdf825fc923f06f",
+        "origin": "http://127.0.0.1:3380",
+        "title": "T01 gap native Tab ShiftTab four arrows and Enter preserve selected IDs and saved values",
+        "status": "passed",
+        "pageErrorCount": 0,
+        "consoleErrorCount": 0,
+        "guardErrorCount": 0
+      },
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791874792980028000/results/interactions-T02-gap-nativ-b0c13-ersisted-range-after-reopen/sanitized-browser-events.json",
+        "runtimeCommit": "a6a2dc67042202bbde163acfafdf825fc923f06f",
+        "origin": "http://127.0.0.1:3380",
+        "title": "T02 gap native 2x2 paste preserves Chinese zero leading zeros and blank with exact persisted range after reopen",
+        "status": "failed",
+        "pageErrorCount": 0,
+        "consoleErrorCount": 0,
+        "guardErrorCount": 0
+      },
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791874792980028000/results/interactions-T02-invalid-e-91156-ed-undo-restores-every-cell/sanitized-browser-events.json",
+        "runtimeCommit": "a6a2dc67042202bbde163acfafdf825fc923f06f",
+        "origin": "http://127.0.0.1:3380",
+        "title": "T02 invalid enum in real 2x4 paste keeps the whole batch unsaved; undo restores every cell",
+        "status": "passed",
+        "pageErrorCount": 0,
+        "consoleErrorCount": 0,
+        "guardErrorCount": 0
+      },
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791874792980028000/results/interactions-T05-T07-anoth-bd650-rwriting-the-newer-revision/sanitized-browser-events.json",
+        "runtimeCommit": "a6a2dc67042202bbde163acfafdf825fc923f06f",
+        "origin": "http://127.0.0.1:3380",
+        "title": "T05/T07 another authorized writer prevents saved undo from overwriting the newer revision",
+        "status": "passed",
+        "pageErrorCount": 0,
+        "consoleErrorCount": 1,
+        "guardErrorCount": 0
+      },
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791874792980028000/results/interactions-T05-unsaved-u-4b7b8-e-new-revisions-across-sort/sanitized-browser-events.json",
+        "runtimeCommit": "a6a2dc67042202bbde163acfafdf825fc923f06f",
+        "origin": "http://127.0.0.1:3380",
+        "title": "T05 unsaved undo/redo and saved reversal write new revisions across sort",
+        "status": "passed",
+        "pageErrorCount": 0,
+        "consoleErrorCount": 0,
+        "guardErrorCount": 0
+      },
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791874792980028000/results/interactions-T07b-native-e-ab3d2-lly-requested-detail-record/sanitized-browser-events.json",
+        "runtimeCommit": "a6a2dc67042202bbde163acfafdf825fc923f06f",
+        "origin": "http://127.0.0.1:3380",
+        "title": "T07b native editor completion keeps the originally requested detail record",
+        "status": "passed",
+        "pageErrorCount": 0,
+        "consoleErrorCount": 0,
+        "guardErrorCount": 0
+      }
+    ],
+    "proofFiles": [
+      "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791874792980028000/results/interactions-T01-gap-nativ-ee936-lected-IDs-and-saved-values/T01-tab-arrow-enter-proof.json",
+      "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791874792980028000/results/interactions-T01-gap-nativ-ee936-lected-IDs-and-saved-values/source-read-only-comparison.json",
+      "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791874792980028000/results/interactions-T02-invalid-e-91156-ed-undo-restores-every-cell/source-read-only-comparison.json",
+      "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791874792980028000/results/interactions-T05-T07-anoth-bd650-rwriting-the-newer-revision/T05-T07-other-session.json",
+      "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791874792980028000/results/interactions-T05-T07-anoth-bd650-rwriting-the-newer-revision/source-read-only-comparison.json",
+      "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791874792980028000/results/interactions-T05-unsaved-u-4b7b8-e-new-revisions-across-sort/T05-unsaved-undo-timing.json",
+      "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791874792980028000/results/interactions-T05-unsaved-u-4b7b8-e-new-revisions-across-sort/source-read-only-comparison.json",
+      "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791874792980028000/results/interactions-T07b-native-e-ab3d2-lly-requested-detail-record/T07b-detail-target.json",
+      "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791874792980028000/results/interactions-T07b-native-e-ab3d2-lly-requested-detail-record/source-read-only-comparison.json"
+    ],
+    "runSummary": [
+      "1 failed",
+      "5 passed (1.1m)"
+    ]
+  },
+  {
+    "label": "INS-A6A",
+    "runDirectory": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/inspection-evidence/1791875015462608000",
+    "runLog": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/inspection-evidence/1791875015462608000/run.log",
+    "tests": [
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/inspection-evidence/1791875015462608000/results/inspection-普通员工从-UI-创建-2-台次-4-测量组-12-角度，3-张照片、总体结论和含图模板回读/sanitized-inspection-events.json",
+        "runtimeCommit": "a6a2dc67042202bbde163acfafdf825fc923f06f",
+        "origin": "http://127.0.0.1:3380",
+        "title": "普通员工从 UI 创建 2 台次 / 4 测量组 / 12 角度，3 张照片、总体结论和含图模板回读",
+        "status": "passed",
+        "pageErrorCount": 0,
+        "consoleErrorCount": 0,
+        "guardErrorCount": 0
+      },
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/inspection-evidence/1791875015462608000/results/inspection-普通员工：活动已创建但响应丢失，401-与-403-后仍用同一操作核实且仅一份活动/sanitized-inspection-events.json",
+        "runtimeCommit": "a6a2dc67042202bbde163acfafdf825fc923f06f",
+        "origin": "http://127.0.0.1:3380",
+        "title": "普通员工：活动已创建但响应丢失，401 与 403 后仍用同一操作核实且仅一份活动",
+        "status": "passed",
+        "pageErrorCount": 0,
+        "consoleErrorCount": 3,
+        "guardErrorCount": 0
+      },
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/inspection-evidence/1791875015462608000/results/inspection-独立第17步夹具：UI-显式关联、原流程提交与通过只完成目标月，其余月份不变/sanitized-inspection-events.json",
+        "runtimeCommit": "a6a2dc67042202bbde163acfafdf825fc923f06f",
+        "origin": "http://127.0.0.1:3380",
+        "title": "独立第17步夹具：UI 显式关联、原流程提交与通过只完成目标月，其余月份不变",
+        "status": "passed",
+        "pageErrorCount": 0,
+        "consoleErrorCount": 0,
+        "guardErrorCount": 0
+      }
+    ],
+    "proofFiles": [
+      "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/inspection-evidence/1791875015462608000/results/inspection-普通员工从-UI-创建-2-台次-4-测量组-12-角度，3-张照片、总体结论和含图模板回读/inspection-evidence-summary.json",
+      "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/inspection-evidence/1791875015462608000/results/inspection-普通员工：活动已创建但响应丢失，401-与-403-后仍用同一操作核实且仅一份活动/inspection-unknown-operation-evidence.json",
+      "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/inspection-evidence/1791875015462608000/results/inspection-独立第17步夹具：UI-显式关联、原流程提交与通过只完成目标月，其余月份不变/inspection-monthly-transition-evidence.json"
+    ],
+    "runSummary": [
+      "3 passed (1.0m)"
+    ]
+  },
+  {
+    "label": "PERSONAL-COMP-PENDING",
+    "runDirectory": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/personal-comparison-evidence/1791875111710447000",
+    "runLog": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/personal-comparison-evidence/1791875111710447000/run.log",
+    "tests": [],
+    "proofFiles": [],
+    "runSummary": [
+      "1 failed"
+    ]
+  },
+  {
+    "label": "I-NATIVE-A53E",
+    "runDirectory": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791875800907578000",
+    "runLog": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791875800907578000/run.log",
+    "runSummary": [
+      "8 passed (54.0s)"
+    ],
+    "tests": [
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791875800907578000/results/interactions-T01-gap-nativ-ee936-lected-IDs-and-saved-values/sanitized-browser-events.json",
+        "runtimeCommit": "a53e7f8dbc179f46984981b0ca4cb6d26a0324fa",
+        "origin": "http://127.0.0.1:3380",
+        "title": "T01 gap native Tab ShiftTab four arrows and Enter preserve selected IDs and saved values",
+        "status": "passed",
+        "pageErrorCount": 0,
+        "consoleErrorCount": 0,
+        "guardErrorCount": 0
+      },
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791875800907578000/results/interactions-T02-gap-nativ-b0c13-ersisted-range-after-reopen/sanitized-browser-events.json",
+        "runtimeCommit": "a53e7f8dbc179f46984981b0ca4cb6d26a0324fa",
+        "origin": "http://127.0.0.1:3380",
+        "title": "T02 gap native 2x2 paste preserves Chinese zero leading zeros and blank with exact persisted range after reopen",
+        "status": "passed",
+        "pageErrorCount": 0,
+        "consoleErrorCount": 0,
+        "guardErrorCount": 0
+      },
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791875800907578000/results/interactions-T02-invalid-e-91156-ed-undo-restores-every-cell/sanitized-browser-events.json",
+        "runtimeCommit": "a53e7f8dbc179f46984981b0ca4cb6d26a0324fa",
+        "origin": "http://127.0.0.1:3380",
+        "title": "T02 invalid enum in real 2x4 paste keeps the whole batch unsaved; undo restores every cell",
+        "status": "passed",
+        "pageErrorCount": 0,
+        "consoleErrorCount": 0,
+        "guardErrorCount": 0
+      },
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791875800907578000/results/interactions-T03-actual-fi-491f7-ity-business-detail-rereads/sanitized-browser-events.json",
+        "runtimeCommit": "a53e7f8dbc179f46984981b0ca4cb6d26a0324fa",
+        "origin": "http://127.0.0.1:3380",
+        "title": "T03 actual fill handle, whole-record sort and filtered-row identity; business detail rereads",
+        "status": "passed",
+        "pageErrorCount": 0,
+        "consoleErrorCount": 0,
+        "guardErrorCount": 0
+      },
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791875800907578000/results/interactions-T04-native-co-a1d9c-reserve-the-selected-record/sanitized-browser-events.json",
+        "runtimeCommit": "a53e7f8dbc179f46984981b0ca4cb6d26a0324fa",
+        "origin": "http://127.0.0.1:3380",
+        "title": "T04 native column resize, freeze menu, scroll, sidebar and viewport preserve the selected record",
+        "status": "passed",
+        "pageErrorCount": 0,
+        "consoleErrorCount": 0,
+        "guardErrorCount": 0
+      },
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791875800907578000/results/interactions-T05-T07-anoth-bd650-rwriting-the-newer-revision/sanitized-browser-events.json",
+        "runtimeCommit": "a53e7f8dbc179f46984981b0ca4cb6d26a0324fa",
+        "origin": "http://127.0.0.1:3380",
+        "title": "T05/T07 another authorized writer prevents saved undo from overwriting the newer revision",
+        "status": "passed",
+        "pageErrorCount": 0,
+        "consoleErrorCount": 1,
+        "guardErrorCount": 0
+      },
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791875800907578000/results/interactions-T05-unsaved-u-4b7b8-e-new-revisions-across-sort/sanitized-browser-events.json",
+        "runtimeCommit": "a53e7f8dbc179f46984981b0ca4cb6d26a0324fa",
+        "origin": "http://127.0.0.1:3380",
+        "title": "T05 unsaved undo/redo and saved reversal write new revisions across sort",
+        "status": "passed",
+        "pageErrorCount": 0,
+        "consoleErrorCount": 0,
+        "guardErrorCount": 0
+      },
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791875800907578000/results/interactions-T07b-native-e-ab3d2-lly-requested-detail-record/sanitized-browser-events.json",
+        "runtimeCommit": "a53e7f8dbc179f46984981b0ca4cb6d26a0324fa",
+        "origin": "http://127.0.0.1:3380",
+        "title": "T07b native editor completion keeps the originally requested detail record",
+        "status": "passed",
+        "pageErrorCount": 0,
+        "consoleErrorCount": 0,
+        "guardErrorCount": 0
+      }
+    ],
+    "proofFiles": [
+      "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791875800907578000/results/interactions-T01-gap-nativ-ee936-lected-IDs-and-saved-values/T01-tab-arrow-enter-proof.json",
+      "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791875800907578000/results/interactions-T01-gap-nativ-ee936-lected-IDs-and-saved-values/source-read-only-comparison.json",
+      "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791875800907578000/results/interactions-T02-gap-nativ-b0c13-ersisted-range-after-reopen/T02-2x2-persisted-values-proof.json",
+      "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791875800907578000/results/interactions-T02-gap-nativ-b0c13-ersisted-range-after-reopen/source-read-only-comparison.json",
+      "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791875800907578000/results/interactions-T02-invalid-e-91156-ed-undo-restores-every-cell/source-read-only-comparison.json",
+      "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791875800907578000/results/interactions-T03-actual-fi-491f7-ity-business-detail-rereads/T03-fill-filter.json",
+      "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791875800907578000/results/interactions-T03-actual-fi-491f7-ity-business-detail-rereads/source-read-only-comparison.json",
+      "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791875800907578000/results/interactions-T04-native-co-a1d9c-reserve-the-selected-record/T04-scroll-before-cancel.json",
+      "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791875800907578000/results/interactions-T04-native-co-a1d9c-reserve-the-selected-record/T04-scroll-before-refreeze.json",
+      "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791875800907578000/results/interactions-T04-native-co-a1d9c-reserve-the-selected-record/T04-scroll-cancelled.json",
+      "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791875800907578000/results/interactions-T04-native-co-a1d9c-reserve-the-selected-record/T04-scroll-default-frozen.json",
+      "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791875800907578000/results/interactions-T04-native-co-a1d9c-reserve-the-selected-record/T04-scroll-refrozen.json",
+      "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791875800907578000/results/interactions-T04-native-co-a1d9c-reserve-the-selected-record/T04-scroll-restore-start.json",
+      "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791875800907578000/results/interactions-T04-native-co-a1d9c-reserve-the-selected-record/T04-view-interaction.json",
+      "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791875800907578000/results/interactions-T04-native-co-a1d9c-reserve-the-selected-record/source-read-only-comparison.json",
+      "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791875800907578000/results/interactions-T05-T07-anoth-bd650-rwriting-the-newer-revision/T05-T07-other-session.json",
+      "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791875800907578000/results/interactions-T05-T07-anoth-bd650-rwriting-the-newer-revision/source-read-only-comparison.json",
+      "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791875800907578000/results/interactions-T05-unsaved-u-4b7b8-e-new-revisions-across-sort/T05-unsaved-undo-timing.json",
+      "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791875800907578000/results/interactions-T05-unsaved-u-4b7b8-e-new-revisions-across-sort/source-read-only-comparison.json",
+      "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791875800907578000/results/interactions-T07b-native-e-ab3d2-lly-requested-detail-record/T07b-detail-target.json",
+      "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791875800907578000/results/interactions-T07b-native-e-ab3d2-lly-requested-detail-record/source-read-only-comparison.json"
+    ]
+  },
+  {
+    "label": "PERSON-A53E",
+    "runDirectory": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/person-evidence/1791875967743046000",
+    "runLog": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/person-evidence/1791875967743046000/run.log",
+    "runSummary": [
+      "3 passed (19.1s)"
+    ],
+    "tests": [
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/person-evidence/1791875967743046000/results/person-Ordinary-worker-a-l-947c3-401-and-403-replay-failures/sanitized-person-events.json",
+        "runtimeCommit": "a53e7f8dbc179f46984981b0ca4cb6d26a0324fa",
+        "origin": "http://127.0.0.1:3380",
+        "title": "Ordinary worker: a lost create response retains the same operation through 401 and 403 replay failures",
+        "status": "passed",
+        "pageErrorCount": 0,
+        "consoleErrorCount": 3,
+        "guardErrorCount": 0
+      },
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/person-evidence/1791875967743046000/results/person-Ordinary-worker-lin-1bb7c-ority-or-historical-records/sanitized-person-events.json",
+        "runtimeCommit": "a53e7f8dbc179f46984981b0ca4cb6d26a0324fa",
+        "origin": "http://127.0.0.1:3380",
+        "title": "Ordinary worker: linked profile rename flows to existing responsibility without changing account authority or historical records",
+        "status": "passed",
+        "pageErrorCount": 0,
+        "consoleErrorCount": 0,
+        "guardErrorCount": 0
+      },
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/person-evidence/1791875967743046000/results/person-Ordinary-worker-two-95b3b--update-and-unlinked-import/sanitized-person-events.json",
+        "runtimeCommit": "a53e7f8dbc179f46984981b0ca4cb6d26a0324fa",
+        "origin": "http://127.0.0.1:3380",
+        "title": "Ordinary worker: two same-name profiles retain IDs through native edits, clipboard, template update, and unlinked import",
+        "status": "passed",
+        "pageErrorCount": 0,
+        "consoleErrorCount": 0,
+        "guardErrorCount": 0
+      }
+    ],
+    "proofFiles": []
+  },
+  {
+    "label": "PRODUCTION-A53E",
+    "runDirectory": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/production-evidence/1791876002772823000",
+    "runLog": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/production-evidence/1791876002772823000/run.log",
+    "runSummary": [
+      "1 passed (16.5s)"
+    ],
+    "tests": [
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/production-evidence/1791876002772823000/results/production-Ordinary-member-4f16a-o-and-image-XLSX-round-trip/sanitized-production-events.json",
+        "runtimeCommit": "a53e7f8dbc179f46984981b0ca4cb6d26a0324fa",
+        "origin": "http://127.0.0.1:3380",
+        "title": "Ordinary member: monthly totals use stable records, canvas CAS, unknown vs zero, and image XLSX round trip",
+        "status": "passed",
+        "pageErrorCount": 0,
+        "consoleErrorCount": 0,
+        "guardErrorCount": 0
+      }
+    ],
+    "proofFiles": [
+      "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/production-evidence/1791876002772823000/results/production-Ordinary-member-4f16a-o-and-image-XLSX-round-trip/production-evidence-summary.json"
+    ]
+  },
+  {
+    "label": "PRODUCTION-CROSSFILE-A53E",
+    "runDirectory": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/production-evidence/1791876019800970000",
+    "runLog": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/production-evidence/1791876019800970000/run.log",
+    "runSummary": [
+      "1 passed (8.3s)"
+    ],
+    "tests": [
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/production-evidence/1791876019800970000/results/production-Cross-file-prod-a775d--40-and-60-from-later-files/sanitized-production-events.json",
+        "runtimeCommit": "a53e7f8dbc179f46984981b0ca4cb6d26a0324fa",
+        "origin": "http://127.0.0.1:3380",
+        "title": "Cross-file production: a saved total of 100 excludes overlapping detail 40 and 60 from later files",
+        "status": "passed",
+        "pageErrorCount": 0,
+        "consoleErrorCount": 0,
+        "guardErrorCount": 0
+      }
+    ],
+    "proofFiles": [
+      "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/production-evidence/1791876019800970000/results/production-Cross-file-prod-a775d--40-and-60-from-later-files/production-crossfile-evidence-summary.json"
+    ]
+  },
+  {
+    "label": "T11-A53E",
+    "runDirectory": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/images-regression-evidence/1791876940144447000",
+    "runLog": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/images-regression-evidence/1791876940144447000/run.log",
+    "runSummary": [
+      "1 passed (10.5s)"
+    ],
+    "tests": [
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/images-regression-evidence/1791876940144447000/image-results/images-regression-T11-firs-0e7f2-nd-replacement-after-reopen/sanitized-browser-events.json",
+        "runtimeCommit": "a53e7f8dbc179f46984981b0ca4cb6d26a0324fa",
+        "origin": "http://127.0.0.1:3380",
+        "title": "T11 first image bind commits but response is lost; UI replay preserves text, identity and replacement after reopen",
+        "status": "passed",
+        "pageErrorCount": 0,
+        "consoleErrorCount": 1,
+        "guardErrorCount": 0
+      }
+    ],
+    "proofFiles": [
+      "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/images-regression-evidence/1791876940144447000/image-results/images-regression-T11-firs-0e7f2-nd-replacement-after-reopen/T11-first-bind-and-replacement-proof.json",
+      "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/images-regression-evidence/1791876940144447000/image-results/images-regression-T11-firs-0e7f2-nd-replacement-after-reopen/T11-recovery-progress.json",
+      "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/images-regression-evidence/1791876940144447000/image-results/images-regression-T11-firs-0e7f2-nd-replacement-after-reopen/source-read-only-comparison.json"
+    ]
+  },
+  {
+    "label": "I-REOPEN-A53E",
+    "runDirectory": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791877251065274000",
+    "runLog": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791877251065274000/run.log",
+    "runSummary": [
+      "4 passed (47.9s)"
+    ],
+    "tests": [
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791877251065274000/results/interactions-T02-invalid-e-91156-ed-undo-restores-every-cell/sanitized-browser-events.json",
+        "runtimeCommit": "a53e7f8dbc179f46984981b0ca4cb6d26a0324fa",
+        "origin": "http://127.0.0.1:3380",
+        "title": "T02 invalid enum in real 2x4 paste keeps the whole batch unsaved; undo restores every cell",
+        "status": "passed",
+        "pageErrorCount": 0,
+        "consoleErrorCount": 0,
+        "guardErrorCount": 0
+      },
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791877251065274000/results/interactions-T04-native-co-a1d9c-reserve-the-selected-record/sanitized-browser-events.json",
+        "runtimeCommit": "a53e7f8dbc179f46984981b0ca4cb6d26a0324fa",
+        "origin": "http://127.0.0.1:3380",
+        "title": "T04 native column resize, freeze menu, scroll, sidebar and viewport preserve the selected record",
+        "status": "passed",
+        "pageErrorCount": 0,
+        "consoleErrorCount": 0,
+        "guardErrorCount": 0
+      },
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791877251065274000/results/interactions-T05-T07-anoth-bd650-rwriting-the-newer-revision/sanitized-browser-events.json",
+        "runtimeCommit": "a53e7f8dbc179f46984981b0ca4cb6d26a0324fa",
+        "origin": "http://127.0.0.1:3380",
+        "title": "T05/T07 another authorized writer prevents saved undo from overwriting the newer revision",
+        "status": "passed",
+        "pageErrorCount": 0,
+        "consoleErrorCount": 1,
+        "guardErrorCount": 0
+      },
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791877251065274000/results/interactions-T05-unsaved-u-4b7b8-e-new-revisions-across-sort/sanitized-browser-events.json",
+        "runtimeCommit": "a53e7f8dbc179f46984981b0ca4cb6d26a0324fa",
+        "origin": "http://127.0.0.1:3380",
+        "title": "T05 unsaved undo/redo and saved reversal write new revisions across sort",
+        "status": "passed",
+        "pageErrorCount": 0,
+        "consoleErrorCount": 0,
+        "guardErrorCount": 0
+      }
+    ],
+    "proofFiles": [
+      "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791877251065274000/results/interactions-T02-invalid-e-91156-ed-undo-restores-every-cell/T02-negative-whole-page-reopen.json",
+      "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791877251065274000/results/interactions-T02-invalid-e-91156-ed-undo-restores-every-cell/source-read-only-comparison.json",
+      "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791877251065274000/results/interactions-T04-native-co-a1d9c-reserve-the-selected-record/T04-scroll-before-cancel.json",
+      "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791877251065274000/results/interactions-T04-native-co-a1d9c-reserve-the-selected-record/T04-scroll-before-refreeze.json",
+      "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791877251065274000/results/interactions-T04-native-co-a1d9c-reserve-the-selected-record/T04-scroll-cancelled.json",
+      "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791877251065274000/results/interactions-T04-native-co-a1d9c-reserve-the-selected-record/T04-scroll-default-frozen.json",
+      "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791877251065274000/results/interactions-T04-native-co-a1d9c-reserve-the-selected-record/T04-scroll-refrozen.json",
+      "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791877251065274000/results/interactions-T04-native-co-a1d9c-reserve-the-selected-record/T04-scroll-restore-start.json",
+      "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791877251065274000/results/interactions-T04-native-co-a1d9c-reserve-the-selected-record/T04-view-interaction.json",
+      "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791877251065274000/results/interactions-T04-native-co-a1d9c-reserve-the-selected-record/T04-whole-page-reopen.json",
+      "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791877251065274000/results/interactions-T04-native-co-a1d9c-reserve-the-selected-record/source-read-only-comparison.json",
+      "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791877251065274000/results/interactions-T05-T07-anoth-bd650-rwriting-the-newer-revision/T05-T07-other-session.json",
+      "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791877251065274000/results/interactions-T05-T07-anoth-bd650-rwriting-the-newer-revision/T05-T07-whole-page-reopen.json",
+      "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791877251065274000/results/interactions-T05-T07-anoth-bd650-rwriting-the-newer-revision/source-read-only-comparison.json",
+      "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791877251065274000/results/interactions-T05-unsaved-u-4b7b8-e-new-revisions-across-sort/T05-unsaved-undo-timing.json",
+      "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791877251065274000/results/interactions-T05-unsaved-u-4b7b8-e-new-revisions-across-sort/T05-whole-page-reopen.json",
+      "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791877251065274000/results/interactions-T05-unsaved-u-4b7b8-e-new-revisions-across-sort/source-read-only-comparison.json"
+    ]
+  },
+  {
+    "label": "CLIP-LIFE-A53E",
+    "runDirectory": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/clipboard-evidence/1791877359577672000",
+    "runLog": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/clipboard-evidence/1791877359577672000/run.log",
+    "runSummary": [
+      "1 passed (58.1s)"
+    ],
+    "tests": [
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/clipboard-evidence/1791877359577672000/clipboard-results/clipboard-PNG-and-JPEG-fil-10e13-l-bytes-owner-and-reopening/sanitized-browser-events.json",
+        "runtimeCommit": "a53e7f8dbc179f46984981b0ca4cb6d26a0324fa",
+        "origin": "http://127.0.0.1:3380",
+        "title": "PNG and JPEG file uploads plus real screenshot clipboard paste preserve original bytes, owner and reopening",
+        "status": "passed",
+        "pageErrorCount": 0,
+        "consoleErrorCount": 0,
+        "guardErrorCount": 0
+      }
+    ],
+    "proofFiles": [
+      "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/clipboard-evidence/1791877359577672000/clipboard-results/clipboard-PNG-and-JPEG-fil-10e13-l-bytes-owner-and-reopening/clipboard-image-proof.json",
+      "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/clipboard-evidence/1791877359577672000/clipboard-results/clipboard-PNG-and-JPEG-fil-10e13-l-bytes-owner-and-reopening/clipboard-lifecycle-progress.json",
+      "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/clipboard-evidence/1791877359577672000/clipboard-results/clipboard-PNG-and-JPEG-fil-10e13-l-bytes-owner-and-reopening/clipboard-new-context-network.json",
+      "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/clipboard-evidence/1791877359577672000/clipboard-results/clipboard-PNG-and-JPEG-fil-10e13-l-bytes-owner-and-reopening/source-read-only-comparison.json"
+    ]
+  },
+  {
+    "label": "PERF-A53E",
+    "runDirectory": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/compound-performance-evidence/1791877773130224000",
+    "runLog": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/compound-performance-evidence/1791877773130224000/run.log",
+    "tests": [
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/compound-performance-evidence/1791877773130224000/results/compound-performance-1000--164e8--5-successful-100x10-pastes/integrated-compound-performance.json",
+        "evidenceSha256": "6da388e4f9bcf8046dfe566c813a25a2760ba67546d3bd08742f407ce847d5a5",
+        "runtimeCommit": "a53e7f8dbc179f46984981b0ca4cb6d26a0324fa",
+        "origin": "http://127.0.0.1:3380",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "label": "COLOR-TEMPLATE-A53E",
+    "runDirectory": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/color-template-evidence/1791878099967285000",
+    "runLog": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/color-template-evidence/1791878099967285000/run.log",
+    "tests": [
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/color-template-evidence/1791878099967285000/results/color-template-current-col-81b3a--ordinary-name-base-mapping/color-template-events.json",
+        "evidenceSha256": "7d7ae88c04554c7e39ec8e3152b70ff7311e1717bc43962415b309ed0720cec7",
+        "runtimeCommit": "a53e7f8dbc179f46984981b0ca4cb6d26a0324fa",
+        "origin": "http://127.0.0.1:3380",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "label": "COLOR-COMP-A53E-RED",
+    "runDirectory": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/color-comparison-evidence/1791877984543387000",
+    "runLog": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/color-comparison-evidence/1791877984543387000/run.log",
+    "tests": [
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/color-comparison-evidence/1791877984543387000/results/color-comparison-After-int-03313-worker-interaction-baseline/sanitized-browser-events.json",
+        "evidenceSha256": "8218acd89c8cf22ca4ca9711a2b8848a30a91dcd2a5a909e787820ae80fa0e07",
+        "runtimeCommit": "a53e7f8dbc179f46984981b0ca4cb6d26a0324fa",
+        "origin": "http://127.0.0.1:3380",
+        "status": "failed"
+      }
+    ]
+  },
+  {
+    "label": "COLOR-AUTOSAVE-A53E-RED",
+    "runDirectory": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/autosave-editor-evidence/1791878569399353000",
+    "runLog": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/autosave-editor-evidence/1791878569399353000/run.log",
+    "tests": [
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/autosave-editor-evidence/1791878569399353000/results/autosave-editor-T06-native-30204-utosave-and-acknowledgement/T06-first-ack-editor-proof.json",
+        "evidenceSha256": "6d56ca0c7b1d977cdd71e740c26c77f8a91e9f2ae50a2f5ea97d770c89bf8d2d",
+        "runtimeCommit": "a53e7f8dbc179f46984981b0ca4cb6d26a0324fa",
+        "origin": "http://127.0.0.1:3380",
+        "status": "failed",
+        "classification": "PRODUCT_REPRODUCED"
+      }
+    ]
+  },
+  {
+    "label": "COLOR-AUTOSAVE-68",
+    "runDirectory": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/autosave-editor-evidence/1791878915149554000",
+    "runLog": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/autosave-editor-evidence/1791878915149554000/run.log",
+    "tests": [
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/autosave-editor-evidence/1791878915149554000/results/autosave-editor-T06-native-30204-utosave-and-acknowledgement/T06-autosave-editor-complete.json",
+        "evidenceSha256": "f9fe9b156a6c3d37d54b2004ac4aa499dae1b1f4dc3387bab2bbef825fd167f4",
+        "runtimeCommit": "68acd102bc8f88fa7bf88aea099ccc7d74cbde28",
+        "origin": "http://127.0.0.1:3380",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "label": "COLOR-COMP-68",
+    "runDirectory": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/color-comparison-evidence/1791878845087386000",
+    "runLog": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/color-comparison-evidence/1791878845087386000/run.log",
+    "tests": [
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/color-comparison-evidence/1791878845087386000/results/color-comparison-After-int-03313-worker-interaction-baseline/baseline.json",
+        "evidenceSha256": "8f9b9cb1209f536c905c7961b7a2770f5370c6635b344303f838268fe35664ea",
+        "runtimeCommit": "68acd102bc8f88fa7bf88aea099ccc7d74cbde28",
+        "origin": "http://127.0.0.1:3380",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "label": "I-NATIVE-68",
+    "runDirectory": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791879087619100000",
+    "runLog": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791879087619100000/run.log",
+    "tests": [
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791879087619100000/results/interactions-T01-gap-nativ-ee936-lected-IDs-and-saved-values/sanitized-browser-events.json",
+        "evidenceSha256": "753fa1f361ce3cf5edd2b5d3897c890cb33d6d3c6ca534721e7840151bcd3295",
+        "runtimeCommit": "68acd102bc8f88fa7bf88aea099ccc7d74cbde28",
+        "origin": "http://127.0.0.1:3380",
+        "title": "T01 gap native Tab ShiftTab four arrows and Enter preserve selected IDs and saved values",
+        "status": "passed",
+        "pageErrorCount": 0,
+        "consoleErrorCount": 0,
+        "guardErrorCount": 0
+      },
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791879087619100000/results/interactions-T02-gap-nativ-b0c13-ersisted-range-after-reopen/sanitized-browser-events.json",
+        "evidenceSha256": "a73a41f6acce87cce1528c62a90f6c3d5896d6a9f56cc1beb0617b40ad900d3a",
+        "runtimeCommit": "68acd102bc8f88fa7bf88aea099ccc7d74cbde28",
+        "origin": "http://127.0.0.1:3380",
+        "title": "T02 gap native 2x2 paste preserves Chinese zero leading zeros and blank with exact persisted range after reopen",
+        "status": "passed",
+        "pageErrorCount": 0,
+        "consoleErrorCount": 0,
+        "guardErrorCount": 0
+      },
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791879087619100000/results/interactions-T02-invalid-e-91156-ed-undo-restores-every-cell/sanitized-browser-events.json",
+        "evidenceSha256": "741487e6767eecbcd6a84f551f8b4c9b75c36a974b557bcfca2f1b7c0e1cf0a6",
+        "runtimeCommit": "68acd102bc8f88fa7bf88aea099ccc7d74cbde28",
+        "origin": "http://127.0.0.1:3380",
+        "title": "T02 invalid enum in real 2x4 paste keeps the whole batch unsaved; undo restores every cell",
+        "status": "passed",
+        "pageErrorCount": 0,
+        "consoleErrorCount": 0,
+        "guardErrorCount": 0
+      },
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791879087619100000/results/interactions-T03-actual-fi-491f7-ity-business-detail-rereads/sanitized-browser-events.json",
+        "evidenceSha256": "6e6f11f974ee21c0e3f5fcf5bfd3c71ac21a166f9cc62621ac1563db142c1b99",
+        "runtimeCommit": "68acd102bc8f88fa7bf88aea099ccc7d74cbde28",
+        "origin": "http://127.0.0.1:3380",
+        "title": "T03 actual fill handle, whole-record sort and filtered-row identity; business detail rereads",
+        "status": "passed",
+        "pageErrorCount": 0,
+        "consoleErrorCount": 0,
+        "guardErrorCount": 0
+      },
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791879087619100000/results/interactions-T04-native-co-a1d9c-reserve-the-selected-record/sanitized-browser-events.json",
+        "evidenceSha256": "41141d4fa88cd8f80ed255cd868386d0a95aae8d8bc04f1eec346791deb99866",
+        "runtimeCommit": "68acd102bc8f88fa7bf88aea099ccc7d74cbde28",
+        "origin": "http://127.0.0.1:3380",
+        "title": "T04 native column resize, freeze menu, scroll, sidebar and viewport preserve the selected record",
+        "status": "passed",
+        "pageErrorCount": 0,
+        "consoleErrorCount": 0,
+        "guardErrorCount": 0
+      },
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791879087619100000/results/interactions-T05-T07-anoth-bd650-rwriting-the-newer-revision/sanitized-browser-events.json",
+        "evidenceSha256": "9eb9b3f9cc4817bbf13cfc28dbf3bed1c9b02f61eb0729f1680e7f54cbf93592",
+        "runtimeCommit": "68acd102bc8f88fa7bf88aea099ccc7d74cbde28",
+        "origin": "http://127.0.0.1:3380",
+        "title": "T05/T07 another authorized writer prevents saved undo from overwriting the newer revision",
+        "status": "passed",
+        "pageErrorCount": 0,
+        "consoleErrorCount": 1,
+        "guardErrorCount": 0
+      },
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791879087619100000/results/interactions-T05-unsaved-u-4b7b8-e-new-revisions-across-sort/sanitized-browser-events.json",
+        "evidenceSha256": "1be36ca438334ad9e6c57b0e5ffe41e09496093861225b719be8afbf8f036a25",
+        "runtimeCommit": "68acd102bc8f88fa7bf88aea099ccc7d74cbde28",
+        "origin": "http://127.0.0.1:3380",
+        "title": "T05 unsaved undo/redo and saved reversal write new revisions across sort",
+        "status": "passed",
+        "pageErrorCount": 0,
+        "consoleErrorCount": 0,
+        "guardErrorCount": 0
+      },
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/interactions-evidence/1791879087619100000/results/interactions-T07b-native-e-ab3d2-lly-requested-detail-record/sanitized-browser-events.json",
+        "evidenceSha256": "67d3b61f1e86b95bfeb055f503ed4aabbb811abb9c21a69c62eaed487cbb94f0",
+        "runtimeCommit": "68acd102bc8f88fa7bf88aea099ccc7d74cbde28",
+        "origin": "http://127.0.0.1:3380",
+        "title": "T07b native editor completion keeps the originally requested detail record",
+        "status": "passed",
+        "pageErrorCount": 0,
+        "consoleErrorCount": 0,
+        "guardErrorCount": 0
+      }
+    ]
+  },
+  {
+    "label": "T11-68",
+    "runDirectory": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/images-regression-evidence/1791879174696452000",
+    "runLog": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/images-regression-evidence/1791879174696452000/run.log",
+    "tests": [
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/images-regression-evidence/1791879174696452000/image-results/images-regression-T11-firs-0e7f2-nd-replacement-after-reopen/sanitized-browser-events.json",
+        "evidenceSha256": "46775e537c6292a16f56cf83ecfc1bc63698a3d0bd642b8897aa36e89646ae75",
+        "runtimeCommit": "68acd102bc8f88fa7bf88aea099ccc7d74cbde28",
+        "origin": "http://127.0.0.1:3380",
+        "title": "T11 first image bind commits but response is lost; UI replay preserves text, identity and replacement after reopen",
+        "status": "passed",
+        "pageErrorCount": 0,
+        "consoleErrorCount": 1,
+        "guardErrorCount": 0
+      }
+    ]
+  },
+  {
+    "label": "CLIP-LIFE-68",
+    "runDirectory": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/clipboard-evidence/1791879230973373000",
+    "runLog": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/clipboard-evidence/1791879230973373000/run.log",
+    "tests": [
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/clipboard-evidence/1791879230973373000/clipboard-results/clipboard-PNG-and-JPEG-fil-10e13-l-bytes-owner-and-reopening/sanitized-browser-events.json",
+        "evidenceSha256": "28f1eb81a7ab7e2971b5879dd9952c97415584928ad262e1c0c8ccc9f4b8f04a",
+        "runtimeCommit": "68acd102bc8f88fa7bf88aea099ccc7d74cbde28",
+        "origin": "http://127.0.0.1:3380",
+        "title": null,
+        "status": "passed",
+        "pageErrorCount": 0,
+        "consoleErrorCount": 0,
+        "guardErrorCount": 0
+      }
+    ]
+  },
+  {
+    "label": "PERF-68",
+    "runDirectory": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/compound-performance-evidence/1791879554116987000",
+    "runLog": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/compound-performance-evidence/1791879554116987000/run.log",
+    "tests": [
+      {
+        "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/compound-performance-evidence/1791879554116987000/results/compound-performance-1000--164e8--5-successful-100x10-pastes/integrated-compound-performance.json",
+        "evidenceSha256": "534a15170d0a6fc46bc19134b4493595991d97e675b3124b4aac7ecf57008b46",
+        "runtimeCommit": "68acd102bc8f88fa7bf88aea099ccc7d74cbde28",
+        "origin": "http://127.0.0.1:3380",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "label": "FINAL-READBACK-HARNESS-STARTUP",
+    "runDirectory": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/final-readback-evidence/1791880141641001000",
+    "runLog": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/final-readback-evidence/1791880141641001000/run.log",
+    "runLogSha256": "4cb1006f6fd39c18f91d1bcd80f6fb10e6a3d52b2b5d301a23fe81d7de2b10a7",
+    "result": "HARNESS_STARTUP_FAILED_NO_TESTS_STARTED",
+    "runtimeCommit": null,
+    "tests": [],
+    "reason": "ESModule/require loader failure; no product path executed"
+  },
+  {
+    "label": "RESTORE-V9-READONLY-EXISTING",
+    "runtimeCommit": "9ed0502b9e97e543dc5beea00998b5edc0bb0e67",
+    "evidence": "/private/tmp/light-truck-sheets-backup-evidence/light_truck_sheets_restore_20261013_xe7b2ca498d31/existing-restore-readonly-verification.json",
+    "evidenceSha256": "a1f04c4598104703e3e8823691a02602f689c8cf191e1a4cbb1adf6c73d64364",
+    "status": "PASS",
+    "verificationKind": "READ_ONLY_EXISTING_RESTORE_WITH_ONE_EXACT_CATALOG_EQUIVALENCE",
+    "applicationSwitchPerformed": false,
+    "restoredApplicationLoginTested": false,
+    "originalFailurePreserved": true
+  },
+  {
+    "label": "FINAL-READBACK-V9-REAL-FAIL-1",
+    "runtimeCommit": "9ed0502b9e97e543dc5beea00998b5edc0bb0e67",
+    "runDirectory": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/final-readback-evidence/1791882314279074000",
+    "runLog": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/final-readback-evidence/1791882314279074000/run.log",
+    "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/final-readback-evidence/1791882314279074000/results/readonly-readback-最终重启后普通员工只读重开：人员稳定记录、检验月度锁定、产量26与100、颜色和照片/readonly-readback-events.json",
+    "evidenceSha256": "6a81942623e73b8da93f2b9ebaaa54c04bc081a23d82fe38e3e982f984b41abc",
+    "status": "FAIL",
+    "completedModulePhases": [
+      "persons",
+      "inspection",
+      "production"
+    ],
+    "reason": "Lazy figure not scrolled into viewport before waiting for img",
+    "pageErrors": [],
+    "consoleErrors": [],
+    "blocked": []
+  },
+  {
+    "label": "FINAL-READBACK-V9-REAL-FAIL-2",
+    "runtimeCommit": "9ed0502b9e97e543dc5beea00998b5edc0bb0e67",
+    "runDirectory": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/final-readback-evidence/1791884341445594000",
+    "runLog": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/final-readback-evidence/1791884341445594000/run.log",
+    "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/final-readback-evidence/1791884341445594000/results/readonly-readback-最终重启后普通员工只读重开：人员稳定记录、检验月度锁定、产量26与100、颜色和照片/readonly-readback-events.json",
+    "evidenceSha256": "654802d77cf0f27a3397dfea577183305b9981c69e265d8629357cc2738175b0",
+    "status": "FAIL",
+    "completedModulePhases": [
+      "persons",
+      "inspection",
+      "production"
+    ],
+    "reason": "390 layout: two network IO suspended and two download actor concurrency429; no automatic recovery; overall run failed",
+    "pageErrors": [],
+    "consoleErrors": [
+      "Failed to load resource: net::ERR_NETWORK_IO_SUSPENDED",
+      "Failed to load resource: net::ERR_NETWORK_IO_SUSPENDED",
+      "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+      "Failed to load resource: the server responded with a status of 429 (Too Many Requests)"
+    ],
+    "blocked": []
+  },
+  {
+    "label": "FINAL-READBACK-V9-PASS",
+    "runtimeCommit": "9ed0502b9e97e543dc5beea00998b5edc0bb0e67",
+    "runDirectory": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/final-readback-evidence/1791938988977234000",
+    "runLog": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/final-readback-evidence/1791938988977234000/run.log",
+    "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/final-readback-evidence/1791938988977234000/results/readonly-readback-最终重启后普通员工只读重开：人员稳定记录、检验月度锁定、产量26与100、颜色和照片/readonly-readback-proof.json",
+    "evidenceSha256": "de356634577dba805b458fe4534feb09fb00505e7a52553df6c309047946ef60",
+    "eventsEvidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/final-readback-evidence/1791938988977234000/results/readonly-readback-最终重启后普通员工只读重开：人员稳定记录、检验月度锁定、产量26与100、颜色和照片/readonly-readback-events.json",
+    "eventsSha256": "43d404f0bad8700597913c3809c9031ef7bb040b6f0ed1a97fe22b116aeea0f9",
+    "status": "PASS",
+    "duration": "51.2s",
+    "modules": [
+      "persons",
+      "inspection",
+      "production",
+      "colors",
+      "colors-responsive"
+    ],
+    "networkCount": 236,
+    "businessWrites": 0,
+    "pageErrorCount": 0,
+    "consoleErrorCount": 0,
+    "guardErrorCount": 0,
+    "allColorPhotosDecoded": 19,
+    "viewports": [
+      1440,
+      1280,
+      1024,
+      390
+    ],
+    "viewportPhotoScope": "all19 identity sets plus first actual decoded image at each width"
+  }
+]

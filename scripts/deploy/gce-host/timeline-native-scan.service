@@ -1,0 +1,27 @@
+[Unit]
+Description=Bounded proxy to approved private scanner
+Requires=timeline-native-scan.socket
+After=timeline-native-scan.socket
+
+[Service]
+User=root
+Group=root
+ExecStartPre=/usr/bin/python3 -I /usr/local/lib/timeline-native-scanner/scanner_host.py gate
+ExecStart=/lib/systemd/systemd-socket-proxyd --connections-max=8 /run/timeline-native-scanner/engine/clamd.sock
+ExecStopPost=/usr/bin/systemctl --no-block stop timeline-native-scan.socket
+KillMode=control-group
+TimeoutStartSec=30
+TimeoutStopSec=15
+Restart=no
+MemoryMax=256M
+TasksMax=32
+UMask=0077
+NoNewPrivileges=true
+CapabilityBoundingSet=CAP_DAC_OVERRIDE
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true

@@ -1,3 +1,4 @@
+import { canManageCabinReviews } from '../lib/reviews-client';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
@@ -22,7 +23,8 @@ const reviewerUser: SessionUser = {
   departmentId: null,
   departmentName: null,
   isSystemAdmin: false,
-  authSource: 'mock',
+  authSource: 'local',
+  teamAccessApproved: true,
   roleCodes: ['reviewer'],
 };
 
@@ -125,12 +127,9 @@ describe('CabinReviewWorkspace', () => {
         reviewerOptions={[
           {
             id: 'user-1',
-            username: 'reviewer',
             name: '评审员',
-            email: null,
             departmentId: null,
             departmentName: null,
-            roleCodes: ['reviewer'],
           },
         ]}
         disabled={false}
@@ -190,5 +189,17 @@ describe('CabinReviewWorkspace', () => {
     );
 
     expect(html).toContain('驳回');
+  });
+});
+
+describe('single-department review admission', () => {
+  it('allows an approved member without a legacy review role, while retaining own-signature rules', () => {
+    const member = { ...reviewerUser, roleCodes: [] };
+    expect(canManageCabinReviews(member, member.id)).toBe(true);
+    expect(canManageCabinReviews(member, 'another-author')).toBe(false);
+  });
+  it('does not admit an unapproved account through a legacy role', () => {
+    expect(canManageCabinReviews({ ...reviewerUser, teamAccessApproved: false })).toBe(false);
+    expect(canManageCabinReviews({ ...reviewerUser, authSource: 'mock' })).toBe(false);
   });
 });

@@ -204,6 +204,7 @@ function createTaskDetail(nodeCode: WorkflowNodeCode): WorkflowTaskInteractionDe
 
   return {
     taskId: `task-${stepNumber}`,
+    taskVersion: '2026-08-11T04:00:00.000Z',
     projectId: 'project-1',
     stepCode: String(stepNumber).padStart(2, '0'),
     stepNumber,

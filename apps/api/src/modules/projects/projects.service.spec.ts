@@ -2,10 +2,18 @@ import {
   ProjectPriority,
   ProjectStatus,
 } from '@prisma/client';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 
+import { installTeamAuthorizationFixture } from '../../test-support/team-authorization.fixture';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { ProjectsService } from './projects.service';
+
+const projectsServiceSource = readFileSync(
+  join(__dirname, 'projects.service.ts'),
+  'utf8',
+);
 
 const actor: AuthenticatedUser = {
   id: 'user-manager',
@@ -15,7 +23,8 @@ const actor: AuthenticatedUser = {
   departmentId: 'dept-pmo',
   departmentName: '项目管理部',
   isSystemAdmin: false,
-  authSource: 'mock',
+  teamAccessApproved: true, authSource: 'local',
+  authVersion: 1,
   roleCodes: ['project_manager'],
 };
 
@@ -94,7 +103,13 @@ function createProjectRecord() {
 }
 
 function createService() {
+  const projectCreateCommandRequest = {
+    findUnique: vi.fn().mockResolvedValue(null),
+    create: vi.fn().mockResolvedValue({ id: 'command-1' }),
+  };
   const tx = {
+    $executeRaw: vi.fn().mockResolvedValue(0),
+    projectCreateCommandRequest,
     user: {
       findFirst: vi.fn(),
       findMany: vi.fn(),
@@ -102,7 +117,10 @@ function createService() {
     project: {
       create: vi.fn(),
       findUnique: vi.fn(),
+      update: vi.fn().mockResolvedValue({ id: 'project-1' }),
     },
+    hueStandard: { create: vi.fn().mockResolvedValue({ id: 'candidate-hue' }) },
+    color: { create: vi.fn().mockResolvedValue({ id: 'candidate-color', name: '演示项目', productionBaseId: null, registerStatus: 'CANDIDATE' }) },
     projectMember: {
       deleteMany: vi.fn(),
       createMany: vi.fn(),
@@ -110,7 +128,9 @@ function createService() {
     },
   };
 
+  installTeamAuthorizationFixture(tx, [{ ...actor, authVersion: 1 }]);
   const prisma = {
+    projectCreateCommandRequest,
     $transaction: vi.fn(async (executor: (client: typeof tx) => Promise<unknown>) => executor(tx)),
   };
 
@@ -145,6 +165,55 @@ function createService() {
 }
 
 describe('ProjectsService', () => {
+  it('uses the explicit color identity and base in project list and workspace detail', () => {
+    const { service } = createService();
+    const color = { id: 'imported-base-color', name: '历史颜色', code: null, productionBaseId: 'base-shandong', productionBase: { id: 'base-shandong', name: '山东' } };
+    const project = { ...createProjectRecord(), primaryColorId: color.id, primaryColor: color,
+      colors: [{ id: 'legacy-color', name: '其他颜色' }], workflowTasks: [], taskBlockers: [] };
+    expect(service['toProjectListItem'](project as never).colorName).toBe('历史颜色');
+    expect(service['toProjectDetail'](project as never)).toMatchObject({
+      primaryColorId: color.id, colorId: color.id, colorName: '历史颜色', productionBaseId: 'base-shandong', productionBaseName: '山东',
+    });
+    project.primaryColor = null as never;
+    expect(service['toProjectListItem'](project as never).colorName).toBeNull();
+    expect(service['toProjectDetail'](project as never).colorId).toBeNull();
+  });
+
+  it('shows the next unfinished monthly deadline before the year-long parent deadline', () => {
+    const { service } = createService();
+    const parentDeadline = new Date('2027-09-28T00:00:00.000Z');
+    const monthDeadline = new Date('2026-10-28T00:00:00.000Z');
+    const project = {
+      ...createProjectRecord(),
+      currentNodeCode: 'VISUAL_COLOR_DIFFERENCE_REVIEW',
+      colors: [], taskBlockers: [],
+      workflowTasks: [{ id: 'monthly-parent', nodeCode: 'VISUAL_COLOR_DIFFERENCE_REVIEW',
+        nodeName: '月度检查', isActive: true, status: 'IN_PROGRESS', taskRound: 1,
+        dueAt: parentDeadline, effectiveDueAt: parentDeadline, updatedAt: new Date(),
+        assigneeUser: null, assigneeDepartment: null }],
+      _count: { members: 1, workflowTasks: 1 },
+    };
+    expect(service['toProjectListItem'](project as never, monthDeadline).earliestDueAt).toBe(monthDeadline.toISOString());
+    expect(service['toProjectListItem'](project as never, null).earliestDueAt).toBe(parentDeadline.toISOString());
+    project.workflowTasks[0]!.effectiveDueAt = new Date('2026-10-01T00:00:00.000Z');
+    expect(service['toProjectListItem'](project as never, monthDeadline).earliestDueAt).toBe('2026-10-01T00:00:00.000Z');
+  });
+
+  it('counts only CLEAN non-deleted direct review attachments in the project timeline', () => {
+    const timelineSource = projectsServiceSource.slice(
+      projectsServiceSource.indexOf('async getProjectTimeline('),
+      projectsServiceSource.indexOf('async getProjectFlowMap('),
+    );
+
+    expect(timelineSource).toMatch(
+      /attachment:\s*\{\s*select:\s*\{\s*scanStatus:\s*true,\s*isDeleted:\s*true/,
+    );
+    expect(timelineSource).toContain(
+      'review.attachment?.scanStatus !== AttachmentScanStatus.CLEAN',
+    );
+    expect(timelineSource).toContain('review.attachment.isDeleted');
+  });
+
   it('creates project and initializes workflow instance', async () => {
     const { service, tx, workflowsService, activityLogsService } = createService();
     const projectRecord = createProjectRecord();
@@ -193,6 +262,7 @@ describe('ProjectsService', () => {
         members: [],
       },
       actor,
+      'project-create:service-1',
     );
 
     expect(workflowsService.initializeProjectWorkflow).toHaveBeenCalledWith(
@@ -204,6 +274,14 @@ describe('ProjectsService', () => {
       }),
     );
     expect(activityLogsService.createWithExecutor).toHaveBeenCalledTimes(2);
+    expect(tx.$executeRaw).toHaveBeenCalledTimes(2);
+    const lockCallOrder = tx.$executeRaw.mock.invocationCallOrder[1]!;
+    expect(lockCallOrder).toBeLessThan(
+      tx.user.findFirst.mock.invocationCallOrder[0]!,
+    );
+    expect(lockCallOrder).toBeLessThan(
+      tx.project.create.mock.invocationCallOrder[0]!,
+    );
     expect(tx.project.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         code: expect.stringMatching(/^PRJ-\d{8}-[A-F0-9]{8}$/),
@@ -211,10 +289,28 @@ describe('ProjectsService', () => {
         paintSupplier: '阿克苏诺贝尔',
       }),
     });
-    expect(result.code).toBe('PRJ-001');
-    expect(result.colorMarketingUnit).toBe('商用车营销事业部');
-    expect(result.paintSupplier).toBe('阿克苏诺贝尔');
-    expect(result.currentWorkflowInstance?.id).toBe('wf-1');
+    expect(tx.color.create).toHaveBeenCalledWith({ data: expect.objectContaining({
+      projectId: 'project-1', registerStatus: 'CANDIDATE', code: null, registerMonth: null,
+    }) });
+    expect(tx.project.update).toHaveBeenCalledWith({ where: { id: 'project-1' }, data: { primaryColorId: 'candidate-color' } });
+    expect(result).toMatchObject({
+      code: 'PRJ-001',
+      colorMarketingUnit: '商用车营销事业部',
+      paintSupplier: '阿克苏诺贝尔',
+      currentWorkflowInstance: { id: 'wf-1' },
+    });
+  });
+
+  it('uses parameterized raw execution for the transaction-scoped project-create lock', () => {
+    const lockSource = projectsServiceSource.slice(
+      projectsServiceSource.indexOf('private async lockProjectCreateCommand('),
+      projectsServiceSource.indexOf('private isUniqueConstraintError('),
+    );
+
+    expect(lockSource).toContain('await tx.$executeRaw`');
+    expect(lockSource).toContain("hashtext(${'feishu-timeline:project-create'})");
+    expect(lockSource).toContain('hashtext(${`${actorUserId}:${idempotencyKey}`})');
+    expect(lockSource).not.toMatch(/\$(?:queryRaw|queryRawUnsafe|executeRawUnsafe)/);
   });
 
   it('拒绝白名单以外的涂料供应商', async () => {
@@ -227,6 +323,7 @@ describe('ProjectsService', () => {
           paintSupplier: '任意供应商',
         },
         actor,
+        'project-create:invalid-supplier-1',
       ),
     ).rejects.toThrow('请求参数不正确。');
   });

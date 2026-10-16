@@ -1,0 +1,176 @@
+{
+  "exactDomainNativeHttp": "PASS",
+  "checkedAt": "2026-09-14T02:30:01.757672+00:00",
+  "environment": "production",
+  "url": "https://timeline.all-too-well.com",
+  "runtimeCommit": "6c70a897ec7643f4681616d801481765aaa8f7bc",
+  "metadata": {
+    "/api/health": {
+      "status": "ok",
+      "service": "feishu-timeline-api",
+      "nodeEnv": "production",
+      "sourceCommit": "6c70a897ec7643f4681616d801481765aaa8f7bc",
+      "sourceTree": "042c502720078f6f546931bf34c5396cb910c9fd",
+      "runtimeCommit": "6c70a897ec7643f4681616d801481765aaa8f7bc",
+      "release": "native-auth-20260914-6c70a897ec76",
+      "buildTime": "2026-09-14T01:01:20Z",
+      "timestamp": "2026-09-14T02:28:51.045Z"
+    },
+    "/build-info": {
+      "service": "feishu-timeline-web",
+      "sourceCommit": "6c70a897ec7643f4681616d801481765aaa8f7bc",
+      "sourceTree": "042c502720078f6f546931bf34c5396cb910c9fd",
+      "runtimeCommit": "6c70a897ec7643f4681616d801481765aaa8f7bc",
+      "release": "native-auth-20260914-6c70a897ec76",
+      "buildTime": "2026-09-14T01:01:20Z"
+    }
+  },
+  "newRuntimeNativeLogin": "PASS",
+  "ownerIdPreserved": true,
+  "secureSessionCookie": true,
+  "originNegativePassed": true,
+  "retiredEntrypointsClosed": true,
+  "logoutRevocationVerified": true,
+  "publishedPatternCorrected": true,
+  "staticAssetCount": 9,
+  "credentialsRecorded": false,
+  "browserAcceptance": "PENDING",
+  "allIssuedVerificationSessionsLoggedOut": true,
+  "requests": [
+    {
+      "method": "GET",
+      "path": "/api/health",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/build-info",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/me",
+      "status": 401
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/login",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/health",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/build-info",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/me",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/projects",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/accounts",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/login",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/_next/static/chunks/74956ec5-69b26496179c6e6d.js",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/_next/static/chunks/4960-6d787b1ebf1918a9.js",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/_next/static/chunks/main-app-4e3f5fe9aed6ab80.js",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/_next/static/chunks/app/login/page-ba97e57f35ebaeac.js",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/_next/static/chunks/2098-e0bdc0b5bae3a17f.js",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/_next/static/chunks/6300-2c82c764f1f545f3.js",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/_next/static/chunks/app/layout-56cb17a11e332f37.js",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/_next/static/chunks/polyfills-42372ed130431b0a.js",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/_next/static/chunks/webpack-64f4cc3635975676.js",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/feishu/start",
+      "status": 410
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/feishu/login-url",
+      "status": 410
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/mock-login",
+      "status": 403
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/logout",
+      "status": 403
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/me",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/logout",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/me",
+      "status": 401
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/logout",
+      "status": 200
+    }
+  ]
+}

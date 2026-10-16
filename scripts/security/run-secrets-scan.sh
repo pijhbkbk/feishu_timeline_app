@@ -19,7 +19,8 @@ rm -f "$REPORT_DIR"/gitleaks*.json "$REPORT_DIR"/gitleaks*.log \
   "$REPORT_DIR"/gitleaks*.status "$REPORT_DIR"/gitleaks*.txt
 
 timestamp="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-commit="$(git -C "$ROOT_DIR" rev-parse --short HEAD 2>/dev/null || printf 'unknown')"
+commit="$(git -C "$ROOT_DIR" rev-parse HEAD 2>/dev/null || printf 'unknown')"
+source_tree="$(git -C "$ROOT_DIR" rev-parse HEAD^{tree} 2>/dev/null || printf 'unknown')"
 overall_status=0
 runner=""
 runner_error=""
@@ -71,6 +72,12 @@ select_runner() {
 
 select_runner
 
+case "$runner" in
+  native) scanner_identity="native Gitleaks $GITLEAKS_VERSION" ;;
+  docker) scanner_identity="Docker $GITLEAKS_IMAGE" ;;
+  *) scanner_identity="unavailable (required Gitleaks $GITLEAKS_VERSION)" ;;
+esac
+
 history_preflight_error=""
 git_dir="$(git -C "$ROOT_DIR" rev-parse --absolute-git-dir 2>/dev/null || true)"
 shallow_repository="$(git -C "$ROOT_DIR" rev-parse --is-shallow-repository 2>/dev/null || true)"
@@ -94,6 +101,25 @@ while IFS= read -r -d '' path; do
   mkdir -p "$CURRENT_SCAN_DIR/$(dirname "$path")"
   cp -p "$ROOT_DIR/$path" "$CURRENT_SCAN_DIR/$path"
 done < <(git -C "$ROOT_DIR" ls-files --cached --others --exclude-standard -z)
+
+# Bind the copied input bytes independently of HEAD (dirty/untracked files are included).
+snapshot_manifest="$REPORT_DIR/current-tree-sha256.txt"
+snapshot_sha256="$(node - "$CURRENT_SCAN_DIR" "$current_manifest" "$snapshot_manifest" <<'NODE'
+const fs = require('node:fs');
+const path = require('node:path');
+const { createHash } = require('node:crypto');
+const [root, pathsFile, output] = process.argv.slice(2);
+const hash = (bytes) => createHash('sha256').update(bytes).digest('hex');
+const paths = fs.readFileSync(pathsFile, 'utf8').split('\n').filter(Boolean).sort();
+const manifest = paths.map((name) => `${hash(fs.readFileSync(path.join(root, name)))}  ${name}\n`).join('');
+fs.writeFileSync(output, manifest);
+process.stdout.write(hash(manifest));
+NODE
+)"
+worktree_state="dirty"
+if [ -z "$(git -C "$ROOT_DIR" status --porcelain --untracked-files=normal)" ]; then
+  worktree_state="clean"
+fi
 
 run_gitleaks_scan() {
   local scan_kind="$1"
@@ -259,19 +285,24 @@ cat >"$DOC_REPORT" <<EOF
 # Secrets Scan R19B
 
 Generated: $timestamp
-Commit: $commit
-Scanner: \`$GITLEAKS_IMAGE\`
+HEAD baseline commit: $commit
+HEAD baseline tree: $source_tree
+Worktree state: $worktree_state
+Current candidate snapshot SHA-256: $snapshot_sha256
+Execution mode: ${runner:-unavailable}
+Scanner: \`$scanner_identity\`
 
 ## Command Results
 
 | Check | Status | Raw Output |
 |---|---|---|
-| Gitleaks current tracked/untracked candidate files | $current_status | reports/security/secrets/gitleaks-current.log |
-| Gitleaks full Git history | $history_status | reports/security/secrets/gitleaks-history.log |
-| Current-tree target manifest | INFO | reports/security/secrets/current-tree-files.txt |
-| Environment-like file inventory | INFO | reports/security/secrets/env-files.txt |
-| Sensitive key name location scan | INFO | reports/security/secrets/sensitive-key-name-locations.txt |
-| .gitignore protection check | INFO | reports/security/secrets/gitignore-check.txt |
+| Gitleaks current tracked/untracked candidate files | $current_status | $REPORT_DIR/gitleaks-current.log |
+| Gitleaks full Git history | $history_status | $REPORT_DIR/gitleaks-history.log |
+| Current-tree target manifest | INFO | $current_manifest |
+| Current-tree file content hashes | INFO | $snapshot_manifest |
+| Environment-like file inventory | INFO | $REPORT_DIR/env-files.txt |
+| Sensitive key name location scan | INFO | $REPORT_DIR/sensitive-key-name-locations.txt |
+| .gitignore protection check | INFO | $REPORT_DIR/gitignore-check.txt |
 
 Reports are redacted. Do not paste or copy secret values into review records. A confirmed
 secret exposure is Critical and requires immediate rotation through the owning platform.

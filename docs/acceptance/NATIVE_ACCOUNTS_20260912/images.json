@@ -1,0 +1,47 @@
+[
+  {
+    "localImageId": "sha256:8e53420614c7740f43c96e9d7081c48acbf125c5e35c4376cb23f5bd34a68710",
+    "tags": [
+      "timeline-native-api:1767dbb"
+    ],
+    "digests": [
+      "timeline-native-api@sha256:8e53420614c7740f43c96e9d7081c48acbf125c5e35c4376cb23f5bd34a68710"
+    ],
+    "labels": {
+      "com.feishu-timeline.source-tree": "199cb837b6dd7682eda61928e108be397498236b",
+      "org.opencontainers.image.created": "2026-09-12T11:49:49Z",
+      "org.opencontainers.image.revision": "1767dbb5eeb30cc57835081de761e1eccb8fac8b",
+      "org.opencontainers.image.version": "native-auth-20260912-1767dbb5eeb3"
+    }
+  },
+  {
+    "localImageId": "sha256:58b03260d3174b65f65a630b8e5d0a016261490263c31711609cf593a9f136bc",
+    "tags": [
+      "timeline-native-ops:1767dbb"
+    ],
+    "digests": [
+      "timeline-native-ops@sha256:58b03260d3174b65f65a630b8e5d0a016261490263c31711609cf593a9f136bc"
+    ],
+    "labels": {
+      "com.feishu-timeline.source-tree": "199cb837b6dd7682eda61928e108be397498236b",
+      "org.opencontainers.image.created": "2026-09-12T11:49:49Z",
+      "org.opencontainers.image.revision": "1767dbb5eeb30cc57835081de761e1eccb8fac8b",
+      "org.opencontainers.image.version": "native-auth-20260912-1767dbb5eeb3"
+    }
+  },
+  {
+    "localImageId": "sha256:46b03a27eba618311fe3102ea59b1dc54da0908170fa0a8031af4dc8f2872cbb",
+    "tags": [
+      "timeline-native-web:1767dbb"
+    ],
+    "digests": [
+      "timeline-native-web@sha256:46b03a27eba618311fe3102ea59b1dc54da0908170fa0a8031af4dc8f2872cbb"
+    ],
+    "labels": {
+      "com.feishu-timeline.source-tree": "199cb837b6dd7682eda61928e108be397498236b",
+      "org.opencontainers.image.created": "2026-09-12T11:49:49Z",
+      "org.opencontainers.image.revision": "1767dbb5eeb30cc57835081de761e1eccb8fac8b",
+      "org.opencontainers.image.version": "native-auth-20260912-1767dbb5eeb3"
+    }
+  }
+]

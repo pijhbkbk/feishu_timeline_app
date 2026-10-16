@@ -1,0 +1,18 @@
+{
+  "syntheticOnly": true,
+  "commit": "541b3dfff682aa29b49a96b251f0a084903c981a",
+  "cases": [
+    {
+      "entry": "CLI initialize protected password file",
+      "characters": 7,
+      "exitCode": 1,
+      "result": "PASS"
+    },
+    {
+      "entry": "CLI initialize protected password file",
+      "characters": 8,
+      "exitCode": 0,
+      "result": "PASS"
+    }
+  ]
+}

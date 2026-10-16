@@ -1,0 +1,7 @@
+{
+  "runtimeCommit": "1767dbb5eeb30cc57835081de761e1eccb8fac8b",
+  "environment": "isolated-loopback-only",
+  "concurrentFirstInitialization": "ONE_SUCCESS_ONE_REFUSAL",
+  "activeSystemAdministrators": 1,
+  "allProcessesExitedBefore20Seconds": true
+}

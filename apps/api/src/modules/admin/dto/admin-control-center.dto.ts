@@ -4,7 +4,7 @@ import {
   WorkflowNodeCode,
   WorkflowTaskStatus,
 } from '@prisma/client';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
   ArrayMaxSize,
   ArrayMinSize,
@@ -337,6 +337,7 @@ export class AdminUserConfigurationPreviewDto {
   @IsDateString()
   expectedVersion?: string;
 
+  @Transform(({ obj }) => (obj as { username: unknown }).username, { toClassOnly: true })
   @IsString()
   @IsNotEmpty()
   @MaxLength(80)

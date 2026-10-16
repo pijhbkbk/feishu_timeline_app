@@ -1,8 +1,8 @@
 'use client';
 
 import {
+  isApprovedTeamUser,
   apiRequest,
-  type FrontendRoleCode,
   type SessionUser,
 } from './auth-client';
 import {
@@ -70,12 +70,6 @@ export type SchedulePlanFormInput = {
   note: string;
 };
 
-const SCHEDULE_PLAN_ROLE_CODES: FrontendRoleCode[] = [
-  'admin',
-  'project_manager',
-  'process_engineer',
-];
-
 const SCHEDULE_PLAN_STATUS_LABELS: Record<SchedulePlanStatus, string> = {
   DRAFT: '草稿',
   CONFIRMED: '已确认',
@@ -142,8 +136,8 @@ export function completeSchedulePlanTask(projectId: string) {
   );
 }
 
-export function fetchSchedulePlanPageOptions() {
-  return fetchUserDirectory();
+export function fetchSchedulePlanPageOptions(projectId: string) {
+  return fetchUserDirectory({ projectId });
 }
 
 export function getDefaultSchedulePlanOwnerId(
@@ -190,15 +184,7 @@ export function validateSchedulePlanForm(input: SchedulePlanFormInput) {
 }
 
 export function canManageSchedulePlans(user: SessionUser | null) {
-  if (!user) {
-    return false;
-  }
-
-  if (user.isSystemAdmin || user.roleCodes.includes('admin')) {
-    return true;
-  }
-
-  return SCHEDULE_PLAN_ROLE_CODES.some((roleCode) => user.roleCodes.includes(roleCode));
+  return isApprovedTeamUser(user);
 }
 
 export function canShowCompleteSchedulePlanTaskButton(

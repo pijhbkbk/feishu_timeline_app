@@ -4,6 +4,7 @@ import {
 } from '@prisma/client';
 
 export const SCHEDULE_PLAN_MANAGEMENT_ROLE_CODES = [
+  'production_operator',
   'admin',
   'project_manager',
   'process_engineer',

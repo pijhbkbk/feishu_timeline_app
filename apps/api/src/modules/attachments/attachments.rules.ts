@@ -41,6 +41,7 @@ export const ATTACHMENT_MANAGEMENT_ROLE_CODES = [
   'purchaser',
   'reviewer',
   'finance',
+  'production_operator',
 ] as const;
 
 export const ATTACHMENT_MAX_FILE_SIZE_BYTES = API_UPLOAD_MAX_FILE_SIZE_BYTES;

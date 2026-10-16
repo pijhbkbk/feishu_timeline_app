@@ -22,8 +22,9 @@ const processEngineerUser: SessionUser = {
   departmentId: null,
   departmentName: null,
   isSystemAdmin: false,
-  authSource: 'mock',
-  roleCodes: ['process_engineer'],
+  authSource: 'local',
+  teamAccessApproved: true,
+  roleCodes: [],
 };
 
 const workspace: SchedulePlansWorkspaceResponse = {
@@ -101,12 +102,9 @@ describe('SchedulePlansWorkspace', () => {
         ownerOptions={[
           {
             id: 'user-1',
-            username: 'process',
             name: '工艺工程师',
-            email: null,
             departmentId: null,
             departmentName: null,
-            roleCodes: ['process_engineer'],
           },
         ]}
         disabled={false}
@@ -140,6 +138,7 @@ describe('SchedulePlansWorkspace', () => {
   });
 
   it('controls completion button logic and exposes status badge labels', () => {
+    expect(canShowCompleteSchedulePlanTaskButton({ ...processEngineerUser, teamAccessApproved: false }, workspace)).toBe(false);
     expect(canShowCompleteSchedulePlanTaskButton(processEngineerUser, workspace)).toBe(true);
     expect(
       canShowCompleteSchedulePlanTaskButton(processEngineerUser, {

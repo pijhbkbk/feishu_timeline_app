@@ -8,17 +8,21 @@ IFS=$'\n\t'
 
 APP_NAME="${APP_NAME:-feishu_timeline_app}"
 APP_USER="${APP_USER:-feishu}"
+API_RUNTIME_USER=feishu-timeline-api
+WEB_RUNTIME_USER=feishu-timeline-web
 APP_HOME="${APP_HOME:-/home/${APP_USER}}"
 APP_RUNTIME_PATH="${APP_RUNTIME_PATH:-/usr/local/bin:/usr/bin:/bin}"
 COREPACK_HOME="${COREPACK_HOME:-$APP_HOME/.cache/node/corepack}"
 APP_ROOT="${APP_ROOT:-/opt/feishu_timeline_app}"
-API_ENV_FILE="${API_ENV_FILE:-$APP_ROOT/apps/api/.env.production}"
-WEB_ENV_FILE="${WEB_ENV_FILE:-$APP_ROOT/apps/web/.env.production}"
+API_ENV_FILE="${API_ENV_FILE:-/etc/feishu-timeline/api.env}"
+WEB_ENV_FILE="${WEB_ENV_FILE:-/etc/feishu-timeline/web.env}"
+DOTENV_DATA_TOOL=/usr/local/libexec/feishu-timeline/dotenv-data
+PYTHON_BIN=/usr/bin/python3
 APP_HOST="${APP_HOST:-timeline.all-too-well.com}"
 API_SERVICE="${API_SERVICE:-feishu-timeline-api.service}"
 WEB_SERVICE="${WEB_SERVICE:-feishu-timeline-web.service}"
-EXPECTED_API_WORKDIR="${EXPECTED_API_WORKDIR:-$APP_ROOT/apps/api}"
-EXPECTED_WEB_WORKDIR="${EXPECTED_WEB_WORKDIR:-$APP_ROOT/apps/web}"
+EXPECTED_API_WORKDIR="${EXPECTED_API_WORKDIR:-$APP_ROOT/current/apps/api}"
+EXPECTED_WEB_WORKDIR="${EXPECTED_WEB_WORKDIR:-$APP_ROOT/current/apps/web}"
 EXPECTED_OBJECT_STORAGE_DIR="${EXPECTED_OBJECT_STORAGE_DIR:-$APP_ROOT/var/object-storage}"
 
 FAILURES=0
@@ -65,11 +69,35 @@ systemd_workdir_matches() {
 }
 
 object_storage_accessible_by_app_user() {
-  run_as_app test -r "$EXPECTED_OBJECT_STORAGE_DIR"
+  runuser -u "$API_RUNTIME_USER" -- test -r "$EXPECTED_OBJECT_STORAGE_DIR"
 }
 
 object_storage_writable_by_app_user() {
-  run_as_app test -w "$EXPECTED_OBJECT_STORAGE_DIR"
+  runuser -u "$API_RUNTIME_USER" -- test -w "$EXPECTED_OBJECT_STORAGE_DIR"
+}
+
+web_runtime_cannot_read_api_env() {
+  runuser -u "$WEB_RUNTIME_USER" -- test ! -r "$API_ENV_FILE"
+}
+
+api_runtime_cannot_read_web_env() {
+  runuser -u "$API_RUNTIME_USER" -- test ! -r "$WEB_ENV_FILE"
+}
+
+canonical_env_metadata_matches() {
+  local env_file="$1"
+  local expected_group="$2"
+  [[ ! -L "$env_file" && "$(stat -c '%U:%G:%a' "$env_file" 2>/dev/null)" = "root:${expected_group}:640" ]]
+}
+
+runtime_identities_are_no_login() {
+  [[ "$(getent passwd "$API_RUNTIME_USER" | awk -F: 'NR == 1 {print $7}')" = /usr/sbin/nologin \
+    && "$(getent passwd "$WEB_RUNTIME_USER" | awk -F: 'NR == 1 {print $7}')" = /usr/sbin/nologin ]]
+}
+
+runtime_users_cannot_write_release() {
+  runuser -u "$API_RUNTIME_USER" -- test ! -w "$APP_ROOT/current" \
+    && runuser -u "$WEB_RUNTIME_USER" -- test ! -w "$APP_ROOT/current"
 }
 
 curl_ok() {
@@ -86,34 +114,20 @@ app_user_can_run_pnpm() {
 
 resolved_object_storage_path_matches_expected() {
   local resolved_path
+  local storage_root
 
-  resolved_path="$(
-    (
-      set +u
-      set -a
-      # shellcheck disable=SC1090
-      source "$API_ENV_FILE"
-      set +a
-      set -u
-      node -e 'const { resolve } = require("node:path"); const cwd = process.argv[1]; const root = process.env.OBJECT_STORAGE_LOCAL_ROOT || "var/object-storage"; process.stdout.write(resolve(cwd, root));' "$EXPECTED_API_WORKDIR"
-    )
-  )"
+  storage_root="$("$PYTHON_BIN" -I "$DOTENV_DATA_TOOL" get --profile api "$API_ENV_FILE" OBJECT_STORAGE_LOCAL_ROOT)"
+  resolved_path="$(node -e 'const { resolve } = require("node:path"); process.stdout.write(resolve(process.argv[1], process.argv[2]));' "$EXPECTED_API_WORKDIR" "$storage_root")"
 
   [[ "$resolved_path" = "$EXPECTED_OBJECT_STORAGE_DIR" ]]
 }
 
 api_env_var_is_non_empty() {
   local var_name="$1"
+  local value
 
-  (
-    set +u
-    set -a
-    # shellcheck disable=SC1090
-    source "$API_ENV_FILE"
-    set +a
-    set -u
-    [[ -n "${!var_name:-}" ]]
-  )
+  value="$("$PYTHON_BIN" -I "$DOTENV_DATA_TOOL" get --profile api "$API_ENV_FILE" "$var_name")" || return 1
+  [[ -n "$value" ]]
 }
 
 log "Current listening sockets from ss -tlnp"
@@ -121,6 +135,15 @@ ss -tlnp || warn "ss -tlnp failed"
 
 check "API env file exists" test -f "$API_ENV_FILE"
 check "Web env file exists" test -f "$WEB_ENV_FILE"
+check "API env file has strict data syntax" "$PYTHON_BIN" -I "$DOTENV_DATA_TOOL" validate --profile api "$API_ENV_FILE"
+check "Web env file has strict data syntax" "$PYTHON_BIN" -I "$DOTENV_DATA_TOOL" validate --profile web "$WEB_ENV_FILE"
+check "API env is root-owned and readable only by its runtime group" canonical_env_metadata_matches "$API_ENV_FILE" feishu-timeline-api
+check "Web env is root-owned and readable only by its runtime group" canonical_env_metadata_matches "$WEB_ENV_FILE" feishu-timeline-web
+check "Canonical env parent is root-controlled" test "$(stat -c '%U:%G:%a' /etc/feishu-timeline 2>/dev/null)" = root:root:755
+check "Web runtime cannot read API env" web_runtime_cannot_read_api_env
+check "API runtime cannot read Web env" api_runtime_cannot_read_web_env
+check "API and Web runtime identities use no-login shells" runtime_identities_are_no_login
+check "Runtime users cannot write immutable release" runtime_users_cannot_write_release
 check "API build artifact exists" test -f "$EXPECTED_API_WORKDIR/dist/main.js"
 check "Web build artifact exists" test -d "$EXPECTED_WEB_WORKDIR/.next"
 check "Application home exists" test -d "$APP_HOME"

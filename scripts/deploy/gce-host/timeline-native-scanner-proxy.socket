@@ -1,0 +1,16 @@
+[Unit]
+DefaultDependencies=no
+Conflicts=shutdown.target
+Before=shutdown.target
+Description=Private native API scanner proxy socket
+Requires=sysinit.target timeline-native-network.service
+Wants=timeline-native-tunnel.service
+After=sysinit.target timeline-native-network.service timeline-native-tunnel.service
+
+[Socket]
+ListenStream=172.30.44.1:13310
+NoDelay=true
+Backlog=8
+
+[Install]
+WantedBy=multi-user.target

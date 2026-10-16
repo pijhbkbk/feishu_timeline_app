@@ -1,5 +1,8 @@
+import { assertApprovedTeamMember } from '../../common/team-membership';
+import { assertTeamTaskById, withProjectWrite } from '../../common/team-authorization';
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -26,7 +29,6 @@ import {
 import { WorkflowsService } from '../workflows/workflows.service';
 import {
   canEditDevelopmentFee,
-  FEE_MANAGEMENT_ROLE_CODES,
   getDevelopmentFeeAmountIssue,
   getDevelopmentFeeCompletionIssue,
   getDevelopmentFeeNodeCode,
@@ -47,6 +49,11 @@ type DevelopmentFeeCreateInput = {
 };
 
 const DEVELOPMENT_FEE_NODE_CODE = getDevelopmentFeeNodeCode();
+const DEVELOPMENT_FEE_RECORD_LIMIT = 100;
+const DEVELOPMENT_FEE_MAX_PAYLOAD_BYTES = 16 * 1024;
+const DEVELOPMENT_FEE_PAYER_MAX_CHARS = 200;
+const DEVELOPMENT_FEE_NOTE_MAX_CHARS = 4_000;
+const DEVELOPMENT_FEE_AMOUNT_PATTERN = /^(?:0|[1-9]\d{0,15})(?:\.\d{1,2})?$/;
 
 @Injectable()
 export class FeesService {
@@ -79,9 +86,9 @@ export class FeesService {
     );
     const input = this.parseWriteInput(rawInput);
 
-    await this.prisma.$transaction(async (tx) => {
-      const context = await this.getFeeContext(tx, projectId);
-      this.assertWritableFeeStage(context);
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
+      const context = await this.lockActiveFeeTaskAndGetContext(tx, actor, projectId);
+      this.assertFeeRecordCapacity(context.records, true);
       await this.assertFixedFeeAmount(tx, input.amount);
 
       const createdRecord = await tx.developmentFee.create({
@@ -136,18 +143,23 @@ export class FeesService {
     );
     const input = this.parseWriteInput(rawInput);
 
-    await this.prisma.$transaction(async (tx) => {
-      const context = await this.getFeeContext(tx, projectId);
-      this.assertWritableFeeStage(context);
-      await this.assertFixedFeeAmount(tx, input.amount);
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
+      await this.lockFeeRow(tx, projectId, feeId);
       const feeRecord = await this.getFeeOrThrow(tx, projectId, feeId);
+      await this.lockActiveFeeTaskAndGetContext(tx, actor, projectId);
+      await this.assertFixedFeeAmount(tx, input.amount);
 
       if (!canEditDevelopmentFee(feeRecord.payStatus)) {
         throw new BadRequestException('已支付或已取消的收费记录不允许编辑。');
       }
 
-      const updatedRecord = await tx.developmentFee.update({
-        where: { id: feeId },
+      const claimed = await tx.developmentFee.updateMany({
+        where: {
+          id: feeId,
+          projectId,
+          payStatus: feeRecord.payStatus,
+          updatedAt: feeRecord.updatedAt,
+        },
         data: {
           feeType: input.feeType,
           amount: input.amount,
@@ -159,10 +171,13 @@ export class FeesService {
           remark: input.note,
           recordedById: actor.id,
         },
-        include: {
-          recordedBy: true,
-          createdBy: true,
-        },
+      });
+      if (claimed.count !== 1) {
+        this.throwFeeStateChanged();
+      }
+      const updatedRecord = await tx.developmentFee.findUniqueOrThrow({
+        where: { id: feeId },
+        include: { recordedBy: true, createdBy: true },
       });
 
       await this.activityLogsService.createWithExecutor(tx, {
@@ -234,9 +249,8 @@ export class FeesService {
       'workflow.transition',
     );
 
-    await this.prisma.$transaction(async (tx) => {
-      const context = await this.getFeeContext(tx, projectId);
-      this.assertWritableFeeStage(context);
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
+      const context = await this.lockActiveFeeTaskAndGetContext(tx, actor, projectId);
 
       if (!context.activeTask) {
         throw new BadRequestException('当前没有可完成的颜色开发收费任务。');
@@ -297,10 +311,10 @@ export class FeesService {
       'workflow.transition',
     );
 
-    await this.prisma.$transaction(async (tx) => {
-      const context = await this.getFeeContext(tx, projectId);
-      this.assertWritableFeeStage(context);
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
+      await this.lockFeeRow(tx, projectId, feeId);
       const feeRecord = await this.getFeeOrThrow(tx, projectId, feeId);
+      const context = await this.lockActiveFeeTaskAndGetContext(tx, actor, projectId);
       const nextStatus = getDevelopmentFeeStatusTransitionTarget(feeRecord.payStatus, action);
 
       if (!nextStatus) {
@@ -310,8 +324,13 @@ export class FeesService {
       await this.startTaskIfNeeded(tx, context.activeTask!, actor, '颜色开发收费记录开始处理。');
 
       const now = new Date();
-      const updatedRecord = await tx.developmentFee.update({
-        where: { id: feeId },
+      const claimed = await tx.developmentFee.updateMany({
+        where: {
+          id: feeId,
+          projectId,
+          payStatus: feeRecord.payStatus,
+          updatedAt: feeRecord.updatedAt,
+        },
         data: {
           payStatus: nextStatus,
           recordedById: actor.id,
@@ -335,10 +354,13 @@ export class FeesService {
               }
             : {}),
         },
-        include: {
-          recordedBy: true,
-          createdBy: true,
-        },
+      });
+      if (claimed.count !== 1) {
+        this.throwFeeStateChanged();
+      }
+      const updatedRecord = await tx.developmentFee.findUniqueOrThrow({
+        where: { id: feeId },
+        include: { recordedBy: true, createdBy: true },
       });
 
       await this.activityLogsService.createWithExecutor(tx, {
@@ -370,11 +392,13 @@ export class FeesService {
           createdBy: true,
         },
         orderBy: [{ recordedAt: 'desc' }, { createdAt: 'desc' }],
+        take: DEVELOPMENT_FEE_RECORD_LIMIT + 1,
       }),
       this.getActiveTask(db, projectId),
       this.hasApprovedOrCompletedWorkflowTask(db, projectId, WorkflowNodeCode.CAB_REVIEW),
       this.getFixedFeeAmount(db),
     ]);
+    this.assertFeeRecordCapacity(records, false);
 
     return {
       project: this.toProjectSummary(project),
@@ -413,8 +437,11 @@ export class FeesService {
           id: true,
           payStatus: true,
         },
+        take: DEVELOPMENT_FEE_RECORD_LIMIT + 1,
       }),
     ]);
+
+    this.assertFeeRecordCapacity(records, false);
 
     return {
       project,
@@ -422,6 +449,58 @@ export class FeesService {
       cabinReviewApproved,
       records,
     };
+  }
+
+  private async lockActiveFeeTaskAndGetContext(
+    tx: Prisma.TransactionClient,
+    actor: AuthenticatedUser,
+    projectId: string,
+  ) {
+    const lockedTasks = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+      SELECT "id"
+      FROM "workflow_tasks"
+      WHERE "projectId" = ${projectId}
+        AND "nodeCode" = ${DEVELOPMENT_FEE_NODE_CODE}::"WorkflowNodeCode"
+        AND "isActive" = true
+      ORDER BY "createdAt" DESC, "taskRound" DESC
+      LIMIT 1
+      FOR UPDATE
+    `);
+    const lockedTaskId = lockedTasks[0]?.id;
+    if (!lockedTaskId) {
+      this.throwFeeStateChanged();
+    }
+
+    const context = await this.getFeeContext(tx, projectId);
+    this.assertWritableFeeStage(context);
+    if (context.activeTask?.id !== lockedTaskId) {
+      this.throwFeeStateChanged();
+    }
+    await assertTeamTaskById(tx, context.activeTask!.id, actor);
+    return context;
+  }
+
+  private async lockFeeRow(
+    tx: Prisma.TransactionClient,
+    projectId: string,
+    feeId: string,
+  ) {
+    const rows = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+      SELECT "id"
+      FROM "development_fees"
+      WHERE "id" = ${feeId} AND "projectId" = ${projectId}
+      FOR UPDATE
+    `);
+    if (rows.length !== 1) {
+      throw new NotFoundException('收费记录不存在。');
+    }
+  }
+
+  private throwFeeStateChanged(): never {
+    throw new ConflictException({
+      code: 'DEVELOPMENT_FEE_STATE_CHANGED',
+      message: '收费记录或流程状态已变更，请刷新后重试。',
+    });
   }
 
   private async getFixedFeeAmount(db: FeesDbClient) {
@@ -475,21 +554,7 @@ export class FeesService {
   }
 
   private assertActorCanManage(actor: AuthenticatedUser) {
-    if (actor.isSystemAdmin) {
-      return;
-    }
-
-    if (
-      actor.roleCodes.some((roleCode) =>
-        FEE_MANAGEMENT_ROLE_CODES.includes(
-          roleCode as (typeof FEE_MANAGEMENT_ROLE_CODES)[number],
-        ),
-      )
-    ) {
-      return;
-    }
-
-    throw new BadRequestException('当前用户没有颜色开发收费权限。');
+    assertApprovedTeamMember(actor);
   }
 
   private async getProjectOrThrow(db: FeesDbClient, projectId: string) {
@@ -607,12 +672,10 @@ export class FeesService {
       Object.values(DevelopmentFeeType).includes(input.feeType as DevelopmentFeeType)
         ? (input.feeType as DevelopmentFeeType)
         : null;
-    const amount =
-      typeof input.amount === 'number'
-        ? input.amount
-        : typeof input.amount === 'string'
-          ? Number(input.amount)
-          : NaN;
+    const normalizedAmount =
+      typeof input.amount === 'number' || typeof input.amount === 'string'
+        ? String(input.amount).trim()
+        : '';
     const currency =
       typeof input.currency === 'string' && input.currency.trim().length > 0
         ? input.currency.trim().toUpperCase()
@@ -627,22 +690,75 @@ export class FeesService {
       throw new BadRequestException('费用类型不能为空。');
     }
 
-    if (!Number.isFinite(amount) || amount <= 0) {
-      throw new BadRequestException('金额必须大于 0。');
+    if (
+      !DEVELOPMENT_FEE_AMOUNT_PATTERN.test(normalizedAmount) ||
+      new Prisma.Decimal(normalizedAmount).lessThanOrEqualTo(0)
+    ) {
+      this.throwFeeInputOutOfBounds('金额必须为大于 0 且最多 16 位整数、2 位小数的数值。');
     }
 
     if (!payer) {
       throw new BadRequestException('付款方不能为空。');
     }
 
-    return {
+    if (!/^[A-Z]{3}$/.test(currency)) {
+      this.throwFeeInputOutOfBounds('币种必须为 3 位大写字母。');
+    }
+    this.assertFeeTextBound(payer, '付款方', DEVELOPMENT_FEE_PAYER_MAX_CHARS);
+    if (note) {
+      this.assertFeeTextBound(note, '备注', DEVELOPMENT_FEE_NOTE_MAX_CHARS);
+    }
+
+    const normalized = {
       feeType,
-      amount: new Prisma.Decimal(amount),
+      amount: normalizedAmount,
       currency,
       payer,
       note,
       recordedAt: this.parseDate(input.recordedAt, '记录时间'),
     };
+    if (
+      Buffer.byteLength(JSON.stringify(normalized), 'utf8') >
+      DEVELOPMENT_FEE_MAX_PAYLOAD_BYTES
+    ) {
+      this.throwFeeInputOutOfBounds(
+        `收费记录不得超过 ${DEVELOPMENT_FEE_MAX_PAYLOAD_BYTES} 字节。`,
+      );
+    }
+
+    return {
+      feeType,
+      amount: new Prisma.Decimal(normalizedAmount),
+      currency,
+      payer,
+      note,
+      recordedAt: normalized.recordedAt,
+    };
+  }
+
+  private assertFeeRecordCapacity(records: readonly unknown[], forCreate: boolean) {
+    if (
+      records.length > DEVELOPMENT_FEE_RECORD_LIMIT ||
+      (forCreate && records.length >= DEVELOPMENT_FEE_RECORD_LIMIT)
+    ) {
+      throw new ConflictException({
+        code: 'DEVELOPMENT_FEE_RECORD_LIMIT_EXCEEDED',
+        message: `每个项目最多保留 ${DEVELOPMENT_FEE_RECORD_LIMIT} 条收费记录。`,
+      });
+    }
+  }
+
+  private assertFeeTextBound(value: string, label: string, maxChars: number) {
+    if (value.length > maxChars) {
+      this.throwFeeInputOutOfBounds(`${label}不得超过 ${maxChars} 个字符。`);
+    }
+  }
+
+  private throwFeeInputOutOfBounds(message: string): never {
+    throw new BadRequestException({
+      code: 'FEE_INPUT_OUT_OF_BOUNDS',
+      message,
+    });
   }
 
   private parseDate(value: unknown, label: string) {

@@ -10,8 +10,6 @@ ROOT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 require_command docker
 
 load_compose_env
-load_release_state_if_present
 
 log "Running Prisma seed"
 compose run --rm api-seed
-

@@ -4,6 +4,8 @@ apps/web/.next-*
 dist
 coverage
 **/*.tsbuildinfo
+**/__pycache__/
+**/*.py[cod]
 .DS_Store
 .turbo
 .env

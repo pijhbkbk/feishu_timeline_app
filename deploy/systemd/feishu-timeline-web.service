@@ -5,19 +5,14 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-User=__APP_USER__
-Environment=HOME=/home/__APP_USER__
-Environment=COREPACK_HOME=/home/__APP_USER__/.cache/node/corepack
-WorkingDirectory=/opt/feishu_timeline_app/apps/web
-EnvironmentFile=/opt/feishu_timeline_app/apps/web/.env.production
-Environment=NODE_ENV=production
+User=__WEB_RUNTIME_USER__
+Group=__WEB_RUNTIME_GROUP__
+WorkingDirectory=/opt/feishu_timeline_app/current/apps/web
 Environment=PATH=/usr/local/bin:/usr/bin:/bin
-ExecStartPre=/usr/bin/test -d /home/__APP_USER__
-ExecStartPre=/usr/bin/test -d /opt/feishu_timeline_app/apps/web/.next
-ExecStartPre=/usr/bin/env bash -lc 'mkdir -p "$COREPACK_HOME"'
-ExecStartPre=/usr/bin/env bash -lc 'command -v node >/dev/null && node -v >/dev/null'
-ExecStartPre=/usr/bin/env bash -lc 'command -v pnpm >/dev/null && pnpm -v >/dev/null'
-ExecStart=/usr/bin/env bash -lc 'cd /opt/feishu_timeline_app/apps/web && exec pnpm exec next start --hostname 127.0.0.1 --port 3000'
+ExecStartPre=/usr/bin/python3 -I /usr/local/libexec/feishu-timeline/dotenv-data validate --profile web /etc/feishu-timeline/web.env
+ExecStartPre=/usr/bin/test -d /opt/feishu_timeline_app/current/apps/web/.next
+ExecStartPre=/usr/bin/node --version
+ExecStart=/usr/bin/python3 -I /usr/local/libexec/feishu-timeline/dotenv-data exec --profile web /etc/feishu-timeline/web.env -- /usr/bin/node /opt/feishu_timeline_app/current/apps/web/node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3000
 Restart=always
 RestartSec=5
 SyslogIdentifier=feishu-timeline-web
@@ -28,8 +23,10 @@ ProtectControlGroups=true
 ProtectKernelModules=true
 ProtectKernelTunables=true
 ProtectHostname=true
-ProtectSystem=full
-ReadWritePaths=/home/__APP_USER__/.cache/node/corepack
+ProtectSystem=strict
+ProtectHome=true
+ProtectProc=invisible
+ReadOnlyPaths=/opt/feishu_timeline_app/releases
 RestrictSUIDSGID=true
 RestrictNamespaces=true
 RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6

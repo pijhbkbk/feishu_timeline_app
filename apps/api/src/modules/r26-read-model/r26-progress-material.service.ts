@@ -1,3 +1,4 @@
+import { assertTeamTaskById, assertTeamTaskOperator, canOperateTeamTask, withProjectWrite, withSystemProjectWrite } from '../../common/team-authorization';
 import { createHash } from 'node:crypto';
 
 import {
@@ -8,12 +9,13 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
+  AttachmentScanStatus,
   AttachmentTargetType,
   AuditTargetType,
   Prisma,
-  ProjectMemberType,
   TaskBlockerStatus,
   UserStatus,
+  WorkflowNodeCode,
   WorkflowTaskStatus,
 } from '@prisma/client';
 
@@ -71,6 +73,7 @@ export class R26ProgressMaterialService {
       progressUpdates,
       attachments,
       assistanceDepartments,
+      materialVersions,
     ] = await Promise.all([
       this.prisma.workflowNodeDefinition.findUnique({
         where: { nodeCode: task.nodeCode },
@@ -108,18 +111,24 @@ export class R26ProgressMaterialService {
           projectId: task.projectId,
           entityType: AttachmentTargetType.WORKFLOW_TASK,
           entityId: task.id,
+          isDeleted: false,
+          scanStatus: AttachmentScanStatus.CLEAN,
         },
         include: {
           uploadedBy: { select: { id: true, name: true } },
         },
         orderBy: [{ versionNo: 'desc' }, { uploadedAt: 'desc' }],
+        take: 1001,
       }),
       this.prisma.department.findMany({
         where: { isActive: true },
         select: { id: true, name: true },
         orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+        take: 1001,
       }),
+      this.loadMaterialVersionPage(task),
     ]);
+    if (attachments.length > 1000 || assistanceDepartments.length > 1000) throw new ConflictException('工作单资料数量超出单次读取范围，请管理员核对。');
     const requiredMaterials = this.parseRequiredMaterials(
       definition?.requiredAttachments,
     );
@@ -130,9 +139,16 @@ export class R26ProgressMaterialService {
       attachments,
     );
     const availableActions = this.getAvailableActions(task, actor);
+    const taskPayload = task.payload && typeof task.payload === 'object' && !Array.isArray(task.payload) ? task.payload : {};
+    const oldRework = taskPayload.rework && typeof taskPayload.rework === 'object' && !Array.isArray(taskPayload.rework) ? taskPayload.rework : {};
 
     return {
       gate: 'R26_GATE3B',
+      rework: {
+        requiresReview: oldRework.applicability === 'REQUIRES_REVIEW',
+        supersedesTaskId: typeof taskPayload.supersedesTaskId === 'string' ? taskPayload.supersedesTaskId : null,
+        isTechnicalRework: typeof taskPayload.technicalReworkSourceTaskId === 'string',
+      },
       taskVersion: task.updatedAt.toISOString(),
       progressSubmissionEnabled: availableActions.some(
         (action) => action.action === 'SUBMIT_PROGRESS',
@@ -143,7 +159,7 @@ export class R26ProgressMaterialService {
       progressHistory: progressUpdates.map((item) =>
         this.serializeProgress(item),
       ),
-      materials: materialView,
+      materials: { ...materialView, versions: materialVersions.items, versionsNextCursor: materialVersions.nextCursor },
       assistanceOptions: {
         users: this.uniquePeople([
           task.project.ownerUser,
@@ -192,8 +208,9 @@ export class R26ProgressMaterialService {
     if (replay) return replay;
 
     try {
-      return await this.prisma.$transaction(
+      return await withProjectWrite(this.prisma, actor, { taskId },
         async (tx) => {
+          await assertTeamTaskById(tx, task.id, actor);
           const duplicate = await tx.r26CommandRequest.findUnique({
             where: { idempotencyKey: input.idempotencyKey },
           });
@@ -301,8 +318,9 @@ export class R26ProgressMaterialService {
     if (replay) return replay;
 
     try {
-      return await this.prisma.$transaction(
+      return await withProjectWrite(this.prisma, actor, { taskId },
         async (tx) => {
+          await assertTeamTaskById(tx, task.id, actor);
           const current = await tx.r26ProgressDraft.findUnique({
             where: {
               workflowTaskId_authorUserId: {
@@ -393,8 +411,9 @@ export class R26ProgressMaterialService {
     }
 
     try {
-      const result = await this.prisma.$transaction(
+      const result = await withProjectWrite(this.prisma, actor, { taskId },
         async (tx) => {
+          await assertTeamTaskById(tx, task.id, actor);
           const lockedTask = await tx.workflowTask.findUnique({
             where: { id: task.id },
             select: {
@@ -657,65 +676,31 @@ export class R26ProgressMaterialService {
     actor: AuthenticatedUser,
     requestId: string,
   ) {
-    const task = await this.loadWritableTaskOrThrow(taskId, actor, true);
-    this.assertTaskVersion(task, input.taskVersion);
+    const task = await this.loadWritableTaskOrThrow(
+      taskId,
+      actor,
+      true,
+      false,
+    );
     this.assertMaterialType(input.materialType);
     if (!file) throw new BadRequestException('请选择要上传的材料。');
 
-    const replacement = input.replacesAttachmentId
-      ? await this.prisma.attachment.findFirst({
-          where: {
-            id: input.replacesAttachmentId,
-            projectId: task.projectId,
-            entityType: AttachmentTargetType.WORKFLOW_TASK,
-            entityId: task.id,
-            isDeleted: false,
-          },
-        })
-      : null;
-    if (input.replacesAttachmentId && !replacement) {
-      throw new NotFoundException('待替换材料不存在或不属于当前工序。');
-    }
-    if (
-      replacement?.materialType &&
-      replacement.materialType !== input.materialType
-    ) {
-      throw new BadRequestException('替换材料的类型必须与原材料一致。');
-    }
-    const activeSameType = await this.prisma.attachment.findFirst({
-      where: {
-        projectId: task.projectId,
-        entityType: AttachmentTargetType.WORKFLOW_TASK,
-        entityId: task.id,
-        materialType: input.materialType,
-        isDeleted: false,
-      },
-    });
-    if (activeSameType && activeSameType.id !== replacement?.id) {
-      throw new ConflictException({
-        code: 'MATERIAL_VERSION_REPLACEMENT_REQUIRED',
-        message: '该材料已有当前版本，请使用“替换版本”上传。',
-        attachmentId: activeSameType.id,
-      });
-    }
-
+    const replacementId = input.replacesAttachmentId ?? null;
+    const action = replacementId
+      ? 'R26_MATERIAL_VERSION_UPLOADED'
+      : 'R26_MATERIAL_UPLOADED';
     const requestHash = this.hashRequest({
-      action: replacement
-        ? 'R26_MATERIAL_VERSION_UPLOADED'
-        : 'R26_MATERIAL_UPLOADED',
+      action,
       taskId,
       actorUserId: actor.id,
       materialType: input.materialType,
       taskVersion: input.taskVersion,
-      replacesAttachmentId: replacement?.id ?? null,
+      replacesAttachmentId: replacementId,
       fileName: file.originalname,
       mimeType: file.mimetype,
       fileSize: file.size,
       checksum: createHash('sha256').update(file.buffer).digest('hex'),
     });
-    const action = replacement
-      ? 'R26_MATERIAL_VERSION_UPLOADED'
-      : 'R26_MATERIAL_UPLOADED';
     const replay = await this.findCommandReplay(
       input.idempotencyKey,
       task,
@@ -725,17 +710,60 @@ export class R26ProgressMaterialService {
     );
     if (replay) return replay;
 
+    let replacement: Awaited<ReturnType<Prisma.TransactionClient['attachment']['findFirst']>>;
     try {
-      await this.prisma.r26CommandRequest.create({
-        data: {
-          projectId: task.projectId,
-          actorUserId: actor.id,
-          idempotencyKey: input.idempotencyKey,
-          action,
-          requestHash,
-          result: Prisma.JsonNull,
-        },
+      const reserved = await withProjectWrite(this.prisma, actor, { taskId }, async tx => {
+        const existing = await tx.r26CommandRequest.findUnique({ where: { idempotencyKey: input.idempotencyKey } });
+        if (existing) return { kind: 'replay' as const, result: this.replayCommand(existing, task, actor, action, requestHash) };
+        await assertTeamTaskById(tx, taskId, actor);
+        const current = await tx.workflowTask.findUniqueOrThrow({ where: { id: taskId }, select: { updatedAt: true, projectId: true } });
+        if (current.projectId !== task.projectId) throw new ConflictException('工序所属项目已变化。');
+        this.assertTaskVersion(current, input.taskVersion);
+        const replacement = replacementId
+          ? await tx.attachment.findFirst({
+              where: {
+                id: replacementId,
+                projectId: task.projectId,
+                entityType: AttachmentTargetType.WORKFLOW_TASK,
+                entityId: task.id,
+                isDeleted: false,
+              },
+            })
+          : null;
+        if (replacementId && !replacement) {
+          throw new NotFoundException('待替换材料不存在或不属于当前工序。');
+        }
+        if (
+          replacement?.materialType &&
+          replacement.materialType !== input.materialType
+        ) {
+          throw new BadRequestException('替换材料的类型必须与原材料一致。');
+        }
+        const activeSameType = await tx.attachment.findFirst({
+          where: {
+            projectId: task.projectId,
+            entityType: AttachmentTargetType.WORKFLOW_TASK,
+            entityId: task.id,
+            materialType: input.materialType,
+            isDeleted: false,
+            scanStatus: AttachmentScanStatus.CLEAN,
+          },
+        });
+        if (activeSameType && activeSameType.id !== replacement?.id) {
+          throw new ConflictException({
+            code: 'MATERIAL_VERSION_REPLACEMENT_REQUIRED',
+            message: '该材料已有当前版本，请使用“替换版本”上传。',
+            attachmentId: activeSameType.id,
+          });
+        }
+        await tx.r26CommandRequest.create({ data: {
+          projectId: task.projectId, actorUserId: actor.id,
+          idempotencyKey: input.idempotencyKey, action, requestHash, result: Prisma.JsonNull,
+        } });
+        return { kind: 'reserved' as const, replacement };
       });
+      if (reserved.kind === 'replay') return reserved.result;
+      replacement = reserved.replacement;
     } catch (error) {
       if (this.isUniqueConstraintError(error)) {
         const duplicate = await this.prisma.r26CommandRequest.findUnique({
@@ -760,6 +788,7 @@ export class R26ProgressMaterialService {
 
     try {
       const attachment = await this.attachmentsService.createStoredAttachment({
+        actor,
         projectId: task.projectId,
         targetType: AttachmentTargetType.WORKFLOW_TASK,
         targetId: task.id,
@@ -771,6 +800,21 @@ export class R26ProgressMaterialService {
         summary: replacement
           ? `替换工序材料，生成 V${replacement.versionNo + 1}：${file.originalname}`
           : `上传工序材料：${file.originalname}`,
+        finalizeUploadResult: async (tx, stored) => {
+          const result = { action, requestId, idempotencyKey: input.idempotencyKey, idempotentReplay: false,
+            materialUploaded: true, attachment: stored, taskStatusChanged: false, workflowTransitioned: false };
+          await tx.r26CommandRequest.update({ where: { idempotencyKey: input.idempotencyKey }, data: { result: result as Prisma.InputJsonValue } });
+        },
+        finalizeDomainAttachment: this.createMaterialAttachmentFinalizeHook({
+          actor,
+          projectId: task.projectId,
+          taskId: task.id,
+          nodeCode: task.nodeCode,
+          materialType: input.materialType,
+          taskVersion: input.taskVersion,
+          replacementId: replacement?.id ?? null,
+          replacementVersion: replacement?.versionNo ?? null,
+        }),
       });
       const result = {
         action,
@@ -782,18 +826,14 @@ export class R26ProgressMaterialService {
         taskStatusChanged: false,
         workflowTransitioned: false,
       };
-      await this.prisma.r26CommandRequest.update({
-        where: { idempotencyKey: input.idempotencyKey },
-        data: { result: result as Prisma.InputJsonValue },
-      });
       return result;
     } catch (error) {
-      await this.prisma.r26CommandRequest.deleteMany({
+      await withSystemProjectWrite(this.prisma, task.projectId, tx => tx.r26CommandRequest.deleteMany({
         where: {
           idempotencyKey: input.idempotencyKey,
           result: { equals: Prisma.JsonNull },
         },
-      });
+      }));
       throw error;
     }
   }
@@ -812,6 +852,173 @@ export class R26ProgressMaterialService {
       actor,
       disposition,
     );
+  }
+
+  async getMaterialVersions(taskId: string, actor: AuthenticatedUser, after?: string) {
+    const task = await this.loadTaskOrThrow(taskId, actor);
+    return this.loadMaterialVersionPage(task, after);
+  }
+
+  private async loadMaterialVersionPage(task: { id: string; projectId: string }, after?: string) {
+    if ((after?.length ?? 0) > 128) throw new BadRequestException('材料分页参数过长。');
+    // Deleted uploads are history only when another version replaces them in the
+    // same task. Ordinary deletions must not become downloadable history.
+    const ids = await this.prisma.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+      SELECT a.id FROM attachments a WHERE a."projectId" = ${task.projectId}
+        AND a."targetType" = 'WORKFLOW_TASK' AND a."targetId" = ${task.id} AND a."scanStatus" = 'CLEAN'
+        AND (NOT a."isDeleted" OR EXISTS (SELECT 1 FROM attachments newer
+          WHERE newer."replacesAttachmentId" = a.id AND newer."projectId" = a."projectId"
+            AND newer."targetType" = a."targetType" AND newer."targetId" = a."targetId"))
+        ${after ? Prisma.sql`AND a.id < ${after}` : Prisma.empty}
+      ORDER BY a.id DESC LIMIT 31`);
+    const page = ids.slice(0, 30);
+    const attachments = page.length ? await this.prisma.attachment.findMany({
+      where: { id: { in: page.map(row => row.id) }, projectId: task.projectId, entityType: 'WORKFLOW_TASK', entityId: task.id, scanStatus: 'CLEAN' },
+      include: { uploadedBy: { select: { id: true, name: true } } }, orderBy: { id: 'desc' }, take: 30,
+    }) : [];
+    return { items: this.buildMaterialView(task.projectId, task.id, [], attachments).versions,
+      nextCursor: ids.length > 30 ? page[29]!.id : null };
+  }
+
+  private createMaterialAttachmentFinalizeHook(input: {
+    actor: AuthenticatedUser;
+    projectId: string;
+    taskId: string;
+    nodeCode: WorkflowNodeCode;
+    materialType: string;
+    taskVersion: string;
+    replacementId: string | null;
+    replacementVersion: number | null;
+  }) {
+    return async (tx: Prisma.TransactionClient) => {
+      if (!(await this.lockWorkflowTaskRow(tx, input.projectId, input.taskId))) {
+        this.throwAttachmentTargetStateChanged();
+      }
+
+      const task = await tx.workflowTask.findUnique({
+        where: { id: input.taskId },
+        select: {
+          id: true,
+          projectId: true,
+          nodeCode: true,
+          assigneeUserId: true,
+          status: true,
+          isActive: true,
+          updatedAt: true,
+        },
+      });
+      const expectedVersion = new Date(input.taskVersion);
+      if (
+        !task ||
+        task.projectId !== input.projectId ||
+        task.nodeCode !== input.nodeCode ||
+        !task.isActive ||
+        !EDITABLE_TASK_STATUSES.has(task.status) ||
+        task.updatedAt.getTime() !== expectedVersion.getTime()
+      ) {
+        this.throwAttachmentTargetStateChanged();
+      }
+
+      assertTeamTaskOperator(task, input.actor);
+
+      if (input.replacementId) {
+        if (
+          !(await this.lockAttachmentRow(
+            tx,
+            input.projectId,
+            input.replacementId,
+          ))
+        ) {
+          this.throwAttachmentTargetStateChanged();
+        }
+        const replacement = await tx.attachment.findFirst({
+          where: {
+            id: input.replacementId,
+            projectId: input.projectId,
+            entityType: AttachmentTargetType.WORKFLOW_TASK,
+            entityId: input.taskId,
+            materialType: input.materialType,
+            ...(input.replacementVersion !== null
+              ? { versionNo: input.replacementVersion }
+              : {}),
+            isDeleted: false,
+            scanStatus: AttachmentScanStatus.CLEAN,
+          },
+          select: { id: true },
+        });
+        if (!replacement) {
+          this.throwAttachmentTargetStateChanged();
+        }
+      }
+
+      const activeMaterial = await tx.attachment.findFirst({
+        where: {
+          projectId: input.projectId,
+          entityType: AttachmentTargetType.WORKFLOW_TASK,
+          entityId: input.taskId,
+          materialType: input.materialType,
+          isDeleted: false,
+          scanStatus: AttachmentScanStatus.CLEAN,
+        },
+        select: { id: true },
+      });
+      if ((activeMaterial?.id ?? null) !== input.replacementId) {
+        this.throwAttachmentTargetStateChanged();
+      }
+
+      const nextTaskVersion = new Date(
+        Math.max(Date.now(), expectedVersion.getTime() + 1),
+      );
+      const updated = await tx.workflowTask.updateMany({
+        where: {
+          id: input.taskId,
+          projectId: input.projectId,
+          nodeCode: input.nodeCode,
+          isActive: true,
+          status: { in: [...EDITABLE_TASK_STATUSES] },
+          updatedAt: expectedVersion,
+        },
+        data: { updatedAt: nextTaskVersion },
+      });
+      if (updated.count !== 1) {
+        this.throwAttachmentTargetStateChanged();
+      }
+    };
+  }
+
+  private async lockWorkflowTaskRow(
+    tx: Prisma.TransactionClient,
+    projectId: string,
+    taskId: string,
+  ) {
+    const rows = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+      SELECT "id"
+      FROM "workflow_tasks"
+      WHERE "id" = ${taskId} AND "projectId" = ${projectId}
+      FOR UPDATE
+    `);
+    return rows.length === 1;
+  }
+
+  private async lockAttachmentRow(
+    tx: Prisma.TransactionClient,
+    projectId: string,
+    attachmentId: string,
+  ) {
+    const rows = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+      SELECT "id"
+      FROM "attachments"
+      WHERE "id" = ${attachmentId} AND "projectId" = ${projectId}
+      FOR UPDATE
+    `);
+    return rows.length === 1;
+  }
+
+  private throwAttachmentTargetStateChanged(): never {
+    throw new ConflictException({
+      code: 'ATTACHMENT_TARGET_STATE_CHANGED',
+      message: '附件扫描期间工序或材料状态已变更，请刷新后重试。',
+    });
   }
 
   private async loadTaskOrThrow(
@@ -884,18 +1091,11 @@ export class R26ProgressMaterialService {
     taskId: string,
     actor: AuthenticatedUser,
     forMaterial = false,
+    requireEditableState = true,
   ) {
     const task = await this.loadTaskOrThrow(taskId, actor);
-    this.assertTaskCanReceiveProgress(task);
-    const actions = this.getAvailableActions(task, actor);
-    const requiredAction = forMaterial ? 'UPLOAD_MATERIAL' : 'SUBMIT_PROGRESS';
-    if (!actions.some((action) => action.action === requiredAction)) {
-      throw new ForbiddenException(
-        forMaterial
-          ? '当前用户不是该工序明确授权的材料提交人。'
-          : '当前用户不是该工序明确授权的进展提交人。',
-      );
-    }
+    if (requireEditableState) this.assertTaskCanReceiveProgress(task);
+    this.assertActorCanWriteTask(task, actor, forMaterial);
     return task;
   }
 
@@ -906,32 +1106,50 @@ export class R26ProgressMaterialService {
     ) {
       return [];
     }
-    const nodeAssignment = task.project.nodeAssignments.find(
-      (item) => item.nodeCode === task.nodeCode,
-    );
-    const collaboratorIds = this.parseIdList(
-      nodeAssignment?.collaboratorUserIds,
-    );
-    const managerMember = task.project.members.some(
-      (member) =>
-        member.userId === actor.id &&
-        (member.memberType === ProjectMemberType.OWNER ||
-          member.memberType === ProjectMemberType.MANAGER),
-    );
-    const canSubmit =
-      actor.isSystemAdmin ||
-      actor.roleCodes.includes('admin') ||
-      task.assigneeUserId === actor.id ||
-      task.project.ownerUserId === actor.id ||
-      managerMember ||
-      collaboratorIds.includes(actor.id);
-    if (!canSubmit) return [];
+    if (!this.hasWritableTaskScope(task, actor)) return [];
+
+    const permissionCodes = new Set(actor.permissionCodes ?? []);
+    const canWriteProgress =
+      actor.isSystemAdmin || permissionCodes.has('workflow.transition');
+    const canManageAttachments =
+      actor.isSystemAdmin || permissionCodes.has('attachment.manage');
+
     return [
-      { action: 'SAVE_PROGRESS_DRAFT', label: '保存草稿' },
-      { action: 'DELETE_PROGRESS_DRAFT', label: '删除草稿' },
-      { action: 'SUBMIT_PROGRESS', label: '提交工作进展' },
-      { action: 'UPLOAD_MATERIAL', label: '上传工序材料' },
+      ...(canWriteProgress
+        ? [
+            { action: 'SAVE_PROGRESS_DRAFT', label: '保存草稿' },
+            { action: 'DELETE_PROGRESS_DRAFT', label: '删除草稿' },
+            { action: 'SUBMIT_PROGRESS', label: '提交工作进展' },
+          ]
+        : []),
+      ...(canManageAttachments
+        ? [{ action: 'UPLOAD_MATERIAL', label: '上传工序材料' }]
+        : []),
     ];
+  }
+
+  private hasWritableTaskScope(task: Gate3BTask, actor: AuthenticatedUser) {
+    return canOperateTeamTask(task, actor);
+  }
+
+  private assertActorCanWriteTask(
+    task: Gate3BTask,
+    actor: AuthenticatedUser,
+    forMaterial: boolean,
+  ) {
+    const requiredPermission = forMaterial
+      ? 'attachment.manage'
+      : 'workflow.transition';
+    const hasPermission =
+      actor.isSystemAdmin ||
+      (actor.permissionCodes ?? []).includes(requiredPermission);
+    if (!this.hasWritableTaskScope(task, actor) || !hasPermission) {
+      throw new ForbiddenException(
+        forMaterial
+          ? '当前用户不是该工序明确授权的材料提交人。'
+          : '当前用户不是该工序明确授权的进展提交人。',
+      );
+    }
   }
 
   private assertTaskCanReceiveProgress(task: {
@@ -1030,6 +1248,7 @@ export class R26ProgressMaterialService {
         entityType: AttachmentTargetType.WORKFLOW_TASK,
         entityId: task.id,
         isDeleted: false,
+        scanStatus: AttachmentScanStatus.CLEAN,
       },
     });
     if (count !== uniqueIds.length) {

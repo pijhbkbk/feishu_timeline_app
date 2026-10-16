@@ -1,4 +1,12 @@
-import { Injectable } from '@nestjs/common';
+import { PERSON_PRESENTATION_SELECT, personPresentation } from '../persons/person-profile-read';
+import { isApprovedTeamMember, TEAM_BUSINESS_PERMISSIONS } from '../../common/team-membership';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { Prisma, UserStatus } from '@prisma/client';
 
 import { PrismaService } from '../../infra/prisma/prisma.service';
@@ -11,10 +19,12 @@ import {
 } from '../auth/auth.constants';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import type { FeishuIdentityProfile } from '../feishu/feishu.types';
+import type { UserDirectoryQueryDto } from './dto/user-directory-query.dto';
 
 type UserWithRelations = Prisma.UserGetPayload<{
   include: {
     department: true;
+    personProfile: { select: typeof PERSON_PRESENTATION_SELECT };
     userRoles: {
       include: {
         role: {
@@ -33,6 +43,13 @@ type UpsertMockUserInput = {
   roleCodes: RoleCode[];
 };
 
+type NormalizedDirectoryQuery = {
+  q?: string;
+  projectId?: string;
+  take: number;
+  cursor?: string;
+};
+
 @Injectable()
 export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
@@ -42,6 +59,7 @@ export class UsersService {
       where: { id: userId },
       include: {
         department: true,
+        personProfile: { select: PERSON_PRESENTATION_SELECT },
         userRoles: {
           include: {
             role: {
@@ -234,74 +252,131 @@ export class UsersService {
     return roles;
   }
 
-  async getDirectory(search?: string) {
-    const normalizedSearch = search?.trim();
+  async getDirectory(rawQuery: UserDirectoryQueryDto, actor: AuthenticatedUser) {
+    const query = this.normalizeDirectoryQuery(rawQuery);
+    await this.assertDirectoryScope(query.projectId, actor);
+
     const users = await this.prisma.user.findMany({
       where: {
         status: UserStatus.ACTIVE,
-        ...(normalizedSearch
+        ...(query.q
           ? {
               OR: [
-                {
-                  username: {
-                    contains: normalizedSearch,
-                    mode: 'insensitive',
-                  },
-                },
-                {
-                  name: {
-                    contains: normalizedSearch,
-                    mode: 'insensitive',
-                  },
-                },
-                {
-                  email: {
-                    contains: normalizedSearch,
-                    mode: 'insensitive',
-                  },
-                },
+                { personProfile: { is: { name: { contains: query.q, mode: 'insensitive' } } } },
+                { personProfile: { is: null }, name: { contains: query.q, mode: 'insensitive' } },
               ],
             }
           : {}),
+        localCredential: { isNot: null },
       },
-      include: {
-        department: true,
-        userRoles: {
-          include: {
-            role: {
-              include: {
-                rolePermissions: true,
-              },
-            },
+      select: {
+        id: true,
+        name: true,
+        departmentId: true,
+        personProfile: { select: PERSON_PRESENTATION_SELECT },
+        department: {
+          select: {
+            name: true,
           },
         },
       },
-      orderBy: [{ name: 'asc' }],
-      take: 100,
+      orderBy: { id: 'asc' },
+      take: query.take,
+      ...(query.cursor
+        ? {
+            cursor: { id: query.cursor },
+            skip: 1,
+          }
+        : {}),
     });
 
-    return users.map((user) => ({
-      id: user.id,
-      username: user.username,
-      name: user.name,
-      email: user.email,
-      departmentId: user.departmentId,
-      departmentName: user.department?.name ?? null,
-      roleCodes: user.userRoles
-        .map((userRole) => userRole.role.code)
-        .filter((roleCode): roleCode is RoleCode => roleCode in ROLE_LABELS),
-    }));
+    return users.map(personPresentation);
+  }
+
+  private normalizeDirectoryQuery(rawQuery: UserDirectoryQueryDto): NormalizedDirectoryQuery {
+    if (!rawQuery || typeof rawQuery !== 'object' || Array.isArray(rawQuery)) {
+      throw new BadRequestException('用户目录查询参数不正确。');
+    }
+
+    const q = this.normalizeDirectoryString(rawQuery.q, 'q', 80);
+    const projectId = this.normalizeDirectoryString(rawQuery.projectId, 'projectId', 64);
+    const cursor = this.normalizeDirectoryString(rawQuery.cursor, 'cursor', 64);
+    const take = rawQuery.take ?? 50;
+
+    if (!Number.isInteger(take) || take < 1 || take > 50) {
+      throw new BadRequestException('用户目录 take 必须是 1 到 50 的整数。');
+    }
+
+    return {
+      ...(q ? { q } : {}),
+      ...(projectId ? { projectId } : {}),
+      take,
+      ...(cursor ? { cursor } : {}),
+    };
+  }
+
+  private normalizeDirectoryString(
+    value: unknown,
+    field: 'q' | 'projectId' | 'cursor',
+    maxLength: number,
+  ) {
+    if (value === undefined) {
+      return undefined;
+    }
+
+    if (typeof value !== 'string') {
+      throw new BadRequestException(`用户目录 ${field} 必须是字符串。`);
+    }
+
+    const normalized = value.trim();
+    if (normalized.length < 1 || normalized.length > maxLength) {
+      throw new BadRequestException(
+        `用户目录 ${field} 长度必须在 1 到 ${maxLength} 个字符之间。`,
+      );
+    }
+
+    return normalized;
+  }
+
+  private async assertDirectoryScope(
+    projectId: string | undefined,
+    actor: AuthenticatedUser,
+  ) {
+    const permissions = new Set(actor.permissionCodes ?? []);
+
+    if (!projectId) {
+      if (actor.isSystemAdmin || permissions.has('project.read')) {
+        return;
+      }
+
+      throw new ForbiddenException('当前用户无权读取全局用户目录。');
+    }
+
+    if (
+      !actor.isSystemAdmin &&
+      !permissions.has('project.read') &&
+      !permissions.has('project.write')
+    ) {
+      throw new ForbiddenException('当前用户缺少项目权限。');
+    }
+
+    const project = await this.prisma.project.findUnique({
+      where: { id: projectId },
+      select: { id: true },
+    });
+    if (!project) throw new NotFoundException('项目不存在。');
   }
 
   private toAuthenticatedUser(user: UserWithRelations, authSource: AuthSource): AuthenticatedUser {
+    const presentation = personPresentation(user);
     if (AUTHENTICATED_USERS_HAVE_FULL_ACCESS) {
       return {
         id: user.id,
         username: user.username,
-        name: user.name,
+        name: presentation.name,
         email: user.email,
-        departmentId: user.departmentId,
-        departmentName: user.department?.name ?? null,
+        departmentId: presentation.departmentId,
+        departmentName: presentation.departmentName,
         isSystemAdmin: true,
         authSource,
         roleCodes: ['admin'],
@@ -312,18 +387,24 @@ export class UsersService {
     return {
       id: user.id,
       username: user.username,
-      name: user.name,
+      name: presentation.name,
       email: user.email,
-      departmentId: user.departmentId,
-      departmentName: user.department?.name ?? null,
+      departmentId: presentation.departmentId,
+      departmentName: presentation.departmentName,
       isSystemAdmin: user.isSystemAdmin,
+      teamAccessApproved: user.teamAccessApproved,
       authSource,
+      authVersion: user.authVersion,
+      requestedJob: user.requestedJob,
+      onboardingCompleted: user.onboardingCompleted,
       roleCodes: user.userRoles
+        .filter((userRole) => userRole.role.status === 'ACTIVE')
         .map((userRole) => userRole.role.code)
         .filter((roleCode): roleCode is RoleCode => roleCode in ROLE_LABELS),
       permissionCodes: [
+        ...(isApprovedTeamMember({ authSource, isSystemAdmin: user.isSystemAdmin, teamAccessApproved: user.teamAccessApproved }) ? TEAM_BUSINESS_PERMISSIONS : []),
         ...new Set(
-          user.userRoles.flatMap((userRole) =>
+          user.userRoles.filter((userRole) => userRole.role.status === 'ACTIVE').flatMap((userRole) =>
             userRole.role.rolePermissions.map((permission) => permission.permissionCode),
           ),
         ),
@@ -342,33 +423,14 @@ export class UsersService {
       return;
     }
 
-    const roleCode: RoleCode = 'viewer';
-    const role = await tx.role.upsert({
-      where: { code: roleCode },
-      create: {
-        code: roleCode,
-        name: ROLE_LABELS[roleCode],
-        description: '飞书登录默认只读角色。',
-        isSystem: true,
-      },
-      update: {
-        name: ROLE_LABELS[roleCode],
-        description: '飞书登录默认只读角色。',
-        isSystem: true,
-      },
+    const role = await tx.role.findUnique({
+      where: { code: 'viewer' },
+      select: { id: true, code: true, status: true },
     });
-    const permissionCodes = ROLE_PERMISSION_CODE_MAP[roleCode] ?? [];
-
-    await tx.rolePermission.deleteMany({
-      where: { roleId: role.id },
-    });
-
-    if (permissionCodes.length > 0) {
-      await tx.rolePermission.createMany({
-        data: permissionCodes.map((permissionCode) => ({
-          roleId: role.id,
-          permissionCode,
-        })),
+    if (!role || role.status !== 'ACTIVE') {
+      throw new ServiceUnavailableException({
+        code: 'DEFAULT_FEISHU_ROLE_MISSING',
+        message: '飞书默认角色未配置或已停用，请联系系统管理员。',
       });
     }
 

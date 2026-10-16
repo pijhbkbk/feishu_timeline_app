@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  Inject,
   Injectable,
   type CallHandler,
   type ExecutionContext,
@@ -8,16 +9,83 @@ import {
   mixin,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { finalize } from 'rxjs';
 
-export const API_UPLOAD_MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024;
+import type { AuthenticatedRequest } from '../modules/auth/auth.types';
+import {
+  UploadAdmissionRejectedException,
+  UploadAdmissionService,
+  type UploadAdmissionLease,
+} from './upload-admission.service';
+import { API_UPLOAD_MAX_FILE_SIZE_BYTES } from './upload-security.constants';
+
+export { API_UPLOAD_MAX_FILE_SIZE_BYTES } from './upload-security.constants';
 
 type FileInterceptorOptions = NonNullable<Parameters<typeof FileInterceptor>[1]>;
 
 type MulterOptionsWithFieldNestingLimit = Omit<FileInterceptorOptions, 'limits'> & {
   readonly limits: NonNullable<FileInterceptorOptions['limits']> & {
     readonly fieldNestingDepth: number;
+    readonly fieldArrayIndexLimit: number;
   };
 };
+
+type UploadLifecycleEmitter = {
+  once(event: string, listener: () => void): unknown;
+  removeListener(event: string, listener: () => void): unknown;
+};
+
+type UploadLifecycleRequest = UploadLifecycleEmitter & {
+  aborted?: boolean;
+};
+
+type UploadLifecycleResponse = UploadLifecycleEmitter & {
+  writableFinished?: boolean;
+};
+
+export function bindUploadAdmissionLeaseToHttpLifecycle(
+  request: UploadLifecycleRequest,
+  response: UploadLifecycleResponse,
+  lease: UploadAdmissionLease,
+) {
+  let released = false;
+  let transportTerminal = Boolean(request.aborted || response.writableFinished);
+  let downstreamWorkSettled = false;
+  const bindings: Array<[UploadLifecycleEmitter, string]> = [
+    [response, 'finish'],
+    [response, 'close'],
+    [response, 'error'],
+    [request, 'aborted'],
+    [request, 'error'],
+  ];
+  const releaseIfSettled = () => {
+    if (!transportTerminal || !downstreamWorkSettled || released) return;
+    released = true;
+    for (const [emitter, event] of bindings) {
+      emitter.removeListener(event, markTransportTerminal);
+    }
+    lease.release();
+  };
+  const markTransportTerminal = () => {
+    if (released) return;
+    transportTerminal = true;
+    releaseIfSettled();
+  };
+
+  for (const [emitter, event] of bindings) {
+    emitter.once(event, markTransportTerminal);
+  }
+
+  releaseIfSettled();
+
+  return {
+    markDownstreamWorkSettled() {
+      if (released) return;
+      downstreamWorkSettled = true;
+      releaseIfSettled();
+    },
+  };
+}
 
 /**
  * Transport-level limits shared by every API endpoint that accepts one binary file.
@@ -36,6 +104,7 @@ export const SECURE_SINGLE_FILE_UPLOAD_OPTIONS = Object.freeze({
     fieldSize: 1024,
     headerPairs: 20,
     fieldNestingDepth: 0,
+    fieldArrayIndexLimit: 0,
   }),
 }) satisfies MulterOptionsWithFieldNestingLimit;
 
@@ -47,12 +116,40 @@ export function SecureSingleFileInterceptor(fieldName: string): Type<NestInterce
 
   @Injectable()
   class SecureSingleFileInterceptorMixin extends NestFileInterceptor {
+    constructor(
+      @Inject(UploadAdmissionService)
+      private readonly uploadAdmissionService: UploadAdmissionService,
+    ) {
+      super();
+    }
+
     override async intercept(context: ExecutionContext, next: CallHandler) {
+      const request = context.switchToHttp().getRequest<AuthenticatedRequest & {
+        file?: { originalname?: string };
+      }>();
+      const response = context
+        .switchToHttp()
+        .getResponse<UploadLifecycleResponse & {
+          setHeader(name: string, value: string): void;
+        }>();
+      let admissionLease: UploadAdmissionLease;
+
+      try {
+        admissionLease = this.uploadAdmissionService.acquire(request);
+      } catch (error) {
+        if (error instanceof UploadAdmissionRejectedException) {
+          response.setHeader('Retry-After', String(error.retryAfterSeconds));
+        }
+        throw error;
+      }
+      const admissionLifecycle = bindUploadAdmissionLeaseToHttpLifecycle(
+        request,
+        response,
+        admissionLease,
+      );
+
       try {
         const result = await super.intercept(context, next);
-        const request = context.switchToHttp().getRequest<{
-          file?: { originalname?: string };
-        }>();
 
         if (request.file?.originalname) {
           request.file.originalname = normalizeMultipartOriginalFileName(
@@ -60,10 +157,14 @@ export function SecureSingleFileInterceptor(fieldName: string): Type<NestInterce
           );
         }
 
-        return result;
+        return result.pipe(
+          finalize(() => admissionLifecycle.markDownstreamWorkSettled()),
+        );
       } catch (error) {
-        if (isFieldNestingLimitError(error)) {
-          throw new BadRequestException('上传表单字段不允许嵌套。');
+        admissionLifecycle.markDownstreamWorkSettled();
+
+        if (isMultipartInputError(error)) {
+          throw new BadRequestException('上传表单字段或文件流无效。');
         }
 
         throw error;
@@ -86,11 +187,12 @@ export function normalizeMultipartOriginalFileName(fileName: string) {
   return decoded.includes('\uFFFD') ? fileName.normalize('NFC') : decoded.normalize('NFC');
 }
 
-function isFieldNestingLimitError(error: unknown) {
+function isMultipartInputError(error: unknown) {
   return (
     typeof error === 'object' &&
     error !== null &&
     'code' in error &&
-    error.code === 'LIMIT_FIELD_NESTING'
+    typeof error.code === 'string' &&
+    ['LIMIT_FIELD_NESTING', 'LIMIT_FIELD_ARRAY_INDEX', 'INVALID_FIELD_NAME', 'STREAM_DESTROYED'].includes(error.code)
   );
 }

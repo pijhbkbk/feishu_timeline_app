@@ -1,0 +1,894 @@
+{
+  "syntheticOnly": true,
+  "steps": {
+    "registration-job-intent-no-grants": {
+      "name": "registration-job-intent-no-grants",
+      "status": "PASS",
+      "completedAt": "2026-09-17T06:30:33.411Z"
+    },
+    "administrator-grants-exact-roles": {
+      "name": "administrator-grants-exact-roles",
+      "status": "PASS",
+      "completedAt": "2026-09-17T06:30:34.760Z"
+    },
+    "disable-enable-old-session-not-revived": {
+      "name": "disable-enable-old-session-not-revived",
+      "status": "PASS",
+      "completedAt": "2026-09-17T06:30:35.588Z"
+    },
+    "password-change-and-one-use-admin-recovery": {
+      "name": "password-change-and-one-use-admin-recovery",
+      "status": "PASS",
+      "completedAt": "2026-09-17T06:30:37.923Z"
+    },
+    "last-native-administrator-protected": {
+      "name": "last-native-administrator-protected",
+      "status": "PASS",
+      "completedAt": "2026-09-17T06:30:38.003Z"
+    },
+    "synthetic-projects-and-idempotency": {
+      "name": "synthetic-projects-and-idempotency",
+      "status": "PASS",
+      "completedAt": "2026-09-17T06:30:56.270Z"
+    },
+    "member-command-and-cross-project-negative": {
+      "name": "member-command-and-cross-project-negative",
+      "status": "PASS",
+      "completedAt": "2026-09-17T06:32:12.042Z"
+    },
+    "member-removal-revokes-access": {
+      "name": "member-removal-revokes-access",
+      "status": "PASS",
+      "completedAt": "2026-09-17T06:32:12.224Z"
+    },
+    "actual-clam-scan-download-and-attachment-idor": {
+      "name": "actual-clam-scan-download-and-attachment-idor",
+      "status": "PASS",
+      "completedAt": "2026-09-17T06:34:32.410Z"
+    },
+    "workflow-initiation-native-admin": {
+      "name": "workflow-initiation-native-admin",
+      "status": "PASS",
+      "completedAt": "2026-09-17T06:35:55.159Z"
+    },
+    "workflow-report-native-engineer": {
+      "name": "workflow-report-native-engineer",
+      "status": "PASS",
+      "completedAt": "2026-09-17T06:35:56.941Z"
+    },
+    "workflow-paint-first-submission": {
+      "name": "workflow-paint-first-submission",
+      "status": "PASS",
+      "completedAt": "2026-09-17T06:35:58.551Z"
+    },
+    "real-clam-eicar-docx-rejected-with-persisted-verdict": {
+      "name": "real-clam-eicar-docx-rejected-with-persisted-verdict",
+      "status": "PASS",
+      "completedAt": "2026-09-17T06:37:49.222Z"
+    },
+    "scanner-unavailable-persists-error-and-blocks-download-login-survives": {
+      "name": "scanner-unavailable-persists-error-and-blocks-download-login-survives",
+      "status": "PASS",
+      "completedAt": "2026-09-17T06:39:39.309Z"
+    },
+    "return-path:workflow-initiation-native-admin": {
+      "name": "return-path:workflow-initiation-native-admin",
+      "status": "PASS",
+      "completedAt": "2026-09-17T06:40:15.322Z"
+    },
+    "return-path:workflow-report-native-engineer": {
+      "name": "return-path:workflow-report-native-engineer",
+      "status": "PASS",
+      "completedAt": "2026-09-17T06:40:17.009Z"
+    },
+    "return-path:workflow-paint-first-submission": {
+      "name": "return-path:workflow-paint-first-submission",
+      "status": "PASS",
+      "completedAt": "2026-09-17T06:40:18.511Z"
+    },
+    "return-path:workflow-sample-return-retains-history": {
+      "name": "return-path:workflow-sample-return-retains-history",
+      "status": "PASS",
+      "completedAt": "2026-09-17T06:40:20.009Z"
+    },
+    "return-path:workflow-paint-resubmission": {
+      "name": "return-path:workflow-paint-resubmission",
+      "status": "PASS",
+      "completedAt": "2026-09-17T06:40:21.538Z"
+    },
+    "return-path:workflow-sample-approval-after-real-image-scan": {
+      "name": "return-path:workflow-sample-approval-after-real-image-scan",
+      "status": "PASS",
+      "completedAt": "2026-09-17T06:40:23.066Z"
+    },
+    "return-path:workflow-procurement-native-purchaser": {
+      "name": "return-path:workflow-procurement-native-purchaser",
+      "status": "PASS",
+      "completedAt": "2026-09-17T06:40:24.637Z"
+    },
+    "return-path:real-notifications-and-audit-readback": {
+      "name": "return-path:real-notifications-and-audit-readback",
+      "status": "PASS",
+      "completedAt": "2026-09-17T06:43:24.248Z"
+    },
+    "canonical-username-rename-no-alias-or-id-claim": {
+      "name": "canonical-username-rename-no-alias-or-id-claim",
+      "status": "PASS",
+      "completedAt": "2026-09-17T06:46:18.820Z"
+    }
+  },
+  "authAuditActions": [
+    "NATIVE_ACCOUNT_REGISTERED",
+    "NATIVE_ACCOUNT_LOGIN",
+    "NATIVE_JOB_REQUESTED",
+    "ADMIN_USER_CONFIGURATION_CHANGED",
+    "ADMIN_USER_STATUS_CHANGED",
+    "NATIVE_PASSWORD_CHANGED",
+    "NATIVE_RECOVERY_ISSUED",
+    "NATIVE_PASSWORD_RECOVERED"
+  ],
+  "workflowAuditActions": [
+    "SAMPLE_CREATED",
+    "SAMPLE_CONFIRMATION_SUBMITTED",
+    "WORKFLOW_RETURN",
+    "PROJECT_CREATED",
+    "WORKFLOW_INITIALIZED",
+    "R26_PROJECT_MEMBER_ADDED",
+    "R26_WORKFLOW_TASK_REASSIGNED",
+    "WORKFLOW_COMPLETE",
+    "R26_ORDINARY_TASK_COMPLETED",
+    "ATTACHMENT_SCAN_PENDING",
+    "ATTACHMENT_SCAN_CLEAN",
+    "ATTACHMENT_UPLOADED",
+    "NOTIFICATION_MARKED_READ",
+    "WORKFLOW_FORM_SAVED",
+    "WORKFLOW_APPROVE"
+  ],
+  "counts": {
+    "users": 5,
+    "projects": 3,
+    "tasks": 16,
+    "attachments": 6,
+    "notifications": 6,
+    "audit": 158
+  },
+  "businessSnapshot": {
+    "projects": [
+      {
+        "id": "cmu55i3l70025of01g9qay5fm",
+        "name": "SYNTHETIC-A2-A",
+        "ownerUserId": "cmu55hliu0000of9n8na7fe0m"
+      },
+      {
+        "id": "cmu55i4n7002mof01aqzylzu9",
+        "name": "SYNTHETIC-A2-B",
+        "ownerUserId": "cmu55hliu0000of9n8na7fe0m"
+      },
+      {
+        "id": "cmu55u3m50093of01j9ifldrz",
+        "name": "SYNTHETIC-A2-RETURN-RESUBMIT",
+        "ownerUserId": "cmu55hliu0000of9n8na7fe0m"
+      }
+    ],
+    "tasks": [
+      {
+        "id": "cmu55i3lq002aof019gx0hd92",
+        "projectId": "cmu55i3l70025of01g9qay5fm",
+        "nodeCode": "PROJECT_INITIATION",
+        "taskRound": 1,
+        "status": "COMPLETED",
+        "isActive": false,
+        "assigneeUserId": "cmu55hliu0000of9n8na7fe0m"
+      },
+      {
+        "id": "cmu55i4ni002rof0106dl8lm5",
+        "projectId": "cmu55i4n7002mof01aqzylzu9",
+        "nodeCode": "PROJECT_INITIATION",
+        "taskRound": 1,
+        "status": "READY",
+        "isActive": true,
+        "assigneeUserId": "cmu55hliu0000of9n8na7fe0m"
+      },
+      {
+        "id": "cmu55oj910065of01ikf3s8ns",
+        "projectId": "cmu55i3l70025of01g9qay5fm",
+        "nodeCode": "DEVELOPMENT_REPORT",
+        "taskRound": 1,
+        "status": "COMPLETED",
+        "isActive": false,
+        "assigneeUserId": "cmu55hnk10009of01rhsuzjw5"
+      },
+      {
+        "id": "cmu55olfp006jof011yowgc9z",
+        "projectId": "cmu55i3l70025of01g9qay5fm",
+        "nodeCode": "PAINT_DEVELOPMENT",
+        "taskRound": 1,
+        "status": "COMPLETED",
+        "isActive": false,
+        "assigneeUserId": "cmu55hnk10009of01rhsuzjw5"
+      },
+      {
+        "id": "cmu55omro006xof015ft90brl",
+        "projectId": "cmu55i3l70025of01g9qay5fm",
+        "nodeCode": "SAMPLE_COLOR_CONFIRMATION",
+        "taskRound": 1,
+        "status": "REJECTED",
+        "isActive": false,
+        "assigneeUserId": "cmu55hnk10009of01rhsuzjw5"
+      },
+      {
+        "id": "cmu55u3mi0098of014aobolkk",
+        "projectId": "cmu55u3m50093of01j9ifldrz",
+        "nodeCode": "PROJECT_INITIATION",
+        "taskRound": 1,
+        "status": "COMPLETED",
+        "isActive": false,
+        "assigneeUserId": "cmu55hliu0000of9n8na7fe0m"
+      },
+      {
+        "id": "cmu55u4v1009wof01zqo6490d",
+        "projectId": "cmu55u3m50093of01j9ifldrz",
+        "nodeCode": "DEVELOPMENT_REPORT",
+        "taskRound": 1,
+        "status": "COMPLETED",
+        "isActive": false,
+        "assigneeUserId": "cmu55hnk10009of01rhsuzjw5"
+      },
+      {
+        "id": "cmu55u64m00aaof012fjzvy71",
+        "projectId": "cmu55u3m50093of01j9ifldrz",
+        "nodeCode": "PAINT_DEVELOPMENT",
+        "taskRound": 1,
+        "status": "COMPLETED",
+        "isActive": false,
+        "assigneeUserId": "cmu55hnk10009of01rhsuzjw5"
+      },
+      {
+        "id": "cmu55u7d900aoof01swmsxre4",
+        "projectId": "cmu55u3m50093of01j9ifldrz",
+        "nodeCode": "SAMPLE_COLOR_CONFIRMATION",
+        "taskRound": 1,
+        "status": "RETURNED",
+        "isActive": false,
+        "assigneeUserId": "cmu55hnk10009of01rhsuzjw5"
+      },
+      {
+        "id": "cmu55u7p700baof01s61c93f5",
+        "projectId": "cmu55u3m50093of01j9ifldrz",
+        "nodeCode": "PAINT_DEVELOPMENT",
+        "taskRound": 2,
+        "status": "COMPLETED",
+        "isActive": false,
+        "assigneeUserId": "cmu55hnk10009of01rhsuzjw5"
+      },
+      {
+        "id": "cmu55u9os00boof0143jijnb4",
+        "projectId": "cmu55u3m50093of01j9ifldrz",
+        "nodeCode": "SAMPLE_COLOR_CONFIRMATION",
+        "taskRound": 2,
+        "status": "APPROVED",
+        "isActive": false,
+        "assigneeUserId": "cmu55hnk10009of01rhsuzjw5"
+      },
+      {
+        "id": "cmu55ua1e00cfof01w9ocm08y",
+        "projectId": "cmu55u3m50093of01j9ifldrz",
+        "nodeCode": "PAINT_PROCUREMENT",
+        "taskRound": 1,
+        "status": "COMPLETED",
+        "isActive": false,
+        "assigneeUserId": "cmu55hn9c0002of01xhtu2aww"
+      },
+      {
+        "id": "cmu55ua1l00cjof01r1856lpo",
+        "projectId": "cmu55u3m50093of01j9ifldrz",
+        "nodeCode": "COLOR_NUMBERING",
+        "taskRound": 1,
+        "status": "READY",
+        "isActive": true,
+        "assigneeUserId": "cmu55hliu0000of9n8na7fe0m"
+      },
+      {
+        "id": "cmu55uc2800cxof01zez9f0g0",
+        "projectId": "cmu55u3m50093of01j9ifldrz",
+        "nodeCode": "FIRST_UNIT_PRODUCTION_PLAN",
+        "taskRound": 1,
+        "status": "READY",
+        "isActive": true,
+        "assigneeUserId": null
+      },
+      {
+        "id": "cmu55uc2l00d1of01pqvx287t",
+        "projectId": "cmu55u3m50093of01j9ifldrz",
+        "nodeCode": "PERFORMANCE_TEST",
+        "taskRound": 1,
+        "status": "READY",
+        "isActive": true,
+        "assigneeUserId": null
+      },
+      {
+        "id": "cmu55uc2t00d5of01grl21men",
+        "projectId": "cmu55u3m50093of01j9ifldrz",
+        "nodeCode": "STANDARD_BOARD_PRODUCTION",
+        "taskRound": 1,
+        "status": "READY",
+        "isActive": true,
+        "assigneeUserId": null
+      }
+    ],
+    "confirmations": [
+      {
+        "id": "cmu55omzq007fof019vp4l9vw",
+        "projectId": "cmu55i3l70025of01g9qay5fm",
+        "sampleId": "cmu55omyq007bof01fmrhe0zm",
+        "workflowTaskId": "cmu55omro006xof015ft90brl",
+        "decision": "REJECT",
+        "confirmedById": "cmu55hnk10009of01rhsuzjw5"
+      },
+      {
+        "id": "cmu55u7om00b6of01akyxy2sq",
+        "projectId": "cmu55u3m50093of01j9ifldrz",
+        "sampleId": "cmu55u7nu00b2of0163ypuie7",
+        "workflowTaskId": "cmu55u7d900aoof01swmsxre4",
+        "decision": "RETURN",
+        "confirmedById": "cmu55hnk10009of01rhsuzjw5"
+      },
+      {
+        "id": "cmu55ua0w00cbof01ilckf83y",
+        "projectId": "cmu55u3m50093of01j9ifldrz",
+        "sampleId": "cmu55u7nu00b2of0163ypuie7",
+        "workflowTaskId": "cmu55u9os00boof0143jijnb4",
+        "decision": "APPROVE",
+        "confirmedById": "cmu55hnk10009of01rhsuzjw5"
+      }
+    ],
+    "attachments": [
+      {
+        "id": "cmu55lxss004vof01ktcmn6ul",
+        "projectId": "cmu55i3l70025of01g9qay5fm",
+        "entityId": "cmu55i3l70025of01g9qay5fm",
+        "checksum": "f3ec9e14b9c085b55edc96155f7bd26b6fdeda2462f02af4e0279d8319b365e3",
+        "scanStatus": "CLEAN",
+        "uploadedById": "cmu55hn9c0002of01xhtu2aww"
+      },
+      {
+        "id": "cmu55mrbm005cof01b45wywt1",
+        "projectId": "cmu55i3l70025of01g9qay5fm",
+        "entityId": "cmu55i3l70025of01g9qay5fm",
+        "checksum": "f3ec9e14b9c085b55edc96155f7bd26b6fdeda2462f02af4e0279d8319b365e3",
+        "scanStatus": "CLEAN",
+        "uploadedById": "cmu55hn9c0002of01xhtu2aww"
+      },
+      {
+        "id": "cmu55mu2s005nof014o1qjh1f",
+        "projectId": "cmu55i3l70025of01g9qay5fm",
+        "entityId": "cmu55i3l70025of01g9qay5fm",
+        "checksum": "f3ec9e14b9c085b55edc96155f7bd26b6fdeda2462f02af4e0279d8319b365e3",
+        "scanStatus": "SCAN_ERROR",
+        "uploadedById": "cmu55hn9c0002of01xhtu2aww"
+      },
+      {
+        "id": "cmu55qz70007wof01u1b0ajbs",
+        "projectId": "cmu55i3l70025of01g9qay5fm",
+        "entityId": "cmu55i3l70025of01g9qay5fm",
+        "checksum": "2e1affbc01a361219f06b702d9681482d719a31c0b281df5495cd654a148393d",
+        "scanStatus": "REJECTED",
+        "uploadedById": "cmu55hn9c0002of01xhtu2aww"
+      },
+      {
+        "id": "cmu55t80u008dof01vh6ciklq",
+        "projectId": "cmu55i3l70025of01g9qay5fm",
+        "entityId": "cmu55i3l70025of01g9qay5fm",
+        "checksum": "f3ec9e14b9c085b55edc96155f7bd26b6fdeda2462f02af4e0279d8319b365e3",
+        "scanStatus": "SCAN_ERROR",
+        "uploadedById": "cmu55hn9c0002of01xhtu2aww"
+      },
+      {
+        "id": "cmu55u9wf00c3of01icik5ero",
+        "projectId": "cmu55u3m50093of01j9ifldrz",
+        "entityId": "cmu55u7nu00b2of0163ypuie7",
+        "checksum": "f3ec9e14b9c085b55edc96155f7bd26b6fdeda2462f02af4e0279d8319b365e3",
+        "scanStatus": "CLEAN",
+        "uploadedById": "cmu55hnk10009of01rhsuzjw5"
+      }
+    ],
+    "audit": [
+      {
+        "id": "cmu55i3lx002eof01n8xvi7sg",
+        "projectId": "cmu55i3l70025of01g9qay5fm",
+        "actorUserId": "cmu55hliu0000of9n8na7fe0m",
+        "action": "PROJECT_CREATED",
+        "targetId": "cmu55i3l70025of01g9qay5fm"
+      },
+      {
+        "id": "cmu55i3lz002gof017ume1zz4",
+        "projectId": "cmu55i3l70025of01g9qay5fm",
+        "actorUserId": "cmu55hliu0000of9n8na7fe0m",
+        "action": "WORKFLOW_INITIALIZED",
+        "targetId": "cmu55i3lo0028of01im9rl8vn"
+      },
+      {
+        "id": "cmu55i4nm002vof01l2pwpvy4",
+        "projectId": "cmu55i4n7002mof01aqzylzu9",
+        "actorUserId": "cmu55hliu0000of9n8na7fe0m",
+        "action": "PROJECT_CREATED",
+        "targetId": "cmu55i4n7002mof01aqzylzu9"
+      },
+      {
+        "id": "cmu55i4nn002xof01qg5yb9cl",
+        "projectId": "cmu55i4n7002mof01aqzylzu9",
+        "actorUserId": "cmu55hliu0000of9n8na7fe0m",
+        "action": "WORKFLOW_INITIALIZED",
+        "targetId": "cmu55i4nh002pof0100zpja86"
+      },
+      {
+        "id": "cmu55i5ro0035of01yoqmel1y",
+        "projectId": "cmu55i3l70025of01g9qay5fm",
+        "actorUserId": "cmu55hliu0000of9n8na7fe0m",
+        "action": "R26_PROJECT_MEMBER_ADDED",
+        "targetId": "cmu55i3l70025of01g9qay5fm"
+      },
+      {
+        "id": "cmu55i5zy003bof01ib15j5gg",
+        "projectId": "cmu55i3l70025of01g9qay5fm",
+        "actorUserId": "cmu55hliu0000of9n8na7fe0m",
+        "action": "R26_PROJECT_MEMBER_ADDED",
+        "targetId": "cmu55i3l70025of01g9qay5fm"
+      },
+      {
+        "id": "cmu55jqr7003pof01yfzhwr6a",
+        "projectId": "cmu55i3l70025of01g9qay5fm",
+        "actorUserId": "cmu55hliu0000of9n8na7fe0m",
+        "action": "R26_PROJECT_MEMBER_ADDED",
+        "targetId": "cmu55i3l70025of01g9qay5fm"
+      },
+      {
+        "id": "cmu55jqvs003vof01weknl2sz",
+        "projectId": "cmu55i3l70025of01g9qay5fm",
+        "actorUserId": "cmu55hliu0000of9n8na7fe0m",
+        "action": "R26_PROJECT_MEMBER_ADDED",
+        "targetId": "cmu55i3l70025of01g9qay5fm"
+      },
+      {
+        "id": "cmu55js5b003zof012wint62u",
+        "projectId": "cmu55i3l70025of01g9qay5fm",
+        "actorUserId": "cmu55hliu0000of9n8na7fe0m",
+        "action": "R26_PROJECT_MEMBER_REMOVED",
+        "targetId": "cmu55i3l70025of01g9qay5fm"
+      },
+      {
+        "id": "cmu55js7u0045of01q9n2lp2e",
+        "projectId": "cmu55i3l70025of01g9qay5fm",
+        "actorUserId": "cmu55hliu0000of9n8na7fe0m",
+        "action": "R26_PROJECT_MEMBER_ADDED",
+        "targetId": "cmu55i3l70025of01g9qay5fm"
+      },
+      {
+        "id": "cmu55lxsz004xof01i7a2d2kd",
+        "projectId": "cmu55i3l70025of01g9qay5fm",
+        "actorUserId": "cmu55hn9c0002of01xhtu2aww",
+        "action": "ATTACHMENT_SCAN_PENDING",
+        "targetId": "cmu55lxss004vof01ktcmn6ul"
+      },
+      {
+        "id": "cmu55lxx0004zof01dkf8eooo",
+        "projectId": "cmu55i3l70025of01g9qay5fm",
+        "actorUserId": "cmu55hn9c0002of01xhtu2aww",
+        "action": "ATTACHMENT_SCAN_CLEAN",
+        "targetId": "cmu55lxss004vof01ktcmn6ul"
+      },
+      {
+        "id": "cmu55lxx20051of01epik3p3e",
+        "projectId": "cmu55i3l70025of01g9qay5fm",
+        "actorUserId": "cmu55hn9c0002of01xhtu2aww",
+        "action": "ATTACHMENT_UPLOADED",
+        "targetId": "cmu55lxss004vof01ktcmn6ul"
+      },
+      {
+        "id": "cmu55mrbv005eof01sdo9v2kv",
+        "projectId": "cmu55i3l70025of01g9qay5fm",
+        "actorUserId": "cmu55hn9c0002of01xhtu2aww",
+        "action": "ATTACHMENT_SCAN_PENDING",
+        "targetId": "cmu55mrbm005cof01b45wywt1"
+      },
+      {
+        "id": "cmu55mrf0005gof01upgh1pzo",
+        "projectId": "cmu55i3l70025of01g9qay5fm",
+        "actorUserId": "cmu55hn9c0002of01xhtu2aww",
+        "action": "ATTACHMENT_SCAN_CLEAN",
+        "targetId": "cmu55mrbm005cof01b45wywt1"
+      },
+      {
+        "id": "cmu55mrf4005iof01feo2wgen",
+        "projectId": "cmu55i3l70025of01g9qay5fm",
+        "actorUserId": "cmu55hn9c0002of01xhtu2aww",
+        "action": "ATTACHMENT_UPLOADED",
+        "targetId": "cmu55mrbm005cof01b45wywt1"
+      },
+      {
+        "id": "cmu55mrfs005kof01eo1httcq",
+        "projectId": "cmu55i3l70025of01g9qay5fm",
+        "actorUserId": "cmu55hn9c0002of01xhtu2aww",
+        "action": "ATTACHMENT_DOWNLOADED",
+        "targetId": "cmu55mrbm005cof01b45wywt1"
+      },
+      {
+        "id": "cmu55mu33005pof01nbtl5hl0",
+        "projectId": "cmu55i3l70025of01g9qay5fm",
+        "actorUserId": "cmu55hn9c0002of01xhtu2aww",
+        "action": "ATTACHMENT_SCAN_PENDING",
+        "targetId": "cmu55mu2s005nof014o1qjh1f"
+      },
+      {
+        "id": "cmu55mxz6005rof011m2drlq8",
+        "projectId": "cmu55i3l70025of01g9qay5fm",
+        "actorUserId": "cmu55hn9c0002of01xhtu2aww",
+        "action": "ATTACHMENT_SCAN_ERROR",
+        "targetId": "cmu55mu2s005nof014o1qjh1f"
+      },
+      {
+        "id": "cmu55mxzf005tof01fyu4gbs3",
+        "projectId": "cmu55i3l70025of01g9qay5fm",
+        "actorUserId": "cmu55hn9c0002of01xhtu2aww",
+        "action": "ATTACHMENT_BINARY_PURGED",
+        "targetId": "cmu55mu2s005nof014o1qjh1f"
+      },
+      {
+        "id": "cmu55oj9c0069of01qmszfw2b",
+        "projectId": "cmu55i3l70025of01g9qay5fm",
+        "actorUserId": "cmu55hliu0000of9n8na7fe0m",
+        "action": "WORKFLOW_COMPLETE",
+        "targetId": "cmu55i3lq002aof019gx0hd92"
+      },
+      {
+        "id": "cmu55oj9p006bof01srhoahkr",
+        "projectId": "cmu55i3l70025of01g9qay5fm",
+        "actorUserId": "cmu55hliu0000of9n8na7fe0m",
+        "action": "R26_ORDINARY_TASK_COMPLETED",
+        "targetId": "cmu55i3lq002aof019gx0hd92"
+      },
+      {
+        "id": "cmu55okcg006fof012szsjnxs",
+        "projectId": "cmu55i3l70025of01g9qay5fm",
+        "actorUserId": "cmu55hliu0000of9n8na7fe0m",
+        "action": "R26_WORKFLOW_TASK_REASSIGNED",
+        "targetId": "cmu55oj910065of01ikf3s8ns"
+      },
+      {
+        "id": "cmu55olg5006nof01dpma0p6w",
+        "projectId": "cmu55i3l70025of01g9qay5fm",
+        "actorUserId": "cmu55hnk10009of01rhsuzjw5",
+        "action": "WORKFLOW_COMPLETE",
+        "targetId": "cmu55oj910065of01ikf3s8ns"
+      },
+      {
+        "id": "cmu55olgh006pof01ckam9e09",
+        "projectId": "cmu55i3l70025of01g9qay5fm",
+        "actorUserId": "cmu55hnk10009of01rhsuzjw5",
+        "action": "R26_ORDINARY_TASK_COMPLETED",
+        "targetId": "cmu55oj910065of01ikf3s8ns"
+      },
+      {
+        "id": "cmu55olpa006tof01onl86o3b",
+        "projectId": "cmu55i3l70025of01g9qay5fm",
+        "actorUserId": "cmu55hliu0000of9n8na7fe0m",
+        "action": "R26_WORKFLOW_TASK_REASSIGNED",
+        "targetId": "cmu55olfp006jof011yowgc9z"
+      },
+      {
+        "id": "cmu55oms30071of01a9b5p5tr",
+        "projectId": "cmu55i3l70025of01g9qay5fm",
+        "actorUserId": "cmu55hnk10009of01rhsuzjw5",
+        "action": "WORKFLOW_COMPLETE",
+        "targetId": "cmu55olfp006jof011yowgc9z"
+      },
+      {
+        "id": "cmu55omse0073of01yzasp39v",
+        "projectId": "cmu55i3l70025of01g9qay5fm",
+        "actorUserId": "cmu55hnk10009of01rhsuzjw5",
+        "action": "R26_ORDINARY_TASK_COMPLETED",
+        "targetId": "cmu55olfp006jof011yowgc9z"
+      },
+      {
+        "id": "cmu55omxk0077of01bfsg5i2e",
+        "projectId": "cmu55i3l70025of01g9qay5fm",
+        "actorUserId": "cmu55hliu0000of9n8na7fe0m",
+        "action": "R26_WORKFLOW_TASK_REASSIGNED",
+        "targetId": "cmu55omro006xof015ft90brl"
+      },
+      {
+        "id": "cmu55omyu007dof01vc68vo15",
+        "projectId": "cmu55i3l70025of01g9qay5fm",
+        "actorUserId": "cmu55hnk10009of01rhsuzjw5",
+        "action": "SAMPLE_CREATED",
+        "targetId": "cmu55omyq007bof01fmrhe0zm"
+      },
+      {
+        "id": "cmu55omzw007hof014q1cemdp",
+        "projectId": "cmu55i3l70025of01g9qay5fm",
+        "actorUserId": "cmu55hnk10009of01rhsuzjw5",
+        "action": "SAMPLE_CONFIRMATION_SUBMITTED",
+        "targetId": "cmu55omyq007bof01fmrhe0zm"
+      },
+      {
+        "id": "cmu55on0a007lof01ns4ujxn4",
+        "projectId": "cmu55i3l70025of01g9qay5fm",
+        "actorUserId": "cmu55hnk10009of01rhsuzjw5",
+        "action": "WORKFLOW_REJECT",
+        "targetId": "cmu55omro006xof015ft90brl"
+      },
+      {
+        "id": "cmu55qz76007yof01ous5iltf",
+        "projectId": "cmu55i3l70025of01g9qay5fm",
+        "actorUserId": "cmu55hn9c0002of01xhtu2aww",
+        "action": "ATTACHMENT_SCAN_PENDING",
+        "targetId": "cmu55qz70007wof01u1b0ajbs"
+      },
+      {
+        "id": "cmu55qzba0080of015zt3e323",
+        "projectId": "cmu55i3l70025of01g9qay5fm",
+        "actorUserId": "cmu55hn9c0002of01xhtu2aww",
+        "action": "ATTACHMENT_SCAN_REJECTED",
+        "targetId": "cmu55qz70007wof01u1b0ajbs"
+      },
+      {
+        "id": "cmu55qzbj0082of01u6sjwe42",
+        "projectId": "cmu55i3l70025of01g9qay5fm",
+        "actorUserId": "cmu55hn9c0002of01xhtu2aww",
+        "action": "ATTACHMENT_BINARY_PURGED",
+        "targetId": "cmu55qz70007wof01u1b0ajbs"
+      },
+      {
+        "id": "cmu55t813008fof018xdk8o35",
+        "projectId": "cmu55i3l70025of01g9qay5fm",
+        "actorUserId": "cmu55hn9c0002of01xhtu2aww",
+        "action": "ATTACHMENT_SCAN_PENDING",
+        "targetId": "cmu55t80u008dof01vh6ciklq"
+      },
+      {
+        "id": "cmu55tbws008hof01awr213d2",
+        "projectId": "cmu55i3l70025of01g9qay5fm",
+        "actorUserId": "cmu55hn9c0002of01xhtu2aww",
+        "action": "ATTACHMENT_SCAN_ERROR",
+        "targetId": "cmu55t80u008dof01vh6ciklq"
+      },
+      {
+        "id": "cmu55tbxo008jof013qcuau4j",
+        "projectId": "cmu55i3l70025of01g9qay5fm",
+        "actorUserId": "cmu55hn9c0002of01xhtu2aww",
+        "action": "ATTACHMENT_BINARY_PURGED",
+        "targetId": "cmu55t80u008dof01vh6ciklq"
+      },
+      {
+        "id": "cmu55u3mn009cof018xscc6o9",
+        "projectId": "cmu55u3m50093of01j9ifldrz",
+        "actorUserId": "cmu55hliu0000of9n8na7fe0m",
+        "action": "PROJECT_CREATED",
+        "targetId": "cmu55u3m50093of01j9ifldrz"
+      },
+      {
+        "id": "cmu55u3mp009eof01c1l2uz33",
+        "projectId": "cmu55u3m50093of01j9ifldrz",
+        "actorUserId": "cmu55hliu0000of9n8na7fe0m",
+        "action": "WORKFLOW_INITIALIZED",
+        "targetId": "cmu55u3mg0096of01k77vhkl6"
+      },
+      {
+        "id": "cmu55u3rb009mof018x53lqwj",
+        "projectId": "cmu55u3m50093of01j9ifldrz",
+        "actorUserId": "cmu55hliu0000of9n8na7fe0m",
+        "action": "R26_PROJECT_MEMBER_ADDED",
+        "targetId": "cmu55u3m50093of01j9ifldrz"
+      },
+      {
+        "id": "cmu55u3u5009sof01z5grg1dx",
+        "projectId": "cmu55u3m50093of01j9ifldrz",
+        "actorUserId": "cmu55hliu0000of9n8na7fe0m",
+        "action": "R26_PROJECT_MEMBER_ADDED",
+        "targetId": "cmu55u3m50093of01j9ifldrz"
+      },
+      {
+        "id": "cmu55u4vi00a0of01o07z4gaf",
+        "projectId": "cmu55u3m50093of01j9ifldrz",
+        "actorUserId": "cmu55hliu0000of9n8na7fe0m",
+        "action": "WORKFLOW_COMPLETE",
+        "targetId": "cmu55u3mi0098of014aobolkk"
+      },
+      {
+        "id": "cmu55u4vy00a2of012wzxduhl",
+        "projectId": "cmu55u3m50093of01j9ifldrz",
+        "actorUserId": "cmu55hliu0000of9n8na7fe0m",
+        "action": "R26_ORDINARY_TASK_COMPLETED",
+        "targetId": "cmu55u3mi0098of014aobolkk"
+      },
+      {
+        "id": "cmu55u52v00a6of010nrdtr6m",
+        "projectId": "cmu55u3m50093of01j9ifldrz",
+        "actorUserId": "cmu55hliu0000of9n8na7fe0m",
+        "action": "R26_WORKFLOW_TASK_REASSIGNED",
+        "targetId": "cmu55u4v1009wof01zqo6490d"
+      },
+      {
+        "id": "cmu55u65300aeof014ttc8dn8",
+        "projectId": "cmu55u3m50093of01j9ifldrz",
+        "actorUserId": "cmu55hnk10009of01rhsuzjw5",
+        "action": "WORKFLOW_COMPLETE",
+        "targetId": "cmu55u4v1009wof01zqo6490d"
+      },
+      {
+        "id": "cmu55u65f00agof01m2laboo8",
+        "projectId": "cmu55u3m50093of01j9ifldrz",
+        "actorUserId": "cmu55hnk10009of01rhsuzjw5",
+        "action": "R26_ORDINARY_TASK_COMPLETED",
+        "targetId": "cmu55u4v1009wof01zqo6490d"
+      },
+      {
+        "id": "cmu55u6d100akof01as51owkx",
+        "projectId": "cmu55u3m50093of01j9ifldrz",
+        "actorUserId": "cmu55hliu0000of9n8na7fe0m",
+        "action": "R26_WORKFLOW_TASK_REASSIGNED",
+        "targetId": "cmu55u64m00aaof012fjzvy71"
+      },
+      {
+        "id": "cmu55u7di00asof01ubx27slk",
+        "projectId": "cmu55u3m50093of01j9ifldrz",
+        "actorUserId": "cmu55hnk10009of01rhsuzjw5",
+        "action": "WORKFLOW_COMPLETE",
+        "targetId": "cmu55u64m00aaof012fjzvy71"
+      },
+      {
+        "id": "cmu55u7dt00auof011pk6r9qn",
+        "projectId": "cmu55u3m50093of01j9ifldrz",
+        "actorUserId": "cmu55hnk10009of01rhsuzjw5",
+        "action": "R26_ORDINARY_TASK_COMPLETED",
+        "targetId": "cmu55u64m00aaof012fjzvy71"
+      },
+      {
+        "id": "cmu55u7ly00ayof01ey39puii",
+        "projectId": "cmu55u3m50093of01j9ifldrz",
+        "actorUserId": "cmu55hliu0000of9n8na7fe0m",
+        "action": "R26_WORKFLOW_TASK_REASSIGNED",
+        "targetId": "cmu55u7d900aoof01swmsxre4"
+      },
+      {
+        "id": "cmu55u7nw00b4of019cesmuqp",
+        "projectId": "cmu55u3m50093of01j9ifldrz",
+        "actorUserId": "cmu55hnk10009of01rhsuzjw5",
+        "action": "SAMPLE_CREATED",
+        "targetId": "cmu55u7nu00b2of0163ypuie7"
+      },
+      {
+        "id": "cmu55u7oq00b8of01sx587n9f",
+        "projectId": "cmu55u3m50093of01j9ifldrz",
+        "actorUserId": "cmu55hnk10009of01rhsuzjw5",
+        "action": "SAMPLE_CONFIRMATION_SUBMITTED",
+        "targetId": "cmu55u7nu00b2of0163ypuie7"
+      },
+      {
+        "id": "cmu55u7pg00beof01ny3ug0no",
+        "projectId": "cmu55u3m50093of01j9ifldrz",
+        "actorUserId": "cmu55hnk10009of01rhsuzjw5",
+        "action": "WORKFLOW_RETURN",
+        "targetId": "cmu55u7d900aoof01swmsxre4"
+      },
+      {
+        "id": "cmu55u8o200biof011rlvka9o",
+        "projectId": "cmu55u3m50093of01j9ifldrz",
+        "actorUserId": "cmu55hliu0000of9n8na7fe0m",
+        "action": "R26_WORKFLOW_TASK_REASSIGNED",
+        "targetId": "cmu55u7p700baof01s61c93f5"
+      },
+      {
+        "id": "cmu55u8p700bmof016se93fns",
+        "projectId": "cmu55u3m50093of01j9ifldrz",
+        "actorUserId": "cmu55hnk10009of01rhsuzjw5",
+        "action": "WORKFLOW_FORM_SAVED",
+        "targetId": "cmu55u7p700baof01s61c93f5"
+      },
+      {
+        "id": "cmu55u9p300bsof01jd5h8zf0",
+        "projectId": "cmu55u3m50093of01j9ifldrz",
+        "actorUserId": "cmu55hnk10009of01rhsuzjw5",
+        "action": "WORKFLOW_COMPLETE",
+        "targetId": "cmu55u7p700baof01s61c93f5"
+      },
+      {
+        "id": "cmu55u9pd00buof018v7hiq78",
+        "projectId": "cmu55u3m50093of01j9ifldrz",
+        "actorUserId": "cmu55hnk10009of01rhsuzjw5",
+        "action": "R26_ORDINARY_TASK_COMPLETED",
+        "targetId": "cmu55u7p700baof01s61c93f5"
+      },
+      {
+        "id": "cmu55u9ug00byof01evx7zb3f",
+        "projectId": "cmu55u3m50093of01j9ifldrz",
+        "actorUserId": "cmu55hliu0000of9n8na7fe0m",
+        "action": "R26_WORKFLOW_TASK_REASSIGNED",
+        "targetId": "cmu55u9os00boof0143jijnb4"
+      },
+      {
+        "id": "cmu55u9wj00c5of018m29oorh",
+        "projectId": "cmu55u3m50093of01j9ifldrz",
+        "actorUserId": "cmu55hnk10009of01rhsuzjw5",
+        "action": "ATTACHMENT_SCAN_PENDING",
+        "targetId": "cmu55u9wf00c3of01icik5ero"
+      },
+      {
+        "id": "cmu55ua0200c7of01na8lvy4r",
+        "projectId": "cmu55u3m50093of01j9ifldrz",
+        "actorUserId": "cmu55hnk10009of01rhsuzjw5",
+        "action": "ATTACHMENT_SCAN_CLEAN",
+        "targetId": "cmu55u9wf00c3of01icik5ero"
+      },
+      {
+        "id": "cmu55ua0400c9of01f4fuo6xf",
+        "projectId": "cmu55u3m50093of01j9ifldrz",
+        "actorUserId": "cmu55hnk10009of01rhsuzjw5",
+        "action": "ATTACHMENT_UPLOADED",
+        "targetId": "cmu55u9wf00c3of01icik5ero"
+      },
+      {
+        "id": "cmu55ua0z00cdof016e9jcp4a",
+        "projectId": "cmu55u3m50093of01j9ifldrz",
+        "actorUserId": "cmu55hnk10009of01rhsuzjw5",
+        "action": "SAMPLE_CONFIRMATION_SUBMITTED",
+        "targetId": "cmu55u7nu00b2of0163ypuie7"
+      },
+      {
+        "id": "cmu55ua1s00cnof0174dwpaxr",
+        "projectId": "cmu55u3m50093of01j9ifldrz",
+        "actorUserId": "cmu55hnk10009of01rhsuzjw5",
+        "action": "WORKFLOW_APPROVE",
+        "targetId": "cmu55u9os00boof0143jijnb4"
+      },
+      {
+        "id": "cmu55ub1100ctof01utm29ldm",
+        "projectId": "cmu55u3m50093of01j9ifldrz",
+        "actorUserId": "cmu55hliu0000of9n8na7fe0m",
+        "action": "R26_WORKFLOW_TASK_REASSIGNED",
+        "targetId": "cmu55ua1e00cfof01w9ocm08y"
+      },
+      {
+        "id": "cmu55uc3200d9of01y1ajciyh",
+        "projectId": "cmu55u3m50093of01j9ifldrz",
+        "actorUserId": "cmu55hn9c0002of01xhtu2aww",
+        "action": "WORKFLOW_COMPLETE",
+        "targetId": "cmu55ua1e00cfof01w9ocm08y"
+      },
+      {
+        "id": "cmu55uc3g00dbof0196lwikr8",
+        "projectId": "cmu55u3m50093of01j9ifldrz",
+        "actorUserId": "cmu55hn9c0002of01xhtu2aww",
+        "action": "R26_ORDINARY_TASK_COMPLETED",
+        "targetId": "cmu55ua1e00cfof01w9ocm08y"
+      },
+      {
+        "id": "cmu55uc7q00dfof01vi4d9p32",
+        "projectId": "cmu55u3m50093of01j9ifldrz",
+        "actorUserId": "cmu55hliu0000of9n8na7fe0m",
+        "action": "NOTIFICATION_MARKED_READ",
+        "targetId": "cmu55ua3600crof01qqpjdk0l"
+      },
+      {
+        "id": "cmu55y3fp00dpof01j7vc6uah",
+        "projectId": "cmu55u3m50093of01j9ifldrz",
+        "actorUserId": "cmu55hliu0000of9n8na7fe0m",
+        "action": "NOTIFICATION_MARKED_READ",
+        "targetId": "cmu55ua2z00cpof01wz2ououv"
+      }
+    ]
+  },
+  "invalidatedChecks": {
+    "real-eicar-rejected-no-clean-release": {
+      "name": "real-eicar-rejected-no-clean-release",
+      "status": "PASS",
+      "completedAt": "2026-09-17T06:34:33.608Z"
+    },
+    "scanner-unavailable-blocks-new-files-login-survives": {
+      "name": "scanner-unavailable-blocks-new-files-login-survives",
+      "status": "PASS",
+      "completedAt": "2026-09-17T06:34:41.279Z"
+    }
+  },
+  "invalidatedChecksReason": "Historical harness results retained for traceability only; not accepted evidence. Replaced by strict persisted verdict checks."
+}

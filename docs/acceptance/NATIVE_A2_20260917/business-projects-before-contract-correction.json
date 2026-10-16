@@ -1,0 +1,175 @@
+{
+  "syntheticOnly": true,
+  "mode": "projects",
+  "runtimeCommit": "6c70a897ec7643f4681616d801481765aaa8f7bc",
+  "startedAt": "2026-09-17T06:30:51.719Z",
+  "requests": [
+    {
+      "method": "GET",
+      "path": "/health",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/projects",
+      "status": 201
+    },
+    {
+      "method": "POST",
+      "path": "/projects",
+      "status": 201
+    },
+    {
+      "method": "POST",
+      "path": "/projects",
+      "status": 201
+    },
+    {
+      "method": "POST",
+      "path": "/projects",
+      "status": 201
+    },
+    {
+      "method": "GET",
+      "path": "/v2/projects/cmu55i3l70025of01g9qay5fm/workspace",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/v2/projects/cmu55i3l70025of01g9qay5fm/members",
+      "status": 201
+    },
+    {
+      "method": "POST",
+      "path": "/v2/projects/cmu55i3l70025of01g9qay5fm/members",
+      "status": 201
+    },
+    {
+      "method": "GET",
+      "path": "/v2/projects/cmu55i3l70025of01g9qay5fm/workspace",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/v2/projects/cmu55i3l70025of01g9qay5fm/workspace",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/v2/projects/cmu55i3l70025of01g9qay5fm/members",
+      "status": 201
+    },
+    {
+      "method": "POST",
+      "path": "/v2/projects/cmu55i3l70025of01g9qay5fm/members",
+      "status": 201
+    },
+    {
+      "method": "GET",
+      "path": "/v2/projects/cmu55i3l70025of01g9qay5fm/workspace",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/projects/cmu55i4n7002mof01aqzylzu9",
+      "status": 403
+    },
+    {
+      "method": "GET",
+      "path": "/v2/projects/cmu55i4n7002mof01aqzylzu9/workspace",
+      "status": 403
+    },
+    {
+      "method": "GET",
+      "path": "/workflows/projects/cmu55i4n7002mof01aqzylzu9",
+      "status": 403
+    },
+    {
+      "method": "GET",
+      "path": "/tasks/cmu55i4ni002rof0106dl8lm5",
+      "status": 403
+    },
+    {
+      "method": "GET",
+      "path": "/workflows/tasks/cmu55i4ni002rof0106dl8lm5/detail",
+      "status": 403
+    },
+    {
+      "method": "GET",
+      "path": "/v2/tasks/cmu55i4ni002rof0106dl8lm5",
+      "status": 403
+    },
+    {
+      "method": "GET",
+      "path": "/projects/cmu55i4n7002mof01aqzylzu9/attachments",
+      "status": 403
+    },
+    {
+      "method": "GET",
+      "path": "/admin/tasks/export",
+      "status": 403
+    },
+    {
+      "method": "GET",
+      "path": "/admin/organization",
+      "status": 403
+    },
+    {
+      "method": "POST",
+      "path": "/workflows/tasks/cmu55i4ni002rof0106dl8lm5/submit",
+      "status": 400
+    },
+    {
+      "method": "POST",
+      "path": "/auth/logout",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/auth/logout",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/auth/logout",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/auth/logout",
+      "status": 200
+    }
+  ],
+  "checks": [
+    {
+      "name": "synthetic-projects-and-idempotency",
+      "status": "PASS",
+      "completedAt": "2026-09-17T06:30:56.270Z"
+    }
+  ],
+  "status": "FAIL",
+  "failure": {
+    "type": "AssertionError",
+    "message": "cross-scope transition: unexpected HTTP status\n\n400 !== 403\n"
+  }
+}

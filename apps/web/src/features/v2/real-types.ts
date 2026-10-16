@@ -142,6 +142,7 @@ export type R26ProjectsResponse = {
 };
 
 export type R26FlowMapNode = {
+  isActive?: boolean;
   taskId: string | null;
   stepCode: string;
   stepNumber: number;
@@ -522,6 +523,7 @@ export type R26TaskResponse = {
 };
 
 export type R26ProgressResponse = R26TaskResponse & {
+  rework?: { requiresReview: boolean; supersedesTaskId: string | null; isTechnicalRework: boolean };
   gate: 'R26_GATE3B';
   taskVersion: string;
   progressSubmissionEnabled: boolean;
@@ -612,6 +614,7 @@ export type R26ProgressMaterials = {
   }>;
   current: R26MaterialVersion[];
   versions: R26MaterialVersion[];
+  versionsNextCursor?: string | null;
   summary: {
     required: number;
     submitted: number;

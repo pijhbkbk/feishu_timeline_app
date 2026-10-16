@@ -1,4 +1,5 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { assertApprovedTeamMember } from '../../common/team-membership';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { type Prisma } from '@prisma/client';
 
 import { PrismaService } from '../../infra/prisma/prisma.service';
@@ -38,28 +39,8 @@ export class ProjectAccessService {
       throw new NotFoundException('项目不存在。');
     }
 
-    if (actor.isSystemAdmin || actor.roleCodes.includes('admin')) {
-      return project;
-    }
-
-    if (requiredPermission === 'audit.read' && actor.roleCodes.includes('auditor')) {
-      return project;
-    }
-
-    const permissionCodes = new Set(actor.permissionCodes ?? []);
-    if (!permissionCodes.has(requiredPermission)) {
-      throw new ForbiddenException('当前用户缺少项目权限。');
-    }
-
-    const hasScope =
-      project.ownerUserId === actor.id ||
-      project.members.length > 0 ||
-      (Boolean(actor.departmentId) && actor.departmentId === project.owningDepartmentId);
-
-    if (!hasScope) {
-      throw new ForbiddenException('当前用户无权访问该项目。');
-    }
-
+    void requiredPermission;
+    assertApprovedTeamMember(actor);
     return project;
   }
 

@@ -1,0 +1,22 @@
+{
+  "/build-info": {
+    "status": 200,
+    "service": "feishu-timeline-web",
+    "sourceCommit": "541b3dfff682aa29b49a96b251f0a084903c981a",
+    "sourceTree": "bc65d7145a498066556f2abc8d8619a6643dc325",
+    "runtimeCommit": "541b3dfff682aa29b49a96b251f0a084903c981a",
+    "release": "native-login-20260918-541b3dfff682",
+    "buildTime": "2026-09-18T03:23:33Z"
+  },
+  "/api/health": {
+    "status": "ok",
+    "service": "feishu-timeline-api",
+    "nodeEnv": "production",
+    "sourceCommit": "541b3dfff682aa29b49a96b251f0a084903c981a",
+    "sourceTree": "bc65d7145a498066556f2abc8d8619a6643dc325",
+    "runtimeCommit": "541b3dfff682aa29b49a96b251f0a084903c981a",
+    "release": "native-login-20260918-541b3dfff682",
+    "buildTime": "2026-09-18T03:23:33Z",
+    "timestamp": "2026-09-18T03:33:38.506Z"
+  }
+}

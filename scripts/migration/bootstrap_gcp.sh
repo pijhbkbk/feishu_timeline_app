@@ -18,9 +18,13 @@ CONFIG_REVIEW_DIR="${CONFIG_REVIEW_DIR:-$APP_ROOT/var/config-review}"
 PLACEHOLDER_ROOT="${PLACEHOLDER_ROOT:-/var/www/all-too-well-placeholder}"
 
 NODE_MAJOR="${NODE_MAJOR:-24}"
+NODE_PACKAGE_VERSION="${NODE_PACKAGE_VERSION:-24.19.0-1nodesource1}"
 PNPM_VERSION="${PNPM_VERSION:-9.15.4}"
 CREATE_APP_USER="${CREATE_APP_USER:-yes}"
 INSTALL_NODE_IF_MISSING="${INSTALL_NODE_IF_MISSING:-yes}"
+NODESOURCE_KEY_URL="https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key"
+NODESOURCE_KEY_SHA256="b42e0321dabdc24e892115da705cf061167eac12a317f23d329862d0aa0a271d" # gitleaks:allow -- public integrity metadata
+NODESOURCE_KEY_FINGERPRINT="6F71F525282841EEDAF851B42F59B5F99B1BE0B4" # gitleaks:allow -- public signing-key identity
 
 log() {
   printf '[INFO] %s\n' "$*"
@@ -36,7 +40,7 @@ fail() {
 }
 
 apt_install() {
-  DEBIAN_FRONTEND=noninteractive apt-get install -y "$@"
+  DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends "$@"
 }
 
 ensure_root() {
@@ -45,13 +49,116 @@ ensure_root() {
   fi
 }
 
+validate_bootstrap_parameters() {
+  local path
+
+  if [[ ! "$APP_USER" =~ ^[a-z_][a-z0-9_-]{0,31}$ ]] \
+    || [[ ! "$APP_GROUP" =~ ^[a-z_][a-z0-9_-]{0,31}$ ]]; then
+    fail 'APP_USER and APP_GROUP must be bounded Linux account names.'
+  fi
+  if [[ ! "$NODE_MAJOR" =~ ^[0-9]{1,2}$ ]] \
+    || [[ ! "$NODE_PACKAGE_VERSION" =~ ^${NODE_MAJOR}\.[0-9]+\.[0-9]+-[0-9]+nodesource[0-9]+$ ]]; then
+    fail 'NODE_PACKAGE_VERSION must be an exact NodeSource version matching NODE_MAJOR.'
+  fi
+  if [[ ! "$PNPM_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    fail 'PNPM_VERSION must be an exact semantic version.'
+  fi
+  if [[ ! "$NODESOURCE_KEY_SHA256" =~ ^[a-f0-9]{64}$ ]] \
+    || [[ ! "$NODESOURCE_KEY_FINGERPRINT" =~ ^[A-F0-9]{40}$ ]]; then
+    fail 'NodeSource key identity pins are malformed.'
+  fi
+  case "$CREATE_APP_USER:$INSTALL_NODE_IF_MISSING" in
+    yes:yes|yes:no|no:yes|no:no)
+      ;;
+    *)
+      fail 'CREATE_APP_USER and INSTALL_NODE_IF_MISSING must be yes or no.'
+      ;;
+  esac
+
+  for path in \
+    "$APP_HOME" \
+    "$APP_ROOT" \
+    "$OBJECT_STORAGE_DIR" \
+    "$BACKUP_STAGING_DIR" \
+    "$CONFIG_REVIEW_DIR" \
+    "$PLACEHOLDER_ROOT"; do
+    if [ "${#path}" -gt 255 ] \
+      || [[ ! "$path" =~ ^/[A-Za-z0-9._/-]+$ ]] \
+      || [[ "$path" =~ (^|/)\.\.?(/|$) ]]; then
+      fail 'Bootstrap paths must be bounded absolute paths without whitespace or dot segments.'
+    fi
+  done
+  [ "$APP_ROOT" = /opt/feishu_timeline_app ] \
+    || fail 'APP_ROOT must use the approved production root /opt/feishu_timeline_app.'
+}
+
+configure_nodesource_repository() {
+  local architecture
+  local key_file
+  local actual_digest
+  local actual_fingerprint
+
+  architecture="$(dpkg --print-architecture)"
+  case "$architecture" in
+    amd64|arm64)
+      ;;
+    *)
+      fail "Unsupported NodeSource architecture: $architecture"
+      ;;
+  esac
+
+  key_file="$(mktemp /tmp/nodesource-repo-key.XXXXXX)"
+  cleanup_nodesource_key() {
+    rm -f -- "$key_file"
+  }
+  trap cleanup_nodesource_key EXIT
+
+  curl --fail --show-error --silent --location \
+    --proto '=https' --tlsv1.2 \
+    "$NODESOURCE_KEY_URL" \
+    --output "$key_file"
+
+  actual_digest="$(sha256sum "$key_file" | awk '{print $1}')"
+  [ "$actual_digest" = "$NODESOURCE_KEY_SHA256" ] \
+    || fail 'Downloaded NodeSource signing key failed the pinned SHA-256 check.'
+
+  actual_fingerprint="$(
+    gpg --batch --show-keys --with-colons "$key_file" \
+      | awk -F: '$1 == "fpr" { print $10; exit }'
+  )"
+  [ "$actual_fingerprint" = "$NODESOURCE_KEY_FINGERPRINT" ] \
+    || fail 'Downloaded NodeSource signing key failed the pinned fingerprint check.'
+
+  install -d -m 0755 /usr/share/keyrings
+  gpg --batch --yes --dearmor \
+    --output /usr/share/keyrings/nodesource.gpg \
+    "$key_file"
+  chmod 0644 /usr/share/keyrings/nodesource.gpg
+
+  printf 'deb [arch=%s signed-by=/usr/share/keyrings/nodesource.gpg] https://deb.nodesource.com/node_%s.x nodistro main\n' \
+    "$architecture" "$NODE_MAJOR" \
+    >/etc/apt/sources.list.d/nodesource.list
+  {
+    printf 'Package: nodejs\n'
+    printf 'Pin: version %s\n' "$NODE_PACKAGE_VERSION"
+    printf 'Pin-Priority: 1001\n'
+  } >/etc/apt/preferences.d/nodejs
+
+  cleanup_nodesource_key
+  trap - EXIT
+}
+
 ensure_node_runtime() {
   local node_ok="no"
+  local installed_package_version=""
+  local runtime_version=""
+  local expected_runtime_version="${NODE_PACKAGE_VERSION%%-*}"
 
-  if command -v node >/dev/null 2>&1; then
-    local current_major
-    current_major="$(node -p 'process.versions.node.split(".")[0]')"
-    if [[ "$current_major" -ge "$NODE_MAJOR" ]]; then
+  if command -v node >/dev/null 2>&1 && command -v dpkg-query >/dev/null 2>&1; then
+    runtime_version="$(node -p 'process.versions.node')"
+    installed_package_version="$(dpkg-query -W -f='${Version}' nodejs 2>/dev/null || true)"
+    if [ "$runtime_version" = "$expected_runtime_version" ] \
+      && [ "$installed_package_version" = "$NODE_PACKAGE_VERSION" ]; then
       node_ok="yes"
     fi
   fi
@@ -61,11 +168,15 @@ ensure_node_runtime() {
       fail "Node.js >= $NODE_MAJOR is required but INSTALL_NODE_IF_MISSING is disabled."
     fi
 
-    log "Installing Node.js ${NODE_MAJOR}.x from NodeSource"
-    curl -fsSL "https://deb.nodesource.com/setup_${NODE_MAJOR}.x" | bash -
-    apt_install nodejs
+    log "Installing pinned Node.js $NODE_PACKAGE_VERSION from the signed NodeSource repository"
+    configure_nodesource_repository
+    apt-get update
+    if ! apt-cache madison nodejs | awk '{print $3}' | grep -Fx "$NODE_PACKAGE_VERSION" >/dev/null; then
+      fail "Pinned Node.js package is unavailable: $NODE_PACKAGE_VERSION"
+    fi
+    apt_install "nodejs=$NODE_PACKAGE_VERSION"
   else
-    log "Node.js already satisfies >= $NODE_MAJOR"
+    log "Pinned Node.js package is already installed: $NODE_PACKAGE_VERSION"
   fi
 
   log "Enabling corepack and pinning pnpm@$PNPM_VERSION"
@@ -88,14 +199,53 @@ create_app_user_if_needed() {
   useradd --create-home --home-dir "$APP_HOME" --shell /bin/bash "$APP_USER"
 }
 
+create_runtime_users_if_needed() {
+  local runtime_user
+
+  for runtime_user in feishu-timeline-api feishu-timeline-web; do
+    if ! getent group "$runtime_user" >/dev/null; then
+      groupadd --system "$runtime_user"
+    fi
+    if ! id "$runtime_user" >/dev/null 2>&1; then
+      useradd --system \
+        --gid "$runtime_user" \
+        --home-dir /nonexistent \
+        --no-create-home \
+        --shell /usr/sbin/nologin \
+        "$runtime_user"
+    fi
+    [ "$(getent passwd "$runtime_user" | awk -F: 'NR == 1 {print $7}')" = /usr/sbin/nologin ] \
+      || fail "Runtime user must use /usr/sbin/nologin: $runtime_user"
+    [ "$runtime_user" != "$APP_USER" ] \
+      || fail 'Deploy user must not be a runtime user.'
+  done
+}
+
 create_directories() {
   log "Creating deployment directories under $APP_ROOT"
-  install -d -m 0755 "$APP_ROOT"
-  install -d -m 0755 "$APP_ROOT/apps"
-  install -d -m 0755 "$APP_ROOT/apps/api"
-  install -d -m 0755 "$APP_ROOT/apps/web"
-  install -d -m 0755 "$APP_ROOT/var"
-  install -d -m 0750 -o "$APP_USER" -g "$APP_GROUP" "$OBJECT_STORAGE_DIR"
+  python3 - "$APP_ROOT" <<'PY'
+from pathlib import Path
+import stat
+import sys
+
+for path in (Path('/opt'), Path(sys.argv[1]), Path(sys.argv[1]) / 'releases', Path(sys.argv[1]) / 'var'):
+    try:
+        metadata = path.lstat()
+    except FileNotFoundError:
+        continue
+    if not stat.S_ISDIR(metadata.st_mode):
+        raise SystemExit(f'bootstrap managed path is not a non-symlink directory: {path}')
+    if metadata.st_uid != 0 or stat.S_IMODE(metadata.st_mode) & 0o022:
+        raise SystemExit(f'bootstrap managed path is not root-controlled: {path}')
+PY
+  install -d -o root -g root -m 0755 "$APP_ROOT"
+  install -d -o root -g root -m 0755 "$APP_ROOT/releases"
+  install -d -o root -g root -m 0755 "$APP_ROOT/var"
+  if [[ -e "$OBJECT_STORAGE_DIR" || -L "$OBJECT_STORAGE_DIR" ]]; then
+    [[ -d "$OBJECT_STORAGE_DIR" && ! -L "$OBJECT_STORAGE_DIR" ]] \
+      || fail "Object storage target is not a non-symlink directory: $OBJECT_STORAGE_DIR"
+  fi
+  install -d -m 0750 -o feishu-timeline-api -g feishu-timeline-api "$OBJECT_STORAGE_DIR"
   install -d -m 0750 -o "$APP_USER" -g "$APP_GROUP" "$BACKUP_STAGING_DIR"
   install -d -m 0750 -o "$APP_USER" -g "$APP_GROUP" "$CONFIG_REVIEW_DIR"
   install -d -m 0755 "$PLACEHOLDER_ROOT"
@@ -127,15 +277,17 @@ EOF
 }
 
 ensure_root
+validate_bootstrap_parameters
 
 log "Updating apt metadata"
 apt-get update
 
 log "Installing base packages"
-apt_install ca-certificates curl git nginx build-essential postgresql-client rsync
+apt_install ca-certificates curl git gnupg nginx build-essential postgresql-client rsync
 
 ensure_node_runtime
 create_app_user_if_needed
+create_runtime_users_if_needed
 create_directories
 create_placeholder_index
 

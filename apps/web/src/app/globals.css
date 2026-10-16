@@ -4053,3 +4053,12 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
+.native-auth-card { max-width: 440px; margin: 32px auto; }
+.native-account-card { max-width: 800px; margin: 24px auto; }
+.native-auth-form { display: grid; gap: 16px; margin: 24px 0; }
+.native-auth-form label { display: grid; gap: 8px; font-weight: 600; }
+.native-auth-form input { box-sizing: border-box; width: 100%; min-width: 0; padding: 11px 12px; border: 1px solid #c8ced8; border-radius: 8px; background: #fff; color: #172033; font: inherit; }
+.native-auth-form input:focus-visible { outline: 2px solid #2868d7; outline-offset: 2px; }
+.native-auth-form .muted { font-weight: 400; font-size: 14px; }
+@media (max-width: 600px) { .native-auth-card, .native-account-card { margin: 12px 0; padding: 20px; } }

@@ -1,0 +1,444 @@
+{
+  "origin": "http://127.0.0.1:3380",
+  "runtimeCommit": "68acd102bc8f88fa7bf88aea099ccc7d74cbde28",
+  "databaseName": "light_truck_sheets_20261013",
+  "route": "/inspections",
+  "readingScale": "1000 rows × 27 actual columns; 10 contiguous editable",
+  "imageScale": "1000 occurrences × 23 actual columns, 30 real image bindings; separate layer in same module",
+  "browser": "155.0.8059.40",
+  "hardware": {
+    "cpu": "Apple M1",
+    "logicalCpus": 8,
+    "memoryBytes": 17179869184,
+    "platform": "darwin",
+    "arch": "arm64"
+  },
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "timingDefinition": "Trusted page input event to matching editor/canvas draw and next animation frame; Playwright call wall time excluded. This is observable response, not compositor pixels.",
+  "loadDefinition": "Navigation start through an actual UI click on the reading tab to autonomous 1000-row, editable current-cell, canvas-drawn readiness. Does not claim the default occurrence first viewport is editable.",
+  "navigationWrites": [],
+  "selection": {
+    "n": 50,
+    "median": 42.75499999523163,
+    "p95": 43.589999973773956,
+    "max": 45.330000042915344
+  },
+  "keyboard": {
+    "n": 50,
+    "median": 47.19499999284744,
+    "p95": 54.72000002861023,
+    "max": 55.48499995470047
+  },
+  "commitToPaint": {
+    "n": 50,
+    "median": 23.774999976158142,
+    "p95": 29.5,
+    "max": 32.2049999833107
+  },
+  "singleSaveIncludingDebounce": {
+    "n": 50,
+    "median": 333.0849999785423,
+    "p95": 347.83999997377396,
+    "max": 515.9850000143051
+  },
+  "serverRequestOnly": {
+    "n": 50,
+    "median": 47.730000019073486,
+    "p95": 62.06500005722046,
+    "max": 236.58999997377396
+  },
+  "sort": {
+    "n": 5,
+    "median": 64.2950000166893,
+    "p95": 65.42500001192093,
+    "max": 65.42500001192093
+  },
+  "filter": {
+    "n": 5,
+    "median": 59.9650000333786,
+    "p95": 68.96499997377396,
+    "max": 68.96499997377396
+  },
+  "pasteResults": [
+    {
+      "run": 0,
+      "rows": 100,
+      "columns": 10,
+      "localMs": 69.875,
+      "serverMs": 1353.0900000333786,
+      "displayRowBatches": [
+        {
+          "operationId": "e85f6e1c-2973-49d7-8ff4-7393f20d5824",
+          "readings": 50,
+          "measurements": 5
+        },
+        {
+          "operationId": "326c0f89-4009-4c95-840e-f6c97688e991",
+          "readings": 50,
+          "measurements": 5
+        }
+      ],
+      "serverReadbackRows": 100
+    },
+    {
+      "run": 1,
+      "rows": 100,
+      "columns": 10,
+      "localMs": 54.685000002384186,
+      "serverMs": 1447.589999973774,
+      "displayRowBatches": [
+        {
+          "operationId": "3de5519c-2d62-4be5-86ab-e1438ffd2b1f",
+          "readings": 50,
+          "measurements": 5
+        },
+        {
+          "operationId": "e88e08f2-f1df-4026-9534-628dfefba851",
+          "readings": 50,
+          "measurements": 5
+        }
+      ],
+      "serverReadbackRows": 100
+    },
+    {
+      "run": 2,
+      "rows": 100,
+      "columns": 10,
+      "localMs": 63.41500002145767,
+      "serverMs": 1253.2049999833107,
+      "displayRowBatches": [
+        {
+          "operationId": "973d7322-fcd9-47b9-a5b0-32dd94e9cd73",
+          "readings": 50,
+          "measurements": 5
+        },
+        {
+          "operationId": "591f10d7-71e8-40d7-958a-f3196fb49eb9",
+          "readings": 50,
+          "measurements": 5
+        }
+      ],
+      "serverReadbackRows": 100
+    },
+    {
+      "run": 3,
+      "rows": 100,
+      "columns": 10,
+      "localMs": 52.92500001192093,
+      "serverMs": 1370.5400000214577,
+      "displayRowBatches": [
+        {
+          "operationId": "4b231a2c-8db1-41ee-a301-5a5a0f4fbf17",
+          "readings": 50,
+          "measurements": 5
+        },
+        {
+          "operationId": "35db6fe3-96b9-4db1-9bad-2ac24611cfe8",
+          "readings": 50,
+          "measurements": 5
+        }
+      ],
+      "serverReadbackRows": 100
+    },
+    {
+      "run": 4,
+      "rows": 100,
+      "columns": 10,
+      "localMs": 63.18000000715256,
+      "serverMs": 1623.6949999928474,
+      "displayRowBatches": [
+        {
+          "operationId": "5384c804-d9b3-4098-bdfa-48cbac5b6121",
+          "readings": 50,
+          "measurements": 5
+        },
+        {
+          "operationId": "0b7635d2-44db-4f02-b360-d2a499308389",
+          "readings": 50,
+          "measurements": 5
+        }
+      ],
+      "serverReadbackRows": 100
+    }
+  ],
+  "pasteLocal": {
+    "n": 5,
+    "median": 63.18000000715256,
+    "p95": 69.875,
+    "max": 69.875
+  },
+  "imageScroll": {
+    "n": 20,
+    "median": 49.844999969005585,
+    "p95": 50.6700000166893,
+    "max": 50.75
+  },
+  "thumbnailCount": 30,
+  "imageCoverageDefinition": "All 30 exact fixture IDs: real native ArrowDown traversal of unfiltered 1000-row occurrence sheet; product detail thumbnail complete with nonzero natural dimensions and same blob URL observed in actual engine native drawImage (may use offscreen raster cache). No test image fetch/decode or application-state writes. Fast 20-wheel latency samples are separate.",
+  "longTasks": [],
+  "switches": [
+    {
+      "cycle": 1,
+      "via": "颜色清单",
+      "destinationReady": {
+        "url": "http://127.0.0.1:3380/admin/color-database",
+        "heading": "颜色清单",
+        "liveCanvases": 2
+      },
+      "liveCanvases": 1,
+      "mounts": 13,
+      "removals": 7,
+      "memory": {
+        "usedJSHeapSize": 135739846,
+        "totalJSHeapSize": 174269862,
+        "jsHeapSizeLimit": 4395630592
+      },
+      "requests": 347
+    },
+    {
+      "cycle": 2,
+      "via": "产量统计",
+      "destinationReady": {
+        "url": "http://127.0.0.1:3380/production",
+        "heading": "月度产量清单",
+        "liveCanvases": 2
+      },
+      "liveCanvases": 2,
+      "mounts": 23,
+      "removals": 13,
+      "memory": {
+        "usedJSHeapSize": 102146365,
+        "totalJSHeapSize": 214036061,
+        "jsHeapSizeLimit": 4395630592
+      },
+      "requests": 409
+    },
+    {
+      "cycle": 3,
+      "via": "人员库",
+      "destinationReady": {
+        "url": "http://127.0.0.1:3380/admin/people",
+        "heading": "人员库",
+        "liveCanvases": 2
+      },
+      "liveCanvases": 1,
+      "mounts": 30,
+      "removals": 18,
+      "memory": {
+        "usedJSHeapSize": 132965036,
+        "totalJSHeapSize": 214408216,
+        "jsHeapSizeLimit": 4395630592
+      },
+      "requests": 460
+    },
+    {
+      "cycle": 4,
+      "via": "颜色清单",
+      "destinationReady": {
+        "url": "http://127.0.0.1:3380/admin/color-database",
+        "heading": "颜色清单",
+        "liveCanvases": 2
+      },
+      "liveCanvases": 2,
+      "mounts": 39,
+      "removals": 23,
+      "memory": {
+        "usedJSHeapSize": 100723552,
+        "totalJSHeapSize": 252892388,
+        "jsHeapSizeLimit": 4395630592
+      },
+      "requests": 520
+    },
+    {
+      "cycle": 5,
+      "via": "产量统计",
+      "destinationReady": {
+        "url": "http://127.0.0.1:3380/production",
+        "heading": "月度产量清单",
+        "liveCanvases": 2
+      },
+      "liveCanvases": 2,
+      "mounts": 47,
+      "removals": 28,
+      "memory": {
+        "usedJSHeapSize": 173831924,
+        "totalJSHeapSize": 256295864,
+        "jsHeapSizeLimit": 4395630592
+      },
+      "requests": 577
+    },
+    {
+      "cycle": 6,
+      "via": "人员库",
+      "destinationReady": {
+        "url": "http://127.0.0.1:3380/admin/people",
+        "heading": "人员库",
+        "liveCanvases": 2
+      },
+      "liveCanvases": 2,
+      "mounts": 55,
+      "removals": 33,
+      "memory": {
+        "usedJSHeapSize": 191961107,
+        "totalJSHeapSize": 259335039,
+        "jsHeapSizeLimit": 4395630592
+      },
+      "requests": 632
+    },
+    {
+      "cycle": 7,
+      "via": "颜色清单",
+      "destinationReady": {
+        "url": "http://127.0.0.1:3380/admin/color-database",
+        "heading": "颜色清单",
+        "liveCanvases": 2
+      },
+      "liveCanvases": 2,
+      "mounts": 63,
+      "removals": 38,
+      "memory": {
+        "usedJSHeapSize": 107841675,
+        "totalJSHeapSize": 295085607,
+        "jsHeapSizeLimit": 4395630592
+      },
+      "requests": 692
+    },
+    {
+      "cycle": 8,
+      "via": "产量统计",
+      "destinationReady": {
+        "url": "http://127.0.0.1:3380/production",
+        "heading": "月度产量清单",
+        "liveCanvases": 2
+      },
+      "liveCanvases": 1,
+      "mounts": 70,
+      "removals": 43,
+      "memory": {
+        "usedJSHeapSize": 135440076,
+        "totalJSHeapSize": 297288324,
+        "jsHeapSizeLimit": 4395630592
+      },
+      "requests": 749
+    },
+    {
+      "cycle": 9,
+      "via": "人员库",
+      "destinationReady": {
+        "url": "http://127.0.0.1:3380/admin/people",
+        "heading": "人员库",
+        "liveCanvases": 2
+      },
+      "liveCanvases": 1,
+      "mounts": 78,
+      "removals": 48,
+      "memory": {
+        "usedJSHeapSize": 177421402,
+        "totalJSHeapSize": 297853498,
+        "jsHeapSizeLimit": 4395630592
+      },
+      "requests": 800
+    },
+    {
+      "cycle": 10,
+      "via": "颜色清单",
+      "destinationReady": {
+        "url": "http://127.0.0.1:3380/admin/color-database",
+        "heading": "颜色清单",
+        "liveCanvases": 2
+      },
+      "liveCanvases": 2,
+      "mounts": 86,
+      "removals": 52,
+      "memory": {
+        "usedJSHeapSize": 223017936,
+        "totalJSHeapSize": 298150724,
+        "jsHeapSizeLimit": 4395630592
+      },
+      "requests": 859
+    }
+  ],
+  "systemIme": "NOT_VERIFIED; no simulated composition",
+  "zoomAndColumnResize": "NOT_MEASURED_BY_THIS_SPEC; requires separate real UI samples",
+  "sourceUnchanged": true,
+  "occurrencesUnchanged": true,
+  "blocked": [],
+  "errors": [],
+  "consoleErrors": [
+    "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+    "Failed to load resource: the server responded with a status of 429 (Too Many Requests)"
+  ],
+  "unexpectedConsoleErrors": [],
+  "recoveredExportRateLimits": [
+    {
+      "path": "/api/attachments/cmv67rqtm087v9k96bx7gwecb/content",
+      "status": 429,
+      "retryAfter": "60",
+      "at": 1791879613472,
+      "recoveredAt": 1791879673664
+    },
+    {
+      "path": "/api/attachments/cmv67pbz9084h9k96e2z2uhsp/content",
+      "status": 429,
+      "retryAfter": "60",
+      "at": 1791879673870,
+      "recoveredAt": 1791879734040
+    }
+  ],
+  "recoveredExportConsoleErrors": [
+    {
+      "text": "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+      "url": "http://127.0.0.1:3380/api/attachments/cmv67rqtm087v9k96bx7gwecb/content",
+      "at": 1791879613472,
+      "phase": "export"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 429 (Too Many Requests)",
+      "url": "http://127.0.0.1:3380/api/attachments/cmv67pbz9084h9k96e2z2uhsp/content",
+      "at": 1791879673870,
+      "phase": "export"
+    }
+  ],
+  "loads": [
+    {
+      "kind": "cold-after-explicit-cache-clear",
+      "navigationToEditableReadingMs": 1836.4199999570847,
+      "moduleDataReadyMs": 1836.4049999713898,
+      "moduleDataReadyDefinition": "Existing viewport-visible canvas readiness; not raw API completion",
+      "navigationPhases": {
+        "readingRowsAvailable": 535.8650000095367,
+        "readingEngineReady": 1295.3100000023842,
+        "readingViewportPaint": 1836.3949999809265,
+        "readingEditableVisible": 1836.3999999761581
+      },
+      "httpCacheEnabledAndNoPlaywrightRoute": true,
+      "apiRequestCount": 58
+    },
+    {
+      "kind": "warm-second-navigation",
+      "navigationToEditableReadingMs": 1409.2400000095367,
+      "moduleDataReadyMs": 1409.2250000238419,
+      "moduleDataReadyDefinition": "Existing viewport-visible canvas readiness; not raw API completion",
+      "navigationPhases": {
+        "readingRowsAvailable": 1295.800000011921,
+        "readingEngineReady": 1295.8299999833107,
+        "readingViewportPaint": 1409.214999973774,
+        "readingEditableVisible": 1409.2200000286102
+      },
+      "httpCacheEnabledAndNoPlaywrightRoute": true,
+      "apiRequestCount": 50
+    }
+  ],
+  "evidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/compound-performance-evidence/1791879554116987000/results/compound-performance-1000--164e8--5-successful-100x10-pastes/integrated-compound-performance.json",
+  "evidenceSha256": "534a15170d0a6fc46bc19134b4493595991d97e675b3124b4aac7ecf57008b46",
+  "result": "PASS",
+  "INPUT_AND_VISUAL": "PASS_IN_MEASURED_SCOPE",
+  "SERVER_PERSISTED": "PASS_FIVE_PASTES_100_ROWS_EACH_GET",
+  "REOPEN_VERIFIED": "PARTIAL_SAMPLED_MODULE_RETURNS",
+  "reopenLimit": "No full 1000-row post-restart readback; each of five actual100x10 pastes GET-verified100 rows; ten module returns retained facts.",
+  "uniqueImageCount": 30,
+  "imageDecodedAndNativeDrawCount": 30
+}

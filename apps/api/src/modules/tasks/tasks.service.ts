@@ -1,3 +1,4 @@
+import { canOperateTeamTask, withProjectWrite } from '../../common/team-authorization';
 import {
   BadRequestException,
   ConflictException,
@@ -6,6 +7,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
+  AttachmentScanStatus,
   AttachmentTargetType,
   AuditTargetType,
   Prisma,
@@ -57,6 +59,19 @@ type WorkflowTaskListRecord = Prisma.WorkflowTaskGetPayload<{
   };
 }>;
 
+type TaskProgressDbClient = Prisma.TransactionClient | PrismaService;
+
+type LockedProgressTask = {
+  id: string;
+  projectId: string;
+  nodeCode: WorkflowNodeCode;
+  nodeName: string;
+  status: WorkflowTaskStatus;
+  isActive: boolean;
+  assigneeUserId: string | null;
+  updatedAt: Date;
+};
+
 const REVIEW_TASK_NODE_CODES = [
   WorkflowNodeCode.SAMPLE_COLOR_CONFIRMATION,
   WorkflowNodeCode.CAB_REVIEW,
@@ -96,6 +111,29 @@ export class TasksService {
   }
 
   async getTaskDetail(taskId: string, actor: AuthenticatedUser) {
+    const taskScope = await this.prisma.workflowTask.findUnique({
+      where: { id: taskId },
+      select: {
+        id: true,
+        projectId: true,
+        assigneeUserId: true,
+      },
+    });
+
+    if (!taskScope) {
+      throw new NotFoundException('工序任务不存在或已被删除。');
+    }
+
+    await this.projectAccessService.assertProjectAccessWithDefaultClient(
+      taskScope.projectId,
+      actor,
+      'project.read',
+    );
+
+    if (!this.canViewTask(actor, taskScope.assigneeUserId)) {
+      throw new ForbiddenException('只能查看分配给自己的任务，项目经理可查看全部。');
+    }
+
     const task = await this.prisma.workflowTask.findUnique({
       where: { id: taskId },
       include: {
@@ -123,7 +161,7 @@ export class TasksService {
       },
     });
 
-    if (!task || !this.canViewTask(actor, task.assigneeUserId)) {
+    if (!task) {
       throw new NotFoundException('工序任务不存在或已被删除。');
     }
 
@@ -158,9 +196,7 @@ export class TasksService {
     actor: AuthenticatedUser,
   ) {
     const task = await this.getProgressTaskOrThrow(taskId, actor, 'workflow.transition');
-    this.assertTaskCanReceiveProgress(task);
     this.assertProgressInput(input);
-    await this.assertProgressReferences(task.projectId, task.id, input);
 
     const existing = await this.prisma.taskProgressUpdate.findUnique({
       where: { idempotencyKey: input.idempotencyKey },
@@ -171,19 +207,65 @@ export class TasksService {
     });
 
     if (existing) {
-      if (existing.workflowTaskId !== task.id || existing.submittedById !== actor.id) {
-        throw new ConflictException('幂等键已被其他进展提交使用。');
-      }
-
+      this.assertMatchingProgressReplay(existing, task.id, input, actor.id);
       return this.toProgressItem(existing);
     }
 
     try {
-      const created = await this.prisma.$transaction(async (tx) => {
+      const created = await withProjectWrite(this.prisma, actor, { taskId }, async (tx) => {
+        const lockedTasks = await tx.$queryRaw<LockedProgressTask[]>(Prisma.sql`
+          SELECT
+            "id",
+            "projectId",
+            "nodeCode",
+            "nodeName",
+            "status",
+            "isActive",
+            "assigneeUserId",
+            "updatedAt"
+          FROM "workflow_tasks"
+          WHERE "id" = ${task.id}
+          FOR UPDATE
+        `);
+        const lockedTask = lockedTasks[0];
+        if (!lockedTask) {
+          throw new NotFoundException('工序任务不存在或已被删除。');
+        }
+
+        await this.projectAccessService.assertProjectAccess(
+          tx,
+          lockedTask.projectId,
+          actor,
+          'workflow.transition',
+        );
+        if (!this.canSubmitTaskProgress(actor, lockedTask)) {
+          throw new ForbiddenException('只有当前负责人或项目经理可提交普通工序进展。');
+        }
+        this.assertLockedTaskCanReceiveProgress(lockedTask);
+        this.assertTaskVersion(lockedTask, input.taskVersion);
+        await this.assertProgressReferences(tx, lockedTask.projectId, lockedTask.id, input);
+
+        const transactionReplay = await tx.taskProgressUpdate.findUnique({
+          where: { idempotencyKey: input.idempotencyKey },
+          include: {
+            submittedBy: { select: { id: true, name: true } },
+            blocker: { include: { helperUser: { select: { id: true, name: true } } } },
+          },
+        });
+        if (transactionReplay) {
+          this.assertMatchingProgressReplay(
+            transactionReplay,
+            lockedTask.id,
+            input,
+            actor.id,
+          );
+          return transactionReplay;
+        }
+
         const progress = await tx.taskProgressUpdate.create({
           data: {
-            workflowTaskId: task.id,
-            projectId: task.projectId,
+            workflowTaskId: lockedTask.id,
+            projectId: lockedTask.projectId,
             submittedById: actor.id,
             completionPercent: input.completionPercent,
             completedContent: input.completedContent.trim(),
@@ -193,12 +275,13 @@ export class TasksService {
                 ? input.materialAttachmentIds
                 : Prisma.JsonNull,
             idempotencyKey: input.idempotencyKey,
+            taskVersion: input.taskVersion,
             ...(input.isBlocked
               ? {
                   blocker: {
                     create: {
-                      workflowTaskId: task.id,
-                      projectId: task.projectId,
+                      workflowTaskId: lockedTask.id,
+                      projectId: lockedTask.projectId,
                       blockerType: input.blockerType!,
                       description: input.blockerDescription!.trim(),
                       helperUserId: input.helperUserId?.trim() || null,
@@ -218,13 +301,13 @@ export class TasksService {
         });
 
         await this.activityLogsService.createWithExecutor(tx, {
-          projectId: task.projectId,
+          projectId: lockedTask.projectId,
           actorUserId: actor.id,
           targetType: AuditTargetType.WORKFLOW_TASK,
-          targetId: task.id,
+          targetId: lockedTask.id,
           action: 'TASK_PROGRESS_SUBMITTED',
-          nodeCode: task.nodeCode,
-          summary: `${task.nodeName} 已提交 ${input.completionPercent}% 工作进展。`,
+          nodeCode: lockedTask.nodeCode,
+          summary: `${lockedTask.nodeName} 已提交 ${input.completionPercent}% 工作进展。`,
           afterData: {
             progressUpdateId: progress.id,
             completionPercent: progress.completionPercent,
@@ -249,9 +332,9 @@ export class TasksService {
 
         if (
           duplicate &&
-          duplicate.workflowTaskId === task.id &&
-          duplicate.submittedById === actor.id
+          duplicate.workflowTaskId === task.id
         ) {
+          this.assertMatchingProgressReplay(duplicate, task.id, input, actor.id);
           return this.toProgressItem(duplicate);
         }
       }
@@ -379,6 +462,7 @@ export class TasksService {
             entityType: AttachmentTargetType.WORKFLOW_TASK,
             entityId: { in: filtered.map((task) => task.id) },
             isDeleted: false,
+            scanStatus: AttachmentScanStatus.CLEAN,
           },
           _count: { _all: true },
         })
@@ -417,6 +501,7 @@ export class TasksService {
       nodeCode: task.nodeCode,
       nodeName: task.nodeName || getCurrentNodeName(task.nodeCode) || task.nodeCode,
       taskStatus: task.status,
+      taskVersion: task.updatedAt.toISOString(),
       dueAt: task.dueAt?.toISOString() ?? null,
       assigneeName: task.assigneeUser?.name ?? '未分配',
       isOverdue,
@@ -453,26 +538,15 @@ export class TasksService {
   }
 
   private canViewTask(actor: AuthenticatedUser, assigneeUserId: string | null) {
-    return (
-      this.isAdmin(actor) ||
-      this.isProjectManager(actor) ||
-      assigneeUserId === actor.id
-    );
+    void assigneeUserId;
+    return actor.isSystemAdmin || (actor.permissionCodes ?? []).includes('project.read');
   }
 
   private canSubmitTaskProgress(
     actor: AuthenticatedUser,
     task: { nodeCode: WorkflowNodeCode; assigneeUserId: string | null },
   ) {
-    if (task.nodeCode === WorkflowNodeCode.DEVELOPMENT_ACCEPTANCE) {
-      return this.isAdmin(actor) || actor.roleCodes.includes('finance');
-    }
-
-    if (task.nodeCode === WorkflowNodeCode.PROJECT_CLOSED) {
-      return this.isAdmin(actor) || this.isProjectManager(actor);
-    }
-
-    return this.isProjectManager(actor) || task.assigneeUserId === actor.id;
+    return canOperateTeamTask(task, actor);
   }
 
   private async getProgressTaskOrThrow(
@@ -490,6 +564,7 @@ export class TasksService {
         status: true,
         isActive: true,
         assigneeUserId: true,
+        updatedAt: true,
       },
     });
 
@@ -535,6 +610,31 @@ export class TasksService {
     }
   }
 
+  private assertLockedTaskCanReceiveProgress(task: {
+    status: WorkflowTaskStatus;
+    isActive: boolean;
+  }) {
+    try {
+      this.assertTaskCanReceiveProgress(task);
+    } catch {
+      throw new ConflictException({
+        code: 'TASK_STATE_CHANGED',
+        message: '工序状态已更新，请刷新后再提交工作进展。',
+      });
+    }
+  }
+
+  private assertTaskVersion(task: { updatedAt: Date }, taskVersion: string) {
+    if (task.updatedAt.toISOString() !== new Date(taskVersion).toISOString()) {
+      throw new ConflictException({
+        code: 'STALE_TASK_VERSION',
+        message: '工序信息已更新，请刷新后再提交工作进展。',
+        expectedVersion: taskVersion,
+        currentVersion: task.updatedAt.toISOString(),
+      });
+    }
+  }
+
   private assertProgressInput(input: CreateTaskProgressDto) {
     if (!input.completedContent.trim()) {
       throw new BadRequestException('请填写本次完成内容。');
@@ -546,12 +646,13 @@ export class TasksService {
   }
 
   private async assertProgressReferences(
+    db: TaskProgressDbClient,
     projectId: string,
     taskId: string,
     input: CreateTaskProgressDto,
   ) {
     if (input.helperUserId) {
-      const helper = await this.prisma.user.findUnique({
+      const helper = await db.user.findUnique({
         where: { id: input.helperUserId },
         select: { id: true },
       });
@@ -566,18 +667,79 @@ export class TasksService {
       return;
     }
 
-    const attachmentCount = await this.prisma.attachment.count({
+    const attachmentCount = await db.attachment.count({
       where: {
         id: { in: attachmentIds },
         projectId,
         entityType: AttachmentTargetType.WORKFLOW_TASK,
         entityId: taskId,
         isDeleted: false,
+        scanStatus: AttachmentScanStatus.CLEAN,
       },
     });
 
     if (attachmentCount !== attachmentIds.length) {
       throw new BadRequestException('进展材料必须已安全上传并绑定到当前任务。');
+    }
+  }
+
+  private assertMatchingProgressReplay(
+    existing: {
+      workflowTaskId: string;
+      submittedById: string | null;
+      completionPercent: number;
+      completedContent: string;
+      nextPlan: string | null;
+      materialAttachmentIds: Prisma.JsonValue;
+      taskVersion: string | null;
+      blocker: {
+        blockerType: string;
+        description: string;
+        helperUserId: string | null;
+        expectedResolvedAt: Date | null;
+      } | null;
+    },
+    taskId: string,
+    input: CreateTaskProgressDto,
+    actorUserId: string,
+  ) {
+    const existingAttachmentIds = Array.isArray(existing.materialAttachmentIds)
+      ? existing.materialAttachmentIds
+      : [];
+    const requestedAttachmentIds = input.materialAttachmentIds ?? [];
+    const attachmentsMatch =
+      existingAttachmentIds.length === requestedAttachmentIds.length &&
+      existingAttachmentIds.every(
+        (value, index) => value === requestedAttachmentIds[index],
+      );
+    let blockerMatches = existing.blocker === null;
+    if (input.isBlocked && existing.blocker) {
+      blockerMatches =
+        existing.blocker.blockerType === input.blockerType &&
+        existing.blocker.description === input.blockerDescription?.trim() &&
+        existing.blocker.helperUserId === (input.helperUserId?.trim() || null) &&
+        existing.blocker.expectedResolvedAt?.toISOString() ===
+          (input.expectedResolvedAt
+            ? new Date(input.expectedResolvedAt).toISOString()
+            : undefined);
+    } else if (input.isBlocked) {
+      blockerMatches = false;
+    }
+    const matches =
+      existing.workflowTaskId === taskId &&
+      existing.submittedById === actorUserId &&
+      existing.taskVersion === input.taskVersion &&
+      existing.completionPercent === input.completionPercent &&
+      existing.completedContent === input.completedContent.trim() &&
+      existing.nextPlan === (input.nextPlan?.trim() || null) &&
+      attachmentsMatch &&
+      blockerMatches;
+
+    if (!matches) {
+      throw new ConflictException({
+        code: 'IDEMPOTENCY_KEY_REUSED_WITH_DIFFERENT_PAYLOAD',
+        message: '幂等键已被其他进展提交或不同请求内容使用。',
+      });
     }
   }
 

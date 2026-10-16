@@ -1,0 +1,29 @@
+{
+  "checkedAt": "2026-09-12T11:55:04.003922+00:00",
+  "environment": "production",
+  "origin": "https://timeline.all-too-well.com",
+  "reads": [
+    {
+      "path": "/api/health",
+      "status": 200,
+      "metadata": {
+        "runtimeCommit": "535041bb25f21d548d863d07b35e3e952b0aeb2c",
+        "sourceCommit": null,
+        "sourceTree": null,
+        "buildTime": "2026-08-09T06:49:11Z",
+        "release": "r26-admin-535041bb25f2"
+      }
+    },
+    {
+      "path": "/build-info",
+      "status": 200,
+      "metadata": {
+        "runtimeCommit": "535041bb25f21d548d863d07b35e3e952b0aeb2c",
+        "sourceCommit": null,
+        "sourceTree": null,
+        "buildTime": "2026-08-09T06:49:11Z",
+        "release": "r26-admin-535041bb25f2"
+      }
+    }
+  ]
+}

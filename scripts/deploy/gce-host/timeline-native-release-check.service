@@ -1,0 +1,15 @@
+[Unit]
+Description=Fixed native program update interruption check
+Requires=timeline-native-cutover-recover.service timeline-native-network.service
+After=timeline-native-cutover-recover.service timeline-native-network.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 -I /usr/local/lib/timeline-native-ops/native_release.py check-recovery
+ExecStopPost=/usr/bin/python3 -I /usr/local/lib/timeline-native-ops/native_release.py recover
+TimeoutStartSec=600
+TimeoutStopSec=180
+KillMode=control-group
+UMask=0077
+MemoryMax=512M
+TasksMax=64

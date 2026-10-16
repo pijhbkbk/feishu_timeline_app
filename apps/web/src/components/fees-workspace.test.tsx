@@ -19,8 +19,9 @@ const financeUser: SessionUser = {
   departmentId: null,
   departmentName: null,
   isSystemAdmin: false,
-  authSource: 'mock',
-  roleCodes: ['finance'],
+  authSource: 'local',
+  teamAccessApproved: true,
+  roleCodes: [],
 };
 
 const workspace: FeesWorkspaceResponse = {

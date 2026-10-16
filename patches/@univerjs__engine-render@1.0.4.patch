@@ -1,0 +1,20 @@
+--- a/lib/es/index.js
++++ b/lib/es/index.js
+@@ -1324,6 +1324,7 @@
+ }
+ function injectStyle(styles) {
+ 	const styleElement = document.createElement("style");
++	styleElement.nonce = document.querySelector("script[nonce]")?.nonce || "";
+ 	document.head.appendChild(styleElement);
+ 	const styleSheet = styleElement.sheet;
+ 	for (const style of styles) styleSheet === null || styleSheet === void 0 || styleSheet.insertRule(style, styleSheet.cssRules.length);
+--- a/lib/cjs/index.js
++++ b/lib/cjs/index.js
+@@ -1325,6 +1325,7 @@
+ }
+ function injectStyle(styles) {
+ 	const styleElement = document.createElement("style");
++	styleElement.nonce = document.querySelector("script[nonce]")?.nonce || "";
+ 	document.head.appendChild(styleElement);
+ 	const styleSheet = styleElement.sheet;
+ 	for (const style of styles) styleSheet === null || styleSheet === void 0 || styleSheet.insertRule(style, styleSheet.cssRules.length);
