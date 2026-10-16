@@ -4,6 +4,7 @@ import unittest
 from unittest.mock import patch
 import native_runtime_app as app
 import native_backup_controller as backup
+import native_release as release
 
 
 def fixture(component):
@@ -43,16 +44,17 @@ class RuntimeBoundaryTests(unittest.TestCase):
                 with self.assertRaises(backup.Failure):app.validate_container(component,changed,image)
 
     def test_runtime_does_not_get_old_database_or_third_party_credentials(self):
-        value=app.fixed_environment({'password':'new-copy-password'},'new-redis-password')
+        identity=release.VERSIONS[release.OLD]
+        value=app.fixed_environment({'password':'new-copy-password'},'new-redis-password',identity)
         self.assertIn('/feishu_timeline_restore_c38c57da?',value['DATABASE_URL'])
         self.assertNotIn('feishu_timeline_app:',value['DATABASE_URL'])
         self.assertEqual(value['AUTH_MOCK_ENABLED'],'false')
         self.assertFalse(any(key.startswith(('FEISHU_','GOOGLE_')) for key in value))
         self.assertEqual(value['NOTIFICATION_REDIS_QUEUE_MAX_JOBS'],'256')
-        self.assertEqual(value['EXPECTED_SOURCE_COMMIT'],app.COMMIT)
-        self.assertEqual(value['EXPECTED_SOURCE_TREE'],app.TREE)
-        web=dict(line.split('=',1) for line in app.web_environment_bytes().decode().splitlines())
-        for key,expected in [('EXPECTED_SOURCE_COMMIT',app.COMMIT),('EXPECTED_SOURCE_TREE',app.TREE),('EXPECTED_RELEASE',app.RELEASE),('EXPECTED_BUILD_TIME',app.BUILD_TIME)]:
+        self.assertEqual(value['EXPECTED_SOURCE_COMMIT'],identity['commit'])
+        self.assertEqual(value['EXPECTED_SOURCE_TREE'],identity['tree'])
+        web=dict(line.split('=',1) for line in app.web_environment_bytes(identity).decode().splitlines())
+        for key,expected in [('EXPECTED_SOURCE_COMMIT',identity['commit']),('EXPECTED_SOURCE_TREE',identity['tree']),('EXPECTED_RELEASE',identity['release']),('EXPECTED_BUILD_TIME',identity['buildTime'])]:
             self.assertEqual(value[key],expected);self.assertEqual(web[key],expected)
 
     def test_unprepared_or_damaged_configuration_cannot_create_container(self):
@@ -73,11 +75,23 @@ class RuntimeBoundaryTests(unittest.TestCase):
         _,stopped=fixture('api');running=copy.deepcopy(stopped);running['State']={'Running':True,'Pid':12}
         with patch.object(app,'inspect',side_effect=[running,stopped,None]),patch.object(app,'docker') as docker:
             app.stop('api',remove=True)
-            self.assertEqual(docker.call_args_list[0].args,('stop','--time=20','a'*64))
+            self.assertEqual(docker.call_args_list[0].args,('stop','--time=65','a'*64))
+            self.assertEqual(docker.call_args_list[0].kwargs, {'timeout': 80})
             self.assertEqual(docker.call_args_list[1].args,('rm','a'*64))
         with patch.object(app,'inspect',return_value=running),patch.object(app,'docker') as docker:
             with self.assertRaises(backup.Failure):app.stop('api',remove=True)
             self.assertEqual(docker.call_count,1)
+
+    def test_docker_wrapper_forwards_only_the_explicit_api_stop_budget(self):
+        with patch.object(app, 'run') as run:
+            app.docker('stop', '--time=65', 'a' * 64, timeout=80)
+            run.assert_called_once_with(['/usr/bin/docker', 'stop', '--time=65', 'a' * 64], timeout=80)
+
+    def test_web_retains_original_short_stop_deadline(self):
+        _, stopped = fixture('web'); running = copy.deepcopy(stopped); running['State'] = {'Running': True, 'Pid': 12}
+        with patch.object(app, 'inspect', side_effect=[running, stopped]), patch.object(app, 'docker') as docker:
+            app.stop('web')
+            docker.assert_called_once_with('stop', '--time=20', 'a' * 64)
 
     def test_dirty_migrated_copy_stops_before_any_role_or_bootstrap_mutation(self):
         with patch.object(app,'state_directory'),patch.object(app.database_scope,'verify'),patch.object(app,'inspect',return_value=None),patch.object(app,'image_identity'),\

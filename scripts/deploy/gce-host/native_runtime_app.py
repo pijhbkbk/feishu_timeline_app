@@ -62,8 +62,8 @@ def locked(component):
         os.close(fd)
 
 
-def docker(*args):
-    return run(['/usr/bin/docker', *args])
+def docker(*args, timeout=45):
+    return run(['/usr/bin/docker', *args], **({'timeout': timeout} if timeout != 45 else {}))
 
 
 def runtime_identity():
@@ -108,7 +108,12 @@ def stop(component, remove=False):
         return
     cid = item['Id']
     if item['State']['Running']:
-        docker('stop', '--time=20', cid)
+        # New native API drains accepted/background writes for up to 45 seconds.
+        # Keep a larger Docker deadline; unrelated containers and Web retain their bounds.
+        if component == 'api':
+            docker('stop', '--time=65', cid, timeout=80)
+        else:
+            docker('stop', '--time=20', cid)
     final = inspect(component)
     require(final and final['Id'] == cid and not final['State']['Running'] and final['State']['Pid'] == 0, 'Application exit unproved')
     if remove:
@@ -224,6 +229,8 @@ def validate_container(component, item, image):
 
 def prepare_start(component):
     state_directory()
+    from native_release_r28_patch import assert_start
+    assert_start(runtime_identity()['commit'])
     from native_cutover import committed_value, present
     if present(ROOT / 'cutover-pending.json') or present(ROOT / 'cutover-committed.json'):
         committed_value()

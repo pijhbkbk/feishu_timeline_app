@@ -61,7 +61,9 @@ def check_legacy():
     if present(PENDING): pending_value()
 
 
-def systemctl(*args): return app.run(['/usr/bin/systemctl',*args])
+def systemctl(*args):
+    limits = {'timeout': 110} if args == ('stop', 'timeline-native-api.service') else {}
+    return app.run(['/usr/bin/systemctl', *args], **limits)
 
 
 def unit_state(unit):
@@ -201,38 +203,18 @@ def close_old_role():
 
 
 def recover():
-    if present(COMMITTED):
-        committed_value()
-        # Closing the old role comes before container/Docker operations.
-        close_old_role();stop_units(OLD)
-        systemctl('disable',*OLD)
-        from native_release import recover_pending, ingress_ready
-        recover_pending()
-        ingress_ready()
-        no_old_journals();app.validate_files();release_checkout()
-        backup.role_change('ALTER ROLE "'+ROLE+'" LOGIN CONNECTION LIMIT 12;')
-        systemctl('enable',*APPS,*SOCKETS)
-        return 'COMMITTED_NEW_RUNTIME_READY'
-    if present(PENDING):
-        pending_value()
-        backup.recover_restore()
-        scope.close_role()
-        stop_units(SOCKETS+PROXIES+APPS)
-        for part in ('api','web'): app.stop(part)
-        systemctl('disable',*SOCKETS,*APPS)
-        backup.recover_source()
-        no_old_journals()
-        backup.role_change('ALTER ROLE "'+backup.ROLE+'" LOGIN;')
-        systemctl('enable',*OLD)
-        # Old units do not depend on this recovery unit; no reverse start ordering.
-        systemctl('start',*OLD)
-        require(all(unit_state(unit)['ActiveState']=='active' for unit in OLD),'Original services not restored')
-        # Keep the immutable pending journal: another cutover requires deliberate reconciliation.
-        return 'PRECOMMIT_OLD_RUNTIME_RESTORED'
-    # The operation can be interrupted inside a backup before writing cutover PENDING.
-    backup.recover_restore()
-    backup.recover_source()
-    return 'NO_CUTOVER_PENDING'
+    # The installed 41-schema program contract permanently supersedes pre-native
+    # recovery. A lost historical commit receipt must never reopen legacy writes.
+    from native_release import recover_pending, ingress_ready
+    recover_pending()
+    committed_value()
+    close_old_role(); stop_units(OLD)
+    systemctl('disable', *OLD)
+    ingress_ready()
+    no_old_journals(); app.validate_files(); release_checkout()
+    backup.role_change('ALTER ROLE "'+ROLE+'" LOGIN CONNECTION LIMIT 12;')
+    systemctl('enable', *APPS, *SOCKETS)
+    return 'COMMITTED_NEW_RUNTIME_READY'
 
 
 def check_health(public=False):

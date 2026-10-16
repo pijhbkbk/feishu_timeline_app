@@ -8289,3 +8289,40 @@ main ref与tag未改变。这里仅追加指针，保留原有未提交交接文
 - 临时Cloud Shell公钥已删除并确认，两条管理主连接已关闭；未新授权OAuth，应用扫描器的永久内部连接保留。
 - 完整实施/证据工作树：`/private/tmp/timeline-native-auth-20260912`，分支 `codex/native-account-auth`，证据HEAD `4ab75cb1b6639c234ccb12579af1d5182d2fb7d8`；详细入口为该工作树 `docs/acceptance/NATIVE_ACCOUNTS_20260912/README.md`。运行提交、运维提交及证据提交分开；main/tag未合并或改写，本目录现有补丁保留。
 - Mac锁屏导致真实浏览器验收不可用，已请求用户手动解锁。剩余登录/个人账号/工作台项目/账号与组织管理页面的正式浏览器截图、Network、console和交互，及产品负责人确认。staging未执行；正式源码Placeholder0，测试白名单10。状态 `PRODUCTION_RUNTIME_SWITCHED / EXACT_DOMAIN_HTTP_AND_RESTART_PASS / DEPLOYMENT_UNVERIFIED / AWAITING_PRODUCT_OWNER_CONFIRMATION`。旧访问和授权blocker已解除，不得继续当作当前服务器阻塞，也不得把本次HTTP证据冒充浏览器/产品验收。
+
+
+## 2026-10-16 · 独立运维分支历史记录保留
+
+以下为原运维分支新增的历史台账，原轮次的状态和时间保持不变。
+
+
+## 原生登录体验版本：独立 Ops 接续准备（2026-09-18）
+
+- 所有者新工作包由根任务实施；本子任务仅在独立 `/private/tmp/timeline-login-release-ops-20260918` 准备 c5 后续固定发布控制器。源码提交 `b4bb33453d66e94adfa8eec013a11e223b26e35e`，未连接生产、推送或发布。
+- 安装范围仅一个新目标模块与原子替换发布控制器；保留原 v1 状态、c5 回退、所有旧原件/备份/收据、PG/Redis/对象保护。固定9项Python依赖和4个unit保持原字节，双方API均要求真实优雅退出。
+- 11个运维测试模块129项本地PASS；12种本地写入/原子激活中断恢复、旧proof拒用及权限/状态负向通过。这些是本地合成测试，不是生产演练。
+- `TARGET=None`：6fd因根任务真实HTTP隐式类型转换失败已撤回，最终新candidate与RepoDigest待提供；当前包不可生成/发布，独立静态审查待完成。
+- 详情及日志摘要见 `docs/acceptance/NATIVE_LOGIN_RELEASE_20260918/OPERATIONS_CONTINUATION.md` 与 `operations-continuation-preliminary.json`。main/tag/生产由本子任务保持不变。
+
+
+## 原生登录体验版本：固定541 Ops包准备（2026-09-18）
+
+- 最终 runtime `541b3dfff682aa29b49a96b251f0a084903c981a`、tree `bc65d7145a498066556f2abc8d8619a6643dc325`，经根任务实际私有RepoDigest回读绑定，Ops源码提交 `0f4980733d6c1265f0677904a5aa4e3ac94776bc`。此前6fd候选撤回记录保留。
+- 本轮20项API/Web差异精确SHA已固定，无schema/依赖变化；根任务新现场preflight与14个controller/unit原始摘要逐项一致。绑定后129项本地运维测试PASS，7脚本语法/字面量/2个payload SHA核对PASS。
+- 固定包 `/private/tmp/timeline-native-login-release-bundle-0f49807`，manifest SHA256 `578a38e3840efffdf4722ab32bdca0d9578577cdfc520d0387a97c0164cb5f3f`。根任务已审接续逻辑，本轮最终身份与包待其最终审查；本子任务未执行SSH、push或生产步骤。
+- 详情见 `docs/acceptance/NATIVE_LOGIN_RELEASE_20260918/operations-final-binding-541b3dfff682.json`。当前仅 FIXED_PACKAGE_PREPARED / FINAL_PACKAGE_REVIEW_PENDING，不能声称新网站交付。
+
+
+## R28 后台与团队流程：固定迁移发布准备（2026-09-28）
+
+- 继续所有者自主上线目标，在独立 Ops 工作树基于 f77d958 准备固定 22aac→29ed14c、37→41 发布。应用候选及私有镜像已固定，尚未安装/执行本轮生产升级。
+- 新增迁移日志、启动/恢复门禁、精确历史及交接验证、实际B0隔离恢复、固定安装器/驱动；原程序发布分支、旧控制器与收据保留。
+- 164项Ops回归、固定镜像升级/备份恢复、真实快照生成器及迁移中/开放写入后两类实际SIGKILL隔离验证通过；独立只读审查发现的恢复入口与快照主键问题已修复，最终只读复核无新的确定阻断。
+- 证据、适配边界、日志/工具摘要和剩余生产步骤见 `docs/acceptance/R28_OPS_20260928/README.md`。精确生产域名/PG14/systemd验证待执行，main/tag不变，产品负责人未确认。
+
+## R28 正式浏览器反馈：41→41 程序补丁准备（2026-09-28）
+
+- 初始29ed正式发布后，实际手机浏览器发现项目列表横向超宽、任务详情内部轨道溢出及历史部门标签问题。应用e917da56b9fca54a40635364e168fdb26a080fb1已固定构建并推送私有源与API/Web镜像；该补丁不改变API业务、schema、迁移或依赖。
+- 新控制器单独追加程序发布日志，固定原OPEN_41锚点不变，41→41只受控备份和程序替换，不执行迁移或任何数据恢复。启动/入口/恢复均检查新日志阶段及历史锚点；新程序写入后中断保留事实并关闭访问。
+- 最终组合40项测试及新增54表门禁通过；独立PG14四类实际SIGKILL（保护后、许可后启动前、新API写入后、OPEN_INTENT）通过；独立只读审查无确定阻断。真实固定镜像登录/人员/提醒/退出和三宽度项目详情正常点击通过。完整边界和日志见 `docs/acceptance/R28_UI_PATCH_20260928/README.md`。
+- 当前为CODE_IMPLEMENTED / LOCAL_VERIFIED / PATCH_NOT_DEPLOYED；下一步从干净Ops提交生成固定五脚本，私有推送后依次checkout/pull/install/update/proof，并在精确生产域名重新验收。main/tag未变，产品负责人未确认。

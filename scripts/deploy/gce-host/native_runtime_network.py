@@ -8,6 +8,7 @@ import hashlib
 import ipaddress
 import json
 import os
+import re
 from pathlib import Path
 import socket
 import selectors
@@ -36,7 +37,15 @@ NETWORKS = [('timeline-native-api', 'br-tln-api', '172.30.44.0/29', '172.30.44.1
 require = backup.require
 
 
-def run(args, *, payload=None):
+def run(args, *, payload=None, timeout=45):
+    # Extended budgets are limited to the fixed native API shutdown chain.
+    require(type(timeout) is int and timeout in (45, 80, 110), 'Unsupported command deadline')
+    if timeout == 80:
+        require(len(args) == 4 and args[:3] == ['/usr/bin/docker', 'stop', '--time=65'] and
+                re.fullmatch(r'[a-f0-9]{64}', args[3]), 'Extended Docker deadline is only for bounded API stop')
+    if timeout == 110:
+        require(args == ['/usr/bin/systemctl', 'stop', 'timeline-native-api.service'],
+                'Extended supervisor deadline is only for native API stop')
     require(payload is None or len(payload) <= 8192, 'Network command input exceeds bound')
     # A private anonymous file avoids pipe write/read deadlocks; no secret input.
     with tempfile.TemporaryFile() as source:
@@ -46,7 +55,7 @@ def run(args, *, payload=None):
         process = subprocess.Popen(args, stdin=source, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                    env=backup.ENV, cwd='/', start_new_session=True)
         buffers = [bytearray(), bytearray()]
-        deadline = time.monotonic() + 45
+        deadline = time.monotonic() + timeout
         try:
             with selectors.DefaultSelector() as ready:
                 for index, stream in enumerate((process.stdout, process.stderr)):

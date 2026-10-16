@@ -1,0 +1,94 @@
+{
+  "phase": "M4_PREDEPLOYMENT",
+  "runtimeIdentity": {
+    "commit": "29ed14c81e297c56699ba571cfc6946a00ccb942",
+    "tree": "5a4406f587116583ea1ee704e3581c7b39f082e6",
+    "release": "r28-admin-20260928-29ed14c81e29",
+    "buildTime": "2026-09-28T09:03:51Z",
+    "images": {
+      "api": "us-west1-docker.pkg.dev/axial-acrobat-492709-r7/feishu-timeline/api@sha256:6d9a67a98445cb288c7c25b67fae31a2c21f6d0efcc4778753f1130ecdb986ed",
+      "ops": "us-west1-docker.pkg.dev/axial-acrobat-492709-r7/feishu-timeline/api-ops@sha256:de0c61c4f88e99017ecd8bafbbac3c23264f80585833f41b39a43eab2056a5ce",
+      "web": "us-west1-docker.pkg.dev/axial-acrobat-492709-r7/feishu-timeline/web@sha256:91ee41ee3cfc29b3837caf2142bcb01bd5a510743674aa59bb55a8eb1932186e"
+    }
+  },
+  "operationsBase": "f77d958de05df59dd43c02fc1ed5e16a7317ca6a",
+  "productionAtPreflight": "22aac0a1b9fe975f60d599f8dbe7be20bcbca1b1",
+  "productionUrl": "https://timeline.all-too-well.com",
+  "productionChanged": false,
+  "targetPostgreSQLMajor": 14,
+  "checks": {
+    "opsUnitTests": 164,
+    "fixedImageMigration37To41": "PASS",
+    "preAndPostMigrationRestore": "PASS",
+    "exactPreservationContract": "PASS",
+    "actualSnapshotGenerator": "PASS",
+    "partialMigrationActualSigkill": "PASS",
+    "writeEnabledActualSigkill": "PASS",
+    "fixedImageBrowser": "PASS",
+    "productionSystemdInterruption": "NOT_EXECUTED",
+    "exactDomainBrowser": "NOT_EXECUTED",
+    "ownerAcceptance": "AWAITING_PRODUCT_OWNER_CONFIRMATION",
+    "independentFinalReview": "PASS_SCOPE_LIMITED",
+    "fixedImageRestartLoginLogout": "PASS",
+    "shellSecurity": "PASS",
+    "postgres14MigrationRestore": "PASS",
+    "postgres14SnapshotPreservation": "PASS",
+    "postgres14FullSchemaSingleLine": "PASS",
+    "predicateBoundaryCombinations": 343,
+    "pg14ActualStartupGates": "PASS",
+    "extractedConstraintInsertUpdate": {
+      "versionsAndRestoreStates": 4,
+      "validPerState": 18,
+      "rejectedPerState": 18,
+      "result": "PASS"
+    }
+  },
+  "logSha256": {
+    "m4-migration-preservation.log": "8e6a2c219213a2e8841534fd2b11746729328213079ba4fb3f87123f9b1aa03d",
+    "m4-production-snapshot-pg-v1.log": "c6136b7dffe45a7a84db2581bf3620f28cbd97b1667320c3cf5d71262357389d",
+    "m4-ops-all-v2.log": "3f3dfc1b5cd6fc55b1e5e2fb7db4a030b509279ff977aa17ce5f4fdd077713b2",
+    "m4-real-migration-interruption-v1.log": "4598706a7f8d524a7c806381f08c0d8c2eae299c39c3cbee3f9fdd4cafb8eaa1",
+    "m4-real-write-interruption-v1.log": "73a21da2b0104738e7692ca86983ae638301cf1152435f019610309997e02000",
+    "m4-fixed-browser-v2.log": "f5d456b8912477a5ec8b8fdab3b956042fd7fcf059113971abc7b38317f11b9e",
+    "m4-ops-all-v8.log": "1a1400653d11e607802a5139981c6af9bd314061960300a61bb20e5f8dc763ba",
+    "m4-ops-shell-security-v2.log": "538f68d3748c300845609f859785fd3d5d8b8efdda7a34cafd90da035d3181ca",
+    "m4-fixed-restart-browser-v5.log": "2af88548d8e588da5a0bd6c3638abc8b38d6b7b3a215867d9a567a3964f8d1a7",
+    "m4-pg14-migration-preservation.log": "8e6a2c219213a2e8841534fd2b11746729328213079ba4fb3f87123f9b1aa03d",
+    "m4-pg14-snapshot.log": "c6136b7dffe45a7a84db2581bf3620f28cbd97b1667320c3cf5d71262357389d",
+    "m4-pg14-source37-schema.log": "01a566b71ed6e21e94a81c86d29d7c4b31083f252438f5a7dd4fd2d99a4fb1ff",
+    "m4-pg14-live-schema.log": "2d026610cc729d44b973fdb4941cc2e1971b970f76c8289848ad49d08331adf4",
+    "m4-pg14-schema.log": "3c81bbf732407fde4902885bed6dfda215024d02304cd03ab636ff91cec924f9",
+    "m4-pg14-predicate.log": "afda7ceaa4e3d322fd92aee97a448f9e63f2dc9621f54b174e4e135453d81645",
+    "m4-pg14-full-schema.log": "78a6a29559031ac2b301e934c7ce89bb1ef9bfc2f5d0ecd58868afc2d8f08aa4",
+    "m4-pg14-final-gates.log": "31ede8f9825abf3624c0bb34099eea666cd8aba9fe382bf8d1b01b15f956bc1f"
+  },
+  "privateSyntheticHarnessSha256": {
+    "migration/run.py": "028f80f10b038b89203a2e27b61fa7b5cc803d494fb11765fe11990166a1bdf5",
+    "migration/fixture.cjs": "4a11e58d3dd9c12ccc7f0e5b8e0b2ff4b6d884268f7ae0a6c486de8d0cc43ffc",
+    "schema_contract.py": "489da2a957bafd3088ebafe6c70c5e19277d54264981ef86754db96804f2b511",
+    "snapshot-check.py": "402ff5c2a87c0f4b27eaeb36da29b67a1dab42ac31e781f6b1d57b90daf11d23",
+    "interruption_check.py": "7c218f7d1f82beb5fa26114971ee3c02e1a4e5e516fcaccc8bb38aceaab6b406",
+    "fixed-http/runtime.py": "f94a0e0cd22f338d98f887fdac3d317f9f8597591f657e68df6a59eb113d6d18",
+    "fixed-http/browser.cjs": "0e0c46e6332d62a4d2081be58bc5f41b82db5abcc5d7878e06a638ec86b5f435",
+    "fixed-http/proxy.py": "59e4693d617767c81af5500d784ea5daa28cd762d973fcb6f9c37a74c6148a47",
+    "migration-pg14/run.py": "cc66a72fc638b7e7ac9275dd7d34f67810d65546be3b18a7f966cdaa6f00403e",
+    "schema-full-pg14.py": "9d2b1894657965d4a09b6379a46e4d493b61dc8d7771e1c33760f43395482dd1",
+    "check-predicate-pg14.py": "2706a3698f524ddbc4c4ec1a2b86a24e04f8c732828048e4eda76a7cbc97c618",
+    "pg14-final-gates.py": "1948dc6588aa63e6f17d59129885f1d012ff06e9319282f0337fd9faa42503b5"
+  },
+  "sensitiveEvidenceCommitted": false,
+  "localPostgreSQLMajors": [
+    14,
+    16
+  ],
+  "liveSchemaInventory": {
+    "37": "0705d3a53a3cc81921dbc8d0886917199d4b18fcedcf9687ea8dcb85e3be4a3e",
+    "41": "d5061e372df4946201163783cb2f909f34a384e0d44c4e26902f2d9968718297"
+  },
+  "restoredSchemaInventory": {
+    "37": "1cfb6df3bd1097c205fd2e1932a72dfce8491dcfad3d5256d499971764e31e3e",
+    "41": "66f3edb43d83ae835137203cf229859ce136b9c54ecc23b36cc142ca3dbb0592"
+  },
+  "productionReadOnlySchema37MatchesIsolatedSource": true,
+  "schemaDifference": "Only the whole documented CHECK line may change in the 37->restore direction; complete schema text otherwise equal and each digest bound to the backup/restore receipt. Production still requires exact live inventory."
+}

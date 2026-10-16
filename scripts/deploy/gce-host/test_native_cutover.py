@@ -2,9 +2,18 @@ import unittest
 from unittest.mock import patch
 import native_cutover as c
 import native_backup_controller as b
+import native_release as release
 
 
 class CutoverBoundaryTests(unittest.TestCase):
+    def test_only_native_api_supervisor_stop_has_extended_outer_deadline(self):
+        with patch.object(c.app, 'run') as run:
+            c.systemctl('stop', 'timeline-native-api.service')
+            run.assert_called_once_with(['/usr/bin/systemctl', 'stop', 'timeline-native-api.service'], timeout=110)
+        with patch.object(c.app, 'run') as run:
+            c.systemctl('stop', 'timeline-native-web.service')
+            run.assert_called_once_with(['/usr/bin/systemctl', 'stop', 'timeline-native-web.service'])
+
     def test_failed_stopped_owned_unit_can_reset_without_losing_kill_evidence(self):
         with patch.object(c,'systemctl') as ctl,patch.object(c,'unit_state',side_effect=[
                 {'ActiveState':'failed','MainPID':'0','ControlPID':'0'},
@@ -105,13 +114,18 @@ class CutoverBoundaryTests(unittest.TestCase):
         self.assertLess(order.index('stop-native'),order.index('recover-source-opens-old'))
 
     def test_committed_recovery_never_reopens_old_role_and_queues_after_gate(self):
+        import native_release_r28 as r28
         calls=[]
         with patch.object(c,'present',return_value=True),patch.object(c,'committed_value'),\
              patch.object(c,'close_old_role',side_effect=lambda:calls.append('old-closed')),patch.object(c,'stop_units'),\
              patch.object(c,'systemctl',side_effect=lambda *args:calls.append(args)),patch.object(c,'no_old_journals'),\
-             patch.object(c.app,'validate_files'),patch.object(c,'release_checkout'),patch.object(b,'role_change') as role:
+             patch.object(c.app,'validate_files'),patch.object(c,'release_checkout'),patch.object(b,'role_change') as role,\
+             patch.object(release,'recover_pending'),patch.object(release,'state',return_value={'version':1,'active':release.OLD,'committed':release.OLD,'pending':False}),patch.object(release,'verify_checkout'),\
+             patch.object(r28,'assert_start') as schema:
             for _ in range(2):self.assertEqual(c.recover(),'COMMITTED_NEW_RUNTIME_READY')
             self.assertTrue(all(c.ROLE in x.args[0] and b.ROLE not in x.args[0] for x in role.call_args_list))
+            self.assertEqual(schema.call_count,2)
+            schema.assert_called_with(release.OLD)
         starts=[v for v in calls if isinstance(v,tuple) and 'start' in v]
         self.assertEqual(starts,[])
         self.assertFalse(any(isinstance(v,tuple) and v[:1]==('enable',) and b.SERVICE in v for v in calls))
