@@ -8326,3 +8326,13 @@ main ref与tag未改变。这里仅追加指针，保留原有未提交交接文
 - 新控制器单独追加程序发布日志，固定原OPEN_41锚点不变，41→41只受控备份和程序替换，不执行迁移或任何数据恢复。启动/入口/恢复均检查新日志阶段及历史锚点；新程序写入后中断保留事实并关闭访问。
 - 最终组合40项测试及新增54表门禁通过；独立PG14四类实际SIGKILL（保护后、许可后启动前、新API写入后、OPEN_INTENT）通过；独立只读审查无确定阻断。真实固定镜像登录/人员/提醒/退出和三宽度项目详情正常点击通过。完整边界和日志见 `docs/acceptance/R28_UI_PATCH_20260928/README.md`。
 - 当前为CODE_IMPLEMENTED / LOCAL_VERIFIED / PATCH_NOT_DEPLOYED；下一步从干净Ops提交生成固定五脚本，私有推送后依次checkout/pull/install/update/proof，并在精确生产域名重新验收。main/tag未变，产品负责人未确认。
+
+## 2026-10-16 — 本机代码集中、全分支整合与磁盘减负
+
+- 所有者明确授权集中本机本项目代码到根工作区、合并所有分支、推送 GitHub 并合并 main；追加要求停止闲置 Docker 项目、减少磁盘占用。本轮没有生产发布或 tag 操作。
+- 原 main `41b4b166c587692e6f0fb9536dca2e1aab646c70`；最终代码提交 `c593d6509660eff2da9ff21a389e4c0202987406`，整合分支 `codex/consolidate-all-20261016`。57 本地分支、37 远端引用的原提交全部纳入祖先，另纳入 4 份未提交源码快照和唯一 detached 草案；原工作树补丁、Git 历史、用户媒体与数据保留。
+- 最新应用、Prisma、依赖与锁文件逐字保持 light-truck-sheets 最新分支；运维、防护和治理分支冲突按当前合同处理。必要新增为原生配置解析兼容与相应回归；过时测试按当前发布门禁修复，生产控制器未改。
+- install / lint / typecheck / Web与API build / Prisma validate PASS。Web 563 PASS；API 1621 PASS、185 SKIPPED；Python 运维 279 PASS、配置 6 PASS；发布身份 18 PASS及两个 Shell 套件 PASS。早期缓存、沙箱与过时夹具 FAIL 保留；Shell 两次失败先停止，独立审查新的根因修复后恢复并通过。正式页面 Placeholder 0（12 条测试命中）。
+- 独立完整性、安全差异和精确树/新增历史发布前复核未发现新增阻断；49 个扫描候选全部研判，确认 Secret 0、未研判 0。原始日志与 SHA256、refs bundle、脏工作树备份在本机私有审计目录，未提交公开。
+- 详情、来源提交、兼容边界、验证适用性和未执行环境见 [PROJECT_CONSOLIDATION_20261016](acceptance/PROJECT_CONSOLIDATION_20261016.md)。本记录提交时 GitHub/main 待推送合并，最终状态由远端和根 main 回读固定；本轮不访问 staging/production、不重做产品路由验收，产品状态仍 AWAITING_PRODUCT_OWNER_CONFIRMATION。
+- 磁盘清理只针对核对后的本项目闲置环境与可重建依赖/构建缓存；数据库卷、附件、备份、原始验收证据及历史源码保留。清理实际回收量与最终 Docker 状态由本机收据及本轮最终报告记录，不用目录逻辑大小代替磁盘实际增量。
