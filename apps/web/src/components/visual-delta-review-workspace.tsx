@@ -1,440 +1,111 @@
 'use client';
 
-import Link from 'next/link';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { ReviewStandardSelect } from './review-standard-select';
+import { reviewStandardLabel, type ReviewStandardOptions } from '../lib/review-standard-version';
 
+import Link from 'next/link';
+import React, { useEffect, useRef, useState } from 'react';
 import { useAuth } from './auth-provider';
 import {
-  approveVisualDeltaReview,
-  canManageVisualDeltaReviews,
-  canShowVisualDeltaReviewApproveButton,
-  canShowVisualDeltaReviewRejectButton,
-  canShowVisualDeltaReviewSubmitButton,
-  createVisualDeltaReview,
-  fetchVisualDeltaReviewPageOptions,
-  fetchVisualDeltaReviewWorkspace,
-  getDefaultVisualDeltaReviewerId,
-  getVisualDeltaReviewApprovalSuccessMessage,
-  getVisualDeltaReviewConclusionLabel,
-  getVisualDeltaReviewWorkspaceHighlights,
-  rejectVisualDeltaReview,
-  submitVisualDeltaReview,
-  toVisualDeltaReviewFormInput,
-  updateVisualDeltaReview,
-  uploadVisualDeltaReviewAttachment,
-  validateVisualDeltaReviewForm,
-  type VisualDeltaReviewFormInput,
-  type VisualDeltaReviewRecord,
-  type VisualDeltaReviewWorkspaceResponse,
+  approveVisualDeltaReview, canWriteVisualDeltaMonth, canWriteVisualDeltaRecord,
+  canShowVisualDeltaReviewApproveButton, canShowVisualDeltaReviewRejectButton, canShowVisualDeltaReviewSubmitButton,
+  createVisualDeltaReview, fetchVisualDeltaReviewWorkspace, getVisualDeltaReviewApprovalSuccessMessage,
+  getVisualDeltaReviewConclusionLabel, rejectVisualDeltaReview, submitVisualDeltaReview, toVisualDeltaReviewFormInput,
+  updateVisualDeltaReview, uploadVisualDeltaReviewAttachment, validateVisualDeltaReviewForm,
+  type VisualDeltaReviewFormInput, type VisualDeltaReviewRecord, type VisualDeltaReviewWorkspaceResponse,
 } from '../lib/visual-delta-reviews-client';
-import { type DirectoryUser, formatDate, getWorkflowNodeLabel } from '../lib/projects-client';
-import { getWorkflowTaskStatusLabel, isWorkflowTaskOverdue } from '../lib/workflows-client';
+import { getWorkflowTaskStatusLabel } from '../lib/workflows-client';
+import { type DirectoryUser, formatDate } from '../lib/projects-client';
 
-type VisualDeltaReviewWorkspaceProps = {
-  projectId: string;
-};
+const EMPTY_FORM: VisualDeltaReviewFormInput = { reviewDate: '', reviewerId: '', reviewConclusion: 'APPROVED', comment: '', conditionNote: '', rejectReason: '' };
 
-const EMPTY_FORM: VisualDeltaReviewFormInput = {
-  reviewDate: '',
-  reviewerId: '',
-  reviewConclusion: 'APPROVED',
-  comment: '',
-  conditionNote: '',
-  rejectReason: '',
-};
-
-export function VisualDeltaReviewWorkspace({
-  projectId,
-}: VisualDeltaReviewWorkspaceProps) {
+export function VisualDeltaReviewWorkspace({ projectId, recurringTaskId = '' }: { projectId: string; recurringTaskId?: string }) {
   const { user } = useAuth();
-  const requestIdRef = useRef(0);
   const [workspace, setWorkspace] = useState<VisualDeltaReviewWorkspaceResponse | null>(null);
-  const [reviewerOptions, setReviewerOptions] = useState<DirectoryUser[]>([]);
+  const [selectedMonthId, setSelectedMonthId] = useState(recurringTaskId);
   const [selectedReviewId, setSelectedReviewId] = useState<string | null>(null);
   const [editingReviewId, setEditingReviewId] = useState<string | null>(null);
   const [form, setForm] = useState<VisualDeltaReviewFormInput>(EMPTY_FORM);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
-  const [actingKey, setActingKey] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
-
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState('');
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  const sequence = useRef(0);
+  const identity = `${projectId}:${user?.id}:${user?.roleCodes.join(',')}:${recurringTaskId}`;
+  const currentIdentity = useRef(identity); currentIdentity.current = identity;
+  useEffect(() => { void load(); return () => { sequence.current++; }; }, [identity]);
+  const month = workspace?.recurringTasks.find(item => item.id === selectedMonthId);
+  const records = month ? workspace?.items.filter(item => item.reviewPeriod === month.plannedDate.slice(0, 7)) ?? [] : [];
+  const canWrite = Boolean(workspace && canWriteVisualDeltaMonth(user, workspace, month));
+  const selectedReview = records.find(item => item.id === selectedReviewId) ?? records[0] ?? null;
+  const ownDraft = records.find(item => item.reviewerId === user?.id && item.workflowTaskId === workspace?.activeTask?.id && !item.submittedAt);
+  const ownRecord = records.find(item => item.reviewerId === user?.id && item.workflowTaskId === workspace?.activeTask?.id);
+  const defaultDate = month?.plannedDate.slice(0, 10) ?? '';
   useEffect(() => {
-    void loadWorkspace({ initial: true });
-  }, [projectId, user?.id]);
-
-  useEffect(() => {
-    if (!workspace?.items.length) {
-      setSelectedReviewId(null);
-      return;
-    }
-
-    const nextReviewId =
-      selectedReviewId && workspace.items.some((item) => item.id === selectedReviewId)
-        ? selectedReviewId
-        : (workspace.items[0]?.id ?? null);
-
-    if (nextReviewId !== selectedReviewId) {
-      setSelectedReviewId(nextReviewId);
-    }
-  }, [selectedReviewId, workspace]);
-
-  const canManage = canManageVisualDeltaReviews(user);
-  const highlights = workspace ? getVisualDeltaReviewWorkspaceHighlights(workspace) : null;
-  const selectedReview =
-    workspace?.items.find((item) => item.id === selectedReviewId) ?? null;
-  const latestReview = workspace?.items[0] ?? null;
-  const isReadOnly = !workspace?.activeTask;
-
-  const summaryCards = useMemo(
-    () => [
-      {
-        label: '目视色差评审任务',
-        value: highlights?.activeTaskStatusLabel ?? '当前无目视色差评审任务',
-      },
-      {
-        label: '批量生产状态',
-        value: workspace?.massProductionCompleted ? '已完成' : '未完成',
-      },
-      {
-        label: '颜色退出/收尾',
-        value: highlights?.downstreamTaskStatusLabel ?? '未激活',
-      },
-      {
-        label: '历史记录数',
-        value: String(workspace?.items.length ?? 0),
-      },
-    ],
-    [highlights, workspace],
-  );
-
-  async function loadWorkspace(options?: { initial?: boolean }) {
-    const requestId = ++requestIdRef.current;
-
-    if (options?.initial) {
-      setIsLoading(true);
-    } else {
-      setIsRefreshing(true);
-    }
-
-    setError(null);
-
+    setForm({ ...EMPTY_FORM, reviewDate: defaultDate, reviewerId: user?.id ?? '' });
+    setEditingReviewId(null); setSelectedReviewId(null); setNotice('');
+  }, [selectedMonthId, defaultDate, user?.id]);
+  async function load() {
+    const request = ++sequence.current; setLoading(true); setError(''); setWorkspace(null);
     try {
-      const [workspaceResponse, users] = await Promise.all([
-        fetchVisualDeltaReviewWorkspace(projectId),
-        fetchVisualDeltaReviewPageOptions(),
-      ]);
-
-      if (requestId !== requestIdRef.current) {
-        return;
-      }
-
-      const availableUsers =
-        user && !users.some((item) => item.id === user.id)
-          ? [
-              {
-                id: user.id,
-                username: user.username,
-                name: user.name,
-                email: user.email,
-                departmentId: user.departmentId,
-                departmentName: user.departmentName,
-                roleCodes: user.roleCodes,
-              },
-              ...users,
-            ]
-          : users;
-      setWorkspace(workspaceResponse);
-      setReviewerOptions(availableUsers);
-      setForm((current) => ({
-        ...current,
-        reviewerId:
-          current.reviewerId && availableUsers.some((item) => item.id === current.reviewerId)
-            ? current.reviewerId
-            : getDefaultVisualDeltaReviewerId(availableUsers, user?.id ?? null),
-      }));
-    } catch (loadError) {
-      if (requestId !== requestIdRef.current) {
-        return;
-      }
-
-      setError(loadError instanceof Error ? loadError.message : '目视色差评审工作区加载失败。');
-    } finally {
-      if (requestId === requestIdRef.current) {
-        setIsLoading(false);
-        setIsRefreshing(false);
-      }
-    }
+      const result = await fetchVisualDeltaReviewWorkspace(projectId);
+      if (request !== sequence.current) return;
+      setWorkspace(result);
+      setSelectedMonthId(current => current || result.recurringTasks.find(item => canWriteVisualDeltaMonth(user, result, item))?.id || result.recurringTasks[0]?.id || '');
+    } catch (e) { if (request === sequence.current) setError(e instanceof Error ? e.message : '月度评审加载失败。'); }
+    finally { if (request === sequence.current) setLoading(false); }
   }
-
-  async function handleSave() {
-    const validationMessage = validateVisualDeltaReviewForm(form);
-
-    if (validationMessage) {
-      setError(validationMessage);
-      return;
-    }
-
-    setIsSaving(true);
-    setError(null);
-    setSuccessMessage(null);
-
+  async function mutate(key: string, action: () => Promise<VisualDeltaReviewWorkspaceResponse>, message: string | ((next: VisualDeltaReviewWorkspaceResponse) => string)) {
+    if (busy) return;
+    setBusy(key); setError(''); setNotice('');
     try {
-      const nextWorkspace = editingReviewId
-        ? await updateVisualDeltaReview(projectId, editingReviewId, form)
-        : await createVisualDeltaReview(projectId, form);
-
-      setWorkspace(nextWorkspace);
-      setEditingReviewId(null);
-      setForm({
-        ...EMPTY_FORM,
-        reviewerId: getDefaultVisualDeltaReviewerId(reviewerOptions, user?.id ?? null),
-      });
-      setSuccessMessage(
-        editingReviewId ? '目视色差评审记录已更新。' : '目视色差评审记录已创建。',
-      );
-    } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : '目视色差评审记录保存失败。');
-    } finally {
-      setIsSaving(false);
-    }
+      const result = await action();
+      if (identity !== currentIdentity.current) return;
+      setWorkspace(result); setEditingReviewId(null);
+      setForm({ ...EMPTY_FORM, reviewDate: defaultDate, reviewerId: user?.id ?? '' });
+      setNotice(typeof message === 'function' ? message(result) : message);
+    } catch (e) { if (identity === currentIdentity.current) setError(e instanceof Error ? e.message : '保存失败，请重试。'); }
+    finally { setBusy(''); }
   }
-
-  async function handleReviewAction(
-    action: 'SUBMIT' | 'APPROVE' | 'REJECT',
-    review: VisualDeltaReviewRecord,
-  ) {
-    setActingKey(`${action.toLowerCase()}:${review.id}`);
-    setError(null);
-    setSuccessMessage(null);
-
-    try {
-      const nextWorkspace =
-        action === 'SUBMIT'
-          ? await submitVisualDeltaReview(projectId, review.id)
-          : action === 'APPROVE'
-            ? await approveVisualDeltaReview(projectId, review.id)
-            : await rejectVisualDeltaReview(projectId, review.id);
-
-      setWorkspace(nextWorkspace);
-      setEditingReviewId(null);
-      setForm({
-        ...EMPTY_FORM,
-        reviewerId: getDefaultVisualDeltaReviewerId(reviewerOptions, user?.id ?? null),
-      });
-      setSuccessMessage(
-        action === 'SUBMIT'
-          ? '目视色差评审记录已提交。'
-          : action === 'APPROVE'
-            ? getVisualDeltaReviewApprovalSuccessMessage(nextWorkspace)
-            : '目视色差评审已驳回，流程已退回批量生产。',
-      );
-    } catch (actionError) {
-      setError(actionError instanceof Error ? actionError.message : '目视色差评审动作执行失败。');
-    } finally {
-      setActingKey(null);
-    }
+  function save() {
+    const validation = validateVisualDeltaReviewForm(form);
+    if (validation) { setError(validation); return; }
+    if (!month || form.reviewDate.slice(0, 7) !== month.plannedDate.slice(0, 7)) { setError('评审日期必须属于所选月份。'); return; }
+    void mutate('save', () => editingReviewId ? updateVisualDeltaReview(projectId, editingReviewId, form) : createVisualDeltaReview(projectId, form), '评审记录已保存，请上传必要附件后提交。');
   }
-
-  async function handleUploadAttachment(review: VisualDeltaReviewRecord, file: File) {
-    setIsUploading(true);
-    setError(null);
-    setSuccessMessage(null);
-
-    try {
-      const nextWorkspace = await uploadVisualDeltaReviewAttachment(projectId, review.id, file);
-      setWorkspace(nextWorkspace);
-      setSuccessMessage(`目视色差评审记录 ${review.id} 已上传附件。`);
-    } catch (uploadError) {
-      setError(uploadError instanceof Error ? uploadError.message : '目视色差评审附件上传失败。');
-    } finally {
-      setIsUploading(false);
-    }
-  }
-
-  function resetForm() {
-    setEditingReviewId(null);
-    setForm({
-      ...EMPTY_FORM,
-      reviewerId: getDefaultVisualDeltaReviewerId(reviewerOptions, user?.id ?? null),
-    });
-  }
-
-  function prepareEdit(review: VisualDeltaReviewRecord) {
-    if (review.submittedAt) {
-      return;
-    }
-
-    setSelectedReviewId(review.id);
-    setEditingReviewId(review.id);
-    setForm(toVisualDeltaReviewFormInput(review));
-  }
-
-  if (isLoading || !workspace || !highlights) {
-    return (
-      <section className="page-card">
-        <p className="eyebrow">目视色差评审</p>
-        <h1>正在加载目视色差评审模块…</h1>
-        <p>评审记录、附件和颜色退出/项目收尾联动状态正在同步。</p>
-      </section>
-    );
-  }
-
-  return (
-    <div className="page-stack">
-      <section className="page-card">
-        <div className="section-header">
-          <div>
-            <p className="eyebrow">目视色差评审</p>
-            <h2 className="section-title">{workspace.project.name}</h2>
-            <p className="muted">
-              当前节点 {highlights.currentNodeLabel}，目标日期 {highlights.targetDateLabel}，
-              风险等级 {highlights.riskLevelLabel}。
-            </p>
-          </div>
-          <div className="inline-actions">
-            <button
-              type="button"
-              className="button button-secondary"
-              disabled={isRefreshing}
-              onClick={() => void loadWorkspace()}
-            >
-              {isRefreshing ? '刷新中…' : '刷新'}
-            </button>
-            <Link href={`/projects/${projectId}/workflow`} className="button button-secondary">
-              查看流程
-            </Link>
-            <Link href={`/projects/${projectId}/mass-production`} className="button button-secondary">
-              查看批量生产
-            </Link>
-          </div>
-        </div>
-        <div className="summary-grid">
-          {summaryCards.map((card) => (
-            <div key={card.label} className="summary-card">
-              <span>{card.label}</span>
-              <strong>{card.value}</strong>
-            </div>
-          ))}
-        </div>
-        <div className="metadata-grid">
-          <div className="metadata-item">
-            <span>节点负责人</span>
-            <strong>{workspace.activeTask?.assigneeUserName ?? '未分配'}</strong>
-          </div>
-          <div className="metadata-item">
-            <span>最近评审结论</span>
-            <strong>
-              {latestReview
-                ? getVisualDeltaReviewConclusionLabel(latestReview.reviewConclusion)
-                : '暂无'}
-            </strong>
-          </div>
-          <div className="metadata-item">
-            <span>最近评审人</span>
-            <strong>{latestReview?.reviewerName ?? '暂无'}</strong>
-          </div>
-          <div className="metadata-item">
-            <span>退回目标节点</span>
-            <strong>
-              {latestReview?.returnToNodeCode
-                ? getWorkflowNodeLabel(latestReview.returnToNodeCode)
-                : '无'}
-            </strong>
-          </div>
-        </div>
-        {workspace.activeTask && isWorkflowTaskOverdue(workspace.activeTask) ? (
-          <p className="error-text">当前目视色差评审任务已逾期。</p>
-        ) : null}
-        {!workspace.massProductionCompleted ? (
-          <p className="muted">批量生产完成后才会激活目视色差评审任务。</p>
-        ) : null}
-      </section>
-
-      {error ? <p className="error-text">{error}</p> : null}
-      {successMessage ? <p className="success-text">{successMessage}</p> : null}
-
-      <section className="page-card">
-        <div className="section-header">
-          <div>
-            <p className="eyebrow">评审表单</p>
-            <h2 className="section-title">目视色差评审表单</h2>
-            <p className="muted">提交后由后端判定通过或驳回，并推进或退回流程。</p>
-          </div>
-          <div className="inline-actions">
-            <button type="button" className="button button-secondary" onClick={resetForm}>
-              重置表单
-            </button>
-          </div>
-        </div>
-        <VisualDeltaReviewForm
-          value={form}
-          reviewerOptions={reviewerOptions}
-          disabled={!canManage || isReadOnly || isSaving}
-          submitLabel={editingReviewId ? '更新评审记录' : '新建评审记录'}
-          onChange={setForm}
-          onSubmit={() => void handleSave()}
-        />
-      </section>
-
-      <section className="page-card">
-        <div className="section-header">
-          <div>
-            <p className="eyebrow">评审历史</p>
-            <h2 className="section-title">目视色差评审历史</h2>
-            <p className="muted">支持查看提交状态、条件通过说明、退回记录和附件。</p>
-          </div>
-        </div>
-        <VisualDeltaReviewHistory
-          user={user}
-          items={workspace.items}
-          selectedReviewId={selectedReviewId}
-          isReadOnly={isReadOnly}
-          workspace={workspace}
-          actingKey={actingKey}
-          isUploading={isUploading}
-          onSelect={setSelectedReviewId}
-          onEdit={prepareEdit}
-          onSubmitReview={(review) => void handleReviewAction('SUBMIT', review)}
-          onApproveReview={(review) => void handleReviewAction('APPROVE', review)}
-          onRejectReview={(review) => void handleReviewAction('REJECT', review)}
-          onUploadAttachment={(review, file) => {
-            void handleUploadAttachment(review, file);
-          }}
-        />
-      </section>
-
-      <section className="page-card">
-        <div className="section-header">
-          <div>
-            <p className="eyebrow">评审详情</p>
-            <h2 className="section-title">目视色差评审详情</h2>
-            <p className="muted">展示评审意见、附件历史、退回记录和项目收尾状态。</p>
-          </div>
-          {selectedReview ? (
-            <div className="inline-actions">
-              <Link
-                href={`/projects/${projectId}/attachments?entityType=REVIEW_RECORD&entityId=${selectedReview.id}`}
-                className="button button-secondary"
-              >
-                查看附件中心
-              </Link>
-            </div>
-          ) : null}
-        </div>
-        <VisualDeltaReviewDetail
-          review={selectedReview}
-          downstreamTask={workspace.downstreamTask}
-        />
-      </section>
-    </div>
-  );
+  function edit(review: VisualDeltaReviewRecord) { setEditingReviewId(review.id); setSelectedReviewId(review.id); setForm(toVisualDeltaReviewFormInput(review)); }
+  if (loading) return <section className="team-workspace"><p role="status">正在加载月度评审…</p></section>;
+  if (!workspace) return <section className="team-workspace"><p role="alert">{error || '月度评审未能加载。'}</p><button className="button" onClick={() => void load()}>重新加载</button></section>;
+  return <section className="team-workspace">
+    <header className="work-heading"><div><h1>月度目视色差评审</h1><p>{workspace.project.code} · {workspace.project.name}</p></div><Link href={`/projects/${projectId}`}>返回项目</Link></header>
+    <div className="work-overview"><label>评审月份 <select value={selectedMonthId} disabled={Boolean(busy)} onChange={event => setSelectedMonthId(event.target.value)}>
+      {recurringTaskId && !workspace.recurringTasks.some(item => item.id === recurringTaskId) ? <option value={recurringTaskId}>任务不存在</option> : null}
+      {workspace.recurringTasks.map(item => <option key={item.id} value={item.id}>第 {item.periodIndex} 月 · {item.periodLabel}{item.status === 'COMPLETED' ? ' · 已完成' : ''}</option>)}
+    </select></label><span>已完成 {workspace.recurringTasks.filter(item => item.status === 'COMPLETED').length} / 12</span><button className="button" disabled={Boolean(busy)} onClick={() => void load()}>刷新</button></div>
+    {error ? <p role="alert" className="error-text">{error}</p> : null}{notice ? <p role="status" className="work-notice">{notice}</p> : null}
+    {!month ? <p className="work-state">{recurringTaskId ? '未找到所选月度任务，请返回我的工作重新选择。' : '进入月度评审阶段后，将生成 12 个月份。'}</p> : <>
+      <p>第 {month.periodIndex} 月 · {month.periodLabel}，计划日期 {formatDate(month.plannedDate)}，期限 {formatDate(month.dueAt)}。</p>
+      {!canWrite ? <p className="work-state">{month.status === 'COMPLETED' ? '本月已完成，评审记录保留可查。' : Date.parse(month.plannedDate) > (workspace.businessTime ? Date.parse(workspace.businessTime) : Date.now()) ? '本月尚未到办理日期。' : '仅在月度评审阶段，由已获准的部门成员办理本人评审记录。'} <Link href="/dashboard">打开我的工作</Link></p> :
+      <section className="page-card"><h2>{editingReviewId ? '编辑本月评审' : '填写本月评审'}</h2>
+        {ownRecord && !editingReviewId ? <p>本月已有本人记录。{ownDraft ? <button className="button" disabled={Boolean(busy)} onClick={() => edit(ownDraft)}>继续填写</button> : '请在下方查看提交结果。'}</p> :
+          <VisualDeltaReviewForm standardOptions={workspace} standardLocked={Boolean(editingReviewId)} value={form} reviewerOptions={user ? [{ id: user.id, name: user.name, departmentId: user.departmentId, departmentName: user.departmentName }] : []}
+            disabled={Boolean(busy)} submitLabel={busy === 'save' ? '正在保存…' : '保存评审记录'} onChange={setForm} onSubmit={save} />}
+      </section>}
+      <section className="page-card"><h2>本月记录与附件</h2><VisualDeltaReviewHistory user={user} items={records} selectedReviewId={selectedReview?.id ?? null} isReadOnly={!canWrite}
+        workspace={workspace} actingKey={busy || null} isUploading={busy.startsWith('upload:')} onSelect={setSelectedReviewId} onEdit={edit}
+        onSubmitReview={review => void mutate(`submit:${review.id}`, () => submitVisualDeltaReview(projectId, review.id), '评审已提交，请核对后确认通过或驳回。')}
+        onApproveReview={review => void mutate(`approve:${review.id}`, () => approveVisualDeltaReview(projectId, review.id), getVisualDeltaReviewApprovalSuccessMessage)}
+        onRejectReview={review => void mutate(`reject:${review.id}`, () => rejectVisualDeltaReview(projectId, review.id), '评审已驳回，流程已退回批量生产。')}
+        onUploadAttachment={(review, file) => void mutate(`upload:${review.id}`, () => uploadVisualDeltaReviewAttachment(projectId, review.id, file), '附件已保存。')} /></section>
+      {selectedReview ? <section className="page-card"><h2>评审详情</h2><VisualDeltaReviewDetail review={selectedReview} downstreamTask={workspace.downstreamTask} /></section> : null}
+    </>}
+  </section>;
 }
 
 export function VisualDeltaReviewForm({
   value,
+  standardOptions = {},
+  standardLocked = false,
   reviewerOptions,
   disabled,
   submitLabel,
@@ -442,6 +113,8 @@ export function VisualDeltaReviewForm({
   onSubmit,
 }: {
   value: VisualDeltaReviewFormInput;
+  standardOptions?: ReviewStandardOptions;
+  standardLocked?: boolean;
   reviewerOptions: DirectoryUser[];
   disabled: boolean;
   submitLabel: string;
@@ -456,6 +129,10 @@ export function VisualDeltaReviewForm({
         onSubmit();
       }}
     >
+      <ReviewStandardSelect value={value.standardVersionId ?? ''}
+        onChange={standardVersionId => onChange({ ...value, standardVersionId })}
+        options={standardOptions.eligibleStandardVersions} required={standardOptions.standardVersionRequired}
+        hasMore={standardOptions.standardVersionsHasMore} locked={standardLocked} disabled={disabled} />
       <label className="field">
         <span>评审日期</span>
         <input
@@ -570,6 +247,7 @@ export function VisualDeltaReviewHistory({
         <thead>
           <tr>
             <th>评审日期</th>
+            <th>标准版本</th>
             <th>评审人</th>
             <th>结论</th>
             <th>状态</th>
@@ -581,7 +259,7 @@ export function VisualDeltaReviewHistory({
         <tbody>
           {items.length === 0 ? (
             <tr>
-              <td colSpan={7}>
+              <td colSpan={8}>
                 <div className="empty-state">
                   <strong>暂无目视色差评审记录</strong>
                   <p>批量生产完成并激活目视色差评审任务后，可在这里创建记录。</p>
@@ -596,6 +274,7 @@ export function VisualDeltaReviewHistory({
                 onClick={() => onSelect(item.id)}
               >
                 <td>{formatDate(item.reviewDate)}</td>
+                <td>{reviewStandardLabel(item.standardVersion)}</td>
                 <td>{item.reviewerName ?? '未指定'}</td>
                 <td>
                   <ReviewResultBadge conclusion={item.reviewConclusion} />
@@ -605,7 +284,7 @@ export function VisualDeltaReviewHistory({
                 <td>{item.returnToNodeName ?? '未退回'}</td>
                 <td>
                   <div className="task-actions">
-                    {canManageVisualDeltaReviews(user, item.reviewerId) &&
+                    {canWriteVisualDeltaRecord(user, workspace, item) &&
                     !isReadOnly &&
                     !item.submittedAt ? (
                       <>
@@ -641,7 +320,7 @@ export function VisualDeltaReviewHistory({
                       <button
                         type="button"
                         className="button button-secondary button-small"
-                        disabled={actingKey === `submit:${item.id}`}
+                        disabled={Boolean(actingKey) || isUploading || actingKey === `submit:${item.id}`}
                         onClick={(event) => {
                           event.stopPropagation();
                           onSubmitReview(item);
@@ -654,7 +333,7 @@ export function VisualDeltaReviewHistory({
                       <button
                         type="button"
                         className="button button-small"
-                        disabled={actingKey === `approve:${item.id}`}
+                        disabled={Boolean(actingKey) || isUploading || actingKey === `approve:${item.id}`}
                         onClick={(event) => {
                           event.stopPropagation();
                           onApproveReview(item);
@@ -667,7 +346,7 @@ export function VisualDeltaReviewHistory({
                       <button
                         type="button"
                         className="button button-secondary button-small"
-                        disabled={actingKey === `reject:${item.id}`}
+                        disabled={Boolean(actingKey) || isUploading || actingKey === `reject:${item.id}`}
                         onClick={(event) => {
                           event.stopPropagation();
                           onRejectReview(item);
@@ -713,6 +392,7 @@ export function VisualDeltaReviewDetail({
         <div className="metadata-item">
           <span>评审时间</span>
           <strong>{formatDate(review.reviewDate)}</strong>
+          <span>{reviewStandardLabel(review.standardVersion)}</span>
         </div>
         <div className="metadata-item">
           <span>评审人</span>

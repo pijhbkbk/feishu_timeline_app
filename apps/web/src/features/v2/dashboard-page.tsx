@@ -155,7 +155,7 @@ function RealDashboardPage() {
       <RealDataState
         loading={loading}
         error={error}
-        label="正在读取当前飞书用户与工作台事实…"
+        label="正在读取当前账号与工作台事实…"
       />
     );
   }
@@ -176,7 +176,7 @@ function RealDashboardPage() {
         <span>任务、材料、阻塞和流程状态由业务系统实时更新。</span>
       </div>
       <PageIntro
-        eyebrow={`${viewer.roleLabel} · ${viewer.departmentName ?? '组织部门待同步'}`}
+        eyebrow={`${viewer.roleLabel} · ${viewer.departmentName ?? '尚未分配部门'}`}
         title={`${viewer.name}，今天先处理最重要的一项。`}
         description={
           currentTask
@@ -184,6 +184,19 @@ function RealDashboardPage() {
             : '当前账号没有待处理工序，可以查看可见项目的最近动态。'
         }
       />
+
+      {viewer.roleCodes.includes('admin') && (viewer.isSystemAdmin || viewer.permissionCodes.includes('system.manage')) && (
+        <section className="r26-card native-admin-workspace" aria-label="管理员工作台">
+          <h2>管理员工作台</h2>
+          <p>查看项目概况，管理用户、组织和正式授权。</p>
+          <div className="native-admin-links">
+            <Link href="/projects">项目概况</Link>
+            {viewer.isSystemAdmin && <Link href="/admin/accounts">账号与待处理授权</Link>}
+            <Link href="/admin/organization">组织与岗位</Link>
+            <Link href="/admin/permissions">角色与权限</Link>
+          </div>
+        </section>
+      )}
 
       {currentTask ? (
         <section className="r26-current-task">
@@ -254,9 +267,7 @@ function RealDashboardPage() {
         <section className="r26-empty-state">
           <strong>当前没有待处理工序</strong>
           <p>
-            {canCreateProject
-              ? '当前还没有项目。新建第一个项目后，系统会自动初始化开发流程。'
-              : '项目和权限数据已经连接成功，可从项目列表继续查看。'}
+            当前账号没有待处理工序，可以查看可见项目的最近动态。
           </p>
           <div className="r26-empty-state__actions">
             {canCreateProject ? (

@@ -1,0 +1,27 @@
+{
+  "runtimeCommit": "9ed0502b9e97e543dc5beea00998b5edc0bb0e67",
+  "reviewer": "root",
+  "method": "Viewed saved actual browser pixels via view_image after passing run; no image editing.",
+  "images": [
+    {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/final-readback-evidence/1791938988977234000/results/readonly-readback-最终重启后普通员工只读重开：人员稳定记录、检验月度锁定、产量26与100、颜色和照片/color-final-readonly-1440.png",
+      "sha256": "b4a95294f7838d42a76dcdcf634848119ed47ed0603a95615dd877aefa15c55a"
+    },
+    {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/final-readback-evidence/1791938988977234000/results/readonly-readback-最终重启后普通员工只读重开：人员稳定记录、检验月度锁定、产量26与100、颜色和照片/color-final-readonly-390.png",
+      "sha256": "5018068f14eb66df737fa78fa78f25cf8e097eba18d12bb0a88c18988f0c0733"
+    },
+    {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/final-readback-evidence/1791938988977234000/results/readonly-readback-最终重启后普通员工只读重开：人员稳定记录、检验月度锁定、产量26与100、颜色和照片/color-final-readonly-390-photos-visible.png",
+      "sha256": "f0ffd927cd8849d4383dcc5e3c6cf84968d7a59b9a15852d4a24058200cb8a1e"
+    }
+  ],
+  "observations": [
+    "1440: one navigation, native table and selected note with leading-zero board number; right record panel lists 19 photos.",
+    "390: one compact navigation, controls wrap, native table uses internal horizontal scrolling; stacked record photo panel remains inside page width.",
+    "390 photo viewport: actual first thumbnails and screenshot/color-grid thumbnails visible. Full-page capture can contain lazy offscreen previews, so it is not evidence every photo simultaneously decoded.",
+    "All 19 photos were separately scrolled and decoded in the normal reopen phase; per-width screenshots prove layout and first-photo visibility only."
+  ],
+  "status": "REVIEWED",
+  "productOwnerAccepted": false
+}

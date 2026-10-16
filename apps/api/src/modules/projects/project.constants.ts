@@ -8,3 +8,5 @@ export const PROJECT_PAINT_SUPPLIER_VALUES = [
 ] as const;
 
 export type ProjectPaintSupplier = (typeof PROJECT_PAINT_SUPPLIER_VALUES)[number];
+
+export const PROJECT_CREATE_MEMBERS_MAX_COUNT = 50;

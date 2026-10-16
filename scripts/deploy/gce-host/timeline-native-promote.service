@@ -1,0 +1,15 @@
+[Unit]
+Description=Bounded one-way native account production promotion
+Requires=postgresql.service timeline-native-cutover-recover.service timeline-native-network.service
+After=postgresql.service timeline-native-cutover-recover.service timeline-native-network.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 -I /usr/local/lib/timeline-native-ops/native_cutover.py promote
+ExecStopPost=/usr/bin/python3 -I /usr/local/lib/timeline-native-ops/native_cutover.py recover
+TimeoutStartSec=600
+TimeoutStopSec=180
+KillMode=control-group
+UMask=0077
+MemoryMax=512M
+TasksMax=64

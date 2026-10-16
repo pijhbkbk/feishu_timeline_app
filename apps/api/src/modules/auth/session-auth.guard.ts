@@ -1,3 +1,4 @@
+import { ACCOUNT_SELF_SERVICE, assertApprovedTeamMember } from '../../common/team-membership';
 import {
   CanActivate,
   ExecutionContext,
@@ -42,6 +43,9 @@ export class SessionAuthGuard implements CanActivate {
     if (!authUser) {
       throw new UnauthorizedException('登录状态已失效，请重新登录。');
     }
+
+    const selfService = this.reflector.getAllAndOverride<boolean>(ACCOUNT_SELF_SERVICE, [context.getHandler(), context.getClass()]);
+    if (!selfService) assertApprovedTeamMember(authUser);
 
     request.authUser = authUser;
     request.sessionToken = sessionToken;

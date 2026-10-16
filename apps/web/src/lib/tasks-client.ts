@@ -22,6 +22,7 @@ export type TaskListItem = {
   nodeCode: WorkflowNodeCode;
   nodeName: string;
   taskStatus: WorkflowTaskStatus;
+  taskVersion: string;
   dueAt: string | null;
   assigneeName: string;
   isOverdue: boolean;
@@ -84,6 +85,7 @@ export type TaskProgressResponse = {
 };
 
 export type CreateTaskProgressInput = {
+  taskVersion: string;
   completedContent: string;
   nextPlan?: string;
   completionPercent: number;

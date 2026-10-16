@@ -8,11 +8,25 @@ PROJECT="${PROJECT:-axial-acrobat-492709-r7}"
 ZONE="${ZONE:-us-west1-b}"
 APP_HOST="${APP_HOST:-timeline.all-too-well.com}"
 
-ssh_gce() {
-  gcloud compute ssh "$INSTANCE" --project="$PROJECT" --zone="$ZONE" --command "$1"
-}
+ROOT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
+# shellcheck source=scripts/deploy/gce-common.sh
+. "$ROOT_DIR/scripts/deploy/gce-common.sh"
 
-ssh_gce "set -euo pipefail
+validate_gce_connection_parameters
+if [ "${#APP_HOST}" -gt 253 ] \
+  || [[ ! "$APP_HOST" =~ ^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$ ]] \
+  || [[ "$APP_HOST" != *.* ]]; then
+  fail 'APP_HOST must be a valid DNS hostname.'
+fi
+
+REMOTE_SCRIPT="$(mktemp /tmp/r27a-gce-verify-remote.XXXXXX)"
+trap 'rm -f -- "$REMOTE_SCRIPT"' EXIT
+cat >"$REMOTE_SCRIPT" <<'REMOTESCRIPTEOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+APP_HOST="$1"
+
 sudo nginx -t
 echo '--- api status ---'
 systemctl status feishu-timeline-api --no-pager -l | sed -n '1,80p'
@@ -29,7 +43,10 @@ curl -I http://127.0.0.1:3000 || true
 echo '--- local curl api ---'
 curl -I http://127.0.0.1:3001/api/health || true
 echo '--- nginx host web ---'
-curl -I -H 'Host: $APP_HOST' http://127.0.0.1/ || true
+curl -I -H "Host: $APP_HOST" http://127.0.0.1/ || true
 echo '--- nginx host api ---'
-curl -I -H 'Host: $APP_HOST' http://127.0.0.1/api/health || true
-"
+curl -I -H "Host: $APP_HOST" http://127.0.0.1/api/health || true
+REMOTESCRIPTEOF
+
+chmod 0700 "$REMOTE_SCRIPT"
+gce_run_remote_script_with_args "$REMOTE_SCRIPT" "$APP_HOST"

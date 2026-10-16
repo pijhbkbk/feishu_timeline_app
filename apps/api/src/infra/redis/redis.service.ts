@@ -1,10 +1,11 @@
-import { Inject, Injectable, OnModuleDestroy } from '@nestjs/common';
+import { Inject, Injectable, OnModuleDestroy, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
 
 @Injectable()
 export class RedisService implements OnModuleDestroy {
   private readonly client: Redis;
+  private activeOperations = 0;
 
   constructor(@Inject(ConfigService) private readonly configService: ConfigService) {
     const redisUrl = this.configService.get<string>('redisUrl') ?? 'redis://localhost:6379';
@@ -13,6 +14,10 @@ export class RedisService implements OnModuleDestroy {
       lazyConnect: true,
       maxRetriesPerRequest: 1,
       enableOfflineQueue: false,
+      autoResendUnfulfilledCommands: false,
+      connectTimeout: 5_000,
+      commandTimeout: 5_000,
+      socketTimeout: 10_000,
     });
   }
 
@@ -21,11 +26,20 @@ export class RedisService implements OnModuleDestroy {
   }
 
   async execute<T>(handler: (client: Redis) => Promise<T>) {
-    if (this.client.status === 'wait') {
-      await this.client.connect();
+    // Admit whole business operations before dispatch, never part of a transaction.
+    // A timed-out command can still occupy ioredis' physical reply queue.
+    if (this.activeOperations >= 32 || this.client.commandQueue.length >= 64) {
+      throw new ServiceUnavailableException('服务繁忙，请稍后重试。');
     }
-
-    return handler(this.client);
+    this.activeOperations += 1;
+    try {
+      if (this.client.status === 'wait') {
+        await this.client.connect();
+      }
+      return await handler(this.client);
+    } finally {
+      this.activeOperations -= 1;
+    }
   }
 
   async onModuleDestroy() {
@@ -33,6 +47,12 @@ export class RedisService implements OnModuleDestroy {
       return;
     }
 
-    await this.client.quit();
+    try {
+      // QUIT on an unused lazy client starts a new connection. With the offline
+      // queue disabled that command rejects while leaving the connection alive.
+      if (this.client.status === 'ready') await this.client.quit();
+    } finally {
+      this.client.disconnect();
+    }
   }
 }

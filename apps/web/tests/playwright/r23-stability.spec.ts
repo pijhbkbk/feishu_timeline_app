@@ -359,7 +359,10 @@ test.describe('R23 稳定性、并发与数据一致性 @r23', () => {
     const before = await apiJson<{
       recurringTasks: Array<{ id: string; plannedDate: string; periodIndex: number }>;
     }>(request, `/workflows/projects/${project.id}/monthly-reviews`);
-    const users = await apiJson<Array<{ id: string; name: string }>>(request, '/users/directory');
+    const users = await apiJson<Array<{ id: string; name: string }>>(
+      request,
+      `/users/directory?projectId=${encodeURIComponent(project.id)}&take=50`,
+    );
     const firstPeriod = before.recurringTasks[0]!;
     const secondPeriod = before.recurringTasks[1]!;
     const reviewer = users[0]!;

@@ -1,0 +1,32 @@
+{
+  "recordedAt": "2026-09-17T07:37:38.454Z",
+  "host": "lima-timeline-recovery-b",
+  "bootId": "5219bf38-e403-458b-b3c5-49cf121b4bfe",
+  "node": "v24.14.0",
+  "docker": "29.5.2",
+  "compose": "5.5.1",
+  "images": 0,
+  "containers": 0,
+  "offlineService": "active",
+  "cloudCredentialDirectory": false,
+  "dockerCredentialFile": false,
+  "connections": [
+    {
+      "name": "public",
+      "blocked": true,
+      "reason": "ECONNREFUSED"
+    },
+    {
+      "name": "source",
+      "blocked": true,
+      "reason": "ECONNREFUSED"
+    },
+    {
+      "name": "metadata",
+      "blocked": true,
+      "reason": "ECONNREFUSED"
+    }
+  ],
+  "iptables": "-P INPUT ACCEPT\n-P FORWARD DROP\n-P OUTPUT ACCEPT\n-N DOCKER\n-N DOCKER-BRIDGE\n-N DOCKER-CT\n-N DOCKER-FORWARD\n-N DOCKER-INTERNAL\n-N DOCKER-USER\n-N TIMELINE_B_FORWARD\n-N TIMELINE_B_OUT\n-A FORWARD -j DOCKER-USER\n-A FORWARD -j DOCKER-FORWARD\n-A FORWARD -j TIMELINE_B_FORWARD\n-A OUTPUT -j TIMELINE_B_OUT\n-A DOCKER ! -i docker0 -o docker0 -j DROP\n-A DOCKER-BRIDGE -o docker0 -j DOCKER\n-A DOCKER-CT -o docker0 -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT\n-A DOCKER-FORWARD -j DOCKER-CT\n-A DOCKER-FORWARD -j DOCKER-INTERNAL\n-A DOCKER-FORWARD -j DOCKER-BRIDGE\n-A DOCKER-FORWARD -i docker0 -j ACCEPT\n-A DOCKER-USER -j TIMELINE_B_FORWARD\n-A TIMELINE_B_FORWARD -i br+ -o br+ -j RETURN\n-A TIMELINE_B_FORWARD -i docker0 -o docker0 -j RETURN\n-A TIMELINE_B_FORWARD -j REJECT --reject-with icmp-port-unreachable\n-A TIMELINE_B_OUT -o lo -j RETURN\n-A TIMELINE_B_OUT -m conntrack --ctstate RELATED,ESTABLISHED -j RETURN\n-A TIMELINE_B_OUT -j REJECT --reject-with icmp-port-unreachable",
+  "ip6tables": "-P INPUT ACCEPT\n-P FORWARD ACCEPT\n-P OUTPUT ACCEPT\n-N DOCKER\n-N DOCKER-BRIDGE\n-N DOCKER-CT\n-N DOCKER-FORWARD\n-N DOCKER-INTERNAL\n-N DOCKER-USER\n-N TIMELINE_B_FORWARD\n-N TIMELINE_B_OUT\n-A FORWARD -j DOCKER-USER\n-A FORWARD -j DOCKER-FORWARD\n-A FORWARD -j TIMELINE_B_FORWARD\n-A OUTPUT -j TIMELINE_B_OUT\n-A DOCKER-FORWARD -j DOCKER-CT\n-A DOCKER-FORWARD -j DOCKER-INTERNAL\n-A DOCKER-FORWARD -j DOCKER-BRIDGE\n-A DOCKER-USER -j TIMELINE_B_FORWARD\n-A TIMELINE_B_FORWARD -i br+ -o br+ -j RETURN\n-A TIMELINE_B_FORWARD -i docker0 -o docker0 -j RETURN\n-A TIMELINE_B_FORWARD -j REJECT --reject-with icmp6-port-unreachable\n-A TIMELINE_B_OUT -o lo -j RETURN\n-A TIMELINE_B_OUT -m conntrack --ctstate RELATED,ESTABLISHED -j RETURN\n-A TIMELINE_B_OUT -j REJECT --reject-with icmp6-port-unreachable"
+}

@@ -16,7 +16,18 @@
     "playwright:test:raw": "pnpm exec playwright test"
   },
   "dependencies": {
-    "next": "^15.5.21",
+    "@univerjs/core": "1.0.4",
+    "@univerjs/drawing": "1.0.4",
+    "@univerjs/preset-sheets-core": "1.0.4",
+    "@univerjs/preset-sheets-drawing": "1.0.4",
+    "@univerjs/presets": "1.0.4",
+    "@univerjs/sheets": "1.0.4",
+    "@univerjs/sheets-drawing": "1.0.4",
+    "exceljs": "4.4.0",
+    "fast-xml-parser": "5.11.2",
+    "fflate": "0.8.3",
+    "get-nonce": "1.0.1",
+    "next": "^15.5.24",
     "react": "^19.2.6",
     "react-dom": "^19.2.6"
   },
@@ -27,6 +38,6 @@
     "@types/react-dom": "^19.2.3",
     "dotenv-cli": "^8.0.0",
     "typescript": "^5.9.3",
-    "vitest": "^3.2.6"
+    "vitest": "^4.1.11"
   }
 }

@@ -1,0 +1,276 @@
+{
+  "reviewedAtUtc": "2026-10-14T00:53:51.648416+00:00",
+  "runtimeCommit": "9ed0502b9e97e543dc5beea00998b5edc0bb0e67",
+  "origin": "http://127.0.0.1:3380",
+  "run": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/final-readback-evidence/1791938988977234000",
+  "runResult": "1 PASS (51.2s)",
+  "artifactSha256": {
+    "results/readonly-readback-最终重启后普通员工只读重开：人员稳定记录、检验月度锁定、产量26与100、颜色和照片/readonly-readback-proof.json": "de356634577dba805b458fe4534feb09fb00505e7a52553df6c309047946ef60",
+    "results/readonly-readback-最终重启后普通员工只读重开：人员稳定记录、检验月度锁定、产量26与100、颜色和照片/readonly-readback-events.json": "43d404f0bad8700597913c3809c9031ef7bb040b6f0ed1a97fe22b116aeea0f9",
+    "results/readonly-readback-最终重启后普通员工只读重开：人员稳定记录、检验月度锁定、产量26与100、颜色和照片/trace.zip": "04a18dc1c4a3e0eb7b27b9188b72fb8c4897b9f0d16e62e8d1c46c76de990cf1",
+    "run.log": "e04d8157a614a9a099be671c83adcc5a43d04c617f483317a5449b2748e3a851"
+  },
+  "harnessSha256": "5fbd2e904f9f98e7fbb52f0676999dcf14acc29fd571f8d82c5f34b50d9ea50c",
+  "harnessEqualsReviewedProposal": true,
+  "proofCount": 5,
+  "proofModules": [
+    "persons",
+    "inspection",
+    "production",
+    "colors",
+    "colors-responsive"
+  ],
+  "businessWrites": 0,
+  "source89BeforeAfter": "959bc8c8bbc53318f9ff743d9ed4938acb3b270230f25018b10377e0296d5961",
+  "newBrowserContext": true,
+  "browserApiResponseCount": 236,
+  "browserApiMethods": {
+    "GET": 235,
+    "POST": 1
+  },
+  "browserApiStatuses": {
+    "200": 236
+  },
+  "thumbnailResponses": 44,
+  "blocked": [],
+  "pageErrors": [],
+  "consoleErrors": [],
+  "personsRecordCount": 5,
+  "inspectionLayerCounts": {
+    "occurrence": 2,
+    "measurement": 4,
+    "reading": 12,
+    "defect": 0
+  },
+  "inspectionMonthlyUnchanged": true,
+  "inspectionPhotoCount": 3,
+  "productionFactCount": 6,
+  "productionTotalsVerified": [
+    26,
+    100
+  ],
+  "productionUnknownDistinctFromZero": true,
+  "colorRecordCount": 2,
+  "colorPhotosDecodedOnce": 19,
+  "responsiveWidths": [
+    1440,
+    1280,
+    1024,
+    390
+  ],
+  "responsivePhotoScope": "19 stable IDs plus one representative decoded photo per width; not all 19 decoded at every width",
+  "screenshots": [
+    {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/final-readback-evidence/1791938988977234000/results/readonly-readback-最终重启后普通员工只读重开：人员稳定记录、检验月度锁定、产量26与100、颜色和照片/color-cmv4yz2hv00019kagrknto6m3-reopened-photos-visible.png",
+      "sha256": "e01108ab8773743c34b50cf3d7861cff1ac52ebd773863ec0dc7fb258e058226",
+      "width": 1440,
+      "height": 1000
+    },
+    {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/final-readback-evidence/1791938988977234000/results/readonly-readback-最终重启后普通员工只读重开：人员稳定记录、检验月度锁定、产量26与100、颜色和照片/color-cmv4yz2hv00019kagrknto6m3-reopened.png",
+      "sha256": "f2967975be6b0db9b9bce6859a43a394fed3357f615e8c98ea56d3b7711da744",
+      "width": 1440,
+      "height": 1132
+    },
+    {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/final-readback-evidence/1791938988977234000/results/readonly-readback-最终重启后普通员工只读重开：人员稳定记录、检验月度锁定、产量26与100、颜色和照片/color-cmv4yz2im00059kaglq0avjja-reopened.png",
+      "sha256": "4fc622e5cccfb877f460508391cf1042d6493d75ce5a335eef21aa5f0a1f1eb9",
+      "width": 1440,
+      "height": 1132
+    },
+    {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/final-readback-evidence/1791938988977234000/results/readonly-readback-最终重启后普通员工只读重开：人员稳定记录、检验月度锁定、产量26与100、颜色和照片/color-final-readonly-1024-photos-visible.png",
+      "sha256": "6f40b539b2e705d22620abeadcb0faa1936827385809501ed232c0962a35935e",
+      "width": 1024,
+      "height": 900
+    },
+    {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/final-readback-evidence/1791938988977234000/results/readonly-readback-最终重启后普通员工只读重开：人员稳定记录、检验月度锁定、产量26与100、颜色和照片/color-final-readonly-1024.png",
+      "sha256": "7f6fb2832490e2ae1cd244a1ace31f726cd5d8be21f53b279edac9bc1808291e",
+      "width": 1024,
+      "height": 1109
+    },
+    {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/final-readback-evidence/1791938988977234000/results/readonly-readback-最终重启后普通员工只读重开：人员稳定记录、检验月度锁定、产量26与100、颜色和照片/color-final-readonly-1280-photos-visible.png",
+      "sha256": "529039bd2c05e8fbc790de6466941268cdca552eb5b71816497f7d0c8866358c",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/final-readback-evidence/1791938988977234000/results/readonly-readback-最终重启后普通员工只读重开：人员稳定记录、检验月度锁定、产量26与100、颜色和照片/color-final-readonly-1280.png",
+      "sha256": "02279ff7ec3da16f793c02a35ae42de1663815037ffbaff51c96c049143938b0",
+      "width": 1280,
+      "height": 939
+    },
+    {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/final-readback-evidence/1791938988977234000/results/readonly-readback-最终重启后普通员工只读重开：人员稳定记录、检验月度锁定、产量26与100、颜色和照片/color-final-readonly-1440-photos-visible.png",
+      "sha256": "1fa625e8c20062d06accefe264ce77a79c626a79702c1e236ead93bd0ba856ac",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/final-readback-evidence/1791938988977234000/results/readonly-readback-最终重启后普通员工只读重开：人员稳定记录、检验月度锁定、产量26与100、颜色和照片/color-final-readonly-1440.png",
+      "sha256": "b4a95294f7838d42a76dcdcf634848119ed47ed0603a95615dd877aefa15c55a",
+      "width": 1440,
+      "height": 1032
+    },
+    {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/final-readback-evidence/1791938988977234000/results/readonly-readback-最终重启后普通员工只读重开：人员稳定记录、检验月度锁定、产量26与100、颜色和照片/color-final-readonly-390-photos-visible.png",
+      "sha256": "f0ffd927cd8849d4383dcc5e3c6cf84968d7a59b9a15852d4a24058200cb8a1e",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/final-readback-evidence/1791938988977234000/results/readonly-readback-最终重启后普通员工只读重开：人员稳定记录、检验月度锁定、产量26与100、颜色和照片/color-final-readonly-390.png",
+      "sha256": "5018068f14eb66df737fa78fa78f25cf8e097eba18d12bb0a88c18988f0c0733",
+      "width": 390,
+      "height": 1827
+    },
+    {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/final-readback-evidence/1791938988977234000/results/readonly-readback-最终重启后普通员工只读重开：人员稳定记录、检验月度锁定、产量26与100、颜色和照片/inspection-cmv6c4ibd008z9ktgwihf4y7x-photos-photos-visible.png",
+      "sha256": "d14ab63c4650d30aa3fd01e3dee4e2952ec73f9047d651d45e6617079257b26c",
+      "width": 1440,
+      "height": 1000
+    },
+    {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/final-readback-evidence/1791938988977234000/results/readonly-readback-最终重启后普通员工只读重开：人员稳定记录、检验月度锁定、产量26与100、颜色和照片/inspection-cmv6c4ibd008z9ktgwihf4y7x-photos.png",
+      "sha256": "2302254c01527af70599f226ffc11dffca62be01b386510ccc6192d27573570a",
+      "width": 1440,
+      "height": 2035
+    },
+    {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/final-readback-evidence/1791938988977234000/results/readonly-readback-最终重启后普通员工只读重开：人员稳定记录、检验月度锁定、产量26与100、颜色和照片/inspection-cmv6c4j9b009b9ktgxexthhfc-photos-photos-visible.png",
+      "sha256": "07a61e058c4a0bd2d41b82904f0159f56e1d7750caf58f769899440cdf70ea35",
+      "width": 1440,
+      "height": 1000
+    },
+    {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/final-readback-evidence/1791938988977234000/results/readonly-readback-最终重启后普通员工只读重开：人员稳定记录、检验月度锁定、产量26与100、颜色和照片/inspection-cmv6c4j9b009b9ktgxexthhfc-photos.png",
+      "sha256": "a706fe33386fb6f4c20100b0b5aa49bff111fa208e2fb63337eef90b4bee4ddd",
+      "width": 1440,
+      "height": 2035
+    },
+    {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/final-readback-evidence/1791938988977234000/results/readonly-readback-最终重启后普通员工只读重开：人员稳定记录、检验月度锁定、产量26与100、颜色和照片/inspection-four-groups-reopened.png",
+      "sha256": "65586bcde1e100fea3df09d746a073fc3fce424b6871d9e0f2d6cf8ef1bc8f8e",
+      "width": 1440,
+      "height": 2035
+    },
+    {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/final-readback-evidence/1791938988977234000/results/readonly-readback-最终重启后普通员工只读重开：人员稳定记录、检验月度锁定、产量26与100、颜色和照片/inspection-linked-month-reopened.png",
+      "sha256": "b54cd1bf0443fead3ba40db3aaadd655425c2560ee455f895788485b368cb45b",
+      "width": 1440,
+      "height": 1530
+    },
+    {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/final-readback-evidence/1791938988977234000/results/readonly-readback-最终重启后普通员工只读重开：人员稳定记录、检验月度锁定、产量26与100、颜色和照片/inspection-twelve-readings-reopened.png",
+      "sha256": "58939f277a9f942eb913aa190643eb174cb103c61036a89d3fa674db5320e86f",
+      "width": 1440,
+      "height": 2073
+    },
+    {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/final-readback-evidence/1791938988977234000/results/readonly-readback-最终重启后普通员工只读重开：人员稳定记录、检验月度锁定、产量26与100、颜色和照片/person-cmv67b3zs00079knb2n0rpi1c-reopened.png",
+      "sha256": "88965fdaf62d03880ac9aeca494da0fd5a41ec7bcc5d42f3896dff92192d52bf",
+      "width": 1440,
+      "height": 1165
+    },
+    {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/final-readback-evidence/1791938988977234000/results/readonly-readback-最终重启后普通员工只读重开：人员稳定记录、检验月度锁定、产量26与100、颜色和照片/person-cmv6cosqr00639k2yna77vk1p-reopened.png",
+      "sha256": "abee7b588058eeb62c2ae96613e4e62801226865c2f21709515cc155f3d188fa",
+      "width": 1440,
+      "height": 1165
+    },
+    {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/final-readback-evidence/1791938988977234000/results/readonly-readback-最终重启后普通员工只读重开：人员稳定记录、检验月度锁定、产量26与100、颜色和照片/person-cmv6cosxz00699k2y0yuertfg-reopened.png",
+      "sha256": "c34f0981e477b0bb85930e0a3fc0fc071fd156af503f3a8692d21f339e291167",
+      "width": 1440,
+      "height": 1165
+    },
+    {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/final-readback-evidence/1791938988977234000/results/readonly-readback-最终重启后普通员工只读重开：人员稳定记录、检验月度锁定、产量26与100、颜色和照片/person-cmv6cov1l007r9k2y0oxh1r4r-reopened.png",
+      "sha256": "71bc25bc62cfc2b9238f14fe08d888a7d89f3167fbdd1591d120c86482ea840d",
+      "width": 1440,
+      "height": 1165
+    },
+    {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/final-readback-evidence/1791938988977234000/results/readonly-readback-最终重启后普通员工只读重开：人员稳定记录、检验月度锁定、产量26与100、颜色和照片/person-cmv6cp3ro00899k2y7mnf67dn-reopened.png",
+      "sha256": "d716f2e04c034262f12d5d912fe26c4ab62476441ace135f3aa8c264b3f10e5a",
+      "width": 1440,
+      "height": 1165
+    },
+    {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/final-readback-evidence/1791938988977234000/results/readonly-readback-最终重启后普通员工只读重开：人员稳定记录、检验月度锁定、产量26与100、颜色和照片/production-2029-07-total-reopened.png",
+      "sha256": "38740c04820d31d48d9beaa3e3cacd3b6385b0ecd7c5c5784af9df66e996cfa1",
+      "width": 1440,
+      "height": 1741
+    },
+    {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/final-readback-evidence/1791938988977234000/results/readonly-readback-最终重启后普通员工只读重开：人员稳定记录、检验月度锁定、产量26与100、颜色和照片/production-2029-10-total-reopened.png",
+      "sha256": "883713232a5e59b7e340d9b6ad6e7b18c7357f3d9ab27f030197a4c72f1abe3f",
+      "width": 1440,
+      "height": 1741
+    },
+    {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/final-readback-evidence/1791938988977234000/results/readonly-readback-最终重启后普通员工只读重开：人员稳定记录、检验月度锁定、产量26与100、颜色和照片/production-cmv6cpjz1008h9k2y0x9zm7nw-reopened-photos-visible.png",
+      "sha256": "6823e91291a87f028ce37adfede543a5b79d7d17d884872cec98201b28ecf954",
+      "width": 1440,
+      "height": 1000
+    },
+    {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/final-readback-evidence/1791938988977234000/results/readonly-readback-最终重启后普通员工只读重开：人员稳定记录、检验月度锁定、产量26与100、颜色和照片/production-cmv6cpjz1008h9k2y0x9zm7nw-reopened.png",
+      "sha256": "76c2b509658a77c82937839f69983aec8d5d7d8ab14760dd8d5146aead054f95",
+      "width": 1440,
+      "height": 1741
+    },
+    {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/final-readback-evidence/1791938988977234000/results/readonly-readback-最终重启后普通员工只读重开：人员稳定记录、检验月度锁定、产量26与100、颜色和照片/production-cmv6cpk7r008n9k2yth3yab5h-reopened-photos-visible.png",
+      "sha256": "5f29f344c8bc247c6d72cd9cf353ccfdcde4f5e75a6c5a27eb4b6daf37a5ff06",
+      "width": 1440,
+      "height": 1000
+    },
+    {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/final-readback-evidence/1791938988977234000/results/readonly-readback-最终重启后普通员工只读重开：人员稳定记录、检验月度锁定、产量26与100、颜色和照片/production-cmv6cpk7r008n9k2yth3yab5h-reopened.png",
+      "sha256": "a49c7a5426486aa39099ac276d8a34163bebcef19d8d9fde794bbf3ed093f3ff",
+      "width": 1440,
+      "height": 1741
+    },
+    {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/final-readback-evidence/1791938988977234000/results/readonly-readback-最终重启后普通员工只读重开：人员稳定记录、检验月度锁定、产量26与100、颜色和照片/production-cmv6cpkga008t9k2yvxhio096-reopened.png",
+      "sha256": "f88dc66c20b7d8d55a4a188a71c20525efbf24189a9aeb4345f6999c608a4114",
+      "width": 1440,
+      "height": 1741
+    },
+    {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/final-readback-evidence/1791938988977234000/results/readonly-readback-最终重启后普通员工只读重开：人员稳定记录、检验月度锁定、产量26与100、颜色和照片/production-cmv6cplyc00939k2y30t3o7nr-reopened.png",
+      "sha256": "cdba5ed87af6c76f666f6a714235fafc45153ba27af1323c73cf8ed7afe770f8",
+      "width": 1440,
+      "height": 1741
+    },
+    {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/final-readback-evidence/1791938988977234000/results/readonly-readback-最终重启后普通员工只读重开：人员稳定记录、检验月度锁定、产量26与100、颜色和照片/production-cmv6cpm5h00999k2yueaxtjo9-reopened.png",
+      "sha256": "ce8d0e44cf63f932b6efd756926541b90142a518d7d0d6c53707d1a4e1686079",
+      "width": 1440,
+      "height": 1741
+    },
+    {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/light-truck-sheets-02-04/final-readback-evidence/1791938988977234000/results/readonly-readback-最终重启后普通员工只读重开：人员稳定记录、检验月度锁定、产量26与100、颜色和照片/production-cmv6cpxtb00an9k2ywfubvk54-reopened.png",
+      "sha256": "6531c2db58fc45ff882fbc9d823502e569c0a6640681b4b2890554ae86d5e6d4",
+      "width": 1440,
+      "height": 1741
+    }
+  ],
+  "visuallyReviewedScreenshots": [
+    "color-final-readonly-390.png",
+    "color-final-readonly-390-photos-visible.png",
+    "color-final-readonly-1440.png"
+  ],
+  "runtimeIdentityEvidence": "Executed unchanged harness line129 GET /api/health and /build-info via page.request requires HTTP200 and runtimeCommit equality; local approved non-admin identity also asserted. Those calls precede trace start and are not retained as raw response bodies in browser events/trace. This review relies on passed assertions, not invented retained payloads.",
+  "currentSourceDeltaFrom9edWithinAppsPackagesLockPatchesScripts": [],
+  "remainingScopeLimits": [
+    "SYSTEM_IME=NOT_VERIFIED; task lines311-312 cap overall ACCEPTANCE at NOT_FULLY_VERIFIED",
+    "Office partial historical production check only; overall full compatibility not verified",
+    "Existing restored DB/object equality is not restored-application login or reconstructed original exported snapshot baseline",
+    "No production/main/tag/product-owner acceptance asserted",
+    "Old failed readback runs retained; successful fresh run does not prove old OS failure cause or an executed manual retry"
+  ]
+}

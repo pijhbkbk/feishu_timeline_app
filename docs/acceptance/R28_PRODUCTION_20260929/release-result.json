@@ -1,0 +1,68 @@
+{
+  "environment": "production",
+  "url": "https://timeline.all-too-well.com",
+  "hostname": "timeline.all-too-well.com",
+  "runtimeCommit": "e917da56b9fca54a40635364e168fdb26a080fb1",
+  "sourceTree": "e3aa410f5211da19f01263c9adc106895d61b896",
+  "runtimeTargetBranch": "codex/r28-ui-patch-release-20260928",
+  "remoteRuntimeCommit": "e917da56b9fca54a40635364e168fdb26a080fb1",
+  "serverCheckoutHead": "e917da56b9fca54a40635364e168fdb26a080fb1",
+  "operationsCommit": "9eb94093df6c15df3600f9ddeb22ea92c7db67af",
+  "operationsTargetBranch": "codex/r28-ui-patch-ops-20260928",
+  "release": "r28-ui-patch-20260928-e917da56b9fc",
+  "buildTime": "2026-09-28T10:48:42Z",
+  "images": {
+    "api": "us-west1-docker.pkg.dev/axial-acrobat-492709-r7/feishu-timeline/api@sha256:868a2b554bf3a266c1c5236f863ead2f9a403ca7176be3fc673064de7c2ce7a3",
+    "web": "us-west1-docker.pkg.dev/axial-acrobat-492709-r7/feishu-timeline/web@sha256:d1025affa265b654077d7baa2a4357a8b428fc8f6139de72d5cafa2a138473b1"
+  },
+  "imageTags": {
+    "api": "us-west1-docker.pkg.dev/axial-acrobat-492709-r7/feishu-timeline/api:r28-ui-patch-20260928-e917da56b9fc",
+    "web": "us-west1-docker.pkg.dev/axial-acrobat-492709-r7/feishu-timeline/web:r28-ui-patch-20260928-e917da56b9fc"
+  },
+  "database": "feishu_timeline_restore_c38c57da",
+  "migrationCount": 41,
+  "tableCount": 54,
+  "nginxUpstreams": {
+    "api": "127.0.0.1:3001",
+    "web": "127.0.0.1:3000"
+  },
+  "containerUpstreams": {
+    "api": "172.30.44.2",
+    "web": "172.30.45.2"
+  },
+  "deploymentTime": "2026-09-29T00:57:22.219797+00:00",
+  "releaseInvocation": "c9fcdf71513749a0803da0f2df52223b",
+  "protectedBackup": "20260929T005653Z-891b4bb4",
+  "databaseRestored": false,
+  "migrationExecuted": false,
+  "programJournalPhase": "COMMITTED",
+  "originalMigrationAnchorSha256": "3081ae83f6127e81e9acc4a7518122ff0749ac5b8f4a281e4c63f6aece1e8123",
+  "originalMigrationAnchorUnchanged": true,
+  "retainedSyntheticAccount": {
+    "status": "INACTIVE",
+    "roleCount": 0,
+    "authVersion": 1,
+    "personnelAuditCount": 1,
+    "adminCommandCount": 1
+  },
+  "sourcePlaceholder": 0,
+  "testOnlyPlaceholderMatches": 10,
+  "staging": {
+    "url": null,
+    "runtimeCommit": null,
+    "status": "NOT_EXECUTED"
+  },
+  "mainChanged": false,
+  "mainCommit": "41b4b166c587692e6f0fb9536dca2e1aab646c70",
+  "tagsChanged": false,
+  "productOwnerAcceptance": "AWAITING_PRODUCT_OWNER_CONFIRMATION",
+  "authenticatedBrowserAcceptance": "PENDING_EXPIRED_OWNER_SESSION",
+  "status": [
+    "CODE_IMPLEMENTED",
+    "LOCAL_VERIFIED",
+    "PRODUCTION_RUNTIME_SWITCHED",
+    "EXACT_DOMAIN_PUBLIC_PATH_PASS",
+    "DEPLOYMENT_UNVERIFIED"
+  ],
+  "verifiedAt": "2026-09-29T01:07:40.584262+00:00"
+}

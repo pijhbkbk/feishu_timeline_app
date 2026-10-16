@@ -1,6 +1,6 @@
 'use client';
 
-import { apiRequest, type FrontendRoleCode, type SessionUser } from './auth-client';
+import { isApprovedTeamUser, apiRequest, type SessionUser } from './auth-client';
 import {
   formatDate,
   getProjectPriorityLabel,
@@ -102,8 +102,6 @@ export const DEVELOPMENT_FEE_STATUS_OPTIONS: Array<{
   { value: 'CANCELLED', label: '已取消' },
 ];
 
-const FEE_ROLE_CODES: FrontendRoleCode[] = ['admin', 'finance'];
-
 const DEVELOPMENT_FEE_TYPE_LABELS = Object.fromEntries(
   DEVELOPMENT_FEE_TYPE_OPTIONS.map((item) => [item.value, item.label]),
 ) as Record<DevelopmentFeeType, string>;
@@ -187,15 +185,7 @@ export function validateFeeForm(input: FeeFormInput) {
 }
 
 export function canManageFees(user: SessionUser | null) {
-  if (!user) {
-    return false;
-  }
-
-  if (user.isSystemAdmin || user.roleCodes.includes('admin')) {
-    return true;
-  }
-
-  return FEE_ROLE_CODES.some((roleCode) => user.roleCodes.includes(roleCode));
+  return isApprovedTeamUser(user);
 }
 
 export function canShowCompleteFeeTaskButton(

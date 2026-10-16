@@ -11,6 +11,8 @@ import {
 } from '@prisma/client';
 import { describe, expect, it, vi } from 'vitest';
 
+import { installTeamAuthorizationFixture } from '../../test-support/team-authorization.fixture';
+
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { R26ProgressMaterialService } from './r26-progress-material.service';
 
@@ -22,9 +24,50 @@ const actor: AuthenticatedUser = {
   departmentId: 'dept-purchase',
   departmentName: '采购部',
   isSystemAdmin: false,
-  authSource: 'feishu',
+  teamAccessApproved: true, authSource: 'local',
+  authVersion: 1,
   roleCodes: ['purchaser'],
+  permissionCodes: [
+    'project.read',
+    'workflow.transition',
+    'attachment.manage',
+  ],
+};
+
+const ordinaryAdminReadOnly: AuthenticatedUser = {
+  ...actor,
+  teamAccessApproved: false,
+  id: 'ordinary-admin-read-only',
+  username: 'ordinary-admin-read-only',
+  name: '仅有读取权限的普通管理员',
+  roleCodes: ['admin'],
   permissionCodes: ['project.read'],
+};
+
+const ordinaryAdminProgressWriter: AuthenticatedUser = {
+  ...ordinaryAdminReadOnly,
+  id: 'ordinary-admin-progress-writer',
+  username: 'ordinary-admin-progress-writer',
+  name: '仅有进展写权限的普通管理员',
+  permissionCodes: ['project.read', 'workflow.transition'],
+};
+
+const ordinaryAdminMaterialWriter: AuthenticatedUser = {
+  ...ordinaryAdminReadOnly,
+  id: 'ordinary-admin-material-writer',
+  username: 'ordinary-admin-material-writer',
+  name: '仅有材料写权限的普通管理员',
+  permissionCodes: ['project.read', 'attachment.manage'],
+};
+
+const permissionlessSystemAdmin: AuthenticatedUser = {
+  ...ordinaryAdminReadOnly,
+  id: 'permissionless-system-admin',
+  username: 'permissionless-system-admin',
+  name: '无权限码系统管理员',
+  isSystemAdmin: true,
+  roleCodes: [],
+  permissionCodes: [],
 };
 
 const taskUpdatedAt = new Date('2026-07-24T03:00:00.000Z');
@@ -140,29 +183,10 @@ function createService(options: {
 } = {}) {
   const loadedTask = options.loadedTask ?? task();
   const tx = {
+    $queryRaw: vi.fn().mockResolvedValue([{ id: loadedTask.id }]),
     workflowTask: {
-      findUnique: vi
-        .fn()
-        .mockResolvedValueOnce({
-          id: loadedTask.id,
-          projectId: loadedTask.projectId,
-          nodeCode: loadedTask.nodeCode,
-          nodeName: loadedTask.nodeName,
-          status: loadedTask.status,
-          isActive: loadedTask.isActive,
-          updatedAt: loadedTask.updatedAt,
-          workflowInstance: {
-            currentNodeCode:
-              loadedTask.workflowInstance.currentNodeCode,
-          },
-        })
-        .mockResolvedValueOnce({
-          status: loadedTask.status,
-          workflowInstance: {
-            currentNodeCode:
-              loadedTask.workflowInstance.currentNodeCode,
-          },
-        }),
+      findUnique: vi.fn().mockResolvedValue(loadedTask),
+      findUniqueOrThrow: vi.fn().mockResolvedValue(loadedTask),
       count: vi.fn().mockResolvedValue(18),
       update: vi.fn(),
       updateMany: vi.fn(),
@@ -185,9 +209,12 @@ function createService(options: {
     r26CommandRequest: {
       findUnique: vi.fn().mockResolvedValue(null),
       create: vi.fn().mockResolvedValue({ id: 'command-1' }),
+      update: vi.fn(), deleteMany: vi.fn().mockResolvedValue({ count: 1 }),
     },
+    attachment: { findFirst: vi.fn().mockResolvedValue(null) },
   };
   const prisma = {
+    $queryRaw: vi.fn().mockResolvedValue([]),
     workflowTask: {
       findUnique: vi.fn().mockResolvedValue(loadedTask),
     },
@@ -221,6 +248,8 @@ function createService(options: {
           executor(tx)),
     ),
   };
+  tx.r26CommandRequest.deleteMany = prisma.r26CommandRequest.deleteMany;
+  installTeamAuthorizationFixture(tx, [{ ...actor, authVersion: 1 }], () => loadedTask);
   const projectAccess = {
     assertProjectAccessWithDefaultClient: vi.fn().mockResolvedValue({
       id: loadedTask.projectId,
@@ -256,6 +285,111 @@ function createService(options: {
   };
 }
 
+const replayMaterialFile = {
+  originalname: '到货确认记录.pdf',
+  mimetype: 'application/pdf',
+  size: 64,
+  buffer: Buffer.from('%PDF-1.4\nmaterial-replay'),
+};
+
+function createMaterialReplayHarness(options: { replacement?: boolean } = {}) {
+  const replacement = options.replacement ?? false;
+  const oldAttachment = {
+    id: 'attachment-old',
+    projectId: 'project-1',
+    entityType: 'WORKFLOW_TASK',
+    entityId: 'task-6',
+    materialType: 'WORK_EVIDENCE',
+    versionNo: 2,
+    isDeleted: false,
+    scanStatus: 'CLEAN',
+  };
+  let oldAttachmentDeleted = false;
+  let currentTask = task();
+  let storedCommand: Record<string, unknown> | null = null;
+
+  const commandFindUnique = vi.fn(async () => storedCommand);
+  const commandCreate = vi.fn(
+    async (args: { data: Record<string, unknown> }) => {
+      storedCommand = { ...args.data };
+      return { id: 'command-material-replay' };
+    },
+  );
+  const commandUpdate = vi.fn(
+    async (args: { data: { result: unknown } }) => {
+      storedCommand = {
+        ...(storedCommand ?? {}),
+        result: args.data.result,
+      };
+      currentTask = task({
+        updatedAt: new Date(taskUpdatedAt.getTime() + 1_000),
+      });
+      if (replacement) oldAttachmentDeleted = true;
+      return { id: 'command-material-replay' };
+    },
+  );
+  const attachmentFindFirst = vi.fn(
+    async (args: { where: Record<string, unknown> }) => {
+      if (!replacement || oldAttachmentDeleted) return null;
+      if (
+        args.where.id === oldAttachment.id ||
+        args.where.materialType === oldAttachment.materialType
+      ) {
+        return oldAttachment;
+      }
+      return null;
+    },
+  );
+  const attachmentCreate = vi.fn().mockResolvedValue({
+    id: replacement ? 'attachment-v3' : 'attachment-v1',
+    fileName: replayMaterialFile.originalname,
+    versionNo: replacement ? 3 : 1,
+  });
+  const prisma = {
+    workflowTask: {
+      findUnique: vi.fn(async () => currentTask),
+    },
+    attachment: {
+      findFirst: attachmentFindFirst,
+    },
+    r26CommandRequest: {
+      findUnique: commandFindUnique,
+      create: commandCreate,
+      update: commandUpdate,
+      deleteMany: vi.fn().mockResolvedValue({ count: 1 }),
+    },
+  };
+  const tx = { ...prisma, $queryRaw: vi.fn().mockResolvedValue([{ id: 'task-6' }]), workflowTask: {
+    findUnique: vi.fn(async () => currentTask), findUniqueOrThrow: vi.fn(async () => currentTask),
+  } };
+  installTeamAuthorizationFixture(tx, [{ ...actor, authVersion: 1 }], () => currentTask);
+  Object.assign(prisma, { $transaction: vi.fn(async (operation: (client: typeof tx) => Promise<unknown>) => operation(tx)) });
+  attachmentCreate.mockImplementation(async (input: any) => {
+    const stored = { id: replacement ? 'attachment-v3' : 'attachment-v1', fileName: replayMaterialFile.originalname, versionNo: replacement ? 3 : 1 };
+    await input.finalizeUploadResult(tx, stored);
+    return stored;
+  });
+  const projectAccess = {
+    assertProjectAccessWithDefaultClient: vi.fn().mockResolvedValue({
+      id: 'project-1',
+    }),
+  };
+  const service = new R26ProgressMaterialService(
+    prisma as never,
+    projectAccess as never,
+    {} as never,
+    { createStoredAttachment: attachmentCreate } as never,
+  );
+
+  return {
+    service,
+    prisma,
+    attachmentCreate,
+    attachmentFindFirst,
+    isOldAttachmentDeleted: () => oldAttachmentDeleted,
+  };
+}
+
 const submitInput = {
   progressStatus: 'IN_PROGRESS' as const,
   completedWork: '已核对采购批次。',
@@ -268,6 +402,407 @@ const submitInput = {
 };
 
 describe('R26 Gate 3B progress and material service', () => {
+  it('replays a successful V1 material upload after the finalize hook bumps taskVersion without a second scan or storage write', async () => {
+    const harness = createMaterialReplayHarness();
+    const input = {
+      materialType: 'WORK_EVIDENCE',
+      taskVersion: taskUpdatedAt.toISOString(),
+      idempotencyKey: 'r26-material-replay-v1',
+    };
+
+    const first = await harness.service.uploadMaterial(
+      'task-6',
+      input,
+      replayMaterialFile,
+      actor,
+      'request-material-v1-first',
+    );
+    const replay = await harness.service.uploadMaterial(
+      'task-6',
+      input,
+      replayMaterialFile,
+      actor,
+      'request-material-v1-replay',
+    );
+
+    expect(first).toMatchObject({
+      action: 'R26_MATERIAL_UPLOADED',
+      idempotentReplay: false,
+      materialUploaded: true,
+    });
+    expect(replay).toMatchObject({
+      action: 'R26_MATERIAL_UPLOADED',
+      idempotentReplay: true,
+      materialUploaded: true,
+    });
+    expect(harness.attachmentCreate).toHaveBeenCalledTimes(1);
+    expect(harness.prisma.r26CommandRequest.create).toHaveBeenCalledTimes(1);
+    expect(harness.prisma.r26CommandRequest.update).toHaveBeenCalledTimes(1);
+    expect(harness.attachmentFindFirst).toHaveBeenCalledTimes(1);
+  });
+
+  it('replays a successful material replacement after the old attachment is deleted without revalidating or rescanning it', async () => {
+    const harness = createMaterialReplayHarness({ replacement: true });
+    const input = {
+      materialType: 'WORK_EVIDENCE',
+      taskVersion: taskUpdatedAt.toISOString(),
+      idempotencyKey: 'r26-material-replay-replacement',
+      replacesAttachmentId: 'attachment-old',
+    };
+
+    const first = await harness.service.uploadMaterial(
+      'task-6',
+      input,
+      replayMaterialFile,
+      actor,
+      'request-material-replacement-first',
+    );
+    expect(harness.isOldAttachmentDeleted()).toBe(true);
+    const attachmentReadsAfterFirstUpload =
+      harness.attachmentFindFirst.mock.calls.length;
+
+    const replay = await harness.service.uploadMaterial(
+      'task-6',
+      input,
+      replayMaterialFile,
+      actor,
+      'request-material-replacement-replay',
+    );
+
+    expect(first).toMatchObject({
+      action: 'R26_MATERIAL_VERSION_UPLOADED',
+      idempotentReplay: false,
+      materialUploaded: true,
+    });
+    expect(replay).toMatchObject({
+      action: 'R26_MATERIAL_VERSION_UPLOADED',
+      idempotentReplay: true,
+      materialUploaded: true,
+    });
+    expect(harness.attachmentFindFirst).toHaveBeenCalledTimes(
+      attachmentReadsAfterFirstUpload,
+    );
+    expect(harness.attachmentCreate).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects a changed material payload that reuses a completed upload key before any second scan or storage write', async () => {
+    const harness = createMaterialReplayHarness();
+    const input = {
+      materialType: 'WORK_EVIDENCE',
+      taskVersion: taskUpdatedAt.toISOString(),
+      idempotencyKey: 'r26-material-replay-different-payload',
+    };
+    await harness.service.uploadMaterial(
+      'task-6',
+      input,
+      replayMaterialFile,
+      actor,
+      'request-material-original',
+    );
+
+    await expect(
+      harness.service.uploadMaterial(
+        'task-6',
+        input,
+        {
+          ...replayMaterialFile,
+          buffer: Buffer.from('%PDF-1.4\nchanged-payload'),
+        },
+        actor,
+        'request-material-changed',
+      ),
+    ).rejects.toMatchObject({
+      response: {
+        code: 'IDEMPOTENCY_KEY_REUSED_WITH_DIFFERENT_REQUEST',
+      },
+    });
+    expect(harness.attachmentCreate).toHaveBeenCalledTimes(1);
+    expect(harness.attachmentFindFirst).toHaveBeenCalledTimes(1);
+    expect(harness.prisma.r26CommandRequest.create).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects save, submit and upload for an ordinary admin with project.read only before commands, storage or audit', async () => {
+    const noScopeTask = task({
+      assigneeUserId: 'another-user',
+      project: {
+        ...task().project,
+        ownerUserId: 'another-owner',
+        members: [],
+        nodeAssignments: [],
+      },
+    });
+
+    const draftCase = createService({ loadedTask: noScopeTask });
+    await expect(
+      draftCase.service.saveDraft(
+        'task-6',
+        {
+          draftVersion: 0,
+          progressStatus: 'IN_PROGRESS',
+          completedWork: '不应写入',
+          idempotencyKey: 'r26-permission:draft-read-only',
+        },
+        ordinaryAdminReadOnly,
+        'request-draft-read-only',
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(draftCase.prisma.$transaction).not.toHaveBeenCalled();
+    expect(draftCase.prisma.r26CommandRequest.findUnique).not.toHaveBeenCalled();
+    expect(draftCase.tx.r26ProgressDraft.create).not.toHaveBeenCalled();
+    expect(draftCase.activityLogs.createWithExecutor).not.toHaveBeenCalled();
+
+    const submitCase = createService({ loadedTask: noScopeTask });
+    await expect(
+      submitCase.service.submitProgress(
+        'task-6',
+        submitInput,
+        ordinaryAdminReadOnly,
+        'request-submit-read-only',
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(submitCase.prisma.$transaction).not.toHaveBeenCalled();
+    expect(submitCase.prisma.r26CommandRequest.findUnique).not.toHaveBeenCalled();
+    expect(submitCase.tx.taskProgressUpdate.create).not.toHaveBeenCalled();
+    expect(submitCase.activityLogs.createWithExecutor).not.toHaveBeenCalled();
+
+    const uploadCase = createService({ loadedTask: noScopeTask });
+    await expect(
+      uploadCase.service.uploadMaterial(
+        'task-6',
+        {
+          materialType: 'WORK_EVIDENCE',
+          taskVersion: taskUpdatedAt.toISOString(),
+          idempotencyKey: 'r26-permission:upload-read-only',
+        },
+        {
+          originalname: '不应写入.pdf',
+          mimetype: 'application/pdf',
+          size: 64,
+          buffer: Buffer.from('%PDF-1.4\n'),
+        },
+        ordinaryAdminReadOnly,
+        'request-upload-read-only',
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(uploadCase.prisma.r26CommandRequest.create).not.toHaveBeenCalled();
+    expect(uploadCase.attachmentCreate).not.toHaveBeenCalled();
+    expect(uploadCase.activityLogs.createWithExecutor).not.toHaveBeenCalled();
+  });
+
+  it('rejects progress and materials for an unqualified admin with workflow.transition', async () => {
+    const noScopeTask = task({
+      assigneeUserId: 'another-user',
+      project: {
+        ...task().project,
+        ownerUserId: 'another-owner',
+        members: [],
+        nodeAssignments: [],
+      },
+    });
+    const progressCase = createService({ loadedTask: noScopeTask });
+
+    await expect(
+      progressCase.service.submitProgress(
+        'task-6',
+        submitInput,
+        ordinaryAdminProgressWriter,
+        'request-progress-writer',
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(progressCase.tx.taskProgressUpdate.create).not.toHaveBeenCalled();
+
+    const materialCase = createService({ loadedTask: noScopeTask });
+    await expect(
+      materialCase.service.uploadMaterial(
+        'task-6',
+        {
+          materialType: 'WORK_EVIDENCE',
+          taskVersion: taskUpdatedAt.toISOString(),
+          idempotencyKey: 'r26-permission:progress-cannot-upload',
+        },
+        {
+          originalname: '不应上传.pdf',
+          mimetype: 'application/pdf',
+          size: 64,
+          buffer: Buffer.from('%PDF-1.4\n'),
+        },
+        ordinaryAdminProgressWriter,
+        'request-progress-cannot-upload',
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(materialCase.attachmentCreate).not.toHaveBeenCalled();
+  });
+
+  it('rejects materials and progress for an unqualified admin with attachment.manage', async () => {
+    const noScopeTask = task({
+      assigneeUserId: 'another-user',
+      project: {
+        ...task().project,
+        ownerUserId: 'another-owner',
+        members: [],
+        nodeAssignments: [],
+      },
+    });
+    const progressCase = createService({ loadedTask: noScopeTask });
+    await expect(
+      progressCase.service.submitProgress(
+        'task-6',
+        submitInput,
+        ordinaryAdminMaterialWriter,
+        'request-material-cannot-progress',
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(progressCase.tx.taskProgressUpdate.create).not.toHaveBeenCalled();
+
+    const materialCase = createService({ loadedTask: noScopeTask });
+    await expect(
+      materialCase.service.uploadMaterial(
+        'task-6',
+        {
+          materialType: 'WORK_EVIDENCE',
+          taskVersion: taskUpdatedAt.toISOString(),
+          idempotencyKey: 'r26-permission:material-writer',
+        },
+        {
+          originalname: '允许上传.pdf',
+          mimetype: 'application/pdf',
+          size: 64,
+          buffer: Buffer.from('%PDF-1.4\n'),
+        },
+        ordinaryAdminMaterialWriter,
+        'request-material-writer',
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(materialCase.attachmentCreate).not.toHaveBeenCalled();
+    expect(materialCase.prisma.r26CommandRequest.create).not.toHaveBeenCalled();
+  });
+
+  it('denies a forged system-administrator snapshot when current persisted authorization differs', async () => {
+    const noScopeTask = task({
+      assigneeUserId: 'another-user',
+      project: {
+        ...task().project,
+        ownerUserId: 'another-owner',
+        members: [],
+        nodeAssignments: [],
+      },
+    });
+    const progressCase = createService({ loadedTask: noScopeTask });
+    await expect(
+      progressCase.service.submitProgress(
+        'task-6',
+        submitInput,
+        permissionlessSystemAdmin,
+        'request-system-admin-progress',
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(progressCase.tx.taskProgressUpdate.create).not.toHaveBeenCalled();
+
+    const materialCase = createService({ loadedTask: noScopeTask });
+    await expect(
+      materialCase.service.uploadMaterial(
+        'task-6',
+        {
+          materialType: 'WORK_EVIDENCE',
+          taskVersion: taskUpdatedAt.toISOString(),
+          idempotencyKey: 'r26-permission:system-admin-upload',
+        },
+        {
+          originalname: '系统管理员上传.pdf',
+          mimetype: 'application/pdf',
+          size: 64,
+          buffer: Buffer.from('%PDF-1.4\n'),
+        },
+        permissionlessSystemAdmin,
+        'request-system-admin-upload',
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(materialCase.attachmentCreate).not.toHaveBeenCalled();
+  });
+
+  it('requires explicit admission and maps granted actions independent of project claim', () => {
+    const { service } = createService();
+    const getAvailableActions = (
+      service as unknown as {
+        getAvailableActions(
+          loadedTask: ReturnType<typeof task>,
+          authenticatedUser: AuthenticatedUser,
+        ): Array<{ action: string }>;
+      }
+    ).getAvailableActions.bind(service);
+    const scopedActors: Array<{
+      scopedTask: ReturnType<typeof task>;
+      scopedActor: AuthenticatedUser;
+    }> = [
+      {
+        scopedTask: task(),
+        scopedActor: {
+          ...actor,
+          permissionCodes: ['project.read'],
+        },
+      },
+      {
+        scopedTask: task({
+          assigneeUserId: 'another-user',
+          project: {
+            ...task().project,
+            ownerUserId: 'project-owner',
+            members: [],
+          },
+        }),
+        scopedActor: {
+          ...actor,
+          id: 'project-owner',
+          roleCodes: ['project_manager'],
+          permissionCodes: ['project.read'],
+        },
+      },
+      {
+        scopedTask: task({
+          assigneeUserId: 'another-user',
+          project: {
+            ...task().project,
+            ownerUserId: 'another-owner',
+            members: [],
+            nodeAssignments: [
+              {
+                nodeCode: WorkflowNodeCode.PAINT_PROCUREMENT,
+                collaboratorUserIds: ['project-collaborator'],
+                reviewerUserIds: [],
+              },
+            ],
+          },
+        }),
+        scopedActor: {
+          ...actor,
+          id: 'project-collaborator',
+          roleCodes: ['process_engineer'],
+          permissionCodes: ['project.read'],
+        },
+      },
+    ];
+
+    for (const { scopedTask, scopedActor } of scopedActors) {
+      expect(getAvailableActions(scopedTask, { ...scopedActor, teamAccessApproved: false })).toEqual([]);
+      expect(
+        getAvailableActions(scopedTask, {
+          ...scopedActor,
+          permissionCodes: ['project.read', 'workflow.transition'],
+        }).map((item) => item.action),
+      ).toEqual([
+        'SAVE_PROGRESS_DRAFT',
+        'DELETE_PROGRESS_DRAFT',
+        'SUBMIT_PROGRESS',
+      ]);
+      expect(
+        getAvailableActions(scopedTask, {
+          ...scopedActor,
+          permissionCodes: ['project.read', 'attachment.manage'],
+        }).map((item) => item.action),
+      ).toEqual(['UPLOAD_MATERIAL']);
+    }
+  });
+
   it('submits immutable progress while preserving task, node and task count', async () => {
     const { service, tx, activityLogs } = createService();
 
@@ -513,7 +1048,7 @@ describe('R26 Gate 3B progress and material service', () => {
     expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 
-  it('keeps ordinary observers and cross-project actors read-only', async () => {
+  it('denies unapproved observers and project-access failures', async () => {
     const observerTask = task({
       assigneeUserId: 'another-user',
       project: {
@@ -533,7 +1068,7 @@ describe('R26 Gate 3B progress and material service', () => {
       service.submitProgress(
         'task-6',
         submitInput,
-        actor,
+        { ...actor, teamAccessApproved: false },
         'request-observer',
       ),
     ).rejects.toBeInstanceOf(ForbiddenException);

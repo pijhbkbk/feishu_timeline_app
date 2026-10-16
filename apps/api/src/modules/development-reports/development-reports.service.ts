@@ -1,19 +1,22 @@
+import { canOperateTeamTask, withProjectWrite } from '../../common/team-authorization';
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import {
   AuditTargetType,
   DevelopmentReportStatus,
+  Prisma,
   WorkflowAction,
   WorkflowNodeCode,
-  type Prisma,
 } from '@prisma/client';
 
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import type { AuthenticatedUser } from '../auth/auth.types';
+import { ProjectAccessService } from '../auth/project-access.service';
 import {
   getAllowedWorkflowActions,
   getCurrentNodeName,
@@ -22,6 +25,13 @@ import {
 import { WorkflowsService } from '../workflows/workflows.service';
 
 type DevelopmentReportDbClient = Prisma.TransactionClient | PrismaService;
+
+const DEVELOPMENT_REPORT_MAX_PAYLOAD_BYTES = 16 * 1024;
+const DEVELOPMENT_REPORT_MAX_POSTGRES_INT = 2_147_483_647;
+const DEVELOPMENT_REPORT_NAME_MAX_CHARS = 200;
+const DEVELOPMENT_REPORT_SHORT_TEXT_MAX_CHARS = 500;
+const DEVELOPMENT_REPORT_LONG_TEXT_MAX_CHARS = 4_000;
+const DEVELOPMENT_REPORT_COMMENT_MAX_CHARS = 2_000;
 
 type DevelopmentReportWriteInput = {
   reportTitle?: string;
@@ -64,9 +74,11 @@ export class DevelopmentReportsService {
     private readonly prisma: PrismaService,
     private readonly workflowsService: WorkflowsService,
     private readonly activityLogsService: ActivityLogsService,
+    private readonly projectAccessService: ProjectAccessService,
   ) {}
 
-  getWorkspace(projectId: string, actor: AuthenticatedUser) {
+  async getWorkspace(projectId: string, actor: AuthenticatedUser) {
+    await this.assertProjectAccess(projectId, actor, 'project.read');
     return this.buildWorkspaceResponse(this.prisma, projectId, actor);
   }
 
@@ -75,15 +87,15 @@ export class DevelopmentReportsService {
     rawInput: unknown,
     actor: AuthenticatedUser,
   ) {
+    await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     const input = this.parseWriteInput(rawInput);
 
-    return this.prisma.$transaction(async (tx) => {
+    return withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
       const project = await this.getProjectOrThrow(tx, projectId);
-      const activeTask = await this.getActiveTaskOrThrow(tx, projectId);
+      const { activeTask, existingReport } =
+        await this.lockDevelopmentReportWriteState(tx, projectId);
 
       this.assertActorCanOperateTask(activeTask, actor);
-
-      const existingReport = await this.getReportByTaskId(tx, activeTask.id);
       const savedReport = await this.upsertReportForTask(tx, {
         project,
         activeTask,
@@ -121,16 +133,16 @@ export class DevelopmentReportsService {
     rawInput: unknown,
     actor: AuthenticatedUser,
   ) {
+    await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     const input = this.parseWriteInput(rawInput);
 
-    return this.prisma.$transaction(async (tx) => {
+    return withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
       const project = await this.getProjectOrThrow(tx, projectId);
-      const activeTask = await this.getActiveTaskOrThrow(tx, projectId);
+      const { activeTask, existingReport } =
+        await this.lockDevelopmentReportWriteState(tx, projectId);
 
       this.assertActorCanOperateTask(activeTask, actor);
       this.assertTaskCanSubmit(activeTask);
-
-      const existingReport = await this.getReportByTaskId(tx, activeTask.id);
       const submittedReport = await this.upsertReportForTask(tx, {
         project,
         activeTask,
@@ -177,6 +189,18 @@ export class DevelopmentReportsService {
     });
   }
 
+  private assertProjectAccess(
+    projectId: string,
+    actor: AuthenticatedUser,
+    requiredPermission: string,
+  ) {
+    return this.projectAccessService.assertProjectAccessWithDefaultClient(
+      projectId,
+      actor,
+      requiredPermission,
+    );
+  }
+
   private async buildWorkspaceResponse(
     db: DevelopmentReportDbClient,
     projectId: string,
@@ -216,6 +240,7 @@ export class DevelopmentReportsService {
         currentNodeName: getCurrentNodeName(project.currentNodeCode),
         targetDate: project.plannedEndDate?.toISOString() ?? null,
       },
+      approvalFacts: project.approvedReportAttachmentId ? { approvedReportDate: project.approvedReportDate?.toISOString() ?? null, approvalReference: project.approvalReference, reportAttachmentId: project.approvedReportAttachmentId, demandSource: latestReport?.demandSource ?? null } : null,
       activeTask: activeTask ? this.toTaskSummary(activeTask) : null,
       currentReport: currentReport ? this.toReportSummary(currentReport) : null,
       latestReport: latestReport ? this.toReportSummary(latestReport) : null,
@@ -239,10 +264,13 @@ export class DevelopmentReportsService {
     },
   ) {
     const now = new Date();
-    const resolvedTitle =
+    const resolvedTitle = this.assertBoundedString(
       input.input.reportTitle?.trim() ||
       input.existingReport?.reportTitle ||
-      `${input.project.name} 新颜色开发报告`;
+        `${input.project.name} 新颜色开发报告`,
+      'reportTitle',
+      DEVELOPMENT_REPORT_NAME_MAX_CHARS,
+    );
     const status = input.submit
       ? DevelopmentReportStatus.SUBMITTED
       : DevelopmentReportStatus.DRAFT;
@@ -268,10 +296,19 @@ export class DevelopmentReportsService {
     };
 
     if (input.existingReport) {
-      await tx.developmentReport.update({
-        where: { id: input.existingReport.id },
+      const updated = await tx.developmentReport.updateMany({
+        where: {
+          id: input.existingReport.id,
+          workflowTaskId: input.activeTask.id,
+          status: DevelopmentReportStatus.DRAFT,
+          submittedAt: null,
+          updatedAt: input.existingReport.updatedAt,
+        },
         data: reportData,
       });
+      if (updated.count !== 1) {
+        this.throwDevelopmentReportStateChanged();
+      }
     } else {
       await tx.developmentReport.create({
         data: {
@@ -302,6 +339,9 @@ export class DevelopmentReportsService {
         name: true,
         currentNodeCode: true,
         plannedEndDate: true,
+        approvedReportDate: true,
+        approvalReference: true,
+        approvedReportAttachmentId: true,
       },
     });
 
@@ -359,6 +399,110 @@ export class DevelopmentReportsService {
     });
   }
 
+  private async lockDevelopmentReportWriteState(
+    tx: Prisma.TransactionClient,
+    projectId: string,
+  ) {
+    const candidateTask = await this.getActiveTaskOrThrow(tx, projectId);
+    const candidateReport = await this.getReportByTaskId(tx, candidateTask.id);
+
+    if (
+      candidateReport &&
+      !(await this.lockDevelopmentReportRow(
+        tx,
+        projectId,
+        candidateReport.id,
+      ))
+    ) {
+      this.throwDevelopmentReportStateChanged();
+    }
+
+    if (
+      !(await this.lockDevelopmentReportTaskRow(
+        tx,
+        projectId,
+        candidateTask.id,
+      ))
+    ) {
+      this.throwDevelopmentReportStateChanged();
+    }
+
+    const activeTask = await this.getExactActiveTask(
+      tx,
+      projectId,
+      candidateTask.id,
+    );
+    if (!activeTask) {
+      this.throwDevelopmentReportStateChanged();
+    }
+
+    const existingReport = await this.getReportByTaskId(tx, activeTask.id);
+    if (
+      (candidateReport && existingReport?.id !== candidateReport.id) ||
+      existingReport?.status === DevelopmentReportStatus.SUBMITTED ||
+      existingReport?.submittedAt
+    ) {
+      this.throwDevelopmentReportStateChanged();
+    }
+
+    return { activeTask, existingReport };
+  }
+
+  private getExactActiveTask(
+    db: DevelopmentReportDbClient,
+    projectId: string,
+    taskId: string,
+  ) {
+    return db.workflowTask.findFirst({
+      where: {
+        id: taskId,
+        projectId,
+        nodeCode: WorkflowNodeCode.DEVELOPMENT_REPORT,
+        isActive: true,
+      },
+      include: {
+        assigneeUser: true,
+        assigneeDepartment: true,
+        workflowInstance: true,
+      },
+    });
+  }
+
+  private async lockDevelopmentReportRow(
+    tx: Prisma.TransactionClient,
+    projectId: string,
+    reportId: string,
+  ) {
+    const rows = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+      SELECT "id"
+      FROM "development_reports"
+      WHERE "id" = ${reportId} AND "projectId" = ${projectId}
+      FOR UPDATE
+    `);
+    return rows.length === 1;
+  }
+
+  private async lockDevelopmentReportTaskRow(
+    tx: Prisma.TransactionClient,
+    projectId: string,
+    taskId: string,
+  ) {
+    const rows = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+      SELECT "id"
+      FROM "workflow_tasks"
+      WHERE "id" = ${taskId} AND "projectId" = ${projectId}
+      FOR UPDATE
+    `);
+    return rows.length === 1;
+  }
+
+  private throwDevelopmentReportStateChanged(): never {
+    throw new ConflictException({
+      code: 'DEVELOPMENT_REPORT_STATE_CHANGED',
+      message: '开发报告或流程状态已变更，请刷新后重试。',
+    });
+  }
+
   private assertTaskCanSubmit(task: DevelopmentReportTaskRecord) {
     if (!this.canSubmitTask(task)) {
       throw new BadRequestException('当前开发报告节点状态不允许提交。');
@@ -385,15 +529,7 @@ export class DevelopmentReportsService {
     task: DevelopmentReportTaskRecord,
     actor: AuthenticatedUser,
   ) {
-    if (actor.isSystemAdmin || actor.roleCodes.includes('admin') || actor.roleCodes.includes('project_manager')) {
-      return true;
-    }
-
-    if (!task.assigneeUserId) {
-      return true;
-    }
-
-    return task.assigneeUserId === actor.id;
+    return canOperateTeamTask(task, actor);
   }
 
   private toTaskSummary(task: DevelopmentReportTaskRecord) {
@@ -451,31 +587,91 @@ export class DevelopmentReportsService {
 
   private parseWriteInput(rawInput: unknown): DevelopmentReportWriteInput {
     const input = this.asRecord(rawInput, 'Invalid development report payload.');
-    const reportTitle = this.parseOptionalString(input.reportTitle);
+    const reportTitle = this.parseOptionalString(
+      input.reportTitle,
+      'reportTitle',
+      DEVELOPMENT_REPORT_NAME_MAX_CHARS,
+    );
 
-    return {
-      demandSource: this.parseRequiredString(input.demandSource, 'demandSource'),
-      targetMarket: this.parseNullableString(input.targetMarket),
-      targetVehicleModel: this.parseNullableString(input.targetVehicleModel),
-      targetColorName: this.parseRequiredString(input.targetColorName, 'targetColorName'),
-      benchmarkColorRef: this.parseNullableString(input.benchmarkColorRef),
+    const normalized: DevelopmentReportWriteInput = {
+      demandSource: this.parseRequiredString(
+        input.demandSource,
+        'demandSource',
+        DEVELOPMENT_REPORT_SHORT_TEXT_MAX_CHARS,
+      ),
+      targetMarket: this.parseNullableString(
+        input.targetMarket,
+        'targetMarket',
+        DEVELOPMENT_REPORT_NAME_MAX_CHARS,
+      ),
+      targetVehicleModel: this.parseNullableString(
+        input.targetVehicleModel,
+        'targetVehicleModel',
+        DEVELOPMENT_REPORT_NAME_MAX_CHARS,
+      ),
+      targetColorName: this.parseRequiredString(
+        input.targetColorName,
+        'targetColorName',
+        DEVELOPMENT_REPORT_NAME_MAX_CHARS,
+      ),
+      benchmarkColorRef: this.parseNullableString(
+        input.benchmarkColorRef,
+        'benchmarkColorRef',
+        DEVELOPMENT_REPORT_NAME_MAX_CHARS,
+      ),
       developmentReason: this.parseRequiredString(
         input.developmentReason,
         'developmentReason',
+        DEVELOPMENT_REPORT_LONG_TEXT_MAX_CHARS,
       ),
       expectedLaunchDate: this.parseOptionalDate(input.expectedLaunchDate, 'expectedLaunchDate'),
       estimatedAnnualVolume: this.parseOptionalInt(
         input.estimatedAnnualVolume,
         'estimatedAnnualVolume',
       ),
-      technicalRequirements: this.parseNullableString(input.technicalRequirements),
-      qualityRequirements: this.parseNullableString(input.qualityRequirements),
-      costTarget: this.parseNullableString(input.costTarget),
-      riskSummary: this.parseNullableString(input.riskSummary),
-      remark: this.parseNullableString(input.remark),
-      submitComment: this.parseNullableString(input.submitComment),
+      technicalRequirements: this.parseNullableString(
+        input.technicalRequirements,
+        'technicalRequirements',
+        DEVELOPMENT_REPORT_LONG_TEXT_MAX_CHARS,
+      ),
+      qualityRequirements: this.parseNullableString(
+        input.qualityRequirements,
+        'qualityRequirements',
+        DEVELOPMENT_REPORT_LONG_TEXT_MAX_CHARS,
+      ),
+      costTarget: this.parseNullableString(
+        input.costTarget,
+        'costTarget',
+        DEVELOPMENT_REPORT_SHORT_TEXT_MAX_CHARS,
+      ),
+      riskSummary: this.parseNullableString(
+        input.riskSummary,
+        'riskSummary',
+        DEVELOPMENT_REPORT_LONG_TEXT_MAX_CHARS,
+      ),
+      remark: this.parseNullableString(
+        input.remark,
+        'remark',
+        DEVELOPMENT_REPORT_LONG_TEXT_MAX_CHARS,
+      ),
+      submitComment: this.parseNullableString(
+        input.submitComment,
+        'submitComment',
+        DEVELOPMENT_REPORT_COMMENT_MAX_CHARS,
+      ),
       ...(reportTitle ? { reportTitle } : {}),
     };
+
+    if (
+      Buffer.byteLength(JSON.stringify(normalized), 'utf8') >
+      DEVELOPMENT_REPORT_MAX_PAYLOAD_BYTES
+    ) {
+      this.throwInputOutOfBounds(
+        `新颜色开发报告不得超过 ${DEVELOPMENT_REPORT_MAX_PAYLOAD_BYTES} 字节。`,
+      );
+    }
+
+    return normalized;
   }
 
   private toAuditSnapshot(report: DevelopmentReportRecord) {
@@ -502,17 +698,15 @@ export class DevelopmentReportsService {
     return rawValue as Record<string, unknown>;
   }
 
-  private parseRequiredString(rawValue: unknown, fieldName: string) {
-    void fieldName;
-
+  private parseRequiredString(rawValue: unknown, fieldName: string, maxChars: number) {
     if (typeof rawValue !== 'string' || rawValue.trim().length === 0) {
       throw new BadRequestException('必填字段不能为空。');
     }
 
-    return rawValue.trim();
+    return this.assertBoundedString(rawValue.trim(), fieldName, maxChars);
   }
 
-  private parseOptionalString(rawValue: unknown) {
+  private parseOptionalString(rawValue: unknown, fieldName: string, maxChars: number) {
     if (rawValue === undefined || rawValue === null || rawValue === '') {
       return undefined;
     }
@@ -521,10 +715,10 @@ export class DevelopmentReportsService {
       throw new BadRequestException('字段必须为文本。');
     }
 
-    return rawValue.trim();
+    return this.assertBoundedString(rawValue.trim(), fieldName, maxChars);
   }
 
-  private parseNullableString(rawValue: unknown) {
+  private parseNullableString(rawValue: unknown, fieldName: string, maxChars: number) {
     if (rawValue === undefined || rawValue === null || rawValue === '') {
       return null;
     }
@@ -533,7 +727,7 @@ export class DevelopmentReportsService {
       throw new BadRequestException('字段必须为文本。');
     }
 
-    return rawValue.trim();
+    return this.assertBoundedString(rawValue.trim(), fieldName, maxChars);
   }
 
   private parseOptionalDate(rawValue: unknown, fieldName: string) {
@@ -563,14 +757,37 @@ export class DevelopmentReportsService {
       return null;
     }
 
-    if (typeof rawValue === 'number' && Number.isInteger(rawValue) && rawValue >= 0) {
+    if (
+      typeof rawValue === 'number' &&
+      Number.isInteger(rawValue) &&
+      rawValue >= 0 &&
+      rawValue <= DEVELOPMENT_REPORT_MAX_POSTGRES_INT
+    ) {
       return rawValue;
     }
 
-    if (typeof rawValue === 'string' && /^\d+$/.test(rawValue)) {
-      return Number(rawValue);
+    if (typeof rawValue === 'string' && /^\d{1,10}$/.test(rawValue)) {
+      const parsed = Number(rawValue);
+      if (parsed <= DEVELOPMENT_REPORT_MAX_POSTGRES_INT) {
+        return parsed;
+      }
     }
 
-    throw new BadRequestException('数值参数必须是正整数。');
+    this.throwInputOutOfBounds('数值参数超出允许范围。');
+  }
+
+  private assertBoundedString(value: string, fieldName: string, maxChars: number) {
+    if (value.length > maxChars) {
+      this.throwInputOutOfBounds(`${fieldName} 不得超过 ${maxChars} 个字符。`);
+    }
+
+    return value;
+  }
+
+  private throwInputOutOfBounds(message: string): never {
+    throw new BadRequestException({
+      code: 'DEVELOPMENT_REPORT_INPUT_OUT_OF_BOUNDS',
+      message,
+    });
   }
 }

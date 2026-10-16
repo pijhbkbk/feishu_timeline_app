@@ -1,0 +1,25 @@
+[Unit]
+Description=Fail closed when scanner process, approval or signatures differ
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+ExecStart=/usr/bin/python3 -I /usr/local/lib/timeline-native-scanner/scanner_host.py check-active
+ExecStopPost=/usr/bin/python3 -I /usr/local/lib/timeline-native-scanner/scanner_host.py recover-check
+KillMode=control-group
+TimeoutStartSec=45
+TimeoutStopSec=45
+MemoryMax=256M
+TasksMax=32
+UMask=0077
+RuntimeDirectory=timeline-native-scanner
+RuntimeDirectoryMode=0700
+RuntimeDirectoryPreserve=yes
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=full
+ReadWritePaths=/var/lib/timeline-native-scanner /run/timeline-native-scanner

@@ -1,0 +1,120 @@
+{
+  "privateDirectory": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/login-experience-delivery-20260918/screenshots",
+  "images": [
+    {
+      "file": "before-login-desktop.png",
+      "sha256": "142b9a9d6825f4c3ce018bc46ffa87fb70df21b987c5210f7d789639684b3610",
+      "bytes": 39703
+    },
+    {
+      "file": "candidate-leading-zero-login-account.png",
+      "sha256": "a696f7648f887d1d4ece0f30185b7a22af745545deb9b4bb24409f9e3fda255b",
+      "bytes": 50601
+    },
+    {
+      "file": "candidate-login-1440.png",
+      "sha256": "b469441e92b110b1c098382f5a4d99b1a200b995ac5bb3e98874d1432ef20ec5",
+      "bytes": 31271
+    },
+    {
+      "file": "candidate-login-390.png",
+      "sha256": "0d634e6a5cec85408b176fe494e30dcb8f106a74ac77da7bd9b392a576dc502c",
+      "bytes": 20635
+    },
+    {
+      "file": "candidate-recover-1440.png",
+      "sha256": "24dc097c442d1a4a7e7820f683ea36bf52cf5a8659e0ab2de782e54babd0388b",
+      "bytes": 32798
+    },
+    {
+      "file": "candidate-recover-390.png",
+      "sha256": "6ad4cb7a0675485e5682720d9d8055df51f4cc95eb2da24fbf3235b0a798e530",
+      "bytes": 23088
+    },
+    {
+      "file": "candidate-register-1440.png",
+      "sha256": "6c4b77c8667d0f647d2c5a2623ceeb78e9e94929a0c71aaa7d1cdfec616766ea",
+      "bytes": 36863
+    },
+    {
+      "file": "candidate-register-390.png",
+      "sha256": "169efb403abff66db7316fed102b87f90474a4c5122f1666ccc765866a16bea0",
+      "bytes": 24124
+    },
+    {
+      "file": "preview-login-1440.png",
+      "sha256": "b469441e92b110b1c098382f5a4d99b1a200b995ac5bb3e98874d1432ef20ec5",
+      "bytes": 31271
+    },
+    {
+      "file": "preview-login-390.png",
+      "sha256": "0d634e6a5cec85408b176fe494e30dcb8f106a74ac77da7bd9b392a576dc502c",
+      "bytes": 20635
+    },
+    {
+      "file": "preview-register-390.png",
+      "sha256": "169efb403abff66db7316fed102b87f90474a4c5122f1666ccc765866a16bea0",
+      "bytes": 24124
+    },
+    {
+      "file": "production-accounts-search-1440.png",
+      "sha256": "d88ddb8197f0973d1d6a19159339c92ef3ff05e298aef829fbc81e0537386455",
+      "bytes": 53985
+    },
+    {
+      "file": "production-callback-1440.png",
+      "sha256": "5611beba37435a8b22b79c123a852f5e06d1e73289550e45d16d97da8e5a6b47",
+      "bytes": 24350
+    },
+    {
+      "file": "production-login-1440.png",
+      "sha256": "b469441e92b110b1c098382f5a4d99b1a200b995ac5bb3e98874d1432ef20ec5",
+      "bytes": 31271
+    },
+    {
+      "file": "production-login-390.png",
+      "sha256": "0d634e6a5cec85408b176fe494e30dcb8f106a74ac77da7bd9b392a576dc502c",
+      "bytes": 20635
+    },
+    {
+      "file": "production-organization-label-1440.png",
+      "sha256": "8dbd6f31f400930a22915bde7af0a7c013ff60471fb94902fa6d38908ebbbf80",
+      "bytes": 60768
+    },
+    {
+      "file": "production-original-account-1440.png",
+      "sha256": "1ee5bb49be5468bffa546904a5a61e269557411c4bd321086591f9beacf11d60",
+      "bytes": 51316
+    },
+    {
+      "file": "production-original-account-dashboard-1440.png",
+      "sha256": "38fb2130d27a0c214ad11d71bf1b64d5a95b1723b963433a93fe04173b4fc0ef",
+      "bytes": 82461
+    },
+    {
+      "file": "production-original-projects-1440.png",
+      "sha256": "82670ec0bc0d69fa0d7f819a08708e4567cee0a58a672c3df20512bc907ed08f",
+      "bytes": 60737
+    },
+    {
+      "file": "production-recover-1440.png",
+      "sha256": "24dc097c442d1a4a7e7820f683ea36bf52cf5a8659e0ab2de782e54babd0388b",
+      "bytes": 32798
+    },
+    {
+      "file": "production-recover-390.png",
+      "sha256": "6ad4cb7a0675485e5682720d9d8055df51f4cc95eb2da24fbf3235b0a798e530",
+      "bytes": 23088
+    },
+    {
+      "file": "production-register-1440.png",
+      "sha256": "6c4b77c8667d0f647d2c5a2623ceeb78e9e94929a0c71aaa7d1cdfec616766ea",
+      "bytes": 36863
+    },
+    {
+      "file": "production-register-390.png",
+      "sha256": "169efb403abff66db7316fed102b87f90474a4c5122f1666ccc765866a16bea0",
+      "bytes": 24124
+    }
+  ]
+}

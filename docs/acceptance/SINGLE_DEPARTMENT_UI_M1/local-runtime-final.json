@@ -1,0 +1,32 @@
+{
+  "origin": "http://127.0.0.1:3350",
+  "runtimeCommit": "a0769e7808ace84a05a36bed6c0edc2e81d097c6",
+  "lastStartedAtUtc": "2026-10-08T09:36:31.548765+00:00",
+  "configFiles": {
+    "proxy.mjs": "0145871180f852bb6b01c323ecd18582b65ff75df14de0cb476024cb866d68e0",
+    "preview.py": "6989c1a1229b7004002583bc1c1303182908881988a2d1ac65bf345ed4a14433",
+    "build_artifact.py": "7b55eb8c0c29780e37be7deed8e41b6789a1a5efe4330debd98944a463ca89da"
+  },
+  "privateCredentialsIncluded": false,
+  "latestChromeProject": {
+    "projectId": "cmv087gvv00549kzwcqfkqsdn",
+    "otherProjectId": "cmv087hqj006e9kzwh7897glr",
+    "taskId": "cmv087jgd007u9kzwb1xn8haf",
+    "nodeUrl": "http://127.0.0.1:3350/projects/cmv087gvv00549kzwcqfkqsdn/tasks/cmv087jgd007u9kzwb1xn8haf?from=dashboard&tab=flow",
+    "run": 1791505647775
+  },
+  "latestChromeRunnerExitCode": 0,
+  "latestChromeTests": {
+    "passed": 2,
+    "failed": 0,
+    "durationReported": "1.7m"
+  },
+  "priorProxyRerun": {
+    "passedAssertions": 2,
+    "runnerExitCode": 1,
+    "workerStopTimeoutErrors": 2,
+    "log": "var/m1-browser-local-csp.log",
+    "rootCause": "Browser worker did not exit after 300000ms; exact underlying cause not established; run overlapped screen lock/interruption. No test or application code changed to obtain final pass."
+  },
+  "artifactDigestVerification": "ARTIFACT_DIGESTS_MATCH on 2026-10-09"
+}

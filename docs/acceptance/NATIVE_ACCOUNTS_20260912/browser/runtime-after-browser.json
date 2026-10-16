@@ -1,0 +1,28 @@
+{
+  "checkedAt": "2026-09-12T12:30:28.668299+00:00",
+  "api": {
+    "status": 200,
+    "body": {
+      "status": "ok",
+      "service": "feishu-timeline-api",
+      "nodeEnv": "development",
+      "sourceCommit": "1767dbb5eeb30cc57835081de761e1eccb8fac8b",
+      "sourceTree": "199cb837b6dd7682eda61928e108be397498236b",
+      "runtimeCommit": "1767dbb5eeb30cc57835081de761e1eccb8fac8b",
+      "release": "native-auth-20260912-1767dbb5eeb3",
+      "buildTime": "2026-09-12T11:49:49Z",
+      "timestamp": "2026-09-12T12:30:28.677Z"
+    }
+  },
+  "web": {
+    "status": 200,
+    "body": {
+      "service": "feishu-timeline-web",
+      "sourceCommit": "1767dbb5eeb30cc57835081de761e1eccb8fac8b",
+      "sourceTree": "199cb837b6dd7682eda61928e108be397498236b",
+      "runtimeCommit": "1767dbb5eeb30cc57835081de761e1eccb8fac8b",
+      "release": "native-auth-20260912-1767dbb5eeb3",
+      "buildTime": "2026-09-12T11:49:49Z"
+    }
+  }
+}

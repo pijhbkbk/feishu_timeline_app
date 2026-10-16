@@ -8,31 +8,40 @@ import {
 const routeMatrix = [
   ['/dashboard', '工作台'],
   ['/v2/dashboard', '工作台'],
-  ['/projects', '项目列表'],
-  ['/projects/project-1', '项目列表'],
-  ['/projects/project-1/pilot-production', '项目列表'],
-  ['/v2/projects/project-1', '项目列表'],
-  ['/tasks', '我的任务'],
-  ['/tasks/pending', '我的任务'],
-  ['/v2/tasks', '我的任务'],
-  ['/progress?projectId=project-1&taskId=task-1', '我的任务'],
-  ['/v2/progress?projectId=project-1&taskId=task-1', '我的任务'],
-  ['/materials/upload?taskId=task-1', '我的任务'],
-  ['/admin', '系统管理'],
-  ['/admin/users', '系统管理'],
-  ['/admin/roles', '系统管理'],
-  ['/admin/audit-logs', '系统管理'],
-  ['/v2/admin', '系统管理'],
-  ['/v2/admin/audit-logs', '系统管理'],
+  ['/projects', '颜色项目'],
+  ['/projects/project-1', '颜色项目'],
+  ['/projects/project-1/pilot-production', '颜色项目'],
+  ['/v2/projects/project-1', '颜色项目'],
+  ['/tasks', '工作台'],
+  ['/tasks/pending', '工作台'],
+  ['/v2/tasks', '工作台'],
+  ['/progress?projectId=project-1&taskId=task-1', '工作台'],
+  ['/v2/progress?projectId=project-1&taskId=task-1', '工作台'],
+  ['/materials/upload?taskId=task-1', '工作台'],
+  ['/admin/color-database', '颜色清单'],
+  ['/admin/color-database/color-1', '颜色清单'],
+  ['/inspections', '评审记录'],
+  ['/production', '产量统计'],
+  ['/admin', null],
+  ['/admin/users', '人员库'],
+  ['/admin/people', '人员库'],
+  ['/admin/organization', '人员库'],
+  ['/v2/admin/people', '人员库'],
+  ['/admin/roles', null],
+  ['/admin/audit-logs', null],
+  ['/v2/admin', null],
+  ['/v2/admin/audit-logs', null],
 ] as const;
 
 describe('top navigation route matrix', () => {
   it('uses the approved product names', () => {
     expect(topNavigationItems.map((item) => item.label)).toEqual([
       '工作台',
-      '项目列表',
-      '我的任务',
-      '系统管理',
+      '颜色项目',
+      '颜色清单',
+      '评审记录',
+      '产量统计',
+      '人员库',
     ]);
   });
 
@@ -41,7 +50,7 @@ describe('top navigation route matrix', () => {
       isTopNavigationItemActive(pathname, item.href),
     );
 
-    expect(activeItems.map((item) => item.label)).toEqual([expectedLabel]);
+    expect(activeItems.map((item) => item.label)).toEqual(expectedLabel ? [expectedLabel] : []);
   });
 
   it('does not assign product navigation state to public routes', () => {

@@ -1,0 +1,98 @@
+{
+  "checkedAt": "2026-09-12T12:34:04.960083+00:00",
+  "productionWritesPerformed": true,
+  "localManagementProcesses": [],
+  "api": {
+    "url": "https://timeline.all-too-well.com/api/health",
+    "exitCode": 0,
+    "metadata": {
+      "status": "ok",
+      "service": "feishu-timeline-api",
+      "nodeEnv": "production",
+      "runtimeCommit": "535041bb25f21d548d863d07b35e3e952b0aeb2c",
+      "buildTime": "2026-08-09T06:49:11Z",
+      "release": "r26-admin-535041bb25f2",
+      "timestamp": "2026-09-12T12:34:06.039Z"
+    }
+  },
+  "web": {
+    "url": "https://timeline.all-too-well.com/build-info",
+    "exitCode": 0,
+    "metadata": {
+      "service": "feishu-timeline-web",
+      "runtimeCommit": "535041bb25f21d548d863d07b35e3e952b0aeb2c",
+      "buildTime": "2026-08-09T06:49:11Z",
+      "release": "r26-admin-535041bb25f2"
+    }
+  },
+  "goalTurnClassification": "previous turn made concrete progress by committing final browser evidence; this turn revalidated the same management-access blocker",
+  "sameBlockerConsecutiveGoalTurns": 3,
+  "currentThreadTerminal": "No attached app terminal session",
+  "runtimeCandidate": "f2da3629e13b2653aae8879c98992877d5ef4170",
+  "status": "PRIOR_ACCESS_BLOCKER_RESOLVED / PRODUCTION_RUNTIME_SWITCHED / EXACT_DOMAIN_HTTP_PASS / BROWSER_PENDING_MAC_UNLOCK",
+  "scope": "production management access, backup/migration/deployment and precise HTTPS native-user acceptance",
+  "rootCause": "Unknown guest-side cause; two prior IAP SSH attempts timed out before protocol banner. No current evidence identifies sshd, Fail2ban, listener, or host load as the cause.",
+  "safeActionsExhausted": [
+    "Final candidate source/builds/images, new auth/permissions/migration/CLI/HTTP tests and independent focused review preserved.",
+    "Final local browser layout/search/GET/console evidence committed separately.",
+    "Public production metadata rechecked using normal TLS validation.",
+    "Current thread terminal and local management processes checked; none available.",
+    "Generic GPT-6 Pro diagnostic consultation completed without private project disclosure."
+  ],
+  "resumeRequires": "Existing usable host management entry/session, or fresh guest SSH listener/service/ban logs enabling a specific supported fix. No secrets should be sent in chat.",
+  "sshRetriedThisTurn": false,
+  "mainChanged": false,
+  "tagsChanged": false,
+  "resumedAudit": {
+    "checkedAt": "2026-09-12T13:34:18Z",
+    "sameBlockerConsecutiveResumedGoalTurns": 3,
+    "previousTurnClassification": "no progress; control page remained unchanged and required approval had not arrived",
+    "newEntry": "User logged into Google Cloud console in Safari; read-only billing inspection completed.",
+    "attemptedAction": "Activate Google Cloud Shell in Safari to inspect the target VM through IAP",
+    "actionResult": "Rejected by automatic approval review; no Cloud Shell launched.",
+    "reviewReason": "Launching Cloud Shell creates an active cloud management session and was judged outside the latest read-only subscription-status request.",
+    "requiredApproval": "Explicit confirmation to launch Cloud Shell and continue work on the target server. A pending question was presented; no answer received.",
+    "authoritativeRecheck": "Safari remains on Billing Account management and still shows Activate Cloud Shell; no live Cloud Shell terminal observed.",
+    "status": "BLOCKED",
+    "productionDeploymentPerformed": false,
+    "sourceCandidateUnchanged": true
+  },
+  "latestCloudShellAudit": {
+    "checkedAt": "2026-09-12T13:58:36Z",
+    "launchApproval": "User explicitly authorized starting Cloud Shell; the launch was completed.",
+    "apiCredentialGrant": "The assistant did not authorize or forward OAuth credentials to Cloud Shell. User screenshot showed a prompt; API authorization in that session remains unverified.",
+    "readOnlyCloudFacts": {
+      "projectBillingEnabled": true,
+      "billingAccountOpen": true,
+      "applicationVmStatus": "RUNNING",
+      "applicationVmMachineType": "e2-medium",
+      "scannerVmStatus": "RUNNING",
+      "scannerVmMachineType": "e2-standard-2",
+      "cloudShellState": "RUNNING"
+    },
+    "browserResult": "Safari embedded shell repeatedly lost its connection; the standalone page remained blank. No target-server command was executed through the browser.",
+    "temporarySshApproval": "Initial automatic approval rejection was reported; user then explicitly authorized adding this Mac existing public key to the current Cloud Shell for a tool-version check, followed by immediate removal.",
+    "temporarySshCheck": {
+      "firstAddAttempt": "Cloud Shell API HTTP 500; read-back confirmed the local public key was absent.",
+      "secondAddAttempt": "Normalized two-field public key accepted; a single bounded SSH connection returned exit 0.",
+      "command": "gcloud version",
+      "cloudSdkVersion": "583.0.0",
+      "oauthCredentialsSentToCloudShell": false,
+      "temporaryPublicKeyAbsentAfterCleanup": true
+    },
+    "targetVmAccessObtained": false,
+    "productionWritesPerformed": false,
+    "nextStep": "A concrete question is pending to extend Cloud Shell use to server diagnosis and the already requested deployment, including current-session API authorization if needed and temporary-access cleanup.",
+    "status": "CLOUD_SHELL_SSH_CHECK_PASS / TARGET_VM_ACCESS_UNVERIFIED / AWAITING_CLOUD_SHELL_DEPLOYMENT_SCOPE_APPROVAL"
+  },
+  "productionBusinessDataChanged": false,
+  "productionRuntimeChanged": true,
+  "latestDeliveryPreparation": "deployment-preparation.json",
+  "currentResumeRequires": "Server delivery authorized and runtime switched. Actual browser acceptance requires user to unlock this Mac. No repeat deployment authorization needed.",
+  "latestProductionRuntimeCommit": "f2da3629e13b2653aae8879c98992877d5ef4170",
+  "latestProductionCommittedAt": "2026-09-12T17:38:51+00:00",
+  "latestProductionHttpEvidence": "production-http.json",
+  "earlierApiAndWebEntriesAreHistorical": true,
+  "temporaryManagementAccess": "REMOVED_AND_VERIFIED",
+  "remainingBlocker": "Mac locked; exact-domain browser acceptance requires user unlock"
+}

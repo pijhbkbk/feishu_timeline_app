@@ -25,60 +25,63 @@ for arg in "$@"; do
   esac
 done
 
-log() {
-  printf '[INFO] %s\n' "$*"
-}
+ROOT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
+# shellcheck source=scripts/deploy/gce-common.sh
+. "$ROOT_DIR/scripts/deploy/gce-common.sh"
 
-ssh_gce() {
-  gcloud compute ssh "$INSTANCE" --project="$PROJECT" --zone="$ZONE" --command "$1"
-}
+validate_gce_connection_parameters
+if [[ ! "$LINES" =~ ^[0-9]{1,6}$ ]] \
+  || [ "$LINES" -lt 1 ] || [ "$LINES" -gt 100000 ]; then
+  fail 'LINES must be an integer from 1 through 100000.'
+fi
+case "$FOLLOW" in
+  yes|no) ;; *) fail 'FOLLOW must be yes or no.' ;; esac
 
 case "$TARGET" in
-  api)
-    JOURNAL_ARGS="-u feishu-timeline-api"
-    NGINX_ARGS=""
-    ;;
-  web)
-    JOURNAL_ARGS="-u feishu-timeline-web"
-    NGINX_ARGS=""
-    ;;
-  nginx)
-    JOURNAL_ARGS="-u nginx"
-    NGINX_ARGS="feishu-timeline.access.log feishu-timeline.error.log all-too-well.com.access.log all-too-well.com.error.log"
-    ;;
-  redis)
-    JOURNAL_ARGS="-u redis-server"
-    NGINX_ARGS=""
-    ;;
-  all)
-    JOURNAL_ARGS="-u feishu-timeline-api -u feishu-timeline-web -u nginx -u redis-server"
-    NGINX_ARGS="feishu-timeline.error.log all-too-well.com.error.log"
-    ;;
-  *)
-    printf '[ERROR] Unsupported TARGET=%s\n' "$TARGET" >&2
-    exit 1
-    ;;
+  api|web|nginx|redis|all) ;;
+  *) fail "Unsupported TARGET=$TARGET" ;;
 esac
 
-if [ "$FOLLOW" = "yes" ]; then
-  log "Following $TARGET logs on $INSTANCE"
-  ssh_gce "set -euo pipefail
-sudo journalctl $JOURNAL_ARGS -f
-"
+REMOTE_SCRIPT="$(mktemp /tmp/r27a-gce-log-tail-remote.XXXXXX)"
+trap 'rm -f -- "$REMOTE_SCRIPT"' EXIT
+cat >"$REMOTE_SCRIPT" <<'REMOTESCRIPTEOF'
+#!/usr/bin/env bash
+set -euo pipefail
+TARGET="$1"
+LINES="$2"
+FOLLOW="$3"
+journal_args=()
+nginx_files=()
+case "$TARGET" in
+  api) journal_args=(-u feishu-timeline-api) ;;
+  web) journal_args=(-u feishu-timeline-web) ;;
+  nginx)
+    journal_args=(-u nginx)
+    nginx_files=(feishu-timeline.access.log feishu-timeline.error.log all-too-well.com.access.log all-too-well.com.error.log)
+    ;;
+  redis) journal_args=(-u redis-server) ;;
+  all)
+    journal_args=(-u feishu-timeline-api -u feishu-timeline-web -u nginx -u redis-server)
+    nginx_files=(feishu-timeline.error.log all-too-well.com.error.log)
+    ;;
+  *) exit 64 ;;
+esac
+if [ "$FOLLOW" = yes ]; then
+  sudo journalctl "${journal_args[@]}" -f
   exit 0
 fi
-
-log "Showing the most recent $LINES lines for $TARGET on $INSTANCE"
-ssh_gce "set -euo pipefail
 echo '--- systemd journal ---'
-sudo journalctl $JOURNAL_ARGS -n '$LINES' --no-pager || true
-if [ -n '$NGINX_ARGS' ]; then
+sudo journalctl "${journal_args[@]}" -n "$LINES" --no-pager || true
+if [ "${#nginx_files[@]}" -gt 0 ]; then
   echo '--- nginx files ---'
-  for file in $NGINX_ARGS; do
-    if [ -f \"/var/log/nginx/\$file\" ]; then
-      echo \"### /var/log/nginx/\$file\"
-      sudo tail -n '$LINES' \"/var/log/nginx/\$file\"
+  for file in "${nginx_files[@]}"; do
+    if [ -f "/var/log/nginx/$file" ]; then
+      echo "### /var/log/nginx/$file"
+      sudo tail -n "$LINES" "/var/log/nginx/$file"
     fi
   done
 fi
-"
+REMOTESCRIPTEOF
+chmod 0700 "$REMOTE_SCRIPT"
+log "Reading $TARGET logs on $INSTANCE"
+gce_run_remote_script_with_args "$REMOTE_SCRIPT" "$TARGET" "$LINES" "$FOLLOW"

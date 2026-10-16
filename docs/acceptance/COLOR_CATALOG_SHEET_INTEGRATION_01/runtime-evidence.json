@@ -1,0 +1,289 @@
+{
+  "taskId": "COLOR_CATALOG_SHEET_INTEGRATION_01",
+  "environment": "local_isolated",
+  "url": "http://127.0.0.1:3370/admin/color-database",
+  "hostname": "127.0.0.1",
+  "database": "color_catalog_sheet_20261012",
+  "runtimeCommit": "5bc1d10e5aea498612d63fd7637107282af7b040",
+  "tree": "e1c40c10a8f9a4be4d791a87962dbd1659ff1104",
+  "release": "color-register-5bc1d10e5aea",
+  "buildTime": "2026-10-12T09:09:51Z",
+  "startedAt": "2026-10-12T09:16:03.001460+00:00",
+  "webBuildId": "L3BA4qCbCnXk6qnUrLD91",
+  "artifacts": {
+    "api": {
+      "root": "apps/api/dist",
+      "excludedPaths": [],
+      "entries": 218,
+      "regularFiles": 218,
+      "totalBytes": 2410906,
+      "sha256": "db451125de63128c817af371d34ed772376a4eee86674e070e182d8515be6aef"
+    },
+    "web": {
+      "root": "apps/web/.next",
+      "excludedPaths": [
+        "cache"
+      ],
+      "entries": 2055,
+      "regularFiles": 2037,
+      "totalBytes": 92777475,
+      "sha256": "2c2c323dcb594d12a48cc11e9a13a58757d50480a7018b0266e19b6478e3ecad"
+    },
+    "shared": {
+      "root": "packages/shared/dist",
+      "excludedPaths": [],
+      "entries": 3,
+      "regularFiles": 3,
+      "totalBytes": 1103,
+      "sha256": "1907bc933f547407ae20051e9985a039bd273b7e0e37a706011db6a71913061a"
+    }
+  },
+  "source": {
+    "method": "git archive",
+    "archiveSha256": "b1cb2cbcb33ea2c5c7d3f1bded6ae2aab833c63c3cd801d11fcbf27ef22606d2",
+    "dirtyWorktreeIncluded": false,
+    "trackedSourceUnchangedExcept": [
+      "apps/api/src/common/build-identity.generated.ts",
+      "apps/web/src/lib/build-identity.generated.ts"
+    ]
+  },
+  "dependencyLockSha256": "7c8349ff42c64b19a4780e6581b66eeb42304b18e521f0cc731f68de8ebc18df",
+  "tools": {
+    "node": "v24.14.0",
+    "pnpm": "9.15.4"
+  },
+  "containerImages": "NOT_USED",
+  "nginx": "NOT_USED; loopback proxy Web 3372/API 3371",
+  "remoteCommit": "NOT_APPLICABLE_LOCAL_ONLY",
+  "runtimeMetadata": {
+    "/api/health": {
+      "sourceCommit": "5bc1d10e5aea498612d63fd7637107282af7b040",
+      "sourceTree": "e1c40c10a8f9a4be4d791a87962dbd1659ff1104",
+      "runtimeCommit": "5bc1d10e5aea498612d63fd7637107282af7b040",
+      "release": "color-register-5bc1d10e5aea",
+      "buildTime": "2026-10-12T09:09:51Z"
+    },
+    "/build-info": {
+      "sourceCommit": "5bc1d10e5aea498612d63fd7637107282af7b040",
+      "sourceTree": "e1c40c10a8f9a4be4d791a87962dbd1659ff1104",
+      "runtimeCommit": "5bc1d10e5aea498612d63fd7637107282af7b040",
+      "release": "color-register-5bc1d10e5aea",
+      "buildTime": "2026-10-12T09:09:51Z"
+    }
+  },
+  "browserEvidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/color-sheet-runtime/browser-evidence/1791796501856308000",
+  "browserResult": "4 PASSED",
+  "visualEvidence": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/color-sheet-runtime/visual-1791796581799",
+  "screenshots": {
+    "template-import-preview-1440.png": {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/color-sheet-runtime/browser-evidence/1791796501856308000/results/color-sheet-local-Syntheti-33b80--XLSX-and-responsive-detail/template-import-preview-1440.png",
+      "sha256": "17b03c19a90f3b7a7a3b2996f491fd6651e9013de2bc48a3545d704c093db6b8"
+    },
+    "template-readonly-error-1280.png": {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/color-sheet-runtime/browser-evidence/1791796501856308000/results/color-sheet-local-Syntheti-33b80--XLSX-and-responsive-detail/template-readonly-error-1280.png",
+      "sha256": "248014264a5dacfa55305e3b3daf97a1dbf18d84c045a2b2498a48705303b1fc"
+    },
+    "ordinary-mapping-preview-only-1440.png": {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/color-sheet-runtime/browser-evidence/1791796501856308000/results/color-sheet-local-Syntheti-33b80--XLSX-and-responsive-detail/ordinary-mapping-preview-only-1440.png",
+      "sha256": "49e630e17f49abbf5ab86d4af0f38f1d0a9aaa367af0e8eb50d696997f56e723"
+    },
+    "visible-version-conflict-1440.png": {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/color-sheet-runtime/browser-evidence/1791796501856308000/results/color-sheet-local-Syntheti-4c2a0-count-and-snapshot-boundary/visible-version-conflict-1440.png",
+      "sha256": "d1c645db16fc157abe1b892a3577675a38439b735f75045c428df0ba0a254b33"
+    },
+    "source-main-detail-1440.png": {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/color-sheet-runtime/visual-1791796581799/source-main-detail-1440.png",
+      "sha256": "65810f3fc389d4b9ee11a66480083f1b0e4ff90b55a8ce4bbad8ec4aef62e03c"
+    },
+    "source-main-detail-1280.png": {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/color-sheet-runtime/visual-1791796581799/source-main-detail-1280.png",
+      "sha256": "a969013d61624ea7403088ed6da1cd47864d43d74254fab07ddc8c2902befc51"
+    },
+    "source-main-detail-390.png": {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/color-sheet-runtime/visual-1791796581799/source-main-detail-390.png",
+      "sha256": "7f4db6b7c3ca96e2d636cd47985e02d7e6a1c7b5ad4b41ee69f9a5007e752706"
+    },
+    "source-main-detail-1024.png": {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/color-sheet-runtime/visual-1791796581799/source-main-detail-1024.png",
+      "sha256": "fc43964ce17c1f70671cfcc69a07ced97675a1030a1472f1c6fc76adcbd0322e"
+    }
+  },
+  "verificationLogs": {
+    "web-test-selection-service.log": {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/color-sheet-runtime/web-test-selection-service.log",
+      "sha256": "944a7d4e668a32dcdb2d409dfec87f1b8f7db0ea5bc82df530d1c0aa4169c39b"
+    },
+    "test-with-loopback.log": {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/color-sheet-runtime/test-with-loopback.log",
+      "sha256": "cbfca9218286d74daedfb435138571255b8ba291f3c45b7effe4b882f9c20802"
+    },
+    "postgres-final.log": {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/color-sheet-runtime/postgres-final.log",
+      "sha256": "3695d8ae62ab9a0b3fc154da0ad5da18249b17ec04892d97b1e2441607052c86"
+    },
+    "lint-text-paste.log": {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/color-sheet-runtime/lint-text-paste.log",
+      "sha256": "b0ae258c2f629d7d809fee72c6eb6217399330728cc47e1e1af26c6fb3a3f5de"
+    },
+    "typecheck-text-paste.log": {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/color-sheet-runtime/typecheck-text-paste.log",
+      "sha256": "209d4bb991b4f381586c285b84d05d310299000ef20795ec70cd7e8f7a5f007f"
+    },
+    "lint-desktop-toolbar.log": {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/color-sheet-runtime/lint-desktop-toolbar.log",
+      "sha256": "02bcc6709e8a1e9fa798784f80fdbb02eb64caf06dc727999d4d18e3e2e8a225"
+    },
+    "typecheck-desktop-toolbar.log": {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/color-sheet-runtime/typecheck-desktop-toolbar.log",
+      "sha256": "00f374d3260a974ebcd344b7d684e3a99a8f4c828a42361c6e44e6e1e35bd8d9"
+    },
+    "prisma-validate.log": {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/color-sheet-runtime/prisma-validate.log",
+      "sha256": "aef85d21c61ded19bb85207974b36e5d0081bc15b856a8f7c1e4432a299d33f2"
+    },
+    "placeholder-final.log": {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/color-sheet-runtime/placeholder-final.log",
+      "sha256": "4c05182463413cdff5fcd710fa01edbcf214b4bb5c1f364df03e992eb56fccaf"
+    },
+    "browser-final-5bc1d10.log": {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/color-sheet-runtime/browser-final-5bc1d10.log",
+      "sha256": "de43c109b8eaebf55d96dd5ed10dfcd8ca8f1d174fbd7ea34cb629b65b5d9418"
+    },
+    "manifest-final.log": {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/color-sheet-runtime/manifest-final.log",
+      "sha256": "0b1de544a23a7f70cb0f2018d558f713c292a07068e40b3df6f24419ed094e00"
+    },
+    "e2e-typecheck-toolbar-final.log": {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/color-sheet-runtime/e2e-typecheck-toolbar-final.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "build-5bc1d10.log": {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/color-sheet-runtime/build-5bc1d10.log",
+      "sha256": "b5a9891f825c974f6d06c4975f523a0351d2b610a4ecbcd4f0233988c01378b2"
+    }
+  },
+  "serverEvidence": {
+    "sourceRecords": 89,
+    "sourceUnchanged": true,
+    "projectCount": 27,
+    "workflowTaskCount": 111,
+    "auditCount": 69,
+    "sha256": "aee5927f84eed9b8adee53b676174355fd36b393bfff00f401e317db076a40b4"
+  },
+  "restart": {
+    "checkedAt": "2026-10-12T09:16:19.465578+00:00",
+    "runtimeCommit": "5bc1d10e5aea498612d63fd7637107282af7b040",
+    "origin": "http://127.0.0.1:3370",
+    "unchangedAfterRestart": true,
+    "sourceCount": 89,
+    "syntheticRecords": 3,
+    "auditCount": 69,
+    "projectCount": 27,
+    "workflowCount": 111
+  },
+  "productStatus": "AWAITING_PRODUCT_OWNER_CONFIRMATION",
+  "layoutEvidence": {
+    "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/color-sheet-runtime/visual-1791796581799/layout.json",
+    "sha256": "e00b01e2848ea0a1651a70a7bdd8e19f3e69074a22a32659690978cf2f7454d6"
+  },
+  "browserDurationSeconds": 50.4,
+  "browserEvents": [
+    {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/color-sheet-runtime/browser-evidence/1791796501856308000/results/color-sheet-local-Syntheti-33b80--XLSX-and-responsive-detail/sanitized-browser-events.json",
+      "sha256": "45fbf9795be109211eddd02df9a4862e1b63b985c8b9e5ddcc2a92ec132e0a18",
+      "pageErrors": 0,
+      "consoleErrors": 0,
+      "guardErrors": 0
+    },
+    {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/color-sheet-runtime/browser-evidence/1791796501856308000/results/color-sheet-local-Syntheti-4c2a0-count-and-snapshot-boundary/sanitized-browser-events.json",
+      "sha256": "8197c3cc8c9b15297acb7a4e12c9277876bba7369b686e2fc96793629fbb7351",
+      "pageErrors": 0,
+      "consoleErrors": 1,
+      "guardErrors": 0
+    },
+    {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/color-sheet-runtime/browser-evidence/1791796501856308000/results/color-sheet-local-Syntheti-4c2a0-count-and-snapshot-boundary/member-b-sanitized-events.json",
+      "sha256": "bc49f0d57c9527dab101ba2ced2cd0e3b3ef3773b2e705d48b7709585feba63f",
+      "pageErrors": 0,
+      "consoleErrors": 0,
+      "guardErrors": 0
+    },
+    {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/color-sheet-runtime/browser-evidence/1791796501856308000/results/color-sheet-local-Syntheti-4c2a0-count-and-snapshot-boundary/unapproved-sanitized-events.json",
+      "sha256": "9413dc6d19cb4e55e94e92281d2cfbc2cd2121042d1d6cb29ee211e972afc126",
+      "pageErrors": 0,
+      "consoleErrors": 0,
+      "guardErrors": 0
+    },
+    {
+      "path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/var/color-sheet-runtime/browser-evidence/1791796501856308000/results/color-sheet-local-Syntheti-bb0fb-nd-retries-the-same-command/sanitized-browser-events.json",
+      "sha256": "96a093040d9f5ac871676525de481d15cafe2fb5c88e9dc83ba23488cf25bdde",
+      "pageErrors": 0,
+      "consoleErrors": 3,
+      "guardErrors": 0
+    }
+  ],
+  "placeholderWhitelist": [
+    {
+      "file": "apps/web/e2e/color-sheet-local.spec.ts",
+      "line": 176,
+      "reason": "测试中的getByPlaceholder API或禁止占位内容的负向断言"
+    },
+    {
+      "file": "apps/web/e2e/color-sheet-local.spec.ts",
+      "line": 261,
+      "reason": "测试中的getByPlaceholder API或禁止占位内容的负向断言"
+    },
+    {
+      "file": "apps/web/e2e/r26-admin-dashboard-color-database.spec.ts",
+      "line": 126,
+      "reason": "测试中的getByPlaceholder API或禁止占位内容的负向断言"
+    },
+    {
+      "file": "apps/web/tests/playwright/r20-fixtures.ts",
+      "line": 372,
+      "reason": "测试中的getByPlaceholder API或禁止占位内容的负向断言"
+    },
+    {
+      "file": "apps/web/e2e/r17-timeline-node-interaction.spec.ts",
+      "line": 28,
+      "reason": "测试中的getByPlaceholder API或禁止占位内容的负向断言"
+    },
+    {
+      "file": "apps/web/e2e/r25a-admin-audit.spec.ts",
+      "line": 49,
+      "reason": "测试中的getByPlaceholder API或禁止占位内容的负向断言"
+    },
+    {
+      "file": "apps/web/tests/playwright/r16-create-project.spec.ts",
+      "line": 80,
+      "reason": "测试中的getByPlaceholder API或禁止占位内容的负向断言"
+    },
+    {
+      "file": "apps/web/tests/playwright/regression.spec.ts",
+      "line": 88,
+      "reason": "测试中的getByPlaceholder API或禁止占位内容的负向断言"
+    },
+    {
+      "file": "apps/web/tests/playwright/r16-business-flow.spec.ts",
+      "line": 81,
+      "reason": "测试中的getByPlaceholder API或禁止占位内容的负向断言"
+    },
+    {
+      "file": "apps/web/tests/playwright/r20-ui-quality.spec.ts",
+      "line": 45,
+      "reason": "测试中的getByPlaceholder API或禁止占位内容的负向断言"
+    },
+    {
+      "file": "apps/web/src/components/admin-audit-workspace-r25a.test.tsx",
+      "line": 22,
+      "reason": "测试中的getByPlaceholder API或禁止占位内容的负向断言"
+    },
+    {
+      "file": "apps/web/src/components/admin-control-center.contract.test.ts",
+      "line": 50,
+      "reason": "测试中的getByPlaceholder API或禁止占位内容的负向断言"
+    }
+  ]
+}

@@ -429,7 +429,7 @@ function OrganizationTable({
   onRemove: (row: Record<string, unknown>) => void;
 }) {
   const headers = response.tab === 'users'
-    ? ['姓名', '飞书身份', '部门', '角色', '状态', '项目 / 任务', '版本', '操作']
+    ? ['姓名', '登录能力', '部门', '角色', '状态', '项目 / 任务', '版本', '操作']
     : response.tab === 'departments'
       ? ['部门', '所属事业部', '负责人', '人数', '活跃任务', '配置节点', '状态']
       : ['项目', '成员', '部门', '项目职责', '关系', '当前任务', '有效期', '版本', '操作'];
@@ -448,7 +448,7 @@ function OrganizationTable({
           <tbody>{response.items.map((row) => response.tab === 'users'
             ? <tr key={row.id}>
                 <td><strong>{readText(row.name)}</strong><small>{readText(row.username)}</small></td>
-                <td>{readText(row.feishuUserId) || '待同步'}</td>
+                <td>{readBoolean(row.canLogin) ? '密码登录已启用' : readBoolean(row.hasCredential) ? '等待恢复密码' : '尚未绑定本地凭据'}</td>
                 <td>{readNestedText(row.department, 'name') || '未归属'}</td>
                 <td>{readArray(row.roles).map((role) => readNestedText(role, 'name')).filter(Boolean).join('、') || '无角色'}</td>
                 <td><StatusBadge value={readText(row.status)} /></td>
@@ -1041,8 +1041,8 @@ function AdminEditDialog({ state, onClose, onSuccess }: { state: Exclude<DialogS
               </Field>
             </> : null}
             {state.kind === 'organizationUser' ? <>
-              <div className="admin-cc-assignment-node-summary"><span>{state.mode === 'create' ? '新增人员' : '编辑人员'}</span><strong>{String(form.name) || '未命名用户'}</strong><small>飞书 User ID / Open ID / Union ID 由身份同步维护，不能手工覆盖。</small></div>
-              <Field label="登录名"><input required value={String(form.username)} onChange={(event) => { const value = event.currentTarget.value; setForm((current) => ({ ...current, username: value })); setPreview(null); }} /></Field>
+              <div className="admin-cc-assignment-node-summary"><span>{state.mode === 'create' ? '新增人员' : '编辑人员'}</span><strong>{String(form.name) || '未命名用户'}</strong><small>账号配置保留原用户 ID 和历史记录；本地凭据通过注册或主机绑定建立，角色需在这里正式授权。</small></div>
+              <Field label="工号"><input type="text" placeholder="请输入工号" required value={String(form.username)} onChange={(event) => { const value = event.currentTarget.value; setForm((current) => ({ ...current, username: value })); setPreview(null); }} /></Field>
               <Field label="姓名"><input required value={String(form.name)} onChange={(event) => { const value = event.currentTarget.value; setForm((current) => ({ ...current, name: value })); setPreview(null); }} /></Field>
               <Field label="邮箱"><input type="email" value={String(form.email)} onChange={(event) => { const value = event.currentTarget.value; setForm((current) => ({ ...current, email: value })); setPreview(null); }} /></Field>
               <Field label="手机号"><input value={String(form.mobile)} onChange={(event) => { const value = event.currentTarget.value; setForm((current) => ({ ...current, mobile: value })); setPreview(null); }} /></Field>

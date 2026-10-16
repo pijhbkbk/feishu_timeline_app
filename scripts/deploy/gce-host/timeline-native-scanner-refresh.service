@@ -1,0 +1,25 @@
+[Unit]
+Description=Verify official scanner databases and cold activate
+After=docker.service network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+ExecStart=/usr/bin/python3 -I /usr/local/lib/timeline-native-scanner/scanner_host.py refresh
+ExecStopPost=/usr/bin/python3 -I /usr/local/lib/timeline-native-scanner/scanner_host.py check-active
+KillMode=control-group
+TimeoutStartSec=1000
+TimeoutStopSec=60
+MemoryMax=512M
+TasksMax=64
+UMask=0077
+RuntimeDirectory=timeline-native-scanner
+RuntimeDirectoryMode=0700
+RuntimeDirectoryPreserve=yes
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=full
+ReadWritePaths=/var/lib/timeline-native-scanner /run/timeline-native-scanner

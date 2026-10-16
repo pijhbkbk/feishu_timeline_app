@@ -1,4 +1,4 @@
-import { ServiceUnavailableException } from '@nestjs/common';
+import { Logger, ServiceUnavailableException } from '@nestjs/common';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -6,10 +6,16 @@ import {
   SessionStoreService,
 } from './session-store.service';
 
-function createService(options: { nodeEnv?: string; redisStatus?: string } = {}) {
+function createService(options: {
+  nodeEnv?: string;
+  redisStatus?: string;
+  redisConnectError?: Error;
+} = {}) {
   const redisClient = {
     status: options.redisStatus ?? 'end',
-    connect: vi.fn(),
+    connect: options.redisConnectError
+      ? vi.fn().mockRejectedValue(options.redisConnectError)
+      : vi.fn(),
     set: vi.fn(),
     get: vi.fn(),
     del: vi.fn(),
@@ -18,6 +24,7 @@ function createService(options: { nodeEnv?: string; redisStatus?: string } = {})
   };
   const redisService = {
     getClient: vi.fn(() => redisClient),
+    execute: vi.fn((handler: (client: typeof redisClient) => Promise<unknown>) => handler(redisClient)),
   };
   const configService = {
     get: vi.fn((key: string) =>
@@ -33,15 +40,53 @@ function createService(options: { nodeEnv?: string; redisStatus?: string } = {})
 
 afterEach(() => {
   vi.useRealTimers();
+  vi.restoreAllMocks();
 });
 
 describe('SessionStoreService security boundaries', () => {
+  it('rejects consumption when the transaction reports an error instead of returning reusable state', async () => {
+    const { service, redisClient } = createService({ nodeEnv: 'production', redisStatus: 'ready' });
+    const transaction = {
+      get: vi.fn().mockReturnThis(),
+      del: vi.fn().mockReturnThis(),
+      exec: vi.fn().mockResolvedValue([[null, '{"state":"test"}'], [new Error('denied'), null]]),
+    };
+    redisClient.multi.mockReturnValue(transaction);
+    await expect(service.consumeJson('state:test')).rejects.toBeInstanceOf(ServiceUnavailableException);
+    expect(transaction.del).toHaveBeenCalledWith('state:test');
+  });
+
+  it('rejects oversized keys and values before the Redis call or fallback allocation', async () => {
+    const { service, redisClient } = createService({ nodeEnv: 'production', redisStatus: 'ready' });
+    await expect(service.getJson('雪'.repeat(86))).rejects.toBeInstanceOf(ServiceUnavailableException);
+    await expect(service.setJson('session:test', { value: '雪'.repeat(1400) }, 60))
+      .rejects.toBeInstanceOf(ServiceUnavailableException);
+    expect(redisClient.get).not.toHaveBeenCalled();
+    expect(redisClient.set).not.toHaveBeenCalled();
+  });
+
   it('fails closed instead of allocating memory when Redis is unavailable in production', async () => {
     const { service } = createService({ nodeEnv: 'production', redisStatus: 'end' });
 
     await expect(service.setJson('session:test', { userId: 'user-1' }, 60)).rejects.toBeInstanceOf(
       ServiceUnavailableException,
     );
+  });
+
+  it('does not copy Redis connection error contents into fallback logs', async () => {
+    const sensitiveError = 'connection=private-marker-161803 session=private-session-marker';
+    const warnSpy = vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+    const { service } = createService({
+      redisStatus: 'wait',
+      redisConnectError: new Error(sensitiveError),
+    });
+
+    await expect(service.setJson('session:test', { userId: 'user-1' }, 60)).resolves.toBeUndefined();
+
+    const serializedLogs = JSON.stringify(warnSpy.mock.calls);
+    expect(serializedLogs).not.toContain(sensitiveError);
+    expect(serializedLogs).not.toContain('private-marker-161803');
+    expect(serializedLogs).not.toContain('private-session-marker');
   });
 
   it('bounds the development fallback store and reclaims expired entries', async () => {

@@ -1,0 +1,20 @@
+[Unit]
+Description=Recover one-way native account cutover
+Requires=postgresql.service
+Wants=docker.service
+After=postgresql.service docker.service timeline-native-backup-recover.service timeline-native-migration-probe-recover.service timeline-native-preparation-recover.service
+Before=timeline-native-network.service timeline-native-api.service timeline-native-web.service timeline-native-api-ingress.socket timeline-native-web-ingress.socket timeline-native-api-ingress.service timeline-native-web-ingress.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 -I /usr/local/lib/timeline-native-ops/native_cutover.py recover
+RemainAfterExit=yes
+TimeoutStartSec=180
+TimeoutStopSec=30
+UMask=0077
+MemoryMax=512M
+TasksMax=64
+KillMode=control-group
+
+[Install]
+WantedBy=multi-user.target

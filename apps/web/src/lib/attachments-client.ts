@@ -1,6 +1,6 @@
 'use client';
 
-import { API_BASE_URL, apiRequest, type FrontendRoleCode, type SessionUser } from './auth-client';
+import { isApprovedTeamUser, API_BASE_URL, apiRequest, type SessionUser } from './auth-client';
 import { formatDate, type WorkflowNodeCode } from './projects-client';
 
 export type AttachmentEntityType =
@@ -12,6 +12,13 @@ export type AttachmentEntityType =
   | 'REVIEW_RECORD'
   | 'NEW_COLOR_REPORT'
   | 'TRIAL_PRODUCTION';
+
+export type AttachmentScanStatus =
+  | 'PENDING_SCAN'
+  | 'CLEAN'
+  | 'REJECTED'
+  | 'SCAN_ERROR'
+  | 'LEGACY_UNSCANNED';
 
 export type ProjectAttachmentSummary = {
   id: string;
@@ -30,12 +37,15 @@ export type ProjectAttachmentSummary = {
   bucket: string;
   storageKey: string;
   objectKey: string;
-  fileUrl: string;
+  fileUrl: string | null;
+  scanStatus: AttachmentScanStatus;
+  scannedAt: string | null;
+  canDownload: boolean;
   materialType: string | null;
   versionNo: number;
   replacesAttachmentId: string | null;
-  contentUrl: string;
-  downloadUrl: string;
+  contentUrl: string | null;
+  downloadUrl: string | null;
   previewUrl: string | null;
   canPreview: boolean;
   uploadedById: string | null;
@@ -62,6 +72,8 @@ export type AttachmentWorkspaceResponse = {
     entityType: AttachmentEntityType | null;
     entityId: string | null;
     includeDeleted: boolean;
+    cursor?: string | null;
+    pageSize?: number;
   };
   limits: {
     maxFileSizeBytes: number;
@@ -80,13 +92,21 @@ export type AttachmentWorkspaceResponse = {
       subtitle: string | null;
     }>;
   }>;
+  entityOptionsHasMore?: boolean;
   items: ProjectAttachmentSummary[];
+  pageInfo?: {
+    pageSize: number;
+    hasMore: boolean;
+    nextCursor: string | null;
+  };
 };
 
 export type AttachmentWorkspaceFilters = {
   entityType?: AttachmentEntityType | '';
   entityId?: string;
   includeDeleted?: boolean;
+  cursor?: string;
+  pageSize?: number;
 };
 
 export type AttachmentBindInput = {
@@ -99,15 +119,21 @@ export type AttachmentUploadInput = AttachmentBindInput & {
   replacesAttachmentId?: string;
 };
 
-const ATTACHMENT_MANAGEMENT_ROLE_CODES: FrontendRoleCode[] = [
-  'admin',
-  'project_manager',
-  'process_engineer',
-  'quality_engineer',
-  'purchaser',
-  'reviewer',
-  'finance',
-];
+export type TaskMaterialUploadInput = {
+  materialType: string;
+  taskVersion: string;
+  replacesAttachmentId?: string;
+};
+
+const DOMAIN_GOVERNED_ATTACHMENT_ENTITY_TYPES = new Set<AttachmentEntityType>([
+  'SAMPLE',
+  'WORKFLOW_TASK',
+  'REVIEW_RECORD',
+  'PERFORMANCE_TEST',
+]);
+
+export const GENERIC_ATTACHMENT_DOMAIN_WORKSPACE_MESSAGE =
+  '该类附件由对应业务流程管理，请前往对应领域工作区操作。';
 
 const ATTACHMENT_ENTITY_TYPE_LABELS: Record<AttachmentEntityType, string> = {
   PROJECT: '项目',
@@ -118,6 +144,14 @@ const ATTACHMENT_ENTITY_TYPE_LABELS: Record<AttachmentEntityType, string> = {
   REVIEW_RECORD: '评审记录',
   NEW_COLOR_REPORT: '开发报告',
   TRIAL_PRODUCTION: '样车试制',
+};
+
+const ATTACHMENT_SCAN_STATUS_LABELS: Record<AttachmentScanStatus, string> = {
+  PENDING_SCAN: '安全扫描中',
+  CLEAN: '安全扫描通过',
+  REJECTED: '安全扫描未通过',
+  SCAN_ERROR: '扫描异常',
+  LEGACY_UNSCANNED: '历史文件待复扫',
 };
 
 export function fetchAttachmentsWorkspace(
@@ -147,6 +181,36 @@ export function uploadProjectAttachment(
   });
 }
 
+export function uploadTaskMaterial(
+  taskId: string,
+  file: File,
+  input: TaskMaterialUploadInput,
+) {
+  const idempotencyKey = createTaskMaterialIdempotencyKey();
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('materialType', input.materialType);
+  formData.append('taskVersion', input.taskVersion);
+  formData.append('idempotencyKey', idempotencyKey);
+  if (input.replacesAttachmentId) {
+    formData.append('replacesAttachmentId', input.replacesAttachmentId);
+  }
+
+  const encodedTaskId = encodeURIComponent(taskId);
+  const path = input.replacesAttachmentId
+    ? `/v2/tasks/${encodedTaskId}/materials/${encodeURIComponent(input.replacesAttachmentId)}/versions`
+    : `/v2/tasks/${encodedTaskId}/materials`;
+
+  return apiRequest<{ attachment: ProjectAttachmentSummary }>(path, {
+    method: 'POST',
+    headers: {
+      'Idempotency-Key': idempotencyKey,
+      'X-Request-Id': idempotencyKey,
+    },
+    body: formData,
+  });
+}
+
 export function fetchProjectAttachmentDetail(projectId: string, attachmentId: string) {
   return apiRequest<ProjectAttachmentSummary>(`/projects/${projectId}/attachments/${attachmentId}`);
 }
@@ -160,6 +224,11 @@ export function fetchAttachmentsByEntity(
     entityType: AttachmentEntityType;
     entityId: string;
     items: ProjectAttachmentSummary[];
+    pageInfo?: {
+      pageSize: number;
+      hasMore: boolean;
+      nextCursor: string | null;
+    };
   }>(
     `/projects/${projectId}/attachments/by-entity${buildQueryString({
       entityType: binding.entityType,
@@ -201,19 +270,21 @@ export function deleteProjectAttachment(projectId: string, attachmentId: string)
 }
 
 export function canManageProjectAttachments(user: SessionUser | null) {
-  if (!user) {
-    return false;
-  }
+  return isApprovedTeamUser(user);
+}
 
-  if (user.isSystemAdmin || user.roleCodes.includes('admin')) {
-    return true;
-  }
-
-  return ATTACHMENT_MANAGEMENT_ROLE_CODES.some((roleCode) => user.roleCodes.includes(roleCode));
+export function canMutateAttachmentInGenericWorkspace(
+  entityType: AttachmentEntityType | '' | null | undefined,
+) {
+  return Boolean(entityType && !DOMAIN_GOVERNED_ATTACHMENT_ENTITY_TYPES.has(entityType));
 }
 
 export function getAttachmentEntityTypeLabel(entityType: AttachmentEntityType) {
   return ATTACHMENT_ENTITY_TYPE_LABELS[entityType];
+}
+
+export function getAttachmentScanStatusLabel(scanStatus: AttachmentScanStatus) {
+  return ATTACHMENT_SCAN_STATUS_LABELS[scanStatus];
 }
 
 export function getAttachmentPreviewUrl(attachment: Pick<ProjectAttachmentSummary, 'previewUrl'>) {
@@ -221,11 +292,11 @@ export function getAttachmentPreviewUrl(attachment: Pick<ProjectAttachmentSummar
 }
 
 export function getAttachmentDownloadUrl(attachment: Pick<ProjectAttachmentSummary, 'downloadUrl'>) {
-  return `${API_BASE_URL}${attachment.downloadUrl}`;
+  return attachment.downloadUrl ? `${API_BASE_URL}${attachment.downloadUrl}` : null;
 }
 
 export function getAttachmentContentUrl(attachment: Pick<ProjectAttachmentSummary, 'contentUrl'>) {
-  return `${API_BASE_URL}${attachment.contentUrl}`;
+  return attachment.contentUrl ? `${API_BASE_URL}${attachment.contentUrl}` : null;
 }
 
 export function getAttachmentPreviewKind(
@@ -275,6 +346,10 @@ export function validateAttachmentUploadInput(input: {
     return '请选择附件归属类型。';
   }
 
+  if (!canMutateAttachmentInGenericWorkspace(input.entityType)) {
+    return GENERIC_ATTACHMENT_DOMAIN_WORKSPACE_MESSAGE;
+  }
+
   if (!input.entityId.trim()) {
     return '请选择附件归属实体。';
   }
@@ -288,6 +363,10 @@ export function validateAttachmentBindInput(input: {
 }) {
   if (!input.entityType) {
     return '请选择绑定实体类型。';
+  }
+
+  if (!canMutateAttachmentInGenericWorkspace(input.entityType)) {
+    return GENERIC_ATTACHMENT_DOMAIN_WORKSPACE_MESSAGE;
   }
 
   if (!input.entityId.trim()) {
@@ -323,6 +402,22 @@ function buildQueryString(filters: AttachmentWorkspaceFilters) {
     searchParams.set('includeDeleted', 'true');
   }
 
+  if (filters.cursor) {
+    searchParams.set('cursor', filters.cursor);
+  }
+
+  if (filters.pageSize) {
+    searchParams.set('pageSize', String(filters.pageSize));
+  }
+
   const serialized = searchParams.toString();
   return serialized ? `?${serialized}` : '';
+}
+
+function createTaskMaterialIdempotencyKey() {
+  const suffix =
+    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  return `r26-material:${suffix}`;
 }

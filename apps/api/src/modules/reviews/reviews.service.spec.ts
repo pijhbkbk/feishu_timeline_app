@@ -32,8 +32,8 @@ function createService() {
   );
 }
 
-describe('ReviewsService plan A authorization', () => {
-  it('allows only the designated reviewer or project manager to operate a review record', () => {
+describe('ReviewsService role queue reviewer identity', () => {
+  it('allows only the designated signer to operate a review record, without manager or administrator delegation', () => {
     const service = createService();
     const designatedReviewer = createActor('reviewer-1', ['reviewer']);
     const otherReviewer = createActor('reviewer-2', ['reviewer']);
@@ -48,7 +48,7 @@ describe('ReviewsService plan A authorization', () => {
     ).not.toThrow();
     expect(() =>
       (service as any).assertActorCanManageReviewRecord(projectManager, 'reviewer-1'),
-    ).not.toThrow();
+    ).toThrow(ForbiddenException);
     expect(() =>
       (service as any).assertActorCanManageReviewRecord(otherReviewer, 'reviewer-1'),
     ).toThrow(ForbiddenException);
@@ -70,6 +70,6 @@ describe('ReviewsService plan A authorization', () => {
     ).toThrow(ForbiddenException);
     expect(() =>
       (service as any).assertActorCanAssignReviewer(projectManager, 'reviewer-2'),
-    ).not.toThrow();
+    ).toThrow(ForbiddenException);
   });
 });

@@ -1,13 +1,14 @@
-import { Injectable } from '@nestjs/common';
+import { requireActiveMonthlyPlan } from '../../common/monthly-review-plan';
+import { ConflictException, Injectable } from '@nestjs/common';
 import {
   RecurringPlanStatus,
   RecurringTaskStatus,
-  SystemParameterValueType,
   WorkflowNodeCode,
-  type Prisma,
+  Prisma,
 } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 
+import { resolveTeamAssignment } from '../personnel/team-assignment';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import {
   addUtcMonthsClamped,
@@ -28,19 +29,25 @@ export class WorkflowRecurringService {
       reviewerId?: string | null;
     },
   ) {
-    const existingPlan = await db.recurringPlan.findFirst({
-      where: {
-        sourceWorkflowTaskId: input.sourceWorkflowTaskId,
-      },
+    await db.$executeRaw(Prisma.sql`SELECT pg_advisory_xact_lock(hashtext(${'team-monthly-plan'}), hashtext(${input.projectId}))`);
+    const plans = await db.recurringPlan.findMany({
+      where: { projectId: input.projectId, sourceNodeCode: WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW },
+      take: 2, orderBy: { createdAt: 'asc' },
     });
+    if (plans.length > 1) throw new ConflictException('此项目存在多个历史月度计划，须核实后再继续，不能自动合并。');
+    const existingPlan = plans[0];
 
     if (existingPlan) {
+      await requireActiveMonthlyPlan(db, input.projectId, existingPlan.id);
       const existingTaskCount = await db.recurringTask.count({
         where: {
           recurringPlanId: existingPlan.id,
         },
       });
 
+      if (existingPlan.status !== RecurringPlanStatus.ACTIVE || existingPlan.totalCount !== 12 || existingTaskCount !== 12) {
+        throw new ConflictException('历史月度计划已停止或月份不完整，请核对后再继续。');
+      }
       return {
         plan: existingPlan,
         generatedTaskCount: existingTaskCount,
@@ -48,7 +55,8 @@ export class WorkflowRecurringService {
       };
     }
 
-    const totalCount = await this.getMonthlyReviewTotalCount(db);
+    const totalCount = 12;
+    const assignment = await resolveTeamAssignment(db, WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW);
     const startDate = startOfUtcDay(input.startAt);
     const monthlyTasks = this.buildMonthlyTasks(startDate, totalCount);
     const endDate = monthlyTasks.at(-1)?.plannedDate ?? startDate;
@@ -81,7 +89,8 @@ export class WorkflowRecurringService {
         periodLabel: task.periodLabel,
         plannedDate: task.plannedDate,
         dueAt: task.dueAt,
-        reviewerId: input.reviewerId ?? null,
+        reviewerId: assignment.assigneeUserId,
+        requiredRoleCode: assignment.requiredRoleCode,
         status: RecurringTaskStatus.PENDING,
         payload: {
           sourceWorkflowTaskId: input.sourceWorkflowTaskId,
@@ -112,30 +121,6 @@ export class WorkflowRecurringService {
         taskCode: `MONTHLY-REVIEW-${year}${month}-${String(periodIndex).padStart(2, '0')}-${randomUUID().slice(0, 6).toUpperCase()}`,
       };
     });
-  }
-
-  private async getMonthlyReviewTotalCount(db: WorkflowDbClient) {
-    const parameter = await db.systemParameter.findUnique({
-      where: {
-        category_code: {
-          category: 'WORKFLOW',
-          code: 'MONTHLY_REVIEW_TOTAL_COUNT',
-        },
-      },
-      select: {
-        valueType: true,
-        valueNumber: true,
-      },
-    });
-
-    if (
-      parameter?.valueType === SystemParameterValueType.NUMBER &&
-      parameter.valueNumber
-    ) {
-      return Number(parameter.valueNumber);
-    }
-
-    return 12;
   }
 
   private buildPlanCode() {

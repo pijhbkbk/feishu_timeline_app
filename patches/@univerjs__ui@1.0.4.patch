@@ -1,0 +1,36 @@
+--- a/lib/es/index.js
++++ b/lib/es/index.js
+@@ -2207,6 +2207,7 @@
+ 	constructor(session, commandService, shortcutService, instanceService) {
+ 		super();
+ 		const cursorStyle = document.createElement("style");
++		cursorStyle.nonce = document.querySelector("script[nonce]")?.nonce || "";
+ 		cursorStyle.textContent = FORMAT_PAINTER_CURSOR_CSS;
+ 		document.head.appendChild(cursorStyle);
+ 		this.disposeWithMe({ dispose: () => cursorStyle.remove() });
+@@ -4655,6 +4656,7 @@
+ 		const existingStyleElement = document.getElementById(this._styleSheetId);
+ 		if (existingStyleElement) existingStyleElement.remove();
+ 		const styleElement = document.createElement("style");
++		styleElement.nonce = document.querySelector("script[nonce]")?.nonce || "";
+ 		styleElement.setAttribute("id", this._styleSheetId);
+ 		styleElement.textContent = `:root {\n${cssVariables}\n}`;
+ 		document.head.appendChild(styleElement);
+--- a/lib/cjs/index.js
++++ b/lib/cjs/index.js
+@@ -2208,6 +2208,7 @@
+ 	constructor(session, commandService, shortcutService, instanceService) {
+ 		super();
+ 		const cursorStyle = document.createElement("style");
++		cursorStyle.nonce = document.querySelector("script[nonce]")?.nonce || "";
+ 		cursorStyle.textContent = FORMAT_PAINTER_CURSOR_CSS;
+ 		document.head.appendChild(cursorStyle);
+ 		this.disposeWithMe({ dispose: () => cursorStyle.remove() });
+@@ -4656,6 +4657,7 @@
+ 		const existingStyleElement = document.getElementById(this._styleSheetId);
+ 		if (existingStyleElement) existingStyleElement.remove();
+ 		const styleElement = document.createElement("style");
++		styleElement.nonce = document.querySelector("script[nonce]")?.nonce || "";
+ 		styleElement.setAttribute("id", this._styleSheetId);
+ 		styleElement.textContent = `:root {\n${cssVariables}\n}`;
+ 		document.head.appendChild(styleElement);

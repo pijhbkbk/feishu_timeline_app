@@ -1,7 +1,9 @@
+import { PERSON_PRESENTATION_SELECT } from '../persons/person-profile-read';
+import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { UserStatus } from '@prisma/client';
 import { describe, expect, it, vi } from 'vitest';
 
-import { ROLE_PERMISSION_CODE_MAP } from '../auth/auth.constants';
+import type { AuthenticatedUser } from '../auth/auth.types';
 import { UsersService } from './users.service';
 
 function createService(tx: Record<string, unknown>) {
@@ -14,6 +16,29 @@ function createService(tx: Record<string, unknown>) {
     prisma,
   };
 }
+
+const projectManager: AuthenticatedUser = {
+  id: 'manager-1',
+  username: 'manager',
+  name: '项目经理',
+  email: 'manager@example.com',
+  departmentId: 'dept-pmo',
+  departmentName: '项目管理部',
+  isSystemAdmin: false,
+  authSource: 'mock',
+  roleCodes: ['project_manager'],
+  permissionCodes: ['project.read', 'project.write'],
+};
+
+const viewer: AuthenticatedUser = {
+  ...projectManager,
+  id: 'viewer-1',
+  username: 'viewer',
+  name: '普通查看者',
+  email: 'viewer@example.com',
+  roleCodes: ['viewer'],
+  permissionCodes: ['project.read'],
+};
 
 describe('UsersService', () => {
   it('preserves the assigned least-privilege role for an active authenticated user', async () => {
@@ -32,6 +57,7 @@ describe('UsersService', () => {
             {
               role: {
                 code: 'viewer',
+                status: 'ACTIVE',
                 rolePermissions: [{ permissionCode: 'project.read' }],
               },
             },
@@ -49,7 +75,7 @@ describe('UsersService', () => {
     });
   });
 
-  it('assigns the read-only viewer role to new Feishu users', async () => {
+  it('assigns the existing viewer role without mutating its governed definition', async () => {
     const tx = {
       user: {
         findFirst: vi.fn().mockResolvedValue(null),
@@ -60,7 +86,12 @@ describe('UsersService', () => {
         create: vi.fn(),
       },
       role: {
-        upsert: vi.fn().mockResolvedValue({ id: 'role-viewer', code: 'viewer' }),
+        findUnique: vi.fn().mockResolvedValue({
+          id: 'role-viewer',
+          code: 'viewer',
+          status: 'ACTIVE',
+        }),
+        upsert: vi.fn(),
       },
       rolePermission: {
         deleteMany: vi.fn(),
@@ -77,23 +108,50 @@ describe('UsersService', () => {
       email: null,
     });
 
-    expect(tx.role.upsert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { code: 'viewer' },
-      }),
-    );
-    expect(tx.rolePermission.createMany).toHaveBeenCalledWith({
-      data: ROLE_PERMISSION_CODE_MAP.viewer.map((permissionCode) => ({
-        roleId: 'role-viewer',
-        permissionCode,
-      })),
+    expect(tx.role.findUnique).toHaveBeenCalledWith({
+      where: { code: 'viewer' },
+      select: { id: true, code: true, status: true },
     });
+    expect(tx.role.upsert).not.toHaveBeenCalled();
+    expect(tx.rolePermission.deleteMany).not.toHaveBeenCalled();
+    expect(tx.rolePermission.createMany).not.toHaveBeenCalled();
     expect(tx.userRole.create).toHaveBeenCalledWith({
       data: {
         userId: 'user-1',
         roleId: 'role-viewer',
       },
     });
+  });
+
+  it('fails closed when the governed default Feishu role is missing', async () => {
+    const tx = {
+      user: {
+        findFirst: vi.fn().mockResolvedValue(null),
+        create: vi.fn().mockResolvedValue({ id: 'user-1' }),
+      },
+      userRole: {
+        count: vi.fn().mockResolvedValue(0),
+        create: vi.fn(),
+      },
+      role: {
+        findUnique: vi.fn().mockResolvedValue(null),
+      },
+    };
+    const { service } = createService(tx);
+
+    await expect(
+      service.upsertFeishuUser({
+        openId: 'ou-missing-role',
+        userId: 'feishu-missing-role',
+        unionId: null,
+        name: '飞书用户',
+        email: null,
+      }),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({ code: 'DEFAULT_FEISHU_ROLE_MISSING' }),
+    });
+
+    expect(tx.userRole.create).not.toHaveBeenCalled();
   });
 
   it('keeps existing Feishu role assignments unchanged', async () => {
@@ -241,4 +299,183 @@ describe('UsersService', () => {
       expect(updateInput.data).not.toHaveProperty('status');
     },
   );
+
+  it('rejects an unassigned account from the team directory', async () => {
+    const prisma = {
+      user: {
+        findMany: vi.fn(),
+      },
+    };
+    const service = new UsersService(prisma as never);
+
+    await expect(service.getDirectory({}, { ...viewer, roleCodes: [], permissionCodes: [] })).rejects.toBeInstanceOf(ForbiddenException);
+    expect(prisma.user.findMany).not.toHaveBeenCalled();
+  });
+
+  it('allows the system administrator but rejects a role label without project.read', async () => {
+    const prisma = {
+      user: {
+        findMany: vi.fn().mockResolvedValue([]),
+      },
+    };
+    const service = new UsersService(prisma as never);
+
+    await expect(
+      service.getDirectory({}, {
+        ...viewer,
+        id: 'system-admin',
+        isSystemAdmin: true,
+        roleCodes: ['admin'],
+        permissionCodes: [],
+      }),
+    ).resolves.toEqual([]);
+
+    await expect(
+      service.getDirectory({}, {
+        ...viewer,
+        id: 'ordinary-admin',
+        roleCodes: ['admin'], permissionCodes: [],
+      }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('returns only the bounded minimum global directory projection to a project writer', async () => {
+    const prisma = {
+      user: {
+        findMany: vi.fn().mockResolvedValue([
+          {
+            id: 'user-2',
+            name: '张三',
+            departmentId: 'dept-pmo',
+            department: { name: '项目管理部' },
+          },
+        ]),
+      },
+    };
+    const service = new UsersService(prisma as never);
+
+    await expect(
+      service.getDirectory(
+        {
+          q: '  张三  ',
+          take: 50,
+          cursor: 'user-1',
+        },
+        projectManager,
+      ),
+    ).resolves.toEqual([
+      {
+        id: 'user-2',
+        name: '张三',
+        departmentId: 'dept-pmo',
+        departmentName: '项目管理部',
+        personId: null, position: null,
+      },
+    ]);
+
+    expect(prisma.user.findMany).toHaveBeenCalledWith({
+      where: {
+        status: UserStatus.ACTIVE,
+        localCredential: { isNot: null },
+        OR: [
+          { personProfile: { is: { name: { contains: '张三', mode: 'insensitive' } } } },
+          { personProfile: { is: null }, name: { contains: '张三', mode: 'insensitive' } },
+        ],
+      },
+      select: {
+        id: true,
+        name: true,
+        departmentId: true,
+        personProfile: { select: PERSON_PRESENTATION_SELECT },
+        department: {
+          select: {
+            name: true,
+          },
+        },
+      },
+      orderBy: { id: 'asc' },
+      take: 50,
+      cursor: { id: 'user-1' },
+      skip: 1,
+    });
+
+    const response = await service.getDirectory({}, projectManager);
+    expect(response[0]).not.toHaveProperty('username');
+    expect(response[0]).not.toHaveProperty('email');
+    expect(response[0]).not.toHaveProperty('roleCodes');
+  });
+
+  it('returns the bounded active native team directory after checking the project exists', async () => {
+    const prisma = {
+      project: {
+        findUnique: vi.fn().mockResolvedValue({
+          id: 'project-1',
+          ownerUserId: 'owner-1',
+          owningDepartmentId: 'dept-pmo',
+          members: [{ id: 'membership-1' }],
+        }),
+      },
+      user: {
+        findMany: vi.fn().mockResolvedValue([]),
+      },
+    };
+    const service = new UsersService(prisma as never);
+
+    await expect(
+      service.getDirectory({ projectId: 'project-1' }, viewer),
+    ).resolves.toEqual([]);
+
+    expect(prisma.project.findUnique).toHaveBeenCalledWith({ where: { id: 'project-1' }, select: { id: true } });
+    expect(prisma.user.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          status: UserStatus.ACTIVE,
+          localCredential: { isNot: null },
+        },
+        take: 50,
+      }),
+    );
+  });
+
+  it('does not let an unassigned account enumerate a project directory', async () => {
+    const prisma = {
+      project: {
+        findUnique: vi.fn().mockResolvedValue({
+          id: 'project-1',
+          ownerUserId: 'owner-1',
+          owningDepartmentId: 'other-dept',
+          members: [],
+        }),
+      },
+      user: {
+        findMany: vi.fn(),
+      },
+    };
+    const service = new UsersService(prisma as never);
+
+    await expect(
+      service.getDirectory({ projectId: 'project-1' }, { ...viewer, roleCodes: [], permissionCodes: [] }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(prisma.user.findMany).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { q: 'x'.repeat(81) },
+    { take: 51 },
+    { take: 0 },
+    { cursor: 'x'.repeat(65) },
+    { projectId: 'x'.repeat(65) },
+  ] as const)('fails closed on an invalid bounded directory query (%s)', async (query) => {
+    const prisma = {
+      user: {
+        findMany: vi.fn(),
+      },
+    };
+    const service = new UsersService(prisma as never);
+
+    await expect(
+      service.getDirectory(query, projectManager),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(prisma.user.findMany).not.toHaveBeenCalled();
+  });
 });

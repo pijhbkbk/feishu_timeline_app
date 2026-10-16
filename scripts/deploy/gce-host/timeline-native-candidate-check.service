@@ -1,0 +1,15 @@
+[Unit]
+Description=Bounded native private candidate startup check
+After=timeline-native-network.service timeline-native-preparation-recover.service
+Requires=timeline-native-network.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 -I /usr/local/lib/timeline-native-ops/native_candidate_check.py check
+ExecStopPost=/usr/bin/python3 -I /usr/local/lib/timeline-native-ops/native_candidate_check.py cleanup
+TimeoutStartSec=210
+TimeoutStopSec=120
+KillMode=control-group
+UMask=0077
+MemoryMax=256M
+TasksMax=64

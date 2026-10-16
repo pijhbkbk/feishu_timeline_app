@@ -57,6 +57,10 @@ export type SampleAttachment = {
 };
 
 export type SampleConfirmationSummary = {
+  taskId?: string | null;
+  actualConfirmedAt?: string | null;
+  confirmationParty?: string | null;
+  confirmationAttachmentId?: string | null;
   id: string;
   sampleId: string;
   sampleNo: string;

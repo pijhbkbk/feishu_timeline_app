@@ -24,8 +24,9 @@ const processEngineerUser: SessionUser = {
   departmentId: null,
   departmentName: null,
   isSystemAdmin: false,
-  authSource: 'mock',
-  roleCodes: ['process_engineer'],
+  authSource: 'local',
+  teamAccessApproved: true,
+  roleCodes: [],
 };
 
 const projectManagerUser: SessionUser = {
@@ -58,8 +59,8 @@ const workspace: ColorExitWorkspaceResponse = {
     status: 'IN_PROGRESS',
     isPrimary: true,
     isActive: true,
-    assigneeUserId: 'user-1',
-    assigneeUserName: '工艺工程师',
+    assigneeUserId: 'manager-1',
+    assigneeUserName: '项目经理',
     assigneeDepartmentId: null,
     assigneeDepartmentName: null,
     dueAt: '2026-03-25T00:00:00.000Z',
@@ -152,7 +153,7 @@ describe('ColorExitWorkspace', () => {
 
   it('controls complete button visibility and validation', () => {
     expect(
-      canShowCompleteColorExitButton(processEngineerUser, workspace, workspace.items[0]!),
+      canShowCompleteColorExitButton({ ...processEngineerUser, teamAccessApproved: false }, workspace, workspace.items[0]!),
     ).toBe(false);
     expect(
       canShowCompleteColorExitButton(projectManagerUser, workspace, workspace.items[0]!),

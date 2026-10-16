@@ -1,7 +1,9 @@
+import { RetiredConfigurationGuard } from '../../common/retired-configuration.guard';
 import {
   BadRequestException,
   Body,
   Controller,
+  UseGuards,
   Get,
   Headers,
   Param,
@@ -124,6 +126,7 @@ export class AdminControlCenterController {
   }
 
   @ApiOperation({ summary: '预览新增系统用户影响，不写入' })
+  @UseGuards(RetiredConfigurationGuard)
   @Post('organization/users/preview')
   previewCreateUser(
     @Body() body: AdminUserConfigurationPreviewDto,
@@ -133,6 +136,7 @@ export class AdminControlCenterController {
   }
 
   @ApiOperation({ summary: '新增系统用户并写入审计' })
+  @UseGuards(RetiredConfigurationGuard)
   @Post('organization/users')
   createUser(
     @Body() body: AdminUserConfigurationChangeDto,
@@ -145,6 +149,7 @@ export class AdminControlCenterController {
   }
 
   @ApiOperation({ summary: '预览系统用户完整配置变更，不写入' })
+  @UseGuards(RetiredConfigurationGuard)
   @Post('organization/users/:userId/preview')
   previewUserConfiguration(
     @Param('userId') userId: string,
@@ -155,6 +160,7 @@ export class AdminControlCenterController {
   }
 
   @ApiOperation({ summary: '修改系统用户完整配置并写入审计' })
+  @UseGuards(RetiredConfigurationGuard)
   @Post('organization/users/:userId')
   changeUserConfiguration(
     @Param('userId') userId: string,
@@ -168,6 +174,7 @@ export class AdminControlCenterController {
   }
 
   @ApiOperation({ summary: '预览新增公司部门影响，不写入' })
+  @UseGuards(RetiredConfigurationGuard)
   @Post('organization/departments/preview')
   previewCreateDepartment(
     @Body() body: AdminDepartmentConfigurationPreviewDto,
@@ -177,6 +184,7 @@ export class AdminControlCenterController {
   }
 
   @ApiOperation({ summary: '新增公司部门并写入审计' })
+  @UseGuards(RetiredConfigurationGuard)
   @Post('organization/departments')
   createDepartment(
     @Body() body: AdminDepartmentConfigurationChangeDto,
@@ -189,6 +197,7 @@ export class AdminControlCenterController {
   }
 
   @ApiOperation({ summary: '批量删除无业务引用的公司部门并写入审计' })
+  @UseGuards(RetiredConfigurationGuard)
   @Post('organization/departments/batch-delete')
   deleteDepartments(
     @Body() body: AdminDepartmentBatchDeleteDto,
@@ -205,6 +214,7 @@ export class AdminControlCenterController {
   }
 
   @ApiOperation({ summary: '预览公司部门完整配置变更，不写入' })
+  @UseGuards(RetiredConfigurationGuard)
   @Post('organization/departments/:departmentId/preview')
   previewDepartmentConfiguration(
     @Param('departmentId') departmentId: string,
@@ -215,6 +225,7 @@ export class AdminControlCenterController {
   }
 
   @ApiOperation({ summary: '修改公司部门完整配置并写入审计' })
+  @UseGuards(RetiredConfigurationGuard)
   @Post('organization/departments/:departmentId')
   changeDepartmentConfiguration(
     @Param('departmentId') departmentId: string,
@@ -234,6 +245,7 @@ export class AdminControlCenterController {
   }
 
   @ApiOperation({ summary: '预览项目节点分工配置影响，不写入' })
+  @UseGuards(RetiredConfigurationGuard)
   @Post('projects/:projectId/assignments/:nodeCode/preview')
   previewNodeAssignment(
     @Param('projectId') projectId: string,
@@ -245,6 +257,7 @@ export class AdminControlCenterController {
   }
 
   @ApiOperation({ summary: '保存项目节点分工配置并写入审计' })
+  @UseGuards(RetiredConfigurationGuard)
   @Post('projects/:projectId/assignments/:nodeCode')
   changeNodeAssignment(
     @Param('projectId') projectId: string,
@@ -272,6 +285,7 @@ export class AdminControlCenterController {
   }
 
   @ApiOperation({ summary: '修改角色名称与权限矩阵并写入审计' })
+  @UseGuards(RetiredConfigurationGuard)
   @Post('permissions/:roleId')
   changeRolePermissions(
     @Param('roleId') roleId: string,
@@ -353,6 +367,7 @@ export class AdminControlCenterController {
   }
 
   @ApiOperation({ summary: '负责人和部门调整影响预览，不写入' })
+  @UseGuards(RetiredConfigurationGuard)
   @Post('tasks/:taskId/assignment-change-preview')
   previewAssignmentChange(
     @Param('taskId') taskId: string,
@@ -362,12 +377,14 @@ export class AdminControlCenterController {
   }
 
   @ApiOperation({ summary: '批量工序计划或分工调整影响预览，不写入' })
+  @UseGuards(RetiredConfigurationGuard)
   @Post('tasks/batch-change-preview')
   previewBatchTaskChanges(@Body() body: AdminBatchTaskPreviewDto) {
     return this.service.previewBatchTaskChanges(body);
   }
 
   @ApiOperation({ summary: '原子执行批量工序计划或分工调整' })
+  @UseGuards(RetiredConfigurationGuard)
   @Post('tasks/batch-change')
   applyBatchTaskChanges(
     @Body() body: AdminBatchTaskChangeDto,
@@ -384,6 +401,7 @@ export class AdminControlCenterController {
   }
 
   @ApiOperation({ summary: '确认负责人和部门调整' })
+  @UseGuards(RetiredConfigurationGuard)
   @Post('tasks/:taskId/assignment-change')
   changeAssignment(
     @Param('taskId') taskId: string,
@@ -402,6 +420,7 @@ export class AdminControlCenterController {
   }
 
   @ApiOperation({ summary: '启用、停用或锁定系统用户' })
+  @UseGuards(RetiredConfigurationGuard)
   @Post('users/:userId/status-change')
   changeUserStatus(
     @Param('userId') userId: string,

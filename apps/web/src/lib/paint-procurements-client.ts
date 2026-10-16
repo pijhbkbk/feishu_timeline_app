@@ -1,8 +1,8 @@
 'use client';
 
 import {
+  isApprovedTeamUser,
   apiRequest,
-  type FrontendRoleCode,
   type SessionUser,
 } from './auth-client';
 import {
@@ -28,8 +28,9 @@ export type SupplierSummary = {
   contactName: string | null;
   contactPhone: string | null;
   status: SupplierStatus;
-  createdAt?: string;
-  updatedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+  idempotentReplay?: boolean;
 };
 
 export type PaintProcurementRecord = {
@@ -97,6 +98,14 @@ export type SupplierFormInput = {
   status: SupplierStatus;
 };
 
+export type SupplierPageResponse = {
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+  items: SupplierSummary[];
+};
+
 export const PROCUREMENT_STATUS_OPTIONS: Array<{
   value: ProcurementStatus;
   label: string;
@@ -111,33 +120,42 @@ const PROCUREMENT_STATUS_LABELS = Object.fromEntries(
   PROCUREMENT_STATUS_OPTIONS.map((item) => [item.value, item.label]),
 ) as Record<ProcurementStatus, string>;
 
-const PROCUREMENT_ALLOWED_ROLE_CODES: FrontendRoleCode[] = [
-  'admin',
-  'project_manager',
-  'purchaser',
-];
-
 export async function fetchPaintProcurementWorkspace(projectId: string) {
   return apiRequest<PaintProcurementWorkspaceResponse>(
     `/projects/${projectId}/paint-procurements`,
   );
 }
 
-export async function fetchSuppliers() {
-  return apiRequest<SupplierSummary[]>('/suppliers');
+export async function fetchSuppliers(page = 1, query = '') {
+  const params = new URLSearchParams({ page: String(page), pageSize: '100' });
+  if (query.trim()) params.set('q', query.trim());
+  return apiRequest<SupplierPageResponse>(`/suppliers?${params.toString()}`);
 }
 
 export async function createSupplier(input: SupplierFormInput) {
   return apiRequest<SupplierSummary>('/suppliers', {
     method: 'POST',
+    headers: {
+      'Idempotency-Key': crypto.randomUUID(),
+    },
     body: input,
   });
 }
 
-export async function updateSupplier(supplierId: string, input: SupplierFormInput) {
-  return apiRequest<SupplierSummary>(`/suppliers/${supplierId}`, {
+export async function updateSupplier(
+  supplierId: string,
+  input: SupplierFormInput,
+  expectedVersion: string,
+) {
+  return apiRequest<SupplierSummary>(`/suppliers/${encodeURIComponent(supplierId)}`, {
     method: 'PATCH',
-    body: input,
+    headers: {
+      'Idempotency-Key': crypto.randomUUID(),
+    },
+    body: {
+      ...input,
+      expectedVersion,
+    },
   });
 }
 
@@ -266,17 +284,7 @@ export function validateSupplierForm(input: SupplierFormInput) {
 }
 
 export function canManagePaintProcurement(user: SessionUser | null) {
-  if (!user) {
-    return false;
-  }
-
-  if (user.isSystemAdmin) {
-    return true;
-  }
-
-  return user.roleCodes.some((roleCode) =>
-    PROCUREMENT_ALLOWED_ROLE_CODES.includes(roleCode),
-  );
+  return isApprovedTeamUser(user);
 }
 
 export function canShowCompleteProcurementTaskButton(

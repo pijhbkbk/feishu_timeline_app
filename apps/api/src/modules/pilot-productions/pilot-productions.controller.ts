@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 
 import { CurrentUser } from '../auth/current-user.decorator';
+import { Permissions } from '../auth/permissions.decorator';
 import { Roles } from '../auth/roles.decorator';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { PilotProductionsService } from './pilot-productions.service';
@@ -16,13 +17,18 @@ import { PilotProductionsService } from './pilot-productions.service';
 export class PilotProductionsController {
   constructor(private readonly pilotProductionsService: PilotProductionsService) {}
 
-  @Roles('admin', 'project_manager', 'process_engineer', 'quality_engineer')
+  @Roles('production_operator', 'admin', 'project_manager', 'process_engineer', 'quality_engineer')
+  @Permissions('project.read')
   @Get('projects/:projectId/first-production-plans')
-  getFirstProductionPlanWorkspace(@Param('projectId') projectId: string) {
-    return this.pilotProductionsService.getFirstProductionPlanWorkspace(projectId);
+  getFirstProductionPlanWorkspace(
+    @Param('projectId') projectId: string,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.pilotProductionsService.getFirstProductionPlanWorkspace(projectId, actor);
   }
 
-  @Roles('admin', 'project_manager', 'process_engineer')
+  @Roles('production_operator', 'admin', 'project_manager', 'process_engineer')
+  @Permissions('workflow.transition')
   @Post('projects/:projectId/first-production-plans')
   createFirstProductionPlan(
     @Param('projectId') projectId: string,
@@ -32,7 +38,8 @@ export class PilotProductionsController {
     return this.pilotProductionsService.createFirstProductionPlan(projectId, body, actor);
   }
 
-  @Roles('admin', 'project_manager', 'process_engineer')
+  @Roles('production_operator', 'admin', 'project_manager', 'process_engineer')
+  @Permissions('workflow.transition')
   @Patch('projects/:projectId/first-production-plans/:planId')
   updateFirstProductionPlan(
     @Param('projectId') projectId: string,
@@ -48,7 +55,8 @@ export class PilotProductionsController {
     );
   }
 
-  @Roles('admin', 'project_manager', 'process_engineer')
+  @Roles('production_operator', 'admin', 'project_manager', 'process_engineer')
+  @Permissions('workflow.transition')
   @Post('projects/:projectId/first-production-plans/:planId/confirm')
   confirmFirstProductionPlan(
     @Param('projectId') projectId: string,
@@ -58,7 +66,8 @@ export class PilotProductionsController {
     return this.pilotProductionsService.confirmFirstProductionPlan(projectId, planId, actor);
   }
 
-  @Roles('admin', 'project_manager', 'process_engineer')
+  @Roles('production_operator', 'admin', 'project_manager', 'process_engineer')
+  @Permissions('workflow.transition')
   @Post('projects/:projectId/first-production-plans/complete-task')
   completeFirstProductionPlanTask(
     @Param('projectId') projectId: string,
@@ -67,22 +76,29 @@ export class PilotProductionsController {
     return this.pilotProductionsService.completeFirstProductionPlanTask(projectId, actor);
   }
 
-  @Roles('admin', 'project_manager', 'process_engineer', 'quality_engineer')
+  @Roles('production_operator', 'admin', 'project_manager', 'process_engineer', 'quality_engineer')
+  @Permissions('project.read')
   @Get('projects/:projectId/trial-productions')
-  getTrialProductionWorkspace(@Param('projectId') projectId: string) {
-    return this.pilotProductionsService.getTrialProductionWorkspace(projectId);
+  getTrialProductionWorkspace(
+    @Param('projectId') projectId: string,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.pilotProductionsService.getTrialProductionWorkspace(projectId, actor);
   }
 
-  @Roles('admin', 'project_manager', 'process_engineer', 'quality_engineer')
+  @Roles('production_operator', 'admin', 'project_manager', 'process_engineer', 'quality_engineer')
+  @Permissions('project.read')
   @Get('projects/:projectId/trial-productions/:trialId')
   getTrialProductionDetail(
     @Param('projectId') projectId: string,
     @Param('trialId') trialId: string,
+    @CurrentUser() actor: AuthenticatedUser,
   ) {
-    return this.pilotProductionsService.getTrialProductionDetail(projectId, trialId);
+    return this.pilotProductionsService.getTrialProductionDetail(projectId, trialId, actor);
   }
 
-  @Roles('admin', 'project_manager', 'process_engineer')
+  @Roles('production_operator', 'admin', 'project_manager', 'process_engineer')
+  @Permissions('workflow.transition')
   @Post('projects/:projectId/trial-productions')
   createTrialProduction(
     @Param('projectId') projectId: string,
@@ -92,7 +108,8 @@ export class PilotProductionsController {
     return this.pilotProductionsService.createTrialProduction(projectId, body, actor);
   }
 
-  @Roles('admin', 'project_manager', 'process_engineer')
+  @Roles('production_operator', 'admin', 'project_manager', 'process_engineer')
+  @Permissions('workflow.transition')
   @Patch('projects/:projectId/trial-productions/:trialId')
   updateTrialProduction(
     @Param('projectId') projectId: string,
@@ -108,7 +125,8 @@ export class PilotProductionsController {
     );
   }
 
-  @Roles('admin', 'project_manager', 'process_engineer')
+  @Roles('production_operator', 'admin', 'project_manager', 'process_engineer')
+  @Permissions('workflow.transition')
   @Post('projects/:projectId/trial-productions/:trialId/add-issue')
   addTrialProductionIssue(
     @Param('projectId') projectId: string,
@@ -124,7 +142,8 @@ export class PilotProductionsController {
     );
   }
 
-  @Roles('admin', 'project_manager', 'process_engineer')
+  @Roles('production_operator', 'admin', 'project_manager', 'process_engineer')
+  @Permissions('workflow.transition')
   @Post('projects/:projectId/trial-productions/:trialId/complete')
   completeTrialProductionRecord(
     @Param('projectId') projectId: string,
@@ -134,7 +153,8 @@ export class PilotProductionsController {
     return this.pilotProductionsService.completeTrialProductionRecord(projectId, trialId, actor);
   }
 
-  @Roles('admin', 'project_manager', 'process_engineer')
+  @Roles('production_operator', 'admin', 'project_manager', 'process_engineer')
+  @Permissions('workflow.transition')
   @Post('projects/:projectId/trial-productions/complete-task')
   completeTrialProductionTask(
     @Param('projectId') projectId: string,

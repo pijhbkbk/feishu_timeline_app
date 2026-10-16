@@ -1,0 +1,125 @@
+{
+  "recordedAt": "2026-09-14T01:47:30.747785+00:00",
+  "runtimeCommit": "6c70a897ec7643f4681616d801481765aaa8f7bc",
+  "runtimeTree": "042c502720078f6f546931bf34c5396cb910c9fd",
+  "opsCommit": "3ebcc84097f7a2c78d382f39afce79eff22ce58a",
+  "build": {
+    "sourceCommit": "6c70a897ec7643f4681616d801481765aaa8f7bc",
+    "sourceTree": "042c502720078f6f546931bf34c5396cb910c9fd",
+    "release": "native-auth-20260914-6c70a897ec76",
+    "buildTime": "2026-09-14T01:01:20Z"
+  },
+  "webTests": {
+    "passed": 290,
+    "files": 58,
+    "targetedPassed": 8,
+    "beforeFix": {
+      "v": "FAIL",
+      "u": "PASS"
+    },
+    "lint": "PASS",
+    "typecheck": "PASS",
+    "build": "PASS"
+  },
+  "opsTests": {
+    "passed": 99,
+    "independentlyRepeated": true
+  },
+  "apiReuseBasis": {
+    "apiSourceSchemaDependenciesUnchangedFrom": "f2da3629e13b2653aae8879c98992877d5ef4170",
+    "compiledFilesCompared": 177,
+    "onlyChangedCompiledFile": "common/build-identity.generated.js",
+    "newLinuxImageBuilt": true
+  },
+  "privateSourcePush": {
+    "runtimeRemoteRef": "refs/heads/codex/native-account-release",
+    "opsRemoteRef": "refs/heads/codex/native-account-ops",
+    "server": "instance-20260408-091840",
+    "bareRepository": "/home/lixiaochen/timeline-native-delivery/source.git",
+    "cleanServerRuntimeCheckout": true,
+    "pushedToPublicRepository": false
+  },
+  "artifactRegistry": {
+    "projectName": "My Project 92644",
+    "repository": "us-west1-docker.pkg.dev/axial-acrobat-492709-r7/feishu-timeline",
+    "type": "DOCKER/STANDARD",
+    "repoAndProjectPublicIamBindings": false,
+    "activeCloudIdentityIsProjectOwner": true,
+    "initialUploadApprovalRejectionResolvedWithOwnershipPrivacyEvidence": true,
+    "bothImagesPushedAndPulled": true,
+    "serverTemporaryRegistryCredentialsRemoved": true
+  },
+  "controllerInstall": {
+    "installed": true,
+    "runtimeChangedByInstallation": false,
+    "systemdVerify": "PASS_WITH_UNRELATED_SNAPD_UNKNOWN_RESTARTMODE_WARNING",
+    "oldControllerCopiesRetained": true
+  },
+  "independentReviews": {
+    "usernamePattern": "PASS",
+    "fixedReleaseController": "PASS",
+    "installer": "PASS",
+    "rehearsalAndUpdateSupervisors": "PASS"
+  },
+  "localPythonCaFailure": {
+    "reason": "Non-system Python 3.12 lacks issuer trust in its default CA location",
+    "firstHttpsRequestFailedBeforeLoginOrRemoteMutation": true,
+    "resolution": "Use /usr/bin/python3 3.9.6 with normal system CA /private/etc/ssl/cert.pem, read-only HTTPS 200 verified",
+    "tlsVerificationDisabled": false
+  },
+  "placeholder": {
+    "productionSourceMatches": 0,
+    "whitelistedTestMatches": 10
+  },
+  "reviewedOrPreparedCheckFileHashes": {
+    "timeline-native-release-install-6c70.sh": "0f7bcf87a8507835b1fb76006172bc46eff6bd34de0a5aa3ae969ba12e33e275",
+    "timeline-native-release-pull-6c70.sh": "172d5f97622e924793689a06138ca5b393ceea4e08fa37000bd4c77a52bf9c4c",
+    "timeline-native-release-checkout-6c70.sh": "adb13c4ca07a422347ddb453eff9d48f5ce855c7c715df4f0b2885f07ffc1d43",
+    "timeline-native-release-rehearse-6c70.sh": "fb141db88fa9a5fffc245e0737d0ad3cf5c523b498095f33e5107d33c3d3de04",
+    "timeline-native-release-update-6c70.sh": "813c46ed03ef8abcd00d5989f68aaa58473a657ca0d11df5e55ea369b3644ddc",
+    "timeline-native-release-and-verify-6c70.py": "8d4aabd83db401356a37dec2d32448772f843627c3fe308e574cc7241c724f63"
+  },
+  "managementConnectionRecovery": {
+    "failedAttempt": "Timed out during SSH banner exchange; no VM commands reached",
+    "cloudShellGoogleApi": "AVAILABLE",
+    "vmStatus": "RUNNING",
+    "directIapSshBannerElapsedSeconds": 1.48,
+    "outerConnectionTimeoutChangedSeconds": {
+      "from": 35,
+      "to": 90
+    },
+    "subsequentAuthenticatedPreflight": "PASS",
+    "priorAttemptStateFilesAllAbsent": true,
+    "diagnosis": "Proxy setup overhead was a likely cause; server SSH directly responded; no SSH/IAM/firewall settings changed"
+  },
+  "executedCheckFileHashes": {
+    "timeline-native-release-install-6c70.sh": "0f7bcf87a8507835b1fb76006172bc46eff6bd34de0a5aa3ae969ba12e33e275",
+    "timeline-native-release-pull-6c70.sh": "172d5f97622e924793689a06138ca5b393ceea4e08fa37000bd4c77a52bf9c4c",
+    "timeline-native-release-checkout-6c70.sh": "adb13c4ca07a422347ddb453eff9d48f5ce855c7c715df4f0b2885f07ffc1d43",
+    "timeline-native-release-rehearse-6c70.sh": "fb141db88fa9a5fffc245e0737d0ad3cf5c523b498095f33e5107d33c3d3de04",
+    "timeline-native-release-update-6c70.sh": "813c46ed03ef8abcd00d5989f68aaa58473a657ca0d11df5e55ea369b3644ddc",
+    "timeline-native-release-proof-6c70.sh": "5633a64e752d7ce65ff71fa9bac80caff216d6406d41aa152d19ee6806e5c22d",
+    "timeline-native-final-http-6c70.py": "8bc65ebbb44fb540e3377e318d77edfe12176910709eda1ad91842c1a1c3a071"
+  },
+  "artifactCheck": {
+    "noNetworkReadOnlyFinalWebImage": "PASS",
+    "renderedUsernamePattern": "[A-Za-z0-9][A-Za-z0-9._\\-]{2,63}",
+    "unicodeSetsConstraint": "PASS",
+    "loginStatus": 200
+  },
+  "releaseObserverFailure": {
+    "actualUpdateSucceeded": true,
+    "failedAssertion": "Successful inactive systemd unit InvocationID was garbage-collected",
+    "updateRepeated": false,
+    "readOnlyJournalAndRuntimeReadback": "PASS",
+    "originalObserverReportedPass": false,
+    "followupReadbackExtraReview": "UNAVAILABLE_MODEL_CAPACITY",
+    "runtimeControllerAndInstallerIndependentReviews": "PASS"
+  },
+  "pnpmInstall": {
+    "hostOfflineInstall": "NOT_COMPLETED_INTERACTIVE_PROMPT",
+    "existingDependenciesReused": true,
+    "dockerFrozenInstallDuringBothBuilds": "PASS",
+    "lockfileChanged": false
+  }
+}

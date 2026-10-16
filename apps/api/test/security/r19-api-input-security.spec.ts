@@ -3,6 +3,42 @@ import { describe, expect, it } from 'vitest';
 import { getAttachmentFileValidationIssue } from '../../src/modules/attachments/attachments.rules';
 import { resolveAppConfig } from '../../src/common/app-config';
 
+const R19_STAGING_BUILD_IDENTITY = Object.freeze({
+  sourceCommit: '0123456789abcdef0123456789abcdef01234567',
+  sourceTree: '89abcdef0123456789abcdef0123456789abcdef',
+  release: 'r27rc1-r19-security-fixture',
+  buildTime: '2026-09-04T01:02:03Z',
+});
+
+const R19_STAGING_ENV: NodeJS.ProcessEnv = {
+  NODE_ENV: 'production',
+  DEPLOYMENT_ENV: 'staging',
+  FRONTEND_URL: 'https://staging.timeline.example.com',
+  DATABASE_URL:
+    'postgresql://app_user:test-only-strong-db-password@postgres:5432/feishu_timeline',
+  REDIS_URL: 'redis://:test-only-strong-redis-password@redis:6379',
+  MALWARE_SCANNER_PROVIDER: 'clamav',
+  CLAMAV_HOST: 'clamav-scanner.internal',
+  ATTACHMENT_STORAGE_GLOBAL_MAX_BYTES: '5368709120',
+  ATTACHMENT_STORAGE_PROJECT_MAX_BYTES: '1073741824',
+  ATTACHMENT_STORAGE_ACTOR_MAX_BYTES: '536870912',
+  ATTACHMENT_STORAGE_GLOBAL_MAX_OBJECTS: '5000',
+  ATTACHMENT_STORAGE_PROJECT_MAX_OBJECTS: '1000',
+  ATTACHMENT_STORAGE_ACTOR_MAX_OBJECTS: '500',
+  ATTACHMENT_STORAGE_MIN_FREE_BYTES: '1073741824',
+  ATTACHMENT_STORAGE_RESERVATION_TTL_MS: '7200000',
+  ATTACHMENT_STORAGE_ACTOR_WINDOW_MS: '2592000000',
+  ATTACHMENT_STORAGE_RECONCILE_INTERVAL_MS: '300000',
+  ATTACHMENT_STORAGE_RECONCILE_BATCH_SIZE: '100',
+  ATTACHMENT_STORAGE_RECONCILIATION_LEASE_MS: '300000',
+  ATTACHMENT_STORAGE_RECONCILIATION_RETRY_MS: '300000',
+  ATTACHMENT_STORAGE_PURGED_METADATA_RETENTION_MS: '7776000000',
+  EXPECTED_SOURCE_COMMIT: R19_STAGING_BUILD_IDENTITY.sourceCommit,
+  EXPECTED_SOURCE_TREE: R19_STAGING_BUILD_IDENTITY.sourceTree,
+  EXPECTED_RELEASE: R19_STAGING_BUILD_IDENTITY.release,
+  EXPECTED_BUILD_TIME: R19_STAGING_BUILD_IDENTITY.buildTime,
+};
+
 describe('R19 API input and upload security', () => {
   it('rejects executable and browser-rendered upload types even when content type is spoofed', () => {
     const dangerousFiles = [
@@ -50,10 +86,31 @@ describe('R19 API input and upload security', () => {
 
   it('uses a fixed frontend origin instead of wildcard CORS configuration', () => {
     expect(
-      resolveAppConfig({
-        NODE_ENV: 'staging',
-        FRONTEND_URL: 'https://staging.timeline.example.com',
-      } as NodeJS.ProcessEnv).frontendUrl,
+      resolveAppConfig(
+        R19_STAGING_ENV,
+        R19_STAGING_BUILD_IDENTITY,
+      ).frontendUrl,
     ).toBe('https://staging.timeline.example.com');
+  });
+
+  it('fails closed when a staging identity expectation is missing', () => {
+    const env = { ...R19_STAGING_ENV };
+    delete env.EXPECTED_SOURCE_TREE;
+
+    expect(() =>
+      resolveAppConfig(env, R19_STAGING_BUILD_IDENTITY),
+    ).toThrowError(/EXPECTED_SOURCE_TREE/);
+  });
+
+  it('fails closed when a staging identity expectation is malformed', () => {
+    expect(() =>
+      resolveAppConfig(
+        {
+          ...R19_STAGING_ENV,
+          EXPECTED_SOURCE_COMMIT: '0123456789ab',
+        },
+        R19_STAGING_BUILD_IDENTITY,
+      ),
+    ).toThrowError(/Expected build identity\.sourceCommit/);
   });
 });

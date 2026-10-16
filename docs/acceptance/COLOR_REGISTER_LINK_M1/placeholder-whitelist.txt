@@ -1,0 +1,10 @@
+apps/web/e2e/r26-admin-dashboard-color-database.spec.ts:126:    const search = page.getByPlaceholder('搜索颜色名称、颜色编号、车型或项目编号');
+apps/web/e2e/r25a-admin-audit.spec.ts:49:    await expect(page.getByText('已创建骨架')).toHaveCount(0);
+apps/web/e2e/r17-timeline-node-interaction.spec.ts:28:    await page.getByPlaceholder('搜索项目、颜色、当前节点').fill(project.name);
+apps/web/tests/playwright/r16-business-flow.spec.ts:81:    await page.getByPlaceholder('搜索项目、颜色、当前节点').fill(project.name);
+apps/web/src/components/admin-audit-workspace-r25a.test.tsx:22:    expect(html).not.toContain('已创建骨架');
+apps/web/tests/playwright/r16-create-project.spec.ts:80:    await page.getByPlaceholder('搜索项目、颜色、当前节点').fill(projectName);
+apps/web/tests/playwright/r20-fixtures.ts:372:  await page.getByPlaceholder('搜索项目、颜色、当前节点').fill(projectName);
+apps/web/src/components/admin-control-center.contract.test.ts:50:    expect(componentSource).not.toContain('已创建骨架');
+apps/web/tests/playwright/r20-ui-quality.spec.ts:45:    await page.getByPlaceholder('搜索项目、颜色、当前节点').fill(project.name);
+apps/web/tests/playwright/regression.spec.ts:88:  await expect(page.getByPlaceholder('项目名称 / 编号 / 颜色')).toBeVisible();

@@ -40,6 +40,9 @@ type ProjectSummary = {
 export async function loginAsProjectManager(page: Page) {
   const username = `r13_pm_${Date.now()}`;
   const response = await page.request.post(`${API_BASE_URL}/auth/mock-login`, {
+    headers: {
+      origin: new URL(process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:3000').origin,
+    },
     data: {
       username,
       name: 'R13 项目经理',
@@ -93,7 +96,10 @@ export async function completePilotProductionByApi(
   projectId: string,
   marker = 'E2E',
 ) {
-  const users = await apiJson<Array<{ id: string }>>(request, '/users/directory');
+  const users = await apiJson<Array<{ id: string }>>(
+    request,
+    `/users/directory?projectId=${encodeURIComponent(projectId)}&take=50`,
+  );
   const ownerId = users[0]?.id;
 
   if (!ownerId) {
@@ -221,7 +227,10 @@ export async function completeAllMonthlyReviewsByApi(
       status: string;
     }>;
   }>(request, `/workflows/projects/${projectId}/monthly-reviews`);
-  const users = await apiJson<Array<{ id: string }>>(request, '/users/directory');
+  const users = await apiJson<Array<{ id: string }>>(
+    request,
+    `/users/directory?projectId=${encodeURIComponent(projectId)}&take=50`,
+  );
   const reviewerId = users[0]?.id;
 
   if (!reviewerId) {

@@ -1,10 +1,14 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import type { MouseEvent, PropsWithChildren } from 'react';
+import { NotificationLink } from '../features/team-work/notifications';
+import { usePathname, useSearchParams } from 'next/navigation';
+import { Suspense, useState, type PropsWithChildren } from 'react';
+import { confirmM1Navigation, useM1NavigationGuard } from '../features/m1/use-unsaved';
 
+import { M1Icon } from '../features/m1/icon';
 import { FRONTEND_ROLE_OPTIONS } from '../lib/auth-client';
+import { loginHref } from '../lib/auth-navigation';
 import {
   filterNavItems,
   getAdminSectionItems,
@@ -16,8 +20,18 @@ import { useAuth } from './auth-provider';
 import { StatePanel } from './state-panel';
 
 export function AppShell({ children }: PropsWithChildren) {
+  useM1NavigationGuard();
   const pathname = usePathname();
-  const { user, isAuthenticated, isLoading, feishuEnabled, startFeishuLogin, logout } = useAuth();
+  const { user, isAuthenticated, isLoading, logout } = useAuth();
+  const [logoutError, setLogoutError] = useState('');
+  const [loggingOut, setLoggingOut] = useState(false);
+  async function handleLogout() {
+    if (!confirmM1Navigation()) return;
+    setLoggingOut(true); setLogoutError('');
+    try { await logout(); }
+    catch (error) { setLogoutError(error instanceof Error ? error.message : '退出失败，请重试。'); }
+    finally { setLoggingOut(false); }
+  }
   const appName = process.env.NEXT_PUBLIC_APP_NAME ?? '轻卡新颜色开发项目管理系统';
   const isAuthRoute = pathname.startsWith('/login');
   const isPublicRoute = isAuthRoute || pathname === '/guide';
@@ -25,8 +39,9 @@ export function AppShell({ children }: PropsWithChildren) {
     pathname === '/admin/color-database' || pathname.startsWith('/admin/color-database/');
   const isAdminRoute =
     (pathname === '/admin' || pathname.startsWith('/admin/')) && !isColorDatabaseRoute;
-  const hasAdminAccess = Boolean(user && (user.isSystemAdmin || user.roleCodes.includes('admin')));
-  const topNav = filterNavItems(topNavigationItems, user);
+  const hasAdminAccess = Boolean(user && (user.isSystemAdmin || user.teamAccessApproved || user.roleCodes.includes('admin')));
+  const pendingAuthorization = user?.authSource === 'local' && !user.isSystemAdmin && !user.teamAccessApproved;
+  const topNav = pendingAuthorization ? [] : filterNavItems(topNavigationItems, user);
   const projectSegments = pathname.split('/').filter(Boolean);
   const projectId =
     projectSegments[0] === 'projects' &&
@@ -37,22 +52,11 @@ export function AppShell({ children }: PropsWithChildren) {
     projectSegments[1] !== 'timeline-board'
       ? projectSegments[1]
       : null;
-  const contextNav = projectId
+  const contextNav = projectId && pathname !== `/projects/${projectId}` && !pathname.startsWith(`/projects/${projectId}/tasks/`)
     ? filterNavItems(getProjectSectionItems(projectId), user)
     : /^\/admin\/(projects|tasks|organization|assignments|permissions|audit-logs)$/.test(pathname)
       ? filterNavItems(getAdminSectionItems(), user)
       : [];
-
-  function handleLoginClick(event: MouseEvent<HTMLAnchorElement>) {
-    if (!feishuEnabled) {
-      return;
-    }
-
-    event.preventDefault();
-    void startFeishuLogin().catch(() => {
-      window.location.href = '/login';
-    });
-  }
 
   const guardedContent =
     !isLoading && isAuthenticated && isAdminRoute && !hasAdminAccess ? (
@@ -60,7 +64,7 @@ export function AppShell({ children }: PropsWithChildren) {
         <StatePanel
           variant="permission"
           title="仅管理员可访问"
-          description="后台管理不会出现在普通用户导航中，服务端接口也会再次校验管理员角色和 system.manage 权限。"
+          description="该账号没有管理权限。"
           actions={<Link href="/dashboard" className="r22-button r22-button-primary">返回工作台</Link>}
         />
       </section>
@@ -70,11 +74,9 @@ export function AppShell({ children }: PropsWithChildren) {
         <StatePanel
           variant="permission"
           title="请先登录"
-          description="前端仅做登录态提示，真正的权限校验仍由后端接口完成。"
+          description="登录后继续。"
           actions={
-            <Link href="/login" className="button button-primary" onClick={handleLoginClick}>
-              前往登录
-            </Link>
+            <Suspense fallback={<Link href={loginHref(pathname)} className="button button-primary">前往登录</Link>}><ContextLoginLink pathname={pathname}/></Suspense>
           }
         />
       </section>
@@ -83,14 +85,14 @@ export function AppShell({ children }: PropsWithChildren) {
     );
 
   return (
-    <div className="shell r22-shell">
-      <header className="r22-app-header">
+    <div className="shell r22-shell m1-shell">
+      <header className={`r22-app-header${isAuthRoute ? ' m1-auth-header' : ''}`}>
         <div className="r22-app-header-inner">
           <Link href="/dashboard" className="r22-brand" aria-label={`${appName}首页`}>
-            <span className="r22-brand-mark" aria-hidden="true">色</span>
+            <span className="r22-brand-mark" aria-hidden="true"><M1Icon name="project" size={24}/></span>
             <span>
               <strong>轻卡定制色</strong>
-              <small>开发管理系统</small>
+
             </span>
           </Link>
 
@@ -110,6 +112,7 @@ export function AppShell({ children }: PropsWithChildren) {
           ) : null}
 
           <div className="r22-header-tools">
+            {!isAuthRoute ? <NotificationLink /> : null}
             {isLoading ? (
               <span className="r22-avatar r22-avatar-loading" aria-label="正在加载登录态" />
             ) : user ? (
@@ -121,27 +124,30 @@ export function AppShell({ children }: PropsWithChildren) {
                   <strong>{user.name}</strong>
                   <span>{user.departmentName ?? '未分配部门'}</span>
                   <small>{formatRoleCodes(user.roleCodes)}</small>
-                  {user.isSystemAdmin || user.roleCodes.includes('admin') ? (
-                    <Link href="/admin">后台管理</Link>
+                  <Link href="/account">我的账号</Link>
+                  <Link href="/account/security">账号安全</Link>
+                  {user.isSystemAdmin ? <Link href="/admin/people">人员</Link> : null}
+                  {user.isSystemAdmin ? (
+                    <Link href="/admin">管理设置</Link>
                   ) : null}
-                  <button type="button" onClick={() => void logout()}>退出登录</button>
+                  <button type="button" disabled={loggingOut} onClick={() => void handleLogout()}>{loggingOut ? '正在退出…' : '退出登录'}</button>
+                  {logoutError ? <p role="alert">{logoutError}</p> : null}
                 </div>
               </details>
-            ) : (
+            ) : !isAuthRoute ? (
               <Link
                 href="/login"
                 className="r22-login-link"
-                onClick={handleLoginClick}
-                data-testid="header-feishu-login"
+                data-testid="header-native-login"
               >
                 登录
               </Link>
-            )}
+            ) : null}
           </div>
         </div>
       </header>
 
-      <main className="content r22-content">
+      <main className={`content r22-content${isAuthRoute ? ' native-auth-content' : pathname === '/account' || pathname.startsWith('/account/') || pathname === '/pending-access' ? ' native-account-content' : ''}`}>
         {contextNav.length > 0 ? (
           <nav className="context-nav r22-context-nav" aria-label="当前工作区导航">
             {contextNav.map((item) => (
@@ -167,6 +173,11 @@ export function AppShell({ children }: PropsWithChildren) {
       </main>
     </div>
   );
+}
+
+function ContextLoginLink({pathname}:{pathname:string}) {
+  const search = useSearchParams();
+  return <Link href={loginHref(pathname, search.size ? `?${search}` : '')} className="button button-primary">前往登录</Link>;
 }
 
 function isContextNavActive(pathname: string, href: string) {

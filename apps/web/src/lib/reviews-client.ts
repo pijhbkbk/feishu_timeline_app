@@ -1,8 +1,10 @@
 'use client';
 
+import type { ReviewStandardOptions, ReviewStandardVersion } from './review-standard-version';
+
 import {
+  isApprovedTeamUser,
   apiRequest,
-  type FrontendRoleCode,
   type SessionUser,
 } from './auth-client';
 import {
@@ -15,6 +17,7 @@ import {
   type WorkflowNodeCode,
 } from './projects-client';
 import {
+  canUserOperateWorkflowTask,
   getWorkflowTaskStatusLabel,
   type WorkflowTaskSummary,
 } from './workflows-client';
@@ -38,6 +41,8 @@ export type AttachmentSummary = {
 };
 
 export type CabinReviewRecord = {
+  standardVersionId?: string | null;
+  standardVersion?: ReviewStandardVersion | null;
   id: string;
   workflowTaskId: string;
   reviewType: 'CAB_REVIEW';
@@ -63,7 +68,7 @@ export type CabinReviewRecord = {
   attachmentHistory: AttachmentSummary[];
 };
 
-export type CabinReviewWorkspaceResponse = {
+export type CabinReviewWorkspaceResponse = ReviewStandardOptions & {
   project: {
     id: string;
     code: string;
@@ -90,6 +95,7 @@ export type CabinReviewWorkspaceResponse = {
 };
 
 export type CabinReviewFormInput = {
+  standardVersionId?: string;
   reviewDate: string;
   reviewerId: string;
   reviewConclusion: CabinReviewConclusion;
@@ -105,13 +111,6 @@ const CABIN_REVIEW_CONCLUSION_OPTIONS: Array<{
   { value: 'APPROVED', label: '通过' },
   { value: 'CONDITIONAL_APPROVED', label: '条件通过' },
   { value: 'REJECTED', label: '驳回' },
-];
-
-const CABIN_REVIEW_ROLE_CODES: FrontendRoleCode[] = [
-  'admin',
-  'project_manager',
-  'quality_engineer',
-  'reviewer',
 ];
 
 const CABIN_REVIEW_CONCLUSION_LABELS = Object.fromEntries(
@@ -187,8 +186,8 @@ export function rejectCabinReview(projectId: string, reviewId: string) {
   );
 }
 
-export function fetchCabinReviewPageOptions() {
-  return fetchUserDirectory();
+export function fetchCabinReviewPageOptions(projectId: string) {
+  return fetchUserDirectory({ projectId });
 }
 
 export function validateCabinReviewForm(input: CabinReviewFormInput) {
@@ -222,18 +221,7 @@ export function canManageCabinReviews(
   user: SessionUser | null,
   reviewerId?: string | null,
 ) {
-  if (!user) {
-    return false;
-  }
-
-  if (reviewerId !== undefined) {
-    return user.roleCodes.includes('project_manager') || reviewerId === user.id;
-  }
-
-  return (
-    user.isSystemAdmin ||
-    CABIN_REVIEW_ROLE_CODES.some((roleCode) => user.roleCodes.includes(roleCode))
-  );
+  return isApprovedTeamUser(user) && (reviewerId === undefined || reviewerId === user.id);
 }
 
 export function canShowCabinReviewSubmitButton(
@@ -245,7 +233,7 @@ export function canShowCabinReviewSubmitButton(
     return false;
   }
 
-  return canManageCabinReviews(user, review.reviewerId);
+  return canManageCabinReviews(user, review.reviewerId) && canUserOperateWorkflowTask(user, workspace.activeTask) && review.workflowTaskId === workspace.activeTask.id;
 }
 
 export function canShowCabinReviewApproveButton(
@@ -264,7 +252,7 @@ export function canShowCabinReviewApproveButton(
     return false;
   }
 
-  return canManageCabinReviews(user, review.reviewerId);
+  return canManageCabinReviews(user, review.reviewerId) && canUserOperateWorkflowTask(user, workspace.activeTask) && review.workflowTaskId === workspace.activeTask.id;
 }
 
 export function canShowCabinReviewRejectButton(
@@ -280,7 +268,7 @@ export function canShowCabinReviewRejectButton(
     return false;
   }
 
-  return canManageCabinReviews(user, review.reviewerId);
+  return canManageCabinReviews(user, review.reviewerId) && canUserOperateWorkflowTask(user, workspace.activeTask) && review.workflowTaskId === workspace.activeTask.id;
 }
 
 export function getCabinReviewConclusionLabel(conclusion: CabinReviewConclusion) {
@@ -310,6 +298,7 @@ export function toCabinReviewFormInput(
   review: CabinReviewRecord,
 ): CabinReviewFormInput {
   return {
+    standardVersionId: review.standardVersionId ?? '',
     reviewDate: review.reviewDate ? review.reviewDate.slice(0, 10) : '',
     reviewerId: review.reviewerId,
     reviewConclusion: review.reviewConclusion,
@@ -332,6 +321,7 @@ export function getDefaultCabinReviewerId(
 
 function toCabinReviewPayload(input: CabinReviewFormInput) {
   return {
+    standardVersionId: input.standardVersionId || null,
     reviewDate: input.reviewDate,
     reviewerId: input.reviewerId,
     reviewConclusion: input.reviewConclusion,

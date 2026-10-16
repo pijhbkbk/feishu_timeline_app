@@ -1,0 +1,18 @@
+[Unit]
+Description=Install reviewed isolated native application networks
+Requires=docker.service
+After=docker.service network-online.target timeline-native-backup-recover.service timeline-native-migration-probe-recover.service
+Wants=network-online.target
+Before=timeline-native-pg.socket timeline-native-scanner-proxy.socket timeline-native-tunnel.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/python3 -I /usr/local/lib/timeline-native-ops/native_runtime_network.py setup
+UMask=0077
+TimeoutStartSec=180
+MemoryMax=128M
+TasksMax=64
+
+[Install]
+WantedBy=multi-user.target

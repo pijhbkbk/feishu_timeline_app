@@ -1,6 +1,8 @@
 'use client';
 
-import { apiRequest, type FrontendRoleCode, type SessionUser } from './auth-client';
+import type { ReviewStandardOptions, ReviewStandardVersion } from './review-standard-version';
+
+import { isApprovedTeamUser, apiRequest, type SessionUser } from './auth-client';
 import {
   fetchUserDirectory,
   formatDate,
@@ -34,6 +36,8 @@ export type AttachmentSummary = {
 };
 
 export type VisualDeltaReviewRecord = {
+  standardVersionId?: string | null;
+  standardVersion?: ReviewStandardVersion | null;
   id: string;
   workflowTaskId: string;
   reviewType: 'VISUAL_COLOR_DIFFERENCE_REVIEW';
@@ -55,7 +59,8 @@ export type VisualDeltaReviewRecord = {
   attachmentHistory: AttachmentSummary[];
 };
 
-export type VisualDeltaReviewWorkspaceResponse = {
+export type VisualDeltaReviewWorkspaceResponse = ReviewStandardOptions & {
+  businessTime?: string;
   project: {
     id: string;
     code: string;
@@ -66,12 +71,15 @@ export type VisualDeltaReviewWorkspaceResponse = {
     riskLevel: ProjectPriority;
   };
   massProductionCompleted: boolean;
+  monthlyPlanActive: boolean;
+  recurringTasks: VisualDeltaMonth[];
   activeTask: WorkflowTaskSummary | null;
   downstreamTask: WorkflowTaskSummary | null;
   items: VisualDeltaReviewRecord[];
 };
 
 export type VisualDeltaReviewFormInput = {
+  standardVersionId?: string;
   reviewDate: string;
   reviewerId: string;
   reviewConclusion: VisualDeltaReviewConclusion;
@@ -80,12 +88,18 @@ export type VisualDeltaReviewFormInput = {
   rejectReason: string;
 };
 
-const VISUAL_DELTA_REVIEW_ROLE_CODES: FrontendRoleCode[] = [
-  'admin',
-  'project_manager',
-  'quality_engineer',
-  'reviewer',
-];
+export type VisualDeltaMonth = { id: string; periodIndex: number; periodLabel: string; plannedDate: string;
+  dueAt: string | null; reviewerId: string | null; status: string };
+
+export function canWriteVisualDeltaMonth(user: SessionUser | null, workspace: VisualDeltaReviewWorkspaceResponse, month: VisualDeltaMonth | undefined, now = workspace.businessTime ? Date.parse(workspace.businessTime) : Date.now()) {
+  return Boolean(canManageVisualDeltaReviews(user) && workspace.activeTask && workspace.monthlyPlanActive && month &&
+    ['PENDING', 'IN_PROGRESS', 'OVERDUE'].includes(month.status) && Date.parse(month.plannedDate) <= now);
+}
+
+export function canWriteVisualDeltaRecord(user: SessionUser | null, workspace: VisualDeltaReviewWorkspaceResponse, review: VisualDeltaReviewRecord) {
+  const month = workspace.recurringTasks.find(task => task.plannedDate.slice(0, 7) === review.reviewPeriod);
+  return review.workflowTaskId === workspace.activeTask?.id && review.reviewerId === user?.id && !review.isPeriodCompleted && canWriteVisualDeltaMonth(user, workspace, month);
+}
 
 const VISUAL_DELTA_REVIEW_CONCLUSION_LABELS: Record<
   VisualDeltaReviewConclusion,
@@ -98,7 +112,7 @@ const VISUAL_DELTA_REVIEW_CONCLUSION_LABELS: Record<
 
 export function fetchVisualDeltaReviewWorkspace(projectId: string) {
   return apiRequest<VisualDeltaReviewWorkspaceResponse>(
-    `/projects/${projectId}/reviews/visual-delta`,
+    `/projects/${projectId}/reviews/visual-delta`, { signal: AbortSignal.timeout(15000) },
   );
 }
 
@@ -109,7 +123,7 @@ export function createVisualDeltaReview(
   return apiRequest<VisualDeltaReviewWorkspaceResponse>(
     `/projects/${projectId}/reviews/visual-delta`,
     {
-      method: 'POST',
+      method: 'POST', signal: AbortSignal.timeout(30000),
       body: toVisualDeltaReviewPayload(input),
     },
   );
@@ -123,7 +137,7 @@ export function updateVisualDeltaReview(
   return apiRequest<VisualDeltaReviewWorkspaceResponse>(
     `/projects/${projectId}/reviews/visual-delta/${reviewId}`,
     {
-      method: 'PATCH',
+      method: 'PATCH', signal: AbortSignal.timeout(30000),
       body: toVisualDeltaReviewPayload(input),
     },
   );
@@ -140,7 +154,7 @@ export function uploadVisualDeltaReviewAttachment(
   return apiRequest<VisualDeltaReviewWorkspaceResponse>(
     `/projects/${projectId}/reviews/visual-delta/${reviewId}/attachment`,
     {
-      method: 'POST',
+      method: 'POST', signal: AbortSignal.timeout(30000),
       body: formData,
     },
   );
@@ -150,7 +164,7 @@ export function submitVisualDeltaReview(projectId: string, reviewId: string) {
   return apiRequest<VisualDeltaReviewWorkspaceResponse>(
     `/projects/${projectId}/reviews/visual-delta/${reviewId}/submit`,
     {
-      method: 'POST',
+      method: 'POST', signal: AbortSignal.timeout(30000),
     },
   );
 }
@@ -159,7 +173,7 @@ export function approveVisualDeltaReview(projectId: string, reviewId: string) {
   return apiRequest<VisualDeltaReviewWorkspaceResponse>(
     `/projects/${projectId}/reviews/visual-delta/${reviewId}/approve`,
     {
-      method: 'POST',
+      method: 'POST', signal: AbortSignal.timeout(30000),
     },
   );
 }
@@ -168,13 +182,13 @@ export function rejectVisualDeltaReview(projectId: string, reviewId: string) {
   return apiRequest<VisualDeltaReviewWorkspaceResponse>(
     `/projects/${projectId}/reviews/visual-delta/${reviewId}/reject`,
     {
-      method: 'POST',
+      method: 'POST', signal: AbortSignal.timeout(30000),
     },
   );
 }
 
-export function fetchVisualDeltaReviewPageOptions() {
-  return fetchUserDirectory();
+export function fetchVisualDeltaReviewPageOptions(projectId: string) {
+  return fetchUserDirectory({ projectId });
 }
 
 export function validateVisualDeltaReviewForm(input: VisualDeltaReviewFormInput) {
@@ -208,18 +222,7 @@ export function canManageVisualDeltaReviews(
   user: SessionUser | null,
   reviewerId?: string | null,
 ) {
-  if (!user) {
-    return false;
-  }
-
-  if (reviewerId !== undefined) {
-    return user.roleCodes.includes('project_manager') || reviewerId === user.id;
-  }
-
-  return (
-    user.isSystemAdmin ||
-    VISUAL_DELTA_REVIEW_ROLE_CODES.some((roleCode) => user.roleCodes.includes(roleCode))
-  );
+  return isApprovedTeamUser(user) && (reviewerId === undefined || reviewerId === user.id);
 }
 
 export function canShowVisualDeltaReviewSubmitButton(
@@ -231,7 +234,7 @@ export function canShowVisualDeltaReviewSubmitButton(
     return false;
   }
 
-  return canManageVisualDeltaReviews(user, review.reviewerId);
+  return canWriteVisualDeltaRecord(user, workspace, review);
 }
 
 export function canShowVisualDeltaReviewApproveButton(
@@ -250,7 +253,7 @@ export function canShowVisualDeltaReviewApproveButton(
     return false;
   }
 
-  return canManageVisualDeltaReviews(user, review.reviewerId);
+  return canWriteVisualDeltaRecord(user, workspace, review);
 }
 
 export function getVisualDeltaReviewApprovalSuccessMessage(
@@ -274,7 +277,7 @@ export function canShowVisualDeltaReviewRejectButton(
     return false;
   }
 
-  return canManageVisualDeltaReviews(user, review.reviewerId);
+  return canWriteVisualDeltaRecord(user, workspace, review);
 }
 
 export function getVisualDeltaReviewConclusionLabel(
@@ -303,6 +306,7 @@ export function toVisualDeltaReviewFormInput(
   review: VisualDeltaReviewRecord,
 ): VisualDeltaReviewFormInput {
   return {
+    standardVersionId: review.standardVersionId ?? '',
     reviewDate: review.reviewDate ? review.reviewDate.slice(0, 10) : '',
     reviewerId: review.reviewerId,
     reviewConclusion: review.reviewConclusion,
@@ -325,6 +329,7 @@ export function getDefaultVisualDeltaReviewerId(
 
 function toVisualDeltaReviewPayload(input: VisualDeltaReviewFormInput) {
   return {
+    standardVersionId: input.standardVersionId || null,
     reviewDate: input.reviewDate,
     reviewerId: input.reviewerId,
     reviewConclusion: input.reviewConclusion,

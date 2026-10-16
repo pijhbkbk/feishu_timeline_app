@@ -4,7 +4,7 @@ export const PUBLIC_ROUTE_KEY = 'public-route';
 export const ROLE_METADATA_KEY = 'role-metadata';
 export const PERMISSION_METADATA_KEY = 'permission-metadata';
 
-export const AUTH_SOURCES = ['mock', 'feishu'] as const;
+export const AUTH_SOURCES = ['local', 'mock', 'feishu'] as const;
 
 export type AuthSource = (typeof AUTH_SOURCES)[number];
 
@@ -14,6 +14,7 @@ export const ROLE_CODES = [
   'process_engineer',
   'quality_engineer',
   'purchaser',
+  'production_operator',
   'reviewer',
   'finance',
   'auditor',
@@ -27,7 +28,8 @@ export const ROLE_LABELS: Record<RoleCode, string> = {
   project_manager: '项目经理',
   process_engineer: '工艺工程师',
   quality_engineer: '质量工程师',
-  purchaser: '采购专员',
+  purchaser: '采购',
+  production_operator: '生产',
   reviewer: '评审人',
   finance: '财务',
   auditor: '审计人员',
@@ -74,6 +76,7 @@ export const ROLE_PERMISSION_CODE_MAP: Record<RoleCode, string[]> = {
     'attachment.manage',
     'dashboard.read',
   ],
+  production_operator: ['project.read', 'workflow.transition', 'attachment.manage', 'dashboard.read'],
   finance: ['project.read', 'workflow.transition', 'attachment.manage', 'dashboard.read'],
   auditor: ['project.read', 'audit.read', 'dashboard.read'],
   viewer: ['project.read', 'dashboard.read'],

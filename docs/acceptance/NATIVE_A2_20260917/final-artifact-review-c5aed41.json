@@ -1,0 +1,172 @@
+{
+  "scope": "read-only artifact bytes and saved inspection; no extraction, container execution, registry operation, or production access",
+  "identity": {
+    "commit": "c5aed415cd17e6e8a21b422a4c5c92b4b924e091",
+    "tree": "830e562f5ec56e99d7fc0b04432fc056dd772254",
+    "release": "native-portable-20260917-c5aed415cd17",
+    "buildTime": "2026-09-17T08:04:51Z"
+  },
+  "manifestSha256": "668be91c5e692713ac837ff0e6d32db5b2a32da6ccefdc4ef086a8414371b344",
+  "files": {
+    "THIRD_PARTY_NOTICES": {
+      "sha256": "316a3275b2d7513830b57ab9d5667cc21bd855e60e5b10d30d55926b631f6af4",
+      "bytes": 21164
+    },
+    "data.mjs": {
+      "sha256": "6a3a4d84503e1b4d2f5d11735585dbeb887c185121a587ffcbad3eb18bb4bdac",
+      "bytes": 5595
+    },
+    "images.tar": {
+      "sha256": "5e17bdf023991e9ef579fe32540672b0a962f0c4453e9a82108334f51d0ef6d8",
+      "bytes": 499075584
+    },
+    "portable.mjs": {
+      "sha256": "cad60ff0cf1cb22c6ae7771fdb77c21fd09ae13a6fe7c329e4340acc0315b9a2",
+      "bytes": 37348
+    },
+    "proxy.mjs": {
+      "sha256": "1f54cb3b346c5f05020c199a27a81935e1840d76db4cf8eccddf1a47b5aee0c4",
+      "bytes": 1396
+    },
+    "source.tar": {
+      "sha256": "5e5d2cd3a51e9941447c44b0f2eb2e5d0ec749117822832ec825c48eed3c377a",
+      "bytes": 50585600
+    },
+    "tunnel.mjs": {
+      "sha256": "94fee9aadb6d2be023bd12d37a2137cdd4415e182fcc9533ae69ee68f45c394c",
+      "bytes": 4791
+    }
+  },
+  "gitArchiveSha256": "5e5d2cd3a51e9941447c44b0f2eb2e5d0ec749117822832ec825c48eed3c377a",
+  "archive": {
+    "entries": 77,
+    "hashedBlobs": 72,
+    "reachableBlobs": 72,
+    "missingDescriptors": [],
+    "runnableImages": {
+      "postgres": {
+        "imageId": "sha256:3b36dd7df1337107cef7502b1e3e94c971483ae87498a9310d25c60fba08cfc9",
+        "configDigest": "sha256:51cbc7b71c5e09753f33d1bbdf7fbc32e5111923995d8e5306b9d1e4f8f629e0",
+        "architecture": "amd64",
+        "os": "linux",
+        "labels": null
+      },
+      "redis": {
+        "imageId": "sha256:1db42ccef14898aa29bae778452d567534b59c107129cbc1163fb552de184d3c",
+        "configDigest": "sha256:5509c0097c6064aa8a3b1df58f1d950e67090fffa6678ae8f3f1dc2385f12deb",
+        "architecture": "amd64",
+        "os": "linux",
+        "labels": null
+      },
+      "scanner": {
+        "imageId": "sha256:17130f6532928a5b4b1272fc5129e5f2639850c0d8086879c516649d32fc8ae6",
+        "configDigest": "sha256:bc673c38fd059c4f39015f26e410c7b5589d286297cd14f4a63e16e98598cd3f",
+        "architecture": "amd64",
+        "os": "linux",
+        "labels": {
+          "com.feishu-timeline.clamav-patch-sha256": "fe9cd766461ca42012cedee06071715edbc47082739855bb6fe6494424db205a",
+          "com.feishu-timeline.clamav-source-sha256": "06dbc7adf96e2f6a27c548a841ce83c95360d1e121b106a6f7cf56f282a3c61b",
+          "maintainer": "ClamAV bugs <clamav-bugs@external.cisco.com>",
+          "org.opencontainers.image.title": "Timeline maintained ClamAV candidate r3"
+        }
+      },
+      "api": {
+        "imageId": "sha256:40544930b329416679f24ebc6dd2354e24beaec9d8490b9edbdbda5e0f71d192",
+        "configDigest": "sha256:9eb315d724a77dde80979bc71367bc99678d2b0a3e501f4053916684dc97ae8d",
+        "architecture": "amd64",
+        "os": "linux",
+        "labels": {
+          "com.feishu-timeline.source-tree": "830e562f5ec56e99d7fc0b04432fc056dd772254",
+          "org.opencontainers.image.created": "2026-09-17T08:04:51Z",
+          "org.opencontainers.image.revision": "c5aed415cd17e6e8a21b422a4c5c92b4b924e091",
+          "org.opencontainers.image.version": "native-portable-20260917-c5aed415cd17"
+        }
+      },
+      "web": {
+        "imageId": "sha256:774419239cea09f8d341fd29ed34361b47012c720bafbe7a3a5ef0d60ffa187b",
+        "configDigest": "sha256:4f657e1853f7bed36cbb262fcccc87d33ca59b8457a521f014c52a3b28926cdc",
+        "architecture": "amd64",
+        "os": "linux",
+        "labels": {
+          "com.feishu-timeline.source-tree": "830e562f5ec56e99d7fc0b04432fc056dd772254",
+          "org.opencontainers.image.created": "2026-09-17T08:04:51Z",
+          "org.opencontainers.image.revision": "c5aed415cd17e6e8a21b422a4c5c92b4b924e091",
+          "org.opencontainers.image.version": "native-portable-20260917-c5aed415cd17"
+        }
+      },
+      "ops": {
+        "imageId": "sha256:bc47eab26f3de164a4cca805453b467fa88922944ca6bdae240a2a8bceda614f",
+        "configDigest": "sha256:21a267e43e8276b016621bb4a630e3f29975b2f1d702b4f61e9905ebd6b91bba",
+        "architecture": "amd64",
+        "os": "linux",
+        "labels": {
+          "com.feishu-timeline.source-tree": "830e562f5ec56e99d7fc0b04432fc056dd772254",
+          "org.opencontainers.image.created": "2026-09-17T08:04:51Z",
+          "org.opencontainers.image.revision": "c5aed415cd17e6e8a21b422a4c5c92b4b924e091",
+          "org.opencontainers.image.version": "native-portable-20260917-c5aed415cd17"
+        }
+      }
+    },
+    "dockerCompatibilityImages": 6
+  },
+  "correspondingSource": {
+    "manifestSha256": "bf5ba8f5d52875beb2e0097656077b89e33d9206e91e753ebe1e1f2f4833c679",
+    "sourceCommit": "13131ee5425017b31ccf77741798a8dc37dbc936",
+    "files": {
+      "COPYING.txt": "0c4fd2fa9733fc9122503797648710851e4ee6d9e4969dd33fcbd8c63cd2f584",
+      "VERIFICATION.md": "b41da074c18bdb9b06e481562cc147f4b19b04a944d4f729eed7e28e4dfc58b3",
+      "clamav-1.4.6-timeline.patch": "fe9cd766461ca42012cedee06071715edbc47082739855bb6fe6494424db205a",
+      "clamav-1.4.6.tar.gz": "06dbc7adf96e2f6a27c548a841ce83c95360d1e121b106a6f7cf56f282a3c61b",
+      "clamav-1.4.6.tar.gz.sha256": "6d54f162e3220bb29c9986539e7317ca4c6ee72b3170af39e963f19697023d5a",
+      "source.json": "372f8ca24cd4346f01cd4a717807d49031dbea1a4d1044db3fdad784677da2dc"
+    }
+  },
+  "errors": [],
+  "registry": {
+    "source": "Parent-produced actual push readback, independently compared as saved evidence; reviewer made no registry call",
+    "recordSha256": "c8e038df675880eebe4cc2255255f58d25c3f0bda03b90b5300eeff9e0d690e5",
+    "images": {
+      "api": {
+        "tag": "us-west1-docker.pkg.dev/axial-acrobat-492709-r7/feishu-timeline/api:native-portable-20260917-c5aed415cd17",
+        "digest": "us-west1-docker.pkg.dev/axial-acrobat-492709-r7/feishu-timeline/api@sha256:40544930b329416679f24ebc6dd2354e24beaec9d8490b9edbdbda5e0f71d192",
+        "imageId": "sha256:40544930b329416679f24ebc6dd2354e24beaec9d8490b9edbdbda5e0f71d192"
+      },
+      "web": {
+        "tag": "us-west1-docker.pkg.dev/axial-acrobat-492709-r7/feishu-timeline/web:native-portable-20260917-c5aed415cd17",
+        "digest": "us-west1-docker.pkg.dev/axial-acrobat-492709-r7/feishu-timeline/web@sha256:774419239cea09f8d341fd29ed34361b47012c720bafbe7a3a5ef0d60ffa187b",
+        "imageId": "sha256:774419239cea09f8d341fd29ed34361b47012c720bafbe7a3a5ef0d60ffa187b"
+      }
+    }
+  },
+  "sourceInspection": [
+    {
+      "path": "/private/tmp/timeline-portable-final-c5aed415cd17",
+      "commit": "c5aed415cd17e6e8a21b422a4c5c92b4b924e091",
+      "tree": "830e562f5ec56e99d7fc0b04432fc056dd772254",
+      "statusPorcelain": ""
+    },
+    {
+      "path": "/private/tmp/timeline-native-portable-20260917",
+      "commit": "c5aed415cd17e6e8a21b422a4c5c92b4b924e091",
+      "tree": "830e562f5ec56e99d7fc0b04432fc056dd772254",
+      "statusPorcelain": ""
+    }
+  ],
+  "softwareDirectoryExactSet": [
+    "THIRD_PARTY_NOTICES",
+    "data.mjs",
+    "images.tar",
+    "manifest.json",
+    "portable.mjs",
+    "proxy.mjs",
+    "source.tar",
+    "tunnel.mjs"
+  ],
+  "limits": [
+    "No extraction or image load/start; no running-container or functional verification by reviewer.",
+    "Compressed blob digests and descriptor closure verified; layer uncompressed diff_ids were not recomputed in this review.",
+    "Registry readback comparison is distinct from local image ID inspection; author performed the push.",
+    "No production request, restored environment inspection, browser interaction or product acceptance in this evidence.",
+    "corresponding-source sourceCommit 13131ee records preserved historical supplemental material, not current application source commit."
+  ]
+}

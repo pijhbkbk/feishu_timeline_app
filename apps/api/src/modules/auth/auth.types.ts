@@ -7,6 +7,7 @@ export type AuthSessionPayload = {
   authSource: AuthSource;
   createdAt: string;
   expiresAt: string;
+  authVersion?: number;
 };
 
 export type AuthenticatedUser = {
@@ -17,9 +18,13 @@ export type AuthenticatedUser = {
   departmentId: string | null;
   departmentName: string | null;
   isSystemAdmin: boolean;
+  teamAccessApproved?: boolean;
   authSource: AuthSource;
   roleCodes: RoleCode[];
   permissionCodes?: string[];
+  authVersion?: number;
+  requestedJob?: string | null;
+  onboardingCompleted?: boolean;
 };
 
 export type AuthenticatedRequest = Request & {
@@ -31,5 +36,6 @@ export type SessionResponse = {
   authenticated: boolean;
   mockEnabled: boolean;
   feishuEnabled: boolean;
+  localEnabled?: boolean;
   user: AuthenticatedUser | null;
 };

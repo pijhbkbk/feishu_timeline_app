@@ -1,0 +1,24 @@
+{
+  "result": "PASS",
+  "scope": "actual production API restart and Redis+API joint restart, not a whole-host reboot",
+  "url": "https://timeline.all-too-well.com",
+  "runtimeCommit": "f2da3629e13b2653aae8879c98992877d5ef4170",
+  "helperSha256": "b9461b18027413cee58d922e56be8924f9c3672b5a57426d86d200e004e2a449",
+  "apiRestart": {
+    "beforePid": 276703,
+    "afterPid": 279213,
+    "sameOwnerSessionAfterRestart": 200
+  },
+  "jointRestart": {
+    "redisBeforePid": 260863,
+    "redisAfterPid": 280252,
+    "apiBeforePid": 279213,
+    "apiAfterPid": 280253,
+    "loggedOutSessionAfterRestart": 401
+  },
+  "allTargetJobsCompleted": true,
+  "exactDomainRuntimeReturned": true,
+  "transientHealth502DuringRestart": true,
+  "allIssuedTestSessionsLoggedOut": true,
+  "credentialsRecorded": false
+}

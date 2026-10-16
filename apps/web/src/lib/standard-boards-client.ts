@@ -1,8 +1,8 @@
 'use client';
 
 import {
+  isApprovedTeamUser,
   apiRequest,
-  type FrontendRoleCode,
   type SessionUser,
 } from './auth-client';
 import {
@@ -41,6 +41,8 @@ export type BoardDistributionRecord = {
 
 export type StandardBoardSummary = {
   id: string;
+  colorId?: string | null;
+  colorVersionId?: string | null;
   boardCode: string;
   versionNo: number;
   basedOnSampleId: string | null;
@@ -85,6 +87,7 @@ export type StandardBoardWorkspaceResponse = {
     currentNodeName: string | null;
     targetDate: string | null;
     riskLevel: ProjectPriority;
+    primaryColor?: { productionBase: { id: string; name: string } | null; id: string; name: string; code: string | null; productionBaseId: string | null; registerRevision: number; registerStatus: 'CANDIDATE' | 'LISTED' | 'PENDING_REVIEW'; registerMonth: string | null } | null;
   };
   procurementCompleted: boolean;
   activeStandardBoardTask: WorkflowTaskSummary | null;
@@ -136,13 +139,6 @@ export type ColorBoardDetailUpdateFormInput = {
   detailUpdatedAt: string;
   note: string;
 };
-
-const STANDARD_BOARD_ALLOWED_ROLE_CODES: FrontendRoleCode[] = [
-  'admin',
-  'project_manager',
-  'process_engineer',
-  'quality_engineer',
-];
 
 const STANDARD_BOARD_STATUS_LABELS: Record<StandardBoardStatus, string> = {
   DRAFT: '草稿',
@@ -376,17 +372,7 @@ export function validateColorBoardDetailUpdateForm(
 }
 
 export function canManageStandardBoards(user: SessionUser | null) {
-  if (!user) {
-    return false;
-  }
-
-  if (user.isSystemAdmin) {
-    return true;
-  }
-
-  return user.roleCodes.some((roleCode) =>
-    STANDARD_BOARD_ALLOWED_ROLE_CODES.includes(roleCode),
-  );
+  return isApprovedTeamUser(user);
 }
 
 export function canShowCompleteStandardBoardTaskButton(

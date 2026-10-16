@@ -1,5 +1,8 @@
+import { PROJECT_DISPLAY_COLOR_SELECT, resolveProjectDisplayColor } from '../../common/project-display-color';
+import { teamProjectScope } from '../../common/team-authorization';
 import { Injectable } from '@nestjs/common';
 import {
+  AttachmentScanStatus,
   AttachmentTargetType,
   ColorStatus,
   ProjectPriority,
@@ -10,7 +13,7 @@ import {
   WorkflowAction,
   WorkflowNodeCode,
   WorkflowTaskStatus,
-  type Prisma,
+  Prisma,
 } from '@prisma/client';
 
 import { PrismaService } from '../../infra/prisma/prisma.service';
@@ -55,7 +58,7 @@ export class DashboardService {
       dueTodayTaskCount,
       pendingReviewTaskCount,
       waitingOnOthersTaskCount,
-      projectRows,
+      visibleProjectCount,
       activities,
     ] =
       await Promise.all([
@@ -129,9 +132,8 @@ export class DashboardService {
             workflowTask: assignedWhere,
           },
         }),
-        this.prisma.project.findMany({
+        this.prisma.project.count({
           where: visibleProjectWhere,
-          select: { id: true },
         }),
         this.prisma.auditLog.findMany({
           where: {
@@ -176,6 +178,7 @@ export class DashboardService {
               entityType: AttachmentTargetType.WORKFLOW_TASK,
               entityId: { in: taskIds },
               isDeleted: false,
+              scanStatus: AttachmentScanStatus.CLEAN,
             },
             _count: { _all: true },
           }),
@@ -259,7 +262,7 @@ export class DashboardService {
         activeTasks: activeTaskCount,
         dueTodayTasks: dueTodayTaskCount,
         overdueTasks: overdueTaskCount,
-        visibleProjects: projectRows.length,
+        visibleProjects: visibleProjectCount,
         pendingReviewTasks: pendingReviewTaskCount,
         pendingMaterialTasks: pendingMaterialTaskCount,
         waitingOnOthersTasks: waitingOnOthersTaskCount,
@@ -284,17 +287,24 @@ export class DashboardService {
     const myTaskWhere = this.buildAssignedActiveTaskWhere(actor);
 
     const [
-      projects,
+      projectStatusGroups,
+      projectUpdatedAggregate,
       overdueTasks,
       currentMonthReviewTasks,
       activeColors,
       pendingColorExits,
+      effectiveMonthlyReviewPending,
     ] = await Promise.all([
-      this.prisma.project.findMany({
+      this.prisma.project.groupBy({
+        by: ['status'],
         where: visibleProjectWhere,
-        select: {
-          id: true,
-          status: true,
+        _count: {
+          _all: true,
+        },
+      }),
+      this.prisma.project.aggregate({
+        where: visibleProjectWhere,
+        _max: {
           updatedAt: true,
         },
       }),
@@ -359,47 +369,30 @@ export class DashboardService {
           },
         },
       }),
+      this.countVisibleMonthlyReviews(actor, monthStart, nextMonthStart),
     ]);
 
-    const projectIds = projects.map((project) => project.id);
-    const effectiveMonthlyReviewPending =
-      projectIds.length === 0
-        ? 0
-        : await this.prisma.recurringTask.count({
-            where: {
-              projectId: {
-                in: projectIds,
-              },
-              status: {
-                in: [RecurringTaskStatus.PENDING, RecurringTaskStatus.IN_PROGRESS, RecurringTaskStatus.OVERDUE],
-              },
-              plannedDate: {
-                gte: monthStart,
-                lt: nextMonthStart,
-              },
-            },
-          });
-    const lastDataUpdatedAt =
-      projects.length > 0
-        ? new Date(Math.max(...projects.map((project) => project.updatedAt.getTime())))
-        : now;
+    const projectCountByStatus = new Map(
+      projectStatusGroups.map((group) => [group.status, group._count._all]),
+    );
+    const totalProjects = projectStatusGroups.reduce(
+      (total, group) => total + group._count._all,
+      0,
+    );
+    const completedProjects = projectCountByStatus.get(ProjectStatus.COMPLETED) ?? 0;
+    const cancelledProjects = projectCountByStatus.get(ProjectStatus.CANCELLED) ?? 0;
+    const lastDataUpdatedAt = projectUpdatedAggregate._max.updatedAt ?? now;
 
     return {
-      totalProjects: projects.length,
-      activeProjects: projects.filter(
-        (project) =>
-          project.status !== ProjectStatus.COMPLETED &&
-          project.status !== ProjectStatus.CANCELLED,
-      ).length,
+      totalProjects,
+      activeProjects: totalProjects - completedProjects - cancelledProjects,
       overdueTasks,
       pendingReviews: currentMonthReviewTasks,
       currentMonthPendingReviews: currentMonthReviewTasks,
       monthlyColorReviewPending: effectiveMonthlyReviewPending,
       pendingColorExits,
       activeColors,
-      completedProjects: projects.filter(
-        (project) => project.status === ProjectStatus.COMPLETED,
-      ).length,
+      completedProjects,
       lastUpdatedAt: now.toISOString(),
       lastDataUpdatedAt: lastDataUpdatedAt.toISOString(),
     };
@@ -437,19 +430,11 @@ export class DashboardService {
             },
           },
         },
+        primaryColor: { select: PROJECT_DISPLAY_COLOR_SELECT },
         colors: {
-          select: {
-            id: true,
-            code: true,
-            name: true,
-            isPrimary: true,
-            status: true,
-            numberingTaskId: true,
-            numberedById: true,
-            numberedAt: true,
-            numberingAttachmentId: true,
-          },
-          orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
+          select: PROJECT_DISPLAY_COLOR_SELECT,
+          orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }, { id: 'asc' }],
+          take: 1,
         },
         workflowTasks: {
           include: {
@@ -550,12 +535,12 @@ export class DashboardService {
             name: true,
           },
         },
+        primaryColorId: true,
+        primaryColor: { select: PROJECT_DISPLAY_COLOR_SELECT },
         colors: {
-          select: {
-            name: true,
-            isPrimary: true,
-          },
-          orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
+          select: PROJECT_DISPLAY_COLOR_SELECT,
+          orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }, { id: 'asc' }],
+          take: 1,
         },
       },
       orderBy: [{ updatedAt: 'desc' }],
@@ -601,7 +586,7 @@ export class DashboardService {
           projectId: plan.projectId,
           projectCode: project?.code ?? '',
           projectName: project?.name ?? '未知项目',
-          colorName: project?.colors[0]?.name ?? '未关联颜色',
+          colorName: resolveProjectDisplayColor(project)?.name ?? '未关联颜色',
           ownerName: project?.ownerUser?.name ?? '未分配',
           currentNodeCode: project?.currentNodeCode ?? null,
           currentNodeName: getCurrentNodeName(project?.currentNodeCode) ?? '未开始',
@@ -634,37 +619,35 @@ export class DashboardService {
   }
 
   async getStageDistribution(actor: AuthenticatedUser) {
-    const projects = await this.prisma.project.findMany({
+    const projectGroups = await this.prisma.project.groupBy({
+      by: ['currentNodeCode'],
       where: {
         ...this.buildVisibleProjectWhere(actor),
         currentNodeCode: {
           not: null,
         },
       },
-      select: {
-        currentNodeCode: true,
+      _count: {
+        _all: true,
       },
     });
 
-    const counter = new Map<WorkflowNodeCode, number>();
-
-    for (const project of projects) {
-      if (!project.currentNodeCode) {
-        continue;
-      }
-
-      counter.set(project.currentNodeCode, (counter.get(project.currentNodeCode) ?? 0) + 1);
-    }
-
-    return [...counter.entries()]
+    return projectGroups
+      .filter(
+        (
+          group,
+        ): group is typeof group & { currentNodeCode: WorkflowNodeCode } =>
+          group.currentNodeCode !== null,
+      )
       .sort(
         (left, right) =>
-          WORKFLOW_NODE_META_MAP[left[0]].sequence - WORKFLOW_NODE_META_MAP[right[0]].sequence,
+          WORKFLOW_NODE_META_MAP[left.currentNodeCode].sequence -
+          WORKFLOW_NODE_META_MAP[right.currentNodeCode].sequence,
       )
-      .map(([nodeCode, count]) => ({
-        nodeCode,
-        nodeName: getCurrentNodeName(nodeCode) ?? nodeCode,
-        count,
+      .map((group) => ({
+        nodeCode: group.currentNodeCode,
+        nodeName: getCurrentNodeName(group.currentNodeCode) ?? group.currentNodeCode,
+        count: group._count._all,
       }));
   }
 
@@ -807,29 +790,33 @@ export class DashboardService {
   }
 
   private buildVisibleProjectWhere(actor: AuthenticatedUser): DashboardProjectVisibility {
-    if (actor.isSystemAdmin || actor.roleCodes.includes('admin')) {
-      return {};
-    }
+    teamProjectScope(actor);
+    return {};
+  }
 
-    return {
-      OR: [
-        { ownerUserId: actor.id },
-        {
-          members: {
-            some: {
-              userId: actor.id,
-            },
-          },
-        },
-        {
-          workflowTasks: {
-            some: {
-              assigneeUserId: actor.id,
-            },
-          },
-        },
-      ],
-    };
+  private async countVisibleMonthlyReviews(
+    actor: AuthenticatedUser,
+    monthStart: Date,
+    nextMonthStart: Date,
+  ) {
+    teamProjectScope(actor);
+    const recurringStatuses = [
+      RecurringTaskStatus.PENDING,
+      RecurringTaskStatus.IN_PROGRESS,
+      RecurringTaskStatus.OVERDUE,
+    ].map((status) => Prisma.sql`${status}::"RecurringTaskStatus"`);
+    const rows = await this.prisma.$queryRaw<Array<{ count: bigint }>>(Prisma.sql`
+      SELECT COUNT(*)::bigint AS "count"
+      FROM "recurring_tasks" AS recurring_task
+      WHERE recurring_task."status" IN (
+        ${Prisma.join(recurringStatuses)}
+      )
+        AND recurring_task."plannedDate" >= ${monthStart}
+        AND recurring_task."plannedDate" < ${nextMonthStart}
+
+    `);
+
+    return Number(rows[0]?.count ?? 0n);
   }
 
   private buildAssignedActiveTaskWhere(actor: AuthenticatedUser): Prisma.WorkflowTaskWhereInput {
@@ -883,19 +870,8 @@ export class DashboardService {
             };
           };
         };
-        colors: {
-          select: {
-            id: true;
-            code: true;
-            name: true;
-            isPrimary: true;
-            status: true;
-            numberingTaskId: true;
-            numberedById: true;
-            numberedAt: true;
-            numberingAttachmentId: true;
-          };
-        };
+        primaryColor: { select: typeof PROJECT_DISPLAY_COLOR_SELECT };
+        colors: { select: typeof PROJECT_DISPLAY_COLOR_SELECT };
         workflowTasks: {
           include: {
             assigneeUser: {
@@ -977,7 +953,7 @@ export class DashboardService {
       };
     });
     const completedNodeCount = nodes.filter((node) => node.timelineStatus === 'COMPLETED').length;
-    const color = project.colors[0] ?? null;
+    const color = resolveProjectDisplayColor(project);
 
     return {
       projectId: project.id,

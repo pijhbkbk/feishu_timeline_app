@@ -7,16 +7,12 @@ INSTANCE="${INSTANCE:-instance-20260408-091840}"
 PROJECT="${PROJECT:-axial-acrobat-492709-r7}"
 ZONE="${ZONE:-us-west1-b}"
 
-log() {
-  printf '[INFO] %s\n' "$*"
-}
-
-ssh_gce() {
-  gcloud compute ssh "$INSTANCE" --project="$PROJECT" --zone="$ZONE" --command "$1"
-}
+ROOT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
+# shellcheck source=scripts/deploy/gce-common.sh
+. "$ROOT_DIR/scripts/deploy/gce-common.sh"
 
 log "Recent rollback backups on remote host"
-ssh_gce "set -euo pipefail
+gce_ssh "set -euo pipefail
 echo '--- step6 backups ---'
 sudo ls -1dt /var/backups/feishu-timeline-step6/* 2>/dev/null | head -n 5 || true
 echo '--- step5 backups ---'

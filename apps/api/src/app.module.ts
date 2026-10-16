@@ -1,7 +1,15 @@
+import { SheetImagesModule } from './modules/sheet-images/sheet-images.module';
+import { ProductionFactsModule } from './modules/production-facts/production-facts.module';
+import { InspectionsModule } from './modules/inspections/inspections.module';
+import { PersonsModule } from './modules/persons/persons.module';
 import { Module } from '@nestjs/common';
+import { ColorRegisterModule } from './modules/color-register/color-register.module';
+import { BusinessClockModule } from './common/business-clock';
+import { PersonnelModule } from './modules/personnel/personnel.module';
 import { ConfigModule } from '@nestjs/config';
 
 import appConfig, { APP_ENV_FILE_PATHS } from './common/app-config';
+import { UploadAdmissionModule } from './common/upload-admission.module';
 import { PrismaModule } from './infra/prisma/prisma.module';
 import { RedisModule } from './infra/redis/redis.module';
 import { ActivityLogsModule } from './modules/activity-logs/activity-logs.module';
@@ -39,11 +47,19 @@ import { WorkflowsModule } from './modules/workflows/workflows.module';
 
 @Module({
   imports: [
+    ColorRegisterModule,
+    PersonsModule,
+    SheetImagesModule,
+    ProductionFactsModule,
+    InspectionsModule,
+    BusinessClockModule,
+    PersonnelModule,
     ConfigModule.forRoot({
       isGlobal: true,
       load: [appConfig],
       envFilePath: [...APP_ENV_FILE_PATHS],
     }),
+    UploadAdmissionModule,
     PrismaModule,
     RedisModule,
     HealthModule,

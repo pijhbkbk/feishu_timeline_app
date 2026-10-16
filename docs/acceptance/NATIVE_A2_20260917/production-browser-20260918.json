@@ -1,0 +1,376 @@
+{
+  "observedAt": "2026-09-18T02:07:54.223375+00:00",
+  "environment": "production",
+  "origin": "https://timeline.all-too-well.com",
+  "runtimeCommit": "c5aed415cd17e6e8a21b422a4c5c92b4b924e091",
+  "runtimeBinding": "Server/image/normal-TLS API+Web metadata proof plus refreshed native browser routes; browser JSON navigation was blocked by client and not bypassed",
+  "result": "PRODUCTION_DEPLOYED / BROWSER_READ_PATH_PASS / AWAITING_PRODUCT_OWNER_CONFIRMATION",
+  "browserSession": {
+    "observedAt": "2026-09-18T02:02:37.446Z",
+    "origin": "https://timeline.all-too-well.com",
+    "nativeLoginDashboard": true,
+    "taskEmptyCorrect": true,
+    "originalProjectCount": 1,
+    "originalProgress": "10/18",
+    "accountDirectoryCount": 12,
+    "searchHit": true,
+    "searchEmpty": true,
+    "refresh": true,
+    "callbackDisabled": true,
+    "logoutReturnedToNativeLogin": true,
+    "logoutReloaded": true,
+    "metadataNavigation": {
+      "path": "/build-info",
+      "result": "ERR_BLOCKED_BY_CLIENT",
+      "priorPageUnchanged": true,
+      "otherEvidence": "normal-TLS HTTP metadata separately recorded"
+    },
+    "screenshotNote": "fullPage captures show stitching artifacts; use *-viewport.png for visual assessment",
+    "networkNote": "pageAssets observed resource/fetch URLs, no response-status HAR",
+    "productionBusinessWrites": false
+  },
+  "consoleWarnErrorCount": 0,
+  "networkScope": "Observed pageAssets resource/fetch URLs, without browser response status or HAR; separate actual HTTPS status checks retained",
+  "privateEvidenceDirectory": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/native-portable-delivery-20260917/final-c5aed415cd17/verification/browser-20260918",
+  "files": [
+    {
+      "file": "account-1024-viewport.png",
+      "bytes": 42122,
+      "sha256": "3d3b2f7bed28505f1384b72e12595ad0aed788cfdd477944eb08e91e73a30f2e"
+    },
+    {
+      "file": "account-1440-viewport.png",
+      "bytes": 51023,
+      "sha256": "6fd3e5c856712d06a461f0ecfa1ae090f17944f5354ff957adefd56883d5b487"
+    },
+    {
+      "file": "account-390-viewport.png",
+      "bytes": 28382,
+      "sha256": "889d244b52166b879d2f420ed7af01abc26d930d8f23bab9e4c9459b74a5e3b1"
+    },
+    {
+      "file": "account-assets.json",
+      "bytes": 8990,
+      "sha256": "04ead18ee74ce55bf6ff2bb367dfec76363a3010c9ff58f76a158331e93ec484"
+    },
+    {
+      "file": "account-dom.txt",
+      "bytes": 988,
+      "sha256": "47bd6d4a55c8b245c0dc8adac43c5bf377a208a46a99332f202fb1d6d6a533c0"
+    },
+    {
+      "file": "account-metrics.json",
+      "bytes": 497,
+      "sha256": "a5529074c002897c1b506e207191111e4d78c2a859b932f223f602302899eceb"
+    },
+    {
+      "file": "accounts-1024-viewport.png",
+      "bytes": 54233,
+      "sha256": "49e5bf5e0af4cdc8591e5e153545a6d87f393ba27114a2ab1ac7390a4b8d2ef4"
+    },
+    {
+      "file": "accounts-1440-viewport.png",
+      "bytes": 59964,
+      "sha256": "eec7d2bc0cf584fb5ea49b79ce5964944196b49dd7ad67263257656decd246b5"
+    },
+    {
+      "file": "accounts-390-viewport.png",
+      "bytes": 9949,
+      "sha256": "b2c30f6068d54dadedae9906009894f80ad1284e589bf199a04994bf76a26aee"
+    },
+    {
+      "file": "accounts-alias-1024-viewport.png",
+      "bytes": 54233,
+      "sha256": "49e5bf5e0af4cdc8591e5e153545a6d87f393ba27114a2ab1ac7390a4b8d2ef4"
+    },
+    {
+      "file": "accounts-alias-1440-viewport.png",
+      "bytes": 59964,
+      "sha256": "eec7d2bc0cf584fb5ea49b79ce5964944196b49dd7ad67263257656decd246b5"
+    },
+    {
+      "file": "accounts-alias-390-viewport.png",
+      "bytes": 39781,
+      "sha256": "c692dca63302f9e55d588254b672ff4f51ef04b378d6c3c1353858ad2c961a78"
+    },
+    {
+      "file": "accounts-alias-assets.json",
+      "bytes": 8043,
+      "sha256": "ddd415780018163c4080e6598e4a5686956cb89c84f72a680b8b1cc511330398"
+    },
+    {
+      "file": "accounts-alias-dom.txt",
+      "bytes": 4573,
+      "sha256": "fc827f83ae2c497d345aac63da2bbbe8fa058d5bb9ef9f48bd8fafdbef200b4e"
+    },
+    {
+      "file": "accounts-alias-metrics.json",
+      "bytes": 527,
+      "sha256": "f488dd14ae6bed596abdffb279dc06d4754cc9b62c3bea9ec2efbdd0846bbf8c"
+    },
+    {
+      "file": "accounts-assets.json",
+      "bytes": 17704,
+      "sha256": "a0abe79534cfb6ed118489a1ce9a5b6f6433d6fc3afd75fdde1f70062e9b9a04"
+    },
+    {
+      "file": "accounts-reloaded-dom.txt",
+      "bytes": 4633,
+      "sha256": "778b545e409b36e7ff17ec3e5a94e88e64b514da8c0caaa3a16a1b6784bb101d"
+    },
+    {
+      "file": "accounts-search-empty-1440-viewport.png",
+      "bytes": 50862,
+      "sha256": "0f6bde774947ecac04e9c085f6d3e6c5b403584be5e6edaf12cd70653a767972"
+    },
+    {
+      "file": "accounts-search-empty-dom.txt",
+      "bytes": 1221,
+      "sha256": "464c67ae057de2fefb9f36b537096ec020d825867b9500da2281cbe19993d2ae"
+    },
+    {
+      "file": "accounts-search-hit-dom.txt",
+      "bytes": 1486,
+      "sha256": "4de8639d5957e973bc6018c8eabfe4723223f3ce2da41e2b582becad8d8f7350"
+    },
+    {
+      "file": "browser-session-result.json",
+      "bytes": 828,
+      "sha256": "156dc928f183014250e19f8a9dfc450c2cae370b2cdccddfb29ea10040d3499a"
+    },
+    {
+      "file": "callback-1024-viewport.png",
+      "bytes": 14142,
+      "sha256": "5f351bd974b3ddaae8d814f86e7a6d8ae8ee9c96a4d15a1f1741d3be7132373f"
+    },
+    {
+      "file": "callback-1440-viewport.png",
+      "bytes": 26847,
+      "sha256": "19bc5e9de15d4fa408b9f9a4bcdd4ee1702cf2b15243160611a3aa43b554efde"
+    },
+    {
+      "file": "callback-390-viewport.png",
+      "bytes": 15235,
+      "sha256": "6b82853ba624e18c491c2b539e2c140c4466e9c09ad4db417d6f0f1b7c165d30"
+    },
+    {
+      "file": "callback-assets.json",
+      "bytes": 5413,
+      "sha256": "10c073cb315edbba2a6e9947ce2a6900ade977718f2066e75f68f8082c96537a"
+    },
+    {
+      "file": "callback-dom.txt",
+      "bytes": 341,
+      "sha256": "900ab056ede878f9ae1e3e776c7cbdd67366e2a363d6059a4ca76e682da22326"
+    },
+    {
+      "file": "callback-metrics.json",
+      "bytes": 518,
+      "sha256": "19952d2996492b547f11d414fc09f8eb0e891ecdfa76a4a28b5bf7f2a298a633"
+    },
+    {
+      "file": "console-warn-error.json",
+      "bytes": 2,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "file": "dashboard-1024-viewport.png",
+      "bytes": 73442,
+      "sha256": "d337f809a0ee553d8b596d83cb43b7c61ef505b8ca0bcabfdf4bc8ea00ef3fb7"
+    },
+    {
+      "file": "dashboard-1024.png",
+      "bytes": 39348,
+      "sha256": "00ddbf66e201d60b5e5c6209cb46bee42ed9dc3a527c8acaeca00fff681641ef"
+    },
+    {
+      "file": "dashboard-1440-viewport.png",
+      "bytes": 82468,
+      "sha256": "116a7fecbeb03837f409c92bb9e11960d2e315e8c88d2384fd97499f56f8c540"
+    },
+    {
+      "file": "dashboard-1440.png",
+      "bytes": 44887,
+      "sha256": "a47dc7f18083ee309e33361f3dcddadd7ad2d656c14995611c5d62b5d006205b"
+    },
+    {
+      "file": "dashboard-390-viewport.png",
+      "bytes": 34963,
+      "sha256": "ac4df0b8bd5bf85c9632e77ada51e7ec460c149fdb7e272956dc93bcb791bf43"
+    },
+    {
+      "file": "dashboard-390.png",
+      "bytes": 41093,
+      "sha256": "7426b9f5432f17836eece240eb661ce2af8a937e33ebb6dccc38e6b23a7cf534"
+    },
+    {
+      "file": "dashboard-assets.json",
+      "bytes": 7540,
+      "sha256": "c484280347ddd6ebae558540da4b3ac045f1dc5dccea372c2c579cb3c2820315"
+    },
+    {
+      "file": "dashboard-checks.json",
+      "bytes": 606,
+      "sha256": "5a5778b199e3908bcaa62a353b9efc3d936238330e521afa596e1ca0a636fdca"
+    },
+    {
+      "file": "dashboard-dom.txt",
+      "bytes": 2212,
+      "sha256": "bbe54759fb094086b8ef9c09afdf02d115bad1e72b5cece51f14a0857ac01bfb"
+    },
+    {
+      "file": "login-1024.png",
+      "bytes": 16942,
+      "sha256": "d6892f6a445992d71ee43c3203e73803ab857605ea6cc7d1b91a97db510265ab"
+    },
+    {
+      "file": "login-1440.png",
+      "bytes": 21194,
+      "sha256": "df66c2ca12c3433d2581fac1c92600def66cc0c5e8050f7900c83813581ce10d"
+    },
+    {
+      "file": "login-390.png",
+      "bytes": 10107,
+      "sha256": "439ebe2de9325cdf83ba945d2c86c92b183052052a082812c45036d87a47ee76"
+    },
+    {
+      "file": "login-after-logout-1024-viewport.png",
+      "bytes": 20898,
+      "sha256": "f984fcfec78863f1a448766bda3f2e9cda6d67c283c6a5c05884aadb7b45b15d"
+    },
+    {
+      "file": "login-after-logout-1440-viewport.png",
+      "bytes": 38517,
+      "sha256": "c2cb23fb3de99c87810d154e5debb2fe0ac07a4d9c5509ff40ad0b2044ff1bb2"
+    },
+    {
+      "file": "login-after-logout-390-viewport.png",
+      "bytes": 4780,
+      "sha256": "270abffe4f3fff4b3999e3f7ce3750226a54f4e08f7bfc0ba54aa5f7437c114d"
+    },
+    {
+      "file": "login-after-logout-assets.json",
+      "bytes": 5058,
+      "sha256": "bf3a0abcbaa90acd2fae4aafa41f25110dea4a6f719096723631b0e48ce13f0b"
+    },
+    {
+      "file": "login-after-logout-dom.txt",
+      "bytes": 601,
+      "sha256": "4847c2d1997f8de09da049c6dc8b29080bc133aa67c5e6204ef2900df67e2f19"
+    },
+    {
+      "file": "login-after-logout-metrics.json",
+      "bytes": 491,
+      "sha256": "708597a72bc21a7e0b7cff3206261973d3faaf94fb68a5e972c647dc36dfaad6"
+    },
+    {
+      "file": "login-final-390-viewport.png",
+      "bytes": 21430,
+      "sha256": "21f54dbba4915733c8abb39d2e1e9688557335cf5f3f271e0f30f96602349ff8"
+    },
+    {
+      "file": "organization-1440-viewport.png",
+      "bytes": 82571,
+      "sha256": "859c4f7268aaa239d5321cb43c35247ad5823ca78b4a7774418630de6ebe82e3"
+    },
+    {
+      "file": "organization-assets.json",
+      "bytes": 15666,
+      "sha256": "0971a6d3df7aac15c76fc1dae5d2574f0796b107edf2221e1af3aa9bd3f5c498"
+    },
+    {
+      "file": "organization-dom.txt",
+      "bytes": 10772,
+      "sha256": "d1aa0ee2666505734fcbf99c238ca75013d61f74e7f3a943c4ca7d32480ad94a"
+    },
+    {
+      "file": "project-detail-1440-viewport.png",
+      "bytes": 95294,
+      "sha256": "00bd77debf8adaf34d01597700393b00fa99fa676018f210fd616f6db02e712d"
+    },
+    {
+      "file": "project-detail-assets.json",
+      "bytes": 34968,
+      "sha256": "13438ef2792228ac271d6c6cdd168296978ce52399465ef6cdacb0398ad61e8c"
+    },
+    {
+      "file": "project-detail-dom.txt",
+      "bytes": 7314,
+      "sha256": "707e54ac41880298a2ea71255d35be6ad4f81550e5ad2149367a76a7c24ed989"
+    },
+    {
+      "file": "projects-1440-viewport.png",
+      "bytes": 60737,
+      "sha256": "82670ec0bc0d69fa0d7f819a08708e4567cee0a58a672c3df20512bc907ed08f"
+    },
+    {
+      "file": "projects-assets.json",
+      "bytes": 7984,
+      "sha256": "2ea9d7cc5ef18ed3e6f0072041f9af9f3a47e66ff947f20c88e5525b061553c2"
+    },
+    {
+      "file": "projects-dom.txt",
+      "bytes": 1790,
+      "sha256": "fe2a5df51788c97a8af354906513340c841e266b50d0432e62b9b30d7b1d3976"
+    }
+  ],
+  "observedApis": {
+    "account-assets": [
+      "/api/auth/accounts",
+      "/api/auth/session",
+      "/api/v2/dashboard"
+    ],
+    "accounts-alias-assets": [
+      "/api/auth/accounts",
+      "/api/auth/session",
+      "/api/v2/dashboard"
+    ],
+    "accounts-assets": [
+      "/api/admin/organization",
+      "/api/admin/overview",
+      "/api/auth/accounts",
+      "/api/auth/session",
+      "/api/v2/dashboard",
+      "/api/v2/projects",
+      "/api/v2/projects/:id/workspace",
+      "/api/v2/tasks/:id"
+    ],
+    "callback-assets": [
+      "/api/auth/session"
+    ],
+    "dashboard-assets": [
+      "/api/auth/session",
+      "/api/v2/dashboard"
+    ],
+    "login-after-logout-assets": [],
+    "organization-assets": [
+      "/api/admin/organization",
+      "/api/admin/overview",
+      "/api/auth/session",
+      "/api/v2/dashboard",
+      "/api/v2/projects",
+      "/api/v2/projects/:id/workspace",
+      "/api/v2/tasks/:id"
+    ],
+    "project-detail-assets": [
+      "/api/auth/session",
+      "/api/v2/dashboard",
+      "/api/v2/projects",
+      "/api/v2/projects/:id/workspace",
+      "/api/v2/tasks/:id"
+    ],
+    "projects-assets": [
+      "/api/auth/session",
+      "/api/v2/dashboard",
+      "/api/v2/projects"
+    ]
+  },
+  "limitations": [
+    "No product-owner acceptance inferred",
+    "Password/recovery/authorization form submissions not performed on real production data; new isolated tests apply",
+    "Independent localhost:9444 browser remains NOT_ACCEPTED at user-deferred certificate warning",
+    "Earlier fullPage stitching artifacts retained; use viewport images, with stable login-final-390 preferred over early login capture",
+    "No claim of complete browser response-status HAR or independent pageerror instrumentation",
+    "Current signed CVD preparation is not activation"
+  ]
+}

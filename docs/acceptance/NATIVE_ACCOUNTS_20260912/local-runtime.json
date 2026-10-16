@@ -1,0 +1,34 @@
+{
+  "checkedAt": "2026-09-12T11:59:26.885825+00:00",
+  "origin": "http://127.0.0.1:3350",
+  "environment": "isolated-loopback-only",
+  "reads": [
+    {
+      "path": "/api/health",
+      "status": 200,
+      "data": {
+        "status": "ok",
+        "service": "feishu-timeline-api",
+        "nodeEnv": "development",
+        "sourceCommit": "1767dbb5eeb30cc57835081de761e1eccb8fac8b",
+        "sourceTree": "199cb837b6dd7682eda61928e108be397498236b",
+        "runtimeCommit": "1767dbb5eeb30cc57835081de761e1eccb8fac8b",
+        "release": "native-auth-20260912-1767dbb5eeb3",
+        "buildTime": "2026-09-12T11:49:49Z",
+        "timestamp": "2026-09-12T11:59:26.897Z"
+      }
+    },
+    {
+      "path": "/build-info",
+      "status": 200,
+      "data": {
+        "service": "feishu-timeline-web",
+        "sourceCommit": "1767dbb5eeb30cc57835081de761e1eccb8fac8b",
+        "sourceTree": "199cb837b6dd7682eda61928e108be397498236b",
+        "runtimeCommit": "1767dbb5eeb30cc57835081de761e1eccb8fac8b",
+        "release": "native-auth-20260912-1767dbb5eeb3",
+        "buildTime": "2026-09-12T11:49:49Z"
+      }
+    }
+  ]
+}

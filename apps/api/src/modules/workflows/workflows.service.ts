@@ -1,16 +1,24 @@
+import { PERSON_PRESENTATION_SELECT, personPresentation } from '../persons/person-profile-read';
+import { PROJECT_DISPLAY_COLOR_SELECT, resolveProjectDisplayColor } from '../../common/project-display-color';
+import { assertApprovedTeamMember } from '../../common/team-membership';
+import { isReworkTask, isTechnicalReworkTask, taskEvidenceIds, ancestorEvidenceIds } from '../../common/workflow-evidence';
+import { BusinessClock } from '../../common/business-clock';
+import { requireActiveMonthlyPlan } from '../../common/monthly-review-plan';
+import { assertTeamTaskOperator, withProjectWrite } from '../../common/team-authorization';
+import { notifyTeamTask, resolveTeamAssignment } from '../personnel/team-assignment';
 import {
   BadRequestException,
   ConflictException,
-  ForbiddenException,
+  HttpException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import {
+  AttachmentScanStatus,
   AttachmentTargetType,
   AuditTargetType,
   ColorExitSuggestion,
   DevelopmentFeeStatus,
-  NotificationType,
   ProductionPlanStatus,
   ProductionPlanType,
   ProjectAssignmentSource,
@@ -24,12 +32,13 @@ import {
   WorkflowInstanceStatus,
   WorkflowNodeCode,
   WorkflowTaskStatus,
-  type Prisma,
+  Prisma,
 } from '@prisma/client';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { getControlledColorNumber } from '../../common/controlled-color-number';
+import { lockWorkflowAssignmentMutations } from '../../common/workflow-assignment-lock';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { ProjectAccessService } from '../auth/project-access.service';
@@ -92,6 +101,8 @@ type WorkflowTransitionTrustedOptions = {
 
 type WorkflowFormSaveInput = {
   payload: Record<string, unknown>;
+  payloadJson: string;
+  payloadBytes: number;
   comment?: string | null;
 };
 
@@ -99,7 +110,7 @@ type WorkflowTaskWithRelations = Prisma.WorkflowTaskGetPayload<{
   include: {
     workflowInstance: true;
     project: true;
-    assigneeUser: true;
+    assigneeUser: { include: { personProfile: { select: typeof PERSON_PRESENTATION_SELECT } } };
     assigneeDepartment: true;
   };
 }>;
@@ -127,6 +138,17 @@ const WORKFLOW_ACTION_LABELS: Record<WorkflowAction, string> = {
   [WorkflowAction.CANCEL]: '取消',
   [WorkflowAction.SYSTEM_SYNC]: '系统同步',
 };
+
+const WORKFLOW_FORM_MAX_BYTES = 16 * 1024;
+const WORKFLOW_FORM_MAX_DEPTH = 8;
+const WORKFLOW_FORM_MAX_NODES = 256;
+const WORKFLOW_FORM_MAX_ARRAY_ITEMS = 100;
+const WORKFLOW_FORM_MAX_OBJECT_KEYS = 100;
+const WORKFLOW_FORM_MAX_KEY_LENGTH = 100;
+const WORKFLOW_FORM_MAX_STRING_LENGTH = 2_000;
+const WORKFLOW_FORM_COMMENT_MAX_LENGTH = 2_000;
+const WORKFLOW_FORM_RATE_MAX_REQUESTS = 30;
+const WORKFLOW_FORM_RATE_WINDOW_MS = 3_600_000;
 
 const REVIEW_RESULT_LABELS = {
   PENDING: '待评审',
@@ -177,30 +199,25 @@ export class WorkflowsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly activityLogsService: ActivityLogsService,
-    private readonly notificationQueueService: NotificationQueueService,
+    notificationQueueService: NotificationQueueService,
     private readonly workflowDeadlineService: WorkflowDeadlineService,
     private readonly workflowRecurringService: WorkflowRecurringService,
     private readonly projectAccessService: ProjectAccessService,
-  ) {}
+    private readonly businessClock: BusinessClock = new BusinessClock(),
+  ) { void notificationQueueService; }
 
   async initializeProjectWorkflow(
     tx: Prisma.TransactionClient,
     input: InitializeWorkflowInput,
   ) {
-    const now = new Date();
+    const now = this.businessClock.now();
     const nodeCode = INITIAL_WORKFLOW_NODE;
+    await lockWorkflowAssignmentMutations(tx, input.projectId, [nodeCode]);
     const taskSchedule = await this.workflowDeadlineService.buildTaskSchedule(tx, {
       nodeCode,
       startAt: now,
     });
-    const projectAssignment = await tx.projectNodeAssignment.findUnique({
-      where: {
-        projectId_nodeCode: {
-          projectId: input.projectId,
-          nodeCode,
-        },
-      },
-    });
+    const assignment = await resolveTeamAssignment(tx, nodeCode);
 
     const instance = await tx.workflowInstance.create({
       data: {
@@ -228,10 +245,7 @@ export class WorkflowsService {
         status: WorkflowTaskStatus.READY,
         isPrimary: true,
         isActive: true,
-        assigneeUserId:
-          projectAssignment?.ownerUserId ?? input.ownerUserId ?? null,
-        assigneeDepartmentId:
-          projectAssignment?.primaryDepartmentId ?? null,
+        ...assignment,
         dueAt: taskSchedule.dueAt,
         effectiveDueAt: taskSchedule.effectiveDueAt,
         overdueDays: 0,
@@ -241,11 +255,9 @@ export class WorkflowsService {
           templateCode: DEFAULT_WORKFLOW_TEMPLATE,
           templateVersion: DEFAULT_WORKFLOW_TEMPLATE_VERSION,
           nodeCode,
-          assignmentSource:
-            projectAssignment?.assignmentSource ?? 'TASK_OVERRIDE',
-          collaboratorUserIds:
-            projectAssignment?.collaboratorUserIds ?? [],
-          reviewerUserIds: projectAssignment?.reviewerUserIds ?? [],
+          assignmentSource: assignment.assigneeUserId ? 'SINGLE_ELIGIBLE_MEMBER' : 'UNASSIGNED',
+          requiredRoleCode: assignment.requiredRoleCode,
+          collaboratorUserIds: [], reviewerUserIds: [],
         },
       },
     });
@@ -262,15 +274,7 @@ export class WorkflowsService {
       },
     });
 
-    try {
-      await this.notificationQueueService.enqueueTaskNotification(
-        task.id,
-        NotificationType.TASK_ASSIGNED,
-        input.initiatedById,
-      );
-    } catch {
-      // Notification queue failures must not affect workflow initialization.
-    }
+    await notifyTeamTask(tx, task.id);
 
     return {
       instance,
@@ -286,16 +290,13 @@ export class WorkflowsService {
       'project.read',
     );
     const workflowInstance = await this.getWorkflowInstanceByProjectOrThrow(this.prisma, projectId);
-    await this.workflowDeadlineService.refreshWorkflowInstanceTaskDeadlines(
-      this.prisma,
-      workflowInstance.id,
-    );
+    // Reading the workflow must not mutate parallel task rows outside the project write lock.
     const tasks = await this.prisma.workflowTask.findMany({
       where: {
         workflowInstanceId: workflowInstance.id,
       },
       include: {
-        assigneeUser: true,
+        assigneeUser: { include: { personProfile: { select: PERSON_PRESENTATION_SELECT } } },
         assigneeDepartment: true,
       },
       orderBy: [
@@ -402,7 +403,7 @@ export class WorkflowsService {
           isActive: true,
         },
         include: {
-          assigneeUser: true,
+          assigneeUser: { include: { personProfile: { select: PERSON_PRESENTATION_SELECT } } },
           assigneeDepartment: true,
         },
         orderBy: [
@@ -560,6 +561,7 @@ export class WorkflowsService {
         workflowInstance: true,
         assigneeUser: {
           include: {
+            personProfile: { select: PERSON_PRESENTATION_SELECT },
             department: true,
           },
         },
@@ -568,17 +570,22 @@ export class WorkflowsService {
           include: {
             ownerUser: {
               include: {
+                personProfile: { select: PERSON_PRESENTATION_SELECT },
                 department: true,
               },
             },
             owningDepartment: true,
+            primaryColor: { select: PROJECT_DISPLAY_COLOR_SELECT },
             colors: {
-              orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
+              select: PROJECT_DISPLAY_COLOR_SELECT,
+              orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }, { id: 'asc' }],
+              take: 1,
             },
             members: {
               include: {
                 user: {
                   include: {
+                    personProfile: { select: PERSON_PRESENTATION_SELECT },
                     department: true,
                   },
                 },
@@ -720,7 +727,7 @@ export class WorkflowsService {
           nodeCode: detailedTask.nodeCode,
         },
         include: {
-          assigneeUser: true,
+          assigneeUser: { include: { personProfile: { select: PERSON_PRESENTATION_SELECT } } },
           assigneeDepartment: true,
         },
         orderBy: [{ taskRound: 'asc' }, { createdAt: 'asc' }],
@@ -777,6 +784,7 @@ export class WorkflowsService {
       where: {
         projectId: detailedTask.projectId,
         isDeleted: false,
+        scanStatus: AttachmentScanStatus.CLEAN,
         OR: [
           {
             entityType: AttachmentTargetType.WORKFLOW_TASK,
@@ -801,8 +809,8 @@ export class WorkflowsService {
       orderBy: [{ uploadedAt: 'desc' }, { createdAt: 'desc' }],
     });
 
-    const now = new Date();
-    const primaryColor = detailedTask.project.colors[0] ?? null;
+    const now = this.businessClock.now();
+    const primaryColor = resolveProjectDisplayColor(detailedTask.project);
     const latestReview = reviewRecords[0] ?? null;
     const latestFlowOperator =
       transitions[0]?.operatorUser?.name ?? auditLogs[0]?.actorUser?.name ?? null;
@@ -842,42 +850,29 @@ export class WorkflowsService {
       nodeType: getWorkflowNodeMeta(detailedTask.nodeCode).isPrimaryTask ? 'MAINLINE' : 'PARALLEL',
       roundNo: detailedTask.taskRound,
       owner: detailedTask.assigneeUser
-        ? {
-            id: detailedTask.assigneeUser.id,
-            name: detailedTask.assigneeUser.name,
-            departmentId: detailedTask.assigneeUser.departmentId,
-            departmentName: detailedTask.assigneeUser.department?.name ?? null,
-          }
+        ? this.currentPersonSummary(detailedTask.assigneeUser)
         : detailedTask.project.ownerUser
-          ? {
-              id: detailedTask.project.ownerUser.id,
-              name: detailedTask.project.ownerUser.name,
-              departmentId: detailedTask.project.ownerUser.departmentId,
-              departmentName: detailedTask.project.ownerUser.department?.name ?? null,
-            }
+          ? this.currentPersonSummary(detailedTask.project.ownerUser)
           : null,
       collaborators: detailedTask.project.members
         .filter((member) => member.memberType !== 'OWNER' && member.memberType !== 'REVIEWER')
         .map((member) => ({
-          id: member.user.id,
-          name: member.user.name,
+          ...this.currentPersonSummary(member.user),
           memberType: member.memberType,
-          departmentId: member.user.departmentId,
-          departmentName: member.user.department?.name ?? null,
         })),
       approvers: this.buildTaskApprovers(detailedTask.project.members, reviewRecords),
       department: {
         id:
           detailedTask.assigneeDepartmentId ??
-          detailedTask.assigneeUser?.departmentId ??
+          (detailedTask.assigneeUser ? personPresentation(detailedTask.assigneeUser).departmentId : null) ??
           detailedTask.project.owningDepartmentId ??
-          detailedTask.project.ownerUser?.departmentId ??
+          (detailedTask.project.ownerUser ? personPresentation(detailedTask.project.ownerUser).departmentId : null) ??
           null,
         name:
           detailedTask.assigneeDepartment?.name ??
-          detailedTask.assigneeUser?.department?.name ??
+          (detailedTask.assigneeUser ? personPresentation(detailedTask.assigneeUser).departmentName : null) ??
           detailedTask.project.owningDepartment?.name ??
-          detailedTask.project.ownerUser?.department?.name ??
+          (detailedTask.project.ownerUser ? personPresentation(detailedTask.project.ownerUser).departmentName : null) ??
           null,
       },
       deadline: detailedTask.dueAt?.toISOString() ?? null,
@@ -905,7 +900,7 @@ export class WorkflowsService {
         rejectReason: latestReview?.rejectReason ?? null,
         conditionNote: latestReview?.conditionNote ?? null,
         reworkRequirement: latestReview?.conditionNote ?? latestReview?.comment ?? null,
-        reworkOwnerName: detailedTask.assigneeUser?.name ?? null,
+        reworkOwnerName: detailedTask.assigneeUser ? personPresentation(detailedTask.assigneeUser).name : null,
         reviewPassAt: detailedTask.reviewPassAt?.toISOString() ?? latestReview?.reviewedAt?.toISOString() ?? null,
         historyRounds: taskRounds.map((round) => ({
           taskId: round.id,
@@ -987,8 +982,7 @@ export class WorkflowsService {
             }
           : null,
       availableActions: detailedTask.isActive
-        ? getAllowedWorkflowActions(detailedTask.nodeCode)
-            .filter((action) => isWorkflowActionCurrentlyAvailable(detailedTask.status, action))
+        ? this.getPublicGenericWorkflowActions(detailedTask)
             .map((action) => ({
               action,
               label: WORKFLOW_ACTION_LABELS[action],
@@ -1056,7 +1050,7 @@ export class WorkflowsService {
         nodeCode: task.nodeCode,
       },
       include: {
-        assigneeUser: true,
+        assigneeUser: { include: { personProfile: { select: PERSON_PRESENTATION_SELECT } } },
         assigneeDepartment: true,
       },
       orderBy: [
@@ -1075,8 +1069,10 @@ export class WorkflowsService {
   }
 
   async saveTaskForm(taskId: string, actor: AuthenticatedUser, rawInput: unknown) {
-    return this.prisma.$transaction(async (tx) => {
-      const input = this.parseFormSaveInput(rawInput);
+    const input = this.parseFormSaveInput(rawInput);
+
+    return withProjectWrite(this.prisma, actor, { taskId }, async (tx) => {
+      await tx.$queryRaw(Prisma.sql`SELECT id FROM workflow_tasks WHERE id = ${taskId} FOR UPDATE`);
       const task = await this.getTaskOrThrow(tx, taskId);
 
       await this.projectAccessService.assertProjectAccess(
@@ -1088,23 +1084,68 @@ export class WorkflowsService {
       this.assertActorCanOperateTask(task, actor);
       this.assertTaskCanSaveForm(task);
 
-      const now = new Date();
       const currentPayload = this.asJsonObject(task.payload);
+      const currentFormData = currentPayload.formData;
+      const currentFormJson = this.tryCanonicalWorkflowFormJson(currentFormData);
+      const currentComment =
+        typeof currentPayload.draftComment === 'string'
+          ? currentPayload.draftComment
+          : undefined;
+      if (
+        currentFormJson === input.payloadJson &&
+        (input.comment === undefined || input.comment === currentComment)
+      ) {
+        return this.buildTaskDetailResponse(tx, task.id);
+      }
+
+      const recentSaveCount = await tx.auditLog.count({
+        where: {
+          actorUserId: actor.id,
+          targetType: AuditTargetType.WORKFLOW_TASK,
+          targetId: task.id,
+          action: 'WORKFLOW_FORM_SAVED',
+          createdAt: {
+            gte: new Date(Date.now() - WORKFLOW_FORM_RATE_WINDOW_MS),
+          },
+        },
+      });
+      if (recentSaveCount >= WORKFLOW_FORM_RATE_MAX_REQUESTS) {
+        throw new HttpException(
+          {
+            statusCode: 429,
+            error: 'Too Many Requests',
+            code: 'WORKFLOW_FORM_RATE_EXCEEDED',
+            message: '工序表单保存过于频繁，请稍后重试。',
+          },
+          429,
+        );
+      }
+
+      const now = this.businessClock.now();
       const nextPayload = {
         ...currentPayload,
-        formData: JSON.parse(JSON.stringify(input.payload)) as Prisma.InputJsonValue,
+        formData: input.payload as Prisma.InputJsonValue,
         draftSavedAt: now.toISOString(),
         ...(input.comment ? { draftComment: input.comment } : {}),
       } satisfies Record<string, Prisma.InputJsonValue>;
 
-      await tx.workflowTask.update({
+      const claimed = await tx.workflowTask.updateMany({
         where: {
           id: taskId,
+          status: task.status,
+          isActive: task.isActive,
+          updatedAt: task.updatedAt,
         },
         data: {
           payload: nextPayload,
         },
       });
+      if (claimed.count !== 1) {
+        throw new ConflictException({
+          code: 'TASK_STATE_CHANGED',
+          message: '工序状态或内容已更新，请刷新后再保存表单。',
+        });
+      }
 
       await this.activityLogsService.createWithExecutor(tx, {
         projectId: task.projectId,
@@ -1114,12 +1155,14 @@ export class WorkflowsService {
         action: 'WORKFLOW_FORM_SAVED',
         nodeCode: task.nodeCode,
         summary: `${task.nodeName} 已保存节点表单草稿。`,
-        beforeData: {
-          payload: task.payload,
-        },
-        afterData: {
-          payload: nextPayload,
-        },
+        beforeData: this.buildWorkflowFormAuditSnapshot(
+          currentFormData,
+          currentComment,
+        ),
+        afterData: this.buildWorkflowFormAuditSnapshotFromJson(
+          input.payloadJson,
+          input.comment ?? currentComment,
+        ),
       });
 
       return this.buildTaskDetailResponse(tx, task.id);
@@ -1145,6 +1188,7 @@ export class WorkflowsService {
           entityType: AttachmentTargetType.WORKFLOW_TASK,
           entityId: task.id,
           isDeleted: false,
+          scanStatus: AttachmentScanStatus.CLEAN,
         },
         select: {
           id: true,
@@ -1189,8 +1233,11 @@ export class WorkflowsService {
     const missingFormFields = requiredFormFields.filter(
       (field) => !this.hasMeaningfulFormValue(formData[field.key]),
     );
-    const domainBlockingReasons =
-      await this.getPilotProductionCompletionIssues(tx, task);
+    const domainBlockingReasons = [
+      ...await this.getPilotProductionCompletionIssues(tx, task),
+      ...await this.getTechnicalReworkCompletionIssues(tx, task),
+      ...await this.getRegisterStandardCompletionIssues(tx, task),
+    ];
 
     return {
       task: {
@@ -1233,7 +1280,14 @@ export class WorkflowsService {
     actor: AuthenticatedUser,
     rawInput: unknown,
   ) {
-    return this.prisma.$transaction((tx) =>
+    if (action !== WorkflowAction.START) {
+      throw new BadRequestException({
+        code: 'GENERIC_TERMINAL_TRANSITION_DISABLED',
+        message: '终态流转必须通过对应业务接口完成。',
+      });
+    }
+
+    return withProjectWrite(this.prisma, actor, { taskId }, (tx) =>
       this.transitionTaskWithExecutor(tx, taskId, action, actor, rawInput),
     );
   }
@@ -1248,6 +1302,7 @@ export class WorkflowsService {
     trustedOptions?: WorkflowTransitionTrustedOptions,
   ) {
     const input = this.parseActionInput(rawInput);
+    await tx.$queryRaw(Prisma.sql`SELECT id FROM workflow_tasks WHERE id = ${taskId} FOR UPDATE`);
     const task = await this.getTaskOrThrow(tx, taskId);
 
     await this.projectAccessService.assertProjectAccess(tx, task.projectId, actor, 'workflow.transition');
@@ -1280,9 +1335,23 @@ export class WorkflowsService {
       }
     }
 
+    if ((isWorkflowCompletionAction(action) || action === WorkflowAction.APPROVE) &&
+        task.project.requiresApprovedReport && !task.project.approvedReportAttachmentId) {
+      throw new BadRequestException('请先登记已获批开发报告及扫描通过的报告材料。');
+    }
+
+    if (task.project.requiresApprovedReport && task.nodeCode === WorkflowNodeCode.SAMPLE_COLOR_CONFIRMATION && action === WorkflowAction.APPROVE &&
+        !(await tx.sampleConfirmation.findUnique({ where: { workflowTaskId: task.id }, select: { id: true } }))) {
+      throw new BadRequestException('请通过样板确认记录提交实际日期、确认方和确认材料。');
+    }
+
     if (isWorkflowCompletionAction(action)) {
       await this.assertRequiredMaterialsSubmitted(tx, task);
       await this.assertPilotProductionRecordsSubmitted(tx, task);
+      const registerIssues = await this.getRegisterStandardCompletionIssues(tx, task);
+      if (registerIssues[0]) throw new BadRequestException(registerIssues[0]);
+      const reworkIssues = await this.getTechnicalReworkCompletionIssues(tx, task);
+      if (reworkIssues.length) throw new BadRequestException(reworkIssues[0]);
     }
 
     if (action === WorkflowAction.APPROVE || isWorkflowCompletionAction(action)) {
@@ -1293,7 +1362,7 @@ export class WorkflowsService {
       const startedTask = await this.updateTaskForTransition(tx, task, {
         data: {
           status: WorkflowTaskStatus.IN_PROGRESS,
-          startedAt: task.startedAt ?? new Date(),
+          startedAt: task.startedAt ?? this.businessClock.now(),
         },
       });
 
@@ -1341,17 +1410,28 @@ export class WorkflowsService {
       throw new BadRequestException('不支持的工序操作。');
     }
 
-    const now = new Date();
+    await lockWorkflowAssignmentMutations(
+      tx,
+      task.projectId,
+      nextTemplates.map((template) => template.nodeCode),
+    );
+
+    const now = this.businessClock.now();
     const updatedTask = await this.updateTaskForTransition(tx, task, {
       data: {
         status: terminalStatus,
         isActive: false,
         ...(action === WorkflowAction.APPROVE
-          ? { reviewPassAt: this.resolveReviewPassAt(input) ?? now }
+          ? { reviewPassAt: now }
           : {}),
         ...(action === WorkflowAction.RETURN ? { returnedAt: now } : { completedAt: now }),
       },
     });
+
+    if (task.nodeCode === WorkflowNodeCode.COLOR_CONSISTENCY_REVIEW &&
+        (action === WorkflowAction.REJECT || action === WorkflowAction.RETURN)) {
+      await this.invalidateTechnicalRound(tx, task, actor, input.comment ?? '一致性评审退回涂料开发');
+    }
 
     const createdTasks = await this.createNextTasks(
       tx,
@@ -1424,13 +1504,46 @@ export class WorkflowsService {
       ...(input.metadata === undefined ? {} : { metadata: input.metadata }),
     });
 
-    await this.enqueueWorkflowNotifications(createdTasks, action, actor.id);
+    for (const createdTask of createdTasks) await notifyTeamTask(tx, createdTask.id);
 
     return this.getProjectWorkflowByInstance(tx, task.workflowInstanceId);
   }
 
   getCurrentNodeName(nodeCode: WorkflowNodeCode | null | undefined) {
     return getCurrentNodeName(nodeCode);
+  }
+
+  /** Caller holds the project lock. Preserve signed history and identity/fee
+   * matters; only technical execution authority is superseded by a 14 return. */
+  private async invalidateTechnicalRound(tx: Prisma.TransactionClient, source: WorkflowTaskWithRelations,
+    actor: AuthenticatedUser, reason: string) {
+    const nodes: WorkflowNodeCode[] = [
+      WorkflowNodeCode.PAINT_DEVELOPMENT, WorkflowNodeCode.SAMPLE_COLOR_CONFIRMATION,
+      WorkflowNodeCode.PAINT_PROCUREMENT, WorkflowNodeCode.STANDARD_BOARD_PRODUCTION,
+      WorkflowNodeCode.BOARD_DETAIL_UPDATE, WorkflowNodeCode.PERFORMANCE_TEST,
+      WorkflowNodeCode.FIRST_UNIT_PRODUCTION_PLAN, WorkflowNodeCode.TRIAL_PRODUCTION, WorkflowNodeCode.CAB_REVIEW,
+    ];
+    // Only the latest execution per affected node; prior rework history is immutable.
+    for (const nodeCode of nodes) {
+      const previous = await tx.workflowTask.findFirst({ where: { workflowInstanceId: source.workflowInstanceId, nodeCode },
+        orderBy: [{ taskRound: 'desc' }, { id: 'desc' }] });
+      if (!previous) continue;
+      const payload = this.asJsonObject(previous.payload);
+      const priorRework = this.asJsonObject(payload.rework as Prisma.JsonValue | undefined);
+      if (priorRework.invalidatedByTaskId) continue;
+      const rework = { invalidatedByTaskId: source.id, applicability: 'REQUIRES_REVIEW', reason };
+      await tx.workflowTask.update({ where: { id: previous.id }, data: {
+        payload: { ...payload, rework } as Prisma.InputJsonObject,
+        ...(previous.isActive ? { status: WorkflowTaskStatus.CANCELLED, isActive: false, assignmentEpoch: { increment: 1 } } : {}),
+      } });
+      await this.activityLogsService.createWithExecutor(tx, { projectId: source.projectId, actorUserId: actor.id,
+        targetType: AuditTargetType.WORKFLOW_TASK, targetId: previous.id, nodeCode, action: 'WORKFLOW_REWORK_REVIEW_REQUIRED',
+        summary: `${previous.nodeName} 的旧结果保留，需按新配方复核。`,
+        beforeData: { status: previous.status, isActive: previous.isActive, assignmentEpoch: previous.assignmentEpoch },
+        afterData: { status: previous.isActive ? WorkflowTaskStatus.CANCELLED : previous.status, isActive: false,
+          assignmentEpoch: previous.assignmentEpoch + Number(previous.isActive), ...rework },
+      });
+    }
   }
 
   private async createNextTasks(
@@ -1442,6 +1555,11 @@ export class WorkflowsService {
     templates: WorkflowTaskSpawnTemplate[],
     trustedAssignments?: WorkflowResolvedAssignment[],
   ) {
+    void trustedAssignments; // Assignment is always resolved from current team roles.
+    const sourcePayload = this.asJsonObject(sourceTask.payload);
+    const technicalReworkSourceTaskId = sourceTask.nodeCode === WorkflowNodeCode.COLOR_CONSISTENCY_REVIEW &&
+      (action === WorkflowAction.REJECT || action === WorkflowAction.RETURN) ? sourceTask.id :
+      typeof sourcePayload.technicalReworkSourceTaskId === 'string' ? sourcePayload.technicalReworkSourceTaskId : undefined;
     const createdTasks: Prisma.WorkflowTaskGetPayload<{
       select: {
         id: true;
@@ -1455,6 +1573,21 @@ export class WorkflowsService {
     for (const template of templates) {
       const nextNodeMeta = getWorkflowNodeMeta(template.nodeCode);
       const isPrimary = template.isPrimary ?? nextNodeMeta.isPrimaryTask;
+
+      // One identity and one fee matter per project, including completed matters.
+      if (template.nodeCode === WorkflowNodeCode.COLOR_NUMBERING || template.nodeCode === WorkflowNodeCode.DEVELOPMENT_ACCEPTANCE) {
+        const existing = await tx.workflowTask.findMany({ where: { workflowInstanceId: sourceTask.workflowInstanceId, nodeCode: template.nodeCode },
+          take: 2, orderBy: { taskRound: 'asc' }, select: { id: true, nodeCode: true, status: true } });
+        if (existing.length > 1 || existing.some(item => item.status === WorkflowTaskStatus.CANCELLED || item.status === WorkflowTaskStatus.REJECTED)) {
+          throw new ConflictException(`${nextNodeMeta.name} 存在需核对的历史事项，不能自动重复派发。`);
+        }
+        if (existing[0]) {
+          await tx.workflowTransition.create({ data: { workflowInstanceId: sourceTask.workflowInstanceId, projectId: sourceTask.projectId,
+            fromTaskId: sourceTask.id, toTaskId: existing[0].id, fromNodeCode: sourceTask.nodeCode, toNodeCode: template.nodeCode,
+            action, operatorUserId: actor.id, comment: `沿用原${nextNodeMeta.name}事项，不重新取号或收费。` } });
+          continue;
+        }
+      }
 
       await this.assertNoActiveTaskForNode(tx, {
         workflowInstanceId: sourceTask.workflowInstanceId,
@@ -1471,25 +1604,16 @@ export class WorkflowsService {
           taskRound: 'desc',
         },
         select: {
+          id: true,
           taskRound: true,
+          payload: true,
         },
       });
       const taskSchedule = await this.workflowDeadlineService.buildTaskSchedule(tx, {
         nodeCode: template.nodeCode,
-        startAt: new Date(),
+        startAt: this.businessClock.now(),
       });
-      const projectAssignment = await tx.projectNodeAssignment.findUnique({
-        where: {
-          projectId_nodeCode: {
-            projectId: sourceTask.projectId,
-            nodeCode: template.nodeCode,
-          },
-        },
-      });
-      const trustedAssignment = trustedAssignments?.find(
-        (assignment) => assignment.nodeCode === template.nodeCode,
-      );
-      const hasTrustedAssignment = trustedAssignment !== undefined;
+      const assignment = await resolveTeamAssignment(tx, template.nodeCode);
 
       const createdTask = await tx.workflowTask.create({
         data: {
@@ -1503,15 +1627,7 @@ export class WorkflowsService {
           status: WorkflowTaskStatus.READY,
           isPrimary,
           isActive: true,
-          assigneeUserId: hasTrustedAssignment
-            ? trustedAssignment.ownerUserId
-            : projectAssignment?.ownerUserId ??
-              sourceTask.project.ownerUserId ??
-              sourceTask.assigneeUserId ??
-              null,
-          assigneeDepartmentId: hasTrustedAssignment
-            ? trustedAssignment.primaryDepartmentId
-            : projectAssignment?.primaryDepartmentId ?? null,
+          ...assignment,
           dueAt: taskSchedule.dueAt,
           effectiveDueAt: taskSchedule.effectiveDueAt,
           overdueDays: 0,
@@ -1530,15 +1646,11 @@ export class WorkflowsService {
             fromTaskId: sourceTask.id,
             fromNodeCode: sourceTask.nodeCode,
             reason: template.reason,
-            assignmentSource: hasTrustedAssignment
-              ? trustedAssignment.assignmentSource
-              : projectAssignment?.assignmentSource ?? 'TASK_OVERRIDE',
-            collaboratorUserIds: hasTrustedAssignment
-              ? trustedAssignment.collaboratorUserIds
-              : projectAssignment?.collaboratorUserIds ?? [],
-            reviewerUserIds: hasTrustedAssignment
-              ? trustedAssignment.reviewerUserIds
-              : projectAssignment?.reviewerUserIds ?? [],
+            assignmentSource: assignment.assigneeUserId ? 'SINGLE_ELIGIBLE_MEMBER' : 'UNASSIGNED',
+            requiredRoleCode: assignment.requiredRoleCode,
+            collaboratorUserIds: [], reviewerUserIds: [],
+            ...(previousTask?.id ? { supersedesTaskId: previousTask.id } : {}),
+            ...(technicalReworkSourceTaskId ? { technicalReworkSourceTaskId } : {}),
             ...(taskSchedule.defaultChargeAmount
               ? { defaultChargeAmount: taskSchedule.defaultChargeAmount }
               : {}),
@@ -1573,33 +1685,6 @@ export class WorkflowsService {
     return createdTasks;
   }
 
-  private async enqueueWorkflowNotifications(
-    createdTasks: Array<{
-      id: string;
-      nodeCode: WorkflowNodeCode;
-      nodeName: string;
-      isPrimary: boolean;
-      taskRound: number;
-    }>,
-    action: WorkflowAction,
-    actorUserId: string,
-  ) {
-    for (const task of createdTasks) {
-      const type =
-        action === WorkflowAction.RETURN || action === WorkflowAction.REJECT
-          ? NotificationType.TASK_RETURNED
-          : getWorkflowNodeMeta(task.nodeCode).isReviewNode
-            ? NotificationType.REVIEW_PENDING
-            : NotificationType.TASK_ASSIGNED;
-
-      try {
-        await this.notificationQueueService.enqueueTaskNotification(task.id, type, actorUserId);
-      } catch {
-        // Notification queue failures must not affect workflow transitions.
-      }
-    }
-  }
-
   private resolveNextTaskTemplates(
     task: WorkflowTaskWithRelations,
     action: WorkflowAction,
@@ -1608,6 +1693,18 @@ export class WorkflowsService {
     const configuredTemplates = getWorkflowNextTaskTemplates(task.nodeCode, action);
 
     if (configuredTemplates.length > 0) {
+      if (
+        action === WorkflowAction.RETURN &&
+        input.targetNodeCode &&
+        !configuredTemplates.some(
+          (template) => template.nodeCode === input.targetNodeCode,
+        )
+      ) {
+        throw new BadRequestException(
+          `${task.nodeName} 不允许退回到客户端指定的目标节点。`,
+        );
+      }
+
       return configuredTemplates;
     }
 
@@ -1616,12 +1713,17 @@ export class WorkflowsService {
     }
 
     const targetNodeCode =
-      input.targetNodeCode ??
       getWorkflowDefaultReturnNode(task.nodeCode) ??
       getPreviousPrimaryNodeCode(task.nodeCode);
 
     if (!targetNodeCode) {
       throw new BadRequestException(`${task.nodeName} 没有可用的退回目标节点。`);
+    }
+
+    if (input.targetNodeCode && input.targetNodeCode !== targetNodeCode) {
+      throw new BadRequestException(
+        `${task.nodeName} 不允许退回到客户端指定的目标节点。`,
+      );
     }
 
     return [
@@ -1671,7 +1773,7 @@ export class WorkflowsService {
 
   private async updateTaskForTransition(
     tx: Prisma.TransactionClient,
-    task: Pick<WorkflowTaskWithRelations, 'id' | 'status' | 'isActive'>,
+    task: Pick<WorkflowTaskWithRelations, 'id' | 'status' | 'isActive' | 'updatedAt'>,
     input: { data: Prisma.WorkflowTaskUpdateManyMutationInput },
   ) {
     const claimed = await tx.workflowTask.updateMany({
@@ -1679,12 +1781,16 @@ export class WorkflowsService {
         id: task.id,
         status: task.status,
         isActive: task.isActive,
+        updatedAt: task.updatedAt,
       },
       data: input.data,
     });
 
     if (claimed.count !== 1) {
-      throw new ConflictException('当前工序任务已被其他操作更新，请刷新后重试。');
+      throw new ConflictException({
+        code: 'WORKFLOW_TASK_STATE_CHANGED',
+        message: '当前工序任务已被其他操作更新，请刷新后重试。',
+      });
     }
 
     return tx.workflowTask.findUniqueOrThrow({
@@ -1731,6 +1837,7 @@ export class WorkflowsService {
         entityType: AttachmentTargetType.WORKFLOW_TASK,
         entityId: task.id,
         isDeleted: false,
+        scanStatus: AttachmentScanStatus.CLEAN,
       },
       select: { fileName: true, materialType: true },
     });
@@ -1813,30 +1920,50 @@ export class WorkflowsService {
     return issues;
   }
 
+  private async getRegisterStandardCompletionIssues(tx: Prisma.TransactionClient, task: Pick<WorkflowTaskWithRelations, 'nodeCode' | 'projectId' | 'project'>) {
+    if (task.nodeCode !== WorkflowNodeCode.STANDARD_BOARD_PRODUCTION || !task.project.primaryColorId) return [];
+    const board = await tx.standardBoard.findFirst({ where: { projectId: task.projectId, isCurrent: true, status: 'ISSUED',
+      colorId: task.project.primaryColorId, colorVersion: { colorId: task.project.primaryColorId } }, select: { id: true } });
+    return board ? [] : ['请先保存并加入颜色清单，再下发引用本项目准确颜色标准版本的当前标准板。'];
+  }
+
+  private async getTechnicalReworkCompletionIssues(tx: Prisma.TransactionClient,
+    task: Pick<WorkflowTaskWithRelations, 'id' | 'workflowInstanceId' | 'nodeCode' | 'nodeName' | 'projectId' | 'payload'>) {
+    if (!isReworkTask(task) && task.nodeCode !== WorkflowNodeCode.PAINT_DEVELOPMENT) return [];
+    const ids = await taskEvidenceIds(tx, task.projectId, task.id);
+    const where = { projectId: task.projectId, id: { in: ids } }, select = { id: true } as const;
+    let record: { id: string } | null | undefined;
+    switch (task.nodeCode) {
+      case WorkflowNodeCode.PAINT_DEVELOPMENT:
+        record = await tx.sample.findFirst({ where: { ...where, isCurrent: true, status: { in: ['IN_PREPARATION', 'CONFIRMED'] } }, select }); break;
+      case WorkflowNodeCode.PAINT_PROCUREMENT:
+        record = await tx.paintProcurement.findFirst({ where: { ...where, status: 'ARRIVED' }, select }); break;
+      case WorkflowNodeCode.STANDARD_BOARD_PRODUCTION:
+        record = await tx.standardBoard.findFirst({ where: { ...where, isCurrent: true, status: 'ISSUED' }, select }); break;
+      case WorkflowNodeCode.BOARD_DETAIL_UPDATE:
+        record = await tx.colorBoardDetailUpdate.findFirst({ where: { ...where, updateStatus: 'UPDATED',
+          standardBoard: { isCurrent: true, status: 'ISSUED', id: { in: await ancestorEvidenceIds(tx, task, WorkflowNodeCode.STANDARD_BOARD_PRODUCTION) } } }, select }); break;
+      case WorkflowNodeCode.PERFORMANCE_TEST:
+        record = await tx.performanceTest.findFirst({ where: { ...where, status: 'SUBMITTED', result: { not: null } }, select }); break;
+      case WorkflowNodeCode.FIRST_UNIT_PRODUCTION_PLAN:
+        record = await tx.productionPlan.findFirst({ where: { ...where, planType: 'FIRST_UNIT', status: { in: ['PLANNED', 'IN_PROGRESS', 'COMPLETED'] } }, select }); break;
+      case WorkflowNodeCode.TRIAL_PRODUCTION:
+        record = await tx.trialProduction.findFirst({ where: { ...where, status: { in: ['PASSED', 'FAILED'] }, result: { not: null },
+          ...(isTechnicalReworkTask(task) ? { productionPlan: { planType: 'FIRST_UNIT', id: { in: await ancestorEvidenceIds(tx, task, WorkflowNodeCode.FIRST_UNIT_PRODUCTION_PLAN) }, status: { in: ['PLANNED', 'IN_PROGRESS', 'COMPLETED'] as ProductionPlanStatus[] } } } : {}) }, select }); break;
+      default: return [];
+    }
+    return record ? [] : [`${task.nodeName} 的旧轮次结果需复核，请登记本轮有效记录后再完成。原采购与收费事实保留。`];
+  }
+
   private async assertMonthlyReviewPeriodsCompleted(
     tx: Prisma.TransactionClient,
-    task: Pick<WorkflowTaskWithRelations, 'id' | 'nodeCode' | 'nodeName'>,
+    task: Pick<WorkflowTaskWithRelations, 'id' | 'projectId' | 'nodeCode' | 'nodeName'>,
   ) {
     if (task.nodeCode !== WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW) {
       return;
     }
 
-    const recurringPlan = await tx.recurringPlan.findFirst({
-      where: {
-        sourceWorkflowTaskId: task.id,
-        sourceNodeCode: WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW,
-      },
-      select: {
-        id: true,
-        totalCount: true,
-      },
-    });
-
-    if (!recurringPlan) {
-      throw new BadRequestException(
-        `${task.nodeName} 尚未生成月度评审计划，不能完成工序。`,
-      );
-    }
+    const recurringPlan = await requireActiveMonthlyPlan(tx, task.projectId);
 
     const completedPeriods = await tx.recurringTask.count({
       where: {
@@ -1857,65 +1984,12 @@ export class WorkflowsService {
     actor: AuthenticatedUser,
     authorizationSource?: WorkflowTransitionAuthorizationSource,
   ) {
-    const isAdmin = actor.isSystemAdmin || actor.roleCodes.includes('admin');
-    const isProjectManager = actor.roleCodes.includes('project_manager');
-    const isReviewNode =
-      task.nodeCode === WorkflowNodeCode.CAB_REVIEW ||
-      task.nodeCode === WorkflowNodeCode.COLOR_CONSISTENCY_REVIEW ||
-      task.nodeCode === WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW;
-
-    if (authorizationSource === 'r26-gate3c1') {
-      if (
-        isAdmin ||
-        isProjectManager ||
-        task.assigneeUserId === actor.id ||
-        task.project.ownerUserId === actor.id
-      ) {
-        return;
-      }
-
-      throw new ForbiddenException(
-        `${task.nodeName} 仅允许当前负责人或项目负责人完成。`,
-      );
-    }
-
-    if (authorizationSource === 'designated-review') {
-      if (isReviewNode) {
-        return;
-      }
-
-      throw new ForbiddenException('指定评审授权不适用于当前工序。');
-    }
-
-    if (task.nodeCode === WorkflowNodeCode.DEVELOPMENT_ACCEPTANCE) {
-      if (isAdmin || actor.roleCodes.includes('finance')) {
-        return;
-      }
-
-      throw new ForbiddenException('第 13 步财务确认仅允许财务确认人或管理员执行。');
-    }
-
-    if (task.nodeCode === WorkflowNodeCode.PROJECT_CLOSED) {
-      if (isAdmin || isProjectManager) {
-        return;
-      }
-
-      throw new ForbiddenException('第 18 步最终退出结论仅允许项目经理或管理员执行。');
-    }
-
-    if (isReviewNode) {
-      if (isProjectManager) {
-        return;
-      }
-
-      throw new ForbiddenException(`${task.nodeName} 仅允许指定评审人或项目经理执行。`);
-    }
-
-    if (isProjectManager || task.assigneeUserId === actor.id) {
+    if (authorizationSource === 'designated-review' && task.nodeCode === WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW) {
+      assertApprovedTeamMember(actor);
+      // ReviewsService has locked and validated the exact monthly period and its state.
       return;
     }
-
-    throw new ForbiddenException(`${task.nodeName} 仅允许当前负责人或项目经理执行。`);
+    assertTeamTaskOperator(task, actor);
   }
 
   private async assertNoActiveTaskForNode(
@@ -1961,7 +2035,7 @@ export class WorkflowsService {
       return;
     }
 
-    const now = new Date();
+    const now = this.businessClock.now();
 
     await tx.workflowInstance.update({
       where: { id: task.workflowInstanceId },
@@ -2030,7 +2104,7 @@ export class WorkflowsService {
           currentNodeCode,
           ...(currentNodeCode === INITIAL_WORKFLOW_NODE
             ? {}
-            : { actualStartDate: project?.actualStartDate ?? new Date() }),
+            : { actualStartDate: project?.actualStartDate ?? this.businessClock.now() }),
         },
       });
     }
@@ -2046,7 +2120,7 @@ export class WorkflowsService {
       include: {
         workflowInstance: true,
         project: true,
-        assigneeUser: true,
+        assigneeUser: { include: { personProfile: { select: PERSON_PRESENTATION_SELECT } } },
         assigneeDepartment: true,
       },
     });
@@ -2099,7 +2173,7 @@ export class WorkflowsService {
         workflowInstanceId,
       },
       include: {
-        assigneeUser: true,
+        assigneeUser: { include: { personProfile: { select: PERSON_PRESENTATION_SELECT } } },
         assigneeDepartment: true,
       },
       orderBy: [
@@ -2294,17 +2368,15 @@ export class WorkflowsService {
     }
   }
 
+  private currentPersonSummary(user: Parameters<typeof personPresentation>[0]) {
+    const { id, name, departmentId, departmentName } = personPresentation(user);
+    return { id, name, departmentId, departmentName };
+  }
+
   private buildTaskApprovers(
     members: Array<{
       memberType: string;
-      user: {
-        id: string;
-        name: string;
-        departmentId: string | null;
-        department?: {
-          name: string;
-        } | null;
-      };
+      user: Parameters<typeof personPresentation>[0];
     }>,
     reviewRecords: Array<{
       reviewerId: string | null;
@@ -2325,21 +2397,18 @@ export class WorkflowsService {
       departmentName: string | null;
     }>();
 
+    const currentReviewerIds = new Set<string>();
     for (const member of members) {
       if (member.memberType !== 'REVIEWER') {
         continue;
       }
 
-      approvers.set(member.user.id, {
-        id: member.user.id,
-        name: member.user.name,
-        departmentId: member.user.departmentId,
-        departmentName: member.user.department?.name ?? null,
-      });
+      currentReviewerIds.add(member.user.id);
+      approvers.set(member.user.id, this.currentPersonSummary(member.user));
     }
 
     for (const review of reviewRecords) {
-      if (!review.reviewerId || !review.reviewer) {
+      if (!review.reviewerId || !review.reviewer || currentReviewerIds.has(review.reviewerId)) {
         continue;
       }
 
@@ -2617,7 +2686,7 @@ export class WorkflowsService {
   private toWorkflowTaskSummary(
     task: Prisma.WorkflowTaskGetPayload<{
       include: {
-        assigneeUser: true;
+        assigneeUser: { include: { personProfile: { select: typeof PERSON_PRESENTATION_SELECT } } };
         assigneeDepartment: true;
       };
     }>,
@@ -2632,7 +2701,7 @@ export class WorkflowsService {
       isPrimary: task.isPrimary,
       isActive: task.isActive,
       assigneeUserId: task.assigneeUserId,
-      assigneeUserName: task.assigneeUser?.name ?? null,
+      assigneeUserName: task.assigneeUser ? personPresentation(task.assigneeUser).name : null,
       assigneeDepartmentId: task.assigneeDepartmentId,
       assigneeDepartmentName: task.assigneeDepartment?.name ?? null,
       dueAt: task.dueAt?.toISOString() ?? null,
@@ -2641,13 +2710,22 @@ export class WorkflowsService {
       returnedAt: task.returnedAt?.toISOString() ?? null,
       payload: task.payload,
       availableActions: task.isActive
-        ? getAllowedWorkflowActions(task.nodeCode).filter((action) =>
-            isWorkflowActionCurrentlyAvailable(task.status, action),
-          )
+        ? this.getPublicGenericWorkflowActions(task)
         : [],
       createdAt: task.createdAt.toISOString(),
       updatedAt: task.updatedAt.toISOString(),
     };
+  }
+
+  private getPublicGenericWorkflowActions(task: {
+    nodeCode: WorkflowNodeCode;
+    status: WorkflowTaskStatus;
+  }) {
+    return getAllowedWorkflowActions(task.nodeCode).filter(
+      (action) =>
+        action === WorkflowAction.START &&
+        isWorkflowActionCurrentlyAvailable(task.status, action),
+    );
   }
 
   private toRecurringTaskSummary(
@@ -2730,6 +2808,12 @@ export class WorkflowsService {
       typeof input.comment === 'string' && input.comment.trim().length > 0
         ? input.comment.trim()
         : undefined;
+    if (comment && comment.length > WORKFLOW_FORM_COMMENT_MAX_LENGTH) {
+      throw new BadRequestException({
+        code: 'WORKFLOW_ACTION_COMMENT_INVALID',
+        message: `工序操作备注不得超过 ${WORKFLOW_FORM_COMMENT_MAX_LENGTH} 个字符。`,
+      });
+    }
     const targetNodeCode =
       typeof input.targetNodeCode === 'string' &&
       Object.values(WorkflowNodeCode).includes(input.targetNodeCode as WorkflowNodeCode)
@@ -2738,7 +2822,7 @@ export class WorkflowsService {
     const metadata =
       input.metadata === undefined
         ? undefined
-        : (JSON.parse(JSON.stringify(input.metadata)) as Prisma.InputJsonValue);
+        : this.normalizeWorkflowActionMetadata(input.metadata);
 
     return {
       ...(comment ? { comment } : {}),
@@ -2758,15 +2842,201 @@ export class WorkflowsService {
       throw new BadRequestException('请求内容必须为表单对象。');
     }
 
+    const payload = this.normalizeWorkflowFormPayload(input.payload);
+
     const comment =
       typeof input.comment === 'string' && input.comment.trim().length > 0
         ? input.comment.trim()
         : undefined;
+    if (comment && comment.length > WORKFLOW_FORM_COMMENT_MAX_LENGTH) {
+      this.throwWorkflowFormPayloadInvalid(
+        'WORKFLOW_FORM_PAYLOAD_INVALID',
+        `表单备注不得超过 ${WORKFLOW_FORM_COMMENT_MAX_LENGTH} 个字符。`,
+      );
+    }
 
     return {
-      payload: input.payload as Record<string, unknown>,
+      payload: payload.value as Record<string, unknown>,
+      payloadJson: payload.json,
+      payloadBytes: payload.bytes,
       ...(comment ? { comment } : {}),
     };
+  }
+
+  private normalizeWorkflowFormPayload(
+    rawPayload: object,
+    allowEmptyRoot = false,
+  ) {
+    const state = { nodes: 0 };
+    const visit = (
+      value: unknown,
+      depth: number,
+    ): Prisma.InputJsonValue | null => {
+      state.nodes += 1;
+      if (state.nodes > WORKFLOW_FORM_MAX_NODES || depth > WORKFLOW_FORM_MAX_DEPTH) {
+        this.throwWorkflowFormPayloadInvalid(
+          'WORKFLOW_FORM_PAYLOAD_INVALID',
+          '表单字段数量或嵌套深度超过允许范围。',
+        );
+      }
+
+      if (value === null || typeof value === 'boolean') {
+        return value;
+      }
+      if (typeof value === 'number') {
+        if (!Number.isFinite(value)) {
+          this.throwWorkflowFormPayloadInvalid(
+            'WORKFLOW_FORM_PAYLOAD_INVALID',
+            '表单数值必须为有限数字。',
+          );
+        }
+        return value;
+      }
+      if (typeof value === 'string') {
+        if (value.length > WORKFLOW_FORM_MAX_STRING_LENGTH) {
+          this.throwWorkflowFormPayloadInvalid(
+            'WORKFLOW_FORM_PAYLOAD_INVALID',
+            `单个表单文本不得超过 ${WORKFLOW_FORM_MAX_STRING_LENGTH} 个字符。`,
+          );
+        }
+        return value;
+      }
+      if (Array.isArray(value)) {
+        if (value.length > WORKFLOW_FORM_MAX_ARRAY_ITEMS) {
+          this.throwWorkflowFormPayloadInvalid(
+            'WORKFLOW_FORM_PAYLOAD_INVALID',
+            `单个表单数组不得超过 ${WORKFLOW_FORM_MAX_ARRAY_ITEMS} 项。`,
+          );
+        }
+        return value.map((item) => visit(item, depth + 1));
+      }
+      if (!value || typeof value !== 'object') {
+        this.throwWorkflowFormPayloadInvalid(
+          'WORKFLOW_FORM_PAYLOAD_INVALID',
+          '表单只能包含 JSON 数据。',
+        );
+      }
+
+      const record = value as Record<string, unknown>;
+      const keys = Object.keys(record).sort();
+      if (
+        (keys.length === 0 && depth === 0 && !allowEmptyRoot) ||
+        keys.length > WORKFLOW_FORM_MAX_OBJECT_KEYS
+      ) {
+        this.throwWorkflowFormPayloadInvalid(
+          'WORKFLOW_FORM_PAYLOAD_INVALID',
+          `表单对象必须非空且单层不得超过 ${WORKFLOW_FORM_MAX_OBJECT_KEYS} 个字段。`,
+        );
+      }
+      const normalized: Record<string, Prisma.InputJsonValue | null> = {};
+      for (const key of keys) {
+        if (
+          !key ||
+          key.length > WORKFLOW_FORM_MAX_KEY_LENGTH ||
+          key === '__proto__' ||
+          key === 'constructor' ||
+          key === 'prototype'
+        ) {
+          this.throwWorkflowFormPayloadInvalid(
+            'WORKFLOW_FORM_PAYLOAD_INVALID',
+            '表单字段名不符合安全约束。',
+          );
+        }
+        normalized[key] = visit(record[key], depth + 1);
+      }
+      return normalized as Prisma.InputJsonObject;
+    };
+
+    const value = visit(rawPayload, 0);
+    const json = JSON.stringify(value);
+    const bytes = Buffer.byteLength(json, 'utf8');
+    if (bytes > WORKFLOW_FORM_MAX_BYTES) {
+      this.throwWorkflowFormPayloadInvalid(
+        'WORKFLOW_FORM_PAYLOAD_TOO_LARGE',
+        `表单 JSON 不得超过 ${WORKFLOW_FORM_MAX_BYTES} 字节。`,
+      );
+    }
+    return { value, json, bytes };
+  }
+
+  private normalizeWorkflowActionMetadata(rawMetadata: unknown) {
+    if (
+      !rawMetadata ||
+      typeof rawMetadata !== 'object' ||
+      Array.isArray(rawMetadata)
+    ) {
+      throw new BadRequestException({
+        code: 'WORKFLOW_ACTION_METADATA_INVALID',
+        message: '工序操作扩展元数据必须是 JSON 对象。',
+      });
+    }
+    try {
+      const normalized = this.normalizeWorkflowFormPayload(rawMetadata, true);
+      const metadata = {
+        ...(normalized.value as Prisma.InputJsonObject),
+      };
+      delete metadata.reviewPassAt;
+      return metadata as Prisma.InputJsonValue;
+    } catch (error) {
+      if (!(error instanceof BadRequestException)) {
+        throw error;
+      }
+      const response = error.getResponse();
+      const code =
+        typeof response === 'object' &&
+        response !== null &&
+        'code' in response &&
+        response.code === 'WORKFLOW_FORM_PAYLOAD_TOO_LARGE'
+          ? 'WORKFLOW_ACTION_METADATA_TOO_LARGE'
+          : 'WORKFLOW_ACTION_METADATA_INVALID';
+      throw new BadRequestException({
+        code,
+        message:
+          code === 'WORKFLOW_ACTION_METADATA_TOO_LARGE'
+            ? `工序操作扩展元数据不得超过 ${WORKFLOW_FORM_MAX_BYTES} 字节。`
+            : '工序操作扩展元数据不符合安全约束。',
+      });
+    }
+  }
+
+  private tryCanonicalWorkflowFormJson(value: unknown) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      return null;
+    }
+    try {
+      return this.normalizeWorkflowFormPayload(value).json;
+    } catch {
+      return null;
+    }
+  }
+
+  private buildWorkflowFormAuditSnapshot(value: unknown, comment?: string) {
+    let json: string;
+    try {
+      json = this.tryCanonicalWorkflowFormJson(value) ?? JSON.stringify(value ?? null);
+    } catch {
+      json = 'null';
+    }
+    return this.buildWorkflowFormAuditSnapshotFromJson(json, comment);
+  }
+
+  private buildWorkflowFormAuditSnapshotFromJson(json: string, comment?: string) {
+    const normalizedComment = comment ?? '';
+    return {
+      payloadSha256: createHash('sha256').update(json).digest('hex'),
+      payloadBytes: Buffer.byteLength(json, 'utf8'),
+      commentSha256: createHash('sha256').update(normalizedComment).digest('hex'),
+      commentBytes: Buffer.byteLength(normalizedComment, 'utf8'),
+    } satisfies Prisma.InputJsonObject;
+  }
+
+  private throwWorkflowFormPayloadInvalid(code: string, message: string): never {
+    throw new BadRequestException({
+      statusCode: 400,
+      error: 'Bad Request',
+      code,
+      message,
+    });
   }
 
   private buildInstanceNo() {
@@ -2775,20 +3045,6 @@ export class WorkflowsService {
 
   private buildTaskNo() {
     return `TASK-${Date.now()}-${randomUUID().slice(0, 8).toUpperCase()}`;
-  }
-
-  private resolveReviewPassAt(input: WorkflowActionInput) {
-    if (!input.metadata || typeof input.metadata !== 'object' || Array.isArray(input.metadata)) {
-      return null;
-    }
-
-    const reviewPassAt = (input.metadata as Record<string, unknown>).reviewPassAt;
-    if (typeof reviewPassAt !== 'string' || reviewPassAt.trim().length === 0) {
-      return null;
-    }
-
-    const parsed = new Date(reviewPassAt);
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
   }
 
   private asJsonObject(value: Prisma.JsonValue | null | undefined) {
@@ -2850,8 +3106,8 @@ export class WorkflowsService {
     return this.workflowRecurringService.ensureMonthlyReviewPlan(tx, {
       projectId: sourceTask.projectId,
       sourceWorkflowTaskId: monthlyReviewTask.id,
-      startAt: updatedTask.completedAt ?? new Date(),
-      reviewerId: sourceTask.assigneeUserId ?? sourceTask.project.ownerUserId ?? null,
+      startAt: updatedTask.completedAt ?? this.businessClock.now(),
+
     });
   }
 }

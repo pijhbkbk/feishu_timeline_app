@@ -12,7 +12,9 @@ for arg in "$@"; do
   case "$arg" in
     LINES=*) LINES="${arg#*=}" ;;
     JOURNAL_SINCE=*) JOURNAL_SINCE="${arg#*=}" ;;
-    INSTANCE=*|PROJECT=*|ZONE=*) eval "$arg" ;;
+    INSTANCE=*) INSTANCE="${arg#*=}" ;;
+    PROJECT=*) PROJECT="${arg#*=}" ;;
+    ZONE=*) ZONE="${arg#*=}" ;;
     *)
       printf '[ERROR] Unsupported argument: %s\n' "$arg" >&2
       exit 1
@@ -22,13 +24,28 @@ done
 
 # shellcheck source=/dev/null
 . "$ROOT_DIR/scripts/deploy/gce-common.sh"
+: "$INSTANCE" "$PROJECT" "$ZONE"
+validate_gce_connection_parameters
+
+if [[ ! "$LINES" =~ ^[0-9]+$ ]] || [ "$LINES" -lt 1 ] || [ "$LINES" -gt 100000 ]; then
+  fail 'LINES must be an integer from 1 through 100000.'
+fi
+journal_since_pattern='^[1-9][0-9]{0,5} (min|mins|minute|minutes|hour|hours|day|days|week|weeks) ago$'
+if [ "${#JOURNAL_SINCE}" -gt 64 ] \
+  || [[ ! "$JOURNAL_SINCE" =~ $journal_since_pattern ]]; then
+  fail 'JOURNAL_SINCE must use a bounded relative form such as "60 min ago" or "24 hours ago".'
+fi
 require_gcloud
 
 remote_script="$(mktemp)"
+cleanup_remote_script() {
+  rm -f -- "$remote_script"
+}
+trap cleanup_remote_script EXIT
 cat >"$remote_script" <<'EOF'
 set -euo pipefail
-lines="__LINES__"
-journal_since="__JOURNAL_SINCE__"
+lines="${1:?missing line count}"
+journal_since="${2:?missing journal window}"
 
 access_log=""
 error_log=""
@@ -78,19 +95,9 @@ printf '\n== API journal error scan ==\n'
 journalctl -u feishu-timeline-api --since "$journal_since" --no-pager | grep -E 'ERROR|Error:|Exception|Unhandled|statusCode.:5[0-9]{2}' || true
 EOF
 
-python3 - "$remote_script" "$LINES" "$JOURNAL_SINCE" <<'PY'
-from pathlib import Path
-import sys
-
-path = Path(sys.argv[1])
-content = path.read_text()
-content = content.replace("__LINES__", sys.argv[2])
-content = content.replace("__JOURNAL_SINCE__", sys.argv[3])
-path.write_text(content)
-PY
-
-output="$(gce_run_remote_script "$remote_script")"
-rm -f "$remote_script"
+output="$(gce_run_remote_script_with_args "$remote_script" "$LINES" "$JOURNAL_SINCE")"
+cleanup_remote_script
+trap - EXIT
 
 printf '%s\n' "$output"
 

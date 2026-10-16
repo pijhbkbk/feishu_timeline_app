@@ -1,8 +1,10 @@
 'use client';
 
 import {
+  isApprovedTeamUser,
   type SessionUser,
   apiRequest,
+  FRONTEND_ROLE_OPTIONS,
 } from './auth-client';
 import {
   formatDate,
@@ -131,6 +133,7 @@ export type WorkflowTaskDetailResponse = {
 
 export type WorkflowTaskInteractionDetail = {
   taskId: string;
+  taskVersion: string;
   projectId: string;
   stepCode: string | null;
   stepNumber: number;
@@ -429,6 +432,10 @@ export async function executeWorkflowAction(
     targetNodeCode?: WorkflowNodeCode;
   },
 ) {
+  if (action !== 'START') {
+    throw new Error('终态流转必须通过对应业务工作区完成。');
+  }
+
   return apiRequest<ProjectWorkflowResponse>(`/workflows/tasks/${taskId}/${action.toLowerCase()}`, {
     method: 'POST',
     body: input ?? {},
@@ -475,34 +482,29 @@ export function isWorkflowTaskOverdue(task: WorkflowTaskSummary) {
   return new Date(task.dueAt).getTime() < Date.now();
 }
 
+const requiredRole: Record<WorkflowNodeCode, SessionUser['roleCodes'][number]> = {
+    PROJECT_INITIATION: 'project_manager', DEVELOPMENT_REPORT: 'project_manager',
+    PAINT_DEVELOPMENT: 'process_engineer', SAMPLE_COLOR_CONFIRMATION: 'reviewer',
+    COLOR_NUMBERING: 'process_engineer', PAINT_PROCUREMENT: 'purchaser',
+    STANDARD_BOARD_PRODUCTION: 'process_engineer', BOARD_DETAIL_UPDATE: 'process_engineer',
+    PERFORMANCE_TEST: 'quality_engineer', FIRST_UNIT_PRODUCTION_PLAN: 'production_operator',
+    TRIAL_PRODUCTION: 'process_engineer', CAB_REVIEW: 'reviewer',
+    DEVELOPMENT_ACCEPTANCE: 'finance', COLOR_CONSISTENCY_REVIEW: 'reviewer',
+    MASS_PRODUCTION_PLAN: 'production_operator', MASS_PRODUCTION: 'production_operator',
+    VISUAL_COLOR_DIFFERENCE_REVIEW: 'quality_engineer', PROJECT_CLOSED: 'project_manager',
+};
+
+export function getWorkflowBusinessRoleLabel(nodeCode: string) {
+  if (!Object.hasOwn(requiredRole, nodeCode)) return '尚未匹配';
+  return FRONTEND_ROLE_OPTIONS.find(role => role.code === requiredRole[nodeCode as WorkflowNodeCode])?.label ?? '尚未匹配';
+}
+
 export function canUserOperateWorkflowTask(
   user: SessionUser | null,
   task: WorkflowTaskSummary,
 ) {
-  if (!user) {
-    return false;
-  }
-
-  const isAdmin = user.isSystemAdmin || user.roleCodes.includes('admin');
-  const isProjectManager = user.roleCodes.includes('project_manager');
-
-  if (task.nodeCode === 'DEVELOPMENT_ACCEPTANCE') {
-    return isAdmin || user.roleCodes.includes('finance');
-  }
-
-  if (task.nodeCode === 'PROJECT_CLOSED') {
-    return isAdmin || isProjectManager;
-  }
-
-  if (
-    task.nodeCode === 'CAB_REVIEW' ||
-    task.nodeCode === 'COLOR_CONSISTENCY_REVIEW' ||
-    task.nodeCode === 'VISUAL_COLOR_DIFFERENCE_REVIEW'
-  ) {
-    return isProjectManager;
-  }
-
-  return isProjectManager || task.assigneeUserId === user.id;
+  if (!user || !task.isActive || !['PENDING', 'READY', 'IN_PROGRESS', 'RETURNED'].includes(task.status)) return false;
+  return isApprovedTeamUser(user);
 }
 
 export function formatWorkflowTaskTime(value: string | null | undefined) {

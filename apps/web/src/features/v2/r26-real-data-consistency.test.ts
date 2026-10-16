@@ -104,7 +104,7 @@ describe('R26 Gate 2 real-data consistency contracts', () => {
     );
   });
 
-  it('keeps the member-assignment tab focused on the server assignment table', () => {
+  it('replaces retired membership setup with task, materials and record tabs', () => {
     expect(workspaceSource).not.toContain(
       'data-testid="r26-member-assignments"',
     );
@@ -113,12 +113,12 @@ describe('R26 Gate 2 real-data consistency contracts', () => {
     expect(workspaceSource).not.toContain('onClick={openAddMember}');
     expect(workspaceSource).not.toContain('onClick={() => openEditMember');
     expect(workspaceSource).not.toContain('onClick={() => openRemoveMember');
-    expect(workspaceSource).toContain(
-      'data-testid="r26-assignment-preview"',
-    );
-    expect(workspaceSource).toContain(
-      'aria-label="18 个工序自动分配预览"',
-    );
+    expect(workspaceSource).not.toContain('data-testid="r26-assignment-preview"');
+    expect(workspaceSource).toContain('>进度与任务</button>');
+    expect(workspaceSource).toContain('>资料</button>');
+    expect(workspaceSource).toContain('>记录</button>');
+    expect(workspaceSource).toContain('<AttachmentsWorkspace projectId={projectId}');
+    expect(workspaceSource).toContain('setShowMap(value => !value)');
   });
 
   it('moves the workspace selection to the server-designated next task after completion', () => {

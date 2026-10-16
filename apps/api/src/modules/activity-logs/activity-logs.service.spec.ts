@@ -43,6 +43,8 @@ function createService() {
       count: vi.fn(),
       findMany: vi.fn(),
       findFirst: vi.fn(),
+      update: vi.fn(),
+      updateMany: vi.fn(),
     },
     $queryRaw: vi.fn(),
     $transaction: vi.fn(async (operations: Array<Promise<unknown>>) => Promise.all(operations)),
@@ -61,6 +63,151 @@ function createService() {
 }
 
 describe('ActivityLogsService', () => {
+  it.each([
+    'https://timeline-marker.example/path',
+    '//timeline-marker.example/path',
+  ])('degrades an unsafe notification timeline link without changing shape: %s', async (linkPath) => {
+    const { service, prisma } = createService();
+    prisma.project.findUnique.mockResolvedValue({
+      id: 'project-1',
+      code: 'PRJ-001',
+      name: '演示项目',
+      currentNodeCode: WorkflowNodeCode.CAB_REVIEW,
+      plannedEndDate: null,
+    });
+    prisma.auditLog.count.mockResolvedValue(1);
+    prisma.workflowTransition.count.mockResolvedValue(0);
+    prisma.notification.count.mockResolvedValue(1);
+    prisma.$queryRaw.mockResolvedValue([
+      {
+        sourceType: 'NOTIFICATION',
+        id: 'notification-unsafe',
+        createdAt: new Date('2026-03-19T09:00:00.000Z'),
+      },
+      {
+        sourceType: 'AUDIT',
+        id: 'audit-1',
+        createdAt: new Date('2026-03-18T08:00:00.000Z'),
+      },
+    ]);
+    prisma.auditLog.findMany.mockResolvedValue([
+      {
+        id: 'audit-1',
+        action: 'PROJECT_UPDATED',
+        summary: '审计内容仍然可见',
+        actorUserId: 'user-1',
+        actorUser: { name: '项目经理' },
+        nodeCode: WorkflowNodeCode.PROJECT_INITIATION,
+        createdAt: new Date('2026-03-18T08:00:00.000Z'),
+      },
+    ]);
+    prisma.workflowTransition.findMany.mockResolvedValue([]);
+    prisma.notification.findMany.mockResolvedValue([
+      {
+        id: 'notification-unsafe',
+        userId: 'user-3',
+        user: { name: '评审人' },
+        title: '待处理驾驶室评审',
+        content: '通知内容仍然可见',
+        notificationType: NotificationType.REVIEW_PENDING,
+        isRead: false,
+        sendStatus: NotificationSendStatus.SENT,
+        linkPath,
+        createdAt: new Date('2026-03-19T09:00:00.000Z'),
+      },
+    ]);
+
+    const result = await service.getProjectLogTimeline('project-1', actor, {
+      page: '1',
+      pageSize: '20',
+    });
+
+    expect(result.pagination).toEqual({
+      page: 1,
+      pageSize: 20,
+      total: 2,
+      totalPages: 1,
+    });
+    expect(result.items).toHaveLength(2);
+    expect(result.items[0]).toMatchObject({
+      sourceType: 'NOTIFICATION',
+      title: '待处理驾驶室评审',
+      description: '通知内容仍然可见',
+      linkPath: null,
+    });
+    expect(result.items[1]).toMatchObject({
+      sourceType: 'AUDIT',
+      title: '审计内容仍然可见',
+    });
+    expect(prisma.notification.findMany).toHaveBeenCalledTimes(1);
+    expect(prisma.notification.update).not.toHaveBeenCalled();
+    expect(prisma.notification.updateMany).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    'https://detail-marker.example/path',
+    '//detail-marker.example/path',
+  ])('degrades an unsafe notification detail link without writeback: %s', async (linkPath) => {
+    const { service, prisma } = createService();
+    prisma.notification.findFirst.mockResolvedValue({
+      id: 'notification-unsafe',
+      userId: 'user-3',
+      user: { name: '评审人' },
+      taskId: null,
+      notificationType: NotificationType.REVIEW_PENDING,
+      title: '待处理驾驶室评审',
+      content: '通知内容仍然可见',
+      linkPath,
+      isRead: false,
+      readAt: null,
+      sendStatus: NotificationSendStatus.SENT,
+      retryCount: 0,
+      metadata: { category: 'review' },
+      createdAt: new Date('2026-03-19T09:00:00.000Z'),
+    });
+
+    const result = await service.getProjectLogDetail(
+      'project-1',
+      'notification:notification-unsafe',
+      actor,
+    );
+
+    expect(result).toMatchObject({
+      id: 'notification:notification-unsafe',
+      sourceType: 'NOTIFICATION',
+      actorName: '评审人',
+      title: '待处理驾驶室评审',
+      content: '通知内容仍然可见',
+      metadata: { category: 'review' },
+      linkPath: null,
+    });
+    expect(prisma.notification.findFirst).toHaveBeenCalledTimes(1);
+    expect(prisma.notification.update).not.toHaveBeenCalled();
+    expect(prisma.notification.updateMany).not.toHaveBeenCalled();
+  });
+
+  it.each(['101', '10000000', '9007199254740992'])(
+    'rejects unsafe page %s before project access or timeline queries',
+    async (page) => {
+      const { service, prisma, projectAccessService } = createService();
+
+      await expect(
+        service.getProjectLogTimeline('project-1', actor, {
+          page,
+          pageSize: '100',
+        }),
+      ).rejects.toMatchObject({
+        response: expect.objectContaining({
+          code: 'PAGINATION_PAGE_OUT_OF_RANGE',
+        }),
+      });
+      expect(projectAccessService.assertProjectAccessWithDefaultClient).not.toHaveBeenCalled();
+      expect(prisma.project.findUnique).not.toHaveBeenCalled();
+      expect(prisma.$queryRaw).not.toHaveBeenCalled();
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    },
+  );
+
   it('aggregates project audit, workflow and notification timeline', async () => {
     const { service, prisma, projectAccessService } = createService();
     prisma.project.findUnique.mockResolvedValue({
@@ -152,6 +299,7 @@ describe('ActivityLogsService', () => {
     expect(result.items[0]).toMatchObject({
       sourceType: 'NOTIFICATION',
       title: '待处理驾驶室评审',
+      linkPath: '/projects/project-1/reviews',
     });
     expect(result.items[1]).toMatchObject({
       sourceType: 'WORKFLOW',
@@ -265,5 +413,40 @@ describe('ActivityLogsService', () => {
       afterData: { name: '新名称' },
       createdAt: '2026-03-18T08:00:00.000Z',
     });
+  });
+
+  it('preserves a legal notification detail link without additional queries or writes', async () => {
+    const { service, prisma } = createService();
+    prisma.notification.findFirst.mockResolvedValue({
+      id: 'notification-legal',
+      userId: 'user-3',
+      user: { name: '评审人' },
+      taskId: null,
+      notificationType: NotificationType.REVIEW_PENDING,
+      title: '待处理驾驶室评审',
+      content: '请处理评审。',
+      linkPath: '/projects/project-1/reviews?tab=todo#item',
+      isRead: false,
+      readAt: null,
+      sendStatus: NotificationSendStatus.SENT,
+      retryCount: 0,
+      metadata: null,
+      createdAt: new Date('2026-03-19T09:00:00.000Z'),
+    });
+
+    const result = await service.getProjectLogDetail(
+      'project-1',
+      'notification:notification-legal',
+      actor,
+    );
+
+    expect(result).toMatchObject({
+      sourceType: 'NOTIFICATION',
+      linkPath: '/projects/project-1/reviews?tab=todo#item',
+    });
+    expect(prisma.notification.findFirst).toHaveBeenCalledTimes(1);
+    expect(prisma.notification.findMany).not.toHaveBeenCalled();
+    expect(prisma.notification.update).not.toHaveBeenCalled();
+    expect(prisma.notification.updateMany).not.toHaveBeenCalled();
   });
 });

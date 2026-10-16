@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 
 import { formatBusinessCode } from '../lib/business-code';
 import { useAuth } from './auth-provider';
@@ -17,7 +17,6 @@ import {
   PROJECT_MEMBER_TYPE_OPTIONS,
   PROJECT_PAINT_SUPPLIER_OPTIONS,
   PROJECT_PRIORITY_OPTIONS,
-  replaceProjectMembers,
   toDateInputValue,
   updateProject,
   type DirectoryUser,
@@ -93,9 +92,26 @@ function buildMemberDrafts(project?: ProjectDetail): MemberDraft[] {
   }));
 }
 
+function buildProjectDirectory(project: ProjectDetail): DirectoryUser[] {
+  const users = new Map<string, DirectoryUser>();
+
+  for (const member of project.members) {
+    if (users.has(member.userId)) continue;
+    users.set(member.userId, {
+      id: member.userId,
+      name: member.name,
+      departmentId: null,
+      departmentName: member.departmentName,
+    });
+  }
+
+  return [...users.values()];
+}
+
 export function ProjectEditor(props: ProjectEditorProps) {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, isLoading: isAuthLoading } = useAuth();
+  const createIdempotencyKeyRef = useRef<string | null>(null);
   const [directoryUsers, setDirectoryUsers] = useState<DirectoryUser[]>([]);
   const [formState, setFormState] = useState<FormState>(() =>
     props.mode === 'edit' ? buildFormState(props.initialProject) : buildFormState(),
@@ -108,20 +124,28 @@ export function ProjectEditor(props: ProjectEditorProps) {
   );
   const [isLoadingUsers, setIsLoadingUsers] = useState(true);
   const [isSavingProject, setIsSavingProject] = useState(false);
-  const [isSavingMembers, setIsSavingMembers] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isDirty, setIsDirty] = useState(false);
   const canManageProject = Boolean(
-    user &&
-      (user.isSystemAdmin ||
-        user.roleCodes.includes('admin') ||
-        user.roleCodes.includes('project_manager')),
+    user && (user.isSystemAdmin || user.permissionCodes?.includes('project.write')),
   );
 
   useEffect(() => {
+    if (isAuthLoading) return;
+    if (props.mode === 'edit') {
+      setDirectoryUsers(buildProjectDirectory(props.initialProject));
+      setIsLoadingUsers(false);
+      return;
+    }
+    if (!canManageProject) {
+      setDirectoryUsers([]);
+      setIsLoadingUsers(false);
+      return;
+    }
+
     void loadDirectoryUsers();
-  }, []);
+  }, [canManageProject, isAuthLoading, props.mode === 'edit' ? props.initialProject : null]);
 
   useEffect(() => {
     if (props.mode === 'edit') {
@@ -137,11 +161,15 @@ export function ProjectEditor(props: ProjectEditorProps) {
   }, [isDirty, props.onDirtyChange]);
 
   function markDirty() {
+    if (props.mode === 'create') {
+      createIdempotencyKeyRef.current = null;
+    }
     setIsDirty(true);
   }
 
   useEffect(() => {
     if (props.mode === 'create' && user && !formState.ownerUserId) {
+      createIdempotencyKeyRef.current = null;
       setFormState((current) => ({
         ...current,
         ownerUserId: user.id,
@@ -204,21 +232,26 @@ export function ProjectEditor(props: ProjectEditorProps) {
     setIsSavingProject(true);
     setError(null);
     setSuccessMessage(null);
+    const createPayload = {
+      name: formState.name,
+      description: formState.description || null,
+      priority: formState.priority,
+      colorMarketingUnit: formState.colorMarketingUnit || null,
+      paintSupplier: formState.paintSupplier,
+      vehicleModel: formState.vehicleModel || null,
+      ownerUserId: formState.ownerUserId || null,
+      plannedStartDate: formState.plannedStartDate || null,
+      plannedEndDate: formState.plannedEndDate || null,
+      members: normalizeMembers(memberDrafts),
+    };
+    const idempotencyKey =
+      createIdempotencyKeyRef.current ?? crypto.randomUUID();
+    createIdempotencyKeyRef.current = idempotencyKey;
 
     try {
-      const detail = await createProject({
-        name: formState.name,
-        description: formState.description || null,
-        priority: formState.priority,
-        colorMarketingUnit: formState.colorMarketingUnit || null,
-        paintSupplier: formState.paintSupplier,
-        vehicleModel: formState.vehicleModel || null,
-        ownerUserId: formState.ownerUserId || null,
-        plannedStartDate: formState.plannedStartDate || null,
-        plannedEndDate: formState.plannedEndDate || null,
-        members: normalizeMembers(memberDrafts),
-      });
+      const detail = await createProject(createPayload, idempotencyKey);
 
+      createIdempotencyKeyRef.current = null;
       setSuccessMessage('项目已创建，流程实例已自动初始化。');
       setIsDirty(false);
       router.push(`/projects/${detail.id}`);
@@ -236,19 +269,25 @@ export function ProjectEditor(props: ProjectEditorProps) {
       return;
     }
 
+    const expectedVersion = currentProject?.updatedAt;
+    if (!expectedVersion) {
+      setError('项目数据版本缺失，请刷新后重试。');
+      return;
+    }
+
     setIsSavingProject(true);
     setError(null);
     setSuccessMessage(null);
 
     try {
       const detail = await updateProject(props.projectId, {
+        expectedVersion,
         name: formState.name,
         description: formState.description || null,
         priority: formState.priority,
         colorMarketingUnit: formState.colorMarketingUnit || null,
         paintSupplier: formState.paintSupplier,
         vehicleModel: formState.vehicleModel || null,
-        ownerUserId: formState.ownerUserId || null,
         plannedStartDate: formState.plannedStartDate || null,
         plannedEndDate: formState.plannedEndDate || null,
       });
@@ -262,28 +301,6 @@ export function ProjectEditor(props: ProjectEditorProps) {
       setError(saveError instanceof Error ? saveError.message : '项目更新失败。');
     } finally {
       setIsSavingProject(false);
-    }
-  }
-
-  async function handleSaveMembers() {
-    if (props.mode !== 'edit') {
-      return;
-    }
-
-    setIsSavingMembers(true);
-    setError(null);
-    setSuccessMessage(null);
-
-    try {
-      const detail = await replaceProjectMembers(props.projectId, normalizeMembers(memberDrafts));
-      setCurrentProject(detail);
-      setMemberDrafts(buildMemberDrafts(detail));
-      setIsDirty(false);
-      setSuccessMessage('项目成员已更新。');
-    } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : '项目成员更新失败。');
-    } finally {
-      setIsSavingMembers(false);
     }
   }
 
@@ -351,7 +368,7 @@ export function ProjectEditor(props: ProjectEditorProps) {
       {error ? <p className="error-text">{error}</p> : null}
       {successMessage ? <p className="success-text">{successMessage}</p> : null}
       {!canManageProject ? (
-        <p className="error-text">只有项目经理或管理员可创建项目、调整负责人和维护项目成员。</p>
+        <p className="error-text">只有项目经理或管理员可创建项目或更新项目基础信息。</p>
       ) : null}
 
       <section className="page-card">
@@ -383,7 +400,7 @@ export function ProjectEditor(props: ProjectEditorProps) {
               data-testid="project-owner-select"
               value={formState.ownerUserId}
               onChange={(event) => updateField('ownerUserId', event.target.value)}
-              disabled={isLoadingUsers}
+              disabled={props.mode === 'edit' || isLoadingUsers}
             >
               <option value="">请选择负责人</option>
               {directoryUsers.map((directoryUser) => (
@@ -392,6 +409,11 @@ export function ProjectEditor(props: ProjectEditorProps) {
                 </option>
               ))}
             </select>
+            {props.mode === 'edit' ? (
+              <small className="muted">
+                负责人变更必须通过受版本控制的成员分工流程完成。
+              </small>
+            ) : null}
           </label>
           <label className="field">
             <span>优先级</span>
@@ -498,16 +520,22 @@ export function ProjectEditor(props: ProjectEditorProps) {
           <div>
             <p className="eyebrow">项目成员</p>
             <h2 className="section-title">项目成员</h2>
-            <p className="muted">成员管理独立保存，所有写操作都会记录审计日志。</p>
+            <p className="muted">
+              {props.mode === 'create'
+                ? '创建时可配置初始成员，所有写操作都会记录审计日志。'
+                : '成员变更必须通过受版本控制的成员分工流程完成；此处仅展示当前成员。'}
+            </p>
           </div>
-          <button
-            type="button"
-            className="button button-secondary"
-            disabled={!canManageProject}
-            onClick={addMemberRow}
-          >
-            添加成员
-          </button>
+          {props.mode === 'create' ? (
+            <button
+              type="button"
+              className="button button-secondary"
+              disabled={!canManageProject}
+              onClick={addMemberRow}
+            >
+              添加成员
+            </button>
+          ) : null}
         </div>
         {memberDrafts.length === 0 ? (
           <div className="empty-state">
@@ -523,7 +551,7 @@ export function ProjectEditor(props: ProjectEditorProps) {
                   <select
                     value={member.userId}
                     onChange={(event) => updateMemberField(index, 'userId', event.target.value)}
-                    disabled={isLoadingUsers}
+                    disabled={props.mode === 'edit' || isLoadingUsers}
                   >
                     <option value="">请选择成员</option>
                     {directoryUsers.map((directoryUser) => (
@@ -544,6 +572,7 @@ export function ProjectEditor(props: ProjectEditorProps) {
                         event.target.value as ProjectMemberType,
                       )
                     }
+                    disabled={props.mode === 'edit'}
                   >
                     {PROJECT_MEMBER_TYPE_OPTIONS.map((option) => (
                       <option key={option.value} value={option.value}>
@@ -558,6 +587,7 @@ export function ProjectEditor(props: ProjectEditorProps) {
                     value={member.title}
                     onChange={(event) => updateMemberField(index, 'title', event.target.value)}
                     placeholder="例如: 项目负责人 / 质量评审"
+                    disabled={props.mode === 'edit'}
                   />
                 </label>
                 <label className="field field-checkbox">
@@ -568,31 +598,22 @@ export function ProjectEditor(props: ProjectEditorProps) {
                     onChange={(event) =>
                       updateMemberField(index, 'isPrimary', event.target.checked)
                     }
+                    disabled={props.mode === 'edit'}
                   />
                 </label>
-                <button
-                  type="button"
-                  className="button button-secondary"
-                  onClick={() => removeMember(index)}
-                >
-                  删除
-                </button>
+                {props.mode === 'create' ? (
+                  <button
+                    type="button"
+                    className="button button-secondary"
+                    onClick={() => removeMember(index)}
+                  >
+                    删除
+                  </button>
+                ) : null}
               </div>
             ))}
           </div>
         )}
-        {props.mode === 'edit' ? (
-          <div className="inline-actions">
-            <button
-              type="button"
-              className="button button-primary"
-              disabled={isSavingMembers || !canManageProject}
-              onClick={() => void handleSaveMembers()}
-            >
-              {isSavingMembers ? '保存中…' : '保存成员'}
-            </button>
-          </div>
-        ) : null}
       </section>
     </div>
   );

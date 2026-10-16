@@ -1,0 +1,709 @@
+[
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/login",
+    "status": 200,
+    "time": "2026-10-08T09:36:51.733Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/_next/static/css/f63270a51b67843d.css",
+    "status": 200,
+    "time": "2026-10-08T09:36:51.892Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/_next/static/css/73f821eff035914f.css",
+    "status": 200,
+    "time": "2026-10-08T09:36:51.900Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/_next/static/css/9fb7deaf80d1da69.css",
+    "status": 200,
+    "time": "2026-10-08T09:36:51.906Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/_next/static/css/dcc7c46d3d3ab2a5.css",
+    "status": 200,
+    "time": "2026-10-08T09:36:51.907Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/_next/static/chunks/webpack-ceeb2ef4d4867010.js",
+    "status": 200,
+    "time": "2026-10-08T09:36:51.908Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/_next/static/css/95afe53b616e04c6.css",
+    "status": 200,
+    "time": "2026-10-08T09:36:51.910Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/_next/static/chunks/main-app-84446f589a425266.js",
+    "status": 200,
+    "time": "2026-10-08T09:36:51.917Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/_next/static/chunks/74956ec5-69b26496179c6e6d.js",
+    "status": 200,
+    "time": "2026-10-08T09:36:51.923Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/_next/static/chunks/2098-e0bdc0b5bae3a17f.js",
+    "status": 200,
+    "time": "2026-10-08T09:36:51.925Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/_next/static/chunks/app/login/page-726482883e96558d.js",
+    "status": 200,
+    "time": "2026-10-08T09:36:51.926Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/_next/static/chunks/8952-925f8aa49a42589e.js",
+    "status": 200,
+    "time": "2026-10-08T09:36:51.927Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/_next/static/chunks/1600-2d161de47998ac17.js",
+    "status": 200,
+    "time": "2026-10-08T09:36:51.928Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/_next/static/chunks/app/layout-5fdae2d6f1e52336.js",
+    "status": 200,
+    "time": "2026-10-08T09:36:51.929Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/_next/static/chunks/4960-6d787b1ebf1918a9.js",
+    "status": 200,
+    "time": "2026-10-08T09:36:51.930Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/dashboard",
+    "status": 200,
+    "time": "2026-10-08T09:36:52.104Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/api/auth/session",
+    "status": 200,
+    "time": "2026-10-08T09:36:52.107Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "POST",
+    "path": "/api/auth/login",
+    "status": 200,
+    "time": "2026-10-08T09:37:21.589Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/dashboard",
+    "status": 200,
+    "time": "2026-10-08T09:37:21.613Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/_next/static/chunks/app/dashboard/page-4bc3777565ad87ef.js",
+    "status": 200,
+    "time": "2026-10-08T09:37:21.621Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/api/notifications/unread-count",
+    "status": 200,
+    "time": "2026-10-08T09:37:21.704Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/projects",
+    "status": 200,
+    "time": "2026-10-08T09:37:21.745Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/admin/color-database",
+    "status": 200,
+    "time": "2026-10-08T09:37:21.751Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/monthly-reviews",
+    "status": 200,
+    "time": "2026-10-08T09:37:21.754Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/analytics",
+    "status": 200,
+    "time": "2026-10-08T09:37:21.758Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/admin/people",
+    "status": 200,
+    "time": "2026-10-08T09:37:21.759Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/notifications",
+    "status": 200,
+    "time": "2026-10-08T09:37:21.760Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/projects/new",
+    "status": 200,
+    "time": "2026-10-08T09:37:21.954Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/api/projects",
+    "status": 200,
+    "time": "2026-10-08T09:37:22.037Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/api/v2/projects/cmuzblrjd00039kdr1xsn8bzr/workspace",
+    "status": 200,
+    "time": "2026-10-08T09:37:25.462Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/projects/cmuzblrjd00039kdr1xsn8bzr/tasks/cmuzblrkf00089kdrchuonb8i",
+    "status": 200,
+    "time": "2026-10-08T09:37:25.505Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/projects/cmuzblrjd00039kdr1xsn8bzr/tasks/cmuzblu1z000v9kdrnri385u7",
+    "status": 200,
+    "time": "2026-10-08T09:37:25.505Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/projects/cmuzblrjd00039kdr1xsn8bzr/tasks/cmuzblu3j00159kdrgyqn083x",
+    "status": 200,
+    "time": "2026-10-08T09:37:25.505Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/projects/cmuzblrjd00039kdr1xsn8bzr/tasks/cmuzbly9b00439kdrpr52vdq1",
+    "status": 200,
+    "time": "2026-10-08T09:37:25.506Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/projects/cmuzblrjd00039kdr1xsn8bzr/tasks/cmuzblvyr002t9kdrg1muwczs",
+    "status": 200,
+    "time": "2026-10-08T09:37:25.506Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/projects/cmuzblrjd00039kdr1xsn8bzr/tasks/cmuzbly8z003z9kdr455aat2o",
+    "status": 200,
+    "time": "2026-10-08T09:37:25.511Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/projects/cmuzblrjd00039kdr1xsn8bzr/tasks/cmuzblvyr002t9kdrg1muwczs",
+    "status": 200,
+    "time": "2026-10-08T09:38:07.870Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/_next/static/chunks/6642-00cfe998293e3afa.js",
+    "status": 200,
+    "time": "2026-10-08T09:38:07.877Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/_next/static/chunks/5385-646e776424763751.js",
+    "status": 200,
+    "time": "2026-10-08T09:38:07.891Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/_next/static/chunks/5033-73904ced2ac8a818.js",
+    "status": 200,
+    "time": "2026-10-08T09:38:07.893Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/_next/static/chunks/5673-ec23a73a2511a7a5.js",
+    "status": 200,
+    "time": "2026-10-08T09:38:07.898Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/_next/static/chunks/app/projects/%5BprojectId%5D/tasks/%5BtaskId%5D/page-b4e5f4292e95f85a.js",
+    "status": 200,
+    "time": "2026-10-08T09:38:07.899Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/api/v2/tasks/cmuzblvyr002t9kdrg1muwczs/progress-context",
+    "status": 200,
+    "time": "2026-10-08T09:38:08.392Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/projects/cmuzblrjd00039kdr1xsn8bzr",
+    "status": 200,
+    "time": "2026-10-08T09:38:08.549Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/api/projects/cmuzblrjd00039kdr1xsn8bzr/samples",
+    "status": 200,
+    "time": "2026-10-08T09:38:08.617Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/api/notifications/unread-count",
+    "status": 200,
+    "time": "2026-10-08T09:38:21.808Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/api/v2/tasks/cmuzblvyr002t9kdrg1muwczs/materials/cmuzblxqo003l9kdrxk4xba9u/content",
+    "status": 200,
+    "time": "2026-10-08T09:38:45.118Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/api/notifications/unread-count",
+    "status": 200,
+    "time": "2026-10-08T10:21:33.186Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/api/notifications/unread-count",
+    "status": 200,
+    "time": "2026-10-08T10:31:08.279Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/api/notifications/unread-count",
+    "status": 200,
+    "time": "2026-10-08T10:38:49.864Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/api/notifications/unread-count",
+    "status": 200,
+    "time": "2026-10-08T11:39:50.754Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/api/notifications/unread-count",
+    "status": 200,
+    "time": "2026-10-08T12:41:02.623Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/api/notifications/unread-count",
+    "status": 200,
+    "time": "2026-10-08T15:33:35.109Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/api/notifications/unread-count",
+    "status": 200,
+    "time": "2026-10-08T17:15:45.730Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/api/notifications/unread-count",
+    "status": 401,
+    "time": "2026-10-08T19:37:35.508Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/api/notifications/unread-count",
+    "status": 401,
+    "time": "2026-10-08T21:21:31.061Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/api/notifications/unread-count",
+    "status": 401,
+    "time": "2026-10-08T22:55:12.067Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/api/notifications/unread-count",
+    "status": 401,
+    "time": "2026-10-09T00:10:13.673Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/api/notifications/unread-count",
+    "status": 401,
+    "time": "2026-10-09T00:11:13.402Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/api/notifications/unread-count",
+    "status": 401,
+    "time": "2026-10-09T00:12:43.064Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/api/notifications/unread-count",
+    "status": 401,
+    "time": "2026-10-09T00:14:13.288Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/api/notifications/unread-count",
+    "status": 401,
+    "time": "2026-10-09T00:15:33.290Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/api/notifications/unread-count",
+    "status": 401,
+    "time": "2026-10-09T00:16:53.388Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/api/notifications/unread-count",
+    "status": 401,
+    "time": "2026-10-09T00:18:13.389Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/api/notifications/unread-count",
+    "status": 401,
+    "time": "2026-10-09T00:19:33.396Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/api/notifications/unread-count",
+    "status": 401,
+    "time": "2026-10-09T00:20:53.393Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/api/notifications/unread-count",
+    "status": 401,
+    "time": "2026-10-09T00:22:13.404Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/api/notifications/unread-count",
+    "status": 401,
+    "time": "2026-10-09T00:23:33.302Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/api/notifications/unread-count",
+    "status": 401,
+    "time": "2026-10-09T00:24:53.391Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/dashboard",
+    "status": 200,
+    "time": "2026-10-09T00:25:45.070Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/projects/new",
+    "status": 200,
+    "time": "2026-10-09T00:25:45.491Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/projects",
+    "status": 200,
+    "time": "2026-10-09T00:25:45.498Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/api/projects",
+    "status": 401,
+    "time": "2026-10-09T00:25:45.507Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/dashboard",
+    "status": 200,
+    "time": "2026-10-09T00:25:53.204Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/api/auth/session",
+    "status": 200,
+    "time": "2026-10-09T00:25:53.599Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/api/projects",
+    "status": 401,
+    "time": "2026-10-09T00:25:53.601Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/projects",
+    "status": 200,
+    "time": "2026-10-09T00:25:53.602Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/admin/color-database",
+    "status": 200,
+    "time": "2026-10-09T00:25:53.606Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/monthly-reviews",
+    "status": 200,
+    "time": "2026-10-09T00:25:53.607Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/analytics",
+    "status": 200,
+    "time": "2026-10-09T00:25:53.607Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/admin/people",
+    "status": 200,
+    "time": "2026-10-09T00:25:53.608Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/login",
+    "status": 200,
+    "time": "2026-10-09T00:25:53.615Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/login",
+    "status": 200,
+    "time": "2026-10-09T00:26:01.860Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "POST",
+    "path": "/api/auth/login",
+    "status": 200,
+    "time": "2026-10-09T00:26:14.283Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/dashboard",
+    "status": 200,
+    "time": "2026-10-09T00:26:14.310Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/api/notifications/unread-count",
+    "status": 200,
+    "time": "2026-10-09T00:26:14.387Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/dashboard",
+    "status": 200,
+    "time": "2026-10-09T00:26:14.444Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/notifications",
+    "status": 200,
+    "time": "2026-10-09T00:26:14.447Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/projects/new",
+    "status": 200,
+    "time": "2026-10-09T00:26:14.448Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/api/projects",
+    "status": 200,
+    "time": "2026-10-09T00:26:14.457Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/api/v2/projects/cmuzcgbwv00059kzwl4kc2oen/workspace",
+    "status": 200,
+    "time": "2026-10-09T00:26:17.944Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/projects/cmuzcgbwv00059kzwl4kc2oen/tasks/cmuzcgbxf000a9kzwbd5wfwi3",
+    "status": 200,
+    "time": "2026-10-09T00:26:18.091Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/projects/cmuzcgbwv00059kzwl4kc2oen/tasks/cmuzcgcgr000x9kzwwxlormsh",
+    "status": 200,
+    "time": "2026-10-09T00:26:18.091Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/projects/cmuzcgbwv00059kzwl4kc2oen/tasks/cmuzcgci400179kzwa3qgwz31",
+    "status": 200,
+    "time": "2026-10-09T00:26:18.096Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/projects/cmuzcgbwv00059kzwl4kc2oen/tasks/cmuzcgee9002v9kzw71du9cld",
+    "status": 200,
+    "time": "2026-10-09T00:26:18.096Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/projects/cmuzcgbwv00059kzwl4kc2oen/tasks/cmuzcggo500459kzw2164h2zs",
+    "status": 200,
+    "time": "2026-10-09T00:26:18.109Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/projects/cmuzcgbwv00059kzwl4kc2oen/tasks/cmuzcggnv00419kzw8bzzuxd2",
+    "status": 200,
+    "time": "2026-10-09T00:26:18.203Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/api/notifications/unread-count",
+    "status": 200,
+    "time": "2026-10-09T00:27:14.413Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/api/notifications/unread-count",
+    "status": 200,
+    "time": "2026-10-09T00:28:14.421Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/api/notifications/unread-count",
+    "status": 200,
+    "time": "2026-10-09T00:29:14.567Z"
+  },
+  {
+    "browser": "Safari",
+    "method": "GET",
+    "path": "/api/notifications/unread-count",
+    "status": 200,
+    "time": "2026-10-09T00:30:14.513Z"
+  }
+]

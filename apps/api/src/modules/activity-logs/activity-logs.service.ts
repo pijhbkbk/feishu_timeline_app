@@ -11,8 +11,11 @@ import {
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { ProjectAccessService } from '../auth/project-access.service';
+import { sanitizeNotificationLinkPathForRead } from '../notifications/notification-link-path.rules';
 import { normalizePage, normalizePageSize } from '../tasks/tasks.rules';
 import { getCurrentNodeName } from '../workflows/workflow-node.constants';
+
+const MAX_PROJECT_TIMELINE_SOURCE_WINDOW = 10_000;
 
 type AuditLogExecutor = Prisma.TransactionClient | PrismaService;
 
@@ -68,13 +71,13 @@ export class ActivityLogsService {
     actor: AuthenticatedUser,
     rawQuery: Record<string, string | undefined> = {},
   ) {
+    const page = normalizePage(rawQuery.page, 1);
+    const pageSize = normalizePageSize(rawQuery.pageSize, 20);
     await this.projectAccessService.assertProjectAccessWithDefaultClient(
       projectId,
       actor,
       'audit.read',
     );
-    const page = normalizePage(rawQuery.page, 1);
-    const pageSize = normalizePageSize(rawQuery.pageSize, 20);
     const from = this.parseOptionalDateFilter(rawQuery.from, 'from');
     const to = this.parseOptionalDateFilter(rawQuery.to, 'to');
     const actorUserId = rawQuery.actorUserId?.trim() || null;
@@ -86,6 +89,18 @@ export class ActivityLogsService {
 
     const offset = (page - 1) * pageSize;
     const sourceWindowSize = offset + pageSize;
+    if (
+      !Number.isSafeInteger(offset) ||
+      !Number.isSafeInteger(sourceWindowSize) ||
+      sourceWindowSize > MAX_PROJECT_TIMELINE_SOURCE_WINDOW
+    ) {
+      throw new BadRequestException({
+        statusCode: 400,
+        error: 'Bad Request',
+        code: 'PAGINATION_SOURCE_WINDOW_OUT_OF_RANGE',
+        message: '审计时间线分页窗口超出安全上限。',
+      });
+    }
     const project = await this.prisma.project.findUnique({
       where: { id: projectId },
       select: {
@@ -307,7 +322,7 @@ export class ActivityLogsService {
         actorUserId: notification.userId,
         nodeCode: null,
         nodeName: null,
-        linkPath: notification.linkPath,
+        linkPath: sanitizeNotificationLinkPathForRead(notification.linkPath),
         isRead: notification.isRead,
         sendStatus: notification.sendStatus,
         createdAt: notification.createdAt.toISOString(),
@@ -460,6 +475,7 @@ export class ActivityLogsService {
 
       return {
         ...notification,
+        linkPath: sanitizeNotificationLinkPathForRead(notification.linkPath),
         id: `notification:${notification.id}`,
         sourceType: 'NOTIFICATION' as const,
         actorName: notification.user.name,

@@ -1,0 +1,14 @@
+{
+  "name": "@feishu-timeline/api-ops",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Short-lived Prisma migration and seed toolchain for the API image.",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "dependencies": {
+    "@prisma/client": "6.19.3",
+    "prisma": "6.19.3",
+    "tsx": "4.22.2"
+  }
+}

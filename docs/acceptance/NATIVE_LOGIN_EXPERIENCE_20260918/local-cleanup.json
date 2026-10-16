@@ -1,0 +1,34 @@
+{
+  "checkedAt": "2026-09-18T03:52:51.706405+00:00",
+  "result": "PASS",
+  "containers": [
+    {
+      "name": "timeline-login-policy-api-v2-20260918",
+      "running": false,
+      "exitCode": 0,
+      "volumesPreserved": true
+    },
+    {
+      "name": "timeline-login-policy-web-final-20260918",
+      "running": false,
+      "exitCode": 0,
+      "volumesPreserved": true
+    },
+    {
+      "name": "timeline-login-policy-redis-20260918",
+      "running": false,
+      "exitCode": 0,
+      "volumesPreserved": true
+    },
+    {
+      "name": "timeline-login-policy-pg-20260918",
+      "running": false,
+      "exitCode": 0,
+      "volumesPreserved": true
+    }
+  ],
+  "loopbackProxyTerminationRequested": 1,
+  "failedCandidateAndDatabaseVolumesPreserved": true,
+  "otherServicesTouched": false,
+  "productionServicesStopped": false
+}

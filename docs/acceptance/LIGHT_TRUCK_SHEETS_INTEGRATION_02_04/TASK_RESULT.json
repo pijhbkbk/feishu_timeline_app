@@ -1,0 +1,38 @@
+{
+  "TASK_ID": "LIGHT_TRUCK_SHEETS_INTEGRATION_02_04",
+  "IMPLEMENTATION": "COMPLETE",
+  "ACCEPTANCE": "NOT_FULLY_VERIFIED",
+  "SHEET_INTERACTION": "PASS",
+  "SHEET_PERFORMANCE": "PASS",
+  "IMAGE_FILE_UPLOAD": "PASS",
+  "IMAGE_CLIPBOARD_PASTE": "PASS",
+  "IMAGE_XLSX_IMPORT_EXPORT": "PASS",
+  "IMAGE_PERSISTENCE_AND_OWNERSHIP": "PASS",
+  "COLOR_CATALOG_REGRESSION": "PASS",
+  "PERSONNEL_BUSINESS_LINK": "PASS",
+  "REVIEW_FACTS_AND_STATISTICS": "PASS",
+  "MONTHLY_REVIEW_LINK": "PASS",
+  "PRODUCTION_AND_STATISTICS": "PASS",
+  "CROSS_MODULE_ROUNDTRIP": "PASS",
+  "PERMISSION_AND_CONCURRENCY": "PASS",
+  "SYSTEM_IME": "NOT_VERIFIED",
+  "OFFICE_APP_COMPATIBILITY": "NOT_VERIFIED",
+  "BUILD": "PASS",
+  "UI_EVIDENCE": [
+    "UI_ACCEPTANCE.md",
+    "EVIDENCE_INDEX.md",
+    "UI_ACCEPTANCE_PHASES.json",
+    "FINAL_READBACK_SUMMARY.json",
+    "PERFORMANCE.md"
+  ],
+  "KNOWN_LIMITATIONS": [
+    "SYSTEM_IME: computer-control policy loading failed twice; actual OS Chinese composition not verified.",
+    "Office: historical production workbook opened read-only in Excel with 44 cells and 2 pictures; inspection open timed out. Full latest Excel/WPS/LibreOffice compatibility not verified.",
+    "Earlier repeated image viewport sweep had two network IO interruptions and two actor-concurrency 429 responses. Final normal reopen passed; manual retry recovery in that old session is unverified and OS cause unknown.",
+    "Unsaved drafts/retry queues are page-memory scoped, not recovered after browser exit; saved records/images persisted and reopened.",
+    "Advanced DISPIMG/external IMAGE/vector/complex Excel effects require explicit exclusion/manual upload; new image imports normalize layout rather than preserve all crop/rotation.",
+    "Current M1 has no normal legacy task-claim/reassignment UI; actual qualified-user concurrency, deactivation and stale-session rejection were tested under existing rules.",
+    "Backup/data/object equality passed; application was not switched to the restored database, and restored-database application login was not tested.",
+    "Product owner confirmation and production deployment were not performed."
+  ]
+}

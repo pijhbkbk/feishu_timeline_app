@@ -1,0 +1,378 @@
+{
+  "runtimeCommit": "a0769e7808ace84a05a36bed6c0edc2e81d097c6",
+  "browser": "154.0.8037.98",
+  "rows": [
+    {
+      "route": "/admin/color-database",
+      "url": "http://127.0.0.1:3350/admin/color-database",
+      "heading": "颜色数据库",
+      "network": [
+        {
+          "path": "/api/auth/session",
+          "method": "GET",
+          "status": 200
+        }
+      ]
+    },
+    {
+      "route": "/monthly-reviews",
+      "url": "http://127.0.0.1:3350/monthly-reviews",
+      "heading": "月度评审进度总览",
+      "network": [
+        {
+          "path": "/api/auth/session",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "path": "/api/dashboard/monthly-review-board",
+          "method": "GET",
+          "status": 200
+        }
+      ]
+    },
+    {
+      "route": "/analytics",
+      "url": "http://127.0.0.1:3350/analytics",
+      "heading": "数据中心",
+      "network": [
+        {
+          "path": "/api/auth/session",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "path": "/api/notifications/unread-count",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "path": "/api/analytics/overview",
+          "method": "GET",
+          "status": 200
+        }
+      ]
+    },
+    {
+      "route": "/admin/people",
+      "url": "http://127.0.0.1:3350/admin/people",
+      "heading": "人员库",
+      "network": [
+        {
+          "path": "/api/auth/session",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "path": "/api/users/directory",
+          "method": "GET",
+          "status": 200
+        }
+      ]
+    },
+    {
+      "route": "/projects/new?from=dashboard",
+      "url": "http://127.0.0.1:3350/projects/new?from=dashboard",
+      "heading": "新建颜色项目",
+      "network": [
+        {
+          "path": "/api/auth/session",
+          "method": "GET",
+          "status": 200
+        },
+        {
+          "path": "/api/notifications/unread-count",
+          "method": "GET",
+          "status": 200
+        }
+      ]
+    },
+    {
+      "route": "/v2/dashboard?project=cmuzblrjd00039kdr1xsn8bzr",
+      "url": "http://127.0.0.1:3350/dashboard?project=cmuzblrjd00039kdr1xsn8bzr",
+      "heading": "颜色开发流程"
+    },
+    {
+      "route": "/projects/flow-map",
+      "url": "http://127.0.0.1:3350/dashboard",
+      "heading": "颜色开发流程"
+    },
+    {
+      "route": "/projects/cmuzblrjd00039kdr1xsn8bzr/overview",
+      "url": "http://127.0.0.1:3350/projects/cmuzblrjd00039kdr1xsn8bzr?tab=flow",
+      "heading": "合成暖白 M1-1791450887410"
+    },
+    {
+      "route": "/projects/cmuzblrjd00039kdr1xsn8bzr/flow-map",
+      "url": "http://127.0.0.1:3350/projects/cmuzblrjd00039kdr1xsn8bzr?tab=flow",
+      "heading": "合成暖白 M1-1791450887410"
+    },
+    {
+      "route": "/projects/cmuzblrjd00039kdr1xsn8bzr/development-report",
+      "url": "http://127.0.0.1:3350/projects/cmuzblrjd00039kdr1xsn8bzr/tasks/cmuzblu1z000v9kdrnri385u7?from=project&tab=flow",
+      "heading": "已获批开发报告"
+    },
+    {
+      "route": "/projects/cmuzblrjd00039kdr1xsn8bzr/samples",
+      "url": "http://127.0.0.1:3350/projects/cmuzblrjd00039kdr1xsn8bzr/tasks/cmuzblvyr002t9kdrg1muwczs?from=project&tab=flow",
+      "heading": "样板颜色确认"
+    }
+  ],
+  "errors": [],
+  "consoleErrors": [],
+  "fontNode": {
+    "family": "-apple-system, \"system-ui\", \"SF Pro Display\", \"SF Pro Text\", \"PingFang SC\", \"Microsoft YaHei\", \"Helvetica Neue\", Arial, sans-serif",
+    "size": "30px"
+  },
+  "actualFonts": {
+    "fonts": [
+      {
+        "familyName": "PingFang SC",
+        "postScriptName": "PingFangSC-Semibold",
+        "isCustomFont": false,
+        "glyphCount": 6
+      }
+    ]
+  },
+  "network": [
+    {
+      "path": "/api/auth/session",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/auth/login",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/notifications/unread-count",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/projects",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/auth/session",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/auth/session",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/dashboard/monthly-review-board",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/auth/session",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/notifications/unread-count",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/analytics/overview",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/auth/session",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/users/directory",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/auth/session",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/notifications/unread-count",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/auth/session",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/notifications/unread-count",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/cmuzblu3j00159kdrgyqn083x/progress-context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/projects/cmuzblrjd00039kdr1xsn8bzr/samples",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/auth/session",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/auth/session",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/auth/session",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/projects/cmuzblrjd00039kdr1xsn8bzr",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/notifications/unread-count",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/projects/cmuzblrjd00039kdr1xsn8bzr/workspace",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/auth/session",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/notifications/unread-count",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/projects/cmuzblrjd00039kdr1xsn8bzr",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/projects/cmuzblrjd00039kdr1xsn8bzr/workspace",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/auth/session",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/notifications/unread-count",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/projects/cmuzblrjd00039kdr1xsn8bzr/workspace",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/cmuzblu1z000v9kdrnri385u7/progress-context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/projects/cmuzblrjd00039kdr1xsn8bzr/development-report",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/projects/cmuzblrjd00039kdr1xsn8bzr/attachments/cmuzbltv0000l9kdruw5xe72f",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/auth/session",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/notifications/unread-count",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/projects/cmuzblrjd00039kdr1xsn8bzr/workspace",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/cmuzblvyr002t9kdrg1muwczs/progress-context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/projects/cmuzblrjd00039kdr1xsn8bzr/samples",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/auth/session",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/notifications/unread-count",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v2/tasks/cmuzblvyr002t9kdrg1muwczs/progress-context",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/projects/cmuzblrjd00039kdr1xsn8bzr/samples",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/notifications/unread-count",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/notifications/unread-count",
+      "method": "GET",
+      "status": 200
+    }
+  ],
+  "zoomBefore": {
+    "devicePixelRatio": 2,
+    "innerWidth": 1440,
+    "innerHeight": 712,
+    "visualScale": 1
+  },
+  "zoomAfter": {
+    "devicePixelRatio": 2,
+    "innerWidth": 1440,
+    "innerHeight": 712,
+    "visualScale": 1
+  },
+  "zoomVerified": false,
+  "pageOverflow": false
+}

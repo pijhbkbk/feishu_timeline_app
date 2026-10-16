@@ -1,0 +1,25 @@
+{
+  "scope": "Read-only bytes/AST checks; no import, driver/script execution or production access",
+  "operationsCommit": "bf2cf83a0bd172a6e9360d5e7f3533912a062813",
+  "runtimeCommit": "c5aed415cd17e6e8a21b422a4c5c92b4b924e091",
+  "priorInstalledReadbackSha256": "8fb7f3d77fbf1f5c717cc7fb8f1072dd29dc5fc4eb77d61758717f36265ad3a9",
+  "oldHelperSha256": "78b9299b5550997d2d939c5b2fc0205b6bd7e0ca620163771a061aede37e8f1a",
+  "newHelperSha256": "e1c7b96aaf7318080223280bdbfc97c1601a2b8036f9a4ccbcc2f3b400548c6e",
+  "oldInstallJournalSha256": "52fd69be9a0fae281801b5640714ca9184a1adcc00c9f5a9856ea02e36c82862",
+  "newInstallJournalSha256": "d2a736e2687c17a678258008252c0b2967f737d65590f2e2560fa5db7c128acd",
+  "results": {
+    "release": {
+      "manifestSha256": "bac905b93e2e54b3a40a2ace75dfdc683885161636fedd04c0cb71586197e7a6",
+      "scriptsAndTemplatesMatched": 7,
+      "driverSha256": "bb2c85a70b2ebc4abe7c83cd85986a32a76662ac1c60cc5f148b05fb1eb7226e"
+    },
+    "repair": {
+      "manifestSha256": "1c1bc79c0c9b6f6870e063a7e6c66d662dade27103ff086b8e6603d9bb4c8fb0",
+      "scriptsAndTemplatesMatched": 1,
+      "driverSha256": "74ef741f6cd3fab1e4f4f25f71b618ac12915843139a3115996b7079190459ba"
+    }
+  },
+  "authorReportedTests": 126,
+  "reviewerRanTests": false,
+  "reviewDiagnostic": "Initial independent rendering used a different dictionary key insertion order; exact generator key order restored for byte comparison, without source or bundle changes."
+}

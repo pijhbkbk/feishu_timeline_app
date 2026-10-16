@@ -1,10 +1,19 @@
+import { PERSON_PRESENTATION_SELECT, personPresentation } from '../persons/person-profile-read';
+import { PROJECT_DISPLAY_COLOR_SELECT, resolveProjectDisplayColor, projectColorSearchWhere } from '../../common/project-display-color';
+import { assignProjectColor, normalizeProjectColorInput, type ProjectColorInput } from '../../common/project-color';
+import { assertApprovedTeamMember } from '../../common/team-membership';
+import { teamProjectScope } from '../../common/team-authorization';
+import { withTeamWrite, withProjectWrite } from '../../common/team-authorization';
 import {
   BadRequestException,
+  ConflictException,
+  GoneException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import {
+  AttachmentScanStatus,
   AttachmentTargetType,
   AuditTargetType,
   ColorExitSuggestion,
@@ -18,7 +27,7 @@ import {
   WorkflowNodeCode,
   WorkflowInstanceStatus,
   WorkflowTaskStatus,
-  type Prisma,
+  Prisma,
 } from '@prisma/client';
 
 import { PrismaService } from '../../infra/prisma/prisma.service';
@@ -27,8 +36,10 @@ import type { AuthenticatedUser } from '../auth/auth.types';
 import { ProjectAccessService } from '../auth/project-access.service';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import { WorkflowsService } from '../workflows/workflows.service';
+import { NODE_BUSINESS_ROLES } from '../personnel/personnel.constants';
 import { WORKFLOW_NODE_META_MAP } from '../workflows/workflow-node.constants';
 import {
+  PROJECT_CREATE_MEMBERS_MAX_COUNT,
   PROJECT_PAINT_SUPPLIER_VALUES,
   type ProjectPaintSupplier,
 } from './project.constants';
@@ -57,8 +68,8 @@ type ProjectListQuery = {
   dateTo?: Date;
 };
 
-type CreateProjectInput = {
-  code: string;
+type CreateProjectInput = ProjectColorInput & {
+  code: string | null;
   name: string;
   description: string | null;
   priority: ProjectPriority;
@@ -73,6 +84,7 @@ type CreateProjectInput = {
 };
 
 type UpdateProjectInput = {
+  expectedVersion: Date;
   name?: string;
   description?: string | null;
   priority?: ProjectPriority;
@@ -80,15 +92,17 @@ type UpdateProjectInput = {
   colorMarketingUnit?: string | null;
   paintSupplier?: ProjectPaintSupplier | null;
   vehicleModel?: string | null;
-  ownerUserId?: string;
   plannedStartDate?: Date | null;
   plannedEndDate?: Date | null;
 };
 
 type ProjectRecord = Prisma.ProjectGetPayload<{
   include: {
+    primaryColor: { select: typeof PROJECT_DISPLAY_COLOR_SELECT };
+    colors: { select: typeof PROJECT_DISPLAY_COLOR_SELECT };
     ownerUser: {
       include: {
+        personProfile: { select: typeof PERSON_PRESENTATION_SELECT };
         department: true;
       };
     };
@@ -97,6 +111,7 @@ type ProjectRecord = Prisma.ProjectGetPayload<{
       include: {
         user: {
           include: {
+            personProfile: { select: typeof PERSON_PRESENTATION_SELECT };
             department: true;
             userRoles: {
               include: {
@@ -124,6 +139,9 @@ const PROJECT_STATUS_VALUES = Object.values(ProjectStatus);
 const PROJECT_PRIORITY_VALUES = Object.values(ProjectPriority);
 const PROJECT_MEMBER_TYPE_VALUES = Object.values(ProjectMemberType);
 const WORKFLOW_NODE_VALUES = Object.values(WorkflowNodeCode);
+const PROJECT_CREATE_ACTION = 'PROJECT_CREATE';
+const PROJECT_IDEMPOTENCY_KEY_MAX_LENGTH = 128;
+const PROJECT_IDEMPOTENCY_KEY_PATTERN = /^[A-Za-z0-9._:-]+$/;
 const PROJECT_LIST_VIEW_VALUES = ['all', 'normal', 'risk', 'overdue', 'review'] as const;
 const REVIEW_NODE_CODES = [
   WorkflowNodeCode.SAMPLE_COLOR_CONFIRMATION,
@@ -205,21 +223,16 @@ export class ProjectsService {
         include: {
           ownerUser: {
             include: {
+              personProfile: { select: PERSON_PRESENTATION_SELECT },
               department: true,
             },
           },
           owningDepartment: true,
+          primaryColor: { select: PROJECT_DISPLAY_COLOR_SELECT },
           colors: {
-            select: {
-              name: true,
-              code: true,
-              isPrimary: true,
-              numberingTaskId: true,
-              numberedById: true,
-              numberedAt: true,
-              numberingAttachmentId: true,
-            },
-            orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
+            select: PROJECT_DISPLAY_COLOR_SELECT,
+            orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }, { id: 'asc' }],
+            take: 1,
           },
           workflowTasks: {
             where: {
@@ -232,10 +245,13 @@ export class ProjectsService {
               taskRound: true,
               isActive: true,
               dueAt: true,
+              effectiveDueAt: true,
               status: true,
               updatedAt: true,
               assigneeUser: {
                 select: {
+                  personProfile: { select: PERSON_PRESENTATION_SELECT },
+                  departmentId: true,
                   id: true,
                   name: true,
                   department: {
@@ -254,6 +270,7 @@ export class ProjectsService {
               },
             },
             orderBy: [{ dueAt: 'asc' }, { updatedAt: 'desc' }],
+            take: 19,
           },
           taskBlockers: {
             where: { status: TaskBlockerStatus.OPEN },
@@ -294,6 +311,12 @@ export class ProjectsService {
       const rightSequence = WORKFLOW_NODE_META_MAP[right.nodeCode]?.sequence ?? right.sequence;
       return leftSequence - rightSequence;
     });
+    const monthlyProjectIds = projects.filter(project => project.workflowTasks.some(task => task.isActive && task.nodeCode === WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW)).map(project => project.id);
+    const monthlyDates = monthlyProjectIds.length ? await this.prisma.recurringTask.groupBy({
+      by: ['projectId'], where: { projectId: { in: monthlyProjectIds }, status: { in: [RecurringTaskStatus.PENDING, RecurringTaskStatus.IN_PROGRESS, RecurringTaskStatus.OVERDUE] },
+        recurringPlan: { status: 'ACTIVE', sourceNodeCode: WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW } }, _min: { dueAt: true },
+    }) : [];
+    const monthlyDeadlines = new Map(monthlyDates.map(item => [item.projectId, item._min.dueAt]));
 
     return {
       page: query.page,
@@ -323,7 +346,7 @@ export class ProjectsService {
         name: WORKFLOW_NODE_META_MAP[definition.nodeCode]?.name ?? definition.name,
         sequence: WORKFLOW_NODE_META_MAP[definition.nodeCode]?.sequence ?? definition.sequence,
       })),
-      items: projects.map((project) => this.toProjectListItem(project)),
+      items: projects.map((project) => this.toProjectListItem(project, monthlyDeadlines.get(project.id))),
     };
   }
 
@@ -366,6 +389,8 @@ export class ProjectsService {
         include: {
           assigneeUser: {
             select: {
+              personProfile: { select: PERSON_PRESENTATION_SELECT },
+              departmentId: true,
               id: true,
               name: true,
             },
@@ -453,12 +478,16 @@ export class ProjectsService {
         include: {
           ownerUser: {
             include: {
+              personProfile: { select: PERSON_PRESENTATION_SELECT },
               department: true,
             },
           },
           owningDepartment: true,
+          primaryColor: { select: PROJECT_DISPLAY_COLOR_SELECT },
           colors: {
-            orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
+            select: PROJECT_DISPLAY_COLOR_SELECT,
+            orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }, { id: 'asc' }],
+            take: 1,
           },
         },
       }),
@@ -469,6 +498,7 @@ export class ProjectsService {
         include: {
           assigneeUser: {
             include: {
+              personProfile: { select: PERSON_PRESENTATION_SELECT },
               department: true,
             },
           },
@@ -503,6 +533,12 @@ export class ProjectsService {
               name: true,
             },
           },
+          attachment: {
+            select: {
+              scanStatus: true,
+              isDeleted: true,
+            },
+          },
         },
         orderBy: [{ reviewedAt: 'desc' }, { createdAt: 'desc' }],
       }),
@@ -527,6 +563,7 @@ export class ProjectsService {
             where: {
               projectId,
               isDeleted: false,
+              scanStatus: AttachmentScanStatus.CLEAN,
               OR: [
                 {
                   entityType: AttachmentTargetType.WORKFLOW_TASK,
@@ -559,7 +596,11 @@ export class ProjectsService {
     }
 
     for (const review of reviewRecords) {
-      if (!review.attachmentId) {
+      if (
+        !review.attachmentId ||
+        review.attachment?.scanStatus !== AttachmentScanStatus.CLEAN ||
+        review.attachment.isDeleted
+      ) {
         continue;
       }
 
@@ -591,8 +632,8 @@ export class ProjectsService {
           task?.returnedAt?.toISOString() ??
           null,
         responsibleDepartment:
-          task?.assigneeDepartment?.name ?? task?.assigneeUser?.department?.name ?? null,
-        ownerName: task?.assigneeUser?.name ?? null,
+          task?.assigneeDepartment?.name ?? (task?.assigneeUser ? personPresentation(task.assigneeUser).departmentName : null),
+        ownerName: (task?.assigneeUser ? personPresentation(task.assigneeUser).name : null),
         output:
           nodeReviews.length > 0
             ? `评审记录 ${nodeReviews.length} 条`
@@ -628,9 +669,9 @@ export class ProjectsService {
         priority: project.priority,
         currentNodeCode: project.currentNodeCode,
         currentNodeName: this.workflowsService.getCurrentNodeName(project.currentNodeCode),
-        colorName: project.colors[0]?.name ?? '未关联颜色',
-        ownerName: project.ownerUser?.name ?? '未分配',
-        ownerDepartmentName: project.ownerUser?.department?.name ?? project.owningDepartment?.name ?? null,
+        colorName: resolveProjectDisplayColor(project)?.name ?? '未关联颜色',
+        ownerName: project.ownerUser ? personPresentation(project.ownerUser).name : '未分配',
+        ownerDepartmentName: (project.ownerUser ? personPresentation(project.ownerUser).departmentName : null) ?? project.owningDepartment?.name ?? null,
         plannedEndDate: this.serializeDate(project.plannedEndDate),
         progressPercent: Math.round((completedNodeCount / this.getOrderedWorkflowNodeCodes().length) * 100),
       },
@@ -790,85 +831,129 @@ export class ProjectsService {
     };
   }
 
-  async createProject(rawInput: unknown, actor: AuthenticatedUser) {
+  async createProject(
+    rawInput: unknown,
+    actor: AuthenticatedUser,
+    rawIdempotencyKey?: string,
+  ) {
+    assertApprovedTeamMember(actor);
+    const idempotencyKey = this.parseProjectIdempotencyKey(rawIdempotencyKey);
     const input = this.normalizeCreateInput(rawInput, actor);
+    const requestHash = this.hashProjectCreateCommand(input);
+    const commandInput = {
+      actorUserId: actor.id,
+      idempotencyKey,
+      requestHash,
+    };
 
-    return this.prisma.$transaction(async (tx) => {
-      const owner = await this.findActiveUserOrThrow(tx, input.ownerUserId);
+    try {
+      return await withTeamWrite(this.prisma, actor, async (tx) => {
+        await this.lockProjectCreateCommand(tx, actor.id, idempotencyKey);
+        const lockedReplay = await this.findProjectCreateCommandReplay(tx, commandInput);
+        if (lockedReplay) {
+          return lockedReplay;
+        }
 
-      const project = await tx.project.create({
-        data: {
-          code: input.code,
-          name: input.name,
-          description: input.description,
-          status: ProjectStatus.IN_PROGRESS,
-          priority: input.priority,
-          currentNodeCode: WorkflowNodeCode.PROJECT_INITIATION,
-          owningDepartmentId: owner.departmentId ?? actor.departmentId ?? null,
+        const owner = await this.findActiveUserOrThrow(tx, input.ownerUserId);
+
+        const project = await tx.project.create({
+          data: {
+            code: input.code ?? this.generateProjectCode(),
+            name: input.name,
+            description: input.description,
+            status: ProjectStatus.DRAFT,
+            requiresApprovedReport: true,
+            priority: input.priority,
+            currentNodeCode: WorkflowNodeCode.PROJECT_INITIATION,
+            owningDepartmentId: owner.departmentId ?? actor.departmentId ?? null,
+            ownerUserId: owner.id,
+            marketRegion: input.marketRegion,
+            colorMarketingUnit: input.colorMarketingUnit,
+            paintSupplier: input.paintSupplier,
+            vehicleModel: input.vehicleModel,
+            plannedStartDate: input.plannedStartDate,
+            plannedEndDate: input.plannedEndDate,
+            actualStartDate: null,
+            actualEndDate: null,
+            closedAt: null,
+          },
+        });
+
+        const color = await assignProjectColor(tx, project.id, input);
+
+        const createdMembers = await this.replaceMembersInTx(tx, {
+          projectId: project.id,
           ownerUserId: owner.id,
-          marketRegion: input.marketRegion,
-          colorMarketingUnit: input.colorMarketingUnit,
-          paintSupplier: input.paintSupplier,
-          vehicleModel: input.vehicleModel,
-          plannedStartDate: input.plannedStartDate,
-          plannedEndDate: input.plannedEndDate,
-          actualStartDate: null,
-          actualEndDate: null,
-          closedAt: null,
-        },
+          members: input.members,
+        });
+
+        const workflow = await this.workflowsService.initializeProjectWorkflow(tx, {
+          projectId: project.id,
+          ownerUserId: owner.id,
+          initiatedById: actor.id,
+        });
+
+        await this.activityLogsService.createWithExecutor(tx, {
+          projectId: project.id,
+          actorUserId: actor.id,
+          targetType: AuditTargetType.PROJECT,
+          targetId: project.id,
+          action: 'PROJECT_CREATED',
+          nodeCode: WorkflowNodeCode.PROJECT_INITIATION,
+          summary: `创建项目 ${project.name}`,
+          afterData: {
+            project: this.toProjectAuditSnapshot(project),
+            color: { id: color.id, name: color.name, productionBaseId: color.productionBaseId, mode: input.colorMode, registerStatus: color.registerStatus },
+            members: this.toMemberAuditSnapshot(createdMembers),
+          },
+        });
+
+        await this.activityLogsService.createWithExecutor(tx, {
+          projectId: project.id,
+          actorUserId: actor.id,
+          targetType: AuditTargetType.WORKFLOW_INSTANCE,
+          targetId: workflow.instance.id,
+          action: 'WORKFLOW_INITIALIZED',
+          nodeCode: WorkflowNodeCode.PROJECT_INITIATION,
+          summary: '项目创建后自动初始化流程实例。',
+          afterData: {
+            workflowInstanceId: workflow.instance.id,
+            workflowTaskId: workflow.task.id,
+            currentNodeCode: workflow.instance.currentNodeCode,
+          },
+        });
+
+        const createdProject = await this.findProjectDetailOrThrow(tx, project.id);
+        const result = this.toProjectDetail(createdProject);
+
+        await tx.projectCreateCommandRequest.create({
+          data: {
+            actorUserId: actor.id,
+            idempotencyKey,
+            requestHash,
+            projectId: project.id,
+            resultSnapshot: result as unknown as Prisma.InputJsonValue,
+          },
+        });
+
+        return { ...result, idempotentReplay: false };
       });
-
-      const createdMembers = await this.replaceMembersInTx(tx, {
-        projectId: project.id,
-        ownerUserId: owner.id,
-        members: input.members,
-      });
-
-      const workflow = await this.workflowsService.initializeProjectWorkflow(tx, {
-        projectId: project.id,
-        ownerUserId: owner.id,
-        initiatedById: actor.id,
-      });
-
-      await this.activityLogsService.createWithExecutor(tx, {
-        projectId: project.id,
-        actorUserId: actor.id,
-        targetType: AuditTargetType.PROJECT,
-        targetId: project.id,
-        action: 'PROJECT_CREATED',
-        nodeCode: WorkflowNodeCode.PROJECT_INITIATION,
-        summary: `创建项目 ${project.name}`,
-        afterData: {
-          project: this.toProjectAuditSnapshot(project),
-          members: this.toMemberAuditSnapshot(createdMembers),
-        },
-      });
-
-      await this.activityLogsService.createWithExecutor(tx, {
-        projectId: project.id,
-        actorUserId: actor.id,
-        targetType: AuditTargetType.WORKFLOW_INSTANCE,
-        targetId: workflow.instance.id,
-        action: 'WORKFLOW_INITIALIZED',
-        nodeCode: WorkflowNodeCode.PROJECT_INITIATION,
-        summary: '项目创建后自动初始化流程实例。',
-        afterData: {
-          workflowInstanceId: workflow.instance.id,
-          workflowTaskId: workflow.task.id,
-          currentNodeCode: workflow.instance.currentNodeCode,
-        },
-      });
-
-      const createdProject = await this.findProjectDetailOrThrow(tx, project.id);
-
-      return this.toProjectDetail(createdProject);
-    });
+    } catch (error) {
+      if (this.isUniqueConstraintError(error)) {
+        const winningReplay = await withTeamWrite(this.prisma, actor,
+          tx => this.findProjectCreateCommandReplay(tx, commandInput));
+        if (winningReplay) {
+          return winningReplay;
+        }
+      }
+      throw error;
+    }
   }
 
   async updateProject(projectId: string, rawInput: unknown, actor: AuthenticatedUser) {
     const input = this.normalizeUpdateInput(rawInput);
 
-    return this.prisma.$transaction(async (tx) => {
+    return withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
       await this.projectAccessService.assertProjectAccess(tx, projectId, actor, 'project.write');
 
       const currentProject = await tx.project.findUnique({
@@ -879,53 +964,50 @@ export class ProjectsService {
         throw new NotFoundException('项目不存在或已被删除。');
       }
 
-      const ownerUserId = input.ownerUserId ?? currentProject.ownerUserId;
-      let resolvedOwnerUserId = ownerUserId;
-
-      if (ownerUserId) {
-        const owner = await this.findActiveUserOrThrow(tx, ownerUserId);
-        resolvedOwnerUserId = owner.id;
+      if (currentProject.updatedAt.getTime() !== input.expectedVersion.getTime()) {
+        this.throwProjectStateChanged(projectId, input.expectedVersion, currentProject.updatedAt);
       }
 
-      const updatedProject = await tx.project.update({
-        where: { id: projectId },
+      const nextVersion = new Date(
+        Math.max(Date.now(), input.expectedVersion.getTime() + 1),
+      );
+      const claimed = await tx.project.updateMany({
+        where: {
+          id: projectId,
+          updatedAt: input.expectedVersion,
+          memberAssignmentVersion: currentProject.memberAssignmentVersion,
+        },
         data: {
-          name: input.name ?? currentProject.name,
-          description:
-            input.description === undefined ? currentProject.description : input.description,
-          priority: input.priority ?? currentProject.priority,
-          marketRegion:
-            input.marketRegion === undefined ? currentProject.marketRegion : input.marketRegion,
-          colorMarketingUnit:
-            input.colorMarketingUnit === undefined
-              ? currentProject.colorMarketingUnit
-              : input.colorMarketingUnit,
-          paintSupplier:
-            input.paintSupplier === undefined
-              ? currentProject.paintSupplier
-              : input.paintSupplier,
-          vehicleModel:
-            input.vehicleModel === undefined ? currentProject.vehicleModel : input.vehicleModel,
-          ownerUserId: resolvedOwnerUserId ?? null,
-          owningDepartmentId:
-            resolvedOwnerUserId && resolvedOwnerUserId !== currentProject.ownerUserId
-              ? (
-                  await this.findActiveUserOrThrow(tx, resolvedOwnerUserId)
-                ).departmentId ?? currentProject.owningDepartmentId
-              : currentProject.owningDepartmentId,
-          plannedStartDate:
-            input.plannedStartDate === undefined
-              ? currentProject.plannedStartDate
-              : input.plannedStartDate,
-          plannedEndDate:
-            input.plannedEndDate === undefined
-              ? currentProject.plannedEndDate
-              : input.plannedEndDate,
+          ...(input.name !== undefined ? { name: input.name } : {}),
+          ...(input.description !== undefined ? { description: input.description } : {}),
+          ...(input.priority !== undefined ? { priority: input.priority } : {}),
+          ...(input.marketRegion !== undefined ? { marketRegion: input.marketRegion } : {}),
+          ...(input.colorMarketingUnit !== undefined
+            ? { colorMarketingUnit: input.colorMarketingUnit }
+            : {}),
+          ...(input.paintSupplier !== undefined
+            ? { paintSupplier: input.paintSupplier }
+            : {}),
+          ...(input.vehicleModel !== undefined ? { vehicleModel: input.vehicleModel } : {}),
+          ...(input.plannedStartDate !== undefined
+            ? { plannedStartDate: input.plannedStartDate }
+            : {}),
+          ...(input.plannedEndDate !== undefined
+            ? { plannedEndDate: input.plannedEndDate }
+            : {}),
+          updatedAt: nextVersion,
         },
       });
 
-      if (resolvedOwnerUserId) {
-        await this.ensureOwnerMemberInTx(tx, projectId, resolvedOwnerUserId);
+      if (claimed.count !== 1) {
+        this.throwProjectStateChanged(projectId, input.expectedVersion);
+      }
+
+      const updatedProject = await tx.project.findUnique({
+        where: { id: projectId },
+      });
+      if (!updatedProject) {
+        this.throwProjectStateChanged(projectId, input.expectedVersion);
       }
 
       await this.activityLogsService.createWithExecutor(tx, {
@@ -946,58 +1028,12 @@ export class ProjectsService {
   }
 
   async replaceProjectMembers(projectId: string, rawInput: unknown, actor: AuthenticatedUser) {
-    const input = this.normalizeMembersInput(rawInput);
-
-    return this.prisma.$transaction(async (tx) => {
-      await this.projectAccessService.assertProjectAccess(tx, projectId, actor, 'project.write');
-
-      const project = await tx.project.findUnique({
-        where: { id: projectId },
-        include: {
-          members: {
-            include: {
-              user: true,
-            },
-          },
-        },
-      });
-
-      if (!project) {
-        throw new NotFoundException('项目不存在或已被删除。');
-      }
-
-      const beforeMembers = project.members.map((member) => ({
-        userId: member.userId,
-        userName: member.user.name,
-        memberType: member.memberType,
-        title: member.title,
-        isPrimary: member.isPrimary,
-      }));
-
-      const updatedMembers = await this.replaceMembersInTx(tx, {
-        projectId,
-        ownerUserId: project.ownerUserId,
-        members: input.members,
-      });
-
-      await this.activityLogsService.createWithExecutor(tx, {
-        projectId,
-        actorUserId: actor.id,
-        targetType: AuditTargetType.PROJECT,
-        targetId: projectId,
-        action: 'PROJECT_MEMBERS_REPLACED',
-        nodeCode: project.currentNodeCode,
-        summary: `更新项目 ${project.name} 成员`,
-        beforeData: {
-          members: beforeMembers,
-        },
-        afterData: {
-          members: this.toMemberAuditSnapshot(updatedMembers),
-        },
-      });
-
-      const detail = await this.findProjectDetailOrThrow(tx, projectId);
-      return this.toProjectDetail(detail);
+    void projectId;
+    void rawInput;
+    void actor;
+    throw new GoneException({
+      code: 'LEGACY_PROJECT_MEMBER_REPLACEMENT_DISABLED',
+      message: '成员变更必须通过受版本控制的成员分工接口完成。',
     });
   }
 
@@ -1045,8 +1081,9 @@ export class ProjectsService {
 
   private normalizeCreateInput(rawInput: unknown, actor: AuthenticatedUser): CreateProjectInput {
     const input = this.asRecord(rawInput, 'Invalid project payload.');
-    const code = this.parseOptionalString(input.code) ?? this.generateProjectCode();
+    const code = this.parseOptionalString(input.code) ?? null;
     const name = this.parseRequiredString(input.name, 'name');
+    const colorInput = normalizeProjectColorInput(input, name);
     const description = this.parseNullableString(input.description);
     const priority =
       this.parseOptionalEnum(input.priority, PROJECT_PRIORITY_VALUES, 'priority') ??
@@ -1066,8 +1103,10 @@ export class ProjectsService {
     const members = this.parseMembers(input.members);
 
     this.assertDateRange(plannedStartDate, plannedEndDate);
+    this.assertCreateMemberLimit(members, ownerUserId);
 
     return {
+      ...colorInput,
       code,
       name,
       description,
@@ -1083,8 +1122,171 @@ export class ProjectsService {
     };
   }
 
+  private parseProjectIdempotencyKey(rawValue: string | undefined) {
+    const value = rawValue?.trim() ?? '';
+    if (
+      !value ||
+      value.length > PROJECT_IDEMPOTENCY_KEY_MAX_LENGTH ||
+      !PROJECT_IDEMPOTENCY_KEY_PATTERN.test(value)
+    ) {
+      throw new BadRequestException({
+        statusCode: 400,
+        error: 'Bad Request',
+        code: 'PROJECT_IDEMPOTENCY_KEY_INVALID',
+        message: `Idempotency-Key 必须为 1-${PROJECT_IDEMPOTENCY_KEY_MAX_LENGTH} 位安全字符。`,
+      });
+    }
+    return value;
+  }
+
+  private hashProjectCreateCommand(input: CreateProjectInput) {
+    const members = input.members
+      .map((member) => ({
+        userId: member.userId,
+        memberType: member.memberType,
+        title: member.title,
+        isPrimary: member.isPrimary,
+      }))
+      .sort((left, right) =>
+        this.stableSerialize(left).localeCompare(this.stableSerialize(right)),
+      );
+    const canonicalPayload = {
+      action: PROJECT_CREATE_ACTION,
+      colorMode: input.colorMode,
+      colorName: input.colorName,
+      productionBaseId: input.productionBaseId,
+      existingColorId: input.existingColorId,
+      code: input.code,
+      name: input.name,
+      description: input.description,
+      priority: input.priority,
+      marketRegion: input.marketRegion,
+      colorMarketingUnit: input.colorMarketingUnit,
+      paintSupplier: input.paintSupplier,
+      vehicleModel: input.vehicleModel,
+      ownerUserId: input.ownerUserId,
+      plannedStartDate: input.plannedStartDate?.toISOString() ?? null,
+      plannedEndDate: input.plannedEndDate?.toISOString() ?? null,
+      members,
+    };
+    return createHash('sha256')
+      .update(this.stableSerialize(canonicalPayload))
+      .digest('hex');
+  }
+
+  private stableSerialize(value: unknown): string {
+    if (Array.isArray(value)) {
+      return `[${value.map((item) => this.stableSerialize(item)).join(',')}]`;
+    }
+    if (value && typeof value === 'object') {
+      return `{${Object.entries(value as Record<string, unknown>)
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(
+          ([key, item]) =>
+            `${JSON.stringify(key)}:${this.stableSerialize(item)}`,
+        )
+        .join(',')}}`;
+    }
+    return JSON.stringify(value) ?? 'null';
+  }
+
+  private async findProjectCreateCommandReplay(
+    db: ProjectDbClient,
+    input: {
+      actorUserId: string;
+      idempotencyKey: string;
+      requestHash: string;
+    },
+  ) {
+    const existing = await db.projectCreateCommandRequest.findUnique({
+      where: {
+        actorUserId_idempotencyKey: {
+          actorUserId: input.actorUserId,
+          idempotencyKey: input.idempotencyKey,
+        },
+      },
+    });
+    if (!existing) {
+      return null;
+    }
+    if (existing.requestHash !== input.requestHash) {
+      throw new ConflictException({
+        statusCode: 409,
+        error: 'Conflict',
+        code: 'IDEMPOTENCY_KEY_REUSED_WITH_DIFFERENT_REQUEST',
+        message: '同一幂等键不能用于不同的项目创建请求。',
+      });
+    }
+    if (
+      !existing.resultSnapshot ||
+      typeof existing.resultSnapshot !== 'object' ||
+      Array.isArray(existing.resultSnapshot)
+    ) {
+      throw new ConflictException({
+        statusCode: 409,
+        error: 'Conflict',
+        code: 'PROJECT_CREATE_COMMAND_RESULT_INVALID',
+        message: '项目创建请求的幂等结果不可用，请联系系统管理员。',
+      });
+    }
+    return {
+      ...(existing.resultSnapshot as Record<string, unknown>),
+      idempotentReplay: true,
+    };
+  }
+
+  private async lockProjectCreateCommand(
+    tx: Prisma.TransactionClient,
+    actorUserId: string,
+    idempotencyKey: string,
+  ) {
+    await tx.$executeRaw`
+      SELECT pg_advisory_xact_lock(
+        hashtext(${'feishu-timeline:project-create'}),
+        hashtext(${`${actorUserId}:${idempotencyKey}`})
+      )
+    `;
+  }
+
+  private isUniqueConstraintError(error: unknown) {
+    return (
+      (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') ||
+      (!!error &&
+        typeof error === 'object' &&
+        'code' in error &&
+        error.code === 'P2002')
+    );
+  }
+
+  private assertCreateMemberLimit(
+    members: ProjectMemberInput[],
+    ownerUserId: string,
+  ) {
+    const includesOwner = members.some(
+      (member) =>
+        member.userId === ownerUserId &&
+        member.memberType === ProjectMemberType.OWNER,
+    );
+    const persistedMemberCount = members.length + (includesOwner ? 0 : 1);
+    if (persistedMemberCount > PROJECT_CREATE_MEMBERS_MAX_COUNT) {
+      throw new BadRequestException({
+        statusCode: 400,
+        error: 'Bad Request',
+        code: 'PROJECT_MEMBER_LIMIT_EXCEEDED',
+        message: `项目成员（含负责人）不得超过 ${PROJECT_CREATE_MEMBERS_MAX_COUNT} 人。`,
+      });
+    }
+  }
+
   private normalizeUpdateInput(rawInput: unknown): UpdateProjectInput {
     const input = this.asRecord(rawInput, 'Invalid project payload.');
+    if (Object.prototype.hasOwnProperty.call(input, 'ownerUserId')) {
+      throw new BadRequestException({
+        code: 'PROJECT_OWNER_CHANGE_REQUIRES_VERSIONED_COMMAND',
+        message: '负责人变更必须通过受版本控制的成员分工接口完成。',
+      });
+    }
+    const expectedVersion = this.parseRequiredProjectVersion(input.expectedVersion);
     const plannedStartDate = this.parseOptionalDate(
       input.plannedStartDate,
       'plannedStartDate',
@@ -1097,7 +1299,7 @@ export class ProjectsService {
       plannedEndDate === undefined ? undefined : plannedEndDate,
     );
 
-    const normalized: UpdateProjectInput = {};
+    const normalized: UpdateProjectInput = { expectedVersion };
     const name = this.parseOptionalString(input.name);
     const description = this.parseNullableString(input.description, true);
     const priority = this.parseOptionalEnum(
@@ -1116,7 +1318,6 @@ export class ProjectsService {
             'paintSupplier',
           );
     const vehicleModel = this.parseNullableString(input.vehicleModel, true);
-    const ownerUserId = this.parseOptionalString(input.ownerUserId);
 
     if (name !== undefined) {
       normalized.name = name;
@@ -1146,10 +1347,6 @@ export class ProjectsService {
       normalized.vehicleModel = vehicleModel;
     }
 
-    if (ownerUserId !== undefined) {
-      normalized.ownerUserId = ownerUserId;
-    }
-
     if (plannedStartDate !== undefined) {
       normalized.plannedStartDate = plannedStartDate;
     }
@@ -1161,12 +1358,42 @@ export class ProjectsService {
     return normalized;
   }
 
-  private normalizeMembersInput(rawInput: unknown) {
-    const input = this.asRecord(rawInput, 'Invalid project members payload.');
+  private parseRequiredProjectVersion(rawValue: unknown) {
+    if (rawValue === undefined || rawValue === null || rawValue === '') {
+      throw new BadRequestException({
+        code: 'PROJECT_VERSION_REQUIRED',
+        message: '缺少项目数据版本，请刷新后重试。',
+      });
+    }
+    if (typeof rawValue !== 'string') {
+      throw new BadRequestException({
+        code: 'PROJECT_VERSION_INVALID',
+        message: '项目数据版本格式不正确，请刷新后重试。',
+      });
+    }
 
-    return {
-      members: this.parseMembers(input.members),
-    };
+    const version = new Date(rawValue);
+    if (Number.isNaN(version.getTime())) {
+      throw new BadRequestException({
+        code: 'PROJECT_VERSION_INVALID',
+        message: '项目数据版本格式不正确，请刷新后重试。',
+      });
+    }
+    return version;
+  }
+
+  private throwProjectStateChanged(
+    projectId: string,
+    expectedVersion: Date,
+    currentVersion?: Date,
+  ): never {
+    throw new ConflictException({
+      code: 'PROJECT_STATE_CHANGED',
+      message: '项目基础信息已被其他操作更新，请刷新后重试。',
+      projectId,
+      expectedVersion: expectedVersion.toISOString(),
+      currentVersion: currentVersion?.toISOString() ?? null,
+    });
   }
 
   private parseMembers(rawValue: unknown): ProjectMemberInput[] {
@@ -1230,22 +1457,7 @@ export class ProjectsService {
         OR: [
           { code: { contains: query.keyword, mode: 'insensitive' } },
           { name: { contains: query.keyword, mode: 'insensitive' } },
-          {
-            colors: {
-              some: {
-                OR: [
-                  { name: { contains: query.keyword, mode: 'insensitive' } },
-                  {
-                    code: { contains: query.keyword, mode: 'insensitive' },
-                    numberingTaskId: { not: null },
-                    numberedById: { not: null },
-                    numberedAt: { not: null },
-                    numberingAttachmentId: { not: null },
-                  },
-                ],
-              },
-            },
-          },
+          projectColorSearchWhere(query.keyword),
         ],
       });
     }
@@ -1269,7 +1481,10 @@ export class ProjectsService {
           {
             ownerUser: {
               is: {
-                departmentId: query.ownerDepartmentId,
+                OR: [
+                  { personProfile: { is: { departmentId: query.ownerDepartmentId } } },
+                  { personProfile: { is: null }, departmentId: query.ownerDepartmentId },
+                ],
               },
             },
           },
@@ -1380,40 +1595,22 @@ export class ProjectsService {
   }
 
   private buildVisibleProjectWhere(actor: AuthenticatedUser): Prisma.ProjectWhereInput {
-    if (actor.isSystemAdmin || actor.roleCodes.includes('admin')) {
-      return {};
-    }
-
-    const scopeWhere: Prisma.ProjectWhereInput[] = [
-      {
-        ownerUserId: actor.id,
-      },
-      {
-        members: {
-          some: {
-            userId: actor.id,
-          },
-        },
-      },
-    ];
-
-    if (actor.departmentId) {
-      scopeWhere.push({
-        owningDepartmentId: actor.departmentId,
-      });
-    }
-
-    return {
-      OR: scopeWhere,
-    };
+    return teamProjectScope(actor);
   }
 
   private async findProjectDetailOrThrow(db: ProjectDbClient, projectId: string) {
     const project = await db.project.findUnique({
       where: { id: projectId },
       include: {
+        primaryColor: { select: PROJECT_DISPLAY_COLOR_SELECT },
+        colors: {
+          select: PROJECT_DISPLAY_COLOR_SELECT,
+          orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }, { id: 'asc' }],
+          take: 1,
+        },
         ownerUser: {
           include: {
+            personProfile: { select: PERSON_PRESENTATION_SELECT },
             department: true,
           },
         },
@@ -1422,6 +1619,7 @@ export class ProjectsService {
           include: {
             user: {
               include: {
+                personProfile: { select: PERSON_PRESENTATION_SELECT },
                 department: true,
                 userRoles: {
                   include: {
@@ -1604,21 +1802,13 @@ export class ProjectsService {
       include: {
         ownerUser: {
           include: {
+            personProfile: { select: typeof PERSON_PRESENTATION_SELECT };
             department: true;
           };
         };
         owningDepartment: true;
-        colors: {
-          select: {
-            name: true;
-            code: true;
-            isPrimary: true;
-            numberingTaskId: true;
-            numberedById: true;
-            numberedAt: true;
-            numberingAttachmentId: true;
-          };
-        };
+        primaryColor: { select: typeof PROJECT_DISPLAY_COLOR_SELECT };
+        colors: { select: typeof PROJECT_DISPLAY_COLOR_SELECT };
         workflowTasks: {
           select: {
             id: true;
@@ -1627,10 +1817,13 @@ export class ProjectsService {
             taskRound: true;
             isActive: true;
             dueAt: true;
+            effectiveDueAt: true;
             status: true;
             updatedAt: true;
             assigneeUser: {
               select: {
+                personProfile: { select: typeof PERSON_PRESENTATION_SELECT };
+                departmentId: true;
                 id: true;
                 name: true;
                 department: {
@@ -1662,7 +1855,12 @@ export class ProjectsService {
         };
       };
     }>,
+    monthlyDueAt?: Date | null,
   ) {
+    if (project.workflowTasks.length > 18) throw new ConflictException('项目活跃工序数量异常，请核对后重试。');
+    const openTasks = project.workflowTasks.filter(task => ['PENDING', 'READY', 'IN_PROGRESS', 'RETURNED'].includes(task.status));
+    const deadlines = [...openTasks.map(task => task.effectiveDueAt ?? task.dueAt), monthlyDueAt].filter((value): value is Date => Boolean(value));
+    const earliestDueAt = deadlines.length ? new Date(Math.min(...deadlines.map(value => value.getTime()))) : null;
     const riskLevel = this.computeRiskLevel(project);
     const now = new Date();
     const currentTask =
@@ -1689,15 +1887,19 @@ export class ProjectsService {
       id: project.id,
       code: project.code,
       name: project.name,
-      colorName: project.colors[0]?.name ?? null,
-      colorCode: getControlledColorNumber(project.colors[0]),
+      colorName: resolveProjectDisplayColor(project)?.name ?? null,
+      colorCode: getControlledColorNumber(resolveProjectDisplayColor(project)),
       status: project.status,
       priority: project.priority,
       currentNodeCode: project.currentNodeCode,
       currentNodeName: this.workflowsService.getCurrentNodeName(project.currentNodeCode),
       ownerUserId: project.ownerUserId,
-      ownerName: project.ownerUser?.name ?? null,
-      ownerDepartmentName: project.ownerUser?.department?.name ?? null,
+      ownerName: project.ownerUser ? personPresentation(project.ownerUser).name : null,
+      ownerDepartmentName: project.ownerUser ? personPresentation(project.ownerUser).departmentName : null,
+      approvedReportDate: this.serializeDate(project.approvedReportDate),
+      approvalReference: project.approvalReference,
+      approvedReportAttachmentId: project.approvedReportAttachmentId,
+      requiresApprovedReport: project.requiresApprovedReport,
       marketRegion: project.marketRegion,
       colorMarketingUnit: project.colorMarketingUnit,
       paintSupplier: project.paintSupplier,
@@ -1709,20 +1911,22 @@ export class ProjectsService {
       progressText: `${Math.min(18, Math.max(0, currentSequence))} / 18`,
       currentTaskId: currentTask?.id ?? null,
       currentTaskOwnerId: currentTask?.assigneeUser?.id ?? null,
-      currentTaskOwnerName: currentTask?.assigneeUser?.name ?? project.ownerUser?.name ?? null,
+      currentTaskOwnerName: currentTask?.assigneeUser ? personPresentation(currentTask.assigneeUser).name : null,
       currentTaskDepartmentName:
         currentTask?.assigneeDepartment?.name ??
-        currentTask?.assigneeUser?.department?.name ??
+        (currentTask?.assigneeUser ? personPresentation(currentTask.assigneeUser).departmentName : null) ??
         null,
-      currentTaskDueAt: this.serializeDate(currentTask?.dueAt ?? null),
-      latestTaskUpdatedAt: currentTask?.updatedAt.toISOString() ?? project.updatedAt.toISOString(),
+      currentRoleCode: currentTask ? NODE_BUSINESS_ROLES[currentTask.nodeCode] : null,
+      earliestDueAt: this.serializeDate(earliestDueAt),
+      currentTaskDueAt: this.serializeDate(currentTask?.effectiveDueAt ?? currentTask?.dueAt ?? null),
+      latestTaskUpdatedAt: new Date(Math.max(project.updatedAt.getTime(), ...project.workflowTasks.map(task => task.updatedAt.getTime()))).toISOString(),
       stall: blocker || overdueTask
         ? {
             nodeCode: currentTask?.nodeCode ?? project.currentNodeCode,
             nodeName: currentTask?.nodeName ?? this.workflowsService.getCurrentNodeName(project.currentNodeCode),
             days: stalledDays,
             reason: blocker?.description ?? '当前工序已超过计划完成时间。',
-            ownerName: currentTask?.assigneeUser?.name ?? project.ownerUser?.name ?? null,
+            ownerName: currentTask?.assigneeUser ? personPresentation(currentTask.assigneeUser).name : null,
             helperName: blocker?.helperUser?.name ?? null,
             expectedResolvedAt: this.serializeDate(blocker?.expectedResolvedAt ?? null),
           }
@@ -1741,6 +1945,12 @@ export class ProjectsService {
 
     return {
       id: project.id,
+      primaryColorId: project.primaryColorId,
+      colorId: resolveProjectDisplayColor(project)?.id ?? null,
+      colorName: resolveProjectDisplayColor(project)?.name ?? null,
+      colorCode: getControlledColorNumber(resolveProjectDisplayColor(project)),
+      productionBaseId: resolveProjectDisplayColor(project)?.productionBaseId ?? null,
+      productionBaseName: resolveProjectDisplayColor(project)?.productionBase?.name ?? null,
       code: project.code,
       name: project.name,
       description: project.description,
@@ -1750,12 +1960,16 @@ export class ProjectsService {
       currentNodeCode: project.currentNodeCode,
       currentNodeName: this.workflowsService.getCurrentNodeName(project.currentNodeCode),
       targetDate: this.serializeDate(project.plannedEndDate),
+      approvedReportDate: this.serializeDate(project.approvedReportDate),
+      approvalReference: project.approvalReference,
+      approvedReportAttachmentId: project.approvedReportAttachmentId,
+      requiresApprovedReport: project.requiresApprovedReport,
       marketRegion: project.marketRegion,
       colorMarketingUnit: project.colorMarketingUnit,
       paintSupplier: project.paintSupplier,
       vehicleModel: project.vehicleModel,
       ownerUserId: project.ownerUserId,
-      ownerName: project.ownerUser?.name ?? null,
+      ownerName: project.ownerUser ? personPresentation(project.ownerUser).name : null,
       owningDepartmentId: project.owningDepartmentId,
       owningDepartmentName: project.owningDepartment?.name ?? null,
       plannedStartDate: this.serializeDate(project.plannedStartDate),
@@ -1783,9 +1997,9 @@ export class ProjectsService {
       members: project.members.map((member) => ({
         id: member.id,
         userId: member.userId,
-        name: member.user.name,
+        name: personPresentation(member.user).name,
         email: member.user.email,
-        departmentName: member.user.department?.name ?? null,
+        departmentName: personPresentation(member.user).departmentName,
         memberType: member.memberType,
         title: member.title,
         isPrimary: member.isPrimary,
@@ -1800,6 +2014,8 @@ export class ProjectsService {
       include: {
         assigneeUser: {
           select: {
+            personProfile: { select: typeof PERSON_PRESENTATION_SELECT };
+            departmentId: true;
             id: true;
             name: true;
           };
@@ -1825,7 +2041,7 @@ export class ProjectsService {
       isActive: task.isActive,
       overdueDays: task.overdueDays,
       assigneeUserId: task.assigneeUserId,
-      assigneeUserName: task.assigneeUser?.name ?? null,
+      assigneeUserName: task.assigneeUser ? personPresentation(task.assigneeUser).name : null,
       assigneeDepartmentId: task.assigneeDepartmentId,
       assigneeDepartmentName: task.assigneeDepartment?.name ?? null,
       dueAt: this.serializeDate(task.dueAt),

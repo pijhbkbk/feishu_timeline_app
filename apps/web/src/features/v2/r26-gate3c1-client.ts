@@ -36,11 +36,11 @@ export async function r26Gate3C1Request<T>(
           : {}),
       },
       body: JSON.stringify(options.body),
-      ...(options.signal ? { signal: options.signal } : {}),
+      signal: options.signal ? AbortSignal.any([options.signal, AbortSignal.timeout(30000)]) : AbortSignal.timeout(30000),
     });
   } catch (error) {
-    if (error instanceof DOMException && error.name === 'AbortError') {
-      throw error;
+    if (error instanceof DOMException && ['AbortError', 'TimeoutError'].includes(error.name)) {
+      throw new Error('请求等待超时，请重试以确认操作结果。', { cause: error });
     }
     throw new Error(
       normalizeApiErrorMessage(

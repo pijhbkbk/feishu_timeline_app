@@ -1,9 +1,13 @@
+import { assertApprovedTeamMember } from '../../common/team-membership';
+import { assertTeamTaskById, withProjectWrite } from '../../common/team-authorization';
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import {
+  AttachmentScanStatus,
   AttachmentTargetType,
   AuditTargetType,
   PerformanceTestResult,
@@ -20,6 +24,7 @@ import { PrismaService } from '../../infra/prisma/prisma.service';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import { AttachmentsService } from '../attachments/attachments.service';
 import type { AuthenticatedUser } from '../auth/auth.types';
+import { ProjectAccessService } from '../auth/project-access.service';
 import {
   getAllowedWorkflowActions,
   getCurrentNodeName,
@@ -57,11 +62,26 @@ type PerformanceTestWriteInput = {
 
 const PERFORMANCE_TEST_TYPE_VALUES = Object.values(PerformanceTestType);
 const PERFORMANCE_TEST_RESULT_VALUES = Object.values(PerformanceTestResult);
+const PERFORMANCE_TEST_RECORD_LIMIT = 100;
+const PERFORMANCE_TEST_SAMPLE_OPTION_LIMIT = 100;
+const PERFORMANCE_TEST_ATTACHMENT_HISTORY_LIMIT = 20;
+const PERFORMANCE_TEST_MAX_PAYLOAD_BYTES = 16 * 1024;
+const PERFORMANCE_TEST_ID_MAX_CHARS = 64;
+const PERFORMANCE_TEST_CODE_MAX_CHARS = 64;
+const PERFORMANCE_TEST_RELATED_OBJECT_MAX_CHARS = 200;
+const PERFORMANCE_TEST_VALUE_MAX_CHARS = 500;
+const PERFORMANCE_TEST_CONCLUSION_MAX_CHARS = 4_000;
+const PERFORMANCE_TEST_ID_PATTERN = /^[A-Za-z0-9_-]+$/;
+const PERFORMANCE_TEST_CODE_PATTERN = /^[A-Za-z0-9._-]+$/;
 const PERFORMANCE_TEST_DETAIL_INCLUDE = {
   sample: true,
   testedBy: true,
   reportAttachment: true,
 } satisfies Prisma.PerformanceTestInclude;
+const PERFORMANCE_TEST_ATTACHMENT_INCLUDE = {
+  uploadedBy: true,
+  deletedBy: true,
+} satisfies Prisma.AttachmentInclude;
 
 @Injectable()
 export class PerformanceTestsService {
@@ -70,13 +90,16 @@ export class PerformanceTestsService {
     private readonly activityLogsService: ActivityLogsService,
     private readonly attachmentsService: AttachmentsService,
     private readonly workflowsService: WorkflowsService,
+    private readonly projectAccessService: ProjectAccessService,
   ) {}
 
-  getWorkspace(projectId: string) {
+  async getWorkspace(projectId: string, actor: AuthenticatedUser) {
+    await this.assertProjectAccess(projectId, actor, 'project.read');
     return this.buildWorkspace(this.prisma, projectId);
   }
 
-  getDetail(projectId: string, testId: string) {
+  async getDetail(projectId: string, testId: string, actor: AuthenticatedUser) {
+    await this.assertProjectAccess(projectId, actor, 'project.read');
     return this.buildDetail(this.prisma, projectId, testId);
   }
 
@@ -85,12 +108,13 @@ export class PerformanceTestsService {
     rawInput: unknown,
     actor: AuthenticatedUser,
   ) {
+    await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     this.assertActorCanManage(actor);
     const input = this.parseWriteInput(rawInput);
 
-    await this.prisma.$transaction(async (tx) => {
-      const context = await this.getPerformanceContext(tx, projectId);
-      this.assertWritableStage(context);
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
+      const { context } = await this.lockPerformanceWriteContext(tx, actor, projectId);
+      this.assertPerformanceTestCapacity(context.records, true);
 
       await this.assertUniqueTestCode(tx, projectId, input.testCode);
       await this.assertSampleReference(tx, projectId, input.sampleId);
@@ -120,6 +144,7 @@ export class PerformanceTestsService {
         targetType: AuditTargetType.PERFORMANCE_TEST,
         targetId: createdTest.id,
         action: 'PERFORMANCE_TEST_CREATED',
+        metadata: { workflowTaskId: context.activeTask!.id, evidenceKind: 'TASK_CREATED_RECORD' },
         nodeCode: WorkflowNodeCode.PERFORMANCE_TEST,
         summary: `创建性能试验记录 ${createdTest.testCode}`,
         afterData: this.toPerformanceTestAuditSnapshot(createdTest),
@@ -135,16 +160,19 @@ export class PerformanceTestsService {
     rawInput: unknown,
     actor: AuthenticatedUser,
   ) {
+    await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     this.assertActorCanManage(actor);
     const input = this.parseWriteInput(rawInput);
 
-    await this.prisma.$transaction(async (tx) => {
-      const context = await this.getPerformanceContext(tx, projectId);
-      this.assertWritableStage(context);
-      const testRecord = await this.getTestOrThrow(tx, projectId, testId);
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
+      const { testRecord } = await this.lockPerformanceWriteContext(
+        tx, actor,
+        projectId,
+        testId,
+      );
 
-      if (!canEditPerformanceTest(testRecord.status)) {
-        throw new BadRequestException('已提交的试验记录不允许编辑。');
+      if (!testRecord || !canEditPerformanceTest(testRecord.status)) {
+        this.throwPerformanceTestStateChanged();
       }
 
       if (testRecord.testCode !== input.testCode) {
@@ -154,8 +182,13 @@ export class PerformanceTestsService {
       await this.assertSampleReference(tx, projectId, input.sampleId);
       await this.assertTesterReference(tx, input.testedById);
 
-      const updatedTest = await tx.performanceTest.update({
-        where: { id: testId },
+      const updated = await tx.performanceTest.updateMany({
+        where: {
+          id: testId,
+          projectId,
+          status: PerformanceTestStatus.DRAFT,
+          updatedAt: testRecord.updatedAt,
+        },
         data: {
           sampleId: input.sampleId,
           relatedObjectName: input.relatedObjectName,
@@ -168,8 +201,11 @@ export class PerformanceTestsService {
           testedById: input.testedById,
           testedAt: input.testedAt,
         },
-        include: PERFORMANCE_TEST_DETAIL_INCLUDE,
       });
+      if (updated.count !== 1) {
+        this.throwPerformanceTestStateChanged();
+      }
+      const updatedTest = await this.getTestOrThrow(tx, projectId, testId);
 
       await this.activityLogsService.createWithExecutor(tx, {
         projectId,
@@ -193,6 +229,7 @@ export class PerformanceTestsService {
     file: UploadedBinaryFile | undefined,
     actor: AuthenticatedUser,
   ) {
+    await this.assertProjectAccess(projectId, actor, 'attachment.manage');
     this.assertActorCanManage(actor);
 
     if (!file) {
@@ -207,7 +244,8 @@ export class PerformanceTestsService {
       throw new BadRequestException('已提交的试验记录不允许再上传报告。');
     }
 
-    const attachment = await this.attachmentsService.createStoredAttachment({
+    await this.attachmentsService.createStoredAttachment({
+      actor,
       projectId,
       targetType: AttachmentTargetType.PERFORMANCE_TEST,
       targetId: testId,
@@ -215,29 +253,14 @@ export class PerformanceTestsService {
       uploadedById: actor.id,
       nodeCode: WorkflowNodeCode.PERFORMANCE_TEST,
       summary: `上传性能试验报告 ${testRecord.testCode}`,
-    });
-
-    await this.prisma.$transaction(async (tx) => {
-      await tx.performanceTest.update({
-        where: { id: testId },
-        data: {
-          reportAttachmentId: attachment.id,
-        },
-      });
-
-      await this.activityLogsService.createWithExecutor(tx, {
+      replacesAttachmentId: testRecord.reportAttachmentId,
+      finalizeDomainAttachment: this.createReportAttachmentFinalizeHook({
+        actor,
         projectId,
-        actorUserId: actor.id,
-        targetType: AuditTargetType.PERFORMANCE_TEST,
-        targetId: testId,
-        action: 'PERFORMANCE_TEST_REPORT_ATTACHED',
-        nodeCode: WorkflowNodeCode.PERFORMANCE_TEST,
-        summary: `性能试验记录 ${testRecord.testCode} 已上传报告附件。`,
-        afterData: {
-          reportAttachmentId: attachment.id,
-          fileName: attachment.fileName,
-        },
-      });
+        testId,
+        workflowTaskId: context.activeTask!.id,
+        expectedAttachmentId: testRecord.reportAttachmentId,
+      }),
     });
 
     return this.buildDetail(this.prisma, projectId, testId);
@@ -248,15 +271,18 @@ export class PerformanceTestsService {
     testId: string,
     actor: AuthenticatedUser,
   ) {
+    await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     this.assertActorCanManage(actor);
 
-    await this.prisma.$transaction(async (tx) => {
-      const context = await this.getPerformanceContext(tx, projectId);
-      this.assertWritableStage(context);
-      const testRecord = await this.getTestOrThrow(tx, projectId, testId);
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
+      const { testRecord } = await this.lockPerformanceWriteContext(
+        tx, actor,
+        projectId,
+        testId,
+      );
 
-      if (!canEditPerformanceTest(testRecord.status)) {
-        throw new BadRequestException('当前试验记录已提交，不能重复提交。');
+      if (!testRecord || !canEditPerformanceTest(testRecord.status)) {
+        this.throwPerformanceTestStateChanged();
       }
 
       const submitIssue = getPerformanceTestSubmitIssue({
@@ -267,6 +293,10 @@ export class PerformanceTestsService {
         testedById: testRecord.testedById,
         testedAt: testRecord.testedAt,
         reportAttachmentId: testRecord.reportAttachmentId,
+        reportAttachmentScanStatus:
+          testRecord.reportAttachment?.scanStatus ?? null,
+        reportAttachmentIsDeleted:
+          testRecord.reportAttachment?.isDeleted ?? null,
         sampleId: testRecord.sampleId,
         relatedObjectName: testRecord.relatedObjectName,
       });
@@ -275,14 +305,22 @@ export class PerformanceTestsService {
         throw new BadRequestException(submitIssue);
       }
 
-      const submittedTest = await tx.performanceTest.update({
-        where: { id: testId },
+      const submitted = await tx.performanceTest.updateMany({
+        where: {
+          id: testId,
+          projectId,
+          status: PerformanceTestStatus.DRAFT,
+          updatedAt: testRecord.updatedAt,
+        },
         data: {
           status: PerformanceTestStatus.SUBMITTED,
           submittedAt: new Date(),
         },
-        include: PERFORMANCE_TEST_DETAIL_INCLUDE,
       });
+      if (submitted.count !== 1) {
+        this.throwPerformanceTestStateChanged();
+      }
+      const submittedTest = await this.getTestOrThrow(tx, projectId, testId);
 
       await this.activityLogsService.createWithExecutor(tx, {
         projectId,
@@ -301,14 +339,14 @@ export class PerformanceTestsService {
   }
 
   async completeTask(projectId: string, actor: AuthenticatedUser) {
+    await this.assertProjectAccess(projectId, actor, 'workflow.transition');
     this.assertActorCanManage(actor);
 
-    await this.prisma.$transaction(async (tx) => {
-      const context = await this.getPerformanceContext(tx, projectId);
-      this.assertWritableStage(context);
+    await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
+      const context = await this.lockPerformanceCompletionContext(tx, actor, projectId);
 
       if (!context.activeTask) {
-        throw new BadRequestException('当前没有可完成的性能试验任务。');
+        this.throwPerformanceTestStateChanged();
       }
 
       const completionIssue = getPerformanceTestCompletionIssue(context.records);
@@ -353,12 +391,24 @@ export class PerformanceTestsService {
     return this.buildWorkspace(this.prisma, projectId);
   }
 
+  private assertProjectAccess(
+    projectId: string,
+    actor: AuthenticatedUser,
+    requiredPermission: string,
+  ) {
+    return this.projectAccessService.assertProjectAccessWithDefaultClient(
+      projectId,
+      actor,
+      requiredPermission,
+    );
+  }
+
   private async buildWorkspace(
     db: PerformanceTestsDbClient,
     projectId: string,
   ) {
     const project = await this.getProjectOrThrow(db, projectId);
-    const [records, activeTask, procurementCompleted, samples] = await Promise.all([
+    const [records, activeTask, procurementCompleted, rawSamples] = await Promise.all([
       db.performanceTest.findMany({
         where: {
           projectId,
@@ -367,7 +417,9 @@ export class PerformanceTestsService {
         orderBy: [
           { updatedAt: 'desc' },
           { createdAt: 'desc' },
+          { id: 'desc' },
         ],
+        take: PERFORMANCE_TEST_RECORD_LIMIT + 1,
       }),
       this.getActiveTask(db, projectId),
       this.hasCompletedProcurementTask(db, projectId),
@@ -379,9 +431,15 @@ export class PerformanceTestsService {
         orderBy: [
           { sampleNo: 'asc' },
           { versionNo: 'desc' },
+          { id: 'asc' },
         ],
+        take: PERFORMANCE_TEST_SAMPLE_OPTION_LIMIT + 1,
       }),
     ]);
+    this.assertPerformanceTestCapacity(records, false);
+    const sampleOptionsHasMore =
+      rawSamples.length > PERFORMANCE_TEST_SAMPLE_OPTION_LIMIT;
+    const samples = rawSamples.slice(0, PERFORMANCE_TEST_SAMPLE_OPTION_LIMIT);
 
     return {
       project: {
@@ -398,6 +456,7 @@ export class PerformanceTestsService {
       canCompleteTask:
         Boolean(activeTask) && getPerformanceTestCompletionIssue(records) === null,
       completionIssue: getPerformanceTestCompletionIssue(records),
+      sampleOptionsHasMore,
       sampleOptions: samples.map((sample) => ({
         id: sample.id,
         sampleNo: sample.sampleNo,
@@ -420,14 +479,28 @@ export class PerformanceTestsService {
     testId: string,
   ) {
     const testRecord = await this.getTestOrThrow(db, projectId, testId);
-    const attachments = await this.attachmentsService.listTargetAttachments(
-      db,
-      AttachmentTargetType.PERFORMANCE_TEST,
-      testId,
+    const rawAttachments = await db.attachment.findMany({
+      where: {
+        projectId,
+        entityType: AttachmentTargetType.PERFORMANCE_TEST,
+        entityId: testId,
+        isDeleted: false,
+        scanStatus: AttachmentScanStatus.CLEAN,
+      },
+      include: PERFORMANCE_TEST_ATTACHMENT_INCLUDE,
+      orderBy: [{ uploadedAt: 'desc' }, { id: 'desc' }],
+      take: PERFORMANCE_TEST_ATTACHMENT_HISTORY_LIMIT + 1,
+    });
+    const attachmentHistoryHasMore =
+      rawAttachments.length > PERFORMANCE_TEST_ATTACHMENT_HISTORY_LIMIT;
+    const attachments = rawAttachments.slice(
+      0,
+      PERFORMANCE_TEST_ATTACHMENT_HISTORY_LIMIT,
     );
 
     return {
       ...this.toPerformanceTestSummary(testRecord),
+      attachmentHistoryHasMore,
       attachmentHistory: attachments.map((attachment) =>
         this.attachmentsService.toAttachmentSummary(attachment),
       ),
@@ -437,6 +510,7 @@ export class PerformanceTestsService {
   private async getPerformanceContext(
     db: PerformanceTestsDbClient,
     projectId: string,
+    options: { deferRecordLimit?: boolean } = {},
   ) {
     const [project, activeTask, procurementCompleted, records] = await Promise.all([
       this.getProjectOrThrow(db, projectId),
@@ -446,8 +520,15 @@ export class PerformanceTestsService {
         where: {
           projectId,
         },
+        orderBy: {
+          id: 'asc',
+        },
+        take: PERFORMANCE_TEST_RECORD_LIMIT + 1,
       }),
     ]);
+    if (!options.deferRecordLimit) {
+      this.assertPerformanceTestCapacity(records, false);
+    }
 
     return {
       project,
@@ -474,20 +555,7 @@ export class PerformanceTestsService {
   }
 
   private assertActorCanManage(actor: AuthenticatedUser) {
-    if (
-      actor.isSystemAdmin ||
-      actor.roleCodes.some(
-        (roleCode) =>
-          roleCode === 'admin' ||
-          roleCode === 'project_manager' ||
-          roleCode === 'process_engineer' ||
-          roleCode === 'quality_engineer',
-      )
-    ) {
-      return;
-    }
-
-    throw new BadRequestException('当前用户没有性能试验管理权限。');
+    assertApprovedTeamMember(actor);
   }
 
   private async getProjectOrThrow(db: PerformanceTestsDbClient, projectId: string) {
@@ -528,6 +596,274 @@ export class PerformanceTestsService {
     }
 
     return testRecord;
+  }
+
+  private async lockPerformanceWriteContext(
+    tx: Prisma.TransactionClient,
+    actor: AuthenticatedUser,
+    projectId: string,
+    testId?: string,
+  ) {
+    let testRecord: Awaited<ReturnType<typeof this.getTestOrThrow>> | null = null;
+
+    if (testId) {
+      if (!(await this.lockPerformanceTestRow(tx, projectId, testId))) {
+        this.throwPerformanceTestStateChanged();
+      }
+      testRecord = await this.getTestOrThrow(tx, projectId, testId);
+      if (!canEditPerformanceTest(testRecord.status)) {
+        this.throwPerformanceTestStateChanged();
+      }
+    }
+
+    const candidateContext = await this.getPerformanceContext(tx, projectId, {
+      deferRecordLimit: !testId,
+    });
+    this.assertWritableStage(candidateContext);
+    const candidateTask = candidateContext.activeTask;
+    if (!candidateTask) {
+      this.throwPerformanceTestStateChanged();
+    }
+
+    if (
+      !(await this.lockWorkflowTaskRow(tx, projectId, candidateTask.id))
+    ) {
+      this.throwPerformanceTestStateChanged();
+    }
+
+    const context = await this.getPerformanceContext(tx, projectId);
+    if (!context.activeTask || context.activeTask.id !== candidateTask.id) {
+      this.throwPerformanceTestStateChanged();
+    }
+    try {
+      this.assertWritableStage(context);
+    } catch {
+      this.throwPerformanceTestStateChanged();
+    }
+
+    if (testId) {
+      testRecord = await this.getTestOrThrow(tx, projectId, testId);
+      if (!canEditPerformanceTest(testRecord.status)) {
+        this.throwPerformanceTestStateChanged();
+      }
+    }
+
+    await assertTeamTaskById(tx, context.activeTask!.id, actor);
+    return { context, testRecord };
+  }
+
+  private async lockPerformanceCompletionContext(
+    tx: Prisma.TransactionClient,
+    actor: AuthenticatedUser,
+    projectId: string,
+  ) {
+    const candidateContext = await this.getPerformanceContext(tx, projectId);
+    this.assertWritableStage(candidateContext);
+    const candidateTask = candidateContext.activeTask;
+    if (!candidateTask) {
+      this.throwPerformanceTestStateChanged();
+    }
+
+    const candidateRecordIds = candidateContext.records.map((record) => record.id);
+    const lockedRecords = await this.lockPerformanceTestRows(tx, projectId);
+    this.assertPerformanceTestCapacity(lockedRecords, false);
+    const lockedRecordIds = lockedRecords.map((record) => record.id);
+    if (
+      lockedRecordIds.length !== candidateRecordIds.length ||
+      lockedRecordIds.some(
+        (recordId, index) => recordId !== candidateRecordIds[index],
+      )
+    ) {
+      this.throwPerformanceTestStateChanged();
+    }
+
+    if (!(await this.lockWorkflowTaskRow(tx, projectId, candidateTask.id))) {
+      this.throwPerformanceTestStateChanged();
+    }
+
+    const context = await this.getPerformanceContext(tx, projectId);
+    if (!context.activeTask || context.activeTask.id !== candidateTask.id) {
+      this.throwPerformanceTestStateChanged();
+    }
+    try {
+      this.assertWritableStage(context);
+    } catch {
+      this.throwPerformanceTestStateChanged();
+    }
+    await assertTeamTaskById(tx, context.activeTask!.id, actor);
+    return context;
+  }
+
+  private createReportAttachmentFinalizeHook(input: {
+    actor: AuthenticatedUser;
+    projectId: string;
+    testId: string;
+    workflowTaskId: string;
+    expectedAttachmentId: string | null;
+  }) {
+    return async (
+      tx: Prisma.TransactionClient,
+      context: { attachmentId: string },
+    ) => {
+      if (
+        !(await this.lockPerformanceTestRow(tx, input.projectId, input.testId))
+      ) {
+        this.throwAttachmentTargetStateChanged();
+      }
+      const lockedTest = await tx.performanceTest.findFirst({
+        where: { id: input.testId, projectId: input.projectId },
+        select: {
+          id: true,
+          status: true,
+          reportAttachmentId: true,
+        },
+      });
+      if (
+        !lockedTest ||
+        lockedTest.status !== PerformanceTestStatus.DRAFT ||
+        lockedTest.reportAttachmentId !== input.expectedAttachmentId
+      ) {
+        this.throwAttachmentTargetStateChanged();
+      }
+
+      await assertTeamTaskById(tx, input.workflowTaskId, input.actor);
+      if (
+        !(await this.lockWorkflowTaskRow(
+          tx,
+          input.projectId,
+          input.workflowTaskId,
+        ))
+      ) {
+        this.throwAttachmentTargetStateChanged();
+      }
+      const activeTask = await tx.workflowTask.findFirst({
+        where: {
+          id: input.workflowTaskId,
+          projectId: input.projectId,
+          nodeCode: WorkflowNodeCode.PERFORMANCE_TEST,
+          isActive: true,
+        },
+        select: { id: true },
+      });
+      if (!activeTask) {
+        this.throwAttachmentTargetStateChanged();
+      }
+
+      if (input.expectedAttachmentId) {
+        if (
+          !(await this.lockAttachmentRow(
+            tx,
+            input.projectId,
+            input.expectedAttachmentId,
+          ))
+        ) {
+          this.throwAttachmentTargetStateChanged();
+        }
+        const replacement = await tx.attachment.findFirst({
+          where: {
+            id: input.expectedAttachmentId,
+            projectId: input.projectId,
+            entityType: AttachmentTargetType.PERFORMANCE_TEST,
+            entityId: input.testId,
+            isDeleted: false,
+            scanStatus: AttachmentScanStatus.CLEAN,
+          },
+          select: { id: true },
+        });
+        if (!replacement) {
+          this.throwAttachmentTargetStateChanged();
+        }
+      }
+
+      const updated = await tx.performanceTest.updateMany({
+        where: {
+          id: input.testId,
+          projectId: input.projectId,
+          status: PerformanceTestStatus.DRAFT,
+          reportAttachmentId: input.expectedAttachmentId,
+        },
+        data: { reportAttachmentId: context.attachmentId },
+      });
+      if (updated.count !== 1) {
+        this.throwAttachmentTargetStateChanged();
+      }
+      await this.activityLogsService.createWithExecutor(tx, {
+        projectId: input.projectId, actorUserId: input.actor.id,
+        targetType: AuditTargetType.PERFORMANCE_TEST, targetId: input.testId,
+        action: 'PERFORMANCE_TEST_REPORT_ATTACHED', nodeCode: WorkflowNodeCode.PERFORMANCE_TEST,
+        summary: '性能试验记录已上传报告附件。', afterData: { reportAttachmentId: context.attachmentId },
+      });
+    };
+  }
+
+  private async lockPerformanceTestRow(
+    tx: Prisma.TransactionClient,
+    projectId: string,
+    testId: string,
+  ) {
+    const rows = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+      SELECT "id"
+      FROM "performance_tests"
+      WHERE "id" = ${testId} AND "projectId" = ${projectId}
+      FOR UPDATE
+    `);
+    return rows.length === 1;
+  }
+
+  private lockPerformanceTestRows(
+    tx: Prisma.TransactionClient,
+    projectId: string,
+  ) {
+    return tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+      SELECT "id"
+      FROM "performance_tests"
+      WHERE "projectId" = ${projectId}
+      ORDER BY "id" ASC
+      LIMIT 101
+      FOR UPDATE
+    `);
+  }
+
+  private async lockWorkflowTaskRow(
+    tx: Prisma.TransactionClient,
+    projectId: string,
+    taskId: string,
+  ) {
+    const rows = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+      SELECT "id"
+      FROM "workflow_tasks"
+      WHERE "id" = ${taskId} AND "projectId" = ${projectId}
+      FOR UPDATE
+    `);
+    return rows.length === 1;
+  }
+
+  private async lockAttachmentRow(
+    tx: Prisma.TransactionClient,
+    projectId: string,
+    attachmentId: string,
+  ) {
+    const rows = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+      SELECT "id"
+      FROM "attachments"
+      WHERE "id" = ${attachmentId} AND "projectId" = ${projectId}
+      FOR UPDATE
+    `);
+    return rows.length === 1;
+  }
+
+  private throwAttachmentTargetStateChanged(): never {
+    throw new ConflictException({
+      code: 'ATTACHMENT_TARGET_STATE_CHANGED',
+      message: '附件扫描期间性能试验或流程状态已变更，请刷新后重试。',
+    });
+  }
+
+  private throwPerformanceTestStateChanged(): never {
+    throw new ConflictException({
+      code: 'PERFORMANCE_TEST_STATE_CHANGED',
+      message: '性能试验记录或流程状态已变更，请刷新后重试。',
+    });
   }
 
   private async getActiveTask(db: PerformanceTestsDbClient, projectId: string) {
@@ -703,7 +1039,35 @@ export class PerformanceTestsService {
       throw new BadRequestException('试验人不能为空。');
     }
 
-    return {
+    this.assertPerformanceTestCode(testCode, '试验编码');
+    if (sampleId) {
+      this.assertPerformanceTestId(sampleId, '关联样板');
+    }
+    if (relatedObjectName) {
+      this.assertPerformanceTestText(
+        relatedObjectName,
+        '关联对象',
+        PERFORMANCE_TEST_RELATED_OBJECT_MAX_CHARS,
+      );
+    }
+    this.assertPerformanceTestText(
+      standardValue,
+      '标准值',
+      PERFORMANCE_TEST_VALUE_MAX_CHARS,
+    );
+    this.assertPerformanceTestText(
+      actualValue,
+      '实测值',
+      PERFORMANCE_TEST_VALUE_MAX_CHARS,
+    );
+    this.assertPerformanceTestText(
+      conclusion,
+      '试验结论',
+      PERFORMANCE_TEST_CONCLUSION_MAX_CHARS,
+    );
+    this.assertPerformanceTestId(testedById, '试验人');
+
+    const normalized = {
       testCode,
       sampleId,
       relatedObjectName,
@@ -715,6 +1079,69 @@ export class PerformanceTestsService {
       testedById,
       testedAt,
     };
+    if (
+      Buffer.byteLength(JSON.stringify(normalized), 'utf8') >
+      PERFORMANCE_TEST_MAX_PAYLOAD_BYTES
+    ) {
+      this.throwPerformanceTestInputOutOfBounds(
+        `性能试验记录不得超过 ${PERFORMANCE_TEST_MAX_PAYLOAD_BYTES} 字节。`,
+      );
+    }
+    return normalized;
+  }
+
+  private assertPerformanceTestCapacity(
+    records: readonly unknown[],
+    forCreate: boolean,
+  ) {
+    if (
+      records.length > PERFORMANCE_TEST_RECORD_LIMIT ||
+      (forCreate && records.length >= PERFORMANCE_TEST_RECORD_LIMIT)
+    ) {
+      throw new ConflictException({
+        code: 'PERFORMANCE_TEST_RECORD_LIMIT_EXCEEDED',
+        message: `每个项目最多保留 ${PERFORMANCE_TEST_RECORD_LIMIT} 条性能试验记录。`,
+      });
+    }
+  }
+
+  private assertPerformanceTestText(
+    value: string,
+    label: string,
+    maxChars: number,
+  ) {
+    if (value.length > maxChars) {
+      this.throwPerformanceTestInputOutOfBounds(
+        `${label}不得超过 ${maxChars} 个字符。`,
+      );
+    }
+  }
+
+  private assertPerformanceTestId(value: string, label: string) {
+    if (
+      value.length > PERFORMANCE_TEST_ID_MAX_CHARS ||
+      !PERFORMANCE_TEST_ID_PATTERN.test(value)
+    ) {
+      this.throwPerformanceTestInputOutOfBounds(`${label}标识不合法。`);
+    }
+  }
+
+  private assertPerformanceTestCode(value: string, label: string) {
+    if (
+      value.length > PERFORMANCE_TEST_CODE_MAX_CHARS ||
+      !PERFORMANCE_TEST_CODE_PATTERN.test(value)
+    ) {
+      this.throwPerformanceTestInputOutOfBounds(
+        `${label}仅允许 1～${PERFORMANCE_TEST_CODE_MAX_CHARS} 位字母、数字、点、下划线或连字符。`,
+      );
+    }
+  }
+
+  private throwPerformanceTestInputOutOfBounds(message: string): never {
+    throw new BadRequestException({
+      code: 'PERFORMANCE_TEST_INPUT_OUT_OF_BOUNDS',
+      message,
+    });
   }
 
   private parseDate(value: unknown, label: string) {
@@ -797,7 +1224,10 @@ export class PerformanceTestsService {
             versionNo: testRecord.sample.versionNo,
           }
         : null,
-      reportAttachment: testRecord.reportAttachment
+      reportAttachment:
+        testRecord.reportAttachment &&
+        !testRecord.reportAttachment.isDeleted &&
+        testRecord.reportAttachment.scanStatus === AttachmentScanStatus.CLEAN
         ? this.attachmentsService.toAttachmentSummary(testRecord.reportAttachment)
         : null,
     };

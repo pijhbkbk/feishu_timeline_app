@@ -1,3 +1,4 @@
+import { teamAssignmentPreview } from '../personnel/team-assignment-preview';
 import { createHash } from 'node:crypto';
 
 import {
@@ -18,6 +19,7 @@ import {
 } from '@prisma/client';
 
 import { PrismaService } from '../../infra/prisma/prisma.service';
+import { lockWorkflowAssignmentMutations } from '../../common/workflow-assignment-lock';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import {
@@ -978,6 +980,11 @@ export class R26MemberAssignmentService {
             input.projectId,
             input.actor,
           );
+          await lockWorkflowAssignmentMutations(
+            tx,
+            input.projectId,
+            Object.values(WorkflowNodeCode),
+          );
           const duplicate = await tx.r26CommandRequest.findUnique({
             where: { idempotencyKey: input.input.idempotencyKey },
           });
@@ -1111,12 +1118,16 @@ export class R26MemberAssignmentService {
       throw new NotFoundException('项目不存在。');
     }
 
+    const hasProjectWrite = (actor.permissionCodes ?? []).includes(
+      'project.write',
+    );
     const isAdmin =
-      actor.isSystemAdmin || actor.roleCodes.includes('admin');
+      actor.isSystemAdmin ||
+      (actor.roleCodes.includes('admin') && hasProjectWrite);
     const isAuthorizedOwner =
       project.ownerUserId === actor.id &&
-      (actor.roleCodes.includes('project_manager') ||
-        (actor.permissionCodes ?? []).includes('project.write'));
+      actor.roleCodes.includes('project_manager') &&
+      hasProjectWrite;
 
     if (!isAdmin && !isAuthorizedOwner) {
       throw new ForbiddenException(
@@ -1258,18 +1269,9 @@ export class R26MemberAssignmentService {
     projectId: string,
     nodeCodes: WorkflowNodeCode[],
   ) {
-    const state = await this.loadAssignmentState(db, projectId);
-    const selected = new Set(nodeCodes);
-
-    return Object.values(WorkflowNodeCode)
-      .filter((nodeCode) => selected.has(nodeCode))
-      .map((nodeCode) =>
-        this.resolveAssignmentForFuture(
-          state,
-          state.projectMembers,
-          nodeCode,
-        ),
-      );
+    // The caller has already checked the project. Project members are historical only.
+    void projectId;
+    return Promise.all([...new Set(nodeCodes)].map(nodeCode => teamAssignmentPreview(db, nodeCode)));
   }
 
   private resolveAssignments(

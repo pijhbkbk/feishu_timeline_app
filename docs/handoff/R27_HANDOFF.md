@@ -379,4 +379,3 @@ STOP
 12. 未完成路由：本轮无业务路由任务；未完成的是安全源码候选与外部 Gate。
 13. Placeholder 数量：本次未重新扫描；不得沿用为当前 dirty overlay 的新证据。
 14. 当前准确状态：`HANDOFF_WRITTEN / DEVELOPMENT_PAUSED / SECURITY_CLEARANCE_NOT_ESTABLISHED / STOP`。
-

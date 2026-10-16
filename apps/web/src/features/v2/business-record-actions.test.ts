@@ -19,7 +19,7 @@ describe('R26 business record remediation actions', () => {
 
   it('does not invent a business action for unrelated steps', () => {
     expect(
-      getR26BusinessRecordAction('PAINT_DEVELOPMENT', 'project-1'),
+      getR26BusinessRecordAction('UNKNOWN_NODE', 'project-1'),
     ).toBeNull();
   });
 });

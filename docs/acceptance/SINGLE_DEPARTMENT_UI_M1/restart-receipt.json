@@ -1,0 +1,12 @@
+{
+  "at": "2026-10-08T09:24:04.703Z",
+  "runtimeCommit": "a0769e7808ace84a05a36bed6c0edc2e81d097c6",
+  "url": "http://127.0.0.1:3350/projects/cmuzblrjd00039kdr1xsn8bzr/tasks/cmuzblvyr002t9kdrg1muwczs?from=dashboard&tab=flow",
+  "result": "PASS",
+  "checks": [
+    "native password login after process restart",
+    "exact saved task facts, author, dates and status",
+    "current and historical materials identical",
+    "API and Web immutable identity matched"
+  ]
+}

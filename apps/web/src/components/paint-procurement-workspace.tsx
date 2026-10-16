@@ -12,6 +12,7 @@ import {
   createPaintProcurement,
   createSupplier,
   fetchPaintProcurementWorkspace,
+  fetchSuppliers,
   getProcurementStatusLabel,
   getProcurementWorkspaceHighlights,
   markArrivedPaintProcurement,
@@ -88,15 +89,21 @@ export function PaintProcurementWorkspace({
 }: PaintProcurementWorkspaceProps) {
   const { user } = useAuth();
   const requestIdRef = useRef(0);
+  const supplierSearchRequestIdRef = useRef(0);
   const [workspace, setWorkspace] = useState<PaintProcurementWorkspaceResponse | null>(null);
+  const [supplierCatalog, setSupplierCatalog] = useState<SupplierSummary[]>([]);
+  const [supplierCatalogTotal, setSupplierCatalogTotal] = useState<number | null>(null);
+  const [supplierSearch, setSupplierSearch] = useState('');
   const [supplierForm, setSupplierForm] = useState<SupplierFormInput>(EMPTY_SUPPLIER_FORM);
   const [editingSupplierId, setEditingSupplierId] = useState<string | null>(null);
+  const [editingSupplierVersion, setEditingSupplierVersion] = useState<string | null>(null);
   const [procurementForm, setProcurementForm] =
     useState<PaintProcurementFormInput>(EMPTY_PROCUREMENT_FORM);
   const [editingProcurementId, setEditingProcurementId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isSavingSupplier, setIsSavingSupplier] = useState(false);
+  const [isSearchingSuppliers, setIsSearchingSuppliers] = useState(false);
   const [isSavingProcurement, setIsSavingProcurement] = useState(false);
   const [actingKey, setActingKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -111,8 +118,20 @@ export function PaintProcurementWorkspace({
   const highlights = workspace ? getProcurementWorkspaceHighlights(workspace) : null;
 
   const sortedSuppliers = useMemo(
-    () => workspace?.suppliers ?? [],
-    [workspace],
+    () => {
+      const supplierById = new Map<string, SupplierSummary>();
+      for (const supplier of supplierCatalog) supplierById.set(supplier.id, supplier);
+      for (const item of workspace?.items ?? []) {
+        if (item.supplier) supplierById.set(item.supplier.id, item.supplier);
+      }
+      return [...supplierById.values()].sort(
+        (left, right) =>
+          left.status.localeCompare(right.status) ||
+          left.supplierName.localeCompare(right.supplierName, 'zh-CN') ||
+          left.id.localeCompare(right.id),
+      );
+    },
+    [supplierCatalog, workspace?.items],
   );
 
   async function loadWorkspace(options?: { initial?: boolean }) {
@@ -134,6 +153,8 @@ export function PaintProcurementWorkspace({
       }
 
       setWorkspace(response);
+      setSupplierCatalog(response.suppliers);
+      setSupplierCatalogTotal(null);
       setProcurementForm((current) => ({
         ...current,
         supplierId:
@@ -155,6 +176,26 @@ export function PaintProcurementWorkspace({
     }
   }
 
+  async function handleSupplierSearch() {
+    const requestId = ++supplierSearchRequestIdRef.current;
+    setIsSearchingSuppliers(true);
+    setError(null);
+
+    try {
+      const page = await fetchSuppliers(1, supplierSearch);
+      if (requestId !== supplierSearchRequestIdRef.current) return;
+      setSupplierCatalog(page.items);
+      setSupplierCatalogTotal(page.total);
+    } catch (searchError) {
+      if (requestId !== supplierSearchRequestIdRef.current) return;
+      setError(searchError instanceof Error ? searchError.message : '供应商搜索失败。');
+    } finally {
+      if (requestId === supplierSearchRequestIdRef.current) {
+        setIsSearchingSuppliers(false);
+      }
+    }
+  }
+
   async function handleSaveSupplier() {
     const validationMessage = validateSupplierForm(supplierForm);
 
@@ -169,7 +210,10 @@ export function PaintProcurementWorkspace({
 
     try {
       if (editingSupplierId) {
-        await updateSupplier(editingSupplierId, supplierForm);
+        if (!editingSupplierVersion) {
+          throw new Error('供应商版本缺失，请刷新后重试。');
+        }
+        await updateSupplier(editingSupplierId, supplierForm, editingSupplierVersion);
         setSuccessMessage('供应商信息已更新。');
       } else {
         await createSupplier(supplierForm);
@@ -178,6 +222,7 @@ export function PaintProcurementWorkspace({
 
       setSupplierForm(EMPTY_SUPPLIER_FORM);
       setEditingSupplierId(null);
+      setEditingSupplierVersion(null);
       await loadWorkspace();
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : '供应商保存失败。');
@@ -258,6 +303,7 @@ export function PaintProcurementWorkspace({
 
   function prepareSupplierEdit(supplier: SupplierSummary) {
     setEditingSupplierId(supplier.id);
+    setEditingSupplierVersion(supplier.updatedAt);
     setSupplierForm({
       supplierCode: supplier.supplierCode,
       supplierName: supplier.supplierName,
@@ -283,6 +329,7 @@ export function PaintProcurementWorkspace({
 
   function resetSupplierForm() {
     setEditingSupplierId(null);
+    setEditingSupplierVersion(null);
     setSupplierForm(EMPTY_SUPPLIER_FORM);
   }
 
@@ -512,6 +559,36 @@ export function PaintProcurementWorkspace({
                   : '新增供应商'}
             </button>
           </div>
+        </form>
+
+        <form
+          className="inline-actions"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void handleSupplierSearch();
+          }}
+        >
+          <label className="field">
+            <span>查询供应商目录</span>
+            <input
+              maxLength={100}
+              value={supplierSearch}
+              placeholder="输入编码、名称、联系人或电话"
+              onChange={(event) => setSupplierSearch(event.target.value)}
+            />
+          </label>
+          <button
+            type="submit"
+            className="button button-secondary"
+            disabled={isSearchingSuppliers}
+          >
+            {isSearchingSuppliers ? '查询中…' : '查询供应商'}
+          </button>
+          {supplierCatalogTotal !== null ? (
+            <span className="muted">
+              共 {supplierCatalogTotal} 条，当前显示前 {supplierCatalog.length} 条
+            </span>
+          ) : null}
         </form>
 
         <div className="detail-grid">

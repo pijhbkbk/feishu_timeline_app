@@ -1,13 +1,2 @@
-import { SamplesWorkspace } from '../../../../components/samples-workspace';
-
-type SamplesPageProps = {
-  params: Promise<{
-    projectId: string;
-  }>;
-};
-
-export default async function SamplesPage({ params }: SamplesPageProps) {
-  const { projectId } = await params;
-
-  return <SamplesWorkspace projectId={projectId} />;
-}
+import {M1RecordEntry} from '../../../../features/m1/record-entry';
+export default async function Page({params}:{params:Promise<{projectId:string}>}){const {projectId}=await params;return <M1RecordEntry projectId={projectId} kind="samples"/>;}

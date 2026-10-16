@@ -1,8 +1,11 @@
+import { PERSON_PRESENTATION_SELECT, personPresentation } from '../persons/person-profile-read';
+import { teamAssignmentPreview } from '../personnel/team-assignment-preview';
 import { Injectable } from '@nestjs/common';
 import {
   ProjectMemberType,
   UserStatus,
   WorkflowNodeCode,
+  type Prisma,
   type WorkflowTaskStatus,
 } from '@prisma/client';
 
@@ -23,6 +26,19 @@ import {
 } from './r26-assignment.resolver';
 
 type ProjectDetail = Awaited<ReturnType<ProjectsService['getProjectDetail']>>;
+type WorkspaceProjectMember = Pick<
+  ProjectDetail['members'][number],
+  | 'id'
+  | 'userId'
+  | 'name'
+  | 'departmentName'
+  | 'memberType'
+  | 'title'
+  | 'isPrimary'
+>;
+type WorkspaceAssignmentProject = {
+  members: WorkspaceProjectMember[];
+};
 
 const MEMBER_TYPE_LABELS: Record<ProjectMemberType, string> = {
   OWNER: '项目负责人',
@@ -76,33 +92,16 @@ export class R26ReadModelService {
   }
 
   async getWorkspace(projectId: string, actor: AuthenticatedUser) {
-    const [
-      project,
-      flowMap,
-      departments,
-      users,
-      tasks,
-      nodeAssignments,
-      projectRecords,
-    ] =
-      await Promise.all([
-      this.projectsService.getProjectDetail(projectId, actor),
+    // Complete the project access check before starting any project-scoped or
+    // company-directory query. The controller-level permission is necessary,
+    // but it does not establish access to this specific project.
+    const project = await this.projectsService.getProjectDetail(
+      projectId,
+      actor,
+    );
+    const canManageMembers = this.canManageWorkspaceMembers(project, actor);
+    const [flowMap, tasks, nodeAssignments, projectRecords] = await Promise.all([
       this.projectsService.getProjectFlowMap(projectId, actor),
-      this.prisma.department.findMany({
-        where: { isActive: true },
-        select: { id: true, code: true, name: true, path: true },
-        orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
-      }),
-      this.prisma.user.findMany({
-        where: { status: UserStatus.ACTIVE },
-        select: {
-          id: true,
-          name: true,
-          departmentId: true,
-          department: { select: { name: true } },
-        },
-        orderBy: [{ name: 'asc' }],
-      }),
       this.prisma.workflowTask.findMany({
         where: { projectId },
         select: {
@@ -117,6 +116,7 @@ export class R26ReadModelService {
           payload: true,
           assigneeUser: {
             select: {
+              personProfile: { select: PERSON_PRESENTATION_SELECT },
               id: true,
               name: true,
               departmentId: true,
@@ -162,23 +162,141 @@ export class R26ReadModelService {
       }),
     ]);
 
-    const directoryDepartments: R26DirectoryDepartment[] = departments;
-    const directoryUsers: R26DirectoryUser[] = users.map((user) => ({
-      id: user.id,
-      name: user.name,
-      departmentId: user.departmentId,
-      departmentName: user.department?.name ?? null,
-    }));
-    const assignmentByNode = new Map(
-      nodeAssignments.map((assignment) => [
-        assignment.nodeCode,
-        {
-          ...assignment,
-          collaboratorUserIds: this.parseUserIdList(assignment.collaboratorUserIds),
-          reviewerUserIds: this.parseUserIdList(assignment.reviewerUserIds),
-        } satisfies R26NodeAssignmentConfig,
-      ]),
+    const projectMemberIds = new Set(
+      project.members.map((member) => member.userId),
     );
+    const assignedUserIds = new Set<string>();
+    const explicitlyRelatedDepartmentIds = new Set<string>();
+    if (project.owningDepartmentId) {
+      explicitlyRelatedDepartmentIds.add(project.owningDepartmentId);
+    }
+    for (const task of tasks) {
+      if (task.assigneeUserId) {
+        assignedUserIds.add(task.assigneeUserId);
+      }
+      if (task.assigneeDepartmentId) {
+        explicitlyRelatedDepartmentIds.add(task.assigneeDepartmentId);
+      }
+      for (const blocker of task.blockers) {
+        if (blocker.helperUser?.id) {
+          assignedUserIds.add(blocker.helperUser.id);
+        }
+        for (const userId of this.parseUserIdList(
+          blocker.assistanceUserIds,
+        )) {
+          assignedUserIds.add(userId);
+        }
+        for (const departmentId of this.parseUserIdList(
+          blocker.assistanceDepartmentIds,
+        )) {
+          explicitlyRelatedDepartmentIds.add(departmentId);
+        }
+      }
+    }
+    for (const assignment of nodeAssignments) {
+      if (assignment.primaryDepartmentId) {
+        explicitlyRelatedDepartmentIds.add(assignment.primaryDepartmentId);
+      }
+      if (assignment.ownerUserId) {
+        assignedUserIds.add(assignment.ownerUserId);
+      }
+      for (const userId of [
+        ...this.parseUserIdList(assignment.collaboratorUserIds),
+        ...this.parseUserIdList(assignment.reviewerUserIds),
+      ]) {
+        assignedUserIds.add(userId);
+      }
+    }
+
+    const userWhere = canManageMembers
+      ? { status: UserStatus.ACTIVE }
+      : this.buildWorkspaceUserScopeWhere(
+          project.ownerUserId,
+          projectMemberIds,
+          assignedUserIds,
+        );
+    const queriedUsers = await this.prisma.user.findMany({
+      where: userWhere,
+      select: {
+        personProfile: { select: PERSON_PRESENTATION_SELECT },
+        id: true,
+        name: true,
+        status: true,
+        departmentId: true,
+        department: { select: { name: true } },
+      },
+      orderBy: [{ name: 'asc' }, { id: 'asc' }],
+    });
+    const users = queriedUsers.filter((user) =>
+      canManageMembers
+        ? user.status === UserStatus.ACTIVE
+        : user.id === project.ownerUserId ||
+          assignedUserIds.has(user.id) ||
+          (projectMemberIds.has(user.id) &&
+            user.status === UserStatus.ACTIVE),
+    );
+    for (const user of users) {
+      const departmentId = personPresentation(user).departmentId;
+      if (departmentId) {
+        explicitlyRelatedDepartmentIds.add(departmentId);
+      }
+    }
+
+    const departmentWhere: Prisma.DepartmentWhereInput = canManageMembers
+      ? { isActive: true }
+      : {
+          id: {
+            in: [...explicitlyRelatedDepartmentIds].sort((left, right) =>
+              left.localeCompare(right),
+            ),
+          },
+        };
+    const queriedDepartments = await this.prisma.department.findMany({
+      where: departmentWhere,
+      select: {
+        id: true,
+        code: true,
+        name: true,
+        path: true,
+        isActive: true,
+      },
+      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }, { id: 'asc' }],
+    });
+    const departments = queriedDepartments.filter((department) =>
+      canManageMembers
+        ? department.isActive
+        : explicitlyRelatedDepartmentIds.has(department.id),
+    );
+    const directoryDepartments: R26DirectoryDepartment[] = departments.map(
+      (department) => ({
+        id: department.id,
+        code: department.code,
+        name: department.name,
+        path: department.path,
+      }),
+    );
+    const directoryUsers: R26DirectoryUser[] = users.map((user) => {
+      const { id, name, departmentId, departmentName } = personPresentation(user);
+      return { id, name, departmentId, departmentName };
+    });
+    const visibleUserIds = new Set(directoryUsers.map((user) => user.id));
+    const workspaceMembers: WorkspaceProjectMember[] = project.members
+      .filter(
+        (member) => canManageMembers || visibleUserIds.has(member.userId),
+      )
+      .map((member) => ({
+        id: member.id,
+        userId: member.userId,
+        name: member.name,
+        departmentName: member.departmentName,
+        memberType: member.memberType,
+        title: member.title,
+        isPrimary: member.isPrimary,
+      }));
+    const workspaceProject = {
+      ...project,
+      members: workspaceMembers,
+    };
     const latestTaskByNode = new Map<WorkflowNodeCode, (typeof tasks)[number]>();
 
     for (const task of tasks) {
@@ -193,16 +311,9 @@ export class R26ReadModelService {
       }
     }
 
-    const assignments = flowMap.nodes.map((node) =>
-      this.buildAssignmentPreview({
-        nodeCode: node.nodeCode,
-        task: latestTaskByNode.get(node.nodeCode) ?? null,
-        nodeAssignment: assignmentByNode.get(node.nodeCode) ?? null,
-        project,
-        departments: directoryDepartments,
-        users: directoryUsers,
-      }),
-    );
+    const assignments = await Promise.all(flowMap.nodes.map(node =>
+      teamAssignmentPreview(this.prisma, node.nodeCode, latestTaskByNode.get(node.nodeCode) ?? null),
+    ));
     const currentAssignment = flowMap.currentStepCode
       ? assignments.find(
           (assignment) => assignment.nodeCode === flowMap.currentStepCode,
@@ -214,7 +325,7 @@ export class R26ReadModelService {
       readOnly: false,
       writeScope: 'PROJECT_MEMBERS_AND_ASSIGNMENTS',
       viewer: this.serializeViewer(actor),
-      project,
+      project: workspaceProject,
       flowMap: {
         ...flowMap,
         currentDepartment:
@@ -228,6 +339,7 @@ export class R26ReadModelService {
 
           return {
             ...node,
+            isActive: Boolean(task?.isActive && ['PENDING', 'READY', 'IN_PROGRESS', 'RETURNED'].includes(task.status)),
             primaryDepartment: assignment?.primaryDepartment ?? null,
             collaboratorDepartments: assignment?.collaboratorDepartments ?? [],
             suggestedOwner: assignment?.suggestedOwner ?? null,
@@ -257,17 +369,26 @@ export class R26ReadModelService {
       },
       organization: {
         departments: directoryDepartments.map((department) => ({
-          ...department,
-          activeUserCount: directoryUsers.filter(
-            (user) => user.departmentId === department.id,
+          id: department.id,
+          code: department.code,
+          name: department.name,
+          activeUserCount: users.filter(
+            (user) =>
+              user.status === UserStatus.ACTIVE &&
+              personPresentation(user).departmentId === department.id,
           ).length,
         })),
         users: directoryUsers.map((user) => ({
           ...user,
-          isProjectMember: project.members.some((member) => member.userId === user.id),
+          isProjectMember: workspaceProject.members.some(
+            (member) => member.userId === user.id,
+          ),
         })),
       },
-      memberAssignments: this.buildMemberAssignments(project, assignments),
+      memberAssignments: this.buildMemberAssignments(
+        workspaceProject,
+        assignments,
+      ),
       assignmentPreview: assignments,
       projectRecords: projectRecords.map((record) => ({
         id: record.id,
@@ -282,11 +403,7 @@ export class R26ReadModelService {
       capabilities: {
         gate: 'R26_GATE3C1',
         memberAssignmentVersion: project.memberAssignmentVersion,
-        manageMembers:
-          actor.isSystemAdmin ||
-          actor.roleCodes.includes('admin') ||
-          (project.ownerUserId === actor.id &&
-            (actor.permissionCodes ?? []).includes('project.write')),
+        manageMembers: false,
         progressWriteEnabled: true,
         workflowWriteEnabled: true,
         workflowWriteScope: 'ORDINARY_STEPS_1_TO_11',
@@ -317,6 +434,47 @@ export class R26ReadModelService {
         availableActions: [],
       },
       notice: 'Gate 2 仅展示真实进展上下文，进展提交与材料上传将在后续门禁开放。',
+    };
+  }
+
+  private canManageWorkspaceMembers(
+    project: { ownerUserId: string | null },
+    actor: AuthenticatedUser,
+  ) {
+    if (actor.isSystemAdmin) {
+      return true;
+    }
+    const hasProjectWrite = (actor.permissionCodes ?? []).includes(
+      'project.write',
+    );
+    return (
+      (actor.roleCodes.includes('admin') && hasProjectWrite) ||
+      (project.ownerUserId === actor.id &&
+        actor.roleCodes.includes('project_manager') &&
+        hasProjectWrite)
+    );
+  }
+
+  private buildWorkspaceUserScopeWhere(
+    ownerUserId: string | null,
+    projectMemberIds: Set<string>,
+    assignedUserIds: Set<string>,
+  ): Prisma.UserWhereInput {
+    const scope: Prisma.UserWhereInput[] = [];
+    if (ownerUserId) {
+      scope.push({ id: ownerUserId });
+    }
+    if (projectMemberIds.size > 0) {
+      scope.push({
+        id: { in: [...projectMemberIds] },
+        status: UserStatus.ACTIVE,
+      });
+    }
+    if (assignedUserIds.size > 0) {
+      scope.push({ id: { in: [...assignedUserIds] } });
+    }
+    return {
+      OR: scope.length > 0 ? scope : [{ id: { in: [] } }],
     };
   }
 
@@ -354,6 +512,7 @@ export class R26ReadModelService {
           },
           assigneeUser: {
             select: {
+              personProfile: { select: PERSON_PRESENTATION_SELECT },
               id: true,
               name: true,
               departmentId: true,
@@ -368,24 +527,26 @@ export class R26ReadModelService {
         },
       }),
     ]);
+    const currentOwner = assignment?.assigneeUser
+      ? personPresentation(assignment.assigneeUser)
+      : null;
     const explicitDepartment =
       assignment?.assigneeDepartment ??
-      assignment?.assigneeUser?.department ??
-      null;
+      (currentOwner?.departmentId
+        ? { id: currentOwner.departmentId, name: currentOwner.departmentName }
+        : null);
     const departmentRule = assignment
       ? R26_ASSIGNMENT_RULES[assignment.nodeCode].primaryDepartment
       : null;
 
     return {
       ...task,
-      owner: assignment?.assigneeUser
+      owner: currentOwner
         ? {
-            id: assignment.assigneeUser.id,
-            name: assignment.assigneeUser.name,
-            departmentId:
-              assignment.assigneeUser.departmentId,
-            departmentName:
-              assignment.assigneeUser.department?.name ?? null,
+            id: currentOwner.id,
+            name: currentOwner.name,
+            departmentId: currentOwner.departmentId,
+            departmentName: currentOwner.departmentName,
           }
         : null,
       department: explicitDepartment
@@ -418,7 +579,7 @@ export class R26ReadModelService {
       } | null;
     } | null;
     nodeAssignment?: R26NodeAssignmentConfig | null;
-    project: ProjectDetail;
+    project: WorkspaceAssignmentProject;
     departments: R26DirectoryDepartment[];
     users: R26DirectoryUser[];
   }) {
@@ -455,7 +616,7 @@ export class R26ReadModelService {
   }
 
   private buildMemberAssignments(
-    project: ProjectDetail,
+    project: WorkspaceAssignmentProject,
     assignments: ReturnType<R26ReadModelService['buildAssignmentPreview']>[],
   ) {
     const groupedMembers = [

@@ -1,16 +1,5 @@
-import { PagePlaceholder } from '../../components/page-placeholder';
+import { redirect } from 'next/navigation';
 
 export default function ColorsPage() {
-  return (
-    <PagePlaceholder
-      eyebrow="颜色管理"
-      title="颜色管理"
-      description="这里后续会承载颜色主数据、颜色版本、编号和状态跟踪。"
-      route="/colors"
-      tags={['颜色主数据', '颜色版本', '颜色取号']}
-      actions={[
-        { label: '进入项目中心', href: '/projects' },
-      ]}
-    />
-  );
+  redirect('/admin/color-database');
 }

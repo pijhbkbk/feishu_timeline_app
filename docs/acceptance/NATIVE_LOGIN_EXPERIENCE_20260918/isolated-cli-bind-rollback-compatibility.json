@@ -1,0 +1,22 @@
+{
+  "result": "PASS",
+  "syntheticOnly": true,
+  "cases": [
+    {
+      "entry": "CLI bind",
+      "characters": 7,
+      "exitCode": 1,
+      "result": "PASS"
+    },
+    {
+      "entry": "CLI bind",
+      "characters": 8,
+      "exitCode": 0,
+      "result": "PASS"
+    }
+  ],
+  "c5ActualCompiledVerifierCompatibleWithNewEightCharacterHash": true,
+  "sameInternalId": true,
+  "noAdministratorGrant": true,
+  "businessWrites": false
+}

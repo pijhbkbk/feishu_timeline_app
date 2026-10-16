@@ -1,0 +1,45 @@
+{
+  "projects": {
+    "expected": 3,
+    "actual": 3,
+    "added": [],
+    "removed": [],
+    "changed": []
+  },
+  "tasks": {
+    "expected": 13,
+    "actual": 13,
+    "added": [],
+    "removed": [],
+    "changed": []
+  },
+  "confirmations": {
+    "expected": 2,
+    "actual": 2,
+    "added": [],
+    "removed": [],
+    "changed": []
+  },
+  "attachments": {
+    "expected": 3,
+    "actual": 3,
+    "added": [],
+    "removed": [],
+    "changed": []
+  },
+  "audit": {
+    "expected": 45,
+    "actual": 46,
+    "added": [
+      {
+        "id": "cmu5a4hzl000pqx01h6e625kx",
+        "projectId": "cmu5997vd0025nz01wkzqbedx",
+        "actorUserId": "cmu5974rc0002nz01zpqbuidw",
+        "action": "ATTACHMENT_DOWNLOADED",
+        "targetId": "cmu59by7y004bnz013k0b7t92"
+      }
+    ],
+    "removed": [],
+    "changed": []
+  }
+}

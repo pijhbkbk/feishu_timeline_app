@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('next/navigation', () => ({
+  useSearchParams: () => new URLSearchParams(),
   useRouter: () => ({
     push: vi.fn(),
     replace: vi.fn(),
@@ -41,9 +42,8 @@ describe('route smoke', () => {
       </AuthProvider>,
     );
 
-    expect(html).toContain('data-testid="r26-project-create"');
-    expect(html).toContain('新建定制色开发项目');
-    expect(html).toContain('data-testid="project-submit-button"');
+    expect(html).toContain('正在加载账号');
+    expect(html).not.toContain('项目成员');
   });
 
   it('renders system guide with process, operation, role and FAQ content', async () => {
@@ -51,11 +51,13 @@ describe('route smoke', () => {
 
     expect(topNavigationItems.map((item) => item.label)).toEqual([
       '工作台',
-      '项目列表',
-      '我的任务',
-      '系统管理',
+      '颜色项目',
+      '颜色清单',
+      '评审记录',
+      '产量统计',
+      '人员库',
     ]);
-    expect(sidebarSections[0]?.items).toHaveLength(4);
+    expect(sidebarSections[0]?.items).toHaveLength(6);
     expect(guideHtml).toContain('轻卡定制颜色开发项目管理系统');
     expect(guideHtml).toContain('反映市场需求');
     expect(guideHtml).toContain('颜色退出');

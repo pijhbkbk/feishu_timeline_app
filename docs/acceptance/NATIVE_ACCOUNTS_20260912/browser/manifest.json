@@ -1,0 +1,296 @@
+{
+  "runtimeCommit": "1767dbb5eeb30cc57835081de761e1eccb8fac8b",
+  "sourceTree": "199cb837b6dd7682eda61928e108be397498236b",
+  "checkedAt": "2026-09-12T12:30:50.559654+00:00",
+  "environment": "local synthetic fixtures; mock false; development API; loopback only",
+  "browser": "Google Chrome Incognito, native UI and DevTools; capture screenshot at DPR 2",
+  "status": "LOCAL_BROWSER_PARTIAL",
+  "observations": [
+    "Native administrator password login reached real dashboard on final runtime.",
+    "Login, registration and recovery forms inspected at 390/1024/1440 CSS widths; fields blank in saved captures.",
+    "Account directory search returned ui-native-20260912 with purchaser intent and no formal roles; unmatched search displayed explicit empty state.",
+    "Account page inspected at all three widths; mobile submit control reachable by vertical scroll; browser credential writes not performed.",
+    "Cache-disabled account directory refresh made 23 successful GET requests, all to loopback; session flags localEnabled true, feishuEnabled false, mockEnabled false; dashboard authSource local and dataSource database.",
+    "Sanitized HAR checked for cookie/auth/CSRF headers, cookies arrays and request bodies; no sensitive fields found.",
+    "Account console at All levels: one DOM username/autofill accessibility advisory, no application exception observed; advisory retained in exported log.",
+    "Admin directory console earlier showed zero messages and one unspecified possible-improvement issue; not claimed zero issues."
+  ],
+  "pending": [
+    "Browser submission of registration/new passwords/recovery and administrator role/department/project configuration.",
+    "Full workflow/review/attachment write browser acceptance with native identities.",
+    "Production backup/migration/host topology/private receiver/deployment and precise HTTPS user path verification.",
+    "Product owner acceptance."
+  ],
+  "files": [
+    {
+      "file": "login-390.png",
+      "url": "http://127.0.0.1:3350/login",
+      "state": "login",
+      "cssViewport": {
+        "width": 390,
+        "height": 844
+      },
+      "pixelDimensions": {
+        "width": 780,
+        "height": 1688
+      },
+      "bytes": 131762,
+      "sha256": "a434ce9a485f69569f7877e97cf40d59b76e05dbefea5087c5553637fafd4cbe"
+    },
+    {
+      "file": "login-1024.png",
+      "url": "http://127.0.0.1:3350/login",
+      "state": "login",
+      "cssViewport": {
+        "width": 1024,
+        "height": 844
+      },
+      "pixelDimensions": {
+        "width": 2048,
+        "height": 1688
+      },
+      "bytes": 187827,
+      "sha256": "45b2a8b2a74ca043e2c35fab458b7206070ffc211c4d5c269850bc7b40c25bc9"
+    },
+    {
+      "file": "login-1440.png",
+      "url": "http://127.0.0.1:3350/login",
+      "state": "login",
+      "cssViewport": {
+        "width": 1440,
+        "height": 844
+      },
+      "pixelDimensions": {
+        "width": 2880,
+        "height": 1688
+      },
+      "bytes": 222042,
+      "sha256": "5e6fc62d38788f2896d9efd95f191ac5615b937ce7eee54df8e17b64332f272b"
+    },
+    {
+      "file": "register-390.png",
+      "url": "http://127.0.0.1:3350/login",
+      "state": "register",
+      "cssViewport": {
+        "width": 390,
+        "height": 844
+      },
+      "pixelDimensions": {
+        "width": 780,
+        "height": 1688
+      },
+      "bytes": 146614,
+      "sha256": "c39bc3e09ac7191b7e43f8e3ddd6b6e0266db7cfb11e74ebf43976b81cc9ad2a"
+    },
+    {
+      "file": "register-1024.png",
+      "url": "http://127.0.0.1:3350/login",
+      "state": "register",
+      "cssViewport": {
+        "width": 1024,
+        "height": 844
+      },
+      "pixelDimensions": {
+        "width": 2048,
+        "height": 1688
+      },
+      "bytes": 198906,
+      "sha256": "c066501f56c0f4e24ab7a80188838fd194bd37d571eded958fb9c4942cac8fba"
+    },
+    {
+      "file": "register-1440.png",
+      "url": "http://127.0.0.1:3350/login",
+      "state": "register",
+      "cssViewport": {
+        "width": 1440,
+        "height": 844
+      },
+      "pixelDimensions": {
+        "width": 2880,
+        "height": 1688
+      },
+      "bytes": 232987,
+      "sha256": "6177acf0e30f44ec0bdd6a36483aabc43bed0697c274705c3c3dcb3e14428e39"
+    },
+    {
+      "file": "recover-390.png",
+      "url": "http://127.0.0.1:3350/login",
+      "state": "recover",
+      "cssViewport": {
+        "width": 390,
+        "height": 844
+      },
+      "pixelDimensions": {
+        "width": 780,
+        "height": 1688
+      },
+      "bytes": 143019,
+      "sha256": "7ac2df31b47414db4c444aacf74986964424a987beb2923eb8584ceff68bd792"
+    },
+    {
+      "file": "recover-1024.png",
+      "url": "http://127.0.0.1:3350/login",
+      "state": "recover",
+      "cssViewport": {
+        "width": 1024,
+        "height": 844
+      },
+      "pixelDimensions": {
+        "width": 2048,
+        "height": 1688
+      },
+      "bytes": 200537,
+      "sha256": "1c5ce14e3b1d650645b3452fe4221a5ed1b5a90ec172a570ad4db9c6a46785d5"
+    },
+    {
+      "file": "recover-1440.png",
+      "url": "http://127.0.0.1:3350/login",
+      "state": "recover",
+      "cssViewport": {
+        "width": 1440,
+        "height": 844
+      },
+      "pixelDimensions": {
+        "width": 2880,
+        "height": 1688
+      },
+      "bytes": 233586,
+      "sha256": "3d18124086653552c8d66b2be2a457f82cd17837cb9b5b46828964277d02e64a"
+    },
+    {
+      "file": "admin-accounts-390.png",
+      "url": "http://127.0.0.1:3350/admin/accounts",
+      "state": "search-hit",
+      "cssViewport": {
+        "width": 390,
+        "height": 844
+      },
+      "pixelDimensions": {
+        "width": 780,
+        "height": 1688
+      },
+      "bytes": 236271,
+      "sha256": "8187887d038a666c1026d46f77ff04469fb43c154ac0fd2afb203092d23089a5"
+    },
+    {
+      "file": "admin-accounts-1024.png",
+      "url": "http://127.0.0.1:3350/admin/accounts",
+      "state": "search-hit",
+      "cssViewport": {
+        "width": 1024,
+        "height": 844
+      },
+      "pixelDimensions": {
+        "width": 2048,
+        "height": 1688
+      },
+      "bytes": 389429,
+      "sha256": "08eb91df792b4fe0fa9096b40cfc63e4f8acefaa0253f9be3e8d2dd252ec6c33"
+    },
+    {
+      "file": "admin-accounts-1440.png",
+      "url": "http://127.0.0.1:3350/admin/accounts",
+      "state": "search-hit",
+      "cssViewport": {
+        "width": 1440,
+        "height": 844
+      },
+      "pixelDimensions": {
+        "width": 2880,
+        "height": 1688
+      },
+      "bytes": 502060,
+      "sha256": "60fe9ea0e7c89486dcb4fb33eaceaac4349e496f0bfc3fe08978a79a32af1ad6"
+    },
+    {
+      "file": "admin-accounts-empty-1440.png",
+      "url": "http://127.0.0.1:3350/admin/accounts",
+      "state": "search-empty",
+      "cssViewport": {
+        "width": 1440,
+        "height": 844
+      },
+      "pixelDimensions": {
+        "width": 2880,
+        "height": 1688
+      },
+      "bytes": 443540,
+      "sha256": "6254bc24886cfde5140f8582b85c82dc7147ade397ef3d703a36120037104f42"
+    },
+    {
+      "file": "account-390.png",
+      "url": "http://127.0.0.1:3350/account",
+      "state": "administrator-account",
+      "cssViewport": {
+        "width": 390,
+        "height": 844
+      },
+      "pixelDimensions": {
+        "width": 780,
+        "height": 1688
+      },
+      "bytes": 154117,
+      "sha256": "dfd6b946c68eb6a05bd678aac42e26e63a95ba0717bad85053deea8c18d5d863"
+    },
+    {
+      "file": "account-1024.png",
+      "url": "http://127.0.0.1:3350/account",
+      "state": "administrator-account",
+      "cssViewport": {
+        "width": 1024,
+        "height": 844
+      },
+      "pixelDimensions": {
+        "width": 2048,
+        "height": 1688
+      },
+      "bytes": 222723,
+      "sha256": "8cf28a5a2e5506e328c47720352cec5c49fc9756725c3d4590a9efa5a1f35eca"
+    },
+    {
+      "file": "account-1440.png",
+      "url": "http://127.0.0.1:3350/account",
+      "state": "administrator-account",
+      "cssViewport": {
+        "width": 1440,
+        "height": 844
+      },
+      "pixelDimensions": {
+        "width": 2880,
+        "height": 1688
+      },
+      "bytes": 258381,
+      "sha256": "04790dc029a4d87e39acf7e9355e936e019c916b5dda3c77dbee7a303de609c6"
+    },
+    {
+      "file": "account-390-bottom.png",
+      "url": "http://127.0.0.1:3350/account",
+      "state": "administrator-account-scrolled",
+      "cssViewport": {
+        "width": 390,
+        "height": 844
+      },
+      "pixelDimensions": {
+        "width": 780,
+        "height": 1688
+      },
+      "bytes": 148233,
+      "sha256": "74383662e58b16d74fd47fe37d45ec270f5e49634b46c4f31617b5b4f16b5427"
+    },
+    {
+      "file": "admin-accounts-get.har",
+      "bytes": 925236,
+      "sha256": "a6d533e889fbe84e6cd1d073a4bb00be1736a44d43e7d777280c1544b84f8f90"
+    },
+    {
+      "file": "account-console.log",
+      "bytes": 191,
+      "sha256": "e25fe32dacf773e1058d2eee85103d118e7ece6062503f1eee2398fa00788003"
+    },
+    {
+      "file": "runtime-after-browser.json",
+      "bytes": 931,
+      "sha256": "0d92a772974d13865791344d66dbca33ff9bb3d05fc5f217f60e15cbef56bf8d"
+    }
+  ]
+}

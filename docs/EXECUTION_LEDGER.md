@@ -1,5 +1,64 @@
 # EXECUTION_LEDGER.md
 
+## R27 Gate 0～2 源码真相、扫描包与历史报告研判（2026-08-09）
+
+- Authorization：产品负责人已提供 `R27_SOURCE_BASELINE_APPROVED=41b4b166c587692e6f0fb9536dca2e1aab646c70`、
+  `R27_GATE0_SOURCE_COMPOSITION_APPROVED` 和 `PLACEHOLDER_DISPOSITIONS_APPROVED`。仍禁止部署
+  production、合并 `main`、建 tag 或跨过人工闸门。
+- Immutable identity：独立 worktree
+  `/Users/lixiaochen/Downloads/feishu_timeline_app-r27-security`，分支
+  `security/r27-final-source-clearance`；治理基线 `41b4b166c587692e6f0fb9536dca2e1aab646c70`；
+  production runtime/source `535041bb25f21d548d863d07b35e3e952b0aeb2c`。两者差异仅五个
+  `docs/**`，运行时代码差异为 0。
+- Source truth：34 个远端分支对 runtime 的独有提交数为 0；V2、18 步、成员/分配、
+  进展/材料、第 12/13/17/18 步、OAuth、后台、颜色库、权限/审计、26 个 migration、
+  Docker/Nginx/systemd/部署脚本和 CI 均在同一谱系；不重新合并历史分支。
+- Frozen fingerprints：pnpm-lock
+  `897bec6a0bf51a3f004ca9c5261606d01f756f50388d926649143ce6a570d9ec`；API Dockerfile
+  `17380e1e7de0255eae6ecb8f5ce56e8f3db12e9313378ff6affabac2a87cc7bf`；Web Dockerfile
+  `56e435169b41e3d42171c6fd568084f4d29ff4a823322472b8dac32980c10148`。R26 Gate 3D staging runtime
+  commit 在历史报告中未记录，准确值为 `UNKNOWN_NOT_RECORDED`。
+- Placeholder implementation：批准去向已在
+  `359b3cb0c01d294d421cf173e0ef0e1d1c06ad5c` 实施；`/reviews`、`/settings`、`/colors`
+  固定跳转，动态 `[section]` 占位兜底删除，20 个合法 section 保留。无开放重定向，
+  权限边界未放宽；正式应用源码 Placeholder 红线命中 0，原始 `rg` 10 行均为
+  测试负向断言/选择器。
+- Placeholder validation：定向回归 `4/4`，Web `48 files / 197 tests`，API
+  `70 files / 329 tests`；`pnpm install --frozen-lockfile`、lint、typecheck、Web/API build、
+  Prisma validate 和 `git diff --check` 全部 PASS。本地 production HTTP 实测三个 `307`
+  Location 精确匹配，非法 section 为 `404`。未执行 staging/生产浏览器验收，不将本地
+  HTTP 冒充为产品证据。
+- Gate 1：打包器与 PDF 解析器提交为
+  `27a0338ac0c59217d121fa6defe0feeec45ca252`。正式第一方包
+  `company-source-scan-27a0338ac0c5.tar.gz`，`887239` bytes，SHA-256
+  `83aff4f1474819ba370088418f018ddf1de29238d9745bf4139580f09864d940`；627 文件、3 个脱敏
+  env 示例排除、禁止路径 0。连续两次 tar 与 5 个 sidecar 逐字节一致，contents 和
+  per-file SHA-256 均 `627/627` PASS。
+- Package boundary：只从 Git commit 的第一方白名单取文件，强制包含项目审计日志路由、
+  Auth、Session、Cookie guard 和 Feishu OAuth；排除依赖、生成物、报告、备份、env、认证
+  artifact、DB dump 和未脱敏日志。未编辑 `node_modules` 或 `.next`。
+- Gate 2：历史 6609 页 PDF 的 156 项已生成每项 15 字段记录，ID 唯一、证据非空。
+  规则统计为 weak hash `80`、setTimeout `38`、eval `22`、setInterval `14`、load `2`；
+  ownership 为 FIRST_PARTY `0`、THIRD_PARTY `134`、GENERATED_ARTIFACT `22`；处置为
+  FALSE_POSITIVE `55`、NOT_IN_PRODUCTION `88`、NEEDS_SECURITY_REVIEW `13`，未研判 `0`。
+  未批量标记误报，13 项保持开放。
+- Gate 2 evidence：JSON SHA-256
+  `3c217ddc8347ca0cfcc8baf6e9a941e091d40f8105a83257b3675f0c1cda2656`；Markdown SHA-256
+  `89224e4d0e3f38374b3c7d65035ed861db773722de96ed63a94ad572ba410cb5`；parser SHA-256
+  `76ad46f80114089c36d217e21a8d46abe502984c20631feac1964b2533c57b57`。重生逐字节一致，
+  schema/156 ledger rows/15 字段/规则统计验证、代表页视觉抽查、gitleaks 与敏感模式检查均 PASS。
+- Evidence files：`docs/security/R27_SOURCE_OF_TRUTH_AUDIT.md`、
+  `docs/security/R27_SOURCE_SCAN_MANIFEST.md`、`docs/security/R27_COMPANY_SAST_TRIAGE.md`、
+  `reports/security/r27/company-sast-findings.json`、`docs/acceptance/ROUTE_ACCEPTANCE_MATRIX.md` 和
+  `docs/rounds/R27.md`。JSON 使用精确强制路径纳入版本控制；tar/sidecar 保留在被忽略的本地交付区。
+- Boundary：正式当前基线第一方 SAST、SCA、Secrets、SBOM、许可证、镜像扫描、R26 业务
+  安全回归和 staging DAST 均未开始。不能宣称 Critical/High/Medium 为 0；当前第一方
+  security clearance 尚未建立。production、`main` 和 tag 均未改变，四个设计草图仍仅存于原仓库。
+- Decision：`R27_GATE1_SOURCE_PACKAGE_COMPLETE / R27_GATE2_156_FINDING_TRIAGE_COMPLETE /
+  UNTRIAGED_HISTORICAL_FINDINGS=0 / OPEN_NEEDS_SECURITY_REVIEW=13 /
+  AWAITING_TRIAGE_AND_FIX_LIST_CONFIRMATION / FORMAL_FIRST_PARTY_SAST_NOT_STARTED /
+  CURRENT_FIRST_PARTY_SECURITY_CLEARANCE=NOT_ESTABLISHED / PRODUCTION_UNCHANGED / STOP`。
+
 ## R26 累积产品与后台更新生产发布（2026-08-09）
 
 - Authorization：产品负责人要求将当前全部代码更新同步到 GitHub、合并 `main`，并发布到
@@ -634,6 +693,9 @@
   exact candidate/image verification, fresh production backup, rollback window
   and observation-owner confirmation.
 
+> **HISTORICAL_NON_NORMATIVE — R27B Governance v2.1**
+> 以下内容保留为历史记录，不再定义当前 Codex 执行协议。当前规范仅来自根 `AGENTS.md`、已批准 Task Contract 和 `docs/gates/VERIFICATION_GATES.md`。不得据此自动 CONTINUE、进入 Next Round、每条命令更新 Ledger，或对小 patch 重跑完整发布 Gate。
+
 > 用途：记录 Codex 每一轮执行情况、验收结果、风险、遗留问题与下一轮决策。
 > 要求：每完成一轮，必须更新本文件。
 
@@ -906,6 +968,9 @@ AWAITING_PRODUCT_OWNER_CONFIRMATION
 - `docs/FLOW_MAP_UI_REFINEMENT_R21C.md`：覆盖 R21C 项目实时流程地图 UI 布局、坐标规则、状态色、自动刷新与截图验收
 
 ---
+
+> **HISTORICAL_NON_NORMATIVE — R27B Governance v2.1**
+> 以下内容保留为历史记录，不再定义当前 Codex 执行协议。当前规范仅来自根 `AGENTS.md`、已批准 Task Contract 和 `docs/gates/VERIFICATION_GATES.md`。不得据此自动 CONTINUE、进入 Next Round、每条命令更新 Ledger，或对小 patch 重跑完整发布 Gate。
 
 ## Round 记录模板（复制使用）
 
@@ -7059,6 +7124,1078 @@ PRODUCTION_UNCHANGED
 TAG_UNCHANGED
 STOP_BEFORE_SECURITY_SCAN_AND_SOURCE_CHANGE
 ```
+
+---
+
+### Round R27 Gate 3—5 Initial Security Scan And Semgrep Blocker（2026-08-10）
+
+#### Authorization And Immutable Input
+
+产品负责人明确提供：
+
+```text
+R27_GATE2_TRIAGE_AND_FIX_LIST_APPROVED
+R27_SOURCE_SCAN_COMMIT=27a0338ac0c59217d121fa6defe0feeec45ca252
+OPEN_NEEDS_SECURITY_REVIEW=13
+```
+
+本轮从不可变 source commit 和已验证源码包启动 Gate 3—5 只读初扫：
+
+```text
+worktree=/Users/lixiaochen/Downloads/feishu_timeline_app-r27-security
+branch=security/r27-final-source-clearance
+scan_start_HEAD=4a1b4abfbb1d18278ca8438c0b1d1085243e2daf
+source_commit=27a0338ac0c59217d121fa6defe0feeec45ca252
+source_archive=company-source-scan-27a0338ac0c5.tar.gz
+source_archive_sha256=83aff4f1474819ba370088418f018ddf1de29238d9745bf4139580f09864d940
+source_archive_files=627
+```
+
+没有使用原仓库四个未跟踪用户设计草图，没有启动应用容器，没有执行 migration，没有访问或
+部署 staging/production，没有修改 main 或 tag。
+
+#### Gate 3 Formal SAST Blocker
+
+仓库固定扫描器：
+
+```text
+Semgrep=1.169.0
+image=docker.io/semgrep/semgrep:1.169.0@sha256:2b33f46ba66cf8cc2ad59ccfa7d22951fd00c632c38f1339e84ec8e6e641a942
+Docker=29.5.2
+enumerated_targets=503
+```
+
+第一次通过 `scripts/security/run-sast.sh` 拉取固定 digest 时，Docker Hub manifest GET 返回
+`Service Unavailable`，Docker rc `125`，`semgrep.status=TOOL_ERROR`。第二次只执行同 digest
+`docker pull`，manifest HEAD 再次返回 `Service Unavailable`。
+
+失败发生在 scanner 启动前：
+
+```text
+formal_semgrep_findings=NOT_PRODUCED
+formal_semgrep_parse_errors=NOT_PRODUCED
+formal_semgrep_result=TOOL_ERROR
+attempts=2
+```
+
+依 `AGENTS.md` 12.13 停止，没有第三次正式 Semgrep 门禁执行。此前曾短暂启动非批准
+Semgrep `1.172.0` 隔离环境下载；发现版本不匹配后立即中止，未完成安装、未执行扫描、未用于
+任何结论，临时目录已删除。正式固定 digest 的失败次数仍严格为两次。
+正式 blocker 的失败环境、命令、根因、两次尝试和恢复条件见
+`docs/security/R27_GATE3_SAST_BLOCKER_REPORT.md`。
+
+人工补证得到 TypeScript-family 516 文件、106,159 行、AST parse error `0`；Bash 49 文件，
+`bash -n` parse error `0`。这些不是正式 Semgrep 结果。
+
+正式 target manifest 还漏扫 49 个 `.sh`、12 个非 config `.mjs` 和 4 个 `.js`；Semgrep
+registry ruleset 未固定，恢复后必须修复扫描覆盖和可重复性。
+
+#### Confirmed First-Party Findings
+
+人工 source-to-sink 审计确认：
+
+| ID | Severity | 结论 |
+|---|---|---|
+| `G3-SAST-001` | HIGH | public logout 没有把 cookie token 传给 service，客户端清 cookie 后 Redis session 仍可保留默认 8 小时 |
+| `G3-SAST-002` | HIGH | 三个生产运维脚本以 `eval` 解析 CLI，另有两个远端 Bash 源码插值 sink |
+| `G3-SAST-003` | MEDIUM | 附件无 quarantine/恶意文件 scanner verdict 即可绑定和下载 |
+| `G3-SAST-004` | MEDIUM | production notification log 记录 user/project/task/dedupe 标识 |
+| `G3-SAST-005` | MEDIUM | 两个部署引导脚本把未固定的 NodeSource 内容 pipe 给 root shell |
+
+新增两个 Low/`NEEDS_SECURITY_REVIEW` 候选：notification `linkPath` 缺站内路径约束，以及缺失
+Origin 的 mutation 被允许。本地对象存储 canonical containment 暂为当前 HTTP 数据流
+`FALSE_POSITIVE`，保留 defense-in-depth 建议。
+
+本轮没有开始修复；后续每项必须先增加失败复现测试。
+
+#### Gate 4 SCA, SBOM, License And Images
+
+依赖初扫：
+
+```text
+production_dependencies=227
+production_Critical=0
+production_High=2
+production_Medium=0
+development_dependencies=248
+development_Critical=0
+development_High=2
+lock_components=472
+lock_unique_High=3
+```
+
+3 个唯一 High 为 `js-yaml@4.3.0`、`nanoid@3.3.16` 和
+`brace-expansion@5.0.8`。前两项进入 production dependency graph；第三项是 dev graph，
+但现有 Dockerfile 把完整 workspace node_modules 复制到 runtime，因此三项都进入 API/Web
+production image。
+
+镜像初扫：
+
+```text
+API image:        Critical=0 High=3 BLOCKED
+Web image:        Critical=0 High=3 BLOCKED
+PostgreSQL image: Critical=0 High=0 PASS
+Redis image:      Critical=0 High=0 PASS
+Nginx image:      Critical=0 High=0 PASS
+```
+
+没有启动这些镜像。临时 CycloneDX 1.6 SBOM 经 OSV 重新解析仍为相同 3 个 High，随后删除；
+最终 SBOM 和 THIRD_PARTY_NOTICES 必须从修复后的冻结 lock/runtime image 重生。14 个
+Sharp/libvips LGPL 表达式仍需分发/法务复核。完整证据见
+`docs/security/R27_GATE4_SCA_INITIAL_REPORT.md`。
+
+历史 13 项已有逐项关闭建议（11 `NOT_IN_PRODUCTION`、2 `FALSE_POSITIVE`），但为遵守 Gate 3
+两次失败停止，本轮没有改写已批准 JSON，仍保留 approved Gate 2 状态。
+
+#### Gate 5 Secrets
+
+Gitleaks `8.30.1` 对 approved source、当前 HEAD、全部有效 refs/reflogs 历史、报告、源码包、
+tracked env/example、二进制及 431 张媒体/OCR 图像的结果：
+
+```text
+confirmed_secret_findings=0
+current_source_findings=0
+full_history_findings=0
+untriaged_secret_candidates=0
+tracked_media_findings=0
+secret_rotation_required=NO
+```
+
+去除仓库窄 allowlist 后唯一候选是文档中公开的 64 位 API dist SHA-256 完整性元数据，已逐项
+确认为 false positive。非 Secret 后续包括 production/staging DB/Redis 配置 fail-closed 和
+空的 `.git/refs/.DS_Store` 元数据清理；没有修改共享 `.git`。详见
+`docs/security/R27_GATE5_SECRETS_REPORT.md`。
+
+#### Checks And Change Boundary
+
+本轮执行的是只读安全初扫和治理证据固化，不是修复后的质量回归：
+
+```text
+source_package_integrity                 PASS
+TypeScript AST parse                     PASS (manual, 516 files / 0 errors)
+bash -n                                  PASS (manual, 49 files / 0 errors)
+formal Semgrep                           TOOL_ERROR / BLOCKED
+production dependency Critical/High=0    FAIL (High=2)
+production image Critical/High=0         FAIL (API=3, Web=3)
+confirmed secrets=0                      PASS
+lint/typecheck/unit/build/Prisma/E2E     NOT_RERUN (no source fix started)
+authenticated staging DAST               NOT_STARTED
+stability test                           NOT_STARTED
+```
+
+只新增/更新 R27 安全治理文档；没有业务源码、lockfile、Dockerfile、migration 或扫描配置修复。
+
+#### Mandatory Delivery Truth
+
+1. 代码是否实现：Gate 1/2 既有工具与证据已存在；本轮确认漏洞尚未修复。
+2. 本地测试是否通过：Secrets PASS；人工 parse PASS；正式 SAST TOOL_ERROR；SCA/image FAIL；
+   修复后全量质量门禁未执行。
+3. staging 精确 URL：未执行；没有访问 staging。
+4. staging runtime commit：`UNKNOWN_NOT_RECORDED`，本轮未改变。
+5. staging 用户路径是否通过：未执行。
+6. production 是否改变：否。
+7. production runtime commit：记录值
+   `535041bb25f21d548d863d07b35e3e952b0aeb2c`，本轮未在线复核、未改变。
+8. production 用户路径是否通过：未执行；没有访问 production。
+9. main 是否改变：否；local main 与 origin/main 均为
+   `41b4b166c587692e6f0fb9536dca2e1aab646c70`。
+10. tag 是否改变：否；仍为既有 `v1.0.0`、`v1.1.0-rc.1`、`v1.1.0-rc.2`、
+    `v1.1.0-rc.3`。
+11. 产品负责人是否确认：R26 Gate 3D、R27 baseline、Gate 0、Gate 2 已确认；本轮安全清场未通过。
+12. 未完成路由：本轮未新增路由；R27 安全修复和动态复测未完成。
+13. Placeholder 数量：Gate 0 正式源码残留 `0`；本轮未改变。
+14. 当前准确状态：见下方 Decision。
+
+#### Decision
+
+```text
+R27_GATE3_FIRST_PARTY_SAST_BLOCKED
+FORMAL_SEMGREP_TOOL_ERROR_AFTER_2_ATTEMPTS
+KNOWN_FIRST_PARTY_CRITICAL=0
+KNOWN_FIRST_PARTY_HIGH_GROUPS=2
+KNOWN_FIRST_PARTY_MEDIUM_GROUPS=3
+NEW_NEEDS_SECURITY_REVIEW=2
+TOTAL_OPEN_NEEDS_SECURITY_REVIEW=15
+R27_GATE4_SCA_FAIL
+PRODUCTION_DEPENDENCY_HIGH=2
+PRODUCTION_IMAGE_UNIQUE_HIGH=3
+R27_GATE5_SECRETS_PASS
+CONFIRMED_SECRET_FINDINGS=0
+SECURITY_CLEARANCE=NOT_ESTABLISHED
+FIXES_NOT_STARTED
+STAGING_DAST_NOT_STARTED
+PRODUCTION_UNCHANGED
+MAIN_UNCHANGED
+TAG_UNCHANGED
+BLOCKER_REPORT
+STOP
+```
+
+
+---
+
+### R27B Codex Governance Refactor Milestone（2026-08-13）
+
+- Baseline：`41b4b166c587692e6f0fb9536dca2e1aab646c70`。
+- Isolation：`/Users/lixiaochen/Downloads/feishu_timeline_app-r27-governance`，分支
+  `governance/r27-agent-architecture`。
+- Scope：仅安装产品负责人批准的治理文件并追加本里程碑；未修改业务源码。
+- Verification：未运行源码测试、build、安全扫描或部署；等待产品负责人 review 治理 diff。
+- Gate：未改变 R27/R27A Gate 结论，R27A security clearance 仍未建立。
+
+---
+
+### R27B Governance Repair v2.1 Milestone（2026-08-13）
+
+```text
+R27B_OWNER_REVIEW_V1=FAIL
+R27B_REPAIR_V2_1_APPLIED=YES
+GOV_WORKTREE_DIRTY=YES
+COMMIT_CREATED=NO
+STAGE_EXECUTED=NO
+PUSH_EXECUTED=NO
+MAIN_UNCHANGED=YES
+PRODUCTION_UNCHANGED=YES
+TAG_UNCHANGED=YES
+SOURCE_REPO_UNCHANGED=YES
+FORMAL_R27_WORKTREE_UNCHANGED=YES
+SOURCE_TESTS=NOT_RUN_BY_DESIGN
+SECURITY_SCAN=NOT_RUN_BY_DESIGN
+DEPLOYMENT=NOT_AUTHORIZED
+AWAITING_OWNER_REVIEW_V2
+```
+
+---
+
+### R27D Reviews Finding Ledger Closure（2026-08-15）
+
+- 目标：将 `R27D-G4-001`、`R27D-G4-002` 绑定到 Reviews 修复提交
+  `2ad18e31a52d2e89617601a0dc29eab07aca0b87` 并记录为 `closed`。
+- 范围：仅 `docs/security/FINDINGS.yaml`、`docs/security/FINDINGS.schema.yaml` 与本执行记录；
+  未修改业务源码、Migration、依赖、Samples 或运行环境。
+- 输入：G1/G2/G3 result artifact SHA-256
+  `51f7a67a689f6adb69577877d69d4f774207453eec1f2c9018eda7447f3e859b`；独立 G4 closure
+  SHA-256 `b934e4a4336dc3ebc81b126722a863cb46d72b9c138a97b24bb1a39843525d33`；
+  PostgreSQL JSON/log SHA-256 分别为
+  `9c01532c104625548872b94e42baeabb8b1f2eb52fa046aec7f2f37139f6ff53` 与
+  `a43237ba4d405e6a07e70a8d42338d0ba27b53003c06385957fdf369f41f6473`。
+- 改动：写入两条 Finding 的 source、scope、fix commit/tree、G1/G2/G3/G4 binding、
+  PostgreSQL closure binding 与完整生命周期；ID schema 支持 `R27D-*` round suffix。
+- 检查：JSON 解析、Ledger 结构/状态/SHA/transition 定向校验、`git diff --check`、docs-only
+  范围核对与 Placeholder 扫描。
+- 验收：两条 Finding 均为 `closed`，fix commit/tree 一致，四类 Gate binding 与 PostgreSQL
+  evidence SHA 已记录；未重跑源码测试、Migration、数据库或安全审查。
+- 风险：普通 `CREATE INDEX` 的生产锁时长尚无数据；正式部署前仍必须批准在线索引或维护窗口
+  策略。该 blocker 不影响本地 Finding/代码提交闭合，但继续阻止 production deployment。
+- Placeholder：全量命令有 10 个 raw match，均为测试中的负向断言或 `getByPlaceholder` API；
+  排除测试后的 `apps/web/src` 正式源码命中为 `0`。
+- 下一步：本 docs-only 提交完成并验证后，Reviews 批次才具备进入独立 Samples 任务的顺序条件；
+  本任务不自动修改 Samples。
+- 环境：未访问 staging/production；main、tag、production 均未改变；产品负责人尚未对部署或
+  产品路径给出 `PRODUCT_OWNER_ACCEPTED`。
+
+
+### R27RC2 目标式规则整合与现场恢复（2026-09-07）
+
+- 输入：所有者本轮请求及 Downloads 中 R27_RESTART_PROMPT.md / AGENTS.candidate.md；候选稿用于增量整合，未直接覆盖根规则。
+- 现场：feishu_timeline_app-r27rc2-repair / security/r27rc2-candidate-repair；基线 38ccd95ae95835806e92b530b17fd50f88166efd。六个既有产品补丁在治理阶段逐文件 SHA-256 不变；原 patch SHA-256 为 fed2bc365cd6c2feab9cebb5b825fff0e1e14a8ace79d1e35653a022960d7831，备份与逐文件摘要在 /private/tmp/rc2-resume-20260907/。
+- 改动：AGENTS.md、治理 architecture、verification gates、三个任务模板、security 上下文；替换模型白名单、机械文件/命令字段门槛、强制另开会话和无条件全局停止。业务/安全不变量、实际平台/组织限制、Git 与环境独立授权保留；补充真实脚本与观察入口。目标树无 STANDARD_EXECUTION_PROFILE 或目录 override，不创建重复入口。
+- 验证：git diff --check PASS；独立只读审查 /root/independent_review 最初发现作者自审豁免残留，删除后复核 PASS。七文档最终 diff SHA-256 52eab939e2288ae9bdc332c5887ee9a8bc0bbdbce2cda25308f1838882a5ca18。原产品六文件未改变。
+- 上下文：当前任务的直接用户指令已明确授权目标式执行，主任务已实际读取更新后的规则；不声称会话启动时的 AGENTS 自动重载。继续工作不依赖修改全局配置或额外工具权限；新会话仍须从目标目录加载。
+- 实际进展：已找到原 RC2 BLOCKER_REPORT；其中 E2E 缺幂等键是实证，后续项目锁日志缺失，不冒充已有复现。新隔离 PostgreSQL 已应用现有 36 migrations；初次容器目录权限问题已修正。
+- 下一步：继续原修复及创建项目的直接流程锁调用链，补真实数据库回归与最终独立审查。manifest/schema 契约与目标平台未决，未关闭 Finding。
+- 环境与授权：本轮仅本地，允许显式 stage/分开 checkpoint，禁止 push/main merge/tag/远端/staging/production；产品状态 AWAITING_PRODUCT_OWNER_CONFIRMATION。
+
+
+### R27RC2 本地修复与独立审查 checkpoint（2026-09-07）
+
+- 目标/输入：续接实际修复树的六文件 dirty patch，完成项目创建、直接流程锁和附件上传链路的真实本地修复；不重启历史盘点。
+- 治理 checkpoint：69c1012a39c0a9977fc442e0b035b203af587997；产品 checkpoint：080453967581ef03872e1b2d130fe9d75d86fc85，tree b5c65c522384643528482053b91ab2c13387e05f。本条和回执为后续独立 evidence commit，不改变应用源码身份。
+- 范围/文件：21 个产品修复及直接测试/迁移说明文件，详见产品 commit；没有依赖、schema、migration 或 CI 修改。六文件原 patch 已保存，治理阶段字节不变；产品阶段只续改其中两份测试，另四份仍字节不变。
+- 执行/验收：根 lint/typecheck、Web 287 测试、最终 API 1284 测试、Web/API build、Prisma validate、部署安全脚本回归 PASS。真实 PostgreSQL 36 migrations 与项目/附件并发测试实际执行；HTTP 主链路及 Chrome 创建/刷新/列表/时间线 PASS。最终独立只读 G4_DIFF PASS。原始 Placeholder 命中 10（全部白名单测试），正式页面 0。
+- 环境：仅本轮专用 localhost / 临时 PostgreSQL 与 Redis，模拟登录；三个临时容器和本轮 Web/API 已关闭。未访问或部署 staging/production，未 push、main merge 或 tag；main 未改变。
+- 风险/下一决策：当前修复达到 CODE_IMPLEMENTED / LOCAL_VERIFIED；整个发布候选尚受 manifest 合同、Admin/Suppliers 现存同类锁路径、正式 source/image 证据、目标 platform 及迁移/恢复授权约束。未关闭新 Finding、未接受风险，不自动进入远端验收。产品状态 AWAITING_PRODUCT_OWNER_CONFIRMATION。
+- 回执与日志索引：[R27RC2_LOCAL_REPAIR_20260907.md](handoff/R27RC2_LOCAL_REPAIR_20260907.md)。原补丁、失败和成功日志、截图/网络及摘要在 /private/tmp/rc2-resume-20260907/。
+
+
+### R27RC2 Admin/Suppliers 与 manifest 本地候选收口（2026-09-07）
+
+- 授权与起点：所有者明确授权锁修复、manifest 合同、验证、独立审查和本地提交；从干净 d4ebd25152cb8c2991918ad2dc5fbe2c1c169dde 续接，未触碰原 main 工作树。
+- 产品：c37f8103e5be35cb951ab3f022ffee80add6038e；tree 25eb8f1352a8602d2a0c72438ab2b23fa74152c5。10 文件：Admin/Supplier 八处事务锁及直接测试，现有 manifest helper/测试/部署合同文档。既有补丁、legacy restore fail-closed、Web、依赖、schema/migration/CI 保留。
+- 验证：23 定向真实 PostgreSQL、151 受影响、API 全量 1320、HTTP 29 请求、manifest 18、原 health/shell 安全回归及 API lint/typecheck/build/Prisma PASS；独立只读 G4_DIFF PASS。原失败日志保留。Web 未变结果按绑定复用；正式页面 Placeholder 0。
+- Finding：唯一 Ledger 新增 R27-RC2-ADVISORY-001 与 R27-RC2-CURRENT-002，均 fixed_diff_verified；原七条历史原文保留，schema 未改，无风险接受或全量关闭。
+- 本机证据：test-results/r27rc2/local-candidate-closure-20260907-034253；上轮35项证据已持久保存并核验于 local-repair-20260907，未提交原始日志。API 和本轮两个临时容器已清理。
+- 状态：CODE_IMPLEMENTED / LOCAL_VERIFIED，仅本轮本地阻断清除。正式 source/image、目标 platform/不可变镜像、外部恢复控制器、Reviews 生产索引方案、具体环境/真实飞书及负责人验收仍未完成。无远端查询/push/main merge/tag/部署，staging/production 未访问，AWAITING_PRODUCT_OWNER_CONFIRMATION。
+- 完整身份、逐锁覆盖、证据与外部输入：[本轮收口回执](handoff/R27RC2_LOCAL_CANDIDATE_CLOSURE_20260907.md)。本条与回执/Finding 为产品之后独立 evidence commit，不回写提交自身身份。
+
+
+### R27RC2 离线制品准备与数据演练（2026-09-07）
+
+- 起点：干净 c7054a7d2511d71ffbef7e05268758cc2ee74110；已核对相对 c37f8103 只有证据文档。用户授权本地准备/修复/审查/提交，禁止新增联网、安装、远端、上传或部署。
+- 工具修复 checkpoint：314b6523259a6f646915debccc85a2226ba40c79，tree f2953a484f0fcd145590088a6e42707b45863940。两文件修正 Gitleaks native 来源、完整 HEAD 基线与实际扫描快照摘要；独立只读审查及现有安全回归 PASS。应用、依赖、schema/migration、CI 与 Finding 原文不变。
+- 实作：干净新提交上 Gitleaks 当前输入/完整本地历史 PASS（267 commits）；旧库 Trivy 生产/全依赖预检零条目，明确不代替当前正式 SCA；Compose 仅解析 PASS。真实 Prisma 26→27→36 升级、六附件五扫描状态/配额、关键内容/约束/权限、升级前后两个空库恢复及对象hash验证 PASS；只是合成演练，篡改仅证明摘要不同，未验证外部恢复消费者拒绝。
+- 原始错误与审查澄清保留；本机96项证据在 test-results/r27rc2/release-artifact-preparation-20260907，摘要索引已核验。两份合成 custom dump 与对象保留，本轮专用断网 PostgreSQL 已清理。
+- 未完成：未知批准目标 platform，固定 Node 基底本地缺失，未构建/运行新镜像；正式 Semgrep/pnpm audit/镜像扫描和远端 CI 未执行。没有真实 runtime/registry digest；控制器、Reviews 生产索引、具体预发环境与真实飞书/负责人验收仍待输入。
+- 下一步：先提出限定 origin/提交的远端只读配置与自动部署副作用核查，再决定 codex/r27rc2-artifact-validation 验证分支的非强制 push；当前 CI 无完整报告保存与六镜像覆盖，不把绿色作业当发布候选就绪。详见 [本轮回执](handoff/R27RC2_RELEASE_ARTIFACT_PREPARATION_20260907.md)。
+- 边界：无远端动作、上传、main/tag 变化、部署或真实用户验收。此记录是后续独立 evidence commit，应用产品 checkpoint 仍为 c37f8103e5be35cb951ab3f022ffee80add6038e。
+
+
+### R27RC2 CI 证据输出本地候选（2026-09-08）
+
+- 输入/授权：所有者转交《补齐管理可见性并完成 CI 证据输出》；从干净 7922fca317c473c9fd26ca582984bfb9f5e20ae1 续接。只读定向远端查询及本地实现/审查/提交；前轮四份未提交只读证据保留。
+- source candidate：5a388095726d1b53fe79e379e1f3665d4a310a5d；tree 608f69ba5aacbb5e67359eabe2a62752424c05ba；锁文件 SHA-256 9186715db8a3fb724b2d856067bb69f320204beb4027b8672a0f2b263503d962 未变。相对原 314b6523 仅新增四个 CI/报告/测试文件差异及既有证据文档；本条和主回执在独立 evidence commit。
+- 改动：ci.yml、run-sca.sh、新 ci-evidence.mjs 及其测试；12份脱敏 JSON 白名单、官方固定 upload-artifact SHA、7天拟留存、实际 source/runner/build/tool 元数据、显式非生产 linux/amd64。原触发器、权限、checkout、dispatch-only Playwright 保持；未改业务、依赖/schema/migrations、基础镜像或 Finding。
+- 验证：node 合成20/20、安全脚本受影响回归、语法/YAML/条件/固定 Action 输入/定向 lint/diff 检查 PASS；独立 G4_DIFF 首轮 Semgrep 严重度 P2 修复后 PASS，最终四文件摘要与提交一致。未运行真实扫描/CI/镜像构建、数据库或重跑1320业务测试；Placeholder raw10测试白名单/正式0。
+- 只读观察：2026-09-08 04:47:44 UTC main 仍为 41b4b166c587692e6f0fb9536dca2e1aab646c70，拟用 codex/r27rc2-artifact-validation ref 当时不存在；管理页缺现有登录，未重复匿名受限查询。Node/Postgres固定 manifest 各查询一次均 digest verification failed，平台可用性未证实，保留引用。
+- 风险/下一决定：需现有管理身份或脱敏 hooks/Apps/Actions/适用规则证据，以及公开候选/必要历史、报告可见性批准后，才提出合并受限执行请求。动态规则摘要、逐镜像 DB/新鲜度、六镜像/真实环境及原独立部署条件未解决。
+- 状态：CODE_IMPLEMENTED / LOCAL_VERIFIED（CI补丁）/ G4_DIFF_PASS；MANAGEMENT_VISIBILITY_PENDING / CI_NOT_EXECUTED / NOT_DEPLOYED；无push、远端上传、main/tag变化、staging/production访问，AWAITING_PRODUCT_OWNER_CONFIRMATION。
+- 单一主回执：[R27RC2_CI_EVIDENCE_READINESS_20260908.md](handoff/R27RC2_CI_EVIDENCE_READINESS_20260908.md)；本地必要日志/摘要索引在 test-results/r27rc2/ci-evidence-readiness-20260908/evidence-index.json，未提交原始证据。
+
+
+### R27RC2 第一次真实远端 CI（2026-09-08）
+
+- 授权/输入：所有者明确批准精确候选及必要历史公开、唯一 validation ref 一次正常 push、既有 CI 网络/日志/cache/12 JSON artifact 和本地结果取回；禁止重跑、其他远端写入及部署。Vercel NONE_OBSERVED_IN_AUTHORIZED_VISIBLE_SCOPE 直接复用。
+- Final preflight：原 source 5a388095726d1b53fe79e379e1f3665d4a310a5d / tree 608f69ba5aacbb5e67359eabe2a62752424c05ba、四文件与锁文件绑定未变；Node原固定index和linux/amd64子manifest均经官方registry正常TLS/字节摘要验证，无源码修复。Postgres仍DEPLOYMENT_PREREQUISITE_PENDING。
+- 实际写入：只向 refs/heads/codex/r27rc2-artifact-validation 正常推送原 source 一次，pre-push守卫拒绝已存在ref；没有推evidence HEAD。推前ref不存在，推后等于候选，main/default仍41b4b166c587692e6f0fb9536dca2e1aab646c70。
+- 实际CI：[run 34191540314](https://github.com/pijhbkbk/feishu_timeline_app/actions/runs/34191540314)，push/attempt1，05:40:41–05:44:21 UTC，failure；verify failure，security-source failure，playwright-smoke skipped。只观察到这一workflow/三个预期checks，deployment记录0。
+- 正式结果：Secrets当前树/历史均PASS零发现；Web构建成功但生产产物eval-source-map检查FAIL，API/Docker/镜像扫描随之skipped；Semgrep4 findings+8 tool errors；全/生产SCA均qs6.15.3的同两条中危公告。未弱化检查、改依赖、rerun或第二次push。
+- 取回验证：两个artifact合计12 JSON已下载；ZIP摘要、白名单、SHA/tree/lock/run/job/step outcome与GitHub一致，身份校验0错误；actual github-hosted ubuntu24 image20260831.293.1、x64、Docker28.0.4 linux/amd64、Node24.20.0。必要可见失败日志已保存；完整归档/raw下载被浏览器客户端阻止，8个Semgrep错误明细及部分ruleId不可得，未伪造补齐。
+- 下一步/结束：只针对本次三个真实失败方向处理；镜像证据需后续另行获准CI。本轮结束，不进入staging/production，不新建产品提交；release FIRST_REMOTE_CI_FAILED / RELEASE_NOT_READY / NOT_DEPLOYED，产品AWAITING_PRODUCT_OWNER_CONFIRMATION。main/tag不变，无路由变更，未重跑Placeholder（此前正式0仅历史观察）。
+- 唯一主回执：[R27RC2_FIRST_REMOTE_CI_EXECUTION_20260908.md](handoff/R27RC2_FIRST_REMOTE_CI_EXECUTION_20260908.md)；29项本地证据及摘要索引在test-results/r27rc2/first-remote-ci-20260908/，原始证据不暂存/提交/上传。
+
+## 2026-09-08 — R27RC2 first remote CI failure repair
+
+- Scope: owner-authorized local three-direction failure repair, targeted downloads/build/scans, independent read-only review and local commits; no second push/CI, settings or deployment.
+- Source: `84a153884bea9d59ec56ef4e6ce3ada4b2144854`; tree `1647b6b00922bda0a39211f95070c65985ee20db`; lock SHA256 `5e7450da9c82bfe96390a9be4198ebc784e5e858e17c5fc5ed71ce33713e3f2c`. Prior source checkpoint `c216bd8938db81239f07738cf343917ae8dd8ca2`; subsequent commit only supplies explicit expected identity to the new runtime test.
+- Implemented: exact Next development-entry tracing exclusions with complete fail-closed artifact scanning; equivalent Bash parser compatibility in eight existing scripts; four independently justified precise SAST annotations and loopback redirect rejection; qs6.16.0 only for its two actual compatible parent versions; regression tests. AGENTS/CI/evaluator/upload boundaries unchanged.
+- Verified: frozen install, lint/typecheck, Web287 + API1280 tests passed /30 DB tests skipped, Web/API builds and Prisma validate, security/deploy/CI-evidence gates, SAST664 targets0 findings/errors plus final one-file affected scan, all/prod SCA0 findings, exact-identity native standalone, final API/Web linux/amd64 image builds, API actual qs6.16.0 and Web offline image runtime. Independent main+incremental source reviews have no blocking source comments.
+- New blocker: final Trivy image scans each report20 OpenSSL package findings (High2/Medium6/Low12), same10 CVEs across both images; libcrypto3/libssl3 3.5.7-r0, scanner fixed3.5.8-r0. Tool errors0. No risk acceptance/base-image update performed. `R27-RC2-CI-IMAGE-001` remains confirmed in unique Finding Ledger; six original repair/triage records also added without changing nine historical records.
+- Evidence: first run34191540314 attempt1 and all29 original indexed hashes preserved. This batch index `test-results/r27rc2/first-ci-failure-repair-20260908/evidence-index.json`; full source/commands/platform/build/rule/DB/result binding recorded. Main receipt `docs/handoff/R27RC2_FIRST_REMOTE_CI_FAILURE_REPAIR_20260908.md` contains failure matrix and held exact FF/CI request.
+- State: `RELEASE_NOT_READY / IMAGE_SCAN_BLOCKED / REMOTE_REVALIDATION_PENDING`. Main/tag/staging/production unchanged/unexecuted; product confirmation pending. Next: minimal authorized base-artifact repair before new candidate CI; original once-only push grant is exhausted. PostgreSQL deployment prerequisite remains pending and was not used to block source/build checks.
+
+
+## R27RC2 image OpenSSL remediation — 2026-09-08
+
+- Scope: authorized local API/Web image remediation only, no remote writes or deployment. Source `8c265959f2dcca272d59ca9cbe8f9ae7b821019d`, tree `033a780976332652ca2b21801863ceab086772bd`; later evidence HEAD in local index. Only two Dockerfiles and one direct runtime test changed.
+- Fix: retain fixed Node24.19/Alpine3.24 base; shared stage pins libcrypto3/libssl3 3.5.8-r0. All runtime/base stages inherit it; ops linkage noted, not accepted as tested.
+- Validation: exact Linux/amd64 API/Web builds and health, crypto/TLS positive-negative, Prisma/Sharp native runtime, Web1126 shipped files,30 separately executed PostgreSQL tests pass. Same Trivy DB SHA confirms old20each/new0each; original coverage/thresholds unchanged. Prior1567PASS/30skip evidence remains original.
+- Independent G4_DIFF approves partial system remediation only. Node embedded3.5.7 remains, at least75803 patch absent in current official24 source; no official complete applicability closure. Unique finding R27-RC2-CI-IMAGE-001 stays in_progress; RELEASE_NOT_READY.
+- Evidence: `docs/handoff/R27RC2_IMAGE_OPENSSL_REMEDIATION_20260908.md`, local `test-results/r27rc2/image-openssl-remediation-20260908/evidence-index.json`. Previous161 local evidence files preserved. No push/CI/settings/deployment. Future FF request condition not met; original first-push permission not reused.
+- New direct test SAST initially found missing GCM tag length; fixed explicit16 and short-tag negative assertion. Final pinned offline scan0 findings/0 errors;8c final images and affected checks rebuilt/rerun, intermediate6dd failure/review preserved.
+
+
+## R27RC2 Node 内嵌 OpenSSL 适用性（2026-09-09）
+
+- 用户明确转交附件，限本地官方输入/现有镜像/外置测试/独立只读审查；无远端写入或部署。
+- source/test candidate `e0b20a69522edd4dc76ee3b3219badda7166acbd` / tree `fa64715929aed610ae2714482db0b881ba2f367d`；只新增一份外置测试，实际两镜像 runtime 仍 `8c265959f2dcca272d59ca9cbe8f9ae7b821019d`。
+- 十项 CVE 在精确 API/Web/current config 内均不适用，不能声称内嵌3.5.7已打补丁；系统40实例修复及原263文件证据保持。
+- 两镜像各24组/80个认证负向通过，原Semgrep定向0 findings/0 errors，语法与独立G4通过；唯一Finding `R27-RC2-CI-IMAGE-001`推进fixed_diff_verified，未closed/未风险接受。
+- 主回执：`docs/handoff/R27RC2_NODE_EMBEDDED_OPENSSL_APPLICABILITY_20260909.md`；本地结果索引：`test-results/r27rc2/node-embedded-openssl-applicability-20260909/evidence-index.json`。
+- 准备新的唯一验证ref FF/CI请求但不执行；当前RELEASE_NOT_READY / REMOTE_REVALIDATION_PENDING。staging/production/main/tag未改变，产品确认未获得。
+
+
+## R27RC2 部署准备续接（2026-09-10）
+
+- 用户目标：持续修复至可安全部署；已授权的本地调查、实现、验证和可回滚检查点持续执行。实际起点为 repair 工作树 a116c374c1603b1cd2d19f5a5d79a0a0f290eb56，未从八月旧树重做。
+- 源码检查点 defd47d80ca2cf9568a02c50c0acbfa89eff57e5 / tree 1ef3bfcd47746ed048c114dce31accb2476af72b：恢复材料 verify-and-snapshot、17项直接测试、真实隔离恢复演练及使用说明。四文件；没有业务、schema/migration、依赖、CI或部署禁用入口改变。
+- 目标与受影响验证：17/17、真实断网PG恢复/篡改拒绝/完整行和对象/外键PASS；独立G4_DIFF PASS；固定Semgrep覆盖三个新增mjs、0finding/0error；manifest和部署安全回归PASS。必需安装/lint/typecheck/test/两端build/Prisma均exit0；Web287、API1280 PASS/30 SKIPPED，跳过不冒充实库执行。
+- 制品：从e0b20a69522edd4dc76ee3b3219badda7166acbd构建本地linux/amd64 API-ops，inspect Id sha256:b0c6b3621c8e8d0271f2402225e33397a6246569360d244d6087c31281e718fa；Trivy新鲜库0漏洞。新镜像在断网空PG真实应用36迁移、checksum、重复deploy及有效Reviews索引PASS。不是registry发布/目标平台验收。
+- 只读远端：validation 5a388095726d1b53fe79e379e1f3665d4a310a5d、main 41b4b166c587692e6f0fb9536dca2e1aab646c70。未push/触发CI/main merge/tag/部署；精确公开推送与目标环境问题仍待所有者回复。
+- 原始失败与最终证据保存在test-results/r27rc2/deployment-readiness-20260910/，不提交上传。源码与证据提交分开。Placeholder正式0/raw10测试白名单；真实环境路由均未验收，临时容器已清理。
+- 风险/下一步：远端CI、明确预发URL/平台/隔离资源、完整制品digest、受信控制器安装/实际恢复、Reviews窗口、真实Feishu/角色/附件与负责人验收未完成。GPT-6 Pro已作通用技术咨询，不代替所有者/组织批准。
+- 单一回执：[R27RC2_DEPLOYMENT_READINESS_20260910.md](handoff/R27RC2_DEPLOYMENT_READINESS_20260910.md)。当前 LOCAL_VERIFIED / NOT_DEPLOYED / RELEASE_NOT_READY / AWAITING_PRODUCT_OWNER_CONFIRMATION。
+
+
+## 2026-09-10 — 生产上线任务启动与新依赖告警
+
+- 最新所有者指令：先修复所有中高危漏洞，再部署既有 GCE 与 `https://timeline.all-too-well.com`；工程阻断委托 GPT-6 Pro 决策。不得将模型意见当作平台权限或实际验收证据。
+- 当前修复工作树：`/Users/lixiaochen/Downloads/feishu_timeline_app-r27rc2-repair`，分支 `security/r27rc2-candidate-repair`，起点 `7783480457c41d64d7c73ba519bf396197c501ee`。旧主工作树与未跟踪媒体保持不动。
+- 已通过 IAP 只读核对现有目标：linux/amd64 Ubuntu 22.04.5、4 GB RAM、约16 GB可用磁盘、Docker29.6/Compose5.1；既有宿主 Nginx、API/Web systemd、PostgreSQL14.24、Redis。还有其他应用，只修改 timeline 专属资源。
+- 精确公网 `/api/health` 与 `/build-info`、server HEAD 均仍为 `535041bb25f21d548d863d07b35e3e952b0aeb2c`，release `r26-admin-535041bb25f2`，buildTime `2026-08-09T06:49:11Z`。本次未切流、未迁移生产数据库。
+- 生产数据库 `feishu_timeline` 约16 MB、26个已完成迁移、1个项目、0评审/0附件；无活动 ClamAV。实际恢复/迁移及杀毒链路尚待执行。
+- 新鲜SCA命中9项包告警，对应8个唯一上游公告（2critical/4high/1medium/1low；中危同时命中Vitest和mocker）。已登记唯一 `FINDINGS.yaml`，状态 `in_progress`；旧扫描不再支持最终候选发布。升级前报告 `test-results/r27rc2/production-release-20260910/sca-baseline.json`，SHA256 `32672eacf8f46cb11dad83e8597b6d717dcde4284a70d9926e5991639bb10140`。
+- 修复范围：Next15.5修复线、sharp0.35.4、Multer2.3.0、Vitest4.1.11，保留既有qs修复；增加HTTP上传边界/异常字段/接收中断回归，精确处理Multer新错误码。未改变模型或历史migration。
+- 独立只读审查确认该升级方向及最小回归；最终安装/锁文件/测试/镜像验证仍待完成。一次目标测试因安装尚未完成、vitest入口未链接而未执行，不计为测试PASS。
+- GCE Artifact Registry查询返回服务未启用，尚未创建仓库或启用服务。正在按所有者委托等待Pro的工程决定；可继续本地修复。
+- 当前准确状态：`CODE_IMPLEMENTED_PARTIAL / LOCAL_VERIFICATION_IN_PROGRESS / NOT_DEPLOYED / AWAITING_PRODUCT_OWNER_CONFIRMATION`。main/tag未改变。
+
+
+### GPT-6 Pro 委托决定与依赖修复进展
+
+- Pro在用户指定账号对话中明确批准：必要修复、既有验证分支非强制FF迭代、CI、私有制品、最小生产适配、恢复演练、维护和切流；不改main/tag，不绕过真实权限或事实验证。
+- 补充决定取消其先前默认的24小时公告/固定凌晨要求。最终演练完成后，可在本任务告知并于本域名展示维护提示，冻结本应用写入与通知、排空请求后短维护。旧会话服务端失效，通知最后恢复；新版本接收业务写入后禁止用旧备份覆盖新数据。
+- 批准启用现有GCE项目Artifact Registry并创建区域内专用私有仓库，不公开、不新增长期密钥；批准保留核验并修补后的宿主Nginx/PostgreSQL14/Redis，容器运行API/Web/ops/ClamAV，清单及校验最小适配实际角色。不是验证豁免。
+- 正式Web构建需保留现有V2/real及V1 fallback配置；旧staging默认V1不适用于本次生产。
+- npm客户端两次在Next下载无进展，第二次请求超时选项未结束挂起的body读取；暂停相同下载方案。独立官方tarball下载成功（31,014,520字节），并与官方注册表SHA512 `OMWNulIIqKM2ykvC2qMjIt0IoavB4UB2SCs4iXJ6z6847FvyH8jBmBWcvrF5iuhTu8Przh20Fo/aoszIdqx4PA==`一致；通过pnpm store add导入内容缓存后offline安装成功。锁文件无file/本机tarball来源，独立审查已确认。
+- 实际锁版本Next/Nexteslint15.5.25、sharp0.35.4、Multer2.3.0、Vitest/mocker4.1.11；全量/生产SCA均0报告漏洞。上传+qs目标25PASS。原始9包告警已清除，但最终镜像/完整验证尚未完成，Finding暂不关闭。
+- Vitest4类型检查发现原有private-method `as never`及无签名mock类型不再兼容；仅明确既有测试方法签名，不删除/跳过/弱化断言。首次修正遗漏2个同型调用，确认具体位置后补齐；保留失败日志，重跑受影响验证。
+
+
+### 2026-09-10 production adaptation / ongoing
+
+- Candidate cd38cf3ad7f1340e5bc1b6e19c5d5e51a07c16ad pushed normally to codex/r27rc2-artifact-validation. CI 34479395531 verify/security-source SUCCESS; Playwright not executed on push. Production still 535041bb25f21d548d863d07b35e3e952b0aeb2c, not changed.
+- Pro decision approves dedicated authenticated Redis, private project network, AOF/noeviction and least-privilege ACL, scoped notification queue+dedupe migration preserving order/expiry; old authentication state revoked, shared Redis untouched. Rejects using host networking merely for connectivity.
+- Exploratory gce-loopback profile reproduced current startup rejection (1 failed / 62 passed), then target tests passed63. This authored exploratory patch was withdrawn in favor of Pro-approved bridge isolation; original production connection policy preserved. Evidence retained under /private/tmp/rc2-production-20260910/evidence/gce-profile-*.log; these results do not describe final-source tests.
+- cd38 image build was cancelled after Next package response body stalled; no produced artifact approved. New bounded official-registry prefetch validates frozen-lock SHA512, rejects oversize/timeout, seeds pnpm store without changing dependency source; frozen install remains required.
+- Pending Pro decision: bridge-bound dedicated PG socket proxy and role-specific database access rules, plus measured ClamAV capacity fallback. Independent review flagged shared-host lateral access and notification in-flight drain proof; neither is waived.
+
+### 2026-09-10 production security continuation — final artifacts and host maintenance preparation
+
+- Runtime source remains pushed immutable `8172cba77db286c75a54d35db3f49a22b37de1b8`, tree `928fd27f18e72b2639a8f17deeaddb355f55bbde`; release `r27-security-8172cba77db2`, build time `2026-09-10T13:10:13Z`. Remote CI run `34480892035` succeeded. No main/tag change.
+- API, API ops and Web amd64 builds completed. Exact-image Trivy 0.72.0 scans recognized Alpine 3.24.1 and reported zero known package vulnerabilities at every severity. Reports and IDs: `/private/tmp/rc2-final-image-scan-8172cba/summary.json`. This is artifact-specific evidence, not host clearance.
+- PostgreSQL 14.24 isolated real DB suite: 4 files / 45 tests PASS; migrations applied, repeated deploy and status PASS. Evidence: `/private/tmp/rc2-production-20260910/evidence/pg14/`.
+- Final image native probes passed: API Prisma/musl transaction, AES-GCM, TLS trust/hostname rejection; Web Sharp 0.35.4, AVIF/heif security revision and malformed input rejection. Initial Web HTTP check returned 500 because required EXPECTED_* identity configuration was omitted in the test environment; preserved failure, supplied the exact four expected identity fields, same-image HTTP/static-resource verification PASS. No application code or assertion weakening. Evidence: `/private/tmp/rc2-final-runtime-8172cba/`.
+- GPT-6 Pro explicitly approved bridge-only production topology, root-controlled PostgreSQL TCP proxy with distinct backend source 127.0.0.2 and exact SCRAM HBA allow/reject boundaries. No host-network workaround or application loopback validation bypass. Implementation pending.
+- GPT-6 Pro approved one private e2-standard-2 scanner VM, <=30GB disk, same region, <=USD100/month including network. Official Oregon browser price verified USD0.06701142/hour; estimate with disk/NAT/IP and USD20 variable reserve = USD76.59/month. Dedicated subnet/router/NAT/firewalls and scanner VM created. No public IP/service account requested. Effective firewall and startup metadata preflight passed (only project SSH key metadata); actual instance postcheck pending. Firewall initial CLI validation failed on unsupported --deny; corrected to documented --action DENY --rules all; resumed only failed and subsequent steps.
+- Confirmed actual original host is running kernel 6.8.0-1053-gcp with fixed 1066 installed, initramfs/modules/GRUB entry present. Pro approved a single normal guest OS reboot after whole-host consistent backups and recovery preparation, including necessary short interruption of the other application, preserving all services/data; no reset/force shutdown. Reboot NOT yet executed.
+- CVE-2026-53362 remains vulnerable on linux-gcp-6.8 1066; Pro requires actual trigger-surface elimination or supported patched/unaffected platform before cutover, not risk acceptance. Process seccomp must cover IPv6/SCTP, io_uring, compatibility ABI and inherited FD boundaries; shared host exposure must also be addressed. Independent review identified the exact Docker v29.6.0 seccomp v0.2.3 base, implementation pending.
+- Current production remains old runtime `535041bb25f21d548d863d07b35e3e952b0aeb2c` at `https://timeline.all-too-well.com`. No production DB migration, traffic switch, session revocation or app stop has occurred. State: CODE_IMPLEMENTED / LOCAL_VERIFIED for scoped fixes; production release NOT_DEPLOYED; product AWAITING_PRODUCT_OWNER_CONFIRMATION. Remaining: host vulnerability disposition and reboot/recovery, scanner/tunnel/runtime isolation, external controller/config, consistent backups and low-privilege restore rehearsal, notifications/inflight reconciliation, exact-domain browser acceptance.
+
+### 2026-09-10 14:00 UTC — delegated maintenance update and scanner blocker
+
+- GPT-6 Pro owner delegate decision 6 supersedes the earlier 1066-only plan: verify official Jammy 5.15 GCP LTS (`linux-gcp-lts-22.04=5.15.0.1115.112`, kernel `5.15.0-1115.125`, runtime `5.15.0-1115-gcp`) plus official Jammy Docker 29.8.0/containerd security updates on one isolated temporary VM; then one prepared production maintenance/reboot, restoring all original services before application cutover. Preserve 1053/1066 rescue kernels and existing Docker containerd image store. Keep following future LTS fixes, not a permanent 1115 pin. Direct kernel notice USN-8730-1; USN-8661-1 describes 1114. No blanket IPv6 shutdown prerequisite remains for CVE-2026-53362 on the unaffected 5.15 branch; other applicable host findings still require evidence.
+- Temporary validation VM `timeline-validation-r27`, us-west1-b, private-only/no service account, synthetic data only; e2-medium/30GB, cumulative budget USD10, enforced DELETE termination 2026-09-10T21:49:06Z with boot-disk auto-delete. Only its dedicated resources may be cleaned; scanner/NAT/shared resources remain. Exact budget record: `/private/tmp/rc2-production-20260910/evidence/validation-resource-budget.json`. Baseline installed official Docker29.6/containerd2.2.5, PostgreSQL14.24, Redis6.0.16, Nginx1.18.0 security revision matching original host. Four immutable private application/support images pulled.
+- Scanner full official signature update/database tests succeeded. Raw scanner binds host loopback only; encrypted application tunnel not yet installed. Nonroot scanner starts using 944MiB of its 3GiB limit. Seccomp v2 keeps IPv6 denied but returns EAFNOSUPPORT for AF_INET6 socket, resolving verified musl AI_ADDRCONFIG startup incompatibility; sha256 dc25b0ab943c0d7b99378b4600fe31002ba209c4445b3e141a2e20c8860bf973. Existing stronger-default restrictions remain. v1 actual native/compatibility-ABI denial probes passed; v2 affected probes pending.
+- BLOCKER (new root cause): ClamAV1.4.6 INSTREAM accepts a ZIP containing an actual 21MiB member despite MaxFileSize20M/AlertExceedsMax. Clean/EICAR/exact20MiB passed; archive limit failed. Independent upstream source review confirmed silent truncation in Stored/Deflate/Bzip2/Implode paths; Office uploads use ZIP too. Preserved original failing assertion/log (`evidence/scanner-stream-regression.log`). No risk acceptance or weakened test. Minimal derived-engine patch proposed to GPT-6 Pro; independent source review proceeding while unaffected temporary-host validation continues.
+- Production remains old runtime 535041bb25f21d548d863d07b35e3e952b0aeb2c/kernel1053; no package installation, restart, database cutover, auth revocation, traffic change, main change or tag change. Application source remains 8172cba77db286c75a54d35db3f49a22b37de1b8; deployment not yet verified.
+
+### 2026-09-10 20:48 UTC — scanner repair and isolated maintenance verification
+
+- Delegate decision 7 approves a minimal maintained ClamAV 1.4.6 ZIP-limit patch, retaining 20MiB file / 100MiB aggregate bounds and fail-closed behavior. Official tarball SHA256 06dbc7adf96e2f6a27c548a841ce83c95360d1e121b106a6f7cf56f282a3c61b verified by Talos signing fingerprint 5BADCA2665EF59DCF8A23D8B707F0DB480836771. New scripts/security/clamav/{zip-limit-alert.patch,source.json} records exact source/patch identities. Four decompression truncation paths now record a limit alert; final runtime regressions and image release remain pending.
+- API scan result preserves REJECTED while classifying Heuristics.Limits.Exceeded.* as SCAN_LIMIT_EXCEEDED rather than malware. Red regression 3 failures preserved; affected attachment tests 110 PASS / 2 database SKIPPED. Independent read-only final diff review PASS; Rust official evidence.add_indicator fixed valid-name path returns Ok(()), closing the reviewer’s hypothetical swallowed-error concern. Source remains dirty/uncommitted; existing 8172cba images do not contain this new classification.
+- Isolated native ClamAV compile succeeded, OOM false. Upstream CTest initially 6/11 PASS; Rust failure traced to read-only test temporary directory and rerun against dedicated writable identical source copy PASS. Four Valgrind suites remain failed with file-descriptor diagnostics; no suppression/skip or blanket PASS. Candidate install staging is not release approval. Evidence: /private/tmp/rc2-production-20260910/evidence/clamav-*.log.
+- Platform auto-review denied exporting the other production application's private source/config. Action not executed. Delegate decision 8 instead approved public Node 24.18.0/sql.js1.12.0 synthetic compatibility testing plus actual original-service recovery checks; no private application source/image/data copied. Synthetic write, normal shutdown, isolated backup restore and postboot write PASS. Actual original application's in-memory persistence/drain prerequisite still unproven, so production stop remains pending.
+- Platform separately stopped an independent custom test-harness subtask. No harness produced. A distinct bounded read-only diff review succeeded. Later CUA submission of a redacted infrastructure/timing/security status summary to GPT-6 Pro was rejected for insufficient specific disclosure authorization. Explicit user disclosure question is pending; that payload has not been resent or sent indirectly. General delegation does not override platform refusal.
+- Temporary validation VM successfully upgraded official Docker29.6 to29.8/containerd2.3.5 and normally rebooted into 5.15.0-1115-gcp. Same storage driver/image IDs/network identity retained; PostgreSQL14 and host Redis persistent sentinels, API/Web exact8172cba identity/auth rejection, dedicated Redis ACL/one-use/Lua/AOF normal restart, synthetic sql.js3-row restore and fourth postboot write PASS. Earlier expiring Redis sentinels expired naturally during elapsed six hours; fresh sentinels separately prove normal-restart AOF, not a false host-reboot persistence claim.
+- Postboot actual API scanner call failed ECONNREFUSED: persisted firewall script inserted scan ACCEPT after final REJECT when INPUT jump already existed. Preserved failed rule order, replaced with deterministic allows-before-reject atomic transaction; sequential first/repeated install and real ConfiguredMalwareScanner clean result PASS, Web negative DB/scanner access PASS, all six services active. Independent static review PASS; script SHA256 0a9482c34bc16d137415f0ed27f513d1affa7eebf80dd78feccc101cb8871a72. Evidence validation-{postboot,network-diagnostic,firewall-order-fixed}.log. Production firewall unchanged.
+- Seccomp v2 actual native denial probes PASS: AF_INET6 EAFNOSUPPORT, restricted families/syscalls denied, compatibility ABI killed, no_new_privs/seccomp active. Temporary deletion deadline remains 2026-09-10T21:49:06Z; no extension decision was submitted. Evidence preservation/remaining boot selector checks precede cleanup.
+- Production at https://timeline.all-too-well.com remains runtime535041bb25f21d548d863d07b35e3e952b0aeb2c, original kernel1053. No production package install, stop/reboot, migration, session revocation, traffic switch, main or tag change. Status: FIX_IMPLEMENTED_PARTIAL / ISOLATED_VERIFICATION_IN_PROGRESS / PRODUCTION_NOT_DEPLOYED / AWAITING_PRODUCT_OWNER_CONFIRMATION.
+
+### 2026-09-10 21:18 UTC — R27 RC2 boundary verification checkpoint
+- Local runtime commits: `21bda57` (scanner ZIP-limit patch and API rejection classification), `7d339e05b56a3b5c28bd1693c9e9b0485023bf8b` (explicit GCE hybrid v2 identity verifier; current tree `a13165ae70a37203f988eaa6c52c368933673c12`). New hybrid verifier passes 57/57 tests including database identity binding; API affected regression 110 PASS / 2 DB-only skipped, lint/typecheck/build PASS. Existing v1 release contract preserved apart from exported primitives.
+- Platform automatic review rejected pushing these commits to `pijhbkbk/feishu_timeline_app:codex/r27rc2-artifact-validation` because disclosure to that exact destination was not explicitly authorized. Push was not executed; exact repository/branch authorization requested and pending. Remote validation remains `8172cba77db286c75a54d35db3f49a22b37de1b8`; main/tag unchanged. No alternate publication attempted.
+- Temporary validation found a real persistent boot regression: cloud GRUB drop-in overrode saved default and booted 6.8. Added late saved-default configuration, verified generated config, and performed another ordinary reboot. Final runtime 5.15.0-1115-gcp, API/Web identity, Redis/PG persistence, synthetic Node/sql.js persistence, firewall order and real API → SSH → clamd scan PASS. Evidence `/private/tmp/rc2-production-20260910/evidence/validation-default-boot-final.log`; earlier failure retained. Actual original production has not received these changes.
+- SCTP/NFSD inventory on original and validation hosts: modules compiled as modules, not loaded; no corresponding active protocol/server/mount. Autoload remains allowed, so conditional host findings are NOT closed. Official mitigation and persistent disabling are under evaluation.
+- Public-source ClamAV control U (unmodified 1.4.6) and P (ZIP patch) both fail the original four Valgrind suites; no assertions/suppressions removed. Public Pro review advised semantic ownership comparison rather than treating matching counts as PASS. Exact musl debug symbols revealed real duplicate listener close (`server-th.c:655` then `clamd.c:862`), under independent read-only ownership review. A separate 9-byte record is finite inherited allocation in exiting verification child; parent has zero corresponding definite loss. Neither finding invalidates the retained original FAIL result.
+- Isolated patched scanner image built as `timeline-clamav-candidate:r27`, short ID `78b90ba544ed`, with source and patch metadata/license. It has not been published or substituted for the active scanner. Candidate startup and original benign INSTREAM regression are in progress on a separate loopback port. Original ZIP-expanded-file-limit failure remains preserved.
+- Public-only GPT-6 Pro consultations: Valgrind comparison, cloud GRUB ordering, and NGINX upstream package route. Previously rejected private infrastructure summary remains unsent pending explicit authorization. No prohibited custom engine harness regenerated.
+- Production remains `535041bb25f21d548d863d07b35e3e952b0aeb2c` at `https://timeline.all-too-well.com`; no maintenance/cutover/migration/new image deployment. Status: local fixes under validation; NOT_DEPLOYED for current candidate; AWAITING_PRODUCT_OWNER_CONFIRMATION. Temporary validation VM retains enforced deletion deadline 2026-09-10T21:49:06Z and original budget bound.
+
+### 2026-09-10 21:44 UTC — R27 RC2 host rehearsal closed; scanner lifecycle fixes continue
+- Local code checkpoint: `d536a3258c3829a79cb37012f2d2f81fa376379c`, tree `6689542524ee196f55811226cad1c9cfa4b9ea4b`. This adds reviewed GCE host reference controls, 10 passing kernel selection regressions, listener FD ownership/PING cleanup patches, and combined scanner source binding. It does not provide a self-authorizing root deployment controller. Nothing was pushed; exact GitHub destination approval remains pending.
+- Kernel helper final SHA256 `a8c999dc3ea339e4cb3f5bf465ce756351e6434b9c3cc2032e7b97f68124817f`. Real official package reinstall verifies image `half-configured` and modules `installed` at the hook, then normal reboot selects 5.15.0-1115-gcp. Incomplete old candidates no longer block a complete newer kernel; deletion of the last complete LTS remains rejected. Test and independent diff review PASS.
+- NGINX route changed following public GPT-6 Pro assessment and official advisories: authenticated upstream package `1.31.5-1~jammy`, package SHA256 `0b4884faf35a35cc85f54d7576b698f8f30981b25959f437235a9885ff40a1d5`. The first repository validation correctly failed because only an older signing fingerprint was allowed. The current signer `8540A6F18833A80E9C1653A42FD21310B49F6B46` was verified in the official NGINX key bundle; signature verification remained enabled. Original Ubuntu package combination was saved, migrated, restored, and migrated back in the synthetic VM. HTTP/TLS, host separation, 401/403/404 controls and real API/Web identities passed each phase. A version-check formatting failure caused by the Ubuntu suffix was preserved and corrected using exact package plus parsed runtime identity. Original production configuration compatibility remains NOT_RUN.
+- Final synthetic host reboot PASS: supported kernel, Docker 29.8, NGINX actual process binary SHA256 `55e4447b18b63a0a48d51504a051d634ef1158c75ae05c10869b16ca303813e2`, SCTP/NFSD module denial, application/PG/Redis/synthetic SQL.js persistence, firewall order, pinned scanner channel. Evidence: `/private/tmp/rc2-production-20260910/evidence/validation-final-maintenance-verified.log`, `validation-real-kernel-postinst.log`, `validation-nginx-restoration-resumed.log`. This is private synthetic validation, not staging or production product acceptance.
+- Original `clamd_valgrind` now PASS (135.50 seconds) after listener ownership and successful PING cleanup; no assertions or suppressions changed. Original/intermediate failures remain available. Combined patch SHA256 `c165ae7da7f2ffeb774205c37d4a59d53c7b92252a32a48186d24a66d9d40d2a` applies cleanly to the exact four original source files and yields all recorded hashes. Code and metadata independently reviewed.
+- Combined candidate image `sha256:7ab976a39c1fab0adbbcdba8f4e20c4ec15784c0e05e3a33117f5ab559a463d5` passes original five INSTREAM checks. Actual 8172cba API scanner client → pinned encrypted SSH → this candidate returns CLEAN / REJECTED for oversized archive / CLEAN recovery. Evidence `scanner-candidate-r2-stream-regression.log` and `validation-api-candidate-scan.log`. Final attachment persistence, new API classification artifact, all required archive paths, final SCA and freshness enforcement remain pending. This image was not published or installed as the active scanner service.
+- Exact debug-symbol original freshclam/sigtool suites remain FAIL. Independent review identifies a separate C/Rust ownership issue: `cdiff_apply` wraps caller-owned FD as an owning Rust File then drops it; sigtool/freshclam subsequently close it again. Minimal wrapper-only borrowed ownership patch is under review, with public-only Pro consultation. Do not misclassify these failures as generic Valgrind noise. The libclamav FD2 record was traced to test stderr redirection; finite freshclam child resources retain separate analysis.
+- Full Ledger schema validation exposed 24 errors in existing R27 IDs/direct lifecycle records. Platform automatic review rejected historical ID/lifecycle normalization due audit integrity concerns. That rewrite did NOT execute; original records remain unchanged and exact authorization was requested. No schema was weakened. Current Ledger schema status remains FAIL, despite successful runtime component tests. Standard `git diff --check` reports expected single-space unified-patch context lines; non-patch changes pass, and exact patch application/hashes were independently verified. Do not report an unqualified diff-check PASS.
+- Temporary validation VM `timeline-validation-r27` / ID `4557429735412403076`, its auto-delete disk and all three dedicated firewall rules were deleted before the enforced 21:49:06Z deadline. Scanner temporary public key and extra candidate forwarding permission were removed; remaining scanner tunnel authorized keys = 0. Evidence `validation-cloud-cleanup.log` and `scanner-validation-key-cleanup.log`. Scanner VM remains for authorized remediation; original production VM/services remain unchanged.
+- Production remains `535041bb25f21d548d863d07b35e3e952b0aeb2c` at `https://timeline.all-too-well.com`. Current code is NOT_DEPLOYED; main/tag unchanged; no human PRODUCT_OWNER_ACCEPTED. Major remaining prerequisites include pushed immutable candidate, exact host risk disposition, external trusted controller, original co-hosted app persistence proof, consistent production backups/recovery, final scanner verification and exact-domain browser acceptance.
+
+
+### 2026-09-10T22:13:13Z — Scanner ownership and continuous signature policy checkpoint
+
+- Local source commit `98388256c4b08584f74f5d5570872df0b961333a` records CDIFF borrowed descriptor and validation-child pipe cleanup. Combined patch SHA256 `fe9cd766461ca42012cedee06071715edbc47082739855bb6fe6494424db205a`. Exact clean application and six resulting source SHA256 checks PASS. Full 10,739-file signed archive comparison identifies only the reviewed source changes.
+- Local API/runtime-policy commit `241d8b41742c750501f0f853ee5e7d682fe9d617`, tree `e73513c94490d1cf8aee6b19ff4cc496c5739584`: reject missing/invalid/future/expired loaded daily timestamps before INSTREAM; post-scan VERSION must preserve engine, signature and timestamp. Scanner timezone and configured 1..48-hour age bound are verified against runtime configuration. All exchanges and graceful closure share one monotonic deadline. Original 12 stale/identity failures and independent-review total-deadline failure retained.
+- API targeted/affected regression: 147 PASS. Full API: 127 files PASS, 3 files skipped; 1310 cases PASS, 30 existing database cases skipped (not counted as PASS). Lint/typecheck/build PASS. GCE identity policy: 45 PASS; deployment shell security regression PASS. Independent read-only review closed fixed-fixture and total-budget P2s; final source SHA256 `6d46e1e5da212d1cc819c63d3cd6e28698811fd87eb7a3851b3d9b018fa88391` and spec `394c570f3a04578084d1f842338bebcd2adb97f308909a59d0b6fce76ef5bd3a`.
+- Original scanner Rust test PASS (95.60s); sigtool Valgrind PASS (36.26s, subsequent pipe-combined run 36.13s). File-copy validation test now PASS after pipe cleanup. Full freshclam Valgrind remains FAIL (5 failed/5 passed/1 original skip), retained diagnostic proves the sample remaining error is a 9-byte child-inherited allocation while parent definite leaks/errors are zero. It is not characterized as a parent leak or medium/high issue; public Pro disposition is pending. No suppression or assertion changed. Original normal functional suite is still running; final scanner image/publication remain pending.
+- Source Trivy: 196 Cargo packages, raw 1 medium and 1 low. CVE-2026-46671 path non-applicability independently reviewed through exact ClamAV bridge, fork section parser and store parser; dependency itself remains unpatched, final image binding pending. Raw report SHA256 `da8c8e2e9b76aae9b66a7a199fcdadb1bb460e6e8a01c8d88a6d0621a4ce3200`. Public Pro concurs with conditional path assessment; no private denied payload was sent.
+- New candidate findings appended without rewriting existing IDs/history. Existing full ledger schema remains FAIL with 24 historical format/lifecycle errors; previously rejected normalization remains unexecuted. GitHub push and denied private-summary disclosure still require pending explicit authorization; no alternate upload or bypass attempted.
+- Production `https://timeline.all-too-well.com` remains unchanged at `535041bb25f21d548d863d07b35e3e952b0aeb2c`. New commits are local only. Temporary GCE validation VM/disk/firewall/key remain deleted. Active production scanner integration, host maintenance/controller, final immutable publication and exact-domain browser acceptance remain outstanding; main/tag unchanged; no PRODUCT_OWNER_ACCEPTED.
+
+
+### 2026-09-10T22:34:27Z — Final scanner artifact and attachment persistence evidence
+
+- Runtime code stays `241d8b41742c750501f0f853ee5e7d682fe9d617`, tree `e73513c94490d1cf8aee6b19ff4cc496c5739584`; no application code changed in this checkpoint. Final scanner r3 OCI manifest `sha256:17130f6532928a5b4b1272fc5129e5f2639850c0d8086879c516649d32fc8ae6`, config `sha256:bc673c38fd059c4f39015f26e410c7b5589d286297cd14f4a63e16e98598cd3f`. Trivy reports config identity; Docker containerd reports manifest identity. Independent verification checked the complete index/manifest/config/8-layer compressed and uncompressed hash chain; not a tag-only match. Exact OS scan: 41 Alpine packages, zero reported vulnerabilities. Cargo source scan remains one medium and one low raw hit.
+- Original normal ClamAV functional suites all five PASS (127.07s). Original five bounded INSTREAM cases and actual compiled API client to r3 PASS. Source/archive comparison now identifies exactly six reviewed modified source files among 10,739, no extra regular files. OneNote CVE path non-applicability is independently bound to exact r3; candidate->false_positive recorded now with scope, raw hit retained and no historical rewrite.
+- Real application AttachmentsService, ProjectAccessService, storage quota, filesystem object storage, audit service and isolated PostgreSQL14 migrations verified five assertions groups: denied out-of-project write/no row, CLEAN persisted/downloaded exact bytes, valid OOXML 21MiB-member REJECTED/SCAN_LIMIT_EXCEEDED/no binary/download403, unavailable scanner SCAN_ERROR/no binary/download403, and all three pending->final audit transitions. Final rows reread from DB. No HTTP/auth-middleware/browser claim. First ordinary ZIP input correctly failed Office format validation (400 before scanner); failure retained. Only input format was corrected to standard OOXML at the same bounded size; no assertion weakened. Evidence: `evidence/attachment-persistence-v2/result.json`, `commands.json`, first failure in `attachment-persistence/persistence.log`. Both temporary databases and synthetic secrets removed; local IAP forward closed.
+- Public Pro review classifies a proven bounded fork-child inherited allocation as Informational/Low, conditionally nonblocking for that specific diagnostic; retain original freshclam_valgrind FAIL (5 failed/5 passed/1 skip). Independent review corrects earlier timing inference: retained PID17 test05 did run after pipe fix and has one 9-byte record/parent15 zero definite/error, but that retained run lacks contemporaneous exact binary hash and does not explain every other failed test. No suite-wide waiver, suppression or assertion change.
+- Read-only GitHub API confirmed authenticated account owns the target repository and has push/admin permission. The repository is PUBLIC. After presenting that new evidence, platform automatic review again rejected the same push: deployment/delegate authority does not explicitly authorize disclosure of these repair sources to the public repository. The action did not execute; explicit public-source disclosure approval requested, pending. No alternate upload, CI bypass, main or tag mutation.
+- Current production `https://timeline.all-too-well.com` remains `535041bb25f21d548d863d07b35e3e952b0aeb2c`; no production stop, package change, migration, traffic switch or new build. Staging public URL/acceptance not performed. Final scanner updater/controller, host remaining findings, co-hosted app durability, backups/restore and exact-domain acceptance remain pending. Existing 24 historical ledger schema errors remain unresolved; rejected historical normalization remains unexecuted. Product state `AWAITING_PRODUCT_OWNER_CONFIRMATION`; current repair `LOCAL_VERIFIED` for stated scope / `NOT_DEPLOYED`.
+
+
+### 2026-09-10T22:53:36Z — Single-connection scan identity and exact production preflight
+
+- Runtime code checkpoint `0e03b47b70d932b57541f8c5a8892d9071149f4c`, tree `75fd844b4e4486746385a47756377aa82fb5f3b1`. Evidence-only predecessor `e7b91bc` records prior scanner/DB proofs. New security fix binds VERSION -> INSTREAM -> VERSION to one numbered IDSESSION TCP connection, rejects disconnect/incorrect or extra responses, retains one monotonic deadline and checks signature age again after final close. Pre-fix regressions demonstrate three connections and incorrect acceptance across peer restart; independent-review close-age regression also preserved. No reconnect or weakened scanner verdict.
+- Final focused transport: 45 PASS, including fragmented replies, all response IDs, END reset/garbage and real write-backpressure error/timeout with socket cleanup. Final API: 1323 PASS / 30 existing DB cases skipped. Lint/typecheck/build PASS. Separate read-only G4_DIFF PASS closed the age-during-close P2; only trailing whitespace removed afterward. Source/compiled hashes and all result hashes: `/private/tmp/rc2-production-20260910/evidence/single-session-checkpoint.json`.
+- Exact new compiled client + unchanged r3 scanner + fresh local PostgreSQL14/migrations re-ran the five persistence groups PASS: permission denial, CLEAN download, bounded OOXML REJECTED with correct limit classification, unavailable SCAN_ERROR, binary purge/download denial and persistent audits. Output `attachment-persistence-v3/result.json`. Temporary DB, synthetic credentials and local IAP forward cleaned. This is service/DB integration, not HTTP/browser/production acceptance.
+- Public Pro scanner update decision selects complete verified candidate/active database sets, no auto SelfCheck/NotifyClamd activation, and controlled cold process activation on changes. Only still-valid unchanged verified active state may survive a download failure; validation/loading/identity failures remain closed. Reviewed design is `scripts/deploy/gce-host/SCANNER_UPDATES.md`; actual updater/controller/timer and SelfCheck0 remain NOT_IMPLEMENTED/NOT_INSTALLED. Current freshness client alone does not prove updater health.
+- Original-host NGINX compatibility preflight uses the same official signed-repository package SHA256 `0b4884faf35a35cc85f54d7576b698f8f30981b25959f437235a9885ff40a1d5` (see exact evidence for authoritative full hash) and binary `55e4447b18b63a0a48d51504a051d634ef1158c75ae05c10869b16ca303813e2`. Original effective config hash remains c516d4928268229e2a0a7a043720c22e779f4a1ca3fe49f3f2747129ca2f8ec8. A same-host restricted candidate config omits only the verified-unused old module-loader include. First test failed because unpacking did not create /var/cache/nginx; created that absent vendor cache parent, second config test PASS. Original PID/config/package/runtime unchanged; maintenance files/cache paths were added, so do not claim the host filesystem was untouched. HTTP/2 deprecation/protocol-option warnings remain; no new running-server proof.
+- Host Redis inspection confirms actual mappings of unpatched system Lua5.1/BitOp/CJSON; Ubuntu Pro is not attached and current configured APT offers no newer shared Lua candidates. Public official review distinguishes USN-7824-3 Redis .1 from USN-8169-1 shared-library ESM updates, including separate cmsgpack handling. Pro recommends evaluating current official Jammy upstream Redis6.2.24 as minimal migration if ESM is unavailable, with signed repository, exact linkage/patch proof, all consumers and backup/restore compatibility. This is a CANDIDATE_PLAN, not an installed or verified fix; shared host library consumers remain unresolved.
+- Fresh public read-only checks of `https://timeline.all-too-well.com/api/health` and `/build-info` both return 200 with runtime `535041bb25f21d548d863d07b35e3e952b0aeb2c`, build `2026-08-09T06:49:11Z`, release `r26-admin-535041bb25f2`. New repair is NOT_DEPLOYED. No production app/database migration, reboot, service cutover, main or tag mutation; no human PRODUCT_OWNER_ACCEPTED.
+
+BLOCKER_REPORT: Public-source push remains rejected by platform automatic review even after ownership/admin permission proof: exact disclosure of this repair source to the PUBLIC GitHub repository must be authorized by the user. No third retry, alternate upload or CI workaround. Current runtime commit is 0e03b47b70d932b57541f8c5a8892d9071149f4c; target branch is codex/r27rc2-artifact-validation, target production URL is https://timeline.all-too-well.com. Required next decision is explicit public-source/evidence publication permission. Separate outstanding items: rejected historical-ledger normalization (24 schema errors, unchanged), shared-host risk remediation/other-app durability, independent root controller, consistent backups/restore, updater implementation and exact-domain browser acceptance. Production product state stays AWAITING_PRODUCT_OWNER_CONFIRMATION.
+
+- Evidence supplement (2026-09-10T22:58:30Z): `attachment-persistence-v3/cleanup-and-assertion-index.json`, SHA256 `b92511d13674635e59c7ee458eec1a7533a0b69db565f9d1282c6b730d9041ae`, binds the exact integration runner and assertions. Failed-attachment download403 assertions are at test-script lines 51 and 59 before the corresponding PASS records. A fresh read-only check confirms all three task PostgreSQL containers absent, all three synthetic env files absent and local forwarding port 43311 closed. This supplies the documentation review's missing cleanup/assertion index; it does not rerun or broaden the original test result. Current ledger schema has the same 24 errors as HEAD with no new errors; no historical normalization executed. Placeholder scan has 10 test-only matches and zero production-source matches, not target-domain browser acceptance.
+
+
+### 2026-09-11T00:17:12Z — Explicit public publication authorized; candidate CI/artifacts verified
+
+- The user explicitly authorized public publication of current repair source and accompanying engineering records to `pijhbkbk/feishu_timeline_app`, branch `codex/r27rc2-artifact-validation`, and triggering CI. The previously blocked push then succeeded normally: 8172cba -> 3068d81ab91c2fdf940f2ceba74552083a33865c. This is new explicit authorization, not a workaround of the earlier review. Eight added commits passed native Gitleaks8.30.1 with redaction. No main/tag change.
+- Remote fixed commit `3068d81ab91c2fdf940f2ceba74552083a33865c`, tree `19dcba645485f76aee29562b55125f35a2e4bdda`; production candidate release `r27-security-3068d81ab91c`, buildTime `2026-09-10T23:01:28Z`. CI [34540178062](https://github.com/pijhbkbk/feishu_timeline_app/actions/runs/34540178062) completed SUCCESS for verify/security-source. Playwright smoke was skipped by the push workflow, not counted as PASS.
+- Exact amd64 API, API-ops and Web images were built and privately published. Each exact-image Trivy0.72.0 report identifies Alpine3.24.1 with zero reported vulnerabilities; native API/Web crypto/Prisma/Sharp tests and Web HTTP/build-identity/static asset checks PASS in isolated containers. Image digests and report hashes are bound by `/private/tmp/rc2-production-20260910/evidence/publication-3068d81/checkpoint.json`, SHA256 `9b15d7ce49ad131a22f24dd972ad399d43cfe725c20df608a18b0e583357c962`. No production traffic or database was used.
+- Scanner r3 was published privately at the same already independently verified OCI manifest `sha256:17130f6532928a5b4b1272fc5129e5f2639850c0d8086879c516649d32fc8ae6`; source patch hash unchanged. Publication does not install the updater, activate r3 on the production tunnel, or close the retained diagnostic/test gaps.
+- Original host remains on old runtime 535041bb25f21d548d863d07b35e3e952b0aeb2c as last verified. This checkpoint performs no original-host package/service change, reboot, migration, authentication revocation or traffic switch. Exact-domain new-build browser acceptance remains NOT_EXECUTED.
+- Expanded existing host report triage finds 19 additional source-package groups / 62 unique CVEs outside kernel/nginx/Redis/Lua groups. All 19 groups are newly registered NOW as candidate in the unique FINDINGS ledger with null reachability/exposure; the original35 records/history remain identical. Raw Ubuntu medium severity and other CVSS values are retained, not lowered. Full schema still has the same24 historical errors; new records add no errors. Initial append approval timed out unexecuted; the tool-authorized single retry succeeded. No historical normalization.
+- Public Pro guidance: close actual risks only with effective fixes, component removal, exact-build non-applicability or complete durable elimination of necessary trigger conditions. Empty FixedVersion, deferred/ignored, no current mapping, loopback and idle old kernels are not blanket waivers. Older rescue kernels need activation boundaries; newer OS/Ubuntu Pro alone do not prove all medium fixes. This is an engineering standard, not product acceptance or a change to platform permissions.
+- Read-only original-host library inventory confirms Expat/GLib consumers in system services and old Redis mappings of Lua/BitOp/CJSON. Expat feature metadata reports XML_Char width1 for exact installed library, not a16-bit build; XML_DTD feature value0 is NOT interpreted as disabled. /usr/bin/xmlwf absent is only a scoped path observation. No private other-application source, command line, environment or full configuration exported.
+- Redis upstream official Jammy candidate `6:6.2.24-1rl1~jammy1` downloaded through APT signed-by flow; key fingerprint54318FA4052D1E61A6B6F7BB5F4349D6BF53AA0C, package metadata/hash chain independently checked. New binary SHA288f4774b44ac04713fe97cf17aacaa7eb335c05096928260b79eec7d8db9822. The original Ubuntu6.0.16 baseline binary hash exactly matches the earlier original-host binary. V4 synthetic AOF-only/RDB restore and restart, authentication/ACL negatives, queue LPUSH/RPOP, absolute TTL within100ms, normal Lua/BitOp/CJSON/CMSGPACK, transactions and fresh-client reconnect PASS; independent read-only review PASS. First attempt lacked three baseline runtime dependencies and failed before tests; diagnosis/failure preserved and only isolated dependencies supplied. These tests do not prove production config, all clients, application auto-reconnect or actual production recovery. Synthetic baseline hashes stayed unchanged during the test; all synthetic backup files were removed by cleanup, not retained as production backups.
+- Redis6.2.24 has official release evidence for16 of17 reviewed historical CVEs, and also fixes46817. CVE-2025-46686/GHSA-2r7g-8hpc-rpq9 has no upstream patched version and is disputed; it remains unresolved, not closed by upgrade. The public exception was escalated immediately to Pro, response pending. Host Redis remains unchanged.
+- Accurate state: candidate source/push/CI/artifact publication verified; application NOT_DEPLOYED; shared host risk disposition, independently trusted controller, scanner updater, original co-hosted-app durability, consistent backups/restore and target-domain browser acceptance still pending. Human product state AWAITING_PRODUCT_OWNER_CONFIRMATION.
+
+
+### 2026-09-11T00:33:36.538323+00:00 — Redis request boundaries following public Pro consultation
+
+- Pro's public GHSA-2r7g-8hpc-rpq9 review found no official patched version for CVE-2025-46686 in Redis6.2.24/newer Redis/Valkey. Fixed authenticated service clients and bounded product requests may support a narrowly evidenced product-path assessment; private networking, ACL and resource caps alone are mitigation, not a component fix. A compromised credential-bearing service requires an independent boundary if included in the promised availability model. No threat-model exclusion, risk acceptance or host finding closure has been recorded here.
+- Independent read-only review of the two current Redis consumers found fixed commands/Lua and fixed argument counts, existing bounded notification JSON/queues/scans, but missing session-read UUID validation and shared in-flight admission. New source rejects malformed session tokens before storage access, caps all auth keys at256 UTF-8 bytes and new auth JSON at4096 bytes, and sends all business Redis operations through admission. Each RedisService instance admits at most32 concurrent operations and refuses new operations when physical reply queue length is already64. This is an admission threshold, not a hard64-command maximum: current fixed transactions can bring63 entries to67; handshake traffic is separate. Entire transactions are admitted before dispatch; EXEC errors fail closed.
+- ioredis command/connect deadlines are5s, socket inactivity timeout10s, offline queuing remains disabled, and automatic replay of unfulfilled commands is disabled. Logical command timeout does not remove a physical pending reply or prove the write rolled back. Background connection recovery may continue; no claim of globally bounded lifetime retry count or fixed10-second physical queue drain.
+- Original regression reproduced7 failures/23 passes before the repair; repaired target30PASS, affected99PASS. Added real disposable Redis6.2.24 verification plus EXEC error regression yielded103PASS: one-use state consumed once, counter/queue normal behavior,5s timeout retaining physical queue accounting, eventual uncertain write observed once without caller retry, and normal reconnect. Exact7 source hashes and evidence hashes: `/private/tmp/rc2-production-20260910/evidence/redis-admission-checkpoint.json`, SHA256 `6ddf0bf701ee39124cdb82c9cb5ce7f6994485e1564c47455fcd2f309c39c80d`. These are application-path checks, not an exploit test or the original-host exposure proof.
+- Isolated startup encountered two internal-network empty host-port mappings while Redis was healthy; no tests ran in those attempts. Stopped that strategy and retained blocker/runtime/log evidence. Changed only the disposable test network to a separate bridge with verified127.0.0.1 random port and one-use password; identical assertions then passed. Owned container/network and synthetic config were removed. No production Redis commands or data were used.
+- Full API regression1332PASS/33SKIPPED across128 passed/4 skipped files. The3 optional Redis tests were separately executed successfully above;30 existing DB-only skips remain explicit. Lint, final typecheck and API build PASS. First typecheck/pretest attempts hit generated-file EPERM; a default-sandbox full test hit listen EPERM and was stopped with retained logs, then rerun with the required local permissions. No failure was suppressed or assertion removed. Existing expired-session regression now uses a valid UUID fixture while retaining expiry/deletion assertions. Final independent review of the additional tests is pending at this record time.
+- Application images built from3068 remain available but do not contain this new patch. Current source is not yet committed/pushed at this record time; no deployment claim. Production remains last verified535041bb25f21d548d863d07b35e3e952b0aeb2c at https://timeline.all-too-well.com. No production service restart/migration/reboot/traffic switch, main change, tag change or product-owner acceptance.
+
+- Subsequent bounded independent review: G4_DIFF PASS for the final7 files and recorded evidence. The103 passing isolated-run tests include3 real Redis integration tests and100 supporting unit tests. Late-write completion and reconnect are separate scenarios, not a combined uncertain-write-during-disconnect proof. Code committed as88cb53607ad77aa5d1d559e01731988f68e26c3b, tree72cf2389e43a01ab322467cf76e3e24fbd16b5b0, then publicly pushed normally to the explicitly authorized validation branch. The accompanying earlier evidence checkpoint isedef5a6934d9134495da155e5d8a9795d367c7f8. Native Gitleaks checked the two added commits without findings. CI34547061691 and rebuilt exact candidate artifacts are in progress; main/tag unchanged.
+- Host vendor evidence review completed62/62 official OSV ID/hash matches, indexSHA e45907fdb813bfc9886a84969d12dbd8f829ca15d4e3311838d90062da9c9a76. Jammy has62 affected source matches without fixed events; Noble60, with two old bind9-libs source entries absent. Different bind9 source has maintained fixed revisions for3039/5946, but installing it does not patch existing9.11 libraries consumed by DHCP. OSV alone does not distinguish needed/deferred/ignored. The7 prior download gaps are resolved. No whole-OS-upgrade or blanket package-clearance claim.
+- Same-host metadata shows177 system conffile baselines match and six sampled trees lack non-root owners/group-or-other write bits; no ACL/ancestor/include/input-source closure was collected. Expat width1 supports only the exact library's16-bit-specific72522 exclusion; xmlwf/VMS-only component candidates still need exact scope closure. Unknown root Python ownership and deleted running Python executables remain unresolved. These read-only observations do not change any finding state or production service.
+
+
+### 2026-09-11T01:08:33.818807+00:00 — Final application artifacts88cb536; external host restart detected
+
+- Published runtime source88cb53607ad77aa5d1d559e01731988f68e26c3b, tree72cf2389e43a01ab322467cf76e3e24fbd16b5b0, buildTime2026-09-11T00:34:42Z, release r27-security-88cb53607ad7. CI [34547061691](https://github.com/pijhbkbk/feishu_timeline_app/actions/runs/34547061691) verify/security-source SUCCESS; Playwright SKIPPED. Private amd64 API/API-ops/Web artifacts published with exact identities matching their Trivy0.72.0 reports (Alpine3.24.1, zero reported package vulnerabilities). Native API/Web crypto/Prisma/Sharp and Web HTTP/build identity/static-resource checks PASS. Checkpoint `/private/tmp/rc2-production-20260910/evidence/publication-88cb536/checkpoint.json`, SHA256 `5578f52fa4157641f791f19b0fba89180f31382126b8f5e328a195841475fd66`, binds the12 evidence files. No production deployment or product acceptance is implied.
+- IMPORTANT current-host evidence supersedes old process/kernel snapshots. At2026-09-11T00:36:59Z original server had kernel6.8.0-1066-gcp, uptime3724.61s, bootID1ae7ba3e-e51c-46cd-b111-87b7d16eb566. GCE platform records hostError at23:34:31.040161Z followed by automaticRestart at23:34:54.349321Z on September10. This was not a maintenance reboot executed by this task. Old deleted-Python/unknown-PID snapshots describe the former boot; current sampled consumers have known system units and ordinary Python executable paths. These changes do not close host findings or prove all data recovered.
+- Server HEAD and fresh no-cache public `/api/health` and `/build-info` all remain535041bb25f21d548d863d07b35e3e952b0aeb2c; both public reads200, release r26-admin-535041bb25f2, buildTime2026-08-09T06:49:11Z. Docker, API, Web, Nginx, PostgreSQL14 and Redis units are active. The new application is NOT_DEPLOYED; no task-initiated production package installation, DB migration, auth revocation or traffic switch occurred. Main/tag unchanged. Product state AWAITING_PRODUCT_OWNER_CONFIRMATION.
+- A pure scanner-update policy and fake-host unit tests are now being implemented under scripts/deploy/gce-host. This is not the actual root adapter, timer, Unix socket proxy or installed update service. An initial policy write approval timed out unexecuted; exactly one tool-authorized retry succeeded. Independent review identified partial-start cleanup order, loss of anti-rollback baseline and same-byte metadata inconsistencies; failures were reproduced and corrected, with final review pending. No production scanner activation or freshness-health claim.
+
+- Final pure scanner policy review PASS; independent reviewer reran25/25 tests. Exact policy SHAe0279a43b11c497253d595b6ef4e7e0b63a4acee8056d8d6f40ffd5b79ed9cce; tests SHAb6a3795c267e3f2f257fba8ea600426c4017dcb8238b1b1fc5802cc20a000889. The final time-boundary review reproduced3 failures, then fixed post-verification/approval/cleanup freshness checks. Full sequence/anti-rollback/identity/partial-start cleanup tests use FakeHost only. Actual root adapter, timer/services, filesystem/signature verifier and Unix ingress installation remain NOT_IMPLEMENTED/NOT_INSTALLED. No production controller gate is closed by these results.
+
+
+### 2026-09-11T02:35:18.754127+00:00 — Scanner durable state and continuous regression
+
+- Explicit owner authorization for public repair source and accompanying engineering records was used for normal pushes to `pijhbkbk/feishu_timeline_app`, branch `codex/r27rc2-artifact-validation`. Commit7bc5e8f3eb67a4ef86905da5893ccec5dd26ff0a CI34549736376 completed SUCCESS, verify/security-source successful; Playwright SKIPPED. Main/tag unchanged.
+- Added scanner_state.py and its real temporary-filesystem tests. Durable approval and version floor share an atomic bounded JSON record; revocation preserves the floor, missing state/lock fails closed, positive revisions cannot lose the floor, and initial unapproved revocation is a no-op. Separate fixed lock, strict duplicate/unknown-field parsing, private regular single-link files, no-follow opens, short-write handling, file fsync/rename/directory fsync and uncertain-commit failure are covered. Production still needs an externally authorized adapter, ancestor trust checks, fixed UID0, boot/process/database binding, real official signature verification and controlled ingress/service integration.
+- Initial serialization error produced5 errors in11 tests; preserved and repaired. A later lost-floor boundary produced2 failures in15 tests; preserved and repaired. Final15/15 pass on local temporary files and real Linux temporary files as non-root UID1001; Linux temporary directories removed. Independent read-only state diff review PASS. Final source SHAe676c73967e3d66bd99ef4045899d7ff670eb73020cd6df1603cc66aa6973b87; test SHA270ac373b3d41852c90bc7060c9a11c49b51b2d5af2fedb7c6751109155dc8c0. Evidence checkpoint `/private/tmp/rc2-production-20260910/evidence/scanner-state-checkpoint.json`, SHA 95500bb748f2cc909157313bbe16d6e343bf3f013d949ee11c2aad5baf0dd130.
+- All50 gce-host regression tests PASS. CI's existing Test step retains pnpm test and additionally runs these Python tests with a120-second bound. No production application source, dependency, schema, credential, service or database changed in this component checkpoint. This does not constitute root-controller integration or power-loss recovery proof. The state revision does not detect restoration of a complete previously valid disk snapshot; recovery needs independently retained highest-version evidence.
+- Placeholder scan returned10 test-only matches:7 getByPlaceholder locators and3 negative assertions rejecting skeleton text. These existing test uses are explicitly whitelisted; formal-page matching placeholder text0. No new browser or product acceptance.
+- Scanner read-only refresh still shows the old enabled timeline-clamd.service and SelfCheck600, with no new updater installed. This finding is retained; tests do not imply deployment. The separately requested authorization to analyze the co-hosted private application's startup/persistence code remains unanswered; no such private code was read or sent to Pro. Earlier automatic refusal continues to govern that dependent action.
+- Runtime application artifacts88cb53607ad77aa5d1d559e01731988f68e26c3b remain available and previously tested. Production last verified535041bb25f21d548d863d07b35e3e952b0aeb2c at https://timeline.all-too-well.com; new repair NOT_DEPLOYED. Staging URL/commit/path and production browser acceptance NOT_EXECUTED. Remaining host findings, scanner integration, consistent backups/recovery and exact-domain acceptance remain open. Product state AWAITING_PRODUCT_OWNER_CONFIRMATION.
+
+- Final workflow/documentation independent review PASS; reviewer separately reran50/50 tests and verified Linux evidence reports UID1001. Existing CI evidence collector regression20/20 PASS. These are component checks; this new checkpoint has not yet run remote CI at record time.
+
+
+### 2026-09-11 — Continuous release resumed from 94ff09f1
+
+- Owner explicitly continued the existing fix/publication/deployment/short-maintenance delegation. The attached R27 execution file is direction, not execution evidence or platform authorization. No other-application private source/config/image export is attempted; only synthetic compatibility and original-container recovery remain in scope.
+- Actual repair tree started clean at94ff09f1ddaee6296e4e7775b41a05e88d7124c2. CI34555256934/push/attempt1 completed FAILURE: verify SUCCESS, security-source SAST BLOCKED by one insecure-file-permissions finding at test_scanner_state.py:25. Both actual redacted artifacts were downloaded, metadata identities checked and archive SHA256 values matched GitHub. Original finding and failed run retained under /private/tmp/r27-continue-94ff/ci.
+- Independent review verified the numeric permission rule flags a redundant chmod0700 on an already-private TemporaryDirectory. New test source12e75baab067b2d7188d524968259e0b8c427697 removes that redundant operation and directly asserts private0700 mode/current UID; negative permissions/ownership/link/state tests remain. Reviewed file SHA256bdba1d6b60c7500796c83e63759a635f824a7dc1716ceb53387b5865887e2604; independent50/50 PASS, CI evidence20/20 PASS; unchanged pinned Semgrep1.169.0 and three rule packs scan the fixed file with0 findings/0 errors.
+- Required install/lint/typecheck/test/Web build/API build/Prisma validate all exit0; Web287 PASS, API1332 PASS/33 existing optional skips (not counted as executed integration tests). Clean single-file source commit pushed by normal FF to codex/r27rc2-artifact-validation; new matching CI34571803229 is in progress at this checkpoint. No old-SHA rerun or force push. New immutable amd64 API/ops/Web builds are in progress; no publication/scan result claimed yet.
+- Fresh production Web/API and server HEAD remain535041bb25f21d548d863d07b35e3e952b0aeb2c at https://timeline.all-too-well.com. Kernel6.8.0-1066-gcp, Docker29.6/containerd2.2.5, Nginx1.18.0-6ubuntu14.20, Redis5:6.0.16-1ubuntu1.1, PG14.24 are actual running versions. Approved5.15/Docker29.8/containerd2.3.5/Nginx1.31.5 combination has retained synthetic rehearsal evidence but is NOT installed on original host. Latest restricted host checkpoint /private/tmp/rc2-production-20260910/evidence/host-risk-followup-94ff09f-checkpoint.json binds five new read-only records; no host package/service write occurred.
+- r3 scanner patch/artifact evidence remains hash-valid. Actual scanner adapter and actual recovery controller are being implemented in separate temporary workspaces, not installed or accepted. Existing pure policy/state tests and non-root restore rehearsal do not prove those effects. Another application's running/healthy state and recent persistent-file mtime do not prove sql.js memory durability; existing save/normal-stop entry information was requested for the eventual maintenance window, without requesting private source. This pauses only dependent host shutdown.
+- A real browser reached official Feishu QR sign-in from the production domain. Owner scan is necessary; no authenticated path or new-build acceptance claimed. A candidate staging subdomain was checked and has authoritative NXDOMAIN; no staging URL was invented or DNS changed. Independent exact-HTTPS entry remains to be established.
+- main remains41b4b166c587692e6f0fb9536dca2e1aab646c70 and existing tags unchanged. Production no migration/cutover/new runtime, staging NOT_DEPLOYED, product AWAITING_PRODUCT_OWNER_CONFIRMATION. Historical finding records/schema errors are not rewritten or normalized. Continue source CI/artifacts, remaining exact host applicability, scanner/recovery integration and isolated acceptance; do not ask again for abstract deployment approval.
+
+
+### 2026-09-12 — 本地离线目标规则最小更新
+
+- 本次用户明确要求最小目标规则更新（DOCS_ONLY）；任务书与粘贴建议用于理解目标，不把其中 M1–M4 实施指令自动视为本轮代码修改授权。
+- 当前目标为正式本地原生认证、本地目录/岗位/权限和离线运行；替换强制真实飞书与继续 GCE 的冲突要求，暂停云端推进，不停止或删除既有服务。业务、安全、数据不变量及历史风险/验收事实保留。
+- 新认证、授权、会话和迁移须有新验证与最终独立安全差异审查；未受影响的修复按输入及环境适用性依据复用。本轮没有重新授予任何历史安全 PASS 或关闭 finding。
+- 分层检查：两个工作树各只有根 AGENTS.md；包含隐藏/忽略目录的文件名扫描未发现 apps、packages、Prisma、scripts、deploy、docs 等目录的 AGENTS.override.md 或下层 AGENTS.md（排除依赖、Git 元数据和生成产物）。实际 CODEX_HOME 为 /Users/lixiaochen/.codex，全局 AGENTS.md 为空，未发现全局 override、自定义 project_doc_fallback_filenames 或项目 .codex/config.toml；未修改全局配置/权限。两个根规则均小于默认 32 KiB 发现上限。
+- 分层依据：[OpenAI 官方 AGENTS.md 文档](https://learn.chatgpt.com/docs/agent-configuration/agents-md)。核对同目录 override 优先、下层覆盖及备用文件；没有启动新 Codex 会话冒充重新加载证明。
+- 已执行：git worktree list --porcelain、git status --porcelain=v1 -uall、git rev-parse HEAD、git diff --check、rg --files --hidden --no-ignore 的规则文件发现，以及必需 Placeholder 扫描。文档差异/Markdown 结构检查 PASS；Git refs/index、业务/数据不变量原段落、全局指令/配置摘要与修改前相同，业务源码/schema/迁移/依赖无差异。
+- 验证范围仅文档；未运行 pnpm install/lint/typecheck/test/build/prisma:validate 或 G3/G4/G5，不安装依赖，不执行数据库、浏览器登录、部署或远端 CI。未提交、未推送；原有未提交台账完整保留。
+
+- 起点及最终源码 HEAD：12e75baab067b2d7188d524968259e0b8c427697；工作树 /Users/lixiaochen/Downloads/feishu_timeline_app-r27rc2-repair，分支 security/r27rc2-candidate-repair；原有 12 行未提交台账完整保留。
+- 改动文件：AGENTS.md、README.md、docs/gates/VERIFICATION_GATES.md、docs/EXECUTION_LEDGER.md。同步入口主目录的 AGENTS.md、README.md、docs/EXECUTION_LEDGER.md；未迁移整个治理版本、未更改 Finding schema/ledger/历史报告，也未将主目录旧源码覆盖到本树。
+- Placeholder 扫描原始 10 行，全为既有测试（7 条 getByPlaceholder、3 条拒绝骨架文案的负向断言），本次明确列入白名单：/private/tmp/local-offline-rules-20260912/repair-placeholder-test-whitelist.txt。正式源码匹配 0；这不是浏览器验收。主目录仍有 4 处占位路由，见其台账，不能混为同一产品版本。
+- 变更前文档与检查明细：/private/tmp/local-offline-rules-20260912。风险/下一决策：认证代码、账号/旧身份迁移及离线包尚未在本轮实现，旧 OAuth、构建和扫描 PASS 不能替代新边界验证。后续以真实最新修复源码实施本地身份主链路，再验证受影响安全与断网运行；本次不自动启动 M1–M4 或恢复云端推进。
+
+| 交付项 | 本轮事实 |
+|---|---|
+| 1 代码是否实现 | 应用代码未修改；仅目标规则更新 |
+| 2 本地测试 | 文档检查 PASS；应用测试与离线验收未执行 |
+| 3 staging URL | 未执行、未指定新验收地址 |
+| 4 staging runtime commit | 未读取/未部署 |
+| 5 staging 用户路径 | 未执行 |
+| 6 production 是否改变 | 本次未改变，未访问远端 |
+| 7 production runtime commit | 未读取，不沿用历史值冒充当前值 |
+| 8 production 用户路径 | 未执行 |
+| 9 main 是否改变 | ref/历史未改变；入口 main 工作区有未提交文档 |
+| 10 tag 是否改变 | 未改变 |
+| 11 产品负责人确认 | 未取得本地版 PRODUCT_OWNER_ACCEPTED |
+| 12 未完成路由 | 本地注册/登录/岗位与账号生命周期尚未在本轮实现，精确新路由待实现确定 |
+| 13 Placeholder 数量 | 本树正式源码 0、测试白名单 10 行；入口主目录旧占位路由 4 处 |
+| 14 当前准确状态 | DOCS_ONLY / RULES_UPDATED / NOT_DEPLOYED / AWAITING_PRODUCT_OWNER_CONFIRMATION |
+
+### 2026-09-12 — GCE 原生账号目标实施 checkpoint（未部署）
+
+- 最新明确目标取代上一个 DOCS_ONLY/本地离线阶段：在 `https://timeline.all-too-well.com` 使用本系统账号，移除第三方登录前提。完整离线包暂不作为本期验收门禁。最小同步 AGENTS/README/gates 的冲突目标；未修改全局平台权限，模型不代理用户或平台授权。
+- 从最新修复源码 `12e75baab067b2d7188d524968259e0b8c427697` 创建隔离工作树 `/private/tmp/timeline-native-auth-20260912`，分支 `codex/native-account-auth`。主目录 main 和原修复工作树的源码、既有未提交记录及用户媒体完整保留；不向公开 GitHub 自动推送新实现。
+- 实现原生注册/密码登录、岗位意向、本人改密、一次性恢复、主机管理员初始化/准确内部 ID 绑定；新增 LocalCredential/AuthInitialization 与 User 认证版本字段，采用 additive migration。旧 OAuth 入口停用、适配器不注册外部身份能力；新通知只进入已有 IN_APP 持久化路径，不伪造飞书已发送记录。账号管理与正式 V2 导航接入中。
+- 安全边界：注册不授角色/项目；Argon2id 固定 64 MiB/3/1、有界并发；密码/恢复码不进入 AdminCommandRequest 的持久化输入摘要或结果；所有旧 OAuth 和生产 mock 会话拒绝；改密/恢复/停用/配置变化通过 authVersion 撤销；保护最后一个实际有密码的启用管理员。运行说明：`docs/NATIVE_ACCOUNT_OPERATIONS.md`。
+- 独立只读审查提出“个人拒绝仍消耗全站额度”和“恢复签发时操作者版本未持行锁”两个有效意见，已修正并增加真实行锁/限速回归；角色权限修改也接入新管理员版本检查。此 checkpoint 最终差异仍待复核，不将初审意见处理等同 G4 PASS。
+- 依赖锁定 argon2 0.44.0，仅增加对应依赖树；已从可信注册表按锁安装。初次离线缺包及 Prisma 缓存权限错误经明确环境修正解决。初次普通沙箱测试禁止监听本机端口，重新在允许本机监听的环境执行，未删/跳过目标断言；两个新测试夹具问题和显式控制字符 lint 问题已修正。
+- 已有验证：完整迁移链 37 项在独立本机 PostgreSQL 成功；首轮 native PG/密码测试 16 PASS；修正后的原生 PG/限速/密码批次 16 PASS，包含 FOR SHARE 与并发撤销屏障。真实本机 HTTP 32 请求 PASS，覆盖 Origin/DTO/登录/轮换/改密/退出/岗位权限/旧入口。基线 schema 合成迁移与迁移前后 pg_dump/restore PASS，新增密码表未自动接管旧用户。后续 UI 文案与类型夹具修正需相应复测。
+- 全量一次重跑：Web 287 PASS；API 1332 PASS、43 条独立环境专用用例 skip（不计通过）；新 PostgreSQL 测试另行显式运行。Web/API 本机 build 曾 PASS，尚非最终固定提交制品。检查日志位于 `/private/tmp/timeline-native-*.log`，合成迁移证据位于本机临时目录；无生产备份/凭据写入仓库。
+- 生产只读事实（2026-09-12T11:04:35Z）：HTTPS `/api/health` 与 `/build-info` 均 200，Web/API runtime `535041bb25f21d548d863d07b35e3e952b0aeb2c`，buildTime `2026-08-09T06:49:11Z`，release `r26-admin-535041bb25f2`。本次未部署/迁移/seed，未改 production/main/tag；宿主 HEAD/当前运行拓扑没有取得新证据。
+- 访问 blocker：GCE IAP SSH 两次在 banner 前超时，第二次有限 ConnectTimeout/ConnectionAttempts/BatchMode，exit 255。有效网络规则允许 IAP 来源到 tcp22，未返回上层 DENY；只读资料提示 Fail2ban 1h 封禁可能影响 IAP，但尚未证实。暂停重复 SSH，不开放公网22、不重启整机、不影响其他应用。已询问是否存在可用管理会话，同时继续本地工作。
+- 模型咨询：浏览器扩展方式多次工具连接失败，改用受支持的 Chrome 原生界面后可用；页面明确显示 6 Pro。自动审批拒绝私有技术摘要的外发，未发送该摘要；改为不包含本项目数据的通用 IAP 排障问题，已提交给 6 Pro，等待建议。意见不构成真实授权或部署证据。
+- 当前状态：`IMPLEMENTATION_IN_PROGRESS / LOCAL_CHECKS_IN_PROGRESS / REVIEW_PENDING / NOT_DEPLOYED / AWAITING_PRODUCT_OWNER_CONFIRMATION`。staging 未部署、浏览器正式用户路径未验收；不能使用旧 OAuth、旧生产健康或本机测试结果冒充本期网站交付。
+
+
+### 2026-09-12 — 原生账号固定候选与本机验证（生产管理连接阻塞）
+
+- 最小规则提交 `de8005a`；主体实现 `5daaf7f2e722e47f3384a57fd09fd4ed3f7f7f4f`；最终修复/运行候选 `1767dbb5eeb30cc57835081de761e1eccb8fac8b`，tree `199cb837b6dd7682eda61928e108be397498236b`。最终 diff 两轮独立只读 focused PASS，未将其扩大为全仓安全清关。
+- 实际 CLI 发现未连接 Redis 清理时新建连接而不退出：回归修复前4 FAIL、修复后14 PASS。修复保留有界 graceful quit，并始终断开；首次管理员初始化在已有管理员时必须指定旧内部 ID。真实已构建 CLI 验证重复初始化/不安全密码文件拒绝、旧身份绑定保留属性；最终制品两进程初始化竞态仅一个成功，均正常退出。
+- 最终新 PostgreSQL/认证/Redis批次26 PASS；最终API实际认证32请求 PASS；新增项目范围14请求 PASS（未授权所有者拒绝、本项目允许、跨项目读写与列表隔离、拒绝后数据和审计不变、管理员目录只读）。完整37项迁移及基线身份/业务外键的迁移前后备份恢复已有PASS，最终schema/migration未变按摘要复用。
+- 最终lint/API类型/Prisma validate、干净提交Web/API构建和三个Linux镜像构建PASS；断网只读非root镜像Argon2实际验证PASS。Web最近288 PASS；实现阶段API完整1332 PASS及43个独立环境skip明确保留，后续变更按目标回归覆盖。同一lockfile依赖audit各级0，非全仓/镜像清关。正式源码Placeholder0、测试白名单10行。
+- 本机最终Web/API于11:59 UTC均报告完整`1767dbb…`与相同tree/release/buildTime；仅loopback合成环境。浏览器在前一Web源码相同候选上完成普通账号登录/岗位/刷新与重启持久性/退出、管理员密码登录进入工作台；账号菜单后浏览器控制工具无法继续，完整账号管理浏览器、三档布局、最终候选浏览器复验保留待办。详见更新后的路由矩阵，不声称整组页面完成。
+- 生产11:55 UTC经系统TLS信任库读取health/build-info均200，仍运行`535041bb25f21d548d863d07b35e3e952b0aeb2c`。本轮无生产命令/备份/迁移/seed/切换，无main/tag变更，无公开源码推送。已准备本机私有候选bundle，尚未传输；server HEAD和当前宿主拓扑未验证。
+- IAP SSH两次banner前超时；云端有效防火墙允许，但已有日志/监控未能补足guest证据。GPT‑6 Pro通用咨询已完成，未提供可绕过主机证据的新办法。私有技术摘要被自动审批拒绝且未发送；仅发送无私有项目内容的通用问题。未把模型当作授权者，未改全局权限/云访问配置，未盲目重启或影响同机其他应用。
+- 下一项外部依赖：可用的既有主机管理通路或管理方的SSH监听、服务、限流/封禁日志证据。恢复后核对实际旧环境、备份恢复、私有发布控制器与扫描/配额、准确旧管理员绑定，再受控部署精确域名验证。此前停用的特权脚本不得直接绕过。等待外部输入期间已完成可独立完成的候选与本机验证工作。
+- 证据提交独立于运行提交。记录、hash、镜像身份、日志索引及真实限制见 `docs/acceptance/NATIVE_ACCOUNTS_20260912/README.md` 和 `verification.json`。
+- 当前准确状态：`CODE_IMPLEMENTED / TARGETED_LOCAL_VERIFICATION_PASS / LOCAL_BROWSER_PARTIAL / NOT_DEPLOYED / AWAITING_PRODUCT_OWNER_CONFIRMATION`。staging未部署/URL未建立/runtime未读取/用户路径未执行；production新用户路径未执行；产品负责人未确认。main/tag未改变。全部本轮生产路由未完成，正式源码占位0。
+
+### 2026-09-12 — 最终原生账号候选浏览器证据补齐（生产未部署）
+
+- 应用源码/运行提交仍为 `1767dbb5eeb30cc57835081de761e1eccb8fac8b`，本轮只增补证据。干净构建工作树未改变，未重跑不受影响的应用测试；之前目标验证及复用边界保留。
+- 本机 Chrome 原生界面与独立 Incognito 窗口已恢复可用；合成管理员完成真实密码登录并进入工作台、账号目录和个人账号页。登录/注册/恢复表单、账号目录、个人账号页检查 1440/1024/390 CSS 宽度，保存 17 张页面 PNG，逐一检查像素尺寸和 SHA256；手机个人账号底部操作可正常滚动到达。
+- 账号搜索命中合成用户并显示“采购专员意向/尚未分配正式角色”，无匹配时显示明确空状态。禁用缓存刷新账号目录，23 个同源 GET 全部 200；会话为 local 身份且 Feishu/mock 关闭，工作台数据来自隔离数据库。
+- 浏览器保存脱敏 HAR，检查无会话 Cookie、授权/CSRF 头、cookies 数组、非 GET 和请求体。个人账号控制台 All levels 保留一条用户名字段自动填充/可访问性建议，无应用异常；不把默认过滤提示或未展开的目录 possible improvement 写成零问题。
+- 12:30 UTC 再读本机 Web/API 元数据均为准确候选 SHA/tree/release；首次普通沙箱读取被本机网络权限拒绝，经工具审批允许只读 loopback 后成功，未修改全局权限。证据入口：`docs/acceptance/NATIVE_ACCOUNTS_20260912/browser/manifest.json`；README、verification.json 和路由矩阵同步更新。
+- 浏览器注册/新密码/恢复提交、正式授权配置和完整业务写入仍未验收；真实 HTTP/PG 结果不能代替这些交互。生产管理连接仍无新恢复条件；当前任务没有附加终端，主机未发现已建立的 TCP22 连接，未第三次盲试 IAP、修改防火墙或重启 VM。
+- staging URL/runtime/用户路径未执行；生产未改变，最近只读 runtime `535041bb25f21d548d863d07b35e3e952b0aeb2c`（11:55 UTC），新用户路径未执行；main/tag未改变；产品负责人未确认；生产本轮路由全部待验收，正式源码Placeholder仍0。
+- 状态仍为 `CODE_IMPLEMENTED / TARGETED_LOCAL_VERIFICATION_PASS / LOCAL_BROWSER_PARTIAL / NOT_DEPLOYED / AWAITING_PRODUCT_OWNER_CONFIRMATION`。恢复发布需要已有可用管理入口或 SSH 服务/监听/封禁日志的新证据；模型意见不代表用户、平台或产品批准。
+
+### 2026-09-12 — 生产管理连接 BLOCKER_REPORT（第三个连续目标回合）
+
+- 前一目标回合通过 `3e1b0512d046c7f4db6de56b3255b7a13100ea13` 完成最终浏览器证据，分类为实质进展；本回合复核同一管理访问阻塞，没有可用新输入或已确认存活的远端执行句柄。
+- 失败环境：现有 GCE 主机，目标 `https://timeline.all-too-well.com`；待发布运行提交 `1767dbb5eeb30cc57835081de761e1eccb8fac8b`。12:34 UTC公开Web/API仍为 `535041bb25f21d548d863d07b35e3e952b0aeb2c`，server HEAD未获得。复现为此前两次IAP SSH在协议banner前超时，第二次有限连接时间/单次尝试退出255；本回合未第三次盲试。
+- 根因尚未确认。云端有效规则允许IAP tcp22；已有日志/监控和通用GPT‑6 Pro咨询未补足guest监听、服务或封禁证据。当前任务无附加终端；只读本机进程清单未发现SSH/gcloud/sftp/autossh管理进程。普通沙箱的进程读取权限不足，经工具审批后限定读取进程名成功，未改全局权限。
+- 已完成可独立的候选、目标验证、差异审查、迁移/合成恢复、Linux构建与本机浏览器证据。剩余主机拓扑/生产备份迁移/准确旧管理员绑定/部署切换/精确HTTPS验收需要真实管理通路；浏览器新凭据和授权操作的尚未执行项继续保留，不扩大PASS。
+- 下一方案：取得已有可用管理会话或SSH监听/服务/故障窗口封禁日志后，按新证据做具体修复，再继续既定受控发布。需要外部输入，不要求重复开发/发布授权；不要在聊天发送密码或密钥。
+- 目标状态 `BLOCKED`；实现状态 `CODE_IMPLEMENTED / TARGETED_LOCAL_VERIFICATION_PASS / LOCAL_BROWSER_PARTIAL / NOT_DEPLOYED / AWAITING_PRODUCT_OWNER_CONFIRMATION`。staging地址/版本/路径未执行，生产未改变且新路径未验收，main/tag未改变，产品负责人未确认，所有本轮生产路由待验收，正式源码Placeholder0。当前复核见 `docs/acceptance/NATIVE_ACCOUNTS_20260912/blocked-audit.json`。
+
+### 2026-09-12 13:34 UTC — Safari管理入口恢复审计
+
+- 用户登录Safari后完成只读订阅查询，控制台可访问。随后恢复网站目标时，启动Cloud Shell的操作被自动审批拒绝：审核认为新管理会话超出了最近“只读查询订阅”的范围。操作未执行；已明确解释审核原因并提出具体确认请求，尚未收到回复，没有借CLI/其他入口绕过该拒绝。
+- 前一恢复回合分类为无进展：仅确认控制台仍停留在账单页面，未取得授权或活跃管理句柄。本回合只读核对仍显示Activate Cloud Shell；三个连续恢复回合保持同一待确认障碍，目标再次标记 `BLOCKED`。自动续行不视为确认，GPT‑6 Pro不代替用户或工具审批。
+- 应用运行候选仍为 `1767dbb5eeb30cc57835081de761e1eccb8fac8b`，已有本地验证/浏览器证据未改变；本回合未部署/迁移、未改main/tag、未进行产品验收。恢复条件及原SSH障碍分别记在 `docs/acceptance/NATIVE_ACCOUNTS_20260912/blocked-audit.json`；不提交账户付款信息或凭据。
+
+### 2026-09-12 13:58 UTC — Cloud Shell临时连接验证
+
+- 后续用户已明确授权启动Cloud Shell，之前启动审批障碍解除。云接口只读确认目标项目计费启用、计费账号有效、主VM（e2-medium）和扫描VM（e2-standard-2）均RUNNING；不提交账户标识、付款信息或凭据。
+- Safari终端反复失联，独立页面空白。本机现有公钥未注册于Cloud Shell；临时注册操作最初被自动审批拒绝，用户随后明确批准“临时连接检查工具版本、结束删除公钥”。第一次API返回500，读回未见该公钥；按官方两字段格式重试后SSH单次有界连接成功，SDK版本583.0.0。不能据此确定第一次500的根因。
+- 检查结束已移除临时公钥并读回确认不存在；没有转送OAuth/API凭据，没有取得目标VM管理入口，没有执行目标服务器命令、备份、迁移或部署。Cloud Shell连接通过不等同生产管理/发布通过。
+- 已提出将当前Cloud Shell用于后续服务器排障、备份迁移发布和HTTPS复验的具体范围确认（含必要的当前会话API授权与结束清理），等待回复。当前应用运行候选仍1767dbb5eeb30cc57835081de761e1eccb8fac8b，既有目标验证保持；staging/production新路径未执行，main/tag未改变，产品负责人未验收，正式源码Placeholder0。
+
+
+### 2026-09-12 14:52 UTC — 管理访问恢复、固定镜像发布及真实备份恢复
+
+- 用户已明确授权Cloud Shell用于服务器检查、必要API授权、备份、原生迁移、发布复验及结束清理；此前访问/审批障碍已解除，不再作为当前阻塞。Cloud Shell IAP已使用既有VM公钥和固定known-host身份连接两个VM，未替换其管理密钥；临时Cloud Shell公钥仍在本次交付使用中，结束必须清理，未新转送OAuth凭据。
+- 实际旧站点host HEAD和Web/API仍为535041bb25f21d548d863d07b35e3e952b0aeb2c；宿主PG14.24、原API/Web原生systemd运行。源库12用户、1项目、49审计、0附件，约16MB；原角色无全局/继承特权，无prepared事务或逻辑订阅。未改业务数据。
+- 新运行候选f2da3629e13b2653aae8879c98992877d5ef4170，tree435fd8f66beef2760ce02388b0948cea35cee55e；新增精确RFC1918容器代理地址信任，防止容器化后所有用户共用登录限速地址。59项目标回归、lint、API类型、独立差异复核PASS；干净源三个amd64镜像build PASS。私有仓库首次上传自动审批拒绝后，通过项目/仓库/IAM只读证据证明当前账号Owner且无public绑定，随后获准上传成功。精确digest见deployment-preparation.json。
+- 新独立备份控制器f231659f989ad445fb22807314a44daf0a9f786a；22项边界/中断测试PASS，真实隔离PG并发验证恢复等待未提交角色创建后NOLOGIN（3.32s）。最终四文件独立focused PASS。安装固定root-owned hash53a047f4…、专用受限OS身份和boot/ExecStopPost恢复入口；未调用旧停用exit78脚本。
+- 真实snapshot20260912T144907Z-9b8c486b用时17.426s，manifestSHA691880a2…；恢复到独立feishu_timeline_restore_c38c57da用时5.786s，46表数据、完整schema/序列、migration记录和对象集合完全一致。源API自动恢复，临时restore数据库role NOLOGIN+连接清理已证明；备份和凭据仅保留host root私有目录，未进入源码/报告。
+- 下一步：扫描器过期官方库的受控更新、精确运行网络/配额/密码Redis和release controller、私有可解析source、候选库迁移与旧管理员精确绑定、最终新备份/切换和HTTPS浏览器验证。旧scanner地址被同机无关Docker网段覆盖，拟只加精确/32路由，不改其Docker网络；当前尚未执行。
+- 状态：CODE_IMPLEMENTED / TARGETED_LOCAL_VERIFICATION_PASS / REAL_BACKUP_RESTORE_PASS / DEPLOYMENT_PREPARATION_IN_PROGRESS / NOT_DEPLOYED / AWAITING_PRODUCT_OWNER_CONFIRMATION。staging URL/runtime/用户路径未完成；production运行版本未改变且新用户路径未验收；main/tag未改变；当前正式源码Placeholder0基于未变Web源码复用。
+
+### Native accounts: scanner installation and private source checkpoint
+
+- Runtime candidate f2da3629e13b2653aae8879c98992877d5ef4170 was actually pushed to the user-owned VM private receiver, refs/heads/codex/native-account-release; no public source push or main/tag change.
+- Reviewed scanner controller/initializer installed as root-owned external bytes. Real initialization PASS (20.609s): both exact old endpoints closed, original unit saved/masked, three historical official databases verified and retained only as floor 28119, approved=null.
+- First new cold activation failed closed after official download/verification. Read-only Docker evidence identified seccomp JSON expansion vs pathname comparison. Scoped correction independently reviewed, 81 targeted tests PASS, single host module atomically replaced. Second refresh is in progress; actual readiness remains unverified.
+- GCP and Docker range inspection found proposed172.30.44/29 and172.30.45/29 do not overlap. Existing172.27/16 Docker route overlaps scanner IP; scoped route repair remains pending.
+- Actual migration, native account initialization, app cutover, exact-domain user acceptance and temporary Cloud Shell key cleanup remain pending. Website still old runtime; do not report DEPLOYED.
+- Details and artifact identities: docs/acceptance/NATIVE_ACCOUNTS_20260912/deployment-preparation.json.
+
+### Native accounts: scanner cold activation, private images and migration-probe review
+
+- Corrected scanner adapter now passed actual cold activation with signed daily28121 (signedAt1789194281), clean and EICAR checks, exact VERSION timestamp, old3311 closure and loopback-only admission. Both reviewed timers enabled. Scanner state/process identity recorded in deployment-preparation.json. Held-connection interruption and unchanged refresh verification are still pending.
+- Private runtime Git push succeeded. All three pinned candidate images were actually pulled on the application VM using its existing read-only service account, with digest/commit/tree/amd64 checks. Temporary Docker auth directory /run/timeline-native-pulls/docker-auth-28eokqaa was removed and absence reported; no additional Cloud Shell OAuth was forwarded.
+- Fixed restored-copy migration probe implemented and independently reviewed. Only previously verified restored DB feishu_timeline_restore_c38c57da may migrate; original DB not targeted. Journal precedes container creation, recovery closes role before Docker cleanup, old46-table projections and original26 migrations are compared before accepting exact37 migrations. 31 native controller tests PASS. Real isolated PostgreSQL projection checks also PASS on synthetic DB native_projection_43ad8e9a, including original field change detection, additive-column stability, migration append and oversized sentinel rejection.
+- Migration probe not yet installed/executed at this checkpoint. Native account CLI, final fresh backup/migration/cutover and exact-domain browser verification remain pending. Production Web/API remain original runtime535041bb25f21d548d863d07b35e3e952b0aeb2c; no product-owner acceptance, main change or tag change.
+
+### Native accounts: real migrated-copy preservation and scanner interruption proof
+
+- Installed migration probe initially rejected Docker's lowercase generic missing-object response before creating its journal or changing any database. Read-only evidence: probe directory empty, restore NOLOGIN/limit1, zero restore clients, original and restored migration counts26. Precisely changed to container inspect with exact missing-container response; other errors remain rejected. 33 tests and independent controller/installer reviews PASS, source commit dc58f32.
+- Corrected real probe PASS in23.449s: restored copy26→37 migrations,46 original table projections unchanged,52 resulting tables;12 users/1 project/49 audits/0 attachments retained, native credentials0, role closed, productionChanged=false. No native admin initialization or production migration yet.
+- Scanner first held-connection test had an evidence-format assertion failure after actual SIGKILL/closure. Normal refresh restored entry with VERIFIED_UNCHANGED and same process. Corrected test uses actual lock marker and systemd ExecMainCode2/Status9/Result signal; reviewed r2 passed held connection closure, new connection refusal, unchanged approval/floor. Following normal refresh VERIFIED_UNCHANGED at1789228418; final PING readback in progress.
+- Private source ref now read back as full candidate f2da3629e13b2653aae8879c98992877d5ef4170. The exact HTTPS website remains old runtime. Next work is isolated runtime networking, authenticated Redis/tunnel, native admin migration, final fresh backup/cutover and browser verification. No main/tag change or product acceptance.
+
+### 2026-09-13 — Native runtime network and private proxy preparation
+
+- Real scanner fault recovery is complete: exact same approved process, PONG and both timers active after VERIFIED_UNCHANGED. Native migration copy preservation remains PASS; original database still26 migrations and original website still active.
+- Native network foundation source b294b8f plus precise built-in null-IPAM fix6f711b0. Initial host setup TypeError occurred in read-only preflight; independent fix review and43 native tests PASS. Isolated namespace11 actual connection cases PASS, including denied metadata/unrelated workload/cross-bridge/host SSH, allowed exact proxies and unchanged unrelated traffic/table. Corrected actual host setup now active/success; two private bridges and scanner/32route configured without app start or DB change.
+- Five proxy/tunnel units and network boot ordering reviewed in source c3884de. Socket default ordering cycle fixed before installation. Application-only ed25519 key generated on app host; private bytes never transferred; source/port-restricted public entry atomically installed in existing scanner-only account. Proxy installer wrote files then systemd249 verify rejected unsupported %d credential specifier, so no proxy startup or daemon reload followed. Official v249 CREDENTIALS_DIRECTORY alternative identified; focused patch pending.
+- Redis old development pin resolves7.4.9 and later7.4.10/11 security fixes apply. Official7.4.11 image pulled on app host with fixed digestff02b58f... andamd64/linux identity. New config/controller drafted for AOF always/rejecttruncation/noeviction, limited named ACL supporting auth and notification transport,64MiB data/256MiB container. Not installed or started; final independent review and real persistence/ACL/pressure tests pending.
+- Current status remains DEPLOYMENT_PREPARATION_IN_PROGRESS / NOT_DEPLOYED / AWAITING_PRODUCT_OWNER_CONFIRMATION. No native admin initialization, production traffic switch, main change, tag change or product acceptance. Temporary Cloud Shell key remains active for authorized work and requires cleanup at completion; application scanner key is a separate permanent runtime dependency.
+
+### Native GCE preparation: private runtime boundaries verified (2026-09-13)
+- Actual Docker29.6 internal network probe passed PostgreSQL handshake, scanner clean/EICAR, forbidden API/Web destinations and preserved unrelated workload health. Internal-only Docker ignored published ports; a loopback systemd socket proxy was verified instead, with expected trusted API peer172.30.44.1. Both probe containers and proxy were removed.
+- Dedicated Redis7.4.11 passed actual authentication/ACL, queue Lua/deduplication, bounded noeviction pressure and two abrupt process restarts. A key first survived a restart, then its acknowledged deletion survived the next; rate state remained. Synthetic keys were removed. This is not host power-loss evidence.
+- Permanent application scanner tunnel passed held-stream interruption, listener closure and automatic reconnection with a new process/PONG. Its key is an application dependency, separate from the temporary management key.
+- Added reviewed candidate application supervision and exact-role HBA scoping. New application credentials are still not handed to API; installation, real HBA deny checks and administrator initialization remain pending. A post-initialization full fingerprint will guard against candidate background changes before cutover.
+- Website remains original runtime535041bb25f21d548d863d07b35e3e952b0aeb2c. Main/tag/production DB unchanged. Detailed non-sensitive receipts: docs/acceptance/NATIVE_ACCOUNTS_20260912/deployment-preparation.json. Temporary management access remains active for authorized delivery and requires cleanup at completion.
+
+### Native GCE: existing administrator bound and candidate startup verified
+- Exact candidate role HBA scope passed real candidate-password access, wrong-password rejection and original/postgres DB denial; original HBA rules retained. Native CLI bound the unique existing owner ID to username lixiaochen, preserving 12 users and business/history references; new credential/bootstrap added with audit50. Password stays private on the host.
+- Initial preparation configuration lacked required EXPECTED metadata and exited before DB mutation. Exact copy preservation proved, configuration corrected and independently reviewed, then bounded resume succeeded. Full52-table/schema/sequence fingerprint saved after initialization.
+- Actual supervised API/Web private startup PASS at f2da3629e13b2653aae8879c98992877d5ef4170; exact build metadata matched and full prepared DB fingerprint stayed identical. Cleanup stopped both containers and closed candidate DB role. API force-stop exit137/OOMfalse retained as evidence, not rewritten to success.
+- Reviewed cutover/controller/ingress/recovery source55a11b38e9ceaaa1a997550c6f904378312c941a was pushed to the private VM operations ref and read back.83 native testsPASS; fixed installer and actual systemd249 dependency verificationPASS. Only recovery enabled; public native ingress remains unstarted. Fixed precommit SIGKILL rehearsal is now in progress.
+- Mac lock screen blocks actual browser interaction; user asked to unlock while independent server work continues. Exact-domain browser acceptance remains pending. No production traffic switch, main/tag change or owner acceptance.
+
+### Native GCE: real native restore and interrupted promotion recovery PASS
+- First rehearsal exited before backup/stop due new private checkout mode0775; exact directory narrowed0700 and clean f2da/tree revalidated. Second stopped before source change because native pg_restore canonicalized one nested AND group in a text-bounds CHECK. All52-table rows/contents and sequences remained exact. Source/restored whole-schema hashes and full sole diff recorded in schema-restore-equivalence files;343 real NULL/Unicode/boundary predicate combinations had zero differences.
+- Fixed backup comparison f027f4d82204e431e228653e674eb27513e2e806 allows only the reviewed directional schema hash pair for fixed c38 source/52 tables; every data/sequence/other schema change remains rejected.85tests and separate source/installer reviewsPASS. Private remote ops ref verified; module5bfda36d... installed. Raw fingerprints/backups and failed isolated restore retained.
+- Next real native snapshot20260912T173618Z-2482ea2b and independent restorePASS, including native password hashes, no Redis session restoration. Fixed precommit check reached its genuine checkpoint, then only its main process received SIGKILL. Invocation82a2c6b274a14d24ae10b292e9bb9cdc: Resultsignal/ExecMainCode2/Status9, ExecStopPost0 and PRECOMMIT_OLD_RUNTIME_RESTORED. Old services and role restored, native services/role closed; full before/after data checked. ReconcilePASS preserved exact pendingSHA0dbedc3a... as immutable evidence. This is process-interruption evidence, not host reboot evidence.
+- Formal supervised promotion has now been requested. Do not report completion until its receipt/runtime checks and exact-domain acceptance finish. Browser remains blocked by Mac lock screen; user unlock requested. Main/tag unchanged, product owner not yet accepted.
+
+### Native GCE: formal runtime switched and exact-domain authentication/restarts PASS
+- Supervised promotion succeeded: COMMITTED2026-09-12T17:38:51+00:00, runtimef2da3629e13b2653aae8879c98992877d5ef4170, nativeDBfeishu_timeline_restore_c38c57da. API/Web and original Nginx loopback upstream identity passed. Both old units disabled/stopped and old roleNOLOGIN; original DB retained. Operations remain separate from runtime commit.
+- Actual HTTPS16-request authentication verification PASS: existing native owner ID/admin status, secure session Cookie, project/accounts access, unauthenticated401, missing/attackerOrigin403, oldOAuth410 without redirect, mock403 and logout401. All issued test sessions logged out; secrets stayed in memory. Safe method/path/status evidence saved in production-http.json.
+- Independent reviewed production restart test PASS: API PID276703→279213 and valid same-owner session200; after logout, combined Redis260863→280252 and API279213→280253 restart completed, old cookie still401. Temporary502 during restarts resolved to correct runtime200. This proves process restarts, not whole-host power-loss recovery. All test sessions logged out; production-session-restart.json.
+- Owner login information delivered exclusively to a new localDownloads private0600 file; password not printed or committed. Mac remains locked, so no new exact-domain browser screenshots/Network/console/user interactions or product-owner acceptance. Formal page acceptance remains pending; main/tag unchanged. Final runtime readback and management-access cleanup are in progress.
+
+### Native GCE final server verification and temporary access cleanup
+- Final runtime proof PASS: both running pinned images, target release checkout HEADf2da,37 migrations, exact Nginx loopback upstreams, native services enabled/active, old services disabled/inactive and old roleNOLOGIN. Full original source DB fingerprint still identical to fresh snapshot20260912T173840Z-b8d3a4d9; native independent restore point20260912T173618Z-2482ea2b retained. ScannerPONG and unrelated cp-wi-sync-auto health preserved. See production-runtime.json.
+- Owner Mac normal-TLS GETs returned correct Web/API versions and actual native login HTML plus current login JS chunk, all200. This is HTTP/static-artifact evidence only; Mac remains locked and no actual browser rendering/network/console/interaction is claimed.
+- Both temporary management SSH masters closed, current Cloud Shell public key removed and API readback confirmed absent. No additional OAuth authorization was granted by this task; permanent app-to-scanner key retained as required runtime dependency. Cleanup evidence saved without secrets.
+- Current state: CODE_IMPLEMENTED / LOCAL_VERIFIED / PRODUCTION_RUNTIME_SWITCHED / EXACT_DOMAIN_HTTP_AND_RESTART_PASS / DEPLOYMENT_UNVERIFIED / AWAITING_PRODUCT_OWNER_CONFIRMATION. Production changed to f2da; staging URL/version/path unexecuted; main and tags unchanged. Pending formal user routes: login/callback/account/dashboard/projects/admin accounts aliases/admin organization. Runtime sourcePlaceholder0;10 explicit test-only matches. Remaining external input: user unlocks Mac for browser acceptance, then product-owner confirmation. No current server fault or repeat permission requirement.
+
+
+### 2026-09-14 — 原生账号登录格式修复及固定程序更新
+
+- 目标仍为精确 `https://timeline.all-too-well.com`；本轮规则未扩大，不重建治理体系或修改全局权限。原工作树未知媒体/既有改动保持，实施工作树 `/private/tmp/timeline-native-auth-20260912`，分支 `codex/native-account-auth`。
+- 实际Chrome发现username pattern的Unicode Sets语法错误，修复提交 `6c70a897ec7643f4681616d801481765aaa8f7bc`；仅该表单及回归变更，API/schema/依赖未变。定向8项、Web290项/58文件、Web lint/typecheck/build、最终镜像断网只读HTML与模式验证通过，生产占位源码0/测试白名单10。API177个编译文件只改变构建身份，未受影响验证明确复用；不把本机离线安装交互提示或旧OAuth测试计PASS。
+- 固定程序升级/回退控制器运维提交 `3ebcc84097f7a2c78d382f39afce79eff22ce58a`，独立99测试及安全审查PASS；安装、演练、更新调用脚本最终独立审查PASS。只推送本人服务器已有私有Git及镜像仓库，目标所有权/私有IAM补证后API上传审批通过。main/tag未改变。
+- 真实SIGKILL演练自动恢复f2da原生版，原登录会话随后me200且同内部ID；全部52表/schema/序列不变。正式6c70更新同样不改数据/37项迁移，不重跑初始化或数据库恢复。程序切换时间 `2026-09-14T01:56:49.490849+00:00`，Web/API/镜像/干净server HEAD均6c70，Nginx仍127.0.0.1:3000/3001；DB为 `feishu_timeline_restore_c38c57da`。旧库保护、扫描器及无关应用读取通过。
+- 更新观察器在实际成功后因systemd GC清空成功单元InvocationID而失败，未生成虚假PASS或重复更新。固定invocation日志及实际运行数据补齐只读证明；这份追加证据脚本的额外复审因两个审查上下文容量错误不可用，未计独立PASS。原控制器安全审查结论不受影响。
+- 最终正常TLS网站27请求PASS：版本一致、原生管理员/项目/目录、Cookie、Origin、旧OAuth410/mock403、退出401、新表单及静态脚本。跨正式升级旧会话可读检查未执行（观察器失败后退出）；不得混为跨中断恢复会话PASS。
+- 本机非系统Python缺CA及首次SSH外层35秒超时分别诊断后恢复：系统CA正常验证；Cloud Shell到VM SSH横幅1.48秒、API可用，外层90秒后预检确认先前指令未达/无状态文件。没有降低TLS、主机密钥或网络安全。
+- 所有临时验证会话退出；本轮Cloud Shell公钥/管理连接和两端专属Docker认证清理确认。用户现有云登录及固定应用扫描连接保留。Cloud Billing当前账号开启、项目计费启用。
+- 精确域名Chrome曾渲染原生登录但随后控制连接故障；修正版多路由截图/Network/console/交互仍待完成。已询问用户手动登录结果，尚未答复/接受。staging URL/commit/path未执行，production实际改变但浏览器路径未验收，main/tag未改变，产品未确认。
+- 证据入口 `docs/acceptance/NATIVE_ACCOUNTS_20260912/README.md` 及 `production-runtime-6c70.json`、`production-http-6c70.json`、`production-release-recovery-6c70.json`、`release-6c70-preparation.json`、`temporary-access-cleanup-20260914.json`；路由矩阵同步更新。
+- 状态：`CODE_IMPLEMENTED / LOCAL_VERIFIED / PRODUCTION_RUNTIME_SWITCHED / EXACT_DOMAIN_HTTP_PASS / DEPLOYMENT_UNVERIFIED / AWAITING_PRODUCT_OWNER_CONFIRMATION`。
+
+
+### 2026-09-14 10:56 — 用户确认原生账号进入正式工作台
+
+- 用户回复“可以进入工作台”并附Safari截图；接受范围仅原生账号登录→工作台，记为 `USER_CONFIRMED_NATIVE_LOGIN_DASHBOARD`，不替代全部管理/业务验收。
+- 同一浏览器会话随后读取原有项目（1项、10/18）、个人账号、原生账号目录及用户名搜索、组织人员页面；版本页正文确认运行6c70。没有改密码、创建用户/项目、配置权限或退出用户会话。
+- 新观察：无当前待办时工作台使用“当前还没有项目”文案，与原有项目存在不一致；源码canCreateProject分支并未检查项目总数。记录开放UI问题，本次未修改代码或部署。用户提供的图片在对话可见，但指定Desktop源文件未找到，不声称本地PNG副本/摘要已保存。
+- 本次代码无变更，本地测试未重跑（既有结果保留）；staging URL/runtime/path均未执行；production本次未改变，运行 `6c70a897ec7643f4681616d801481765aaa8f7bc`；用户确认登录路径，其他读取为实际浏览器观察；main/tag未变。
+- 未完成：工作台空状态提示、注册/恢复/改密/授权写入浏览器验收、完整Network/console和响应式矩阵、callback/别名；正式Placeholder维持上次源码扫描0，本次未改源码。精确状态 `PRODUCTION_BROWSER_PARTIAL / USER_CONFIRMED_NATIVE_LOGIN_DASHBOARD`；整个产品尚未获接受。
+- 证据：`docs/acceptance/NATIVE_ACCOUNTS_20260912/owner-browser-confirmation-20260914.json`；README/路由矩阵同步更新。临时云访问仍保持已清理。
+
+### 2026-09-17 — 原生业务验收与可携带恢复实施中
+
+- 所有者明确采用 `NATIVE_AUTH_ACCEPTANCE_AND_PORTABLE_RECOVERY.md`；正式业务、离线软件、合成异机恢复分别验收。原 main 及未知修改/媒体保留；隔离 clone `codex/native-portable-recovery` 从现有原生源码 c33c1bd 续接。当前短交接：`docs/handoff/NATIVE_PORTABLE_20260917.md`。
+- 正式域名复现无待办误报无项目，同一用户仪表盘可见项目数及列表 total 均 1。修复 d6004cd 保留数据权限和空态，定向 Web 27/API 13 通过。13131ee 候选全套 Web 297/API 1353 通过，另 60 项明确 SKIPPED；冻结依赖、类型、lint、构建、Prisma 检查已执行。生产占位源码 0，测试白名单 10。
+- 合成账号与业务验收覆盖真实注册、岗位和正式角色区分、角色分配、停用、改密/恢复、最后管理员、跨项目拒绝、代表性 RETURN 流程、扫描/附件/审计，完整范围与失败记录见 `docs/acceptance/NATIVE_A2_20260917/README.md`。不以此证明最终包或独立断网恢复。
+- 可携带工具增加空库业务目录、受限身份恢复、正常写入排空、加密 app-only 备份、签名冻结验签与镜像/source tree 身份校验。独立审查发现问题均按证据修复；最后 namespace 审查只取得静态结论，平台拦截的动态实验不计 PASS。真实初始化预演发现子进程加载问题，070390a 修复后实际通过，故旧 13131ee 包不是最终交付。
+- 独立 B 虚拟机已准备并实际拒绝公网、旧服务器及元数据访问，镜像/容器初始均 0；尚未导入最终包。预演 A2 真实 PNG 扫描下载、正常停写备份通过；首次恢复数据/序列一致，schema 同一 CHECK 的括号重组造成严格拒绝。精确摘要等价补丁被自动审批拒绝，未应用或绕过；独立静态完整 diff 仅确认语义，等待具体变更授权，不把恢复写 PASS。
+- 06:51:59Z 生产只读证明实际 checkout、Web/API/镜像、状态均 6c70a897ec7643f4681616d801481765aaa8f7bc，无 pending。13131ee 源码/镜像已预备上传现有私有库但未运行；后续 Ops 更新已暂停待最终同版本包。无生产数据导出、DNS/main/tag 改动或新付费资源；专属镜像上传认证已清理，原有用户凭据保留。
+- 当前：`CODE_IMPLEMENTED / LOCAL_VERIFICATION_IN_PROGRESS / PORTABLE_RESTORE_BLOCKED_ON_REVIEWED_SCHEMA_DIFFERENCE / PRODUCTION_UNCHANGED / AWAITING_PRODUCT_OWNER_CONFIRMATION`。staging/最终包/独立恢复/新正式路由验收未完成；此前所有者原生登录→工作台确认继续有效。
+- 后续不受阻工作：签名 floor 补强集成 dc9d4c8，最终独立静态证据 1d433a6；真实官方导入、较低版本拒绝、v2 密文携带 floor、非空持久队列/去重字节及 TTL 编解码通过，单元 4/4。独立 B 修正 Docker 重启规则顺序后再次冷启动，主机公网/源服务器/元数据出口拒绝、镜像/容器仍 0；完成后正常停止保留磁盘。细节及来源在现有 A2 README，不声称独立应用恢复已通过。
+- schema 精确例外已形成完整可审阅方案并询问所有者，批准尚未到达，未应用或重试。预演密文、秘密、非敏感证据已分别持久保存到本项目 ignored var 私有目录；源码保存在独立任务分支，不改 main 或用户工作树。
+
+### 2026-09-17 — 所有者批准精确结构校验例外，恢复实施继续
+
+- 所有者明确回复“批准这一项精确例外”，对应已保存并独立核对的单一有方向 schema 摘要对：`3f933e582eab518c24e308cb9991e1f5fab16c310eee10f041e38746cb76b4c0` → `175721348d4d09345618dcec49699b70d2cc13ee7298e3c78bfd6ebdc9fd52c6`。批准不包括任意 SQL 归一化或其他摘要组合，不降低全量行、序列、对象、身份及角色门禁，不修改旧失败证据。
+- 使用正常工具审批实施，新增匹配/反向/其他结构及数据差异拒绝回归并独立复核；随后仅以合成备份恢复到新空预演目标，原失败库保留，独立 B 仍等待最终包首次装入。最终同版本包、真实独立恢复及正式域名发布仍需实际通过，不因批准直接变更状态为 PASS。
+
+### 2026-09-17 08:25Z — 最终包冻结与真实 A3 链路通过
+
+- 冻结 runtime `c5aed415cd17e6e8a21b422a4c5c92b4b924e091`，tree `830e562f5ec56e99d7fc0b04432fc056dd772254`，三镜像构建完成；最终私有 source ref 和 API/Web registry digest 实际回读一致。详细制品身份见唯一短交接与 `NATIVE_A2_20260917/final-artifact-review-c5aed41.json`；后续证据 commit 与 runtime 分开。专属上传凭据已清理，用户现有云身份保留。
+- 最终软件包七文件、源码归档、六镜像及 72 OCI 内容块独立只读核对通过。A3 在该版本真实空库安装/目录/管理员初始化，六模式 253 HTTP 请求覆盖原生权限、业务、真实附件扫描、RETURN/重提/APPROVE和再读取，全部通过；源码、锁文件未变的旧质量结果按明确依据复用，60 SKIPPED 仍不计通过。
+- B 真实独立 VM 已断网，首次最终加载前缓存为零。一次 init 因 VM 重启清空临时 TLS 文件失败；改用持久 guest home 后配置与官方签名导入成功，六镜像身份逐一核对，未 seed/初始化业务库。08:25Z 起进行 A→B 加密恢复与会话边界测试，尚未报告 C 通过。
+- 最终 Ops `d16dc78cae8ef67f24c0530f2705e2f81f27236c` 的 119 回归和独立静态身份核对通过，七脚本固定包绑定最终 c5；仅准备私有推送及只读检查，未安装或更新生产。生产仍 6c70，main/tag/其他应用未变；登录→工作台的既有用户确认保留，完整产品未接受。
+
+### 2026-09-17 09:10Z — 独立恢复推进及首次发布演练失败
+
+- 最终 c5 software/corresponding-source 共 15 文件逐一复制后校验，已保存原项目私有 `var/native-portable-delivery-20260917/final-c5aed415cd17`；三份官方签名单独保存。main/tag 和用户未知差异不变。
+- 独立 B 首次 QEMU PostgreSQL 启动失败，改用宿主已安装 Rosetta 的 VM 局部设置，特殊系统共享 `/mnt/lima-rosetta` 明确记录；没有用户文件共享或全局安装/信任变更。实际全量 52 表、2 对象、非空队列恢复通过。08:39:59Z B1 在源恢复码尚未过期时验证旧会话/旧码拒绝、内部身份/授权保留和新恢复正常。
+- 两个后续问题均保留原失败：历史断言之前合法下载增加审计（只调整外部测试顺序、不改完整断言）；新目标 proxy 128 MiB OOM（独立审查后外部 B profile 只调 512 MiB 与真正 TLS 健康检查）。实际恢复历史比对、新项目写读、扫描/下载同摘要/CSV、断公网与旧服务器、队列只执行一次及应用重启均通过。VM 冷重启和第二备份恢复仍在执行，不称 C 整体通过。
+- 用户无法暂时处理本机证书提示，后提供 Safari 警告截图；`https://localhost:9444/login` 浏览器 NOT_ACCEPTED。没有工具绕过或全机信任修改，此条件只暂停该浏览器验收。
+- 修订推进顺序：B 的 ARM 测试环境配置问题与现有原生 GCE 发布路径独立，A3 最终链路 253 请求已通过，故先授权安装已审查 Ops 控制器并演练，不等待 C 全部结束；正式程序更新仍须实际备份/演练门禁。
+- 08:54Z d16 控制器实际安装，生产文件已改变但程序仍 6c70。08:58:34—08:59:52Z 首次 rehearsal 因 socket 不含 MainPID 而 KeyError，备份创建/checkpoint 前失败；自动恢复稳定 6c70，09:01:40Z 正常 TLS API 200。没有本轮保护备份、不报演练 PASS。只读真实属性与本地 RED 回归确认根因；限定修复通过 121 回归和静态复核，精确已安装 d16→新 helper 的原子补丁待独立审查。不得第三次盲试或直接 update。
+- 当前源码/依赖未变，正式 Placeholder 0/测试白名单10。staging URL A3 `https://localhost:3450`、B `https://localhost:9444`，同 c5；production `https://timeline.all-too-well.com` 仍 `6c70a897ec7643f4681616d801481765aaa8f7bc`，新页面未验收；产品整体未确认。
+
+
+### 2026-09-18 — c5正式浏览器、独立恢复与持久交付收尾
+
+- 生产已于09-17 09:27:01.821805Z从6c70更新固定c5，Ops bf2。首次socket属性失败保留，126测试/静态审查后精确原子修补，唯一重演与真实SIGKILL恢复通过；一次update/proof成功。52表指纹、37迁移checksum、镜像/server HEAD/公开元数据/Nginx一致。两份服务器保护备份保留；旧API137为冻结而非优雅排空，未演练生产整机重启。见NATIVE_RELEASE_20260917真实记录。
+- 正常TLS18项原生认证/读取/Origin/旧OAuth/mock/退出验证PASS，09-18元数据再次200/c5。09-18正式浏览器登录→修复工作台/原项目1项10/18→账号/目录搜索/组织/别名→旧回调停用/退出刷新实际通过；工作台三档无横向溢出，捕获warn/error0。同源请求和静态资源清单已保存；不提供完整浏览器状态HAR，HTTP状态另有独立证据。JSON元数据页客户端阻止保留、未绕过。截图fullPage拼接异常不作视觉证据，以viewport及稳定登录截图为准。
+- 独立B实际A→B52表2对象恢复、未过期旧恢复码/会话无效、授权历史保留、新项目和真实扫描/导出、应用及整VM冷重启通过。第二备份到空目标52表3对象、22HTTP、新写入跨恢复/队列单次去重通过；最终B2运行，09-18一次status exit0六服务running。独立审查核对61项摘要/52tar成员/7测试工具及1环境工具，静态审查不称再次独立执行。
+- 已把固定软件/扫描器源码、分开的合成加密备份/秘密、执行过的命令、B profile、A3/C及生产证明持久保存ignored var；旧61证据未变。新官方daily28126只完成下载和离线签名验证，单独准备未激活；原28125于09-18 06:24:23Z到期，48小时策略不变。现有证据依据复用，不重复运行源码未变的测试；60SKIPPED仍未通过。
+- 更新同一短交接及路由矩阵，不扩治理体系。原main41b4b16/tag/脏修改及用户媒体未变，runtime和evidence分开。本轮没有新云资源、生产DB恢复/seed/迁移、真实项目推进、DNS/全局权限变更；浏览器自己的验证会话退出，原Safari会话不变。临时访问清理按实际日期记录。
+- 当前代码/技术验证已完成，production c5已部署且原生读取路径通过；全部产品仍AWAITING_PRODUCT_OWNER_CONFIRMATION。本机9444浏览器因用户暂缓证书处理NOT_ACCEPTED；注册/改密/恢复/授权UI实际提交仍待人工，隔离HTTP不替代。staging仅A3 https://localhost:3450（已停）和B https://localhost:9444（运行）同c5；无远端staging。源码Placeholder0/测试白名单10，main/tag未改变。
+
+### 2026-09-18 — 所有者登录体验及密码策略修正（候选冻结前）
+
+- 本轮仅处理所有者最新反馈：登录/注册/恢复共用浅色居中 440px 卡片、手机两侧至少 16px、次要入口；用户可见登录标识为“工号”。认证布局限定于 `/login*`，项目工作区与业务规则不变。原 main 脏修改保留，实施分支 `codex/login-experience-20260918` 基线 `1034b38f055690cc912f331e8f47924c792a196d`；相关目录无新增覆盖指令，不改治理或全局权限。
+- 原生产 `/login` 在 1440px 浏览器实测卡片 1376px，根因是通用 `.r22-shell .page-card` 覆盖认证宽度。失败截图及新增工号、8字符边界 RED 证据保留；修复认证选择器优先级，未改全局项目宽度。
+- 新设密码最低 8 Unicode 码点由服务、改密/恢复 DTO、Web 提交、CLI/portable 文件检查共同执行；保留原登录验证、Argon2id 参数、长密码、限流、弱口令检查并补短常见弱口令。此为产品策略调整，不声称符合 NIST 单因素 15 字符要求。工号继续使用字符串，`001234` 与 `1234` 不合并；不改内部 ID、历史关系或授予权限，无 schema/依赖变更。
+- 已执行 `pnpm install --frozen-lockfile`、lint、typecheck、test、Web/API build、Prisma validate；Web309/API1355通过，通用命令61项SKIPPED不计通过。真实新建 PostgreSQL 13项另行通过，覆盖旧ID/历史作者、初始化及注册/改密/恢复/主机绑定8通过7拒绝、长旧密码、前导零区分、重复拒绝、权限与会话边界。Portable普通测试5通过2跳过。完整日志在本轮私有证据目录，后续统一持久化。
+- 工具阶段保留真实失败：离线依赖缓存缺包后正常冻结安装通过；Prisma缓存时间戳受沙箱限制后授权运行通过；新测试库临时初始化服务重启竞态导致createdb中断，改为最终TCP服务就绪后准确续建通过。未删除失败记录或重用生产数据。
+- 独立静态差异审查未发现阻断，最终提交与真实浏览器/HTTP证据待绑定。当前只有 `CODE_IMPLEMENTED / LOCAL_CHECKS_PASS`，候选尚未部署；production仍c5，原账号生产复验及两档真实截图待执行。main/tag未改变，产品状态 `AWAITING_PRODUCT_OWNER_CONFIRMATION`。正式源码Placeholder0，10条测试白名单不变。
+
+#### 固定候选真实 HTTP 发现并修正工号隐式转换
+
+- 6fd49d9a606ee357347ad7aaad5751c23e6e3260 的固定镜像在隔离真实 HTTP 中把 JSON 数字工号注册为字符串（201而非400），因此撤回该发布候选；仅已上传到本人私有制品库，未在生产安装或运行。失败库、镜像、7请求记录和退出证据保留。该次实际 CLI 初始化7拒绝/8接受成立，但不代表整个候选通过。
+- 根因：正式 `main.ts` 启用 implicit conversion 且 tsc 生成 design:type；Vitest 未生成该元数据，旧单元结果未覆盖此差异。原检查日志保持原执行事实，不继续作为类型边界通过证明。修复只在认证工号和管理员账号配置工号 DTO 保留原输入类型再做 IsString；注册/正式保存继承相同规则，不改全局转换、内部用户ID、账号匹配、权限和业务数据。新测试显式模拟正式元数据；独立增量审查无阻断。
+- 修正后 API lint/typecheck/build、1356项测试通过（61跳过），新增定向8项通过。最初新增管理员测试缺必填业务字段而失败，补完整合成输入后通过，失败日志保留。待新不可变镜像在全新 HTTP 测试库复验；生产仍c5。
+
+
+### 2026-09-18 03:52Z — 所有者登录修正正式运行与实际复验
+
+- 最终runtime `541b3dfff682aa29b49a96b251f0a084903c981a` / tree `bc65d7145a498066556f2abc8d8619a6643dc325`；私有远端ref可解析，固定API/Web镜像于`2026-09-18T03:40:16.918106+00:00`在精确`https://timeline.all-too-well.com`更新。运行端HEAD、镜像、Web/API元数据一致；Nginx保持3000/3001、数据库`feishu_timeline_restore_c38c57da`保持52表37迁移，无seed/DB恢复或项目写入。
+- 新版实际编译4 DTO/32断言及全新隔离48 HTTP通过，证明工号非字符串拒绝、前导零区分、8字符设置/登录、7字符拒绝、短弱口令拒绝、旧长密码、权限及会话/限流边界。CLI初始化/绑定8通过7拒绝、旧c5实际校验器读取新版8字符哈希通过。最终Web309/API1356通过、通用61跳过不计PASS；独立真实PG13通过，portable5通过2跳过。最终差异/证据/固定调用器独立静态审查通过；不存在独立重跑的虚假声明。
+- 固定Ops`0f4980733d6c1265f0677904a5aa4e3ac94776bc`129回归通过。真实SIGKILL演练自动恢复c5，正常退出0且全表不变；正式更新正常保护备份后切541。备份`20260918T033846Z-8de19b91`及`20260918T033959Z-3198b06e`保留；全部6步骤实际exit0，最终只读身份/清理再次确认。
+- 精确正式域名18项正常TLS检查通过，原`lixiaochen`未改长密码登录及浏览器进入/刷新工作台成功，原项目1/进度10/18、账号12保持。登录/注册/恢复桌面卡片440px、390px手机内容区域两侧16px，两档6截图通过；工作区宽度不受认证选择器影响。个人账号、目录搜索与组织配置表单标签显示工号；组织表单取消未提交。callback卡片440px及原生返回链接可见，点击后目标页未再观察，不计返回导航PASS。
+- 浏览器实际API/静态资源清单保存，响应状态由独立HTTPS记录提供，不冒称HAR；console warn/error0，独立pageerror流不可用。新凭据UI提交未执行，8/7设置来自真实合成HTTP/CLI。全部自有验证会话退出、临时tab关闭；本轮4个合成容器正常停止、卷/失败证据保留，3350代理停止。两端临时registry认证清理；无新增Cloud Shell key或OAuth授权，不撤销用户现有凭据。
+- 新策略是产品决策，不宣称NIST15合规。撤回6fd、预览EXPECTED缺失及原工具失败均保留。未重启全仓治理或重发旧离线包，原main/tag/用户脏修改不变。
+- 详细14项状态与环境身份：[本轮交付证据](acceptance/NATIVE_LOGIN_EXPERIENCE_20260918/README.md)。本机隔离URL`http://127.0.0.1:3350/login`同541（验证后停止），无远端staging。正式Placeholder0/测试白名单10。当前`CODE_IMPLEMENTED / LOCAL_VERIFIED / PRODUCTION_DEPLOYED / AWAITING_PRODUCT_OWNER_CONFIRMATION`，运行commit与随后证据commit分开；不得宣布整个产品接受。
+
+### 2026-09-18 — 指定已有账号管理员、登录首页及账号安全修正（候选）
+
+- 延续实际 b352 交付工作树及正式运行 541b3dfff682；本轮分支 codex/owner-admin-home-20260918，不改 main/tag、治理或其他应用。只读核对确认指定工号唯一匹配原生凭据及其注册/登录审计；现有旧管理员是另一个内部账号，保留双方身份和原项目历史，不合并或重置密码。真实标识和维护计划仅保存在受保护证据中，不进入软件包。
+- 根因分开处理：目标账号缺正式管理员标记/角色；前端登录和守卫以岗位登记/空角色默认送账号页；账号页同时显示改密和岗位申请；账号通用卡片过宽。新增 root 双层保护、精确内部 ID+预期身份/版本/角色集的 CLI 维护，事务授予已有 admin 角色并定向递增 authVersion，主机审计和维护 UUID 幂等，撤销后的旧计划不会重授。无新增公开提权接口、schema、业务或凭据写入。
+- 登录统一按真实权限进入工作台或待分配页；显式同源深链做路由权限检查，项目读权限经后端验证。资料与二级安全页分开；管理员工作台复用既有管理入口。登录/注册/恢复 440px，账号安全 480px，手机至少16px；宽业务工作区保持。密码显示/隐藏与自动填充保留，8–128 产品策略未变，不把岗位登记当强制改密。
+- 本地冻结安装、lint/typecheck、Web/API build、Prisma validate 通过；常规 API1369通过/62跳过（跳过不计通过），独立真实 PostgreSQL14通过，portable6通过。保留账号布局 RED3、lint控制字符规则失败、新增导航测试类型推断失败及修正后结果。独立审查发现项目创建深链权限键不一致，改为真实 project.write + admin/project_manager 合同并补正负向。
+- 离线软件源码归档改为构建输入和通用操作说明白名单，排除历史交付/账号记录；真实备份与软件分开。其真实 git archive 回归通过。最终镜像、HTTP/浏览器、最小恢复和受控发布尚待新固定版本验证，本条不宣称生产已更新或产品已接受。
+
+### 2026-09-18 — 指定管理员、工作首页及窄表单正式交付收尾（22aac）
+
+- runtime `22aac0a1b9fe975f60d599f8dbe7be20bcbca1b1` / tree `0e067cbf0c99b9ee8a297054a4c60ccc78083f0b`；Ops `f77d958de05df59dd43c02fc1ed5e16a7317ca6a`。私有远端、运行端HEAD、Web/API元数据和两镜像一致，正式域名 `https://timeline.all-too-well.com` 于 `2026-09-18T08:40:11.588218+00:00` 更新。六步真实exit0；SIGKILL恢复演练与正常排空保护备份通过，52表37迁移保持，无seed/恢复或真实项目写入。
+- 指定原账号经唯一内部ID/凭据/历史审计定位，root受控CLI授权真实管理员成功；重复相同计划ALREADY_APPLIED。仅目标authVersion递增，凭据/历史用户/项目成员与进度不变；正式原项目仍1个、10/18。精确身份与审计引用仅保存私有交付，不加入通用软件初始化。
+- 冻结安装、lint/typecheck、Web/API build、Prisma validate PASS；Web328/API1369 PASS，62 SKIPPED不计通过；真实PG14、portable6、Ops134 PASS。实际镜像密码48 HTTP、维护重放24项、岗位项目隔离12 HTTP及空PG最小恢复PASS。原始RED/工具失败保留。应用最终差异、维护调用器及Ops最终固定脚本独立只读审查通过，未声称独立重跑测试或新增远端CI。
+- 所有者亲自输入原密码，从退出状态正常登录，并回复“已直接进入管理员工作台”。正式浏览器复核管理员视图、刷新保持、管理账号/组织/权限真实读取、资料与主动安全入口；桌面1440/手机390真实截图，安全480px/手机两侧16px且输入48px。正常登录无改密表单。console warn/error0，资源/API请求清单留证；无独立pageerror流或完整HAR。没有再要求所有者重复第二次登录；合成账号退出再登录通过。
+- 同22aac离线软件7载荷、6镜像与1094源码成员核对，真实身份/历史交付排除；最小恢复保留管理员且初始化拒绝覆盖。没有升级旧独立VM或重复全量异机演练。浏览器新凭据提交未执行，HTTP/CLI真实边界单列，不修改所有者密码。隔离服务停止、临时registry凭据清理；保留用户工作台。
+- 唯一主要回执位于私有 ignored `var/owner-admin-delivery-20260918/RECEIPT.md`。非敏感身份/测试/截图摘要见 `docs/acceptance/NATIVE_OWNER_HOME_20260918/result.json`，具体路由矩阵已追加。本机 `http://127.0.0.1:3350` 验证后停止，无远端staging；main/tag未变，正式Placeholder0/测试10。当前 CODE_IMPLEMENTED / LOCAL_VERIFIED / PRODUCTION_DEPLOYED；本轮登录路径OWNER_CONFIRMED，完整产品仍AWAITING_PRODUCT_OWNER_CONFIRMATION。随后证据commit不改变运行commit。
+
+### 2026-09-22 — R28 PPT阶段目标实施中（未发布）
+
+- 用户授权在自有Mac/GCE完成PPT后台阶段目标及必要技术咨询。以最新b456e7675c3d391d8200e0ce295d9d3fcd55f691代码/发布证据为基线，隔离工作树/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree、分支codex/admin-role-workflow-20260922；原目录的未知/既有修改与用户附件保留。
+- 需求、按序M1–M4边界、模型咨询及当前检查事实见[本轮记录](rounds/R28.md)。人员入口/注册导航完成代码，固定角色队列和事务鉴权正在收口。两条Prisma migration已在全新合成PG重演；23项真实PG通过；Web331通过；首次API全量281失败正在按影响处理，不伪记PASS。
+- 尚未形成发布候选，不访问其他应用；production未改变，精确目标仍https://timeline.all-too-well.com、runtime22aac0a1b9fe975f60d599f8dbe7be20bcbca1b1。main/tag未改变；产品负责人未确认。M2、M3、M4与最终路由验收尚未通过，继续实施。
+
+### 2026-09-22 — R28 M2 中间全量回归通过，独立审查进行中
+
+- 同项目事务锁、资格变更边界和附件finalize恢复完成实现；GPT-6 Pro第二次意见已采纳，独立审查附件两项问题的修复已静态复核。真实PG人员/队列24项与附件5项分别通过，附件组对象存储/配额替身边界明确记录。
+- API当前全量1410通过、91跳过（不计PASS），类型检查通过；失败113项的中间结果及修正依据保留。Web331为M1未变化源码检查依据，未代替新工作台验收。证据与剩余范围见[R28](rounds/R28.md)。
+- 完整M2独立审查尚未返回；M3/M4继续待做，未形成干净不可变候选。精确生产域名/runtime、main、tag均未改变，不能宣布发布或产品通过。
+
+
+### 2026-09-28 — R28 重建工作树并继续 M3（未发布）
+
+- 旧临时工作树被系统清理；从原基线与本会话已识别源码修改重建到持久 `var/admin-worktree`，分支 `codex/admin-recovery-20260928`。未改原目录用户补丁、main 或生产。无旧完整树 hash，不宣称字节级完整恢复。
+- 冻结依赖、39 条迁移、API 1415 / Web 339、lint、两端构建和 Prisma 校验通过；95 项未配环境跳过不计 PASS。真实 PG 当前 33 项通过。新增月度办理页面正做增量回归。恢复/失败分类/咨询及剩余 M3–M4 见 [R28](rounds/R28.md)。
+- 检查点提交只保存工作；尚未固定可部署候选、远端发布或产品确认。准确状态 IN_PROGRESS / NOT_DEPLOYED / AWAITING_PRODUCT_OWNER_CONFIRMATION。
+
+
+## 2026-09-28 M3 项目、材料与提醒检查点（尚未发布）
+
+- 接入紧凑项目列表/立项、项目进度/资料/记录、普通工作单、材料版本历史和站内提醒。提醒采用持久扫描游标/租约、不可变任务去重、一人一天逾期摘要及有界子项；旧通知只分类保留。新增两条迁移，总计41条正式迁移。
+- 修正全新目录初始化与迁移预置七业务角色/生产权限不一致的问题；保留既有角色ID和时间，15项真实PG目录初始化回归通过。曾生成重复生产权限补齐草稿，在隔离库执行因缺updatedAt失败，确认原生产角色迁移已完整后撤回未提交草稿；测试库保留rolled-back失败记录，未修改正式历史迁移或生产。
+- 本地全量Web340/API1418通过，API104项跳过不计PASS；lint/typecheck/Web及API构建/Prisma校验通过。真实PG人员/分派/附件33项、提醒9项、目录15项分别通过，不与单元测试相加冒充单一套件。证据在ignored var/r28-verification和原目录var/recovery-20260928。
+- 新合成库r28_http_v2关闭mock和第三方身份：五账号真实注册/授权/再登录、两个项目、进展幂等重试、角色负向、材料V1/V2和真实二进制读回通过。该环境使用local-eicar扫描器，不代表正式ClamAV安全验收；源码开发运行不代表固定发布身份。
+- 真实浏览器在http://127.0.0.1:3100完成登录→工作台→项目列表→详情→工作单→历史PDF请求。首次1024/390失败确认为grid内在宽度撑开页面，限定新工作区列宽和表单最小宽度后1440/1024/390全部通过，失败截图保留；正式域名尚未复验。请求替身交互7项另列，不冒充真实后端。
+- 材料历史下载前缀、已确认写入后的新命令key、旧工序链接不误选新轮次、超时重试、月度深链等已修改；增量浏览器回归和最终独立审查仍待完成。正式Placeholder为0，测试白名单10处。
+- M3尚缺两项目18节点完整推演及提醒/人员实际交互，M4未开始。production仍未改变，main/tag未改变；本次commit仅保护中间工作，状态IN_PROGRESS / NOT_DEPLOYED / AWAITING_PRODUCT_OWNER_CONFIRMATION。
+
+
+## 2026-09-28 M3 完整流程和返工验证收口
+
+- 两个合成项目 A/B 经原生账号与真实 HTTP 完成 01–18。B 覆盖04→03、12→11和首月17→16；12个月份ID/日期保持，截止前1ms拒绝、到期后可办理。A退出更新颜色状态，B保留不改颜色退出字段。12月由隔离BusinessClock推进，安全时间/会话/Redis租约仍走真实时间，不宣称现实中经过一年；测试入口不进入正式构建，无生产时间开关。
+- GPT-6 Pro 第4/5次抽象技术咨询支持业务日历隔离、14技术返工与05编号/13收费保全；未上传源码/凭据/业务数据，意见不代替产品确认。14退回03时取消旧活跃技术分支，已签署事实保留并标记需复核，新任务携带祖先和替代关系；05/13复用原事项，不重编号或重收费。
+- C/D/E/F真实HTTP覆盖连续两次14退回、12内层返工、错误旧计划试制晚于正确试制仍选正确证据，以及07/08重建/旧板拒绝。最终F在收紧SQL后通过；首次合成脚本错引用E项目计划被400拒绝，改为F本项目旧计划后继续，原失败保留。没有用时间戳猜测记录属于哪轮；创建审计在同一授权事务绑定具体任务与记录。读取仅提取有界键，类型/长度/数量/跨项目和流程实例均校验。
+- 修正标准板PostgreSQL LEFT参数类型、18保留决定误写颜色退出字段、生产/评审角色与领取人显示，以及人员手机布局。人员真实浏览器保存/刷新、纯生产访问排产、提醒全部已读/刷新保持通过；合成账号角色随后恢复。主路径与历史PDF在1440/1024/390真实浏览器通过，无横向溢出或pageerror；同源HTTP开发环境不是生产证据。
+- 最终单元回归Web342/API1422通过，API116跳过不计PASS；lint/typecheck/Web及API构建/Prisma校验通过。标准板PG3、返工与证据边界PG9通过，此前未变化的人员/分派/附件PG33、提醒PG9、目录PG15按源码边界复用。前一轮全量的2条标量哨兵失败确属新增完整payload读取；改为仅id+有界SQL后原断言原样通过，未弱化测试。
+- 独立只读审查已覆盖最终角色/返工/证据绑定增量，无新增明确阻断；审查者未运行测试。正式Placeholder0，测试白名单10。证据保存在ignored var/r28-verification（m3-final-*-v2、m3-bounded-evidence-*、m3-native-closed-chrome、m3-people-notifications-final）及test-results。
+- M3技术实施/本地路径达到继续M4条件。M4固定镜像、37→41迁移/历史保全及恢复、正式域名浏览器仍待执行。2026-09-28只读网站仍运行22aac0a1b9fe975f60d599f8dbe7be20bcbca1b1，Nginx/生产/main/tag未修改，产品状态AWAITING_PRODUCT_OWNER_CONFIRMATION。此检查点不代表已部署。
+
+
+## 2026-09-28 M4 正式发布及页面补丁检查点
+
+- 29ed14c81e297c56699ba571cfc6946a00ccb942 已在 https://timeline.all-too-well.com 执行受控发布；2026-09-28T10:16:46.696559Z 完成，Web/API/服务器源码身份一致，原生认证、41条迁移、54张表和目标Nginx已核验。运行镜像与发布细节保存在私有 m4-server-{checkout,pull,install,rehearse,update,proof}.log；发布控制源码7f509fccc05258b3f61bef69b93be52137c554ec。
+- 发布前真实PG14备份恢复与迁移保全、受控SIGKILL恢复演练通过；迁移后不回退37条结构或恢复旧数据。原始迁移锚点及B0备份保留。生产已新增验收写入，后续补丁必须独立保存当前41条数据库，不能重跑原迁移控制器。
+- 正式域名真实浏览器完成原生注册/密码登录/退出、无业务角色403/自授403、管理员停用合成账号/刷新再读、停用后已有会话与密码登录401。新合成验收账号保留停用及审计；既有用户权限和业务项目未改动。材料/流程只读已接真实API；产品负责人未确认。
+- 正式浏览器发现三处问题：手机项目卡片继承850px最小宽度；详情主责角色误用历史部门；详情侧栏受旧样式覆盖而裁切。保留失败页面和自动化RED，修复为适配卡片、固定工序角色标签与明确的响应式列布局。办理权限判断保持不变。
+- 补丁全量Web343项、8项工作台浏览器回归、1项原生API详情布局回归通过，lint/typecheck通过；新Web构建已通过。API、schema、依赖未变化，复用29ed已验证边界。独立只读审查未见确定阻断，补充面板viewport边界断言。测试输出在ignored var/r28-verification/m4-patch-*。
+- 当前仅原29ed在正式运行；此页面补丁尚未发布，正式手机列表和详情仍需准确新commit复测。产品状态AWAITING_PRODUCT_OWNER_CONFIRMATION；main/tag未变，staging未发布，不将本机证据当作正式域名验收。
+
+- 后续加强viewport断言暴露手机内层网格问题，已停止盲试、记录BLOCKER_REPORT并咨询GPT-6 Pro；实际测量确认footer两列按钮撑开隐式auto列，限定本页面网格并手机按钮纵排后，9项浏览器回归（含真实API三宽布局、内部溢出、关闭按钮点击）全部通过。第一次未指定外部服务/第二次沙箱拒绝的运行未计测试PASS，日志保留。详见docs/acceptance/R28_MOBILE_DETAIL_BLOCKER.md。
+
+
+## 2026-09-29 M4 固定程序已切换，登录后页面待复查
+
+- 应用e917da56b9fca54a40635364e168fdb26a080fb1、运维9eb94093df6c15df3600f9ddeb22ea92c7db67af从干净提交和私有远端生成固定制品/五脚本。checkout/pull/install/update/proof全部通过；正式2026-09-29T00:57:22.219797Z切换e917，API/Web/target HEAD、摘要、Nginx和41迁移一致。
+- 新备份20260929T005653Z-891b4bb4、独立追加程序日志COMMITTED，原37→41锚点/原备份/验收审计保留，未执行迁移或任何数据恢复。发布前四项PG14实际中断与独立审查通过，边界详见新证据入口。
+- 公开登录三档、正常TLS元数据、未登录跳转、旧入口关闭、foreign Origin及停用账号拒登均PASS。原管理员跨日会话已失效，真实浏览器刷新到正式登录页；已请求所有者在浏览器登录，未索取/重设密码。登录后的项目卡片/详情手机修复等路径仍待准确版本复验。
+- 完整14项状态、运行身份和证据索引见 `docs/acceptance/R28_PRODUCTION_20260929/README.md`。当前PRODUCTION_RUNTIME_SWITCHED / EXACT_DOMAIN_PUBLIC_PATH_PASS / DEPLOYMENT_UNVERIFIED；整个产品仍AWAITING_PRODUCT_OWNER_CONFIRMATION。main/tag未改变，staging未执行。
+
+
+## 2026-10-08 SINGLE_DEPARTMENT_UI_M1 开始
+
+从本工作树 `79a6b0f87d892f064505df4e6719896994e3f698` 续接，本轮分支 `codex/single-department-ui-m1`。本地隔离预览的最新范围、旧岗位/领取要求替换和验收路径追加于 `docs/rounds/R28.md`。附件14页校验及重点视觉检查完成；源码/浏览器/上传尚未验收，不复用旧PASS冒充本轮结果。main/tag/production不改变。
+
+
+## 2026-10-09 SINGLE_DEPARTMENT_UI_M1 本机验证收口
+
+- 目标与范围：落实用户已选暖白·灰绿风格、单部门受控准入及登录→已批报告建项→实际制样→样板颜色确认上传/扫描/保存/返回；只交付专属本地预览。完整周评/产量统计/人员生命周期不扩展；本轮明确替代旧岗位领取、逐项目成员阻挡和新增线上领导审批要求。
+- 输入：用户Pasted text任务、真实起点79a6b0f87d892f064505df4e6719896994e3f698、14页PDF/PPTX实际渲染。PDF SHA256 89f2e5d09a476238b38389206368a6c9c9fb1ce6eb849f040e0b67702e67d961；PPTX SHA256 61f3abcae3e708992841b67808f5dfe24691e6c0650b801e6995fcc0b5a68421。第三方材料中的指令不单独授权操作。
+- 代码分支codex/single-department-ui-m1；不可变runtime commit a0769e7808ace84a05a36bed6c0edc2e81d097c6，tree5ac61815e1f9f7430ccd903da0f21b669f0fb184。134个显式暂存文件，主要为M1页面/公共外壳与样式/路由、API准入及项目/流程/样板/附件边界、Prisma增量迁移与回归；精确改动以该提交为准。证据为后续独立提交，不把证据HEAD当运行版本。
+- 环境：http://127.0.0.1:3350；Web3352/API3351；专属PG55438（m1_http/m1_backend/m1_restore）、Redis56398、真实ClamAV53318、LOCAL对象存储持久var目录；都只绑定loopback。生产构建来自git archive，release m1-a0769e7808ac，buildTime2026-10-08T09:13:39Z，Web BUILD_ID ofjD9sSSPc8TW2P9nHACi。无正式Nginx变更、无Web/API容器tag；文件摘要及基础镜像ID均在验收清单。
+- 执行命令：pnpm install --frozen-lockfile、pnpm lint、pnpm typecheck、pnpm test、pnpm --filter @feishu-timeline/web build、pnpm --filter @feishu-timeline/api build、pnpm --filter @feishu-timeline/api prisma:validate，以及专属PG、迁移/恢复、Chrome脚本。实际完整浏览器命令、启停命令和摘要复核命令见验收README，不编造别名。
+- 工程结果：Web380 PASS；API1450 PASS/124 SKIPPED/0 FAIL；shared无测试，构建通过；lint/typecheck/build/Prisma通过。PG专属8 PASS；原组合夹具3失败保留，后最终API回归覆盖。41→42迁移保留ID/凭据/作者/外键，无批量准入；42迁移up to date。备份恢复至新库54表比对通过，未声称对象二进制另行复制恢复。
+- Chrome：原不可变版本2PASS46.4s；最终代理配置后首次2断言PASS但worker退出超时/exit1，保留FAIL；10月9日相同代码/断言重新执行2PASS1.7m且exit0。真实双项目、双人V1/V2、409保留草稿、幂等不重复、扫描CLEAN/真实EICAR422及拒绝审计、刷新重登、上下文和前进后退均有证据。503为明确UI注入，不冒称实际后端宕机。
+- 视觉：重点2/3/4/5/6/14页对照，1440/1280/1024/390截图；主链19张独立复核无明确P1/P2。真实Chrome登录150%放大无横向溢出；工作台CSS150%另列。P3归档审计文件名下划线、范围外人员表仍有旧浅蓝行样式保留。
+- Safari：WebDriver远程自动化未开启→UNAVAILABLE；原生首加载无样式并两次刷新失败记录保留。专属loopback代理仅删Web CSP upgrade-insecure-requests，其他安全头/API不变，源码7项及实际HTTP7项、合计14项检查通过。新登录请求下真实Safari登录、18节点、确认事实/作者/材料V2、内容200/预览、关闭和返回原project/task URL通过。跨夜会话过期明确拒绝；最终重登刷新受两次ScreenCaptureKit -3811阻断，全写链未在Safari重演，不计完整Safari PASS。未改变系统安全设置；旧刷新缓存原因未证实。
+- 已修根因：首页pageSize100超API50导致400、任务历史错用最新事实、409及超时草稿/材料版本、脏态退出/前进后退与StrictMode包装、移动画布初始定位等。原公网失败URL未在本轮复现/复测，不声称本地问题是其唯一根因。
+- 最终独立只读审查覆盖权限/日期/跨轮事实/附件、前端返回及视觉、代理边界；不替代产品确认。Placeholder运行源码0，原始10处测试白名单。
+- 证据入口：docs/acceptance/SINGLE_DEPARTMENT_UI_M1/README.md、VISUAL_COMPARISON.md及路由矩阵增量；原失败、跳过和能力限制均保留。私密账号、env、session、数据库备份、截图原文件及运行日志保存在ignored var，不提交秘密或用户设计材料，不推送公开仓库。
+- 下一步决策：本机Chrome真实M1供负责人操作确认；Safari剩余证据可在屏幕捕获恢复后补验，不自行宣布产品通过、不自动进入下一轮、不部署正式网站。当前CODE_IMPLEMENTED / BUILD_COMPLETE / LOCAL_CHROME_VERIFIED / SAFARI_PARTIALLY_VERIFIED / NOT_DEPLOYED_TO_PRODUCTION / AWAITING_PRODUCT_OWNER_CONFIRMATION。远端staging未执行，production未改变且本轮runtime未现场读取，main=41b4b166c587692e6f0fb9536dca2e1aab646c70/tag未改变；强制14项完整列于验收README。
+
+- 补充证据：登录/新建/原03四档、未准入1440/390共14图及单图溢出检查取得；补充助手两次分别因控件定位、把确认审批状态APPROVED误期待为COMPLETED而FAIL后停止，未改产品或记录。两次FAIL不计PASS，原04另有独立主链通过证据，详见SUPPLEMENTAL_FINAL_CAPTURE_BLOCKER.md。
+
+
+## 2026-10-09 COLOR_REGISTER_LINK_M1 本机可操作交付
+
+- 目标/范围：用户实际《制造中心商用车颜色清单明细.xlsx》接入现有颜色清单；基地/备注独立、保留所有表/原行/空值/条件/控制限与来源，候选项目→07事务加入清单，准确既有颜色和项目关联，版本固定引用，生产粒度防重复；单部门同等业务管理权限和安全保留，不重建平台、不恢复多角色审批、不执行未确认关闭。
+- 输入/现场：原附件SHA256 34ab4145cc004c7b712bf5431b9f169d2e6f0e3d8b8922a389e722d264c836e7。起点c4077e74b81be3be5294b0ff827532d42ce7b4b9；原m1_http20合成项目/0颜色/42迁移，仅作隔离基线，未读取生产库。所有来源原文及对象留ignored私有目录，不进入公开仓库/CI。
+- 改动：runtime `3ace9626dbf88ccca68c16d11faa55ab9f1765dc`、分支codex/color-register-integration。107个累积文件以git diff清单为准：Prisma schema及20261009020000增量迁移、color-register域/CLI、共享标准解析、07原子保存/版本发放/工作流守卫、项目显式主色/既有身份关联、评审版本、生产聚合、既有路由UI/权限合同与测试、受控工作簿解析。只有根任务写正式源码，独立上下文只读审查及私有提案。
+- 命令：pnpm install --frozen-lockfile、pnpm lint、pnpm typecheck、pnpm test、pnpm --filter @feishu-timeline/web build、pnpm --filter @feishu-timeline/api build、pnpm --filter @feishu-timeline/api prisma:validate；真实PG专属vitest15+9+3、解析19、42项来源核对、固定git archive构建、原生Chrome5、同文件CLI replay、快照备份恢复与重启。具体入口/日志和版本在docs/acceptance/COLOR_REGISTER_LINK_M1/README.md。
+- 结果：89来源颜色（23/14/16/21/15基地）、1166行/19297格保全，155测量/39 Lab缺值不补零；122明确产量行/1464事实，53产量行待核对。新汉玉白共色相/分资料、SD蓝独立，其他同名不自动同标准。新建候选无正式编号/月，07保存入清单仅一次，V2保留V1，评审/发放不改旧版，既有项目/作者不重建。
+- 验证：Web422、API1496PASS/148SKIPPED；PG27PASS、解析19PASS；双构建/lint/typecheck/Prisma PASS；Chrome最终5PASS18.1s，三宽真实数据和写读回，正常console/pageerror0，错误态503显式注入；独立G4_DIFF REVIEWED。前序全量与PG按不变后端/schema/依赖复用，后续布局增量重跑Web422及双构建。跳过不算PASS。
+- 环境：http://127.0.0.1:3360，Web3362/API3361，color_register_v2及43迁移，专属Redis DB3/ClamAV/LOCAL对象。Web/API元数据与不可变runtime相等，最终制品摘要一致；59表恢复与45对象恢复PASS，重启读回PASS。原3350、production、main=41b4b166c587692e6f0fb9536dca2e1aab646c70、4tag未改变；没有推送或访问远端。
+- 失败留痕：首次导入契约错配隔离库留存，DTO漏字段红绿、手机隐藏标签/旧表格撑宽修复、编辑分页保护、测试等待URL/可访问文本框定位、备份预检旧库名修正。未删除断言、审计或旧历史，未放宽CSP；修复证据详见回执。Placeholder运行0/测试白名单10。
+- 风险/下一步：53条产量归属待业务核对；有不明确历史的旧项目不自动关联；Safari/完整评审批转/完整统计重做/关闭规则不声称本轮浏览器通过。目标本机主链可操作，产品仍AWAITING_PRODUCT_OWNER_CONFIRMATION；等待负责人核对，不自动进入新轮次或生产发布。
+
+
+## 2026-10-12 · R28补充 COLOR_CATALOG_SHEET_INTEGRATION_01 本地表格接入
+
+- 目标/范围：按用户确认的任务书接通现有颜色清单与本机 Personal Sheets，完成本地验证；不推进新轮次、生产发布或独立颜色建档。
+- 输入：任务书和轻卡颜色清单工作台参考图；业务基线218dbc2b73b3f946fee239b340d3aba6e382029c；Personal Sheets实际路径/版本与源码复用见[DELIVERY.md](/Users/lixiaochen/Downloads/feishu_timeline_app/var/admin-worktree/docs/acceptance/COLOR_CATALOG_SHEET_INTEGRATION_01/DELIVERY.md)。原目录用户补丁保持不变。
+- 改动：29个运行文件，runtime `5bc1d10e5aea498612d63fd7637107282af7b040`，tree e1c40c10a8f9a4be4d791a87962dbd1659ff1104，分支codex/color-catalog-sheet-integration。新增业务表格适配、5字段批量保存/版本/幂等/审计、XLSX模板往返与普通文件预览、四份固定Univer/样式依赖补丁及必要回归。原详情提取复用，既有建项流程保留。无schema/migration或治理规则变更。精确文件清单可由基线至runtime的git diff取得。
+- 命令：pnpm install、pnpm lint、pnpm typecheck、pnpm test、Web/API/shared固定提交构建、Prisma validate；真实隔离PostgreSQL目标回归；专用Chrome四场景；制品摘要复核、来源对照和重启。具体命令/日志摘要见交付文档，原始日志在ignored var/color-sheet-runtime。
+- 验证：Web461PASS/80文件；API1520PASS/157SKIPPED（跳过不计通过）；PG21PASS；最终Chrome4PASS/50.4秒。全仓检查后只有前端事件/菜单/文字粘贴修正，依适用源码及环境复用未变后端验证，相关Web/浏览器/lint/typecheck及固定双构建再验。真实输入/多格粘贴/文本日期/复制/保存撤销/排序ID/模板/no-op/非法批次/双账号409/越权403/未知响应幂等通过。正常路径console/pageerror0；预期负向单列。
+- 环境：精确URL http://127.0.0.1:3370/admin/color-database，DB color_catalog_sheet_20261012，43迁移，Redis DB4；本机代理Web3372/API3371，无Nginx和构建镜像，元数据同runtime。最终Web BUILD_ID L3BA4qCbCnXk6qnUrLD91；完整摘要和启动时间在runtime-evidence.json。原3350/3360、production均不改变。
+- 数据：当前97记录包含89来源和既有/本轮合成记录；89来源ID/版本及业务字段保持，写入只限3条专用合成记录。项目27/流程任务111不增；累计合成保存审计69条含前序候选验证，重启前后记录/审计/来源哈希相同。
+- 审查/失败：独立只读复核后端、未知保存结果、ZIP实际解压预算、引擎事件、nonce/文字粘贴及最终共享菜单。失败、暂停与新修复依据见BLOCKER_REPORT.md；未删除断言、审计或旧结果。正式Placeholder0，12处测试白名单命中。
+- 风险/下一决策：至多加载500条、普通xlsx仅映射预览、草稿与个人视图不持久化；原生Excel/WPS、Safari、真实触摸未验证。主颜色清单技术路径LOCAL_VERIFIED，v2别名未单独浏览器验；负责人尚未PRODUCT_OWNER_ACCEPTED。staging/production未执行、main/tag未改、无push；当前CODE_IMPLEMENTED / LOCAL_VERIFIED / NOT_DEPLOYED_TO_PRODUCTION / AWAITING_PRODUCT_OWNER_CONFIRMATION。
+
+## 2026-10-13 · R28 补充 LIGHT_TRUCK_SHEETS_INTEGRATION_02_04 实施检查点
+
+- 所有者统一任务要求连续完成共用表格修复、三条图片入口、人员/检验/产量业务接入及真实普通员工本地验收。当前分支 `codex/light-truck-sheets-02-04`；原目录用户修改保留；production/main/tag 不变。
+- 旧 3370 正式构建基线：普通员工排序 5 次 3476–3884 ms；2 条可见记录仍反复重建画布。新实现复用单一运行实例并局部同步，待新构建实测。基线私有证据 `var/light-truck-sheets-02-04/baseline-evidence/`。
+- 已实现稳定 recordId/fieldKey、带 CAS/幂等与审计的人员档案、检验四层事实、月度实际产量、共用图片资源/缩略图/上传扫描/布局保存/Excel 嵌图交换。当前人员展示桥接现有任务/项目，保留账号资格和历史事实。迁移 202610130001–005。
+- 独立只读审查提出并修复参与资格、统计快照、图片重试顺序/迟到读取、替换布局参数、未知导入结果等问题；图片后端审查未发现确定 P1/P2，补充竞态验证仍进行中。
+- 隔离环境：`http://127.0.0.1:3380`（待启动），API3381/Web3382，PostgreSQL `light_truck_sheets_20261013`，RedisDB5，独立对象目录与 ClamAV53319；原3370保持运行。真实扫描 preflight clean/EICAR PASS。
+- 本检查点是源码保存，不是本地验收结论。所有页面、图片与性能均须最终不可变构建重新验证；按原任务持续推进。报告目录 `docs/acceptance/LIGHT_TRUCK_SHEETS_INTEGRATION_02_04/`。
+
+
+## 2026-10-13 · LIGHT_TRUCK_SHEETS_02_04 首个不可变候选实操与修复
+
+- 运行候选 `2173ac425173dfc9cfdcd0bf0577b06a1db4130e` 已在 `http://127.0.0.1:3380` 启动；Web/API 构建身份一致；只使用专属合成写入与 89 条来源只读对照。
+- 固定依赖安装、lint/typecheck、Web 485/84文件、API 1612/152文件通过；API另180项跳过不计通过。新真实 PostgreSQL 人员5、来源幂等3、统计快照1、检验/产量8、参与人员3、图片3通过；新增检验提交与上传竞态/未准入权限2通过。
+- 普通人员实际新增/修改产量得27→25，未知与0分开，含图模板写入成功；之后缩略图显示失败。根因是新路由传image id而旧下载准入只读attachmentId，首次即429，客户端失败缓存删除又引发581次重试。修正目标映射、独立有界导数限额及失败重试策略后须重跑。
+- 实际检验已录入2台次/4组/12读数与3图；测试总体结论定位需修正。审查发现原评审导航进入只读详情，改为既有color-evaluation办理入口，提交/通过仍待实操。
+- 人员关联姓名更新到原任务且历史署名保留；新增结果未知后401/403重试相同操作不重复建档，2项浏览器通过。最新模板导回暴露父适配器保存后未更新revision，正在修复。
+- 性能隔离数据1000台次+30图已经真实业务服务/扫描准备；图片按既有6次/分钟限额排队，不调大上传限制。真实系统输入法所需CUA连续两次请求策略加载失败，对应门禁暂停；其他独立验收继续。没有将insertText称为IME。
+- 原始失败与运行日志在 `var/light-truck-sheets-02-04/`；最终报告将分别列界面/服务端/重开结果。当前仍实施与验收中，生产、main、tag未改变，产品未确认。
+
+
+## 2026-10-13 · LIGHT_TRUCK_SHEETS_02_04 复合录入与实操修正检查点
+
+- 6f696666d2411cdde1f14790dd3a4b82a8262ed5 普通员工真实本地 PNG/JPEG 上传、浏览器图片剪贴板、原图解码及重开通过。人员模板/同源导入已走通，目录检查脚本误用分页形状已按数组合同修正；仍须最终重跑。产量27→25及两张含图导入已执行，照片位于屏幕外的惰性预览需实际滚动后核对，未伪报图片可见通过。
+- 检验2台次/4组/12角度、3图及模板回读已执行；390宽度长标题造成横向溢出，新增可换行规则。产量桌面统计压缩以增加表格可见空间。
+- 角度工作表使用4项既有测量组字段+6项读数字段形成十列真实批量录入；保留父子版本、200事实后台上限、50显示行分批以及原六字段Excel合同。同组不一致输入在原生命令前整次拒绝，含未变化格也检查。
+- 独立上下文确认并修复保存途中撤销回旧值时关联行被覆盖问题；批次携带单个编辑序号，响应保留后续输入，未引入全表快照。检验命令确认重放400/409后允许修正，401/403/404仍保留未知原请求；通用多阶段导入未套用该推断。
+- API命令回执7单测、真实PG3、复合与共用回归通过；全量测试首次因沙箱listen EPERM未通过，授权本地监听环境正在重跑。独立审查只提供技术意见，不替代负责人确认。最终浏览器/性能继续执行，当前检查点不表示验收通过。
+
+
+## 2026-10-13 · LIGHT_TRUCK_SHEETS_02_04 原生布局与月度入口实操修正
+
+- 897d71e23a49ff625def2f1c61ceb3f2140fe798 在3380普通员工浏览器：人员完整3例通过；图片拖动/迟到列表/未知重放3例、慢保存与403/409/422恢复4例通过；检验2车4组12角度3图及模板读回通过。
+- 产量27→25、按基地22→20、空值/0、两图Excel导回和独立解析均已执行；390宽度隐式grid列溢出，补minmax(0,1fr)、子项min-width和长标题换行，待新制品复测。
+- 原生拖列真实失败证据 interactions-evidence/1791870289288920000（列宽变化0）；installed1.0.4鼠标拖动发送delta-column-width/delta-row-height，原精确命令许可遗漏。补两命令，结构/公式/只读仍拒绝。目标42项及lint/typecheck通过。
+- 月度link正常保存但原办理页仍按旧领取人条件隐藏按钮；当前R28 M1后端已采用准入成员+本人签署，正常路由没有旧领取入口。独立审查核对现有服务、锁和历史规则后，前端移除旧月份领取人限制并保留本人/阶段/日期/未完成门禁。新增回归首次误将结论‘通过’当操作按钮而失败；已限定真实button/input断言后通过29项。未改后端权限或月份计划。
+- 首轮完整性能实操50选区、50按键、5排序/筛选、5次100x10粘贴均完成，批次已读回；30图只观测29个请求导致整例FAIL，仍须诊断补证。首次读数可编辑冷4.672秒/暖4.790秒超过3秒目标，未报性能达标。所有原始失败及计时保留。
+- 当前仅本地实施候选；后续不可变构建、原失败URL回测和性能仍执行中，生产/main/tag未改，产品负责人未确认。
+
+
+## 2026-10-13 · LIGHT_TRUCK_SHEETS_02_04 读取性能修正检查点
+
+- 01284c37353c04efff09d1c75502d7b888cf640c 普通员工本地实操：原生列宽/冻结/侧栏/缩放后编辑通过；检验完整3例通过，含2车4组12角度3照片、真实关联后提交并通过目标月份且另外11个月不变；产量完整1例通过，含27→25、两图模板往返、图片歧义预览阻止写入、四宽布局与原统计读回。人员资格两真实非管理员会话 CAS/停用/旧页面拒绝/恢复通过。
+- 1000读数性能原证据冷4.672秒、暖4.790秒保留FAIL。切换层级时旧consumer取消共享读取并重新分页，暖轮86个rows请求为两套完整43页；新增活动级只读读取生命周期，切层共用初次请求，已有缓存先核实最新活动权限/提交元数据及revision。刷新、冲突、表单与导入后仍全读；迟到请求不能发布。
+- 单元48项、全仓typecheck、目标lint通过；独立只读审查未发现确定阻断，未把单元结果称为浏览器性能通过。照片、保存队列、CAS、幂等、上传限额均未放宽。新构建及相同原失败场景继续验收。
+- production/main/tag未改变；SYSTEM_IME仍因工具策略失败未验证，不能声称总体验收通过。
+
+
+## 2026-10-13 · LIGHT_TRUCK_SHEETS_02_04 详情目标身份修正
+
+- 0ec1ad48d3c3aa2bf109be2d351c50579636cc89 新快照层切换只读实操通过：已完成月度活动切四层仍锁定、复用每次1详情/0行分页，显式刷新重新读全四层，事实/照片/月度结果不变。
+- 原生填充、筛选隐藏记录保护、列宽/冻结、保存前与保存后撤销、非法枚举整批拒绝已在该构建实操。双人CAS冲突与服务器新值保留正确，但打开详情复现错行。独立T07b最短路径（双击安徽备注不改字→查看业务详情）稳定打开山东；红证据1791872357402274000。
+- 根因是finishEditing按原生Enter结束，移动选区，而弹窗读取实时selected。现在在点击时固定recordId并以独立目标状态打开详情；仍保留结束编辑后检查真实待保存/未知结果/保存中门禁。新增实际组件2条调度回归；独立审查无新增确定阻断，最终不可变构建原路径green待执行。
+- 本机Excel补充验证：产量含图副本44格及2图片对象、尺寸、只读与关闭后hash检查通过；检验副本AppleEvent超时，整体办公软件验证未齐，不宣称完全兼容。未改变生产、main或tag，IME仍未验证。
+
+## 2026-10-13 · LIGHT_TRUCK_SHEETS_02_04 首屏延时定位与修复
+
+- 25a944edcf85aa22ce36913299ceba7f4df4683a 实际详情目标/双成员冲突2例、颜色模板往返1例通过；10完整模块循环40次挂载之后多图上传、真实图片粘贴、随后文字、新浏览器上下文读回通过。证据目录在本轮UI报告索引保留原版本。
+- 完整千行性能运行1791873579498243000仅冷/暖加载阈值失败：4947.62/4532.525ms。50选区p95 44.405ms、50按键p95 55.105ms，50单格含防抖保存max1018.42ms；5次排序/筛选/100×10粘贴、30图真实解码与原生绘制、20滚轮和10次切换均已执行。阻断记录单列，未把整项性能记通过。
+- 43分页已是一轮，最后数据0.72/0.67秒完成。新根因是本系统等待Univer Steady，其安装版本在Rendered后固定延后3000ms。只将本系统ready门槛改为Rendered；编辑、剪贴板、图片与权限控制器在该阶段同步注册，第三方lazy菜单照常初始化，不修改引擎时钟或手动生命周期，不减少数据或关闭自动保存/图片。
+- 新实际runtime边界5例在精确旧源3FAIL/2PASS，候选连同模型、命令、图片36PASS；独立核对插件时序。正式完整Web回归、全仓typecheck/lint与新不可变构建进行中。新构建仍须同口径性能及受影响实操，不能以单元green宣称首屏已达标。
+- Personal对照首次在文件预检发现xlsx真实30列，原脚本误假设25列；尚未执行导入写入，正在按23业务+2技术+5关系列修正逐格比对。生产/main/tag未改变，产品与系统IME未确认。
+
+
+## 2026-10-13 · LIGHT_TRUCK_SHEETS_02_04 原生粘贴尾空单元格修正
+
+- a6a2dc67042202bbde163acfafdf825fc923f06f 检验完整3例通过，原生连续输入T01及双人冲突/详情目标、非法枚举、撤销通过。原T02两行两列含中文、前导零、0和最后空格位真实失败：右下色板编号仍保留旧值；证据1791874792980028000。
+- installed1.0.4 legacyPaste调用convertTextToTable，text.trim()删掉末尾TAB，未生成对应空td，业务模型未收到清空命令。现有依赖补丁仅替换ESM/CJS该行：规范CRLF并去掉恰好一个末记录换行，保留TAB、单元格空白与完整空行；既有文本/日期补丁、HTML优先及业务校验不变。
+- 实际bundle函数24项旧18FAIL/6PASS、新24PASS；安装更新锁文件及补丁hash后24PASS、全前端94文件560PASS。独立只读审查没有确定阻断；全仓typecheck/lint与新不可变构建继续。新构建须原T02界面/服务端/重开和受影响原生操作复测。
+- T04此前截图显示身份列已滚出，旧画布采样未处理clear/copy导致假残留；临时测量修正保留冻结断言并需真实新绘制帧，旧4项失败/候选7项通过，不作为产品操作已通过的替代。
+- 冷暖3秒性能目标仍待最终构建实测。生产/main/tag未改；当前源检查点不代表产品验收通过。
+
+
+## 2026-10-13 · LIGHT_TRUCK_SHEETS_02_04 自动保存与正在输入的单元格隔离
+
+- a53e7f8dbc179f46984981b0ca4cb6d26a0324fa 千行完整实操1791877773130224000通过，冷1.462秒/热1.214秒，50选区与50键p95均小于100ms；30图、五轮100×10、10切换通过。单键max223.940ms、批量保存max2078.705ms及原件限流恢复保留原数字，不冒称每笔均无延迟。
+- 最后颜色连续输入1791877984543387000实际将第33笔拆到不同基地两行，已保存失败截图及两PATCH。颜色350ms自动保存调用与手动相同save()，无条件finishEditing()，会结束下一次仍打开的原生编辑并移动选区。独立复核确认其他模块保存队列没有此自动结束行为，ack已有跳过当前编辑格/保留后续草稿保护。
+- 修复只将定时器设为save(false)，仅提交已经确认的单元格草稿；显式保存/核实仍默认结束原生编辑后取快照。原CAS、operationId/未知结果重放、校验、更正原因、批次和图片路径不变。
+- 实际组件新增回归在精确旧源2FAIL/3PASS；候选目标29PASS。正式全Web94文件563PASS、全仓typecheck/lintPASS，独立差异审查通过。原URL确定性专项及新不可变制品仍待实操，不能把组件测试代替真实焦点验收。
+- a53颜色模板最终1791878099967285000通过，15张图字节/稳定身份与只读拒绝/同名基地更新均已核对；本轮不改变生产、main或tag，SYSTEM_IME仍未验证，产品负责人未确认。
+
+
+## 2026-10-13 · LIGHT_TRUCK_SHEETS_02_04 恢复迁移已应用原始字节
+
+- 68不可变构建的原生编辑、8项交互及4整页重开、图片首次失败恢复/替换、10模块循环/真实截图粘贴与千行全性能均通过。最终千行1791879554116987000冷1836.420/暖1409.240ms，选择p9543.590、键盘p9554.720、普通保存max515.985ms；原证据绑定68，不改写运行版本。
+- 备份第一次被工具单行解析多行JSON阻断；修正读取协议并6项回归通过后，第二次门禁报告003迁移checksum不符，已停止、记录BLOCKER_REPORT，只读定位。未导出dump、未创建恢复库、未修改原库或对象。
+- 数据库003回执SHA32452ba385087b9affad18c64d7a5ce232b02479ba16240ec4116da61b89d7ca恰与保留的原始实施提案一致。正式003为46b7b30da9e513fd319fa03691400545500ca9ffac640d72b2817239a7ec8341。双独立只读核对确认原文件8551bytes，正式8550bytes，严格old_applied == formal + 一个LF；首提交前整理文件丢了末尾空行，SQL/DDL完全相同。
+- 本次仅恢复003源码精确已应用字节，不改数据库迁移回执、不新增DDL、不修改业务/认证/图片/依赖代码。新的不可变构建用于明确修正后的恢复验证；此前两次失败保持，不执行第三次盲跑。该格式恢复无新增模型迁移，Prisma校验与源适用性核对后继续恢复及最终只读回读；其余68技术结果按应用源码逐字节相等复用。
+- 生产/main/tag未改变，SYSTEM_IME和产品负责人仍未验证/确认。
+
+
+## 2026-10-14 · LIGHT_TRUCK_SHEETS_INTEGRATION_02_04 本地交付与最终证据归档
+
+- 目标/范围：按统一任务完成共享表格修复、颜色回归、本地上传/截图粘贴/含图XLSX、人员/检验/月度流程/产量贯通，以及普通已准入员工真实UI输入、服务端保存和重开验证。本轮沿R28既有原生账号与M1业务边界，不改生产身份/全局权限，不跳转新的产品轮次。
+- 输入：用户统一任务书、颜色参考图、项目AGENTS/R28历史规则；业务工程在本工作树，Personal原工程只读，比较用隔离副本。正式应用源码已在2173及后续修复commit中保存，最终runtime/source为9ed0502b9e97e543dc5beea00998b5edc0bb0e67，制品sourceTree492c42d17720c1569b7d0373c68cb93ee327ae67。9ed相对68只有已应用003迁移末尾LF及账本，应用代码字节相等。
+- 改动文件：本次归档只更新docs/acceptance/LIGHT_TRUCK_SHEETS_INTEGRATION_02_04内DELIVERY、UI_ACCEPTANCE、PERFORMANCE、BLOCKER_REPORT及明确的脱敏证据/独立审查摘要，并追加ROUTE_ACCEPTANCE_MATRIX和本ledger；不把账号、env、Cookie、Session、原始trace、数据库dump或对象备份提交Git。runtime code commit与本次docs-only evidence commit分开记录。
+- 已执行工程门禁：不可变9ed `pnpm install --frozen-lockfile`，shared/API/Web生产构建及Prisma validate通过；全仓lint/typecheck、Web94文件563测试、24项安装依赖文本粘贴回归按精确未变源码适用；API1621 PASS/185 SKIPPED，8份真实PG日志28 PASS，48迁移已应用含本期5份。SKIPPED不计PASS。完整命令/原始日志与源适用性见DELIVERY和独立报告，不机械重复未受影响测试。
+- 本地真实操作：68八交互、原生自动保存输入专项、50快速输入、首次图片失响应同op恢复/替换、10模块循环后真实图片和文本剪贴板均通过；a53人员/产量/颜色模板、a6a检验/月度流程按未变源精确复用，保留原runtime不重标。检查/写入均经正常UI；服务端GET/数据库只作事实核对与隔离准备，不替代用户输入。
+- 最终性能：1000×27真实读数列、1000×23台次/30图，冷1836.420/暖1409.240ms，50选择p95 43.590ms、50键p95 54.720ms，单条含防抖保存max515.985ms；五次100×10批量本地max69.875ms、整批保存max1623.695ms（单列），5排序/筛选、20滚轮、10次往返通过。Personal含图排序400保留原限制，不扩展修改原工程。
+- 恢复：两个前置失败保留；修正完整JSON协议/恢复003原LF后实际恢复到新库xe7b2ca498d31。原严格schema字符串比较的唯一数组cast表示差异保留FAIL；随后只读、精确等价检查68表/136对象/112CLEAN/5迁移PASS。未改变迁移回执、未再次恢复、未重建旧snapshot，未切恢复库应用登录。
+- 最终重开：`python3 var/light-truck-sheets-02-04/run-readback.py`，9ed实际run1791938988977234000，1 PASS/51.2s。正常登录后5组proof完整、颜色19图全解码、1440/1280/1024/390各全ID+首图，236浏览器API响应全200，业务写/page/console/blocked全0，来源89指纹不变。独立核查proof/SHA，root目视1440/390及照片实际截图。原两回读FAIL与IO中断/并发429无故障恢复证据的边界保留。
+- 运行身份：isolated local，http://127.0.0.1:3380，DB light_truck_sheets_20261013，Node同源代理→Web3382/API3381，2026-10-13T09:04:32.366624Z启动。API health与Web build-info于2026-10-14T00:54:17Z实际均回9ed、buildTime2026-10-13T08:31:30Z、release color-register-9ed0502b9e97。Web BUILD_ID rFFp9MNTrCAFZTphUKHKo；制品SHA详DELIVERY。无镜像/Nginx，本机remote commit不适用。
+- Placeholder扫描：本轮要求的rg扫描总12，全部明确测试/fixture白名单，运行实现0；git diff --check通过。环境证据不等于生产或产品通过。
+- 风险/未完成验证：SYSTEM_IME因工具两次策略拒绝NOT_VERIFIED；Excel产量历史副本44格2图部分通过、检验超时，整体Office NOT_VERIFIED；当前M1无旧领取/改派UI，不编造操作。未保存草稿仅当前页面内存，高级Excel图片效果不保证原样。
+- 最终决策：IMPLEMENTATION=COMPLETE，已列技术路径LOCAL_VERIFIED，ACCEPTANCE=NOT_FULLY_VERIFIED，AWAITING_PRODUCT_OWNER_CONFIRMATION。不推进生产/staging或下一轮；production/main/tag未改变，main仍41b4b166c587692e6f0fb9536dca2e1aab646c70。原始失败完整保留，未将未执行或SKIPPED改为PASS。
+
+
+## 2026-10-16 · 整合前主目录历史记录保留
+
+以下为主目录既有未提交台账的原文存档，只代表各条原记录时的状态；当前整合状态见本轮最新条目。
 
 ---
 

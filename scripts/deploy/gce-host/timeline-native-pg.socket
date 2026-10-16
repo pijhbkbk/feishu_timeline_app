@@ -1,0 +1,15 @@
+[Unit]
+DefaultDependencies=no
+Conflicts=shutdown.target
+Before=shutdown.target
+Description=Private native API PostgreSQL proxy socket
+Requires=sysinit.target timeline-native-network.service
+After=sysinit.target timeline-native-network.service postgresql.service
+
+[Socket]
+ListenStream=172.30.44.1:16432
+NoDelay=true
+Backlog=32
+
+[Install]
+WantedBy=multi-user.target

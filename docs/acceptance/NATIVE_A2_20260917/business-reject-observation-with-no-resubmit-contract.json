@@ -1,0 +1,195 @@
+{
+  "syntheticOnly": true,
+  "mode": "workflow",
+  "runtimeCommit": "6c70a897ec7643f4681616d801481765aaa8f7bc",
+  "startedAt": "2026-09-17T06:35:51.792Z",
+  "requests": [
+    {
+      "method": "GET",
+      "path": "/health",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/workflows/projects/cmu55i3l70025of01g9qay5fm",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/v2/tasks/cmu55i3lq002aof019gx0hd92/completion-preview",
+      "status": 201
+    },
+    {
+      "method": "POST",
+      "path": "/v2/tasks/cmu55i3lq002aof019gx0hd92/complete",
+      "status": 201
+    },
+    {
+      "method": "POST",
+      "path": "/v2/tasks/cmu55i3lq002aof019gx0hd92/complete",
+      "status": 201
+    },
+    {
+      "method": "GET",
+      "path": "/workflows/projects/cmu55i3l70025of01g9qay5fm",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/v2/projects/cmu55i3l70025of01g9qay5fm/workspace",
+      "status": 200
+    },
+    {
+      "method": "PATCH",
+      "path": "/v2/projects/cmu55i3l70025of01g9qay5fm/tasks/cmu55oj910065of01ikf3s8ns/assignment",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/workflows/tasks/cmu55oj910065of01ikf3s8ns/start",
+      "status": 403
+    },
+    {
+      "method": "GET",
+      "path": "/workflows/projects/cmu55i3l70025of01g9qay5fm",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/v2/tasks/cmu55oj910065of01ikf3s8ns/completion-preview",
+      "status": 201
+    },
+    {
+      "method": "POST",
+      "path": "/v2/tasks/cmu55oj910065of01ikf3s8ns/complete",
+      "status": 201
+    },
+    {
+      "method": "POST",
+      "path": "/v2/tasks/cmu55oj910065of01ikf3s8ns/complete",
+      "status": 201
+    },
+    {
+      "method": "GET",
+      "path": "/workflows/projects/cmu55i3l70025of01g9qay5fm",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/v2/projects/cmu55i3l70025of01g9qay5fm/workspace",
+      "status": 200
+    },
+    {
+      "method": "PATCH",
+      "path": "/v2/projects/cmu55i3l70025of01g9qay5fm/tasks/cmu55olfp006jof011yowgc9z/assignment",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/v2/tasks/cmu55olfp006jof011yowgc9z/completion-preview",
+      "status": 201
+    },
+    {
+      "method": "POST",
+      "path": "/v2/tasks/cmu55olfp006jof011yowgc9z/complete",
+      "status": 201
+    },
+    {
+      "method": "POST",
+      "path": "/v2/tasks/cmu55olfp006jof011yowgc9z/complete",
+      "status": 201
+    },
+    {
+      "method": "GET",
+      "path": "/workflows/projects/cmu55i3l70025of01g9qay5fm",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/v2/projects/cmu55i3l70025of01g9qay5fm/workspace",
+      "status": 200
+    },
+    {
+      "method": "PATCH",
+      "path": "/v2/projects/cmu55i3l70025of01g9qay5fm/tasks/cmu55omro006xof015ft90brl/assignment",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/projects/cmu55i3l70025of01g9qay5fm/samples",
+      "status": 201
+    },
+    {
+      "method": "POST",
+      "path": "/projects/cmu55i3l70025of01g9qay5fm/samples/confirm",
+      "status": 201
+    },
+    {
+      "method": "GET",
+      "path": "/workflows/projects/cmu55i3l70025of01g9qay5fm",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/auth/logout",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/auth/logout",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/auth/logout",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/auth/logout",
+      "status": 200
+    }
+  ],
+  "checks": [
+    {
+      "name": "workflow-initiation-native-admin",
+      "status": "PASS",
+      "completedAt": "2026-09-17T06:35:55.159Z"
+    },
+    {
+      "name": "workflow-report-native-engineer",
+      "status": "PASS",
+      "completedAt": "2026-09-17T06:35:56.941Z"
+    },
+    {
+      "name": "workflow-paint-first-submission",
+      "status": "PASS",
+      "completedAt": "2026-09-17T06:35:58.551Z"
+    }
+  ],
+  "status": "FAIL",
+  "failure": {
+    "type": "AssertionError",
+    "message": "active PAINT_DEVELOPMENT required"
+  }
+}

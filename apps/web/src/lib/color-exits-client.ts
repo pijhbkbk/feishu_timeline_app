@@ -1,8 +1,8 @@
 'use client';
 
 import {
+  isApprovedTeamUser,
   apiRequest,
-  type FrontendRoleCode,
   type SessionUser,
 } from './auth-client';
 import {
@@ -88,11 +88,6 @@ export type ColorExitFormInput = {
   replacementColorId: string;
 };
 
-const COLOR_EXIT_ROLE_CODES: FrontendRoleCode[] = [
-  'admin',
-  'project_manager',
-];
-
 export function fetchColorExitWorkspace(projectId: string) {
   return apiRequest<ColorExitWorkspaceResponse>(`/projects/${projectId}/color-exit`);
 }
@@ -148,15 +143,7 @@ export function validateColorExitForm(input: ColorExitFormInput) {
 }
 
 export function canManageColorExit(user: SessionUser | null) {
-  if (!user) {
-    return false;
-  }
-
-  if (user.isSystemAdmin || user.roleCodes.includes('admin')) {
-    return true;
-  }
-
-  return COLOR_EXIT_ROLE_CODES.some((roleCode) => user.roleCodes.includes(roleCode));
+  return isApprovedTeamUser(user);
 }
 
 export function canShowCompleteColorExitButton(

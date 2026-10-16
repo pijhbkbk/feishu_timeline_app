@@ -1,4 +1,5 @@
 import {
+  AttachmentScanStatus,
   PerformanceTestResult,
   PerformanceTestStatus,
 } from '@prisma/client';
@@ -49,6 +50,8 @@ export function getPerformanceTestSubmitIssue(input: {
   testedById: string | null;
   testedAt: Date | null;
   reportAttachmentId: string | null;
+  reportAttachmentScanStatus: AttachmentScanStatus | null;
+  reportAttachmentIsDeleted: boolean | null;
   sampleId: string | null;
   relatedObjectName: string | null;
 }) {
@@ -82,6 +85,13 @@ export function getPerformanceTestSubmitIssue(input: {
 
   if (!input.reportAttachmentId) {
     return '请先上传试验报告附件。';
+  }
+
+  if (
+    input.reportAttachmentScanStatus !== AttachmentScanStatus.CLEAN ||
+    input.reportAttachmentIsDeleted !== false
+  ) {
+    return '试验报告附件尚未通过安全扫描。';
   }
 
   return null;

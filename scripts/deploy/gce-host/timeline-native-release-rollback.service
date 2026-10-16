@@ -1,0 +1,15 @@
+[Unit]
+Description=Fixed native account program rollback without database restore
+Requires=timeline-native-cutover-recover.service timeline-native-network.service
+After=timeline-native-cutover-recover.service timeline-native-network.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 -I /usr/local/lib/timeline-native-ops/native_release.py rollback
+ExecStopPost=/usr/bin/python3 -I /usr/local/lib/timeline-native-ops/native_release.py recover
+TimeoutStartSec=360
+TimeoutStopSec=180
+KillMode=control-group
+UMask=0077
+MemoryMax=512M
+TasksMax=64

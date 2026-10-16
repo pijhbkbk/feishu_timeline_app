@@ -1,0 +1,79 @@
+{
+  "sourceCommit": "9ed0502b9e97e543dc5beea00998b5edc0bb0e67",
+  "evidence": "/private/tmp/light-truck-sheets-backup-evidence/light_truck_sheets_restore_20261013_xe7b2ca498d31/existing-restore-readonly-verification.json",
+  "evidenceSha256": "a1f04c4598104703e3e8823691a02602f689c8cf191e1a4cbb1adf6c73d64364",
+  "verificationStatus": "PASS",
+  "verificationKind": "READ_ONLY_EXISTING_RESTORE_WITH_ONE_EXACT_CATALOG_EQUIVALENCE",
+  "startedAtUtc": "2026-10-13T08:40:00.812240+00:00",
+  "completedAtUtc": "2026-10-13T08:40:04.313699+00:00",
+  "databasePair": {
+    "source": "light_truck_sheets_20261013",
+    "restored": "light_truck_sheets_restore_20261013_xe7b2ca498d31"
+  },
+  "verifierSha256": "10348992c4094698f242a23cd943d31ce3c6a3b54a6abac7755b00e33a79ea9d",
+  "helperSha256": "45ea09ea44f9c31f4a1331fc3d260f3ca1430ae875b84eea6db472f7ba9a1e53",
+  "originalEvidenceAndDumpHashesRechecked": {
+    "attempt.json": "7a336b6f199af8a725fe27a42a2f54ef6d48259e42a0b4faebbfd0a0f4092ec6",
+    "failure.json": "d31c686958649247e6de6d13cf2765327772b3b2552d21c48818309f1344d0f8",
+    "light_truck_sheets_20261013.dump": "8bfcddfb3f4c0846ac5e300d3c61eb3bf117f4b247f1f62c8b4fc14c9721cfec"
+  },
+  "publicTableCount": 68,
+  "rowFingerprintsEqual": true,
+  "schema": {
+    "originalSourceSchemaSha256": "4f559c3da208616855fe9a92de33a81439d4ce137d47e283cd06f53ac67f1fe9",
+    "originalRestoredSchemaSha256": "4edfafb4d3b981b8f61c5165d52abf93e81c927ea9f7d8e22af13ff74d6bf513",
+    "originalSchemaExactEquality": false,
+    "normalizedSourceSchemaSha256": "4f559c3da208616855fe9a92de33a81439d4ce137d47e283cd06f53ac67f1fe9",
+    "normalizedRestoredSchemaSha256": "4f559c3da208616855fe9a92de33a81439d4ce137d47e283cd06f53ac67f1fe9",
+    "normalizedSchemaEquality": true,
+    "allowedDifferences": [
+      {
+        "table": "sheet_images",
+        "constraint": "sheet_images_layout_check",
+        "source": {
+          "table": "sheet_images",
+          "name": "sheet_images_layout_check",
+          "type": "c",
+          "validated": true,
+          "deferrable": false,
+          "deferred": false,
+          "definition": "CHECK ((mode::text = ANY (ARRAY['CELL'::character varying, 'FLOATING'::character varying]::text[])) AND \"offsetX\" >= '-4096'::integer AND \"offsetX\" <= 4096 AND \"offsetY\" >= '-4096'::integer AND \"offsetY\" <= 4096 AND width >= 16 AND width <= 4096 AND height >= 16 AND height <= 4096 AND revision > 0)"
+        },
+        "restored": {
+          "table": "sheet_images",
+          "name": "sheet_images_layout_check",
+          "type": "c",
+          "validated": true,
+          "deferrable": false,
+          "deferred": false,
+          "definition": "CHECK ((mode::text = ANY (ARRAY['CELL'::character varying::text, 'FLOATING'::character varying::text])) AND \"offsetX\" >= '-4096'::integer AND \"offsetX\" <= 4096 AND \"offsetY\" >= '-4096'::integer AND \"offsetY\" <= 4096 AND width >= 16 AND width <= 4096 AND height >= 16 AND height <= 4096 AND revision > 0)"
+        },
+        "reason": "These two non-null varchar constants cast to text identically whether the array or each element is cast. All other syntax, bounds and metadata remain exact."
+      }
+    ],
+    "sectionCounts": {
+      "constraints": 252,
+      "indexes": 304,
+      "columns": 880,
+      "enums": 266
+    }
+  },
+  "fiveMigrationFileHashes": {
+    "202610130001_person_profiles": "10de1609f9fb3291081bb892562d1134e73c1b90d61a3692bcbbf4125be48a25",
+    "202610130002_sheet_images": "39e12d0699f4ddd75513149410800b11ee57b506d213160dedd70100d56c86ba",
+    "202610130003_inspection_facts": "32452ba385087b9affad18c64d7a5ce232b02479ba16240ec4116da61b89d7ca",
+    "202610130004_sheet_import_source": "06cd9dfe52e4e4a2f5f9707f45211c3f36fdaa1d827397e2accf13ae9a10e041",
+    "202610130005_person_import_identity": "97724588c540bc8a4d09a89475685958c90c2d5d61d109c3e95ebd92cf2b3a4c"
+  },
+  "objectCount": 136,
+  "objectInventorySha256": "ecfe23dc62c2d3a9484320be3c30f89936685b4b2c567c21c32f588a4d59b565",
+  "attachmentReferenceCheck": {
+    "liveCleanAttachments": 112,
+    "checksumsPresentAndVerified": 112,
+    "legacyWithoutChecksum": 0
+  },
+  "applicationSwitchPerformed": false,
+  "restoredApplicationLoginTested": false,
+  "originalExportedSnapshotBaselineReconstructed": false,
+  "reviewScope": "Read actual successful report and bind source/hash/retained original failure; no execution scripts changed, no DB/browser/restore or formal-repository write performed."
+}

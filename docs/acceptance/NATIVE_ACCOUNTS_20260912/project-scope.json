@@ -1,0 +1,12 @@
+{
+  "runtimeCommit": "1767dbb5eeb30cc57835081de761e1eccb8fac8b",
+  "environment": "isolated-loopback-only",
+  "requests": 14,
+  "newAccountWithoutRole": "DENIED_EVEN_FOR_OWN_PROJECT",
+  "assignedOwnProject": "PASS",
+  "crossProjectRead": "DENIED",
+  "crossProjectWrite": "DENIED_NO_DB_OR_AUDIT_CHANGE",
+  "projectListIsolation": "PASS",
+  "administratorAccountAndOrganizationReads": "PASS",
+  "roleGrantSource": "explicit synthetic database fixture, not admin UI proof"
+}

@@ -1,0 +1,102 @@
+{
+  "observedAt": "2026-09-17T07:42:29.293Z",
+  "toolCommit": "2846bc6bfe7243539cfefa06929520c51b3a7997",
+  "scope": [
+    "timeline-portable-d43c037a0022",
+    "timeline-portable-26c09e04e2c1",
+    "timeline-portable-4f0b74224e5e",
+    "timeline-portable-fa972abf9915"
+  ],
+  "action": "Normal stop only; named volumes and backup files preserved",
+  "containers": [
+    {
+      "name": "timeline-portable-fa972abf9915-redis-1",
+      "running": false,
+      "status": "exited",
+      "exitCode": 0,
+      "oomKilled": false,
+      "image": "sha256:1db42ccef14898aa29bae778452d567534b59c107129cbc1163fb552de184d3c"
+    },
+    {
+      "name": "timeline-portable-4f0b74224e5e-redis-1",
+      "running": false,
+      "status": "exited",
+      "exitCode": 0,
+      "oomKilled": false,
+      "image": "sha256:1db42ccef14898aa29bae778452d567534b59c107129cbc1163fb552de184d3c"
+    },
+    {
+      "name": "timeline-portable-4f0b74224e5e-postgres-1",
+      "running": false,
+      "status": "exited",
+      "exitCode": 0,
+      "oomKilled": false,
+      "image": "sha256:3b36dd7df1337107cef7502b1e3e94c971483ae87498a9310d25c60fba08cfc9"
+    },
+    {
+      "name": "timeline-portable-26c09e04e2c1-scanner-1",
+      "running": false,
+      "status": "exited",
+      "exitCode": 0,
+      "oomKilled": false,
+      "image": "sha256:17130f6532928a5b4b1272fc5129e5f2639850c0d8086879c516649d32fc8ae6"
+    },
+    {
+      "name": "timeline-portable-26c09e04e2c1-proxy-1",
+      "running": false,
+      "status": "exited",
+      "exitCode": 137,
+      "oomKilled": false,
+      "image": "sha256:872e6b8d0800546f51a986ddf03e0b5d2d65c250fa4911b95549c3774a72fc91"
+    },
+    {
+      "name": "timeline-portable-26c09e04e2c1-web-1",
+      "running": false,
+      "status": "exited",
+      "exitCode": 0,
+      "oomKilled": false,
+      "image": "sha256:b7b86f39893dce2e49a6f90f6f655e63cd0a4c4043735a5d0cb18ca9592a17e5"
+    },
+    {
+      "name": "timeline-portable-26c09e04e2c1-api-1",
+      "running": false,
+      "status": "exited",
+      "exitCode": 0,
+      "oomKilled": false,
+      "image": "sha256:872e6b8d0800546f51a986ddf03e0b5d2d65c250fa4911b95549c3774a72fc91"
+    },
+    {
+      "name": "timeline-portable-26c09e04e2c1-redis-1",
+      "running": false,
+      "status": "exited",
+      "exitCode": 0,
+      "oomKilled": false,
+      "image": "sha256:1db42ccef14898aa29bae778452d567534b59c107129cbc1163fb552de184d3c"
+    },
+    {
+      "name": "timeline-portable-26c09e04e2c1-postgres-1",
+      "running": false,
+      "status": "exited",
+      "exitCode": 0,
+      "oomKilled": false,
+      "image": "sha256:3b36dd7df1337107cef7502b1e3e94c971483ae87498a9310d25c60fba08cfc9"
+    },
+    {
+      "name": "timeline-portable-d43c037a0022-postgres-1",
+      "running": false,
+      "status": "exited",
+      "exitCode": 0,
+      "oomKilled": false,
+      "image": "sha256:3b36dd7df1337107cef7502b1e3e94c971483ae87498a9310d25c60fba08cfc9"
+    },
+    {
+      "name": "timeline-portable-d43c037a0022-redis-1",
+      "running": false,
+      "status": "exited",
+      "exitCode": 0,
+      "oomKilled": false,
+      "image": "sha256:1db42ccef14898aa29bae778452d567534b59c107129cbc1163fb552de184d3c"
+    }
+  ],
+  "allRunningContainerNames": []
+}

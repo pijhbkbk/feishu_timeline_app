@@ -1,0 +1,24 @@
+{
+  "runtimeCommit": "541b3dfff682aa29b49a96b251f0a084903c981a",
+  "sourceTree": "bc65d7145a498066556f2abc8d8619a6643dc325",
+  "independentRuntimeDiffReview": "PASS",
+  "independentEvidenceReview": "PASS",
+  "independentDriverReview": "PASS",
+  "reviewType": "Independent static diff and existing evidence review; not independent reexecution",
+  "operationsCommit": "0f4980733d6c1265f0677904a5aa4e3ac94776bc",
+  "driverSha256": "efb34d5a8ad8b2c36777f3fdc98e3c1f1eb155122ff9b146f4408a15265663cf",
+  "tests": {
+    "web": 309,
+    "api": 1356,
+    "separatelyExecutedPostgreSQL": 13,
+    "httpRequests": 48,
+    "compiledDtoAssertions": 32,
+    "operations": 129,
+    "fullApiCommandSkipped": 61,
+    "portable": 5,
+    "portableSkipped": 2
+  },
+  "unaffectedValidationReuse": "Final DTO follow-up did not change Web, migrations, hashing, rate limiting, or business rules; corresponding initial checks and real PostgreSQL service tests retained within their scopes.",
+  "failedCandidate": "6fd49d9a606ee357347ad7aaad5751c23e6e3260",
+  "failedCandidateProductionDeployed": false
+}

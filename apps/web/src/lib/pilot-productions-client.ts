@@ -1,8 +1,8 @@
 'use client';
 
 import {
+  isApprovedTeamUser,
   apiRequest,
-  type FrontendRoleCode,
   type SessionUser,
 } from './auth-client';
 import {
@@ -67,7 +67,7 @@ export type TrialProductionIssueRecord = {
   updatedAt: string;
 };
 
-export type TrialProductionRecord = {
+export type TrialProductionWorkspaceRecord = {
   id: string;
   productionPlanId: string | null;
   productionPlanNo: string | null;
@@ -83,6 +83,10 @@ export type TrialProductionRecord = {
   completedAt: string | null;
   createdAt: string;
   updatedAt: string;
+  issueCount: number;
+};
+
+export type TrialProductionDetailRecord = TrialProductionWorkspaceRecord & {
   issues: TrialProductionIssueRecord[];
 };
 
@@ -126,7 +130,7 @@ export type TrialProductionWorkspaceResponse = {
     status: FirstProductionPlanStatus;
     ownerName: string | null;
   }>;
-  items: TrialProductionRecord[];
+  items: TrialProductionWorkspaceRecord[];
 };
 
 export type FirstProductionPlanFormInput = {
@@ -156,12 +160,6 @@ export type TrialProductionIssueFormInput = {
   severity: TrialProductionIssueSeverity;
   responsibleDept: string;
 };
-
-const PILOT_PRODUCTION_MANAGEMENT_ROLE_CODES: FrontendRoleCode[] = [
-  'admin',
-  'project_manager',
-  'process_engineer',
-];
 
 const FIRST_PRODUCTION_PLAN_STATUS_LABELS: Record<
   FirstProductionPlanStatus,
@@ -273,7 +271,7 @@ export async function fetchTrialProductionWorkspace(projectId: string) {
 }
 
 export async function fetchTrialProductionDetail(projectId: string, trialId: string) {
-  return apiRequest<TrialProductionRecord>(
+  return apiRequest<TrialProductionDetailRecord>(
     `/projects/${projectId}/trial-productions/${trialId}`,
   );
 }
@@ -349,8 +347,8 @@ export async function completeTrialProductionTask(projectId: string) {
   );
 }
 
-export async function fetchPilotProductionPageOptions() {
-  return fetchUserDirectory();
+export async function fetchPilotProductionPageOptions(projectId: string) {
+  return fetchUserDirectory({ projectId });
 }
 
 export function getDefaultProductionOwnerId(
@@ -438,18 +436,10 @@ export function validateTrialProductionIssueForm(
   return null;
 }
 
-export function canManagePilotProductions(user: SessionUser | null) {
-  if (!user) {
-    return false;
-  }
-
-  if (user.isSystemAdmin) {
-    return true;
-  }
-
-  return user.roleCodes.some((roleCode) =>
-    PILOT_PRODUCTION_MANAGEMENT_ROLE_CODES.includes(roleCode),
-  );
+export function canManagePilotProductions(user: SessionUser | null, nodeCode?: 'FIRST_UNIT_PRODUCTION_PLAN' | 'TRIAL_PRODUCTION') {
+  // Both node types use team access; retain the argument for existing callers.
+  void nodeCode;
+  return isApprovedTeamUser(user);
 }
 
 export function canShowCompleteFirstProductionPlanTaskButton(
@@ -461,7 +451,7 @@ export function canShowCompleteFirstProductionPlanTaskButton(
   }
 
   return (
-    canManagePilotProductions(user) &&
+    canManagePilotProductions(user, workspace.activeTask.nodeCode === 'FIRST_UNIT_PRODUCTION_PLAN' ? 'FIRST_UNIT_PRODUCTION_PLAN' : 'TRIAL_PRODUCTION') &&
     canUserOperateWorkflowTask(user, workspace.activeTask)
   );
 }
@@ -475,7 +465,7 @@ export function canShowCompleteTrialProductionTaskButton(
   }
 
   return (
-    canManagePilotProductions(user) &&
+    canManagePilotProductions(user, workspace.activeTask.nodeCode === 'FIRST_UNIT_PRODUCTION_PLAN' ? 'FIRST_UNIT_PRODUCTION_PLAN' : 'TRIAL_PRODUCTION') &&
     canUserOperateWorkflowTask(user, workspace.activeTask)
   );
 }

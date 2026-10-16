@@ -1,3 +1,4 @@
+import { assertApprovedTeamMember, TEAM_BUSINESS_PERMISSIONS } from '../../common/team-membership';
 import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 
@@ -32,6 +33,11 @@ export class PermissionsGuard implements CanActivate {
 
     if (!user) {
       throw new ForbiddenException('请先登录后再操作。');
+    }
+
+    if (requiredPermissions.some(permission => (TEAM_BUSINESS_PERMISSIONS as readonly string[]).includes(permission))) {
+      assertApprovedTeamMember(user);
+      return true;
     }
 
     // Only the explicit super-administrator flag is an unconditional safety

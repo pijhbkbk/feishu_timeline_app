@@ -13,6 +13,7 @@ const { pathnameState, authState } = vi.hoisted(() => ({
       isSystemAdmin: true,
     } as {
       id: string;
+      authSource?: string;
       name: string;
       departmentName: string | null;
       roleCodes: string[];
@@ -96,7 +97,7 @@ describe('V2 account menu', () => {
     expect(html).toContain('李晓晨的账号信息');
   });
 
-  it('renders only the four retained product destinations', () => {
+  it('renders only the three product destinations', () => {
     const html = renderToStaticMarkup(
       <V2Shell>
         <p>页面内容</p>
@@ -107,13 +108,13 @@ describe('V2 account menu', () => {
     )?.[1];
 
     expect(primaryNavHtml).toBeDefined();
-    expect(primaryNavHtml?.match(/href="\/v2\/(?:dashboard|projects|tasks|admin)"/g)).toHaveLength(4);
+    expect(primaryNavHtml?.match(/href="\/v2\/(?:dashboard|projects|admin\/people)"/g)).toHaveLength(3);
     expect(primaryNavHtml?.match(/aria-current="page"/g)).toHaveLength(1);
     expect(primaryNavHtml).not.toContain('aria-disabled="true"');
     expect(primaryNavHtml).not.toContain('进展提交');
   });
 
-  it('maps the progress workflow to the retained task destination', () => {
+  it('maps the progress workflow to the my-work destination', () => {
     pathnameState.value = '/v2/progress';
 
     const html = renderToStaticMarkup(
@@ -123,13 +124,13 @@ describe('V2 account menu', () => {
     );
 
     expect(html).toContain(
-      'class="is-active" aria-current="page" aria-disabled="false" href="/v2/tasks"',
+      'class="is-active" aria-current="page" aria-disabled="false" href="/v2/dashboard"',
     );
     expect(html.match(/aria-current="page"/g)).toHaveLength(1);
     expect(html).not.toContain('进展提交');
   });
 
-  it('does not render protected navigation or business data before Feishu login', () => {
+  it('does not render protected navigation or business data before native login', () => {
     authState.user = null;
     authState.isAuthenticated = false;
 
@@ -140,10 +141,18 @@ describe('V2 account menu', () => {
     );
 
     expect(html).toContain('data-testid="r26-auth-redirect"');
-    expect(html).toContain('正在打开飞书登录');
+    expect(html).toContain('正在打开账号登录');
     expect(html).not.toContain('V2 主导航');
     expect(html).not.toContain('受保护的业务页面');
     expect(html).not.toContain('真实数据暂时不可用');
+  });
+
+  it('keeps a native account without granted roles in the account approval flow', () => {
+    authState.user = { id: 'new-user', name: '待授权', departmentName: null, roleCodes: [], isSystemAdmin: false, authSource: 'local' };
+    const html = renderToStaticMarkup(<V2Shell><p>受保护的业务页面</p></V2Shell>);
+    expect(html).toContain('账号尚未分配正式角色');
+    expect(html).not.toContain('V2 主导航');
+    expect(html).not.toContain('受保护的业务页面');
   });
 
   it('shows an authentication-specific retry when the session service fails', () => {

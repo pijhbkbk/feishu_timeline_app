@@ -22,7 +22,12 @@ for expected in \
   apps/web/src/app/layout.tsx \
   apps/web/src/middleware.ts \
   apps/web/next.config.ts \
-  apps/web/eslint.config.mjs; do
+  apps/web/eslint.config.mjs \
+  .github/workflows/ci.yml \
+  scripts/deploy/ops-check.sh \
+  scripts/load/r23-auth-common.js \
+  scripts/load/r23-build-k6-session.mjs \
+  scripts/security/list-sast-targets.sh; do
   grep -Fx "$expected" "$targets_file" >/dev/null \
     || fail "expected SAST target is missing: $expected"
 done
@@ -38,6 +43,135 @@ while IFS= read -r target; do
     fail "ignored or out-of-scope path leaked into the SAST target manifest: $target"
   fi
 done <"$targets_file"
+
+ci_workflow="$ROOT_DIR/.github/workflows/ci.yml"
+remote_uses_count=0
+while IFS= read -r uses_line; do
+  action_ref="$(printf '%s\n' "$uses_line" \
+    | sed -E 's/^[[:space:]]*(-[[:space:]]*)?uses:[[:space:]]*//; s/[[:space:]]+#.*$//; s/[[:space:]]+$//')"
+
+  case "$action_ref" in
+    ./*)
+      continue
+      ;;
+  esac
+
+  remote_uses_count=$((remote_uses_count + 1))
+  if [[ ! "$action_ref" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_./-]+@[0-9a-f]{40}$ ]]; then
+    fail "remote GitHub Action is not pinned to a lowercase 40-hex commit: $action_ref"
+  fi
+done < <(grep -E '^[[:space:]]*uses:' "$ci_workflow")
+
+[ "$remote_uses_count" -gt 0 ] \
+  || fail 'CI workflow does not contain any remote GitHub Actions to verify'
+
+checkout_steps=''
+if ! checkout_steps="$(awk '
+  function finish_checkout() {
+    if (in_checkout && !has_persist_credentials) {
+      invalid_checkout = 1
+    }
+  }
+
+  /^[[:space:]]+- name:/ {
+    finish_checkout()
+    in_checkout = 0
+    has_with = 0
+    with_indent = 0
+    has_persist_credentials = 0
+  }
+
+  /^[[:space:]]+uses:[[:space:]]+actions\/checkout@/ {
+    in_checkout = 1
+    checkout_count += 1
+  }
+
+  in_checkout && /^[[:space:]]+with:[[:space:]]*(#.*)?$/ {
+    match($0, /^[[:space:]]*/)
+    has_with = 1
+    with_indent = RLENGTH
+  }
+
+  in_checkout && has_with && /^[[:space:]]+persist-credentials:[[:space:]]+false([[:space:]]*(#.*)?)?$/ {
+    match($0, /^[[:space:]]*/)
+    if (RLENGTH > with_indent) {
+      has_persist_credentials = 1
+    }
+  }
+
+  END {
+    finish_checkout()
+    if (invalid_checkout) exit 1
+    print checkout_count + 0
+  }
+' "$ci_workflow")"; then
+  fail 'every actions/checkout step must set persist-credentials: false explicitly'
+fi
+
+[ "$checkout_steps" -gt 0 ] \
+  || fail 'CI workflow does not contain an actions/checkout step to verify'
+
+grep -F "configService.get<string>('frontendUrl')" \
+  "$ROOT_DIR/apps/api/src/main.ts" >/dev/null \
+  || fail 'API bootstrap does not consume the validated frontendUrl from ConfigService'
+if grep -F 'process.env.FRONTEND_URL' "$ROOT_DIR/apps/api/src/main.ts" >/dev/null; then
+  fail 'API bootstrap bypasses protected FRONTEND_URL validation through process.env'
+fi
+
+# The first-party allowlist is intentionally exhaustive for authored executable
+# and source extensions. The only generated TypeScript exclusion currently in
+# the allowlist is Next.js' tracked next-env.d.ts declaration.
+expected_targets="$TMP_DIR/expected-targets.txt"
+sorted_targets="$TMP_DIR/sorted-targets.txt"
+: >"$expected_targets"
+while IFS= read -r -d '' candidate; do
+  case "$candidate" in
+    */node_modules/*|*/.next/*|*/dist/*|*/build/*|*/coverage/*|*/generated/*|*/__generated__/*|*/playwright-report/*|*/test-results/*|*.tsbuildinfo|*/next-env.d.ts)
+      continue
+      ;;
+  esac
+
+  case "$candidate" in
+    .github/workflows/*)
+      case "$candidate" in
+        *.yml|*.yaml)
+          printf '%s\n' "$candidate" >>"$expected_targets"
+          ;;
+      esac
+      ;;
+    apps/web/*|apps/api/*|apps/api-ops/*|packages/shared/*|deploy/*|scripts/*)
+      case "$candidate" in
+        *.sh|*.js|*.jsx|*.mjs|*.cjs|*.ts|*.tsx|*.mts|*.cts|*.py|tsconfig*.json|*/tsconfig*.json)
+          printf '%s\n' "$candidate" >>"$expected_targets"
+          ;;
+      esac
+      ;;
+    eslint.config.mjs|tsconfig*.json)
+      printf '%s\n' "$candidate" >>"$expected_targets"
+      ;;
+  esac
+done < <(git -C "$ROOT_DIR" ls-files --cached --others --exclude-standard -z)
+
+LC_ALL=C sort -u "$expected_targets" -o "$expected_targets"
+LC_ALL=C sort -u "$targets_file" >"$sorted_targets"
+if ! cmp -s "$expected_targets" "$sorted_targets"; then
+  comm -23 "$expected_targets" "$sorted_targets" >&2 || true
+  comm -13 "$expected_targets" "$sorted_targets" >&2 || true
+  fail 'SAST target manifest does not exactly cover the approved first-party source allowlist'
+fi
+
+# Dockerfiles and Prisma schemas remain mandatory company-package inputs, but
+# they are not claimed as Semgrep targets until pinned language-specific rules
+# are approved. Docker runtime risk and Prisma schema validity use their
+# separate image/config and prisma:validate gates.
+for separate_gate_input in \
+  apps/api/Dockerfile \
+  apps/web/Dockerfile \
+  apps/api/prisma/schema.prisma; do
+  if grep -Fx "$separate_gate_input" "$targets_file" >/dev/null; then
+    fail "separate-gate input was incorrectly claimed as a Semgrep target: $separate_gate_input"
+  fi
+done
 
 safe_build="$TMP_DIR/safe/.next"
 mkdir -p "$safe_build/server" "$safe_build/static/chunks"
@@ -56,6 +190,31 @@ if SECURITY_REPORT_DIR="$TMP_DIR/unsafe-report" \
   >/dev/null 2>&1; then
   fail 'development eval-source-map artifact was accepted'
 fi
+
+# Hidden standalone dependencies, server output and maps are shipped too.
+for artifact_path in \
+  'server/app.js' 'static/chunks/app.js.map' \
+  'standalone/node_modules/.pnpm/vendor/node_modules/vendor/index.cjs'; do
+  mkdir -p "$(dirname "$safe_build/$artifact_path")"
+  printf '//# sourceURL=webpack-internal:///synthetic-test\n' >"$safe_build/$artifact_path"
+  artifact_rc=0
+  SECURITY_REPORT_DIR="$TMP_DIR/complete-artifact-report" \
+    "$ROOT_DIR/scripts/security/check-production-build-artifacts.sh" "$safe_build" \
+    >/dev/null 2>&1 || artifact_rc=$?
+  [ "$artifact_rc" -eq 1 ] || fail "shipped artifact was not rejected: $artifact_path"
+  rm "$safe_build/$artifact_path"
+done
+mkdir -p "$TMP_DIR/scanner-failure-bin"
+for failed_tool in find grep; do
+  printf '#!/usr/bin/env bash\nexit 2\n' >"$TMP_DIR/scanner-failure-bin/$failed_tool"
+  chmod +x "$TMP_DIR/scanner-failure-bin/$failed_tool"
+  artifact_rc=0
+  PATH="$TMP_DIR/scanner-failure-bin:$PATH" SECURITY_REPORT_DIR="$TMP_DIR/tool-error-report" \
+    "$ROOT_DIR/scripts/security/check-production-build-artifacts.sh" "$safe_build" \
+    >/dev/null 2>&1 || artifact_rc=$?
+  [ "$artifact_rc" -eq 2 ] || fail "artifact $failed_tool error did not fail closed"
+  rm "$TMP_DIR/scanner-failure-bin/$failed_tool"
+done
 
 cat >"$TMP_DIR/semgrep-pass.json" <<'JSON'
 {"results":[],"errors":[]}
@@ -221,6 +380,20 @@ grep -Fx 'TOOL_ERROR' "$TMP_DIR/secrets-tool-error/gitleaks-current.status" >/de
   || fail 'current-tree Gitleaks tool failure status was not recorded'
 grep -Fx 'TOOL_ERROR' "$TMP_DIR/secrets-tool-error/gitleaks-history.status" >/dev/null \
   || fail 'history Gitleaks tool failure status was not recorded'
+
+grep -Fx "HEAD baseline commit: $(git -C "$ROOT_DIR" rev-parse HEAD)" "$TMP_DIR/secrets-tool-error.md" >/dev/null \
+  || fail 'secrets report does not bind the full source commit'
+grep -Fx "HEAD baseline tree: $(git -C "$ROOT_DIR" rev-parse HEAD^{tree})" "$TMP_DIR/secrets-tool-error.md" >/dev/null \
+  || fail 'secrets report does not bind the full source tree'
+grep -Fx 'Execution mode: native' "$TMP_DIR/secrets-tool-error.md" >/dev/null \
+  || fail 'native execution mode is missing from secrets report'
+grep -Fx 'Scanner: `native Gitleaks 8.30.1`' "$TMP_DIR/secrets-tool-error.md" >/dev/null \
+  || fail 'native scanner was misreported as a Docker image'
+[ -s "$TMP_DIR/secrets-tool-error/current-tree-sha256.txt" ] \
+  || fail 'current scan snapshot content manifest is missing'
+expected_snapshot_hash="$(node -e "const fs=require('node:fs');process.stdout.write(require('node:crypto').createHash('sha256').update(fs.readFileSync(process.argv[1])).digest('hex'))" "$TMP_DIR/secrets-tool-error/current-tree-sha256.txt")"
+grep -Fx "Current candidate snapshot SHA-256: $expected_snapshot_hash" "$TMP_DIR/secrets-tool-error.md" >/dev/null \
+  || fail 'current scan snapshot digest does not match the file content manifest'
 
 cat >"$fake_bin/gitleaks" <<'SH'
 #!/usr/bin/env bash
@@ -545,3 +718,5 @@ grep -Fx 'TOOL_ERROR' "$TMP_DIR/zap-tool-error-run/zap-baseline.status" >/dev/nu
   || fail 'stale ZAP JSON report survived a failed scan'
 
 printf 'PASS: security gate regression tests\n'
+
+node --test "$ROOT_DIR/scripts/security/tests/r24b-loopback.test.mjs"

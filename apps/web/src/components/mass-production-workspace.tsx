@@ -4,6 +4,7 @@ import Link from 'next/link';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 import { useAuth } from './auth-provider';
+import { canUserOperateWorkflowTask } from '../lib/workflows-client';
 import {
   canManageMassProductions,
   canShowCompleteMassProductionTaskButton,
@@ -64,7 +65,7 @@ export function MassProductionWorkspace({
     void loadWorkspace({ initial: true });
   }, [projectId]);
 
-  const canManage = canManageMassProductions(user);
+  const canManage = canManageMassProductions(user) && Boolean(workspace?.activeTask && canUserOperateWorkflowTask(user, workspace.activeTask));
   const isReadOnly = !workspace?.activeTask;
   const highlights = workspace ? getMassProductionWorkspaceHighlights(workspace) : null;
 
@@ -104,7 +105,7 @@ export function MassProductionWorkspace({
     try {
       const [nextWorkspace, nextOwners] = await Promise.all([
         fetchMassProductionWorkspace(projectId),
-        fetchMassProductionPageOptions(),
+        fetchMassProductionPageOptions(projectId),
       ]);
 
       if (requestId !== requestIdRef.current) {
