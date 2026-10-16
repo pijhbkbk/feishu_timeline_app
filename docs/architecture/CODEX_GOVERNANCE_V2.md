@@ -14,7 +14,7 @@ immutable baseline
 → G1/G2
 → independent G4_DIFF
 → approved batch G3
-→ milestone G4_COMPONENT / final G4_FULL
+→ externally supplied component/full evidence when required
 → authorized G5
 ```
 
@@ -25,7 +25,7 @@ immutable baseline
 3. `docs/templates/TASK_CONTRACT.md`：一次任务的 scope、权限、Gate、模型、预算和停止条件。
 4. `docs/security/FINDINGS.yaml`：唯一 Finding Ledger。
 5. `docs/security/FINDINGS.schema.yaml`：Draft 2020-12 可校验结构 schema。
-6. `docs/gates/VERIFICATION_GATES.md`：G0、G1、G2、G3、G4_DIFF、G4_COMPONENT、G4_FULL、G5。
+6. `docs/gates/VERIFICATION_GATES.md`：可执行 Gate 为 G0、G1、G2、G3、G4_DIFF、G5；`G4_COMPONENT`、`G4_FULL` 只保留为不可变外部证据或历史非规范分类。
 7. `docs/rounds/` 与 handoff：当前轮次事实和临时禁止回退项。
 
 R27 当前“不得改写已验收 R26 产品语义”等约束继续由 `docs/rounds/R27.md` 和最新 handoff 管理，不进入永久根规则。
@@ -52,18 +52,20 @@ PRODUCTION_ACCESS_ALLOWED
 - `READ_ONLY`：状态核对、调查和比较；默认不写 handoff。
 - `DOCS_ONLY`：治理文档或提示词变更；G0–G1。
 - `LOCAL_CODE`：局部普通实现；G0–G2。
-- `SECURITY_REVIEW`：只读 G4_DIFF / G4_COMPONENT / G4_FULL。
+- `SECURITY_REVIEW`：在 `STANDARD_CODEX_ONLY_V1` 下只执行只读 `G4_DIFF`，并可核验外部提供的 component/full evidence；不得执行 `G4_COMPONENT` 或 `G4_FULL`。
 - `SECURITY_FIX`：有界 patch；默认 G0–G2，随后独立 G4_DIFF。
-- `SCHEMA_OR_DEPENDENCY`：批准的 G3 和必要的 `G4_DIFF` / `G4_COMPONENT`。
+- `SCHEMA_OR_DEPENDENCY`：批准的 G3 和必要的 `G4_DIFF`；如 closure criterion 需要 component/full evidence，只能使用外部提供的证据。
 - `RELEASE`：只有明确授权才进入 G5。
 
 ## 5. Gate 架构
 
 - G3 只用于产品负责人批准的批次闭合、里程碑 candidate 或公共控制平面变化。小 patch、commit 和 cherry-pick 不自动触发。
 - `G4` 不是 Contract 标识：
-  - `G4_DIFF`：exact diff，Critical/High 和高风险边界必须独立审查；
-  - `G4_COMPONENT`：明确组件，只读、固定 scope 和预算；
-  - `G4_FULL`：clean immutable commit，全仓只读、高成本批准。
+  - `G4_DIFF`：可执行的被动/本地 exact-diff 审查；Critical/High 和高风险边界必须独立审查；
+  - `G4_COMPONENT`：明确组件的外部证据分类，不是可执行 Codex Gate；
+  - `G4_FULL`：clean immutable candidate 的外部证据分类，不是可执行 Codex Gate。
+- `G4_COMPONENT` 和 `G4_FULL` 只分类不可变外部证据。owner 授权、模型、预算、prompt、嵌套 `AGENTS.md`、推理级别或 subagent 均不能使其可由 Codex 执行。
+- Standard Codex 可只读核验外部报告的 commit/tree、scope、tool/image/rule、command、environment、timestamp、结构和结果 hash，但不得执行 component/full scan。
 - Gate 只验证，不授予 stage/commit/push/merge/tag/deploy 权限。
 
 ## 6. Finding 控制平面
@@ -95,7 +97,7 @@ MAX_MODEL: gpt-5.6-terra | gpt-5.6-sol
 MAX_REASONING: low | medium | high | xhigh | ultra
 ```
 
-默认 `gpt-5.6-terra / medium`；复杂安全根因可提高到 `gpt-5.6-sol / high|xhigh`。Ultra、subagents、G4_COMPONENT 和 G4_FULL 必须有批准 ID、理由、并发、discovery、tool-call、wall-clock 和周额度占比上限。
+默认 `gpt-5.6-terra / medium`；复杂安全根因可提高到 `gpt-5.6-sol / high|xhigh`。模型、推理级别、Ultra、subagent、批准 ID 或预算只能收窄已允许的执行范围，不能扩大 `STANDARD_CODEX_ONLY_V1` 的固定能力上限，也不能授权 Codex 执行 `G4_COMPONENT` 或 `G4_FULL`。
 
 ## 9. Handoff 与 Ledger
 
@@ -105,14 +107,17 @@ MAX_REASONING: low | medium | high | xhigh | ultra
 
 ## 10. R27 当前实施顺序
 
+本节保留 R27 历史任务名称以说明实施次序，属于历史非规范记录，不授予执行权限。
+
 1. R27B governance 修订并通过 owner review；
 2. 在批准后形成治理 commit；
 3. 建立唯一 integration branch；
 4. Reviews、Samples、StandardBoards 逐组迁移和独立 G4_DIFF；
 5. clean candidate 上执行批准的 G3；
-6. 组件审查后，在最终 immutable commit 上执行一次 G4_FULL；
-7. 最后进入获准的 staging/private-cloud G5；
-8. main、production、tag 保持独立授权。
+6. closure criterion 要求 component/full evidence 时，绑定外部提供且与 exact immutable candidate 一致的报告，不由 Codex 执行对应扫描；
+7. 缺失证据记录 `EXTERNAL_EVIDENCE_REQUIRED`；blocked、unavailable、empty、stale 或 malformed evidence 均不得记为 PASS；
+8. 最后进入获准的 staging/private-cloud G5；
+9. main、production、tag 保持独立授权。
 
 ## 11. 文件清单
 

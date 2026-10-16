@@ -120,11 +120,14 @@ closed
 
 ## 9. 扫描与修复边界
 
-- `G4_DIFF`：exact patch/commit/branch，只读；默认独立任务或审查者。
-- `G4_COMPONENT`：明确目录/组件，只读；需要固定 scope、授权和预算。
-- `G4_FULL`：clean immutable commit，全仓只读；需要 full-scan 高成本批准和预算上限。
-- Security scan、triage、patch、independent verification、full regression 和 release 分开执行。
+- `G4_DIFF`：在明确的 standard-Codex Task Contract 下可执行；仅对 exact patch/commit/branch 做只读、被动/本地审查，默认由独立任务或审查者完成。
+- `G4_COMPONENT`：只作为外部证据分类。Standard Codex 可核验已提供报告的 identity、scope、immutable commit/tree、tool/image/rule identity、command、environment、timestamp、report structure 和 result hash，但不得执行 component scan。
+- `G4_FULL`：只作为 clean immutable candidate 的外部证据分类。Standard Codex 可核验已提供 full report 的 identity 与完整性，但不得执行 full scan。
+- 必需证据缺失或无效时，必须保留准确的非 PASS 状态，包括 `EXTERNAL_EVIDENCE_REQUIRED`、`BLOCKED_BY_PLATFORM_POLICY`、`BLOCKED_BY_STANDARD_CODEX_PROFILE`、`TOOL_ERROR`、`NOT_RUN`、`INVALID`、`STALE` 或 `UNBOUND`。
+- External scan evidence、triage、repair、`G4_DIFF`、regression、Git operations 和 release 分别授权；任何一项都不自动授予另一项。
 - 扫描任务不自动修复；接受 finding 后另开 `SECURITY_FIX`。
+- 禁止 Codex 执行 repository cybersecurity scanner 不会降低认证、授权、上传保护、保密、审计、资源边界、依赖安全或 release integrity 的产品要求。
+- 本文件中的应用恶意文件 Scanner、附件 scan state 和 Scanner trust boundary 是产品运行时概念，不构成 Codex 执行 repository cybersecurity scanner 的权限。
 - 局部 PASS 不得表述为全源 0C/0H/0M 或 security clearance。
 
 ## 10. 默认排除与授权
