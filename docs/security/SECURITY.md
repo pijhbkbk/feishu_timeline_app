@@ -16,7 +16,7 @@ Security Invariants: docs/security/SECURITY_INVARIANTS.md
 
 ## 2. 关键资产
 
-- 飞书 OAuth 身份、session、Cookie、state、token/ticket 缓存；
+- 本地原生账号、密码哈希、恢复码、session 与 Cookie；隔离保留的旧 OAuth state/token 仍按敏感数据保护；
 - 项目、流程、评审、附件、收费、排产、批产、月度评审和颜色退出数据；
 - 角色、部门、项目成员、管理员与对象级数据范围；
 - 附件对象存储、quarantine/scan 状态和下载授权；
@@ -27,7 +27,7 @@ Security Invariants: docs/security/SECURITY_INVARIANTS.md
 ## 3. 主要信任边界
 
 ```text
-Browser / Feishu H5
+Browser
         ↓
 Next.js Web
         ↓
@@ -42,7 +42,7 @@ CI/CD / Nginx / systemd / private-cloud runtime
 
 还包括：
 
-- 飞书开放平台与本系统之间的 OAuth/JSAPI 边界；
+- 浏览器与本系统之间的注册、密码登录、恢复及会话边界；OAuth/JSAPI 仅为隔离旧代码，不是当前身份前提；
 - 用户上传内容与受信任运行时之间的文件边界；
 - 应用用户与管理员、项目与项目、部门与部门之间的数据范围边界；
 - Git source tree、构建产物、部署 controller 和 root 权限之间的供应链边界；
@@ -52,13 +52,13 @@ CI/CD / Nginx / systemd / private-cloud runtime
 
 - 默认所有 API 受认证保护；所有业务写接口必须认证，绝无 public allowlist 例外。
 - Public allowlist 只允许以下经审计类别：
-  1. OAuth/飞书认证 bootstrap；
-  2. OAuth/飞书 callback；
+  1. 有界本地注册与密码登录；
+  2. 有界账号恢复；旧 OAuth bootstrap/callback 不因历史例外重新激活；
   3. 返回非敏感信息的 health/readiness；
   4. 产品负责人和安全负责人明确批准的只读公共元数据。
 - 每项 public 例外必须精确记录：HTTP method、route、业务目的、允许输入、允许输出、rate/resource bound、责任人、批准依据、复核日期和负向测试。
 - 禁止使用宽泛前缀、Controller 级整组豁免、环境变量隐式放开或“内部接口”作为 public 依据。
-- public callback 只能完成认证交换，不得直接执行一般业务写入或绕过后续授权。
+- public 认证入口只能完成对应的身份与会话操作，不得直接执行一般业务写入或绕过后续授权。
 
 ## 5. 必须报告的 Finding
 
