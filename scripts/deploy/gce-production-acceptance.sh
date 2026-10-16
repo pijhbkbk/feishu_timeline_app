@@ -333,34 +333,44 @@ printf 'service_postgresql=%s\n' "$(systemctl is-active postgresql)"
 printf 'service_redis=%s\n' "$(systemctl is-active redis-server)"
 printf 'postgres_ready=%s\n' "$(pg_isready -h localhost -p 5432 >/dev/null 2>&1 && echo yes || echo no)"
 printf 'redis_ping=%s\n' "$(redis-cli ping 2>/dev/null || true)"
-printf 'env_api_mode=%s\n' "$(stat -c '%a' /opt/feishu_timeline_app/apps/api/.env.production)"
-printf 'env_web_mode=%s\n' "$(stat -c '%a' /opt/feishu_timeline_app/apps/web/.env.production)"
-printf 'runtime_commit=%s\n' "$(git -C /opt/feishu_timeline_app rev-parse HEAD)"
+printf 'env_api_mode=%s\n' "$(stat -c '%a' /etc/feishu-timeline/api.env)"
+printf 'env_web_mode=%s\n' "$(stat -c '%a' /etc/feishu-timeline/web.env)"
+printf 'env_api_owner=%s\n' "$(stat -c '%U:%G' /etc/feishu-timeline/api.env)"
+printf 'env_web_owner=%s\n' "$(stat -c '%U:%G' /etc/feishu-timeline/web.env)"
+printf 'env_parent_owner_mode=%s\n' "$(stat -c '%U:%G:%a' /etc/feishu-timeline)"
+printf 'web_can_read_api_env=%s\n' "$(sudo -u feishu-timeline-web test -r /etc/feishu-timeline/api.env && echo yes || echo no)"
+printf 'api_can_read_web_env=%s\n' "$(sudo -u feishu-timeline-api test -r /etc/feishu-timeline/web.env && echo yes || echo no)"
+printf 'api_runtime_shell=%s\n' "$(getent passwd feishu-timeline-api | awk -F: '{print $7}')"
+printf 'web_runtime_shell=%s\n' "$(getent passwd feishu-timeline-web | awk -F: '{print $7}')"
+printf 'release_owner=%s\n' "$(stat -c '%U:%G' "$(readlink -f /opt/feishu_timeline_app/current)")"
+printf 'api_can_write_release=%s\n' "$(sudo -u feishu-timeline-api test -w "$(readlink -f /opt/feishu_timeline_app/current)" && echo yes || echo no)"
+printf 'web_can_write_release=%s\n' "$(sudo -u feishu-timeline-web test -w "$(readlink -f /opt/feishu_timeline_app/current)" && echo yes || echo no)"
+printf 'runtime_commit=%s\n' "$(basename "$(readlink -f /opt/feishu_timeline_app/current)")"
 
-if grep -F 'AdminControlCenter' /opt/feishu_timeline_app/apps/web/src/app/admin/\[section\]/page.tsx >/dev/null 2>&1 &&
-  ! grep -E 'PagePlaceholder|已创建骨架|后续按权限展示' /opt/feishu_timeline_app/apps/web/src/app/admin/\[section\]/page.tsx >/dev/null 2>&1; then
+if grep -F 'AdminControlCenter' /opt/feishu_timeline_app/current/apps/web/src/app/admin/\[section\]/page.tsx >/dev/null 2>&1 &&
+  ! grep -E 'PagePlaceholder|已创建骨架|后续按权限展示' /opt/feishu_timeline_app/current/apps/web/src/app/admin/\[section\]/page.tsx >/dev/null 2>&1; then
   echo 'admin_route_real=yes'
 else
   echo 'admin_route_real=no'
 fi
 
-if [ -f /opt/feishu_timeline_app/apps/web/src/components/admin-control-center.tsx ]; then
+if [ -f /opt/feishu_timeline_app/current/apps/web/src/components/admin-control-center.tsx ]; then
   echo 'admin_web_source=yes'
 else
   echo 'admin_web_source=no'
 fi
 
-if [ -f /opt/feishu_timeline_app/apps/api/src/modules/admin/admin-control-center.controller.ts ]; then
+if [ -f /opt/feishu_timeline_app/current/apps/api/src/modules/admin/admin-control-center.controller.ts ]; then
   echo 'admin_api_source=yes'
 else
   echo 'admin_api_source=no'
 fi
 
 admin_placeholder_build_count="$(
-  if [ -d /opt/feishu_timeline_app/apps/web/.next/server/app/admin ]; then
+  if [ -d /opt/feishu_timeline_app/current/apps/web/.next/server/app/admin ]; then
     placeholder_files="$(
       grep -RIlE '已创建骨架|后续按权限展示|Coming soon|Demo only|暂未实现' \
-        /opt/feishu_timeline_app/apps/web/.next/server/app/admin 2>/dev/null || true
+        /opt/feishu_timeline_app/current/apps/web/.next/server/app/admin 2>/dev/null || true
     )"
     printf '%s\n' "$placeholder_files" | awk 'NF' | wc -l
   else
@@ -375,36 +385,26 @@ else
   echo 'nginx_test=fail'
 fi
 
-python3 - <<'PY'
-from pathlib import Path
-import shlex
-
-def load_env(path: Path) -> dict[str, str]:
-    data: dict[str, str] = {}
-    if not path.exists():
-        return data
-    for line in path.read_text().splitlines():
-        s = line.strip()
-        if not s or s.startswith('#') or '=' not in s:
-            continue
-        key, value = s.split('=', 1)
-        try:
-            parsed = shlex.split(value)
-            data[key] = parsed[0] if parsed else ''
-        except ValueError:
-            data[key] = value
-    return data
-
-api_data = load_env(Path('/opt/feishu_timeline_app/apps/api/.env.production'))
-
-for key in ('DEPLOYMENT_ENV', 'FRONTEND_URL', 'FEISHU_REDIRECT_URI', 'OAUTH_PROVIDER', 'FEISHU_AUTHORIZATION_ENDPOINT', 'AUTH_MOCK_ENABLED', 'REDIS_URL', 'DATABASE_URL'):
-    print(f'env_{key}={"set" if api_data.get(key) else "missing"}')
-    if key in {'DEPLOYMENT_ENV', 'FRONTEND_URL', 'FEISHU_REDIRECT_URI', 'OAUTH_PROVIDER', 'FEISHU_AUTHORIZATION_ENDPOINT', 'AUTH_MOCK_ENABLED'} and api_data.get(key):
-        print(f'value_{key}={api_data[key]}')
-
-print(f'placeholder_FEISHU_APP_ID={"true" if api_data.get("FEISHU_APP_ID") == "your_feishu_app_id" else "false"}')
-print(f'placeholder_FEISHU_APP_SECRET={"true" if api_data.get("FEISHU_APP_SECRET") == "your_feishu_app_secret" else "false"}')
-PY
+dotenv_data_tool=/usr/local/libexec/feishu-timeline/dotenv-data
+api_env_file=/etc/feishu-timeline/api.env
+sudo /usr/bin/python3 -I "$dotenv_data_tool" validate --profile api "$api_env_file"
+for key in DEPLOYMENT_ENV FRONTEND_URL FEISHU_REDIRECT_URI OAUTH_PROVIDER FEISHU_AUTHORIZATION_ENDPOINT AUTH_MOCK_ENABLED REDIS_URL DATABASE_URL; do
+  value="$(sudo /usr/bin/python3 -I "$dotenv_data_tool" get --profile api "$api_env_file" "$key" 2>/dev/null || true)"
+  if [ -n "$value" ]; then
+    printf 'env_%s=set\n' "$key"
+    case "$key" in
+      DEPLOYMENT_ENV|FRONTEND_URL|FEISHU_REDIRECT_URI|OAUTH_PROVIDER|FEISHU_AUTHORIZATION_ENDPOINT|AUTH_MOCK_ENABLED)
+        printf 'value_%s=%s\n' "$key" "$value"
+        ;;
+    esac
+  else
+    printf 'env_%s=missing\n' "$key"
+  fi
+done
+feishu_app_id="$(sudo /usr/bin/python3 -I "$dotenv_data_tool" get --profile api "$api_env_file" FEISHU_APP_ID 2>/dev/null || true)"
+feishu_app_secret="$(sudo /usr/bin/python3 -I "$dotenv_data_tool" get --profile api "$api_env_file" FEISHU_APP_SECRET 2>/dev/null || true)"
+printf 'placeholder_FEISHU_APP_ID=%s\n' "$([ "$feishu_app_id" = your_feishu_app_id ] && echo true || echo false)"
+printf 'placeholder_FEISHU_APP_SECRET=%s\n' "$([ "$feishu_app_secret" = your_feishu_app_secret ] && echo true || echo false)"
 REMOTE
 )"
 
@@ -469,18 +469,39 @@ else
 fi
 
 api_env_mode="$(remote_value env_api_mode)"
-if [ "$api_env_mode" = "600" ]; then
-  add_result "env_api_mode" "600" "$api_env_mode" "PASS"
+if [ "$api_env_mode" = "640" ]; then
+  add_result "env_api_mode" "640 root:app-group" "$api_env_mode" "PASS"
 else
-  add_result "env_api_mode" "600" "${api_env_mode:-<missing>}" "FAIL"
+  add_result "env_api_mode" "640 root:app-group" "${api_env_mode:-<missing>}" "FAIL"
 fi
 
 web_env_mode="$(remote_value env_web_mode)"
-if [ "$web_env_mode" = "600" ]; then
-  add_result "env_web_mode" "600" "$web_env_mode" "PASS"
+if [ "$web_env_mode" = "640" ]; then
+  add_result "env_web_mode" "640 root:app-group" "$web_env_mode" "PASS"
 else
-  add_result "env_web_mode" "600" "${web_env_mode:-<missing>}" "FAIL"
+  add_result "env_web_mode" "640 root:app-group" "${web_env_mode:-<missing>}" "FAIL"
 fi
+
+for ownership_check in \
+  'env_api_owner|root:feishu-timeline-api' \
+  'env_web_owner|root:feishu-timeline-web' \
+  'env_parent_owner_mode|root:root:755' \
+  'web_can_read_api_env|no' \
+  'api_can_read_web_env|no' \
+  'api_runtime_shell|/usr/sbin/nologin' \
+  'web_runtime_shell|/usr/sbin/nologin' \
+  'release_owner|root:root' \
+  'api_can_write_release|no' \
+  'web_can_write_release|no'; do
+  check_name="${ownership_check%%|*}"
+  expected_value="${ownership_check#*|}"
+  actual_value="$(remote_value "$check_name")"
+  if [ "$actual_value" = "$expected_value" ]; then
+    add_result "$check_name" "$expected_value" "$actual_value" "PASS"
+  else
+    add_result "$check_name" "$expected_value" "${actual_value:-<missing>}" "FAIL"
+  fi
+done
 
 deployment_environment="$(remote_value value_DEPLOYMENT_ENV)"
 if [ "$deployment_environment" = "production" ]; then

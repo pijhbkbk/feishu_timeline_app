@@ -7324,3 +7324,246 @@ TAG_UNCHANGED
 BLOCKER_REPORT
 STOP
 ```
+
+---
+
+### Round R27A Confirmed Security Findings Remediation（2026-08-11）
+
+#### Authorization And Stop Boundary
+
+产品负责人要求停止等待 Docker Hub，不执行第三次 Semgrep；先修复人工数据流、SCA 和镜像扫描
+已经确认的问题，完成后停止在 `AWAITING_R27A_REVIEW`，不得自动进入 R27B。
+
+执行边界：
+
+```text
+worktree=/Users/lixiaochen/Downloads/feishu_timeline_app-r27-security
+branch=security/r27-final-source-clearance
+start_evidence_commit=16c1a9d0844f0a648866462544d91e7926760f97
+r27a_source_commit=f5edacd4e302f8a8377627c149eb2f160279d812
+r27a_source_tree=6dec4331b26a9442f25344e4b5802e8b5d5cf93d
+pnpm_lock_sha256=d5d165edb36508e4970647deb1835ad9d10ef6f2ccb804b0de55b781e77f21db
+production_deployment=NOT_EXECUTED
+staging_deployment=NOT_EXECUTED
+main_merge=NOT_EXECUTED
+tag_creation=NOT_EXECUTED
+formal_semgrep_attempt_3=NOT_EXECUTED
+```
+
+#### Independent Remediation Commits
+
+| Commit | Scope |
+|---|---|
+| `30a6d233da0f03e2913fa917f1f434f130df76ae` | Auth/session, protected config, Origin/CSRF, log redaction |
+| `683d453d199db5f8764ee99391badc45e0b3efa1` | Attachment quarantine/CLEAN semantics and eight-module project IDOR |
+| `c5807951b5d4b549fb37641b95fc20bace4e64d5` | Dependency, minimal images, api-ops and license tooling |
+| `3975373d28cc2e4b760e8f85861624322d42ccf8` | Deployment/migration/GCE injection and bootstrap hardening |
+| `6d7674b61955b4ea4ba118ad17f02234aa57e576` | First-party source package and SAST target coverage |
+| `f5edacd4e302f8a8377627c149eb2f160279d812` | Authenticated pre-Multer upload resource admission, multipart ingress and API process resource bounds |
+
+No `git add -A` was used. Two narrow fixup commits used only to remove Gitleaks false-positive
+test-fixture/public-integrity matches were autosquashed before any push. Gitleaks on the exact
+`f5edacd4...` source tree returned 0 findings; `.gitleaks.toml` was not broadened to hide first-party data.
+The previous `6d7674b...` overlay count is superseded. The exact final staged evidence snapshot and the
+post-evidence-commit valid-ref-reachable history remain to be scanned after all current Markdown/SBOM files
+are final; no old candidate count is carried forward.
+
+#### Confirmed Finding Remediation
+
+1. Logout now deletes the current Redis session and clears the cookie; it is idempotent, rejects malformed
+   session selectors and preserves other device sessions.
+2. Initial `ops-check`/backup/http-error injection plus homologous restore and GCE remote-source paths were
+   converted to strict validation, argv arrays, static remote scripts and position parameters. `eval=0` in
+   the identified scripts.
+3. Attachment metadata now has `PENDING_SCAN/CLEAN/REJECTED/SCAN_ERROR/LEGACY_UNSCANNED`; new data enters
+   quarantine, only CLEAN objects can be promoted/downloaded/referenced/counted, and Web handles nullable URL
+   plus `canDownload`.
+4. Eight project-scoped modules discovered during the review now execute scope-first authorization before
+   business lookup/transaction/storage/attachment side effects.
+5. Application/notification logs no longer copy full user/project/task/dedupe metadata; link paths and
+   protected unsafe-request origin checks fail closed.
+6. Staging/production DB, Redis, frontend origin, ClamAV and mock-auth configuration fail closed.
+7. Root `curl | bash` was removed and NodeSource key/hash/fingerprint/package version were pinned.
+8. `js-yaml`, `nanoid` and `brace-expansion` advisories were remediated; API/Web are minimal runtime targets
+   and Prisma operations use a separate api-ops target.
+9. A final independent review confirmed an additional authenticated multipart resource-exhaustion Medium.
+   The sixth commit adds post-auth/pre-Multer global, actor, target and bounded-rate admission; two-phase
+   transport/downstream lease release; multipart-only Nginx limits and API memory/PID bounds. A real
+   client-abort slow-handler regression proves disconnect cannot free capacity while scanner/storage/DB work
+   continues.
+
+Real staging ClamAV has not been connected. Therefore the attachment Medium is
+`CODE_IMPLEMENTED_EXTERNAL_ACCEPTANCE_PENDING`, not finally closed. Historical attachments remain
+`LEGACY_UNSCANNED` until rescan or approved disposition.
+
+The upload resource Medium is also `CODE_IMPLEMENTED_EXTERNAL_ACCEPTANCE_PENDING`: real staging must verify
+trusted client-IP topology, actual cgroup/systemd enforcement, normal browser concurrency, scanner latency,
+memory peaks and the authorized load profile.
+
+#### Quality Regression
+
+Executed after the functional R27A changes:
+
+```text
+pnpm install --frozen-lockfile                         PASS
+pnpm lint                                             PASS
+pnpm typecheck                                        PASS
+pnpm test                                             PASS
+  Web                                                 48 files / 198 tests
+  API                                                 82 files / 450 tests
+upload admission/config/Nginx focused                 4 files / 70 tests PASS
+pnpm build                                            PASS
+pnpm --filter @feishu-timeline/api prisma:validate    PASS
+pnpm test:e2e                                         PASS
+attachment/ClamAV/storage focused                     34 tests PASS
+8-module project-scope focused                        53 tests PASS
+deployment Shell security test                        PASS
+security target gate                                  PASS
+bash -n                                               50/50 PASS
+ShellCheck 0.11.0 changed/security scope through 6d   PASS / 0 findings
+sixth-commit Shell changes                            security-hardening + bash-n PASS; no third full rerun
+ShellCheck 0.11.0 all 50 targets                      5 warnings / 20 information; REVIEW_PENDING
+Playwright                                            BLOCKED before assertions
+formal Semgrep                                        NOT RUN; prior 2-attempt TOOL_ERROR remains
+```
+
+Playwright attempt 1 stopped before assertions because the exact bundled Chromium cache was absent. Attempt 2
+used installed Chrome 151 but stopped before assertions because the pinned Playwright ffmpeg cache was absent.
+No third attempt or browser/media download was started. Intended local URLs were Web
+`http://localhost:3000` and API `http://localhost:3001/api`; no user URL result was produced. Recovery requires
+the approved lockfile-matched browser and ffmpeg artifacts, then one immutable-commit rerun. Full blocker fields
+are recorded in `docs/security/R27A_REMEDIATION_REPORT.md`.
+
+#### Exact-Commit Source, SCA, Image, SBOM And Secret Evidence
+
+Company source package double build:
+
+```text
+archive=company-source-scan-f5edacd4e302.tar.gz
+archive_sha256=d591f5c340bc334167e656d15a415db05b9ecfdda860e4120dd77a119a8aa5b3
+archive_size=942531
+included_files=648
+excluded_candidates=3
+prohibited_paths=0
+byte_reproducible=YES
+sast_targets=589
+sast_target_manifest_sha256=b032ebb7cb0f561a70e05943ffacacc7ef9d5ca7d1fee7e69695933919686427
+```
+
+Dependency and secret evidence:
+
+```text
+pnpm production C/H/M/L/I=0/0/0/0/0 CARRY_FORWARD_BY_IDENTICAL_LOCK_SHA256
+pnpm full lock C/H/M/L/I=0/0/0/0/0 CARRY_FORWARD_BY_IDENTICAL_LOCK_SHA256
+OSV packages=472 vulnerabilities=0 CARRY_FORWARD_BY_IDENTICAL_LOCK_SHA256
+Gitleaks exact f5edacd4 source tree=0
+Gitleaks pre-evidence 81-valid-ref-reachable history through f5edacd4=0
+Gitleaks final staged evidence overlay=PENDING_EXACT_EVIDENCE_RESCAN
+Gitleaks final ref-reachable history=PENDING_POST_EVIDENCE_COMMIT_RESCAN
+Gitleaks confirmed/untriaged secrets=PENDING_FINAL_EVIDENCE_RESCAN
+```
+
+The exact raw history command used `git log --all` in a non-shallow repository; it does not cover reflog-only
+or unreachable objects. A read-only check observed 13 local unreachable commits after autosquash. They are not
+part of the branch, company source package or remote push lineage. If company policy requires local
+object-database coverage, an approved reflog/unreachable-object scan or metadata disposition remains pending.
+The earlier Gate 5 refs/reflogs scan is separate historical evidence and is not substituted for this run.
+
+Pinned Trivy `0.72.0` read the existing database metadata/hash without refresh, confirmed the 03:36–03:37 UTC
+scan window was before `NextUpdate`, then used hard-network-disabled exact-ID offline scans against DB SHA-256
+`87673cedb42993948419888d19c7ffe221c012b78d27844a0a45924319ce9929`:
+
+| Local candidate | Exact image ID | Platform | C/H/M/L/U |
+|---|---|---|---|
+| API | `sha256:b969d9faa5394f7f2d4360dc7aaf94d15e8addba0bc545056671418030a62fd1` | `linux/arm64` | `0/0/0/0/0` |
+| Web | `sha256:dcb65cfd2e3099d844cf351f227f7381f72a691f856f5960cfa245e06d6282d8` | `linux/arm64` | `0/0/0/0/0` |
+| API ops | `sha256:12197a6ea1d5ac22d36c0621b8cd00b3c47805ba315c00a62ac84b9aa058a07e` | `linux/arm64` | `0/0/0/0/0` |
+
+All three OCI revision labels equal the R27A source commit. These are local ARM64 candidates, not production
+images; target private-cloud architecture remains unknown and must be rebuilt/rescanned if different. Three
+CycloneDX SBOMs, five license inventories and THIRD_PARTY_NOTICES are bound in
+`security/R27A_EVIDENCE_BINDING.md`. UNKNOWN/GPL/LGPL/CC-BY and Sharp/libvips remain for company legal/security
+review.
+
+The first API image-build attempt changed BuildKit's network mode, missed the existing cache key and stopped
+at Corepack before producing a candidate. The second and final attempt restored the Dockerfile's original
+build-network mode only to match audited local cache: dependency/install layers were `CACHED`, package
+downloads were 0, the fixed base digest did not change and no Docker Hub pull was observed. Trivy/SBOM
+execution was hard network-disabled. No image was started, deployed or pushed.
+
+#### Historical Review Findings
+
+The approved 156-record triage remains intact and `UNTRIAGED=0`. R27A did not self-confirm the 13 historical
+`NEEDS_SECURITY_REVIEW` dispositions: 11 old reported Next/React versions have a recommended
+`NOT_IN_PRODUCTION` disposition; the current React action-state and unsigned cookie-parser paths have a
+recommended application-reachability `FALSE_POSITIVE` disposition. All 13 remain
+`AWAITING_SECURITY_DISPOSITION` until company security confirms them.
+
+#### Remaining Gates
+
+- formal pinned Semgrep and any resulting fix/retest;
+- real staging ClamAV acceptance and legacy attachment rescan/disposition;
+- staging upload resource and reconciliation review;
+- exact Playwright toolchain rerun;
+- full-manifest ShellCheck observation review and approved rerun;
+- target-architecture image rebuild/scan;
+- company legal/security license and 13-item disposition review;
+- authenticated staging DAST and lifecycle UAT;
+- 10 VU x 30 minute and 5 VU x 2 hour tests;
+- company formal rescan and final clearance.
+
+#### Mandatory Delivery Truth
+
+1. 代码是否实现：是，R27A 源码冻结在
+   `f5edacd4e302f8a8377627c149eb2f160279d812`；恶意文件扫描与上传资源准入两项 Medium
+   尚待真实 staging 验收。
+2. 本地测试是否通过：lint/typecheck/unit/build/Prisma/E2E/Shell/security focused PASS；Playwright
+   两次工具阻断；正式 Semgrep 未产出。
+3. staging 精确 URL：未执行、未访问。
+4. staging runtime commit：`UNKNOWN_NOT_RECORDED`；本轮未部署。
+5. staging 用户路径是否通过：未执行；ClamAV/DAST/浏览器路径未验收。
+6. production 是否改变：否。
+7. production runtime commit：记录值
+   `535041bb25f21d548d863d07b35e3e952b0aeb2c`；本轮未在线复核、未改变。
+8. production 用户路径是否通过：未执行；未访问 production。
+9. main 是否改变：否；local main 与 origin/main 均为
+   `41b4b166c587692e6f0fb9536dca2e1aab646c70`。
+10. tag 是否改变：否；仍为既有四个 tag。
+11. 产品负责人是否确认：已确认 R26 Gate 3D、R27 baseline、Gate 0、Gate 2；R27A 修复差异和最终
+    安全清场尚未确认。
+12. 未完成路由：本轮无未完成业务路由；安全外部闸门和动态验收未完成。
+13. Placeholder 数量：正式产品源码 `0`；原始 regex 的 10 条命中均为测试断言或
+    `getByPlaceholder` 方法名。
+14. 当前准确状态：见 Decision。
+
+#### Decision
+
+```text
+R27A_CODE_IMPLEMENTED
+R27A_SOURCE_COMMIT=f5edacd4e302f8a8377627c149eb2f160279d812
+R27A_ATTACHMENT_RESOURCE_ADMISSION_FIX_IMPLEMENTED
+R27A_KNOWN_CODE_C_H_M_BLOCKERS_AFTER_INDEPENDENT_REVIEW=0
+R27A_LOCAL_QUALITY_PARTIALLY_VERIFIED
+PLAYWRIGHT_BLOCKED_TOOLING_AFTER_2_ATTEMPTS
+FULL_MANIFEST_SHELLCHECK_REVIEW_PENDING
+LOCAL_GIT_UNREACHABLE_SECRET_SCOPE_DECISION_PENDING
+R27A_LOCAL_ARM64_DEPENDENCY_AND_IMAGE_SCAN=PASS
+CONFIRMED_SECRET_FINDINGS_IN_EXACT_SOURCE_TREE=0
+FINAL_DELIVERY_CONFIRMED_SECRET_FINDINGS=PENDING_EXACT_EVIDENCE_RESCAN
+FINAL_DELIVERY_UNTRIAGED_SECRET_CANDIDATES=PENDING_EXACT_EVIDENCE_RESCAN
+ATTACHMENT_SCANNER_REAL_STAGING_ACCEPTANCE_PENDING
+ATTACHMENT_RESOURCE_ADMISSION_STAGING_LOAD_ACCEPTANCE_PENDING
+ATTACHMENT_RECONCILIATION_STAGING_ACCEPTANCE_PENDING
+LEGACY_ATTACHMENT_RESCAN_OR_DISPOSAL_POLICY_PENDING
+FORMAL_SEMGREP_STILL_PENDING
+STAGING_DAST_NOT_STARTED
+FULL_STABILITY_NOT_STARTED
+TARGET_ARCHITECTURE_REBUILD_REQUIRED=YES_UNTIL_CONFIRMED
+LEGAL_SECURITY_LICENSE_REVIEW=OPEN
+SECURITY_CLEARANCE=NOT_ESTABLISHED
+PRODUCTION_UNCHANGED
+MAIN_UNCHANGED
+TAG_UNCHANGED
+AWAITING_R27A_REVIEW
+STOP
+```

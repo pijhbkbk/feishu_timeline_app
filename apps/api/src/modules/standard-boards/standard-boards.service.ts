@@ -70,16 +70,23 @@ type ColorBoardDetailUpdateWriteInput = {
 const COLOR_BOARD_DETAIL_UPDATE_STATUS_VALUES = Object.values(
   ColorBoardDetailUpdateStatus,
 );
+const STANDARD_BOARD_RECORD_LIMIT = 100;
+const STANDARD_BOARD_DISTRIBUTION_LIMIT = 100;
+const COLOR_BOARD_DETAIL_UPDATE_LIMIT = 100;
+const STANDARD_BOARD_SAMPLE_OPTION_LIMIT = 100;
+const STANDARD_BOARD_MAX_PAYLOAD_BYTES = 16 * 1024;
+const STANDARD_BOARD_ID_MAX_CHARS = 64;
+const STANDARD_BOARD_CODE_MAX_CHARS = 64;
+const STANDARD_BOARD_PERSON_MAX_CHARS = 200;
+const STANDARD_BOARD_NOTE_MAX_CHARS = 4_000;
+const STANDARD_BOARD_VERSION_MAX = 2_147_483_647;
+const STANDARD_BOARD_ID_PATTERN = /^[A-Za-z0-9_-]+$/;
+const STANDARD_BOARD_CODE_PATTERN = /^[A-Za-z0-9._-]+$/;
+const POSITIVE_DECIMAL_INTEGER_PATTERN = /^[1-9]\d*$/;
 
-const STANDARD_BOARD_INCLUDE = {
+const STANDARD_BOARD_BASE_INCLUDE = {
   basedOnSample: true,
   issuedBy: true,
-  distributionRecords: {
-    orderBy: [
-      { sentAt: 'desc' as const },
-      { createdAt: 'desc' as const },
-    ],
-  },
 } satisfies Prisma.StandardBoardInclude;
 
 const COLOR_BOARD_DETAIL_UPDATE_INCLUDE = {
@@ -113,14 +120,27 @@ export class StandardBoardsService {
         projectId,
         isCurrent: true,
       },
-      include: STANDARD_BOARD_INCLUDE,
+      include: STANDARD_BOARD_BASE_INCLUDE,
       orderBy: [
         { versionNo: 'desc' },
         { updatedAt: 'desc' },
+        { id: 'asc' },
       ],
     });
 
-    return board ? this.toStandardBoardSummary(board) : null;
+    if (!board) {
+      return null;
+    }
+
+    const distributionRecords = await this.getBoundedDistributionRecords(
+      this.prisma,
+      projectId,
+    );
+
+    return this.toStandardBoardSummary(
+      board,
+      distributionRecords.filter((record) => record.standardBoardId === board.id),
+    );
   }
 
   async getColorBoardDetailUpdateWorkspace(projectId: string, actor: AuthenticatedUser) {
@@ -146,6 +166,7 @@ export class StandardBoardsService {
       const context = await this.getStandardBoardContext(tx, projectId);
       this.assertLockedContextTask(context.activeTask, lockedTaskId);
       this.assertWritableStandardBoardStage(context);
+      this.assertStandardBoardCapacity(context.boards, true);
       await this.assertSampleReference(tx, projectId, input.basedOnSampleId);
       await this.assertUniqueBoardVersion(tx, projectId, input.boardCode, input.versionNo);
 
@@ -159,7 +180,7 @@ export class StandardBoardsService {
           remark: input.remark,
           isCurrent: !hasCurrentBoard,
         },
-        include: STANDARD_BOARD_INCLUDE,
+        include: STANDARD_BOARD_BASE_INCLUDE,
       });
 
       await this.activityLogsService.createWithExecutor(tx, {
@@ -197,6 +218,7 @@ export class StandardBoardsService {
       this.assertLockedContextTask(context.activeTask, lockedTaskId);
       this.assertWritableStandardBoardStage(context);
       const board = await this.getBoardOrThrow(tx, projectId, boardId);
+      this.assertPersistedStandardBoardAuditSource(board);
 
       if (!canEditStandardBoard(board.status)) {
         throw new BadRequestException('已下发或已归档的标准板不允许编辑。');
@@ -224,7 +246,7 @@ export class StandardBoardsService {
           basedOnSampleId: input.basedOnSampleId,
           remark: input.remark,
         },
-        include: STANDARD_BOARD_INCLUDE,
+        include: STANDARD_BOARD_BASE_INCLUDE,
       });
 
       await this.activityLogsService.createWithExecutor(tx, {
@@ -261,6 +283,7 @@ export class StandardBoardsService {
       this.assertLockedContextTask(context.activeTask, lockedTaskId);
       this.assertWritableStandardBoardStage(context);
       const board = await this.getBoardOrThrow(tx, projectId, boardId);
+      this.assertPersistedStandardBoardAuditSource(board);
 
       if (board.status === StandardBoardStatus.ARCHIVED) {
         throw new BadRequestException('已归档的标准板不能设置为当前版本。');
@@ -281,7 +304,7 @@ export class StandardBoardsService {
         data: {
           isCurrent: true,
         },
-        include: STANDARD_BOARD_INCLUDE,
+        include: STANDARD_BOARD_BASE_INCLUDE,
       });
 
       await this.activityLogsService.createWithExecutor(tx, {
@@ -336,6 +359,7 @@ export class StandardBoardsService {
       this.assertLockedContextTask(context.activeTask, lockedTaskId);
       this.assertWritableStandardBoardStage(context);
       const board = await this.getBoardOrThrow(tx, projectId, boardId);
+      this.assertPersistedStandardBoardAuditSource(board);
       const nextStatus = getStandardBoardStatusTransitionTarget(
         board.status,
         'ISSUE',
@@ -355,7 +379,7 @@ export class StandardBoardsService {
           recipientDept: input.recipientDept,
           ...(input.remark !== null ? { remark: input.remark } : {}),
         },
-        include: STANDARD_BOARD_INCLUDE,
+        include: STANDARD_BOARD_BASE_INCLUDE,
       });
 
       await this.activityLogsService.createWithExecutor(tx, {
@@ -393,11 +417,13 @@ export class StandardBoardsService {
       const context = await this.getStandardBoardContext(tx, projectId);
       this.assertLockedContextTask(context.activeTask, lockedTaskId);
       this.assertWritableStandardBoardStage(context);
+      this.assertDistributionCapacity(context.distributions, true);
       const board = await this.getBoardOrThrow(tx, projectId, boardId);
 
       if (board.status !== StandardBoardStatus.ISSUED) {
         throw new BadRequestException('仅已下发的标准板才能添加下发记录。');
       }
+      this.assertPersistedStandardBoardAuditSource(board);
 
       const distributionRecord = await tx.boardDistributionRecord.create({
         data: {
@@ -451,7 +477,13 @@ export class StandardBoardsService {
       const context = await this.getColorBoardDetailUpdateContext(tx, projectId);
       this.assertLockedContextTask(context.activeTask, lockedTaskId);
       this.assertWritableBoardDetailUpdateStage(context);
-      await this.getBoardOrThrow(tx, projectId, input.standardBoardId);
+      this.assertColorBoardDetailUpdateCapacity(context.updates, true);
+      const board = await this.getBoardOrThrow(
+        tx,
+        projectId,
+        input.standardBoardId,
+      );
+      this.assertPersistedStandardBoardIdentitySource(board);
 
       const detailUpdate = await tx.colorBoardDetailUpdate.create({
         data: {
@@ -622,6 +654,7 @@ export class StandardBoardsService {
       this.assertLockedContextTask(context.activeTask, lockedTaskId);
       this.assertWritableStandardBoardStage(context);
       const board = await this.getBoardOrThrow(tx, projectId, boardId);
+      this.assertPersistedStandardBoardAuditSource(board);
       const nextStatus = getStandardBoardStatusTransitionTarget(board.status, action);
 
       if (!nextStatus) {
@@ -634,7 +667,7 @@ export class StandardBoardsService {
           status: nextStatus,
           ...(action === 'MARK_CREATED' ? { producedAt: new Date() } : {}),
         },
-        include: STANDARD_BOARD_INCLUDE,
+        include: STANDARD_BOARD_BASE_INCLUDE,
       });
 
       await this.activityLogsService.createWithExecutor(tx, {
@@ -697,23 +730,27 @@ export class StandardBoardsService {
     const project = await this.getProjectOrThrow(db, projectId);
     const [
       boards,
+      distributionRecords,
       standardBoardTask,
       boardDetailTask,
       procurementCompleted,
       detailUpdates,
-      sampleOptions,
+      rawSampleOptions,
     ] = await Promise.all([
       db.standardBoard.findMany({
         where: {
           projectId,
         },
-        include: STANDARD_BOARD_INCLUDE,
+        include: STANDARD_BOARD_BASE_INCLUDE,
         orderBy: [
           { isCurrent: 'desc' },
           { boardCode: 'asc' },
           { versionNo: 'desc' },
+          { id: 'asc' },
         ],
+        take: STANDARD_BOARD_RECORD_LIMIT + 1,
       }),
+      this.getBoundedDistributionRecords(db, projectId),
       this.getActiveTask(db, projectId, WorkflowNodeCode.STANDARD_BOARD_PRODUCTION),
       this.getActiveTask(db, projectId, WorkflowNodeCode.BOARD_DETAIL_UPDATE),
       this.hasCompletedProcurementTask(db, projectId),
@@ -725,7 +762,9 @@ export class StandardBoardsService {
         orderBy: [
           { detailUpdatedAt: 'desc' },
           { createdAt: 'desc' },
+          { id: 'desc' },
         ],
+        take: COLOR_BOARD_DETAIL_UPDATE_LIMIT + 1,
       }),
       db.sample.findMany({
         where: {
@@ -738,9 +777,23 @@ export class StandardBoardsService {
         orderBy: [
           { sampleNo: 'asc' },
           { versionNo: 'desc' },
+          { id: 'asc' },
         ],
+        take: STANDARD_BOARD_SAMPLE_OPTION_LIMIT + 1,
       }),
     ]);
+    this.assertStandardBoardCapacity(boards, false);
+    this.assertColorBoardDetailUpdateCapacity(detailUpdates, false);
+    const sampleOptionsHasMore =
+      rawSampleOptions.length > STANDARD_BOARD_SAMPLE_OPTION_LIMIT;
+    const sampleOptions = rawSampleOptions.slice(
+      0,
+      STANDARD_BOARD_SAMPLE_OPTION_LIMIT,
+    );
+    const distributionsByBoardId = this.groupDistributionsByBoardId(
+      distributionRecords,
+    );
+    const currentBoard = boards.find((board) => board.isCurrent) ?? null;
 
     return {
       project: {
@@ -768,16 +821,25 @@ export class StandardBoardsService {
         getBoardDetailUpdateCompletionIssue(detailUpdates) === null,
       colorBoardDetailUpdateCompletionIssue:
         getBoardDetailUpdateCompletionIssue(detailUpdates),
+      sampleOptionsHasMore,
       sampleOptions: sampleOptions.map((sample) => ({
         id: sample.id,
         sampleNo: sample.sampleNo,
         sampleName: sample.sampleName,
         versionNo: sample.versionNo,
       })),
-      currentBoard: boards.find((board) => board.isCurrent)
-        ? this.toStandardBoardSummary(boards.find((board) => board.isCurrent)!)
+      currentBoard: currentBoard
+        ? this.toStandardBoardSummary(
+            currentBoard,
+            distributionsByBoardId.get(currentBoard.id) ?? [],
+          )
         : null,
-      items: boards.map((board) => this.toStandardBoardSummary(board)),
+      items: boards.map((board) =>
+        this.toStandardBoardSummary(
+          board,
+          distributionsByBoardId.get(board.id) ?? [],
+        ),
+      ),
       detailUpdates: detailUpdates.map((updateRecord) =>
         this.toColorBoardDetailUpdateSummary(updateRecord),
       ),
@@ -788,15 +850,63 @@ export class StandardBoardsService {
     db: StandardBoardsDbClient,
     projectId: string,
   ) {
-    const workspace = await this.buildWorkspace(db, projectId);
+    const [project, activeTask, currentBoard, detailUpdates, distributionRecords] =
+      await Promise.all([
+        this.getProjectOrThrow(db, projectId),
+        this.getActiveTask(db, projectId, WorkflowNodeCode.BOARD_DETAIL_UPDATE),
+        db.standardBoard.findFirst({
+          where: {
+            projectId,
+            isCurrent: true,
+          },
+          include: STANDARD_BOARD_BASE_INCLUDE,
+          orderBy: [
+            { boardCode: 'asc' },
+            { versionNo: 'desc' },
+            { id: 'asc' },
+          ],
+        }),
+        db.colorBoardDetailUpdate.findMany({
+          where: {
+            projectId,
+          },
+          include: COLOR_BOARD_DETAIL_UPDATE_INCLUDE,
+          orderBy: [
+            { detailUpdatedAt: 'desc' },
+            { createdAt: 'desc' },
+            { id: 'desc' },
+          ],
+          take: COLOR_BOARD_DETAIL_UPDATE_LIMIT + 1,
+        }),
+        this.getBoundedDistributionRecords(db, projectId),
+      ]);
+    this.assertColorBoardDetailUpdateCapacity(detailUpdates, false);
+    const completionIssue = getBoardDetailUpdateCompletionIssue(detailUpdates);
 
     return {
-      project: workspace.project,
-      activeTask: workspace.activeColorBoardDetailUpdateTask,
-      canCompleteTask: workspace.canCompleteColorBoardDetailUpdateTask,
-      completionIssue: workspace.colorBoardDetailUpdateCompletionIssue,
-      currentBoard: workspace.currentBoard,
-      items: workspace.detailUpdates,
+      project: {
+        id: project.id,
+        code: project.code,
+        name: project.name,
+        currentNodeCode: project.currentNodeCode,
+        currentNodeName: getCurrentNodeName(project.currentNodeCode),
+        targetDate: project.plannedEndDate?.toISOString() ?? null,
+        riskLevel: project.priority,
+      },
+      activeTask: activeTask ? this.toWorkflowTaskSummary(activeTask) : null,
+      canCompleteTask: Boolean(activeTask) && completionIssue === null,
+      completionIssue,
+      currentBoard: currentBoard
+        ? this.toStandardBoardSummary(
+            currentBoard,
+            distributionRecords.filter(
+              (record) => record.standardBoardId === currentBoard.id,
+            ),
+          )
+        : null,
+      items: detailUpdates.map((updateRecord) =>
+        this.toColorBoardDetailUpdateSummary(updateRecord),
+      ),
     };
   }
 
@@ -804,22 +914,56 @@ export class StandardBoardsService {
     db: StandardBoardsDbClient,
     projectId: string,
   ) {
-    const [project, activeTask, procurementCompleted, boards] = await Promise.all([
-      this.getProjectOrThrow(db, projectId),
-      this.getActiveTask(db, projectId, WorkflowNodeCode.STANDARD_BOARD_PRODUCTION),
+    const [
+      activeTask,
+      procurementCompleted,
+      boards,
+      distributions,
+      detailUpdates,
+    ] = await Promise.all([
+      this.getActiveTaskReference(
+        db,
+        projectId,
+        WorkflowNodeCode.STANDARD_BOARD_PRODUCTION,
+      ),
       this.hasCompletedProcurementTask(db, projectId),
       db.standardBoard.findMany({
         where: {
           projectId,
         },
+        select: {
+          id: true,
+          isCurrent: true,
+          status: true,
+        },
+        orderBy: {
+          id: 'asc',
+        },
+        take: STANDARD_BOARD_RECORD_LIMIT + 1,
+      }),
+      this.getBoundedDistributionReferences(db, projectId),
+      db.colorBoardDetailUpdate.findMany({
+        where: {
+          projectId,
+        },
+        select: {
+          id: true,
+        },
+        orderBy: {
+          id: 'asc',
+        },
+        take: COLOR_BOARD_DETAIL_UPDATE_LIMIT + 1,
       }),
     ]);
+    this.assertStandardBoardCapacity(boards, false);
+    this.assertColorBoardDetailUpdateCapacity(detailUpdates, false);
 
     return {
-      project,
       activeTask,
       procurementCompleted,
       boards,
+      distributions,
+      detailUpdates,
     };
   }
 
@@ -827,23 +971,155 @@ export class StandardBoardsService {
     db: StandardBoardsDbClient,
     projectId: string,
   ) {
-    const [project, activeTask, procurementCompleted, updates] = await Promise.all([
-      this.getProjectOrThrow(db, projectId),
-      this.getActiveTask(db, projectId, WorkflowNodeCode.BOARD_DETAIL_UPDATE),
-      this.hasCompletedProcurementTask(db, projectId),
+    const [
+      activeTask,
+      updates,
+      boards,
+      distributions,
+    ] = await Promise.all([
+      this.getActiveTaskReference(
+        db,
+        projectId,
+        WorkflowNodeCode.BOARD_DETAIL_UPDATE,
+      ),
       db.colorBoardDetailUpdate.findMany({
         where: {
           projectId,
         },
+        select: {
+          id: true,
+          updateStatus: true,
+        },
+        orderBy: {
+          id: 'asc',
+        },
+        take: COLOR_BOARD_DETAIL_UPDATE_LIMIT + 1,
       }),
+      db.standardBoard.findMany({
+        where: {
+          projectId,
+        },
+        select: {
+          id: true,
+        },
+        orderBy: {
+          id: 'asc',
+        },
+        take: STANDARD_BOARD_RECORD_LIMIT + 1,
+      }),
+      this.getBoundedDistributionReferences(db, projectId),
     ]);
+    this.assertColorBoardDetailUpdateCapacity(updates, false);
+    this.assertStandardBoardCapacity(boards, false);
 
     return {
-      project,
       activeTask,
-      procurementCompleted,
       updates,
+      boards,
+      distributions,
     };
+  }
+
+  private async getBoundedDistributionRecords(
+    db: StandardBoardsDbClient,
+    projectId: string,
+  ) {
+    const records = await db.boardDistributionRecord.findMany({
+      where: {
+        projectId,
+      },
+      orderBy: [
+        { standardBoardId: 'asc' },
+        { sentAt: 'desc' },
+        { createdAt: 'desc' },
+        { id: 'desc' },
+      ],
+      take: STANDARD_BOARD_DISTRIBUTION_LIMIT + 1,
+    });
+    this.assertDistributionCapacity(records, false);
+    return records;
+  }
+
+  private async getBoundedDistributionReferences(
+    db: StandardBoardsDbClient,
+    projectId: string,
+  ) {
+    const records = await db.boardDistributionRecord.findMany({
+      where: {
+        projectId,
+      },
+      select: {
+        id: true,
+      },
+      orderBy: {
+        id: 'asc',
+      },
+      take: STANDARD_BOARD_DISTRIBUTION_LIMIT + 1,
+    });
+    this.assertDistributionCapacity(records, false);
+    return records;
+  }
+
+  private groupDistributionsByBoardId(
+    records: readonly Prisma.BoardDistributionRecordGetPayload<
+      Record<string, never>
+    >[],
+  ) {
+    const grouped = new Map<
+      string,
+      Prisma.BoardDistributionRecordGetPayload<Record<string, never>>[]
+    >();
+    for (const record of records) {
+      const boardRecords = grouped.get(record.standardBoardId) ?? [];
+      boardRecords.push(record);
+      grouped.set(record.standardBoardId, boardRecords);
+    }
+    return grouped;
+  }
+
+  private assertStandardBoardCapacity(
+    records: readonly unknown[],
+    forCreate: boolean,
+  ) {
+    if (
+      records.length > STANDARD_BOARD_RECORD_LIMIT ||
+      (forCreate && records.length >= STANDARD_BOARD_RECORD_LIMIT)
+    ) {
+      throw new ConflictException({
+        code: 'STANDARD_BOARD_RECORD_LIMIT_EXCEEDED',
+        message: `每个项目最多保留 ${STANDARD_BOARD_RECORD_LIMIT} 条标准板记录。`,
+      });
+    }
+  }
+
+  private assertDistributionCapacity(
+    records: readonly unknown[],
+    forCreate: boolean,
+  ) {
+    if (
+      records.length > STANDARD_BOARD_DISTRIBUTION_LIMIT ||
+      (forCreate && records.length >= STANDARD_BOARD_DISTRIBUTION_LIMIT)
+    ) {
+      throw new ConflictException({
+        code: 'STANDARD_BOARD_DISTRIBUTION_LIMIT_EXCEEDED',
+        message: `每个项目最多保留 ${STANDARD_BOARD_DISTRIBUTION_LIMIT} 条标准板下发记录。`,
+      });
+    }
+  }
+
+  private assertColorBoardDetailUpdateCapacity(
+    records: readonly unknown[],
+    forCreate: boolean,
+  ) {
+    if (
+      records.length > COLOR_BOARD_DETAIL_UPDATE_LIMIT ||
+      (forCreate && records.length >= COLOR_BOARD_DETAIL_UPDATE_LIMIT)
+    ) {
+      throw new ConflictException({
+        code: 'COLOR_BOARD_DETAIL_UPDATE_LIMIT_EXCEEDED',
+        message: `每个项目最多保留 ${COLOR_BOARD_DETAIL_UPDATE_LIMIT} 条色板明细更新记录。`,
+      });
+    }
   }
 
   private assertWritableStandardBoardStage(context: {
@@ -877,6 +1153,12 @@ export class StandardBoardsService {
   }
 
   private assertActorCanManage(actor: AuthenticatedUser) {
+    this.assertStandardBoardId(actor.id, '操作人');
+    this.assertStandardBoardText(
+      actor.name,
+      '操作人姓名',
+      STANDARD_BOARD_PERSON_MAX_CHARS,
+    );
     if (
       actor.isSystemAdmin ||
       actor.roleCodes.some(
@@ -923,7 +1205,7 @@ export class StandardBoardsService {
         id: boardId,
         projectId,
       },
-      include: STANDARD_BOARD_INCLUDE,
+      include: STANDARD_BOARD_BASE_INCLUDE,
     });
 
     if (!board) {
@@ -949,12 +1231,15 @@ export class StandardBoardsService {
       },
       select: {
         id: true,
+        sampleNo: true,
       },
     });
 
     if (!sample) {
       throw new BadRequestException('关联样板不存在。');
     }
+    this.assertStandardBoardId(sample.id, '关联样板');
+    this.assertStandardBoardCode(sample.sampleNo, '样板编号');
   }
 
   private async assertUniqueBoardVersion(
@@ -1009,6 +1294,27 @@ export class StandardBoardsService {
     });
   }
 
+  private async getActiveTaskReference(
+    db: StandardBoardsDbClient,
+    projectId: string,
+    nodeCode: 'STANDARD_BOARD_PRODUCTION' | 'BOARD_DETAIL_UPDATE',
+  ) {
+    return db.workflowTask.findFirst({
+      where: {
+        projectId,
+        nodeCode,
+        isActive: true,
+      },
+      select: {
+        id: true,
+      },
+      orderBy: [
+        { createdAt: 'desc' },
+        { taskRound: 'desc' },
+      ],
+    });
+  }
+
   private async hasCompletedProcurementTask(
     db: StandardBoardsDbClient,
     projectId: string,
@@ -1047,13 +1353,26 @@ export class StandardBoardsService {
     if (!boardCode) {
       throw new BadRequestException('标准板编号不能为空。');
     }
+    this.assertStandardBoardCode(boardCode, '标准板编号');
+    if (basedOnSampleId) {
+      this.assertStandardBoardId(basedOnSampleId, '关联样板');
+    }
+    if (remark) {
+      this.assertStandardBoardText(
+        remark,
+        '标准板备注',
+        STANDARD_BOARD_NOTE_MAX_CHARS,
+      );
+    }
 
-    return {
+    const normalized = {
       boardCode,
       versionNo,
       basedOnSampleId,
       remark,
     };
+    this.assertStandardBoardPayloadBytes(normalized, '标准板记录');
+    return normalized;
   }
 
   private parseIssueBoardInput(rawInput: unknown): IssueBoardInput {
@@ -1082,13 +1401,36 @@ export class StandardBoardsService {
     if (!recipientName && !recipientDept) {
       throw new BadRequestException('接收人或接收部门至少填写一项。');
     }
+    if (recipientName) {
+      this.assertStandardBoardText(
+        recipientName,
+        '接收人',
+        STANDARD_BOARD_PERSON_MAX_CHARS,
+      );
+    }
+    if (recipientDept) {
+      this.assertStandardBoardText(
+        recipientDept,
+        '接收部门',
+        STANDARD_BOARD_PERSON_MAX_CHARS,
+      );
+    }
+    if (remark) {
+      this.assertStandardBoardText(
+        remark,
+        '下发备注',
+        STANDARD_BOARD_NOTE_MAX_CHARS,
+      );
+    }
 
-    return {
+    const normalized = {
       recipientName,
       recipientDept,
       issuedAt,
       remark,
     };
+    this.assertStandardBoardPayloadBytes(normalized, '标准板下发记录');
+    return normalized;
   }
 
   private parseDistributionWriteInput(rawInput: unknown): DistributionWriteInput {
@@ -1118,14 +1460,36 @@ export class StandardBoardsService {
     if (!receiverDept) {
       throw new BadRequestException('接收部门不能为空。');
     }
+    this.assertStandardBoardText(
+      receiverName,
+      '接收人',
+      STANDARD_BOARD_PERSON_MAX_CHARS,
+    );
+    this.assertStandardBoardText(
+      receiverDept,
+      '接收部门',
+      STANDARD_BOARD_PERSON_MAX_CHARS,
+    );
+    if (note) {
+      this.assertStandardBoardText(
+        note,
+        '下发备注',
+        STANDARD_BOARD_NOTE_MAX_CHARS,
+      );
+    }
+    if (signedAt && signedAt.getTime() < sentAt.getTime()) {
+      this.throwStandardBoardInputOutOfBounds('签收时间不得早于发送时间。');
+    }
 
-    return {
+    const normalized = {
       receiverName,
       receiverDept,
       sentAt,
       signedAt,
       note,
     };
+    this.assertStandardBoardPayloadBytes(normalized, '标准板下发记录');
+    return normalized;
   }
 
   private parseColorBoardDetailUpdateWriteInput(
@@ -1158,13 +1522,23 @@ export class StandardBoardsService {
     if (!updateStatus) {
       throw new BadRequestException('更新状态不能为空。');
     }
+    this.assertStandardBoardId(standardBoardId, '关联标准板');
+    if (note) {
+      this.assertStandardBoardText(
+        note,
+        '明细更新备注',
+        STANDARD_BOARD_NOTE_MAX_CHARS,
+      );
+    }
 
-    return {
+    const normalized = {
       standardBoardId,
       updateStatus,
       detailUpdatedAt,
       note,
     };
+    this.assertStandardBoardPayloadBytes(normalized, '色板明细更新记录');
+    return normalized;
   }
 
   private parsePositiveInteger(value: unknown, label: string) {
@@ -1172,13 +1546,79 @@ export class StandardBoardsService {
       throw new BadRequestException(`${label}不能为空。`);
     }
 
-    const numericValue = Number(value);
+    const normalizedValue = typeof value === 'string' ? value.trim() : value;
+    if (
+      typeof normalizedValue === 'string' &&
+      !POSITIVE_DECIMAL_INTEGER_PATTERN.test(normalizedValue)
+    ) {
+      this.throwStandardBoardInputOutOfBounds(
+        `${label}必须是十进制正整数。`,
+      );
+    }
 
-    if (!Number.isInteger(numericValue) || numericValue <= 0) {
-      throw new BadRequestException(`${label}必须是大于 0 的整数。`);
+    const numericValue = Number(normalizedValue);
+
+    if (
+      !Number.isSafeInteger(numericValue) ||
+      numericValue <= 0 ||
+      numericValue > STANDARD_BOARD_VERSION_MAX
+    ) {
+      this.throwStandardBoardInputOutOfBounds(
+        `${label}必须在 1～${STANDARD_BOARD_VERSION_MAX} 之间。`,
+      );
     }
 
     return numericValue;
+  }
+
+  private assertStandardBoardId(value: string, label: string) {
+    if (
+      value.length > STANDARD_BOARD_ID_MAX_CHARS ||
+      !STANDARD_BOARD_ID_PATTERN.test(value)
+    ) {
+      this.throwStandardBoardInputOutOfBounds(`${label}标识不合法。`);
+    }
+  }
+
+  private assertStandardBoardCode(value: string, label: string) {
+    if (
+      value.length > STANDARD_BOARD_CODE_MAX_CHARS ||
+      !STANDARD_BOARD_CODE_PATTERN.test(value)
+    ) {
+      this.throwStandardBoardInputOutOfBounds(
+        `${label}仅允许 1～${STANDARD_BOARD_CODE_MAX_CHARS} 位字母、数字、点、下划线或连字符。`,
+      );
+    }
+  }
+
+  private assertStandardBoardText(
+    value: string,
+    label: string,
+    maxChars: number,
+  ) {
+    if (value.length > maxChars) {
+      this.throwStandardBoardInputOutOfBounds(
+        `${label}不得超过 ${maxChars} 个字符。`,
+      );
+    }
+  }
+
+  private assertStandardBoardPayloadBytes(value: object, label: string) {
+    if (
+      Buffer.byteLength(JSON.stringify(value), 'utf8') >
+      STANDARD_BOARD_MAX_PAYLOAD_BYTES
+    ) {
+      this.throwStandardBoardInputOutOfBounds(
+        `${label}不得超过 ${STANDARD_BOARD_MAX_PAYLOAD_BYTES} 字节。`,
+      );
+    }
+  }
+
+  private throwStandardBoardInputOutOfBounds(message: string): never {
+    throw new BadRequestException({
+      code: 'STANDARD_BOARD_INPUT_OUT_OF_BOUNDS',
+      message,
+    });
   }
 
   private parseDate(value: unknown, label: string) {
@@ -1233,8 +1673,11 @@ export class StandardBoardsService {
 
   private toStandardBoardSummary(
     board: Prisma.StandardBoardGetPayload<{
-      include: typeof STANDARD_BOARD_INCLUDE;
+      include: typeof STANDARD_BOARD_BASE_INCLUDE;
     }>,
+    distributionRecords: readonly Prisma.BoardDistributionRecordGetPayload<
+      Record<string, never>
+    >[] = [],
   ) {
     return {
       id: board.id,
@@ -1260,7 +1703,7 @@ export class StandardBoardsService {
             versionNo: board.basedOnSample.versionNo,
           }
         : null,
-      distributions: board.distributionRecords.map((record) =>
+      distributions: distributionRecords.map((record) =>
         this.toDistributionRecordSummary(record),
       ),
     };
@@ -1306,10 +1749,11 @@ export class StandardBoardsService {
 
   private toStandardBoardAuditSnapshot(
     board: Prisma.StandardBoardGetPayload<{
-      include: typeof STANDARD_BOARD_INCLUDE;
+      include: typeof STANDARD_BOARD_BASE_INCLUDE;
     }>,
   ) {
-    return {
+    this.assertPersistedStandardBoardAuditSource(board);
+    const snapshot = {
       id: board.id,
       boardCode: board.boardCode,
       versionNo: board.versionNo,
@@ -1325,6 +1769,81 @@ export class StandardBoardsService {
       recipientDept: board.recipientDept,
       remark: board.remark,
     } satisfies Prisma.InputJsonValue;
+    this.assertStandardBoardPayloadBytes(snapshot, '标准板审计快照');
+    return snapshot;
+  }
+
+  private assertPersistedStandardBoardAuditSource(board: {
+    id: string;
+    boardCode: string;
+    versionNo: number;
+    basedOnSampleId: string | null;
+    basedOnSample: {
+      id: string;
+      sampleNo: string;
+    } | null;
+    issuedById: string | null;
+    issuedBy: {
+      id: string;
+      name: string;
+    } | null;
+    recipientName: string | null;
+    recipientDept: string | null;
+    remark: string | null;
+  }) {
+    this.assertPersistedStandardBoardIdentitySource(board);
+    if (board.basedOnSampleId) {
+      this.assertStandardBoardId(board.basedOnSampleId, '关联样板');
+    }
+    if (board.basedOnSample) {
+      this.assertStandardBoardId(board.basedOnSample.id, '关联样板');
+      this.assertStandardBoardCode(
+        board.basedOnSample.sampleNo,
+        '样板编号',
+      );
+    }
+    if (board.issuedById) {
+      this.assertStandardBoardId(board.issuedById, '下发人');
+    }
+    if (board.issuedBy) {
+      this.assertStandardBoardId(board.issuedBy.id, '下发人');
+      this.assertStandardBoardText(
+        board.issuedBy.name,
+        '下发人姓名',
+        STANDARD_BOARD_PERSON_MAX_CHARS,
+      );
+    }
+    if (board.recipientName) {
+      this.assertStandardBoardText(
+        board.recipientName,
+        '接收人',
+        STANDARD_BOARD_PERSON_MAX_CHARS,
+      );
+    }
+    if (board.recipientDept) {
+      this.assertStandardBoardText(
+        board.recipientDept,
+        '接收部门',
+        STANDARD_BOARD_PERSON_MAX_CHARS,
+      );
+    }
+    if (board.remark) {
+      this.assertStandardBoardText(
+        board.remark,
+        '标准板备注',
+        STANDARD_BOARD_NOTE_MAX_CHARS,
+      );
+    }
+  }
+
+  private assertPersistedStandardBoardIdentitySource(board: {
+    id: string;
+    boardCode: string;
+    versionNo: number;
+  }) {
+    this.assertStandardBoardId(board.id, '标准板');
+    this.assertStandardBoardCode(board.boardCode, '标准板编号');
+    this.parsePositiveInteger(board.versionNo, '版本号');
   }
 
   private toColorBoardDetailUpdateAuditSnapshot(
@@ -1332,7 +1851,8 @@ export class StandardBoardsService {
       include: typeof COLOR_BOARD_DETAIL_UPDATE_INCLUDE;
     }>,
   ) {
-    return {
+    this.assertPersistedColorBoardDetailAuditSource(updateRecord);
+    const snapshot = {
       id: updateRecord.id,
       standardBoardId: updateRecord.standardBoardId,
       boardCode: updateRecord.standardBoard.boardCode,
@@ -1343,5 +1863,45 @@ export class StandardBoardsService {
       updatedByName: updateRecord.updatedBy?.name ?? null,
       note: updateRecord.note,
     } satisfies Prisma.InputJsonValue;
+    this.assertStandardBoardPayloadBytes(snapshot, '色板明细更新审计快照');
+    return snapshot;
+  }
+
+  private assertPersistedColorBoardDetailAuditSource(updateRecord: {
+    id: string;
+    standardBoardId: string;
+    standardBoard: {
+      id: string;
+      boardCode: string;
+      versionNo: number;
+    };
+    updatedById: string | null;
+    updatedBy: {
+      id: string;
+      name: string;
+    } | null;
+    note: string | null;
+  }) {
+    this.assertStandardBoardId(updateRecord.id, '色板明细更新记录');
+    this.assertStandardBoardId(updateRecord.standardBoardId, '关联标准板');
+    this.assertPersistedStandardBoardIdentitySource(updateRecord.standardBoard);
+    if (updateRecord.updatedById) {
+      this.assertStandardBoardId(updateRecord.updatedById, '更新人');
+    }
+    if (updateRecord.updatedBy) {
+      this.assertStandardBoardId(updateRecord.updatedBy.id, '更新人');
+      this.assertStandardBoardText(
+        updateRecord.updatedBy.name,
+        '更新人姓名',
+        STANDARD_BOARD_PERSON_MAX_CHARS,
+      );
+    }
+    if (updateRecord.note) {
+      this.assertStandardBoardText(
+        updateRecord.note,
+        '明细更新备注',
+        STANDARD_BOARD_NOTE_MAX_CHARS,
+      );
+    }
   }
 }

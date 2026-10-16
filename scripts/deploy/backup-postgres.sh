@@ -58,15 +58,16 @@ trap cleanup_remote_script EXIT
 cat >"$remote_script" <<'EOF'
 set -euo pipefail
 umask 077
+unset NODE_OPTIONS NODE_PATH PYTHONHOME PYTHONPATH PYTHONSTARTUP
+export PATH=/usr/local/bin:/usr/bin:/bin
 
 backup_root="${1:?missing backup root}"
 run_restore_drill="${2:?missing restore-drill mode}"
 keep_drill_artifacts="${3:?missing artifact-retention mode}"
 
 if [ "${#backup_root}" -gt 255 ] \
-  || [[ ! "$backup_root" =~ ^/[A-Za-z0-9._/-]+$ ]] \
-  || [[ "$backup_root" =~ (^|/)\.\.?(/|$) ]]; then
-  printf '[ERROR] Invalid backup root.\n' >&2
+  || [[ ! "$backup_root" =~ ^/var/backups/[A-Za-z0-9._-]+$ ]]; then
+  printf '[ERROR] Backup root must be a direct safe child of /var/backups.\n' >&2
   exit 2
 fi
 case "$run_restore_drill:$keep_drill_artifacts" in
@@ -78,29 +79,122 @@ case "$run_restore_drill:$keep_drill_artifacts" in
     ;;
 esac
 
-set -a
-. /opt/feishu_timeline_app/apps/api/.env.production
-set +a
+dotenv_data_tool=/usr/local/libexec/feishu-timeline/dotenv-data
+api_env_file=/etc/feishu-timeline/api.env
+sudo /usr/bin/python3 -I - "$dotenv_data_tool" "$api_env_file" <<'PY'
+from pathlib import Path
+import grp
+import stat
+import sys
 
-base_db_url="${DATABASE_URL%%\?*}"
+tool = Path(sys.argv[1])
+env_file = Path(sys.argv[2])
+for directory in (
+    Path('/usr'),
+    Path('/usr/local'),
+    Path('/usr/local/libexec'),
+    tool.parent,
+    Path('/etc'),
+    env_file.parent,
+):
+    metadata = directory.lstat()
+    if not stat.S_ISDIR(metadata.st_mode) or metadata.st_uid != 0:
+        raise SystemExit(f'privileged parent is not a root-owned non-symlink directory: {directory}')
+    if stat.S_IMODE(metadata.st_mode) & 0o022:
+        raise SystemExit(f'privileged parent is group/other writable: {directory}')
+
+tool_metadata = tool.lstat()
+if not stat.S_ISREG(tool_metadata.st_mode) or tool_metadata.st_uid != 0:
+    raise SystemExit('Strict dotenv tool is not a root-owned regular file.')
+if stat.S_IMODE(tool_metadata.st_mode) & 0o022 or not stat.S_IMODE(tool_metadata.st_mode) & 0o100:
+    raise SystemExit('Strict dotenv tool has unsafe permissions.')
+
+env_metadata = env_file.lstat()
+api_gid = grp.getgrnam('feishu-timeline-api').gr_gid
+if not stat.S_ISREG(env_metadata.st_mode) or env_metadata.st_uid != 0:
+    raise SystemExit('Canonical API env is not a root-owned regular file.')
+if env_metadata.st_gid != api_gid or stat.S_IMODE(env_metadata.st_mode) not in {0o440, 0o640}:
+    raise SystemExit('Canonical API env is not isolated to the API runtime group.')
+PY
+sudo /usr/bin/python3 -I "$dotenv_data_tool" validate --profile api "$api_env_file"
+postgres_exec() {
+  sudo /usr/bin/python3 -I "$dotenv_data_tool" postgres-exec \
+    --profile api "$api_env_file" -- "$@"
+}
+postgres_exec_database() {
+  local database="$1"
+  shift
+
+  sudo /usr/bin/python3 -I "$dotenv_data_tool" postgres-exec \
+    --profile api --database "$database" "$api_env_file" -- "$@"
+}
 timestamp="$(date -u +%Y%m%dT%H%M%SZ)"
 backup_dir="${backup_root}/${timestamp}"
 backup_file="${backup_dir}/feishu-timeline.dump"
-plain_sql="${backup_dir}/feishu-timeline.sql"
-rewritten_sql="${backup_dir}/feishu-timeline.restore.sql"
+archive_list="${backup_dir}/feishu-timeline.archive.list"
 report_file="${backup_dir}/restore-drill-report.txt"
-restore_schema="r12_restore_$(date +%s)"
+restore_database="r27_restore_$(/usr/bin/python3 -I -c 'import secrets; print(secrets.token_hex(16))')"
+RESTORE_DATABASE_CREATED=no
 
 current_user="$(id -un)"
 current_group="$(id -gn)"
+current_uid="$(id -u)"
 
-if ! mkdir -p "$backup_root" 2>/dev/null; then
-  sudo install -d -m 0750 -o "$current_user" -g "$current_group" "$backup_root"
+sudo /usr/bin/python3 -I - /var /var/backups <<'PY'
+from pathlib import Path
+import stat
+import sys
+
+var, backups = map(Path, sys.argv[1:])
+metadata = var.lstat()
+if not stat.S_ISDIR(metadata.st_mode) or metadata.st_uid != 0 or stat.S_IMODE(metadata.st_mode) & 0o022:
+    raise SystemExit('/var is not a root-controlled non-symlink directory')
+try:
+    metadata = backups.lstat()
+except FileNotFoundError:
+    raise SystemExit(0)
+if not stat.S_ISDIR(metadata.st_mode) or metadata.st_uid != 0 or stat.S_IMODE(metadata.st_mode) & 0o022:
+    raise SystemExit('/var/backups is not a root-controlled non-symlink directory')
+PY
+sudo install -d -o root -g root -m 0755 /var/backups
+sudo /usr/bin/python3 -I - /var/backups <<'PY'
+from pathlib import Path
+import stat
+import sys
+
+path = Path(sys.argv[1])
+metadata = path.lstat()
+if not stat.S_ISDIR(metadata.st_mode) or metadata.st_uid != 0 or stat.S_IMODE(metadata.st_mode) & 0o022:
+    raise SystemExit('/var/backups failed its root-controlled postcondition')
+PY
+if sudo test -e "$backup_root" || sudo test -L "$backup_root"; then
+  sudo /usr/bin/python3 -I - "$backup_root" "$current_uid" <<'PY'
+from pathlib import Path
+import stat
+import sys
+
+path = Path(sys.argv[1])
+expected_uid = int(sys.argv[2])
+metadata = path.lstat()
+if (
+    not stat.S_ISDIR(metadata.st_mode)
+    or metadata.st_uid != expected_uid
+    or stat.S_IMODE(metadata.st_mode) != 0o700
+):
+    raise SystemExit(
+        'Backup root must be a private non-symlink directory owned by the invoking identity.'
+    )
+PY
+else
+  sudo install -d -m 0700 -o "$current_user" -g "$current_group" "$backup_root"
 fi
 
-mkdir -p "$backup_dir"
+mkdir -m 0700 "$backup_dir"
 
-pg_dump --format=custom --no-owner --file "$backup_file" "$base_db_url"
+(
+  set -o noclobber
+  postgres_exec /usr/bin/pg_dump --format=custom --no-owner >"$backup_file"
+)
 sha256sum "$backup_file" >"${backup_file}.sha256"
 
 printf 'backup_dir=%s\n' "$backup_dir"
@@ -111,80 +205,116 @@ if [ "$run_restore_drill" != "yes" ]; then
   exit 0
 fi
 
-cleanup_restore_schema() {
-  psql "$base_db_url" -v ON_ERROR_STOP=1 \
-    -c "DROP SCHEMA IF EXISTS \"$restore_schema\" CASCADE" >/dev/null 2>&1 || true
+cleanup_restore_database() {
+  if [[ "$RESTORE_DATABASE_CREATED" = yes ]]; then
+    sudo -u postgres /usr/bin/dropdb --if-exists -- "$restore_database" >/dev/null 2>&1 || true
+  fi
 }
 
-trap cleanup_restore_schema EXIT
+trap cleanup_restore_database EXIT
 
-pg_restore --no-owner --file "$plain_sql" "$backup_file"
+/usr/bin/pg_restore --list "$backup_file" >"$archive_list"
+source_database="$(postgres_exec /usr/bin/psql -X -Atqc 'select current_database()')"
+restore_database_owner="$(postgres_exec /usr/bin/psql -X -Atqc 'select current_user')"
+[[ "$source_database" =~ ^[A-Za-z_][A-Za-z0-9_]{0,62}$ ]] \
+  || { echo 'Source database name is outside the approved identifier profile.' >&2; exit 1; }
+[[ "$restore_database_owner" =~ ^[A-Za-z_][A-Za-z0-9_]{0,62}$ ]] \
+  || { echo 'Restore database owner is outside the approved identifier profile.' >&2; exit 1; }
 
-python3 - "$plain_sql" "$rewritten_sql" "$restore_schema" <<'PY'
-from pathlib import Path
-import sys
+sudo -u postgres /usr/bin/createdb \
+  --owner="$restore_database_owner" \
+  --template=template0 \
+  -- "$restore_database"
+RESTORE_DATABASE_CREATED=yes
+postgres_exec_database "$restore_database" /usr/bin/pg_restore --exit-on-error --no-owner "$backup_file"
 
-source = Path(sys.argv[1]).read_text()
-target = sys.argv[2]
-schema = sys.argv[3]
+table_digest() {
+  local database="$1"
+  local table="$2"
 
-replacements = [
-    ('CREATE SCHEMA public;', f'CREATE SCHEMA "{schema}";'),
-    ('ALTER SCHEMA public OWNER TO ', f'ALTER SCHEMA "{schema}" OWNER TO '),
-    ('COMMENT ON SCHEMA public IS ', f'COMMENT ON SCHEMA "{schema}" IS '),
-    ('SET search_path = public, pg_catalog;', f'SET search_path = "{schema}", pg_catalog;'),
-    (' public.', f' "{schema}".'),
-    ('public.', f'"{schema}".'),
-    (' SCHEMA public', f' SCHEMA "{schema}"'),
-]
+  [[ "$database" =~ ^[A-Za-z_][A-Za-z0-9_]{0,62}$ \
+      && "$table" =~ ^[A-Za-z_][A-Za-z0-9_]{0,62}$ ]] \
+    || { echo 'Restore-drill digest identifiers are unsafe.' >&2; return 1; }
+  if [[ "$database" = "$source_database" ]]; then
+    postgres_exec /usr/bin/psql -X -q -v ON_ERROR_STOP=1 \
+      -c "COPY (SELECT row_to_json(t)::text FROM public.\"$table\" AS t ORDER BY row_to_json(t)::text) TO STDOUT"
+  elif [[ "$database" = "$restore_database" ]]; then
+    postgres_exec_database "$restore_database" /usr/bin/psql -X -q -v ON_ERROR_STOP=1 \
+      -c "COPY (SELECT row_to_json(t)::text FROM public.\"$table\" AS t ORDER BY row_to_json(t)::text) TO STDOUT"
+  else
+    echo 'Restore-drill digest database is outside the transaction.' >&2
+    return 1
+  fi | sha256sum | awk '{print $1}'
+}
 
-for old, new in replacements:
-    source = source.replace(old, new)
-
-Path(target).write_text(source)
-PY
-
-psql "$base_db_url" -v ON_ERROR_STOP=1 -c "DROP SCHEMA IF EXISTS \"$restore_schema\" CASCADE"
-psql "$base_db_url" -v ON_ERROR_STOP=1 -c "CREATE SCHEMA \"$restore_schema\""
-psql "$base_db_url" -v ON_ERROR_STOP=1 -f "$rewritten_sql" >/dev/null
-
-public_tables="$(psql "$base_db_url" -Atqc "select count(*) from information_schema.tables where table_schema='public'")"
-restore_tables="$(psql "$base_db_url" -Atqc "select count(*) from information_schema.tables where table_schema='$restore_schema'")"
-public_users="$(psql "$base_db_url" -Atqc "select count(*) from public.users")"
-restore_users="$(psql "$base_db_url" -Atqc "select count(*) from \"$restore_schema\".users")"
-public_projects="$(psql "$base_db_url" -Atqc "select count(*) from public.projects")"
-restore_projects="$(psql "$base_db_url" -Atqc "select count(*) from \"$restore_schema\".projects")"
-public_audit_logs="$(psql "$base_db_url" -Atqc "select count(*) from public.audit_logs")"
-restore_audit_logs="$(psql "$base_db_url" -Atqc "select count(*) from \"$restore_schema\".audit_logs")"
+source_tables="$(postgres_exec /usr/bin/psql -X -Atqc \
+  "select count(*) from information_schema.tables where table_schema='public'")"
+restore_tables="$(postgres_exec_database "$restore_database" /usr/bin/psql -X -Atqc \
+  "select count(*) from information_schema.tables where table_schema='public'")"
+source_constraints="$(postgres_exec /usr/bin/psql -X -Atqc \
+  "select count(*) from pg_constraint c join pg_namespace n on n.oid=c.connamespace where n.nspname='public'")"
+restore_constraints="$(postgres_exec_database "$restore_database" /usr/bin/psql -X -Atqc \
+  "select count(*) from pg_constraint c join pg_namespace n on n.oid=c.connamespace where n.nspname='public'")"
+source_indexes="$(postgres_exec /usr/bin/psql -X -Atqc \
+  "select count(*) from pg_indexes where schemaname='public'")"
+restore_indexes="$(postgres_exec_database "$restore_database" /usr/bin/psql -X -Atqc \
+  "select count(*) from pg_indexes where schemaname='public'")"
+source_users="$(postgres_exec /usr/bin/psql -X -Atqc "select count(*) from public.users")"
+restore_users="$(postgres_exec_database "$restore_database" /usr/bin/psql -X -Atqc "select count(*) from public.users")"
+source_projects="$(postgres_exec /usr/bin/psql -X -Atqc "select count(*) from public.projects")"
+restore_projects="$(postgres_exec_database "$restore_database" /usr/bin/psql -X -Atqc "select count(*) from public.projects")"
+source_audit_logs="$(postgres_exec /usr/bin/psql -X -Atqc "select count(*) from public.audit_logs")"
+restore_audit_logs="$(postgres_exec_database "$restore_database" /usr/bin/psql -X -Atqc "select count(*) from public.audit_logs")"
+source_users_digest="$(table_digest "$source_database" users)"
+restore_users_digest="$(table_digest "$restore_database" users)"
+source_projects_digest="$(table_digest "$source_database" projects)"
+restore_projects_digest="$(table_digest "$restore_database" projects)"
+source_audit_logs_digest="$(table_digest "$source_database" audit_logs)"
+restore_audit_logs_digest="$(table_digest "$restore_database" audit_logs)"
 
 {
-  printf 'restore_schema=%s\n' "$restore_schema"
-  printf 'public_tables=%s\n' "$public_tables"
+  printf 'restore_database=%s\n' "$restore_database"
+  printf 'source_tables=%s\n' "$source_tables"
   printf 'restore_tables=%s\n' "$restore_tables"
-  printf 'public_users=%s\n' "$public_users"
+  printf 'source_constraints=%s\n' "$source_constraints"
+  printf 'restore_constraints=%s\n' "$restore_constraints"
+  printf 'source_indexes=%s\n' "$source_indexes"
+  printf 'restore_indexes=%s\n' "$restore_indexes"
+  printf 'source_users=%s\n' "$source_users"
   printf 'restore_users=%s\n' "$restore_users"
-  printf 'public_projects=%s\n' "$public_projects"
+  printf 'source_projects=%s\n' "$source_projects"
   printf 'restore_projects=%s\n' "$restore_projects"
-  printf 'public_audit_logs=%s\n' "$public_audit_logs"
+  printf 'source_audit_logs=%s\n' "$source_audit_logs"
   printf 'restore_audit_logs=%s\n' "$restore_audit_logs"
+  printf 'source_users_digest=%s\n' "$source_users_digest"
+  printf 'restore_users_digest=%s\n' "$restore_users_digest"
+  printf 'source_projects_digest=%s\n' "$source_projects_digest"
+  printf 'restore_projects_digest=%s\n' "$restore_projects_digest"
+  printf 'source_audit_logs_digest=%s\n' "$source_audit_logs_digest"
+  printf 'restore_audit_logs_digest=%s\n' "$restore_audit_logs_digest"
 } | tee "$report_file"
 
-if [ "$public_tables" != "$restore_tables" ] \
-  || [ "$public_users" != "$restore_users" ] \
-  || [ "$public_projects" != "$restore_projects" ] \
-  || [ "$public_audit_logs" != "$restore_audit_logs" ]; then
+if [ "$source_tables" != "$restore_tables" ] \
+  || [ "$source_constraints" != "$restore_constraints" ] \
+  || [ "$source_indexes" != "$restore_indexes" ] \
+  || [ "$source_users" != "$restore_users" ] \
+  || [ "$source_projects" != "$restore_projects" ] \
+  || [ "$source_audit_logs" != "$restore_audit_logs" ] \
+  || [ "$source_users_digest" != "$restore_users_digest" ] \
+  || [ "$source_projects_digest" != "$restore_projects_digest" ] \
+  || [ "$source_audit_logs_digest" != "$restore_audit_logs_digest" ]; then
   echo 'restore_status=mismatch' >&2
   exit 1
 fi
 
 echo 'restore_status=ok'
 
-psql "$base_db_url" -v ON_ERROR_STOP=1 \
-  -c "DROP SCHEMA IF EXISTS \"$restore_schema\" CASCADE" >/dev/null
+sudo -u postgres /usr/bin/dropdb --if-exists -- "$restore_database"
+RESTORE_DATABASE_CREATED=no
 trap - EXIT
 
 if [ "$keep_drill_artifacts" != "yes" ]; then
-  rm -f -- "$plain_sql" "$rewritten_sql"
+  rm -f -- "$archive_list"
 fi
 EOF
 

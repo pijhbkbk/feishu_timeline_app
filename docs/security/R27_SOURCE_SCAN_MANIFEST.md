@@ -11,16 +11,16 @@ SOURCE_COMMIT=<完整 40 位不可变 commit> \
 
 打包脚本只从指定 Git commit 的对象树读取文件，不从工作目录复制源码。若白名单范围存在已暂存、未暂存或未忽略的未跟踪源码，脚本会失败关闭，防止“扫描包内容”和声明的 `sourceCommit` 不一致。目标 commit 必须包含本打包脚本，且执行中脚本的 Git blob 必须与目标 commit 中的版本完全相同；因此不能使用工作树里的未提交打包器为旧 commit 生成正式包。
 
-本包只用于第一方 SAST。第三方依赖不混入源码包，依赖漏洞由 SCA/SBOM 处理；Web/API/基础镜像由 Image Scan 处理；Secrets 扫描继续覆盖当前树、完整 Git 历史和批准的证据范围。三类结果不得互相替代。
+本包只用于第一方 SAST。第三方依赖不混入源码包，依赖漏洞由 SCA/SBOM 处理；Web/API/基础镜像由 Image Scan 处理；Secrets 扫描分别覆盖精确当前树、记录的有效 refs 可达历史及经批准的附加对象范围；reflog-only/unreachable object 必须单列，不能用 `git log --all` 冒充。三类结果不得互相替代。
 
 ## 2. 不可变版本身份
 
-| 字段 | 当前 Gate 1 状态 |
+| 字段 | Gate 1 修复前状态 |
 |---|---|
 | R27 治理基线 | `41b4b166c587692e6f0fb9536dca2e1aab646c70` |
 | R26 production runtime/source | `535041bb25f21d548d863d07b35e3e952b0aeb2c` |
 | Placeholder 处置后的 runtime candidate | `359b3cb0c01d294d421cf173e0ef0e1d1c06ad5c` |
-| 最终 R27 `sourceCommit` | `27a0338ac0c59217d121fa6defe0feeec45ca252`；包含打包器和公司 SAST PDF 解析器 |
+| Gate 1 修复前 `sourceCommit` | `27a0338ac0c59217d121fa6defe0feeec45ca252`；包含打包器和公司 SAST PDF 解析器 |
 | 分支 | `security/r27-final-source-clearance` |
 | production | 本 Gate 不部署、不改变 |
 
@@ -135,7 +135,7 @@ Gate 0 批准的 Placeholder 处置已形成 runtime candidate
 `sourceCommit=27a0338ac0c59217d121fa6defe0feeec45ca252`。正式公司源码包已经在共享独立
 worktree 从该 commit 连续生成两次并复核；不是治理基线包、脏工作树包或隔离 clone 的机制测试包。
 
-最终包身份：
+Gate 1 修复前包身份：
 
 | 项目 | 值 |
 |---|---|
@@ -162,5 +162,88 @@ R27_GATE1_SOURCE_PACKAGE_COMPLETE
 IMMUTABLE_SOURCE_COMMIT_BOUND
 BYTE_REPRODUCIBLE
 FORMAL_FIRST_PARTY_SAST_NOT_STARTED
+PRODUCTION_UNCHANGED
+```
+
+## 8. R27A 第一阶段不可变公司源码包（已被后续安全修复替代）
+
+R27A 前五类代码修复形成当时的不可变 source commit：
+
+```text
+6d7674b61955b4ea4ba118ad17f02234aa57e576
+```
+
+从该 commit 的 Git 对象树在两个隔离输出目录连续构建，tar 与全部 sidecar
+byte-for-byte identical。该包曾替代 `27a0338...`，但随后独立审查确认并修复了上传资源耗尽
+Medium，因此本节包已标记为 `SUPERSEDED_SOURCE_EVIDENCE`，不得再作为当前公司复扫候选。
+
+| 项目 | R27A 值 |
+|---|---|
+| archive | `company-source-scan-6d7674b61955.tar.gz` |
+| archive size | `933353` bytes |
+| archive SHA-256 | `b72a01bff1b52ef0bcab97848568deedb1e45662deb0791ecd6a758198c2906a` |
+| included files | `644` |
+| excluded candidates | `3` |
+| excluded paths | `apps/api/.env.example`、`apps/web/.env.example`、`deploy/env/staging.env.example` |
+| run A vs run B | archive 与五个 sidecar 均 byte-for-byte identical |
+| prohibited paths | `0` |
+| SAST target manifest | `585` first-party targets |
+
+最终 target 构成为 Shell 50、MJS 16、JS 4、TS 343、TSX 164、MTS 1、Python 1、JSON 5、
+CI YAML 1。Dockerfile 与 Prisma schema/migrations 由独立 image/schema gate 覆盖，不冒充 Semgrep
+language target。包保存在被忽略的本地交付目录
+`reports/security/r27/company-source-package/`，不会自包含。
+
+```text
+R27A_SOURCE_PACKAGE_COMPLETE
+R27A_SOURCE_COMMIT_BOUND
+BYTE_REPRODUCIBLE
+FORMAL_FIRST_PARTY_SAST_STILL_PENDING
+SUPERSEDED_SOURCE_EVIDENCE
+COMPANY_RESCAN_NOT_STARTED
+PRODUCTION_UNCHANGED
+```
+
+## 9. R27A 当前不可变公司源码包
+
+追加的认证态上传资源准入修复形成第六个独立 source commit：
+
+```text
+f5edacd4e302f8a8377627c149eb2f160279d812
+```
+
+从该 commit 的 Git 对象树在两个隔离输出目录连续构建；archive 与五个 sidecar 均
+byte-for-byte identical。该包替代 `6d7674b...` 包，成为当前本地公司复扫候选。它尚未提交
+公司平台，正式 Semgrep 也尚未恢复。
+
+| 项目 | 当前 R27A 值 |
+|---|---|
+| source tree | `6dec4331b26a9442f25344e4b5802e8b5d5cf93d` |
+| archive | `company-source-scan-f5edacd4e302.tar.gz` |
+| archive size | `942531` bytes |
+| archive SHA-256 | `d591f5c340bc334167e656d15a415db05b9ecfdda860e4120dd77a119a8aa5b3` |
+| included files | `648` |
+| excluded candidates | `3` |
+| excluded paths | `apps/api/.env.example`、`apps/web/.env.example`、`deploy/env/staging.env.example` |
+| run A vs run B | archive 与五个 sidecar 均 byte-for-byte identical |
+| contents/tar/per-file hash | `648 / 648` PASS |
+| prohibited paths | `0` |
+| SAST target manifest | `589` first-party targets；SHA-256 `b032ebb7cb0f561a70e05943ffacacc7ef9d5ca7d1fee7e69695933919686427` |
+
+当前 target 构成为 Shell 50、MJS 16、JS 4、TS 347、TSX 164、MTS 1、Python 1、JSON 5、
+CI YAML 1；duplicate、missing、untracked、forbidden 和 package-missing target 均为 `0`。
+Dockerfile 与 Prisma schema/migrations 继续由独立 image/schema gate 覆盖，不冒充 Semgrep
+language target。包保存在被忽略的本地交付目录
+`reports/security/r27/company-source-package/`，不会自包含；Git 中既有的
+`reports/security/r27/company-sast-findings.json` 是 Gate 2 机器证据，不在源码包白名单或
+SAST manifest 中。
+
+```text
+R27A_SOURCE_PACKAGE_COMPLETE
+R27A_SOURCE_COMMIT=f5edacd4e302f8a8377627c149eb2f160279d812
+R27A_SOURCE_COMMIT_BOUND
+BYTE_REPRODUCIBLE
+FORMAL_FIRST_PARTY_SAST_STILL_PENDING
+COMPANY_RESCAN_NOT_STARTED
 PRODUCTION_UNCHANGED
 ```

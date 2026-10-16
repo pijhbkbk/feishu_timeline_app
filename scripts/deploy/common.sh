@@ -8,6 +8,7 @@ COMPOSE_FILE="${COMPOSE_FILE:-$ROOT_DIR/deploy/compose.staging.yml}"
 COMPOSE_ENV_FILE="${COMPOSE_ENV_FILE:-$ROOT_DIR/deploy/env/staging.env}"
 COMPOSE_ENV_EXAMPLE="${COMPOSE_ENV_EXAMPLE:-$ROOT_DIR/deploy/env/staging.env.example}"
 STATE_DIR="${STATE_DIR:-$ROOT_DIR/deploy/.state}"
+DOTENV_DATA_TOOL="${DOTENV_DATA_TOOL:-$ROOT_DIR/scripts/deploy/dotenv-data.py}"
 
 log() {
   printf '[INFO] %s\n' "$*"
@@ -185,10 +186,48 @@ validate_staging_security_env() {
   fi
 }
 
+load_dotenv_data() {
+  local profile="$1"
+  local file="$2"
+  local dotenv_dump
+  local previous_umask
+  local key
+  local value
+
+  require_command python3
+  previous_umask="$(umask)"
+  umask 077
+  dotenv_dump="$(mktemp /tmp/feishu-timeline-dotenv.XXXXXX)" \
+    || { umask "$previous_umask"; fail 'Unable to create a private dotenv transfer file.'; }
+  umask "$previous_umask"
+
+  if ! python3 "$DOTENV_DATA_TOOL" keys0 --profile "$profile" >"$dotenv_dump"; then
+    rm -f -- "$dotenv_dump"
+    fail "Unknown dotenv profile: $profile"
+  fi
+  while IFS= read -r -d '' key; do
+    unset "$key"
+  done <"$dotenv_dump"
+
+  if ! python3 "$DOTENV_DATA_TOOL" env0 --profile "$profile" "$file" >"$dotenv_dump"; then
+    rm -f -- "$dotenv_dump"
+    fail "Invalid $profile dotenv data: $file"
+  fi
+
+  while IFS= read -r -d '' key; do
+    if ! IFS= read -r -d '' value; then
+      rm -f -- "$dotenv_dump"
+      fail "Truncated validated dotenv data: $file"
+    fi
+    printf -v "$key" '%s' "$value"
+    export "$key"
+  done <"$dotenv_dump"
+  rm -f -- "$dotenv_dump"
+}
+
 load_compose_env() {
   ensure_compose_env_file
-  # shellcheck source=/dev/null
-  set -a && . "$COMPOSE_ENV_FILE" && set +a
+  load_dotenv_data staging "$COMPOSE_ENV_FILE"
   validate_staging_security_env
 }
 
@@ -196,8 +235,7 @@ load_release_state_if_present() {
   local file="${1:-$STATE_DIR/current.env}"
 
   if [[ -f "$file" ]]; then
-    # shellcheck source=/dev/null
-    set -a && . "$file" && set +a
+    load_dotenv_data release "$file"
   fi
 }
 

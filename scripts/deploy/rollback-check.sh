@@ -27,11 +27,9 @@ fi
 log "Previous release state:"
 cat "$PREVIOUS_STATE"
 
-# shellcheck source=/dev/null
-set -a && . "$PREVIOUS_STATE" && set +a
+load_release_state_if_present "$PREVIOUS_STATE"
 
 docker image inspect "${API_IMAGE_REPO}:${IMAGE_TAG}" >/dev/null 2>&1 || fail "Missing API rollback image ${API_IMAGE_REPO}:${IMAGE_TAG}"
 docker image inspect "${WEB_IMAGE_REPO}:${IMAGE_TAG}" >/dev/null 2>&1 || fail "Missing Web rollback image ${WEB_IMAGE_REPO}:${IMAGE_TAG}"
 
 log "Rollback prerequisites verified"
-

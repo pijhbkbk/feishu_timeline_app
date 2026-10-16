@@ -88,10 +88,17 @@ cleanup_remote_script() {
 trap cleanup_remote_script EXIT
 cat >"$remote_script" <<'EOF'
 set -euo pipefail
-set -a
-. /opt/feishu_timeline_app/apps/api/.env.production
-set +a
-BASE_DB_URL="${DATABASE_URL%%\?*}"
+DOTENV_DATA_TOOL=/usr/local/libexec/feishu-timeline/dotenv-data
+API_ENV_FILE=/etc/feishu-timeline/api.env
+sudo /usr/bin/python3 -I "$DOTENV_DATA_TOOL" validate --profile api "$API_ENV_FILE"
+postgres_exec() {
+  sudo /usr/bin/python3 -I "$DOTENV_DATA_TOOL" postgres-exec \
+    --profile api "$API_ENV_FILE" -- "$@"
+}
+redis_exec() {
+  sudo /usr/bin/python3 -I "$DOTENV_DATA_TOOL" redis-exec \
+    --profile api "$API_ENV_FILE" -- "$@"
+}
 
 printf 'service:feishu-timeline-api=%s\n' "$(systemctl is-active feishu-timeline-api || true)"
 printf 'service:feishu-timeline-web=%s\n' "$(systemctl is-active feishu-timeline-web || true)"
@@ -110,13 +117,13 @@ for port in 80 443 3000 3001 5432 6379; do
   fi
 done
 
-if psql "$BASE_DB_URL" -Atqc 'select 1' >/dev/null 2>&1; then
+if postgres_exec /usr/bin/psql -Atqc 'select 1' >/dev/null 2>&1; then
   echo 'db_connectivity=ok'
 else
   echo 'db_connectivity=fail'
 fi
 
-if redis-cli -u "$REDIS_URL" --raw ping 2>/dev/null | grep -qx 'PONG'; then
+if redis_exec /usr/bin/redis-cli --raw ping 2>/dev/null | grep -qx 'PONG'; then
   echo 'redis_connectivity=ok'
 else
   echo 'redis_connectivity=fail'

@@ -144,6 +144,7 @@ REDIS_IMAGE_ID=${REDIS_IMAGE_ID}
 NGINX_IMAGE=${NGINX_IMAGE}
 NGINX_IMAGE_ID=${NGINX_IMAGE_ID}
 EOF
+python3 "$DOTENV_DATA_TOOL" validate --profile release "$PENDING_STATE"
 
 log "Starting postgres and redis"
 compose up -d postgres redis
