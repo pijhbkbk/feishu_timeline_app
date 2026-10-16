@@ -91,12 +91,17 @@ answers_include_ip "$APP_DNS" "$PUBLIC_IP" || fail "$APP_HOST does not resolve d
 
 FINAL_ROOT_CONF_B64="$(
   cat <<EOF | base64 | tr -d '\n'
+log_format all_too_well_no_args '\$remote_addr - \$remote_user [\$time_local] '
+                                '"\$request_method \$uri \$server_protocol" \$status \$body_bytes_sent '
+                                '"\$http_user_agent"';
+
 server {
     listen 80;
     listen [::]:80;
     server_name ${WWW_DOMAIN};
 
-    return 301 https://${ROOT_DOMAIN}\$request_uri;
+    access_log /var/log/nginx/${ROOT_DOMAIN}.access.log all_too_well_no_args;
+    return 301 https://${ROOT_DOMAIN}\$uri;
 }
 
 server {
@@ -104,7 +109,8 @@ server {
     listen [::]:80;
     server_name ${ROOT_DOMAIN};
 
-    return 301 https://${ROOT_DOMAIN}\$request_uri;
+    access_log /var/log/nginx/${ROOT_DOMAIN}.access.log all_too_well_no_args;
+    return 301 https://${ROOT_DOMAIN}\$uri;
 }
 
 server {
@@ -116,7 +122,8 @@ server {
     ssl_certificate_key /etc/letsencrypt/live/${ROOT_DOMAIN}/privkey.pem;
     add_header Strict-Transport-Security "max-age=31536000" always;
 
-    return 301 https://${ROOT_DOMAIN}\$request_uri;
+    access_log /var/log/nginx/${ROOT_DOMAIN}.access.log all_too_well_no_args;
+    return 301 https://${ROOT_DOMAIN}\$uri;
 }
 
 server {
@@ -127,7 +134,7 @@ server {
     ssl_certificate /etc/letsencrypt/live/${ROOT_DOMAIN}/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/${ROOT_DOMAIN}/privkey.pem;
 
-    access_log /var/log/nginx/${ROOT_DOMAIN}.access.log;
+    access_log /var/log/nginx/${ROOT_DOMAIN}.access.log all_too_well_no_args;
     error_log /var/log/nginx/${ROOT_DOMAIN}.error.log warn;
 
     root ${PLACEHOLDER_DIR};
@@ -147,6 +154,10 @@ EOF
 
 FINAL_TIMELINE_CONF_B64="$(
   cat <<EOF | base64 | tr -d '\n'
+log_format feishu_timeline_no_args '\$remote_addr - \$remote_user [\$time_local] '
+                                   '"\$request_method \$uri \$server_protocol" \$status \$body_bytes_sent '
+                                   '"\$http_user_agent"';
+
 map \$http_content_type \$feishu_timeline_upload_client {
     default "";
     "~*^multipart/form-data(?:;|\$)" \$binary_remote_addr;
@@ -161,6 +172,13 @@ server {
     listen [::]:80;
     server_name ${APP_HOST};
 
+    access_log /var/log/nginx/feishu-timeline.access.log feishu_timeline_no_args;
+
+    location = ${FEISHU_CALLBACK_PATH} {
+        error_log /dev/null crit;
+        return 308 https://${APP_HOST}${FEISHU_CALLBACK_PATH};
+    }
+
     return 301 https://${APP_HOST}\$request_uri;
 }
 
@@ -172,7 +190,7 @@ server {
     ssl_certificate /etc/letsencrypt/live/${APP_HOST}/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/${APP_HOST}/privkey.pem;
 
-    access_log /var/log/nginx/feishu-timeline.access.log;
+    access_log /var/log/nginx/feishu-timeline.access.log feishu_timeline_no_args;
     error_log /var/log/nginx/feishu-timeline.error.log warn;
 
     client_max_body_size 21m;
@@ -184,6 +202,20 @@ server {
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
     add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
     proxy_hide_header X-Powered-By;
+
+    location = ${FEISHU_CALLBACK_PATH} {
+        error_log /dev/null crit;
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_set_header X-Forwarded-Host \$host;
+        proxy_set_header X-Forwarded-Port \$server_port;
+        proxy_read_timeout 60s;
+        proxy_send_timeout 60s;
+    }
 
     location ~* ^/api/(?:attachments/[A-Za-z0-9_-]+/content|projects/[A-Za-z0-9_-]+/attachments/[A-Za-z0-9_-]+/download|v2/tasks/[A-Za-z0-9_-]+/materials/[A-Za-z0-9_-]+/content)/?\$ {
         limit_conn_status 429;
@@ -264,47 +296,70 @@ PLACEHOLDER_DIR="$9"
 INSTALL_CERTBOT="${10}"
 FINAL_TIMELINE_CONF_B64="${11}"
 FINAL_ROOT_CONF_B64="${12}"
+DOTENV_DATA_TOOL=/usr/local/libexec/feishu-timeline/dotenv-data
+API_ENV_FILE=/etc/feishu-timeline/api.env
+WEB_ENV_FILE=/etc/feishu-timeline/web.env
 backup_dir="/var/backups/feishu-timeline-step6/$(date -u +%Y%m%dT%H%M%SZ)"
-sudo mkdir -p "$backup_dir"
+sudo install -d -o root -g root -m 0700 "$backup_dir"
 
 backup_if_exists() {
   local source="$1"
   local target="$2"
   if [ -e "$source" ]; then
-    sudo cp -a "$source" "$backup_dir/$target"
+    sudo test -f "$source"
+    sudo test ! -L "$source"
+    sudo test ! -e "$backup_dir/$target"
+    sudo test ! -L "$backup_dir/$target"
+    sudo install -o root -g root -m 0600 "$source" "$backup_dir/$target"
   fi
 }
 
 backup_if_exists /etc/nginx/sites-available/feishu-timeline feishu-timeline.conf.bak
 backup_if_exists /etc/nginx/sites-available/all-too-well-root all-too-well-root.conf.bak
-backup_if_exists "$APP_ROOT/apps/api/.env.production" api.env.production.bak
-backup_if_exists "$APP_ROOT/apps/web/.env.production" web.env.production.bak
+backup_if_exists "$API_ENV_FILE" api.env.production.bak
+backup_if_exists "$WEB_ENV_FILE" web.env.production.bak
 backup_if_exists /etc/systemd/system/feishu-timeline-api.service feishu-timeline-api.service.bak
 backup_if_exists /etc/systemd/system/feishu-timeline-web.service feishu-timeline-web.service.bak
 
-upsert_env() {
-  local file="$1"
-  local key="$2"
-  local value="$3"
-  if grep -q "^${key}=" "$file"; then
-    sudo sed -i "s#^${key}=.*#${key}=${value}#" "$file"
-  else
-    printf '%s=%s\n' "$key" "$value" | sudo tee -a "$file" >/dev/null
-  fi
+rewrite_managed_env() {
+  local profile="$1"
+  local file="$2"
+  local file_gid
+  shift 2
+
+  sudo /usr/bin/python3 -I "$DOTENV_DATA_TOOL" validate --profile "$profile" "$file"
+  [ "$(sudo stat -c '%u' "$file")" = 0 ] \
+    || { echo "Managed env is not root-owned: $file" >&2; exit 1; }
+  case "$(sudo stat -c '%a' "$file")" in
+    440|640) ;;
+    *) echo "Managed env has unsafe mode: $file" >&2; exit 1 ;;
+  esac
+  file_gid="$(sudo stat -c '%g' "$file")"
+  sudo /usr/bin/python3 -I "$DOTENV_DATA_TOOL" rewrite \
+    --profile "$profile" \
+    --source "$file" \
+    --target "$file" \
+    --uid 0 \
+    --gid "$file_gid" \
+    --mode 0640 \
+    --require-secure-parent \
+    "$@"
 }
 
-sudo test -f "$APP_ROOT/apps/api/.env.production"
-sudo test -f "$APP_ROOT/apps/web/.env.production"
+sudo test -f "$API_ENV_FILE"
+sudo test -f "$WEB_ENV_FILE"
 sudo mkdir -p "$PLACEHOLDER_DIR"
-upsert_env "$APP_ROOT/apps/api/.env.production" FRONTEND_URL "$PUBLIC_APP_URL"
-upsert_env "$APP_ROOT/apps/api/.env.production" DEPLOYMENT_ENV production
-upsert_env "$APP_ROOT/apps/api/.env.production" FEISHU_REDIRECT_URI "$EXPECTED_FEISHU_REDIRECT_URI"
-upsert_env "$APP_ROOT/apps/api/.env.production" OAUTH_PROVIDER "$OAUTH_PROVIDER"
-upsert_env "$APP_ROOT/apps/api/.env.production" FEISHU_AUTHORIZATION_ENDPOINT "$FEISHU_AUTHORIZATION_ENDPOINT"
-upsert_env "$APP_ROOT/apps/api/.env.production" AUTH_MOCK_ENABLED false
-upsert_env "$APP_ROOT/apps/web/.env.production" NEXT_PUBLIC_API_BASE_URL /api
-upsert_env "$APP_ROOT/apps/web/.env.production" NEXT_PUBLIC_ENABLE_MOCK_LOGIN false
-sudo sed -i '/^NEXT_PUBLIC_FEISHU_APP_ID=/d' "$APP_ROOT/apps/web/.env.production"
+rewrite_managed_env api "$API_ENV_FILE" \
+  --set "FRONTEND_URL=$PUBLIC_APP_URL" \
+  --set "DEPLOYMENT_ENV=production" \
+  --set "FEISHU_REDIRECT_URI=$EXPECTED_FEISHU_REDIRECT_URI" \
+  --set "OAUTH_PROVIDER=$OAUTH_PROVIDER" \
+  --set "FEISHU_AUTHORIZATION_ENDPOINT=$FEISHU_AUTHORIZATION_ENDPOINT" \
+  --set "AUTH_MOCK_ENABLED=false"
+rewrite_managed_env web "$WEB_ENV_FILE" \
+  --set "NEXT_PUBLIC_API_BASE_URL=/api" \
+  --set "NEXT_PUBLIC_ENABLE_MOCK_LOGIN=false" \
+  --delete NEXT_PUBLIC_FEISHU_APP_ID
 
 if ! command -v certbot >/dev/null 2>&1; then
   if [ "$INSTALL_CERTBOT" = no ]; then

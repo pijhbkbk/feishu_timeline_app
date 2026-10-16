@@ -88,6 +88,8 @@ validate_bootstrap_parameters() {
       fail 'Bootstrap paths must be bounded absolute paths without whitespace or dot segments.'
     fi
   done
+  [ "$APP_ROOT" = /opt/feishu_timeline_app ] \
+    || fail 'APP_ROOT must use the approved production root /opt/feishu_timeline_app.'
 }
 
 configure_nodesource_repository() {
@@ -197,14 +199,53 @@ create_app_user_if_needed() {
   useradd --create-home --home-dir "$APP_HOME" --shell /bin/bash "$APP_USER"
 }
 
+create_runtime_users_if_needed() {
+  local runtime_user
+
+  for runtime_user in feishu-timeline-api feishu-timeline-web; do
+    if ! getent group "$runtime_user" >/dev/null; then
+      groupadd --system "$runtime_user"
+    fi
+    if ! id "$runtime_user" >/dev/null 2>&1; then
+      useradd --system \
+        --gid "$runtime_user" \
+        --home-dir /nonexistent \
+        --no-create-home \
+        --shell /usr/sbin/nologin \
+        "$runtime_user"
+    fi
+    [ "$(getent passwd "$runtime_user" | awk -F: 'NR == 1 {print $7}')" = /usr/sbin/nologin ] \
+      || fail "Runtime user must use /usr/sbin/nologin: $runtime_user"
+    [ "$runtime_user" != "$APP_USER" ] \
+      || fail 'Deploy user must not be a runtime user.'
+  done
+}
+
 create_directories() {
   log "Creating deployment directories under $APP_ROOT"
-  install -d -m 0755 "$APP_ROOT"
-  install -d -m 0755 "$APP_ROOT/apps"
-  install -d -m 0755 "$APP_ROOT/apps/api"
-  install -d -m 0755 "$APP_ROOT/apps/web"
-  install -d -m 0755 "$APP_ROOT/var"
-  install -d -m 0750 -o "$APP_USER" -g "$APP_GROUP" "$OBJECT_STORAGE_DIR"
+  python3 - "$APP_ROOT" <<'PY'
+from pathlib import Path
+import stat
+import sys
+
+for path in (Path('/opt'), Path(sys.argv[1]), Path(sys.argv[1]) / 'releases', Path(sys.argv[1]) / 'var'):
+    try:
+        metadata = path.lstat()
+    except FileNotFoundError:
+        continue
+    if not stat.S_ISDIR(metadata.st_mode):
+        raise SystemExit(f'bootstrap managed path is not a non-symlink directory: {path}')
+    if metadata.st_uid != 0 or stat.S_IMODE(metadata.st_mode) & 0o022:
+        raise SystemExit(f'bootstrap managed path is not root-controlled: {path}')
+PY
+  install -d -o root -g root -m 0755 "$APP_ROOT"
+  install -d -o root -g root -m 0755 "$APP_ROOT/releases"
+  install -d -o root -g root -m 0755 "$APP_ROOT/var"
+  if [[ -e "$OBJECT_STORAGE_DIR" || -L "$OBJECT_STORAGE_DIR" ]]; then
+    [[ -d "$OBJECT_STORAGE_DIR" && ! -L "$OBJECT_STORAGE_DIR" ]] \
+      || fail "Object storage target is not a non-symlink directory: $OBJECT_STORAGE_DIR"
+  fi
+  install -d -m 0750 -o feishu-timeline-api -g feishu-timeline-api "$OBJECT_STORAGE_DIR"
   install -d -m 0750 -o "$APP_USER" -g "$APP_GROUP" "$BACKUP_STAGING_DIR"
   install -d -m 0750 -o "$APP_USER" -g "$APP_GROUP" "$CONFIG_REVIEW_DIR"
   install -d -m 0755 "$PLACEHOLDER_ROOT"
@@ -246,6 +287,7 @@ apt_install ca-certificates curl git gnupg nginx build-essential postgresql-clie
 
 ensure_node_runtime
 create_app_user_if_needed
+create_runtime_users_if_needed
 create_directories
 create_placeholder_index
 

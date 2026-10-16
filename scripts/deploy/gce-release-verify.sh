@@ -140,54 +140,37 @@ curl -k -I --max-time 10 --resolve "$WWW_DOMAIN:443:127.0.0.1" "https://$WWW_DOM
 echo '---'
 curl -k -I --max-time 10 --resolve "$APP_HOST:443:127.0.0.1" "https://$APP_HOST/" || true
 echo '--- env ---'
-python3 - <<'PY'
-from pathlib import Path
-import os
-import shlex
-keys = {
-    Path(os.environ['APP_ROOT']) / 'apps/api/.env.production': [
-        'DEPLOYMENT_ENV',
-        'FRONTEND_URL',
-        'FEISHU_REDIRECT_URI',
-        'OAUTH_PROVIDER',
-        'FEISHU_AUTHORIZATION_ENDPOINT',
-        'AUTH_MOCK_ENABLED',
-        'FEISHU_APP_ID',
-        'FEISHU_APP_SECRET',
-        'DATABASE_URL',
-        'REDIS_URL',
-    ],
-    Path(os.environ['APP_ROOT']) / 'apps/web/.env.production': ['NEXT_PUBLIC_API_BASE_URL', 'NEXT_PUBLIC_ENABLE_MOCK_LOGIN', 'NEXT_PUBLIC_UI_VERSION', 'NEXT_PUBLIC_UI_DATA_MODE', 'V1_FALLBACK_ENABLED'],
-}
-for path, names in keys.items():
-    print(f'[{path}]')
-    if not path.exists():
-      print('missing')
-      continue
-    data = {}
-    for line in path.read_text().splitlines():
-      s = line.strip()
-      if not s or s.startswith('#') or '=' not in s:
-        continue
-      k, v = s.split('=', 1)
-      try:
-        parsed = shlex.split(v)
-        data[k] = parsed[0] if parsed else ''
-      except ValueError:
-        data[k] = v
-    for name in names:
-      value = data.get(name, '')
-      if value:
-        if name in {'DEPLOYMENT_ENV', 'FRONTEND_URL', 'FEISHU_REDIRECT_URI', 'OAUTH_PROVIDER', 'FEISHU_AUTHORIZATION_ENDPOINT', 'AUTH_MOCK_ENABLED', 'NEXT_PUBLIC_API_BASE_URL', 'NEXT_PUBLIC_ENABLE_MOCK_LOGIN', 'NEXT_PUBLIC_UI_VERSION', 'NEXT_PUBLIC_UI_DATA_MODE', 'V1_FALLBACK_ENABLED'}:
-          print(f'{name}=<set:{value}>')
-        elif name in {'FEISHU_APP_ID', 'FEISHU_APP_SECRET'} and value in {'your_feishu_app_id', 'your_feishu_app_secret'}:
-          print(f'{name}=<placeholder>')
-        else:
-          print(f'{name}=<set>')
-      else:
-        print(f'{name}=<missing>')
-    print()
-PY
+dotenv_data_tool=/usr/local/libexec/feishu-timeline/dotenv-data
+api_env_file=/etc/feishu-timeline/api.env
+web_env_file=/etc/feishu-timeline/web.env
+sudo /usr/bin/python3 -I "$dotenv_data_tool" validate --profile api "$api_env_file"
+sudo /usr/bin/python3 -I "$dotenv_data_tool" validate --profile web "$web_env_file"
+printf '[%s]\n' "$api_env_file"
+for name in DEPLOYMENT_ENV FRONTEND_URL FEISHU_REDIRECT_URI OAUTH_PROVIDER FEISHU_AUTHORIZATION_ENDPOINT AUTH_MOCK_ENABLED FEISHU_APP_ID FEISHU_APP_SECRET DATABASE_URL REDIS_URL; do
+  value="$(sudo /usr/bin/python3 -I "$dotenv_data_tool" get --profile api "$api_env_file" "$name" 2>/dev/null || true)"
+  if [ -z "$value" ]; then
+    printf '%s=<missing>\n' "$name"
+  elif [ "$name" = FEISHU_APP_ID ] && [ "$value" = your_feishu_app_id ] \
+    || [ "$name" = FEISHU_APP_SECRET ] && [ "$value" = your_feishu_app_secret ]; then
+    printf '%s=<placeholder>\n' "$name"
+  else
+    case "$name" in
+      DEPLOYMENT_ENV|FRONTEND_URL|FEISHU_REDIRECT_URI|OAUTH_PROVIDER|FEISHU_AUTHORIZATION_ENDPOINT|AUTH_MOCK_ENABLED)
+        printf '%s=<set:%s>\n' "$name" "$value"
+        ;;
+      *) printf '%s=<set>\n' "$name" ;;
+    esac
+  fi
+done
+printf '[%s]\n' "$web_env_file"
+for name in NEXT_PUBLIC_API_BASE_URL NEXT_PUBLIC_ENABLE_MOCK_LOGIN NEXT_PUBLIC_UI_VERSION NEXT_PUBLIC_UI_DATA_MODE V1_FALLBACK_ENABLED; do
+  value="$(sudo /usr/bin/python3 -I "$dotenv_data_tool" get --profile web "$web_env_file" "$name" 2>/dev/null || true)"
+  if [ -n "$value" ]; then
+    printf '%s=<set:%s>\n' "$name" "$value"
+  else
+    printf '%s=<missing>\n' "$name"
+  fi
+done
 echo '--- certbot ---'
 sudo certbot certificates | sed -n '1,120p'
 echo '--- recent api log warnings ---'
