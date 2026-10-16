@@ -21,6 +21,8 @@ jobs:
         id: checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
+          # Installer recovery regressions reconstruct pinned historical controllers.
+          fetch-depth: 0
           persist-credentials: false
 
       - name: Setup pnpm

@@ -8336,3 +8336,4 @@ main ref与tag未改变。这里仅追加指针，保留原有未提交交接文
 - 独立完整性、安全差异和精确树/新增历史发布前复核未发现新增阻断；49 个扫描候选全部研判，确认 Secret 0、未研判 0。原始日志与 SHA256、refs bundle、脏工作树备份在本机私有审计目录，未提交公开。
 - 详情、来源提交、兼容边界、验证适用性和未执行环境见 [PROJECT_CONSOLIDATION_20261016](acceptance/PROJECT_CONSOLIDATION_20261016.md)。本记录提交时 GitHub/main 待推送合并，最终状态由远端和根 main 回读固定；本轮不访问 staging/production、不重做产品路由验收，产品状态仍 AWAITING_PRODUCT_OWNER_CONFIRMATION。
 - 磁盘清理只针对核对后的本项目闲置环境与可重建依赖/构建缓存；数据库卷、附件、备份、原始验收证据及历史源码保留。清理实际回收量与最终 Docker 状态由本机收据及本轮最终报告记录，不用目录逻辑大小代替磁盘实际增量。
+- GitHub 首轮并行 push / PR verify 在浅 checkout 缺少固定历史控制器的同一原因上失败（279 测试、119 errors），与本机完整历史结果区分；按明确根因补齐 verify 的 fetch-depth: 0 后重新验证，未跳过测试或更改断言。远端 CI 结果绑定新的 PR head。
