@@ -1,9 +1,34 @@
 import path from 'node:path';
+import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 
 import type { NextConfig } from 'next';
 
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
+const require = createRequire(import.meta.url);
+const webStandaloneRelease = require(
+  '../../scripts/deploy/web-standalone-release.cjs',
+) as {
+  assertReleaseProfile(
+    env: NodeJS.ProcessEnv,
+    context: string,
+  ): Record<string, string>;
+};
+
+const productionReleaseProfile =
+  process.env.NODE_ENV === 'production'
+    ? webStandaloneRelease.assertReleaseProfile(
+        process.env,
+        'Next production build',
+      )
+    : null;
+const buildBoundEnvironment = productionReleaseProfile
+  ? Object.fromEntries(
+      Object.entries(productionReleaseProfile).filter(
+        ([name]) => name !== 'NODE_ENV',
+      ),
+    )
+  : null;
 
 const securityHeaders = [
   {
@@ -43,6 +68,12 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   distDir: process.env.NEXT_DIST_DIR ?? '.next',
   output: 'standalone',
+  ...(productionReleaseProfile && buildBoundEnvironment
+    ? {
+        env: buildBoundEnvironment,
+        generateBuildId: async () => productionReleaseProfile.RUNTIME_COMMIT,
+      }
+    : {}),
   devIndicators: false,
   poweredByHeader: false,
   reactStrictMode: true,

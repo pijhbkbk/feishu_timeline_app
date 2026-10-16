@@ -45,8 +45,34 @@ jobs:
       - name: Test
         run: pnpm test
 
+      - name: Prepare Web Release Identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "${GITHUB_SHA}" =~ ^[0-9a-f]{40}$ ]]
+          short_sha="${GITHUB_SHA:0:12}"
+          {
+            printf 'NODE_ENV=production\n'
+            printf 'NEXT_PUBLIC_API_BASE_URL=/api\n'
+            printf 'NEXT_PUBLIC_ENABLE_MOCK_LOGIN=false\n'
+            printf 'NEXT_PUBLIC_UI_VERSION=v2\n'
+            printf 'NEXT_PUBLIC_UI_DATA_MODE=real\n'
+            printf 'V1_FALLBACK_ENABLED=false\n'
+            printf 'NEXT_PUBLIC_R26_V2_PROTOTYPE=false\n'
+            printf 'NEXT_PUBLIC_R26_V2_DATA_MODE=read-only-real\n'
+            printf 'RUNTIME_COMMIT=%s\n' "${GITHUB_SHA}"
+            printf 'BUILD_TIME=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            printf 'RELEASE=ci-%s\n' "${short_sha}"
+          } >>"${GITHUB_ENV}"
+
       - name: Build Web
         run: pnpm --filter @feishu-timeline/web build
+
+      - name: Verify Web Standalone Artifact
+        env:
+          HOSTNAME: 127.0.0.1
+          PORT: 3000
+        run: pnpm --filter @feishu-timeline/web standalone:verify
 
       - name: Reject Development Build Artifacts
         run: bash scripts/security/check-production-build-artifacts.sh
@@ -64,7 +90,21 @@ jobs:
         run: docker build -t feishu-timeline-api:ci -f apps/api/Dockerfile .
 
       - name: Build Web Docker Image
-        run: docker build -t feishu-timeline-web:ci -f apps/web/Dockerfile .
+        run: |
+          docker build \
+            --build-arg NEXT_PUBLIC_API_BASE_URL="${NEXT_PUBLIC_API_BASE_URL}" \
+            --build-arg NEXT_PUBLIC_ENABLE_MOCK_LOGIN="${NEXT_PUBLIC_ENABLE_MOCK_LOGIN}" \
+            --build-arg NEXT_PUBLIC_UI_VERSION="${NEXT_PUBLIC_UI_VERSION}" \
+            --build-arg NEXT_PUBLIC_UI_DATA_MODE="${NEXT_PUBLIC_UI_DATA_MODE}" \
+            --build-arg V1_FALLBACK_ENABLED="${V1_FALLBACK_ENABLED}" \
+            --build-arg NEXT_PUBLIC_R26_V2_PROTOTYPE="${NEXT_PUBLIC_R26_V2_PROTOTYPE}" \
+            --build-arg NEXT_PUBLIC_R26_V2_DATA_MODE="${NEXT_PUBLIC_R26_V2_DATA_MODE}" \
+            --build-arg RUNTIME_COMMIT="${RUNTIME_COMMIT}" \
+            --build-arg BUILD_TIME="${BUILD_TIME}" \
+            --build-arg RELEASE="${RELEASE}" \
+            -t feishu-timeline-web:ci \
+            -f apps/web/Dockerfile \
+            .
 
       - name: Scan Production Container Images
         run: bash scripts/security/scan-production-images.sh feishu-timeline-api:ci feishu-timeline-web:ci

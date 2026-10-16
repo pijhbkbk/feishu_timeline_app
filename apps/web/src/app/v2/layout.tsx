@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 
 import { Providers } from '../../components/providers';
 import { isR26V2PrototypeEnabled } from '../../features/v2/r26-feature';
+import { isProductionV2Ui } from '../../features/v2/production-ui';
 import { R26PrototypeProvider } from '../../features/v2/prototype-store';
 import { R26RealDataProvider } from '../../features/v2/r26-real-data-context';
 import { V2Shell } from '../../features/v2/v2-shell';
@@ -18,7 +19,7 @@ export const metadata: Metadata = {
 };
 
 export default function V2Layout({ children }: { children: ReactNode }) {
-  if (!isR26V2PrototypeEnabled()) {
+  if (!isProductionV2Ui() && !isR26V2PrototypeEnabled()) {
     notFound();
   }
 

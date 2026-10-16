@@ -4,8 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "dotenv -e .env.example -- next dev --port 3000",
-    "build": "next build",
-    "start": "dotenv -e .env.example -- next start --hostname 127.0.0.1 --port 3000",
+    "build": "next build && pnpm run standalone:package",
+    "start": "node .next/standalone/apps/web/server.js",
+    "standalone:package": "node ../../scripts/deploy/web-standalone-release.cjs package --source-app . --standalone-app .next/standalone/apps/web",
+    "standalone:verify": "node ../../scripts/deploy/web-standalone-release.cjs verify --app-dir .next/standalone/apps/web",
     "lint": "pnpm exec eslint src --ext .ts,.tsx --max-warnings=0",
     "typecheck": "tsc --noEmit",
     "test": "pnpm exec vitest run",

@@ -1,6 +1,22 @@
 name: ${COMPOSE_PROJECT_NAME:-feishu-timeline-staging}
 
+x-release-metadata: &release-metadata
+  RUNTIME_COMMIT: ${RUNTIME_COMMIT:?Set RUNTIME_COMMIT to the full release commit}
+  BUILD_TIME: ${BUILD_TIME:?Set BUILD_TIME to the UTC release build timestamp}
+  RELEASE: ${RELEASE:?Set RELEASE to the immutable release identifier}
+
+x-web-release: &web-release
+  <<: *release-metadata
+  NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:?Set NEXT_PUBLIC_API_BASE_URL=/api}
+  NEXT_PUBLIC_ENABLE_MOCK_LOGIN: ${NEXT_PUBLIC_ENABLE_MOCK_LOGIN:?Set NEXT_PUBLIC_ENABLE_MOCK_LOGIN=false}
+  NEXT_PUBLIC_UI_VERSION: ${NEXT_PUBLIC_UI_VERSION:?Set NEXT_PUBLIC_UI_VERSION=v2}
+  NEXT_PUBLIC_UI_DATA_MODE: ${NEXT_PUBLIC_UI_DATA_MODE:?Set NEXT_PUBLIC_UI_DATA_MODE=real}
+  V1_FALLBACK_ENABLED: ${V1_FALLBACK_ENABLED:?Set V1_FALLBACK_ENABLED=false}
+  NEXT_PUBLIC_R26_V2_PROTOTYPE: ${NEXT_PUBLIC_R26_V2_PROTOTYPE:?Set NEXT_PUBLIC_R26_V2_PROTOTYPE=false}
+  NEXT_PUBLIC_R26_V2_DATA_MODE: ${NEXT_PUBLIC_R26_V2_DATA_MODE:?Set NEXT_PUBLIC_R26_V2_DATA_MODE=read-only-real}
+
 x-api-runtime: &api-runtime
+  <<: *release-metadata
   NODE_ENV: production
   DEPLOYMENT_ENV: staging
   HOST: 0.0.0.0
@@ -180,27 +196,15 @@ services:
       dockerfile: apps/web/Dockerfile
       target: runtime
       args:
+        <<: *web-release
         NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-轻卡新颜色开发项目管理系统}
-        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-/api}
-        NEXT_PUBLIC_ENABLE_MOCK_LOGIN: ${NEXT_PUBLIC_ENABLE_MOCK_LOGIN:-false}
-        NEXT_PUBLIC_UI_VERSION: ${NEXT_PUBLIC_UI_VERSION:-v1}
-        NEXT_PUBLIC_UI_DATA_MODE: ${NEXT_PUBLIC_UI_DATA_MODE:-real}
-        V1_FALLBACK_ENABLED: ${V1_FALLBACK_ENABLED:-true}
-        NEXT_PUBLIC_R26_V2_PROTOTYPE: ${NEXT_PUBLIC_R26_V2_PROTOTYPE:-false}
-        NEXT_PUBLIC_R26_V2_DATA_MODE: ${NEXT_PUBLIC_R26_V2_DATA_MODE:-prototype}
     container_name: ${COMPOSE_PROJECT_NAME:-feishu-timeline-staging}-web
     environment:
+      <<: *web-release
       NODE_ENV: production
-      HOST: 0.0.0.0
+      HOSTNAME: 0.0.0.0
       PORT: 3000
       NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-轻卡新颜色开发项目管理系统}
-      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-/api}
-      NEXT_PUBLIC_ENABLE_MOCK_LOGIN: ${NEXT_PUBLIC_ENABLE_MOCK_LOGIN:-false}
-      NEXT_PUBLIC_UI_VERSION: ${NEXT_PUBLIC_UI_VERSION:-v1}
-      NEXT_PUBLIC_UI_DATA_MODE: ${NEXT_PUBLIC_UI_DATA_MODE:-real}
-      V1_FALLBACK_ENABLED: ${V1_FALLBACK_ENABLED:-true}
-      NEXT_PUBLIC_R26_V2_PROTOTYPE: ${NEXT_PUBLIC_R26_V2_PROTOTYPE:-false}
-      NEXT_PUBLIC_R26_V2_DATA_MODE: ${NEXT_PUBLIC_R26_V2_DATA_MODE:-prototype}
     depends_on:
       api:
         condition: service_healthy
