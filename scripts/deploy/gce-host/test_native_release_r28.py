@@ -4,6 +4,7 @@ import tempfile
 from pathlib import Path
 from contextlib import ExitStack
 import unittest
+import native_release_r28_patch as program
 from unittest.mock import patch
 import native_release_r28 as r28
 import native_release as release
@@ -53,6 +54,7 @@ class R28BoundaryTests(unittest.TestCase):
             retained.write_text('{"phase":"WRITE_ENABLE_INTENT"}')
             stack.enter_context(patch.object(r28, 'JOURNAL', retained))
             stack.enter_context(patch.object(release, 'operation'))
+            stack.enter_context(patch.object(program, 'record', side_effect=backup.Failure('patch migration guard rejected')))
             stack.enter_context(patch.object(r28, 'journal', return_value={'phase': 'WRITE_ENABLE_INTENT'}))
             stack.enter_context(patch.object(release, 'state', return_value={**stable(r28.TARGET['base']), 'pending': True}))
             role = stack.enter_context(patch.object(r28.scope, 'close_role'))

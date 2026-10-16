@@ -69,6 +69,15 @@ redis_connectivity=ok
 EOF
       ;;
     http)
+      printf 'count=0\nerror_count=0\njournal_error_count=0\n'
+      ;;
+    http_error_counts)
+      printf 'count=0\nerror_count=1\njournal_error_count=1\n'
+      ;;
+    http_unavailable)
+      printf 'count=0\nerror_count=0\njournal_error_count=unavailable\n'
+      ;;
+    http_missing_metrics)
       printf 'count=0\n'
       ;;
     backup)
@@ -271,6 +280,14 @@ run_script() {
         fail "$script executed an injected command for argument: $argument"
       fi
       ;;
+    remote_rejected)
+      [ "$rc" -eq 1 ] || fail "$script did not reject an invalid remote result"
+      [ -s "$case_dir/gcloud.log" ] \
+        || fail "$script rejected the remote fixture before observing its metrics"
+      grep -E 'Recent (nginx|API).*count=|Remote error metric is missing or invalid:' \
+        "$case_dir/stderr" >/dev/null \
+        || fail "$script failed for a reason unrelated to remote error metrics"
+      ;;
     *)
       fail "unknown test expectation: $expected"
       ;;
@@ -313,6 +330,9 @@ for entry in "${SCRIPTS[@]}"; do
 done
 
 run_script 'scripts/deploy/check-http-errors.sh' http 'LINES=200' accepted
+run_script 'scripts/deploy/check-http-errors.sh' http_error_counts 'LINES=200' remote_rejected
+run_script 'scripts/deploy/check-http-errors.sh' http_unavailable 'LINES=200' remote_rejected
+run_script 'scripts/deploy/check-http-errors.sh' http_missing_metrics 'LINES=200' remote_rejected
 run_script 'scripts/deploy/check-http-errors.sh' http 'LINES=0' rejected
 run_script 'scripts/deploy/check-http-errors.sh' http 'LINES=100001' rejected
 run_script 'scripts/deploy/check-http-errors.sh' http 'JOURNAL_SINCE=60 min ago' accepted

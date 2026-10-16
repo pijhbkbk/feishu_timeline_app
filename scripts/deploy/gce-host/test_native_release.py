@@ -7,6 +7,7 @@ import tempfile
 import hashlib
 import types
 import unittest
+import native_release_r28_patch as program
 from unittest.mock import patch
 import native_release as release
 import native_runtime_app as app
@@ -53,28 +54,29 @@ class ReleaseBoundaryTests(unittest.TestCase):
         observed = []
         def update(**kwargs):
             with self.assertRaises(release.OperationActive):
-                with release.operation():
-                    self.fail('Competing operation acquired the lock')
+                with release.operation(): self.fail('Competing operation acquired the lock')
             observed.append(kwargs)
         with tempfile.TemporaryDirectory() as directory, patch.object(release, 'ROOT', Path(directory)), \
                 patch.object(backup, 'regular', side_effect=lambda fd, maximum, owner: regular(fd, maximum, owner=os.getuid())), \
                 patch.object(release, 'INSTALLED', Path(release.__file__).parent), \
                 patch.object(release.os, 'geteuid', return_value=0), \
                 patch.object(release.socket, 'gethostname', return_value='instance-20260408-091840'), \
-                patch.object(app, 'state_directory'), patch.object(release, 'update', side_effect=update), \
-                patch.object(r28, 'update', side_effect=update):
+                patch.object(app, 'state_directory'), patch.object(release, 'present', return_value=False), \
+                patch.object(release, 'update', side_effect=update) as rollback, \
+                patch.object(program, 'update', side_effect=update) as update_patch, patch.object(r28, 'update') as migration_update:
             for action in ('update', 'rollback'):
-                with patch.object(release.sys, 'argv', ['native_release.py', action]):
-                    release.main()
-            self.assertEqual(observed, [{'rehearse': False}, {'rollback': True}])
+                with patch.object(release.sys, 'argv', ['native_release.py', action]): release.main()
+            self.assertEqual(observed, [{}, {'rollback': True}])
+            update_patch.assert_called_once_with(); rollback.assert_called_once_with(rollback=True); migration_update.assert_not_called()
 
-    def test_interrupted_rollback_restores_new_program_without_database_restore(self):
+    def test_interrupted_rollback_retains_pending_state_without_database_restore(self):
         pending = {'version': 1, 'active': release.OLD, 'committed': release.NEW, 'pending': True}
-        with patch.object(release, 'state', return_value=pending), patch.object(release, 'close_program'), \
-                patch.object(release, 'replace_state') as write, patch.object(backup, 'restore') as restore, patch('builtins.print'):
-            release.recover_pending_unlocked()
-            write.assert_called_once_with(stable(release.NEW))
-            restore.assert_not_called()
+        with patch.object(release, 'state', return_value=pending), patch.object(program, 'record', return_value={'phase': 'PREPARED'}), \
+                patch.object(r28, 'hold_closed', side_effect=backup.Failure('maintenance retained')) as hold, \
+                patch.object(release, 'replace_state') as write, patch.object(backup, 'restore') as restore:
+            with self.assertRaisesRegex(backup.Failure, 'maintenance retained'): release.recover_pending_unlocked()
+            hold.assert_called_once(); write.assert_not_called(); restore.assert_not_called()
+            self.assertEqual(pending, {'version': 1, 'active': release.OLD, 'committed': release.NEW, 'pending': True})
 
     def test_rollback_accepts_stopped_or_missing_new_containers(self):
         for existing in (None, {'State': {'Running': False, 'Pid': 0}}):
@@ -155,15 +157,18 @@ class ReleaseBoundaryTests(unittest.TestCase):
 
     def test_pending_prevents_ingress_before_checkout_or_commands(self):
         value = {**stable(), 'active': release.NEW, 'pending': True}
-        with patch.object(release, 'state', return_value=value), patch.object(release, 'verify_checkout') as verify:
-            with self.assertRaisesRegex(backup.Failure, 'pending'):
-                release.ingress_ready()
-            verify.assert_not_called()
+        with patch.object(release, 'state', return_value=value), patch.object(release, 'verify_checkout') as verify, \
+                patch.object(program, 'assert_start') as gate:
+            with self.assertRaisesRegex(backup.Failure, 'pending'): release.ingress_ready()
+            gate.assert_not_called(); verify.assert_not_called()
         with patch.object(release, 'state', return_value=stable(release.NEW)), patch.object(release, 'verify_checkout') as verify, \
-                patch.object(r28, 'assert_start') as schema:
+                patch.object(program, 'assert_start') as gate:
             release.ingress_ready()
-            schema.assert_called_once_with(release.NEW)
-            verify.assert_called_once_with(release.NEW)
+            gate.assert_called_once_with(release.NEW, ingress=True); verify.assert_called_once_with(release.NEW)
+        with patch.object(release, 'state', return_value=stable(release.NEW)), patch.object(release, 'verify_checkout') as verify, \
+                patch.object(program, 'assert_start', side_effect=backup.Failure('41 schema gate rejected')) as gate:
+            with self.assertRaisesRegex(backup.Failure, '41 schema gate rejected'): release.ingress_ready()
+            gate.assert_called_once_with(release.NEW, ingress=True); verify.assert_not_called()
 
     def test_new_environment_changes_only_metadata_and_preserves_private_paths(self):
         with patch.object(release, 'state', return_value=stable()):
@@ -190,23 +195,23 @@ class ReleaseBoundaryTests(unittest.TestCase):
             with self.assertRaisesRegex(backup.Failure, 'identity differs'):
                 app.image_identity('api', identity)
 
-    def test_recovery_selects_old_native_program_only_after_owned_containers_stop(self):
-        events = []
-        pending = {**stable(), 'active': release.NEW, 'pending': True}
-        with patch.object(release, 'state', return_value=pending), \
-                patch.object(release, 'close_program', side_effect=lambda: events.append('stop')), \
-                patch.object(release, 'replace_state', side_effect=lambda value: events.append(value)), \
-                patch.object(backup, 'role_change') as roles, patch.object(backup, 'sql') as sql, patch('builtins.print'):
-            self.assertTrue(release.recover_pending_unlocked())
-            self.assertEqual(events, ['stop', stable()])
-            roles.assert_not_called()
-            sql.assert_not_called()
-        with patch.object(release, 'state', return_value=pending), \
-                patch.object(release, 'close_program', side_effect=backup.Failure('still running')), \
-                patch.object(release, 'replace_state') as write:
-            with self.assertRaises(backup.Failure):
-                release.recover_pending_unlocked()
-            write.assert_not_called()
+    def test_recovery_never_selects_old_native_program_after_patch_intent(self):
+        for stop_failure in (False, True):
+            events = []
+            pending = {**stable(), 'active': release.NEW, 'pending': True}
+            def stop():
+                events.append('stop')
+                if stop_failure: raise backup.Failure('still running')
+            with self.subTest(stop_failure=stop_failure), patch.object(release, 'state', return_value=pending), \
+                    patch.object(program, 'record', return_value={'phase': 'WRITE_ENABLE_INTENT'}), \
+                    patch.object(r28.scope, 'close_role') as close_role, patch.object(release, 'close_program', side_effect=stop), \
+                    patch.object(r28, 'stop_worker') as worker, patch.object(cutover, 'systemctl') as ctl, \
+                    patch.object(release, 'replace_state') as write, patch.object(backup, 'role_change') as roles, \
+                    patch.object(backup, 'sql') as sql, patch.object(backup, 'restore') as restore:
+                with self.assertRaises(backup.Failure): release.recover_pending_unlocked()
+                self.assertEqual(events, ['stop']); close_role.assert_called_once(); worker.assert_called_once()
+                ctl.assert_called_once_with('stop', 'timeline-native-redis.service')
+                write.assert_not_called(); roles.assert_not_called(); sql.assert_not_called(); restore.assert_not_called()
 
     def test_reviewed_api_scope_cannot_allow_schema_or_dependency_changes(self):
         cases = [
@@ -264,11 +269,12 @@ class ReleaseBoundaryTests(unittest.TestCase):
             remove.assert_not_called()
 
     def test_committed_new_program_is_not_rolled_back(self):
-        with patch.object(release, 'state', return_value=stable(release.NEW)), \
-                patch.object(release, 'close_program') as close, patch.object(release, 'replace_state') as write:
+        with patch.object(release, 'state', return_value=stable(release.NEW)), patch.object(program, 'record', return_value={'phase': 'COMMITTED'}), \
+                patch.object(program, 'assert_start') as gate, patch.object(release, 'close_program') as close, \
+                patch.object(release, 'replace_state') as write, patch.object(backup, 'restore') as restore:
             self.assertFalse(release.recover_pending_unlocked())
-            close.assert_not_called()
-            write.assert_not_called()
+            gate.assert_called_once_with(release.NEW, ingress=True)
+            close.assert_not_called(); write.assert_not_called(); restore.assert_not_called()
 
     def test_update_releases_lock_before_start_and_commits_only_after_private_health(self):
         events = []
@@ -333,9 +339,13 @@ class ReleaseBoundaryTests(unittest.TestCase):
                 release.update()
             self.assertEqual(value, {**stable(), 'pending': True})
             ctl.assert_not_called()
-            with patch('builtins.print'):
-                release.recover_pending_unlocked()
-            self.assertEqual(value, stable())
+            restore = stack.enter_context(patch.object(backup, 'restore'))
+            with patch.object(program, 'record', return_value={'phase': 'PREPARED'}), \
+                    patch.object(r28, 'hold_closed', side_effect=backup.Failure('maintenance retained')) as hold:
+                with self.assertRaisesRegex(backup.Failure, 'maintenance retained'): release.recover_pending_unlocked()
+                hold.assert_called_once()
+            self.assertEqual(value, {**stable(), 'pending': True})
+            restore.assert_not_called()
 
     def test_private_health_failure_keeps_recoverable_intent_and_ingress_closed(self):
         value = stable()

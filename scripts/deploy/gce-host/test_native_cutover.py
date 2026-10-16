@@ -1,4 +1,7 @@
 import unittest
+from contextlib import ExitStack
+import native_release_r28 as r28
+import native_release_r28_patch as program
 from unittest.mock import patch
 import native_cutover as c
 import native_backup_controller as b
@@ -94,41 +97,50 @@ class CutoverBoundaryTests(unittest.TestCase):
                 role.assert_not_called()
 
     def test_corrupt_commit_never_falls_back_to_old_database(self):
-        with patch.object(c,'present',return_value=True),patch.object(c,'committed_value',side_effect=b.Failure('corrupt')),\
-             patch.object(b,'role_change') as role,patch.object(c,'systemctl') as ctl:
-            with self.assertRaises(b.Failure):c.recover()
-            role.assert_not_called();ctl.assert_not_called()
+        with patch.object(release, 'operation'), patch.object(c, 'committed_value', side_effect=b.Failure('corrupt')) as committed, \
+                patch.object(r28.scope, 'close_role') as close_role, patch.object(release, 'close_program') as stop, \
+                patch.object(r28, 'stop_worker') as worker, patch.object(c, 'systemctl') as ctl, \
+                patch.object(b, 'role_change') as role, patch.object(b, 'recover_restore') as restore, \
+                patch.object(b, 'recover_source') as source, patch.object(c, 'close_old_role') as old_role:
+            with self.assertRaisesRegex(b.Failure, 'maintenance retained'): c.recover()
+            committed.assert_called_once()
+            close_role.assert_called_once(); stop.assert_called_once(); worker.assert_called_once()
+            ctl.assert_called_once_with('stop', 'timeline-native-redis.service')
+            role.assert_not_called(); restore.assert_not_called(); source.assert_not_called(); old_role.assert_not_called()
 
-    def test_precommit_closes_candidate_before_opening_old_database(self):
-        order=[]
-        with patch.object(c,'present',side_effect=[False,True]),patch.object(c,'pending_value'),patch.object(b,'recover_restore'),patch.object(b,'recover_source',side_effect=lambda:order.append('recover-source-opens-old')),\
-             patch.object(c.scope,'close_role',side_effect=lambda:order.append('close-candidate')),\
-             patch.object(c,'stop_units',side_effect=lambda _:order.append('stop-native')),patch.object(c.app,'stop'),\
-             patch.object(c,'systemctl',side_effect=lambda *args:order.append(args)),patch.object(c,'no_old_journals'),\
-             patch.object(b,'role_change',side_effect=lambda sql:order.append(sql)),\
-             patch.object(c,'unit_state',return_value={'ActiveState':'active'}):
-            self.assertEqual(c.recover(),'PRECOMMIT_OLD_RUNTIME_RESTORED')
-        opening=next(i for i,v in enumerate(order) if isinstance(v,str) and 'LOGIN;' in v)
-        self.assertLess(order.index('close-candidate'),opening);self.assertLess(order.index('stop-native'),opening)
-        self.assertLess(order.index('close-candidate'),order.index('recover-source-opens-old'))
-        self.assertLess(order.index('stop-native'),order.index('recover-source-opens-old'))
+    def test_precommit_patch_guard_closes_candidate_without_opening_old_database(self):
+        order = []
+        with patch.object(release, 'operation'), patch.object(program, 'record', return_value={'phase': 'PREPARED'}), \
+                patch.object(r28.scope, 'close_role', side_effect=lambda: order.append('close-candidate')), \
+                patch.object(release, 'close_program', side_effect=lambda: order.append('stop-native')), \
+                patch.object(r28, 'stop_worker', side_effect=lambda: order.append('stop-worker')), \
+                patch.object(c, 'systemctl', side_effect=lambda *args: order.append(args)), \
+                patch.object(c, 'committed_value') as prior, patch.object(b, 'recover_restore') as restore, \
+                patch.object(b, 'recover_source') as source, patch.object(b, 'role_change') as role:
+            with self.assertRaisesRegex(b.Failure, 'maintenance retained'): c.recover()
+            self.assertEqual(order, ['close-candidate', 'stop-native', 'stop-worker', ('stop', 'timeline-native-redis.service')])
+            prior.assert_not_called(); restore.assert_not_called(); source.assert_not_called(); role.assert_not_called()
 
     def test_committed_recovery_never_reopens_old_role_and_queues_after_gate(self):
-        import native_release_r28 as r28
-        calls=[]
-        with patch.object(c,'present',return_value=True),patch.object(c,'committed_value'),\
-             patch.object(c,'close_old_role',side_effect=lambda:calls.append('old-closed')),patch.object(c,'stop_units'),\
-             patch.object(c,'systemctl',side_effect=lambda *args:calls.append(args)),patch.object(c,'no_old_journals'),\
-             patch.object(c.app,'validate_files'),patch.object(c,'release_checkout'),patch.object(b,'role_change') as role,\
-             patch.object(release,'recover_pending'),patch.object(release,'state',return_value={'version':1,'active':release.OLD,'committed':release.OLD,'pending':False}),patch.object(release,'verify_checkout'),\
-             patch.object(r28,'assert_start') as schema:
-            for _ in range(2):self.assertEqual(c.recover(),'COMMITTED_NEW_RUNTIME_READY')
-            self.assertTrue(all(c.ROLE in x.args[0] and b.ROLE not in x.args[0] for x in role.call_args_list))
-            self.assertEqual(schema.call_count,2)
-            schema.assert_called_with(release.OLD)
-        starts=[v for v in calls if isinstance(v,tuple) and 'start' in v]
-        self.assertEqual(starts,[])
-        self.assertFalse(any(isinstance(v,tuple) and v[:1]==('enable',) and b.SERVICE in v for v in calls))
+        calls = []
+        commit = program.TARGET['commit']
+        with patch.object(c, 'committed_value'), patch.object(c, 'close_old_role', side_effect=lambda: calls.append('old-closed')), \
+                patch.object(c, 'stop_units'), patch.object(c, 'systemctl', side_effect=lambda *args: calls.append(args)), \
+                patch.object(c, 'no_old_journals'), patch.object(c.app, 'validate_files'), patch.object(c, 'release_checkout'), \
+                patch.object(b, 'role_change') as role, patch.object(release, 'recover_pending') as recover, \
+                patch.object(release, 'state', return_value=program.stable(commit)), patch.object(release, 'verify_checkout'), \
+                patch.object(program, 'assert_start', side_effect=lambda *args, **kwargs: calls.append('patch-gate')) as gate:
+            for _ in range(2): self.assertEqual(c.recover(), 'COMMITTED_NEW_RUNTIME_READY')
+            self.assertEqual(role.call_count, 2)
+            self.assertTrue(all(c.ROLE in item.args[0] and b.ROLE not in item.args[0] for item in role.call_args_list))
+            self.assertEqual(recover.call_count, 2)
+            self.assertEqual(gate.call_count, 2); gate.assert_called_with(commit, ingress=True)
+        enables = [i for i, value in enumerate(calls) if isinstance(value, tuple) and value[:1] == ('enable',)]
+        gates = [i for i, value in enumerate(calls) if value == 'patch-gate']
+        self.assertEqual(len(enables), 2)
+        self.assertTrue(all(gate_index < enable_index for gate_index, enable_index in zip(gates, enables)))
+        self.assertEqual([value for value in calls if isinstance(value, tuple) and 'start' in value], [])
+        self.assertFalse(any(isinstance(value, tuple) and value[:1] == ('enable',) and b.SERVICE in value for value in calls))
 
     def test_dispatch_and_health_run_outside_lock_even_when_dependencies_are_inactive(self):
         from contextlib import contextmanager
@@ -153,6 +165,37 @@ class CutoverBoundaryTests(unittest.TestCase):
                  patch.object(c,'check_health',side_effect=health),patch.object(c,'committed_value',return_value={'committedAt':'fixed'}),patch('builtins.print'):
                 c.main()
         self.assertEqual(events,['durable-commit','queue-after-release','health-after-release']*2)
+
+    def test_missing_commit_or_wrong_41_schema_never_authorizes_legacy_recovery(self):
+        for failure in ('missing-commit', 'migration-count', 'schema'):
+            with self.subTest(failure=failure), ExitStack() as stack:
+                stack.enter_context(patch.object(release, 'operation'))
+                committed = stack.enter_context(patch.object(c, 'committed_value'))
+                if failure == 'missing-commit': committed.side_effect = b.Failure('historical commit missing')
+                bound = {**program.TARGET, 'migrationAnchorSha256': b.sha(b'synthetic-anchor')}
+                stack.enter_context(patch.object(program, 'TARGET', bound))
+                stack.enter_context(patch.object(r28, 'journal', return_value={'phase': 'OPEN_41', 'target': bound['base']}))
+                read = stack.enter_context(patch.object(b, 'read_file', return_value=b'synthetic-anchor'))
+                migrations = stack.enter_context(patch.object(r28, 'migration_state'))
+                schema = stack.enter_context(patch.object(r28, 'schema_state'))
+                if failure == 'migration-count': migrations.side_effect = b.Failure('41 migrations required')
+                if failure == 'schema': schema.side_effect = b.Failure('41 schema differs')
+                close_role = stack.enter_context(patch.object(r28.scope, 'close_role'))
+                stop = stack.enter_context(patch.object(release, 'close_program'))
+                worker = stack.enter_context(patch.object(r28, 'stop_worker'))
+                ctl = stack.enter_context(patch.object(c, 'systemctl'))
+                old_role = stack.enter_context(patch.object(c, 'close_old_role'))
+                restore = stack.enter_context(patch.object(b, 'restore'))
+                old_restore = stack.enter_context(patch.object(b, 'recover_restore'))
+                old_source = stack.enter_context(patch.object(b, 'recover_source'))
+                sql = stack.enter_context(patch.object(b, 'sql'))
+                with self.assertRaisesRegex(b.Failure, 'maintenance retained'): c.recover()
+                committed.assert_called_once(); close_role.assert_called_once(); stop.assert_called_once(); worker.assert_called_once()
+                ctl.assert_called_once_with('stop', 'timeline-native-redis.service')
+                old_role.assert_not_called(); restore.assert_not_called(); old_restore.assert_not_called(); old_source.assert_not_called(); sql.assert_not_called()
+                if failure == 'missing-commit': read.assert_not_called(); migrations.assert_not_called(); schema.assert_not_called()
+                elif failure == 'migration-count': migrations.assert_called_once_with(41); schema.assert_not_called()
+                else: migrations.assert_called_once_with(41); schema.assert_called_once_with(41)
 
 
 if __name__=='__main__':unittest.main()
