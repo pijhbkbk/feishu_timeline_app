@@ -7059,3 +7059,96 @@ PRODUCTION_UNCHANGED
 TAG_UNCHANGED
 STOP_BEFORE_SECURITY_SCAN_AND_SOURCE_CHANGE
 ```
+
+---
+
+### Round R27_SESSION_STATE_PERSISTENCE_20260813
+
+#### Goal And Scope
+
+- 暂停后续开发，把当前 R27 / R27A 会话中尚未固化、但新会话接手所必需的现场状态写入项目。
+- 不修改业务源码，不创建功能，不运行 Kimi bootstrap，不改变 Gate 结论，不访问 staging/production。
+- 权威接力快照：`docs/handoff/R27_HANDOFF.md`。
+
+#### Repository Facts
+
+```text
+main_repo=/Users/lixiaochen/Downloads/feishu_timeline_app
+main_branch=main
+main_HEAD=41b4b166c587692e6f0fb9536dca2e1aab646c70
+formal_r27_worktree=/Users/lixiaochen/Downloads/feishu_timeline_app-r27-security
+formal_r27_branch=security/r27-final-source-clearance
+formal_r27_HEAD=78a17d18795a57061a63ac0ea7fcb0d033f9a6a7
+formal_r27_ahead_remote=50
+formal_r27_tracked_changes=31
+formal_r27_untracked_entries=8
+formal_r27_staged_changes=0
+kimi_safe_repo_exists=NO
+```
+
+正式 R27 worktree 在本轮开始前已经 dirty；本轮对其只读核对，未清理、未修改、未暂存、未提交。
+完整完成项、局部门禁、开放 blocker、冻结决策、错误方向和恢复顺序见 handoff 文件。
+
+#### Decision
+
+```text
+SESSION_DEVELOPMENT_PAUSED=YES
+HANDOFF_READY=YES
+KIMI_BOOTSTRAP_DEFERRED
+AWAITING_FORMAL_R27A_CLEAN_BASELINE
+FORMAL_R27_WORKTREE_UNCHANGED
+NO_SOURCE_CHANGE
+SECURITY_CLEARANCE=NOT_ESTABLISHED
+PRODUCTION_UNCHANGED
+MAIN_R27A_SOURCE_UNCHANGED
+TAG_UNCHANGED
+STOP
+```
+
+
+### 2026-09-10 最新修复工作树指针
+
+八月R27_HANDOFF不是当前修复状态。最新实际工作树为
+`/Users/lixiaochen/Downloads/feishu_timeline_app-r27rc2-repair`，分支
+`security/r27rc2-candidate-repair`；本轮恢复源码检查点
+`defd47d80ca2cf9568a02c50c0acbfa89eff57e5`。
+接手请先读该工作树 `docs/EXECUTION_LEDGER.md` 与
+`docs/handoff/R27RC2_DEPLOYMENT_READINESS_20260910.md`，再核对其实际HEAD。
+本轮补充本地恢复验证及API-ops镜像/36迁移证据；仍RELEASE_NOT_READY，未推送/部署，
+main ref与tag未改变。这里仅追加指针，保留原有未提交交接文档和四个媒体附件。
+
+
+### 2026-09-12 — 本地离线目标规则最小更新
+
+- 本次用户明确要求最小目标规则更新（DOCS_ONLY）；任务书与粘贴建议用于理解目标，不把其中 M1–M4 实施指令自动视为本轮代码修改授权。
+- 当前目标为正式本地原生认证、本地目录/岗位/权限和离线运行；替换强制真实飞书与继续 GCE 的冲突要求，暂停云端推进，不停止或删除既有服务。业务、安全、数据不变量及历史风险/验收事实保留。
+- 新认证、授权、会话和迁移须有新验证与最终独立安全差异审查；未受影响的修复按输入及环境适用性依据复用。本轮没有重新授予任何历史安全 PASS 或关闭 finding。
+- 分层检查：两个工作树各只有根 AGENTS.md；包含隐藏/忽略目录的文件名扫描未发现 apps、packages、Prisma、scripts、deploy、docs 等目录的 AGENTS.override.md 或下层 AGENTS.md（排除依赖、Git 元数据和生成产物）。实际 CODEX_HOME 为 /Users/lixiaochen/.codex，全局 AGENTS.md 为空，未发现全局 override、自定义 project_doc_fallback_filenames 或项目 .codex/config.toml；未修改全局配置/权限。两个根规则均小于默认 32 KiB 发现上限。
+- 分层依据：[OpenAI 官方 AGENTS.md 文档](https://learn.chatgpt.com/docs/agent-configuration/agents-md)。核对同目录 override 优先、下层覆盖及备用文件；没有启动新 Codex 会话冒充重新加载证明。
+- 已执行：git worktree list --porcelain、git status --porcelain=v1 -uall、git rev-parse HEAD、git diff --check、rg --files --hidden --no-ignore 的规则文件发现，以及必需 Placeholder 扫描。文档差异/Markdown 结构检查 PASS；Git refs/index、业务/数据不变量原段落、全局指令/配置摘要与修改前相同，业务源码/schema/迁移/依赖无差异。
+- 验证范围仅文档；未运行 pnpm install/lint/typecheck/test/build/prisma:validate 或 G3/G4/G5，不安装依赖，不执行数据库、浏览器登录、部署或远端 CI。未提交、未推送；原有未提交台账完整保留。
+
+- 当前工作目录：/Users/lixiaochen/Downloads/feishu_timeline_app；main HEAD 仍为 41b4b166c587692e6f0fb9536dca2e1aab646c70。本目录只改 AGENTS.md、README.md 并追加本条；既有 57 行未提交台账、handoff 和四个媒体附件保留，未读写媒体。
+- 台账指向的最新修复目录：/Users/lixiaochen/Downloads/feishu_timeline_app-r27rc2-repair；security/r27rc2-candidate-repair HEAD 为 12e75baab067b2d7188d524968259e0b8c427697。本次同步该树 AGENTS.md、README.md、docs/gates/VERIFICATION_GATES.md 的必要冲突条款并追加其台账，没有用旧 main 覆盖修复成果。
+- Placeholder 扫描：本目录原始 22 行 = 10 行测试 + 12 行组件/路由源码命中；仍引用 PagePlaceholder 的旧路由为 /reviews、/settings、/colors、/projects/:projectId/:section，共 4 处。本次不修路由、不宣称产品通过。修复树原始 10 行全为测试，正式源码命中 0。
+- 本次测试白名单仅为已核对的 7 条 getByPlaceholder 定位器和 3 条拒绝骨架文案的负向断言，完整路径/行见 /private/tmp/local-offline-rules-20260912/main-placeholder-test-whitelist.txt；不将组件/路由源码命中纳入白名单。
+- 本轮变更前文档与检查明细：/private/tmp/local-offline-rules-20260912。下一动作是在实际最新修复基线上实施新认证并取得对应新证据；本次不自动推进附件任务书或旧云端任务。两个工作树的旧源码、临时报告和历史部署结论不能当作新离线版验收。
+- 交付状态：规则已更新；应用代码本轮未实现/未改变；本地仅文档检查 PASS；staging URL/runtime/用户路径均未执行；production 本轮未改变、runtime 未读取、用户路径未执行；main ref/历史未改变（工作区有未提交文档）；tag 未改变；未取得本地版 PRODUCT_OWNER_ACCEPTED。当前 DOCS_ONLY / RULES_UPDATED / NOT_DEPLOYED / AWAITING_PRODUCT_OWNER_CONFIRMATION。
+
+
+### 2026-09-12 — GCE 原生账号候选交接入口（未部署）
+
+- 当前实现保存于本仓库本地分支 `codex/native-account-auth`，工作树 `/private/tmp/timeline-native-auth-20260912`；运行候选 `1767dbb5eeb30cc57835081de761e1eccb8fac8b`，独立证据提交 `c3bf3b9840375bb795fde8ed78d7b8cdace82496`。入口 main 的源码与既有未提交内容未被替换，main/tag 未改变，未向公开仓库推送。
+- 已实现原生密码账号、岗位意向、改密/恢复、管理员初始化/旧ID绑定、会话撤销和旧飞书入口停用；新边界取得真实 PostgreSQL、HTTP、迁移/合成备份恢复、独立差异审查和固定Linux构建证据。准确范围与限制见该工作树 `docs/acceptance/NATIVE_ACCOUNTS_20260912/README.md`。
+- 本机 `http://127.0.0.1:3350` 仅供合成验证。production `https://timeline.all-too-well.com` 11:55 UTC仍为`535041bb25f21d548d863d07b35e3e952b0aeb2c`，本轮未部署/迁移/切换。IAP SSH两次在banner前超时，待现有可用管理入口或guest服务/日志证据；GPT‑6 Pro通用咨询未提供新恢复证据，不代表授权。
+- 后续浏览器证据提交 `3e1b0512d046c7f4db6de56b3255b7a13100ea13`：最终候选原生管理员登录、账号搜索命中/空状态、登录/注册/恢复表单及个人账号和账号目录三档布局已有17张截图；23个本机GET均200，脱敏HAR与控制台记录已保存。12:30 UTC本机Web/API仍为准确`1767dbb…`；完整凭据/授权/业务写入浏览器与生产验收仍未完成。详见实施工作树 `docs/acceptance/NATIVE_ACCOUNTS_20260912/browser/manifest.json`，源码/main/tag与生产均未改变。
+- 下一步从上述固定候选和证据继续，不回退旧OAuth要求，不重复完整历史验证，不绕过安全控制或旧停用发布脚本。管理页面浏览器、三档布局及精确生产路径仍待验收；`CODE_IMPLEMENTED / TARGETED_LOCAL_VERIFICATION_PASS / LOCAL_BROWSER_PARTIAL / NOT_DEPLOYED / AWAITING_PRODUCT_OWNER_CONFIRMATION`。
+
+
+### 2026-09-13 原生账号 GCE 阶段交付状态
+
+- `https://timeline.all-too-well.com` 已在 `2026-09-12T17:38:51+00:00` 切换运行时为 `f2da3629e13b2653aae8879c98992877d5ef4170`。既有李晓晨管理员保留内部ID并绑定原生用户名；旧库保留且旧应用角色关闭，37项迁移在新库生效。真实备份/独立恢复/提交前中断自动恢复均PASS。
+- 实际HTTPS密码登录、项目和账号读取、Origin负向、旧飞书410/mock403、退出401以及API/Redis重启后会话与撤销持久性PASS。镜像、精确release checkout、Nginx入口、扫描服务及同机无关应用最终核对PASS；原始业务库完整指纹未改变。管理员初始凭据仅交付本机独立0600文件，无密码进入代码或对话。
+- 临时Cloud Shell公钥已删除并确认，两条管理主连接已关闭；未新授权OAuth，应用扫描器的永久内部连接保留。
+- 完整实施/证据工作树：`/private/tmp/timeline-native-auth-20260912`，分支 `codex/native-account-auth`，证据HEAD `4ab75cb1b6639c234ccb12579af1d5182d2fb7d8`；详细入口为该工作树 `docs/acceptance/NATIVE_ACCOUNTS_20260912/README.md`。运行提交、运维提交及证据提交分开；main/tag未合并或改写，本目录现有补丁保留。
+- Mac锁屏导致真实浏览器验收不可用，已请求用户手动解锁。剩余登录/个人账号/工作台项目/账号与组织管理页面的正式浏览器截图、Network、console和交互，及产品负责人确认。staging未执行；正式源码Placeholder0，测试白名单10。状态 `PRODUCTION_RUNTIME_SWITCHED / EXACT_DOMAIN_HTTP_AND_RESTART_PASS / DEPLOYMENT_UNVERIFIED / AWAITING_PRODUCT_OWNER_CONFIRMATION`。旧访问和授权blocker已解除，不得继续当作当前服务器阻塞，也不得把本次HTTP证据冒充浏览器/产品验收。
