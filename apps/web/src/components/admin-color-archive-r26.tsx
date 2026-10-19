@@ -10,7 +10,7 @@ import {
   type AdminColorArchiveResponse,
   type AdminColorMaterial,
 } from '../lib/admin-client';
-import { API_BASE_URL } from '../lib/auth-client';
+import { API_BASE_URL, ApiRequestError } from '../lib/auth-client';
 import { useAuth } from './auth-provider';
 import { formatColorStatus, formatDate } from './admin-color-database-r26';
 
@@ -20,17 +20,25 @@ export function AdminColorArchiveR26({ colorId }: { colorId: string }) {
   const [data, setData] = useState<AdminColorArchiveResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [archiveUnavailable, setArchiveUnavailable] = useState(false);
 
   useEffect(() => {
     let active = true;
     async function load() {
       setLoading(true);
+      setData(null);
       setError(null);
+      setArchiveUnavailable(false);
       try {
         const result = await fetchAdminColorArchive(colorId);
         if (active) setData(result);
       } catch (loadError) {
-        if (active) setError(loadError instanceof Error ? loadError.message : '颜色档案加载失败。');
+        if (!active) return;
+        if (loadError instanceof ApiRequestError && loadError.status === 404 && loadError.message === '颜色档案不存在。') {
+          setArchiveUnavailable(true);
+        } else {
+          setError(loadError instanceof Error ? loadError.message : '颜色档案加载失败。');
+        }
       } finally {
         if (active) setLoading(false);
       }
@@ -44,8 +52,9 @@ export function AdminColorArchiveR26({ colorId }: { colorId: string }) {
       <Link href="/admin/color-database" className="r26-admin-back">
         ← 返回颜色数据库{isAdministrator ? '' : '（授权项目）'}
       </Link>
+      {archiveUnavailable ? <p role="status">未找到可展示的开发项目资料档案。清单与年度复核信息在下方单独读取。</p> : null}
       {error ? <div className="r26-admin-home__error" role="alert"><span>{error}</span></div> : null}
-      <AnnualReviewPanel colorId={colorId} />
+      <AnnualReviewPanel key={colorId} colorId={colorId} />
       {loading && !data ? <div className="r26-color-db__skeleton" aria-label="正在加载颜色档案"><span /><span /></div> : null}
       {data ? (
         <>
