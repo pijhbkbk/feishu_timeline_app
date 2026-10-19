@@ -1,0 +1,124 @@
+import React from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+const hooks=vi.hoisted(()=>({slots:[] as unknown[],index:0,effects:[] as Array<()=>void>,cleanups:new Map<number,()=>void>(),setups:new Map<number,()=>void|(()=>void)>(),dirty:false}));
+const api=vi.hoisted(()=>({list:vi.fn(),read:vi.fn(),create:vi.fn(),save:vi.fn(),revisions:vi.fn(),restore:vi.fn(),import:vi.fn()}));
+vi.mock('react',async()=>{
+ const actual=await vi.importActual<typeof import('react')>('react');
+ return {...actual,useState:<T,>(initial:T)=>{const i=hooks.index++;if(!(i in hooks.slots))hooks.slots[i]=initial;return[hooks.slots[i],(value:T|((old:T)=>T))=>{const next=typeof value==='function'?(value as (old:T)=>T)(hooks.slots[i] as T):value;if(!Object.is(hooks.slots[i],next)){hooks.slots[i]=next;hooks.dirty=true;}}];},useRef:<T,>(initial:T)=>{const i=hooks.index++;if(!(i in hooks.slots))hooks.slots[i]={current:initial};return hooks.slots[i];},useEffect:(effect:()=>void|(()=>void),deps:unknown[])=>{const i=hooks.index++,previous=hooks.slots[i] as unknown[]|undefined;if(previous?.length===deps.length&&previous.every((value,at)=>Object.is(value,deps[at])))return;hooks.slots[i]=deps;hooks.setups.set(i,effect);hooks.effects.push(()=>{hooks.cleanups.get(i)?.();const cleanup=effect();if(cleanup)hooks.cleanups.set(i,cleanup);});}};
+});
+vi.mock('next/link',()=>({default:'a'}));
+vi.mock('next/navigation',()=>({useSearchParams:()=>new URLSearchParams(window.location.search)}));
+vi.mock('../../components/auth-provider',()=>({useAuth:()=>({user:{isSystemAdmin:true,authSource:'local'}})}));
+vi.mock('../m1/use-unsaved',()=>({useProjectUnsavedChanges:vi.fn()}));
+vi.mock('../business-sheet/image-client',()=>({defaultImageLayout:()=>({}),listSheetImages:vi.fn(),uploadSheetImage:vi.fn()}));
+vi.mock('../business-sheet/record-exchange',()=>({downloadWorkbook:vi.fn()}));
+vi.mock('./canvas',()=>({WorkbookCanvas:({snapshot}:{snapshot:{id:string}})=><div data-workbook={snapshot.id}/> }));
+vi.mock('./client',()=>({listWorkbooks:api.list,readWorkbook:api.read,createWorkbook:api.create,saveWorkbook:api.save,listRevisions:api.revisions,restoreWorkbook:api.restore}));
+vi.mock('./xlsx',()=>({readFreeWorkbook:api.import}));
+import { ApiRequestError } from '../../lib/auth-client';
+import { blankWorkbook } from './contract';
+import { FreeWorkbookWorkspace } from './workspace';
+import type { SavedWorkbook } from './client';
+const oldId='11111111-1111-4111-8111-111111111111',laterId='22222222-2222-4222-8222-222222222222';
+let url:URL,replace:ReturnType<typeof vi.fn>,tree:React.ReactElement;
+function saved(id:string):SavedWorkbook{return {id,name:`合成${id.slice(0,1)}`,revision:1,snapshotHash:'hash',updatedAt:'2026-10-19T00:00:00Z',snapshot:blankWorkbook(id,`合成${id.slice(0,1)}`)};}
+function draw(){hooks.index=0;hooks.dirty=false;tree=FreeWorkbookWorkspace();hooks.effects.splice(0).forEach(effect=>effect());return tree;}
+async function settle(){for(let n=0;n<20;n++){draw();await Promise.resolve();await Promise.resolve();await Promise.resolve();if(!hooks.dirty)return renderToStaticMarkup(tree);}throw new Error('Workbook did not settle');}
+function nodes(node:React.ReactNode):React.ReactElement<Record<string,unknown>>[]{if(!React.isValidElement<Record<string,unknown>>(node))return[];return[node,...React.Children.toArray(node.props.children as React.ReactNode).flatMap(nodes)];}
+function text(node:React.ReactNode):string{return typeof node==='string'?node:React.isValidElement<{children?:React.ReactNode}>(node)?React.Children.toArray(node.props.children).map(text).join(''):'';}
+async function click(label:string){const button=nodes(tree).find(n=>n.type==='button'&&text(n)===label);expect(button).toBeDefined();(button!.props.onClick as ()=>void)();await vi.dynamicImportSettled();return settle();}
+function dispose(){hooks.cleanups.forEach(cleanup=>cleanup());hooks.cleanups.clear();}
+beforeEach(()=>{
+ hooks.slots=[];hooks.index=0;hooks.effects=[];hooks.cleanups=new Map();hooks.setups=new Map();hooks.dirty=false;
+ Object.values(api).forEach(mock=>mock.mockReset());url=new URL(`http://localhost/admin/color-database?workbook=${oldId}`);
+ replace=vi.fn((_state:unknown,_title:string,next:URL)=>{url=new URL(next);});
+ vi.stubGlobal('window',{get location(){return {href:url.href,search:url.search};},history:{state:null,replaceState:replace},confirm:vi.fn(()=>true)});
+ api.list.mockResolvedValue({items:[saved(oldId)],nextCursor:'next-page'});api.read.mockImplementation((id:string)=>Promise.resolve(saved(id)));api.create.mockImplementation((snapshot:SavedWorkbook['snapshot'])=>Promise.resolve({...saved(snapshot.id),name:snapshot.name}));
+});
+afterEach(()=>{dispose();vi.unstubAllGlobals();});
+it('directly reads a requested workbook outside the first page and retains its selectable identity',async()=>{
+ url.searchParams.set('workbook',laterId);const html=await settle();expect(api.read).toHaveBeenCalledWith(laterId,expect.any(AbortSignal));expect(api.read).not.toHaveBeenCalledWith(oldId,expect.anything());expect(html).toContain(`data-workbook="${laterId}"`);expect(html).toContain(`value="${laterId}"`);expect(url.searchParams.get('workbook')).toBe(laterId);
+});
+it.each([403,404])('keeps requested workbook %s as an error without silently opening the first workbook',async status=>{
+ url.searchParams.set('workbook',laterId);api.read.mockRejectedValue(new ApiRequestError('指定工作簿不可读取',status));const html=await settle();expect(html).toContain('指定工作簿不可读取');expect(html).toContain('重试读取工作簿');expect(html).not.toContain('data-workbook=');expect(html).not.toContain('开始编辑颜色工作簿');expect(api.read).toHaveBeenCalledTimes(1);expect(replace).not.toHaveBeenCalled();
+});
+it('updates the URL on a successful new workbook and reloads that same ID',async()=>{
+ await settle();await click('新建');const id=api.create.mock.calls[0]![0].id;expect(url.searchParams.get('workbook')).toBe(id);expect(nodes(tree).some(n=>n.type==='option'&&n.props.value===id)).toBe(true);expect(renderToStaticMarkup(tree)).toContain(`data-workbook="${id}"`);dispose();hooks.slots=[];hooks.cleanups=new Map();await settle();expect(api.read).toHaveBeenLastCalledWith(id,expect.any(AbortSignal));
+});
+it('updates the URL when an imported copy is confirmed and reloads that copy',async()=>{
+ await settle();api.import.mockResolvedValue({snapshot:blankWorkbook(laterId,'合成导入'),images:[],warnings:[],fileName:'synthetic.xlsx'});
+ const input=nodes(tree).find(n=>n.type==='input'&&n.props.accept==='.xlsx')!;
+ (input.props.onChange as (event:unknown)=>void)({target:{files:[new File([new Uint8Array([1])],'synthetic.xlsx')],value:'file'}});
+ await vi.dynamicImportSettled();await settle();await click('确认导入副本');expect(url.searchParams.get('workbook')).toBe(laterId);expect(nodes(tree).some(n=>n.type==='option'&&n.props.value===laterId)).toBe(true);expect(renderToStaticMarkup(tree)).toContain(`data-workbook="${laterId}"`);dispose();hooks.slots=[];hooks.cleanups=new Map();await settle();expect(api.read).toHaveBeenLastCalledWith(laterId,expect.any(AbortSignal));
+});
+it('retries an initial list failure without creating or saving anything',async()=>{
+ api.list.mockRejectedValueOnce(new Error('暂时离线'));expect(await settle()).toContain('暂时离线');await click('重试读取工作簿');expect(renderToStaticMarkup(tree)).toContain(`data-workbook="${oldId}"`);expect(api.list).toHaveBeenCalledTimes(2);expect(api.create).not.toHaveBeenCalled();expect(api.save).not.toHaveBeenCalled();
+});
+it('aborts a hanging initial read and ignores its late response after unmount',async()=>{
+ let resolve!:(value:SavedWorkbook)=>void;api.read.mockImplementation(()=>new Promise< SavedWorkbook >(r=>{resolve=r;}));await settle();const signal=api.read.mock.calls[0]![1] as AbortSignal;dispose();expect(signal.aborted).toBe(true);resolve(saved(oldId));await Promise.resolve();await Promise.resolve();expect(replace).not.toHaveBeenCalled();
+});
+it('does not replace the URL when a selected-workbook read resolves after unmount',async()=>{
+ await settle();replace.mockClear();let resolve!:(value:SavedWorkbook)=>void;api.read.mockImplementation(()=>new Promise< SavedWorkbook >(r=>{resolve=r;}));const select=nodes(tree).find(n=>n.type==='select'&&n.props['aria-label']==='选择工作簿')!;(select.props.onChange as (event:unknown)=>void)({target:{value:laterId}});await settle();const signal=api.read.mock.calls.at(-1)![1] as AbortSignal;const urlWrites=replace.mock.calls.length;dispose();expect(signal.aborted).toBe(true);resolve(saved(laterId));await Promise.resolve();await Promise.resolve();expect(replace).toHaveBeenCalledTimes(urlWrites);
+});
+it('preserves the unsaved confirmation before opening a different workbook',async()=>{
+ await settle();const canvas=nodes(tree).find(n=>typeof n.props.onChanged==='function')!;(canvas.props.onChanged as ()=>void)();await settle();vi.mocked(window.confirm).mockReturnValue(false);api.read.mockClear();const select=nodes(tree).find(n=>n.type==='select'&&n.props['aria-label']==='选择工作簿')!;(select.props.onChange as (event:unknown)=>void)({target:{value:laterId}});await settle();expect(window.confirm).toHaveBeenCalled();expect(api.read).not.toHaveBeenCalled();expect(url.searchParams.get('workbook')).toBe(oldId);
+});
+
+it('deduplicates a directly opened workbook when its list page is subsequently loaded',async()=>{
+ url.searchParams.set('workbook',laterId);await settle();api.list.mockResolvedValueOnce({items:[saved(laterId)],nextCursor:null});await click('更多');expect(nodes(tree).filter(n=>n.type==='option'&&n.props.value===laterId)).toHaveLength(1);
+});
+
+it('follows same-instance query changes and back to the previous workbook',async()=>{
+ await settle();api.read.mockClear();url.searchParams.set('workbook',laterId);expect(await settle()).toContain(`data-workbook="${laterId}"`);expect(api.read).toHaveBeenCalledWith(laterId,expect.any(AbortSignal));
+ url.searchParams.set('workbook',oldId);expect(await settle()).toContain(`data-workbook="${oldId}"`);expect(api.read).toHaveBeenLastCalledWith(oldId,expect.any(AbortSignal));
+});
+it('aborts an obsolete initial read when the same instance receives a new query',async()=>{
+ let resolve!:(value:SavedWorkbook)=>void;api.read.mockImplementationOnce(()=>new Promise<SavedWorkbook>(r=>{resolve=r;}));await settle();const signal=api.read.mock.calls[0]![1] as AbortSignal;
+ url.searchParams.set('workbook',laterId);expect(await settle()).toContain(`data-workbook="${laterId}"`);expect(signal.aborted).toBe(true);resolve(saved(oldId));const html=await settle();expect(url.searchParams.get('workbook')).toBe(laterId);expect(html).not.toContain(`data-workbook="${oldId}"`);
+});
+it('ignores a read that resolves after the URL changes but before the router rerenders',async()=>{
+ let resolve!:(value:SavedWorkbook)=>void;api.read.mockImplementationOnce(()=>new Promise<SavedWorkbook>(r=>{resolve=r;}));await settle();url.searchParams.set('workbook',laterId);resolve(saved(oldId));await Promise.resolve();await Promise.resolve();expect(replace).not.toHaveBeenCalled();expect(await settle()).toContain(`data-workbook="${laterId}"`);
+});
+it('restores the active URL and retains unsaved content when a query change is cancelled',async()=>{
+ await settle();const canvas=nodes(tree).find(n=>typeof n.props.onChanged==='function')!;(canvas.props.onChanged as ()=>void)();await settle();vi.mocked(window.confirm).mockReturnValue(false);api.read.mockClear();url.searchParams.set('workbook',laterId);
+ const html=await settle();expect(window.confirm).toHaveBeenCalledTimes(1);expect(api.read).not.toHaveBeenCalled();expect(url.searchParams.get('workbook')).toBe(oldId);expect(html).toContain(`data-workbook="${oldId}"`);expect(html).toContain('有未保存内容');
+});
+it.each(['query','selection'])('removes the old editor after confirmed %s navigation while a new read is pending',async via=>{
+ await settle();const oldCanvas=nodes(tree).find(n=>typeof n.props.onChanged==='function')!;(oldCanvas.props.onChanged as ()=>void)();await settle();let resolve!:(value:SavedWorkbook)=>void;api.read.mockImplementationOnce(()=>new Promise<SavedWorkbook>(r=>{resolve=r;}));
+ if(via==='query')url.searchParams.set('workbook',laterId);else{const select=nodes(tree).find(n=>n.type==='select'&&n.props['aria-label']==='选择工作簿')!;(select.props.onChange as (event:unknown)=>void)({target:{value:laterId}});}
+ expect(await settle()).not.toContain('data-workbook=');(oldCanvas.props.onChanged as ()=>void)();expect(await settle()).not.toContain('有未保存内容');resolve(saved(laterId));expect(await settle()).toContain(`data-workbook="${laterId}"`);expect(window.confirm).toHaveBeenCalledTimes(1);
+});
+it.each([403,404])('never shows the previous editor under a query whose read returns %s',async status=>{
+ await settle();api.read.mockRejectedValueOnce(new ApiRequestError('指定工作簿不可读取',status));url.searchParams.set('workbook',laterId);const html=await settle();expect(html).toContain('指定工作簿不可读取');expect(html).not.toContain('data-workbook=');expect(url.searchParams.get('workbook')).toBe(laterId);expect(api.read).toHaveBeenCalledTimes(2);
+});
+it('does not reload or remount an unsaved imported copy when its own URL replacement is observed',async()=>{
+ await settle();api.import.mockResolvedValue({snapshot:blankWorkbook(laterId,'合成未保存内容'),images:[],warnings:[],fileName:'synthetic.xlsx'});const input=nodes(tree).find(n=>n.type==='input'&&n.props.accept==='.xlsx')!;
+ (input.props.onChange as (event:unknown)=>void)({target:{files:[new File([new Uint8Array([1])],'synthetic.xlsx')],value:'file'}});await vi.dynamicImportSettled();await settle();api.read.mockClear();await click('确认导入副本');const canvas=nodes(tree).find(n=>typeof n.props.onChanged==='function')!,key=canvas.key;
+ const html=await settle();expect(api.read).not.toHaveBeenCalled();expect(nodes(tree).find(n=>typeof n.props.onChanged==='function')!.key).toBe(key);expect((canvas.props.snapshot as {name:string}).name).toBe('合成未保存内容');expect(html).toContain('有未保存内容');expect(window.confirm).not.toHaveBeenCalled();
+});
+it('rejects a query change while a create result is pending without losing its request',async()=>{
+ await settle();let resolve!:(value:SavedWorkbook)=>void;api.create.mockImplementationOnce(()=>new Promise<SavedWorkbook>(r=>{resolve=r;}));void click('新建');await settle();url.searchParams.set('workbook',laterId);const html=await settle();expect(url.searchParams.get('workbook')).toBe(oldId);expect(html).toContain('当前操作尚未结束');expect(api.read).toHaveBeenCalledTimes(1);
+ const created=api.create.mock.calls[0]![0] as SavedWorkbook['snapshot'];resolve({...saved(created.id),snapshot:created});await settle();expect(url.searchParams.get('workbook')).toBe(created.id);expect(api.create).toHaveBeenCalledTimes(1);expect(api.read).toHaveBeenCalledTimes(1);
+});
+it('retains an uncertain create operation and blocks a query change until its retry',async()=>{
+ await settle();api.create.mockRejectedValueOnce(new Error('响应丢失'));await click('新建');api.read.mockClear();url.searchParams.set('workbook',laterId);const html=await settle();expect(html).toContain('上次操作结果尚未确认');expect(url.searchParams.get('workbook')).toBe(oldId);expect(api.read).not.toHaveBeenCalled();expect(html).toContain('重试创建');
+});
+it('keeps unfinished imported images and their active identity on a query change',async()=>{
+ await settle();api.import.mockResolvedValue({snapshot:blankWorkbook(laterId,'图片待导入'),images:[{sourceMediaId:1}],warnings:[],fileName:'synthetic.xlsx'});const input=nodes(tree).find(n=>n.type==='input'&&n.props.accept==='.xlsx')!;
+ (input.props.onChange as (event:unknown)=>void)({target:{files:[new File([new Uint8Array([1])],'synthetic.xlsx')],value:'file'}});await vi.dynamicImportSettled();await settle();await click('确认导入副本');api.read.mockClear();url.searchParams.set('workbook',oldId);const html=await settle();expect(html).toContain('图片导入尚未完成');expect(html).toContain(`data-workbook="${laterId}"`);expect(url.searchParams.get('workbook')).toBe(laterId);expect(api.read).not.toHaveBeenCalled();
+});
+
+it('retains the uncertain save request when a query change attempts to leave',async()=>{
+ await settle();const canvas=nodes(tree).find(n=>typeof n.props.onChanged==='function')!;(canvas.props.runtime as {current:unknown}).current={snapshot:vi.fn().mockResolvedValue(saved(oldId).snapshot)};(canvas.props.onReady as ()=>void)();(canvas.props.onChanged as ()=>void)();await settle();api.save.mockRejectedValueOnce(new Error('保存响应丢失'));await click('保存');const request=api.save.mock.calls[0]![1];api.read.mockClear();url.searchParams.set('workbook',laterId);
+ const html=await settle();expect(html).toContain('上次操作结果尚未确认');expect(html).toContain('核实并保存');expect(html).toContain('有未保存内容');expect(url.searchParams.get('workbook')).toBe(oldId);expect(api.read).not.toHaveBeenCalled();api.save.mockResolvedValueOnce({...saved(oldId),revision:2});await click('核实并保存');expect(api.save.mock.calls[1]![1]).toBe(request);
+});
+it('retains an uncertain restore operation and does not navigate away',async()=>{
+ await settle();api.revisions.mockResolvedValueOnce({items:[{revision:1,createdAt:'2026-10-19T00:00:00Z'}],nextBefore:null});await click('版本恢复');const select=nodes(tree).find(n=>n.type==='select'&&n.props['aria-label']==='历史版本')!;(select.props.onChange as (event:unknown)=>void)({target:{value:'1'}});await settle();api.restore.mockRejectedValueOnce(new Error('恢复响应丢失'));await click('恢复为新版本');api.read.mockClear();url.searchParams.set('workbook',laterId);
+ const html=await settle();expect(html).toContain('上次操作结果尚未确认');expect(html).toContain('核实恢复结果');expect(url.searchParams.get('workbook')).toBe(oldId);expect(api.read).not.toHaveBeenCalled();
+});
+
+it('restarts an initial read after Strict Mode effect cleanup/setup and ignores the first response',async()=>{
+ let resolve!:(value:SavedWorkbook)=>void;api.read.mockImplementationOnce(()=>new Promise<SavedWorkbook>(r=>{resolve=r;}));await settle();const signal=api.read.mock.calls[0]![1] as AbortSignal;dispose();hooks.setups.forEach((setup,index)=>{const cleanup=setup();if(cleanup)hooks.cleanups.set(index,cleanup);});
+ expect(signal.aborted).toBe(true);expect(await settle()).toContain(`data-workbook="${oldId}"`);expect(api.read).toHaveBeenCalledTimes(2);const writes=replace.mock.calls.length;resolve(saved(oldId));await settle();expect(replace).toHaveBeenCalledTimes(writes);
+});

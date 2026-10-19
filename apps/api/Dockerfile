@@ -55,7 +55,8 @@ RUN node scripts/deploy/release-identity.mjs generate-ts \
 
 FROM build AS api-production-deps
 
-RUN pnpm --filter @feishu-timeline/api deploy --prod --no-optional /out/api \
+# Sharp's platform-specific native modules are locked optional dependencies.
+RUN pnpm --filter @feishu-timeline/api deploy --prod /out/api \
   && cd /out/api \
   && /app/apps/api/node_modules/.bin/prisma generate --schema prisma/schema.prisma
 
@@ -134,5 +135,22 @@ HEALTHCHECK --interval=15s --timeout=5s --retries=10 --start-period=20s \
   CMD node -e "require('node:http').get('http://127.0.0.1:3001/api/health',(response)=>process.exit(response.statusCode===200?0:1)).on('error',()=>process.exit(1))"
 
 USER node
+
+# Exercise the shipped native module and image codecs as the runtime user.
+# This must run in the final image: build-stage dependencies can hide omissions.
+RUN --network=none node -e ' \
+  const assert = require("node:assert/strict"); \
+  const sharp = require("sharp"); \
+  assert.notEqual(process.getuid(), 0); \
+  (async () => { \
+    for (const format of ["png", "jpeg"]) { \
+      const input = await sharp({ create: { width: 16, height: 16, channels: 3, background: "#668877" } }).toFormat(format).toBuffer(); \
+      const output = await sharp(input).resize(8, 8).webp().toBuffer(); \
+      const metadata = await sharp(output).metadata(); \
+      assert.equal(metadata.format, "webp"); \
+      assert.equal(metadata.width, 8); \
+      assert.equal(metadata.height, 8); \
+    } \
+  })().catch((error) => { console.error(error); process.exit(1); });'
 
 CMD ["node", "dist/main.js"]

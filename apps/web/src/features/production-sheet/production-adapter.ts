@@ -5,7 +5,7 @@ export interface ProductionSource { fileName: string; sheetName: string; rowNumb
 export interface ProductionFact {
   id: string; colorId: string; colorName: string | null; colorCode: string; baseId: string; baseName: string;
   month: string; quantity: string | null; unit: '台'; revision: number; metricScope: string; metricScopeLabel: string; rowKind: 'MONTH_TOTAL'; editable: boolean;
-  originalSource: ProductionSource | null;
+  originalSource: unknown;
 }
 export interface ProductionFilters { baseId: string; colorId: string; fromMonth: string; toMonth: string }
 export interface ProductionList { items: ProductionFact[]; total: number; page: number; pageSize: number; totalPages: number; scope: string; reconciliationFactCount: number; reconciliationExcluded: boolean; unsupportedDimensions: string[] }
@@ -32,10 +32,21 @@ export function productionQuery(filters: ProductionFilters): URLSearchParams {
   if (filters.fromMonth && filters.toMonth && filters.fromMonth > filters.toMonth) throw new Error('开始月份不能晚于结束月份。');
   return new URLSearchParams(Object.fromEntries(Object.entries(filters).filter(([, value]) => value !== '')));
 }
+/** Stored legacy provenance is informational JSON, never a record identity. */
+export function productionSourceSummary(source: unknown): string | null {
+  if (source === null || source === undefined) return null;
+  if (typeof source !== 'object' || Array.isArray(source)) return '来源信息待核对';
+  const value = source as Record<string, unknown>;
+  if (typeof value.fileName !== 'string' || !value.fileName.trim() || value.fileName.length > 255
+    || typeof value.sheetName !== 'string' || !value.sheetName.trim() || value.sheetName.length > 200
+    || !Array.isArray(value.rowNumbers) || !value.rowNumbers.length || value.rowNumbers.length > 200
+    || value.rowNumbers.some(row => !Number.isSafeInteger(row) || row < 1 || row > 1048576)) return '来源信息待核对';
+  return `${value.fileName} / ${value.sheetName} / ${value.rowNumbers.join('、')}`;
+}
 export function productionRow(fact: ProductionFact, canEdit = true): RecordSheetRow<ProductionFact> {
   return { id: fact.id, revision: fact.revision, meta: fact, editable: canEdit && fact.editable ? ['quantity'] : [],
     values: { month: fact.month, baseName: fact.baseName, colorName: fact.colorName, colorCode: fact.colorCode, quantity: fact.quantity, unit: fact.unit,
-      scope: fact.metricScopeLabel, photos: null, sourceSummary: fact.originalSource ? `${fact.originalSource.fileName} / ${fact.originalSource.sheetName} / ${fact.originalSource.rowNumbers.join('、')}` : null } };
+      scope: fact.metricScopeLabel, photos: null, sourceSummary: productionSourceSummary(fact.originalSource) } };
 }
 export function parseProductionQuantity(value: string | null): number | null {
   if (value === null || value.trim() === '') return null;
