@@ -200,6 +200,10 @@ export class AttachmentsController {
     response.setHeader('Cache-Control', 'private, no-store');
     response.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
     response.setHeader('Content-Security-Policy', "sandbox; default-src 'none'");
+    if (content.contentType === 'application/pdf' && content.disposition === 'inline') {
+      // The PDF frame must opt into isolation to load inside the application's COEP page.
+      response.setHeader('Cross-Origin-Embedder-Policy', 'credentialless');
+    }
     response.setHeader('Content-Length', String(content.contentLength));
     response.setHeader('X-Accel-Buffering', 'no');
     response.setHeader(
