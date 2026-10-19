@@ -270,8 +270,9 @@ export function CabinReviewWorkspace({
     return (
       <section className="page-card">
         <p className="eyebrow">驾驶室评审</p>
-        <h1>正在加载驾驶室评审模块…</h1>
-        <p>评审记录、附件和流程状态正在同步。</p>
+        <h1>{error ? '驾驶室评审读取失败' : '正在加载驾驶室评审模块…'}</h1>
+        {error ? <><p role="alert">{error}</p><button type="button" className="button button-secondary" onClick={() => void loadWorkspace({ initial: true })}>重试</button></> : <p role="status">评审记录、附件和流程状态正在同步。</p>}
+        <M1RecordReturn projectId={projectId} />
       </section>
     );
   }

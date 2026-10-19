@@ -6427,6 +6427,204 @@
         }
       ],
       "closure": null
+    },
+    {
+      "id": "R28-CI-BRACES-001",
+      "title": "braces GHSA-vfj7-8cjw-p6xm recursive AST stack exhaustion in the development lint dependency chain",
+      "status": "fixed_diff_verified",
+      "severity": "high",
+      "confidence": "high",
+      "classification": "pre_existing",
+      "cwe": "CWE-674",
+      "source": {
+        "type": "sca",
+        "report_path": "/private/tmp/design-convergence-ci-audit-before.json",
+        "binding": {
+          "commit": "9bdec2864c3ed9eb1a045062b756611f98208bfb",
+          "tree": "aae4f8c7aede705eab99277436fd30f44a633d1c",
+          "tool_name": "pnpm audit",
+          "tool_version": "Node 24.14.0; pnpm 9.15.4",
+          "command": "pnpm audit --json",
+          "environment": "Fresh isolated tracked-source clone baseline dependency audit; no production input or credentials; advisory is one of 13 registry findings.",
+          "result_sha256": "02001341e1550e1d0436734651e4cbcb3f7d88aa8751a459d056243e4a90ef61",
+          "log_path": "/private/tmp/design-convergence-ci-audit-before.json",
+          "config_sha256": "276706a5970a0a201fe26f1fcee2af60163bb73e789336c55204b2bfff0cf279",
+          "recorded_at": "2026-10-19T02:02:55Z"
+        }
+      },
+      "scope": {
+        "component": "Development lint transitive braces 3.0.3; exact local depth repair",
+        "affected_files": [
+          "package.json",
+          "pnpm-lock.yaml",
+          "patches/braces@3.0.3.patch",
+          "scripts/security/tests/braces-depth.test.mjs"
+        ],
+        "entry_points": [
+          "braces.parse",
+          "braces.compile",
+          "braces.expand",
+          "braces.stringify",
+          "@next/eslint-plugin-next@15.5.25 > fast-glob@3.3.1 > micromatch@4.0.8 > braces@3.0.3"
+        ],
+        "trust_boundary": "Deeply nested glob text or caller-supplied AST into recursive development-tool walkers; no application network exposure established."
+      },
+      "evidence": {
+        "reachable": true,
+        "production_exposed": false,
+        "reproduction_path": "Unpatched braces 3.0.3 compile at 4999 balanced nesting levels and 9999 characters throws RangeError Maximum call stack size exceeded under the default maximum length; retained baseline /private/tmp/design-convergence-ci-braces-baseline-final.log SHA256 9d653ea20ca99e23c38bbb79c91eeee0a16392762078b16038541291a9af97d6. The local patch bounds parser nesting and all three recursive AST consumers at depth 128; 3/3 tests cover normal alternatives/ranges/escaping, balanced/unclosed input and direct AST bypass attempts. The sole audit path is the root dev-only Next ESLint plugin chain.",
+        "proof_gap": "The upstream package version remains 3.0.3 and raw all-workspace audit remains FAIL with High=1; no upstream patched version is available. Raw all JSON /private/tmp/design-convergence-ci-sca-final/pnpm-audit-all.json SHA256 ad85f007d5518119ebbeda2ec202d6bc26e3a73c6157d2a4d00e5c9b75caf3aa; production audit PASS/0 at /private/tmp/design-convergence-ci-sca-final/pnpm-audit.json SHA256 de746d7d71ffdaf5af79a33ed1befeab253126887ed0266a0c73a6669acd22c4. These are exact-graph local results, not claims about deployed runtime. Fresh final committed-candidate audit/patch-aware assessment and full-source CI remain pending; no full clearance, risk acceptance or release approval."
+      },
+      "root_cause_cluster": "BRACES_GHSA_VFJ7_8CJW_P6XM_UNBOUNDED_AST_DEPTH",
+      "security_invariants": [
+        "SEC-009",
+        "SEC-017"
+      ],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
+      "fix": {
+        "task_id": "DESIGN_CONVERGENCE_CI_20261019",
+        "branch": "codex/design-convergence-20261019",
+        "commit": "31864786da03bb9e61f977a62edfd2c587c89631",
+        "tree": "9c851d7a2eea3cc2750b1c1016e8e3df0d83a53e",
+        "changed_files": [
+          "package.json",
+          "pnpm-lock.yaml",
+          "patches/braces@3.0.3.patch",
+          "scripts/security/tests/braces-depth.test.mjs"
+        ]
+      },
+      "verification": {
+        "targeted": {
+          "status": "pass",
+          "binding": {
+            "commit": "31864786da03bb9e61f977a62edfd2c587c89631",
+            "tree": "9c851d7a2eea3cc2750b1c1016e8e3df0d83a53e",
+            "tool_name": "Node targeted regression",
+            "tool_version": "Node 24.14.0; pnpm 9.15.4",
+            "command": "node --test scripts/security/tests/braces-depth.test.mjs",
+            "environment": "Isolated clone regression executed before core commit; exact patch, regression, package and lock bytes map to core via /private/tmp/design-convergence-ci-core-evidence-map.json SHA256 67136d74009a76901132bc51e142c103518976e42d844044c51b638b3066a618. This is input-specific reuse, not a fresh core checkout run.",
+            "result_sha256": "73d99b234c2ad1f4868711fdb6e421c09dac3b7cd1b43acdd958fe9fb5ba775c",
+            "log_path": "/private/tmp/design-convergence-ci-braces-tests-final.log",
+            "config_sha256": "77f69000e7a7240e6e8a7043a3eae0fabf328aec3be934685dcd656d9f02ee23",
+            "recorded_at": "2026-10-19T02:02:55Z"
+          },
+          "notes": "3/3 passed, 0 skipped; exact core patch SHA256 77f69000e7a7240e6e8a7043a3eae0fabf328aec3be934685dcd656d9f02ee23; test SHA256 5583cbf7fe14fffc2c9927c07387190509b0a707b32d97f4e1b88ac1234f808e; lock SHA256 e3fbdd0a7539bf392dea172bc96ae7bfd48cccd3a54cdcf00219081f918b7d51."
+        },
+        "affected_regression": {
+          "status": "pass",
+          "binding": {
+            "commit": "31864786da03bb9e61f977a62edfd2c587c89631",
+            "tree": "9c851d7a2eea3cc2750b1c1016e8e3df0d83a53e",
+            "tool_name": "Node targeted regression",
+            "tool_version": "Node 24.14.0; pnpm 9.15.4",
+            "command": "node --test scripts/security/tests/braces-depth.test.mjs",
+            "environment": "Isolated clone regression executed before core commit; exact patch, regression, package and lock bytes map to core via /private/tmp/design-convergence-ci-core-evidence-map.json SHA256 67136d74009a76901132bc51e142c103518976e42d844044c51b638b3066a618. This is input-specific reuse, not a fresh core checkout run.",
+            "result_sha256": "73d99b234c2ad1f4868711fdb6e421c09dac3b7cd1b43acdd958fe9fb5ba775c",
+            "log_path": "/private/tmp/design-convergence-ci-braces-tests-final.log",
+            "config_sha256": "77f69000e7a7240e6e8a7043a3eae0fabf328aec3be934685dcd656d9f02ee23",
+            "recorded_at": "2026-10-19T02:02:55Z"
+          },
+          "notes": "The same bounded suite also verifies unaffected normal alternatives, ranges, escaping and parentheses. This entry does not reuse the entire pre-core application test run for changed product code."
+        },
+        "diff_review": {
+          "status": "pass",
+          "binding": {
+            "commit": "31864786da03bb9e61f977a62edfd2c587c89631",
+            "tree": "9c851d7a2eea3cc2750b1c1016e8e3df0d83a53e",
+            "tool_name": "Codex independent context and Node test runner",
+            "tool_version": "Independent session /root/route_people_audit; Node 24.14.0",
+            "command": "Independent read-only braces/zlib and patch-aware diff review; node --test braces-depth.test.mjs; node --test patched-sca.test.mjs ci-evidence.test.mjs",
+            "environment": "Independent read-only context reviewed exact braces patch and regression SHA values, then independently reran 3/3 and 35/35 with zero skips. Braces input bytes exactly match core; patch-aware follow-up and schema-compatible ID correction are separate post-core uncommitted inputs and await final candidate binding.",
+            "result_sha256": "4383dc827e9c94ce3d46d99746a4e286dac36f085f43a03191d9ee87f7bea7b5",
+            "log_path": "/private/tmp/design-convergence-ci-finding-id-independent-review.json",
+            "config_sha256": "77f69000e7a7240e6e8a7043a3eae0fabf328aec3be934685dcd656d9f02ee23",
+            "recorded_at": "2026-10-19T02:02:55Z"
+          },
+          "notes": "No new blocking finding within reviewed scope. Independent braces 3/3 log SHA256 bdc742162559e981bb923b2a7d0265547b7f0881412a81f9f388bc1d5cfcde2e; post-core patch-aware/ID correction 35/35 log SHA256 7106932f9e155f78301542a6433e9ca38a2f371979cbf1b6422c4d3c13c3bf8c. This is local remediation verification, not a waiver of raw audit."
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Final immutable candidate registry/CI and changed-source scanners remain required; prior dirty experimental images and full-source scans are not mapped wholesale to core."
+        }
+      },
+      "closure": null,
+      "history": [
+        {
+          "at": "2026-10-19T02:02:55Z",
+          "transition": "null->candidate",
+          "actor": "Codex task implementation; independent review by /root/route_people_audit",
+          "reason": "Recorded from actual pnpm audit GHSA-vfj7-8cjw-p6xm / CVE-2026-93687.",
+          "approval_id": null,
+          "binding": null
+        },
+        {
+          "at": "2026-10-19T02:02:55Z",
+          "transition": "candidate->confirmed",
+          "actor": "Codex task implementation; independent review by /root/route_people_audit",
+          "reason": "Under-length 4999-level input reproduced stack exhaustion; root dev chain verified; no production exploitability inferred.",
+          "approval_id": null,
+          "binding": null
+        },
+        {
+          "at": "2026-10-19T02:02:55Z",
+          "transition": "confirmed->accepted_for_fix",
+          "actor": "Codex task implementation; independent review by /root/route_people_audit",
+          "reason": "Owner authorized actual CI/security repair; parent delegated a real bounded-depth patch. No risk acceptance.",
+          "approval_id": null,
+          "binding": null
+        },
+        {
+          "at": "2026-10-19T02:02:55Z",
+          "transition": "accepted_for_fix->in_progress",
+          "actor": "Codex task implementation; independent review by /root/route_people_audit",
+          "reason": "Implemented parser and direct AST walker depth bounds via pnpm patch, preserving upstream version and raw audit result.",
+          "approval_id": null,
+          "binding": null
+        },
+        {
+          "at": "2026-10-19T02:02:55Z",
+          "transition": "in_progress->fixed_target_verified",
+          "actor": "Codex task implementation; independent review by /root/route_people_audit",
+          "reason": "Actual 3/3 regression passed; exact patch and test bytes mapped to core 31864786da03bb9e61f977a62edfd2c587c89631.",
+          "approval_id": null,
+          "binding": {
+            "commit": "31864786da03bb9e61f977a62edfd2c587c89631",
+            "tree": "9c851d7a2eea3cc2750b1c1016e8e3df0d83a53e",
+            "tool_name": "Node targeted regression",
+            "tool_version": "Node 24.14.0; pnpm 9.15.4",
+            "command": "node --test scripts/security/tests/braces-depth.test.mjs",
+            "environment": "Isolated clone regression executed before core commit; exact patch, regression, package and lock bytes map to core via /private/tmp/design-convergence-ci-core-evidence-map.json SHA256 67136d74009a76901132bc51e142c103518976e42d844044c51b638b3066a618. This is input-specific reuse, not a fresh core checkout run.",
+            "result_sha256": "73d99b234c2ad1f4868711fdb6e421c09dac3b7cd1b43acdd958fe9fb5ba775c",
+            "log_path": "/private/tmp/design-convergence-ci-braces-tests-final.log",
+            "config_sha256": "77f69000e7a7240e6e8a7043a3eae0fabf328aec3be934685dcd656d9f02ee23",
+            "recorded_at": "2026-10-19T02:02:55Z"
+          }
+        },
+        {
+          "at": "2026-10-19T02:02:55Z",
+          "transition": "fixed_target_verified->fixed_diff_verified",
+          "actor": "Codex task implementation; independent review by /root/route_people_audit",
+          "reason": "Independent read-only review and 3/3 plus 35/35 regressions passed. Lifecycle events are recorded together from this session evidence; no full/production closure.",
+          "approval_id": null,
+          "binding": {
+            "commit": "31864786da03bb9e61f977a62edfd2c587c89631",
+            "tree": "9c851d7a2eea3cc2750b1c1016e8e3df0d83a53e",
+            "tool_name": "Codex independent context and Node test runner",
+            "tool_version": "Independent session /root/route_people_audit; Node 24.14.0",
+            "command": "Independent read-only braces/zlib and patch-aware diff review; node --test braces-depth.test.mjs; node --test patched-sca.test.mjs ci-evidence.test.mjs",
+            "environment": "Independent read-only context reviewed exact braces patch and regression SHA values, then independently reran 3/3 and 35/35 with zero skips. Braces input bytes exactly match core; patch-aware follow-up and schema-compatible ID correction are separate post-core uncommitted inputs and await final candidate binding.",
+            "result_sha256": "4383dc827e9c94ce3d46d99746a4e286dac36f085f43a03191d9ee87f7bea7b5",
+            "log_path": "/private/tmp/design-convergence-ci-finding-id-independent-review.json",
+            "config_sha256": "77f69000e7a7240e6e8a7043a3eae0fabf328aec3be934685dcd656d9f02ee23",
+            "recorded_at": "2026-10-19T02:02:55Z"
+          }
+        }
+      ]
     }
   ]
 }

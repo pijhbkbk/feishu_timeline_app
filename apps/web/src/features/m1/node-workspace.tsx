@@ -18,9 +18,10 @@ import { useProjectUnsavedChanges } from './use-unsaved';
 type Confirmation = SampleConfirmationSummary;
 function today(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
 export function M1NodeWorkspace({projectId,taskId}:{projectId:string;taskId:string}) {
+ const search=useSearchParams();
  const [context,setContext]=useState<R26ProgressResponse|null>(null),[error,setError]=useState(''),[retry,setRetry]=useState(0);
  useEffect(()=>{let active=true;setContext(null);setError('');void apiRequest<R26ProgressResponse>(`/v2/tasks/${encodeURIComponent(taskId)}/progress-context`,{signal:AbortSignal.timeout(15000)}).then(c=>{if(c.task.projectId!==projectId)throw Error('该节点不属于当前项目。');if(active)setContext(c);}).catch(e=>{if(active)setError(e instanceof Error?e.message:'节点加载失败。');});return()=>{active=false;};},[projectId,taskId,retry]);
- if(error)return <section className="m1-card m1-state"><p role="alert">{error}</p><button className="m1-button" onClick={()=>setRetry(n=>n+1)}>重新加载</button></section>;
+ if(error)return <section className="m1-card m1-state"><p role="alert">{error}</p><button className="m1-button" onClick={()=>setRetry(n=>n+1)}>重新加载</button><Link className="m1-button" href={nodeReturnHref(projectId,taskId,search.toString())}>返回来源页面</Link></section>;
  if(!context)return <p className="m1-state" role="status">正在加载记录…</p>;
  if(!['PROJECT_INITIATION','DEVELOPMENT_REPORT','PAINT_DEVELOPMENT','SAMPLE_COLOR_CONFIRMATION'].includes(context.task.nodeCode))return <TaskWorkspace projectId={projectId} taskId={taskId}/>;
  return <M1Record key={`${projectId}:${taskId}`} initial={context} projectId={projectId} taskId={taskId}/>;

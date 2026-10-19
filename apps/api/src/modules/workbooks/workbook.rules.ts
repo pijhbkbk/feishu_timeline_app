@@ -36,8 +36,9 @@ export function validateSnapshot(raw: unknown, id: string) {
     if (typeof value === 'string' && value.length > 1024 * 1024) throw new BadRequestException('工作簿单项内容过大。');
     if (!value || typeof value !== 'object') return;
     for (const [key, child] of Object.entries(value)) {
-      if (['__proto__','constructor','prototype','html','src','url','href','hyperlink','backgroundImage','customBlocks','customRanges','embeddedObjects'].includes(key) && child !== null && child !== undefined && !(Array.isArray(child) && child.length === 0)) throw new BadRequestException('工作簿包含未支持的嵌入内容或链接。');
+      if (['__proto__','constructor','prototype','html','src','url','href','hyperlink','customBlocks','customRanges','embeddedObjects'].includes(key) && child !== null && child !== undefined && !(Array.isArray(child) && child.length === 0)) throw new BadRequestException('工作簿包含未支持的嵌入内容或链接。');
       if (key === 'custom' && child !== null && child !== undefined && Object.keys(object(child)).length) throw new BadRequestException('暂不支持自定义工作簿扩展。');
+      if (key === 'backgroundImage' && child !== null && child !== undefined) { const bg=object(child);exact(bg,['source','imageSourceType','scaleX','scaleY']);workbookId(bg.source);if(bg.imageSourceType!=='UUID')throw new BadRequestException('背景图片必须是已扫描的本地资产。');for(const scale of ['scaleX','scaleY'])if(bg[scale]!==undefined&&(typeof bg[scale]!=='number'||!Number.isFinite(bg[scale])||Number(bg[scale])<0.01||Number(bg[scale])>100))throw new BadRequestException('背景图片物理尺寸超限。'); }
       if (key === 'f') validateFormula(child);
       inspect(child, depth + 1);
     }
@@ -48,10 +49,12 @@ export function validateSnapshot(raw: unknown, id: string) {
   const sheets = object(snapshot.sheets);
   if (Object.keys(sheets).length !== order.length || order.some(id => typeof id !== 'string' || !/^[A-Za-z0-9_-]{1,128}$/.test(id) || !Object.hasOwn(sheets,id))) throw new BadRequestException('工作表顺序与内容不一致。');
   let cells = 0; let formulas = 0; const names = new Set<string>();
+  const imageIds = new Set<string>(),backgroundImageIds=new Set<string>(); let drawingCount = 0;
   for (const sheetId of order as string[]) {
     const sheet = object(sheets[sheetId]);
     if (sheet.id !== sheetId || typeof sheet.name !== 'string' || !sheet.name.trim() || sheet.name.length > 31 || [...sheet.name].some(c=>'[]*?/:\\'.includes(c)) || names.has(sheet.name.toLocaleLowerCase())) throw new BadRequestException('工作表名称无效或重复。');
     names.add(sheet.name.toLocaleLowerCase());
+    if(sheet.backgroundImage){const asset=workbookId(object(sheet.backgroundImage).source);imageIds.add(asset);backgroundImageIds.add(asset);drawingCount++;}
     const rows = integer(sheet.rowCount,1,WORKBOOK_LIMITS.rows), columns = integer(sheet.columnCount,1,WORKBOOK_LIMITS.columns);
     const index = (key: string, max: number) => { if (!/^(0|[1-9]\d*)$/.test(key) || Number(key) >= max) throw new BadRequestException('单元格或样式超出工作表范围。'); };
     for (const [r,row] of Object.entries(object(sheet.cellData ?? {}))) {
@@ -73,7 +76,6 @@ export function validateSnapshot(raw: unknown, id: string) {
     }
   }
   if (Object.keys(object(snapshot.styles)).length > 50000) throw new BadRequestException('工作簿样式数量超限。');
-  const imageIds = new Set<string>(); let drawingCount = 0;
   if (snapshot.resources !== undefined) {
     if (!Array.isArray(snapshot.resources) || snapshot.resources.length > 20) throw new BadRequestException('工作簿资源数量超限。');
     for (const rawResource of snapshot.resources) {
@@ -103,5 +105,5 @@ export function validateSnapshot(raw: unknown, id: string) {
       }
     }
   }
-  return { snapshot, bytes, hash: digest(snapshot), imageIds: [...imageIds] };
+  return { snapshot, bytes, hash: digest(snapshot), imageIds: [...imageIds],backgroundImageIds:[...backgroundImageIds] };
 }

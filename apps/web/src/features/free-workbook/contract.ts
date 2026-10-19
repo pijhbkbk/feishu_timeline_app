@@ -18,6 +18,7 @@ export function checkWorkbookBounds(snapshot:IWorkbookData){
   if(!snapshot.sheetOrder.length||snapshot.sheetOrder.length>WORKBOOK_LIMITS.sheets)throw new Error('工作表数量须为 1–32。');
   let count=0;
   for(const id of snapshot.sheetOrder){const sheet=snapshot.sheets[id];if(!sheet||!sheet.rowCount||sheet.rowCount>WORKBOOK_LIMITS.rows||!sheet.columnCount||sheet.columnCount>WORKBOOK_LIMITS.columns)throw new Error('每张工作表最多 10000 行、256 列。');
+    if(sheet.backgroundImage){const bg=sheet.backgroundImage;if(bg.imageSourceType!=='UUID'||!(/^[a-f\d]{8}-[a-f\d]{4}-4[a-f\d]{3}-[89ab][a-f\d]{3}-[a-f\d]{12}$/i.test(bg.source))||Object.keys(bg).some(key=>!['source','imageSourceType','scaleX','scaleY'].includes(key))||[bg.scaleX??1,bg.scaleY??1].some(value=>!Number.isFinite(value)||value<0.01||value>100))throw new Error('背景图片须为已扫描的本地资产且尺寸有效。');}
     for(const row of Object.values((sheet.cellData??{}) as Record<string,Record<string,ICellData>>)){for(const cell of Object.values(row)){if(++count>WORKBOOK_LIMITS.cells)throw new Error('工作簿有内容单元格超过 200000 个。');if(cell?.f)checkFormula(cell.f);}}
   }
   if(new TextEncoder().encode(JSON.stringify(snapshot)).length>WORKBOOK_LIMITS.bytes)throw new Error('工作簿快照超过 7 MiB。');

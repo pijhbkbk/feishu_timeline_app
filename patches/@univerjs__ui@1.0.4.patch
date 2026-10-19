@@ -1,24 +1,8 @@
---- a/lib/es/index.js
-+++ b/lib/es/index.js
-@@ -2207,6 +2207,7 @@
- 	constructor(session, commandService, shortcutService, instanceService) {
- 		super();
- 		const cursorStyle = document.createElement("style");
-+		cursorStyle.nonce = document.querySelector("script[nonce]")?.nonce || "";
- 		cursorStyle.textContent = FORMAT_PAINTER_CURSOR_CSS;
- 		document.head.appendChild(cursorStyle);
- 		this.disposeWithMe({ dispose: () => cursorStyle.remove() });
-@@ -4655,6 +4656,7 @@
- 		const existingStyleElement = document.getElementById(this._styleSheetId);
- 		if (existingStyleElement) existingStyleElement.remove();
- 		const styleElement = document.createElement("style");
-+		styleElement.nonce = document.querySelector("script[nonce]")?.nonce || "";
- 		styleElement.setAttribute("id", this._styleSheetId);
- 		styleElement.textContent = `:root {\n${cssVariables}\n}`;
- 		document.head.appendChild(styleElement);
+diff --git a/lib/cjs/index.js b/lib/cjs/index.js
+index 39e21a0395823b58c2981b1f01d062aa701ba968..82dcded112c9a993e091a3ddada7ba5fc2100b32 100644
 --- a/lib/cjs/index.js
 +++ b/lib/cjs/index.js
-@@ -2208,6 +2208,7 @@
+@@ -2208,6 +2208,7 @@ let FormatPainterController = class FormatPainterController extends _univerjs_co
  	constructor(session, commandService, shortcutService, instanceService) {
  		super();
  		const cursorStyle = document.createElement("style");
@@ -26,7 +10,7 @@
  		cursorStyle.textContent = FORMAT_PAINTER_CURSOR_CSS;
  		document.head.appendChild(cursorStyle);
  		this.disposeWithMe({ dispose: () => cursorStyle.remove() });
-@@ -4656,6 +4657,7 @@
+@@ -4656,6 +4657,7 @@ var ThemeSwitcherService = class extends _univerjs_core.Disposable {
  		const existingStyleElement = document.getElementById(this._styleSheetId);
  		if (existingStyleElement) existingStyleElement.remove();
  		const styleElement = document.createElement("style");
@@ -34,3 +18,95 @@
  		styleElement.setAttribute("id", this._styleSheetId);
  		styleElement.textContent = `:root {\n${cssVariables}\n}`;
  		document.head.appendChild(styleElement);
+@@ -5870,7 +5872,7 @@ function ContextMenuMenuItem(props) {
+ 			clearSubmenuCloseTimer();
+ 			if (hasSubmenu && !disabled && !hoverSuppressed) {
+ 				setKeyboardSubmenuFocusRequested(false);
+-				setSubmenuPositionReady(false);
++				if (!submenuVisible) setSubmenuPositionReady(false);
+ 				setActiveSubmenuKey(menuKey);
+ 				return;
+ 			}
+@@ -5912,7 +5914,7 @@ function ContextMenuMenuItem(props) {
+ 				event.stopPropagation();
+ 				clearSubmenuCloseTimer();
+ 				setKeyboardSubmenuFocusRequested(true);
+-				setSubmenuPositionReady(false);
++				if (!submenuVisible) setSubmenuPositionReady(false);
+ 				setActiveSubmenuKey(menuKey);
+ 			},
+ 			onClick: (event) => {
+@@ -5920,7 +5922,7 @@ function ContextMenuMenuItem(props) {
+ 				if (hasSubmenu) {
+ 					if (headerAction) {
+ 						setKeyboardSubmenuFocusRequested(event.detail === 0);
+-						setSubmenuPositionReady(false);
++						if (!submenuVisible) setSubmenuPositionReady(false);
+ 						setActiveSubmenuKey(menuKey);
+ 						return;
+ 					}
+@@ -5936,7 +5938,7 @@ function ContextMenuMenuItem(props) {
+ 						return;
+ 					}
+ 					setKeyboardSubmenuFocusRequested(event.detail === 0);
+-					setSubmenuPositionReady(false);
++					if (!submenuVisible) setSubmenuPositionReady(false);
+ 					setActiveSubmenuKey(menuKey);
+ 					return;
+ 				}
+diff --git a/lib/es/index.js b/lib/es/index.js
+index dafd86f7a3030c5513bc7d5c6427062612402582..e2f63b88dc77e2eb1d5c61cb529874e951c1453b 100644
+--- a/lib/es/index.js
++++ b/lib/es/index.js
+@@ -2207,6 +2207,7 @@ let FormatPainterController = class FormatPainterController extends Disposable {
+ 	constructor(session, commandService, shortcutService, instanceService) {
+ 		super();
+ 		const cursorStyle = document.createElement("style");
++		cursorStyle.nonce = document.querySelector("script[nonce]")?.nonce || "";
+ 		cursorStyle.textContent = FORMAT_PAINTER_CURSOR_CSS;
+ 		document.head.appendChild(cursorStyle);
+ 		this.disposeWithMe({ dispose: () => cursorStyle.remove() });
+@@ -4655,6 +4656,7 @@ var ThemeSwitcherService = class extends Disposable {
+ 		const existingStyleElement = document.getElementById(this._styleSheetId);
+ 		if (existingStyleElement) existingStyleElement.remove();
+ 		const styleElement = document.createElement("style");
++		styleElement.nonce = document.querySelector("script[nonce]")?.nonce || "";
+ 		styleElement.setAttribute("id", this._styleSheetId);
+ 		styleElement.textContent = `:root {\n${cssVariables}\n}`;
+ 		document.head.appendChild(styleElement);
+@@ -5869,7 +5871,7 @@ function ContextMenuMenuItem(props) {
+ 			clearSubmenuCloseTimer();
+ 			if (hasSubmenu && !disabled && !hoverSuppressed) {
+ 				setKeyboardSubmenuFocusRequested(false);
+-				setSubmenuPositionReady(false);
++				if (!submenuVisible) setSubmenuPositionReady(false);
+ 				setActiveSubmenuKey(menuKey);
+ 				return;
+ 			}
+@@ -5911,7 +5913,7 @@ function ContextMenuMenuItem(props) {
+ 				event.stopPropagation();
+ 				clearSubmenuCloseTimer();
+ 				setKeyboardSubmenuFocusRequested(true);
+-				setSubmenuPositionReady(false);
++				if (!submenuVisible) setSubmenuPositionReady(false);
+ 				setActiveSubmenuKey(menuKey);
+ 			},
+ 			onClick: (event) => {
+@@ -5919,7 +5921,7 @@ function ContextMenuMenuItem(props) {
+ 				if (hasSubmenu) {
+ 					if (headerAction) {
+ 						setKeyboardSubmenuFocusRequested(event.detail === 0);
+-						setSubmenuPositionReady(false);
++						if (!submenuVisible) setSubmenuPositionReady(false);
+ 						setActiveSubmenuKey(menuKey);
+ 						return;
+ 					}
+@@ -5935,7 +5937,7 @@ function ContextMenuMenuItem(props) {
+ 						return;
+ 					}
+ 					setKeyboardSubmenuFocusRequested(event.detail === 0);
+-					setSubmenuPositionReady(false);
++					if (!submenuVisible) setSubmenuPositionReady(false);
+ 					setActiveSubmenuKey(menuKey);
+ 					return;
+ 				}

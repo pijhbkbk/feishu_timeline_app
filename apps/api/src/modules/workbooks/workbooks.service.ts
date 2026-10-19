@@ -60,8 +60,9 @@ export class WorkbooksService {
   private async write(tx:Prisma.TransactionClient,actor:AuthenticatedUser,id:string,expected:number,checked:ReturnType<typeof validateSnapshot>,op:string,restoredFrom?:number){
     const current=await tx.freeWorkbook.findUnique({where:{id},select:{revision:true}});if(!current)throw new NotFoundException('工作簿不存在。');if(current.revision!==expected)throw new ConflictException('工作簿已有新版本；本地内容仍保留，请导出备份后重新读取。');
     if(checked.imageIds.length){
-      const assets=await tx.sheetImage.findMany({where:{id:{in:checked.imageIds},targetType:'SHEET_WORKBOOK',recordId:id,isDeleted:false,attachment:{entityType:'SHEET_WORKBOOK',entityId:id,isDeleted:false,scanStatus:'CLEAN'}},select:{id:true},take:WORKBOOK_LIMITS.images});
+      const assets=await tx.sheetImage.findMany({where:{id:{in:checked.imageIds},targetType:'SHEET_WORKBOOK',recordId:id,isDeleted:false,attachment:{entityType:'SHEET_WORKBOOK',entityId:id,isDeleted:false,scanStatus:'CLEAN'}},select:{id:true,pixelWidth:true,pixelHeight:true,attachment:{select:{fileSize:true}}},take:WORKBOOK_LIMITS.images});
       if(assets.length!==checked.imageIds.length)throw new BadRequestException('图片未完成扫描、已失效或不属于当前工作簿。');
+      const backgrounds=assets.filter(asset=>checked.backgroundImageIds.includes(asset.id));if(backgrounds.reduce((sum,asset)=>sum+asset.pixelWidth*asset.pixelHeight,0)>40_000_000||backgrounds.reduce((sum,asset)=>sum+asset.attachment.fileSize,0)>20*1024*1024)throw new BadRequestException('背景原件合计超过 20 MiB 或 40 MP。');
     }
     const total=await tx.freeWorkbookRevision.aggregate({where:{workbookId:id},_sum:{snapshotBytes:true}});
     if((total._sum.snapshotBytes??0)+checked.bytes>WORKBOOK_LIMITS.revisionsBytes)throw new BadRequestException('工作簿历史达到 256 MiB 容量上限；内容未覆盖，请导出备份并新建工作簿。');

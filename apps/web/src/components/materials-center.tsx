@@ -64,6 +64,7 @@ export function MaterialsCenter() {
       }
 
       setPayload(response);
+      setError(null);
     } catch (loadError) {
       if (requestId !== requestIdRef.current) {
         return;
@@ -78,12 +79,30 @@ export function MaterialsCenter() {
     }
   }
 
-  if (isLoading || !payload) {
+  if (isLoading) {
     return (
       <section className="page-card">
         <p className="eyebrow">材料中心</p>
         <h2 className="section-title">正在加载材料提交平台…</h2>
         <p>系统正在同步项目、当前工序、责任人和材料入口。</p>
+      </section>
+    );
+  }
+
+  if (!payload) {
+    return (
+      <section className="page-card" role="alert">
+        <StatePanel
+          variant="error"
+          title="材料中心加载失败"
+          description={error ?? '未能读取项目材料，请重试。'}
+          actions={<>
+            <button type="button" className="button button-secondary" disabled={isRefreshing} onClick={() => void loadMaterials()}>
+              {isRefreshing ? '重试中…' : '重试'}
+            </button>
+            <Link href="/projects" className="button button-secondary">项目列表</Link>
+          </>}
+        />
       </section>
     );
   }

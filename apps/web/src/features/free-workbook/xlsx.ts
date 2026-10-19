@@ -5,11 +5,12 @@ import { XMLParser } from 'fast-xml-parser';
 import { strFromU8, zipSync } from 'fflate';
 import { inspectCatalogArchive } from '../color-register/sheet-exchange';
 import { readRawEmbeddedImages } from '../business-sheet/xlsx-raw-images';
-import { writeEmbeddedImages, type EmbeddedImage, type ImageAnchor, type ImageExportItem } from '../business-sheet/xlsx-images';
+import { writeEmbeddedImages, type ImageAnchor, type ImageExportItem } from '../business-sheet/xlsx-images';
 import { imageBytes, type SheetImage } from '../business-sheet/image-client';
 import { checkFormula, checkWorkbookBounds, WORKBOOK_LIMITS } from './contract';
+import { backgroundScale, readWorkbookBackgrounds, type WorkbookImportImage } from './background';
 
-export interface WorkbookImport {snapshot:IWorkbookData;images:EmbeddedImage[];warnings:string[];fileName:string}
+export interface WorkbookImport {snapshot:IWorkbookData;images:WorkbookImportImage[];warnings:string[];fileName:string}
 const obj=(value:unknown):Record<string,unknown>=>value&&typeof value==='object'&&!Array.isArray(value)?value as Record<string,unknown>:{};
 const BORDER=['','thin','hair','dotted','dashed','dashDot','dashDotDot','double','medium','mediumDashed','mediumDashDot','mediumDashDotDot','slantDashDot','thick'];
 const horizontal=['','left','center','right','justify','justify','distributed'];
@@ -75,6 +76,7 @@ export async function readFreeWorkbook(bytes:Uint8Array,fileName:string,id:strin
       for(const m of xml.matchAll(/<(?:[\w.-]+:)?row\b[^>]*\br\s*=\s*["'](\d+)["']/g))if(Number(m[1])>WORKBOOK_LIMITS.rows)throw new Error('工作表行号超限。');
     }
   }
+  const backgrounds=readWorkbookBackgrounds(files);
   const workbook=new ExcelJS.Workbook();await workbook.xlsx.load(zipSync(files,{level:0}) as never);if(!workbook.worksheets.length)throw new Error('工作簿没有可读取的工作表。');
   if(workbook.definedNames.model.length)throw new Error('暂不支持命名区域；请在源文件副本中将命名引用改成明确坐标后导入。原文件未修改。');
   const palette=themes(files),date1904=Boolean(workbook.properties.date1904),snapshot:IWorkbookData={id,name:fileName.replace(/\.xlsx$/i,'').slice(0,200)||'导入工作簿',appVersion:'1.0.4',locale:LocaleType.ZH_CN,dateSystem:date1904?DateSystem.Date1904:DateSystem.Date1900,styles:{},sheetOrder:[],sheets:{}};
@@ -96,12 +98,12 @@ export async function readFreeWorkbook(bytes:Uint8Array,fileName:string,id:strin
     const view=(source.views??[]).find(v=>v.state==='frozen') as Partial<ExcelJS.WorksheetViewFrozen>|undefined;
     snapshot.sheetOrder.push(sheetId);snapshot.sheets[sheetId]={id:sheetId,name:source.name,hidden:source.state==='veryHidden'?2:source.state==='hidden'?1:0,rowCount:Math.min(WORKBOOK_LIMITS.rows,Math.max(200,source.rowCount+30)),columnCount:Math.min(WORKBOOK_LIMITS.columns,Math.max(26,source.columnCount+4)),defaultRowHeight:(source.properties.defaultRowHeight??15)*4/3,defaultColumnWidth:(source.properties.defaultColWidth??8.43)*7+5,cellData,rowData,columnData,mergeData,...(view?{freeze:{xSplit:view.xSplit??0,ySplit:view.ySplit??0,startRow:view.ySplit??0,startColumn:view.xSplit??0}}:{})};
   }
-  const inventory=readRawEmbeddedImages(files,workbook,{archiveInspected:true,rowTargets:()=>new Map()});
+  const inventory=readRawEmbeddedImages(backgrounds.drawingFiles,workbook,{archiveInspected:true,rowTargets:()=>new Map()});
   const unsupported=inventory.issues.filter(issue=>!/IMAGE_COUNT_MISMATCH/.test(issue.code));
   if(unsupported.length||inventory.inventory.unrepresentedPictureCount)throw new Error(`图片存在不支持内容：${unsupported[0]?.message??'部分图片无法识别'}；未创建编辑副本。`);
-  if(inventory.images.length>WORKBOOK_LIMITS.images)throw new Error('每个工作簿最多 50 张图片。');
+  if(inventory.images.length+backgrounds.images.length>WORKBOOK_LIMITS.images)throw new Error('每个工作簿最多 50 张图片。');
   for(const image of inventory.images)if(!image.anchor||image.status==='error'||image.issues.some(issue=>/UNSUPPORTED|INVALID|ANCHOR_UNRESOLVED/.test(issue.code)))throw new Error('图片锚点或外观不能完整转换；请保留源文件并先转换图片。');
-  checkWorkbookBounds(snapshot);return {snapshot,images:inventory.images,warnings:[...warnings],fileName};
+  checkWorkbookBounds(snapshot);return {snapshot,images:[...inventory.images,...backgrounds.images],warnings:[...warnings],fileName};
 }
 function excelColor(value:unknown):Partial<ExcelJS.Color>|undefined{const rgb=obj(value).rgb;if(typeof rgb!=='string')return undefined;const normalized=rgb.replace(/^#/,'');return /^[\da-f]{6}$/i.test(normalized)?{argb:`FF${normalized.toUpperCase()}`}:undefined;}
 function styleData(value:unknown,snapshot:IWorkbookData):IStyleData{return (typeof value==='string'?snapshot.styles[value]:value) as IStyleData??{};}
@@ -117,7 +119,8 @@ function writeStyle(raw:IStyleData):Partial<ExcelJS.Style>{
 }
 export async function writeFreeWorkbook(snapshot:IWorkbookData,assets:readonly SheetImage[]):Promise<Uint8Array>{
   checkWorkbookBounds(snapshot);const workbook=new ExcelJS.Workbook();workbook.creator='轻卡定制色';workbook.properties.date1904=snapshot.dateSystem===DateSystem.Date1904;workbook.calcProperties.fullCalcOnLoad=true;
-  const sheets=new Map<string,number>();
+  const sheets=new Map<string,number>(),cached=new Map<string,Awaited<ReturnType<typeof imageBytes>>>(),backgroundMedia=new Map<string,number>();
+  async function binaryFor(id:string){const asset=assets.find(a=>a.id===id);if(!asset)throw new Error('图片原件不在当前授权工作簿中。');let binary=cached.get(id);if(!binary){binary=await imageBytes(asset);cached.set(id,binary);}if(binary.mime!=='image/png'&&binary.mime!=='image/jpeg')throw new Error('图片原件格式无效。');return binary;}
   for(const id of snapshot.sheetOrder){const source=snapshot.sheets[id]!,sheet=workbook.addWorksheet(source.name??'工作表');sheets.set(id,sheet.id);sheet.state=source.hidden===2?'veryHidden':source.hidden?'hidden':'visible';sheet.properties.defaultRowHeight=(source.defaultRowHeight??20)*3/4;sheet.properties.defaultColWidth=((source.defaultColumnWidth??64)-5)/7;
     for(const [r,row] of Object.entries(source.rowData??{})){const target=sheet.getRow(Number(r)+1);if(row.h!==undefined)target.height=row.h*3/4;else if(row.hd===1||row.s)target.height=(source.defaultRowHeight??20)*3/4;target.hidden=row.hd===1;if(row.s)Object.assign(target,writeStyle(styleData(row.s,snapshot)));}
     for(const [c,col] of Object.entries(source.columnData??{})){const target=sheet.getColumn(Number(c)+1);if(col.w!==undefined)target.width=(col.w-5)/7;target.hidden=col.hd===1;if(col.s)target.style=writeStyle(styleData(col.s,snapshot));}
@@ -128,8 +131,9 @@ export async function writeFreeWorkbook(snapshot:IWorkbookData,assets:readonly S
     }
     for(const range of source.mergeData??[])sheet.mergeCells(range.startRow+1,range.startColumn+1,range.endRow+1,range.endColumn+1);
     if(source.freeze&&(source.freeze.xSplit||source.freeze.ySplit))sheet.views=[{state:'frozen',xSplit:source.freeze.xSplit,ySplit:source.freeze.ySplit}];
+    if(source.backgroundImage){const bg=source.backgroundImage,binary=await binaryFor(bg.source),scale=backgroundScale(binary.bytes);if(Math.abs((bg.scaleX??1)-scale.scaleX)>0.001||Math.abs((bg.scaleY??1)-scale.scaleY)>0.001)throw new Error('背景缩放与原件物理尺寸不一致，不能无损导出。');let media=backgroundMedia.get(bg.source);if(media===undefined){media=workbook.addImage({buffer:binary.bytes as never,extension:binary.mime==='image/png'?'png':'jpeg'});backgroundMedia.set(bg.source,media);}sheet.addBackgroundImage(media);}
   }
-  const images:ImageExportItem[]=[];const cached=new Map<string,Awaited<ReturnType<typeof imageBytes>>>();
+  const images:ImageExportItem[]=[];
   const resource=snapshot.resources?.find(item=>item.name==='SHEET_DRAWING_PLUGIN');
   if(resource?.data){const content=JSON.parse(resource.data) as Record<string,{data:Record<string,ISheetDrawing>;order:string[]}>;
     for(const [sheetId,set] of Object.entries(content))for(const drawingId of set.order){const drawing=set.data[drawingId]!;if(!('source'in drawing)||drawing.imageSourceType!=='UUID')throw new Error('图片资源不是可导出的本地资产。');const asset=assets.find(a=>a.id===drawing.source);if(!asset)throw new Error('图片原件不在当前授权工作簿中。');let binary=cached.get(asset.id);if(!binary){binary=await imageBytes(asset);cached.set(asset.id,binary);}if(binary.mime!=='image/png'&&binary.mime!=='image/jpeg')throw new Error('图片原件格式无效。');

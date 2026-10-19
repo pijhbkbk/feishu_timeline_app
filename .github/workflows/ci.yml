@@ -172,7 +172,7 @@ jobs:
         id: security_gates
         run: |
           bash scripts/security/tests/security-gates.test.sh
-          node --test scripts/security/tests/ci-evidence.test.mjs scripts/security/tests/integrity-allowlist.test.mjs scripts/security/tests/braces-depth.test.mjs
+          node --test scripts/security/tests/ci-evidence.test.mjs scripts/security/tests/integrity-allowlist.test.mjs scripts/security/tests/braces-depth.test.mjs scripts/security/tests/patched-sca.test.mjs
 
       - name: Secrets — Current Tree and Git History
         id: secrets
@@ -183,7 +183,7 @@ jobs:
         if: ${{ always() && steps.evidence_init.outcome == 'success' }}
         run: bash scripts/security/run-sast.sh
 
-      - name: SCA — Production Dependencies Only
+      - name: SCA — Full and Production Graphs with Exact Local Remediation
         id: sca
         if: ${{ always() && steps.evidence_init.outcome == 'success' }}
         run: bash scripts/security/run-sca.sh
