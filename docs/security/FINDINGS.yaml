@@ -6625,6 +6625,839 @@
           }
         }
       ]
+    },
+    {
+      "id": "R28-PORTABLE-PG-001",
+      "title": "Portable PostgreSQL14 base image OS libraries and bundled gosu produce blocking package-version findings",
+      "status": "fixed_diff_verified",
+      "severity": "critical",
+      "confidence": "high",
+      "classification": "pre_existing",
+      "cwe": null,
+      "source": {
+        "type": "sca",
+        "report_path": "/private/tmp/design-convergence-final-trivy-9710cbfbda99/scans/image-4.json",
+        "binding": {
+          "commit": "9710cbfbda9975c1c58f15cff8ff0167540eef6f",
+          "tree": "375767ba259954cfa9c53d25e1f0bac91789cb2a",
+          "tool_name": "Trivy",
+          "tool_version": "ghcr.io/aquasecurity/trivy:0.72.0@sha256:cffe3f5161a47a6823fbd23d985795b3ed72a4c806da4c4df16266c02accdd6f",
+          "command": "bash /private/tmp/design-convergence-ci-9710cbf-20261019/scripts/security/scan-production-images.sh sha256:caafd8549446ef7bb8898947b30597d9c384273eadc5e5b2abfb3c7bfd083136 sha256:2f042d7c003c8e995ee07a13443badb372e718aad1ddab0de1359ecd1d6dc1df sha256:33e83e77344e26780f0d41448e6ab7e15efd7ec11ca2b24b35027b6c6b43e1ea sha256:3b36dd7df1337107cef7502b1e3e94c971483ae87498a9310d25c60fba08cfc9 sha256:b1addbe72465a718643cff9e60a58e6df1841e29d6d7d60c9a85d8d72f08d1a7 sha256:17130f6532928a5b4b1272fc5129e5f2639850c0d8086879c516649d32fc8ae6",
+          "environment": "Isolated local immutable linux/amd64 image sha256:3b36dd7df1337107cef7502b1e3e94c971483ae87498a9310d25c60fba08cfc9; role postgres. All-severity gate; raw report ArtifactName and Metadata.ImageID equal exact spec; no service start, database mount, production access or push.",
+          "result_sha256": "efa911ed2d30b3d412fabb92445bdb2248f7b875b640bc6bddbaccd48e8abfaf",
+          "log_path": "/private/tmp/design-convergence-final-trivy-9710cbfbda99/scans/image-4.json",
+          "config_sha256": "d4cd6108648dd30833b5aa63e81889de38c5863a0703ac271eff057308b44db2",
+          "recorded_at": "2026-10-19T05:05:03.537298+00:00"
+        }
+      },
+      "scope": {
+        "component": "Portable-only postgres infrastructure image; exact original sha256:3b36dd7df1337107cef7502b1e3e94c971483ae87498a9310d25c60fba08cfc9",
+        "affected_files": [
+          "deploy/images/portable/postgres/Dockerfile"
+        ],
+        "entry_points": [
+          "scripts/security/scan-production-images.sh",
+          "scripts/portable/portable.mjs"
+        ],
+        "trust_boundary": "Immutable local offline-package infrastructure runtime dependencies; no change to the separate staging profile."
+      },
+      "evidence": {
+        "reachable": null,
+        "production_exposed": null,
+        "reproduction_path": "Actual scan9710cbf returns BLOCKED for this image with 89 package finding instances, severity counts {\"CRITICAL\": 1, \"HIGH\": 33, \"LOW\": 15, \"MEDIUM\": 39, \"UNKNOWN\": 1}. libcrypto3 3.5.7-r0: 10 findings, scanner fixed versions 3.5.8-r0; libssl3 3.5.7-r0: 10 findings, scanner fixed versions 3.5.8-r0; libuuid 2.42.1-r0: 8 findings, scanner fixed versions 2.42.3-r0,2.42.3-r1; zlib 1.3.2-r0: 1 findings, scanner fixed versions 1.3.2-r1; github.com/moby/sys/user v0.1.0: 1 findings, scanner fixed versions 0.4.1; golang.org/x/sys v0.1.0: 1 findings, scanner fixed versions 0.44.0; stdlib v1.24.6: 58 findings, scanner fixed versions 1.24.11, 1.25.5,1.24.12, 1.25.6,1.24.13, 1.25.7, 1.26.0-rc.3,1.24.8, 1.25.2,1.24.9, 1.25.3,1.25.10, 1.26.3,1.25.11, 1.26.4,1.25.12, 1.26.5, 1.27.0-rc.2,1.25.13, 1.26.6, 1.27.0-rc.3,1.25.8, 1.26.1,1.25.9, 1.26.2,1.26.9, 1.27.2. Full six-image evidence /private/tmp/design-convergence-final-trivy-9710cbfbda99/verification.json SHA256 8169875cf4cf1539402320d02bf41a43d42752e252b614723c544a755f305f03. This records package identity and gate failure; it does not infer exploit reachability.",
+        "proof_gap": "Original package-finding exploit reachability and production exposure remain unknown; no false-positive or risk acceptance. Exact repaired image scan and bounded final de2 affected runtime verified below. Physical second-machine recovery, full repository security review, browser/IME/Office and product-owner/production acceptance are not established. Separate proxy healthcheck operational mismatch is outside these3 unchanged infrastructure image fixes. Removed gosu exploit applicability is not inferred; removal and actual UID70 new-volume install/restore are verified."
+      },
+      "root_cause_cluster": "PORTABLE_POSTGRES_PINNED_BASE_PACKAGE_REVISIONS_20261019",
+      "security_invariants": [],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
+      "fix": {
+        "task_id": "DESIGN_CONVERGENCE_PORTABLE_INFRA_20261019",
+        "branch": "codex/design-convergence-20261019",
+        "commit": "28689b652fe615d606fadd81f0e3bcbd4611c3ae",
+        "tree": "527931ed7e9c1a58a6c50966500fdadca080bb42",
+        "changed_files": [
+          "deploy/images/portable/postgres/Dockerfile"
+        ]
+      },
+      "verification": {
+        "targeted": {
+          "status": "pass",
+          "binding": {
+            "commit": "28689b652fe615d606fadd81f0e3bcbd4611c3ae",
+            "tree": "527931ed7e9c1a58a6c50966500fdadca080bb42",
+            "tool_name": "Trivy",
+            "tool_version": "ghcr.io/aquasecurity/trivy:0.72.0@sha256:cffe3f5161a47a6823fbd23d985795b3ed72a4c806da4c4df16266c02accdd6f",
+            "command": "Exact immutable image sha256:4c826970badf0a0588cc5e8d0f53087c4bb60a6b9ec38c4843d13fb27f624007 scanned by scripts/security/scan-production-images.sh; full actual command bound by /private/tmp/design-convergence-final-trivy-28689b652fe6/verification.json",
+            "environment": "Isolated linux/amd64. Original286 all-severity actual scan0; final de2 exact-ID/original-label/unchanged-Dockerfile/artifact-hash reuse independently verified. No ignore, severity filter, production access or risk acceptance.",
+            "result_sha256": "f741000168e0c727673e290bc71dc86805366242848507b99e1d7832b3341d22",
+            "log_path": "/private/tmp/design-convergence-final-trivy-28689b652fe6/scans/image-4.json",
+            "config_sha256": "42642f9b949e06a626bc81928def214b83d486167b2cbb3832b4bd22b4207694",
+            "recorded_at": "2026-10-19T05:34:29.236723384Z"
+          },
+          "notes": "Original9710 failed report preserved in source.binding. Repaired exact postgres image has0 all-severity findings. Final de2 applicability /private/tmp/design-convergence-final-trivy-de2b49c49358/verification.json SHA256 7ba5ac668cf46bc3170fb4b10a2234d286684ebe41501a82d917af006c424c1e; independent raw/identity/hash review /private/tmp/design-convergence-de2-trivy-evidence-independent-review.json SHA256 b4d786998956f2f5d70166c28f0a6f52c5b5c9967dbddc8426b07ca3fc6f8e20. Three new app scans plus3 original exact-infra reports reused; not6 fresh scans."
+        },
+        "affected_regression": {
+          "status": "pass",
+          "binding": {
+            "commit": "de2b49c49358ffa917a237442672528a16da3f85",
+            "tree": "3d722a4642f5ea52a98867411dcb97c026d61adf",
+            "tool_name": "Portable CLI and compiled API isolated runtime verification",
+            "tool_version": "Committed de2 portable CLI; Node24; PostgreSQL14.24; Redis7.4.9; ClamAV1.4.6",
+            "command": "Recorded install/initialize/import-signatures/start/backup/restore/stop/start sequence plus api-verify.py seed/restore/restart and scanner-verify.py; exact per-step commands and log hashes in runtime-status.json evidenceSha256",
+            "environment": "Same Mac, separate new dedicated instances/volumes at https://localhost:45443 and https://localhost:45444, exact generated CA, sourceA stopped. Synthetic data; no physical second-machine, browser/IME/Office/product-owner or production claim.",
+            "result_sha256": "3a10604cd3461da2c3a298b858f25d1a0f4aec324598034be225664d5b670330",
+            "log_path": "/private/tmp/design-convergence-portable-de2b49c49358-evidence/runtime-status.json",
+            "config_sha256": "0dbbb8cfc07e4a22c56725194807b786b8c4af379a4950f9f5cbc72cf31ea7ee",
+            "recorded_at": "2026-10-19T06:54:20.760880+00:00"
+          },
+          "notes": "Exact repaired PG14.24 image starts as UID70 without gosu. Final de2 fresh install, real authenticated business writes, encrypted backup and new-volume restore pass. All70 tables,1 original object and exact pre-reset fingerprint verified; full schema185683 bytes shares SHA256 dc325684079569492c944b1ff1b1c47dc24b0b6f82002359f4d94f8bbb4a3919. Original password, post-restore new write and restart readback pass. Original c89 restore failure preserved; forward canonicalization migration de2 fixed it without any fingerprint waiver. No exploit reachability assertion for the removed gosu binary."
+        },
+        "diff_review": {
+          "status": "pass",
+          "binding": {
+            "commit": "28689b652fe615d606fadd81f0e3bcbd4611c3ae",
+            "tree": "527931ed7e9c1a58a6c50966500fdadca080bb42",
+            "tool_name": "Independent read-only diff review",
+            "tool_version": "route_people_audit context",
+            "command": "Inspect exact three portable Dockerfiles; compare fixed revisions, local OCI input and preserved scanner core hashes; no runtime execution",
+            "environment": "Independent reviewer inspected pre-commit patch cc3d872f93148b2a6f08585372fec0bcccc89dcadd5dbc689c38a617b98bd7d3. Each reviewed file hash now exactly matches commit28689b6; scope does not claim final image/runtime PASS.",
+            "result_sha256": "4a8cb65a397fb7ef587a1a466fa0eaca5dba4ababad1cef2c381c0087190d063",
+            "log_path": "/private/tmp/design-convergence-portable-infra-v2-independent-review.json",
+            "config_sha256": "c0b1b09ec271450cfd0689d20ed81c95d0b8e84a391a190acfdc8bb219a8bffb",
+            "recorded_at": "2026-10-19T05:18:58.762810+00:00"
+          },
+          "notes": "Exact portable Dockerfile diff/OCI input independently reviewed. File bytes still match final de2; repaired target scan and affected runtime recorded separately. Not a full-repository security clearance."
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Bounded final de2 install/backup/new-instance restore and restart passed under affected_regression. No G4_FULL or product/production acceptance claimed. Separate proxy healthcheck mismatch remains in /private/tmp/design-convergence-portable-de2b49c49358-evidence/proxy-health-candidate.json SHA256 7f9c2e7a63c5393e621792a008166060763f0d5f3b46b3d3b64cb37a9f77b412; strict external HTTPS API passed but not all services report healthy. Original c89 restore FAIL and final orchestration operation.lock rejection preserved."
+        }
+      },
+      "closure": null,
+      "history": [
+        {
+          "at": "2026-10-19T05:24:15.180476+00:00",
+          "transition": "null->candidate",
+          "actor": "Codex implementation evidence; independent diff review by route_people_audit",
+          "reason": "Imported actual immutable-image package scan: 89 instances. Discovery severity follows scanner maximum, not established exploitability.",
+          "approval_id": null,
+          "binding": {
+            "commit": "9710cbfbda9975c1c58f15cff8ff0167540eef6f",
+            "tree": "375767ba259954cfa9c53d25e1f0bac91789cb2a",
+            "tool_name": "Trivy",
+            "tool_version": "ghcr.io/aquasecurity/trivy:0.72.0@sha256:cffe3f5161a47a6823fbd23d985795b3ed72a4c806da4c4df16266c02accdd6f",
+            "command": "bash /private/tmp/design-convergence-ci-9710cbf-20261019/scripts/security/scan-production-images.sh sha256:caafd8549446ef7bb8898947b30597d9c384273eadc5e5b2abfb3c7bfd083136 sha256:2f042d7c003c8e995ee07a13443badb372e718aad1ddab0de1359ecd1d6dc1df sha256:33e83e77344e26780f0d41448e6ab7e15efd7ec11ca2b24b35027b6c6b43e1ea sha256:3b36dd7df1337107cef7502b1e3e94c971483ae87498a9310d25c60fba08cfc9 sha256:b1addbe72465a718643cff9e60a58e6df1841e29d6d7d60c9a85d8d72f08d1a7 sha256:17130f6532928a5b4b1272fc5129e5f2639850c0d8086879c516649d32fc8ae6",
+            "environment": "Isolated local immutable linux/amd64 image sha256:3b36dd7df1337107cef7502b1e3e94c971483ae87498a9310d25c60fba08cfc9; role postgres. All-severity gate; raw report ArtifactName and Metadata.ImageID equal exact spec; no service start, database mount, production access or push.",
+            "result_sha256": "efa911ed2d30b3d412fabb92445bdb2248f7b875b640bc6bddbaccd48e8abfaf",
+            "log_path": "/private/tmp/design-convergence-final-trivy-9710cbfbda99/scans/image-4.json",
+            "config_sha256": "d4cd6108648dd30833b5aa63e81889de38c5863a0703ac271eff057308b44db2",
+            "recorded_at": "2026-10-19T05:05:03.537298+00:00"
+          }
+        },
+        {
+          "at": "2026-10-19T05:24:15.180476+00:00",
+          "transition": "candidate->confirmed",
+          "actor": "Codex implementation evidence; independent diff review by route_people_audit",
+          "reason": "Confirmed exact installed package/image identity and reproducible all-severity gate failure. Reachability and production exposure remain unknown; no false-positive disposition.",
+          "approval_id": null,
+          "binding": {
+            "commit": "9710cbfbda9975c1c58f15cff8ff0167540eef6f",
+            "tree": "375767ba259954cfa9c53d25e1f0bac91789cb2a",
+            "tool_name": "Trivy",
+            "tool_version": "ghcr.io/aquasecurity/trivy:0.72.0@sha256:cffe3f5161a47a6823fbd23d985795b3ed72a4c806da4c4df16266c02accdd6f",
+            "command": "bash /private/tmp/design-convergence-ci-9710cbf-20261019/scripts/security/scan-production-images.sh sha256:caafd8549446ef7bb8898947b30597d9c384273eadc5e5b2abfb3c7bfd083136 sha256:2f042d7c003c8e995ee07a13443badb372e718aad1ddab0de1359ecd1d6dc1df sha256:33e83e77344e26780f0d41448e6ab7e15efd7ec11ca2b24b35027b6c6b43e1ea sha256:3b36dd7df1337107cef7502b1e3e94c971483ae87498a9310d25c60fba08cfc9 sha256:b1addbe72465a718643cff9e60a58e6df1841e29d6d7d60c9a85d8d72f08d1a7 sha256:17130f6532928a5b4b1272fc5129e5f2639850c0d8086879c516649d32fc8ae6",
+            "environment": "Isolated local immutable linux/amd64 image sha256:3b36dd7df1337107cef7502b1e3e94c971483ae87498a9310d25c60fba08cfc9; role postgres. All-severity gate; raw report ArtifactName and Metadata.ImageID equal exact spec; no service start, database mount, production access or push.",
+            "result_sha256": "efa911ed2d30b3d412fabb92445bdb2248f7b875b640bc6bddbaccd48e8abfaf",
+            "log_path": "/private/tmp/design-convergence-final-trivy-9710cbfbda99/scans/image-4.json",
+            "config_sha256": "d4cd6108648dd30833b5aa63e81889de38c5863a0703ac271eff057308b44db2",
+            "recorded_at": "2026-10-19T05:05:03.537298+00:00"
+          }
+        },
+        {
+          "at": "2026-10-19T05:24:15.180476+00:00",
+          "transition": "confirmed->accepted_for_fix",
+          "actor": "Codex implementation evidence; independent diff review by route_people_audit",
+          "reason": "Owner authorized real CI/security repairs and parent delegated a portable-only infrastructure repair; this is remediation authorization, not risk acceptance.",
+          "approval_id": null,
+          "binding": null
+        },
+        {
+          "at": "2026-10-19T05:24:15.180476+00:00",
+          "transition": "accepted_for_fix->in_progress",
+          "actor": "Codex implementation evidence; independent diff review by route_people_audit",
+          "reason": "Committed reviewed portable-only Dockerfile in 28689b652fe615d606fadd81f0e3bcbd4611c3ae; final derived build/scan/runtime proof pending.",
+          "approval_id": null,
+          "binding": null
+        },
+        {
+          "at": "2026-10-19T06:57:12.723981+00:00",
+          "transition": "in_progress->fixed_target_verified",
+          "actor": "Codex CI evidence collector; actual scan and artifact hashes independently reviewed by route_people_audit",
+          "reason": "Exact repaired immutable image has0 all-severity findings; original raw139 discovery instances preserved. New de2 reuses same286 infrastructure IDs and unchanged build inputs, not a fresh infra scan.",
+          "approval_id": null,
+          "binding": {
+            "commit": "28689b652fe615d606fadd81f0e3bcbd4611c3ae",
+            "tree": "527931ed7e9c1a58a6c50966500fdadca080bb42",
+            "tool_name": "Trivy",
+            "tool_version": "ghcr.io/aquasecurity/trivy:0.72.0@sha256:cffe3f5161a47a6823fbd23d985795b3ed72a4c806da4c4df16266c02accdd6f",
+            "command": "Exact immutable image sha256:4c826970badf0a0588cc5e8d0f53087c4bb60a6b9ec38c4843d13fb27f624007 scanned by scripts/security/scan-production-images.sh; full actual command bound by /private/tmp/design-convergence-final-trivy-28689b652fe6/verification.json",
+            "environment": "Isolated linux/amd64. Original286 all-severity actual scan0; final de2 exact-ID/original-label/unchanged-Dockerfile/artifact-hash reuse independently verified. No ignore, severity filter, production access or risk acceptance.",
+            "result_sha256": "f741000168e0c727673e290bc71dc86805366242848507b99e1d7832b3341d22",
+            "log_path": "/private/tmp/design-convergence-final-trivy-28689b652fe6/scans/image-4.json",
+            "config_sha256": "42642f9b949e06a626bc81928def214b83d486167b2cbb3832b4bd22b4207694",
+            "recorded_at": "2026-10-19T05:34:29.236723384Z"
+          }
+        },
+        {
+          "at": "2026-10-19T06:57:12.723981+00:00",
+          "transition": "fixed_target_verified->fixed_diff_verified",
+          "actor": "Codex CI evidence collector; independent exact Dockerfile diff review by route_people_audit",
+          "reason": "Existing independent exact diff review plus final de2 affected synthetic runtime/strict restore/restart verified. No whole-repository clearance, risk acceptance, production inference or closure.",
+          "approval_id": null,
+          "binding": {
+            "commit": "28689b652fe615d606fadd81f0e3bcbd4611c3ae",
+            "tree": "527931ed7e9c1a58a6c50966500fdadca080bb42",
+            "tool_name": "Independent read-only diff review",
+            "tool_version": "route_people_audit context",
+            "command": "Inspect exact three portable Dockerfiles; compare fixed revisions, local OCI input and preserved scanner core hashes; no runtime execution",
+            "environment": "Independent reviewer inspected pre-commit patch cc3d872f93148b2a6f08585372fec0bcccc89dcadd5dbc689c38a617b98bd7d3. Each reviewed file hash now exactly matches commit28689b6; scope does not claim final image/runtime PASS.",
+            "result_sha256": "4a8cb65a397fb7ef587a1a466fa0eaca5dba4ababad1cef2c381c0087190d063",
+            "log_path": "/private/tmp/design-convergence-portable-infra-v2-independent-review.json",
+            "config_sha256": "c0b1b09ec271450cfd0689d20ed81c95d0b8e84a391a190acfdc8bb219a8bffb",
+            "recorded_at": "2026-10-19T05:18:58.762810+00:00"
+          }
+        }
+      ]
+    },
+    {
+      "id": "R28-PORTABLE-REDIS-001",
+      "title": "Portable Redis base image carries outdated OpenSSL and zlib library revisions",
+      "status": "fixed_diff_verified",
+      "severity": "high",
+      "confidence": "high",
+      "classification": "pre_existing",
+      "cwe": null,
+      "source": {
+        "type": "sca",
+        "report_path": "/private/tmp/design-convergence-final-trivy-9710cbfbda99/scans/image-5.json",
+        "binding": {
+          "commit": "9710cbfbda9975c1c58f15cff8ff0167540eef6f",
+          "tree": "375767ba259954cfa9c53d25e1f0bac91789cb2a",
+          "tool_name": "Trivy",
+          "tool_version": "ghcr.io/aquasecurity/trivy:0.72.0@sha256:cffe3f5161a47a6823fbd23d985795b3ed72a4c806da4c4df16266c02accdd6f",
+          "command": "bash /private/tmp/design-convergence-ci-9710cbf-20261019/scripts/security/scan-production-images.sh sha256:caafd8549446ef7bb8898947b30597d9c384273eadc5e5b2abfb3c7bfd083136 sha256:2f042d7c003c8e995ee07a13443badb372e718aad1ddab0de1359ecd1d6dc1df sha256:33e83e77344e26780f0d41448e6ab7e15efd7ec11ca2b24b35027b6c6b43e1ea sha256:3b36dd7df1337107cef7502b1e3e94c971483ae87498a9310d25c60fba08cfc9 sha256:b1addbe72465a718643cff9e60a58e6df1841e29d6d7d60c9a85d8d72f08d1a7 sha256:17130f6532928a5b4b1272fc5129e5f2639850c0d8086879c516649d32fc8ae6",
+          "environment": "Isolated local immutable linux/amd64 image sha256:b1addbe72465a718643cff9e60a58e6df1841e29d6d7d60c9a85d8d72f08d1a7; role redis. All-severity gate; raw report ArtifactName and Metadata.ImageID equal exact spec; no service start, database mount, production access or push.",
+          "result_sha256": "4e1c2a2178c55c7a434ed2e797c887c8172da8c5a393960388b5f690357f49c6",
+          "log_path": "/private/tmp/design-convergence-final-trivy-9710cbfbda99/scans/image-5.json",
+          "config_sha256": "d4cd6108648dd30833b5aa63e81889de38c5863a0703ac271eff057308b44db2",
+          "recorded_at": "2026-10-19T05:05:03.537298+00:00"
+        }
+      },
+      "scope": {
+        "component": "Portable-only redis infrastructure image; exact original sha256:b1addbe72465a718643cff9e60a58e6df1841e29d6d7d60c9a85d8d72f08d1a7",
+        "affected_files": [
+          "deploy/images/portable/redis/Dockerfile"
+        ],
+        "entry_points": [
+          "scripts/security/scan-production-images.sh",
+          "scripts/portable/portable.mjs"
+        ],
+        "trust_boundary": "Immutable local offline-package infrastructure runtime dependencies; no change to the separate staging profile."
+      },
+      "evidence": {
+        "reachable": null,
+        "production_exposed": null,
+        "reproduction_path": "Actual scan9710cbf returns BLOCKED for this image with 47 package finding instances, severity counts {\"HIGH\": 4, \"LOW\": 16, \"MEDIUM\": 27}. libcrypto3 3.3.7-r0: 23 findings, scanner fixed versions 3.3.7-r1,3.3.7-r2; libssl3 3.3.7-r0: 23 findings, scanner fixed versions 3.3.7-r1,3.3.7-r2; zlib 1.3.2-r0: 1 findings, scanner fixed versions 1.3.2-r1. Full six-image evidence /private/tmp/design-convergence-final-trivy-9710cbfbda99/verification.json SHA256 8169875cf4cf1539402320d02bf41a43d42752e252b614723c544a755f305f03. This records package identity and gate failure; it does not infer exploit reachability.",
+        "proof_gap": "Original package-finding exploit reachability and production exposure remain unknown; no false-positive or risk acceptance. Exact repaired image scan and bounded final de2 affected runtime verified below. Physical second-machine recovery, full repository security review, browser/IME/Office and product-owner/production acceptance are not established. Separate proxy healthcheck operational mismatch is outside these3 unchanged infrastructure image fixes."
+      },
+      "root_cause_cluster": "PORTABLE_REDIS_PINNED_BASE_PACKAGE_REVISIONS_20261019",
+      "security_invariants": [],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
+      "fix": {
+        "task_id": "DESIGN_CONVERGENCE_PORTABLE_INFRA_20261019",
+        "branch": "codex/design-convergence-20261019",
+        "commit": "28689b652fe615d606fadd81f0e3bcbd4611c3ae",
+        "tree": "527931ed7e9c1a58a6c50966500fdadca080bb42",
+        "changed_files": [
+          "deploy/images/portable/redis/Dockerfile"
+        ]
+      },
+      "verification": {
+        "targeted": {
+          "status": "pass",
+          "binding": {
+            "commit": "28689b652fe615d606fadd81f0e3bcbd4611c3ae",
+            "tree": "527931ed7e9c1a58a6c50966500fdadca080bb42",
+            "tool_name": "Trivy",
+            "tool_version": "ghcr.io/aquasecurity/trivy:0.72.0@sha256:cffe3f5161a47a6823fbd23d985795b3ed72a4c806da4c4df16266c02accdd6f",
+            "command": "Exact immutable image sha256:06f11a64394b3be2b31066f5a06e0d2560b7da831463065a43b999084bf87df1 scanned by scripts/security/scan-production-images.sh; full actual command bound by /private/tmp/design-convergence-final-trivy-28689b652fe6/verification.json",
+            "environment": "Isolated linux/amd64. Original286 all-severity actual scan0; final de2 exact-ID/original-label/unchanged-Dockerfile/artifact-hash reuse independently verified. No ignore, severity filter, production access or risk acceptance.",
+            "result_sha256": "edd0b12f616752e19442b34e73fd183405d885cb064a66db10a8721a8404d930",
+            "log_path": "/private/tmp/design-convergence-final-trivy-28689b652fe6/scans/image-5.json",
+            "config_sha256": "42642f9b949e06a626bc81928def214b83d486167b2cbb3832b4bd22b4207694",
+            "recorded_at": "2026-10-19T05:34:39.17929725Z"
+          },
+          "notes": "Original9710 failed report preserved in source.binding. Repaired exact redis image has0 all-severity findings. Final de2 applicability /private/tmp/design-convergence-final-trivy-de2b49c49358/verification.json SHA256 7ba5ac668cf46bc3170fb4b10a2234d286684ebe41501a82d917af006c424c1e; independent raw/identity/hash review /private/tmp/design-convergence-de2-trivy-evidence-independent-review.json SHA256 b4d786998956f2f5d70166c28f0a6f52c5b5c9967dbddc8426b07ca3fc6f8e20. Three new app scans plus3 original exact-infra reports reused; not6 fresh scans."
+        },
+        "affected_regression": {
+          "status": "pass",
+          "binding": {
+            "commit": "de2b49c49358ffa917a237442672528a16da3f85",
+            "tree": "3d722a4642f5ea52a98867411dcb97c026d61adf",
+            "tool_name": "Portable CLI and compiled API isolated runtime verification",
+            "tool_version": "Committed de2 portable CLI; Node24; PostgreSQL14.24; Redis7.4.9; ClamAV1.4.6",
+            "command": "Recorded install/initialize/import-signatures/start/backup/restore/stop/start sequence plus api-verify.py seed/restore/restart and scanner-verify.py; exact per-step commands and log hashes in runtime-status.json evidenceSha256",
+            "environment": "Same Mac, separate new dedicated instances/volumes at https://localhost:45443 and https://localhost:45444, exact generated CA, sourceA stopped. Synthetic data; no physical second-machine, browser/IME/Office/product-owner or production claim.",
+            "result_sha256": "3a10604cd3461da2c3a298b858f25d1a0f4aec324598034be225664d5b670330",
+            "log_path": "/private/tmp/design-convergence-portable-de2b49c49358-evidence/runtime-status.json",
+            "config_sha256": "0dbbb8cfc07e4a22c56725194807b786b8c4af379a4950f9f5cbc72cf31ea7ee",
+            "recorded_at": "2026-10-19T06:54:20.760880+00:00"
+          },
+          "notes": "Exact repaired Redis7.4.9 image participates in authenticated startup, native sessions and application writes. Final de2 restore explicitly excludes sessions and resets the session boundary: old source session401, original password login, new write and stop/start readback pass. Application-level authentication/session/restart coverage does not claim restoration of old Redis sessions or arbitrary AOF contents."
+        },
+        "diff_review": {
+          "status": "pass",
+          "binding": {
+            "commit": "28689b652fe615d606fadd81f0e3bcbd4611c3ae",
+            "tree": "527931ed7e9c1a58a6c50966500fdadca080bb42",
+            "tool_name": "Independent read-only diff review",
+            "tool_version": "route_people_audit context",
+            "command": "Inspect exact three portable Dockerfiles; compare fixed revisions, local OCI input and preserved scanner core hashes; no runtime execution",
+            "environment": "Independent reviewer inspected pre-commit patch cc3d872f93148b2a6f08585372fec0bcccc89dcadd5dbc689c38a617b98bd7d3. Each reviewed file hash now exactly matches commit28689b6; scope does not claim final image/runtime PASS.",
+            "result_sha256": "4a8cb65a397fb7ef587a1a466fa0eaca5dba4ababad1cef2c381c0087190d063",
+            "log_path": "/private/tmp/design-convergence-portable-infra-v2-independent-review.json",
+            "config_sha256": "7e6539d5526e92eb9050c08d21583164e63a6995eedcb3f64bc87abf8ccab7f1",
+            "recorded_at": "2026-10-19T05:18:58.762810+00:00"
+          },
+          "notes": "Exact portable Dockerfile diff/OCI input independently reviewed. File bytes still match final de2; repaired target scan and affected runtime recorded separately. Not a full-repository security clearance."
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Bounded final de2 install/backup/new-instance restore and restart passed under affected_regression. No G4_FULL or product/production acceptance claimed. Separate proxy healthcheck mismatch remains in /private/tmp/design-convergence-portable-de2b49c49358-evidence/proxy-health-candidate.json SHA256 7f9c2e7a63c5393e621792a008166060763f0d5f3b46b3d3b64cb37a9f77b412; strict external HTTPS API passed but not all services report healthy. Original c89 restore FAIL and final orchestration operation.lock rejection preserved."
+        }
+      },
+      "closure": null,
+      "history": [
+        {
+          "at": "2026-10-19T05:24:15.180476+00:00",
+          "transition": "null->candidate",
+          "actor": "Codex implementation evidence; independent diff review by route_people_audit",
+          "reason": "Imported actual immutable-image package scan: 47 instances. Discovery severity follows scanner maximum, not established exploitability.",
+          "approval_id": null,
+          "binding": {
+            "commit": "9710cbfbda9975c1c58f15cff8ff0167540eef6f",
+            "tree": "375767ba259954cfa9c53d25e1f0bac91789cb2a",
+            "tool_name": "Trivy",
+            "tool_version": "ghcr.io/aquasecurity/trivy:0.72.0@sha256:cffe3f5161a47a6823fbd23d985795b3ed72a4c806da4c4df16266c02accdd6f",
+            "command": "bash /private/tmp/design-convergence-ci-9710cbf-20261019/scripts/security/scan-production-images.sh sha256:caafd8549446ef7bb8898947b30597d9c384273eadc5e5b2abfb3c7bfd083136 sha256:2f042d7c003c8e995ee07a13443badb372e718aad1ddab0de1359ecd1d6dc1df sha256:33e83e77344e26780f0d41448e6ab7e15efd7ec11ca2b24b35027b6c6b43e1ea sha256:3b36dd7df1337107cef7502b1e3e94c971483ae87498a9310d25c60fba08cfc9 sha256:b1addbe72465a718643cff9e60a58e6df1841e29d6d7d60c9a85d8d72f08d1a7 sha256:17130f6532928a5b4b1272fc5129e5f2639850c0d8086879c516649d32fc8ae6",
+            "environment": "Isolated local immutable linux/amd64 image sha256:b1addbe72465a718643cff9e60a58e6df1841e29d6d7d60c9a85d8d72f08d1a7; role redis. All-severity gate; raw report ArtifactName and Metadata.ImageID equal exact spec; no service start, database mount, production access or push.",
+            "result_sha256": "4e1c2a2178c55c7a434ed2e797c887c8172da8c5a393960388b5f690357f49c6",
+            "log_path": "/private/tmp/design-convergence-final-trivy-9710cbfbda99/scans/image-5.json",
+            "config_sha256": "d4cd6108648dd30833b5aa63e81889de38c5863a0703ac271eff057308b44db2",
+            "recorded_at": "2026-10-19T05:05:03.537298+00:00"
+          }
+        },
+        {
+          "at": "2026-10-19T05:24:15.180476+00:00",
+          "transition": "candidate->confirmed",
+          "actor": "Codex implementation evidence; independent diff review by route_people_audit",
+          "reason": "Confirmed exact installed package/image identity and reproducible all-severity gate failure. Reachability and production exposure remain unknown; no false-positive disposition.",
+          "approval_id": null,
+          "binding": {
+            "commit": "9710cbfbda9975c1c58f15cff8ff0167540eef6f",
+            "tree": "375767ba259954cfa9c53d25e1f0bac91789cb2a",
+            "tool_name": "Trivy",
+            "tool_version": "ghcr.io/aquasecurity/trivy:0.72.0@sha256:cffe3f5161a47a6823fbd23d985795b3ed72a4c806da4c4df16266c02accdd6f",
+            "command": "bash /private/tmp/design-convergence-ci-9710cbf-20261019/scripts/security/scan-production-images.sh sha256:caafd8549446ef7bb8898947b30597d9c384273eadc5e5b2abfb3c7bfd083136 sha256:2f042d7c003c8e995ee07a13443badb372e718aad1ddab0de1359ecd1d6dc1df sha256:33e83e77344e26780f0d41448e6ab7e15efd7ec11ca2b24b35027b6c6b43e1ea sha256:3b36dd7df1337107cef7502b1e3e94c971483ae87498a9310d25c60fba08cfc9 sha256:b1addbe72465a718643cff9e60a58e6df1841e29d6d7d60c9a85d8d72f08d1a7 sha256:17130f6532928a5b4b1272fc5129e5f2639850c0d8086879c516649d32fc8ae6",
+            "environment": "Isolated local immutable linux/amd64 image sha256:b1addbe72465a718643cff9e60a58e6df1841e29d6d7d60c9a85d8d72f08d1a7; role redis. All-severity gate; raw report ArtifactName and Metadata.ImageID equal exact spec; no service start, database mount, production access or push.",
+            "result_sha256": "4e1c2a2178c55c7a434ed2e797c887c8172da8c5a393960388b5f690357f49c6",
+            "log_path": "/private/tmp/design-convergence-final-trivy-9710cbfbda99/scans/image-5.json",
+            "config_sha256": "d4cd6108648dd30833b5aa63e81889de38c5863a0703ac271eff057308b44db2",
+            "recorded_at": "2026-10-19T05:05:03.537298+00:00"
+          }
+        },
+        {
+          "at": "2026-10-19T05:24:15.180476+00:00",
+          "transition": "confirmed->accepted_for_fix",
+          "actor": "Codex implementation evidence; independent diff review by route_people_audit",
+          "reason": "Owner authorized real CI/security repairs and parent delegated a portable-only infrastructure repair; this is remediation authorization, not risk acceptance.",
+          "approval_id": null,
+          "binding": null
+        },
+        {
+          "at": "2026-10-19T05:24:15.180476+00:00",
+          "transition": "accepted_for_fix->in_progress",
+          "actor": "Codex implementation evidence; independent diff review by route_people_audit",
+          "reason": "Committed reviewed portable-only Dockerfile in 28689b652fe615d606fadd81f0e3bcbd4611c3ae; final derived build/scan/runtime proof pending.",
+          "approval_id": null,
+          "binding": null
+        },
+        {
+          "at": "2026-10-19T06:57:12.723981+00:00",
+          "transition": "in_progress->fixed_target_verified",
+          "actor": "Codex CI evidence collector; actual scan and artifact hashes independently reviewed by route_people_audit",
+          "reason": "Exact repaired immutable image has0 all-severity findings; original raw139 discovery instances preserved. New de2 reuses same286 infrastructure IDs and unchanged build inputs, not a fresh infra scan.",
+          "approval_id": null,
+          "binding": {
+            "commit": "28689b652fe615d606fadd81f0e3bcbd4611c3ae",
+            "tree": "527931ed7e9c1a58a6c50966500fdadca080bb42",
+            "tool_name": "Trivy",
+            "tool_version": "ghcr.io/aquasecurity/trivy:0.72.0@sha256:cffe3f5161a47a6823fbd23d985795b3ed72a4c806da4c4df16266c02accdd6f",
+            "command": "Exact immutable image sha256:06f11a64394b3be2b31066f5a06e0d2560b7da831463065a43b999084bf87df1 scanned by scripts/security/scan-production-images.sh; full actual command bound by /private/tmp/design-convergence-final-trivy-28689b652fe6/verification.json",
+            "environment": "Isolated linux/amd64. Original286 all-severity actual scan0; final de2 exact-ID/original-label/unchanged-Dockerfile/artifact-hash reuse independently verified. No ignore, severity filter, production access or risk acceptance.",
+            "result_sha256": "edd0b12f616752e19442b34e73fd183405d885cb064a66db10a8721a8404d930",
+            "log_path": "/private/tmp/design-convergence-final-trivy-28689b652fe6/scans/image-5.json",
+            "config_sha256": "42642f9b949e06a626bc81928def214b83d486167b2cbb3832b4bd22b4207694",
+            "recorded_at": "2026-10-19T05:34:39.17929725Z"
+          }
+        },
+        {
+          "at": "2026-10-19T06:57:12.723981+00:00",
+          "transition": "fixed_target_verified->fixed_diff_verified",
+          "actor": "Codex CI evidence collector; independent exact Dockerfile diff review by route_people_audit",
+          "reason": "Existing independent exact diff review plus final de2 affected synthetic runtime/strict restore/restart verified. No whole-repository clearance, risk acceptance, production inference or closure.",
+          "approval_id": null,
+          "binding": {
+            "commit": "28689b652fe615d606fadd81f0e3bcbd4611c3ae",
+            "tree": "527931ed7e9c1a58a6c50966500fdadca080bb42",
+            "tool_name": "Independent read-only diff review",
+            "tool_version": "route_people_audit context",
+            "command": "Inspect exact three portable Dockerfiles; compare fixed revisions, local OCI input and preserved scanner core hashes; no runtime execution",
+            "environment": "Independent reviewer inspected pre-commit patch cc3d872f93148b2a6f08585372fec0bcccc89dcadd5dbc689c38a617b98bd7d3. Each reviewed file hash now exactly matches commit28689b6; scope does not claim final image/runtime PASS.",
+            "result_sha256": "4a8cb65a397fb7ef587a1a466fa0eaca5dba4ababad1cef2c381c0087190d063",
+            "log_path": "/private/tmp/design-convergence-portable-infra-v2-independent-review.json",
+            "config_sha256": "7e6539d5526e92eb9050c08d21583164e63a6995eedcb3f64bc87abf8ccab7f1",
+            "recorded_at": "2026-10-19T05:18:58.762810+00:00"
+          }
+        }
+      ]
+    },
+    {
+      "id": "R28-PORTABLE-SCANNER-001",
+      "title": "Portable patched ClamAV base image carries outdated nghttp2 pcre2 and zlib revisions",
+      "status": "fixed_diff_verified",
+      "severity": "high",
+      "confidence": "high",
+      "classification": "pre_existing",
+      "cwe": null,
+      "source": {
+        "type": "sca",
+        "report_path": "/private/tmp/design-convergence-final-trivy-9710cbfbda99/scans/image-6.json",
+        "binding": {
+          "commit": "9710cbfbda9975c1c58f15cff8ff0167540eef6f",
+          "tree": "375767ba259954cfa9c53d25e1f0bac91789cb2a",
+          "tool_name": "Trivy",
+          "tool_version": "ghcr.io/aquasecurity/trivy:0.72.0@sha256:cffe3f5161a47a6823fbd23d985795b3ed72a4c806da4c4df16266c02accdd6f",
+          "command": "bash /private/tmp/design-convergence-ci-9710cbf-20261019/scripts/security/scan-production-images.sh sha256:caafd8549446ef7bb8898947b30597d9c384273eadc5e5b2abfb3c7bfd083136 sha256:2f042d7c003c8e995ee07a13443badb372e718aad1ddab0de1359ecd1d6dc1df sha256:33e83e77344e26780f0d41448e6ab7e15efd7ec11ca2b24b35027b6c6b43e1ea sha256:3b36dd7df1337107cef7502b1e3e94c971483ae87498a9310d25c60fba08cfc9 sha256:b1addbe72465a718643cff9e60a58e6df1841e29d6d7d60c9a85d8d72f08d1a7 sha256:17130f6532928a5b4b1272fc5129e5f2639850c0d8086879c516649d32fc8ae6",
+          "environment": "Isolated local immutable linux/amd64 image sha256:17130f6532928a5b4b1272fc5129e5f2639850c0d8086879c516649d32fc8ae6; role scanner. All-severity gate; raw report ArtifactName and Metadata.ImageID equal exact spec; no service start, database mount, production access or push.",
+          "result_sha256": "430d7c8c9bb66ba01d5aae235fdb656756d78fab3e1d2a1c59a4d4d275908543",
+          "log_path": "/private/tmp/design-convergence-final-trivy-9710cbfbda99/scans/image-6.json",
+          "config_sha256": "d4cd6108648dd30833b5aa63e81889de38c5863a0703ac271eff057308b44db2",
+          "recorded_at": "2026-10-19T05:05:03.537298+00:00"
+        }
+      },
+      "scope": {
+        "component": "Portable-only scanner infrastructure image; exact original sha256:17130f6532928a5b4b1272fc5129e5f2639850c0d8086879c516649d32fc8ae6",
+        "affected_files": [
+          "deploy/images/portable/scanner/Dockerfile"
+        ],
+        "entry_points": [
+          "scripts/security/scan-production-images.sh",
+          "scripts/portable/portable.mjs"
+        ],
+        "trust_boundary": "Immutable local offline-package infrastructure runtime dependencies; no change to the separate staging profile."
+      },
+      "evidence": {
+        "reachable": null,
+        "production_exposed": null,
+        "reproduction_path": "Actual scan9710cbf returns BLOCKED for this image with 3 package finding instances, severity counts {\"HIGH\": 1, \"MEDIUM\": 2}. nghttp2-libs 1.69.0-r0: 1 findings, scanner fixed versions 1.70.0-r0; pcre2 10.48-r0: 1 findings, scanner fixed versions 10.49-r0; zlib 1.3.2-r0: 1 findings, scanner fixed versions 1.3.2-r1. Full six-image evidence /private/tmp/design-convergence-final-trivy-9710cbfbda99/verification.json SHA256 8169875cf4cf1539402320d02bf41a43d42752e252b614723c544a755f305f03. This records package identity and gate failure; it does not infer exploit reachability.",
+        "proof_gap": "Original package-finding exploit reachability and production exposure remain unknown; no false-positive or risk acceptance. Exact repaired image scan and bounded final de2 affected runtime verified below. Physical second-machine recovery, full repository security review, browser/IME/Office and product-owner/production acceptance are not established. Separate proxy healthcheck operational mismatch is outside these3 unchanged infrastructure image fixes."
+      },
+      "root_cause_cluster": "PORTABLE_SCANNER_PINNED_BASE_PACKAGE_REVISIONS_20261019",
+      "security_invariants": [],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
+      "fix": {
+        "task_id": "DESIGN_CONVERGENCE_PORTABLE_INFRA_20261019",
+        "branch": "codex/design-convergence-20261019",
+        "commit": "28689b652fe615d606fadd81f0e3bcbd4611c3ae",
+        "tree": "527931ed7e9c1a58a6c50966500fdadca080bb42",
+        "changed_files": [
+          "deploy/images/portable/scanner/Dockerfile"
+        ]
+      },
+      "verification": {
+        "targeted": {
+          "status": "pass",
+          "binding": {
+            "commit": "28689b652fe615d606fadd81f0e3bcbd4611c3ae",
+            "tree": "527931ed7e9c1a58a6c50966500fdadca080bb42",
+            "tool_name": "Trivy",
+            "tool_version": "ghcr.io/aquasecurity/trivy:0.72.0@sha256:cffe3f5161a47a6823fbd23d985795b3ed72a4c806da4c4df16266c02accdd6f",
+            "command": "Exact immutable image sha256:95bc17d4912d3d4b470e4bb67df827714e2837c5c9e76f2317430f1485bd48d6 scanned by scripts/security/scan-production-images.sh; full actual command bound by /private/tmp/design-convergence-final-trivy-28689b652fe6/verification.json",
+            "environment": "Isolated linux/amd64. Original286 all-severity actual scan0; final de2 exact-ID/original-label/unchanged-Dockerfile/artifact-hash reuse independently verified. No ignore, severity filter, production access or risk acceptance.",
+            "result_sha256": "53964b3ebdac163470c97809636080025e161a3b2d2192565785836d8baf7ee9",
+            "log_path": "/private/tmp/design-convergence-final-trivy-28689b652fe6/scans/image-6.json",
+            "config_sha256": "42642f9b949e06a626bc81928def214b83d486167b2cbb3832b4bd22b4207694",
+            "recorded_at": "2026-10-19T05:34:52.088786423Z"
+          },
+          "notes": "Original9710 failed report preserved in source.binding. Repaired exact scanner image has0 all-severity findings. Final de2 applicability /private/tmp/design-convergence-final-trivy-de2b49c49358/verification.json SHA256 7ba5ac668cf46bc3170fb4b10a2234d286684ebe41501a82d917af006c424c1e; independent raw/identity/hash review /private/tmp/design-convergence-de2-trivy-evidence-independent-review.json SHA256 b4d786998956f2f5d70166c28f0a6f52c5b5c9967dbddc8426b07ca3fc6f8e20. Three new app scans plus3 original exact-infra reports reused; not6 fresh scans."
+        },
+        "affected_regression": {
+          "status": "pass",
+          "binding": {
+            "commit": "de2b49c49358ffa917a237442672528a16da3f85",
+            "tree": "3d722a4642f5ea52a98867411dcb97c026d61adf",
+            "tool_name": "Portable CLI and compiled API isolated runtime verification",
+            "tool_version": "Committed de2 portable CLI; Node24; PostgreSQL14.24; Redis7.4.9; ClamAV1.4.6",
+            "command": "Recorded install/initialize/import-signatures/start/backup/restore/stop/start sequence plus api-verify.py seed/restore/restart and scanner-verify.py; exact per-step commands and log hashes in runtime-status.json evidenceSha256",
+            "environment": "Same Mac, separate new dedicated instances/volumes at https://localhost:45443 and https://localhost:45444, exact generated CA, sourceA stopped. Synthetic data; no physical second-machine, browser/IME/Office/product-owner or production claim.",
+            "result_sha256": "3a10604cd3461da2c3a298b858f25d1a0f4aec324598034be225664d5b670330",
+            "log_path": "/private/tmp/design-convergence-portable-de2b49c49358-evidence/runtime-status.json",
+            "config_sha256": "0dbbb8cfc07e4a22c56725194807b786b8c4af379a4950f9f5cbc72cf31ea7ee",
+            "recorded_at": "2026-10-19T06:54:20.760880+00:00"
+          },
+          "notes": "Exact repaired ClamAV1.4.6 image retains all5 patched core hashes and original source/patch labels. Actual final de2 compiled API client proves clean,CLEAN exact20MiB,EICAR rejection,compressed21MiB member limit rejection,clean recovery and unavailable-endpoint fail-closed. Engine1.4.6/daily28157. Signed definitions imported on both new instances; real CLEAN image original/thumbnail and restore readback pass. No stock replacement or scan-policy bypass."
+        },
+        "diff_review": {
+          "status": "pass",
+          "binding": {
+            "commit": "28689b652fe615d606fadd81f0e3bcbd4611c3ae",
+            "tree": "527931ed7e9c1a58a6c50966500fdadca080bb42",
+            "tool_name": "Independent read-only diff review",
+            "tool_version": "route_people_audit context",
+            "command": "Inspect exact three portable Dockerfiles; compare fixed revisions, local OCI input and preserved scanner core hashes; no runtime execution",
+            "environment": "Independent reviewer inspected pre-commit patch cc3d872f93148b2a6f08585372fec0bcccc89dcadd5dbc689c38a617b98bd7d3. Each reviewed file hash now exactly matches commit28689b6; scope does not claim final image/runtime PASS.",
+            "result_sha256": "4a8cb65a397fb7ef587a1a466fa0eaca5dba4ababad1cef2c381c0087190d063",
+            "log_path": "/private/tmp/design-convergence-portable-infra-v2-independent-review.json",
+            "config_sha256": "542cdd13e15caa053ba9e291461b0f50ba5f3b42819a21e8eb11833f567f46bd",
+            "recorded_at": "2026-10-19T05:18:58.762810+00:00"
+          },
+          "notes": "Exact portable Dockerfile diff/OCI input independently reviewed. File bytes still match final de2; repaired target scan and affected runtime recorded separately. Not a full-repository security clearance."
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Bounded final de2 install/backup/new-instance restore and restart passed under affected_regression. No G4_FULL or product/production acceptance claimed. Separate proxy healthcheck mismatch remains in /private/tmp/design-convergence-portable-de2b49c49358-evidence/proxy-health-candidate.json SHA256 7f9c2e7a63c5393e621792a008166060763f0d5f3b46b3d3b64cb37a9f77b412; strict external HTTPS API passed but not all services report healthy. Original c89 restore FAIL and final orchestration operation.lock rejection preserved."
+        }
+      },
+      "closure": null,
+      "history": [
+        {
+          "at": "2026-10-19T05:24:15.180476+00:00",
+          "transition": "null->candidate",
+          "actor": "Codex implementation evidence; independent diff review by route_people_audit",
+          "reason": "Imported actual immutable-image package scan: 3 instances. Discovery severity follows scanner maximum, not established exploitability.",
+          "approval_id": null,
+          "binding": {
+            "commit": "9710cbfbda9975c1c58f15cff8ff0167540eef6f",
+            "tree": "375767ba259954cfa9c53d25e1f0bac91789cb2a",
+            "tool_name": "Trivy",
+            "tool_version": "ghcr.io/aquasecurity/trivy:0.72.0@sha256:cffe3f5161a47a6823fbd23d985795b3ed72a4c806da4c4df16266c02accdd6f",
+            "command": "bash /private/tmp/design-convergence-ci-9710cbf-20261019/scripts/security/scan-production-images.sh sha256:caafd8549446ef7bb8898947b30597d9c384273eadc5e5b2abfb3c7bfd083136 sha256:2f042d7c003c8e995ee07a13443badb372e718aad1ddab0de1359ecd1d6dc1df sha256:33e83e77344e26780f0d41448e6ab7e15efd7ec11ca2b24b35027b6c6b43e1ea sha256:3b36dd7df1337107cef7502b1e3e94c971483ae87498a9310d25c60fba08cfc9 sha256:b1addbe72465a718643cff9e60a58e6df1841e29d6d7d60c9a85d8d72f08d1a7 sha256:17130f6532928a5b4b1272fc5129e5f2639850c0d8086879c516649d32fc8ae6",
+            "environment": "Isolated local immutable linux/amd64 image sha256:17130f6532928a5b4b1272fc5129e5f2639850c0d8086879c516649d32fc8ae6; role scanner. All-severity gate; raw report ArtifactName and Metadata.ImageID equal exact spec; no service start, database mount, production access or push.",
+            "result_sha256": "430d7c8c9bb66ba01d5aae235fdb656756d78fab3e1d2a1c59a4d4d275908543",
+            "log_path": "/private/tmp/design-convergence-final-trivy-9710cbfbda99/scans/image-6.json",
+            "config_sha256": "d4cd6108648dd30833b5aa63e81889de38c5863a0703ac271eff057308b44db2",
+            "recorded_at": "2026-10-19T05:05:03.537298+00:00"
+          }
+        },
+        {
+          "at": "2026-10-19T05:24:15.180476+00:00",
+          "transition": "candidate->confirmed",
+          "actor": "Codex implementation evidence; independent diff review by route_people_audit",
+          "reason": "Confirmed exact installed package/image identity and reproducible all-severity gate failure. Reachability and production exposure remain unknown; no false-positive disposition.",
+          "approval_id": null,
+          "binding": {
+            "commit": "9710cbfbda9975c1c58f15cff8ff0167540eef6f",
+            "tree": "375767ba259954cfa9c53d25e1f0bac91789cb2a",
+            "tool_name": "Trivy",
+            "tool_version": "ghcr.io/aquasecurity/trivy:0.72.0@sha256:cffe3f5161a47a6823fbd23d985795b3ed72a4c806da4c4df16266c02accdd6f",
+            "command": "bash /private/tmp/design-convergence-ci-9710cbf-20261019/scripts/security/scan-production-images.sh sha256:caafd8549446ef7bb8898947b30597d9c384273eadc5e5b2abfb3c7bfd083136 sha256:2f042d7c003c8e995ee07a13443badb372e718aad1ddab0de1359ecd1d6dc1df sha256:33e83e77344e26780f0d41448e6ab7e15efd7ec11ca2b24b35027b6c6b43e1ea sha256:3b36dd7df1337107cef7502b1e3e94c971483ae87498a9310d25c60fba08cfc9 sha256:b1addbe72465a718643cff9e60a58e6df1841e29d6d7d60c9a85d8d72f08d1a7 sha256:17130f6532928a5b4b1272fc5129e5f2639850c0d8086879c516649d32fc8ae6",
+            "environment": "Isolated local immutable linux/amd64 image sha256:17130f6532928a5b4b1272fc5129e5f2639850c0d8086879c516649d32fc8ae6; role scanner. All-severity gate; raw report ArtifactName and Metadata.ImageID equal exact spec; no service start, database mount, production access or push.",
+            "result_sha256": "430d7c8c9bb66ba01d5aae235fdb656756d78fab3e1d2a1c59a4d4d275908543",
+            "log_path": "/private/tmp/design-convergence-final-trivy-9710cbfbda99/scans/image-6.json",
+            "config_sha256": "d4cd6108648dd30833b5aa63e81889de38c5863a0703ac271eff057308b44db2",
+            "recorded_at": "2026-10-19T05:05:03.537298+00:00"
+          }
+        },
+        {
+          "at": "2026-10-19T05:24:15.180476+00:00",
+          "transition": "confirmed->accepted_for_fix",
+          "actor": "Codex implementation evidence; independent diff review by route_people_audit",
+          "reason": "Owner authorized real CI/security repairs and parent delegated a portable-only infrastructure repair; this is remediation authorization, not risk acceptance.",
+          "approval_id": null,
+          "binding": null
+        },
+        {
+          "at": "2026-10-19T05:24:15.180476+00:00",
+          "transition": "accepted_for_fix->in_progress",
+          "actor": "Codex implementation evidence; independent diff review by route_people_audit",
+          "reason": "Committed reviewed portable-only Dockerfile in 28689b652fe615d606fadd81f0e3bcbd4611c3ae; final derived build/scan/runtime proof pending.",
+          "approval_id": null,
+          "binding": null
+        },
+        {
+          "at": "2026-10-19T06:57:12.723981+00:00",
+          "transition": "in_progress->fixed_target_verified",
+          "actor": "Codex CI evidence collector; actual scan and artifact hashes independently reviewed by route_people_audit",
+          "reason": "Exact repaired immutable image has0 all-severity findings; original raw139 discovery instances preserved. New de2 reuses same286 infrastructure IDs and unchanged build inputs, not a fresh infra scan.",
+          "approval_id": null,
+          "binding": {
+            "commit": "28689b652fe615d606fadd81f0e3bcbd4611c3ae",
+            "tree": "527931ed7e9c1a58a6c50966500fdadca080bb42",
+            "tool_name": "Trivy",
+            "tool_version": "ghcr.io/aquasecurity/trivy:0.72.0@sha256:cffe3f5161a47a6823fbd23d985795b3ed72a4c806da4c4df16266c02accdd6f",
+            "command": "Exact immutable image sha256:95bc17d4912d3d4b470e4bb67df827714e2837c5c9e76f2317430f1485bd48d6 scanned by scripts/security/scan-production-images.sh; full actual command bound by /private/tmp/design-convergence-final-trivy-28689b652fe6/verification.json",
+            "environment": "Isolated linux/amd64. Original286 all-severity actual scan0; final de2 exact-ID/original-label/unchanged-Dockerfile/artifact-hash reuse independently verified. No ignore, severity filter, production access or risk acceptance.",
+            "result_sha256": "53964b3ebdac163470c97809636080025e161a3b2d2192565785836d8baf7ee9",
+            "log_path": "/private/tmp/design-convergence-final-trivy-28689b652fe6/scans/image-6.json",
+            "config_sha256": "42642f9b949e06a626bc81928def214b83d486167b2cbb3832b4bd22b4207694",
+            "recorded_at": "2026-10-19T05:34:52.088786423Z"
+          }
+        },
+        {
+          "at": "2026-10-19T06:57:12.723981+00:00",
+          "transition": "fixed_target_verified->fixed_diff_verified",
+          "actor": "Codex CI evidence collector; independent exact Dockerfile diff review by route_people_audit",
+          "reason": "Existing independent exact diff review plus final de2 affected synthetic runtime/strict restore/restart verified. No whole-repository clearance, risk acceptance, production inference or closure.",
+          "approval_id": null,
+          "binding": {
+            "commit": "28689b652fe615d606fadd81f0e3bcbd4611c3ae",
+            "tree": "527931ed7e9c1a58a6c50966500fdadca080bb42",
+            "tool_name": "Independent read-only diff review",
+            "tool_version": "route_people_audit context",
+            "command": "Inspect exact three portable Dockerfiles; compare fixed revisions, local OCI input and preserved scanner core hashes; no runtime execution",
+            "environment": "Independent reviewer inspected pre-commit patch cc3d872f93148b2a6f08585372fec0bcccc89dcadd5dbc689c38a617b98bd7d3. Each reviewed file hash now exactly matches commit28689b6; scope does not claim final image/runtime PASS.",
+            "result_sha256": "4a8cb65a397fb7ef587a1a466fa0eaca5dba4ababad1cef2c381c0087190d063",
+            "log_path": "/private/tmp/design-convergence-portable-infra-v2-independent-review.json",
+            "config_sha256": "542cdd13e15caa053ba9e291461b0f50ba5f3b42819a21e8eb11833f567f46bd",
+            "recorded_at": "2026-10-19T05:18:58.762810+00:00"
+          }
+        }
+      ]
+    },
+    {
+      "id": "R28-PORTABLE-STATUS-001",
+      "title": "Portable status prints raw Compose command fields containing credential-bearing arguments",
+      "status": "fixed_diff_verified",
+      "severity": "medium",
+      "confidence": "high",
+      "classification": "pre_existing",
+      "cwe": "CWE-200",
+      "source": {
+        "type": "manual",
+        "report_path": "/private/tmp/design-convergence-portable-status-reproduction.json",
+        "binding": {
+          "commit": "c89c5e5540c39423bd186539bb1ab3649771e9b6",
+          "tree": "795490f179548ef4b9e2319c315a4611cb153718",
+          "tool_name": "Manual source tracing and synthetic real CLI reproduction",
+          "tool_version": "v24.14.0",
+          "command": "node scripts/portable/portable.mjs status SYNTHETIC_INSTANCE; Docker executable replaced only in the child PATH with a synthetic fixture",
+          "environment": "Old committed CLI source; fake Docker image inspect and Compose JSON; synthetic literal marker only, no real Docker/instance/credential access. Boolean-only old/new output proof.",
+          "result_sha256": "8ff17ffe82e46a61bfa7c4025a161d214b1a5fc02f7db076c85ada539a7b7545",
+          "log_path": "/private/tmp/design-convergence-portable-status-reproduction.json",
+          "config_sha256": "f5882c9da0f4aa19a398ec5d5e8b183f133e70bc4823c9ba858b68d18c352009",
+          "recorded_at": "2026-10-19T06:02:00.317259+00:00"
+        }
+      },
+      "scope": {
+        "component": "Local portable CLI status output",
+        "affected_files": [
+          "scripts/portable/portable.mjs",
+          "scripts/portable/portable.test.mjs"
+        ],
+        "entry_points": [
+          "node portable.mjs status INSTANCE"
+        ],
+        "trust_boundary": "Credential-bearing Docker Compose metadata to operator stdout and any downstream logs; Redis command is assembled with --requirepass."
+      },
+      "evidence": {
+        "reachable": true,
+        "production_exposed": null,
+        "reproduction_path": "Source connects Redis requirepass arguments to raw Compose ps JSON stdout. Actual old CLI with a fully synthetic fake-Docker response outputs the synthetic private marker; fixed CLI outputs only Name, Service, State, Health, ExitCode and omits it. Parser errors and over-limit subprocess output are sanitized. Reproduction report binds both source hashes; no real instance status was invoked.",
+        "proof_gap": "No actual secret disclosure, log compromise or production exposure is established. Final packaged CLI operational status readback and final candidate portable recovery are pending. Medium severity reflects credential-output impact through an operator-only local command, without demonstrated unauthenticated exposure. This finding does not assess the Docker socket trust model or remove protected runtime credentials."
+      },
+      "root_cause_cluster": "PORTABLE_STATUS_RAW_COMPOSE_STDOUT_20261019",
+      "security_invariants": [],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
+      "fix": {
+        "task_id": "DESIGN_CONVERGENCE_PORTABLE_STATUS_20261019",
+        "branch": "codex/design-convergence-20261019",
+        "commit": "ede2439b7a353d1eaf98a0ca49e740e34e2a457a",
+        "tree": "984d7c6a5ce8979e5fbaf91dcb818bde994fdcea",
+        "changed_files": [
+          "scripts/portable/portable.mjs",
+          "scripts/portable/portable.test.mjs"
+        ]
+      },
+      "verification": {
+        "targeted": {
+          "status": "pass",
+          "binding": {
+            "commit": "ede2439b7a353d1eaf98a0ca49e740e34e2a457a",
+            "tree": "984d7c6a5ce8979e5fbaf91dcb818bde994fdcea",
+            "tool_name": "Node test runner",
+            "tool_version": "v24.14.0",
+            "command": "node --test scripts/portable/portable.test.mjs",
+            "environment": "Nine tests, zero skips. JSON-array/JSONL/empty, exact public field projection, malformed input and 1MiB/64row bounds, actual CLI with fake Docker and synthetic private markers. Exact two reviewed source hashes mapped to committed ede2439.",
+            "result_sha256": "cc9ffcdc88304c4ad175c0211d70371639e6921a22e0a4f273685ec79a0075c3",
+            "log_path": "/private/tmp/design-convergence-portable-status-tests.log",
+            "config_sha256": "7d45e09da73d184ee6bb83b6631a320976fccd31b305b33a13a2da45f5b78f55",
+            "recorded_at": "2026-10-19T06:00:44.526701+00:00"
+          },
+          "notes": "Five exact public fields; no Command/Env/future field forwarding. Capture/parse1MiB,64rows, bounded scalar fields and fixed error messages. Actual fake-Docker CLI plus old/new synthetic proof."
+        },
+        "affected_regression": {
+          "status": "pass",
+          "binding": {
+            "commit": "ede2439b7a353d1eaf98a0ca49e740e34e2a457a",
+            "tree": "984d7c6a5ce8979e5fbaf91dcb818bde994fdcea",
+            "tool_name": "Independent read-only diff review and test execution",
+            "tool_version": "workbook_architecture context",
+            "command": "Inspect final two-file patch and run node --test scripts/portable/portable.test.mjs",
+            "environment": "Separate context; independent9/9 zero skips; code/lock/patch byte hashes verified; reviewed source files exactly match committed ede2439. This is technical verification, not human release/product approval.",
+            "result_sha256": "bec760d3a040e1cf585143331583caada4b59060da2212e8a3bc0d5e60a6d001",
+            "log_path": "/private/tmp/design-convergence-portable-status-independent-review.json",
+            "config_sha256": "7d45e09da73d184ee6bb83b6631a320976fccd31b305b33a13a2da45f5b78f55",
+            "recorded_at": "2026-10-19T06:03:04.292000+00:00"
+          },
+          "notes": "Independent9/9, no skipped test; existing manifest, encrypted backup, signature floor, source archive and schema comparison tests retained. No runtime/backup contract changed."
+        },
+        "diff_review": {
+          "status": "pass",
+          "binding": {
+            "commit": "ede2439b7a353d1eaf98a0ca49e740e34e2a457a",
+            "tree": "984d7c6a5ce8979e5fbaf91dcb818bde994fdcea",
+            "tool_name": "Independent read-only diff review and test execution",
+            "tool_version": "workbook_architecture context",
+            "command": "Inspect final two-file patch and run node --test scripts/portable/portable.test.mjs",
+            "environment": "Separate context; independent9/9 zero skips; code/lock/patch byte hashes verified; reviewed source files exactly match committed ede2439. This is technical verification, not human release/product approval.",
+            "result_sha256": "bec760d3a040e1cf585143331583caada4b59060da2212e8a3bc0d5e60a6d001",
+            "log_path": "/private/tmp/design-convergence-portable-status-independent-review.json",
+            "config_sha256": "7d45e09da73d184ee6bb83b6631a320976fccd31b305b33a13a2da45f5b78f55",
+            "recorded_at": "2026-10-19T06:03:04.292000+00:00"
+          },
+          "notes": "Separate read-only author-independent review found no new blocker; exact reviewed file hashes bind to ede2439."
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Final software-package operational status and full isolated restore remain separately tracked; no security clearance or product acceptance claimed."
+        }
+      },
+      "closure": null,
+      "history": [
+        {
+          "at": "2026-10-19T06:09:56.367212+00:00",
+          "transition": "null->candidate",
+          "actor": "Codex implementation; independent verification by workbook_architecture",
+          "reason": "Builder identified raw Compose JSON stdout and credential-bearing Redis command.",
+          "approval_id": null,
+          "binding": {
+            "commit": "c89c5e5540c39423bd186539bb1ab3649771e9b6",
+            "tree": "795490f179548ef4b9e2319c315a4611cb153718",
+            "tool_name": "Manual source tracing and synthetic real CLI reproduction",
+            "tool_version": "v24.14.0",
+            "command": "node scripts/portable/portable.mjs status SYNTHETIC_INSTANCE; Docker executable replaced only in the child PATH with a synthetic fixture",
+            "environment": "Old committed CLI source; fake Docker image inspect and Compose JSON; synthetic literal marker only, no real Docker/instance/credential access. Boolean-only old/new output proof.",
+            "result_sha256": "8ff17ffe82e46a61bfa7c4025a161d214b1a5fc02f7db076c85ada539a7b7545",
+            "log_path": "/private/tmp/design-convergence-portable-status-reproduction.json",
+            "config_sha256": "f5882c9da0f4aa19a398ec5d5e8b183f133e70bc4823c9ba858b68d18c352009",
+            "recorded_at": "2026-10-19T06:02:00.317259+00:00"
+          }
+        },
+        {
+          "at": "2026-10-19T06:09:56.367212+00:00",
+          "transition": "candidate->confirmed",
+          "actor": "Codex implementation; independent verification by workbook_architecture",
+          "reason": "Source-to-output chain and synthetic old/new real CLI reproduction establish the defect; no actual-secret event asserted.",
+          "approval_id": null,
+          "binding": {
+            "commit": "c89c5e5540c39423bd186539bb1ab3649771e9b6",
+            "tree": "795490f179548ef4b9e2319c315a4611cb153718",
+            "tool_name": "Manual source tracing and synthetic real CLI reproduction",
+            "tool_version": "v24.14.0",
+            "command": "node scripts/portable/portable.mjs status SYNTHETIC_INSTANCE; Docker executable replaced only in the child PATH with a synthetic fixture",
+            "environment": "Old committed CLI source; fake Docker image inspect and Compose JSON; synthetic literal marker only, no real Docker/instance/credential access. Boolean-only old/new output proof.",
+            "result_sha256": "8ff17ffe82e46a61bfa7c4025a161d214b1a5fc02f7db076c85ada539a7b7545",
+            "log_path": "/private/tmp/design-convergence-portable-status-reproduction.json",
+            "config_sha256": "f5882c9da0f4aa19a398ec5d5e8b183f133e70bc4823c9ba858b68d18c352009",
+            "recorded_at": "2026-10-19T06:02:00.317259+00:00"
+          }
+        },
+        {
+          "at": "2026-10-19T06:09:56.367212+00:00",
+          "transition": "confirmed->accepted_for_fix",
+          "actor": "Codex implementation; independent verification by workbook_architecture",
+          "reason": "Owner authorized security repair and parent delegated minimal status-only correction; no risk acceptance.",
+          "approval_id": null,
+          "binding": null
+        },
+        {
+          "at": "2026-10-19T06:09:56.367212+00:00",
+          "transition": "accepted_for_fix->in_progress",
+          "actor": "Codex implementation; independent verification by workbook_architecture",
+          "reason": "Implemented bounded five-field projection and synthetic negative regressions in an isolated clone.",
+          "approval_id": null,
+          "binding": null
+        },
+        {
+          "at": "2026-10-19T06:09:56.367212+00:00",
+          "transition": "in_progress->fixed_target_verified",
+          "actor": "Codex implementation; independent verification by workbook_architecture",
+          "reason": "Nine tests pass with zero skips; final two source files match committed ede2439.",
+          "approval_id": null,
+          "binding": {
+            "commit": "ede2439b7a353d1eaf98a0ca49e740e34e2a457a",
+            "tree": "984d7c6a5ce8979e5fbaf91dcb818bde994fdcea",
+            "tool_name": "Node test runner",
+            "tool_version": "v24.14.0",
+            "command": "node --test scripts/portable/portable.test.mjs",
+            "environment": "Nine tests, zero skips. JSON-array/JSONL/empty, exact public field projection, malformed input and 1MiB/64row bounds, actual CLI with fake Docker and synthetic private markers. Exact two reviewed source hashes mapped to committed ede2439.",
+            "result_sha256": "cc9ffcdc88304c4ad175c0211d70371639e6921a22e0a4f273685ec79a0075c3",
+            "log_path": "/private/tmp/design-convergence-portable-status-tests.log",
+            "config_sha256": "7d45e09da73d184ee6bb83b6631a320976fccd31b305b33a13a2da45f5b78f55",
+            "recorded_at": "2026-10-19T06:00:44.526701+00:00"
+          }
+        },
+        {
+          "at": "2026-10-19T06:09:56.367212+00:00",
+          "transition": "fixed_target_verified->fixed_diff_verified",
+          "actor": "Codex implementation; independent verification by workbook_architecture",
+          "reason": "Independent read-only review and nine tests pass; packaged operational verification remains pending.",
+          "approval_id": null,
+          "binding": {
+            "commit": "ede2439b7a353d1eaf98a0ca49e740e34e2a457a",
+            "tree": "984d7c6a5ce8979e5fbaf91dcb818bde994fdcea",
+            "tool_name": "Independent read-only diff review and test execution",
+            "tool_version": "workbook_architecture context",
+            "command": "Inspect final two-file patch and run node --test scripts/portable/portable.test.mjs",
+            "environment": "Separate context; independent9/9 zero skips; code/lock/patch byte hashes verified; reviewed source files exactly match committed ede2439. This is technical verification, not human release/product approval.",
+            "result_sha256": "bec760d3a040e1cf585143331583caada4b59060da2212e8a3bc0d5e60a6d001",
+            "log_path": "/private/tmp/design-convergence-portable-status-independent-review.json",
+            "config_sha256": "7d45e09da73d184ee6bb83b6631a320976fccd31b305b33a13a2da45f5b78f55",
+            "recorded_at": "2026-10-19T06:03:04.292000+00:00"
+          }
+        }
+      ]
     }
   ]
 }

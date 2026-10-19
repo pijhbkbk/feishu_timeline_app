@@ -384,3 +384,162 @@ Office口径：历史01284产量文件在真实Excel中部分PASS，检验文件
 | 产量 | a53：1440×900、1280×800、1024×900、390×844 | `production-evidence/1791876002772823000/results/production-Ordinary-member-4f16a-o-and-image-XLSX-round-trip/production-canonical-and-separate-sources-{1440,1280,1024,390}.png` |
 
 a6a→a53仅TSV末尾空白依赖修复，a53→68仅颜色自动保存/对应回归，未改变非颜色JSON/XLSX业务、API、共享runtime、CSS或图片代码。旧尺寸证据保留原commit，不冒充68重新执行；68颜色受影响回归已实跑。68→V9只恢复003已应用字节的末尾LF并更新账本，没有应用逻辑/SQL语义改变；旧浏览器结果保留68标识，不重标为V9。最终readback首次1791880141641001000为harness ESM加载失败、零测试启动，修正测试包配置及惰性照片观察后，9ed的1791938988977234000已有新只读回读PASS；旧写入/性能记录不重标9ed。生产/staging远端发布、main/tag在本轮本地验收中未改变；具体14项交付状态由[交付记录](./LIGHT_TRUCK_SHEETS_INTEGRATION_02_04/DELIVERY.md)统一记录。
+
+
+---
+
+## 2026-10-19 设计续接：9710 历史运行基线与 14 页对应
+
+本节保留9710阶段的历史运行与源码映射；当前预览及后续候选状态见下方c89与恢复增量，不由本节旧时态推断。当时运行提交为 `9710cbfbda9975c1c58f15cff8ff0167540eef6f`，tree `375767ba259954cfa9c53d25e1f0bac91789cb2a`。当时已报告3390真实运行此版本，并读取非敏感健康身份文件 `var/design-convergence-20261019/runtime-9710-health.json` 核对 source/runtime commit 和 tree；这是 loopback 开发运行环境，不是正式域名验收。
+
+源码映射复用已核对的86f矩阵。实际 `git diff --name-only 86f0300d9ccee6f8019b7580f71766dc7272a688 9710cbfbda9975c1c58f15cff8ff0167540eef6f` 仅有两Dockerfile、Next预取脚本及测试、旧开发档案组件及测试六文件；其中页面差异仅为档案状态分类和跨colorId清理。已对9710该组件重新核对；其它映射源码未变。源码不变允许复用来源映射，不自动把旧版操作记成9710重新验收。
+
+- `SOURCE_VERIFIED` 仅指路由、组件、动作、返回和后端合同有对应，不是整页PASS。
+- 浏览器事实由根任务实际操作后提供，本节只引用精确范围与版本。没有实际主动作的页面保持未验；浏览器截图不替代保存读回、权限负向或产品负责人确认。
+- API路径省略 `/api`；动态ID由实际授权合成记录选择。网页 `/v2/:path*` 按 `next.config.ts` 重定向 `/:path*`，不移除服务端 `/api/v2/...`；`/legacy`单列历史入口。
+- 第1页为封面，不为其新增占位功能。最终状态仍为分项本地验证，未声明整体验收或生产更新。
+
+| 参考页 | 实际路由 / 组件 | 实际 API / 数据 | 默认、编辑、空与错误状态 | 动作及实际结果 | 保存 / 取消 / 后退 | 主路由、v2、legacy 与合同差异 | 参考与浏览器证据 |
+|---|---|---|---|---|---|---|---|
+| 1 封面 / 总览 | 无独立业务路由；入口 `/login` → `/dashboard` | 无封面业务 API | 仅为参考稿目录，不应创建占位页 | 进入登录或工作台 | 不适用 | 设计封面，不计功能页完成 | 封面，不计功能验收。 |
+| 2 登录 | `/login`；`LoginPage`、`AuthProvider`、`PasswordField` | `GET /auth/session`；`POST /auth/login`、`/auth/register`、`/auth/recover`；登录目的地可能校验 `/v2/projects/:p/workspace` | 默认工号/密码；注册/恢复是同页模式；busy 禁用；错误 FeedbackBanner；注册成功但后续登录失败仍提示账号已建立 | 本地密码登录；注册建立真实账号；恢复使旧会话失效；目标由 `resolveLoginDestination` 决定 | 登录成功跳目标；注册/恢复可“返回登录”；无独立保存草稿；字段失败留在页面 | 当前原生身份入口；旧 `/login/callback` 不承担第三方交换；不能用历史 OAuth 截图验收 | SOURCE_VERIFIED；318原生登录与aee3400恢复登录分别有实际路径；9710已运行不等于重新执行全部认证动作。 |
+| 3 流程首页 | `/dashboard?project=:p&taskId=:t`；`M1Dashboard`、`M1FlowMap` | `GET /projects` 有界列表；`GET /v2/projects/:p/workspace` | 默认首个可读颜色项目；颜色选择/搜索/刷新；加载、空结果、错误重试；待跟进来自真实节点 | 点节点 / 待跟进进入真实 `/projects/:p/tasks/:t?from=dashboard…`；新建进入 `/projects/new?from=dashboard` | 首页只读；节点保存后按来源返回选中项目；新建有取消 | 当前 M1 首页；`/v2/dashboard` 由 Next redirects 实际跳 `/dashboard`，旧 v2 页面源码不决定对外画面；`/legacy/dashboard` 单列历史 | SOURCE_VERIFIED；318地图→材料扫描→保存返回→刷新；86f1440截图；实际timeout后重试恢复4/18，失败保留。 |
+| 4 颜色项目 | `/projects`、`/projects/new`；`ColorProjects`、`NewColorProject` | `GET /projects`；`POST /projects`；新建后读取 `/v2/projects/:p/workspace`，按需上传报告、`POST /projects/:p/approved-report` | 查询/节点筛选/分页、无项目/无匹配、错误重新加载；新建表单和业务权限拒绝态；报告上传/扫描状态可见 | 项目名称/编号打开详情；新建服务端分配稳定项目 ID、继续保存已创建草稿，避免重复项目 | 新建“创建项目/继续保存”后进入详情；取消回来源列表/首页；保留列表搜索和滚动上下文 | 当前 M1；`/v2/projects` 实际重定向 `/projects`；`/legacy/projects` 旧入口不能替代本页截图 | SOURCE_VERIFIED；86f项目列表实际打开并截图；新建/编辑/权限分支未因此判PASS。 |
+| 5 项目总览 | `/projects/:p?tab=flow`；`ColorProjectOverview`；`/overview` 固定跳此路由 | `GET /projects/:p`、`GET /v2/projects/:p/workspace`；`PATCH /projects/:p`（expectedVersion）；资料页使用附件 API | 默认流程图；资料/周评与产量/记录标签；`?edit=1` 编辑弹窗；加载、错误重试与返回；记录空态 | 节点进入记录；编辑颜色名称/车型/计划开始/说明；读取真实审计记录；资料进入 `AttachmentsWorkspace` | 保存更新版本并刷新；取消/关闭在 dirty 时确认；回来源首页或保留筛选的列表 | 当前 M1；`/v2/projects/:p` 实际重定向本路由；9710时“周评与产量”标签仍链接项目月度视觉评审与生产记录，独立自然周视图为 `/inspections`，不能混称同一入口；c89新增四入口另列 | SOURCE_VERIFIED；86f项目总览、资料标签实际打开并截图；其余主动作待验。 |
+| 6 样板记录 | `/projects/:p/samples` 经 `M1RecordEntry` 解析真实节点 → `/projects/:p/tasks/:t`；`M1NodeWorkspace` | `GET /v2/tasks/:t/progress-context`；`GET /projects/:p/samples?taskId=:t`；`POST /projects/:p/samples`、`/samples/confirm`；材料上传；按真实条件 `POST /v2/tasks/:t/complete` | 实际制样/确认日期、确认方/决定/备注；已处理节点只读；样板先保存后完成失败时继续同一记录；找不到节点有错误/重试/返回 | 登记本轮样板或确认事实；需材料时必须先扫描通过；制样路径仅在后端接受后完成本轮任务 | “保存并返回”回原节点来源并刷新；取消受未保存守卫；不得把仅保存样板误记作节点完成 | 当前 M1 入口复用旧 samples 业务；保留样板/任务 ID；不是任意自由表格行 | SOURCE_VERIFIED；aee3400新库副本新增样板确认→刷新，非3390全样板链或9710重测。 |
+| 7 标准板 | `/projects/:p/standard-boards`；`StandardBoardsWorkspace`、`BoardStandardPublishForm` | `GET/POST /projects/:p/standard-boards`；`PATCH …/:boardId`；`POST …/:boardId/{set-current,mark-created,issue,distributions}`；`/color-board-detail-update` 和各 `complete-task` | 选中当前/首条版本；新增/编辑板号、版本、样板来源；下发/签收/明细；加载、错误重试、无记录；权限与活动节点约束 | 创建/修改板、设当前板、制作/下发、记录分发；明确发布颜色标准版本；完成动作走后端门禁 | 保存返回更新后的 workspace；取消编辑重置表单；`M1RecordReturn` 回来源；完成按钮与“保存板记录”区分 | 当前真实业务路由，复用既有组件并加 M1 来源返回；不是 `/legacy` 路由；视觉与 14 页仍须截图核对 | SOURCE_VERIFIED；86f标准板实际打开并截图；创建/制作/下发/完成未全部实测。 |
+| 8 项目评审 | `/projects/:p/reviews?review=cabin`（另有 consistency / legacy-monthly）；`ProjectReviewsWorkspace` 及 Cabin/Consistency/Monthly 子组件 | `/projects/:p/reviews/cabin`、`/reviews/consistency`；创建/编辑、attachment、submit、approve/reject；历史 monthly 独立旧 API | 默认驾驶室；切换后保留已打开子页输入；草稿/提交/结果态；错误及业务拒绝需实测；不同时加载所有标签 | 保存评审事实、关联材料、提交/确认；既有后端状态与角色门禁保留 | 各子页显式保存/取消及来源返回；提交不能由前端假置完成 | 当前路由；“历史月度评审”明确 legacy 语义但不在 `/legacy` URL；本轮未新增多角色审批；旧 approve/reject 能力仍在，不能据视觉稿称已移除 | SOURCE_VERIFIED；9710实际切驾驶室→一致性；未到节点按钮disabled，为门禁观察，未执行评审保存。 |
+| 9 材料 | 项目资料 `/projects/:p?tab=materials` 或 `/projects/:p/materials` → `AttachmentsWorkspace`；`/materials/upload?taskId=:t` → `MaterialsUploadR22`；`/materials` → `MaterialsCenter` | 项目附件 list/upload/detail/preview/download；节点材料命令；`GET /dashboard/project-timelines`（聚合入口） | 文件选择、扫描待处理/成功/拒绝、版本历史；替换态可取消；无任务/无材料空态；MaterialsCenter 初次失败且 payload 空时现显示错误、重试与返回；后续刷新失败保留已读数据。附件/驾驶室/节点首载错误与返回亦已修复（Node 回归证据，不代替浏览器故障注入） | 上传/替换保留版本，预览/下载再次鉴权；节点材料与普通附件不能互换；聚合页只是导航 | 上传确认后刷新材料；取消替换不删除已存历史；项目资料按来源返回；旧上传页回我的任务 | 当前真实资料与旧 R22 上传组件并存；`/v2/materials` 实际重定向聚合页；`/legacy/materials` 单列历史，不能用聚合页能打开替代上传验收 | SOURCE_VERIFIED；318材料扫描→保存返回→刷新；86f资料页实际打开；aee3400旧PDF下载hash一致。其他附件动作待验。 |
+| 10 颜色库：自由工作簿与业务区 | `/admin/color-database` → `FreeWorkbookWorkspace`；`?view=records` 或 `?colorId=:id` → `ColorRegisterWorkspace`；`/admin/color-database/:id` → `AdminColorArchiveR26` + `AnnualReviewPanel`；`AdminColorDatabaseR26` 分流 | `GET/POST /workbooks`；`GET/PUT /workbooks/:id`、`GET …/revisions`、`POST …/restore`；`SHEET_WORKBOOK` 图片；业务区 `/color-register`、`/color-register/sheet`、标准版本与导入 API | 默认列表/选择/新建；完整 Univer 编辑；dirty、saving、未确认、冲突、图片导入/取消、空态、错误；导入不支持内容明确拒绝或确认降级副本 | 多 sheet/样式/合并/公式/图片；保存全 snapshot；恢复追加新 revision；XLSX 导入创建独立副本；导出本地文件；业务区保留稳定业务 ID | 显式保存；未确认重试原请求；重新读取/切换受未保存守卫；图片未完成不能保存；取消导入回持久副本；返回工作台/业务区 | 当前默认自由工作簿；`/v2/admin/color-database` 实际重定向当前路由；自由行号不作业务 ID；**未自动发布/同步到颜色业务记录，首版业务发布入口指向受控区，不等于已实现任意工作簿映射发布** | SOURCE_VERIFIED；aee合成两表v5编辑+Excel实开；86f真实11表副本v2保存读回、背景可见、Excel11表无repair；OWNER_REPORTED_PASS系统IME。非全部兼容性/任意映射发布PASS。 |
+| 11 周评与日常检验 | `/inspections`；`InspectionsWorkspace` 默认周评视图；`week-range`、`ActivityForm`、`RecordSheetWorkspace`；另可切日常全部日期 | `GET /inspections/activities?baseId&fromDate&toDate&page&pageSize=25` 与同范围 `/inspections/statistics`；原 `POST/PATCH /activities`、层级 `/rows`、`/batch`、`/review-link` | 上海日期的周一至周日首尾计入；上一周/下一周/日期选周/回本周/基地筛选；周活动空态与统计失败单独重试；日常历史分页；切范围保留未保存守卫 | 周列表来自真实活动；统计覆盖该周及基地全部已保存事实、车辆按稳定对象 ID 跨活动去重；新建本周活动默认适用日期，编辑沿用活动 ID/revision；照片仍绑定对象台次，不绑定行号 | 活动显式保存/取消；层级表格有自动保存、冲突/未确认恢复；活动或事实保存后刷新周列表与汇总；切周/基地/层级前处理未保存内容；侧栏返回工作台 | 已实现自然周读取与维护入口，无新增“周评完成”审批状态、无自动推进月度流程；`/monthly-reviews` 仍为原月度进度。周视图不是新增自由工作簿，不把检验事实保存等同评审完成 | SOURCE_VERIFIED；86f活动新建10/19→编辑10/20并保留备注/参与人→同ID刷新；上周10/12..18空态→本周1活动。首次工具fill日期失败保留；跨年等未实测项待验。 |
+| 12 月度产量 | `/production`；`ProductionSheetWorkspace`、`RecordSheetWorkspace`；项目旧批量生产另为 `/projects/:p/mass-production` | `GET /production-facts`、`/statistics`、`/sources`；`PATCH /production-facts/batch`；颜色/基地与 `SHEET_PRODUCTION` 图片 | 基地/颜色/月份筛选；有界列表；新增、导入、来源核对、统计失败；空白未知与 0 区分；冲突/保存未确认态 | 维护颜色×基地×月份全车型总量；更正更新同一事实；来源事实与项目批次分开；图片/含图 XLSX | 表格自动保存及重试/冲突处理；新增弹窗保存/取消；未保存先处理再筛选/导入；返回工作台，链接项目统计 | 当前真实月度总量页；项目 mass-production 是旧流程批次，不等于总量事实；不要相加造成双计 | SOURCE_VERIFIED；9710阶段尚无完整月度产量写入/导入/刷新UI链，不能用年度种子事实代替；c89新增与刷新证据另列。 |
+| 13 年度颜色复核 | `/admin/color-database/:id` → `AdminColorArchiveR26` 的 `AnnualReviewPanel`；业务清单 `?view=records` / `?colorId=:id` → `RegisterDetails` 同面板；项目 `/projects/:p/color-exit` 嵌入同面板 | `GET/POST /color-register/:id/annual-review`；`ColorAnnualReviewService` 读取同颜色/基地的 `MONTHLY_ACTUAL_TOTAL_V1` 13月事实；immutable AuditLog + AdminCommandRequest；旧 `/color-exit` 承接正式退出评审 | 首次入清单月起连续13自然月、下一月复核：2026-09..2027-09，2027-10复核；缺月/未知不能裁决，0是真实0；未到期、未入清单或已退出不可保存；读失败可重试；仅旧档案明确404转普通status；未知404/403/500仍alert；挂起时年度与返回仍挂载；切colorId清旧档案和旧年度状态 | 显示逐月原事实、版本、总量与依据；20/21继续保留，19低于阈值待原退出评审；输入说明后保存不可变复核证据，不自动退出/推进项目；已有年度证据约束后续旧手填退出，不能把20伪写19绕过 | 保存包含operationId/revision/snapshotHash并读回历史；详情关闭有dirty保护；退出页保存年度后刷新阈值20且保留未保存表单；使用已保存依据填入退出表单需显式点击；返回颜色库/原项目 | 已闭合本轮明确的首次13月与20保留合同；无新周期表/schema/多角色审批；不推断后续年度周期、不覆盖历史已完成退出。旧 color-evaluation/月度评审不冒充本年度合同；任意颜色批量年度确认不在此实现内 | SOURCE_VERIFIED；86f合成2024-09..2025-09共13月，保存20保留→刷新历史；9710普通状态新文案与原20历史实看。19/21/缺月等仅真实PG/HTTP证据，不冒称浏览器负向。 |
+| 14 人员库 | `/admin/people`；`PeopleEntry` 默认 `PeopleDirectory`，可切 `PersonSheetWorkspace`；权限 `/admin/people/permissions` 独立 | `GET/POST /persons`；`PATCH /persons/sheet`、`/persons/:id/archive`、`/persons/:id/department`；已关联账号状态/准入 `PATCH /people/:userId` | 常用/启用/归档，姓名工号搜索、游标分页；详情、新增/编辑/状态/归档表单；加载/空/错误重试；无准入拒绝 | 直接维护人员；新增不创建登录账号；停用后可归档；恢复名单不自动启用账号；关联账号准入/部门/停用仅管理员适用范围 | 表单保存有 operationId 和 revision/version；取消不写；dirty 离开守卫；返回工作台或表格/列表切换；详情关闭 | 当前 M1 默认列表；`/v2/admin/people` 实际重定向当前路由；人员档案与登录账号/授权分开，不恢复旧多角色审批流程 | SOURCE_VERIFIED；新增无账号→编辑刷新→停用归档隐藏→恢复仍无账号；86f实际1440/1024/389无body横向溢出，长姓名详情实点。历史作者保留仅独立PG。 |
+
+### 复用的源码定位（除档案项外，9710相对86f未变）
+
+| 范围 | 源码定位（相对仓库；未变化项沿用86f行号） | 本次可准确声明 |
+|---|---|---|
+| 页面重定向 | `apps/web/next.config.ts` 的 `redirects()` | `/v2/:path* → /:path*`；不要把残留页面实现当实际URL分流。 |
+| 工作簿/业务记录/档案 | `apps/web/src/components/admin-color-database-r26.tsx:8`；`apps/web/src/app/admin/color-database/[colorId]/page.tsx:3` | 默认自由工作簿；query切受控业务清单；路径参数页是开发档案+年度面板，不能混写成同一组件。 |
+| 自然周日期与范围 | `apps/web/src/features/inspections/week-range.ts:4`、`:20`；`apps/web/src/features/inspections/client.ts:42`；`apps/web/src/features/inspections/workspace.tsx:23` | 上海业务日期；周一至周日；列表与统计共用同base/date范围，25条分页与完整范围统计分开。 |
+| 周活动维护 | `apps/web/src/features/inspections/forms.tsx:9`；`apps/api/src/modules/inspections/inspections.controller.ts:23` | 复用原活动更新/幂等/CAS；日常与周视图共用稳定事实与照片身份；无新审批状态。 |
+| 年度窗口和判断 | `apps/api/src/modules/color-register/color-annual-review.rules.ts:10`；`color-annual-review.service.ts:70` | 当前受控registerMonth起0..12月，13月后复核；单一全车型总量；缺月/未知不等同0；20保留。 |
+| 年度读写与历史 | `apps/api/src/modules/color-register/color-register.controller.ts:19`；`color-annual-review.service.ts:35`；`apps/web/src/features/color-register/annual-review.tsx:17` | 后端权限、颜色锁、snapshot/revision并发与operationId幂等；保存不可变审计后读回，非自动退出。 |
+| 年度与旧退出绑定 | `apps/api/src/modules/color-exits/color-exits.annual-review.ts:12`；`color-exits.service.ts`；`apps/web/src/components/color-exit-workspace.tsx:336` | 已保存年度事实约束手填量/年度/决定，防止20→手填19绕过；无年度证据的其它既有阈值合同不任意重写；不覆盖历史已完成退出。 |
+| 档案慢请求与草稿 | `apps/web/src/components/admin-color-archive-r26.tsx:55`；`apps/web/src/components/project-reviews-workspace.tsx:19` | 档案慢/失败时年度与返回仍在；评审标签只首次挂载，已打开标签hidden保留本地输入。 |
+| 首载错误与返回 | `apps/web/src/components/materials-center.tsx:92`；`workspace-load-failures.test.tsx`；`features/m1/context.ts`、`record-return.tsx` | 首载失败显式错误重试；节点/记录按allowlisted来源回路返回，测试不冒充浏览器。 |
+
+
+
+### 9710 阶段实际证据（历史基线）
+
+9710阶段的本地预览为 `http://127.0.0.1:3390`，当时运行 `9710cbfbda9975c1c58f15cff8ff0167540eef6f`（tree `375767ba259954cfa9c53d25e1f0bac91789cb2a`）。9710年度页已在真实浏览器显示普通status“未找到可展示的开发项目资料档案。清单与年度复核信息在下方单独读取。”，原20台继续保留历史仍可见；截图为 `after/annual-9710-css1440.png`，对应AX文本由根记录引用。独立真实loader10项覆盖已知404、未知404、403/500、挂起及换颜色旧数据清理；没有把该单测当浏览器故障注入。9710评审页实际切驾驶室→一致性，因未到节点而按钮禁用，只记门禁观察，不记评审保存PASS。
+
+318构建（`31864786da03bb9e61f977a62edfd2c587c89631`）已实走原生登录 → 流程地图 → 涂料材料扫描 → 保存返回 → 刷新。86f（`86f0300d9ccee6f8019b7580f71766dc7272a688`）项目列表、总览、资料与标准板实际打开并截图，仍未覆盖每页主动作。流程首页有一次实际请求timeout，错误可重试并恢复到4/18；失败留存，不能改成从未失败。
+
+人员实际链为无账号新增 → 编辑保存刷新 → 停用 → 归档后默认名单隐藏 → 恢复仍无登录账号。86f实宽1440、1024、389均无body横向溢出，长姓名详情实点；文件名390不代表实际390（浏览器67%时实际389）。历史作者保留、最后管理员与关联账号会话边界只引用独立11项真实PG记录，不冒称浏览器全路径。
+
+86f周活动 `cmverityx000y9klo8my61j6v` 新建10/19 → 编辑10/20并保留备注与参与人 → 同ID刷新；上一周10/12..18为空态，再回本周1活动。首次工具fill(date)未触发React导致日期未改，后用实际键盘stepper修改成功；前者记工具输入失败。86f年度合成颜色 `synthetic-annual-ui-20261019-20` 的2024-09..2025-09共13个月事实已说明→保存→刷新历史，20台继续保留。规则按所有者明确决定：2026-09..2027-09首尾13月，2027-10复核；20保留、缺月不裁决，保存不可变证据不自动退出，19仍走已有退出评审。19/20/21/缺月和并发等另有真实PG/HTTP验证，不扩大为全部浏览器负向。
+
+aee（`aee63f6e51b477b9a43b5b5b3678ec0efd2703d7`）合成工作簿两表已实做中文paste、SUM20、14号粗体居中、合并/取消合并/undo、行插删/undo/高36、列插删/宽220、图片保存至v5；实际Excel已查看导出两表、1个图片对象和20。中文paste本身不证明IME。所有者对所请求合成工作簿D1的系统中文输入验收反馈“选词、保存和刷新正常”，记 `OWNER_REPORTED_PASS`；不是自动化OS候选词事件证据，也不将其它文件中出现同样文字推断为同一次IME操作。
+
+真实11表清单此前“不支持背景图”和aee“背景附件CUID误按UUID”的两次导入失败均保留。86f独立副本已导入11表、保存v2并读回，背景可见；导出由实际Excel打开为11表且无repair提示。这只证明已观察的表数、背景显示、保存读回和Office可打开，未逐格证明全部样式、公式、DPI、打印设置或再导入无损。本节仅记录已报告的实测范围，不附真实清单内容或截图。
+
+aee在 `http://127.0.0.1:3400` 的同机新数据库与对象副本恢复已原密码登录 → 新增样板确认 → 刷新，旧PDF下载hash一致。该证据不代替9710异机portable或正式HTTPS恢复。在该历史记录形成时portable仍在独立准备/验证，当时尚无最终异机结果；后续结果按实际候选另列，生产域名状态不由本地结果推导。
+
+参考/调整前/实装对照页在 `http://127.0.0.1:3394/`，3/10/14页逐项三列比较、14页可折叠、所有业务操作入口前往3390。当时已实看三列可见、布局可读，放大/折叠与链接操作仍待逐项检查；后续完成情况见c89增量。该阶段对照包含27张明确授权的参考与合成现场图，原86f/aee图未批量重标9710，未含真实清单截图、私密配置或账号资料。
+
+9710阶段的未完成/未验证范围（后续增量另列）：未有证据的14页主动作、部分错误/权限负向和全部页面窄屏；自由工作簿到业务记录的任意映射发布；完整Office无损兼容；portable异机运行/恢复与生产HTTPS验收。既有业务ID、安全命令、图片扫描/归属/CLEAN下载和审批门禁继续保留。未使用测试总数、页面打开或源码合并替代产品完成；产品负责人整体接受仍待明确。
+
+### 9710 受影响源码及独立审查引用
+
+- `apps/web/src/components/admin-color-archive-r26.tsx:25`：真实loader，精确识别既有档案404；`:29`开始清旧data；`:37`未知错误仍alert；`:55`普通状态；`:57`年度以colorId为key且不依赖档案返回。API权限与档案筛选未改。
+- 档案独审：`/private/tmp/design-convergence-archive-state-v2-independent-review.json`，SHA256 `87af60640c5f8ac696980089fc0bdc468f8fac4936ee852469ed116a55512bc5`；独立10/10，不把自动组件测试写成真实浏览器负向。
+- 年度后端与UI独审：`/private/tmp/design-convergence-annual-independent-review.json`，SHA256 `db51549690f5bbabac4780655b6a2d837ac62574cb73bef95c5b850b6dfb8a55`；真实PG/HTTP11项、API26项、Web6项，仅对应已绑定源码/环境。类型修正另见 `design-convergence-annual-seed-and-type-independent-review.json`。
+- 构建缓存独审：`/private/tmp/design-convergence-build-cache-independent-review.json`，SHA256 `4316d20cb3f91c2efe4e348c9f8c38465fe82ac8e6ddd2340bb7c01586bfd4e6`；6项与固定官方包SHA512，不代替最终镜像构建/扫描。
+
+本节作为既有矩阵的9710历史基线保留；后续截图、Network/console、实际制品摘要及portable结果按具体候选增补，不覆盖旧失败或改记旧版本事实。
+
+
+9710 新增完整路径：重新登录 → 首页样板确认 → 合成 PDF 扫描放行 → 保存返回原 project/taskId → 重开并刷新，事实与材料读回一致。详见 [实施与验证记录](DESIGN_CONVERGENCE_20261019.md)。最新候选修复及运行证据在该记录补录；不将本节旧截图自动改记为后续候选实测。
+
+## 2026-10-19 c89 历史运行增量（后续4bdb另列）
+
+本节保留c89阶段当时的状态，与上方9710历史基线分开；最新运行以末尾4bdb增量为准。当时 loopback `http://127.0.0.1:3390` 健康身份为应用 `c89c5e5540c39423bd186539bb1ab3649771e9b6`、tree `795490f179548ef4b9e2319c315a4611cb153718`，已只读核对 `var/design-convergence-20261019/runtime-c89-health.json`。`ede2439b7a353d1eaf98a0ca49e740e34e2a457a` 仅修 Portable CLI status 两文件；当前最终源码候选为 `de2b49c49358ffa917a237442672528a16da3f85`、tree `3d722a4642f5ea52a98867411dcb97c026d61adf`，再增加前向2条CHECK稳定迁移及round-trip回归，保留strict schema hash比对，不做指纹豁免。de2已完成同机独立新实例的API严格恢复、新写与重启读回；随后Chrome并发加载触发128MiB proxy OOM退出，45444当前不可用，另有healthcheck错误端口，新候选修复中。3390仍为c89，不把API链通过写成浏览器交付或全服务健康。既有86f/aee/9710截图与动作保留原版本。
+
+| 参考页 | 路由 / 组件 | 本次准确增量 | 未验证或限制 |
+|---|---|---|---|
+| 1 封面 | `/login` → `/dashboard` | 参考目录，无新业务页 | 不计功能完成。 |
+| 2 登录 | `/login` / `LoginPage`、`AuthProvider` | 9710实际重新原生登录后走完整样板确认路径；aee3400另有原密码恢复登录 | c89健康身份不代表重新完成注册、恢复、所有会话负向。 |
+| 3 流程首页 | `/dashboard` / `M1Dashboard`、`M1FlowMap` | 9710样板确认保存返回后来源project/taskId保留，地图6/18，后续取号/采购；旧4/18和timeout→重试记录保留 | 新地图不是其余12个节点通过。旧截图不批量改c89。 |
+| 4 颜色项目 | `/projects`、`/projects/new` / `ColorProjects`、`NewColorProject` | 沿用86f已打开/截图与SOURCE_VERIFIED | 新建、编辑、权限分支无新增实际验收。 |
+| 5 项目总览 | `/projects/:p?tab=tracking` / `ColorProjectOverview`、`ProjectTrackingLinks` | c89四入口真实点击：`/inspections`同周10/20活动可见，`/production`14条28台；旧项目`color-evaluation`未到节点0/12，旧`mass-production`未到节点禁用表单；各自浏览器back均回`tab=tracking`，最后总览返回来源→`/projects` | 入口及浏览器返回已观察。旧页自身返回link明确为`?tab=flow`，不伪装tracking；旧流程仅门禁观察，不记写入PASS。合成截图`after/project-c89-tracking-css1280.png`及4份destination文本由root保存。 |
+| 6 样板记录 | `/projects/:p/tasks/:t` / `M1NodeWorkspace` | 9710重新登录→样板确认合成PDF→扫描CLEAN→保存返回来源project/taskId→重开+刷新。证据`after/confirmation-9710-path.json`及scanned/returned/refreshed三PNG、AX | 该路径不覆盖所有制样/退回分支，也不是标准板或评审验收。aee3400恢复样板路径另列。 |
+| 7 标准板 | `/projects/:p/standard-boards` / `StandardBoardsWorkspace` | 沿用86f打开截图与SOURCE_VERIFIED | 创建、制作、下发、签收、完成仍未全走；项目未到节点的门禁需与缺实现区分。 |
+| 8 项目评审 | `/projects/:p/reviews` / `ProjectReviewsWorkspace` | 9710实际驾驶室→一致性，未到节点按钮disabled；已打开标签保留草稿有组件证据 | 只记门禁观察，未执行评审保存/提交，不重引入多角色审批。 |
+| 9 材料 | 项目资料、`/materials`、上传页 / `AttachmentsWorkspace`、`MaterialsCenter` | 318涂料材料链保留；9710本次合成PDF属于样板确认链，扫描CLEAN与保存读回有事实 | 普通附件替换/下载/权限负向不能用样板PDF替代。首载错误回归不冒称浏览器故障注入。 |
+| 10 颜色库 / 工作簿 | `/admin/color-database?workbook=:id` / `FreeWorkbookWorkspace`；`?view=records` / `ColorRegisterWorkspace` | c89实际无效ID明确报错不fallback；新建ID与URL同步；保存v2刷新；从v1恢复追加v3，再从v2恢复追加v4。合成两表/一图导入ID `fdd44911-adce-4fc5-bb4c-34e435485908`与URL同步，继续图片导入扫描→明确保存→reload同ID v2；1440第一表14号粗体、合并A5:C5、公式结果20；1280第二表图片和值20可见。作者37、独立39项仅辅助覆盖同实例query/back、dirty取消与晚包；不替代UI | 首张restored截图为loading，不展示或计成功；ready截图已获授权且实际查看：`after/workbook-c89-restored-ready-css1440.png`及同名DOM，当前v4，A1合成导航验证/B1数量/A2保存与重开/B2 21均可见。c89实际browserback已回原`22205d21-fe60-4b7f-8a94-e45ef35ee9fb`、版本4；dirty原生confirm取消受工具限制未完成，未保存、未更改server。证据`after/workbook-c89-dirty-cancel-tool-limit.json`及back-version4 PNG/TXT。该取消分支不因组件测试或普通back通过判PASS。原11表/Office/IME仍绑定86及所有者事实；任意业务映射发布未实现。 |
+| 11 周评与日常检验 | `/inspections` / `InspectionsWorkspace` | 自然周语义与86f新建10/19→编辑10/20→刷新、前周空态→本周事实保留；项目总览已新增明确全局入口 | 不能把全局周活动保存当旧月度评审完成；首次工具fill日期失败保留。 |
+| 12 月度产量 | `/production` / `ProductionSheetWorkspace`、`productionSourceSummary` | 合成旧来源元数据导致`rowNumbers.join`崩溃；c89已兼容并实际加载13条，来源异常显示“来源信息待核对”而不改事实 | c89新增合成松柏绿/基地甲/2026-10/8台→整页reload→服务器读回8；原13条20台不变，总14条28台。截图`after/production-c89-refreshed-css1440.png`，DOM同前缀。首次工具fill月份失效，HTMLvalidation阻止写入；原生月份/年份键盘后成功，保留工具失败。未验证全部导入/冲突分支。 |
+| 13 首次年度 | `/admin/color-database/:id` / `AnnualReviewPanel` | 原86f13月20台保存→刷新历史、9710普通档案status与原20历史读回保留；规则2026-09..2027-09首尾13月、2027-10复核、20保留 | 19/21/缺月/并发以真实PG/HTTP证据记录；不自动退出、不猜后续周期、不覆盖历史退出。 |
+| 14 人员库 | `/admin/people` / `PeopleDirectory`、可切`PersonSheetWorkspace` | 原新增无账号→编辑刷新→停用归档→恢复无账号；86f1440/1024/389，9710合成1280截图补录 | 新截图不等于再次完整维护链；历史作者与最后管理员/会话边界仍只引用独立PG。 |
+
+### c89 受影响源码定位与证据
+
+- `apps/web/src/features/color-projects/project-overview.tsx:70` / `:107`：项目跟踪标签与四个明确入口，保留旧月度和旧量产。
+- `apps/web/src/features/free-workbook/workspace.tsx:25`、`:32`、`:59`：实时query身份、读控制器/晚响应过滤、未决操作和dirty守卫；确认切换后旧编辑器移除，失败不展示错身份旧内容。自身URL更新不重读导入副本。GET15秒边界位于`client.ts`，CAS/幂等/扫描合同未改。
+- 独审`/private/tmp/design-convergence-navigation-v2-independent-review.json`，SHA256 `0021748c3ee9d2586e62209fcf9ca5353ee2cf3b2607cc87edce5859afe43e8d`；39/39零skip，v1两条独立FAIL保留。不是实际Next浏览器history证据。
+- `apps/web/src/features/production-sheet/production-adapter.ts:8`、`:42`、`:49`：历史来源按unknown解析，严格验证文件/表/行号后展示，异常只提示核对；不改原事实。UI13条加载由根实际确认。
+- `apps/api/Dockerfile`的Sharp运行依赖属于候选构建修复；本矩阵不以源码修复或3390健康代替实际容器图片处理和Portable验收。
+
+### 对照页与保留边界
+
+`http://127.0.0.1:3394/`现含37张明确授权的参考/合成现场图；禁止真实清单截图或账号配置。三列布局、放大开关、14行展开已有根实际观察。旧target=_blank点击未观察新tab的失败保留；已改同页target=_self，CTA点击→同页3390/dashboard→后退3394/#top已实际确认。c89对照页已更新为37张授权图片、40项公开资源；5私密路径404、错误Host421。证据`/private/tmp/design-convergence-compare-verification-c89-tracking.json`（SHA256 `8d64e706b1b034a8b5f9e1caa166e427d5428d379ceb82c8b83a8b41cda28bda`）绑定本版内容、白名单及源码/运行版本。合成导入截图`after/workbook-c89-import-refreshed-css1440.png`、`after/workbook-c89-import-sheet2-css1280.png`及同名AX由根实际查看确认ready；仅复制获准PNG，不公开AX。产量新增/读回、工作簿恢复ready及此次导入图已展示，不展示loading恢复图。
+
+同机3400恢复与实际Office/所有者IME范围沿用原精确记录。de2的API严格恢复与新写/重启限定通过，随后Chrome并发导致proxy OOM、45444当前不可用，后继候选修复中；生产HTTPS状态不从本轮UI推导；SOURCE_VERIFIED、截图、测试数量、构建和源码合并均不等于整页/整产品完成。最终产品负责人接受仍待明确。
+
+对照页交互补录：root已真实点击同页“进入实际工作台”→3390/dashboard→浏览器back回3394/#top；lightbox开闭、14行展开与折叠也已实际验证。证据`after/comparison-interactions.json`。原target_blank未观察新tab失败保留；不再将已完成同页CTA标为pending。新补图库仍待root最终reload视觉复核。
+
+
+### c89 精确390布局与返回补录
+
+- 现场由root实际设置CDP `mobile:true,width:390,height:844,deviceScaleFactor:1`，首页、工作簿、人员列表及人员详情的`documentWidth`均为390，无body横向溢出；证据`after/exact390-c89-evidence.json`，不改旧86f 389事实。
+- 精确图：`workbook-c89-css390-mobile.png`、`dashboard-c89-css390-mobile.png`、`people-c89-css390-mobile.png`、`people-detail-c89-css390-mobile.png`。仅这些获准合成PNG加入3394，新增后41图/44公开资源。
+- 人员详情先在正常视口真实打开，再缩至390；移动仿真下两种点击无反应，清除后同定位器可打开。布局通过不等于移动点击通过，临时override已由root清除。
+- c89工作簿普通browserback已回原`22205d21-fe60-4b7f-8a94-e45ef35ee9fb`版本4；原生dirty-confirm取消受工具限制未完成，未保存、未更改server。该分支保留未验，不能用组件测试或普通back结果替代。
+- 3390仍运行c89；de2恢复API链为历史限定通过，后续proxy OOM/45444不可用与healthcheck错端口独立保留，后继候选修复中。
+
+
+### c89 新建项目、说明编辑与资料路径增量（PDF 修复前真实事实）
+
+运行仍为 `c89c5e5540c39423bd186539bb1ab3649771e9b6`，`http://127.0.0.1:3390`。本增量可并入本轮第4、5、9页的实际动作列；9710历史表不重写。
+
+| 页 | 本次实际路径与读回 | 保留边界 |
+| --- | --- | --- |
+| 4 颜色项目 | `/projects` → `/projects/new`；填写合成基地甲、批准日期2026-10-19、依据/来源，上传合成PDF并扫描放行；创建项目 `cmvey2ws3001a9kuqemje6d81` 后进入详情3/18，批准报告已完成。 | 不覆盖所有角色/失败分支或18节点。基地label定位和文件chooser监听曾失败，按真实AX与先监听后点击成功；不记作无失败路径。 |
+| 5 项目总览 | 编辑该项目需求说明 → 保存 → 整页刷新 → 再打开编辑框，读回相同内容 → 无修改取消。批准报告节点 `cmvey2xyf00259kuquf6jrzyt` 显示原日期、依据、来源、已放行V1与审计；返回原项目 `tab=flow&taskId=…`。 | 与既有tracking四入口记录并存，不把本次flow返回改写为tracking。 |
+| 9 材料/附件 | 项目资料列表1材料，CLEAN；实际下载与合成原件SHA256相同：`97f59943dabd4bcc3b8f88207a625bfbbc0598b889f910c45466ba8127aecfdd`。 | **内嵌PDF预览FAIL**：HTTP200/inline仍被 `coep-frame-resource-needs-coep-header` 阻断。下载通过不等于预览通过。PDF-inline最小COEP修复已形成独立审查补丁，真实新制品绘制仍待验证。 |
+
+证据：`var/design-convergence-20261019/after/project-c89-create-edit-path.json`，同目录 `project-c89-{created,edit-readback,approved-report-readback}.{png,txt}`、`project-c89-material-preview-failure.{png,txt}`、`project-c89-pdf-response-headers.json`、`project-c89-pdf-network-diagnostics.json`。比较页只可复制已明确授权的前三张合成PNG，不复制下载件、私密材料或真实清单。
+
+最小修复补丁 `/private/tmp/design-convergence-pdf-preview-20261019.patch`（SHA256 `76bcdf472c32a02604a0b6d5818a472500ed984b68fa0e09637a9e79580b2d08`），仅PDF inline添加 `Cross-Origin-Embedder-Policy: credentialless`；原CSP sandbox/default-src none、CORP same-origin、nosniff、权限与CLEAN检查不变。作者及独立各86项目标回归通过；独立报告 `/private/tmp/design-convergence-pdf-preview-independent-review.json`（SHA256 `5f44b23e4d54bb6a5d4d4ffd5b9287d53cb661c6601ee60bc2835fa83d74e946`）。该测试不替代浏览器PDF绘制。
+
+
+### 4bdb 当前运行与恢复增量
+
+3390当前实际运行 `4bdbb85174208d30a12c70bba777f1bd6a86c123` / tree `60781402dfee27c99d1f567019450ded7c858be8`，构建时间2026-10-19T08:07:32Z、BUILD_ID `bcCQGc6V-oSOX4p4Df5TG`。升级先备份既有隔离数据库，核对完整migration文件集合与字节，再迁移/保留对象/重启；API与Web均200且身份匹配，详见 `var/design-convergence-20261019/preview-4bdb-cutover.json`。此前318 EXPECTED配置残留导致旧build-info500，首次helper在停服前断言拒绝；失败保留，不能把旧Web健康记PASS。
+
+- 第4/5页以上c89新建、编辑、刷新、批准报告返回增量覆盖原表的相应“未验”项；其它权限/失败分支保持未验。
+- 第9页：c89原PDF缺COEP的FAIL保留；4bdb只精确增加PDF inline COEP，安全限制不变。新B45454资料页的PDF原件、响应头、匿名/退出负向有实际接口验证；自动工具暂停PDF响应，不能证明绘制。所有者手动确认“能看到 PDF 正文”，单列OWNER_REPORTED_PASS。
+- 第10页：新B45454原账号登录→新建 `72b9c48b-63a2-4a49-993f-18eee00204bc` → 四格输入 → 保存v2 → 整页刷新同ID v2，合成松柏绿和20实际可见。`after/portable-4bdb-workbook-readback.{png,txt}`。旧builder工作簿版本未覆盖。
+- 第2页新增真实缺口：`/projects/:id/materials`登录returnTo被旧精确白名单拒绝，落/dashboard；同项目 `?tab=materials`形式可用。已对main核对为既有未改问题；资料子路由深链返回仍未完成，不以登录成功替代返回验收。
+- 最终portable的70表/2对象、schema、原密码/会话隔离、新写入和重启读回为同机新卷事实；物理异机未执行。离线软件与备份持久保存于本机delivery，未部署正式域名。
+
+当前结果与历史表分列；完整产品仍待所有者验收，未覆盖的主动作仍按原矩阵显式保留。
+
+3390切换后原账号实际登录并回原项目 `?tab=materials&taskId=…`，原CLEAN材料下载SHA未变；旧合成工作簿仍v4/B2=21，本次只读。IAB PDF网络200/COEP已修复，但黑色阅读区/blockedByClient与inline-style CSP错误仍保留，不冒称IAB绘制通过。证据 `after/preview-4bdb-browser-verification.json`。
+
+最终3394对照包含45张明确授权图片、48项公开资源，14页可展开、三列对照和放大、同页实际应用CTA。37/41张的旧统计只属于对应历史版本。最终核验 `/private/tmp/design-convergence-compare-verification-final-4bdb.json`，不展示真实清单内容。
+
+对照最后仅补文本边界：`/private/tmp/design-convergence-compare-final-text-addendum.json`（SHA256 `80f5bdc906a23a30c225f5c4976b748a9db1ad40a1f9c8fcd0f89cfed4589c75`）绑定最终HTML/manifest，复用同一图库/脚本/服务的48项检查。49个对照包文件已原字节持久复制至 `var/design-convergence-20261019/delivery/reference-comparison-20261019/`；根任务已重新加载实际查看最终三列与边界并保存 `after/comparison-final-4bdb.jpg`。
