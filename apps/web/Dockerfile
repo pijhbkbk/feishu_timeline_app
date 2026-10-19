@@ -4,6 +4,10 @@ ARG BUILD_SOURCE_TREE
 ARG BUILD_RELEASE
 ARG BUILD_TIME
 
+# Optional public archive input: --build-context next-archive=/path/to/cache-context
+# Default is empty; the dependency helper keeps its bounded official download.
+FROM scratch AS next-archive
+
 FROM ${NODE_IMAGE} AS openssl-base
 
 # Alpine 3.24 security revisions; Node's embedded OpenSSL is a separate input.
@@ -28,7 +32,8 @@ COPY packages/shared/package.json packages/shared/package.json
 
 COPY patches ./patches
 COPY scripts/deploy/prefetch-next.mjs scripts/deploy/prefetch-next.mjs
-RUN node scripts/deploy/prefetch-next.mjs && pnpm install --frozen-lockfile
+RUN --mount=type=bind,from=next-archive,target=/run/next-archive,readonly \
+    node scripts/deploy/prefetch-next.mjs && pnpm install --frozen-lockfile
 
 FROM deps AS build
 
