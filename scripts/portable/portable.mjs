@@ -122,8 +122,27 @@ function instance(root) {
   const u=new URL(c.origin);need(u.protocol==='https:'&&u.hostname==='localhost'&&u.origin===c.origin&&Number(u.port)>=1024,'This delivered profile only permits explicit localhost HTTPS');
   return {root,c,m};
 }
-function compose(s,args,input) {
-  return docker(['compose','--project-name',s.c.name,'--file',path.join(s.root,'compose.json'),...args],input);
+function compose(s,args,input,limit=MAX) {
+  return command('docker',['compose','--project-name',s.c.name,'--file',path.join(s.root,'compose.json'),...args],input,limit);
+}
+export function safeStatusRows(bytes) {
+  const message='Compose status response rejected';
+  need((typeof bytes==='string'||Buffer.isBuffer(bytes))&&Buffer.byteLength(bytes)<=1024*1024,message);
+  const raw=bytes.toString().trim();let rows;
+  try { rows=raw?(raw.startsWith('[')?JSON.parse(raw):raw.split('\n').map(line=>JSON.parse(line))):[]; }
+  catch { throw new Error(message); }
+  need(Array.isArray(rows)&&rows.length<=64,message);
+  return rows.map(row=>{
+    need(row&&typeof row==='object'&&!Array.isArray(row),message);
+    need(typeof row.Name==='string'&&/^[A-Za-z0-9][A-Za-z0-9_.-]{0,255}$/.test(row.Name),message);
+    need(typeof row.Service==='string'&&/^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$/.test(row.Service),message);
+    need(typeof row.State==='string'&&/^[a-z][a-z-]{0,31}$/.test(row.State),message);
+    need(typeof row.Health==='string'&&/^[a-z-]{0,32}$/.test(row.Health),message);
+    need(Number.isSafeInteger(row.ExitCode)&&row.ExitCode>=0&&row.ExitCode<=255,message);
+    // Compose includes Command (and may add other private fields). Never echo it,
+    // including on parse failure: CLI errors are displayed to the operator.
+    return {Name:row.Name,Service:row.Service,State:row.State,Health:row.Health,ExitCode:row.ExitCode};
+  });
 }
 function runtimeEnv(m,secrets,origin) {
   return {
@@ -376,7 +395,7 @@ async function main(args) {
   if(op==='install'&&a.length===1)return install(s);
   if(op==='start'&&a.length===1)return await start(s);
   if(op==='stop'&&a.length===1){stop(s);compose(s,['stop','--timeout','30','scanner','redis','postgres']);return;}
-  if(op==='status'&&a.length===1){console.log(compose(s,['ps','--format','json']).toString());return;}
+  if(op==='status'&&a.length===1){console.log(JSON.stringify(safeStatusRows(compose(s,['ps','--format','json'],undefined,1024*1024))));return;}
   if(op==='initialize'&&a.length===4)return initialize(s,path.resolve(a[1]),a[2],a[3]);
   if(op==='backup'&&a.length===3)return backup(s,path.resolve(a[1]),path.resolve(a[2]));
   if(op==='restore'&&a.length===3)return restore(s,path.resolve(a[1]),path.resolve(a[2]));
