@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import { M1RecordLink as Link, M1RecordReturn } from '../features/m1/record-return';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 import { useAuth } from './auth-provider';
@@ -410,9 +410,7 @@ export function AttachmentsWorkspace({
             >
               {isRefreshing ? '刷新中…' : '立即刷新'}
             </button>
-            <Link href={`/projects/${projectId}/overview`} className="button button-secondary">
-              返回概览
-            </Link>
+            <M1RecordReturn projectId={projectId} fallbackTab="materials" />
           </div>
         </div>
         <div className="summary-grid">

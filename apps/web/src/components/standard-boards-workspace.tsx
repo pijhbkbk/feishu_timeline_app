@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import { M1RecordLink as Link, M1RecordReturn } from '../features/m1/record-return';
 import { BoardStandardPublishForm } from '../features/color-register/board-standard-publish-form';
 import React, { useEffect, useRef, useState } from 'react';
 
@@ -394,9 +394,7 @@ export function StandardBoardsWorkspace({
             >
               {isRefreshing ? '刷新中…' : '刷新'}
             </button>
-            <Link href={`/projects/${projectId}/workflow`} className="button button-secondary">
-              查看流程
-            </Link>
+            <M1RecordReturn projectId={projectId} />
           </div>
         </div>
         <div className="metadata-grid">

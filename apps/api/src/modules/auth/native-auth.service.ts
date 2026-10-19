@@ -57,7 +57,7 @@ export class NativeAuthService {
         await this.lockLoginName(tx, username);
         await this.assertLoginNameAvailable(tx, username);
         const user = await tx.user.create({
-          data: { username, name, status: UserStatus.ACTIVE, onboardingCompleted: false,
+          data: { username, name, status: UserStatus.ACTIVE, onboardingCompleted: false, personProfile: { create: { name } },
             localCredential: { create: { loginName: username, passwordHash } } },
         });
         await this.audit(tx, user.id, user.id, 'NATIVE_ACCOUNT_REGISTERED');
@@ -216,7 +216,7 @@ export class NativeAuthService {
         username, authVersion: { increment: 1 }, onboardingCompleted: true,
         localCredential: { create: { loginName: username, passwordHash } },
       } }) : await tx.user.create({ data: {
-        username, name, isSystemAdmin: true, status: UserStatus.ACTIVE, onboardingCompleted: true,
+        username, name, isSystemAdmin: true, status: UserStatus.ACTIVE, onboardingCompleted: true, personProfile: { create: { name } },
         localCredential: { create: { loginName: username, passwordHash } },
       } });
       const role = await tx.role.upsert({ where: { code: 'admin' }, create: { code: 'admin', name: '系统管理员' }, update: {} });

@@ -1,0 +1,16 @@
+import { describe,it,expect } from 'vitest';
+import { validateSnapshot, validateFormula } from './workbook.rules';
+const id='10000000-0000-4000-8000-000000000001';
+const fixture=()=>({id,name:'合成工作簿',appVersion:'1.0.4',locale:'zhCN',styles:{bold:{bl:1}},sheetOrder:['a','b'],sheets:{a:{id:'a',name:'清单',rowCount:100,columnCount:26,cellData:{0:{0:{v:'中文',s:'bold'},1:{v:2}},1:{1:{f:'=SUM(B1:B1)',v:2}}},mergeData:[{startRow:0,endRow:0,startColumn:2,endColumn:3}],rowData:{0:{h:32}},columnData:{0:{w:180}}},b:{id:'b',name:'资料',rowCount:100,columnCount:26,cellData:{}}}});
+describe('complete free-workbook snapshot contract',()=>{
+  it('retains sheets, formulas, styles, geometry and merge data unchanged',()=>{const input=fixture();const result=validateSnapshot(input,id);expect(result.snapshot).toEqual(input);expect(result.hash).toHaveLength(64);});
+  it.each(['=WEBSERVICE("https://example.invalid")','=IMAGE("https://example.invalid")',"='[remote.xlsx]sheet'!A1",'=SUM(XFD1048576:XFD1048576)','=cmd|run!A1'])('rejects unsafe or unbounded formula %s',formula=>expect(()=>validateFormula(formula)).toThrow());
+  it('rejects sparse out of bounds cells and resource source URLs',()=>{const value=fixture();(value.sheets.a.cellData as Record<string,unknown>)['999999']={0:{v:'bad'}};expect(()=>validateSnapshot(value,id)).toThrow();const url={...fixture(),resources:[{name:'SHEET_DRAWING_PLUGIN',data:JSON.stringify({a:{order:['x'],data:{x:{drawingId:'x',drawingType:0,unitId:id,subUnitId:'a',source:'https://example.invalid',imageSourceType:'URL',sheetTransform:{from:{row:0,column:0,rowOffset:0,columnOffset:0},to:{row:1,column:1,rowOffset:0,columnOffset:0}},axisAlignSheetTransform:{from:{row:0,column:0,rowOffset:0,columnOffset:0},to:{row:1,column:1,rowOffset:0,columnOffset:0}}}}}})}]};expect(()=>validateSnapshot(url,id)).toThrow();});
+  it('rejects foreign identity, unknown plugin and document hyperlinks',()=>{expect(()=>validateSnapshot({...fixture(),id:'other'},id)).toThrow();expect(()=>validateSnapshot({...fixture(),resources:[{name:'UNKNOWN_PLUGIN',data:'{}'}]},id)).toThrow();const value=fixture();(value.sheets.a.cellData[0][0] as Record<string,unknown>).p={body:{dataStream:'x',customRanges:[{url:'https://example.invalid'}]}};expect(()=>validateSnapshot(value,id)).toThrow();});
+});
+
+describe('native engine and whole range contract',()=>{
+ it('accepts only empty native permission and theme resources',()=>{const native={...fixture(),resources:['SHEET_AuthzIoMockService_PLUGIN','SHEET_RANGE_THEME_MODEL_PLUGIN','SHEET_WORKSHEET_PROTECTION_PLUGIN','SHEET_WORKSHEET_PROTECTION_POINT_PLUGIN'].map(name=>({name,data:'{}'}))};expect(()=>validateSnapshot(native,id)).not.toThrow();native.resources[0]!.data='{"permission":true}';expect(()=>validateSnapshot(native,id)).toThrow();});
+ it.each(['=SUM(XFD:XFD)','=SUM(1:1048576)','=SUM(Sheet1!XFD:XFD)',"=SUM('中文页2'!1:1048576)",'=SUM(AAAA1:AAAA2)'])('rejects oversized range %s',formula=>expect(()=>validateFormula(formula)).toThrow());
+ it.each(['=SUM(Sheet1!A1:A2)',"=SUM('中文页2'!A1:A2)",'=SUM(数据2!A1:A2)','=SUM(A:A)','=SUM(1:10000)'])('accepts bounded internal formula %s',formula=>expect(()=>validateFormula(formula)).not.toThrow());
+});

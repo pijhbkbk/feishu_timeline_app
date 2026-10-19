@@ -147,6 +147,8 @@ def historical_floor():
     require({p.name for p in entries} == {'main.cvd', 'daily.cvd', 'bytecode.cvd', 'freshclam.dat'}, 'Unexpected legacy databases')
     frozen = BASE / 'legacy-floor'
     frozen.mkdir(mode=0o755)
+    # Public signatures only; no group/world write permission, and the verifier needs traversal.
+    # nosemgrep: python.lang.security.audit.insecure-file-permissions.insecure-file-permissions
     os.chmod(frozen, 0o755)
     files, signed = [], None
     for name in ('main.cvd', 'daily.cvd', 'bytecode.cvd'):

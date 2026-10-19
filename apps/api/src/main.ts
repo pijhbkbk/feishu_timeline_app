@@ -5,6 +5,7 @@ import { NestFactory } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
+import { workbookBody } from './modules/workbooks/workbook-body.middleware';
 
 import { AppModule } from './app.module';
 import { createSameOriginMutationGuard } from './common/same-origin.middleware';
@@ -24,6 +25,7 @@ async function bootstrap() {
   app.setGlobalPrefix('api');
   app.use(cookieParser());
   app.use(createSameOriginMutationGuard(frontendUrl));
+  app.use(workbookBody);
   const requestDrain = new RequestDrainInterceptor();
   app.useGlobalInterceptors(requestDrain);
   app.useGlobalPipes(

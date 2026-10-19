@@ -95,7 +95,7 @@ function imageMetadata(m) {
 export const softwareSourcePaths = [
   '.dockerignore', '.editorconfig', '.env.example', '.env.production.example',
   '.gitignore', '.gitleaks.toml', 'LICENSE', 'THIRD_PARTY_NOTICES',
-  'apps', 'packages', 'deploy', 'scripts', 'docker-compose.yml',
+  'apps', 'packages', 'patches', 'deploy', 'scripts', 'docker-compose.yml',
   'eslint.config.mjs', 'package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml',
   'tsconfig.base.json', 'docs/NATIVE_ACCOUNT_OPERATIONS.md',
 ];
@@ -269,14 +269,14 @@ function backup(s,out,keyFile) {
     need(JSON.stringify(before)===JSON.stringify(fingerprint(s,true)),'Database changed while frozen');
     const body=Buffer.from(JSON.stringify({version:2,softwareSha256:hash(JSON.stringify(s.m)),commit:s.m.commit,postgresMajor:14,createdAt:new Date().toISOString(),signatureFloor:signatureFloor(s),database:{bytes:dump.toString('base64'),sha256:hash(dump)},fingerprints:before,objects,queue}));
     need(body.length<=MAX,'Backup exceeds bound');const key=read(keyFile,32,true);need(key.length===32,'Backup key must be 32 random bytes');
-    const nonce=crypto.randomBytes(12);const cipher=crypto.createCipheriv('aes-256-gcm',key,nonce);cipher.setAAD(Buffer.from('timeline-portable-backup-v1'));
+    const nonce=crypto.randomBytes(12);const cipher=crypto.createCipheriv('aes-256-gcm',key,nonce,{authTagLength:16});cipher.setAAD(Buffer.from('timeline-portable-backup-v1'));
     const encrypted=Buffer.concat([cipher.update(body),cipher.final()]);write(out,Buffer.concat([Buffer.from('TLPBK001'),nonce,cipher.getAuthTag(),encrypted]));
     console.log(JSON.stringify({backup:out,sha256:shaFile(out),tables:Object.keys(before.tables).length,objects:objects.length,persistentQueueKeys:queue.length,writers:'stopped; explicit start is required',sessionsExported:false}));
   }finally{sql(s,'ALTER ROLE timeline_app LOGIN;','postgres',false); /* API remains stopped. */ }
 }
 export function decryptBackup(raw,key) {
   need(raw.length>=36&&raw.length<=MAX+36&&raw.subarray(0,8).toString()==='TLPBK001'&&key.length===32,'Invalid encrypted backup');
-  const d=crypto.createDecipheriv('aes-256-gcm',key,raw.subarray(8,20));d.setAAD(Buffer.from('timeline-portable-backup-v1'));d.setAuthTag(raw.subarray(20,36));
+  const d=crypto.createDecipheriv('aes-256-gcm',key,raw.subarray(8,20),{authTagLength:16});d.setAAD(Buffer.from('timeline-portable-backup-v1'));d.setAuthTag(raw.subarray(20,36));
   return json(Buffer.concat([d.update(raw.subarray(36)),d.final()]));
 }
 function restore(s,file,keyFile) {

@@ -69,7 +69,7 @@ done
 log "Remote verification"
 REMOTE_SCRIPT="$(mktemp /tmp/r27a-gce-release-verify-remote.XXXXXX)"
 trap 'rm -f -- "$REMOTE_SCRIPT"' EXIT
-cat >"$REMOTE_SCRIPT" <<'REMOTE_SCRIPT_EOF'
+cat >"$REMOTE_SCRIPT" <<'REMOTESCRIPTEOF'
 #!/usr/bin/env bash
 set -euo pipefail
 ROOT_DOMAIN="$1"
@@ -175,7 +175,7 @@ echo '--- certbot ---'
 sudo certbot certificates | sed -n '1,120p'
 echo '--- recent api log warnings ---'
 journalctl -u feishu-timeline-api -n 120 --no-pager | grep -E 'ECONNREFUSED|WARN|ERROR' || true
-REMOTE_SCRIPT_EOF
+REMOTESCRIPTEOF
 chmod 0700 "$REMOTE_SCRIPT"
 gce_run_remote_script_with_args \
   "$REMOTE_SCRIPT" "$ROOT_DOMAIN" "$WWW_DOMAIN" "$APP_HOST" "$APP_ROOT"

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { assertProfileFieldAccess, commandHash, parsePersonCreate, parsePersonLink, parsePersonSheet } from './persons.rules';
+import { assertProfileFieldAccess, commandHash, parsePersonArchive, parsePersonCreate, parsePersonLink, parsePersonSheet } from './persons.rules';
 
 const sheet = (changes: unknown) => ({ operationId: 'save-1', items: [{ id: 'person-a', expectedRevision: 1, changes }] });
 describe('person profile command boundary', () => {
@@ -46,5 +46,29 @@ describe('person profile command boundary', () => {
     expect(parsePersonLink(valid).userId).toBe('account-a');
     expect(() => parsePersonLink({ ...valid, name: '同名人员' })).toThrow();
     expect(() => parsePersonLink({ ...valid, reason: ' ' })).toThrow();
+  });
+});
+
+describe('person lifecycle audit reason', () => {
+  it('preserves an explicit status reason and rejects blank supplied reasons', () => {
+    expect(parsePersonSheet({ ...sheet({ isActive: false }), reason: '离开项目团队' }).reason).toBe('离开项目团队');
+    expect(() => parsePersonSheet({ ...sheet({ isActive: false }), reason: ' ' })).toThrow();
+  });
+});
+
+describe('person archive contract', () => {
+  const command = { operationId: 'archive-1', expectedRevision: 2, archived: true, reason: '离开常用名单' };
+  it('accepts explicit archive and restore without security mutations', () => {
+    expect(parsePersonArchive(command)).toEqual(command);
+    expect(parsePersonArchive({ ...command, archived: false }).archived).toBe(false);
+  });
+  it.each(['true', null, 1, undefined])('rejects ambiguous archive value %j', archived => {
+    expect(() => parsePersonArchive({ ...command, archived })).toThrow();
+  });
+  it('requires reason and CAS and rejects grant/status injection', () => {
+    expect(() => parsePersonArchive({ ...command, reason: ' ' })).toThrow();
+    expect(() => parsePersonArchive({ ...command, expectedRevision: 0 })).toThrow();
+    expect(() => parsePersonArchive({ ...command, status: 'ACTIVE' })).toThrow();
+    expect(() => parsePersonArchive({ ...command, teamAccessApproved: true })).toThrow();
   });
 });

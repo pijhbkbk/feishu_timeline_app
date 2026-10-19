@@ -299,6 +299,8 @@ class FilesystemTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as root:
             path = Path(root) / 'file'
             path.write_bytes(b'example')
+            # Negative fixture: production file_hash must reject this writable file immediately below.
+            # nosemgrep: python.lang.security.audit.insecure-file-permissions.insecure-file-permissions
             os.chmod(path, 0o666)
             with self.assertRaises(UpdateFailure):
                 adapter.file_hash(path, owner=os.getuid())

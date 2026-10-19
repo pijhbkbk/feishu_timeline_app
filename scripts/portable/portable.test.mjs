@@ -63,7 +63,7 @@ test('software source archive includes build inputs and generic instructions, ex
   try {
     git('init','--quiet');
     for(const item of softwareSourcePaths) {
-      const file=['apps','packages','deploy','scripts'].includes(item)?path.join(item,'synthetic.txt'):item;
+      const file=['apps','packages','patches','deploy','scripts'].includes(item)?path.join(item,'synthetic.txt'):item;
       fs.mkdirSync(path.dirname(path.join(root,file)),{recursive:true});fs.writeFileSync(path.join(root,file),'build source');
     }
     fs.mkdirSync(path.join(root,'docs/acceptance'),{recursive:true});
@@ -73,7 +73,7 @@ test('software source archive includes build inputs and generic instructions, ex
     git('-c','user.name=Archive Test','-c','user.email=archive@example.invalid','commit','--quiet','-m','synthetic archive fixture');
     const archive=git('archive','HEAD','--',...softwareSourcePaths);
     const listing=execFileSync('tar',['-tf','-'],{input:archive}).toString();
-    assert.match(listing,/apps\/synthetic.txt/);assert.match(listing,/docs\/NATIVE_ACCOUNT_OPERATIONS.md/);
+    assert.match(listing,/apps\/synthetic.txt/);assert.match(listing,/patches\/synthetic.txt/);assert.match(listing,/docs\/NATIVE_ACCOUNT_OPERATIONS.md/);
     assert.doesNotMatch(listing,/acceptance|reports|private-account/);
     assert.equal(archive.includes(Buffer.from('synthetic-private-record')),false);
   } finally { fs.rmSync(root,{recursive:true}); }

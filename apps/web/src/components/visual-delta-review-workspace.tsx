@@ -3,7 +3,7 @@
 import { ReviewStandardSelect } from './review-standard-select';
 import { reviewStandardLabel, type ReviewStandardOptions } from '../lib/review-standard-version';
 
-import Link from 'next/link';
+import { M1RecordLink as Link, M1RecordReturn } from '../features/m1/record-return';
 import React, { useEffect, useRef, useState } from 'react';
 import { useAuth } from './auth-provider';
 import {
@@ -77,7 +77,7 @@ export function VisualDeltaReviewWorkspace({ projectId, recurringTaskId = '' }: 
   if (loading) return <section className="team-workspace"><p role="status">正在加载月度评审…</p></section>;
   if (!workspace) return <section className="team-workspace"><p role="alert">{error || '月度评审未能加载。'}</p><button className="button" onClick={() => void load()}>重新加载</button></section>;
   return <section className="team-workspace">
-    <header className="work-heading"><div><h1>月度目视色差评审</h1><p>{workspace.project.code} · {workspace.project.name}</p></div><Link href={`/projects/${projectId}`}>返回项目</Link></header>
+    <header className="work-heading"><div><h1>月度目视色差评审</h1><p>{workspace.project.code} · {workspace.project.name}</p></div><M1RecordReturn projectId={projectId} /></header>
     <div className="work-overview"><label>评审月份 <select value={selectedMonthId} disabled={Boolean(busy)} onChange={event => setSelectedMonthId(event.target.value)}>
       {recurringTaskId && !workspace.recurringTasks.some(item => item.id === recurringTaskId) ? <option value={recurringTaskId}>任务不存在</option> : null}
       {workspace.recurringTasks.map(item => <option key={item.id} value={item.id}>第 {item.periodIndex} 月 · {item.periodLabel}{item.status === 'COMPLETED' ? ' · 已完成' : ''}</option>)}

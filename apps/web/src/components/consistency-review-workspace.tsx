@@ -3,7 +3,7 @@
 import { ReviewStandardSelect } from './review-standard-select';
 import { reviewStandardLabel, type ReviewStandardOptions } from '../lib/review-standard-version';
 
-import Link from 'next/link';
+import { M1RecordLink as Link, M1RecordReturn } from '../features/m1/record-return';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 import { useAuth } from './auth-provider';
@@ -300,9 +300,7 @@ export function ConsistencyReviewWorkspace({
             >
               {isRefreshing ? '刷新中…' : '刷新'}
             </button>
-            <Link href={`/projects/${projectId}/workflow`} className="button button-secondary">
-              查看流程
-            </Link>
+            <M1RecordReturn projectId={projectId} />
             <Link href={`/projects/${projectId}/production-plans`} className="button button-secondary">
               查看排产计划
             </Link>

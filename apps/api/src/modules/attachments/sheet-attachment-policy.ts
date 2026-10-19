@@ -7,7 +7,7 @@ import type { ProjectAccessService } from '../auth/project-access.service';
 import { lockProjectWrite } from '../../common/team-authorization';
 import { lockInspectionActivity } from '../inspections/inspection-review-link';
 
-export const SHEET_TARGETS = ['SHEET_COLOR', 'SHEET_PERSON', 'SHEET_INSPECTION', 'SHEET_PRODUCTION'] as const;
+export const SHEET_TARGETS = ['SHEET_WORKBOOK', 'SHEET_COLOR', 'SHEET_PERSON', 'SHEET_INSPECTION', 'SHEET_PRODUCTION'] as const;
 export type SheetTarget = typeof SHEET_TARGETS[number];
 export function isSheetTarget(value: AttachmentTargetType | string): value is SheetTarget {
   return (SHEET_TARGETS as readonly string[]).includes(value);
@@ -17,7 +17,8 @@ export function isSheetTarget(value: AttachmentTargetType | string): value is Sh
 export async function authorizeSheetAttachmentTarget(db: Prisma.TransactionClient | PrismaService, type: AttachmentTargetType, id: string, actor: AuthenticatedUser, access: ProjectAccessService, write = false) {
   assertApprovedTeamMember(actor);
   if (!isSheetTarget(type) || !/^[A-Za-z0-9_-]{1,128}$/.test(id)) throw new BadRequestException('表格附件归属不合法。');
-  const record = type === 'SHEET_COLOR' ? await db.color.findUnique({ where: { id }, select: { id: true } })
+  const record = type === 'SHEET_WORKBOOK' ? await db.freeWorkbook.findUnique({ where: { id }, select: { id: true } })
+    : type === 'SHEET_COLOR' ? await db.color.findUnique({ where: { id }, select: { id: true } })
     : type === 'SHEET_PERSON' ? await db.personProfile.findUnique({ where: { id }, select: { id: true } })
       : type === 'SHEET_PRODUCTION' ? await db.colorProductionFact.findUnique({ where: { id }, select: { id: true } })
         : await db.inspectionOccurrence.findUnique({ where: { id }, select: { id: true, activityId: true } });

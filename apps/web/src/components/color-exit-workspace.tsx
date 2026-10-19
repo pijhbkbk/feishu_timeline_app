@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import { M1RecordLink as Link, M1RecordReturn } from '../features/m1/record-return';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 import { useAuth } from './auth-provider';
@@ -260,9 +260,7 @@ export function ColorExitWorkspace({ projectId }: ColorExitWorkspaceProps) {
             >
               {isRefreshing ? '刷新中…' : '刷新'}
             </button>
-            <Link href={`/projects/${projectId}/workflow`} className="button button-secondary">
-              查看流程
-            </Link>
+            <M1RecordReturn projectId={projectId} />
             <Link href={`/projects/${projectId}/color-evaluation`} className="button button-secondary">
               查看色差评审
             </Link>

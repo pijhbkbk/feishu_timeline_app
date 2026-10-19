@@ -4,11 +4,11 @@ import { PrismaService } from '../../infra/prisma/prisma.service';
 import { assertApprovedTeamMember } from '../../common/team-membership';
 import { assertCurrentTeamActor, lockTeamAuthorization, withTeamWrite } from '../../common/team-authorization';
 import type { AuthenticatedUser } from '../auth/auth.types';
-import { assertProfileFieldAccess, commandHash, identity, object, only, parsePersonCreate, parsePersonDepartment, parsePersonLink, parsePersonSheet, type PersonChanges } from './persons.rules';
+import { assertProfileFieldAccess, commandHash, identity, object, only, parsePersonArchive, parsePersonCreate, parsePersonDepartment, parsePersonLink, parsePersonSheet, type PersonChanges } from './persons.rules';
 
 const SELECT = {
   id: true, userId: true, name: true, departmentId: true, position: true,
-  originalSource: true, email: true, mobile: true, note: true, isActive: true, revision: true,
+  originalSource: true, email: true, mobile: true, note: true, isActive: true, archivedAt: true, revision: true,
   department: { select: { id: true, name: true, isActive: true } },
   user: { select: { id: true, username: true, status: true, isSystemAdmin: true, teamAccessApproved: true, updatedAt: true,
     localCredential: { select: { userId: true } },
@@ -42,14 +42,15 @@ export class PersonsService {
 
   async list(raw: Record<string, unknown>, actor: AuthenticatedUser) {
     assertApprovedTeamMember(actor); const query = object(raw);
-    only(query, ['q', 'after', 'take', 'departmentId', 'active', 'linked']);
+    only(query, ['q', 'after', 'take', 'departmentId', 'active', 'linked', 'archived']);
     const q = query.q === undefined ? '' : query.q;
     if (typeof q !== 'string' || q.length > 100) throw new BadRequestException('搜索内容不合法。');
     const take = query.take === undefined ? 50 : typeof query.take === 'string' && /^[1-9]\d?$/.test(query.take) ? Number(query.take) : 0;
     if (take < 1 || take > 50) throw new BadRequestException('每页 1–50 条。');
-    for (const field of ['active', 'linked']) if (query[field] !== undefined && !['true', 'false'].includes(query[field] as string)) throw new BadRequestException('筛选值不合法。');
+    for (const field of ['active', 'linked', 'archived']) if (query[field] !== undefined && !['true', 'false'].includes(query[field] as string)) throw new BadRequestException('筛选值不合法。');
     const where: Prisma.PersonProfileWhereInput = {
-      ...(q.trim() ? { name: { contains: q.trim(), mode: 'insensitive' } } : {}),
+      ...(q.trim() ? { AND: [{ OR: [{ name: { contains: q.trim(), mode: 'insensitive' } }, { user: { is: { username: { contains: q.trim(), mode: 'insensitive' } } } }] }] } : {}),
+      archivedAt: query.archived === 'true' ? { not: null } : null,
       ...(query.after !== undefined ? { id: { gt: identity(query.after) } } : {}),
       ...(query.departmentId !== undefined ? { departmentId: identity(query.departmentId) } : {}),
       ...(query.linked !== undefined ? { userId: query.linked === 'true' ? { not: null } : null } : {}),
@@ -105,6 +106,7 @@ export class PersonsService {
         if (current.revision !== item.expectedRevision) throw stale(item.id, current.revision);
         // Admins use the separately audited department command too. This endpoint
         // cannot acquire an exclusive auth fence after taking shared/row locks.
+        if (current.archivedAt) throw new ConflictException('请先恢复人员档案，再编辑资料。');
         assertProfileFieldAccess(current.userId, item.changes);
         const changed = Object.entries(item.changes).some(([key, value]) => current[key as keyof PersonChanges] !== value);
         if (changed) {
@@ -113,7 +115,7 @@ export class PersonsService {
           if (saved.count !== 1) throw stale(item.id, current.revision);
           await tx.auditLog.create({ data: { actorUserId: actor.id, targetType: 'PERSON_PROFILE', targetId: item.id,
             action: 'PERSON_PROFILE_UPDATED', beforeData: json(Object.fromEntries(Object.keys(item.changes).map(key => [key, current[key as keyof PersonChanges]]))),
-            afterData: json(item.changes), metadata: { operationId: input.operationId, previousRevision: item.expectedRevision } } });
+            afterData: json(item.changes), metadata: { operationId: input.operationId, previousRevision: item.expectedRevision, ...(input.reason ? { reason: input.reason } : {}) } } });
         }
         items.push(row(await tx.personProfile.findUniqueOrThrow({ where: { id: item.id }, select: SELECT })));
       }
@@ -129,6 +131,7 @@ export class PersonsService {
     return this.administratorWrite(actor, tx => this.command(tx, actor, 'PERSON_DEPARTMENT_CHANGED', { id, ...input }, async () => {
       const current = await this.lockProfile(tx, id);
       if (current.revision !== input.expectedRevision) throw stale(id, current.revision);
+      if (current.archivedAt) throw new ConflictException('请先恢复人员档案，再调整部门。');
       if (input.departmentId !== current.departmentId) {
         await this.department(tx, input.departmentId);
         await tx.personProfile.update({ where: { id }, data: { departmentId: input.departmentId, revision: { increment: 1 } } });
@@ -153,12 +156,35 @@ export class PersonsService {
       if (profile.revision !== input.expectedRevision) throw stale(id, profile.revision);
       if (!user || user.updatedAt.toISOString() !== input.expectedUserVersion) throw new ConflictException('账号不存在或版本已变化。');
       if (profile.userId || user.personProfile) throw new ConflictException('人员或账号已经关联；不能自动覆盖或按同名合并。');
-      if (!profile.isActive || user.status !== 'ACTIVE' || !user.localCredential) throw new ConflictException('请先分别确认启用的人员档案和本地账号。');
+      if (profile.archivedAt || !profile.isActive || user.status !== 'ACTIVE' || !user.localCredential) throw new ConflictException('请先分别确认启用的人员档案和本地账号。');
       await tx.personProfile.update({ where: { id }, data: { userId: user.id, revision: { increment: 1 } } });
       await tx.auditLog.create({ data: { actorUserId: actor.id, targetType: 'PERSON_PROFILE', targetId: id, action: 'PERSON_ACCOUNT_LINKED',
         beforeData: { userId: null }, afterData: { userId: user.id }, metadata: { reason: input.reason, operationId: input.operationId, grantsChanged: false } } });
       return { items: [row(await tx.personProfile.findUniqueOrThrow({ where: { id }, select: SELECT }))] };
     }));
+  }
+
+  /** Archive only inactive identities. A shared authorization fence serializes
+   * this decision with account status changes, which take the exclusive fence.
+   * Restoring the directory entry never reactivates or authorizes its account. */
+  async archive(personId: string, raw: unknown, actor: AuthenticatedUser) {
+    const id = identity(personId), input = parsePersonArchive(raw);
+    return withTeamWrite(this.prisma, actor, tx => this.command(tx, actor, input.archived ? 'PERSON_PROFILE_ARCHIVED' : 'PERSON_PROFILE_RESTORED', { id, ...input }, async () => {
+      const current = await this.lockProfile(tx, id);
+      if (current.revision !== input.expectedRevision) throw stale(id, current.revision);
+      if (input.archived && (current.user ? current.user.status === 'ACTIVE' : current.isActive)) {
+        throw new ConflictException('请先停用人员，再归档；账号停用须由管理员办理。');
+      }
+      if (Boolean(current.archivedAt) !== input.archived) {
+        const archivedAt = input.archived ? new Date() : null;
+        await tx.personProfile.update({ where: { id }, data: { archivedAt, revision: { increment: 1 } } });
+        await tx.auditLog.create({ data: { actorUserId: actor.id, targetType: 'PERSON_PROFILE', targetId: id,
+          action: input.archived ? 'PERSON_PROFILE_ARCHIVED' : 'PERSON_PROFILE_RESTORED',
+          beforeData: { archivedAt: current.archivedAt?.toISOString() ?? null }, afterData: { archivedAt: archivedAt?.toISOString() ?? null },
+          metadata: { operationId: input.operationId, reason: input.reason, accountChanged: false } } });
+      }
+      return { items: [row(await tx.personProfile.findUniqueOrThrow({ where: { id }, select: SELECT }))] };
+    }), { timeout: 15000 });
   }
 
   private async department(tx: Prisma.TransactionClient, id: string | null | undefined) {

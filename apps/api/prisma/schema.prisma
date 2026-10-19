@@ -399,6 +399,7 @@ enum ProductionPlanStatus {
 }
 
 enum AttachmentTargetType {
+  SHEET_WORKBOOK
   SHEET_COLOR
   SHEET_PERSON
   SHEET_INSPECTION
@@ -464,6 +465,7 @@ enum SampleConfirmationDecision {
 }
 
 enum AuditTargetType {
+  FREE_WORKBOOK
   PERSON_PROFILE
   PROJECT
   COLOR
@@ -517,6 +519,9 @@ model Department {
 }
 
 model User {
+  workbooksCreated FreeWorkbook[] @relation("FreeWorkbookCreator")
+  workbooksUpdated FreeWorkbook[] @relation("FreeWorkbookEditor")
+  workbookRevisions FreeWorkbookRevision[]
   uploadedSheetImages SheetImage[] @relation("SheetImageUploader")
   inspectionActivitiesCreated InspectionActivity[] @relation("InspectionActivityCreator")
   personProfile PersonProfile?
@@ -1971,6 +1976,7 @@ model PersonProfile {
   mobile       String?     @db.VarChar(32)
   note         String?     @db.VarChar(2000)
   isActive     Boolean     @default(true)
+  archivedAt   DateTime?
   revision     Int         @default(1)
   user         User?       @relation(fields: [userId], references: [id], onDelete: Restrict)
   department   Department? @relation(fields: [departmentId], references: [id], onDelete: Restrict)
@@ -1978,6 +1984,7 @@ model PersonProfile {
   updatedAt    DateTime    @updatedAt
 
   @@index([departmentId, isActive, id])
+  @@index([archivedAt, id])
   @@index([name, id])
   @@map("person_profiles")
 }
@@ -2137,4 +2144,39 @@ model SheetImage {
   @@unique([actorUserId, operationId])
   @@index([targetType, recordId, isDeleted, id])
   @@map("sheet_images")
+}
+
+// Free workbook content is independent from published color records.
+model FreeWorkbook {
+  id String @id @default(uuid()) @db.Uuid
+  name String @db.VarChar(200)
+  revision Int @default(1)
+  snapshot Json
+  snapshotBytes Int
+  snapshotHash String @db.VarChar(64)
+  createdById String
+  updatedById String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  creator User @relation("FreeWorkbookCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  editor User @relation("FreeWorkbookEditor", fields: [updatedById], references: [id], onDelete: Restrict)
+  revisions FreeWorkbookRevision[]
+  @@index([updatedAt, id])
+  @@map("free_workbooks")
+}
+
+model FreeWorkbookRevision {
+  id String @id @default(uuid()) @db.Uuid
+  workbookId String @db.Uuid
+  revision Int
+  snapshot Json
+  snapshotBytes Int
+  snapshotHash String @db.VarChar(64)
+  actorUserId String
+  restoredFrom Int?
+  createdAt DateTime @default(now())
+  actor User @relation(fields: [actorUserId], references: [id], onDelete: Restrict)
+  workbook FreeWorkbook @relation(fields: [workbookId], references: [id], onDelete: Restrict)
+  @@unique([workbookId, revision])
+  @@map("free_workbook_revisions")
 }

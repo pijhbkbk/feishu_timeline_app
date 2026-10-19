@@ -1,4 +1,5 @@
 import { apiRequest } from '../../lib/auth-client';
+import type { ImportPlan } from '../business-sheet/record-import';
 import type { RecordSheetPatch, RecordSheetRow } from '../business-sheet/record-sheet-types';
 export interface ProductionSource { fileName: string; sheetName: string; rowNumbers: number[]; fileHash?: string }
 export interface ProductionFact {
@@ -90,7 +91,7 @@ export interface ProductionImportContext {
 export const PRODUCTION_IMPORT_COLUMNS = [...PRODUCTION_COLUMNS,
   { key: 'colorId', label: '颜色记录ID', width: 220 }, { key: 'baseId', label: '基地ID', width: 220 }, { key: 'rowKind', label: '行类型', width: 150 },
 ];
-export function prepareProductionImport(input: import('../business-sheet/record-exchange').ExchangeInput, clearFields: readonly string[], context: ProductionImportContext): import('../business-sheet/record-import').ImportPlan {
+export function prepareProductionImport(input: import('../business-sheet/record-exchange').ExchangeInput, clearFields: readonly string[], context: ProductionImportContext): ImportPlan {
   const fail = (message: string) => ({ input, status: 'error' as const, message });
   if (input.errors.length) return fail(input.errors.join('；'));
   try {
@@ -128,13 +129,13 @@ export function prepareProductionImport(input: import('../business-sheet/record-
   } catch (cause) { return fail(cause instanceof Error ? cause.message : '产量字段无效。'); }
 }
 /** Catch duplicate create grains across the whole preview before 50-row save chunks. */
-export function finalizeProductionImports(plans: import('../business-sheet/record-import').ImportPlan[]) {
+export function finalizeProductionImports(plans: ImportPlan[]) {
   const counts = new Map<string, number>();
   const key = (plan: typeof plans[number]) => { const data = plan.data as ProductionImportOperation | undefined; return data?.kind === 'create' ? JSON.stringify([data.colorId, data.baseId, data.month]) : null; };
   plans.forEach(plan => { const grain = key(plan); if (grain) counts.set(grain, (counts.get(grain) ?? 0) + 1); });
   return plans.map(plan => { const grain = key(plan); return grain && counts.get(grain)! > 1 ? { ...plan, status: 'error' as const, message: '同一文件多行声明相同颜色、基地与月份的月度总量，请核对并保留一条；不会自动累加。' } : plan; });
 }
-export async function applyProductionImports(plans: import('../business-sheet/record-import').ImportPlan[], operationId: string) {
+export async function applyProductionImports(plans: ImportPlan[], operationId: string) {
   const items = plans.map(plan => {
     const data = plan.data as ProductionImportOperation | undefined;
     if (!data || (plan.status !== 'update' && plan.status !== 'create') || data.kind !== plan.status) throw new Error('导入预览不完整，请重新核对。');

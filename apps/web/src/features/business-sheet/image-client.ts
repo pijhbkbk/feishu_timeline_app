@@ -1,6 +1,6 @@
 'use client';
 import { API_BASE_URL, apiRequest, ApiRequestError, normalizeApiErrorMessage } from '../../lib/auth-client';
-export type SheetImageTarget = 'SHEET_COLOR' | 'SHEET_PERSON' | 'SHEET_INSPECTION' | 'SHEET_PRODUCTION';
+export type SheetImageTarget = 'SHEET_WORKBOOK' | 'SHEET_COLOR' | 'SHEET_PERSON' | 'SHEET_INSPECTION' | 'SHEET_PRODUCTION';
 export interface ImageLayout { fieldKey: string; mode: 'CELL' | 'FLOATING'; offsetX: number; offsetY: number; width: number; height: number }
 export interface SheetImage extends ImageLayout { id: string; attachmentId: string; targetType: SheetImageTarget; recordId: string; revision: number; isDeleted: boolean; thumbnailUrl: string; contentUrl: string }
 export const defaultImageLayout = (fieldKey = 'photos'): ImageLayout => ({ fieldKey, mode: 'CELL', offsetX: 4, offsetY: 4, width: 112, height: 72 });

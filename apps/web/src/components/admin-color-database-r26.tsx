@@ -1,8 +1,15 @@
 'use client';
 
 import { ColorRegisterWorkspace } from '../features/color-register/workspace';
+import { FreeWorkbookWorkspace } from '../features/free-workbook/workspace';
+import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 
-export function AdminColorDatabaseR26() { return <ColorRegisterWorkspace />; }
+export function AdminColorDatabaseR26() {
+  const params=useSearchParams();
+  if(params.get('view')==='records'||params.has('colorId'))return <><div style={{padding:'12px 24px'}}><Link href="/admin/color-database">返回自由工作簿</Link></div><ColorRegisterWorkspace /></>;
+  return <FreeWorkbookWorkspace />;
+}
 
 // Retained for the existing development-material archive route.
 export function formatColorStatus(status: string) {

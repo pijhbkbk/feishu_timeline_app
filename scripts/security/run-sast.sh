@@ -49,6 +49,7 @@ else
       semgrep scan \
       --disable-version-check \
       --metrics=off \
+      --timeout 30 \
       --config p/owasp-top-ten \
       --config p/javascript \
       --config p/typescript \
@@ -70,6 +71,7 @@ else
       semgrep scan \
         --disable-version-check \
         --metrics=off \
+        --timeout 30 \
         --config p/owasp-top-ten \
         --config p/javascript \
         --config p/typescript \

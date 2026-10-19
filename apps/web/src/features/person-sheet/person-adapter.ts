@@ -2,8 +2,8 @@ import { apiRequest } from '../../lib/auth-client';
 import type { RecordSheetPatch, RecordSheetRow } from '../business-sheet/record-sheet-types';
 export interface PersonRecord {
   id: string; revision: number; name: string; departmentId: string | null; department: { id: string; name: string } | null;
-  position: string | null; email: string | null; mobile: string | null; note: string | null; isActive: boolean; editableFields: string[];
-  account: { id: string; username: string; version: string; status: string; roles: { code: string; name: string }[]; teamAccessApproved: boolean; hasCredential: boolean } | null;
+  position: string | null; email: string | null; mobile: string | null; note: string | null; isActive: boolean; archivedAt?: string | null; editableFields: string[];
+  account: { id: string; username: string; version: string; status: string; isSystemAdmin?: boolean; roles: { code: string; name: string }[]; teamAccessApproved: boolean; hasCredential: boolean } | null;
   originalSource: { fileHash: string; fileName: string; sheetName: string; rowNumbers: number[] } | null;
 }
 export interface DepartmentOption { id: string; name: string }

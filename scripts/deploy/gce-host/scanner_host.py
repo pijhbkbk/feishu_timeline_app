@@ -363,6 +363,8 @@ class LinuxHost:
         require(len({path.stem for path in selected}) == 3, 'Ambiguous candidate databases')
         frozen = BASE / 'sets' / candidate.name
         frozen.mkdir(mode=0o755)
+        # Public signatures only; root owns the directory, and non-root verification needs traversal.
+        # nosemgrep: python.lang.security.audit.insecure-file-permissions.insecure-file-permissions
         os.chmod(frozen, 0o755)  # Non-root verifier must traverse it under unit UMask=0077.
         candidate.frozen = frozen
         files, daily_stime = [], None

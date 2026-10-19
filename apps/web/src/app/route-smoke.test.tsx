@@ -94,7 +94,7 @@ describe('route smoke', () => {
 
     expect(workflowHtml).toContain('正在加载流程视图');
     expect(reviewsHtml).toContain('正在加载驾驶室评审模块');
-    expect(reviewsHtml).toContain('正在加载一致性评审模块');
+    expect(reviewsHtml).toContain('aria-pressed="false">一致性评审');
     expect(logsHtml).toContain('正在加载项目日志');
   });
 });

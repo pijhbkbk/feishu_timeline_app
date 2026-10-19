@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import { M1RecordReturn } from '../features/m1/record-return';
 import React, { useEffect, useRef, useState } from 'react';
 
 import { FeedbackBanner } from './feedback-banner';
@@ -165,9 +165,7 @@ export function MonthlyReviewWorkspace({ projectId }: MonthlyReviewWorkspaceProp
             >
               {isRefreshing ? '刷新中…' : '刷新'}
             </button>
-            <Link href={`/projects/${projectId}/workflow`} className="button button-secondary">
-              查看流程
-            </Link>
+            <M1RecordReturn projectId={projectId} />
           </div>
         </div>
         {error ? <FeedbackBanner variant="error" title="台账加载失败" message={error} /> : null}

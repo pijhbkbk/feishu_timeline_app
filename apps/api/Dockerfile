@@ -7,7 +7,7 @@ ARG BUILD_TIME
 FROM ${NODE_IMAGE} AS openssl-base
 
 # Alpine 3.24 security revisions; Node's embedded OpenSSL is a separate input.
-RUN apk add --no-cache libcrypto3=3.5.8-r0 libssl3=3.5.8-r0
+RUN apk add --no-cache libcrypto3=3.5.9-r0 libssl3=3.5.9-r0 zlib=1.3.2-r1
 
 FROM openssl-base AS base
 
@@ -26,6 +26,7 @@ COPY apps/api-ops/package.json apps/api-ops/package.json
 COPY apps/web/package.json apps/web/package.json
 COPY packages/shared/package.json packages/shared/package.json
 
+COPY patches ./patches
 COPY scripts/deploy/prefetch-next.mjs scripts/deploy/prefetch-next.mjs
 RUN node scripts/deploy/prefetch-next.mjs && pnpm install --frozen-lockfile
 
