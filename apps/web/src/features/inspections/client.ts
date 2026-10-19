@@ -1,5 +1,6 @@
 'use client';
 import { apiRequest } from '../../lib/auth-client';
+import type { InspectionDateRange } from './week-range';
 export type Conclusion='PENDING'|'PASS'|'FAIL';
 export type Layer='occurrence'|'measurement'|'reading'|'defect';
 export type Source={fileName:string;sheetName:string;rowNumbers:number[];fileHash:string};
@@ -32,4 +33,16 @@ export type BatchResult={activityId:string;revision:number;items:Array<Fact&{ent
 export function saveFacts(id:string,body:unknown){return apiRequest<BatchResult>(`/inspections/activities/${encodeURIComponent(id)}/batch`,{method:'PATCH',body,signal:AbortSignal.timeout(30000)});}
 export type Choice={id:string;label:string;detail?:string};
 export type ChoicePage={items:Choice[];next:string|null};
-export function listActivities(baseId='',page=1){return apiRequest<Page<Activity>>(`/inspections/activities?page=${page}&pageSize=25${baseId?`&baseId=${encodeURIComponent(baseId)}`:''}`,{signal:AbortSignal.timeout(15000)});}
+function dateQuery(baseId: string, range?: InspectionDateRange) {
+  const query = new URLSearchParams();
+  if (baseId) query.set('baseId', baseId);
+  if (range) {query.set('fromDate', range.fromDate);query.set('toDate', range.toDate);}
+  return query;
+}
+export function listActivities(baseId='',page=1,range?:InspectionDateRange,signal?:AbortSignal){
+  const query=dateQuery(baseId,range);query.set('page',String(page));query.set('pageSize','25');
+  return apiRequest<Page<Activity>>(`/inspections/activities?${query}`,{signal:signal??AbortSignal.timeout(15000)});
+}
+export function readWeekStats(baseId:string,range:InspectionDateRange,signal?:AbortSignal){
+  return apiRequest<Stats>(`/inspections/statistics?${dateQuery(baseId,range)}`,{signal:signal??AbortSignal.timeout(15000)});
+}

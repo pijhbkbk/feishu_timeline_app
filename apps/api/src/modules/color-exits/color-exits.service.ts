@@ -1,3 +1,4 @@
+import { assertAnnualReviewExitBasis } from './color-exits.annual-review';
 import { assertApprovedTeamMember } from '../../common/team-membership';
 import { assertTeamTaskById, withProjectWrite } from '../../common/team-authorization';
 import {
@@ -31,6 +32,7 @@ import {
 import { WorkflowsService } from '../workflows/workflows.service';
 import {
   getColorExitCompletionIssue,
+  getColorExitRetentionIssue,
   getColorExitSystemSuggestion,
   getColorExitStageIssue,
 } from './color-exits.rules';
@@ -120,7 +122,12 @@ export class ColorExitsService {
       await this.startTaskIfNeeded(tx, context.activeTask!, actor, '颜色退出任务已开始处理。');
 
       const boundColor = await this.getBoundProjectColor(tx, projectId);
-      const exitPolicy = await this.resolveExitPolicy(tx, input.annualOutput);
+      const annualReview = await assertAnnualReviewExitBasis(tx, boundColor?.id ?? null, input);
+      const exitPolicy = annualReview
+        ? { exitThreshold: 20, systemSuggestion: getColorExitSystemSuggestion({ annualOutput: input.annualOutput, threshold: 20 }) }
+        : await this.resolveExitPolicy(tx, input.annualOutput);
+      const retentionIssue = getColorExitRetentionIssue({ annualOutput: input.annualOutput, exitThreshold: exitPolicy.exitThreshold, finalDecision: input.finalDecision });
+      if (retentionIssue) throw new BadRequestException(retentionIssue);
       await this.assertReplacementColor(tx, projectId, boundColor?.id ?? null, input.replacementColorId);
 
       const record = await tx.colorExit.create({
@@ -151,7 +158,7 @@ export class ColorExitsService {
         action: 'COLOR_EXIT_CREATED',
         nodeCode: COLOR_EXIT_NODE_CODE,
         summary: `创建颜色退出记录 ${record.id}`,
-        afterData: this.toColorExitAuditSnapshot(record),
+        afterData: { ...this.toColorExitAuditSnapshot(record), annualReview },
       });
     });
 
@@ -180,7 +187,12 @@ export class ColorExitsService {
       this.assertWritableStage(context);
       const record = await this.getExitRecordOrThrow(tx, projectId, exitId);
       this.assertEditableRecord(record, context.activeTask!.id);
-      const exitPolicy = await this.resolveExitPolicy(tx, input.annualOutput);
+      const annualReview = await assertAnnualReviewExitBasis(tx, record.colorId ?? (await this.getBoundProjectColor(tx, projectId))?.id ?? null, input);
+      const exitPolicy = annualReview
+        ? { exitThreshold: 20, systemSuggestion: getColorExitSystemSuggestion({ annualOutput: input.annualOutput, threshold: 20 }) }
+        : await this.resolveExitPolicy(tx, input.annualOutput);
+      const retentionIssue = getColorExitRetentionIssue({ annualOutput: input.annualOutput, exitThreshold: exitPolicy.exitThreshold, finalDecision: input.finalDecision });
+      if (retentionIssue) throw new BadRequestException(retentionIssue);
 
       await this.assertReplacementColor(
         tx,
@@ -216,7 +228,7 @@ export class ColorExitsService {
         nodeCode: COLOR_EXIT_NODE_CODE,
         summary: `更新颜色退出记录 ${exitId}`,
         beforeData: this.toColorExitAuditSnapshot(record),
-        afterData: this.toColorExitAuditSnapshot(updatedRecord),
+        afterData: { ...this.toColorExitAuditSnapshot(updatedRecord), annualReview },
       });
     });
 
@@ -243,7 +255,10 @@ export class ColorExitsService {
       this.assertWritableStage(context);
       const record = await this.getExitRecordOrThrow(tx, projectId, exitId);
       this.assertEditableRecord(record, context.activeTask!.id);
+      const annualReview = await assertAnnualReviewExitBasis(tx, record.colorId ?? (await this.getBoundProjectColor(tx, projectId))?.id ?? null, record);
 
+      const retentionIssue = getColorExitRetentionIssue(record);
+      if (retentionIssue) throw new BadRequestException(retentionIssue);
       const completionIssue = getColorExitCompletionIssue({
         exitDate: record.exitDate,
         exitReason: record.exitReason,
@@ -394,7 +409,7 @@ export class ColorExitsService {
         action: 'COLOR_EXIT_COMPLETED',
         nodeCode: COLOR_EXIT_NODE_CODE,
         summary: `颜色生命周期判断已完成（${completedRecord.finalDecision}）。`,
-        afterData: this.toColorExitAuditSnapshot(completedRecord),
+        afterData: { ...this.toColorExitAuditSnapshot(completedRecord), annualReview },
       });
     });
 
@@ -462,6 +477,10 @@ export class ColorExitsService {
       ]);
 
     const latestRecord = items[0] ?? null;
+    const annualReview = currentColor ? await db.auditLog.findFirst({
+      where: { targetType: 'COLOR', targetId: currentColor.id, action: 'COLOR_ANNUAL_REVIEW_RECORDED' },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], select: { id: true },
+    }) : null;
 
     return {
       project: this.toProjectSummary(project),
@@ -484,10 +503,11 @@ export class ColorExitsService {
         status: color.status,
         isPrimary: color.isPrimary,
       })),
-      defaultExitThreshold,
+      defaultExitThreshold: annualReview ? 20 : defaultExitThreshold,
       canCompleteTask:
         Boolean(activeTask) &&
         latestRecord !== null &&
+        getColorExitRetentionIssue(latestRecord) === null &&
         getColorExitCompletionIssue({
           exitDate: latestRecord.exitDate,
           exitReason: latestRecord.exitReason,
@@ -500,7 +520,7 @@ export class ColorExitsService {
       completionIssue:
         latestRecord === null
           ? '请先创建颜色退出记录。'
-          : getColorExitCompletionIssue({
+          : getColorExitRetentionIssue(latestRecord) ?? getColorExitCompletionIssue({
               exitDate: latestRecord.exitDate,
               exitReason: latestRecord.exitReason,
               operatorId: latestRecord.operatorId,

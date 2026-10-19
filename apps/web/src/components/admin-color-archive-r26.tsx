@@ -1,6 +1,8 @@
 'use client';
 
 import Link from 'next/link';
+import { AnnualReviewPanel } from '../features/color-register/annual-review';
+import '../features/color-register/register.css';
 import React, { useEffect, useState } from 'react';
 
 import {
@@ -37,14 +39,14 @@ export function AdminColorArchiveR26({ colorId }: { colorId: string }) {
     return () => { active = false; };
   }, [colorId]);
 
-  if (loading && !data) return <main className="r26-color-archive"><div className="r26-color-db__skeleton" aria-label="正在加载颜色档案"><span /><span /></div></main>;
-
   return (
     <main className="r26-color-archive" data-testid="admin-color-archive-page">
       <Link href="/admin/color-database" className="r26-admin-back">
         ← 返回颜色数据库{isAdministrator ? '' : '（授权项目）'}
       </Link>
       {error ? <div className="r26-admin-home__error" role="alert"><span>{error}</span></div> : null}
+      <AnnualReviewPanel colorId={colorId} />
+      {loading && !data ? <div className="r26-color-db__skeleton" aria-label="正在加载颜色档案"><span /><span /></div> : null}
       {data ? (
         <>
           <header className="r26-color-archive__hero">
