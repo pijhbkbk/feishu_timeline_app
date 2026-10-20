@@ -4,8 +4,10 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 const hooks=vi.hoisted(()=>({slots:[] as unknown[],index:0,effects:[] as Array<()=>void>,cleanups:new Map<number,()=>void>(),setups:new Map<number,()=>void|(()=>void)>(),dirty:false}));
 const identity=vi.hoisted(()=>({id:'synthetic-owner-a'}));
 const drafts=vi.hoisted(()=>({read:vi.fn(),write:vi.fn(),remove:vi.fn(),claim:vi.fn()}));
+const intents=vi.hoisted(()=>({rows:new Map<string,unknown>(),read:vi.fn(),write:vi.fn(),remove:vi.fn()}));
 const cloudApi=vi.hoisted(()=>({read:vi.fn(),execute:vi.fn()}));
 const api=vi.hoisted(()=>({list:vi.fn(),read:vi.fn(),create:vi.fn(),save:vi.fn(),revisions:vi.fn(),restore:vi.fn(),import:vi.fn()}));
+const images=vi.hoisted(()=>({upload:vi.fn()}));
 vi.mock('react',async()=>{
  const actual=await vi.importActual<typeof import('react')>('react');
  return {...actual,useState:<T,>(initial:T)=>{const i=hooks.index++;if(!(i in hooks.slots))hooks.slots[i]=initial;return[hooks.slots[i],(value:T|((old:T)=>T))=>{const next=typeof value==='function'?(value as (old:T)=>T)(hooks.slots[i] as T):value;if(!Object.is(hooks.slots[i],next)){hooks.slots[i]=next;hooks.dirty=true;}}];},useRef:<T,>(initial:T)=>{const i=hooks.index++;if(!(i in hooks.slots))hooks.slots[i]={current:initial};return hooks.slots[i];},useEffect:(effect:()=>void|(()=>void),deps:unknown[])=>{const i=hooks.index++,previous=hooks.slots[i] as unknown[]|undefined;if(previous?.length===deps.length&&previous.every((value,at)=>Object.is(value,deps[at])))return;hooks.slots[i]=deps;hooks.setups.set(i,effect);hooks.effects.push(()=>{hooks.cleanups.get(i)?.();const cleanup=effect();if(cleanup)hooks.cleanups.set(i,cleanup);});}};
@@ -15,12 +17,13 @@ vi.mock('next/dynamic',()=>({default:()=>function MappingPanel(){return <div dat
 vi.mock('next/navigation',()=>({useSearchParams:()=>new URLSearchParams(window.location.search)}));
 vi.mock('../../components/auth-provider',()=>({useAuth:()=>({user:{id:identity.id,isSystemAdmin:true,authSource:'local'}})}));
 vi.mock('../m1/use-unsaved',()=>({useProjectUnsavedChanges:vi.fn()}));
-vi.mock('../business-sheet/image-client',()=>({defaultImageLayout:()=>({}),listSheetImages:vi.fn(),uploadSheetImage:vi.fn()}));
+vi.mock('../business-sheet/image-client',()=>({defaultImageLayout:()=>({}),listSheetImages:vi.fn(),uploadSheetImage:images.upload}));
 vi.mock('../business-sheet/record-exchange',()=>({downloadWorkbook:vi.fn()}));
 vi.mock('./canvas',()=>({WorkbookCanvas:({snapshot}:{snapshot:{id:string}})=><div data-workbook={snapshot.id}/> }));
 vi.mock('./client',()=>({listWorkbooks:api.list,readWorkbook:api.read,createWorkbook:api.create,saveWorkbook:api.save,listRevisions:api.revisions,restoreWorkbook:api.restore}));
 vi.mock('./server-draft-client',()=>({readServerDraft:cloudApi.read,executeServerDraftRequest:cloudApi.execute}));
 vi.mock('./draft-store',()=>({validateLocalDraft:vi.fn(),readLocalDrafts:drafts.read,writeLocalDraft:drafts.write,removeLocalDraft:drafts.remove,claimLocalDraft:drafts.claim}));
+vi.mock('./workbook-intent-store',async importOriginal=>{const actual=await importOriginal<typeof import('./workbook-intent-store')>();return {...actual,readWorkbookIntent:intents.read,writeWorkbookIntent:intents.write,removeWorkbookIntent:intents.remove};});
 vi.mock('./xlsx',()=>({readFreeWorkbook:api.import}));
 import { ApiRequestError } from '../../lib/auth-client';
 import { blankWorkbook } from './contract';
@@ -29,7 +32,7 @@ import type { SavedWorkbook } from './client';
 import type { ServerDraftRequest } from './server-draft-session';
 const oldId='11111111-1111-4111-8111-111111111111',laterId='22222222-2222-4222-8222-222222222222';
 let url:URL,replace:ReturnType<typeof vi.fn>,tree:React.ReactElement;
-function saved(id:string):SavedWorkbook{return {id,name:`合成${id.slice(0,1)}`,revision:1,snapshotHash:'hash',updatedAt:'2026-10-19T00:00:00Z',snapshot:blankWorkbook(id,`合成${id.slice(0,1)}`)};}
+function saved(id:string):SavedWorkbook{return {id,name:`合成${id.slice(0,1)}`,revision:1,snapshotHash:'a'.repeat(64),updatedAt:'2026-10-19T00:00:00Z',snapshot:blankWorkbook(id,`合成${id.slice(0,1)}`)};}
 function draw(){hooks.index=0;hooks.dirty=false;tree=FreeWorkbookWorkspace();hooks.effects.splice(0).forEach(effect=>effect());return tree;}
 async function settle(){for(let n=0;n<20;n++){draw();await Promise.resolve();await Promise.resolve();await Promise.resolve();if(!hooks.dirty)return renderToStaticMarkup(tree);}throw new Error('Workbook did not settle');}
 function nodes(node:React.ReactNode):React.ReactElement<Record<string,unknown>>[]{if(!React.isValidElement<Record<string,unknown>>(node))return[];return[node,...React.Children.toArray(node.props.children as React.ReactNode).flatMap(nodes)];}
@@ -39,8 +42,9 @@ function dispose(){hooks.cleanups.forEach(cleanup=>cleanup());hooks.cleanups.cle
 beforeEach(()=>{
  hooks.slots=[];hooks.index=0;hooks.effects=[];hooks.cleanups=new Map();hooks.setups=new Map();hooks.dirty=false;
  cloudApi.read.mockReset().mockResolvedValue({workbookRevision:1,draft:null,baseStale:false});cloudApi.execute.mockReset().mockRejectedValue(new Error('Synthetic cloud transport unavailable'));
+ intents.rows.clear();intents.read.mockReset().mockImplementation(async(owner:string)=>structuredClone(intents.rows.get(owner)??null));intents.write.mockReset().mockImplementation(async(owner:string,intent:unknown,expected:number|null)=>{const old=intents.rows.get(owner) as {revision:number}|undefined;if((old?.revision??null)!==expected)throw new Error('Synthetic intent CAS');const next={revision:(expected??0)+1,intent:structuredClone(intent)};intents.rows.set(owner,next);return structuredClone(next);});intents.remove.mockReset().mockImplementation(async(owner:string)=>{intents.rows.delete(owner);});
  identity.id='synthetic-owner-a';Object.values(drafts).forEach(mock=>mock.mockReset());drafts.read.mockResolvedValue([]);drafts.write.mockResolvedValue(true);drafts.remove.mockResolvedValue(undefined);
- Object.values(api).forEach(mock=>mock.mockReset());url=new URL(`http://localhost/admin/color-database?workbook=${oldId}`);
+ images.upload.mockReset();Object.values(api).forEach(mock=>mock.mockReset());url=new URL(`http://localhost/admin/color-database?workbook=${oldId}`);
  replace=vi.fn((_state:unknown,_title:string,next:URL)=>{url=new URL(next);});
  vi.stubGlobal('window',{get location(){return {href:url.href,search:url.search};},history:{state:null,replaceState:replace},confirm:vi.fn(()=>true)});
  api.list.mockResolvedValue({items:[saved(oldId)],nextCursor:'next-page'});api.read.mockImplementation((id:string)=>Promise.resolve(saved(id)));api.create.mockImplementation((snapshot:SavedWorkbook['snapshot'])=>Promise.resolve({...saved(snapshot.id),name:snapshot.name}));
@@ -108,10 +112,10 @@ it('does not reload or remount an unsaved imported copy when its own URL replace
 });
 it('rejects a query change while a create result is pending without losing its request',async()=>{
  await settle();let resolve!:(value:SavedWorkbook)=>void;api.create.mockImplementationOnce(()=>new Promise<SavedWorkbook>(r=>{resolve=r;}));void click('新建');await settle();url.searchParams.set('workbook',laterId);const html=await settle();expect(url.searchParams.get('workbook')).toBe(oldId);expect(html).toContain('当前操作尚未结束');expect(api.read).toHaveBeenCalledTimes(1);
- const created=api.create.mock.calls[0]![0] as SavedWorkbook['snapshot'];resolve({...saved(created.id),snapshot:created});await settle();expect(url.searchParams.get('workbook')).toBe(created.id);expect(api.create).toHaveBeenCalledTimes(1);expect(api.read).toHaveBeenCalledTimes(1);
+ const created=api.create.mock.calls[0]![0] as SavedWorkbook['snapshot'];resolve({...saved(created.id),name:created.name,snapshot:created});await settle();expect(url.searchParams.get('workbook')).toBe(created.id);expect(api.create).toHaveBeenCalledTimes(1);expect(api.read).toHaveBeenCalledTimes(2);expect(api.read).toHaveBeenLastCalledWith(created.id,expect.any(AbortSignal));
 });
 it('retains an uncertain create operation and blocks a query change until its retry',async()=>{
- await settle();api.create.mockRejectedValueOnce(new Error('响应丢失'));await click('新建');api.read.mockClear();url.searchParams.set('workbook',laterId);const html=await settle();expect(html).toContain('上次操作结果尚未确认');expect(url.searchParams.get('workbook')).toBe(oldId);expect(api.read).not.toHaveBeenCalled();expect(html).toContain('重试创建');
+ await settle();api.create.mockRejectedValueOnce(new Error('响应丢失'));await click('新建');api.read.mockClear();url.searchParams.set('workbook',laterId);const html=await settle();expect(html).toContain('上次操作结果尚未确认');expect(url.searchParams.get('workbook')).toBe(oldId);expect(api.read).not.toHaveBeenCalled();expect(html).toContain('核实并恢复原请求');
 });
 it('keeps unfinished imported images and their active identity on a query change',async()=>{
  await settle();api.import.mockResolvedValue({snapshot:blankWorkbook(laterId,'图片待导入'),images:[{sourceMediaId:1}],warnings:[],fileName:'synthetic.xlsx'});const input=nodes(tree).find(n=>n.type==='input'&&n.props.accept==='.xlsx')!;
@@ -124,7 +128,7 @@ it('retains the uncertain save request when a query change attempts to leave',as
 });
 it('retains an uncertain restore operation and does not navigate away',async()=>{
  await settle();api.revisions.mockResolvedValueOnce({items:[{revision:1,createdAt:'2026-10-19T00:00:00Z'}],nextBefore:null});await click('版本恢复');const select=nodes(tree).find(n=>n.type==='select'&&n.props['aria-label']==='历史版本')!;(select.props.onChange as (event:unknown)=>void)({target:{value:'1'}});await settle();api.restore.mockRejectedValueOnce(new Error('恢复响应丢失'));await click('恢复为新版本');api.read.mockClear();url.searchParams.set('workbook',laterId);
- const html=await settle();expect(html).toContain('上次操作结果尚未确认');expect(html).toContain('核实恢复结果');expect(url.searchParams.get('workbook')).toBe(oldId);expect(api.read).not.toHaveBeenCalled();
+ const html=await settle();expect(html).toContain('上次操作结果尚未确认');expect(html).toContain('核实并恢复原请求');expect(url.searchParams.get('workbook')).toBe(oldId);expect(api.read).not.toHaveBeenCalled();
 });
 
 it('restarts an initial read after Strict Mode effect cleanup/setup and ignores the first response',async()=>{
@@ -155,7 +159,7 @@ function canvasRuntime(){return nodes(tree).find(n=>typeof n.props.onChanged==='
 it('opens mapping from the current editor with the exact formal version without saving the workbook',async()=>{
  await settle();readyEditor();await settle();const snapshot=saved(oldId).snapshot;(canvasRuntime().props.runtime as {current:{snapshot:ReturnType<typeof vi.fn>}}).current.snapshot.mockResolvedValue(snapshot);await click('应用到业务');const panel=nodes(tree).find(n=>typeof n.props.getSource==='function')!;
  expect(panel.props.actorId).toBe(identity.id);expect(nodes(tree).some(n=>n.props.inert===true)).toBe(true);
- const source=await (panel.props.getSource as ()=>Promise<unknown>)();expect(source).toEqual({workbookId:oldId,formalRevision:1,sourceSnapshotHash:'hash',snapshot});
+ const source=await (panel.props.getSource as ()=>Promise<unknown>)();expect(source).toEqual({workbookId:oldId,formalRevision:1,sourceSnapshotHash:'a'.repeat(64),snapshot});
  expect(api.save).not.toHaveBeenCalled();(panel.props.onApplied as (value:unknown[])=>void)([{}]);const html=await settle();expect(html).toContain('工作簿保存状态独立');expect(html).toContain('有未保存内容');
 });
 it('rejects a mapping snapshot that finishes after account or workbook navigation',async()=>{
@@ -185,4 +189,37 @@ it('preserves N+1 when it arrives while the published cloud draft is being disca
 });
 it('removes the confirmed local slot after a direct formal save before any cloud draft exists',async()=>{
  await settle();readyEditor();await settle();api.save.mockResolvedValueOnce({...saved(oldId),revision:2});await click('保存');await vi.waitFor(()=>expect(drafts.remove).toHaveBeenCalledTimes(1));const removed=drafts.remove.mock.calls[0]![0];expect(removed.baseRevision).toBe(2);expect(removed.pending).toBeNull();expect(removed.sequence).toBe(1);expect(cloudApi.execute).not.toHaveBeenCalled();expect(renderToStaticMarkup(tree)).not.toContain('有未保存内容');
+});
+
+function refreshComponent(){dispose();hooks.slots=[];hooks.effects=[];hooks.setups=new Map();hooks.index=0;return settle();}
+async function selectSyntheticImport(images:unknown[]=[]){api.import.mockResolvedValue({snapshot:blankWorkbook(laterId,'合成导入'),images,warnings:[],fileName:'synthetic.xlsx'});const input=nodes(tree).find(n=>n.type==='input'&&n.props.accept==='.xlsx')!;(input.props.onChange as (event:unknown)=>void)({target:{files:[new File([new Uint8Array([80,75,3,4])],'synthetic.xlsx')],value:'file'}});await vi.dynamicImportSettled();await settle();}
+it.each(['create','restore','import'] as const)('reopens the persisted %s UI after response loss and dispatches exactly the same request',async kind=>{
+ await settle();const send=kind==='restore'?api.restore:api.create;send.mockRejectedValueOnce(new Error('Synthetic response loss'));
+ if(kind==='create')await click('新建');
+ else if(kind==='import'){await selectSyntheticImport();await click('确认导入副本');}
+ else{api.revisions.mockResolvedValueOnce({items:[{revision:1,createdAt:'2026-10-19T00:00:00Z'}],nextBefore:null});await click('版本恢复');const select=nodes(tree).find(n=>n.type==='select'&&n.props['aria-label']==='历史版本')!;(select.props.onChange as (event:unknown)=>void)({target:{value:'1'}});await settle();await click('恢复为新版本');}
+ const original=structuredClone(send.mock.calls[0]);expect(send).toHaveBeenCalledTimes(1);const record=intents.rows.get(identity.id) as {intent:{phase:string,data:{kind:string}}};expect(record.intent.phase).toBe('awaiting-receipt');
+ await refreshComponent();expect(send).toHaveBeenCalledTimes(1);expect(renderToStaticMarkup(tree)).toContain('核实并恢复原请求');
+ if(kind==='restore')send.mockResolvedValueOnce({...saved(oldId),revision:2});
+ await click('核实并恢复原请求');expect(send).toHaveBeenCalledTimes(2);expect(send.mock.calls[1]).toEqual(original);expect(api.save).not.toHaveBeenCalled();
+ const updated=intents.rows.get(identity.id) as {intent:{phase:string}};expect(updated.intent.phase).toBe(kind==='import'?'awaiting-receipt':'confirmed');
+ if(kind==='import'){expect(api.import.mock.calls.at(-1)![0]).toEqual(new Uint8Array([80,75,3,4]));expect(api.import.mock.calls.at(-1)![2]).toBe(laterId);}
+});
+it.each(['unmount','account'] as const)('does not send create after %s while durable intent preparation is pending',async change=>{
+ await settle();let resume!:()=>void;const write=intents.write.getMockImplementation()!;intents.write.mockImplementationOnce(async(...args)=>{const record=await write(...args);await new Promise<void>(resolve=>{resume=resolve;});return record;});void click('新建');await vi.waitFor(()=>expect(resume).toBeTypeOf('function'));
+ if(change==='unmount')dispose();else{identity.id='synthetic-owner-b';await settle();}
+ resume();await vi.dynamicImportSettled();await settle();expect(api.create).not.toHaveBeenCalled();expect((intents.rows.get('synthetic-owner-a') as {intent:{phase:string}}).intent.phase).toBe('prepared');expect(intents.rows.has('synthetic-owner-b')).toBe(false);
+});
+it('rebuilds a partially imported picture after refresh from original bytes and acknowledged asset before completing the local draft',async()=>{
+ await settle();const image={sourceMediaId:1,sheetId:'sheet-1',bytes:new Uint8Array([1,2,3]),mime:'image/png',anchor:{kind:'oneCell',from:{row:0,column:0,rowOffset:0,columnOffset:0},width:20,height:20}};await selectSyntheticImport([image]);await click('确认导入副本');
+ const snapshot=blankWorkbook(laterId,'合成导入'),insert=vi.fn().mockRejectedValueOnce(new Error('Synthetic placement failure')).mockResolvedValue(undefined),runtime={snapshot:vi.fn().mockResolvedValue(snapshot),draftSnapshot:vi.fn().mockResolvedValue({snapshot,edit:null}),insertAsset:insert};
+ let canvas=canvasRuntime();(canvas.props.runtime as {current:unknown}).current=runtime;(canvas.props.onReady as ()=>void)();await settle();images.upload.mockResolvedValue({id:oldId,targetType:'SHEET_WORKBOOK',recordId:laterId,isDeleted:false});await click('继续导入并保留完整草稿');expect(images.upload).toHaveBeenCalledTimes(1);const operation=insert.mock.calls[0]![3];
+ await refreshComponent();await click('核实并恢复原请求');canvas=canvasRuntime();(canvas.props.runtime as {current:unknown}).current=runtime;(canvas.props.onReady as ()=>void)();await settle();await click('继续导入并保留完整草稿');
+ expect(api.create).toHaveBeenCalledTimes(1);expect(images.upload).toHaveBeenCalledTimes(1);expect(insert).toHaveBeenCalledTimes(2);expect(insert.mock.calls[1]![3]).toBe(operation);expect(drafts.write.mock.calls.at(-1)![0].snapshot).toEqual(snapshot);expect((intents.rows.get(identity.id) as {intent:unknown}).intent).toMatchObject({phase:'confirmed',resolution:'succeeded',data:{imageIndex:1,assets:[['1',oldId]]}});expect(api.save).not.toHaveBeenCalled();expect(renderToStaticMarkup(tree)).toContain('完整导入已保留为本机草稿');
+});
+it('pauses only the canvas while a structure request waits, and preserves late input before dispatch',async()=>{
+ await settle();readyEditor();await settle();let release!:(value:boolean)=>void;drafts.write.mockImplementationOnce(()=>new Promise<boolean>(resolve=>{release=resolve;}));void click('新建');await vi.waitFor(()=>expect(release).toBeTypeOf('function'));expect(await settle()).toContain('inert');const canvas=canvasRuntime();(canvas.props.onChanged as ()=>void)();release(true);await vi.dynamicImportSettled();expect(await settle()).toContain('保留草稿期间又有输入');expect(api.create).not.toHaveBeenCalled();expect(intents.write).not.toHaveBeenCalled();expect(renderToStaticMarkup(tree)).toContain(`data-workbook="${oldId}"`);
+});
+it('keeps an import unresolved if complete local draft durability fails after all image positions',async()=>{
+ await settle();await selectSyntheticImport();await click('确认导入副本');const snapshot=blankWorkbook(laterId,'合成导入'),canvas=canvasRuntime();(canvas.props.runtime as {current:unknown}).current={snapshot:vi.fn().mockResolvedValue(snapshot),draftSnapshot:vi.fn().mockResolvedValue({snapshot,edit:null})};(canvas.props.onReady as ()=>void)();await settle();drafts.write.mockRejectedValueOnce(new Error('Synthetic local quota'));expect(await click('继续导入并保留完整草稿')).toContain('Synthetic local quota');expect((intents.rows.get(identity.id) as {intent:{phase:string}}).intent.phase).toBe('awaiting-receipt');expect(renderToStaticMarkup(tree)).toContain('继续导入并保留完整草稿');expect(api.save).not.toHaveBeenCalled();
 });

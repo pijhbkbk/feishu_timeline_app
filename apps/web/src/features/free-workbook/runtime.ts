@@ -25,7 +25,7 @@ import '@univerjs/preset-sheets-drawing/lib/index.css';
 import '@univerjs/preset-sheets-filter/lib/index.css';
 import '@univerjs/preset-sheets-sort/lib/index.css';
 
-export interface WorkbookRuntime {ready:Promise<void>;retryImages():Promise<number>;snapshot():Promise<IWorkbookData>;draftSnapshot():Promise<{snapshot:IWorkbookData;edit:WorkbookEditingDraft|null}|null>;restoreEdit(edit:WorkbookEditingDraft):Promise<void>;insertImage(file:File):Promise<void>;insertAsset(sheetId:string,assetId:string,anchor:ImageAnchor):Promise<void>;setBackgroundAsset(sheetId:string,assetId:string,scale:{scaleX:number;scaleY:number}):Promise<void>;dispose():void}
+export interface WorkbookRuntime {ready:Promise<void>;retryImages():Promise<number>;snapshot():Promise<IWorkbookData>;draftSnapshot():Promise<{snapshot:IWorkbookData;edit:WorkbookEditingDraft|null}|null>;restoreEdit(edit:WorkbookEditingDraft):Promise<void>;insertImage(file:File):Promise<void>;insertAsset(sheetId:string,assetId:string,anchor:ImageAnchor,drawingId?:string):Promise<void>;setBackgroundAsset(sheetId:string,assetId:string,scale:{scaleX:number;scaleY:number}):Promise<void>;dispose():void}
 export function createFreeWorkbook(options:{container:HTMLElement;snapshot:IWorkbookData;onChanged():void;onError(message:string):void;onUploading(count:number):void;onImageFailures(count:number):void}):WorkbookRuntime{
   setNonce(document.querySelector<HTMLScriptElement>('script[nonce]')?.nonce??'');
   const io=new WorkbookImageIo(options.snapshot.id,options.onUploading,Object.values(options.snapshot.sheets).flatMap(sheet=>sheet.backgroundImage?[sheet.backgroundImage.source]:[]),options.onImageFailures);
@@ -80,8 +80,10 @@ export function createFreeWorkbook(options:{container:HTMLElement;snapshot:IWork
   subscriptions.push(univerAPI.addEvent(univerAPI.Event.BeforeOverGridImageInsert,event=>{if(event.insertImageParams.some(image=>image.imageSourceType!==ImageSourceType.UUID||!/^[a-f\d-]{36}$/i.test(image.source))){event.cancel=true;options.onError('图片必须通过本系统上传并扫描。');}}));
   subscriptions.push(univerAPI.addEvent(univerAPI.Event.BeforeOverGridImageChange,event=>{if(event.images.some(({changeParam})=>changeParam.source!==undefined&&!/^[a-f\d-]{36}$/i.test(changeParam.source)||changeParam.imageSourceType!==undefined&&changeParam.imageSourceType!==ImageSourceType.UUID)){event.cancel=true;options.onError('不能改为外部图片地址。');}}));
   subscriptions.push(univerAPI.addEvent(univerAPI.Event.CommandExecuted,event=>{if(!disposed&&changesWorkbook(event))options.onChanged();}));
-  const insertAsset=async(sheetId:string,assetId:string,anchor:ImageAnchor)=>{
-    await ready;const sheet=workbook.getSheetBySheetId(sheetId);if(!sheet)throw new Error('图片工作表不存在。');await io.getImage(assetId);
+  const insertAsset=async(sheetId:string,assetId:string,anchor:ImageAnchor,drawingId?:string)=>{
+    await ready;if(disposed)throw new Error('编辑器已关闭。');const sheet=workbook.getSheetBySheetId(sheetId);if(!sheet)throw new Error('图片工作表不存在。');
+    if(drawingId){if(!/^[a-f\d]{8}-[a-f\d]{4}-4[a-f\d]{3}-[89ab][a-f\d]{3}-[a-f\d]{12}$/i.test(drawingId))throw new Error('图片导入标识无效。');const existing=sheet.getImages().find(image=>image.getId()===drawingId);if(existing){if(existing.toBuilder().getSource()!==assetId)throw new Error('原导入图片身份不一致。');return;}}
+    await io.getImage(assetId);if(disposed)throw new Error('编辑器已关闭。');
     const builder=sheet.newOverGridImage().setSource(assetId,ImageSourceType.UUID);
     if(anchor.to&&anchor.kind==='twoCell')builder.setPlacement({kind:SheetDrawingAnchorType.Both,from:anchor.from,to:anchor.to});
     else if(anchor.to){
@@ -90,7 +92,8 @@ export function createFreeWorkbook(options:{container:HTMLElement;snapshot:IWork
       builder.setPlacement(anchor.kind==='absolute'?{kind:SheetDrawingAnchorType.None,left,top,width,height}:{kind:SheetDrawingAnchorType.Position,from:anchor.from,width,height});
     }else if(anchor.kind==='absolute')builder.setPlacement({kind:SheetDrawingAnchorType.None,left:anchor.from.columnOffset,top:anchor.from.rowOffset,width:anchor.width!,height:anchor.height!});
     else builder.setPlacement({kind:SheetDrawingAnchorType.Position,from:anchor.from,width:anchor.width!,height:anchor.height!});
-    if(!sheet.insertImages([await builder.buildAsync()]))throw new Error('图片插入失败，已上传资源仍保留。');
+    const image=await builder.buildAsync();if(disposed)throw new Error('编辑器已关闭。');if(drawingId)image.drawingId=drawingId;
+    if(!sheet.insertImages([image]))throw new Error('图片插入失败，已上传资源仍保留。');
   };
   let resetBackgroundView:(()=>void)|undefined;
   const retryImages=async()=>{
@@ -107,7 +110,7 @@ export function createFreeWorkbook(options:{container:HTMLElement;snapshot:IWork
     for(const sheet of workbook.getSheets()){const drawings=sheet.getImages().filter(image=>recovered.has(image.toBuilder().getSource())).map(image=>manager.getDrawingByParam({unitId:workbook.getId(),subUnitId:sheet.getSheetId(),drawingId:image.getId()})).filter((drawing):drawing is IDrawingParam=>Boolean(drawing));manager.refreshTransform(drawings);}
     main?.makeForceDirty(true);render?.scene.makeDirty();return result.remaining;
   };
-  const setBackgroundAsset=async(sheetId:string,assetId:string,scale:{scaleX:number;scaleY:number})=>{await ready;if(!workbook.getSheetBySheetId(sheetId))throw new Error('背景工作表不存在。');io.markBackground(assetId);await io.getImage(assetId);const ok=univerAPI.syncExecuteCommand('sheet.command.set-worksheet-background-image',{unitId:workbook.getId(),subUnitId:sheetId,backgroundImage:{source:assetId,imageSourceType:ImageSourceType.UUID,...scale}});if(!ok)throw new Error('背景图片设置失败，已上传原件仍保留。');};
+  const setBackgroundAsset=async(sheetId:string,assetId:string,scale:{scaleX:number;scaleY:number})=>{await ready;if(disposed)throw new Error('编辑器已关闭。');if(!workbook.getSheetBySheetId(sheetId))throw new Error('背景工作表不存在。');io.markBackground(assetId);await io.getImage(assetId);if(disposed)throw new Error('编辑器已关闭。');const ok=univerAPI.syncExecuteCommand('sheet.command.set-worksheet-background-image',{unitId:workbook.getId(),subUnitId:sheetId,backgroundImage:{source:assetId,imageSourceType:ImageSourceType.UUID,...scale}});if(!ok)throw new Error('背景图片设置失败，已上传原件仍保留。');};
   return {ready,retryImages,setBackgroundAsset,restoreEdit,snapshot:async()=>{await ready;const data=await committedSnapshot({isDisposed:()=>disposed,isComposing:imeActive,isEditing:()=>workbook.isCellEditing(),endEditing:()=>workbook.endEditingAsync(true),calculate:()=>univerAPI.getFormula().onCalculationResultApplied(10000),read:()=>workbook.save()});checkWorkbookBounds(data);return data;},draftSnapshot:async()=>{await ready;if(disposed||imeActive())return null;await univerAPI.getFormula().onCalculationResultApplied(10000);if(disposed||imeActive())return null;const snapshot=workbook.save();checkWorkbookBounds(snapshot);return {snapshot,edit:readEdit(snapshot)};},insertAsset,
     insertImage:async file=>{const image=await io.saveImage(file);const sheet=workbook.getActiveSheet(),cell=sheet.getActiveCell();await insertAsset(sheet.getSheetId(),image.source,{kind:'oneCell',from:{row:cell?.getRow()??0,column:cell?.getColumn()??0,rowOffset:4,columnOffset:4},width:160,height:100});},
     dispose:()=>{disposed=true;resolveReady();options.container.removeEventListener('compositionstart',compositionStart,true);options.container.removeEventListener('compositionend',compositionEnd,true);subscriptions.forEach(s=>s.dispose());io.dispose();univer.dispose();}};
