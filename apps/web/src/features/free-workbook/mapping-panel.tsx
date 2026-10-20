@@ -1,10 +1,10 @@
 'use client';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { listActivities, type Activity } from '../inspections/client';
 import { layerLabels } from '../inspections/model';
 import { readCatalog } from '../color-register/sheet-client';
 import { prepareBusinessMapping, type BusinessMappingDefinition, type BusinessMappingSource, type BusinessMappingTarget } from './business-mapping';
-import { BusinessApplySession, BusinessApplyFailure, retryBusinessApplyCheckpoint, assertPreparedBusinessSource, prepareMappedBusiness, type BusinessApplyPreview, type BusinessApplyReceipt } from './business-apply';
+import { BusinessApplySession, BusinessApplyFailure, scopedBusinessApplyTransport, retryBusinessApplyCheckpoint, assertPreparedBusinessSource, prepareMappedBusiness, type BusinessApplyPreview, type BusinessApplyReceipt } from './business-apply';
 import { loadMappingContext, mappingColumns, type MappingContext } from './mapping-context';
 import { readBusinessApplyJournal, writeBusinessApplyJournal, clearBusinessApplyJournal, cancelPreparedBusinessApplyJournal, type BusinessApplyCheckpoint, type BusinessApplyPersistence } from './business-apply-journal';
 import './mapping-panel.css';
@@ -45,6 +45,12 @@ function ActorBusinessMappingPanel({ actorId, getSource, onClose, onApplied }: B
   const [reason, setReason] = useState(''), [error, setError] = useState(''), [loading, setLoading] = useState(true), [scopeLoading, setScopeLoading] = useState(false), [scopeError, setScopeError] = useState('');
   const [preview, setPreview] = useState<BusinessApplyPreview | null>(null), [page, setPage] = useState(1), [busy, setBusy] = useState(false), [version, setVersion] = useState(0), [sourceRetry, setSourceRetry] = useState(0), [scopeRetry, setScopeRetry] = useState(0);
   const session = useRef<BusinessApplySession | null>(null), mounted = useRef(true), working = useRef(false);
+  const scopeGeneration = useRef(0), owner = useRef({ actorId, workbookId: source?.workbookId });
+  owner.current = { actorId, workbookId: source?.workbookId };
+  const scopedTransport = () => {
+    const generation = scopeGeneration.current, workbookId = source?.workbookId;
+    return scopedBusinessApplyTransport(() => mounted.current && generation === scopeGeneration.current && owner.current.actorId === actorId && !!workbookId && owner.current.workbookId === workbookId);
+  };
   const [restored, setRestored] = useState<BusinessApplyCheckpoint | null>(null); const journalRevision = useRef<number | null>(null);
   const [loadedActor, setLoadedActor] = useState<string | null>(null);
   const persistence = (): BusinessApplyPersistence => ({ actorId, persist: async checkpoint => { journalRevision.current = await writeBusinessApplyJournal(checkpoint, journalRevision.current); } });
@@ -52,9 +58,10 @@ function ActorBusinessMappingPanel({ actorId, getSource, onClose, onApplied }: B
   const locked = busy || !!session.current?.pending || restored?.phase === 'prepared' || restored?.phase === 'awaiting-receipt';
   const applied = session.current?.receipts ?? restored?.receipts ?? [];
   const started = applied.length > 0 || locked || restored !== null;
-  useEffect(() => { mounted.current = true; let cancelled = false; setLoading(true); setError(''); setLoadedActor(null); setSource(null); setDefinition(null); setRestored(null); session.current = null; journalRevision.current = null;
+  useLayoutEffect(() => { scopeGeneration.current++; mounted.current = true; return () => { mounted.current = false; scopeGeneration.current++; }; }, [actorId, sourceRetry]);
+  useEffect(() => { let cancelled = false; setLoading(true); setError(''); setLoadedActor(null); setSource(null); setDefinition(null); setRestored(null); session.current = null; journalRevision.current = null;
     void sourceGetter.current().then(async value => { const saved = await readBusinessApplyJournal(actorId, value.workbookId); if (!cancelled) { journalRevision.current = saved?.revision ?? null; setRestored(saved?.checkpoint ?? null); setSource(value); setLoadedActor(actorId); setDefinition(initialDefinition(value, value.snapshot.sheetOrder[0]!, { kind: 'person' })); } }).catch(cause => { if (!cancelled) setError(message(cause)); }).finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; mounted.current = false; };
+    return () => { cancelled = true; };
   }, [sourceRetry, actorId]);
   useEffect(() => { if (!target) return; const controller = new AbortController(); const signal = AbortSignal.any([controller.signal, AbortSignal.timeout(30000)]); setScopeLoading(true); setScopeError(''); setContext(null);
     void (async () => {
@@ -87,13 +94,14 @@ function ActorBusinessMappingPanel({ actorId, getSource, onClose, onApplied }: B
   };
   const apply = async () => {
     if (!preview || working.current) return; working.current = true; setBusy(true); setError('');
+    const transport = scopedTransport();
     try {
       const current = session.current ?? new BusinessApplySession(preview, persistence()); session.current = current;
-      if (current.pending) await current.retryPending(undefined, () => sourceGetter.current());
+      if (current.pending) await current.retryPending(transport, () => sourceGetter.current());
       else {
         const liveContext = await loadMappingContext(preview.mapping.definition.target, AbortSignal.timeout(30000));
         const liveSource = await sourceGetter.current();
-        await current.applyNext(liveSource, liveContext, undefined, () => sourceGetter.current());
+        await current.applyNext(liveSource, liveContext, transport, () => sourceGetter.current());
       }
       if (mounted.current) { setVersion(n => n + 1); if (!current.remaining) await onApplied(current.receipts); }
     } catch (cause) { if (mounted.current) setError(message(cause)); } finally { working.current = false; if (mounted.current) { setBusy(false); setVersion(n => n + 1); } }
@@ -105,7 +113,8 @@ function ActorBusinessMappingPanel({ actorId, getSource, onClose, onApplied }: B
   };
   const recover = async () => {
     if (!restored || working.current) return; working.current = true; setBusy(true); setError('');
-    try { const saved = await retryBusinessApplyCheckpoint(restored, persistence(), undefined, restored.phase === 'prepared' ? () => assertPreparedBusinessSource(restored, () => sourceGetter.current()) : undefined); if (mounted.current) { setRestored(saved); await onApplied(saved.receipts); } }
+    const transport = scopedTransport();
+    try { const saved = await retryBusinessApplyCheckpoint(restored, persistence(), transport, restored.phase === 'prepared' ? () => assertPreparedBusinessSource(restored, () => sourceGetter.current()) : undefined); if (mounted.current) { setRestored(saved); await onApplied(saved.receipts); } }
     catch (cause) { if (mounted.current) { if (cause instanceof BusinessApplyFailure) setRestored(cause.checkpoint); setError(message(cause)); } }
     finally { working.current = false; if (mounted.current) setBusy(false); }
   };

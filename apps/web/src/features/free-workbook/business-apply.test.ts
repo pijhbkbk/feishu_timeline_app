@@ -6,7 +6,7 @@ import type { RegisterRow } from '../color-register/client';
 import type { Snapshot } from '../inspections/client';
 import { prepareBusinessMapping, type BusinessMappingDefinition, type BusinessMappingSource, type BusinessMappingTarget } from './business-mapping';
 import { mappingColumns, type MappingContext } from './mapping-context';
-import { BusinessApplySession, BusinessApplyFailure, retryBusinessApplyCheckpoint, assertPreparedBusinessSource, prepareMappedBusiness, sendBusinessApplyRequest, type BusinessApplyRequest } from './business-apply';
+import { BusinessApplySession, BusinessApplyFailure, retryBusinessApplyCheckpoint, assertPreparedBusinessSource, prepareMappedBusiness, sendBusinessApplyRequest, scopedBusinessApplyTransport, type BusinessApplyRequest } from './business-apply';
 import { validateBusinessApplyCheckpoint, BUSINESS_JOURNAL_LIMITS, type BusinessApplyCheckpoint } from './business-apply-journal';
 vi.mock('../../lib/auth-client', async importOriginal => ({ ...await importOriginal<typeof import('../../lib/auth-client')>(), apiRequest: vi.fn() }));
 const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
@@ -206,5 +206,39 @@ describe('immutable commands, ambiguity and partial batches', () => {
     await expect(session.applyNext(source, context, vi.fn().mockRejectedValue(new Error('network')))).rejects.toThrow();
     vi.mocked(apiRequest).mockResolvedValue(ack(session.pending!)); await session.retryPending(sendBusinessApplyRequest);
     const [path, options] = vi.mocked(apiRequest).mock.calls[0]!; expect(path).toBe('/persons'); expect(options?.method).toBe('POST'); expect(options?.headers).toEqual({ 'Idempotency-Key': session.receipts[0]!.operationId }); expect(options?.body).toMatchObject({ operationId: session.receipts[0]!.operationId }); expect(options?.signal).toBeInstanceOf(AbortSignal);
+  });
+});
+
+
+describe('owner scope at the final dispatch boundary', () => {
+  it.each(['unmounted', 'actor', 'workbook'] as const)('never sends a new command after %s changes during persistence', async change => {
+    const context = people(), { preview, source } = await setup({ kind: 'person' }, [{ name: '合成甲' }], context);
+    const owner = { mounted: true, actor: 'actor', workbook: source.workbookId };
+    let release!: () => void, entered!: () => void, saved!: BusinessApplyCheckpoint;
+    const gate = new Promise<void>(resolve => { release = resolve; }), waiting = new Promise<void>(resolve => { entered = resolve; });
+    const persist = async (checkpoint: BusinessApplyCheckpoint) => { saved = clone(checkpoint); if (checkpoint.phase === 'awaiting-receipt') { entered(); await gate; } };
+    const send = vi.fn(async (request: BusinessApplyRequest) => ack(request));
+    const transport = scopedBusinessApplyTransport(() => owner.mounted && owner.actor === 'actor' && owner.workbook === source.workbookId, send);
+    const session = new BusinessApplySession(preview, { actorId: 'actor', persist });
+    const pending = session.applyNext(source, context, transport); await waiting;
+    const original = clone(saved.request);
+    if (change === 'unmounted') owner.mounted = false; else if (change === 'actor') owner.actor = 'other'; else owner.workbook = 'other-workbook';
+    release(); await expect(pending).rejects.toThrow('本次尚未发送');
+    expect(send).not.toHaveBeenCalled(); expect(saved).toMatchObject({ actorId: 'actor', workbookId: source.workbookId, phase: 'prepared', everAmbiguous: false, request: original });
+    expect(session.pending).toEqual(original); expect(session.uncertain).toBe(false);
+  });
+  it('never replays an unknown old-account command after scope closes during recovery persistence', async () => {
+    const context = people(), { preview, source } = await setup({ kind: 'person' }, [{ name: '合成甲' }], context);
+    let saved!: BusinessApplyCheckpoint; const persist = async (checkpoint: BusinessApplyCheckpoint) => { saved = clone(checkpoint); };
+    const session = new BusinessApplySession(preview, { actorId: 'actor', persist });
+    await expect(session.applyNext(source, context, vi.fn().mockRejectedValue(new Error('lost acknowledgement')))).rejects.toThrow('结果未知');
+    const original = clone(saved), send = vi.fn(); let active = true, release!: () => void, entered!: () => void;
+    const gate = new Promise<void>(resolve => { release = resolve; }), waiting = new Promise<void>(resolve => { entered = resolve; });
+    const pending = retryBusinessApplyCheckpoint(original, { actorId: 'actor', persist: async checkpoint => { saved = clone(checkpoint); entered(); await gate; } }, scopedBusinessApplyTransport(() => active, send));
+    await waiting; active = false; release(); await expect(pending).rejects.toThrow('结果未知');
+    expect(send).not.toHaveBeenCalled(); expect(saved).toEqual(original);
+    const nextSend = vi.fn(async (request: BusinessApplyRequest) => ack(request));
+    await retryBusinessApplyCheckpoint(saved, { actorId: 'actor', persist }, scopedBusinessApplyTransport(() => true, nextSend));
+    expect(nextSend.mock.calls[0]![0]).toEqual(original.request); expect(saved.phase).toBe('confirmed');
   });
 });

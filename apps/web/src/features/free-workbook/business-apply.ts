@@ -93,6 +93,13 @@ function acknowledge(request: BusinessApplyRequest, value: unknown, activityRevi
 }
 export const sendBusinessApplyRequest: BusinessApplyTransport = request => apiRequest(request.path, { method: request.method, headers: { 'Idempotency-Key': request.operationId }, body: JSON.parse(request.bodyJSON) as unknown, signal: AbortSignal.timeout(30000) });
 
+class InactiveBusinessApplyScopeError extends Error {}
+/** This check must be synchronous and adjacent to dispatch: neither journal writes nor
+ * source reads may bridge an account/workbook change into a different authenticated request. */
+export function scopedBusinessApplyTransport(isActive: () => boolean, transport: BusinessApplyTransport = sendBusinessApplyRequest): BusinessApplyTransport {
+  return request => { if (!isActive()) throw new InactiveBusinessApplyScopeError('原账号或工作簿页面已关闭，请回到原账号核实已保存的请求。'); return transport(request); };
+}
+
 /** No automatic network activity/retry. Each new batch needs fresh domain reads and a freshly
  * captured workbook. An uncertain request is settled verbatim, even after source changes: never
  * replace it with a new key, body, current revision or another person's draft. */
@@ -186,6 +193,11 @@ export async function retryBusinessApplyCheckpoint(checkpoint: BusinessApplyChec
     await persistence.persist(freeze(confirmed)); return confirmed;
   } catch (cause) {
     if (cause instanceof BusinessApplyFailure) throw cause;
+    if (cause instanceof InactiveBusinessApplyScopeError && !wasAmbiguous) {
+      const unsent: BusinessApplyCheckpoint = { ...safe, phase: 'prepared', everAmbiguous: false };
+      try { await persistence.persist(freeze(unsent)); } catch { throw new BusinessApplyFailure('原页面已关闭，且日志被另一页面改变；原请求需核实。', { ...safe, phase: 'awaiting-receipt', everAmbiguous: true }); }
+      throw new BusinessApplyFailure(`${cause.message} 本次尚未发送。`, unsent);
+    }
     const definitive = dispatched && !wasAmbiguous && cause instanceof ApiRequestError && [400, 401, 403, 404, 409, 413, 422, 429].includes(cause.status);
     if (definitive) {
       const rejected: BusinessApplyCheckpoint = { ...safe, phase: 'rejected', everAmbiguous: false, request: null };
