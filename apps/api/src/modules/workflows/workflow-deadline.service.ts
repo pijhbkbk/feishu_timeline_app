@@ -8,6 +8,7 @@ import {
 
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { getCurrentNodeName } from './workflow-node.constants';
+import { readPerformanceArrivalAnchor } from './performance-arrival-anchor';
 import {
   addUtcDays,
   addUtcMonthsClamped,
@@ -99,6 +100,8 @@ export class WorkflowDeadlineService {
         effectiveDueAt: true,
         manualDueAt: true,
         overdueDays: true,
+        nodeCode: true,
+        payload: true,
       },
     });
 
@@ -106,7 +109,7 @@ export class WorkflowDeadlineService {
 
     for (const task of tasks) {
       const effectiveDueAt = task.manualDueAt ?? task.effectiveDueAt ?? task.dueAt;
-      const overdueDays = this.getOverdueDays(effectiveDueAt, now);
+      const overdueDays = this.getOverdueDays(effectiveDueAt, now, task);
 
       if (
         task.effectiveDueAt?.getTime() === effectiveDueAt?.getTime() &&
@@ -131,11 +134,19 @@ export class WorkflowDeadlineService {
     };
   }
 
-  getOverdueDays(dueAt: Date | null, now = this.businessClock.now()) {
+  getOverdueDays(dueAt: Date | null, now = this.businessClock.now(), task?: {
+    nodeCode?: WorkflowNodeCode; payload?: Prisma.JsonValue | null;
+  }) {
     if (!dueAt) {
       return 0;
     }
 
+    // Only the new, source-bound feedback rule uses an exact Shanghai deadline.
+    // Legacy tasks retain their original UTC-day calculation and stored facts.
+    if (task?.nodeCode === WorkflowNodeCode.PERFORMANCE_TEST && readPerformanceArrivalAnchor(task.payload)) {
+      if (now.getTime() <= dueAt.getTime()) return 0;
+      return Math.max(1, getUtcDayDiff(new Date(now.getTime() + 8 * 3600000), new Date(dueAt.getTime() + 8 * 3600000)));
+    }
     const dueBoundary = endOfUtcDay(dueAt);
     if (now.getTime() <= dueBoundary.getTime()) {
       return 0;

@@ -160,18 +160,25 @@ describe.skipIf(!url).sequential('A13 arrival anchor on dedicated synthetic Post
     expect(await db.performanceTest.findUniqueOrThrow({ where: { id: oldTest.id } })).toEqual(oldTest);
   });
 
-  it('links new performance evidence to the anchored purchase and reminder reads the persisted due date', async () => {
+  it('keeps the deadline source separate from the test object and reminders read the persisted due date', async () => {
     const f = await fixture();
     const record = await ordered(f, '2026-09-23');
     await procurement.markArrived(f.project.id, record.id, actor);
     await procurement.completeTask(f.project.id, actor);
     const feedback = await db.workflowTask.findFirstOrThrow({ where: { projectId: f.project.id, nodeCode: 'PERFORMANCE_TEST', isActive: true } });
-    await performance.createTest(f.project.id, { testCode: `PERF-${randomUUID()}`, sampleId: null, relatedObjectName: '合成批次', testItem: 'GLOSS',
+    await performance.createTest(f.project.id, { testCode: `PERF-${randomUUID()}`, sampleId: null, relatedObjectName: '合成另一试验批次', testItem: 'GLOSS',
       standardValue: '80', actualValue: '81', result: 'PASS', conclusion: '合成结论', testedById: actor.id, testedAt: '2027-03-23' }, actor);
-    expect(await db.performanceTest.findFirstOrThrow({ where: { projectId: f.project.id } })).toMatchObject({ paintProcurementId: record.id });
+    expect(await db.performanceTest.findFirstOrThrow({ where: { projectId: f.project.id } })).toMatchObject({ paintProcurementId: null, relatedObjectName: '合成另一试验批次' });
+    expect(readPerformanceArrivalAnchor(feedback.payload)?.procurementId).toBe(record.id);
     const reminders = new TaskRemindersService(db as never);
     expect(await reminders.target(db as never, 'ordinary', feedback.id, new Date('2027-03-23T00:00:00Z')))
       .toMatchObject({ dueAt: new Date('2027-03-23T15:59:59.999Z') });
+    await deadlines.refreshWorkflowInstanceTaskDeadlines(db as never, f.instance.id, new Date('2027-03-23T15:59:59.999Z'));
+    expect((await taskRead(feedback.id)).overdueDays).toBe(0);
+    await deadlines.refreshWorkflowInstanceTaskDeadlines(db as never, f.instance.id, new Date('2027-03-23T16:00:00.000Z'));
+    expect((await taskRead(feedback.id)).overdueDays).toBe(1);
+    await deadlines.refreshWorkflowInstanceTaskDeadlines(db as never, f.instance.id, new Date('2027-03-24T16:00:00.000Z'));
+    expect((await taskRead(feedback.id)).overdueDays).toBe(2);
     await deadlines.refreshWorkflowInstanceTaskDeadlines(db as never, f.instance.id, new Date('2028-01-01T00:00:00Z'));
     expect((await taskRead(feedback.id)).dueAt).toEqual(feedback.dueAt);
     await db.workflowTask.update({ where: { id: feedback.id }, data: { isActive: false, status: 'COMPLETED' } });

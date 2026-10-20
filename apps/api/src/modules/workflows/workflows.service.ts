@@ -1018,12 +1018,14 @@ export class WorkflowsService {
         overdueDays: this.workflowDeadlineService.getOverdueDays(
           detailedTask.effectiveDueAt ?? detailedTask.dueAt,
           now,
+          detailedTask,
         ),
         isOverdue:
           detailedTask.isActive &&
           this.workflowDeadlineService.getOverdueDays(
             detailedTask.effectiveDueAt ?? detailedTask.dueAt,
             now,
+            detailedTask,
           ) > 0,
         slaStatus: this.resolveTaskSlaStatus(detailedTask, now),
         progressPercent: this.getTaskTimeProgressPercent(detailedTask, now),
@@ -2543,6 +2545,8 @@ export class WorkflowsService {
 
   private resolveTaskSlaStatus(
     task: {
+      nodeCode?: WorkflowNodeCode;
+      payload?: Prisma.JsonValue | null;
       isActive: boolean;
       status: WorkflowTaskStatus;
       dueAt: Date | null;
@@ -2563,7 +2567,7 @@ export class WorkflowsService {
 
     if (
       task.isActive &&
-      this.workflowDeadlineService.getOverdueDays(task.effectiveDueAt ?? task.dueAt, now) > 0
+      this.workflowDeadlineService.getOverdueDays(task.effectiveDueAt ?? task.dueAt, now, task) > 0
     ) {
       return '已逾期';
     }

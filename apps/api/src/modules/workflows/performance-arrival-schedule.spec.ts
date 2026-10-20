@@ -30,6 +30,19 @@ function fixture() {
 }
 
 describe('Performance feedback schedule from confirmed arrival', () => {
+  it('marks source-bound feedback overdue at Shanghai midnight and leaves legacy UTC-day behavior intact', () => {
+    const deadlines = new WorkflowDeadlineService();
+    const dueAt = new Date(anchor.dueAt);
+    const task = { nodeCode: WorkflowNodeCode.PERFORMANCE_TEST, payload: { performanceArrivalAnchor: anchor } };
+    expect(deadlines.getOverdueDays(dueAt, dueAt, task)).toBe(0);
+    expect(deadlines.getOverdueDays(dueAt, new Date('2027-02-28T16:00:00.000Z'), task)).toBe(1);
+    expect(deadlines.getOverdueDays(dueAt, new Date('2027-03-01T16:00:00.000Z'), task)).toBe(2);
+    expect(deadlines.getOverdueDays(dueAt, new Date('2027-02-28T16:00:00.000Z'), { ...task, payload: {} })).toBe(0);
+    expect(deadlines.getOverdueDays(dueAt, new Date('2027-02-28T16:00:00.000Z'), { ...task, nodeCode: WorkflowNodeCode.PAINT_PROCUREMENT })).toBe(0);
+    const { spawn } = fixture();
+    expect((spawn as unknown as { resolveTaskSlaStatus: (...args: unknown[]) => string }).resolveTaskSlaStatus({ ...task, isActive: true, status: 'READY', dueAt, effectiveDueAt: dueAt }, new Date('2027-02-28T16:00:00.000Z'))).toBe('已逾期');
+  });
+
   it('uses six calendar months in fresh catalog defaults and remains nonblocking', () => {
     expect(workflowNodes.find(node => node.nodeCode === WorkflowNodeCode.PERFORMANCE_TEST))
       .toMatchObject({ durationType: 'MONTH_OFFSET', durationValue: 6, isBlocking: false });
