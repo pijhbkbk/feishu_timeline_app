@@ -127,7 +127,7 @@ it('retains the uncertain save request when a query change attempts to leave',as
  const html=await settle();expect(html).toContain('上次操作结果尚未确认');expect(html).toContain('核实并保存');expect(html).toContain('有未保存内容');expect(url.searchParams.get('workbook')).toBe(oldId);expect(api.read).not.toHaveBeenCalled();api.save.mockResolvedValueOnce({...saved(oldId),revision:2});await click('核实并保存');expect(api.save.mock.calls[1]![1]).toBe(request);
 });
 it('retains an uncertain restore operation and does not navigate away',async()=>{
- await settle();api.revisions.mockResolvedValueOnce({items:[{revision:1,createdAt:'2026-10-19T00:00:00Z'}],nextBefore:null});await click('版本恢复');const select=nodes(tree).find(n=>n.type==='select'&&n.props['aria-label']==='历史版本')!;(select.props.onChange as (event:unknown)=>void)({target:{value:'1'}});await settle();api.restore.mockRejectedValueOnce(new Error('恢复响应丢失'));await click('恢复为新版本');api.read.mockClear();url.searchParams.set('workbook',laterId);
+ await settle();api.revisions.mockResolvedValueOnce({items:[{revision:1,createdAt:'2026-10-19T00:00:00Z'}],nextBefore:null});await click('版本恢复');const select=nodes(tree).find(n=>n.type==='select'&&n.props['aria-label']==='历史版本')!;(select.props.onChange as (event:unknown)=>void)({target:{value:'1'}});await settle();api.restore.mockRejectedValueOnce(new Error('恢复响应丢失'));await click('恢复为新版本');await click('确认恢复历史版本');api.read.mockClear();url.searchParams.set('workbook',laterId);
  const html=await settle();expect(html).toContain('上次操作结果尚未确认');expect(html).toContain('核实并恢复原请求');expect(url.searchParams.get('workbook')).toBe(oldId);expect(api.read).not.toHaveBeenCalled();
 });
 
@@ -197,7 +197,7 @@ it.each(['create','restore','import'] as const)('reopens the persisted %s UI aft
  await settle();const send=kind==='restore'?api.restore:api.create;send.mockRejectedValueOnce(new Error('Synthetic response loss'));
  if(kind==='create')await click('新建');
  else if(kind==='import'){await selectSyntheticImport();await click('确认导入副本');}
- else{api.revisions.mockResolvedValueOnce({items:[{revision:1,createdAt:'2026-10-19T00:00:00Z'}],nextBefore:null});await click('版本恢复');const select=nodes(tree).find(n=>n.type==='select'&&n.props['aria-label']==='历史版本')!;(select.props.onChange as (event:unknown)=>void)({target:{value:'1'}});await settle();await click('恢复为新版本');}
+ else{api.revisions.mockResolvedValueOnce({items:[{revision:1,createdAt:'2026-10-19T00:00:00Z'}],nextBefore:null});await click('版本恢复');const select=nodes(tree).find(n=>n.type==='select'&&n.props['aria-label']==='历史版本')!;(select.props.onChange as (event:unknown)=>void)({target:{value:'1'}});await settle();await click('恢复为新版本');await click('确认恢复历史版本');}
  const original=structuredClone(send.mock.calls[0]);expect(send).toHaveBeenCalledTimes(1);const record=intents.rows.get(identity.id) as {intent:{phase:string,data:{kind:string}}};expect(record.intent.phase).toBe('awaiting-receipt');
  await refreshComponent();expect(send).toHaveBeenCalledTimes(1);expect(renderToStaticMarkup(tree)).toContain('核实并恢复原请求');
  if(kind==='restore')send.mockResolvedValueOnce({...saved(oldId),revision:2});
@@ -222,4 +222,21 @@ it('pauses only the canvas while a structure request waits, and preserves late i
 });
 it('keeps an import unresolved if complete local draft durability fails after all image positions',async()=>{
  await settle();await selectSyntheticImport();await click('确认导入副本');const snapshot=blankWorkbook(laterId,'合成导入'),canvas=canvasRuntime();(canvas.props.runtime as {current:unknown}).current={snapshot:vi.fn().mockResolvedValue(snapshot),draftSnapshot:vi.fn().mockResolvedValue({snapshot,edit:null})};(canvas.props.onReady as ()=>void)();await settle();drafts.write.mockRejectedValueOnce(new Error('Synthetic local quota'));expect(await click('继续导入并保留完整草稿')).toContain('Synthetic local quota');expect((intents.rows.get(identity.id) as {intent:{phase:string}}).intent.phase).toBe('awaiting-receipt');expect(renderToStaticMarkup(tree)).toContain('继续导入并保留完整草稿');expect(api.save).not.toHaveBeenCalled();
+});
+
+it('requires page confirmation and cancels restoration without sending a request',async()=>{
+ await settle();api.revisions.mockResolvedValueOnce({items:[{revision:1,createdAt:'2026-10-19T00:00:00Z'}],nextBefore:null});await click('版本恢复');const select=nodes(tree).find(n=>n.type==='select'&&n.props['aria-label']==='历史版本')!;(select.props.onChange as (event:unknown)=>void)({target:{value:'1'}});await settle();
+ expect(await click('恢复为新版本')).toContain('当前服务器版本');expect(api.restore).not.toHaveBeenCalled();expect(window.confirm).not.toHaveBeenCalled();await click('取消本次恢复');expect(api.restore).not.toHaveBeenCalled();expect(intents.rows.size).toBe(0);
+});
+it('rejects a restore confirmation after new workbook edits',async()=>{
+ await settle();api.revisions.mockResolvedValueOnce({items:[{revision:1,createdAt:'2026-10-19T00:00:00Z'}],nextBefore:null});await click('版本恢复');const select=nodes(tree).find(n=>n.type==='select'&&n.props['aria-label']==='历史版本')!;(select.props.onChange as (event:unknown)=>void)({target:{value:'1'}});await settle();await click('恢复为新版本');const canvas=nodes(tree).find(n=>typeof n.props.onChanged==='function')!;(canvas.props.onChanged as ()=>void)();await settle();expect(await click('确认恢复历史版本')).toContain('内容已变化');expect(api.restore).not.toHaveBeenCalled();expect(intents.rows.size).toBe(0);
+});
+
+it('rejects new editing while the confirmed restore is awaiting draft capture',async()=>{
+ await settle();readyEditor();await settle();api.revisions.mockResolvedValueOnce({items:[{revision:1,createdAt:'2026-10-19T00:00:00Z'}],nextBefore:null});await click('版本恢复');const select=nodes(tree).find(n=>n.type==='select'&&n.props['aria-label']==='历史版本')!;(select.props.onChange as (event:unknown)=>void)({target:{value:'1'}});await settle();await click('恢复为新版本');
+ const canvas=canvasRuntime(),rt=(canvas.props.runtime as {current:{draftSnapshot:ReturnType<typeof vi.fn>}}).current;let resolve!:(value:unknown)=>void;rt.draftSnapshot.mockImplementationOnce(()=>new Promise(r=>{resolve=r;}));const pending=click('确认恢复历史版本');await vi.waitFor(()=>expect(resolve).toBeDefined());(canvas.props.onChanged as ()=>void)();await settle();resolve({snapshot:saved(oldId).snapshot,edit:null});await pending;expect(renderToStaticMarkup(tree)).toContain('确认恢复后又有内容');expect(api.restore).not.toHaveBeenCalled();expect(intents.rows.size).toBe(0);
+});
+it('rejects new editing during restore intent persistence before any network send',async()=>{
+ await settle();api.revisions.mockResolvedValueOnce({items:[{revision:1,createdAt:'2026-10-19T00:00:00Z'}],nextBefore:null});await click('版本恢复');const select=nodes(tree).find(n=>n.type==='select'&&n.props['aria-label']==='历史版本')!;(select.props.onChange as (event:unknown)=>void)({target:{value:'1'}});await settle();await click('恢复为新版本');
+ const write=intents.write.getMockImplementation()!;let release!:()=>void;intents.write.mockImplementationOnce(async(...args:unknown[])=>{const stored=await write(...args);await new Promise<void>(r=>{release=r;});return stored;});const pending=click('确认恢复历史版本');await vi.waitFor(()=>expect(release).toBeDefined());const canvas=canvasRuntime();(canvas.props.onChanged as ()=>void)();await settle();release();await pending;await vi.waitFor(async()=>expect(await settle()).toContain('确认恢复后又有内容'));expect(api.restore).not.toHaveBeenCalled();expect((intents.rows.get(identity.id) as {intent:{phase:string}}).intent.phase).toBe('prepared');
 });

@@ -30,6 +30,7 @@ export function FreeWorkbookWorkspace(){
   const [structureBusy,setStructureBusy]=useState(false);
   const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[uploading,setUploading]=useState(0),[dirty,setDirty]=useState(false),[error,setError]=useState(''),[status,setStatus]=useState(''),[title,setTitle]=useState('新工作簿');
   const [candidate,setCandidate]=useState<WorkbookImport|null>(null),[history,setHistory]=useState<WorkbookRevision[]|null>(null),[before,setBefore]=useState<number|null>(null),[selectedRevision,setSelectedRevision]=useState('');
+  const [restoreConfirmation,setRestoreConfirmation]=useState<{ownerId:string;workbookId:string;expected:number;target:number;sequence:number}|null>(null);
   const pendingImport=useRef<{data:WorkbookImport;index:number;operations:string[];assets:Map<string,string>;intentId:string}|null>(null),candidateSource=useRef<{workbookId:string;bytes:Uint8Array}|null>(null);
   const intentRecord=useRef<StoredWorkbookIntent|null>(null),intentOwner=useRef<string|null>(null);
   const [storedIntent,setStoredIntent]=useState<StoredWorkbookIntent|null>(null),[intentReady,setIntentReady]=useState(false),[intentError,setIntentError]=useState(''),[intentRetry,setIntentRetry]=useState(0);
@@ -73,7 +74,7 @@ export function FreeWorkbookWorkspace(){
     setItems(previous=>previous.some(item=>item.id===id)?previous:[{id,name,revision,snapshotHash,updatedAt},...previous]);
     const url=new URL(window.location.href);url.searchParams.set('workbook',id);historyReplace(url);setReady(false);setActive(value);
     session.current=new WorkbookSaveSession(recovered?.baseRevision??value.revision,recovered?.pending??null);
-    sequence.current=recovered?.sequence??(isDirty?1:0);confirmed.current=0;setDirty(isDirty||Boolean(recovered));setEpoch(n=>n+1);setHistory(null);setRecoveryFailed(false);setImageFailures(0);setEditingDraft(recovered?.edit??null);
+    sequence.current=recovered?.sequence??(isDirty?1:0);confirmed.current=0;setDirty(isDirty||Boolean(recovered));setEpoch(n=>n+1);setHistory(null);setRestoreConfirmation(null);setRecoveryFailed(false);setImageFailures(0);setEditingDraft(recovered?.edit??null);
     setStatus(recovered?`已恢复本机草稿 · 基于版本 ${recovered.baseRevision}`:isDirty?'待保存':`已读取版本 ${value.revision}`);
     const generation=++draftGeneration.current;editorId.current=recovered?.editorId??crypto.randomUUID();localDraft.current=recovered??null;draftWriteVersion.current=recovered?.writeVersion??0;setRecoverable([]);cloud.current=recoveredCloud??(ownerId?new ServerDraftSession({workbookId:id,authorUserId:ownerId,baseWorkbookRevision:recovered?.baseRevision??value.revision}):null);setCloudRecovery(null);setCloudStatus('');cloudLoadVersion.current++;setCloudReady(Boolean(recovered||isDirty)&&!cloud.current?.conflicted);if(recovered)setCloudStatus(cloud.current?.conflicted?'服务器草稿冲突，本机内容保留，请重新读取':cloud.current?.uncertain?'服务器草稿结果待确认，本机内容保留':'已恢复本机内容，服务器草稿自动保存已启用');setDraftStatus(recovered?'本机草稿已恢复 · 尚未提交服务器':'');
     if(!ownerId||isDirty||recovered){setDraftReady(true);return;}
@@ -105,7 +106,7 @@ export function FreeWorkbookWorkspace(){
     // underneath a B URL while B is loading or after B is denied/not found.
     activeId.current=null;runtime.current=null;session.current=null;
     if(identityChanged){pendingImport.current=null;candidateSource.current=null;setUploading(0);}
-    setMappingOpen(false);setMappingStatus('');setActive(null);setReady(false);setDirty(false);setCandidate(null);setHistory(null);setStatus('');setLoading(true);setError('');draftGeneration.current++;cloud.current=null;setCloudReady(false);setCloudRecovery(null);setCloudStatus('');localDraft.current=null;setRecoverable([]);setDraftStatus('');
+    setMappingOpen(false);setMappingStatus('');setActive(null);setReady(false);setDirty(false);setCandidate(null);setHistory(null);setRestoreConfirmation(null);setStatus('');setLoading(true);setError('');draftGeneration.current++;cloud.current=null;setCloudReady(false);setCloudRecovery(null);setCloudStatus('');localDraft.current=null;setRecoverable([]);setDraftStatus('');
     void (async()=>{
       try{
         if(requested==='')throw new Error('工作簿标识无效，请检查链接。');
@@ -170,15 +171,15 @@ export function FreeWorkbookWorkspace(){
     if(!isCurrent()||activeMeta.current!==meta||session.current?.revision!==meta.revision)throw new Error('账号、工作簿或正式版本已变化，请重新打开映射。');
     return {workbookId:meta.id,formalRevision:meta.revision,sourceSnapshotHash:meta.snapshotHash,snapshot};
   }
-  function intentPorts(){
+  function intentPorts(assertConfirmation?:()=>void){
     const owner=ownerId,isCurrent=captureScope();
-    const assertActive=()=>{if(!owner||currentOwner.current!==owner||intentOwner.current!==owner||!isCurrent())throw new Error('原账号或工作簿已切换，原请求日志保留，请回到原账号核实。');};
+    const assertActive=()=>{if(!owner||currentOwner.current!==owner||intentOwner.current!==owner||!isCurrent())throw new Error('原账号或工作簿已切换，原请求日志保留，请回到原账号核实。');assertConfirmation?.();};
     return {assertActive,onStored:(record:StoredWorkbookIntent)=>{if(currentOwner.current===owner&&intentOwner.current===owner){intentRecord.current=record;setStoredIntent(record);}}};
   }
   async function retainCurrentDraft(){if(active&&runtime.current&&sequence.current>0){const isCurrent=captureScope(),captured=await captureLatestDraft(isCurrent,true);if(!isCurrent())throw new Error('当前页面已切换，原草稿保留。');if(!captured||captured.sequence!==sequence.current)throw new Error('保留草稿期间又有输入，请完成输入后重试，原操作未继续。');}}
-  async function resumeIntent(record= intentRecord.current){
+  async function resumeIntent(record= intentRecord.current,assertConfirmation?:()=>void){
     if(!record||!ownerId||intentOwner.current!==ownerId)throw new Error('请先读取当前账号的操作记录。');
-    const ports=intentPorts(),coordinator=new WorkbookIntentSession(ownerId,record,ports);ports.assertActive();
+    const ports=intentPorts(assertConfirmation),coordinator=new WorkbookIntentSession(ownerId,record,ports);ports.assertActive();
     if(record.intent.phase==='confirmed'&&record.intent.resolution==='rejected')throw new Error('原操作已明确拒绝；保留的原文件和本机草稿未删除，可结束此记录后重试新操作。');
     await retainCurrentDraft();ports.assertActive();
     await coordinator.execute();ports.assertActive();const current=coordinator.record,intent=current.intent;
@@ -266,11 +267,14 @@ export function FreeWorkbookWorkspace(){
   });}
   async function exportFile(){await run(async()=>{const isCurrent=captureScope();if(!active||!runtime.current||pendingImport.current||uploading)throw new Error('请先完成图片导入。');const snapshot=await runtime.current.snapshot(),assets=await listSheetImages('SHEET_WORKBOOK',[active.id]);const {writeFreeWorkbook}=await import('./xlsx');const {workbookExportWarnings}=await import('./filter-exchange');const warnings=workbookExportWarnings(snapshot);if(!isCurrent())return;if(warnings.length&&!window.confirm(`${warnings.join('\n')}\n继续导出副本？`))return;const bytes=await writeFreeWorkbook(snapshot,assets,{allowFilterCriteriaConversion:warnings.length>0});if(!isCurrent())return;downloadWorkbook(bytes,`${snapshot.name}.xlsx`);setStatus('已导出当前内容；服务器保存状态未改变');});}
   async function showHistory(more=false){if(!active)return;await run(async()=>{const isCurrent=captureScope();const result=await listRevisions(active.id,more?before??undefined:undefined,readController.current?.signal);if(!isCurrent())return;setHistory(previous=>more?[...previous??[],...result.items]:result.items);setBefore(result.nextBefore);});}
-  async function restore(){if(!active||!selectedRevision||!canLeave())return;if(!window.confirm('将此历史版本恢复为新版本？当前服务器版本保留在历史中。'))return;await run(async()=>{
+  function requestRestore(){if(!active||!ownerId||!selectedRevision||!canLeave())return;setRestoreConfirmation({ownerId,workbookId:active.id,expected:active.revision,target:Number(selectedRevision),sequence:sequence.current});}
+  async function restore(){const confirmation=restoreConfirmation;if(!confirmation)return;setRestoreConfirmation(null);
+    if(!active||ownerId!==confirmation.ownerId||currentOwner.current!==confirmation.ownerId||active.id!==confirmation.workbookId||activeId.current!==confirmation.workbookId||active.revision!==confirmation.expected||sequence.current!==confirmation.sequence||Number(selectedRevision)!==confirmation.target){setError('账号、工作簿或内容已变化，请重新核对历史版本后确认恢复。');return;}
+    if(!canLeave())return;const assertConfirmation=()=>{if(currentOwner.current!==confirmation.ownerId||activeMeta.current?.id!==confirmation.workbookId||activeMeta.current.revision!==confirmation.expected||sequence.current!==confirmation.sequence)throw new Error('确认恢复后又有内容或版本变化，原内容和操作日志保留，请重新核对。');};await run(async()=>{
     if(!ownerId||!intentReady||intentOwner.current!==ownerId||intentRecord.current)throw new Error('请先读取并结束原操作记录。');
-    const ports=intentPorts();await retainCurrentDraft();ports.assertActive();
-    const intent:WorkbookIntent={version:1,intentId:crypto.randomUUID(),phase:'prepared',resolution:null,data:{kind:'restore',id:active.id,revision:Number(selectedRevision),expected:active.revision,operationId:crypto.randomUUID()}};
-    const coordinator=await WorkbookIntentSession.prepare(ownerId,intent,ports);await resumeIntent(coordinator.record);
+    const ports=intentPorts(assertConfirmation);ports.assertActive();await retainCurrentDraft();ports.assertActive();
+    const intent:WorkbookIntent={version:1,intentId:crypto.randomUUID(),phase:'prepared',resolution:null,data:{kind:'restore',id:confirmation.workbookId,revision:confirmation.target,expected:confirmation.expected,operationId:crypto.randomUUID()}};
+    const coordinator=await WorkbookIntentSession.prepare(ownerId,intent,ports);await resumeIntent(coordinator.record,assertConfirmation);
   },true);}
   return <section className="fw-workspace"><div inert={mappingOpen}>
     <header className="fw-heading"><div><h1>颜色工作簿</h1><span className="fw-kind">自由编辑</span></div><Link href="/admin/color-database?view=records" className="fw-link">业务颜色记录</Link></header>
@@ -300,7 +304,7 @@ export function FreeWorkbookWorkspace(){
     {imageFailures>0&&<div className="fw-error" role="alert">{imageFailures} 张图片读取失败，位置和资源引用仍保留。<button disabled={busy||uploading>0||!ready} onClick={()=>void run(async()=>{const isCurrent=captureScope(),remaining=await runtime.current!.retryImages();if(isCurrent())setStatus(remaining?'仍有图片无法读取，可稍后再次重试':'图片已重新读取；保存状态未改变');})}>重试失败图片</button></div>}
     {error&&<div className="fw-error" role="alert">{error}{!active&&<button disabled={loading||busy} onClick={()=>setLoadEpoch(value=>value+1)}>重试读取工作簿</button>}</div>}
     {candidate&&<div className="fw-dialog" role="dialog" aria-label="导入工作簿"><h2>{candidate.fileName}</h2><p>{candidate.snapshot.sheetOrder.length} 张工作表 · {candidate.images.length} 张图片</p><p>导入为新的工作簿副本。原文件保持不变，保存后写入服务器。</p>{candidate.warnings.map(w=><p key={w} className="fw-error">{w}</p>)}<button disabled={busy} className="fw-primary" onClick={()=>void acceptImport()}>确认导入副本</button><button disabled={busy||!!storedIntent} onClick={()=>{candidateSource.current=null;setCandidate(null);}}>取消</button></div>}
-    {history&&<div className="fw-dialog" role="dialog" aria-label="工作簿版本"><h2>版本恢复</h2><select aria-label="历史版本" value={selectedRevision} onChange={event=>setSelectedRevision(event.target.value)}><option value="">选择历史版本</option>{history.map(item=><option key={item.revision} value={item.revision}>版本 {item.revision} · {new Date(item.createdAt).toLocaleString()}</option>)}</select><button disabled={!canEdit||busy||!selectedRevision||!intentReady||!!storedIntent} onClick={()=>void restore()}>恢复为新版本</button>{before&&<button onClick={()=>void showHistory(true)}>更早版本</button>}<button disabled={busy} onClick={()=>setHistory(null)}>关闭</button></div>}
+    {history&&<div className="fw-dialog" role="dialog" aria-label="工作簿版本"><h2>版本恢复</h2><select aria-label="历史版本" disabled={busy||!!restoreConfirmation} value={selectedRevision} onChange={event=>setSelectedRevision(event.target.value)}><option value="">选择历史版本</option>{history.map(item=><option key={item.revision} value={item.revision}>版本 {item.revision} · {new Date(item.createdAt).toLocaleString()}</option>)}</select><button disabled={!canEdit||busy||!selectedRevision||!intentReady||!!storedIntent||!!restoreConfirmation} onClick={requestRestore}>恢复为新版本</button>{restoreConfirmation&&<section aria-label="确认历史恢复"><p>将历史版本 {restoreConfirmation.target} 恢复为新版本。当前服务器版本 {restoreConfirmation.expected} 和旧历史继续保留；恢复不会覆盖历史记录。</p><button disabled={!canEdit||busy||!intentReady||!!storedIntent} onClick={()=>void restore()}>确认恢复历史版本</button><button disabled={busy} onClick={()=>setRestoreConfirmation(null)}>取消本次恢复</button></section>}{before&&<button disabled={busy||!!restoreConfirmation} onClick={()=>void showHistory(true)}>更早版本</button>}<button disabled={busy} onClick={()=>{setRestoreConfirmation(null);setHistory(null);}}>关闭</button></div>}
     {pendingImport.current&&ready&&<div className="fw-import-progress"><span>重建图片 {pendingImport.current.index} / {pendingImport.current.data.images.length} · 原件与操作 ID 已保留</span><button disabled={busy} onClick={()=>void importImages()}>继续导入并保留完整草稿</button></div>}
     {recoverable.length>0&&<div className="fw-dialog" role="dialog" aria-label="恢复本机草稿"><h2>发现未提交的本机草稿</h2><p>服务器版本 {active?.revision} 已读取。恢复只打开草稿，不会覆盖服务器；结果未知的保存将沿用原请求核实。</p>{recoverable.map(draft=><div key={draft.editorId}><span>{new Date(draft.savedAt).toLocaleString()} · 基于版本 {draft.baseRevision}{draft.pending?' · 保存结果待确认':''}{draft.edit?' · 包含尚未确认的单元格输入':''}</span><button disabled={busy} onClick={()=>void recoverDraft(draft)}>恢复这份草稿</button><button disabled={busy} onClick={()=>downloadDraft(draft)}>下载草稿恢复副本</button><button disabled={busy} onClick={()=>void discardDraft(draft)}>放弃这份草稿</button></div>)}<button disabled={busy} onClick={()=>setRecoverable([])}>暂不恢复，查看服务器版本</button></div>}
     {recoveryFailed&&localDraft.current&&<div className="fw-dialog" role="alert"><p>未确认输入尚未完整恢复，编辑已暂停。原稿仍在本机，可重试或下载含文字、格式及原请求的完整恢复副本。</p><button disabled={busy} onClick={()=>{if(active&&localDraft.current)mount(active,true,localDraft.current);}}>重新尝试恢复输入</button><button disabled={busy} onClick={()=>localDraft.current&&downloadDraft(localDraft.current)}>下载草稿恢复副本</button></div>}
