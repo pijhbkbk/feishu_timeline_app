@@ -1,4 +1,6 @@
 import { assertInspectionReviewLink } from '../inspections/inspection-review-link';
+import { createHash } from 'node:crypto';
+import { parseExteriorRectificationCommand, readExteriorRectification, requireExteriorRectificationComplete } from '../../common/exterior-rectification';
 import { REVIEW_STANDARD_SELECT, assertReviewStandardUnchanged, loadReviewStandardOptions, parseReviewStandardVersionId, requireReviewStandardVersion } from './review-standard-version';
 import { isApprovedTeamMember } from '../../common/team-membership';
 import { BusinessClock } from '../../common/business-clock';
@@ -644,6 +646,56 @@ export class ReviewsService {
     return this.buildConsistencyReviewWorkspace(this.prisma, projectId);
   }
 
+  /** Existing team members record supplier correction; this is not another approval role. */
+  async completeExteriorRectification(projectId: string, rawInput: unknown, actor: AuthenticatedUser) {
+    await this.assertActorCanManage(projectId, actor);
+    const input = parseExteriorRectificationCommand(rawInput);
+    const requestHash = createHash('sha256').update(JSON.stringify({ actorId: actor.id, projectId, ...input })).digest('hex');
+    const receipt = await withProjectWrite(this.prisma, actor, { projectId }, async tx => {
+      await tx.$queryRaw(Prisma.sql`SELECT id FROM workflow_tasks WHERE id = ${input.taskId} AND "projectId" = ${projectId} FOR UPDATE`);
+      const task = await tx.workflowTask.findFirst({ where: { id: input.taskId, projectId, nodeCode: WorkflowNodeCode.COLOR_CONSISTENCY_REVIEW } });
+      if (!task) throw new ConflictException('整车整改任务不存在或不属于本项目。');
+      const correction = readExteriorRectification(task);
+      if (!correction) throw new ConflictException('本任务不是外饰件厂家整改轮次。');
+      if (correction.status === 'COMPLETED') {
+        if (correction.operationId !== input.operationId || correction.requestHash !== requestHash || correction.recordedById !== actor.id) throw new ConflictException('本轮整改已登记；不得覆盖原完成事实或更换请求内容。');
+        const progress = await tx.taskProgressUpdate.findFirst({ where: { id: correction.progressUpdateId, projectId, workflowTaskId: task.id, submittedById: actor.id } });
+        if (!progress) throw new ConflictException('整改完成依据缺失，请核对历史记录。');
+        return { taskId: task.id, operationId: input.operationId, progressUpdateId: progress.id };
+      }
+      const instance = await tx.workflowInstance.findFirst({ where: { id: task.workflowInstanceId, projectId, status: 'RUNNING' }, select: { id: true } });
+      if (!instance) throw new ConflictException('流程已结束或取消，不能登记新的整改完成。');
+      const context = await this.getConsistencyReviewContext(tx, projectId);
+      const stageIssue = getConsistencyReviewStageIssue({ cabinReviewCompleted: context.cabinReviewCompleted, hasActiveTask: context.activeTask?.id === task.id });
+      if (stageIssue) throw new BadRequestException(stageIssue);
+      await assertTeamTaskById(tx, task.id, actor);
+      if (task.updatedAt.toISOString() !== input.expectedTaskVersion) throw new ConflictException('整改任务版本已变化，请刷新核对；未登记完成。');
+      const recordedAt = this.businessClock.now();
+      const progress = await tx.taskProgressUpdate.create({ data: {
+        // Existing progress semantics: the review task remains IN_PROGRESS (50), not completed by supplier correction.
+        projectId, workflowTaskId: task.id, submittedById: actor.id, progressStatus: 'IN_PROGRESS', completionPercent: 50,
+        completedContent: `外饰件厂家：${input.supplierName}\n整改完成日期：${input.completedOn}\n整改说明：${input.summary}`,
+        nextPlan: '进行本轮整车复审；本记录不代表评审通过。', idempotencyKey: `exterior:${task.id}:${input.operationId}`,
+        requestId: input.operationId, taskVersion: input.expectedTaskVersion,
+      } });
+      const completed = { status: 'COMPLETED', sourceTaskId: correction.sourceTaskId, supplierName: input.supplierName,
+        completedOn: input.completedOn, summary: input.summary, recordedAt: recordedAt.toISOString(), recordedById: actor.id,
+        progressUpdateId: progress.id, operationId: input.operationId, requestHash } as const;
+      const payload = task.payload && typeof task.payload === 'object' && !Array.isArray(task.payload) ? task.payload : {};
+      const claimed = await tx.workflowTask.updateMany({ where: { id: task.id, projectId, isActive: true, updatedAt: task.updatedAt },
+        data: { payload: { ...payload, exteriorRectification: completed }, updatedAt: new Date(Math.max(recordedAt.getTime(), task.updatedAt.getTime() + 1)) } });
+      if (claimed.count !== 1) throw new ConflictException('整改任务已变化；完成记录未提交。');
+      await this.activityLogsService.createWithExecutor(tx, { projectId, actorUserId: actor.id, targetType: AuditTargetType.WORKFLOW_TASK,
+        targetId: task.id, nodeCode: WorkflowNodeCode.COLOR_CONSISTENCY_REVIEW, action: 'EXTERIOR_RECTIFICATION_COMPLETED',
+        summary: '登记外饰件厂家整改完成，开放本轮整车复审；有效技术、标准、颜色与收费事实保留。',
+        beforeData: { status: 'PENDING', sourceTaskId: correction.sourceTaskId },
+        afterData: completed, metadata: { operationId: input.operationId, progressUpdateId: progress.id },
+      });
+      return { taskId: task.id, operationId: input.operationId, progressUpdateId: progress.id };
+    });
+    return { receipt, workspace: await this.buildConsistencyReviewWorkspace(this.prisma, projectId) };
+  }
+
   async updateConsistencyReview(
     projectId: string,
     reviewId: string,
@@ -936,7 +988,7 @@ export class ReviewsService {
         WorkflowAction.REJECT,
         actor,
         {
-          comment: updatedReview.rejectReason ?? '颜色一致性评审不通过，退回涂料开发。',
+          comment: updatedReview.rejectReason ?? '整车评审不通过，转外饰件厂家整改后复审。',
           metadata: {
             reviewRecordId: updatedReview.id,
             returnToNodeCode: updatedReview.returnToNodeCode,
@@ -945,10 +997,10 @@ export class ReviewsService {
         'designated-review',
       );
 
-      const returnedPaintDevelopmentTask = await this.getLatestWorkflowTaskByNode(
+      const exteriorRectificationTask = await this.getLatestWorkflowTaskByNode(
         tx,
         projectId,
-        WorkflowNodeCode.PAINT_DEVELOPMENT,
+        WorkflowNodeCode.COLOR_CONSISTENCY_REVIEW,
       );
 
       await this.activityLogsService.createWithExecutor(tx, {
@@ -958,12 +1010,12 @@ export class ReviewsService {
         targetId: reviewId,
         action: 'CONSISTENCY_REVIEW_REJECTED',
         nodeCode: WorkflowNodeCode.COLOR_CONSISTENCY_REVIEW,
-        summary: '颜色一致性评审驳回，已退回涂料开发。',
+        summary: '整车评审驳回，已建立外饰件厂家整改与整车复审轮次；有效事实保留。',
         afterData: {
           reviewRecordId: updatedReview.id,
           rejectReason: updatedReview.rejectReason,
           returnToNodeCode: updatedReview.returnToNodeCode,
-          returnedPaintDevelopmentTaskId: returnedPaintDevelopmentTask?.id ?? null,
+          exteriorRectificationTaskId: exteriorRectificationTask?.id ?? null,
         },
       });
     });
@@ -1606,6 +1658,7 @@ export class ReviewsService {
       project: this.toProjectSummary(project),
       ...await loadReviewStandardOptions(db, project, activeTask),
       cabinReviewCompleted,
+      exteriorRectification: activeTask ? this.toExteriorRectificationSummary(activeTask) : null,
       activeTask: activeTask ? this.toWorkflowTaskSummary(activeTask) : null,
       downstreamTask: schedulePlanTask
         ? this.toWorkflowTaskSummary(schedulePlanTask)
@@ -2207,7 +2260,7 @@ export class ReviewsService {
 
   private assertWritableConsistencyReviewStage(context: {
     cabinReviewCompleted: boolean;
-    activeTask: { id: string } | null;
+    activeTask: { id: string; payload?: Prisma.JsonValue | null } | null;
   }) {
     const issue = getConsistencyReviewStageIssue({
       cabinReviewCompleted: context.cabinReviewCompleted,
@@ -2217,6 +2270,7 @@ export class ReviewsService {
     if (issue) {
       throw new BadRequestException(issue);
     }
+    if (context.activeTask) requireExteriorRectificationComplete(context.activeTask);
   }
 
   private assertWritableVisualDeltaReviewStage(context: {
@@ -3225,6 +3279,14 @@ export class ReviewsService {
       targetDate: project.plannedEndDate?.toISOString() ?? null,
       riskLevel: project.priority,
     };
+  }
+
+  private toExteriorRectificationSummary(task: { id: string; payload: Prisma.JsonValue | null; updatedAt: Date; reworkReason: string | null }) {
+    const correction = readExteriorRectification(task);
+    if (!correction) return null;
+    const common = { taskId: task.id, taskVersion: task.updatedAt.toISOString(), sourceTaskId: correction.sourceTaskId, requirement: task.reworkReason, status: correction.status };
+    return correction.status === 'PENDING' ? common : { ...common, supplierName: correction.supplierName, completedOn: correction.completedOn,
+      summary: correction.summary, recordedAt: correction.recordedAt, recordedById: correction.recordedById, progressUpdateId: correction.progressUpdateId };
   }
 
   private toWorkflowTaskSummary(

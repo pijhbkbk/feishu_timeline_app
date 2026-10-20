@@ -2,10 +2,15 @@ import 'reflect-metadata';
 
 import { describe, expect, it } from 'vitest';
 
-import { ROLE_METADATA_KEY } from '../auth/auth.constants';
+import { ROLE_METADATA_KEY, PUBLIC_ROUTE_KEY } from '../auth/auth.constants';
 import { ReviewsController } from './reviews.controller';
 
 describe('ReviewsController RBAC metadata', () => {
+  it('keeps exterior correction within the existing authenticated review boundary', () => {
+    const handler = ReviewsController.prototype.completeExteriorRectification;
+    expect(Reflect.getMetadata(PUBLIC_ROUTE_KEY, handler)).toBeUndefined();
+    expect(Reflect.getMetadata(ROLE_METADATA_KEY, handler)).toEqual(Reflect.getMetadata(ROLE_METADATA_KEY, ReviewsController.prototype.rejectConsistencyReview));
+  });
   it('protects cabin review endpoints with reviewer roles', () => {
     const prototype = ReviewsController.prototype;
 

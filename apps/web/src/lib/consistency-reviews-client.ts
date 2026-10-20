@@ -59,6 +59,7 @@ export type ConsistencyReviewRecord = {
 };
 
 export type ConsistencyReviewWorkspaceResponse = ReviewStandardOptions & {
+  exteriorRectification?: ExteriorRectificationSummary | null;
   project: {
     id: string;
     code: string;
@@ -73,6 +74,20 @@ export type ConsistencyReviewWorkspaceResponse = ReviewStandardOptions & {
   downstreamTask: WorkflowTaskSummary | null;
   items: ConsistencyReviewRecord[];
 };
+
+export interface ExteriorRectificationSummary {
+  taskId: string; taskVersion: string; sourceTaskId: string; requirement: string | null; status: 'PENDING' | 'COMPLETED';
+  supplierName?: string; completedOn?: string; summary?: string; recordedAt?: string; recordedById?: string; progressUpdateId?: string;
+}
+export interface ExteriorRectificationInput {
+  taskId: string; expectedTaskVersion: string; operationId: string; supplierName: string; completedOn: string; summary: string;
+}
+export async function completeExteriorRectification(projectId: string, input: Readonly<ExteriorRectificationInput>) {
+  const result = await apiRequest<{ receipt: { taskId: string; operationId: string; progressUpdateId: string }; workspace: ConsistencyReviewWorkspaceResponse }>(
+    `/projects/${projectId}/reviews/consistency/rectification`, { method: 'POST', body: input, signal: AbortSignal.timeout(15000) });
+  if (result.receipt?.taskId !== input.taskId || result.receipt.operationId !== input.operationId || (typeof result.receipt.progressUpdateId !== 'string' || !/^[A-Za-z0-9_-]{1,128}$/.test(result.receipt.progressUpdateId)) || result.workspace?.project.id !== projectId) throw new Error('整改保存回执不匹配；请保留原请求并刷新核对。');
+  return result;
+}
 
 export type ConsistencyReviewFormInput = {
   standardVersionId?: string;
@@ -213,7 +228,7 @@ export function canShowConsistencyReviewSubmitButton(
   workspace: ConsistencyReviewWorkspaceResponse,
   review: ConsistencyReviewRecord,
 ) {
-  if (!workspace.activeTask || review.submittedAt) {
+  if (!workspace.activeTask || workspace.exteriorRectification?.status === 'PENDING' || review.submittedAt) {
     return false;
   }
 
@@ -225,7 +240,7 @@ export function canShowConsistencyReviewApproveButton(
   workspace: ConsistencyReviewWorkspaceResponse,
   review: ConsistencyReviewRecord,
 ) {
-  if (!workspace.activeTask || !review.submittedAt) {
+  if (!workspace.activeTask || workspace.exteriorRectification?.status === 'PENDING' || !review.submittedAt) {
     return false;
   }
 
@@ -244,7 +259,7 @@ export function canShowConsistencyReviewRejectButton(
   workspace: ConsistencyReviewWorkspaceResponse,
   review: ConsistencyReviewRecord,
 ) {
-  if (!workspace.activeTask || !review.submittedAt) {
+  if (!workspace.activeTask || workspace.exteriorRectification?.status === 'PENDING' || !review.submittedAt) {
     return false;
   }
 

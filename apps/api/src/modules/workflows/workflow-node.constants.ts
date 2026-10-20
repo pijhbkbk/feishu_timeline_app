@@ -185,7 +185,7 @@ export const WORKFLOW_NODE_META_MAP: Record<WorkflowNodeCode, WorkflowNodeMeta> 
       WorkflowAction.REJECT,
       WorkflowAction.RETURN,
     ],
-    defaultReturnNodeCode: WorkflowNodeCode.PAINT_DEVELOPMENT,
+    defaultReturnNodeCode: WorkflowNodeCode.COLOR_CONSISTENCY_REVIEW,
   },
   [WorkflowNodeCode.MASS_PRODUCTION_PLAN]: {
     name: '排产计划',
@@ -379,16 +379,16 @@ export const WORKFLOW_NEXT_TASK_MAP: Partial<
     ],
     [WorkflowAction.REJECT]: [
       {
-        nodeCode: WorkflowNodeCode.PAINT_DEVELOPMENT,
+        nodeCode: WorkflowNodeCode.COLOR_CONSISTENCY_REVIEW,
         isPrimary: true,
-        reason: '一致性评审不通过，退回涂料开发。',
+        reason: '整车评审不通过，外饰件厂家整改完成后进行新一轮整车复审。',
       },
     ],
     [WorkflowAction.RETURN]: [
       {
-        nodeCode: WorkflowNodeCode.PAINT_DEVELOPMENT,
+        nodeCode: WorkflowNodeCode.COLOR_CONSISTENCY_REVIEW,
         isPrimary: true,
-        reason: '一致性评审退回，重新进行涂料开发。',
+        reason: '整车评审退回外饰件厂家整改，保留有效事实后进行整车复审。',
       },
     ],
   },

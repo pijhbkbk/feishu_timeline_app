@@ -132,7 +132,7 @@ export function getConsistencyReviewStageIssue(input: {
 }
 
 export function getConsistencyReviewReturnNodeCode() {
-  return WorkflowNodeCode.PAINT_DEVELOPMENT;
+  return WorkflowNodeCode.COLOR_CONSISTENCY_REVIEW;
 }
 
 export function getVisualDeltaReviewStageIssue(input: {

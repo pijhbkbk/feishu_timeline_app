@@ -10,6 +10,8 @@ import {
 } from './consistency-review-workspace';
 import {
   canShowConsistencyReviewSubmitButton,
+  canShowConsistencyReviewApproveButton,
+  canShowConsistencyReviewRejectButton,
   validateConsistencyReviewForm,
   type ConsistencyReviewWorkspaceResponse,
 } from '../lib/consistency-reviews-client';
@@ -86,6 +88,14 @@ const workspace: ConsistencyReviewWorkspaceResponse = {
 };
 
 describe('ConsistencyReviewWorkspace', () => {
+  it('blocks review buttons until exterior supplier correction is recorded', () => {
+    const pending: ConsistencyReviewWorkspaceResponse = { ...workspace, exteriorRectification: { status: 'PENDING', taskId: 'task-1', taskVersion: '2026-10-20T00:00:00.000Z', sourceTaskId: 'old-14', requirement: '外饰件整改' } };
+    const row = workspace.items[0]!;
+    expect(canShowConsistencyReviewSubmitButton(reviewerUser, pending, row)).toBe(false);
+    expect(canShowConsistencyReviewApproveButton(reviewerUser, pending, { ...row, submittedAt: '2026-10-20T00:00:00.000Z' })).toBe(false);
+    expect(canShowConsistencyReviewRejectButton(reviewerUser, pending, { ...row, reviewConclusion: 'REJECTED', submittedAt: '2026-10-20T00:00:00.000Z' })).toBe(false);
+    expect(canShowConsistencyReviewSubmitButton(reviewerUser, { ...pending, exteriorRectification: { ...pending.exteriorRectification!, status: 'COMPLETED' } }, row)).toBe(true);
+  });
   it('renders consistency review form fields', () => {
     const html = renderToStaticMarkup(
       <ConsistencyReviewForm

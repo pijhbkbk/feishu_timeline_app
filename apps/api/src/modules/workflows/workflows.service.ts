@@ -1,3 +1,4 @@
+import { requireExteriorRectificationComplete } from '../../common/exterior-rectification';
 import { PERSON_PRESENTATION_SELECT, personPresentation } from '../persons/person-profile-read';
 import { PROJECT_DISPLAY_COLOR_SELECT, resolveProjectDisplayColor } from '../../common/project-display-color';
 import { assertApprovedTeamMember } from '../../common/team-membership';
@@ -1308,6 +1309,7 @@ export class WorkflowsService {
     await this.projectAccessService.assertProjectAccess(tx, task.projectId, actor, 'workflow.transition');
     this.assertActorCanOperateTask(task, actor, authorizationSource);
     this.assertTaskCanTransition(task, action);
+    if (task.nodeCode === WorkflowNodeCode.COLOR_CONSISTENCY_REVIEW && action !== WorkflowAction.START) requireExteriorRectificationComplete(task);
 
     if (trustedOptions?.enforceCompletionRequirements) {
       const inspection = await this.inspectTaskCompletionWithExecutor(
@@ -1428,11 +1430,6 @@ export class WorkflowsService {
       },
     });
 
-    if (task.nodeCode === WorkflowNodeCode.COLOR_CONSISTENCY_REVIEW &&
-        (action === WorkflowAction.REJECT || action === WorkflowAction.RETURN)) {
-      await this.invalidateTechnicalRound(tx, task, actor, input.comment ?? '一致性评审退回涂料开发');
-    }
-
     const createdTasks = await this.createNextTasks(
       tx,
       task,
@@ -1513,39 +1510,6 @@ export class WorkflowsService {
     return getCurrentNodeName(nodeCode);
   }
 
-  /** Caller holds the project lock. Preserve signed history and identity/fee
-   * matters; only technical execution authority is superseded by a 14 return. */
-  private async invalidateTechnicalRound(tx: Prisma.TransactionClient, source: WorkflowTaskWithRelations,
-    actor: AuthenticatedUser, reason: string) {
-    const nodes: WorkflowNodeCode[] = [
-      WorkflowNodeCode.PAINT_DEVELOPMENT, WorkflowNodeCode.SAMPLE_COLOR_CONFIRMATION,
-      WorkflowNodeCode.PAINT_PROCUREMENT, WorkflowNodeCode.STANDARD_BOARD_PRODUCTION,
-      WorkflowNodeCode.BOARD_DETAIL_UPDATE, WorkflowNodeCode.PERFORMANCE_TEST,
-      WorkflowNodeCode.FIRST_UNIT_PRODUCTION_PLAN, WorkflowNodeCode.TRIAL_PRODUCTION, WorkflowNodeCode.CAB_REVIEW,
-    ];
-    // Only the latest execution per affected node; prior rework history is immutable.
-    for (const nodeCode of nodes) {
-      const previous = await tx.workflowTask.findFirst({ where: { workflowInstanceId: source.workflowInstanceId, nodeCode },
-        orderBy: [{ taskRound: 'desc' }, { id: 'desc' }] });
-      if (!previous) continue;
-      const payload = this.asJsonObject(previous.payload);
-      const priorRework = this.asJsonObject(payload.rework as Prisma.JsonValue | undefined);
-      if (priorRework.invalidatedByTaskId) continue;
-      const rework = { invalidatedByTaskId: source.id, applicability: 'REQUIRES_REVIEW', reason };
-      await tx.workflowTask.update({ where: { id: previous.id }, data: {
-        payload: { ...payload, rework } as Prisma.InputJsonObject,
-        ...(previous.isActive ? { status: WorkflowTaskStatus.CANCELLED, isActive: false, assignmentEpoch: { increment: 1 } } : {}),
-      } });
-      await this.activityLogsService.createWithExecutor(tx, { projectId: source.projectId, actorUserId: actor.id,
-        targetType: AuditTargetType.WORKFLOW_TASK, targetId: previous.id, nodeCode, action: 'WORKFLOW_REWORK_REVIEW_REQUIRED',
-        summary: `${previous.nodeName} 的旧结果保留，需按新配方复核。`,
-        beforeData: { status: previous.status, isActive: previous.isActive, assignmentEpoch: previous.assignmentEpoch },
-        afterData: { status: previous.isActive ? WorkflowTaskStatus.CANCELLED : previous.status, isActive: false,
-          assignmentEpoch: previous.assignmentEpoch + Number(previous.isActive), ...rework },
-      });
-    }
-  }
-
   private async createNextTasks(
     tx: Prisma.TransactionClient,
     sourceTask: WorkflowTaskWithRelations,
@@ -1557,9 +1521,10 @@ export class WorkflowsService {
   ) {
     void trustedAssignments; // Assignment is always resolved from current team roles.
     const sourcePayload = this.asJsonObject(sourceTask.payload);
-    const technicalReworkSourceTaskId = sourceTask.nodeCode === WorkflowNodeCode.COLOR_CONSISTENCY_REVIEW &&
-      (action === WorkflowAction.REJECT || action === WorkflowAction.RETURN) ? sourceTask.id :
-      typeof sourcePayload.technicalReworkSourceTaskId === 'string' ? sourcePayload.technicalReworkSourceTaskId : undefined;
+    // Preserve already-existing technical ancestry; exterior correction must not start a paint round.
+    const technicalReworkSourceTaskId = typeof sourcePayload.technicalReworkSourceTaskId === 'string' ? sourcePayload.technicalReworkSourceTaskId : undefined;
+    const exteriorCorrection = sourceTask.nodeCode === WorkflowNodeCode.COLOR_CONSISTENCY_REVIEW &&
+      (action === WorkflowAction.REJECT || action === WorkflowAction.RETURN);
     const createdTasks: Prisma.WorkflowTaskGetPayload<{
       select: {
         id: true;
@@ -1621,7 +1586,7 @@ export class WorkflowsService {
           projectId: sourceTask.projectId,
           taskNo: this.buildTaskNo(),
           nodeCode: template.nodeCode,
-          nodeName: nextNodeMeta.name,
+          nodeName: exteriorCorrection ? '外饰件厂家整改与整车复审' : nextNodeMeta.name,
           stepCode: taskSchedule.stepCode,
           taskRound: (previousTask?.taskRound ?? 0) + 1,
           status: WorkflowTaskStatus.READY,
@@ -1651,6 +1616,7 @@ export class WorkflowsService {
             collaboratorUserIds: [], reviewerUserIds: [],
             ...(previousTask?.id ? { supersedesTaskId: previousTask.id } : {}),
             ...(technicalReworkSourceTaskId ? { technicalReworkSourceTaskId } : {}),
+            ...(exteriorCorrection ? { exteriorRectification: { status: 'PENDING', sourceTaskId: sourceTask.id } } : {}),
             ...(taskSchedule.defaultChargeAmount
               ? { defaultChargeAmount: taskSchedule.defaultChargeAmount }
               : {}),

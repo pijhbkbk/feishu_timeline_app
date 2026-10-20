@@ -105,6 +105,16 @@ export class ReviewsController {
   }
 
   @Roles('admin', 'project_manager', 'quality_engineer', 'reviewer')
+  @Post('consistency/rectification')
+  completeExteriorRectification(
+    @Param('projectId') projectId: string,
+    @Body() body: unknown,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.reviewsService.completeExteriorRectification(projectId, body, actor);
+  }
+
+  @Roles('admin', 'project_manager', 'quality_engineer', 'reviewer')
   @Post('consistency')
   createConsistencyReview(
     @Param('projectId') projectId: string,

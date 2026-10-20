@@ -168,6 +168,7 @@ const FLOW_MAP_EDGE_DEFINITIONS: Array<{
   { from: WorkflowNodeCode.CAB_REVIEW, to: WorkflowNodeCode.TRIAL_PRODUCTION, edgeType: 'return', label: 'N 退回' },
   { from: WorkflowNodeCode.CAB_REVIEW, to: WorkflowNodeCode.DEVELOPMENT_ACCEPTANCE, edgeType: 'parallel', label: 'Y 非阻塞' },
   { from: WorkflowNodeCode.CAB_REVIEW, to: WorkflowNodeCode.COLOR_CONSISTENCY_REVIEW, edgeType: 'mainline', label: 'Y' },
+  { from: WorkflowNodeCode.COLOR_CONSISTENCY_REVIEW, to: WorkflowNodeCode.COLOR_CONSISTENCY_REVIEW, edgeType: 'return', label: '外饰件厂家整改后整车复审' },
   { from: WorkflowNodeCode.COLOR_CONSISTENCY_REVIEW, to: WorkflowNodeCode.MASS_PRODUCTION_PLAN, edgeType: 'mainline' },
   { from: WorkflowNodeCode.MASS_PRODUCTION_PLAN, to: WorkflowNodeCode.MASS_PRODUCTION, edgeType: 'mainline' },
   { from: WorkflowNodeCode.MASS_PRODUCTION, to: WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW, edgeType: 'mainline' },

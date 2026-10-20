@@ -1,6 +1,7 @@
 'use client';
 
 import { ReviewStandardSelect } from './review-standard-select';
+import { ExteriorRectificationPanel } from './exterior-rectification-panel';
 import { reviewStandardLabel, type ReviewStandardOptions } from '../lib/review-standard-version';
 
 import { M1RecordLink as Link, M1RecordReturn } from '../features/m1/record-return';
@@ -94,7 +95,7 @@ export function ConsistencyReviewWorkspace({
   const isReadOnly = !workspace?.activeTask || !canUserOperateWorkflowTask(user, workspace.activeTask);
   const decisionGuidance =
     form.reviewConclusion === 'REJECTED'
-      ? '驳回时必须补充原因，后端会把流程退回到涂料开发并保留历史。'
+      ? '驳回时必须补充原因，转外饰件厂家整改后进行整车复审；有效记录保留。'
       : form.reviewConclusion === 'CONDITIONAL_APPROVED'
         ? '条件通过时必须补充整改条件，避免后续排产口径不清。'
         : '通过后排产计划节点可进入，建议在评审意见中留下关键判断依据。';
@@ -226,7 +227,7 @@ export function ConsistencyReviewWorkspace({
           ? '一致性评审记录已提交。'
           : action === 'APPROVE'
             ? '一致性评审已通过，排产计划节点已可进入。'
-            : '一致性评审已驳回，流程已退回涂料开发。',
+            : '整车评审已驳回，已进入外饰件厂家整改与整车复审轮次。',
       );
     } catch (actionError) {
       setError(actionError instanceof Error ? actionError.message : '一致性评审动作执行失败。');
@@ -353,6 +354,10 @@ export function ConsistencyReviewWorkspace({
         <FeedbackBanner variant="success" title="评审操作已完成" message={successMessage} />
       ) : null}
 
+      {workspace.exteriorRectification ? <ExteriorRectificationPanel key={`${workspace.exteriorRectification.taskId}:${workspace.exteriorRectification.taskVersion}`}
+        projectId={projectId} correction={workspace.exteriorRectification} disabled={!canManage || isReadOnly}
+        onError={message => setError(message || null)} onSaved={next => { setWorkspace(next); setSuccessMessage('外饰件厂家整改完成已登记，可填写本轮整车复审记录。'); }} /> : null}
+
       <section className="page-card">
         <div className="section-header">
           <div>
@@ -378,7 +383,7 @@ export function ConsistencyReviewWorkspace({
             standardLocked={Boolean(editingReviewId)}
             value={form}
             reviewerOptions={reviewerOptions}
-            disabled={!canManage || isReadOnly || isSaving}
+            disabled={!canManage || isReadOnly || isSaving || workspace.exteriorRectification?.status === 'PENDING'}
             submitLabel={editingReviewId ? '更新评审记录' : '新建评审记录'}
             onChange={setForm}
             onSubmit={() => void handleSave()}

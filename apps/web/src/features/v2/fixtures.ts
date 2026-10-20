@@ -345,6 +345,7 @@ export const r26FlowNodes: R26FlowNode[] = [
 ];
 
 export const r26FlowEdges: R26FlowEdge[] = [
+  { id: '14-14', from: 14, to: 14, path: 'M815 1150 L960 1150 L960 1190 L815 1190', type: 'return', label: 'N' },
   { id: '01-02', from: 1, to: 2, path: 'M720 172 L720 190', type: 'mainline' },
   { id: '02-03', from: 2, to: 3, path: 'M720 282 L720 300', type: 'mainline' },
   { id: '03-04', from: 3, to: 4, path: 'M720 392 L720 410', type: 'mainline' },

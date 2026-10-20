@@ -91,6 +91,7 @@ const FLOW_MAP_PATHS: Record<string, string> = {
   'CAB_REVIEW->TRIAL_PRODUCTION': 'M 825 1005 L 940 1005 L 940 846 L 815 846',
   'CAB_REVIEW->DEVELOPMENT_ACCEPTANCE': 'M 615 1005 L 560 1005 L 560 1086 L 495 1086',
   'CAB_REVIEW->COLOR_CONSISTENCY_REVIEW': 'M 720 1070 L 720 1120',
+  'COLOR_CONSISTENCY_REVIEW->COLOR_CONSISTENCY_REVIEW': 'M 815 1150 L 960 1150 L 960 1190 L 815 1190',
   'COLOR_CONSISTENCY_REVIEW->MASS_PRODUCTION_PLAN': 'M 720 1212 L 720 1250',
   'MASS_PRODUCTION_PLAN->MASS_PRODUCTION': 'M 720 1342 L 720 1380',
   'MASS_PRODUCTION->VISUAL_COLOR_DIFFERENCE_REVIEW': 'M 720 1472 L 720 1510',
@@ -730,6 +731,7 @@ export function FlowMapConnector({ edge }: { edge: ProjectFlowMapEdge }) {
   return (
     <g className={`flow-map-edge flow-map-edge-${edge.status} flow-map-edge-${edge.edgeType}`}>
       <path d={path} markerEnd="url(#flow-map-arrow)" />
+      {edge.fromNodeCode === 'COLOR_CONSISTENCY_REVIEW' && edge.toNodeCode === 'COLOR_CONSISTENCY_REVIEW' ? <text x="850" y="1136">外饰件厂家整改 → 整车复审</text> : null}
     </g>
   );
 }
