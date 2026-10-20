@@ -37,7 +37,7 @@ export async function resolveLoginDestination(
   if (path === '/admin/accounts' || path === '/admin/people/permissions') return administrator && user.isSystemAdmin ? destination : fallback;
   if (['/admin', '/admin/projects', '/admin/tasks', '/admin/organization', '/admin/assignments', '/admin/permissions', '/admin/audit-logs'].includes(path)) return administrator ? destination : fallback;
   if (path === '/projects/new') return user.isSystemAdmin || user.teamAccessApproved ? destination : fallback;
-  const project = /^\/projects\/([A-Za-z0-9_-]+)(?:\/tasks\/[A-Za-z0-9_-]+)?$/.exec(path);
+  const project = /^\/projects\/([A-Za-z0-9_-]+)(?:\/(?:tasks\/[A-Za-z0-9_-]+|materials))?$/.exec(path);
   if (project) {
     try { if (await canReadProject(project[1]!)) return destination; } catch { /* fail closed */ }
   }
