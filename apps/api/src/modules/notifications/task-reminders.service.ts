@@ -5,6 +5,7 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { withSystemProjectWrite } from '../../common/team-authorization';
 import { requireActiveMonthlyPlan } from '../../common/monthly-review-plan';
+import { hasRecordedMonthlyReview } from '../../common/monthly-review-applicability';
 import { eligibleTeamUserWhere, OPEN_TEAM_TASK_STATUSES, OPEN_MONTHLY_TASK_STATUSES } from '../personnel/team-assignment';
 import { NODE_BUSINESS_ROLES } from '../personnel/personnel.constants';
 import { persistTaskReminder, shanghaiBusinessDay, type ReminderTarget } from './task-reminder.rules';
@@ -88,6 +89,7 @@ export class TaskRemindersService {
     }
     const task = await tx.recurringTask.findUnique({ where: { id } });
     if (!task || task.plannedDate > now || !OPEN_MONTHLY_TASK_STATUSES.includes(task.status as typeof OPEN_MONTHLY_TASK_STATUSES[number])) return null;
+    if (!await hasRecordedMonthlyReview(tx, task.id, task.projectId)) return null;
     const parents = await tx.workflowTask.findMany({ where: { projectId: task.projectId, nodeCode: 'VISUAL_COLOR_DIFFERENCE_REVIEW', isActive: true, status: { in: [...OPEN_TEAM_TASK_STATUSES] } }, select: { id: true }, take: 2 });
     if (parents.length !== 1) return null;
     try { await requireActiveMonthlyPlan(tx, task.projectId, task.recurringPlanId); }

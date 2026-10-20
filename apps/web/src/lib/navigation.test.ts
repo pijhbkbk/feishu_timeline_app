@@ -20,7 +20,7 @@ const routeMatrix = [
   ['/materials/upload?taskId=task-1', '工作台'],
   ['/admin/color-database', '颜色清单'],
   ['/admin/color-database/color-1', '颜色清单'],
-  ['/inspections', '评审记录'],
+  ['/inspections', '周评'],
   ['/production', '产量统计'],
   ['/admin', null],
   ['/admin/users', '人员库'],
@@ -39,7 +39,7 @@ describe('top navigation route matrix', () => {
       '工作台',
       '颜色项目',
       '颜色清单',
-      '评审记录',
+      '周评',
       '产量统计',
       '人员库',
     ]);

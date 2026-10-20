@@ -2,6 +2,7 @@
 
 import { M1RecordReturn } from '../features/m1/record-return';
 import React, { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 
 import { FeedbackBanner } from './feedback-banner';
 import { StatePanel } from './state-panel';
@@ -131,7 +132,7 @@ export function MonthlyReviewWorkspace({ projectId }: MonthlyReviewWorkspaceProp
       <section className="page-card">
         <p className="eyebrow">月度评审台账</p>
         <h2 className="section-title">正在加载月度评审台账…</h2>
-        <p>第 17 步周期计划、12 个月度实例和最近评审记录正在同步。</p>
+        <p>正在同步历史周期计划与评审记录。当前周评按实际抽检登记。</p>
       </section>
     );
   }
@@ -150,13 +151,14 @@ export function MonthlyReviewWorkspace({ projectId }: MonthlyReviewWorkspaceProp
         <div className="section-header">
           <div>
             <p className="eyebrow">月度评审台账</p>
-            <h2 className="section-title">第 17 步月度评审台账</h2>
+            <h2 className="section-title">历史月度评审台账</h2>
             <p className="muted">
-              批量生产完成后自动生成 12 个按月实例，已完成 {workspace.summary.completedPeriods} / 12。
+              保留原有期次，已完成 {workspace.summary.completedPeriods} / {workspace.summary.totalPeriods}。未登记实际抽检的期次不作为当前待办或逾期。
               最近更新：{formatDateTime(lastUpdatedAt)}。
             </p>
           </div>
           <div className="inline-actions">
+            <Link href="/inspections" className="button button-secondary">登记实际周评</Link>
             <button
               type="button"
               className="button button-secondary"
@@ -195,7 +197,7 @@ export function MonthlyReviewWorkspace({ projectId }: MonthlyReviewWorkspaceProp
             <strong>
               {workspace.recurringPlan
                 ? `${formatDate(workspace.recurringPlan.startDate)} - ${formatDate(workspace.recurringPlan.endDate)}`
-                : '批量生产完成后生成'}
+                : '无固定月度周期'}
             </strong>
           </div>
           <div className="metadata-item">
@@ -207,22 +209,22 @@ export function MonthlyReviewWorkspace({ projectId }: MonthlyReviewWorkspaceProp
           variant="info"
           compact
           title="实例绑定规则"
-          message="第 17 步台账按 12 个周期实例建档；关联评审记录仅展示与当前月份实例匹配的正式评审数据。"
+          message="此处保留历史月度流程与原记录；当前周评按实际抽检登记，未抽检颜色不自动产生月度义务。"
         />
       </section>
 
       <section className="page-card">
         <div className="section-header">
           <div>
-            <p className="eyebrow">12 个月实例</p>
-            <h2 className="section-title">12 个月度实例</h2>
+            <p className="eyebrow">历史期次</p>
+            <h2 className="section-title">原月度实例</h2>
             <p className="muted">点击任意月份可查看该周期的明细、结果和关联评审记录。</p>
           </div>
         </div>
         {workspace.recurringTasks.length === 0 ? (
           <StatePanel
             title="当前项目尚未生成月度评审计划"
-            description="第 16 步“批量生产”完成后，系统会自动创建 12 条月度评审任务。"
+            description="当前按实际抽检登记周评，不再自动创建 12 条月度任务。"
           />
         ) : (
           <div className="monthly-review-grid" data-testid="monthly-review-grid">
@@ -231,19 +233,19 @@ export function MonthlyReviewWorkspace({ projectId }: MonthlyReviewWorkspaceProp
                 key={task.id}
                 type="button"
                 className={`monthly-review-card monthly-review-card-${getRecurringStatusTone(
-                  task.status,
-                )}${isCurrentMonth(task.plannedDate) ? ' monthly-review-card-current' : ''}${
+                  task.status, task.hasRecordedSampling,
+                )}${task.hasRecordedSampling && isCurrentMonth(task.plannedDate) ? ' monthly-review-card-current' : ''}${
                   selectedTaskId === task.id ? ' monthly-review-card-selected' : ''
                 }`}
                 onClick={() => setSelectedTaskId(task.id)}
               >
                 <span className="workflow-node-kicker">第 {task.periodIndex} 个月</span>
                 <strong>{task.periodLabel}</strong>
-                <span>{getRecurringTaskStatusLabel(task.status)}</span>
-                {isCurrentMonth(task.plannedDate) ? <span className="status-pill status-pill-warning">本月任务</span> : null}
+                <span>{task.hasRecordedSampling || task.status === 'COMPLETED' ? getRecurringTaskStatusLabel(task.status) : `未登记实际抽检；历史状态：${getRecurringTaskStatusLabel(task.status)}`}</span>
+                {task.hasRecordedSampling && isCurrentMonth(task.plannedDate) ? <span className="status-pill status-pill-warning">本月任务</span> : null}
                 <span>计划: {formatDate(task.plannedDate)}</span>
                 <span>完成: {formatDate(task.completedAt)}</span>
-                <RecurringStatusBadge status={task.status} />
+                <RecurringStatusBadge status={task.status} hasRecordedSampling={task.hasRecordedSampling} />
                 <span className="table-link">查看详情</span>
               </button>
             ))}
@@ -278,7 +280,7 @@ export function MonthlyReviewWorkspace({ projectId }: MonthlyReviewWorkspaceProp
                     <StatePanel
                       compact
                       title="暂无周期任务"
-                      description="批量生产完成后，这里会自动展示 12 条月度评审实例。"
+                      description="没有旧月度记录；请从周评入口登记实际抽检。"
                     />
                   </td>
                 </tr>
@@ -294,7 +296,7 @@ export function MonthlyReviewWorkspace({ projectId }: MonthlyReviewWorkspaceProp
                     <td>{formatDate(task.completedAt)}</td>
                     <td>{getReviewResultLabel(task.result)}</td>
                     <td>
-                      <RecurringStatusBadge status={task.status} />
+                      <RecurringStatusBadge status={task.status} hasRecordedSampling={task.hasRecordedSampling} />
                     </td>
                     <td>{task.comment ?? '无'}</td>
                   </tr>
@@ -330,7 +332,7 @@ export function MonthlyReviewWorkspace({ projectId }: MonthlyReviewWorkspaceProp
               </div>
               <div className="metadata-item">
                 <span>任务状态</span>
-                <strong>{getRecurringTaskStatusLabel(detail.recurringTask.status)}</strong>
+                <RecurringStatusBadge status={detail.recurringTask.status} hasRecordedSampling={detail.recurringTask.hasRecordedSampling} />
               </div>
               <div className="metadata-item">
                 <span>评审结论</span>
@@ -340,8 +342,8 @@ export function MonthlyReviewWorkspace({ projectId }: MonthlyReviewWorkspaceProp
             {selectedTask ? (
               <div className="summary-grid">
                 <div className="summary-card">
-                  <span>本月状态</span>
-                  <strong>{getRecurringTaskStatusLabel(selectedTask.status)}</strong>
+                  <span>原期次状态</span>
+                  <RecurringStatusBadge status={selectedTask.status} hasRecordedSampling={selectedTask.hasRecordedSampling} />
                 </div>
                 <div className="summary-card">
                   <span>计划日期</span>
@@ -404,15 +406,17 @@ export function MonthlyReviewWorkspace({ projectId }: MonthlyReviewWorkspaceProp
   );
 }
 
-function RecurringStatusBadge({
-  status,
+export function RecurringStatusBadge({
+  status, hasRecordedSampling,
 }: {
   status: MonthlyReviewWorkspaceResponse['recurringTasks'][number]['status'];
+  hasRecordedSampling?: boolean | undefined;
 }) {
+  const historical = !hasRecordedSampling && status !== 'COMPLETED';
   return (
     <span
       className={
-        status === 'COMPLETED'
+        historical ? 'status-pill status-pill-neutral' : status === 'COMPLETED'
           ? 'status-pill status-pill-success'
           : status === 'OVERDUE'
             ? 'status-pill status-pill-danger'
@@ -421,17 +425,19 @@ function RecurringStatusBadge({
               : 'status-pill status-pill-neutral'
       }
     >
-      {getRecurringTaskStatusLabel(status)}
+      {historical ? `未登记实际抽检；历史状态：${getRecurringTaskStatusLabel(status)}` : getRecurringTaskStatusLabel(status)}
     </span>
   );
 }
 
 function getRecurringStatusTone(
   status: MonthlyReviewWorkspaceResponse['recurringTasks'][number]['status'],
+  hasRecordedSampling?: boolean,
 ) {
   if (status === 'COMPLETED') {
     return 'completed';
   }
+  if (!hasRecordedSampling) return 'pending';
 
   if (status === 'OVERDUE') {
     return 'overdue';

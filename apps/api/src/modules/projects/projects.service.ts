@@ -3,6 +3,7 @@ import { PROJECT_DISPLAY_COLOR_SELECT, resolveProjectDisplayColor, projectColorS
 import { assignProjectColor, normalizeProjectColorInput, type ProjectColorInput } from '../../common/project-color';
 import { assertApprovedTeamMember } from '../../common/team-membership';
 import { teamProjectScope } from '../../common/team-authorization';
+import { recordedMonthlyReviewIds, recordedMonthlyReviewSql } from '../../common/monthly-review-applicability';
 import { withTeamWrite, withProjectWrite } from '../../common/team-authorization';
 import {
   BadRequestException,
@@ -313,11 +314,15 @@ export class ProjectsService {
       return leftSequence - rightSequence;
     });
     const monthlyProjectIds = projects.filter(project => project.workflowTasks.some(task => task.isActive && task.nodeCode === WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW)).map(project => project.id);
-    const monthlyDates = monthlyProjectIds.length ? await this.prisma.recurringTask.groupBy({
-      by: ['projectId'], where: { projectId: { in: monthlyProjectIds }, status: { in: [RecurringTaskStatus.PENDING, RecurringTaskStatus.IN_PROGRESS, RecurringTaskStatus.OVERDUE] },
-        recurringPlan: { status: 'ACTIVE', sourceNodeCode: WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW } }, _min: { dueAt: true },
-    }) : [];
-    const monthlyDeadlines = new Map(monthlyDates.map(item => [item.projectId, item._min.dueAt]));
+    const monthlyDates = monthlyProjectIds.length ? await this.prisma.$queryRaw<Array<{ projectId: string; dueAt: Date | null }>>(Prisma.sql`
+      SELECT t."projectId", min(t."dueAt") AS "dueAt" FROM recurring_tasks t
+      JOIN recurring_plans p ON p.id = t."recurringPlanId"
+      WHERE t."projectId" IN (${Prisma.join(monthlyProjectIds)})
+        AND t.status IN ('PENDING', 'IN_PROGRESS', 'OVERDUE')
+        AND p.status = 'ACTIVE' AND p."sourceNodeCode" = 'VISUAL_COLOR_DIFFERENCE_REVIEW'
+        AND ${recordedMonthlyReviewSql(Prisma.sql`t.id`, Prisma.sql`t."projectId"`)}
+      GROUP BY t."projectId" LIMIT ${monthlyProjectIds.length}`) : [];
+    const monthlyDeadlines = new Map(monthlyDates.map(item => [item.projectId, item.dueAt]));
 
     return {
       page: query.page,
@@ -612,6 +617,7 @@ export class ProjectsService {
     }
 
     const latestTaskByNode = this.getLatestTaskByNode(tasks);
+    const sampledPeriods = await recordedMonthlyReviewIds(this.prisma, recurringPlan?.tasks.map(task => task.id) ?? []);
     const nodes = this.getOrderedWorkflowNodeCodes().map((nodeCode) => {
       const task = latestTaskByNode.get(nodeCode) ?? null;
       const nodeReviews = reviewRecords.filter((review) => review.workflowTaskId === task?.id);
@@ -650,7 +656,7 @@ export class ProjectsService {
             : null,
         monthlyReview:
           nodeCode === WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW
-            ? this.buildMonthlyReviewSummary(recurringPlan, now)
+            ? this.buildMonthlyReviewSummary(recurringPlan, now, sampledPeriods)
             : null,
         colorExit:
           nodeCode === WorkflowNodeCode.PROJECT_CLOSED
@@ -2444,13 +2450,14 @@ export class ProjectsService {
         }>
       | null,
     now: Date,
+    sampledPeriods: ReadonlySet<string> = new Set(),
   ) {
     if (!recurringPlan) {
       return {
-        totalPeriods: 12,
+        totalPeriods: 0,
         completedPeriods: 0,
         overduePeriods: 0,
-        progressText: '尚未生成 12 个月度实例',
+        progressText: '按实际抽检记录；无固定月度义务',
         currentMonthTask: null,
       };
     }
@@ -2471,10 +2478,10 @@ export class ProjectsService {
       totalPeriods: recurringPlan.totalCount,
       completedPeriods,
       overduePeriods: recurringPlan.tasks.filter(
-        (task) => task.status === RecurringTaskStatus.OVERDUE,
+        (task) => task.status === RecurringTaskStatus.OVERDUE && sampledPeriods.has(task.id),
       ).length,
-      progressText: `已完成 ${completedPeriods} / ${recurringPlan.totalCount}`,
-      currentMonthTask: currentMonthTask
+      progressText: `历史月度已完成 ${completedPeriods} / ${recurringPlan.totalCount}`,
+      currentMonthTask: currentMonthTask && sampledPeriods.has(currentMonthTask.id)
         ? {
             id: currentMonthTask.id,
             periodLabel: currentMonthTask.periodLabel,

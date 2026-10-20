@@ -30,4 +30,12 @@ describe('R26 Gate 3C2 / 3C3 lifecycle actions', () => {
     );
     expect(getR26LifecycleActionBySlug('unknown')).toBeNull();
   });
+
+  it('describes actual sampling and exterior-parts rework without promising automatic legacy completion', () => {
+    expect(getR26LifecycleActionByStep(17)?.description).toContain('未抽检颜色不产生月度义务');
+    expect(getR26LifecycleActionByStep(17)?.description).toContain('门禁不会自动跳过');
+    expect(getR26LifecycleActionByStep(17)?.description).not.toContain('只有 12/12');
+    expect(getR26LifecycleActionByStep(14)?.description).toContain('外饰件厂家整改');
+    expect(getR26LifecycleActionByStep(14)?.description).not.toContain('退回涂料开发');
+  });
 });

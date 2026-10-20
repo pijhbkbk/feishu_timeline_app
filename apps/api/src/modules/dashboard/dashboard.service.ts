@@ -1,5 +1,6 @@
 import { PROJECT_DISPLAY_COLOR_SELECT, resolveProjectDisplayColor } from '../../common/project-display-color';
 import { teamProjectScope } from '../../common/team-authorization';
+import { recordedMonthlyReviewIds, recordedMonthlyReviewSql } from '../../common/monthly-review-applicability';
 import { Injectable } from '@nestjs/common';
 import {
   AttachmentScanStatus,
@@ -505,6 +506,8 @@ export class DashboardService {
       }
     }
 
+    const sampledPeriods = await recordedMonthlyReviewIds(this.prisma, recurringPlans.flatMap(plan => plan.tasks.map(task => task.id)));
+
     return {
       lastUpdatedAt: now.toISOString(),
       items: projects.map((project) =>
@@ -513,6 +516,7 @@ export class DashboardService {
           recurringPlanByProject.get(project.id) ?? null,
           nodeDefinitionByCode,
           now,
+          sampledPeriods,
         ),
       ),
     };
@@ -569,6 +573,7 @@ export class DashboardService {
             },
           });
     const projectById = new Map(projects.map((project) => [project.id, project]));
+    const sampledPeriods = await recordedMonthlyReviewIds(this.prisma, plans.flatMap(plan => plan.tasks.map(task => task.id)));
     const items = plans
       .filter((plan, index, allPlans) =>
         allPlans.findIndex((candidate) => candidate.projectId === plan.projectId) === index,
@@ -594,9 +599,9 @@ export class DashboardService {
           planCode: plan.planCode,
           totalPeriods: plan.totalCount,
           completedPeriods: plan.tasks.filter((task) => task.status === RecurringTaskStatus.COMPLETED).length,
-          overduePeriods: plan.tasks.filter((task) => task.status === RecurringTaskStatus.OVERDUE).length,
-          currentMonthTask: currentMonthTask ? this.toMonthlyBoardTask(currentMonthTask) : null,
-          months: plan.tasks.map((task) => this.toMonthlyBoardTask(task)),
+          overduePeriods: plan.tasks.filter((task) => task.status === RecurringTaskStatus.OVERDUE && sampledPeriods.has(task.id)).length,
+          currentMonthTask: currentMonthTask && sampledPeriods.has(currentMonthTask.id) ? this.toMonthlyBoardTask(currentMonthTask, true) : null,
+          months: plan.tasks.map((task) => this.toMonthlyBoardTask(task, sampledPeriods.has(task.id))),
         };
       });
 
@@ -813,6 +818,7 @@ export class DashboardService {
       )
         AND recurring_task."plannedDate" >= ${monthStart}
         AND recurring_task."plannedDate" < ${nextMonthStart}
+        AND ${recordedMonthlyReviewSql(Prisma.sql`recurring_task.id`, Prisma.sql`recurring_task."projectId"`)}
 
     `);
 
@@ -901,6 +907,7 @@ export class DashboardService {
       isBlocking: boolean;
     }>,
     now: Date,
+    sampledPeriods: ReadonlySet<string> = new Set(),
   ) {
     const latestTaskByNode = this.getLatestTaskByNode(project.workflowTasks);
     const activePrimaryTasks = project.workflowTasks
@@ -980,7 +987,7 @@ export class DashboardService {
             ).length,
             totalPeriods: recurringPlan.totalCount,
             overduePeriods: recurringPlan.tasks.filter(
-              (task) => task.status === RecurringTaskStatus.OVERDUE,
+              (task) => task.status === RecurringTaskStatus.OVERDUE && sampledPeriods.has(task.id),
             ).length,
           }
         : null,
@@ -1089,7 +1096,7 @@ export class DashboardService {
     completedAt: Date | null;
     status: RecurringTaskStatus;
     result: ReviewResult;
-  }) {
+  }, hasRecordedSampling = false) {
     return {
       id: task.id,
       periodIndex: task.periodIndex,
@@ -1098,6 +1105,7 @@ export class DashboardService {
       dueAt: task.dueAt?.toISOString() ?? null,
       completedAt: task.completedAt?.toISOString() ?? null,
       status: task.status,
+      hasRecordedSampling,
       result: task.result,
     };
   }

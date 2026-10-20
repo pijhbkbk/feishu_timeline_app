@@ -107,7 +107,6 @@ describe('WorkflowsService', () => {
       sampleColorConfirmationTask,
     );
     vi.spyOn(service as any, 'createNextTasks').mockResolvedValue([]);
-    vi.spyOn(service as any, 'maybeCreateRecurringPlan').mockResolvedValue(null);
     vi.spyOn(service as any, 'applyWorkflowCompletionIfNeeded').mockResolvedValue(
       undefined,
     );
@@ -630,7 +629,7 @@ describe('WorkflowsService', () => {
       new Date('2026-08-25T00:00:00.000Z'),
     );
 
-    expect(summary.progressText).toBe('已完成 1 / 12');
+    expect(summary.progressText).toBe('历史月度已完成 1 / 12');
     expect(summary.completedPeriods).toBe(1);
     expect(summary.totalPeriods).toBe(12);
   });
@@ -797,43 +796,29 @@ describe('WorkflowsService', () => {
     );
   });
 
-  it('creates a monthly recurring plan after mass production completes', async () => {
-    const { service, workflowRecurringService } = createService();
+  it('preserves the normal mass-production transition without creating calendar sampling obligations', async () => {
+    const { service, workflowRecurringService, activityLogsService } = createService();
+    const tx = createTransitionExecutor();
+    Object.assign(tx, { workflowNodeDefinition: { findUnique: vi.fn().mockResolvedValue(null) } });
+    stubTransitionSideEffects(service);
+    const source = { ...sampleColorConfirmationTask, nodeCode: WorkflowNodeCode.MASS_PRODUCTION };
+    vi.mocked((service as any).getTaskOrThrow).mockResolvedValue(source);
+    vi.mocked((service as any).createNextTasks).mockResolvedValue([{ id: 'task-17', nodeCode: WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW }]);
+    tx.workflowTask.findUniqueOrThrow.mockImplementation(async ({ where }) => ({ ...source, id: where.id,
+      nodeCode: where.id === 'task-17' ? WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW : source.nodeCode,
+      status: WorkflowTaskStatus.COMPLETED, isActive: false }));
+    await service.transitionTaskWithExecutor(tx as never, source.id, WorkflowAction.COMPLETE, actor, {});
+    expect(workflowRecurringService.ensureMonthlyReviewPlan).not.toHaveBeenCalled();
+    expect(activityLogsService.createWithExecutor).toHaveBeenCalledWith(tx, expect.objectContaining({
+      afterData: expect.objectContaining({ createdRecurringPlan: null }),
+    }));
+  });
 
-    await (service as any).maybeCreateRecurringPlan(
-      {},
-      {
-        projectId: 'project-1',
-        nodeCode: WorkflowNodeCode.MASS_PRODUCTION,
-        assigneeUserId: 'process-1',
-        project: {
-          ownerUserId: 'owner-1',
-        },
-      },
-      {
-        nodeCode: WorkflowNodeCode.MASS_PRODUCTION,
-        status: WorkflowTaskStatus.COMPLETED,
-        completedAt: new Date('2026-04-19T08:00:00.000Z'),
-      },
-      [
-        {
-          id: 'task-17',
-          nodeCode: WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW,
-          nodeName: '整车色差一致性评审',
-          isPrimary: true,
-          taskRound: 1,
-        },
-      ],
-    );
-
-    expect(workflowRecurringService.ensureMonthlyReviewPlan).toHaveBeenCalledWith(
-      {},
-      {
-        projectId: 'project-1',
-        sourceWorkflowTaskId: 'task-17',
-        startAt: new Date('2026-04-19T08:00:00.000Z'),
-      },
-    );
+  it('does not invent a 0/12 obligation when no monthly plan exists', () => {
+    const { service } = createService();
+    expect((service as any).buildTaskMonthlyReviewSummary(null, [], new Date())).toMatchObject({
+      totalPeriods: 0, progressText: '按实际抽检记录；无固定月度义务', ledgerPath: '/inspections',
+    });
   });
 
   it('syncs workflow state from active primary tasks so parallel tasks do not block the mainline', async () => {

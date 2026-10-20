@@ -73,7 +73,7 @@ export function MonthlyReviewsBoard() {
       <section className="page-card">
         <p className="eyebrow">月度评审</p>
         <h2 className="section-title">正在加载整车色差一致性评审台账…</h2>
-        <p>系统正在同步第 17 步 12 个月度评审任务。</p>
+        <p>正在读取历史月度记录。当前周评按实际抽检登记。</p>
       </section>
     );
   }
@@ -92,13 +92,13 @@ export function MonthlyReviewsBoard() {
         <div className="section-header">
           <div>
             <p className="eyebrow">第 17 步</p>
-            <h2 className="section-title">月度评审进度总览</h2>
+            <h2 className="section-title">历史月度评审台账</h2>
             <p className="muted">
-              最近更新：{formatDateTime(payload.lastUpdatedAt)}。按项目展示 12 个月份卡片，
-              突出本月任务、逾期周期和完成进度。
+              最近更新：{formatDateTime(payload.lastUpdatedAt)}。保留原月份记录；没有明确实际抽检关联的期次不计当前待办或逾期。
             </p>
           </div>
           <div className="inline-actions">
+            <Link href="/inspections" className="button button-secondary">登记实际周评</Link>
             <button
               type="button"
               className="button button-secondary"
@@ -127,7 +127,7 @@ export function MonthlyReviewsBoard() {
         <section className="page-card">
           <StatePanel
             title="暂无月度评审计划"
-            description="项目完成第 16 步批量生产后，会自动生成 12 个月度评审任务。"
+            description="当前周评按实际抽检组织，不为未抽检颜色自动生成月度任务。"
           />
         </section>
       ) : (
@@ -172,14 +172,14 @@ export function MonthlyReviewMonthCard({
   return (
     <Link
       href={`/projects/${projectId}/reviews?recurringTaskId=${task.id}`}
-      className={`monthly-review-card monthly-review-card-${getRecurringStatusTone(task.status)}${
-        isCurrentMonth(task.plannedDate) ? ' monthly-review-card-current' : ''
+      className={`monthly-review-card monthly-review-card-${getRecurringStatusTone(task.status, task.hasRecordedSampling)}${
+        task.hasRecordedSampling && isCurrentMonth(task.plannedDate) ? ' monthly-review-card-current' : ''
       }`}
     >
       <span className="workflow-node-kicker">第 {task.periodIndex} 个月</span>
       <strong>{task.periodLabel}</strong>
-      <span>{getRecurringTaskStatusLabel(task.status)}</span>
-      {isCurrentMonth(task.plannedDate) ? (
+      <span>{task.hasRecordedSampling || task.status === 'COMPLETED' ? getRecurringTaskStatusLabel(task.status) : `未登记实际抽检；历史状态：${getRecurringTaskStatusLabel(task.status)}`}</span>
+      {task.hasRecordedSampling && isCurrentMonth(task.plannedDate) ? (
         <span className="status-pill status-pill-warning">本月任务</span>
       ) : null}
       <span>计划：{formatDate(task.plannedDate)}</span>
@@ -191,7 +191,8 @@ export function MonthlyReviewMonthCard({
   );
 }
 
-function getRecurringStatusTone(status: DashboardMonthlyReviewTask['status']) {
+function getRecurringStatusTone(status: DashboardMonthlyReviewTask['status'], hasRecordedSampling?: boolean) {
+  if (!hasRecordedSampling && status !== 'COMPLETED') return 'pending';
   switch (status) {
     case 'COMPLETED':
       return 'completed';

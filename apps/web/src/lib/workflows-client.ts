@@ -338,6 +338,7 @@ export type MonthlyReviewRecordSummary = {
 };
 
 export type RecurringTaskSummary = {
+  hasRecordedSampling?: boolean;
   id: string;
   recurringPlanId: string;
   taskCode: string;

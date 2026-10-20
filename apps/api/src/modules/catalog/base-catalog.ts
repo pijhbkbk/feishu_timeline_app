@@ -383,7 +383,7 @@ export const workflowNodes = [
     allowRework: false,
     allowManualDueAt: false,
     isReviewNode: true,
-    description: '批量生产完成后每月执行一次的整车色差一致性评审。',
+    description: '按实际抽检记录整车色差一致性；不为未抽检颜色自动生成月度义务。旧月度任务保留历史。',
   },
   {
     stepCode: '18',

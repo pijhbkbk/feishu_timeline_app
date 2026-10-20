@@ -1,4 +1,5 @@
 import { Prisma, type TaskReminderKind } from '@prisma/client';
+import { recordedMonthlyReviewSql } from '../../common/monthly-review-applicability';
 
 export function shanghaiBusinessDay(now: Date) {
   const date = new Date(now.getTime() + 8 * 3600000).toISOString().slice(0, 10);
@@ -21,6 +22,7 @@ export function reminderTaskEligibleSql(userId: Prisma.Sql, ordinaryId: Prisma.S
       JOIN users u ON u.id = ${userId} JOIN local_credentials lc ON lc."userId" = u.id
       JOIN user_roles ur ON ur."userId" = u.id JOIN roles r ON r.id = ur."roleId"
       WHERE t.id = ${monthlyId} AND t."assignmentEpoch" = ${epoch} AND t."plannedDate" <= ${now}
+      AND ${recordedMonthlyReviewSql(Prisma.sql`t.id`, Prisma.sql`t."projectId"`)}
       AND t.status IN ('PENDING','IN_PROGRESS','OVERDUE') AND (t."reviewerId" IS NULL OR t."reviewerId" = u.id)
       AND u.status = 'ACTIVE' AND r.status = 'ACTIVE' AND r.code = 'quality_engineer'
       AND p.status = 'ACTIVE' AND p.frequency = 'MONTHLY' AND p."totalCount" = 12 AND p."projectId" = t."projectId" AND p."sourceNodeCode" = 'VISUAL_COLOR_DIFFERENCE_REVIEW'

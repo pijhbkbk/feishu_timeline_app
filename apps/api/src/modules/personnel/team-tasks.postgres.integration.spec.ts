@@ -231,6 +231,15 @@ describe.skipIf(!url).sequential('R28 role queue and authorization fence on real
     expect(months).toHaveLength(12); expect(months[0]!.plannedDate.toISOString()).toBe('2020-02-29T00:00:00.000Z');
     const future = months[11]!;
     await db.recurringTask.update({ where: { id: future.id }, data: { plannedDate: new Date(Date.now() + 86400000 * 30) } });
+    // Explicit legacy facts make these periods applicable; calendar rows alone
+    // are no longer current work under V1. Preserve all concurrency assertions.
+    for (const sampled of [months[0]!, future]) {
+      const period = sampled.plannedDate.toISOString().slice(0, 7);
+      const review = await db.reviewRecord.create({ data: { projectId: parent.projectId, workflowTaskId: parent.id,
+        reviewType: 'VISUAL_COLOR_DIFFERENCE_REVIEW', reviewedAt: sampled.plannedDate, reviewPeriod: period } });
+      await db.auditLog.create({ data: { projectId: parent.projectId, targetType: 'REVIEW_RECORD', targetId: review.id,
+        action: 'VISUAL_DELTA_REVIEW_CREATED', metadata: { recurringTaskId: sampled.id, reviewPeriod: period } } });
+    }
     expect((await service.listMonthly(first, { view: 'available' })).items.map(item => item.id)).not.toContain(future.id);
     await expect(service.claimMonthly(first, future.id, body())).rejects.toThrow('尚未到期');
     await expect(service.claim(first, parent.id, body())).rejects.toThrow('具体月度');

@@ -5,6 +5,7 @@ import { assertApprovedTeamMember } from '../../common/team-membership';
 import { isReworkTask, isTechnicalReworkTask, taskEvidenceIds, ancestorEvidenceIds } from '../../common/workflow-evidence';
 import { BusinessClock } from '../../common/business-clock';
 import { requireActiveMonthlyPlan } from '../../common/monthly-review-plan';
+import { recordedMonthlyReviewIds } from '../../common/monthly-review-applicability';
 import { assertTeamTaskOperator, withProjectWrite } from '../../common/team-authorization';
 import { notifyTeamTask, resolveTeamAssignment } from '../personnel/team-assignment';
 import {
@@ -203,10 +204,10 @@ export class WorkflowsService {
     private readonly activityLogsService: ActivityLogsService,
     notificationQueueService: NotificationQueueService,
     private readonly workflowDeadlineService: WorkflowDeadlineService,
-    private readonly workflowRecurringService: WorkflowRecurringService,
+    workflowRecurringService: WorkflowRecurringService,
     private readonly projectAccessService: ProjectAccessService,
     private readonly businessClock: BusinessClock = new BusinessClock(),
-  ) { void notificationQueueService; }
+  ) { void notificationQueueService; void workflowRecurringService; }
 
   async initializeProjectWorkflow(
     tx: Prisma.TransactionClient,
@@ -438,6 +439,7 @@ export class WorkflowsService {
     }
 
     const recurringTasks = recurringPlan?.tasks ?? [];
+    const sampledPeriods = await recordedMonthlyReviewIds(this.prisma, recurringTasks.map(task => task.id));
 
     return {
       project: {
@@ -463,18 +465,18 @@ export class WorkflowsService {
         totalPeriods: recurringTasks.length,
         completedPeriods: recurringTasks.filter((task) => task.status === RecurringTaskStatus.COMPLETED)
           .length,
-        overduePeriods: recurringTasks.filter((task) => task.status === RecurringTaskStatus.OVERDUE)
+        overduePeriods: recurringTasks.filter((task) => task.status === RecurringTaskStatus.OVERDUE && sampledPeriods.has(task.id))
           .length,
         pendingPeriods: recurringTasks.filter(
           (task) =>
-            task.status === RecurringTaskStatus.PENDING ||
-            task.status === RecurringTaskStatus.IN_PROGRESS,
+            sampledPeriods.has(task.id) && (task.status === RecurringTaskStatus.PENDING ||
+            task.status === RecurringTaskStatus.IN_PROGRESS),
         ).length,
       },
       activeWorkflowTask: activeConsistencyTask
         ? this.toWorkflowTaskSummary(activeConsistencyTask)
         : null,
-      recurringTasks: recurringTasks.map((task) => this.toRecurringTaskSummary(task)),
+      recurringTasks: recurringTasks.map((task) => ({ ...this.toRecurringTaskSummary(task), hasRecordedSampling: sampledPeriods.has(task.id) })),
       recentReviews: latestReviews.map((review) => this.toMonthlyReviewRecordSummary(review)),
     };
   }
@@ -533,7 +535,7 @@ export class WorkflowsService {
         planCode: recurringTask.recurringPlan.planCode,
         status: recurringTask.recurringPlan.status,
       },
-      recurringTask: this.toRecurringTaskSummary(recurringTask),
+      recurringTask: { ...this.toRecurringTaskSummary(recurringTask), hasRecordedSampling: (await recordedMonthlyReviewIds(this.prisma, [recurringTask.id])).has(recurringTask.id) },
       relatedReviews: reviews.map((review) => this.toMonthlyReviewRecordSummary(review)),
     };
   }
@@ -963,7 +965,8 @@ export class WorkflowsService {
           : null,
       monthlyReviewSummary:
         detailedTask.nodeCode === WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW
-          ? this.buildTaskMonthlyReviewSummary(recurringPlan, systemParameters, now)
+          ? this.buildTaskMonthlyReviewSummary(recurringPlan, systemParameters, now,
+              await recordedMonthlyReviewIds(this.prisma, recurringPlan?.tasks.map(task => task.id) ?? []))
           : null,
       colorExitSummary:
         detailedTask.nodeCode === WorkflowNodeCode.PROJECT_CLOSED
@@ -1442,12 +1445,8 @@ export class WorkflowsService {
       nextTemplates,
       trustedOptions?.nextTaskAssignments,
     );
-    const recurringPlan = await this.maybeCreateRecurringPlan(
-      tx,
-      task,
-      updatedTask,
-      createdTasks,
-    );
+    // V1 sampling is recorded as actual inspection activities. Completing mass
+    // production must not manufacture twelve per-color calendar obligations.
 
     if (createdTasks.length === 0) {
       await tx.workflowTransition.create({
@@ -1492,14 +1491,7 @@ export class WorkflowsService {
           isPrimary: createdTask.isPrimary,
           taskRound: createdTask.taskRound,
         })),
-        createdRecurringPlan: recurringPlan
-          ? {
-              id: recurringPlan.plan.id,
-              planCode: recurringPlan.plan.planCode,
-              totalCount: recurringPlan.plan.totalCount,
-              generatedTaskCount: recurringPlan.generatedTaskCount,
-            }
-          : null,
+        createdRecurringPlan: null,
       },
       ...(input.metadata === undefined ? {} : { metadata: input.metadata }),
     });
@@ -2414,13 +2406,10 @@ export class WorkflowsService {
       valueNumber: Prisma.Decimal | null;
     }>,
     now: Date,
+    sampledPeriods: ReadonlySet<string> = new Set(),
   ) {
-    const totalCount = recurringPlan?.totalCount ?? this.resolveNumericSystemParameter(
-      systemParameters,
-      'WORKFLOW',
-      'MONTHLY_REVIEW_TOTAL_COUNT',
-      12,
-    );
+    void systemParameters;
+    const totalCount = recurringPlan?.totalCount ?? 0;
     const tasks = recurringPlan?.tasks ?? [];
     const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
     const nextMonthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
@@ -2436,11 +2425,11 @@ export class WorkflowsService {
       planCode: recurringPlan?.planCode ?? null,
       totalPeriods: totalCount,
       completedPeriods: tasks.filter((task) => task.status === RecurringTaskStatus.COMPLETED).length,
-      overduePeriods: tasks.filter((task) => task.status === RecurringTaskStatus.OVERDUE).length,
-      progressText: `已完成 ${
+      overduePeriods: tasks.filter((task) => task.status === RecurringTaskStatus.OVERDUE && sampledPeriods.has(task.id)).length,
+      progressText: !recurringPlan ? '按实际抽检记录；无固定月度义务' : `历史月度已完成 ${
         tasks.filter((task) => task.status === RecurringTaskStatus.COMPLETED).length
       } / ${totalCount}`,
-      currentMonthTask: currentMonthTask
+      currentMonthTask: currentMonthTask && sampledPeriods.has(currentMonthTask.id)
         ? {
             id: currentMonthTask.id,
             periodLabel: currentMonthTask.periodLabel,
@@ -2450,7 +2439,7 @@ export class WorkflowsService {
             dueAt: currentMonthTask.dueAt?.toISOString() ?? null,
           }
         : null,
-      ledgerPath: '/monthly-reviews',
+      ledgerPath: recurringPlan ? '/monthly-reviews' : '/inspections',
     };
   }
 
@@ -3051,42 +3040,4 @@ export class WorkflowsService {
     };
   }
 
-  private async maybeCreateRecurringPlan(
-    tx: Prisma.TransactionClient,
-    sourceTask: WorkflowTaskWithRelations,
-    updatedTask: {
-      nodeCode: WorkflowNodeCode;
-      status: WorkflowTaskStatus;
-      completedAt: Date | null;
-    },
-    createdTasks: Array<{
-      id: string;
-      nodeCode: WorkflowNodeCode;
-      nodeName: string;
-      isPrimary: boolean;
-      taskRound: number;
-    }>,
-  ) {
-    if (
-      sourceTask.nodeCode !== WorkflowNodeCode.MASS_PRODUCTION ||
-      updatedTask.status !== WorkflowTaskStatus.COMPLETED
-    ) {
-      return null;
-    }
-
-    const monthlyReviewTask = createdTasks.find(
-      (task) => task.nodeCode === WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW,
-    );
-
-    if (!monthlyReviewTask) {
-      return null;
-    }
-
-    return this.workflowRecurringService.ensureMonthlyReviewPlan(tx, {
-      projectId: sourceTask.projectId,
-      sourceWorkflowTaskId: monthlyReviewTask.id,
-      startAt: updatedTask.completedAt ?? this.businessClock.now(),
-
-    });
-  }
 }

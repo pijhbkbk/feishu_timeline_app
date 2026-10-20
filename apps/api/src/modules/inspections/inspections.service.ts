@@ -80,9 +80,12 @@ export class InspectionsService {
     return withTeamWrite(this.prisma,actor,tx=>this.command(tx,actor,identity(b.operationId),'INSPECTION_ACTIVITY_UPDATE',{id,...input},async()=>{
       const current=await lockInspectionActivity(tx,id);this.revision(current,input.expectedRevision);
       if(current.reviewRecordId&&current.activityDate.valueOf()!==input.activityDate.valueOf())throw new ConflictException('关联月度评审后的活动日期不可移动。');
-      await this.checkPeople(tx,input.personIds);
       const {personIds,expectedRevision:_revision,...data}=input;void _revision;
       const beforeParticipants=await tx.inspectionParticipant.findMany({where:{activityId:id},select:{personId:true},take:50});
+      // Existing participants remain historical facts when their directory entry
+      // is disabled/archived. Only newly added identities require availability.
+      const existingIds=new Set(beforeParticipants.map(p=>p.personId));
+      await this.checkPeople(tx,personIds.filter(personId=>!existingIds.has(personId)));
       await tx.inspectionParticipant.deleteMany({where:{activityId:id,personId:{notIn:personIds}}});
       await tx.inspectionParticipant.createMany({data:personIds.map(personId=>({activityId:id,personId})),skipDuplicates:true});
       const saved=await tx.inspectionActivity.update({where:{id},data:{...data,revision:{increment:1}}});
@@ -194,7 +197,7 @@ export class InspectionsService {
     // Keep unlinked profile state stable until this activity write commits. The
     // surrounding shared authorization fence already protects linked User status.
     if(ids.length)await tx.$queryRaw(Prisma.sql`SELECT id FROM person_profiles WHERE id IN (${Prisma.join(ids)}) ORDER BY id FOR SHARE`);
-    const found=await tx.personProfile.count({where:{id:{in:ids},OR:[{userId:null,isActive:true},{user:{is:{status:'ACTIVE'}}}]}});
+    const found=await tx.personProfile.count({where:{id:{in:ids},archivedAt:null,OR:[{userId:null,isActive:true},{user:{is:{status:'ACTIVE'}}}]}});
     if(found!==ids.length)throw new BadRequestException('参与人员须选择已启用的真实人员档案；不会自动创建账号或授予资格。');
   }
   private async command<T>(tx:Prisma.TransactionClient,actor:AuthenticatedUser,operationId:string,action:string,input:unknown,execute:()=>Promise<T>):Promise<T>{

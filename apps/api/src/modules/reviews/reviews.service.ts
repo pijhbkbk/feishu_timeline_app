@@ -1053,7 +1053,7 @@ export class ReviewsService {
         ReviewType.VISUAL_COLOR_DIFFERENCE_REVIEW,
       );
       await this.assertReviewWriteInputPersistable(tx, input);
-      await this.getVisualDeltaRecurringTaskForDate(
+      const recurringTask = await this.getVisualDeltaRecurringTaskForDate(
         tx,
         projectId,
         recurringPlanId,
@@ -1091,6 +1091,7 @@ export class ReviewsService {
         targetType: AuditTargetType.REVIEW_RECORD,
         targetId: reviewRecord.id,
         action: 'VISUAL_DELTA_REVIEW_CREATED',
+        metadata: { recurringTaskId: recurringTask.id, reviewPeriod: reviewRecord.reviewPeriod },
         nodeCode: WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW,
         summary: `创建目视色差评审记录 ${reviewRecord.id}`,
         afterData: this.toCabinReviewAuditSnapshot(reviewRecord),
@@ -1125,7 +1126,7 @@ export class ReviewsService {
       assertReviewStandardUnchanged(reviewRecord.standardVersionId, input.standardVersionId);
       await assertInspectionReviewLink(tx, { reviewId, projectId, reviewedAt: input.reviewDate, standardVersionId: input.standardVersionId });
       await this.assertReviewWriteInputPersistable(tx, input);
-      await this.getVisualDeltaRecurringTaskForDate(
+      const recurringTask = await this.getVisualDeltaRecurringTaskForDate(
         tx,
         projectId,
         recurringPlanId,
@@ -1160,6 +1161,7 @@ export class ReviewsService {
         targetType: AuditTargetType.REVIEW_RECORD,
         targetId: reviewId,
         action: 'VISUAL_DELTA_REVIEW_UPDATED',
+        metadata: { recurringTaskId: recurringTask.id, reviewPeriod: updatedRecord.reviewPeriod },
         nodeCode: WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW,
         summary: `更新目视色差评审记录 ${reviewId}`,
         beforeData: this.toCabinReviewAuditSnapshot(reviewRecord),
