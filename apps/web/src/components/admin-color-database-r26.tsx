@@ -7,7 +7,9 @@ import Link from 'next/link';
 
 export function AdminColorDatabaseR26() {
   const params=useSearchParams();
-  if(params.get('view')==='records'||params.has('colorId'))return <><div style={{padding:'12px 24px'}}><Link href="/admin/color-database">返回自由工作簿</Link></div><ColorRegisterWorkspace /></>;
+  const workbookId=params.get('workbook');
+  const workbookHref=workbookId?`/admin/color-database?workbook=${encodeURIComponent(workbookId)}`:'/admin/color-database';
+  if(params.get('view')==='records'||params.has('colorId'))return <><div style={{padding:'12px 24px'}}><Link href={workbookHref}>返回自由工作簿</Link></div><ColorRegisterWorkspace /></>;
   return <FreeWorkbookWorkspace />;
 }
 

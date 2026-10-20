@@ -277,7 +277,7 @@ export function FreeWorkbookWorkspace(){
     const coordinator=await WorkbookIntentSession.prepare(ownerId,intent,ports);await resumeIntent(coordinator.record,assertConfirmation);
   },true);}
   return <section className="fw-workspace"><div inert={mappingOpen}>
-    <header className="fw-heading"><div><h1>颜色工作簿</h1><span className="fw-kind">自由编辑</span></div><Link href="/admin/color-database?view=records" className="fw-link">业务颜色记录</Link></header>
+    <header className="fw-heading"><div><h1>颜色工作簿</h1><span className="fw-kind">自由编辑</span></div><Link href={active?`/admin/color-database?view=records&workbook=${encodeURIComponent(active.id)}`:'/admin/color-database?view=records'} className="fw-link">业务颜色记录</Link></header>
     <div className="fw-toolbar">
       <label>工作簿<select aria-label="选择工作簿" value={active?.id??''} disabled={loading||busy||uploading>0} onChange={event=>void open(event.target.value)}><option value="" disabled>选择工作簿</option>{items.map(item=><option key={item.id} value={item.id}>{item.name}</option>)}</select></label>{after&&<button disabled={busy} onClick={()=>void run(()=>refreshList(true))}>更多</button>}
       <input aria-label="新工作簿名" value={title} maxLength={200} onChange={event=>setTitle(event.target.value)}/><button disabled={!canEdit||busy||loading||!intentReady||!!storedIntent} onClick={()=>void create()}>新建</button>
