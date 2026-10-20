@@ -134,6 +134,8 @@ export class ServerDraftSession {
   get uncertain(){return this.pending!==null;}
   get conflicted(){return this.conflict;}
   existing(){return this.pending;}
+  /** Only the caller that knows this operation never reached transport may abandon it. */
+  abandonUnsent(operationId:string){if(this.pending?.body.operationId===operationId){this.pending=null;this.generation++;}}
   retainedDraft(){return this.retained;}
   /** Retain newer local input independently of an earlier in-flight request. */
   capture(snapshotInput:IWorkbookData,capturedSequence:number){

@@ -38,7 +38,8 @@ export function createFreeWorkbook(options:{container:HTMLElement;snapshot:IWork
   const compositionStart=()=>{composing=true;},compositionEnd=()=>{composing=false;if(!disposed)options.onChanged();};
   options.container.addEventListener('compositionstart',compositionStart,true);options.container.addEventListener('compositionend',compositionEnd,true);
   const subscriptions=[univerAPI.addEvent(univerAPI.Event.LifeCycleChanged,event=>{if(event.stage>=LifecycleStages.Rendered)resolveReady();})];
-  const workbook=univerAPI.createWorkbook(options.snapshot);if(univerAPI.getCurrentLifecycleStage()>=LifecycleStages.Rendered)resolveReady();
+  // Univer owns a mutable model; persisted request/draft snapshots remain immutable.
+  const workbook=univerAPI.createWorkbook(structuredClone(options.snapshot));if(univerAPI.getCurrentLifecycleStage()>=LifecycleStages.Rendered)resolveReady();
   // Univer 1.0.4 adapter. The live document is distinct from the sheet cell
   // until Enter; reading it must never call endEditingAsync or parse the text.
   const injector=univer.__getInjector(),bridge=injector.get(IEditorBridgeService),editors=injector.get(IEditorService),renders=injector.get(IRenderManagerService);

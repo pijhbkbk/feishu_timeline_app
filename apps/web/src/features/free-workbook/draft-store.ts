@@ -1,12 +1,13 @@
 import type { IWorkbookData } from '@univerjs/core';
 import { checkWorkbookBounds, WORKBOOK_LIMITS } from './contract';
+import type { ServerDraftCheckpoint } from './server-draft-session';
 import type { PendingWorkbookSave } from './save-session';
 import { validateEditingDraft, type WorkbookEditingDraft } from './editing-draft';
 
 export interface WorkbookLocalDraft {
   schema:1; ownerId:string; workbookId:string; editorId:string;
   baseRevision:number; sequence:number; savedAt:number; writeVersion?:number;
-  snapshot:IWorkbookData; pending:PendingWorkbookSave|null; edit?:WorkbookEditingDraft|null;
+  snapshot:IWorkbookData; pending:PendingWorkbookSave|null; edit?:WorkbookEditingDraft|null; server?:ServerDraftCheckpoint|null;
 }
 const DATABASE='timeline-workbook-local-drafts-v1',STORE='drafts',QUOTA='quota';
 const MAX_TOTAL_BYTES=128*1024*1024,MAX_SCOPE_DRAFTS=20;
@@ -18,10 +19,11 @@ export function validateLocalDraft(raw:WorkbookLocalDraft,ownerId:string,workboo
   if(!raw||raw.schema!==1||raw.ownerId!==ownerId||raw.workbookId!==workbookId||!ownerId||ownerId.length>128||!uuid.test(workbookId)||!uuid.test(raw.editorId)||!Number.isSafeInteger(raw.baseRevision)||raw.baseRevision<1||!Number.isSafeInteger(raw.sequence)||raw.sequence<1||!Number.isFinite(raw.savedAt)||raw.savedAt<0||raw.snapshot?.id!==workbookId)throw new Error('本机草稿身份或版本无效，未替换工作簿。');
   if(raw.writeVersion!==undefined&&(!Number.isSafeInteger(raw.writeVersion)||raw.writeVersion<0))throw new Error('本机草稿写入顺序无效。');
   checkWorkbookBounds(raw.snapshot);
+  if(raw.server&&(raw.server.workbookId!==workbookId||raw.server.authorUserId!==ownerId))throw new Error('服务器草稿请求的身份与本机草稿不一致。');
   if(raw.edit)validateEditingDraft(raw.edit,raw.snapshot);
   if(raw.pending){const {payload,sequence}=raw.pending;if(!payload||payload.expectedRevision!==raw.baseRevision||payload.snapshot?.id!==workbookId||!uuid.test(payload.operationId)||!Number.isSafeInteger(sequence)||sequence<1||sequence>raw.sequence)throw new Error('本机草稿的未确认请求无效。');checkWorkbookBounds(payload.snapshot);}
   const bytes=new TextEncoder().encode(JSON.stringify(raw)).length;
-  if(bytes>WORKBOOK_LIMITS.bytes*2+256*1024+4096)throw new Error('本机草稿超过容量上限，内容仍在当前页面，请显式保存或导出。');
+  if(bytes>WORKBOOK_LIMITS.bytes*4+256*1024+16384)throw new Error('本机草稿超过容量上限，内容仍在当前页面，请显式保存或导出。');
   return bytes;
 }
 async function openDatabase():Promise<IDBDatabase>{
@@ -40,7 +42,7 @@ export async function readLocalDrafts(ownerId:string,workbookId:string):Promise<
   try{return await new Promise((resolve,reject)=>{
     const tx=db.transaction(STORE,'readonly');const request=tx.objectStore(STORE).index('scope').getAll(IDBKeyRange.only([ownerId,workbookId]),MAX_SCOPE_DRAFTS+1);
     let values:WorkbookLocalDraft[]=[];
-    request.onsuccess=()=>{try{if(request.result.length>MAX_SCOPE_DRAFTS)throw new Error('本机草稿数量异常，请导出当前内容并联系维护人员。');values=request.result.map((stored:StoredDraft)=>{const draft:WorkbookLocalDraft={schema:stored.schema,ownerId:stored.ownerId,workbookId:stored.workbookId,editorId:stored.editorId,baseRevision:stored.baseRevision,sequence:stored.sequence,savedAt:stored.savedAt,writeVersion:stored.writeVersion??0,snapshot:stored.snapshot,pending:stored.pending,edit:stored.edit??null};validateLocalDraft(draft,ownerId,workbookId);return draft;}).sort((a,b)=>b.savedAt-a.savedAt);}catch(error){reject(error);}};
+    request.onsuccess=()=>{try{if(request.result.length>MAX_SCOPE_DRAFTS)throw new Error('本机草稿数量异常，请导出当前内容并联系维护人员。');values=request.result.map((stored:StoredDraft)=>{const draft:WorkbookLocalDraft={schema:stored.schema,ownerId:stored.ownerId,workbookId:stored.workbookId,editorId:stored.editorId,baseRevision:stored.baseRevision,sequence:stored.sequence,savedAt:stored.savedAt,writeVersion:stored.writeVersion??0,snapshot:stored.snapshot,pending:stored.pending,edit:stored.edit??null,server:stored.server??null};validateLocalDraft(draft,ownerId,workbookId);return draft;}).sort((a,b)=>b.savedAt-a.savedAt);}catch(error){reject(error);}};
     tx.oncomplete=()=>resolve(values);tx.onerror=()=>reject(new Error('本机草稿读取失败，服务器工作簿未改变。'));tx.onabort=()=>reject(new Error('本机草稿读取已中断。'));
   });}finally{db.close();}
 }

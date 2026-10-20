@@ -4,6 +4,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 const hooks=vi.hoisted(()=>({slots:[] as unknown[],index:0,effects:[] as Array<()=>void>,cleanups:new Map<number,()=>void>(),setups:new Map<number,()=>void|(()=>void)>(),dirty:false}));
 const identity=vi.hoisted(()=>({id:'synthetic-owner-a'}));
 const drafts=vi.hoisted(()=>({read:vi.fn(),write:vi.fn(),remove:vi.fn(),claim:vi.fn()}));
+const cloudApi=vi.hoisted(()=>({read:vi.fn(),execute:vi.fn()}));
 const api=vi.hoisted(()=>({list:vi.fn(),read:vi.fn(),create:vi.fn(),save:vi.fn(),revisions:vi.fn(),restore:vi.fn(),import:vi.fn()}));
 vi.mock('react',async()=>{
  const actual=await vi.importActual<typeof import('react')>('react');
@@ -17,12 +18,14 @@ vi.mock('../business-sheet/image-client',()=>({defaultImageLayout:()=>({}),listS
 vi.mock('../business-sheet/record-exchange',()=>({downloadWorkbook:vi.fn()}));
 vi.mock('./canvas',()=>({WorkbookCanvas:({snapshot}:{snapshot:{id:string}})=><div data-workbook={snapshot.id}/> }));
 vi.mock('./client',()=>({listWorkbooks:api.list,readWorkbook:api.read,createWorkbook:api.create,saveWorkbook:api.save,listRevisions:api.revisions,restoreWorkbook:api.restore}));
+vi.mock('./server-draft-client',()=>({readServerDraft:cloudApi.read,executeServerDraftRequest:cloudApi.execute}));
 vi.mock('./draft-store',()=>({validateLocalDraft:vi.fn(),readLocalDrafts:drafts.read,writeLocalDraft:drafts.write,removeLocalDraft:drafts.remove,claimLocalDraft:drafts.claim}));
 vi.mock('./xlsx',()=>({readFreeWorkbook:api.import}));
 import { ApiRequestError } from '../../lib/auth-client';
 import { blankWorkbook } from './contract';
 import { FreeWorkbookWorkspace } from './workspace';
 import type { SavedWorkbook } from './client';
+import type { ServerDraftRequest } from './server-draft-session';
 const oldId='11111111-1111-4111-8111-111111111111',laterId='22222222-2222-4222-8222-222222222222';
 let url:URL,replace:ReturnType<typeof vi.fn>,tree:React.ReactElement;
 function saved(id:string):SavedWorkbook{return {id,name:`合成${id.slice(0,1)}`,revision:1,snapshotHash:'hash',updatedAt:'2026-10-19T00:00:00Z',snapshot:blankWorkbook(id,`合成${id.slice(0,1)}`)};}
@@ -34,6 +37,7 @@ async function click(label:string){const button=nodes(tree).find(n=>n.type==='bu
 function dispose(){hooks.cleanups.forEach(cleanup=>cleanup());hooks.cleanups.clear();}
 beforeEach(()=>{
  hooks.slots=[];hooks.index=0;hooks.effects=[];hooks.cleanups=new Map();hooks.setups=new Map();hooks.dirty=false;
+ cloudApi.read.mockReset().mockResolvedValue({workbookRevision:1,draft:null,baseStale:false});cloudApi.execute.mockReset().mockRejectedValue(new Error('Synthetic cloud transport unavailable'));
  identity.id='synthetic-owner-a';Object.values(drafts).forEach(mock=>mock.mockReset());drafts.read.mockResolvedValue([]);drafts.write.mockResolvedValue(true);drafts.remove.mockResolvedValue(undefined);
  Object.values(api).forEach(mock=>mock.mockReset());url=new URL(`http://localhost/admin/color-database?workbook=${oldId}`);
  replace=vi.fn((_state:unknown,_title:string,next:URL)=>{url=new URL(next);});
@@ -144,3 +148,28 @@ it('durably captures later content while the first server save is still awaiting
 });
 
 it('offers retry and a complete recovery download while a failed editing overlay remains preserved',async()=>{const draft={schema:1,ownerId:identity.id,workbookId:oldId,editorId:crypto.randomUUID(),baseRevision:1,sequence:3,savedAt:Date.now(),snapshot:saved(oldId).snapshot,pending:null};drafts.read.mockResolvedValueOnce([draft]);drafts.claim.mockResolvedValue({...draft,editorId:crypto.randomUUID()});await settle();await click('恢复这份草稿');const canvas=nodes(tree).find(n=>typeof n.props.onRecoveryError==='function')!;(canvas.props.onRecoveryError as (message:string)=>void)('合成恢复失败');const html=await settle();expect(html).toContain('合成恢复失败');expect(html).toContain('inert');expect(html).toContain('重新尝试恢复输入');expect(html).toContain('下载草稿恢复副本');expect(nodes(tree).find(n=>n.type==='button'&&text(n)==='保存')?.props.disabled).toBe(true);});
+
+function cloudRead(){const snapshot=saved(oldId).snapshot;snapshot.name='云端保留内容';return {workbookRevision:1,baseStale:false,draft:{id:laterId,draftRevision:1,baseWorkbookRevision:1,snapshotHash:'a'.repeat(64),snapshotBytes:JSON.stringify(snapshot).length,updatedAt:'2026-10-20T00:00:00Z',snapshot}};}
+function canvasRuntime(){return nodes(tree).find(n=>typeof n.props.onChanged==='function')!;}
+it('preserves the latest editing document before recovering a cloud draft without waiting for autosave',async()=>{
+ cloudApi.read.mockResolvedValueOnce(cloudRead());await settle();readyEditor();await settle();const canvas=canvasRuntime(),rt=(canvas.props.runtime as {current:{draftSnapshot:ReturnType<typeof vi.fn>}}).current;const snapshot=saved(oldId).snapshot;snapshot.name='不到800ms的新内容';const edit={sheetId:snapshot.sheetOrder[0],row:0,column:0,document:{body:{dataStream:'未确认文本\r\n'}}};rt.draftSnapshot.mockResolvedValue({snapshot,edit});
+ await click('恢复服务器草稿');expect(drafts.write.mock.calls[0]![0]).toMatchObject({snapshot:{name:'不到800ms的新内容'},edit});expect(drafts.write.mock.calls[1]![0].editorId).not.toBe(drafts.write.mock.calls[0]![0].editorId);expect((canvasRuntime().props.snapshot as {name:string}).name).toBe('云端保留内容');expect(window.confirm).toHaveBeenCalled();
+});
+it('does not replace the current editor when current input cannot be durably captured',async()=>{
+ cloudApi.read.mockResolvedValueOnce(cloudRead());await settle();readyEditor();await settle();const canvas=canvasRuntime(),key=canvas.key;const rt=(canvas.props.runtime as {current:{draftSnapshot:ReturnType<typeof vi.fn>}}).current;rt.draftSnapshot.mockResolvedValue(null);const html=await click('恢复服务器草稿');expect(canvasRuntime().key).toBe(key);expect(drafts.write).not.toHaveBeenCalled();expect(html).toContain('完成中文选词');
+});
+it('does not overwrite input made while cloud restoration is persisting its replacement',async()=>{
+ cloudApi.read.mockResolvedValueOnce(cloudRead());await settle();readyEditor();await settle();let resolve!:(value:boolean)=>void;drafts.write.mockResolvedValueOnce(true).mockImplementationOnce(()=>new Promise<boolean>(r=>{resolve=r;}));void click('恢复服务器草稿');await settle();const canvas=canvasRuntime(),key=canvas.key;(canvas.props.onChanged as ()=>void)();await settle();resolve(true);const html=await settle();expect(canvasRuntime().key).toBe(key);expect(html).toContain('又有新输入');
+});
+it('abandons only a newly unsent cloud operation when its durable checkpoint fails',async()=>{
+ vi.useFakeTimers();await settle();readyEditor();await settle();drafts.write.mockResolvedValueOnce(true).mockRejectedValueOnce(new Error('合成落盘失败'));await vi.advanceTimersByTimeAsync(801);await vi.waitFor(async()=>expect(await settle()).toContain('服务器草稿未发送'));expect(cloudApi.execute).not.toHaveBeenCalled();expect(renderToStaticMarkup(tree)).not.toContain('核实服务器草稿');api.save.mockResolvedValueOnce({...saved(oldId),revision:2});await click('保存');expect(api.save).toHaveBeenCalledTimes(1);
+});
+it('does not send an old autosave after the same workbook is remounted while local storage is pending',async()=>{
+ vi.useFakeTimers();await settle();readyEditor();await settle();let resolve!:(value:boolean)=>void;drafts.write.mockImplementationOnce(()=>new Promise<boolean>(r=>{resolve=r;}));await vi.advanceTimersByTimeAsync(801);await settle();expect(drafts.write).toHaveBeenCalledTimes(1);await click('重新读取');resolve(true);await settle();await vi.advanceTimersByTimeAsync(1);expect(cloudApi.execute).not.toHaveBeenCalled();expect(renderToStaticMarkup(tree)).not.toContain('有未保存内容');
+});
+it('preserves N+1 when it arrives while the published cloud draft is being discarded',async()=>{
+ cloudApi.read.mockResolvedValueOnce(cloudRead());await settle();await click('恢复服务器草稿');readyEditor();await settle();api.save.mockResolvedValueOnce({...saved(oldId),revision:2});let resolve!:(value:unknown)=>void;cloudApi.execute.mockImplementationOnce(()=>new Promise(r=>{resolve=r;}));void click('保存');await vi.waitFor(()=>expect(cloudApi.execute).toHaveBeenCalledTimes(1));const request=cloudApi.execute.mock.calls[0]![0] as ServerDraftRequest;expect(request.kind).toBe('discard');const canvas=canvasRuntime(),rt=(canvas.props.runtime as {current:{draftSnapshot:ReturnType<typeof vi.fn>}}).current;const snapshot=saved(oldId).snapshot;snapshot.name='清理等待期间的新输入';rt.draftSnapshot.mockResolvedValue({snapshot,edit:null});(canvas.props.onChanged as ()=>void)();await settle();resolve({receipt:{action:'DRAFT_DISCARDED',draftId:laterId,draftRevision:1,baseWorkbookRevision:1,snapshotHash:'a'.repeat(64),workbookRevision:2},currentDraft:null,workbookRevision:2,baseStale:false,superseded:false});await settle();expect(drafts.remove).not.toHaveBeenCalled();expect(drafts.write.mock.calls.at(-1)![0].snapshot.name).toBe('清理等待期间的新输入');await vi.waitFor(async()=>expect(await settle()).toContain('有未保存内容'));
+});
+it('removes the confirmed local slot after a direct formal save before any cloud draft exists',async()=>{
+ await settle();readyEditor();await settle();api.save.mockResolvedValueOnce({...saved(oldId),revision:2});await click('保存');await vi.waitFor(()=>expect(drafts.remove).toHaveBeenCalledTimes(1));const removed=drafts.remove.mock.calls[0]![0];expect(removed.baseRevision).toBe(2);expect(removed.pending).toBeNull();expect(removed.sequence).toBe(1);expect(cloudApi.execute).not.toHaveBeenCalled();expect(renderToStaticMarkup(tree)).not.toContain('有未保存内容');
+});

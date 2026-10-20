@@ -141,3 +141,5 @@ describe('strict server draft protocol and explicit transport',()=>{
     const count=vi.mocked(apiRequest).mock.calls.length;await expect(readServerDraft('../other')).rejects.toThrow();expect(apiRequest).toHaveBeenCalledTimes(count);
   });
 });
+
+it('only abandons an exact operation known to be unsent and retains its editing snapshot',async()=>{const s=session(),request=await s.requestSave(snapshot(),7);s.abandonUnsent('not-the-operation');expect(s.existing()).toBe(request);s.abandonUnsent(request.body.operationId);expect(s.uncertain).toBe(false);expect(s.retainedDraft()?.capturedSequence).toBe(7);expect((await s.requestSave(snapshot(),7)).body.operationId).not.toBe(request.body.operationId);});
