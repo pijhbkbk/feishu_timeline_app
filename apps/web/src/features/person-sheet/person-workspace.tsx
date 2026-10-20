@@ -13,7 +13,8 @@ import { useSheetImages } from '../business-sheet/use-images';
 import type { RecordSheetRow, RecordWorkspaceContext } from '../business-sheet/record-sheet-types';
 import type { ExchangeInput } from '../business-sheet/record-exchange';
 import { useProjectUnsavedChanges } from '../m1/use-unsaved';
-import { PERSON_COLUMNS, personChanges, personRow, readPersons, savePersons, validatePerson, type DepartmentOption, type PersonRecord } from './person-adapter';
+import { preparePersonImport } from './person-import';
+import { PERSON_COLUMNS, personRow, readPersons, savePersons, validatePerson, type DepartmentOption, type PersonRecord } from './person-adapter';
 export function PersonSheetWorkspace() {
   const { user } = useAuth();
   const [rows, setRows] = useState<readonly RecordSheetRow<PersonRecord>[]>([]), [departments, setDepartments] = useState<DepartmentOption[]>([]), [hasMore, setHasMore] = useState(false);
@@ -43,19 +44,7 @@ export function PersonSheetWorkspace() {
       const sources = rows.filter(row => row.meta?.originalSource?.fileHash === input.source.fileHash && row.meta.originalSource.sheetName === input.source.sheetName && row.meta.originalSource.rowNumbers.includes(input.row));
       if (sources.length === 1) { row = sources[0]; input = { ...input, id: row!.id, revision: row!.revision }; }
     }
-    if (row && input.revision !== row.revision) return { input, status: 'error', message: '记录版本冲突，请导出最新版本后核对。' };
-    const allowed = row?.editable ?? ['name', 'departmentName', 'position', 'mobile', 'email', 'note', 'availability'];
-    const changes: Record<string, string | null> = {};
-    for (const [field, value] of Object.entries(input.values)) {
-      if (field === 'photos' || (value === null || value === '') && !clear.includes(field)) continue;
-      if (row && (row.values[field] ?? null) === value) continue;
-      if (!allowed.includes(field)) return { input, status: 'error', message: `${PERSON_COLUMNS.find(column => column.key === field)?.label ?? field}是只读信息，不能导入修改。` };
-      const issue = validatePerson(row ?? { id: input.clientId, revision: 1, values: input.values, editable: allowed }, field, value); if (issue) return { input, status: 'error', message: issue };
-      changes[field] = value;
-    }
-    if (!row && !changes.name) return { input, status: 'error', message: '新人员档案必须填写姓名。' };
-    try { const converted = personChanges(changes, departments); return { input, status: row ? Object.keys(changes).length ? 'update' : 'unchanged' : 'create', message: row ? Object.keys(changes).map(key => `${PERSON_COLUMNS.find(column => column.key === key)?.label}：${row.values[key] ?? '空'} → ${changes[key] ?? '空'}`).join('；') : '创建独立人员档案，不创建账号或业务资格。', data: converted }; }
-    catch (cause) { return { input, status: 'error', message: cause instanceof Error ? cause.message : '字段关联无效' }; }
+    return preparePersonImport(input, clear, { rows, departments });
   }
   async function apply(plans: ImportPlan[], operationId: string) {
     const result: Array<{ clientId: string; id: string }> = [];
