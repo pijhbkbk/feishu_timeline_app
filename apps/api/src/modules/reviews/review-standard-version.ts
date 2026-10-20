@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException } from '@nestjs/common';
-import { Prisma, StandardBoardStatus, WorkflowNodeCode } from '@prisma/client';
-import { ancestorEvidenceIds } from '../../common/workflow-evidence';
+import { Prisma, StandardBoardStatus } from '@prisma/client';
+import { reviewStandardEvidence } from './review-standard-evidence';
 
 export const REVIEW_STANDARD_SELECT = {
   id: true, colorId: true, versionNo: true, boardCode: true,
@@ -18,12 +18,15 @@ export function parseReviewStandardVersionId(value: unknown): string | null {
 }
 
 async function eligibleWhere(db: Prisma.TransactionClient, project: LinkedProject, task: ReviewTask) {
-  const boardIds = await ancestorEvidenceIds(db, task, WorkflowNodeCode.STANDARD_BOARD_PRODUCTION);
+  if (task.projectId !== project.id) throw new ConflictException('评审工序不属于当前项目。');
+  const { boardIds, parallel } = await reviewStandardEvidence(db, task);
   return {
     colorId: project.primaryColorId!,
+    ...(parallel ? { publishedAt: { not: null }, color: { productionBaseId: { not: null } } } : {}),
     standardBoards: { some: {
       id: { in: boardIds }, projectId: project.id, colorId: project.primaryColorId!,
       status: StandardBoardStatus.ISSUED,
+      ...(parallel ? { issuedAt: { not: null } } : {}),
     } },
   } satisfies Prisma.ColorVersionWhereInput;
 }

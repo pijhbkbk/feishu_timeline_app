@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
-import { Prisma, WorkflowNodeCode } from '@prisma/client';
-import { ancestorEvidenceIds } from '../../common/workflow-evidence';
+import { Prisma } from '@prisma/client';
+import { reviewStandardEvidence } from './review-standard-evidence';
 import { assertReviewStandardUnchanged, loadReviewStandardOptions, parseReviewStandardVersionId, requireReviewStandardVersion } from './review-standard-version';
-vi.mock('../../common/workflow-evidence', () => ({ ancestorEvidenceIds: vi.fn(async () => ['board-this-round']) }));
+vi.mock('./review-standard-evidence', () => ({ reviewStandardEvidence: vi.fn(async () => ({ boardIds: ['board-this-round'], parallel: false })) }));
 const project = { id: 'project-one', primaryColorId: 'color-shandong' };
 const task = { projectId: project.id, workflowInstanceId: 'workflow-one', payload: { fromTaskId: 'previous-task' } };
 function client() {
@@ -24,13 +24,27 @@ describe('explicit review standard version', () => {
   it('rejects another color/base or a board from another workflow round without fallback', async () => {
     const { value, db } = client();
     await expect(requireReviewStandardVersion(db, project, task, 'version-xingang')).rejects.toThrow('不属于');
-    expect(ancestorEvidenceIds).toHaveBeenCalledWith(db, task, WorkflowNodeCode.STANDARD_BOARD_PRODUCTION);
+    expect(reviewStandardEvidence).toHaveBeenCalledWith(db, task);
     expect(value.colorVersion.findFirst).toHaveBeenCalledWith({
       where: { id: 'version-xingang', colorId: 'color-shandong', standardBoards: { some: {
         id: { in: ['board-this-round'] }, projectId: project.id, colorId: 'color-shandong', status: 'ISSUED',
       } } }, select: { id: true },
     });
     expect(value.colorVersion.findMany).not.toHaveBeenCalled();
+  });
+  it('requires a published and actually issued standard with a resolved base for the parallel path', async () => {
+    const { value, db } = client();
+    vi.mocked(reviewStandardEvidence).mockResolvedValueOnce({ boardIds: ['board-this-round'], parallel: true });
+    await loadReviewStandardOptions(db, project, task);
+    expect(value.colorVersion.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: {
+      colorId: project.primaryColorId, publishedAt: { not: null }, color: { productionBaseId: { not: null } },
+      standardBoards: { some: { id: { in: ['board-this-round'] }, projectId: project.id,
+        colorId: project.primaryColorId, status: 'ISSUED', issuedAt: { not: null } } },
+    } }));
+  });
+  it('rejects a review task from another project before resolving any standard', async () => {
+    const { db } = client();
+    await expect(loadReviewStandardOptions(db, project, { ...task, projectId: 'foreign-project' })).rejects.toThrow('不属于当前项目');
   });
   it('pins the chosen eligible ID, independently of newest version', async () => {
     const { value, db } = client();
