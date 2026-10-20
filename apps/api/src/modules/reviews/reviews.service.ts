@@ -1159,6 +1159,10 @@ export class ReviewsService {
       this.assertDraftReviewRecordForLockedWrite(reviewRecord);
       assertReviewStandardUnchanged(reviewRecord.standardVersionId, input.standardVersionId);
       await assertInspectionReviewLink(tx, { reviewId, projectId, reviewedAt: input.reviewDate, standardVersionId: input.standardVersionId });
+      if (recurringPlanId && getMonthlyReviewPeriodKey(input.reviewDate) !== reviewRecord.reviewPeriod &&
+          (await continuableVisualReviewIds(tx, projectId, [reviewId])).has(reviewId)) {
+        throw new ConflictException('原期次已结束，仅可续办原月份的既存记录，不能改派到其他月份。');
+      }
       await this.assertReviewWriteInputPersistable(tx, input);
       const recurringTask = await this.getVisualDeltaRecurringTaskForDate(
         tx,

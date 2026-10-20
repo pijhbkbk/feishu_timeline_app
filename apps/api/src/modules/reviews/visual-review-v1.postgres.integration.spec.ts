@@ -288,8 +288,13 @@ describe.skipIf(!url).sequential('A12 V1 actual review stage on exclusive synthe
         rejectReason: null, returnToNodeCode: null, attachmentId: null, trialProductionId: null, trialVehicleNo: null,
       } } });
     await confirmRecord(f, first.id);
-    const next = await create(f, { reviewDate: old.months[1]!.plannedDate.toISOString() }); await confirmRecord(f, next.id);
     const secondInput = { ...input(), reviewerId: secondActor.id, reviewDate: date.toISOString() };
+    const recordBefore = await db.reviewRecord.findUniqueOrThrow({ where: { id: second.id } });
+    const auditBefore = await db.auditLog.findMany({ where: { targetId: second.id }, orderBy: { id: 'asc' } });
+    await expect(reviews.updateVisualDeltaReview(f.project.id, second.id, { ...secondInput, reviewDate: old.months[1]!.plannedDate.toISOString() }, secondActor)).rejects.toThrow('原月份');
+    expect(await db.reviewRecord.findUnique({ where: { id: second.id } })).toEqual(recordBefore);
+    expect(await db.auditLog.findMany({ where: { targetId: second.id }, orderBy: { id: 'asc' } })).toEqual(auditBefore);
+    const next = await create(f, { reviewDate: old.months[1]!.plannedDate.toISOString() }); await confirmRecord(f, next.id);
     await expect(reviews.updateVisualDeltaReview(f.project.id, second.id, { ...secondInput, reviewDate: old.months[1]!.plannedDate.toISOString() }, secondActor)).rejects.toThrow('已结束');
     const correctedDate = new Date(date); correctedDate.setUTCDate(2);
     await reviews.updateVisualDeltaReview(f.project.id, second.id, { ...secondInput, reviewDate: correctedDate.toISOString() }, secondActor);
@@ -324,5 +329,16 @@ describe.skipIf(!url).sequential('A12 V1 actual review stage on exclusive synthe
       action: 'VISUAL_DELTA_REVIEW_CREATED', metadata: { recurringTaskId: before.id, reviewPeriod: late.reviewPeriod } } });
     await expect(reviews.submitVisualDeltaReview(f.project.id, late.id, thirdActor)).rejects.toThrow('已结束');
     expect(await db.recurringTask.findUnique({ where: { id: before.id } })).toEqual(before);
+  });
+
+  it('keeps ordinary open-period date corrections available without creating or completing periods', async () => {
+    const f = await fixture(); const old = await legacy(f);
+    const record = await create(f, { reviewDate: old.months[0]!.plannedDate.toISOString() });
+    const periods = await db.recurringTask.findMany({ where: { recurringPlanId: old.plan.id }, orderBy: { id: 'asc' } });
+    const priorAudit = await db.auditLog.findMany({ where: { targetId: record.id }, orderBy: { id: 'asc' } });
+    await reviews.updateVisualDeltaReview(f.project.id, record.id, { ...input(), reviewDate: old.months[1]!.plannedDate.toISOString() }, actor);
+    expect(await db.reviewRecord.findUnique({ where: { id: record.id } })).toMatchObject({ reviewPeriod: old.months[1]!.plannedDate.toISOString().slice(0, 7) });
+    expect(await db.recurringTask.findMany({ where: { recurringPlanId: old.plan.id }, orderBy: { id: 'asc' } })).toEqual(periods);
+    expect(await db.auditLog.findMany({ where: { id: { in: priorAudit.map(row => row.id) } }, orderBy: { id: 'asc' } })).toEqual(priorAudit);
   });
 });
