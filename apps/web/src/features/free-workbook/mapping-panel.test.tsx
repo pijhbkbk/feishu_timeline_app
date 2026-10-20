@@ -18,4 +18,5 @@ it('paginates all preview rows while keeping the complete error and change count
   const preview = prepareMappedBusiness(mapping, { kind: 'person', directory: { items: [], departments: [], hasMore: false } });
   const first = renderToStaticMarkup(<MappingPlanTable preview={preview} page={1} setPage={() => {}} />), last = renderToStaticMarkup(<MappingPlanTable preview={preview} page={2} setPage={() => {}} />);
   expect(first).toContain('新增 100'); expect(first).toContain('错误 1'); expect(first).not.toContain('业务资格是只读信息'); expect(last).toContain('业务资格是只读信息'); expect(last).toContain('共 101 行'); expect(first).toContain('不是 ID'); expect(first).toContain('空白来源行跳过 3');
+  expect(first).toContain('映射字段与值'); expect(first).toContain('<dt>姓名</dt><dd>合成人员0</dd>'); expect(last).toContain('不能导入的资格'); expect(first).not.toContain('不能导入的资格');
 });

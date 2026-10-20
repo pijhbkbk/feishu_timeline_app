@@ -32,8 +32,12 @@ function columnLabel(value: number) { let result = ''; for (let n = value + 1; n
 const statusLabel = { create: '新增', update: '修改', unchanged: '未变化', error: '错误' };
 export function MappingPlanTable({ preview, page, setPage }: { preview: BusinessApplyPreview; page: number; setPage: (page: number) => void }) {
   const total = Math.max(1, Math.ceil(preview.plans.length / 100));
+  const columns = new Map(mappingColumns(preview.mapping.definition.target).map(column => [column.key, column.label]));
   return <><p>{Object.entries(statusLabel).map(([status, label]) => `${label} ${preview.plans.filter(plan => plan.status === status).length}`).join(' · ')} · 空白来源行跳过 {preview.mapping.counts.skippedBlankRows}</p>
-    <div className="wb-map-table"><table><thead><tr><th>来源行（不是 ID）</th><th>动作</th><th>稳定 ID / 版本</th><th>实际变更或错误</th></tr></thead><tbody>{preview.plans.slice((page - 1) * 100, page * 100).map(plan => <tr key={plan.input.clientId}><td>{plan.input.row}</td><td>{statusLabel[plan.status]}</td><td>{plan.input.id ? `${plan.input.id} / v${plan.input.revision}` : '由正式新增命令生成'}</td><td>{plan.message || '无变更'}</td></tr>)}</tbody></table></div>
+    <div className="wb-map-table"><table><thead><tr><th>来源行（不是 ID）</th><th>动作</th><th>稳定 ID / 版本</th><th>映射字段与值</th><th>实际变更或错误</th></tr></thead><tbody>{preview.plans.slice((page - 1) * 100, page * 100).map(plan => {
+      const values = Object.entries(plan.input.values).filter(([key, value]) => value !== null && value !== '' || preview.mapping.definition.clearFields.includes(key));
+      return <tr key={plan.input.clientId}><td>{plan.input.row}</td><td>{statusLabel[plan.status]}</td><td>{plan.input.id ? `${plan.input.id} / v${plan.input.revision}` : '由正式新增命令生成'}</td><td><details open={values.length <= 3}><summary>核对 {values.length} 项映射值</summary><dl>{values.map(([key, value]) => <React.Fragment key={key}><dt>{columns.get(key) ?? key}</dt><dd>{value === null || value === '' ? '明确清空' : value}</dd></React.Fragment>)}</dl></details></td><td>{plan.message || '无变更'}</td></tr>;
+    })}</tbody></table></div>
     {!preview.plans.length ? <p>所选区域没有可应用的业务值。</p> : null}<nav aria-label="映射预览分页"><button type="button" className="m1-button" disabled={page <= 1} onClick={() => setPage(page - 1)}>上一页</button><span>第 {page} / {total} 页 · 共 {preview.plans.length} 行</span><button type="button" className="m1-button" disabled={page >= total} onClick={() => setPage(page + 1)}>下一页</button></nav></>;
 }
 
