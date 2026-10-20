@@ -40,6 +40,7 @@ export function VisualDeltaReviewWorkspace({ projectId, recurringTaskId = '' }: 
   const actualMode = workspace?.reviewMode === 'ACTUAL';
   const records = actualMode ? workspace.items.filter(item => item.reviewPeriod === 'TASK') : month ? workspace?.items.filter(item => item.reviewPeriod === month.plannedDate.slice(0, 7)) ?? [] : [];
   const canWrite = Boolean(workspace && canWriteVisualDeltaMonth(user, workspace, month));
+  const canWork = canWrite || Boolean(workspace && records.some(review => canWriteVisualDeltaRecord(user, workspace, review)));
   const selectedReview = records.find(item => item.id === selectedReviewId) ?? records[0] ?? null;
   const ownDraft = records.find(item => item.reviewerId === user?.id && item.workflowTaskId === workspace?.activeTask?.id && !item.submittedAt);
   const ownRecord = records.find(item => item.reviewerId === user?.id && item.workflowTaskId === workspace?.activeTask?.id);
@@ -95,13 +96,14 @@ export function VisualDeltaReviewWorkspace({ projectId, recurringTaskId = '' }: 
     {error ? <p role="alert" className="error-text">{error}</p> : null}{notice ? <p role="status" className="work-notice">{notice}</p> : null}
     {!actualMode && !month ? <p className="work-state">未找到所选历史期次，请返回重新核对；不会自动生成月份。</p> : <>
       {month ? <p>历史第 {month.periodIndex} 月 · {month.periodLabel}，原计划日期 {formatDate(month.plannedDate)}，原期限 {formatDate(month.dueAt)}。未抽检的空期次无需补做。</p> : null}
-      {!canWrite ? <p className="work-state">{month?.status === 'COMPLETED' ? '本期已完成，评审记录保留可查。' : month && Date.parse(month.plannedDate) > (workspace.businessTime ? Date.parse(workspace.businessTime) : Date.now()) ? '历史期次尚未到办理日期。' : '仅在当前评审阶段，由已获准的部门成员办理本人实际评审记录。'} <Link href="/dashboard">打开我的工作</Link></p> :
+      {month?.status === 'COMPLETED' && canWork ? <p>本期首条签署事实保留；仅继续办理此前已经登记的本人未确认记录，不新增或改派记录。</p> : null}
+      {!canWork ? <p className="work-state">{month?.status === 'COMPLETED' ? '本期已完成，评审记录保留可查。' : month && Date.parse(month.plannedDate) > (workspace.businessTime ? Date.parse(workspace.businessTime) : Date.now()) ? '历史期次尚未到办理日期。' : '仅在当前评审阶段，由已获准的部门成员办理本人实际评审记录。'} <Link href="/dashboard">打开我的工作</Link></p> :
       <section className="page-card"><h2>{editingReviewId ? '编辑实际评审' : '填写实际评审'}</h2>
         {ownRecord && !editingReviewId ? <p>当前已有本人记录。{ownDraft ? <button className="button" disabled={Boolean(busy)} onClick={() => edit(ownDraft)}>继续填写</button> : '请在下方查看提交结果。'}</p> :
           <VisualDeltaReviewForm standardOptions={workspace} standardLocked={Boolean(editingReviewId)} value={form} reviewerOptions={user ? [{ id: user.id, name: user.name, departmentId: user.departmentId, departmentName: user.departmentName }] : []}
             disabled={Boolean(busy)} submitLabel={busy === 'save' ? '正在保存…' : '保存评审记录'} onChange={setForm} onSubmit={save} />}
       </section>}
-      <section className="page-card"><h2>实际记录与附件</h2><VisualDeltaReviewHistory user={user} items={records} selectedReviewId={selectedReview?.id ?? null} isReadOnly={!canWrite}
+      <section className="page-card"><h2>实际记录与附件</h2><VisualDeltaReviewHistory user={user} items={records} selectedReviewId={selectedReview?.id ?? null} isReadOnly={!canWork}
         workspace={workspace} actingKey={busy || null} isUploading={busy.startsWith('upload:')} onSelect={setSelectedReviewId} onEdit={edit}
         onSubmitReview={review => void mutate(`submit:${review.id}`, () => submitVisualDeltaReview(projectId, review.id), '评审已提交，请核对后确认通过或驳回。')}
         onApproveReview={review => void mutate(`approve:${review.id}`, () => approveVisualDeltaReview(projectId, review.id), getVisualDeltaReviewApprovalSuccessMessage)}

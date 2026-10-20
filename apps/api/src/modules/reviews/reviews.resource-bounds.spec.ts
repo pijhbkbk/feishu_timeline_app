@@ -118,6 +118,7 @@ function workspaceDb(input?: {
   recurringTasks?: unknown[];
   recurringPlans?: unknown[];
   attachmentRows?: unknown[];
+  confirmedReviewIds?: string[];
 }) {
   const reviewFindMany = vi.fn().mockResolvedValue(input?.reviews ?? []);
   const recurringFindMany = vi
@@ -141,7 +142,8 @@ function workspaceDb(input?: {
   const queryRaw = vi.fn(async (query: { strings?: readonly string[] }) => {
     const sql = query.strings?.join('') ?? '';
     if (sql.includes('monthly_plan_integrity')) return [monthlyPlanRow()];
-    if (sql.includes('SELECT r.id FROM review_records r')) return [];
+    if (sql.includes('visual_review_continuation')) return [];
+    if (sql.includes('SELECT r.id FROM review_records r')) return (input?.confirmedReviewIds ?? []).map(id => ({ id }));
     if (sql.includes('CHAR_LENGTH')) {
       return sourceQuery(query);
     }
@@ -1528,11 +1530,18 @@ describe('ReviewsService resource bounds', () => {
     );
   });
 
-  it('keeps project month completion through a task rework without mixing different months', async () => {
+  it('keeps exact old record confirmations through rework without treating the month as every row confirmation', async () => {
     const rows = [
       reviewRecord('review-old', ReviewType.VISUAL_COLOR_DIFFERENCE_REVIEW, {
         workflowTaskId: 'task-old',
         reviewPeriod: '2026-07',
+        reviewedAt: new Date('2026-07-11T00:00:00Z'),
+        submittedAt: new Date('2026-07-11T00:00:00Z'),
+      }),
+      reviewRecord('review-unconfirmed', ReviewType.VISUAL_COLOR_DIFFERENCE_REVIEW, {
+        workflowTaskId: 'task-old',
+        reviewPeriod: '2026-07',
+        reviewedAt: new Date('2026-07-11T00:00:00Z'),
       }),
       reviewRecord('review-current', ReviewType.VISUAL_COLOR_DIFFERENCE_REVIEW, {
         workflowTaskId: 'task-current',
@@ -1543,7 +1552,7 @@ describe('ReviewsService resource bounds', () => {
       { status: RecurringTaskStatus.COMPLETED, plannedDate: new Date('2026-07-01T00:00:00Z') },
       { status: RecurringTaskStatus.PENDING, plannedDate: new Date('2026-08-01T00:00:00Z') },
     ] }];
-    const harness = workspaceDb({ reviews: rows, recurringPlans });
+    const harness = workspaceDb({ reviews: rows, recurringPlans, confirmedReviewIds: ['review-old'] });
     const { service } = createService(harness.db);
 
     const workspace = await Reflect.get(
@@ -1553,6 +1562,7 @@ describe('ReviewsService resource bounds', () => {
 
     expect(workspace.items).toEqual([
       expect.objectContaining({ id: 'review-old', isPeriodCompleted: true }),
+      expect.objectContaining({ id: 'review-unconfirmed', isPeriodCompleted: false }),
       expect.objectContaining({ id: 'review-current', isPeriodCompleted: false }),
     ]);
     expect(harness.recurringPlanFindMany).toHaveBeenCalledTimes(1);
@@ -1802,6 +1812,7 @@ describe('ReviewsService resource bounds', () => {
         'plan-exact',
         expect.any(Date),
         actor,
+        ...(method === 'updateVisualDeltaReview' ? ['review-1'] : []),
       );
     },
   );

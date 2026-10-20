@@ -5,6 +5,7 @@ import { BusinessClock } from '../../common/business-clock';
 import { assertApprovedTeamMember } from '../../common/team-membership';
 import { withProjectWrite, withTeamWrite } from '../../common/team-authorization';
 import { resolveVisualReviewPlan } from '../../common/monthly-review-plan';
+import { continuableVisualReviewIds } from '../../common/visual-review-confirmation';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { ProjectAccessService } from '../auth/project-access.service';
 import { commandHash, identity, jsonData, object, pagination, positiveInt, textField } from '../color-register/color-register.rules';
@@ -158,7 +159,8 @@ export class InspectionsService {
         if(!input.recurringTaskId)throw new BadRequestException('历史计划必须选择准确期次，不能绕过原关联。');
         const task=await tx.recurringTask.findUnique({where:{id:input.recurringTaskId}});
         if(!task||task.projectId!==input.projectId||task.recurringPlanId!==plan.id)throw new BadRequestException('月度任务不属于目标项目。');
-        if(task.plannedDate>this.clock.now()||!['PENDING','IN_PROGRESS','OVERDUE'].includes(task.status))throw new ConflictException('月度任务尚未到期或已结束。');
+        const continuing=task.status==='COMPLETED'&&(await continuableVisualReviewIds(tx,input.projectId,[input.reviewRecordId],task.id)).has(input.reviewRecordId);
+        if(task.plannedDate>this.clock.now()||(!continuing&&!['PENDING','IN_PROGRESS','OVERDUE'].includes(task.status)))throw new ConflictException('月度任务尚未到期或已结束。');
       }else if(input.recurringTaskId)throw new BadRequestException('实际阶段评审不能关联其他历史月份。');
       const review=await tx.reviewRecord.findUnique({where:{id:input.reviewRecordId},include:{workflowTask:{select:{isActive:true,nodeCode:true,status:true}}}});
       if(!review||review.projectId!==input.projectId||review.reviewType!=='VISUAL_COLOR_DIFFERENCE_REVIEW'||review.reviewerId!==actor.id||review.submittedAt||!review.workflowTask.isActive||review.workflowTask.nodeCode!=='VISUAL_COLOR_DIFFERENCE_REVIEW'||!['PENDING','READY','IN_PROGRESS','RETURNED'].includes(review.workflowTask.status)||(review.reviewPeriod==='TASK')!==!plan)throw new ConflictException('请选择本人通过原评审入口创建的有效实际评审草稿。');

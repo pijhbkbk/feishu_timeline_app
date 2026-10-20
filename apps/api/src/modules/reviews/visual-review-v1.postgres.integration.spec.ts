@@ -86,6 +86,14 @@ describe.skipIf(!url).sequential('A12 V1 actual review stage on exclusive synthe
     f.task = await db.workflowTask.update({ where: { id: f.task.id }, data: { payload: { fromTaskId: previous.id } } });
     return { base, color, version, board };
   }
+  async function anotherReviewer() {
+    const username = `a12-stage-${randomUUID()}`;
+    const role = await db.role.findUniqueOrThrow({ where: { code: 'quality_engineer' } });
+    const user = await db.user.create({ data: { username, name: '合成同月第二评审员', teamAccessApproved: true,
+      localCredential: { create: { loginName: username, passwordHash: 'synthetic-no-login' } },
+      userRoles: { create: { roleId: role.id } } } });
+    return { ...actor, id: user.id, username, name: user.name, authVersion: user.authVersion };
+  }
 
   it('saves TASK review without inventing months, confirms record separately, then explicitly completes stage', async () => {
     const f = await fixture();
@@ -229,5 +237,92 @@ describe.skipIf(!url).sequential('A12 V1 actual review stage on exclusive synthe
     await expect(reviews.confirmVisualDeltaStage(f.project.id, stage(f), actor, true)).rejects.toThrow('历史计划异常');
     expect(await db.recurringPlan.findUnique({ where: { id: old.plan.id } })).toMatchObject({ projectId: foreign.project.id });
     expect(await db.recurringTask.count({ where: { recurringPlanId: old.plan.id, projectId: f.project.id } })).toBe(12);
+  });
+
+  it('finishes two existing same-month reviewers separately without rewriting the first period signature', async () => {
+    const f = await fixture(); const old = await legacy(f); const basis = await standard(f); const secondActor = await anotherReviewer();
+    const day = old.months[0]!.plannedDate.toISOString().slice(0, 10);
+    const first = await create(f, { reviewDate: day, standardVersionId: basis.version.id });
+    const secondInput = { ...input(), reviewerId: secondActor.id, reviewDate: day, standardVersionId: basis.version.id };
+    const created = await reviews.createVisualDeltaReview(f.project.id, secondInput, secondActor);
+    const second = created.items.find(item => item.reviewerId === secondActor.id)!;
+    await confirmRecord(f, first.id);
+    const periodBefore = await db.recurringTask.findUniqueOrThrow({ where: { id: old.months[0]!.id } });
+    const firstBefore = await db.reviewRecord.findUniqueOrThrow({ where: { id: first.id } });
+    const firstAudits = await db.auditLog.findMany({ where: { targetId: first.id }, orderBy: { id: 'asc' } });
+    const workspace = await reviews.getVisualDeltaReviewWorkspace(f.project.id, secondActor);
+    expect(workspace.items.find(item => item.id === second.id)).toMatchObject({ canContinueCompletedPeriod: true, isPeriodCompleted: false });
+    const thirdActor = await anotherReviewer();
+    await expect(reviews.createVisualDeltaReview(f.project.id, { ...secondInput, reviewerId: thirdActor.id }, thirdActor)).rejects.toThrow('已结束');
+    await expect(reviews.updateVisualDeltaReview(f.project.id, first.id, { ...input(), reviewDate: day, standardVersionId: basis.version.id }, actor)).rejects.toThrow('已确认');
+    await expect(reviews.confirmVisualDeltaStage(f.project.id, stage(f), actor, true)).rejects.toThrow('未提交或未确认');
+    await reviews.updateVisualDeltaReview(f.project.id, second.id, { ...secondInput, comment: '合成第二人补充本人意见' }, secondActor);
+    await reviews.uploadVisualDeltaReviewAttachment(f.project.id, second.id, file, secondActor);
+    const activity = await inspections.createActivity({ operationId: randomUUID(), date: day, baseId: basis.base.id, personIds: [] }, secondActor);
+    const object = await inspections.createObject({ operationId: randomUUID(), objectKind: 'VEHICLE', objectCode: randomUUID(), sampleId: null }, secondActor);
+    await inspections.saveBatch(activity.id, { operationId: randomUUID(), expectedRevision: 1,
+      items: [{ entity: 'occurrence', kind: 'create', clientId: 'same-month-vehicle', objectId: object.id, colorId: basis.color.id, values: { overallConclusion: 'PASS' } }] }, secondActor);
+    await inspections.linkReview(activity.id, { operationId: randomUUID(), expectedRevision: 2, projectId: f.project.id, recurringTaskId: old.months[0]!.id, reviewRecordId: second.id }, secondActor);
+    await reviews.submitVisualDeltaReview(f.project.id, second.id, secondActor);
+    await reviews.approveVisualDeltaReview(f.project.id, second.id, secondActor);
+    expect(await db.recurringTask.findUnique({ where: { id: old.months[0]!.id } })).toEqual(periodBefore);
+    expect(await db.reviewRecord.findUnique({ where: { id: first.id } })).toEqual(firstBefore);
+    expect(await db.auditLog.findMany({ where: { targetId: first.id }, orderBy: { id: 'asc' } })).toEqual(firstAudits);
+    await reviews.confirmVisualDeltaStage(f.project.id, stage(f), actor, true);
+  });
+
+  it('continues exact legacy CREATE audit drafts but cannot move them into another completed month', async () => {
+    const f = await fixture(); const old = await legacy(f); const secondActor = await anotherReviewer();
+    const date = old.months[0]!.plannedDate;
+    const first = await create(f, { reviewDate: date.toISOString() });
+    // Synthetic pre-A12 persisted shape, without rewriting any actual audit.
+    const second = await db.reviewRecord.create({ data: { projectId: f.project.id, workflowTaskId: f.task.id,
+      reviewerId: secondActor.id, reviewType: 'VISUAL_COLOR_DIFFERENCE_REVIEW', reviewPeriod: date.toISOString().slice(0, 7),
+      reviewedAt: date, result: 'APPROVED', comment: '合成旧服务本人草稿' } });
+    await db.auditLog.create({ data: { projectId: f.project.id, actorUserId: secondActor.id, targetId: second.id,
+      targetType: 'REVIEW_RECORD', action: 'VISUAL_DELTA_REVIEW_CREATED', afterData: {
+        id: second.id, workflowTaskId: f.task.id, reviewerId: secondActor.id,
+        reviewType: 'VISUAL_COLOR_DIFFERENCE_REVIEW', reviewDate: date.toISOString(),
+        standardVersionId: null, reviewConclusion: 'APPROVED', submittedAt: null,
+        reviewerName: secondActor.name, comment: second.comment, conditionNote: null,
+        rejectReason: null, returnToNodeCode: null, attachmentId: null, trialProductionId: null, trialVehicleNo: null,
+      } } });
+    await confirmRecord(f, first.id);
+    const next = await create(f, { reviewDate: old.months[1]!.plannedDate.toISOString() }); await confirmRecord(f, next.id);
+    const secondInput = { ...input(), reviewerId: secondActor.id, reviewDate: date.toISOString() };
+    await expect(reviews.updateVisualDeltaReview(f.project.id, second.id, { ...secondInput, reviewDate: old.months[1]!.plannedDate.toISOString() }, secondActor)).rejects.toThrow('已结束');
+    const correctedDate = new Date(date); correctedDate.setUTCDate(2);
+    await reviews.updateVisualDeltaReview(f.project.id, second.id, { ...secondInput, reviewDate: correctedDate.toISOString() }, secondActor);
+    await reviews.submitVisualDeltaReview(f.project.id, second.id, secondActor);
+    await reviews.approveVisualDeltaReview(f.project.id, second.id, secondActor);
+    await reviews.confirmVisualDeltaStage(f.project.id, stage(f), actor, true);
+    expect(await db.recurringTask.findUnique({ where: { id: old.months[0]!.id } })).toMatchObject({ reviewerId: actor.id });
+  });
+
+  it('does not infer confirmation or continuation from a completed month without an exact prior audit identity', async () => {
+    const f = await fixture(); const old = await legacy(f); const secondActor = await anotherReviewer();
+    const day = old.months[0]!.plannedDate;
+    const first = await create(f, { reviewDate: day.toISOString() });
+    const unrelated = await db.reviewRecord.create({ data: { projectId: f.project.id, workflowTaskId: f.task.id,
+      reviewerId: secondActor.id, reviewType: 'VISUAL_COLOR_DIFFERENCE_REVIEW', reviewPeriod: day.toISOString().slice(0, 7),
+      reviewedAt: day, result: 'APPROVED', comment: '合成归属证据缺失负向' } });
+    await db.auditLog.create({ data: { projectId: f.project.id, targetType: 'REVIEW_RECORD', targetId: unrelated.id,
+      action: 'VISUAL_DELTA_REVIEW_CREATED', afterData: { id: unrelated.id, workflowTaskId: 'another-task',
+        reviewerId: secondActor.id, reviewType: 'VISUAL_COLOR_DIFFERENCE_REVIEW', reviewDate: day.toISOString() } } });
+    await confirmRecord(f, first.id);
+    const before = await db.recurringTask.findUniqueOrThrow({ where: { id: old.months[0]!.id } });
+    const current = await reviews.getVisualDeltaReviewWorkspace(f.project.id, secondActor);
+    expect(current.items.find(row => row.id === unrelated.id)).toMatchObject({ canContinueCompletedPeriod: false, isPeriodCompleted: false });
+    await expect(reviews.updateVisualDeltaReview(f.project.id, unrelated.id,
+      { ...input(), reviewerId: secondActor.id, reviewDate: day.toISOString() }, secondActor)).rejects.toThrow('已结束');
+    await expect(reviews.confirmVisualDeltaStage(f.project.id, stage(f), actor, true)).rejects.toThrow('未提交或未确认');
+    const thirdActor = await anotherReviewer();
+    const late = await db.reviewRecord.create({ data: { projectId: f.project.id, workflowTaskId: f.task.id,
+      reviewerId: thirdActor.id, reviewType: 'VISUAL_COLOR_DIFFERENCE_REVIEW', reviewPeriod: day.toISOString().slice(0, 7),
+      reviewedAt: day, result: 'APPROVED', comment: '合成期次完成后插入负向' } });
+    await db.auditLog.create({ data: { projectId: f.project.id, targetType: 'REVIEW_RECORD', targetId: late.id,
+      action: 'VISUAL_DELTA_REVIEW_CREATED', metadata: { recurringTaskId: before.id, reviewPeriod: late.reviewPeriod } } });
+    await expect(reviews.submitVisualDeltaReview(f.project.id, late.id, thirdActor)).rejects.toThrow('已结束');
+    expect(await db.recurringTask.findUnique({ where: { id: before.id } })).toEqual(before);
   });
 });

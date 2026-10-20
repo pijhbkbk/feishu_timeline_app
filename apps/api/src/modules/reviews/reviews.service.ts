@@ -6,7 +6,7 @@ import { isApprovedTeamMember } from '../../common/team-membership';
 import { BusinessClock } from '../../common/business-clock';
 import { isReworkTask, isTechnicalReworkTask, ancestorEvidenceIds } from '../../common/workflow-evidence';
 import { requireActiveMonthlyPlan, resolveVisualReviewPlan } from '../../common/monthly-review-plan';
-import { confirmedVisualReviewIds } from '../../common/visual-review-confirmation';
+import { confirmedVisualReviewIds, continuableVisualReviewIds } from '../../common/visual-review-confirmation';
 import { assertTeamTaskById, withProjectWrite } from '../../common/team-authorization';
 import {
   BadRequestException,
@@ -1166,6 +1166,7 @@ export class ReviewsService {
         recurringPlanId,
         input.reviewDate,
         actor,
+        reviewId,
       );
       await this.assertUniqueVisualReviewerPerPeriod(
         tx,
@@ -1351,8 +1352,8 @@ export class ReviewsService {
         },
       );
 
-      const recurringTask = await this.getVisualDeltaRecurringTaskForDate(tx, projectId, recurringPlanId, updatedReview.reviewedAt!, actor);
-      if (recurringTask) {
+      const recurringTask = await this.getVisualDeltaRecurringTaskForDate(tx, projectId, recurringPlanId, updatedReview.reviewedAt!, actor, reviewId);
+      if (recurringTask && recurringTask.status !== RecurringTaskStatus.COMPLETED) {
         const completed = await tx.recurringTask.updateMany({
           where: { id: recurringTask.id, recurringPlanId: recurringPlanId!, status: { in: [RecurringTaskStatus.PENDING, RecurringTaskStatus.IN_PROGRESS, RecurringTaskStatus.OVERDUE] } },
           data: { status: RecurringTaskStatus.COMPLETED, result: updatedReview.result, comment: updatedReview.comment, reviewerId: updatedReview.reviewerId, completedAt: this.businessClock.now() },
@@ -1662,14 +1663,8 @@ export class ReviewsService {
       code: 'VISUAL_DELTA_REVIEW_PLAN_IDENTITY_CONFLICT',
       message: '项目存在多个历史月度计划，请核对后再继续。',
     });
-    const completedReviewPeriods = new Set<string>();
     for (const recurringPlan of recurringPlans) {
       this.assertVisualDeltaReviewPeriodCapacity(recurringPlan.tasks);
-      for (const task of recurringPlan.tasks) {
-        if (task.status === RecurringTaskStatus.COMPLETED) {
-          completedReviewPeriods.add(getMonthlyReviewPeriodKey(task.plannedDate));
-        }
-      }
     }
     const attachmentHistories = await this.loadReviewAttachmentHistories(
       db,
@@ -1677,6 +1672,7 @@ export class ReviewsService {
       reviewIds,
     );
     const confirmed = await confirmedVisualReviewIds(db, projectId, reviewIds);
+    const continuable = await continuableVisualReviewIds(db, projectId, reviewIds);
 
     return {
       project: this.toProjectSummary(project),
@@ -1695,12 +1691,8 @@ export class ReviewsService {
           item,
           attachmentHistories.get(item.id),
         ),
-        isPeriodCompleted: confirmed.has(item.id) || Boolean(
-          item.reviewPeriod &&
-            completedReviewPeriods.has(
-              item.reviewPeriod,
-            ),
-        ),
+        canContinueCompletedPeriod: continuable.has(item.id),
+        isPeriodCompleted: confirmed.has(item.id),
       })),
     };
   }
@@ -1797,7 +1789,7 @@ export class ReviewsService {
         const plan = await this.assertVisualDeltaAttachmentPlanAdmission(tx, input.projectId, context.activeTask.id);
         this.assertVisualReviewPeriodMode(reviewRecord, plan?.id ?? null);
         if (!reviewRecord.reviewedAt) throw new ConflictException('评审日期缺失。');
-        await this.getVisualDeltaRecurringTaskForDate(tx, input.projectId, plan?.id ?? null, reviewRecord.reviewedAt, input.actor);
+        await this.getVisualDeltaRecurringTaskForDate(tx, input.projectId, plan?.id ?? null, reviewRecord.reviewedAt, input.actor, input.reviewId);
       }
 
       return {
@@ -2512,7 +2504,7 @@ export class ReviewsService {
       this.assertVisualReviewPeriodMode(state.reviewRecord, recurringPlan?.id ?? null);
       if ((await confirmedVisualReviewIds(tx, projectId, [state.reviewRecord.id])).has(state.reviewRecord.id)) throw new ConflictException('评审已确认，原记录不能再次修改。');
       if (!state.reviewRecord.reviewedAt) throw new ConflictException('月度评审日期缺失。');
-      await this.getVisualDeltaRecurringTaskForDate(tx, projectId, recurringPlan?.id ?? null, state.reviewRecord.reviewedAt, actor);
+      await this.getVisualDeltaRecurringTaskForDate(tx, projectId, recurringPlan?.id ?? null, state.reviewRecord.reviewedAt, actor, state.reviewRecord.id);
     }
     return { ...state, recurringPlanId: recurringPlan?.id ?? null };
   }
@@ -2764,6 +2756,7 @@ export class ReviewsService {
     recurringPlanId: string | null,
     reviewDate: Date,
     actor: AuthenticatedUser,
+    existingReviewId?: string,
   ) {
     if (!recurringPlanId) return null;
     const { periodStart, periodEnd } = getMonthlyReviewPeriodRange(reviewDate);
@@ -2790,7 +2783,9 @@ export class ReviewsService {
     if (!isApprovedTeamMember(actor)) {
       throw new ForbiddenException('账号尚未获准办理本部门评审。');
     }
-    if (current.plannedDate > this.businessClock.now() || !['PENDING', 'IN_PROGRESS', 'OVERDUE'].includes(current.status)) {
+    const continuing = current.status === RecurringTaskStatus.COMPLETED && existingReviewId &&
+      (await continuableVisualReviewIds(db, projectId, [existingReviewId], current.id)).has(existingReviewId);
+    if (current.plannedDate > this.businessClock.now() || (!continuing && !['PENDING', 'IN_PROGRESS', 'OVERDUE'].includes(current.status))) {
       throw new ConflictException('本月任务尚未到期或已结束，不能修改评审结果。');
     }
     return current;
@@ -2937,7 +2932,7 @@ export class ReviewsService {
           const plan = await this.assertVisualDeltaAttachmentPlanAdmission(tx, input.projectId, input.workflowTaskId);
           this.assertVisualReviewPeriodMode(lockedReview, plan?.id ?? null);
           if (!lockedReview.reviewedAt) this.throwAttachmentTargetStateChanged();
-          await this.getVisualDeltaRecurringTaskForDate(tx, input.projectId, plan?.id ?? null, lockedReview.reviewedAt, input.actor);
+          await this.getVisualDeltaRecurringTaskForDate(tx, input.projectId, plan?.id ?? null, lockedReview.reviewedAt, input.actor, input.reviewId);
         });
       }
 

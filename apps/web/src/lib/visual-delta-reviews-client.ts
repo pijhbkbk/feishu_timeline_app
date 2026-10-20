@@ -43,6 +43,7 @@ export type VisualDeltaReviewRecord = {
   reviewType: 'VISUAL_COLOR_DIFFERENCE_REVIEW';
   reviewPeriod: string | null;
   isPeriodCompleted: boolean;
+  canContinueCompletedPeriod?: boolean;
   reviewConclusion: VisualDeltaReviewConclusion;
   reviewDate: string | null;
   submittedAt: string | null;
@@ -101,8 +102,12 @@ export function canWriteVisualDeltaMonth(user: SessionUser | null, workspace: Vi
 
 export function canWriteVisualDeltaRecord(user: SessionUser | null, workspace: VisualDeltaReviewWorkspaceResponse, review: VisualDeltaReviewRecord) {
   const month = workspace.recurringTasks.find(task => task.plannedDate.slice(0, 7) === review.reviewPeriod);
+  const continuing = canManageVisualDeltaReviews(user) && workspace.monthlyPlanActive &&
+    workspace.activeTask && ['PENDING', 'READY', 'IN_PROGRESS', 'RETURNED'].includes(workspace.activeTask.status) &&
+    month?.status === 'COMPLETED' && review.canContinueCompletedPeriod === true;
   return (workspace.reviewMode !== 'ACTUAL' || review.reviewPeriod === 'TASK') &&
-    review.workflowTaskId === workspace.activeTask?.id && review.reviewerId === user?.id && !review.isPeriodCompleted && canWriteVisualDeltaMonth(user, workspace, month);
+    review.workflowTaskId === workspace.activeTask?.id && review.reviewerId === user?.id && !review.isPeriodCompleted &&
+    (canWriteVisualDeltaMonth(user, workspace, month) || Boolean(continuing));
 }
 
 export type VisualStagePreview = { taskId: string; taskVersion: string; canComplete: boolean; blockingReasons: string[] };

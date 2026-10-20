@@ -6,7 +6,7 @@ import type { VisualDeltaReviewWorkspaceResponse, VisualStagePreview } from '../
 // Node component scheduler exercises the actual callback chain, not browser events.
 const hooks = vi.hoisted(() => ({ slots: [] as unknown[], index: 0, dirty: false,
   effects: [] as Array<() => void>, cleanups: new Map<number, () => void>() }));
-const api = vi.hoisted(() => ({ load: vi.fn(), create: vi.fn(), approve: vi.fn(), preview: vi.fn(), confirm: vi.fn() }));
+const api = vi.hoisted(() => ({ load: vi.fn(), create: vi.fn(), update: vi.fn(), approve: vi.fn(), preview: vi.fn(), confirm: vi.fn() }));
 const member: SessionUser = { id: 'author', username: 'synthetic', name: '合成评审人', email: null,
   departmentId: null, departmentName: null, authSource: 'local', teamAccessApproved: true,
   isSystemAdmin: false, roleCodes: ['quality_engineer'] };
@@ -30,7 +30,7 @@ vi.mock('react', async () => ({ ...await vi.importActual<typeof import('react')>
 vi.mock('./auth-provider', () => ({ useAuth: () => ({ user: member }) }));
 vi.mock('../lib/visual-delta-reviews-client', async () => ({
   ...await vi.importActual<typeof import('../lib/visual-delta-reviews-client')>('../lib/visual-delta-reviews-client'),
-  fetchVisualDeltaReviewWorkspace: api.load, createVisualDeltaReview: api.create,
+  fetchVisualDeltaReviewWorkspace: api.load, createVisualDeltaReview: api.create, updateVisualDeltaReview: api.update,
   approveVisualDeltaReview: api.approve, previewVisualDeltaStage: api.preview, confirmVisualDeltaStage: api.confirm,
 }));
 import { VisualDeltaReviewWorkspace, VisualDeltaReviewForm, VisualDeltaReviewHistory } from './visual-delta-review-workspace';
@@ -75,6 +75,27 @@ beforeEach(() => {
 });
 afterEach(() => hooks.cleanups.forEach(cleanup => cleanup()));
 describe('actual visual review and explicit stage callbacks', () => {
+  it('edits an admitted existing draft after the first monthly signature without creating another record', async () => {
+    const current = workspace();
+    current.reviewMode = 'LEGACY_MONTHLY'; current.monthlyPlanActive = true;
+    current.recurringTasks = [{ id: 'period', periodIndex: 1, periodLabel: '2026-10', plannedDate: date,
+      dueAt: null, reviewerId: 'first-author', status: 'COMPLETED' }];
+    current.items = [{ id: 'existing-review', workflowTaskId: 'task', reviewType: 'VISUAL_COLOR_DIFFERENCE_REVIEW',
+      reviewPeriod: '2026-10', isPeriodCompleted: false, canContinueCompletedPeriod: true,
+      reviewConclusion: 'APPROVED', reviewDate: date, submittedAt: null, reviewerId: member.id,
+      reviewerName: member.name, comment: '合成既存意见', conditionNote: null, rejectReason: null,
+      returnToNodeCode: null, returnToNodeName: null, createdAt: date, updatedAt: date, attachment: null, attachmentHistory: [] }];
+    api.load.mockResolvedValue(current); api.update.mockResolvedValue(current);
+    await flush();
+    expect(text(tree)).toContain('首条签署事实保留');
+    expect(elements(tree).find(item => item.type === VisualDeltaReviewHistory)?.props.isReadOnly).toBe(false);
+    click('继续填写'); await flush();
+    const form = elements(tree).find(item => item.type === VisualDeltaReviewForm)!;
+    expect(form.props.disabled).toBe(false);
+    (form.props.onSubmit as () => void)(); await flush();
+    expect(api.update).toHaveBeenCalledWith('project', 'existing-review', expect.objectContaining({ comment: '合成既存意见' }));
+    expect(api.create).not.toHaveBeenCalled(); expect(api.confirm).not.toHaveBeenCalled();
+  });
   it('saves a real date without requiring or inventing a month', async () => {
     await flush();
     expect(text(tree)).toContain('不生成固定月份义务');
