@@ -1,37 +1,27 @@
 'use client';
-import { Tools, DOCS_NORMAL_EDITOR_UNIT_ID_KEY, DOCS_FORMULA_BAR_EDITOR_UNIT_ID_KEY, CommandType, ImageSourceType, ImageUploadStatusType, LifecycleStages, LocaleType, type IWorkbookData } from '@univerjs/core';
+import { Tools, DOCS_NORMAL_EDITOR_UNIT_ID_KEY, DOCS_FORMULA_BAR_EDITOR_UNIT_ID_KEY, CommandType, ImageSourceType, LifecycleStages, LocaleType, type IWorkbookData, type IDrawingParam } from '@univerjs/core';
 import { createUniver, mergeLocales } from '@univerjs/presets';
-import { UniverSheetsCorePreset, IEditorBridgeService, IEditorService, IRenderManagerService, DocIMEInputManagerService, ReplaceSnapshotCommand } from '@univerjs/preset-sheets-core';
+import { UniverSheetsCorePreset, IEditorBridgeService, IEditorService, IRenderManagerService, DocIMEInputManagerService, ReplaceSnapshotCommand, type Spreadsheet } from '@univerjs/preset-sheets-core';
 import CoreZhCN from '@univerjs/preset-sheets-core/locales/zh-CN';
 import DrawingZhCN from '@univerjs/preset-sheets-drawing/locales/zh-CN';
-import { ImageIoService } from '@univerjs/preset-sheets-drawing';
+import { IDrawingManagerService } from '@univerjs/preset-sheets-drawing';
+import { WorkbookImageIo } from './image-io';
+import { createBackgroundRetry } from './background-retry';
 import { SheetDrawingAnchorType } from '@univerjs/sheets-drawing';
 import '@univerjs/sheets-drawing/facade';
 import { setNonce } from 'get-nonce';
 import { createRecordDrawingPreset } from '../business-sheet/drawing-preset';
-import { sheetThumbnails } from '../business-sheet/thumbnail-client';
-import { uploadSheetImage, defaultImageLayout, listSheetImages } from '../business-sheet/image-client';
-import { ThumbnailCache, type ThumbnailLease } from '../business-sheet/thumbnail-cache';
 import type { ImageAnchor } from '../business-sheet/xlsx-images';
 import { checkFormula, checkWorkbookBounds, WORKBOOK_LIMITS } from './contract';
 import { validateEditingDraft, type WorkbookEditingDraft } from './editing-draft';
 import { changesWorkbook } from './change-tracking';
-import { readBackgroundOriginal } from './background-io';
 import '@univerjs/preset-sheets-core/lib/index.css';
 import '@univerjs/preset-sheets-drawing/lib/index.css';
 
-export interface WorkbookRuntime {ready:Promise<void>;snapshot():Promise<IWorkbookData>;draftSnapshot():Promise<{snapshot:IWorkbookData;edit:WorkbookEditingDraft|null}|null>;restoreEdit(edit:WorkbookEditingDraft):Promise<void>;insertImage(file:File):Promise<void>;insertAsset(sheetId:string,assetId:string,anchor:ImageAnchor):Promise<void>;setBackgroundAsset(sheetId:string,assetId:string,scale:{scaleX:number;scaleY:number}):Promise<void>;dispose():void}
-class WorkbookImageIo extends ImageIoService {
-  private leases=new Map<string,ThumbnailLease>();private backgrounds=new Set<string>();private originalLeases=new Map<string,ThumbnailLease>();private originals:ThumbnailCache;private pending=0;private operations=new Map<string,string>();
-  constructor(private id:string,private changed:(pending:number)=>void,backgroundIds:string[],onError:(message:string)=>void){super();this.backgrounds=new Set(backgroundIds);this.originals=new ThumbnailCache(async(assetId,signal)=>{try{const assets=await listSheetImages('SHEET_WORKBOOK',[this.id],signal),asset=assets.find(item=>item.id===assetId&&item.recordId===this.id&&item.targetType==='SHEET_WORKBOOK'&&!item.isDeleted);if(!asset)throw new Error('背景原件不属于当前工作簿。');return await readBackgroundOriginal(asset,signal);}catch(error){if(!signal.aborted)onError(error instanceof Error?error.message:'背景原件读取失败。');throw error;}},2,32);}
-  markBackground(id:string){if(this.backgrounds.size>=32&&!this.backgrounds.has(id))throw new Error('背景图片资源超过 32 个，请保存后重新读取。');this.backgrounds.add(id);}
-  override async saveImage(file:File){this.changed(++this.pending);try{const hash=[...new Uint8Array(await crypto.subtle.digest('SHA-256',await file.arrayBuffer()))].map(n=>n.toString(16).padStart(2,'0')).join('');const key=`${file.name}:${file.type}:${hash}`;let operationId=this.operations.get(key);if(!operationId){operationId=crypto.randomUUID();this.operations.set(key,operationId);}const asset=await uploadSheetImage(file,'SHEET_WORKBOOK',this.id,defaultImageLayout(),operationId,()=>{});return {imageId:asset.id,source:asset.id,imageSourceType:ImageSourceType.UUID,base64Cache:'',status:ImageUploadStatusType.SUCCUSS};}finally{this.changed(--this.pending);}}
-  override getImage(id:string){if(!/^[a-f\d-]{36}$/i.test(id))return Promise.reject(new Error('图片资源标识无效。'));if(this.backgrounds.has(id)){let original=this.originalLeases.get(id);if(!original){original=this.originals.acquire(id);this.originalLeases.set(id,original);}return original.get();}let lease=this.leases.get(id);if(!lease){lease=sheetThumbnails.acquire(id);this.leases.set(id,lease);}return lease.get();}
-  dispose(){for(const lease of [...this.leases.values(),...this.originalLeases.values()])lease.release();this.leases.clear();this.originalLeases.clear();}
-}
-export function createFreeWorkbook(options:{container:HTMLElement;snapshot:IWorkbookData;onChanged():void;onError(message:string):void;onUploading(count:number):void}):WorkbookRuntime{
+export interface WorkbookRuntime {ready:Promise<void>;retryImages():Promise<number>;snapshot():Promise<IWorkbookData>;draftSnapshot():Promise<{snapshot:IWorkbookData;edit:WorkbookEditingDraft|null}|null>;restoreEdit(edit:WorkbookEditingDraft):Promise<void>;insertImage(file:File):Promise<void>;insertAsset(sheetId:string,assetId:string,anchor:ImageAnchor):Promise<void>;setBackgroundAsset(sheetId:string,assetId:string,scale:{scaleX:number;scaleY:number}):Promise<void>;dispose():void}
+export function createFreeWorkbook(options:{container:HTMLElement;snapshot:IWorkbookData;onChanged():void;onError(message:string):void;onUploading(count:number):void;onImageFailures(count:number):void}):WorkbookRuntime{
   setNonce(document.querySelector<HTMLScriptElement>('script[nonce]')?.nonce??'');
-  const io=new WorkbookImageIo(options.snapshot.id,options.onUploading,Object.values(options.snapshot.sheets).flatMap(sheet=>sheet.backgroundImage?[sheet.backgroundImage.source]:[]),options.onError);
+  const io=new WorkbookImageIo(options.snapshot.id,options.onUploading,Object.values(options.snapshot.sheets).flatMap(sheet=>sheet.backgroundImage?[sheet.backgroundImage.source]:[]),options.onImageFailures);
   const hidden=['sheet.command.insert-cell-image','sheet.command.set-worksheet-background-image','sheet.command.add-range-protection-from-toolbar','sheet.command.add-range-protection-from-context-menu','sheet.command.add-range-protection-from-sheet-bar','sheet.command.view-sheet-permission-from-context-menu','sheet.command.view-sheet-permission-from-sheet-bar','sidebar.operation.defined-name'];
   const {univer,univerAPI}=createUniver({locale:LocaleType.ZH_CN,locales:{[LocaleType.ZH_CN]:mergeLocales(CoreZhCN,DrawingZhCN)},presets:[UniverSheetsCorePreset({container:options.container,header:true,toolbar:true,ribbonType:'simple',formulaBar:true,footer:{sheetBar:true,statisticBar:true,menus:true,zoomSlider:true},menu:Object.fromEntries(hidden.map(id=>[id,{hidden:true}]))}),createRecordDrawingPreset(io)]});
   let resolveReady!:()=>void;const ready=new Promise<void>(resolve=>{resolveReady=resolve;});let disposed=false,composing=false;
@@ -95,8 +85,23 @@ export function createFreeWorkbook(options:{container:HTMLElement;snapshot:IWork
     else builder.setPlacement({kind:SheetDrawingAnchorType.Position,from:anchor.from,width:anchor.width!,height:anchor.height!});
     if(!sheet.insertImages([await builder.buildAsync()]))throw new Error('图片插入失败，已上传资源仍保留。');
   };
+  let resetBackgroundView:(()=>void)|undefined;
+  const retryImages=async()=>{
+    const result=await io.retryFailures();if(disposed)return result.remaining;
+    const render=renders.getRenderUnitById(workbook.getId()),main=render?.mainComponent as Spreadsheet|undefined;
+    if(result.backgrounds&&main){
+      // The pinned 1.0.4 background extension caches failed decoded images and
+      // exposes no eviction method. Recreate only that view extension; the
+      // workbook, pending cell edit, selection, and undo stack stay in place.
+      resetBackgroundView??=createBackgroundRetry(main.extensions,main,injector,()=>{main.makeForceDirty(true);render?.scene.makeDirty();},()=>disposed);
+      resetBackgroundView();
+    }
+    const recovered=new Set(result.recovered),manager=injector.get(IDrawingManagerService);
+    for(const sheet of workbook.getSheets()){const drawings=sheet.getImages().filter(image=>recovered.has(image.toBuilder().getSource())).map(image=>manager.getDrawingByParam({unitId:workbook.getId(),subUnitId:sheet.getSheetId(),drawingId:image.getId()})).filter((drawing):drawing is IDrawingParam=>Boolean(drawing));manager.refreshTransform(drawings);}
+    main?.makeForceDirty(true);render?.scene.makeDirty();return result.remaining;
+  };
   const setBackgroundAsset=async(sheetId:string,assetId:string,scale:{scaleX:number;scaleY:number})=>{await ready;if(!workbook.getSheetBySheetId(sheetId))throw new Error('背景工作表不存在。');io.markBackground(assetId);await io.getImage(assetId);const ok=univerAPI.syncExecuteCommand('sheet.command.set-worksheet-background-image',{unitId:workbook.getId(),subUnitId:sheetId,backgroundImage:{source:assetId,imageSourceType:ImageSourceType.UUID,...scale}});if(!ok)throw new Error('背景图片设置失败，已上传原件仍保留。');};
-  return {ready,setBackgroundAsset,restoreEdit,snapshot:async()=>{await ready;if(imeActive())throw new Error('请先完成中文选词，再保存。');if(workbook.isCellEditing())await workbook.endEditingAsync(true);await univerAPI.getFormula().onCalculationResultApplied(10000);const data=workbook.save();checkWorkbookBounds(data);return data;},draftSnapshot:async()=>{await ready;if(disposed||imeActive())return null;await univerAPI.getFormula().onCalculationResultApplied(10000);if(disposed||imeActive())return null;const snapshot=workbook.save();checkWorkbookBounds(snapshot);return {snapshot,edit:readEdit(snapshot)};},insertAsset,
+  return {ready,retryImages,setBackgroundAsset,restoreEdit,snapshot:async()=>{await ready;if(imeActive())throw new Error('请先完成中文选词，再保存。');if(workbook.isCellEditing())await workbook.endEditingAsync(true);await univerAPI.getFormula().onCalculationResultApplied(10000);const data=workbook.save();checkWorkbookBounds(data);return data;},draftSnapshot:async()=>{await ready;if(disposed||imeActive())return null;await univerAPI.getFormula().onCalculationResultApplied(10000);if(disposed||imeActive())return null;const snapshot=workbook.save();checkWorkbookBounds(snapshot);return {snapshot,edit:readEdit(snapshot)};},insertAsset,
     insertImage:async file=>{const image=await io.saveImage(file);const sheet=workbook.getActiveSheet(),cell=sheet.getActiveCell();await insertAsset(sheet.getSheetId(),image.source,{kind:'oneCell',from:{row:cell?.getRow()??0,column:cell?.getColumn()??0,rowOffset:4,columnOffset:4},width:160,height:100});},
     dispose:()=>{disposed=true;resolveReady();options.container.removeEventListener('compositionstart',compositionStart,true);options.container.removeEventListener('compositionend',compositionEnd,true);subscriptions.forEach(s=>s.dispose());io.dispose();univer.dispose();}};
 }
