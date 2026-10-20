@@ -1,7 +1,7 @@
 'use client';
-import { CommandType, ImageSourceType, ImageUploadStatusType, LifecycleStages, LocaleType, type IWorkbookData } from '@univerjs/core';
+import { Tools, DOCS_NORMAL_EDITOR_UNIT_ID_KEY, DOCS_FORMULA_BAR_EDITOR_UNIT_ID_KEY, CommandType, ImageSourceType, ImageUploadStatusType, LifecycleStages, LocaleType, type IWorkbookData } from '@univerjs/core';
 import { createUniver, mergeLocales } from '@univerjs/presets';
-import { UniverSheetsCorePreset } from '@univerjs/preset-sheets-core';
+import { UniverSheetsCorePreset, IEditorBridgeService, IEditorService, IRenderManagerService, DocIMEInputManagerService, ReplaceSnapshotCommand } from '@univerjs/preset-sheets-core';
 import CoreZhCN from '@univerjs/preset-sheets-core/locales/zh-CN';
 import DrawingZhCN from '@univerjs/preset-sheets-drawing/locales/zh-CN';
 import { ImageIoService } from '@univerjs/preset-sheets-drawing';
@@ -14,12 +14,13 @@ import { uploadSheetImage, defaultImageLayout, listSheetImages } from '../busine
 import { ThumbnailCache, type ThumbnailLease } from '../business-sheet/thumbnail-cache';
 import type { ImageAnchor } from '../business-sheet/xlsx-images';
 import { checkFormula, checkWorkbookBounds, WORKBOOK_LIMITS } from './contract';
+import { validateEditingDraft, type WorkbookEditingDraft } from './editing-draft';
 import { changesWorkbook } from './change-tracking';
 import { readBackgroundOriginal } from './background-io';
 import '@univerjs/preset-sheets-core/lib/index.css';
 import '@univerjs/preset-sheets-drawing/lib/index.css';
 
-export interface WorkbookRuntime {ready:Promise<void>;snapshot():Promise<IWorkbookData>;insertImage(file:File):Promise<void>;insertAsset(sheetId:string,assetId:string,anchor:ImageAnchor):Promise<void>;setBackgroundAsset(sheetId:string,assetId:string,scale:{scaleX:number;scaleY:number}):Promise<void>;dispose():void}
+export interface WorkbookRuntime {ready:Promise<void>;snapshot():Promise<IWorkbookData>;draftSnapshot():Promise<{snapshot:IWorkbookData;edit:WorkbookEditingDraft|null}|null>;restoreEdit(edit:WorkbookEditingDraft):Promise<void>;insertImage(file:File):Promise<void>;insertAsset(sheetId:string,assetId:string,anchor:ImageAnchor):Promise<void>;setBackgroundAsset(sheetId:string,assetId:string,scale:{scaleX:number;scaleY:number}):Promise<void>;dispose():void}
 class WorkbookImageIo extends ImageIoService {
   private leases=new Map<string,ThumbnailLease>();private backgrounds=new Set<string>();private originalLeases=new Map<string,ThumbnailLease>();private originals:ThumbnailCache;private pending=0;private operations=new Map<string,string>();
   constructor(private id:string,private changed:(pending:number)=>void,backgroundIds:string[],onError:(message:string)=>void){super();this.backgrounds=new Set(backgroundIds);this.originals=new ThumbnailCache(async(assetId,signal)=>{try{const assets=await listSheetImages('SHEET_WORKBOOK',[this.id],signal),asset=assets.find(item=>item.id===assetId&&item.recordId===this.id&&item.targetType==='SHEET_WORKBOOK'&&!item.isDeleted);if(!asset)throw new Error('背景原件不属于当前工作簿。');return await readBackgroundOriginal(asset,signal);}catch(error){if(!signal.aborted)onError(error instanceof Error?error.message:'背景原件读取失败。');throw error;}},2,32);}
@@ -33,9 +34,35 @@ export function createFreeWorkbook(options:{container:HTMLElement;snapshot:IWork
   const io=new WorkbookImageIo(options.snapshot.id,options.onUploading,Object.values(options.snapshot.sheets).flatMap(sheet=>sheet.backgroundImage?[sheet.backgroundImage.source]:[]),options.onError);
   const hidden=['sheet.command.insert-cell-image','sheet.command.set-worksheet-background-image','sheet.command.add-range-protection-from-toolbar','sheet.command.add-range-protection-from-context-menu','sheet.command.add-range-protection-from-sheet-bar','sheet.command.view-sheet-permission-from-context-menu','sheet.command.view-sheet-permission-from-sheet-bar','sidebar.operation.defined-name'];
   const {univer,univerAPI}=createUniver({locale:LocaleType.ZH_CN,locales:{[LocaleType.ZH_CN]:mergeLocales(CoreZhCN,DrawingZhCN)},presets:[UniverSheetsCorePreset({container:options.container,header:true,toolbar:true,ribbonType:'simple',formulaBar:true,footer:{sheetBar:true,statisticBar:true,menus:true,zoomSlider:true},menu:Object.fromEntries(hidden.map(id=>[id,{hidden:true}]))}),createRecordDrawingPreset(io)]});
-  let resolveReady!:()=>void;const ready=new Promise<void>(resolve=>{resolveReady=resolve;});let disposed=false;
+  let resolveReady!:()=>void;const ready=new Promise<void>(resolve=>{resolveReady=resolve;});let disposed=false,composing=false;
+  const compositionStart=()=>{composing=true;},compositionEnd=()=>{composing=false;if(!disposed)options.onChanged();};
+  options.container.addEventListener('compositionstart',compositionStart,true);options.container.addEventListener('compositionend',compositionEnd,true);
   const subscriptions=[univerAPI.addEvent(univerAPI.Event.LifeCycleChanged,event=>{if(event.stage>=LifecycleStages.Rendered)resolveReady();})];
   const workbook=univerAPI.createWorkbook(options.snapshot);if(univerAPI.getCurrentLifecycleStage()>=LifecycleStages.Rendered)resolveReady();
+  // Univer 1.0.4 adapter. The live document is distinct from the sheet cell
+  // until Enter; reading it must never call endEditingAsync or parse the text.
+  const injector=univer.__getInjector(),bridge=injector.get(IEditorBridgeService),editors=injector.get(IEditorService),renders=injector.get(IRenderManagerService);
+  const editorIds=[DOCS_NORMAL_EDITOR_UNIT_ID_KEY,DOCS_FORMULA_BAR_EDITOR_UNIT_ID_KEY];
+  const imeActive=()=>composing||editorIds.some(id=>Boolean(renders.getRenderUnitById(id)?.with(DocIMEInputManagerService).getActiveRange()));
+  const readEdit=(snapshot:IWorkbookData):WorkbookEditingDraft|null=>{
+    if(!workbook.isCellEditing())return null;
+    const location=bridge.getEditLocation(),editor=editors.getEditor(DOCS_NORMAL_EDITOR_UNIT_ID_KEY);
+    if(!location||location.unitId!==workbook.getId()||!editor)throw new Error('单元格编辑内容尚不可读取，请保持页面打开。');
+    const edit={sheetId:location.sheetId,row:location.row,column:location.column,document:structuredClone(editor.getDocumentData())};validateEditingDraft(edit,snapshot);return edit;
+  };
+  const restoreEdit=async(edit:WorkbookEditingDraft)=>{
+    await ready;validateEditingDraft(edit,options.snapshot);if(disposed)throw new Error('编辑器已关闭。');
+    const sheet=workbook.getSheetBySheetId(edit.sheetId)!;workbook.setActiveSheet(sheet);workbook.setActiveRange(sheet.getRange(edit.row,edit.column));
+    if(!workbook.startEditing())throw new Error('未确认输入尚未恢复，原草稿保留。');
+    const position=bridge.getEditLocation();if(position?.sheetId!==edit.sheetId||position.row!==edit.row||position.column!==edit.column)throw new Error('编辑器位置不符，未恢复输入。');
+    for(const id of editorIds){const editor=editors.getEditor(id);if(!editor)throw new Error('输入编辑器未就绪，原草稿保留。');
+      const doc={...structuredClone(edit.document),id};
+      if(!univerAPI.syncExecuteCommand(ReplaceSnapshotCommand.id,{unitId:id,snapshot:doc,textRanges:null}))throw new Error('未确认输入恢复失败，原草稿保留。');
+      if(!Tools.diffValue(editor.getDocumentData().body,doc.body))throw new Error('未确认输入读回不一致，原草稿保留。');
+    }
+    bridge.changeEditorDirty(true);
+    const end=Math.max(0,edit.document.body!.dataStream.length-2);editors.getEditor(DOCS_NORMAL_EDITOR_UNIT_ID_KEY)!.setSelectionRanges([{startOffset:end,endOffset:end}],false);
+  };
   subscriptions.push(univerAPI.addEvent(univerAPI.Event.BeforeCommandExecute,event=>{
     try {
       if(/(?:hyperlink|defined-name|protection|insert-cell-image|range-theme)/.test(event.id))throw new Error('此功能不在工作簿支持范围内。');
@@ -68,7 +95,7 @@ export function createFreeWorkbook(options:{container:HTMLElement;snapshot:IWork
     if(!sheet.insertImages([await builder.buildAsync()]))throw new Error('图片插入失败，已上传资源仍保留。');
   };
   const setBackgroundAsset=async(sheetId:string,assetId:string,scale:{scaleX:number;scaleY:number})=>{await ready;if(!workbook.getSheetBySheetId(sheetId))throw new Error('背景工作表不存在。');io.markBackground(assetId);await io.getImage(assetId);const ok=univerAPI.syncExecuteCommand('sheet.command.set-worksheet-background-image',{unitId:workbook.getId(),subUnitId:sheetId,backgroundImage:{source:assetId,imageSourceType:ImageSourceType.UUID,...scale}});if(!ok)throw new Error('背景图片设置失败，已上传原件仍保留。');};
-  return {ready,setBackgroundAsset,snapshot:async()=>{await ready;if(workbook.isCellEditing())await workbook.endEditingAsync(true);await univerAPI.getFormula().onCalculationResultApplied(10000);const data=workbook.save();checkWorkbookBounds(data);return data;},insertAsset,
+  return {ready,setBackgroundAsset,restoreEdit,snapshot:async()=>{await ready;if(imeActive())throw new Error('请先完成中文选词，再保存。');if(workbook.isCellEditing())await workbook.endEditingAsync(true);await univerAPI.getFormula().onCalculationResultApplied(10000);const data=workbook.save();checkWorkbookBounds(data);return data;},draftSnapshot:async()=>{await ready;if(disposed||imeActive())return null;await univerAPI.getFormula().onCalculationResultApplied(10000);if(disposed||imeActive())return null;const snapshot=workbook.save();checkWorkbookBounds(snapshot);return {snapshot,edit:readEdit(snapshot)};},insertAsset,
     insertImage:async file=>{const image=await io.saveImage(file);const sheet=workbook.getActiveSheet(),cell=sheet.getActiveCell();await insertAsset(sheet.getSheetId(),image.source,{kind:'oneCell',from:{row:cell?.getRow()??0,column:cell?.getColumn()??0,rowOffset:4,columnOffset:4},width:160,height:100});},
-    dispose:()=>{disposed=true;resolveReady();subscriptions.forEach(s=>s.dispose());io.dispose();univer.dispose();}};
+    dispose:()=>{disposed=true;resolveReady();options.container.removeEventListener('compositionstart',compositionStart,true);options.container.removeEventListener('compositionend',compositionEnd,true);subscriptions.forEach(s=>s.dispose());io.dispose();univer.dispose();}};
 }

@@ -2,6 +2,8 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 const hooks=vi.hoisted(()=>({slots:[] as unknown[],index:0,effects:[] as Array<()=>void>,cleanups:new Map<number,()=>void>(),setups:new Map<number,()=>void|(()=>void)>(),dirty:false}));
+const identity=vi.hoisted(()=>({id:'synthetic-owner-a'}));
+const drafts=vi.hoisted(()=>({read:vi.fn(),write:vi.fn(),remove:vi.fn(),claim:vi.fn()}));
 const api=vi.hoisted(()=>({list:vi.fn(),read:vi.fn(),create:vi.fn(),save:vi.fn(),revisions:vi.fn(),restore:vi.fn(),import:vi.fn()}));
 vi.mock('react',async()=>{
  const actual=await vi.importActual<typeof import('react')>('react');
@@ -9,12 +11,13 @@ vi.mock('react',async()=>{
 });
 vi.mock('next/link',()=>({default:'a'}));
 vi.mock('next/navigation',()=>({useSearchParams:()=>new URLSearchParams(window.location.search)}));
-vi.mock('../../components/auth-provider',()=>({useAuth:()=>({user:{isSystemAdmin:true,authSource:'local'}})}));
+vi.mock('../../components/auth-provider',()=>({useAuth:()=>({user:{id:identity.id,isSystemAdmin:true,authSource:'local'}})}));
 vi.mock('../m1/use-unsaved',()=>({useProjectUnsavedChanges:vi.fn()}));
 vi.mock('../business-sheet/image-client',()=>({defaultImageLayout:()=>({}),listSheetImages:vi.fn(),uploadSheetImage:vi.fn()}));
 vi.mock('../business-sheet/record-exchange',()=>({downloadWorkbook:vi.fn()}));
 vi.mock('./canvas',()=>({WorkbookCanvas:({snapshot}:{snapshot:{id:string}})=><div data-workbook={snapshot.id}/> }));
 vi.mock('./client',()=>({listWorkbooks:api.list,readWorkbook:api.read,createWorkbook:api.create,saveWorkbook:api.save,listRevisions:api.revisions,restoreWorkbook:api.restore}));
+vi.mock('./draft-store',()=>({validateLocalDraft:vi.fn(),readLocalDrafts:drafts.read,writeLocalDraft:drafts.write,removeLocalDraft:drafts.remove,claimLocalDraft:drafts.claim}));
 vi.mock('./xlsx',()=>({readFreeWorkbook:api.import}));
 import { ApiRequestError } from '../../lib/auth-client';
 import { blankWorkbook } from './contract';
@@ -31,12 +34,13 @@ async function click(label:string){const button=nodes(tree).find(n=>n.type==='bu
 function dispose(){hooks.cleanups.forEach(cleanup=>cleanup());hooks.cleanups.clear();}
 beforeEach(()=>{
  hooks.slots=[];hooks.index=0;hooks.effects=[];hooks.cleanups=new Map();hooks.setups=new Map();hooks.dirty=false;
+ identity.id='synthetic-owner-a';Object.values(drafts).forEach(mock=>mock.mockReset());drafts.read.mockResolvedValue([]);drafts.write.mockResolvedValue(true);drafts.remove.mockResolvedValue(undefined);
  Object.values(api).forEach(mock=>mock.mockReset());url=new URL(`http://localhost/admin/color-database?workbook=${oldId}`);
  replace=vi.fn((_state:unknown,_title:string,next:URL)=>{url=new URL(next);});
  vi.stubGlobal('window',{get location(){return {href:url.href,search:url.search};},history:{state:null,replaceState:replace},confirm:vi.fn(()=>true)});
  api.list.mockResolvedValue({items:[saved(oldId)],nextCursor:'next-page'});api.read.mockImplementation((id:string)=>Promise.resolve(saved(id)));api.create.mockImplementation((snapshot:SavedWorkbook['snapshot'])=>Promise.resolve({...saved(snapshot.id),name:snapshot.name}));
 });
-afterEach(()=>{dispose();vi.unstubAllGlobals();});
+afterEach(()=>{vi.useRealTimers();dispose();vi.unstubAllGlobals();});
 it('directly reads a requested workbook outside the first page and retains its selectable identity',async()=>{
  url.searchParams.set('workbook',laterId);const html=await settle();expect(api.read).toHaveBeenCalledWith(laterId,expect.any(AbortSignal));expect(api.read).not.toHaveBeenCalledWith(oldId,expect.anything());expect(html).toContain(`data-workbook="${laterId}"`);expect(html).toContain(`value="${laterId}"`);expect(url.searchParams.get('workbook')).toBe(laterId);
 });
@@ -110,7 +114,7 @@ it('keeps unfinished imported images and their active identity on a query change
 });
 
 it('retains the uncertain save request when a query change attempts to leave',async()=>{
- await settle();const canvas=nodes(tree).find(n=>typeof n.props.onChanged==='function')!;(canvas.props.runtime as {current:unknown}).current={snapshot:vi.fn().mockResolvedValue(saved(oldId).snapshot)};(canvas.props.onReady as ()=>void)();(canvas.props.onChanged as ()=>void)();await settle();api.save.mockRejectedValueOnce(new Error('保存响应丢失'));await click('保存');const request=api.save.mock.calls[0]![1];api.read.mockClear();url.searchParams.set('workbook',laterId);
+ await settle();const canvas=nodes(tree).find(n=>typeof n.props.onChanged==='function')!;(canvas.props.runtime as {current:unknown}).current={snapshot:vi.fn().mockResolvedValue(saved(oldId).snapshot),draftSnapshot:vi.fn().mockResolvedValue({snapshot:saved(oldId).snapshot,edit:null})};(canvas.props.onReady as ()=>void)();(canvas.props.onChanged as ()=>void)();await settle();api.save.mockRejectedValueOnce(new Error('保存响应丢失'));await click('保存');const request=api.save.mock.calls[0]![1];api.read.mockClear();url.searchParams.set('workbook',laterId);
  const html=await settle();expect(html).toContain('上次操作结果尚未确认');expect(html).toContain('核实并保存');expect(html).toContain('有未保存内容');expect(url.searchParams.get('workbook')).toBe(oldId);expect(api.read).not.toHaveBeenCalled();api.save.mockResolvedValueOnce({...saved(oldId),revision:2});await click('核实并保存');expect(api.save.mock.calls[1]![1]).toBe(request);
 });
 it('retains an uncertain restore operation and does not navigate away',async()=>{
@@ -122,3 +126,21 @@ it('restarts an initial read after Strict Mode effect cleanup/setup and ignores 
  let resolve!:(value:SavedWorkbook)=>void;api.read.mockImplementationOnce(()=>new Promise<SavedWorkbook>(r=>{resolve=r;}));await settle();const signal=api.read.mock.calls[0]![1] as AbortSignal;dispose();hooks.setups.forEach((setup,index)=>{const cleanup=setup();if(cleanup)hooks.cleanups.set(index,cleanup);});
  expect(signal.aborted).toBe(true);expect(await settle()).toContain(`data-workbook="${oldId}"`);expect(api.read).toHaveBeenCalledTimes(2);const writes=replace.mock.calls.length;resolve(saved(oldId));await settle();expect(replace).toHaveBeenCalledTimes(writes);
 });
+
+function readyEditor(){const canvas=nodes(tree).find(n=>typeof n.props.onChanged==='function')!;(canvas.props.runtime as {current:unknown}).current={snapshot:vi.fn().mockResolvedValue(saved(oldId).snapshot),draftSnapshot:vi.fn().mockResolvedValue({snapshot:saved(oldId).snapshot,edit:null})};(canvas.props.onReady as ()=>void)();(canvas.props.onChanged as ()=>void)();}
+it('does not send a save if durable request storage fails',async()=>{await settle();readyEditor();await settle();drafts.write.mockRejectedValueOnce(new Error('本机配额耗尽'));const html=await click('保存');expect(api.save).not.toHaveBeenCalled();expect(html).toContain('本机配额耗尽');expect(html).toContain('有未保存内容');expect(html).not.toContain('核实并保存');expect(html).toContain('保存请求尚未发送');});
+it('ignores a late save acknowledgement after the signed-in account changes',async()=>{
+ await settle();readyEditor();await settle();let resolve!:(value:SavedWorkbook)=>void;api.save.mockImplementationOnce(()=>new Promise<SavedWorkbook>(r=>{resolve=r;}));const saving=click('保存');await settle();expect(api.save).toHaveBeenCalledTimes(1);
+ identity.id='synthetic-owner-b';url.searchParams.set('workbook',laterId);await settle();resolve({...saved(oldId),revision:2,name:'OLD OWNER ACK'});await saving;const html=await settle();expect(html).toContain(`data-workbook="${laterId}"`);expect(html).not.toContain('OLD OWNER ACK');expect(drafts.remove).not.toHaveBeenCalled();expect(drafts.write.mock.calls.every(call=>call[0].ownerId==='synthetic-owner-a')).toBe(true);
+});
+it('retains new edits made while the previous snapshot is being saved',async()=>{
+ await settle();readyEditor();await settle();let resolve!:(value:SavedWorkbook)=>void;api.save.mockImplementationOnce(()=>new Promise<SavedWorkbook>(r=>{resolve=r;}));const saving=click('保存');await settle();const canvas=nodes(tree).find(n=>typeof n.props.onChanged==='function')!;(canvas.props.onChanged as ()=>void)();await settle();resolve({...saved(oldId),revision:2});await saving;const html=await settle();expect(html).toContain('仍有新修改');expect(drafts.remove).not.toHaveBeenCalled();expect(drafts.write.mock.calls.at(-1)![0].pending).toBeNull();expect(drafts.write.mock.calls.at(-1)![0].baseRevision).toBe(2);
+});
+
+it('durably captures later content while the first server save is still awaiting acknowledgement',async()=>{
+ vi.useFakeTimers();await settle();readyEditor();await settle();let resolve!:(value:SavedWorkbook)=>void;api.save.mockImplementationOnce(()=>new Promise<SavedWorkbook>(r=>{resolve=r;}));const button=nodes(tree).find(n=>n.type==='button'&&text(n)==='保存')!;(button.props.onClick as ()=>void)();await settle();expect(api.save).toHaveBeenCalledTimes(1);const original=structuredClone(api.save.mock.calls[0]![1]);
+ const canvas=nodes(tree).find(n=>typeof n.props.onChanged==='function')!,rt=(canvas.props.runtime as {current:{draftSnapshot:ReturnType<typeof vi.fn>}}).current;const later=saved(oldId).snapshot;later.name='N+1 actual content';rt.draftSnapshot.mockResolvedValue({snapshot:later,edit:null});(canvas.props.onChanged as ()=>void)();await settle();await vi.advanceTimersByTimeAsync(801);await settle();const retained=drafts.write.mock.calls.at(-1)![0];expect(retained.snapshot.name).toBe('N+1 actual content');expect(retained.pending.payload).toEqual(original);expect(retained.sequence).toBeGreaterThan(retained.pending.sequence);expect(api.save).toHaveBeenCalledTimes(1);
+ resolve({...saved(oldId),revision:2});await settle();expect(drafts.write.mock.calls.at(-1)![0].snapshot.name).toBe('N+1 actual content');expect(drafts.write.mock.calls.at(-1)![0].pending).toBeNull();expect(drafts.remove).not.toHaveBeenCalled();
+});
+
+it('offers retry and a complete recovery download while a failed editing overlay remains preserved',async()=>{const draft={schema:1,ownerId:identity.id,workbookId:oldId,editorId:crypto.randomUUID(),baseRevision:1,sequence:3,savedAt:Date.now(),snapshot:saved(oldId).snapshot,pending:null};drafts.read.mockResolvedValueOnce([draft]);drafts.claim.mockResolvedValue({...draft,editorId:crypto.randomUUID()});await settle();await click('恢复这份草稿');const canvas=nodes(tree).find(n=>typeof n.props.onRecoveryError==='function')!;(canvas.props.onRecoveryError as (message:string)=>void)('合成恢复失败');const html=await settle();expect(html).toContain('合成恢复失败');expect(html).toContain('inert');expect(html).toContain('重新尝试恢复输入');expect(html).toContain('下载草稿恢复副本');expect(nodes(tree).find(n=>n.type==='button'&&text(n)==='保存')?.props.disabled).toBe(true);});
