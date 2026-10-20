@@ -24,6 +24,7 @@ import {
   isWorkflowActionCurrentlyAvailable,
 } from '../workflows/workflow-node.constants';
 import { WorkflowsService } from '../workflows/workflows.service';
+import { ensurePerformanceArrivalAnchor } from '../workflows/performance-arrival-anchor';
 import {
   canEditPaintProcurement,
   getPaintProcurementCompletionIssue,
@@ -281,6 +282,8 @@ export class PaintProcurementsService {
         throw new BadRequestException(completionIssue);
       }
 
+      await ensurePerformanceArrivalAnchor(tx, context.activeTask, actor.id);
+
       await this.workflowsService.transitionTaskWithExecutor(
         tx,
         context.activeTask.id,
@@ -340,7 +343,7 @@ export class PaintProcurementsService {
     await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
       await this.lockProcurementRow(tx, projectId, procurementId);
       const procurement = await this.getProcurementOrThrow(tx, projectId, procurementId);
-      await this.lockActiveProcurementTaskAndGetContext(tx, actor, projectId);
+      const context = await this.lockActiveProcurementTaskAndGetContext(tx, actor, projectId);
       const nextStatus = getProcurementStatusTransitionTarget(procurement.status, action);
 
       if (!nextStatus) {
@@ -387,6 +390,10 @@ export class PaintProcurementsService {
         beforeData: this.toProcurementAuditSnapshot(procurement),
         afterData: this.toProcurementAuditSnapshot(updatedRecord),
       });
+
+      if (action === 'MARK_ARRIVED') {
+        await ensurePerformanceArrivalAnchor(tx, context.activeTask!, actor.id);
+      }
     });
 
     return this.buildWorkspace(this.prisma, projectId);

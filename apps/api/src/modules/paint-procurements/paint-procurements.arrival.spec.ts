@@ -26,16 +26,37 @@ function setup(status: ProcurementStatus = ProcurementStatus.DRAFT, arrivalDate:
     supplier: { id: 'supplier-1', supplierName: '合成供应商' },
   };
   const task = { id: 'task-1', nodeCode: WorkflowNodeCode.PAINT_PROCUREMENT,
-    assigneeUserId: actor.id, isActive: true, status: 'IN_PROGRESS' };
+    projectId: 'project-1', assigneeUserId: actor.id, isActive: true, status: 'IN_PROGRESS',
+    payload: {} as Prisma.JsonValue, updatedAt: new Date('2026-09-02T00:00:00Z') };
+  const evidence: Array<{ id: string; targetId: string; action: string; beforeData?: unknown; afterData?: unknown }> = [
+    { id: 'create-audit', targetId: record.id, action: 'PAINT_PROCUREMENT_CREATED', afterData: { id: record.id } },
+    ...(status === 'ARRIVED' ? [{ id: 'arrival-audit', targetId: record.id, action: 'PAINT_PROCUREMENT_ARRIVED',
+      beforeData: { status: 'ORDERED' }, afterData: { id: record.id, status: 'ARRIVED', arrivalDate: arrivalDate?.toISOString() } }] : []),
+  ];
   const tx = {
     $executeRaw: vi.fn().mockResolvedValue(1),
-    $queryRaw: vi.fn(async (query: Prisma.Sql) => [{
-      id: query.strings.join('').includes('paint_procurements') ? record.id : task.id,
-    }]),
+    $queryRaw: vi.fn(async (query: Prisma.Sql) => {
+      const sql = query.strings.join('');
+      if (sql.includes('FROM "audit_logs"')) {
+        const action = sql.includes('PAINT_PROCUREMENT_CREATED') ? 'PAINT_PROCUREMENT_CREATED' : 'PAINT_PROCUREMENT_ARRIVED';
+        return evidence.filter(row => row.action === action).map(row => ({
+          id: row.id, targetId: row.targetId, recordId: record.id, beforeStatus: 'ORDERED', afterStatus: 'ARRIVED',
+          arrivalDate: record.arrivalDate?.toISOString(), createdAt: new Date('2026-09-02T00:00:00Z'),
+        }));
+      }
+      return [{ id: sql.includes('paint_procurements') ? record.id : task.id }];
+    }),
     user: { findUnique: vi.fn().mockResolvedValue({ status: 'ACTIVE', authVersion: 1,
       isSystemAdmin: false, teamAccessApproved: true, userRoles: [] }) },
     project: { findUnique: vi.fn().mockResolvedValue({ id: 'project-1', currentNodeCode: WorkflowNodeCode.PAINT_PROCUREMENT }) },
-    workflowTask: { findFirst: vi.fn().mockResolvedValue(task), findUnique: vi.fn().mockResolvedValue(task) },
+    workflowTask: { findFirst: vi.fn().mockResolvedValue(task), findUnique: vi.fn().mockResolvedValue(task),
+      updateMany: vi.fn(async ({ data }: { data: Partial<typeof task> }) => { Object.assign(task, data); return { count: 1 }; }) },
+    auditLog: {
+      findMany: vi.fn(async ({ where }: { where: { action: string } }) => evidence.filter(row => row.action === where.action)),
+      create: vi.fn(async ({ data }: { data: Omit<(typeof evidence)[number], 'id'> }) => {
+        const row = { id: `audit-${evidence.length}`, ...data }; evidence.push(row); return row;
+      }),
+    },
     supplier: { findUnique: vi.fn().mockResolvedValue(record.supplier) },
     paintProcurement: {
       findFirst: vi.fn(async ({ where }: { where: { id?: string } }) => where.id ? record : null),
@@ -49,7 +70,7 @@ function setup(status: ProcurementStatus = ProcurementStatus.DRAFT, arrivalDate:
     },
   };
   const prisma = { $transaction: vi.fn(async (operation: (client: typeof tx) => Promise<unknown>) => operation(tx)) };
-  const audit = { createWithExecutor: vi.fn() };
+  const audit = { createWithExecutor: vi.fn(async (_tx, data) => tx.auditLog.create({ data })) };
   const workflow = { transitionTaskWithExecutor: vi.fn() };
   const access = { assertProjectAccessWithDefaultClient: vi.fn().mockResolvedValue({ id: 'project-1' }) };
   const service = new PaintProcurementsService(prisma as never, audit as never, workflow as never, access as never);

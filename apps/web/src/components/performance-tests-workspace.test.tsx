@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   CompletePerformanceTestTaskButton,
+  PerformanceArrivalSummary,
   TestItemTable,
   TestResultForm,
 } from './performance-tests-workspace';
@@ -187,5 +188,27 @@ describe('PerformanceTestsWorkspace', () => {
       testedAt: '',
     })).toBe('试验编码不能为空。');
     expect(html).toContain('完成性能试验节点');
+  });
+
+  it('displays the stored six-month deadline on the Shanghai business date without recalculating it', () => {
+    const html = renderToStaticMarkup(<PerformanceArrivalSummary task={{ ...workspace.activeTask!,
+      dueAt: '2027-02-28T15:59:59.999Z',
+      payload: { performanceArrivalAnchor: { rule: 'FIRST_VALID_ARRIVAL_PLUS_6_CALENDAR_MONTHS_V1', arrivalDate: '2026-08-31T00:00:00Z' } },
+    }} />);
+    expect(html).toContain('2026/08/31');
+    expect(html).toContain('2027/02/28');
+    expect(html).toContain('后续到货不重置');
+    expect(html).toContain('不阻塞主线');
+  });
+
+  it('shows missing legacy source explicitly while keeping its saved deadline', () => {
+    const html = renderToStaticMarkup(<PerformanceArrivalSummary task={{ ...workspace.activeTask!,
+      dueAt: '2026-03-24T00:00:00Z', payload: null,
+    }} />);
+    expect(html).toContain('尚无可核对依据');
+    expect(html).toContain('2026/03/24');
+    expect(html).toContain('不按当前时间重新推算');
+    expect(html).not.toContain('后续到货不重置');
+    expect(renderToStaticMarkup(<PerformanceArrivalSummary task={null} />)).toBe('');
   });
 });

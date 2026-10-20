@@ -67,6 +67,7 @@ import {
 } from './workflow-node.constants';
 import { WorkflowDeadlineService } from './workflow-deadline.service';
 import { WorkflowRecurringService } from './workflow-recurring.service';
+import { readPerformanceArrivalAnchor } from './performance-arrival-anchor';
 
 type WorkflowDbClient = Prisma.TransactionClient | PrismaService;
 
@@ -1538,6 +1539,12 @@ export class WorkflowsService {
     for (const template of templates) {
       const nextNodeMeta = getWorkflowNodeMeta(template.nodeCode);
       const isPrimary = template.isPrimary ?? nextNodeMeta.isPrimaryTask;
+      const performanceAnchor = template.nodeCode === WorkflowNodeCode.PERFORMANCE_TEST
+        ? readPerformanceArrivalAnchor(sourceTask.payload) : null;
+      if (template.nodeCode === WorkflowNodeCode.PERFORMANCE_TEST &&
+          (sourceTask.nodeCode !== WorkflowNodeCode.PAINT_PROCUREMENT || !performanceAnchor || performanceAnchor.procurementTaskId !== sourceTask.id)) {
+        throw new ConflictException('缺少当前采购轮次的性能试验到货起算依据，请核对后重试。');
+      }
 
       // One identity and one fee matter per project, including completed matters.
       if (template.nodeCode === WorkflowNodeCode.COLOR_NUMBERING || template.nodeCode === WorkflowNodeCode.DEVELOPMENT_ACCEPTANCE) {
@@ -1576,7 +1583,8 @@ export class WorkflowsService {
       });
       const taskSchedule = await this.workflowDeadlineService.buildTaskSchedule(tx, {
         nodeCode: template.nodeCode,
-        startAt: this.businessClock.now(),
+        startAt: performanceAnchor ? new Date(performanceAnchor.arrivalDate) : this.businessClock.now(),
+        ...(performanceAnchor ? { manualDueAt: new Date(performanceAnchor.dueAt) } : {}),
       });
       const assignment = await resolveTeamAssignment(tx, template.nodeCode);
 
@@ -1614,6 +1622,7 @@ export class WorkflowsService {
             assignmentSource: assignment.assigneeUserId ? 'SINGLE_ELIGIBLE_MEMBER' : 'UNASSIGNED',
             requiredRoleCode: assignment.requiredRoleCode,
             collaboratorUserIds: [], reviewerUserIds: [],
+            ...(performanceAnchor ? { performanceArrivalAnchor: performanceAnchor } : {}),
             ...(previousTask?.id ? { supersedesTaskId: previousTask.id } : {}),
             ...(technicalReworkSourceTaskId ? { technicalReworkSourceTaskId } : {}),
             ...(exteriorCorrection ? { exteriorRectification: { status: 'PENDING', sourceTaskId: sourceTask.id } } : {}),

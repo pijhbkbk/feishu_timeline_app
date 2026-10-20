@@ -326,6 +326,7 @@ export function PerformanceTestsWorkspace({
             <strong>{workspace.statistics.submittedCount}</strong>
           </div>
         </div>
+        <PerformanceArrivalSummary task={workspace.activeTask} />
         {workspace.activeTask && isWorkflowTaskOverdue(workspace.activeTask) ? (
           <p className="error-text">当前涂料性能试验任务已逾期。</p>
         ) : null}
@@ -434,6 +435,25 @@ export function PerformanceTestsWorkspace({
       </section>
     </div>
   );
+}
+
+export function PerformanceArrivalSummary({ task }: { task: PerformanceTestsWorkspaceResponse['activeTask'] }) {
+  if (!task) return null;
+  const payload = task.payload && typeof task.payload === 'object' && !Array.isArray(task.payload)
+    ? task.payload as Record<string, unknown> : null;
+  const raw = payload?.performanceArrivalAnchor;
+  const anchor = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw as Record<string, unknown> : null;
+  const hasAnchor = anchor?.rule === 'FIRST_VALID_ARRIVAL_PLUS_6_CALENDAR_MONTHS_V1';
+  const dateLabel = (value: unknown) => {
+    if (typeof value !== 'string' || !Number.isFinite(new Date(value).getTime())) return '待核对';
+    return new Intl.DateTimeFormat('zh-CN', { timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(value));
+  };
+  return <div>
+    <p>本轮首次有效到货：<strong>{hasAnchor ? dateLabel(anchor.arrivalDate) : '尚无可核对依据'}</strong>；性能反馈截止：<strong>{dateLabel(task.dueAt)}</strong>（北京时间）。</p>
+    <p className="muted">{hasAnchor
+      ? '期限为首次有效到货后 6 个日历月，月末夹断；后续到货不重置。性能反馈与首台主线并行，不阻塞主线。'
+      : '保留该任务已记录的截止日期，不按当前时间重新推算；到货起算依据缺失时需核对。'}</p>
+  </div>;
 }
 
 export function TestResultForm({

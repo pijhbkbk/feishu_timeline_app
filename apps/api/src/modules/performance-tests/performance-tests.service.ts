@@ -31,6 +31,7 @@ import {
   isWorkflowActionCurrentlyAvailable,
 } from '../workflows/workflow-node.constants';
 import { WorkflowsService } from '../workflows/workflows.service';
+import { readPerformanceArrivalAnchor } from '../workflows/performance-arrival-anchor';
 import {
   canEditPerformanceTest,
   getPerformanceTestCompletionIssue,
@@ -115,6 +116,7 @@ export class PerformanceTestsService {
     await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
       const { context } = await this.lockPerformanceWriteContext(tx, actor, projectId);
       this.assertPerformanceTestCapacity(context.records, true);
+      const arrivalAnchor = readPerformanceArrivalAnchor(context.activeTask!.payload);
 
       await this.assertUniqueTestCode(tx, projectId, input.testCode);
       await this.assertSampleReference(tx, projectId, input.sampleId);
@@ -123,6 +125,7 @@ export class PerformanceTestsService {
       const createdTest = await tx.performanceTest.create({
         data: {
           projectId,
+          ...(arrivalAnchor ? { paintProcurementId: arrivalAnchor.procurementId } : {}),
           sampleId: input.sampleId,
           relatedObjectName: input.relatedObjectName,
           testCode: input.testCode,
