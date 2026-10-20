@@ -62,7 +62,7 @@ export type RegisterDetail = RegisterRow & {
   sources: RegisterSource[];
   provenance: Array<{ fileName: string; sheetName: string; rowNumber: number; rawCells: RegisterJson }>;
   projects: Array<{ id: string; name: string }>;
-  production: Array<{ id: string; month: string; metricScope: string; quantity: string | null; sourceCell: string | null }>;
+  production: Array<{ id: string; month: string; metricScope: string; vehicleModel: string; quantity: string | null; sourceCell: string | null }>;
   productionLimit: number;
   systemProduction: { items: Array<{ month: string; metricScope: string; quantity: string | null; recordCount: number; unknownQuantityCount: number }>; hasMore: boolean; undatedRecordCount: number };
 };
