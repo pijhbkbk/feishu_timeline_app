@@ -35,6 +35,27 @@ console.log(JSON.stringify({ result: 'PASS', assertions: count, coverage: ['null
 
 });
 
+it('keeps explicit model import identities and exported counting columns separate from original totals', () => {
+  const context = { facts: new Map<string, ProductionFact>(), colors: [{ id: 'c', name: '合成色', base: { id: 'b', name: '基地' } }], chosenBaseId: 'b', chosenColorId: 'c' };
+  const make = (model: string, rowKind = 'MODEL_DETAIL'): ExchangeInput => ({ row: 2, clientId: model, id: null, revision: null, errors: [],
+    values: { month: '2026-10', quantity: '10', rowKind, vehicleModel: model }, source: { fileName: '合成.xlsx', sheetName: '车型', rowNumbers: [2], fileHash: 'a'.repeat(64) } });
+  const a = prepareProductionImport(make('车型甲'), [], context), b = prepareProductionImport(make('车型乙'), [], context);
+  assert.equal(a.status, 'create'); assert.equal(b.status, 'create');
+  assert.deepEqual(finalizeProductionImports([a, b]).map(value => value.status), ['create', 'create']);
+  assert.deepEqual(finalizeProductionImports([a, a]).map(value => value.status), ['error', 'error']);
+  assert.equal(prepareProductionImport(make(''), [], context).status, 'error');
+  assert.equal(prepareProductionImport(make('车型甲', 'MONTH_TOTAL'), [], context).status, 'error');
+  const fact: ProductionFact = { id: 'f', colorId: 'c', colorName: '合成色', colorCode: '', baseId: 'b', baseName: '基地', month: '2026-10',
+    quantity: '10', unit: '台', revision: 1, metricScope: 'MONTHLY_MODEL_DETAIL_V1', metricScopeLabel: '车型明细', rowKind: 'MODEL_DETAIL', vehicleModel: '车型甲',
+    editable: true, originalSource: null, includedInOperationalTotal: false, effectiveQuantity: null, countingStatus: '保留对账，不计入统计' };
+  const values = productionRow(fact).values;
+  assert.equal(values.quantity, '10'); assert.equal(values.effectiveQuantity, null); assert.equal(values.vehicleModel, '车型甲');
+  assert.equal(values.countingStatus, '保留对账，不计入统计');
+  const update = { ...make('车型甲'), id: 'f', revision: 1, values: { ...values, quantity: '8' } };
+  assert.equal(prepareProductionImport(update, [], { ...context, facts: new Map([['f', fact]]) }).status, 'update');
+  assert.equal(prepareProductionImport({ ...update, values: { ...update.values, vehicleModel: '车型乙' } }, [], { ...context, facts: new Map([['f', fact]]) }).status, 'error');
+});
+
 it('keeps monthly facts usable when legacy provenance is incomplete, without changing the source or identity', () => {
   const source = Object.freeze({ synthetic: true, seed: 'annual-ui', purpose: '13-month-boundary' });
   const fact: ProductionFact = { id: 'legacy-fact', colorId: 'color-a', colorName: '合成颜色', colorCode: 'SYNTH', baseId: 'base-a', baseName: '合成基地', month: '2025-09', quantity: '20', unit: '台', revision: 3, metricScope: 'MONTHLY_ACTUAL_TOTAL_V1', metricScopeLabel: '月度实际总量', rowKind: 'MONTH_TOTAL', editable: true, originalSource: source };

@@ -6,6 +6,8 @@ import { withTeamWrite } from '../../common/team-authorization';
 import { lockRegisterColor } from '../../common/color-standard';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { MONTHLY_ACTUAL_SCOPE, MONTHLY_ACTUAL_SCOPE_LABEL, onlyFields } from '../production-facts/production-facts.rules';
+import { operationalProductionWhere, PRODUCTION_SNAPSHOT_SELECT, resolveProductionMonth } from '../production-facts/production-basis';
+import { MAX_MODELS_PER_MONTH } from '../production-facts/production-facts.rules';
 import { commandHash, identity, jsonData, object, positiveInt, textField } from './color-register.rules';
 import { ANNUAL_REVIEW_ACTION, ANNUAL_REVIEW_POLICY, annualReviewDecision, businessMonth, firstAnnualReviewWindow } from './color-annual-review.rules';
 
@@ -69,23 +71,32 @@ export class ColorAnnualReviewService {
 
 export async function readColorAnnualSnapshot(db: Db, color: Color) {
     const window = firstAnnualReviewWindow(color.registerMonth);
-    const facts = window && color.productionBaseId ? await db.colorProductionFact.findMany({
-      where: { colorId: color.id, productionBaseId: color.productionBaseId, metricScope: MONTHLY_ACTUAL_SCOPE, sourceRowId: null, month: { gte: window.fromMonth, lte: window.toMonth } },
-      orderBy: { month: 'asc' }, take: 14, select: { id: true, month: true, quantity: true, revision: true },
-    }) : [];
-    const months = window?.months.map(month => {
-      const fact = facts.find(value => value.month === month);
-      return { month, factId: fact?.id ?? null, revision: fact?.revision ?? null, quantity: fact?.quantity?.toString() ?? null };
-    }) ?? [];
-    const missingMonths = months.filter(value => !value.factId).map(value => value.month);
-    const unknownMonths = months.filter(value => value.factId && value.quantity === null).map(value => value.month);
-    const invalid = facts.length > 13 || facts.some(value => value.quantity !== null && (!value.quantity.isInteger() || value.quantity.isNegative()));
+    const [facts, bases] = window && color.productionBaseId ? await Promise.all([
+      db.colorProductionFact.findMany({
+        where: { colorId: color.id, productionBaseId: color.productionBaseId, ...operationalProductionWhere, month: { gte: window.fromMonth, lte: window.toMonth } },
+        orderBy: [{ month: 'asc' }, { id: 'asc' }], take: 13 * (MAX_MODELS_PER_MONTH + 1) + 1, select: PRODUCTION_SNAPSHOT_SELECT,
+      }),
+      db.colorProductionBasis.findMany({ where: { colorId: color.id, productionBaseId: color.productionBaseId, month: { gte: window.fromMonth, lte: window.toMonth } },
+        take: 14, orderBy: { month: 'asc' }, select: { month: true, mode: true, revision: true, snapshotHash: true } }),
+    ]) : [[], []];
+    const resolved = window?.months.map(month => resolveProductionMonth(month, facts.filter(fact => fact.month === month), bases.find(value => value.month === month) ?? null)) ?? [];
+    const months = resolved.map(value => {
+      const total = facts.find(fact => fact.month === value.month && fact.metricScope === MONTHLY_ACTUAL_SCOPE);
+      // Existing total-only annual evidence retains its exact public snapshot shape.
+      if (!value.modelCount) return { month: value.month, factId: total?.id ?? null, revision: total?.revision ?? null, quantity: value.quantity };
+      return { month: value.month, factId: value.hasFacts ? (value.totalFactId ?? value.facts[0]!.id) : null,
+        revision: value.revision, quantity: value.quantity, mode: value.mode,
+        factsSnapshot: value.snapshotHash, reconciliationRequired: value.reconciliationRequired };
+    });
+    const missingMonths = resolved.filter(value => !value.hasFacts).map(value => value.month);
+    const unknownMonths = resolved.filter(value => value.hasFacts && value.quantity === null).map(value => value.month);
+    const invalid = facts.length > 13 * (MAX_MODELS_PER_MONTH + 1) || bases.length > 13 || resolved.some(value => value.invalid);
     const complete = Boolean(window && color.productionBaseId && !missingMonths.length && !unknownMonths.length && !invalid);
     const quantity = complete ? months.reduce((sum, value) => sum + BigInt(value.quantity!), 0n).toString() : null;
     const decision = annualReviewDecision(quantity);
     const issue = !window ? '请先核对并保存入清单月份。' : !color.productionBaseId ? '请先明确生产基地。'
       : color.registerStatus !== 'LISTED' ? '仅已入清单的颜色可进行首次年度复核。' : color.exitFlag ? '该颜色已有退出事实，请在原记录核对，不重写历史。'
-        : invalid ? '月度产量不符合整数总量口径，请核对原事实。' : !complete ? '13个月份须逐月有明确总量；缺月和空数量不能当作0。'
+        : invalid ? '月度产量不符合整数总量口径，请核对原事实。' : !complete ? '13个月份须逐月有明确统计口径与数量；混合未选择、缺月和空数量不能当作0。'
           : businessMonth() < window.reviewMonth ? `尚未到复核月份 ${window.reviewMonth}。` : null;
     const stable = { policy: ANNUAL_REVIEW_POLICY, colorId: color.id, baseId: color.productionBaseId, revision: color.registerRevision,
       registerMonth: color.registerMonth, window, metricScope: MONTHLY_ACTUAL_SCOPE, months, quantity, decision };

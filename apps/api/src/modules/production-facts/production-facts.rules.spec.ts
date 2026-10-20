@@ -22,4 +22,11 @@ describe('monthly production input contract', () => {
     expect(() => parseProductionBatch({ operationId: 'op1', items: [{ ...create, month: '2026-13' }] })).toThrow();
     expect(() => productionFilters({ fromMonth: '2026-10', toMonth: '2026-09' })).toThrow();
   });
+  it('requires explicit model grain and a bounded original name; same month different models are independent', () => {
+    const detail = { ...create, rowKind: 'MODEL_DETAIL', vehicleModel: '车型甲' };
+    expect(parseProductionBatch({ operationId: 'op1', items: [detail, { ...detail, clientId: 'draft2', vehicleModel: '车型乙' }] }).items).toHaveLength(2);
+    for (const vehicleModel of [undefined, '', ' ', 'x'.repeat(101), 'x\nx']) expect(() => parseProductionBatch({ operationId: 'op1', items: [{ ...detail, vehicleModel }] })).toThrow();
+    expect(() => parseProductionBatch({ operationId: 'op1', items: [{ ...create, vehicleModel: '车型甲' }] })).toThrow();
+    expect(() => parseProductionBatch({ operationId: 'op1', items: [detail, { ...detail, clientId: 'draft2' }] })).toThrow();
+  });
 });

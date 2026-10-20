@@ -85,6 +85,7 @@ model ProductionBase {
   name      String  @db.VarChar(200)
   colors    Color[]
   productionFacts ColorProductionFact[]
+  productionBasesSelected ColorProductionBasis[]
   @@map("production_bases")
 }
 
@@ -140,6 +141,7 @@ model ColorProductionFact {
   productionBaseId String
   month            String @db.VarChar(7)
   metricScope      String @db.VarChar(200)
+  vehicleModel     String @default("") @db.VarChar(100)
   quantity         Decimal? @db.Decimal(18, 3)
   sourceRowId      String?
   sourceCell       String? @db.VarChar(32)
@@ -147,9 +149,24 @@ model ColorProductionFact {
   color            Color @relation(fields: [colorId], references: [id], onDelete: Restrict)
   productionBase   ProductionBase @relation(fields: [productionBaseId], references: [id], onDelete: Restrict)
   sourceRow        ColorImportRow? @relation(fields: [sourceRowId], references: [id], onDelete: Restrict)
-  @@unique([colorId, productionBaseId, month, metricScope])
+  @@unique([colorId, productionBaseId, month, metricScope, vehicleModel], map: "color_production_facts_model_grain_key")
   @@index([productionBaseId, month, metricScope])
   @@map("color_production_facts")
+}
+
+model ColorProductionBasis {
+  id               String @id @default(cuid())
+  colorId          String
+  productionBaseId String
+  month            String @db.VarChar(7)
+  mode             String @db.VarChar(20)
+  snapshotHash     String @db.VarChar(64)
+  revision         Int @default(1)
+  updatedAt        DateTime @updatedAt
+  color            Color @relation(fields: [colorId], references: [id], onDelete: Restrict)
+  productionBase   ProductionBase @relation(fields: [productionBaseId], references: [id], onDelete: Restrict)
+  @@unique([colorId, productionBaseId, month])
+  @@map("color_production_bases")
 }
 
 enum WorkflowNodeCode {
@@ -858,6 +875,7 @@ model Color {
   registerRevision      Int                @default(1)
   sourceRows            ColorImportRow[]
   productionFacts       ColorProductionFact[]
+  productionBasesSelected ColorProductionBasis[]
   code                  String?            @unique
   name                  String
   description           String?
