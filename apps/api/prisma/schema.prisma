@@ -522,6 +522,7 @@ model User {
   workbooksCreated FreeWorkbook[] @relation("FreeWorkbookCreator")
   workbooksUpdated FreeWorkbook[] @relation("FreeWorkbookEditor")
   workbookRevisions FreeWorkbookRevision[]
+  workbookDrafts FreeWorkbookDraft[]
   uploadedSheetImages SheetImage[] @relation("SheetImageUploader")
   inspectionActivitiesCreated InspectionActivity[] @relation("InspectionActivityCreator")
   personProfile PersonProfile?
@@ -2161,8 +2162,28 @@ model FreeWorkbook {
   creator User @relation("FreeWorkbookCreator", fields: [createdById], references: [id], onDelete: Restrict)
   editor User @relation("FreeWorkbookEditor", fields: [updatedById], references: [id], onDelete: Restrict)
   revisions FreeWorkbookRevision[]
+  drafts FreeWorkbookDraft[]
   @@index([updatedAt, id])
   @@map("free_workbooks")
+}
+
+model FreeWorkbookDraft {
+  id String @id @default(uuid()) @db.Uuid
+  workbookId String @db.Uuid
+  authorUserId String
+  draftRevision Int @default(1)
+  baseWorkbookRevision Int
+  snapshot Json
+  snapshotBytes Int
+  snapshotHash String @db.VarChar(64)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  author User @relation(fields: [authorUserId], references: [id], onDelete: Restrict)
+  workbook FreeWorkbook @relation(fields: [workbookId], references: [id], onDelete: Restrict)
+  baseRevision FreeWorkbookRevision @relation(fields: [workbookId, baseWorkbookRevision], references: [workbookId, revision], onDelete: Restrict)
+  @@unique([workbookId, authorUserId])
+  @@index([authorUserId, updatedAt])
+  @@map("free_workbook_drafts")
 }
 
 model FreeWorkbookRevision {
@@ -2174,6 +2195,7 @@ model FreeWorkbookRevision {
   snapshotHash String @db.VarChar(64)
   actorUserId String
   restoredFrom Int?
+  drafts FreeWorkbookDraft[]
   createdAt DateTime @default(now())
   actor User @relation(fields: [actorUserId], references: [id], onDelete: Restrict)
   workbook FreeWorkbook @relation(fields: [workbookId], references: [id], onDelete: Restrict)

@@ -4,8 +4,8 @@ import { PrismaClient } from '@prisma/client';
 import { beforeAll,afterAll,describe,it,expect } from 'vitest';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { WorkbooksService } from './workbooks.service';
-const connection=process.env.WORKBOOK_TEST_DATABASE_URL;
-if(connection){const url=new URL(connection);if(url.hostname!=='127.0.0.1'||url.port!=='55438'||!/^\/free_workbook_[a-z0-9_]+$/.test(url.pathname))throw new Error('Only isolated loopback:55438/free_workbook_* PostgreSQL allowed.');}
+const connection=process.env.WORKBOOK_TEST_DATABASE_URL??process.env.WORKBOOK_DRAFT_TEST_DATABASE_URL;
+if(connection){const url=new URL(connection);const allowed=url.port==='55438'&&/^\/free_workbook_[a-z0-9_]+$/.test(url.pathname)||url.port==='55460'&&/^\/free_workbook_drafts_[a-z0-9_]+$/.test(url.pathname);if(url.hostname!=='127.0.0.1'||!allowed)throw new Error('Only explicit isolated workbook PostgreSQL targets allowed.');}
 const snapshot=(id:string,name='合成工作簿')=>({id,name,appVersion:'1.0.4',locale:'zhCN',styles:{bold:{bl:1,fs:16}},sheetOrder:['s1','s2'],sheets:{s1:{id:'s1',name:'清单',rowCount:100,columnCount:26,cellData:{0:{0:{v:'原始中文',s:'bold'},1:{v:2}},1:{1:{f:'=SUM(B1:B1)',v:2}}},mergeData:[{startRow:0,endRow:0,startColumn:3,endColumn:4}],rowData:{0:{h:32}},columnData:{0:{w:180}}},s2:{id:'s2',name:'资料',rowCount:100,columnCount:26,cellData:{}}}});
 describe.runIf(Boolean(connection)).sequential('free workbook real PostgreSQL CAS and history',()=>{
  const db=new PrismaClient({datasources:{db:{url:connection??'postgresql://synthetic:synthetic@127.0.0.1:55438/free_workbook_not_running'}}});let service:WorkbooksService,actor:AuthenticatedUser,peer:AuthenticatedUser,outsider:AuthenticatedUser;

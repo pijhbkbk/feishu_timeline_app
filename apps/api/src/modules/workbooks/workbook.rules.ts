@@ -2,6 +2,14 @@ import { BadRequestException } from '@nestjs/common';
 import { createHash } from 'node:crypto';
 
 export const WORKBOOK_LIMITS = { bytes: 7 * 1024 * 1024, sheets: 32, rows: 10000, columns: 256, cells: 200000, images: 50, revisionsBytes: 256 * 1024 * 1024 } as const;
+// One replaceable slot per author/workbook. Autosaves never consume formal history.
+export const WORKBOOK_DRAFT_LIMITS = { slotsPerUser: 8, bytesPerUser: 64 * 1024 * 1024, bytesGlobal: 512 * 1024 * 1024 } as const;
+export function draftExpectation(input: Record<string, unknown>, allowMissing = false) {
+  const revision = integer(input.expectedDraftRevision, allowMissing ? 0 : 1);
+  const id = input.expectedDraftId === null && allowMissing ? null : workbookId(input.expectedDraftId);
+  if ((id === null) !== (revision === 0)) throw new BadRequestException('新草稿须使用空标识和版本 0；已有草稿须提供标识和版本。');
+  return { id, revision };
+}
 type JsonObject = Record<string, unknown>;
 export function object(value: unknown): JsonObject { if (!value || typeof value !== 'object' || Array.isArray(value)) throw new BadRequestException('工作簿内容须为对象。'); return value as JsonObject; }
 export function exact(value: JsonObject, keys: readonly string[]) { if (Object.keys(value).some(k => !keys.includes(k))) throw new BadRequestException('请求包含不支持的字段。'); }

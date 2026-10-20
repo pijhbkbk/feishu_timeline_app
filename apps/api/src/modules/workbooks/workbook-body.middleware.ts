@@ -4,7 +4,7 @@ import type { NextFunction, Request, Response } from 'express';
 let activeWorkbookBodies=0;
 export function workbookBody(request: Request, response: Response, next: NextFunction) {
   const path=request.path;
-  if (!(request.method === 'POST' && path === '/api/workbooks' || request.method === 'PUT' && /^\/api\/workbooks\/[a-f\d-]{36}$/i.test(path))) { next(); return; }
+  if (!(request.method === 'POST' && path === '/api/workbooks' || request.method === 'PUT' && /^\/api\/workbooks\/[a-f\d-]{36}(?:\/draft)?$/i.test(path))) { next(); return; }
   if (!/^application\/json(?:;|$)/i.test(request.headers['content-type'] ?? '') || request.headers['content-encoding']) { response.status(415).json({ message:'工作簿请求须为未压缩 JSON。' }); return; }
   if(activeWorkbookBodies>=4){response.status(503).json({message:'工作簿保存请求繁忙，请稍后重试原请求。'});return;}
   activeWorkbookBodies++;let released=false;const release=()=>{if(!released){released=true;activeWorkbookBodies--;}};
