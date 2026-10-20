@@ -11,6 +11,7 @@ vi.mock('react',async()=>{
  return {...actual,useState:<T,>(initial:T)=>{const i=hooks.index++;if(!(i in hooks.slots))hooks.slots[i]=initial;return[hooks.slots[i],(value:T|((old:T)=>T))=>{const next=typeof value==='function'?(value as (old:T)=>T)(hooks.slots[i] as T):value;if(!Object.is(hooks.slots[i],next)){hooks.slots[i]=next;hooks.dirty=true;}}];},useRef:<T,>(initial:T)=>{const i=hooks.index++;if(!(i in hooks.slots))hooks.slots[i]={current:initial};return hooks.slots[i];},useEffect:(effect:()=>void|(()=>void),deps:unknown[])=>{const i=hooks.index++,previous=hooks.slots[i] as unknown[]|undefined;if(previous?.length===deps.length&&previous.every((value,at)=>Object.is(value,deps[at])))return;hooks.slots[i]=deps;hooks.setups.set(i,effect);hooks.effects.push(()=>{hooks.cleanups.get(i)?.();const cleanup=effect();if(cleanup)hooks.cleanups.set(i,cleanup);});}};
 });
 vi.mock('next/link',()=>({default:'a'}));
+vi.mock('next/dynamic',()=>({default:()=>function MappingPanel(){return <div data-mapping-panel/>;}}));
 vi.mock('next/navigation',()=>({useSearchParams:()=>new URLSearchParams(window.location.search)}));
 vi.mock('../../components/auth-provider',()=>({useAuth:()=>({user:{id:identity.id,isSystemAdmin:true,authSource:'local'}})}));
 vi.mock('../m1/use-unsaved',()=>({useProjectUnsavedChanges:vi.fn()}));
@@ -151,6 +152,18 @@ it('offers retry and a complete recovery download while a failed editing overlay
 
 function cloudRead(){const snapshot=saved(oldId).snapshot;snapshot.name='云端保留内容';return {workbookRevision:1,baseStale:false,draft:{id:laterId,draftRevision:1,baseWorkbookRevision:1,snapshotHash:'a'.repeat(64),snapshotBytes:JSON.stringify(snapshot).length,updatedAt:'2026-10-20T00:00:00Z',snapshot}};}
 function canvasRuntime(){return nodes(tree).find(n=>typeof n.props.onChanged==='function')!;}
+it('opens mapping from the current editor with the exact formal version without saving the workbook',async()=>{
+ await settle();readyEditor();await settle();const snapshot=saved(oldId).snapshot;(canvasRuntime().props.runtime as {current:{snapshot:ReturnType<typeof vi.fn>}}).current.snapshot.mockResolvedValue(snapshot);await click('应用到业务');const panel=nodes(tree).find(n=>typeof n.props.getSource==='function')!;
+ expect(panel.props.actorId).toBe(identity.id);expect(nodes(tree).some(n=>n.props.inert===true)).toBe(true);
+ const source=await (panel.props.getSource as ()=>Promise<unknown>)();expect(source).toEqual({workbookId:oldId,formalRevision:1,sourceSnapshotHash:'hash',snapshot});
+ expect(api.save).not.toHaveBeenCalled();(panel.props.onApplied as (value:unknown[])=>void)([{}]);const html=await settle();expect(html).toContain('工作簿保存状态独立');expect(html).toContain('有未保存内容');
+});
+it('rejects a mapping snapshot that finishes after account or workbook navigation',async()=>{
+ await settle();readyEditor();await settle();let resolve!:(value:SavedWorkbook['snapshot'])=>void;
+ const rt=(canvasRuntime().props.runtime as {current:{snapshot:ReturnType<typeof vi.fn>}}).current;rt.snapshot.mockImplementation(()=>new Promise(r=>{resolve=r;}));await click('应用到业务');const panel=nodes(tree).find(n=>typeof n.props.getSource==='function')!;
+ const pending=(panel.props.getSource as ()=>Promise<unknown>)();const rejected=expect(pending).rejects.toThrow('账号、工作簿或正式版本已变化');identity.id='synthetic-owner-b';url.searchParams.set('workbook',laterId);await settle();resolve(saved(oldId).snapshot);await rejected;
+ expect(nodes(tree).some(n=>typeof n.props.getSource==='function')).toBe(false);expect(api.save).not.toHaveBeenCalled();
+});
 it('preserves the latest editing document before recovering a cloud draft without waiting for autosave',async()=>{
  cloudApi.read.mockResolvedValueOnce(cloudRead());await settle();readyEditor();await settle();const canvas=canvasRuntime(),rt=(canvas.props.runtime as {current:{draftSnapshot:ReturnType<typeof vi.fn>}}).current;const snapshot=saved(oldId).snapshot;snapshot.name='不到800ms的新内容';const edit={sheetId:snapshot.sheetOrder[0],row:0,column:0,document:{body:{dataStream:'未确认文本\r\n'}}};rt.draftSnapshot.mockResolvedValue({snapshot,edit});
  await click('恢复服务器草稿');expect(drafts.write.mock.calls[0]![0]).toMatchObject({snapshot:{name:'不到800ms的新内容'},edit});expect(drafts.write.mock.calls[1]![0].editorId).not.toBe(drafts.write.mock.calls[0]![0].editorId);expect((canvasRuntime().props.snapshot as {name:string}).name).toBe('云端保留内容');expect(window.confirm).toHaveBeenCalled();

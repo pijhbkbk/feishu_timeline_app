@@ -1,5 +1,7 @@
 'use client';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
+import type { MappingSource } from './mapping-panel';
 import { useSearchParams } from 'next/navigation';
 import React, { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../../components/auth-provider';
@@ -18,6 +20,7 @@ import { validateLocalDraft, claimLocalDraft, readLocalDrafts, writeLocalDraft, 
 import { createWorkbook, listRevisions, listWorkbooks, readWorkbook, restoreWorkbook, saveWorkbook, type SavedWorkbook, type WorkbookMeta, type WorkbookRevision } from './client';
 import type { WorkbookImport } from './xlsx';
 import './workbook.css';
+const BusinessMappingPanel=dynamic(()=>import('./mapping-panel').then(module=>module.BusinessMappingPanel),{ssr:false,loading:()=> <div role="status">正在打开业务映射…</div>});
 const message=(cause:unknown)=>cause instanceof Error?cause.message:'操作失败，内容仍保留。';
 export function FreeWorkbookWorkspace(){
   const {user}=useAuth(),canEdit=isApprovedTeamUser(user);const runtime=useRef<WorkbookRuntime|null>(null),session=useRef<WorkbookSaveSession|null>(null),sequence=useRef(0),confirmed=useRef(0);
@@ -30,6 +33,8 @@ export function FreeWorkbookWorkspace(){
   const navigationRead=useRef<{requested:string|null;controller:AbortController}|null>(null),handledLoadEpoch=useRef(0);
   const cloudLoadVersion=useRef(0),cloud=useRef<ServerDraftSession|null>(null),cloudSending=useRef(false);
   const [cloudReady,setCloudReady]=useState(false),[cloudBusy,setCloudBusy]=useState(false),[cloudStatus,setCloudStatus]=useState(''),[cloudRecovery,setCloudRecovery]=useState<ServerDraftRead|null>(null);
+  const [mappingOpen,setMappingOpen]=useState(false),[mappingStatus,setMappingStatus]=useState('');
+  const activeMeta=useRef(active);activeMeta.current=active;
   const [recoveryFailed,setRecoveryFailed]=useState(false),[imageFailures,setImageFailures]=useState(0);
   const [editingDraft,setEditingDraft]=useState<WorkbookEditingDraft|null>(null);
   const [loadEpoch,setLoadEpoch]=useState(0);
@@ -57,6 +62,7 @@ export function FreeWorkbookWorkspace(){
   async function refreshList(more=false){const isCurrent=captureScope();const result=await listWorkbooks(more?after??undefined:undefined,readController.current?.signal);if(!isCurrent())return;setItems(previous=>{const selected=previous.find(item=>item.id===activeId.current);const retained=more?previous:selected?[selected]:[];return [...new Map([...retained,...result.items].map(item=>[item.id,item] as const)).values()];});setAfter(result.nextCursor);}
   function mount(value:SavedWorkbook,isDirty=false,recovered?:WorkbookLocalDraft,recoveredCloud?:ServerDraftSession){
     if(!mounted.current||currentOwner.current!==ownerId)return;
+    setMappingOpen(false);setMappingStatus('');
     const {id,name,revision,snapshotHash,updatedAt}=value;activeId.current=id;setLoading(false);setError('');
     setItems(previous=>previous.some(item=>item.id===id)?previous:[{id,name,revision,snapshotHash,updatedAt},...previous]);
     const url=new URL(window.location.href);url.searchParams.set('workbook',id);historyReplace(url);setReady(false);setActive(value);
@@ -93,7 +99,7 @@ export function FreeWorkbookWorkspace(){
     // underneath a B URL while B is loading or after B is denied/not found.
     activeId.current=null;runtime.current=null;session.current=null;
     if(identityChanged){pendingImport.current=null;createPending.current=null;restorePending.current=null;setUploading(0);}
-    setActive(null);setReady(false);setDirty(false);setCandidate(null);setHistory(null);setStatus('');setLoading(true);setError('');draftGeneration.current++;cloud.current=null;setCloudReady(false);setCloudRecovery(null);setCloudStatus('');localDraft.current=null;setRecoverable([]);setDraftStatus('');
+    setMappingOpen(false);setMappingStatus('');setActive(null);setReady(false);setDirty(false);setCandidate(null);setHistory(null);setStatus('');setLoading(true);setError('');draftGeneration.current++;cloud.current=null;setCloudReady(false);setCloudRecovery(null);setCloudStatus('');localDraft.current=null;setRecoverable([]);setDraftStatus('');
     void (async()=>{
       try{
         if(requested==='')throw new Error('工作簿标识无效，请检查链接。');
@@ -152,6 +158,12 @@ export function FreeWorkbookWorkspace(){
   function open(id:string){replaceWorkbookUrl(id);setLoadEpoch(value=>value+1);}
   function replaceWorkbookUrl(id:string|null){const url=new URL(window.location.href);if(id===null)url.searchParams.delete('workbook');else url.searchParams.set('workbook',id);historyReplace(url);}
   function historyReplace(url:URL){window.history.replaceState(window.history.state,'',url);}
+  async function mappingSource():Promise<MappingSource>{
+    if(!active||!ownerId||!runtime.current||!ready||busyRef.current||uploading||pendingImport.current||createPending.current||restorePending.current||session.current?.uncertain)throw new Error('请先完成工作簿加载、图片导入并核实原保存请求。');
+    const isCurrent=captureScope(),meta=activeMeta.current!,snapshot=await runtime.current.snapshot();
+    if(!isCurrent()||activeMeta.current!==meta||session.current?.revision!==meta.revision)throw new Error('账号、工作簿或正式版本已变化，请重新打开映射。');
+    return {workbookId:meta.id,formalRevision:meta.revision,sourceSnapshotHash:meta.snapshotHash,snapshot};
+  }
   async function create(){if(!createPending.current&&!canLeave())return;await run(async()=>{const isCurrent=captureScope();const request=createPending.current??{snapshot:blankWorkbook(crypto.randomUUID(),title.trim()||'新工作簿'),operationId:crypto.randomUUID()};createPending.current=request;try{const result=await createWorkbook(request.snapshot,request.operationId);if(!isCurrent())return;createPending.current=null;mount({...result,snapshot:request.snapshot});await refreshList();}catch(cause){if(!isCurrent())return;if(cause instanceof ApiRequestError&&[400,409,422].includes(cause.status))createPending.current=null;setDirty(true);throw cause;}});}
   async function save(){await run(async()=>{
     if(!active||!runtime.current||!session.current||uploading||pendingImport.current||cloudSending.current)throw new Error('请等待图片和工作簿加载完成。');
@@ -190,13 +202,14 @@ export function FreeWorkbookWorkspace(){
   async function exportFile(){await run(async()=>{const isCurrent=captureScope();if(!active||!runtime.current||pendingImport.current||uploading)throw new Error('请先完成图片导入。');const snapshot=await runtime.current.snapshot(),assets=await listSheetImages('SHEET_WORKBOOK',[active.id]);const {writeFreeWorkbook}=await import('./xlsx');const {workbookExportWarnings}=await import('./filter-exchange');const warnings=workbookExportWarnings(snapshot);if(!isCurrent())return;if(warnings.length&&!window.confirm(`${warnings.join('\n')}\n继续导出副本？`))return;const bytes=await writeFreeWorkbook(snapshot,assets,{allowFilterCriteriaConversion:warnings.length>0});if(!isCurrent())return;downloadWorkbook(bytes,`${snapshot.name}.xlsx`);setStatus('已导出当前内容；服务器保存状态未改变');});}
   async function showHistory(more=false){if(!active)return;await run(async()=>{const isCurrent=captureScope();const result=await listRevisions(active.id,more?before??undefined:undefined,readController.current?.signal);if(!isCurrent())return;setHistory(previous=>more?[...previous??[],...result.items]:result.items);setBefore(result.nextBefore);});}
   async function restore(){if(!active||!selectedRevision&&!restorePending.current)return;if(!restorePending.current&&!canLeave())return;if(!restorePending.current&&!window.confirm('将此历史版本恢复为新版本？当前服务器版本保留在历史中。'))return;await run(async()=>{const isCurrent=captureScope();const pending=restorePending.current??{id:active.id,revision:Number(selectedRevision),expected:active.revision,operationId:crypto.randomUUID()};restorePending.current=pending;try{await restoreWorkbook(pending.id,pending.expected,pending.revision,pending.operationId);if(!isCurrent())return;const restored=await readWorkbook(pending.id,readController.current?.signal);if(!isCurrent())return;restorePending.current=null;mount(restored);await refreshList();setStatus('历史版本已恢复为新版本');}catch(cause){if(!isCurrent())return;if(cause instanceof ApiRequestError&&[400,409,422].includes(cause.status))restorePending.current=null;setDirty(true);throw cause;}});}
-  return <section className="fw-workspace">
+  return <section className="fw-workspace"><div inert={mappingOpen}>
     <header className="fw-heading"><div><h1>颜色工作簿</h1><span className="fw-kind">自由编辑</span></div><Link href="/admin/color-database?view=records" className="fw-link">业务颜色记录</Link></header>
     <div className="fw-toolbar">
       <label>工作簿<select aria-label="选择工作簿" value={active?.id??''} disabled={loading||busy||uploading>0} onChange={event=>void open(event.target.value)}><option value="" disabled>选择工作簿</option>{items.map(item=><option key={item.id} value={item.id}>{item.name}</option>)}</select></label>{after&&<button disabled={busy} onClick={()=>void run(()=>refreshList(true))}>更多</button>}
       <input aria-label="新工作簿名" value={title} maxLength={200} onChange={event=>setTitle(event.target.value)}/><button disabled={!canEdit||busy||loading} onClick={()=>void create()}>{createPending.current?'重试创建':'新建'}</button>
       <button disabled={!canEdit||busy||loading||uploading>0} onClick={()=>picker.current?.click()}>导入 XLSX</button>
       <button disabled={!ready||busy||uploading>0||!canEdit} onClick={()=>imagePicker.current?.click()}>图片</button>
+      <button disabled={!ready||busy||uploading>0||Boolean(pendingImport.current)||!canEdit} onClick={()=>setMappingOpen(true)}>应用到业务</button>
       <button className="fw-primary" disabled={!ready||busy||cloudBusy||uploading>0||Boolean(pendingImport.current)||!canEdit} onClick={()=>void save()}>{session.current?.uncertain?'核实并保存':'保存'}</button>
       <button disabled={!ready||busy||uploading>0} onClick={()=>void exportFile()}>导出 XLSX</button><button disabled={!active||busy} onClick={()=>void showHistory()}>版本恢复</button>
       <button disabled={!active||busy||uploading>0} onClick={()=>active&&void open(active.id)}>重新读取</button>
@@ -204,6 +217,7 @@ export function FreeWorkbookWorkspace(){
       <input ref={imagePicker} type="file" accept="image/png,image/jpeg" hidden onChange={event=>{const file=event.target.files?.[0];event.target.value='';if(file)void run(async()=>{await runtime.current?.insertImage(file);});}}/>
     </div>
     <div className="fw-status" role="status">{loading?'正在读取工作簿':busy?'处理中':uploading?'图片正在扫描':status||'请选择或新建工作簿'}{dirty&&!busy&&<strong> · 有未保存内容</strong>}{draftStatus&&<span className="fw-draft-status"> · {draftStatus}</span>}</div>
+    {mappingStatus&&<div className="fw-status" role="status">{mappingStatus}</div>}
     {active&&canEdit&&<div className="fw-status" role="status">{cloudBusy?'正在保存服务器草稿':cloudStatus||'正在检查服务器草稿'}{cloud.current?.uncertain&&<button disabled={busy||cloudBusy} onClick={()=>void run(()=>retryCloud())}>核实服务器草稿</button>}{!cloudReady&&!cloudBusy&&<button disabled={busy} onClick={()=>void loadCloud(active.id,draftGeneration.current,active.revision)}>读取服务器草稿</button>}</div>}
     {cloudRecovery?.draft&&<div className="fw-dialog" role="dialog" aria-label="服务器草稿"><h2>服务器上有未提交草稿</h2><p>草稿基于正式版本 {cloudRecovery.draft.baseWorkbookRevision}，保存于 {new Date(cloudRecovery.draft.updatedAt).toLocaleString()}。恢复不会自动覆盖正式版本；未确认的单元格输入只在原浏览器保留。</p><button disabled={busy||cloudBusy} onClick={()=>void recoverCloud()}>恢复服务器草稿</button>{localDraft.current&&<button disabled={busy||cloudBusy} onClick={()=>adoptCloudForLocal()}>用当前本机内容更新这份草稿</button>}<button disabled={busy||cloudBusy} onClick={()=>{setCloudRecovery(null);setCloudReady(false);setCloudStatus('服务器原草稿保留，自动保存暂未启用');}}>保留原草稿，继续查看</button></div>}
     {imageFailures>0&&<div className="fw-error" role="alert">{imageFailures} 张图片读取失败，位置和资源引用仍保留。<button disabled={busy||uploading>0||!ready} onClick={()=>void run(async()=>{const isCurrent=captureScope(),remaining=await runtime.current!.retryImages();if(isCurrent())setStatus(remaining?'仍有图片无法读取，可稍后再次重试':'图片已重新读取；保存状态未改变');})}>重试失败图片</button></div>}
@@ -215,6 +229,6 @@ export function FreeWorkbookWorkspace(){
     {recoveryFailed&&localDraft.current&&<div className="fw-dialog" role="alert"><p>未确认输入尚未完整恢复，编辑已暂停。原稿仍在本机，可重试或下载含文字、格式及原请求的完整恢复副本。</p><button disabled={busy} onClick={()=>{if(active&&localDraft.current)mount(active,true,localDraft.current);}}>重新尝试恢复输入</button><button disabled={busy} onClick={()=>localDraft.current&&downloadDraft(localDraft.current)}>下载草稿恢复副本</button></div>}
     {active&&!draftReady&&<div role="status">正在检查本机草稿</div>}
     {active&&draftReady&&!recoverable.length?<div inert={recoveryFailed}><WorkbookCanvas key={`${active.id}:${epoch}`} snapshot={active.snapshot} editingDraft={editingDraft} runtime={runtime} onChanged={changed} onRecoveryError={message=>{setRecoveryFailed(true);setReady(false);setError(message);}} onError={setError} onUploading={setUploading} onImageFailures={setImageFailures} onReady={()=>{if(activeId.current===active.id)setReady(true);}}/></div>:!active&&!loading&&!error&&<div className="fw-empty"><h2>开始编辑颜色工作簿</h2><p>新建工作簿，或导入 XLSX 副本。</p></div>}
-    <details className="fw-capabilities"><summary>支持范围与保存规则</summary><p>支持多工作表、增删行列、复制粘贴、撤销重做、文字与数字、字体/颜色/对齐/边框、合并、行高列宽、基础公式及 PNG/JPEG 图片与工作表平铺背景。保存整个工作簿，冲突时保留本地输入；图片移除后原始资产保留用于恢复。</p><p>最多 32 张工作表、每表 10000 行/256 列、200000 个有内容单元格、50 张图片。导入/导出 XLSX 上限 5 MiB，完整快照上限 7 MiB。宏、外链、复杂绘图和未支持公式拒绝导入；筛选、条件格式、验证、图表、批注等须明确确认转换。Office 与系统输入法的实际兼容性以验收记录为准。</p><p>工作簿排版与行号不会自动修改业务颜色记录。业务记录页可预览字段映射；只有带系统记录 ID 和版本的模板可确认更新。新增业务颜色通过项目建项，项目继续读取结构化颜色资料。</p></details>
-  </section>;
+    <details className="fw-capabilities"><summary>支持范围与保存规则</summary><p>支持多工作表、增删行列、复制粘贴、撤销重做、文字与数字、字体/颜色/对齐/边框、合并、行高列宽、基础公式、排序/筛选、冻结及 PNG/JPEG 图片与工作表平铺背景。保存整个工作簿，冲突时保留本地输入；图片移除后原始资产保留用于恢复。</p><p>最多 32 张工作表、每表 10000 行/256 列、200000 个有内容单元格、50 张图片。导入/导出 XLSX 上限 5 MiB，完整快照上限 7 MiB。宏、外链、复杂绘图和未支持公式拒绝导入；筛选范围可保留，筛选条件、条件格式、验证、图表、批注等不支持对象须明确确认转换。Office 与系统输入法的实际兼容性以验收记录为准。</p><p>工作簿排版与行号不会自动修改业务颜色记录。点击“应用到业务”可选择工作表、表头、区域与字段，先预览再明确应用。已有记录须映射稳定 ID 和版本；人员、检验与产量新增沿正式命令创建，不把行号当身份。新增业务颜色通过项目建项，项目继续读取结构化颜色资料。</p></details>
+  </div>{mappingOpen&&active&&ownerId&&<BusinessMappingPanel key={`${ownerId}:${active.id}`} actorId={ownerId} getSource={mappingSource} onClose={()=>setMappingOpen(false)} onApplied={receipts=>{setMappingStatus(`业务应用已确认 ${receipts.length} 条记录；工作簿保存状态独立`);}}/>}</section>;
 }
