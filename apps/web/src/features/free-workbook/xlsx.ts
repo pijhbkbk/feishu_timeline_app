@@ -1,4 +1,5 @@
 import ExcelJS from 'exceljs';
+import { workbookFilters, workbookExportWarnings } from './filter-exchange';
 import { CellValueType, DateSystem, LocaleType, type ICellData, type IStyleData, type IWorkbookData } from '@univerjs/core';
 import { getSheetDrawingPlacement, SheetDrawingAnchorType, type ISheetDrawing } from '@univerjs/sheets-drawing';
 import { XMLParser } from 'fast-xml-parser';
@@ -71,7 +72,8 @@ export async function readFreeWorkbook(bytes:Uint8Array,fileName:string,id:strin
     if(/TargetMode\s*=\s*["']External["']/i.test(xml))throw new Error('文件包含外部链接；请在源文件中移除或另存无外链副本。');
     if(/^xl\/worksheets\/[^/]+\.xml$/.test(path)){
       if(++sheetCount>WORKBOOK_LIMITS.sheets)throw new Error('最多 32 张工作表。');
-      if(/<(?:[\w.-]+:)?(?:conditionalFormatting|dataValidations|autoFilter|sheetProtection|extLst)\b/.test(xml))warnings.add('条件格式、数据验证、自动筛选或保护不进入编辑副本；原文件保持不变。');
+      if(/<(?:[\w.-]+:)?(?:conditionalFormatting|dataValidations|sheetProtection|extLst)\b/.test(xml))warnings.add('条件格式、数据验证或保护不进入编辑副本；原文件保持不变。');
+      if(/<(?:[\w.-]+:)?(?:filterColumn|sortState)\b/.test(xml))warnings.add('筛选范围保留，但当前筛选条件或排序规则不进入编辑副本；单元格原有顺序与源文件保留。');
       for(const m of xml.matchAll(/<(?:[\w.-]+:)?(?:c|dimension|mergeCell)\b[^>]*\b(?:r|ref)\s*=\s*["']([^"']+)["']/g))for(const address of m[1]!.split(':'))coordinates(address);
       for(const m of xml.matchAll(/<(?:[\w.-]+:)?row\b[^>]*\br\s*=\s*["'](\d+)["']/g))if(Number(m[1])>WORKBOOK_LIMITS.rows)throw new Error('工作表行号超限。');
     }
@@ -98,12 +100,15 @@ export async function readFreeWorkbook(bytes:Uint8Array,fileName:string,id:strin
     const view=(source.views??[]).find(v=>v.state==='frozen') as Partial<ExcelJS.WorksheetViewFrozen>|undefined;
     snapshot.sheetOrder.push(sheetId);snapshot.sheets[sheetId]={id:sheetId,name:source.name,hidden:source.state==='veryHidden'?2:source.state==='hidden'?1:0,rowCount:Math.min(WORKBOOK_LIMITS.rows,Math.max(200,source.rowCount+30)),columnCount:Math.min(WORKBOOK_LIMITS.columns,Math.max(26,source.columnCount+4)),defaultRowHeight:(source.properties.defaultRowHeight??15)*4/3,defaultColumnWidth:(source.properties.defaultColWidth??8.43)*7+5,cellData,rowData,columnData,mergeData,...(view?{freeze:{xSplit:view.xSplit??0,ySplit:view.ySplit??0,startRow:view.ySplit??0,startColumn:view.xSplit??0}}:{})};
   }
+  const filters:Record<string,unknown>={};
+  for(const source of workbook.worksheets){if(typeof source.autoFilter==='string'){const addresses=source.autoFilter.split(':');if(addresses.length<1||addresses.length>2)throw new Error('XLSX筛选范围无效。');const start=coordinates(addresses[0]!),end=coordinates(addresses[1]??addresses[0]!);if(end.row<start.row||end.column<start.column)throw new Error('XLSX筛选范围无效。');const target=snapshot.sheets[String(source.id)]!;target.rowCount=Math.max(target.rowCount!,end.row+1);target.columnCount=Math.max(target.columnCount!,end.column+1);filters[String(source.id)]={ref:{startRow:start.row,endRow:end.row,startColumn:start.column,endColumn:end.column},filterColumns:[]};}}
+  if(Object.keys(filters).length)snapshot.resources=[{name:'SHEET_FILTER_PLUGIN',data:JSON.stringify(filters)}];
   const inventory=readRawEmbeddedImages(backgrounds.drawingFiles,workbook,{archiveInspected:true,rowTargets:()=>new Map()});
   const unsupported=inventory.issues.filter(issue=>!/IMAGE_COUNT_MISMATCH/.test(issue.code));
   if(unsupported.length||inventory.inventory.unrepresentedPictureCount)throw new Error(`图片存在不支持内容：${unsupported[0]?.message??'部分图片无法识别'}；未创建编辑副本。`);
   if(inventory.images.length+backgrounds.images.length>WORKBOOK_LIMITS.images)throw new Error('每个工作簿最多 50 张图片。');
   for(const image of inventory.images)if(!image.anchor||image.status==='error'||image.issues.some(issue=>/UNSUPPORTED|INVALID|ANCHOR_UNRESOLVED/.test(issue.code)))throw new Error('图片锚点或外观不能完整转换；请保留源文件并先转换图片。');
-  checkWorkbookBounds(snapshot);return {snapshot,images:[...inventory.images,...backgrounds.images],warnings:[...warnings],fileName};
+  checkWorkbookBounds(snapshot);workbookFilters(snapshot);return {snapshot,images:[...inventory.images,...backgrounds.images],warnings:[...warnings],fileName};
 }
 function excelColor(value:unknown):Partial<ExcelJS.Color>|undefined{const rgb=obj(value).rgb;if(typeof rgb!=='string')return undefined;const normalized=rgb.replace(/^#/,'');return /^[\da-f]{6}$/i.test(normalized)?{argb:`FF${normalized.toUpperCase()}`}:undefined;}
 function styleData(value:unknown,snapshot:IWorkbookData):IStyleData{return (typeof value==='string'?snapshot.styles[value]:value) as IStyleData??{};}
@@ -117,8 +122,8 @@ function writeStyle(raw:IStyleData):Partial<ExcelJS.Style>{
   const border:Partial<ExcelJS.Borders>={};for(const [key,side] of [['t','top'],['b','bottom'],['l','left'],['r','right']] as const){const b=obj(obj(s.bd)[key]),name=BORDER[Number(b.s)];if(name)border[side]={style:name as ExcelJS.BorderStyle,...(excelColor(b.cl)?{color:excelColor(b.cl)!}:{})};}style.border=border;
   const pattern=obj(s.n).pattern;if(typeof pattern==='string')style.numFmt=pattern;return style;
 }
-export async function writeFreeWorkbook(snapshot:IWorkbookData,assets:readonly SheetImage[]):Promise<Uint8Array>{
-  checkWorkbookBounds(snapshot);const workbook=new ExcelJS.Workbook();workbook.creator='轻卡定制色';workbook.properties.date1904=snapshot.dateSystem===DateSystem.Date1904;workbook.calcProperties.fullCalcOnLoad=true;
+export async function writeFreeWorkbook(snapshot:IWorkbookData,assets:readonly SheetImage[],options:{allowFilterCriteriaConversion?:boolean}={}):Promise<Uint8Array>{
+  checkWorkbookBounds(snapshot);if(workbookExportWarnings(snapshot).length&&!options.allowFilterCriteriaConversion)throw new Error('当前筛选条件不能无损导出；请先确认导出含全部行数据的副本。');const filters=workbookFilters(snapshot);const workbook=new ExcelJS.Workbook();workbook.creator='轻卡定制色';workbook.properties.date1904=snapshot.dateSystem===DateSystem.Date1904;workbook.calcProperties.fullCalcOnLoad=true;
   const sheets=new Map<string,number>(),cached=new Map<string,Awaited<ReturnType<typeof imageBytes>>>(),backgroundMedia=new Map<string,number>();
   async function binaryFor(id:string){const asset=assets.find(a=>a.id===id);if(!asset)throw new Error('图片原件不在当前授权工作簿中。');let binary=cached.get(id);if(!binary){binary=await imageBytes(asset);cached.set(id,binary);}if(binary.mime!=='image/png'&&binary.mime!=='image/jpeg')throw new Error('图片原件格式无效。');return binary;}
   for(const id of snapshot.sheetOrder){const source=snapshot.sheets[id]!,sheet=workbook.addWorksheet(source.name??'工作表');sheets.set(id,sheet.id);sheet.state=source.hidden===2?'veryHidden':source.hidden?'hidden':'visible';sheet.properties.defaultRowHeight=(source.defaultRowHeight??20)*3/4;sheet.properties.defaultColWidth=((source.defaultColumnWidth??64)-5)/7;
@@ -130,6 +135,7 @@ export async function writeFreeWorkbook(snapshot:IWorkbookData,assets:readonly S
       else target.value=cell.v??null;
     }
     for(const range of source.mergeData??[])sheet.mergeCells(range.startRow+1,range.startColumn+1,range.endRow+1,range.endColumn+1);
+    if(filters[id]){const ref=filters[id]!.ref;sheet.autoFilter={from:{row:ref.startRow+1,column:ref.startColumn+1},to:{row:ref.endRow+1,column:ref.endColumn+1}};}
     if(source.freeze&&(source.freeze.xSplit||source.freeze.ySplit))sheet.views=[{state:'frozen',xSplit:source.freeze.xSplit,ySplit:source.freeze.ySplit}];
     if(source.backgroundImage){const bg=source.backgroundImage,binary=await binaryFor(bg.source),scale=backgroundScale(binary.bytes);if(Math.abs((bg.scaleX??1)-scale.scaleX)>0.001||Math.abs((bg.scaleY??1)-scale.scaleY)>0.001)throw new Error('背景缩放与原件物理尺寸不一致，不能无损导出。');let media=backgroundMedia.get(bg.source);if(media===undefined){media=workbook.addImage({buffer:binary.bytes as never,extension:binary.mime==='image/png'?'png':'jpeg'});backgroundMedia.set(bg.source,media);}sheet.addBackgroundImage(media);}
   }

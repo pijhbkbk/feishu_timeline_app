@@ -30,7 +30,34 @@ export function validateFormula(raw: unknown) {
   for(const match of formula.matchAll(/(?:^|[^A-Za-z_\d])\$?([1-9]\d*)\s*:\s*\$?([1-9]\d*)(?![A-Za-z_\d])/g))if(Number(match[1])>WORKBOOK_LIMITS.rows||Number(match[2])>WORKBOOK_LIMITS.rows)throw new BadRequestException('公式引用超过工作簿行列范围。');
   if (/(?:https?:|file:|javascript:|data:|\/\/)/i.test(formula)) throw new BadRequestException('公式不能访问外部地址。');
 }
-const RESOURCE_NAMES = new Set(['SHEET_AuthzIoMockService_PLUGIN', 'SHEET_DRAWING_PLUGIN', 'SHEET_DEFINED_NAME_PLUGIN', 'SHEET_RANGE_THEME_MODEL_PLUGIN', 'SHEET_WORKSHEET_PROTECTION_PLUGIN', 'SHEET_WORKSHEET_PROTECTION_POINT_PLUGIN', 'SHEET_RANGE_PROTECTION_PLUGIN']);
+const RESOURCE_NAMES = new Set(['SHEET_AuthzIoMockService_PLUGIN', 'SHEET_DRAWING_PLUGIN', 'SHEET_FILTER_PLUGIN', 'SHEET_DEFINED_NAME_PLUGIN', 'SHEET_RANGE_THEME_MODEL_PLUGIN', 'SHEET_WORKSHEET_PROTECTION_PLUGIN', 'SHEET_WORKSHEET_PROTECTION_POINT_PLUGIN', 'SHEET_RANGE_PROTECTION_PLUGIN']);
+// Native filter snapshots are data, never executable query expressions. Keep
+// every range, cache and criterion bounded by the already validated worksheet.
+function validateFilters(raw:unknown,sheets:JsonObject){
+  const content=object(raw);
+  for(const [sheetId,value] of Object.entries(content)){
+    if(!Object.hasOwn(sheets,sheetId))throw new BadRequestException('筛选的工作表不存在。');
+    const sheet=object(sheets[sheetId]),filter=object(value);exact(filter,['ref','filterColumns','cachedFilteredOut']);
+    const range=object(filter.ref);exact(range,['startRow','endRow','startColumn','endColumn','rangeType']);
+    const startRow=integer(range.startRow,0,Number(sheet.rowCount)-1),endRow=integer(range.endRow,startRow,Number(sheet.rowCount)-1);
+    const startColumn=integer(range.startColumn,0,Number(sheet.columnCount)-1),endColumn=integer(range.endColumn,startColumn,Number(sheet.columnCount)-1);
+    if(range.rangeType!==undefined)integer(range.rangeType,0,3);
+    const columns=filter.filterColumns??[];
+    if(!Array.isArray(columns)||columns.length>endColumn-startColumn+1)throw new BadRequestException('筛选列数量超限。');
+    const ids=new Set<number>();
+    const array=(value:unknown,max:number)=>{if(!Array.isArray(value)||value.length>max)throw new BadRequestException('筛选条件数量超限。');return value;};
+    const text=(value:unknown)=>{if(typeof value!=='string'||value.length>32767)throw new BadRequestException('筛选文字超限。');};
+    const color=(value:unknown)=>{if(typeof value!=='string'||!/^#[a-f\d]{6}(?:[a-f\d]{2})?$/i.test(value))throw new BadRequestException('筛选颜色无效。');};
+    for(const rawColumn of columns){
+      const column=object(rawColumn);exact(column,['colId','filters','customFilters','colorFilters']);const id=integer(column.colId,startColumn,endColumn);if(ids.has(id))throw new BadRequestException('筛选列重复。');ids.add(id);
+      if(['filters','customFilters','colorFilters'].filter(key=>column[key]!==undefined).length>1)throw new BadRequestException('筛选列不能同时使用多种条件。');
+      if(column.filters!==undefined){const values=object(column.filters);exact(values,['blank','filters']);if(values.blank!==undefined&&values.blank!==true)throw new BadRequestException('空值筛选无效。');if(values.filters!==undefined)for(const value of array(values.filters,Number(sheet.rowCount)))text(value);}
+      if(column.colorFilters!==undefined){const values=object(column.colorFilters);exact(values,['cellFillColors','cellTextColors']);if(values.cellFillColors!==undefined)for(const value of array(values.cellFillColors,256))if(value!==null)color(value);if(values.cellTextColors!==undefined)for(const value of array(values.cellTextColors,256))color(value);}
+      if(column.customFilters!==undefined){const values=object(column.customFilters);exact(values,['and','customFilters']);if(values.and!==undefined&&values.and!==1)throw new BadRequestException('筛选组合无效。');const items=array(values.customFilters,2);if(!items.length)throw new BadRequestException('筛选条件为空。');for(const item of items){const term=object(item);exact(term,['val','operator']);if(typeof term.val==='number'){if(!Number.isFinite(term.val))throw new BadRequestException('筛选值无效。');}else text(term.val);if(term.operator!==undefined&&!['equal','notEqual','greaterThan','greaterThanOrEqual','lessThan','lessThanOrEqual'].includes(String(term.operator)))throw new BadRequestException('筛选比较符无效。');}}
+    }
+    if(filter.cachedFilteredOut!==undefined){const rows=array(filter.cachedFilteredOut,endRow-startRow),unique=new Set<number>();for(const value of rows){const row=integer(value,startRow+1,endRow);if(unique.has(row))throw new BadRequestException('筛选缓存行重复。');unique.add(row);}}
+  }
+}
 export function validateSnapshot(raw: unknown, id: string) {
   const snapshot = object(raw); exact(snapshot, ['id','name','appVersion','locale','styles','sheetOrder','sheets','resources','rev','dateSystem','defaultStyle','custom']);
   if (snapshot.id !== id || snapshot.appVersion !== '1.0.4') throw new BadRequestException('工作簿身份或格式版本不匹配。');
@@ -86,11 +113,14 @@ export function validateSnapshot(raw: unknown, id: string) {
   if (Object.keys(object(snapshot.styles)).length > 50000) throw new BadRequestException('工作簿样式数量超限。');
   if (snapshot.resources !== undefined) {
     if (!Array.isArray(snapshot.resources) || snapshot.resources.length > 20) throw new BadRequestException('工作簿资源数量超限。');
+    const resourceNames=new Set<string>();
     for (const rawResource of snapshot.resources) {
       const resource = object(rawResource);
       if (typeof resource.name !== 'string' || !RESOURCE_NAMES.has(resource.name) || typeof resource.data !== 'string') throw new BadRequestException('包含未支持的工作簿资源。');
+      exact(resource,['name','data']);if(resourceNames.has(resource.name))throw new BadRequestException('工作簿资源名称重复。');resourceNames.add(resource.name);
       let content: unknown; try { content = resource.data ? JSON.parse(resource.data) : {}; } catch { throw new BadRequestException('工作簿资源损坏。'); }
       inspect(content);
+      if(resource.name==='SHEET_FILTER_PLUGIN'){validateFilters(content,sheets);continue;}
       if (resource.name !== 'SHEET_DRAWING_PLUGIN') {
         // Permissions and named ranges are not application authorization and are
         // not part of the first exchange contract. Preserve empty engine records.

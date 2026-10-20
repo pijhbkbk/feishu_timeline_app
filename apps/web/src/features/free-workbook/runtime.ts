@@ -3,10 +3,15 @@ import { Tools, DOCS_NORMAL_EDITOR_UNIT_ID_KEY, DOCS_FORMULA_BAR_EDITOR_UNIT_ID_
 import { createUniver, mergeLocales } from '@univerjs/presets';
 import { UniverSheetsCorePreset, IEditorBridgeService, IEditorService, IRenderManagerService, DocIMEInputManagerService, ReplaceSnapshotCommand, type Spreadsheet } from '@univerjs/preset-sheets-core';
 import CoreZhCN from '@univerjs/preset-sheets-core/locales/zh-CN';
+import { UniverSheetsFilterPreset } from '@univerjs/preset-sheets-filter';
+import FilterZhCN from '@univerjs/preset-sheets-filter/locales/zh-CN';
+import { UniverSheetsSortPreset } from '@univerjs/preset-sheets-sort';
+import SortZhCN from '@univerjs/preset-sheets-sort/locales/zh-CN';
 import DrawingZhCN from '@univerjs/preset-sheets-drawing/locales/zh-CN';
 import { IDrawingManagerService } from '@univerjs/preset-sheets-drawing';
 import { WorkbookImageIo } from './image-io';
 import { createBackgroundRetry } from './background-retry';
+import { committedSnapshot } from './committed-snapshot';
 import { SheetDrawingAnchorType } from '@univerjs/sheets-drawing';
 import '@univerjs/sheets-drawing/facade';
 import { setNonce } from 'get-nonce';
@@ -17,13 +22,15 @@ import { validateEditingDraft, type WorkbookEditingDraft } from './editing-draft
 import { changesWorkbook } from './change-tracking';
 import '@univerjs/preset-sheets-core/lib/index.css';
 import '@univerjs/preset-sheets-drawing/lib/index.css';
+import '@univerjs/preset-sheets-filter/lib/index.css';
+import '@univerjs/preset-sheets-sort/lib/index.css';
 
 export interface WorkbookRuntime {ready:Promise<void>;retryImages():Promise<number>;snapshot():Promise<IWorkbookData>;draftSnapshot():Promise<{snapshot:IWorkbookData;edit:WorkbookEditingDraft|null}|null>;restoreEdit(edit:WorkbookEditingDraft):Promise<void>;insertImage(file:File):Promise<void>;insertAsset(sheetId:string,assetId:string,anchor:ImageAnchor):Promise<void>;setBackgroundAsset(sheetId:string,assetId:string,scale:{scaleX:number;scaleY:number}):Promise<void>;dispose():void}
 export function createFreeWorkbook(options:{container:HTMLElement;snapshot:IWorkbookData;onChanged():void;onError(message:string):void;onUploading(count:number):void;onImageFailures(count:number):void}):WorkbookRuntime{
   setNonce(document.querySelector<HTMLScriptElement>('script[nonce]')?.nonce??'');
   const io=new WorkbookImageIo(options.snapshot.id,options.onUploading,Object.values(options.snapshot.sheets).flatMap(sheet=>sheet.backgroundImage?[sheet.backgroundImage.source]:[]),options.onImageFailures);
   const hidden=['sheet.command.insert-cell-image','sheet.command.set-worksheet-background-image','sheet.command.add-range-protection-from-toolbar','sheet.command.add-range-protection-from-context-menu','sheet.command.add-range-protection-from-sheet-bar','sheet.command.view-sheet-permission-from-context-menu','sheet.command.view-sheet-permission-from-sheet-bar','sidebar.operation.defined-name'];
-  const {univer,univerAPI}=createUniver({locale:LocaleType.ZH_CN,locales:{[LocaleType.ZH_CN]:mergeLocales(CoreZhCN,DrawingZhCN)},presets:[UniverSheetsCorePreset({container:options.container,header:true,toolbar:true,ribbonType:'simple',formulaBar:true,footer:{sheetBar:true,statisticBar:true,menus:true,zoomSlider:true},menu:Object.fromEntries(hidden.map(id=>[id,{hidden:true}]))}),createRecordDrawingPreset(io)]});
+  const {univer,univerAPI}=createUniver({locale:LocaleType.ZH_CN,locales:{[LocaleType.ZH_CN]:mergeLocales(CoreZhCN,DrawingZhCN,FilterZhCN,SortZhCN)},presets:[UniverSheetsCorePreset({container:options.container,header:true,toolbar:true,ribbonType:'simple',formulaBar:true,footer:{sheetBar:true,statisticBar:true,menus:true,zoomSlider:true},menu:Object.fromEntries(hidden.map(id=>[id,{hidden:true}]))}),createRecordDrawingPreset(io),UniverSheetsFilterPreset(),UniverSheetsSortPreset()]});
   let resolveReady!:()=>void;const ready=new Promise<void>(resolve=>{resolveReady=resolve;});let disposed=false,composing=false;
   const compositionStart=()=>{composing=true;},compositionEnd=()=>{composing=false;if(!disposed)options.onChanged();};
   options.container.addEventListener('compositionstart',compositionStart,true);options.container.addEventListener('compositionend',compositionEnd,true);
@@ -101,7 +108,7 @@ export function createFreeWorkbook(options:{container:HTMLElement;snapshot:IWork
     main?.makeForceDirty(true);render?.scene.makeDirty();return result.remaining;
   };
   const setBackgroundAsset=async(sheetId:string,assetId:string,scale:{scaleX:number;scaleY:number})=>{await ready;if(!workbook.getSheetBySheetId(sheetId))throw new Error('背景工作表不存在。');io.markBackground(assetId);await io.getImage(assetId);const ok=univerAPI.syncExecuteCommand('sheet.command.set-worksheet-background-image',{unitId:workbook.getId(),subUnitId:sheetId,backgroundImage:{source:assetId,imageSourceType:ImageSourceType.UUID,...scale}});if(!ok)throw new Error('背景图片设置失败，已上传原件仍保留。');};
-  return {ready,retryImages,setBackgroundAsset,restoreEdit,snapshot:async()=>{await ready;if(imeActive())throw new Error('请先完成中文选词，再保存。');if(workbook.isCellEditing())await workbook.endEditingAsync(true);await univerAPI.getFormula().onCalculationResultApplied(10000);const data=workbook.save();checkWorkbookBounds(data);return data;},draftSnapshot:async()=>{await ready;if(disposed||imeActive())return null;await univerAPI.getFormula().onCalculationResultApplied(10000);if(disposed||imeActive())return null;const snapshot=workbook.save();checkWorkbookBounds(snapshot);return {snapshot,edit:readEdit(snapshot)};},insertAsset,
+  return {ready,retryImages,setBackgroundAsset,restoreEdit,snapshot:async()=>{await ready;const data=await committedSnapshot({isDisposed:()=>disposed,isComposing:imeActive,isEditing:()=>workbook.isCellEditing(),endEditing:()=>workbook.endEditingAsync(true),calculate:()=>univerAPI.getFormula().onCalculationResultApplied(10000),read:()=>workbook.save()});checkWorkbookBounds(data);return data;},draftSnapshot:async()=>{await ready;if(disposed||imeActive())return null;await univerAPI.getFormula().onCalculationResultApplied(10000);if(disposed||imeActive())return null;const snapshot=workbook.save();checkWorkbookBounds(snapshot);return {snapshot,edit:readEdit(snapshot)};},insertAsset,
     insertImage:async file=>{const image=await io.saveImage(file);const sheet=workbook.getActiveSheet(),cell=sheet.getActiveCell();await insertAsset(sheet.getSheetId(),image.source,{kind:'oneCell',from:{row:cell?.getRow()??0,column:cell?.getColumn()??0,rowOffset:4,columnOffset:4},width:160,height:100});},
     dispose:()=>{disposed=true;resolveReady();options.container.removeEventListener('compositionstart',compositionStart,true);options.container.removeEventListener('compositionend',compositionEnd,true);subscriptions.forEach(s=>s.dispose());io.dispose();univer.dispose();}};
 }
