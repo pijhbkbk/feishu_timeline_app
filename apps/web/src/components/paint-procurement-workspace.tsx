@@ -759,9 +759,8 @@ export function ProcurementRecordForm({
         />
       </label>
       <label className="field">
-        <span>到货日期</span>
+        <span>实际到货日期（未到货可留空）</span>
         <input
-          required
           type="date"
           value={value.arrivalDate}
           disabled={disabled || readOnly}
@@ -889,10 +888,14 @@ export function ProcurementRecordList({
                         </button>
                       ) : null}
                       {canManage && !isReadOnly && item.status === 'ORDERED' && onMarkArrived ? (
-                        <MarkArrivedButton
-                          disabled={actingKey === `MARK_ARRIVED:${item.id}`}
-                          onClick={() => onMarkArrived(item)}
-                        />
+                        <>
+                          <MarkArrivedButton
+                            disabled={!item.arrivalDate || actingKey === `MARK_ARRIVED:${item.id}`}
+                            pending={actingKey === `MARK_ARRIVED:${item.id}`}
+                            onClick={() => onMarkArrived(item)}
+                          />
+                          {!item.arrivalDate ? <span className="muted">编辑并保存实际到货日期后可标记到货。</span> : null}
+                        </>
                       ) : null}
                       {canManage &&
                       !isReadOnly &&
@@ -973,9 +976,11 @@ export function SupplierInfoCard({
 export function MarkArrivedButton({
   onClick,
   disabled,
+  pending = false,
 }: {
   onClick: () => void;
   disabled: boolean;
+  pending?: boolean;
 }) {
   return (
     <button
@@ -984,7 +989,7 @@ export function MarkArrivedButton({
       disabled={disabled}
       onClick={onClick}
     >
-      {disabled ? '处理中…' : '标记到货'}
+      {pending ? '处理中…' : '标记到货'}
     </button>
   );
 }

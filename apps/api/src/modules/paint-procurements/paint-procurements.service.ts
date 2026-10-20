@@ -41,7 +41,7 @@ type PaintProcurementCreateInput = {
   batchNo: string;
   quantity: Prisma.Decimal;
   unit: string;
-  arrivalDate: Date;
+  arrivalDate: Date | null;
   note: string | null;
 };
 
@@ -52,7 +52,7 @@ type PaintProcurementUpdateInput = {
   batchNo?: string;
   quantity?: Prisma.Decimal;
   unit?: string;
-  arrivalDate?: Date;
+  arrivalDate?: Date | null;
   note?: string | null;
 };
 
@@ -185,7 +185,7 @@ export class PaintProcurementsService {
           ...(input.batchNo ? { batchNo: input.batchNo } : {}),
           ...(input.quantity ? { quantity: input.quantity } : {}),
           ...(input.unit ? { unit: input.unit } : {}),
-          ...(input.arrivalDate ? { arrivalDate: input.arrivalDate } : {}),
+          ...(input.arrivalDate !== undefined ? { arrivalDate: input.arrivalDate } : {}),
           ...(input.note !== undefined ? { note: input.note } : {}),
         },
       });
@@ -347,6 +347,10 @@ export class PaintProcurementsService {
         throw new BadRequestException('非法采购状态变更。');
       }
 
+      if (action === 'MARK_ARRIVED' && !procurement.arrivalDate) {
+        throw new BadRequestException('请先编辑并保存实际到货日期，再标记到货。');
+      }
+
       const now = new Date();
       const claimed = await tx.paintProcurement.updateMany({
         where: {
@@ -359,7 +363,7 @@ export class PaintProcurementsService {
           status: nextStatus,
           ...(action === 'ORDER' ? { orderedAt: now } : {}),
           ...(action === 'MARK_ARRIVED'
-            ? { arrivalDate: procurement.arrivalDate ?? now, cancelledAt: null }
+            ? { arrivalDate: procurement.arrivalDate, cancelledAt: null }
             : {}),
           ...(action === 'CANCEL' ? { cancelledAt: now } : {}),
         },
@@ -712,7 +716,7 @@ export class PaintProcurementsService {
     const batchNo = typeof input.batchNo === 'string' ? input.batchNo.trim() : '';
     const quantity = this.parseDecimal(input.quantity, '采购数量');
     const unit = typeof input.unit === 'string' ? input.unit.trim() : '';
-    const arrivalDate = this.parseDate(input.arrivalDate, '到货日期');
+    const arrivalDate = this.parseOptionalDate(input.arrivalDate, '实际到货日期');
     const note =
       typeof input.note === 'string' && input.note.trim().length > 0
         ? input.note.trim()
@@ -794,7 +798,7 @@ export class PaintProcurementsService {
     const arrivalDate =
       input.arrivalDate === undefined
         ? undefined
-        : this.parseDate(input.arrivalDate, '到货日期');
+        : this.parseOptionalDate(input.arrivalDate, '实际到货日期');
     const note =
       input.note === undefined
         ? undefined
@@ -835,7 +839,7 @@ export class PaintProcurementsService {
       ...(batchNo ? { batchNo } : {}),
       ...(quantity ? { quantity } : {}),
       ...(unit ? { unit } : {}),
-      ...(arrivalDate ? { arrivalDate } : {}),
+      ...(arrivalDate !== undefined ? { arrivalDate } : {}),
       ...(note !== undefined ? { note } : {}),
     };
     this.assertProcurementPayloadBytes(normalized);
@@ -921,9 +925,13 @@ export class PaintProcurementsService {
     });
   }
 
-  private parseDate(value: unknown, label: string) {
-    if (typeof value !== 'string' || value.trim().length === 0) {
-      throw new BadRequestException(`${label}不能为空。`);
+  private parseOptionalDate(value: unknown, label: string) {
+    if (value === undefined || value === null || (typeof value === 'string' && !value.trim())) {
+      return null;
+    }
+
+    if (typeof value !== 'string') {
+      throw new BadRequestException(`${label}格式不正确。`);
     }
 
     const parsedDate = new Date(value);

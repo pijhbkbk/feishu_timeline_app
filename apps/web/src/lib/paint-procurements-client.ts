@@ -264,10 +264,6 @@ export function validateProcurementForm(input: PaintProcurementFormInput) {
     return '单位不能为空。';
   }
 
-  if (!input.arrivalDate.trim()) {
-    return '到货日期不能为空。';
-  }
-
   return null;
 }
 
