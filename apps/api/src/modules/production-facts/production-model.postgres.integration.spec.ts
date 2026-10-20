@@ -6,6 +6,7 @@ import type { AuthenticatedUser } from '../auth/auth.types';
 import { ProductionFactsService } from './production-facts.service';
 import { ColorAnnualReviewService, readColorAnnualSnapshot } from '../color-register/color-annual-review.service';
 import { MONTHLY_MODEL_SCOPE } from './production-facts.rules';
+import { commandHash } from '../color-register/color-register.rules';
 
 const url = process.env.PRODUCTION_MODEL_TEST_DATABASE_URL;
 if (url) {
@@ -30,6 +31,23 @@ describe.skipIf(!url).sequential('A14 model facts, monthly basis and annual evid
     service = new ProductionFactsService(db as never);
   });
   afterAll(async () => { await db.$disconnect(); });
+
+  it('replays an exact pre-upgrade MONTH_TOTAL receipt without changing its hash, row or audit', async () => {
+    const operationId = randomUUID(), clientId = 'legacy-draft';
+    const oldItem = { kind: 'create', clientId, colorId, baseId, month: '2026-08', quantity: 7, rowKind: 'MONTH_TOTAL', source: null };
+    const fact = await db.colorProductionFact.create({ data: { colorId, productionBaseId: baseId, month: oldItem.month, quantity: 7, metricScope: 'MONTHLY_ACTUAL_TOTAL_V1' } });
+    const result = { items: [{ id: fact.id, clientId, revision: 1, quantity: '7', rowKind: 'MONTH_TOTAL' }], submittedCount: 1 };
+    const oldHash = commandHash([oldItem]);
+    await db.adminCommandRequest.create({ data: { idempotencyKey: `production-facts:${actor.id}:${operationId}`, actorUserId: actor.id,
+      action: 'PRODUCTION_FACT_BATCH', requestHash: oldHash, result } });
+    const auditBefore = await db.auditLog.count({ where: { actorUserId: actor.id } });
+    const raw = { operationId, items: [{ kind: 'create', clientId, colorId, baseId, month: oldItem.month, quantity: 7, rowKind: 'MONTH_TOTAL' }] };
+    expect(await service.saveBatch(raw, actor)).toEqual(result);
+    expect(await db.colorProductionFact.count({ where: { colorId, month: oldItem.month } })).toBe(1);
+    expect((await db.adminCommandRequest.findUniqueOrThrow({ where: { idempotencyKey: `production-facts:${actor.id}:${operationId}` } })).requestHash).toBe(oldHash);
+    expect(await db.auditLog.count({ where: { actorUserId: actor.id } })).toBe(auditBefore);
+    await expect(service.saveBatch({ ...raw, items: [{ ...raw.items[0], quantity: 8 }] }, actor)).rejects.toMatchObject({ status: 409 });
+  });
 
   it('persists same color/base/month models 10+12+5=27, replaces 10→8→9 and replays without adding', async () => {
     const items = [create('车型甲', 10), create('车型乙', 12), create('车型丙', 5)], operationId = randomUUID();

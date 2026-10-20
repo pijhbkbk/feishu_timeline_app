@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { actualQuantity, parseProductionBatch, productionFilters } from './production-facts.rules';
+import { actualQuantity, parseProductionBatch, productionCommandItems, productionFilters } from './production-facts.rules';
 const create = { kind: 'create', clientId: 'draft1', colorId: 'color1', baseId: 'base1', month: '2026-09', quantity: 10, rowKind: 'MONTH_TOTAL' };
 describe('monthly production input contract', () => {
   it('preserves unknown versus confirmed zero', () => { expect(actualQuantity(null)).toBeNull(); expect(actualQuantity(0)).toBe(0); });
@@ -28,5 +28,10 @@ describe('monthly production input contract', () => {
     for (const vehicleModel of [undefined, '', ' ', 'x'.repeat(101), 'x\nx']) expect(() => parseProductionBatch({ operationId: 'op1', items: [{ ...detail, vehicleModel }] })).toThrow();
     expect(() => parseProductionBatch({ operationId: 'op1', items: [{ ...create, vehicleModel: '车型甲' }] })).toThrow();
     expect(() => parseProductionBatch({ operationId: 'op1', items: [detail, { ...detail, clientId: 'draft2' }] })).toThrow();
+  });
+  it('keeps the exact legacy total receipt hash input while retaining model identity for new detail requests', () => {
+    const original = [{ kind: 'create', clientId: 'draft1', colorId: 'color1', baseId: 'base1', month: '2026-09', quantity: 10, rowKind: 'MONTH_TOTAL', source: null }];
+    expect(JSON.stringify(productionCommandItems(parseProductionBatch({ operationId: 'op1', items: [create] }).items))).toBe(JSON.stringify(original));
+    expect(productionCommandItems(parseProductionBatch({ operationId: 'op1', items: [{ ...create, rowKind: 'MODEL_DETAIL', vehicleModel: '车型甲' }] }).items)[0]).toMatchObject({ vehicleModel: '车型甲' });
   });
 });

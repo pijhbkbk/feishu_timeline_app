@@ -5,7 +5,7 @@ import { assertApprovedTeamMember } from '../../common/team-membership';
 import { withTeamWrite } from '../../common/team-authorization';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { commandHash, identity, jsonData, pagination } from '../color-register/color-register.rules';
-import { factGrain, grain, MAX_MODELS_PER_MONTH, MONTHLY_ACTUAL_SCOPE, MONTHLY_ACTUAL_SCOPE_LABEL, MONTHLY_MODEL_SCOPE, MONTHLY_MODEL_SCOPE_LABEL, parseBasisRead, parseBasisWrite, parseProductionBatch, productionFilters } from './production-facts.rules';
+import { factGrain, grain, MAX_MODELS_PER_MONTH, MONTHLY_ACTUAL_SCOPE, MONTHLY_ACTUAL_SCOPE_LABEL, MONTHLY_MODEL_SCOPE, MONTHLY_MODEL_SCOPE_LABEL, parseBasisRead, parseBasisWrite, parseProductionBatch, productionCommandItems, productionFilters } from './production-facts.rules';
 import { operationalProductionWhere, readProductionMonth } from './production-basis';
 import { readProductionStatistics } from './production-statistics';
 
@@ -129,7 +129,7 @@ export class ProductionFactsService {
     return withTeamWrite(this.prisma, actor, async tx => {
       const key = `production-facts:${actor.id}:${input.operationId}`;
       await tx.$executeRaw(Prisma.sql`SELECT pg_advisory_xact_lock(hashtext(${key}))`);
-      const requestHash = commandHash(input.items);
+      const requestHash = commandHash(productionCommandItems(input.items));
       const replay = await tx.adminCommandRequest.findUnique({ where: { idempotencyKey: key } });
       if (replay) {
         if (replay.action !== 'PRODUCTION_FACT_BATCH' || replay.requestHash !== requestHash) throw new ConflictException('操作标识已使用，且内容不同。');

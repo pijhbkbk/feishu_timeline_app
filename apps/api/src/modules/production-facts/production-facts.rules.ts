@@ -12,6 +12,13 @@ export const MONTHLY_MODEL_SCOPE_LABEL = '月度车型明细（同色、基地�
 export type ProductionCreate = { kind: 'create'; clientId: string; colorId: string; baseId: string; month: string; quantity: number | null; rowKind: 'MONTH_TOTAL' | 'MODEL_DETAIL'; vehicleModel: string; source: BusinessFactSource | null };
 export type ProductionUpdate = { kind: 'update'; id: string; expectedRevision: number; quantity: number | null };
 export type ProductionMutation = ProductionCreate | ProductionUpdate;
+/** Retain the exact pre-model parsed request shape and key order for old receipts. */
+export function productionCommandItems(items: ProductionMutation[]) {
+  return items.map(item => item.kind === 'create' && item.rowKind === 'MONTH_TOTAL'
+    ? { kind: item.kind, clientId: item.clientId, colorId: item.colorId, baseId: item.baseId, month: item.month,
+      quantity: item.quantity, rowKind: item.rowKind, source: item.source }
+    : item);
+}
 export function onlyFields(input: Record<string, unknown>, fields: string[]) {
   const field = Object.keys(input).find(key => !fields.includes(key));
   if (field) throw new BadRequestException({ code: 'PRODUCTION_FIELD_ERROR', field, message: '包含只读或不支持的字段。' });
