@@ -268,10 +268,11 @@ describe.skipIf(!url).sequential('R28 role queue and authorization fence on real
     months = await db.recurringTask.findMany({ where: { recurringPlanId: plan.plan.id }, orderBy: { periodIndex: 'asc' } });
     expect(months).toHaveLength(12); expect(months[0]).toMatchObject({ status: 'COMPLETED', reviewerId: winner.id });
     const workflow = new WorkflowsService(db as never, null as never, null as never, null as never, recurring, null as never);
-    const check = () => db.$transaction(tx => workflow['assertMonthlyReviewPeriodsCompleted'](tx, newParent));
-    await expect(check()).rejects.toThrow('月度评审未完成');
+    const check = () => db.$transaction(async tx => workflow['getVisualReviewCompletionIssues'](tx, await workflow['getTaskOrThrow'](tx, newParent.id)));
+    expect(await check()).toContain('请先保存、提交并明确确认本阶段的实际评审记录。');
     await db.recurringTask.updateMany({ where: { recurringPlanId: plan.plan.id }, data: { status: 'COMPLETED' } });
-    await expect(check()).resolves.toBeUndefined();
+    // A calendar count never substitutes for actual stage confirmation.
+    expect(await check()).toContain('请先保存、提交并明确确认本阶段的实际评审记录。');
     expect(await db.recurringPlan.count({ where: { projectId: parent.projectId } })).toBe(1);
   });
 
@@ -327,8 +328,8 @@ describe.skipIf(!url).sequential('R28 role queue and authorization fence on real
       const checkSigning = () => withProjectWrite(db as never, first, { projectId: parent.projectId }, tx =>
         reviews['resolveVisualDeltaRecurringPlan'](tx, parent.projectId, parent.id));
       await expect(checkSigning()).rejects.toMatchObject({ status: 409 });
-      await expect(withProjectWrite(db as never, first, { projectId: parent.projectId }, tx =>
-        workflow['assertMonthlyReviewPeriodsCompleted'](tx, parent))).rejects.toMatchObject({ status: 409 });
+      await expect(withProjectWrite(db as never, first, { projectId: parent.projectId }, async tx =>
+        workflow['getVisualReviewCompletionIssues'](tx, await workflow['getTaskOrThrow'](tx, parent.id)))).rejects.toMatchObject({ status: 409 });
       expect(await db.recurringPlan.findUniqueOrThrow({ where: { id: planId }, include: { tasks: { orderBy: { periodIndex: 'asc' } } } })).toEqual(before);
     },
   );

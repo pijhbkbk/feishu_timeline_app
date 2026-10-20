@@ -4,8 +4,11 @@ import { PROJECT_DISPLAY_COLOR_SELECT, resolveProjectDisplayColor } from '../../
 import { assertApprovedTeamMember } from '../../common/team-membership';
 import { isReworkTask, isTechnicalReworkTask, taskEvidenceIds, ancestorEvidenceIds } from '../../common/workflow-evidence';
 import { BusinessClock } from '../../common/business-clock';
-import { requireActiveMonthlyPlan } from '../../common/monthly-review-plan';
-import { recordedMonthlyReviewIds } from '../../common/monthly-review-applicability';
+import { resolveVisualReviewPlan } from '../../common/monthly-review-plan';
+import { confirmedVisualReviewIds } from '../../common/visual-review-confirmation';
+import { recordedMonthlyReviewSql, recordedMonthlyReviewIds } from '../../common/monthly-review-applicability';
+import { requireReviewStandardVersion } from '../reviews/review-standard-version';
+import { assertInspectionReviewLink } from '../inspections/inspection-review-link';
 import { assertTeamTaskOperator, withProjectWrite } from '../../common/team-authorization';
 import { notifyTeamTask, resolveTeamAssignment } from '../personnel/team-assignment';
 import {
@@ -1244,6 +1247,7 @@ export class WorkflowsService {
       ...await this.getPilotProductionCompletionIssues(tx, task),
       ...await this.getTechnicalReworkCompletionIssues(tx, task),
       ...await this.getRegisterStandardCompletionIssues(tx, task),
+      ...await this.getVisualReviewCompletionIssues(tx, task),
     ];
 
     return {
@@ -1363,7 +1367,11 @@ export class WorkflowsService {
     }
 
     if (action === WorkflowAction.APPROVE || isWorkflowCompletionAction(action)) {
-      await this.assertMonthlyReviewPeriodsCompleted(tx, task);
+      if (task.nodeCode === WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW) {
+        await this.assertRequiredMaterialsSubmitted(tx, task);
+        const issues = await this.getVisualReviewCompletionIssues(tx, task);
+        if (issues.length) throw new BadRequestException({ code: 'VISUAL_REVIEW_COMPLETION_NOT_MET', message: issues[0], blockingReasons: issues });
+      }
     }
 
     if (action === WorkflowAction.START) {
@@ -1924,28 +1932,45 @@ export class WorkflowsService {
     return record ? [] : [`${task.nodeName} 的旧轮次结果需复核，请登记本轮有效记录后再完成。原采购与收费事实保留。`];
   }
 
-  private async assertMonthlyReviewPeriodsCompleted(
-    tx: Prisma.TransactionClient,
-    task: Pick<WorkflowTaskWithRelations, 'id' | 'projectId' | 'nodeCode' | 'nodeName'>,
+  private async getVisualReviewCompletionIssues(
+    tx: WorkflowDbClient,
+    task: Pick<WorkflowTaskWithRelations, 'id' | 'projectId' | 'nodeCode' | 'project' | 'workflowInstanceId' | 'payload'>,
   ) {
-    if (task.nodeCode !== WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW) {
-      return;
+    if (task.nodeCode !== WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW) return [];
+    const plan = await resolveVisualReviewPlan(tx, task.projectId);
+    const issues: string[] = [];
+    if (plan) {
+      const pending = await tx.$queryRaw<Array<{ count: number }>>(Prisma.sql`
+        SELECT count(*)::int AS count FROM recurring_tasks t
+        WHERE t."recurringPlanId" = ${plan.id} AND t."projectId" = ${task.projectId}
+          AND t.status IN ('PENDING','IN_PROGRESS','OVERDUE')
+          AND ${recordedMonthlyReviewSql(Prisma.sql`t.id`, Prisma.sql`t."projectId"`)}`);
+      if (pending[0]?.count) issues.push(`尚有 ${pending[0].count} 个已登记实际抽检的历史期次未完成；未抽检的空期次不要求补做。`);
     }
-
-    const recurringPlan = await requireActiveMonthlyPlan(tx, task.projectId);
-
-    const completedPeriods = await tx.recurringTask.count({
-      where: {
-        recurringPlanId: recurringPlan.id,
-        status: RecurringTaskStatus.COMPLETED,
-      },
+    const records = await tx.reviewRecord.findMany({
+      where: { projectId: task.projectId, workflowTaskId: task.id, reviewType: 'VISUAL_COLOR_DIFFERENCE_REVIEW' },
+      select: { id: true, standardVersionId: true, reviewedAt: true, reviewPeriod: true, attachmentId: true },
+      orderBy: { id: 'asc' }, take: 101,
     });
-
-    if (completedPeriods < recurringPlan.totalCount) {
-      throw new BadRequestException(
-        `${task.nodeName} 尚有 ${recurringPlan.totalCount - completedPeriods} 个月度评审未完成（${completedPeriods}/${recurringPlan.totalCount}）。`,
-      );
+    if (records.length > 100) return [...issues, '本阶段评审记录超出有界读取上限，请核对历史记录。'];
+    if (!records.length) return [...issues, '请先保存、提交并明确确认本阶段的实际评审记录。'];
+    const confirmed = await confirmedVisualReviewIds(tx, task.projectId, records.map(record => record.id));
+    const pendingRecords = records.filter(record => !confirmed.has(record.id));
+    if (pendingRecords.length) issues.push(`尚有 ${pendingRecords.length} 条本阶段实际评审记录未提交或未确认通过。`);
+    for (const record of records) {
+      if ((record.reviewPeriod === 'TASK') !== !plan) {
+        issues.push('评审模式与历史计划不一致；保留原记录，不能自动改派。');
+        break;
+      }
+      if (!confirmed.has(record.id)) continue;
+      await requireReviewStandardVersion(tx, task.project, task, record.standardVersionId);
+      await assertInspectionReviewLink(tx, { reviewId: record.id, projectId: task.projectId, reviewedAt: record.reviewedAt, standardVersionId: record.standardVersionId });
+      if (record.attachmentId && !await tx.attachment.findFirst({ where: {
+        id: record.attachmentId, projectId: task.projectId, entityType: 'REVIEW_RECORD',
+        entityId: record.id, scanStatus: 'CLEAN', isDeleted: false,
+      }, select: { id: true } })) issues.push('已确认评审的附件不可用或安全检查未通过，请核对原材料。');
     }
+    return issues;
   }
 
   private assertActorCanOperateTask(
@@ -2329,7 +2354,7 @@ export class WorkflowsService {
       case WorkflowNodeCode.DEVELOPMENT_ACCEPTANCE:
         return '开发收费记录';
       case WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW:
-        return '12 个月色差评审台账';
+        return '实际目视色差评审与历史台账';
       case WorkflowNodeCode.PROJECT_CLOSED:
         return '颜色退出记录';
       default:

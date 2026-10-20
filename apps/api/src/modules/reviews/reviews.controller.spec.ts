@@ -57,5 +57,10 @@ describe('ReviewsController RBAC metadata', () => {
       'quality_engineer',
       'reviewer',
     ]);
+    for (const method of [prototype.previewVisualDeltaStage, prototype.confirmVisualDeltaStage]) {
+      expect(Reflect.getMetadata(ROLE_METADATA_KEY, method)).toEqual([
+        'admin', 'project_manager', 'quality_engineer', 'reviewer',
+      ]);
+    }
   });
 });

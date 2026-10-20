@@ -569,10 +569,13 @@ describe('WorkflowsService', () => {
     ).rejects.toThrow('至少需要一条已完成的有效试制记录');
   });
 
-  it('blocks generic completion of the monthly review node before all periods finish', async () => {
+  it('requires actual review confirmation rather than treating a twelve-period count as completion', async () => {
     const { service } = createService();
     const tx = {
-      $queryRaw: vi.fn().mockResolvedValue([{ id: 'plan-1', status: 'ACTIVE', frequency: 'MONTHLY', totalCount: 12, taskCount: 12, validCount: 12 }]),
+      $queryRaw: vi.fn().mockImplementation(async query => query.strings.join('').includes('monthly_plan_integrity')
+        ? [{ id: 'plan-1', status: 'ACTIVE', frequency: 'MONTHLY', totalCount: 12, taskCount: 12, validCount: 12 }]
+        : [{ count: 1 }]),
+      reviewRecord: { findMany: vi.fn().mockResolvedValue([]) },
       recurringPlan: {
         findMany: vi.fn().mockResolvedValue([{
           id: 'plan-1',
@@ -585,24 +588,27 @@ describe('WorkflowsService', () => {
     };
 
     await expect(
-      (service as any).assertMonthlyReviewPeriodsCompleted(tx, {
+      (service as any).getVisualReviewCompletionIssues(tx, {
         id: 'task-17',
         projectId: 'project-1',
         nodeCode: WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW,
         nodeName: '整车色差一致性评审',
       }),
-    ).rejects.toThrow('尚有 11 个月度评审未完成（1/12）');
+    ).resolves.toEqual([
+      '尚有 1 个已登记实际抽检的历史期次未完成；未抽检的空期次不要求补做。',
+      '请先保存、提交并明确确认本阶段的实际评审记录。',
+    ]);
 
     tx.recurringTask.count.mockResolvedValue(12);
 
     await expect(
-      (service as any).assertMonthlyReviewPeriodsCompleted(tx, {
+      (service as any).getVisualReviewCompletionIssues(tx, {
         id: 'task-17',
         projectId: 'project-1',
         nodeCode: WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW,
         nodeName: '整车色差一致性评审',
       }),
-    ).resolves.toBeUndefined();
+    ).resolves.toContain('请先保存、提交并明确确认本阶段的实际评审记录。');
   });
 
   it('returns a readable monthly review progress summary', () => {

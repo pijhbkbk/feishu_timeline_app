@@ -186,6 +186,18 @@ export class ReviewsController {
   }
 
   @Roles('admin', 'project_manager', 'quality_engineer', 'reviewer')
+  @Post('visual-delta/stage-preview')
+  previewVisualDeltaStage(@Param('projectId') projectId: string, @Body() body: unknown, @CurrentUser() actor: AuthenticatedUser) {
+    return this.reviewsService.confirmVisualDeltaStage(projectId, body, actor);
+  }
+
+  @Roles('admin', 'project_manager', 'quality_engineer', 'reviewer')
+  @Post('visual-delta/stage-confirm')
+  confirmVisualDeltaStage(@Param('projectId') projectId: string, @Body() body: unknown, @CurrentUser() actor: AuthenticatedUser) {
+    return this.reviewsService.confirmVisualDeltaStage(projectId, body, actor, true);
+  }
+
+  @Roles('admin', 'project_manager', 'quality_engineer', 'reviewer')
   @Post('visual-delta')
   createVisualDeltaReview(
     @Param('projectId') projectId: string,

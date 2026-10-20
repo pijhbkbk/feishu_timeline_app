@@ -67,7 +67,7 @@ function reviewRecord(
     attachmentId: null,
     reviewType,
     reviewRound: 1,
-    reviewPeriod: 'TASK',
+    reviewPeriod: reviewType === ReviewType.VISUAL_COLOR_DIFFERENCE_REVIEW ? '2026-08' : 'TASK',
     result: ReviewResult.APPROVED,
     comment: '评审通过',
     conditionNote: null,
@@ -141,6 +141,7 @@ function workspaceDb(input?: {
   const queryRaw = vi.fn(async (query: { strings?: readonly string[] }) => {
     const sql = query.strings?.join('') ?? '';
     if (sql.includes('monthly_plan_integrity')) return [monthlyPlanRow()];
+    if (sql.includes('SELECT r.id FROM review_records r')) return [];
     if (sql.includes('CHAR_LENGTH')) {
       return sourceQuery(query);
     }
@@ -437,6 +438,7 @@ function workspaceSourceAdmissionHarness(input: {
   });
   const queryRaw = vi.fn(async (query: RawSqlQuery) => {
     const sql = sqlText(query);
+    if (sql.includes('SELECT r.id FROM review_records r')) return [];
     if (sql.includes('monthly_plan_integrity')) return [monthlyPlanRow()];
     if (sql.includes('CHAR_LENGTH')) {
       return sourceQuery(query);
@@ -1647,12 +1649,14 @@ describe('ReviewsService resource bounds', () => {
     {
       label: 'two same-scope plans even when each plan is individually bounded',
       plans: [{ id: 'plan-a' }, { id: 'plan-b' }],
+      code: 'VISUAL_DELTA_REVIEW_PLAN_IDENTITY_CONFLICT',
     },
     {
       label: 'a plan whose damaged project identity leaves no in-scope match',
       plans: [],
+      code: 'MONTHLY_REVIEW_PLAN_INVALID',
     },
-  ])('fails closed on $label before a visual write can continue', async ({ plans }) => {
+  ])('fails closed on $label before a visual write can continue', async ({ plans, code }) => {
     const afterLockWrite = vi.fn();
     const queryRaw = vi.fn(async (query: { strings?: readonly string[] }) => {
       const sql = query.strings?.join('') ?? '';
@@ -1686,7 +1690,7 @@ describe('ReviewsService resource bounds', () => {
         await afterLockWrite();
       })(),
     ).rejects.toMatchObject({
-      response: { code: 'VISUAL_DELTA_REVIEW_PLAN_IDENTITY_CONFLICT' },
+      response: { code },
     });
     expect(afterLockWrite).not.toHaveBeenCalled();
   });
@@ -1886,15 +1890,14 @@ describe('ReviewsService resource bounds', () => {
         }),
       }),
     );
-    expect(planFind).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { id: 'plan-exact' } }),
-    );
-    expect(recurringCount).toHaveBeenCalledWith({
-      where: {
-        recurringPlanId: 'plan-exact',
-        status: RecurringTaskStatus.COMPLETED,
-      },
-    });
+    expect(planFind).not.toHaveBeenCalled();
+    expect(recurringCount).not.toHaveBeenCalled();
+    expect(transition).not.toHaveBeenCalled();
+    expect(activityCreate).toHaveBeenCalledWith(tx, expect.objectContaining({
+      action: 'VISUAL_DELTA_REVIEW_APPROVED',
+      metadata: expect.objectContaining({ workflowTaskId: 'task-current', reviewRecordId: 'review-1',
+        reviewVersion: currentReview.updatedAt.toISOString(), recurringTaskId: 'period-current' }),
+    }));
   });
 
   it.each([

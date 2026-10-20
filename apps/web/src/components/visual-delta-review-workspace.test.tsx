@@ -186,7 +186,8 @@ describe('VisualDeltaReviewWorkspace', () => {
     expect(
       canShowVisualDeltaReviewApproveButton(reviewerUser, workspace, completedReview),
     ).toBe(false);
-    expect(getVisualDeltaReviewApprovalSuccessMessage(workspace)).toContain('完成 12/12 后');
+    expect(getVisualDeltaReviewApprovalSuccessMessage(workspace)).toContain('单独确认阶段完成');
+    expect(getVisualDeltaReviewApprovalSuccessMessage(workspace)).not.toContain('12/12');
     expect(
       getVisualDeltaReviewApprovalSuccessMessage({
         ...workspace,
@@ -234,6 +235,14 @@ describe('single-department review admission', () => {
 describe('M1 monthly admission matches current server rules', () => {
   const member: SessionUser = { ...reviewerUser, roleCodes: [] };
   const now = '2026-03-25T00:00:00.000Z';
+  it('allows only TASK records in actual mode without inventing monthly eligibility', () => {
+    const actual = { ...workspace, reviewMode: 'ACTUAL' as const, monthlyPlanActive: false, recurringTasks: [] };
+    expect(canWriteVisualDeltaMonth(member, actual, undefined)).toBe(true);
+    expect(canWriteVisualDeltaRecord(member, actual, { ...workspace.items[0]!, reviewPeriod: 'TASK' })).toBe(true);
+    expect(canWriteVisualDeltaRecord(member, actual, workspace.items[0]!)).toBe(false);
+    expect(canWriteVisualDeltaMonth({ ...member, teamAccessApproved: false }, actual, undefined)).toBe(false);
+    expect(canWriteVisualDeltaMonth(member, { ...actual, activeTask: null }, undefined)).toBe(false);
+  });
   const withMonthOwner = (reviewerId: string | null): VisualDeltaReviewWorkspaceResponse => ({
     ...workspace, businessTime: now,
     recurringTasks: [{ ...workspace.recurringTasks[0]!, reviewerId }],

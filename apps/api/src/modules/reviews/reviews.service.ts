@@ -5,7 +5,8 @@ import { REVIEW_STANDARD_SELECT, assertReviewStandardUnchanged, loadReviewStanda
 import { isApprovedTeamMember } from '../../common/team-membership';
 import { BusinessClock } from '../../common/business-clock';
 import { isReworkTask, isTechnicalReworkTask, ancestorEvidenceIds } from '../../common/workflow-evidence';
-import { requireActiveMonthlyPlan } from '../../common/monthly-review-plan';
+import { requireActiveMonthlyPlan, resolveVisualReviewPlan } from '../../common/monthly-review-plan';
+import { confirmedVisualReviewIds } from '../../common/visual-review-confirmation';
 import { assertTeamTaskById, withProjectWrite } from '../../common/team-authorization';
 import {
   BadRequestException,
@@ -53,7 +54,6 @@ import {
   getConsistencyReviewStageIssue,
   getMonthlyReviewPeriodKey,
   getMonthlyReviewPeriodRange,
-  shouldCompleteVisualDeltaWorkflow,
   getVisualDeltaReviewReturnNodeCode,
   getVisualDeltaReviewStageIssue,
 } from './reviews.rules';
@@ -140,6 +140,7 @@ const REVIEW_ATTACHMENT_FINALIZE_CONFLICT_CODES = new Set([
   'REVIEW_PERSISTED_SOURCE_OUT_OF_BOUNDS',
   'REVIEW_ORPHAN_REVIEWER',
   'VISUAL_DELTA_REVIEW_PLAN_IDENTITY_CONFLICT',
+  'VISUAL_DELTA_REVIEW_MODE_CHANGED',
   'VISUAL_DELTA_REVIEW_PERIOD_LIMIT_EXCEEDED',
   'MONTHLY_REVIEW_PLAN_INVALID',
 ]);
@@ -1032,6 +1033,39 @@ export class ReviewsService {
     return this.buildVisualDeltaReviewWorkspace(this.prisma, projectId);
   }
 
+  async confirmVisualDeltaStage(projectId: string, rawInput: unknown, actor: AuthenticatedUser, confirm = false) {
+    await this.assertActorCanManage(projectId, actor);
+    if (!rawInput || typeof rawInput !== 'object' || Array.isArray(rawInput)) throw new BadRequestException('阶段确认参数无效。');
+    const input = rawInput as Record<string, unknown>;
+    if (Object.keys(input).some(key => !['taskId', 'taskVersion'].includes(key)) ||
+        typeof input.taskId !== 'string' || !/^[A-Za-z0-9_-]{1,64}$/.test(input.taskId) ||
+        typeof input.taskVersion !== 'string' || input.taskVersion.length > 32 ||
+        !Number.isFinite(new Date(input.taskVersion).getTime()) ||
+        new Date(input.taskVersion).toISOString() !== input.taskVersion) throw new BadRequestException('请提供准确的工序与版本。');
+    const preview = await withProjectWrite(this.prisma, actor, { projectId }, async tx => {
+      if (!await this.lockWorkflowTaskRow(tx, projectId, input.taskId as string)) this.throwReviewStateChanged();
+      const context = await this.getVisualDeltaReviewContext(tx, projectId);
+      this.assertWritableVisualDeltaReviewStage(context);
+      if (!context.activeTask || context.activeTask.id !== input.taskId || context.activeTask.updatedAt.toISOString() !== input.taskVersion) this.throwReviewStateChanged();
+      await this.assertReviewTaskOperator(tx, context.activeTask.id, actor, ReviewType.VISUAL_COLOR_DIFFERENCE_REVIEW);
+      const check = await this.workflowsService.inspectTaskCompletionWithExecutor(tx, context.activeTask.id);
+      const blockingReasons = [
+        ...check.domainBlockingReasons,
+        ...check.form.missing.map(field => `必填表单缺少：${field.label}`),
+        ...check.materials.missing.map(material => `缺少必交材料：${material.name}`),
+        ...check.blockers.map(blocker => `存在未解除阻塞：${blocker.description}`),
+      ];
+      if (confirm) {
+        if (blockingReasons.length) throw new BadRequestException({ message: blockingReasons[0], blockingReasons });
+        await this.workflowsService.transitionTaskWithExecutor(tx, context.activeTask.id, WorkflowAction.APPROVE, actor,
+          { comment: '经明确核对，实际评审记录与所有适用事项已完成，确认本阶段完成。' }, 'designated-review',
+          { enforceCompletionRequirements: true });
+      }
+      return { taskId: context.activeTask.id, taskVersion: context.activeTask.updatedAt.toISOString(), canComplete: blockingReasons.length === 0, blockingReasons };
+    });
+    return confirm ? this.buildVisualDeltaReviewWorkspace(this.prisma, projectId) : preview;
+  }
+
   async createVisualDeltaReview(
     projectId: string,
     rawInput: unknown,
@@ -1064,7 +1098,7 @@ export class ReviewsService {
         tx,
         context.activeTask!.id,
         input.reviewerId,
-        input.reviewDate,
+        recurringPlanId ? getMonthlyReviewPeriodKey(input.reviewDate) : 'TASK',
       );
 
       const standardVersionId = await requireReviewStandardVersion(tx, context.project, context.activeTask!, input.standardVersionId);
@@ -1075,7 +1109,7 @@ export class ReviewsService {
           workflowTaskId: context.activeTask!.id,
           reviewerId: input.reviewerId,
           reviewType: ReviewType.VISUAL_COLOR_DIFFERENCE_REVIEW,
-          reviewPeriod: getMonthlyReviewPeriodKey(input.reviewDate),
+          reviewPeriod: recurringPlanId ? getMonthlyReviewPeriodKey(input.reviewDate) : 'TASK',
           result: input.reviewConclusion,
           comment: input.comment,
           conditionNote: input.conditionNote,
@@ -1091,7 +1125,7 @@ export class ReviewsService {
         targetType: AuditTargetType.REVIEW_RECORD,
         targetId: reviewRecord.id,
         action: 'VISUAL_DELTA_REVIEW_CREATED',
-        metadata: { recurringTaskId: recurringTask.id, reviewPeriod: reviewRecord.reviewPeriod },
+        metadata: { recurringTaskId: recurringTask?.id ?? null, reviewPeriod: reviewRecord.reviewPeriod },
         nodeCode: WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW,
         summary: `创建目视色差评审记录 ${reviewRecord.id}`,
         afterData: this.toCabinReviewAuditSnapshot(reviewRecord),
@@ -1137,7 +1171,7 @@ export class ReviewsService {
         tx,
         context.activeTask!.id,
         input.reviewerId,
-        input.reviewDate,
+        recurringPlanId ? getMonthlyReviewPeriodKey(input.reviewDate) : 'TASK',
         reviewId,
       );
 
@@ -1146,7 +1180,7 @@ export class ReviewsService {
         reviewRecord,
         {
           reviewerId: input.reviewerId,
-          reviewPeriod: getMonthlyReviewPeriodKey(input.reviewDate),
+          reviewPeriod: recurringPlanId ? getMonthlyReviewPeriodKey(input.reviewDate) : 'TASK',
           result: input.reviewConclusion,
           comment: input.comment,
           conditionNote: input.conditionNote,
@@ -1161,7 +1195,7 @@ export class ReviewsService {
         targetType: AuditTargetType.REVIEW_RECORD,
         targetId: reviewId,
         action: 'VISUAL_DELTA_REVIEW_UPDATED',
-        metadata: { recurringTaskId: recurringTask.id, reviewPeriod: updatedRecord.reviewPeriod },
+        metadata: { recurringTaskId: recurringTask?.id ?? null, reviewPeriod: updatedRecord.reviewPeriod },
         nodeCode: WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW,
         summary: `更新目视色差评审记录 ${reviewId}`,
         beforeData: this.toCabinReviewAuditSnapshot(reviewRecord),
@@ -1285,7 +1319,7 @@ export class ReviewsService {
     await this.assertActorCanManage(projectId, actor);
 
     await withProjectWrite(this.prisma, actor, { projectId }, async (tx) => {
-      const { context, reviewRecord, recurringPlanId } =
+      const { reviewRecord, recurringPlanId } =
         await this.lockVisualDeltaReviewWriteState(
           tx,
           projectId,
@@ -1317,129 +1351,24 @@ export class ReviewsService {
         },
       );
 
-      const recurringTask = await this.getVisualDeltaRecurringTaskForDate(
-        tx,
-        projectId,
-        recurringPlanId,
-        updatedReview.reviewedAt!,
-        actor,
-      );
-
-      if (recurringTask.status === RecurringTaskStatus.COMPLETED) {
-        throw new BadRequestException('当前月份已完成评审，请选择其他月份。');
+      const recurringTask = await this.getVisualDeltaRecurringTaskForDate(tx, projectId, recurringPlanId, updatedReview.reviewedAt!, actor);
+      if (recurringTask) {
+        const completed = await tx.recurringTask.updateMany({
+          where: { id: recurringTask.id, recurringPlanId: recurringPlanId!, status: { in: [RecurringTaskStatus.PENDING, RecurringTaskStatus.IN_PROGRESS, RecurringTaskStatus.OVERDUE] } },
+          data: { status: RecurringTaskStatus.COMPLETED, result: updatedReview.result, comment: updatedReview.comment, reviewerId: updatedReview.reviewerId, completedAt: this.businessClock.now() },
+        });
+        if (completed.count !== 1) throw new ConflictException('实际关联期次状态已变化，请刷新后重试。');
       }
-
-      if (
-        context.activeTask!.status === WorkflowTaskStatus.PENDING ||
-        context.activeTask!.status === WorkflowTaskStatus.READY ||
-        context.activeTask!.status === WorkflowTaskStatus.RETURNED
-      ) {
-        await this.workflowsService.transitionTaskWithExecutor(
-          tx,
-          context.activeTask!.id,
-          WorkflowAction.START,
-          actor,
-          {
-            comment: '开始执行 12 个月目视色差评审计划。',
-            metadata: {
-              reviewRecordId: updatedReview.id,
-              recurringTaskId: recurringTask.id,
-            },
-          },
-          'designated-review',
-        );
-      }
-
-      const completedAt = this.businessClock.now();
-      const completed = await tx.recurringTask.updateMany({
-        where: {
-          id: recurringTask.id,
-          recurringPlanId,
-          status: {
-            in: [
-              RecurringTaskStatus.PENDING,
-              RecurringTaskStatus.IN_PROGRESS,
-              RecurringTaskStatus.OVERDUE,
-            ],
-          },
-        },
-        data: {
-          status: RecurringTaskStatus.COMPLETED,
-          result: updatedReview.result,
-          comment: updatedReview.comment,
-          reviewerId: updatedReview.reviewerId,
-          completedAt,
-        },
-      });
-
-      if (completed.count !== 1) {
-        throw new BadRequestException('当前月份评审状态已变更，请刷新后重试。');
-      }
-
-      const [recurringPlan, completedPeriods] = await Promise.all([
-        tx.recurringPlan.findUniqueOrThrow({
-          where: { id: recurringPlanId },
-          select: { totalCount: true },
-        }),
-        tx.recurringTask.count({
-          where: {
-            recurringPlanId,
-            status: RecurringTaskStatus.COMPLETED,
-          },
-        }),
-      ]);
-      const workflowComplete = shouldCompleteVisualDeltaWorkflow({
-        completedPeriods,
-        totalPeriods: recurringPlan.totalCount,
-      });
-
-      if (workflowComplete) {
-        await this.workflowsService.transitionTaskWithExecutor(
-          tx,
-          context.activeTask!.id,
-          WorkflowAction.APPROVE,
-          actor,
-          {
-            comment: '12 个月目视色差评审全部完成。',
-            metadata: {
-              reviewRecordId: updatedReview.id,
-              reviewConclusion: updatedReview.result,
-              recurringTaskId: recurringTask.id,
-              completedPeriods,
-              totalPeriods: recurringPlan.totalCount,
-            },
-          },
-          'designated-review',
-        );
-      }
-
-      const projectClosedTask = workflowComplete
-        ? await this.getLatestWorkflowTaskByNode(
-            tx,
-            projectId,
-            WorkflowNodeCode.PROJECT_CLOSED,
-          )
-        : null;
-
+      // Record confirmation and stage completion are separate user actions.
+      // The workflow gate checks this exact version and all applicable work.
       await this.activityLogsService.createWithExecutor(tx, {
-        projectId,
-        actorUserId: actor.id,
-        targetType: AuditTargetType.REVIEW_RECORD,
-        targetId: reviewId,
-        action: 'VISUAL_DELTA_REVIEW_APPROVED',
-        nodeCode: WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW,
-        summary: workflowComplete
-          ? '12 个月目视色差评审已全部完成，项目收尾节点已激活。'
-          : `第 ${recurringTask.periodIndex} 个月目视色差评审已完成（${completedPeriods}/${recurringPlan.totalCount}）。`,
-        afterData: {
-          reviewRecordId: updatedReview.id,
-          result: updatedReview.result,
-          recurringTaskId: recurringTask.id,
-          recurringTaskPeriodIndex: recurringTask.periodIndex,
-          completedPeriods,
-          totalPeriods: recurringPlan.totalCount,
-          projectClosedTaskId: projectClosedTask?.id ?? null,
-        },
+        projectId, actorUserId: actor.id, targetType: AuditTargetType.REVIEW_RECORD,
+        targetId: reviewId, action: 'VISUAL_DELTA_REVIEW_APPROVED', nodeCode: WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW,
+        summary: '实际目视色差评审记录已确认；阶段完成仍须单独核对并确认。',
+        metadata: { workflowTaskId: updatedReview.workflowTaskId, reviewRecordId: updatedReview.id,
+          reviewVersion: updatedReview.updatedAt.toISOString(), standardVersionId: updatedReview.standardVersionId,
+          result: updatedReview.result, reviewPeriod: updatedReview.reviewPeriod, recurringTaskId: recurringTask?.id ?? null },
+        afterData: { reviewRecordId: updatedReview.id, result: updatedReview.result, recurringTaskId: recurringTask?.id ?? null, recurringTaskPeriodIndex: recurringTask?.periodIndex ?? null },
       });
     });
 
@@ -1747,12 +1676,14 @@ export class ReviewsService {
       projectId,
       reviewIds,
     );
+    const confirmed = await confirmedVisualReviewIds(db, projectId, reviewIds);
 
     return {
       project: this.toProjectSummary(project),
       ...await loadReviewStandardOptions(db, project, activeTask),
       massProductionCompleted,
       businessTime: this.businessClock.now().toISOString(),
+      reviewMode: recurringPlans.length ? 'LEGACY_MONTHLY' as const : 'ACTUAL' as const,
       monthlyPlanActive: recurringPlans[0]?.status === RecurringPlanStatus.ACTIVE,
       recurringTasks: recurringPlans[0]?.tasks ?? [],
       activeTask: activeTask ? this.toWorkflowTaskSummary(activeTask) : null,
@@ -1764,7 +1695,7 @@ export class ReviewsService {
           item,
           attachmentHistories.get(item.id),
         ),
-        isPeriodCompleted: Boolean(
+        isPeriodCompleted: confirmed.has(item.id) || Boolean(
           item.reviewPeriod &&
             completedReviewPeriods.has(
               item.reviewPeriod,
@@ -1828,6 +1759,7 @@ export class ReviewsService {
           attachmentId: true,
           submittedAt: true,
           reviewedAt: true,
+          reviewPeriod: true,
         },
       });
       if (!reviewRecord) {
@@ -1863,8 +1795,9 @@ export class ReviewsService {
       );
       if (input.reviewType === ReviewType.VISUAL_COLOR_DIFFERENCE_REVIEW) {
         const plan = await this.assertVisualDeltaAttachmentPlanAdmission(tx, input.projectId, context.activeTask.id);
-        if (!reviewRecord.reviewedAt) throw new ConflictException('月度评审日期缺失。');
-        await this.getVisualDeltaRecurringTaskForDate(tx, input.projectId, plan.id, reviewRecord.reviewedAt, input.actor);
+        this.assertVisualReviewPeriodMode(reviewRecord, plan?.id ?? null);
+        if (!reviewRecord.reviewedAt) throw new ConflictException('评审日期缺失。');
+        await this.getVisualDeltaRecurringTaskForDate(tx, input.projectId, plan?.id ?? null, reviewRecord.reviewedAt, input.actor);
       }
 
       return {
@@ -1886,11 +1819,7 @@ export class ReviewsService {
       projectId,
       workflowTaskId,
     );
-    await this.assertVisualDeltaPlanCapacity(
-      db,
-      projectId,
-      recurringPlan.id,
-    );
+    if (recurringPlan) await this.assertVisualDeltaPlanCapacity(db, projectId, recurringPlan.id);
     return recurringPlan;
   }
 
@@ -2578,16 +2507,14 @@ export class ReviewsService {
       projectId,
       state.context.activeTask!.id,
     );
-    await this.assertVisualDeltaPlanCapacity(
-      tx,
-      projectId,
-      recurringPlan.id,
-    );
+    if (recurringPlan) await this.assertVisualDeltaPlanCapacity(tx, projectId, recurringPlan.id);
     if (state.reviewRecord) {
+      this.assertVisualReviewPeriodMode(state.reviewRecord, recurringPlan?.id ?? null);
+      if ((await confirmedVisualReviewIds(tx, projectId, [state.reviewRecord.id])).has(state.reviewRecord.id)) throw new ConflictException('评审已确认，原记录不能再次修改。');
       if (!state.reviewRecord.reviewedAt) throw new ConflictException('月度评审日期缺失。');
-      await this.getVisualDeltaRecurringTaskForDate(tx, projectId, recurringPlan.id, state.reviewRecord.reviewedAt, actor);
+      await this.getVisualDeltaRecurringTaskForDate(tx, projectId, recurringPlan?.id ?? null, state.reviewRecord.reviewedAt, actor);
     }
-    return { ...state, recurringPlanId: recurringPlan.id };
+    return { ...state, recurringPlanId: recurringPlan?.id ?? null };
   }
 
   private async lockReviewWriteState<
@@ -2703,6 +2630,13 @@ export class ReviewsService {
       ORDER BY recurring_plan."id" ASC
       LIMIT ${2}
     `);
+    if (plans.length === 0) {
+      // No plan is valid in V1; a plan explicitly linked through a source task
+      // or old period with damaged project identity is not a no-plan project.
+      const historical = await resolveVisualReviewPlan(db, projectId);
+      if (!historical) return null;
+      throw new ConflictException({ code: 'VISUAL_DELTA_REVIEW_PLAN_IDENTITY_CONFLICT', message: '历史计划与当前项目身份不一致，请保留原记录并核对。' });
+    }
     if (plans.length !== 1) {
       throw new ConflictException({
         code: 'VISUAL_DELTA_REVIEW_PLAN_IDENTITY_CONFLICT',
@@ -2827,10 +2761,11 @@ export class ReviewsService {
   private async getVisualDeltaRecurringTaskForDate(
     db: Prisma.TransactionClient,
     projectId: string,
-    recurringPlanId: string,
+    recurringPlanId: string | null,
     reviewDate: Date,
     actor: AuthenticatedUser,
   ) {
+    if (!recurringPlanId) return null;
     const { periodStart, periodEnd } = getMonthlyReviewPeriodRange(reviewDate);
     const recurringTask = await db.recurringTask.findFirst({
       where: {
@@ -2861,14 +2796,19 @@ export class ReviewsService {
     return current;
   }
 
+  private assertVisualReviewPeriodMode(review: { reviewPeriod: string; reviewedAt: Date | null }, planId: string | null) {
+    const expected = planId && review.reviewedAt ? getMonthlyReviewPeriodKey(review.reviewedAt) : 'TASK';
+    if (review.reviewPeriod !== expected) throw new ConflictException({ code: 'VISUAL_DELTA_REVIEW_MODE_CHANGED',
+      message: '评审所属模式或历史期次已变化，请保留原记录并核对，不能自动改派。' });
+  }
+
   private async assertUniqueVisualReviewerPerPeriod(
     db: ReviewsDbClient,
     workflowTaskId: string,
     reviewerId: string,
-    reviewDate: Date,
+    reviewPeriod: string,
     excludeReviewId?: string,
   ) {
-    const reviewPeriod = getMonthlyReviewPeriodKey(reviewDate);
     const duplicatedReview = await db.reviewRecord.findFirst({
       where: {
         workflowTaskId,
@@ -2921,6 +2861,7 @@ export class ReviewsService {
           attachmentId: true,
           submittedAt: true,
           reviewedAt: true,
+          reviewPeriod: true,
         },
       });
       if (!lockedReview) {
@@ -2992,11 +2933,12 @@ export class ReviewsService {
         ),
       );
       if (input.reviewType === ReviewType.VISUAL_COLOR_DIFFERENCE_REVIEW) {
-        const plan = await this.translateReviewAttachmentFinalizeConflict(() =>
-          this.assertVisualDeltaAttachmentPlanAdmission(tx, input.projectId, input.workflowTaskId),
-        );
-        if (!lockedReview.reviewedAt) this.throwAttachmentTargetStateChanged();
-        await this.getVisualDeltaRecurringTaskForDate(tx, input.projectId, plan.id, lockedReview.reviewedAt, input.actor);
+        await this.translateReviewAttachmentFinalizeConflict(async () => {
+          const plan = await this.assertVisualDeltaAttachmentPlanAdmission(tx, input.projectId, input.workflowTaskId);
+          this.assertVisualReviewPeriodMode(lockedReview, plan?.id ?? null);
+          if (!lockedReview.reviewedAt) this.throwAttachmentTargetStateChanged();
+          await this.getVisualDeltaRecurringTaskForDate(tx, input.projectId, plan?.id ?? null, lockedReview.reviewedAt, input.actor);
+        });
       }
 
       const updated = await tx.reviewRecord.updateMany({
