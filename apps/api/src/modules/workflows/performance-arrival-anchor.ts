@@ -45,6 +45,21 @@ export function readPerformanceArrivalAnchor(payload: Prisma.JsonValue | undefin
   };
 }
 
+/** Deadline refresh needs seven small fields, never the full legacy task JSON. */
+export async function loadPerformanceArrivalAnchor(db: Pick<Prisma.TransactionClient, '$queryRaw'>, taskId: string) {
+  const keys = ['rule', 'procurementTaskId', 'procurementId', 'creationAuditId', 'arrivalAuditId', 'arrivalDate', 'dueAt'];
+  const fields = keys.map(key => Prisma.sql`${key}, CASE
+    WHEN jsonb_typeof("payload"->'performanceArrivalAnchor'->${key}) = 'string'
+    THEN LEFT("payload"->'performanceArrivalAnchor'->>${key}, 129) ELSE NULL END`);
+  const rows = await db.$queryRaw<Array<{ anchorType: string | null; anchor: Prisma.JsonObject }>>(Prisma.sql`
+    SELECT jsonb_typeof("payload"->'performanceArrivalAnchor') AS "anchorType",
+      jsonb_build_object(${Prisma.join(fields)}) AS anchor
+    FROM workflow_tasks WHERE id = ${taskId} AND "nodeCode" = 'PERFORMANCE_TEST' LIMIT 1`);
+  const row = rows[0];
+  if (!row || row.anchorType === null) return null;
+  return readPerformanceArrivalAnchor({ performanceArrivalAnchor: row.anchorType === 'object' ? row.anchor : null });
+}
+
 /** Caller holds the project and active procurement task locks. No historical
  * task, procurement or audit row is rewritten. Existing anchors never reset.
  */

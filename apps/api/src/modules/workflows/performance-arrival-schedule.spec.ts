@@ -30,6 +30,29 @@ function fixture() {
 }
 
 describe('Performance feedback schedule from confirmed arrival', () => {
+  it('refreshes only a fixed anchor projection and does not fetch unrelated task payloads', async () => {
+    const dueAt = new Date(anchor.dueAt);
+    const db = {
+      workflowTask: {
+        findMany: vi.fn().mockResolvedValue([
+          { id: 'performance-2', nodeCode: 'PERFORMANCE_TEST', dueAt, effectiveDueAt: dueAt, manualDueAt: null, overdueDays: 0 },
+          { id: 'ordinary-1', nodeCode: 'PAINT_PROCUREMENT', dueAt, effectiveDueAt: dueAt, manualDueAt: null, overdueDays: 0 },
+        ]), update: vi.fn(),
+      },
+      $queryRaw: vi.fn().mockResolvedValue([{ anchorType: 'object', anchor }]),
+    };
+    await new WorkflowDeadlineService().refreshWorkflowInstanceTaskDeadlines(db as never, 'instance', new Date('2027-02-28T16:00:00.000Z'));
+    expect(db.workflowTask.findMany.mock.calls[0]?.[0].select).not.toHaveProperty('payload');
+    expect(db.$queryRaw).toHaveBeenCalledTimes(1);
+    const sql = db.$queryRaw.mock.calls[0]?.[0] as Prisma.Sql;
+    expect(sql.values).toContain('performance-2');
+    expect(sql.values).not.toContain('ordinary-1');
+    expect(sql.strings.join('')).toContain('jsonb_build_object');
+    expect(sql.strings.join('')).toContain('LEFT(');
+    expect(sql.strings.join('')).not.toMatch(/SELECT\s+(?:\*|"?payload"?\s*[,\n])/);
+    expect(db.workflowTask.update).toHaveBeenCalledExactlyOnceWith({ where: { id: 'performance-2' }, data: { effectiveDueAt: dueAt, overdueDays: 1 } });
+  });
+
   it('marks source-bound feedback overdue at Shanghai midnight and leaves legacy UTC-day behavior intact', () => {
     const deadlines = new WorkflowDeadlineService();
     const dueAt = new Date(anchor.dueAt);

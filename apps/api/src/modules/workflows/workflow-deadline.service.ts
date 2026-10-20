@@ -8,7 +8,7 @@ import {
 
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { getCurrentNodeName } from './workflow-node.constants';
-import { readPerformanceArrivalAnchor } from './performance-arrival-anchor';
+import { loadPerformanceArrivalAnchor, readPerformanceArrivalAnchor } from './performance-arrival-anchor';
 import {
   addUtcDays,
   addUtcMonthsClamped,
@@ -101,7 +101,6 @@ export class WorkflowDeadlineService {
         manualDueAt: true,
         overdueDays: true,
         nodeCode: true,
-        payload: true,
       },
     });
 
@@ -109,7 +108,11 @@ export class WorkflowDeadlineService {
 
     for (const task of tasks) {
       const effectiveDueAt = task.manualDueAt ?? task.effectiveDueAt ?? task.dueAt;
-      const overdueDays = this.getOverdueDays(effectiveDueAt, now, task);
+      const anchor = task.nodeCode === WorkflowNodeCode.PERFORMANCE_TEST
+        ? await loadPerformanceArrivalAnchor(db, task.id) : null;
+      const overdueDays = this.getOverdueDays(effectiveDueAt, now, {
+        nodeCode: task.nodeCode, payload: anchor ? { performanceArrivalAnchor: anchor } : null,
+      });
 
       if (
         task.effectiveDueAt?.getTime() === effectiveDueAt?.getTime() &&

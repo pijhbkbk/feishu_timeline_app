@@ -170,6 +170,8 @@ describe.skipIf(!url).sequential('A13 arrival anchor on dedicated synthetic Post
       standardValue: '80', actualValue: '81', result: 'PASS', conclusion: '合成结论', testedById: actor.id, testedAt: '2027-03-23' }, actor);
     expect(await db.performanceTest.findFirstOrThrow({ where: { projectId: f.project.id } })).toMatchObject({ paintProcurementId: null, relatedObjectName: '合成另一试验批次' });
     expect(readPerformanceArrivalAnchor(feedback.payload)?.procurementId).toBe(record.id);
+    const payloadWithLegacyText = { ...(feedback.payload as Record<string, never>), unrelatedLegacyText: 'x'.repeat(100000) };
+    await db.workflowTask.update({ where: { id: feedback.id }, data: { payload: payloadWithLegacyText } });
     const reminders = new TaskRemindersService(db as never);
     expect(await reminders.target(db as never, 'ordinary', feedback.id, new Date('2027-03-23T00:00:00Z')))
       .toMatchObject({ dueAt: new Date('2027-03-23T15:59:59.999Z') });
@@ -183,6 +185,6 @@ describe.skipIf(!url).sequential('A13 arrival anchor on dedicated synthetic Post
     expect((await taskRead(feedback.id)).dueAt).toEqual(feedback.dueAt);
     await db.workflowTask.update({ where: { id: feedback.id }, data: { isActive: false, status: 'COMPLETED' } });
     expect(await reminders.target(db as never, 'ordinary', feedback.id, new Date('2028-01-01T00:00:00Z'))).toBeNull();
-    expect((await taskRead(feedback.id)).payload).toEqual(feedback.payload);
+    expect((await taskRead(feedback.id)).payload).toEqual(payloadWithLegacyText);
   });
 });
