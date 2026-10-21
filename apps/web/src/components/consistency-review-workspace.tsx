@@ -498,7 +498,7 @@ export function ConsistencyReviewForm({
             }`}
           >
             <strong>驳回</strong>
-            <p>会退回到涂料开发，必须补充驳回原因。</p>
+            <p>进入外饰件厂家整改，完成后重新进行整车复审。必须补充驳回原因。</p>
           </div>
         </div>
       </div>
@@ -577,7 +577,7 @@ export function ConsistencyReviewForm({
           onChange={(event) => onChange({ ...value, rejectReason: event.target.value })}
         />
         <small className="field-hint field-hint-emphasis">
-          选择“驳回”时，此字段为必填，并会退回到涂料开发。
+          选择“驳回”时，此字段为必填；流程进入外饰件厂家整改，完成后重新进行整车复审。
         </small>
       </label>
       <div className="field field-actions">
