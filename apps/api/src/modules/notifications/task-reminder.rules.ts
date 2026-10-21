@@ -1,5 +1,6 @@
 import { Prisma, type TaskReminderKind } from '@prisma/client';
 import { recordedMonthlyReviewSql } from '../../common/monthly-review-applicability';
+import { notificationRecipientEligibleSql } from './notification-recipient.rules';
 
 export function shanghaiBusinessDay(now: Date) {
   const date = new Date(now.getTime() + 8 * 3600000).toISOString().slice(0, 10);
@@ -11,20 +12,18 @@ export function reminderTaskEligibleSql(userId: Prisma.Sql, ordinaryId: Prisma.S
   return Prisma.sql`(
     EXISTS (SELECT 1 FROM workflow_tasks t JOIN users u ON u.id = ${userId}
       JOIN local_credentials lc ON lc."userId" = u.id
-      JOIN user_roles ur ON ur."userId" = u.id JOIN roles r ON r.id = ur."roleId"
       WHERE t.id = ${ordinaryId} AND t.id = ${stage} AND t."assignmentEpoch" = ${epoch}
       AND t."isActive" AND t.status IN ('PENDING','READY','IN_PROGRESS','RETURNED')
       AND t."nodeCode" <> 'VISUAL_COLOR_DIFFERENCE_REVIEW'
       AND (t."assigneeUserId" IS NULL OR t."assigneeUserId" = u.id)
-      AND u.status = 'ACTIVE' AND r.status = 'ACTIVE' AND r.code = t."requiredRoleCode")
+      AND ${notificationRecipientEligibleSql()})
     OR EXISTS (SELECT 1 FROM recurring_tasks t JOIN recurring_plans p ON p.id = t."recurringPlanId"
       JOIN workflow_tasks parent ON parent.id = ${stage} AND parent."projectId" = t."projectId"
       JOIN users u ON u.id = ${userId} JOIN local_credentials lc ON lc."userId" = u.id
-      JOIN user_roles ur ON ur."userId" = u.id JOIN roles r ON r.id = ur."roleId"
       WHERE t.id = ${monthlyId} AND t."assignmentEpoch" = ${epoch} AND t."plannedDate" <= ${now}
       AND ${recordedMonthlyReviewSql(Prisma.sql`t.id`, Prisma.sql`t."projectId"`)}
       AND t.status IN ('PENDING','IN_PROGRESS','OVERDUE') AND (t."reviewerId" IS NULL OR t."reviewerId" = u.id)
-      AND u.status = 'ACTIVE' AND r.status = 'ACTIVE' AND r.code = 'quality_engineer'
+      AND ${notificationRecipientEligibleSql()}
       AND p.status = 'ACTIVE' AND p.frequency = 'MONTHLY' AND p."totalCount" = 12 AND p."projectId" = t."projectId" AND p."sourceNodeCode" = 'VISUAL_COLOR_DIFFERENCE_REVIEW'
       AND parent."isActive" AND parent.status IN ('PENDING','READY','IN_PROGRESS','RETURNED') AND parent."nodeCode" = 'VISUAL_COLOR_DIFFERENCE_REVIEW'
       AND (SELECT count(*) FROM workflow_tasks active_parent WHERE active_parent."projectId" = t."projectId" AND active_parent."isActive" AND active_parent.status IN ('PENDING','READY','IN_PROGRESS','RETURNED') AND active_parent."nodeCode" = 'VISUAL_COLOR_DIFFERENCE_REVIEW') = 1
@@ -68,7 +67,7 @@ export async function persistTaskReminder(tx: Prisma.TransactionClient, target: 
     userId, projectId: shared ? null : target.projectId, taskId: !shared && target.kind === 'ordinary' ? target.id : null,
     notificationType: shared ? 'TASK_OVERDUE' : kind === 'ACTIVATE' ? 'TASK_ASSIGNED' : 'SYSTEM_INFO',
     reminderKind: kind, businessDate: shared ? shanghaiBusinessDay(now).date : null,
-    title: shared ? `${shanghaiBusinessDay(now).date} 逾期工作汇总` : `${kind === 'ACTIVATE' ? target.ownerId ? '待办' : '可领取' : '今日到期'}：${target.title}`,
+    title: shared ? `${shanghaiBusinessDay(now).date} 逾期工作汇总` : `${kind === 'ACTIVATE' ? '待办' : '今日到期'}：${target.title}`,
     content: shared ? '查看仍需你处理的逾期工作。' : '打开工作单查看详情并办理。',
     linkPath: shared ? '/notifications' : target.kind === 'monthly' ? `/projects/${target.projectId}/color-evaluation?recurringTaskId=${target.id}` : `/projects/${target.projectId}/tasks/${target.id}`,
     dedupeKey, sendChannel: 'IN_APP', sendStatus: 'SENT', ...(!shared ? binding : {}),

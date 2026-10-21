@@ -6,9 +6,10 @@ import { PrismaService } from '../../infra/prisma/prisma.service';
 import { withSystemProjectWrite } from '../../common/team-authorization';
 import { requireActiveMonthlyPlan } from '../../common/monthly-review-plan';
 import { hasRecordedMonthlyReview } from '../../common/monthly-review-applicability';
-import { eligibleTeamUserWhere, OPEN_TEAM_TASK_STATUSES, OPEN_MONTHLY_TASK_STATUSES } from '../personnel/team-assignment';
+import { OPEN_TEAM_TASK_STATUSES, OPEN_MONTHLY_TASK_STATUSES } from '../personnel/team-assignment';
 import { NODE_BUSINESS_ROLES } from '../personnel/personnel.constants';
 import { persistTaskReminder, shanghaiBusinessDay, type ReminderTarget } from './task-reminder.rules';
+import { eligibleNotificationRecipientWhere } from './notification-recipient.rules';
 
 type Cursor = { afterTask: string; currentTask: string | null; afterUser: string };
 const initialCursor = (): Cursor => ({ afterTask: '', currentTask: null, afterUser: '' });
@@ -60,12 +61,12 @@ export class TaskRemindersService {
               status: { in: ['PENDING', 'IN_PROGRESS'] }, dueAt: { lt: now } }, data: { status: 'OVERDUE' } });
             markedOverdue += updated.count;
           }
-          return tx.user.findMany({ where: { ...eligibleTeamUserWhere(target.roleCode), AND: [{ id: { gt: cursor.afterUser } }, ...(target.ownerId ? [{ id: target.ownerId }] : [])] }, select: { id: true }, orderBy: { id: 'asc' }, take: take + 1 });
+          return tx.user.findMany({ where: { ...eligibleNotificationRecipientWhere(), AND: [{ id: { gt: cursor.afterUser } }, ...(target.ownerId ? [{ id: target.ownerId }] : [])] }, select: { id: true }, orderBy: { id: 'asc' }, take: take + 1 });
         });
         for (const user of page.slice(0, take)) {
           await withSystemProjectWrite(this.prisma, candidate.projectId, async tx => {
             const target = await this.target(tx, kind, candidate.id, now);
-            if (!target || (target.ownerId && target.ownerId !== user.id) || !await tx.user.findFirst({ where: { id: user.id, ...eligibleTeamUserWhere(target.roleCode) }, select: { id: true } })) return;
+            if (!target || (target.ownerId && target.ownerId !== user.id) || !await tx.user.findFirst({ where: { id: user.id, ...eligibleNotificationRecipientWhere() }, select: { id: true } })) return;
             await persistTaskReminder(tx, target, user.id, 'ACTIVATE', now);
             if (target.dueAt && target.dueAt < now) await persistTaskReminder(tx, target, user.id, 'OVERDUE_DAY', now);
             else if (target.dueAt && target.dueAt < shanghaiBusinessDay(now).end) await persistTaskReminder(tx, target, user.id, 'DUE_SOON', now);

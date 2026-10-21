@@ -69,6 +69,25 @@ describe('durable bounded role reminder scanning', () => {
     await service.scan('ordinary', now);
     expect(db.notification.createMany).not.toHaveBeenCalled();
   });
+  it('uses current admission for both recipient paging and the locked write recheck', async () => {
+    const { service, db } = fixture();
+    await service.scan('ordinary', now);
+    const eligibility = { status: 'ACTIVE', localCredential: { isNot: null },
+      OR: [{ teamAccessApproved: true }, { isSystemAdmin: true }] };
+    expect(db.user.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: {
+      ...eligibility, AND: [{ id: { gt: '' } }],
+    } }));
+    expect(db.user.findFirst).toHaveBeenCalledWith({ where: { id: 'u0000', ...eligibility }, select: { id: true } });
+  });
+  it('keeps assigned reminders restricted to their current owner even when the page is stale', async () => {
+    const { service, db, target } = fixture();
+    vi.mocked(service.target).mockResolvedValue({ ...target('t0000'), ownerId: 'other-owner' });
+    await service.scan('ordinary', now);
+    expect(db.user.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ AND: [{ id: { gt: '' } }, { id: 'other-owner' }] }),
+    }));
+    expect(db.notification.createMany).not.toHaveBeenCalled();
+  });
   it('creates only activation and due-soon for a task due later in the Shanghai day', async () => {
     const { service, db, target } = fixture();
     vi.mocked(service.target).mockResolvedValue({ ...target('t0000'), dueAt: new Date('2026-09-28T15:59:59Z') });

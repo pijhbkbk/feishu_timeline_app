@@ -2,6 +2,7 @@ import { PERSON_PRESENTATION_SELECT, personPresentation } from '../persons/perso
 import { ConflictException } from '@nestjs/common';
 import { Prisma, type WorkflowNodeCode, type WorkflowTask } from '@prisma/client';
 import { BUSINESS_ROLE_CODES, NODE_BUSINESS_ROLES, type BusinessRoleCode } from './personnel.constants';
+import { eligibleNotificationRecipientWhere } from '../notifications/notification-recipient.rules';
 
 export const OPEN_MONTHLY_TASK_STATUSES = ['PENDING', 'IN_PROGRESS', 'OVERDUE'] as const;
 
@@ -26,18 +27,17 @@ export async function notifyTeamTask(tx: Prisma.TransactionClient, taskId: strin
   } });
   // The 17 parent is an aggregate, not an early reminder for twelve future months.
   if (task.nodeCode === 'VISUAL_COLOR_DIFFERENCE_REVIEW') return;
-  const roleCode = NODE_BUSINESS_ROLES[task.nodeCode];
-  const eligibleWhere = eligibleTeamUserWhere(roleCode);
+  const eligibleWhere = eligibleNotificationRecipientWhere();
   const where: Prisma.UserWhereInput = task.assigneeUserId ? { ...eligibleWhere, id: task.assigneeUserId } : eligibleWhere;
-  if (await tx.user.count({ where }) > 1000) throw new ConflictException('此角色通知人数超过 1000 人，请核对团队目录后重试。');
+  if (await tx.user.count({ where }) > 1000) throw new ConflictException('此任务通知人数超过 1000 人，请核对团队目录后重试。');
   let cursor = '';
   while (true) {
     const recipients = await tx.user.findMany({ where: { AND: [where, { id: { gt: cursor } }] }, take: 100, orderBy: { id: 'asc' }, select: { id: true } });
     if (!recipients.length) break;
     await tx.notification.createMany({ data: recipients.map(user => ({
       userId: user.id, projectId: task.projectId, taskId: task.id, notificationType: 'TASK_ASSIGNED', reminderKind: 'ACTIVATE', assignmentEpoch: task.assignmentEpoch, stageTaskId: task.id,
-      title: `${task.assigneeUserId ? '待办' : '可领取'}：${task.nodeName}`,
-      content: task.assigneeUserId ? '任务已分配给你，请在我的工作中处理。' : '角色队列有新任务，领取后即可办理。',
+      title: `待办：${task.nodeName}`,
+      content: task.assigneeUserId ? '任务已分配给你，请在我的工作中处理。' : '有新的共同维护任务，打开工作单即可办理。',
       linkPath: `/projects/${task.projectId}/tasks/${task.id}`, sendChannel: 'IN_APP', sendStatus: 'SENT',
       dedupeKey: `ACTIVATE:ordinary:${task.id}:${user.id}`,
     })), skipDuplicates: true });

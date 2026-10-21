@@ -26,7 +26,7 @@ describe.skipIf(!url).sequential('role reminders on real isolated PostgreSQL', (
     const role = await db.role.upsert({ where: { code: 'quality_engineer' }, create: { code: 'quality_engineer', name: '质量试验' }, update: { status: 'ACTIVE' } });
     for (const name of ['one', 'two']) {
       const username = `r28-reminder-${run}-${name}`;
-      const user = await db.user.create({ data: { username, name: '合成提醒人员', localCredential: { create: { loginName: username, passwordHash: 'synthetic-not-login' } }, userRoles: { create: { roleId: role.id } } } });
+      const user = await db.user.create({ data: { username, name: '合成提醒人员', teamAccessApproved: true, localCredential: { create: { loginName: username, passwordHash: 'synthetic-not-login' } }, userRoles: { create: { roleId: role.id } } } });
       if (name === 'one') userId = user.id; else otherId = user.id;
     }
     actor = { id: userId } as AuthenticatedUser;
