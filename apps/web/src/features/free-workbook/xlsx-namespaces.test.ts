@@ -127,6 +127,14 @@ describe('SpreadsheetML namespace compatibility', () => {
     finally { load.mockRestore(); }
   });
 
+  it('does not treat a foreign coordinate attribute as an unqualified cell address', async () => {
+    const files = unzipSync(artifactBytes()), path = 'xl/worksheets/sheet1.xml';
+    files[path] = strToU8(strFromU8(files[path]!).replace(/<x:worksheet\b/, '<x:worksheet xmlns:other="urn:other"').replace('<x:c r="A1"', '<x:c other:r="A1"'));
+    const load = vi.spyOn(Object.getPrototypeOf(new ExcelJS.Workbook().xlsx), 'load');
+    try { await expect(readFreeWorkbook(zipSync(files), 'foreign-coordinate.xlsx', crypto.randomUUID())).rejects.toThrow('缺少坐标'); expect(load).not.toHaveBeenCalled(); }
+    finally { load.mockRestore(); }
+  });
+
   it.each(['cols', 'sheetData', 'cellXfs', 'f'])('rejects duplicate %s singleton nodes before ExcelJS', async node => {
     const files = unzipSync(artifactBytes()), path = node === 'cellXfs' ? 'xl/styles.xml' : 'xl/worksheets/sheet1.xml';
     const xml = strFromU8(files[path]!);

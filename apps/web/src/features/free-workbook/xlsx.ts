@@ -55,7 +55,7 @@ function coordinates(address:string){const m=/^([A-Z]+)([1-9]\d*)$/.exec(address
 function preflightXml(files:Record<string,Uint8Array>){
   // Keep attributes separate from child elements so an attribute called c,
   // row or sheetData cannot hide the nodes checked before ExcelJS allocates.
-  const parser=new XMLParser({ignoreAttributes:false,attributeNamePrefix:'@_',removeNSPrefix:true,processEntities:false,parseTagValue:false,parseAttributeValue:false});
+  const parser=new XMLParser({ignoreAttributes:false,attributeNamePrefix:'@_',removeNSPrefix:false,processEntities:false,parseTagValue:false,parseAttributeValue:false});
   const array=(value:unknown):unknown[]=>value===undefined?[]:Array.isArray(value)?value:[value];
   const single=(value:unknown)=>{if(Array.isArray(value))throw new Error('XLSX XML 包含重复的单值节点；源文件未修改。');return obj(value);};
   const bounded=(value:unknown,min:number,max:number)=>{if(typeof value!=='string'||!/^\d+$/.test(value)||!Number.isSafeInteger(Number(value))||Number(value)<min||Number(value)>max)throw new Error('XLSX 行列或样式索引超限。');return Number(value);};
