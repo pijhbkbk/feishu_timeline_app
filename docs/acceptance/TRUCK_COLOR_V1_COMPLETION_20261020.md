@@ -229,3 +229,10 @@ A14恢复准备补录：新只读helper与准备索引/独审已原字节持久�
 ChatGPT要求的生产入口/分配边界索引已完成，副本 `namespace-20261022/v1-xlsx-namespace-production-boundary-index-20261022-final.json` SHA `6d4b389ee84bd16b97df12884213a5d8f9b87831776f7f674d2776eebb0d6ddb`。它区分真实readFreeWorkbook+真实ExcelJS正例、入口拒绝且load未调用、仅helper与未覆盖变体。索引识别旧other:max用例另注入第二cols的干扰，已只改测试为替换唯一cols并断言前后一个容器；有无混淆属性分别精确拒绝于namespace/index guard，且ExcelJS load均0调用。新test-only提交4e5e9ab778af399db31ce26cdcf73db69c8dc7ae/tree43500aa8fa4a3900859d1772edd57331b63bd154，目标两文件73PASS、独立单文件30PASS/0SKIP；独审SHA `2bb634d023b0c0409552656bb4d2d854a2af3487ccbaf372a14331d32db2c56b`。原100报告不改写，生产字节/锁/schema均与R08相同，不重建同字节制品；唯一Finding仍fixed_diff_verified，补充当前目标绑定，不执行OOM。
 
 Office经实际Excel16.114官方字典核对，另存的静态受控方案独审通过；根对全新只读input副本执行一次脚本接口尝试，未操作原已打开工作簿。实际在OPEN_INPUT_COPY阶段返回-1712超时，resultMayBeUnknown保留，输出文件不存在，原件和input字节hash不变；未重试/关闭Excel/改全局设置。随后cua_repl实际报告Mac锁屏、自动解锁失败；不据此断言超时唯一原因，已请求所有者手动解锁，Docker停机条件仍不变。结果与静态独审副本在 `office-saveas-20261022-r01/`。这不是另存成功、GUI故障修复或Office通过。恢复CUA工具文档后，后续计算机交互仅使用cua_repl；不再通过脚本接口重试或扩大权限。
+
+
+### 本轮执行回执已接受，整体仍PARTIAL
+
+补充回执实际消息0b428124-1cb0-4b45-97c2-953d9096f8d4，ChatGPT最新实际回复 `ab133134-f266-5105-8c41-e901f0a66fc0` 已回读并保存 `chatgpt-feedback-ab133134-20261022.{txt,json}`：认可本轮状态记录、边界证据与暂停范围要求已落实，没有新增代码整改；接受4e5e9ab的唯一cols测试作为精确边界证据，保持Finding fixed_diff_verified。生产/锁/schema未变，继续使用真实189a8c4/R08制品，不因测试/文档提交重复构建；293SKIP/G3 PARTIAL及整体PARTIAL不变。
+
+Office超时仍属结果未知：无output/hash不变不能证明input副本未被Excel打开。解锁后先通过cua_repl核对实际工作簿、对话框及精确输出路径；若input已打开则核实身份后从现场继续，若出现out先核实内容，禁止自动重演整段。Mac解锁只解除Office界面阻断；Docker必须另等冷备完成和明确重启许可。既有局部路径复用，产品尚未到签收。两项外部条件均未获解除，本轮不向模型申请替代授权、不标目标完成。
