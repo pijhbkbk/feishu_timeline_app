@@ -7458,6 +7458,103 @@
           }
         }
       ]
+    },
+    {
+      "id": "R28-V1-XLSX-NAMESPACE-BOUND-001",
+      "title": "XLSX preflight flattens XML attributes and can hide allocation bounds from ExcelJS",
+      "status": "confirmed",
+      "severity": "medium",
+      "confidence": "high",
+      "classification": "pre_existing",
+      "cwe": "CWE-400",
+      "source": {
+        "type": "diff_scan",
+        "report_path": "/private/tmp/v1-xlsx-namespace-preflight-reproduction-20261022.json",
+        "binding": {
+          "commit": "15c5ec7de97bebe0c931bc972c367c773b3fee33",
+          "tree": "38554e5c32a28e3b55b5a599f4c4f34bf66fcf56",
+          "tool_name": "Independent read-only source tracing and bounded synthetic parser reproduction",
+          "tool_version": "Node v24.14.0; fast-xml-parser5.11.2; ExcelJS4.4.0",
+          "command": "/opt/homebrew/opt/node@24/bin/node /private/tmp/v1-xlsx-namespace-preflight-reproduction-20261022.cjs",
+          "environment": "Local source commit15c5ec7; real XMLParser and real ExcelJS ColXform, two synthetic strings, no unbounded Column allocation, no application service, credential, database or production access",
+          "result_sha256": "fc4c0aac01fafb5edb247a41da06df29c38c14d776ca861eff07dffcb9d3dca6",
+          "log_path": "/private/tmp/v1-xlsx-namespace-preflight-reproduction-20261022.json",
+          "config_sha256": "f627fc39d8f359d2613f19da150bf3e61b9aa7bac154f2cdd8e477f2e37b8b7f",
+          "recorded_at": "2026-10-22T05:31:10.526Z"
+        }
+      },
+      "scope": {
+        "component": "Free workbook XLSX preflight before ExcelJS allocation",
+        "affected_files": [
+          "apps/web/src/features/free-workbook/xlsx.ts"
+        ],
+        "entry_points": [
+          "readFreeWorkbook",
+          "preflightXml"
+        ],
+        "trust_boundary": "User-selected local XLSX archive with bounded ZIP contents enters browser XML preflight and then ExcelJS sparse-column/cell allocation"
+      },
+      "evidence": {
+        "reachable": true,
+        "production_exposed": null,
+        "reproduction_path": "inspectCatalogArchive accepts ordinary CRC-valid XML attributes. For col min=1 max=4294967294 evil:max=1 with evil bound to urn:synthetic, real preflight XMLParser with removeNSPrefix:true and attributeNamePrefix:'' produces max=1, while real ExcelJS ColXform reads literal max=4294967294. ExcelJS Column.fromModel then has while(count<=col.max) push(new Column(...)); this allocation was deliberately not executed. In a second actual parse, row evil:c='' overwrites its c child and can hide cells from preflight checks. Authenticated user selection of a crafted XLSX reaches this local parser; no server write is needed.",
+        "proof_gap": "No browser crash, OOM, full oversized-workbook load or production exposure was tested. Medium severity reflects a user-triggered client resource-exhaustion boundary, not unauthenticated server impact. Repair, exact final diff review, immutable build and GUI import are pending and must be recorded separately. Existing ZIP byte/entry/CRC limits do not bound ExcelJS allocation indices after parser disagreement."
+      },
+      "root_cause_cluster": "FREE_WORKBOOK_XML_ATTRIBUTE_NAMESPACE_PREFLIGHT_ALLOCATION_20261022",
+      "security_invariants": [],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
+      "fix": {
+        "task_id": "TRUCK-COLOR-V1-CONTINUE-20261020-R02",
+        "branch": null,
+        "commit": null,
+        "tree": null,
+        "changed_files": []
+      },
+      "verification": {
+        "targeted": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Confirmed old parser disagreement; fix validation not yet frozen."
+        },
+        "affected_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Await exact namespace/bounds patch and existing XLSX regression."
+        },
+        "diff_review": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Separate reviewer identified the defect; final repair diff not yet frozen."
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "No whole-repository security clearance, final candidate runtime, Office or browser acceptance is established."
+        }
+      },
+      "closure": null,
+      "history": [
+        {
+          "at": "2026-10-22T05:31:10.526Z",
+          "transition": "null->candidate",
+          "actor": "Codex independent_review",
+          "reason": "Scoped namespace-import diff review traced inconsistent XML attribute handling between bounded preflight and ExcelJS; no matching existing Ledger finding was found.",
+          "approval_id": null,
+          "binding": null
+        },
+        {
+          "at": "2026-10-22T05:31:10.526Z",
+          "transition": "candidate->confirmed",
+          "actor": "Codex independent_review",
+          "reason": "Two harmless synthetic inputs reproduced namespace-bound attribute override and attribute/child collision with current installed parsers; source trace shows the unbounded allocation consumer. No OOM or production event is asserted.",
+          "approval_id": null,
+          "binding": null
+        }
+      ]
     }
   ]
 }
