@@ -21,6 +21,30 @@ const limited = () => new Error('XLSX XML 结构或正规化后大小超限；�
 type Attribute = { name: string; value: string };
 type Metadata = 'revisionPtr' | 'calcFeatures' | 'feature';
 type Frame = { name: string; outputName: string; namespaces: Map<string, string>; uri: string; local: string; extension: boolean; metadata: Metadata | undefined };
+const WORKSHEET_ALLOCATION_PATHS: Record<string, readonly string[]> = {
+  cols: ['worksheet/cols'], col: ['worksheet/cols/col'],
+  sheetData: ['worksheet/sheetData'], row: ['worksheet/sheetData/row'],
+  c: ['worksheet/sheetData/row/c'], f: ['worksheet/sheetData/row/c/f'],
+};
+const STYLE_ALLOCATION_PATHS: Record<string, readonly string[]> = {
+  fonts: ['styleSheet/fonts'], fills: ['styleSheet/fills'], borders: ['styleSheet/borders'],
+  numFmts: ['styleSheet/numFmts'], cellXfs: ['styleSheet/cellXfs'], cellStyleXfs: ['styleSheet/cellStyleXfs'],
+  dxfs: ['styleSheet/dxfs'], dxf: ['styleSheet/dxfs/dxf'],
+  font: ['styleSheet/fonts/font', 'styleSheet/dxfs/dxf/font'],
+  fill: ['styleSheet/fills/fill', 'styleSheet/dxfs/dxf/fill'],
+  border: ['styleSheet/borders/border', 'styleSheet/dxfs/dxf/border'],
+  numFmt: ['styleSheet/numFmts/numFmt', 'styleSheet/dxfs/dxf/numFmt'],
+  xf: ['styleSheet/cellXfs/xf', 'styleSheet/cellStyleXfs/xf'],
+};
+
+// ExcelJS dispatches some nodes by tag even below unknown wrappers. Its
+// allocation consumers must see exactly the paths inspected by preflightXml.
+// Differential styles are a valid, separate location for non-indexed styles.
+function checkAllocationPath(rootName: string, local: string, stack: Frame[]): void {
+  const paths = rootName === 'worksheet' ? WORKSHEET_ALLOCATION_PATHS : rootName === 'styleSheet' ? STYLE_ALLOCATION_PATHS : undefined;
+  const allowed = paths && Object.hasOwn(paths, local) ? paths[local] : undefined;
+  if (allowed && !allowed.includes([...stack.map(frame => frame.uri === MAIN ? frame.local : ''), local].join('/'))) throw invalid();
+}
 
 // Native Excel adds runtime revision and calculation-version metadata. Keep
 // its qualified bytes; never reinterpret it as SpreadsheetML business data.
@@ -141,6 +165,7 @@ function normalizePart(bytes: Uint8Array, rootName: string): Uint8Array {
       if (namespaces.size > 64 || stack.length >= 128) throw limited();
       const [prefix, local] = node.name.includes(':') ? node.name.split(':') as [string, string] : ['', node.name];
       const uri = namespaces.get(prefix), main = uri === MAIN;
+      if (main) checkAllocationPath(rootName, local, stack);
       const metadata = metadataKind(uri, local, stack), parentMetadata = stack.at(-1)?.metadata;
       if (parentMetadata && !(parentMetadata === 'calcFeatures' && metadata === 'feature')) throw invalid();
       if ((!main && !metadata && !(prefix && uri && STYLE_EXTENSIONS.has(uri) && stack.at(-1)?.extension)) || (namespaces.has('') && namespaces.get('') !== MAIN)) throw invalid();

@@ -81,6 +81,50 @@ describe('SpreadsheetML namespace compatibility', () => {
     finally { load.mockRestore(); }
   });
 
+  it.each([
+    ['cols', '<syntheticContainer><cols><col min="1" max="1000000000"/></cols></syntheticContainer>'],
+    ['col', '<cols><syntheticContainer><col min="1" max="1000000000"/></syntheticContainer></cols>'],
+    ['sheetData', '<syntheticContainer><sheetData><row r="1"><c r="A1"><v>1</v></c></row></sheetData></syntheticContainer>'],
+    ['row', '<sheetData><syntheticContainer><row r="1"><c r="A1"><v>1</v></c></row></syntheticContainer></sheetData>'],
+    ['c', '<sheetData><row r="1"><syntheticContainer><c r="A1"><v>1</v></c></syntheticContainer></row></sheetData>'],
+    ['f', '<sheetData><row r="1"><c r="A1"><syntheticContainer><f>1+1</f></syntheticContainer><v>2</v></c></row></sheetData>'],
+  ])('rejects a misplaced worksheet %s node before invoking ExcelJS', async (_node, replacement) => {
+    const book = new ExcelJS.Workbook(); book.addWorksheet('合成').getCell('A1').value = 1;
+    const files = unzipSync(new Uint8Array(await book.xlsx.writeBuffer())), path = 'xl/worksheets/sheet1.xml';
+    files[path] = strToU8(strFromU8(files[path]!).replace(/<sheetData>[\s\S]*?<\/sheetData>/, replacement));
+    const load = vi.spyOn(Object.getPrototypeOf(new ExcelJS.Workbook().xlsx), 'load').mockImplementation(async () => { throw new Error('UNEXPECTED_EXCELJS_LOAD'); });
+    try { await expect(readFreeWorkbook(zipSync(files), 'misplaced-data.xlsx', crypto.randomUUID())).rejects.toThrow('XML 命名空间或结构不受支持'); expect(load).not.toHaveBeenCalled(); }
+    finally { load.mockRestore(); }
+  });
+
+  it.each([
+    ['fonts', 'font'], ['fills', 'fill'], ['borders', 'border'], ['numFmts', 'numFmt'], ['cellXfs', 'xf'], ['cellStyleXfs', 'xf'], ['dxfs', 'dxf'],
+  ])('rejects a misplaced %s container or %s item before ExcelJS', async (container, child) => {
+    for (const nestedItem of [false, true]) {
+      const book = new ExcelJS.Workbook(); book.addWorksheet('合成').getCell('A1').value = 1;
+      const files = unzipSync(new Uint8Array(await book.xlsx.writeBuffer())), path = 'xl/styles.xml';
+      const item = child === 'xf' ? '<xf fontId="999999999"/>' : `<${child}/>`;
+      const replacement = nestedItem ? `<${container}><syntheticContainer>${item}</syntheticContainer></${container}>` : `<syntheticContainer><${container}>${item}</${container}></syntheticContainer>`;
+      const source = strFromU8(files[path]!), containerXml = new RegExp(`<${container}\\b[^>]*(?:/>|>[\\s\\S]*?<\\/${container}>)`);
+      files[path] = strToU8(containerXml.test(source) ? source.replace(containerXml, replacement) : source.replace('</styleSheet>', `${replacement}</styleSheet>`));
+      const load = vi.spyOn(Object.getPrototypeOf(new ExcelJS.Workbook().xlsx), 'load').mockImplementation(async () => { throw new Error('UNEXPECTED_EXCELJS_LOAD'); });
+      try { await expect(readFreeWorkbook(zipSync(files), 'misplaced-styles.xlsx', crypto.randomUUID())).rejects.toThrow('XML 命名空间或结构不受支持'); expect(load).not.toHaveBeenCalled(); }
+      finally { load.mockRestore(); }
+    }
+  });
+
+  it('preserves valid differential font, fill, border and number-format paths', async () => {
+    const book = new ExcelJS.Workbook(), sheet = book.addWorksheet('合成'); sheet.getCell('A1').value = 1;
+    sheet.addConditionalFormatting({ ref: 'A1', rules: [{ type: 'expression', formulae: ['A1>0'], priority: 1,
+      style: { font: { bold: true }, fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF00FF00' } }, border: { bottom: { style: 'thin' } }, numFmt: '0.00' } }] });
+    const bytes = new Uint8Array(await book.xlsx.writeBuffer()), files = inspectCatalogArchive(bytes);
+    expect(strFromU8(files['xl/styles.xml']!)).toContain('<dxfs');
+    expect(normalizeSpreadsheetNamespaces(files)['xl/styles.xml']).toBe(files['xl/styles.xml']);
+    const parsed = await readFreeWorkbook(bytes, 'differential-styles.xlsx', crypto.randomUUID());
+    expect(parsed.snapshot.sheets[parsed.snapshot.sheetOrder[0]!]!.cellData?.[0]?.[0]?.v).toBe(1);
+    expect(parsed.warnings).toContain('条件格式、数据验证或保护不进入编辑副本；原文件保持不变。');
+  });
+
   it('imports the original artifact-tool bytes and preserves all twenty values and header style', async () => {
     const bytes = artifactBytes(), before = new Uint8Array(bytes);
     expect(createHash('sha256').update(bytes).digest('hex')).toBe('e79742d69e1b53e12e1764c7a9b78078b57a107339b9904fd05d6b6266f9199b');
