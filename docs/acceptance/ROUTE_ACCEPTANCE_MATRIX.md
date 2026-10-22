@@ -586,3 +586,9 @@ aee在 `http://127.0.0.1:3400` 的同机新数据库与对象副本恢复已原�
 新应用候选189a8c4的代码检查通过但293个DB/Redis用例SKIP；当前在线预览不可用。参考/实装对照保留本机离线HTML与历史合成图，不能替代待恢复的产品。具体日志/失败与剩余仍见同一[V1入口](TRUCK_COLOR_V1_COMPLETION_20261020.md)。
 
 R08补录：189a8c4的API/Web不可变Darwin构建已均完成，同commit/tree/release/buildTime，尚未启动。小型Excel4×2样本另存副本已于10月21日cbe实际回导、保存刷新rev2，按filter-excel-roundtrip-readback.json复用；完整双表/日期/公式/图片范围仍未通过，今天Save As失败不覆盖此历史小样本事实。
+
+
+2026-10-22 Office增量：所有者解锁并手动另存成功，实际Excel副本13762B/SHAe0c1030e…，双表/图片截图留存。原R08生产解析真实拒绝该副本；已在2eede76修复精确revisionPtr/calcFeatures元数据准入，新生产解析双输入成功。数据/公式缓存/合并/图片字节保留，字体、行高和列宽差异保留，图片相对锚点不代表绝对位置相同。A05仅NATIVE_SAVE_AS_AND_PARSER_VERIFIED；完整浏览器回导/保存刷新、日期与全格式保真未通过，不能用解析或116回归替代产品验收。Docker冷备hold仍有效，3490继续不可操作。证据及失败链见同一V1入口“Mac解锁及原生Excel另存后的兼容性修复”。
+
+
+2026-10-22后续安全增量：R09构建后发现未知MAIN容器下cols能绕预检，实际消费sentinel已证；R09仅历史。最终01b4bbd按完整URI/核心节点路径修复，130受影响/独立20及目标59通过、同文件load0；真实Office r04解析保持原完整结果。不得把旧R09或解析结果写为最终页面/Office往返PASS，浏览器回导/保存刷新仍未执行，Docker停机条件不变。

@@ -7500,7 +7500,7 @@
         "reachable": true,
         "production_exposed": null,
         "reproduction_path": "inspectCatalogArchive accepts ordinary CRC-valid XML attributes. For col min=1 max=4294967294 evil:max=1 with evil bound to urn:synthetic, real preflight XMLParser with removeNSPrefix:true and attributeNamePrefix:'' produces max=1, while real ExcelJS ColXform reads literal max=4294967294. ExcelJS Column.fromModel then has while(count<=col.max) push(new Column(...)); this allocation was deliberately not executed. In a second actual parse, row evil:c='' overwrites its c child and can hide cells from preflight checks. Authenticated user selection of a crafted XLSX reaches this local parser; no server write is needed.",
-        "proof_gap": "Old defect reproduced with harmless real-parser inputs and allocation source trace; no OOM or production exposure claimed. Exact merged repair closes parser disagreement, independently100pass/0skip. Final candidate build, browser import/save/readback and Office acceptance remain separate and pending; Docker cold-backup hold prevents runtime verification. Supplementary test-only4e5e9ab isolates qualified/unqualified allocation guards; original duplicate-cols confound retained as historical evidence limitation. Boundary index explicitly identifies helper-only and untested variants; ordinary browser import still only proves compatibility."
+        "proof_gap": "Old defect reproduced with harmless real-parser inputs and allocation source trace; no OOM or production exposure claimed. Exact merged repair closes parser disagreement, independently100pass/0skip. Final candidate build, browser import/save/readback and Office acceptance remain separate and pending; Docker cold-backup hold prevents runtime verification. Supplementary test-only4e5e9ab isolates qualified/unqualified allocation guards; original duplicate-cols confound retained as historical evidence limitation. Boundary index explicitly identifies helper-only and untested variants; ordinary browser import still only proves compatibility. Additional unknown MAIN wrapper/cols mismatch was confirmed after metadata repair2eede76: real ColXform received max1000000000 and threw before returning a column model. R09 remains historical, never runtime-started. Full URI/local allocation paths fixed in01b4bbd; same fixed synthetic input now loadCalls0; current review82e23b62/committed appendix307ebef8. ExtLst/ext case proves only preflight acceptance, not consumer allocation. Native Excel r04 returns unchanged parsed values and37 geometry/style differences; final browser/save/reload, R10 runtime and full security clearance remain pending."
       },
       "root_cause_cluster": "FREE_WORKBOOK_XML_ATTRIBUTE_NAMESPACE_PREFLIGHT_ALLOCATION_20261022",
       "security_invariants": [],
@@ -7512,10 +7512,9 @@
       "fix": {
         "task_id": "TRUCK-COLOR-V1-CONTINUE-20261020-R02",
         "branch": "codex/design-convergence-20261019",
-        "commit": "cef82c528980198dfbae62a6e5acdb94bb7cbdda",
-        "tree": "c18d7b5eb5f61b7ab2655c232ff3dbad07d88cea",
+        "commit": "01b4bbdb198a0c0fb324fdded5cb1c8b7bc3146a",
+        "tree": "4e3e287d60d82a130440699d1ac151e3c95d40ad",
         "changed_files": [
-          "apps/web/src/features/free-workbook/xlsx.ts",
           "apps/web/src/features/free-workbook/xlsx-namespaces.ts",
           "apps/web/src/features/free-workbook/xlsx-namespaces.test.ts"
         ]
@@ -7524,50 +7523,50 @@
         "targeted": {
           "status": "pass",
           "binding": {
-            "commit": "4e5e9ab778af399db31ce26cdcf73db69c8dc7ae",
-            "tree": "43500aa8fa4a3900859d1772edd57331b63bd154",
-            "tool_name": "Actual production import entry boundary regression; isolated test-only supplement",
+            "commit": "01b4bbdb198a0c0fb324fdded5cb1c8b7bc3146a",
+            "tree": "4e3e287d60d82a130440699d1ac151e3c95d40ad",
+            "tool_name": "Full allocation path target and affected XLSX regression",
             "tool_version": "Node v24.14.0; pnpm9.15.4; Vitest4.1.11",
-            "command": "pnpm --filter @feishu-timeline/web exec vitest run src/features/free-workbook/xlsx-namespaces.test.ts src/features/free-workbook/xlsx.test.ts",
-            "environment": "2files73pass0skip; test-only commit; production xlsx.ts/xlsx-namespaces.ts, lock and schema byte-identical to immutable R08 candidate189a8c4. Qualified and unqualified oversized-column cases each contain exactly one cols, require distinct namespace/index errors, and assert real ExcelJS load not called. No OOM, Docker, database, browser or new artifact build.",
-            "result_sha256": "634bea13d686b6d2c86edfc6775672d0b1ce335b5e71ab17c4f1e99aea5b76fc",
-            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/namespace-20261022/isolated-boundary-supplement.json",
+            "command": "pnpm --filter @feishu-timeline/web exec vitest run src/features/free-workbook/xlsx-namespaces.test.ts src/features/free-workbook/xlsx.test.ts src/features/color-register/sheet-exchange.test.ts src/features/free-workbook/background-io.test.ts src/features/free-workbook/background-retry.test.ts",
+            "environment": "5files130pass0skip on exact committed source hashes; unknown MAIN wrappers/containers/items rejected before ExcelJS, valid differential styles and native Excel metadata retained; lint/typecheck exit0; no Docker/DB/runtime.",
+            "result_sha256": "54b19c6348d0745643900f8a4235927e39dd1a189be1c67b826d24a9f4f162c5",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/nested-core-paths-20261022/final-regression.log",
             "config_sha256": "d96a07aa3f39bf74bcf855ef5ad2e7c8ec7f799465f19c38fa0440f30d41e896",
-            "recorded_at": "2026-10-22T06:08:24.038394+00:00"
+            "recorded_at": "2026-10-22T07:51:52.529764+00:00"
           },
-          "notes": "Prior frozen100 result/history retained, not relabeled. Production-entry index /Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/namespace-20261022/v1-xlsx-namespace-production-boundary-index-20261022-final.json SHA6d4b389ee84bd16b97df12884213a5d8f9b87831776f7f674d2776eebb0d6ddb distinguishes real readFreeWorkbook/ExcelJS positive paths, pre-load entry rejection, helper-only coverage and remaining variants. Original qualified-max test also had duplicate cols; supplemental single-container tests remove that confound."
+          "notes": "Prior frozen100 result/history retained, not relabeled. Production-entry index /Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/namespace-20261022/v1-xlsx-namespace-production-boundary-index-20261022-final.json SHA6d4b389ee84bd16b97df12884213a5d8f9b87831776f7f674d2776eebb0d6ddb distinguishes real readFreeWorkbook/ExcelJS positive paths, pre-load entry rejection, helper-only coverage and remaining variants. Original qualified-max test also had duplicate cols; supplemental single-container tests remove that confound. Native Excel Save As follow-up: commit2eede76cc9af8962cbb89c4cc0e26fff313dfaa1/tree4782d432d500c5e08a1e10c705e620943a6f0b4f narrows new revisionPtr/calcFeatures metadata to exact URI/element/parent paths; main-data children/text/CDATA are rejected. Root affected116pass0skip, then test-only load throw-sentinel target45pass0skip; final source/test SHA4d4ec9051d3ffac33939d45db54d82c22cd3f197c9e8445e0a015058b8b4e1cc/fd2c9af65899fc48e61c28d17b7fe8dab28d5c1a3ddb13218233727acd559bd3. Committed verification SHA9fb4f50cfd56d0957b7b8d8e4dd27f0d6026111fdcacc0ea5645cc198cd8a0a4 at var/truck-color-v1-20261020/office-native-metadata-20261022/committed-verification.json. Old bindings remain historical, not relabeled as this new source. Previous binding 4e5e9ab778af399db31ce26cdcf73db69c8dc7ae / result 634bea13d686b6d2c86edfc6775672d0b1ce335b5e71ab17c4f1e99aea5b76fc retained as historical; current binding advances only after independently verified full allocation paths in 01b4bbdb198a0c0fb324fdded5cb1c8b7bc3146a."
         },
         "affected_regression": {
           "status": "pass",
           "binding": {
-            "commit": "f11c05f6c2b84a78fa80f80b46a7fee8739efffa",
-            "tree": "9c2dd94e475d5798d02d9da9d492ccabca43ae4f",
+            "commit": "01b4bbdb198a0c0fb324fdded5cb1c8b7bc3146a",
+            "tree": "4e3e287d60d82a130440699d1ac151e3c95d40ad",
+            "tool_name": "Full allocation path target and affected XLSX regression",
             "tool_version": "Node v24.14.0; pnpm9.15.4; Vitest4.1.11",
-            "config_sha256": "d96a07aa3f39bf74bcf855ef5ad2e7c8ec7f799465f19c38fa0440f30d41e896",
-            "recorded_at": "2026-10-22T05:45:04.570169+00:00",
-            "tool_name": "Frozen targeted and affected XLSX regression",
             "command": "pnpm --filter @feishu-timeline/web exec vitest run src/features/free-workbook/xlsx-namespaces.test.ts src/features/free-workbook/xlsx.test.ts src/features/color-register/sheet-exchange.test.ts src/features/free-workbook/background-io.test.ts src/features/free-workbook/background-retry.test.ts",
-            "environment": "Clean isolated author source f11c05f; exact three merged blobs independently equal cef82c5;100 tests pass,0skip. No Docker, database, browser or Office validation.",
-            "result_sha256": "7cbdad9956123fada93428ecc85b4500bae3cdfb12684b46c74d6170039230b3",
-            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/namespace-20261022/v1-xlsx-namespaces-20261022-verification.json"
+            "environment": "5files130pass0skip on exact committed source hashes; unknown MAIN wrappers/containers/items rejected before ExcelJS, valid differential styles and native Excel metadata retained; lint/typecheck exit0; no Docker/DB/runtime.",
+            "result_sha256": "54b19c6348d0745643900f8a4235927e39dd1a189be1c67b826d24a9f4f162c5",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/nested-core-paths-20261022/final-regression.log",
+            "config_sha256": "d96a07aa3f39bf74bcf855ef5ad2e7c8ec7f799465f19c38fa0440f30d41e896",
+            "recorded_at": "2026-10-22T07:51:52.529764+00:00"
           },
-          "notes": "5files100pass0skip include XLSX, images/relationships, sheet exchange and background IO/retry; 5MiB/512entries/20MiB bounds retained. Source artifact unchanged."
+          "notes": "5files100pass0skip include XLSX, images/relationships, sheet exchange and background IO/retry; 5MiB/512entries/20MiB bounds retained. Source artifact unchanged. Previous binding f11c05f6c2b84a78fa80f80b46a7fee8739efffa / result 7cbdad9956123fada93428ecc85b4500bae3cdfb12684b46c74d6170039230b3 retained as historical; current binding advances only after independently verified full allocation paths in 01b4bbdb198a0c0fb324fdded5cb1c8b7bc3146a."
         },
         "diff_review": {
           "status": "pass",
           "binding": {
-            "commit": "cef82c528980198dfbae62a6e5acdb94bb7cbdda",
-            "tree": "c18d7b5eb5f61b7ab2655c232ff3dbad07d88cea",
+            "commit": "01b4bbdb198a0c0fb324fdded5cb1c8b7bc3146a",
+            "tree": "4e3e287d60d82a130440699d1ac151e3c95d40ad",
+            "tool_name": "Independent full URI and core-node path diff/consumer verification",
             "tool_version": "Node v24.14.0; pnpm9.15.4; Vitest4.1.11",
+            "command": "Review exact two-file diff, independent20tests and final target59tests; fixed input production entry confirms loadCalls=0; then compare committed two source blobs",
+            "environment": "Separate independent_review context. Frozen inputa6c9372e formerly reaches actual ColXform consumer sentinel; repaired production entry rejects before load. Native source/Excel Save As r04 success remains parser-only. No OOM/service/DB/GUI/network; focused review not full clearance.",
+            "result_sha256": "82e23b6295ce7c5882bee8f82fbbf9e0d3671ae2b1d888466667d17f74e53d9b",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/nested-core-paths-20261022/independent-review.json",
             "config_sha256": "d96a07aa3f39bf74bcf855ef5ad2e7c8ec7f799465f19c38fa0440f30d41e896",
-            "recorded_at": "2026-10-22T05:45:04.570169+00:00",
-            "tool_name": "Independent read-only exact diff review and regression",
-            "command": "Inspect final3-file diff, independently run100 tests, then compare all3 source blobs at final author f11c05f and merged cef82c5",
-            "environment": "Separate independent_review context;100pass/0skip; no new confirmed blocker. Merged source identity record SHA5db8bb2e542e8ee8157a0cd0d3aeb853fe08a85d2be0a8a8382aa4592f874dfe. No release/product approval.",
-            "result_sha256": "33b80ce207de096b5fb1394a310d9824bb01006f3b4b2432da5d88df84e59542",
-            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/namespace-20261022/v1-xlsx-namespaces-20261022-independent-review.json"
+            "recorded_at": "2026-10-22T07:51:52.529764+00:00"
           },
-          "notes": "Independent exact final3-file review and100test rerun; root merge blobs confirmed. Full security clearance and runtime acceptance not claimed. Supplemental exact one-test-file independent review SHA2bb634d023b0c0409552656bb4d2d854a2af3487ccbaf372a14331d32db2c56b, independent30pass0skip, matches committed4e5e9ab test SHA3046682218f0fb4985d59a481ad4bc4dd104c3a3a01cec0dbde54146c8346bbf. Production repair review remains valid by unchanged bytes; no new100-test review or artifact rebuild claimed."
+          "notes": "Independent exact final3-file review and100test rerun; root merge blobs confirmed. Full security clearance and runtime acceptance not claimed. Supplemental exact one-test-file independent review SHA2bb634d023b0c0409552656bb4d2d854a2af3487ccbaf372a14331d32db2c56b, independent30pass0skip, matches committed4e5e9ab test SHA3046682218f0fb4985d59a481ad4bc4dd104c3a3a01cec0dbde54146c8346bbf. Production repair review remains valid by unchanged bytes; no new100-test review or artifact rebuild claimed. Production normalizer subsequently changed in2eede76 for real native Excel metadata compatibility; new independent exact two-file review SHA c79761a6c73d5815dd5888f82b2679fae6d803a248778a46ca114551c77dac50 and committed blob appendix SHA e960730450a37094ee8aaab0ca6b484285d246a8d2f6cbbb6c7263684aeeda09 are stored at var/truck-color-v1-20261020/office-native-metadata-20261022/{independent-review,committed-review}.json. Independent29+45 frozen-source tests passed; later single-line test sentinel reviewed and root final45 log verified, not represented as rerun29+45 under new test hash. Existing allocation/namespace/ZIP guards remain intact; status stays fixed_diff_verified, no full/security/product clearance. Previous binding cef82c528980198dfbae62a6e5acdb94bb7cbdda / result 33b80ce207de096b5fb1394a310d9824bb01006f3b4b2432da5d88df84e59542 retained as historical; current binding advances only after independently verified full allocation paths in 01b4bbdb198a0c0fb324fdded5cb1c8b7bc3146a. Same-cluster additional path defect was confirmed by actual consumer tracing, repaired and independently verified during this follow-up. Existing transition enum does not represent reopening a fixed_diff_verified entry; no unsupported or fabricated transition was added. The rejected uncommitted draft and failed validation are retained in nested-core-paths-20261022. New verification binding records exact final source; status remains focused fixed_diff_verified, not full/closed."
         },
         "full_regression": {
           "status": "pending",

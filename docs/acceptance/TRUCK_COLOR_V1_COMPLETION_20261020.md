@@ -236,3 +236,53 @@ Office经实际Excel16.114官方字典核对，另存的静态受控方案独审
 补充回执实际消息0b428124-1cb0-4b45-97c2-953d9096f8d4，ChatGPT最新实际回复 `ab133134-f266-5105-8c41-e901f0a66fc0` 已回读并保存 `chatgpt-feedback-ab133134-20261022.{txt,json}`：认可本轮状态记录、边界证据与暂停范围要求已落实，没有新增代码整改；接受4e5e9ab的唯一cols测试作为精确边界证据，保持Finding fixed_diff_verified。生产/锁/schema未变，继续使用真实189a8c4/R08制品，不因测试/文档提交重复构建；293SKIP/G3 PARTIAL及整体PARTIAL不变。
 
 Office超时仍属结果未知：无output/hash不变不能证明input副本未被Excel打开。解锁后先通过cua_repl核对实际工作簿、对话框及精确输出路径；若input已打开则核实身份后从现场继续，若出现out先核实内容，禁止自动重演整段。Mac解锁只解除Office界面阻断；Docker必须另等冷备完成和明确重启许可。既有局部路径复用，产品尚未到签收。两项外部条件均未获解除，本轮不向模型申请替代授权、不标目标完成。
+
+
+### Mac解锁及原生Excel另存后的兼容性修复（2026-10-22）
+
+所有者本轮已反馈“已解锁”和“已保存”。解锁后先用cua_repl检查实际Excel现场，再打开已核对的只读合成input；工具另存按钮仍灰色，所有者随后手动完成指定空output目录的另存。实际Excel窗口标题为“excel-roundtrip.xlsx — 已保存到我的 Mac”，双表及第二表图片均已实看并留截图。旧脚本OPEN_INPUT_COPY超时与GUI灰色失败保留，未据此归因或称工具故障已修复。
+
+原件11234B/SHA `15be6e7627563c5259f169d78dac6558abe4ebe3b39f060006ed6dd6d91dec43`和只读input保持不变；实际另存13762B/SHA `e0c1030ece148ccee5a33eeddef36cff3e790c4343b5e49670728423b73559cd`，原字节保存于`office-saveas-20261022-r01/excel-roundtrip-owner-saved.xlsx`。GUI证据见`office-r02-native-save-checkpoint.json`，两张实际另存后截图为`office-r02-excel-saved-first.png`及`office-r02-excel-saved-image.png`。
+
+| 核对层次 | 实际结果与限制 |
+|---|---|
+| 原生Excel另存与静态原件比较 | 双表、16个存储cell记录、SUM(B2:B3)及缓存20、A5:C5合并、2240B PNG原字节保持；图片相对A2+4/4px、160×100保持。不是改输入后的公式重算证据。 |
+| 字体/几何 | font0明确Calibri→宋体，原本稀疏的header/body字体被补全宋体；默认行高18→24pt、第10空行27→36pt，列宽变化。不能把这类变化归为纯元数据；同相对锚点不证明绝对位置一致。按存储网格推算图片top28→36px，不是截图测量。 |
+| 旧R08实际生产解析 | 原件成功，真实Excel另存副本在命名空间预检失败(exit1)。首拒绝workbook直接子节点xr:revisionPtr，后续calcFeatures也不兼容；不把“Excel另存成功”算系统往返成功。 |
+| 新修复实际生产解析 | 两个实际输入均readFreeWorkbook返回(exit0)，14个解析cell值/类型/公式缓存与合并一致，图片字节/相对锚点一致，37项样式/几何差异逐项保留。warnings为空不代表图片业务归属确定：两者均pending+SPANS_ROWS，未自动分配业务行。 |
+| 运行路径 | 浏览器回导→继续导入→保存→刷新仍NOT_EXECUTED；Docker/PG/Redis/3490按冷备要求继续停止。日期字段不在本样本内，不宣称日期兼容或完整Office验收。 |
+
+生产修复提交`2eede76cc9af8962cbb89c4cc0e26fff313dfaa1` / tree`4782d432d500c5e08a1e10c705e620943a6f0b4f`，只改normalizer及回归测试。依据微软定义的[revisionPtr元数据](https://learn.microsoft.com/en-us/openspecs/office_standards/ms-xlsx/5082e3cf-b020-4599-b656-3b4207f0470d)与[calcFeatures结构](https://learn.microsoft.com/en-us/openspecs/office_standards/ms-xlsx/6c4054c8-05a9-49dc-baa9-13e5a6282989)，只准入精确URI/元素/祖先路径，叶节点拒绝子元素和非空text/CDATA；保留qualified原字节。未把新URI加入通用扩展允许集合，未知URI、主数据夹带、属性歧义、r别名、DTD、5MiB/512项/20MiB与分配预检继续拒绝。
+
+新增回归在修复前2FAIL/37PASS；修复后5文件116PASS/0SKIP。独审建议的单行load throw-sentinel补强后目标45PASS/0SKIP、lint通过；此前Web typecheck TS2379失败已按类型声明修复，后续typecheck退出0。真实解析r01失败、r02源hash漂移拒绝且parser调用0、r03成功分别保存，不覆盖旧证据。源码normalizer SHA`4d4ec9051d3ffac33939d45db54d82c22cd3f197c9e8445e0a015058b8b4e1cc`、最终测试SHA`fd2c9af65899fc48e61c28d17b7fe8dab28d5c1a3ddb13218233727acd559bd3`；lock/schema/业务安全及导出转换未改，R08旧制品不包含本次生产修复。
+
+证据仍在`var/truck-color-v1-20261020/office-native-metadata-20261022/`，实际解析对照`fixed-parser-comparison.json` SHA`acb9ead7249df7cd80810a36d1a063e48fd0603d66af3fc6ae8add1370f37fd9`；静态原件比较SHA`fa079b0cc2a2c2a1e0c55e1a9e39aeb12b4a88442f22efb4a0ade6996d9eeac0`。字体/行高变化不据现有证据归咎于生产导出；纯解析不代替GUI保存读回。当前外部边界只解除Mac解锁/手动另存，冷备和Docker重启许可仍未解除，整体及G3继续PARTIAL、产品未到签收。
+
+
+本次独立G4_DIFF报告SHA`c79761a6c73d5815dd5888f82b2679fae6d803a248778a46ca114551c77dac50`，提交两blob绑定附录SHA`e960730450a37094ee8aaab0ca6b484285d246a8d2f6cbbb6c7263684aeeda09`；独立29项负向及原冻结目标45项通过，末次test sentinel单行单独复核并核对根新45日志，没有冒称新test下重复执行29+45。唯一Finding保持fixed_diff_verified并补同一来源指针；整账旧schema问题未在本项处理。提交绑定总索引`office-native-metadata-20261022/committed-verification.json` SHA`9fb4f50cfd56d0957b7b8d8e4dd27f0d6026111fdcacc0ea5645cc198cd8a0a4`。
+
+
+### R09构建后追加核心节点路径修复（2026-10-22）
+
+R09/2eede76的API→Web一次构建7命令均exit0、四身份一致，实际制品独审通过；但同一输入预检的追加有界调查确认另一处父路径分歧，因此R09只保留历史构建证据，不作为当前最终候选。API manifest SHA0696cc29…、Web SHA d8ac7244…，收据SHA`b7ecdde40579933fd4704419de7730e0191f42e5c1b2b184544ea1e1fce12b01`，独审SHA`0a4baa3682f6fa55d879cd4f978d6f435a7319a87c2facacf3be1944d8f9e9fb`，都在`candidate-2eede76-20261022/`；54迁移/schema/锁仍与R08完全一致，未migrate/启动。
+
+实际readFreeWorkbook对未知MAIN syntheticContainer内cols未预检到该索引；在同一固定新ZIP（SHA`a6c9372e9a34ab1356fd267fd4f4005962cad066ce1d3bdb898696ce3cd4e876`）上，真实ColXform.parseOpen收到max=1000000000后立即throw-sentinel，未返回列模型、未分配大量列。extLst/ext例仅证明预检放行，因有专用ExtListXform接管，不能宣称同样消费；两者分列。复现独审SHA`399314c2fccfc9d48cc952941e5054f093fdbc3688a4e33a929d363c501cd6c9`，不是安全PASS。
+
+根已按完整MAIN URI+local祖先路径统一限制worksheet/cols/col、worksheet/sheetData/row/c/f及styles索引容器/项；合法styleSheet/dxfs/dxf字体/填充/边框/numFmt仍支持，不做extLst特判或移除现有边界。新增12例在旧2eede76上12FAIL/45PASS，修复后5文件130PASS/0SKIP、lint/types0；当前两源冻结3d354f56…/5fe856ce…，独立最终diff、固定输入拒绝及真实Excel双输入读回进行中。证据`nested-core-paths-20261022/`，唯一Finding仍为R28-V1-XLSX-NAMESPACE-BOUND-001，不另建状态源。后续必须新提交/新制品，旧R09和Office失败不覆盖。Docker冷备hold、真实运行与完整A05未完成边界保持。
+
+
+父路径最终修复已提交`01b4bbdb198a0c0fb324fdded5cb1c8b7bc3146a`/tree`4e3e287d60d82a130440699d1ac151e3c95d40ad`。独立20项及最终目标59项均PASS/0SKIP，精确diff报告SHA`82e23b6295ce7c5882bee8f82fbbf9e0d3671ae2b1d888466667d17f74e53d9b`、提交两blob附录SHA`307ebef8c0e1df3ba5448a95e4835e25d557737401705d41d78353ac7124ed26`；同一固定合成文件实际新入口拒绝且loadCalls=0、输入hash不变。合法原件/Excel副本在最终guard下r04各调用一次exit0，完整解析对象及37项差异与r03逐项相同，对照SHA`a896b3b34ad4865d493f9242783f4bd37d50599a52c3e9326494f1e240a77629`。提交验证索引`nested-core-paths-20261022/committed-verification.json` SHA`e7321fcc6051fe26f8e8698f9fed8b79a849cbffcec8178255130bcb09316ce5`；原始复现、test source/config/log、实际消费sentinel和实际读回脚本/JSON已原字节持久化。唯一Finding保留历史，并用当前验证绑定与notes记录追加确认、修复和独审事实，保持focused fixed_diff_verified；无full clearance。现有schema不支持fixed_diff_verified重新修复的跳转，初次草案校验失败已保留，未扩schema或伪造状态跳转。
+
+R10仅为新提交同身份API/Web纯构建，四脚本相对R09只机械改输出路径/release/commit/tree/helperhash；独立脚本审查SHA`afaa7d5294350e37f2a5706f754bbd1945a2bf26d5b0ead14f310e12d91402b6`。构建期间HEAD保持01b4bbd，所有未提交改动仅docs；R09所有制品与失败记录保留，不混称同一候选。Docker冷备暂停继续有效。
+
+
+### 当前待运行候选R10（01b4bbd）双制品完成
+
+R10 API/Web wrapper均exit0，7内部命令全0、未重试。四身份为commit`01b4bbdb198a0c0fb324fdded5cb1c8b7bc3146a`、tree`4e3e287d60d82a130440699d1ac151e3c95d40ad`、release`materials-r10-01b4bbdb198a`、buildTime`2026-10-22T07:51:49Z`；根已实际读取两个manifest逐项比较。API manifest SHA`0022ac6560ca09b73db3e968f3367e79e07eab1d5ff9d33b4621a0d4196aff46`、Web SHA`6758bc4e5285c271fdfd22fdc667f72b6d275ccbd48f90bd118e8c824628dd96`，共同源归档SHA`1a92eb6e3b52e419e2cadcbea95cf549984d78e63f6e5d4ad7f63f94c68d0547`。收据SHA`975a4f9fda2ca3ef13b95972fe6305e5cb6041c5c593dca3115aee7ee5c3a59f`；schema/lock/54条migration与R09完全相同，未执行migrate。
+
+证据`candidate-01b4bbd-20261022/`包含真实API/Web manifest、构建回执、两wrapper和7条命令的原始日志/exit记录及hash索引。只属于不可变Darwin构建，尚未启动、不是Linux/Docker或portable新包；R09、R08的真实身份与先前失败全部保留。原10行台账及未知媒体/停机资料继续保留。本轮无push/main merge/tag、生产操作或扫描VM启动；新候选远端CI未执行。无DB代码检查、构建、parser、Office原生界面和完整Web路径分别记录，整体及G3仍PARTIAL，不以130测试、构建或代码合并替代产品完成。
+
+当前仍无可操作3490预览：所有者冷备和Docker停用要求未解除。历史14页参考/实装对照入口保持`var/design-convergence-20261019/delivery/reference-comparison-20261019/index.html`及其旧图，不算新候选实装截图。完整已接受使用链仍按cbe：14整改→复审→CLEAN附件/提交/通过→15排产→刷新历史；恢复后先核对原资源/数据和实际runtime身份，再补本次新候选Office原件及另存副本导入→保存→刷新、受影响页面、A12/A14/提醒调度与所需DB/Redis/恢复验证。未到产品签收阶段，不能由ChatGPT意见代替所有者冷备重启许可或产品确认。
+
+
+R10实际制品独审SHA`a29aba7b9884cd190f40e01d8ca3d55559db1462baa605c193d483856e0cfb99`：独立重算2062源文件、API2338物化/44066依赖、Web1597严格清单、7命令result/loghash、两wrapper与四身份/API-Web链接全部一致，原合成输入及实际Excel副本hash不变；未重复构建/运行。单条Finding文档独审SHA`48a6958741a0cb957b21b24132b8db134884f2eea815affc92854ff6fe821170`确认唯一条目变更、原history/其他59条/schema不变，所有新证据引用与当前01b4bbd匹配。纠正后的单条结构校验通过，整账原24问题前后相同；失败草案与校验25问题收据保留，未声称完整draft2020合规。两份报告已原字节持久化，不把模型审查等同所有者产品验收。

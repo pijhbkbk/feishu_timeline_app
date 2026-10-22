@@ -8405,3 +8405,14 @@ main ref与tag未改变。这里仅追加指针，保留原有未提交交接文
 - 冷备外续接：安全索引补强发现旧属性测试有重复cols干扰，已在4e5e9ab仅修测试隔离，真实入口73目标/30独立PASS，生产/R08字节未变，Finding仍fixed_diff_verified。Office全新只读副本一次脚本另存尝试在打开阶段-1712超时、无out，原件/input不变；随后CUA实报Mac锁屏，已请手动解锁，后续只走cua_repl。Docker仍OFF，完整Office及运行门禁未通过。细节/原失败见同一V1入口。
 
 - 最新实际ChatGPT回复ab133134已回读，确认本轮有界要求落实、无新增代码整改，接受4e5e9ab证据并继续R08，无需重建；整体/G3均PARTIAL。Mac解锁后先查Excel超时现场，不自动重演；Docker冷备/重启许可单独解除。产品未到签收。全文见V1入口，后续等待真实外部条件，不用模型判断替代所有者许可。
+
+
+- Office后续：所有者解锁、手动完成指定合成副本另存，Excel双表/图片实看及output SHAe0c1030e…已留证；原件/input SHA15be6e76…不变。实际生产解析发现原R08误拒绝Excel revisionPtr/calcFeatures，已仅两文件修复并提交2eede76cc9af8962cbb89c4cc0e26fff313dfaa1/tree4782d432d500c5e08a1e10c705e620943a6f0b4f；116目标/受影响PASS、最终load-sentinel补强45PASS，lint/types通过，独立窄审未发现确定阻断。真实双输入解析exit0，旧exit1与hash漂移拦截保留；字体/行高/列宽变化明确记录，不能称全格式保真。Office仅原生另存+解析，浏览器回导保存刷新仍待；新R09纯构建准备中，不复用旧R08冒充新源码。Docker冷备/重启许可未解除、服务OFF，整体/G3仍PARTIAL。详见同一V1入口，原10行Ledger hunk与未知媒体保留。
+
+- R09双制品7命令exit0/独审通过后，追加同根因检查真实证明unknown MAIN wrapper内cols绕预检、被ColXform消费；throw-sentinel在列模型前中断，无OOM。R09仅历史构建保留，根已统一敏感核心节点完整父路径，合法dxf样式保留，130受影响PASS/lint/types0，最终独审与真实Excel双输入读回中。沿同一Finding/同一V1入口续接，不把旧no-blocker或build PASS外推当前安全/产品；Docker仍OFF。
+
+- 父路径最终01b4bbdb198a0c0fb324fdded5cb1c8b7bc3146a/tree4e3e287d60d82a130440699d1ac151e3c95d40ad已提交，独立20/59PASS+两blob核对通过，同固定输入load0；真实Excel双输入r04解析与r03逐项一致。唯一Finding focused fixed_diff_verified、旧记录保留，R10纯构建中；原件/副本不变、Docker继续OFF、A05/整体/G3仍PARTIAL。证据索引SHAe7321fcc…见同一V1入口，原Ledger hunk不stage。
+
+- 当前待运行R10/01b4bbd双Darwin制品完成：API/Web四身份一致、7命令均0，manifest SHA0022ac65…/6758bc4e…、receipt975a4f9f…；schema/锁/54迁移与R09同，未migrate/启动。原始日志/exit与清单已持久化candidate-01b4bbd-20261022，R09/R08历史不覆盖。完整Office/运行/CI/DB及产品确认仍待，G3/整体PARTIAL，冷备hold未解除。
+
+- R10制品独审a29aba7b…已确认真实源码/完整库存/7日志/身份与迁移；单Finding文档独审48a69587…匹配，其他条/原history/schema未变。实际输入hash保持，原始证据已持久化。当前只待向获准ChatGPT回报并读反馈；冷备/重启许可及运行产品验收未解除，不能标整体完成。
