@@ -6,6 +6,8 @@ const MAIN = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main';
 const XML = 'http://www.w3.org/XML/1998/namespace';
 const XMLNS = 'http://www.w3.org/2000/xmlns/';
 const REL = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+const REVISION = 'http://schemas.microsoft.com/office/spreadsheetml/2014/revision';
+const CALC_FEATURES = 'http://schemas.microsoft.com/office/spreadsheetml/2018/calcfeatures';
 // ExcelJS emits these ignorable style extensions itself. They remain qualified
 // and byte-preserved, only inside extLst; they are never treated as main data.
 const STYLE_EXTENSIONS = new Set([
@@ -17,7 +19,21 @@ const NAME = /^[A-Za-z_][A-Za-z0-9_.-]*(?::[A-Za-z_][A-Za-z0-9_.-]*)?/;
 const invalid = () => new Error('XLSX XML 命名空间或结构不受支持；源文件未修改。');
 const limited = () => new Error('XLSX XML 结构或正规化后大小超限；源文件未修改。');
 type Attribute = { name: string; value: string };
-type Frame = { name: string; outputName: string; namespaces: Map<string, string>; extension: boolean };
+type Metadata = 'revisionPtr' | 'calcFeatures' | 'feature';
+type Frame = { name: string; outputName: string; namespaces: Map<string, string>; uri: string; local: string; extension: boolean; metadata: Metadata | undefined };
+
+// Native Excel adds runtime revision and calculation-version metadata. Keep
+// its qualified bytes; never reinterpret it as SpreadsheetML business data.
+// These URIs are deliberately not added to the general style extension set.
+function metadataKind(uri: string | undefined, local: string, stack: Frame[]): Metadata | undefined {
+  const parent = stack.at(-1);
+  if (uri === REVISION && local === 'revisionPtr' && stack.length === 1 && parent?.uri === MAIN && parent.local === 'workbook') return 'revisionPtr';
+  if (uri !== CALC_FEATURES) return undefined;
+  if (local === 'feature' && parent?.metadata === 'calcFeatures') return 'feature';
+  if (local === 'calcFeatures' && stack.length === 3 && stack[0]?.uri === MAIN && stack[0].local === 'workbook'
+    && stack[1]?.uri === MAIN && stack[1].local === 'extLst' && parent?.uri === MAIN && parent.local === 'ext') return 'calcFeatures';
+  return undefined;
+}
 
 // Decode only namespace identifiers. All source text and attribute value bytes
 // remain untouched in the emitted XML; no entity resolver or external I/O exists.
@@ -64,7 +80,8 @@ function opening(tag: string): { name: string; attributes: Attribute[]; selfClos
  * Rewrite only validated SpreadsheetML element names, preserving source XML
  * text, attributes, comments and CDATA verbatim. Other XML/media parts never
  * enter this function. Unknown elements are explicitly rejected, not stripped;
- * already supported ignorable style extensions keep their qualified names.
+ * supported style extensions and narrowly scoped native Excel runtime
+ * metadata keep their qualified names.
  */
 function normalizePart(bytes: Uint8Array, rootName: string): Uint8Array {
   const source = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
@@ -77,16 +94,21 @@ function normalizePart(bytes: Uint8Array, rootName: string): Uint8Array {
     if (outputBytes > CATALOG_XLSX_LIMITS.expandedBytes) throw limited();
     chunks.push(text);
   };
+  const appendText = (text: string) => {
+    if (stack.at(-1)?.metadata && /\S/.test(text)) throw invalid();
+    append(text);
+  };
   while (position < source.length) {
     const start = source.indexOf('<', position);
-    if (start < 0) { append(source.slice(position)); break; }
-    append(source.slice(position, start));
+    if (start < 0) { appendText(source.slice(position)); break; }
+    appendText(source.slice(position, start));
     if (++tokens > 1_000_000) throw limited();
     let end: number;
     if (source.startsWith('<!--', start) || source.startsWith('<![CDATA[', start) || source.startsWith('<?', start)) {
       const marker = source.startsWith('<!--', start) ? '-->' : source.startsWith('<![CDATA[', start) ? ']]>' : '?>';
       end = source.indexOf(marker, start + 2);
       if (end < 0) throw invalid();
+      if (stack.at(-1)?.metadata && marker === ']]>' && /\S/.test(source.slice(start + 9, end))) throw invalid();
       end += marker.length;
       append(source.slice(start, end));
       position = end;
@@ -119,7 +141,9 @@ function normalizePart(bytes: Uint8Array, rootName: string): Uint8Array {
       if (namespaces.size > 64 || stack.length >= 128) throw limited();
       const [prefix, local] = node.name.includes(':') ? node.name.split(':') as [string, string] : ['', node.name];
       const uri = namespaces.get(prefix), main = uri === MAIN;
-      if ((!main && !(prefix && uri && STYLE_EXTENSIONS.has(uri) && stack.at(-1)?.extension)) || (namespaces.has('') && namespaces.get('') !== MAIN)) throw invalid();
+      const metadata = metadataKind(uri, local, stack), parentMetadata = stack.at(-1)?.metadata;
+      if (parentMetadata && !(parentMetadata === 'calcFeatures' && metadata === 'feature')) throw invalid();
+      if ((!main && !metadata && !(prefix && uri && STYLE_EXTENSIONS.has(uri) && stack.at(-1)?.extension)) || (namespaces.has('') && namespaces.get('') !== MAIN)) throw invalid();
       const expandedAttributes = new Set<string>();
       const attributeLocals = new Set<string>();
       for (const attribute of node.attributes) {
@@ -145,7 +169,7 @@ function normalizePart(bytes: Uint8Array, rootName: string): Uint8Array {
       const outputName = main ? local : node.name;
       changed ||= node.name !== outputName || Boolean(defaultDeclaration);
       append(`<${outputName}${defaultDeclaration}${tag.slice(node.name.length + 1)}`);
-      if (!node.selfClosing) stack.push({ name: node.name, outputName, namespaces, extension: Boolean(stack.at(-1)?.extension) || (main && local === 'extLst') });
+      if (!node.selfClosing) stack.push({ name: node.name, outputName, namespaces, uri: uri!, local, metadata, extension: Boolean(stack.at(-1)?.extension) || (main && local === 'extLst') });
     }
     position = end;
   }

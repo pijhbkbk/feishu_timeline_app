@@ -7,6 +7,12 @@ import { normalizeSpreadsheetNamespaces } from './xlsx-namespaces';
 import { readFreeWorkbook } from './xlsx';
 
 const MAIN = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main';
+const REVISION = 'http://schemas.microsoft.com/office/spreadsheetml/2014/revision';
+const CALC_FEATURES = 'http://schemas.microsoft.com/office/spreadsheetml/2018/calcfeatures';
+// Structures observed in the native Excel Save As copy (SHA256 e0c1030e…).
+// The regression uses generated synthetic data, not a user's workbook binary.
+const revisionPointer = `<xr:revisionPtr xmlns:xr="${REVISION}" revIDLastSave="0" documentId="synthetic"/>`;
+const calculationFeatures = `<extLst><ext uri="{B58B0392-4F1F-4190-BB64-5DF3571DCE5F}"><cf:calcFeatures xmlns:cf="${CALC_FEATURES}"><cf:feature name="microsoft.com:RD"/><cf:feature name="microsoft.com:Single"/></cf:calcFeatures></ext></extLst>`;
 // Exact authorized artifact-tool synthetic failure: no real workbook or media.
 // SHA256 e79742d69e1b53e12e1764c7a9b78078b57a107339b9904fd05d6b6266f9199b.
 const ARTIFACT_FIXTURE = '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';
@@ -16,6 +22,65 @@ const normalize = (xml: string) => strFromU8(normalizeSpreadsheetNamespaces(part
 const pixel = Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a6mgAAAAASUVORK5CYII='), c => c.charCodeAt(0));
 
 describe('SpreadsheetML namespace compatibility', () => {
+  it('imports native Excel revision/calculation metadata without losing two sheets, formula, merge, style or image', async () => {
+    const book = new ExcelJS.Workbook(), first = book.addWorksheet('工作表1'), second = book.addWorksheet('合成记录页');
+    first.getCell('A1').value = '合成颜色'; first.getCell('A1').font = { name: '宋体', bold: true, size: 14 };
+    first.getCell('B2').value = 12; first.getCell('B3').value = 8; first.getCell('C2').value = { formula: 'SUM(B2:B3)', result: 20 };
+    first.mergeCells('A5:C5'); first.getCell('A5').value = '合成验证：合并说明'; first.getRow(10).height = 36;
+    second.getCell('A1').value = '恢复与多表验证'; second.getCell('B2').value = 20;
+    const image = book.addImage({ buffer: pixel as never, extension: 'png' });
+    second.addImage(image, { tl: { col: 0, row: 1 }, ext: { width: 160, height: 100 } });
+    const files = unzipSync(new Uint8Array(await book.xlsx.writeBuffer()));
+    files['xl/workbook.xml'] = strToU8(strFromU8(files['xl/workbook.xml']!).replace('</workbook>', `${revisionPointer}${calculationFeatures}</workbook>`));
+    const bytes = zipSync(files), before = new Uint8Array(bytes);
+    const normalized = normalizeSpreadsheetNamespaces(files);
+    expect(normalized['xl/workbook.xml']).toBe(files['xl/workbook.xml']);
+    const parsed = await readFreeWorkbook(bytes, 'native-excel-synthetic.xlsx', crypto.randomUUID());
+    expect(bytes).toEqual(before); expect(parsed.warnings).toEqual([]);
+    const [a, b] = parsed.snapshot.sheetOrder.map(id => parsed.snapshot.sheets[id]!);
+    expect([a!.name, b!.name]).toEqual(['工作表1', '合成记录页']);
+    expect(a!.cellData?.[1]?.[2]).toMatchObject({ f: '=SUM(B2:B3)', v: 20 });
+    expect(a!.cellData?.[0]?.[0]?.s).toMatchObject({ ff: '宋体', bl: 1, fs: 14 });
+    expect(a!.rowData?.[9]?.h).toBe(48);
+    expect(a!.mergeData).toContainEqual({ startRow: 4, endRow: 4, startColumn: 0, endColumn: 2 });
+    expect(b!.cellData?.[1]?.[1]?.v).toBe(20);
+    expect(parsed.images).toHaveLength(1); expect(parsed.images[0]!.bytes).toEqual(pixel);
+    expect(parsed.images[0]!.anchor).toMatchObject({ kind: 'oneCell', width: 160, height: 100 });
+  });
+
+  it.each([
+    `<workbook xmlns="${MAIN}"><bad:revisionPtr xmlns:bad="urn:unknown"/></workbook>`,
+    `<workbook xmlns="${MAIN}"><xr:cols xmlns:xr="${REVISION}"/></workbook>`,
+    `<workbook xmlns="${MAIN}"><sheets>${revisionPointer}</sheets></workbook>`,
+    `<workbook xmlns="${MAIN}">${revisionPointer.replace('/>', '><sheets/></xr:revisionPtr>')}</workbook>`,
+    `<workbook xmlns="${MAIN}">${revisionPointer.replace('/>', '>hidden text</xr:revisionPtr>')}</workbook>`,
+    `<workbook xmlns="${MAIN}">${revisionPointer.replace('/>', '><![CDATA[hidden text]]></xr:revisionPtr>')}</workbook>`,
+    `<workbook xmlns="${MAIN}"><cf:calcFeatures xmlns:cf="${CALC_FEATURES}"/></workbook>`,
+    `<workbook xmlns="${MAIN}"><extLst><ext uri="synthetic"><cf:feature xmlns:cf="${CALC_FEATURES}" name="microsoft.com:RD"/></ext></extLst></workbook>`,
+    `<workbook xmlns="${MAIN}">${calculationFeatures.replace('cf:feature', 'cf:col')}</workbook>`,
+    `<workbook xmlns="${MAIN}">${calculationFeatures.replace('<cf:feature name="microsoft.com:RD"/>', '<col min="1" max="1000000000"/>')}</workbook>`,
+    `<workbook xmlns="${MAIN}">${calculationFeatures.replace('<cf:feature name="microsoft.com:RD"/>', '<cf:feature name="microsoft.com:RD"><sheets/></cf:feature>')}</workbook>`,
+    `<workbook xmlns="${MAIN}">${calculationFeatures.replace('<cf:feature name="microsoft.com:RD"/>', '<cf:feature name="microsoft.com:RD"><![CDATA[hidden text]]></cf:feature>')}</workbook>`,
+  ])('rejects unknown, misplaced or data-shaped metadata elements: %s', xml => {
+    expect(() => normalize(xml)).toThrow('XML');
+  });
+
+  it('preserves metadata aliases and paired empty leaves when normalizing a main namespace prefix', () => {
+    const metadata = revisionPointer.replaceAll('xr:', 'rev:').replace('xmlns:xr=', 'xmlns:rev=').replace('/>', '></rev:revisionPtr>');
+    const xml = `<x:workbook xmlns:x="${MAIN}">${metadata}</x:workbook>`;
+    expect(normalize(xml)).toBe(`<workbook xmlns="${MAIN}" xmlns:x="${MAIN}">${metadata}</workbook>`);
+  });
+
+  it('still rejects a real oversized column before ExcelJS when valid Excel metadata is present', async () => {
+    const book = new ExcelJS.Workbook(); book.addWorksheet('合成').getCell('A1').value = '保留';
+    const files = unzipSync(new Uint8Array(await book.xlsx.writeBuffer()));
+    files['xl/workbook.xml'] = strToU8(strFromU8(files['xl/workbook.xml']!).replace('</workbook>', `${revisionPointer}${calculationFeatures}</workbook>`));
+    files['xl/worksheets/sheet1.xml'] = strToU8(strFromU8(files['xl/worksheets/sheet1.xml']!).replace('<sheetData>', '<cols><col min="1" max="1000000000"/></cols><sheetData>'));
+    const load = vi.spyOn(Object.getPrototypeOf(new ExcelJS.Workbook().xlsx), 'load').mockImplementation(async () => { throw new Error('UNEXPECTED_EXCELJS_LOAD'); });
+    try { await expect(readFreeWorkbook(zipSync(files), 'bounded-native-excel.xlsx', crypto.randomUUID())).rejects.toThrow('XLSX 行列或样式索引超限'); expect(load).not.toHaveBeenCalled(); }
+    finally { load.mockRestore(); }
+  });
+
   it('imports the original artifact-tool bytes and preserves all twenty values and header style', async () => {
     const bytes = artifactBytes(), before = new Uint8Array(bytes);
     expect(createHash('sha256').update(bytes).digest('hex')).toBe('e79742d69e1b53e12e1764c7a9b78078b57a107339b9904fd05d6b6266f9199b');
