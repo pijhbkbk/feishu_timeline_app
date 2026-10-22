@@ -110,11 +110,19 @@ describe('SpreadsheetML namespace compatibility', () => {
     finally { load.mockRestore(); }
   });
 
-  it('rejects a qualified attribute hiding an oversized allocation index before ExcelJS', async () => {
-    const files = unzipSync(artifactBytes());
-    files['xl/worksheets/sheet1.xml'] = strToU8(strFromU8(files['xl/worksheets/sheet1.xml']!).replace(/<x:worksheet\b/, '<x:worksheet xmlns:other="urn:other"').replace(/<x:sheetData>/, '<x:cols><x:col min="1" max="1000000000" other:max="1"/></x:cols><x:sheetData>'));
+  it.each([true, false])('rejects an oversized allocation index before ExcelJS (qualified hiding attribute: %s)', async qualified => {
+    const files = unzipSync(artifactBytes()), path = 'xl/worksheets/sheet1.xml';
+    const source = strFromU8(files[path]!);
+    expect(source.match(/<x:cols\b/g)).toHaveLength(1);
+    const xml = source.replace(/<x:worksheet\b/, '<x:worksheet xmlns:other="urn:other"')
+      .replace(/<x:cols\b[\s\S]*?<\/x:cols>/, `<x:cols><x:col min="1" max="1000000000"${qualified ? ' other:max="1"' : ''}/></x:cols>`);
+    // One cols container isolates the attribute and allocation guards from the
+    // separate duplicate-singleton rejection exercised below.
+    expect(xml.match(/<x:cols\b/g)).toHaveLength(1);
+    expect(xml).toContain('max="1000000000"');
+    files[path] = strToU8(xml);
     const load = vi.spyOn(Object.getPrototypeOf(new ExcelJS.Workbook().xlsx), 'load');
-    try { await expect(readFreeWorkbook(zipSync(files), 'attribute-confusion.xlsx', crypto.randomUUID())).rejects.toThrow('XML'); expect(load).not.toHaveBeenCalled(); }
+    try { await expect(readFreeWorkbook(zipSync(files), 'attribute-confusion.xlsx', crypto.randomUUID())).rejects.toThrow(qualified ? 'XML 命名空间或结构不受支持' : 'XLSX 行列或样式索引超限'); expect(load).not.toHaveBeenCalled(); }
     finally { load.mockRestore(); }
   });
 
