@@ -5,6 +5,7 @@ import { getSheetDrawingPlacement, SheetDrawingAnchorType, type ISheetDrawing } 
 import { XMLParser } from 'fast-xml-parser';
 import { strFromU8, zipSync } from 'fflate';
 import { inspectCatalogArchive } from '../color-register/sheet-exchange';
+import { normalizeSpreadsheetNamespaces } from './xlsx-namespaces';
 import { readRawEmbeddedImages } from '../business-sheet/xlsx-raw-images';
 import { writeEmbeddedImages, type ImageAnchor, type ImageExportItem } from '../business-sheet/xlsx-images';
 import { imageBytes, type SheetImage } from '../business-sheet/image-client';
@@ -52,18 +53,21 @@ function readCell(cell:ExcelJS.Cell,palette:string[],date1904:boolean):ICellData
 function coordinates(address:string){const m=/^([A-Z]+)([1-9]\d*)$/.exec(address);if(!m)throw new Error('工作表坐标无效。');const column=[...m[1]!].reduce((n,c)=>n*26+c.charCodeAt(0)-64,0)-1,row=Number(m[2])-1;if(row>=WORKBOOK_LIMITS.rows||column>=WORKBOOK_LIMITS.columns)throw new Error('工作表超过 10000 行、256 列。');return {row,column};}
 // Run before ExcelJS, whose sparse-column model otherwise allocates up to col.max.
 function preflightXml(files:Record<string,Uint8Array>){
-  const parser=new XMLParser({ignoreAttributes:false,attributeNamePrefix:'',removeNSPrefix:true,processEntities:false,parseTagValue:false,parseAttributeValue:false});
+  // Keep attributes separate from child elements so an attribute called c,
+  // row or sheetData cannot hide the nodes checked before ExcelJS allocates.
+  const parser=new XMLParser({ignoreAttributes:false,attributeNamePrefix:'@_',removeNSPrefix:true,processEntities:false,parseTagValue:false,parseAttributeValue:false});
   const array=(value:unknown):unknown[]=>value===undefined?[]:Array.isArray(value)?value:[value];
+  const single=(value:unknown)=>{if(Array.isArray(value))throw new Error('XLSX XML 包含重复的单值节点；源文件未修改。');return obj(value);};
   const bounded=(value:unknown,min:number,max:number)=>{if(typeof value!=='string'||!/^\d+$/.test(value)||!Number.isSafeInteger(Number(value))||Number(value)<min||Number(value)>max)throw new Error('XLSX 行列或样式索引超限。');return Number(value);};
   let styles=1,cells=0;
-  if(files['xl/styles.xml']){const root=obj(obj(parser.parse(strFromU8(files['xl/styles.xml']))).styleSheet);for(const [list,child] of [['cellXfs','xf'],['cellStyleXfs','xf'],['fonts','font'],['fills','fill'],['borders','border'],['numFmts','numFmt']] as const){const entries=array(obj(root[list])[child]);if(entries.length>50000)throw new Error('XLSX 样式数量超限。');if(list==='cellXfs')styles=Math.max(1,entries.length);for(const entry of entries)for(const key of ['fontId','fillId','borderId','xfId','numFmtId'])if(obj(entry)[key]!==undefined)bounded(obj(entry)[key],0,65535);}}
+  if(files['xl/styles.xml']){const root=obj(obj(parser.parse(strFromU8(files['xl/styles.xml']))).styleSheet);for(const [list,child] of [['cellXfs','xf'],['cellStyleXfs','xf'],['fonts','font'],['fills','fill'],['borders','border'],['numFmts','numFmt']] as const){const entries=array(single(root[list])[child]);if(entries.length>50000)throw new Error('XLSX 样式数量超限。');if(list==='cellXfs')styles=Math.max(1,entries.length);for(const entry of entries)for(const key of ['fontId','fillId','borderId','xfId','numFmtId'])if(obj(entry)[`@_${key}`]!==undefined)bounded(obj(entry)[`@_${key}`],0,65535);}}
   for(const [path,bytes] of Object.entries(files)){if(!/^xl\/worksheets\/[^/]+\.xml$/.test(path))continue;const root=obj(obj(parser.parse(strFromU8(bytes))).worksheet);
-    for(const value of array(obj(root.cols).col)){const col=obj(value),min=bounded(col.min,1,WORKBOOK_LIMITS.columns);bounded(col.max,min,WORKBOOK_LIMITS.columns);if(col.style!==undefined)bounded(col.style,0,styles-1);}
-    for(const value of array(obj(root.sheetData).row)){const row=obj(value);bounded(row.r,1,WORKBOOK_LIMITS.rows);if(row.s!==undefined)bounded(row.s,0,styles-1);for(const value of array(row.c)){if(++cells>WORKBOOK_LIMITS.cells)throw new Error('XLSX 单元格超过 200000 个。');const cell=obj(value);if(typeof cell.r!=='string')throw new Error('XLSX 单元格缺少坐标。');coordinates(cell.r);if(cell.s!==undefined)bounded(cell.s,0,styles-1);if(cell.f!==undefined){const kind=obj(cell.f).t;if(kind!==undefined&&kind!=='normal'&&kind!=='shared')throw new Error('暂不支持数组、数据表或未知公式类型；源文件未修改。');const formula=typeof cell.f==='string'?cell.f:obj(cell.f)['#text'];if(typeof formula==='string'&&formula)checkFormula(`=${formula}`);const ref=obj(cell.f).ref;if(ref!==undefined){if(typeof ref!=='string')throw new Error('公式范围无效。');for(const address of ref.split(':'))coordinates(address);}}}}
+    for(const value of array(single(root.cols).col)){const col=obj(value),min=bounded(col['@_min'],1,WORKBOOK_LIMITS.columns);bounded(col['@_max'],min,WORKBOOK_LIMITS.columns);if(col['@_style']!==undefined)bounded(col['@_style'],0,styles-1);}
+    for(const value of array(single(root.sheetData).row)){const row=obj(value);bounded(row['@_r'],1,WORKBOOK_LIMITS.rows);if(row['@_s']!==undefined)bounded(row['@_s'],0,styles-1);for(const value of array(row.c)){if(++cells>WORKBOOK_LIMITS.cells)throw new Error('XLSX 单元格超过 200000 个。');const cell=obj(value);if(typeof cell['@_r']!=='string')throw new Error('XLSX 单元格缺少坐标。');coordinates(cell['@_r']);if(cell['@_s']!==undefined)bounded(cell['@_s'],0,styles-1);if(cell.f!==undefined){const formulaNode=single(cell.f),kind=formulaNode['@_t'];if(kind!==undefined&&kind!=='normal'&&kind!=='shared')throw new Error('暂不支持数组、数据表或未知公式类型；源文件未修改。');const formula=typeof cell.f==='string'?cell.f:formulaNode['#text'];if(typeof formula==='string'&&formula)checkFormula(`=${formula}`);const ref=formulaNode['@_ref'];if(ref!==undefined){if(typeof ref!=='string')throw new Error('公式范围无效。');for(const address of ref.split(':'))coordinates(address);}}}}
   }
 }
 export async function readFreeWorkbook(bytes:Uint8Array,fileName:string,id:string):Promise<WorkbookImport>{
-  const files=inspectCatalogArchive(bytes),warnings=new Set<string>();preflightXml(files);let sheetCount=0;
+  const files=normalizeSpreadsheetNamespaces(inspectCatalogArchive(bytes)),warnings=new Set<string>();preflightXml(files);let sheetCount=0;
   for(const [path,content] of Object.entries(files)){
     if(/vbaProject|activeX|externalLinks|embeddings/i.test(path))throw new Error('不支持宏、嵌入对象或外部工作簿连接；源文件未修改。');
     if(/xl\/(?:charts|pivot|tables|comments|threadedComments|slicer)/i.test(path))warnings.add('图表、数据透视表、表格筛选、批注和切片器不进入编辑副本；请保留原文件。');
