@@ -46,23 +46,30 @@ describe('route smoke', () => {
     expect(html).not.toContain('项目成员');
   });
 
-  it('renders system guide with process, operation, role and FAQ content', async () => {
+  it('renders the approved shared-member, actual-inspection and annual-review guide', async () => {
     const guideHtml = renderToStaticMarkup(<SystemGuidePage />);
 
-    expect(topNavigationItems.map((item) => item.label)).toEqual([
-      '工作台',
-      '颜色项目',
-      '颜色清单',
-      '评审记录',
-      '产量统计',
-      '人员库',
+    expect(topNavigationItems.map(({ label, href }) => ({ label, href }))).toEqual([
+      { label: '工作台', href: '/dashboard' },
+      { label: '颜色项目', href: '/projects' },
+      { label: '颜色清单', href: '/admin/color-database' },
+      { label: '周评', href: '/inspections' },
+      { label: '产量统计', href: '/production' },
+      { label: '人员库', href: '/admin/people' },
     ]);
     expect(sidebarSections[0]?.items).toHaveLength(6);
     expect(guideHtml).toContain('轻卡定制颜色开发项目管理系统');
     expect(guideHtml).toContain('反映市场需求');
     expect(guideHtml).toContain('颜色退出');
     expect(guideHtml).toContain('如何使用本系统');
-    expect(guideHtml).toContain('各角色怎么使用');
+    expect(guideHtml).toContain('涂装工艺部如何共同维护');
+    expect(guideHtml).toContain('未抽检颜色不产生评审逾期');
+    expect(guideHtml).toContain('登记整改完成后重新进行整车复审');
+    expect(guideHtml).toContain('2026-09至2027-09，首尾都计入');
+    expect(guideHtml).toContain('累计恰好20台继续保留');
+    expect(guideHtml).toContain('首次有效到货日起算6个日历月');
+    expect(guideHtml).not.toContain('每月一次，共12个月');
+    for (const { href } of topNavigationItems) expect(guideHtml).toContain(`href="${href}"`);
     expect(guideHtml).toContain('为什么完成第4步后出现两个任务？');
   });
 
