@@ -7462,7 +7462,7 @@
     {
       "id": "R28-V1-XLSX-NAMESPACE-BOUND-001",
       "title": "XLSX preflight flattens XML attributes and can hide allocation bounds from ExcelJS",
-      "status": "confirmed",
+      "status": "fixed_diff_verified",
       "severity": "medium",
       "confidence": "high",
       "classification": "pre_existing",
@@ -7486,7 +7486,9 @@
       "scope": {
         "component": "Free workbook XLSX preflight before ExcelJS allocation",
         "affected_files": [
-          "apps/web/src/features/free-workbook/xlsx.ts"
+          "apps/web/src/features/free-workbook/xlsx.ts",
+          "apps/web/src/features/free-workbook/xlsx-namespaces.ts",
+          "apps/web/src/features/free-workbook/xlsx-namespaces.test.ts"
         ],
         "entry_points": [
           "readFreeWorkbook",
@@ -7498,7 +7500,7 @@
         "reachable": true,
         "production_exposed": null,
         "reproduction_path": "inspectCatalogArchive accepts ordinary CRC-valid XML attributes. For col min=1 max=4294967294 evil:max=1 with evil bound to urn:synthetic, real preflight XMLParser with removeNSPrefix:true and attributeNamePrefix:'' produces max=1, while real ExcelJS ColXform reads literal max=4294967294. ExcelJS Column.fromModel then has while(count<=col.max) push(new Column(...)); this allocation was deliberately not executed. In a second actual parse, row evil:c='' overwrites its c child and can hide cells from preflight checks. Authenticated user selection of a crafted XLSX reaches this local parser; no server write is needed.",
-        "proof_gap": "No browser crash, OOM, full oversized-workbook load or production exposure was tested. Medium severity reflects a user-triggered client resource-exhaustion boundary, not unauthenticated server impact. Repair, exact final diff review, immutable build and GUI import are pending and must be recorded separately. Existing ZIP byte/entry/CRC limits do not bound ExcelJS allocation indices after parser disagreement."
+        "proof_gap": "Old defect reproduced with harmless real-parser inputs and allocation source trace; no OOM or production exposure claimed. Exact merged repair closes parser disagreement, independently100pass/0skip. Final candidate build, browser import/save/readback and Office acceptance remain separate and pending; Docker cold-backup hold prevents runtime verification."
       },
       "root_cause_cluster": "FREE_WORKBOOK_XML_ATTRIBUTE_NAMESPACE_PREFLIGHT_ALLOCATION_20261022",
       "security_invariants": [],
@@ -7509,26 +7511,63 @@
       },
       "fix": {
         "task_id": "TRUCK-COLOR-V1-CONTINUE-20261020-R02",
-        "branch": null,
-        "commit": null,
-        "tree": null,
-        "changed_files": []
+        "branch": "codex/design-convergence-20261019",
+        "commit": "cef82c528980198dfbae62a6e5acdb94bb7cbdda",
+        "tree": "c18d7b5eb5f61b7ab2655c232ff3dbad07d88cea",
+        "changed_files": [
+          "apps/web/src/features/free-workbook/xlsx.ts",
+          "apps/web/src/features/free-workbook/xlsx-namespaces.ts",
+          "apps/web/src/features/free-workbook/xlsx-namespaces.test.ts"
+        ]
       },
       "verification": {
         "targeted": {
-          "status": "pending",
-          "binding": null,
-          "notes": "Confirmed old parser disagreement; fix validation not yet frozen."
+          "status": "pass",
+          "binding": {
+            "commit": "f11c05f6c2b84a78fa80f80b46a7fee8739efffa",
+            "tree": "9c2dd94e475d5798d02d9da9d492ccabca43ae4f",
+            "tool_version": "Node v24.14.0; pnpm9.15.4; Vitest4.1.11",
+            "config_sha256": "d96a07aa3f39bf74bcf855ef5ad2e7c8ec7f799465f19c38fa0440f30d41e896",
+            "recorded_at": "2026-10-22T05:45:04.570169+00:00",
+            "tool_name": "Frozen targeted and affected XLSX regression",
+            "command": "pnpm --filter @feishu-timeline/web exec vitest run src/features/free-workbook/xlsx-namespaces.test.ts src/features/free-workbook/xlsx.test.ts src/features/color-register/sheet-exchange.test.ts src/features/free-workbook/background-io.test.ts src/features/free-workbook/background-retry.test.ts",
+            "environment": "Clean isolated author source f11c05f; exact three merged blobs independently equal cef82c5;100 tests pass,0skip. No Docker, database, browser or Office validation.",
+            "result_sha256": "7cbdad9956123fada93428ecc85b4500bae3cdfb12684b46c74d6170039230b3",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/namespace-20261022/v1-xlsx-namespaces-20261022-verification.json"
+          },
+          "notes": "Literal @_ attributes prevent foreign attribute/child collisions; ambiguous attrs and singleton duplicates rejected before ExcelJS; original known-prefix artifact imports under bounded regression."
         },
         "affected_regression": {
-          "status": "pending",
-          "binding": null,
-          "notes": "Await exact namespace/bounds patch and existing XLSX regression."
+          "status": "pass",
+          "binding": {
+            "commit": "f11c05f6c2b84a78fa80f80b46a7fee8739efffa",
+            "tree": "9c2dd94e475d5798d02d9da9d492ccabca43ae4f",
+            "tool_version": "Node v24.14.0; pnpm9.15.4; Vitest4.1.11",
+            "config_sha256": "d96a07aa3f39bf74bcf855ef5ad2e7c8ec7f799465f19c38fa0440f30d41e896",
+            "recorded_at": "2026-10-22T05:45:04.570169+00:00",
+            "tool_name": "Frozen targeted and affected XLSX regression",
+            "command": "pnpm --filter @feishu-timeline/web exec vitest run src/features/free-workbook/xlsx-namespaces.test.ts src/features/free-workbook/xlsx.test.ts src/features/color-register/sheet-exchange.test.ts src/features/free-workbook/background-io.test.ts src/features/free-workbook/background-retry.test.ts",
+            "environment": "Clean isolated author source f11c05f; exact three merged blobs independently equal cef82c5;100 tests pass,0skip. No Docker, database, browser or Office validation.",
+            "result_sha256": "7cbdad9956123fada93428ecc85b4500bae3cdfb12684b46c74d6170039230b3",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/namespace-20261022/v1-xlsx-namespaces-20261022-verification.json"
+          },
+          "notes": "5files100pass0skip include XLSX, images/relationships, sheet exchange and background IO/retry; 5MiB/512entries/20MiB bounds retained. Source artifact unchanged."
         },
         "diff_review": {
-          "status": "pending",
-          "binding": null,
-          "notes": "Separate reviewer identified the defect; final repair diff not yet frozen."
+          "status": "pass",
+          "binding": {
+            "commit": "cef82c528980198dfbae62a6e5acdb94bb7cbdda",
+            "tree": "c18d7b5eb5f61b7ab2655c232ff3dbad07d88cea",
+            "tool_version": "Node v24.14.0; pnpm9.15.4; Vitest4.1.11",
+            "config_sha256": "d96a07aa3f39bf74bcf855ef5ad2e7c8ec7f799465f19c38fa0440f30d41e896",
+            "recorded_at": "2026-10-22T05:45:04.570169+00:00",
+            "tool_name": "Independent read-only exact diff review and regression",
+            "command": "Inspect final3-file diff, independently run100 tests, then compare all3 source blobs at final author f11c05f and merged cef82c5",
+            "environment": "Separate independent_review context;100pass/0skip; no new confirmed blocker. Merged source identity record SHA5db8bb2e542e8ee8157a0cd0d3aeb853fe08a85d2be0a8a8382aa4592f874dfe. No release/product approval.",
+            "result_sha256": "33b80ce207de096b5fb1394a310d9824bb01006f3b4b2432da5d88df84e59542",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/namespace-20261022/v1-xlsx-namespaces-20261022-independent-review.json"
+          },
+          "notes": "Independent exact final3-file review and100test rerun; root merge blobs confirmed. Full security clearance and runtime acceptance not claimed."
         },
         "full_regression": {
           "status": "pending",
@@ -7553,6 +7592,60 @@
           "reason": "Two harmless synthetic inputs reproduced namespace-bound attribute override and attribute/child collision with current installed parsers; source trace shows the unbounded allocation consumer. No OOM or production event is asserted.",
           "approval_id": null,
           "binding": null
+        },
+        {
+          "at": "2026-10-22T05:45:04.570169+00:00",
+          "transition": "confirmed->accepted_for_fix",
+          "actor": "Codex root; independent verification by independent_review",
+          "reason": "Existing owner task authorizes necessary implementation and security repair; no risk acceptance.",
+          "approval_id": null,
+          "binding": null
+        },
+        {
+          "at": "2026-10-22T05:45:04.570169+00:00",
+          "transition": "accepted_for_fix->in_progress",
+          "actor": "Codex root; independent verification by independent_review",
+          "reason": "Implement known-URI scope-aware namespace normalization and literal preflight attributes with unchanged ZIP limits.",
+          "approval_id": null,
+          "binding": null
+        },
+        {
+          "at": "2026-10-22T05:45:04.570169+00:00",
+          "transition": "in_progress->fixed_target_verified",
+          "actor": "Codex root; independent verification by independent_review",
+          "reason": "Frozen target and affected regression100pass0skip; final source blobs match merged cef82c5.",
+          "approval_id": null,
+          "binding": {
+            "commit": "f11c05f6c2b84a78fa80f80b46a7fee8739efffa",
+            "tree": "9c2dd94e475d5798d02d9da9d492ccabca43ae4f",
+            "tool_version": "Node v24.14.0; pnpm9.15.4; Vitest4.1.11",
+            "config_sha256": "d96a07aa3f39bf74bcf855ef5ad2e7c8ec7f799465f19c38fa0440f30d41e896",
+            "recorded_at": "2026-10-22T05:45:04.570169+00:00",
+            "tool_name": "Frozen targeted and affected XLSX regression",
+            "command": "pnpm --filter @feishu-timeline/web exec vitest run src/features/free-workbook/xlsx-namespaces.test.ts src/features/free-workbook/xlsx.test.ts src/features/color-register/sheet-exchange.test.ts src/features/free-workbook/background-io.test.ts src/features/free-workbook/background-retry.test.ts",
+            "environment": "Clean isolated author source f11c05f; exact three merged blobs independently equal cef82c5;100 tests pass,0skip. No Docker, database, browser or Office validation.",
+            "result_sha256": "7cbdad9956123fada93428ecc85b4500bae3cdfb12684b46c74d6170039230b3",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/namespace-20261022/v1-xlsx-namespaces-20261022-verification.json"
+          }
+        },
+        {
+          "at": "2026-10-22T05:45:04.570169+00:00",
+          "transition": "fixed_target_verified->fixed_diff_verified",
+          "actor": "Codex root; independent verification by independent_review",
+          "reason": "Separate read-only context reviewed exact3-file repair, reran100tests and confirmed root merged blobs.",
+          "approval_id": null,
+          "binding": {
+            "commit": "cef82c528980198dfbae62a6e5acdb94bb7cbdda",
+            "tree": "c18d7b5eb5f61b7ab2655c232ff3dbad07d88cea",
+            "tool_version": "Node v24.14.0; pnpm9.15.4; Vitest4.1.11",
+            "config_sha256": "d96a07aa3f39bf74bcf855ef5ad2e7c8ec7f799465f19c38fa0440f30d41e896",
+            "recorded_at": "2026-10-22T05:45:04.570169+00:00",
+            "tool_name": "Independent read-only exact diff review and regression",
+            "command": "Inspect final3-file diff, independently run100 tests, then compare all3 source blobs at final author f11c05f and merged cef82c5",
+            "environment": "Separate independent_review context;100pass/0skip; no new confirmed blocker. Merged source identity record SHA5db8bb2e542e8ee8157a0cd0d3aeb853fe08a85d2be0a8a8382aa4592f874dfe. No release/product approval.",
+            "result_sha256": "33b80ce207de096b5fb1394a310d9824bb01006f3b4b2432da5d88df84e59542",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/namespace-20261022/v1-xlsx-namespaces-20261022-independent-review.json"
+          }
         }
       ]
     }
