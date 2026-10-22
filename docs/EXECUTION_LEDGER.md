@@ -8399,3 +8399,7 @@ main ref与tag未改变。这里仅追加指针，保留原有未提交交接文
 - 本日只读GitHub main仍9bdec286/CI38866594479 failure；无push/main merge/production/扫描VM启动。详情和证据继续在[V1入口](acceptance/TRUCK_COLOR_V1_COMPLETION_20261020.md)，不建立新状态账本。冷备解除并获准后再复核原资源并恢复预览，整体PARTIAL / AWAITING_PRODUCT_OWNER_CONFIRMATION。
 
 - R08增量：API/Web同身份不可变构建wrapper均0，release materials-r08-189a8c471b62 / buildTime2026-10-22T05:50:53Z，manifest分别0919f9d3…/1e001f73…；7命令均0，54迁移checksum未变/未migrate，仅Darwin制品。原文报告已实际回报获准ChatGPT会话，反馈待回读；Docker与运行服务继续停止，不能以制品身份替代runtime。详见V1入口R08段。
+
+- ChatGPT实际反馈9605e8ba已回读：认可R08制品准备、尚未运行，无新增已确证代码整改；4×2筛选Office往返可按cbe范围收口。293SKIP使最终G3仍PARTIAL，单次IN_APP扫描不证明自动调度；XLSX原件兼容、既有生产入口边界断言索引、双表Office、A12/A14及原运行验收继续。所有者冷备/重启许可仍是外部边界，产品未到签收。全文与适用范围见V1入口本轮反馈段。
+
+- 冷备外续接：安全索引补强发现旧属性测试有重复cols干扰，已在4e5e9ab仅修测试隔离，真实入口73目标/30独立PASS，生产/R08字节未变，Finding仍fixed_diff_verified。Office全新只读副本一次脚本另存尝试在打开阶段-1712超时、无out，原件/input不变；随后CUA实报Mac锁屏，已请手动解锁，后续只走cua_repl。Docker仍OFF，完整Office及运行门禁未通过。细节/原失败见同一V1入口。

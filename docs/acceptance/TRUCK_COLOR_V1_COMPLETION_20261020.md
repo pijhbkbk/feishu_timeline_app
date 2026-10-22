@@ -8,7 +8,7 @@
 - WORKSPACE：`/Users/lixiaochen/Downloads/feishu_timeline_app`
 - SOURCE_ID：`codex/design-convergence-20261019`，应用候选 `189a8c471b624f8e8e3e8f903b2185f3bf0b7f69`、tree `3dd0358fcbd6cd87b64b5747b67923a3197012cb`；原Ledger补丁与未跟踪媒体保留。
 - RUNTIME_ID：**STOPPED（2026-10-22）**。3490/3491/3492及隔离PG/Redis已停止，Docker正在冷备，所有者明确“冷备尚在进行，暂不启动 Docker”。最后已验证运行身份仅为历史 `cbe1b35922462325738129c857176fbf24bbc4e5` / tree `d4d12ad0ea544e91939ddcf2e86632707827e542` / release `materials-r04-api-cbe1b3592246` / buildTime `2026-10-20T09:43:35Z`；不是当前在线版本。旧PID不再作为运行依据，新候选纯构建中。
-- CURRENT_ITEM：合法前缀XLSX导入修复及边界解析安全修复已合入并独审；系统导览按实际周评、获准成员共同维护、年度13个月与20台保留口径修正。最终候选G3与同身份API/Web不可变构建已完成、尚未运行；A12/A14/双成员提醒/Office往返和恢复等依赖服务恢复。
+- CURRENT_ITEM：合法前缀XLSX导入修复及边界解析安全修复已合入并独审；系统导览按实际周评、获准成员共同维护、年度13个月与20台保留口径修正。候选无DB代码检查与同身份API/Web不可变构建已完成、尚未运行；G3数据库/Redis门禁未完成；A12/A14/双成员提醒/Office往返和恢复等依赖服务恢复。
 - COMPLETED_DELTA：完整读取实际Gmail `1a157ab3b180f4aa`；14529字符、35023字节，文件与实际邮件 instruction 完全一致，SHA256 `1d4eb08ae4a7271b91a1f7103676b5b1140a0340b455d4c24caafb761a40e3d4`。来源聊天的真实人类授权已核对，所有者在本聊天另明确授权回报新会话「轻卡定制色验收目标」。
 - EVIDENCE：`var/truck-color-v1-20261020/receipt-R02.json`；前次已接受结果 `var/chatgpt-followup-20261020/materials-completion.json`；既有 [DESIGN_CONVERGENCE](DESIGN_CONVERGENCE_20261019.md)。
 - OPEN_BLOCKERS：所有者冷备hold期间不启动Docker/容器/预览。A07产量实际应用、A12/A14、双成员GUI提醒、最终浏览器导入/保存读回、Safari、完整Office往返、性能和最终恢复仍待。正式CI旧failure未改；当前通知队列false，不启用全队列制造提醒。
@@ -210,3 +210,22 @@ R08独立制品复核已完成：实际重算git archive/tree、四身份、Web�
 
 
 A14恢复准备补录：新只读helper与准备索引/独审已原字节持久化至 `a14-readback-prepared-20261022/`。固定直连loopback3490、前后核对API/Web四身份，业务仅GET，原脚本/结果保留、wx不覆盖，增加源值/样式、3稳定ID/版本、4事实与口径/未拆分断言。仅node --check通过，未网络/登录/读凭据或业务验证，状态PREPARATION_REVIEWED/NOT_EXECUTED。独审SHA `e1293a6ebe4fafd96872d3f49c6b7b4cbcfe38f1e53cdfae88606d0475414600`。首次实际映射仍需GUI捕获fullJSONHash并与originalSource.fileHash比较，不得用snapshotHash替代或以helper单独声称初始内容对应。
+
+
+### ChatGPT本轮实际反馈9605e8ba（2026-10-22）
+
+实际回读反馈 `9605e8ba-0def-5b3c-82f4-24177f4707dd`，全文保存 `chatgpt-feedback-9605e8ba-20261022.{txt,json}`。其结论仅依据本机报告：R08可登记“已提交、同身份API/Web制品成功、尚未启动验收”；没有新增已确证代码整改，不代表对方读取了本机文件或所有者签收。此前“反馈尚待”是对应时刻历史事实，本段更新为已读回。
+
+- XLSX兼容原件的3870字节/hash/数据结构须在最终R08实际导入→保存→刷新读回；安全finding继续fixed_diff_verified，既有100项目标/独审不机械重做。补现有断言对实际生产解析入口与分配边界对应关系的具体索引，不能用正常导入成功替代安全边界、也不执行OOM。
+- 单次IN_APP管理员扫描方案可用，但通道限定不等于只扫本样例；实际执行前核对合成环境整体扫描范围/接收人。取得适用任务生成、应收成员登录可见、重复扫描去重三项；两成员共维与通知收件条件分别验证。**管理员单次扫描不证明定时自动触发**，依赖该调度/队列的最终交付配置仍须实际触发证据；目前不要求开全队列或外部邮件。
+- A14统计三个指标不呈现为互斥可相加分组；/guide和两处A11提示只补受影响页面，不重演已接受整条链。
+- 最终G3仍为PARTIAL：293数据库/Redis SKIP保持未执行。冷备解除后补本次变化及原合同要求的门禁，按输入身份复用未受影响真实PG证据，不为消总数机械跑所有历史。远端旧CI不代表R08，本地exit0不替代候选所需CI证据。
+- 4×2小型筛选文件Office路径按cbe/原显式转换范围可收口，无需重跑；双表Save As原因未明与完整往返仍阻断，继续实际保存副本再回导。
+- 所有者当前介入只限冷备完成和重启许可，产品签收尚未到提交阶段。A11/A08/A07/A13已接受范围保持；继续独立代码/证据工作，不另发全面盘点或重复派发。修改邮件查询未见本轮新邮件，未发邮件。
+
+
+### 安全入口证据补强与Office独立尝试
+
+ChatGPT要求的生产入口/分配边界索引已完成，副本 `namespace-20261022/v1-xlsx-namespace-production-boundary-index-20261022-final.json` SHA `6d4b389ee84bd16b97df12884213a5d8f9b87831776f7f674d2776eebb0d6ddb`。它区分真实readFreeWorkbook+真实ExcelJS正例、入口拒绝且load未调用、仅helper与未覆盖变体。索引识别旧other:max用例另注入第二cols的干扰，已只改测试为替换唯一cols并断言前后一个容器；有无混淆属性分别精确拒绝于namespace/index guard，且ExcelJS load均0调用。新test-only提交4e5e9ab778af399db31ce26cdcf73db69c8dc7ae/tree43500aa8fa4a3900859d1772edd57331b63bd154，目标两文件73PASS、独立单文件30PASS/0SKIP；独审SHA `2bb634d023b0c0409552656bb4d2d854a2af3487ccbaf372a14331d32db2c56b`。原100报告不改写，生产字节/锁/schema均与R08相同，不重建同字节制品；唯一Finding仍fixed_diff_verified，补充当前目标绑定，不执行OOM。
+
+Office经实际Excel16.114官方字典核对，另存的静态受控方案独审通过；根对全新只读input副本执行一次脚本接口尝试，未操作原已打开工作簿。实际在OPEN_INPUT_COPY阶段返回-1712超时，resultMayBeUnknown保留，输出文件不存在，原件和input字节hash不变；未重试/关闭Excel/改全局设置。随后cua_repl实际报告Mac锁屏、自动解锁失败；不据此断言超时唯一原因，已请求所有者手动解锁，Docker停机条件仍不变。结果与静态独审副本在 `office-saveas-20261022-r01/`。这不是另存成功、GUI故障修复或Office通过。恢复CUA工具文档后，后续计算机交互仅使用cua_repl；不再通过脚本接口重试或扩大权限。
