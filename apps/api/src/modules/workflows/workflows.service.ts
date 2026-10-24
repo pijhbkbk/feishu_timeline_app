@@ -828,7 +828,11 @@ export class WorkflowsService {
       nodeIndex >= 0 && nodeIndex < workflowNodeCodes.length - 1
         ? workflowNodeCodes[nodeIndex + 1]
         : null;
-    const durationRule = this.buildDurationRule(nodeDefinition);
+    const performanceAnchor = detailedTask.nodeCode === WorkflowNodeCode.PERFORMANCE_TEST
+      ? readPerformanceArrivalAnchor(detailedTask.payload) : null;
+    const durationRule = performanceAnchor
+      ? '本轮首次有效到货起算 6 个日历月；月末取目标月最后一天，后续到货不重置'
+      : this.buildDurationRule(nodeDefinition);
     const feeFixedAmount = this.resolveNumericSystemParameter(
       systemParameters,
       'WORKFLOW',
@@ -1007,8 +1011,8 @@ export class WorkflowsService {
         currentNodeName: getCurrentNodeName(detailedTask.project.currentNodeCode),
       },
       schedule: {
-        durationType: nodeDefinition?.durationType ?? null,
-        durationValue: nodeDefinition?.durationValue ?? null,
+        durationType: performanceAnchor ? WorkflowDurationType.MONTH_OFFSET : nodeDefinition?.durationType ?? null,
+        durationValue: performanceAnchor ? 6 : nodeDefinition?.durationValue ?? null,
         ruleText: durationRule,
         startedAt: detailedTask.startedAt?.toISOString() ?? detailedTask.createdAt.toISOString(),
         createdAt: detailedTask.createdAt.toISOString(),

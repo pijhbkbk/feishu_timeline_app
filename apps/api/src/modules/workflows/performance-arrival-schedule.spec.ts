@@ -29,7 +29,60 @@ function fixture() {
   return { tx, spawn, source };
 }
 
+function interactionFixture(payload: Prisma.JsonValue, nodeCode: WorkflowNodeCode = WorkflowNodeCode.PERFORMANCE_TEST) {
+  const task = {
+    id: 'performance-2', projectId: 'project-1', workflowInstanceId: 'workflow-1', nodeCode,
+    nodeName: '性能试验', payload, status: 'COMPLETED', isActive: false, taskRound: 2,
+    createdAt: new Date('2026-10-20T08:09:18.807Z'), updatedAt: new Date('2026-10-24T06:48:26.935Z'),
+    completedAt: new Date('2026-10-24T06:48:26.935Z'), dueAt: new Date(anchor.dueAt), effectiveDueAt: new Date(anchor.dueAt),
+    project: { id: 'project-1', code: 'SYN-1', name: '合成性能试验', colors: [], members: [] },
+  };
+  const definition = { nodeCode, durationType: 'MONTH_OFFSET', durationValue: 4, stepCode: '09', isBlocking: false };
+  const db = {
+    workflowTask: { findUnique: vi.fn().mockResolvedValue(task), findMany: vi.fn().mockResolvedValue([task]) },
+    workflowNodeDefinition: { findUnique: vi.fn().mockResolvedValue(definition) },
+    reviewRecord: { findMany: vi.fn().mockResolvedValue([]) },
+    systemParameter: { findMany: vi.fn().mockResolvedValue([]) },
+    workflowTransition: { findMany: vi.fn().mockResolvedValue([]) },
+    auditLog: { findMany: vi.fn().mockResolvedValue([]) },
+    attachment: { findMany: vi.fn().mockResolvedValue([]) },
+  };
+  const access = { assertProjectAccessWithDefaultClient: vi.fn() };
+  const service = new WorkflowsService(db as never, {} as never, {} as never,
+    new WorkflowDeadlineService(), {} as never, access as never,
+    { now: () => new Date('2026-10-24T06:50:00Z') } as never);
+  return { service, task, definition, access };
+}
+
 describe('Performance feedback schedule from confirmed arrival', () => {
+  it('reports the frozen six-month arrival rule for a completed task despite the installed four-month catalog', async () => {
+    const { service, task, definition, access } = interactionFixture({ performanceArrivalAnchor: anchor });
+    const actor = { id: 'approved-member' };
+    const before = JSON.stringify({ task, definition });
+    const result = await service.getTaskInteractionDetail(task.id, actor as never);
+    expect(access.assertProjectAccessWithDefaultClient).toHaveBeenCalledWith('project-1', actor, 'project.read');
+    expect(result.schedule).toMatchObject({
+      durationType: 'MONTH_OFFSET', durationValue: 6,
+      ruleText: '本轮首次有效到货起算 6 个日历月；月末取目标月最后一天，后续到货不重置',
+      dueAt: anchor.dueAt, effectiveDueAt: anchor.dueAt, completedAt: task.completedAt.toISOString(),
+    });
+    expect(JSON.stringify({ task, definition })).toBe(before);
+  });
+
+  it.each([
+    [{}, WorkflowNodeCode.PERFORMANCE_TEST],
+    [{ performanceArrivalAnchor: anchor }, WorkflowNodeCode.PAINT_PROCUREMENT],
+  ] as const)('preserves the installed legacy rule without an applicable performance anchor', async (payload, nodeCode) => {
+    const { service, task } = interactionFixture(payload, nodeCode);
+    const result = await service.getTaskInteractionDetail(task.id, { id: 'approved-member' } as never);
+    expect(result.schedule).toMatchObject({ durationType: 'MONTH_OFFSET', durationValue: 4, ruleText: '按月偏移，4 个月' });
+  });
+
+  it('rejects an inconsistent anchor instead of displaying a fabricated six-month rule', async () => {
+    const { service, task } = interactionFixture({ performanceArrivalAnchor: { ...anchor, dueAt: '2027-03-01T15:59:59.999Z' } });
+    await expect(service.getTaskInteractionDetail(task.id, { id: 'approved-member' } as never)).rejects.toThrow('起算依据');
+  });
+
   it('refreshes only a fixed anchor projection and does not fetch unrelated task payloads', async () => {
     const dueAt = new Date(anchor.dueAt);
     const db = {

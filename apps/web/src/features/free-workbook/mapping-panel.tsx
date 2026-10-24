@@ -73,7 +73,7 @@ function ActorBusinessMappingPanel({ actorId, getSource, onClose, onApplied }: B
     void sourceGetter.current().then(async value => { const saved = await readBusinessApplyJournal(actorId, value.workbookId); if (!cancelled) { journalRevision.current = saved?.revision ?? null; setRestored(saved?.checkpoint ?? null); setSource(value); setLoadedActor(actorId); setDefinition(initialDefinition(value, value.snapshot.sheetOrder[0]!, { kind: 'person' })); } }).catch(cause => { if (!cancelled) setError(message(cause)); }).finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [sourceRetry, actorId]);
-  useEffect(() => { if (!target) return; const controller = new AbortController(); const signal = AbortSignal.any([controller.signal, AbortSignal.timeout(30000)]); setScopeLoading(true); setScopeError(''); setContext(null);
+  useEffect(() => { if (!target || restored) return; const controller = new AbortController(); const signal = AbortSignal.any([controller.signal, AbortSignal.timeout(30000)]); setScopeLoading(true); setScopeError(''); setContext(null);
     void (async () => {
       if (target.kind === 'production') {
         const choices = await readCatalog(signal); if (choices.totalPages > 40 || choices.items.length !== choices.total) throw new Error('颜色范围超过本次读取上限，请在产量业务页维护。');
@@ -88,7 +88,7 @@ function ActorBusinessMappingPanel({ actorId, getSource, onClose, onApplied }: B
       const value = await loadMappingContext(target, signal); if (!controller.signal.aborted) setContext(value);
     })().catch(cause => { if (!controller.signal.aborted) setScopeError(message(cause)); }).finally(() => { if (!controller.signal.aborted) setScopeLoading(false); });
     return () => controller.abort();
-  }, [target, activityPage, scopeRetry]);
+  }, [target, activityPage, scopeRetry, restored]);
   useEffect(() => { if (!locked) return; const guard = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ''; }; window.addEventListener('beforeunload', guard); return () => window.removeEventListener('beforeunload', guard); }, [locked]);
   const change = (value: BusinessMappingDefinition) => { if (started) return; setDefinition(value); setPreview(null); session.current = null; setError(''); };
   const updateTarget = (value: BusinessMappingTarget) => { if (definition) change({ ...definition, target: value }); };
@@ -165,7 +165,7 @@ function ActorBusinessMappingPanel({ actorId, getSource, onClose, onApplied }: B
       {restored.request ? <button type="button" className="m1-button m1-primary" disabled={busy} onClick={() => void recover()}>明确恢复并核实原请求</button> : <button type="button" className="m1-button" disabled={busy} onClick={() => void resetPreview()}>已核对回执，结束旧应用并重新映射</button>}
     </section> : null}
     {loadedActor === actorId && (restored?.phase === 'prepared' || session.current?.pending && !session.current.uncertain) ? <button type="button" className="m1-button" disabled={busy} onClick={() => void cancelUnsent()}>取消尚未发送的请求</button> : null}
-    {loadedActor === actorId && source && definition && target ? <>
+    {loadedActor === actorId && !restored && source && definition && target ? <>
       <p>来源：{source.snapshot.name} · 正式版本 {source.formalRevision} · 本次读取内容包含当前编辑值，应用不会替代工作簿保存。</p>
       <fieldset disabled={busy || started}><legend>1. 目标业务与关联范围</legend>
         <label>目标业务<select value={target.kind} onChange={event => { setActivityPage(1); const next = initialTarget(event.target.value as BusinessMappingTarget['kind']); change({ ...definition, target: next, fields: [], clearFields: [] }); }}>
