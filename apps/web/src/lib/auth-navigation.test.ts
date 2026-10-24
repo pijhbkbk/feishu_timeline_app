@@ -108,4 +108,37 @@ describe('native login destinations from authenticated permissions', () => {
       expect(allowed).toHaveBeenCalledExactlyOnceWith('project-a');
     }
   });
+  it.each([
+    '/projects/project-a/color-evaluation?from=project&tab=flow&originTask=task-a',
+    '/projects/project-a/color-evaluation?recurringTaskId=month-a',
+    '/projects/project-a/color-evaluation',
+    '/v2/projects/project-a/color-evaluation/',
+  ])('returns approved roles-empty members to precise visual review targets: %s', async target => {
+    const probe = vi.fn(async () => true);
+    const approved = { ...member, roleCodes: [], permissionCodes: [] };
+    expect(await resolveLoginDestination(approved, query(target), origin, probe))
+      .toBe(target.replace(/^\/v2/, '').replace(/\/$/, ''));
+    expect(probe).toHaveBeenCalledExactlyOnceWith('project-a');
+  });
+  it('keeps visual review returns behind the project permission probe and admission', async () => {
+    const target = query('/projects/project-a/color-evaluation?originTask=task-a');
+    for (const probe of [vi.fn(async () => false), vi.fn(async () => { throw new Error('unavailable'); })]) {
+      expect(await resolveLoginDestination(member, target, origin, probe)).toBe('/dashboard');
+      expect(probe).toHaveBeenCalledExactlyOnceWith('project-a');
+    }
+    const probe = vi.fn(async () => true);
+    expect(await resolveLoginDestination(pending, target, origin, probe)).toBe('/pending-access');
+    expect(probe).not.toHaveBeenCalled();
+  });
+  it.each([
+    '/projects/project-a/color-evaluation-extra', '/projects/project-a/color-evaluation/extra',
+    '//evil.example/projects/project-a/color-evaluation',
+    'https://evil.example/projects/project-a/color-evaluation',
+    '/projects/project-a%2fcolor-evaluation', '/projects/project-a%255ccolor-evaluation',
+  ])('does not broaden the visual review return allowlist: %s', async target => {
+    const probe = vi.fn(async () => true);
+    expect(await resolveLoginDestination(member, query(target), origin, probe)).toBe('/dashboard');
+    expect(probe).not.toHaveBeenCalled();
+  });
+
 });

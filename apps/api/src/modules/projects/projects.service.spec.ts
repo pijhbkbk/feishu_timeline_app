@@ -1,6 +1,7 @@
 import {
   ProjectPriority,
   ProjectStatus,
+  WorkflowNodeCode,
 } from '@prisma/client';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -165,6 +166,26 @@ function createService() {
 }
 
 describe('ProjectsService', () => {
+  it.each([
+    [0, 'CURRENT', 'IN_PROGRESS'], [0, 'PENDING', 'PENDING'],
+    [12, 'CURRENT', 'MONTHLY_TRACKING'], [12, 'COMPLETED', 'COMPLETED'],
+    [0, 'COMPLETED', 'COMPLETED'], [12, 'OVERDUE', 'OVERDUE'],
+    [12, 'RETURNED', 'RETURNED'], [0, 'RETURNED', 'RETURNED'],
+  ])('distinguishes actual reviews from retained historical periods (%s, %s)', (periods, status, expected) => {
+    const { service } = createService();
+    expect(service['resolveFlowMapNodeStatus']({
+      nodeCode: WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW, taskId: 'task-17', status,
+      monthlyReview: { totalPeriods: periods, completedPeriods: 0 }, colorExit: null,
+    })).toBe(expected);
+  });
+  it('does not invent historical tracking without a period summary or a task', () => {
+    const { service } = createService();
+    expect(service['resolveFlowMapNodeStatus']({ nodeCode: WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW,
+      taskId: 'task-17', status: 'CURRENT', monthlyReview: null, colorExit: null })).toBe('IN_PROGRESS');
+    expect(service['resolveFlowMapNodeStatus']({ nodeCode: WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW,
+      taskId: null, status: 'NOT_STARTED', monthlyReview: { totalPeriods: 12, completedPeriods: 0 }, colorExit: null })).toBe('NOT_STARTED');
+  });
+
   it('uses the explicit color identity and base in project list and workspace detail', () => {
     const { service } = createService();
     const color = { id: 'imported-base-color', name: '历史颜色', code: null, productionBaseId: 'base-shandong', productionBase: { id: 'base-shandong', name: '山东' } };

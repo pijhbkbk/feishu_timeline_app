@@ -22,4 +22,13 @@ describe('R26 business record remediation actions', () => {
       getR26BusinessRecordAction('UNKNOWN_NODE', 'project-1'),
     ).toBeNull();
   });
+  it('opens actual visual reviews without requiring a new monthly obligation', () => {
+    const action = getR26BusinessRecordAction('VISUAL_COLOR_DIFFERENCE_REVIEW', 'project-a');
+    expect(action?.href).toBe('/projects/project-a/color-evaluation');
+    expect(action?.label).toBe('办理目视色差评审');
+    expect(action?.guidance).toContain('按实际抽检日期');
+    expect(action?.guidance).toContain('已有历史期次');
+    expect(action?.guidance).not.toContain('已领取且到期');
+  });
+
 });

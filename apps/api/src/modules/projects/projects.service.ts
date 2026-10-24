@@ -2157,7 +2157,8 @@ export class ProjectsService {
     if (
       node.nodeCode === WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW &&
       node.status !== 'COMPLETED' &&
-      node.taskId
+      node.taskId &&
+      (node.monthlyReview?.totalPeriods ?? 0) > 0
     ) {
       return 'MONTHLY_TRACKING';
     }
