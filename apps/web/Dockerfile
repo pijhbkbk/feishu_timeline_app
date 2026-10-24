@@ -11,7 +11,7 @@ FROM scratch AS next-archive
 FROM ${NODE_IMAGE} AS openssl-base
 
 # Alpine 3.24 security revisions; Node's embedded OpenSSL is a separate input.
-RUN apk add --no-cache libcrypto3=3.5.9-r0 libssl3=3.5.9-r0 zlib=1.3.2-r1
+RUN apk add --no-cache libcrypto3=3.5.9-r0 libssl3=3.5.9-r0 zlib=1.3.2-r1 musl=1.2.6-r3 musl-utils=1.2.6-r3
 
 FROM openssl-base AS base
 
