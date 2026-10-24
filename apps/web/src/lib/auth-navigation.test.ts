@@ -48,6 +48,16 @@ describe('native login destinations from authenticated permissions', () => {
     }
     expect(await resolveLoginDestination(member, query('/admin/people/permissions'), origin, vi.fn())).toBe('/dashboard');
   });
+  it('returns approved roles-empty members to reminders without granting pending access', async () => {
+    const approved = { ...member, roleCodes: [], permissionCodes: [] };
+    const probe = vi.fn();
+    expect(loginHref('/notifications')).toBe('/login?returnTo=%2Fnotifications');
+    expect(await resolveLoginDestination(approved, query('/notifications'), origin, probe)).toBe('/notifications');
+    expect(await resolveLoginDestination(pending, query('/notifications'), origin, probe)).toBe('/pending-access');
+    expect(await resolveLoginDestination(approved, query('/notifications/unknown'), origin, probe)).toBe('/dashboard');
+    expect(await resolveLoginDestination(approved, query('https://evil.example/notifications'), origin, probe)).toBe('/dashboard');
+    expect(probe).not.toHaveBeenCalled();
+  });
   it('preserves a project deep link only after server read permission succeeds', async () => {
     const allowed = vi.fn(async () => true);
     expect(await resolveLoginDestination(member, query('/projects/project-a?taskId=task-a'), origin, allowed)).toBe('/projects/project-a?taskId=task-a');

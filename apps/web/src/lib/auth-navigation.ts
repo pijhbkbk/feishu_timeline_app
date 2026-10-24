@@ -31,7 +31,7 @@ export async function resolveLoginDestination(
   const destination = path + url.search + url.hash;
   if (path === '/account' || path === '/account/security') return destination;
   if (needsAssignment(user)) return fallback;
-  if (['/dashboard', '/projects', '/tasks', '/admin/people', '/admin/color-database', '/inspections', '/production', '/monthly-reviews', '/analytics'].includes(path)) return destination;
+  if (['/dashboard', '/projects', '/tasks', '/admin/people', '/admin/color-database', '/inspections', '/production', '/monthly-reviews', '/analytics', '/notifications'].includes(path)) return destination;
   const administrator = user.roleCodes.includes('admin') &&
     (user.isSystemAdmin || user.permissionCodes?.includes('system.manage'));
   if (path === '/admin/accounts' || path === '/admin/people/permissions') return administrator && user.isSystemAdmin ? destination : fallback;
