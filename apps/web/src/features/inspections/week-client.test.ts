@@ -21,4 +21,16 @@ describe('inspection server-scoped week queries', () => {
     await listActivities('', 1);
     expect(Object.fromEntries(query(0).searchParams)).toEqual({page: '1', pageSize: '25'});
   });
+  it('uses the same exact color and base for statistics and matching activities without implying a review association', async () => {
+    const signal = new AbortController().signal;
+    await listActivities('base-1', 1, range, signal, 'color & 2');
+    await readWeekStats('base-1', range, signal, 'color & 2');
+    for (const index of [0, 1]) {
+      expect(query(index).searchParams.get('colorId')).toBe('color & 2');
+      expect(query(index).searchParams.get('baseId')).toBe('base-1');
+      expect(query(index).searchParams.has('projectId')).toBe(false);
+      expect(query(index).searchParams.has('sampledProjectId')).toBe(false);
+    }
+    expect(apiRequest).toHaveBeenCalledTimes(2);
+  });
 });

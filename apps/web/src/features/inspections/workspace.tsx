@@ -13,8 +13,9 @@ import{ActivityForm,ChildForm,ObjectOccurrenceForm}from'./forms';
 import{ReviewLinkForm}from'./review-link';
 import{LinkedInspectionReview}from'./linked-review';
 import{InspectionImport,exportInspection}from'./exchange';
-import{message}from'./controls';
-import{listActivities,readActivity,readSnapshot,readStats,readWeekStats,saveFacts,type Activity,type Layer,type Page,type Snapshot,type Stats,type Measurement}from'./client';
+import{message,RemoteChoice}from'./controls';
+import{loadInspectionColors,loadInspectionProjects,readProjectColorScope,type ProjectColorScope}from'./query-scope';
+import{listActivities,readActivity,readSnapshot,readStats,readWeekStats,saveFacts,type Activity,type Layer,type Page,type Snapshot,type Stats,type Measurement,type Choice}from'./client';
 import{acknowledge,buildRows,columns,conclusionLabels,layerLabels,updateItems,validate,createReadingNormalizer,type RowMeta}from'./model';
 import'../color-register/sheet-workspace.css';
 import'./inspections.css';
@@ -25,7 +26,27 @@ export function InspectionsWorkspace({exchange}:{exchange?:InspectionExchange}){
  const{user}=useAuth();const canEdit=isApprovedTeamUser(user);
  const[bases,setBases]=useState<Array<{id:string;name:string}>>([]),[base,setBase]=useState(''),[page,setPage]=useState(1),[list,setList]=useState<Page<Activity>|null>(null),[activityId,setActivity]=useState(''),[error,setError]=useState(''),[loading,setLoading]=useState(true),[createActivity,setCreateActivity]=useState(false),[retry,setRetry]=useState(0);
  const[view,setView]=useState<'week'|'daily'>('week'),[weekDay,setWeekDay]=useState(()=>shanghaiToday()),[weekStats,setWeekStats]=useState<Stats|null>(null),[statsError,setStatsError]=useState('');
- const guard=useRef<(()=>Promise<boolean>)|null>(null);
+ const guard=useRef<(()=>Promise<boolean>)|null>(null),changeSequence=useRef(0);
+ const[scopeMode,setScopeMode]=useState<'all'|'color'|'project'>('all'),[scopeChoice,setScopeChoice]=useState<Choice|null>(null);
+ const[projectResult,setProjectResult]=useState<{key:string;value?:ProjectColorScope;error?:string}|null>(null),[projectRetry,setProjectRetry]=useState(0);
+ const accountKey=user?.id??'',projectId=scopeMode==='project'?scopeChoice?.id??'':'',projectKey=JSON.stringify([accountKey,projectId,projectRetry]);
+ const projectScope=projectResult?.key===projectKey?projectResult:null;
+ const scopeReady=scopeMode==='all'||scopeMode==='color'&&Boolean(scopeChoice)||scopeMode==='project'&&Boolean(projectScope?.value);
+ const queryBase=scopeMode==='project'?projectScope?.value?.baseId??'':base;
+ const queryColor=scopeMode==='color'?scopeChoice?.id:scopeMode==='project'?projectScope?.value?.colorId:undefined;
+ const scopeLabel=scopeMode==='project'?projectScope?.value?.label:scopeMode==='color'?scopeChoice?.label:undefined;
+ const loadChoices=useCallback((search:string,cursor:string|null,signal:AbortSignal)=>{
+  const bounded=AbortSignal.any([signal,AbortSignal.timeout(15000)]);
+  return scopeMode==='project'?loadInspectionProjects(search,cursor,bounded):loadInspectionColors(base,search,cursor,bounded);
+ },[scopeMode,base]);
+ useEffect(()=>{
+  if(!projectId)return;
+  const controller=new AbortController(),signal=AbortSignal.any([controller.signal,AbortSignal.timeout(15000)]);
+  void readProjectColorScope(projectId,signal).then(value=>{if(!controller.signal.aborted)setProjectResult({key:projectKey,value});})
+   .catch(cause=>{if(!controller.signal.aborted)setProjectResult({key:projectKey,error:message(cause)});});
+  return()=>controller.abort();
+ },[projectId,projectKey]);
+ useEffect(()=>{changeSequence.current++;setScopeMode('all');setScopeChoice(null);setProjectResult(null);setActivity('');setList(null);setWeekStats(null);setPage(1);},[accountKey]);
  const week=useMemo(()=>inspectionWeek(weekDay),[weekDay]);
  const range=view==='week'?week:undefined;
  const refresh=useCallback(()=>setRetry(n=>n+1),[]);
@@ -33,31 +54,43 @@ export function InspectionsWorkspace({exchange}:{exchange?:InspectionExchange}){
  useEffect(()=>{const controller=new AbortController();void apiRequest<{facets:{bases:Array<{id:string;name:string}>}}>('/color-register?pageSize=1',{signal:controller.signal}).then(data=>{if(!controller.signal.aborted)setBases(data.facets.bases);}).catch(cause=>{if(!controller.signal.aborted)setError(message(cause));});return()=>controller.abort();},[]);
  useEffect(()=>{
   const controller=new AbortController(),signal=AbortSignal.any([controller.signal,AbortSignal.timeout(15000)]);
-  setLoading(true);setError('');setList(null);
-  void listActivities(base,page,range,signal).then(data=>{if(!controller.signal.aborted){setList(data);setActivity(old=>old||data.items[0]?.id||'');}}).catch(cause=>{if(!controller.signal.aborted)setError(message(cause));}).finally(()=>{if(!controller.signal.aborted)setLoading(false);});
+  setLoading(scopeReady);setError('');setList(null);
+  if(!scopeReady)return()=>controller.abort();
+  void listActivities(queryBase,page,range,signal,queryColor).then(data=>{if(!controller.signal.aborted){setList(data);setActivity(old=>old||data.items[0]?.id||'');}}).catch(cause=>{if(!controller.signal.aborted)setError(message(cause));}).finally(()=>{if(!controller.signal.aborted)setLoading(false);});
   return()=>controller.abort();
- },[base,page,range,retry]);
+ },[queryBase,queryColor,scopeReady,page,range,retry,accountKey]);
  useEffect(()=>{
   const controller=new AbortController(),signal=AbortSignal.any([controller.signal,AbortSignal.timeout(15000)]);
   setWeekStats(null);setStatsError('');
-  if(range)void readWeekStats(base,range,signal).then(data=>{if(!controller.signal.aborted)setWeekStats(data);}).catch(cause=>{if(!controller.signal.aborted)setStatsError(message(cause));});
+  if(range&&scopeReady)void readWeekStats(queryBase,range,signal,queryColor).then(data=>{if(!controller.signal.aborted)setWeekStats(data);}).catch(cause=>{if(!controller.signal.aborted)setStatsError(message(cause));});
   return()=>controller.abort();
- },[base,range,retry]);
- async function change(run:()=>void){if(createActivity||guard.current&&!await guard.current())return;run();}
- function switchScope(run:()=>void){void change(()=>{run();setPage(1);setActivity('');});}
+ },[queryBase,queryColor,scopeReady,range,retry,accountKey]);
+ async function change(run:()=>void){const sequence=++changeSequence.current;if(createActivity||guard.current&&!await guard.current())return;if(sequence===changeSequence.current)run();}
+ function switchScope(run:()=>void){void change(()=>{run();setPage(1);setActivity('');setList(null);setWeekStats(null);setStatsError('');setRetry(n=>n+1);});}
  function selectWeek(value:string){try{inspectionWeek(value);switchScope(()=>setWeekDay(value));}catch(cause){setError(message(cause));}}
  function moveWeek(days:number){try{selectWeek(shiftDate(weekDay,days));}catch(cause){setError(message(cause));}}
  return<div className="inspection-module">
   <header className="inspection-intro"><div><h1>周评与日常检验</h1><p>按自然周核对实际抽检，一场可记录多个颜色与车辆；未抽检颜色不产生评审逾期。</p></div><Link className="m1-button" href="/monthly-reviews">查看历史月度台账</Link></header>
   <nav className="inspection-tabs" aria-label="检验查看方式"><button type="button" className="m1-button" aria-current={view==='week'?'page':undefined} onClick={()=>{if(view!=='week')switchScope(()=>setView('week'));}}>周评视图</button><button type="button" className="m1-button" aria-current={view==='daily'?'page':undefined} onClick={()=>{if(view!=='daily')switchScope(()=>setView('daily'));}}>日常活动（全部日期）</button></nav>
+  <section className="inspection-query-scope" aria-label="抽检查询范围">
+   <label>查询范围<select value={scopeMode} onChange={e=>{const mode=e.target.value as typeof scopeMode;switchScope(()=>{setScopeMode(mode);setScopeChoice(null);setProjectResult(null);});}}><option value="all">所选基地全部颜色</option><option value="color">按颜色</option><option value="project">按项目当前颜色</option></select></label>
+   {scopeMode!=='all'?<RemoteChoice key={JSON.stringify([accountKey,scopeMode,base])} label={scopeMode==='project'?'查询项目':'查询颜色'} value={scopeChoice} onSelect={choice=>switchScope(()=>{setScopeChoice(choice);setProjectResult(null);setProjectRetry(n=>n+1);})} load={loadChoices}/>:null}
+   {scopeMode!=='all'?<button className="m1-button" type="button" onClick={()=>switchScope(()=>{setScopeMode('all');setScopeChoice(null);setProjectResult(null);})}>清除颜色与项目筛选</button>:null}
+   {scopeMode==='project'&&scopeChoice&&!projectScope?<p role="status">正在核对项目的明确颜色与基地…</p>:null}
+   {projectScope?.error?<p role="alert" className="m1-error">{projectScope.error}</p>:null}
+   {scopeMode==='project'&&scopeChoice?<button className="m1-button" type="button" onClick={()=>switchScope(()=>setProjectRetry(n=>n+1))}>重新核对项目颜色</button>:null}
+   {scopeLabel?<p>当前抽检范围：{scopeLabel}。列表显示包含该颜色的活动，汇总仅计算该颜色台次；打开活动后保留整场所有颜色的事实。</p>:null}
+   {scopeMode==='project'?<p>按项目当前已明确关联的颜色与基地查询。正式评审仍需在活动中明确关联；本筛选不改变原项目、评审或历史记录。</p>:null}
+  </section>
   {range?<section className="inspection-week" aria-label="自然周范围">
    <div className="inspection-week-heading"><div><h2>{range.fromDate} — {range.toDate}</h2><p>周一至周日 · Asia/Shanghai（上海日期）</p></div><div className="inspection-week-controls"><button className="m1-button" type="button" onClick={()=>moveWeek(-7)}>上一周</button><label>选择周内日期<input type="date" value={weekDay} onChange={e=>{const value=e.target.value;if(value)selectWeek(value);}}/></label><button className="m1-button" type="button" onClick={()=>moveWeek(7)}>下一周</button><button className="m1-button" type="button" onClick={()=>switchScope(()=>setWeekDay(shanghaiToday()))}>回到本周</button></div></div>
-   {weekStats?<><dl className="inspection-stats inspection-week-stats">{[['本周活动',list?.total??'—'],['检验台次',weekStats.occurrences],['去重车辆',weekStats.uniqueVehicles],['待判定台次',weekStats.pending],['不合格台次',weekStats.failed]].map(([label,value])=><div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl><p>统计覆盖所选基地与本周全部已保存记录，跨活动按对象 ID 去重；下方列表每页 25 个活动。保存检验事实不会自动完成月度评审。</p></>:statsError?<p role="alert" className="m1-error">本周统计读取失败：{statsError}<button className="m1-button" onClick={refresh}>重试统计</button></p>:<p role="status">正在读取本周统计…</p>}
+   {!scopeReady?<p>请先选择并核对准确的{scopeMode==='project'?'项目颜色':'颜色'}，再查看本周统计。</p>:weekStats?<><dl className="inspection-stats inspection-week-stats">{[[queryColor?'涉及此色活动':'本周活动',list?.total??'—'],['检验台次',weekStats.occurrences],['去重车辆',weekStats.uniqueVehicles],['待判定台次',weekStats.pending],['不合格台次',weekStats.failed]].map(([label,value])=><div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl><p>统计覆盖{queryColor?'所选颜色、基地与本周的已保存台次':'所选基地与本周全部已保存记录'}，跨活动按对象 ID 去重；下方列表每页 25 个活动。保存检验事实不会自动完成月度评审。</p></>:statsError?<p role="alert" className="m1-error">本周统计读取失败：{statsError}<button className="m1-button" onClick={refresh}>重试统计</button></p>:<p role="status">正在读取本周统计…</p>}
   </section>:<p className="inspection-scope">日常活动按检验日期倒序分页，可继续查看与维护历史记录。</p>}
-  <section className="inspection-activity-picker" aria-label="选择检验活动"><label>活动基地<select value={base} onChange={e=>{const value=e.target.value;switchScope(()=>setBase(value));}}><option value="">全部基地</option>{bases.map(item=><option key={item.id} value={item.id}>{item.name}</option>)}</select></label><label>{range?'本周检验活动':'检验活动'}<select value={activityId} onChange={e=>{const value=e.target.value;void change(()=>setActivity(value));}}><option value="">请选择活动</option>{activityId&&!list?.items.some(item=>item.id===activityId)?<option value={activityId}>当前打开的活动（日期与基地见下方）</option>:null}{list?.items.map(item=><option key={item.id} value={item.id}>{item.activityDate.slice(0,10)} · {item.productionBase.name} · {item.batchLabel??'未填批次'} · {item._count?.occurrences??0} 台次</option>)}</select></label><button className="m1-button m1-button-primary" disabled={!canEdit} onClick={()=>void change(()=>setCreateActivity(true))}>{range?'新建本周活动':'新建检验活动'}</button><button className="m1-button" onClick={refresh}>刷新活动列表</button>{list?<span>共 {list.total} 个活动 · 第 {page} 页</span>:null}<button className="m1-button" disabled={page<=1||loading} onClick={()=>void change(()=>{setActivity('');setPage(n=>n-1);})}>上一页活动</button><button className="m1-button" disabled={!list||page*25>=list.total||loading} onClick={()=>void change(()=>{setActivity('');setPage(n=>n+1);})}>下一页活动</button></section>
+  <section className="inspection-activity-picker" aria-label="选择检验活动"><label>活动基地<select value={queryBase} disabled={scopeMode==='project'} onChange={e=>{const value=e.target.value;switchScope(()=>{setBase(value);setScopeChoice(null);});}}><option value="">全部基地</option>{bases.map(item=><option key={item.id} value={item.id}>{item.name}</option>)}</select></label><label>{range?'本周检验活动':'检验活动'}<select value={activityId} onChange={e=>{const value=e.target.value;void change(()=>setActivity(value));}}><option value="">请选择活动</option>{activityId&&!list?.items.some(item=>item.id===activityId)?<option value={activityId}>当前打开的活动（日期与基地见下方）</option>:null}{list?.items.map(item=><option key={item.id} value={item.id}>{item.activityDate.slice(0,10)} · {item.productionBase.name} · {item.batchLabel??'未填批次'} · {item._count?.occurrences??0} 台次（整场）</option>)}</select></label><button className="m1-button m1-button-primary" disabled={!canEdit||!scopeReady} onClick={()=>void change(()=>setCreateActivity(true))}>{range?'新建本周活动':'新建检验活动'}</button><button className="m1-button" onClick={refresh}>刷新活动列表</button>{list?<span>共 {list.total} 个活动 · 第 {page} 页</span>:null}<button className="m1-button" disabled={page<=1||loading} onClick={()=>void change(()=>{setActivity('');setPage(n=>n-1);})}>上一页活动</button><button className="m1-button" disabled={!list||page*25>=list.total||loading} onClick={()=>void change(()=>{setActivity('');setPage(n=>n+1);})}>下一页活动</button></section>
   {loading?<p role="status">正在读取活动列表…</p>:null}{error?<p role="alert" className="m1-error">{error}</p>:null}
-  {activityId?<ActivityWorkspace key={activityId} id={activityId} canEdit={canEdit} guardRef={guard} onRecordsChanged={refresh} {...(range?{dateRange:range}:{})} {...(exchange?{exchange}:{})}/>:!loading&&!error?<section className="inspection-empty"><h2>{range?'本周尚无检验活动':'尚未选择检验活动'}</h2><p>{range?'可新建本周真实活动，或切换周次与基地查看已有记录。':'新建真实检验活动后，选择车辆或样件、颜色，再填写测点和角度读数。'}</p></section>:null}
-  {createActivity?<ActivityForm bases={bases} initialDate={defaultActivityDate(range)} initialBaseId={base} {...(range?{dateRange:range}:{})} onClose={()=>setCreateActivity(false)} onCreated={id=>{setCreateActivity(false);setActivity(id);refresh();}}/>:null}
+  {queryColor&&activityId?<p className="inspection-scope">以下为所选活动整场详情，包含全部颜色；颜色筛选汇总见上方。</p>:null}
+  {scopeReady&&activityId?<ActivityWorkspace key={activityId} id={activityId} canEdit={canEdit} guardRef={guard} onRecordsChanged={refresh} {...(range?{dateRange:range}:{})} {...(exchange?{exchange}:{})}/>:scopeReady&&!loading&&!error?<section className="inspection-empty"><h2>{range?'本周尚无检验活动':'尚未选择检验活动'}</h2><p>{range?'可新建本周真实活动，或切换周次与基地查看已有记录。':'新建真实检验活动后，选择车辆或样件、颜色，再填写测点和角度读数。'}</p></section>:null}
+  {createActivity?<ActivityForm bases={bases} initialDate={defaultActivityDate(range)} initialBaseId={queryBase} {...(range?{dateRange:range}:{})} onClose={()=>setCreateActivity(false)} onCreated={id=>{setCreateActivity(false);setActivity(id);refresh();}}/>:null}
  </div>;
 }
 function SheetNavigationGuard({context}:{context:RecordWorkspaceContext<RowMeta>}) {
