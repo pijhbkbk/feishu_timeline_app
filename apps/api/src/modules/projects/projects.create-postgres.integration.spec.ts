@@ -59,12 +59,33 @@ describe.skipIf(!databaseUrl).sequential('project creation with real workflow an
     secondUrl.searchParams.set('application_name', waiterName);
     waiter = new PrismaClient({ datasources: { db: { url: secondUrl.toString() } } });
     await Promise.all([db.$connect(), waiter.$connect()]);
-    const user = await db.user.create({ data: { username: `rc2_${runId}`, name: 'RC2 local fixture', status: UserStatus.ACTIVE } });
-    actor = { id: user.id, username: user.username, name: user.name, email: null, departmentId: null, departmentName: null, isSystemAdmin: false, authSource: 'mock', roleCodes: ['project_manager'], permissionCodes: ['project.write', 'project.read'] };
+    // Exercise the current native member boundary before the transaction under
+    // test. No administrator or role grant is needed to create a team project.
+    const user = await db.user.create({ data: {
+      username: `rc2_${runId}`, name: 'RC2 local fixture', status: UserStatus.ACTIVE,
+      teamAccessApproved: true,
+      localCredential: { create: { loginName: `rc2_${runId}`, passwordHash: 'synthetic-no-login' } },
+    } });
+    actor = { id: user.id, username: user.username, name: user.name, email: null, departmentId: null, departmentName: null, isSystemAdmin: false, teamAccessApproved: true, authSource: 'local', authVersion: user.authVersion, roleCodes: [], permissionCodes: [] };
   });
 
   afterAll(async () => {
     await Promise.all([db?.$disconnect(), waiter?.$disconnect()]);
+  });
+
+  it('rejects a native account before team admission without business, command or audit writes', async () => {
+    const user = await db.user.create({ data: {
+      username: `rc2_pending_${runId}`, name: 'RC2 pending native fixture',
+      status: UserStatus.ACTIVE, teamAccessApproved: false,
+      localCredential: { create: { loginName: `rc2_pending_${runId}`, passwordHash: 'synthetic-no-login' } },
+    } });
+    const pending: AuthenticatedUser = { ...actor, id: user.id, username: user.username, name: user.name, authVersion: user.authVersion, teamAccessApproved: false };
+    const key = randomUUID();
+    const request = { ...input('pending admission'), ownerUserId: user.id };
+    await expect(services().projects.createProject(request, pending, key)).rejects.toMatchObject({ status: 403 });
+    expect(await db.project.count({ where: { ownerUserId: user.id } })).toBe(0);
+    expect(await db.projectCreateCommandRequest.count({ where: { actorUserId: user.id } })).toBe(0);
+    expect(await db.auditLog.count({ where: { actorUserId: user.id } })).toBe(0);
   });
 
   it('persists project, workflow, task, transition and both audit records', async () => {
@@ -157,16 +178,31 @@ describe.skipIf(!databaseUrl).sequential('project creation with real workflow an
     await assertPersisted(resultId(result), key);
   });
 
-  it('rejects an inactive owner without creating project or command rows', async () => {
+  it('rejects a now-inactive operator without creating project or command rows', async () => {
     const key = randomUUID();
     const request = input('inactive owner');
     await db.user.update({ where: { id: actor.id }, data: { status: UserStatus.INACTIVE } });
     try {
-      await expect(services().projects.createProject(request, actor, key)).rejects.toThrow();
+      await expect(services().projects.createProject(request, actor, key)).rejects.toMatchObject({ status: 403, message: '登录或人员授权已变化，请重新登录。' });
       expect(await db.project.count({ where: { name: request.name } })).toBe(0);
       expect(await db.projectCreateCommandRequest.count({ where: { actorUserId: actor.id, idempotencyKey: key } })).toBe(0);
     } finally {
       await db.user.update({ where: { id: actor.id }, data: { status: UserStatus.ACTIVE } });
     }
+  });
+
+  it('rejects an inactive owner selected by an active approved operator', async () => {
+    const owner = await db.user.create({ data: {
+      username: `rc2_inactive_owner_${runId}`, name: 'RC2 inactive owner fixture',
+      status: UserStatus.INACTIVE, teamAccessApproved: true,
+      localCredential: { create: { loginName: `rc2_inactive_owner_${runId}`, passwordHash: 'synthetic-no-login' } },
+    } });
+    const key = randomUUID();
+    const request = { ...input('inactive distinct owner'), ownerUserId: owner.id };
+    const auditBefore = await db.auditLog.count({ where: { actorUserId: actor.id } });
+    await expect(services().projects.createProject(request, actor, key)).rejects.toMatchObject({ status: 400, message: '所选项目成员不存在或已停用。' });
+    expect(await db.project.count({ where: { ownerUserId: owner.id } })).toBe(0);
+    expect(await db.projectCreateCommandRequest.count({ where: { actorUserId: actor.id, idempotencyKey: key } })).toBe(0);
+    expect(await db.auditLog.count({ where: { actorUserId: actor.id } })).toBe(auditBefore);
   });
 });
