@@ -8,6 +8,29 @@ import {
   LOCAL_DEVELOPMENT_BUILD_IDENTITY,
   type BuildIdentity,
 } from './build-identity';
+import { createReminderScope } from './notification-reminder-scope';
+
+describe('local scoped IN_APP reminder configuration', () => {
+  const scope = { projectIds: ['p1'], taskIds: ['t1'], recipientIds: ['u1'] };
+  const enabled = { DEPLOYMENT_ENV: 'local', NOTIFICATION_QUEUE_ENABLED: 'false',
+    NOTIFICATION_IN_APP_REMINDER_SCAN_ENABLED: 'true', NOTIFICATION_IN_APP_REMINDER_SCOPE_JSON: JSON.stringify(scope) };
+  it('is off by default and only enables with an exact explicit server scope', () => {
+    expect(resolveAppConfig({})).toMatchObject({ notificationInAppReminderScanEnabled: false, notificationInAppReminderScope: null });
+    expect(resolveAppConfig(enabled)).toMatchObject({ notificationQueueEnabled: false, notificationInAppReminderScanEnabled: true,
+      notificationInAppReminderScope: createReminderScope(scope), notificationInAppReminderScanMs: 300000 });
+  });
+  it.each([
+    { NOTIFICATION_QUEUE_ENABLED: undefined }, { NOTIFICATION_QUEUE_ENABLED: 'true' },
+    { NOTIFICATION_QUEUE_ENABLED: 'typo' }, { NOTIFICATION_IN_APP_REMINDER_SCOPE_JSON: '' },
+    { NOTIFICATION_IN_APP_REMINDER_SCOPE_JSON: '{}' }, { NOTIFICATION_IN_APP_REMINDER_SCAN_ENABLED: 'TRUE' },
+    { NOTIFICATION_IN_APP_REMINDER_SCAN_MS: '999' }, { NOTIFICATION_IN_APP_REMINDER_SCAN_MS: '86400001' },
+  ])('fails closed on invalid scoped configuration %#', override => {
+    expect(() => resolveAppConfig({ ...enabled, ...override })).toThrow(/NOTIFICATION_/);
+  });
+  it('cannot enable the isolated local mode in a protected deployment', () => {
+    expect(() => resolveAppConfig({ ...enabled, ...createProtectedEnvironment('staging') })).toThrow('requires local deployment');
+  });
+});
 
 const TEST_PROTECTED_BUILD_IDENTITY: BuildIdentity = Object.freeze({
   sourceCommit: '0123456789abcdef0123456789abcdef01234567',

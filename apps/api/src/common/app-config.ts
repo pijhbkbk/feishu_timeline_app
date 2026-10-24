@@ -8,6 +8,7 @@ import {
 } from './build-identity';
 import { API_UPLOAD_MAX_CONCURRENT_REQUESTS } from './upload-security.constants';
 import { resolveNativeAuthTrustedProxyIp } from './native-auth-client';
+import { parseReminderScopeJSON, type ReminderScope } from './notification-reminder-scope';
 
 export type AppConfig = {
   nodeEnv: string;
@@ -22,6 +23,9 @@ export type AppConfig = {
   databaseUrl: string;
   redisUrl: string;
   notificationQueueEnabled: boolean;
+  notificationInAppReminderScanEnabled: boolean;
+  notificationInAppReminderScanMs: number;
+  notificationInAppReminderScope: ReminderScope | null;
   notificationQueuePollMs: number;
   notificationOverdueScanMs: number;
   notificationRetryDelayMs: number;
@@ -470,6 +474,18 @@ export function resolveAppConfig(
     31_536_000_000,
   );
 
+  const scopedFlag = env.NOTIFICATION_IN_APP_REMINDER_SCAN_ENABLED;
+  if (scopedFlag !== undefined && scopedFlag !== 'true' && scopedFlag !== 'false') {
+    throw new Error('NOTIFICATION_IN_APP_REMINDER_SCAN_ENABLED must be true or false.');
+  }
+  const notificationInAppReminderScanEnabled = scopedFlag === 'true';
+  const notificationInAppReminderScope = env.NOTIFICATION_IN_APP_REMINDER_SCOPE_JSON
+    ? parseReminderScopeJSON(env.NOTIFICATION_IN_APP_REMINDER_SCOPE_JSON) : null;
+  if (notificationInAppReminderScanEnabled && (deploymentEnvironment !== 'local' ||
+      env.NOTIFICATION_QUEUE_ENABLED !== 'false' || !notificationInAppReminderScope)) {
+    throw new Error('NOTIFICATION_IN_APP_REMINDER_SCAN_ENABLED requires local deployment, explicit NOTIFICATION_QUEUE_ENABLED=false and a nonempty scope.');
+  }
+
   const notificationMemoryQueueMaxJobs = resolveBoundedInteger(
     'NOTIFICATION_MEMORY_QUEUE_MAX_JOBS',
     env.NOTIFICATION_MEMORY_QUEUE_MAX_JOBS,
@@ -571,6 +587,12 @@ export function resolveAppConfig(
     databaseUrl,
     redisUrl,
     notificationQueueEnabled: resolveBoolean(env.NOTIFICATION_QUEUE_ENABLED, true),
+    notificationInAppReminderScanEnabled,
+    notificationInAppReminderScope,
+    notificationInAppReminderScanMs: resolveBoundedInteger(
+      'NOTIFICATION_IN_APP_REMINDER_SCAN_MS', env.NOTIFICATION_IN_APP_REMINDER_SCAN_MS,
+      300000, 1000, 86400000,
+    ),
     notificationQueuePollMs: resolveBoundedInteger(
       'NOTIFICATION_QUEUE_POLL_MS',
       env.NOTIFICATION_QUEUE_POLL_MS,

@@ -72,12 +72,18 @@ export async function persistTaskReminder(tx: Prisma.TransactionClient, target: 
     linkPath: shared ? '/notifications' : target.kind === 'monthly' ? `/projects/${target.projectId}/color-evaluation?recurringTaskId=${target.id}` : `/projects/${target.projectId}/tasks/${target.id}`,
     dedupeKey, sendChannel: 'IN_APP', sendStatus: 'SENT', ...(!shared ? binding : {}),
   }], skipDuplicates: true });
-  const notification = await tx.notification.findUniqueOrThrow({ where: { sendChannel_dedupeKey: { sendChannel: 'IN_APP', dedupeKey } }, select: { id: true } });
+  const notification = await tx.notification.findUniqueOrThrow({ where: { sendChannel_dedupeKey: { sendChannel: 'IN_APP', dedupeKey } },
+    select: { id: true, assignmentEpoch: true, stageTaskId: true, recurringTaskId: true } });
   if (!shared) {
     // Rebind when the same immutable task returns to this recipient, preserving its read state and creation time.
-    await tx.notification.updateMany({ where: { id: notification.id }, data: binding });
+    // An unchanged replay must also preserve updatedAt; Prisma updates it even for identical data.
+    if (notification.assignmentEpoch !== binding.assignmentEpoch || notification.stageTaskId !== binding.stageTaskId || notification.recurringTaskId !== binding.recurringTaskId) {
+      await tx.notification.updateMany({ where: { id: notification.id }, data: binding });
+    }
   } else {
-    await tx.notificationDigestItem.upsert({ where: { notificationId_taskKey: { notificationId: notification.id, taskKey: `${target.kind}:${target.id}` } },
+    const key = { notificationId: notification.id, taskKey: `${target.kind}:${target.id}` };
+    const item = await tx.notificationDigestItem.findUnique({ where: { notificationId_taskKey: key }, select: { stageTaskId: true, assignmentEpoch: true } });
+    if (!item || item.stageTaskId !== target.stageTaskId || item.assignmentEpoch !== target.epoch) await tx.notificationDigestItem.upsert({ where: { notificationId_taskKey: key },
       create: { notificationId: notification.id, taskKey: `${target.kind}:${target.id}`, projectId: target.projectId,
         workflowTaskId: target.kind === 'ordinary' ? target.id : null, recurringTaskId: target.kind === 'monthly' ? target.id : null,
         stageTaskId: target.stageTaskId, assignmentEpoch: target.epoch },

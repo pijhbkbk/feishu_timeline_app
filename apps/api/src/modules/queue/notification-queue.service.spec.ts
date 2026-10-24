@@ -5,12 +5,13 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { NotificationLinkPathValidationError } from '../notifications/notification-link-path.rules';
 import { TaskRemindersService } from '../notifications/task-reminders.service';
 import { NotificationQueueService } from './notification-queue.service';
+import { createReminderScope } from '../../common/notification-reminder-scope';
 
 function createService(options?: {
   redisFails?: boolean;
   redisError?: Error;
   processorFailsOnce?: boolean;
-  config?: Record<string, boolean | number>;
+  config?: Record<string, unknown>;
 }) {
   let shouldFail = options?.processorFailsOnce ?? false;
   const redisDedupeKeys = new Set<string>();
@@ -143,6 +144,62 @@ afterEach(() => {
 });
 
 describe('NotificationQueueService', () => {
+  it('runs exactly one scoped IN_APP timer without starting global workers and stops cleanly', async () => {
+    vi.useFakeTimers();
+    const scope = createReminderScope({ projectIds: ['p1'], taskIds: ['t1'], recipientIds: ['u1'] });
+    const { service, redisService, notificationsService } = createService({ config: {
+      notificationQueueEnabled: false, deploymentEnvironment: 'local', notificationInAppReminderScanEnabled: true,
+      notificationInAppReminderScope: scope, notificationInAppReminderScanMs: 1000,
+    } });
+    const scan = vi.spyOn(TaskRemindersService.prototype, 'scan').mockResolvedValue({ scanned: 1, enqueued: 1, skipped: false, hasMore: false, markedOverdue: 0 });
+    const log = vi.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined);
+    const error = vi.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+    const pending = vi.spyOn(service, 'processPendingJobs');
+    try {
+      service.onModuleInit(); expect(vi.getTimerCount()).toBe(1); expect(scan).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(scan).toHaveBeenCalledWith('ordinary', expect.any(Date), scope);
+      expect(log.mock.calls.join()).toContain('origin=scheduled');
+      expect(log.mock.calls.join()).toContain('recipientAttempts=1');
+      scan.mockRejectedValueOnce(new Error('private-recipient-data'));
+      await vi.advanceTimersByTimeAsync(1000); await vi.advanceTimersByTimeAsync(1000);
+      expect(scan).toHaveBeenCalledTimes(3); expect(JSON.stringify(error.mock.calls)).not.toContain('private-recipient-data');
+      await service.processOverdueScan();
+      expect(scan).toHaveBeenLastCalledWith('ordinary', expect.any(Date), scope);
+      expect(await service.processMonthlyReviewSchedule()).toMatchObject({ skipped: true });
+      expect(pending).not.toHaveBeenCalled(); expect(redisService.execute).not.toHaveBeenCalled();
+      expect(notificationsService.processQueuedNotification).not.toHaveBeenCalled();
+      service.beginShutdown(); expect(vi.getTimerCount()).toBe(0); expect(service.isShutdownIdle()).toBe(true);
+      const count = scan.mock.calls.length; await vi.advanceTimersByTimeAsync(5000); await service.processDueReminderScan();
+      expect(scan).toHaveBeenCalledTimes(count);
+    } finally { service.onModuleDestroy(); vi.useRealTimers(); }
+  });
+
+  it('serializes manual and automatic scoped ticks and includes an active scan in shutdown', async () => {
+    vi.useFakeTimers();
+    const scope = createReminderScope({ projectIds: ['p'], taskIds: ['t'], recipientIds: ['u'] });
+    const { service } = createService({ config: { notificationQueueEnabled: false, deploymentEnvironment: 'local',
+      notificationInAppReminderScanEnabled: true, notificationInAppReminderScope: scope, notificationInAppReminderScanMs: 1000 } });
+    let release!: () => void; const held = new Promise<void>(resolve => { release = resolve; });
+    const scan = vi.spyOn(TaskRemindersService.prototype, 'scan').mockImplementation(async () => { await held; return { scanned: 1, enqueued: 1, skipped: false, hasMore: false, markedOverdue: 0 }; });
+    vi.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined);
+    try {
+      const manual = service.processDueReminderScan(); service.onModuleInit(); await vi.advanceTimersByTimeAsync(1000);
+      expect(scan).toHaveBeenCalledTimes(1); service.beginShutdown(); expect(service.isShutdownIdle()).toBe(false);
+      release(); await manual; expect(service.isShutdownIdle()).toBe(true);
+    } finally { release(); service.onModuleDestroy(); vi.useRealTimers(); }
+  });
+
+  it('does not start any timer for default-disabled or invalid scope configuration', () => {
+    vi.useFakeTimers();
+    try {
+      const { service } = createService(); service.onModuleInit(); expect(vi.getTimerCount()).toBe(0); service.onModuleDestroy();
+      for (const config of [{ notificationQueueEnabled: true }, { deploymentEnvironment: 'production' }, { notificationInAppReminderScope: null }]) {
+        const invalid = createService({ config: { notificationQueueEnabled: false, deploymentEnvironment: 'local', notificationInAppReminderScanEnabled: true, ...config } }).service;
+        expect(() => invalid.onModuleInit()).toThrow(); expect(vi.getTimerCount()).toBe(0);
+      }
+    } finally { vi.useRealTimers(); }
+  });
   it('finishes an in-flight dequeued notification before becoming snapshot-idle, without dequeuing another', async () => {
     const {service,notificationsService,redisQueue}=createService();
     let finish!: () => void;

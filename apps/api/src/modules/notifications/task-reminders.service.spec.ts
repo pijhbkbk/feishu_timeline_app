@@ -2,6 +2,7 @@ import 'reflect-metadata';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { TaskRemindersService } from './task-reminders.service';
 import type { ReminderTarget } from './task-reminder.rules';
+import { createReminderScope } from '../../common/notification-reminder-scope';
 
 function fixture(kind: 'ordinary' | 'monthly' = 'ordinary', taskCount = 1, userCount = 1) {
   let cursor = ''; let lease: string | null = null;
@@ -23,7 +24,7 @@ function fixture(kind: 'ordinary' | 'monthly' = 'ordinary', taskCount = 1, userC
     workflowTask: { findFirst }, recurringTask: { findFirst, updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
     user: { findMany: vi.fn(async ({ where, take }) => users.filter(u => u.id > where.AND[0].id.gt).slice(0, take)), findFirst: vi.fn().mockResolvedValue({ id: 'qualified' }) },
     notification: { createMany: vi.fn().mockResolvedValue({ count: 1 }), findUniqueOrThrow: vi.fn().mockResolvedValue({ id: 'card' }), updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
-    notificationDigestItem: { upsert: vi.fn().mockResolvedValue({}) },
+    notificationDigestItem: { findUnique: vi.fn().mockResolvedValue(null), upsert: vi.fn().mockResolvedValue({}) },
   };
   const service = new TaskRemindersService(db as never);
   const target = (id: string): ReminderTarget => ({ kind, id, projectId: tasks.find(t => t.id === id)!.projectId, stageTaskId: id,
@@ -34,6 +35,60 @@ function fixture(kind: 'ordinary' | 'monthly' = 'ordinary', taskCount = 1, userC
 const now = new Date('2026-09-28T02:00:00Z');
 afterEach(() => vi.restoreAllMocks());
 describe('durable bounded role reminder scanning', () => {
+  const scope = createReminderScope({ projectIds: ['p0'], taskIds: ['t0000'], recipientIds: ['u0000'] });
+  it('binds scoped candidate, recipient, cursor and lease predicates while retaining eligibility', async () => {
+    const { service, db, getCursor } = fixture();
+    await service.scan('ordinary', now, scope);
+    expect(db.workflowTask.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({
+      projectId: { in: ['p0'] }, AND: [{ id: { in: ['t0000'] } }], isActive: true,
+    }) }));
+    expect(db.user.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({
+      AND: [{ id: { gt: '' } }, { id: { in: ['u0000'] } }], status: 'ACTIVE', localCredential: { isNot: null },
+    }) }));
+    expect(db.reminderScanState.createMany).toHaveBeenCalledWith({ data: [{ name: `team-reminders:ordinary:scoped:${scope.hash}` }], skipDuplicates: true });
+    expect(getCursor()).toEqual({ afterTask: '', currentTask: null, afterUser: '', scopeHash: scope.hash });
+    expect(db.notification.createMany).toHaveBeenCalled();
+  });
+  it('applies scope and current activity predicates on a resumed task too', async () => {
+    const { service, db } = fixture();
+    db.reminderScanState.findUniqueOrThrow.mockResolvedValueOnce({ cursor: JSON.stringify({ afterTask: '', currentTask: 't0000', afterUser: '', scopeHash: scope.hash }) });
+    await service.scan('ordinary', now, scope);
+    expect(db.workflowTask.findFirst).toHaveBeenNthCalledWith(1, expect.objectContaining({ where: expect.objectContaining({
+      id: 't0000', projectId: { in: ['p0'] }, AND: [{ id: { in: ['t0000'] } }], isActive: true,
+      status: { in: ['PENDING', 'READY', 'IN_PROGRESS', 'RETURNED'] },
+    }) }));
+  });
+  it.each([{ scopeHash: 'foreign' }, { currentTask: 'outside' }, { afterTask: 'outside' }, { afterUser: 'outside' }])('rejects scope/cursor mismatch before traversing %#', async override => {
+    const { service, db, getLease } = fixture();
+    db.reminderScanState.findUniqueOrThrow.mockResolvedValueOnce({ cursor: JSON.stringify({ afterTask: '', currentTask: null, afterUser: '', scopeHash: scope.hash, ...override }) });
+    await expect(service.scan('ordinary', now, scope)).rejects.toThrow('cursor');
+    expect(db.workflowTask.findFirst).not.toHaveBeenCalled(); expect(getLease()).toBeNull();
+  });
+  it('fails closed for invalid/monthly scopes without acquiring a global scan state', async () => {
+    const { service, db } = fixture();
+    await expect(service.scan('monthly', now, scope)).rejects.toThrow('ordinary');
+    await expect(service.scan('ordinary', now, null as never)).rejects.toThrow('Invalid reminder scope');
+    expect(db.reminderScanState.createMany).not.toHaveBeenCalled();
+  });
+  it('rechecks locked target project, owner and recipient admission before persisting', async () => {
+    for (const change of ['project', 'owner', 'admission'] as const) {
+      const { service, db, target } = fixture();
+      if (change === 'admission') db.user.findFirst.mockResolvedValueOnce(null as never);
+      else vi.mocked(service.target).mockResolvedValueOnce(target('t0000')).mockResolvedValueOnce({ ...target('t0000'),
+        ...(change === 'project' ? { projectId: 'outside' } : { ownerId: 'outside' }) });
+      await service.scan('ordinary', now, scope);
+      expect(db.notification.createMany).not.toHaveBeenCalled();
+    }
+  });
+  it('does not trust an out-of-scope candidate or recipient returned by an adapter', async () => {
+    const a = fixture();
+    a.db.workflowTask.findFirst.mockResolvedValueOnce({ id: 'outside', projectId: 'p0' });
+    await expect(a.service.scan('ordinary', now, scope)).rejects.toThrow('candidate');
+    expect(a.db.notification.createMany).not.toHaveBeenCalled();
+    const b = fixture(); b.db.user.findMany.mockResolvedValueOnce([{ id: 'outside' }]);
+    await expect(b.service.scan('ordinary', now, scope)).rejects.toThrow('recipient');
+    expect(b.db.notification.createMany).not.toHaveBeenCalled();
+  });
   it('keeps task pages bounded and persists progress across successive ticks', async () => {
     const { service, db, getCursor } = fixture('ordinary', 52);
     expect(await service.scan('ordinary', now)).toMatchObject({ scanned: 50, hasMore: true });
