@@ -30,9 +30,9 @@ export async function loadInspectionColors(baseId: string, search: string, curso
   const page = cursor ?? '1';
   const query = new URLSearchParams({ page, pageSize: '20', search });
   if (baseId) query.set('baseId', baseId);
-  const data = await apiRequest<{ items: Array<{ id: string; name: string; formalCode: string | null; productionBase?: { name: string } | null }>; total: number }>(
+  const data = await apiRequest<{ items: Array<{ id: string; name: string; formalCode: string | null; base: { name: string } | null }>; total: number }>(
     `/color-register?${query}`, { signal });
   return { items: data.items.map(c => ({ id: c.id, label: c.name,
-    detail: `${c.productionBase?.name ?? '基地见颜色记录'} · ${c.formalCode ?? '正式编号未填'}` })),
+    detail: `${c.base?.name ?? '基地未关联'} · ${c.formalCode ?? '正式编号未填'}` })),
     next: Number(page) * 20 < data.total ? String(Number(page) + 1) : null };
 }
