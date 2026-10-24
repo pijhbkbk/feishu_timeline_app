@@ -52,6 +52,12 @@ const ERROR_VALUE = /^#(?:NULL!|DIV\/0!|VALUE!|REF!|NAME\?|NUM!|N\/A|SPILL!|CALC
 // A deserialized preview must be prepared again. Keep its full source bytes private and immutable;
 // the synchronous guard below has no asynchronous hash window between checking and constructing a request.
 const captures = new WeakMap<BusinessMappingPreview, { sourceJSON: string; mappingJSON: string }>();
+/** Return only the original immutable strings, never reconstruct a lost capture. */
+export function readBusinessMappingCapture(preview: BusinessMappingPreview): Readonly<{ sourceJSON: string; mappingJSON: string }> {
+  const capture = captures.get(preview);
+  if (!capture) throw new Error('此预览没有保留来源原文，无法导出；请重新读取内容并预览。');
+  return Object.freeze({ ...capture });
+}
 function fail(message: string): never { throw new Error(message); }
 function integer(value: unknown, minimum: number, maximum: number): value is number { return typeof value === 'number' && Number.isSafeInteger(value) && value >= minimum && value <= maximum; }
 function object(value: unknown): value is Record<string, unknown> { return !!value && typeof value === 'object' && !Array.isArray(value); }

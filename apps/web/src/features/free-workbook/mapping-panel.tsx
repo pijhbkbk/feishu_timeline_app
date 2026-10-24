@@ -7,6 +7,7 @@ import { prepareBusinessMapping, type BusinessMappingDefinition, type BusinessMa
 import { BusinessApplySession, BusinessApplyFailure, scopedBusinessApplyTransport, retryBusinessApplyCheckpoint, assertPreparedBusinessSource, prepareMappedBusiness, type BusinessApplyPreview, type BusinessApplyReceipt } from './business-apply';
 import { loadMappingContext, mappingColumns, type MappingContext } from './mapping-context';
 import { readBusinessApplyJournal, writeBusinessApplyJournal, clearBusinessApplyJournal, cancelPreparedBusinessApplyJournal, type BusinessApplyCheckpoint, type BusinessApplyPersistence } from './business-apply-journal';
+import { exportMappingEvidence } from './mapping-evidence';
 import './mapping-panel.css';
 
 export type MappingSource = BusinessMappingSource;
@@ -47,10 +48,15 @@ function ActorBusinessMappingPanel({ actorId, getSource, onClose, onApplied }: B
   const [context, setContext] = useState<MappingContext | null>(null), [catalog, setCatalog] = useState<Awaited<ReturnType<typeof readCatalog>> | null>(null);
   const [activities, setActivities] = useState<Activity[]>([]), [activityPage, setActivityPage] = useState(1), [activityTotal, setActivityTotal] = useState(0);
   const [reason, setReason] = useState(''), [error, setError] = useState(''), [loading, setLoading] = useState(true), [scopeLoading, setScopeLoading] = useState(false), [scopeError, setScopeError] = useState('');
-  const [preview, setPreview] = useState<BusinessApplyPreview | null>(null), [page, setPage] = useState(1), [busy, setBusy] = useState(false), [version, setVersion] = useState(0), [sourceRetry, setSourceRetry] = useState(0), [scopeRetry, setScopeRetry] = useState(0);
+  const [preview, setPreviewState] = useState<BusinessApplyPreview | null>(null), [page, setPage] = useState(1), [busy, setBusy] = useState(false), [version, setVersion] = useState(0), [sourceRetry, setSourceRetry] = useState(0), [scopeRetry, setScopeRetry] = useState(0);
   const session = useRef<BusinessApplySession | null>(null), mounted = useRef(true), working = useRef(false);
   const scopeGeneration = useRef(0), owner = useRef({ actorId, workbookId: source?.workbookId });
   owner.current = { actorId, workbookId: source?.workbookId };
+  const capturedPreview = useRef<{ preview: BusinessApplyPreview; actorId: string; workbookId: string; generation: number } | null>(null);
+  const setPreview = (value: BusinessApplyPreview | null) => {
+    capturedPreview.current = value ? { preview: value, actorId, workbookId: value.mapping.binding.workbookId, generation: scopeGeneration.current } : null;
+    setPreviewState(value);
+  };
   const scopedTransport = () => {
     const generation = scopeGeneration.current, workbookId = source?.workbookId;
     return scopedBusinessApplyTransport(() => mounted.current && generation === scopeGeneration.current && owner.current.actorId === actorId && !!workbookId && owner.current.workbookId === workbookId);
@@ -88,13 +94,31 @@ function ActorBusinessMappingPanel({ actorId, getSource, onClose, onApplied }: B
   const updateTarget = (value: BusinessMappingTarget) => { if (definition) change({ ...definition, target: value }); };
   const refreshPreview = async () => {
     if (!definition || working.current || started) return; working.current = true; setBusy(true); setError(''); setPreview(null); session.current = null;
+    const generation = scopeGeneration.current;
     try {
       const currentContext = await loadMappingContext(definition.target, AbortSignal.timeout(30000));
       const current = await sourceGetter.current();
       const mapping = await prepareBusinessMapping(current, definition, mappingColumns(definition.target));
       const result = prepareMappedBusiness(mapping, currentContext, reason);
-      if (mounted.current) { setSource(current); setContext(currentContext); setPreview(result); setPage(1); }
+      if (mounted.current && generation === scopeGeneration.current && owner.current.actorId === actorId) { setSource(current); setContext(currentContext); setPreview(result); setPage(1); }
     } catch (cause) { if (mounted.current) setError(message(cause)); } finally { working.current = false; if (mounted.current) setBusy(false); }
+  };
+  const downloadEvidence = async () => {
+    const captured = capturedPreview.current;
+    if (!captured || captured.preview !== preview || working.current) return;
+    const isCurrent = () => mounted.current && capturedPreview.current === captured && scopeGeneration.current === captured.generation && owner.current.actorId === captured.actorId && owner.current.workbookId === captured.workbookId;
+    working.current = true; setBusy(true); setError('');
+    try {
+      const bytes = await exportMappingEvidence(captured.preview, captured, isCurrent);
+      if (!isCurrent()) return;
+      const url = URL.createObjectURL(new Blob([bytes], { type: 'application/zip' }));
+      try {
+        const link = document.createElement('a'); link.href = url;
+        link.download = `mapping-${captured.workbookId}-v${captured.preview.mapping.binding.formalRevision}.zip`;
+        link.click();
+      } finally { setTimeout(() => URL.revokeObjectURL(url), 1000); }
+    } catch (cause) { if (isCurrent()) setError(message(cause)); }
+    finally { working.current = false; if (mounted.current) setBusy(false); }
   };
   const apply = async () => {
     if (!preview || working.current) return; working.current = true; setBusy(true); setError('');
@@ -175,6 +199,8 @@ function ActorBusinessMappingPanel({ actorId, getSource, onClose, onApplied }: B
       </fieldset>
       <div className="wb-map-actions"><button type="button" className="m1-button" disabled={busy || started || scopeLoading || !context || !definition.fields.length} onClick={() => void refreshPreview()}>读取当前内容并预览</button>{preview && !locked ? <button type="button" className="m1-button" onClick={() => void resetPreview()}>结束本次预览并重新映射</button> : null}</div>
       {preview ? <section aria-label="业务映射预览"><h3>3. 核对并应用业务记录</h3><MappingPlanTable preview={preview} page={page} setPage={setPage} />
+        <button type="button" className="m1-button" disabled={busy} onClick={() => void downloadEvidence()}>下载本次映射依据</button>
+        <p>包含本次捕获的工作簿原文、映射选择与全部预览行，供离线核对；下载不会保存工作簿或提交业务记录。</p>
         <p>每批最多 50 条，每批前重新读取业务版本和当前工作簿。变更来源、排序或映射后必须重新预览。已确认批次不会回滚或重复应用。</p>
         {applied.length ? <details open><summary>已确认 {applied.length} 条业务记录</summary><ul>{applied.map(row => <li key={row.clientId}>来源第 {row.sourceRow} 行 → {row.id} · v{row.revision}</li>)}</ul></details> : null}
         <button type="button" className="m1-button m1-primary" disabled={busy || preview.plans.some(plan => plan.status === 'error') || !preview.plans.some(plan => plan.status === 'create' || plan.status === 'update') || !!session.current?.failed || !!session.current && !session.current.remaining} onClick={() => void apply()}>{busy ? '正在核对并提交…' : session.current?.pending ? '核实并重试原请求' : applied.length ? session.current?.remaining ? `应用下一批（剩余 ${session.current.remaining} 条）` : '本次业务记录已全部确认' : '明确应用第一批业务记录'}</button>

@@ -19,6 +19,9 @@ function errorPlan(input: ImportPlan['input'], message: string): ImportPlan { re
 function object(value: unknown): value is Record<string, unknown> { return !!value && typeof value === 'object' && !Array.isArray(value); }
 function active(plan: ImportPlan) { return plan.status === 'create' || plan.status === 'update'; }
 const prepared = new WeakSet<BusinessApplyPreview>();
+export function assertPreparedBusinessPreview(preview: BusinessApplyPreview): void {
+  if (!prepared.has(preview)) throw new Error('只能导出本次实际生成的预览；历史请求请保留原回执并重新预览。');
+}
 
 /** The original adapters still decide business values, permissions and stable identity. Explicit
  * mapping adds no template marker and does not transfer pictures, accounts or workflow decisions. */
