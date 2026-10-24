@@ -40,7 +40,7 @@ describe('production qs dependency boundaries', () => {
 
   it('keeps both production parents on the same fixed dependency', () => {
     expect(expressRequire.resolve('qs')).toBe(bodyParserRequire.resolve('qs'));
-    expect(expressRequire('qs/package.json').version).toBe('6.16.0');
+    expect(expressRequire('qs/package.json').version).toBe('6.16.1');
   });
 
   it('preserves actual Express form parsing and request limits', async () => {

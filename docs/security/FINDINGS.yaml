@@ -7647,6 +7647,1259 @@
           }
         }
       ]
+    },
+    {
+      "id": "R28-V1-SCA-001",
+      "title": "body-parser 2.3.0 — GHSA-27r3-jxmh-p828 — body-parser vulnerable to Denial of Service via trailing bytes after a compressed request body",
+      "status": "in_progress",
+      "severity": "high",
+      "confidence": "high",
+      "classification": "pre_existing",
+      "cwe": null,
+      "source": {
+        "type": "sca",
+        "report_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/sca-current-candidate-r01/raw/pnpm-audit-all.json",
+        "binding": {
+          "commit": "d66d10d17d1299428576ea76871d8f6bd5f776f0",
+          "tree": "5bf9c70d54fc7cc88b2ebd3ce52bd1104a37f792",
+          "tool_name": "pnpm audit",
+          "tool_version": "9.15.4",
+          "command": "bash scripts/security/run-sca.sh (pnpm audit --audit-level low --json; pnpm audit --prod --audit-level low --json)",
+          "environment": "Clean independent local clone; Node v24.14.0; full/prod lockfile graphs only; no deployed service or container scan; lock SHA256 d96a07aa3f39bf74bcf855ef5ad2e7c8ec7f799465f19c38fa0440f30d41e896",
+          "result_sha256": "16e5d46414fe32cb664acea98789611f0344618ab6403694cda9205a4d261adc",
+          "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/sca-current-candidate-r01/raw/pnpm-audit-all.log",
+          "config_sha256": "d96a07aa3f39bf74bcf855ef5ad2e7c8ec7f799465f19c38fa0440f30d41e896",
+          "recorded_at": "2026-10-24T05:52:56.586821+00:00"
+        }
+      },
+      "scope": {
+        "component": "body-parser (production and development dependency graphs)",
+        "affected_files": [
+          "package.json",
+          "pnpm-lock.yaml",
+          "apps/api/package.json"
+        ],
+        "entry_points": [
+          "apps/api > @nestjs/core@11.1.28 > @nestjs/platform-express@11.1.28 > express@5.2.1 > body-parser@2.3.0",
+          "apps/api > @nestjs/platform-express@11.1.28 > express@5.2.1 > body-parser@2.3.0",
+          "apps/api > @nestjs/swagger@11.4.6 > @nestjs/core@11.1.28 > @nestjs/platform-express@11.1.28 > express@5.2.1 > body-parser@2.3.0",
+          "apps/api > swagger-ui-express@5.0.1 > express@5.2.1 > body-parser@2.3.0"
+        ],
+        "trust_boundary": "Untrusted HTTP or multipart input to API dependency middleware"
+      },
+      "evidence": {
+        "reachable": null,
+        "production_exposed": null,
+        "reproduction_path": "原始full audit exit1/FAIL：/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/sca-current-candidate-r01/raw/pnpm-audit-all.json SHA256 16e5d46414fe32cb664acea98789611f0344618ab6403694cda9205a4d261adc；production audit exit1/FAIL：/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/sca-current-candidate-r01/raw/pnpm-audit.json SHA256 e6314ecacd9f6543cee065c1a6b6e87ae4491dbb4acb6835f8ea91adad45e759；本条同时存在于production图。 锁定版本 2.3.0；受影响范围 >=2.0.0 <2.4.0；修复范围 >=2.4.0。报告中的依赖链（不是重新运行的installed-package探测）：\napps/api > @nestjs/core@11.1.28 > @nestjs/platform-express@11.1.28 > express@5.2.1 > body-parser@2.3.0\napps/api > @nestjs/platform-express@11.1.28 > express@5.2.1 > body-parser@2.3.0\napps/api > @nestjs/swagger@11.4.6 > @nestjs/core@11.1.28 > @nestjs/platform-express@11.1.28 > express@5.2.1 > body-parser@2.3.0\napps/api > swagger-ui-express@5.0.1 > express@5.2.1 > body-parser@2.3.0\n官方公告 https://github.com/advisories/GHSA-27r3-jxmh-p828\n生产依赖图命中。NestFactory.create(AppModule)未关闭默认body parser；Nest Express适配器注册express.json/urlencoded。工作簿专用中间件的Content-Encoding拒绝仅覆盖指定工作簿写路由，不是全局解析防护。官方根因为压缩帧之后的尾字节触发未捕获解码异常；未对本运行实例发送复现请求。",
+        "proof_gap": "未实施本条利用复现或检查生产暴露；修复后的目标回归、SCA、独立diff及制品/运行验证待主任务完成。生产依赖图命中。NestFactory.create(AppModule)未关闭默认body parser；Nest Express适配器注册express.json/urlencoded。工作簿专用中间件的Content-Encoding拒绝仅覆盖指定工作簿写路由，不是全局解析防护。官方根因为压缩帧之后的尾字节触发未捕获解码异常；未对本运行实例发送复现请求。"
+      },
+      "root_cause_cluster": "GHSA-27r3-jxmh-p828",
+      "security_invariants": [],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
+      "fix": {
+        "task_id": "TRUCK-COLOR-V1-FINAL-EXECUTION-20261024-R01",
+        "branch": null,
+        "commit": null,
+        "tree": null,
+        "changed_files": []
+      },
+      "verification": {
+        "targeted": {
+          "status": "pending",
+          "binding": null,
+          "notes": "待修复候选及对应真实证据；本提案不提供PASS。"
+        },
+        "affected_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "待修复候选及对应真实证据；本提案不提供PASS。"
+        },
+        "diff_review": {
+          "status": "pending",
+          "binding": null,
+          "notes": "待修复候选及对应真实证据；本提案不提供PASS。"
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "待修复候选及对应真实证据；本提案不提供PASS。"
+        }
+      },
+      "closure": null,
+      "history": [
+        {
+          "at": "2026-10-24T05:52:56.586821+00:00",
+          "transition": "null->candidate",
+          "actor": "Codex root: actual pnpm audit",
+          "reason": "原作者实际pnpm audit报告锁定版本命中；保留raw失败。",
+          "approval_id": null,
+          "binding": {
+            "commit": "d66d10d17d1299428576ea76871d8f6bd5f776f0",
+            "tree": "5bf9c70d54fc7cc88b2ebd3ce52bd1104a37f792",
+            "tool_name": "pnpm audit",
+            "tool_version": "9.15.4",
+            "command": "bash scripts/security/run-sca.sh (pnpm audit --audit-level low --json; pnpm audit --prod --audit-level low --json)",
+            "environment": "Clean independent local clone; Node v24.14.0; full/prod lockfile graphs only; no deployed service or container scan; lock SHA256 d96a07aa3f39bf74bcf855ef5ad2e7c8ec7f799465f19c38fa0440f30d41e896",
+            "result_sha256": "16e5d46414fe32cb664acea98789611f0344618ab6403694cda9205a4d261adc",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/sca-current-candidate-r01/raw/pnpm-audit-all.log",
+            "config_sha256": "d96a07aa3f39bf74bcf855ef5ad2e7c8ec7f799465f19c38fa0440f30d41e896",
+            "recorded_at": "2026-10-24T05:52:56.586821+00:00"
+          }
+        },
+        {
+          "at": "2026-10-24T05:57:53.096909+00:00",
+          "transition": "candidate->confirmed",
+          "actor": "Codex ci_investigation: readonly triage",
+          "reason": "只读核对原始JSON、锁定路径与官方公告；确认依赖版本命中，不推断当前服务已被利用。",
+          "approval_id": null,
+          "binding": {
+            "commit": "d66d10d17d1299428576ea76871d8f6bd5f776f0",
+            "tree": "5bf9c70d54fc7cc88b2ebd3ce52bd1104a37f792",
+            "tool_name": "pnpm audit",
+            "tool_version": "9.15.4",
+            "command": "bash scripts/security/run-sca.sh (pnpm audit --audit-level low --json; pnpm audit --prod --audit-level low --json)",
+            "environment": "Clean independent local clone; Node v24.14.0; full/prod lockfile graphs only; no deployed service or container scan; lock SHA256 d96a07aa3f39bf74bcf855ef5ad2e7c8ec7f799465f19c38fa0440f30d41e896",
+            "result_sha256": "16e5d46414fe32cb664acea98789611f0344618ab6403694cda9205a4d261adc",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/sca-current-candidate-r01/raw/pnpm-audit-all.log",
+            "config_sha256": "d96a07aa3f39bf74bcf855ef5ad2e7c8ec7f799465f19c38fa0440f30d41e896",
+            "recorded_at": "2026-10-24T05:52:56.586821+00:00"
+          }
+        },
+        {
+          "at": "2026-10-24T05:57:53.096909+00:00",
+          "transition": "confirmed->accepted_for_fix",
+          "actor": "Codex root under owner-authorized final execution",
+          "reason": "主任务已明确授权修复新SCA缺口；无风险接受或发布批准。",
+          "approval_id": null,
+          "binding": null
+        },
+        {
+          "at": "2026-10-24T05:57:53.096909+00:00",
+          "transition": "accepted_for_fix->in_progress",
+          "actor": "Codex root: repair in progress",
+          "reason": "主任务正在实施必要依赖/锁修复；本提案尚未导入唯一Ledger。建议：根override express@5.2.1>body-parser=2.4.0；body-parser@2.4.0>qs=6.16.1及express@5.2.1>qs=6.16.1，删除旧body-parser@2.3.0>qs。2.4.0 manifest要求qs^6.16.1，禁止强压6.16.0。",
+          "approval_id": null,
+          "binding": null
+        }
+      ]
+    },
+    {
+      "id": "R28-V1-SCA-002",
+      "title": "multer 2.4.0 — GHSA-q7qp-rjg7-q26m — multer vulnerable to Denial of Service via a pending asynchronous fileFilter after request teardown",
+      "status": "in_progress",
+      "severity": "high",
+      "confidence": "high",
+      "classification": "pre_existing",
+      "cwe": null,
+      "source": {
+        "type": "sca",
+        "report_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/sca-current-candidate-r01/raw/pnpm-audit-all.json",
+        "binding": {
+          "commit": "d66d10d17d1299428576ea76871d8f6bd5f776f0",
+          "tree": "5bf9c70d54fc7cc88b2ebd3ce52bd1104a37f792",
+          "tool_name": "pnpm audit",
+          "tool_version": "9.15.4",
+          "command": "bash scripts/security/run-sca.sh (pnpm audit --audit-level low --json; pnpm audit --prod --audit-level low --json)",
+          "environment": "Clean independent local clone; Node v24.14.0; full/prod lockfile graphs only; no deployed service or container scan; lock SHA256 d96a07aa3f39bf74bcf855ef5ad2e7c8ec7f799465f19c38fa0440f30d41e896",
+          "result_sha256": "16e5d46414fe32cb664acea98789611f0344618ab6403694cda9205a4d261adc",
+          "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/sca-current-candidate-r01/raw/pnpm-audit-all.log",
+          "config_sha256": "d96a07aa3f39bf74bcf855ef5ad2e7c8ec7f799465f19c38fa0440f30d41e896",
+          "recorded_at": "2026-10-24T05:52:56.586821+00:00"
+        }
+      },
+      "scope": {
+        "component": "multer (production and development dependency graphs)",
+        "affected_files": [
+          "package.json",
+          "pnpm-lock.yaml",
+          "apps/api/package.json"
+        ],
+        "entry_points": [
+          "apps/api > @nestjs/core@11.1.28 > @nestjs/platform-express@11.1.28 > multer@2.4.0",
+          "apps/api > @nestjs/platform-express@11.1.28 > multer@2.4.0",
+          "apps/api > @nestjs/swagger@11.4.6 > @nestjs/core@11.1.28 > @nestjs/platform-express@11.1.28 > multer@2.4.0"
+        ],
+        "trust_boundary": "Untrusted HTTP or multipart input to API dependency middleware"
+      },
+      "evidence": {
+        "reachable": null,
+        "production_exposed": null,
+        "reproduction_path": "原始full audit exit1/FAIL：/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/sca-current-candidate-r01/raw/pnpm-audit-all.json SHA256 16e5d46414fe32cb664acea98789611f0344618ab6403694cda9205a4d261adc；production audit exit1/FAIL：/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/sca-current-candidate-r01/raw/pnpm-audit.json SHA256 e6314ecacd9f6543cee065c1a6b6e87ae4491dbb4acb6835f8ea91adad45e759；本条同时存在于production图。 锁定版本 2.4.0；受影响范围 >=2.0.0 <2.5.0；修复范围 >=2.5.0。报告中的依赖链（不是重新运行的installed-package探测）：\napps/api > @nestjs/core@11.1.28 > @nestjs/platform-express@11.1.28 > multer@2.4.0\napps/api > @nestjs/platform-express@11.1.28 > multer@2.4.0\napps/api > @nestjs/swagger@11.4.6 > @nestjs/core@11.1.28 > @nestjs/platform-express@11.1.28 > multer@2.4.0\n官方公告 https://github.com/advisories/GHSA-q7qp-rjg7-q26m\n生产依赖图命中。官方攻击条件为异步fileFilter在请求teardown后恢复。当前共享单文件上传配置未发现自定义异步fileFilter；这限制当前利用路径结论，但不等于包无漏洞、全局不可达或安全豁免。",
+        "proof_gap": "未实施本条利用复现或检查生产暴露；修复后的目标回归、SCA、独立diff及制品/运行验证待主任务完成。生产依赖图命中。官方攻击条件为异步fileFilter在请求teardown后恢复。当前共享单文件上传配置未发现自定义异步fileFilter；这限制当前利用路径结论，但不等于包无漏洞、全局不可达或安全豁免。"
+      },
+      "root_cause_cluster": "GHSA-q7qp-rjg7-q26m",
+      "security_invariants": [],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
+      "fix": {
+        "task_id": "TRUCK-COLOR-V1-FINAL-EXECUTION-20261024-R01",
+        "branch": null,
+        "commit": null,
+        "tree": null,
+        "changed_files": []
+      },
+      "verification": {
+        "targeted": {
+          "status": "pending",
+          "binding": null,
+          "notes": "待修复候选及对应真实证据；本提案不提供PASS。"
+        },
+        "affected_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "待修复候选及对应真实证据；本提案不提供PASS。"
+        },
+        "diff_review": {
+          "status": "pending",
+          "binding": null,
+          "notes": "待修复候选及对应真实证据；本提案不提供PASS。"
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "待修复候选及对应真实证据；本提案不提供PASS。"
+        }
+      },
+      "closure": null,
+      "history": [
+        {
+          "at": "2026-10-24T05:52:56.586821+00:00",
+          "transition": "null->candidate",
+          "actor": "Codex root: actual pnpm audit",
+          "reason": "原作者实际pnpm audit报告锁定版本命中；保留raw失败。",
+          "approval_id": null,
+          "binding": {
+            "commit": "d66d10d17d1299428576ea76871d8f6bd5f776f0",
+            "tree": "5bf9c70d54fc7cc88b2ebd3ce52bd1104a37f792",
+            "tool_name": "pnpm audit",
+            "tool_version": "9.15.4",
+            "command": "bash scripts/security/run-sca.sh (pnpm audit --audit-level low --json; pnpm audit --prod --audit-level low --json)",
+            "environment": "Clean independent local clone; Node v24.14.0; full/prod lockfile graphs only; no deployed service or container scan; lock SHA256 d96a07aa3f39bf74bcf855ef5ad2e7c8ec7f799465f19c38fa0440f30d41e896",
+            "result_sha256": "16e5d46414fe32cb664acea98789611f0344618ab6403694cda9205a4d261adc",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/sca-current-candidate-r01/raw/pnpm-audit-all.log",
+            "config_sha256": "d96a07aa3f39bf74bcf855ef5ad2e7c8ec7f799465f19c38fa0440f30d41e896",
+            "recorded_at": "2026-10-24T05:52:56.586821+00:00"
+          }
+        },
+        {
+          "at": "2026-10-24T05:57:53.096909+00:00",
+          "transition": "candidate->confirmed",
+          "actor": "Codex ci_investigation: readonly triage",
+          "reason": "只读核对原始JSON、锁定路径与官方公告；确认依赖版本命中，不推断当前服务已被利用。",
+          "approval_id": null,
+          "binding": {
+            "commit": "d66d10d17d1299428576ea76871d8f6bd5f776f0",
+            "tree": "5bf9c70d54fc7cc88b2ebd3ce52bd1104a37f792",
+            "tool_name": "pnpm audit",
+            "tool_version": "9.15.4",
+            "command": "bash scripts/security/run-sca.sh (pnpm audit --audit-level low --json; pnpm audit --prod --audit-level low --json)",
+            "environment": "Clean independent local clone; Node v24.14.0; full/prod lockfile graphs only; no deployed service or container scan; lock SHA256 d96a07aa3f39bf74bcf855ef5ad2e7c8ec7f799465f19c38fa0440f30d41e896",
+            "result_sha256": "16e5d46414fe32cb664acea98789611f0344618ab6403694cda9205a4d261adc",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/sca-current-candidate-r01/raw/pnpm-audit-all.log",
+            "config_sha256": "d96a07aa3f39bf74bcf855ef5ad2e7c8ec7f799465f19c38fa0440f30d41e896",
+            "recorded_at": "2026-10-24T05:52:56.586821+00:00"
+          }
+        },
+        {
+          "at": "2026-10-24T05:57:53.096909+00:00",
+          "transition": "confirmed->accepted_for_fix",
+          "actor": "Codex root under owner-authorized final execution",
+          "reason": "主任务已明确授权修复新SCA缺口；无风险接受或发布批准。",
+          "approval_id": null,
+          "binding": null
+        },
+        {
+          "at": "2026-10-24T05:57:53.096909+00:00",
+          "transition": "accepted_for_fix->in_progress",
+          "actor": "Codex root: repair in progress",
+          "reason": "主任务正在实施必要依赖/锁修复；本提案尚未导入唯一Ledger。建议：根override @nestjs/platform-express@11.1.28>multer=2.5.0。",
+          "approval_id": null,
+          "binding": null
+        }
+      ]
+    },
+    {
+      "id": "R28-V1-SCA-003",
+      "title": "vite 7.3.6 — GHSA-698v-4r3x-3vcv — launch-editor: escapeCmdArgs() omits % escaping on Windows",
+      "status": "in_progress",
+      "severity": "medium",
+      "confidence": "high",
+      "classification": "pre_existing",
+      "cwe": null,
+      "source": {
+        "type": "sca",
+        "report_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/sca-current-candidate-r01/raw/pnpm-audit-all.json",
+        "binding": {
+          "commit": "d66d10d17d1299428576ea76871d8f6bd5f776f0",
+          "tree": "5bf9c70d54fc7cc88b2ebd3ce52bd1104a37f792",
+          "tool_name": "pnpm audit",
+          "tool_version": "9.15.4",
+          "command": "bash scripts/security/run-sca.sh (pnpm audit --audit-level low --json; pnpm audit --prod --audit-level low --json)",
+          "environment": "Clean independent local clone; Node v24.14.0; full/prod lockfile graphs only; no deployed service or container scan; lock SHA256 d96a07aa3f39bf74bcf855ef5ad2e7c8ec7f799465f19c38fa0440f30d41e896",
+          "result_sha256": "16e5d46414fe32cb664acea98789611f0344618ab6403694cda9205a4d261adc",
+          "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/sca-current-candidate-r01/raw/pnpm-audit-all.log",
+          "config_sha256": "d96a07aa3f39bf74bcf855ef5ad2e7c8ec7f799465f19c38fa0440f30d41e896",
+          "recorded_at": "2026-10-24T05:52:56.586821+00:00"
+        }
+      },
+      "scope": {
+        "component": "vite (development/full dependency graph only)",
+        "affected_files": [
+          "package.json",
+          "pnpm-lock.yaml",
+          "apps/api/package.json",
+          "apps/web/package.json"
+        ],
+        "entry_points": [
+          "apps/api > vitest@4.1.11 > @vitest/mocker@4.1.11 > vite@7.3.6",
+          "apps/api > vitest@4.1.11 > vite@7.3.6",
+          "apps/web > vitest@4.1.11 > @vitest/mocker@4.1.11 > vite@7.3.6",
+          "apps/web > vitest@4.1.11 > vite@7.3.6"
+        ],
+        "trust_boundary": "Development server/editor/mock plugin inputs; absent from current production audit graph"
+      },
+      "evidence": {
+        "reachable": null,
+        "production_exposed": null,
+        "reproduction_path": "原始full audit exit1/FAIL：/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/sca-current-candidate-r01/raw/pnpm-audit-all.json SHA256 16e5d46414fe32cb664acea98789611f0344618ab6403694cda9205a4d261adc；production audit exit1/FAIL：/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/sca-current-candidate-r01/raw/pnpm-audit.json SHA256 e6314ecacd9f6543cee065c1a6b6e87ae4491dbb4acb6835f8ea91adad45e759；本条仅在full图，production未报告本条。 锁定版本 7.3.6；受影响范围 >=7.0.0 <=7.3.6；修复范围 >=7.3.7。报告中的依赖链（不是重新运行的installed-package探测）：\napps/api > vitest@4.1.11 > @vitest/mocker@4.1.11 > vite@7.3.6\napps/api > vitest@4.1.11 > vite@7.3.6\napps/web > vitest@4.1.11 > @vitest/mocker@4.1.11 > vite@7.3.6\napps/web > vitest@4.1.11 > vite@7.3.6\n官方公告 https://github.com/advisories/GHSA-698v-4r3x-3vcv\n仅full开发依赖图命中，prod未命中；官方条件为Windows launch-editor百分号参数转义、恶意文件名与环境变量等组合。本次未验证该平台与配置下的可利用性。",
+        "proof_gap": "未实施本条利用复现或检查生产暴露；修复后的目标回归、SCA、独立diff及制品/运行验证待主任务完成。仅full开发依赖图命中，prod未命中；官方条件为Windows launch-editor百分号参数转义、恶意文件名与环境变量等组合。本次未验证该平台与配置下的可利用性。"
+      },
+      "root_cause_cluster": "GHSA-698v-4r3x-3vcv",
+      "security_invariants": [],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
+      "fix": {
+        "task_id": "TRUCK-COLOR-V1-FINAL-EXECUTION-20261024-R01",
+        "branch": null,
+        "commit": null,
+        "tree": null,
+        "changed_files": []
+      },
+      "verification": {
+        "targeted": {
+          "status": "pending",
+          "binding": null,
+          "notes": "待修复候选及对应真实证据；本提案不提供PASS。"
+        },
+        "affected_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "待修复候选及对应真实证据；本提案不提供PASS。"
+        },
+        "diff_review": {
+          "status": "pending",
+          "binding": null,
+          "notes": "待修复候选及对应真实证据；本提案不提供PASS。"
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "待修复候选及对应真实证据；本提案不提供PASS。"
+        }
+      },
+      "closure": null,
+      "history": [
+        {
+          "at": "2026-10-24T05:52:56.586821+00:00",
+          "transition": "null->candidate",
+          "actor": "Codex root: actual pnpm audit",
+          "reason": "原作者实际pnpm audit报告锁定版本命中；保留raw失败。",
+          "approval_id": null,
+          "binding": {
+            "commit": "d66d10d17d1299428576ea76871d8f6bd5f776f0",
+            "tree": "5bf9c70d54fc7cc88b2ebd3ce52bd1104a37f792",
+            "tool_name": "pnpm audit",
+            "tool_version": "9.15.4",
+            "command": "bash scripts/security/run-sca.sh (pnpm audit --audit-level low --json; pnpm audit --prod --audit-level low --json)",
+            "environment": "Clean independent local clone; Node v24.14.0; full/prod lockfile graphs only; no deployed service or container scan; lock SHA256 d96a07aa3f39bf74bcf855ef5ad2e7c8ec7f799465f19c38fa0440f30d41e896",
+            "result_sha256": "16e5d46414fe32cb664acea98789611f0344618ab6403694cda9205a4d261adc",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/sca-current-candidate-r01/raw/pnpm-audit-all.log",
+            "config_sha256": "d96a07aa3f39bf74bcf855ef5ad2e7c8ec7f799465f19c38fa0440f30d41e896",
+            "recorded_at": "2026-10-24T05:52:56.586821+00:00"
+          }
+        },
+        {
+          "at": "2026-10-24T05:57:53.096909+00:00",
+          "transition": "candidate->confirmed",
+          "actor": "Codex ci_investigation: readonly triage",
+          "reason": "只读核对原始JSON、锁定路径与官方公告；确认依赖版本命中，不推断当前服务已被利用。",
+          "approval_id": null,
+          "binding": {
+            "commit": "d66d10d17d1299428576ea76871d8f6bd5f776f0",
+            "tree": "5bf9c70d54fc7cc88b2ebd3ce52bd1104a37f792",
+            "tool_name": "pnpm audit",
+            "tool_version": "9.15.4",
+            "command": "bash scripts/security/run-sca.sh (pnpm audit --audit-level low --json; pnpm audit --prod --audit-level low --json)",
+            "environment": "Clean independent local clone; Node v24.14.0; full/prod lockfile graphs only; no deployed service or container scan; lock SHA256 d96a07aa3f39bf74bcf855ef5ad2e7c8ec7f799465f19c38fa0440f30d41e896",
+            "result_sha256": "16e5d46414fe32cb664acea98789611f0344618ab6403694cda9205a4d261adc",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/sca-current-candidate-r01/raw/pnpm-audit-all.log",
+            "config_sha256": "d96a07aa3f39bf74bcf855ef5ad2e7c8ec7f799465f19c38fa0440f30d41e896",
+            "recorded_at": "2026-10-24T05:52:56.586821+00:00"
+          }
+        },
+        {
+          "at": "2026-10-24T05:57:53.096909+00:00",
+          "transition": "confirmed->accepted_for_fix",
+          "actor": "Codex root under owner-authorized final execution",
+          "reason": "主任务已明确授权修复新SCA缺口；无风险接受或发布批准。",
+          "approval_id": null,
+          "binding": null
+        },
+        {
+          "at": "2026-10-24T05:57:53.096909+00:00",
+          "transition": "accepted_for_fix->in_progress",
+          "actor": "Codex root: repair in progress",
+          "reason": "主任务正在实施必要依赖/锁修复；本提案尚未导入唯一Ledger。建议：根override vite=7.3.7，保持7.x。",
+          "approval_id": null,
+          "binding": null
+        }
+      ]
+    },
+    {
+      "id": "R28-V1-SCA-004",
+      "title": "vite 7.3.6 — GHSA-r825-w8mm-5pxw — launch-editor: Editor CLI flag misinterpretation causing arbitrary command execution for some editors",
+      "status": "in_progress",
+      "severity": "medium",
+      "confidence": "high",
+      "classification": "pre_existing",
+      "cwe": null,
+      "source": {
+        "type": "sca",
+        "report_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/sca-current-candidate-r01/raw/pnpm-audit-all.json",
+        "binding": {
+          "commit": "d66d10d17d1299428576ea76871d8f6bd5f776f0",
+          "tree": "5bf9c70d54fc7cc88b2ebd3ce52bd1104a37f792",
+          "tool_name": "pnpm audit",
+          "tool_version": "9.15.4",
+          "command": "bash scripts/security/run-sca.sh (pnpm audit --audit-level low --json; pnpm audit --prod --audit-level low --json)",
+          "environment": "Clean independent local clone; Node v24.14.0; full/prod lockfile graphs only; no deployed service or container scan; lock SHA256 d96a07aa3f39bf74bcf855ef5ad2e7c8ec7f799465f19c38fa0440f30d41e896",
+          "result_sha256": "16e5d46414fe32cb664acea98789611f0344618ab6403694cda9205a4d261adc",
+          "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/sca-current-candidate-r01/raw/pnpm-audit-all.log",
+          "config_sha256": "d96a07aa3f39bf74bcf855ef5ad2e7c8ec7f799465f19c38fa0440f30d41e896",
+          "recorded_at": "2026-10-24T05:52:56.586821+00:00"
+        }
+      },
+      "scope": {
+        "component": "vite (development/full dependency graph only)",
+        "affected_files": [
+          "package.json",
+          "pnpm-lock.yaml",
+          "apps/api/package.json",
+          "apps/web/package.json"
+        ],
+        "entry_points": [
+          "apps/api > vitest@4.1.11 > @vitest/mocker@4.1.11 > vite@7.3.6",
+          "apps/api > vitest@4.1.11 > vite@7.3.6",
+          "apps/web > vitest@4.1.11 > @vitest/mocker@4.1.11 > vite@7.3.6",
+          "apps/web > vitest@4.1.11 > vite@7.3.6"
+        ],
+        "trust_boundary": "Development server/editor/mock plugin inputs; absent from current production audit graph"
+      },
+      "evidence": {
+        "reachable": null,
+        "production_exposed": null,
+        "reproduction_path": "原始full audit exit1/FAIL：/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/sca-current-candidate-r01/raw/pnpm-audit-all.json SHA256 16e5d46414fe32cb664acea98789611f0344618ab6403694cda9205a4d261adc；production audit exit1/FAIL：/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/sca-current-candidate-r01/raw/pnpm-audit.json SHA256 e6314ecacd9f6543cee065c1a6b6e87ae4491dbb4acb6835f8ea91adad45e759；本条仅在full图，production未报告本条。 锁定版本 7.3.6；受影响范围 >=7.0.0 <=7.3.6；修复范围 >=7.3.7。报告中的依赖链（不是重新运行的installed-package探测）：\napps/api > vitest@4.1.11 > @vitest/mocker@4.1.11 > vite@7.3.6\napps/api > vitest@4.1.11 > vite@7.3.6\napps/web > vitest@4.1.11 > @vitest/mocker@4.1.11 > vite@7.3.6\napps/web > vitest@4.1.11 > vite@7.3.6\n官方公告 https://github.com/advisories/GHSA-r825-w8mm-5pxw\n仅full开发依赖图命中，prod未命中；官方Vite路径需WSL、恶意文件名和会解释CLI标志的编辑器。本次未验证该平台与配置。",
+        "proof_gap": "未实施本条利用复现或检查生产暴露；修复后的目标回归、SCA、独立diff及制品/运行验证待主任务完成。仅full开发依赖图命中，prod未命中；官方Vite路径需WSL、恶意文件名和会解释CLI标志的编辑器。本次未验证该平台与配置。"
+      },
+      "root_cause_cluster": "GHSA-r825-w8mm-5pxw",
+      "security_invariants": [],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
+      "fix": {
+        "task_id": "TRUCK-COLOR-V1-FINAL-EXECUTION-20261024-R01",
+        "branch": null,
+        "commit": null,
+        "tree": null,
+        "changed_files": []
+      },
+      "verification": {
+        "targeted": {
+          "status": "pending",
+          "binding": null,
+          "notes": "待修复候选及对应真实证据；本提案不提供PASS。"
+        },
+        "affected_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "待修复候选及对应真实证据；本提案不提供PASS。"
+        },
+        "diff_review": {
+          "status": "pending",
+          "binding": null,
+          "notes": "待修复候选及对应真实证据；本提案不提供PASS。"
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "待修复候选及对应真实证据；本提案不提供PASS。"
+        }
+      },
+      "closure": null,
+      "history": [
+        {
+          "at": "2026-10-24T05:52:56.586821+00:00",
+          "transition": "null->candidate",
+          "actor": "Codex root: actual pnpm audit",
+          "reason": "原作者实际pnpm audit报告锁定版本命中；保留raw失败。",
+          "approval_id": null,
+          "binding": {
+            "commit": "d66d10d17d1299428576ea76871d8f6bd5f776f0",
+            "tree": "5bf9c70d54fc7cc88b2ebd3ce52bd1104a37f792",
+            "tool_name": "pnpm audit",
+            "tool_version": "9.15.4",
+            "command": "bash scripts/security/run-sca.sh (pnpm audit --audit-level low --json; pnpm audit --prod --audit-level low --json)",
+            "environment": "Clean independent local clone; Node v24.14.0; full/prod lockfile graphs only; no deployed service or container scan; lock SHA256 d96a07aa3f39bf74bcf855ef5ad2e7c8ec7f799465f19c38fa0440f30d41e896",
+            "result_sha256": "16e5d46414fe32cb664acea98789611f0344618ab6403694cda9205a4d261adc",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/sca-current-candidate-r01/raw/pnpm-audit-all.log",
+            "config_sha256": "d96a07aa3f39bf74bcf855ef5ad2e7c8ec7f799465f19c38fa0440f30d41e896",
+            "recorded_at": "2026-10-24T05:52:56.586821+00:00"
+          }
+        },
+        {
+          "at": "2026-10-24T05:57:53.096909+00:00",
+          "transition": "candidate->confirmed",
+          "actor": "Codex ci_investigation: readonly triage",
+          "reason": "只读核对原始JSON、锁定路径与官方公告；确认依赖版本命中，不推断当前服务已被利用。",
+          "approval_id": null,
+          "binding": {
+            "commit": "d66d10d17d1299428576ea76871d8f6bd5f776f0",
+            "tree": "5bf9c70d54fc7cc88b2ebd3ce52bd1104a37f792",
+            "tool_name": "pnpm audit",
+            "tool_version": "9.15.4",
+            "command": "bash scripts/security/run-sca.sh (pnpm audit --audit-level low --json; pnpm audit --prod --audit-level low --json)",
+            "environment": "Clean independent local clone; Node v24.14.0; full/prod lockfile graphs only; no deployed service or container scan; lock SHA256 d96a07aa3f39bf74bcf855ef5ad2e7c8ec7f799465f19c38fa0440f30d41e896",
+            "result_sha256": "16e5d46414fe32cb664acea98789611f0344618ab6403694cda9205a4d261adc",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/sca-current-candidate-r01/raw/pnpm-audit-all.log",
+            "config_sha256": "d96a07aa3f39bf74bcf855ef5ad2e7c8ec7f799465f19c38fa0440f30d41e896",
+            "recorded_at": "2026-10-24T05:52:56.586821+00:00"
+          }
+        },
+        {
+          "at": "2026-10-24T05:57:53.096909+00:00",
+          "transition": "confirmed->accepted_for_fix",
+          "actor": "Codex root under owner-authorized final execution",
+          "reason": "主任务已明确授权修复新SCA缺口；无风险接受或发布批准。",
+          "approval_id": null,
+          "binding": null
+        },
+        {
+          "at": "2026-10-24T05:57:53.096909+00:00",
+          "transition": "accepted_for_fix->in_progress",
+          "actor": "Codex root: repair in progress",
+          "reason": "主任务正在实施必要依赖/锁修复；本提案尚未导入唯一Ledger。建议：根override vite=7.3.7，保持7.x。",
+          "approval_id": null,
+          "binding": null
+        }
+      ]
+    },
+    {
+      "id": "R28-V1-SCA-005",
+      "title": "vite 7.3.6 — GHSA-587h-7wmj-h5pm — launch-editor: `fs.existsSync()` existence check can be bypassed on Windows",
+      "status": "in_progress",
+      "severity": "high",
+      "confidence": "high",
+      "classification": "pre_existing",
+      "cwe": null,
+      "source": {
+        "type": "sca",
+        "report_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/sca-current-candidate-r01/raw/pnpm-audit-all.json",
+        "binding": {
+          "commit": "d66d10d17d1299428576ea76871d8f6bd5f776f0",
+          "tree": "5bf9c70d54fc7cc88b2ebd3ce52bd1104a37f792",
+          "tool_name": "pnpm audit",
+          "tool_version": "9.15.4",
+          "command": "bash scripts/security/run-sca.sh (pnpm audit --audit-level low --json; pnpm audit --prod --audit-level low --json)",
+          "environment": "Clean independent local clone; Node v24.14.0; full/prod lockfile graphs only; no deployed service or container scan; lock SHA256 d96a07aa3f39bf74bcf855ef5ad2e7c8ec7f799465f19c38fa0440f30d41e896",
+          "result_sha256": "16e5d46414fe32cb664acea98789611f0344618ab6403694cda9205a4d261adc",
+          "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/sca-current-candidate-r01/raw/pnpm-audit-all.log",
+          "config_sha256": "d96a07aa3f39bf74bcf855ef5ad2e7c8ec7f799465f19c38fa0440f30d41e896",
+          "recorded_at": "2026-10-24T05:52:56.586821+00:00"
+        }
+      },
+      "scope": {
+        "component": "vite (development/full dependency graph only)",
+        "affected_files": [
+          "package.json",
+          "pnpm-lock.yaml",
+          "apps/api/package.json",
+          "apps/web/package.json"
+        ],
+        "entry_points": [
+          "apps/api > vitest@4.1.11 > @vitest/mocker@4.1.11 > vite@7.3.6",
+          "apps/api > vitest@4.1.11 > vite@7.3.6",
+          "apps/web > vitest@4.1.11 > @vitest/mocker@4.1.11 > vite@7.3.6",
+          "apps/web > vitest@4.1.11 > vite@7.3.6"
+        ],
+        "trust_boundary": "Development server/editor/mock plugin inputs; absent from current production audit graph"
+      },
+      "evidence": {
+        "reachable": null,
+        "production_exposed": null,
+        "reproduction_path": "原始full audit exit1/FAIL：/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/sca-current-candidate-r01/raw/pnpm-audit-all.json SHA256 16e5d46414fe32cb664acea98789611f0344618ab6403694cda9205a4d261adc；production audit exit1/FAIL：/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/sca-current-candidate-r01/raw/pnpm-audit.json SHA256 e6314ecacd9f6543cee065c1a6b6e87ae4491dbb4acb6835f8ea91adad45e759；本条仅在full图，production未报告本条。 锁定版本 7.3.6；受影响范围 >=7.0.0 <=7.3.6；修复范围 >=7.3.7。报告中的依赖链（不是重新运行的installed-package探测）：\napps/api > vitest@4.1.11 > @vitest/mocker@4.1.11 > vite@7.3.6\napps/api > vitest@4.1.11 > vite@7.3.6\napps/web > vitest@4.1.11 > @vitest/mocker@4.1.11 > vite@7.3.6\napps/web > vitest@4.1.11 > vite@7.3.6\n官方公告 https://github.com/advisories/GHSA-587h-7wmj-h5pm\n仅full开发依赖图命中，prod未命中；官方条件涉及Windows launch-editor存在性检查绕过。本次未验证Windows运行面。",
+        "proof_gap": "未实施本条利用复现或检查生产暴露；修复后的目标回归、SCA、独立diff及制品/运行验证待主任务完成。仅full开发依赖图命中，prod未命中；官方条件涉及Windows launch-editor存在性检查绕过。本次未验证Windows运行面。"
+      },
+      "root_cause_cluster": "GHSA-587h-7wmj-h5pm",
+      "security_invariants": [],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
+      "fix": {
+        "task_id": "TRUCK-COLOR-V1-FINAL-EXECUTION-20261024-R01",
+        "branch": null,
+        "commit": null,
+        "tree": null,
+        "changed_files": []
+      },
+      "verification": {
+        "targeted": {
+          "status": "pending",
+          "binding": null,
+          "notes": "待修复候选及对应真实证据；本提案不提供PASS。"
+        },
+        "affected_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "待修复候选及对应真实证据；本提案不提供PASS。"
+        },
+        "diff_review": {
+          "status": "pending",
+          "binding": null,
+          "notes": "待修复候选及对应真实证据；本提案不提供PASS。"
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "待修复候选及对应真实证据；本提案不提供PASS。"
+        }
+      },
+      "closure": null,
+      "history": [
+        {
+          "at": "2026-10-24T05:52:56.586821+00:00",
+          "transition": "null->candidate",
+          "actor": "Codex root: actual pnpm audit",
+          "reason": "原作者实际pnpm audit报告锁定版本命中；保留raw失败。",
+          "approval_id": null,
+          "binding": {
+            "commit": "d66d10d17d1299428576ea76871d8f6bd5f776f0",
+            "tree": "5bf9c70d54fc7cc88b2ebd3ce52bd1104a37f792",
+            "tool_name": "pnpm audit",
+            "tool_version": "9.15.4",
+            "command": "bash scripts/security/run-sca.sh (pnpm audit --audit-level low --json; pnpm audit --prod --audit-level low --json)",
+            "environment": "Clean independent local clone; Node v24.14.0; full/prod lockfile graphs only; no deployed service or container scan; lock SHA256 d96a07aa3f39bf74bcf855ef5ad2e7c8ec7f799465f19c38fa0440f30d41e896",
+            "result_sha256": "16e5d46414fe32cb664acea98789611f0344618ab6403694cda9205a4d261adc",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/sca-current-candidate-r01/raw/pnpm-audit-all.log",
+            "config_sha256": "d96a07aa3f39bf74bcf855ef5ad2e7c8ec7f799465f19c38fa0440f30d41e896",
+            "recorded_at": "2026-10-24T05:52:56.586821+00:00"
+          }
+        },
+        {
+          "at": "2026-10-24T05:57:53.096909+00:00",
+          "transition": "candidate->confirmed",
+          "actor": "Codex ci_investigation: readonly triage",
+          "reason": "只读核对原始JSON、锁定路径与官方公告；确认依赖版本命中，不推断当前服务已被利用。",
+          "approval_id": null,
+          "binding": {
+            "commit": "d66d10d17d1299428576ea76871d8f6bd5f776f0",
+            "tree": "5bf9c70d54fc7cc88b2ebd3ce52bd1104a37f792",
+            "tool_name": "pnpm audit",
+            "tool_version": "9.15.4",
+            "command": "bash scripts/security/run-sca.sh (pnpm audit --audit-level low --json; pnpm audit --prod --audit-level low --json)",
+            "environment": "Clean independent local clone; Node v24.14.0; full/prod lockfile graphs only; no deployed service or container scan; lock SHA256 d96a07aa3f39bf74bcf855ef5ad2e7c8ec7f799465f19c38fa0440f30d41e896",
+            "result_sha256": "16e5d46414fe32cb664acea98789611f0344618ab6403694cda9205a4d261adc",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/sca-current-candidate-r01/raw/pnpm-audit-all.log",
+            "config_sha256": "d96a07aa3f39bf74bcf855ef5ad2e7c8ec7f799465f19c38fa0440f30d41e896",
+            "recorded_at": "2026-10-24T05:52:56.586821+00:00"
+          }
+        },
+        {
+          "at": "2026-10-24T05:57:53.096909+00:00",
+          "transition": "confirmed->accepted_for_fix",
+          "actor": "Codex root under owner-authorized final execution",
+          "reason": "主任务已明确授权修复新SCA缺口；无风险接受或发布批准。",
+          "approval_id": null,
+          "binding": null
+        },
+        {
+          "at": "2026-10-24T05:57:53.096909+00:00",
+          "transition": "accepted_for_fix->in_progress",
+          "actor": "Codex root: repair in progress",
+          "reason": "主任务正在实施必要依赖/锁修复；本提案尚未导入唯一Ledger。建议：根override vite=7.3.7，保持7.x。",
+          "approval_id": null,
+          "binding": null
+        }
+      ]
+    },
+    {
+      "id": "R28-V1-SCA-006",
+      "title": "vite 7.3.6 — GHSA-9jrq-w75r-8gcw — Vite: Cross origin script execution through Vite custom middleware",
+      "status": "in_progress",
+      "severity": "low",
+      "confidence": "high",
+      "classification": "pre_existing",
+      "cwe": null,
+      "source": {
+        "type": "sca",
+        "report_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/sca-current-candidate-r01/raw/pnpm-audit-all.json",
+        "binding": {
+          "commit": "d66d10d17d1299428576ea76871d8f6bd5f776f0",
+          "tree": "5bf9c70d54fc7cc88b2ebd3ce52bd1104a37f792",
+          "tool_name": "pnpm audit",
+          "tool_version": "9.15.4",
+          "command": "bash scripts/security/run-sca.sh (pnpm audit --audit-level low --json; pnpm audit --prod --audit-level low --json)",
+          "environment": "Clean independent local clone; Node v24.14.0; full/prod lockfile graphs only; no deployed service or container scan; lock SHA256 d96a07aa3f39bf74bcf855ef5ad2e7c8ec7f799465f19c38fa0440f30d41e896",
+          "result_sha256": "16e5d46414fe32cb664acea98789611f0344618ab6403694cda9205a4d261adc",
+          "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/sca-current-candidate-r01/raw/pnpm-audit-all.log",
+          "config_sha256": "d96a07aa3f39bf74bcf855ef5ad2e7c8ec7f799465f19c38fa0440f30d41e896",
+          "recorded_at": "2026-10-24T05:52:56.586821+00:00"
+        }
+      },
+      "scope": {
+        "component": "vite (development/full dependency graph only)",
+        "affected_files": [
+          "package.json",
+          "pnpm-lock.yaml",
+          "apps/api/package.json",
+          "apps/web/package.json"
+        ],
+        "entry_points": [
+          "apps/api > vitest@4.1.11 > @vitest/mocker@4.1.11 > vite@7.3.6",
+          "apps/api > vitest@4.1.11 > vite@7.3.6",
+          "apps/web > vitest@4.1.11 > @vitest/mocker@4.1.11 > vite@7.3.6",
+          "apps/web > vitest@4.1.11 > vite@7.3.6"
+        ],
+        "trust_boundary": "Development server/editor/mock plugin inputs; absent from current production audit graph"
+      },
+      "evidence": {
+        "reachable": null,
+        "production_exposed": null,
+        "reproduction_path": "原始full audit exit1/FAIL：/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/sca-current-candidate-r01/raw/pnpm-audit-all.json SHA256 16e5d46414fe32cb664acea98789611f0344618ab6403694cda9205a4d261adc；production audit exit1/FAIL：/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/sca-current-candidate-r01/raw/pnpm-audit.json SHA256 e6314ecacd9f6543cee065c1a6b6e87ae4491dbb4acb6835f8ea91adad45e759；本条仅在full图，production未报告本条。 锁定版本 7.3.6；受影响范围 >=7.0.0 <=7.3.6；修复范围 >=7.3.7。报告中的依赖链（不是重新运行的installed-package探测）：\napps/api > vitest@4.1.11 > @vitest/mocker@4.1.11 > vite@7.3.6\napps/api > vitest@4.1.11 > vite@7.3.6\napps/web > vitest@4.1.11 > @vitest/mocker@4.1.11 > vite@7.3.6\napps/web > vitest@4.1.11 > vite@7.3.6\n官方公告 https://github.com/advisories/GHSA-9jrq-w75r-8gcw\n仅full开发依赖图命中，prod未命中；官方条件为自定义middleware/transformIndexHtml与请求URL处理。本次未证明本应用启用了该暴露面。",
+        "proof_gap": "未实施本条利用复现或检查生产暴露；修复后的目标回归、SCA、独立diff及制品/运行验证待主任务完成。仅full开发依赖图命中，prod未命中；官方条件为自定义middleware/transformIndexHtml与请求URL处理。本次未证明本应用启用了该暴露面。"
+      },
+      "root_cause_cluster": "GHSA-9jrq-w75r-8gcw",
+      "security_invariants": [],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
+      "fix": {
+        "task_id": "TRUCK-COLOR-V1-FINAL-EXECUTION-20261024-R01",
+        "branch": null,
+        "commit": null,
+        "tree": null,
+        "changed_files": []
+      },
+      "verification": {
+        "targeted": {
+          "status": "pending",
+          "binding": null,
+          "notes": "待修复候选及对应真实证据；本提案不提供PASS。"
+        },
+        "affected_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "待修复候选及对应真实证据；本提案不提供PASS。"
+        },
+        "diff_review": {
+          "status": "pending",
+          "binding": null,
+          "notes": "待修复候选及对应真实证据；本提案不提供PASS。"
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "待修复候选及对应真实证据；本提案不提供PASS。"
+        }
+      },
+      "closure": null,
+      "history": [
+        {
+          "at": "2026-10-24T05:52:56.586821+00:00",
+          "transition": "null->candidate",
+          "actor": "Codex root: actual pnpm audit",
+          "reason": "原作者实际pnpm audit报告锁定版本命中；保留raw失败。",
+          "approval_id": null,
+          "binding": {
+            "commit": "d66d10d17d1299428576ea76871d8f6bd5f776f0",
+            "tree": "5bf9c70d54fc7cc88b2ebd3ce52bd1104a37f792",
+            "tool_name": "pnpm audit",
+            "tool_version": "9.15.4",
+            "command": "bash scripts/security/run-sca.sh (pnpm audit --audit-level low --json; pnpm audit --prod --audit-level low --json)",
+            "environment": "Clean independent local clone; Node v24.14.0; full/prod lockfile graphs only; no deployed service or container scan; lock SHA256 d96a07aa3f39bf74bcf855ef5ad2e7c8ec7f799465f19c38fa0440f30d41e896",
+            "result_sha256": "16e5d46414fe32cb664acea98789611f0344618ab6403694cda9205a4d261adc",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/sca-current-candidate-r01/raw/pnpm-audit-all.log",
+            "config_sha256": "d96a07aa3f39bf74bcf855ef5ad2e7c8ec7f799465f19c38fa0440f30d41e896",
+            "recorded_at": "2026-10-24T05:52:56.586821+00:00"
+          }
+        },
+        {
+          "at": "2026-10-24T05:57:53.096909+00:00",
+          "transition": "candidate->confirmed",
+          "actor": "Codex ci_investigation: readonly triage",
+          "reason": "只读核对原始JSON、锁定路径与官方公告；确认依赖版本命中，不推断当前服务已被利用。",
+          "approval_id": null,
+          "binding": {
+            "commit": "d66d10d17d1299428576ea76871d8f6bd5f776f0",
+            "tree": "5bf9c70d54fc7cc88b2ebd3ce52bd1104a37f792",
+            "tool_name": "pnpm audit",
+            "tool_version": "9.15.4",
+            "command": "bash scripts/security/run-sca.sh (pnpm audit --audit-level low --json; pnpm audit --prod --audit-level low --json)",
+            "environment": "Clean independent local clone; Node v24.14.0; full/prod lockfile graphs only; no deployed service or container scan; lock SHA256 d96a07aa3f39bf74bcf855ef5ad2e7c8ec7f799465f19c38fa0440f30d41e896",
+            "result_sha256": "16e5d46414fe32cb664acea98789611f0344618ab6403694cda9205a4d261adc",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/sca-current-candidate-r01/raw/pnpm-audit-all.log",
+            "config_sha256": "d96a07aa3f39bf74bcf855ef5ad2e7c8ec7f799465f19c38fa0440f30d41e896",
+            "recorded_at": "2026-10-24T05:52:56.586821+00:00"
+          }
+        },
+        {
+          "at": "2026-10-24T05:57:53.096909+00:00",
+          "transition": "confirmed->accepted_for_fix",
+          "actor": "Codex root under owner-authorized final execution",
+          "reason": "主任务已明确授权修复新SCA缺口；无风险接受或发布批准。",
+          "approval_id": null,
+          "binding": null
+        },
+        {
+          "at": "2026-10-24T05:57:53.096909+00:00",
+          "transition": "accepted_for_fix->in_progress",
+          "actor": "Codex root: repair in progress",
+          "reason": "主任务正在实施必要依赖/锁修复；本提案尚未导入唯一Ledger。建议：根override vite=7.3.7，保持7.x。",
+          "approval_id": null,
+          "binding": null
+        }
+      ]
+    },
+    {
+      "id": "R28-V1-SCA-007",
+      "title": "vite 7.3.6 — GHSA-rq7h-c2jc-7f22 — Vite: Files outside `server.fs.allow` could be served when project paths match system paths on non-Windows machine",
+      "status": "in_progress",
+      "severity": "medium",
+      "confidence": "high",
+      "classification": "pre_existing",
+      "cwe": null,
+      "source": {
+        "type": "sca",
+        "report_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/sca-current-candidate-r01/raw/pnpm-audit-all.json",
+        "binding": {
+          "commit": "d66d10d17d1299428576ea76871d8f6bd5f776f0",
+          "tree": "5bf9c70d54fc7cc88b2ebd3ce52bd1104a37f792",
+          "tool_name": "pnpm audit",
+          "tool_version": "9.15.4",
+          "command": "bash scripts/security/run-sca.sh (pnpm audit --audit-level low --json; pnpm audit --prod --audit-level low --json)",
+          "environment": "Clean independent local clone; Node v24.14.0; full/prod lockfile graphs only; no deployed service or container scan; lock SHA256 d96a07aa3f39bf74bcf855ef5ad2e7c8ec7f799465f19c38fa0440f30d41e896",
+          "result_sha256": "16e5d46414fe32cb664acea98789611f0344618ab6403694cda9205a4d261adc",
+          "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/sca-current-candidate-r01/raw/pnpm-audit-all.log",
+          "config_sha256": "d96a07aa3f39bf74bcf855ef5ad2e7c8ec7f799465f19c38fa0440f30d41e896",
+          "recorded_at": "2026-10-24T05:52:56.586821+00:00"
+        }
+      },
+      "scope": {
+        "component": "vite (development/full dependency graph only)",
+        "affected_files": [
+          "package.json",
+          "pnpm-lock.yaml",
+          "apps/api/package.json",
+          "apps/web/package.json"
+        ],
+        "entry_points": [
+          "apps/api > vitest@4.1.11 > @vitest/mocker@4.1.11 > vite@7.3.6",
+          "apps/api > vitest@4.1.11 > vite@7.3.6",
+          "apps/web > vitest@4.1.11 > @vitest/mocker@4.1.11 > vite@7.3.6",
+          "apps/web > vitest@4.1.11 > vite@7.3.6"
+        ],
+        "trust_boundary": "Development server/editor/mock plugin inputs; absent from current production audit graph"
+      },
+      "evidence": {
+        "reachable": null,
+        "production_exposed": null,
+        "reproduction_path": "原始full audit exit1/FAIL：/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/sca-current-candidate-r01/raw/pnpm-audit-all.json SHA256 16e5d46414fe32cb664acea98789611f0344618ab6403694cda9205a4d261adc；production audit exit1/FAIL：/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/sca-current-candidate-r01/raw/pnpm-audit.json SHA256 e6314ecacd9f6543cee065c1a6b6e87ae4491dbb4acb6835f8ea91adad45e759；本条仅在full图，production未报告本条。 锁定版本 7.3.6；受影响范围 >=7.0.0 <=7.3.6；修复范围 >=7.3.7。报告中的依赖链（不是重新运行的installed-package探测）：\napps/api > vitest@4.1.11 > @vitest/mocker@4.1.11 > vite@7.3.6\napps/api > vitest@4.1.11 > vite@7.3.6\napps/web > vitest@4.1.11 > @vitest/mocker@4.1.11 > vite@7.3.6\napps/web > vitest@4.1.11 > vite@7.3.6\n官方公告 https://github.com/advisories/GHSA-rq7h-c2jc-7f22\n仅full开发依赖图命中，prod未命中；官方条件包含非Windows开发服务器可访问及项目导入路径与系统路径匹配。不能把全部Vite条目统一标作Windows不适用。",
+        "proof_gap": "未实施本条利用复现或检查生产暴露；修复后的目标回归、SCA、独立diff及制品/运行验证待主任务完成。仅full开发依赖图命中，prod未命中；官方条件包含非Windows开发服务器可访问及项目导入路径与系统路径匹配。不能把全部Vite条目统一标作Windows不适用。"
+      },
+      "root_cause_cluster": "GHSA-rq7h-c2jc-7f22",
+      "security_invariants": [],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
+      "fix": {
+        "task_id": "TRUCK-COLOR-V1-FINAL-EXECUTION-20261024-R01",
+        "branch": null,
+        "commit": null,
+        "tree": null,
+        "changed_files": []
+      },
+      "verification": {
+        "targeted": {
+          "status": "pending",
+          "binding": null,
+          "notes": "待修复候选及对应真实证据；本提案不提供PASS。"
+        },
+        "affected_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "待修复候选及对应真实证据；本提案不提供PASS。"
+        },
+        "diff_review": {
+          "status": "pending",
+          "binding": null,
+          "notes": "待修复候选及对应真实证据；本提案不提供PASS。"
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "待修复候选及对应真实证据；本提案不提供PASS。"
+        }
+      },
+      "closure": null,
+      "history": [
+        {
+          "at": "2026-10-24T05:52:56.586821+00:00",
+          "transition": "null->candidate",
+          "actor": "Codex root: actual pnpm audit",
+          "reason": "原作者实际pnpm audit报告锁定版本命中；保留raw失败。",
+          "approval_id": null,
+          "binding": {
+            "commit": "d66d10d17d1299428576ea76871d8f6bd5f776f0",
+            "tree": "5bf9c70d54fc7cc88b2ebd3ce52bd1104a37f792",
+            "tool_name": "pnpm audit",
+            "tool_version": "9.15.4",
+            "command": "bash scripts/security/run-sca.sh (pnpm audit --audit-level low --json; pnpm audit --prod --audit-level low --json)",
+            "environment": "Clean independent local clone; Node v24.14.0; full/prod lockfile graphs only; no deployed service or container scan; lock SHA256 d96a07aa3f39bf74bcf855ef5ad2e7c8ec7f799465f19c38fa0440f30d41e896",
+            "result_sha256": "16e5d46414fe32cb664acea98789611f0344618ab6403694cda9205a4d261adc",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/sca-current-candidate-r01/raw/pnpm-audit-all.log",
+            "config_sha256": "d96a07aa3f39bf74bcf855ef5ad2e7c8ec7f799465f19c38fa0440f30d41e896",
+            "recorded_at": "2026-10-24T05:52:56.586821+00:00"
+          }
+        },
+        {
+          "at": "2026-10-24T05:57:53.096909+00:00",
+          "transition": "candidate->confirmed",
+          "actor": "Codex ci_investigation: readonly triage",
+          "reason": "只读核对原始JSON、锁定路径与官方公告；确认依赖版本命中，不推断当前服务已被利用。",
+          "approval_id": null,
+          "binding": {
+            "commit": "d66d10d17d1299428576ea76871d8f6bd5f776f0",
+            "tree": "5bf9c70d54fc7cc88b2ebd3ce52bd1104a37f792",
+            "tool_name": "pnpm audit",
+            "tool_version": "9.15.4",
+            "command": "bash scripts/security/run-sca.sh (pnpm audit --audit-level low --json; pnpm audit --prod --audit-level low --json)",
+            "environment": "Clean independent local clone; Node v24.14.0; full/prod lockfile graphs only; no deployed service or container scan; lock SHA256 d96a07aa3f39bf74bcf855ef5ad2e7c8ec7f799465f19c38fa0440f30d41e896",
+            "result_sha256": "16e5d46414fe32cb664acea98789611f0344618ab6403694cda9205a4d261adc",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/sca-current-candidate-r01/raw/pnpm-audit-all.log",
+            "config_sha256": "d96a07aa3f39bf74bcf855ef5ad2e7c8ec7f799465f19c38fa0440f30d41e896",
+            "recorded_at": "2026-10-24T05:52:56.586821+00:00"
+          }
+        },
+        {
+          "at": "2026-10-24T05:57:53.096909+00:00",
+          "transition": "confirmed->accepted_for_fix",
+          "actor": "Codex root under owner-authorized final execution",
+          "reason": "主任务已明确授权修复新SCA缺口；无风险接受或发布批准。",
+          "approval_id": null,
+          "binding": null
+        },
+        {
+          "at": "2026-10-24T05:57:53.096909+00:00",
+          "transition": "accepted_for_fix->in_progress",
+          "actor": "Codex root: repair in progress",
+          "reason": "主任务正在实施必要依赖/锁修复；本提案尚未导入唯一Ledger。建议：根override vite=7.3.7，保持7.x。",
+          "approval_id": null,
+          "binding": null
+        }
+      ]
+    },
+    {
+      "id": "R28-V1-SCA-008",
+      "title": "@vitest/mocker 4.1.11 — GHSA-qxg6-89mg-rqv8 — Vitest: Code injection via unauthenticated manual mock registration",
+      "status": "in_progress",
+      "severity": "medium",
+      "confidence": "high",
+      "classification": "pre_existing",
+      "cwe": null,
+      "source": {
+        "type": "sca",
+        "report_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/sca-current-candidate-r01/raw/pnpm-audit-all.json",
+        "binding": {
+          "commit": "d66d10d17d1299428576ea76871d8f6bd5f776f0",
+          "tree": "5bf9c70d54fc7cc88b2ebd3ce52bd1104a37f792",
+          "tool_name": "pnpm audit",
+          "tool_version": "9.15.4",
+          "command": "bash scripts/security/run-sca.sh (pnpm audit --audit-level low --json; pnpm audit --prod --audit-level low --json)",
+          "environment": "Clean independent local clone; Node v24.14.0; full/prod lockfile graphs only; no deployed service or container scan; lock SHA256 d96a07aa3f39bf74bcf855ef5ad2e7c8ec7f799465f19c38fa0440f30d41e896",
+          "result_sha256": "16e5d46414fe32cb664acea98789611f0344618ab6403694cda9205a4d261adc",
+          "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/sca-current-candidate-r01/raw/pnpm-audit-all.log",
+          "config_sha256": "d96a07aa3f39bf74bcf855ef5ad2e7c8ec7f799465f19c38fa0440f30d41e896",
+          "recorded_at": "2026-10-24T05:52:56.586821+00:00"
+        }
+      },
+      "scope": {
+        "component": "@vitest/mocker (development/full dependency graph only)",
+        "affected_files": [
+          "package.json",
+          "pnpm-lock.yaml",
+          "apps/api/package.json",
+          "apps/web/package.json"
+        ],
+        "entry_points": [
+          "apps/api > vitest@4.1.11 > @vitest/mocker@4.1.11",
+          "apps/web > vitest@4.1.11 > @vitest/mocker@4.1.11"
+        ],
+        "trust_boundary": "Development server/editor/mock plugin inputs; absent from current production audit graph"
+      },
+      "evidence": {
+        "reachable": null,
+        "production_exposed": null,
+        "reproduction_path": "原始full audit exit1/FAIL：/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/sca-current-candidate-r01/raw/pnpm-audit-all.json SHA256 16e5d46414fe32cb664acea98789611f0344618ab6403694cda9205a4d261adc；production audit exit1/FAIL：/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/sca-current-candidate-r01/raw/pnpm-audit.json SHA256 e6314ecacd9f6543cee065c1a6b6e87ae4491dbb4acb6835f8ea91adad45e759；本条仅在full图，production未报告本条。 锁定版本 4.1.11；受影响范围 >=2.1.0-beta.7 <4.1.12；修复范围 >=4.1.12。报告中的依赖链（不是重新运行的installed-package探测）：\napps/api > vitest@4.1.11 > @vitest/mocker@4.1.11\napps/web > vitest@4.1.11 > @vitest/mocker@4.1.11\n官方公告 https://github.com/advisories/GHSA-qxg6-89mg-rqv8\n仅full开发依赖图命中，prod未命中；官方漏洞位于公开mockerPlugin/interceptorPlugin的开发服务器WebSocket处理器。普通Node测试运行不注册该处理器；源码范围检索未发现显式使用这些插件。未做运行面或网络可达性验证。",
+        "proof_gap": "未实施本条利用复现或检查生产暴露；修复后的目标回归、SCA、独立diff及制品/运行验证待主任务完成。仅full开发依赖图命中，prod未命中；官方漏洞位于公开mockerPlugin/interceptorPlugin的开发服务器WebSocket处理器。普通Node测试运行不注册该处理器；源码范围检索未发现显式使用这些插件。未做运行面或网络可达性验证。"
+      },
+      "root_cause_cluster": "GHSA-qxg6-89mg-rqv8",
+      "security_invariants": [],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
+      "fix": {
+        "task_id": "TRUCK-COLOR-V1-FINAL-EXECUTION-20261024-R01",
+        "branch": null,
+        "commit": null,
+        "tree": null,
+        "changed_files": []
+      },
+      "verification": {
+        "targeted": {
+          "status": "pending",
+          "binding": null,
+          "notes": "待修复候选及对应真实证据；本提案不提供PASS。"
+        },
+        "affected_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "待修复候选及对应真实证据；本提案不提供PASS。"
+        },
+        "diff_review": {
+          "status": "pending",
+          "binding": null,
+          "notes": "待修复候选及对应真实证据；本提案不提供PASS。"
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "待修复候选及对应真实证据；本提案不提供PASS。"
+        }
+      },
+      "closure": null,
+      "history": [
+        {
+          "at": "2026-10-24T05:52:56.586821+00:00",
+          "transition": "null->candidate",
+          "actor": "Codex root: actual pnpm audit",
+          "reason": "原作者实际pnpm audit报告锁定版本命中；保留raw失败。",
+          "approval_id": null,
+          "binding": {
+            "commit": "d66d10d17d1299428576ea76871d8f6bd5f776f0",
+            "tree": "5bf9c70d54fc7cc88b2ebd3ce52bd1104a37f792",
+            "tool_name": "pnpm audit",
+            "tool_version": "9.15.4",
+            "command": "bash scripts/security/run-sca.sh (pnpm audit --audit-level low --json; pnpm audit --prod --audit-level low --json)",
+            "environment": "Clean independent local clone; Node v24.14.0; full/prod lockfile graphs only; no deployed service or container scan; lock SHA256 d96a07aa3f39bf74bcf855ef5ad2e7c8ec7f799465f19c38fa0440f30d41e896",
+            "result_sha256": "16e5d46414fe32cb664acea98789611f0344618ab6403694cda9205a4d261adc",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/sca-current-candidate-r01/raw/pnpm-audit-all.log",
+            "config_sha256": "d96a07aa3f39bf74bcf855ef5ad2e7c8ec7f799465f19c38fa0440f30d41e896",
+            "recorded_at": "2026-10-24T05:52:56.586821+00:00"
+          }
+        },
+        {
+          "at": "2026-10-24T05:57:53.096909+00:00",
+          "transition": "candidate->confirmed",
+          "actor": "Codex ci_investigation: readonly triage",
+          "reason": "只读核对原始JSON、锁定路径与官方公告；确认依赖版本命中，不推断当前服务已被利用。",
+          "approval_id": null,
+          "binding": {
+            "commit": "d66d10d17d1299428576ea76871d8f6bd5f776f0",
+            "tree": "5bf9c70d54fc7cc88b2ebd3ce52bd1104a37f792",
+            "tool_name": "pnpm audit",
+            "tool_version": "9.15.4",
+            "command": "bash scripts/security/run-sca.sh (pnpm audit --audit-level low --json; pnpm audit --prod --audit-level low --json)",
+            "environment": "Clean independent local clone; Node v24.14.0; full/prod lockfile graphs only; no deployed service or container scan; lock SHA256 d96a07aa3f39bf74bcf855ef5ad2e7c8ec7f799465f19c38fa0440f30d41e896",
+            "result_sha256": "16e5d46414fe32cb664acea98789611f0344618ab6403694cda9205a4d261adc",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/sca-current-candidate-r01/raw/pnpm-audit-all.log",
+            "config_sha256": "d96a07aa3f39bf74bcf855ef5ad2e7c8ec7f799465f19c38fa0440f30d41e896",
+            "recorded_at": "2026-10-24T05:52:56.586821+00:00"
+          }
+        },
+        {
+          "at": "2026-10-24T05:57:53.096909+00:00",
+          "transition": "confirmed->accepted_for_fix",
+          "actor": "Codex root under owner-authorized final execution",
+          "reason": "主任务已明确授权修复新SCA缺口；无风险接受或发布批准。",
+          "approval_id": null,
+          "binding": null
+        },
+        {
+          "at": "2026-10-24T05:57:53.096909+00:00",
+          "transition": "accepted_for_fix->in_progress",
+          "actor": "Codex root: repair in progress",
+          "reason": "主任务正在实施必要依赖/锁修复；本提案尚未导入唯一Ledger。建议：API及Web devDependencies vitest升级至4.1.12范围并审核锁定整个@vitest精确4.1.12族；不只孤立覆盖mocker。",
+          "approval_id": null,
+          "binding": null
+        }
+      ]
+    },
+    {
+      "id": "R28-V1-SCA-009",
+      "title": "@vitest/mocker 4.1.11 — GHSA-xp26-3454-mjgp — Vitest: Windows backslash traversal bypasses the @vitest/mocker redirect allowlist fix",
+      "status": "in_progress",
+      "severity": "medium",
+      "confidence": "high",
+      "classification": "pre_existing",
+      "cwe": null,
+      "source": {
+        "type": "sca",
+        "report_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/sca-current-candidate-r01/raw/pnpm-audit-all.json",
+        "binding": {
+          "commit": "d66d10d17d1299428576ea76871d8f6bd5f776f0",
+          "tree": "5bf9c70d54fc7cc88b2ebd3ce52bd1104a37f792",
+          "tool_name": "pnpm audit",
+          "tool_version": "9.15.4",
+          "command": "bash scripts/security/run-sca.sh (pnpm audit --audit-level low --json; pnpm audit --prod --audit-level low --json)",
+          "environment": "Clean independent local clone; Node v24.14.0; full/prod lockfile graphs only; no deployed service or container scan; lock SHA256 d96a07aa3f39bf74bcf855ef5ad2e7c8ec7f799465f19c38fa0440f30d41e896",
+          "result_sha256": "16e5d46414fe32cb664acea98789611f0344618ab6403694cda9205a4d261adc",
+          "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/sca-current-candidate-r01/raw/pnpm-audit-all.log",
+          "config_sha256": "d96a07aa3f39bf74bcf855ef5ad2e7c8ec7f799465f19c38fa0440f30d41e896",
+          "recorded_at": "2026-10-24T05:52:56.586821+00:00"
+        }
+      },
+      "scope": {
+        "component": "@vitest/mocker (development/full dependency graph only)",
+        "affected_files": [
+          "package.json",
+          "pnpm-lock.yaml",
+          "apps/api/package.json",
+          "apps/web/package.json"
+        ],
+        "entry_points": [
+          "apps/api > vitest@4.1.11 > @vitest/mocker@4.1.11",
+          "apps/web > vitest@4.1.11 > @vitest/mocker@4.1.11"
+        ],
+        "trust_boundary": "Development server/editor/mock plugin inputs; absent from current production audit graph"
+      },
+      "evidence": {
+        "reachable": null,
+        "production_exposed": null,
+        "reproduction_path": "原始full audit exit1/FAIL：/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/sca-current-candidate-r01/raw/pnpm-audit-all.json SHA256 16e5d46414fe32cb664acea98789611f0344618ab6403694cda9205a4d261adc；production audit exit1/FAIL：/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/sca-current-candidate-r01/raw/pnpm-audit.json SHA256 e6314ecacd9f6543cee065c1a6b6e87ae4491dbb4acb6835f8ea91adad45e759；本条仅在full图，production未报告本条。 锁定版本 4.1.11；受影响范围 >=4.1.11 <4.1.12；修复范围 >=4.1.12。报告中的依赖链（不是重新运行的installed-package探测）：\napps/api > vitest@4.1.11 > @vitest/mocker@4.1.11\napps/web > vitest@4.1.11 > @vitest/mocker@4.1.11\n官方公告 https://github.com/advisories/GHSA-xp26-3454-mjgp\n仅full开发依赖图命中，prod未命中；官方条件为Windows路径反斜杠及公开mock插件HMR重定向处理器。当前Mac/Node测试路径不能证明Windows路径安全。",
+        "proof_gap": "未实施本条利用复现或检查生产暴露；修复后的目标回归、SCA、独立diff及制品/运行验证待主任务完成。仅full开发依赖图命中，prod未命中；官方条件为Windows路径反斜杠及公开mock插件HMR重定向处理器。当前Mac/Node测试路径不能证明Windows路径安全。"
+      },
+      "root_cause_cluster": "GHSA-xp26-3454-mjgp",
+      "security_invariants": [],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
+      "fix": {
+        "task_id": "TRUCK-COLOR-V1-FINAL-EXECUTION-20261024-R01",
+        "branch": null,
+        "commit": null,
+        "tree": null,
+        "changed_files": []
+      },
+      "verification": {
+        "targeted": {
+          "status": "pending",
+          "binding": null,
+          "notes": "待修复候选及对应真实证据；本提案不提供PASS。"
+        },
+        "affected_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "待修复候选及对应真实证据；本提案不提供PASS。"
+        },
+        "diff_review": {
+          "status": "pending",
+          "binding": null,
+          "notes": "待修复候选及对应真实证据；本提案不提供PASS。"
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "待修复候选及对应真实证据；本提案不提供PASS。"
+        }
+      },
+      "closure": null,
+      "history": [
+        {
+          "at": "2026-10-24T05:52:56.586821+00:00",
+          "transition": "null->candidate",
+          "actor": "Codex root: actual pnpm audit",
+          "reason": "原作者实际pnpm audit报告锁定版本命中；保留raw失败。",
+          "approval_id": null,
+          "binding": {
+            "commit": "d66d10d17d1299428576ea76871d8f6bd5f776f0",
+            "tree": "5bf9c70d54fc7cc88b2ebd3ce52bd1104a37f792",
+            "tool_name": "pnpm audit",
+            "tool_version": "9.15.4",
+            "command": "bash scripts/security/run-sca.sh (pnpm audit --audit-level low --json; pnpm audit --prod --audit-level low --json)",
+            "environment": "Clean independent local clone; Node v24.14.0; full/prod lockfile graphs only; no deployed service or container scan; lock SHA256 d96a07aa3f39bf74bcf855ef5ad2e7c8ec7f799465f19c38fa0440f30d41e896",
+            "result_sha256": "16e5d46414fe32cb664acea98789611f0344618ab6403694cda9205a4d261adc",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/sca-current-candidate-r01/raw/pnpm-audit-all.log",
+            "config_sha256": "d96a07aa3f39bf74bcf855ef5ad2e7c8ec7f799465f19c38fa0440f30d41e896",
+            "recorded_at": "2026-10-24T05:52:56.586821+00:00"
+          }
+        },
+        {
+          "at": "2026-10-24T05:57:53.096909+00:00",
+          "transition": "candidate->confirmed",
+          "actor": "Codex ci_investigation: readonly triage",
+          "reason": "只读核对原始JSON、锁定路径与官方公告；确认依赖版本命中，不推断当前服务已被利用。",
+          "approval_id": null,
+          "binding": {
+            "commit": "d66d10d17d1299428576ea76871d8f6bd5f776f0",
+            "tree": "5bf9c70d54fc7cc88b2ebd3ce52bd1104a37f792",
+            "tool_name": "pnpm audit",
+            "tool_version": "9.15.4",
+            "command": "bash scripts/security/run-sca.sh (pnpm audit --audit-level low --json; pnpm audit --prod --audit-level low --json)",
+            "environment": "Clean independent local clone; Node v24.14.0; full/prod lockfile graphs only; no deployed service or container scan; lock SHA256 d96a07aa3f39bf74bcf855ef5ad2e7c8ec7f799465f19c38fa0440f30d41e896",
+            "result_sha256": "16e5d46414fe32cb664acea98789611f0344618ab6403694cda9205a4d261adc",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/sca-current-candidate-r01/raw/pnpm-audit-all.log",
+            "config_sha256": "d96a07aa3f39bf74bcf855ef5ad2e7c8ec7f799465f19c38fa0440f30d41e896",
+            "recorded_at": "2026-10-24T05:52:56.586821+00:00"
+          }
+        },
+        {
+          "at": "2026-10-24T05:57:53.096909+00:00",
+          "transition": "confirmed->accepted_for_fix",
+          "actor": "Codex root under owner-authorized final execution",
+          "reason": "主任务已明确授权修复新SCA缺口；无风险接受或发布批准。",
+          "approval_id": null,
+          "binding": null
+        },
+        {
+          "at": "2026-10-24T05:57:53.096909+00:00",
+          "transition": "accepted_for_fix->in_progress",
+          "actor": "Codex root: repair in progress",
+          "reason": "主任务正在实施必要依赖/锁修复；本提案尚未导入唯一Ledger。建议：API及Web devDependencies vitest升级至4.1.12范围并审核锁定整个@vitest精确4.1.12族；不只孤立覆盖mocker。",
+          "approval_id": null,
+          "binding": null
+        }
+      ]
     }
   ]
 }
