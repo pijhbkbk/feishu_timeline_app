@@ -9,7 +9,7 @@ import { pathToFileURL } from 'node:url';
 export const FINDING_ID = 'R28-CI-BRACES-001';
 export const ADVISORY = 'GHSA-vfj7-8cjw-p6xm';
 export const PATCH_SHA = '77f69000e7a7240e6e8a7043a3eae0fabf328aec3be934685dcd656d9f02ee23';
-export const LOCK_SHA = 'f308fd073c316e0c536167283173f31ecd6fd89c63825441ac0dac333086a0ff';
+export const LOCK_SHA = 'd96a07aa3f39bf74bcf855ef5ad2e7c8ec7f799465f19c38fa0440f30d41e896';
 const TEST_SHA = '5583cbf7fe14fffc2c9927c07387190509b0a707b32d97f4e1b88ac1234f808e';
 const PNPM_PATCH = 'puxqlaaxolc2hdmxjvqssmpewy';
 const SOURCES = Object.freeze({
