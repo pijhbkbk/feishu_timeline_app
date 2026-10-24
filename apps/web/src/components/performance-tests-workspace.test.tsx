@@ -10,6 +10,7 @@ import {
 } from './performance-tests-workspace';
 import {
   canShowCompletePerformanceTestTaskButton,
+  getPerformanceTestWorkspaceHighlights,
   validatePerformanceTestForm,
   type PerformanceTestsWorkspaceResponse,
 } from '../lib/performance-tests-client';
@@ -211,4 +212,17 @@ describe('PerformanceTestsWorkspace', () => {
     expect(html).not.toContain('后续到货不重置');
     expect(renderToStaticMarkup(<PerformanceArrivalSummary task={null} />)).toBe('');
   });
+  it('shows a completed history context without granting the active round completion action', () => {
+    const historical = { ...workspace.activeTask!, id: 'old-task', taskRound: 1, status: 'COMPLETED' as const,
+      dueAt: '2027-02-28T15:59:59.999Z', completedAt: '2026-10-24T06:48:26.935Z',
+      payload: { performanceArrivalAnchor: { rule: 'FIRST_VALID_ARRIVAL_PLUS_6_CALENDAR_MONTHS_V1', arrivalDate: '2026-08-31T00:00:00Z' } } };
+    const result = { ...workspace, taskContext: historical };
+    expect(getPerformanceTestWorkspaceHighlights(result).activeTaskStatusLabel).toBe('已完成');
+    expect(canShowCompletePerformanceTestTaskButton(testerUser, result)).toBe(false);
+    expect(canShowCompletePerformanceTestTaskButton(testerUser, { ...result, activeTask: null })).toBe(false);
+    const html = renderToStaticMarkup(<PerformanceArrivalSummary task={historical} />);
+    expect(html).toContain('2026/08/31');
+    expect(html).toContain('2027/02/28');
+  });
+
 });

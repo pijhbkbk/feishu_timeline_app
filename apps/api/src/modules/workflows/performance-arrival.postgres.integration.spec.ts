@@ -187,4 +187,36 @@ describe.skipIf(!url).sequential('A13 arrival anchor on dedicated synthetic Post
     expect(await reminders.target(db as never, 'ordinary', feedback.id, new Date('2028-01-01T00:00:00Z'))).toBeNull();
     expect((await taskRead(feedback.id)).payload).toEqual(payloadWithLegacyText);
   });
+  it.each([false, true])('rejects performance completion without submitted evidence (draft=%s), preserving the real transaction state', async (withDraft) => {
+    const f = await fixture();
+    const procurementRecord = await ordered(f, '2026-08-31');
+    await procurement.markArrived(f.project.id, procurementRecord.id, actor);
+    await procurement.completeTask(f.project.id, actor);
+    const feedback = await db.workflowTask.findFirstOrThrow({ where: { projectId: f.project.id, nodeCode: 'PERFORMANCE_TEST', isActive: true } });
+    if (withDraft) {
+      await performance.createTest(f.project.id, { testCode: `PERF-${randomUUID()}`, sampleId: null,
+        relatedObjectName: '合成缺附件验证', testItem: 'GLOSS', standardValue: '80', actualValue: '81', result: 'PASS',
+        conclusion: '合成未提交结论', testedById: actor.id, testedAt: '2026-10-24' }, actor);
+    }
+    const snapshot = async () => ({
+      task: await taskRead(feedback.id), procurementTask: await taskRead(f.task.id),
+      records: await db.performanceTest.findMany({ where: { projectId: f.project.id }, orderBy: { id: 'asc' } }),
+      audits: await db.auditLog.findMany({ where: { projectId: f.project.id }, orderBy: { id: 'asc' } }),
+      transitions: await db.workflowTransition.findMany({ where: { projectId: f.project.id }, orderBy: { id: 'asc' } }),
+    });
+    const before = await snapshot();
+    if (withDraft) {
+      expect(before.records).toHaveLength(1);
+      expect(before.records[0]).toMatchObject({ status: 'DRAFT', reportAttachmentId: null });
+      const draft = before.records[0];
+      if (!draft) throw new Error('Expected the synthetic draft created above');
+      await expect(performance.submitTest(f.project.id, draft.id, actor)).rejects.toThrow('报告附件');
+      expect(await snapshot()).toEqual(before);
+    }
+    await expect(performance.completeTask(f.project.id, actor)).rejects.toThrow(withDraft ? '没有有效试验结论' : '至少需要一条');
+    expect(await snapshot()).toEqual(before);
+    expect(before.task).toMatchObject({ status: 'READY', isActive: true, dueAt: new Date('2027-02-28T15:59:59.999Z') });
+    expect(readPerformanceArrivalAnchor(before.task.payload)?.procurementId).toBe(procurementRecord.id);
+  });
+
 });

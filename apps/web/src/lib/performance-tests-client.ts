@@ -72,6 +72,7 @@ export type PerformanceTestsWorkspaceResponse = {
   };
   procurementCompleted: boolean;
   activeTask: WorkflowTaskSummary | null;
+  taskContext?: Pick<WorkflowTaskSummary, 'id' | 'taskRound' | 'status' | 'assigneeUserName' | 'dueAt' | 'completedAt' | 'payload'> | null;
   canCompleteTask: boolean;
   completionIssue: string | null;
   sampleOptions: Array<{
@@ -137,8 +138,9 @@ const PERFORMANCE_TEST_RESULT_LABELS = Object.fromEntries(
   PERFORMANCE_TEST_RESULT_OPTIONS.map((item) => [item.value, item.label]),
 ) as Record<PerformanceTestResult, string>;
 
-export async function fetchPerformanceTestsWorkspace(projectId: string) {
-  return apiRequest<PerformanceTestsWorkspaceResponse>(`/projects/${projectId}/performance-tests`);
+export async function fetchPerformanceTestsWorkspace(projectId: string, originTask?: string) {
+  const query = originTask !== undefined ? `?${new URLSearchParams({ originTask })}` : '';
+  return apiRequest<PerformanceTestsWorkspaceResponse>(`/projects/${projectId}/performance-tests${query}`);
 }
 
 export async function fetchPerformanceTestDetail(projectId: string, testId: string) {
@@ -269,7 +271,7 @@ export function canShowCompletePerformanceTestTaskButton(
   user: SessionUser | null,
   workspace: PerformanceTestsWorkspaceResponse,
 ) {
-  if (!workspace.activeTask || !workspace.canCompleteTask) {
+  if (!workspace.activeTask || !workspace.canCompleteTask || (workspace.taskContext && workspace.taskContext.id !== workspace.activeTask.id)) {
     return false;
   }
 
@@ -286,8 +288,8 @@ export function getPerformanceTestWorkspaceHighlights(
     currentNodeLabel: getWorkflowNodeLabel(workspace.project.currentNodeCode),
     targetDateLabel: formatDate(workspace.project.targetDate),
     riskLevelLabel: getProjectPriorityLabel(workspace.project.riskLevel),
-    activeTaskStatusLabel: workspace.activeTask
-      ? getWorkflowTaskStatusLabel(workspace.activeTask.status)
+    activeTaskStatusLabel: (workspace.taskContext ?? workspace.activeTask)
+      ? getWorkflowTaskStatusLabel((workspace.taskContext ?? workspace.activeTask)!.status)
       : '当前无性能试验任务',
   };
 }

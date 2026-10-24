@@ -5,6 +5,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
@@ -34,8 +35,9 @@ export class PerformanceTestsController {
   getWorkspace(
     @Param('projectId') projectId: string,
     @CurrentUser() actor: AuthenticatedUser,
+    @Query('originTask') originTask?: string,
   ) {
-    return this.performanceTestsService.getWorkspace(projectId, actor);
+    return this.performanceTestsService.getWorkspace(projectId, actor, originTask);
   }
 
   @Roles('admin', 'project_manager', 'process_engineer', 'quality_engineer')

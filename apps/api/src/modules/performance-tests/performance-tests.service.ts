@@ -31,6 +31,7 @@ import {
   isWorkflowActionCurrentlyAvailable,
 } from '../workflows/workflow-node.constants';
 import { WorkflowsService } from '../workflows/workflows.service';
+import { loadPerformanceArrivalAnchor, readPerformanceArrivalAnchor } from '../workflows/performance-arrival-anchor';
 import {
   canEditPerformanceTest,
   getPerformanceTestCompletionIssue,
@@ -93,9 +94,12 @@ export class PerformanceTestsService {
     private readonly projectAccessService: ProjectAccessService,
   ) {}
 
-  async getWorkspace(projectId: string, actor: AuthenticatedUser) {
+  async getWorkspace(projectId: string, actor: AuthenticatedUser, originTask?: unknown) {
     await this.assertProjectAccess(projectId, actor, 'project.read');
-    return this.buildWorkspace(this.prisma, projectId);
+    if (originTask !== undefined && (typeof originTask !== 'string' || !PERFORMANCE_TEST_ID_PATTERN.test(originTask) || originTask.length > PERFORMANCE_TEST_ID_MAX_CHARS)) {
+      throw new BadRequestException('来源工序标识无效。');
+    }
+    return this.buildWorkspace(this.prisma, projectId, originTask);
   }
 
   async getDetail(projectId: string, testId: string, actor: AuthenticatedUser) {
@@ -406,6 +410,7 @@ export class PerformanceTestsService {
   private async buildWorkspace(
     db: PerformanceTestsDbClient,
     projectId: string,
+    originTask?: string,
   ) {
     const project = await this.getProjectOrThrow(db, projectId);
     const [records, activeTask, procurementCompleted, rawSamples] = await Promise.all([
@@ -440,6 +445,14 @@ export class PerformanceTestsService {
     const sampleOptionsHasMore =
       rawSamples.length > PERFORMANCE_TEST_SAMPLE_OPTION_LIMIT;
     const samples = rawSamples.slice(0, PERFORMANCE_TEST_SAMPLE_OPTION_LIMIT);
+    const activeAnchor = activeTask ? readPerformanceArrivalAnchor(activeTask.payload) : null;
+    // Presentation context is independent from the active task used by every write gate.
+    const taskContext = activeTask && (!originTask || originTask === activeTask.id)
+      ? { id: activeTask.id, taskRound: activeTask.taskRound, status: activeTask.status,
+          assigneeUserName: activeTask.assigneeUser?.name ?? null, dueAt: activeTask.dueAt?.toISOString() ?? null,
+          completedAt: activeTask.completedAt?.toISOString() ?? null,
+          payload: activeAnchor ? { performanceArrivalAnchor: activeAnchor } : null }
+      : await this.getTaskContext(db, projectId, originTask);
 
     return {
       project: {
@@ -453,8 +466,9 @@ export class PerformanceTestsService {
       },
       procurementCompleted,
       activeTask: activeTask ? this.toWorkflowTaskSummary(activeTask) : null,
+      taskContext,
       canCompleteTask:
-        Boolean(activeTask) && getPerformanceTestCompletionIssue(records) === null,
+        Boolean(activeTask) && taskContext?.id === activeTask?.id && getPerformanceTestCompletionIssue(records) === null,
       completionIssue: getPerformanceTestCompletionIssue(records),
       sampleOptionsHasMore,
       sampleOptions: samples.map((sample) => ({
@@ -471,6 +485,27 @@ export class PerformanceTestsService {
       },
       items: records.map((record) => this.toPerformanceTestSummary(record)),
     };
+  }
+
+  private async getTaskContext(db: PerformanceTestsDbClient, projectId: string, taskId?: string) {
+    const task = await db.workflowTask.findFirst({
+      where: {
+        projectId, nodeCode: WorkflowNodeCode.PERFORMANCE_TEST,
+        ...(taskId ? { id: taskId } : { status: WorkflowTaskStatus.COMPLETED, isActive: false }),
+      },
+      select: { id: true, taskRound: true, status: true, dueAt: true, completedAt: true,
+        assigneeUser: { select: { name: true } } },
+      orderBy: [{ completedAt: { sort: 'desc', nulls: 'last' } }, { taskRound: 'desc' }, { id: 'desc' }],
+    });
+    if (!task) {
+      if (taskId) throw new NotFoundException('来源性能试验工序不属于当前项目或不存在。');
+      return null;
+    }
+    const anchor = await loadPerformanceArrivalAnchor(db, task.id);
+    return { id: task.id, taskRound: task.taskRound, status: task.status,
+      assigneeUserName: task.assigneeUser?.name ?? null,
+      dueAt: task.dueAt?.toISOString() ?? null, completedAt: task.completedAt?.toISOString() ?? null,
+      payload: anchor ? { performanceArrivalAnchor: anchor } : null };
   }
 
   private async buildDetail(

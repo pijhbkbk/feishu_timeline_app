@@ -2,6 +2,7 @@
 
 import { M1RecordLink as Link, M1RecordReturn } from '../features/m1/record-return';
 import React, { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 
 import { useAuth } from './auth-provider';
 import {
@@ -53,6 +54,11 @@ const EMPTY_FORM: PerformanceTestFormInput = {
 export function PerformanceTestsWorkspace({
   projectId,
 }: PerformanceTestsWorkspaceProps) {
+  const originTask = useSearchParams()?.get('originTask') ?? undefined;
+  return <PerformanceTestsWorkspaceContent key={JSON.stringify([projectId, originTask])} projectId={projectId} originTask={originTask} />;
+}
+
+function PerformanceTestsWorkspaceContent({ projectId, originTask }: PerformanceTestsWorkspaceProps & { originTask: string | undefined }) {
   const { user } = useAuth();
   const requestIdRef = useRef(0);
   const [workspace, setWorkspace] = useState<PerformanceTestsWorkspaceResponse | null>(null);
@@ -71,7 +77,8 @@ export function PerformanceTestsWorkspace({
 
   useEffect(() => {
     void loadWorkspace({ initial: true });
-  }, [projectId]);
+    return () => { requestIdRef.current += 1; };
+  }, [projectId, originTask]);
 
   useEffect(() => {
     if (!workspace?.items.length) {
@@ -116,7 +123,8 @@ export function PerformanceTestsWorkspace({
 
   const canManage = canManagePerformanceTests(user);
   const highlights = workspace ? getPerformanceTestWorkspaceHighlights(workspace) : null;
-  const isReadOnly = !workspace?.activeTask;
+  const taskContext = workspace?.taskContext ?? workspace?.activeTask ?? null;
+  const isReadOnly = !workspace?.activeTask || Boolean(taskContext && taskContext.id !== workspace.activeTask.id);
   const sampleOptions = workspace?.sampleOptions ?? [];
 
   async function loadWorkspace(options?: { initial?: boolean }) {
@@ -132,7 +140,7 @@ export function PerformanceTestsWorkspace({
 
     try {
       const [workspaceResponse, users] = await Promise.all([
-        fetchPerformanceTestsWorkspace(projectId),
+        fetchPerformanceTestsWorkspace(projectId, originTask),
         fetchPerformanceTestPageOptions(projectId),
       ]);
 
@@ -274,6 +282,15 @@ export function PerformanceTestsWorkspace({
     });
   }
 
+  if (!isLoading && !workspace && error) {
+    return <section className="page-card" role="alert">
+      <h1>性能试验工作区无法读取</h1><p>{error}</p>
+      <button type="button" className="button button-secondary" disabled={isRefreshing}
+        onClick={() => void loadWorkspace({ initial: true })}>重新读取</button>
+      <M1RecordReturn projectId={projectId} />
+    </section>;
+  }
+
   if (isLoading || !workspace || !highlights) {
     return (
       <section className="page-card">
@@ -319,14 +336,15 @@ export function PerformanceTestsWorkspace({
           </div>
           <div className="metadata-item">
             <span>节点负责人</span>
-            <strong>{workspace.activeTask?.assigneeUserName ?? '未分配'}</strong>
+            <strong>{taskContext?.assigneeUserName ?? '未分配'}</strong>
           </div>
           <div className="metadata-item">
             <span>已提交记录</span>
             <strong>{workspace.statistics.submittedCount}</strong>
           </div>
         </div>
-        <PerformanceArrivalSummary task={workspace.activeTask} />
+        {taskContext && isReadOnly ? <p className="muted">查看第 {taskContext.taskRound} 轮工序历史；以下试验记录为本项目记录，保留各自原结论与附件。</p> : null}
+        <PerformanceArrivalSummary task={taskContext} />
         {workspace.activeTask && isWorkflowTaskOverdue(workspace.activeTask) ? (
           <p className="error-text">当前涂料性能试验任务已逾期。</p>
         ) : null}
@@ -437,7 +455,7 @@ export function PerformanceTestsWorkspace({
   );
 }
 
-export function PerformanceArrivalSummary({ task }: { task: PerformanceTestsWorkspaceResponse['activeTask'] }) {
+export function PerformanceArrivalSummary({ task }: { task: Pick<NonNullable<PerformanceTestsWorkspaceResponse['activeTask']>, 'dueAt' | 'payload'> | null }) {
   if (!task) return null;
   const payload = task.payload && typeof task.payload === 'object' && !Array.isArray(task.payload)
     ? task.payload as Record<string, unknown> : null;
