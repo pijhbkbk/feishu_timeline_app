@@ -19,6 +19,7 @@ export class InspectionsService {
 
   async list(query:Record<string,unknown>,actor:AuthenticatedUser){
     assertApprovedTeamMember(actor);
+    if(query.projectId)await this.access.assertProjectAccess(this.prisma,identity(query.projectId),actor,'project.read');
     const {page,pageSize,skip}=pagination(query);
     const where={...(query.baseId?{productionBaseId:identity(query.baseId)}:{}),...(query.projectId?{projectId:identity(query.projectId)}:{}),...(query.reviewRecordId?{reviewRecordId:identity(query.reviewRecordId)}:{}),...(query.colorId?{occurrences:{some:{colorId:identity(query.colorId)}}}:{}),...(query.fromDate||query.toDate?{activityDate:{...(query.fromDate?{gte:activityDate(query.fromDate)}:{}),...(query.toDate?{lte:activityDate(query.toDate)}:{})}}:{})};
     const [items,total]=await Promise.all([this.prisma.inspectionActivity.findMany({where,orderBy:[{activityDate:'desc'},{id:'asc'}],take:pageSize,skip,
@@ -80,7 +81,7 @@ export class InspectionsService {
     const input={expectedRevision:positiveInt(b.expectedRevision,'活动版本'),activityDate:activityDate(b.date),batchLabel:textField(b.batchLabel,'批次说明',200),note:textField(b.note,'备注',4000),personIds:parseParticipants(b.personIds)};
     return withTeamWrite(this.prisma,actor,tx=>this.command(tx,actor,identity(b.operationId),'INSPECTION_ACTIVITY_UPDATE',{id,...input},async()=>{
       const current=await lockInspectionActivity(tx,id);this.revision(current,input.expectedRevision);
-      if(current.reviewRecordId&&current.activityDate.valueOf()!==input.activityDate.valueOf())throw new ConflictException('关联月度评审后的活动日期不可移动。');
+      if(current.reviewRecordId&&current.activityDate.valueOf()!==input.activityDate.valueOf())throw new ConflictException('关联评审后的活动日期不可移动。');
       const {personIds,expectedRevision:_revision,...data}=input;void _revision;
       const beforeParticipants=await tx.inspectionParticipant.findMany({where:{activityId:id},select:{personId:true},take:50});
       // Existing participants remain historical facts when their directory entry
@@ -174,6 +175,11 @@ export class InspectionsService {
   async statistics(query:Record<string,unknown>,actor:AuthenticatedUser){
     assertApprovedTeamMember(actor);
     const filters:Prisma.Sql[]=[];
+    if(query.projectId){
+      const projectId=identity(query.projectId);
+      await this.access.assertProjectAccess(this.prisma,projectId,actor,'project.read');
+      filters.push(Prisma.sql`a."projectId"=${projectId}`);
+    }
     if(query.activityId)filters.push(Prisma.sql`a.id=${identity(query.activityId)}`);
     if(query.colorId)filters.push(Prisma.sql`o."colorId"=${identity(query.colorId)}`);
     if(query.baseId)filters.push(Prisma.sql`a."productionBaseId"=${identity(query.baseId)}`);

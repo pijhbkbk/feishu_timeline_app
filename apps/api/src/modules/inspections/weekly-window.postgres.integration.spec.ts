@@ -67,4 +67,33 @@ describe.skipIf(!connection).sequential('real PostgreSQL natural-week activity w
     await expect(service.list({...range, baseId: baseA}, blocked)).rejects.toMatchObject({status: 403});
     await expect(service.statistics({...range, baseId: baseA}, blocked)).rejects.toMatchObject({status: 403});
   });
+  it('keeps project statistics aligned with the project list and intersects every selected scope', async () => {
+    const projectA = await db.project.create({data: {code: `weekly-project-a-${run}`, name: '合成周项目甲'}});
+    const projectB = await db.project.create({data: {code: `weekly-project-b-${run}`, name: '合成周项目乙'}});
+    const vehicle = await service.createObject({operationId: randomUUID(), objectCode: `project-vehicle-${run}`, objectKind: 'VEHICLE', vin: null, sampleId: null}, actor) as {id: string};
+    const projectActivities: string[] = [];
+    for (const [projectId, overallConclusion] of [[projectA.id, 'PASS'], [projectA.id, 'PENDING'], [projectB.id, 'FAIL'], [null, 'FAIL']] as const) {
+      const id = await activity('2026-12-29');
+      // Isolated DB fixture association only; no review submission is simulated.
+      await db.inspectionActivity.update({where: {id}, data: {projectId}});
+      if (projectId === projectA.id) projectActivities.push(id);
+      await service.saveBatch(id, {operationId: randomUUID(), expectedRevision: 1, items: [
+        {entity: 'occurrence', kind: 'create', clientId: 'vehicle', objectId: vehicle.id, colorId: colorA, values: {overallConclusion}},
+        {entity: 'measurement', kind: 'create', clientId: 'group', occurrence: {clientId: 'vehicle'}, values: {pointLabel: '合成测点', groupLabel: '初测', standardVersionId: null, conclusion: 'PENDING'}},
+        {entity: 'reading', kind: 'create', clientId: 'reading', measurement: {clientId: 'group'}, values: {angleLabel: '45°', lValue: '50', aValue: '0', bValue: '0', deltaE: null}},
+      ]}, actor);
+    }
+    const scope = {...range, baseId: baseA, colorId: colorA, projectId: projectA.id};
+    // This approved member is neither owner nor project member: preserve shared-team access.
+    expect((await service.list(scope, actor)).items.map(item => item.id).sort()).toEqual(projectActivities.sort());
+    expect(await service.statistics(scope, actor)).toMatchObject({occurrences: 2, uniqueVehicles: 1, passed: 1, pending: 1, failed: 0, measurementGroups: 2, angleReadings: 2, passRate: 1});
+    for (const mismatch of [{baseId: baseB}, {colorId: 'absent-color'}, {fromDate: '2026-12-30'}, {activityId: inside[0]}]) {
+      expect(await service.statistics({...scope, ...mismatch}, actor)).toMatchObject({occurrences: 0, measurementGroups: 0, angleReadings: 0, passRate: null});
+    }
+    for (const method of ['list', 'statistics'] as const) {
+      await expect(service[method]({projectId: 'absent-project'}, actor)).rejects.toMatchObject({status: 404});
+      await expect(service[method]({projectId: {}}, actor)).rejects.toMatchObject({status: 400});
+      await expect(service[method](scope, {...actor, teamAccessApproved: false})).rejects.toMatchObject({status: 403});
+    }
+  });
 });
