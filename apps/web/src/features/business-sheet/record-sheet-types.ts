@@ -3,7 +3,11 @@ import type { BusinessSheetRuntime, BusinessSheetRow } from './runtime';
 import type { BusinessSheetCanvasProps } from './canvas';
 export type RecordSheetValue = string | null;
 export interface RecordSheetRow<TMeta = unknown> { id: string; revision: number; values: Record<string, RecordSheetValue>; editable: readonly string[]; meta?: TMeta; dependencies?: Readonly<Record<string, number>> }
-export interface RecordSheetColumn { key: string; label: string; width: number }
+export interface RecordSheetColumn {
+  key: string; label: string; width: number;
+  /** Only explicitly numeric business fields become numbers in an XLSX export. */
+  exportType?: 'integer';
+}
 export interface RecordSheetChange { id: string; field: string; value: RecordSheetValue }
 export interface RecordSheetPatch { id: string; expectedRevision: number; changes: Record<string, RecordSheetValue>; expectedDependencies?: Readonly<Record<string, number>> }
 /** Related rows acknowledge shared parent facts; their own fact revision must remain unchanged. */

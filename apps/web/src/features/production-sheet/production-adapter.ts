@@ -1,6 +1,6 @@
 import { apiRequest } from '../../lib/auth-client';
 import type { ImportPlan } from '../business-sheet/record-import';
-import type { RecordSheetPatch, RecordSheetRow } from '../business-sheet/record-sheet-types';
+import type { RecordSheetColumn, RecordSheetPatch, RecordSheetRow } from '../business-sheet/record-sheet-types';
 export interface ProductionSource { fileName: string; sheetName: string; rowNumbers: number[]; fileHash?: string }
 export interface ProductionFact {
   id: string; colorId: string; colorName: string | null; colorCode: string; baseId: string; baseName: string;
@@ -27,11 +27,11 @@ export const PRODUCTION_COLUMNS = [
   { key: 'month', label: '业务月份', width: 125 }, { key: 'baseName', label: '生产基地', width: 140 },
   { key: 'colorName', label: '颜色名称', width: 155 }, { key: 'colorCode', label: '颜色编号', width: 155 },
   { key: 'vehicleModel', label: '车型原文', width: 160 }, { key: 'rowKind', label: '行类型', width: 145 },
-  { key: 'quantity', label: '实际台数', width: 130 }, { key: 'unit', label: '单位', width: 80 },
+  { key: 'quantity', label: '实际台数', width: 130, exportType: 'integer' }, { key: 'unit', label: '单位', width: 80 },
   { key: 'scope', label: '统计口径', width: 275 }, { key: 'photos', label: '照片', width: 145 },
-  { key: 'countingStatus', label: '月度计数状态', width: 220 }, { key: 'effectiveQuantity', label: '计入统计台数', width: 140 },
+  { key: 'countingStatus', label: '月度计数状态', width: 220 }, { key: 'effectiveQuantity', label: '计入统计台数', width: 140, exportType: 'integer' },
   { key: 'sourceSummary', label: '导入来源', width: 260 },
-];
+] satisfies readonly RecordSheetColumn[];
 export const emptyProductionFilters: ProductionFilters = { baseId: '', colorId: '', fromMonth: '', toMonth: '', vehicleModel: '' };
 export function productionQuery(filters: ProductionFilters): URLSearchParams {
   if (filters.fromMonth && !/^\d{4}-(0[1-9]|1[0-2])$/.test(filters.fromMonth) || filters.toMonth && !/^\d{4}-(0[1-9]|1[0-2])$/.test(filters.toMonth)) throw new Error('月份须使用 YYYY-MM。');
