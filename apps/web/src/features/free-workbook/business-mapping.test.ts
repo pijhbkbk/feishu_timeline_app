@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { LocaleType, type ICellData, type IWorkbookData } from '@univerjs/core';
+import { DateSystem, LocaleType, type ICellData, type IWorkbookData } from '@univerjs/core';
 import { apiRequest } from '../../lib/auth-client';
 import { PERSON_COLUMNS, personChanges } from '../person-sheet/person-adapter';
 import { CATALOG_COLUMNS, previewCatalogImport } from '../color-register/sheet-exchange';
@@ -164,6 +164,52 @@ describe('preview source binding and apply guard', () => {
 describe('existing domain contracts remain authoritative', () => {
   const fact: ProductionFact = { id: 'fact1', revision: 4, colorId: 'color1', colorName: '合成绿', colorCode: 'SYN', baseId: 'base1', baseName: '合成基地', month: '2026-09', quantity: '20', unit: '台', metricScope: 'MONTH_TOTAL', metricScopeLabel: '月度实际总量（全车型，不分产线和班次）', rowKind: 'MONTH_TOTAL', editable: true, originalSource: null };
   const context = () => ({ facts: new Map([[fact.id, fact]]), colors: [{ id: 'color1', name: '合成绿', base: { id: 'base1', name: '合成基地' } }], chosenBaseId: 'base1', chosenColorId: 'color1' });
+  it.each([[undefined, 46296, 'yyyy-m'], [DateSystem.Date1900, 46296, 'yyyy-mm'], [DateSystem.Date1904, 44834, 'yyyy-mm']] as const)('maps an explicitly formatted month in date system %s without changing captured source', async (dateSystem, serial, pattern) => {
+    const input = source({ 1: { 0: { v: serial, t: 2, s: 'monthStyle' }, 1: { v: 10 }, 2: { v: 'MONTH_TOTAL' } } });
+    if (dateSystem !== undefined) input.snapshot.dateSystem = dateSystem;
+    input.snapshot.styles.monthStyle = { n: { pattern } };
+    const before = JSON.stringify(input.snapshot);
+    const mapping: BusinessMappingDefinition = { ...definition(), target: { kind: 'production', baseId: 'base1', colorId: 'color1' }, fields: [{ column: 0, field: 'month' }, { column: 1, field: 'quantity' }, { column: 2, field: 'rowKind' }] };
+    const preview = await prepareBusinessMapping(input, mapping, PRODUCTION_IMPORT_COLUMNS);
+    expect(preview.rows[0]?.input.values.month).toBe('2026-10');
+    expect(preview.rows[0]?.cellKinds.month).toBe('number');
+    expect(prepareProductionImport(preview.rows[0]!.input, [], context())).toMatchObject({ status: 'create', data: { month: '2026-10', quantity: 10 } });
+    expect(JSON.stringify(input.snapshot)).toBe(before);
+    expect(() => assertBusinessMappingCurrent(preview, input, mapping, PRODUCTION_IMPORT_COLUMNS)).not.toThrow();
+    input.snapshot.styles.monthStyle!.n!.pattern = 'yyyy/mm/dd';
+    expect(() => assertBusinessMappingCurrent(preview, input, mapping, PRODUCTION_IMPORT_COLUMNS)).toThrow('重新预览');
+    expect(apiRequest).not.toHaveBeenCalled();
+  });
+  it.each([undefined, 'General', 'yyyy/mm/dd', 'mm:ss', '[Red]yyyy-mm', 'yyyy-mm;@'])('does not guess an ambiguous numeric month format %s', async pattern => {
+    const input = source({ 1: { 0: { v: 46296, ...(pattern ? { s: { n: { pattern } } } : {}) }, 2: { v: 'MONTH_TOTAL' } } });
+    const mapping: BusinessMappingDefinition = { ...definition(), target: { kind: 'production', baseId: 'base1', colorId: 'color1' }, fields: [{ column: 0, field: 'month' }, { column: 2, field: 'rowKind' }] };
+    const preview = await prepareBusinessMapping(input, mapping, PRODUCTION_IMPORT_COLUMNS);
+    expect(preview.rows[0]?.input.values.month).toBe('46296');
+    expect(prepareProductionImport(preview.rows[0]!.input, [], context()).status).toBe('error');
+  });
+  it.each([0, 60, -1, 46296.5, 2958466, 1568704638905, Number.MAX_SAFE_INTEGER])('rejects pseudo dates, hidden time and out-of-range serial %s', async serial => {
+    const input = source({ 1: { 0: { v: serial, s: { n: { pattern: 'yyyy-m' } } } } });
+    const mapping: BusinessMappingDefinition = { ...definition(), target: { kind: 'production', baseId: 'base1', colorId: 'color1' }, fields: [{ column: 0, field: 'month' }] };
+    const preview = await prepareBusinessMapping(input, mapping, PRODUCTION_IMPORT_COLUMNS);
+    expect(preview.rows[0]?.intent).toBe('error');
+  });
+  it.each([[0, '1904-01'], [2957003, '9999-12'], [2957004, null], [1568704637443, null], [Number.MAX_SAFE_INTEGER, null]] as const)('bounds the 1904 month serial %s before conversion', async (serial, expected) => {
+    const input = source({ 1: { 0: { v: serial, s: { n: { pattern: 'yyyy-mm' } } } } });
+    input.snapshot.dateSystem = DateSystem.Date1904;
+    const mapping: BusinessMappingDefinition = { ...definition(), target: { kind: 'production', baseId: 'base1', colorId: 'color1' }, fields: [{ column: 0, field: 'month' }] };
+    const preview = await prepareBusinessMapping(input, mapping, PRODUCTION_IMPORT_COLUMNS);
+    if (expected) expect(preview.rows[0]?.input.values.month).toBe(expected);
+    else expect(preview.rows[0]?.intent).toBe('error');
+  });
+  it('keeps month-styled IDs numeric and rejects formula caches before month normalization', async () => {
+    const input = source({ 1: { 0: { v: 46296, s: { n: { pattern: 'yyyy-m' } } }, 1: { v: 1 }, 2: { v: 46296, f: '=TODAY()', s: { n: { pattern: 'yyyy-m' } } } } });
+    const mapping: BusinessMappingDefinition = { ...definition(), target: { kind: 'production', baseId: 'base1', colorId: 'color1' }, fields: [{ column: 0, field: '__id' }, { column: 1, field: '__revision' }, { column: 2, field: 'month' }] };
+    const preview = await prepareBusinessMapping(input, mapping, PRODUCTION_IMPORT_COLUMNS);
+    expect(preview.rows[0]?.cellKinds.__id).toBe('number');
+    expect(preview.rows[0]?.input.errors.join(' ')).toMatch(/公式/);
+    expect(preview.rows[0]?.input.errors.join(' ')).toMatch(/记录 ID/);
+    expect(preview.rows[0]?.intent).toBe('error');
+  });
   it('feeds production ID/revision updates into the real adapter without incrementing or bypassing conflicts', async () => {
     const mapping: BusinessMappingDefinition = { ...definition(), target: { kind: 'production', baseId: 'base1', colorId: 'color1' }, fields: [{ column: 0, field: '__id' }, { column: 1, field: '__revision' }, { column: 2, field: 'quantity' }] };
     const preview = await prepareBusinessMapping(source({ 1: { 0: { v: 'fact1' }, 1: { v: 4 }, 2: { v: 0 } }, 2: { 0: { v: 'unknown' }, 1: { v: 1 }, 2: { v: 5 } } }), mapping, PRODUCTION_IMPORT_COLUMNS);

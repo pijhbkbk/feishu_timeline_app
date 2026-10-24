@@ -1,4 +1,4 @@
-import type { ICellData, IWorkbookData } from '@univerjs/core';
+import { DateSystem, excelSerialToDateTimeParts, getDateSystemMaxSerial, type ICellData, type IWorkbookData } from '@univerjs/core';
 import type { ExchangeInput } from '../business-sheet/record-exchange';
 
 /** Preparation only. Domain adapters and authenticated commands remain authoritative. */
@@ -127,8 +127,23 @@ function readCell(cell: ICellData | null | undefined): { value: string | null; k
   const text = String(value);
   if (text.length > BUSINESS_MAPPING_LIMITS.text || text.includes('\0')) fail('业务值超过长度上限或含空字符。');
   if (/^\s*=/.test(text) || ERROR_VALUE.test(text)) fail('公式或错误值须转换为明确业务值。');
-  // Numbers (including styled Excel date serials) are not guessed into dates or IDs.
+  // Keep the raw type. Only the explicit production-month path below interprets month formatting.
   return { value: text, kind: kind === 'rich-text' ? kind : typeof value as 'string' | 'number' | 'boolean' };
+}
+function productionMonth(source: IWorkbookData, cell: ICellData | null | undefined, value: ReturnType<typeof readCell>): ReturnType<typeof readCell> {
+  if (value.kind !== 'number' || !cell) return value;
+  const style = typeof cell.s === 'string' ? source.styles[cell.s] : cell.s;
+  // These are explicit month-only formats, including Univer's own typed YYYY-MM format.
+  // Do not infer a month from an unformatted number, a day/time format or an ID field.
+  if (!style || !/^yyyy-mm?$/.test(style.n?.pattern ?? '')) return value;
+  const dateSystem = source.dateSystem ?? DateSystem.Date1900;
+  if (dateSystem !== DateSystem.Date1900 && dateSystem !== DateSystem.Date1904) fail('月份单元格的日期系统无效。');
+  const serial = cell.v;
+  if (typeof serial !== 'number' || !Number.isSafeInteger(serial)) fail('月份单元格须为完整日期，不可包含隐藏时间。');
+  if (serial < (dateSystem === DateSystem.Date1904 ? 0 : 1) || serial > getDateSystemMaxSerial(dateSystem) || (dateSystem === DateSystem.Date1900 && serial === 60)) fail('月份单元格的日期序列无效。');
+  const parts = excelSerialToDateTimeParts(serial, { dateSystem });
+  if (!parts || parts.day < 1 || (dateSystem === DateSystem.Date1900 && serial === 60)) fail('月份单元格的日期序列无效。');
+  return { value: `${String(parts.year).padStart(4, '0')}-${String(parts.month).padStart(2, '0')}`, kind: value.kind };
 }
 function mergeCoverage(source: IWorkbookData, definition: BusinessMappingDefinition): Map<number, Int32Array> {
   const sheet = source.sheets[definition.sheetId]!, merges = sheet.mergeData ?? [];
@@ -151,7 +166,9 @@ function rowCells(source: IWorkbookData, definition: BusinessMappingDefinition, 
     const merged = coverage.get(entry.column)![row]! > 0;
     try {
       if (merged) fail('选中数据格属于合并区域；请明确拆分业务值后重新预览。');
-      return { ...entry, ...readCell(sheet.cellData?.[row]?.[entry.column]), error: null };
+      const cell = sheet.cellData?.[row]?.[entry.column], raw = readCell(cell);
+      const value = definition.target.kind === 'production' && entry.field === 'month' && row !== definition.headerRow ? productionMonth(source, cell, raw) : raw;
+      return { ...entry, ...value, error: null };
     } catch (cause) { return { ...entry, value: null, kind: 'blank' as const, error: cause instanceof Error ? cause.message : '单元格无效。' }; }
   });
 }
