@@ -1,5 +1,7 @@
 'use client';
 
+import { localDateTimeToIso } from './local-datetime';
+
 import { isApprovedTeamUser, apiRequest, type SessionUser } from './auth-client';
 import { fetchUserDirectory, formatDate, getProjectPriorityLabel, getWorkflowNodeLabel, type DirectoryUser, type ProjectPriority, type WorkflowNodeCode } from './projects-client';
 import { canUserOperateWorkflowTask, getWorkflowTaskStatusLabel, type WorkflowTaskSummary } from './workflows-client';
@@ -152,6 +154,7 @@ export async function createPerformanceTest(projectId: string, input: Performanc
     method: 'POST',
     body: {
       ...input,
+      testedAt: localDateTimeToIso(input.testedAt),
       sampleId: input.sampleId || null,
       relatedObjectName: input.relatedObjectName || null,
     },
@@ -169,6 +172,7 @@ export async function updatePerformanceTest(
       method: 'PATCH',
       body: {
         ...input,
+        testedAt: localDateTimeToIso(input.testedAt),
         sampleId: input.sampleId || null,
         relatedObjectName: input.relatedObjectName || null,
       },

@@ -1,5 +1,7 @@
 'use client';
 
+import { localDateTimeToIso } from './local-datetime';
+
 import { isApprovedTeamUser, apiRequest, type SessionUser } from './auth-client';
 import {
   formatDate,
@@ -236,7 +238,7 @@ function toFeePayload(input: FeeFormInput) {
     amount: Number(FIXED_DEVELOPMENT_FEE_AMOUNT),
     currency: input.currency,
     payer: input.payer,
-    recordedAt: input.recordedAt,
+    recordedAt: localDateTimeToIso(input.recordedAt),
     note: input.note || null,
   };
 }
