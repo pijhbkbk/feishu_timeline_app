@@ -82,3 +82,25 @@ export async function ancestorEvidenceIds(db: Prisma.TransactionClient,
   }
   throw new ConflictException('返工依据链超过读取上限，请核对历史。');
 }
+
+/** Read previews and locked transitions share the same task-scoped evidence predicate. */
+export async function getTrialReworkCompletionIssue(db: Prisma.TransactionClient,
+  task: { id: string; projectId: string; workflowInstanceId: string; nodeName: string; payload: Prisma.JsonValue | null }) {
+  if (!isReworkTask(task)) return null;
+  const ids = await taskEvidenceIds(db, task.projectId, task.id);
+  const record = await db.trialProduction.findFirst({
+    where: {
+      projectId: task.projectId,
+      id: { in: ids },
+      status: { in: ['PASSED', 'FAILED'] },
+      result: { not: null },
+      ...(isTechnicalReworkTask(task) ? { productionPlan: {
+        planType: 'FIRST_UNIT' as const,
+        id: { in: await ancestorEvidenceIds(db, task, 'FIRST_UNIT_PRODUCTION_PLAN') },
+        status: { in: ['PLANNED', 'IN_PROGRESS', 'COMPLETED'] as const },
+      } } : {}),
+    },
+    select: { id: true },
+  });
+  return record ? null : `${task.nodeName} 的旧轮次结果需复核，请登记本轮有效记录后再完成。原采购与收费事实保留。`;
+}

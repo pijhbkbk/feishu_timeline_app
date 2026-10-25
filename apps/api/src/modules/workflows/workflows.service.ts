@@ -2,7 +2,7 @@ import { requireExteriorRectificationComplete } from '../../common/exterior-rect
 import { PERSON_PRESENTATION_SELECT, personPresentation } from '../persons/person-profile-read';
 import { PROJECT_DISPLAY_COLOR_SELECT, resolveProjectDisplayColor } from '../../common/project-display-color';
 import { assertApprovedTeamMember } from '../../common/team-membership';
-import { isReworkTask, isTechnicalReworkTask, taskEvidenceIds, ancestorEvidenceIds } from '../../common/workflow-evidence';
+import { isReworkTask, getTrialReworkCompletionIssue, taskEvidenceIds, ancestorEvidenceIds } from '../../common/workflow-evidence';
 import { BusinessClock } from '../../common/business-clock';
 import { resolveVisualReviewPlan } from '../../common/monthly-review-plan';
 import { confirmedVisualReviewIds } from '../../common/visual-review-confirmation';
@@ -1911,6 +1911,10 @@ export class WorkflowsService {
   private async getTechnicalReworkCompletionIssues(tx: Prisma.TransactionClient,
     task: Pick<WorkflowTaskWithRelations, 'id' | 'workflowInstanceId' | 'nodeCode' | 'nodeName' | 'projectId' | 'payload'>) {
     if (!isReworkTask(task) && task.nodeCode !== WorkflowNodeCode.PAINT_DEVELOPMENT) return [];
+    if (task.nodeCode === WorkflowNodeCode.TRIAL_PRODUCTION) {
+      const issue = await getTrialReworkCompletionIssue(tx, task);
+      return issue ? [issue] : [];
+    }
     const ids = await taskEvidenceIds(tx, task.projectId, task.id);
     const where = { projectId: task.projectId, id: { in: ids } }, select = { id: true } as const;
     let record: { id: string } | null | undefined;
@@ -1928,9 +1932,6 @@ export class WorkflowsService {
         record = await tx.performanceTest.findFirst({ where: { ...where, status: 'SUBMITTED', result: { not: null } }, select }); break;
       case WorkflowNodeCode.FIRST_UNIT_PRODUCTION_PLAN:
         record = await tx.productionPlan.findFirst({ where: { ...where, planType: 'FIRST_UNIT', status: { in: ['PLANNED', 'IN_PROGRESS', 'COMPLETED'] } }, select }); break;
-      case WorkflowNodeCode.TRIAL_PRODUCTION:
-        record = await tx.trialProduction.findFirst({ where: { ...where, status: { in: ['PASSED', 'FAILED'] }, result: { not: null },
-          ...(isTechnicalReworkTask(task) ? { productionPlan: { planType: 'FIRST_UNIT', id: { in: await ancestorEvidenceIds(tx, task, WorkflowNodeCode.FIRST_UNIT_PRODUCTION_PLAN) }, status: { in: ['PLANNED', 'IN_PROGRESS', 'COMPLETED'] as ProductionPlanStatus[] } } } : {}) }, select }); break;
       default: return [];
     }
     return record ? [] : [`${task.nodeName} 的旧轮次结果需复核，请登记本轮有效记录后再完成。原采购与收费事实保留。`];

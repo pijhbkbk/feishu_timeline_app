@@ -1,4 +1,5 @@
 import { assertApprovedTeamMember } from '../../common/team-membership';
+import { getTrialReworkCompletionIssue } from '../../common/workflow-evidence';
 import { assertTeamTaskById, withProjectWrite } from '../../common/team-authorization';
 import {
   BadRequestException,
@@ -818,6 +819,8 @@ export class PilotProductionsService {
     for (const item of items) {
       this.assertTrialProductionIssueCount(item._count.issues, false);
     }
+    const completionIssue = getTrialProductionCompletionIssue(items) ??
+      (activeTask ? await getTrialReworkCompletionIssue(db, activeTask) : null);
 
     return {
       project: this.toProjectSummary(project),
@@ -825,8 +828,8 @@ export class PilotProductionsService {
       activeTask: activeTask ? this.toWorkflowTaskSummary(activeTask) : null,
       canCompleteTask:
         Boolean(activeTask) &&
-        getTrialProductionCompletionIssue(items) === null,
-      completionIssue: getTrialProductionCompletionIssue(items),
+        completionIssue === null,
+      completionIssue,
       downstreamCabReviewTask: cabReviewTask
         ? this.toWorkflowTaskSummary(cabReviewTask)
         : null,
