@@ -43,6 +43,14 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   distDir: process.env.NEXT_DIST_DIR ?? '.next',
   output: 'standalone',
+  webpack(config, { dev }) {
+    // A bounded offline build can omit the reusable disk cache. Application
+    // output, dependency tracing and runtime behavior retain the same settings.
+    if (!dev && process.env.TIMELINE_BUILD_CACHE === 'disabled') {
+      config.cache = false;
+    }
+    return config;
+  },
   devIndicators: false,
   poweredByHeader: false,
   reactStrictMode: true,

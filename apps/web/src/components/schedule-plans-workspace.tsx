@@ -74,7 +74,7 @@ export function SchedulePlansWorkspace({
       },
       {
         label: '排产任务状态',
-        value: highlights?.activeTaskStatusLabel ?? '当前无排产任务',
+        value: highlights?.displayTaskStatusLabel ?? '当前未激活',
       },
       {
         label: '批量生产节点',
@@ -254,12 +254,12 @@ export function SchedulePlansWorkspace({
         </div>
         <div className="metadata-grid">
           <div className="metadata-item">
-            <span>当前负责人</span>
-            <strong>{workspace.activeTask?.assigneeUserName ?? '未分配'}</strong>
+            <span>节点负责人</span>
+            <strong>{workspace.displayTask?.assigneeUserName ?? '未分配'}</strong>
           </div>
           <div className="metadata-item">
             <span>完成条件</span>
-            <strong>{workspace.canCompleteTask ? '已满足' : '未满足'}</strong>
+            <strong>{highlights?.completionStatusLabel ?? '当前未激活'}</strong>
           </div>
           <div className="metadata-item">
             <span>最近计划日期</span>
@@ -268,8 +268,8 @@ export function SchedulePlansWorkspace({
           <div className="metadata-item">
             <span>后续节点</span>
             <strong>
-              {workspace.downstreamMassProductionTask
-                ? getWorkflowTaskStatusLabel(workspace.downstreamMassProductionTask.status)
+              {workspace.displayDownstreamTask
+                ? getWorkflowTaskStatusLabel(workspace.displayDownstreamTask.status)
                 : '未激活'}
             </strong>
           </div>

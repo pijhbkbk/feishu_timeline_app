@@ -13,6 +13,7 @@ import {
   ProductionPlanType,
   UserStatus,
   WorkflowAction,
+  WorkflowInstanceStatus,
   WorkflowNodeCode,
   WorkflowTaskStatus,
 } from '@prisma/client';
@@ -443,11 +444,23 @@ export class MassProductionsService {
       ]);
 
     this.assertRecordCapacity(items, false);
+    const displayWorkflowId = activeTask?.workflowInstanceId ??
+      await this.getDisplayWorkflowId(db, projectId);
+    const [displayTask, displayDownstreamTask] = displayWorkflowId
+      ? await Promise.all([
+          activeTask ?? this.getTaskForDisplay(db, projectId, displayWorkflowId, MASS_PRODUCTION_NODE_CODE),
+          this.getTaskForDisplay(db, projectId, displayWorkflowId, WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW),
+        ])
+      : [null, null];
 
     return {
       project: this.toProjectSummary(project),
       schedulePlanCompleted,
       activeTask: activeTask ? this.toWorkflowTaskSummary(activeTask) : null,
+      displayTask: displayTask ? this.toWorkflowTaskSummary(displayTask) : null,
+      displayDownstreamTask: displayDownstreamTask
+        ? this.toWorkflowTaskSummary(displayDownstreamTask)
+        : null,
       downstreamVisualReviewTask: downstreamVisualReviewTask
         ? this.toWorkflowTaskSummary(downstreamVisualReviewTask)
         : null,
@@ -582,6 +595,38 @@ export class MassProductionsService {
     }
 
     return project;
+  }
+
+  /** Display context only; never replace active-task write authorization with history. */
+  private async getDisplayWorkflowId(db: MassProductionDbClient, projectId: string) {
+    const running = await db.workflowInstance.findFirst({
+      where: { projectId, status: WorkflowInstanceStatus.RUNNING },
+      orderBy: { versionNo: 'desc' },
+      select: { id: true },
+    });
+    if (running) return running.id;
+    const latest = await db.workflowInstance.findFirst({
+      where: { projectId },
+      orderBy: { versionNo: 'desc' },
+      select: { id: true },
+    });
+    return latest?.id ?? null;
+  }
+
+  private async getTaskForDisplay(
+    db: MassProductionDbClient,
+    projectId: string,
+    workflowInstanceId: string,
+    nodeCode: WorkflowNodeCode,
+  ) {
+    return db.workflowTask.findFirst({
+      where: { projectId, workflowInstanceId, nodeCode },
+      include: { assigneeUser: true, assigneeDepartment: true },
+      orderBy: [
+        { isActive: 'desc' }, { taskRound: 'desc' },
+        { createdAt: 'desc' }, { id: 'desc' },
+      ],
+    });
   }
 
   private async getActiveTask(

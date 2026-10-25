@@ -9,6 +9,7 @@ import {
 } from './mass-production-workspace';
 import {
   canShowCompleteMassProductionTaskButton,
+  getMassProductionWorkspaceHighlights,
   validateMassProductionForm,
   type MassProductionWorkspaceResponse,
 } from '../lib/mass-production-client';
@@ -60,6 +61,8 @@ const workspace: MassProductionWorkspaceResponse = {
     createdAt: '2026-03-24T00:00:00.000Z',
     updatedAt: '2026-03-24T00:00:00.000Z',
   },
+  displayTask: null,
+  displayDownstreamTask: null,
   downstreamVisualReviewTask: null,
   canCompleteTask: true,
   completionIssue: null,
@@ -166,4 +169,26 @@ describe('MassProductionWorkspace', () => {
     const html = renderToStaticMarkup(<ProductionStatusBadge status="CANCELLED" />);
     expect(html).toContain('已取消');
   });
+  it('shows completed historical tasks without enabling another completion', () => {
+    const completed = { ...workspace.activeTask!, status: 'COMPLETED' as const,
+      isActive: false, completedAt: '2026-03-26T18:00:00.000Z', availableActions: [] };
+    const historical = { ...workspace, activeTask: null, displayTask: completed,
+      displayDownstreamTask: { ...completed, id: 'downstream-completed', nodeCode: 'VISUAL_COLOR_DIFFERENCE_REVIEW' as const },
+      canCompleteTask: false };
+    expect(getMassProductionWorkspaceHighlights(historical)).toMatchObject({
+      displayTaskStatusLabel: '已完成', downstreamTaskStatusLabel: '已完成', completionStatusLabel: '已完成',
+    });
+    expect(canShowCompleteMassProductionTaskButton(processEngineerUser, historical)).toBe(false);
+  });
+
+  it('separates unactivated from active unmet conditions despite completed business rows', () => {
+    expect(getMassProductionWorkspaceHighlights({ ...workspace, activeTask: null,
+      displayTask: null, displayDownstreamTask: null, canCompleteTask: false })).toMatchObject({
+      displayTaskStatusLabel: '当前未激活', completionStatusLabel: '当前未激活',
+    });
+    expect(getMassProductionWorkspaceHighlights({ ...workspace, displayTask: workspace.activeTask,
+      canCompleteTask: false }).completionStatusLabel).toBe('当前条件不足');
+    expect(getMassProductionWorkspaceHighlights({ ...workspace, displayTask: workspace.activeTask }).completionStatusLabel).toBe('已满足');
+  });
+
 });

@@ -57,6 +57,8 @@ export type MassProductionWorkspaceResponse = {
   };
   schedulePlanCompleted: boolean;
   activeTask: WorkflowTaskSummary | null;
+  displayTask: WorkflowTaskSummary | null;
+  displayDownstreamTask: WorkflowTaskSummary | null;
   downstreamVisualReviewTask: WorkflowTaskSummary | null;
   canCompleteTask: boolean;
   completionIssue: string | null;
@@ -232,12 +234,19 @@ export function getMassProductionWorkspaceHighlights(
     currentNodeLabel: getWorkflowNodeLabel(workspace.project.currentNodeCode),
     targetDateLabel: formatDate(workspace.project.targetDate),
     riskLevelLabel: getProjectPriorityLabel(workspace.project.riskLevel),
-    activeTaskStatusLabel: workspace.activeTask
-      ? getWorkflowTaskStatusLabel(workspace.activeTask.status)
-      : '当前无批量生产任务',
-    downstreamTaskStatusLabel: workspace.downstreamVisualReviewTask
-      ? getWorkflowTaskStatusLabel(workspace.downstreamVisualReviewTask.status)
+    displayTaskStatusLabel: workspace.displayTask
+      ? getWorkflowTaskStatusLabel(workspace.displayTask.status)
+      : '当前未激活',
+    downstreamTaskStatusLabel: workspace.displayDownstreamTask
+      ? getWorkflowTaskStatusLabel(workspace.displayDownstreamTask.status)
       : '未激活',
+    completionStatusLabel: workspace.displayTask?.status === 'COMPLETED'
+      ? '已完成'
+      : !workspace.displayTask
+        ? '当前未激活'
+        : workspace.activeTask?.id !== workspace.displayTask.id
+          ? `${getWorkflowTaskStatusLabel(workspace.displayTask.status)}（当前不可操作）`
+          : workspace.canCompleteTask ? '已满足' : '当前条件不足',
   };
 }
 
