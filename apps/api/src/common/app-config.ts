@@ -1,3 +1,5 @@
+import { isAbsolute, normalize, parse } from 'node:path';
+
 import {
   FEISHU_CN_OAUTH_PROVIDER,
   type OAuthProvider,
@@ -170,6 +172,7 @@ function isPlaceholderCredential(value: string) {
 function assertProtectedConnectionUrl(
   name: 'DATABASE_URL' | 'REDIS_URL',
   rawValue: string | undefined,
+  loopbackHttps = false,
 ) {
   const value = rawValue?.trim();
 
@@ -199,7 +202,22 @@ function assertProtectedConnectionUrl(
     .replace(/^\[|\]$/g, '')
     .replace(/\.$/, '');
 
-  if (
+  if (loopbackHttps) {
+    const parameters = [...parsed.searchParams.entries()];
+    if (parsed.hostname !== '127.0.0.1' || !parsed.port || parsed.hash ||
+        (name === 'DATABASE_URL'
+          ? parameters.some(([key, value]) => key !== 'schema' || value !== 'public') || parameters.length > 1
+          : parameters.length > 0 || (parsed.pathname !== '' && parsed.pathname !== '/'))) {
+      throw new Error(`${name} must use an explicit 127.0.0.1 port without connection overrides in loopback-https.`);
+    }
+    if (name === 'DATABASE_URL' && (
+      !/^[a-zA-Z_][a-zA-Z0-9_]{0,62}$/.test(decodeUrlCredential(parsed.username)) ||
+      /^(postgres|root|admin)$/i.test(decodeUrlCredential(parsed.username)) ||
+      !/^\/[a-zA-Z_][a-zA-Z0-9_]{0,62}$/.test(parsed.pathname)
+    )) {
+      throw new Error('DATABASE_URL must specify a dedicated application user and database in loopback-https.');
+    }
+  } else if (
     !hostname ||
     LOCAL_CONNECTION_HOSTS.has(hostname) ||
     hostname.startsWith('127.') ||
@@ -214,9 +232,10 @@ function assertProtectedConnectionUrl(
 
   const password = decodeUrlCredential(parsed.password).trim();
 
-  if (password.length < 20 || isPlaceholderCredential(password)) {
+  const minimumPasswordLength = loopbackHttps ? 32 : 20;
+  if (password.length < minimumPasswordLength || isPlaceholderCredential(password)) {
     throw new Error(
-      `${name} must include a non-placeholder password of at least 20 characters in staging and production.`,
+      `${name} must include a non-placeholder password of at least ${minimumPasswordLength} characters in staging and production.`,
     );
   }
 
@@ -233,6 +252,44 @@ function assertProtectedConnectionUrl(
   }
 
   return value;
+}
+
+// Native offline instances keep the protected staging policy. This opt-in only
+// permits services bound to the same machine; it does not create a dev-auth mode.
+function resolveLoopbackHttpsProfile(
+  env: NodeJS.ProcessEnv,
+  nodeEnv: string,
+  deploymentEnvironment: AppConfig['deploymentEnvironment'],
+) {
+  if (env.LOCAL_RUNTIME_PROFILE === undefined) return false;
+  if (env.LOCAL_RUNTIME_PROFILE !== 'loopback-https' ||
+      nodeEnv !== 'production' || deploymentEnvironment !== 'staging') {
+    throw new Error('LOCAL_RUNTIME_PROFILE=loopback-https requires production NODE_ENV and staging DEPLOYMENT_ENV.');
+  }
+  if (env.HOST !== '127.0.0.1') {
+    throw new Error('HOST must be explicitly 127.0.0.1 in loopback-https.');
+  }
+  const frontend = /^https:\/\/localhost:([1-9][0-9]{3,4})\/?$/.exec(env.FRONTEND_URL ?? '');
+  if (!frontend || Number(frontend[1]) < 1024 || Number(frontend[1]) > 65535) {
+    throw new Error('FRONTEND_URL must be an explicit https://localhost:port origin in loopback-https.');
+  }
+  if (!env.PORT || !/^[1-9][0-9]{3,4}$/.test(env.PORT) ||
+      Number(env.PORT) < 1024 || Number(env.PORT) > 65535 || env.PORT === frontend[1]) {
+    throw new Error('PORT must be an explicit unprivileged API port distinct from FRONTEND_URL in loopback-https.');
+  }
+  if (env.AUTH_MOCK_ENABLED !== 'false') {
+    throw new Error('AUTH_MOCK_ENABLED must be explicitly false in loopback-https.');
+  }
+  if (env.CLAMAV_HOST !== '127.0.0.1') {
+    throw new Error('CLAMAV_HOST must be explicitly 127.0.0.1 in loopback-https.');
+  }
+  const objectRoot = env.OBJECT_STORAGE_LOCAL_ROOT ?? '';
+  if (!isAbsolute(objectRoot) || normalize(objectRoot) !== objectRoot ||
+      objectRoot === parse(objectRoot).root ||
+      [...objectRoot].some(character => character.charCodeAt(0) < 32 || character.charCodeAt(0) === 127)) {
+    throw new Error('OBJECT_STORAGE_LOCAL_ROOT must be an explicit normalized absolute directory in loopback-https.');
+  }
+  return true;
 }
 
 function assertProtectedScannerHost(rawValue: string | undefined) {
@@ -323,12 +380,13 @@ export function resolveAppConfig(
   });
   const isProtectedEnvironment =
     deploymentEnvironment === 'staging' || deploymentEnvironment === 'production';
+  const loopbackHttps = resolveLoopbackHttpsProfile(env, nodeEnv, deploymentEnvironment);
   const databaseUrl = isProtectedEnvironment
-    ? assertProtectedConnectionUrl('DATABASE_URL', env.DATABASE_URL)
+    ? assertProtectedConnectionUrl('DATABASE_URL', env.DATABASE_URL, loopbackHttps)
     : env.DATABASE_URL ??
       'postgresql://postgres:postgres@localhost:5432/feishu_timeline?schema=public';
   const redisUrl = isProtectedEnvironment
-    ? assertProtectedConnectionUrl('REDIS_URL', env.REDIS_URL)
+    ? assertProtectedConnectionUrl('REDIS_URL', env.REDIS_URL, loopbackHttps)
     : env.REDIS_URL ?? 'redis://localhost:6379';
   const scannerProviderValue =
     env.MALWARE_SCANNER_PROVIDER?.trim().toLowerCase() ||
@@ -355,7 +413,7 @@ export function resolveAppConfig(
     if (!localScannerHost) {
       throw new Error('CLAMAV_HOST must be configured for the ClamAV scanner.');
     }
-    malwareScannerHost = isProtectedEnvironment
+    malwareScannerHost = isProtectedEnvironment && !loopbackHttps
       ? assertProtectedScannerHost(localScannerHost)
       : localScannerHost;
   }
