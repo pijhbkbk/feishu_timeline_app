@@ -84,9 +84,10 @@ it('does not create an engine when startup resolves after unmount',async()=>{
 it('disposes an unready instance and ignores its late readiness and callbacks',async()=>{
   const pending=deferred<void>();instance.ready=pending.promise;draw();await settle();
   const callbacks=create.mock.calls[0]![0];stop();pending.resolve();await settle();
-  callbacks.onChanged();callbacks.onError('late');callbacks.onUploading(1);callbacks.onImageFailures(1);
+  callbacks.onChanged();callbacks.onError('late');callbacks.onImageError('late image');callbacks.onUploading(1);callbacks.onImageFailures(1);
   expect(instance.dispose).toHaveBeenCalledTimes(1);expect(props.runtime.current).toBeNull();
   for(const callback of [props.onReady,props.onChanged,props.onError,props.onUploading,props.onImageFailures])expect(callback).not.toHaveBeenCalled();
+  expect(await settle()).not.toContain('late image');expect(create).toHaveBeenCalledTimes(1);
 });
 
 it('does not turn recovery failure into a fresh engine retry or discard its draft',async()=>{
@@ -101,4 +102,16 @@ it('forwards an active engine error without replacing the editable instance',asy
   draw();await settle();create.mock.calls[0]![0].onError('Synthetic command rejection');await settle();
   expect(props.onError).toHaveBeenCalledWith('Synthetic command rejection');expect(props.runtime.current).toBe(instance);
   expect(retryButton()).toBeUndefined();expect(create).toHaveBeenCalledTimes(1);expect(instance.dispose).not.toHaveBeenCalled();
+});
+
+it('clears only a previous image warning when a new upload starts, retaining unrelated errors',async()=>{
+  draw();await settle();const callbacks=create.mock.calls[0]![0];
+  callbacks.onUploading(1);callbacks.onImageError('图片上传连接中断；请重试核实原请求。');callbacks.onUploading(0);
+  expect(await settle()).toContain('图片上传连接中断');expect(props.onError).not.toHaveBeenCalled();
+  callbacks.onError('保存版本冲突，原稿保留。');callbacks.onUploading(1);
+  expect(await settle()).not.toContain('图片上传连接中断');expect(props.onError).toHaveBeenCalledExactlyOnceWith('保存版本冲突，原稿保留。');
+  callbacks.onImageError('图片上传期间工作表、选区或内容已变化。');callbacks.onUploading(0);
+  expect(await settle()).toContain('图片上传期间工作表');
+  callbacks.onUploading(1);callbacks.onUploading(0);
+  expect(await settle()).not.toContain('图片上传期间工作表');expect(props.onError).toHaveBeenCalledTimes(1);
 });
