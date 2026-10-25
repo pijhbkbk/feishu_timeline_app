@@ -1,5 +1,12 @@
 import type { SessionUser } from './auth-client';
 
+const projectReturnPages = new Set([
+  'attachments', 'color-evaluation', 'color-exit', 'development-report', 'fees',
+  'flow-map', 'logs', 'mass-production', 'materials', 'overview', 'paint-procurement',
+  'performance-tests', 'pilot-production', 'production-plans', 'retrospective',
+  'reviews', 'samples', 'standard-boards', 'tasks', 'workflow',
+]);
+
 export function needsAssignment(user: SessionUser) {
   return user.authSource === 'local' && !user.isSystemAdmin && !user.teamAccessApproved;
 }
@@ -37,8 +44,10 @@ export async function resolveLoginDestination(
   if (path === '/admin/accounts' || path === '/admin/people/permissions') return administrator && user.isSystemAdmin ? destination : fallback;
   if (['/admin', '/admin/projects', '/admin/tasks', '/admin/organization', '/admin/assignments', '/admin/permissions', '/admin/audit-logs'].includes(path)) return administrator ? destination : fallback;
   if (path === '/projects/new') return user.isSystemAdmin || user.teamAccessApproved ? destination : fallback;
-  const project = /^\/projects\/([A-Za-z0-9_-]+)(?:\/(?:tasks\/[A-Za-z0-9_-]+|materials|color-evaluation))?$/.exec(path);
+  const project = /^\/projects\/([A-Za-z0-9_-]+)(?:\/(.+))?$/.exec(path);
   if (project) {
+    const page = project[2];
+    if (page && !projectReturnPages.has(page) && !/^(?:tasks|samples)\/[A-Za-z0-9_-]+$/.test(page)) return fallback;
     try { if (await canReadProject(project[1]!)) return destination; } catch { /* fail closed */ }
   }
   return fallback;

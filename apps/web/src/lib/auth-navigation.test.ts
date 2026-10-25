@@ -141,4 +141,42 @@ describe('native login destinations from authenticated permissions', () => {
     expect(probe).not.toHaveBeenCalled();
   });
 
+  it.each([
+    'attachments', 'color-exit', 'development-report', 'fees', 'flow-map', 'logs',
+    'mass-production', 'overview', 'paint-procurement', 'performance-tests',
+    'pilot-production', 'production-plans', 'retrospective', 'reviews', 'samples',
+    'standard-boards', 'tasks', 'workflow', 'samples/sample-a',
+  ])('preserves existing project page context after the server read probe: %s', async page => {
+    const target = `/projects/project-a/${page}?from=project&tab=flow&originTask=task-a`;
+    const allowed = vi.fn(async () => true);
+    const approved = { ...member, roleCodes: [], permissionCodes: [] };
+    expect(await resolveLoginDestination(approved, query(target), origin, allowed)).toBe(target);
+    expect(allowed).toHaveBeenCalledExactlyOnceWith('project-a');
+  });
+
+  it('keeps the failed pilot-plan login return behind admission and project permission', async () => {
+    const target = '/projects/project-a/pilot-production?from=project&tab=flow&originTask=task-a';
+    expect(loginHref('/projects/project-a/pilot-production', '?from=project&tab=flow&originTask=task-a'))
+      .toBe(`/login${query(target)}`);
+    for (const probe of [vi.fn(async () => false), vi.fn(async () => { throw new Error('unavailable'); })]) {
+      expect(await resolveLoginDestination(member, query(target), origin, probe)).toBe('/dashboard');
+      expect(probe).toHaveBeenCalledExactlyOnceWith('project-a');
+    }
+    const pendingProbe = vi.fn(async () => true);
+    expect(await resolveLoginDestination(pending, query(target), origin, pendingProbe)).toBe('/pending-access');
+    expect(pendingProbe).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    '/projects/project-a/actions/complete', '/projects/project-a/pilot-production-extra',
+    '/projects/project-a/pilot-production/extra', '/projects/project-a/samples/sample-a/extra',
+    '/projects/project-a/samples/unknown%2fsegment', '/projects/project-a%2fpilot-production',
+    '/projects/project-a%255cpilot-production', '//evil.example/projects/project-a/pilot-production',
+    'https://evil.example/projects/project-a/pilot-production',
+  ])('rejects actions, unknown descendants and unsafe project returns: %s', async target => {
+    const probe = vi.fn(async () => true);
+    expect(await resolveLoginDestination(member, query(target), origin, probe)).toBe('/dashboard');
+    expect(probe).not.toHaveBeenCalled();
+  });
+
 });
