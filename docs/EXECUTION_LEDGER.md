@@ -8588,3 +8588,31 @@ main ref与tag未改变。这里仅追加指针，保留原有未提交交接文
 - A15-04以E75更新R24制品绑定；A15-05因API停止由PASS→BLOCKED，当前49PASS/14PARTIAL/9NV/2BLOCKED=74，7/15包、3/9历史链保持，P0-01重开为3/10关闭。事故前50/74、4/10和全部成功/失败历史保留，不用历史数字声称当前可用。
 - 当前库system_identifier7698580194934571049、public/PGDATA与已核容器卷名对应；指定8份旧记录无故障前system_identifier，前态UNKNOWN。窗口Office op de776…原请求401；恢复后同op201是实际新建，不是无副作用查询。现新本0f91…仅rev1/0图，目标create命令/审计存在，未正式v2；日期本与W指定版本仍在，不能扩写其他数据全安全。
 - 所有者已确认退出Docker→推出外盘→重连；完整raw目前allocated113994252288B，大于内置可用约78081814528B。没有全盘复制/修复。具体方案r24-isolated-recovery-proposal-r01/plan.json SHA071c085632f422e4fae4005ca92daecd6628d63fd03518845f66064d167ad60c已准备；就事故后逻辑状态作为新恢复起点、以及新内置盘2核/4GiB/24GiB Lima VM和loopback HTTPS45464提出两个明确决定，未创建/下载/恢复/启动。原API保持停止，普通代码工作已完成。
+
+
+## 2026-10-25 — 所有者批准隔离恢复与Lima新目标
+
+- 所有者随后明确同意以当前事故后逻辑状态作为新恢复起点，并批准内置盘Lima独立VM（2CPU/4GiB/24GiB、HTTPS45464、无个人目录或故障外盘共享）。授权收据r24-isolated-recovery-proposal-r01/owner-authorization.json SHA f1a033e555395c5ca98bf65bca2d9af81eb07cf6344542398fd0c850e8acca61；原库/原API停写保持，不恢复旧缺失计划ID。此前“待答”是原时点记录。
+- 官方Lima2.2.1/Ubuntu24.04 ARM64固定镜像1d6bffe6…已于04:27:17Z启动truck-color-recovery-r24-20261025。因Unix socket长度，专用LIMA_HOME为内置盘/Users/lixiaochen/.lima-tcr24；最终配置35e06af3…无host mounts/base/附盘，45464仅127.0.0.1，其他应用端口ignore，管理SSH65135单列且同为loopback。配置独审8f93a289…与guest实际2CPU/4095504384B/内部ext4/readback成立；原Docker/context未改，尚不是可用业务预览。
+- 原36对象104865B已复制到新私有包，copy收据ebc38643…、manifest719449cc…及新包逐件独立hash读回5f8b8e84…成立；历史E73只有metadata，不将新hash反推事故前字节一致。数据库仍待实际restore；源元数据补核PG14.24、UTF8/en_US.utf8、public/plpgsql1.0、72主键/174外键/31check/0序列。
+- guest依赖r01因不可达的继承代理导致索引失败，未进行PG/Node阶段。r02仅在新guest显式官方HTTPS直连并令apt索引错误非零，修正受控prefix全局pnpm入口；14阶段0，PG14.24/Node24.14.0/pnpm9.15.4。PG/Redis实际inactive+masked，未启动业务；独审ae940a04…，两轮真实日志均保留。04:36:05Z已启动同43fada9源码/tree/lock的Linux ARM64 fresh构建，c4ea3eb1…入口独审c02e225f…；构建/恢复/登录/媒体/新写/重启结论均仍待，不拿准备或安装代替PASS。
+- PM反馈78c4ad6d已读，所有者授权及新目标启动进展已发送指定6ad6ddfe会话；新消息实际id尚待读回。旧origin的de776意图/0f91 blankv1及本机稿保持，跨源恢复不自动复制IndexedDB、不重放原请求，不以新本冒称旧意图完成。现行49/14/9/2、7/15包、3/9历史链、P0关闭3/10未升级；无push/远端CI/main/tag/production。
+
+
+## 2026-10-25 — 独立VM实际逻辑恢复与R25受保护本机入口
+
+- 所有者两项恢复批准有效；新PG systemID7700459308674415750、新库truck_color_recovery_r24_20261025及专用非特权角色与原库隔离。原首次preflight因inet_server_addr文本带/32失败且未restore；修正后pg_restore只实际执行一次、事务exit0。原raw COPY因timezone显示失败保留，后续UTC只读核对72表/2459行/54迁移全部相等（b9fc4aa1…）；quota间隔类型错误独立修正补核a7593cf0…，0未完/过期/24h临界，非定时器停用。
+- 新36对象104865B逐件bytes/hash及35附件/20图片/2来源批次/35reservation引用成立，0未引用，原作者/业务ID保持（b4bccec7…）；独审6abe65c3…支持此实际范围。旧缺失计划仍0，未补建。应用登录、媒体、正常新写和重启尚未执行，不升级A15-10或整链。
+- R24 Linux ARM64实际7阶段0；原inventory拒绝esbuild0.28.1两个原生文件的相同inode硬链接，精确pair补核后完整库存395a060b…，原失败不覆盖。ClamAV1.4.6原patch在官方UbuntuRust1.89上compile/install/ELF/link均0；此前1.75 Cargo lock4失败及r03无默认config的version-clamd失败保留，待显式配置版本/签名/真实五项行为。
+- 启动前独审04789dd6…确认production NODE_ENV+local部署配置被现有guard拒绝。27013ab9486743071edc326fd903ae1b46e59cff/treef313865f5432bc920241e436dc5b19a774cf8062只改app-config/spec及原生操作说明：显式loopback-https仅production NODE_ENV+staging，精确loopback服务/强凭证/专用DB用户/HTTPS/绝对对象根；禁连接覆盖参数，默认production/staging及认证/Redis/身份/配额/真实Clam保护保持。183目标/0skip、APItypes、目标lint、diff0；原controlregex lint和夹具长度失败分开保存。
+- 新Redis已从空库正常shutdown SAVE/重启并读回127监听、认证、appendfsyncalways、aof-load-truncatedno、noeviction及0keys，PID23473；原Redis/原API不动。R25新干净源码archivee49bd75f…已导出，双制品与启动待。唯一矩阵仍49/14/9/2、7/15包、3/9历史链、P0关闭3/10；无push/远端CI/main/tag/production或产品签收。
+
+
+## 2026-10-25 — R25恢复使用链与实际正常重启
+
+- R25原生ARM64构建7阶段0，独审c2da6879…；严格profile正式启动/新PG/Redis/真实Clam/四身份/loopback当前独审f56a80a9…成立。原生产/外盘库不触及，原API继续停写；新入口https://localhost:45464，所有者亲自确认浏览器证书。
+- 原M1正常密码→原pilot-production返回；W v9/日期本v2/图片实际读回；newplan cmvnusx5t0009jzl50azd96tj/batch002，13:18:42Z创建201后200/刷新，13:19:36旧应用3PID正常停止，13:20新API24236/Web24242/proxy24243四身份同；同plan全字段、W全DTO与3图非缓存200重启后保持。独审f271f719…，浏览器binding78dcb08d…。A15-05恢复PASS、A15-10限定逻辑恢复PASS；矩阵51/13/9/1、7/15包、3/9链、P0关闭5/10。完整离线包与E2E-08未闭合。
+- 所有失败保留：首次必填日期阻止提交、图片尚未加载截图、过期CDP body均明确不算成功；原R24工具链/库存/UTC尾项错误及R25lint/夹具失败独立留存。无物理事故镜像或故障重启结论，旧缺失记录不补建。
+- 恢复后沿新batch继续原项目：计划确认/10完成、合成试制补摘要后11完成，12要求本轮已下发标准；07/09支线仍在，07制板标准新V3已保存读回，继续下发。当前实际分配18,263,273,472B低于24GiB上限。无push/远端CI/main/tag/production或产品签收。
+
+- 后续标准板issue真实暴露datetime-local时区缺陷（13:37Z）：输入上海10月25日21:37却存21:37Z/UI26日，原记录不改。原响应/截图已留，开始有界同根因修复；A10/E2E-06继续PARTIAL，不以已入清单V3或ISSUED代完整节点合流。

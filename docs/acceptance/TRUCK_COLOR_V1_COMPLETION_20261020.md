@@ -4,18 +4,18 @@
 
 - TASK_ID：`TRUCK-COLOR-V1-COMPLETION-20261020-R01`；主线派发 `TRUCK-COLOR-V1-CONTINUE-20261020-R02`。
 - CURRENT_SUBTASK：`TRUCK-COLOR-V1-FINAL-EXECUTION-20261024-R01`；沿PM已核对冻结的v1.0继续实际实施，产品签收另记A15-12。
-- STATE：`RUNNING / SYNTHETIC_DATA_WRITE_HOLD`；产品 `PARTIAL / AWAITING_PRODUCT_OWNER_CONFIRMATION`。普通代码修复与只读保护继续；原合成业务写入及预览验收暂停，不能称当前实例可操作。
+- STATE：`RUNNING / LOCAL_RECOVERY_VERIFIED`；产品 `PARTIAL / AWAITING_PRODUCT_OWNER_CONFIRMATION`。原合成库继续停写、原API保持停止；获准新内置盘Lima恢复实例已可操作，正常原生登录、原本/媒体、新ID保存与应用重启读回成立。
 - WORKSPACE：`/Users/lixiaochen/Downloads/feishu_timeline_app`；分支 `codex/design-convergence-20261019`。
-- SOURCE_ID：当前应用源码提交 `43fada95cbd1648879c67a772d3e45596f9f2741` / tree `fc875f8bfe9019847ef4221299e1d1ecbd0f953c`；R24两文件修正现有项目页登录返回遗漏，仍逐项目服务端读取校验。75目标/0skip、Web types/目标lint及独审通过；新不可变制品7阶段已构建成功，尚未启动，库存独审35236431…已完成。原R23 e3e73926d17c07a67cf557b4abd5feae3bcb2948修复及实际证据保留，四文档增量和未知媒体未夹带入代码提交。
-- ARTIFACT_ID：R24 `materials-r24-43fada95cbd1` / build `2026-10-25T04:10:59Z`，源码43fada95cbd1648879c67a772d3e45596f9f2741/treefc875f8bfe9019847ef4221299e1d1ecbd0f953c；7构建阶段exit0，receipt SHA977b028f87e2997bc59c737a771adaa02df92c2d70724e23154ccc8d2738df30；2080源/43590依赖/1857运行库存独审35236431…匹配。未启动；原R23制品/四端点历史及API停止记录分别保留。
-- RUNTIME_ID：R23于2026-10-25T03:25:36Z启动、03:25:40Z四端点匹配（16bc10a8…）；这是历史运行身份。03:48依赖异常后原卷与原PG/Redis/Clam已于03:58受控恢复，04:02:47Z因确认一条合成计划缺失，精确停止API PID85926并暂停写入；Web85927/代理85928保留页面状态。3490目前不是可操作交付预览。未切换R24或正式HTTPS。
+- SOURCE_ID：当前应用源码 `27013ab9486743071edc326fd903ae1b46e59cff` / tree `f313865f5432bc920241e436dc5b19a774cf8062`（R25）。严格loopback-https仅production NODE_ENV+staging，默认保护/正式认证/Redis/Clam/配额保持；183目标0skip/types/lint0及独审，R24返回修复75目标按输入复用，原失败保留。新GUI已实际登录返回pilot-production。
+- ARTIFACT_ID：R25 Linux Ubuntu ARM64 `truck-recovery-r25-27013ab94867` / build `2026-10-25T12:49:18Z`，上述commit/tree与lock b90b4bac…；7阶段0，独审c2da6879…。R25实际安装运行成立；完整可迁移离线包A15-09尚未齐备，旧Darwin/Alpine制品及扫描各保原适用范围。
+- RUNTIME_ID：`https://localhost:45464`，内置盘Lima `truck-color-recovery-r24-20261025`（2CPU/4GiB/24GiB、无host共享）。13:20Z正常应用重启后API24236/Web24242/proxy24243，直连/TLS四身份一致；新PG systemID7700459308674415750、Redis23473、Clam23986真实loopback。原R23 API保持停止，3490不作为预览。
 - REMOTE_LAST_OBSERVED：2026-10-24只读main仍`9bdec2864c3ed9eb1a045062b756611f98208bfb`、最新main CI `38866594479` failure；候选无新远端CI。精确正式域名身份仍UNKNOWN；本轮未查生产或触发CI。
-- CURRENT_ITEM：49PASS/14PARTIAL/9NOT_VERIFIED/2BLOCKED、7/15包、3/9历史链、3/10 P0；事故前50/74与4/10另保留。E61闭合本机E2E-04；E62三入口持久原件闭合A06-01，E63双基准实际图位闭合A05-06。E64图片结构v9独审闭合A06-02；E2E-06正确白项目03/04/06完成，主线仍未整链。
+- CURRENT_ITEM：51PASS/13PARTIAL/9NOT_VERIFIED/1BLOCKED、7/15包、3/9历史链、5/10 P0关闭。E76恢复A15-05当前本地身份PASS，E77闭合A15-10批准逻辑恢复PASS；A15-09/E2E-08尚未闭合。事故前50/74与事故后49/74历史均保留。
 - COMPLETED_DELTA：M2建多色多车活动/M1同ID维护、50%→100%及按色/项目统计；A11两成员实际记录独立确认、首签/附件保留、草稿阻阶段、明确完成后唯一18。D07签月兼容性按14核心输入复用；R20登录返回已截图128实测。E55重复stage请求400且限定节点/审计不变，不代全A08。 新增E56/E57结构/格式正式刷新、新合法导入/同图异位/删源保留；E58限定16f/R20的DB/Redis及G3适用性，不外推后继代码。
 - EVIDENCE：当前受控记录 `var/truck-color-v1-20261020/final-execution-20261024-r01/`；旧R10 `candidate-01b4bbd-20261022/`、冻结基线 `acceptance-baseline-20261023-r01/`、PM反馈 `baseline-pm-review-20261023-r01/` 均保留，不以新收据改写旧结果。
-- OPEN_BLOCKERS：新增真实状态差异：03:48:30Z首台计划cmvnafmqh004n9kaufja5iwi5曾POST201且随后GET200可见，依赖恢复后同原库精确查询为0；所有者已确认手动退出Docker后推出外盘再接回，系统证实设备断联与写失败；是否等待完全停止及特定丢行机制仍UNKNOWN，未补建/重放/覆盖。已核W v9、日期本v2、年度revision5与旧DTO相等，不推断全库损坏。结构本回导原op已核实至0f91badd-2d51-4a35-a2d2-d55919973f25/图片0of5，暂停继续及正式保存。未保存取消/确认、项目主链、公式代表式、整浏览器重开、Safari/性能/四宽、required CI/full安全、独立恢复及正式环境仍待。
-- HUMAN_ACTION：2026-10-24 12:53:34所有者在受信来源线程明确冷备已完成，允许核对后恢复原专用Docker/PG/Redis/3490/3491，禁止重建覆盖原库、生产扫描VM和生产发布。实际userMessage及SHA已核对并记入resume-preflight.json；不再重复索取重启许可。产品签收仍待技术与目标环境就绪。
-- NEXT_ACTION：当前合成库已保护，04:10:28–31Z受控custom dump749762B/SHA91241ce9…，TOC仅list，36对象仅stat元数据。所有者已明确当时退出Docker→推出外盘→接回，系统证实USB断联及APFS写失败在Docker EOF前；具体丢行机制未证明。准备精确续办决定，不补建缺失计划。R24制品及独审已完成，保持原API关闭。等待对事故后逻辑状态续验和内置盘专用Lima VM（2核/4GiB/24GiB、localhost:45464）的具体决定；不覆盖原库，恢复目标通过新写/应用重启后才续原条目；不重演人工Excel、不改分母、不把R23历史PASS当当前运行就绪。
+- OPEN_BLOCKERS：新增真实状态差异：03:48:30Z首台计划cmvnafmqh004n9kaufja5iwi5曾POST201且随后GET200可见，依赖恢复后同原库精确查询为0；所有者已确认手动退出Docker后推出外盘再接回，系统证实设备断联与写失败；是否等待完全停止及特定丢行机制仍UNKNOWN，未补建/重放/覆盖。已核W v9、日期本v2、年度revision5与旧DTO相等，不推断全库损坏。结构本回导原op已核实至0f91badd-2d51-4a35-a2d2-d55919973f25/图片0of5，暂停继续及正式保存。未保存取消/确认、项目主链、公式代表式、整浏览器重开、Safari/性能/四宽、required CI/full安全、A15-09完整离线包及正式环境仍待；A15-10独立逻辑恢复已由E77闭合。
+- HUMAN_ACTION：所有者已批准事故后逻辑起点、内置Lima2CPU/4GiB/24GiB及HTTPS45464，并已亲自处理新入口浏览器证书提示。无需重问；不做全盘事故镜像、不覆盖原库、不沿用旧缺失ID。原Office/IME反馈按实际范围复用，最终签收仍待。
+- NEXT_ACTION：E76/E77新目标使用链已实际通过并独审；继续原正确青州白项目同轮标准板/驾驶室评审/后续正式周评、结构本四值回导/支持代表式/dirty选择与整本重开、Safari/固定性能/四宽，并补A15-09可迁移离线安装包。旧origin的de776未完成意图保持，不跨源重放或另建本冒充完成。
 - RESUME_ENTRY：本节 → [v1.0基线](ROUTE_ACCEPTANCE_MATRIX.md#v1-baseline-v10) → 原子条目和E2E/门禁队列；不重跑已接受且适用的局部路径。
 
 <!-- V1_BASELINE_DASHBOARD_START -->
@@ -23,9 +23,9 @@
 
 唯一断言和详细执行步骤在[矩阵现行基线](ROUTE_ACCEPTANCE_MATRIX.md#v1-baseline-v10)，本看板从该表派生，不独立手改分母。历史证据沿用原版本/日期；本轮新实际结果E36–E64按逐项范围加入，冷备hold已解除。当前范围可确定，无阻断基线的SCOPE_UNRESOLVED；3条无原始强制依据的载体强化仅OPTIONAL。PM已核对冻结v1.0（反馈Gmail `1a167cfcb731a6b9`）；冻结的是完工标准，范围/阈值/漏项更正仍需显式记录并重算。
 
-- MUST证据覆盖 `P/N=49/74=66.22%`，这是验收证据覆盖率，不是代码/工程完成率。PARTIAL 14、NOT_VERIFIED 9、BLOCKED 2，FAIL/SKIPPED/SCOPE_UNRESOLVED/NOT_APPLICABLE均0；合计74。旧失败保留，当前FAIL=0不表示无历史失败/全仓无问题。A15-05因当前API停止从PASS改BLOCKED；事故前50/74另保留。
+- MUST证据覆盖 `P/N=51/74=68.92%`，这是验收证据覆盖率，不是代码/工程完成率。PARTIAL 13、NOT_VERIFIED 9、BLOCKED 1，FAIL/SKIPPED/SCOPE_UNRESOLVED/NOT_APPLICABLE均0；合计74。旧失败保留，当前FAIL=0不表示无历史失败/全仓无问题。A15-05在新目标由BLOCKED恢复PASS，A15-10由PARTIAL升PASS；原事故前后状态保留。
 - 关键集成链 `Q/K=3/9=33.33%`：原生成员/人员、整本草稿重开、Office、四域映射/统计、项目并行、实际周评、到货试验提醒、离线独立目标恢复、正式HTTPS；E2E-01、E2E-04与E2E-07按原链/实际时序及逐输入适用性闭合，其余链不以局部计数代替。
-- 10组P0交付阻断 `3/10关闭、7未关闭`，5组原V1必需P1中P1-01已关闭、其余4组未关闭；不是10个已确认P0漏洞。每组的唯一矩阵ID/关闭条件/责任与依赖见[矩阵执行队列](ROUTE_ACCEPTANCE_MATRIX.md#v1-baseline-v10)。P2不进入必需门槛。
+- 10组P0交付阻断 `5/10关闭、5未关闭`，5组原V1必需P1中P1-01已关闭、其余4组未关闭；不是10个已确认P0漏洞。每组的唯一矩阵ID/关闭条件/责任与依赖见[矩阵执行队列](ROUTE_ACCEPTANCE_MATRIX.md#v1-baseline-v10)。P2不进入必需门槛。
 
 | A包 | MUST N_i | 有效PASS P_i | PARTIAL | NOT_VERIFIED | BLOCKED | 整包 |
 |---|---:|---:|---:|---:|---:|---|
@@ -43,23 +43,23 @@
 | A12 | 3 | 3 | 0 | 0 | 0 | PASS |
 | A13 | 6 | 6 | 0 | 0 | 0 | PASS |
 | A14 | 4 | 4 | 0 | 0 | 0 | PASS |
-| A15 | 12 | 3 | 4 | 3 | 2 | PARTIAL |
+| A15 | 12 | 5 | 3 | 3 | 1 | PARTIAL |
 
 整包仅全部MUST通过才PASS；7/15整包PASS并非工程完成率。API/GUI/原生Office/系统IME/PG/Redis/恢复/目标环境各保各自范围。已接受人员/颜色/未关联检验映射、草稿CAS/异常回执、一图续接/晚输入、整车整改、到货报告、Chrome正常系统IME及小型Office原生步骤按逐文件/语义差异有效复用；小型4×2旧cbe完整往返保留历史PASS，不冒称新reader已测。
 
 | 完工门槛 | 当前证据层级/关闭条件 | 矩阵入口 |
 |---|---|---|
-| 制品/运行身份 | R23双Darwin制品及历史3490/3491/3492四字段匹配；04:02:47Z原API因状态差异暂停，R24制品已构建/未启动。历史身份PASS不证明当前可用，精确异常见E71/E72 | A15-04/05 |
+| 制品/运行身份 | E76 R25 Ubuntu ARM64不可变构建与新HTTPS45464直连/TLS四身份、实际数据源/配置/原生登录一致；原API停写和E71/E72事故历史保留 | A15-04/05 |
 | G3/真实DB/Redis | R23/e3e精确G3及独审cc4581f2…成立：Web1101PASS/0skip，API1817PASS/305skip，lint/types/prisma均0；305不计真实PG通过。D01–D18按E58与后续输入差异复用，原5FAIL/303SKIP及新增两例旧真PG结果分列 | A15-06 |
 | 必需候选CI | R23/e3e两Linux amd64镜像独审及Trivy0.72.0、2026-10-25新库均未检出漏洞；index/child、内嵌OpenSSL与OS EOL警告分列。required候选CI/配置仍NOT_VERIFIED；旧main failure保留，非全安全clearance | A15-07 |
 | XLSX安全 | 唯一Finding R28-V1-XLSX-NAMESPACE-BOUND-001保持fixed_diff_verified/full pending/closure=null；目标/受影响/独审有精确01b4证据，不改风险或closed | A15-08 |
 | Office2基准 | 原生手动另存/精确r04生产parser已验；R11原件浏览器属性已验，R12另存副本显示/保存已验；两件公式20→21→22及O2→23/导出/真实Excel查看/回导已验，E63补实际图位、E68补固定日期往返；E70前导零/数值零/空串/缺失格导出和Excel成立，正式回导待恢复。两文件分别对自己的基准，不强求Excel原生37变化消失 | A05-01至06 |
 | Safari/性能/布局 | Chrome正常人工IME有效复用；Safari、固定性能和四个CSS宽度/新guide缺口按原合同。1280与1024并列，非替代 | A04/A15-01/03 |
-| 离线/异机/备份恢复 | 程序/镜像/说明完整并在独立主机或VM运行，DB+本+对象恢复后登录/媒体/新写/应用重启。旧同Mac70表2对象/TOC不等于当前候选恢复，物理第二台/宿主OS重启不另增MUST | A15-09/10 |
+| 离线/异机/备份恢复 | E77已闭合获准事故后逻辑状态的独立Lima实际恢复：DB+本+36对象、原账号/媒体/新ID写/正常应用重启读回。A15-09完整可迁移安装包仍缺，不以恢复成功替代；物理第二台/宿主OS重启不另增MUST | A15-09/10 |
 | 约定目标 | 精确https://timeline.all-too-well.com，当前身份UNKNOWN/R10未发布。原扫描VM停机/新附件限制仍有效；实际准入冲突按具体依赖处理，不旁路或静默降级 | A15-11 |
 | 所有者接收 | 其余73项技术/交付MUST（不含A15-12）、9条技术关键链及必需门禁和约定环境先就绪，再由李晓晨实际UAT并明确接收；此后A15-12才计PASS，PM冻结/技术审核不代签 | A15-12 |
 
-实际顺序：**NOW**原卷和原三容器已恢复，但因缺失合成计划暂停API写入；当前逻辑库/日志已保护、R24代码/制品已完成；原磁盘不视为物理只读现场。独立稳定恢复目标和数据处置决定待定，通过恢复验证后续四值回导、原支持清单代表式和真实dirty选择；**RUN已获准**R11身份及产量27→25→26已验→年度→两成员周评/任务和提醒→O1/O2及整本/图片/异常链→Safari/性能/四宽→变化触及的PG/Redis及CI/安全→离线独立目标恢复→有效授权/安全条件下精确正式目标→所有者签收。共用样本关闭不同断言，分母不重复计；已满足局部不再排重复工作。
+实际顺序：**NOW**原API停写/事故证据保留；新独立目标R25实际登录、原本/图片、新计划保存和正常重启读回已验。沿同项目并行标准板/评审继续，同时补四值回导、原支持清单代表式和真实dirty选择；**RUN已获准**R11身份及产量27→25→26已验→年度→两成员周评/任务和提醒→O1/O2及整本/图片/异常链→Safari/性能/四宽→变化触及的PG/Redis及CI/安全→离线独立目标恢复→有效授权/安全条件下精确正式目标→所有者签收。共用样本关闭不同断言，分母不重复计；已满足局部不再排重复工作。
 
 执行顺序为其余73项技术/交付MUST（不含A15-12）、9条技术关键链及必需门禁和约定环境先就绪，再进入李晓晨实际UAT；明确接收后A15-12才计PASS，发现原范围缺陷按影响修复/复验。V1最终完成仍要求74/74 MUST与9/9技术关键链PASS、必需交付阻碍/阻断缺陷清零、必需CI/安全/恢复门槛PASS、实际交付身份一致、约定环境可用且所有者明确接收。基线冻结不代表产品完成；生产/外部步骤仍受对应权限和安全条件约束。
 <!-- V1_BASELINE_DASHBOARD_END -->
@@ -504,3 +504,13 @@ E66绑定干净e3e/tree31c/R23双制品、完整库存、受控启停与四端�
 - A15-04以E75更新R24制品绑定；A15-05因API停止由PASS→BLOCKED，当前49PASS/14PARTIAL/9NV/2BLOCKED=74，7/15包、3/9历史链保持，P0-01重开为3/10关闭。事故前50/74、4/10和全部成功/失败历史保留，不用历史数字声称当前可用。
 - 当前库system_identifier7698580194934571049、public/PGDATA与已核容器卷名对应；指定8份旧记录无故障前system_identifier，前态UNKNOWN。窗口Office op de776…原请求401；恢复后同op201是实际新建，不是无副作用查询。现新本0f91…仅rev1/0图，目标create命令/审计存在，未正式v2；日期本与W指定版本仍在，不能扩写其他数据全安全。
 - 所有者已确认退出Docker→推出外盘→重连；完整raw目前allocated113994252288B，大于内置可用约78081814528B。没有全盘复制/修复。具体方案r24-isolated-recovery-proposal-r01/plan.json SHA071c085632f422e4fae4005ca92daecd6628d63fd03518845f66064d167ad60c已准备；就事故后逻辑状态作为新恢复起点、以及新内置盘2核/4GiB/24GiB Lima VM和loopback HTTPS45464提出两个明确决定，未创建/下载/恢复/启动。原API保持停止，普通代码工作已完成。
+
+
+## 2026-10-25 — R25新恢复实例可操作与两项断言闭合
+
+- E76：27013ab…/f313…/truck-recovery-r25-27013ab94867/build12:49:18Z，Ubuntu ARM64 7构建阶段0，实际原生HTTPS45464启动及正常重启后四端身份/新PG/Redis/Clam/loopback独审f56a80a9…；183目标与75返回及原G3按输入复用，305skip及所有旧失败保留，非完整安全clearance。
+- E77：批准事故后dump及36对象实际恢复；M1原密码登录正确返回原pilot-production；W v9完整DTO、日期本v2/11表、真实图片；newID cmvnusx5t0009jzl50azd96tj/batch SYN-E2E06-R23-002创建201/随后200/刷新/正常应用重启后全字段同。独审f271f719…支持A15-10限定PASS，A15-05恢复PASS；51/13/9/1、7/15包、3/9链、P0关闭5/10。原缺失计划未找回，旧origin意图不重放，未做PG/Redis/VM/故障重启。
+- 可操作路径：[原项目](https://localhost:45464/projects/cmvm46f44000r9kl5klnhsonj/pilot-production)→[原本v9](https://localhost:45464/admin/color-database?workbook=4ecbabd3-5e43-4dd5-be69-c544d4732da8)→图片结构验收R22。r25-browser-recovery-r01中02/05/07/08分别留登录返回/图片/重启计划/重启图片；binding78dcb08d…保留准确URL、网络及失败边界。
+- 恢复之后的新流程动作另存r25-project-path-r01：新计划确认/10完成、合成试制保存/缺摘要400/补明确合成结论/完成11，主线到12，07/09未完支线仍在；12正确要求本轮已下发标准，07新制板已保存颜色标准V3并读回，继续下发。该进行中路径不升级E2E-06/A10/A11。A15-09完整包、四值回导/dirty/整本/性能兼容/四宽、CI/安全/正式环境和所有者接收继续。
+
+- 13:37Z续办发现真实时间差异：标准板datetime-local输入2026-10-25T21:37，实际issue响应保存2026-10-25T21:37:00.000Z，上海页面显示10月26日。原06响应/07图留存于r25-project-path-r01；不回填覆盖，正在修本地时间到带时区时间的转换，同根因直接输入做目标复验。该进行中问题不改写已冻结重启前后的恢复证据。
