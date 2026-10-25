@@ -161,6 +161,7 @@ function workspaceDb(input?: {
     capacityQuery,
     db: {
       project: { findUnique: vi.fn().mockResolvedValue(project) },
+      workflowInstance: { findFirst: vi.fn().mockResolvedValue(null) },
       workflowTask: { findFirst: vi.fn().mockResolvedValue(null) },
       trialProduction: { findFirst: vi.fn().mockResolvedValue(null) },
       reviewRecord: { findMany: reviewFindMany },
@@ -243,6 +244,7 @@ function nonCreateWriteHarness(input: {
   const workspaceTx = {
     $queryRaw: queryRaw,
     project: { findUnique: vi.fn().mockResolvedValue(project) },
+    workflowInstance: { findFirst: vi.fn().mockResolvedValue(null) },
     workflowTask: { findFirst: vi.fn().mockResolvedValue(null) },
     trialProduction: { findFirst: vi.fn().mockResolvedValue(null) },
     reviewRecord: { findMany: vi.fn().mockResolvedValue(workspaceRows) },
@@ -452,6 +454,7 @@ function workspaceSourceAdmissionHarness(input: {
   });
   const db = {
     project: { findUnique: vi.fn().mockResolvedValue(project) },
+    workflowInstance: { findFirst: vi.fn().mockResolvedValue(null) },
     workflowTask: { findFirst: vi.fn().mockResolvedValue(null) },
     trialProduction: { findFirst: vi.fn().mockResolvedValue(null) },
     reviewRecord: { findMany: reviewFindMany },
@@ -1391,6 +1394,7 @@ describe('ReviewsService resource bounds', () => {
       const tx = {
       inspectionActivity: { findUnique: vi.fn().mockResolvedValue(null) },
         project: { findUnique: vi.fn().mockResolvedValue(project) },
+        workflowInstance: { findFirst: vi.fn().mockResolvedValue(null) },
         workflowTask: { findFirst: vi.fn().mockResolvedValue(null) },
         trialProduction: { findFirst: vi.fn().mockResolvedValue(null) },
         reviewRecord: { findMany: reviewFindMany },

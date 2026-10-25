@@ -318,7 +318,7 @@ export function ConsistencyReviewWorkspace({
         <div className="metadata-grid">
           <div className="metadata-item">
             <span>节点负责人</span>
-            <strong>{workspace.activeTask?.assigneeUserName ?? '未分配'}</strong>
+            <strong>{(workspace.displayTask ?? workspace.activeTask)?.assigneeUserName ?? '未分配'}</strong>
           </div>
           <div className="metadata-item">
             <span>最近评审结论</span>
@@ -438,7 +438,7 @@ export function ConsistencyReviewWorkspace({
         </div>
         <ConsistencyReviewDetail
           review={selectedReview}
-          downstreamTask={workspace.downstreamTask}
+          downstreamTask={workspace.displayDownstreamTask === undefined ? workspace.downstreamTask : workspace.displayDownstreamTask}
         />
       </section>
     </div>

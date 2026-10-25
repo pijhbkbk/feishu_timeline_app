@@ -28,6 +28,7 @@ import {
   TrialProductionStatus,
   UserStatus,
   WorkflowAction,
+  WorkflowInstanceStatus,
   WorkflowNodeCode,
   WorkflowTaskStatus,
   Prisma,
@@ -1514,6 +1515,15 @@ export class ReviewsService {
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       }),
     ]);
+    const displayWorkflowId = activeTask?.workflowInstanceId ??
+      await this.getDisplayWorkflowId(db, projectId);
+    const [displayTask, displayFeeTask, displayConsistencyTask] = displayWorkflowId
+      ? await Promise.all([
+          activeTask ?? this.getTaskForDisplay(db, projectId, displayWorkflowId, WorkflowNodeCode.CAB_REVIEW),
+          this.getTaskForDisplay(db, projectId, displayWorkflowId, WorkflowNodeCode.DEVELOPMENT_ACCEPTANCE),
+          this.getTaskForDisplay(db, projectId, displayWorkflowId, WorkflowNodeCode.COLOR_CONSISTENCY_REVIEW),
+        ])
+      : [null, null, null];
     const attachmentHistories = await this.loadReviewAttachmentHistories(
       db,
       projectId,
@@ -1525,6 +1535,11 @@ export class ReviewsService {
       ...await loadReviewStandardOptions(db, project, activeTask),
       trialProductionCompleted,
       activeTask: activeTask ? this.toWorkflowTaskSummary(activeTask) : null,
+      displayTask: displayTask ? this.toWorkflowTaskSummary(displayTask) : null,
+      displayDownstreamTasks: {
+        developmentFee: displayFeeTask ? this.toWorkflowTaskSummary(displayFeeTask) : null,
+        consistencyReview: displayConsistencyTask ? this.toWorkflowTaskSummary(displayConsistencyTask) : null,
+      },
       downstreamTasks: {
         developmentFee: developmentFeeTask
           ? this.toWorkflowTaskSummary(developmentFeeTask)
@@ -1584,6 +1599,14 @@ export class ReviewsService {
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       }),
     ]);
+    const displayWorkflowId = activeTask?.workflowInstanceId ??
+      await this.getDisplayWorkflowId(db, projectId);
+    const [displayTask, displayDownstreamTask] = displayWorkflowId
+      ? await Promise.all([
+          activeTask ?? this.getTaskForDisplay(db, projectId, displayWorkflowId, WorkflowNodeCode.COLOR_CONSISTENCY_REVIEW),
+          this.getTaskForDisplay(db, projectId, displayWorkflowId, WorkflowNodeCode.MASS_PRODUCTION_PLAN),
+        ])
+      : [null, null];
     const attachmentHistories = await this.loadReviewAttachmentHistories(
       db,
       projectId,
@@ -1596,6 +1619,8 @@ export class ReviewsService {
       cabinReviewCompleted,
       exteriorRectification: activeTask ? this.toExteriorRectificationSummary(activeTask) : null,
       activeTask: activeTask ? this.toWorkflowTaskSummary(activeTask) : null,
+      displayTask: displayTask ? this.toWorkflowTaskSummary(displayTask) : null,
+      displayDownstreamTask: displayDownstreamTask ? this.toWorkflowTaskSummary(displayDownstreamTask) : null,
       downstreamTask: schedulePlanTask
         ? this.toWorkflowTaskSummary(schedulePlanTask)
         : null,
@@ -2263,6 +2288,38 @@ export class ReviewsService {
     }
 
     return project;
+  }
+
+  /** Display context only; never replace active-task write authorization with history. */
+  private async getDisplayWorkflowId(db: ReviewsDbClient, projectId: string) {
+    const running = await db.workflowInstance.findFirst({
+      where: { projectId, status: WorkflowInstanceStatus.RUNNING },
+      orderBy: { versionNo: 'desc' },
+      select: { id: true },
+    });
+    if (running) return running.id;
+    const latest = await db.workflowInstance.findFirst({
+      where: { projectId },
+      orderBy: { versionNo: 'desc' },
+      select: { id: true },
+    });
+    return latest?.id ?? null;
+  }
+
+  private async getTaskForDisplay(
+    db: ReviewsDbClient,
+    projectId: string,
+    workflowInstanceId: string,
+    nodeCode: WorkflowNodeCode,
+  ) {
+    return db.workflowTask.findFirst({
+      where: { projectId, workflowInstanceId, nodeCode },
+      include: { assigneeUser: true, assigneeDepartment: true },
+      orderBy: [
+        { isActive: 'desc' }, { taskRound: 'desc' },
+        { createdAt: 'desc' }, { id: 'desc' },
+      ],
+    });
   }
 
   private async getActiveTask(

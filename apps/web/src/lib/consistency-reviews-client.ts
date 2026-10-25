@@ -71,6 +71,8 @@ export type ConsistencyReviewWorkspaceResponse = ReviewStandardOptions & {
   };
   cabinReviewCompleted: boolean;
   activeTask: WorkflowTaskSummary | null;
+  displayTask?: WorkflowTaskSummary | null;
+  displayDownstreamTask?: WorkflowTaskSummary | null;
   downstreamTask: WorkflowTaskSummary | null;
   items: ConsistencyReviewRecord[];
 };
@@ -279,15 +281,18 @@ export function getConsistencyReviewConclusionLabel(
 export function getConsistencyReviewWorkspaceHighlights(
   workspace: ConsistencyReviewWorkspaceResponse,
 ) {
+  const displayTask = workspace.displayTask === undefined ? workspace.activeTask : workspace.displayTask;
+  const downstream = workspace.displayDownstreamTask === undefined
+    ? workspace.downstreamTask : workspace.displayDownstreamTask;
   return {
     currentNodeLabel: getWorkflowNodeLabel(workspace.project.currentNodeCode),
     targetDateLabel: formatDate(workspace.project.targetDate),
     riskLevelLabel: getProjectPriorityLabel(workspace.project.riskLevel),
-    activeTaskStatusLabel: workspace.activeTask
-      ? getWorkflowTaskStatusLabel(workspace.activeTask.status)
+    activeTaskStatusLabel: displayTask
+      ? getWorkflowTaskStatusLabel(displayTask.status)
       : '当前无一致性评审任务',
-    downstreamTaskStatusLabel: workspace.downstreamTask
-      ? getWorkflowTaskStatusLabel(workspace.downstreamTask.status)
+    downstreamTaskStatusLabel: downstream
+      ? getWorkflowTaskStatusLabel(downstream.status)
       : '未激活',
   };
 }
