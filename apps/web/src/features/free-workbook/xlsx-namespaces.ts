@@ -8,6 +8,9 @@ const XMLNS = 'http://www.w3.org/2000/xmlns/';
 const REL = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
 const REVISION = 'http://schemas.microsoft.com/office/spreadsheetml/2014/revision';
 const CALC_FEATURES = 'http://schemas.microsoft.com/office/spreadsheetml/2018/calcfeatures';
+const MC = 'http://schemas.openxmlformats.org/markup-compatibility/2006';
+const EXCEL_2013 = 'http://schemas.microsoft.com/office/spreadsheetml/2010/11/main';
+const ABS_PATH = 'http://schemas.microsoft.com/office/spreadsheetml/2010/11/ac';
 // ExcelJS emits these ignorable style extensions itself. They remain qualified
 // and byte-preserved, only inside extLst; they are never treated as main data.
 const STYLE_EXTENSIONS = new Set([
@@ -19,8 +22,8 @@ const NAME = /^[A-Za-z_][A-Za-z0-9_.-]*(?::[A-Za-z_][A-Za-z0-9_.-]*)?/;
 const invalid = () => new Error('XLSX XML 命名空间或结构不受支持；源文件未修改。');
 const limited = () => new Error('XLSX XML 结构或正规化后大小超限；源文件未修改。');
 type Attribute = { name: string; value: string };
-type Metadata = 'revisionPtr' | 'calcFeatures' | 'feature';
-type Frame = { name: string; outputName: string; namespaces: Map<string, string>; uri: string; local: string; extension: boolean; metadata: Metadata | undefined };
+type Metadata = 'revisionPtr' | 'calcFeatures' | 'feature' | 'pathAlternative' | 'pathChoice' | 'absPath';
+type Frame = { name: string; outputName: string; namespaces: Map<string, string>; uri: string; local: string; extension: boolean; metadata: Metadata | undefined; metadataChildren: number };
 const WORKSHEET_ALLOCATION_PATHS: Record<string, readonly string[]> = {
   cols: ['worksheet/cols'], col: ['worksheet/cols/col'],
   sheetData: ['worksheet/sheetData'], row: ['worksheet/sheetData/row'],
@@ -52,11 +55,33 @@ function checkAllocationPath(rootName: string, local: string, stack: Frame[]): v
 function metadataKind(uri: string | undefined, local: string, stack: Frame[]): Metadata | undefined {
   const parent = stack.at(-1);
   if (uri === REVISION && local === 'revisionPtr' && stack.length === 1 && parent?.uri === MAIN && parent.local === 'workbook') return 'revisionPtr';
+  if (uri === MC && local === 'AlternateContent' && stack.length === 1 && parent?.uri === MAIN && parent.local === 'workbook') return 'pathAlternative';
+  if (uri === MC && local === 'Choice' && parent?.metadata === 'pathAlternative') return 'pathChoice';
+  if (uri === ABS_PATH && local === 'absPath' && parent?.metadata === 'pathChoice') return 'absPath';
   if (uri !== CALC_FEATURES) return undefined;
   if (local === 'feature' && parent?.metadata === 'calcFeatures') return 'feature';
   if (local === 'calcFeatures' && stack.length === 3 && stack[0]?.uri === MAIN && stack[0].local === 'workbook'
     && stack[1]?.uri === MAIN && stack[1].local === 'extLst' && parent?.uri === MAIN && parent.local === 'ext') return 'calcFeatures';
   return undefined;
+}
+
+// This supports only Excel's saved-directory metadata, not general MC branch
+// selection. The qualified subtree is preserved for ExcelJS to ignore. The URL
+// is never resolved, opened, logged, or copied into the editable workbook.
+function checkPathMetadata(metadata: Metadata | undefined, attributes: Attribute[], namespaces: Map<string, string>): void {
+  if (metadata !== 'pathAlternative' && metadata !== 'pathChoice' && metadata !== 'absPath') return;
+  const values = attributes.filter(attribute => attribute.name !== 'xmlns' && !attribute.name.startsWith('xmlns:'));
+  if (metadata === 'pathAlternative') { if (values.length) throw invalid(); return; }
+  const attribute = values[0];
+  if (values.length !== 1 || attribute?.name !== (metadata === 'pathChoice' ? 'Requires' : 'url')) throw invalid();
+  if (metadata === 'pathChoice') {
+    const requiredPrefix = namespaceValue(attribute.value).trim();
+    if (!/^[A-Za-z_][A-Za-z0-9_.-]*$/.test(requiredPrefix) || namespaces.get(requiredPrefix) !== EXCEL_2013) throw invalid();
+  } else if (!attribute.value.length || attribute.value.length > 4096) throw limited();
+}
+
+function checkMetadataChildren(frame: Frame): void {
+  if ((frame.metadata === 'pathAlternative' || frame.metadata === 'pathChoice') && frame.metadataChildren !== 1) throw invalid();
 }
 
 // Decode only namespace identifiers. All source text and attribute value bytes
@@ -112,7 +137,7 @@ function normalizePart(bytes: Uint8Array, rootName: string): Uint8Array {
   if (/<!DOCTYPE|<!ENTITY/i.test(source) || XMLValidator.validate(source) !== true) throw invalid();
   const stack: Frame[] = [];
   const chunks: string[] = [];
-  let position = 0, tokens = 0, roots = 0, outputBytes = 0, changed = false;
+  let position = 0, tokens = 0, roots = 0, pathAlternatives = 0, outputBytes = 0, changed = false;
   const append = (text: string) => {
     outputBytes += strToU8(text).byteLength;
     if (outputBytes > CATALOG_XLSX_LIMITS.expandedBytes) throw limited();
@@ -152,6 +177,7 @@ function normalizePart(bytes: Uint8Array, rootName: string): Uint8Array {
     if (tag.startsWith('</')) {
       const name = /^<\/([^\s>]+)\s*>$/.exec(tag)?.[1], frame = stack.pop();
       if (!frame || name !== frame.name) throw invalid();
+      checkMetadataChildren(frame);
       append(tag.replace(`</${frame.name}`, `</${frame.outputName}`));
     } else {
       const node = opening(tag);
@@ -167,7 +193,12 @@ function normalizePart(bytes: Uint8Array, rootName: string): Uint8Array {
       const uri = namespaces.get(prefix), main = uri === MAIN;
       if (main) checkAllocationPath(rootName, local, stack);
       const metadata = metadataKind(uri, local, stack), parentMetadata = stack.at(-1)?.metadata;
-      if (parentMetadata && !(parentMetadata === 'calcFeatures' && metadata === 'feature')) throw invalid();
+      if (parentMetadata && !((parentMetadata === 'calcFeatures' && metadata === 'feature')
+        || (parentMetadata === 'pathAlternative' && metadata === 'pathChoice')
+        || (parentMetadata === 'pathChoice' && metadata === 'absPath'))) throw invalid();
+      if (metadata === 'pathAlternative' && ++pathAlternatives > 1) throw invalid();
+      checkPathMetadata(metadata, node.attributes, namespaces);
+      if (parentMetadata) stack.at(-1)!.metadataChildren++;
       if ((!main && !metadata && !(prefix && uri && STYLE_EXTENSIONS.has(uri) && stack.at(-1)?.extension)) || (namespaces.has('') && namespaces.get('') !== MAIN)) throw invalid();
       const expandedAttributes = new Set<string>();
       const attributeLocals = new Set<string>();
@@ -194,7 +225,9 @@ function normalizePart(bytes: Uint8Array, rootName: string): Uint8Array {
       const outputName = main ? local : node.name;
       changed ||= node.name !== outputName || Boolean(defaultDeclaration);
       append(`<${outputName}${defaultDeclaration}${tag.slice(node.name.length + 1)}`);
-      if (!node.selfClosing) stack.push({ name: node.name, outputName, namespaces, uri: uri!, local, metadata, extension: Boolean(stack.at(-1)?.extension) || (main && local === 'extLst') });
+      const frame: Frame = { name: node.name, outputName, namespaces, uri: uri!, local, metadata, metadataChildren: 0, extension: Boolean(stack.at(-1)?.extension) || (main && local === 'extLst') };
+      if (node.selfClosing) checkMetadataChildren(frame);
+      else stack.push(frame);
     }
     position = end;
   }

@@ -72,6 +72,7 @@ export async function readFreeWorkbook(bytes:Uint8Array,fileName:string,id:strin
     if(/vbaProject|activeX|externalLinks|embeddings/i.test(path))throw new Error('不支持宏、嵌入对象或外部工作簿连接；源文件未修改。');
     if(/xl\/(?:charts|pivot|tables|comments|threadedComments|slicer)/i.test(path))warnings.add('图表、数据透视表、表格筛选、批注和切片器不进入编辑副本；请保留原文件。');
     if(!/\.xml$|\.rels$/i.test(path))continue;const xml=strFromU8(content);
+    if(path==='xl/workbook.xml'&&/<[\w.-]+:absPath\b/.test(xml))warnings.add('工作簿原保存路径元数据不进入编辑副本；原文件保持不变。');
     if(path==='xl/styles.xml'&&(/<(?:[\w.-]+:)?gradientFill\b|patternType=["'](?!solid["']|none["']|gray125["'])|<(?:[\w.-]+:)?(?:outline|shadow|condense|extend)\b|<alignment\b[^>]*\bindent=/.test(xml)))warnings.add('渐变或图案填充、特殊字体效果与缩进不进入编辑副本；请保留原文件。');
     if(/TargetMode\s*=\s*["']External["']/i.test(xml))throw new Error('文件包含外部链接；请在源文件中移除或另存无外链副本。');
     if(/^xl\/worksheets\/[^/]+\.xml$/.test(path)){

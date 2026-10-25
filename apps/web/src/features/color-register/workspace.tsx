@@ -36,6 +36,7 @@ export function ColorRegisterWorkspace() {
   const [selected, setSelected] = useState<string | null>(null); const [activeField, setActiveField] = useState('note');
   const [panel, setPanel] = useState(true); const [detail, setDetail] = useState<RegisterDetail | null>(null); const [detailError, setDetailError] = useState('');
   const [detailTargetId, setDetailTargetId] = useState<string | null>(null); const [importOpen, setImportOpen] = useState(false);
+  const returningTo = useRef<{ id: string; sequence: number; ready: boolean } | null>(null); const [hiddenReturnId, setHiddenReturnId] = useState<string | null>(null);
   const [reason, setReason] = useState(''); const [engineReady, setEngineReady] = useState(false);
   const retry = useRef<{ fingerprint: string; operationId: string } | null>(null);
   const unconfirmed = useRef<{ items: SheetPatch[]; operationId: string; reason: string } | null>(null);
@@ -52,16 +53,19 @@ export function ColorRegisterWorkspace() {
   const standardEdits = patches.some(patch => Object.keys(patch.changes).some(field => field !== 'note'));
   const bump = () => setTick(value => value + 1);
 
-  const load = useCallback(async (signal: AbortSignal) => {
+  const load = useCallback(async (signal: AbortSignal, returnId?: string) => {
     const sequence = ++loadSequence.current;
+    returningTo.current = returnId ? { id: returnId, sequence, ready: false } : null;
     setLoading(true); setError('');
     try {
-      const data = await readCatalog(signal); if (sequence !== loadSequence.current) return;
+      const data = await readCatalog(signal); if (sequence !== loadSequence.current) return false;
+      if (returningTo.current?.sequence === sequence) returningTo.current.ready = true;
       model.current = new CatalogSheetModel(data.items); setFacets(data.facets); setTotal(data.total);
       const requested = new URLSearchParams(window.location.search).get('colorId');
       setSelected(current => data.items.some(row => row.id === (current ?? requested)) ? current ?? requested : null);
       retry.current = null; setEpoch(value => value + 1); setNotice('已读取服务器记录');
-    } catch (cause) { if (sequence === loadSequence.current) setError(message(cause)); }
+      return true;
+    } catch (cause) { if (sequence === loadSequence.current) { setError(message(cause)); if (returningTo.current?.sequence === sequence) returningTo.current = null; } return false; }
     finally { if (sequence === loadSequence.current) setLoading(false); }
   }, []);
   useEffect(() => { const controller = new AbortController(); void load(controller.signal); return () => controller.abort(); }, [load]);
@@ -70,6 +74,16 @@ export function ColorRegisterWorkspace() {
   const reload = async () => { await runtime.current?.finishEditing(); if (unconfirmed.current) { setError('上次保存结果尚未确认，请先核实结果，再重新读取。'); return; } if (savingRef.current || ((model.current?.patches().length ?? 0) > 0 && !window.confirm('重新读取将放弃未保存内容，是否继续？'))) return; void load(AbortSignal.timeout(30000)); };
   async function openImport() { await runtime.current?.finishEditing(); if (model.current?.patches().length || unconfirmed.current || savingRef.current || imageState.pending) { setError('请先确认当前文字和图片保存结果，再导入。'); return; } setImportOpen(true); }
   async function openDetails() { const targetId = selected; if (!targetId) return; await runtime.current?.finishEditing(); if (model.current?.patches().length || unconfirmed.current || savingRef.current) { setError('请先保存或处理待保存内容，再打开业务详情。'); return; } setDetailTargetId(targetId); }
+  function returnToRecord() {
+    if (!detailTargetId) return;
+    setSelected(detailTargetId); setPanel(true); setDetailTargetId(null);
+    runtime.current?.selectCell(detailTargetId, activeField);
+    // Opening the modal already finished the native editor. Finishing it again
+    // here can advance selection to another row instead of the detail target.
+    if (!model.current?.patches().length && !unconfirmed.current && !savingRef.current && !imageState.pending) {
+      void load(AbortSignal.timeout(30000), detailTargetId);
+    }
+  }
   const visible = useMemo(() => {
     const rows = [...model.current?.rows.values() ?? []];
     const query = filters.search.trim().toLocaleLowerCase();
@@ -78,7 +92,22 @@ export function ColorRegisterWorkspace() {
       .sort((a, b) => (displayValue(a, key!).localeCompare(displayValue(b, key!), 'zh-CN') || a.id.localeCompare(b.id)) * (direction === 'desc' ? -1 : 1));
     // Save acknowledgements do not reorder a sheet while someone is editing it.
   }, [epoch, filters, sort]);
-  useEffect(() => { setSelected(current => visible.some(row => row.id === current) ? current : visible[0]?.id ?? null); }, [visible]);
+  useEffect(() => {
+    const target = returningTo.current?.ready ? returningTo.current.id : null;
+    if (target) {
+      returningTo.current = null;
+      const available = visible.some(row => row.id === target);
+      setSelected(available ? target : null); setHiddenReturnId(available ? null : target);
+      return;
+    }
+    if (hiddenReturnId) {
+      const available = visible.some(row => row.id === hiddenReturnId);
+      setSelected(available ? hiddenReturnId : null);
+      if (available) setHiddenReturnId(null);
+      return;
+    }
+    setSelected(current => visible.some(row => row.id === current) ? current : visible[0]?.id ?? null);
+  }, [visible, hiddenReturnId]);
   const handlers = useRef<{ changes: (changes: SheetChange[]) => void; undo: () => void; redo: () => void }>({ changes: () => {}, undo: () => {}, redo: () => {} });
   function applyChanges(changes: SheetChange[]) {
     if (!canEdit || loading || !model.current) return;
@@ -184,19 +213,20 @@ export function ColorRegisterWorkspace() {
     {conflicts.length ? <div className="cs-conflicts" role="alert"><h2>记录已被其他成员修改</h2><p>核对服务器当前值与本次输入，再选择重新编辑；不会自动覆盖。</p>{conflicts.map(patch => <div key={patch.id}><strong>{model.current!.rows.get(patch.id)!.name}</strong>{Object.entries(patch.changes).map(([field, value]) => <p key={field}>{SHEET_COLUMNS.find(column => column.key === field)?.label}：服务器「{displayValue(model.current!.rows.get(patch.id)!, field) || '空'}」 → 本次「{value ?? '空'}」</p>)}<button className="m1-button" onClick={() => resolve(patch.id, false)}>采用服务器值</button><button className="m1-button" onClick={() => resolve(patch.id, true)}>保留输入并重新编辑</button></div>)}</div> : null}
     {dirty ? <div className="cs-save-bar"><span>{uncertain ? '上次保存结果待核实 · ' : ''}{patches.length} 条记录待保存{standardEdits ? ' · 标准修改将追加历史版本' : ''}</span>{standardEdits ? <input aria-label="标准更正原因" placeholder="填写标准更正原因" maxLength={1000} value={reason} onChange={e => setReason(e.target.value)} /> : null}<button className="m1-button m1-primary" disabled={saving || (!uncertain && (!!errors.length || !!conflicts.length))} onClick={() => void save()}>{saving ? '保存中…' : uncertain ? '核实上次保存结果' : '保存修改'}</button></div> : null}
     {total > (model.current?.rows.size ?? 0) ? <p className="m1-notice">当前载入前 {model.current?.rows.size} 条，共 {total} 条。筛选和导出仅覆盖已载入记录。</p> : null}
+    {hiddenReturnId ? <p className="m1-notice" role="status">{model.current?.rows.has(hiddenReturnId) ? <>刚查看的记录已不符合当前筛选，未切换到其他记录。<button type="button" className="m1-button" onClick={() => void changeView(() => { setFilters(initialFilters); setSelected(hiddenReturnId); setHiddenReturnId(null); })}>清除筛选并定位该记录</button></> : '刚查看的记录不在当前可读取数据中，请核对访问范围后重新读取。'}</p> : null}
     <div className={`cs-content ${panel && selectedRow ? 'with-detail' : ''}`}>
       <div className="cs-sheet">
         <div className="cs-tools"><button className="m1-button" title="撤销；保存过的修改将作为反向变更再次保存" disabled={loading || saving || !model.current?.undoStack.length} onClick={() => history('undo')}>撤销</button><button className="m1-button" disabled={loading || saving || !model.current?.redoStack.length} onClick={() => history('redo')}>重做</button><select aria-label="整行排序" value={sort} onChange={e => { const value = e.target.value; void changeView(() => setSort(value)); }}><option value="name:asc">颜色名称 · 升序</option><option value="name:desc">颜色名称 · 降序</option><option value="baseName:asc">生产基地 · 升序</option><option value="boardCode:asc">色板编号 · 升序</option></select><span className="cs-tool-spacer" /><button className="m1-button" disabled={loading || saving} onClick={reload}><M1Icon name="refresh" />刷新</button><button className="m1-button" onClick={() => setPanel(value => !value)}>{panel ? '收起详情' : '记录详情'}</button></div>
         {selectedRow ? <div className="cs-cell-editor"><label htmlFor="cs-active-cell">{SHEET_COLUMNS.find(column => column.key === activeField)?.label ?? '单元格'}{activeEditable ? '' : ' · 只读'}</label>{activeOptions && activeEditable ? <select id="cs-active-cell" aria-label="当前单元格" value={activeValue} onChange={e => editActive(e.target.value)}><option value="">清空</option>{[...new Set([activeValue, ...activeOptions])].filter(Boolean).map(value => <option key={value}>{value}</option>)}</select> : <input id="cs-active-cell" aria-label="当前单元格" value={activeValue} readOnly={!activeEditable} maxLength={activeField === 'note' ? 4000 : activeField === 'registerMonth' ? 7 : activeField === 'boardCode' ? 128 : 200} onChange={e => editActive(e.target.value)} />}</div> : null}
-        <div className="cs-engine-wrap"><BusinessSheetCanvas runtimeRef={runtime} rows={canvasRows} columns={SHEET_COLUMNS} label="颜色清单在线表格" images={imageState.images} imageActions={{ add: (files, id) => { void addImages(files, id); }, change: imageState.change, remove: imageState.remove, requestFiles: () => { setPanel(true); window.setTimeout(() => document.querySelector<HTMLInputElement>('[aria-label="选择记录图片"]')?.click(), 0); } }} selection={{ id: selected, field: activeField }} onReady={setEngineReady}
-          onChanges={changes => handlers.current.changes(changes)} onSelection={(id, _row, col) => { setSelected(id); setActiveField(SHEET_COLUMNS[col]?.key ?? 'note'); }} onError={setError} onUndo={() => handlers.current.undo()} onRedo={() => handlers.current.redo()} />
+        <div className="cs-engine-wrap">{!hiddenReturnId ? <BusinessSheetCanvas runtimeRef={runtime} rows={canvasRows} columns={SHEET_COLUMNS} label="颜色清单在线表格" images={imageState.images} imageActions={{ add: (files, id) => { void addImages(files, id); }, change: imageState.change, remove: imageState.remove, requestFiles: () => { setPanel(true); window.setTimeout(() => document.querySelector<HTMLInputElement>('[aria-label="选择记录图片"]')?.click(), 0); } }} selection={{ id: selected, field: activeField }} onReady={setEngineReady}
+          onChanges={changes => handlers.current.changes(changes)} onSelection={(id, _row, col) => { setSelected(id); setActiveField(SHEET_COLUMNS[col]?.key ?? 'note'); }} onError={setError} onUndo={() => handlers.current.undo()} onRedo={() => handlers.current.redo()} /> : <div className="cs-state">请先定位刚查看的记录，再继续编辑。</div>}
           {!engineReady || loading ? <div className="cs-engine-loading" role="status">{loading ? '正在读取颜色记录…' : '正在加载在线表格…'}</div> : !visible.length ? <div className="cs-empty-overlay cs-state"><h2>没有符合条件的颜色记录</h2><button className="m1-button" onClick={() => void changeView(() => setFilters(initialFilters))}>清除筛选</button></div> : null}</div>
         <footer className="cs-statusbar"><strong>颜色清单</strong><span>{visible.length} 条记录{selectedRow ? ` · ${selectedRow.name ?? '当前记录'}` : ''}</span><span>{notice || (dirty ? '编辑尚未保存' : '服务器数据')}</span></footer>
       </div>
       {panel && selectedRow ? <aside className="cs-detail" aria-label="记录详情"><header><h2>记录详情</h2><button aria-label="关闭记录详情" onClick={() => setPanel(false)}><M1Icon name="close" /></button></header><h3>{selectedRow.name}<span className="m1-badge">{selectedRow.base?.name ?? '基地待核对'}</span></h3><h4>基本信息</h4><dl>{SHEET_COLUMNS.filter(column => column.key !== 'photos').slice(0, 9).map(column => <div key={column.key}><dt>{column.label}</dt><dd>{displayValue(selectedRow, column.key) || '—'}</dd></div>)}</dl>{detailError ? <p className="m1-error">{detailError}</p> : null}<SheetImagePanel state={imageState} recordId={selectedRow.id} recordName={selectedRow.name ?? "当前记录"} disabled={!canEdit} /><h4>来源记录</h4>{detail ? detail.sources.length ? detail.sources.slice(0, 3).map((source, index) => <div className="cs-source" key={index}><M1Icon name="file" /><div><strong>{source.fileName}</strong><p>工作表：{source.sheetName}</p><p>来源行：{source.rowNumbers.join('、')}</p></div></div>) : <p>由系统项目建立</p> : <p>正在读取来源…</p>}<h4>关联项目</h4>{detail?.projects.length ? detail.projects.map(project => <Link className="cs-project-link" key={project.id} href={`/projects/${encodeURIComponent(project.id)}`}>{project.name}<M1Icon name="next" /></Link>) : <p>暂无已确认关联</p>}<button className="m1-button cs-detail-more" onClick={() => void openDetails()} disabled={dirty || saving}><M1Icon name="file" />查看业务详情与历史</button><p className="cs-detail-note">名称、基地、正式编号和状态由原业务流程维护。标准更正不会授予量产许可。</p></aside> : null}
     </div>
     <details className="cs-source-browser"><summary>历史来源工作簿与核对</summary><SourceWorkbook /></details>
-    {detailTargetId ? <RegisterDetails id={detailTargetId} onClose={() => { setDetailTargetId(null); if (!dirty) reload(); }} /> : null}
+    {detailTargetId ? <RegisterDetails id={detailTargetId} onReturnToRecord={returnToRecord} onClose={() => { setDetailTargetId(null); if (!dirty) reload(); }} /> : null}
     {importOpen && model.current ? <ColorImageSheetImport rows={[...model.current.rows.values()]} images={imageState.images} paintTypes={paintTypes} manufacturers={manufacturers} onClose={() => setImportOpen(false)} onSaved={async () => { await load(AbortSignal.timeout(30000)); await imageState.reload(); }} /> : null}
   </section>;
 }
