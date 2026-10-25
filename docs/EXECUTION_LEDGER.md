@@ -8545,3 +8545,46 @@ main ref与tag未改变。这里仅追加指针，保留原有未提交交接文
 - 唯一矩阵50PASS/14PARTIAL/9NV/1BLOCKED、7/15包、3/9链，P0仍4/10。E64图片结构v9保存刷新及独审关闭A06-02，原业务台次归属按不变直接输入分别复用；Office日期/完整重开/正确项目/兼容性能/质量恢复等继续。原三文档补丁/未知媒体保留，无push/远端CI/main/tag/生产或签收结论。
 
 - 后续日期样本：旧11表本当前404，授权34ab…原副本在R22真实导入被XML命名空间/结构guard拒绝（189）；无重复重试/无业务应用，原件保留，开始精确只读根因诊断。A02-06/A05-05不提升。
+
+
+## 2026-10-25 — R23源码修复与已收取的PM反馈
+
+- R22报告已实际发送至获准会话“轻卡定制色验收目标”（user message a0b05876-1d3d-4a09-8833-52226fa2ca6b）；反馈47a5de9a-9a6b-44de-ab1e-4031b7a2a6d8已读回。PM接受50/74、3/9的限定证据，要求年度弹窗返回按A15-03/P1-05修复；不重开E2E-04、不重复产量写入、不把旧本404解释成删除。
+- 产品提交 e3e73926d17c07a67cf557b4abd5feae3bcb2948 / tree31c193517c35b5f8c9aa193d5da7096916b8022f，仅10个Web源/测试文件。Excel只接受精确workbook/MC AlternateContent/Choice/absPath元数据，路径不进入编辑副本；原34ab…副本在独立真实parser中成功读取11表，未改原件。返回使用稳定详情ID、dirty确认、保存期间互斥、原生焦点同步；更正后不符合筛选时显式提示并提供定位，读请求期间改排序仍保留返回意图。
+- 最终152目标、typecheck/lint均0；初次类型失败保留。XML独审a763bde7…、导航最终独审47cbe5a0…和committed.json绑定最终字节；审查中发现的busy/焦点/筛选/异步竞态均已修复，非GUI结论。原安全Finding仅追加适用性，不升级full或closed。
+- R23干净本机双制品与必要G3/Linux检查开始准备；当前实际仍是R22/08d，日期导入及新返回均待新候选真实复验。矩阵50PASS/14PARTIAL/9NV/1BLOCKED、3/9保持；无push、远端CI、生产或所有者签收。未知媒体及所有旧失败保留。
+
+## 2026-10-25 — R23实际身份与日期局部验证
+
+- E66：e3e/tree31c/R23/build03:20:06Z，03:25:36Z受控启动85926/85927/85928；16bc10a8…四端点和b50e2606…poststart独审匹配。7构建命令0，2080源/43590依赖/1857运行库存独审cdd1e32a…；只停R22所属PID，原PG/Redis/Clam/对象保持，提醒state自然tick另记。
+- 原34ab…已实际导入新本fed52fc6…v2/刷新，显式继续入口保留11处背景共1asset；五个日期/文本/空白样本由正常M1 GET与194–198截图核对，独审0e1083e6…。原R22拒绝保留；取证错误计数和浮点末尾差异如实单列。导出208150c9…已生成，Excel当前打开工具限制，回导/完整Office待续，矩阵计数不提升。
+- R23 G3及两Linux镜像/固定Trivy已执行，独立证据复核进行中。无push、远端CI、main、tag或生产操作；50/74、3/9及产品PARTIAL保持。
+
+## 2026-10-25 — R23证据E67–E70与依赖异常
+
+- E67精确e3e的G3/Linux镜像/Trivy与独审已完成；API305跳过及历史真实PG证据边界保留。E68原11表日期五样本、原生Excel及正式回导已闭合其局部范围；E69年度已保存返回成立，dirty实际选择仍UNKNOWN。E70结构本四值实际导出与Excel保持类型/格式/存在性，回导尚未正式完成，50/14/9/1、3/9不变。
+- R23回报已在获准“轻卡定制色验收目标”读回user932ef5c6-9ecf-452c-b0d6-66edb1077c77及反馈9fe001b4-3e7d-4798-aa63-21bfed86a7db。PM认可原11表阻断及正常返回在此范围修复，要求只补四值回导和真实取消/确认，不扩大样本或重复人工另存；保留模型技术意见不代所有者签收。
+- 精确XML根因索引继续用r22-11sheet-namespace-diagnostic-r01/review.json b87b2dcf…及r22-xlsx-mc-path-review-r01/review.json a763bde7…：xl/workbook.xml在MAIN workbook/MC AlternateContent处被旧foreign-element guard拒绝；最终只准入单一MC Choice（Requires解析到http://schemas.microsoft.com/office/spreadsheetml/2010/11/main）和单一空absPath（http://schemas.microsoft.com/office/spreadsheetml/2010/11/ac）。url有界且忽略，不进入副本或网络；重复/未知父子/Fallback/URI/属性/文本/DTD等负向保留。此为明确调整元数据准入，不称安全规则完全未改。
+- 正确项目cmvm46f44000r9kl5klnhsonj的合成首台计划已创建（SYN-E2E06-R23-001，2026-10-25，1台）；确认操作遭依赖离线，未确认推进。GUI原导入op de776ef8-8c81-43d7-8fa0-f90366efc7e5保留，不另建本重试。
+- 03:50起登录500：API Prisma P1001/127.0.0.1:55439、Redis6399 ECONNREFUSED，原PG/Redis/Clam端口均无监听，Docker报告无法启动；三应用PID及四身份health200仍在，不能称业务就绪。物理Extreme SSD在，但原APFS DockerData-SSD未挂载；暂停普通Docker启动/依赖写操作，正在核原映射与恢复条件，未重建库或覆盖数据。220/221错误界面和r23-auth-failure-500.json保留。
+
+
+## 2026-10-25 — 合成数据差异暂停与R24登录返回修复
+
+- 原APFS卷经原受控helper于03:55:54Z按UUID恢复，Docker与原三容器于03:58:31Z恢复，CID/镜像/卷/端口全部匹配；未重建、迁移、seed或旧库覆盖。54迁移checksum一致；W v9/日期本v2/年度revision5完整DTO与故障前相等。
+- 首台计划cmvnafmqh004n9kaufja5iwi5在03:48:30Z真实POST201、随后GET200包含同记录；恢复后正常M1 API及原库READ ONLY精确id/planNo/project+batch查询均0。PG fsync/synchronous_commit/full_page_writes开启，日志仅证明中断与自动恢复，初始卷卸载与缺失机制仍UNKNOWN。根于04:02:47Z只SIGTERM已核API85926，保留Web/代理页面与原数据源；不补建掩盖差异。
+- 正常重登真实落到dashboard，定位pilot-production等既有项目页遗漏于登录returnTo白名单；43fada95cbd1648879c67a772d3e45596f9f2741/treefc875f8bfe9019847ef4221299e1d1ecbd0f953c只修两文件。20精确静态页及tasks/samples严格详情仍需原canReadProject，未知路径/action/额外层级/编码分隔及外部URL拒绝。75目标0skip、Web类型/目标lint0、独审a2608557…；新候选GUI未验，历史失败221/222保留。
+- 结构本回导同op de776ef8-8c81-43d7-8fa0-f90366efc7e5已正常核实到新本0f91badd-2d51-4a35-a2d2-d55919973f25/图片0of5；因数据hold没有继续/正式保存，不算往返通过。所有者已经打开Excel，215–219只读证据保留，不再请求重复打开。50/74与3/9是限定历史证据覆盖，当前运行不可操作；无push、远端CI、main/tag或生产操作。
+
+- 04:10:28–31Z原合成库在API无进程/3491无监听/PG无其他client及prepared tx条件下完成受控custom备份749762B，SHA91241ce988b6c2ea8cb3bcc066bbb05ffff1c8755d90e56ca07e9b19a31ae81e，收据79546e9d975711b376d88285f5b75616bb6eece637da5478ed4418a885551efb。仅pg_restore --list成功，不称实际恢复；54迁移与36对象stat元数据前后一致，对象二进制未备份，旧备份/raw未读改。
+- 所有者已明确“手动退出了Docker，然后推出外接硬盘，再连回来”。系统限定窗口进一步证实03:48:44.529Z USB terminate/link change→44.692外层media absent→APFS Docker.raw读写/sync失败→Docker EOF，03:48:51外层重挂；不再泛查硬件，具体等待退出完成与丢行机制仍未证明。限定报告602d9f5e3f180606f4470d1585c766916015c7b6675ab1d620713b8f2e388dd6；数据续办方案准备，API hold未解除。
+- 新阻断/43fada9已实际回报获准ChatGPT会话，user60b43bf9-960a-4ea3-b9c3-c98e64d7c773已读回；该时点PM反馈尚未返回，不冒称已认可。
+
+
+## 2026-10-25 — PM事故保护反馈、R24制品与当前适用性
+
+- 新回报user60b43bf9…已实际送达，PM反馈44c0a12f-f72e-449e-b479-b357007d2115已读回：继续写入隔离；保护性逻辑导出不等于物理事故现场/对象二进制备份；优先稳定空目标恢复，不直接原库补计划。没有重复邮件。
+- R24/43fada95…/treefc875…/materials-r24-43fada95cbd1/build04:10:59Z已7阶段0，纯内置盘源码/缓存/临时/输出、不调用故障Docker；完整2080/43590/1857库存独审35236431…，未启动。保护独审35f6596e…核新dump/TOC/54迁移/36对象元数据，明确没有实际restore或原物理盘不变结论。
+- A15-04以E75更新R24制品绑定；A15-05因API停止由PASS→BLOCKED，当前49PASS/14PARTIAL/9NV/2BLOCKED=74，7/15包、3/9历史链保持，P0-01重开为3/10关闭。事故前50/74、4/10和全部成功/失败历史保留，不用历史数字声称当前可用。
+- 当前库system_identifier7698580194934571049、public/PGDATA与已核容器卷名对应；指定8份旧记录无故障前system_identifier，前态UNKNOWN。窗口Office op de776…原请求401；恢复后同op201是实际新建，不是无副作用查询。现新本0f91…仅rev1/0图，目标create命令/审计存在，未正式v2；日期本与W指定版本仍在，不能扩写其他数据全安全。
+- 所有者已确认退出Docker→推出外盘→重连；完整raw目前allocated113994252288B，大于内置可用约78081814528B。没有全盘复制/修复。具体方案r24-isolated-recovery-proposal-r01/plan.json SHA071c085632f422e4fae4005ca92daecd6628d63fd03518845f66064d167ad60c已准备；就事故后逻辑状态作为新恢复起点、以及新内置盘2核/4GiB/24GiB Lima VM和loopback HTTPS45464提出两个明确决定，未创建/下载/恢复/启动。原API保持停止，普通代码工作已完成。
