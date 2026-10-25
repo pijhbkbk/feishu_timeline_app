@@ -23,9 +23,9 @@ describe('compatibility routes', () => {
   it.each([
     ['reviews', ReviewsPage, '/projects'],
     ['settings', SettingsPage, '/admin'],
-    ['colors', ColorsPage, '/admin/color-database'],
-  ])('redirects /%s to its supported destination', (_route, page, destination) => {
-    page();
+    ['colors', () => ColorsPage({ searchParams: Promise.resolve({}) }), '/admin/color-database'],
+  ])('redirects /%s to its supported destination', async (_route, page, destination) => {
+    await page();
 
     expect(redirectMock).toHaveBeenCalledOnce();
     expect(redirectMock).toHaveBeenCalledWith(destination);
