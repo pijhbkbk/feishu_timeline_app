@@ -1,20 +1,68 @@
 # 轻卡定制色 V1 连续实施
 
-本文件是本次总目标的续接入口，执行摘要仍由 [EXECUTION_LEDGER](../EXECUTION_LEDGER.md) 引用。用户路径沿用 [ROUTE_ACCEPTANCE_MATRIX](ROUTE_ACCEPTANCE_MATRIX.md)，安全结论仅在 [FINDINGS](../security/FINDINGS.yaml)；不重建历史验收台账。
+本文件是现有V1总目标的唯一当前入口；执行账本 [EXECUTION_LEDGER](../EXECUTION_LEDGER.md) 只留检查点。用户路径与验收条目仅维护在 [ROUTE_ACCEPTANCE_MATRIX](ROUTE_ACCEPTANCE_MATRIX.md#v1-baseline-v10)，安全状态仅引用 [FINDINGS](../security/FINDINGS.yaml)。下方历史追加保留原日期、FAIL与版本，不覆盖当前入口。
 
-- TASK_ID：`TRUCK-COLOR-V1-COMPLETION-20261020-R01`
-- DISPATCH_TASK_ID：`TRUCK-COLOR-V1-CONTINUE-20261020-R02`
-- STATE：`RUNNING`；本地运行验收受所有者冷备暂停约束，纯源码/构建继续。
-- WORKSPACE：`/Users/lixiaochen/Downloads/feishu_timeline_app`
-- SOURCE_ID：`codex/design-convergence-20261019`，应用候选 `189a8c471b624f8e8e3e8f903b2185f3bf0b7f69`、tree `3dd0358fcbd6cd87b64b5747b67923a3197012cb`；原Ledger补丁与未跟踪媒体保留。
-- RUNTIME_ID：**STOPPED（2026-10-22）**。3490/3491/3492及隔离PG/Redis已停止，Docker正在冷备，所有者明确“冷备尚在进行，暂不启动 Docker”。最后已验证运行身份仅为历史 `cbe1b35922462325738129c857176fbf24bbc4e5` / tree `d4d12ad0ea544e91939ddcf2e86632707827e542` / release `materials-r04-api-cbe1b3592246` / buildTime `2026-10-20T09:43:35Z`；不是当前在线版本。旧PID不再作为运行依据，新候选纯构建中。
-- CURRENT_ITEM：合法前缀XLSX导入修复及边界解析安全修复已合入并独审；系统导览按实际周评、获准成员共同维护、年度13个月与20台保留口径修正。候选无DB代码检查与同身份API/Web不可变构建已完成、尚未运行；G3数据库/Redis门禁未完成；A12/A14/双成员提醒/Office往返和恢复等依赖服务恢复。
-- COMPLETED_DELTA：完整读取实际Gmail `1a157ab3b180f4aa`；14529字符、35023字节，文件与实际邮件 instruction 完全一致，SHA256 `1d4eb08ae4a7271b91a1f7103676b5b1140a0340b455d4c24caafb761a40e3d4`。来源聊天的真实人类授权已核对，所有者在本聊天另明确授权回报新会话「轻卡定制色验收目标」。
-- EVIDENCE：`var/truck-color-v1-20261020/receipt-R02.json`；前次已接受结果 `var/chatgpt-followup-20261020/materials-completion.json`；既有 [DESIGN_CONVERGENCE](DESIGN_CONVERGENCE_20261019.md)。
-- OPEN_BLOCKERS：所有者冷备hold期间不启动Docker/容器/预览。A07产量实际应用、A12/A14、双成员GUI提醒、最终浏览器导入/保存读回、Safari、完整Office往返、性能和最终恢复仍待。正式CI旧failure未改；当前通知队列false，不启用全队列制造提醒。
-- HUMAN_ACTION：所有者2026-10-22明确“冷备尚在进行，暂不启动 Docker”；仅依赖服务动作暂停。待冷备完成并收到重启许可，再检查原有合成资源身份后恢复；不重建/覆盖现有数据库。产品负责人最终接收仍待。
-- NEXT_ACTION：完成已提交候选G3与同身份API/Web纯构建、保存失败和独审证据并回报获准ChatGPT；冷备解除后从原合成数据继续A14映射、A12及双成员提醒真实路径，再做Office/Safari/性能/恢复。
-- RESUME_ENTRY：先读取本节、执行Ledger尾部及当前diff；继续NEXT_ACTION，不重跑已闭合的材料返回验收。
+- TASK_ID：`TRUCK-COLOR-V1-COMPLETION-20261020-R01`；主线派发 `TRUCK-COLOR-V1-CONTINUE-20261020-R02`。
+- CURRENT_SUBTASK：`TRUCK-COLOR-V1-FINAL-EXECUTION-20261024-R01`；沿PM已核对冻结的v1.0继续实际实施，产品签收另记A15-12。
+- STATE：`RUNNING`；产品 `PARTIAL / AWAITING_PRODUCT_OWNER_CONFIRMATION`。最终未签收不表示在等待继续开发批准。
+- WORKSPACE：`/Users/lixiaochen/Downloads/feishu_timeline_app`；分支 `codex/design-convergence-20261019`。
+- SOURCE_ID：当前源码HEAD `08d862c3d8d757ae4409bd895a9a98756b37e79e` / tree `d88f5f8c8b747b254931e3ea6e61c0a2953b4f02`；ac3aa093修图片旧提示，08d862c修颜色链接丢ID。79/18目标、types/lint及独审通过，两处现已在R22实际复验。三文档原补丁/未知媒体保留。
+- ARTIFACT_ID：实际R22 `materials-r22-08d862c3d8d7` / build `2026-10-25T02:43:31Z`，源码/tree同上；7构建命令0，build receipt `2f030a98…`、全库存独审 `4847a38d…`、启动前审 `1f1ee705…`；旧R21制品与失败保留。
+- RUNTIME_ID：2026-10-25T02:49:23.288800Z启动R22；3490代理/3491 API/3492 Web PID81999/81997/81998；02:49:39Z四端点200/四字段一致。poststart独审 `b688ba8c…` 核原PG/Redis/Clam、38通知/4摘要全行与scope外保持；仅scope state.updatedAt自然tick改变。非正式HTTPS。
+- REMOTE_LAST_OBSERVED：2026-10-24只读main仍`9bdec2864c3ed9eb1a045062b756611f98208bfb`、最新main CI `38866594479` failure；候选无新远端CI。精确正式域名身份仍UNKNOWN；本轮未查生产或触发CI。
+- CURRENT_ITEM：50PASS/14PARTIAL/9NOT_VERIFIED/1BLOCKED、7/15包、3/9链、4/10 P0。E61闭合本机E2E-04；E62三入口持久原件闭合A06-01，E63双基准实际图位闭合A05-06。E64图片结构v9独审闭合A06-02；E2E-06正确白项目03/04/06完成，主线仍未整链。
+- COMPLETED_DELTA：M2建多色多车活动/M1同ID维护、50%→100%及按色/项目统计；A11两成员实际记录独立确认、首签/附件保留、草稿阻阶段、明确完成后唯一18。D07签月兼容性按14核心输入复用；R20登录返回已截图128实测。E55重复stage请求400且限定节点/审计不变，不代全A08。 新增E56/E57结构/格式正式刷新、新合法导入/同图异位/删源保留；E58限定16f/R20的DB/Redis及G3适用性，不外推后继代码。
+- EVIDENCE：当前受控记录 `var/truck-color-v1-20261020/final-execution-20261024-r01/`；旧R10 `candidate-01b4bbd-20261022/`、冻结基线 `acceptance-baseline-20261023-r01/`、PM反馈 `baseline-pm-review-20261023-r01/` 均保留，不以新收据改写旧结果。
+- OPEN_BLOCKERS：E2E-06匹配项目主链、Office日期/支持清单、整浏览器与草稿重开、Safari/性能/四宽、候选required CI/full安全、独立恢复及正式环境仍未闭合。图片结构已按E64闭合；弹窗内同URL返回链接未关闭弹窗；正常关闭可返回，未冒称链接有效。
+- HUMAN_ACTION：2026-10-24 12:53:34所有者在受信来源线程明确冷备已完成，允许核对后恢复原专用Docker/PG/Redis/3490/3491，禁止重建覆盖原库、生产扫描VM和生产发布。实际userMessage及SHA已核对并记入resume-preflight.json；不再重复索取重启许可。产品签收仍待技术与目标环境就绪。
+- NEXT_ACTION：继续授权原日期样本/正确项目/兼容性能布局；后继G3和Linux镜像按已核输入差异在隔离源实施。沿原队列至恢复与约定环境，不重演已验人工Excel或增加分母。
+- RESUME_ENTRY：本节 → [v1.0基线](ROUTE_ACCEPTANCE_MATRIX.md#v1-baseline-v10) → 原子条目和E2E/门禁队列；不重跑已接受且适用的局部路径。
+
+<!-- V1_BASELINE_DASHBOARD_START -->
+## v1.0可复算验收看板（范围冻结于2026-10-23，状态更新2026-10-25）
+
+唯一断言和详细执行步骤在[矩阵现行基线](ROUTE_ACCEPTANCE_MATRIX.md#v1-baseline-v10)，本看板从该表派生，不独立手改分母。历史证据沿用原版本/日期；本轮新实际结果E36–E64按逐项范围加入，冷备hold已解除。当前范围可确定，无阻断基线的SCOPE_UNRESOLVED；3条无原始强制依据的载体强化仅OPTIONAL。PM已核对冻结v1.0（反馈Gmail `1a167cfcb731a6b9`）；冻结的是完工标准，范围/阈值/漏项更正仍需显式记录并重算。
+
+- MUST证据覆盖 `P/N=50/74=67.57%`，这是验收证据覆盖率，不是代码/工程完成率。PARTIAL 14、NOT_VERIFIED 9、BLOCKED 1，FAIL/SKIPPED/SCOPE_UNRESOLVED/NOT_APPLICABLE均0；合计74。旧失败保留，当前FAIL=0不表示无历史失败/全仓无问题。
+- 关键集成链 `Q/K=3/9=33.33%`：原生成员/人员、整本草稿重开、Office、四域映射/统计、项目并行、实际周评、到货试验提醒、离线独立目标恢复、正式HTTPS；E2E-01、E2E-04与E2E-07按原链/实际时序及逐输入适用性闭合，其余链不以局部计数代替。
+- 10组P0交付阻断 `4/10关闭、6未关闭`，5组原V1必需P1中P1-01已关闭、其余4组未关闭；不是10个已确认P0漏洞。每组的唯一矩阵ID/关闭条件/责任与依赖见[矩阵执行队列](ROUTE_ACCEPTANCE_MATRIX.md#v1-baseline-v10)。P2不进入必需门槛。
+
+| A包 | MUST N_i | 有效PASS P_i | PARTIAL | NOT_VERIFIED | BLOCKED | 整包 |
+|---|---:|---:|---:|---:|---:|---|
+| A01 | 4 | 4 | 0 | 0 | 0 | PASS |
+| A02 | 6 | 4 | 2 | 0 | 0 | PARTIAL |
+| A03 | 5 | 3 | 2 | 0 | 0 | PARTIAL |
+| A04 | 5 | 1 | 0 | 4 | 0 | PARTIAL |
+| A05 | 6 | 5 | 1 | 0 | 0 | PARTIAL |
+| A06 | 3 | 3 | 0 | 0 | 0 | PASS |
+| A07 | 5 | 5 | 0 | 0 | 0 | PASS |
+| A08 | 6 | 6 | 0 | 0 | 0 | PASS |
+| A09 | 3 | 0 | 2 | 1 | 0 | PARTIAL |
+| A10 | 3 | 1 | 2 | 0 | 0 | PARTIAL |
+| A11 | 3 | 1 | 1 | 1 | 0 | PARTIAL |
+| A12 | 3 | 3 | 0 | 0 | 0 | PASS |
+| A13 | 6 | 6 | 0 | 0 | 0 | PASS |
+| A14 | 4 | 4 | 0 | 0 | 0 | PASS |
+| A15 | 12 | 4 | 4 | 3 | 1 | PARTIAL |
+
+整包仅全部MUST通过才PASS；7/15整包PASS并非工程完成率。API/GUI/原生Office/系统IME/PG/Redis/恢复/目标环境各保各自范围。已接受人员/颜色/未关联检验映射、草稿CAS/异常回执、一图续接/晚输入、整车整改、到货报告、Chrome正常系统IME及小型Office原生步骤按逐文件/语义差异有效复用；小型4×2旧cbe完整往返保留历史PASS，不冒称新reader已测。
+
+| 完工门槛 | 当前证据层级/关闭条件 | 矩阵入口 |
+|---|---|---|
+| 制品/运行身份 | R22双Darwin制品及实际3490/3491/3492四字段匹配；原合成PG/Redis/对象保持，精确启停与poststart收据已核，不能以端口/health替代身份 | A15-04/05 |
+| G3/真实DB/Redis | PASS（限16f/R20）；E58逐D01–D18及E52后受影响检查/构建独审成立。原5FAIL、303SKIP、历史21PG+25规则/body分列，无新完整G3重跑；新剪贴板代码、CI/安全/恢复另验 | A15-06 |
+| 必需候选CI | E52精确0c20本机API/Web Linux构建及固定Trivy各0；required候选CI/配置仍NOT_VERIFIED，新f323/R20不冒用旧IID。旧main failure保留，非全安全clearance | A15-07 |
+| XLSX安全 | 唯一Finding R28-V1-XLSX-NAMESPACE-BOUND-001保持fixed_diff_verified/full pending/closure=null；目标/受影响/独审有精确01b4证据，不改风险或closed | A15-08 |
+| Office2基准 | 原生手动另存/精确r04生产parser已验；R11原件浏览器属性已验，R12另存副本显示/保存已验；两件公式20→21→22及O2→23/导出/真实Excel查看/回导已验，E63补实际图位；日期/前导零剩余分别待。两文件分别对自己的基准，不强求Excel原生37变化消失 | A05-01至06 |
+| Safari/性能/布局 | Chrome正常人工IME有效复用；Safari、固定性能和四个CSS宽度/新guide缺口按原合同。1280与1024并列，非替代 | A04/A15-01/03 |
+| 离线/异机/备份恢复 | 程序/镜像/说明完整并在独立主机或VM运行，DB+本+对象恢复后登录/媒体/新写/应用重启。旧同Mac70表2对象/TOC不等于当前候选恢复，物理第二台/宿主OS重启不另增MUST | A15-09/10 |
+| 约定目标 | 精确https://timeline.all-too-well.com，当前身份UNKNOWN/R10未发布。原扫描VM停机/新附件限制仍有效；实际准入冲突按具体依赖处理，不旁路或静默降级 | A15-11 |
+| 所有者接收 | 其余73项技术/交付MUST（不含A15-12）、9条技术关键链及必需门禁和约定环境先就绪，再由李晓晨实际UAT并明确接收；此后A15-12才计PASS，PM冻结/技术审核不代签 | A15-12 |
+
+实际顺序：**NOW**只读补旧公式/日期元数据索引、后继变更的输入适用性及制品/恢复准备；**RUN已获准**R11身份及产量27→25→26已验→年度→两成员周评/任务和提醒→O1/O2及整本/图片/异常链→Safari/性能/四宽→变化触及的PG/Redis及CI/安全→离线独立目标恢复→有效授权/安全条件下精确正式目标→所有者签收。共用样本关闭不同断言，分母不重复计；已满足局部不再排重复工作。
+
+执行顺序为其余73项技术/交付MUST（不含A15-12）、9条技术关键链及必需门禁和约定环境先就绪，再进入李晓晨实际UAT；明确接收后A15-12才计PASS，发现原范围缺陷按影响修复/复验。V1最终完成仍要求74/74 MUST与9/9技术关键链PASS、必需交付阻碍/阻断缺陷清零、必需CI/安全/恢复门槛PASS、实际交付身份一致、约定环境可用且所有者明确接收。基线冻结不代表产品完成；生产/外部步骤仍受对应权限和安全条件约束。
+<!-- V1_BASELINE_DASHBOARD_END -->
 
 ## 有效口径和交付环境
 
@@ -300,3 +348,119 @@ ChatGPT未宣布总目标完成；整体和G3仍PARTIAL，293DB/Redis SKIP未执
 
 
 最后一次反馈后邮件补查返回Gmail FORBIDDEN/PERMISSION_DENIED，reason=RATE_LIMIT_EXCEEDED；最新邮箱状态未验证，不能以先前成功查询0封断言此刻无新邮件。错误原文`chatgpt-mail-office-r10-20261022-final-rate-limit.json`保留，未绕过/反复查询/发邮件。直接目标会话39ac3d37回复已实际回读，不受该邮件读取限流影响。
+
+### 2026-10-24 原环境恢复与首个产量实走
+
+- 从旧R10不可变提交重建丢失程序（非文档改动触发）；2062源码文件核对，44063依赖逐字一致，3个Prisma生成文件仅两处构建根路径差异经归一化核对。API/Web同新四字段，原库/对象已先备份，未迁移/seed/重建；原生账号实际登录。预览 http://127.0.0.1:3490/ ，原工作簿入口 `/admin/color-database?workbook=268c7b0a-6374-46e4-b2bf-64acc47b9990`。
+- 原表“合成A14车型产量映射 / 工作表1”revision3的10/12/5经实际映射预览3新增0错误后明确应用，三条MODEL_DETAIL成为正式事实；A `cmvlxrqrg00039k8h7tyef4i1` 保持ID、revision1→2→3、数量10→8→9，B/C保持12/5与revision1。实际保存、刷新、统计与XLSX数据依次27→25→26；整页刷新仍9/12/5与26。
+- 三份原始XLSX哈希与业务身份一致，独立解析发现I/N数量实际是shared-string文本，不能当作Excel SUM/重算通过。保留失败原件production-27/25/26.xlsx；修复只给显式台数列数值类型，未知不转0、编号/月份/公式状文本不推断。修复前9项FAIL保留，修复后目标和受影响验证另留日志。
+- 月份工具fill只改变DOM，未触发受控状态，不能认定产品bug；真实原生分段键盘输入后GET含fromMonth=2026-09&toMonth=2026-09、HTTP200并返回26。证据production-native-month-filter.json和10-production-month-filter-26.jpg。尚未完成未知/0、混合口径、年度13月20/19/CAS历史，故A14/E2E-04不提升PASS。
+- 本机HTTP profile使用现有development会话回退，不证明保护环境的Redis fail-closed；本地ClamAV未启动，不关闭扫描要求。生产扫描VM/生产发布未执行。当前runtime/API证据与后续修复候选分别记录，不混为一次验证。
+
+- R11修复已提交823b1ea2c3bdfc530720cd8570f4acb2de813fe4：仅显式quantity/effectiveQuantity转数值、严格拒绝非整数字符/不安全整数；未知空白与0区分，其他字段不推断、隐藏ID版本保持。真实export→解析→回导不变、原始XML类型/无公式、文本编号等覆盖；34受影响PASS，最终目标独审10PASS，types/lint0，非原生Office重算证明。
+- 新r02双制品完成、实际4端点身份一致并原生登录。两次升级preflight失败保留：Next改process.title触发argv拒绝（未停止）；随后原进程已按birth/cwd/version/监听核对终止，但TIME_WAIT使plain bind误拒；明确无LISTEN后按Node SO_REUSEADDR校验恢复，新PID7605/7606/7607，未放宽鉴权/扫描/loopback。
+- 未知路径9→null：known17/quantity=null/unknown1；0路径known=quantity17/unknown0；恢复9后26，A版本到6，ID不变。新增同月总量100 ID cmvly3xdy00119k8h4xh7qqhc 保留原车型，未选依据quantity=null，选MODEL_DETAILS=26，选MONTH_TOTAL=100，筛车型A时unallocatedMonthCount1而非分摊100；最终选回车型。网络原件production-unknown-zero-restored-network.json与production-mixed-basis-network.json。
+- R11实际下载production-numeric-26.xlsx SHA6963a15914c3cf85748968f3bff7c0e00afa9972089c877224c87c2e7249e039，I原数量数值9/12/5/100，N有效数值9/12/5/空，分别126/26；身份及状态保留。真实回导预览新增0/更新0/不变4/错误0，确认回执文字写入0不变4；这是不变回导，未冒称Office重算。为覆盖变动的导出行为，又在R11同ID完成10→8→9与三个新下载，网络/截图20–22及文件留存，旧文本导出不覆盖。
+
+
+## 2026-10-24 14:12 — 新SCA依赖修复与映射依据下载
+
+- `fbfcbd421cb4d7d9c838bb7081fbec1743c5b481` / tree `873076e2daddd47ffcea54f3fbe35e12de42b487`：body-parser2.4.0、multer2.5.0、两处qs6.16.1、Vitest4.1.12/Vite7.3.7。两包显式开发peer消除pnpm9旧peer残留；初次锁解析/定向up仍7.3.6及附带Rollup漂移均保留，最终锁只替换必要12包并增content-type2.1.0，Rollup/5补丁未变。最终锁SHA `b90b4baca3abd61877fd6a7971499e43fb94b4714a7ee3fe9ea8fb94312093a8`。
+- 同fixture SHA `bd7cabcc3922c959c79c62249fb7a385c1059df8a9846df5927a16adf35bb9e2`，旧R12依赖图body-parser/multer子进程各exit1，新图各exit0；请求输入、时间和输出有界，不触及运行服务。最早deflate-only exit0历史未改。Multer为截断流/过滤拒绝后恢复测试，TCP断连由既有真实HTTP回归覆盖。
+- API139/Web121/安全guards38目标0skip；候选Web979/API1758通过、294SKIP不计通过，types/lint0。9文件独审SHA `2a13153e31c4e651335ac263d849b40b0679a88549dc05f9051244d6262189c2`；提交/新SCA复核SHA `e55374d86c0e1f0d4eb9329f8fce0492abb9d58f8c0bcc6d724ea2e3c287d073`。`sca-fbfcbd4-r01`独立clean clone两次raw audit均0项/exit0，没有本地豁免兜底；不覆盖旧d66九项失败，不是CI/容器/全仓安全。
+- 唯一FINDINGS新增R28-V1-SCA-001至009并仅推进fixed_diff_verified；旧60条/发现历史/closure未改，full pending。Ajv2020 8.17.1+formats校验新增9项通过，全账原24格式错误逐字保持；Python包安装CA失败保留，未关闭TLS验证。
+- R13/fbfcbd4独立archive+fresh frozen-copy构建7命令exit0，2066源码/43590依赖/1856制品、55schema迁移及双身份已独审；argon2、sharp、实际parser与braces补丁smoke0，未启动。独审额外no-dangling断言遇到R12同有的TypeScript开发链接，原失败保留；依据实际trace及既有合同不冒称新运行缺陷。
+- `c2ba4fe5aa6ba91fa8726a1dfac5d44cc21b8b4f`仅新增映射依据下载：从WeakMap取预览时exact UTF-8 JSON，四固定ZIP文件，完整错误/跳过/跨页plans，来源/映射/预览前后摘要；actor/book/preview/generation异步守卫，旧缺失拒绝。无getSource、业务API、IDB或命令重放；JSON不是原XLSX，包不含业务上下文全库或图片二进制。58项/4实际文件目标、types/lint0，独审SHA `b6b6f1d63a4f8f84dfed42a9d08aeaaeca46a76979de1678f5c859323f796588`。命令附带的journal测试路径不存在，未将其计作执行或PASS；既有business-apply测试仍覆盖请求恢复。R12调整前截图51已保存，R14构建中，真实下载未完成。
+- 证据继续在既有`final-execution-20261024-r01`下的`dependency-security-fix-r01`、`sca-fbfcbd4-r01`、`candidate-security-r13-r01`、`mapping-evidence-r01`和`candidate-c2ba4fe-r14-r01`。未push/main/tag/生产；冻结31/74、0/9不变。
+
+## 2026-10-24 — R14实际映射与两成员/联系人路径
+
+- R14实际四端点身份为c2ba4fe5aa6ba91fa8726a1dfac5d44cc21b8b4f，3490代理/3491 API/3492 Web；原库、对象和54迁移不变。映射下载真实ZIP及失败保留、同ID更正/回执重开见矩阵E43；A07-05按精确范围PASS，旧首次3eb9源字节未留存的缺口不改写。
+- 两名已批准普通成员通过原生登录/页面共同维护同一人员，rev2→3→4及作者/操作ID经刷新GET和只读审计一致。原无账号联系人停用→归档→恢复仍停用→单独启用，旧周评参与者ID/姓名与activity.createdById保留，新名单先排除后回归原ID，账号始终为空；E44支持A01-03/A12-03局部PASS，不代周评完成门禁。
+- 当前提交df2fab9a6f493d5e56e7b082ca4b9db740563eb6，另含b06f2b9的两镜像musl1.2.6-r3修复、8f65f6e的显式月格式日期映射与df2fab9的限定IN_APP调度/重放历史保护。实际新本月份原值46296导致旧预览3错，失败ZIP保留；83目标/月格式边界通过不代新GUI。提醒实库先保留4通过2失败，再修同原因重复写updatedAt，7实PG/142单元/54受影响及types/lint通过，独审附录65f7e1fcbb99f4bf309db1ede84f0d2d9ddcb28c12d812359ff09f568d8648ad；实际自动触发仍待R15。
+- R15不可变构建7命令exit0，源/依赖/制品清单已交独审；此时未切换。原镜像c2扫描命中同一CVE的musl/musl-utils，UNKNOWN级别原样保留；b06修复镜像构建/扫描继续。唯一Finding schema不接受UNKNOWN，已保留明确导入建议与IMPORT_BLOCKED_SCHEMA_SEVERITY_ENUM，不自行改治理schema或降低严重度。
+- 唯一原子表重算34/74 PASS、27 PARTIAL、12 NOT_VERIFIED、1 BLOCKED，0/9完整链；不是产品完成。未push/main/tag/生产，未注册终结结果或声称ChatGPT已接收。
+
+
+### 2026-10-24 R15来源、提醒和任务完成；R17显示修复
+
+E45新合成工作簿2807d567…v2的十月10/12/5，先真实下载完整来源与映射ZIP，再实际PATCH200创建三条v1事实；源raw SHA32490ce…与三事实originalSource.fileHash一致，服务器snapshotHash421792…独立保留。刷新后3原ID回执仍在，正式产量页面指定十月读回27台。首次因本机日志4条配额阻止且无写请求，截图81为FAIL；核对已确认旧Sept v11回执后结束该日志，才完成实际写入。旧3eb9缺原文不补造。独审e578cb7e…与刷新附录d8e11855…。
+
+E46限定原1项目/2任务/2成员的独立IN_APP timer在06:45:22Z自然触发，早于manual，形成6通知/2摘要。M1真实标读并刷新，M2另行登录可见；第二次自然timer及一次受控manual后通知/摘要完整行摘要一致，已读不重置、范围外不变。未来半年任务只有ACTIVATE，无到期/逾期；资格负向来自专用PG7项，不混成原DB实操。独审f6067b49…；全队列/外邮保持关闭。
+
+E47 M2在原已提交报告点击完成性能试验，06:48:26.935Z完成并返回项目刷新。原PG精确只读核对首到货7字段仍等10月20日证据，报告/单附件v1/CLEAN/未替换及两完成审计actor均正确；不声称旧证据未记录列存在历史全行摘要。任务页旧“待领取”、catalog四月及提醒登录returnTo失效均已修。当前c2b066f含最后三文件窄修，82API/37Web目标回归、双type/lint通过且独审无成立阻断。R16历史构建保留，R17待运行复验。
+
+矩阵37/74 PASS、26PARTIAL/10NV/1BLOCKED，2/15整包、0/9完整链。源码、构建、实际R15、main/CI、正式目标及产品接收分开；不将此检查点登记为最终完成。
+
+
+## 2026-10-24 R17点验与R18两项修复
+
+R17 c2b066fc…四身份实际一致；提醒登录后回到/notifications、完成任务状态、原映射回执只读恢复及结束后新表单均已点击。报告子页仍显示“当前无性能试验任务”的真实失败保留在90；fa19122新增准确origin历史上下文、原7字段期限与失败提示，旧轮不得操作新活动轮，未改变写事务/锁。45API/6Web、双types/lint0，独审e850244e…/提交附录12bbd463…；初次TS2532和筛选只命中3文件的问题保留。
+
+周评按色/按项目明确primaryColor与基地查询由0c20c56实现，正式projectId评审关联不改。列表含色活动和整场详情分别标注，解析失败不退回全库；同周按钮清空不重读问题已修。81Web/type/lint0、独审c492815a…/附录9bc89e57…，实际GUI待R18。原两色活动和基地缺失A13项目不能伪造成正式单色评审关联。原55461库52迁移与现行54不符，原库保持不改；新独立专用空集群补迁移和目标PG，不使用材料库。
+
+E48系统/私有边界与E44实际成员链经独审支持A01-04/E2E-01 PASS。当前38/74、25PARTIAL/10NV/1BLOCKED、3/15整包、1/9完整链；状态仍RUNNING/PARTIAL。E49两c2镜像实际构建与扫描全severity0命中仅绑定c2，不是新0c20或远端CI结果。R18构建完成待独审启动，未生产、push/main/tag或终结回传。
+
+R18于07:37:43Z按原三个进程归属正常停止R17后启动，07:37:55Z四端点200/四身份一致（runtime-identity-readback SHA c19f125f…）。完整库存独审a03e9370…、启动前独审cb989069…，未重置任务或改变原PG/Redis/对象及限定提醒范围；本段将此前“待启动”推进为实际运行，真实页面复验继续。
+
+
+## 2026-10-24 R18到货试验提醒链与当前候选质量
+
+E50在全新空的专用PG14.24目标执行D10/D06/D07，实际13/6/16 PASS、0SKIP，532输入/54迁移/71表原行经另一上下文独审绑定。原52迁移库只正常停机、原卷保留，不迁移覆盖；材料库/Redis/生产未由该runner访问。D07单个新fixture月12删除是明确缺期负例，合成CLEAN附件元数据/finalize不当成真实扫描。
+
+E51在实际R18核对同一已完成task、7锚点、原已提交report和单附件只读/错误/返回；E47的M2原完成及审计保持。A13-02与A13-04升PASS，E2E-07按允许复用的多版本连续本机链PASS：10月20日到货报告→R15自然timer/两成员可见去重→M2于06:48:26.935Z完成→R18历史只读及原流程返回。不是同浏览器/同候选重演，不声称完成后又发新提醒。
+
+唯一矩阵派生40/74=54.05%、23PARTIAL/10NV/1BLOCKED，整包A01/A07/A13/A14共4/15，完整链E2E-01/07共2/9。P0仅01/05两组关闭仍2/10；P1-01新闭合、其他4组未闭合。E52精确0c20独立clean-clone lint/types/test/prisma validate全0，Web1017/API1808通过、303跳过另列，Prisma生成钩子实际2次；同source的两Linux镜像API d4069bbd…/Web afeb1382…构建/固定Trivy全severity各0命中。它们不是required远端CI、后来f4d/R19镜像或完整安全关闭。
+
+当前源码f4d82589…仅两Web文件修正颜色选项基地字段，R19制品完成并独审；实际仍R18/0c20，A13与后续代码输入影响分开。旧R15/R17视觉失败、PG52阻断、包装器保护失败及其他历史均保留。仍RUNNING/PARTIAL/AWAITING_PRODUCT_OWNER_CONFIRMATION；继续现有工程验收，不登记总目标完成或所有者接收。
+
+R18实质回报已通过所有者授权的app直接消息送达「轻卡定制色验收目标」6ad6ddfe…，实际回读消息c8d3bf59-70ce-4508-9e14-31fcf03ae41a（证据r18-pm-feedback-c8d3bf59.json SHA0afe16f7…）。PM确认该范围继续，强调A12整场/单色项目统计边界、A08-05与E2E-04依赖、fullJSONHash原文对照，不要求重录已验映射；不等于所有者签收或Bridge路由已修。本机后续同名色基地显示实测FAIL已f4d8258两文件修复，12目标/types/lint0及独审e3ab5893…，R19双制品7命令0/8fa46065…、独审99452305…，待实际切换复验。
+
+
+## 2026-10-24 R19双成员周评与R20实际/历史模式修复
+
+E53 M2以普通成员创建多色双车活动cmvm5a7…，M1同ID维护备注、蓝色结论FAILv2→PASSv3及照片6755d4a4…；M2创建者、两参与人、白色v2保留。整场2车2台次/50%→100%，按蓝色及白色项目分别2活动2台次1去重车辆，颜色查询不改变正式评审关联。截图123–127/真实网络/限定只读PG由独立上下文核实。此前未抽检新港白零统计仍适用，新活动仅山东青州。
+
+A11原活动的两TASK实际评审同日分别提交/确认，M1完成时M2草稿使stage-preview阻断；M2完成后仍需明确confirm才201并出现唯一18READY。M1首签整个API记录、附件与关联单色活动未覆盖，15/16旧完成及13未完保留。历史签月移动保护与旧12期由E50 D07已执行例3/5/13–16复用，14核心输入至f323逐字不变；不是新legacy GUI。A12-01/02按独审350647e7…/70b752f1…升PASS，A12全包局部闭合。
+
+E2E-06仍PARTIAL：多色活动查询的是白色项目，正式完成链是A11另一项目/单色活动。当前服务只允许活动唯一评审且所有台次颜色等于项目主色；不能强挂多色、删另一颜色或伪称两资源同ID。按原合同核对整链解释，尚未改模型/保护或降低门槛。矩阵42/74=56.76%、22PARTIAL/9NV/1BLOCKED，5/15包、2/9链；P0按原子组01/04/05共3/10关闭，不代完整链。
+
+f323e51da77291591b32696c46cd0c7675c9ae3d/tree b29db577a56de8d000bd41d7b8ec573c0bad89ba仅9文件修复color-evaluation登录allowlist及实际/历史摘要/链接/零期数。Web78覆盖为73既过复用+SSR5修后重跑，API15、双types/lint0，原React/TS失败保留；最终独审附录bfd54818…无成立阻断。R20干净不可变双制品7命令0/完整库存独审后，08:50:15Z启动；首502保留，经实际监听确认后08:50:56Z四端点200/四身份一致。截图128正常退出/重登回到原color-evaluation，未落dashboard。
+
+E55仅实际重复阶段请求：原GUI成功201后，M2正常认证同taskId/taskVersion/body重放1次，返回400“当前没有活跃的目视色差评审任务”；限定原task1/下游1/相关audit15/transition2完整行不变，独审94bca12a…。接口没有operationId字段，不冒称成功回执重放；原cookie假设失败domain0保留。A08-05同图不同位置/删源行保护仍继续，整体未签收/未push/生产未动。
+
+
+- 2026-10-24 PM回读：88733f72…明确原合同允许多色事实活动与项目正式评审不同ID，仍须准确颜色/基地的同项目上下文。矩阵显式保留两处原句并勘误，原断言/74/9不变；42/74、2/9未提升。限定PG09:06:39Z证明青州白项目cmvm46…仍03 READY且无样件/板/评审；已完成A11新港独立色不能与原青州白/蓝活动拼链。合法后续计划42012190…，不是完成证据。原多色台次与A11历史保留；不新增多对多或放宽linkReview，不重复手抄原事实。
+
+
+## 2026-10-25 — 复制持久化与图片粘贴修复候选
+
+- E59实际复制B2中文到F2，保存v5与刷新正式读回，独审确认唯一变化F2字符串。A02-03从PARTIAL到PASS，与E56–58合计新增5项：47/74、17PARTIAL/9NV/1BLOCKED；6/15包、4/10 P0，完整链仍2/9。失败截图149、401过期会话与重新原生登录分别保留。
+- R20在G8粘贴合成PNG上传后未显示，截图148与console/network为实际失败。最小修复611a36ea32af0d6862701c6770a8bae7a9d889a8为本地预览URL、独立drawing ID、大小/数量/释放边界和上传前/真正插入前scope双检；仅扫描通过的UUID入snapshot。初版独审指出切表竞争，最终五文件独审2a385613…确认差异已修。
+- 37目标和23文件370受影响检查通过，Web类型与五文件lint为exit0；日志/源码哈希在clipboard-image-fix-r02。原预览仍R20，R21在干净不可变源构建中，未将测试数或提交成功计作图片GUI通过。
+
+## 2026-10-25 — R21实际图片链、两项发现与后继候选
+
+E60：R21真实系统剪贴板同图G8/K8两位置→Undo仅撤一图→Redo→正式v6→关闭旧tab3/新tab6重开，原图仍在；同坐标B2跨工作表等待201后拒绝，返回原页重试才插入；撤销该B2后G18丢弃已返回201的响应，明确重试只落一图，正式v7刷新保持G8/K8/G18。两原件各2240B且SHA256 `5bfbf0545f002fa86cc76a40f9c97fc0b629bdf70b390038779264e64a1ecb1b`，正式快照无blob依赖。独审 `r21-clipboard-independent-r01/review.json` SHA `139e264e4a473f51f32d9d1709286122b3306a151e103e314f6605004a7fe416`；截断通道、两次DTO取证错误及164/166旧错误残留保留。不能用这段替代Office几何、全部输入入口或整本E2E。
+
+实际发现与修复：`ac3aa093920b124a827d3efa4f408e5be2c67312` 将图片提示隔离，开始新上传清除旧图片提示，保留一般保存/409错误；目标79/types/lint最终全0、独审74733b99…，fixture可选回调兼容修正保留。产量“查看该颜色的业务详情”实际丢colorId进入无关自由本（169），`08d862c3d8d757ae4409bd895a9a98756b37e79e` 保留单一有界ID并编码到现有业务记录入口；目标18/type/lint最终0、独审8a41311f…，初版两类型错误原日志保留。两修复尚未由R21页面证明。
+
+E2E-06本次实际：准确青州白项目 `cmvm46f44000r9kl5klnhsonj` 经03开发样板→04真实CLEAN确认材料/APPROVED→06合成采购/实际到货/完成，主线到10，07/09并行READY。09到期2027-04-25符合首到货六日历月。独立限定PG读回79fc36ea…；两次日期DOM填值未提交成功与原多色周评rev7/未关联事实保留，不复制周评数据或称整链完成。
+
+E2E-04新增桥接正在独审：新源 `cad334d8-f87d-4eee-ae45-ff338ba5efcd` v2，完整首次ZIP `r21-e2e04-first-mapping-source.zip` SHA fba8e41272a9373e2e29eaea03b05f588eba336d19ab3bf7d68f00a2f7a55d77。三真实MODEL_DETAIL同ID10/12/5→8/12/5→9/12/5、显式MODEL_DETAILS、27/25/26数值导出及刷新；同颜色2024-09至2025-09共13月26台新年度记录已保存/刷新，旧19总量和20/19历史保留。没有项目退出或时钟变更。导入预览时误点旧合成工作簿保存，047d…v2→v3仅新增空SHEET_FILTER_PLUGIN资源，原单元格/样式/7资源不变，独审2d9c18c1…；此误保存明确不计新源完成。导航缺陷等待R22真实点击，不先升E2E-04。
+
+已回读授权PM会话反馈745605ae…：47/74及2/9保持，A02-03原填充Undo/Redo按E57复用，A15-06原版本和303SKIP保留，优先R21图片负向和同源年度路径。无新邮件、push、远端CI、main/tag、生产或扫描VM操作；所有者签收未取得。
+
+
+## 2026-10-25 — R22运行、图片重试与E2E-04闭合
+
+E61实际同源数据链经6172d40e…独审，R22导航增量63e8486a…确认产量详情进入准确颜色/基地、关闭返回所选记录、刷新后年度26与3份完整历史不变。源cad334d8…v2的source.json/fullJSONHash/三事实fileHash均740660dd…；原XLSX642482…与ZIPfba8…另列，不能混用。13月为首月26加12明确零月，旧TOTAL19只对账，旧20/19历史全对象深等。E2E-04按原条件PASS，R21丢ID失败保留；弹窗内同URL返回链接未关闭，正常关闭按钮有效。
+
+E62文件选择201丢响应→显式同操作重试复用asset→旧图片错误提示消失→正式v8→关闭旧tab/新tab7→精确M1 GET/原件一致。独审34c96a73…确认旧四图和其他全部内容不变，仅K18新增一图；原件2240B/5bfb…、保存snapshot f059981e…。空truncated浏览器重开抓包保留，02:56独立正式GET补证；一般409保护沿精确79检查和源blob复用，不虚称新GUI。与E16/E56/E60组合，A06-01 PASS。
+
+E63独审46fefc2e…实测O1/O2图片约159.84×100.21CSS；画布相对(50.21,47.35)/(50.21,56.46)符合各自模型(50,48)/(50,56)，明确JPEG边界误差及截图/CSS缩放。完整边框底色底字可见；原生Excel旧图与真实R12导出/回导按各自身份复用，当前O1v4/O2v5完整snapshot深等。A05-06 PASS，不重做人工另存、不消除Excel37差异、不外推完整Office。
+
+R22实际02:49:23Z启动，四端点02:49:39Z一致，b688ba8c…poststart独审确认原资源与提醒边界。仅更新既有三入口；50/74、14PARTIAL/9NV/1BLOCKED、7/15包、3/9链、4/10 P0。PM a45109c8反馈已回读，本增量待发送；未push/远端CI/main/tag/生产/扫描VM。E64图片结构v9正式保存/刷新/独立GET深等；四图row+1/top+24px，实际排序移动数值但不移动浮图锚点，表改名/切换保持。E13业务稳定归属按12直接输入不变复用，与自由图分别记；A06-02 PASS，184合并拒绝/排序稀疏行差异保留。日期与后续主链继续。
+
+
+新未完成点：2026-10-25 R22正常M1精确读取旧11表本f99356bd…返回404；随后从已授权原件34ab4145…真实文件选择导入独立副本，页面拒绝“XLSX XML 命名空间或结构不受支持；源文件未修改”（截图189）。未创建新正式本、未应用业务，原件保持；A02-06/A05-05继续PARTIAL，具体guard原因正在定位，不删安全检查或将拒绝报PASS。
