@@ -10,6 +10,28 @@ const pixel=Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAA
 vi.mock('../business-sheet/image-client',()=>({imageBytes:async()=>({bytes:Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a6mgAAAAASUVORK5CYII='),c=>c.charCodeAt(0)),mime:'image/png'})}));
 async function fixture(){const book=new ExcelJS.Workbook();const a=book.addWorksheet('中文颜色');a.getCell('A1').value='颜色名称';a.getCell('A1').font={name:'Arial',size:16,bold:true,color:{argb:'FF3F6B58'}};a.getCell('A1').fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFE8F0E9'}};a.getCell('A1').alignment={horizontal:'center',wrapText:true};a.getCell('B2').value=2;a.getCell('B3').value=3;a.getCell('B4').value={formula:'SUM(B2:B3)',result:5};a.mergeCells('C1:D2');a.getCell('C1').value='基地与备注独立';a.getColumn(1).width=23;a.getRow(1).height=32;book.addWorksheet('第二页').getCell('A1').value='不合并业务ID';return new Uint8Array(await book.xlsx.writeBuffer());}
 describe('free workbook XLSX exchange',()=>{
+ it('keeps worksheet default widths on columns with metadata but no width override',async()=>{
+   const parsed=await readFreeWorkbook(await fixture(),'defaults.xlsx',crypto.randomUUID());
+   for(const [index,id] of parsed.snapshot.sheetOrder.entries()){
+     const sheet=parsed.snapshot.sheets[id]!;
+     sheet.defaultColumnWidth=index===0?100:88;
+     sheet.columnData={0:{s:{}},1:{s:{bl:1}},2:{hd:1},3:{w:220}};
+     sheet.cellData![0]![5]={v:'继承默认列宽'};
+   }
+   const output=await writeFreeWorkbook(parsed.snapshot,[]),excel=new ExcelJS.Workbook();
+   await excel.xlsx.load(output as never);
+   const reopened=await readFreeWorkbook(output,'defaults-copy.xlsx',crypto.randomUUID());
+   for(const [index,id] of reopened.snapshot.sheetOrder.entries()){
+     const sheet=reopened.snapshot.sheets[id]!,expected=index===0?100:88;
+     expect(sheet.defaultColumnWidth).toBeCloseTo(expected);
+     for(const column of [0,1,2])expect(sheet.columnData?.[column]?.w??sheet.defaultColumnWidth).toBe(expected);
+     expect(sheet.columnData?.[3]?.w).toBe(220);
+     expect(sheet.columnData?.[2]?.hd).toBe(1);
+     for(const column of [4,5])expect(sheet.columnData?.[column]?.w??sheet.defaultColumnWidth).toBeCloseTo(expected);
+     expect(sheet.cellData?.[0]?.[5]?.v).toBe('继承默认列宽');
+     expect(excel.worksheets[index]!.getColumn(2).font?.bold).toBe(true);
+   }
+ });
  it('round trips values, font, alignment, fill, formula, merges, dimensions and sheets',async()=>{const parsed=await readFreeWorkbook(await fixture(),'synthetic.xlsx',crypto.randomUUID());expect(parsed.snapshot.sheetOrder).toHaveLength(2);expect(parsed.images).toHaveLength(0);const output=await writeFreeWorkbook(parsed.snapshot,[]);const book=new ExcelJS.Workbook();await book.xlsx.load(output as never);const sheet=book.getWorksheet('中文颜色')!;expect(sheet.getCell('A1').value).toBe('颜色名称');expect(sheet.getCell('A1').font).toMatchObject({size:16,bold:true,color:{argb:'FF3F6B58'}});expect(sheet.getCell('A1').alignment).toMatchObject({horizontal:'center',wrapText:true});expect(sheet.getCell('B4').formula).toBe('SUM(B2:B3)');expect(sheet.getCell('B4').result).toBe(5);expect(sheet.model.merges).toContain('C1:D2');expect(sheet.getRow(1).height).toBe(32);expect(sheet.getColumn(1).width).toBe(23);expect(book.worksheets).toHaveLength(2);});
  it('rejects a formula that can access external services before allocating a workbook',async()=>{const book=new ExcelJS.Workbook();book.addWorksheet('数据').getCell('A1').value={formula:'WEBSERVICE("https://example.invalid")',result:''};await expect(readFreeWorkbook(new Uint8Array(await book.xlsx.writeBuffer()),'unsafe.xlsx',crypto.randomUUID())).rejects.toThrow('暂不支持函数');});
  it('extracts PNG source bytes and round trips saved image placement with original bytes',async()=>{const book=new ExcelJS.Workbook(),sheet=book.addWorksheet('图片');sheet.getCell('A1').value='合成图片';const image=book.addImage({buffer:pixel as never,extension:'png'});sheet.addImage(image,{tl:{col:1,row:1},ext:{width:96,height:48}});const parsed=await readFreeWorkbook(new Uint8Array(await book.xlsx.writeBuffer()),'image.xlsx',crypto.randomUUID());expect(parsed.images).toHaveLength(1);expect(parsed.images[0]!.bytes).toEqual(pixel);const assetId=crypto.randomUUID(),sheetId=parsed.snapshot.sheetOrder[0]!;const drawing={drawingId:'synthetic-drawing',unitId:parsed.snapshot.id,subUnitId:sheetId,drawingType:0,source:assetId,imageSourceType:'UUID',anchorType:'0',transform:{left:64,top:20,width:96,height:48},sheetTransform:{from:{row:1,column:1,rowOffset:0,columnOffset:0},to:{row:3,column:2,rowOffset:8,columnOffset:32}},axisAlignSheetTransform:{from:{row:1,column:1,rowOffset:0,columnOffset:0},to:{row:3,column:2,rowOffset:8,columnOffset:32}}};parsed.snapshot.resources=[{name:'SHEET_DRAWING_PLUGIN',data:JSON.stringify({[sheetId]:{data:{'synthetic-drawing':drawing},order:['synthetic-drawing']}})}];const output=await writeFreeWorkbook(parsed.snapshot,[{id:assetId,recordId:parsed.snapshot.id} as SheetImage]);const reopened=await readFreeWorkbook(output,'image-copy.xlsx',crypto.randomUUID());expect(reopened.images).toHaveLength(1);expect(reopened.images[0]!.bytes).toEqual(pixel);expect(reopened.images[0]!.anchor).toMatchObject({kind:'oneCell',width:96,height:48});});
