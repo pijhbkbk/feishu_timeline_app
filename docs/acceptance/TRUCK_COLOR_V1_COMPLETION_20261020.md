@@ -4,24 +4,24 @@
 
 - TASK_ID：`TRUCK-COLOR-V1-COMPLETION-20261020-R01`；主线派发 `TRUCK-COLOR-V1-CONTINUE-20261020-R02`。
 - CURRENT_SUBTASK：`TRUCK-COLOR-V1-FINAL-EXECUTION-20261024-R01`；沿PM已核对冻结的v1.0继续实际实施，产品签收另记A15-12。
-- STATE：`RUNNING / LOCAL_RECOVERY_VERIFIED / PREVIEW_MAINTENANCE`；产品 `PARTIAL / AWAITING_PRODUCT_OWNER_CONFIRMATION`。E113原三app及scanner正常停机，新joint scanner因maps归属拒绝已正常退出；原数据库和Redis继续运行。
+- STATE：`RUNNING / LOCAL_JOINT_RUNTIME_VERIFIED / PREVIEW_AVAILABLE`；产品 `PARTIAL / AWAITING_PRODUCT_OWNER_CONFIRMATION`。E114新joint scanner与五例/有界观察完成，E115新joint应用正常重启、既有O2认证读回及页面显示完成；旧失败保留。
 - WORKSPACE：`/Users/lixiaochen/Downloads/feishu_timeline_app`；分支 `codex/design-convergence-20261019`。
-- SOURCE_ID：目标应用源码为 `3941beccddd0dfce94c8f0f7fd7d62819fb05270` / tree `db699c2e128e9c40d677de2ccca0788d8ffccdb9`；E98–E101对应原副本的实际运行/产品验证，当前维护停机。后续文档checkpoint不改变该应用身份。
-- ARTIFACT_ID：3941 Ubuntu ARM64，release `truck-recovery-r30-3941beccddd0` / build `2026-10-26T12:28:07Z`；E97八子阶段0，640MiB image f38a0a21…；E98 manifestc6b3f29…/copy3dd86…完整15741项460214149B。旧17aa与R27包保留；当前仅有界应用预览，全包A15-09仍PARTIAL。
-- RUNTIME_ID：`https://localhost:45464` 当前维护不可用；原API4540/Web4546/proxy4552及scanner4112已正常退出。PG4039同systemID7700459308674415750、Redis4075及boot2552886b…保持。新joint scanner8382首次启动在maps校验拒绝后已正常退出；失败6e207bf7…保留，不把旧health当当前在线。
+- SOURCE_ID：目标应用源码为 `3941beccddd0dfce94c8f0f7fd7d62819fb05270` / tree `db699c2e128e9c40d677de2ccca0788d8ffccdb9`；E98–E101属于原副本，E114/E115属于新联合安装目录。文档checkpoint不改变应用身份。
+- ARTIFACT_ID：3941 Ubuntu ARM64，release `truck-recovery-r30-3941beccddd0` / build `2026-10-26T12:28:07Z`；E109联合application收据cc59aa92…/manifestc6b3f29…，E110 runtime5ee49d4e…/manifest3da9be29…；R27基包594c92b6…与419文件delta7aabbfd0…及20deb组成已实装集合。软件清单/操作说明收口中，A15-09仍PARTIAL。
+- RUNTIME_ID：`https://localhost:45464` 已由 `/home/recovery/offline-software-r30-3941bec-r01` 提供；run `restart-final-joint-r01` 的API9064/Web9065/proxy9072均为新Node，同startTicks4484662，实际15种可执行映射及直连/TLS四身份对应3941。scanner8677/t4406128为R03，PG4039同systemID7700459308674415750/Redis4075及boot2552886b…保持；原app与scanner正常停机记录和两次maps失败均保留。
 - REMOTE_LAST_OBSERVED：2026-10-24只读main仍`9bdec2864c3ed9eb1a045062b756611f98208bfb`、最新main CI `38866594479` failure；候选无新远端CI。精确正式域名身份仍UNKNOWN；本轮未查生产或触发CI。
 - CURRENT_ITEM：57PASS/9PARTIAL/7NOT_VERIFIED/1BLOCKED、10/15包、5/9连续技术链、6/10 P0关闭。E95闭合A11-03，E96重开A05-04后由E99精确小数读回复闭；E93+E99及未受影响历史Office组成E2E-03 PASS。E100闭合A03-01/P0-03，E101闭合双模式A02-01；异步编辑和E2E-02不跟随升级。
 - COMPLETED_DELTA：E97完成受限构建/core恢复，E98实际装载3941并核身份，E99使用正确db091…文件全新op cb5c1dbe…→703898c1…正式v2/刷新。四小数、14格/样式/合并、400行高/52列宽、图片2240B/5bfb…均与各自基准相等；原8755…v2舍入失败未覆盖。O1/SUM/日期/原生Office按输入不变复用。
 - EVIDENCE：当前受控记录 `var/truck-color-v1-20261020/final-execution-20261024-r01/`；旧R10 `candidate-01b4bbd-20261022/`、冻结基线 `acceptance-baseline-20261023-r01/`、PM反馈 `baseline-pm-review-20261023-r01/` 均保留，不以新收据改写旧结果。
 - OPEN_BLOCKERS：新增真实状态差异：03:48:30Z首台计划cmvnafmqh004n9kaufja5iwi5曾POST201且随后GET200可见，依赖恢复后同原库精确查询为0；所有者已确认手动退出Docker后推出外盘再接回，系统证实设备断联与写失败；是否等待完全停止及特定丢行机制仍UNKNOWN，未补建/重放/覆盖。已核W v9、日期本v2、年度revision5与旧DTO相等，不推断全库损坏。结构本回导原op已核实至0f91badd-2d51-4a35-a2d2-d55919973f25/图片0of5，原记录保留不续写；E84使用新ID另完成四值回导，不冒称旧操作恢复。未保存取消/确认、项目并行/返回剩余断言、异步编辑、Safari/性能/四宽、required CI/full安全、A15-09完整离线包及正式环境仍待；A15-10独立逻辑恢复已由E77闭合。
 - HUMAN_ACTION：所有者已批准事故后逻辑起点、内置Lima2CPU/4GiB/24GiB及HTTPS45464，并已亲自处理新入口浏览器证书提示。无需重问；不做全盘事故镜像、不覆盖原库、不沿用旧缺失ID。原Office/IME反馈按实际范围复用；新整Chrome退出重开已由所有者确认并经根重登录读回，最终签收仍待。
-- NEXT_ACTION：E102初始化、E105依赖、E106新库HTTP认证、E109/E110联合文件安装及E111最终native loader已通过限定验证。当前优先定位E113新scanner实际maps拒绝，保持fail closed，再执行新五例与新joint应用业务/退出/正常重启；复用既有适用验证。R10反馈2dc54125…已读取；其余异步编辑、并行/标准/dirty、Safari/性能/四宽及CI/安全/正式环境沿矩阵继续。
+- NEXT_ACTION：E102初始化、E105依赖、E106新库HTTP认证、E109/E110联合安装、E111 loader、E114实际scanner/五例、E115新joint业务/退出/正常应用重启及GUI均有限定证据。收拢现成基包/增量/依赖/R03补充的最终清单和唯一INSTALL入口，明确固定VM控制器的适用边界；不重跑已成立初始化/Office/IME/整浏览器重开。其余异步编辑、并行/标准/dirty、Safari/性能/四宽与CI/安全/正式环境沿矩阵继续。
 - RESUME_ENTRY：本节 → [v1.0基线](ROUTE_ACCEPTANCE_MATRIX.md#v1-baseline-v10) → 原子条目和E2E/门禁队列；不重跑已接受且适用的局部路径。
 
 <!-- V1_BASELINE_DASHBOARD_START -->
-## v1.0可复算验收看板（范围冻结于2026-10-23，状态更新2026-10-26）
+## v1.0可复算验收看板（范围冻结于2026-10-23，状态更新2026-10-27）
 
-唯一断言和详细执行步骤在[矩阵现行基线](ROUTE_ACCEPTANCE_MATRIX.md#v1-baseline-v10)，本看板从该表派生，不独立手改分母。历史证据沿用原版本/日期；本轮新实际结果E36–E104按逐项范围加入，冷备hold已解除。当前范围可确定，无阻断基线的SCOPE_UNRESOLVED；3条无原始强制依据的载体强化仅OPTIONAL。PM已核对冻结v1.0（反馈Gmail `1a167cfcb731a6b9`）；冻结的是完工标准，范围/阈值/漏项更正仍需显式记录并重算。
+唯一断言和详细执行步骤在[矩阵现行基线](ROUTE_ACCEPTANCE_MATRIX.md#v1-baseline-v10)，本看板从该表派生，不独立手改分母。历史证据沿用原版本/日期；本轮新实际结果E36–E115按逐项范围加入，冷备hold已解除。当前范围可确定，无阻断基线的SCOPE_UNRESOLVED；3条无原始强制依据的载体强化仅OPTIONAL。PM已核对冻结v1.0（反馈Gmail `1a167cfcb731a6b9`）；冻结的是完工标准，范围/阈值/漏项更正仍需显式记录并重算。
 
 - MUST证据覆盖 `P/N=57/74=77.03%`，这是验收证据覆盖率，不是代码/工程完成率。PARTIAL 9、NOT_VERIFIED 7、BLOCKED 1，其余原子分类0，合计74。E99修复并实测O2小数读回，A05-04复闭；旧68px和8755…v2取整失败保留，不表示全仓无问题。
 - 关键集成链 `Q/K=5/9=55.56%`：E2E-01/03/04/06/07按实际时序及逐输入适用性闭合；Office两份基准各自完整，未冒称同一次/同一制品重演。整本草稿、项目并行、完整离线包和正式HTTPS仍待。
@@ -641,3 +641,13 @@ R10已送达授权会话user d108cff9…，反馈2dc54125…确认loader与回�
 19:12:24–33Z新joint scanner实际PID8382/startTicks4215486加载并响应PING/VERSION，但实际maps遇CHECK_MAPPED_PATH_NOT_FINAL_NATIVE_PROOF；start回执6e207bf77fbe342c03a2657a6f6582a6a8e680b11c4d34922287af186d1ca012为失败，正常SIGTERM、remainingOwnedGroup=[]。19:14Z只读再核新PID已消失、两数据服务身份相同。该轮未记录具体拒绝路径，来源仍UNKNOWN；不推断库不安全或放宽清单。采样最低guest1313832960B、最低MemAvailable2609729536B，专用根观察高水位112934912B；不是硬配额/瞬时峰值证明。
 
 实际记录在E/r30-final-window-execution-r01（E为既有final-execution-20261024-r01目录）。45464当前维护不可用，不能引用E98旧health作为当前可用证明。下一步只增加有界maps诊断并使用新日志/PID路径，再独审执行；原失败/config/CVD/历史保留。新五例、联合应用实际启动/业务/退出/正常重启均未执行；A15-09仍PARTIAL，57/9/7/1与10/15包、5/9链、6/10 P0不变。原副本备用恢复入口已准备，原外盘Docker/生产/远端CI/main/tag未动。
+
+## 2026-10-27 — 新联合扫描器与应用正常重启（E114–E115）
+
+E114保留E113第一次maps拒绝6e207bf7…及诊断第二次712d33f5…：准确三项为locale-archive、C.utf8/LC_CTYPE及gconv-modules.cache。官方签名索引固定的两个glibc deb与后两项实际文件逐字相同（来源证明21143bac…）；无来源证明的archive不准入。R03保持C.UTF-8，仅为scanner子进程增加LOCPATH=/usr/lib/locale，18库原native闭包不放宽，另两项包数据有精确inode/权限/held-FD/hash来源检查且必须实际出现LC_CTYPE。19:44Z实际启动f5ee718f…，独审991bf5cc…；不是把未知映射全部忽略。
+
+新joint编译客户端实际五例78ab069d…全部预期，497已加载模块与最终清单一致；150s观察5ae638b0…覆盖全部，后验f30410ac…仍同scanner/PID/config/CVD及18库+2数据。1312采样总占用高水位176144384B、guest最低1250078720B、内存最低2444795904B、最大实际采样间隔0.193978417s；独审d741d6e1…。各子项峰值非同时，不能相加；采样不冒称硬配额/通用并发证明。
+
+E115先以新application/runtime完成三进程启动和严格CA四身份；正常SIGTERM停8889/8890/8901（2daee04e…），再起9064/9065/9072。前后现有O2工作簿完整DTO3883B/ec68aea9…均为revision2、B2=14/C2=23；原图2240B/5bfbf054…相同，普通密码登录/退出后旧cookie401，两阶段未发业务写请求。PG/Redis/scanner及原恢复数据源未重启。新进程15类实际可执行映射逐项受原生闭包约束，未观察的addon不外推。
+
+原Chrome标签两次CDP focus超时保留；按所有者既有授权开同profile新空白窗口后控制恢复，新标签实际打开O2并显示14/23与绿色图片。刷新book/session/draft及切页thumbnail均200、非disk/service-worker cache，捕获console warn/error为空；browser/result.json为37a92bd6…，最后运行绑定20:04:07Z。独审d870f1c9…覆盖173公开文件/46命令回执和两截图；7GET中6个对应200，首次重复list的ERR_ABORTED/canceled保留，不当PASS。没有重做所有者已确认的整Chrome退出、正常IME或Office。此处仍只是本机联合运行/正常应用重启与既有业务，软件交付入口收口和其他原子项继续，57/9/7/1=74、10/15包、5/9链、6/10 P0不变；无push/main/tag/远端CI/production/原外盘Docker或所有者签收。

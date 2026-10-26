@@ -8761,3 +8761,10 @@ R10已送达授权会话user d108cff9…，反馈2dc54125…确认loader与回�
 19:12:24–33Z新joint scanner实际PID8382/startTicks4215486加载并响应PING/VERSION，但实际maps遇CHECK_MAPPED_PATH_NOT_FINAL_NATIVE_PROOF；start回执6e207bf77fbe342c03a2657a6f6582a6a8e680b11c4d34922287af186d1ca012为失败，正常SIGTERM、remainingOwnedGroup=[]。19:14Z只读再核新PID已消失、两数据服务身份相同。该轮未记录具体拒绝路径，来源仍UNKNOWN；不推断库不安全或放宽清单。采样最低guest1313832960B、最低MemAvailable2609729536B，专用根观察高水位112934912B；不是硬配额/瞬时峰值证明。
 
 实际记录在E/r30-final-window-execution-r01（E为既有final-execution-20261024-r01目录）。45464当前维护不可用，不能引用E98旧health作为当前可用证明。下一步只增加有界maps诊断并使用新日志/PID路径，再独审执行；原失败/config/CVD/历史保留。新五例、联合应用实际启动/业务/退出/正常重启均未执行；A15-09仍PARTIAL，57/9/7/1与10/15包、5/9链、6/10 P0不变。原副本备用恢复入口已准备，原外盘Docker/生产/远端CI/main/tag未动。
+
+
+## 2026-10-27 — 新joint扫描器、应用重启与O2读回（E114–E115）
+
+E113两次实际maps拒绝保留。两项非执行数据已用官方精确deb认证21143bac…；archive无来源不准入，R03仅子进程LOCPATH保留UTF8，18库native检查及两项held-FD数据检查不放宽。新scanner8677/t4406128实际启动f5ee718f…，独审991bf5cc…；五例78ab069d…、150秒1312采样5ae638b0…、后验f30410ac…均0且同owner。实际总高水位176144384B、guest最低1250078720B、内存最低2444795904B，最大间隔0.193978417s；独审d741d6e1…，采样不作硬配额。
+
+E115新joint三app启动后正常停旧8889/8890/8901、再起9064/9065/9072（stop2daee04e…）。两阶段认证读回O2完整DTOec68…/revision2/14与23、原图2240B/5bfb…相同，退出后旧cookie401；PG4039/Redis4075/scanner8677不重启。最终4身份与15映射对应3941/db699/build12:28:07Z。Chrome旧标签CDP超时保留，已有授权空白窗口恢复后实际值/绿色图/刷新非缓存200与console空成功，browser result37a92bd6…；173公开文件/46命令及GUI独审d870f1c9…成立。7GET有6对应200，首重复list取消保留。HTTPS45464预览已恢复，完整软件清单和INSTALL入口收口中，A15-09/总产品仍PARTIAL，57/9/7/1及5/9链不改。未操作原外盘Docker、push/main/tag/远端CI或生产。
