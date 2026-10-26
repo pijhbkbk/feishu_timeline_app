@@ -8633,3 +8633,27 @@ main ref与tag未改变。这里仅追加指针，保留原有未提交交接文
 - 实际R27补合成普通账号注册/密码登录、刷新、退出与旧会话401，无角色/管理员提升。首次GUI刷新失去会话且缺首个cookie证据，根因UNKNOWN；第二次cookie属性及刷新session true、退出后false均实取，独审ef6f9dd7…。guide/FAQ和两评审实际入口/来源返回已记录，A11-03等新驾驶室提示实装后再判。
 - 00:34Z正常停止R27三应用与r04扫描器，PG/Redis保留。第一次构建预检错误比较原schema与生成schema摘要；修正后第二次预检通过，但根只读remount返回EBUSY32，未抽源/编译。失败日志及640MiB空image保留；00:58:52Z累计实际24785432576B，预算剩984371200B。下一步先最小挂载能力探针，不无依据重试。
 - 新first-start扫描器、fresh-init及恢复适配器仍是准备材料，20deb实际安装/新库初始化未执行。当前预览维护停机，最后运行身份仍R27。唯一计数52/13/8/1、7/15包、4/9链、5/10 P0保持；原事故库/外盘不动，无push/远端CI/main/tag/生产或产品签收。
+
+## 2026-10-26 — Office四值回导、B05失败保留与R27恢复
+
+- E84实际新op369b6840…/新本7b259a10…：原导出4a5f2742…经真实GUI回导、显式继续、4资产/5图位、正式保存v2/刷新，类型逐格保持。独审59964e6f…与E42/E68/E70适用复用支持A05-05 PASS；唯一表派生53/12/8/1、8/15包，4/9链和5/10 P0保持。E2E-03只缺O1 edited v4自己的导出→Excel→回导尾段；旧de776/0f91事故状态不改。
+- 分类追溯043d4eb0…核2fe9ffb同批A11-01 PARTIAL→PASS与A15-09 NOT_VERIFIED→PARTIAL，原52/13/8/1正确；保留所有旧时点数字。
+- E86：B05完整依赖视图实过，准备exit0后compile入口guard因继承/boot rw拒绝，实际编译0条。失败盘和日志保留；B06只修私有视图boot/EFI只读及vfat检查，独审3f3d1c6b…，尚无新构建。03:14Z宿主实际24874500096B，距24GiB余895303680B，小于下一640+256MiB峰值44220416B；大写盘动作未准入，不用guestfree替代。
+- 所有者明确批准临时guest core窗口。首次脚本因公开回执0664拒绝且未写sysctl；精确三文件收紧0600后实际窗口成功，B05失败仍finally恢复原Apport pattern（07fe9e37…）。PG48041/Redis48066/scanner r03正常续启；Redis初读pidfile竞态保留，未重复start，后只读证实实际运行。
+- E85：03:11Z API48256/Web48262/proxy48268正常启动，四身份仍147f2db23a3a1c4fabce7b31fb4db542d08dc0b9/treeb7552adf04725b32aaff0cd8e253d4ff959ee275。前后90日quota39条/三项0，原M1浏览器会话、同项目05/09/18和新book v2 snapshotHash读回保持；维护结束。取证脚本两次psql-c仅末COMMIT结果为空，改-f逐SELECT后通过，失败不删除、未改数据或口径。
+- 新first-start r02已将官方sudo .4精确deb纳必需联合附件及INSTALL，独审b72d1311…；未安装/改系统sudo，未假列入20deb/122基础闭包。新空目标初始化/20deb实际安装仍缺。a141源码仍未运行，无push/远端CI/main/tag/production/所有者签收。
+
+
+## 2026-10-26 — O1导出列宽修复与新boot恢复
+
+- 所有者Excel截图绑定11325B/c28a…及B2=13/C2=22；独审核出4处默认列宽100/88→68真实缺陷。E2E-03明确FAIL，14格/PNG已验局部不扩大撤回。17aa74a33c14fac516c924573c2b2388f6960238/tree738a75c3b949a08309ce7084f2d75bddbcb61a46只修两Web文件；红例100→68保留，136目标及最终44/types/lint0、独审9447d3d0…。源码未构建运行。
+- 恢复现场VM Stopped/12:55SIGTERM及VZ错误，发起者UNKNOWN；同VM按既有授权正常start，新boot2552886b…，原PG1396/Redis1430/scanner恢复，旧PID文件保留改名而非删除。API1565/Web1566/proxy1573仍R27，前后quota39/三零；9份回执19fcf66d…及独审8e6a997c…，GUI39f3b8e3…核Dashboard与O1v4全DTO相等。未声称全库或故障整链相等；原外盘/Docker未动。
+- 原O1导入仅处理中结果未观察，当前36项完整列表无后续新本、页面无pending，不重放坏文件。Caches/lima现不存在（非本任务删除）；精确缺失根记ABSENT/0，VM启动后实际22240698368B、余3529105408B。B05 raw与完整核验gzip均保留，无释放；B06探针PASS，新17aa构建/安装分别核峰值。现53/12/8/1、8/15包、4/9链、5/10 P0；无push/远端CI/main/tag/生产或所有者签收。
+
+
+## 2026-10-26 — 默认列宽影响核对、17aa实际编译与正常恢复
+
+- E89独审8c7c05c5…确认O2也有四列68px的实际导出/正式回导反证，E2E-03失败范围改为O1/O2共享列宽；不将O2整个尾段称无缺口。两图均位于显式220px A列内、x4–164、oneCell160×100，几何计算差0，A05-06限定PASS保留。原reader小数取整无明确容差批准，待候选实测，不自行放宽标准。
+- E90从不可变17aa74a33c14fac516c924573c2b2388f6960238/tree738a75c3b949a08309ce7084f2d75bddbcb61a46实际编译；3个host阶段/8条子阶段全exit0，旧依赖前后相同。build2026-10-26T08:28:17Z，image5fc084fc…/671088640B，构建回执746e0f3b…，实际独审243bb9f3…及清单附录c8daef23…。仅COMPILED_ONLY/runtimeReady=false，新应用未装载，不能算Office/历史提示实装通过。
+- 四项真实正常停机回执绑定临时core窗口，finally恢复正文66adfe73…与原pattern一致。08:49Z PG2277/Redis2309/scanner resume-after-17aa74a-r01/R27 API2426/Web2428/proxy2438正常续启，前后90日quota39/三零；原O1 v4页面可操作。image首次普通用户读取因root0600拒绝且未挂载，后在既有授权下只读hash/noload挂载，不改mode或原件。
+- 构建结束任务实际22673813504B，低于24GiB；新预览应用复制和完整包各自另核预算。未释放B05 raw/gzip，未动原Docker/外盘。最新增量发送到获准ChatGPT会话的桌面工具返回找不到会话，随后浏览器已打开精确会话但读取超时；此次回报未送达，不冒称收到反馈。已有反馈edfb134f…保留。计数53/12/8/1、8/15包、4/9链、5/10 P0不增加；无push/远端CI/main/tag/production/所有者签收。
