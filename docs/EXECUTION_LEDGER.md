@@ -8752,3 +8752,12 @@ E112首次R01在PUBLIC_INPUT_META拒绝：root传输脚本的默认open受guest 
 旧r27-build/artifact现在是“已归档；使用前须从保留完整tar恢复依赖，当前不是可立即启动备用制品”。当前3941独立预览副本和R27已安装运行时不依赖这两个前缀，失败盘、其他镜像、未知route-cache与原外盘Docker未动。原副本正常回退入口已独审b96d086…并实际prepare57f576c…，未启动/停止服务；未来stop与新scanner回执仍待真实产生。
 
 R10已送达授权会话user d108cff9…，反馈2dc54125…确认loader与回收边界、320MiB窗口算术余17.43MiB而非硬配额，要求扫描后对新应用另核资源；不重做已通过安装/loader/初始化/认证，不加PG/Redis/VM重启。下一步仍新scanner实际maps/五例→newjoint应用代表业务/退出/正常重启。现57/9/7/1、10/15包、5/9链、6/10 P0及A15-09 PARTIAL保持；无push/远端CI/main/tag/production或所有者签收。
+
+
+## 2026-10-27 — 联合扫描器首次运行拒绝与维护状态（E113）
+
+19:11:57Z正常停止原API4540/Web4546/proxy4552（903e518b…）和scanner4112（e1b8e04b…）；PG4039/1806709、Redis4075/1806956未停。fresh准入guest1427066880B、MemAvailable2414587904B满足本窗口要求，host完整24GiB范围另存。新配置db5e36f9…、最终loader核对ce66f803…及三CVD复制/官方校验4db3be0f…实际exit0，未下载签名或重做20deb安装。
+
+19:12:24–33Z新joint scanner实际PID8382/startTicks4215486加载并响应PING/VERSION，但实际maps遇CHECK_MAPPED_PATH_NOT_FINAL_NATIVE_PROOF；start回执6e207bf77fbe342c03a2657a6f6582a6a8e680b11c4d34922287af186d1ca012为失败，正常SIGTERM、remainingOwnedGroup=[]。19:14Z只读再核新PID已消失、两数据服务身份相同。该轮未记录具体拒绝路径，来源仍UNKNOWN；不推断库不安全或放宽清单。采样最低guest1313832960B、最低MemAvailable2609729536B，专用根观察高水位112934912B；不是硬配额/瞬时峰值证明。
+
+实际记录在E/r30-final-window-execution-r01（E为既有final-execution-20261024-r01目录）。45464当前维护不可用，不能引用E98旧health作为当前可用证明。下一步只增加有界maps诊断并使用新日志/PID路径，再独审执行；原失败/config/CVD/历史保留。新五例、联合应用实际启动/业务/退出/正常重启均未执行；A15-09仍PARTIAL，57/9/7/1与10/15包、5/9链、6/10 P0不变。原副本备用恢复入口已准备，原外盘Docker/生产/远端CI/main/tag未动。

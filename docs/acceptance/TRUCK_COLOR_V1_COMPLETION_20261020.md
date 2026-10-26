@@ -4,18 +4,18 @@
 
 - TASK_ID：`TRUCK-COLOR-V1-COMPLETION-20261020-R01`；主线派发 `TRUCK-COLOR-V1-CONTINUE-20261020-R02`。
 - CURRENT_SUBTASK：`TRUCK-COLOR-V1-FINAL-EXECUTION-20261024-R01`；沿PM已核对冻结的v1.0继续实际实施，产品签收另记A15-12。
-- STATE：`RUNNING / LOCAL_RECOVERY_VERIFIED / PREVIEW_AVAILABLE`；产品 `PARTIAL / AWAITING_PRODUCT_OWNER_CONFIRMATION`。3941已实际运行并闭合O2受影响尾段；原事故库/原API继续停写，旧停止及失败记录保留，停止发起者UNKNOWN。
+- STATE：`RUNNING / LOCAL_RECOVERY_VERIFIED / PREVIEW_MAINTENANCE`；产品 `PARTIAL / AWAITING_PRODUCT_OWNER_CONFIRMATION`。E113原三app及scanner正常停机，新joint scanner因maps归属拒绝已正常退出；原数据库和Redis继续运行。
 - WORKSPACE：`/Users/lixiaochen/Downloads/feishu_timeline_app`；分支 `codex/design-convergence-20261019`。
-- SOURCE_ID：当前应用源码与运行均为 `3941beccddd0dfce94c8f0f7fd7d62819fb05270` / tree `db699c2e128e9c40d677de2ccca0788d8ffccdb9`。只修XLSX导入小数列宽取整；红例、45目标/类型/目标lint、源码独审b6d97e62…和实际O2独审a276422b…分别保留。
+- SOURCE_ID：目标应用源码为 `3941beccddd0dfce94c8f0f7fd7d62819fb05270` / tree `db699c2e128e9c40d677de2ccca0788d8ffccdb9`；E98–E101对应原副本的实际运行/产品验证，当前维护停机。后续文档checkpoint不改变该应用身份。
 - ARTIFACT_ID：3941 Ubuntu ARM64，release `truck-recovery-r30-3941beccddd0` / build `2026-10-26T12:28:07Z`；E97八子阶段0，640MiB image f38a0a21…；E98 manifestc6b3f29…/copy3dd86…完整15741项460214149B。旧17aa与R27包保留；当前仅有界应用预览，全包A15-09仍PARTIAL。
-- RUNTIME_ID：`https://localhost:45464`，run `first-3941bec-r01`，API4540/Web4546/proxy4552；严格CA/direct四身份3941一致，浏览器新回导保存/刷新成立。PG4039同systemID7700459308674415750、Redis4075/scanner4112与boot保持；切换只停三app，quota前后41/三零、90日；没有migrate/seed/restore当前库。E98实际独审4d51abc7…，备用17aa仅prepare。
+- RUNTIME_ID：`https://localhost:45464` 当前维护不可用；原API4540/Web4546/proxy4552及scanner4112已正常退出。PG4039同systemID7700459308674415750、Redis4075及boot2552886b…保持。新joint scanner8382首次启动在maps校验拒绝后已正常退出；失败6e207bf7…保留，不把旧health当当前在线。
 - REMOTE_LAST_OBSERVED：2026-10-24只读main仍`9bdec2864c3ed9eb1a045062b756611f98208bfb`、最新main CI `38866594479` failure；候选无新远端CI。精确正式域名身份仍UNKNOWN；本轮未查生产或触发CI。
 - CURRENT_ITEM：57PASS/9PARTIAL/7NOT_VERIFIED/1BLOCKED、10/15包、5/9连续技术链、6/10 P0关闭。E95闭合A11-03，E96重开A05-04后由E99精确小数读回复闭；E93+E99及未受影响历史Office组成E2E-03 PASS。E100闭合A03-01/P0-03，E101闭合双模式A02-01；异步编辑和E2E-02不跟随升级。
 - COMPLETED_DELTA：E97完成受限构建/core恢复，E98实际装载3941并核身份，E99使用正确db091…文件全新op cb5c1dbe…→703898c1…正式v2/刷新。四小数、14格/样式/合并、400行高/52列宽、图片2240B/5bfb…均与各自基准相等；原8755…v2舍入失败未覆盖。O1/SUM/日期/原生Office按输入不变复用。
 - EVIDENCE：当前受控记录 `var/truck-color-v1-20261020/final-execution-20261024-r01/`；旧R10 `candidate-01b4bbd-20261022/`、冻结基线 `acceptance-baseline-20261023-r01/`、PM反馈 `baseline-pm-review-20261023-r01/` 均保留，不以新收据改写旧结果。
 - OPEN_BLOCKERS：新增真实状态差异：03:48:30Z首台计划cmvnafmqh004n9kaufja5iwi5曾POST201且随后GET200可见，依赖恢复后同原库精确查询为0；所有者已确认手动退出Docker后推出外盘再接回，系统证实设备断联与写失败；是否等待完全停止及特定丢行机制仍UNKNOWN，未补建/重放/覆盖。已核W v9、日期本v2、年度revision5与旧DTO相等，不推断全库损坏。结构本回导原op已核实至0f91badd-2d51-4a35-a2d2-d55919973f25/图片0of5，原记录保留不续写；E84使用新ID另完成四值回导，不冒称旧操作恢复。未保存取消/确认、项目并行/返回剩余断言、异步编辑、Safari/性能/四宽、required CI/full安全、A15-09完整离线包及正式环境仍待；A15-10独立逻辑恢复已由E77闭合。
 - HUMAN_ACTION：所有者已批准事故后逻辑起点、内置Lima2CPU/4GiB/24GiB及HTTPS45464，并已亲自处理新入口浏览器证书提示。无需重问；不做全盘事故镜像、不覆盖原库、不沿用旧缺失ID。原Office/IME反馈按实际范围复用；新整Chrome退出重开已由所有者确认并经根重登录读回，最终签收仍待。
-- NEXT_ACTION：E102新空库初始化已完成；E103固定20deb已实际展开，先修复dpkg归属解析并完整重验，再用新库执行真实管理员HTTP登录/退出。E104的3941应用增量实物已读回独审；联合安装/scanner首次运行仍待容量准入。其余异步编辑、并行/标准/dirty、Safari/性能/四宽及CI/安全/正式环境沿矩阵继续。R06反馈d8b9bc49…已读取，不重复初始化、Office或Chrome正常IME。
+- NEXT_ACTION：E102初始化、E105依赖、E106新库HTTP认证、E109/E110联合文件安装及E111最终native loader已通过限定验证。当前优先定位E113新scanner实际maps拒绝，保持fail closed，再执行新五例与新joint应用业务/退出/正常重启；复用既有适用验证。R10反馈2dc54125…已读取；其余异步编辑、并行/标准/dirty、Safari/性能/四宽及CI/安全/正式环境沿矩阵继续。
 - RESUME_ENTRY：本节 → [v1.0基线](ROUTE_ACCEPTANCE_MATRIX.md#v1-baseline-v10) → 原子条目和E2E/门禁队列；不重跑已接受且适用的局部路径。
 
 <!-- V1_BASELINE_DASHBOARD_START -->
@@ -55,7 +55,7 @@
 | XLSX安全 | 唯一Finding R28-V1-XLSX-NAMESPACE-BOUND-001保持fixed_diff_verified/full pending/closure=null；目标/受影响/独审有精确01b4证据，不改风险或closed | A15-08 |
 | Office2基准 | E93 O1与E99 O2受影响尾段均经实际保存刷新及独审闭合；O2精确99.5/87.82421875保持，14格/样式/合并/尺寸/图原件无新增损失。E68/E70/E84与原生Office按不变输入复用；旧失败和Excel自身37差异保留 | A05-01至06；E2E-03 PASS |
 | Safari/性能/布局 | Chrome正常人工IME有效复用；Safari、固定性能和四个CSS宽度/新guide缺口按原合同。1280与1024并列，非替代 | A04/A15-01/03 |
-| 离线/异机/备份恢复 | E77已闭合获准事故后逻辑状态的独立Lima实际恢复：DB+本+36对象、原账号/媒体/新ID写/正常应用重启读回。E80新离线prefix已实际安装运行；E82已补新账号注册/登录/刷新/退出限定证据；E102在固定新低权DB完成54迁移/目录/单管理员及重复CLI拒绝无计数变化，11直接组件与3941同；E103固定20deb已展开但完整运行依赖重验未通过，E104增量已物化；A15-09仍缺新库HTTP、scanner首次启动和最终R30联合安装集合实走，不以恢复成功替代；物理第二台/宿主OS重启不另增MUST | A15-09/10 |
+| 离线/异机/备份恢复 | E77已闭合获准事故后逻辑状态的独立Lima实际恢复：DB+本+36对象、原账号/媒体/新ID写/正常应用重启读回。E80新离线prefix已实际安装运行；E82已补新账号注册/登录/刷新/退出限定证据；E102在固定新低权DB完成54迁移/目录/单管理员及重复CLI拒绝无计数变化，11直接组件与3941同；E105固定20deb完整重验通过、E106新库管理员HTTP已验，E109/E110联合文件已安装、E111最终native loader通过；E113 scanner首次运行在maps归属拒绝后正常退出，A15-09仍缺新scanner五例和新联合应用业务/退出/正常重启，不以恢复成功替代；物理第二台/宿主OS重启不另增MUST | A15-09/10 |
 | 约定目标 | 精确https://timeline.all-too-well.com，当前身份UNKNOWN/R10未发布。原扫描VM停机/新附件限制仍有效；实际准入冲突按具体依赖处理，不旁路或静默降级 | A15-11 |
 | 所有者接收 | 其余73项技术/交付MUST（不含A15-12）、9条技术关键链及必需门禁和约定环境先就绪，再由李晓晨实际UAT并明确接收；此后A15-12才计PASS，PM冻结/技术审核不代签 | A15-12 |
 
@@ -632,3 +632,12 @@ E112首次R01在PUBLIC_INPUT_META拒绝：root传输脚本的默认open受guest 
 旧r27-build/artifact现在是“已归档；使用前须从保留完整tar恢复依赖，当前不是可立即启动备用制品”。当前3941独立预览副本和R27已安装运行时不依赖这两个前缀，失败盘、其他镜像、未知route-cache与原外盘Docker未动。原副本正常回退入口已独审b96d086…并实际prepare57f576c…，未启动/停止服务；未来stop与新scanner回执仍待真实产生。
 
 R10已送达授权会话user d108cff9…，反馈2dc54125…确认loader与回收边界、320MiB窗口算术余17.43MiB而非硬配额，要求扫描后对新应用另核资源；不重做已通过安装/loader/初始化/认证，不加PG/Redis/VM重启。下一步仍新scanner实际maps/五例→newjoint应用代表业务/退出/正常重启。现57/9/7/1、10/15包、5/9链、6/10 P0及A15-09 PARTIAL保持；无push/远端CI/main/tag/production或所有者签收。
+
+
+## 2026-10-27 — 联合扫描器首次运行拒绝与维护状态（E113）
+
+19:11:57Z正常停止原API4540/Web4546/proxy4552（903e518b…）和scanner4112（e1b8e04b…）；PG4039/1806709、Redis4075/1806956未停。fresh准入guest1427066880B、MemAvailable2414587904B满足本窗口要求，host完整24GiB范围另存。新配置db5e36f9…、最终loader核对ce66f803…及三CVD复制/官方校验4db3be0f…实际exit0，未下载签名或重做20deb安装。
+
+19:12:24–33Z新joint scanner实际PID8382/startTicks4215486加载并响应PING/VERSION，但实际maps遇CHECK_MAPPED_PATH_NOT_FINAL_NATIVE_PROOF；start回执6e207bf77fbe342c03a2657a6f6582a6a8e680b11c4d34922287af186d1ca012为失败，正常SIGTERM、remainingOwnedGroup=[]。19:14Z只读再核新PID已消失、两数据服务身份相同。该轮未记录具体拒绝路径，来源仍UNKNOWN；不推断库不安全或放宽清单。采样最低guest1313832960B、最低MemAvailable2609729536B，专用根观察高水位112934912B；不是硬配额/瞬时峰值证明。
+
+实际记录在E/r30-final-window-execution-r01（E为既有final-execution-20261024-r01目录）。45464当前维护不可用，不能引用E98旧health作为当前可用证明。下一步只增加有界maps诊断并使用新日志/PID路径，再独审执行；原失败/config/CVD/历史保留。新五例、联合应用实际启动/业务/退出/正常重启均未执行；A15-09仍PARTIAL，57/9/7/1与10/15包、5/9链、6/10 P0不变。原副本备用恢复入口已准备，原外盘Docker/生产/远端CI/main/tag未动。
