@@ -8721,3 +8721,14 @@ E106新库管理员已实际完成原生HTTP登录/身份/退出/旧会话失效
 E107旧17aa成功构建镜像671088640B完整归档为113349769B gzip134a5d46…，解压全SHA5fc084fc…/CRC/源前后元数据一致，实际独审8102bb7b…。原镜像尚在、未卸载或回收，不计释放空间。另旧runtime三目录预检遇未知route-cache而停止，未读取内容/删除。最后full host23003910144B<24GiB、guest1626791936B>1GiB；联合新目录组装及scanner first-start仍须fresh预算。
 
 唯一矩阵仍57PASS/9PARTIAL/7NOT_VERIFIED/1BLOCKED=74、10/15包、5/9链、6/10 P0；A15-09仍PARTIAL，当前45464应用source3941/tree db699/build12:28:07Z。联合安装器只新增固定分支，原三入口保持；19个本机小夹具验证流边界/拒绝/非覆盖与最终mode，未模拟Linux owner或完整安装。R07反馈fa722658…已读，按其要求保持版本边界和隔离Cookie。没有push/远端CI/main/tag/production、原外盘Docker或所有者签收。
+
+
+## 2026-10-27 — 可恢复镜像迁移与新目录实际组装（E108–E110）
+
+E108不是直接删除被占用镜像：原只读预检exit2发现7个传播挂载，0文件/映射引用及UNKNOWN；新精确传播核对后正常umount2(flags0)，八namespace旧view全部消失、loop自动分离。原失败保留。随后fresh宿主完整gziphash/stat与已完整展开独审、guest全原件hash/无引用/loop空闭合，仅已归档17aa raw按dev/inode释放，原六owner保持。宿主113349769B完整gzip前后字节同；guest实增671105024B到2297827328，独审f1a99f9f…；未用force/lazy/setns/手动detach/TRIM或删除未知缓存/其他源。历史17aa完整字节可从归档恢复，B05失败证据与当前3941原件不动。
+
+E109新joint application真实exit0，收据cc59aa92…/独审e7d561b5…：原R27包与419增量实发双hash，15322+419=15741叶/2176目录/315link，完整bytes/mode/owner/link读回；15007模式差异按最终c6b3，1371旧独有从不写。allocated513732608B、总增长517410816B。E110随后以真实app收据非覆盖装新runtime，exit0/收据5ee49d4e…/独审f8d237bf…：170叶/160file/10link/30目录、487350156B全读回，原R27运行时来源保留。两个安装步骤均未启动程序/服务或连接DB。
+
+最后实际guest可用1288687616B，高于1GiB仅214945792B；host fullscope23709696000B低于24GiB。新目录Node/Prisma/Clam加载、scanner首次运行和最终业务/正常重启仍待；CVD112798155B加原128MiB临时文件门限与日志需要更多容量，单文件门限不是总临时空间控制。两个已归档Prisma前缀仅候选，未知runtime/route-cache不读改，不预支回收。当前3941预览仍由原六服务提供。
+
+R08已送达授权会话，用户消息f547cee2…/反馈3a9ba22e…已读：认可E105/E106限定范围，要求优先实际联合集合，不重复依赖或认证。相关Gmail查询仍为空，未发邮件。现行57/9/7/1=74、10/15包、5/9链、6/10 P0、A15-09 PARTIAL保持；无push/远端CI/main/tag/production或所有者签收。
