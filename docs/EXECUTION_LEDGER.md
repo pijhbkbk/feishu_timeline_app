@@ -8710,3 +8710,14 @@ E103保留首次基础版本拒绝及后续loader失败。原122基础包仅3个
 E104已物化3941应用增量：419文件/10879276B，tar2425561B/SHA7aabbfd0…；完整bytes/mode读回与独审242958a8…成立。R27基包和最终3941 manifest共同定义联合应用，旧1371独有项排除、15007模式差异须按最终清单处理，禁止hardlink后chmod影响基包。新应用联合安装尚未执行；新库HTTP控制器/主机入口已审但须等实际依赖成功回执。当前3941应用/PG/Redis/scanner未停，无原外盘Docker、push/远端CI/main/tag/production。
 
 本轮只纠正A15-04/05原子行滞留17aa的描述为E97/E98当前3941，旧E90/E91历史不改；57/9/7/1、10/15包、5/9链、6/10 P0及A15-09 PARTIAL均保持。完整宿主预算15:43Z为22878625792B<25769803776B；后续新安装仍须新采样及guest1GiB底线，空间候选尚未清理。R06已送达获准ChatGPT会话，反馈d8b9bc49…支持E100/E101与E102限定范围，无重复邮件或所有者签收。
+
+
+## 2026-10-27 — 新依赖实际通过、新库管理员与独立收尾（E105–E107）
+
+E105实际16:08Z（UTC）只读重验exit0：原20deb payload的2263文件/135链接、134 ELF与9版本完成；144命令包括1dpkg/134loader/9version，278日志双hash，185库归属为134新prefix+51基础。canonical-first修复没有扩大原122集合，E103精确3包更新与所有失败保留；实际独审c10328b5…，不把组件验证当Node/Prisma/Clam最终运行。
+
+E106新库管理员已实际完成原生HTTP登录/身份/退出/旧会话失效，连接E102新DB、独立Redis6381/API3594/HTTPS45474，纯API局部Cookie不共享浏览器。原控制器在全部auth后读取Redis尾项报CHECK_REDIS_ERROR、整体exit1，三子进程正常SIGTERM0；该失败不改。局部fixture证实makefile未及时关闭FD，但旧RESP正文缺失，具体原报错原因仍UNKNOWN。修复helper后仅复制1134B AOF到新私有克隆，22次读取零拒绝/阻塞，正常停止；原AOF/config与新DB完整投影相等（login1/audit3），原六服务/3941严格CAhealth保持。收尾回执128f07d0…和独审623cc385…闭合限定尾项，不重登或重初始化。
+
+E107旧17aa成功构建镜像671088640B完整归档为113349769B gzip134a5d46…，解压全SHA5fc084fc…/CRC/源前后元数据一致，实际独审8102bb7b…。原镜像尚在、未卸载或回收，不计释放空间。另旧runtime三目录预检遇未知route-cache而停止，未读取内容/删除。最后full host23003910144B<24GiB、guest1626791936B>1GiB；联合新目录组装及scanner first-start仍须fresh预算。
+
+唯一矩阵仍57PASS/9PARTIAL/7NOT_VERIFIED/1BLOCKED=74、10/15包、5/9链、6/10 P0；A15-09仍PARTIAL，当前45464应用source3941/tree db699/build12:28:07Z。联合安装器只新增固定分支，原三入口保持；19个本机小夹具验证流边界/拒绝/非覆盖与最终mode，未模拟Linux owner或完整安装。R07反馈fa722658…已读，按其要求保持版本边界和隔离Cookie。没有push/远端CI/main/tag/production、原外盘Docker或所有者签收。
