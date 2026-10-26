@@ -4,33 +4,33 @@
 
 - TASK_ID：`TRUCK-COLOR-V1-COMPLETION-20261020-R01`；主线派发 `TRUCK-COLOR-V1-CONTINUE-20261020-R02`。
 - CURRENT_SUBTASK：`TRUCK-COLOR-V1-FINAL-EXECUTION-20261024-R01`；沿PM已核对冻结的v1.0继续实际实施，产品签收另记A15-12。
-- STATE：`RUNNING / LOCAL_RECOVERY_VERIFIED / PREVIEW_AVAILABLE`；产品 `PARTIAL / AWAITING_PRODUCT_OWNER_CONFIRMATION`。原合成库/原API继续停写；新Lima已有恢复使用及应用重启实证，2026-10-26T12:55+08:00原VM停止；07:06Z后在新boot恢复原PG/Redis/scanner/R27应用，Dashboard与O1 v4已实际读回。停止发起者UNKNOWN，不冒称前次正常关机。
+- STATE：`RUNNING / LOCAL_RECOVERY_VERIFIED / PREVIEW_AVAILABLE`；产品 `PARTIAL / AWAITING_PRODUCT_OWNER_CONFIRMATION`。E91已从R27正常切到17aa预览；原事故库/原API继续停写，VM旧停止及失败记录保留，停止发起者UNKNOWN。
 - WORKSPACE：`/Users/lixiaochen/Downloads/feishu_timeline_app`；分支 `codex/design-convergence-20261019`。
-- SOURCE_ID：当前应用源码 `17aa74a33c14fac516c924573c2b2388f6960238` / tree `738a75c3b949a08309ce7084f2d75bddbcb61a46`；继承a141历史展示/返工提示，并修复XLSX默认列宽丢失；目标/类型/lint/独审成立；E90已实际编译（08:28:17Z），尚未装载运行。最后实际应用仍R27，不混称候选对齐。
-- ARTIFACT_ID：已运行R27 Linux Ubuntu ARM64 `truck-recovery-r27-147f2db23a3a` / build `2026-10-25T14:10:48Z`，commit `147f2db23a3a1c4fabce7b31fb4db542d08dc0b9` / tree `b7552adf04725b32aaff0cd8e253d4ff959ee275`、lock b90b4bac…；7阶段0与库存独审d1467131…。552309013B离线包已非覆盖安装，需另附r04操作补充；完整A15-09仍PARTIAL。
-- RUNTIME_ID：`https://localhost:45464` 当前可用，仍R27。内置盘Lima2CPU/4GiB/24GiB、无host共享；E90维护后API2426/Web2428/proxy2438，PG2277同systemID7700459308674415750、Redis2309、scanner resume-after-17aa74a-r01。仍同boot2552886b…，严格CA四身份R27、quota前后39/三零、O1 v4页面恢复；原R23 API继续停止。
+- SOURCE_ID：当前源码 `3941beccddd0dfce94c8f0f7fd7d62819fb05270` / tree `db699c2e128e9c40d677de2ccca0788d8ffccdb9`，只修XLSX导入小数列宽取整；红例、45目标/类型/目标lint及独审b6d97e62…成立，未构建运行。实际运行仍前一应用提交17aa，不混称候选对齐。
+- ARTIFACT_ID：当前17aa Ubuntu ARM64：commit `17aa74a33c14fac516c924573c2b2388f6960238` / tree `738a75c3b949a08309ce7084f2d75bddbcb61a46` / release `truck-recovery-r29-17aa74a33c14` / build `2026-10-26T08:28:17Z`。E90八子阶段0，E91应用manifest83c76b92…/copy86aba501…完整15741项460214339B。原552309013B R27离线包及r04补充保留；当前17aa只为有界应用预览，全包A15-09仍PARTIAL。
+- RUNTIME_ID：`https://localhost:45464` 实际17aa/run first-17aa74a-r01，API2976/Web2977/proxy2988；严格CA/直连四身份一致，PG2277同systemID7700459308674415750、Redis2309、scanner resume-after-17aa74a-r01保持，同boot2552886b…；前后90日quota39/三零。E91独审ce933156…、E92/E93真实登录/保存/刷新成立；原Docker/事故库不触及。
 - REMOTE_LAST_OBSERVED：2026-10-24只读main仍`9bdec2864c3ed9eb1a045062b756611f98208bfb`、最新main CI `38866594479` failure；候选无新远端CI。精确正式域名身份仍UNKNOWN；本轮未查生产或触发CI。
-- CURRENT_ITEM：53PASS/12PARTIAL/8NOT_VERIFIED/1BLOCKED、8/15包、4/9历史连续技术链、5/10 P0关闭。E84闭合A05-05；E79闭合A11-01及E2E-06本机链；E80推进A15-09至PARTIAL，E2E-08仍未闭合。历史失败和旧计数保留。
-- COMPLETED_DELTA：E84新副本四值正式保存/刷新读回，结合既有SUM/日期/原生Excel支持A05-05限定PASS；O1导出c28a…原生Excel13/22已确认，但4处默认列宽丢失，E87记录真实FAIL与源码修复；新候选导出/Excel/回导尾段待验。M2建多色多车活动/M1同ID维护、50%→100%及按色/项目统计；A11两成员实际记录独立确认、首签/附件保留、草稿阻阶段、明确完成后唯一18。D07签月兼容性按14核心输入复用；R20登录返回已截图128实测。E55重复stage请求400且限定节点/审计不变，不代全A08。 新增E56/E57结构/格式正式刷新、新合法导入/同图异位/删源保留；E58限定16f/R20的DB/Redis及G3适用性，不外推后继代码。
+- CURRENT_ITEM：54PASS/11PARTIAL/8NOT_VERIFIED/1BLOCKED、8/15包、4/9历史连续技术链、5/10 P0关闭。E92仅闭合A02-06代表公式/格式；E93 O1尾段已闭合，O2小数宽度仍实测FAIL，整体E2E-03保持FAIL。原计数及历史失败保留。
+- COMPLETED_DELTA：E91新预览实际身份对齐17aa；E92原11表真实修改两输入、直接引用/算术重算、正式v3保存/刷新；E93 O1 v4→新导出a745…→原生Excel13/22→新本641ce…v2保存刷新，四列100/88及原PNG逐字保持。O2新导出db091…保留99.5/87.82421875，但新本8755…v2读取取整为100/88，失败独立保存；E94新3941只为待构建修复。
 - EVIDENCE：当前受控记录 `var/truck-color-v1-20261020/final-execution-20261024-r01/`；旧R10 `candidate-01b4bbd-20261022/`、冻结基线 `acceptance-baseline-20261023-r01/`、PM反馈 `baseline-pm-review-20261023-r01/` 均保留，不以新收据改写旧结果。
-- OPEN_BLOCKERS：新增真实状态差异：03:48:30Z首台计划cmvnafmqh004n9kaufja5iwi5曾POST201且随后GET200可见，依赖恢复后同原库精确查询为0；所有者已确认手动退出Docker后推出外盘再接回，系统证实设备断联与写失败；是否等待完全停止及特定丢行机制仍UNKNOWN，未补建/重放/覆盖。已核W v9、日期本v2、年度revision5与旧DTO相等，不推断全库损坏。结构本回导原op已核实至0f91badd-2d51-4a35-a2d2-d55919973f25/图片0of5，原记录保留不续写；E84使用新ID另完成四值回导，不冒称旧操作恢复。未保存取消/确认、项目并行/返回剩余断言、公式代表式、整浏览器重开、Safari/性能/四宽、required CI/full安全、A15-09完整离线包及正式环境仍待；A15-10独立逻辑恢复已由E77闭合。
+- OPEN_BLOCKERS：新增真实状态差异：03:48:30Z首台计划cmvnafmqh004n9kaufja5iwi5曾POST201且随后GET200可见，依赖恢复后同原库精确查询为0；所有者已确认手动退出Docker后推出外盘再接回，系统证实设备断联与写失败；是否等待完全停止及特定丢行机制仍UNKNOWN，未补建/重放/覆盖。已核W v9、日期本v2、年度revision5与旧DTO相等，不推断全库损坏。结构本回导原op已核实至0f91badd-2d51-4a35-a2d2-d55919973f25/图片0of5，原记录保留不续写；E84使用新ID另完成四值回导，不冒称旧操作恢复。未保存取消/确认、项目并行/返回剩余断言、整浏览器重开、Safari/性能/四宽、required CI/full安全、A15-09完整离线包及正式环境仍待；A15-10独立逻辑恢复已由E77闭合。
 - HUMAN_ACTION：所有者已批准事故后逻辑起点、内置Lima2CPU/4GiB/24GiB及HTTPS45464，并已亲自处理新入口浏览器证书提示。无需重问；不做全盘事故镜像、不覆盖原库、不沿用旧缺失ID。原Office/IME反馈按实际范围复用，最终签收仍待。
-- NEXT_ACTION：B05在编译入口因继承/boot可写失败，编译0条；B06无image探针实际PASS（b8ceea51…）。后续Caches/lima已不存在，原因未查；预算按该确切根ABSENT/0保留分母，VM恢复后的历史采样为22240698368B；E90构建结束实际22673813504B，余3095990272B，下一大阶段须重新采样；原失败raw/gzip均保留，无释放。E90新17aa受限编译已完成，image5fc084fc…/回执746e0f3b…；当前仅COMPILED_ONLY，应用闭包复制与全包/安装各阶段另核峰值。预览保持R27，实装新历史/返工提示仍待。E84四值回导已闭合；先实装默认列宽修复，再续O1 edited v4新导出→Excel→回导尾段，并补O2受影响列宽片段、代表式、dirty/整本重开、Safari/性能/四宽及初始化/20deb实际安装。旧origin意图不跨源重放。
+- NEXT_ACTION：先核下一干净3941构建的真实容量，不覆盖旧image/失败记录，不扩24GiB。10:43Z guestfree1173364736B（比1GiB floor多99622912B），总allocated23211864064B/余2557939712B；原640MiB image+source+新应用并存不能直接准入。只读核成功r25/r27非运行构建缓存可恢复归档方案，失败r24/B05不动。继续17aa已实装历史/返工提示、dirty返回/双模式边界等未受影响GUI；新候选后仅补O2列宽回导，复用O1/SUM/日期/已有Office，不重演整文件。Safari/固定性能/四宽、新空库初始化/20deb及CI/安全/正式目标仍待。
 - RESUME_ENTRY：本节 → [v1.0基线](ROUTE_ACCEPTANCE_MATRIX.md#v1-baseline-v10) → 原子条目和E2E/门禁队列；不重跑已接受且适用的局部路径。
 
 <!-- V1_BASELINE_DASHBOARD_START -->
 ## v1.0可复算验收看板（范围冻结于2026-10-23，状态更新2026-10-26）
 
-唯一断言和详细执行步骤在[矩阵现行基线](ROUTE_ACCEPTANCE_MATRIX.md#v1-baseline-v10)，本看板从该表派生，不独立手改分母。历史证据沿用原版本/日期；本轮新实际结果E36–E90按逐项范围加入，冷备hold已解除。当前范围可确定，无阻断基线的SCOPE_UNRESOLVED；3条无原始强制依据的载体强化仅OPTIONAL。PM已核对冻结v1.0（反馈Gmail `1a167cfcb731a6b9`）；冻结的是完工标准，范围/阈值/漏项更正仍需显式记录并重算。
+唯一断言和详细执行步骤在[矩阵现行基线](ROUTE_ACCEPTANCE_MATRIX.md#v1-baseline-v10)，本看板从该表派生，不独立手改分母。历史证据沿用原版本/日期；本轮新实际结果E36–E94按逐项范围加入，冷备hold已解除。当前范围可确定，无阻断基线的SCOPE_UNRESOLVED；3条无原始强制依据的载体强化仅OPTIONAL。PM已核对冻结v1.0（反馈Gmail `1a167cfcb731a6b9`）；冻结的是完工标准，范围/阈值/漏项更正仍需显式记录并重算。
 
-- MUST证据覆盖 `P/N=53/74=71.62%`，这是验收证据覆盖率，不是代码/工程完成率。PARTIAL 12、NOT_VERIFIED 8、BLOCKED 1，FAIL/SKIPPED/SCOPE_UNRESOLVED/NOT_APPLICABLE均0；合计74。此处FAIL=0仅为MUST原子分类；关键集成链E2E-03因默认列宽丢失为FAIL，其他旧失败保留，不表示全仓无问题。A15-05在新目标由BLOCKED恢复PASS，A15-10由PARTIAL升PASS；E79闭合A11-01，E80将A15-09从NOT_VERIFIED推进PARTIAL；原事故前后状态保留。
+- MUST证据覆盖 `P/N=54/74=72.97%`，这是验收证据覆盖率，不是代码/工程完成率。PARTIAL 11、NOT_VERIFIED 8、BLOCKED 1，FAIL/SKIPPED/SCOPE_UNRESOLVED/NOT_APPLICABLE均0；合计74。此处FAIL=0仅为MUST原子分类；关键集成链E2E-03因O2导入小数列宽取整为FAIL，其他旧失败保留，不表示全仓无问题。A15-05在新目标由BLOCKED恢复PASS，A15-10由PARTIAL升PASS；E79闭合A11-01，E80将A15-09从NOT_VERIFIED推进PARTIAL；原事故前后状态保留。
 - 关键集成链 `Q/K=4/9=44.44%`：原生成员/人员、整本草稿重开、Office、四域映射/统计、项目并行、实际周评、到货试验提醒、离线独立目标恢复、正式HTTPS；E2E-01、E2E-04、E2E-06与E2E-07按原链/实际时序及逐输入适用性闭合，其余链不以局部计数代替。
 - 10组P0交付阻断 `5/10关闭、5未关闭`，5组原V1必需P1中P1-01已关闭、其余4组未关闭；不是10个已确认P0漏洞。每组的唯一矩阵ID/关闭条件/责任与依赖见[矩阵执行队列](ROUTE_ACCEPTANCE_MATRIX.md#v1-baseline-v10)。P2不进入必需门槛。
 
 | A包 | MUST N_i | 有效PASS P_i | PARTIAL | NOT_VERIFIED | BLOCKED | 整包 |
 |---|---:|---:|---:|---:|---:|---|
 | A01 | 4 | 4 | 0 | 0 | 0 | PASS |
-| A02 | 6 | 4 | 2 | 0 | 0 | PARTIAL |
+| A02 | 6 | 5 | 1 | 0 | 0 | PARTIAL |
 | A03 | 5 | 3 | 2 | 0 | 0 | PARTIAL |
 | A04 | 5 | 1 | 0 | 4 | 0 | PARTIAL |
 | A05 | 6 | 6 | 0 | 0 | 0 | PASS |
@@ -49,17 +49,17 @@
 
 | 完工门槛 | 当前证据层级/关闭条件 | 矩阵入口 |
 |---|---|---|
-| 制品/运行身份 | E78/E80 R27 Ubuntu ARM64不可变构建与新HTTPS45464直连/TLS四身份、实际数据源/配置/原生登录一致；原API停写和E71/E72事故历史保留 | A15-04/05 |
+| 制品/运行身份 | E90/E91不可变17aa构建、应用完整复制、严格CA/直连四身份及真实使用成立；新3941源码尚未构建，原事故源停写保持 | A15-04/05 |
 | G3/真实DB/Redis | R23/e3e精确G3及独审cc4581f2…成立：Web1101PASS/0skip，API1817PASS/305skip，lint/types/prisma均0；305不计真实PG通过。D01–D18按E58与后续输入差异复用，原5FAIL/303SKIP及新增两例旧真PG结果分列 | A15-06 |
 | 必需候选CI | R23/e3e两Linux amd64镜像独审及Trivy0.72.0、2026-10-25新库均未检出漏洞；index/child、内嵌OpenSSL与OS EOL警告分列。required候选CI/配置仍NOT_VERIFIED；旧main failure保留，非全安全clearance | A15-07 |
 | XLSX安全 | 唯一Finding R28-V1-XLSX-NAMESPACE-BOUND-001保持fixed_diff_verified/full pending/closure=null；目标/受影响/独审有精确01b4证据，不改风险或closed | A15-08 |
-| Office2基准 | O1原件导入/编辑/保存/刷新及各自图位已有证据；O2 v5已完成导出fa01…→真实Excel查看→新本v2回导保存刷新。E68固定日期含09:52:00、E70四值导出/Excel及E84新副本四值正式回导读回，共同支持A05-05限定PASS。E87/E89核O1和O2各4处默认列宽丢失，O2回导两次GET均为68；E2E-03当前FAIL且不关闭，A05-06原限定几何计算仍成立。修复已编译未运行，两文件分别对自身基准，Excel原生37变化保留 | A05-01至06；E2E-03 |
+| Office2基准 | E93 O1 edited v4新导出→原生Excel→新副本正式保存刷新及图片/有效尺寸全等，尾段已独审闭合；O2新导出小数保持，实际回导仍99.5→100、87.82421875→88。E94已修源码未运行，E2E-03继续FAIL。E68/E70/E84日期/四值及A05-06限定图位按输入复用，旧失败与Excel自身37变化保留 | A05-01至06；E2E-03 |
 | Safari/性能/布局 | Chrome正常人工IME有效复用；Safari、固定性能和四个CSS宽度/新guide缺口按原合同。1280与1024并列，非替代 | A04/A15-01/03 |
 | 离线/异机/备份恢复 | E77已闭合获准事故后逻辑状态的独立Lima实际恢复：DB+本+36对象、原账号/媒体/新ID写/正常应用重启读回。E80新离线prefix已实际安装运行；E82已补新账号注册/登录/刷新/退出限定证据；A15-09仍缺新库初始化、20deb实际安装和最终安装集合实走，不以恢复成功替代；物理第二台/宿主OS重启不另增MUST | A15-09/10 |
 | 约定目标 | 精确https://timeline.all-too-well.com，当前身份UNKNOWN/R10未发布。原扫描VM停机/新附件限制仍有效；实际准入冲突按具体依赖处理，不旁路或静默降级 | A15-11 |
 | 所有者接收 | 其余73项技术/交付MUST（不含A15-12）、9条技术关键链及必需门禁和约定环境先就绪，再由李晓晨实际UAT并明确接收；此后A15-12才计PASS，PM冻结/技术审核不代签 | A15-12 |
 
-实际顺序：**NOW**原API停写/事故证据保留；新独立目标R25实际登录、原本/图片、新计划保存和正常重启读回已验。同项目标准/驾驶室返工及正式17完成已验证，05/09和18待办保持；R29/17aa已编译未装载，先完成候选预览/实际身份及O1编辑v4导出→实际Excel→回导尾段，并补O2受影响宽度片段、原支持清单代表式和真实dirty选择；**RUN已获准**R11身份及产量27→25→26已验→年度→两成员周评/任务和提醒→O1/O2及整本/图片/异常链→Safari/性能/四宽→变化触及的PG/Redis及CI/安全→离线独立目标恢复→有效授权/安全条件下精确正式目标→所有者签收。共用样本关闭不同断言，分母不重复计；已满足局部不再排重复工作。
+实际顺序：**NOW** 当前17aa可操作，O1尾段与代表式已取得增量；3941小数宽度修复已提交但构建受guest空间限制，先形成可恢复缓存归档与真实预算方案，同时完成已实装历史提示/导航缺项。新候选后只补受影响O2宽度回导。随后继续双模式保护/整浏览器重开/Safari/固定性能/四宽、候选CI与安全、完整离线安装、有效条件下精确正式目标，最后所有者签收；已满足局部按输入复用，不再机械重演。
 
 执行顺序为其余73项技术/交付MUST（不含A15-12）、9条技术关键链及必需门禁和约定环境先就绪，再进入李晓晨实际UAT；明确接收后A15-12才计PASS，发现原范围缺陷按影响修复/复验。V1最终完成仍要求74/74 MUST与9/9技术关键链PASS、必需交付阻碍/阻断缺陷清零、必需CI/安全/恢复门槛PASS、实际交付身份一致、约定环境可用且所有者明确接收。基线冻结不代表产品完成；生产/外部步骤仍受对应权限和安全条件约束。
 <!-- V1_BASELINE_DASHBOARD_END -->
@@ -547,3 +547,12 @@ E66绑定干净e3e/tree31c/R23双制品、完整库存、受控启停与四端�
 - E90从不可变17aa74a33c14fac516c924573c2b2388f6960238/tree738a75c3b949a08309ce7084f2d75bddbcb61a46实际编译；3个host阶段/8条子阶段全exit0，旧依赖前后相同。build2026-10-26T08:28:17Z，image5fc084fc…/671088640B，构建回执746e0f3b…，实际独审243bb9f3…及清单附录c8daef23…。仅COMPILED_ONLY/runtimeReady=false，新应用未装载，不能算Office/历史提示实装通过。
 - 四项真实正常停机回执绑定临时core窗口，finally恢复正文66adfe73…与原pattern一致。08:49Z PG2277/Redis2309/scanner resume-after-17aa74a-r01/R27 API2426/Web2428/proxy2438正常续启，前后90日quota39/三零；原O1 v4页面可操作。image首次普通用户读取因root0600拒绝且未挂载，后在既有授权下只读hash/noload挂载，不改mode或原件。
 - 构建结束任务实际22673813504B，低于24GiB；新预览应用复制和完整包各自另核预算。未释放B05 raw/gzip，未动原Docker/外盘。最新增量发送到获准ChatGPT会话的桌面工具返回找不到会话，随后浏览器已打开精确会话但读取超时；此次回报未送达，不冒称收到反馈。已有反馈edfb134f…保留。计数53/12/8/1、8/15包、4/9链、5/10 P0不增加；无push/远端CI/main/tag/production/所有者签收。
+
+
+## 2026-10-26 — E91–E94实际17aa、代表式与Office尾段
+
+- E91已实际复制并运行17aa，不再是COMPILED_ONLY：完整application-manifest83c76b92…、copy86aba501…；正常停R27后启动API2976/Web2977/proxy2988，直连/严格CA四身份同17aa/tree738a/build08:28:17Z。原PG/Redis/scanner保持、quota前后39/三零，实际独审ce933156…；当前只为应用预览，不代完整离线包。
+- E92原11表920fc926…真实修改2026 B42=5、2025 B82=417，G43直接引用=40、O82算术=4188；正式保存v3/hash a309447d…、刷新GET一致。315表达式保持且缓存独立核算、11结构/502numFmt/212日期格/11背景引用保持；旧SUM/日期按输入复用，A02-06限定PASS。首次401/草稿待核实失败及重登恢复保留，不称315次GUI。
+- E93 O1 v4新导出a745ac3b…/11314B、真实Excel16.114.1只读13/22/公式、新op ce91…→新本641ce…正式v2/刷新。14格、样式合并、400有效行高、52有效列宽和PNG2240B/5bfb…全等，05/06截图实际可见；原03无网格/04未加载/下载工具失败与首次PNG脚本语法失败均保留。追加独审9e2ff522…支持O1目标尾段闭合，不代表Excel编辑或SaveAs。
+- O2仅补受影响片段：原9be5…v5新导出db0911bc…/11346B保留99.5/87.82421875；新op962eee…→8755…正式v2/两次刷新GET均100/88，故E2E-03保持FAIL。3941beccddd0dfce94c8f0f7fd7d62819fb05270/tree db699c2…仅去读取Math.round并参数化旧用例，红例、45目标、types/lint及独审b6d97e62…成立；未构建/运行。
+- 唯一矩阵54PASS/11PARTIAL/8NV/1BLOCKED=74、8/15包、4/9链、5/10 P0；本轮只提升A02-06，完整Office与其他缺项不提前关闭。用户已重新打开获准ChatGPT会话，当前在恢复回报通道；最新结果尚待实际发送/回读，不冒称反馈已取得。没有push、远端CI、main/tag、production或所有者签收。
