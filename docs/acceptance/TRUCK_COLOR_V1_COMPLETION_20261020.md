@@ -4,18 +4,18 @@
 
 - TASK_ID：`TRUCK-COLOR-V1-COMPLETION-20261020-R01`；主线派发 `TRUCK-COLOR-V1-CONTINUE-20261020-R02`。
 - CURRENT_SUBTASK：`TRUCK-COLOR-V1-FINAL-EXECUTION-20261024-R01`；沿PM已核对冻结的v1.0继续实际实施，产品签收另记A15-12。
-- STATE：`RUNNING / LOCAL_RECOVERY_VERIFIED`；产品 `PARTIAL / AWAITING_PRODUCT_OWNER_CONFIRMATION`。原合成库继续停写、原API保持停止；获准新内置盘Lima恢复实例已可操作，正常原生登录、原本/媒体、新ID保存与应用重启读回成立。
+- STATE：`RUNNING / LOCAL_RECOVERY_VERIFIED / PREVIEW_MAINTENANCE_STOPPED`；产品 `PARTIAL / AWAITING_PRODUCT_OWNER_CONFIRMATION`。原合成库/原API继续停写；新Lima已有恢复使用及应用重启实证，2026-10-26T00:34Z为受限构建正常停应用/scanner，当前预览暂停。
 - WORKSPACE：`/Users/lixiaochen/Downloads/feishu_timeline_app`；分支 `codex/design-convergence-20261019`。
-- SOURCE_ID：当前已提交源码 `d3b264141798ae0c8195e921c097a014b042d589` / tree `eddf0f1d611701100e28cfdc2d8597b03ae929a4`（R29），含R28返工预览与R29历史状态修复；目标回归/类型/lint/独审通过，尚未构建部署。当前运行仍为R27，不混称候选对齐。
+- SOURCE_ID：当前应用源码 `a14126fb0ca2f8ca70e61730896f5c91836d5122` / tree `e38c9d73e053e1dbf3e9da8370a3bcf70226884f`；含返工预览、四处历史状态展示及涂装厂提示，目标/类型/lint/独审成立，尚未构建运行。最后实际应用仍R27，不混称候选对齐。
 - ARTIFACT_ID：已运行R27 Linux Ubuntu ARM64 `truck-recovery-r27-147f2db23a3a` / build `2026-10-25T14:10:48Z`，commit `147f2db23a3a1c4fabce7b31fb4db542d08dc0b9` / tree `b7552adf04725b32aaff0cd8e253d4ff959ee275`、lock b90b4bac…；7阶段0与库存独审d1467131…。552309013B离线包已非覆盖安装，需另附r04操作补充；完整A15-09仍PARTIAL。
-- RUNTIME_ID：`https://localhost:45464`，内置盘Lima `truck-color-recovery-r24-20261025`（2CPU/4GiB/24GiB、无host共享）。15:45Z后API27095/Web27097/proxy27102从offline-software-r27-r01启动，直连HTTP与严格实例CA HTTPS四身份同R27；新PG systemID7700459308674415750/Redis23473保持，实际Clam新prefix与5例通过。原R23 API停止，3490不作为预览。
+- RUNTIME_ID：`https://localhost:45464` 当前维护停机。内置盘Lima `truck-color-recovery-r24-20261025`（2CPU/4GiB/24GiB、无host共享）；最后运行R27的API27095/Web27097/proxy27102及scanner27044已正常停止，PG systemID7700459308674415750/Redis23473保留。历史直连/严格CA四身份及5例扫描实证保留；原R23 API继续停止，3490不是预览。
 - REMOTE_LAST_OBSERVED：2026-10-24只读main仍`9bdec2864c3ed9eb1a045062b756611f98208bfb`、最新main CI `38866594479` failure；候选无新远端CI。精确正式域名身份仍UNKNOWN；本轮未查生产或触发CI。
 - CURRENT_ITEM：52PASS/13PARTIAL/8NOT_VERIFIED/1BLOCKED、7/15包、4/9历史连续技术链、5/10 P0关闭。E79闭合A11-01及E2E-06本机链；E80推进A15-09至PARTIAL，E2E-08仍未闭合。历史失败和旧计数保留。
 - COMPLETED_DELTA：M2建多色多车活动/M1同ID维护、50%→100%及按色/项目统计；A11两成员实际记录独立确认、首签/附件保留、草稿阻阶段、明确完成后唯一18。D07签月兼容性按14核心输入复用；R20登录返回已截图128实测。E55重复stage请求400且限定节点/审计不变，不代全A08。 新增E56/E57结构/格式正式刷新、新合法导入/同图异位/删源保留；E58限定16f/R20的DB/Redis及G3适用性，不外推后继代码。
 - EVIDENCE：当前受控记录 `var/truck-color-v1-20261020/final-execution-20261024-r01/`；旧R10 `candidate-01b4bbd-20261022/`、冻结基线 `acceptance-baseline-20261023-r01/`、PM反馈 `baseline-pm-review-20261023-r01/` 均保留，不以新收据改写旧结果。
 - OPEN_BLOCKERS：新增真实状态差异：03:48:30Z首台计划cmvnafmqh004n9kaufja5iwi5曾POST201且随后GET200可见，依赖恢复后同原库精确查询为0；所有者已确认手动退出Docker后推出外盘再接回，系统证实设备断联与写失败；是否等待完全停止及特定丢行机制仍UNKNOWN，未补建/重放/覆盖。已核W v9、日期本v2、年度revision5与旧DTO相等，不推断全库损坏。结构本回导原op已核实至0f91badd-2d51-4a35-a2d2-d55919973f25/图片0of5，暂停继续及正式保存。未保存取消/确认、项目并行/返回剩余断言、公式代表式、整浏览器重开、Safari/性能/四宽、required CI/full安全、A15-09完整离线包及正式环境仍待；A15-10独立逻辑恢复已由E77闭合。
 - HUMAN_ACTION：所有者已批准事故后逻辑起点、内置Lima2CPU/4GiB/24GiB及HTTPS45464，并已亲自处理新入口浏览器证书提示。无需重问；不做全盘事故镜像、不覆盖原库、不沿用旧缺失ID。原Office/IME反馈按实际范围复用，最终签收仍待。
-- NEXT_ACTION：E81两项修复完成受限构建/实际历史与返工页面复验；E80离线包整合修正及依赖安装/初始化/注册/退出缺项；继续四值回导、代表式、dirty选择/整本重开、Safari/性能/四宽。旧origin的de776意图保持，不跨源重放或用新本冒充恢复完成。
+- NEXT_ACTION：E83构建挂载EBUSY已取得独立只读根视图探针PASS（未编译），完成最小修正及新编号受限构建后恢复预览、复验历史/返工提示。E82新账号注册/登录/刷新/退出有限定实证；继续初始化/20deb实际安装/完整安装集合及四值回导、代表式、dirty/整本重开、Safari/性能/四宽。旧origin意图不跨源重放。
 - RESUME_ENTRY：本节 → [v1.0基线](ROUTE_ACCEPTANCE_MATRIX.md#v1-baseline-v10) → 原子条目和E2E/门禁队列；不重跑已接受且适用的局部路径。
 
 <!-- V1_BASELINE_DASHBOARD_START -->
@@ -524,3 +524,10 @@ E66绑定干净e3e/tree31c/R23双制品、完整库存、受控启停与四端�
 - E81：d5e8e47b43d5dbe5e5ffef2ddfc252b19e3a32d4修返工预览真实守卫/标准选择警告；d3b264141798ae0c8195e921c097a014b042d589/treeeddf0f1d611701100e28cfdc2d8597b03ae929a4修同工作流历史排产/量产展示，不增加写权限，显式禁持久构建缓存支持受限构建。52API/3Web及R29目标16API/10Web+10新API、类型/lint0，独审62c23fbb…/8cf1acbb…。未构建部署，旧R27历史显示错误保留；不以源码提交冒充实装。
 - Placeholder本轮12命中均测试选择器/负向断言，正式页面0；原扫描日志ddf0cb78…保留。已批准未知媒体未读取/移动/暂存；无治理改动、push、远端CI、main/tag、production。预算实际24347287552B低于25769803776B，包含修正补漏的recovery-vm证据目录，不扩容/清旧证据。
 - 增量已发送获准ChatGPT会话6ad6ddfe…并读回消息ca9f5ee2-d48f-4eda-ac98-61f70d07c3bc；当时反馈尚在生成，不称已认可。正式域名、requiredCI/full安全、剩余工作簿/性能/布局及所有者接收仍待。
+
+## 2026-10-26 — R29源码与原生账号增量，预览维护停机
+
+- a14126fb0ca2f8ca70e61730896f5c91836d5122/treee38c9d73e053e1dbf3e9da8370a3bcf70226884f补驾驶室/一致性历史节点及明确涂装厂提示；不改变写权限。目标API119/119、Web19/19、文案6/6与类型/lint、独审成立，早期失败保留；当前未构建运行。
+- 实际R27新普通账号注册/密码登录/刷新/退出和旧会话401已有限定实证，仍未获角色/管理员。首次GUI刷新失去会话原因UNKNOWN；第二次完整请求/cookie属性/刷新/退出证据保留，不能将首次失败洗绿。guide和两类评审入口/返回已实走，新文案仍待实装。
+- 00:34Z正常停应用及扫描器供受限构建。修正原schema/生成物摘要误比后预检通过，根挂载只读设置又因EBUSY32失败，未抽源/编译；日志及空构建盘保留。当前https://localhost:45464维护停机，最后运行仍R27；先验证最小挂载方案，再决定新构建，不称候选对齐完成。
+- 实际累计24785432576B，仍低于24GiB；first-start、新库初始化及依赖安装尚未执行。唯一矩阵52/13/8/1、4/9链保持，详见EXECUTION_LEDGER与矩阵E82/E83。无原事故库写入、push/远端CI/main/tag/生产或所有者签收。
