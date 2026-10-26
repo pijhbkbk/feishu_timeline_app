@@ -8732,3 +8732,23 @@ E109新joint application真实exit0，收据cc59aa92…/独审e7d561b5…：原R
 最后实际guest可用1288687616B，高于1GiB仅214945792B；host fullscope23709696000B低于24GiB。新目录Node/Prisma/Clam加载、scanner首次运行和最终业务/正常重启仍待；CVD112798155B加原128MiB临时文件门限与日志需要更多容量，单文件门限不是总临时空间控制。两个已归档Prisma前缀仅候选，未知runtime/route-cache不读改，不预支回收。当前3941预览仍由原六服务提供。
 
 R08已送达授权会话，用户消息f547cee2…/反馈3a9ba22e…已读：认可E105/E106限定范围，要求优先实际联合集合，不重复依赖或认证。相关Gmail查询仍为空，未发邮件。现行57/9/7/1=74、10/15包、5/9链、6/10 P0、A15-09 PARTIAL保持；无push/远端CI/main/tag/production或所有者签收。
+
+
+## 2026-10-27 — 最终联合目录原生加载验证（E111）
+
+E111保留R01在任何loader前的PREFIX_MANIFEST_UNIQUE失败：原20deb清单含69个被多个包相同声明的目录，229额外行均无元数据冲突。r02只归并相同目录并保留全部packages，2398文件/链接叶不变；实际清单和7负向/3正向纯fixture及独审060560e2…成立，未重新安装依赖。
+
+18:26:04Z实际final joint的10原生根/48只读命令全exit0，96日志与58库闭包逐项读回；37原122基础、4joint根、3Clam私库、6新20deb、8应用native，匿名根按同PID/base核对。guest-result59f7dbb…、实际独审199cf691…；guest1288077312B、full host23713624064B，原六服务未停。结果止于loader解析，不声称服务dlopen/maps、scanner首启或最终业务/正常重启已通过。
+
+两处Prisma派生依赖可恢复迁移及新scanner仍在准备/独审，尚未计回收。当前HTTPS45464继续由原3941预览提供；57/9/7/1、10/15包、5/9链、6/10 P0及A15-09 PARTIAL不变。R09反馈8687a66d…认可E108–E110限定范围，要求保留同目录各包来源及旧artifact恢复限制；不重复初始化或认证，也不代所有者签收。
+
+
+## 2026-10-27 — 两处旧构建依赖可恢复回收（E112）
+
+E112首次R01在PUBLIC_INPUT_META拒绝：root传输脚本的默认open受guest umask影响，七控制文件实际0664；输出目录未创建、零删除，完整归档同FD前后全hash保持。r02只用新独占路径并显式EXCL/NOFOLLOW0600，逐项mode/uid/nlink/hash读回，原拒绝守卫不变，独立窄审93021712…成立。原guest审查由resume消息原文采集e280aee…，明确reviewer与root采集者，未冒充人类批准。
+
+18:38:23–24Z实际完整归档552309013B/594c92b6…保持同FD前后hash，fresh全UID无引用/完整index投影后，先落restore-index，再按dirfd与元数据CAS移除139文件/6link/18目录。guest440d9129…/host1879626e…及实际独审7fd60cb5…核326条INTENT/DONE、0pending，六owner同、原immutable index未改。guest available1287360512→1427566592，实际净增加140206080B；full host23576580096B，不把逻辑大小或TRIM当释放。
+
+旧r27-build/artifact现在是“已归档；使用前须从保留完整tar恢复依赖，当前不是可立即启动备用制品”。当前3941独立预览副本和R27已安装运行时不依赖这两个前缀，失败盘、其他镜像、未知route-cache与原外盘Docker未动。原副本正常回退入口已独审b96d086…并实际prepare57f576c…，未启动/停止服务；未来stop与新scanner回执仍待真实产生。
+
+R10已送达授权会话user d108cff9…，反馈2dc54125…确认loader与回收边界、320MiB窗口算术余17.43MiB而非硬配额，要求扫描后对新应用另核资源；不重做已通过安装/loader/初始化/认证，不加PG/Redis/VM重启。下一步仍新scanner实际maps/五例→newjoint应用代表业务/退出/正常重启。现57/9/7/1、10/15包、5/9链、6/10 P0及A15-09 PARTIAL保持；无push/远端CI/main/tag/production或所有者签收。
