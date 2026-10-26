@@ -155,6 +155,33 @@ class TargetTests(unittest.TestCase):
 
 
 class CommandTests(unittest.TestCase):
+    def test_payload_phase_cannot_report_native_success_or_call_loader(self):
+        tree = {'regularFiles': 2263, 'symlinks': 135, 'treeVerified': True}
+        with patch.object(module, 'verify_tree', return_value=tree) as verify, \
+             patch.object(module, 'loader_checks', side_effect=AssertionError('native execution forbidden')):
+            actual, loader, status = module.final_verification(defer_native_checks=True)
+            self.assertEqual(actual, tree)
+            self.assertIsNone(loader)
+            self.assertEqual(status, 'FIXED_RUNTIME_PAYLOAD_EXTRACTED_AND_READBACK_VERIFIED')
+            self.assertEqual(verify.call_count, 2)
+
+    def test_payload_phase_still_refuses_invalid_or_changing_tree(self):
+        for values in ([module.Refused('EXTRACTED_FILE')], [{'files': 1}, {'files': 2}]):
+            with patch.object(module, 'verify_tree', side_effect=values), \
+                 patch.object(module, 'loader_checks') as native:
+                with self.assertRaises(module.Refused): module.final_verification(True)
+                native.assert_not_called()
+
+    def test_default_still_requires_complete_native_coverage(self):
+        for count in (133, 134):
+            with patch.object(module, 'verify_tree', return_value={'treeVerified': True}), \
+                 patch.object(module, 'loader_checks', return_value={'elfCount': count, 'versionCommands': 9}):
+                if count == 133:
+                    with self.assertRaisesRegex(module.Refused, 'FIXED_VERIFICATION_COVERAGE'):
+                        module.final_verification()
+                else:
+                    self.assertEqual(module.final_verification()[2], 'NEW_PREFIX_RUNTIME_PAYLOAD_AND_ELF_VERIFIED')
+
     def test_install_without_execute_does_not_read_or_write(self):
         result = subprocess.run([sys.executable, '-I', '-B', str(HELPER), 'install',
                                  '--input', '/path/never-created', '--binding-sha256', 'absent',

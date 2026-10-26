@@ -530,6 +530,19 @@ def fixed_inputs(args):
  return selection,bases,identity,binding
 
 
+def final_verification(defer_native_checks=False):
+ tree=verify_tree()
+ if defer_native_checks:
+  # This phase is never a native-runtime success receipt. Downstream runtime
+  # admission must still require its own actual loader/process evidence.
+  need(tree==verify_tree(),'FINAL_TREE_CHANGED')
+  return tree,None,'FIXED_RUNTIME_PAYLOAD_EXTRACTED_AND_READBACK_VERIFIED'
+ loader=loader_checks()
+ need(tree==verify_tree(),'FINAL_TREE_CHANGED')
+ need(loader['elfCount']==134 and loader['versionCommands']==9,'FIXED_VERIFICATION_COVERAGE')
+ return tree,loader,'NEW_PREFIX_RUNTIME_PAYLOAD_AND_ELF_VERIFIED'
+
+
 def main():
  parser=argparse.ArgumentParser(description=__doc__)
  commands_parser=parser.add_subparsers(dest='action',required=True)
@@ -540,6 +553,8 @@ def main():
  for name in ('input','binding-sha256','budget-sha256'):
   install.add_argument('--'+name,required=True)
  install.add_argument('--execute',action='store_true')
+ install.add_argument('--defer-native-checks',action='store_true',
+                      help='verify payload only; explicitly leave loader and versions NOT_EXECUTED')
  args=parser.parse_args()
  if args.action=='install' and not args.execute:
   print(json.dumps({'status':'PLAN_NOT_EXECUTED'}));return 0
@@ -565,14 +580,13 @@ def main():
    extract_fixed_deb(package)
    durable(OUT/(package['package']+'-extracted.json'),{'package':package['package'],
      'archiveSha256':package['sha256'],'capacity':capacity()})
-  tree=verify_tree();loader=loader_checks()
-  need(tree==verify_tree(),'FINAL_TREE_CHANGED')
-  need(loader['elfCount']==134 and loader['versionCommands']==9,'FIXED_VERIFICATION_COVERAGE')
-  final={'status':'NEW_PREFIX_RUNTIME_PAYLOAD_AND_ELF_VERIFIED','platform':identity,
+  tree,loader,status=final_verification(args.defer_native_checks)
+  final={'status':status,'platform':identity,
     'targetBindingSha256':args.binding_sha256,'selectionSha256':SELECTION_SHA,
     'hostBudgetSha256':args.budget_sha256,'budgetPolicySha256':binding['budgetPolicySha256'],
     'baseInstallSha256':binding['baseInstallSha256'],'target':str(TARGET),'tree':tree,
-    'loader':loader,'basePackageCount':len(base_rows),'baseUpdate':base_update_binding,
+    'loader':loader,'nativeChecks':'NOT_EXECUTED' if args.defer_native_checks else 'EXECUTED',
+    'basePackageCount':len(base_rows),'baseUpdate':base_update_binding,
     'commands':commands,'capacity':capacity(),'systemPackageDatabaseChanged':False,
     'maintainerScriptsRun':False,'servicesStartedOrStopped':False,'databaseAccessed':False,
     'fullOfflineAcceptance':False,'finishedAt':datetime.datetime.now(datetime.timezone.utc).isoformat()}

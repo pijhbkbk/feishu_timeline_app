@@ -38,6 +38,8 @@ python3 -I -B install_runtime_debs.py install --execute \
 
 成功结果必须来自本次真实 20 包提取、完整树读回、134 个 ELF loader 与 9 个版本命令。canonical-first 库归属和同次 PID/root/base 匿名根验证复用最终修复，不允许未知库或系统中的同名 20 包库回退。正常 pidfd/SIGTERM 收尾保留。
 
+若本次只验证新提取入口，可显式加 `--defer-native-checks`：仍实际检查精确基础包、20 包全部提取和完整树前后读回，但不重复 loader/版本命令。该阶段只写 `FIXED_RUNTIME_PAYLOAD_EXTRACTED_AND_READBACK_VERIFIED`，`nativeChecks=NOT_EXECUTED`、`loader=null`；不能作为原生运行准入或把旧 loader 结果改标为新执行。默认完整模式不变，后续运行仍需要相应真实证据。
+
 ## 当前验证边界
 
 此组件已有本机边界测试以及保留的实际 loader/owner 输出的纯解析回归。临时路径测试仅模拟 Linux UID，不能证明新目标实际权限、安装或运行。新目标宿主包装、联合 app/scanner 配置与生命周期适配另行完成；本文件不是整套软件的最终 INSTALL，也不宣称 A15-09 完成。
