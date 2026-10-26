@@ -651,3 +651,13 @@ E114保留E113第一次maps拒绝6e207bf7…及诊断第二次712d33f5…：准�
 E115先以新application/runtime完成三进程启动和严格CA四身份；正常SIGTERM停8889/8890/8901（2daee04e…），再起9064/9065/9072。前后现有O2工作簿完整DTO3883B/ec68aea9…均为revision2、B2=14/C2=23；原图2240B/5bfbf054…相同，普通密码登录/退出后旧cookie401，两阶段未发业务写请求。PG/Redis/scanner及原恢复数据源未重启。新进程15类实际可执行映射逐项受原生闭包约束，未观察的addon不外推。
 
 原Chrome标签两次CDP focus超时保留；按所有者既有授权开同profile新空白窗口后控制恢复，新标签实际打开O2并显示14/23与绿色图片。刷新book/session/draft及切页thumbnail均200、非disk/service-worker cache，捕获console warn/error为空；browser/result.json为37a92bd6…，最后运行绑定20:04:07Z。独审d870f1c9…覆盖173公开文件/46命令回执和两截图；7GET中6个对应200，首次重复list的ERR_ABORTED/canceled保留，不当PASS。没有重做所有者已确认的整Chrome退出、正常IME或Office。此处仍只是本机联合运行/正常应用重启与既有业务，软件交付入口收口和其他原子项继续，57/9/7/1=74、10/15包、5/9链、6/10 P0不变；无push/main/tag/远端CI/production/原外盘Docker或所有者签收。
+
+## 2026-10-27 — 异步尝试未命中与新安装入口修复（E116–E117）
+
+E116实际自然交错未命中公式等待：首PUT的responseReceived为20:18:06.461070Z，F1选择为20:18:06.875Z，晚413.930ms。这里只证明响应事件已先到，不声称整个响应体/JS处理已结束；generic busy没有替代公式特定拒绝。后续未确认文字保留→确认→显式保存→非缓存GET成功。当前703898c1…为revision4，B2=15、C2=24、F1=ASYNC-R30-EDIT；原v2与旧验收不改。完整DTO12处差异保留，drawing字符串不同而解析对象相等、第二表/顺序相等，不称整DTO逐字同。结果41c2a30b…、独审b7bec23d…；7个ERR_ABORTED取消事件单列，不计通过。A03-05保持PARTIAL，本次为NOT_OBSERVED；E2E-02不升级。
+
+E117交付引用集合r02 manifest99af2662…及附录独审9bfdb836…已核89项直接引用，未冒充传递依赖闭包。已定位D1/D2/S1/S2/A1/A2/H1实际代码缺口，说明文字不足以关闭A15-09。新健康20deb入口已提交a02d5bd22b6ebb0fba900a841a79b4596e86f852；源helper9a46d1d…，复用原安全提取与最终canonical owner/同PID匿名根解析，移除新安装对历史失败链的前置。新目标prepare采集当前boot/路径，实际基包回执和完整host scope/reader依赖链由外部绑定，禁止覆盖原目录或自行授予信任。scanner/app及宿主包装适配仍待。
+
+13个本机边界用例及24个历史owner/134个历史loader输出的纯解析回归exit0；临时路径只模拟UID，不冒充Linux实装。独审4071c0db…、最终空行/README附录75de8a3c…；审查发现原256根上限低于完整scope，已改4096并覆盖344根，不缩分母。最终仅删一个EOF空行，AST与测试输入相同；首次git diff --cached --check的空行拒绝保留。当前完整host23724331008B/356根，小于24GiB；guest1290350592B低于安装前1409286144B门限，所以尚未执行新提取，不能报安装PASS。当前运行程序仍3941，不是该工具源码提交。
+
+R13已实际送达获准会话，user0d39f4e0…/反馈ec6f7d95…已读；反馈要求新入口正常路径实际执行、只针对安装依赖收口，A03先取得可核计算等待时序，不能继续盲试或延迟HTTP冒充。没有新邮件、重跑正常IME/Office/整Chrome、启动原外盘Docker或远端动作。Placeholder扫描12项均为测试代码/测试断言，未检出正式占位页面。57/9/7/1=74、10/15包、5/9链、6/10 P0、产品PARTIAL保持。
