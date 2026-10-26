@@ -100,7 +100,8 @@ export async function readFreeWorkbook(bytes:Uint8Array,fileName:string,id:strin
         cellData[r-1]??={};cellData[r-1]![c-1]=readCell(cell,palette,date1904);
       }
     }
-    for(let c=1;c<=Math.max(source.columnCount,source.columns.length);c++){const col=source.getColumn(c);columnData[c-1]={...(col.width?{w:Math.round(col.width*7+5)}:{}),...(col.hidden?{hd:1}:{}),s:readStyle(col.style,palette)};}
+    // Match the default-width conversion: rounding explicit widths loses fractional source geometry.
+    for(let c=1;c<=Math.max(source.columnCount,source.columns.length);c++){const col=source.getColumn(c);columnData[c-1]={...(col.width?{w:col.width*7+5}:{}),...(col.hidden?{hd:1}:{}),s:readStyle(col.style,palette)};}
     const mergeData=(source.model.merges??[]).map(range=>{const [start,end]=range.split(':').map(coordinates);return {startRow:start!.row,startColumn:start!.column,endRow:end!.row,endColumn:end!.column};});
     const view=(source.views??[]).find(v=>v.state==='frozen') as Partial<ExcelJS.WorksheetViewFrozen>|undefined;
     snapshot.sheetOrder.push(sheetId);snapshot.sheets[sheetId]={id:sheetId,name:source.name,hidden:source.state==='veryHidden'?2:source.state==='hidden'?1:0,rowCount:Math.min(WORKBOOK_LIMITS.rows,Math.max(200,source.rowCount+30)),columnCount:Math.min(WORKBOOK_LIMITS.columns,Math.max(26,source.columnCount+4)),defaultRowHeight:(source.properties.defaultRowHeight??15)*4/3,defaultColumnWidth:(source.properties.defaultColWidth??8.43)*7+5,cellData,rowData,columnData,mergeData,...(view?{freeze:{xSplit:view.xSplit??0,ySplit:view.ySplit??0,startRow:view.ySplit??0,startColumn:view.xSplit??0}}:{})};

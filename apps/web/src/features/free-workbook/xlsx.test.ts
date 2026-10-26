@@ -10,22 +10,25 @@ const pixel=Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAA
 vi.mock('../business-sheet/image-client',()=>({imageBytes:async()=>({bytes:Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a6mgAAAAASUVORK5CYII='),c=>c.charCodeAt(0)),mime:'image/png'})}));
 async function fixture(){const book=new ExcelJS.Workbook();const a=book.addWorksheet('中文颜色');a.getCell('A1').value='颜色名称';a.getCell('A1').font={name:'Arial',size:16,bold:true,color:{argb:'FF3F6B58'}};a.getCell('A1').fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFE8F0E9'}};a.getCell('A1').alignment={horizontal:'center',wrapText:true};a.getCell('B2').value=2;a.getCell('B3').value=3;a.getCell('B4').value={formula:'SUM(B2:B3)',result:5};a.mergeCells('C1:D2');a.getCell('C1').value='基地与备注独立';a.getColumn(1).width=23;a.getRow(1).height=32;book.addWorksheet('第二页').getCell('A1').value='不合并业务ID';return new Uint8Array(await book.xlsx.writeBuffer());}
 describe('free workbook XLSX exchange',()=>{
- it('keeps worksheet default widths on columns with metadata but no width override',async()=>{
+ it.each([
+   {defaults:[100,88],override:220},
+   {defaults:[99.5,87.82421875],override:220.375},
+ ])('keeps default and explicit column widths through XLSX exchange: %j',async({defaults,override})=>{
    const parsed=await readFreeWorkbook(await fixture(),'defaults.xlsx',crypto.randomUUID());
    for(const [index,id] of parsed.snapshot.sheetOrder.entries()){
      const sheet=parsed.snapshot.sheets[id]!;
-     sheet.defaultColumnWidth=index===0?100:88;
-     sheet.columnData={0:{s:{}},1:{s:{bl:1}},2:{hd:1},3:{w:220}};
+     sheet.defaultColumnWidth=defaults[index]!;
+     sheet.columnData={0:{s:{}},1:{s:{bl:1}},2:{hd:1},3:{w:override}};
      sheet.cellData![0]![5]={v:'继承默认列宽'};
    }
    const output=await writeFreeWorkbook(parsed.snapshot,[]),excel=new ExcelJS.Workbook();
    await excel.xlsx.load(output as never);
    const reopened=await readFreeWorkbook(output,'defaults-copy.xlsx',crypto.randomUUID());
    for(const [index,id] of reopened.snapshot.sheetOrder.entries()){
-     const sheet=reopened.snapshot.sheets[id]!,expected=index===0?100:88;
+     const sheet=reopened.snapshot.sheets[id]!,expected=defaults[index]!;
      expect(sheet.defaultColumnWidth).toBeCloseTo(expected);
      for(const column of [0,1,2])expect(sheet.columnData?.[column]?.w??sheet.defaultColumnWidth).toBe(expected);
-     expect(sheet.columnData?.[3]?.w).toBe(220);
+     expect(sheet.columnData?.[3]?.w).toBe(override);
      expect(sheet.columnData?.[2]?.hd).toBe(1);
      for(const column of [4,5])expect(sheet.columnData?.[column]?.w??sheet.defaultColumnWidth).toBeCloseTo(expected);
      expect(sheet.cellData?.[0]?.[5]?.v).toBe('继承默认列宽');
