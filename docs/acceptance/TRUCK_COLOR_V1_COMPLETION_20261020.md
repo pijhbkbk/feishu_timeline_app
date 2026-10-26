@@ -4,27 +4,27 @@
 
 - TASK_ID：`TRUCK-COLOR-V1-COMPLETION-20261020-R01`；主线派发 `TRUCK-COLOR-V1-CONTINUE-20261020-R02`。
 - CURRENT_SUBTASK：`TRUCK-COLOR-V1-FINAL-EXECUTION-20261024-R01`；沿PM已核对冻结的v1.0继续实际实施，产品签收另记A15-12。
-- STATE：`RUNNING / LOCAL_RECOVERY_VERIFIED / PREVIEW_AVAILABLE`；产品 `PARTIAL / AWAITING_PRODUCT_OWNER_CONFIRMATION`。E91已从R27正常切到17aa预览；原事故库/原API继续停写，VM旧停止及失败记录保留，停止发起者UNKNOWN。
+- STATE：`RUNNING / LOCAL_RECOVERY_VERIFIED / PREVIEW_AVAILABLE`；产品 `PARTIAL / AWAITING_PRODUCT_OWNER_CONFIRMATION`。3941已实际运行并闭合O2受影响尾段；原事故库/原API继续停写，旧停止及失败记录保留，停止发起者UNKNOWN。
 - WORKSPACE：`/Users/lixiaochen/Downloads/feishu_timeline_app`；分支 `codex/design-convergence-20261019`。
-- SOURCE_ID：当前源码 `3941beccddd0dfce94c8f0f7fd7d62819fb05270` / tree `db699c2e128e9c40d677de2ccca0788d8ffccdb9`，只修XLSX导入小数列宽取整；红例、45目标/类型/目标lint及独审b6d97e62…成立，未构建运行。实际运行仍前一应用提交17aa，不混称候选对齐。
-- ARTIFACT_ID：当前17aa Ubuntu ARM64：commit `17aa74a33c14fac516c924573c2b2388f6960238` / tree `738a75c3b949a08309ce7084f2d75bddbcb61a46` / release `truck-recovery-r29-17aa74a33c14` / build `2026-10-26T08:28:17Z`。E90八子阶段0，E91应用manifest83c76b92…/copy86aba501…完整15741项460214339B。原552309013B R27离线包及r04补充保留；当前17aa只为有界应用预览，全包A15-09仍PARTIAL。
-- RUNTIME_ID：`https://localhost:45464` 实际17aa/run first-17aa74a-r01，API2976/Web2977/proxy2988；严格CA/直连四身份一致，PG2277同systemID7700459308674415750、Redis2309、scanner resume-after-17aa74a-r01保持，同boot2552886b…；前后90日quota39/三零。E91独审ce933156…、E92/E93真实登录/保存/刷新成立；原Docker/事故库不触及。
+- SOURCE_ID：当前应用源码与运行均为 `3941beccddd0dfce94c8f0f7fd7d62819fb05270` / tree `db699c2e128e9c40d677de2ccca0788d8ffccdb9`。只修XLSX导入小数列宽取整；红例、45目标/类型/目标lint、源码独审b6d97e62…和实际O2独审a276422b…分别保留。
+- ARTIFACT_ID：3941 Ubuntu ARM64，release `truck-recovery-r30-3941beccddd0` / build `2026-10-26T12:28:07Z`；E97八子阶段0，640MiB image f38a0a21…；E98 manifestc6b3f29…/copy3dd86…完整15741项460214149B。旧17aa与R27包保留；当前仅有界应用预览，全包A15-09仍PARTIAL。
+- RUNTIME_ID：`https://localhost:45464`，run `first-3941bec-r01`，API4540/Web4546/proxy4552；严格CA/direct四身份3941一致，浏览器新回导保存/刷新成立。PG4039同systemID7700459308674415750、Redis4075/scanner4112与boot保持；切换只停三app，quota前后41/三零、90日；没有migrate/seed/restore当前库。E98实际独审4d51abc7…，备用17aa仅prepare。
 - REMOTE_LAST_OBSERVED：2026-10-24只读main仍`9bdec2864c3ed9eb1a045062b756611f98208bfb`、最新main CI `38866594479` failure；候选无新远端CI。精确正式域名身份仍UNKNOWN；本轮未查生产或触发CI。
-- CURRENT_ITEM：54PASS/11PARTIAL/8NOT_VERIFIED/1BLOCKED、8/15包、4/9历史连续技术链、5/10 P0关闭。E92仅闭合A02-06代表公式/格式；E93 O1尾段已闭合，O2小数宽度仍实测FAIL，整体E2E-03保持FAIL。原计数及历史失败保留。
-- COMPLETED_DELTA：E91新预览实际身份对齐17aa；E92原11表真实修改两输入、直接引用/算术重算、正式v3保存/刷新；E93 O1 v4→新导出a745…→原生Excel13/22→新本641ce…v2保存刷新，四列100/88及原PNG逐字保持。O2新导出db091…保留99.5/87.82421875，但新本8755…v2读取取整为100/88，失败独立保存；E94新3941只为待构建修复。
+- CURRENT_ITEM：55PASS/11PARTIAL/7NOT_VERIFIED/1BLOCKED、9/15包、5/9连续技术链、5/10 P0关闭。E95闭合A11-03，E96重开A05-04后由E99精确小数读回复闭；E93+E99及未受影响历史Office组成E2E-03 PASS。P0-03仍缺整浏览器重开，不关闭。
+- COMPLETED_DELTA：E97完成受限构建/core恢复，E98实际装载3941并核身份，E99使用正确db091…文件全新op cb5c1dbe…→703898c1…正式v2/刷新。四小数、14格/样式/合并、400行高/52列宽、图片2240B/5bfb…均与各自基准相等；原8755…v2舍入失败未覆盖。O1/SUM/日期/原生Office按输入不变复用。
 - EVIDENCE：当前受控记录 `var/truck-color-v1-20261020/final-execution-20261024-r01/`；旧R10 `candidate-01b4bbd-20261022/`、冻结基线 `acceptance-baseline-20261023-r01/`、PM反馈 `baseline-pm-review-20261023-r01/` 均保留，不以新收据改写旧结果。
 - OPEN_BLOCKERS：新增真实状态差异：03:48:30Z首台计划cmvnafmqh004n9kaufja5iwi5曾POST201且随后GET200可见，依赖恢复后同原库精确查询为0；所有者已确认手动退出Docker后推出外盘再接回，系统证实设备断联与写失败；是否等待完全停止及特定丢行机制仍UNKNOWN，未补建/重放/覆盖。已核W v9、日期本v2、年度revision5与旧DTO相等，不推断全库损坏。结构本回导原op已核实至0f91badd-2d51-4a35-a2d2-d55919973f25/图片0of5，原记录保留不续写；E84使用新ID另完成四值回导，不冒称旧操作恢复。未保存取消/确认、项目并行/返回剩余断言、整浏览器重开、Safari/性能/四宽、required CI/full安全、A15-09完整离线包及正式环境仍待；A15-10独立逻辑恢复已由E77闭合。
 - HUMAN_ACTION：所有者已批准事故后逻辑起点、内置Lima2CPU/4GiB/24GiB及HTTPS45464，并已亲自处理新入口浏览器证书提示。无需重问；不做全盘事故镜像、不覆盖原库、不沿用旧缺失ID。原Office/IME反馈按实际范围复用，最终签收仍待。
-- NEXT_ACTION：先核下一干净3941构建的真实容量，不覆盖旧image/失败记录，不扩24GiB。10:43Z guestfree1173364736B（比1GiB floor多99622912B），总allocated23211864064B/余2557939712B；原640MiB image+source+新应用并存不能直接准入。只读核成功r25/r27非运行构建缓存可恢复归档方案，失败r24/B05不动。继续17aa已实装历史/返工提示、dirty返回/双模式边界等未受影响GUI；新候选后仅补O2列宽回导，复用O1/SUM/日期/已有Office，不重演整文件。Safari/固定性能/四宽、新空库初始化/20deb及CI/安全/正式目标仍待。
+- NEXT_ACTION：继续A02双模式保护、A03整浏览器重开/异步编辑与其余并行/标准/dirty路径；并行准备A15-09现有空库初始化与20deb实际安装缺口。Safari/性能/四宽、required CI/full安全及正式目标仍按矩阵；先回报已闭合O2和准确身份，不请求形式性继续批准。
 - RESUME_ENTRY：本节 → [v1.0基线](ROUTE_ACCEPTANCE_MATRIX.md#v1-baseline-v10) → 原子条目和E2E/门禁队列；不重跑已接受且适用的局部路径。
 
 <!-- V1_BASELINE_DASHBOARD_START -->
 ## v1.0可复算验收看板（范围冻结于2026-10-23，状态更新2026-10-26）
 
-唯一断言和详细执行步骤在[矩阵现行基线](ROUTE_ACCEPTANCE_MATRIX.md#v1-baseline-v10)，本看板从该表派生，不独立手改分母。历史证据沿用原版本/日期；本轮新实际结果E36–E94按逐项范围加入，冷备hold已解除。当前范围可确定，无阻断基线的SCOPE_UNRESOLVED；3条无原始强制依据的载体强化仅OPTIONAL。PM已核对冻结v1.0（反馈Gmail `1a167cfcb731a6b9`）；冻结的是完工标准，范围/阈值/漏项更正仍需显式记录并重算。
+唯一断言和详细执行步骤在[矩阵现行基线](ROUTE_ACCEPTANCE_MATRIX.md#v1-baseline-v10)，本看板从该表派生，不独立手改分母。历史证据沿用原版本/日期；本轮新实际结果E36–E99按逐项范围加入，冷备hold已解除。当前范围可确定，无阻断基线的SCOPE_UNRESOLVED；3条无原始强制依据的载体强化仅OPTIONAL。PM已核对冻结v1.0（反馈Gmail `1a167cfcb731a6b9`）；冻结的是完工标准，范围/阈值/漏项更正仍需显式记录并重算。
 
-- MUST证据覆盖 `P/N=54/74=72.97%`，这是验收证据覆盖率，不是代码/工程完成率。PARTIAL 11、NOT_VERIFIED 8、BLOCKED 1，FAIL/SKIPPED/SCOPE_UNRESOLVED/NOT_APPLICABLE均0；合计74。此处FAIL=0仅为MUST原子分类；关键集成链E2E-03因O2导入小数列宽取整为FAIL，其他旧失败保留，不表示全仓无问题。A15-05在新目标由BLOCKED恢复PASS，A15-10由PARTIAL升PASS；E79闭合A11-01，E80将A15-09从NOT_VERIFIED推进PARTIAL；原事故前后状态保留。
-- 关键集成链 `Q/K=4/9=44.44%`：原生成员/人员、整本草稿重开、Office、四域映射/统计、项目并行、实际周评、到货试验提醒、离线独立目标恢复、正式HTTPS；E2E-01、E2E-04、E2E-06与E2E-07按原链/实际时序及逐输入适用性闭合，其余链不以局部计数代替。
+- MUST证据覆盖 `P/N=55/74=74.32%`，这是验收证据覆盖率，不是代码/工程完成率。PARTIAL 11、NOT_VERIFIED 7、BLOCKED 1，其余原子分类0，合计74。E99修复并实测O2小数读回，A05-04复闭；旧68px和8755…v2取整失败保留，不表示全仓无问题。
+- 关键集成链 `Q/K=5/9=55.56%`：E2E-01/03/04/06/07按实际时序及逐输入适用性闭合；Office两份基准各自完整，未冒称同一次/同一制品重演。整本草稿、项目并行、完整离线包和正式HTTPS仍待。
 - 10组P0交付阻断 `5/10关闭、5未关闭`，5组原V1必需P1中P1-01已关闭、其余4组未关闭；不是10个已确认P0漏洞。每组的唯一矩阵ID/关闭条件/责任与依赖见[矩阵执行队列](ROUTE_ACCEPTANCE_MATRIX.md#v1-baseline-v10)。P2不进入必需门槛。
 
 | A包 | MUST N_i | 有效PASS P_i | PARTIAL | NOT_VERIFIED | BLOCKED | 整包 |
@@ -39,30 +39,31 @@
 | A08 | 6 | 6 | 0 | 0 | 0 | PASS |
 | A09 | 3 | 0 | 2 | 1 | 0 | PARTIAL |
 | A10 | 3 | 1 | 2 | 0 | 0 | PARTIAL |
-| A11 | 3 | 2 | 0 | 1 | 0 | PARTIAL |
+| A11 | 3 | 3 | 0 | 0 | 0 | PASS |
 | A12 | 3 | 3 | 0 | 0 | 0 | PASS |
 | A13 | 6 | 6 | 0 | 0 | 0 | PASS |
 | A14 | 4 | 4 | 0 | 0 | 0 | PASS |
 | A15 | 12 | 5 | 4 | 2 | 1 | PARTIAL |
 
-整包仅全部MUST通过才PASS；8/15整包PASS并非工程完成率。API/GUI/原生Office/系统IME/PG/Redis/恢复/目标环境各保各自范围。已接受人员/颜色/未关联检验映射、草稿CAS/异常回执、一图续接/晚输入、整车整改、到货报告、Chrome正常系统IME及小型Office原生步骤按逐文件/语义差异有效复用；小型4×2旧cbe完整往返保留历史PASS，不冒称新reader已测。
+整包仅全部MUST通过才PASS；9/15整包PASS并非工程完成率。API/GUI/原生Office/系统IME/PG/Redis/恢复/目标环境各保各自范围。已接受人员/颜色/未关联检验映射、草稿CAS/异常回执、一图续接/晚输入、整车整改、到货报告、Chrome正常系统IME及小型Office原生步骤按逐文件/语义差异有效复用；小型4×2旧cbe完整往返保留历史PASS，不冒称新reader已测。
 
 | 完工门槛 | 当前证据层级/关闭条件 | 矩阵入口 |
 |---|---|---|
-| 制品/运行身份 | E90/E91不可变17aa构建、应用完整复制、严格CA/直连四身份及真实使用成立；新3941源码尚未构建，原事故源停写保持 | A15-04/05 |
+| 制品/运行身份 | E97/E98不可变3941构建、完整应用复制、严格CA/直连四身份和真实O2使用成立；旧源/事故源停写保持，非全包发布 | A15-04/05 |
 | G3/真实DB/Redis | R23/e3e精确G3及独审cc4581f2…成立：Web1101PASS/0skip，API1817PASS/305skip，lint/types/prisma均0；305不计真实PG通过。D01–D18按E58与后续输入差异复用，原5FAIL/303SKIP及新增两例旧真PG结果分列 | A15-06 |
 | 必需候选CI | R23/e3e两Linux amd64镜像独审及Trivy0.72.0、2026-10-25新库均未检出漏洞；index/child、内嵌OpenSSL与OS EOL警告分列。required候选CI/配置仍NOT_VERIFIED；旧main failure保留，非全安全clearance | A15-07 |
 | XLSX安全 | 唯一Finding R28-V1-XLSX-NAMESPACE-BOUND-001保持fixed_diff_verified/full pending/closure=null；目标/受影响/独审有精确01b4证据，不改风险或closed | A15-08 |
-| Office2基准 | E93 O1 edited v4新导出→原生Excel→新副本正式保存刷新及图片/有效尺寸全等，尾段已独审闭合；O2新导出小数保持，实际回导仍99.5→100、87.82421875→88。E94已修源码未运行，E2E-03继续FAIL。E68/E70/E84日期/四值及A05-06限定图位按输入复用，旧失败与Excel自身37变化保留 | A05-01至06；E2E-03 |
+| Office2基准 | E93 O1与E99 O2受影响尾段均经实际保存刷新及独审闭合；O2精确99.5/87.82421875保持，14格/样式/合并/尺寸/图原件无新增损失。E68/E70/E84与原生Office按不变输入复用；旧失败和Excel自身37差异保留 | A05-01至06；E2E-03 PASS |
 | Safari/性能/布局 | Chrome正常人工IME有效复用；Safari、固定性能和四个CSS宽度/新guide缺口按原合同。1280与1024并列，非替代 | A04/A15-01/03 |
 | 离线/异机/备份恢复 | E77已闭合获准事故后逻辑状态的独立Lima实际恢复：DB+本+36对象、原账号/媒体/新ID写/正常应用重启读回。E80新离线prefix已实际安装运行；E82已补新账号注册/登录/刷新/退出限定证据；A15-09仍缺新库初始化、20deb实际安装和最终安装集合实走，不以恢复成功替代；物理第二台/宿主OS重启不另增MUST | A15-09/10 |
 | 约定目标 | 精确https://timeline.all-too-well.com，当前身份UNKNOWN/R10未发布。原扫描VM停机/新附件限制仍有效；实际准入冲突按具体依赖处理，不旁路或静默降级 | A15-11 |
 | 所有者接收 | 其余73项技术/交付MUST（不含A15-12）、9条技术关键链及必需门禁和约定环境先就绪，再由李晓晨实际UAT并明确接收；此后A15-12才计PASS，PM冻结/技术审核不代签 | A15-12 |
 
-实际顺序：**NOW** 当前17aa可操作，O1尾段与代表式已取得增量；3941小数宽度修复已提交但构建受guest空间限制，先形成可恢复缓存归档与真实预算方案，同时完成已实装历史提示/导航缺项。新候选后只补受影响O2宽度回导。随后继续双模式保护/整浏览器重开/Safari/固定性能/四宽、候选CI与安全、完整离线安装、有效条件下精确正式目标，最后所有者签收；已满足局部按输入复用，不再机械重演。
+实际顺序：**NOW** 3941构建/实装/O2受影响尾段已闭合，继续双模式保护、整浏览器重开、异步编辑、并行/标准及dirty导航；并行准备最小新库初始化和20deb安装验证。Safari/性能/四宽、候选CI安全、完整离线包、有效条件下精确正式目标及所有者签收仍待。
 
 执行顺序为其余73项技术/交付MUST（不含A15-12）、9条技术关键链及必需门禁和约定环境先就绪，再进入李晓晨实际UAT；明确接收后A15-12才计PASS，发现原范围缺陷按影响修复/复验。V1最终完成仍要求74/74 MUST与9/9技术关键链PASS、必需交付阻碍/阻断缺陷清零、必需CI/安全/恢复门槛PASS、实际交付身份一致、约定环境可用且所有者明确接收。基线冻结不代表产品完成；生产/外部步骤仍受对应权限和安全条件约束。
 <!-- V1_BASELINE_DASHBOARD_END -->
+
 
 ## 有效口径和交付环境
 
@@ -556,3 +557,11 @@ E66绑定干净e3e/tree31c/R23双制品、完整库存、受控启停与四端�
 - E93 O1 v4新导出a745ac3b…/11314B、真实Excel16.114.1只读13/22/公式、新op ce91…→新本641ce…正式v2/刷新。14格、样式合并、400有效行高、52有效列宽和PNG2240B/5bfb…全等，05/06截图实际可见；原03无网格/04未加载/下载工具失败与首次PNG脚本语法失败均保留。追加独审9e2ff522…支持O1目标尾段闭合，不代表Excel编辑或SaveAs。
 - O2仅补受影响片段：原9be5…v5新导出db0911bc…/11346B保留99.5/87.82421875；新op962eee…→8755…正式v2/两次刷新GET均100/88，故E2E-03保持FAIL。3941beccddd0dfce94c8f0f7fd7d62819fb05270/tree db699c2…仅去读取Math.round并参数化旧用例，红例、45目标、types/lint及独审b6d97e62…成立；未构建/运行。
 - 唯一矩阵54PASS/11PARTIAL/8NV/1BLOCKED=74、8/15包、4/9链、5/10 P0；本轮只提升A02-06，完整Office与其他缺项不提前关闭。用户已重新打开获准ChatGPT会话，当前在恢复回报通道；最新结果尚待实际发送/回读，不冒称反馈已取得。没有push、远端CI、main/tag、production或所有者签收。
+
+
+## 2026-10-26 — E95–E99历史返回、3941实装与O2读回复验
+
+- E95在实际17aa完成驾驶室/一致性新提示、两轮历史、排产与量产及来源返回，A11-03闭合；E96按四处小数直接反证重开A05-04尺寸范围，历史属性不删除。
+- E97成功cache已完整归档后限定回收，3941构建3主/8子exit0，core真实恢复；E98完整复制15741项后正常切换三app，当前45464四身份3941/tree db699/build12:28:07Z，API4540/Web4546/proxy4552，同PG/Redis/scanner保持，90日quota前后41/三零。独审4d51abc7…；全范围实际22623064064B<24GiB。未调用原外盘Docker、无数据回滚。
+- E99正确O2导出db091…全新导入703898c1…正式v2，四小数精确保留；14格/语义样式/400行高/52列宽/合并/图几何一致，原件2240B/5bfb…正常鉴权200。浏览器刷新与独立API全DTO字节等，截图主表14/23和图已实际查看，独审a276422b…。旧8755…v2失败未动；CDP旧响应缓存过期单列取证限制，已由正常API原件补证。
+- A05-04复闭PASS；结合E93 O1与原生Office/SUM/日期/四值未变输入，E2E-03连续链PASS。现55/11/7/1=74，9/15包、5/9链，5/10 P0仍不变：正常保存组尚缺整浏览器重开。完整离线包/CI/full安全/正式域名/所有者签收未闭合，无push/main/tag/远端CI/production。
