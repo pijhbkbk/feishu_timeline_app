@@ -199,8 +199,11 @@ def native_admission(b, c):
         memory()
         p = Path(row['path'])
         # Actual executable/library bytes are rechecked; no loader or version command is rerun.
-        raw = read(p, 256*1024**2, owner=p.stat().st_uid)
-        need(p.stat().st_uid in (0, UID) and sha(raw) == row['sha256'], 'NATIVE_FILE_CHANGED')
+        need(row.get('delivery') in {'exact-122-base', 'new-prefix-20deb', '3941-application-native',
+                                    'joint-declared-runtime-root', 'joint-private-clam'}, 'NATIVE_DELIVERY')
+        owner = 0 if row['delivery'] == 'exact-122-base' else UID
+        raw = read(p, 256*1024**2, owner=owner)
+        need(sha(raw) == row['sha256'], 'NATIVE_FILE_CHANGED')
     need(any(r['path'] == str(c.NODE) and r['sha256'] == c.NODE_SHA for r in rows), 'NATIVE_NODE')
     need(combined.get(str(LOADER), {}).get('sha256') == LOADER_SHA and
          combined.get(b['dependencies']+'/usr/bin/openssl', {}).get('sha256') == OPENSSL_SHA, 'TLS_TOOLCHAIN')

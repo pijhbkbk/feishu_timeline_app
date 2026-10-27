@@ -66,6 +66,8 @@ class ConfigurationGuards(unittest.TestCase):
         p.write_bytes(b'abc')
         p.chmod(0o600)
         with self.assertRaises(RuntimeError):
+            m.read(p, owner=os.getuid()+1)
+        with self.assertRaises(RuntimeError):
             m.read(p, 2, owner=os.getuid())
         p.chmod(0o666)
         with self.assertRaises(RuntimeError):
