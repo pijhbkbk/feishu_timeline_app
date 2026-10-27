@@ -1149,7 +1149,14 @@ def fixed_owners(require_stopped=False):
              scanner_stopped_at.tzinfo is not None and
              observed_at <= app_stopped_at <= dt.datetime.now(dt.timezone.utc) and
              observed_at <= scanner_stopped_at <= dt.datetime.now(dt.timezone.utc), 'PRE_STOP_FACT_ORDER')
-        need(sc.get('status') == 'NEW_PREFIX_SCANNER_NORMAL_STOPPED' and sc.get('currentBootId') == BOOT and sc.get('forceKill') is False and
+        # Legacy normal-stop receipts omit bootId. The live observation already
+        # binds the exact successful scanner start to this boot; join the stop
+        # to that same start instead of inventing a field in historical data.
+        observed_start = before.get('scannerStart', {})
+        receipt_pin({key: observed_start.get(key) for key in ('path', 'sha256')})
+        need(all(sc.get('startReceipt', {}).get(key) == observed_start[key] for key in ('path', 'sha256')),
+             'NORMAL_STOP_OBSERVED_START_BINDING')
+        need(sc.get('status') == 'NEW_PREFIX_SCANNER_NORMAL_STOPPED' and sc.get('currentBootId', BOOT) == BOOT and sc.get('forceKill') is False and
              sc.get('remainingOwnedGroup') == [] and sc.get('termination', {}).get('status') == 'NORMAL_SIGTERM_EXIT' and
              all(sc.get('oldProcess', {}).get(k) == v for k, v in PREVIOUS_OWNERS['scanner'].items()), 'EXACT_SCANNER_NORMAL_STOP')
         for expected in PREVIOUS_OWNERS.values():

@@ -148,11 +148,11 @@ class PhaseTests(unittest.TestCase):
         clock=m.dt.datetime.now(m.dt.timezone.utc)
         before={'kind':'LIVE_PREDECESSOR_OWNERS_OBSERVED','bootIdBefore':BOOT,'bootIdAfter':BOOT,
             'owners':owners,'allFourLive':True,'executableAndCwdVerified':True,'servicesStopped':False,
-            'at':(clock-datetime.timedelta(seconds=5)).isoformat()}
+            'at':(clock-datetime.timedelta(seconds=5)).isoformat(), 'scannerStart':pin('scanner-start')}
         app={'status':'OWNED_APPLICATIONS_STOPPED','at':(clock-datetime.timedelta(seconds=4)).isoformat(),
             'processes':[{'role':role,'pid':owners[role]['pid'],'startTicks':str(owners[role]['startTicks']),
                 'sigtermSent':True} for role in ('api','web','proxy')]}
-        scanner={'status':'NEW_PREFIX_SCANNER_NORMAL_STOPPED','currentBootId':BOOT,'forceKill':False,
+        scanner={'status':'NEW_PREFIX_SCANNER_NORMAL_STOPPED','forceKill':False,'startReceipt':pin('scanner-start'),
             'remainingOwnedGroup':[],'termination':{'status':'NORMAL_SIGTERM_EXIT'},'oldProcess':owners['scanner'],
             'finishedAt':(clock-datetime.timedelta(seconds=3)).isoformat()}
         if mutate:mutate(before,app,scanner)
@@ -172,6 +172,15 @@ class PhaseTests(unittest.TestCase):
             m.fixed_owners(require_stopped=True)
     def test_same_boot_live_observation_connects_legacy_stop_without_fabricating_boot(self):
         self.stop_bridge()
+    def test_scanner_stop_must_join_observed_successful_start(self):
+        mutations=[lambda b,a,s:s['startReceipt'].update(sha256='b'*64),
+                   lambda b,a,s:s['startReceipt'].update(path='/home/recovery/other-start.json'),
+                   lambda b,a,s:s.pop('startReceipt'),
+                   lambda b,a,s:b.pop('scannerStart'),
+                   lambda b,a,s:s.update(currentBootId='different')]
+        for mutate in mutations:
+            with self.subTest(mutate=mutate):
+                with self.assertRaises(RuntimeError):self.stop_bridge(mutate)
     def test_cross_boot_owner_or_stop_order_bridge_rejected(self):
         mutations=[lambda b,a,s:b.update(bootIdAfter='different'),
                    lambda b,a,s:b.update(owners={}),
