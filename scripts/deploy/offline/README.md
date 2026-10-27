@@ -50,9 +50,9 @@ python3 -I -B install_runtime_debs.py install --execute \
 python3 -I -B scripts/deploy/offline/test_install_runtime_debs.py -v
 ```
 
-## 扫描器健康生命周期入口（尚待实际运行验证）
+## 扫描器健康生命周期入口
 
-`install_scanner.py` 保留 R03 的官方数据、locale、native/maps、容量、时效和正常 pidfd 停止实现，增加正常新目标准备及阶段连接。旧失败记录不作为输入，也不修改旧 R03。当前源实现只经过本机有界检查；不能据此关闭 S1/S2 或 A15-09。
+`install_scanner.py` 保留 R03 的官方数据、locale、native/maps、容量、时效和正常 pidfd 停止实现，增加正常新目标准备及阶段连接。旧失败记录不作为输入，也不修改旧 R03。E122 已实际完成正常 prepare/loader/import/start/verify 并接回应用，记录在原验收矩阵；此限定阶段不等于 A15-09 完成。
 
 固定支持原 R30 的 Ubuntu ARM64、UID/GID 1100、3941 应用和精确运行时内容。`target-binding.json` 由外部明确目标并按全文 SHA 固定，包含以下三类事实：
 
@@ -85,3 +85,18 @@ python3 -I -B install_scanner.py --observe-predecessor SOURCE_SHA EVENT
 ```
 
 这个独立只读阶段读取已外部固定的 `predecessor-source.json`（固定 kind、boot、实际 applicationStart/scannerStart 的 path/SHA），核四 owner 的 PID/tick/UID/exe/cwd/argv，并保存同 boot 观察。它不停止任何服务，不读取环境变量/秘密，也不把观察标作停止成功。之后正常停止真实前任；新 binding 引用实际观察和停止回执。新安装的 absent 分支不需要这份替换专用材料。最终 INSTALL 及应用接入仍需完成，当前文档不是完整交付入口。
+
+
+## 新实例配置的首次生成
+
+`prepare_instance.py` 为固定3941联合软件生成一次全新的隔离实例配置，支持文件为 `instance_software.py`、`instance_policy.py`。调用方在进程之外固定这三个源码文件和公开target binding，脚本默认PLAN，不以自算hash授权执行。
+
+本轮固定复用E102已初始化的独立库及低权role；仅执行进程从批准的0600连接文件投影DATABASE_URL，保存到本实例0700/private下的0600单键输入与runtime-env。旧Redis连接不采纳，旧preview-private不读取。新Redis6381凭据、空持久化目录、TLS和应用3594/Web3595/HTTPS45474配置只在首次生成时建立；目标已存在即拒绝。普通启动或重启必须读取本实例原私有文件和原Redis数据，不能重新运行生成器、清空AOF、轮换密码或重发证书。私有文件不得进入通用包、公开回执或命令行。
+
+输入binding固定kind/目标boot和hostname/软件与依赖路径/预算完整scope/两支持模块SHA/selection/直接成功native回执。生成前要求新鲜只读DB/低权/54迁移/无对象依赖回执、实际内存和完整磁盘预算；完整核当前app/runtime叶及实际native库字节，TLS经已认证20deb openssl与显式loader执行；不重跑134加载项。新CA仅用于本实例严格hostname验证，不改系统/浏览器信任。生成后调用本产品编译配置validator并在内存读回私有值；输出不含私有内容或摘要。
+
+```text
+python3 -I -B prepare_instance.py --execute   --binding ACTUAL_PUBLIC_BINDING --binding-sha256 REVIEWED_BINDING_SHA   --budget ACTUAL_FRESH_BUDGET --budget-sha256 REVIEWED_BUDGET_SHA
+```
+
+这一步不连接数据库或启动服务；数据库现状、对应对象目录、Redis/API/Web/代理启动及同配置重启另验。PG和已健康scanner是共享依赖，不能由新实例停止入口管理。当前配置入口有11项本机边界用例；实际新实例生成和运行验证仍待，不据夹具关闭A2或A15-09。
