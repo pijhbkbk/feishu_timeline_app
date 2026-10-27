@@ -4,24 +4,24 @@
 
 - TASK_ID：`TRUCK-COLOR-V1-COMPLETION-20261020-R01`；主线派发 `TRUCK-COLOR-V1-CONTINUE-20261020-R02`。
 - CURRENT_SUBTASK：`TRUCK-COLOR-V1-FINAL-EXECUTION-20261024-R01`；沿PM已核对冻结的v1.0继续实际实施，产品签收另记A15-12。
-- STATE：`RUNNING / LOCAL_JOINT_RUNTIME_VERIFIED / PREVIEW_AVAILABLE`；产品 `PARTIAL / AWAITING_PRODUCT_OWNER_CONFIRMATION`。E114新joint scanner与五例/有界观察完成，E115新joint应用正常重启、既有O2认证读回及页面显示完成；旧失败保留。
+- STATE：`RUNNING / LOCAL_JOINT_RUNTIME_VERIFIED / PREVIEW_AVAILABLE`；产品 `PARTIAL / AWAITING_PRODUCT_OWNER_CONFIRMATION`。E122健康scanner正常安装/启动链实际完成，E123现有应用接回、严格CA身份与工作簿GUI读回完成；旧失败保留，新实例私有配置仍待。
 - WORKSPACE：`/Users/lixiaochen/Downloads/feishu_timeline_app`；分支 `codex/design-convergence-20261019`。
 - SOURCE_ID：目标应用源码为 `3941beccddd0dfce94c8f0f7fd7d62819fb05270` / tree `db699c2e128e9c40d677de2ccca0788d8ffccdb9`；E98–E101属于原副本，E114/E115属于新联合安装目录。文档checkpoint不改变应用身份。
 - ARTIFACT_ID：3941 Ubuntu ARM64，release `truck-recovery-r30-3941beccddd0` / build `2026-10-26T12:28:07Z`；E109联合application收据cc59aa92…/manifestc6b3f29…，E110 runtime5ee49d4e…/manifest3da9be29…；R27基包594c92b6…与419文件delta7aabbfd0…及20deb组成已实装集合。软件清单/操作说明收口中，A15-09仍PARTIAL。
-- RUNTIME_ID：`https://localhost:45464` 已由 `/home/recovery/offline-software-r30-3941bec-r01` 提供；run `restart-final-joint-r01` 的API9064/Web9065/proxy9072均为新Node，同startTicks4484662，实际15种可执行映射及直连/TLS四身份对应3941。scanner8677/t4406128为R03，PG4039同systemID7700459308674415750/Redis4075及boot2552886b…保持；原app与scanner正常停机记录和两次maps失败均保留。
+- RUNTIME_ID：`https://localhost:45464` 由 `/home/recovery/offline-software-r30-3941bec-r01` 提供；run `first-healthy-handoff-r01`：API12186/Web12187的startTicks6470303，proxy12194/t6470304；15实际可执行映射、直连/TLS四身份对应3941。健康scanner12124/t6467825，PG4039/t1806709/systemID7700459308674415750、Redis4075/t1806956、boot2552886b-e854-4f99-8b4e-bd307d8ddb92不变。旧9064/9065/9072与8677已正常停止，旧记录保留。
 - REMOTE_LAST_OBSERVED：2026-10-24只读main仍`9bdec2864c3ed9eb1a045062b756611f98208bfb`、最新main CI `38866594479` failure；候选无新远端CI。精确正式域名身份仍UNKNOWN；本轮未查生产或触发CI。
 - CURRENT_ITEM：57PASS/9PARTIAL/7NOT_VERIFIED/1BLOCKED、10/15包、5/9连续技术链、6/10 P0关闭。E95闭合A11-03，E96重开A05-04后由E99精确小数读回复闭；E93+E99及未受影响历史Office组成E2E-03 PASS。E100闭合A03-01/P0-03，E101闭合双模式A02-01；异步编辑和E2E-02不跟随升级。
 - COMPLETED_DELTA：E97完成受限构建/core恢复，E98实际装载3941并核身份，E99使用正确db091…文件全新op cb5c1dbe…→703898c1…正式v2/刷新。四小数、14格/样式/合并、400行高/52列宽、图片2240B/5bfb…均与各自基准相等；原8755…v2舍入失败未覆盖。O1/SUM/日期/原生Office按输入不变复用。
 - EVIDENCE：当前受控记录 `var/truck-color-v1-20261020/final-execution-20261024-r01/`；旧R10 `candidate-01b4bbd-20261022/`、冻结基线 `acceptance-baseline-20261023-r01/`、PM反馈 `baseline-pm-review-20261023-r01/` 均保留，不以新收据改写旧结果。
-- OPEN_BLOCKERS：新增真实状态差异：03:48:30Z首台计划cmvnafmqh004n9kaufja5iwi5曾POST201且随后GET200可见，依赖恢复后同原库精确查询为0；所有者已确认手动退出Docker后推出外盘再接回，系统证实设备断联与写失败；是否等待完全停止及特定丢行机制仍UNKNOWN，未补建/重放/覆盖。已核W v9、日期本v2、年度revision5与旧DTO相等，不推断全库损坏。结构本回导原op已核实至0f91badd-2d51-4a35-a2d2-d55919973f25/图片0of5，原记录保留不续写；E84使用新ID另完成四值回导，不冒称旧操作恢复。未保存取消/确认、项目并行/返回剩余断言、异步编辑、Safari/性能/四宽、required CI/full安全、A15-09完整离线包及正式环境仍待；A15-10独立逻辑恢复已由E77闭合。
+- OPEN_BLOCKERS：新增真实状态差异：03:48:30Z首台计划cmvnafmqh004n9kaufja5iwi5曾POST201且随后GET200可见，依赖恢复后同原库精确查询为0；所有者已确认手动退出Docker后推出外盘再接回，系统证实设备断联与写失败；是否等待完全停止及特定丢行机制仍UNKNOWN，未补建/重放/覆盖。已核W v9、日期本v2、年度revision5与旧DTO相等，不推断全库损坏。结构本回导原op已核实至0f91badd-2d51-4a35-a2d2-d55919973f25/图片0of5，原记录保留不续写；E84使用新ID另完成四值回导，不冒称旧操作恢复。E120取消离开保留输入已由所有者确认，确认离开/返回与项目并行剩余断言、异步编辑、Safari/性能/四宽、required CI/full安全、A15-09完整离线包及正式环境仍待；A15-10独立逻辑恢复已由E77闭合。
 - HUMAN_ACTION：所有者已批准事故后逻辑起点、内置Lima2CPU/4GiB/24GiB及HTTPS45464，并已亲自处理新入口浏览器证书提示。无需重问；不做全盘事故镜像、不覆盖原库、不沿用旧缺失ID。原Office/IME反馈按实际范围复用；新整Chrome退出重开已由所有者确认并经根重登录读回，最终签收仍待。
-- NEXT_ACTION：E102初始化、E105依赖、E106新库HTTP认证、E109/E110联合安装、E111 loader、E114实际scanner/五例、E115新joint业务/退出/正常应用重启及GUI均有限定证据。收拢现成基包/增量/依赖/R03补充的最终清单和唯一INSTALL入口，明确固定VM控制器的适用边界；不重跑已成立初始化/Office/IME/整浏览器重开。其余异步编辑、并行/标准/dirty、Safari/性能/四宽与CI/安全/正式环境沿矩阵继续。
+- NEXT_ACTION：E119正常D1提取、E122正常S1/S2与E123现有实例接回均有实际记录；E123不是A2新私有配置。下一步复用E102已初始化低权DB，生成独立新实例配置并闭合INSTALL依赖；不重跑已成立初始化/Office/IME/整浏览器重开。其余异步编辑、并行/标准/dirty、Safari/性能/四宽与CI/安全/正式环境沿矩阵继续。
 - RESUME_ENTRY：本节 → [v1.0基线](ROUTE_ACCEPTANCE_MATRIX.md#v1-baseline-v10) → 原子条目和E2E/门禁队列；不重跑已接受且适用的局部路径。
 
 <!-- V1_BASELINE_DASHBOARD_START -->
 ## v1.0可复算验收看板（范围冻结于2026-10-23，状态更新2026-10-27）
 
-唯一断言和详细执行步骤在[矩阵现行基线](ROUTE_ACCEPTANCE_MATRIX.md#v1-baseline-v10)，本看板从该表派生，不独立手改分母。历史证据沿用原版本/日期；本轮新实际结果E36–E115按逐项范围加入，冷备hold已解除。当前范围可确定，无阻断基线的SCOPE_UNRESOLVED；3条无原始强制依据的载体强化仅OPTIONAL。PM已核对冻结v1.0（反馈Gmail `1a167cfcb731a6b9`）；冻结的是完工标准，范围/阈值/漏项更正仍需显式记录并重算。
+唯一断言和详细执行步骤在[矩阵现行基线](ROUTE_ACCEPTANCE_MATRIX.md#v1-baseline-v10)，本看板从该表派生，不独立手改分母。历史证据沿用原版本/日期；本轮新实际结果E36–E123按逐项范围加入，冷备hold已解除。当前范围可确定，无阻断基线的SCOPE_UNRESOLVED；3条无原始强制依据的载体强化仅OPTIONAL。PM已核对冻结v1.0（反馈Gmail `1a167cfcb731a6b9`）；冻结的是完工标准，范围/阈值/漏项更正仍需显式记录并重算。
 
 - MUST证据覆盖 `P/N=57/74=77.03%`，这是验收证据覆盖率，不是代码/工程完成率。PARTIAL 9、NOT_VERIFIED 7、BLOCKED 1，其余原子分类0，合计74。E99修复并实测O2小数读回，A05-04复闭；旧68px和8755…v2取整失败保留，不表示全仓无问题。
 - 关键集成链 `Q/K=5/9=55.56%`：E2E-01/03/04/06/07按实际时序及逐输入适用性闭合；Office两份基准各自完整，未冒称同一次/同一制品重演。整本草稿、项目并行、完整离线包和正式HTTPS仍待。
@@ -55,11 +55,11 @@
 | XLSX安全 | 唯一Finding R28-V1-XLSX-NAMESPACE-BOUND-001保持fixed_diff_verified/full pending/closure=null；目标/受影响/独审有精确01b4证据，不改风险或closed | A15-08 |
 | Office2基准 | E93 O1与E99 O2受影响尾段均经实际保存刷新及独审闭合；O2精确99.5/87.82421875保持，14格/样式/合并/尺寸/图原件无新增损失。E68/E70/E84与原生Office按不变输入复用；旧失败和Excel自身37差异保留 | A05-01至06；E2E-03 PASS |
 | Safari/性能/布局 | Chrome正常人工IME有效复用；Safari、固定性能和四个CSS宽度/新guide缺口按原合同。1280与1024并列，非替代 | A04/A15-01/03 |
-| 离线/异机/备份恢复 | E77已闭合获准事故后逻辑状态的独立Lima实际恢复：DB+本+36对象、原账号/媒体/新ID写/正常应用重启读回。E80新离线prefix已实际安装运行；E82已补新账号注册/登录/刷新/退出限定证据；E102在固定新低权DB完成54迁移/目录/单管理员及重复CLI拒绝无计数变化，11直接组件与3941同；E105固定20deb完整重验通过、E106新库管理员HTTP已验，E109/E110联合文件已安装、E111最终native loader通过；E113 scanner首次运行在maps归属拒绝后正常退出，A15-09仍缺新scanner五例和新联合应用业务/退出/正常重启，不以恢复成功替代；物理第二台/宿主OS重启不另增MUST | A15-09/10 |
+| 离线/异机/备份恢复 | E77已闭合获准事故后逻辑状态的独立Lima实际恢复：DB+本+36对象、原账号/媒体/新ID写/正常应用重启读回。E80新离线prefix已实际安装运行；E82已补新账号注册/登录/刷新/退出限定证据；E102在固定新低权DB完成54迁移/目录/单管理员及重复CLI拒绝无计数变化，11直接组件与3941同；E105固定20deb完整重验通过、E106新库管理员HTTP已验，E109/E110联合文件已安装、E111最终native loader通过；E114/E115新joint scanner五例及应用业务/退出/正常重启已成立，E122正常scanner入口实际完成，E123现有应用接回/GUI读回已成立；A2新实例配置和INSTALL闭包仍待，不以恢复成功替代；物理第二台/宿主OS重启不另增MUST | A15-09/10 |
 | 约定目标 | 精确https://timeline.all-too-well.com，当前身份UNKNOWN/R10未发布。原扫描VM停机/新附件限制仍有效；实际准入冲突按具体依赖处理，不旁路或静默降级 | A15-11 |
 | 所有者接收 | 其余73项技术/交付MUST（不含A15-12）、9条技术关键链及必需门禁和约定环境先就绪，再由李晓晨实际UAT并明确接收；此后A15-12才计PASS，PM冻结/技术审核不代签 | A15-12 |
 
-实际顺序：**NOW** 3941构建/实装/O2受影响尾段已闭合，继续异步编辑、并行/标准及dirty导航；整浏览器重开和双模式保护已由E100/E101闭合；E102空目标初始化已完成，继续20deb安装和scanner首次启动验证。Safari/性能/四宽、候选CI安全、完整离线包、有效条件下精确正式目标及所有者签收仍待。
+实际顺序：**NOW** 3941构建/实装/O2受影响尾段已闭合，继续异步编辑、并行/标准及dirty导航；整浏览器重开和双模式保护已由E100/E101闭合；E102空目标初始化、E119正常20deb提取、E122正常scanner启动与E123接回已完成，继续独立新实例私有配置和INSTALL闭包。Safari/性能/四宽、候选CI安全、完整离线包、有效条件下精确正式目标及所有者签收仍待。
 
 执行顺序为其余73项技术/交付MUST（不含A15-12）、9条技术关键链及必需门禁和约定环境先就绪，再进入李晓晨实际UAT；明确接收后A15-12才计PASS，发现原范围缺陷按影响修复/复验。V1最终完成仍要求74/74 MUST与9/9技术关键链PASS、必需交付阻碍/阻断缺陷清零、必需CI/安全/恢复门槛PASS、实际交付身份一致、约定环境可用且所有者明确接收。基线冻结不代表产品完成；生产/外部步骤仍受对应权限和安全条件约束。
 <!-- V1_BASELINE_DASHBOARD_END -->

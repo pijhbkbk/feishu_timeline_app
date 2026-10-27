@@ -8800,3 +8800,16 @@ E120收到所有者“已取消，合成更正原因仍在”，原文7b6608f1�
 已独占创建input-scanner-healthy-r30-r01并传已提交helper与两份公开data来源；旧cc59/5ee49/70584/59f7四直接成功原件新读hash相等，PG/Redis公开startup原件同。新scanner目录、target binding、prepare/import/start尚未生成或运行；六服务维持原身份。正在准备具体app接回及安全回退后再切换，不把静态审查或input目录存在计S1/S2完成。
 
 R14实际送达user723d76ad…，反馈090982a9…已读：D1提取与人工取消分支收口、不重做；下一实质结果应是S1/S2健康正常链，然后app本目标私有配置/INSTALL。同目录/boot/字节未变时可复用既有native/五例，不能改标新执行。相关Gmail查询仍为空，未发送邮件。57/9/7/1及5/9、产品PARTIAL不变。
+
+
+## 2026-10-27 — 健康扫描器实际正常链与现有应用接回（E122–E123）
+
+工具提交0b821efa1b89d39475a1b1636b1d8ab4a2cacf49修正旧stop没有boot字段的消费合同，以真实成功start+停前观察绑定；ec768e799edaf399c828b11f0e298ea20b0c327e仅允许精确Next15.5.28 title的尾NUL，不放宽非空argv。17本机fixture与独审680394/b23694成立，原-I缺失fixture失败及实际predecessor观察失败保留。
+
+E122实际ba840停前四owner→旧app908b正常stop→旧scannerfe2正常stop后，新目标prepare cd529/loader23de/importfaf3/start e3d762/verify0b48均exit0，独审f9575498。新scanner12124/t6467825，18库+2官方数据、73maps行通过；PG4039/Redis4075及boot保持。同软件、3CVD、25逻辑配置与编译客户端机器核对，旧五例78ab仅适用性复用，新五例NOT_EXECUTED。采样最大间隔1.144s与guest最低1632346112B明确记录，非硬quota。CVD48h截止2026-10-27T06:24:12Z未放宽；具体fallback已审但未执行。
+
+E123新current-instance配置适配后完成quota-pre→start/maps→verify/maps→quota-post；本次审查所列11条命令（含准备和scanner/应用读回）均exit0，实际独审77fc6c60。API12186/Web12187/t6470303、proxy12194/t6470304；严格CA四身份/15maps仍3941/db699/build12:28:07Z，原恢复DB/对象及数据服务不变。quota42行/三零/90日，只有quota helper声明无写入；并未关闭业务timer。该配置复制适配不算A2新私有配置。
+
+浏览器合成账号正常登录后v4完整DTO4011B/f8bd…与切换前逐字相同，B2=15/C2=24/F1标记及第二页绿色图实际可见；result89ac4062、GUI独审c7052ab0。6个RSC后续取消保留不计完成，console/异常0；旧dirty tab保留且没有提交标准。未重跑保存/Office/IME/整Chrome，未新增同run正常stop/restart。HTTPS45464已恢复，当前运行源码仍3941，工具提交不冒充应用身份。
+
+下一步A2新实例配置与INSTALL实际依赖闭包；E102/E106初始化与新DB认证继续复用，不机械重做。原57/9/7/1=74、10/15包、5/9链、6/10 P0及产品PARTIAL不变。无push/main/tag/远端CI/生产、原外盘Docker或所有者签收；未知untracked保留不读。
