@@ -1,0 +1,223 @@
+#!/usr/bin/env python3
+"""Bounded lifecycle tests; temporary local files are not Linux installation evidence."""
+import copy
+import importlib.util
+import json
+import os
+from pathlib import Path
+import tempfile
+import unittest
+from unittest.mock import patch
+
+SOURCE = Path(__file__).with_name('install_scanner.py')
+spec = importlib.util.spec_from_file_location('scanner_entry', SOURCE)
+m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+D = 'a'*64
+BOOT = '11111111-1111-1111-1111-111111111111'
+INPUT = Path('/home/recovery/input-scanner-test')
+
+def target():
+    return {'kind': 'OFFLINE_SCANNER_TARGET_V1', 'identity': m.IDENTITY, 'currentBootId': BOOT,
+        'paths': {'input': str(INPUT), 'software': '/home/recovery/software-test',
+            'sourceSoftware': '/home/recovery/source-test', 'dependencies': '/home/recovery/debs-test',
+            'scanner': '/home/recovery/scanner-test'}, 'run': 'first-start',
+        'applicationAssemblySha256': D, 'runtimeAssemblySha256': D, 'runtimeManifestSha256': D,
+        'nativeReceipt': {'path': '/home/recovery/native-test/result.json', 'sha256': D},
+        'dependencyReceipt': {'path': '/home/recovery/debs-evidence-test/result.json', 'sha256': D},
+        'dataServices': {role: {'receipt': {'path': '/home/recovery/data-test/'+role+'.json', 'sha256': D},
+            'owner': {'pid': 100+i, 'startTicks': 1000+i, 'uid': 109 if role == 'pg' else 1100}}
+            for i, role in enumerate(('pg', 'redis'))}, 'predecessor': {'mode': 'absent'},
+        'dataBaselineSha256': D, 'dataSourceMetadataSha256': D, 'dataSourceOriginSha256': D,
+        'budgetPolicySha256': D}
+
+class TargetBindingTests(unittest.TestCase):
+    def setUp(self):
+        self.here = patch.object(m, 'HERE', INPUT); self.here.start(); self.addCleanup(self.here.stop)
+    def test_fresh_target_needs_no_historical_failure_keys(self):
+        self.assertEqual(m.validate_target(target())['scanner'], Path('/home/recovery/scanner-test'))
+    def test_path_collisions_escape_and_shell_text_rejected(self):
+        for value in ['/home/recovery/software-test', '/home/recovery/../other', '/home/recovery/nested/target',
+                      '/home/recovery/bad name', '/home/recovery/target;cmd']:
+            with self.subTest(value=value):
+                v=target();v['paths']['scanner']=value
+                with self.assertRaises(RuntimeError):m.validate_target(v)
+    def test_wrong_identity_unknown_keys_and_invalid_pins_rejected(self):
+        for mutate in (lambda v:v.update(identity={}), lambda v:v.update(approvedForExecution=True),
+                       lambda v:v.update(nativeReceipt={'path':'/etc/passwd','sha256':D}),
+                       lambda v:v.update(dataBaselineSha256='old-pass')):
+            v=target();mutate(v)
+            with self.assertRaises(RuntimeError):m.validate_target(v)
+    def test_absence_cannot_carry_synthetic_stop_or_owners(self):
+        v=target();v['predecessor']['owners']={}
+        with self.assertRaises(RuntimeError):m.validate_target(v)
+    def test_pid_reuse_or_missing_owner_fields_not_normalized(self):
+        for row in ({'pid':True,'startTicks':123,'uid':1100},{'pid':123,'startTicks':'123','uid':1100},
+                    {'pid':123,'startTicks':123,'uid':0},{'pid':123,'uid':1100}):
+            with self.assertRaises(RuntimeError):m.validate_owner(row)
+
+class PhaseTests(unittest.TestCase):
+    def setUp(self):
+        self.patches=[]
+        for key,val in {'REPORT':{},'PIN_SHA':D,'PREP_SHA':'b'*64,'BOOT':BOOT,'CONFIG_SHA':'c'*64,
+                        'NATIVE_SHA':'d'*64,'TARGET_BINDING':target()}.items():
+            p=patch.object(m,key,val);p.start();self.patches.append(p)
+        self.addCleanup(lambda:[p.stop() for p in reversed(self.patches)])
+    def phase(self, name):
+        return {'phase':name,'identity':m.IDENTITY,'currentBootId':BOOT,'packagePinFileSha256':D,
+            'packageBinding':target(),'preparationSha256':'b'*64,'configSha256':'c'*64,
+            'jointDeliveryBinding':{'sha256':'e'*64},'nativeReceipt':{'sha256':'d'*64}}
+    def test_phase_receipt_rejects_cross_target_boot_prep_config_or_phase(self):
+        with patch.object(m,'pins',return_value=target()), patch.object(m,'joint_check',return_value={'sha256':'e'*64}):
+            m.phase_identity(self.phase('loader'),'loader')
+            for key in ('phase','identity','currentBootId','packagePinFileSha256','packageBinding',
+                        'preparationSha256','configSha256','jointDeliveryBinding','nativeReceipt'):
+                with self.subTest(field=key):
+                    value=self.phase('loader');value[key]='different'
+                    with self.assertRaises((RuntimeError,AttributeError)):m.phase_identity(value,'loader')
+    def full_dependency(self):
+        return {'status':'NEW_PREFIX_RUNTIME_PAYLOAD_AND_ELF_VERIFIED','target':'/home/recovery/debs-test',
+            'bootId':BOOT,'selectionSha256':'35784a08501e366fd440449a085935f751ecb0428e88ca9c34412dc35b720851',
+            'basePackageCount':122,'tree':{'regularFiles':2263,'symlinks':135,'treeVerified':True},
+            'loader':{'elfCount':134,'versionCommands':9},
+            'baseUpdate':{'overlaySha256':'7ce7c823871d70d0e84a5a5fe1ff162c6cbaaccb5d11525f6db826c2b489e6c1'}}
+    def test_payload_only_cannot_be_used_for_native_admission(self):
+        value=self.full_dependency();value.update(status='FIXED_RUNTIME_PAYLOAD_EXTRACTED_AND_READBACK_VERIFIED',loader=None)
+        with patch.object(m,'DEBS',Path('/home/recovery/debs-test')),patch.object(m,'read_json',return_value=(value,{})):
+            with self.assertRaisesRegex(RuntimeError,'ACTUAL_FULL_DEPENDENCY_SUCCESS_REQUIRED'):m.dependency_success()
+    def test_direct_success_does_not_recurse_historical_failures(self):
+        value=self.full_dependency();value['originalFailurePreserved']='/nonexistent/historical-failure.json'
+        with patch.object(m,'DEBS',Path('/home/recovery/debs-test')),patch.object(m,'read_json',return_value=(value,{'sha256':D})) as reader:
+            self.assertEqual(m.dependency_success(),{'sha256':D});self.assertEqual(reader.call_count,1)
+    def test_loader_and_import_inner_outer_identity_are_distinct(self):
+        v=self.phase('import');v.update(status='OFFLINE_SIGNATURE_IMPORT_VERIFIED_SCANNER_NOT_STARTED',
+            importReceiptSha256='f'*64,loaderReceipt={'sha256':D},signaturesImported=True,servicesStarted=False)
+        with (patch.object(m,'SCANNER_RUN','first-start'),patch.object(m,'EVENTS',Path('/home/recovery/events')),
+             patch.object(m,'loader_receipt',return_value={'sha256':D}),patch.object(m,'phase_identity'),
+             patch.object(m,'read_json',return_value=(v,{'sha256':'e'*64})),patch.object(m,'no_scanner_or_build') as safety):
+            with self.assertRaisesRegex(RuntimeError,'IMPORT_PHASE_RECEIPT_BINDING'):
+                m.start('first-start','e'*64,'loader',D,'import','e'*64,{}, {})
+            safety.assert_not_called()
+    def test_config_is_created_once_in_new_root_not_start_event(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp).resolve();off=root/'offline';scanner=off/'scanner';private=off/'private';logs=private/'scanner'
+            values={'HOME':root,'OFFLINE':off,'PRIVATE':private,'SCANNER':scanner,'LOGS':logs,
+                    'EVENTS':scanner/'events','CONFIG':scanner/'clamd.conf','UID':os.getuid(),
+                    'CONFIG_TEXT':'Foreground yes\n','CONFIG_SHA':m.sha(b'Foreground yes\n')}
+            from contextlib import ExitStack
+            with ExitStack() as stack:
+                for k,v in values.items():stack.enter_context(patch.object(m,k,v))
+                for name in ('package','resources','joint_check'):stack.enter_context(patch.object(m,name))
+                actual_file_info=m.file_info
+                stack.enter_context(patch.object(m,'file_info',side_effect=lambda *args,**kw:actual_file_info(*args,owner=os.getuid(),**kw)))
+                old=os.umask(0o077)
+                try:
+                    m.prepare();self.assertEqual((scanner/'clamd.conf').read_bytes(),b'Foreground yes\n')
+                    self.assertEqual(list((scanner/'events').iterdir()),[])
+                    with self.assertRaisesRegex(RuntimeError,'ENTIRE_NEW_SCANNER_TARGET_REQUIRED'):m.prepare()
+                finally:os.umask(old)
+    def test_execute_prepare_dispatch_uses_digest_function_and_no_history(self):
+        from contextlib import ExitStack
+        with ExitStack() as stack:
+            for obj,key,val in [(m.sys,'platform','linux'),(m.platform,'machine',lambda:'aarch64'),
+                                (m.os,'getuid',lambda:1100),(m.os,'getgid',lambda:1100),
+                                (m,'OUT',None),(m,'REPORT',{})]:
+                stack.enter_context(patch.object(obj,key,val))
+            stack.enter_context(patch.object(m.os,'pidfd_open',create=True))
+            stack.enter_context(patch.object(m.os,'environ',{}))
+            stack.enter_context(patch.object(m.signal,'signal'))
+            stack.enter_context(patch.object(m.signal,'setitimer'))
+            stack.enter_context(patch.object(m,'configure_target'))
+            stack.enter_context(patch.object(m,'joint_check',return_value={}))
+            stack.enter_context(patch.object(m,'pins',return_value=target()))
+            for name in ('data_baseline','fixed_owners','budget'):
+                stack.enter_context(patch.object(m,name))
+            prepared=stack.enter_context(patch.object(m,'prepare'))
+            old=os.umask(0o077)
+            try:m.execute(D,D,D,'-','prepare',[])
+            finally:os.umask(old)
+            prepared.assert_called_once_with()
+            self.assertIsNone(m.PREP_SHA)
+    def stop_bridge(self, mutate=None):
+        import datetime
+        from contextlib import ExitStack
+        v=target(); owners={role:{'pid':200+i,'startTicks':2000+i,'uid':1100}
+            for i,role in enumerate(('api','web','proxy','scanner'))}
+        pin=lambda name:{'path':'/home/recovery/stop-test/'+name+'.json','sha256':D}
+        v['predecessor']={'mode':'own-normal-stop','owners':owners,'applicationStop':pin('app'),
+            'scannerStop':pin('scanner'),'beforeStopObservation':pin('before')}
+        clock=m.dt.datetime.now(m.dt.timezone.utc)
+        before={'kind':'LIVE_PREDECESSOR_OWNERS_OBSERVED','bootIdBefore':BOOT,'bootIdAfter':BOOT,
+            'owners':owners,'allFourLive':True,'executableAndCwdVerified':True,'servicesStopped':False,
+            'at':(clock-datetime.timedelta(seconds=5)).isoformat()}
+        app={'status':'OWNED_APPLICATIONS_STOPPED','at':(clock-datetime.timedelta(seconds=4)).isoformat(),
+            'processes':[{'role':role,'pid':owners[role]['pid'],'startTicks':str(owners[role]['startTicks']),
+                'sigtermSent':True} for role in ('api','web','proxy')]}
+        scanner={'status':'NEW_PREFIX_SCANNER_NORMAL_STOPPED','currentBootId':BOOT,'forceKill':False,
+            'remainingOwnedGroup':[],'termination':{'status':'NORMAL_SIGTERM_EXIT'},'oldProcess':owners['scanner'],
+            'finishedAt':(clock-datetime.timedelta(seconds=3)).isoformat()}
+        if mutate:mutate(before,app,scanner)
+        dataowners={role:row['owner'] for role,row in v['dataServices'].items()}
+        records={'before':before,'app':app,'scanner':scanner,
+            'pg':{'status':'ORIGINAL_POSTGRES_NORMAL_START_SAME_CLUSTER','bootId':BOOT,
+                'readback':{'process':dataowners['pg']}},
+            'redis':{'status':'ORIGINAL_REDIS_NORMAL_START_PERSISTENCE_READY','bootId':BOOT,'process':dataowners['redis']}}
+        live={row['pid']:{**row,'state':'S'} for row in dataowners.values()}
+        with ExitStack() as stack:
+            for key,val in {'TARGET_BINDING':v,'DATA_OWNERS':dataowners,'PREVIOUS_OWNERS':owners}.items():
+                stack.enter_context(patch.object(m,key,val))
+            stack.enter_context(patch.object(m,'pins',return_value=v))
+            stack.enter_context(patch.object(m,'read_json',side_effect=lambda path,*a:(records[path.stem],{'sha256':D})))
+            stack.enter_context(patch.object(m.Path,'read_text',return_value=BOOT))
+            stack.enter_context(patch.object(m,'process',side_effect=lambda pid:live.get(pid)))
+            m.fixed_owners(require_stopped=True)
+    def test_same_boot_live_observation_connects_legacy_stop_without_fabricating_boot(self):
+        self.stop_bridge()
+    def test_cross_boot_owner_or_stop_order_bridge_rejected(self):
+        mutations=[lambda b,a,s:b.update(bootIdAfter='different'),
+                   lambda b,a,s:b.update(owners={}),
+                   lambda b,a,s:a['processes'][0].update(startTicks='9999'),
+                   lambda b,a,s:s.update(finishedAt='2000-01-01T00:00:00+00:00')]
+        for mutate in mutations:
+            with self.subTest(mutate=mutate):
+                with self.assertRaises(RuntimeError):self.stop_bridge(mutate)
+    def test_stop_dispatch_ignores_native_signature_data_service_and_budget_admission(self):
+        from contextlib import ExitStack
+        with tempfile.TemporaryDirectory() as temp, ExitStack() as stack:
+            events=Path(temp).resolve()/'events';events.mkdir()
+            for obj,key,val in [(m.sys,'platform','linux'),(m.platform,'machine',lambda:'aarch64'),
+                (m.os,'getuid',lambda:1100),(m.os,'getgid',lambda:1100),(m,'EVENTS',events),
+                (m,'SCANNER',events.parent),(m,'LOGS',events.parent),(m,'OUT',None),(m,'REPORT',{})]:
+                stack.enter_context(patch.object(obj,key,val))
+            stack.enter_context(patch.object(m.os,'pidfd_open',create=True))
+            stack.enter_context(patch.object(m.os,'environ',{}))
+            for name in ('signal','setitimer'):stack.enter_context(patch.object(m.signal,name))
+            for name in ('configure_target','directory'):stack.enter_context(patch.object(m,name))
+            stack.enter_context(patch.object(m,'joint_check',return_value={}))
+            stack.enter_context(patch.object(m,'pins',return_value=target()))
+            stack.enter_context(patch.object(m,'file_info',return_value={'sha256':D}))
+            guards=[stack.enter_context(patch.object(m,name,side_effect=AssertionError(name)))
+                    for name in ('data_baseline','fixed_owners','budget','package','prepared')]
+            stopped=stack.enter_context(patch.object(m,'stop',side_effect=lambda *a:m.REPORT.update(status='STOP_FIXTURE')))
+            old=os.umask(0o077)
+            try:m.execute(D,D,D,'-','stop',['first-start',D,'stop-event'])
+            finally:os.umask(old)
+            stopped.assert_called_once_with('first-start',D)
+            for guard in guards:guard.assert_not_called()
+            self.assertEqual(json.loads((events/'stop-stop-event/receipt.json').read_text())['status'],'STOP_FIXTURE')
+    def test_only_frozen_web_process_title_is_accepted_after_exact_owner_checks(self):
+        app={'artifact':'/home/recovery/software-test/application','identity':m.IDENTITY,
+             'packageBinding':{'manifestSha256':m.APP_MANIFEST_SHA}}
+        owner={'argv':['node','server.js'],'cwd':'/home/recovery/software-test/application/runtime/apps/web',
+               'executable':'/home/recovery/software-test/runtime/node24/bin/node'}
+        self.assertEqual(m.observed_argv_mode('web',['next-server (v15.5.28)'],owner,app),'fixed-3941-next-server-title')
+        self.assertEqual(m.observed_argv_mode('web',owner['argv'],owner,app),'exact-start-argv')
+        for role,argv,cwd in [('api',['next-server (v15.5.28)'],owner['cwd']),
+                              ('web',['next-server (v15.5.29)'],owner['cwd']),
+                              ('web',['next-server (v15.5.28)'],'/home/recovery/wrong')]:
+            with self.assertRaises(RuntimeError):m.observed_argv_mode(role,argv,{**owner,'cwd':cwd},app)
+    def test_owner_default_cwd_is_resolved_at_call_time(self):
+        import inspect
+        self.assertIsNone(inspect.signature(m.owner_matches).parameters['cwd'].default)
+        self.assertIsNone(inspect.signature(m.term_owned).parameters['cwd'].default)
+
+if __name__=='__main__':unittest.main()

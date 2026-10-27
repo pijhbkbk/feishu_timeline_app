@@ -49,3 +49,39 @@ python3 -I -B install_runtime_debs.py install --execute \
 ```text
 python3 -I -B scripts/deploy/offline/test_install_runtime_debs.py -v
 ```
+
+## 扫描器健康生命周期入口（尚待实际运行验证）
+
+`install_scanner.py` 保留 R03 的官方数据、locale、native/maps、容量、时效和正常 pidfd 停止实现，增加正常新目标准备及阶段连接。旧失败记录不作为输入，也不修改旧 R03。当前源实现只经过本机有界检查；不能据此关闭 S1/S2 或 A15-09。
+
+固定支持原 R30 的 Ubuntu ARM64、UID/GID 1100、3941 应用和精确运行时内容。`target-binding.json` 由外部明确目标并按全文 SHA 固定，包含以下三类事实：
+
+- 固定制品：应用身份、基包/应用清单、运行时叶集合、20 包与基础系统来源、loader、两项官方非执行数据、CVD 字节和安全阈值不由新目标重新认可。
+- 目标：`paths` 的 input/software/sourceSoftware/dependencies/scanner 均为 `/home/recovery` 互异直属目录；一个固定 run；外部真实 assembly/native/dependency 成功回执、budget policy、data baseline 摘要。输入与已有软件目录须独立验证；scanner 目录在 prepare 时必须不存在。
+- 本次身份：`currentBootId`、PG/Redis 的实际启动回执与 owner、目标 data baseline。阶段成功 SHA 分别传入后继，不回写基础 binding，避免循环自举。
+
+`dependencyReceipt` 必须是该目录、该 boot 的完整 `NEW_PREFIX_RUNTIME_PAYLOAD_AND_ELF_VERIFIED`，且具备134 ELF/9版本的真实结果；新 D1 payload-only 回执禁止作 native 准入。同目录与字节未变时可复用该目标已实测的依赖与最终 native 证明，记录 `priorActualLoaderReused=true`、`loaderReexecuted=false`，不必为阶段连接机械重跑。这里只读取直接成功回执；其历史审计引用不作为新的运行前置。
+
+输入目录包含 `install_scanner.py`、`target-binding.json`、`scanner-manifest.json`、`data-baseline.json`、`official-data-source-proof.json`、`host-budget-policy.json` 和各阶段新鲜的 `budget-<SHA>.json`。`scanner-manifest.json` 固定代码、两数据文件、完整 budget policy 的真实大小/摘要，以及目标 binding SHA、确定性配置 SHA。它由外部审查传入，不因自算 SHA 自动可信。运行时清单的目标字段可以变化，但全部170叶内容必须符合固定集合。
+
+命令形状（参数为实际全文 SHA，不是可直接执行的模板值）：
+
+```text
+python3 -I -B install_scanner.py --execute CONTENT_SHA TARGET_SHA BUDGET_SHA - prepare
+python3 -I -B install_scanner.py --execute CONTENT_SHA TARGET_SHA BUDGET_SHA PREP_SHA loader EVENT
+python3 -I -B install_scanner.py --execute CONTENT_SHA TARGET_SHA BUDGET_SHA PREP_SHA import EVENT LOADER_EVENT LOADER_SHA
+python3 -I -B install_scanner.py --execute CONTENT_SHA TARGET_SHA BUDGET_SHA PREP_SHA start RUN INNER_IMPORT_SHA LOADER_EVENT LOADER_SHA IMPORT_EVENT IMPORT_PHASE_SHA
+python3 -I -B install_scanner.py --execute CONTENT_SHA TARGET_SHA BUDGET_SHA PREP_SHA verify RUN START_SHA EVENT
+python3 -I -B install_scanner.py --execute CONTENT_SHA TARGET_SHA BUDGET_SHA PREP_SHA observe RUN START_SHA EVENT SECONDS
+python3 -I -B install_scanner.py --execute CONTENT_SHA TARGET_SHA BUDGET_SHA - stop RUN START_SHA EVENT
+```
+
+prepare 只在新根创建一次配置；loader/import/start 均绑定同一配置和准备回执。import 的 `IMPORT-RECEIPT.json` 内层 SHA 与事件 `receipt.json` 外层 SHA 分开传入，不能混用。每阶段写独占事件、失败保留、不自动重试；输出 `receipt` 是实际 JSON 文件路径。stop 只针对批准的本 run、同 boot 和实际 owner，保持可在 CVD 过期或 PG/Redis 不在线时正常停止，不强杀、不删除残留 PID 文件。
+
+`predecessor.mode=absent` 只适用于无在用前任的目标；loader/import/start 仍实查所有进程和端口。已有实例替换使用 `own-normal-stop`，绑定四个旧 owner、其实际 app/scanner 停止回执及 `beforeStopObservation`，不能把 absence 当绕过在用服务的开关。已有 app 停止回执没有 boot 字段，所以先在同 boot、四进程仍存活时生成观察：
+
+```text
+python3 -I -B install_scanner.py --observe-predecessor SOURCE_SHA EVENT
+```
+
+这个独立只读阶段读取已外部固定的 `predecessor-source.json`（固定 kind、boot、实际 applicationStart/scannerStart 的 path/SHA），核四 owner 的 PID/tick/UID/exe/cwd/argv，并保存同 boot 观察。它不停止任何服务，不读取环境变量/秘密，也不把观察标作停止成功。之后正常停止真实前任；新 binding 引用实际观察和停止回执。新安装的 absent 分支不需要这份替换专用材料。最终 INSTALL 及应用接入仍需完成，当前文档不是完整交付入口。
