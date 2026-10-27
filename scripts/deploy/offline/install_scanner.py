@@ -299,7 +299,9 @@ def observe_predecessor(source_sha, event):
 def observed_argv_mode(role, argv, expected, app):
     if argv == expected.get('argv'): return 'exact-start-argv'
     artifact = target_path(app.get('artifact'))
-    need(role == 'web' and argv == [WEB_PROCESS_TITLE] and
+    # Node rewrites its argv buffer and leaves its unused tail NUL-padded.
+    # Accept only that exact title plus an empty tail, never another argument.
+    need(role == 'web' and argv and argv[0] == WEB_PROCESS_TITLE and all(x == '' for x in argv[1:]) and
          app.get('identity') == IDENTITY and app.get('packageBinding', {}).get('manifestSha256') == APP_MANIFEST_SHA and
          expected.get('cwd') == str(artifact/'runtime/apps/web') and
          expected.get('executable') == str(artifact.parent/'runtime/node24/bin/node'), 'OBSERVER_ARGV')
@@ -1345,7 +1347,9 @@ if __name__ == '__main__':
     if len(sys.argv) == 4 and sys.argv[1] == '--observe-predecessor':
         try: observe_predecessor(sys.argv[2], sys.argv[3])
         except BaseException as error:
-            print(json.dumps({'status': 'OBSERVATION_FAILED_NO_SERVICE_ACTION', 'errorType': type(error).__name__}))
+            print(json.dumps({'status': 'OBSERVATION_FAILED_NO_SERVICE_ACTION', 'errorType': type(error).__name__,
+                              'errorCode': str(error) if isinstance(error, RuntimeError) and
+                              re.fullmatch(r'CHECK_[A-Z0-9_]+', str(error)) else type(error).__name__}))
             raise SystemExit(1)
     elif len(sys.argv) >= 7 and sys.argv[1] == '--execute' and sys.argv[6] in lengths and len(sys.argv)-7 == lengths[sys.argv[6]]:
         try: execute(sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5], sys.argv[6], sys.argv[7:])

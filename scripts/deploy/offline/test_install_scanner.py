@@ -219,6 +219,9 @@ class PhaseTests(unittest.TestCase):
         owner={'argv':['node','server.js'],'cwd':'/home/recovery/software-test/application/runtime/apps/web',
                'executable':'/home/recovery/software-test/runtime/node24/bin/node'}
         self.assertEqual(m.observed_argv_mode('web',['next-server (v15.5.28)'],owner,app),'fixed-3941-next-server-title')
+        self.assertEqual(m.observed_argv_mode('web',['next-server (v15.5.28)']+['']*85,owner,app),'fixed-3941-next-server-title')
+        for tail in (['extra'], ['', 'extra'], [' ', '']):
+            with self.assertRaises(RuntimeError):m.observed_argv_mode('web',['next-server (v15.5.28)']+tail,owner,app)
         self.assertEqual(m.observed_argv_mode('web',owner['argv'],owner,app),'exact-start-argv')
         for role,argv,cwd in [('api',['next-server (v15.5.28)'],owner['cwd']),
                               ('web',['next-server (v15.5.29)'],owner['cwd']),
