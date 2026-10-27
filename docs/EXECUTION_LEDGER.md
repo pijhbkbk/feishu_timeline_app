@@ -8789,3 +8789,14 @@ E119工具源码824903a232edc700e96813cff2a670464d3c2354、helper e865d39d…，
 E120收到所有者“已取消，合成更正原因仍在”，原文7b6608f1…和对应独审97e18429…。只标OWNER_REPORTED_PASS，未提交标准；原两次工具焦点超时保留。确认离开、返回/草稿合同恢复仍未验证，A15-03不升级。顺带更正A15-05历史代理tick：API/Web4484662、proxy4484663，以原start receipt和新/proc读回为准，不是新重启。
 
 扫描器正常入口正在写代码，app新私有配置和INSTALL实际依赖闭包仍待；A15-09及产品保持PARTIAL，57/9/7/1=74、10/15包、5/9链、6/10 P0不变。没有重跑正常IME/Office/整Chrome、启动原外盘Docker、push/main/tag/远端CI或生产动作。
+
+
+## 2026-10-27 — 扫描器正常入口源码收口，运行切换尚未执行（E121）
+
+新工具提交15c3580d0ad12b92bdaaaad05ef26b4be33e53ed，install_scanner.py SHA1e386217…、16本机有界fixture exit0、独审db3f7943…。保留39个R03函数AST，正常新目标改用外部真实binding和prepare→loader→内外import→start链；20deb必须完整native成功，payload-only不准入；当前70584/59f7直接成功schema纯兼容核对通过，不递归历史失败。旧namespace/boot/失败PID常量不作为新目标前置，实际两官方data/CTYPE/LOCPATH、48h、容量和正常pidfd stop不放宽。新前任观察只读实际四owner/同boot，补原appstop无boot的事实桥；不捏造旧字段。
+
+先修复digest局部名遮蔽；初两轮temp fixture分别因Mac路径别名与模拟owner默认值失败，原日志保留，后续修正测试输入不放宽产品guard。真实只读/proc表明Web已改写Next进程标题；实际3941 c6b3清单和c970fbf4包原件确认15.5.28，新增仅该web精确title+同PID/tick/UID/exe/cwd/manifest分支，其他角色/版本拒绝。源默认仍PLAN。
+
+已独占创建input-scanner-healthy-r30-r01并传已提交helper与两份公开data来源；旧cc59/5ee49/70584/59f7四直接成功原件新读hash相等，PG/Redis公开startup原件同。新scanner目录、target binding、prepare/import/start尚未生成或运行；六服务维持原身份。正在准备具体app接回及安全回退后再切换，不把静态审查或input目录存在计S1/S2完成。
+
+R14实际送达user723d76ad…，反馈090982a9…已读：D1提取与人工取消分支收口、不重做；下一实质结果应是S1/S2健康正常链，然后app本目标私有配置/INSTALL。同目录/boot/字节未变时可复用既有native/五例，不能改标新执行。相关Gmail查询仍为空，未发送邮件。57/9/7/1及5/9、产品PARTIAL不变。
