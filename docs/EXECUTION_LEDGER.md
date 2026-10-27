@@ -8778,3 +8778,14 @@ E117交付引用集合r02 manifest99af2662…及附录独审9bfdb836…已核89�
 13个本机边界用例及24个历史owner/134个历史loader输出的纯解析回归exit0；临时路径只模拟UID，不冒充Linux实装。独审4071c0db…、最终空行/README附录75de8a3c…；审查发现原256根上限低于完整scope，已改4096并覆盖344根，不缩分母。最终仅删一个EOF空行，AST与测试输入相同；首次git diff --cached --check的空行拒绝保留。当前完整host23724331008B/356根，小于24GiB；guest1290350592B低于安装前1409286144B门限，所以尚未执行新提取，不能报安装PASS。当前运行程序仍3941，不是该工具源码提交。
 
 R13已实际送达获准会话，user0d39f4e0…/反馈ec6f7d95…已读；反馈要求新入口正常路径实际执行、只针对安装依赖收口，A03先取得可核计算等待时序，不能继续盲试或延迟HTTP冒充。没有新邮件、重跑正常IME/Office/整Chrome、启动原外盘Docker或远端动作。Placeholder扫描12项均为测试代码/测试断言，未检出正式占位页面。57/9/7/1=74、10/15包、5/9链、6/10 P0、产品PARTIAL保持。
+
+
+## 2026-10-27 — 健康依赖入口实际安装与人工取消导航（E118–E120）
+
+E118仅将已完整归档的3941成功构建raw可恢复释放：完整gzip113280178B/03d803fd…及展开f38a…独审ff0399…；普通umount flags0、8传播挂载清空、loop1自动脱离独审5901a…。00:31Z fresh宿主持FD前后全hash与guest全源hash/metadataCAS/全UID无引用/无未知项后，唯一raw释放exit0，实际guest增加671100928B、六owner保持，独审3fee3885…。不计host释放或实际恢复，不碰其他盘/缓存。
+
+E119工具源码824903a232edc700e96813cff2a670464d3c2354、helper e865d39d…，新runtime-debs-r30-fresh-r01实际prepare→20包提取→完整文件/链接读回exit0，成功5e939263…、独审c80092cd…。16边界检查及payload阶段独审e5a8b82b…承接E117；此次2263文件/135链接、211103744B，23公开文件、唯一子命令dpkg-query。显式nativeChecks=NOT_EXECUTED/loader=null，不把134旧加载结果改标新prefix。新binding9be9f7fc…/完整372根policy7ca5922d…，host23745015808B<24GiB、guest1746821120B>1GiB，六owner不变。当前应用source仍3941，新工具提交不代表应用版本。
+
+E120收到所有者“已取消，合成更正原因仍在”，原文7b6608f1…和对应独审97e18429…。只标OWNER_REPORTED_PASS，未提交标准；原两次工具焦点超时保留。确认离开、返回/草稿合同恢复仍未验证，A15-03不升级。顺带更正A15-05历史代理tick：API/Web4484662、proxy4484663，以原start receipt和新/proc读回为准，不是新重启。
+
+扫描器正常入口正在写代码，app新私有配置和INSTALL实际依赖闭包仍待；A15-09及产品保持PARTIAL，57/9/7/1=74、10/15包、5/9链、6/10 P0不变。没有重跑正常IME/Office/整Chrome、启动原外盘Docker、push/main/tag/远端CI或生产动作。
