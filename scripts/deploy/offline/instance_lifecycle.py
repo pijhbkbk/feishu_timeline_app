@@ -98,7 +98,7 @@ def load(args, stopping=False):
     need(generation['selectionPlan']['sha256'] == m.PLAN_SHA and plan['identity'] == m.IDENTITY, 'FIXED_SOFTWARE_PLAN')
     m.memory(initial=args.phase == 'start')
     c.installed(plan, m.APP_SHA, m.ASSEMBLY_SHA, full=True)
-    m.native_admission(generation, c)
+    ctx['nativeAdmission'] = m.native_admission(generation, c, b.get('baseUpdate'))
     ctx['native'] = m.pinned(generation['nativeReceipt'])
     ctx['deps'] = m.pinned(generation['dependencyReceipt'])
     ctx['plan'] = plan
@@ -430,6 +430,7 @@ def start():
                 'bootId':b['bootId'],'run':ctx['run'],'instance':INSTANCE,'identity':m.IDENTITY,
                 'configurationReceipt':b['configurationReceipt'],'configurationRegenerated':False,
                 'configurationCreatedOnBoot':ctx['config']['bootId'],
+                'nativeAdmission':ctx['nativeAdmission'],
                 'owners':{**owners,'redis':owner},'identities':identities,'applicationMaps':appmaps,
                 'redisReadiness':redis_after,'quotaPost':qpost,'resourceObservation':resource_guard(),
                 'scannerApplicability':ctx['scanner']['applicability'],'preservedSixOwners':True,

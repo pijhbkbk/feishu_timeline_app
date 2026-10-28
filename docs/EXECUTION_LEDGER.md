@@ -8834,3 +8834,18 @@ R15已送达d52c3e75…，反馈fa79f09e…已读：认可E122/E123限定范围�
 45464当前不可用，原scanner签名已过48h；E122/E123和已接受Office/IME等保留历史适用范围，不改分母。源码检查点7ce1bb9保存A2生命周期及E124事实；随后修正持久配置创建boot与当前runtime混绑，15定向本机用例成立，仍需真实新启动。官方签名一次更新入口正在独审，保留旧签名和48h、严格CA、新独占目录、正常子进程收尾，不强杀或启动原外盘Docker。
 
 R16已实际送达851cdace…，反馈f461d503…已读：先恢复有效scanner/3941预览并读回v4的15/24/F1及图片，再用E124原配置完成A2。新CVD只补受影响CLEAN/EICAR，未变尺寸/解压边界按输入适用性复用，不重复134加载或新增VM重启目标。相关Gmail查询为空，未发邮件。产品仍57/9/7/1、5/9/PARTIAL，未push/main/tag/远端CI/production或所有者签收。证据在既有r30-healthy-scanner-execution-r01/resume-20261028-r01及对应host-preparation目录。
+
+
+## 2026-10-28 — 有效签名与预览恢复、精确系统包变化（E126–E128）
+
+E126官方freshclam一次及三份sigtool实际exit0，新收据3226cfa5…、签名实际独审da39c683…。daily28166构建2026-10-27T06:24:12Z，48h截止2026-10-29T06:24:12Z；旧库不覆盖。当前scanner1826/t257820、boot9fee751f…的prepare/loader/import/start/verify真实成立，start86c463a4…；原编译客户端CLEAN/EICAR结果d54795a6…实际成功。旧20MiB/解压边界按相同25逻辑配置及软件身份复用，不称新五例；首次探针缺少旧临时索引的失败保留，改用固定历史来源与当前编译字节。419采样/112844800B高水位/最大间隔0.254846s只是观察，非硬quota。
+
+E127原3941私有配置正常复用，无重建TLS/账号/数据。API2502/t343663、Web2503/proxy2510/t343664，start b3745264…，严格CA四身份/15可执行映射、quota42行/三零/90日成立，databaseWrites=false只限quota查询。Chrome原合成账号正常登录703898c1…v4，4011B/f8bd7714…与切换前完整DTO逐字同，15/24/F1和第二页绿色图实际可见；GUI35d05719…、缩略图1052B/3b7c154b…。两项ERR_ABORTED保留，console警告/错误0。原dirty标签不在本次Chrome起点中，不声称本次保留或丢失该草稿；没有提交标准或重跑保存/Office/IME/整Chrome。预览已可用；新增b2a消费代码独审f24fd7d6…、实际预览事后独审ac88208b…已完成，原先容量不足记录仍保留。
+
+E128 A2原配置首次start在创建任何A2子进程之前被CHECK_NATIVE_FILE_CHANGED拒绝。dpkg记录北京时间11:11:19将libbrotli1由1.1.0-2build2更新为1.1.0-2ubuntu0.1；不是本轮Codex发起，发起者UNKNOWN，未越权读取unattended日志。203库只两份Brotli变化；完整122包版本只该一项变化。已按保留Ubuntu公开keyring/gpgv→noble-security InRelease→完整Packages→精确339950B ARM64 deb（911411fb…）核来源；现场17项payload含三库/三链接逐项相同。134旧list日志只有libcurl受影响，本次仅其31 named依赖加根共32项读回与loader成功（8c88a81d…），其他原加载按适用性复用，未重提20包或重跑全部134。
+
+元数据首次缺Valid-Until、host路径、symlink 0777及/usr根目录解析失败均保留；上游未给Valid-Until如实记录，签名日期与有限7日调查窗口另列。首次loader退出0但多匿名首行的比较失败保留；修后沿既有同PID解析器及LD_DEBUG，实际r03 anonymousRoot=null，只称named输出相同，不称本次覆盖匿名分支。四个当前scanner/app进程maps公开原件均无Brotli；不是宣称安全更新已被所有进程加载。
+
+工具源码b2a36a0a4fe97a159c2aee32e511b5b88b450415与运行应用3941分开。新精确更新入口只允许显式绑定上述来源/定向加载证据，两旧native证明保留，其他库及58实际映射范围不扩大；8定向边界和11/15/3受影响本机检查成立，最初Mac uid/gid模拟失败保留。Brotli实际证据与最终源码独审921c6976…成立，支持下一步受控准入；A2仍未启动，不计运行验收。
+
+R17已送达7f176d27…、反馈0705f5f6…已读：接受预览恢复的限定事实，要求精确Brotli来源/实际映射/受影响加载及必要窄审后继续E124，不回退系统安全包、不重复初始化或VM重启。证据在既有host-preparation和execution的resume-20261028-r01子目录，保持375根预算分母。当前57/9/7/1、10/15包、5/9链、6/10 P0及产品PARTIAL不变，无push/main/tag/远端CI/production、原外盘Docker或所有者签收。

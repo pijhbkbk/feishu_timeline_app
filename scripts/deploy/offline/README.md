@@ -104,8 +104,15 @@ python3 -I -B prepare_instance.py --execute   --binding ACTUAL_PUBLIC_BINDING --
 
 `instance_lifecycle.py` 将普通 `start` 与 `stop` 分开，读取已生成的本实例配置；支持模块为 `instance_processes.py` 和 `instance_scanner.py`。新四进程用独立端口/日志/run记录，PG与已健康scanner只作为依赖。正常stop需要外部固定本次实际成功start回执，核同boot/四owner，禁止原六进程，不受CVD或容量过期阻止。启动失败对捕获的Redis owner独立正常收尾。此生命周期入口目前仅源码、目标边界回归与独立静态审查；实际运行结果另记，不能据此报告A2已完成。
 
-`shared_scanner_readback.py` 只调用已固定扫描器组件的只读验证链，不调用其启动窗口的失败清理，因此验证失败也不能停止共享扫描器。2026-10-28 续接现场的虚拟机已经停止，原 CVD 也已过期；当前生命周期仍有历史配置与当前 boot 混绑的问题。这里保存的入口是待修复源码检查点，不能拿旧进程或旧签名启动新窗口。恢复后的实际进程、有效签名及同配置重启另行记录。
+`shared_scanner_readback.py` 只调用已固定扫描器组件的只读验证链，不调用其启动窗口的失败清理，因此验证失败也不能停止共享扫描器。2026-10-28 续接已将历史配置出处与当前boot分开，当前scanner绑定V2使用新签名及实际CLEAN/EICAR，原生软件/尺寸边界仅按输入适用性复用。E126/E127已恢复原scanner和预览；A2自身普通启动及同配置重启另验。
 
 `refresh_signatures.py` 在新独占目录执行一次官方 FreshClam 更新及三份 sigtool 验签，保留旧库，48小时按 daily 内部签发时间计算。严格CA、一次尝试、600秒、完整宿主预算、guest 1GiB底线和320MiB采样窗口保留；子树通过独占session和pidfd正常收尾，不强杀。它不启动扫描器、不修改现有配置；实际加载新库及CLEAN/EICAR另验。控制器和支持模块须由外部固定已审源码摘要；无 --execute 只输出PLAN。
 
-普通实例启动已将配置创建boot保留为历史出处，当前runtime仍校验真实boot。scanner消费者的新boot/新签名适配尚待，不能仅据此称整条重启路径成立。
+普通实例启动将配置创建boot保留为历史出处，当前runtime仍校验真实boot。`resume_preview.py`仅复用原预览配置，原配置不重建；独立审查b2a消费修复和E127实际读回已成立，但不代A2或完整安装合同。
+
+
+## 精确基础包更新的运行适配
+
+A2 runtime binding 可显式携带 `baseUpdate`，包含 `result`、`metadata`、`analysis` 三个公开文件引用（各有path/bytes/sha256）。当前仅支持 E128 已认证的 Ubuntu ARM64 `libbrotli1 1.1.0-2ubuntu0.1`：固定来源、17项包payload实际读回和受影响libcurl定向loader证明；原122包/203库历史记录保持不变。只有两份确定的Brotli库允许使用新摘要，其alias、当前包版本、大小/权限/owner和其他依赖仍逐项检查。缺省不使用更新，任意后续版本或第三份库变化仍拒绝。
+
+调用者在程序之外完成来源及差异审查后，才可把三份实际证据加入新的运行binding；程序内固定摘要只识别证据，不代替外部批准。该补充不修改E124创建binding或私有配置，不重新安装系统包，不重跑134项loader，也不扩大实际运行map清单。普通停止不读取此更新或其他启动准入条件。`nativeAdmission` 在新的实际启动结果中同时保留旧native身份与当前基础包更新身份。A2实际运行结果仍以执行Ledger/矩阵为准。

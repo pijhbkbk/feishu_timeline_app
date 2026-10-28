@@ -169,7 +169,76 @@ def validate_database_state(state):
     return state
 
 
-def native_admission(b, c):
+def base_library_alias(path, owner=0):
+    alias = Path(path.removesuffix('.1.0'))
+    s = alias.lstat()
+    need(alias.parent.resolve() == alias.parent and stat.S_ISLNK(s.st_mode) and
+         s.st_uid == s.st_gid == owner and os.readlink(alias) == Path(path).name and
+         alias.resolve(strict=True) == Path(path), 'BASE_UPDATE_LIBRARY_ALIAS')
+
+
+def base_update(refs, combined):
+    """Opt in to one externally reviewed base-package update; retain old proofs.
+
+    These pins identify actual public source/loader evidence, not an approval.
+    The caller must review and bind them outside this executable before use.
+    No other package, library, or later version is admitted by this exception.
+    """
+    if refs is None:
+        return {}, None
+    pins = {'result': '8c88a81d3416506140f4f61f5afc3ff2942981bd16f95d873ad5bdbbaceeb723',
+            'metadata': '5a18c71bd16dffba909339fda86dda427e359d8ef3f44a651d37106a5370313e',
+            'analysis': 'dcf5c000d4934d7751969be45cd37eb5c5ed8835ddfde6877ce4a54631b0aa48'}
+    need(isinstance(refs, dict) and set(refs) == set(pins) and
+         all(refs[k].get('sha256') == v for k, v in pins.items()), 'EXACT_BASE_UPDATE_PINS')
+    proof, metadata, analysis = (pinned(refs[k]) for k in ('result', 'metadata', 'analysis'))
+    need(proof.get('kind') == 'R30_BROTLI_EXACT_UPDATE_AND_TARGETED_LOADER_V1' and
+         proof.get('status') == 'OFFICIAL_PAYLOAD_READBACK_AND_AFFECTED_LIBCURL_LOADER_PASS' and
+         proof.get('historicalDependencyReceiptSha256') == DEPS_SHA and
+         proof.get('metadataReceiptSha256') == pins['metadata'] and
+         proof.get('debAnalysisSha256') == pins['analysis'] and
+         proof.get('debSha256') == analysis.get('debSha256') == metadata.get('package', {}).get('SHA256') ==
+         '911411fb6fdfb4ab91dd4242f5a0a5e1f47b38e003a25c8dc7730238cb323e18' and
+         proof.get('loader', {}).get('exitCode') == 0 and
+         proof['loader'].get('normalizedNamedOutputEqualHistorical') is True and
+         analysis.get('dependenciesUnchangedFromRetainedClosure') is True and
+         metadata.get('baseCount') == 122 and
+         proof.get('baseDelta') == metadata.get('baseDelta') == [
+             {'package': 'libbrotli1:arm64', 'before': ['1.1.0-2build2', 'arm64', 'ii '],
+              'after': ['1.1.0-2ubuntu0.1', 'arm64', 'ii ']}], 'ACTUAL_BASE_UPDATE_PROOF')
+    rows = proof.get('changedNativeLibraries', [])
+    expected = {
+        '/usr/lib/aarch64-linux-gnu/libbrotlidec.so.1.1.0': (
+            'b7895f0fd4ad47408cb01fcb959ae6792804c15512526166f9bf48358714d0b5',
+            '18ab766ad16cd9806ff65a9397e6c09c6bea15d7e8ef1b7614bb4b6134a25e58', 67688),
+        '/usr/lib/aarch64-linux-gnu/libbrotlicommon.so.1.1.0': (
+            '016600f673a5d1a565cf98f608d8425033593ab78827eccc3384596f70386c8c',
+            '71fdb0eb9f2c43c777ed0e7ab30f0741f76861739798a618ab030c12c792919c', 198784)}
+    need(len(rows) == 2 and {r['path'] for r in rows} == set(expected), 'ONLY_TWO_BASE_LIBRARY_UPDATES')
+    updates = {}
+    for row in rows:
+        old, new, size = expected[row['path']]
+        need(row == {'path': row['path'], 'historicalSha256': old, 'currentSha256': new,
+                     'package': 'libbrotli1:arm64', 'version': '1.1.0-2ubuntu0.1',
+                     'bytes': size, 'mode': 0o644, 'uid': 0} and
+             combined.get(row['path'], {}).get('sha256') == old and
+             combined[row['path']].get('delivery') == 'exact-122-base', 'BASE_UPDATE_MATCHES_HISTORY')
+        # The .so aliases are package payload too; reject redirection despite an unchanged real file.
+        base_library_alias(row['path'])
+        updates[row['path']] = row
+    # Read only the selected public package identity. Never install, downgrade, or repair it here.
+    command = ['/usr/bin/dpkg-query', '-W', '-f=${Version}\t${Architecture}\t${db:Status-Abbrev}\n', 'libbrotli1:arm64']
+    q = subprocess.run(command, capture_output=True, timeout=10,
+                       env={'PATH': '/usr/bin:/bin', 'LANG': 'C', 'LC_ALL': 'C'})
+    need(q.returncode == 0 and q.stdout == b'1.1.0-2ubuntu0.1\tarm64\tii \n' and not q.stderr,
+         'CURRENT_BASE_PACKAGE_VERSION')
+    return updates, {'receiptSha256': pins['result'], 'metadataSha256': pins['metadata'],
+                     'debAnalysisSha256': pins['analysis'], 'updatedLibraries': 2,
+                     'package': 'libbrotli1:arm64', 'version': '1.1.0-2ubuntu0.1',
+                     'currentPackageQueryExitCode': q.returncode, 'targetedLoaderReexecutedNow': False}
+
+
+def native_admission(b, c, base_update_refs=None):
     dep = pinned(b['dependencyReceipt'])
     need(b['dependencyReceipt']['sha256'] == DEPS_SHA and
          dep.get('status') == 'NEW_PREFIX_RUNTIME_PAYLOAD_AND_ELF_VERIFIED' and
@@ -195,6 +264,7 @@ def native_admission(b, c):
     for row in rows + dependency_libraries:
         need(row['path'] not in combined or combined[row['path']]['sha256'] == row['sha256'], 'LIBRARY_PROOF_CONFLICT')
         combined[row['path']] = row
+    updates, update_evidence = base_update(base_update_refs, combined)
     for row in combined.values():
         memory()
         p = Path(row['path'])
@@ -203,12 +273,18 @@ def native_admission(b, c):
                                     'joint-declared-runtime-root', 'joint-private-clam'}, 'NATIVE_DELIVERY')
         owner = 0 if row['delivery'] == 'exact-122-base' else UID
         raw = read(p, 256*1024**2, owner=owner)
-        need(sha(raw) == row['sha256'], 'NATIVE_FILE_CHANGED')
+        update = updates.get(row['path'])
+        need(sha(raw) == (update['currentSha256'] if update else row['sha256']), 'NATIVE_FILE_CHANGED')
+        if update:
+            s = p.lstat()
+            need(len(raw) == update['bytes'] and s.st_uid == s.st_gid == 0 and
+                 stat.S_IMODE(s.st_mode) == 0o644, 'CURRENT_BASE_LIBRARY_METADATA')
     need(any(r['path'] == str(c.NODE) and r['sha256'] == c.NODE_SHA for r in rows), 'NATIVE_NODE')
     need(combined.get(str(LOADER), {}).get('sha256') == LOADER_SHA and
          combined.get(b['dependencies']+'/usr/bin/openssl', {}).get('sha256') == OPENSSL_SHA, 'TLS_TOOLCHAIN')
     return {'receiptSha256': NATIVE_SHA, 'dependencyReceiptSha256': DEPS_SHA,
-            'librariesReadBack': len(combined), 'loaderReexecuted': False}
+            'librariesReadBack': len(combined), 'loaderReexecuted': False,
+            'currentBaseUpdate': update_evidence}
 
 
 def budget(b, budget_ref):
