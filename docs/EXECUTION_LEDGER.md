@@ -8824,3 +8824,13 @@ E123新current-instance配置适配后完成quota-pre→start/maps→verify/maps
 新独占/home/recovery/offline-instance-r30-a2-fresh-r01实际创建单键DB输入、随机Redis6381凭据/空持久化目录、独立TLS与3594/3595/45474配置；没有读旧preview-private、重建库/账号或复制旧Redis密码。配置生成本身databaseCommands=false，前置确有只读SQL；native loaderReexecuted=false仅指不重跑134/原生验证，实际psql/TLS工具通过认证loader执行。所有私密值/摘要未进入公开回执；CA不改变宿主或浏览器信任。servicesStarted=false，不能称A2已可用/可重启。
 
 R15已送达d52c3e75…，反馈fa79f09e…已读：认可E122/E123限定范围，要求首次生成与普通启动分离、stop只新四owner、原E102管理员和本库读回、同配置普通重启后再闭合INSTALL。下一步按此实施，当前45464/source3941及产品57/9/7/1、5/9/PARTIAL不变；没有远端或原外盘Docker动作。
+
+## 2026-10-28 — 原VM中断后数据服务续接（E125）
+
+本次现场VM为Stopped，host日志在10月27日11:43:53北京时间收到SIGTERM并报VZ CanRequestStop unsupported，发起者UNKNOWN；并非本任务主动安排VM重启验收。按原授权正常启动同一VM，boot9fee751f-120b-451e-9b1b-b17eac34bf98，原PG控制systemId7700459308674415750保持、前态in production，不冒称此前正常关库或全库无损。
+
+原数据启动helper只改真实新boot和独占输出目录，源码cd136397…、独审ca2ce8b3…。实际PG8157ac69…/Redis34690e10…回执及读回逐字相同，PID1431/t19820与1467/t20074、loopback/认证/AOF配置正常；7执行记录exit0，实际独审6c16689e…。没有restore/init/migration/seed/flush/改密。完整375根host预算23872708608B<25769803776B；guest1617747968B和内存3766996992B只是前置观察，不冒充全过程峰值。
+
+45464当前不可用，原scanner签名已过48h；E122/E123和已接受Office/IME等保留历史适用范围，不改分母。源码检查点7ce1bb9保存A2生命周期及E124事实；随后修正持久配置创建boot与当前runtime混绑，15定向本机用例成立，仍需真实新启动。官方签名一次更新入口正在独审，保留旧签名和48h、严格CA、新独占目录、正常子进程收尾，不强杀或启动原外盘Docker。
+
+R16已实际送达851cdace…，反馈f461d503…已读：先恢复有效scanner/3941预览并读回v4的15/24/F1及图片，再用E124原配置完成A2。新CVD只补受影响CLEAN/EICAR，未变尺寸/解压边界按输入适用性复用，不重复134加载或新增VM重启目标。相关Gmail查询为空，未发邮件。产品仍57/9/7/1、5/9/PARTIAL，未push/main/tag/远端CI/production或所有者签收。证据在既有r30-healthy-scanner-execution-r01/resume-20261028-r01及对应host-preparation目录。

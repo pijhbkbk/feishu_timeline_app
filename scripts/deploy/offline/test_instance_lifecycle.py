@@ -31,6 +31,19 @@ class FakeSocket:
 class LifecycleTests(unittest.TestCase):
     def tearDown(self):lifecycle.ctx.clear()
 
+    def test_durable_configuration_survives_new_boot_without_rewriting_provenance(self):
+        old_boot='2552886b-e854-4f99-8b4e-bd307d8ddb92'
+        new_boot='9fee751f-120b-451e-9b1b-b17eac34bf98'
+        generation={'instance':lifecycle.INSTANCE,'software':'/home/recovery/software',
+                    'dependencies':'/home/recovery/dependencies','bootId':old_boot}
+        configuration={k:v for k,v in generation.items() if k!='dependencies'}
+        runtime={**generation,'bootId':new_boot}
+        lifecycle.configuration_origin(configuration,generation,runtime)
+        self.assertEqual(configuration['bootId'],old_boot)
+        for changes in ({'bootId':new_boot},{'software':'/home/recovery/other'}, {'instance':'/home/recovery/other'}):
+            with self.subTest(changes=changes),self.assertRaisesRegex(RuntimeError,'GENERATION_BINDING'):
+                lifecycle.configuration_origin({**configuration,**changes},generation,runtime)
+
     def test_plan_does_not_read_any_binding(self):
         p=subprocess.run([sys.executable,'-I','-B',lifecycle.__file__,'start','test'],capture_output=True,text=True)
         self.assertEqual(p.returncode,0);self.assertEqual(json.loads(p.stdout),{'status':'PLAN_ONLY'})

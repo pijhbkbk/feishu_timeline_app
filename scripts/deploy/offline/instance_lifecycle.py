@@ -92,8 +92,7 @@ def load(args, stopping=False):
         return
     config = m.pinned(b['configurationReceipt'], 65536)
     generation = m.pinned(config['targetBinding'], 65536)
-    need(generation['instance'] == INSTANCE and generation['software'] == b['software'] and
-         generation['dependencies'] == b['dependencies'] and generation['bootId'] == b['bootId'], 'GENERATION_BINDING')
+    configuration_origin(config, generation, b)
     ctx.update(config=config, generation=generation)
     plan = m.pinned(generation['selectionPlan'], 65536)
     need(generation['selectionPlan']['sha256'] == m.PLAN_SHA and plan['identity'] == m.IDENTITY, 'FIXED_SOFTWARE_PLAN')
@@ -110,6 +109,17 @@ def load(args, stopping=False):
     ctx['scanner'] = scanner.load(c, plan, {'path':args.scanner_binding,'sha256':args.scanner_sha256})
     validate_configuration()
     preserved()
+
+
+def configuration_origin(config, generation, runtime):
+    # Configuration is durable; its creation boot is historical provenance.
+    # The caller separately checks the runtime binding against the live boot.
+    need(generation['instance'] == config['instance'] == runtime['instance'] == INSTANCE and
+         generation['software'] == config['software'] == runtime['software'] and
+         generation['dependencies'] == runtime['dependencies'] and
+         config['bootId'] == generation['bootId'] and
+         re.fullmatch('[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}', generation['bootId']) is not None,
+         'GENERATION_BINDING')
 
 
 def preserved():
@@ -129,7 +139,7 @@ def validate_configuration():
     need(config['kind']=='R30_FRESH_INSTANCE_CONFIGURATION_RESULT_V1' and
          config['status']=='NEW_CONFIG_GENERATED_AND_COMPILED_CONFIG_VALIDATED_NOT_STARTED' and
          config['identity']==m.IDENTITY and config['instance']==INSTANCE and config['software']==b['software'] and
-         config['bootId']==b['bootId'], 'ACTUAL_CONFIGURATION')
+         config['bootId']==ctx['generation']['bootId'], 'ACTUAL_CONFIGURATION')
     for root in (p.R/'private',p.R/'objects',p.R/'redis',p.R/'tls'):
         m.canonical(root);s=root.stat();need(s.st_uid==s.st_gid==1100 and stat.S_IMODE(s.st_mode)==0o700, 'INSTANCE_DIRECTORY')
     env=json.loads(m.read(p.R/'private/runtime-env.json',16384,private=True))
@@ -419,6 +429,7 @@ def start():
         report={'status':'A2_FOUR_PROCESSES_STARTED_AND_VERIFIED','at':dt.datetime.now(dt.timezone.utc).isoformat(),
                 'bootId':b['bootId'],'run':ctx['run'],'instance':INSTANCE,'identity':m.IDENTITY,
                 'configurationReceipt':b['configurationReceipt'],'configurationRegenerated':False,
+                'configurationCreatedOnBoot':ctx['config']['bootId'],
                 'owners':{**owners,'redis':owner},'identities':identities,'applicationMaps':appmaps,
                 'redisReadiness':redis_after,'quotaPost':qpost,'resourceObservation':resource_guard(),
                 'scannerApplicability':ctx['scanner']['applicability'],'preservedSixOwners':True,

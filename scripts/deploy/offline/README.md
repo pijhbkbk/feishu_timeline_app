@@ -105,3 +105,7 @@ python3 -I -B prepare_instance.py --execute   --binding ACTUAL_PUBLIC_BINDING --
 `instance_lifecycle.py` 将普通 `start` 与 `stop` 分开，读取已生成的本实例配置；支持模块为 `instance_processes.py` 和 `instance_scanner.py`。新四进程用独立端口/日志/run记录，PG与已健康scanner只作为依赖。正常stop需要外部固定本次实际成功start回执，核同boot/四owner，禁止原六进程，不受CVD或容量过期阻止。启动失败对捕获的Redis owner独立正常收尾。此生命周期入口目前仅源码、目标边界回归与独立静态审查；实际运行结果另记，不能据此报告A2已完成。
 
 `shared_scanner_readback.py` 只调用已固定扫描器组件的只读验证链，不调用其启动窗口的失败清理，因此验证失败也不能停止共享扫描器。2026-10-28 续接现场的虚拟机已经停止，原 CVD 也已过期；当前生命周期仍有历史配置与当前 boot 混绑的问题。这里保存的入口是待修复源码检查点，不能拿旧进程或旧签名启动新窗口。恢复后的实际进程、有效签名及同配置重启另行记录。
+
+`refresh_signatures.py` 在新独占目录执行一次官方 FreshClam 更新及三份 sigtool 验签，保留旧库，48小时按 daily 内部签发时间计算。严格CA、一次尝试、600秒、完整宿主预算、guest 1GiB底线和320MiB采样窗口保留；子树通过独占session和pidfd正常收尾，不强杀。它不启动扫描器、不修改现有配置；实际加载新库及CLEAN/EICAR另验。控制器和支持模块须由外部固定已审源码摘要；无 --execute 只输出PLAN。
+
+普通实例启动已将配置创建boot保留为历史出处，当前runtime仍校验真实boot。scanner消费者的新boot/新签名适配尚待，不能仅据此称整条重启路径成立。
