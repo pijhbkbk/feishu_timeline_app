@@ -224,7 +224,10 @@ def execute(args):
     native = m.native_admission(generation,c)
     proof=m.pinned(generation['nativeReceipt']); allowed={r['path']:r for r in proof['libraries']}
     tools={name:c.TARGET/('runtime/clamav/bin/'+name) for name in ('freshclam','sigtool')}
-    for p in tools.values(): need(str(p) in allowed and sha(m.read(p,32*1024**2)) == allowed[str(p)]['sha256'], 'EXACT_NATIVE_TOOL')
+    for p in tools.values():
+        row=allowed.get(str(p),{})
+        need(type(row.get('bytes')) is int and 0<row['bytes']<=256*1024**2, 'EXACT_NATIVE_TOOL_SIZE')
+        need(sha(m.read(p,row['bytes'])) == row['sha256'], 'EXACT_NATIVE_TOOL')
     budget=m.budget(generation,{'path':args.budget,'bytes':Path(args.budget).stat().st_size,'sha256':args.budget_sha256})
     need(budget['hostAllocatedBytes']+WINDOW <= 24*1024**3 and m.shutil.disk_usage(HOME).free >= FLOOR+WINDOW, 'REFRESH_CAPACITY')
     ca=Path('/etc/ssl/certs/ca-certificates.crt')
