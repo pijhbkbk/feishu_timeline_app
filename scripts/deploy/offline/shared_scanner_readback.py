@@ -12,8 +12,8 @@ import re
 import sys
 import types
 
-SOURCE = Path('/home/recovery/input-scanner-healthy-r30-r03/install_scanner.py')
-SOURCE_SHA = '4ed7a3f3f27b847f3098f6c88a8b6d065b2425a659080b2c21116377e9b93abf'
+SOURCE = Path('/home/recovery/input-scanner-healthy-r30-r04/install_scanner.py')
+SOURCE_SHA = '2cfe22db63f62abc20067bf498ca34a45e2b0e83391cc6a42ea836a4e8d19f8c'
 
 
 def observe(args):
@@ -27,7 +27,7 @@ def observe(args):
     m.os.umask(0o077)
     m.configure_target(args.target_sha256)
     m.JOINT_SHA=m.digest(args.content_sha256);m.BUDGET_SHA=m.digest(args.budget_sha256);m.PREP_SHA=m.digest(args.preparation_sha256)
-    m.need(re.fullmatch('a2-[a-z0-9-]{1,48}',args.event),'A2_EVENT_NAME')
+    m.need(re.fullmatch('(?:a2|resume)-[a-z0-9-]{1,48}',args.event),'A2_EVENT_NAME')
     m.REPORT.update(kind='OFFLINE_SCANNER_HEALTHY_FIRST_START',phase='verify',startedAt=m.now(),identity=m.IDENTITY,
         jointDeliveryBinding=m.joint_check(),packagePinFileSha256=m.PIN_SHA,packageBinding=m.pins(),forceKill=False,
         appOrDatabaseAccess=False,signatureUpdates=False,sourceChanges=False,windowBytes=m.WINDOW_BYTES,
