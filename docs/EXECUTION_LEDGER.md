@@ -8813,3 +8813,14 @@ E123新current-instance配置适配后完成quota-pre→start/maps→verify/maps
 浏览器合成账号正常登录后v4完整DTO4011B/f8bd…与切换前逐字相同，B2=15/C2=24/F1标记及第二页绿色图实际可见；result89ac4062、GUI独审c7052ab0。6个RSC后续取消保留不计完成，console/异常0；旧dirty tab保留且没有提交标准。未重跑保存/Office/IME/整Chrome，未新增同run正常stop/restart。HTTPS45464已恢复，当前运行源码仍3941，工具提交不冒充应用身份。
 
 下一步A2新实例配置与INSTALL实际依赖闭包；E102/E106初始化与新DB认证继续复用，不机械重做。原57/9/7/1=74、10/15包、5/9链、6/10 P0及产品PARTIAL不变。无push/main/tag/远端CI/生产、原外盘Docker或所有者签收；未知untracked保留不读。
+
+
+## 2026-10-27 — A2首次私有配置实际生成（E124）
+
+工具10c6391cb9760a7d3908dd9be01b6a2f20fd2117及owner收紧f159c9763637e85452fc9ff132111a5f0088d9fc，11本机边界测试/最终独审626393cb。root独立预检首次因PG109的/proc/exe权限拒绝，原失败保留；r02只读PG PID/tick/UID，其余五进程exe/cwd，未扩权限或停止服务。
+
+03:16:06Z实际已认证psql只读查询：独立库truck_color_a1509_init_r29_20261026、低权role truck_color_init_r29、54完整迁移名与E102逐项同；单管理员/凭证/初始化保持，审计1/3，四对象相关计数全0。state14494da0…→外部binding aec910c0…→fresh完整375根budget c96165e6…→03:16:12Z实际新配置生成/编译validator/readback exit0，configuration03cf1213…，实际独审ffedfce8…。host23860404224B<24GiB并留64MiB，guest1631539200B、初始MemAvailable2346098688B。
+
+新独占/home/recovery/offline-instance-r30-a2-fresh-r01实际创建单键DB输入、随机Redis6381凭据/空持久化目录、独立TLS与3594/3595/45474配置；没有读旧preview-private、重建库/账号或复制旧Redis密码。配置生成本身databaseCommands=false，前置确有只读SQL；native loaderReexecuted=false仅指不重跑134/原生验证，实际psql/TLS工具通过认证loader执行。所有私密值/摘要未进入公开回执；CA不改变宿主或浏览器信任。servicesStarted=false，不能称A2已可用/可重启。
+
+R15已送达d52c3e75…，反馈fa79f09e…已读：认可E122/E123限定范围，要求首次生成与普通启动分离、stop只新四owner、原E102管理员和本库读回、同配置普通重启后再闭合INSTALL。下一步按此实施，当前45464/source3941及产品57/9/7/1、5/9/PARTIAL不变；没有远端或原外盘Docker动作。

@@ -99,4 +99,9 @@ python3 -I -B install_scanner.py --observe-predecessor SOURCE_SHA EVENT
 python3 -I -B prepare_instance.py --execute   --binding ACTUAL_PUBLIC_BINDING --binding-sha256 REVIEWED_BINDING_SHA   --budget ACTUAL_FRESH_BUDGET --budget-sha256 REVIEWED_BUDGET_SHA
 ```
 
-这一步不连接数据库或启动服务；数据库现状、对应对象目录、Redis/API/Web/代理启动及同配置重启另验。PG和已健康scanner是共享依赖，不能由新实例停止入口管理。当前配置入口有11项本机边界用例；实际新实例生成和运行验证仍待，不据夹具关闭A2或A15-09。
+这一步不连接数据库或启动服务；数据库现状、对应对象目录、Redis/API/Web/代理启动及同配置重启另验。PG和已健康scanner是共享依赖，不能由新实例停止入口管理。当前配置入口有11项本机边界用例；E124已从已提交工具在真实目标生成并通过产品配置校验；自身启动/原管理员/同配置正常重启仍待，不据配置生成关闭A2或A15-09。
+
+
+`instance_lifecycle.py` 将普通 `start` 与 `stop` 分开，读取已生成的本实例配置；支持模块为 `instance_processes.py` 和 `instance_scanner.py`。新四进程用独立端口/日志/run记录，PG与已健康scanner只作为依赖。正常stop需要外部固定本次实际成功start回执，核同boot/四owner，禁止原六进程，不受CVD或容量过期阻止。启动失败对捕获的Redis owner独立正常收尾。此生命周期入口目前仅源码、目标边界回归与独立静态审查；实际运行结果另记，不能据此报告A2已完成。
+
+`shared_scanner_readback.py` 只调用已固定扫描器组件的只读验证链，不调用其启动窗口的失败清理，因此验证失败也不能停止共享扫描器。2026-10-28 续接现场的虚拟机已经停止，原 CVD 也已过期；当前生命周期仍有历史配置与当前 boot 混绑的问题。这里保存的入口是待修复源码检查点，不能拿旧进程或旧签名启动新窗口。恢复后的实际进程、有效签名及同配置重启另行记录。
