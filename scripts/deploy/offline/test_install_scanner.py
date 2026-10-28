@@ -35,6 +35,19 @@ class TargetBindingTests(unittest.TestCase):
         self.here = patch.object(m, 'HERE', INPUT); self.here.start(); self.addCleanup(self.here.stop)
     def test_fresh_target_needs_no_historical_failure_keys(self):
         self.assertEqual(m.validate_target(target())['scanner'], Path('/home/recovery/scanner-test'))
+    def test_v2_keeps_historical_boot_separate_and_requires_signature_source(self):
+        value=target();value.update(kind='OFFLINE_SCANNER_TARGET_V2',
+            historicalEvidenceBootId='22222222-2222-2222-2222-222222222222',
+            signatureRefreshReceipt={'path':'/home/recovery/offline-signatures-fixture/result.json','sha256':D})
+        m.validate_target(value)
+        with patch.object(m,'TARGET_BINDING',value),patch.object(m,'BOOT',BOOT):
+            self.assertEqual(m.historical_boot(),value['historicalEvidenceBootId'])
+            self.assertEqual(m.BOOT,BOOT)
+        for key in ('historicalEvidenceBootId','signatureRefreshReceipt'):
+            changed=copy.deepcopy(value);del changed[key]
+            with self.subTest(key=key),self.assertRaises(RuntimeError):m.validate_target(changed)
+        value['kind']='OFFLINE_SCANNER_TARGET_V1'
+        with self.assertRaises(RuntimeError):m.validate_target(value)
     def test_path_collisions_escape_and_shell_text_rejected(self):
         for value in ['/home/recovery/software-test', '/home/recovery/../other', '/home/recovery/nested/target',
                       '/home/recovery/bad name', '/home/recovery/target;cmd']:
@@ -88,6 +101,33 @@ class PhaseTests(unittest.TestCase):
         value=self.full_dependency();value['originalFailurePreserved']='/nonexistent/historical-failure.json'
         with patch.object(m,'DEBS',Path('/home/recovery/debs-test')),patch.object(m,'read_json',return_value=(value,{'sha256':D})) as reader:
             self.assertEqual(m.dependency_success(),{'sha256':D});self.assertEqual(reader.call_count,1)
+
+    def test_previous_boot_native_proof_keeps_its_origin(self):
+        value=self.full_dependency();binding=target();binding.update(kind='OFFLINE_SCANNER_TARGET_V2',historicalEvidenceBootId=BOOT)
+        new_boot='33333333-3333-3333-3333-333333333333'
+        with patch.object(m,'TARGET_BINDING',binding),patch.object(m,'BOOT',new_boot),patch.object(m,'DEBS',Path('/home/recovery/debs-test')),patch.object(m,'read_json',return_value=(value,{'sha256':D})):
+            self.assertEqual(m.dependency_success(),{'sha256':D})
+            value['bootId']=new_boot
+            with self.assertRaisesRegex(RuntimeError,'ACTUAL_FULL_DEPENDENCY_SUCCESS_REQUIRED'):m.dependency_success()
+
+    def test_refresh_origin_requires_verified_fresh_complete_set_and_exit(self):
+        root='/home/recovery/offline-signatures-fixture'
+        binding=target();binding.update(kind='OFFLINE_SCANNER_TARGET_V2',signatureRefreshReceipt={'path':root+'/result.json','sha256':D})
+        receipt={'kind':'OFFICIAL_CVD_REFRESH_ONCE_V1','output':root,
+            'status':'OFFICIAL_SIGNATURE_REFRESH_VERIFIED_SCANNER_NOT_STARTED','identity':m.IDENTITY,
+            'signatureMaxAgeHours':48,'officialMirror':'database.clamav.net','maximumAttempts':1,
+            'tlsVerificationDisabled':False,'servicesStarted':False,'oldSignatureFilesChanged':False,
+            'commands':[{'name':name,'exitCode':0,'cleanup':{'exited':True},'forceKill':False} for name in ('freshclam-once','verify-main','verify-daily','verify-bytecode')],
+            'signatures':[{'name':name,'path':root+'/db/'+name,'bytes':10,'sha256':D,'version':1,'buildEpoch':100000} for name in m.CVD_PINS]}
+        with patch.object(m,'TARGET_BINDING',binding),patch.object(m,'read_json',side_effect=lambda *_:(receipt,{'sha256':D})),patch.object(m.time,'time',return_value=100001):
+            source,pins,reference=m.signature_sources()
+            self.assertEqual(str(source),root+'/db');self.assertEqual(len(pins),3)
+            self.assertEqual(reference,binding['signatureRefreshReceipt'])
+            receipt['commands'][0]['cleanup']['exited']=False
+            with self.assertRaisesRegex(RuntimeError,'SIGNATURE_REFRESH_COMMANDS'):m.signature_sources()
+            receipt['commands'][0]['cleanup']['exited']=True
+            daily=next(r for r in receipt['signatures'] if r['name']=='daily.cvd');daily['buildEpoch']=200000
+            with self.assertRaisesRegex(RuntimeError,'DAILY_EXPIRED_OR_FUTURE'):m.signature_sources()
     def test_loader_and_import_inner_outer_identity_are_distinct(self):
         v=self.phase('import');v.update(status='OFFLINE_SIGNATURE_IMPORT_VERIFIED_SCANNER_NOT_STARTED',
             importReceiptSha256='f'*64,loaderReceipt={'sha256':D},signaturesImported=True,servicesStarted=False)

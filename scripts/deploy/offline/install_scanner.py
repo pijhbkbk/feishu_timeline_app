@@ -184,7 +184,11 @@ def validate_target(value):
                 'runtimeAssemblySha256', 'runtimeManifestSha256', 'nativeReceipt', 'dependencyReceipt',
                 'dataServices', 'predecessor', 'dataBaselineSha256', 'dataSourceMetadataSha256',
                 'dataSourceOriginSha256', 'budgetPolicySha256'}
-    need(isinstance(value, dict) and set(value) == required and value['kind'] == 'OFFLINE_SCANNER_TARGET_V1'
+    if isinstance(value, dict) and value.get('kind') == 'OFFLINE_SCANNER_TARGET_V2':
+        required |= {'historicalEvidenceBootId', 'signatureRefreshReceipt'}
+        need(re.fullmatch(r'[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}', value.get('historicalEvidenceBootId','')) is not None, 'HISTORICAL_BOOT_FORMAT')
+        receipt_pin(value.get('signatureRefreshReceipt'))
+    need(isinstance(value, dict) and set(value) == required and value['kind'] in ('OFFLINE_SCANNER_TARGET_V1','OFFLINE_SCANNER_TARGET_V2')
          and value['identity'] == IDENTITY, 'TARGET_BINDING_SCHEMA')
     need(isinstance(value['currentBootId'], str) and
          re.fullmatch(r'[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}', value['currentBootId']), 'BOOT_FORMAT')
@@ -211,6 +215,41 @@ def validate_target(value):
         receipt_pin(prior['beforeStopObservation'])
         for row in prior['owners'].values(): validate_owner(row)
     return parsed
+
+
+def historical_boot():
+    return TARGET_BINDING.get('historicalEvidenceBootId', BOOT)
+
+
+def signature_sources():
+    if TARGET_BINDING['kind'] == 'OFFLINE_SCANNER_TARGET_V1':
+        return SOURCE_SOFTWARE/'scanner/signatures', CVD_PINS, None
+    pin=TARGET_BINDING['signatureRefreshReceipt']
+    value,meta=read_json(Path(pin['path']),pin['sha256'],1024**2)
+    root=target_path(value.get('output'),True)
+    need(root.name.startswith('offline-signatures-') and Path(pin['path'])==root/'result.json' and
+         value.get('kind')=='OFFICIAL_CVD_REFRESH_ONCE_V1' and
+         value.get('status')=='OFFICIAL_SIGNATURE_REFRESH_VERIFIED_SCANNER_NOT_STARTED' and
+         value.get('identity')==IDENTITY and value.get('signatureMaxAgeHours')==48 and
+         value.get('officialMirror')=='database.clamav.net' and value.get('maximumAttempts')==1 and
+         value.get('tlsVerificationDisabled') is False and value.get('servicesStarted') is False and
+         value.get('oldSignatureFilesChanged') is False, 'VERIFIED_SIGNATURE_REFRESH')
+    commands=value.get('commands',[])
+    need(len(commands)==4 and {r.get('name') for r in commands}=={'freshclam-once','verify-main','verify-daily','verify-bytecode'} and
+         all(r.get('exitCode')==0 and r.get('cleanup',{}).get('exited') is True and r.get('forceKill') is False for r in commands), 'SIGNATURE_REFRESH_COMMANDS')
+    rows=value.get('signatures',[])
+    need(len(rows)==3 and {r.get('name') for r in rows}==set(CVD_PINS), 'REFRESH_EXACT_SIGNATURE_SET')
+    selected={}
+    for row in rows:
+        name=row['name']; need(row.get('path')==str(root/'db'/name) and type(row.get('bytes')) is int and
+             0<row['bytes']<=128*1024**2 and type(row.get('version')) is int and row['version']>0 and
+             type(row.get('buildEpoch')) is int, 'REFRESH_SIGNATURE_FIELDS')
+        digest(row.get('sha256'))
+        if name=='daily.cvd':need(0<=time.time()-row['buildEpoch']<=MAX_AGE,'DAILY_EXPIRED_OR_FUTURE')
+        selected[name]={k:row[k] for k in ('bytes','sha256','version','buildEpoch')}
+    need(sum(r['bytes'] for r in selected.values())<=192*1024**2,'REFRESH_SIGNATURE_TOTAL')
+    REPORT['signatureRefreshReceipt']=meta
+    return root/'db',selected,{'path':pin['path'],'sha256':pin['sha256']}
 
 
 def validate_owner(row):
@@ -370,12 +409,16 @@ def package():
     for key in required:
         need(NATIVE_LIBRARIES.get(str(SOFTWARE/key), {}).get('sha256') == checked[key]['sha256'], 'CLAM_ROOT_NATIVE_BINDING')
     need(file_info(LOADER, 8*1024**2, owner=0)['sha256'] == LOADER_SHA, 'EXACT_LOADER')
-    source_manifest, _ = read_json(SOURCE_SOFTWARE/'MANIFEST.json', BASE_MANIFEST_SHA, 16*1024**2)
-    source_rows = {x['path']: x for x in source_manifest['entries']}
-    for name, expected in CVD_PINS.items():
-        key = 'scanner/signatures/'+name; row = source_rows.get(key, {})
-        need(row.get('type') == 'file' and all(row.get(k) == expected[k] for k in ['bytes', 'sha256']), 'ORIGINAL_CVD_PIN')
-        index[key] = row
+    _,signature_pins,refresh_ref=signature_sources()
+    if refresh_ref is None:
+        source_manifest, _ = read_json(SOURCE_SOFTWARE/'MANIFEST.json', BASE_MANIFEST_SHA, 16*1024**2)
+        source_rows = {x['path']: x for x in source_manifest['entries']}
+        for name, expected in signature_pins.items():
+            key = 'scanner/signatures/'+name; row = source_rows.get(key, {})
+            need(row.get('type') == 'file' and all(row.get(k) == expected[k] for k in ['bytes', 'sha256']), 'ORIGINAL_CVD_PIN')
+            index[key] = row
+    else:
+        for name,expected in signature_pins.items():index['scanner/signatures/'+name]={'type':'file',**expected}
     REPORT.update(packageBinding=bound, scannerPackageFiles=checked)
     return index, checked
 
@@ -666,7 +709,9 @@ def loader_run(name, binary):
 def signatures(index, import_sha):
     directory(DB)
     imported, meta = read_json(DB/'IMPORT-RECEIPT.json', import_sha)
-    need(imported.get('status') == 'OFFLINE_SIGNATURE_IMPORT_VERIFIED_SCANNER_NOT_STARTED' and
+    _,_,refresh_ref=signature_sources()
+    need(imported.get('signatureRefreshReceipt')==refresh_ref and
+         imported.get('status') == 'OFFLINE_SIGNATURE_IMPORT_VERIFIED_SCANNER_NOT_STARTED' and
          imported.get('identity') == IDENTITY and imported.get('manifestSha256') == BASE_MANIFEST_SHA and
          imported.get('target') == str(DB) and imported.get('targetBindingSha256') == PIN_SHA and
          imported.get('preparationSha256') == PREP_SHA and imported.get('configSha256') == CONFIG_SHA and
@@ -721,7 +766,7 @@ def data_baseline():
     need(isinstance(DATA_BASELINE_SHA, str) and re.fullmatch(r'[a-f0-9]{64}', DATA_BASELINE_SHA), 'EXTERNAL_DATA_BASELINE_SHA')
     value, meta = read_json(HERE/'data-baseline.json', DATA_BASELINE_SHA, 32768, 0o600)
     need(value.get('kind') == 'EXACT_TWO_PACKAGE_OWNED_NONEXEC_DATA_BASELINE' and
-         value.get('identity') == IDENTITY and value.get('bootId') == BOOT and
+         value.get('identity') == IDENTITY and value.get('bootId') == historical_boot() and
          value.get('nativeReceiptSha256') == NATIVE_SHA and
          value.get('sourceMetadataSha256') == TARGET_BINDING['dataSourceMetadataSha256'] and
          value.get('sourceOriginSha256') == TARGET_BINDING['dataSourceOriginSha256'] and
@@ -915,7 +960,7 @@ def phase_identity(value, phase):
 def dependency_success():
     pin = TARGET_BINDING['dependencyReceipt']; value, meta = read_json(Path(pin['path']), pin['sha256'], 4*1024**2)
     need(value.get('status') == 'NEW_PREFIX_RUNTIME_PAYLOAD_AND_ELF_VERIFIED' and
-         value.get('target') == str(DEBS) and value.get('bootId', value.get('platform', {}).get('bootId')) == BOOT and
+         value.get('target') == str(DEBS) and value.get('bootId', value.get('platform', {}).get('bootId')) == historical_boot() and
          value.get('selectionSha256') == '35784a08501e366fd440449a085935f751ecb0428e88ca9c34412dc35b720851' and
          value.get('basePackageCount') == 122 and value.get('tree') ==
          {'regularFiles': 2263, 'symlinks': 135, 'treeVerified': True} and
@@ -1089,7 +1134,7 @@ def native_proof():
     global NATIVE_LIBRARIES
     b = pins(); dependency_success(); proof, info = read_json(NATIVE_RESULT, b['nativeReceipt']['sha256'], 4*1024**2)
     need(proof.get('status') == 'TEN_FINAL_TARGET_ELF_PROBES_VERIFIED_NOT_STARTED' and
-         proof.get('bootId') == BOOT and proof.get('applicationAssemblyReceiptSha256') == APP_RECEIPT_SHA and
+         proof.get('bootId') == historical_boot() and proof.get('applicationAssemblyReceiptSha256') == APP_RECEIPT_SHA and
          proof.get('jointRuntimeAssemblyReceiptSha256') == RUNTIME_RECEIPT_SHA and
          proof.get('runtimeManifestSha256') == RUNTIME_MANIFEST_SHA and
          proof.get('runtimeReceiptSha256') == DEBS_RECEIPT_SHA and
@@ -1113,8 +1158,16 @@ def fixed_owners(require_stopped=False):
     alive = []
     for role, expected in DATA_OWNERS.items():
         pin = TARGET_BINDING['dataServices'][role]['receipt']; record, meta = read_json(Path(pin['path']), pin['sha256'])
-        wanted = 'ORIGINAL_POSTGRES_NORMAL_START_SAME_CLUSTER' if role == 'pg' else 'ORIGINAL_REDIS_NORMAL_START_PERSISTENCE_READY'
-        need(record.get('status') == wanted and record.get('bootId') == BOOT, 'ACTUAL_DATA_START_RECEIPT')
+        wanted = {'ORIGINAL_POSTGRES_NORMAL_START_SAME_CLUSTER'} if role == 'pg' else {'ORIGINAL_REDIS_NORMAL_START_PERSISTENCE_READY'}
+        if TARGET_BINDING['kind']=='OFFLINE_SCANNER_TARGET_V2':
+            wanted.add('ORIGINAL_POSTGRES_STARTED_NEW_BOOT' if role=='pg' else 'ORIGINAL_REDIS_STARTED_NEW_BOOT')
+        need(record.get('status') in wanted and record.get('bootId') == BOOT, 'ACTUAL_DATA_START_RECEIPT')
+        if record.get('status')=='ORIGINAL_POSTGRES_STARTED_NEW_BOOT':
+            need(record.get('readback',{}).get('systemId')=='7700459308674415750' and
+                 record['readback'].get('data')=='/var/lib/postgresql/14/main' and record['readback'].get('port')=='5432', 'NEW_BOOT_ORIGINAL_PG')
+        if record.get('status')=='ORIGINAL_REDIS_STARTED_NEW_BOOT':
+            need(record.get('authenticatedPing') is True and record.get('persistence')=={'loading':'0','aof_enabled':'1','aof_last_write_status':'ok'} and
+                 record.get('noFlushResetRepairOrConfigChanges') is True,'NEW_BOOT_ORIGINAL_REDIS')
         owner = record.get('readback', {}).get('process', {}) if role == 'pg' else record.get('process', {})
         need(all(str(owner.get(k)) == str(v) for k, v in expected.items()), 'DATA_START_RECEIPT_OWNER')
         REPORT.setdefault('dataServiceReceipts', {})[role] = meta
@@ -1288,15 +1341,18 @@ def run_sigtool(name, source):
 def import_signatures(event, index):
     no_scanner_or_build();fixed_owners(require_stopped=True);need(not listeners(), 'PORT_3310_OCCUPIED')
     need(not DB.exists() and not DB.is_symlink(), 'NEW_CVD_DIRECTORY_REQUIRED')
+    source_dir,signature_pins,refresh_ref=signature_sources()
     DB.mkdir(mode=0o700);rows = [];report = {'status': 'FAILED_PRESERVED', 'startedAt': now(), 'networkUsed': False, 'freshclamExecuted': False, 'clamdStarted': False}
     try:
         for name in ['main.cvd', 'daily.cvd', 'bytecode.cvd']:
-            source = SOURCE_SOFTWARE/'scanner/signatures'/name;expected = CVD_PINS[name]
+            source = source_dir/name;expected = signature_pins[name]
             original = file_info(source, 128*1024**2)
             need(all(original[k] == expected[k] for k in ['bytes', 'sha256']), 'SOURCE_CVD_BYTES')
             with source.open('rb') as stream: fields = stream.read(512).decode('ascii').rstrip(' \x00\r\n').split(':')
             need(len(fields) == 9 and fields[0] == 'ClamAV-VDB', 'CVD_HEADER')
             header = {'version': int(fields[2]), 'buildEpoch': int(fields[8])}
+            if refresh_ref is not None:
+                need(all(header[key]==expected[key] for key in ('version','buildEpoch')), 'REFRESH_CVD_HEADER_IDENTITY')
             if name == 'daily.cvd': need(0 <= time.time()-header['buildEpoch'] <= MAX_AGE, 'DAILY_EXPIRED_OR_FUTURE')
             verified = run_sigtool(name[:-4], source)
             before = source.stat(); fd = os.open(source, os.O_RDONLY|os.O_NOFOLLOW)
@@ -1311,10 +1367,11 @@ def import_signatures(event, index):
             need(copied == expected['bytes'] and file_info(source, 128*1024**2) == original and
                  file_info(DB/name, 128*1024**2, 0o600)['sha256'] == expected['sha256'], 'CVD_SOURCE_OR_COPY_CHANGED')
             rows.append({'name': name, **expected, **header, 'sigtoolExitCode': 0, 'verificationLogSha256': verified['sha256']})
-        need(sum(r['bytes'] for r in rows) == 112798155, 'THREE_CVD_TOTAL')
+        need(sum(r['bytes'] for r in rows) == sum(r['bytes'] for r in signature_pins.values()), 'THREE_CVD_TOTAL')
         report.update(status='OFFLINE_SIGNATURE_IMPORT_VERIFIED_SCANNER_NOT_STARTED', identity=IDENTITY,
                       targetBindingSha256=PIN_SHA, preparationSha256=PREP_SHA, configSha256=CONFIG_SHA, currentBootId=BOOT,
-                      manifestSha256=BASE_MANIFEST_SHA, signatures=rows, target=str(DB), sourceSoftware=str(SOURCE_SOFTWARE))
+                      manifestSha256=BASE_MANIFEST_SHA, signatures=rows, target=str(DB), sourceSoftware=str(SOURCE_SOFTWARE),
+                      signatureSourceDirectory=str(source_dir),signatureRefreshReceipt=refresh_ref)
         REPORT.update(status='OFFLINE_SIGNATURE_IMPORT_VERIFIED_SCANNER_NOT_STARTED', signaturesImported=True, servicesStarted=False)
     finally:
         report['finishedAt'] = now();REPORT['importReceiptSha256'] = write_new(DB/'IMPORT-RECEIPT.json', report)
