@@ -130,3 +130,18 @@ D1、首次配置和签名刷新现均支持显式 `baseUpdate` 三引用，使�
 
 
 `delivery_check.py --delivery-root ABSOLUTE_DELIVERY_ROOT --manifest-sha256 EXTERNALLY_REVIEWED_SHA`只读核独立交付目录：每个明确文件的大小、完整SHA、稳定FD、无链接及未列出文件，以及声明入口的program/support/input文件是否都在该集合。不可读子目录直接拒绝，不能静默漏检。它不从Git或原源码目录取文件，不联网/访问VM/安装，不自行推断任意代码的传递依赖；真实安装入口及适用目标仍须由INSTALL和独审分别说明。
+
+## 从交付目录调用现有批准目标
+
+`delivery_host.py` 消除正常调用对源码 checkout、Git、宿主旧 `execute-host` 和固定 repo 路径的依赖。交付根、manifest 全文 SHA、宿主 binding 全文 SHA、Lima CLI/其 SHA、LIMA_HOME、VM 和当前 guest boot 均显式传入。只接受包内声明的五类正常入口；公开输入必须已在绑定中的 guest 路径，逐一校验字节与同目录支持模块后才调用。没有自动传文件、建 VM、改私有配置或失败重试。
+
+默认调用只允许 `prepare_instance.py --check-native-admission` 的精确参数，实际走已提交配置入口；输出目录独占，记录完整包检查、全范围预算、调用意图和真实 stdout/stderr/退出码。`--execute-reviewed` 才能调用 binding 中另行核准的普通命令，flag 本身不是授权。原 guest 脚本的预算、时效、对象及配置保护继续执行；过期预算须由调用者以新公开文件/外部绑定提供，不用历史预算充数。宿主这层预算是独立观察，不伪称旧 reader 执行，也不自动替换 guest 原策略。
+
+```text
+python3 -I -B DELIVERY_ROOT/operations/delivery_host.py \
+  --delivery-root DELIVERY_ROOT --manifest-sha256 EXTERNAL_MANIFEST_SHA \
+  --binding EXPLICIT_HOST_BINDING --binding-sha256 EXTERNAL_BINDING_SHA \
+  --output NEW_PUBLIC_EVIDENCE_DIRECTORY
+```
+
+当前合同明确限定已批准的 Ubuntu 24.04 ARM64 目标和实际软件/依赖 prefix。绑定中的绝对 guest 路径是目标事实，不能把旧回执换路径当新安装。原 assembly helper 仅留作历史组装来源；本次不新增任意 prefix、第二台机器或另一轮组装/134 loader 验收要求。E130 与已验证安装执行按未变输入复用，不能将本入口的只读结果标成新安装或生命周期重跑。
