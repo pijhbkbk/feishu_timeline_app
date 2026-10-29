@@ -95,6 +95,30 @@ class LifecycleTests(unittest.TestCase):
         lifecycle.ctx['p']=types.SimpleNamespace(matches=lambda _:False)
         with self.assertRaisesRegex(RuntimeError,'OWN_REDIS_PROCESS'):lifecycle.redis_listener({'pid':9})
 
+    def test_stopped_redis_time_wait_is_not_a_live_listener(self):
+        header=b'  sl local_address rem_address st tx_queue rx_queue tr tm_when retrnsmt uid timeout inode\n'
+        row=b' 0: 0100007F:18ED 0100007F:C123 06 00000000:00000000 03:00000001 00000000 1100 0 0\n'
+        with patch.object(Path,'read_bytes',side_effect=[header+row,header]):
+            self.assertEqual(lifecycle.redis_listener_closed(),{'listenerAbsent':True,'timeWaitConnections':1})
+
+    def test_any_redis_listener_blocks_stop_success(self):
+        header=b'header\n'
+        for family in ('ipv4','ipv6'):
+            address=b'00000000' if family=='ipv4' else b'00000000000000000000000000000000'
+            row=b' 0: '+address+b':18ED 00000000:0000 0A 00000000:00000000 00:00000000 00000000 1100 0 99\n'
+            with patch.object(Path,'read_bytes',side_effect=[header+row,header] if family=='ipv4' else [header,header+row]):
+                with self.assertRaisesRegex(RuntimeError,'OWN_REDIS_LISTENER_STILL_OPEN'):
+                    lifecycle.redis_listener_closed()
+
+    def test_stopped_redis_does_not_signal_a_missing_pid(self):
+        lifecycle.ctx.update(p=types.SimpleNamespace(matches=Mock()),m=types.SimpleNamespace(LOADER='/loader'))
+        owner={'pid':204,'uid':1100,'executable':'/loader','cwd':lifecycle.INSTANCE+'/redis'}
+        with patch.object(lifecycle.os,'pidfd_open',side_effect=ProcessLookupError,create=True), \
+             patch.object(lifecycle,'redis_listener_closed',return_value={'listenerAbsent':True,'timeWaitConnections':2}), \
+             patch.object(lifecycle.signal,'pidfd_send_signal',create=True) as signal:
+            self.assertTrue(lifecycle.redis_stop(owner)['alreadyExited'])
+            signal.assert_not_called()
+
     def setup_stop(self, root, owners, *, success=True):
         event=root/'events'/'run';event.mkdir(parents=True)
         runs=root/'runs';(runs/'run').mkdir(parents=True)

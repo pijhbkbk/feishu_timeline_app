@@ -333,20 +333,38 @@ def bind_gates(quota_path,quota_hash,scanner_path,scanner_hash):
     return {'quota':{'path':quota_path,'sha256':quota_hash},'scannerApplicability':ctx['scanner']['applicability']}
 
 
+def redis_listener_closed():
+    # A successfully closed Redis connection may remain in TIME_WAIT. Binding
+    # without SO_REUSEADDR tests reuse policy, not whether the server stopped.
+    # Require no IPv4/IPv6 listener on the exact instance port instead.
+    time_wait = 0
+    for family in ('tcp', 'tcp6'):
+        raw = Path('/proc/net', family).read_bytes()
+        need(len(raw) <= 2*1024**2, 'STOP_SOCKET_TABLE_BOUND')
+        for line in raw.decode().splitlines()[1:]:
+            cells = line.split()
+            need(len(cells) >= 10, 'STOP_SOCKET_ROW')
+            if int(cells[1].rsplit(':', 1)[1], 16) != 6381:
+                continue
+            need(cells[3] != '0A', 'OWN_REDIS_LISTENER_STILL_OPEN')
+            if cells[3] == '06':
+                time_wait += 1
+    return {'listenerAbsent': True, 'timeWaitConnections': time_wait}
+
+
 def redis_stop(owner):
     p=ctx['p'];need(owner['uid']==1100 and owner['executable']==str(ctx['m'].LOADER) and owner['cwd']==INSTANCE+'/redis','OWN_REDIS_STOP_SHAPE')
     try:fd=os.pidfd_open(owner['pid'])
     except ProcessLookupError:
-        with socket.socket() as sock:sock.bind(('127.0.0.1',6381))
-        return {'alreadyExited':True,'pid':owner['pid'],'portClosed':True,'forceKill':False}
+        return {'alreadyExited':True,'pid':owner['pid'],**redis_listener_closed(),'forceKill':False}
     try:
         need(p.matches(owner),'OWN_REDIS_STOP_IDENTITY')
         signal.pidfd_send_signal(fd,signal.SIGTERM)
         poller=select.poll();poller.register(fd,select.POLLIN)
         need(bool(poller.poll(45000)),'REDIS_STOP_TIMEOUT_NO_FORCE_KILL')
     finally:os.close(fd)
-    with socket.socket() as sock:sock.bind(('127.0.0.1',6381))
-    return {'pid':owner['pid'],'startTicks':owner['startTicks'],'sigtermSent':True,'pidfdExited':True,'portClosed':True,'forceKill':False}
+    return {'pid':owner['pid'],'startTicks':owner['startTicks'],'sigtermSent':True,'pidfdExited':True,
+            **redis_listener_closed(),'forceKill':False}
 
 
 def stop(event_name):
@@ -374,7 +392,9 @@ def stop(event_name):
         except BaseException as error:errors.append('applications');report['applicationStopError']=safe_error(error)
         if redis_owner:
             try:report['redis']=redis_stop(redis_owner)
-            except BaseException as error:errors.append('redis');report['redisStopError']=safe_error(error)
+            except BaseException as error:
+                errors.append('redis');report['redisStopError']=safe_error(error)
+                if isinstance(error, OSError):report['redisStopErrno']=error.errno
         need(not errors,'OWN_STOP_INCOMPLETE')
         preserved();report['status']='OWN_NEW_INSTANCE_PROCESSES_NORMAL_STOPPED'
     except BaseException as error:

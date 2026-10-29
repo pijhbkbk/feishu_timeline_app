@@ -8849,3 +8849,14 @@ E128 A2原配置首次start在创建任何A2子进程之前被CHECK_NATIVE_FILE_
 工具源码b2a36a0a4fe97a159c2aee32e511b5b88b450415与运行应用3941分开。新精确更新入口只允许显式绑定上述来源/定向加载证据，两旧native证明保留，其他库及58实际映射范围不扩大；8定向边界和11/15/3受影响本机检查成立，最初Mac uid/gid模拟失败保留。Brotli实际证据与最终源码独审921c6976…成立，支持下一步受控准入；A2仍未启动，不计运行验收。
 
 R17已送达7f176d27…、反馈0705f5f6…已读：接受预览恢复的限定事实，要求精确Brotli来源/实际映射/受影响加载及必要窄审后继续E124，不回退系统安全包、不重复初始化或VM重启。证据在既有host-preparation和execution的resume-20261028-r01子目录，保持375根预算分母。当前57/9/7/1、10/15包、5/9链、6/10 P0及产品PARTIAL不变，无push/main/tag/远端CI/production、原外盘Docker或所有者签收。
+
+
+## 2026-10-29 — A2原配置首启/管理员通过，停止检查故障保留（E129）
+
+工具044604200c5b39cd9c2ecd73396ccd58f0e8beec在原E124配置上首次正常启动A2（10月28日05:01Z）：a61ea5f8…，Redis3185/t709513、API3200/t709547、Web3206/proxy3212/t709548；四身份/实际maps、203库含两份精确Brotli更新、原配置未重生成成立，原六owner保持。原E106管理员内部ID cmvpbk3w20000jzwu41dixc0h已精确核对；auth源码52a92da…独审83effa9a…后，05:12Z实际严格CA45474登录/会话/账户读取/退出/旧cookie401通过（b68e17e9…）。54迁移及单账号/凭证/init/角色不变，loginAudit1→2/allAudit3→4；认证有实际写入，SQL前后查询本身为READ ONLY。
+
+05:13Z正常stop先对proxy/Web/API发送SIGTERM，Redis也收到SIGTERM、AOF fsync并于05:13:09.062记录正常退出；控制器却返回CHECK_OWN_STOP_INCOMPLETE/redisStopError=OSError（6ece0ce8…）。四PID后续均不存在。原回执未带errno，不能反推必为TIME_WAIT，也不把原失败改成PASS。10月29日00:54Z续接重新核对，boot9fee…和六共享owner均未变，A2四进程仍absent。
+
+修复将停止后的port-bind检查替换为pidfd退出及IPv4/IPv6无6381 LISTEN，TIME_WAIT另记；新实例准入使用SO_REUSEADDR而非SO_REUSEPORT，活跃listener仍拒绝，补errno诊断。临时loopback内核分配端口回归实际plain bind errno98、可复用bind通过、live listener仍拒绝（6f27351f…）；未触业务端口。18生命周期/11配置/8精确更新边界通过。真实修复后正常stop/restart仍待，不能据unit或已退出读回闭合A2。
+
+E126 scanner实际独审4194bc3d…补齐，同boot/1826/28166/CLEAN-EICAR范围成立；签名截止仍2026-10-29T06:24:12Z，未刷新来延长记录。INSTALL梳理f797f196…另指出D1/首次配置/下次签名刷新尚未消费Brotli补充、host固定repo路径及软件集合未物化；这些是后续具体实现缺口，不靠改说明关闭A15-09。总矩阵仍57/9/7/1、5/9/PARTIAL，未远端发布或动原外盘Docker。

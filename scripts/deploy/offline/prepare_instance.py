@@ -312,6 +312,9 @@ def ports_free():
         for port in PORTS:
             sock = socket.socket()
             sockets.append(sock)
+            # Match the services' normal listener reuse policy. A live listener
+            # still prevents binding; closed connections in TIME_WAIT do not.
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             sock.bind(('127.0.0.1', port))
     finally:
         for sock in sockets:
