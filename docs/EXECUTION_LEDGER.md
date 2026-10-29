@@ -8915,3 +8915,17 @@ A03-05只读调查async-wait-observation-plan-r02.json（c14d5b9b…）确认当
 ChatGPT支持A15-09/P0-07按既定范围关闭，不追加安装、新VM或任意prefix；58/8/7/1=74及产品PARTIAL不变。这是依据执行报告和冻结合同的技术反馈，不冒称其访问本机或代所有者验收。下一项仍A03-05：限定控制真实公式等待时序，记录等待→GUI新编辑→释放→原保护拒绝及输入保留，撤除干预后正常保存、刷新和正式API读回；未实际系统组词不标IME交错通过，不能以草稿合法写入否定正式保存保护。方案尚未执行，不升级A03-05/E2E-02。
 
 本轮仅通信与证据核对，无应用、数据库、VM或远端变更。daily28166截止仍为今日14:24:12，未刷新；后续扫描/上传按实际时点沿原刷新或拒绝流程，纯编辑验证不额外引入无关扫描门槛。Gmail最新状态仍未核实。
+
+## 2026-10-29 — 真实公式等待中的普通新编辑受控取证（E133）
+
+原合成账号通过正常GUI登录，无改密或鉴权绕过。Web/API读回仍为3941beccddd0dfce94c8f0f7fd7d62819fb05270、tree db699c2e128e9c40d677de2ccca0788d8ffccdb9；原703898c1…v4完整DTO摘要f8bd7714…与历史相同。另由GUI新建8d28b371-f25b-4c90-95ab-e27b67d52227，单表3baf5b67…，不改原本；实际应用runtime/committed-snapshot/workspace及锁文件相对当前源码e4f135f…无差异。
+
+先一次短暂停检查作用域并立即恢复，此探测不计交错验收；后续非暂停探测证明外层真实B1公式节点与内层resolver共享同一pendingTasks引用。临时gate源码三项独审意见（失败不立即停用、重入双释放、未安装成功时遗留hold）在启用前修复，r01/r02保留，实际r03 SHA970d4846…。仅以7处返回false的条件断点观察/控制一次真实宏任务resolver，无全局Promise替换、公式结果模拟、保护分支调用或HTTP延迟。
+
+15:11:06.735北京时间，正式保存waitId1进入等待；06.757绑定真实B1 =A1+1、计算session5非终态；06.769原宏任务回调已到达并暂留。06.892–07.761真实GUI向C1输入A03_NEW_EDIT，25条trusted事件均在同一未完成session5；07.831释放，实际持有1074.5ms；07.837原保护读取editing=true/composing=false并抛原错误。GUI显示“计算期间有新的单元格输入…当前编辑仍保留”和待保存，截图保留完整新文字；本次无正式PUT，拒绝后API仍v4且完整DTO与前态相同，不把合法草稿与正式写入混同。
+
+无WATCHDOG/FAIL/意外Debugger暂停；清理held=false，7处断点、监听、定时器和window引用已撤除，并关闭Debugger。随后正常点击保存，唯一正式PUT200生成v5，刷新及正式API全文相等：A1=4，B1公式=A1+1/结果5，C1=A03_NEW_EDIT；最终可操作预览为https://localhost:45464/admin/color-database?workbook=8d28b371-f25b-4c90-95ab-e27b67d52227。刷新时5项ERR_ABORTED（列表及路由预取）单列，不计PASS；console未返回warn/error。
+
+证据沿用同SR，汇总a03-result-20261029-r01.json SHA3212310e67c6863e61ba8d20fcc617b6502df36a1adfd74c91c9f9092c467265。原trace的FORMAL_ENTRY.revision=10误名实际是sequence.current本地编辑序号，不能作为服务端版本；服务端前态/拒绝后版本均由API确认4。release.editText为空仅是canvas编辑器DOM正文提取限制，保留原字段，以trusted输入、实际截图和随后存储文字判定，不改写原证据。
+
+本次只支持受控运行时调度下的普通新编辑分支，不称自然命中或系统IME交错；新独立样本也不自动证明原整本E2E-02。A03-05仍PARTIAL、E2E-02及58/8/7/1=74保持，未重跑正常IME/Office/安装/性能或新增测试框架。无应用代码、构建、scanner刷新、VM服务、原外盘Docker、push/main/tag/生产变更或所有者签收；Placeholder12项仍仅测试代码。实际只读独审f79224e1e7a6462bd78fce5d990d554c92795310b046979cb243e14f37085340支持普通分支且无需重跑，七处断点移除/Debugger关闭以主任务实际工具回执为据；本次回报另续记。
