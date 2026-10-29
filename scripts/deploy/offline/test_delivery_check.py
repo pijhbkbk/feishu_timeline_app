@@ -1,0 +1,57 @@
+"""Integrity boundary tests for a new standalone delivery root, no VM access."""
+import importlib.util
+import hashlib
+import json
+from pathlib import Path
+import tempfile
+import unittest
+from unittest.mock import patch
+
+spec=importlib.util.spec_from_file_location('delivery',Path(__file__).with_name('delivery_check.py'))
+m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
+
+
+class DeliveryTests(unittest.TestCase):
+    def setUp(self):
+        self.temp=tempfile.TemporaryDirectory();self.root=Path(self.temp.name).resolve()
+        (self.root/'ops').mkdir();(self.root/'ops/run.py').write_bytes(b'# public fixture\n')
+        raw=(self.root/'ops/run.py').read_bytes()
+        self.row={'path':'ops/run.py','bytes':len(raw),'sha256':hashlib.sha256(raw).hexdigest()}
+        self.manifest={'kind':'R30_MATERIALIZED_SOFTWARE_DELIVERY_V1',
+            'applicationIdentity':{'sourceCommit':'3941beccddd0dfce94c8f0f7fd7d62819fb05270'},
+            'files':[self.row],'entrypoints':{'check':{'program':'ops/run.py','support':[],'inputs':[],'scope':'fixture'}}}
+        self.write_manifest()
+    def tearDown(self):self.temp.cleanup()
+    def write_manifest(self):
+        raw=json.dumps(self.manifest).encode();(self.root/'manifest.json').write_bytes(raw)
+        self.sha=hashlib.sha256(raw).hexdigest()
+        (self.root/'SHA256SUMS').write_text(self.row['sha256']+'  ops/run.py\n'+self.sha+'  manifest.json\n')
+    def test_complete_delivery_from_unrelated_cwd(self):
+        with patch.object(m.os,'getcwd',side_effect=AssertionError('no cwd discovery')):
+            r=m.check(self.root,self.sha)
+        self.assertEqual(r['files'],1);self.assertFalse(r['filesWritten']);self.assertFalse(r['sourceCheckoutRead'])
+    def test_tampered_bytes_and_manifest_pin_are_rejected(self):
+        with self.assertRaisesRegex(RuntimeError,'FILE_SHA256'):m.check(self.root,'0'*64)
+        (self.root/'ops/run.py').write_bytes(b'X'*self.row['bytes'])
+        with self.assertRaisesRegex(RuntimeError,'FILE_SHA256'):m.check(self.root,self.sha)
+    def test_missing_declared_support_is_not_a_complete_delivery(self):
+        self.manifest['entrypoints']['check']['support']=['ops/missing.py'];self.write_manifest()
+        with self.assertRaisesRegex(RuntimeError,'MISSING_ENTRYPOINT_FILE'):m.check(self.root,self.sha)
+    def test_unknown_private_or_link_additions_are_rejected(self):
+        p=self.root/'unlisted';p.write_bytes(b'not part of delivery')
+        with self.assertRaisesRegex(RuntimeError,'UNLISTED_OR_MISSING_FILE'):m.check(self.root,self.sha)
+        p.unlink();p.symlink_to('/outside')
+        with self.assertRaisesRegex(RuntimeError,'EXTRA_SYMLINK'):m.check(self.root,self.sha)
+    def test_source_escape_and_changed_checksum_set_rejected(self):
+        for name in ('../source','/absolute','a//b','a/./b'):
+            with self.assertRaisesRegex(RuntimeError,'RELATIVE_PATH'):m.relative(name)
+        (self.root/'SHA256SUMS').write_text(self.sha+'  manifest.json\n')
+        with self.assertRaisesRegex(RuntimeError,'CHECKSUM_SET'):m.check(self.root,self.sha)
+    def test_unreadable_extra_tree_cannot_disappear_from_closed_set(self):
+        def denied(*args,**kwargs):
+            kwargs['onerror'](PermissionError('fixture inaccessible subtree'))
+            return iter(())
+        with patch.object(m.os,'walk',side_effect=denied):
+            with self.assertRaisesRegex(RuntimeError,'TREE_READ_ERROR'):m.check(self.root,self.sha)
+
+if __name__=='__main__':unittest.main()

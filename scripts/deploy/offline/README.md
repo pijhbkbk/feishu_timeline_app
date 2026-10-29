@@ -127,3 +127,6 @@ D1、首次配置和签名刷新现均支持显式 `baseUpdate` 三引用，使�
 `prepare_instance.py --check-native-admission --binding ... --binding-sha256 ...`完整核既有软件/native来源和当前203库，返回`CONFIG_NOT_GENERATED_NATIVE_ADMISSION_VERIFIED`，不读私有连接文件、不核占用中的业务端口、不生成目录/TLS/Redis。真正首次生成仍为`--execute`，新鲜DB/容量/端口检查不跳过。当前binding的boot必须是现场；可显式指定`historicalEvidenceBootId`仅绑定原成功native历史，其原软件/依赖路径和完整文件字节仍核，不能挪用给新prefix。
 
 `refresh_signatures.py --check-admission`与真正`--execute`共用创建输出目录前的完整准入函数，核当前boot、旧配置来源、精确更新、工具/CA及新鲜完整预算，返回`REFRESH_NOT_EXECUTED_ADMISSION_VERIFIED`；不联网、不创建输出或下载。真正更新仍需一次执行、三CVD验签、48h有效期和之后实际加载/扫描。三项只读入口只证明接线，实际安装/配置/更新语义与既有结果按差异分别判断。
+
+
+`delivery_check.py --delivery-root ABSOLUTE_DELIVERY_ROOT --manifest-sha256 EXTERNALLY_REVIEWED_SHA`只读核独立交付目录：每个明确文件的大小、完整SHA、稳定FD、无链接及未列出文件，以及声明入口的program/support/input文件是否都在该集合。不可读子目录直接拒绝，不能静默漏检。它不从Git或原源码目录取文件，不联网/访问VM/安装，不自行推断任意代码的传递依赖；真实安装入口及适用目标仍须由INSTALL和独审分别说明。
