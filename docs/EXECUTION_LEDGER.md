@@ -8935,3 +8935,17 @@ ChatGPT支持A15-09/P0-07按既定范围关闭，不追加安装、新VM或任�
 15:24–15:28北京时间，通过原授权会话发送工具送达R20，实际读回用户消息e121be34-638a-4efe-b112-8b3e5ba6bb53全文与2326字符原稿相同，反馈af910acc-4241-444f-afaf-70ed4ff8c282已完成。同SR/r20-chatgpt-delivery-feedback-20261029-r01.json SHA02dab6c443e568b1ab160a963ef52a37e1ff39e6f7aed35f57dbbd3184fd7199。此前旧Chrome报告页读取超时保留；此次不用该超时截图作为送达证据，没有重复发送或新增邮件。
 
 ChatGPT支持普通GUI受控交错分支收口、无需重跑，明确冻结A03-05尚需真实系统候选未确认时结束公式等待这一段；不得以旧正常IME或普通editing拒绝替代。它依据报告作技术判断，未访问本机或代所有者签收。继续复用8d28…v5，限定新增composition观察/释放差异审查，不要求所有输入法或三入口排列；A15-09/P0-07、58/8/7/1、E2E-02状态保持。
+
+## 2026-10-29 — 系统IME保护中段及未闭合尾段（E134）
+
+同3941应用、8d28b371…独立合成本，局部resolver保持5秒保险，仅新增实际composition观察及原options读取；IME gate源码474a0608…经只读差异审查。三次尝试分别保留，不拼成一次PASS。r01观察器只有ARMED，所有者在旧同名标签操作，属于主任务标签绑定准备错误，不是产品失败；所有者正常选词保存v7，API确认A2/A3中文。随后原生Chrome窗口核对唯一标题和前台标签，已保存的旧重复标签才关闭。
+
+r02于17:03:04.337北京时间捕获真实B1公式session2，原宏任务回调确已到达。08.173真实compositionstart发生在同一等待；08.424原options检查composing/editing均true，持有4087.37ms后释放；08.427原guard仍均true，GUI显示原错误“请先完成中文选词，再保存。”。后续真实compositionupdate仍持续，原A4拼音保留；无正式PUT，拒绝后正式v7完整body与前态相等。没有watchdog、FAIL或意外暂停，支持保护中段。所有者随后报告候选消失，不能据untrusted compositionend或复制状态的时序推断原因，也不能声称原候选完成。原拼音zhong wen另行明确保存v8，不删除或重输掩盖尾段缺口。
+
+r03调整人工步骤为先直接选词、后回报，不改gate或应用；17:16:40.298捕获session4，45.299先由5000.855ms保险释放，原guard均false；48.157才真实compositionstart，晚约2.86秒。正式PUT200生成v9发生在组词之前，符合正常保存，不是保护失效；本次交错NOT_OBSERVED。所有者最终确认选词成功，撤除后根正常点保存唯一PUT200成v10，刷新正式body全文相等：A1=7、B1公式=A1+1/值8、C1原marker、A2/A3/B2中文、A4原拼音。不能把r02中段与r03正常尾段拼接为同一次IME通过。
+
+每次清理held=false、8处本次断点移除；最终window gate不存在、临时标题由刷新恢复、Debugger和Network观察关闭。最终刷新4项GET ERR_ABORTED（工作簿旧请求及3项路由预取）单列，正式保存和最终读回200；console无warn/error。证据装配首次误比带额外instrumentationPresent的外层wrapper而断言退出1，未写结果；改为完整正式API body比较相等，原始文件不改写。
+
+同SR/a03-ime-result-20261029-r01.json SHA d4b41205fdcdd1052fb5bd8f2d580bd8fb51659dc5f8c066cd7d16ddd56cdc6d绑定29项本地证据；实际只读独审a03-ime-independent-review-20261029-r01.json SHA01547733da70149cd741068c817f29acc382a5d2b778f479cd00d9343c8c9adc支持上述限定结论。下一方案仅减少真人点击：主任务真实GUI保存、确认等待、选目标格，所有者已守候Chrome后直接组词选词；仍有5秒及250ms限制，尚未实施，不称消除反应时间。
+
+A03-05仍PARTIAL、E2E-02仍NOT_VERIFIED，58/8/7/1=74不变。未重跑普通GUI/正常IME/Office/安装、未改应用源码/构建/服务/权限/原外盘Docker，未push/main/tag/production或代所有者签收。现可操作预览为https://localhost:45464/admin/color-database?workbook=8d28b371-f25b-4c90-95ab-e27b67d52227（正式v10）。
