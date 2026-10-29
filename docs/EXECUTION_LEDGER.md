@@ -8885,3 +8885,17 @@ R18实际送达cc3c3845-df75-4fed-8b95-18e719a1fd8e，反馈63fe5f85-8c61-4b36-b
 工具fcbe02fe5638ab678ac785585a9249389667c694新增交付文件检查；候选delivery-r03实际物化118文件/662522045B，manifest c3132daf…，大归档/增量/工具/公开模板/INSTALL均有实体。包内入口在/private/tmp独立cwd完成全文件检查exit0，实际独审ef078da0…核全流摘要及闭合集合；不把它当完整INSTALL。新宿主调用器继续实现，从交付根和显式外部目标绑定调已批准入口，保留现有prefix与真实回执，不新增任意prefix或重跑E130。
 
 最新截图workbook-visible-20261029.jpg显示合成记录页绿色图片与现有编辑器，只作为当时页面观察，未重跑保存/IME/Office/整浏览器。现预览仍https://localhost:45464；运行应用仍3941，源码工具变化不冒充应用重构建。Gmail再次查询同transport/backend错误，暂停同因查询，不声称邮箱无反馈。产品57/9/7/1=74、10/15包、5/9链、6/10 P0/PARTIAL仍保持，远端/原外盘Docker未动。
+
+## 2026-10-29 — 实体包正常宿主调用与离线交付技术闭合（E132）
+
+工具提交d25d7a9f502dc2223f07bfd543348d03c0c0d7c6新增delivery_host.py，从交付根和外部全文SHA绑定读取程序/支持模块/公开输入，Lima CLI及SHA/VM/home/当前boot显式指定；默认仅运行配置入口的原生只读准入，完整375根预算仍24GiB。源码初审69bc2020…指出校验后按路径重读、双pipe关闭后的wait超时漏存和输出目录漏计三项，均修为执行已校验bytes/完整超时留存/输出纳入原scope；最终源码独审a85195ed…、17个相关本机fixture exit0。首轮fixture误用group-writable系统Python导致4FAIL/1ERROR的原记录保留，未放宽metadata guard。
+
+03:34:37Z，包内真实入口从工具指定外层cwd=/private/tmp发起，完整核120文件/662542061B，宿主375根24761905152B；实际连接显式原VM并逐项核公开输入，然后调用同配置脚本--check-native-admission，203库及精确两Brotli通过、exit0、stderr空。回执bac164a9…，原输入无写/私有值未读/服务未变，不能称再次安装/配置/刷新。外层cwd来自实际exec_command调用事实，不冒称原回执已经记录该字段；内部工作目录为交付根，源码无原repo/Git/旧host wrapper依赖。
+
+实际完整断言独审c6ad23402695809636484e8542c45a46daa18ab15a962744e288b3be693e158f全流核实体集合、14工具等于d25及真实调用；同时核E82注册147f→3941的auth/user/client/config/lock/schema/proxy逐源不变，结合E102/E106、E109/E110/E111、E114/E115、E124/E130，支持A15-09及仅依赖它的P0-07在获准独立Lima/现有实际prefix范围技术关闭。不新增任意prefix/第二VM/重注册/重复E130门槛，不把只读检查单独当完整安装。
+
+最终包目录沿用r30-healthy-scanner-host-preparation-r01/resume-20261028-r01/delivery-r03，结论说明修订r05。manifest完整SHA bcfcb0f5c2411e5ee2f968e2651b8b1538ac4339fd7cc5508e7067d9d588275f，120文件/662542744B；操作工具仍d25，应用仍3941。相对已实际dispatch的r04/b8275c0d…仅INSTALL结论文字与manifest/checksums改变，全部执行输入未变；03:44Z最终完整文件检查exit0，复用实际调用依据明示，不重复执行。旧r03/r04元数据分别完整保留旁目录metadata-before-r04/r05，不改写旧缺口和失败事实。
+
+唯一矩阵重算为58PASS/8PARTIAL/7NOT_VERIFIED/1BLOCKED=74，10/15整包、5/9技术链、7/10 P0；A15包6/3/2/1，不自动升级E2E-08、A15-08、安全门禁、正式环境或所有者验收。工作簿当前版本4/绿色图再截图workbook-visible-after-host-entry.jpg，只是可操作预览观察，不重跑正常IME/Office/保存重开。
+
+只读GitHub连接器失败后，gh CLI实际读取main仍9bdec2864c3ed9eb1a045062b756611f98208bfb，最新main CI仍38866594479/failure；未push/重跑CI/main merge/tag/production。Gmail同transport错误两次，不能宣称无新修改邮件。下一动作仍A03-05真实计算等待交错及原矩阵并行/标准/dirty/四宽等缺口；离线包的闭合不替代这些产品动作。
