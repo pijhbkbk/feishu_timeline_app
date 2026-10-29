@@ -8899,3 +8899,9 @@ R18实际送达cc3c3845-df75-4fed-8b95-18e719a1fd8e，反馈63fe5f85-8c61-4b36-b
 唯一矩阵重算为58PASS/8PARTIAL/7NOT_VERIFIED/1BLOCKED=74，10/15整包、5/9技术链、7/10 P0；A15包6/3/2/1，不自动升级E2E-08、A15-08、安全门禁、正式环境或所有者验收。工作簿当前版本4/绿色图再截图workbook-visible-after-host-entry.jpg，只是可操作预览观察，不重跑正常IME/Office/保存重开。
 
 只读GitHub连接器失败后，gh CLI实际读取main仍9bdec2864c3ed9eb1a045062b756611f98208bfb，最新main CI仍38866594479/failure；未push/重跑CI/main merge/tag/production。Gmail同transport错误两次，不能宣称无新修改邮件。下一动作仍A03-05真实计算等待交错及原矩阵并行/标准/dirty/四宽等缺口；离线包的闭合不替代这些产品动作。
+
+### E132之后的续接边界
+
+R19通过桌面send_message_to_thread向原获准6ad6ddfe…发送时返回No Codex thread found。Chrome确已创建同一目标URL，但读取连续超时，原生Chrome窗口实看正文白屏；没有向页面填入或提交报告。完整草稿在同SR/r19-unsent-report.txt，状态NOT_SENT，不能称ChatGPT已收到或已同意新结论。用户已被请求确认页面恢复，未重新索取发送授权。
+
+A03-05只读调查async-wait-observation-plan-r02.json（c14d5b9b…）确认当前3941 runtime/committedSnapshot逐字相等，未配置workerURL，公式在页面线程；不能用暂停整个线程保留输入。已定位真实pending会话及宏任务让出点，候选局部resolver gate属于显式运行时干预，尚未执行或计PASS。新独立浏览器观察页实际进入原生登录页，已请求原合成账号正常重登；旧已渲染v4截图不代新会话认证。未改密码、标准、工作簿、应用源码或调度状态。待这两项外部输入恢复后继续，不重演已接受Office/正常IME/E130。
