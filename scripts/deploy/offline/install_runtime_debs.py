@@ -5,7 +5,7 @@ No system package installation, maintainer scripts, downloads, DB or service cha
 The caller must authenticate this program, the host scope/reader and target binding
 outside this program. A locally generated hash is identity, never authorization.
 """
-import argparse,ctypes,datetime,hashlib,io,json,os,re,resource,shutil,signal,stat,struct,subprocess,sys,tarfile,time
+import argparse,copy,ctypes,datetime,hashlib,io,json,os,re,resource,shutil,signal,stat,struct,subprocess,sys,tarfile,time,types
 from pathlib import Path,PurePosixPath
 
 ROOT=Path('/home/recovery')
@@ -27,6 +27,7 @@ LOADER=Path('/usr/lib/aarch64-linux-gnu/ld-linux-aarch64.so.1')
 LOADER_SHA='390027e5f45f236bd1838bc54bf464c5ff01d260ab9f8b415ea8276641bce505'
 ENV={}
 base_update_binding={};base_update_file_pins={}
+supplemental_update_binding=None;supplemental_file_pins={}
 started=time.monotonic();commands=[];library_cache={};base_packages={};expected={};archive_entries=[];counter=0
 
 class Refused(Exception):pass
@@ -101,9 +102,19 @@ def exact_base_update(bases):
  base_update_binding.update({'originalBaseSha256':BASE_SHA,'overlaySha256':BASE_UPDATE_OVERLAY_SHA,'proofInputs':proofs,'changedPackages':sorted(BASE_UPDATE_EXPECTED),'checkedInstalledFiles':checked,'checkedInstalledBytes':total,'unchangedBasePackageCount':119})
  return bases
 
-def query_base(bases):
+def query_base(bases,readonly=False):
  fmt='${binary:Package}\t${Version}\t${Architecture}\t${db:Status-Abbrev}\n'
- text=run(['/usr/bin/dpkg-query','-W','-f='+fmt]+[x['dpkgSpecifier']for x in bases['packages']])
+ argv=['/usr/bin/dpkg-query','-W','-f='+fmt]+[x['dpkgSpecifier']for x in bases['packages']]
+ if readonly:
+  # run() owns extraction logs under OUT, which must not exist in this mode.
+  need(len(bases['packages'])==122,'READONLY_BASE_COUNT')
+  q=subprocess.run(argv,stdin=subprocess.DEVNULL,stdout=subprocess.PIPE,stderr=subprocess.PIPE,
+                   env=ENV,cwd=ROOT,timeout=15)
+  need(q.returncode==0 and not q.stderr and len(q.stdout)<=65536,'READONLY_BASE_QUERY')
+  text=q.stdout.decode()
+  commands.append({'argv':argv,'exitCode':q.returncode,'stdoutBytes':len(q.stdout),
+                   'stdoutSha256':hashlib.sha256(q.stdout).hexdigest(),'filesWritten':False})
+ else:text=run(argv)
  rows={}
  for line in text.splitlines():
   fields=line.split('\t');need(len(fields)==4,'DPKG_FIELDS');rows[fields[0]]=fields[1:]
@@ -112,6 +123,62 @@ def query_base(bases):
   candidate=rows.get(key,rows.get(p['package']));need(candidate is not None and candidate[:2]==[p['version'],p['architecture']]and candidate[2].strip()=='ii','EXACT_BASE_PACKAGE')
   base_packages[p['package']]={'version':p['version'],'architecture':p['architecture'],'dpkgSpecifier':p['dpkgSpecifier']}
  return rows
+
+def base_update_support(support):
+ need(set(support)=={'configurationCodeSha256','dependencyReceipt'},'SUPPLEMENT_SUPPORT')
+ source=INPUT/'prepare_instance.py';digest_arg(support['configurationCodeSha256'])
+ info=regular(source,65536,1100)
+ need(source.resolve(strict=True)==source and not info.st_mode&0o022,'SUPPLEMENT_SOURCE_METADATA')
+ raw=source.read_bytes();need(hashlib.sha256(raw).hexdigest()==support['configurationCodeSha256'],'SUPPLEMENT_SOURCE_PIN')
+ m=types.ModuleType('prepare_instance');m.__file__=str(source)
+ exec(compile(raw,str(source),'exec'),m.__dict__)
+ return m
+
+def exact_supplemental_update(bases,binding):
+ """Keep the old overlay; consume one separately pinned current update proof."""
+ global supplemental_update_binding
+ refs=binding.get('baseUpdate')
+ if refs is None:
+  need('baseUpdateSupport' not in binding,'SUPPLEMENT_WITHOUT_PROOF')
+  return bases
+ support=binding.get('baseUpdateSupport',{})
+ m=base_update_support(support)
+ dep_ref=support['dependencyReceipt']
+ need(dep_ref.get('sha256')==m.DEPS_SHA,'SUPPLEMENT_HISTORY_PIN')
+ dep=m.pinned(dep_ref)
+ need(dep.get('status')=='NEW_PREFIX_RUNTIME_PAYLOAD_AND_ELF_VERIFIED' and
+      dep.get('basePackageCount')==122 and dep.get('loader',{}).get('elfCount')==134,
+      'SUPPLEMENT_HISTORY_SUCCESS')
+ rows=dep['loader']['libraries'];need(len({r['path'] for r in rows})==len(rows),'SUPPLEMENT_HISTORY_SET')
+ updates,evidence=m.base_update(refs,{r['path']:r for r in rows})
+ for path,row in updates.items():
+  p=Path(path);data=m.read(p,1024**2,owner=0);s=p.lstat()
+  need(m.sha(data)==row['currentSha256'] and len(data)==row['bytes'] and
+       s.st_uid==s.st_gid==0 and stat.S_IMODE(s.st_mode)==0o644,'SUPPLEMENT_CURRENT_BYTES_METADATA')
+ copied=copy.deepcopy(bases)
+ matches=[x for x in copied['packages'] if x['package']=='libbrotli1']
+ need(len(matches)==1 and (matches[0]['architecture'],matches[0]['version'])==('arm64','1.1.0-2build2'),
+      'SUPPLEMENT_ORIGINAL_VERSION')
+ matches[0]['version']='1.1.0-2ubuntu0.1'
+ supplemental_file_pins.update(updates)
+ supplemental_update_binding={**evidence,'currentUnchangedFromOriginalBasePackageCount':118,
+                              'originalThreePackageOverlayRetained':True,
+                              'support':support}
+ return copied
+
+def supplemental_owner(path,names,actual_sha,metadata):
+ if str(path) not in supplemental_file_pins and not any(n.split(':')[0]=='libbrotli1' for n in names):
+  return
+ # Same package membership must not grant its encoder or any other path.
+ row=supplemental_file_pins.get(str(path))
+ need(row is not None and names==['libbrotli1:arm64'] and
+      actual_sha==row['currentSha256'] and metadata.st_size==row['bytes'] and
+      metadata.st_uid==metadata.st_gid==0 and stat.S_IMODE(metadata.st_mode)==0o644,
+      'SUPPLEMENT_EXACT_OWNER_PATH_BYTES')
+ alias=Path(str(path).removesuffix('.1.0'));s=alias.lstat()
+ need(alias.parent.resolve()==alias.parent and stat.S_ISLNK(s.st_mode) and
+      s.st_uid==s.st_gid==0 and os.readlink(alias)==path.name and alias.resolve(strict=True)==path,
+      'SUPPLEMENT_EXACT_ALIAS')
 
 def verify_tree():
  actual={}
@@ -272,6 +339,7 @@ def owner(path):
   need(s.st_uid==0 and not s.st_mode&0o022,'BASE_LIBRARY_OWNER_MODE')
   actual_sha=sha(real)
   if any(n.split(':')[0]in BASE_UPDATE_EXPECTED for n in names):need(base_update_file_pins.get(key)==actual_sha,'UPDATED_BASE_LIBRARY_NOT_AUTHENTICATED')
+  if supplemental_update_binding is not None:supplemental_owner(real,names,actual_sha,s)
   value={'path':key,'delivery':'exact-122-base','packages':sorted(set(names)),'sha256':actual_sha}
  library_cache[key]=value;return value
 
@@ -482,6 +550,11 @@ def prepare_target(args):
           'paths':{key:str(value) for key,value in paths.items()},
           'baseInstallSha256':args.base_install_sha256,'budgetPolicySha256':args.budget_policy_sha256,
           'createdAt':datetime.datetime.now(datetime.timezone.utc).isoformat()}
+ if getattr(args,'base_update',None):
+  digest_arg(args.base_update_sha256)
+  extra=load(Path(args.base_update),args.base_update_sha256,65536)
+  need(set(extra)=={'baseUpdate','baseUpdateSupport'},'SUPPLEMENT_BINDING_KEYS')
+  binding.update(extra)
  path=paths['input']/'target-binding.json'
  durable(path,binding)
  return {'status':'TARGET_BOUND_NOT_INSTALLED','bindingPath':str(path),'bindingSha256':sha(path),
@@ -494,7 +567,8 @@ def fixed_inputs(args):
  input_path=Path(args.input)
  need(input_path.parent==ROOT and input_path.resolve(strict=True)==input_path,'INPUT_PATH')
  binding=load(input_path/'target-binding.json',args.binding_sha256)
- need(set(binding)=={'kind','platform','paths','baseInstallSha256','budgetPolicySha256','createdAt'}
+ required={'kind','platform','paths','baseInstallSha256','budgetPolicySha256','createdAt'}
+ need(set(binding) in (required,required|{'baseUpdate','baseUpdateSupport'})
       and binding['kind']=='OFFLINE_RUNTIME_TARGET_V1','BINDING_SCHEMA')
  need(binding['platform']==identity,'TARGET_IDENTITY_CHANGED')
  paths=target_paths(binding['paths'])
@@ -505,6 +579,7 @@ def fixed_inputs(args):
  selection=load(INPUT/'selection.json',SELECTION_SHA)
  entries=load(INPUT/'payload-entries.json',ENTRIES_SHA)
  bases=exact_base_update(load(BASE/'dependencies/base-prerequisites.json',BASE_SHA))
+ bases=exact_supplemental_update(bases,binding)
  base_install(BASE,binding['baseInstallSha256'])
  policy=scope_policy(INPUT/'host-budget-policy.json',binding['budgetPolicySha256'])
  budget=load(INPUT/'budget.json',args.budget_sha256,8*1024**2)
@@ -549,12 +624,15 @@ def main():
  prepare=commands_parser.add_parser('prepare-target',help='create a new public target binding; do not install')
  for name in ('input','base','target','output','base-install-sha256','budget-policy-sha256'):
   prepare.add_argument('--'+name,required=True)
+ prepare.add_argument('--base-update');prepare.add_argument('--base-update-sha256')
  install=commands_parser.add_parser('install',help='explicit one-shot extraction and complete verification')
  for name in ('input','binding-sha256','budget-sha256'):
   install.add_argument('--'+name,required=True)
  install.add_argument('--execute',action='store_true')
  install.add_argument('--defer-native-checks',action='store_true',
                       help='verify payload only; explicitly leave loader and versions NOT_EXECUTED')
+ check=commands_parser.add_parser('check-base-admission',help='read-only exact base/owner admission; never install')
+ for name in ('input','binding-sha256','budget-sha256'):check.add_argument('--'+name,required=True)
  args=parser.parse_args()
  if args.action=='install' and not args.execute:
   print(json.dumps({'status':'PLAN_NOT_EXECUTED'}));return 0
@@ -568,13 +646,22 @@ def main():
   if args.action=='prepare-target':
    print(json.dumps(prepare_target(args)));return 0
   selection,bases,identity,binding=fixed_inputs(args)
+  if args.action=='check-base-admission':
+   base_rows=query_base(bases,readonly=True)
+   checked=[owner(Path(path)) for path in sorted(supplemental_file_pins)]
+   print(json.dumps({'status':'NOT_INSTALLED_BASE_ADMISSION_VERIFIED','platform':identity,
+     'targetBindingSha256':args.binding_sha256,'basePackageCount':len(base_rows),
+     'baseUpdate':base_update_binding,'supplementalBaseUpdate':supplemental_update_binding,
+     'supplementalOwners':checked,'commands':commands,'filesWritten':False,
+     'servicesChanged':False,'loaderExecuted':False,'databaseAccessed':False}));return 0
   OUT.mkdir(mode=0o700);created_output=True
   TARGET.mkdir(mode=0o700)
   durable(OUT/'intent.json',{'status':'PREPARED_FOR_FIXED_20_DEB_EXTRACTION',
     'platform':identity,'targetBindingSha256':args.binding_sha256,'selectionSha256':SELECTION_SHA,
     'payloadEntriesSha256':ENTRIES_SHA,'hostBudgetSha256':args.budget_sha256,
     'budgetPolicySha256':binding['budgetPolicySha256'],'baseInstallSha256':binding['baseInstallSha256'],
-    'capacity':capacity(),'servicesChanged':False,'baseUpdate':base_update_binding})
+    'capacity':capacity(),'servicesChanged':False,'baseUpdate':base_update_binding,
+    'supplementalBaseUpdate':supplemental_update_binding})
   base_rows=query_base(bases)
   for package in selection['packages']:
    extract_fixed_deb(package)
@@ -586,7 +673,7 @@ def main():
     'hostBudgetSha256':args.budget_sha256,'budgetPolicySha256':binding['budgetPolicySha256'],
     'baseInstallSha256':binding['baseInstallSha256'],'target':str(TARGET),'tree':tree,
     'loader':loader,'nativeChecks':'NOT_EXECUTED' if args.defer_native_checks else 'EXECUTED',
-    'basePackageCount':len(base_rows),'baseUpdate':base_update_binding,
+    'basePackageCount':len(base_rows),'baseUpdate':base_update_binding,'supplementalBaseUpdate':supplemental_update_binding,
     'commands':commands,'capacity':capacity(),'systemPackageDatabaseChanged':False,
     'maintainerScriptsRun':False,'servicesStartedOrStopped':False,'databaseAccessed':False,
     'fullOfflineAcceptance':False,'finishedAt':datetime.datetime.now(datetime.timezone.utc).isoformat()}

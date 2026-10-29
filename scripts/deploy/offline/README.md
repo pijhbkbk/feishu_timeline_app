@@ -99,10 +99,10 @@ python3 -I -B install_scanner.py --observe-predecessor SOURCE_SHA EVENT
 python3 -I -B prepare_instance.py --execute   --binding ACTUAL_PUBLIC_BINDING --binding-sha256 REVIEWED_BINDING_SHA   --budget ACTUAL_FRESH_BUDGET --budget-sha256 REVIEWED_BUDGET_SHA
 ```
 
-这一步不连接数据库或启动服务；数据库现状、对应对象目录、Redis/API/Web/代理启动及同配置重启另验。PG和已健康scanner是共享依赖，不能由新实例停止入口管理。当前配置入口有11项本机边界用例；E124已从已提交工具在真实目标生成并通过产品配置校验；自身启动/原管理员/同配置正常重启仍待，不据配置生成关闭A2或A15-09。
+这一步不连接数据库或启动服务；数据库现状、对应对象目录、Redis/API/Web/代理启动及同配置重启另验。PG和已健康scanner是共享依赖，不能由新实例停止入口管理。当前配置入口有11项本机边界用例；E124已从已提交工具在真实目标生成并通过产品配置校验；E130已完成原配置启动、原管理员使用和同配置正常重启；完整INSTALL仍不据此关闭。
 
 
-`instance_lifecycle.py` 将普通 `start` 与 `stop` 分开，读取已生成的本实例配置；支持模块为 `instance_processes.py` 和 `instance_scanner.py`。新四进程用独立端口/日志/run记录，PG与已健康scanner只作为依赖。正常stop需要外部固定本次实际成功start回执，核同boot/四owner，禁止原六进程，不受CVD或容量过期阻止。启动失败对捕获的Redis owner独立正常收尾。此生命周期入口目前仅源码、目标边界回归与独立静态审查；实际运行结果另记，不能据此报告A2已完成。
+`instance_lifecycle.py` 将普通 `start` 与 `stop` 分开，读取已生成的本实例配置；支持模块为 `instance_processes.py` 和 `instance_scanner.py`。新四进程用独立端口/日志/run记录，PG与已健康scanner只作为依赖。正常stop需要外部固定本次实际成功start回执，核同boot/四owner，禁止原六进程，不受CVD或容量过期阻止。启动失败对捕获的Redis owner独立正常收尾。E130已完成该入口的实际start/auth/stop/restart/auth及独审；仅闭合A2限定运行链，原停止检查失败保留。
 
 `shared_scanner_readback.py` 只调用已固定扫描器组件的只读验证链，不调用其启动窗口的失败清理，因此验证失败也不能停止共享扫描器。2026-10-28 续接已将历史配置出处与当前boot分开，当前scanner绑定V2使用新签名及实际CLEAN/EICAR，原生软件/尺寸边界仅按输入适用性复用。E126/E127已恢复原scanner和预览；A2自身普通启动及同配置重启另验。
 
@@ -116,3 +116,14 @@ python3 -I -B prepare_instance.py --execute   --binding ACTUAL_PUBLIC_BINDING --
 A2 runtime binding 可显式携带 `baseUpdate`，包含 `result`、`metadata`、`analysis` 三个公开文件引用（各有path/bytes/sha256）。当前仅支持 E128 已认证的 Ubuntu ARM64 `libbrotli1 1.1.0-2ubuntu0.1`：固定来源、17项包payload实际读回和受影响libcurl定向loader证明；原122包/203库历史记录保持不变。只有两份确定的Brotli库允许使用新摘要，其alias、当前包版本、大小/权限/owner和其他依赖仍逐项检查。缺省不使用更新，任意后续版本或第三份库变化仍拒绝。
 
 调用者在程序之外完成来源及差异审查后，才可把三份实际证据加入新的运行binding；程序内固定摘要只识别证据，不代替外部批准。该补充不修改E124创建binding或私有配置，不重新安装系统包，不重跑134项loader，也不扩大实际运行map清单。普通停止不读取此更新或其他启动准入条件。`nativeAdmission` 在新的实际启动结果中同时保留旧native身份与当前基础包更新身份。A2实际运行结果仍以执行Ledger/矩阵为准。
+
+
+## 三个入口的同一精确更新与只读准入
+
+D1、首次配置和签名刷新现均支持显式 `baseUpdate` 三引用，使用同一E128固定证据。缺省仍按旧版本合同核对，未知版本、不同SHA或第三份库不准入。D1保留原三包overlay，补充单列；`baseUpdateSupport`额外绑定`configurationCodeSha256`及固定旧成功`dependencyReceipt`，从本输入目录加载经外部固定的`prepare_instance.py`。只有两份确定Brotli库的当前大小/hash/root0644/精确dpkg owner/alias成立才放行，同包encoder等其他文件不获准。当前总基包版本差异4项，旧overlay的119未变仅指旧三包阶段；补充结果另记当前118未变。
+
+`install_runtime_debs.py prepare-target`可用`--base-update`和`--base-update-sha256`加入仅含上述两字段的公开补充文件；不自动搜索。`check-base-admission --input ... --binding-sha256 ... --budget-sha256 ...`执行固定122包查询和两库owner/bytes检查，不创建target/output、不写日志、不提取或跑loader，明确返回`NOT_INSTALLED_BASE_ADMISSION_VERIFIED`。安装路径仍须独立的`install --execute`，不得把只读结果代安装。
+
+`prepare_instance.py --check-native-admission --binding ... --binding-sha256 ...`完整核既有软件/native来源和当前203库，返回`CONFIG_NOT_GENERATED_NATIVE_ADMISSION_VERIFIED`，不读私有连接文件、不核占用中的业务端口、不生成目录/TLS/Redis。真正首次生成仍为`--execute`，新鲜DB/容量/端口检查不跳过。当前binding的boot必须是现场；可显式指定`historicalEvidenceBootId`仅绑定原成功native历史，其原软件/依赖路径和完整文件字节仍核，不能挪用给新prefix。
+
+`refresh_signatures.py --check-admission`与真正`--execute`共用创建输出目录前的完整准入函数，核当前boot、旧配置来源、精确更新、工具/CA及新鲜完整预算，返回`REFRESH_NOT_EXECUTED_ADMISSION_VERIFIED`；不联网、不创建输出或下载。真正更新仍需一次执行、三CVD验签、48h有效期和之后实际加载/扫描。三项只读入口只证明接线，实际安装/配置/更新语义与既有结果按差异分别判断。

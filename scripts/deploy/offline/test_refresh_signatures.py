@@ -99,4 +99,44 @@ class RefreshTests(unittest.TestCase):
         send.assert_not_called();self.assertFalse(result['sigtermSent']);self.assertEqual(result['signaledOwners'],[])
 
 
+class AdmissionTests(unittest.TestCase):
+    def test_check_mode_never_starts_download_or_creates_output(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)/'new-output'
+            result = (None, {'bootId': 'live'}, root, None, None, None, {'checked': True}, None, {'verified': True})
+            with patch.object(refresh, 'admission', return_value=result), \
+                 patch.object(refresh, 'run', side_effect=AssertionError('no process')), \
+                 patch.object(Path, 'mkdir', side_effect=AssertionError('no directory')), \
+                 patch('builtins.print') as output:
+                refresh.execute(types.SimpleNamespace(check_admission=True))
+            self.assertEqual(json.loads(output.call_args.args[0])['status'], 'REFRESH_NOT_EXECUTED_ADMISSION_VERIFIED')
+            self.assertFalse(root.exists())
+
+    def test_admission_rejects_native_before_budget_directory_or_download(self):
+        # Exercise the real admission wiring, including separate live refresh boot
+        # and unchanged historical configuration boot. No private files are read.
+        generation = {'bootId': 'old', 'software': '/home/recovery/offline-software-test',
+                      'instance': '/home/recovery/offline-instance-test'}
+        config = {'status': 'NEW_CONFIG_GENERATED_AND_COMPILED_CONFIG_VALIDATED_NOT_STARTED',
+                  'identity': {'fixed': True}, **generation, 'targetBinding': {}}
+        b = {'kind': 'OFFICIAL_CVD_REFRESH_ONCE_V1', 'bootId': 'live',
+             'output': '/home/recovery/offline-signatures-test', 'configurationReceipt': {},
+             'softwareCodeSha256': 'a'*64, 'baseUpdate': {'explicit': 'proof'}}
+        native = unittest.mock.Mock(side_effect=RuntimeError('CHECK_TEST_NATIVE_REJECT'))
+        m = types.SimpleNamespace(IDENTITY={'fixed': True}, pinned=unittest.mock.Mock(side_effect=[b,config,generation]), native_admission=native)
+        c = types.SimpleNamespace()
+        with patch.object(refresh, 'support', side_effect=[m,c]), \
+             patch.object(refresh.sys, 'flags', types.SimpleNamespace(isolated=1)), \
+             patch.object(refresh.sys, 'platform', 'linux'), patch.object(refresh.os, 'getuid', return_value=1100), \
+             patch.object(refresh.os, 'geteuid', return_value=1100), patch.object(refresh.os, 'getgid', return_value=1100), \
+             patch.object(refresh.os, 'uname', return_value=types.SimpleNamespace(machine='aarch64')), \
+             patch.object(Path, 'stat', return_value=types.SimpleNamespace(st_size=1)), \
+             patch.object(Path, 'exists', return_value=False), patch.object(Path, 'is_symlink', return_value=False), \
+             patch.object(Path, 'read_text', return_value='live'), \
+             patch.object(Path, 'mkdir', side_effect=AssertionError('no writes')):
+            with self.assertRaisesRegex(RuntimeError, 'TEST_NATIVE_REJECT'):
+                refresh.admission(types.SimpleNamespace(configuration_code_sha256='a'*64,binding='/binding',binding_sha256='b'*64))
+        native.assert_called_once_with(generation,c,b['baseUpdate'])
+
+
 if __name__=='__main__':unittest.main()

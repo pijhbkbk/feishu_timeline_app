@@ -161,5 +161,37 @@ class ConfigurationGuards(unittest.TestCase):
                 with self.assertRaises(RuntimeError): m.database_state({})
 
 
+class AdmissionOnlyTests(unittest.TestCase):
+    def test_readonly_branch_passes_exact_update_without_private_or_port_access(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve()
+            b = {'instance': str(root/'new-instance'), 'software': str(root/'software'),
+                 'bootId': 'live-boot', 'historicalEvidenceBootId': 'old-boot',
+                 'baseUpdate': {'explicit': 'proof'}, 'selectionPlan': {'sha256': m.PLAN_SHA},
+                 'support': {'instance_software.py': 'a'*64}}
+            c = types.SimpleNamespace(installed=lambda *a, **k: None)
+            with patch.object(m, 'binding', return_value=b), patch.object(m, 'memory'), \
+                 patch.object(m, 'support', return_value=c), patch.object(m, 'pinned', return_value={'identity': m.IDENTITY}), \
+                 patch.object(m, 'native_admission', return_value={'verified': True}) as native, \
+                 patch.object(m, 'ports_free', side_effect=AssertionError('no ports')), \
+                 patch.object(m, 'budget', side_effect=AssertionError('no configuration budget')), \
+                 patch.object(m, 'database_state', side_effect=AssertionError('no database')), \
+                 patch.object(m, 'read', side_effect=AssertionError('no private reads')), \
+                 patch.object(m, 'write_new', side_effect=AssertionError('no writes')):
+                result = m.prepare({}, None, check_native_only=True)
+            native.assert_called_once_with(b, c, b['baseUpdate'])
+            self.assertEqual(result['status'], 'CONFIG_NOT_GENERATED_NATIVE_ADMISSION_VERIFIED')
+            self.assertFalse((root/'new-instance').exists())
+
+    def test_old_proof_cannot_be_reassigned_to_new_dependency_prefix(self):
+        b = {'dependencyReceipt': {'sha256': m.DEPS_SHA}, 'dependencies': '/new-prefix',
+             'bootId': 'live-boot', 'historicalEvidenceBootId': 'old-boot'}
+        dep = {'status': 'NEW_PREFIX_RUNTIME_PAYLOAD_AND_ELF_VERIFIED',
+               'target': '/original-prefix', 'bootId': 'old-boot'}
+        with patch.object(m, 'pinned', return_value=dep):
+            with self.assertRaisesRegex(RuntimeError, 'FULL_NATIVE_DEPENDENCIES'):
+                m.native_admission(b, types.SimpleNamespace())
+
+
 if __name__ == '__main__':
     unittest.main()

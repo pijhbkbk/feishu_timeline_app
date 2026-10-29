@@ -203,7 +203,7 @@ def inventory(root, m):
     return rows
 
 
-def execute(args):
+def admission(args):
     os.umask(0o077)
     need(sys.flags.isolated and os.getuid() == os.geteuid() == os.getgid() == 1100 and
          sys.platform == 'linux' and os.uname().machine == 'aarch64', 'ISOLATED_GUEST')
@@ -221,7 +221,7 @@ def execute(args):
     c = support('instance_software.py', b['softwareCodeSha256'])
     c.TARGET=Path(generation['software']); c.ART=c.TARGET/'application'; c.NODE=c.TARGET/'runtime/node24/bin/node'
     # Historical native receipts retain their original boot; every referenced library is read now.
-    native = m.native_admission(generation,c)
+    native = m.native_admission(generation,c,b.get('baseUpdate'))
     proof=m.pinned(generation['nativeReceipt']); allowed={r['path']:r for r in proof['libraries']}
     tools={name:c.TARGET/('runtime/clamav/bin/'+name) for name in ('freshclam','sigtool')}
     for p in tools.values():
@@ -233,6 +233,16 @@ def execute(args):
     ca=Path('/etc/ssl/certs/ca-certificates.crt')
     ca_raw=m.read(ca,8*1024**2,owner=0)
     need(sha(ca_raw) == b['systemCaSha256'], 'SYSTEM_CA_PIN')
+    return m, b, root, generation, c, tools, budget, ca, native
+
+
+def execute(args):
+    m, b, root, generation, c, tools, budget, ca, native = admission(args)
+    if args.check_admission:
+        print(json.dumps({'status': 'REFRESH_NOT_EXECUTED_ADMISSION_VERIFIED',
+                          'bootId': b['bootId'], 'nativeApplicability': native, 'budget': budget,
+                          'networkAccessed': False, 'filesWritten': False, 'servicesChanged': False}))
+        return
     REPORT.update(kind=b['kind'], bootId=b['bootId'], identity=m.IDENTITY, startedAt=dt.datetime.now(dt.timezone.utc).isoformat(),
                   output=str(root), nativeApplicability=native, budget=budget, signatureMaxAgeHours=48,
                   officialMirror='database.clamav.net', maximumAttempts=1, tlsVerificationDisabled=False,
@@ -266,10 +276,13 @@ def execute(args):
 
 
 if __name__ == '__main__':
-    parser=argparse.ArgumentParser();parser.add_argument('--execute',action='store_true')
+    parser=argparse.ArgumentParser()
+    mode=parser.add_mutually_exclusive_group()
+    mode.add_argument('--execute',action='store_true')
+    mode.add_argument('--check-admission',action='store_true')
     for key in ('configuration-code-sha256','binding','binding-sha256','budget','budget-sha256'):parser.add_argument('--'+key)
     args=parser.parse_args()
-    if not args.execute: print(json.dumps({'status':'PLAN_ONLY'}))
+    if not (args.execute or args.check_admission): print(json.dumps({'status':'PLAN_ONLY'}))
     else:
         try: execute(args)
         except Exception as error:

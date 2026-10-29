@@ -239,17 +239,18 @@ def base_update(refs, combined):
 
 
 def native_admission(b, c, base_update_refs=None):
+    evidence_boot = b.get('historicalEvidenceBootId', b.get('bootId'))
     dep = pinned(b['dependencyReceipt'])
     need(b['dependencyReceipt']['sha256'] == DEPS_SHA and
          dep.get('status') == 'NEW_PREFIX_RUNTIME_PAYLOAD_AND_ELF_VERIFIED' and
-         dep.get('target') == b['dependencies'] and dep.get('bootId', dep.get('platform', {}).get('bootId')) == b['bootId'] and
+         dep.get('target') == b['dependencies'] and dep.get('bootId', dep.get('platform', {}).get('bootId')) == evidence_boot and
          dep.get('basePackageCount') == 122 and dep.get('tree') == {'regularFiles': 2263, 'symlinks': 135, 'treeVerified': True} and
          dep.get('loader', {}).get('elfCount') == 134 and dep['loader'].get('versionCommands') == 9 and
          dep.get('selectionSha256') == '35784a08501e366fd440449a085935f751ecb0428e88ca9c34412dc35b720851' and
          dep.get('baseUpdate', {}).get('overlaySha256') == '7ce7c823871d70d0e84a5a5fe1ff162c6cbaaccb5d11525f6db826c2b489e6c1', 'FULL_NATIVE_DEPENDENCIES')
     n = pinned(b['nativeReceipt'])
     need(b['nativeReceipt']['sha256'] == NATIVE_SHA and n.get('status') == 'TEN_FINAL_TARGET_ELF_PROBES_VERIFIED_NOT_STARTED' and
-         n.get('bootId') == b['bootId'] and n.get('applicationAssemblyReceiptSha256') == ASSEMBLY_SHA and
+         n.get('bootId') == evidence_boot and n.get('applicationAssemblyReceiptSha256') == ASSEMBLY_SHA and
          n.get('jointRuntimeAssemblyReceiptSha256') == RUNTIME_SHA and n.get('runtimeManifestSha256') == RUNTIME_MANIFEST and
          n.get('runtimeReceiptSha256') == DEPS_SHA and n.get('exactBasePackageCount') == 122 and
          n.get('finalTargetFilesVerified') is True and n.get('sourceProbeOnly') is False and
@@ -284,7 +285,7 @@ def native_admission(b, c, base_update_refs=None):
          combined.get(b['dependencies']+'/usr/bin/openssl', {}).get('sha256') == OPENSSL_SHA, 'TLS_TOOLCHAIN')
     return {'receiptSha256': NATIVE_SHA, 'dependencyReceiptSha256': DEPS_SHA,
             'librariesReadBack': len(combined), 'loaderReexecuted': False,
-            'currentBaseUpdate': update_evidence}
+            'currentBaseUpdate': update_evidence, 'historicalEvidenceBootId': evidence_boot}
 
 
 def budget(b, budget_ref):
@@ -362,7 +363,7 @@ def redis_text(r, password):
             'maxclients 16\nmaxmemory 33554432\nmaxmemory-policy noeviction\n')
 
 
-def prepare(ref, budget_ref):
+def prepare(ref, budget_ref, check_native_only=False):
     os.umask(0o077)
     b = binding(ref)
     initial_memory = memory(initial=True)
@@ -370,12 +371,16 @@ def prepare(ref, budget_ref):
     need(not r.exists() and not r.is_symlink(), 'EXCLUSIVE_NEW_INSTANCE')
     canonical(r.parent)
     c = support('instance_software.py', b['support']['instance_software.py'])
-    policy = support('instance_policy.py', b['support']['instance_policy.py'])
     c.TARGET, c.ART, c.NODE = software, software/'application', software/'runtime/node24/bin/node'
     plan = pinned(b['selectionPlan'], 65536)
     need(b['selectionPlan']['sha256'] == PLAN_SHA and plan['identity'] == IDENTITY, 'SELECTION_PLAN')
     c.installed(plan, APP_SHA, ASSEMBLY_SHA, full=True)
-    native = native_admission(b, c)
+    native = native_admission(b, c, b.get('baseUpdate'))
+    if check_native_only:
+        return {'status': 'CONFIG_NOT_GENERATED_NATIVE_ADMISSION_VERIFIED',
+                'bootId': b['bootId'], 'nativeApplicability': native, 'software': b['software'],
+                'privateInputsRead': False, 'servicesChanged': False, 'filesWritten': False}
+    policy = support('instance_policy.py', b['support']['instance_policy.py'])
     budget_result = budget(b, budget_ref)
     database_state(b['databaseState'])
     ports_free()
@@ -428,21 +433,27 @@ def prepare(ref, budget_ref):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--execute', action='store_true')
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument('--execute', action='store_true')
+    mode.add_argument('--check-native-admission', action='store_true')
     parser.add_argument('--binding', required=True)
     parser.add_argument('--binding-sha256', required=True)
-    parser.add_argument('--budget', required=True)
-    parser.add_argument('--budget-sha256', required=True)
+    parser.add_argument('--budget')
+    parser.add_argument('--budget-sha256')
     args = parser.parse_args()
-    if not args.execute:
+    if not (args.execute or args.check_native_admission):
         print(json.dumps({'status': 'PLAN_ONLY_NO_TARGET_READ_OR_WRITE'}))
     else:
         try:
             refs = []
-            for path, digest in [(args.binding, args.binding_sha256), (args.budget, args.budget_sha256)]:
+            inputs = [(args.binding, args.binding_sha256)]
+            if not args.check_native_admission:
+                need(bool(args.budget and args.budget_sha256), 'BUDGET_ARGUMENTS')
+                inputs.append((args.budget, args.budget_sha256))
+            for path, digest in inputs:
                 p = Path(path)
                 refs.append({'path': str(p), 'bytes': p.lstat().st_size, 'sha256': digest})
-            print(json.dumps(prepare(*refs)))
+            print(json.dumps(prepare(refs[0], refs[1] if len(refs) == 2 else None, args.check_native_admission)))
         except Exception as error:
             code = str(error) if isinstance(error, RuntimeError) and re.fullmatch('CHECK_[A-Z0-9_]+', str(error)) else type(error).__name__
             print(json.dumps({'status': 'CONFIGURATION_FAILED_PRESERVED', 'errorCode': code}))

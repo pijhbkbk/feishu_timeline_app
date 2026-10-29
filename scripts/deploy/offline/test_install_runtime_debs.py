@@ -194,4 +194,98 @@ class CommandTests(unittest.TestCase):
             json.loads('{"target":1,"target":2}', object_pairs_hook=module.unique_object)
 
 
+class SupplementalAdmissionTests(unittest.TestCase):
+    def setUp(self):
+        module.supplemental_file_pins.clear()
+        module.supplemental_update_binding = None
+
+    def tearDown(self):
+        module.supplemental_file_pins.clear()
+        module.supplemental_update_binding = None
+
+    def test_no_opt_in_does_not_load_source_or_mutate_baseline(self):
+        baseline = {'packages': [{'package': 'libbrotli1', 'version': '1.1.0-2build2', 'architecture': 'arm64'}]}
+        with patch.object(module, 'base_update_support', side_effect=AssertionError('no source')):
+            self.assertIs(module.exact_supplemental_update(baseline, {}), baseline)
+            with self.assertRaisesRegex(module.Refused, 'SUPPLEMENT_WITHOUT_PROOF'):
+                module.exact_supplemental_update(baseline, {'baseUpdateSupport': {}})
+
+    def test_supplement_uses_old_proof_and_returns_a_copy(self):
+        baseline = {'packages': [{'package': 'libbrotli1', 'version': '1.1.0-2build2', 'architecture': 'arm64'}]}
+        original = copy.deepcopy(baseline)
+        binding = {'baseUpdate': {'exact': True}, 'baseUpdateSupport': {'dependencyReceipt': {'sha256': 'a'*64}}}
+        dep = {'status': 'NEW_PREFIX_RUNTIME_PAYLOAD_AND_ELF_VERIFIED', 'basePackageCount': 122,
+               'loader': {'elfCount': 134, 'libraries': [{'path': '/historical', 'sha256': 'b'*64}]}}
+        m = SimpleNamespace(DEPS_SHA='a'*64, pinned=lambda ref: dep,
+                            base_update=unittest.mock.Mock(return_value=({}, {'updatedLibraries': 2})))
+        with patch.object(module, 'base_update_support', return_value=m):
+            result = module.exact_supplemental_update(baseline, binding)
+            self.assertEqual(baseline, original)
+            self.assertEqual(result['packages'][0]['version'], '1.1.0-2ubuntu0.1')
+            self.assertNotIn('libbrotli1', module.BASE_UPDATE_EXPECTED)
+            self.assertEqual(module.supplemental_update_binding['currentUnchangedFromOriginalBasePackageCount'], 118)
+            m.base_update.assert_called_once_with(binding['baseUpdate'], {'/historical': dep['loader']['libraries'][0]})
+            bad = copy.deepcopy(baseline);bad['packages'][0]['version'] = 'future'
+            with self.assertRaisesRegex(module.Refused, 'SUPPLEMENT_ORIGINAL_VERSION'):
+                module.exact_supplemental_update(bad, binding)
+            binding['baseUpdateSupport']['dependencyReceipt']['sha256'] = 'c'*64
+            with self.assertRaisesRegex(module.Refused, 'SUPPLEMENT_HISTORY_PIN'):
+                module.exact_supplemental_update(baseline, binding)
+
+    def test_owner_does_not_grant_encoder_other_owner_or_bad_bytes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            real = Path(tmp).resolve()/'libbrotlidec.so.1.1.0';real.write_bytes(b'fixture')
+            alias = Path(str(real).removesuffix('.1.0'));alias.symlink_to(real.name)
+            digest = hashlib.sha256(b'fixture').hexdigest()
+            module.supplemental_file_pins[str(real)] = {'currentSha256': digest, 'bytes': 7}
+            metadata = SimpleNamespace(st_uid=0,st_gid=0,st_mode=0o100644,st_size=7)
+            original = Path.lstat
+            def root_alias(p):
+                st = original(p)
+                return SimpleNamespace(st_mode=st.st_mode,st_uid=0,st_gid=0)
+            with patch.object(Path, 'lstat', root_alias):
+                module.supplemental_owner(real, ['libbrotli1:arm64'], digest, metadata)
+                for path,names,hash_value in [(real.with_name('libbrotlienc.so.1.1.0'),['libbrotli1:arm64'],digest),
+                                             (real,['libc6:arm64'],digest),(real,['libbrotli1:amd64'],digest),
+                                             (real,['libbrotli1:arm64'],'0'*64)]:
+                    with self.assertRaisesRegex(module.Refused, 'SUPPLEMENT_EXACT_OWNER_PATH_BYTES'):
+                        module.supplemental_owner(path,names,hash_value,metadata)
+                alias.unlink();alias.symlink_to('/other')
+                with self.assertRaisesRegex(module.Refused, 'SUPPLEMENT_EXACT_ALIAS'):
+                    module.supplemental_owner(real,['libbrotli1:arm64'],digest,metadata)
+
+    def test_readonly_package_query_never_opens_output_log(self):
+        packages = [{'package': 'fixture'+str(i), 'version': '1', 'architecture': 'arm64',
+                     'dpkgSpecifier': 'fixture'+str(i)+':arm64'} for i in range(122)]
+        raw = ''.join(x['dpkgSpecifier']+'\t1\tarm64\tii \n' for x in packages).encode()
+        q = subprocess.CompletedProcess([],0,raw,b'')
+        with patch.object(module.subprocess,'run',return_value=q) as query, \
+             patch.object(module,'run',side_effect=AssertionError('no output logs')), \
+             patch.object(module.os,'open',side_effect=AssertionError('no file writes')):
+            rows = module.query_base({'packages':packages},readonly=True)
+        self.assertEqual(len(rows),122)
+        self.assertEqual(query.call_args.kwargs['cwd'],module.ROOT)
+        self.assertFalse(module.commands[-1]['filesWritten'])
+        q.stdout += b'x'*65537
+        with patch.object(module.subprocess,'run',return_value=q):
+            with self.assertRaisesRegex(module.Refused,'READONLY_BASE_QUERY'):
+                module.query_base({'packages':packages},readonly=True)
+
+    def test_check_base_mode_never_creates_target_or_extracts(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp)/'target';out = Path(tmp)/'output'
+            with patch.object(module.sys,'argv',['installer','check-base-admission','--input','/input',
+                              '--binding-sha256','a'*64,'--budget-sha256','b'*64]), \
+                 patch.object(module,'fixed_inputs',return_value=({}, {}, {'bootId':'live'}, {})), \
+                 patch.object(module,'query_base',return_value={'base':[]}), \
+                 patch.object(module,'TARGET',target), patch.object(module,'OUT',out), \
+                 patch.object(module.resource,'setrlimit'), patch.object(module.signal,'signal'), \
+                 patch.object(module.signal,'alarm'), patch.object(module,'durable',side_effect=AssertionError('no write')), \
+                 patch.object(module,'extract_fixed_deb',side_effect=AssertionError('no extraction')), \
+                 patch.object(module,'loader_checks',side_effect=AssertionError('no loader')), patch('builtins.print') as output:
+                self.assertEqual(module.main(),0)
+                self.assertEqual(json.loads(output.call_args.args[0])['status'],'NOT_INSTALLED_BASE_ADMISSION_VERIFIED')
+            self.assertFalse(target.exists());self.assertFalse(out.exists())
+
+
 if __name__ == '__main__': unittest.main()

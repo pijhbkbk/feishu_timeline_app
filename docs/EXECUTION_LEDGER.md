@@ -8860,3 +8860,16 @@ R17已送达7f176d27…、反馈0705f5f6…已读：接受预览恢复的限定�
 修复将停止后的port-bind检查替换为pidfd退出及IPv4/IPv6无6381 LISTEN，TIME_WAIT另记；新实例准入使用SO_REUSEADDR而非SO_REUSEPORT，活跃listener仍拒绝，补errno诊断。临时loopback内核分配端口回归实际plain bind errno98、可复用bind通过、live listener仍拒绝（6f27351f…）；未触业务端口。18生命周期/11配置/8精确更新边界通过。真实修复后正常stop/restart仍待，不能据unit或已退出读回闭合A2。
 
 E126 scanner实际独审4194bc3d…补齐，同boot/1826/28166/CLEAN-EICAR范围成立；签名截止仍2026-10-29T06:24:12Z，未刷新来延长记录。INSTALL梳理f797f196…另指出D1/首次配置/下次签名刷新尚未消费Brotli补充、host固定repo路径及软件集合未物化；这些是后续具体实现缺口，不靠改说明关闭A15-09。总矩阵仍57/9/7/1、5/9/PARTIAL，未远端发布或动原外盘Docker。
+
+
+## 2026-10-29 — A2同配置正常停止/重启实际闭合（E130）
+
+工具42def854d2c55ff16d39e5ea24a4090c1cd06cbf上，原E124配置03cf1213…和原3941软件完成新完整链：01:04Z start0420e9c7…→原管理员auth9ddc9ac8…→01:06Z正常stop6eb29978…→restart30540b4f…→01:08Z authdd21a0b1…。首轮Redis4498/t922015、API4513/Web4514/proxy4525全部正常SIGTERM退出；Redis pidfdExited/listenerAbsent=true，实际TIME_WAIT=1，修复不再误报。不是仅用原四PID已经消失替代真实停止。新四owner为Redis4655/t938613、API4670/Web4671/t938622、proxy4678/t938623；原六共享owner和boot9fee…保持。
+
+两轮严格CA45474身份/账户/退出及旧cookie401真实成立，原管理员内部ID、54迁移、单账号/凭证/init保持；认证各增加1条login audit（2→3→4），总audit4→5→6，不称全程只读。每次启动回执有四owner、API/Web/proxy三份applicationMaps及Redis readiness；不是四份独立maps。没有重生成私有配置/TLS、重建库/账号、清空Redis或重启PG/VM。
+
+独审bef03052…核5回执/readback逐字相同、41公开命令metadata均exit0/no retry、8份375根/24GiB预算和reserve；源码窄审00617c15…已覆盖停止修复。E129原失败6ece仍FAIL，原errno未知不改写。当前A2运行于guest-only45474，原可操作预览仍https://localhost:45464。A2限定运行链闭合，INSTALL三入口接线、可迁移宿主调用和软件集合物化仍待，A15-09及57/9/7/1、5/9/PARTIAL不升级。
+
+R18实际送达cc3c3845-df75-4fed-8b95-18e719a1fd8e，反馈63fe5f85-8c61-4b36-b287-6f8db971b9e7已完整保存/读取：A2限定链无需重做，三项INSTALL合并最小收口；只读预检不冒充再安装/刷新，E2E-08不随A15-09自动升级。Gmail定向查询遇transport错误，不能据此说没有新邮件；ChatGPT反馈明确本轮未另发邮件。
+
+三个consumer接线及只读入口已实现，93个本机fixture exit0（不代Linux实装）。独审15621296…发现首版D1只读仍调用写OUT日志的run()，已修为固定122包只读capture，并补真实query调用链测试；首轮92绿不能证明该分支。当前范围源码审查完成，下一步在同VM用新public input执行三项准入，不安装/生成/联网/触私有配置。
