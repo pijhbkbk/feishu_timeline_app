@@ -666,7 +666,7 @@ V-E087=`e0870e8f4d919496d0161646ccc2c1aa28cd7822`；8c630=`8c630ac3c370c54908c9e
 | A03-02 | MUST; S1:A03; S3:32 | 未确认输入的隔离本机稿可恢复 | 在单元格未按Enter输入→本机落稿→刷新/关页→恢复→正式保存；20稿可恢复/21拒绝、账号隔离及旧写删保护按原承诺成立 | Chrome GUI+IndexedDB+API | E03 | R02：草稿/编辑稿/save-session同字节，普通挂载/restoreEdit连续源段未变 | PASS | 无；整浏览器/完整格式集成仍见A03-01 | 已满足；不重复执行此局部；Codex仅核E2E集成及后续输入变化 |
 | A03-03 | MUST; S1:A03; S3:32 | 无本机稿的新上下文可恢复私有服务器草稿 | 云稿保存回执后新上下文无IndexedDB→读私有云稿→恢复并发布rev2→仅精确对应槽清理；云稿丢回执新输入也保留 | GUI+server draft API | E05 | R02：云session/client/后端CAS不变；8c→e087更严资源键校验不影响合法唯一资源fixture | PASS | 无；不覆盖新实例身份配置 | 已满足；不重复执行此局部；Codex仅核E2E集成及后续输入变化 |
 | A03-04 | MUST; S1:A03; S1:A08 | 旧回执不清掉保存期间的新输入 | 分别在回执丢失/在途继续N+1输入→关页恢复→同请求核实只确认rev2且N+1仍dirty→明确新保存rev3 | Chrome GUI+意图/草稿+API | E04 | R02：save-session/writeVersion/草稿协议相同；两个回执位置为同一场景变体 | PASS | 无；不是全部故障组合 | 已满足；不重复执行此局部；Codex仅核E2E集成及后续输入变化 |
-| A03-05 | MUST; S1:A03; S1:134 | 等待公式期间的新编辑/组词不得被误标已保存 | 工作簿保存/导出/应用取值等待formula后开始新编辑或IME；本次明确拒绝/保留新输入、不可显示成功；下一次明确保存可读回 | 异步边界代码+真实GUI/系统IME适用部分 | 原47项及8d829同步身份；E07正常IME；E133普通GUI；E134真实IME保护中段 | E133普通GUI交错闭合。E134 r02同pending内真实composition，原guard拒绝、正式v7全文不变且拼音保留，但原候选完成未证；r01错标签、r03保险先释放均NOT_OBSERVED。r03随后普通选词另存v10并刷新读回，不与r02拼接通过；独审支持限定结论 | PARTIAL | 尚缺同一次IME等待内拒绝→原候选正常确认→撤除后正式保存刷新；E2E-02整本链独立未闭；责任Codex | 不重复普通受控交错或正常ChromeIME；原保护和正式路径保持，三次干预均撤除，不按真人手速盲试 |
+| A03-05 | MUST; S1:A03; S1:134 | 等待公式期间的新编辑/组词不得被误标已保存 | 工作簿保存/导出/应用取值等待formula后开始新编辑或IME；本次明确拒绝/保留新输入、不可显示成功；下一次明确保存可读回 | 异步边界代码+真实GUI/系统IME适用部分 | E133普通GUI；E134失败边界；E135同次系统IME完整路径及共享入口独审 | E135同session4 pending内真实组词，原guard comp/edit=true拒绝且v12全文不变；同候选继续落为中文，撤除后唯一PUT200成v13并刷新全文相等。三入口共享runtime.snapshot→committedSnapshot已核；结合E133覆盖冻结断言，不拼接旧失败 | PASS | 无本项缺口；E2E-02原多表整链独立未闭，不代所有者签收 | 受控调度及实际Mac系统IME范围；不称自然命中/全部输入法，不重演三入口；干预已撤除 |
 
 #### A04
 
@@ -792,13 +792,13 @@ V-E087=`e0870e8f4d919496d0161646ccc2c1aa28cd7822`；8c630=`8c630ac3c370c54908c9e
 
 ### 由唯一原子表派生的计数
 
-主分母N=74，有效PASS P=58，覆盖率58/74=78.38%（证据覆盖率，非代码完成率）；OPTIONAL 3项不计分母。PASS=58、PARTIAL=8、NOT_VERIFIED=7、BLOCKED=1、FAIL=0、SKIPPED=0、SCOPE_UNRESOLVED=0、NOT_APPLICABLE=0，总和74。E100闭合A03-01及P0-03；E101补实际双入口与身份/命令负向闭合A02-01。E132闭合A15-09/P0-07；10/15整包、5/9技术链、7/10 P0；A03-05/E2E-02未升级，旧计数及失败保留原日期。
+主分母N=74，有效PASS P=59，覆盖率59/74=79.73%（证据覆盖率，非代码完成率）；OPTIONAL 3项不计分母。PASS=59、PARTIAL=7、NOT_VERIFIED=7、BLOCKED=1、FAIL=0、SKIPPED=0、SCOPE_UNRESOLVED=0、NOT_APPLICABLE=0，总和74。E100闭合A03-01及P0-03；E101补实际双入口与身份/命令负向闭合A02-01；E132闭合A15-09/P0-07；E135闭合A03-05。11/15整包、5/9技术链、7/10 P0，E2E-02未升级；旧计数及失败保留原日期。
 
 | A包 | MUST N_i | 有效PASS P_i | PARTIAL | NOT_VERIFIED | BLOCKED | 其他未通过 | 整包状态 |
 |---|---:|---:|---:|---:|---:|---:|---|
 | A01 | 4 | 4 | 0 | 0 | 0 | 0 | PASS |
 | A02 | 6 | 6 | 0 | 0 | 0 | 0 | PASS |
-| A03 | 5 | 4 | 1 | 0 | 0 | 0 | PARTIAL |
+| A03 | 5 | 5 | 0 | 0 | 0 | 0 | PASS |
 | A04 | 5 | 1 | 0 | 4 | 0 | 0 | PARTIAL |
 | A05 | 6 | 6 | 0 | 0 | 0 | 0 | PASS |
 | A06 | 3 | 3 | 0 | 0 | 0 | 0 | PASS |
@@ -812,7 +812,7 @@ V-E087=`e0870e8f4d919496d0161646ccc2c1aa28cd7822`；8c630=`8c630ac3c370c54908c9e
 | A14 | 4 | 4 | 0 | 0 | 0 | 0 | PASS |
 | A15 | 12 | 6 | 3 | 2 | 1 | 0 | PARTIAL |
 
-整包仅全部MUST PASS才PASS；当前10/15整包PASS不表示工程完成率。本基线v1.0已由PM核对冻结，当前分母保持不变，PASS计数随逐项真实证据更新，不以改变分母提高通过率；后续任何新增/删MUST/阈值变动需显式范围决定和版本记录。
+整包仅全部MUST PASS才PASS；当前11/15整包PASS不表示工程完成率。本基线v1.0已由PM核对冻结，当前分母保持不变，PASS计数随逐项真实证据更新，不以改变分母提高通过率；后续任何新增/删MUST/阈值变动需显式范围决定和版本记录。
 
 ### 既有证据与受测身份索引
 
@@ -956,6 +956,7 @@ E01–E35保留历史记录的原日期/身份；E36起是本轮新增实际验�
 | E132 | [实际完整断言独审](../../var/truck-color-v1-20261020/final-execution-20261024-r01/r30-healthy-scanner-execution-r01/resume-20261028-r01/delivery-host-actual-review-r01.json) SHAc6ad2340…；[实际入口](../../var/truck-color-v1-20261020/final-execution-20261024-r01/r30-healthy-scanner-execution-r01/resume-20261028-r01/portable-delivery-preflight-r01/result.json) SHAbac164a9…；[唯一INSTALL](../../var/truck-color-v1-20261020/final-execution-20261024-r01/r30-healthy-scanner-host-preparation-r01/resume-20261028-r01/delivery-r03/INSTALL.md) | 工具d25d7a9；应用3941；r05 manifest bcfcb0f5… | 2026-10-29T03:34Z实际调用；03:44Z结论修订文件检查 | 包内host从外层/private/tmp运行，核120文件及375根后真实调配置只读入口，203库/Brotli/exit0成立；源码3项审查发现已修，17相关本机fixture不代运行。r05仅INSTALL说明变化，所有执行输入不变，旧r03/r04元数据保留。结合E82逐源适用性、E102/106、E109–115、E124/130支持A15-09/P0-07技术关闭；不新增prefix或重做E130，不自动升E2E-08/生产/owner |
 | E133 | [受控交错结果](../../var/truck-color-v1-20261020/final-execution-20261024-r01/r30-healthy-scanner-execution-r01/resume-20261028-r01/a03-result-20261029-r01.json) SHA3212310e…；[独审](../../var/truck-color-v1-20261020/final-execution-20261024-r01/r30-healthy-scanner-execution-r01/resume-20261028-r01/a03-independent-review-20261029-r01.json) SHAf79224e1… | 原3941/db699；新合成8d28b371…单表；API前态v4 | 2026-10-29T07:11:06–07:11:08Z及随后正常保存/刷新 | 真正pending session5内25条trusted输入；局部resolver1074.5ms后释放，原guard拒绝且新编辑保留，正式v4全文未变。无意外暂停/保险触发；撤除后唯一PUT200成v5，4/5/marker及刷新DTO一致。原trace revision10实际为本地序号、空DOM字段限制、5个GET取消保留；只支持受控普通GUI分支，不称IME、自然命中或E2E-02，A03仍PARTIAL |
 | E134 | [IME分轮结果](../../var/truck-color-v1-20261020/final-execution-20261024-r01/r30-healthy-scanner-execution-r01/resume-20261028-r01/a03-ime-result-20261029-r01.json) SHAd4b41205…；[独审](../../var/truck-color-v1-20261020/final-execution-20261024-r01/r30-healthy-scanner-execution-r01/resume-20261028-r01/a03-ime-independent-review-20261029-r01.json) SHA01547733… | 原3941；同8d28b371…单表；v7→v10 | 2026-10-29T09:03Z、09:16Z及随后保存刷新 | r01错标签仅ARMED。r02真实session2等待中composition，4087.37ms释放、原guard comp/edit=true拒绝，无正式PUT且v7全文不变；候选随后消失，原拼音另存v8，尾段未闭。r03五秒保险释放后约2.86秒才组词，NOT_OBSERVED；正常v9→撤除后B2中文另存v10并刷新全文相等。三次各8断点清除/held=false；不拼接为PASS，4项刷新GET取消单列，A03仍PARTIAL |
+| E135 | [IME完整路径](../../var/truck-color-v1-20261020/final-execution-20261024-r01/r30-healthy-scanner-execution-r01/resume-20261028-r01/a03-ime-complete-result-20261030-r05.json) SHA5abe522d…；[完整断言独审](../../var/truck-color-v1-20261020/final-execution-20261024-r01/r30-healthy-scanner-execution-r01/resume-20261028-r01/a03-ime-full-independent-review-20261030-r05.json) SHA1e8d109d… | 原3941；同8d28…单表；v12→v13 | 2026-10-30T00:23:11–00:23:27Z及随后正常保存刷新 | 选D2后同session4仍held；真实compositionstart→3682.77ms释放→原guard comp/edit=true拒绝，v12全文不变/无PUT；同次trusted更新到中文，末尾untrusted compositionend如实分列。撤除8点后正常PUT200→v13、刷新全文相等；四GET取消保留。独审核三入口共享保护，结合E133关闭A03-05；r04抢读未交接与会话恢复不计PASS；E2E-02不升 |
 
 
 

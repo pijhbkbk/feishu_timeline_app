@@ -8957,3 +8957,17 @@ E134记录提交92606192826741fe3a948e035b9645d5f7009037，实际diff只含Ledge
 ChatGPT支持分轮边界及所提GUI交接方式，不称访问本机原件或代所有者签收；明确选格时真实等待必须仍有效，选词必须晚于组词状态下的原保护。下次先原生前台/唯一标题/工作簿核对、读回v10，选确为空的C2，主任务连续GUI保存→确认FORMAL_WAIT_BOUND→选格后停手，记录等待及选格时点；所有者在原窗口输入，见原错误后完成原候选，不切聊天取开始信号。5秒从原捕获时点起算、不重置；250ms检查不改。超时仍NOT_OBSERVED，若候选再消失保留输入及窄范围焦点/事件/操作记录，不预判原因或盲改代码。
 
 已询问所有者当前是否方便真实系统IME配合；尚未安装新gate或再次编辑，现有v10受保护。此人工输入是相关动作的剩余依赖，不重开E133/A15-09/P0-07，计数保持。
+
+## 2026-10-30 — 同一次系统IME交错完整闭合（E135）
+
+所有者确认可配合后，准备检查发现C2已有真实候选而gate尚未启用，先由所有者完成原候选。过夜会话失效使原保存未知、GET401；在独立登录页用原合成账号正常登录，回原页“核实并保存”成功v11，C2中文保留，未刷新丢弃草稿、改密或绕过认证。此段不计交错。临时登录页已关闭。
+
+r04第一次即时检查仍ARMED，主任务在选D2之前停止；真实formula在约44ms后捕获、又47.6ms后BOUND，五秒保险正常释放并保存v12。保留NOT_OBSERVED及原trace，不算产品FAIL。已定位为观察者抢读，改为同一CUA调用内最多1秒、10ms异步只读轮询；绝对deadline、hold.arrived、同wait/session、formal.pending及持有不足1秒都须满足才选格，abort先fail/disarm再cleanup防晚捕获竞态，剩余hold如实记录。实际等待源码v2 SHA f9540e66edbd830b1f126c54036db9a00f21c0eb79e5588ca2b3c8bb825a2695；安装记录的v1/cdb01b…只是未执行预备稿，handoff-plan明确纠正，原文件保留。原474a0608…IME gate、5秒保险、250ms检查和应用逻辑未改。
+
+r05同8d28…本v12，08:23:11.658北京时间捕获真实B1公式session4，11.687宏任务原回调已到达且FORMAL_WAIT_BOUND。观察轮询41.075ms返回；D2真实GUI选中后12.354仍held=true、同pending session，已持有696.57ms。随后停止所有鼠键操作。15.081 trusted compositionstart；15.340原options comp/edit=true，实际持有3682.77ms释放；15.344原guard仍comp/edit=true，GUI原错误明确拒绝。真实compositionupdate在同一候选链从z持续到26.967“中文”，随后中文input；26.974 compositionend为untrusted，明确不冒称可信结束事件。此时原options composing=false/editing=true，截图同显原错误、待保存及D2中文；无第二次compositionstart、删除重输或工具接管候选。正式v12完整body前后相同，正式PUT为0，无FAIL/WATCHDOG/Debugger暂停。
+
+撤除8处断点/监听/定时器/window gate且held=false后，正常GUI明确保存唯一PUT200成v13；刷新及正式API完整body相等。v12→v13只有六处预期差异：revision、A1 8→9、B1 9→10、D2中文新增、snapshotHash、updatedAt；原C1标记、A2/B2/C2/A3中文、A4原拼音及其他内容保持。刷新4项GET取消（旧工作簿请求及production/people/inspections预取）保留，console无warn/error。最终临时标题恢复，Debugger/Network观察关闭，当前预览同URL正式v13。
+
+同SR/a03-ime-complete-result-20261030-r05.json SHA5abe522d09f66fe45efdb3ae419ada7d171e5077d147f65a0fb8dc630c5448c5绑定30项证据；完整断言只读独审a03-ime-full-independent-review-20261030-r05.json SHA1e8d109d0561db8ac1a0909cf006a1f7f90e553c22e49a185a9c86645c0ff41f。独审核save/exportFile/mappingSource均await runtime.snapshot→committedSnapshot，原保护在workbook.save()读取前抛错，业务来源拒绝不继续应用；结合E133普通分支及未变边界源码，支持A03-05冻结断言技术PASS，不要求重演三套交错。结论仅受控调度与实际Mac系统IME，不称自然时序、全部输入法或所有者签收。
+
+唯一矩阵重算59PASS/7PARTIAL/7NOT_VERIFIED/1BLOCKED=74，79.73%证据覆盖、11/15整包、5/9技术链、7/10 P0；E2E-02保持NOT_VERIFIED。应用仍3941/db699，当前源码至HEAD应用目录/共享/锁无差异；本轮不改应用、不构建/新增测试/安装/扫描/VM/原外盘Docker，不push/main/tag/production。下一组仅原703…多表本v4的组合编辑、草稿恢复与明确保存重开内容链，先读回核对，再按已验原子适用性复用，不重做Office/正常IME/全Chrome退出/离线安装。
