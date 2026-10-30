@@ -9031,3 +9031,20 @@ OP=同轮r30-a09-api-overlay-preparation-20261030-r01。实际切换03:51:04–0
 证据SR/a09-correction-member-result-20261030-r02.json SHA cdb4ac64063f20abcfdaba467f955330edcaf5223aff85b0128f4e7bb6cbd090绑定43项；独审a09-correction-member-independent-review-20261030-r01.json SHA e5e3df991f40571445781e286aa75289cb01953424a905f73e789f7bc61df5b6支持A09-03及E137成员支路。共8个唯一GET取消（7刷新/详情、1note），不计PASS；console无warn/error。原生app无窗口、CDP键盘不支持、Playwright按键超时及加载时详情点击无效保留，最终通过同Chrome标签标准输入控制完成，不把失败尝试算通过。
 
 矩阵现62PASS/5PARTIAL/6NOT_VERIFIED/1BLOCKED=74，83.78%证据覆盖、12/15包、6/9技术链、7/10 P0；剩余11技术/交付及1所有者接收。A10/E2E-05继续，当前原项目仍05/09/18未完，不因18/18节点数声称完成。API源码仍3a11，当前工作树只文档证据改动；Placeholder12项仍均测试。没有追加测试总数、重新IME/Office/安装、push/main/tag/CI/production或所有者签收。最终共同身份双组件制品尚未构建，本机可操作预览仍https://localhost:45464。
+
+
+### E138回报R25已收到
+
+原授权6ad6ddfe…会话消息1fe89b01-6539-4be5-a380-6ca4d4ab606a与完成反馈a1f63988-1467-417f-9f14-019396de86cd已核完整文字；SR/r25-chatgpt-delivery-feedback-20261030-r01.json SHAaf39024b2d9262f22058bc6934dec6ffe6660db645c157acab43349746324498。外层thread显示systemError，但该turn completed/error null且反馈完整，不能误称未送达或重发。ChatGPT支持A09范围关闭，转原A10；共同身份真实重编可准备，原r05及混合预览边界不变。无新邮件，邮箱状态仍未核实。
+
+## 2026-10-30 — 同项目材料、幂等与并行费用链（E139）
+
+继续E138 API3a11/Web3941本机组件预览、原M1；原青州白项目cmvm46f44000r9kl5klnhsonj/实例cmvm46f61000u9kl531konffa。R19原M2建项POST9903.3182/201确为同项目；R20原M1样板确认提交（含原材料引用）POST9903.4962/201、task04 cmvn72twp00lb9k1kw0y7i6z3与attachment cmvn767h300lz9k1k2hq7hrn1对应。今日实际从工作台进入04、显示原320×180 PNG，下载2240B SHA5bfbf0545f002fa86cc76a40f9c97fc0b629bdf70b390038779264e64a1ecb1b，CLEAN/V1/作者/任务绑定均一致，再返回原dashboard project/taskId。原2026-10-25保存与今日读取/返回分列，没有重新上传或重开04。
+
+复用原确认body/key、原M1，唯一实际POST201/idempotentReplay=true，confirmation cmvn76n0y00mb9k1kgkz6wwud不变；响应中的PAINT_PROCUREMENT是原缓存事实，新GET另核仍IN_PROGRESS/PROJECT_CLOSED（页面颜色退出），非回滚。首次预检把auth/me直接user误判为user嵌套，POST前失败；r01空结果及异常保留，修正读取结构后r02才是实际重试。低权限只读PG前后125629B全文相等，SHAc75b8a59e7e93eee97d40ea1670d84905f763f08760c7fd8ebc88626f40d4aeb，限定1命令/1确认/1样板/1实例/20任务/25transition/87审计，不称全库零写。
+
+实际GUI沿06采购原到货、07标准板及13费用并分别返回原任务/工作台；07 payload与不可变transition cmvn79v0300nv9k1k3i89ibe3同指原06。当前board cmvnwzg3j0003jz1nuozhhnmw仍ISSUED/current、colorVersion cmvnwzg3f0001jz1ngzdnzlax（v4），原分发及明细更新保持，不拿新增DRAFT v5冒充项目依据。12→13/14双transition存在，原fee cmvnxjppm002ojz1nizaa3fut仍10000CNY/PAID且注明无真实支付；全部fee与board历史对象同R27相等。05OVERDUE、09PENDING、18EXIT_PENDING保持，18/18只是流程节点覆盖。费用页无活跃任务时概括为完成条件未满足易误读；原任务13已完成/付款记录正确，此非阻断文案观察保留。
+
+SR/a10-result-20261030-r01.json SHA15ed9b235660867b072218f0c299cc816b6cf80a50e254478e1d075086ce00bf绑定37项；源码属性独审166890b7…核47项及原D02实际12PG范围，另完整独审4079810e6ae1d8599d3ddc3a7125357d94e14bb32d51894a7a74f1685fff48df核23前半输入、E95六展示文件、原真实写入及10项整链依赖，支持A10-01/02和E2E-05限定本机技术PASS。历史PG/评审/整改按属性复用，不新增测试总数或冒称同制品同会话重演；console无warn/error，原加载态/错误selector保留。
+
+唯一矩阵64PASS/3PARTIAL/6NOT_VERIFIED/1BLOCKED=74，86.49%证据覆盖、13/15包、7/9技术链、7/10P0，剩9技术/交付及1所有者接收。最终共同身份双制品仍未构建，OP新鲜376根预算06:40:07Z为24802480128B/25769803776B；832MiB新增停止阈值为轮询拒绝条件并非内核硬配额，具体Mac构建wrapper尚在独审。当前r05旧包/历史安全、正式域名未升级；未push/main/tag/CI/production、scanner刷新或原外盘Docker，产品PARTIAL/AWAITING_PRODUCT_OWNER_CONFIRMATION。
