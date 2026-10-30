@@ -214,7 +214,13 @@ def inspect_archive(path, rows, digest, guard):
     with tarfile.open(path, 'r:gz') as archive:
         for item in archive:
             guard()
-            need(item.name in rows and item.name not in seen and not item.pax_headers, 'ARCHIVE_MEMBER')
+            need(item.name in rows and item.name not in seen, 'ARCHIVE_MEMBER')
+            # Python's PAX writer uses these for long paths. The effective names
+            # must still be exactly the externally pinned manifest names/links.
+            need(set(item.pax_headers) <= {'path', 'linkpath'}
+                 and item.pax_headers.get('path', item.name) == item.name
+                 and item.pax_headers.get('linkpath', item.linkname) == item.linkname,
+                 'ARCHIVE_PAX')
             seen.add(item.name)
             row = rows[item.name]
             if 'symlink' in row:

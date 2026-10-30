@@ -63,12 +63,14 @@ class DeltaAcceptance(unittest.TestCase):
     def row(data):
         return {'bytes': len(data), 'mode': 0o600, 'sha256': d.sha(data), 'sourceKind': 'compiled'}
 
-    def make_archive(self, extra=None):
+    def make_archive(self, extra=None, pax=None):
         path = self.package / 'application-delta.tar.gz'
         with tarfile.open(path, 'w:gz') as archive:
             for name, row in self.new.items():
                 info = tarfile.TarInfo(name)
                 info.mode, info.size = row['mode'], row['bytes']
+                if pax:
+                    info.pax_headers = pax
                 archive.addfile(info, io.BytesIO(('new:' + name).encode()))
             if extra:
                 archive.addfile(extra)
@@ -215,6 +217,22 @@ class DeltaAcceptance(unittest.TestCase):
         state.unlink()
         (state.parent/'other-state').mkdir(mode=0o700)
         with self.assertRaisesRegex(RuntimeError, 'EXTRA_OR_WRITABLE_DIRECTORY'):
+            d.run(self.args)
+        self.assertFalse(self.args.target.exists())
+
+    def test_long_pax_path_is_bound_to_manifest(self):
+        name = 'runtime/apps/web/.next/server/' + 'a' * 90 + '.js'
+        self.new[name] = self.row(('new:' + name).encode())
+        self.manifest['compositeEntryCount'] += 1
+        self.make_archive()
+        self.seal()
+        d.run(self.args)
+        self.assertEqual((self.args.target/name).read_bytes(), ('new:' + name).encode())
+
+    def test_other_pax_metadata_is_rejected(self):
+        self.make_archive(pax={'mtime': '1.5'})
+        self.seal()
+        with self.assertRaisesRegex(RuntimeError, 'ARCHIVE_PAX'):
             d.run(self.args)
         self.assertFalse(self.args.target.exists())
 
