@@ -9010,3 +9010,24 @@ R22实际消息8dcbf7be-9021-44a8-82ec-5a4113412eb7全文匹配本机草稿，�
 新API从干净提交编译256 JS/2730705B，manifest66b3d6480e9d85f2b449eadbfbc4c3c9e105077a7036a9740ac5a549283ad875；未传入VM、未替换运行。完整Linux重建空间不足，API组件复用原已核Linux依赖的预备方案正在独审；首稿发现回退清理和120秒预算过期阻断，已暂停该稿，不称已安全切换。当前A09-03仍PARTIAL，待修复运行身份、正式更正理由/历史及保护字段负向；A10未覆盖动作另待。
 
 唯一矩阵现61PASS/6PARTIAL/6NOT_VERIFIED/1BLOCKED=74，82.43%证据覆盖、11/15整包、6/9技术链、7/10 P0；剩余12项技术/交付及1项所有者接收。可操作工作副本https://localhost:45464/admin/color-database?workbook=47340fd8-acb4-4d57-b55e-f4a938f36a6f，原703…v5和IME8d28…v13保留。未push/main/tag、运行CI、访问生产、重开安装、刷新scanner或启动原外盘Docker；产品仍PARTIAL/AWAITING_PRODUCT_OWNER_CONFIRMATION。
+
+
+### E137回报R24已收到
+
+原授权6ad6ddfe…会话R24用户消息2ebf0ee0-ad94-4102-95bd-12fe746c1052及完成反馈5b893855-f932-42df-8eef-4248dd761dd8已读回，原稿2119字符相符。同SR/r24-chatgpt-delivery-feedback-20261030-r01.json SHA eacf2bcdf89e7a6136f2c7791a6212d254e7fbc5650fb044b5f6048f70e25f6b。ChatGPT支持E137并允许真实API组件预览，最终A15-04/05仍须一致候选制品；不改旧包身份、不重开离线安装全链。无重送或新邮件，邮箱状态仍未核实。
+
+## 2026-10-30 — 新API实际修复、标准更正及成员支路（E138）
+
+API3a11b23edd291869d29331d2abc089d2ae6fbc67/tree8cc6afd7566142a967fd265b4a4f6b14f0c1f000已在https://localhost:45464实际运行，release truck-a09-api-3a11b23edd29/build2026-10-30T01:51:46Z；Web保持3941beccddd0dfce94c8f0f7fd7d62819fb05270/tree db699c2e128e9c40d677de2ccca0788d8ffccdb9及原build。阶段身份差异明示，不称最终同候选整包，原r05仍3941。
+
+OP=同轮r30-a09-api-overlay-preparation-20261030-r01。实际切换03:51:04–09Z：原API2502/t343663正常TERM，新9889/t5041938；Web/proxy/PG/Redis/scanner未动。完整13812依赖/295链接及15原native映射核对，四个完整新鲜376根预算，最低扣除保留后余量904159232B；最终24798789632B低于24GiB。预后DB quota均42行/3零，依赖/启动条件保持。切换回执9dc1990e…、独审e60aaf92…支持实际组件切换，不冒称故障回退实跑。首两版回退/预算脚本未执行原件保留。没有Mac native传入、强杀、原外盘Docker、生产或scanner刷新。
+
+核实E137实际浏览器为原合成admin cmvg3m2c500009kzhvfpdt9ow；补明其角色，既有身份/结构事实保留。正常GUI退出后以原M1账号登录，auth/me证实cmvgce8pg00209k63noc25430、isSystemAdmin=false、roles=[]、teamAccessApproved=true，无改密/权限变化。M1在青州白原标准v4/记录rev5真实填写三个空格原因，POST82911.681/400明确拒绝，GUI原草稿保留；低权限只读PG前后39970B逐字相同（4版本/25审计/0更正命令）。改为明确合成原因后，唯一POST82911.683/201生成v5 cmvugu5xf0003jzmp6yx3qto0、rev6，板号SYN-QZ-WHITE-R30-003；原4版本及25审计完整对象不变，新增1审计/1命令。原因存入版本和审计；命令只有requestHash/result，不称其含完整原因。M1认证精确审计GET200提供作者ID/名称/原因/新版本，不称标准GUI直接显示作者。
+
+新标准仍DRAFT，GUI量产待核对且仅提示缺该标准批准；旧v4批准/评审和发放未迁移，新版本未获量产许可。刷新后实际可见新v5板号、完整更正理由与旧v4/v3/v2。普通浏览器剪贴板+MetaV对名称字段明确拒绝，完整DTO相同；对色板编号只形成草稿，无理由点保存被挡，该窗口无写请求、完整DTO相同；撤销本次草稿再刷新。额外M1认证PATCH /color-register/sheet缺理由400/field reason。其请求响应JSON保留，Network gap已truncated，不能称全网络闭环。
+
+成员边界最小补证复用原4色：M1逐个GUI详情；在原记录表只给青州白备注追加M1-SHEET-20261030，真实PATCH82911.745/200，刷新后rev6→7，5标准完全不变。该支路与工作簿映射共用sheet接口/准入/CAS，未重做导出导入。14域全部200，只有note/revision及4生成时钟变化；新审计cmvuhn3lo0009jzmpzs7ba0qx明确M1/COLOR_REGISTER_SHEET_SAVED，旧26审计不变。对E137的8关联域，原项目/活动/台次/图片6域全文不变，评审仍v4；workspace只有时钟及当前角色/目录展示范围差异，不称删人或改变项目成员。
+
+证据SR/a09-correction-member-result-20261030-r02.json SHA cdb4ac64063f20abcfdaba467f955330edcaf5223aff85b0128f4e7bb6cbd090绑定43项；独审a09-correction-member-independent-review-20261030-r01.json SHA e5e3df991f40571445781e286aa75289cb01953424a905f73e789f7bc61df5b6支持A09-03及E137成员支路。共8个唯一GET取消（7刷新/详情、1note），不计PASS；console无warn/error。原生app无窗口、CDP键盘不支持、Playwright按键超时及加载时详情点击无效保留，最终通过同Chrome标签标准输入控制完成，不把失败尝试算通过。
+
+矩阵现62PASS/5PARTIAL/6NOT_VERIFIED/1BLOCKED=74，83.78%证据覆盖、12/15包、6/9技术链、7/10 P0；剩余11技术/交付及1所有者接收。A10/E2E-05继续，当前原项目仍05/09/18未完，不因18/18节点数声称完成。API源码仍3a11，当前工作树只文档证据改动；Placeholder12项仍均测试。没有追加测试总数、重新IME/Office/安装、push/main/tag/CI/production或所有者签收。最终共同身份双组件制品尚未构建，本机可操作预览仍https://localhost:45464。
