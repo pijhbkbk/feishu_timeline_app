@@ -9062,3 +9062,9 @@ SR/a10-result-20261030-r01.json SHA15ed9b235660867b072218f0c299cc816b6cf80a50e25
 为实际消费确切base+delta新增application_delta.py，不改原三消费者、原r05或配置。只写不存在的新应用目录，两个依赖目录显式引用已核原基包，完整物理/逻辑树、文件hash/模式/UID及链接逐项读回，外部manifest SHA绑定。独审发现未定义变量、回执可污染输入、目录权限放宽及摘要名义错误，均在执行前修正。最初8目标测试PASS；加强0700后合成夹具中间目录755导致3ERROR/5FAIL，修夹具后11/11 PASS，记录delta-consumer-tests-r03；最终源码16ff7a47d9b58a68b62f9a77ef1e348919d82c699157a2e43c7d66d97ed96f61，独审6ca6d3dddc14ee78d2b594c358c41f0d158fb4e6879828cbf20d676e88046a33。110秒/1GiB为本阶段有界准入，需外层超时与新鲜完整宿主预算。
 
 此记录时尚未VM组装、原生加载或服务切换，真实预览仍API3a11/Web3941；新软件集合、INSTALL及后续运行验证未完成。不增加矩阵PASS，不重跑IME/Office/离线安装，不修改业务数据、scanner、原外盘Docker或正式域名。
+
+### 增量实际准入首次拒绝与最小修正
+
+消费者提交218c473后，三项精确输入实际传入新的input-joint-delta-20261030-r01；组装08:53:29Z退出1/CHECK_EXTRA_OR_WRITABLE_DIRECTORY，新应用目录未创建、服务未停。只读元数据定位原ART唯一额外目录runtime/apps/web/.next/server/route-cache，0700/UID=GID1100、含1子目录；内容和来源未知，未读取或清理。原manifest没有它，且它不属于新候选输入。
+
+最小修正仅在旧基包树核验中将这个精确目录记为未消费状态，先核类型/规范路径/所有权/0700、不得与manifest派生集合及依赖别名相交，然后不遍历、不复制。所有15741声明叶仍需完整核验，新目标和依赖仍不允许额外内容。r04夹具缺父目录2ERROR、r05负向实际更早TREE_BOUND拒绝但断言期望误配1FAIL保留；修正夹具与拒绝码对应后r06 13/13 PASS，源码SHAd768784b67ffe1377d6547bbd60de50856494a7cdd6ef2348806714ee815c63f，独审8aea99f51909a0352d2aab1ebce2dfe6a66dd100375724131bfe4c2c492f586c。本段尚未再次执行组装，不把脚本修正写成运行成功。

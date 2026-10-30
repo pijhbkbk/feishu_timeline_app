@@ -23,7 +23,8 @@ class DeltaAcceptance(unittest.TestCase):
         self.package.mkdir(mode=0o700)
         self.old = {}
         for name in ('node_modules/pkg/index.js', 'runtime/node_modules/next/index.js',
-                     'apps/api/dist/main.js', 'runtime/apps/web/server.js', 'apps/api/package.json'):
+                     'apps/api/dist/main.js', 'runtime/apps/web/server.js',
+                     'runtime/apps/web/.next/server/static.js', 'apps/api/package.json'):
             data = ('old:' + name).encode()
             path = self.base / name
             path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -44,13 +45,14 @@ class DeltaAcceptance(unittest.TestCase):
         self.addCleanup(self.pin.stop)
         self.addCleanup(self.temp.cleanup)
         self.new = {p: self.row(('new:' + p).encode()) for p in
-                    ('apps/api/dist/main.js', 'runtime/apps/web/server.js')}
+                    ('apps/api/dist/main.js', 'runtime/apps/web/server.js',
+                     'runtime/apps/web/.next/server/static.js')}
         self.manifest = {
             'kind': 'APPLICATION_BASE_PLUS_DELTA_V1', 'baseManifestSha256': d.BASE_SHA,
             'identity': {'sourceCommit': 'a' * 40, 'sourceTree': 'b' * 40,
                          'release': 'synthetic-test', 'buildTime': '2026-10-30T00:00:00Z'},
             'replacementPrefixes': d.PREFIXES, 'entries': self.new, 'removedBaseEntries': [],
-            'preservedBaseEntryCount': len(self.old) - 2, 'compositeEntryCount': len(self.old)}
+            'preservedBaseEntryCount': len(self.old) - 3, 'compositeEntryCount': len(self.old)}
         self.make_archive()
         self.args = argparse.Namespace(package=self.package, base=self.base, base_manifest=self.base_manifest,
                                        target=self.root / 'target', receipt=self.root / 'receipt.json',
@@ -178,6 +180,40 @@ class DeltaAcceptance(unittest.TestCase):
 
     def test_directory_permissions_remain_exact(self):
         (self.base/'node_modules').chmod(0o755)
+        with self.assertRaisesRegex(RuntimeError, 'EXTRA_OR_WRITABLE_DIRECTORY'):
+            d.run(self.args)
+        self.assertFalse(self.args.target.exists())
+
+    def test_exact_old_runtime_state_is_preserved_but_never_copied(self):
+        state = self.base/d.BASE_UNCONSUMED_STATE
+        state.mkdir(mode=0o700)
+        private = state/'unknown-state'
+        private.write_text('synthetic do not consume')
+        private.chmod(0)
+        result = d.run(self.args)
+        self.assertEqual([r['path'] for r in result['unconsumedBaseDirectories']], [d.BASE_UNCONSUMED_STATE])
+        self.assertFalse((self.args.target/d.BASE_UNCONSUMED_STATE).exists())
+        self.assertEqual(private.stat().st_mode & 0o777, 0)
+        private.chmod(0o600)
+        self.assertEqual(private.read_text(), 'synthetic do not consume')
+        (self.args.target/d.BASE_UNCONSUMED_STATE).mkdir(mode=0o700)
+        self.args.mode, self.args.receipt = 'verify', self.root/'verify.json'
+        with self.assertRaisesRegex(RuntimeError, 'EXTRA_OR_WRITABLE_DIRECTORY|TREE_BOUND'):
+            d.run(self.args)
+        self.assertFalse(self.args.receipt.exists())
+
+    def test_runtime_state_exception_never_accepts_link_or_neighbor(self):
+        state = self.base/d.BASE_UNCONSUMED_STATE
+        state.symlink_to(self.root, target_is_directory=True)
+        with self.assertRaisesRegex(RuntimeError, 'WRITABLE_BY_OTHERS|CANONICAL_PATH|FILE_TYPE_OR_HARDLINK'):
+            d.run(self.args)
+        state.unlink()
+        state.write_text('not a directory')
+        state.chmod(0o600)
+        with self.assertRaisesRegex(RuntimeError, 'FILE_TYPE_OR_HARDLINK'):
+            d.run(self.args)
+        state.unlink()
+        (state.parent/'other-state').mkdir(mode=0o700)
         with self.assertRaisesRegex(RuntimeError, 'EXTRA_OR_WRITABLE_DIRECTORY'):
             d.run(self.args)
         self.assertFalse(self.args.target.exists())

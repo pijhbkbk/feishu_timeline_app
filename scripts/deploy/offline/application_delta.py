@@ -24,6 +24,9 @@ BASE_SHA = 'c6b3f29ca19eca0111e1127d1c4e07e1f4d8d2b142893ef8f0a1ca15056db8a2'
 PREFIXES = ['apps/api/dist/', 'runtime/apps/web/']
 ALIASES = ('node_modules', 'runtime/node_modules')
 DANGLING = 'runtime/node_modules/.pnpm/node_modules/typescript'
+# Observed alongside the running old Web, absent from its artifact manifest.
+# Its contents/provenance are unknown. Never read/copy it or accept it in target.
+BASE_UNCONSUMED_STATE = 'runtime/apps/web/.next/server/route-cache'
 MAX_ARCHIVE = 64 * 1024**2
 MAX_MANIFEST = 8 * 1024**2
 MAX_FILE = 256 * 1024**2
@@ -136,8 +139,9 @@ def validate_rows(rows):
     return dirs
 
 
-def physical_tree(root, leaves):
+def physical_tree(root, leaves, old_base=False):
     dirs = directories(leaves)
+    excluded = []
     seen, seen_dirs, todo = set(), set(), [root]
     while todo:
         p = todo.pop()
@@ -145,6 +149,15 @@ def physical_tree(root, leaves):
         rel = '' if rel == '.' else rel
         s = p.lstat()
         need(s.st_uid == os.getuid() and s.st_gid == os.getgid(), 'TREE_OWNER')
+        if old_base and rel == BASE_UNCONSUMED_STATE:
+            need(rel not in leaves and rel not in dirs
+                 and not any(n.startswith(rel + '/') for n in leaves)
+                 and alias_for(rel) is None
+                 and rel.startswith('runtime/apps/web/'), 'STATE_NOT_AN_INPUT')
+            meta(p, directory=True)
+            need(stat.S_IMODE(s.st_mode) == 0o700, 'STATE_DIRECTORY_MODE')
+            excluded.append(rel)
+            continue
         if stat.S_ISDIR(s.st_mode):
             need(rel in dirs and stat.S_IMODE(s.st_mode) == 0o700, 'EXTRA_OR_WRITABLE_DIRECTORY')
             seen_dirs.add(rel)
@@ -152,19 +165,20 @@ def physical_tree(root, leaves):
         else:
             need(rel in leaves and (stat.S_ISREG(s.st_mode) or stat.S_ISLNK(s.st_mode)), 'EXTRA_LEAF')
             seen.add(rel)
-        need(len(todo) + len(seen) + len(seen_dirs) <= len(leaves) + len(dirs), 'TREE_BOUND')
+        need(len(todo) + len(seen) + len(seen_dirs) <= len(leaves) + len(dirs) + int(old_base), 'TREE_BOUND')
     need(seen == set(leaves) and seen_dirs == dirs, 'EXACT_TREE')
+    return excluded
 
 
 def alias_for(name):
     return next((a for a in ALIASES if name.startswith(a + '/')), None)
 
 
-def verify_tree(root, rows, guard, base=None):
+def verify_tree(root, rows, guard, base=None, old_base=False):
     physical = {k for k in rows if base is None or alias_for(k) is None}
     if base is not None:
         physical.update(ALIASES)
-    physical_tree(root, physical)
+    excluded = physical_tree(root, physical, old_base=old_base)
     if base is not None:
         for a in ALIASES:
             p = root / a
@@ -189,6 +203,9 @@ def verify_tree(root, rows, guard, base=None):
         else:
             need(stat.S_IMODE(s.st_mode) == row['mode'] and s.st_size == row['bytes'], 'EXACT_MODE_SIZE')
             read(p, MAX_FILE, row['sha256'], keep=False, guard=guard)
+    for rel in excluded:
+        need(stat.S_IMODE(meta(root / rel, directory=True).st_mode) == 0o700, 'STATE_DIRECTORY_CHANGED')
+    return excluded
 
 
 def inspect_archive(path, rows, digest, guard):
@@ -309,7 +326,7 @@ def run(args):
         need(shutil.disk_usage(args.target.parent).free >= FLOOR, 'GUEST_FREE_FLOOR')
     guard()
     manifest, old, rows = contract(args.package, args.manifest_sha256, args.base_manifest)
-    verify_tree(args.base, old, guard)
+    excluded = verify_tree(args.base, old, guard, old_base=True)
     inspect_archive(args.package / manifest['archive']['name'], manifest['entries'],
                     manifest['archive']['sha256'], guard)
     if args.mode == 'assemble':
@@ -327,6 +344,11 @@ def run(args):
               'compositeManifestSha256': sha(packed({'kind': 'JOINT_BASE_PLUS_DELTA_APPLICATION_MANIFEST_V1',
                                                     'identity': manifest['identity'], 'entries': rows})),
               'directoryAliases': list(ALIASES),
+              'declaredBaseEntriesVerified': len(old),
+              'unconsumedBaseDirectories': [{'path': p, 'mode': '0700', 'uid': os.getuid(),
+                                             'gid': os.getgid(), 'contentsInspected': False,
+                                             'copied': False} for p in excluded],
+              'unconsumedContentsReadCopiedOrExecuted': False,
               'baseRequired': True, 'serviceOrDatabaseActions': False,
               'elapsedSeconds': time.monotonic() - started}
     write_new(args.receipt, packed(result))
