@@ -723,8 +723,8 @@ V-E087=`e0870e8f4d919496d0161646ccc2c1aa28cd7822`；8c630=`8c630ac3c370c54908c9e
 
 | ID | 范围/准确出处 | 验收断言/样本 | 入口、步骤与可观察通过条件 | 所需方式 | 最近真实结果/证据 | 候选适用性/复用依据 | 当前结论 | 未完原因/执行依赖 | 最短下一动作/责任 |
 |---|---|---|---|---|---|---|---|---|---|
-| A09-01 | MUST; S1:A09; S1:73 | 颜色/标准/基地来源准确且指定蓝色独立 | 记录区打开两蓝、新汉玉白相关基地→比较备注/角度/L*a*b*/版本/来源；色相关系不吞基地，尊贵蓝(SD)/新港尊贵蓝ID各自独立，缺测不变0 | GUI+source/业务API | E19; E12 | 旧导入来源/更正身份保留；当前完整关系场景未复核 | PARTIAL | RUN（当前实际3941；仅补对应未闭合路径）；责任Codex | Codex原4颜色只补关系/字段缺口，不重新导入或猜合并 |
-| A09-02 | MUST; S1:A09 | 排序/改名/导入后颜色关联不串 | 在工作副本操作排序/改名/导入后打开相应项目、评审、图片→仍为原stable IDs/标准版本/基地，无按名/行位串挂 | GUI+多域API/图片 | E12原更正未改变关联 | 所需结构变化后关联全场景缺证 | NOT_VERIFIED | RUN（当前实际3941；仅补对应未闭合路径）；责任Codex | Codex用原记录只补结构变化关联读回；复用已接受原身份 |
+| A09-01 | MUST; S1:A09; S1:73 | 颜色/标准/基地来源准确且指定蓝色独立 | 记录区打开两蓝、新汉玉白相关基地→比较备注/角度/L*a*b*/版本/来源；色相关系不吞基地，尊贵蓝(SD)/新港尊贵蓝ID各自独立，缺测不变0 | GUI+source/业务API | E19/E12；E137原4颜色GUI/完整标准与来源对比 | 3941实际读回：4个原v1/完整provenance与E19相等，两白同色相但基地/ID独立，两蓝独立；新港白15°缺测与45°b=0同屏，青州白当前v4与原历史分列 | PASS | 无本项缺口；当前v4空测量不冒称含原v1值，旧来源未覆盖 | 限本机原4色；不重新导入原来源或推定未知关联 |
+| A09-02 | MUST; S1:A09 | 排序/改名/导入后颜色关联不串 | 在工作副本操作排序/改名/导入后打开相应项目、评审、图片→仍为原stable IDs/标准版本/基地，无按名/行位串挂 | GUI+多域API/图片 | E137：工作副本整行排序/改表名/导出回导/仅备注映射，8域读回及项目/评审/原图实看 | b22…v2→v4、473…v2保持稳定ID；PATCH200后仅两note/revision变化。标准/基地/项目/评审/台次/图绑定全同，8域仅3查询时钟变化；独审73b26300… | PASS | 限该结构变化链；7+5请求取消及13处回导表达差异保留，不称全部格式无损 | A09-03仍待实际标准更正及保护负向；不自动提升E2E-05 |
 | A09-03 | MUST; S1:A09 | 正式标准更正有理由/历史，普通粘贴不能绕过 | 颜色档案/标准更正入口提交理由→新版本+旧史/作者可查；普通表粘贴保护字段不能绕正式更正服务 | GUI+认证API负向/历史 | E12只入清单月更正；旧标准证据见S8第7页 | 颜色理由更正不自动证明正式标准全部路径 | PARTIAL | RUN（当前实际3941；仅补对应未闭合路径）；责任Codex | Codex定位现有标准更正真实证据，适用即复用，仅补缺少合法/绕过负向 |
 
 #### A10
@@ -792,7 +792,7 @@ V-E087=`e0870e8f4d919496d0161646ccc2c1aa28cd7822`；8c630=`8c630ac3c370c54908c9e
 
 ### 由唯一原子表派生的计数
 
-主分母N=74，有效PASS P=59，覆盖率59/74=79.73%（证据覆盖率，非代码完成率）；OPTIONAL 3项不计分母。PASS=59、PARTIAL=7、NOT_VERIFIED=7、BLOCKED=1、FAIL=0、SKIPPED=0、SCOPE_UNRESOLVED=0、NOT_APPLICABLE=0，总和74。E100闭合A03-01及P0-03；E101补实际双入口与身份/命令负向闭合A02-01；E132闭合A15-09/P0-07；E135闭合A03-05。11/15整包、6/9技术链、7/10 P0，E136闭合E2E-02，不额外增加原子PASS；旧计数及失败保留原日期。
+主分母N=74，有效PASS P=61，覆盖率61/74=82.43%（证据覆盖率，非代码完成率）；OPTIONAL 3项不计分母。PASS=61、PARTIAL=6、NOT_VERIFIED=6、BLOCKED=1、FAIL=0、SKIPPED=0、SCOPE_UNRESOLVED=0、NOT_APPLICABLE=0，总和74。E100闭合A03-01及P0-03；E101补实际双入口与身份/命令负向闭合A02-01；E132闭合A15-09/P0-07；E135闭合A03-05；E137闭合A09-01/02。11/15整包、6/9技术链、7/10 P0，E136闭合E2E-02，不额外增加原子PASS；旧计数及失败保留原日期。
 
 | A包 | MUST N_i | 有效PASS P_i | PARTIAL | NOT_VERIFIED | BLOCKED | 其他未通过 | 整包状态 |
 |---|---:|---:|---:|---:|---:|---:|---|
@@ -804,7 +804,7 @@ V-E087=`e0870e8f4d919496d0161646ccc2c1aa28cd7822`；8c630=`8c630ac3c370c54908c9e
 | A06 | 3 | 3 | 0 | 0 | 0 | 0 | PASS |
 | A07 | 5 | 5 | 0 | 0 | 0 | 0 | PASS |
 | A08 | 6 | 6 | 0 | 0 | 0 | 0 | PASS |
-| A09 | 3 | 0 | 2 | 1 | 0 | 0 | PARTIAL |
+| A09 | 3 | 2 | 1 | 0 | 0 | 0 | PARTIAL |
 | A10 | 3 | 1 | 2 | 0 | 0 | 0 | PARTIAL |
 | A11 | 3 | 3 | 0 | 0 | 0 | 0 | PASS |
 | A12 | 3 | 3 | 0 | 0 | 0 | 0 | PASS |
@@ -958,6 +958,7 @@ E01–E35保留历史记录的原日期/身份；E36起是本轮新增实际验�
 | E134 | [IME分轮结果](../../var/truck-color-v1-20261020/final-execution-20261024-r01/r30-healthy-scanner-execution-r01/resume-20261028-r01/a03-ime-result-20261029-r01.json) SHAd4b41205…；[独审](../../var/truck-color-v1-20261020/final-execution-20261024-r01/r30-healthy-scanner-execution-r01/resume-20261028-r01/a03-ime-independent-review-20261029-r01.json) SHA01547733… | 原3941；同8d28b371…单表；v7→v10 | 2026-10-29T09:03Z、09:16Z及随后保存刷新 | r01错标签仅ARMED。r02真实session2等待中composition，4087.37ms释放、原guard comp/edit=true拒绝，无正式PUT且v7全文不变；候选随后消失，原拼音另存v8，尾段未闭。r03五秒保险释放后约2.86秒才组词，NOT_OBSERVED；正常v9→撤除后B2中文另存v10并刷新全文相等。三次各8断点清除/held=false；不拼接为PASS，4项刷新GET取消单列，A03仍PARTIAL |
 | E135 | [IME完整路径](../../var/truck-color-v1-20261020/final-execution-20261024-r01/r30-healthy-scanner-execution-r01/resume-20261028-r01/a03-ime-complete-result-20261030-r05.json) SHA5abe522d…；[完整断言独审](../../var/truck-color-v1-20261020/final-execution-20261024-r01/r30-healthy-scanner-execution-r01/resume-20261028-r01/a03-ime-full-independent-review-20261030-r05.json) SHA1e8d109d… | 原3941；同8d28…单表；v12→v13 | 2026-10-30T00:23:11–00:23:27Z及随后正常保存刷新 | 选D2后同session4仍held；真实compositionstart→3682.77ms释放→原guard comp/edit=true拒绝，v12全文不变/无PUT；同次trusted更新到中文，末尾untrusted compositionend如实分列。撤除8点后正常PUT200→v13、刷新全文相等；四GET取消保留。独审核三入口共享保护，结合E133关闭A03-05；r04抢读未交接与会话恢复不计PASS；E2E-02不升 |
 | E136 | [原多表组合链](../../var/truck-color-v1-20261020/final-execution-20261024-r01/r30-healthy-scanner-execution-r01/resume-20261028-r01/e2e02-result-20261030-r01.json) SHA4d074385…；[完整链独审](../../var/truck-color-v1-20261020/final-execution-20261024-r01/r30-healthy-scanner-execution-r01/resume-20261028-r01/e2e02-independent-review-20261030-r01.json) SHA42a445fe… | 原3941；原703…多表本v4→v5 | 2026-10-30 | 同本结构/粗体/公式/原图位置组合进入草稿，真实刷新本机恢复仍正式v4；明确PUT200→v5，离开工作台重开全文相等及两表图位实看。原body9处/解析23处预期差异，草稿→保存三锚点尾差5.684e-14明示；图实际位移250.4/48，ID/尺寸保持。3+15GET取消、产品draft DELETE200范围单列。19依赖及E99/E100/E116限定复用独审支持E2E-02本机PASS，原子不加分 |
+| E137 | [颜色身份与关联实测](../../var/truck-color-v1-20261020/final-execution-20261024-r01/r30-healthy-scanner-execution-r01/resume-20261028-r01/a09-identity-association-result-20261030-r01.json) SHA235869f1…；[完整断言独审](../../var/truck-color-v1-20261020/final-execution-20261024-r01/r30-healthy-scanner-execution-r01/resume-20261028-r01/a09-identity-association-independent-review-20261030-r01.json) SHA73b26300… | 实际Web/API仍3941；新源码3a11b23未运行 | 2026-10-30 | 四原色GUI/原标准与来源不变；工作副本排序改名导出回导后仅备注映射，正式PATCH200，四域颜色仅两note/revision改变，8关联域仅3时钟变化；原项目/评审/蓝台次原图实看。原缺测与0区别保持。7+5取消、两次粘贴未写入、13布局表达差异保留。支持A09-01/02限定本机PASS；A09-03及修复新运行、A10/整链仍待 |
 
 
 
