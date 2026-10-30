@@ -8971,3 +8971,21 @@ r05同8d28…本v12，08:23:11.658北京时间捕获真实B1公式session4，11.
 同SR/a03-ime-complete-result-20261030-r05.json SHA5abe522d09f66fe45efdb3ae419ada7d171e5077d147f65a0fb8dc630c5448c5绑定30项证据；完整断言只读独审a03-ime-full-independent-review-20261030-r05.json SHA1e8d109d0561db8ac1a0909cf006a1f7f90e553c22e49a185a9c86645c0ff41f。独审核save/exportFile/mappingSource均await runtime.snapshot→committedSnapshot，原保护在workbook.save()读取前抛错，业务来源拒绝不继续应用；结合E133普通分支及未变边界源码，支持A03-05冻结断言技术PASS，不要求重演三套交错。结论仅受控调度与实际Mac系统IME，不称自然时序、全部输入法或所有者签收。
 
 唯一矩阵重算59PASS/7PARTIAL/7NOT_VERIFIED/1BLOCKED=74，79.73%证据覆盖、11/15整包、5/9技术链、7/10 P0；E2E-02保持NOT_VERIFIED。应用仍3941/db699，当前源码至HEAD应用目录/共享/锁无差异；本轮不改应用、不构建/新增测试/安装/扫描/VM/原外盘Docker，不push/main/tag/production。下一组仅原703…多表本v4的组合编辑、草稿恢复与明确保存重开内容链，先读回核对，再按已验原子适用性复用，不重做Office/正常IME/全Chrome退出/离线安装。
+
+### E135回报R22已收到
+
+R22实际消息8dcbf7be-9021-44a8-82ec-5a4113412eb7全文匹配本机草稿，已完成反馈7a4db6f2-6a11-4af3-bf7b-9b05d6f148ef支持A03-05关闭及既定E2E-02范围，无需再试IME/三入口或形式性继续批准。其判断依据报告及独审摘要，未称直接访问本机。回读r22-chatgpt-delivery-feedback-20261030-r01.json SHA1684e47dfa47ef86c5e734800a1663b8122e141ccd08abeef625ef2e0eb971e4；无新增邮件或所有者签收。
+
+## 2026-10-30 — 原多表本组合草稿恢复与保存重开闭合（E136）
+
+当前health/build重新读回仍3941/db699/build2026-10-26T12:28:07Z。原703898c1-a8bf-4d59-8217-fcc630df5c8e（o2-v5-17aa-export）正式v4原始响应4011B/SHA f8bd7714…与E116及E133逐字相同，未回滚历史。首次页面无待恢复/待核实提示，真实截图后按预告最小动作向前编辑：工作表1 B2 15→16、原C2 SUM公式24→25；空D1新增E2E02-R22并加粗；sheet2改名“合成记录页·续验”；原绿色图实际拖动，transform由50/56到300.4/104、160×100保持，实际位移250.4/48，不冒称精确250。sheet/drawing/asset身份、表顺序保持，无新图上传。
+
+本机稿与服务器draftRevision4/base4已持久化，正式完整v4仍不变；真实reload后出现恢复选择，主任务点击“恢复这份草稿”，页面明确恢复本机内容且有未保存内容。两表组合内容及移动图片实际截图，恢复后正式API仍v4。随后正常明确保存唯一PUT79795.244/200成v5，产品对本工作簿draft发DELETE79795.245/200；此段未保存request body，不新增精确槽/hash清理协议重验声明。实际点工作台→已观察dashboard→重开原URL，v5完整body及落盘wrapper文件与保存后逐字相同，两表与图片重新实看。没有把取消刷新当成功或把服务器草稿成功当正式保存。
+
+独立全量比较v4→v5恰9处原body差异：revision、B2、C2、D1、新样式RGKFzy、sheet2名称、drawing资源、snapshotHash、updatedAt；解析资源后为23处可解释差异。草稿→保存仅resources/4/data一个原字段变化，解析后3个columnOffset各差5.684341886080802e-14及键顺序，不能称字符串或解析对象完全相等。最终transform300.4/104/160/100保持；独立按行列宽及表头重算axis anchor为[300.4,104]→[460.4,204]。16格值/类型/公式/有效样式、400行有效行高、52列有效列宽、合并、冻结、其他资源及所有身份/顺序核全。原asset2199…及原件摘要沿E99复用，本次缩略图实际200/image-webp/1052B/SHA3b7c154b…与页面图位另列，不冒称原件重新取数。
+
+草稿恢复段180 events、4次合法draft PUT200、无正式PUT、3个GET取消；正式保存/离开重开段188 events、1正式PUT200、1本工作簿draft DELETE200、15个GET取消，两段共18个取消不计PASS，均truncated=false/hasMore=false，console无warn/error。DOM粗体locator无匹配后以原生AX完成；首before-sheet2-r01误为第一表，真正图位基线r02；restored-sheet1-r01为加载态，完成图r02；这些原件保留不用作完成证据。缩略图读回已成功但首落盘表达式变量错误，随后仅落已有结果，不重取。
+
+同SR/e2e02-result-20261030-r01.json SHA4d0743856d105ae2c2b45a4d14e39bb03712f3df4fdeebe8c6d9ffef51d5c0d8绑定27项证据；完整链只读独审e2e02-independent-review-20261030-r01.json SHA42a445fe53e308f5f80a4a8e0339172aee509cd828ca3ab1f3ebb8dec8da61b8核9截图、全内容/锚点/19依赖及历史衔接，支持E2E-02限定本机技术PASS。整Chrome退出重开/重登沿E99/E100原v2及未变输入复用，E116 v2→v4、本次v4→v5连续；不称v5另做整Chrome退出，也不混用8d28单表样本。
+
+技术链6/9=66.67%，原子仍59/74、不重复加分；11/15包、7/10 P0、产品PARTIAL/AWAITING_PRODUCT_OWNER_CONFIRMATION。当前可操作预览https://localhost:45464/admin/color-database?workbook=703898c1-a8bf-4d59-8217-fcc630df5c8e，正式v5。无应用源码、构建、测试、安装、扫描刷新、VM/原外盘Docker、远端或正式环境变更。其余14项技术/交付及1项所有者接收仍按唯一矩阵保留，不把本链关闭当整个系统完成。
