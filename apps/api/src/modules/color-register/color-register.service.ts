@@ -85,10 +85,12 @@ export class ColorRegisterService {
         select: { id: true, month: true, metricScope: true, vehicleModel: true, quantity: true, productionBaseId: true, sourceRowId: true, sourceCell: true, revision: true, originalSource: true } }),
       readSystemColorProduction(this.prisma, id),
     ]);
-    return { ...row(color), hueStandard: color.hueStandard, projects: color.linkedProjects,
+    const summary = row(color);
+    return { ...summary, hueStandard: color.hueStandard, projects: color.linkedProjects,
       pendingReasons: [!color.productionBaseId ? '生产基地尚待核对。' : null,
         color.registerStatus === 'PENDING_REVIEW' ? '来源字段存在待核对项，原始记录已保留。' : null,
-        color.projectId === null ? '历史来源没有提供量产批准证据；未创建开发流程。' : null].filter(Boolean),
+        !color.projectId && !color.linkedProjects.length ? '当前颜色尚未关联开发项目。' : null,
+        summary.productionApprovalStatus !== 'APPROVED' ? '当前标准尚未查询到有效量产批准记录。' : null].filter(Boolean),
       versions: versions.map(version => {
         const data = technical(version.technicalData);
         return { id: version.id, versionNo: version.versionNo, boardCode: version.boardCode,
@@ -199,7 +201,7 @@ export class ColorRegisterService {
     const input = { colorId: id, expectedRevision: positiveInt(body.expectedRevision, '颜色记录版本'),
       boardCode: textField(body.boardCode, '色板编号', 128), registerMonth: parseRegisterMonth(body.registerMonth),
       technicalData: parseColorTechnicalData(body.technicalData) };
-    if (!input.technicalData.changeSummary) throw new BadRequestException('请填写更正原因；历史标准不会被覆盖。');
+    if (typeof input.technicalData.changeSummary !== 'string' || !input.technicalData.changeSummary.trim()) throw new BadRequestException('请填写更正原因；历史标准不会被覆盖。');
     return withTeamWrite(this.prisma, actor, tx => this.command(tx, actor, identity(body.operationId, '操作标识'), 'COLOR_STANDARD_CORRECTED', input, async () => {
       const current = await lockRegisterColor(tx, id);
       // A candidate must pass the existing project board node; this correction endpoint cannot bypass it.
