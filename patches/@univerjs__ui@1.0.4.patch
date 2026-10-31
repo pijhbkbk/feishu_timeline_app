@@ -10,6 +10,16 @@ index 39e21a0395823b58c2981b1f01d062aa701ba968..82dcded112c9a993e091a3ddada7ba5f
  		cursorStyle.textContent = FORMAT_PAINTER_CURSOR_CSS;
  		document.head.appendChild(cursorStyle);
  		this.disposeWithMe({ dispose: () => cursorStyle.remove() });
+@@ -4123,8 +4124,7 @@ const ToolbarItem = forwardRef((props, ref) => {
+ 		function handleSelect(option) {
+ 			if (disabled) return;
+-			let commandId = sId;
+-			if (option.id) commandId = option.id;
++			const commandId = option.commandId ?? (option.id || sId);
+ 			const commandParams = typeof option.params === "function" ? option.params(option.value) : option.params;
+ 			executeCommand(commandId, commandParams ?? { value: option.value });
+ 		}
+ 		function handleSelectionsValueChange(value) {
 @@ -4656,6 +4657,7 @@ var ThemeSwitcherService = class extends _univerjs_core.Disposable {
  		const existingStyleElement = document.getElementById(this._styleSheetId);
  		if (existingStyleElement) existingStyleElement.remove();
@@ -66,6 +76,16 @@ index dafd86f7a3030c5513bc7d5c6427062612402582..e2f63b88dc77e2eb1d5c61cb529874e9
  		cursorStyle.textContent = FORMAT_PAINTER_CURSOR_CSS;
  		document.head.appendChild(cursorStyle);
  		this.disposeWithMe({ dispose: () => cursorStyle.remove() });
+@@ -4122,8 +4123,7 @@ const ToolbarItem = forwardRef((props, ref) => {
+ 		function handleSelect(option) {
+ 			if (disabled) return;
+-			let commandId = sId;
+-			if (option.id) commandId = option.id;
++			const commandId = option.commandId ?? (option.id || sId);
+ 			const commandParams = typeof option.params === "function" ? option.params(option.value) : option.params;
+ 			executeCommand(commandId, commandParams ?? { value: option.value });
+ 		}
+ 		function handleSelectionsValueChange(value) {
 @@ -4655,6 +4656,7 @@ var ThemeSwitcherService = class extends Disposable {
  		const existingStyleElement = document.getElementById(this._styleSheetId);
  		if (existingStyleElement) existingStyleElement.remove();
