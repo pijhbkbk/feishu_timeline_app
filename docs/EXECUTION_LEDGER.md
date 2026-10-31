@@ -9110,3 +9110,39 @@ Chrome原M1会话自然有效，auth/me非管理员。真实刷新原703898c1-a8
 实际总结OP/joint-lifecycle-actual-result-20261031-r01.json SHA0caf6c5aa2b0376e32e7cd045b01f88b8b5513ce5483692504c16972d1f60bff绑定65项。独审e0a8a317f2bb58fc3210b77f3e2e36cda107a7110e2cd9e3410b12d5b2ac5fc4及调用补证独审62012021617ebfdad4342ea0d95a5842d03d4e717257f7b699d794c1a938514b支持当前boot普通生命周期/交付绑定缺口关闭；浏览器独审a701358f644cb3225b9cff81204f112112ab0754e7aa3ff4d70d8e7a21df2c31。未验证跨VM重启、故障回退或新安装；旧3941已验安装按输入适用性复用，不改旧结论。
 
 矩阵64PASS/3PARTIAL/6NOT_VERIFIED/1BLOCKED=74、86.49%、13/15包、7/9链、7/10P0保持。A15-04/05/09更新当前共同候选适用性，不新增PASS。下一步原14页/guide四CSS宽、导航dirty离开返回、真实Safari及固定性能，再按有效权限推进CI/full安全/正式目标；E2E-08和所有者接收不升级。未改应用/依赖/schema、重新构建/安装、刷新scanner、启动原外盘Docker、push/main/tag/远端CI/生产；产品PARTIAL/AWAITING_PRODUCT_OWNER_CONFIRMATION。
+
+
+### E141回报R28已收到
+
+原授权6ad6ddfe…会话用户消息21bd5bb9-f3f8-45da-b42e-5b431385e36b、完成反馈f7c0389b-a49d-463c-9141-b0f77ddce36d已实际读回，SR/r28-chatgpt-delivery-feedback-20261031-r01.json留存。支持共同候选普通生命周期缺口关闭，转A15-01/03及Safari/固定性能，不追加启停/安装。反馈提及Gmail副本1a18fb8587820d32，本轮尚未读取该邮件，不称已领取或邮箱最新无新件。
+
+## 2026-10-31 — 窄屏实修、当前候选交付及导航草稿读回（E142）
+
+应用提交5b07fe3404cb83d485b924b9fdc65f1a1a18ddf0/tree3122780c1149a496d7bd58c19cb7e88d1c1c6816只改4份CSS：390周评活动选择不再只剩箭头、产量筛选避免重叠、人员详情/编辑关闭按钮不再竖排、评审/材料栅格子项不再撑开整页。原948/379相对375的溢出已在真实新构建回到375，原M1暖白灰绿与Univer/业务安全保护保留。临时样式观察已撤除，实际截图stylePreview=false。CSS源码及受控预览独审分别保留；没有业务逻辑、依赖、schema或治理规则变更。
+
+所有者仅为本次构建/增量授权376根同范围临时25GiB，Lima磁盘仍24GB。新1064源文件归档及API/Web实际构建成功，release truck-layout-5b07fe3404cb-r01/build2026-10-31T03:14:40Z；Bnew=OP/joint-build-5b07-r01。6阶段退出0，结果SHA2348924e86ad922f6f1883697ac505d8bdd5a4b73c2bca9388c45b48cb60d672；17份完整预算最大25948499968B、最长32.503秒间隔，新增峰值803962880B，轮询条件不是内核配额。只释放新复制构建输入的两处node_modules，29538叶/4364目录先核原内容、模式和链接；当前用户lsof为空及构建进程组不存在，不声称全UID特权检查。实际净释放650317824B，25981210624→25330892800B，扣64MiB仍余371802112B，已回24GiB；源码、制品、失败和原依赖不动。后续组装/start继续原24GiB准入，未动原外盘Docker或旧证据。
+
+操作工具另分c473d17（普通生命周期固定双profile及外部STOPPED绑定）与540c9f5ea890a4189b86a6d4066984d718570eae（交付checker精确5b07身份/三摘要）。同ROOT锁/CAS保持；跨profile只有实际STOPPED、owners为空、无pending/error/unresolved且boot/target/path/hash相符才可start，不回退旧INITIAL。原29目标生命周期回归及checker修正夹具后的9目标回归/独审成立，r01缺INSTALL/helpers的失败保留，不把用例数当产品完成。
+
+新delta946叶（944文件+2原链接）9494574B，SHA3d7637ec39a1c2cf4ee5c55dc96e9ceec7093b80a72442764b2a7a504aacf7a2；manifest bb5c7d58cbe8f4433abb3509f707e7aae2a41b4c860005d82dfc7bab9d8dcb43，composite8a7ac3f26c7b512999d00e29e3671634d0c0565218ca160f3642158c15d38ea2。115旧应用路径移除、15742组合叶；14728原Linux依赖不变、7Darwin包排除，无native载荷。原消费者055cb5d9…未改，旧route-cache内容继续未知/未消费。17必要公开输入传入并逐项核验，Linux实际组装6.715647秒成功。新joint-delivery-5b07-r01共30声明文件18115918B，含manifest/SHA256SUMS为32文件；manifest019ce1ecec64ef821abb49499ed6b68226b76a43f2e98e69ee955ed6eab84626。INSTALL执行前冻结，包内checker从/private/tmp实际exit0；仍依赖原r05/基包，不是独立全量包。恢复模板的占位值不是已执行回退证据，真实恢复仍须外部实际STOPPED前置，本轮未回退/重装。
+
+从包内普通入口正常stop旧3a11再start新5b07，旧Web13626/t7859934、API13609/t7859853正常退出；新APP=/home/recovery/application-layout-5b07-r01，API14379/t8517521、Web14396/t8517603。boot9fee751f-120b-451e-9b1b-b17eac34bf98、proxy2510/t343664及原PG/Redis/scanner保留原身份，15选定native映射匹配。四直连/严格CA HTTPS身份均5b07，state指向本次start、无pending。stop收据a204f063bbb4ee0326647e40c35a905fe27fd4d69c8ff50e40071841cd12f04a；start679e65699729a8048f565cb3f7eeeb1c04e20206ba840c45243eb2713a9f1036；实际链独审7fb0eb00…、交付最终独审24f814ba…通过。三个新鲜完整预算25405440000/25405612032/25405816832B均在24GiB，guest准入成功但数字未保存的限制仍明示；不重启补历史数字。
+
+原3a11 GUI上，8d28b371…工作簿v13/D5空白经真实输入实际保留A15NAVDRAFT20261031（工具键入原带下划线文本未产生下划线，按实值记录）。本地及云稿形成、正式仍v13；真实确认离开到工作台→返回同本→恢复这份草稿→明确保存v14→刷新完整读回。两个确认工具超时及内核重连网络缺口保留，不能声称全窗口无写；保存窗口正式PUT200及草稿DELETE200成立，刷新片段有7取消且截断。独审239d9381…核旧内容/结构/样式/图片，仅revision/D5/snapshotHash/updatedAt变化。新5b07本轮完整DTO与v14相等，703898c1…原v5完整DTO也与E136/生命周期前后相同，16/25与第二表绿图实看；没有重新编辑这两个历史本。
+
+SR/a15-layout-20261031-r01下actual-layout-result-r01.json SHAe31abe811fd38b28c846fa0426c343f7450b44128a8b0bdf3582a819ad8f78a0绑定100份有效尺寸元数据及854条无截断事件，数量不是验收分子。原14页中封面无路由；其余当前业务页面及适用空/编辑/长备注按1440/1280/1024/390实际补图；guide桌面三宽全页、390仅顶部/FAQ两张有界视口，独审511b4a4b…/49bf6262…/a2d8ab7c…及auth-guide9a289868…分范围查看。六主入口、新建取消/项目编辑返回、sample图预览/返回、标准/评审页、材料回原project?tab=materials、年度回原color记录均实际点击；年度页返回颜色清单时保留workbook=047ddde6…上下文；记录来源仍显示synthetic-annual-due-20261024-r01.xlsx/合成年度基地R01/第2行，不混称703或8d28来源。390流程图实际内滚到左右/纵向并缩放115→100，材料内滚后下载控件可达，生产侧栏内滚后图片动作可达；不称18节点全部点击或本轮执行下载。390第二表图片可局部浏览，不承诺完整桌面编辑。
+
+reference-implementation-comparison-r02.html提供14参考页/当前5b07/历史3a11/已撤受控样式及四宽切换，142本地图片资源与JS语法静态独审bea12d1a…成立，旧r01不改。四张误名p02-login实际被有效会话重定向dashboard，已明确排除；materials普通缩放异常图排除，替用有尺寸绑定CDP图。guide半年FAQ本次点击收起，不能按faq-open文件名称展开。全局新grid命中认证卡片，旧3a11三表单仅可复用未改逻辑/内容，5b07认证四宽布局仍待，A15-01/03暂不升PASS。真实Safari新标签由所有者手动通过证书、AX实际显示登录页；随后原生点击失去frame/截图空白，未登录或取得Safari产品链，不能报A04-02通过。原生工具两次同因失败后暂停该动作，准备集中人工步骤；不改安全/全机信任。
+
+性能只读准备performance-next-scope-readonly-r01.json SHAeace20d3399ca21a97b6c593ae67e35342e0a243e7fd0491a5ffdc19fe8e1c76沿S7：冷暖各1，选择/按键50，正式保存50，排序/筛选/粘贴各5，30图/10切换。旧3380/PATCH业务runner不直接跑；1000×27源与当前自由本需先绑定，云稿次数只报实际n。没有新性能PASS。矩阵仍64PASS/3PARTIAL/6NOT_VERIFIED/1BLOCKED=74、13/15包、7/9链、7/10P0；产品PARTIAL/AWAITING_PRODUCT_OWNER_CONFIRMATION。待新认证布局、Safari及固定性能，再按有效权限推进CI/full安全/精确正式HTTPS与最终所有者接收；没有push/main/tag/远端CI/生产、重开安装或已闭合ChromeIME/Office/业务七链。
+
+
+### E142文档独审及R29回报已收到
+
+最终三文档独审OP/layout-docs-e142-review-r01.json SHA7974dd8c85c73696a4d39659fc5661728b7585dce0ef5c3667c68fd4fffac562支持当前限定表述：年度返回workbook上下文不当来源ID，guide390只两有界视口，仅checker有/private/tmp原始cwd；普通stop/start未保存外层host cwd/argv，不外推。Placeholder本轮12命中均测试，diff-check0，计数逐项不变。
+
+R29用户消息6e3b4f4b-8d24-4557-b226-ee443c3aae94及单点纠正f4249353-7dd3-44ab-8b19-a0acb272ec50实际送达，合并反馈71feb68e-8f5e-4f6a-8bad-1fe647eb529a完整读回。SR/r29-chatgpt-delivery-feedback-20261031-r01.json保留原报告与纠正，原R29不能静默改写。Gmail同反馈1a19036f557e9814已实际只读并去重，SR/r29-gmail-feedback-read-20261031-r01.json；不是全邮箱最新状态核验，无新邮件。反馈支持已报范围，下一批明确新认证三表单四宽/返回及guide中部/必要FAQ展开，符合完整断言后分别关闭A15-01/03，不等Safari或性能整批完成，不重开安装/启停。
+
+Safari仅准备独立新本3609636f-6ae7-46d6-a6f0-4661453f198c（Safari 系统输入验收 20261031）：Chrome真实GUI新建op734dbd29-a58b-4b06-a64e-18c172d1aff5，正常结束已确认记录，API原M1/正式v1/全空白成立。证据在layout目录safari-5b07；已向本人一次请求Safari真实输入/保存刷新/返回，尚未取得结果，不重建或抢写。用户询问账号密码后只核原合成M1记录与当前username相符，将本机0600凭据文件入口交本人，不改密、不发送密码到PM/邮件或证据。
+
+原性能活动cmv67mzdw00b39k96r7y47ahw在当前原M1同源GET返回404，layout目录performance-old-activity-presence-r01.json保留；这是该身份当前入口的结果，不扩称全库查无。只读核原合成定义准备最小正常录入/导入，未执行旧3380/PATCH runner、未直接写恢复库或给性能PASS。
