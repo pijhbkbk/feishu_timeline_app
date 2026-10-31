@@ -9146,3 +9146,31 @@ R29用户消息6e3b4f4b-8d24-4557-b226-ee443c3aae94及单点纠正f4249353-7dd3-
 Safari仅准备独立新本3609636f-6ae7-46d6-a6f0-4661453f198c（Safari 系统输入验收 20261031）：Chrome真实GUI新建op734dbd29-a58b-4b06-a64e-18c172d1aff5，正常结束已确认记录，API原M1/正式v1/全空白成立。证据在layout目录safari-5b07；已向本人一次请求Safari真实输入/保存刷新/返回，尚未取得结果，不重建或抢写。用户询问账号密码后只核原合成M1记录与当前username相符，将本机0600凭据文件入口交本人，不改密、不发送密码到PM/邮件或证据。
 
 原性能活动cmv67mzdw00b39k96r7y47ahw在当前原M1同源GET返回404，layout目录performance-old-activity-presence-r01.json保留；这是该身份当前入口的结果，不扩称全库查无。只读核原合成定义准备最小正常录入/导入，未执行旧3380/PATCH runner、未直接写恢复库或给性能PASS。
+
+
+## 2026-10-31 — Safari 原保存内容保留及返回错误工作簿实修（E143）
+
+所有者在独立新本3609636f-6ae7-46d6-a6f0-4661453f198c（Safari 系统输入验收 20261031）完成系统中文输入、两行、快速切换、复制、保存刷新及工作台往返，报告保存v2后返回却显示v3、文字不见。其截图和Safari AX实际选中的是旧047ddde6-3370-4e4c-a7db-14f19d2fc742（合成草稿单次恢复）v3。只读正式API确认新本仍v2，D1中文输入验收、D2第二句，、D3轻卡/东方两行、D4快速切换、D5第二句，；草稿null/baseStale=false。所有者进一步明确实际只输入了“第二句，”，不应记为后半句丢失。重新打开正确新本后Safari实际截图显示五格及“已读取版本2”。未恢复历史、补写、覆盖或重做IME。证据位于E142的layout/safari-5b07，读回SHAac0534cfd35be2cbfea07174cece7add06eb593586e5ba386adea88aeba5a9d6，owner-clarification-r01.json及reopened-v2-settled.png保留。
+
+真实缺陷是裸颜色清单入口默认列表首本。应用提交9c412ddf892db584633d3e083781e8bfc393fba5/tree dde64d42b3f35b23bde0d53a21872f4ab1a37e55修正为显式URL优先，其次当前账号/本标签最近成功打开的工作簿；记忆最多8账号且只存ID，sessionStorage失败用本标签内存，不声称被禁持久化时跨刷新仍恢复。所有重新读取仍经过原鉴权API，记忆本403/404不静默换本。等待认证就绪再默认选本，账号失效先清旧编辑器；原dirty、草稿、CAS和业务命令保护不变。
+
+另在正常Chrome退出时实见当前360本的登录returnTo仍指703旧本。已装Next15.5.28会将携带__NA的history状态认作内部调用而跳过路由同步；修复使用公开replaceState(null,...)，由框架保留内部状态并同步useSearchParams。新69目标回归、Web类型/四文件lint/diff-check均exit0；原64/68阶段记录保留，数量不是产品验收。独审ef613acc5eeac7ff4a9f9676aa174a5810dd7ccd20e58da0c59da4324d562c96、增量bf89cbf6f65d20a909ebecd1e238fd13b7ab5e0c0e355c9781862e620bb61019。初稿认证early-return清理缺口在提交前修正并覆盖，不隐去审查过程。
+
+所有者本次call_f286414ca025433282569798294cf40f明确再次临时25GiB、完成回24GiB；不是沿用已结束的上次授权。同376根及原Lima24GB不变。OP/joint-build-9c412dd-r01实际1066源文件、6构建阶段exit0，身份release truck-workbook-return-9c412ddf892d-r01/build2026-10-31T05:03:04Z，result SHA8b8fa683ffdb082ae6856d7197a63203326b2f0f11aae135d98f1f17af09b09a。复制输入峰值804024320B。delta946叶/9491375B、SHA c73952d25eac483ce64184151a89377cacb34926dad3de32acfd177e76fc674d，manifest77f6b2593ab32bbd180bf2c81a6cf310880c100a1ef051b0f3843e4ec17e1862，组合bd0769add13d5e80983eeaa6b633098c497f5b08bfdfcd8ca7c973657eb31be3；116旧应用路径移除、15742组合叶，原Linux依赖保留。此段记录时尚未切换运行，预览仍5b07；复制输入释放、24GiB归还及Safari往返/登录returnTo新候选实测尚待，不增加PASS。
+
+
+### E143实际运行与产品返回结果
+
+本轮新复制输入已按内容/链接/模式闭集和当前用户占用检查释放，净650317824B，总26252918784→25602600960B，临时25GiB已经归还原24GiB；不动源码、制品、历史和原外盘Docker。新的普通启动继续用原376根/24GiB及64MiB保留，三份完整总量25677144064/25677332480/25677520896B，最后扣保留余25174016B；只为准入时点，不称连续硬配额。guest准入数值未单独保存限制保持。
+
+操作工具另提交b0e9a708b1f8ef37c2c05833d831f91e77d5ec90，固定9c profile和交付摘要；29＋10目标检查及diff独审bf952895…通过。新joint-delivery-9c412dd-r01含30声明文件17996907B，加manifest/SHA256SUMS共32文件；manifest6cde59099b213a88b5ba58201ddda62db28827573718152bbf3a43f2703bf014，binding3351810c792bef419aadfd4e956d1941592f17327dd518bed4958c50b3f743f3。包内checker从/private/tmp实际exit0；INSTALL先冻结、实际结果另存；仍需原r05/Linux基包，未重新安装。包独审223113f5…无阻断。
+
+原5b07由包内普通stop正常退出，新9c从包内普通start实际启动；两次外层绝对argv/cwd=/private/tmp/exit0本轮完整保留，不倒填R29历史。stop3d6668b73b323389e869000626913754a172ecff2583de2b5a40792e36dca947→startcec44605618f93cea4da636a4b8a896b9ec1c3d640a312ccc38ba6f1428e481f，共享state指向后者且无pending。API15121/t9173595、Web15139/t9173697；直连和严格CA HTTPS四入口均9c/05:03:04Z。原proxy/PG/Redis/scanner固定身份守卫在成功路径执行，原私有配置和数据保持；最终收据未单列全部共享stat原值，不外推为逐项新readback。实际运行独审ec8f956e…成立，不追加启停。
+
+所有者Safari系统组词、标点、两行/快切/复制及正式v2保存刷新，按其原5b07实际报告保留；9c未改CSS/auth/guide/IME/parser/API/锁文件。新的同一Safari窗口66E431FD…刷新后，真实点工作台→裸颜色清单，返回原360…/“Safari 系统输入验收 20261031”/v2，五格原文和两行可见。唯一有效最终图workbook-return-9c412dd/safari-return-v2-matched.png已实看；先前捕到另一Safari窗口的图和safari-return-settled-ax明确排除，不以工具无frame判产品失败。未再次编辑、保存、恢复历史或重做IME。
+
+Chrome同一本→工作台→裸颜色入口→当前360/v2→正常退出→前往登录的returnTo360→注册/返回登录→恢复/返回登录→原M1正常密码登录→当前360/v2；没有新注册或改密。随后实际业务记录→返回自由本仍360/v2。原正式DTO、Safari后、重登后及业务记录返回后全文相等，草稿null/baseStale=false；同本内容链并非只比版本号。Chrome导航78事件31请求无截断，30GET及1次正常登出POST，16ERR_ABORTED保留；输入密码前已停捕获，不称整个登录窗口零写，也不要求Safari全程Network。证据在SR/a15-layout-20261031-r01/workbook-return-9c412dd。
+
+已补5b07真实未登录三表单×四CSS宽，字段/标签/主按钮/返回可见可用、无整页溢出；12图独审323fa93d…。次要按钮偏浅作为原图观察保留，9c实际computed为rgb(63,107,88)/opacity1/enabled，不推定新阻断。guide390新全页与六段原尺寸、中部/材料表真实横滚至269=max、半年FAQ实际开/关文本已补，独审6013a2f5…；旧误图保留排除。reference-implementation-comparison-r03.html纳入新三表单/四宽切换、guide补证及实际Safari返回，仍标原截图5b07与9c逐输入复用，不重做PPT。
+
+E143完整断言与实际产品独审6a81817b352687477432c7d245ca02f4d87672d2ced569aac0fe73676fd74ebc支持按本机范围关闭A04-02/A15-01/A15-03；A15-02新业务记录返回桥接保持PASS。唯一矩阵复算67PASS/1PARTIAL/5NOT_VERIFIED/1BLOCKED=74、90.54%；13/15包、7/9技术链、7/10P0不变。P1为4关闭/1未闭：P1-02/03早已按E136/E138/E139实操满足，旧“1关闭”段首滞后本次纠正，本轮另关P1-05，不凭计数提升E2E。剩固定性能三条、CI/完整安全/正式目标三条及最后所有者接收。Placeholder12命中均测试；没有push/main/tag/远端CI/生产或原外盘Docker操作。
