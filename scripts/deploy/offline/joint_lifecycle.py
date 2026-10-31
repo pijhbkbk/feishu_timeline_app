@@ -50,6 +50,11 @@ TARGETS = {
         'application': '/home/recovery/application-workbook-9c412dd-r01',
         'delta': '/home/recovery/input-workbook-lifecycle-20261031-r01/delta',
         'deltaSha256': '77f6b2593ab32bbd180bf2c81a6cf310880c100a1ef051b0f3843e4ec17e1862'},
+    'save2e0c191': {
+        'identity': {'sourceCommit': '2e0c191f8ed1eb1bdd0f817354a0a785d0c3b126', 'sourceTree': '150440646f845b04774991ff65b2f84a37b3b968', 'release': 'truck-workbook-save-2e0c191f8ed1-r01', 'buildTime': '2026-10-31T08:03:16Z'},
+        'application': '/home/recovery/application-save-2e0c191-r01',
+        'delta': '/home/recovery/input-save-lifecycle-20261031-r01/delta',
+        'deltaSha256': '1eec75c5a436e2d49f4bdeff30bbeec1a856d878d243faa662a0e9e1260b7292'},
 }
 ctx = {}
 
@@ -165,7 +170,7 @@ def listening_ports():
 
 
 def bind_target(binding):
-    """Two explicit, reviewed candidates share one existing instance lock."""
+    """Explicit, reviewed candidates share one existing instance lock."""
     global APP, IDENTITY, DELTA, DELTA_SHA
     if binding.get('kind') == 'R30_JOINT_APPLICATION_LIFECYCLE_V1':
         target = TARGETS['joint3a11']

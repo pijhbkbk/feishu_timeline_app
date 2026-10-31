@@ -29,6 +29,7 @@ TARGET_INPUTS = {
     "joint3a11": "/home/recovery/input-layout-recovery-20261031-r01",
     "layout5b07": "/home/recovery/input-layout-lifecycle-20261031-r01",
     "workbook9c412dd": "/home/recovery/input-workbook-lifecycle-20261031-r01",
+    "save2e0c191": "/home/recovery/input-save-lifecycle-20261031-r01",
 }
 ROOT = "/home/recovery/joint-lifecycle-3a11-r01"
 BOOT = "9fee751f-120b-451e-9b1b-b17eac34bf98"
@@ -153,7 +154,7 @@ def load_budget_host():
     module=types.ModuleType("delivered_budget");module.__file__=str(path)
     exec(compile(pinned(path,row["sha256"]),str(path),"exec"),module.__dict__)
     def budget(name,inputdir,reserve):
-        policy={"kind":"OFFLINE_HOST_BUDGET_SCOPE_V1","limit":24*1024**3,
+        policy={"kind":"OFFLINE_HOST_BUDGET_SCOPE_V1","limit":49*1024**3//2,
                 "expectedRootPaths":state["pins"]["budgetRootPaths"]}
         b=module.budget(policy,OP,["/Users/lixiaochen/Library/Caches/lima"])
         b.update(round30RootsIncluded=True,guestAccess=False)

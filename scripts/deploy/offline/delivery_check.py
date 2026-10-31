@@ -53,6 +53,15 @@ WORKBOOK_INPUTS = {
 }
 
 
+SAVE_IDENTITY = {'sourceCommit': '2e0c191f8ed1eb1bdd0f817354a0a785d0c3b126', 'sourceTree': '150440646f845b04774991ff65b2f84a37b3b968', 'release': 'truck-workbook-save-2e0c191f8ed1-r01', 'buildTime': '2026-10-31T08:03:16Z'}
+SAVE_INPUTS = {
+    **JOINT_INPUTS,
+    'delta/manifest.json': '1eec75c5a436e2d49f4bdeff30bbeec1a856d878d243faa662a0e9e1260b7292',
+    'delta/application-delta.tar.gz': '347131f4f0c9e50db30dfd1e463485a6fe9e6cbf604e584655be4ce21bacbc4a',
+    'inputs/composite-application-manifest.json': 'ba756d75e325e9c40c324b395670e87c60f082e9807f7deef1fb7adefdb8313e',
+}
+
+
 def need(ok, code):
     if not ok:
         raise RuntimeError('CHECK_' + code)
@@ -111,7 +120,8 @@ def check(root, manifest_sha):
     if joint:
         identity = manifest.get('applicationIdentity')
         inputs = (JOINT_INPUTS if identity == JOINT_IDENTITY else LAYOUT_INPUTS if identity == LAYOUT_IDENTITY
-                  else WORKBOOK_INPUTS if identity == WORKBOOK_IDENTITY else None)
+                  else WORKBOOK_INPUTS if identity == WORKBOOK_IDENTITY
+                  else SAVE_INPUTS if identity == SAVE_IDENTITY else None)
         need(inputs is not None and
              manifest.get('requiredBaseDeliveryManifestSha256') == JOINT_BASE_DELIVERY and
              manifest.get('standalone') is False, 'JOINT_MANIFEST_CONTRACT')
