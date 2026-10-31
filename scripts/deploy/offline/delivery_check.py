@@ -29,6 +29,17 @@ JOINT_INPUTS = {
     'inputs/base-application-manifest.json': 'c6b3f29ca19eca0111e1127d1c4e07e1f4d8d2b142893ef8f0a1ca15056db8a2',
     'inputs/composite-application-manifest.json': '55a0e2f5dd7e1cf9e7734761a9c770bf0df2dc137d9d4846ab3c9845736224e2',
 }
+LAYOUT_IDENTITY = {
+    'sourceCommit': '5b07fe3404cb83d485b924b9fdc65f1a1a18ddf0',
+    'sourceTree': '3122780c1149a496d7bd58c19cb7e88d1c1c6816',
+    'release': 'truck-layout-5b07fe3404cb-r01', 'buildTime': '2026-10-31T03:14:40Z',
+}
+LAYOUT_INPUTS = {
+    **JOINT_INPUTS,
+    'delta/manifest.json': 'bb5c7d58cbe8f4433abb3509f707e7aae2a41b4c860005d82dfc7bab9d8dcb43',
+    'delta/application-delta.tar.gz': '3d7637ec39a1c2cf4ee5c55dc96e9ceec7093b80a72442764b2a7a504aacf7a2',
+    'inputs/composite-application-manifest.json': '8a7ac3f26c7b512999d00e29e3671634d0c0565218ca160f3642158c15d38ea2',
+}
 
 
 def need(ok, code):
@@ -87,7 +98,9 @@ def check(root, manifest_sha):
     manifest = json.loads(raw, object_pairs_hook=unique)
     joint = manifest.get('kind') == 'R30_MATERIALIZED_APPLICATION_DELTA_DELIVERY_V1'
     if joint:
-        need(manifest.get('applicationIdentity') == JOINT_IDENTITY and
+        identity = manifest.get('applicationIdentity')
+        inputs = JOINT_INPUTS if identity == JOINT_IDENTITY else LAYOUT_INPUTS if identity == LAYOUT_IDENTITY else None
+        need(inputs is not None and
              manifest.get('requiredBaseDeliveryManifestSha256') == JOINT_BASE_DELIVERY and
              manifest.get('standalone') is False, 'JOINT_MANIFEST_CONTRACT')
     else:
@@ -101,7 +114,7 @@ def check(root, manifest_sha):
     if joint:
         by_name = {r['path']: r for r in rows}
         need(all(by_name.get(name, {}).get('sha256') == digest
-                 for name, digest in JOINT_INPUTS.items()) and
+                 for name, digest in inputs.items()) and
              {'INSTALL.md', 'operations/delivery_check.py'} <= set(names), 'JOINT_INPUT_CLOSURE')
     need(all(type(r['bytes']) is int and 0 <= r['bytes'] <= 1024**3 for r in rows) and
          sum(r['bytes'] for r in rows) <= MAX_TOTAL, 'TOTAL_BOUND')

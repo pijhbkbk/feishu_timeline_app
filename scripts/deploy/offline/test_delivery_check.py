@@ -91,4 +91,36 @@ class DeliveryTests(unittest.TestCase):
             entry['inputs'].remove('delta/application-delta.tar.gz');materialize()
             with self.assertRaisesRegex(RuntimeError,'JOINT_ENTRYPOINT_CONTRACT'):m.check(self.root,self.sha)
 
+    def test_layout_identity_cannot_retag_previous_delta(self):
+        names=[*m.JOINT_INPUTS,'INSTALL.md','operations/delivery_check.py']
+        rows=[];payloads={}
+        for name in names:
+            raw=b'old public fixture '+name.encode();payloads[name]=raw
+            p=self.root/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_bytes(raw)
+            rows.append({'path':name,'bytes':len(raw),'sha256':hashlib.sha256(raw).hexdigest()})
+        oldpins={r['path']:r['sha256'] for r in rows if r['path'] in m.JOINT_INPUTS}
+        changed=['delta/manifest.json','delta/application-delta.tar.gz','inputs/composite-application-manifest.json']
+        newpins={**oldpins,**{name:hashlib.sha256(b'new '+payloads[name]).hexdigest() for name in changed}}
+        self.manifest.update(kind='R30_MATERIALIZED_APPLICATION_DELTA_DELIVERY_V1',
+            applicationIdentity=m.JOINT_IDENTITY.copy(),requiredBaseDeliveryManifestSha256=m.JOINT_BASE_DELIVERY,
+            standalone=False,files=[self.row,*rows])
+        self.manifest['entrypoints']['application-delta']={
+            'program':'operations/application_delta.py','support':[],
+            'inputs':['delta/manifest.json','delta/application-delta.tar.gz','inputs/base-application-manifest.json'],
+            'scope':'check/assemble/verify exact base plus delta; no service or database actions'}
+        def materialize():
+            self.write_manifest()
+            (self.root/'SHA256SUMS').write_text(''.join(r['sha256']+'  '+r['path']+'\n' for r in self.manifest['files'])+self.sha+'  manifest.json\n')
+        with patch.object(m,'JOINT_INPUTS',oldpins),patch.object(m,'LAYOUT_INPUTS',newpins):
+            materialize();m.check(self.root,self.sha)
+            self.manifest['applicationIdentity']=m.LAYOUT_IDENTITY.copy();materialize()
+            with self.assertRaisesRegex(RuntimeError,'JOINT_INPUT_CLOSURE'):m.check(self.root,self.sha)
+            for row in rows:
+                if row['path'] in changed:
+                    raw=b'new '+payloads[row['path']];(self.root/row['path']).write_bytes(raw)
+                    row.update(bytes=len(raw),sha256=hashlib.sha256(raw).hexdigest())
+            materialize();m.check(self.root,self.sha)
+            self.manifest['applicationIdentity']['buildTime']=m.JOINT_IDENTITY['buildTime'];materialize()
+            with self.assertRaisesRegex(RuntimeError,'JOINT_MANIFEST_CONTRACT'):m.check(self.root,self.sha)
+
 if __name__=='__main__':unittest.main()
