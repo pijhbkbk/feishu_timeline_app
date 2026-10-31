@@ -6,6 +6,7 @@ import { withTeamWrite } from '../../common/team-authorization';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { lockSheetAttachmentTarget } from '../attachments/sheet-attachment-policy';
 import { digest, draftExpectation, exact, integer, object, operationId, validateSnapshot, workbookId, workbookName, WORKBOOK_DRAFT_LIMITS, WORKBOOK_LIMITS } from './workbook.rules';
+import type { WorkbookSaveTiming } from './workbook-save-timing';
 const META={id:true,name:true,revision:true,snapshotHash:true,updatedAt:true} satisfies Prisma.FreeWorkbookSelect;
 const DRAFT_META = { id:true,draftRevision:true,baseWorkbookRevision:true,snapshotHash:true,snapshotBytes:true,updatedAt:true } satisfies Prisma.FreeWorkbookDraftSelect;
 type DraftReceipt = {
@@ -45,12 +46,22 @@ export class WorkbooksService {
       });
     });
   }
-  async save(idInput:string,raw:unknown,actor:AuthenticatedUser){
+  async save(idInput:string,raw:unknown,actor:AuthenticatedUser,timing?:WorkbookSaveTiming){
+    timing?.mark('serviceEnter');
     const id=workbookId(idInput),input=object(raw);exact(input,['operationId','expectedRevision','snapshot']);const op=operationId(input.operationId),revision=integer(input.expectedRevision),checked=validateSnapshot(input.snapshot,id);
-    return withTeamWrite(this.prisma,actor,async tx=>{
-      await this.lock(tx,id);
-      return this.command(tx,actor,op,'WORKBOOK_SAVED',{id,...input},()=>this.write(tx,actor,id,revision,checked,op));
-    },{timeout:30000});
+    timing?.mark('validated');timing?.mark('transactionStart');
+    try {
+      const result=await withTeamWrite(this.prisma,actor,async tx=>{
+        timing?.mark('transactionEnter');
+        await this.lock(tx,id);timing?.mark('locksAcquired');
+        const saved=await this.command(tx,actor,op,'WORKBOOK_SAVED',{id,...input},async()=>{
+          timing?.mark('writeStart');
+          try{return await this.write(tx,actor,id,revision,checked,op);}finally{timing?.mark('writeEnd');}
+        });
+        timing?.mark('commandEnd');return saved;
+      },{timeout:30000});
+      timing?.mark('transactionEnd');return result;
+    } finally { timing?.mark('serviceEnd'); }
   }
   async restore(idInput:string,raw:unknown,actor:AuthenticatedUser){
     const id=workbookId(idInput),input=object(raw);exact(input,['operationId','expectedRevision','revision']);const op=operationId(input.operationId),expected=integer(input.expectedRevision),revision=integer(input.revision);
