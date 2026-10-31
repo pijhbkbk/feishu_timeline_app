@@ -16,6 +16,19 @@ import sys
 
 MAX_FILES = 512
 MAX_TOTAL = 2 * 1024**3
+JOINT_IDENTITY = {
+    'sourceCommit': '3a11b23edd291869d29331d2abc089d2ae6fbc67',
+    'sourceTree': '8cc6afd7566142a967fd265b4a4f6b14f0c1f000',
+    'release': 'truck-joint-3a11b23edd29-r01', 'buildTime': '2026-10-30T07:14:36Z',
+}
+JOINT_BASE_DELIVERY = 'bcfcb0f5c2411e5ee2f968e2651b8b1538ac4339fd7cc5508e7067d9d588275f'
+JOINT_INPUTS = {
+    'operations/application_delta.py': '055cb5d98d275b3b3f788fbd661c09edda6a9cc07539277397853cc5a4e1f86c',
+    'delta/manifest.json': '97b61b6b5957e5639b806a4ffdb2283eeb7c44a941f6902dfd546a68583ebedd',
+    'delta/application-delta.tar.gz': '536bb92f14fa365863f0365dd23d7a609dd9c6e41234c543fe489c7c1c24fff3',
+    'inputs/base-application-manifest.json': 'c6b3f29ca19eca0111e1127d1c4e07e1f4d8d2b142893ef8f0a1ca15056db8a2',
+    'inputs/composite-application-manifest.json': '55a0e2f5dd7e1cf9e7734761a9c770bf0df2dc137d9d4846ab3c9845736224e2',
+}
 
 
 def need(ok, code):
@@ -72,13 +85,24 @@ def check(root, manifest_sha):
     need(root.is_absolute() and root.resolve(strict=True) == root and root.is_dir(), 'DELIVERY_ROOT')
     raw, _, _ = read_file(root, 'manifest.json', 1024**2, expected_hash=manifest_sha, retain=True)
     manifest = json.loads(raw, object_pairs_hook=unique)
-    need(manifest.get('kind') == 'R30_MATERIALIZED_SOFTWARE_DELIVERY_V1' and
-         manifest.get('applicationIdentity', {}).get('sourceCommit') == '3941beccddd0dfce94c8f0f7fd7d62819fb05270',
-         'MANIFEST_CONTRACT')
+    joint = manifest.get('kind') == 'R30_MATERIALIZED_APPLICATION_DELTA_DELIVERY_V1'
+    if joint:
+        need(manifest.get('applicationIdentity') == JOINT_IDENTITY and
+             manifest.get('requiredBaseDeliveryManifestSha256') == JOINT_BASE_DELIVERY and
+             manifest.get('standalone') is False, 'JOINT_MANIFEST_CONTRACT')
+    else:
+        need(manifest.get('kind') == 'R30_MATERIALIZED_SOFTWARE_DELIVERY_V1' and
+             manifest.get('applicationIdentity', {}).get('sourceCommit') == '3941beccddd0dfce94c8f0f7fd7d62819fb05270',
+             'MANIFEST_CONTRACT')
     rows = manifest['files']
     need(isinstance(rows, list) and 1 <= len(rows) <= MAX_FILES, 'FILE_COUNT')
     names = [relative(r['path']) for r in rows]
     need(len(names) == len(set(names)) and 'manifest.json' not in names, 'UNIQUE_FILES')
+    if joint:
+        by_name = {r['path']: r for r in rows}
+        need(all(by_name.get(name, {}).get('sha256') == digest
+                 for name, digest in JOINT_INPUTS.items()) and
+             {'INSTALL.md', 'operations/delivery_check.py'} <= set(names), 'JOINT_INPUT_CLOSURE')
     need(all(type(r['bytes']) is int and 0 <= r['bytes'] <= 1024**3 for r in rows) and
          sum(r['bytes'] for r in rows) <= MAX_TOTAL, 'TOTAL_BOUND')
     for row in rows:
@@ -93,6 +117,13 @@ def check(root, manifest_sha):
         for name in [entry['program'], *entry['support'], *entry['inputs']]:
             required.add(relative(name))
     need(required <= set(names), 'MISSING_ENTRYPOINT_FILE')
+    if joint:
+        need(entrypoints.get('application-delta') == {
+            'program': 'operations/application_delta.py', 'support': [],
+            'inputs': ['delta/manifest.json', 'delta/application-delta.tar.gz',
+                       'inputs/base-application-manifest.json'],
+            'scope': 'check/assemble/verify exact base plus delta; no service or database actions',
+        }, 'JOINT_ENTRYPOINT_CONTRACT')
     # This bounded walk stays inside this new delivery root. Reject accidental
     # private/unknown additions and symlinks rather than following them.
     expected = set(names) | {'manifest.json', 'SHA256SUMS'}
@@ -119,6 +150,8 @@ def check(root, manifest_sha):
             'at': dt.datetime.now(dt.timezone.utc).isoformat(), 'deliveryRoot': str(root),
             'manifestSha256': manifest_sha, 'files': len(rows), 'bytes': sum(r['bytes'] for r in rows),
             'entrypoints': sorted(entrypoints), 'sourceCheckoutRead': False,
+            'requiredBaseDeliveryManifestSha256': JOINT_BASE_DELIVERY if joint else None,
+            'baseDeliveryContentsVerifiedByThisCheck': False,
             'networkAccessed': False, 'guestAccessed': False, 'filesWritten': False,
             'installOrProductAcceptance': False}
 

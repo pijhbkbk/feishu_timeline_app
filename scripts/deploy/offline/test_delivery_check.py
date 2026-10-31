@@ -54,4 +54,41 @@ class DeliveryTests(unittest.TestCase):
         with patch.object(m.os,'walk',side_effect=denied):
             with self.assertRaisesRegex(RuntimeError,'TREE_READ_ERROR'):m.check(self.root,self.sha)
 
+    def test_delta_cannot_pass_as_standalone_or_retag_an_old_package(self):
+        self.manifest.update(kind='R30_MATERIALIZED_APPLICATION_DELTA_DELIVERY_V1',
+                             applicationIdentity=m.JOINT_IDENTITY.copy(),
+                             requiredBaseDeliveryManifestSha256=m.JOINT_BASE_DELIVERY,
+                             standalone=False)
+        self.write_manifest()
+        with self.assertRaisesRegex(RuntimeError,'JOINT_INPUT_CLOSURE'):m.check(self.root,self.sha)
+        for field,value in [('standalone',True),('requiredBaseDeliveryManifestSha256','0'*64),
+                            ('applicationIdentity',{'sourceCommit':m.JOINT_IDENTITY['sourceCommit']})]:
+            old=self.manifest[field];self.manifest[field]=value;self.write_manifest()
+            with self.assertRaisesRegex(RuntimeError,'JOINT_MANIFEST_CONTRACT'):m.check(self.root,self.sha)
+            self.manifest[field]=old
+
+    def test_delta_requires_delivered_inputs_and_the_exact_consumer_entry(self):
+        names=[*m.JOINT_INPUTS,'INSTALL.md','operations/delivery_check.py']
+        rows=[]
+        for name in names:
+            p=self.root/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_bytes(b'public fixture '+name.encode())
+            raw=p.read_bytes();rows.append({'path':name,'bytes':len(raw),'sha256':hashlib.sha256(raw).hexdigest()})
+        self.manifest.update(kind='R30_MATERIALIZED_APPLICATION_DELTA_DELIVERY_V1',
+            applicationIdentity=m.JOINT_IDENTITY.copy(),requiredBaseDeliveryManifestSha256=m.JOINT_BASE_DELIVERY,
+            standalone=False,files=[self.row,*rows])
+        entry={'program':'operations/application_delta.py','support':[],
+               'inputs':['delta/manifest.json','delta/application-delta.tar.gz','inputs/base-application-manifest.json'],
+               'scope':'check/assemble/verify exact base plus delta; no service or database actions'}
+        self.manifest['entrypoints']['application-delta']=entry
+        pins={r['path']:r['sha256'] for r in rows if r['path'] in m.JOINT_INPUTS}
+        def materialize():
+            self.write_manifest()
+            (self.root/'SHA256SUMS').write_text(''.join(r['sha256']+'  '+r['path']+'\n' for r in self.manifest['files'])+self.sha+'  manifest.json\n')
+        with patch.object(m,'JOINT_INPUTS',pins):
+            materialize();result=m.check(self.root,self.sha)
+            self.assertFalse(result['baseDeliveryContentsVerifiedByThisCheck'])
+            self.assertEqual(result['requiredBaseDeliveryManifestSha256'],m.JOINT_BASE_DELIVERY)
+            entry['inputs'].remove('delta/application-delta.tar.gz');materialize()
+            with self.assertRaisesRegex(RuntimeError,'JOINT_ENTRYPOINT_CONTRACT'):m.check(self.root,self.sha)
+
 if __name__=='__main__':unittest.main()
