@@ -28,6 +28,7 @@ INPUT = "/home/recovery/input-joint-lifecycle-20261031-r01"
 TARGET_INPUTS = {
     "joint3a11": "/home/recovery/input-layout-recovery-20261031-r01",
     "layout5b07": "/home/recovery/input-layout-lifecycle-20261031-r01",
+    "workbook9c412dd": "/home/recovery/input-workbook-lifecycle-20261031-r01",
 }
 ROOT = "/home/recovery/joint-lifecycle-3a11-r01"
 BOOT = "9fee751f-120b-451e-9b1b-b17eac34bf98"

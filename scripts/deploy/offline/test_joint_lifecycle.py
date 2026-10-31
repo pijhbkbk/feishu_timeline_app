@@ -215,7 +215,8 @@ class CandidateContinuationTests(unittest.TestCase):
         return digest,result
     def test_forward_and_reverse_require_real_stopped_state(self):
         with patch.object(m,'ROOT',self.root),patch.object(m,'read',side_effect=lambda p,*a:Path(p).read_bytes()):
-            for source,target in [('joint3a11','layout5b07'),('layout5b07','joint3a11')]:
+            for source,target in [('joint3a11','layout5b07'),('layout5b07','joint3a11'),
+                                  ('layout5b07','workbook9c412dd'),('workbook9c412dd','layout5b07')]:
                 digest,result=self.stopped(source,target)
                 self.assertEqual(m.state(digest),result)
                 self.assertEqual(m.ctx['transitionOrigin']['sha256'],digest)
@@ -241,8 +242,9 @@ class CandidateContinuationTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError,'STALE_STATE_ARGUMENT'):m.state('f'*64)
     def test_new_target_never_falls_back_to_initial_running_receipt(self):
         with patch.object(m,'ROOT',self.root):
-            m.bind_target(self.binding('layout5b07'));m.ctx['binding']=self.binding('layout5b07')
-            with self.assertRaisesRegex(RuntimeError,'NEW_TARGET_REQUIRES_STATE'):m.state(m.INITIAL_SHA)
+            for target in ('layout5b07','workbook9c412dd'):
+                m.bind_target(self.binding(target));m.ctx['binding']=self.binding(target)
+                with self.assertRaisesRegex(RuntimeError,'NEW_TARGET_REQUIRES_STATE'):m.state(m.INITIAL_SHA)
     def test_arbitrary_candidate_rejected_and_owner_scope_follows_exact_target(self):
         with patch.object(m,'ROOT',self.root):
             b=self.binding('layout5b07');b['identity']={**b['identity'],'sourceCommit':'f'*40}

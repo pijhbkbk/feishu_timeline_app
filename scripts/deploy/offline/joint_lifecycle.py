@@ -43,6 +43,13 @@ TARGETS = {
         'application': '/home/recovery/application-layout-5b07-r01',
         'delta': '/home/recovery/input-layout-lifecycle-20261031-r01/delta',
         'deltaSha256': 'bb5c7d58cbe8f4433abb3509f707e7aae2a41b4c860005d82dfc7bab9d8dcb43'},
+    'workbook9c412dd': {
+        'identity': {'sourceCommit': '9c412ddf892db584633d3e083781e8bfc393fba5',
+                     'sourceTree': 'dde64d42b3f35b23bde0d53a21872f4ab1a37e55',
+                     'release': 'truck-workbook-return-9c412ddf892d-r01', 'buildTime': '2026-10-31T05:03:04Z'},
+        'application': '/home/recovery/application-workbook-9c412dd-r01',
+        'delta': '/home/recovery/input-workbook-lifecycle-20261031-r01/delta',
+        'deltaSha256': '77f6b2593ab32bbd180bf2c81a6cf310880c100a1ef051b0f3843e4ec17e1862'},
 }
 ctx = {}
 

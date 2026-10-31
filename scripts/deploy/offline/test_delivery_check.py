@@ -92,6 +92,12 @@ class DeliveryTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError,'JOINT_ENTRYPOINT_CONTRACT'):m.check(self.root,self.sha)
 
     def test_layout_identity_cannot_retag_previous_delta(self):
+        self.check_identity_cannot_retag_previous_delta(m.LAYOUT_IDENTITY,'LAYOUT_INPUTS')
+
+    def test_workbook_identity_cannot_retag_previous_delta(self):
+        self.check_identity_cannot_retag_previous_delta(m.WORKBOOK_IDENTITY,'WORKBOOK_INPUTS')
+
+    def check_identity_cannot_retag_previous_delta(self,new_identity,pins_name):
         names=[*m.JOINT_INPUTS,'INSTALL.md','operations/delivery_check.py']
         rows=[];payloads={}
         for name in names:
@@ -111,9 +117,9 @@ class DeliveryTests(unittest.TestCase):
         def materialize():
             self.write_manifest()
             (self.root/'SHA256SUMS').write_text(''.join(r['sha256']+'  '+r['path']+'\n' for r in self.manifest['files'])+self.sha+'  manifest.json\n')
-        with patch.object(m,'JOINT_INPUTS',oldpins),patch.object(m,'LAYOUT_INPUTS',newpins):
+        with patch.object(m,'JOINT_INPUTS',oldpins),patch.object(m,pins_name,newpins):
             materialize();m.check(self.root,self.sha)
-            self.manifest['applicationIdentity']=m.LAYOUT_IDENTITY.copy();materialize()
+            self.manifest['applicationIdentity']=new_identity.copy();materialize()
             with self.assertRaisesRegex(RuntimeError,'JOINT_INPUT_CLOSURE'):m.check(self.root,self.sha)
             for row in rows:
                 if row['path'] in changed:

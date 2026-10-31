@@ -40,6 +40,17 @@ LAYOUT_INPUTS = {
     'delta/application-delta.tar.gz': '3d7637ec39a1c2cf4ee5c55dc96e9ceec7093b80a72442764b2a7a504aacf7a2',
     'inputs/composite-application-manifest.json': '8a7ac3f26c7b512999d00e29e3671634d0c0565218ca160f3642158c15d38ea2',
 }
+WORKBOOK_IDENTITY = {
+    'sourceCommit': '9c412ddf892db584633d3e083781e8bfc393fba5',
+    'sourceTree': 'dde64d42b3f35b23bde0d53a21872f4ab1a37e55',
+    'release': 'truck-workbook-return-9c412ddf892d-r01', 'buildTime': '2026-10-31T05:03:04Z',
+}
+WORKBOOK_INPUTS = {
+    **JOINT_INPUTS,
+    'delta/manifest.json': '77f6b2593ab32bbd180bf2c81a6cf310880c100a1ef051b0f3843e4ec17e1862',
+    'delta/application-delta.tar.gz': 'c73952d25eac483ce64184151a89377cacb34926dad3de32acfd177e76fc674d',
+    'inputs/composite-application-manifest.json': 'bd0769add13d5e80983eeaa6b633098c497f5b08bfdfcd8ca7c973657eb31be3',
+}
 
 
 def need(ok, code):
@@ -99,7 +110,8 @@ def check(root, manifest_sha):
     joint = manifest.get('kind') == 'R30_MATERIALIZED_APPLICATION_DELTA_DELIVERY_V1'
     if joint:
         identity = manifest.get('applicationIdentity')
-        inputs = JOINT_INPUTS if identity == JOINT_IDENTITY else LAYOUT_INPUTS if identity == LAYOUT_IDENTITY else None
+        inputs = (JOINT_INPUTS if identity == JOINT_IDENTITY else LAYOUT_INPUTS if identity == LAYOUT_IDENTITY
+                  else WORKBOOK_INPUTS if identity == WORKBOOK_IDENTITY else None)
         need(inputs is not None and
              manifest.get('requiredBaseDeliveryManifestSha256') == JOINT_BASE_DELIVERY and
              manifest.get('standalone') is False, 'JOINT_MANIFEST_CONTRACT')
