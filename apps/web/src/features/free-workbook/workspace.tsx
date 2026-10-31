@@ -152,9 +152,17 @@ export function FreeWorkbookWorkspace(){
     finally{cloudSending.current=false;if(mounted.current){setCloudBusy(false);if(isCurrent()&&sequence.current!==capturedSequence)setDraftTick(n=>n+1);}}
   }
   async function retryCloud(){if(cloudSending.current)return;const isCurrent=captureScope();cloudSending.current=true;setCloudBusy(true);try{await performCloud(isCurrent);}finally{cloudSending.current=false;if(mounted.current)setCloudBusy(false);}}
-  async function discardPublishedCloud(isCurrent:()=>boolean){
-    const coordinator=cloud.current;if(!isCurrent()||!coordinator?.state.draftId||coordinator.uncertain||coordinator.conflicted)return;
-    const request=coordinator.requestDiscard(sequence.current);try{await performCloud(isCurrent,request.body.operationId);}catch(cause){if(isCurrent())setCloudStatus(`正式版本已保存，草稿清理尚未发送：${message(cause)}`);}
+  async function checkpointPublishedSave(isCurrent:()=>boolean){
+    if(!isCurrent())return;
+    const checkpoint=()=>captureLatestDraft(isCurrent).catch(cause=>{if(isCurrent())setDraftStatus(message(cause));});
+    const coordinator=cloud.current;
+    if(!coordinator?.state.draftId||coordinator.uncertain||coordinator.conflicted){await checkpoint();return;}
+    let request:ReturnType<ServerDraftSession['requestDiscard']>;
+    try{request=coordinator.requestDiscard(sequence.current);}catch(cause){await checkpoint();throw cause;}
+    // Persist the formal acknowledgement and pending cleanup together. The
+    // existing cloud path captures current input before transport and again
+    // after its receipt; an extra full capture here duplicated the first one.
+    try{await performCloud(isCurrent,request.body.operationId);}catch(cause){if(isCurrent())setCloudStatus(`正式版本已保存，草稿清理尚未发送：${message(cause)}`);}
   }
   async function recoverCloud(){await run(async()=>{
     const draft=cloudRecovery?.draft;if(!draft||!active||!ownerId)return;
@@ -233,8 +241,7 @@ export function FreeWorkbookWorkspace(){
     setActive(value=>value?{...value,...ack,revision:Math.max(value.revision,ack.revision)}:value);
     const changedSince=sequence.current!==confirmed.current;setDirty(changedSince||newerKnown);
     setStatus(newerKnown?`原请求已确认保存为版本 ${ack.revision}；服务器已有版本 ${active.revision}，请重新读取`:changedSince?`版本 ${ack.revision} 已保存，仍有新修改`:`已保存 · 版本 ${ack.revision}`);
-    await captureLatestDraft(isCurrent).catch(cause=>{if(isCurrent())setDraftStatus(message(cause));});
-    await discardPublishedCloud(isCurrent);
+    await checkpointPublishedSave(isCurrent);
     if(!isCurrent())return;
     if(sequence.current===confirmed.current&&!newerKnown&&!cloud.current?.uncertain&&!cloud.current?.conflicted&&localDraft.current?.sequence===confirmed.current&&localDraft.current.baseRevision===ack.revision){
       const savedDraft=localDraft.current;

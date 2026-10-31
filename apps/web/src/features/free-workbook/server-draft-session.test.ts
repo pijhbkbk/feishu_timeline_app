@@ -44,6 +44,23 @@ describe('pure server draft coordination',()=>{
     expect(()=>recovered.requestPublish(3,8)).toThrow();
     const next=await recovered.requestSave(snapshot('更新'),8);expect(next.body.expectedDraftRevision).toBe(1);expect(next.body.operationId).not.toBe(first.body.operationId);
   });
+  it('keeps earlier checkpoint bytes immutable while exposing each new coordinator state',async()=>{
+    const s=session(),first=await s.requestSave(snapshot(),7),before=s.checkpoint(),bytes=JSON.stringify(before);
+    expect(before.pending).toBe(first);expect(Object.isFrozen(before)).toBe(true);
+    expect(()=>{before.retained!.snapshot.sheets.s!.cellData![0]![0]!.v='changed';}).toThrow();
+    s.capture(snapshot('newer'),8);const newer=s.checkpoint();
+    expect(newer.retained?.snapshot.name).toBe('newer');expect(newer.pending).toBe(first);expect(JSON.stringify(before)).toBe(bytes);
+    s.confirm(saveAck(first));const acknowledged=s.checkpoint();
+    expect(acknowledged.pending).toBeNull();expect(acknowledged.acknowledgedSequence).toBe(7);expect(before.state.draftId).toBeNull();
+    const discard=s.requestDiscard(8),pending=s.checkpoint();expect(pending.pending).toBe(discard);expect(acknowledged.pending).toBeNull();
+    const recovered=await ServerDraftSession.recover(JSON.parse(JSON.stringify(pending)),{workbookId:bookId,authorUserId:owner});
+    expect(recovered.existing()).toEqual(discard);expect(recovered.retainedDraft()?.snapshot.name).toBe('newer');
+  });
+  it('retains the checkpoint envelope depth boundary for already frozen members',()=>{
+    const deep:Record<string,unknown>={};let cursor=deep;for(let i=0;i<38;i++){const next={};cursor.next=next;cursor=next;}
+    const s=session();s.capture(Object.assign(snapshot(),{custom:deep}),7);
+    expect(()=>s.checkpoint()).toThrow('服务器草稿数据或回执不匹配');
+  });
   it('checks actor/workbook scope and rejects corrupted persisted payload/hash/version without networking',async()=>{
     const s=session();await s.requestSave(snapshot(),7);const checkpoint=s.checkpoint();
     await expect(ServerDraftSession.recover(checkpoint,{workbookId:otherId,authorUserId:owner})).rejects.toThrow();

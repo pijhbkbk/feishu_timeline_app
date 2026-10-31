@@ -239,6 +239,27 @@ it('preserves N+1 when it arrives while the published cloud draft is being disca
 it('removes the confirmed local slot after a direct formal save before any cloud draft exists',async()=>{
  await settle();readyEditor();await settle();api.save.mockResolvedValueOnce({...saved(oldId),revision:2});await click('保存');await vi.waitFor(()=>expect(drafts.remove).toHaveBeenCalledTimes(1));const removed=drafts.remove.mock.calls[0]![0];expect(removed.baseRevision).toBe(2);expect(removed.pending).toBeNull();expect(removed.sequence).toBe(1);expect(cloudApi.execute).not.toHaveBeenCalled();expect(renderToStaticMarkup(tree)).not.toContain('有未保存内容');
 });
+it('persists formal acknowledgement and exact cleanup request together before cloud deletion',async()=>{
+ cloudApi.read.mockResolvedValueOnce(cloudRead());await settle();await click('恢复服务器草稿');readyEditor();await settle();
+ const rt=(canvasRuntime().props.runtime as {current:{draftSnapshot:ReturnType<typeof vi.fn>}}).current;rt.draftSnapshot.mockClear();drafts.write.mockClear();
+ api.save.mockResolvedValueOnce({...saved(oldId),revision:2});let release!:(ok:boolean)=>void;
+ drafts.write.mockImplementationOnce(async()=>true).mockImplementationOnce(()=>new Promise<boolean>(resolve=>{release=resolve;}));
+ cloudApi.execute.mockResolvedValueOnce({receipt:{action:'DRAFT_DISCARDED',draftId:laterId,draftRevision:1,baseWorkbookRevision:1,snapshotHash:'a'.repeat(64),workbookRevision:2},currentDraft:null,workbookRevision:2,baseStale:false,superseded:false});
+ void click('保存');await vi.waitFor(()=>expect(release).toBeDefined());
+ const checkpoint=drafts.write.mock.calls[1]![0];expect(checkpoint).toMatchObject({baseRevision:2,pending:null,server:{pending:{kind:'discard',body:{expectedDraftId:laterId,expectedDraftRevision:1}}}});
+ expect(rt.draftSnapshot).toHaveBeenCalledTimes(1);expect(cloudApi.execute).not.toHaveBeenCalled();
+ release(true);await vi.waitFor(async()=>expect(await settle()).toContain('已保存 · 版本 2'));
+ expect(cloudApi.execute).toHaveBeenCalledExactlyOnceWith(checkpoint.server.pending);
+ expect(drafts.remove).toHaveBeenCalledTimes(1);expect(drafts.remove.mock.calls[0]![0]).toMatchObject({baseRevision:2,pending:null,server:{pending:null,state:{draftId:null}}});
+});
+it('does not send cleanup when its combined acknowledgement checkpoint cannot be persisted',async()=>{
+ cloudApi.read.mockResolvedValueOnce(cloudRead());await settle();await click('恢复服务器草稿');readyEditor();await settle();
+ api.save.mockResolvedValueOnce({...saved(oldId),revision:2});drafts.write.mockReset().mockResolvedValueOnce(true).mockRejectedValue(new Error('合成清理检查点失败'));
+ await click('保存');await vi.waitFor(async()=>expect(await settle()).toContain('草稿清理尚未发送'));
+ expect(api.save).toHaveBeenCalledTimes(1);expect(cloudApi.execute).not.toHaveBeenCalled();expect(drafts.remove).not.toHaveBeenCalled();
+ const durable=drafts.write.mock.calls[0]![0];expect(durable.pending.payload).toEqual(api.save.mock.calls[0]![1]);
+ expect(drafts.write.mock.calls[1]![0]).toMatchObject({baseRevision:2,pending:null,server:{pending:{kind:'discard'}}});
+});
 
 function refreshComponent(){dispose();hooks.slots=[];hooks.effects=[];hooks.setups=new Map();hooks.index=0;return settle();}
 async function selectSyntheticImport(images:unknown[]=[]){api.import.mockResolvedValue({snapshot:blankWorkbook(laterId,'合成导入'),images,warnings:[],fileName:'synthetic.xlsx'});const input=nodes(tree).find(n=>n.type==='input'&&n.props.accept==='.xlsx')!;(input.props.onChange as (event:unknown)=>void)({target:{files:[new File([new Uint8Array([80,75,3,4])],'synthetic.xlsx')],value:'file'}});await vi.dynamicImportSettled();await settle();}

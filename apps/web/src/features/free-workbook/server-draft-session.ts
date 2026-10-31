@@ -188,7 +188,12 @@ export class ServerDraftSession {
     if([400,409,413,415,422].includes(status??0)){this.pending=null;this.generation++;if(status===409)this.conflict=true;}
     // A transport/auth/server failure is not proof that an earlier attempt did not commit.
   }
-  checkpoint():ServerDraftCheckpoint{return freeze(clone({version:1,workbookId:this.workbookId,authorUserId:this.authorUserId,state:this.slot,acknowledgedSequence:this.acknowledgedSequence,pending:this.pending,retained:this.retained,conflicted:this.conflict}));}
+  checkpoint():ServerDraftCheckpoint{
+    // These internal members are already validated, detached and deeply frozen.
+    // At most two bounded 7 MiB snapshots fit the 16 MiB envelope. Reuse them
+    // without another JSON copy, but keep the envelope's original depth check.
+    return freeze({version:1,workbookId:this.workbookId,authorUserId:this.authorUserId,state:this.slot,acknowledgedSequence:this.acknowledgedSequence,pending:this.pending,retained:this.retained,conflicted:this.conflict});
+  }
   static async recover(raw:unknown,expected:{workbookId:string;authorUserId:string}){
     const input=object(clone(raw));exact(input,['version','workbookId','authorUserId','state','acknowledgedSequence','pending','retained','conflicted']);
     if(input.version!==1||input.workbookId!==id(expected.workbookId)||input.authorUserId!==author(expected.authorUserId))throw invalid();
