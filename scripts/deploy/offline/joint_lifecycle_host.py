@@ -25,6 +25,10 @@ OP = HOST.parent.parent
 LIMA = Path("/opt/homebrew/bin/limactl")
 LIMA_SHA = "04a4b12ac9d24f5fc9260caa0f8fc5d36cb97d548e82a16c348909c4e818f534"
 INPUT = "/home/recovery/input-joint-lifecycle-20261031-r01"
+TARGET_INPUTS = {
+    "joint3a11": "/home/recovery/input-layout-recovery-20261031-r01",
+    "layout5b07": "/home/recovery/input-layout-lifecycle-20261031-r01",
+}
 ROOT = "/home/recovery/joint-lifecycle-3a11-r01"
 BOOT = "9fee751f-120b-451e-9b1b-b17eac34bf98"
 PROTOCOL = "A09_BUDGET_STDIO_V1"
@@ -359,6 +363,7 @@ def run_channel(argv):
 
 
 def main():
+    global INPUT
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument("action",choices=("status","start","stop","restart"))
     p.add_argument("--execute-reviewed",action="store_true");p.add_argument("--binding",type=Path)
@@ -370,8 +375,12 @@ def main():
     need(re.fullmatch('[a-z0-9][a-z0-9-]{0,47}',a.event or ''),"EVENT_NAME")
     need(re.fullmatch('[a-f0-9]{64}',a.expected_state_sha256 or ''),"EXTERNAL_STATE_PIN")
     pins=json.loads(pinned(a.binding,a.binding_sha256,256*1024))
-    need(pins['kind']=='R30_JOINT_APPLICATION_LIFECYCLE_V1' and pins['bootId']==BOOT and
-         pins['root']==ROOT and pins['guestInput']==INPUT,"HOST_BINDING")
+    if pins.get('kind') == 'R30_JOINT_APPLICATION_LIFECYCLE_V2':
+        need(pins.get('target') in TARGET_INPUTS, 'HOST_TARGET')
+        INPUT = TARGET_INPUTS[pins['target']]
+    else:
+        need(pins.get('kind') == 'R30_JOINT_APPLICATION_LIFECYCLE_V1', 'HOST_BINDING_KIND')
+    need(pins['bootId']==BOOT and pins['root']==ROOT and pins['guestInput']==INPUT,"HOST_BINDING")
     pinned(HOST,pins['files']['joint_lifecycle_host.py']['sha256'],256*1024)
     pinned(HOST.parent/'joint_lifecycle.py',pins['files']['joint_lifecycle.py']['sha256'],256*1024)
     need(len(pins['budgetRootPaths'])==len(set(pins['budgetRootPaths']))==376 and

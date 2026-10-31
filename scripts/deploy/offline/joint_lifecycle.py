@@ -33,6 +33,17 @@ INITIAL_SHA = '6717b032593de6e240ccbebe342fa997e58ba819821a66ac35546516a6512b8e'
 DELTA = Path('/home/recovery/input-joint-delivery-20261031-r01/delta')
 DELTA_SHA = '97b61b6b5957e5639b806a4ffdb2283eeb7c44a941f6902dfd546a68583ebedd'
 PORTS = {'api': 3591, 'web': 3592}
+TARGETS = {
+    'joint3a11': {'identity': IDENTITY, 'application': str(APP),
+                 'delta': str(DELTA), 'deltaSha256': DELTA_SHA},
+    'layout5b07': {
+        'identity': {'sourceCommit': '5b07fe3404cb83d485b924b9fdc65f1a1a18ddf0',
+                     'sourceTree': '3122780c1149a496d7bd58c19cb7e88d1c1c6816',
+                     'release': 'truck-layout-5b07fe3404cb-r01', 'buildTime': '2026-10-31T03:14:40Z'},
+        'application': '/home/recovery/application-layout-5b07-r01',
+        'delta': '/home/recovery/input-layout-lifecycle-20261031-r01/delta',
+        'deltaSha256': 'bb5c7d58cbe8f4433abb3509f707e7aae2a41b4c860005d82dfc7bab9d8dcb43'},
+}
 ctx = {}
 
 
@@ -146,9 +157,54 @@ def listening_ports():
     return found & set(PORTS.values())
 
 
+def bind_target(binding):
+    """Two explicit, reviewed candidates share one existing instance lock."""
+    global APP, IDENTITY, DELTA, DELTA_SHA
+    if binding.get('kind') == 'R30_JOINT_APPLICATION_LIFECYCLE_V1':
+        target = TARGETS['joint3a11']
+    else:
+        need(binding.get('kind') == 'R30_JOINT_APPLICATION_LIFECYCLE_V2' and
+             binding.get('target') in TARGETS, 'TARGET_BINDING')
+        target = TARGETS[binding['target']]
+    need(binding.get('identity') == target['identity'] and
+         binding.get('application') == target['application'] and
+         binding.get('bootId') == BOOT and binding.get('root') == str(ROOT), 'BINDING_SCOPE')
+    APP, IDENTITY = Path(target['application']), target['identity']
+    DELTA, DELTA_SHA = Path(target['delta']), target['deltaSha256']
+
+
+def stopped_predecessor(value, path, digest):
+    """Only an externally pinned actual normal stop can bridge identities."""
+    binding, args = ctx['binding'], ctx['args']
+    predecessor = binding.get('predecessor', {})
+    source = TARGETS.get(predecessor.get('target'), {})
+    need(binding.get('kind') == 'R30_JOINT_APPLICATION_LIFECYCLE_V2' and args.action == 'start'
+         and set(predecessor) == {'target', 'path', 'sha256'} and source and
+         source['identity'] != IDENTITY and value.get('identity') == source['identity'] and
+         predecessor['path'] == str(path) and predecessor['sha256'] == digest,
+         'STOPPED_PREDECESSOR_BINDING')
+    need(value.get('kind') == 'JOINT_APPLICATION_LIFECYCLE_RESULT_V1' and
+         value.get('action') == 'stop' and value.get('status') == 'JOINT_LIFECYCLE_STOPPED' and
+         value.get('owners') == {} and value.get('bootId') == BOOT and
+         not any(value.get(k) for k in ('unresolvedChildren', 'errorCode', 'cleanupIncomplete',
+                                       'cleanupFailureCode', 'statePublicationUncertain')) and
+         not (ROOT/'pending.json').exists(), 'PREDECESSOR_NOT_NORMAL_STOP')
+    need(re.fullmatch('[a-f0-9]{64}', value.get('claimSha256', '')) is not None,
+         'PREDECESSOR_CLAIM_DIGEST')
+    claim = json.loads(read(path.parent/'claim.json', value.get('claimSha256')))
+    need(claim.get('identity') == source['identity'] and claim.get('bootId') == BOOT and
+         claim.get('event') == path.parent.name and claim.get('action') == 'stop' and
+         claim.get('bindingSha256') == value.get('bindingSha256') and
+         claim.get('previousStateSha256') == value.get('previousStateSha256'), 'PREDECESSOR_CLAIM')
+    ctx['transitionOrigin'] = dict(predecessor)
+
+
 def state(expected_sha, discover=False):
     pointer=ROOT/'state.json'
     if not pointer.exists():
+        need(IDENTITY == TARGETS['joint3a11']['identity'] and
+             ctx.get('binding', {}).get('kind', 'R30_JOINT_APPLICATION_LIFECYCLE_V1') ==
+             'R30_JOINT_APPLICATION_LIFECYCLE_V1', 'NEW_TARGET_REQUIRES_STATE')
         need(discover or expected_sha==INITIAL_SHA,'INITIAL_EXTERNAL_STATE')
         expected_sha=INITIAL_SHA
         source=json.loads(read(INITIAL,INITIAL_SHA))
@@ -164,7 +220,9 @@ def state(expected_sha, discover=False):
         need(path.parent.parent==ROOT/'events' and path.name=='result.json','STATE_RECEIPT_PATH')
         value=json.loads(read(path,expected_sha))
         ctx['stateReceiptPath']=path
-        need(value['identity']==IDENTITY and value['bootId']==BOOT,'STATE_IDENTITY_OR_BOOT')
+        need(value['bootId']==BOOT,'STATE_IDENTITY_OR_BOOT')
+        if value['identity'] != IDENTITY:
+            stopped_predecessor(value, path, expected_sha)
     need(set(value['owners'])<=set(PORTS),'STATE_OWNER_ROLES')
     for role,owner in value['owners'].items():validate_owner(role,owner)
     ctx['previousStateSha256']=expected_sha
@@ -248,6 +306,7 @@ def prepare_runtime(value):
     _,old_id,old_env=rv.validate_existing_configuration()
     need(not {'NODE_OPTIONS','NODE_PATH','LD_PRELOAD'}&set(old_env),'ENVIRONMENT_INJECTION')
     o.INPUT=HERE;o.ROOT=ROOT;j.ROOT=ROOT;j.INPUT=HERE
+    j.APP=APP;j.IDENTITY=IDENTITY
     o.ctx.update(args=ctx['args'],pins=ctx['binding'],m=m,base=rv.base,observe=rv.observe,
                  native=rv.NATIVE_PROOF,old_id=old_id,old_env=old_env,event=ctx['event'],logs=ctx['logs'])
     j.ctx.update(original={'proxy':value['proxyOwner']},priorIdentities={},children=[],
@@ -323,6 +382,7 @@ def finish(value, report):
     report.update(kind='JOINT_APPLICATION_LIFECYCLE_RESULT_V1',identity=IDENTITY,bootId=BOOT,
                   previousStateSha256=ctx['previousStateSha256'],proxyOwner=value['proxyOwner'],
                   bindingSha256=ctx['args'].binding_sha256,claimSha256=ctx['claimSha256'])
+    if 'transitionOrigin' in ctx:report['transitionOrigin']=ctx['transitionOrigin']
     digest=write(ctx['event']/'result.json',report)
     pointer={'path':str(ctx['event']/'result.json'),'sha256':digest}
     temp=ROOT/('state-'+ctx['args'].event+'.tmp');write(temp,pointer)
@@ -352,8 +412,7 @@ def main():
         print(json.dumps({'status':'PLAN_ONLY','actions':['status','start','stop','restart'],'components':['api','web']}));return
     boot();need(re.fullmatch('[a-f0-9]{64}',a.binding_sha256 or ''),'EXTERNAL_BINDING_DIGEST')
     binding=json.loads(read(HERE/'binding.json',a.binding_sha256))
-    need(binding['kind']=='R30_JOINT_APPLICATION_LIFECYCLE_V1' and binding['identity']==IDENTITY and
-         binding['bootId']==BOOT and binding['root']==str(ROOT) and binding['application']==str(APP), 'BINDING_SCOPE')
+    bind_target(binding)
     row=binding['files']['joint_lifecycle.py'];need(sha(read(Path(__file__)))==row['sha256'],'EXECUTION_FILE_PIN')
     ctx.update(args=a,binding=binding)
     lock=instance_lock()
@@ -371,6 +430,7 @@ def main():
         syncdir(event.parent);syncdir(logs.parent)
         claim={'event':a.event,'action':a.action,'previousStateSha256':a.expected_state_sha256,
                'bindingSha256':a.binding_sha256,'bootId':BOOT,'identity':IDENTITY,'ownersBefore':value['owners']}
+        if 'transitionOrigin' in ctx:claim['transitionOrigin']=ctx['transitionOrigin']
         claim_sha=write(event/'claim.json',claim)
         ctx['claimSha256']=claim_sha
         write(ROOT/'pending.json',{'event':a.event,'claim':str(event/'claim.json'),'claimSha256':claim_sha})

@@ -185,4 +185,71 @@ class HostTests(unittest.TestCase):
             os.link(p,p.with_name('alias'))
             with self.assertRaisesRegex(host.Failure,'HOST_INPUT_METADATA'):host.read(p)
 
+
+class CandidateContinuationTests(unittest.TestCase):
+    def setUp(self):
+        self.temp=tempfile.TemporaryDirectory();self.root=Path(self.temp.name).resolve()
+        self.event=self.root/'events'/'actual-stop';self.event.mkdir(parents=True)
+        self.saved=(m.APP,m.IDENTITY,m.DELTA,m.DELTA_SHA)
+        m.ctx.clear()
+    def tearDown(self):
+        m.APP,m.IDENTITY,m.DELTA,m.DELTA_SHA=self.saved
+        self.temp.cleanup()
+    def binding(self,target):
+        t=m.TARGETS[target]
+        return {'kind':'R30_JOINT_APPLICATION_LIFECYCLE_V2','target':target,
+                'identity':t['identity'],'application':t['application'],
+                'root':str(self.root),'bootId':m.BOOT}
+    def stopped(self,source,target,changes=None):
+        claim={'event':'actual-stop','action':'stop','identity':m.TARGETS[source]['identity'],
+               'bootId':m.BOOT,'bindingSha256':'b'*64,'previousStateSha256':'a'*64}
+        raw=json.dumps(claim).encode();(self.event/'claim.json').write_bytes(raw)
+        result={**claim,'kind':'JOINT_APPLICATION_LIFECYCLE_RESULT_V1','status':'JOINT_LIFECYCLE_STOPPED',
+                'owners':{},'proxyOwner':{'fixture':True},'claimSha256':m.sha(raw)}
+        if changes:result.update(changes)
+        raw=json.dumps(result).encode();digest=m.sha(raw);path=self.event/'result.json';path.write_bytes(raw)
+        (self.root/'state.json').write_text(json.dumps({'path':str(path),'sha256':digest}))
+        binding=self.binding(target);binding['predecessor']={'target':source,'path':str(path),'sha256':digest}
+        m.ctx.update(binding=binding,args=types.SimpleNamespace(action='start'))
+        m.bind_target(binding)
+        return digest,result
+    def test_forward_and_reverse_require_real_stopped_state(self):
+        with patch.object(m,'ROOT',self.root),patch.object(m,'read',side_effect=lambda p,*a:Path(p).read_bytes()):
+            for source,target in [('joint3a11','layout5b07'),('layout5b07','joint3a11')]:
+                digest,result=self.stopped(source,target)
+                self.assertEqual(m.state(digest),result)
+                self.assertEqual(m.ctx['transitionOrigin']['sha256'],digest)
+                self.assertEqual(m.APP,Path(m.TARGETS[target]['application']))
+    def test_foreign_running_failed_pending_and_wrong_boot_are_rejected(self):
+        with patch.object(m,'ROOT',self.root),patch.object(m,'read',side_effect=lambda p,*a:Path(p).read_bytes()):
+            for change in [{'status':'JOINT_LIFECYCLE_RUNNING'}, {'status':'FAILED_PRESERVED'},
+                           {'owners':{'api':owner('api')}}, {'unresolvedChildren':['api']},
+                           {'errorCode':'CHECK_ERROR'}, {'bootId':'wrong'}, {'claimSha256':''}]:
+                digest,_=self.stopped('joint3a11','layout5b07',change)
+                with self.assertRaises(RuntimeError):m.state(digest)
+            digest,_=self.stopped('joint3a11','layout5b07')
+            (self.root/'pending.json').write_text('{}')
+            with self.assertRaisesRegex(RuntimeError,'PREDECESSOR_NOT_NORMAL_STOP'):m.state(digest)
+    def test_wrong_predecessor_and_nonstart_cannot_adopt(self):
+        with patch.object(m,'ROOT',self.root),patch.object(m,'read',side_effect=lambda p,*a:Path(p).read_bytes()):
+            for key,value in [('target','layout5b07'),('path','/wrong'),('sha256','f'*64)]:
+                digest,_=self.stopped('joint3a11','layout5b07')
+                m.ctx['binding']['predecessor'][key]=value
+                with self.assertRaisesRegex(RuntimeError,'STOPPED_PREDECESSOR_BINDING'):m.state(digest)
+            digest,_=self.stopped('joint3a11','layout5b07');m.ctx['args'].action='stop'
+            with self.assertRaisesRegex(RuntimeError,'STOPPED_PREDECESSOR_BINDING'):m.state(digest)
+            with self.assertRaisesRegex(RuntimeError,'STALE_STATE_ARGUMENT'):m.state('f'*64)
+    def test_new_target_never_falls_back_to_initial_running_receipt(self):
+        with patch.object(m,'ROOT',self.root):
+            m.bind_target(self.binding('layout5b07'));m.ctx['binding']=self.binding('layout5b07')
+            with self.assertRaisesRegex(RuntimeError,'NEW_TARGET_REQUIRES_STATE'):m.state(m.INITIAL_SHA)
+    def test_arbitrary_candidate_rejected_and_owner_scope_follows_exact_target(self):
+        with patch.object(m,'ROOT',self.root):
+            b=self.binding('layout5b07');b['identity']={**b['identity'],'sourceCommit':'f'*40}
+            with self.assertRaisesRegex(RuntimeError,'BINDING_SCOPE'):m.bind_target(b)
+            m.bind_target(self.binding('layout5b07'))
+            good=owner('api');m.validate_owner('api',good)
+            good['cwd']=m.TARGETS['joint3a11']['application']+'/apps/api'
+            with self.assertRaisesRegex(RuntimeError,'APPLICATION_OWNER_SCOPE'):m.validate_owner('api',good)
+
 if __name__=='__main__':unittest.main()
