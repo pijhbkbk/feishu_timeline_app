@@ -9216,3 +9216,26 @@ Chrome原标签失去debugger连接，已用新的同浏览器观察标签恢复
 R32实际送达消息e370b66d-2b64-4b53-aced-1e7c69c95f26，已读完整反馈01273c21-f37e-4320-8a34-01a8b9a719ac及Gmail同件1a191246563dcd20，按副本去重；SR/r32-chatgpt-delivery-feedback-20261031-r01.json与r32-feedback-mail-read-20261031-r01.json保留。反馈确认构建成果保留、运行仍9c、A04-04保持FAIL；只等本次限定只读检查授权，实际回收后须重新核host/guest准入，预计19MB不能提前计为可用或足够启动。该反馈不是sudo/新增删除授权或产品签收；没有新结果不重复发送等待报告，不重编译、不扩安装、旧已闭链不重演。
 
 本轮根规则要求的apps/web占位扫描exit0、12处命中，均为测试中的getByPlaceholder或否定占位文案的断言，未命中正式页面占位；此扫描不代产品完成。三文档git diff --check为0。
+
+
+## 2026-10-31 — 2e0正常实装、性能失败与工具栏粘贴实修（E146）
+
+所有者call_4ba23651dbb44865a1da131a6b03622b已明确许可六个指定副本的sudo只读占用核对；本次限定读取实际成功（120进程/1209 FD/120 maps、NO_REFERENCES_OBSERVED），未扩大对象或读文件内容。审后由UID1100逐项stat/hash/CAS释放19283968B，六member完整备份0669e8b8…保留。旧r01权限失败和原数据/日志/历史不删；旧一次性initialize若复用须恢复两个公开输入副本。OP/save-six-copy-occupation-readonly-result-r01.json、save-guest-copy-release-result-r02.json和独审89c34fd5…绑定此次动作。
+
+原376根/host64MiB保留与guest1GiB底线保持。实际传17公开文件9943863B、Linux组装15742叶成功，composite manifest ba756d75…，原base15741叶完整核验；route-cache未读取/复制。正常停止9c收据71197480…；新启动r01实际被底层budget仍用24GiB拒绝，b4f0148…失败收据/STOPPED owners={}保留，不覆盖失败。工具ffab7669fe4e17ac98c0a15877cd8bb7e5902af3仅修已给24.5许可向真实budget reader传递：默认24、显式仅24/24.5、拒25且policy不能自授，64MiB/完整根/时限保持；45检查exit0，独审403487ba…。
+
+新不可变交付joint-delivery-2e0c191-r02有35个声明payload文件18005015B；含manifest/checksums实际37文件18016907B，manifest fe6798ef3817bda39c153ee12b14d74be50a22bb248327ce2a4788ffd7d9d3f4；binding e4e9910a477d92c3b8f9c7fd539a262dde0781246cfab09f96d9fb867c3a243b。新operation输入单独r02目录，delta保持既有r01，未改冻结r01。实际正常start r02 09:16:24–39Z exit0，收据36e7b2d65dd1955cfcd2f7a1a8d0aaf47098f3ab85d8ce361829fe92a5381e28；API16660/t10547157、Web16677/t10547259，boot9fee751f-120b-451e-9b1b-b17eac34bf98，proxy2510及PG/Redis/scanner不变。四个直接/严格CA HTTPS入口共同应用2e0c191f8ed1eb1bdd0f817354a0a785d0c3b126/tree150440646f845b04774991ff65b2f84a37b3b968/release truck-workbook-save-2e0c191f8ed1-r01/build2026-10-31T08:03:16Z。Chrome正常刷新仍同0c879b6d-12fe-43e5-b1dd-a46988f19c77本v3/hashdf15…，完整快照等于切换前。不是BUILD_ONLY，也不再待sudo授权。
+
+R33已送达用户消息020f131b-bf97-4541-97a3-5f9944d37e7f，完整反馈4844ef27-cf29-4b46-bd4c-a9913a136856及同Gmail1a19145ae41cc4ae已读去重。来源核对确认旧80MiB是工程stage plan而非所有者额度/冻结S7，原baseline/停止线/旧短缺计算保留。新first-write-resource-plan-r02（SHA6da43f49…）仅预登记一笔正常编辑/草稿/正式保存：guest当前至少1GiB+48MiB操作+16MiB异步、host24.5GiB内另留64MiB并预留本笔64MiB；独审22d89d0c…，不外推全50。11:10:44Z fresh host25953091584B、guest1146638336B，超过1140850688准入值5787648B；正式仍v3。这是技术计划修订，不是所有者新上限；原临时25已结束。
+
+S7new=OP/performance-s7-2e0-20261031-r01。2e0真实选择50次p95 nearest-rank第48=121.895ms、max271.680ms，FAIL；不挑样本。正常系统paste预登记F3=S7-2e0-001后，本机及服务器草稿先自然保存；真实点保存一次，R05原完整UI终点7269.515ms、trusted=true、probeErrors=[]，FAIL并停止余49，不拼旧9c样本。正式PUT操作0cb17e01-4cc2-48de-b573-6a5e0aad98bf/expected3，正式v4/hash307abd7534f5686394a030736024a85d32878d1841708a7b0b43a1e11ddecc06；完整差异为F3 v/t和SHEET_DEFINED_NAME_PLUGIN.data空串→{}。API草稿null/revision4、刷新完整DTO相等；原请求hash与stored hash一致，PG jsonb读回键序不同但逐JSON值相同。空名称资源经实际Univer读取/序列化与API规则独审09012d55…确认两者均空集合，原快照无f/si/ref，不称只有F3字节变化。刷新撤除观察器/五个canvas原生函数恢复，临时1440×900尺寸已reset，当前仍v4。实际结果独审ae7b34eb94b6814abf25e5173477dbf0a0451b9267c12e402991407084d36cd6。
+
+单笔网络3348.673ms正式PUT本身已超2s；其响应→DELETE发起1124.886ms，DELETE172.313ms，其响应→列表919.610ms、列表33.260ms。7个长任务2724ms可重叠，不与UI时间相加，不直接归数据库。原API日志47873B在256KiB界内只读全文，未发现本操作ID/本ID或duration字段；不导出原文。实际proxy/Prisma源码没有请求/query阶段计时，旧请求慢段仍UNATTRIBUTED。受控VM只运行实际compiled rules纯函数3轮（无HTTP/DB）：校验61–137ms、摘要20–30ms、JSON复制32–70ms；不代完整请求或当前浏览器成本，PG读回键序的诊断hash另列。r01 PATH node缺失127保留，r02用已核绝对Node24路径成功，不改配置或开启新诊断。下一性能补丁须先取得具体慢段依据。
+
+11:18:07Z同376根host25960607744B，24.5GiB扣64MiB余278958080B；guest1146564608B，高于1GiB+64MiB仅5713920B。准入至操作后的guest净减73728B只是单次净观测，不是高水位/硬配额或后49笔准入。原数据库/历史/备份/外盘保持。
+
+另真实点工具栏“粘贴”→下拉“粘贴”报command sheet.command.paste未注册，单元格未变化，随后系统paste成功只证明另一入口。静态根因是ui1.0.4 ToolbarItem.handleSelect忽略option.commandId，拿菜单id执行；不是安全guard删除注册。源码7baa9d105e3340de200f1b29dde736a7d402999e/treef7ca005a53a8b6be02e1211c4efe090067507f26仅在现有ES/CJS patch优先真实commandId，保空id fallback/disabled/params/focus/原CommandService，一次分发；不注册假别名、不隐藏按钮、不改业务/公式/图片安全保护。锁文件仅11处patch摘要xtog→imwq，依赖版本/integrity未变；这是UI依赖字节变化，不称全部依赖未变。
+
+真实vendor函数目标22PASS（含实际CommandService前置拒绝），旧vendor同断言18PASS/4FAIL，原TSV24及业务guard12回归通过。初次测试logger缺debug与ignored子目录git-apply跳过修正后才形成上述成对日志；lint首次process导入缺失留存，补node:process后exit0。普通pnpm lockfile-only/offline尝试未缓存Next15.5.25解析失败且未改版本；按本机pnpm9.15.4 LF/MD5/base32算法核旧摘要，仅换patch hash后，frozen-lockfile/lockfile-only/offline/ignore-scripts实际exit0。默认diff-check仅12处patch上下文空格+tab报错，patch-aware同检查0，不改全局配置。独审6dbac289c51e9d402d86e0ff0e182503abcdf569012e8d063bd0642d8bbbeb26核最终源码、候选ES/CJS全文、锁及日志；本机installed vendor仍旧xtog，新源码未安装/构建/GUI实装。下一步先准备精确依赖与构建路径，不能拿22测试当产品恢复。
+
+R34实际送达dbf12a9b-6b81-4d6b-ad00-bacc7598dac8，完整反馈885ce759-5c34-411d-81be-2c58f8517463及Gmail同件1a191b348a77a192已读去重，SR/r34-chatgpt-delivery-feedback-20261031-r01.json保留。按真实反证将A02-03当前PASS重开FAIL、A02包PARTIAL、E2E-02当前PARTIAL、P1-02 RUN，E57/E59/E136历史事实保留；当前66PASS/1PARTIAL/4NOT_VERIFIED/2FAIL/1BLOCKED=74、89.19%、12/15包、6/9有效链、P0仍7/10、P1 3/5。不扩分母或全面重验Safari/IME/Office。产品仍PARTIAL，未执行远端CI/push/main/tag/production或代所有者签收；治理规则与唯一安全Finding状态未改。原受保护未跟踪媒体/附件保持。

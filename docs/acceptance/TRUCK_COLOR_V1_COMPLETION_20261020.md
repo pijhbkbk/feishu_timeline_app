@@ -3,17 +3,17 @@
 当前执行状态以 [EXECUTION_LEDGER](../EXECUTION_LEDGER.md) 最新检查点为准；本页是其摘要，验收断言和计数仅从 [ROUTE_ACCEPTANCE_MATRIX](ROUTE_ACCEPTANCE_MATRIX.md#v1-baseline-v10) 派生，安全状态仅引用 [FINDINGS](../security/FINDINGS.yaml)。下方历史追加保留原日期、FAIL和版本，不覆盖当前入口。
 
 - TASK_ID：`TRUCK-COLOR-V1-COMPLETION-20261020-R01`；主线 `TRUCK-COLOR-V1-CONTINUE-20261020-R02`；当前子任务 `TRUCK-COLOR-V1-FINAL-EXECUTION-20261024-R01`。
-- STATE：`RUNNING / LOCAL_VERIFIED / PREVIEW_AVAILABLE`；产品 `PARTIAL / AWAITING_PRODUCT_OWNER_CONFIRMATION`。最近E145，2026-10-31；仅本机验收，不代正式域名。
-- WORKSPACE：`/Users/lixiaochen/Downloads/feishu_timeline_app`；分支 `codex/design-convergence-20261019`。运行应用9c412dd；新应用2e0c191已构建/目标检查/独审，未实装；新操作工具2ea9e4a；文档checkpoint另列。
-- SOURCE_ID：API/Web应用 `9c412ddf892db584633d3e083781e8bfc393fba5` / tree `dde64d42b3f35b23bde0d53a21872f4ab1a37e55`；release `truck-workbook-return-9c412ddf892d-r01` / build `2026-10-31T05:03:04Z`。实修裸颜色入口返回错误本及登录returnTo；原5b07布局/IME等未变输入依原受测身份复用。
-- ARTIFACT_ID：原r05基包及必需依赖＋`joint-delivery-9c412dd-r01`；30声明17996907B/32实际文件；manifest `6cde59099b213a88b5ba58201ddda62db28827573718152bbf3a43f2703bf014`。包内checker、普通stop/start本轮均有/private/tmp绝对argv/exit0；依赖原基包，不是全量包。
-- RUNTIME_ID：`https://localhost:45464`，boot `9fee751f-120b-451e-9b1b-b17eac34bf98`；API15121/t9173595、Web15139/t9173697，四入口共同9c。原proxy/PG/Redis/scanner固定守卫及配置保持；原M1正常重登、Safari原360本v2/五格及全文相等。
+- STATE：`RUNNING / LOCAL_VERIFIED / PREVIEW_AVAILABLE`；产品 `PARTIAL / AWAITING_PRODUCT_OWNER_CONFIRMATION`。最近E146，2026-10-31；仅本机，不代正式域名。
+- WORKSPACE：`/Users/lixiaochen/Downloads/feishu_timeline_app`；分支 `codex/design-convergence-20261019`。运行应用2e0c191；操作工具ffab766；新菜单修复7baa9d105e3340de200f1b29dde736a7d402999e已源码/目标验证/独审，未构建实装。
+- SOURCE_ID：API/Web运行 `2e0c191f8ed1eb1bdd0f817354a0a785d0c3b126` / tree `150440646f845b04774991ff65b2f84a37b3b968`；release `truck-workbook-save-2e0c191f8ed1-r01` / build `2026-10-31T08:03:16Z`。
+- ARTIFACT_ID：原r05基包及必需依赖＋`joint-delivery-2e0c191-r02`；35个声明payload文件18005015B，含manifest/checksums实际37文件18016907B，manifest `fe6798ef3817bda39c153ee12b14d74be50a22bb248327ce2a4788ffd7d9d3f4`。包内checker与正常start r02实际exit0；不是全量包，旧r01失败保留。
+- RUNTIME_ID：`https://localhost:45464`，boot `9fee751f-120b-451e-9b1b-b17eac34bf98`；API16660/t10547157、Web16677/t10547259，四入口共同2e0。原proxy/PG/Redis/scanner守卫及配置保持；同0c879本切换前后v3全文等，实际新保存v4刷新全文等。
 - REMOTE_LAST_OBSERVED：2026-10-31连接GitHub只读main仍 `9bdec2864c3ed9eb1a045062b756611f98208bfb`、最新main CI `38866594479` failure；未新增可归档的分支保护配置证据，必需门禁不变。候选未新增远端CI，精确正式域名身份仍UNKNOWN。
-- CURRENT_ITEM：67 PASS/1 PARTIAL/4 NOT_VERIFIED/1 FAIL/1 BLOCKED=74，13/15包、7/9技术链、7/10 P0、4/5 P1。E143关闭A04-02/A15-01/A15-03，A15-02补9c适用桥接；P1-02/03旧段首滞后按既有实操纠正，不新增E2E。
-- EVIDENCE：E143 OP包独审223113f5…、运行ec8f956e…、产品6a81817b…；SR/a15-layout-20261031-r01/workbook-return-9c412dd含原本内容链。reference-implementation-comparison-r03.html可切14参考页、三认证模式和四宽，补guide及实际Safari返回。
-- OPEN_LIMITS：E145完整376根25895968768B，24.5GiB扣64MiB余343597056B；构建临时25例外已回24.5。guest1183100928B不足新输入＋应用后保留原启动余量；六份可恢复复制文件已备份，但占用检查被/proc权限拒绝，未删除/未切换。原外盘、历史、旧数据不动；性能FAIL、CI/安全/正式目标未闭合。
-- HUMAN_ACTION：只待本次六份复制文件的限定sudo只读占用检查授权，旧索引单次许可不扩用。Safari本人输入及必要澄清已完成，不再重复；最终所有者签收仍待技术条件。
-- NEXT_ACTION：限定占用读取获准并确认空间后正常切换2e0，再在同0c879本v3向前开始固定新批次；首笔仍超2秒则保留FAIL并停止其余49次。旧9c选择50/保存1失败不拼新版本，其他S7分支保持原分母，不重开已闭合业务/安装。
+- CURRENT_ITEM：66 PASS/1 PARTIAL/4 NOT_VERIFIED/2 FAIL/1 BLOCKED=74，12/15包、6/9有效技术链、7/10 P0、3/5 P1。E146新反证重开A02-03及E2E-02/P1-02；历史保存恢复/Office/Safari事实不推翻。
+- EVIDENCE：E146实际结果独审ae7b34eb…，菜单diff独审6dbac289…；OP/performance-s7-2e0-20261031-r01含原始选择/保存/Network/全文读回/资源及截图。reference-implementation-comparison-r03.html继续保留14参考页与实装对照。
+- OPEN_LIMITS：E146实测选择p95 121.895ms、首保存7269.515ms FAIL；工具栏粘贴未注册命令FAIL。当前376根25960607744B，24.5GiB扣64MiB余278958080B；guest1146564608B。六份副本限定sudo只读及精确释放已完成；备份/旧数据/历史/外盘保持。CI/full安全/正式目标仍未闭合。
+- HUMAN_ACTION：本次限定sudo问题已解决，无需重复确认。最终所有者签收仍待技术条件；新构建若实际超现行上限须另核具体例外，旧临时25许可已结束。
+- NEXT_ACTION：菜单修复7baa9d1待精确依赖落地、构建及小范围实际工具栏复验；保存3.35s请求等待尚未归因，先用既有记录与只读函数计时定位，不继续余49次或盲构建性能补丁。
 - RESUME_ENTRY：最新Ledger → 矩阵未闭合原子/E2E依赖 → 本页派生摘要；最终A15-12由李晓晨明确接收，不由PM或Codex代签。
 
 <!-- V1_BASELINE_DASHBOARD_START -->
@@ -21,14 +21,14 @@
 
 唯一断言和详细步骤在[矩阵现行基线](ROUTE_ACCEPTANCE_MATRIX.md#v1-baseline-v10)，本表按其74条MUST派生。PM冻结的是标准，不是产品接受；旧PASS按原版本/输入适用性复用，FAIL和未执行仍保留。
 
-- MUST证据覆盖 `67/74=90.54%`，PARTIAL 1、NOT_VERIFIED 4、FAIL 1、BLOCKED 1；这不是代码完成率。
-- 关键技术链 `7/9=77.78%`；E2E-01至07各按实际证据成立，E2E-08仍有安全依赖，E2E-09正式目标未验。
-- P0交付组7/10关闭，P1必需组由矩阵逐项依赖决定；不是漏洞严重级别数量。剩6项技术/交付及1项所有者接收。
+- MUST证据覆盖 `66/74=89.19%`，PARTIAL 1、NOT_VERIFIED 4、FAIL 2、BLOCKED 1；这不是代码完成率。
+- 关键技术链 `6/9=66.67%`；E2E-02当前因A02-03重开，其余已核链保持原范围，E2E-08仍有安全依赖，E2E-09正式目标未验。
+- P0交付组7/10关闭，P1必需组由矩阵逐项依赖决定；不是漏洞严重级别数量。剩7项技术/交付及1项所有者接收。
 
 | A包 | MUST N_i | 有效PASS P_i | PARTIAL | NOT_VERIFIED | FAIL | BLOCKED | 整包 |
 |---|---:|---:|---:|---:|---:|---:|---|
 | A01 | 4 | 4 | 0 | 0 | 0 | 0 | PASS |
-| A02 | 6 | 6 | 0 | 0 | 0 | 0 | PASS |
+| A02 | 6 | 5 | 0 | 0 | 1 | 0 | PARTIAL |
 | A03 | 5 | 5 | 0 | 0 | 0 | 0 | PASS |
 | A04 | 5 | 2 | 0 | 2 | 1 | 0 | PARTIAL |
 | A05 | 6 | 6 | 0 | 0 | 0 | 0 | PASS |
@@ -43,15 +43,15 @@
 | A14 | 4 | 4 | 0 | 0 | 0 | 0 | PASS |
 | A15 | 12 | 8 | 1 | 2 | 0 | 1 | PARTIAL |
 
-13/15整包PASS，A04与A15未闭。代码、GUI、真实Office、系统IME、PG/Redis、恢复和精确目标环境各守证据范围，不互相替代。
+12/15整包PASS，A02、A04与A15未闭。代码、GUI、真实Office、系统IME、PG/Redis、恢复和精确目标环境各守证据范围，不互相替代。
 
 | 完工门槛 | 当前范围 | 矩阵入口 |
 |---|---|---|
-| 制品/运行身份 | E143共同9c四字段、Linux实体/普通stop-start/原M1正常登录及360v2全文读回；旧v5/v14保持其受测范围，仅本机 | A15-04/05 |
+| 制品/运行身份 | E146共同2e0四字段、Linux组装/普通start、同本v3保留及新v4正式保存刷新；仅本机 | A15-04/05 |
 | G3/真实DB/Redis | E67 R23 G3与E58属性证据按逐输入复用；原305 SKIP不计真实PG PASS；新局部24测试不充全仓 | A15-06 |
 | 必需CI/安全 | required候选CI和适用full仍未闭；原R23镜像未检出保留其版本，唯一Finding状态不擅改closed | A15-07/08 |
-| Office/IME/整本 | E93/E99两基准、E135真实IME交错、E136组合编辑/草稿/正式v5完整读回已成立，不重演 | A03/A05；E2E-02/03 |
-| Safari/性能/页面 | E143三项已闭合；E144选择50 p95=108.725ms/首保存6666.385ms FAIL，2e0已构建，实装前占用读取受权限阻断；其余性能仍待 | A04-02至05；A15-01/03 |
+| Office/IME/整本 | E93/E99两基准、E135真实IME交错、E136历史组合编辑/草稿/正式v5读回事实保留；E2E-02当前因A02-03依赖重开，仅补受影响证据 | A03/A05；E2E-02/03 |
+| Safari/性能/页面 | Safari/布局原范围保持；E146新选择p95=121.895ms/首保存7269.515ms FAIL；工具栏粘贴失败已重开，其他S7未验 | A02-03；A04-02至05；A15-01/03 |
 | 离线/恢复 | E132原3941完整安装合同已核；E140至E143共同候选增量包/普通生命周期适用性成立，非新全量安装或跨VM重启。E77获准逻辑恢复保持，E2E-08安全依赖另验 | A15-09/10 |
 | 约定目标/接收 | 精确 `https://timeline.all-too-well.com` 当前身份UNKNOWN，新候选未发布；技术条件及代表UAT就绪后由所有者明确接收 | A15-11/12 |
 
