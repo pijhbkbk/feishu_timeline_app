@@ -2,8 +2,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import type { NextConfig } from 'next';
+import { BoundedUiInputPlugin, sharedDependencyBuild } from './bounded-build';
 
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
+const sharedBuild = sharedDependencyBuild(path.resolve(currentDir, '../..'), process.env);
 
 const securityHeaders = [
   {
@@ -49,12 +51,13 @@ const nextConfig: NextConfig = {
     if (!dev && process.env.TIMELINE_BUILD_CACHE === 'disabled') {
       config.cache = false;
     }
+    if (!dev && sharedBuild) config.plugins.push(new BoundedUiInputPlugin(sharedBuild));
     return config;
   },
   devIndicators: false,
   poweredByHeader: false,
   reactStrictMode: true,
-  outputFileTracingRoot: path.join(currentDir, '../../'),
+  outputFileTracingRoot: sharedBuild?.tracingRoot ?? path.join(currentDir, '../../'),
   outputFileTracingExcludes: {
     'next-server': [
       '**/node_modules/typescript/**/*',
