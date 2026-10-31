@@ -184,6 +184,28 @@ class HostTests(unittest.TestCase):
             p=Path(d).resolve()/'input';p.write_bytes(b'public');p.chmod(0o600)
             os.link(p,p.with_name('alias'))
             with self.assertRaisesRegex(host.Failure,'HOST_INPUT_METADATA'):host.read(p)
+    def test_joint_budget_calls_real_delivered_reader_with_retention_limit(self):
+        # Exercise the actual transitive reader, not a stub returning a policy.
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d).resolve(); roots=[]
+            for i in range(375):
+                p=root/str(i);p.mkdir();roots.append(str(p))
+            roots.append('/Users/lixiaochen/Library/Caches/lima')
+            raw=(HERE/'delivery_host.py').read_bytes()
+            host.state['pins']={'files':{'delivery_host.py':{'sha256':host.sha(raw)}},'budgetRootPaths':roots}
+            captured={}; modules=[]; original_factory=types.ModuleType
+            def factory(name):
+                module=original_factory(name);modules.append(module);return module
+            def save(name,value):captured[name]=value
+            with patch.object(host,'OP',Path(roots[0])),patch.object(host.types,'ModuleType',side_effect=factory),patch.object(host,'save',side_effect=save),patch.object(host,'own_run',return_value=types.SimpleNamespace(returncode=0,stderr=b'',stdout=b'EXCLUSIVE_0600_VERIFIED\n')):
+                reader=host.load_budget_host()
+                with patch.object(modules[0],'bounded',return_value=(0,b'4',b'')):
+                    digest=reader.budget('prepare',host.INPUT,64*1024**2)
+            result=json.loads(captured['prepare.budget.json'])
+            self.assertEqual(digest,host.sha(captured['prepare.budget.json']))
+            self.assertEqual(result['limit'],49*1024**3//2)
+            self.assertEqual(len(result['rows']),376)
+            self.assertEqual(result['reserve'],64*1024**2)
 
 
 class CandidateContinuationTests(unittest.TestCase):

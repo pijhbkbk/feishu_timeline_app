@@ -109,9 +109,13 @@ def bounded(argv, env, cwd, timeout, cap):
         process.stdout.close(); process.stderr.close()
 
 
-def budget(policy, root, allowed_absent):
+def budget(policy, root, allowed_absent, *, approved_limit=LIMIT):
     roots = policy['expectedRootPaths']
-    need(policy['kind'] == 'OFFLINE_HOST_BUDGET_SCOPE_V1' and policy['limit'] == LIMIT and
+    # A policy file cannot grant a higher ceiling. Only the reviewed caller can
+    # select the owner's 24.5 GiB retention allowance; legacy callers keep 24.
+    need(type(approved_limit) is int and approved_limit in (LIMIT, 49*1024**3//2),
+         'APPROVED_BUDGET_LIMIT')
+    need(policy['kind'] == 'OFFLINE_HOST_BUDGET_SCOPE_V1' and policy['limit'] == approved_limit and
          1 <= len(roots) <= 4096 and len(roots) == len(set(roots)), 'COMPLETE_BUDGET_POLICY')
     need(isinstance(allowed_absent, list) and len(allowed_absent) <= 1 and
          set(allowed_absent) <= set(roots), 'ABSENT_ROOT_SCOPE')
@@ -130,9 +134,9 @@ def budget(policy, root, allowed_absent):
         rows.append({'path': value, 'allocatedBytes': int(out.split()[0])*1024})
     need(all(not p.exists() and not p.is_symlink() for p in absent), 'ABSENT_ROOT_CHANGED')
     total = sum(r['allocatedBytes'] for r in rows)
-    need(total + 64*1024**2 <= LIMIT, 'HOST_PREFLIGHT_CAPACITY')
+    need(total + 64*1024**2 <= approved_limit, 'HOST_PREFLIGHT_CAPACITY')
     return {'at': dt.datetime.now(dt.timezone.utc).isoformat(), 'rows': rows,
-            'totalAllocatedBytes': total, 'limit': LIMIT, 'reserve': 64*1024**2,
+            'totalAllocatedBytes': total, 'limit': approved_limit, 'reserve': 64*1024**2,
             'scopeNarrowed': False, 'readerSha256': sha(read(Path(__file__).resolve()))}
 
 

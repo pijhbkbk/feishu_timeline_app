@@ -29,7 +29,7 @@ TARGET_INPUTS = {
     "joint3a11": "/home/recovery/input-layout-recovery-20261031-r01",
     "layout5b07": "/home/recovery/input-layout-lifecycle-20261031-r01",
     "workbook9c412dd": "/home/recovery/input-workbook-lifecycle-20261031-r01",
-    "save2e0c191": "/home/recovery/input-save-lifecycle-20261031-r01",
+    "save2e0c191": "/home/recovery/input-save-lifecycle-20261031-r02",
 }
 ROOT = "/home/recovery/joint-lifecycle-3a11-r01"
 BOOT = "9fee751f-120b-451e-9b1b-b17eac34bf98"
@@ -156,7 +156,8 @@ def load_budget_host():
     def budget(name,inputdir,reserve):
         policy={"kind":"OFFLINE_HOST_BUDGET_SCOPE_V1","limit":49*1024**3//2,
                 "expectedRootPaths":state["pins"]["budgetRootPaths"]}
-        b=module.budget(policy,OP,["/Users/lixiaochen/Library/Caches/lima"])
+        b=module.budget(policy,OP,["/Users/lixiaochen/Library/Caches/lima"],
+                        approved_limit=49*1024**3//2)
         b.update(round30RootsIncluded=True,guestAccess=False)
         need(len(b["rows"])==376 and b["totalAllocatedBytes"]+reserve<=b["limit"],"FULL_BUDGET")
         raw=(json.dumps(b,sort_keys=True,indent=2)+"\n").encode();digest=sha(raw)

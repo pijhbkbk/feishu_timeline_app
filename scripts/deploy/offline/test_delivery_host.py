@@ -73,6 +73,21 @@ class HostTests(unittest.TestCase):
         self.assertEqual((code,out,err),(3,b'public\n',b''))
         with self.assertRaisesRegex(RuntimeError,'TRANSPORT_OUTPUT_BOUND'):
             m.bounded([sys.executable,'-I','-B','-c','print("x"*4096)'],{'PATH':'/usr/bin:/bin'},self.root,3,64)
+    def test_retention_limit_requires_explicit_caller_and_keeps_reserve(self):
+        limit=49*1024**3//2
+        policy={'kind':'OFFLINE_HOST_BUDGET_SCOPE_V1','limit':limit,'expectedRootPaths':[str(self.root)]}
+        with self.assertRaisesRegex(RuntimeError,'COMPLETE_BUDGET_POLICY'):
+            m.budget(policy,self.root,[])
+        with self.assertRaisesRegex(RuntimeError,'APPROVED_BUDGET_LIMIT'):
+            m.budget({**policy,'limit':25*1024**3},self.root,[],approved_limit=25*1024**3)
+        used=24*1024**3+128*1024**2
+        with patch.object(m,'bounded',return_value=(0,str(used//1024).encode(),b'')):
+            result=m.budget(policy,self.root,[],approved_limit=limit)
+        self.assertEqual((result['totalAllocatedBytes'],result['limit'],result['reserve']),
+                         (used,limit,64*1024**2))
+        with patch.object(m,'bounded',return_value=(0,str((limit-64*1024**2+1024)//1024).encode(),b'')):
+            with self.assertRaisesRegex(RuntimeError,'HOST_PREFLIGHT_CAPACITY'):
+                m.budget(policy,self.root,[],approved_limit=limit)
     def test_transport_deadline_stops_owned_process(self):
         with self.assertRaisesRegex(RuntimeError,'TRANSPORT_TIMEOUT'):
             m.bounded([sys.executable,'-I','-B','-c','import time;time.sleep(5)'],{'PATH':'/usr/bin:/bin'},self.root,.1,64)
