@@ -102,3 +102,12 @@ button { cursor:pointer; } button:disabled { cursor:not-allowed; opacity:.58; }
 .m1-modal {border:1px solid var(--m1-border);color:var(--m1-text);}.m1-modal::backdrop {background:rgb(37 51 47 / 40%)}.m1-modal h2 {overflow-wrap:anywhere;min-width:0}.m1-auth-header .r22-header-tools {display:none;}
 
 .m1-file-picker{display:flex;align-items:center;gap:12px;flex-wrap:wrap;min-width:0}.m1-file-picker>span{overflow-wrap:anywhere;min-width:0;flex:1 1 160px}.m1-file-picker>input[hidden]{display:none}
+
+.m1-shell .r22-content,
+.m1-shell .page-stack { grid-template-columns:minmax(0,1fr); }
+.m1-shell .r22-content > *,
+.m1-shell .page-stack,
+.m1-shell .page-stack > * { min-width:0; }
+@media(max-width:600px) {
+  .m1-shell .r22-context-nav { margin-right:-16px;margin-left:-16px;width:calc(100% + 32px);padding-right:16px;padding-left:16px; }
+}
