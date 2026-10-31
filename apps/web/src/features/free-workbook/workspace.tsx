@@ -17,6 +17,7 @@ import { ServerDraftSession, type ServerDraftRead } from './server-draft-session
 import { readServerDraft, executeServerDraftRequest } from './server-draft-client';
 import { WorkbookSaveSession } from './save-session';
 import { WorkbookIntentSession } from './workbook-intent-session';
+import { recentWorkbook, rememberWorkbook } from './recent-workbook';
 import { readWorkbookIntent, removeWorkbookIntent, type StoredWorkbookIntent, type WorkbookIntent } from './workbook-intent-store';
 import { validateLocalDraft, claimLocalDraft, readLocalDrafts, writeLocalDraft, removeLocalDraft, type WorkbookLocalDraft } from './draft-store';
 import { listRevisions, listWorkbooks, readWorkbook, saveWorkbook, type SavedWorkbook, type WorkbookMeta, type WorkbookRevision } from './client';
@@ -25,7 +26,7 @@ import './workbook.css';
 const BusinessMappingPanel=dynamic(()=>import('./mapping-panel').then(module=>module.BusinessMappingPanel),{ssr:false,loading:()=> <div role="status">正在打开业务映射…</div>});
 const message=(cause:unknown)=>cause instanceof Error?cause.message:'操作失败，内容仍保留。';
 export function FreeWorkbookWorkspace(){
-  const {user}=useAuth(),canEdit=isApprovedTeamUser(user);const runtime=useRef<WorkbookRuntime|null>(null),session=useRef<WorkbookSaveSession|null>(null),sequence=useRef(0),confirmed=useRef(0);
+  const {user,isLoading:authLoading}=useAuth(),canEdit=isApprovedTeamUser(user);const runtime=useRef<WorkbookRuntime|null>(null),session=useRef<WorkbookSaveSession|null>(null),sequence=useRef(0),confirmed=useRef(0);
   const [items,setItems]=useState<WorkbookMeta[]>([]),[after,setAfter]=useState<string|null>(null),[active,setActive]=useState<SavedWorkbook|null>(null),[epoch,setEpoch]=useState(0),[ready,setReady]=useState(false);
   const [structureBusy,setStructureBusy]=useState(false);
   const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[uploading,setUploading]=useState(0),[dirty,setDirty]=useState(false),[error,setError]=useState(''),[status,setStatus]=useState(''),[title,setTitle]=useState('新工作簿');
@@ -73,6 +74,7 @@ export function FreeWorkbookWorkspace(){
     const {id,name,revision,snapshotHash,updatedAt}=value;activeId.current=id;setLoading(false);setError('');
     setItems(previous=>previous.some(item=>item.id===id)?previous:[{id,name,revision,snapshotHash,updatedAt},...previous]);
     const url=new URL(window.location.href);url.searchParams.set('workbook',id);historyReplace(url);setReady(false);setActive(value);
+    if(ownerId)rememberWorkbook(ownerId,id);
     session.current=new WorkbookSaveSession(recovered?.baseRevision??value.revision,recovered?.pending??null);
     sequence.current=recovered?.sequence??(isDirty?1:0);confirmed.current=0;setDirty(isDirty||Boolean(recovered));setEpoch(n=>n+1);setHistory(null);setRestoreConfirmation(null);setRecoveryFailed(false);setImageFailures(0);setEditingDraft(recovered?.edit??null);
     setStatus(recovered?`已恢复本机草稿 · 基于版本 ${recovered.baseRevision}`:isDirty?'待保存':`已读取版本 ${value.revision}`);
@@ -95,29 +97,34 @@ export function FreeWorkbookWorkspace(){
     // Next keeps this component mounted for query/back navigation. Read the live
     // URL as well, because a replaceState update can precede its React render.
     const requested=new URLSearchParams(window.location.search).get('workbook');
-    const identityChanged=loadedOwner.current!==ownerId;loadedOwner.current=ownerId;
+    const identityChanged=loadedOwner.current!==ownerId;
+    if(authLoading&&!identityChanged){navigationRead.current?.controller.abort();navigationRead.current=null;return;}
+    loadedOwner.current=ownerId;
     const forced=identityChanged||handledLoadEpoch.current!==loadEpoch;handledLoadEpoch.current=loadEpoch;
     if(!forced&&((activeId.current!==null&&requested===activeId.current)||navigationRead.current?.requested===requested))return;
     if(!identityChanged&&!canLeave()){replaceWorkbookUrl(activeId.current);return;}
     navigationRead.current?.controller.abort();
     const controller=new AbortController();navigationRead.current={requested,controller};
-    const current=()=>mounted.current&&!controller.signal.aborted&&navigationRead.current?.controller===controller&&new URLSearchParams(window.location.search).get('workbook')===requested;
+    const current=()=>mounted.current&&currentOwner.current===ownerId&&!controller.signal.aborted&&navigationRead.current?.controller===controller&&new URLSearchParams(window.location.search).get('workbook')===requested;
     // Discard only after canLeave succeeds. No editable A canvas may remain
     // underneath a B URL while B is loading or after B is denied/not found.
     activeId.current=null;runtime.current=null;session.current=null;
     if(identityChanged){pendingImport.current=null;candidateSource.current=null;setUploading(0);}
     setMappingOpen(false);setMappingStatus('');setActive(null);setReady(false);setDirty(false);setCandidate(null);setHistory(null);setRestoreConfirmation(null);setStatus('');setLoading(true);setError('');draftGeneration.current++;cloud.current=null;setCloudReady(false);setCloudRecovery(null);setCloudStatus('');localDraft.current=null;setRecoverable([]);setDraftStatus('');
+    // Clear an old actor's editor first, but do not choose a default workbook
+    // before authentication settles and make it an unintended explicit URL.
+    if(authLoading||!ownerId){navigationRead.current=null;setItems([]);setAfter(null);setLoading(authLoading);return;}
     void (async()=>{
       try{
         if(requested==='')throw new Error('工作簿标识无效，请检查链接。');
         const result=await listWorkbooks(undefined,controller.signal);if(!current())return;
         setItems(result.items);setAfter(result.nextCursor);
-        const selected=requested??result.items[0]?.id;
+        const selected=requested??recentWorkbook(ownerId)??result.items[0]?.id;
         if(selected){const value=await readWorkbook(selected,controller.signal);if(current())mount(value);}
       }catch(cause){if(current())setError(message(cause));}
       finally{if(navigationRead.current?.controller===controller){navigationRead.current=null;if(mounted.current&&!controller.signal.aborted)setLoading(false);}}
     })();
-  },[requestedId,loadEpoch,ownerId]);
+  },[requestedId,loadEpoch,ownerId,authLoading]);
   function changed(){if(currentOwner.current!==ownerId||!active||activeId.current!==active.id)return;sequence.current++;setDirty(sequence.current!==confirmed.current);setStatus(session.current?.uncertain?'保存结果待确认；新修改仍保留':'待保存');setDraftStatus('正在保留本机草稿');setDraftTick(n=>n+1);}
   async function loadCloud(id:string,generation:number,revision:number){
     if(!ownerId||cloudSending.current)return;const owner=ownerId,loadVersion=++cloudLoadVersion.current;setCloudReady(false);
@@ -164,7 +171,9 @@ export function FreeWorkbookWorkspace(){
   function canLeave(){if(busyRef.current||uploading>0){setError('当前操作尚未结束，请等待完成后再切换工作簿。');return false;}if(pendingImport.current){setError('图片导入尚未完成，请继续导入或重新打开原文件。');return false;}if(session.current?.uncertain||Boolean(intentRecord.current&&intentRecord.current.intent.phase!=='confirmed')){setError('上次操作结果尚未确认，请先重试核实原请求。');return false;}return !(dirty||candidate)||window.confirm(localDraft.current?.sequence===sequence.current?'保留本机草稿并打开另一工作簿？':'当前最新内容尚未保存到本机草稿，继续打开另一工作簿会丢失这些内容。是否继续？');}
   function open(id:string){replaceWorkbookUrl(id);setLoadEpoch(value=>value+1);}
   function replaceWorkbookUrl(id:string|null){const url=new URL(window.location.href);if(id===null)url.searchParams.delete('workbook');else url.searchParams.set('workbook',id);historyReplace(url);}
-  function historyReplace(url:URL){window.history.replaceState(window.history.state,'',url);}
+  // Let Next synchronize useSearchParams (including login returnTo) with this
+  // application navigation. Replaying its private history marker skips that.
+  function historyReplace(url:URL){window.history.replaceState(null,'',url);}
   async function mappingSource():Promise<MappingSource>{
     if(!active||!ownerId||!runtime.current||!ready||busyRef.current||uploading||pendingImport.current||Boolean(intentRecord.current&&intentRecord.current.intent.phase!=='confirmed')||session.current?.uncertain)throw new Error('请先完成工作簿加载、图片导入并核实原保存请求。');
     const isCurrent=captureScope(),meta=activeMeta.current!,snapshot=await runtime.current.snapshot();
@@ -276,7 +285,7 @@ export function FreeWorkbookWorkspace(){
     const intent:WorkbookIntent={version:1,intentId:crypto.randomUUID(),phase:'prepared',resolution:null,data:{kind:'restore',id:confirmation.workbookId,revision:confirmation.target,expected:confirmation.expected,operationId:crypto.randomUUID()}};
     const coordinator=await WorkbookIntentSession.prepare(ownerId,intent,ports);await resumeIntent(coordinator.record,assertConfirmation);
   },true);}
-  return <section className="fw-workspace"><div inert={mappingOpen}>
+  return <section className="fw-workspace"><div inert={mappingOpen||authLoading||!ownerId}>
     <header className="fw-heading"><div><h1>颜色工作簿</h1><span className="fw-kind">自由编辑</span></div><Link href={active?`/admin/color-database?view=records&workbook=${encodeURIComponent(active.id)}`:'/admin/color-database?view=records'} className="fw-link">业务颜色记录</Link></header>
     <div className="fw-toolbar">
       <label>工作簿<select aria-label="选择工作簿" value={active?.id??''} disabled={loading||busy||uploading>0} onChange={event=>void open(event.target.value)}><option value="" disabled>选择工作簿</option>{items.map(item=><option key={item.id} value={item.id}>{item.name}</option>)}</select></label>{after&&<button disabled={busy} onClick={()=>void run(()=>refreshList(true))}>更多</button>}

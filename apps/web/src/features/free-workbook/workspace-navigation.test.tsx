@@ -2,7 +2,7 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 const hooks=vi.hoisted(()=>({slots:[] as unknown[],index:0,effects:[] as Array<()=>void>,cleanups:new Map<number,()=>void>(),setups:new Map<number,()=>void|(()=>void)>(),dirty:false}));
-const identity=vi.hoisted(()=>({id:'synthetic-owner-a'}));
+const identity=vi.hoisted(()=>({id:'synthetic-owner-a',loading:false,approved:true}));
 const drafts=vi.hoisted(()=>({read:vi.fn(),write:vi.fn(),remove:vi.fn(),claim:vi.fn()}));
 const intents=vi.hoisted(()=>({rows:new Map<string,unknown>(),read:vi.fn(),write:vi.fn(),remove:vi.fn()}));
 const cloudApi=vi.hoisted(()=>({read:vi.fn(),execute:vi.fn()}));
@@ -15,7 +15,7 @@ vi.mock('react',async()=>{
 vi.mock('next/link',()=>({default:'a'}));
 vi.mock('next/dynamic',()=>({default:()=>function MappingPanel(){return <div data-mapping-panel/>;}}));
 vi.mock('next/navigation',()=>({useSearchParams:()=>new URLSearchParams(window.location.search)}));
-vi.mock('../../components/auth-provider',()=>({useAuth:()=>({user:{id:identity.id,isSystemAdmin:true,authSource:'local'}})}));
+vi.mock('../../components/auth-provider',()=>({useAuth:()=>({user:identity.id?{id:identity.id,isSystemAdmin:identity.approved,authSource:'local'}:null,isLoading:identity.loading})}));
 vi.mock('../m1/use-unsaved',()=>({useProjectUnsavedChanges:vi.fn()}));
 vi.mock('../business-sheet/image-client',()=>({defaultImageLayout:()=>({}),listSheetImages:vi.fn(),uploadSheetImage:images.upload}));
 vi.mock('../business-sheet/record-exchange',()=>({downloadWorkbook:vi.fn()}));
@@ -43,13 +43,62 @@ beforeEach(()=>{
  hooks.slots=[];hooks.index=0;hooks.effects=[];hooks.cleanups=new Map();hooks.setups=new Map();hooks.dirty=false;
  cloudApi.read.mockReset().mockResolvedValue({workbookRevision:1,draft:null,baseStale:false});cloudApi.execute.mockReset().mockRejectedValue(new Error('Synthetic cloud transport unavailable'));
  intents.rows.clear();intents.read.mockReset().mockImplementation(async(owner:string)=>structuredClone(intents.rows.get(owner)??null));intents.write.mockReset().mockImplementation(async(owner:string,intent:unknown,expected:number|null)=>{const old=intents.rows.get(owner) as {revision:number}|undefined;if((old?.revision??null)!==expected)throw new Error('Synthetic intent CAS');const next={revision:(expected??0)+1,intent:structuredClone(intent)};intents.rows.set(owner,next);return structuredClone(next);});intents.remove.mockReset().mockImplementation(async(owner:string)=>{intents.rows.delete(owner);});
- identity.id='synthetic-owner-a';Object.values(drafts).forEach(mock=>mock.mockReset());drafts.read.mockResolvedValue([]);drafts.write.mockResolvedValue(true);drafts.remove.mockResolvedValue(undefined);
+ identity.id='synthetic-owner-a';identity.loading=false;identity.approved=true;Object.values(drafts).forEach(mock=>mock.mockReset());drafts.read.mockResolvedValue([]);drafts.write.mockResolvedValue(true);drafts.remove.mockResolvedValue(undefined);
  images.upload.mockReset();Object.values(api).forEach(mock=>mock.mockReset());url=new URL(`http://localhost/admin/color-database?workbook=${oldId}`);
  replace=vi.fn((_state:unknown,_title:string,next:URL)=>{url=new URL(next);});
  vi.stubGlobal('window',{get location(){return {href:url.href,search:url.search};},history:{state:null,replaceState:replace},confirm:vi.fn(()=>true)});
  api.list.mockResolvedValue({items:[saved(oldId)],nextCursor:'next-page'});api.read.mockImplementation((id:string)=>Promise.resolve(saved(id)));api.create.mockImplementation((snapshot:SavedWorkbook['snapshot'])=>Promise.resolve({...saved(snapshot.id),name:snapshot.name}));
 });
 afterEach(()=>{vi.useRealTimers();dispose();vi.unstubAllGlobals();});
+it.each([false,true])('returns to the last mounted workbook from a bare link, even when the first list page is empty: %s',async empty=>{
+ url.searchParams.set('workbook',laterId);await settle();api.read.mockClear();
+ if(empty)api.list.mockResolvedValue({items:[],nextCursor:null});
+ url.search='';const html=await refreshComponent();
+ expect(html).toContain(`data-workbook="${laterId}"`);expect(url.searchParams.get('workbook')).toBe(laterId);
+ expect(api.read).toHaveBeenCalledExactlyOnceWith(laterId,expect.any(AbortSignal));expect(api.save).not.toHaveBeenCalled();expect(api.create).not.toHaveBeenCalled();
+});
+it('waits for authentication before resolving a bare link and keeps different actors separate',async()=>{
+ url.searchParams.set('workbook',laterId);await settle();
+ identity.id='synthetic-owner-b';url.searchParams.set('workbook',oldId);await settle();
+ identity.id='';identity.loading=true;url.search='';api.list.mockClear();api.read.mockClear();replace.mockClear();
+ await refreshComponent();expect(api.list).not.toHaveBeenCalled();expect(api.read).not.toHaveBeenCalled();expect(replace).not.toHaveBeenCalled();
+ identity.id='synthetic-owner-a';identity.loading=false;expect(await settle()).toContain(`data-workbook="${laterId}"`);
+ identity.id='synthetic-owner-b';url.search='';expect(await settle()).toContain(`data-workbook="${oldId}"`);
+});
+it('lets an explicit link override remembered selection and remembers only the successful result',async()=>{
+ url.searchParams.set('workbook',laterId);await settle();url.searchParams.set('workbook',oldId);await refreshComponent();
+ expect(api.read).toHaveBeenLastCalledWith(oldId,expect.any(AbortSignal));url.search='';expect(await refreshComponent()).toContain(`data-workbook="${oldId}"`);
+});
+it('publishes the selected ID as application navigation without replaying private router state',async()=>{
+ Object.assign(window.history,{state:{__NA:true,__PRIVATE_NEXTJS_INTERNALS_TREE:['synthetic-old-route']}});
+ url.searchParams.set('workbook',laterId);await settle();
+ expect(replace).toHaveBeenCalledWith(null,'',expect.objectContaining({href:`http://localhost/admin/color-database?workbook=${laterId}`}));
+});
+it.each(['signed-out','unapproved','loading'] as const)('removes an old actor editor and rejects late reads when identity becomes %s',async change=>{
+ await settle();readyEditor();await settle();
+ let resolve!:(value:SavedWorkbook)=>void;api.read.mockImplementationOnce(()=>new Promise<SavedWorkbook>(r=>{resolve=r;}));url.searchParams.set('workbook',laterId);await settle();
+ if(change==='unapproved')identity.approved=false;else identity.id='';identity.loading=change==='loading';
+ api.list.mockClear();const html=await settle();expect(html).not.toContain('data-workbook=');expect(html).not.toContain('有未保存内容');expect(api.list).not.toHaveBeenCalled();
+ resolve(saved(laterId));await settle();expect(api.save).not.toHaveBeenCalled();expect(drafts.remove).not.toHaveBeenCalled();
+ identity.id='synthetic-owner-a';identity.loading=false;identity.approved=true;url.search='';expect(await settle()).toContain(`data-workbook="${oldId}"`);
+});
+it('clears an already mounted editor when its actor disappears during authentication refresh',async()=>{
+ await settle();readyEditor();await settle();identity.id='';identity.loading=true;
+ expect(await settle()).not.toContain('data-workbook=');expect(renderToStaticMarkup(tree)).not.toContain('有未保存内容');expect(api.save).not.toHaveBeenCalled();expect(drafts.remove).not.toHaveBeenCalled();
+});
+it.each([403,404])('retries a denied remembered workbook (%s) without falling back or writing',async status=>{
+ url.searchParams.set('workbook',laterId);await settle();url.search='';api.read.mockClear();api.read.mockRejectedValue(new ApiRequestError('原工作簿不可读取',status));
+ expect(await refreshComponent()).toContain('原工作簿不可读取');expect(renderToStaticMarkup(tree)).not.toContain('data-workbook=');
+ await click('重试读取工作簿');expect(api.read.mock.calls.map(call=>call[0])).toEqual([laterId,laterId]);
+ expect(url.searchParams.has('workbook')).toBe(false);expect(api.create).not.toHaveBeenCalled();expect(api.save).not.toHaveBeenCalled();
+});
+it('does not remember a cancelled switch or a response from an obsolete account',async()=>{
+ await settle();readyEditor();await settle();vi.mocked(window.confirm).mockReturnValueOnce(false);url.searchParams.set('workbook',laterId);await settle();
+ url.search='';expect(await refreshComponent()).toContain(`data-workbook="${oldId}"`);
+ let resolve!:(value:SavedWorkbook)=>void;api.read.mockImplementationOnce(()=>new Promise<SavedWorkbook>(r=>{resolve=r;}));url.searchParams.set('workbook',laterId);await settle();
+ identity.id='synthetic-owner-b';url.search='';await settle();resolve(saved(laterId));await settle();
+ identity.id='synthetic-owner-a';url.search='';expect(await settle()).toContain(`data-workbook="${oldId}"`);
+});
 it('directly reads a requested workbook outside the first page and retains its selectable identity',async()=>{
  url.searchParams.set('workbook',laterId);const html=await settle();expect(api.read).toHaveBeenCalledWith(laterId,expect.any(AbortSignal));expect(api.read).not.toHaveBeenCalledWith(oldId,expect.anything());expect(html).toContain(`data-workbook="${laterId}"`);expect(html).toContain(`value="${laterId}"`);expect(url.searchParams.get('workbook')).toBe(laterId);
 });
