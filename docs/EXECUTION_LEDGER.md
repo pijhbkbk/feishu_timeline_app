@@ -9174,3 +9174,22 @@ Chrome同一本→工作台→裸颜色入口→当前360/v2→正常退出→�
 已补5b07真实未登录三表单×四CSS宽，字段/标签/主按钮/返回可见可用、无整页溢出；12图独审323fa93d…。次要按钮偏浅作为原图观察保留，9c实际computed为rgb(63,107,88)/opacity1/enabled，不推定新阻断。guide390新全页与六段原尺寸、中部/材料表真实横滚至269=max、半年FAQ实际开/关文本已补，独审6013a2f5…；旧误图保留排除。reference-implementation-comparison-r03.html纳入新三表单/四宽切换、guide补证及实际Safari返回，仍标原截图5b07与9c逐输入复用，不重做PPT。
 
 E143完整断言与实际产品独审6a81817b352687477432c7d245ca02f4d87672d2ced569aac0fe73676fd74ebc支持按本机范围关闭A04-02/A15-01/A15-03；A15-02新业务记录返回桥接保持PASS。唯一矩阵复算67PASS/1PARTIAL/5NOT_VERIFIED/1BLOCKED=74、90.54%；13/15包、7/9技术链、7/10P0不变。P1为4关闭/1未闭：P1-02/03早已按E136/E138/E139实操满足，旧“1关闭”段首滞后本次纠正，本轮另关P1-05，不凭计数提升E2E。剩固定性能三条、CI/完整安全/正式目标三条及最后所有者接收。Placeholder12命中均测试；没有push/main/tag/远端CI/生产或原外盘Docker操作。
+
+
+## 2026-10-31 — S7 原样本落地、首批性能失败及保存去重修复（E144）
+
+R30用户消息b2818375-5d63-4c57-ba45-813e485a989c已送达已授权「轻卡定制色验收目标」，完整回复94b293a0-bb9e-4da5-8ca0-00f708e15069及Gmail同件1a190a753e190a5c已读去重，SR/r30-chatgpt-delivery-feedback-20261031-r01.json保留。支持E143三项关闭及67/74，明确不重做Safari/IME/Office/安装。10月31日连接GitHub只读main仍9bdec2864c3ed9eb1a045062b756611f98208bfb、最新main CI38866594479 failure；冻结合同必需verify/security-source门禁不变。OP/remote-main-ci-readonly-20261031-r01.json留存，无远端执行。
+
+所有者call_38e78e803ab0470198f2a50d97608ad4批准本轮验收及新增历史/证据在原376根保留24.5GiB；原临时25已结束，Lima仍24GB、guest1GiB底线和host64MiB保留不变。OP/performance-s7-9c-20261031-r01（S7）为本批证据目录。原1000×27定义/27列宽/100组×10行/空白与空字符串/冻结/样式逐项保留，新s7-reading-1000x27.xlsx 92812B SHAae2c9c66a99c3be6adbee59fcefe7e8e28460263635d6aad471b63ba49d1e2e1；另原30图137544B SHA c8506e02428f05a8ae547715aebd623a4f32de6881e61e56cb89b8e65958d984单独保留，尚未导入。定义/输入独审f76006b2…成立，不运行旧3380/PATCH runner。
+
+原M1正常GUI导入→预览1表0图→确认副本→继续完整草稿→明确保存v2→正式API逐格读回，新本0c879b6d-12fe-43e5-b1dd-a46988f19c77/name s7-reading-1000x27。27,027格原内容/类型正确，1031×31是正常导入边界补空，不改变1000×27测量区域。v2 snapshotBytes2125131/hash a260883d…；只读事务核stored attribute75084B/pglz，不能当全部物理成本。准备独审9b616fe9…；旧工作簿未编辑。先48MiB单次导入额度，再按实际增长、固定baseline1183350784free及80MiB累计观测停止线1099464704评估单操作；这不是硬配额或50次整体放行。
+
+r01观察脚本语法残片、r02–04计时边界问题在安装前修正并留存；r05独审c17b3e16…后仅注入当前页。Page.addScriptToEvaluateOnNewDocument工具不支持，未注册、未改变缓存、未取得冷暖指标。选择50次均trusted/no probe error，p95 nearest-rank第48项108.725ms、max164.265ms，超过100ms；不丢首个150.285ms或其他慢样本。原生文字工具没有产生输入，按键终点又遇逐字canvas/透明输入缓冲限制，按键NOT_OBSERVED，不把缓冲文字当可见呈现。随后用正常系统剪贴板粘贴KA到F2，作为真实首正式保存输入，不冒称键入或100×10粘贴样本。
+
+自然云稿PUT200后真实点保存，一次正式PUT200、草稿DELETE200、列表GET200，v3界面完整成功耗时6666.385ms，超过2s；正式保存只有1/50，未为凑数继续重复。API全文比较仅F2新增v=KA/t=1和revision/hash/updatedAt改变，F3仍空，其他快照全部相等，草稿null/baseStale=false，正常刷新显示v3。首笔后guest净观测下降217088B，不代表瞬时峰值。CDP同钟分段为正式PUT1759.510ms、响应到DELETE2199.427ms、DELETE191.978ms、响应到list825.694ms、list26.304ms；UI与CDP两端未建立精确桥接，残差1663.472ms不可拆成精确阶段。云稿PUT1111.467ms，粘贴到云回执仅跨时钟粗约4.8s，不能作精确验收。工具等待3s超时没有再次保存，原操作结果后来读回。31条>200ms长任务保留，非零长任务不是新增否决阈值。
+
+独审83ecdfdc…确认上述失败/适用范围。正式读回后已正常reload撤除观察器，__sheetPerf不存在，五个canvas原生函数均恢复；当前页仍原9c。S7/result-r01.json SHA c3199ed9701321a080a273c25ea76284f0df49bfdae1a0bd07791b671b2c9e02汇总，原始网络/样本/截图分别保留。没有排序/筛选/100×10粘贴、30图或10切换新结果。扫码签名/图片与guest空间另核，不绕过。
+
+源码2e0c191f8ed1eb1bdd0f817354a0a785d0c3b126/tree150440646f845b04774991ff65b2f84a37b3b968只修两处前端重复：正式ack与待清理请求共用一次完整当前草稿捕获；内部已深冻的云检查点成员免重复JSON复制，保留整体depth40和外部16MiB恢复校验。无槽/准备失败仍留ack检查点，网络前本机事务、原操作ID/CAS、公式/IME、新编辑和草稿清理等待不变；未缓存runtime快照。100目标/受影响回归、Web typecheck、四文件lint、diff-check均exit0；exact diff独审eb11c8e5…成立。代码检查不证明6.67s已修好，尚未构建/部署/性能复验。治理规则未改。
+
+最新完整376根25685131264B，24.5GiB扣64MiB余554434560B；guest1183121408free，底线上109379584B。现有受控832MiB构建窗口仍差317980672B（303.25MiB），没有已支持可直接复用的小峰值Web构建路径。所有者call_b6261b37fa8344359346f06a1add3dcf已批准仅本次2e0构建/增量临时25GiB、结束回已批准24.5GiB；未启动构建、服务切换、依赖清理或原外盘。矩阵继续67PASS/1PARTIAL/5NOT_VERIFIED/1BLOCKED=74，A04-04明确记录已观察FAIL而未闭合，不新增PASS或提升整链。

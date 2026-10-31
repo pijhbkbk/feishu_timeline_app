@@ -3,17 +3,17 @@
 当前执行状态以 [EXECUTION_LEDGER](../EXECUTION_LEDGER.md) 最新检查点为准；本页是其摘要，验收断言和计数仅从 [ROUTE_ACCEPTANCE_MATRIX](ROUTE_ACCEPTANCE_MATRIX.md#v1-baseline-v10) 派生，安全状态仅引用 [FINDINGS](../security/FINDINGS.yaml)。下方历史追加保留原日期、FAIL和版本，不覆盖当前入口。
 
 - TASK_ID：`TRUCK-COLOR-V1-COMPLETION-20261020-R01`；主线 `TRUCK-COLOR-V1-CONTINUE-20261020-R02`；当前子任务 `TRUCK-COLOR-V1-FINAL-EXECUTION-20261024-R01`。
-- STATE：`RUNNING / LOCAL_VERIFIED / PREVIEW_AVAILABLE`；产品 `PARTIAL / AWAITING_PRODUCT_OWNER_CONFIRMATION`。最近E143，2026-10-31；仅本机验收，不代正式域名。
-- WORKSPACE：`/Users/lixiaochen/Downloads/feishu_timeline_app`；分支 `codex/design-convergence-20261019`。应用9c412dd；操作工具b0e9a70；文档checkpoint另列。
+- STATE：`RUNNING / LOCAL_VERIFIED / PREVIEW_AVAILABLE`；产品 `PARTIAL / AWAITING_PRODUCT_OWNER_CONFIRMATION`。最近E144，2026-10-31；仅本机验收，不代正式域名。
+- WORKSPACE：`/Users/lixiaochen/Downloads/feishu_timeline_app`；分支 `codex/design-convergence-20261019`。运行应用9c412dd；新源码2e0c191已目标检查/独审、未构建；操作工具b0e9a70；文档checkpoint另列。
 - SOURCE_ID：API/Web应用 `9c412ddf892db584633d3e083781e8bfc393fba5` / tree `dde64d42b3f35b23bde0d53a21872f4ab1a37e55`；release `truck-workbook-return-9c412ddf892d-r01` / build `2026-10-31T05:03:04Z`。实修裸颜色入口返回错误本及登录returnTo；原5b07布局/IME等未变输入依原受测身份复用。
 - ARTIFACT_ID：原r05基包及必需依赖＋`joint-delivery-9c412dd-r01`；30声明17996907B/32实际文件；manifest `6cde59099b213a88b5ba58201ddda62db28827573718152bbf3a43f2703bf014`。包内checker、普通stop/start本轮均有/private/tmp绝对argv/exit0；依赖原基包，不是全量包。
 - RUNTIME_ID：`https://localhost:45464`，boot `9fee751f-120b-451e-9b1b-b17eac34bf98`；API15121/t9173595、Web15139/t9173697，四入口共同9c。原proxy/PG/Redis/scanner固定守卫及配置保持；原M1正常重登、Safari原360本v2/五格及全文相等。
-- REMOTE_LAST_OBSERVED：2026-10-29只读main仍 `9bdec2864c3ed9eb1a045062b756611f98208bfb`、最新main CI `38866594479` failure；这不是今天新查询。候选未新增远端CI，精确正式域名身份仍UNKNOWN。
+- REMOTE_LAST_OBSERVED：2026-10-31连接GitHub只读main仍 `9bdec2864c3ed9eb1a045062b756611f98208bfb`、最新main CI `38866594479` failure；未新增可归档的分支保护配置证据，必需门禁不变。候选未新增远端CI，精确正式域名身份仍UNKNOWN。
 - CURRENT_ITEM：67 PASS/1 PARTIAL/5 NOT_VERIFIED/1 BLOCKED=74，13/15包、7/9技术链、7/10 P0、4/5 P1。E143关闭A04-02/A15-01/A15-03，A15-02补9c适用桥接；P1-02/03旧段首滞后按既有实操纠正，不新增E2E。
 - EVIDENCE：E143 OP包独审223113f5…、运行ec8f956e…、产品6a81817b…；SR/a15-layout-20261031-r01/workbook-return-9c412dd含原本内容链。reference-implementation-comparison-r03.html可切14参考页、三认证模式和四宽，补guide及实际Safari返回。
-- OPEN_LIMITS：本轮临时25GiB已回24GiB，最近完整376根总25677520896B，扣64MiB保留余25174016B；后续仍须新鲜准入，guest准入数字未单列限制保留。原外盘事故缺失计划未找回，CVD无新刷新证据；性能/CI/安全/正式目标未验。
+- OPEN_LIMITS：所有者新批准本轮24.5GiB保留，376根最新25685131264B，扣64MiB余554434560B；guest底线上109379584B。2e0修复构建按原832MiB窗口缺303.25MiB，所有者已批准本次临时25GiB后回24.5，构建尚未执行。原外盘不动；CVD无新刷新证据，性能已有FAIL，CI/安全/正式目标未闭合。
 - HUMAN_ACTION：Safari本人真实输入、保存刷新及D2/D5澄清已完成，新版本同本往返由Codex取得，不再重复索取；Chrome系统IME/Office保持，最终所有者签收待技术条件。
-- NEXT_ACTION：按原S7准备与核对1000×27及30图精确合成载体，再测固定性能；随后沿有效授权推进CI/full安全/正式HTTPS。不重开已闭合IME、Office、七业务链或安装。
+- NEXT_ACTION：E144首保存6.666s及选择p95=108.725ms失败已保留；构建2e0保存去重修复并在同1000×27本复验后续。50保存仅1次，冷暖/按键不可观测、排序筛选粘贴/30图/切换待验；不重开已闭合IME、Office、七业务链或安装。
 - RESUME_ENTRY：最新Ledger → 矩阵未闭合原子/E2E依赖 → 本页派生摘要；最终A15-12由李晓晨明确接收，不由PM或Codex代签。
 
 <!-- V1_BASELINE_DASHBOARD_START -->
@@ -51,7 +51,7 @@
 | G3/真实DB/Redis | E67 R23 G3与E58属性证据按逐输入复用；原305 SKIP不计真实PG PASS；新局部24测试不充全仓 | A15-06 |
 | 必需CI/安全 | required候选CI和适用full仍未闭；原R23镜像未检出保留其版本，唯一Finding状态不擅改closed | A15-07/08 |
 | Office/IME/整本 | E93/E99两基准、E135真实IME交错、E136组合编辑/草稿/正式v5完整读回已成立，不重演 | A03/A05；E2E-02/03 |
-| Safari/性能/页面 | E143补齐auth/guide、Safari真实输入与同本返回，A04-02/A15-01/03闭合；固定性能A04-03/04/05仍待 | A04-02至05；A15-01/03 |
+| Safari/性能/页面 | E143三项已闭合；E144选择50 p95=108.725ms/首保存6666.385ms FAIL，2e0源码修复尚未构建；其余性能仍待 | A04-02至05；A15-01/03 |
 | 离线/恢复 | E132原3941完整安装合同已核；E140至E143共同候选增量包/普通生命周期适用性成立，非新全量安装或跨VM重启。E77获准逻辑恢复保持，E2E-08安全依赖另验 | A15-09/10 |
 | 约定目标/接收 | 精确 `https://timeline.all-too-well.com` 当前身份UNKNOWN，新候选未发布；技术条件及代表UAT就绪后由所有者明确接收 | A15-11/12 |
 
