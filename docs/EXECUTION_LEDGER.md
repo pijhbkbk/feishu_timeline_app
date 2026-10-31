@@ -9193,3 +9193,26 @@ r01观察脚本语法残片、r02–04计时边界问题在安装前修正并留
 源码2e0c191f8ed1eb1bdd0f817354a0a785d0c3b126/tree150440646f845b04774991ff65b2f84a37b3b968只修两处前端重复：正式ack与待清理请求共用一次完整当前草稿捕获；内部已深冻的云检查点成员免重复JSON复制，保留整体depth40和外部16MiB恢复校验。无槽/准备失败仍留ack检查点，网络前本机事务、原操作ID/CAS、公式/IME、新编辑和草稿清理等待不变；未缓存runtime快照。100目标/受影响回归、Web typecheck、四文件lint、diff-check均exit0；exact diff独审eb11c8e5…成立。代码检查不证明6.67s已修好，尚未构建/部署/性能复验。治理规则未改。
 
 最新完整376根25685131264B，24.5GiB扣64MiB余554434560B；guest1183121408free，底线上109379584B。现有受控832MiB构建窗口仍差317980672B（303.25MiB），没有已支持可直接复用的小峰值Web构建路径。所有者call_b6261b37fa8344359346f06a1add3dcf已批准仅本次2e0构建/增量临时25GiB、结束回已批准24.5GiB；未启动构建、服务切换、依赖清理或原外盘。矩阵继续67PASS/1PARTIAL/5NOT_VERIFIED/1BLOCKED=74，A04-04明确记录已观察FAIL而未闭合，不新增PASS或提升整链。
+
+
+## 2026-10-31 — 保存候选构建、增量准备及受限占用检查（E145）
+
+R31已实际送达原授权6ad6ddfe…：用户消息cec1fcae-2855-4b1f-8e4d-2e407c86bfc3，完整反馈f038c25a-fd32-4b76-b646-a4f650753e2b；Gmail同件1a190fbe468d5e7a已读去重，不重送实施邮件。SR/r31-chatgpt-delivery-feedback-20261031-r01.json保留。按反馈将A04-04状态从NOT_VERIFIED纠正为FAIL，与已观察超限一致；派生67PASS/1PARTIAL/4NOT_VERIFIED/1FAIL/1BLOCKED=74，90.54%，包/链/P0/P1不新增关闭。旧E144当时拆分作为历史保留。
+
+不可变应用2e0c191f8ed1eb1bdd0f817354a0a785d0c3b126/tree150440646f845b04774991ff65b2f84a37b3b968实际完成Mac API/Web六阶段构建与编译身份核对，release truck-workbook-save-2e0c191f8ed1-r01/buildTime2026-10-31T08:03:16Z；不是Linux已运行。OP/joint-build-2e0c191-r01/result.json及全部收据保留；观测目录峰值804032512B，不称硬配额。应用delta946叶、保留Linux依赖14796叶、合并15742；archive9488481B/SHA347131f4f0c9e50db30dfd1e463485a6fe9e6cbf604e584655be4ce21bacbc4a，manifest1eec75c5a436e2d49f4bdeff30bbeec1a856d878d243faa662a0e9e1260b7292，独审48e997ef…。
+
+两处本轮新构建依赖副本经29538叶闭集/原件hash、mode/nlink、当前用户lsof、build PGID和逐叶CAS核验后实际释放；完整376根26521882624→25871564800B，已回24.5GiB并留64MiB。原件、编译制品、源tar和历史均保留。最新含新备份/准备材料的376根25895968768B，24.5GiB扣64MiB余343597056B，预算SHAe6f44449…；临时25不作为运行上限。
+
+运行工具另提交2ea9e4a3f6e89c75f131e84fb2654970bbe416e9，仅新增固定2e0候选/制品hash及已批准24.5GiB的宿主和guest观察器预算；guest1GiB/启动64MiB、内存/日志、原376根/120秒、状态CAS/正常stop/start保护不变。58目标检查exit0，操作diff独审454b79fd…；原冻结包不改。新公开inputs只更新对应observer row与LEGACY_PINS_SHA，独审4ec9dc9d…确认实际加载链与原配置/TLS来源保留，未以新执行pins重建私有配置。OP/joint-delivery-2e0c191-r01已物化软件与工具，但实际STOPPED前驱、binding和最终交付manifest尚未形成，不能当完整可启动交付。
+
+guest当前free1183100928B。新输入约9.94MB+应用按现清单约44.86MB会不足原1GiB+64MiB启动余量，未先停旧服。已只读备份旧一次性input-joint-delta/package的两个公开传输副本及专用VM .npm/_cacache四个下载缓存，六文件分配量19283968B；当前正常生命周期使用另一份完整delta，两份host正式包/原件均保持。完整backup tar14128060B/SHA0669e8b8d3a9a1558257de2ecaf598c49d1a64d6148c7587c6385021dd3a5da1，逐member核验及独审52c3b4d…；仅可恢复复制输入，不涉及历史收据、业务数据、日志、目录或原外盘。历史一次性initialize若再次复用，须先恢复这两副本，不冒称它仍可立即执行。
+
+六文件释放前的当前UID占用检查实际遇/proc/1047/fd/0 PermissionError，在任何unlink之前退出1。OP/save-guest-copy-release-result-r01.json保留，之后六文件stat/hash读回全同，未删除、未重试。已向所有者申请仅这六inode的sudo只读占用检查，原另一公开索引的单次许可不扩用；等待回答期间只准备受限只读脚本和后续精确传输方案，不提权、不传guest、不组装、不切服务。超时/未知保留，不通过忽略权限错误继续删除。
+
+Chrome原标签失去debugger连接，已用新的同浏览器观察标签恢复读取；同0c879b6d-12fe-43e5-b1dd-a46988f19c77仍正式v3/hash df15df7a4a219bb859969cb7216169780a7fb042a88c25c9dde24fd08cfdd3e9，API/Web HTTPS身份均仍9c412dd。未重新编辑保存、未装性能观察器；此次读取不算冷/暖性能。下一步在限定占用读取获准且实际空间准入后正常切换，再从同本v3向前做预先固定的2e0新批首笔；仍超2s则保留新失败并停该批余下49次，不与旧9c样本拼接。未push/触发远端CI/生产/原Docker，产品仍PARTIAL/AWAITING_PRODUCT_OWNER_CONFIRMATION。
+
+本轮上述现成浏览器三GET身份另归档OP/save-build-existing-browser-readback-r01.json，API返回时点2026-10-31T08:33:26.723Z；只摘取身份及API报告的工作簿hash，不称再次全文复算。OP/save-build-pending-permission-preview-r01.jpg保留实际9c/v3页面。E145三文档独审OP/workbook-save-e145-docs-review-r01.json/SHA45345eb5…无阻断，A04-04末列时态改为“实装2e0后”。
+
+R32实际送达消息e370b66d-2b64-4b53-aced-1e7c69c95f26，已读完整反馈01273c21-f37e-4320-8a34-01a8b9a719ac及Gmail同件1a191246563dcd20，按副本去重；SR/r32-chatgpt-delivery-feedback-20261031-r01.json与r32-feedback-mail-read-20261031-r01.json保留。反馈确认构建成果保留、运行仍9c、A04-04保持FAIL；只等本次限定只读检查授权，实际回收后须重新核host/guest准入，预计19MB不能提前计为可用或足够启动。该反馈不是sudo/新增删除授权或产品签收；没有新结果不重复发送等待报告，不重编译、不扩安装、旧已闭链不重演。
+
+本轮根规则要求的apps/web占位扫描exit0、12处命中，均为测试中的getByPlaceholder或否定占位文案的断言，未命中正式页面占位；此扫描不代产品完成。三文档git diff --check为0。

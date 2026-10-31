@@ -675,7 +675,7 @@ V-E087=`e0870e8f4d919496d0161646ccc2c1aa28cd7822`；8c630=`8c630ac3c370c54908c9e
 | A04-01 | MUST; S1:A04; S3:32 | Mac Chrome正常系统中文输入不丢字 | 所有者实际Mac Chrome155：候选停留约2秒→确认→连续两格、中文标点、换行、快切、粘贴→保存刷新，D1/D2正式rev2一致 | 所有者真实系统IME+GUI/API | E07 | R04：composition/imeActive/readEdit/restoreEdit同段，Univer核心/drawing仍1.0.4；新async保护独立A03-05 | PASS | 无；仅正常Chrome过程，未称Safari或新交错通过 | 已满足；不重复执行此局部；Codex仅核E2E集成及后续输入变化 |
 | A04-02 | MUST; S1:A04; S1:A15 | 真实Safari完成同类系统IME与主工作簿路径 | 所有者实际Safari使用与A04-01同类输入，再保存/刷新/关键导航；选词/文本/状态正确；自动WebKit另记 | 真实Safari+系统IME+GUI/API | E143所有者5b07真实输入/保存刷新v2，9c同窗口往返及五格图/正式DTO；独审6a81817b… | 原360本不重建；D2/D5实际仅“第二句，”由本人澄清，非丢字；9c未改IME。工作台→裸颜色入口仍360/v2/五格；四份正式DTO全文等 | PASS | 限本机真实Safari及原用户步骤；无Safari全程Network，不用API中文代系统输入；错窗口图/AX排除 | 已满足；不重复系统IME，性能三条另验 |
 | A04-03 | MUST; S1:A04; S7 | 最终构建冷暖可见可编辑加载≤3秒 | M1同机Chrome1440×900，1000×27及30图约定样本，冷/暖各1；导航起到可见/可编辑≤3000ms，保存原始资源及终点 | 真实GUI Performance | E144正常1000×27导入v2；预加载观察工具不支持，冷暖NOT_OBSERVED | 开发chunk128秒FAIL保留；不可用迟到注入或可打开页面代冷暖终点 | NOT_VERIFIED | RUN（当前实际共同9c；仅补对应未闭合路径）；责任Codex | Codex在届时精确不可变候选测冷暖各1，不扣除滚动等待或修改阈值 |
-| A04-04 | MUST; S1:A04; S7 | 输入与保存达到固定阈值 | 选择/按键各50次p95≤100ms；正式保存50次点击至真实成功max≤2s；云稿从最后输入含800ms防抖至回执max≤2s，次数无旧规定则报原始实际n不造门槛 | 真实GUI事件/Network/正式读回 | E144同9c选择50 p95=108.725ms FAIL；首正式保存1/50=6666.385ms FAIL，v3全文读回成立 | 按键NOT_OBSERVED；云PUT1次1111.467ms，输入至回执跨时钟未精确测得；源码2e0未构建 | NOT_VERIFIED | RUN（当前实际共同9c；仅补对应未闭合路径）；责任Codex | 保留已观察FAIL；构建2e0后测实际收益及完整原分母，不将1/50当通过 |
+| A04-04 | MUST; S1:A04; S7 | 输入与保存达到固定阈值 | 选择/按键各50次p95≤100ms；正式保存50次点击至真实成功max≤2s；云稿从最后输入含800ms防抖至回执max≤2s，次数无旧规定则报原始实际n不造门槛 | 真实GUI事件/Network/正式读回 | E144同9c选择50 p95=108.725ms FAIL；首正式保存1/50=6666.385ms FAIL，v3全文读回成立 | 按键NOT_OBSERVED；云PUT1次1111.467ms，输入至回执跨时钟未精确测得；2e0已完成不可变构建，尚未实装复测 | FAIL | RUN（当前实际共同9c；仅补对应未闭合路径）；责任Codex | 保留已观察FAIL；实装2e0后测实际收益及完整原分母，不将1/50当通过 |
 | A04-05 | MUST; S1:A04; S7 | 排序/筛选/粘贴、30图与10次切换按原测量合同记录 | 1000行排序/筛选各5、100×10粘贴5次本地可编辑max≤1s；30图实际解码与10次目的页ready后返回，记录意外写/长任务/内存原始值 | 真实GUI+图像解码+Performance | E144原30图输入已独立核同hash，首保存失败后未继续其他性能写入 | 不增加零泄漏/全程零长任务或批量保存未规定的数值门槛 | NOT_VERIFIED | RUN（当前实际共同9c；仅补对应未闭合路径）；责任Codex | Codex复用同一性能夹具；图加载/切换与输入阈值分别记证据 |
 
 #### A05
@@ -792,14 +792,14 @@ V-E087=`e0870e8f4d919496d0161646ccc2c1aa28cd7822`；8c630=`8c630ac3c370c54908c9e
 
 ### 由唯一原子表派生的计数
 
-主分母N=74，有效PASS P=67，覆盖率67/74=90.54%（证据覆盖率，非代码完成率）；OPTIONAL 3项不计分母。PASS=67、PARTIAL=1、NOT_VERIFIED=5、BLOCKED=1、FAIL=0、SKIPPED=0、SCOPE_UNRESOLVED=0、NOT_APPLICABLE=0，总和74。E100闭合A03-01及P0-03；E101闭合A02-01；E132闭合A15-09/P0-07；E135闭合A03-05；E137＋E138成员支路支持A09-01/02，E138闭合A09-03。E139闭合A10-01/02及E2E-05；E143闭合A04-02/A15-01/A15-03；13/15整包、7/9技术链、7/10 P0，E136闭合E2E-02，不额外增加原子PASS；旧计数及失败保留原日期。
+主分母N=74，有效PASS P=67，覆盖率67/74=90.54%（证据覆盖率，非代码完成率）；OPTIONAL 3项不计分母。PASS=67、PARTIAL=1、NOT_VERIFIED=4、BLOCKED=1、FAIL=1、SKIPPED=0、SCOPE_UNRESOLVED=0、NOT_APPLICABLE=0，总和74。E100闭合A03-01及P0-03；E101闭合A02-01；E132闭合A15-09/P0-07；E135闭合A03-05；E137＋E138成员支路支持A09-01/02，E138闭合A09-03。E139闭合A10-01/02及E2E-05；E143闭合A04-02/A15-01/A15-03；13/15整包、7/9技术链、7/10 P0，E136闭合E2E-02，不额外增加原子PASS；旧计数及失败保留原日期。
 
 | A包 | MUST N_i | 有效PASS P_i | PARTIAL | NOT_VERIFIED | BLOCKED | 其他未通过 | 整包状态 |
 |---|---:|---:|---:|---:|---:|---:|---|
 | A01 | 4 | 4 | 0 | 0 | 0 | 0 | PASS |
 | A02 | 6 | 6 | 0 | 0 | 0 | 0 | PASS |
 | A03 | 5 | 5 | 0 | 0 | 0 | 0 | PASS |
-| A04 | 5 | 2 | 0 | 3 | 0 | 0 | PARTIAL |
+| A04 | 5 | 2 | 0 | 2 | 0 | 1 FAIL | PARTIAL |
 | A05 | 6 | 6 | 0 | 0 | 0 | 0 | PASS |
 | A06 | 3 | 3 | 0 | 0 | 0 | 0 | PASS |
 | A07 | 5 | 5 | 0 | 0 | 0 | 0 | PASS |
@@ -966,6 +966,7 @@ E01–E35保留历史记录的原日期/身份；E36起是本轮新增实际验�
 | E142 | [当前实装总结](../../var/truck-color-v1-20261020/final-execution-20261024-r01/r30-healthy-scanner-execution-r01/resume-20261028-r01/a15-layout-20261031-r01/actual-layout-result-r01.json) SHAe31abe81…；[参考实装r02](../../var/truck-color-v1-20261020/final-execution-20261024-r01/r30-healthy-scanner-execution-r01/resume-20261028-r01/a15-layout-20261031-r01/reference-implementation-comparison-r02.html)；OP运行独审7fb0eb00…/包24f814ba…/草稿239d9381…/四组GUI独审 | 应用5b07/3122780c；工具c473d17/540c9f5；HTTPS45464 | 2026-10-31 | 真实4CSS修复、双构建/正常stop-start/四身份，临时25GiB回24GiB；业务页四宽/导航、v13草稿恢复保存v14及新构建全文复核。登录误图/异常缩放图排除，新auth布局与Safari/性能待补，不新增PASS。 |
 | E143 | [同本导航/内容结果](../../var/truck-color-v1-20261020/final-execution-20261024-r01/r30-healthy-scanner-execution-r01/resume-20261028-r01/a15-layout-20261031-r01/workbook-return-9c412dd/result-r01.json)；[新版对照r03](../../var/truck-color-v1-20261020/final-execution-20261024-r01/r30-healthy-scanner-execution-r01/resume-20261028-r01/a15-layout-20261031-r01/reference-implementation-comparison-r03.html)；OP包223113f5…/运行ec8f956e…/产品6a81817b…独审 | 应用9c412dd/dde64d42；工具b0e9；HTTPS45464 | 2026-10-31 | Safari原输入保存v2保留，误返回旧v3实修；同Safari裸入口及Chrome登录/业务记录返回均原360v2全文等。新认证三表单四宽/guide缺片段补齐，按精确输入复用；关闭A04-02/A15-01/03，余性能/CI/安全/正式/所有者。 |
 | E144 | [性能原始汇总](../../var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/performance-s7-9c-20261031-r01/result-r01.json) SHA c3199ed9…；OP输入f76006b2…/准备9b616fe9…/首次失败83ecdfdc…/修复diff eb11c8e5…独审 | 运行9c；新源码2e0c191/15044064未构建；45464独立0c879本 | 2026-10-31 | 原1000×27正常导入v2；选择50 p95=108.725ms、首保存1/50=6666.385ms均FAIL，v3仅F2=KA变化且草稿空。冷暖/按键NOT_OBSERVED，其他性能未执行。所有者批准24.5GiB保留；新构建临时25已单独获准、结束回24.5，不新增PASS。 |
+| E145 | [构建与回报事实](../../var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/workbook-save-build-current-result-r01.json) SHA f580315c…；[占用权限阻断](../../var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/save-release-permission-blocker-r01.json) SHA3ded31d1…；操作/输入链独审454b79fd…/4ec9dc9d… | 新应用2e0/tree1504已Mac构建与delta核验；操作2ea9；运行仍9c/同0c879本v3 | 2026-10-31 | 新构建复制输入释放后原376根已回24.5；guest六复制文件有完整hash备份，但占用检查权限拒绝，零删除并逐文件读回未变，尚未传新guest输入/组装/切换。A04-04状态正式纠正FAIL，派生67/1/4/1FAIL/1BLOCKED=74，不新增产品PASS。 |
 
 
 
@@ -1085,7 +1086,7 @@ verify未配置PG/Redis service或各TEST_* URL，`pnpm test`绿不自动填掉�
 | P1-04 | Safari/IME/性能 | A04-01 A04-02 A04-03 A04-04 A04-05 | 真实Safari系统IME和固定性能阈值达标，原Chrome正常IME有效复用 | RUN；E143真实Safari已闭合，仅A04-03/04/05固定性能未闭合，E144已有FAIL；不重复系统输入 |
 | P1-05 | 导航/四宽/参考实装（已关闭） | A15-01 A15-02 A15-03 | 原14页/guide路由组件动作返回、默认/编辑/长文/加载/错误及四CSS宽按原约定可用 | CLOSED；E142＋E143实际四宽/guide/认证/同本导航及r03对照完成；不代正式目标 |
 
-1. **当前继续（NOW/RUN）**：E143关闭A04-02/A15-01/03及P1-05，当前9c修复裸入口与登录returnTo，原360v2全文保持。E144原样本已导入、选择/首保存FAIL，先构建源码2e0去重修复并复验，完整S7仍待；CI/full安全、正式目标沿有效授权及实际条件推进，305skip及旧FAIL保留。
+1. **当前继续（NOW/RUN）**：E143关闭A04-02/A15-01/03及P1-05，当前9c修复裸入口与登录returnTo，原360v2全文保持。E144原样本已导入、选择/首保存FAIL，E145新2e0已构建，限定占用检查待授权，先完成正常实装再复验，完整S7仍待；CI/full安全、正式目标沿有效授权及实际条件推进，305skip及旧FAIL保留。
 2. **运行前置已完成**：沿获准事故后逻辑起点、独立Lima与原数据，当前共同9c，原5b07、3a11和3941历史分列。历史Office、Chrome系统IME、业务七链和离线安装按逐输入适用性复用，不机械重放；普通重启不提高E2E-08安全或正式HTTPS验收状态。
 3. **特定人类/外部动作**：到达具体候选时缺少的Git/CI/发布授权与生产扫描资源限制、最后李晓晨UAT。Safari系统输入与必要澄清已完成不再索取；隔离恢复/事故后起点及证书已有授权，普通技术工作继续。
 
