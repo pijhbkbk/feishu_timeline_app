@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Bounded lifecycle tests; temporary local files are not Linux installation evidence."""
 import copy
+import datetime as dt
+import types
 import importlib.util
 import json
 import os
@@ -248,7 +250,7 @@ class PhaseTests(unittest.TestCase):
                     for name in ('data_baseline','fixed_owners','budget','package','prepared')]
             stopped=stack.enter_context(patch.object(m,'stop',side_effect=lambda *a:m.REPORT.update(status='STOP_FIXTURE')))
             old=os.umask(0o077)
-            try:m.execute(D,D,D,'-','stop',['first-start',D,'stop-event'])
+            try:m.execute(D,D,D,'-','stop',['first-start',D,'stop-event'],approved_limit=25*1024**3)
             finally:os.umask(old)
             stopped.assert_called_once_with('first-start',D)
             for guard in guards:guard.assert_not_called()
@@ -271,5 +273,29 @@ class PhaseTests(unittest.TestCase):
         import inspect
         self.assertIsNone(inspect.signature(m.owner_matches).parameters['cwd'].default)
         self.assertIsNone(inspect.signature(m.term_owned).parameters['cwd'].default)
+
+
+class ScannerRetentionBudgetTests(unittest.TestCase):
+    def test_explicit_limit_and_both_remaining_window_floors(self):
+        limit=25*1024**3;roots=['/r'+str(i) for i in range(376)]
+        reader={'entrySha256':'a'*64,'dependencies':[{'name':'reader','sha256':'b'*64}]}
+        policy={'kind':'OFFLINE_HOST_BUDGET_SCOPE_V1','limit':limit,'expectedRootPaths':roots,'reader':reader}
+        used=64*1024**2;remaining=m.WINDOW_BYTES-used;total=limit-remaining-64*1024**2
+        receipt={'at':dt.datetime.now(dt.timezone.utc).isoformat(),'scopeNarrowed':False,'reader':reader,'limit':limit,
+                 'rows':[{'path':p,'allocatedBytes':total if i==0 else 0} for i,p in enumerate(roots)],'totalAllocatedBytes':total}
+        def call(approved=limit,guest=None):
+            with patch.object(m,'TARGET_BINDING',{'budgetPolicySha256':D}),patch.object(m,'BUDGET_SHA',D),patch.object(m,'REPORT',{}), \
+                 patch.object(m,'read_json',side_effect=[(policy,{'sha256':D}),(receipt,{'sha256':D})]), \
+                 patch.object(m,'allocation',return_value={'totalAllocatedBytes':used}), \
+                 patch.object(m.shutil,'disk_usage',return_value=types.SimpleNamespace(free=m.FLOOR+remaining if guest is None else guest)):
+                m.budget(approved_limit=approved);return m.REPORT['budgetAdmission']
+        self.assertEqual(call()['approvedLimitBytes'],limit)
+        self.assertEqual(call()['hostReserveBytes'],64*1024**2)
+        with self.assertRaisesRegex(RuntimeError,'BUDGET_POLICY_KIND'):call(m.HOST_CAP)
+        with self.assertRaisesRegex(RuntimeError,'FRESH_WINDOW_RESERVATION'):call(guest=m.FLOOR+remaining-1)
+        receipt['rows'][0]['allocatedBytes']+=1;receipt['totalAllocatedBytes']+=1
+        with self.assertRaisesRegex(RuntimeError,'FRESH_WINDOW_RESERVATION'):call()
+        for invalid in (True,-1,26*1024**3,float(limit)):
+            with self.assertRaisesRegex(RuntimeError,'APPROVED_BUDGET_LIMIT'):call(invalid)
 
 if __name__=='__main__':unittest.main()

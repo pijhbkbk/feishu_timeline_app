@@ -203,6 +203,21 @@ def inventory(root, m):
     return rows
 
 
+def operation_budget(m, binding, generation, args):
+    # Configuration provenance stays immutable. Only this operation's explicitly
+    # pinned budget policy can differ from the historical generation policy.
+    approved = getattr(args, 'approved_host_limit_bytes', 24*1024**3)
+    context = dict(generation)
+    if 'executionBudgetPolicy' in binding:
+        context['budgetPolicy'] = binding['executionBudgetPolicy']
+    result = m.budget(context, {'path':args.budget, 'bytes':Path(args.budget).stat().st_size,
+                              'sha256':args.budget_sha256}, approved_limit=approved)
+    need(result['hostAllocatedBytes']+WINDOW+result['reservedBytes'] <= approved and
+         m.shutil.disk_usage(HOME).free >= FLOOR+WINDOW, 'REFRESH_CAPACITY')
+    result['configurationBudgetPolicy'] = generation['budgetPolicy']
+    return result
+
+
 def admission(args):
     os.umask(0o077)
     need(sys.flags.isolated and os.getuid() == os.geteuid() == os.getgid() == 1100 and
@@ -228,8 +243,7 @@ def admission(args):
         row=allowed.get(str(p),{})
         need(type(row.get('bytes')) is int and 0<row['bytes']<=256*1024**2, 'EXACT_NATIVE_TOOL_SIZE')
         need(sha(m.read(p,row['bytes'])) == row['sha256'], 'EXACT_NATIVE_TOOL')
-    budget=m.budget(generation,{'path':args.budget,'bytes':Path(args.budget).stat().st_size,'sha256':args.budget_sha256})
-    need(budget['hostAllocatedBytes']+WINDOW <= 24*1024**3 and m.shutil.disk_usage(HOME).free >= FLOOR+WINDOW, 'REFRESH_CAPACITY')
+    budget=operation_budget(m,b,generation,args)
     ca=Path('/etc/ssl/certs/ca-certificates.crt')
     ca_raw=m.read(ca,8*1024**2,owner=0)
     need(sha(ca_raw) == b['systemCaSha256'], 'SYSTEM_CA_PIN')
@@ -280,6 +294,7 @@ if __name__ == '__main__':
     mode=parser.add_mutually_exclusive_group()
     mode.add_argument('--execute',action='store_true')
     mode.add_argument('--check-admission',action='store_true')
+    parser.add_argument('--approved-host-limit-bytes',type=int,default=24*1024**3)
     for key in ('configuration-code-sha256','binding','binding-sha256','budget','budget-sha256'):parser.add_argument('--'+key)
     args=parser.parse_args()
     if not (args.execute or args.check_admission): print(json.dumps({'status':'PLAN_ONLY'}))

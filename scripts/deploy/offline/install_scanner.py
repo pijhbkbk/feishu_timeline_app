@@ -1078,7 +1078,7 @@ def stop(run, expected):
             REPORT.setdefault('retainedPrivateLogs', []).append(log_snapshot(LOGS/name))
 
 
-def execute(joint_sha, pin_sha, budget_sha, prep_sha, phase, args):
+def execute(joint_sha, pin_sha, budget_sha, prep_sha, phase, args, *, approved_limit=HOST_CAP):
     global JOINT_SHA, BUDGET_SHA, PREP_SHA, OUT, CURRENT_INDEX
     os.umask(0o077); configure_target(pin_sha)
     JOINT_SHA, BUDGET_SHA = digest(joint_sha), digest(budget_sha)
@@ -1094,7 +1094,7 @@ def execute(joint_sha, pin_sha, budget_sha, prep_sha, phase, args):
     signal.signal(signal.SIGTERM, interruption);signal.signal(signal.SIGINT, interruption);signal.signal(signal.SIGALRM, interruption)
     signal.setitimer(signal.ITIMER_REAL, {'prepare': 60, 'loader': 60, 'import': 330, 'start': 180, 'verify': 60, 'observe': 270, 'stop': 60}[phase])
     try:
-        if phase == 'prepare': budget(initial=True);prepare()
+        if phase == 'prepare': budget(initial=True, approved_limit=approved_limit);prepare()
         else:
             directory(SCANNER);directory(EVENTS);directory(LOGS)
             event = args[2] if phase in ('verify', 'stop', 'observe') else args[0]
@@ -1102,7 +1102,7 @@ def execute(joint_sha, pin_sha, budget_sha, prep_sha, phase, args):
             write_new(OUT/'execution.claim.json', {'at': now(), 'phase': phase, 'controllerPid': os.getpid(), 'controllerSha256': file_info(Path(__file__).resolve(), 128*1024)['sha256']})
             if phase == 'stop': stop(args[0], args[1])
             else:
-                budget();prepared();index, checked = package();CURRENT_INDEX = index;resources()
+                budget(approved_limit=approved_limit);prepared();index, checked = package();CURRENT_INDEX = index;resources()
                 if phase in ('loader', 'import', 'start'): fixed_owners(require_stopped=True)
                 if phase == 'loader': no_scanner_or_build();loader(index)
                 elif phase == 'import':
@@ -1220,9 +1220,11 @@ def fixed_owners(require_stopped=False):
     REPORT['retainedDataOwners'] = alive
 
 
-def budget(initial=False):
+def budget(initial=False, *, approved_limit=HOST_CAP):
+    need(type(approved_limit) is int and approved_limit in (HOST_CAP,49*1024**3//2,25*1024**3),
+         'APPROVED_BUDGET_LIMIT')
     policy, policy_meta = read_json(HERE/'host-budget-policy.json', TARGET_BINDING['budgetPolicySha256'], 4*1024**2)
-    need(policy.get('kind') == 'OFFLINE_HOST_BUDGET_SCOPE_V1' and policy.get('limit') == HOST_CAP,
+    need(policy.get('kind') == 'OFFLINE_HOST_BUDGET_SCOPE_V1' and policy.get('limit') == approved_limit,
          'BUDGET_POLICY_KIND')
     roots = policy.get('expectedRootPaths'); reader = policy.get('reader', {})
     need(isinstance(roots, list) and 4 <= len(roots) <= 4096 and len(set(roots)) == len(roots) and
@@ -1238,16 +1240,17 @@ def budget(initial=False):
     age = (dt.datetime.now(dt.timezone.utc)-dt.datetime.fromisoformat(b['at'])).total_seconds()
     rows = b.get('rows', [])
     need(0 <= age <= 120 and b.get('scopeNarrowed') is False and b.get('reader') == reader and
-         b.get('limit') == HOST_CAP and len(rows) == len(roots) and {x.get('path') for x in rows} == set(roots) and
+         b.get('limit') == approved_limit and len(rows) == len(roots) and {x.get('path') for x in rows} == set(roots) and
          all(type(x.get('allocatedBytes')) is int and x['allocatedBytes'] >= 0 for x in rows) and
          type(b.get('totalAllocatedBytes')) is int and sum(x['allocatedBytes'] for x in rows) == b['totalAllocatedBytes'],
          'FRESH_FULL_HOST_BUDGET')
     used = allocation()['totalAllocatedBytes']; reserve = WINDOW_BYTES-used
-    need(reserve >= 0 and b['totalAllocatedBytes']+reserve <= HOST_CAP and
+    need(reserve >= 0 and b['totalAllocatedBytes']+reserve+64*1024**2 <= approved_limit and
          shutil.disk_usage(HOME).free >= FLOOR+reserve, 'FRESH_WINDOW_RESERVATION')
     REPORT['budgetAdmission'] = {'receipt': meta, 'policy': policy_meta, 'ageSeconds': age,
         'hostAllocatedBytes': b['totalAllocatedBytes'], 'remainingWindowReservationBytes': reserve,
-        'fullWindowBytes': WINDOW_BYTES, 'initialTargetAbsent': initial}
+        'fullWindowBytes': WINDOW_BYTES, 'hostReserveBytes': 64*1024**2,
+        'approvedLimitBytes': approved_limit, 'initialTargetAbsent': initial}
 
 
 def allocation():
@@ -1400,6 +1403,12 @@ def limited_daemon_restored(mask):
 
 
 if __name__ == '__main__':
+    approved_limit = HOST_CAP
+    if sys.argv[1:2] == ['--approved-host-limit-bytes']:
+        # An execution argument, never selected from the delivered policy.
+        if len(sys.argv)<3 or not re.fullmatch(r'[0-9]{1,12}',sys.argv[2]):
+            raise SystemExit('CHECK_APPROVED_BUDGET_LIMIT_ARGUMENT')
+        approved_limit=int(sys.argv[2]);sys.argv=[sys.argv[0]]+sys.argv[3:]
     lengths = {'prepare': 0, 'loader': 1, 'import': 3, 'start': 6, 'verify': 3, 'observe': 4, 'stop': 3}
     if len(sys.argv) == 4 and sys.argv[1] == '--observe-predecessor':
         try: observe_predecessor(sys.argv[2], sys.argv[3])
@@ -1409,7 +1418,7 @@ if __name__ == '__main__':
                               re.fullmatch(r'CHECK_[A-Z0-9_]+', str(error)) else type(error).__name__}))
             raise SystemExit(1)
     elif len(sys.argv) >= 7 and sys.argv[1] == '--execute' and sys.argv[6] in lengths and len(sys.argv)-7 == lengths[sys.argv[6]]:
-        try: execute(sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5], sys.argv[6], sys.argv[7:])
+        try: execute(sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5], sys.argv[6], sys.argv[7:], approved_limit=approved_limit)
         except BaseException as error:
             print(json.dumps({'status': 'FAILED_PRESERVED', 'errorType': type(error).__name__,
                               'errorCode': str(error)[:200] if isinstance(error, RuntimeError) else type(error).__name__}), flush=True)

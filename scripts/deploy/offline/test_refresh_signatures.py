@@ -1,4 +1,6 @@
 """Local failure-boundary tests; no network, scanner, certificate or real CVD."""
+import copy
+import datetime as dt
 import importlib.util
 import json
 from pathlib import Path
@@ -138,5 +140,36 @@ class AdmissionTests(unittest.TestCase):
                 refresh.admission(types.SimpleNamespace(configuration_code_sha256='a'*64,binding='/binding',binding_sha256='b'*64))
         native.assert_called_once_with(generation,c,b['baseUpdate'])
 
+
+
+class RefreshRetentionTests(unittest.TestCase):
+    def test_real_budget_wiring_keeps_configuration_origin_and_reserve(self):
+        config_path=Path(__file__).with_name('prepare_instance.py')
+        spec=importlib.util.spec_from_file_location('refresh_budget_support',config_path)
+        m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
+        limit=25*1024**3;roots=['/r'+str(i) for i in range(376)]
+        reader={'entrySha256':'a'*64,'dependencies':[{'name':'reader','sha256':'b'*64}]}
+        policy={'kind':'OFFLINE_HOST_BUDGET_SCOPE_V1','limit':limit,'expectedRootPaths':roots,'reader':reader}
+        used=limit-refresh.WINDOW-m.RESERVE
+        receipt={'at':dt.datetime.now(dt.timezone.utc).isoformat(),'scopeNarrowed':False,'reader':reader,'limit':limit,
+                 'rows':[{'path':p,'allocatedBytes':used if i==0 else 0} for i,p in enumerate(roots)],'totalAllocatedBytes':used}
+        generation={'budgetPolicy':{'path':'/old-policy','bytes':1,'sha256':'c'*64},'instance':'historical'}
+        binding={'executionBudgetPolicy':{'path':'/new-policy','bytes':1,'sha256':'d'*64}}
+        original=copy.deepcopy(generation)
+        with tempfile.TemporaryDirectory() as tmp:
+            path=Path(tmp)/'budget.json';path.write_text('{}')
+            args=types.SimpleNamespace(budget=str(path),budget_sha256='e'*64,approved_host_limit_bytes=limit)
+            with patch.object(m,'pinned',side_effect=[policy,receipt]) as pins,patch.object(m.shutil,'disk_usage',return_value=types.SimpleNamespace(free=refresh.FLOOR+refresh.WINDOW)):
+                result=refresh.operation_budget(m,binding,generation,args)
+                self.assertEqual(pins.call_args_list[0].args[0],binding['executionBudgetPolicy'])
+                self.assertEqual(result['configurationBudgetPolicy'],original['budgetPolicy'])
+                self.assertEqual(result['limit'],limit)
+            self.assertEqual(generation,original)
+            args.approved_host_limit_bytes=24*1024**3
+            with patch.object(m,'pinned',side_effect=[policy,receipt]),patch.object(m.shutil,'disk_usage',return_value=types.SimpleNamespace(free=2*1024**3)):
+                with self.assertRaisesRegex(RuntimeError,'FRESH_COMPLETE_BUDGET'):refresh.operation_budget(m,binding,generation,args)
+            args.approved_host_limit_bytes=limit;receipt['rows'][0]['allocatedBytes']+=1;receipt['totalAllocatedBytes']+=1
+            with patch.object(m,'pinned',side_effect=[policy,receipt]),patch.object(m.shutil,'disk_usage',return_value=types.SimpleNamespace(free=2*1024**3)):
+                with self.assertRaisesRegex(RuntimeError,'REFRESH_CAPACITY'):refresh.operation_budget(m,binding,generation,args)
 
 if __name__=='__main__':unittest.main()

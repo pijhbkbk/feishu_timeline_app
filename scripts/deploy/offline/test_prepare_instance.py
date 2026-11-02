@@ -136,6 +136,21 @@ class ConfigurationGuards(unittest.TestCase):
         with patch.object(m, 'pinned', side_effect=[policy, receipt]), patch.object(m.shutil, 'disk_usage', return_value=types.SimpleNamespace(free=1024**3)):
             with self.assertRaises(RuntimeError): m.budget({'budgetPolicy': {}}, {})
 
+    def test_retention_budget_caller_policy_receipt_and_reserve(self):
+        for limit in (49*1024**3//2,25*1024**3):
+            policy,receipt=self.budget_inputs();policy['limit']=receipt['limit']=limit
+            receipt['rows'][0]['allocatedBytes']=limit-m.RESERVE-300
+            receipt['totalAllocatedBytes']=limit-m.RESERVE
+            with patch.object(m,'pinned',side_effect=[policy,receipt]),patch.object(m.shutil,'disk_usage',return_value=types.SimpleNamespace(free=2*1024**3)):
+                with self.assertRaisesRegex(RuntimeError,'FRESH_COMPLETE_BUDGET'):m.budget({'budgetPolicy':{}},{})
+            with patch.object(m,'pinned',side_effect=[policy,receipt]),patch.object(m.shutil,'disk_usage',return_value=types.SimpleNamespace(free=2*1024**3)):
+                self.assertEqual(m.budget({'budgetPolicy':{}},{},approved_limit=limit)['limit'],limit)
+            receipt['rows'][0]['allocatedBytes']+=1;receipt['totalAllocatedBytes']+=1
+            with patch.object(m,'pinned',side_effect=[policy,receipt]),patch.object(m.shutil,'disk_usage',return_value=types.SimpleNamespace(free=2*1024**3)):
+                with self.assertRaisesRegex(RuntimeError,'FRESH_COMPLETE_BUDGET'):m.budget({'budgetPolicy':{}},{},approved_limit=limit)
+        for invalid in (True,-1,26*1024**3,float(25*1024**3)):
+            with self.assertRaisesRegex(RuntimeError,'APPROVED_BUDGET_LIMIT'):m.budget({}, {},approved_limit=invalid)
+
     def test_payload_only_cannot_enter_native_admission(self):
         with patch.object(m, 'pinned', return_value={'status': 'FIXED_RUNTIME_PAYLOAD_EXTRACTED_AND_READBACK_VERIFIED'}):
             with self.assertRaisesRegex(RuntimeError, 'FULL_NATIVE_DEPENDENCIES'):

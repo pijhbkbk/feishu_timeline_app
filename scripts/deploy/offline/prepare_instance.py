@@ -288,13 +288,16 @@ def native_admission(b, c, base_update_refs=None):
             'currentBaseUpdate': update_evidence, 'historicalEvidenceBootId': evidence_boot}
 
 
-def budget(b, budget_ref):
+def budget(b, budget_ref, *, approved_limit=24*1024**3):
+    # The reviewed caller selects an owner-approved allowance; policy cannot.
+    need(type(approved_limit) is int and approved_limit in (24*1024**3,49*1024**3//2,25*1024**3),
+         'APPROVED_BUDGET_LIMIT')
     policy = pinned(b['budgetPolicy'])
     receipt = pinned(budget_ref)
     roots = policy.get('expectedRootPaths', [])
     rows = receipt.get('rows', [])
     age = (dt.datetime.now(dt.timezone.utc) - dt.datetime.fromisoformat(receipt['at'])).total_seconds()
-    need(policy.get('kind') == 'OFFLINE_HOST_BUDGET_SCOPE_V1' and policy.get('limit') == 24*1024**3 and
+    need(policy.get('kind') == 'OFFLINE_HOST_BUDGET_SCOPE_V1' and policy.get('limit') == approved_limit and
          4 <= len(roots) <= 4096 and len(roots) == len(set(roots)) and 0 <= age <= 120 and
          receipt.get('scopeNarrowed') is False and receipt.get('reader') == policy.get('reader') and
          receipt.get('limit') == policy['limit'] and len(rows) == len(roots) and
@@ -304,7 +307,8 @@ def budget(b, budget_ref):
          receipt['totalAllocatedBytes'] + RESERVE <= policy['limit'] and
          shutil.disk_usage(HOME).free >= 1024**3 + RESERVE, 'FRESH_COMPLETE_BUDGET')
     return {'hostAllocatedBytes': receipt['totalAllocatedBytes'], 'reservedBytes': RESERVE,
-            'guestFreeBytes': shutil.disk_usage(HOME).free, 'ageSeconds': age}
+            'guestFreeBytes': shutil.disk_usage(HOME).free, 'ageSeconds': age,
+            'limit': approved_limit, 'policy': b['budgetPolicy'], 'receipt': budget_ref}
 
 
 def ports_free():
