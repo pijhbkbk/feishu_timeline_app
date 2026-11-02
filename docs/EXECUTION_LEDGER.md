@@ -9324,3 +9324,71 @@ OP/local-scanner-client-20261102-r02/execute在05:47:34Z通过真实已编译应
 原proxy按原Node/脚本/preparation/私密配置/TLS字节正常启动，严格CA TLS及loopback45464 socket owner读回成立；OP/original-proxy-resume-20261102-r01/execute/guest-receipt.json SHAe2abcf2e8cb1ec61ba4de2f15ebdf68cd8c89c6c6544d5f58bcb9c42b708eb40，源审8d12e2a4…。只启动代理，API/Web仍停止，TLS入口不等于可操作预览。旧lifecycle state仍是save-start-r02原RUNNING SHA36e7b2d…/旧boot9fee，pending不存在；只读保存原件，未操作旧PID或改state。
 
 R41实际结果已提交原授权6ad6ddfe会话，完整反馈尚待；不重复发送。当前PG/Redis/scanner/proxy运行，d9仍待guest组装及recover-boot→正常start→四入口/同本/菜单/有限保存实测。66/1/4/2FAIL/1BLOCKED=74及12/15包、6/9链、P0 7/10/P1 3/5不变，无产品签收、无公网更新。旧失败、原外盘和受保护用户文件不动。
+
+
+## 2026-11-02 — d9运行恢复、菜单原子性反证与单次保存诊断（E151）
+
+R41完整反馈b0ac049e-bd3f-46ee-99e9-f2d88af09e45及Gmail同件1a19ad71bae9e012已读去重，记录OP/r41-chatgpt-delivery-feedback-20261102-r01.json。沿原范围复用签名/数据恢复证据，不重开安装。d9增量实际guest组装、BOOT_RECOVERED及正常start后，直连与严格CA HTTPS的API/Web四入口共同commit d9d00d26729e321d2904ecc1c5b5f22f1d79958c/tree8ac5b1de6101f6e96bf1608b89d58ccf23fe3d38/release truck-toolbar-menu-d9d00d26729e-r02/build2026-11-02T01:07:31Z。原M1正常登录；性能本0c879…原v4及多表图片本703898…原v5完整snapshot与既有基线相等，第二表绿色图片实际可见。https://localhost:45464已恢复可操作预览；不以health或BOOT_RECOVERED单独代产品证据。
+
+OP/menu-product-20261102-r01：新独立小本634a8589-b608-451c-b6b2-355a44fadead实际原工具栏“粘贴”“仅粘贴值”、中文/文本前导零/数值零/空白/两块范围/边界/撤销重做，保存v3及刷新全文对应；K1公式=1+1另存v4。业务混合只读粘贴整块拒绝。实际公式复制包含缓存值2及公式MIME，但粘贴业务备注时先写值草稿2、随后公式mutation才被拒绝，前值未自动回滚；这是A02-03真实原子性失败。工具正常撤销后为空，正式API仍revision1/note空，未提交业务写。早期取错clipboard的截图与后来撤销后的错误均不算原子拒绝PASS。旧失败保留，不再盲试d9。
+
+操作源码e987a8f3932bc453eb2d68e85856ee76a03d5d4c只将已有默认OFF观察器接到受审生命周期的一次性四字段输入；50目标检查及独审d7ec0573…，新操作包manifest00fa007e55bff659682dff9023f63b7971570f297e4dcf26faf88734f6766d3d。唯一新保存OP/menu-one-save-diagnostic-20261102-r01，性能本v4→v5、F4=DIAG-d9-001，operation8d09159b-a5cd-4d99-a020-092a693d7649/tracee3192150-484b-4c90-b849-bea13fbaa7f0。Chrome真实点击完整UI5276.470ms仍超过2000ms，非S7通过样本；后端1538.595ms/write1410.552/锁7.091，不归咎具体SQL。CDP点击→PUT1563.979ms、PUT1574.444ms、回应→草稿DELETE1045.934ms、DELETE137.800ms、回应→列表909.919ms、列表15.432ms；跨时钟误差约2.067ms，重叠长任务不累加。正式v5与刷新全snapshot仅F4新增t/v；未复算未留存的PUT全体/DELETE槽CAS，响应体缓存丢失不触发重放。独审e97e557360b93760571cb57a3f4fd515a249c2aee176c0b9ae1fc0b508500278成立。
+
+诊断后浏览器刷新撤除观察器，原生命周期正常stop→现行签名短读→无诊断参数start；OP/menu-timing-lifecycle-actual-review-20261102-r01.json/SHA562547656b15ceb24a9da0d6b7dfc872dd02abbfb5e18872488b6a699e2d47e9。最终state SHA1f6a6d36753c05a6f3d2057f0e47f42ff60c7a977208d03b89ccbe1490532635，API3231/t1672619、Web3248/t1672681，timing两键均不存在；四入口仍d9，共享PG/Redis/scanner/proxy不变。19份376根预算峰26380591104B，在25GiB及64MiB保留下；guest底线guard成立，不虚构未留存的精确最小值。未重复CLEAN/EICAR或下载签名，daily时效仍沿E150。
+
+新修复源码e299057a21e18f0b702e5d1bfe3d74ec47687505/treea3d2ec84dc647d69d49e0bb995bd6e0f218351c4：业务clipboard在首个redo前整块预验，遵循实际1.0.4 p/v、外部数值转换/目标格式与离散行映射，原业务ID/mutation/关联字段守卫保留，显式仅值粘贴保留；编辑结束校验失败阻断颜色页后续动作。保存清理复用已分离的请求snapshot，但保留两次IDB耐久检查点、CAS/新编辑/IME fallback；同sequence未确认输入不得被清理为已保存。真实ES/CJS管线旧反例先写42后拒绝公式、新hook写入前拒绝；34目标、94focused、Webtsc0，42文件550受影响及目标lint/diff0。OP/menu-save-source-checks-20261102-r01/result.json SHA65cf28ed94513726af485bea664114a6d824556c517516b1b1fd0618e7231e39绑定输入hash与日志；前置目标以toolChunk关联，不冒称独审重跑。业务独审e4e065cc…和checkpoint独审成立，未称新GUI、系统IME或性能通过。构建脚本已准备、尚未执行；原运行d9保持。
+
+Placeholder12处均为测试getByPlaceholder或否定占位断言，无正式占位命中。原66 PASS/1 PARTIAL/4 NOT_VERIFIED/2 FAIL/1 BLOCKED=74、12/15包、6/9链、P0 7/10/P1 3/5保持；A02-03/A04-04仍FAIL，E2E-02仍PARTIAL，CI/full安全/正式域名/所有者接收未闭。原受保护未跟踪文件、数据历史、外盘Docker和远端均未动。R42全文曾在输入框，工具提交未见生效且连接超时，曾请所有者发送；随后真实读取Gmail同件1a19b7f245b377cb（09:02:43Z，OP/r42-feedback-gmail-20261102-r01.json），明确回应R42全文并声明来源为所有者在当前ChatGPT提供的报告。所有者随后call_3458534d7f814928b8eb6e21c8ce546a明确“已发送”，不再重复；不冒称工具发送成功或已取得ChatGPT消息ID。反馈保持PARTIAL/原计数，要求菜单原子拒绝与保存源码慢段验证，不重开观察器/旧余49。参考/实装仍使用既有reference-implementation-comparison-r03.html，新增菜单与v5截图在上述实际证据目录。
+
+
+## 2026-11-02 — e299不可变构建、增量装配及切换准入（E152，进行中）
+
+R42所有者已发送，Gmail同件1a19b7f245b377cb已读去重。应用源码e299057a21e18f0b702e5d1bfe3d74ec47687505/treea3d2ec84dc647d69d49e0bb995bd6e0f218351c4于09:16:06Z生成release truck-menu-save-e299057a21e1-r01，宿主API/Web六构建命令实际0；1070源文件、29537依赖绑定、97NFT/1339解析输入，UI两端实际receipt保持。OP/joint-build-menu-save-e299057-r01/result.json SHA74ff9188…及独审1c4aa9f1…，不重建应用用于后继仅测试/操作工具提交。
+
+R42补充目标42实际bundle/12组件及52生命周期检查回执OP/menu-save-supplemental-checks-20261102-r01/result.json SHA5bd822a6…明确原toolChunk，未伪造未捕获raw日志；独审dbd24ede…/db49c5d1…。测试提交1d49154、精确生命周期target提交bb44e12ff85ed4ab76005e20fac050bae4edd8c0。增量archive9488474B/SHA706fe993…、manifest3f89102e…、composite464834cd…，947新叶+14796基包叶=15743；实际transfer/assemble均0，09:47:03Z新独立application-menu-save-e299057-r01已验未启动，route-cache内容继续不读不复制。
+
+独审发现host-only交付checker未登记新候选，尚未执行stage即补精确四身份/三个制品pin及防旧包改标签/错buildTime回归；eceb51c53268b4c81df45f8a5a04666ecfd423e0，13目标检查0，独审通过，不放宽既有闭集守卫，不重新构建应用或重传17个guest输入。
+
+旧d9应用按原正常生命周期于09:50Z停止，实际前驱b8d8dbb80d6e433cbe6e153db312f10e4068f7b7d8a402d34a836fd9610988b4；共享PG/Redis/scanner/proxy保持。新启动前只读scanner r01因辅助脚本事件名不满足原resume/a2前缀而退出，源审遗漏明确保留；修正输入后r02实际CHECK_FRESH_WINDOW_RESERVATION，guest原件2c76c24f…，未操作scanner/下载。没有把失败改PASS，也未弱化320MiB完整运行余窗、原376根25GiB/host64MiB/guest1GiB门槛。当前应用暂未运行，45464业务暂不可操作，新候选GUI尚未验证。
+
+为归还本轮临时构建占用，仅将新建build/source整个展开内容归档；8213成员、176775168B allocated，38874971B gzip/SHA9165b298…，全成员文件hash/metadata/941字面链接及源前后闭集一致、Mac lsof无占用。另将本轮生成9584640B source.tar无损压缩为1917847B/SHA325491b3…，逐字节解压相等。两归档已fsync，原报告/日志/manifest/制品/历史和业务数据保持。当前尚未释放展开副本，release独审与fresh准入进行中；不将预期空间当实际准入。无新资源/sudo/原外盘/生产/远端操作。原66/1/4/2FAIL/1BLOCKED及9链状态不变。
+
+E152续（10:12Z后）：两归档实际完成新建临时展开/source.tar释放，归档摘要9165b298…/325491b3…保持，44份旧构建报告日志原件不变；只释放本轮可重建且已完整归档副本，不删除历史/业务记录。fresh scanner r03在原320MiB余窗下通过，原件95618e61…，r01前缀/r02容量失败保留。新24文件交付包manifest1da68ee07f70e28a49e5a1b3763468bb573e56f62d82802cb9901406b91d5309、binding adf2e7f6…实际正常start，state原件9e99d6a447cc0633cec08f33a15572aa5e592235097431708fdf02c437a2d29d。新API4003/t2543742、Web4020/t2543824，原共享四服务保持；timing前缀环境均不存在。直连API/Web与严格CA HTTPS四入口共同e299/a3d2/truck-menu-save-e299057a21e1-r01/2026-11-02T09:16:06Z，OP/menu-save-runtime-readback-20261102-r02/result.json；r01只读HTTP helper受环境代理502失败保留，r02仅固定loopback显式直连，不改系统代理。实际独审cf5cdb73cc83bdffb5a8c8f3010f7315d1e41b88531bc60f64de62cc8d6c977f核44份原376根预算、峰26734157824B及全部收据；预览已恢复，先前停服描述只适用当时。
+
+## 2026-11-02 — 菜单原子修复实装与小功能完整读回（E153）
+
+原Chrome合成M1会话进入e299实际小本634a8589-b608-451c-b6b2-355a44fadead/v4。OP/menu-save-product-20261102-r01保留动作/剪贴板/Network/DTO/截图。复制K1真实formula MIME及缓存2→业务C2默认菜单粘贴，原子拒绝，Undo/Redo均disabled、无可见待保存内容/正式写、API全文仍revision1/note空；两格J1合法文本+K1公式的真实MIME再次整块拒绝，正式revision5全文等且完整窗口零写。通用错误“单元格包含不支持的内容”不冒称内部公式分支trace，另有原生=1+1编辑后点Redo的明确公式错误、正式revision7全文等/零写；原redo未被执行。
+
+正向分别记录：业务仅值粘贴/Undo/Redo/Undo产生四次现有自动保存PATCH，revision1→5、note依次2/null/2/null；普通文本默认菜单粘贴实际成功，revision5→6/note=A02_FIRST_LEGAL，正常Undo→7/note空。所有修订保留，不把恢复为空称从未写。两次无效clipboard快捷键空读及快速Undo工具超时保留，不混为产品操作证据。
+
+自由工作簿默认菜单J1:K1→J3:K3保留文本/公式=1+1/cache2；仅值→J8:K8保留类型并去公式，Undo/Redo可见；正式PUT expectedRevision4/op a53890ed…→v5，与刷新完整snapshot/metadata及请求hash eeb9c572…一致。原27格中文/前导零/数值零/空白/边界保持，不称这些格本轮重新粘贴。随后M1输入11、真正选区M1:M3后原CopyDown快捷键填充，Undo仅M1、Redo三格11；明确PUT expectedRevision5/op c3186bce…→v6、刷新API200，全文与请求相等/hash63723f83…，原32格保持，只新增M1/M2/M3数值11。拖角两次实际只选区未填不计PASS；v6 PUT响应在刷新后CDP缓存丢失，保留限制、不重放保存；真实UI版本与完整正式GET支持该次结果。
+
+四份独立GUI读回/范围审查完成，最终OP/menu-save-product-20261102-r01/final-scope-review.json SHA cc51f67a7222d42a07e9198530e06cb13eccd51448144debe49e4e1f7ff980e7支持按冻结小功能范围关闭A02-03；不改历史E146/E151 FAIL。唯一原子计数变67 PASS/1 PARTIAL/4 NOT_VERIFIED/1 FAIL/1 BLOCKED=74，13/15包。E2E-02及P1-02仍需受影响依赖和原同本链适用性核对，暂不自动提升，6/9链、P0 7/10/P1 3/5保持。可操作路径：45464原生账号→颜色清单选择A02-03菜单本→编辑/菜单→保存→刷新；自由本v6与业务记录revision7严格分开。
+
+## 2026-11-02 — 保存局部源码成本真实浏览器观察（E154）
+
+OP/menu-save-source-profile-20261102-r01由固定d9/e299已提交源和原性能合成v4输入生成，manifest63e4808c8aae17edc9770bd83c387925e871be0c1f7172a0b589f2a943b3fc91。5个功能模块函数体按源码固定，只将IDB名称换为两个独立profile库、去掉未使用engine依赖；workspace/runtime仅静态调用图，未执行真实Univer capture或正式保存。Chrome真实各点击一次、每候选固定3轮，所有18次检查点事务complete并完整IDB读回相等；9次write内显式envelope clone由9→0，pending请求相关复制仍保留。三检查点write总耗时原始轮次d9=[485.8,462.7,513.3]ms/e299=[350.9,335.0,322.2]ms，中位数485.8→335.0ms；独立validation/clone探针单独记账，不能叠加到含自身校验和原生存储成本的write耗时，不能将局部差异当完整保存提速或2秒达标。真实engine捕获、旧两个1s级前端间隔及后端1.54s仍未归因。
+
+初始只读静态入口因工具导航Sec-Fetch-Site=cross-site被自身guard403拒绝，原件与脚本保留；r02仅固定HTML的无Origin顶层document/navigate例外，三资产/hash/Host/loopback/无API/CSP/64连接/20分钟不变。两个候选结果均THREE_ROUND_SOURCE_OBSERVATIONS_COMPLETE、零业务请求/零观察错误，页面已关闭、两静态服务均正常exit0，未在应用安装/重开观察器，API timing仍OFF。profile生成及结果文件计原376根，后继独审等新增占用纳入后续预算读数；Chrome真实IDB物理路径/占用归属UNKNOWN，不假称纳入总量；独立静态归属审查明确留存。生成前原376根total26550272000B、扣64MiB余226164736B，在25GiB下；不新增资源/依赖/VM。
+
+实际分析actual-analysis.json SHA c0b1a1b597f49fdca5728a370f686902af0678b5e28748a88b20d21229c0ef34支持基于已实装安全修复准备一次原性能本正常GUI新保存，仍需完整终点与正式读回。旧唯一d9诊断不重放，旧余49次仍停；A04-04继续FAIL，A04-03/05及CI/full安全/正式域名/所有者接收未闭。独立实际profile审查进行中，未以三轮组件样本升级产品计数。
+
+E154续：实际profile独审OP/menu-save-source-profile-20261102-r01/independent-actual-review.json SHA d790a4e0a5a44d39d9c0ca0af2e57f4c76681da53b17c75e44909e074bba4af6完成，确认三轮数据/完整读回与结论范围；不据局部结果提升A04。
+
+## 2026-11-02 — e299单次真实保存仍超时标，正式内容保留（E155）
+
+基于E154局部剖析，OP/menu-e299-one-save-20261102-r01固定原性能本0c879b6d-12fe-43e5-b1dd-a46988f19c77、正式v5且无云稿、F5只有原style无值；新页API/Web共同e299实际读回。fresh原376根total26561249280B、扣64MiB余215187456B；guest free1932312576B，preflight-resource.json SHA96108d4801a788ec06559c116a731ff03a19d9e4fa78205fc22ed227d03d85cf。只通过GUI给F5输入DIAG-e299-001，等待本机与云稿基于v5的真实回执。新60秒只读观察器源码0f8fa4c9…/plan a954686b…经独审d9c97d08…，不改SDK/请求/handler/公式行为；API timing保持OFF。
+
+13:32Z唯一可信Save点击，完整终点及次帧同根复核9559.650ms，仍超过2000ms，A04-04继续FAIL；不是50次样本或普遍退化统计。正式v5→v6、响应200、云槽DELETE200/清空，observer自动解除全部监听，刷新后observer属性不存在。snapshotHash e5fd225f5ce5bbf1e60ae2791a1b79772b8ac2fb059ec503469037442a5b2e7e；F5真实输入生成t/v及Univer富文本p/style，未称只改t/v。完整请求/响应/基线/正式读回/刷新原件与截图均保留。CDP完整窗口不截断，PUT请求至responseReceived约6081ms；没有本次后端trace，不能将网络区间归因DB或SQL。实际独审及分段分析进行中，不再追加旧49次或重放已保存请求。
+
+R43本地回报草稿保留；原会话DOM两次超时、原生AX粘贴后输入仍空、坐标工具无可用窗口，新连接打开该会话也超时。未点击发送，不冒称R43送达；R42所有者已发送不重送。相同工具新应用页能够正常读取/输入/保存，本机产品续验继续，不把ChatGPT连接故障判为产品失败。
+
+E155续：实际viewport1440×722/DPR2，保留为一次真实保存诊断，不称冻结1440×900环境的S7 1/50；观察器较r05更小，虽终点语义相同，不作严格版本性能同比。分段独析bounded-diagnosis.json SHA890ff1b65caa71d93f11cfd1dc9dcb6c68aff835e85caf398e09bc674a907886：PUT发送15.600ms、发送完至首响应头6020.412ms；PUT response→DELETE502.317ms；API/Prisma/规则及锁输入旧新未变。事后资源快照与早于该保存的日志mtime不能回填当时GC/IO/锁原因。另原始HTTP GET文本发现F5.p.documentStyle.pageSize.width从请求121.12173461914062变为121.1217346191406；不是工具对象格式化造成。仅该字段差异、其他内容保持，但不能称PUT snapshot严格读回相等；声明hash仍为原请求e5fd…，原始响应文本和差异保留，定位层次的只读核对继续，未改写任何数据或容差验收。
+
+## 2026-11-02 — 原多表图片本草稿恢复与返回桥接（E156）
+
+OP/menu-e299-multisheet-bridge-20261102-r01在原703898c1-a8bf-4d59-8217-fcc630df5c8e本完成。起点v5与E151原DTO全文等、无云稿，D8空；GUI输入E299-DRAFT-BRIDGE后本机/云稿ready、正式仍v5，刷新出现本机与云稿恢复选择，实点“恢复这份草稿”。恢复后D8、双表与第二表绿图真实可见；唯一正常PUT expected5→v6及DELETE精确原槽rev1均200。工作台实际ready后从颜色清单返回同ID/v6，再刷新及正式API全文等。旧dashboard-dom抓取偏早仍为工作簿，保留并排除，使用dashboard-ready证据。
+
+全snapshot只新增sheet1 D8的t1/v/既有style；原16格、公式、styles、两表顺序/行列尺寸、drawing原字符串及解析几何全等。请求snapshot、云稿、正式/返回/刷新同值，实际JS字节4009B/hash45276b03…；本机恢复/正式保存/返回截图完整。独审917a17f1acef15b48820c37aeaa80c9c03f91ac3fbd9f20c1b3a07d31d61787c结合先前e777f440…的完整19链依赖/20分组映射，支持E2E-02本机技术PASS与P1-02关闭；不新增原子，原子仍67/1/4/1/1=74、13/15包，链恢复7/9、P0 7/10、P1 4/5。Office/系统IME/整Chrome退出按未受影响输入复用，不冒称今天重测；E155性能及精度差异独立保留。
+
+E155/E156独审收尾：单次实际独审actual-review.json SHA23afcf59be3de104d3b341824e72ab6755414a4d44ef9bd2f58772b54c072f14确认9559.650ms、非S7固定窗口和唯一数值差异。numeric-readback-investigation.json SHA91310af2e73a89d980100da78e7ba437479f92d5f36ebe219b099e20959645c4仅执行一次repeatable-read READ ONLY事务；核对原PG14.24/systemId7700459308674415750后，当前与历史v6的JSONB指定标量均为121.1217346191406，故差异已存在于写入链，不只是GET格式化。源码检查与本地标量演算显示Prisma6.19.3客户端输入序列化及服务双JSON往返保留原长值，未实际捕获客户端到引擎中间值，具体引擎转换位置仍未定位；未改数据、精度设置或以容差接受。原cwd权限警告和初次误判保留。三文档独审r02 SHA f8f1859062b0614abef088a8073afa86cdbea147e40387b52359bf6a08259c83核对冻结标准/计数，唯一A15-05旧待办措辞已同步为E156完成。
