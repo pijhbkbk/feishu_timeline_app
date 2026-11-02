@@ -1,9 +1,10 @@
 import 'reflect-metadata';
 import { randomUUID } from 'node:crypto';
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { beforeAll,afterAll,describe,it,expect } from 'vitest';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { WorkbooksService } from './workbooks.service';
+import { validateSnapshot } from './workbook.rules';
 const connection=process.env.WORKBOOK_TEST_DATABASE_URL??process.env.WORKBOOK_DRAFT_TEST_DATABASE_URL;
 if(connection){const url=new URL(connection);const allowed=url.port==='55438'&&/^\/free_workbook_[a-z0-9_]+$/.test(url.pathname)||url.port==='55460'&&/^\/free_workbook_drafts_[a-z0-9_]+$/.test(url.pathname);if(url.hostname!=='127.0.0.1'||!allowed)throw new Error('Only explicit isolated workbook PostgreSQL targets allowed.');}
 const snapshot=(id:string,name='合成工作簿')=>({id,name,appVersion:'1.0.4',locale:'zhCN',styles:{bold:{bl:1,fs:16}},sheetOrder:['s1','s2'],sheets:{s1:{id:'s1',name:'清单',rowCount:100,columnCount:26,cellData:{0:{0:{v:'原始中文',s:'bold'},1:{v:2}},1:{1:{f:'=SUM(B1:B1)',v:2}}},mergeData:[{startRow:0,endRow:0,startColumn:3,endColumn:4}],rowData:{0:{h:32}},columnData:{0:{w:180}}},s2:{id:'s2',name:'资料',rowCount:100,columnCount:26,cellData:{}}}});
@@ -12,6 +13,34 @@ describe.runIf(Boolean(connection)).sequential('free workbook real PostgreSQL CA
  async function user(approved:boolean):Promise<AuthenticatedUser>{const row=await db.user.create({data:{username:`wb-${randomUUID()}`,name:'合成工作簿成员',teamAccessApproved:approved}});return {id:row.id,username:row.username,name:row.name,email:null,departmentId:null,departmentName:null,isSystemAdmin:false,teamAccessApproved:approved,authSource:'local',roleCodes:[],permissionCodes:[],authVersion:row.authVersion};}
  async function create(){const id=randomUUID(),data=snapshot(id);await service.create({id,name:data.name,snapshot:data,operationId:randomUUID()},actor);return {id,data};}
  beforeAll(async()=>{await db.$connect();service=new WorkbooksService(db as never);actor=await user(true);peer=await user(true);outsider=await user(false);});afterAll(async()=>{await db.$disconnect();});
+ it('preserves submitted numeric values through current, history and restore storage',async()=>{
+  const id=randomUUID(),base=snapshot(id),width=JSON.parse('121.12173461914062') as number;
+  const data={...base,sheets:{...base.sheets,s1:{...base.sheets.s1,cellData:{
+   0:{0:{v:'精度回归',p:{body:{dataStream:'精度回归\r\n'},documentStyle:{pageSize:{width}}}},1:{v:width}},
+   1:{0:{v:1.0000000000000002},1:{v:0.30000000000000004}},
+  }}}};
+  const checked=validateSnapshot(data,id);
+  const created=await service.create({id,name:data.name,snapshot:data,operationId:randomUUID()},actor);
+  expect(created.snapshotHash).toBe(checked.hash);
+  expect((await service.get(id,actor)).snapshot).toEqual(data);
+  const rows=await db.$queryRaw<Array<{width:string;value:string;bytes:number;hash:string}>>(Prisma.sql`
+   SELECT snapshot #>> '{sheets,s1,cellData,0,0,p,documentStyle,pageSize,width}' AS width,
+    snapshot #>> '{sheets,s1,cellData,0,1,v}' AS value,"snapshotBytes" AS bytes,"snapshotHash" AS hash
+   FROM free_workbooks WHERE id=${id}::uuid
+   UNION ALL
+   SELECT snapshot #>> '{sheets,s1,cellData,0,0,p,documentStyle,pageSize,width}',
+    snapshot #>> '{sheets,s1,cellData,0,1,v}',"snapshotBytes","snapshotHash"
+   FROM free_workbook_revisions WHERE "workbookId"=${id}::uuid AND revision=1`);
+  expect(rows).toHaveLength(2);
+  for(const row of rows)expect(row).toEqual({width:String(width),value:String(width),bytes:checked.bytes,hash:checked.hash});
+  const edited={...data,name:'精度修改'};
+  expect((await service.save(id,{expectedRevision:1,operationId:randomUUID(),snapshot:edited},actor)).revision).toBe(2);
+  expect((await service.get(id,actor)).snapshot).toEqual(edited);
+  expect((await db.freeWorkbookRevision.findUniqueOrThrow({where:{workbookId_revision:{workbookId:id,revision:2}}})).snapshot).toEqual(edited);
+  expect((await service.restore(id,{expectedRevision:2,revision:1,operationId:randomUUID()},actor)).revision).toBe(3);
+  expect((await service.get(id,actor)).snapshot).toEqual(data);
+  expect((await db.freeWorkbookRevision.findUniqueOrThrow({where:{workbookId_revision:{workbookId:id,revision:1}}})).snapshot).toEqual(data);
+ });
  it('replays concurrent exact create once, rejects changed reuse, and does not touch colors',async()=>{const before=await db.color.count(),id=randomUUID(),data=snapshot(id),input={id,name:data.name,snapshot:data,operationId:randomUUID()};const results=await Promise.all([service.create(input,actor),service.create(input,actor)]);expect(results.map(r=>r.id)).toEqual([id,id]);expect(await db.freeWorkbookRevision.count({where:{workbookId:id}})).toBe(1);await expect(service.create({...input,snapshot:{...data,name:'changed'},name:'changed'},actor)).rejects.toMatchObject({status:409});expect(await db.color.count()).toBe(before);});
  it('allows exactly one of two writers and returns the exact winning snapshot',async()=>{const {id,data}=await create();const a={...data,name:'成员A'},b={...data,name:'成员B'};const results=await Promise.allSettled([service.save(id,{expectedRevision:1,operationId:randomUUID(),snapshot:a},actor),service.save(id,{expectedRevision:1,operationId:randomUUID(),snapshot:b},peer)]);expect(results.filter(r=>r.status==='fulfilled')).toHaveLength(1);expect(results.filter(r=>r.status==='rejected')).toHaveLength(1);const row=await service.get(id,actor);expect(row.revision).toBe(2);expect([a,b]).toContainEqual(row.snapshot);expect(await db.freeWorkbookRevision.count({where:{workbookId:id}})).toBe(2);});
  it('replays an acknowledged-or-lost save without writing again and restores a full old version',async()=>{const {id,data}=await create();const edit={...data,name:'修改后的工作簿'},input={expectedRevision:1,operationId:randomUUID(),snapshot:edit};const first=await service.save(id,input,actor);const replay=await service.save(id,input,actor);expect(first.revision).toBe(replay.revision);expect(await db.freeWorkbookRevision.count({where:{workbookId:id}})).toBe(2);const restore={expectedRevision:2,revision:1,operationId:randomUUID()};expect((await service.restore(id,restore,peer)).revision).toBe(3);expect((await service.restore(id,restore,peer)).revision).toBe(3);expect((await service.get(id,actor)).snapshot).toEqual(data);expect(await db.freeWorkbookRevision.count({where:{workbookId:id}})).toBe(3);expect((await service.revisions(id,{},actor)).items[0]).toMatchObject({revision:3,restoredFrom:1});});

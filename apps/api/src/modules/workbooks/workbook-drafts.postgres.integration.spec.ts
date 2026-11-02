@@ -22,6 +22,32 @@ describe.runIf(Boolean(connection)).sequential('replaceable workbook drafts on r
   beforeAll(async()=>{await db.$connect();service=new WorkbooksService(db as never);actor=await user();peer=await user();});
   afterAll(async()=>{await db.$disconnect();});
 
+  it('preserves exact numeric values through draft replacement and publication',async()=>{
+    const {id,data,owner}=await fresh(),width=JSON.parse('121.12173461914062') as number;
+    const numeric={...data,sheets:{s:{...data.sheets.s,cellData:{
+      0:{0:{v:'精度草稿',p:{body:{dataStream:'精度草稿\r\n'},documentStyle:{pageSize:{width}}}},1:{v:width}},
+      1:{0:{v:1.0000000000000002},1:{v:0.30000000000000004}},
+    }}}};
+    const first=await service.saveDraft(id,initial(id,numeric),owner);
+    expect((await service.getDraft(id,owner)).draft?.snapshot).toEqual(numeric);
+    const changed={...numeric,name:'精度草稿更新'},checked=validateSnapshot(changed,id);
+    const second=await service.saveDraft(id,{...initial(id,changed),...expectation(first.currentDraft!)},owner);
+    expect(second.currentDraft?.draftRevision).toBe(2);
+    expect((await service.getDraft(id,owner)).draft?.snapshot).toEqual(changed);
+    const stored=await db.$queryRaw<Array<{width:string;bytes:number;hash:string}>>(Prisma.sql`
+      SELECT snapshot #>> '{sheets,s,cellData,0,0,p,documentStyle,pageSize,width}' AS width,
+        "snapshotBytes" AS bytes,"snapshotHash" AS hash
+      FROM free_workbook_drafts WHERE id=${second.currentDraft!.id}::uuid AND "authorUserId"=${owner.id}`);
+    expect(stored).toEqual([{width:String(width),bytes:checked.bytes,hash:checked.hash}]);
+    expect((await service.get(id,owner)).snapshot).toEqual(data);
+    const published=await service.publishDraft(id,{operationId:randomUUID(),...expectation(second.currentDraft!),expectedWorkbookRevision:1},owner);
+    expect(published.receipt.workbook?.revision).toBe(2);
+    expect(published.receipt.workbook?.snapshotHash).toBe(checked.hash);
+    expect((await service.get(id,owner)).snapshot).toEqual(changed);
+    expect((await db.freeWorkbookRevision.findUniqueOrThrow({where:{workbookId_revision:{workbookId:id,revision:2}}})).snapshot).toEqual(changed);
+    expect((await service.getDraft(id,owner)).draft).toBeNull();
+  });
+
   it('overwrites a single draft without changing the formal snapshot, revision or history',async()=>{
     const {id,data,owner}=await fresh();let ack=await service.saveDraft(id,initial(id),owner);
     for(let n=0;n<6;n++)ack=await service.saveDraft(id,{...initial(id,{...data,name:`未提交 ${n}`}),...expectation(ack.currentDraft!)},owner);

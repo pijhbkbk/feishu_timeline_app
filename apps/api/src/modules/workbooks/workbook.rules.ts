@@ -143,5 +143,5 @@ export function validateSnapshot(raw: unknown, id: string) {
       }
     }
   }
-  return { snapshot, bytes, hash: digest(snapshot), imageIds: [...imageIds],backgroundImageIds:[...backgroundImageIds] };
+  return { snapshot, serialized, bytes, hash: digest(snapshot), imageIds: [...imageIds],backgroundImageIds:[...backgroundImageIds] };
 }

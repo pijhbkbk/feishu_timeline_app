@@ -7,6 +7,7 @@ import type { AuthenticatedUser } from '../auth/auth.types';
 import { lockSheetAttachmentTarget } from '../attachments/sheet-attachment-policy';
 import { digest, draftExpectation, exact, integer, object, operationId, validateSnapshot, workbookId, workbookName, WORKBOOK_DRAFT_LIMITS, WORKBOOK_LIMITS } from './workbook.rules';
 import type { WorkbookSaveTiming } from './workbook-save-timing';
+import { insertWorkbookDraftSnapshot, insertWorkbookRevisionSnapshot, insertWorkbookSnapshot, updateWorkbookDraftSnapshot, updateWorkbookSnapshot } from './workbook-snapshot-storage';
 const META={id:true,name:true,revision:true,snapshotHash:true,updatedAt:true} satisfies Prisma.FreeWorkbookSelect;
 const DRAFT_META = { id:true,draftRevision:true,baseWorkbookRevision:true,snapshotHash:true,snapshotBytes:true,updatedAt:true } satisfies Prisma.FreeWorkbookDraftSelect;
 type DraftReceipt = {
@@ -40,8 +41,8 @@ export class WorkbooksService {
       return this.command(tx,actor,op,'WORKBOOK_CREATED',input,async()=>{
         if(await tx.freeWorkbook.count()>=200)throw new BadRequestException('工作簿数量达到 200 个上限，请联系维护人员。');
         if(await tx.freeWorkbook.findUnique({where:{id},select:{id:true}}))throw new ConflictException('工作簿标识已存在。');
-        const row=await tx.freeWorkbook.create({data:{id,name,revision:1,snapshot:json(checked.snapshot),snapshotBytes:checked.bytes,snapshotHash:checked.hash,createdById:actor.id,updatedById:actor.id},select:META});
-        await tx.freeWorkbookRevision.create({data:{workbookId:id,revision:1,snapshot:json(checked.snapshot),snapshotBytes:checked.bytes,snapshotHash:checked.hash,actorUserId:actor.id}});
+        const row=await insertWorkbookSnapshot(tx,id,name,actor.id,checked);
+        await insertWorkbookRevisionSnapshot(tx,id,1,actor.id,checked);
         await this.audit(tx,actor,id,'WORKBOOK_CREATED',0,1,checked.hash,op);return row;
       });
     });
@@ -103,13 +104,12 @@ export class WorkbooksService {
         const delta=checked.bytes-(previous?.snapshotBytes??0);
         if(!previous&&own._count._all>=WORKBOOK_DRAFT_LIMITS.slotsPerUser)throw new BadRequestException('个人服务器草稿已达 8 个，请明确保存或丢弃现有草稿。');
         if((own._sum.snapshotBytes??0)+delta>WORKBOOK_DRAFT_LIMITS.bytesPerUser||(total._sum.snapshotBytes??0)+delta>WORKBOOK_DRAFT_LIMITS.bytesGlobal)throw new BadRequestException('服务器草稿容量不足；现有草稿未被覆盖，请保留本机草稿。');
-        const data={baseWorkbookRevision:base,snapshot:json(checked.snapshot),snapshotBytes:checked.bytes,snapshotHash:checked.hash};
         let draft;
         if(previous){
-          const updated=await tx.freeWorkbookDraft.updateMany({where:{id:previous.id,authorUserId:actor.id,draftRevision:expected.revision},data:{...data,draftRevision:{increment:1}}});
-          if(updated.count!==1)throw new ConflictException('草稿已变化，请读取当前草稿后决定。');
+          const updated=await updateWorkbookDraftSnapshot(tx,previous.id,actor.id,expected.revision,base,checked);
+          if(updated!==1)throw new ConflictException('草稿已变化，请读取当前草稿后决定。');
           draft=await tx.freeWorkbookDraft.findUniqueOrThrow({where:{id:previous.id},select:DRAFT_META});
-        }else draft=await tx.freeWorkbookDraft.create({data:{...data,workbookId:id,authorUserId:actor.id},select:DRAFT_META});
+        }else draft=await insertWorkbookDraftSnapshot(tx,id,actor.id,base,checked);
         const result:DraftReceipt={action:'DRAFT_SAVED',draftId:draft.id,draftRevision:draft.draftRevision,baseWorkbookRevision:base,snapshotHash:checked.hash,workbookRevision:workbook.revision};
         await this.auditDraft(tx,actor,id,result,op);return result;
       });
@@ -175,8 +175,8 @@ export class WorkbooksService {
     await this.validateAssets(tx,id,checked);
     const total=await tx.freeWorkbookRevision.aggregate({where:{workbookId:id},_sum:{snapshotBytes:true}});
     if((total._sum.snapshotBytes??0)+checked.bytes>WORKBOOK_LIMITS.revisionsBytes)throw new BadRequestException('工作簿历史达到 256 MiB 容量上限；内容未覆盖，请导出备份并新建工作簿。');
-    const updated=await tx.freeWorkbook.updateMany({where:{id,revision:expected},data:{name:workbookName(checked.snapshot.name),snapshot:json(checked.snapshot),snapshotBytes:checked.bytes,snapshotHash:checked.hash,revision:{increment:1},updatedById:actor.id}});if(updated.count!==1)throw new ConflictException('工作簿版本冲突，未覆盖服务器内容。');
-    await tx.freeWorkbookRevision.create({data:{workbookId:id,revision:expected+1,snapshot:json(checked.snapshot),snapshotBytes:checked.bytes,snapshotHash:checked.hash,actorUserId:actor.id,...(restoredFrom===undefined?{}:{restoredFrom})}});
+    const updated=await updateWorkbookSnapshot(tx,id,expected,workbookName(checked.snapshot.name),actor.id,checked);if(updated!==1)throw new ConflictException('工作簿版本冲突，未覆盖服务器内容。');
+    await insertWorkbookRevisionSnapshot(tx,id,expected+1,actor.id,checked,restoredFrom);
     await this.audit(tx,actor,id,restoredFrom===undefined?'WORKBOOK_SAVED':'WORKBOOK_RESTORED',expected,expected+1,checked.hash,op,restoredFrom);
     return tx.freeWorkbook.findUniqueOrThrow({where:{id},select:META});
   }
