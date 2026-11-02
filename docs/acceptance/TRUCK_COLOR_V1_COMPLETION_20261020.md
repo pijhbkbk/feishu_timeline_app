@@ -3,17 +3,17 @@
 当前执行状态以 [EXECUTION_LEDGER](../EXECUTION_LEDGER.md) 最新检查点为准；本页是其摘要，验收断言和计数仅从 [ROUTE_ACCEPTANCE_MATRIX](ROUTE_ACCEPTANCE_MATRIX.md#v1-baseline-v10) 派生，安全状态仅引用 [FINDINGS](../security/FINDINGS.yaml)。下方历史追加保留原日期、FAIL和版本，不覆盖当前入口。
 
 - TASK_ID：`TRUCK-COLOR-V1-COMPLETION-20261020-R01`；主线 `TRUCK-COLOR-V1-CONTINUE-20261020-R02`；当前子任务 `TRUCK-COLOR-V1-FINAL-EXECUTION-20261024-R01`。
-- STATE：`VM_RUNNING / APPLICATION_STOPPED / RESTORING`；产品 `PARTIAL / AWAITING_PRODUCT_OWNER_CONFIRMATION`。最近E148，2026-11-02；本机预览目前不可用，历史验证按原输入与版本保留。
+- STATE：`VM_RUNNING / APPLICATION_STOPPED / SIGNATURE_REFRESH_FAILED`；产品 `PARTIAL / AWAITING_PRODUCT_OWNER_CONFIRMATION`。最近E149，2026-11-02；本机预览目前不可用，历史验证按原输入与版本保留。
 - WORKSPACE：`/Users/lixiaochen/Downloads/feishu_timeline_app`；分支 `codex/design-convergence-20261019`。应用候选d9d00d2含菜单修复7baa9d1、受限构建76c7147及默认关闭的单请求保存观察器；已编译/打包/独审，尚未guest组装实装。
 - SOURCE_ID：候选 `d9d00d26729e321d2904ecc1c5b5f22f1d79958c` / tree `8ac5b1de6101f6e96bf1608b89d58ccf23fe3d38`；release `truck-toolbar-menu-d9d00d26729e-r02` / build `2026-11-02T01:07:31Z`。最后受测运行应用2e0c191/tree15044064、build2026-10-31T08:03:16Z属于旧boot历史。
 - ARTIFACT_ID：`OP/menu-application-delta-20261102-r01`，947新叶＋14796保留Linux基包叶＝15743；archive9481527B/SHA `9b438e13bb85739d132d94265b1f8bb40e73c8e5b806b5f1267d8c8a0ad645ad`，manifest `ba0d4c52979ecabd3d9eee0546e930df04daddabc62a76fea56d7321ef4fe65a`。宿主实际消费者检查及独审成立；仍需原Linux基包，非完整安装包或guest已接受。
 - RUNTIME_ID：E148同一Lima正常stop/edit/start扩至25GiB，新boot `589fefa8-c3d5-477d-a597-7303774115c9`；原PG/Redis已正常启动，原systemId/目录/持久配置保持；scanner/API/Web/proxy未启动，`https://localhost:45464`尚未恢复。旧boot `9fee751f-120b-451e-9b1b-b17eac34bf98` 的2e0四入口、0c879本v4全文和旧owner只作历史，不用于新boot操作。
 - REMOTE_LAST_OBSERVED：2026-10-31连接GitHub只读main仍 `9bdec2864c3ed9eb1a045062b756611f98208bfb`、最新main CI `38866594479` failure；未新增可归档的分支保护配置证据，必需门禁不变。候选未新增远端CI，精确正式域名身份仍UNKNOWN。
 - CURRENT_ITEM：66 PASS/1 PARTIAL/4 NOT_VERIFIED/2 FAIL/1 BLOCKED=74，12/15包、6/9有效技术链、7/10 P0、3/5 P1。E146新反证重开A02-03及E2E-02/P1-02；历史保存恢复/Office/Safari事实不推翻。
-- EVIDENCE：E147编译/postverify独审6c85f9c3…、包实际独审7219008d…、13份可重建复制输入释放独审51e43581…；R36/R37及Gmail同件完整反馈已读；E148冷备独审b6911dc5…、扩容实际独审f3439d39…、两本完整正式快照读回独审e635829f…成立；性能本v4和多表图片本v5与旧正式快照深相等，尚非认证API/GUI读回。E146性能失败、r05/r06失败与原截图保持。reference-implementation-comparison-r03.html仍是既有14页参考/实装对照，本轮无新GUI证据。
-- OPEN_LIMITS：A02-03菜单、A04-04性能仍FAIL，不因构建通过关闭。E148扩容后完整376根26102796288B，按获准25GiB扣64MiB后余673640448B；guest free2184048640B。daily签名仍过期，尚未刷新/加载；512MiB是后续阶段模型，备份/PG/WAL/应用及诊断须分别新鲜准入，不能据此宣称全流程空间足够。CI/full安全/正式目标仍未闭合。
+- EVIDENCE：E147编译/postverify独审6c85f9c3…、包实际独审7219008d…、13份可重建复制输入释放独审51e43581…；R36至R39及Gmail同件完整反馈已读；E148冷备独审b6911dc5…、扩容实际独审f3439d39…、两本完整正式快照读回独审e635829f…成立；性能本v4和多表图片本v5与旧正式快照深相等，尚非认证API/GUI读回。E146性能失败、r05/r06失败与原截图保持。reference-implementation-comparison-r03.html仍是既有14页参考/实装对照，本轮无新GUI证据。
+- OPEN_LIMITS：A02-03菜单、A04-04性能仍FAIL。E149一次刷新及唯一verbose诊断均exit5/curl18；后者daily28171已下载并通过FreshClam自测，但main传输不完整，bytecode和外层三sigtool未执行，完整签名集仍失败。下载方案已停止，不继续第三次。host观测峰26128543744B、guest最少free2159980544B，守住已批25GiB/host64MiB/guest1GiB；非容量拒绝，不保证后续全部阶段准入。CI/full安全/正式目标仍未闭合。
 - HUMAN_ACTION：所有者call_54a6adb263424774b0293f65de287840已批准两项25GiB持续调整并继续；当前磁盘已按正常入口实际扩容。旧临时25/限定sudo没有扩用，最终所有者签收仍待。
-- NEXT_ACTION：当前冷备、扩容和原PG/Redis正常启动已实做，两本完整正式快照保持；接着刷新验签/加载，再绑定共享owner并直接组装启动d9；不重跑旧2e0。正常账号/正式内容读回后，在独立小本验证菜单，再仅做一笔预登记的保存分段观察；余49次停止，观察器恢复期默认关闭。
+- NEXT_ACTION：保留失败并只读核新daily与原官方main/bytecode的来源和合同适用性；尚未复制/验签/加载，不把派生集合冒称完整FreshClam成功。依据不足则维持外部依赖HOLD。有效签名/实际scanner具备后才新boot绑定并组装启动d9，再验证菜单及一笔预登记保存分段；不重做冷备/扩容/PG/Office/IME或失败批次余49次。
 - RESUME_ENTRY：最新Ledger → 矩阵未闭合原子/E2E依赖 → 本页派生摘要；最终A15-12由李晓晨明确接收，不由PM或Codex代签。
 
 <!-- V1_BASELINE_DASHBOARD_START -->

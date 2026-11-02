@@ -9292,3 +9292,20 @@ E148续（03:38Z）：原PG/Redis已按受审r02脚本实际正常启动，host�
 首次只读查询封装保留两类失败：workdir=/home/recovery造成postgres无法chdir的stderr（查询退出0），改/tmp后多SQL经psql -c的最后ROLLBACK输出遮住SELECT，stdout空被初步记为DATA_DIFFERENCE_HOLD；未据此补写数据。同SQL用stdin -f -后聚合真实返回原库/public、同systemId、44本/两指定ID均在；旧空stdout不证明记录缺失，E85已出现同类调用限制。本轮完整两本只读事务读回OP/newboot-pg-workbooks-summary-20261102-r03.json，raw SHA37de877a…：0c879b6d-12fe-43e5-b1dd-a46988f19c77仍v4/hash307abd7534f5686394a030736024a85d32878d1841708a7b0b43a1e11ddecc06；703898c1-a8bf-4d59-8217-fcc630df5c8e仍v5/hash09c8603e1cffe6e54af8dba8088e7cf569e14033682515bb91654eabf0de639b。独审OP/newboot-pg-readback-actual-review-20261102-r01.json/SHAe635829ff31ded6174436722892b96574a7dba4c9f5a9b6a74043d93f11399cd分别对原v4与原重开v5复算全snapshot深相等。失败记录不覆盖；不外推全库相等、认证API/GUI或图片二进制可用性。当前仅数据服务运行，45464仍不可用，原菜单/性能状态与计数保持。
 
 R38已发送至原授权6ad6ddfe会话，汇报所有者两项新授权、实际冷备/扩容/数据启动与两本读回及查询更正；完整反馈尚待。签名刷新新独占输入及25GiB真实wrapper已准备，独审进行中，未联网；历史generation policy保持。E147三文档最终复核文件现摘要37880a3b…覆盖diff56f46efe…，原7981233…属于此前修订并在其记录内保留；当前E148文档增量另待独审。
+
+
+## 2026-11-02 — 单次签名诊断结束，完整刷新仍失败（E149）
+
+R38完整反馈6fafee0e-d56f-4797-a2ff-783bef613d60及Gmail同件1a19a5decad27515已读去重；R39（发送标题R38后续）user d6c41236-93e9-4067-9b00-5bb6a1ca33b3、完整反馈0fa1a88d-4bdd-43a8-b7d8-7426462764bd及Gmail1a19a74b45947869已读去重。对应OP/r38-chatgpt-delivery-feedback-20261102-r01.json、r39-chatgpt-delivery-feedback-20261102-r01.json保留；不重做E148扩容/冷备/原数据验证。0a02576文档独审6c5ffae5…已完成，旧“待独审/待反馈”记录保留其当时范围。
+
+操作源码f4787f4增加显式25GiB向生命周期真实budget/observe传递，以及固定d9/新boot的recover-boot：真实新PG/Redis/scanner/proxy收据绑定、旧owner只保留历史，BOOT_RECOVERED与应用RUNNING分开；失败留事件/原state，不对旧PID发信号。5资源与最终42生命周期目标检查exit0，独审300b2c56…；尚未guest续接执行，新scanner/proxy收据缺失。应用d9制品不因操作工具更新重新构建。
+
+第一次刷新OP/signature-refresh-25-20261102-r01于03:50:35–44Z实际失败：FreshClam exit5/curl18 partial-transfer，431B日志、原字节回执02d239c750ff002b7a3e303bf38dddd2467041320f20f1547828a1a572490fb0；无完整CVD，三sigtool未执行，独审2cbf952c…。随后普通Python HEAD 403属于另一请求，不能回填FreshClam状态；未继续普通HEAD/GET探测。
+
+基于真实部分传输错误与官方-v诊断方式，源码12737000eeb4221676afad0061dac42f6bde243e只支持这次精确前驱的一次诊断：保留原90B freshclam.dat及摘要58695dd2…，不得抹掉冷却状态；只加-v，原工具1.4.6/官方地址/严格CA/MaxAttempts1、资源与owner边界不变。16目标检查exit0，源码及r02精确输入独审84a1519a…；stage/admission实际0，等待前次1722秒后在同boot589f…执行。
+
+r02于04:19:26–04:20:26Z仍失败：daily.cvd HTTP200/23447611B，FreshClam自身数据库测试355841签名通过/版本28171；随后main.cvd HTTP200/声明89072577B，但curl18部分传输，实际传输字节未知，FreshClam exit5、host exit1。未观察403/429/cooldown，截断责任方未定位；不是容量拒绝。bytecode未走到、外层三sigtool和完整集合验证均未执行，不能把daily局部结果写成签名集成功。新db目录只保留daily及状态文件，原签名不改。原字节guest结果SHA1b82dfb38de4c7729968c8d881686a0f1979b1cd8726219a296b3b6ef136d2c1；7764B verbose原件SHA5b4f1b187de0abe8170f72bea5f3968183955665933967b299f968c13bc4a870以0600受限保留，对外仅脱敏摘要。r02状态文件本次读回仍与已绑定r01摘要相同，不称此次重读两份。
+
+进程自然结束、remainingOwners=[]，无SIGTERM/KILL；guest采样最少free2159980544B、目录观测峰23580672B，host原376根峰26128543744B，均在已批25GiB、host64MiB/guest1GiB底线内；采样不是瞬时峰值证明或硬配额。OP/signature-refresh-25-20261102-r02/failure-summary.json/SHA2dbfcc98edfa96227c6f48d995c23391fc274992853183cfb09ab0e3aaaeb150记录本轮方案结束，不再第三次下载或换目录/客户端/网络参数重试。实际独审OP/signature-refresh-25-diagnostic-actual-review-20261102-r02.json/SHAe5b397d85c9655eb3b8cb287ca08e0f68b97e347bd1315b7a0cfc9cf1a855d69核原字节结果、脱敏摘要、14份预算及边界成立。
+
+当前仅VM/PG/Redis运行，scanner/API/Web/proxy未起，45464不可用；原66/1/4/2FAIL/1BLOCKED、12/15包、6/9链、P0 7/10、P1 3/5保持。R40已向原授权会话提交本次实际结果，完整反馈尚待。独立只读分析新daily与已留存官方main/bytecode能否在原合同下组成明确派生的新集合；尚未复制/验签/加载，不伪造FreshClam成功或弱化48h/三CVD/来源规则。若无可验证依据，维持外部依赖HOLD。原外盘、业务历史、受保护未跟踪文件及远端CI/push/main/tag/production未动。
