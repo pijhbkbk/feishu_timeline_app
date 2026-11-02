@@ -51,6 +51,52 @@ PHASES = {
 state = {}
 
 
+def binding_filename(name, event):
+    need(name == 'binding.json' or (
+        isinstance(event, str) and re.fullmatch('[a-z0-9][a-z0-9-]{0,47}', event)
+        and name == 'binding-' + event + '.json'), 'BINDING_NAME')
+    return name
+
+
+def timing_config(raw, target, action, event):
+    """Public, single-request diagnostic contract; never an arbitrary env map."""
+    if raw is None:
+        return None
+    need(target == 'menud9d00d2' and action in ('start', 'restart'), 'TIMING_SCOPE')
+    need(isinstance(raw, str) and len(raw.encode('utf-8')) <= 1024, 'TIMING_BOUND')
+    def unique(pairs):
+        result = {}
+        for key, value in pairs:
+            need(key not in result, 'TIMING_DUPLICATE_KEY')
+            result[key] = value
+        return result
+    try:
+        value = json.loads(raw, object_pairs_hook=unique)
+    except ValueError:
+        need(False, 'TIMING_JSON')
+    need(isinstance(value, dict) and set(value) ==
+         {'workbookId', 'expectedRevision', 'traceId', 'expiresAt'}, 'TIMING_FIELDS')
+    need(value['workbookId'] == '0c879b6d-12fe-43e5-b1dd-a46988f19c77', 'TIMING_WORKBOOK')
+    trace = value['traceId']
+    need(isinstance(trace, str) and re.fullmatch(
+        '[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}', trace), 'TIMING_TRACE')
+    need(event == 'save-timing-' + trace, 'TIMING_EVENT')
+    need(type(value['expectedRevision']) is int and 1 <= value['expectedRevision'] <= 2**53-1,
+         'TIMING_REVISION')
+    expiry = value['expiresAt']; current = int(time.time() * 1000)
+    need(type(expiry) is int and current < expiry <= min(current + 600000, 2**53-1), 'TIMING_EXPIRY')
+    return value
+
+
+def target_input(target, requested):
+    need(target in TARGET_INPUTS, 'HOST_TARGET')
+    allowed = {TARGET_INPUTS[target]}
+    if target == 'menud9d00d2':
+        allowed.add('/home/recovery/input-menu-lifecycle-20261102-r02')
+    need(requested in allowed, 'HOST_INPUT_DIRECTORY')
+    return requested
+
+
 class Failure(Exception):
     pass
 
@@ -379,15 +425,19 @@ def main():
     p.add_argument("--binding-sha256");p.add_argument("--expected-state-sha256")
     p.add_argument("--event");p.add_argument("--output",type=Path)
     p.add_argument('--approved-host-limit-bytes',type=int,default=49*1024**3//2)
+    p.add_argument('--binding-name',default='binding.json')
+    p.add_argument('--workbook-save-timing')
     a=p.parse_args()
     if not a.execute_reviewed:
         print(json.dumps({"status":"PLAN_ONLY","components":["api","web"],"executed":False}));return
     need(re.fullmatch('[a-z0-9][a-z0-9-]{0,47}',a.event or ''),"EVENT_NAME")
     need(re.fullmatch('[a-f0-9]{64}',a.expected_state_sha256 or ''),"EXTERNAL_STATE_PIN")
+    binding_filename(a.binding_name,a.event)
     pins=json.loads(pinned(a.binding,a.binding_sha256,256*1024))
+    timing=timing_config(a.workbook_save_timing,pins.get('target'),a.action,a.event)
     if pins.get('kind') == 'R30_JOINT_APPLICATION_LIFECYCLE_V2':
         need(pins.get('target') in TARGET_INPUTS, 'HOST_TARGET')
-        INPUT = TARGET_INPUTS[pins['target']]
+        INPUT = target_input(pins['target'], pins.get('guestInput'))
         if pins['target'] in TARGET_BOOTS:BOOT=TARGET_BOOTS[pins['target']]
     else:
         need(pins.get('kind') == 'R30_JOINT_APPLICATION_LIFECYCLE_V1', 'HOST_BINDING_KIND')
@@ -404,7 +454,9 @@ def main():
                  approvedHostLimitBytes=a.approved_host_limit_bytes)
     if a.action in ('start','restart','recover-boot'):state['h']=load_budget_host()
     argv=[INPUT+'/joint_lifecycle.py',a.action,'--execute-reviewed','--binding-sha256',a.binding_sha256,
-          '--expected-state-sha256',a.expected_state_sha256,'--event',a.event]
+          '--expected-state-sha256',a.expected_state_sha256,'--event',a.event,
+          '--binding-name',a.binding_name]
+    if timing is not None:argv += ['--workbook-save-timing',json.dumps(timing,separators=(',',':'))]
     if a.action in ('start','restart','recover-boot'):
         argv += ['--budget-channel-stdio','--approved-host-limit-bytes',str(a.approved_host_limit_bytes)]
     command=BASE+['/usr/bin/env','-i','PATH=/usr/bin:/bin','HOME=/home/recovery','/usr/bin/python3','-I','-B','-u','-c',guest_launcher(argv,pins['files']['joint_lifecycle.py']['sha256'])]

@@ -437,4 +437,90 @@ class RecoveryServicesTests(unittest.TestCase):
         self.proxy['process']['launchedArgv']=['unapproved']
         with self.assertRaisesRegex(RuntimeError,'RECOVERY_PROXY_OWNER'):self.invoke()
 
+class SaveTimingTests(unittest.TestCase):
+    def setUp(self):
+        m.ctx.clear()
+        self.trace='12345678-abcd-4321-8abc-123456789012'
+        self.event='save-timing-'+self.trace
+        self.config={'workbookId':'0c879b6d-12fe-43e5-b1dd-a46988f19c77',
+                     'expectedRevision':4,'traceId':self.trace,'expiresAt':1600000}
+    def invoke(self,module,value=None,raw=None,action='restart',target='menud9d00d2',event=None):
+        with patch.object(module.time,'time',return_value=1000):
+            return module.timing_config(raw if raw is not None else json.dumps(self.config if value is None else value),
+                                        target,action,self.event if event is None else event)
+    def test_both_consumers_have_same_closed_contract_and_off_default(self):
+        for module in (m,host):
+            self.assertEqual(self.invoke(module),self.config)
+            self.assertIsNone(module.timing_config(None,'other','stop',None))
+            for changes,code in [({'expectedRevision':True},'REVISION'),({'expectedRevision':0},'REVISION'),
+                ({'expectedRevision':2**53},'REVISION'),({'expiresAt':1000000},'EXPIRY'),
+                ({'expiresAt':1600001},'EXPIRY'),({'expiresAt':True},'EXPIRY'),
+                ({'traceId':'12345678-abcd-1321-8abc-123456789012'},'TRACE'),
+                ({'workbookId':self.trace},'WORKBOOK'),({'extra':'value'},'FIELDS')]:
+                with self.subTest(module=module.__name__,changes=changes),self.assertRaisesRegex(Exception,'TIMING_'+code):
+                    self.invoke(module,{**self.config,**changes})
+            for raw,code in [('[]','FIELDS'),('{bad','JSON'),(' '*1025,'BOUND'),
+                ('{"workbookId":1,"workbookId":2}','DUPLICATE_KEY')]:
+                with self.assertRaisesRegex(Exception,'TIMING_'+code):self.invoke(module,raw=raw)
+            for action in ('stop','status','recover-boot'):
+                with self.assertRaisesRegex(Exception,'TIMING_SCOPE'):self.invoke(module,action=action)
+            with self.assertRaisesRegex(Exception,'TIMING_SCOPE'):self.invoke(module,target='save2e0c191')
+            with self.assertRaisesRegex(Exception,'TIMING_EVENT'):self.invoke(module,event='other')
+    def test_binding_name_and_input_allowlists(self):
+        for module in (m,host):
+            self.assertEqual(module.binding_filename('binding.json',None),'binding.json')
+            self.assertEqual(module.binding_filename('binding-'+self.event+'.json',self.event),'binding-'+self.event+'.json')
+            for name in ('../binding.json','/binding.json','binding-other.json','binding-'+self.event+'.json/..'):
+                with self.assertRaisesRegex(Exception,'BINDING_NAME'):module.binding_filename(name,self.event)
+        for revision in ('r01','r02'):
+            path='/home/recovery/input-menu-lifecycle-20261102-'+revision
+            self.assertEqual(host.target_input('menud9d00d2',path),path)
+        for path in ('/tmp/arbitrary','/home/recovery/input-menu-lifecycle-20261102-r03'):
+            with self.assertRaisesRegex(Exception,'HOST_INPUT_DIRECTORY'):host.target_input('menud9d00d2',path)
+        with self.assertRaisesRegex(Exception,'HOST_INPUT_DIRECTORY'):
+            host.target_input('save2e0c191','/home/recovery/input-menu-lifecycle-20261102-r02')
+    def test_api_only_copy_and_expiry_recheck(self):
+        original={'LOCAL_RUNTIME_PROFILE':'loopback-https','NODE_ENV':'production',
+                  'DEPLOYMENT_ENV':'staging','HOST':'127.0.0.1'}
+        args=types.SimpleNamespace(action='restart',event=self.event,workbook_save_timing=json.dumps(self.config))
+        m.ctx.update(j=types.SimpleNamespace(environment=lambda role,_:original),args=args,
+                     binding={'target':'menud9d00d2'})
+        with patch.object(m.time,'time',return_value=1000):
+            self.assertEqual(json.loads(m.launch_environment('api')['WORKBOOK_SAVE_TIMING']),self.config)
+            self.assertNotIn('WORKBOOK_SAVE_TIMING',m.launch_environment('web'))
+            self.assertNotIn('WORKBOOK_SAVE_TIMING',original)
+        with patch.object(m.time,'time',return_value=1600),self.assertRaisesRegex(RuntimeError,'TIMING_EXPIRY'):
+            m.launch_environment('api')
+        args.workbook_save_timing=None
+        self.assertEqual(m.launch_environment('api'),original)
+        original['WORKBOOK_SAVE_TIMING']='unexpected'
+        with self.assertRaisesRegex(RuntimeError,'TIMING_DEFAULT_OFF'):m.launch_environment('api')
+    def test_profile_is_not_silently_unarmed(self):
+        m.ctx.update(j=types.SimpleNamespace(environment=lambda *_:{}),binding={'target':'menud9d00d2'},
+                     args=types.SimpleNamespace(action='start',event=self.event,workbook_save_timing=json.dumps(self.config)))
+        with patch.object(m.time,'time',return_value=1000),self.assertRaisesRegex(RuntimeError,'TIMING_PROFILE'):
+            m.launch_environment('api')
+    def test_expiry_after_budget_never_stops_apps_and_plain_stop_needs_no_admission(self):
+        clock=[1000]
+        def budget(*_): clock[0]=1600
+        m.ctx.update(j=types.SimpleNamespace(environment=lambda *_:{}),binding={'target':'menud9d00d2'},
+                     o=types.SimpleNamespace(resources=Mock(side_effect=budget)),
+                     args=types.SimpleNamespace(action='restart',event=self.event,workbook_save_timing=json.dumps(self.config)))
+        with patch.object(m.time,'time',side_effect=lambda:clock[0]),patch.object(m,'stop_owned') as stop,\
+             patch.object(m.subprocess,'Popen') as spawn:
+            with self.assertRaisesRegex(RuntimeError,'TIMING_EXPIRY'):m.stop_with_admission({},'restart')
+            stop.assert_not_called();spawn.assert_not_called()
+            m.ctx['o'].resources.reset_mock()
+            # Expired diagnostic/scanner inputs are irrelevant to an explicit stop.
+            m.stop_with_admission({},'stop')
+            stop.assert_called_once_with({});m.ctx['o'].resources.assert_not_called()
+    def test_invalid_timing_rejected_before_guest_lock_or_event(self):
+        binding={'guestInput':str(m.HERE),'target':'menud9d00d2'}
+        argv=['joint_lifecycle','restart','--execute-reviewed','--binding-sha256','a'*64,
+              '--event',self.event,'--workbook-save-timing','{}']
+        with patch.object(sys,'argv',argv),patch.object(m,'read',return_value=json.dumps(binding).encode()),\
+             patch.object(m,'instance_lock') as lock,patch.object(m,'boot') as boot:
+            with self.assertRaisesRegex(RuntimeError,'TIMING_FIELDS'):m.main()
+            lock.assert_not_called();boot.assert_not_called()
+
 if __name__=='__main__':unittest.main()

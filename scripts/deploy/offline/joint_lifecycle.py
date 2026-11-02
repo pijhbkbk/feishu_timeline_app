@@ -68,6 +68,44 @@ TARGETS = {
 ctx = {}
 
 
+def binding_filename(name, event):
+    need(name == 'binding.json' or (
+        isinstance(event, str) and re.fullmatch('[a-z0-9][a-z0-9-]{0,47}', event)
+        and name == 'binding-' + event + '.json'), 'BINDING_NAME')
+    return name
+
+
+def timing_config(raw, target, action, event):
+    """Public, single-request diagnostic contract; never an arbitrary env map."""
+    if raw is None:
+        return None
+    need(target == 'menud9d00d2' and action in ('start', 'restart'), 'TIMING_SCOPE')
+    need(isinstance(raw, str) and len(raw.encode('utf-8')) <= 1024, 'TIMING_BOUND')
+    def unique(pairs):
+        result = {}
+        for key, value in pairs:
+            need(key not in result, 'TIMING_DUPLICATE_KEY')
+            result[key] = value
+        return result
+    try:
+        value = json.loads(raw, object_pairs_hook=unique)
+    except ValueError:
+        need(False, 'TIMING_JSON')
+    need(isinstance(value, dict) and set(value) ==
+         {'workbookId', 'expectedRevision', 'traceId', 'expiresAt'}, 'TIMING_FIELDS')
+    need(value['workbookId'] == '0c879b6d-12fe-43e5-b1dd-a46988f19c77', 'TIMING_WORKBOOK')
+    trace = value['traceId']
+    need(isinstance(trace, str) and re.fullmatch(
+        '[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}', trace), 'TIMING_TRACE')
+    need(event == 'save-timing-' + trace, 'TIMING_EVENT')
+    need(type(value['expectedRevision']) is int and 1 <= value['expectedRevision'] <= 2**53-1,
+         'TIMING_REVISION')
+    expiry = value['expiresAt']; current = int(time.time() * 1000)
+    need(type(expiry) is int and current < expiry <= min(current + 600000, 2**53-1), 'TIMING_EXPIRY')
+    return value
+
+
+
 def need(ok, code):
     if not ok:
         raise RuntimeError('CHECK_' + code)
@@ -462,7 +500,24 @@ def prepare_runtime(value):
         for name in ('.env','.env.local','.env.production','.env.production.local'):
             need(not os.path.lexists(root/name),'NO_DOTENV')
     j.config_preflight()
+    # Validate before a restart can stop either application. Never persist the opt-in.
+    for role in PORTS: launch_environment(role)
     return j,o
+
+
+def launch_environment(role):
+    need(role in PORTS, 'APPLICATION_ROLE')
+    env = dict(ctx['j'].environment(role, True))
+    need('WORKBOOK_SAVE_TIMING' not in env, 'TIMING_DEFAULT_OFF')
+    raw = getattr(ctx['args'], 'workbook_save_timing', None)
+    if raw is not None:
+        value = timing_config(raw, ctx['binding'].get('target'), ctx['args'].action, ctx['args'].event)
+        if role == 'api':
+            need(all(env.get(k) == v for k, v in {
+                'LOCAL_RUNTIME_PROFILE': 'loopback-https', 'NODE_ENV': 'production',
+                'DEPLOYMENT_ENV': 'staging', 'HOST': '127.0.0.1'}.items()), 'TIMING_PROFILE')
+            env['WORKBOOK_SAVE_TIMING'] = json.dumps(value, separators=(',', ':'))
+    return env
 
 
 def start_owned(value):
@@ -482,6 +537,15 @@ def start_owned(value):
         raise
 
 
+def stop_with_admission(value, action):
+    if action == 'restart':
+        ctx['o'].resources(True, 'switch-pre-stop')
+        for role in PORTS: launch_environment(role)
+    else:
+        need(action == 'stop', 'STOP_ACTION')
+    return stop_owned(value)
+
+
 def spawn_owned(role):
     """Use the existing launch/observe primitives with durable ownership records."""
     j,o=ctx['j'],ctx['o'];cwd,argv=expected(role)
@@ -489,7 +553,7 @@ def spawn_owned(role):
     write(ctx['event']/('normal-'+role+'-intent.json'),
           {'role':role,'bootId':BOOT,'cwd':cwd,'argv':argv,'identity':IDENTITY})
     with (ctx['logs']/('normal-'+role+'.log')).open('xb') as stream:
-        child=subprocess.Popen(argv,cwd=cwd,env=j.environment(role,True),stdin=subprocess.DEVNULL,
+        child=subprocess.Popen(argv,cwd=cwd,env=launch_environment(role),stdin=subprocess.DEVNULL,
                                stdout=stream,stderr=subprocess.STDOUT,close_fds=True,
                                start_new_session=True,preexec_fn=lambda:o.limits(4*1024**2))
     item={'child':child,'fd':None,'role':role};j.ctx['children'].append(item)
@@ -521,6 +585,7 @@ def finish(value, report):
     if 'transitionOrigin' in ctx:report['transitionOrigin']=ctx['transitionOrigin']
     if 'recoveryOrigin' in ctx:report['recoveryOrigin']=ctx['recoveryOrigin']
     if 'currentRecoveryEvidence' in ctx:report['currentRecoveryEvidence']=ctx['currentRecoveryEvidence']
+    if ctx.get('timing') is not None:report['workbookSaveTiming']=ctx['timing']
     digest=write(ctx['event']/'result.json',report)
     pointer={'path':str(ctx['event']/'result.json'),'sha256':digest}
     temp=ROOT/('state-'+ctx['args'].event+'.tmp');write(temp,pointer)
@@ -566,15 +631,19 @@ def main():
     p.add_argument('--execute-reviewed',action='store_true');p.add_argument('--binding-sha256')
     p.add_argument('--expected-state-sha256');p.add_argument('--event');p.add_argument('--budget-channel-stdio',action='store_true')
     p.add_argument('--approved-host-limit-bytes',type=int,default=49*1024**3//2)
+    p.add_argument('--binding-name',default='binding.json')
+    p.add_argument('--workbook-save-timing')
     a=p.parse_args()
     if not a.execute_reviewed:
         print(json.dumps({'status':'PLAN_ONLY','actions':['status','start','stop','restart','recover-boot'],'components':['api','web']}));return
     need(re.fullmatch('[a-f0-9]{64}',a.binding_sha256 or ''),'EXTERNAL_BINDING_DIGEST')
-    binding=json.loads(read(HERE/'binding.json',a.binding_sha256))
+    binding=json.loads(read(HERE/binding_filename(a.binding_name,a.event),a.binding_sha256))
+    need(binding.get('guestInput') == str(HERE), 'BINDING_INPUT_DIRECTORY')
+    timing=timing_config(a.workbook_save_timing,binding.get('target'),a.action,a.event)
     bind_target(binding)
     boot()
     row=binding['files']['joint_lifecycle.py'];need(sha(read(Path(__file__)))==row['sha256'],'EXECUTION_FILE_PIN')
-    ctx.update(args=a,binding=binding)
+    ctx.update(args=a,binding=binding,timing=timing)
     lock=instance_lock()
     try:
         if a.action=='recover-boot':
@@ -593,6 +662,7 @@ def main():
         syncdir(event.parent);syncdir(logs.parent)
         claim={'event':a.event,'action':a.action,'previousStateSha256':a.expected_state_sha256,
                'bindingSha256':a.binding_sha256,'bootId':BOOT,'identity':IDENTITY,'ownersBefore':value['owners']}
+        if timing is not None:claim['workbookSaveTiming']=timing
         if 'transitionOrigin' in ctx:claim['transitionOrigin']=ctx['transitionOrigin']
         if 'recoveryOrigin' in ctx:claim['recoveryOrigin']=ctx['recoveryOrigin']
         claim_sha=write(event/'claim.json',claim)
@@ -604,8 +674,7 @@ def main():
                 need(a.budget_channel_stdio,'START_REQUIRES_BUDGET_CHANNEL')
                 prepare_runtime(value)
             if a.action in ('stop','restart'):
-                if a.action=='restart':ctx['o'].resources(True,'switch-pre-stop')
-                report['stops']=stop_owned(value);report['owners']={}
+                report['stops']=stop_with_admission(value,a.action);report['owners']={}
             if a.action in ('start','restart'):
                 owners,proof=start_owned(value);report.update(owners=owners,**proof,status='JOINT_LIFECYCLE_RUNNING')
             elif a.action=='recover-boot':
