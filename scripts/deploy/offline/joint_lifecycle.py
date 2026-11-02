@@ -64,6 +64,14 @@ TARGETS = {
         'delta':'/home/recovery/input-menu-lifecycle-20261102-r01/delta',
         'deltaSha256':'ba0d4c52979ecabd3d9eee0546e930df04daddabc62a76fea56d7321ef4fe65a',
         'bootId':'589fefa8-c3d5-477d-a597-7303774115c9'},
+    'menusavee299057': {
+        'identity': {'sourceCommit':'e299057a21e18f0b702e5d1bfe3d74ec47687505',
+                     'sourceTree':'a3d2ec84dc647d69d49e0bb995bd6e0f218351c4',
+                     'release':'truck-menu-save-e299057a21e1-r01','buildTime':'2026-11-02T09:16:06Z'},
+        'application':'/home/recovery/application-menu-save-e299057-r01',
+        'delta':'/home/recovery/input-menu-save-lifecycle-20261102-r01/delta',
+        'deltaSha256':'3f89102e84cf5482ca6dc490d5b941664a5053ab3c337787e8a74dd309caf4de',
+        'bootId':'589fefa8-c3d5-477d-a597-7303774115c9'},
 }
 ctx = {}
 

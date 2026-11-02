@@ -252,6 +252,27 @@ class CandidateContinuationTests(unittest.TestCase):
                 self.assertEqual(m.state(digest),result)
                 self.assertEqual(m.ctx['transitionOrigin']['sha256'],digest)
                 self.assertEqual(m.APP,Path(m.TARGETS[target]['application']))
+    def test_menu_save_candidate_requires_exact_normal_stopped_d9_predecessor(self):
+        current_boot=m.TARGETS['menusavee299057']['bootId']
+        original_binding=self.binding
+        def binding(target):
+            value=original_binding(target)
+            value['runtimeRecovery']={'kind':'SAME_INSTANCE_NEW_BOOT_BINDING_V1','bootId':current_boot,
+                                      'previousState':{},'pg':{},'redis':{},'scanner':{},'proxy':{}}
+            return value
+        self.binding=binding
+        with patch.object(m,'BOOT',current_boot),patch.object(m,'ROOT',self.root),patch.object(m,'read',side_effect=lambda p,*a:Path(p).read_bytes()):
+            for source,target in [('menud9d00d2','menusavee299057'),('menusavee299057','menud9d00d2')]:
+                digest,result=self.stopped(source,target)
+                self.assertEqual(m.state(digest),result)
+                self.assertEqual(m.APP,Path(m.TARGETS[target]['application']))
+            for change in [{'status':'JOINT_LIFECYCLE_RUNNING'},{'status':'FAILED_PRESERVED'},
+                           {'owners':{'api':owner('api')}},{'bootId':'wrong'}]:
+                digest,_=self.stopped('menud9d00d2','menusavee299057',change)
+                with self.assertRaises(RuntimeError):m.state(digest)
+            bad=binding('menusavee299057');bad['identity']={**bad['identity'],'sourceCommit':'f'*40}
+            with self.assertRaisesRegex(RuntimeError,'BINDING_SCOPE'):m.bind_target(bad)
+
     def test_foreign_running_failed_pending_and_wrong_boot_are_rejected(self):
         with patch.object(m,'ROOT',self.root),patch.object(m,'read',side_effect=lambda p,*a:Path(p).read_bytes()):
             for change in [{'status':'JOINT_LIFECYCLE_RUNNING'}, {'status':'FAILED_PRESERVED'},
@@ -262,6 +283,19 @@ class CandidateContinuationTests(unittest.TestCase):
             digest,_=self.stopped('joint3a11','layout5b07')
             (self.root/'pending.json').write_text('{}')
             with self.assertRaisesRegex(RuntimeError,'PREDECESSOR_NOT_NORMAL_STOP'):m.state(digest)
+    def test_menu_save_host_input_is_exact_and_diagnostic_stays_off(self):
+        import importlib.util
+        spec=importlib.util.spec_from_file_location('new_host',Path(__file__).with_name('joint_lifecycle_host.py'))
+        host=importlib.util.module_from_spec(spec);spec.loader.exec_module(host)
+        path='/home/recovery/input-menu-save-lifecycle-20261102-r01'
+        self.assertEqual(host.target_input('menusavee299057',path),path)
+        self.assertEqual(host.TARGET_BOOTS['menusavee299057'],m.TARGETS['menusavee299057']['bootId'])
+        for other in [path+'-extra','/home/recovery/input-menu-lifecycle-20261102-r02']:
+            with self.assertRaisesRegex(Exception,'HOST_INPUT_DIRECTORY'):host.target_input('menusavee299057',other)
+        for module in [m,host]:
+            self.assertIsNone(module.timing_config(None,'menusavee299057','start','menu-save-start-r01'))
+            with self.assertRaisesRegex(Exception,'TIMING_SCOPE'):module.timing_config('{}','menusavee299057','start','menu-save-start-r01')
+
     def test_wrong_predecessor_and_nonstart_cannot_adopt(self):
         with patch.object(m,'ROOT',self.root),patch.object(m,'read',side_effect=lambda p,*a:Path(p).read_bytes()):
             for key,value in [('target','layout5b07'),('path','/wrong'),('sha256','f'*64)]:

@@ -31,8 +31,10 @@ TARGET_INPUTS = {
     "workbook9c412dd": "/home/recovery/input-workbook-lifecycle-20261031-r01",
     "save2e0c191": "/home/recovery/input-save-lifecycle-20261031-r02",
     "menud9d00d2": "/home/recovery/input-menu-lifecycle-20261102-r01",
+    "menusavee299057": "/home/recovery/input-menu-save-lifecycle-20261102-r01",
 }
-TARGET_BOOTS = {'menud9d00d2':'589fefa8-c3d5-477d-a597-7303774115c9'}
+TARGET_BOOTS = {'menud9d00d2':'589fefa8-c3d5-477d-a597-7303774115c9',
+                'menusavee299057':'589fefa8-c3d5-477d-a597-7303774115c9'}
 ROOT = "/home/recovery/joint-lifecycle-3a11-r01"
 BOOT = "9fee751f-120b-451e-9b1b-b17eac34bf98"
 PROTOCOL = "A09_BUDGET_STDIO_V1"
