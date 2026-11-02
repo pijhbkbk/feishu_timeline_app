@@ -424,6 +424,12 @@ class RecoveryServicesTests(unittest.TestCase):
     def test_live_pid_reuse_or_wrong_socket_refuses_binding(self):
         with self.assertRaisesRegex(RuntimeError,'RECOVERY_DATA_LIVE_OWNER'):self.invoke(wrong_tick=True)
         with self.assertRaisesRegex(RuntimeError,'RECOVERY_PROXY_SOCKET_OWNER'):self.invoke(socket_link='socket:[foreign]')
+    def test_second_scanner_root_requires_its_paired_run(self):
+        self.r['scanner']['root']='/home/recovery/offline-scanner-healthy-20261102-r02'
+        with self.assertRaisesRegex(RuntimeError,'RECOVERY_SCANNER_SCOPE'):self.invoke()
+        self.r['scanner']['run']='newboot-healthy-scanner-20261102-r02'
+        self.invoke()
+
     def test_scanner_scope_and_proxy_recipe_are_fixed(self):
         self.r['scanner']['root']='/home/recovery/arbitrary'
         with self.assertRaisesRegex(RuntimeError,'RECOVERY_SCANNER_SCOPE'):self.invoke()

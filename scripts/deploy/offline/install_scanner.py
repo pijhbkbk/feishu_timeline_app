@@ -20,6 +20,7 @@ import struct
 import subprocess
 import sys
 import time
+import types
 
 HOME = Path('/home/recovery')
 HERE = Path(__file__).resolve().parent
@@ -57,6 +58,8 @@ APP_RECEIPT_SHA = RUNTIME_RECEIPT_SHA = RUNTIME_MANIFEST_SHA = DEBS_RECEIPT_SHA 
 BOOT = SCANNER_RUN = CONFIG_SHA = CONFIG_TEXT = LIBRARY_PATH = None
 TARGET_BINDING = {}
 DATA_ROWS = {}; NATIVE_LIBRARIES = {}; CURRENT_INDEX = {}; DATA_OWNERS = {}; PREVIOUS_OWNERS = {}
+BASE_LIBRARY_UPDATES = {}
+BASE_UPDATE_VERIFIER_SHA = '6efd9402e40d859fc0fa3be2aa6e6f3e3e2e549ef9c0be855f207e6a069edb6e'
 OUT = None; REPORT = {}
 RUNTIME_ENTRIES_SHA = '69d9a25cd9fac988f50fcc5f65c554e65829409ba903e9b705eb7d8d4d5782a1'
 # Frozen 3941 application manifest pins Next 15.5.28; Next rewrites its process title.
@@ -189,6 +192,18 @@ def validate_target(value):
         required |= {'historicalEvidenceBootId', source_key}
         need(re.fullmatch(r'[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}', value.get('historicalEvidenceBootId','')) is not None, 'HISTORICAL_BOOT_FORMAT')
         receipt_pin(value.get(source_key))
+    if isinstance(value, dict) and value.get('kind') == 'OFFLINE_SCANNER_TARGET_V3' and (
+            'baseUpdate' in value or 'baseUpdateVerifier' in value):
+        required |= {'baseUpdate', 'baseUpdateVerifier'}
+        verifier = receipt_pin(value.get('baseUpdateVerifier'))
+        need(verifier == {'path': str(HERE/'prepare_instance.py'), 'sha256': BASE_UPDATE_VERIFIER_SHA},
+             'EXACT_BASE_UPDATE_VERIFIER')
+        refs = value.get('baseUpdate')
+        need(isinstance(refs, dict) and set(refs) == {'result', 'metadata', 'analysis'}, 'BASE_UPDATE_REFS')
+        for ref in refs.values():
+            need(isinstance(ref, dict) and set(ref) == {'path', 'sha256', 'bytes'} and
+                 type(ref['bytes']) is int and 0 < ref['bytes'] <= 128*1024, 'BASE_UPDATE_REF_FIELDS')
+            receipt_pin({k: ref[k] for k in ('path', 'sha256')})
     need(isinstance(value, dict) and set(value) == required and value['kind'] in ('OFFLINE_SCANNER_TARGET_V1','OFFLINE_SCANNER_TARGET_V2','OFFLINE_SCANNER_TARGET_V3')
          and value['identity'] == IDENTITY, 'TARGET_BINDING_SCHEMA')
     need(isinstance(value['currentBootId'], str) and
@@ -373,7 +388,8 @@ def configure_target(pin_sha):
     global PIN_SHA, TARGET_BINDING, SOFTWARE, SOURCE_SOFTWARE, DEBS, OFFLINE, PRIVATE, SCANNER, LOGS
     global EVENTS, DB, CONFIG, DAEMON_LOG, PIDFILE, EXE, LIB, LIBRARY_PATH, NATIVE_RESULT, NATIVE_SHA
     global APP_RECEIPT_SHA, RUNTIME_RECEIPT_SHA, RUNTIME_MANIFEST_SHA, DEBS_RECEIPT_SHA, BOOT, SCANNER_RUN
-    global CONFIG_TEXT, CONFIG_SHA, DATA_BASELINE_SHA, DATA_OWNERS, PREVIOUS_OWNERS
+    global CONFIG_TEXT, CONFIG_SHA, DATA_BASELINE_SHA, DATA_OWNERS, PREVIOUS_OWNERS, BASE_LIBRARY_UPDATES
+    BASE_LIBRARY_UPDATES = {}
     PIN_SHA = digest(pin_sha)
     value, _ = read_json(PIN, PIN_SHA, 32768, 0o600); paths = validate_target(value)
     TARGET_BINDING = value
@@ -811,7 +827,11 @@ def loader_run(name, binary):
     roots = [r for r in proof['roots'] if r.get('finalProbePath') == str(binary)]
     need(len(roots) == 1 and roots[0].get('loaderExecuted') is True and roots[0].get('classification') == 'LOADER_LIST_RESOLUTION_ONLY', 'ACTUAL_CLAM_LOADER_ROOT')
     for row in roots[0].get('namedLibraries', []):
-        need(mapped_library(Path(row['path']), CURRENT_INDEX)['sha256'] == row['sha256'], 'CLAM_LOADER_BYTES_CHANGED')
+        update = BASE_LIBRARY_UPDATES.get(row['path'])
+        if update:
+            need(row['sha256'] == update['historicalSha256'], 'CLAM_LOADER_BASE_UPDATE_HISTORY')
+        need(mapped_library(Path(row['path']), CURRENT_INDEX)['sha256'] ==
+             (update['currentSha256'] if update else row['sha256']), 'CLAM_LOADER_BYTES_CHANGED')
     return {'binary': str(binary), 'actualNativeReceiptSha256': pins()['nativeReceipt']['sha256'],
             'priorCommandLog': roots[0]['commandLog'], 'newPrefixPrivateLibraries': sorted(r['path'] for r in roots[0]['namedLibraries'] if r['path'].startswith(str(LIB)+'/')),
             'priorActualLoaderReused': True, 'loaderReexecuted': False}
@@ -1268,8 +1288,42 @@ def execute(joint_sha, pin_sha, budget_sha, prep_sha, phase, args, *, approved_l
 
 
 
+def base_update_verifier():
+    need(TARGET_BINDING['kind'] == 'OFFLINE_SCANNER_TARGET_V3', 'BASE_UPDATE_TARGET_KIND')
+    pin = TARGET_BINDING['baseUpdateVerifier']
+    need(pin == {'path': str(HERE/'prepare_instance.py'), 'sha256': BASE_UPDATE_VERIFIER_SHA},
+         'EXACT_BASE_UPDATE_VERIFIER')
+    path = Path(pin['path']); info = file_info(path, 65536)
+    need(info['sha256'] == BASE_UPDATE_VERIFIER_SHA, 'BASE_UPDATE_VERIFIER_HASH')
+    with os.fdopen(os.open(path, os.O_RDONLY | os.O_NOFOLLOW), 'rb') as stream:
+        raw = stream.read(65537)
+    need(len(raw) == info['bytes'] and sha(raw) == info['sha256'], 'BASE_UPDATE_VERIFIER_READ_CHANGED')
+    verifier = types.ModuleType('scanner_base_update_reference'); verifier.__file__ = str(path)
+    exec(compile(raw, str(path), 'exec'), verifier.__dict__)
+    return verifier, info
+
+
+def admit_base_library_update():
+    """Reuse the exact reviewed package exception; no general hash override."""
+    refs = TARGET_BINDING.get('baseUpdate')
+    if refs is None:
+        return {}
+    verifier, info = base_update_verifier()
+    updates, evidence = verifier.base_update(refs, NATIVE_LIBRARIES)
+    # The shared verifier checks historical pins, aliases and installed package;
+    # current bytes and metadata are read here before any native command.
+    for path_text, row in updates.items():
+        actual = file_info(Path(path_text), row['bytes'], mode=0o644, owner=0, single_link=False)
+        need(actual['bytes'] == row['bytes'] and actual['sha256'] == row['currentSha256'] and
+             Path(path_text).stat().st_gid == 0, 'CURRENT_BASE_LIBRARY_METADATA')
+    REPORT['baseUpdateApplicability'] = {'verifier': info, 'sources': refs, **evidence,
+        'currentLibraryBytesVerified': True, 'historicalNativeProofPreserved': True}
+    return updates
+
+
 def native_proof():
-    global NATIVE_LIBRARIES
+    global NATIVE_LIBRARIES, BASE_LIBRARY_UPDATES
+    BASE_LIBRARY_UPDATES = {}
     b = pins(); dependency_success(); proof, info = read_json(NATIVE_RESULT, b['nativeReceipt']['sha256'], 4*1024**2)
     need(proof.get('status') == 'TEN_FINAL_TARGET_ELF_PROBES_VERIFIED_NOT_STARTED' and
          proof.get('bootId') == historical_boot() and proof.get('applicationAssemblyReceiptSha256') == APP_RECEIPT_SHA and
@@ -1285,6 +1339,7 @@ def native_proof():
          len({r.get('path') for r in rows}) == len(rows), 'NATIVE_LIBRARY_SET')
     NATIVE_LIBRARIES = {r['path']: r for r in rows}
     need(NATIVE_LIBRARIES.get(str(LOADER), {}).get('sha256') == LOADER_SHA, 'NATIVE_LOADER_PIN')
+    BASE_LIBRARY_UPDATES = admit_base_library_update()
     REPORT['nativeReceipt'] = info
     return proof
 
@@ -1442,7 +1497,13 @@ def mapped_library(path, index):
     else:
         need(path == EXE, 'MAPPED_RUNTIME_NOT_CLAMD');owner = UID
     info = file_info(path, owner=owner, single_link=(owner != 0))
-    need(info['sha256'] == row['sha256'] and info['bytes'] == row['bytes'], 'MAPPED_NATIVE_PROOF_BYTES')
+    update = BASE_LIBRARY_UPDATES.get(key)
+    if update:
+        s = path.stat()
+        need(owner == 0 and row['sha256'] == update['historicalSha256'] and
+             s.st_gid == 0 and stat.S_IMODE(s.st_mode) == 0o644, 'MAPPED_BASE_UPDATE_METADATA')
+    need(info['sha256'] == (update['currentSha256'] if update else row['sha256']) and
+         info['bytes'] == (update['bytes'] if update else row['bytes']), 'MAPPED_NATIVE_PROOF_BYTES')
     return {**info, 'delivery': row['delivery'], **({'packages': row['packages']} if owner == 0 else {})}
 
 

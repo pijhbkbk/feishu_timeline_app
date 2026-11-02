@@ -263,8 +263,9 @@ def current_recovery_services(m,plan,base,value):
     local='materialPath' in scanner
     source_key='materialPath' if local else 'refreshPath'
     need(set(scanner)=={'handoff','root','run',source_key} and
-         scanner['root']=='/home/recovery/offline-scanner-healthy-20261102-r01' and
-         scanner['run']=='newboot-healthy-scanner-20261102-r01' and
+         (scanner['root'], scanner['run']) in {
+             ('/home/recovery/offline-scanner-healthy-20261102-r01', 'newboot-healthy-scanner-20261102-r01'),
+             ('/home/recovery/offline-scanner-healthy-20261102-r02', 'newboot-healthy-scanner-20261102-r02')} and
          (scanner[source_key]==scanner['root']+'/scanner-db/IMPORT-RECEIPT.json' if local else
           re.fullmatch(r'/home/recovery/offline-signatures-20261102-r[0-9]{2}/result.json',scanner[source_key])),
          'RECOVERY_SCANNER_SCOPE')

@@ -76,6 +76,66 @@ class TargetBindingTests(unittest.TestCase):
                     {'pid':123,'startTicks':123,'uid':0},{'pid':123,'uid':1100}):
             with self.assertRaises(RuntimeError):m.validate_owner(row)
 
+class BaseLibraryUpdateTests(unittest.TestCase):
+    def test_opt_in_is_paired_v3_and_exact_verifier_only(self):
+        value=target();value.update(kind='OFFLINE_SCANNER_TARGET_V3',historicalEvidenceBootId=BOOT,
+            signatureMaterialManifest={'path':str(INPUT/'local-sources.json'),'sha256':D},
+            baseUpdateVerifier={'path':str(INPUT/'prepare_instance.py'),'sha256':m.BASE_UPDATE_VERIFIER_SHA},
+            baseUpdate={k:{'path':'/home/recovery/proof/'+k,'sha256':D,'bytes':1} for k in ('result','metadata','analysis')})
+        with patch.object(m,'HERE',INPUT):
+            m.validate_target(value)
+            for key in ('baseUpdate','baseUpdateVerifier'):
+                changed=copy.deepcopy(value);del changed[key]
+                with self.assertRaises(RuntimeError):m.validate_target(changed)
+            changed=copy.deepcopy(value);changed['baseUpdateVerifier']['sha256']=D
+            with self.assertRaisesRegex(RuntimeError,'EXACT_BASE_UPDATE_VERIFIER'):m.validate_target(changed)
+            changed=copy.deepcopy(value);changed['kind']='OFFLINE_SCANNER_TARGET_V2'
+            changed['signatureRefreshReceipt']=changed.pop('signatureMaterialManifest')
+            with self.assertRaisesRegex(RuntimeError,'TARGET_BINDING_SCHEMA'):m.validate_target(changed)
+
+    def test_absent_opt_in_never_loads_reference(self):
+        with patch.object(m,'TARGET_BINDING',target()),patch.object(m,'base_update_verifier',side_effect=AssertionError('not opted in')):
+            self.assertEqual(m.admit_base_library_update(),{})
+
+    def test_verifier_uses_exact_real_source_bytes(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td).resolve();p=root/'prepare_instance.py'
+            p.write_bytes(SOURCE.with_name('prepare_instance.py').read_bytes());p.chmod(0o600)
+            real=m.file_info
+            with patch.object(m,'HERE',root),patch.object(m,'TARGET_BINDING',{'kind':'OFFLINE_SCANNER_TARGET_V3',
+                 'baseUpdateVerifier':{'path':str(p),'sha256':m.BASE_UPDATE_VERIFIER_SHA}}),                 patch.object(m,'file_info',side_effect=lambda *a,**kw:real(*a,**{'owner':os.getuid(),**kw})):
+                self.assertTrue(callable(m.base_update_verifier()[0].base_update))
+                p.write_bytes(p.read_bytes()+b'\n# changed')
+                with self.assertRaisesRegex(RuntimeError,'BASE_UPDATE_VERIFIER_HASH'):m.base_update_verifier()
+
+    def test_current_mapping_rejects_no_opt_in_other_library_and_metadata(self):
+        p=Path('/usr/lib/aarch64-linux-gnu/libbrotlidec.so.1.1.0')
+        row={'sha256':'1'*64,'bytes':10,'delivery':'exact-122-base','packages':['libbrotli1:arm64']}
+        update={'historicalSha256':row['sha256'],'currentSha256':'2'*64,'bytes':11}
+        info={'path':str(p),'sha256':'2'*64,'bytes':11}
+        with patch.object(m,'LIB',Path('/home/recovery/lib')),patch.object(m,'canonical'),             patch.object(m,'NATIVE_LIBRARIES',{str(p):row}),patch.object(m,'BASE_LIBRARY_UPDATES',{}),             patch.object(m,'file_info',return_value=info),patch.object(Path,'stat',return_value=types.SimpleNamespace(st_gid=0,st_mode=0o644)):
+            with self.assertRaisesRegex(RuntimeError,'MAPPED_NATIVE_PROOF_BYTES'):m.mapped_library(p,{})
+            m.BASE_LIBRARY_UPDATES[str(p)]=update
+            self.assertEqual(m.mapped_library(p,{})['sha256'],'2'*64)
+            m.BASE_LIBRARY_UPDATES.clear();m.BASE_LIBRARY_UPDATES[str(p)+'-unrelated']=update
+            with self.assertRaisesRegex(RuntimeError,'MAPPED_NATIVE_PROOF_BYTES'):m.mapped_library(p,{})
+            m.BASE_LIBRARY_UPDATES[str(p)]=update
+            with patch.object(Path,'stat',return_value=types.SimpleNamespace(st_gid=1100,st_mode=0o644)):
+                with self.assertRaisesRegex(RuntimeError,'MAPPED_BASE_UPDATE_METADATA'):m.mapped_library(p,{})
+
+    def test_loader_keeps_old_proof_but_compares_admitted_current_hash(self):
+        binary=Path('/home/recovery/freshclam');path='/usr/lib/aarch64-linux-gnu/libbrotlidec.so.1.1.0'
+        row={'path':path,'sha256':'1'*64}
+        proof={'roots':[{'finalProbePath':str(binary),'loaderExecuted':True,'classification':'LOADER_LIST_RESOLUTION_ONLY',
+                        'namedLibraries':[row],'commandLog':{'sha256':D}}]}
+        updates={path:{'historicalSha256':'1'*64,'currentSha256':'2'*64,'bytes':11}}
+        with patch.object(m,'native_proof',return_value=proof),patch.object(m,'BASE_LIBRARY_UPDATES',updates),             patch.object(m,'mapped_library',return_value={'sha256':'2'*64}),patch.object(m,'pins',return_value={'nativeReceipt':{'sha256':D}}):
+            self.assertTrue(m.loader_run('freshclam',binary)['priorActualLoaderReused'])
+            self.assertEqual(row['sha256'],'1'*64)
+            updates[path]['historicalSha256']='3'*64
+            with self.assertRaisesRegex(RuntimeError,'CLAM_LOADER_BASE_UPDATE_HISTORY'):m.loader_run('freshclam',binary)
+
+
 class PhaseTests(unittest.TestCase):
     def setUp(self):
         self.patches=[]

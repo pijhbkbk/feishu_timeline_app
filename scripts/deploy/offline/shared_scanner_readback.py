@@ -12,8 +12,8 @@ import re
 import sys
 import types
 
-SOURCE = Path('/home/recovery/input-scanner-healthy-r30-r04/install_scanner.py')
-SOURCE_SHA = '2cfe22db63f62abc20067bf498ca34a45e2b0e83391cc6a42ea836a4e8d19f8c'
+SOURCE = Path('/home/recovery/input-scanner-20261102-r02/install_scanner.py')
+SOURCE_SHA = '9dfd5565938c405e3915945e396c24b1b940cbed6202cdbaa65196b051d2d010'
 
 
 def observe(args):
@@ -38,7 +38,7 @@ def observe(args):
     m.data_baseline();m.fixed_owners();m.directory(m.SCANNER);m.directory(m.EVENTS);m.directory(m.LOGS)
     m.OUT=m.EVENTS/('verify-'+args.event);m.OUT.mkdir(mode=0o700)
     try:
-        m.budget();m.prepared();index,checked=m.package();m.CURRENT_INDEX=index;m.resources()
+        m.budget(approved_limit=args.approved_host_limit_bytes);m.prepared();index,checked=m.package();m.CURRENT_INDEX=index;m.resources()
         m.verify(args.run,args.start_sha256,index)
     except BaseException as error:
         m.REPORT.update(status='SHARED_SCANNER_READBACK_FAILED_NO_SERVICE_ACTION',errorType=type(error).__name__,
@@ -51,6 +51,7 @@ def observe(args):
 
 if __name__=='__main__':
     parser=argparse.ArgumentParser();parser.add_argument('--execute',action='store_true')
+    parser.add_argument('--approved-host-limit-bytes',type=int,default=24*1024**3)
     for name in ('target-sha256','content-sha256','budget-sha256','preparation-sha256','start-sha256','run','event'):
         parser.add_argument('--'+name,required=True)
     args=parser.parse_args()

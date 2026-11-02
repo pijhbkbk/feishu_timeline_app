@@ -100,6 +100,9 @@ class DeliveryTests(unittest.TestCase):
     def test_save_identity_cannot_retag_previous_delta(self):
         self.check_identity_cannot_retag_previous_delta(m.SAVE_IDENTITY,'SAVE_INPUTS')
 
+    def test_menu_identity_cannot_retag_previous_delta(self):
+        self.check_identity_cannot_retag_previous_delta(m.MENU_IDENTITY,'MENU_INPUTS')
+
     def check_identity_cannot_retag_previous_delta(self,new_identity,pins_name):
         names=[*m.JOINT_INPUTS,'INSTALL.md','operations/delivery_check.py']
         rows=[];payloads={}

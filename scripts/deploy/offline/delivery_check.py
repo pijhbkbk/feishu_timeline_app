@@ -61,6 +61,18 @@ SAVE_INPUTS = {
     'inputs/composite-application-manifest.json': 'ba756d75e325e9c40c324b395670e87c60f082e9807f7deef1fb7adefdb8313e',
 }
 
+MENU_IDENTITY = {
+    'sourceCommit':'d9d00d26729e321d2904ecc1c5b5f22f1d79958c',
+    'sourceTree':'8ac5b1de6101f6e96bf1608b89d58ccf23fe3d38',
+    'release':'truck-toolbar-menu-d9d00d26729e-r02','buildTime':'2026-11-02T01:07:31Z',
+}
+MENU_INPUTS = {
+    **JOINT_INPUTS,
+    'delta/manifest.json':'ba0d4c52979ecabd3d9eee0546e930df04daddabc62a76fea56d7321ef4fe65a',
+    'delta/application-delta.tar.gz':'9b438e13bb85739d132d94265b1f8bb40e73c8e5b806b5f1267d8c8a0ad645ad',
+    'inputs/composite-application-manifest.json':'84c5472ea24bc0cbdb5893a26d9269ac0b75587f28a92817ee05523dc5c7ab88',
+}
+
 
 def need(ok, code):
     if not ok:
@@ -121,7 +133,8 @@ def check(root, manifest_sha):
         identity = manifest.get('applicationIdentity')
         inputs = (JOINT_INPUTS if identity == JOINT_IDENTITY else LAYOUT_INPUTS if identity == LAYOUT_IDENTITY
                   else WORKBOOK_INPUTS if identity == WORKBOOK_IDENTITY
-                  else SAVE_INPUTS if identity == SAVE_IDENTITY else None)
+                  else SAVE_INPUTS if identity == SAVE_IDENTITY
+                  else MENU_INPUTS if identity == MENU_IDENTITY else None)
         need(inputs is not None and
              manifest.get('requiredBaseDeliveryManifestSha256') == JOINT_BASE_DELIVERY and
              manifest.get('standalone') is False, 'JOINT_MANIFEST_CONTRACT')
