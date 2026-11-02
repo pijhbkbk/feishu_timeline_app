@@ -45,7 +45,7 @@ for (const entry of ['es', 'cjs']) {
   function setup({ guard = true, rows, columns, domain, generalRow } = {}) {
     columns ??= [{ key: 'id', label: '只读', width: 100 }, { key: 'note', label: '备注', width: 100 }];
     rows ??= [{ id: 'record', values: ['stable', 'old'], editable: [false, true] }];
-    const model = new modelModule.BusinessSheetModel(rows, columns), errors = [], writes = [], plans = [];
+    const model = new modelModule.BusinessSheetModel(rows, columns), errors = [], writes = [], plans = [], undoEntries = [];
     const injector = new core.Injector(), commands = new core.CommandService(injector, { warn() {}, debug() {} }, { getConfig() {} });
     commands.registerCommand(sheets.SetRangeValuesMutation);
     commands.onCommandExecuted(command => {
@@ -65,7 +65,7 @@ for (const entry of ['es', 'cjs']) {
     const instance = {getUnit: id => id==='book'?workbook:null};injector.add([core.IUniverInstanceService,{useValue:instance}]);
     const accessor = {get: token=>injector.get(token)};
     const formulaData = { getSheetFormulaData: () => ({}), getArrayFormulaCellData: () => ({}) };
-    const service = { _clipboardHooks: [], _notifyClipboardHook() {}, _commandService: commands, _logService: { log(_a, _b, plan) { plans.push(plan); } }, _undoRedoService: { pushUndoRedo() {} },
+    const service = { _clipboardHooks: [], _notifyClipboardHook() {}, _commandService: commands, _logService: { log(_a, _b, plan) { plans.push(plan); } }, _undoRedoService: { pushUndoRedo(entry) { undoEntries.push(entry); } },
       _getSetSelectionOperation: () => null, _getPastedRangeAutoHeightMutation: () => null, updatePasteOptionsCache() {}, setShowMenu() {} };
     actual.addHook.call(service, { id: constants.DEFAULT_PASTE, priority: 0, onPasteCells(from, to, data) {
       const result = actual.getSetCellDataMutations(to, from, data, accessor); return { redos: [result.redo], undos: [result.undo] };
@@ -80,9 +80,9 @@ for (const entry of ['es', 'cjs']) {
     let input, range, pasteType, external;
     commands.registerCommand({ id: 'univer.command.paste', type: core.CommandType.COMMAND, handler: () => actual.paste.call(service, { cellMatrix: new core.ObjectMatrix(input) },
       { unitId: 'book', subUnitId: 'sheet', pastedRange: range }, pasteType, external ? undefined : { unitId: 'source', subUnitId: 'sheet', range: { rows: [0], cols: [0] }, copyType: 'COPY' }) });
-    return { model, errors, writes, plans, service, worksheet,
+    return { model, errors, writes, plans, undoEntries, service, worksheet,
       paste: (data, target = { rows: [1], cols: [1] }, type = constants.DEFAULT_PASTE, fromExternal = false) => { external = fromExternal; input = data; range = target; pasteType = type; return commands.executeCommand('univer.command.paste'); },
-      dispose() { commands.dispose(); workbook.dispose(); injector.dispose(); },
+      dispose() { if (!writes.length) assert.equal(undoEntries.length,0,'rejected paste must not add SDK undo history'); commands.dispose(); workbook.dispose(); injector.dispose(); },
     };
   }
   test(`${entry}: old per-mutation guard leaves the cached value before rejecting the genuine formula mutation`, async () => {
@@ -95,8 +95,8 @@ for (const entry of ['es', 'cjs']) {
   test(`${entry}: explicit paste-values accepts the cached scalar without a formula`, async () => {
     const s=setup();try { assert.equal(await s.paste({0:{0:{v:42,t:2,f:'=40+2'}}},undefined,constants.SPECIAL_PASTE_VALUE),true);assert.equal(s.model.value(1,1),'42');assert.ok(s.writes.every(p=>!p.cellValue[1][1]?.f)); } finally {s.dispose();}
   });
-  for (const cell of [{v:'中文'}, {v:'0010',t:4}, {v:0,t:2}, {v:''}, {v:'actual',p:{body:{dataStream:'discarded\r\n'}}}, {v:'rich',p:{body:{dataStream:'rich\r\n',textRuns:[{st:0,ed:2,ts:{bl:1}}]}}}]) test(`${entry}: accepted value follows the actual value factory ${JSON.stringify(cell)}`, async()=>{
-    const s=setup();try { assert.equal(await s.paste({0:{0:cell}}),true);assert.equal(s.model.value(1,1),String(cell.v)||null); } finally {s.dispose();}
+  for (const cell of [{v:'中文'}, {v:'0010',t:4}, {v:0,t:2}, {v:false,t:3}, {v:null}, {v:' '}, {v:''}, {v:'actual',p:{body:{dataStream:'discarded\r\n'}}}, {v:'rich',p:{body:{dataStream:'rich\r\n',textRuns:[{st:0,ed:2,ts:{bl:1}}]}}}]) test(`${entry}: accepted value follows the actual value factory ${JSON.stringify(cell)}`, async()=>{
+    const s=setup();try { assert.equal(await s.paste({0:{0:cell}}),true);assert.equal(s.model.value(1,1),cell.v == null ? null : String(cell.v)||null); } finally {s.dispose();}
   });
   test(`${entry}: mixed readonly range is rejected before its editable part`, async()=>{
     const s=setup();try { assert.equal(await s.paste({0:{0:{v:'changed ID'},1:{v:'new note'}}},{rows:[1],cols:[0,1]}),false);assert.equal(s.writes.length,0);assert.equal(s.model.value(1,1),'old'); } finally {s.dispose();}
@@ -106,10 +106,18 @@ for (const entry of ['es', 'cjs']) {
   });
   for (const [name,data,range] of [
     ['merged source',{0:{0:{v:'merge',colSpan:2}}},{rows:[1],cols:[1]}],
-    ['formula later in range',{0:{0:{v:'new'},1:{v:2,f:'=1+1'}}},{rows:[1],cols:[0,1]}],
+    ['formula without a cached value',{0:{0:{f:'=1+1'}}},{rows:[1],cols:[1]}],
     ['out of bounds',{0:{0:{v:'new'}}},{rows:[2],cols:[1]}],
   ]) test(`${entry}: ${name} leaves every cell unchanged`,async()=>{
     const s=setup();try{assert.equal(await s.paste(data,range),false);assert.equal(s.writes.length,0);assert.equal(s.worksheet.getCellRaw(1,1).v,'old');}finally{s.dispose();}
+  });
+  test(`${entry}: only the final writable cell is illegal and the entire paste is rejected`,async()=>{
+    const rows=[{id:'record',values:['old-left','old-right'],editable:[true,true]}];
+    const s=setup({rows});try{
+      assert.equal(await s.paste({0:{0:{v:'legal new'},1:{v:2,f:'=1+1'}}},{rows:[1],cols:[0,1]}),false);
+      assert.equal(s.writes.length,0);assert.equal(s.undoEntries.length,0);assert.match(s.errors[0],/不支持公式/);
+      assert.equal(s.worksheet.getCellRaw(1,0).v,'old-left');assert.equal(s.worksheet.getCellRaw(1,1).v,'old-right');
+    }finally{s.dispose();}
   });
   test(`${entry}: filtered discrete rows map to stable record identities`,async()=>{
     const rows=Array.from({length:3},(_,i)=>({id:`row-${i}`,values:['stable','old'],editable:[false,true]}));
