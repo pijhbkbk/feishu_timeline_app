@@ -260,15 +260,22 @@ def current_recovery_services(m,plan,base,value):
              'RECOVERY_DATA_LIVE_OWNER')
         shared.append((owner['pid'],str(owner['startTicks']),uid))
     scanner=r['scanner']
-    need(set(scanner)=={'handoff','root','run','refreshPath'} and
+    local='materialPath' in scanner
+    source_key='materialPath' if local else 'refreshPath'
+    need(set(scanner)=={'handoff','root','run',source_key} and
          scanner['root']=='/home/recovery/offline-scanner-healthy-20261102-r01' and
          scanner['run']=='newboot-healthy-scanner-20261102-r01' and
-         scanner['refreshPath'].startswith('/home/recovery/offline-signatures-20261102-') and
-         re.fullmatch(r'/home/recovery/offline-signatures-20261102-r[0-9]{2}/result.json',scanner['refreshPath']),
+         (scanner[source_key]==scanner['root']+'/scanner-db/IMPORT-RECEIPT.json' if local else
+          re.fullmatch(r'/home/recovery/offline-signatures-20261102-r[0-9]{2}/result.json',scanner[source_key])),
          'RECOVERY_SCANNER_SCOPE')
     handoff=load_module('scanner-handoff.py');handoff.NEW_ROOT=Path(scanner['root'])
-    handoff.CURRENT_RUN=scanner['run'];handoff.REFRESH_PATH=Path(scanner['refreshPath'])
+    handoff.CURRENT_RUN=scanner['run']
+    if not local:handoff.REFRESH_PATH=Path(scanner[source_key])
     proof=handoff.load(m,plan,scanner['handoff'])
+    proof_key='currentLocalImport' if local else 'currentRefresh'
+    other_key='currentRefresh' if local else 'currentLocalImport'
+    need(proof.get('applicability',{}).get(proof_key,{}).get('path')==scanner[source_key] and
+         other_key not in proof['applicability'],'RECOVERY_SCANNER_SOURCE_KIND')
     owner=proof['start']['process'];shared.append((owner['pid'],str(owner['startTicks']),owner['uid']))
     proxy=recovery_ref(r['proxy'],directory/'proxy-start.json');owner=proxy['process']
     need(proxy.get('status')=='ORIGINAL_PROXY_STARTED_NEW_BOOT' and proxy.get('bootId')==BOOT and

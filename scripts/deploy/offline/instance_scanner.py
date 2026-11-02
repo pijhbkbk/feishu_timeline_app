@@ -71,9 +71,41 @@ def compare(old,five,start,verify,identity,boot,mode,old_config,new_config,now_e
 
 def verify_refreshed(proofs,start,verify,identity,boot,now_epoch):
  refresh,client=proofs['refresh'],proofs['client']
- require(refresh.get('status')=='OFFICIAL_SIGNATURE_REFRESH_VERIFIED_SCANNER_NOT_STARTED' and refresh.get('bootId')==boot and refresh.get('identity')==identity,'ACTUAL_REFRESH')
+ if proofs.get('sourceKind')=='OFFICIAL_CVD_LOCAL_SOURCES_V1':
+  require(refresh.get('status')=='OFFLINE_SIGNATURE_IMPORT_VERIFIED_SCANNER_NOT_STARTED' and
+   refresh.get('sourceKind')=='OFFICIAL_CVD_LOCAL_SOURCES_V1' and refresh.get('currentBootId')==boot and
+   refresh.get('identity')==identity and refresh.get('networkUsed') is False and
+   refresh.get('freshclamExecuted') is False and refresh.get('clamdStarted') is False and
+   refresh.get('originalRefreshOutcome')=='FAILED_PRESERVED','ACTUAL_LOCAL_IMPORT')
+  require(refresh.get('target')==str(NEW_ROOT/'scanner-db') and
+   proofs['refreshRef']['path']==str(NEW_ROOT/'scanner-db/IMPORT-RECEIPT.json'),'EXACT_LOCAL_IMPORT')
+  require(start['packageBinding'].get('kind')==verify['packageBinding'].get('kind')=='OFFLINE_SCANNER_TARGET_V3' and
+   start['packageBinding'].get('signatureMaterialManifest')==verify['packageBinding'].get('signatureMaterialManifest')==refresh.get('signatureMaterialManifest'),
+   'LOCAL_MANIFEST_PHASE_REFERENCE')
+  for receipt in (start,verify):
+   require(all(receipt.get('signatureImportReceipt',{}).get(k)==proofs['refreshRef'][k] for k in ('path','sha256')),
+    'ACTUAL_LOCAL_IMPORT_PHASE_REFERENCE')
+   loaded=receipt['runtime'].get('localSetLoad',{})
+   require(loaded.get('databaseDirectory')==str(NEW_ROOT/'scanner-db') and
+    loaded.get('databaseFiles')==['bytecode.cvd','daily.cvd','main.cvd'] and
+    type(loaded.get('loadedSignatures')) is int and loaded['loadedSignatures']>0 and
+    loaded.get('headerCountEqualityAsserted') is False and
+    loaded.get('bytecodeTrustSignedObserved') is True and
+    loaded.get('engineFunctionalityLevel')==216 and
+    loaded.get('requiredFunctionalityLevels')=={r['name']:r.get('requiredFunctionalityLevel') for r in refresh['signatures']} and
+    all(type(level) is int and 0<level<=216 for level in loaded['requiredFunctionalityLevels'].values()) and
+    loaded.get('daemonLogPrefix',{}).get('path')==str(NEW_ROOT/'private/scanner/clamd.log') and
+    re.fullmatch('[a-f0-9]{64}',loaded['daemonLogPrefix'].get('prefixSha256','')),
+    'ACTUAL_LOCAL_SET_LOAD')
+  require(len(refresh.get('signatures',[]))==3 and all(r.get('sigtoolExitCode')==0 and
+   re.fullmatch('[a-f0-9]{64}',r.get('verificationLogSha256','')) and
+   type(r.get('requiredFunctionalityLevel')) is int and r['requiredFunctionalityLevel']>0 for r in refresh['signatures']),
+   'LOCAL_THREE_SIGTOOL_VERIFICATIONS')
+ else:
+  require(proofs.get('sourceKind') is None,'SIGNATURE_SOURCE_KIND')
+  require(refresh.get('status')=='OFFICIAL_SIGNATURE_REFRESH_VERIFIED_SCANNER_NOT_STARTED' and refresh.get('bootId')==boot and refresh.get('identity')==identity,'ACTUAL_REFRESH')
+  require(start['packageBinding'].get('signatureRefreshReceipt')==verify['packageBinding'].get('signatureRefreshReceipt')==proofs['refreshRef'],'REFRESH_PHASE_REFERENCE')
  require(sig_projection(refresh['signatures'])==sig_projection(start['runtime']['signatures'])==sig_projection(verify['runtime']['signatures']),'REFRESH_START_VERIFY_CVD')
- require(start['packageBinding'].get('signatureRefreshReceipt')==verify['packageBinding'].get('signatureRefreshReceipt')==proofs['refreshRef'],'REFRESH_PHASE_REFERENCE')
  require(client.get('status')=='TWOCASE_REAL_CLIENT_PASS' and client.get('identity')==identity and all(client.get('compiledIdentity',{}).get(k)==v for k,v in identity.items()) and client.get('currentBootId')==boot,'ACTUAL_CURRENT_CLIENT')
  require(client.get('scannerStartReceipt')==proofs['startRef'] and client.get('scannerProcess')==start['process'],'CURRENT_CLIENT_SCANNER_OWNER')
  require(client.get('endpoint')=={'host':'127.0.0.1','port':3310} and client.get('databaseOrHttpAccess') is False and client.get('serviceControl') is False and client.get('signatureMaxAgeHours')==48 and client.get('perScanTimeoutMs')==15000,'CURRENT_CLIENT_SCOPE')
@@ -112,7 +144,7 @@ def load(m,plan,reference):
  mode="healthy";pin=reference["sha256"]
  require(mode in ('healthy','rollback') and re.fullmatch('[a-f0-9]{64}',pin or ''),'EXTERNAL_BINDING')
  binding=m.pinned(Path(reference['path']),pin,16384)
- require(binding.get('kind')=='CURRENT_INSTANCE_SCANNER_HANDOFF_V2' and binding.get('identity')==plan['identity'] and binding.get('mode')==mode and binding.get('currentBootId')==m.BOOT,'BINDING_IDENTITY')
+ require(binding.get('kind') in ('CURRENT_INSTANCE_SCANNER_HANDOFF_V2','CURRENT_INSTANCE_SCANNER_HANDOFF_V3') and binding.get('identity')==plan['identity'] and binding.get('mode')==mode and binding.get('currentBootId')==m.BOOT,'BINDING_IDENTITY')
  root=NEW_ROOT if mode=='healthy' else OLD_ROOT;run=CURRENT_RUN if mode=='healthy' else 'rollback-after-healthy-r30-r01'
  expected_start=root/'scanner/events'/('start-'+run)/'receipt.json'
  expected_verify=Path(binding['verify']['path'])
@@ -132,10 +164,14 @@ def load(m,plan,reference):
   require(start.get('kind')==verify.get('kind')=='OFFLINE_SCANNER_HEALTHY_FIRST_START' and start.get('scannerTarget')==verify.get('scannerTarget')==str(root),'HEALTHY_TARGET')
   require(start['packageBinding']==verify['packageBinding'] and start['packagePinFileSha256']==verify['packagePinFileSha256'] and start['jointDeliveryBinding']==verify['jointDeliveryBinding'] and start['preparationSha256']==verify['preparationSha256'] and start['configSha256']==verify['configSha256']==new_meta['sha256'],'PHASE_BINDING')
  else:require(start.get('kind')==verify.get('kind')=='FINAL_JOINT_SCANNER_LOCALE_DATA_CONTROL' and start['packageBinding']==verify['packageBinding']==old['packageBinding'],'ROLLBACK_BINDING')
- require(binding['refresh']['path']==str(REFRESH_PATH) and binding['client']['path']==str(NEW_ROOT/'client-two-r01/result.json'),'EXACT_CURRENT_PROOF_PATHS')
- refreshed={'refresh':m.pinned(REFRESH_PATH,binding['refresh']['sha256'],2*1024**2),'client':m.pinned(NEW_ROOT/'client-two-r01/result.json',binding['client']['sha256'],2*1024**2),'refreshRef':binding['refresh'],'startRef':binding['start']}
+ local=binding['kind']=='CURRENT_INSTANCE_SCANNER_HANDOFF_V3'
+ key='material' if local else 'refresh';source_path=NEW_ROOT/'scanner-db/IMPORT-RECEIPT.json' if local else REFRESH_PATH
+ if local:require(set(binding)=={'kind','identity','mode','currentBootId','start','verify',key,'client'},'HANDOFF_FIELDS')
+ require(binding[key]['path']==str(source_path) and binding['client']['path']==str(NEW_ROOT/'client-two-r01/result.json'),'EXACT_CURRENT_PROOF_PATHS')
+ refreshed={'refresh':m.pinned(source_path,binding[key]['sha256'],2*1024**2),'client':m.pinned(NEW_ROOT/'client-two-r01/result.json',binding['client']['sha256'],2*1024**2),'refreshRef':binding[key],'startRef':binding['start']}
+ if local:refreshed['sourceKind']='OFFICIAL_CVD_LOCAL_SOURCES_V1'
  applicability=compare(old,five,start,verify,plan['identity'],m.BOOT,mode,old_raw,new_raw,time.time(),refreshed)
- applicability.update(currentRefresh=binding['refresh'],currentTwoCases=binding['client'])
+ applicability.update({('currentLocalImport' if local else 'currentRefresh'):binding[key],'currentTwoCases':binding['client']})
  manifest=m.pinned(m.TARGET/'application-manifest.json','c6b3f29ca19eca0111e1127d1c4e07e1f4d8d2b142893ef8f0a1ca15056db8a2')
  for rel in ('apps/api/dist/modules/attachments/malware-scanner.service.js','apps/api/dist/modules/attachments/clamav-session.js','apps/api/dist/common/upload-security.constants.js','apps/api/dist/common/build-identity.generated.js'):
   row=manifest['entries'][rel];require(m.filehash(m.ART/rel,row['bytes'])==row['sha256'],'CURRENT_COMPILED_CLIENT')

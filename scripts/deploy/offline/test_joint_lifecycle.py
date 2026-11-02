@@ -390,7 +390,8 @@ class RecoveryServicesTests(unittest.TestCase):
         m.ctx['binding']={'runtimeRecovery':self.r}
         self.base=types.SimpleNamespace(PROXY=proxy_path,read=lambda *a:b'proxy',matches=lambda *a:True,
             listeners=lambda:[{'port':45464,'family':'tcp','address':'0100007F','inode':'77'}])
-        self.handoff=types.SimpleNamespace(load=Mock(return_value={'start':{'process':{'pid':444,'uid':1100,'startTicks':40}},'applicability':{'verified':True}}))
+        self.handoff=types.SimpleNamespace(load=Mock(return_value={'start':{'process':{'pid':444,'uid':1100,'startTicks':40}},
+            'applicability':{'verified':True,'currentRefresh':{'path':self.r['scanner']['refreshPath'],'sha256':'e'*64}}}))
     def tearDown(self):m.BOOT=self.boot;m.ctx.clear()
     def invoke(self, *, wrong_tick=False, socket_link='socket:[77]'):
         def reference(ref,expected,maximum=256*1024):
@@ -411,6 +412,15 @@ class RecoveryServicesTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError,'RECOVERY_ORIGINAL_POSTGRES'):self.invoke()
         self.pg['readback']['systemId']='7700459308674415750';self.rd['settings']['aof-load-truncated']='yes'
         with self.assertRaisesRegex(RuntimeError,'RECOVERY_ORIGINAL_REDIS'):self.invoke()
+    def test_local_material_is_only_the_current_scanner_import_receipt(self):
+        scanner=self.r['scanner'];del scanner['refreshPath']
+        scanner['materialPath']=scanner['root']+'/scanner-db/IMPORT-RECEIPT.json'
+        with self.assertRaisesRegex(RuntimeError,'RECOVERY_SCANNER_SOURCE_KIND'):self.invoke()
+        proof=self.handoff.load.return_value['applicability'];del proof['currentRefresh']
+        proof['currentLocalImport']={'path':scanner['materialPath'],'sha256':'f'*64}
+        self.assertEqual(self.invoke(),((111,'10',109),(222,'20',1100),(444,'40',1100)))
+        scanner['materialPath']='/home/recovery/unrelated/IMPORT-RECEIPT.json'
+        with self.assertRaisesRegex(RuntimeError,'RECOVERY_SCANNER_SCOPE'):self.invoke()
     def test_live_pid_reuse_or_wrong_socket_refuses_binding(self):
         with self.assertRaisesRegex(RuntimeError,'RECOVERY_DATA_LIVE_OWNER'):self.invoke(wrong_tick=True)
         with self.assertRaisesRegex(RuntimeError,'RECOVERY_PROXY_SOCKET_OWNER'):self.invoke(socket_link='socket:[foreign]')

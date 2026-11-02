@@ -56,6 +56,12 @@ class TargetBindingTests(unittest.TestCase):
             with self.subTest(value=value):
                 v=target();v['paths']['scanner']=value
                 with self.assertRaises(RuntimeError):m.validate_target(v)
+    def test_v3_has_explicit_material_manifest_not_a_successful_refresh(self):
+        value=target();value.update(kind='OFFLINE_SCANNER_TARGET_V3',historicalEvidenceBootId=BOOT,
+            signatureMaterialManifest={'path':'/home/recovery/input-scanner-test/local-sources.json','sha256':D})
+        m.validate_target(value)
+        value['signatureRefreshReceipt']=value['signatureMaterialManifest']
+        with self.assertRaisesRegex(RuntimeError,'TARGET_BINDING_SCHEMA'):m.validate_target(value)
     def test_wrong_identity_unknown_keys_and_invalid_pins_rejected(self):
         for mutate in (lambda v:v.update(identity={}), lambda v:v.update(approvedForExecution=True),
                        lambda v:v.update(nativeReceipt={'path':'/etc/passwd','sha256':D}),

@@ -184,11 +184,12 @@ def validate_target(value):
                 'runtimeAssemblySha256', 'runtimeManifestSha256', 'nativeReceipt', 'dependencyReceipt',
                 'dataServices', 'predecessor', 'dataBaselineSha256', 'dataSourceMetadataSha256',
                 'dataSourceOriginSha256', 'budgetPolicySha256'}
-    if isinstance(value, dict) and value.get('kind') == 'OFFLINE_SCANNER_TARGET_V2':
-        required |= {'historicalEvidenceBootId', 'signatureRefreshReceipt'}
+    if isinstance(value, dict) and value.get('kind') in ('OFFLINE_SCANNER_TARGET_V2','OFFLINE_SCANNER_TARGET_V3'):
+        source_key = 'signatureMaterialManifest' if value['kind']=='OFFLINE_SCANNER_TARGET_V3' else 'signatureRefreshReceipt'
+        required |= {'historicalEvidenceBootId', source_key}
         need(re.fullmatch(r'[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}', value.get('historicalEvidenceBootId','')) is not None, 'HISTORICAL_BOOT_FORMAT')
-        receipt_pin(value.get('signatureRefreshReceipt'))
-    need(isinstance(value, dict) and set(value) == required and value['kind'] in ('OFFLINE_SCANNER_TARGET_V1','OFFLINE_SCANNER_TARGET_V2')
+        receipt_pin(value.get(source_key))
+    need(isinstance(value, dict) and set(value) == required and value['kind'] in ('OFFLINE_SCANNER_TARGET_V1','OFFLINE_SCANNER_TARGET_V2','OFFLINE_SCANNER_TARGET_V3')
          and value['identity'] == IDENTITY, 'TARGET_BINDING_SCHEMA')
     need(isinstance(value['currentBootId'], str) and
          re.fullmatch(r'[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}', value['currentBootId']), 'BOOT_FORMAT')
@@ -221,9 +222,119 @@ def historical_boot():
     return TARGET_BINDING.get('historicalEvidenceBootId', BOOT)
 
 
+def signature_reference_key():
+    return 'signatureMaterialManifest' if TARGET_BINDING['kind']=='OFFLINE_SCANNER_TARGET_V3' else 'signatureRefreshReceipt'
+
+
+def cvd_header(path):
+    canonical(path);before=path.stat()
+    need(stat.S_ISREG(before.st_mode) and before.st_uid==UID and before.st_nlink==1 and
+         not before.st_mode & 0o022 and 512<before.st_size<=128*1024**2,'CVD_HEADER_FILE')
+    with os.fdopen(os.open(path,os.O_RDONLY|os.O_NOFOLLOW),'rb') as stream:
+        opened=os.fstat(stream.fileno())
+        need((opened.st_dev,opened.st_ino)==(before.st_dev,before.st_ino),'CVD_HEADER_OPEN_CHANGED')
+        fields=stream.read(512).decode('ascii').rstrip(' \x00\r\n').split(':')
+        after=os.fstat(stream.fileno())
+    need((after.st_size,after.st_mtime_ns,after.st_ctime_ns)==
+         (before.st_size,before.st_mtime_ns,before.st_ctime_ns),'CVD_HEADER_READ_CHANGED')
+    need(len(fields)==9 and fields[0]=='ClamAV-VDB','CVD_HEADER')
+    values={key:int(fields[index]) for key,index in
+            (('version',2),('signatures',3),('requiredFunctionalityLevel',4),('buildEpoch',8))}
+    need(all(value>0 for value in values.values()),'CVD_HEADER_VALUES')
+    return values
+
+
+def local_signature_sources():
+    """Declare existing official files; only import_signatures can verify the new set.
+
+    This branch never runs FreshClam or rewrites its failed receipt. The ordinary
+    import still verifies all three original files, copies them, and reads back
+    the exact set before the scanner may load it.
+    """
+    pin=TARGET_BINDING['signatureMaterialManifest']
+    value,meta=read_json(Path(pin['path']),pin['sha256'],65536)
+    need(set(value)=={'kind','status','identity','bootId','historicalRefresh','failedDownload',
+                      'files','bytecodeRemoteVersion'} and
+         value['kind']=='OFFICIAL_CVD_LOCAL_SOURCES_V1' and
+         value['status']=='SOURCES_DECLARED_NOT_VERIFIED' and value['identity']==IDENTITY and
+         value['bootId']==BOOT and value['bytecodeRemoteVersion'] is None,'LOCAL_CVD_SOURCE_MANIFEST')
+    for key in ('historicalRefresh','failedDownload'):receipt_pin(value[key])
+    old,_=read_json(Path(value['historicalRefresh']['path']),value['historicalRefresh']['sha256'],65536)
+    failed,_=read_json(Path(value['failedDownload']['path']),value['failedDownload']['sha256'],65536)
+    roots={}
+    for key,record in (('historicalRefresh',old),('failedDownload',failed)):
+        root=target_path(record.get('output'),True);roots[key]=root
+        need(root.name.startswith('offline-signatures-') and
+             value[key]['path']==str(root/'result.json') and
+             record.get('kind')=='OFFICIAL_CVD_REFRESH_ONCE_V1' and record.get('identity')==IDENTITY and
+             record.get('officialMirror')=='database.clamav.net' and record.get('maximumAttempts')==1 and
+             record.get('tlsVerificationDisabled') is False and record.get('servicesStarted') is False and
+             record.get('oldSignatureFilesChanged') is False and record.get('signatureMaxAgeHours')==48,
+             'LOCAL_CVD_OFFICIAL_ORIGIN')
+    commands=old.get('commands',[])
+    need(old.get('status')=='OFFICIAL_SIGNATURE_REFRESH_VERIFIED_SCANNER_NOT_STARTED' and
+         len(commands)==4 and {r.get('name') for r in commands}==
+         {'freshclam-once','verify-main','verify-daily','verify-bytecode'} and
+         all(r.get('exitCode')==0 and r.get('cleanup',{}).get('exited') is True and
+             r.get('forceKill') is False for r in commands),'LOCAL_CVD_PRIOR_COMPLETE_SUCCESS')
+    previous=old.get('signatures',[])
+    need(len(previous)==3 and {r.get('name') for r in previous}==set(CVD_PINS),'LOCAL_CVD_PRIOR_SET')
+    commands=failed.get('commands',[])
+    need(failed.get('status')=='FAILED_PRESERVED' and failed.get('bootId')==BOOT and
+         failed.get('errorCode')=='CHECK_UPDATE_COMMAND_FAILED' and len(commands)==1 and
+         commands[0].get('name')=='freshclam-once' and commands[0].get('exitCode')==5 and
+         commands[0].get('cleanup',{}).get('exited') is True and
+         commands[0]['cleanup'].get('remainingOwners')==[] and commands[0].get('forceKill') is False,
+         'LOCAL_CVD_FAILED_DOWNLOAD_PRESERVED')
+    log=commands[0]['log'];log_path=roots['failedDownload']/'logs/freshclam-once.log'
+    need(log.get('path')==str(log_path) and 0<log.get('bytes',0)<=1024**2,'LOCAL_CVD_DOWNLOAD_LOG')
+    info=file_info(log_path,1024**2,0o600)
+    need(all(info[k]==log[k] for k in ('bytes','sha256')),'LOCAL_CVD_DOWNLOAD_LOG_PIN')
+    raw=log_path.read_bytes()  # Private verbose text is never returned or printed.
+    need(len(raw)==info['bytes'] and sha(raw)==info['sha256'],'LOCAL_CVD_LOG_READ_CHANGED')
+    main_versions=re.findall(rb'^query_remote_database_version: main\.cvd version from DNS: ([0-9]+)$',raw,re.M)
+    daily_versions=re.findall(rb'^daily\.cvd updated \(version: ([0-9]+), sigs: ([0-9]+),',raw,re.M)
+    need(len(main_versions)==len(daily_versions)==1 and b'Database test passed.' in raw and
+         b'Transferred a partial file' in raw,'LOCAL_CVD_OBSERVED_COMPONENT_VERSIONS')
+    rows=value['files'];need(isinstance(rows,list) and len(rows)==3 and
+         {r.get('name') for r in rows}==set(CVD_PINS),'LOCAL_CVD_EXACT_SOURCES')
+    selected={};sources={}
+    for row in rows:
+        name=row['name']
+        need(set(row)=={'name','path','bytes','sha256','version','signatures','requiredFunctionalityLevel','buildEpoch'},
+             'LOCAL_CVD_FILE_FIELDS')
+        expected_root=roots['failedDownload'] if name=='daily.cvd' else roots['historicalRefresh']
+        source=expected_root/'db'/name
+        need(row['path']==str(source) and type(row['bytes']) is int and 512<row['bytes']<=128*1024**2,
+             'LOCAL_CVD_FILE_ORIGIN')
+        digest(row['sha256']);actual=file_info(source,128*1024**2,0o600);header=cvd_header(source)
+        need(all(actual[k]==row[k] for k in ('bytes','sha256')) and
+             all(type(row[k]) is int and header[k]==row[k] for k in header),'LOCAL_CVD_CURRENT_BYTES_HEADER')
+        # Pinned ClamAV 1.4.6: libclamav/others.h CL_FLEVEL, returned by
+        # cl_retflevel(). The native/compiled engine identity gates stay intact.
+        need(header['requiredFunctionalityLevel']<=216,'LOCAL_CVD_ENGINE_FUNCTIONALITY_LEVEL')
+        need(file_info(source,128*1024**2,0o600)==actual,'LOCAL_CVD_SOURCE_CHANGED')
+        if name=='daily.cvd':
+            need(header['version']==int(daily_versions[0][0]) and header['signatures']==int(daily_versions[0][1]) and
+                 0<=time.time()-header['buildEpoch']<=MAX_AGE,'LOCAL_CVD_DAILY_APPLICABILITY')
+        else:
+            prior=next(r for r in previous if r['name']==name)
+            need(prior.get('path')==str(source) and all(prior.get(k)==row[k] for k in
+                 ('bytes','sha256','version','signatures','buildEpoch')),'LOCAL_CVD_RETAINED_OFFICIAL_BYTES')
+            if name=='main.cvd':need(header['version']==int(main_versions[0]),'LOCAL_CVD_MAIN_VERSION_GAP')
+        sources[name]=source;selected[name]={k:row[k] for k in row if k not in ('name','path')}
+    need(sum(r['bytes'] for r in selected.values())<=192*1024**2,'LOCAL_CVD_TOTAL')
+    REPORT['localSignatureSources']={'manifest':meta,'historicalRefresh':value['historicalRefresh'],
+        'failedDownload':value['failedDownload'],'mainObservedRemoteVersion':int(main_versions[0]),
+        'bytecodeRemoteVersion':None,'sourceFilesReadBack':True,'newSetVerified':False}
+    return sources,selected,pin
+
+
 def signature_sources():
     if TARGET_BINDING['kind'] == 'OFFLINE_SCANNER_TARGET_V1':
         return SOURCE_SOFTWARE/'scanner/signatures', CVD_PINS, None
+    if TARGET_BINDING['kind'] == 'OFFLINE_SCANNER_TARGET_V3':
+        return local_signature_sources()
     pin=TARGET_BINDING['signatureRefreshReceipt']
     value,meta=read_json(Path(pin['path']),pin['sha256'],1024**2)
     root=target_path(value.get('output'),True)
@@ -710,7 +821,7 @@ def signatures(index, import_sha):
     directory(DB)
     imported, meta = read_json(DB/'IMPORT-RECEIPT.json', import_sha)
     _,_,refresh_ref=signature_sources()
-    need(imported.get('signatureRefreshReceipt')==refresh_ref and
+    need(imported.get(signature_reference_key())==refresh_ref and
          imported.get('status') == 'OFFLINE_SIGNATURE_IMPORT_VERIFIED_SCANNER_NOT_STARTED' and
          imported.get('identity') == IDENTITY and imported.get('manifestSha256') == BASE_MANIFEST_SHA and
          imported.get('target') == str(DB) and imported.get('targetBindingSha256') == PIN_SHA and
@@ -734,9 +845,13 @@ def signatures(index, import_sha):
             fields = f.read(512).decode('ascii').rstrip(' \x00\r\n').split(':')
         need(len(fields) == 9 and fields[0] == 'ClamAV-VDB', 'CVD_HEADER')
         info.update(name=name, version=int(fields[2]), buildEpoch=int(fields[8]))
+        if TARGET_BINDING['kind']=='OFFLINE_SCANNER_TARGET_V3':info.update(cvd_header(DB/name))
         prior = next(x for x in received if x['name'] == name)
         need(all(prior.get(k) == info[k] for k in ['name', 'bytes', 'sha256', 'version', 'buildEpoch']) and
              prior.get('sigtoolExitCode') == 0, 'IMPORT_CVD_IDENTITY')
+        if TARGET_BINDING['kind']=='OFFLINE_SCANNER_TARGET_V3':
+            need(all(prior.get(k)==info[k] for k in ('signatures','requiredFunctionalityLevel')),
+                 'IMPORT_LOCAL_CVD_HEADER_IDENTITY')
         verification = file_info(DB/(name[:-4]+'-verify.log'), 1024**2, 0o600)
         need(verification['sha256'] == prior.get('verificationLogSha256'), 'IMPORT_SIGTOOL_LOG')
         if name == 'daily.cvd':
@@ -838,6 +953,28 @@ def mapped_data(path, mapping):
             'classification': 'EXACT_PACKAGE_OWNED_NONEXEC_DATA', 'heldFdReadStable': True}
 
 
+def local_set_load_observation(signature_rows):
+    # clamd emits Loaded only after cl_load succeeds. Header counts include
+    # signatures the engine may intentionally ignore; they are not an equality
+    # assertion about the engine's loaded count. The exact three-file directory,
+    # signed bytes, config and current daemon owner are checked separately.
+    snapshot=log_snapshot(DAEMON_LOG)
+    with os.fdopen(os.open(DAEMON_LOG,os.O_RDONLY|os.O_NOFOLLOW),'rb') as stream:
+        raw=stream.read(snapshot['prefixBytes'])
+    need(len(raw)==snapshot['prefixBytes'] and sha(raw)==snapshot['prefixSha256'],'LOCAL_SET_LOG_CHANGED')
+    counts=[int(x) for x in re.findall(rb'Loaded ([0-9]+) signatures\.',raw)]
+    need(counts and all(n>0 for n in counts),'LOCAL_SET_LOAD_NOT_OBSERVED')
+    trust_signed=re.search(rb'Bytecode: Security mode set to "?TrustSigned"?',raw) is not None
+    need(trust_signed,'LOCAL_SET_SIGNED_BYTECODE_MODE')
+    return {'databaseDirectory':str(DB),'databaseFiles':sorted(r['name'] for r in signature_rows),
+            'loadedSignatures':counts[-1],'loadRecords':len(counts),
+            'headerSignatureTotal':sum(r['signatures'] for r in signature_rows),
+            'headerCountEqualityAsserted':False,'bytecodeTrustSignedObserved':trust_signed,
+            'engineFunctionalityLevel':216,
+            'requiredFunctionalityLevels':{r['name']:r['requiredFunctionalityLevel'] for r in signature_rows},
+            'daemonLogPrefix':snapshot}
+
+
 def runtime_readback(owner, signature_rows, index):
     need(owner_matches(owner), 'OWNER_NOT_RUNNING')
     found = listeners()
@@ -900,7 +1037,8 @@ def runtime_readback(owner, signature_rows, index):
     need(sorted(selected) == sorted([b'TZ=UTC', ('LD_LIBRARY_PATH='+LIBRARY_PATH).encode(),
          b'LOCPATH=/usr/lib/locale', b'LANG=C.UTF-8', b'LC_ALL=C.UTF-8']), 'CHILD_LIBRARY_ENV')
     need(owner_matches(owner), 'OWNER_CHANGED_AFTER_READBACK')
-    return {'ping': pong, 'actualVersion': version, 'listener': found[0], 'loadedPrivateLibraries': loaded, 'loadedNonExecutableData': loaded_data,
+    full_set={'localSetLoad':local_set_load_observation(signature_rows)} if TARGET_BINDING['kind']=='OFFLINE_SCANNER_TARGET_V3' else {}
+    return {**full_set,'ping': pong, 'actualVersion': version, 'listener': found[0], 'loadedPrivateLibraries': loaded, 'loadedNonExecutableData': loaded_data,
             'actualFileSizeLimit': daemon_limit(owner['pid']),
             'actualExecutable': file_info(LOADER, owner=0), 'declaredClamdBinary': file_info(EXE), 'config': config_check(), 'signatures': signature_rows,
             'childEnvironmentWhitelist': {'TZ': 'UTC', 'LD_LIBRARY_PATH': LIBRARY_PATH, 'LOCPATH': '/usr/lib/locale', 'LANG': 'C.UTF-8', 'LC_ALL': 'C.UTF-8'},
@@ -1159,7 +1297,7 @@ def fixed_owners(require_stopped=False):
     for role, expected in DATA_OWNERS.items():
         pin = TARGET_BINDING['dataServices'][role]['receipt']; record, meta = read_json(Path(pin['path']), pin['sha256'])
         wanted = {'ORIGINAL_POSTGRES_NORMAL_START_SAME_CLUSTER'} if role == 'pg' else {'ORIGINAL_REDIS_NORMAL_START_PERSISTENCE_READY'}
-        if TARGET_BINDING['kind']=='OFFLINE_SCANNER_TARGET_V2':
+        if TARGET_BINDING['kind'] in ('OFFLINE_SCANNER_TARGET_V2','OFFLINE_SCANNER_TARGET_V3'):
             wanted.add('ORIGINAL_POSTGRES_STARTED_NEW_BOOT' if role=='pg' else 'ORIGINAL_REDIS_STARTED_NEW_BOOT')
         need(record.get('status') in wanted and record.get('bootId') == BOOT, 'ACTUAL_DATA_START_RECEIPT')
         if record.get('status')=='ORIGINAL_POSTGRES_STARTED_NEW_BOOT':
@@ -1348,12 +1486,13 @@ def import_signatures(event, index):
     DB.mkdir(mode=0o700);rows = [];report = {'status': 'FAILED_PRESERVED', 'startedAt': now(), 'networkUsed': False, 'freshclamExecuted': False, 'clamdStarted': False}
     try:
         for name in ['main.cvd', 'daily.cvd', 'bytecode.cvd']:
-            source = source_dir/name;expected = signature_pins[name]
+            source = source_dir[name] if isinstance(source_dir,dict) else source_dir/name
+            expected = signature_pins[name]
             original = file_info(source, 128*1024**2)
             need(all(original[k] == expected[k] for k in ['bytes', 'sha256']), 'SOURCE_CVD_BYTES')
-            with source.open('rb') as stream: fields = stream.read(512).decode('ascii').rstrip(' \x00\r\n').split(':')
-            need(len(fields) == 9 and fields[0] == 'ClamAV-VDB', 'CVD_HEADER')
-            header = {'version': int(fields[2]), 'buildEpoch': int(fields[8])}
+            full_header=cvd_header(source)
+            header={k:full_header[k] for k in ('version','buildEpoch')}
+            if TARGET_BINDING['kind']=='OFFLINE_SCANNER_TARGET_V3':header=full_header
             if refresh_ref is not None:
                 need(all(header[key]==expected[key] for key in ('version','buildEpoch')), 'REFRESH_CVD_HEADER_IDENTITY')
             if name == 'daily.cvd': need(0 <= time.time()-header['buildEpoch'] <= MAX_AGE, 'DAILY_EXPIRED_OR_FUTURE')
@@ -1374,7 +1513,13 @@ def import_signatures(event, index):
         report.update(status='OFFLINE_SIGNATURE_IMPORT_VERIFIED_SCANNER_NOT_STARTED', identity=IDENTITY,
                       targetBindingSha256=PIN_SHA, preparationSha256=PREP_SHA, configSha256=CONFIG_SHA, currentBootId=BOOT,
                       manifestSha256=BASE_MANIFEST_SHA, signatures=rows, target=str(DB), sourceSoftware=str(SOURCE_SOFTWARE),
-                      signatureSourceDirectory=str(source_dir),signatureRefreshReceipt=refresh_ref)
+                      signatureSourceDirectory=None if isinstance(source_dir,dict) else str(source_dir),
+                      **{signature_reference_key():refresh_ref})
+        if TARGET_BINDING['kind']=='OFFLINE_SCANNER_TARGET_V3':
+            report.update(sourceKind='OFFICIAL_CVD_LOCAL_SOURCES_V1',
+                          sourceFiles={name:str(path) for name,path in source_dir.items()},
+                          sourceProvenance=REPORT['localSignatureSources'],
+                          originalRefreshOutcome='FAILED_PRESERVED')
         REPORT.update(status='OFFLINE_SIGNATURE_IMPORT_VERIFIED_SCANNER_NOT_STARTED', signaturesImported=True, servicesStarted=False)
     finally:
         report['finishedAt'] = now();REPORT['importReceiptSha256'] = write_new(DB/'IMPORT-RECEIPT.json', report)
