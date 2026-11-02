@@ -30,7 +30,9 @@ TARGET_INPUTS = {
     "layout5b07": "/home/recovery/input-layout-lifecycle-20261031-r01",
     "workbook9c412dd": "/home/recovery/input-workbook-lifecycle-20261031-r01",
     "save2e0c191": "/home/recovery/input-save-lifecycle-20261031-r02",
+    "menud9d00d2": "/home/recovery/input-menu-lifecycle-20261102-r01",
 }
+TARGET_BOOTS = {'menud9d00d2':'589fefa8-c3d5-477d-a597-7303774115c9'}
 ROOT = "/home/recovery/joint-lifecycle-3a11-r01"
 BOOT = "9fee751f-120b-451e-9b1b-b17eac34bf98"
 PROTOCOL = "A09_BUDGET_STDIO_V1"
@@ -154,10 +156,12 @@ def load_budget_host():
     module=types.ModuleType("delivered_budget");module.__file__=str(path)
     exec(compile(pinned(path,row["sha256"]),str(path),"exec"),module.__dict__)
     def budget(name,inputdir,reserve):
-        policy={"kind":"OFFLINE_HOST_BUDGET_SCOPE_V1","limit":49*1024**3//2,
+        allowance=state.get('approvedHostLimitBytes',49*1024**3//2)
+        need(type(allowance) is int and allowance in (49*1024**3//2,25*1024**3),'APPROVED_HOST_LIMIT')
+        policy={"kind":"OFFLINE_HOST_BUDGET_SCOPE_V1","limit":allowance,
                 "expectedRootPaths":state["pins"]["budgetRootPaths"]}
         b=module.budget(policy,OP,["/Users/lixiaochen/Library/Caches/lima"],
-                        approved_limit=49*1024**3//2)
+                        approved_limit=allowance)
         b.update(round30RootsIncluded=True,guestAccess=False)
         need(len(b["rows"])==376 and b["totalAllocatedBytes"]+reserve<=b["limit"],"FULL_BUDGET")
         raw=(json.dumps(b,sort_keys=True,indent=2)+"\n").encode();digest=sha(raw)
@@ -176,6 +180,7 @@ def transition(phase):
         allowed={None:{"prepare"},"prepare":{"switch-pre-stop"},"switch-pre-stop":{"switch-post-stop"},"switch-post-stop":{"switch-post-verify"}}
     elif action=="start":
         allowed={None:{"prepare"},"prepare":{"switch-post-stop"},"switch-post-stop":{"switch-post-verify"}}
+    elif action=='recover-boot':allowed={None:{'prepare'}}
     else:allowed={}
     need(phase in allowed.get(previous,set()),"BUDGET_PHASE_ORDER")
     state["phase"]=phase
@@ -246,16 +251,17 @@ def handle_line(raw, child):
         reply_budget(message, child)
     else:
         need("terminal" not in state and message.get("status") in {
-            "FAILED_PRESERVED","JOINT_LIFECYCLE_RUNNING","JOINT_LIFECYCLE_STOPPED","JOINT_LIFECYCLE_STATUS"
+            "FAILED_PRESERVED","JOINT_LIFECYCLE_RUNNING","JOINT_LIFECYCLE_STOPPED","JOINT_LIFECYCLE_STATUS","BOOT_RECOVERED"
         },"GUEST_TERMINAL")
         if "path" in message:
             need(message["path"]==ROOT+"/events/"+state["event"]+"/result.json" and
                  re.fullmatch(r"[a-f0-9]{64}",message.get("sha256","")),"GUEST_RESULT_PATH")
         if message["status"]!="FAILED_PRESERVED":
             expected={"start":"JOINT_LIFECYCLE_RUNNING","restart":"JOINT_LIFECYCLE_RUNNING",
-                      "stop":"JOINT_LIFECYCLE_STOPPED","status":"JOINT_LIFECYCLE_STATUS"}[state["action"]]
+                      "stop":"JOINT_LIFECYCLE_STOPPED","status":"JOINT_LIFECYCLE_STATUS","recover-boot":"BOOT_RECOVERED"}[state["action"]]
             need(message["status"]==expected,"GUEST_SUCCESS_STATUS")
-            need(state.get("phase")==("switch-post-verify" if state["action"] in ("start","restart") else None),"GUEST_SUCCESS_PHASE")
+            expected_phase='prepare' if state['action']=='recover-boot' else ('switch-post-verify' if state['action'] in ('start','restart') else None)
+            need(state.get('phase')==expected_phase,'GUEST_SUCCESS_PHASE')
             if state['action']!='status':
                 need(set(message)=={'status','path','sha256'} and
                      message['path']==ROOT+'/events/'+state['event']+'/result.json' and
@@ -366,12 +372,13 @@ def run_channel(argv):
 
 
 def main():
-    global INPUT
+    global INPUT, BOOT
     p=argparse.ArgumentParser(description=__doc__)
-    p.add_argument("action",choices=("status","start","stop","restart"))
+    p.add_argument("action",choices=("status","start","stop","restart","recover-boot"))
     p.add_argument("--execute-reviewed",action="store_true");p.add_argument("--binding",type=Path)
     p.add_argument("--binding-sha256");p.add_argument("--expected-state-sha256")
     p.add_argument("--event");p.add_argument("--output",type=Path)
+    p.add_argument('--approved-host-limit-bytes',type=int,default=49*1024**3//2)
     a=p.parse_args()
     if not a.execute_reviewed:
         print(json.dumps({"status":"PLAN_ONLY","components":["api","web"],"executed":False}));return
@@ -381,6 +388,7 @@ def main():
     if pins.get('kind') == 'R30_JOINT_APPLICATION_LIFECYCLE_V2':
         need(pins.get('target') in TARGET_INPUTS, 'HOST_TARGET')
         INPUT = TARGET_INPUTS[pins['target']]
+        if pins['target'] in TARGET_BOOTS:BOOT=TARGET_BOOTS[pins['target']]
     else:
         need(pins.get('kind') == 'R30_JOINT_APPLICATION_LIFECYCLE_V1', 'HOST_BINDING_KIND')
     need(pins['bootId']==BOOT and pins['root']==ROOT and pins['guestInput']==INPUT,"HOST_BINDING")
@@ -392,11 +400,13 @@ def main():
          not a.output.is_relative_to(OP) and any(a.output.is_relative_to(Path(r)) for r in pins['budgetRootPaths']),"OUTPUT_SCOPE")
     a.output.mkdir(mode=0o700)
     state.update(out=a.output,pins=pins,event=a.event,action=a.action,
-                 expectedStateSha256=a.expected_state_sha256)
-    if a.action in ('start','restart'):state['h']=load_budget_host()
+                 expectedStateSha256=a.expected_state_sha256,
+                 approvedHostLimitBytes=a.approved_host_limit_bytes)
+    if a.action in ('start','restart','recover-boot'):state['h']=load_budget_host()
     argv=[INPUT+'/joint_lifecycle.py',a.action,'--execute-reviewed','--binding-sha256',a.binding_sha256,
           '--expected-state-sha256',a.expected_state_sha256,'--event',a.event]
-    if a.action in ('start','restart'):argv.append('--budget-channel-stdio')
+    if a.action in ('start','restart','recover-boot'):
+        argv += ['--budget-channel-stdio','--approved-host-limit-bytes',str(a.approved_host_limit_bytes)]
     command=BASE+['/usr/bin/env','-i','PATH=/usr/bin:/bin','HOME=/home/recovery','/usr/bin/python3','-I','-B','-u','-c',guest_launcher(argv,pins['files']['joint_lifecycle.py']['sha256'])]
     save('intent.json',{'at':now(),'bindingSha256':a.binding_sha256,'action':a.action,
                         'command':command,'sourceCheckoutRead':False,'automaticRetry':False})

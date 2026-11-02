@@ -7,6 +7,7 @@ Each mutation requires the current external state digest and an instance lock.
 """
 import argparse
 import fcntl
+import functools
 import hashlib
 import json
 import os
@@ -55,6 +56,14 @@ TARGETS = {
         'application': '/home/recovery/application-save-2e0c191-r01',
         'delta': '/home/recovery/input-save-lifecycle-20261031-r01/delta',
         'deltaSha256': '1eec75c5a436e2d49f4bdeff30bbeec1a856d878d243faa662a0e9e1260b7292'},
+    'menud9d00d2': {
+        'identity': {'sourceCommit':'d9d00d26729e321d2904ecc1c5b5f22f1d79958c',
+                     'sourceTree':'8ac5b1de6101f6e96bf1608b89d58ccf23fe3d38',
+                     'release':'truck-toolbar-menu-d9d00d26729e-r02','buildTime':'2026-11-02T01:07:31Z'},
+        'application':'/home/recovery/application-menu-d9d00d2-r01',
+        'delta':'/home/recovery/input-menu-lifecycle-20261102-r01/delta',
+        'deltaSha256':'ba0d4c52979ecabd3d9eee0546e930df04daddabc62a76fea56d7321ef4fe65a',
+        'bootId':'589fefa8-c3d5-477d-a597-7303774115c9'},
 }
 ctx = {}
 
@@ -171,7 +180,7 @@ def listening_ports():
 
 def bind_target(binding):
     """Explicit, reviewed candidates share one existing instance lock."""
-    global APP, IDENTITY, DELTA, DELTA_SHA
+    global APP, IDENTITY, DELTA, DELTA_SHA, BOOT
     if binding.get('kind') == 'R30_JOINT_APPLICATION_LIFECYCLE_V1':
         target = TARGETS['joint3a11']
     else:
@@ -180,9 +189,104 @@ def bind_target(binding):
         target = TARGETS[binding['target']]
     need(binding.get('identity') == target['identity'] and
          binding.get('application') == target['application'] and
-         binding.get('bootId') == BOOT and binding.get('root') == str(ROOT), 'BINDING_SCOPE')
+         binding.get('bootId') == target.get('bootId',BOOT) and binding.get('root') == str(ROOT), 'BINDING_SCOPE')
+    if 'bootId' in target:
+        BOOT=target['bootId']
+        recovery=binding.get('runtimeRecovery',{})
+        need(set(recovery)=={'kind','bootId','previousState','pg','redis','scanner','proxy'} and
+             recovery['kind']=='SAME_INSTANCE_NEW_BOOT_BINDING_V1' and recovery['bootId']==BOOT,
+             'RUNTIME_RECOVERY_BINDING')
     APP, IDENTITY = Path(target['application']), target['identity']
     DELTA, DELTA_SHA = Path(target['delta']), target['deltaSha256']
+
+
+def recovery_ref(reference, exact_path, maximum=256*1024):
+    need(isinstance(reference,dict) and set(reference)=={'path','sha256'} and
+         reference['path']==str(exact_path) and
+         re.fullmatch('[a-f0-9]{64}',reference['sha256']) is not None,'RECOVERY_REFERENCE')
+    return json.loads(read(Path(reference['path']),reference['sha256'],maximum))
+
+
+def recovery_origin(expected_sha):
+    """Historical owners are data only. Never inspect or signal their PIDs."""
+    r=ctx['binding']['runtimeRecovery'];origin=r['previousState']
+    need(set(origin)=={'path','sha256','bootId','target'} and origin['target']=='save2e0c191' and
+         origin['bootId']=='9fee751f-120b-451e-9b1b-b17eac34bf98' and origin['bootId']!=BOOT and
+         origin['sha256']==expected_sha and not (ROOT/'pending.json').exists(), 'RECOVERY_ORIGIN_SCOPE')
+    pointer=json.loads(read(ROOT/'state.json'))
+    need(pointer=={'path':origin['path'],'sha256':expected_sha},'RECOVERY_POINTER_CAS')
+    path=Path(origin['path'])
+    need(path.parent.parent==ROOT/'events' and path.name=='result.json','RECOVERY_OLD_RESULT_PATH')
+    old=json.loads(read(path,expected_sha))
+    need(old.get('kind')=='JOINT_APPLICATION_LIFECYCLE_RESULT_V1' and
+         old.get('status')=='JOINT_LIFECYCLE_RUNNING' and old.get('bootId')==origin['bootId'] and
+         old.get('identity')==TARGETS[origin['target']]['identity'] and
+         set(old.get('owners',{}))==set(PORTS) and
+         not any(old.get(k) for k in ('unresolvedChildren','cleanupIncomplete','statePublicationUncertain')),
+         'RECOVERY_OLD_RUNNING_SOURCE')
+    proxy=recovery_ref(r['proxy'],Path('/home/recovery/instance/vm-resume-r30-20261102-r02/proxy-start.json'))
+    need(proxy.get('status')=='ORIGINAL_PROXY_STARTED_NEW_BOOT' and proxy.get('bootId')==BOOT,
+         'RECOVERY_NEW_PROXY_RECEIPT')
+    need(not listening_ports(),'RECOVERY_APPS_MUST_BE_ABSENT')
+    ctx.update(previousStateSha256=expected_sha,stateReceiptPath=path,
+               recoveryOrigin={**origin,'interruptionCause':'UNKNOWN','historicalOwners':old['owners'],
+                               'historicalProxyOwner':old['proxyOwner']})
+    return {'owners':{},'proxyOwner':proxy['process'],'bootId':BOOT,'identity':IDENTITY,
+            'status':'NEW_BOOT_APPS_ABSENT'}
+
+
+def current_recovery_services(m,plan,base,value):
+    r=ctx['binding']['runtimeRecovery'];directory=Path('/home/recovery/instance/vm-resume-r30-20261102-r02')
+    pg=recovery_ref(r['pg'],directory/'pg-start.json')
+    rd=recovery_ref(r['redis'],directory/'redis-start.json')
+    need(pg.get('status')=='ORIGINAL_POSTGRES_STARTED_NEW_BOOT' and pg.get('bootId')==BOOT and
+         pg.get('noRestoreMigrationSeedOrRepair') is True and
+         pg['readback']['systemId']=='7700459308674415750' and
+         pg['readback']['data']=='/var/lib/postgresql/14/main' and pg['readback']['port']=='5432',
+         'RECOVERY_ORIGINAL_POSTGRES')
+    need(rd.get('status')=='ORIGINAL_REDIS_STARTED_NEW_BOOT' and rd.get('bootId')==BOOT and
+         rd.get('authenticatedPing') is True and rd.get('noFlushResetRepairOrConfigChanges') is True and
+         rd.get('settings')=={'bind':'127.0.0.1','protected-mode':'yes','appendonly':'yes',
+             'appendfsync':'always','aof-load-truncated':'no','maxmemory-policy':'noeviction'} and
+         rd.get('persistence')=={'loading':'0','aof_enabled':'1','aof_last_write_status':'ok'},
+         'RECOVERY_ORIGINAL_REDIS')
+    shared=[]
+    for owner,uid in ((pg['readback']['process'],109),(rd['process'],1100)):
+        need(owner.get('bootId')==BOOT and type(owner.get('pid')) is int and owner['pid']>1 and
+             owner.get('uid')==uid and re.fullmatch('[0-9]+',str(owner.get('startTicks',''))),
+             'RECOVERY_DATA_OWNER_FIELDS')
+        p=Path('/proc')/str(owner['pid']);raw=(p/'stat').read_text();parts=raw[raw.rfind(')')+2:].split()
+        need(parts[0]!='Z' and parts[19]==str(owner['startTicks']) and p.stat().st_uid==uid,
+             'RECOVERY_DATA_LIVE_OWNER')
+        shared.append((owner['pid'],str(owner['startTicks']),uid))
+    scanner=r['scanner']
+    need(set(scanner)=={'handoff','root','run','refreshPath'} and
+         scanner['root']=='/home/recovery/offline-scanner-healthy-20261102-r01' and
+         scanner['run']=='newboot-healthy-scanner-20261102-r01' and
+         scanner['refreshPath'].startswith('/home/recovery/offline-signatures-20261102-') and
+         re.fullmatch(r'/home/recovery/offline-signatures-20261102-r[0-9]{2}/result.json',scanner['refreshPath']),
+         'RECOVERY_SCANNER_SCOPE')
+    handoff=load_module('scanner-handoff.py');handoff.NEW_ROOT=Path(scanner['root'])
+    handoff.CURRENT_RUN=scanner['run'];handoff.REFRESH_PATH=Path(scanner['refreshPath'])
+    proof=handoff.load(m,plan,scanner['handoff'])
+    owner=proof['start']['process'];shared.append((owner['pid'],str(owner['startTicks']),owner['uid']))
+    proxy=recovery_ref(r['proxy'],directory/'proxy-start.json');owner=proxy['process']
+    need(proxy.get('status')=='ORIGINAL_PROXY_STARTED_NEW_BOOT' and proxy.get('bootId')==BOOT and
+         proxy.get('proxyPath')==str(base.PROXY) and proxy.get('proxySha256')==sha(base.read(base.PROXY)) and
+         owner.get('uid')==1100 and owner.get('executable')==str(NODE) and
+         owner.get('cwd')=='/home/recovery/instance' and
+         owner.get('launchedArgv')==[str(NODE),'--max-old-space-size=64',str(base.PROXY)] and
+         value['proxyOwner']==owner and base.matches(owner),'RECOVERY_PROXY_OWNER')
+    found=[x for x in base.listeners() if x['port']==45464]
+    need(len(found)==1 and found[0]['family']=='tcp' and found[0]['address']=='0100007F',
+         'RECOVERY_PROXY_LOOPBACK')
+    links=[]
+    for fd in (Path('/proc')/str(owner['pid'])/'fd').iterdir():
+        try:links.append(os.readlink(fd))
+        except FileNotFoundError:pass
+    need('socket:['+found[0]['inode']+']' in links and base.matches(owner),'RECOVERY_PROXY_SOCKET_OWNER')
+    ctx['currentRecoveryEvidence']={'pg':r['pg'],'redis':r['redis'],'scanner':proof['applicability'],'proxy':r['proxy']}
+    return tuple(shared)
 
 
 def stopped_predecessor(value, path, digest):
@@ -311,11 +415,23 @@ def load_module(name):
 def prepare_runtime(value):
     j=load_module('joint_preview.py');o=load_module('api_overlay.py');j.o=o
     m=load_module('preview-common.py');m.INPUT=HERE
+    recovery=ctx['binding'].get('runtimeRecovery')
+    if recovery:
+        m.BOOT=BOOT;o.BOOT=BOOT
+        execution_pin=ctx['binding'].get('legacyExecutionPinsSha256','')
+        need(re.fullmatch('[a-f0-9]{64}',execution_pin) is not None,'RECOVERY_EXECUTION_PINS')
+        o.LEGACY_PINS_SHA=execution_pin
     old_pins,plan=m.load(o.LEGACY_PINS_SHA)
     rv=load_module('runtime-preview.py');rv.INPUT=HERE;rv.m=m;rv.plan=plan
     rv.PINS_SHA,rv.MANIFEST_SHA,rv.COPY_SHA=o.LEGACY_PINS_SHA,o.APP_SHA,o.ASSEMBLY_SHA
     rv.initialize(False)
+    # This explicit caller allowance never changes historical configuration pins.
+    allowance = getattr(ctx['args'], 'approved_host_limit_bytes', 49*1024**3//2)
+    need(type(allowance) is int and allowance in (49*1024**3//2,25*1024**3), 'APPROVED_HOST_LIMIT')
+    if allowance != 49*1024**3//2:
+        rv.observe.resources = functools.partial(rv.observe.resources, approved_limit=allowance)
     _,old_id,old_env=rv.validate_existing_configuration()
+    if recovery:o.SHARED=current_recovery_services(m,plan,rv.base,value)
     need(not {'NODE_OPTIONS','NODE_PATH','LD_PRELOAD'}&set(old_env),'ENVIRONMENT_INJECTION')
     o.INPUT=HERE;o.ROOT=ROOT;j.ROOT=ROOT;j.INPUT=HERE
     j.APP=APP;j.IDENTITY=IDENTITY
@@ -395,6 +511,8 @@ def finish(value, report):
                   previousStateSha256=ctx['previousStateSha256'],proxyOwner=value['proxyOwner'],
                   bindingSha256=ctx['args'].binding_sha256,claimSha256=ctx['claimSha256'])
     if 'transitionOrigin' in ctx:report['transitionOrigin']=ctx['transitionOrigin']
+    if 'recoveryOrigin' in ctx:report['recoveryOrigin']=ctx['recoveryOrigin']
+    if 'currentRecoveryEvidence' in ctx:report['currentRecoveryEvidence']=ctx['currentRecoveryEvidence']
     digest=write(ctx['event']/'result.json',report)
     pointer={'path':str(ctx['event']/'result.json'),'sha256':digest}
     temp=ROOT/('state-'+ctx['args'].event+'.tmp');write(temp,pointer)
@@ -414,22 +532,47 @@ def finish(value, report):
     print(json.dumps({'status':report['status'],'path':pointer['path'],'sha256':digest}),flush=True)
 
 
+def preserve_recovery_failure(report):
+    event=ctx['event'];a=ctx['args'];claim_sha=ctx['claimSha256']
+    report.update(kind='NEW_BOOT_BINDING_FAILURE_V1',bootId=BOOT,identity=IDENTITY,
+                  recoveryOrigin=ctx['recoveryOrigin'],claimSha256=claim_sha,
+                  previousStateSha256=ctx['previousStateSha256'],servicesChanged=False)
+    if not (event/'result.json').exists():
+        digest=write(event/'result.json',report)
+        pointer=json.loads(read(ROOT/'state.json'))
+        need(pointer['sha256']==ctx['previousStateSha256'],'RECOVERY_FAILURE_POINTER_CHANGED')
+        pending=json.loads(read(ROOT/'pending.json'))
+        need(pending=={'event':a.event,'claim':str(event/'claim.json'),'claimSha256':claim_sha},
+             'RECOVERY_FAILURE_PENDING_CHANGED')
+        (ROOT/'pending.json').unlink();syncdir(ROOT)
+        print(json.dumps({'status':'FAILED_PRESERVED','path':str(event/'result.json'),'sha256':digest}),flush=True)
+    else:
+        report['statePublicationUncertain']=True
+        write(event/'publication-failure.json',report)
+        print(json.dumps({'status':'FAILED_PRESERVED','statePublicationUncertain':True}),flush=True)
+
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
-    p.add_argument('action',choices=('status','start','stop','restart'))
+    p.add_argument('action',choices=('status','start','stop','restart','recover-boot'))
     p.add_argument('--execute-reviewed',action='store_true');p.add_argument('--binding-sha256')
     p.add_argument('--expected-state-sha256');p.add_argument('--event');p.add_argument('--budget-channel-stdio',action='store_true')
+    p.add_argument('--approved-host-limit-bytes',type=int,default=49*1024**3//2)
     a=p.parse_args()
     if not a.execute_reviewed:
-        print(json.dumps({'status':'PLAN_ONLY','actions':['status','start','stop','restart'],'components':['api','web']}));return
-    boot();need(re.fullmatch('[a-f0-9]{64}',a.binding_sha256 or ''),'EXTERNAL_BINDING_DIGEST')
+        print(json.dumps({'status':'PLAN_ONLY','actions':['status','start','stop','restart','recover-boot'],'components':['api','web']}));return
+    need(re.fullmatch('[a-f0-9]{64}',a.binding_sha256 or ''),'EXTERNAL_BINDING_DIGEST')
     binding=json.loads(read(HERE/'binding.json',a.binding_sha256))
     bind_target(binding)
+    boot()
     row=binding['files']['joint_lifecycle.py'];need(sha(read(Path(__file__)))==row['sha256'],'EXECUTION_FILE_PIN')
     ctx.update(args=a,binding=binding)
     lock=instance_lock()
     try:
-        value=state(a.expected_state_sha256,discover=a.action=='status')
+        if a.action=='recover-boot':
+            need(binding.get('target')=='menud9d00d2','RECOVERY_TARGET')
+            value=recovery_origin(a.expected_state_sha256)
+        else:value=state(a.expected_state_sha256,discover=a.action=='status')
         if a.action=='status':
             print(json.dumps({'status':'JOINT_LIFECYCLE_STATUS','stateSha256':ctx['previousStateSha256'],
                               'observed':inspect(value),'pendingClaim':
@@ -443,12 +586,13 @@ def main():
         claim={'event':a.event,'action':a.action,'previousStateSha256':a.expected_state_sha256,
                'bindingSha256':a.binding_sha256,'bootId':BOOT,'identity':IDENTITY,'ownersBefore':value['owners']}
         if 'transitionOrigin' in ctx:claim['transitionOrigin']=ctx['transitionOrigin']
+        if 'recoveryOrigin' in ctx:claim['recoveryOrigin']=ctx['recoveryOrigin']
         claim_sha=write(event/'claim.json',claim)
         ctx['claimSha256']=claim_sha
         write(ROOT/'pending.json',{'event':a.event,'claim':str(event/'claim.json'),'claimSha256':claim_sha})
         report={'action':a.action,'status':'FAILED_PRESERVED','owners':dict(value['owners'])}
         try:
-            if a.action in ('start','restart'):
+            if a.action in ('start','restart','recover-boot'):
                 need(a.budget_channel_stdio,'START_REQUIRES_BUDGET_CHANNEL')
                 prepare_runtime(value)
             if a.action in ('stop','restart'):
@@ -456,10 +600,21 @@ def main():
                 report['stops']=stop_owned(value);report['owners']={}
             if a.action in ('start','restart'):
                 owners,proof=start_owned(value);report.update(owners=owners,**proof,status='JOINT_LIFECYCLE_RUNNING')
+            elif a.action=='recover-boot':
+                ctx['j'].retained()
+                need(not listening_ports(),'RECOVERY_APPS_CHANGED_BEFORE_PUBLICATION')
+                report['status']='BOOT_RECOVERED'
             else:report['status']='JOINT_LIFECYCLE_STOPPED'
             finish(value,report)
         except BaseException as error:
             report['status']='FAILED_PRESERVED';report['errorCode']=safe_code(error)
+            if a.action=='recover-boot':
+                # This action creates no application/shared-service process.
+                # Its bounded configuration probe is handled by the original
+                # runtime helper. A failed binding must not
+                # replace the old RUNNING pointer or signal its historical PIDs.
+                preserve_recovery_failure(report)
+                raise SystemExit(1)
             if not ctx.get('statePublished') and 'j' in ctx and ctx['j'].ctx.get('children'):
                 try:report['failureCleanup']=ctx['j'].cleanup('operation-failure')
                 except BaseException as cleanup:

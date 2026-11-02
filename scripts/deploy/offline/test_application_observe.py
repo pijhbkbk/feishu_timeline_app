@@ -14,7 +14,7 @@ spec.loader.exec_module(m)
 
 class ResourceAdmissionTests(unittest.TestCase):
     def check(self, *, limit=49*1024**3//2, total=24*1024**3+128*1024**2,
-              free=1024**3+64*1024**2, starting=True):
+              free=1024**3+64*1024**2, starting=True, approved_limit=49*1024**3//2):
         roots = ['/Users/lixiaochen/.lima-tcr24', '/Users/lixiaochen/Library/Caches/lima', '/opt/homebrew/Cellar/lima']
         budget = {'at': datetime.datetime.now(datetime.timezone.utc).isoformat(),
                   'scopeNarrowed': False, 'round30RootsIncluded': True, 'limit': limit,
@@ -28,7 +28,8 @@ class ResourceAdmissionTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp, \
              patch.object(m.shutil, 'disk_usage', return_value=types.SimpleNamespace(free=free)), \
              patch.object(Path, 'read_text', return_value='MemAvailable: 2097152 kB\nMemTotal: 4194304 kB\n'):
-            return m.resources(view, types.SimpleNamespace(LOGS=Path(tmp)/'absent'), 'a'*64, starting)
+            return m.resources(view, types.SimpleNamespace(LOGS=Path(tmp)/'absent'), 'a'*64, starting,
+                               approved_limit=approved_limit)
 
     def test_retained_24_5_budget_accepts_usage_above_previous_24(self):
         self.assertEqual(self.check()['newApplicationReservationBytes'], 64*1024**2)
@@ -36,6 +37,24 @@ class ResourceAdmissionTests(unittest.TestCase):
     def test_build_exception_does_not_become_runtime_limit(self):
         with self.assertRaisesRegex(RuntimeError, 'FRESH_COMPLETE_HOST_BUDGET'):
             self.check(limit=25*1024**3)
+
+    def test_explicit_owner_25_limit_accepts_new_usage_and_keeps_reserves(self):
+        cap=25*1024**3
+        result=self.check(limit=cap,approved_limit=cap,total=cap-64*1024**2)
+        self.assertEqual(result['hostLimitBytes'],cap)
+        self.assertEqual(result['hostReservedBytes'],64*1024**2)
+        for starting in (True,False):
+            with self.subTest(starting=starting),self.assertRaisesRegex(RuntimeError,'APPLICATION_RESOURCE_ADMISSION'):
+                self.check(limit=cap,approved_limit=cap,total=cap-64*1024**2+1,starting=starting)
+        with self.assertRaisesRegex(RuntimeError,'APPLICATION_RESOURCE_ADMISSION'):
+            self.check(limit=cap,approved_limit=cap,free=1024**3+64*1024**2-1)
+
+    def test_policy_cannot_change_explicit_allowance(self):
+        with self.assertRaisesRegex(RuntimeError,'FRESH_COMPLETE_HOST_BUDGET'):
+            self.check(limit=49*1024**3//2,approved_limit=25*1024**3)
+        for value in (True,25.0*1024**3,26*1024**3):
+            with self.subTest(value=value),self.assertRaisesRegex(RuntimeError,'APPROVED_HOST_LIMIT'):
+                self.check(approved_limit=value)
 
     def test_host_and_guest_reserves_are_not_waived(self):
         with self.assertRaisesRegex(RuntimeError, 'APPLICATION_RESOURCE_ADMISSION'):

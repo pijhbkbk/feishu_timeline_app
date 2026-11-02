@@ -201,6 +201,14 @@ class HostTests(unittest.TestCase):
                 reader=host.load_budget_host()
                 with patch.object(modules[0],'bounded',return_value=(0,b'4',b'')):
                     digest=reader.budget('prepare',host.INPUT,64*1024**2)
+                    for allowance in (25*1024**3,49*1024**3//2):
+                        host.state['approvedHostLimitBytes']=allowance
+                        digest=reader.budget('prepare',host.INPUT,64*1024**2)
+                        self.assertEqual(json.loads(captured['prepare.budget.json'])['limit'],allowance)
+                    for invalid in (True,26*1024**3,float(25*1024**3)):
+                        host.state['approvedHostLimitBytes']=invalid
+                        with self.assertRaisesRegex(host.Failure,'APPROVED_HOST_LIMIT'):
+                            reader.budget('invalid',host.INPUT,64*1024**2)
             result=json.loads(captured['prepare.budget.json'])
             self.assertEqual(digest,host.sha(captured['prepare.budget.json']))
             self.assertEqual(result['limit'],49*1024**3//2)
@@ -276,5 +284,141 @@ class CandidateContinuationTests(unittest.TestCase):
             good=owner('api');m.validate_owner('api',good)
             good['cwd']=m.TARGETS['joint3a11']['application']+'/apps/api'
             with self.assertRaisesRegex(RuntimeError,'APPLICATION_OWNER_SCOPE'):m.validate_owner('api',good)
+
+class NewBootBindingTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp=tempfile.TemporaryDirectory();self.root=Path(self.tmp.name).resolve()
+        self.saved=(m.ROOT,m.BOOT,m.APP,m.IDENTITY,m.DELTA,m.DELTA_SHA)
+        m.ROOT=self.root;m.BOOT='589fefa8-c3d5-477d-a597-7303774115c9'
+        m.APP=Path(m.TARGETS['menud9d00d2']['application']);m.IDENTITY=m.TARGETS['menud9d00d2']['identity']
+        self.old_path=self.root/'events'/'old-running'/'result.json';self.old_path.parent.mkdir(parents=True)
+        self.old={'kind':'JOINT_APPLICATION_LIFECYCLE_RESULT_V1','status':'JOINT_LIFECYCLE_RUNNING',
+                  'bootId':'9fee751f-120b-451e-9b1b-b17eac34bf98','identity':m.TARGETS['save2e0c191']['identity'],
+                  'owners':{'api':{'pid':123},'web':{'pid':124}},'proxyOwner':{'pid':125}}
+        self.proxy={'status':'ORIGINAL_PROXY_STARTED_NEW_BOOT','bootId':m.BOOT,'process':{'pid':999}}
+        self.proxy_path=Path('/home/recovery/instance/vm-resume-r30-20261102-r02/proxy-start.json')
+        self.set_source()
+        m.ctx.clear();m.ctx['binding']={'target':'menud9d00d2','runtimeRecovery':{
+            'previousState':{'path':str(self.old_path),'sha256':self.digest,'bootId':self.old['bootId'],'target':'save2e0c191'},
+            'proxy':{'path':str(self.proxy_path),'sha256':m.sha(m.packed(self.proxy))}}}
+        def fixture_read(path,digest=None,maximum=256*1024):
+            raw=m.packed(self.proxy) if Path(path)==self.proxy_path else Path(path).read_bytes()
+            m.need(digest is None or m.sha(raw)==digest,'PUBLIC_DIGEST');return raw
+        self.reader=patch.object(m,'read',side_effect=fixture_read);self.reader.start()
+        self.ports=patch.object(m,'listening_ports',return_value=set());self.ports.start()
+    def tearDown(self):
+        self.reader.stop();self.ports.stop()
+        m.ROOT,m.BOOT,m.APP,m.IDENTITY,m.DELTA,m.DELTA_SHA=self.saved;m.ctx.clear();self.tmp.cleanup()
+    def set_source(self):
+        raw=m.packed(self.old);self.old_path.write_bytes(raw);self.digest=m.sha(raw)
+        (self.root/'state.json').write_bytes(m.packed({'path':str(self.old_path),'sha256':self.digest}))
+    def operation(self):
+        value=m.recovery_origin(self.digest)
+        event=self.root/'events'/'recover-newboot';event.mkdir()
+        m.ctx.update(event=event,args=types.SimpleNamespace(event=event.name,binding_sha256='b'*64),claimSha256='c'*64)
+        (self.root/'pending.json').write_bytes(m.packed({'event':event.name,'claim':str(event/'claim.json'),'claimSha256':'c'*64}))
+        return value,event
+    def test_old_pid_reuse_is_never_inspected_or_signaled(self):
+        with patch.object(m,'current',side_effect=AssertionError('old owner read')),patch.object(m.signal,'pidfd_send_signal',create=True) as send:
+            value=m.recovery_origin(self.digest)
+        self.assertEqual(value['owners'],{});send.assert_not_called()
+        self.assertEqual(m.ctx['recoveryOrigin']['historicalOwners'],self.old['owners'])
+        self.assertEqual(m.ctx['recoveryOrigin']['interruptionCause'],'UNKNOWN')
+    def test_old_boot_running_cannot_enter_normal_start(self):
+        with self.assertRaisesRegex(RuntimeError,'STATE_IDENTITY_OR_BOOT'):m.state(self.digest)
+    def test_origin_requires_exact_pointer_and_no_pending(self):
+        (self.root/'state.json').write_bytes(m.packed({'path':str(self.old_path),'sha256':'a'*64}))
+        with self.assertRaisesRegex(RuntimeError,'RECOVERY_POINTER_CAS'):m.recovery_origin(self.digest)
+        self.set_source();(self.root/'pending.json').write_text('{}')
+        with self.assertRaisesRegex(RuntimeError,'RECOVERY_ORIGIN_SCOPE'):m.recovery_origin(self.digest)
+    def test_non_running_origin_or_application_listener_rejected(self):
+        self.old['status']='FAILED_PRESERVED';self.set_source()
+        m.ctx['binding']['runtimeRecovery']['previousState']['sha256']=self.digest
+        with self.assertRaisesRegex(RuntimeError,'RECOVERY_OLD_RUNNING_SOURCE'):m.recovery_origin(self.digest)
+        self.old['status']='JOINT_LIFECYCLE_RUNNING';self.set_source()
+        m.ctx['binding']['runtimeRecovery']['previousState']['sha256']=self.digest
+        with patch.object(m,'listening_ports',return_value={3591}),self.assertRaisesRegex(RuntimeError,'RECOVERY_APPS_MUST_BE_ABSENT'):
+            m.recovery_origin(self.digest)
+    def test_publish_keeps_history_and_normal_start_can_read_new_binding(self):
+        original=self.old_path.read_bytes();value,event=self.operation()
+        with contextlib.redirect_stdout(io.StringIO()):m.finish(value,{'status':'BOOT_RECOVERED','action':'recover-boot','owners':{}})
+        pointer=json.loads((self.root/'state.json').read_text());result=json.loads((event/'result.json').read_text())
+        self.assertEqual(result['status'],'BOOT_RECOVERED');self.assertEqual(result['bootId'],m.BOOT)
+        self.assertEqual(self.old_path.read_bytes(),original);self.assertFalse((self.root/'pending.json').exists())
+        m.ctx['args'].action='start'
+        self.assertEqual(m.state(pointer['sha256'])['status'],'BOOT_RECOVERED')
+    def test_failed_binding_preserves_old_pointer_and_claim_result(self):
+        original=(self.root/'state.json').read_bytes();_,event=self.operation()
+        with patch.object(m.signal,'pidfd_send_signal',create=True) as send,contextlib.redirect_stdout(io.StringIO()):
+            m.preserve_recovery_failure({'status':'FAILED_PRESERVED','errorCode':'CHECK_SCANNER_NOT_READY','owners':{}})
+        self.assertEqual((self.root/'state.json').read_bytes(),original);send.assert_not_called()
+        self.assertTrue((event/'result.json').exists());self.assertFalse((self.root/'pending.json').exists())
+    def test_failed_binding_never_clears_foreign_pending(self):
+        _,event=self.operation();(self.root/'pending.json').write_text('{"event":"foreign"}')
+        with self.assertRaisesRegex(RuntimeError,'RECOVERY_FAILURE_PENDING_CHANGED'):
+            m.preserve_recovery_failure({'status':'FAILED_PRESERVED','owners':{}})
+        self.assertTrue((event/'result.json').exists());self.assertTrue((self.root/'pending.json').exists())
+    def test_host_recovery_has_only_prepare_phase_and_distinct_success(self):
+        host.state.clear();host.state.update(action='recover-boot',event='recover-newboot',guestPid=1)
+        host.transition('prepare')
+        with self.assertRaisesRegex(host.Failure,'BUDGET_PHASE_ORDER'):host.transition('switch-post-stop')
+        with patch.object(host,'save'):
+            host.handle_line(json.dumps({'status':'BOOT_RECOVERED','path':host.ROOT+'/events/recover-newboot/result.json','sha256':'a'*64}).encode(),None)
+
+class RecoveryServicesTests(unittest.TestCase):
+    def setUp(self):
+        self.boot=m.BOOT;m.BOOT='589fefa8-c3d5-477d-a597-7303774115c9';m.ctx.clear()
+        directory='/home/recovery/instance/vm-resume-r30-20261102-r02'
+        proxy_path=Path('/home/recovery/instance/scanner-handoff-3941bec-r01/proxy.mjs')
+        self.pg={'status':'ORIGINAL_POSTGRES_STARTED_NEW_BOOT','bootId':m.BOOT,'noRestoreMigrationSeedOrRepair':True,
+            'readback':{'systemId':'7700459308674415750','data':'/var/lib/postgresql/14/main','port':'5432',
+            'process':{'pid':111,'uid':109,'startTicks':'10','bootId':m.BOOT}}}
+        self.rd={'status':'ORIGINAL_REDIS_STARTED_NEW_BOOT','bootId':m.BOOT,'authenticatedPing':True,
+            'noFlushResetRepairOrConfigChanges':True,'process':{'pid':222,'uid':1100,'startTicks':'20','bootId':m.BOOT},
+            'settings':{'bind':'127.0.0.1','protected-mode':'yes','appendonly':'yes','appendfsync':'always',
+                        'aof-load-truncated':'no','maxmemory-policy':'noeviction'},
+            'persistence':{'loading':'0','aof_enabled':'1','aof_last_write_status':'ok'}}
+        self.proxy={'status':'ORIGINAL_PROXY_STARTED_NEW_BOOT','bootId':m.BOOT,'proxyPath':str(proxy_path),'proxySha256':m.sha(b'proxy'),
+            'process':{'pid':333,'uid':1100,'executable':str(m.NODE),'cwd':'/home/recovery/instance',
+                       'launchedArgv':[str(m.NODE),'--max-old-space-size=64',str(proxy_path)]}}
+        self.r={'pg':{'path':directory+'/pg-start.json','sha256':'a'*64},
+                'redis':{'path':directory+'/redis-start.json','sha256':'b'*64},
+                'proxy':{'path':directory+'/proxy-start.json','sha256':'c'*64},
+                'scanner':{'root':'/home/recovery/offline-scanner-healthy-20261102-r01',
+                    'run':'newboot-healthy-scanner-20261102-r01','refreshPath':'/home/recovery/offline-signatures-20261102-r01/result.json',
+                    'handoff':{'path':'/proof','sha256':'d'*64}}}
+        m.ctx['binding']={'runtimeRecovery':self.r}
+        self.base=types.SimpleNamespace(PROXY=proxy_path,read=lambda *a:b'proxy',matches=lambda *a:True,
+            listeners=lambda:[{'port':45464,'family':'tcp','address':'0100007F','inode':'77'}])
+        self.handoff=types.SimpleNamespace(load=Mock(return_value={'start':{'process':{'pid':444,'uid':1100,'startTicks':40}},'applicability':{'verified':True}}))
+    def tearDown(self):m.BOOT=self.boot;m.ctx.clear()
+    def invoke(self, *, wrong_tick=False, socket_link='socket:[77]'):
+        def reference(ref,expected,maximum=256*1024):
+            self.assertEqual(ref['path'],str(expected))
+            return {'pg-start.json':self.pg,'redis-start.json':self.rd,'proxy-start.json':self.proxy}[expected.name]
+        def proc_text(path,*a,**k):
+            tick='99' if wrong_tick else ('10' if str(path)=='/proc/111/stat' else '20')
+            return '111 (process) '+' '.join(['S']+['0']*18+[tick])
+        with patch.object(m,'recovery_ref',side_effect=reference),patch.object(m,'load_module',return_value=self.handoff),\
+             patch.object(Path,'read_text',proc_text),patch.object(Path,'stat',lambda p,*a,**k:types.SimpleNamespace(st_uid=109 if str(p)=='/proc/111' else 1100)),\
+             patch.object(Path,'iterdir',return_value=iter([Path('/proc/333/fd/3')])),patch.object(m.os,'readlink',return_value=socket_link):
+            return m.current_recovery_services(types.SimpleNamespace(),{'identity':'base'},self.base,{'proxyOwner':self.proxy['process']})
+    def test_current_services_derive_shared_owners_from_actual_receipts(self):
+        self.assertEqual(self.invoke(),((111,'10',109),(222,'20',1100),(444,'40',1100)))
+        self.handoff.load.assert_called_once();self.assertEqual(m.ctx['currentRecoveryEvidence']['pg'],self.r['pg'])
+    def test_data_identity_and_persistence_cannot_be_substituted(self):
+        self.pg['readback']['systemId']='different'
+        with self.assertRaisesRegex(RuntimeError,'RECOVERY_ORIGINAL_POSTGRES'):self.invoke()
+        self.pg['readback']['systemId']='7700459308674415750';self.rd['settings']['aof-load-truncated']='yes'
+        with self.assertRaisesRegex(RuntimeError,'RECOVERY_ORIGINAL_REDIS'):self.invoke()
+    def test_live_pid_reuse_or_wrong_socket_refuses_binding(self):
+        with self.assertRaisesRegex(RuntimeError,'RECOVERY_DATA_LIVE_OWNER'):self.invoke(wrong_tick=True)
+        with self.assertRaisesRegex(RuntimeError,'RECOVERY_PROXY_SOCKET_OWNER'):self.invoke(socket_link='socket:[foreign]')
+    def test_scanner_scope_and_proxy_recipe_are_fixed(self):
+        self.r['scanner']['root']='/home/recovery/arbitrary'
+        with self.assertRaisesRegex(RuntimeError,'RECOVERY_SCANNER_SCOPE'):self.invoke()
+        self.r['scanner']['root']='/home/recovery/offline-scanner-healthy-20261102-r01'
+        self.proxy['process']['launchedArgv']=['unapproved']
+        with self.assertRaisesRegex(RuntimeError,'RECOVERY_PROXY_OWNER'):self.invoke()
 
 if __name__=='__main__':unittest.main()
