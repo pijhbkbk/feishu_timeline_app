@@ -70,10 +70,11 @@ export function ColorRegisterWorkspace() {
   }, []);
   useEffect(() => { const controller = new AbortController(); void load(controller.signal); return () => controller.abort(); }, [load]);
   async function addImages(files: File[], recordId: string) { try { await imageState.add(files, recordId); } catch (cause) { setError(message(cause)); } }
-  async function changeView(change: () => void) { await runtime.current?.finishEditing(); change(); }
-  const reload = async () => { await runtime.current?.finishEditing(); if (unconfirmed.current) { setError('上次保存结果尚未确认，请先核实结果，再重新读取。'); return; } if (savingRef.current || ((model.current?.patches().length ?? 0) > 0 && !window.confirm('重新读取将放弃未保存内容，是否继续？'))) return; void load(AbortSignal.timeout(30000)); };
-  async function openImport() { await runtime.current?.finishEditing(); if (model.current?.patches().length || unconfirmed.current || savingRef.current || imageState.pending) { setError('请先确认当前文字和图片保存结果，再导入。'); return; } setImportOpen(true); }
-  async function openDetails() { const targetId = selected; if (!targetId) return; await runtime.current?.finishEditing(); if (model.current?.patches().length || unconfirmed.current || savingRef.current) { setError('请先保存或处理待保存内容，再打开业务详情。'); return; } setDetailTargetId(targetId); }
+  async function finishNativeEditSafely() { try { await runtime.current?.finishEditing(); return true; } catch (cause) { setError(message(cause)); return false; } }
+  async function changeView(change: () => void) { if (await finishNativeEditSafely()) change(); }
+  const reload = async () => { if (!await finishNativeEditSafely()) return; if (unconfirmed.current) { setError('上次保存结果尚未确认，请先核实结果，再重新读取。'); return; } if (savingRef.current || ((model.current?.patches().length ?? 0) > 0 && !window.confirm('重新读取将放弃未保存内容，是否继续？'))) return; void load(AbortSignal.timeout(30000)); };
+  async function openImport() { if (!await finishNativeEditSafely()) return; if (model.current?.patches().length || unconfirmed.current || savingRef.current || imageState.pending) { setError('请先确认当前文字和图片保存结果，再导入。'); return; } setImportOpen(true); }
+  async function openDetails() { const targetId = selected; if (!targetId) return; if (!await finishNativeEditSafely()) return; if (model.current?.patches().length || unconfirmed.current || savingRef.current) { setError('请先保存或处理待保存内容，再打开业务详情。'); return; } setDetailTargetId(targetId); }
   function returnToRecord() {
     if (!detailTargetId) return;
     setSelected(detailTargetId); setPanel(true); setDetailTargetId(null);
@@ -114,7 +115,7 @@ export function ColorRegisterWorkspace() {
     try { model.current.apply(changes); setNotice(''); setError(''); bump(); }
     catch (cause) { setError(message(cause)); runtime.current?.updateValues(changes.map(change => ({ ...change, value: displayValue(model.current!.display(change.id), change.field) }))); }
   }
-  async function history(action: 'undo' | 'redo') { await runtime.current?.finishEditing(); if (!model.current || loading || savingRef.current) return; try { const changes = model.current[action](); runtime.current?.updateValues(changes); setNotice(changes.length ? '变更已放入待保存内容，保存后才写入业务记录。' : ''); bump(); } catch (cause) { setError(message(cause)); } }
+  async function history(action: 'undo' | 'redo') { if (!await finishNativeEditSafely()) return; if (!model.current || loading || savingRef.current) return; try { const changes = model.current[action](); runtime.current?.updateValues(changes); setNotice(changes.length ? '变更已放入待保存内容，保存后才写入业务记录。' : ''); bump(); } catch (cause) { setError(message(cause)); } }
   handlers.current = { changes: applyChanges, undo: () => history('undo'), redo: () => history('redo') };
   const canvasRows = useMemo(() => visible.map(row => ({ id: row.id,
     values: SHEET_COLUMNS.map(column => displayValue(model.current!.display(row.id), column.key)),
@@ -132,7 +133,7 @@ export function ColorRegisterWorkspace() {
     if (!model.current || savingRef.current) return;
     // Automatic saving sends committed cells without ending a newer native edit.
     // Explicit Save/Verify still finishes the editor before taking its snapshot.
-    if (finishNativeEdit) await runtime.current?.finishEditing();
+    if (finishNativeEdit && !await finishNativeEditSafely()) return;
     if (savingRef.current || loading) return;
     const current = model.current;
     if (unconfirmed.current) {

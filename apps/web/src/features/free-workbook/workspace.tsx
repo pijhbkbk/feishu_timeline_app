@@ -133,16 +133,16 @@ export function FreeWorkbookWorkspace(){
       else{cloud.current=new ServerDraftSession({workbookId:id,authorUserId:owner,baseWorkbookRevision:revision});setCloudReady(true);setCloudStatus('服务器草稿自动保存已启用');}
     }catch(cause){if(mounted.current&&generation===draftGeneration.current&&currentOwner.current===owner&&loadVersion===cloudLoadVersion.current){setCloudReady(false);setCloudStatus(`服务器草稿读取失败：${message(cause)}`);}}
   }
-  async function performCloud(isCurrent:()=>boolean,unsentOperationId?:string){
+  async function performCloud(isCurrent:()=>boolean,unsentOperationId?:string,checkpoint:()=>Promise<unknown>=()=>captureLatestDraft(isCurrent)){
     const coordinator=cloud.current,request=coordinator?.existing();if(!coordinator||!request||!isCurrent())return;
     // The local envelope includes the exact request even when it is older than
     // the latest editing snapshot. Network writes never precede durability.
-    try{await captureLatestDraft(isCurrent);}catch(cause){if(unsentOperationId)coordinator.abandonUnsent(unsentOperationId);throw cause;}if(!isCurrent()||cloud.current!==coordinator)return;
+    try{await checkpoint();}catch(cause){if(unsentOperationId)coordinator.abandonUnsent(unsentOperationId);throw cause;}if(!isCurrent()||cloud.current!==coordinator)return;
     try{const ack=await executeServerDraftRequest(request);if(!isCurrent()||cloud.current!==coordinator)return;
       const result=coordinator.confirm(ack);setCloudStatus(result.status==='conflict'?'服务器草稿已发生变化，本机内容保留，请重新读取后选择':request.kind==='save'?`服务器草稿已保存 · 基于正式版本 ${ack.receipt.baseWorkbookRevision}`:'已清理本次正式保存对应的服务器草稿');
       if(result.status==='conflict')setCloudReady(false);
     }catch(cause){if(!isCurrent()||cloud.current!==coordinator)return;coordinator.reject(cause instanceof ApiRequestError?cause.status:undefined);setCloudStatus(coordinator.uncertain?'服务器草稿结果待确认，本机内容已保留':`服务器草稿未保存：${message(cause)}`);if(coordinator.conflicted)setCloudReady(false);}
-    if(isCurrent())await captureLatestDraft(isCurrent).catch(cause=>{if(isCurrent())setDraftStatus(`本机草稿检查点更新失败：${message(cause)}，请保持页面打开并重试。`);});
+    if(isCurrent())await checkpoint().catch(cause=>{if(isCurrent())setDraftStatus(`本机草稿检查点更新失败：${message(cause)}，请保持页面打开并重试。`);});
   }
   async function autoSaveCloud(snapshot:SavedWorkbook['snapshot'],capturedSequence:number,isCurrent:()=>boolean){
     const coordinator=cloud.current;if(!isCurrent()||!cloudReady||!coordinator||coordinator.uncertain||coordinator.conflicted||cloudSending.current||coordinator.checkpoint().acknowledgedSequence===capturedSequence)return;
@@ -152,9 +152,9 @@ export function FreeWorkbookWorkspace(){
     finally{cloudSending.current=false;if(mounted.current){setCloudBusy(false);if(isCurrent()&&sequence.current!==capturedSequence)setDraftTick(n=>n+1);}}
   }
   async function retryCloud(){if(cloudSending.current)return;const isCurrent=captureScope();cloudSending.current=true;setCloudBusy(true);try{await performCloud(isCurrent);}finally{cloudSending.current=false;if(mounted.current)setCloudBusy(false);}}
-  async function checkpointPublishedSave(isCurrent:()=>boolean){
+  async function checkpointPublishedSave(isCurrent:()=>boolean,capture:()=>Promise<unknown>){
     if(!isCurrent())return;
-    const checkpoint=()=>captureLatestDraft(isCurrent).catch(cause=>{if(isCurrent())setDraftStatus(message(cause));});
+    const checkpoint=()=>capture().catch(cause=>{if(isCurrent())setDraftStatus(message(cause));});
     const coordinator=cloud.current;
     if(!coordinator?.state.draftId||coordinator.uncertain||coordinator.conflicted){await checkpoint();return;}
     let request:ReturnType<ServerDraftSession['requestDiscard']>;
@@ -162,7 +162,7 @@ export function FreeWorkbookWorkspace(){
     // Persist the formal acknowledgement and pending cleanup together. The
     // existing cloud path captures current input before transport and again
     // after its receipt; an extra full capture here duplicated the first one.
-    try{await performCloud(isCurrent,request.body.operationId);}catch(cause){if(isCurrent())setCloudStatus(`正式版本已保存，草稿清理尚未发送：${message(cause)}`);}
+    try{await performCloud(isCurrent,request.body.operationId,capture);}catch(cause){if(isCurrent())setCloudStatus(`正式版本已保存，草稿清理尚未发送：${message(cause)}`);}
   }
   async function recoverCloud(){await run(async()=>{
     const draft=cloudRecovery?.draft;if(!draft||!active||!ownerId)return;
@@ -227,7 +227,8 @@ export function FreeWorkbookWorkspace(){
     if(cloud.current?.conflicted)throw new Error('服务器草稿存在冲突，请先读取并选择需要保留的内容。');
     if(cloud.current?.uncertain)throw new Error('请先核实服务器草稿的原请求，当前内容已保留。');
     const coordinator=session.current,pending=coordinator.existing(),isCurrent=captureScope();
-    const current=await runtime.current.snapshot(),capturedSequence=sequence.current||1;
+    const savedRuntime=runtime.current;
+    const current=await savedRuntime.snapshot(),capturedSequence=sequence.current||1;
     if(!isCurrent())return;
     if(!sequence.current)sequence.current=capturedSequence;
     const payload=pending??coordinator.request(current,capturedSequence);setStatus('正在保存');
@@ -241,9 +242,20 @@ export function FreeWorkbookWorkspace(){
     setActive(value=>value?{...value,...ack,revision:Math.max(value.revision,ack.revision)}:value);
     const changedSince=sequence.current!==confirmed.current;setDirty(changedSince||newerKnown);
     setStatus(newerKnown?`原请求已确认保存为版本 ${ack.revision}；服务器已有版本 ${active.revision}，请重新读取`:changedSince?`版本 ${ack.revision} 已保存，仍有新修改`:`已保存 · 版本 ${ack.revision}`);
-    await checkpointPublishedSave(isCurrent);
+    const confirmedSequence=confirmed.current;
+    // Reuse only this save's detached immutable payload, while the same editor
+    // is still idle at exactly that sequence. Composition can start without an
+    // onChanged event, so sequence equality alone is insufficient.
+    const checkpoint=()=>{
+      if(!isCurrent())return Promise.resolve();
+      return !newerKnown&&runtime.current===savedRuntime&&sequence.current===confirmedSequence&&savedRuntime.isEditIdle()
+        ?persistDraft(payload.snapshot,confirmedSequence):captureLatestDraft(isCurrent);
+    };
+    await checkpointPublishedSave(isCurrent,checkpoint);
     if(!isCurrent())return;
-    if(sequence.current===confirmed.current&&!newerKnown&&!cloud.current?.uncertain&&!cloud.current?.conflicted&&localDraft.current?.sequence===confirmed.current&&localDraft.current.baseRevision===ack.revision){
+    const unfinishedEdit=!savedRuntime.isEditIdle()||Boolean(localDraft.current?.edit);
+    if(unfinishedEdit){setDirty(true);setStatus(`版本 ${ack.revision} 已保存，仍有未确认输入`);}
+    if(!unfinishedEdit&&sequence.current===confirmed.current&&!newerKnown&&!cloud.current?.uncertain&&!cloud.current?.conflicted&&localDraft.current?.sequence===confirmed.current&&localDraft.current.baseRevision===ack.revision){
       const savedDraft=localDraft.current;
       try{await removeLocalDraft(savedDraft);if(isCurrent()&&localDraft.current===savedDraft){localDraft.current=null;setDraftStatus('');}}catch(cause){if(isCurrent())setDraftStatus(message(cause));}
     }else{setDraftTick(n=>n+1);await captureLatestDraft(isCurrent).catch(cause=>{if(isCurrent())setDraftStatus(message(cause));});}

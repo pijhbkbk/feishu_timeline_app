@@ -40,7 +40,7 @@ beforeEach(async()=>{
   vi.resetModules();hooks.slots=[];hooks.index=0;hooks.effects=[];hooks.cleanups=new Map();
   fonts.prepare.mockReset().mockResolvedValue(undefined);
   instance={
-    ready:Promise.resolve(),dispose:vi.fn(),restoreEdit:vi.fn().mockResolvedValue(undefined),
+    ready:Promise.resolve(),isEditIdle:vi.fn(()=>true),dispose:vi.fn(),restoreEdit:vi.fn().mockResolvedValue(undefined),
     retryImages:vi.fn(),snapshot:vi.fn(),draftSnapshot:vi.fn(),insertImage:vi.fn(),insertAsset:vi.fn(),setBackgroundAsset:vi.fn(),
   };
   create=vi.fn(()=>instance);vi.doMock('./runtime',()=>({createFreeWorkbook:create}));

@@ -214,3 +214,11 @@ describe('autosave while a later native edit is still open', () => {
     expect(api.saveCatalog.mock.calls[2]?.[1]).not.toBe(original?.[1]); expect(finish).toHaveBeenCalledOnce();
   });
 });
+
+it.each(['保存修改','撤销','刷新'])('stops %s when native editing rejects a value',async label=>{
+ await flush();canvas().onChanges([{id:'a',field:'note',value:'existing draft'}]);await flush();
+ finish.mockRejectedValueOnce(new Error('业务清单不支持公式，请输入文本。'));
+ const reads=api.readCatalog.mock.calls.length;const button=elements(tree).find(item=>item.type==='button'&&text(item.props.children as ReactNode).endsWith(label))!;
+ expect(button).toBeDefined();await (button.props.onClick as ()=>Promise<void>)();await flush();
+ expect(text(tree)).toContain('不支持公式');expect(displayedNote()).toBe('existing draft');expect(api.saveCatalog).not.toHaveBeenCalled();expect(api.readCatalog.mock.calls.length).toBe(reads);
+});

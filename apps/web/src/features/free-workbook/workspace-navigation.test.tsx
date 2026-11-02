@@ -172,7 +172,7 @@ it('keeps unfinished imported images and their active identity on a query change
 });
 
 it('retains the uncertain save request when a query change attempts to leave',async()=>{
- await settle();const canvas=nodes(tree).find(n=>typeof n.props.onChanged==='function')!;(canvas.props.runtime as {current:unknown}).current={snapshot:vi.fn().mockResolvedValue(saved(oldId).snapshot),draftSnapshot:vi.fn().mockResolvedValue({snapshot:saved(oldId).snapshot,edit:null})};(canvas.props.onReady as ()=>void)();(canvas.props.onChanged as ()=>void)();await settle();api.save.mockRejectedValueOnce(new Error('保存响应丢失'));await click('保存');const request=api.save.mock.calls[0]![1];api.read.mockClear();url.searchParams.set('workbook',laterId);
+ await settle();const canvas=nodes(tree).find(n=>typeof n.props.onChanged==='function')!;(canvas.props.runtime as {current:unknown}).current={isEditIdle:vi.fn(()=>true),snapshot:vi.fn().mockResolvedValue(saved(oldId).snapshot),draftSnapshot:vi.fn().mockResolvedValue({snapshot:saved(oldId).snapshot,edit:null})};(canvas.props.onReady as ()=>void)();(canvas.props.onChanged as ()=>void)();await settle();api.save.mockRejectedValueOnce(new Error('保存响应丢失'));await click('保存');const request=api.save.mock.calls[0]![1];api.read.mockClear();url.searchParams.set('workbook',laterId);
  const html=await settle();expect(html).toContain('上次操作结果尚未确认');expect(html).toContain('核实并保存');expect(html).toContain('有未保存内容');expect(url.searchParams.get('workbook')).toBe(oldId);expect(api.read).not.toHaveBeenCalled();api.save.mockResolvedValueOnce({...saved(oldId),revision:2});await click('核实并保存');expect(api.save.mock.calls[1]![1]).toBe(request);
 });
 it('retains an uncertain restore operation and does not navigate away',async()=>{
@@ -185,7 +185,7 @@ it('restarts an initial read after Strict Mode effect cleanup/setup and ignores 
  expect(signal.aborted).toBe(true);expect(await settle()).toContain(`data-workbook="${oldId}"`);expect(api.read).toHaveBeenCalledTimes(2);const writes=replace.mock.calls.length;resolve(saved(oldId));await settle();expect(replace).toHaveBeenCalledTimes(writes);
 });
 
-function readyEditor(){const canvas=nodes(tree).find(n=>typeof n.props.onChanged==='function')!;(canvas.props.runtime as {current:unknown}).current={snapshot:vi.fn().mockResolvedValue(saved(oldId).snapshot),draftSnapshot:vi.fn().mockResolvedValue({snapshot:saved(oldId).snapshot,edit:null})};(canvas.props.onReady as ()=>void)();(canvas.props.onChanged as ()=>void)();}
+function readyEditor(){const canvas=nodes(tree).find(n=>typeof n.props.onChanged==='function')!;(canvas.props.runtime as {current:unknown}).current={isEditIdle:vi.fn(()=>true),snapshot:vi.fn().mockResolvedValue(saved(oldId).snapshot),draftSnapshot:vi.fn().mockResolvedValue({snapshot:saved(oldId).snapshot,edit:null})};(canvas.props.onReady as ()=>void)();(canvas.props.onChanged as ()=>void)();}
 it('does not send a save if durable request storage fails',async()=>{await settle();readyEditor();await settle();drafts.write.mockRejectedValueOnce(new Error('本机配额耗尽'));const html=await click('保存');expect(api.save).not.toHaveBeenCalled();expect(html).toContain('本机配额耗尽');expect(html).toContain('有未保存内容');expect(html).not.toContain('核实并保存');expect(html).toContain('保存请求尚未发送');});
 it('ignores a late save acknowledgement after the signed-in account changes',async()=>{
  await settle();readyEditor();await settle();let resolve!:(value:SavedWorkbook)=>void;api.save.mockImplementationOnce(()=>new Promise<SavedWorkbook>(r=>{resolve=r;}));const saving=click('保存');await settle();expect(api.save).toHaveBeenCalledTimes(1);
@@ -247,9 +247,11 @@ it('persists formal acknowledgement and exact cleanup request together before cl
  cloudApi.execute.mockResolvedValueOnce({receipt:{action:'DRAFT_DISCARDED',draftId:laterId,draftRevision:1,baseWorkbookRevision:1,snapshotHash:'a'.repeat(64),workbookRevision:2},currentDraft:null,workbookRevision:2,baseStale:false,superseded:false});
  void click('保存');await vi.waitFor(()=>expect(release).toBeDefined());
  const checkpoint=drafts.write.mock.calls[1]![0];expect(checkpoint).toMatchObject({baseRevision:2,pending:null,server:{pending:{kind:'discard',body:{expectedDraftId:laterId,expectedDraftRevision:1}}}});
- expect(rt.draftSnapshot).toHaveBeenCalledTimes(1);expect(cloudApi.execute).not.toHaveBeenCalled();
+ expect(rt.draftSnapshot).not.toHaveBeenCalled();expect(cloudApi.execute).not.toHaveBeenCalled();
  release(true);await vi.waitFor(async()=>expect(await settle()).toContain('已保存 · 版本 2'));
  expect(cloudApi.execute).toHaveBeenCalledExactlyOnceWith(checkpoint.server.pending);
+ expect(rt.draftSnapshot).not.toHaveBeenCalled();expect(drafts.write).toHaveBeenCalledTimes(3);
+ expect(drafts.write.mock.calls[2]![0]).toMatchObject({baseRevision:2,pending:null,server:{pending:null,state:{draftId:null}}});
  expect(drafts.remove).toHaveBeenCalledTimes(1);expect(drafts.remove.mock.calls[0]![0]).toMatchObject({baseRevision:2,pending:null,server:{pending:null,state:{draftId:null}}});
 });
 it('does not send cleanup when its combined acknowledgement checkpoint cannot be persisted',async()=>{
@@ -291,7 +293,7 @@ it('pauses only the canvas while a structure request waits, and preserves late i
  await settle();readyEditor();await settle();let release!:(value:boolean)=>void;drafts.write.mockImplementationOnce(()=>new Promise<boolean>(resolve=>{release=resolve;}));void click('新建');await vi.waitFor(()=>expect(release).toBeTypeOf('function'));expect(await settle()).toContain('inert');const canvas=canvasRuntime();(canvas.props.onChanged as ()=>void)();release(true);await vi.dynamicImportSettled();expect(await settle()).toContain('保留草稿期间又有输入');expect(api.create).not.toHaveBeenCalled();expect(intents.write).not.toHaveBeenCalled();expect(renderToStaticMarkup(tree)).toContain(`data-workbook="${oldId}"`);
 });
 it('keeps an import unresolved if complete local draft durability fails after all image positions',async()=>{
- await settle();await selectSyntheticImport();await click('确认导入副本');const snapshot=blankWorkbook(laterId,'合成导入'),canvas=canvasRuntime();(canvas.props.runtime as {current:unknown}).current={snapshot:vi.fn().mockResolvedValue(snapshot),draftSnapshot:vi.fn().mockResolvedValue({snapshot,edit:null})};(canvas.props.onReady as ()=>void)();await settle();drafts.write.mockRejectedValueOnce(new Error('Synthetic local quota'));expect(await click('继续导入并保留完整草稿')).toContain('Synthetic local quota');expect((intents.rows.get(identity.id) as {intent:{phase:string}}).intent.phase).toBe('awaiting-receipt');expect(renderToStaticMarkup(tree)).toContain('继续导入并保留完整草稿');expect(api.save).not.toHaveBeenCalled();
+ await settle();await selectSyntheticImport();await click('确认导入副本');const snapshot=blankWorkbook(laterId,'合成导入'),canvas=canvasRuntime();(canvas.props.runtime as {current:unknown}).current={isEditIdle:vi.fn(()=>true),snapshot:vi.fn().mockResolvedValue(snapshot),draftSnapshot:vi.fn().mockResolvedValue({snapshot,edit:null})};(canvas.props.onReady as ()=>void)();await settle();drafts.write.mockRejectedValueOnce(new Error('Synthetic local quota'));expect(await click('继续导入并保留完整草稿')).toContain('Synthetic local quota');expect((intents.rows.get(identity.id) as {intent:{phase:string}}).intent.phase).toBe('awaiting-receipt');expect(renderToStaticMarkup(tree)).toContain('继续导入并保留完整草稿');expect(api.save).not.toHaveBeenCalled();
 });
 
 it('requires page confirmation and cancels restoration without sending a request',async()=>{
@@ -309,4 +311,35 @@ it('rejects new editing while the confirmed restore is awaiting draft capture',a
 it('rejects new editing during restore intent persistence before any network send',async()=>{
  await settle();api.revisions.mockResolvedValueOnce({items:[{revision:1,createdAt:'2026-10-19T00:00:00Z'}],nextBefore:null});await click('版本恢复');const select=nodes(tree).find(n=>n.type==='select'&&n.props['aria-label']==='历史版本')!;(select.props.onChange as (event:unknown)=>void)({target:{value:'1'}});await settle();await click('恢复为新版本');
  const write=intents.write.getMockImplementation()!;let release!:()=>void;intents.write.mockImplementationOnce(async(...args:unknown[])=>{const stored=await write(...args);await new Promise<void>(r=>{release=r;});return stored;});const pending=click('确认恢复历史版本');await vi.waitFor(()=>expect(release).toBeDefined());const canvas=canvasRuntime();(canvas.props.onChanged as ()=>void)();await settle();release();await pending;await vi.waitFor(async()=>expect(await settle()).toContain('确认恢复后又有内容'));expect(api.restore).not.toHaveBeenCalled();expect((intents.rows.get(identity.id) as {intent:{phase:string}}).intent.phase).toBe('prepared');
+});
+
+it.each(['native editing','IME composition'])('captures current %s even without a new committed sequence',async kind=>{
+ cloudApi.read.mockResolvedValueOnce(cloudRead());await settle();await click('恢复服务器草稿');readyEditor();await settle();
+ const rt=(canvasRuntime().props.runtime as {current:{isEditIdle:ReturnType<typeof vi.fn>;draftSnapshot:ReturnType<typeof vi.fn>}}).current;
+ rt.isEditIdle.mockReturnValue(false);const snapshot=saved(oldId).snapshot;snapshot.name='未完成的新输入';
+ const edit={sheetId:snapshot.sheetOrder[0],row:0,column:0,document:{body:{dataStream:'正在组词\r\n'}}};
+ rt.draftSnapshot.mockResolvedValue(kind==='IME composition'?null:{snapshot,edit});rt.draftSnapshot.mockClear();drafts.write.mockClear();
+ api.save.mockResolvedValueOnce({...saved(oldId),revision:2});
+ cloudApi.execute.mockResolvedValueOnce({receipt:{action:'DRAFT_DISCARDED',draftId:laterId,draftRevision:1,baseWorkbookRevision:1,snapshotHash:'a'.repeat(64),workbookRevision:2},currentDraft:null,workbookRevision:2,baseStale:false,superseded:false});
+ await click('保存');await vi.waitFor(()=>expect(cloudApi.execute).toHaveBeenCalledTimes(1));await settle();
+ expect(rt.draftSnapshot).toHaveBeenCalled();
+ if(kind==='native editing'){expect(drafts.write.mock.calls[1]![0]).toMatchObject({snapshot:{name:'未完成的新输入'},edit});expect(drafts.write.mock.calls[2]![0]).toMatchObject({snapshot:{name:'未完成的新输入'},edit});}
+ expect(renderToStaticMarkup(tree)).toContain('仍有未确认输入');
+ expect(drafts.remove).not.toHaveBeenCalled();
+});
+it('does not substitute an old retried payload for newer input in post-ack checkpoints',async()=>{
+ await settle();readyEditor();await settle();api.save.mockRejectedValueOnce(new Error('response lost'));await click('保存');
+ const original=structuredClone(api.save.mock.calls[0]![1]);const canvas=canvasRuntime();
+ const rt=(canvas.props.runtime as {current:{snapshot:ReturnType<typeof vi.fn>;draftSnapshot:ReturnType<typeof vi.fn>}}).current;
+ const newer=saved(oldId).snapshot;newer.name='重试前的下一笔输入';rt.snapshot.mockResolvedValue(newer);rt.draftSnapshot.mockResolvedValue({snapshot:newer,edit:null});(canvas.props.onChanged as ()=>void)();await settle();
+ api.save.mockResolvedValueOnce({...saved(oldId),revision:2});await click('核实并保存');await settle();
+ expect(api.save.mock.calls[1]![1]).toEqual(original);expect(drafts.remove).not.toHaveBeenCalled();
+ expect(drafts.write.mock.calls.at(-1)![0]).toMatchObject({snapshot:{name:'重试前的下一笔输入'},baseRevision:2,pending:null});
+});
+it('stops the cleanup checkpoint continuation after an account switch',async()=>{
+ cloudApi.read.mockResolvedValueOnce(cloudRead());await settle();await click('恢复服务器草稿');readyEditor();await settle();
+ api.save.mockResolvedValueOnce({...saved(oldId),revision:2});let release!:(ok:boolean)=>void;
+ drafts.write.mockReset().mockResolvedValueOnce(true).mockImplementationOnce(()=>new Promise<boolean>(r=>{release=r;}));
+ void click('保存');await vi.waitFor(()=>expect(release).toBeDefined());identity.id='synthetic-owner-b';url.searchParams.set('workbook',laterId);await settle();release(true);await settle();
+ expect(cloudApi.execute).not.toHaveBeenCalled();expect(drafts.remove).not.toHaveBeenCalled();expect(drafts.write.mock.calls.every(call=>call[0].ownerId==='synthetic-owner-a')).toBe(true);
 });

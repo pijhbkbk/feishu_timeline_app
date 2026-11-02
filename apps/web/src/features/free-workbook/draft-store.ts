@@ -60,7 +60,9 @@ export async function writeLocalDraft(draft:WorkbookLocalDraft){
       if(old&&(old.baseRevision>draft.baseRevision||old.sequence>draft.sequence||old.sequence===draft.sequence&&((old.writeVersion??0)>(draft.writeVersion??0)||(old.writeVersion??0)===(draft.writeVersion??0)&&old.savedAt>draft.savedAt)))return;
       const nextTotal=Number(total.result??0)-(old?.bytes??0)+bytes;
       if(!old&&count.result>=MAX_SCOPE_DRAFTS||nextTotal>MAX_TOTAL_BYTES){failure=new Error('本机草稿空间已满。已有草稿保留，请先保存、导出或明确放弃旧草稿。');tx.abort();return;}
-      store.put({...structuredClone(draft),key:key(draft),bytes});quota.put(nextTotal,'bytes');applied=true;
+      // IndexedDB synchronously clones the value passed to put; keep its transaction
+      // and completion barrier without first cloning the same full snapshot again.
+      store.put({...draft,key:key(draft),bytes});quota.put(nextTotal,'bytes');applied=true;
     };
     previous.onsuccess=update;total.onsuccess=update;count.onsuccess=update;
     tx.oncomplete=()=>resolve(applied);tx.onerror=()=>reject(failure??new Error('本机草稿保存失败，请显式保存或导出。'));tx.onabort=()=>reject(failure??new Error('本机草稿保存已中断。'));
