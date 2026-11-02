@@ -9309,3 +9309,18 @@ r02于04:19:26–04:20:26Z仍失败：daily.cvd HTTP200/23447611B，FreshClam自
 进程自然结束、remainingOwners=[]，无SIGTERM/KILL；guest采样最少free2159980544B、目录观测峰23580672B，host原376根峰26128543744B，均在已批25GiB、host64MiB/guest1GiB底线内；采样不是瞬时峰值证明或硬配额。OP/signature-refresh-25-20261102-r02/failure-summary.json/SHA2dbfcc98edfa96227c6f48d995c23391fc274992853183cfb09ab0e3aaaeb150记录本轮方案结束，不再第三次下载或换目录/客户端/网络参数重试。实际独审OP/signature-refresh-25-diagnostic-actual-review-20261102-r02.json/SHAe5b397d85c9655eb3b8cb287ca08e0f68b97e347bd1315b7a0cfc9cf1a855d69核原字节结果、脱敏摘要、14份预算及边界成立。
 
 当前仅VM/PG/Redis运行，scanner/API/Web/proxy未起，45464不可用；原66/1/4/2FAIL/1BLOCKED、12/15包、6/9链、P0 7/10、P1 3/5保持。R40已向原授权会话提交本次实际结果，完整反馈尚待。独立只读分析新daily与已留存官方main/bytecode能否在原合同下组成明确派生的新集合；尚未复制/验签/加载，不伪造FreshClam成功或弱化48h/三CVD/来源规则。若无可验证依据，维持外部依赖HOLD。原外盘、业务历史、受保护未跟踪文件及远端CI/push/main/tag/production未动。
+
+
+## 2026-11-02 — 三源官方签名实际加载与原代理恢复（E150）
+
+R40完整反馈65624044-a25d-41c4-9219-0f38feb308ab及Gmail同件1a19a857c95c396d已读去重，支持在原来源/三CVD/48h/真实加载规则下复用完整官方文件；不要求三文件必须来自同一次FreshClam exit0。E149两次下载失败不改判，不再第三次联网刷新。来源为原官方main63/bytecode339与r02完整daily28171，bytecode当前远端版本仍UNKNOWN。
+
+操作源码6eb4807引入显式V3 local-sources/import handoff，旧V1/V2守卫保持。r01实际prepare通过、loader在CHECK_MAPPED_NATIVE_PROOF_BYTES拒绝，原件SHA1e874963ceb6cf5dfa7136d91a36526df57f7c248310021f49e3f76c3c5aa249保留，未执行sigtool/启动。已知Brotli两库更新与旧native摘要不一致；507db99754bcb3d88bee4822936793d6e8e298af只复用受pin的prepare_instance.base_update三来源、固定两路径/原新摘要/包版本/alias和当前metadata，mapped_library与loader_run均保留历史对应比较，其他库不放宽。新r02独占目录保留r01。7个相关suite按Python-I-B执行exit0，首次遗漏-I的两个宿主fixture错误另记，非guest失败或守卫修改。源码独审02b479b3…、消费者独审83670db9…、r02输入独审936c524e…成立；应用d9制品未重建。
+
+OP/local-scanner-20261102-r02实际stage/prepare/loader/import/start/verify均0。05:43–05:44Z三次sigtool均0，导入外层回执3cdb2a4353bcdc91a7a542ae4518cc3ce168fc9f27be63500d593210ff6bcfcc；05:46Z原ClamAV1.4.6实际三库加载，Loaded3628245、TrustSigned、engine功能级216≥各库90，header总数3642948只记录、不冒称应相等。start原件7a70ab9756892add96fd4ec07efdb5a5cc5e7b228e002d74693bb79fa13731df，verify b02bf416135b2685bab4c7372618cbd0bf65a068b7968bc8a7a125f55d786caa，当前owner2368/t939813/uid1100/loopback3310。
+
+OP/local-scanner-client-20261102-r02/execute在05:47:34Z通过真实已编译应用扫描客户端：42B CLEAN→CLEAN、68B EICAR→REJECTED/MALWARE_FOUND:Eicar-Test-Signature；前后同owner/engine1.4.6/daily28171。结果a31e051fc04c4db6bfc96d01c9196bc36b0e11932b2e2744fe46fe2b4ef56130，独审OP/local-scanner-current-actual-review-20261102-r02.json/SHA4166ce85b3c1a3bbf53f96047149fcb6b7a5db93e73a5c9724987146073a0626核对实际原件及21份预算。host峰26254950400B，guest最少free2045759488B；保留原376根/25GiB/host64MiB/guest1GiB，采样非硬配额。daily内部buildEpoch1793514454，48h截止2026-11-03T06:27:34Z，每次后续使用仍按实时时效；未复跑历史20MiB/解压用例或HTTP/DB。
+
+原proxy按原Node/脚本/preparation/私密配置/TLS字节正常启动，严格CA TLS及loopback45464 socket owner读回成立；OP/original-proxy-resume-20261102-r01/execute/guest-receipt.json SHAe2abcf2e8cb1ec61ba4de2f15ebdf68cd8c89c6c6544d5f58bcb9c42b708eb40，源审8d12e2a4…。只启动代理，API/Web仍停止，TLS入口不等于可操作预览。旧lifecycle state仍是save-start-r02原RUNNING SHA36e7b2d…/旧boot9fee，pending不存在；只读保存原件，未操作旧PID或改state。
+
+R41实际结果已提交原授权6ad6ddfe会话，完整反馈尚待；不重复发送。当前PG/Redis/scanner/proxy运行，d9仍待guest组装及recover-boot→正常start→四入口/同本/菜单/有限保存实测。66/1/4/2FAIL/1BLOCKED=74及12/15包、6/9链、P0 7/10/P1 3/5不变，无产品签收、无公网更新。旧失败、原外盘和受保护用户文件不动。
