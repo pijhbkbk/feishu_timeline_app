@@ -78,14 +78,32 @@ class HostTests(unittest.TestCase):
         policy={'kind':'OFFLINE_HOST_BUDGET_SCOPE_V1','limit':limit,'expectedRootPaths':[str(self.root)]}
         with self.assertRaisesRegex(RuntimeError,'COMPLETE_BUDGET_POLICY'):
             m.budget(policy,self.root,[])
-        with self.assertRaisesRegex(RuntimeError,'APPROVED_BUDGET_LIMIT'):
-            m.budget({**policy,'limit':25*1024**3},self.root,[],approved_limit=25*1024**3)
+        for invalid in (26*1024**3, True, -1, float(limit)):
+            with self.assertRaisesRegex(RuntimeError,'APPROVED_BUDGET_LIMIT'):
+                m.budget({**policy,'limit':invalid},self.root,[],approved_limit=invalid)
         used=24*1024**3+128*1024**2
         with patch.object(m,'bounded',return_value=(0,str(used//1024).encode(),b'')):
             result=m.budget(policy,self.root,[],approved_limit=limit)
         self.assertEqual((result['totalAllocatedBytes'],result['limit'],result['reserve']),
                          (used,limit,64*1024**2))
         with patch.object(m,'bounded',return_value=(0,str((limit-64*1024**2+1024)//1024).encode(),b'')):
+            with self.assertRaisesRegex(RuntimeError,'HOST_PREFLIGHT_CAPACITY'):
+                m.budget(policy,self.root,[],approved_limit=limit)
+    def test_november_retention_25_requires_explicit_caller_and_exact_reserve(self):
+        limit=25*1024**3
+        policy={'kind':'OFFLINE_HOST_BUDGET_SCOPE_V1','limit':limit,'expectedRootPaths':[str(self.root)]}
+        for caller in (None,49*1024**3//2):
+            with self.assertRaisesRegex(RuntimeError,'COMPLETE_BUDGET_POLICY'):
+                kwargs={} if caller is None else {'approved_limit':caller}
+                m.budget(policy,self.root,[],**kwargs)
+        # Exercise the actual du reader, not just a precomputed receipt.
+        result=m.budget(policy,self.root,[],approved_limit=limit)
+        self.assertEqual(result['limit'],limit)
+        self.assertEqual(len(result['rows']),1)
+        self.assertEqual(result['readerSha256'],m.sha((HERE/'delivery_host.py').read_bytes()))
+        with patch.object(m,'bounded',return_value=(0,str((limit-64*1024**2)//1024).encode(),b'')):
+            self.assertEqual(m.budget(policy,self.root,[],approved_limit=limit)['reserve'],64*1024**2)
+        with patch.object(m,'bounded',return_value=(0,str((limit-64*1024**2)//1024+1).encode(),b'')):
             with self.assertRaisesRegex(RuntimeError,'HOST_PREFLIGHT_CAPACITY'):
                 m.budget(policy,self.root,[],approved_limit=limit)
     def test_transport_deadline_stops_owned_process(self):

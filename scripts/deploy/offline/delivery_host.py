@@ -112,8 +112,9 @@ def bounded(argv, env, cwd, timeout, cap):
 def budget(policy, root, allowed_absent, *, approved_limit=LIMIT):
     roots = policy['expectedRootPaths']
     # A policy file cannot grant a higher ceiling. Only the reviewed caller can
-    # select the owner's 24.5 GiB retention allowance; legacy callers keep 24.
-    need(type(approved_limit) is int and approved_limit in (LIMIT, 49*1024**3//2),
+    # select an explicitly granted retention allowance; legacy callers keep 24.
+    # The owner approved 25 GiB for the existing scope on 2026-11-02.
+    need(type(approved_limit) is int and approved_limit in (LIMIT, 49*1024**3//2, 25*1024**3),
          'APPROVED_BUDGET_LIMIT')
     need(policy['kind'] == 'OFFLINE_HOST_BUDGET_SCOPE_V1' and policy['limit'] == approved_limit and
          1 <= len(roots) <= 4096 and len(roots) == len(set(roots)), 'COMPLETE_BUDGET_POLICY')
