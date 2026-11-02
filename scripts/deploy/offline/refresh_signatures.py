@@ -250,21 +250,64 @@ def admission(args):
     return m, b, root, generation, c, tools, budget, ca, native
 
 
+def diagnostic_state(m, binding):
+    """One explicit verbose diagnostic retains FreshClam's own refusal state."""
+    ref=binding.get('diagnosticRetry')
+    if ref is None:return None,None
+    need(isinstance(ref,dict) and set(ref)=={'kind','previousReceipt','updateState'} and
+         ref['kind']=='PARTIAL_TRANSFER_VERBOSE_ONCE_V1','DIAGNOSTIC_RETRY_BINDING')
+    previous=m.pinned(ref['previousReceipt'],65536)
+    prior_root=Path(previous['output'])
+    need(prior_root.parent==HOME and re.fullmatch('offline-signatures-[a-z0-9-]{1,48}',prior_root.name) and
+         ref['previousReceipt']['path']==str(prior_root/'result.json') and
+         previous.get('status')=='FAILED_PRESERVED' and previous.get('bootId')==binding['bootId'] and
+         previous.get('identity')==m.IDENTITY and
+         previous.get('errorCode')=='CHECK_UPDATE_COMMAND_FAILED' and
+         previous.get('maximumAttempts')==1 and previous.get('diagnosticRetry') is None and
+         previous.get('officialMirror')=='database.clamav.net' and
+         previous.get('tlsVerificationDisabled') is False,'DIAGNOSTIC_PREVIOUS_ATTEMPT')
+    age=time.time()-dt.datetime.fromisoformat(previous['finishedAt']).timestamp()
+    commands=previous.get('commands',[])
+    need(age>=300 and len(commands)==1 and commands[0].get('name')=='freshclam-once' and
+         commands[0].get('exitCode')==5 and commands[0].get('cleanup',{}).get('exited') is True and
+         commands[0]['cleanup'].get('remainingOwners')==[],'DIAGNOSTIC_PREVIOUS_CLEANUP_AND_WAIT')
+    log=commands[0]['log']
+    need(log['path']==str(prior_root/'logs/freshclam-once.log') and 0<log['bytes']<=MAX_LOG,
+         'DIAGNOSTIC_PREVIOUS_LOG')
+    raw=m.read(Path(log['path']),MAX_LOG,private=True)
+    need(len(raw)==log['bytes'] and sha(raw)==log['sha256'] and
+         b'Transferred a partial file' in raw,'DIAGNOSTIC_PARTIAL_TRANSFER')
+    need(not re.search(rb'403|429|cool.?down|rate.?limit|blocked',raw,re.I),
+         'DIAGNOSTIC_EXPLICIT_SERVER_REFUSAL')
+    state=ref['updateState']
+    need(set(state)=={'path','bytes','sha256'} and state['path']==str(prior_root/'db/freshclam.dat') and
+         type(state['bytes']) is int and 0<state['bytes']<=4096,'DIAGNOSTIC_UPDATE_STATE')
+    data=m.read(Path(state['path']),4096,private=True)
+    need(len(data)==state['bytes'] and sha(data)==state['sha256'],'DIAGNOSTIC_UPDATE_STATE_PIN')
+    return data,{'kind':ref['kind'],'previousReceipt':ref['previousReceipt'],
+                 'updateState':state,'waitedSeconds':age,'verbose':True,
+                 'cooldownStatePreserved':True,'automaticRetry':False}
+
+
 def execute(args):
     m, b, root, generation, c, tools, budget, ca, native = admission(args)
+    prior_state,diagnostic=diagnostic_state(m,b)
     if args.check_admission:
         print(json.dumps({'status': 'REFRESH_NOT_EXECUTED_ADMISSION_VERIFIED',
                           'bootId': b['bootId'], 'nativeApplicability': native, 'budget': budget,
-                          'networkAccessed': False, 'filesWritten': False, 'servicesChanged': False}))
+                          'networkAccessed': False, 'filesWritten': False, 'servicesChanged': False,
+                          'diagnosticRetry':diagnostic}))
         return
     REPORT.update(kind=b['kind'], bootId=b['bootId'], identity=m.IDENTITY, startedAt=dt.datetime.now(dt.timezone.utc).isoformat(),
                   output=str(root), nativeApplicability=native, budget=budget, signatureMaxAgeHours=48,
                   officialMirror='database.clamav.net', maximumAttempts=1, tlsVerificationDisabled=False,
                   systemCaSha256=b['systemCaSha256'], servicesStarted=False, oldSignatureFilesChanged=False,
                   sourceBindingSha256=args.binding_sha256, status='FAILED_PRESERVED')
+    if diagnostic is not None:REPORT['diagnosticRetry']=diagnostic
     root.mkdir(mode=0o700)
     try:
         for name in ('db','tmp','logs'): (root/name).mkdir(mode=0o700)
+        if prior_state is not None:m.write_new(root/'db/freshclam.dat',prior_state)
         conf=(f'DatabaseOwner recovery\nDatabaseDirectory {root}/db\nDatabaseMirror database.clamav.net\n'
               'ConnectTimeout 10\nReceiveTimeout 120\nMaxAttempts 1\nScriptedUpdates yes\nTestDatabases yes\nChecks 1\nForeground yes\n')
         m.write_new(root/'freshclam.conf',conf.encode())
@@ -272,7 +315,8 @@ def execute(args):
         env={'PATH':'/usr/bin:/bin','HOME':str(HOME),'TMPDIR':str(root/'tmp'),'LANG':'C','LC_ALL':'C','TZ':'UTC','CURL_CA_BUNDLE':str(ca)}
         argv=lambda name:[str(m.LOADER),'--inhibit-cache','--library-path',libraries,str(tools[name])]
         guard(root,m,initial=True)
-        run(argv('freshclam')+['--config-file='+str(root/'freshclam.conf'),'--stdout'],env,root,m,'freshclam-once',600)
+        run(argv('freshclam')+['--config-file='+str(root/'freshclam.conf'),'--stdout']+
+            (['-v'] if diagnostic is not None else []),env,root,m,'freshclam-once',600)
         rows=inventory(root,m)
         for row in rows:
             output=run(argv('sigtool')+['--info='+row['path']],env,root,m,'verify-'+row['name'][:-4],90)

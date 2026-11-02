@@ -172,4 +172,50 @@ class RefreshRetentionTests(unittest.TestCase):
             with patch.object(m,'pinned',side_effect=[policy,receipt]),patch.object(m.shutil,'disk_usage',return_value=types.SimpleNamespace(free=2*1024**3)):
                 with self.assertRaisesRegex(RuntimeError,'REFRESH_CAPACITY'):refresh.operation_budget(m,binding,generation,args)
 
+class DiagnosticStateTests(unittest.TestCase):
+    def fixture(self):
+        root='/home/recovery/offline-signatures-failed-r01';data=b'opaque-existing-cooldown-state'
+        log=b'ERROR: Download failed (18) Transferred a partial file\n'
+        prior={'output':root,'status':'FAILED_PRESERVED','bootId':'live','identity':{'fixed':True},
+               'errorCode':'CHECK_UPDATE_COMMAND_FAILED','maximumAttempts':1,'officialMirror':'database.clamav.net',
+               'tlsVerificationDisabled':False,'finishedAt':dt.datetime.fromtimestamp(1000,dt.timezone.utc).isoformat(),
+               'commands':[{'name':'freshclam-once','exitCode':5,'cleanup':{'exited':True,'remainingOwners':[]},
+                   'log':{'path':root+'/logs/freshclam-once.log','bytes':len(log),'sha256':refresh.sha(log)}}]}
+        binding={'bootId':'live','diagnosticRetry':{'kind':'PARTIAL_TRANSFER_VERBOSE_ONCE_V1',
+            'previousReceipt':{'path':root+'/result.json','bytes':1,'sha256':'a'*64},
+            'updateState':{'path':root+'/db/freshclam.dat','bytes':len(data),'sha256':refresh.sha(data)}}}
+        reader=unittest.mock.Mock(side_effect=lambda p,*a,**k: log if str(p).endswith('.log') else data)
+        m=types.SimpleNamespace(IDENTITY=prior['identity'],pinned=lambda *a:prior,read=reader)
+        return binding,prior,m,data,log
+    def test_default_has_no_retry_or_state_read(self):
+        self.assertEqual(refresh.diagnostic_state(None,{}),(None,None))
+    def test_explicit_diagnostic_keeps_opaque_state_and_requires_wait(self):
+        b,p,m,data,_=self.fixture()
+        with patch.object(refresh.time,'time',return_value=1300):
+            actual,proof=refresh.diagnostic_state(m,b)
+        self.assertEqual(actual,data);self.assertTrue(proof['cooldownStatePreserved']);self.assertFalse(proof['automaticRetry'])
+        with patch.object(refresh.time,'time',return_value=1299):
+            with self.assertRaisesRegex(RuntimeError,'PREVIOUS_CLEANUP_AND_WAIT'):refresh.diagnostic_state(m,b)
+    def test_recursive_retry_and_remaining_process_refused(self):
+        b,p,m,_,_=self.fixture();p['diagnosticRetry']={'prior':True}
+        with self.assertRaisesRegex(RuntimeError,'PREVIOUS_ATTEMPT'):refresh.diagnostic_state(m,b)
+        p.pop('diagnosticRetry');p['commands'][0]['cleanup']['remainingOwners']=[[1,2]]
+        with patch.object(refresh.time,'time',return_value=1300),self.assertRaisesRegex(RuntimeError,'PREVIOUS_CLEANUP_AND_WAIT'):
+            refresh.diagnostic_state(m,b)
+    def test_changed_state_and_wrong_path_refused(self):
+        b,p,m,_,_=self.fixture()
+        b['diagnosticRetry']['updateState']['sha256']='f'*64
+        with patch.object(refresh.time,'time',return_value=1300),self.assertRaisesRegex(RuntimeError,'UPDATE_STATE_PIN'):
+            refresh.diagnostic_state(m,b)
+        b['diagnosticRetry']['updateState']['path']='/home/recovery/another/freshclam.dat'
+        with patch.object(refresh.time,'time',return_value=1300),self.assertRaisesRegex(RuntimeError,'UPDATE_STATE'):
+            refresh.diagnostic_state(m,b)
+    def test_explicit_denial_cannot_be_retried_as_partial_transfer(self):
+        for suffix in (b'HTTP/1.1 403',b'error code 429',b'cool-down',b'rate limited',b'blocked'):
+            b,p,m,data,log=self.fixture();log+=suffix
+            p['commands'][0]['log'].update(bytes=len(log),sha256=refresh.sha(log))
+            m.read.side_effect=lambda path,*a,**k:log if str(path).endswith('.log') else data
+            with self.subTest(suffix=suffix),patch.object(refresh.time,'time',return_value=1300),self.assertRaisesRegex(RuntimeError,'EXPLICIT_SERVER_REFUSAL'):
+                refresh.diagnostic_state(m,b)
+
 if __name__=='__main__':unittest.main()
