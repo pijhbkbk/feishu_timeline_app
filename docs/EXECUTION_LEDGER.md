@@ -9239,3 +9239,56 @@ S7new=OP/performance-s7-2e0-20261031-r01。2e0真实选择50次p95 nearest-rank�
 真实vendor函数目标22PASS（含实际CommandService前置拒绝），旧vendor同断言18PASS/4FAIL，原TSV24及业务guard12回归通过。初次测试logger缺debug与ignored子目录git-apply跳过修正后才形成上述成对日志；lint首次process导入缺失留存，补node:process后exit0。普通pnpm lockfile-only/offline尝试未缓存Next15.5.25解析失败且未改版本；按本机pnpm9.15.4 LF/MD5/base32算法核旧摘要，仅换patch hash后，frozen-lockfile/lockfile-only/offline/ignore-scripts实际exit0。默认diff-check仅12处patch上下文空格+tab报错，patch-aware同检查0，不改全局配置。独审6dbac289c51e9d402d86e0ff0e182503abcdf569012e8d063bd0642d8bbbeb26核最终源码、候选ES/CJS全文、锁及日志；本机installed vendor仍旧xtog，新源码未安装/构建/GUI实装。下一步先准备精确依赖与构建路径，不能拿22测试当产品恢复。
 
 R34实际送达dbf12a9b-6b81-4d6b-ad00-bacc7598dac8，完整反馈885ce759-5c34-411d-81be-2c58f8517463及Gmail同件1a191b348a77a192已读去重，SR/r34-chatgpt-delivery-feedback-20261031-r01.json保留。按真实反证将A02-03当前PASS重开FAIL、A02包PARTIAL、E2E-02当前PARTIAL、P1-02 RUN，E57/E59/E136历史事实保留；当前66PASS/1PARTIAL/4NOT_VERIFIED/2FAIL/1BLOCKED=74、89.19%、12/15包、6/9有效链、P0仍7/10、P1 3/5。不扩分母或全面重验Safari/IME/Office。产品仍PARTIAL，未执行远端CI/push/main/tag/production或代所有者签收；治理规则与唯一安全Finding状态未改。原受保护未跟踪媒体/附件保持。
+
+
+## 2026-11-02 — 菜单候选受限编译、单请求观察器与新现场停机（E147）
+
+R35完整反馈已在原授权6ad6ddfe会话读回，消息023a7efc-aa2a-4078-9f8f-7656e5a2c127及Gmail同件1a191d15c80584ae按副本去重。沿用66PASS/1PARTIAL/4NOT_VERIFIED/2FAIL/1BLOCKED=74、12/15包、6/9链、P0 7/10、P1 3/5；A02-03/A04-04继续FAIL。菜单源码修复7baa与运行验证分开，不重做已闭Office/IME或失败批次余49笔。
+
+构建配置76c7147280d6a19a051f05be13ea61b4be82a230仅为显式受限production/CI/no-build-cache路径添加共享依赖tracingRoot和真实Webpack UI资源收据，默认配置/HTTP缓存不改。11目标检查、lint/typecheck和独审71485f94…成立；首次回执路径/导入检查失败保留。最终应用d9d00d26729e321d2904ecc1c5b5f22f1d79958c/tree8ac5b1de6101f6e96bf1608b89d58ccf23fe3d38另含默认关闭的一次WORKBOOK_SAVE_TIMING观察器：仅本机HTTPS/staging/production，精确工作簿、expectedRevision、traceId、至多10分钟期限；首个匹配PUT在解析前消费，解析成功且operationId/revision合格后才绑定实际operationId，失败不重启。原8MiB解析器、认证/事务/审计/正式保存语义不变；45秒/finish/close清理，一条固定字段且限2KiB的日志不含认证/正文/SQL。47目标检查、最终10观察器检查、lint/typecheck及独审19d1734a…成立；原oversize fetch EPIPE失败保留，改为实际HTTP413断言，不把EPIPE当PASS。未执行诊断保存，也未改数据库配置。
+
+OP/joint-build-menu-d9d00d2-r01初次git apply绝对目标路径拒绝，未编译；result76376259…、source tar af81173d…保留。r06审后仅续用原未编译source，13包2341文件/136链接复制输入与381共享包链接逐项核验，原本机依赖不改，累计r01+r02计入同236MiB窗口，不重复复制。API/Web实际编译exit0，但后置清单因共享Next/React虚拟包根目录未声明拒绝，result1e5096e9…保留。只读定位97目录引用仅这两已核根；r07仅补这两个目录许可，未知路径仍拒绝，恢复剩余窗口容量准入后独审c5512700…成立。不重编译、不改身份，r03实际postverify exit0。
+
+实际制品identity为d9d00d2全文/tree8ac5b1…/release truck-toolbar-menu-d9d00d26729e-r02/build2026-11-02T01:07:31Z。6条编译和身份命令、97 raw NFT/8785引用/1339合并输入/1342 standalone叶、API313/Web2801清单与真实UI资源3/3/0逐项读回；client包含已修UI入口，旧vendor输入与失败证据保持。结果ce2467dc…、trace5d89cde4…、实际独审6c85f9c3…，状态MAC_API_WEB_COMPILED_LINUX_CLOSURE_PENDING。18份完整376根预算均保64MiB；累计观测峰215433216B，final扣保留余52506624B。原24.5GiB上限不变，236MiB是轮询停止窗口，不称硬配额；无临时25GiB扩用。
+
+本轮重新核现场发现原Lima实例Stopped，Chrome不在可连接浏览器清单；本轮未执行VM停机，发起者尚未核实。OP/menu-current-environment-20261102-r01.json/d34eadae…保存只读事实，尚未启动VM/读取私有配置/写数据。先前2e0c191在45464运行与性能本正式v4是历史事实，当前不称预览可用。现行生命周期绑定旧boot和共享owner，跨boot恢复缺口需精确新回执，不把旧RUNNING伪写成正常STOPPED。原实例正常恢复已有E88/E125授权先例；数据修复、覆盖、扩大资源另按实际风险判断。六文件sudo许可已于E146限定消费，不用于本轮。
+
+本轮源码/依赖构建只产生本机新制品，未push/main/tag/远端CI/production，原Docker、外盘、历史和受保护未跟踪媒体保持。Linux包、运行恢复、工具栏真实点击/保存刷新、一次有界请求分段和所有者接收仍待；产品PARTIAL/AWAITING_PRODUCT_OWNER_CONFIRMATION。
+
+
+E147续：增量实物OP/menu-application-delta-20261102-r01已经实际生成并独审7219008d…：947新叶/14796保留/15743 composite，archive9481527B/SHA9b438e13bb85739d132d94265b1f8bb40e73c8e5b806b5f1267d8c8a0ad645ad，manifestba0d4c52979ecabd3d9eee0546e930df04daddabc62a76fea56d7321ef4fe65a，composite84c5472ea24bc0cbdb5893a26d9269ac0b75587f28a92817ee05523dc5c7ab88。95交付NFT/7770引用（6159 shared、1437 app、174 root package）逐项映射，原件与派生JSON分别记hash，两app链接字面量保留；现成application_delta的contract/validate_rows/inspect_archive实际宿主只读检查通过。原脚本独审发现未检查缺失叶及tar扩展头计数缺口，先修四映射闭集和两层真实流字节界，再独审86abf2f1…后执行；不是削断言通过。包采样峰18452480B（最终目录18456576B），实际tar展开41175040B，32MiB目录/16MiB压缩/64MiB展开界保持。未实际guest消费/组装/运行。
+
+本轮13包可重建副本经独审31246c25…、13次本机当前UID lsof和6个已结束build/identity PGID检查、逐叶签名CAS后实际释放2477叶/486目录；事后独审51e43581…核2339原件、2份新UI候选、136literal恢复来源，source/patch/编译/包/UI收据与失败史均保持。完整376根26208985088→26156269568B，实测净差52715520B，扣64MiB余83296256B；不等同guest空间增长。381共享别名、9 seed文件及其余链接保留；17个暂时悬空链接明确记录，再构建或重放UI输入检查须先按闭集恢复13包，不为补证再复制全树。未用sudo、未触旧29538叶回收或六inode授权。
+
+R36实际送达user ca204059-f78c-4b3e-82af-1117a0db89d4；完整反馈e9e632fc-ada5-425b-b7a4-b0f2eb31ca40及Gmail同件1a199eb512a5d4ec已读并去重，OP/r36-chatgpt-delivery-feedback-20261102-r01.json保留无邮件头的正文。确认当前环境HOLD不抹去历史适用PASS，新boot A15-05绑定仍待；按既有同实例恢复许可继续，条件具备可直接启动d9，不要求先跑2e0、再安装或重演A15-10。签名48h/新旧并存峰值、原数据/状态及诊断默认关闭边界保持。本反馈不是新增容量、数据修复、sudo或产品签收许可。
+
+
+E147续（11月2日新现场）：同一原Lima实例truck-color-recovery-r24-20261025经受限正常start实际exit0，未强制启动/新建VM，未改2CPU/4GiB/24GiB磁盘。OP/menu-existing-vm-start-20261102-r01/result.json记录01:57:41Z完成；8份完整预算均在现行24.5GiB及64MiB保留内，轮询不是硬配额。新boot3ca20f31-15ee-4ccd-a72b-2551a1e162ca；只读确认5432/6379/3310/3591/3592/45464均未监听，旧state存在、pending不存在。PG/Redis/scanner/API/Web/proxy均未由本轮启动，当前预览不可用。旧boot RUNNING及停止发起者未知保留，不以旧PID进行操作、不改写正常STOPPED。仅准备新boot原数据正常启动helper并完成独审67c4f4d3…，未执行。
+
+两处公开daily CVD头部均为28166、buildEpoch1793082252（2026-10-27T06:24:12Z），已超过原48小时；仅头512字节/尺寸观察，不称验签，main/bytecode不套daily年龄要求。OP/menu-scanner-space-observation-20261102-r01.json/f8e9630b…在02:08:36Z记录guest1143611392B，1GiB底线上剩69869568B（约66.6MiB）。原刷新320MiB窗口及保留最多192MiB新签名后再准备scanner320MiB窗口，新增阶段峰值模型512MiB，当前空间不准入；未下载、未创建新scanner目录或传输d9。
+
+OP/menu-capacity-decision-budget-20261102-r01.json/1a3c846d…是02:12:09Z完整376根只读分配量观察，总26088488960B；raw limit保留原reader的24GiB常量，未执行24.5GiB操作准入。另按现行已批准24.5GiB及64MiB保留量算术余151076864B。已向所有者提出两项具体决定：原376根上限持续24.5→25GiB、同一Lima主磁盘24→25GiB（+1GiB）；方案OP/menu-capacity-decision-plan-20261102-r01.md含先核数据备份/磁盘身份、正常停机及Lima官方扩容入口、正常重启读回，失败不自行分区/格式化/修盘/缩盘。当前尚未答复，未扩大任何上限或执行扩容；历史临时25及六文件sudo均不可沿用。只暂停依赖容量的下载/装配/启动，独立文档、消费路径和工具准备继续。
+
+本轮apps/web占位扫描exit0、12处命中，均为测试的getByPlaceholder或否定正式占位文案断言，未命中正式页面占位；不以扫描代产品完成。三文档diff-check为0，原74断言/阈值及历史失败保留，独审中。
+
+E147三文档独审OP/menu-e147-docs-review-20261102-r01.json/SHA798123312551240604e9a423376fad52b5a1eb91ea57a38e652c128576754969成立，覆盖diff d3a970fc…；审中两处残留“当前2e0”已改为环境HOLD，冻结断言/阈值/74分母及状态保持。R37已送达原授权会话，user a75a0bf4-a12a-4a6b-bc2b-deb8c4492566；本条仅记送达，尚未取得完整反馈。
+
+
+## 2026-11-02 — 两项25GiB授权、当前冷备与同实例正常扩容（E148）
+
+所有者call_54a6adb263424774b0293f65de287840明确“允许两项调整并继续”：原376根统计范围总上限24.5→25GiB持续保留、同一Lima主磁盘24→25GiB（+1GiB）；host64MiB及guest1GiB底线不变，不承诺缩回。E147待决为当时时点，未沿用旧临时25或六文件sudo。R37实际user a75a0bf4-a12a-4a6b-bc2b-deb8c4492566、完整反馈ea0a9731-f28e-4ded-8b6b-531d74927100及Gmail同件1a19a1549d21e740已完整读取/去重；OP/r37-chatgpt-delivery-feedback-20261102-r01.json记录后到所有者授权。PM不是扩容批准者，原菜单/性能FAIL及历史66PASS范围不变。
+
+操作源码8c2d6e3f4e8d59aa29047b92dee2a8b2ab0ee9d7仅使delivery_host实际du reader可显式接收25GiB，默认24/旧24.5、完整根、64MiB与拒任意数/布尔等保持。13目标与独审02ca8d69…成立。新policy53197a20…从原376根逐项绑定，真实reader4df8783e…直接输出limit25，不把旧raw24观察改名为25准入。后继ce5bdbc2d38561edc8b169061e74a9dd673a8468将明确额度接到prepare_instance/refresh/scanner预算，历史generation创建policy与executionBudgetPolicy分别保留，host64MiB加入阶段剩余量比较，stop继续跳过预算门禁。14/11/21目标和六文件独审9982bfc4…成立；guest实际消费者尚未执行。应用制品仍d9，不为操作policy重编应用。
+
+旧可恢复逻辑备份仅10月25日，不覆盖10月31性能本v4。本轮实际冷备OP/pre-expand-cold-backup-20261102-r01在02:53:30Z完成：PG整个数据目录含WAL和配置，2661成员/95864479B源文件，gzip17331858B/SHA bc0c5848f8e638bfdccaf1c4ef04f9f46d06e875c9057a1c95c0892c39562f1e；原Redis/objects/private/TLS/实际代理及配置来源/生命周期/A2配套状态427成员/1615044B，gzip299092B/SHA4a855995300d56bdbe13bb071a38fc321d8ff0557413a97f8e768997dd91b58a。源前/归档流/源后hash与闭集相同，宿主逐成员复核，0700目录/0600私有文件，不在guest另落副本。PG systemId7700459308674415750，控制状态in production，服务/端口已停；这是当前崩溃恢复输入保护，不称引擎已恢复、v4已读回或A15-10重验。guest/host准备独审2242fe83…/fee688d8…，实际独审b6911dc5…；旧备份/失败/历史保持。
+
+本机Lima2.2.1 edit --disk帮助及官方主盘扩容文档已核，guest既有growpart/resizefs配置为PER_ALWAYS；未手工执行分区/格式化/修复/缩盘。OP/expand-same-vm-25-20261102-r01实际正常stop→edit --disk25→start均exit0，03:09:48Z完成。原磁盘dev16777230/inode64754051、root UUID86f7cf19-9959-4dba-91b1-0052c9d45c21保持，逻辑盘26843545600B，配置语义仅disk变化，CPU2/内存4GiB/挂载等保持。新boot589fefa8-c3d5-477d-a597-7303774115c9，guest total24883167232B/free2184048640B；完整host最后26102796288B，扣64MiB余673640448B。8份预算保持原376根，峰26107424768B，轮询不称硬配额；停机stderr一条关闭连接错误保留，其后实际Stopped且CLI0，不写日志零错误。准备独审b637ff86…及实际独审f3439d39…成立。
+
+新boot各业务/扫描/应用端口仍未启动，45464不可用。后续先原PG/Redis正常启动和精确数据读回，再现行签名刷新/验签/加载与d9组装启动，每阶段fresh准入；本次25不保证所有未来性能历史均足够。普通引擎恢复不包含人工清WAL/截AOF/覆盖数据库/改密，发现具体差异才暂停受影响写入。原数据helper r02仅BOOT与独占OUT变化，经实际扩容审查一并核对；尚未执行。原外盘Docker、未跟踪媒体、远端CI/push/main/tag/production均未动。
+
+
+E148续（03:38Z）：原PG/Redis已按受审r02脚本实际正常启动，host准备独审a17289cb…；PG启动03:21:38Z/PID1422/t71422，readback systemId7700459308674415750、/var/lib/postgresql/14/main、14.24/loopback5432保持，guest收据905ea0e5…。Redis03:22:19Z/PID1463/t75735，原配置/目录、AUTH PING及AOF always/拒截断/noeviction保持，收据033c91b7…。两个exit0/stderr空，新boot589f…，无restore/seed/配置改写/业务写。与10/28原helper14个函数AST相同；原PG启动前in production及未查明停因保留。
+
+首次只读查询封装保留两类失败：workdir=/home/recovery造成postgres无法chdir的stderr（查询退出0），改/tmp后多SQL经psql -c的最后ROLLBACK输出遮住SELECT，stdout空被初步记为DATA_DIFFERENCE_HOLD；未据此补写数据。同SQL用stdin -f -后聚合真实返回原库/public、同systemId、44本/两指定ID均在；旧空stdout不证明记录缺失，E85已出现同类调用限制。本轮完整两本只读事务读回OP/newboot-pg-workbooks-summary-20261102-r03.json，raw SHA37de877a…：0c879b6d-12fe-43e5-b1dd-a46988f19c77仍v4/hash307abd7534f5686394a030736024a85d32878d1841708a7b0b43a1e11ddecc06；703898c1-a8bf-4d59-8217-fcc630df5c8e仍v5/hash09c8603e1cffe6e54af8dba8088e7cf569e14033682515bb91654eabf0de639b。独审OP/newboot-pg-readback-actual-review-20261102-r01.json/SHAe635829ff31ded6174436722892b96574a7dba4c9f5a9b6a74043d93f11399cd分别对原v4与原重开v5复算全snapshot深相等。失败记录不覆盖；不外推全库相等、认证API/GUI或图片二进制可用性。当前仅数据服务运行，45464仍不可用，原菜单/性能状态与计数保持。
+
+R38已发送至原授权6ad6ddfe会话，汇报所有者两项新授权、实际冷备/扩容/数据启动与两本读回及查询更正；完整反馈尚待。签名刷新新独占输入及25GiB真实wrapper已准备，独审进行中，未联网；历史generation policy保持。E147三文档最终复核文件现摘要37880a3b…覆盖diff56f46efe…，原7981233…属于此前修订并在其记录内保留；当前E148文档增量另待独审。
