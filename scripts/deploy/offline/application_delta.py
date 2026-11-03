@@ -22,6 +22,12 @@ import time
 
 BASE_SHA = 'c6b3f29ca19eca0111e1127d1c4e07e1f4d8d2b142893ef8f0a1ca15056db8a2'
 PREFIXES = ['apps/api/dist/', 'runtime/apps/web/']
+ROOT_PACKAGE = 'runtime/package.json'
+ROOT_PACKAGE_ROW = {
+    'bytes': 4390, 'mode': 0o600,
+    'sha256': '6ac87d2797469c5c67a2ba97361d1097576560d26ae55c2f1a75d3cb2ba0ad78',
+    'sourceKind': 'compiled',
+}
 ALIASES = ('node_modules', 'runtime/node_modules')
 DANGLING = 'runtime/node_modules/.pnpm/node_modules/typescript'
 # Observed alongside the running old Web, absent from its artifact manifest.
@@ -243,14 +249,22 @@ def inspect_archive(path, rows, digest, guard):
 
 def contract(package, digest, base_manifest):
     manifest = json_file(package / 'manifest.json', digest)
-    need(manifest.get('kind') == 'APPLICATION_BASE_PLUS_DELTA_V1'
+    replacement_files = manifest.get('replacementFiles', [])
+    need(((manifest.get('kind') == 'APPLICATION_BASE_PLUS_DELTA_V1' and replacement_files == [])
+          or (manifest.get('kind') == 'APPLICATION_BASE_PLUS_DELTA_V2'
+              and replacement_files == [ROOT_PACKAGE]))
          and manifest.get('baseManifestSha256') == BASE_SHA
          and manifest.get('replacementPrefixes') == PREFIXES, 'DELTA_CONTRACT')
     base = json_file(base_manifest, BASE_SHA)
     old, new = base['entries'], manifest['entries']
     validate_rows(old)
-    need(all(any(k.startswith(p) for p in PREFIXES) for k in new), 'DELTA_SCOPE')
-    removed = {k for k in old if any(k.startswith(p) for p in PREFIXES)}
+    if replacement_files:
+        # Only the reviewed root metadata adding the minimatch patch declaration.
+        # Node entry/type fields and all other package fields retain their values.
+        need(ROOT_PACKAGE in old and new.get(ROOT_PACKAGE) == ROOT_PACKAGE_ROW,
+             'EXACT_ROOT_PACKAGE_METADATA')
+    need(all(k in replacement_files or any(k.startswith(p) for p in PREFIXES) for k in new), 'DELTA_SCOPE')
+    removed = {k for k in old if k in replacement_files or any(k.startswith(p) for p in PREFIXES)}
     need(manifest['removedBaseEntries'] == sorted(removed - set(new)), 'TOMBSTONES')
     composite = {k: v for k, v in old.items() if k not in removed}
     need(not composite.keys() & new.keys(), 'PRESERVED_OVERLAP')

@@ -9569,3 +9569,29 @@ E167函数诊断续。当前460同本F9唯一v9→v10，完整3003.925ms仍FAIL�
 唯一Ledger新增001 fixed_diff_verified、002/003为此CVE精确旧版本false_positive。新增3条schema通过，完整Ledger原24个历史schema错误与444cea9基线逐条相同，首次完整校验FAIL原事实保留，未重写历史。当前verifier实际复算原full/prod双FAIL原件与新安装源，返回LOCALLY_REMEDIATED，一版本已补丁、两版本该机制不适用，未知公告/变更入口/待审/伪造status均拒绝。当前目标与独审成立，完整安全、Linux镜像和正式发布门禁保留开放。
 
 在原378根/40GiB、Host峰后10GiB条件内，以2GiB预计新增窗口准入独立本地扫描工具。专用目录ci-toolchain-r01通过官方PyPI安装semgrep1.169.0及依赖，保留wheel安装报告和摘要，未改全局Python。结束完整范围28157075456B，属于终态测量而非峰值。原外盘Docker保持停用。待补后端北京时间直接依赖后对精确候选做最终SAST/Secret/CI，避免随后代码变化造成机械全仓重复。
+
+
+## 2026-11-03 — 北京时间后端日历与隔离数据库验证（E169）
+
+R49完整PM反馈已在原6ad6ddfe会话读回并保留，认可按所有者最新方向暂停性能专项，继续安全、CI及交付。原完整保存耗时FAIL和67/74保持；未实施服务器草稿发布优化。
+
+后端提交01a874eb5919f29c041b6c3fd31777a8964e4c59，tree cb56e57329b06bdd0ec22327c66a6f0fb3d1f519，共27文件。既有business-date集中区分UTC事件时刻、北京时间业务日及DATE/月标签，修正截止、提醒、月度查询、项目日期筛选、检验评审链接等直接调用。首次有效到货加六个月原算法及年度13个月/恰20台保留规则沿用有效证据。schema、迁移及既存时间事实保持。
+
+独审4bc97dde…发现微秒ISO、空格ISO及项目日期筛选三项P2，均已定向修复；增量独审b203a9c2…无成立问题。原目标96通过/1过时预期失败、首次新增PG用例类型失败原件保留，修正后对应19/25用例及实际10文件67调用方回归分别通过，类型和目标lint exit0。一次包含不存在文件模式的运行实际仅2文件13例，未记成10文件。
+
+2026-11-03T14:09Z在原保留隔离PostgreSQL55460、systemId7703744655454693397执行真实只读事务，UTC、Asia/Shanghai、America/New_York三种会话时区均通过北京时间跨年、月标签和日界筛选。3/3、0skip，事务强制ROLLBACK。原24项UTC写入用例复用。执行结果摘要0ba358c6a3c634ab982d499bc29b3ea3546b03566de913b273956786b82513dd。专用PG正常停止、SSH tunnel清理及55460无监听已读回，应用PG5432仍监听；未初始化、迁移、补种或删除原测试数据。PG准备第一次旧owner错配由独审指出并修正，原准备和复核5504ab92…保留。
+
+新鲜补丁后SCA入口实际exit0，原full/prod audit仍1/1并保留FAIL。minimatch-applicability.json对精确公告返回LOCALLY_REMEDIATED，原审查和源/入口/锁/回归摘要约束均有效；旧braces verifier拒绝该新公告并由专用minimatch准入接管，未将原始audit改写为零问题。
+
+当前运行仍460ded4、正式工作簿v10，01a874尚待共同构建和实装。干净完整历史副本用于候选SAST/Secret，根工作区未跟踪媒体未纳入。已审有效内容按实际输入复用，完整安全、远端CI/Linux镜像、正式域名及所有者接收继续待闭合。
+
+
+## 2026-11-03 — 最终候选源码安全扫描解阻（E170）
+
+候选01a874在干净完整Git历史副本执行Semgrep1.169.0、Gitleaks8.30.1，首轮SAST三个解析错误及一条MD5警报、Secret当前/历史两条警报全部保留。三项有界记录进入唯一FINDINGS，R50-CI-PARSER-001、R50-CI-MD5-001、R50-CI-COMMIT-001。后两者分别为强制SHA256并行校验的包MD5元数据、实际e0870e8f4d919496d0161646ccc2c1aa28cd7822 Git commit，无凭证外泄证据。
+
+修复提交1bf3c131bd647bff700b631af514237453c57f90/tree ae61f4e06a9d914c0d6eefc40862e99cdbcf6d67。仅变量uniqueIds、两个mock类型别名、MD5用途参数及精确两整行/path/ruleAND例外和对应负向夹具。独审884c5a43…确认最终6文件；Web两个实际文件、Gitleaks变值/追加凭证/其他路径、API/Web类型及目标lint通过。scanner首次命令漏-I致两dispatch环境守卫拒绝，原失败保留；正确隔离入口30例通过。首次月度模板提取未解除解析错误，撤回该无效改动后仅变量改名，单文件复验0错误。
+
+新精确提交通过原native入口重扫，SAST在14:30:44Z exit0，Secret当前文件及完整历史在14:30:56Z exit0，原始JSON、日志与执行回执均在capacity-unblock-20261103-r01/candidate-security-1bf3c13-r01。SCA既有已审锁、补丁、实际安装源保持其有效适用性。以上是本地源码安全门禁，远端requiredCI/Linux镜像及完整发布仍待完成。
+
+共同构建第一次在编译前被ORIGINAL_CLOSURE_CHANGED拒绝。差异准确为pnpm生成的两个新增.bin/jiti、.bin/tsx包装文件；无缺失依赖，编译命令尚未调用。新的精确hash非消费记录保持未知输入拒绝、原闭包和trace校验。原输出及失败保留，准备小范围复核后续建。当前运行仍460ded4/v10，性能FAIL作为所有者要求保留的已知偏差，验收分母与原状态保持。

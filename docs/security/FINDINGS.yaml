@@ -10189,6 +10189,547 @@
           }
         }
       ]
+    },
+    {
+      "id": "R50-CI-PARSER-001",
+      "title": "Semgrep partial parsing prevents complete authored source coverage",
+      "status": "fixed_diff_verified",
+      "severity": "info",
+      "confidence": "high",
+      "classification": "proof_gap",
+      "cwe": null,
+      "source": {
+        "type": "sast",
+        "report_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/candidate-security-01a874e-r01/sast/semgrep.json",
+        "binding": {
+          "commit": "01a874eb5919f29c041b6c3fd31777a8964e4c59",
+          "tree": "cb56e57329b06bdd0ec22327c66a6f0fb3d1f519",
+          "tool_name": "Semgrep",
+          "tool_version": "1.169.0",
+          "command": "bash scripts/security/run-sast.sh",
+          "environment": "Mac local isolated source/checks; application remains460ded4; no remote CI/image or product acceptance",
+          "result_sha256": "325464257942c39b222437a00553cf7fd3508ffd5a156be1e9eda62023ff7ffe",
+          "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/candidate-security-01a874e-r01/sast/semgrep.json",
+          "config_sha256": null,
+          "recorded_at": "2026-11-03T14:31:12.432499+00:00"
+        }
+      },
+      "scope": {
+        "component": "Candidate source security gates",
+        "affected_files": [
+          "apps/api/src/common/monthly-review-applicability.ts",
+          "apps/web/src/features/free-workbook/business-apply.test.ts",
+          "apps/web/src/features/free-workbook/workspace-navigation.test.tsx"
+        ],
+        "entry_points": [
+          "scripts/security/run-sast.sh"
+        ],
+        "trust_boundary": "Exact source/metadata scanning without generic suppression"
+      },
+      "evidence": {
+        "reachable": true,
+        "production_exposed": false,
+        "reproduction_path": "Semgrep1.169.0 misparsed unique keyword in loop and typeof-import generic expressions. Local variable rename and explicit type aliases preserve SQL/pagination/mocks/assertions. Three exact target files now parse with no findings or errors.",
+        "proof_gap": "Remote required CI/images and full product delivery remain open. Original raw findings/errors retained."
+      },
+      "root_cause_cluster": "R50-CI-PARSER",
+      "security_invariants": [],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
+      "fix": {
+        "task_id": "TRUCK-COLOR-V1-CI-SECURITY-CONTINUATION-20261103",
+        "branch": "codex/design-convergence-20261019",
+        "commit": "1bf3c131bd647bff700b631af514237453c57f90",
+        "tree": "ae61f4e06a9d914c0d6eefc40862e99cdbcf6d67",
+        "changed_files": [
+          "apps/api/src/common/monthly-review-applicability.ts",
+          "apps/web/src/features/free-workbook/business-apply.test.ts",
+          "apps/web/src/features/free-workbook/workspace-navigation.test.tsx"
+        ]
+      },
+      "verification": {
+        "targeted": {
+          "status": "pass",
+          "binding": {
+            "commit": "1bf3c131bd647bff700b631af514237453c57f90",
+            "tree": "ae61f4e06a9d914c0d6eefc40862e99cdbcf6d67",
+            "tool_name": "Actual bounded target verification",
+            "tool_version": "Exact pinned tool and input hashes in receipt",
+            "command": "See exact report and target-results.json / static-results.json",
+            "environment": "Mac local isolated source/checks; application remains460ded4; no remote CI/image or product acceptance",
+            "result_sha256": "03a0897bcc17f09b98ea1630470a36f074ea46843ed40635ee935d687bb719db",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/security-scan-fixes-r01/semgrep-monthly-r02.json",
+            "config_sha256": null,
+            "recorded_at": "2026-11-03T14:31:12.432499+00:00"
+          },
+          "notes": "Exact reports retain failed first commands and successful scoped correction."
+        },
+        "affected_regression": {
+          "status": "pass",
+          "binding": {
+            "commit": "1bf3c131bd647bff700b631af514237453c57f90",
+            "tree": "ae61f4e06a9d914c0d6eefc40862e99cdbcf6d67",
+            "tool_name": "Type/lint and bounded behavior regressions",
+            "tool_version": "Exact pinned tool and input hashes in receipt",
+            "command": "TypeScript API/Web, scoped ESLint, web target and isolated scanner tests",
+            "environment": "Mac local isolated source/checks; application remains460ded4; no remote CI/image or product acceptance",
+            "result_sha256": "acade1a8734dcca02fe54a26cff4ec97341ff1234a1dcfc4983a17986dcc4a72",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/security-scan-fixes-r01/static-results.json",
+            "config_sha256": null,
+            "recorded_at": "2026-11-03T14:31:12.432499+00:00"
+          },
+          "notes": "Web mocks behavior preserved; scanner correct -I entry30PASS; native Gitleaks negative test8 expected findings."
+        },
+        "diff_review": {
+          "status": "pass",
+          "binding": {
+            "commit": "1bf3c131bd647bff700b631af514237453c57f90",
+            "tree": "ae61f4e06a9d914c0d6eefc40862e99cdbcf6d67",
+            "tool_name": "Read-only exact six-file diff review",
+            "tool_version": "Exact pinned tool and input hashes in receipt",
+            "command": "save_idle_diff_review limited source diff; no new agent or recursive work",
+            "environment": "Mac local isolated source/checks; application remains460ded4; no remote CI/image or product acceptance",
+            "result_sha256": "884c5a43d3caa3a547f978826aaadda8f38c106b2d37f74a24756ecc209a3173",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/security-scan-fixes-r01/independent-review-r01.json",
+            "config_sha256": null,
+            "recorded_at": "2026-11-03T14:31:12.432499+00:00"
+          },
+          "notes": "NO_ACTIONABLE_FINDINGS on six final files only."
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Exact final1bf3 candidate native sast entry exit0. Receipt /Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/candidate-security-1bf3c13-r01/sast/execution.json SHA256 788bb1443e8b9d383d06cb84b31d102de8e6a31b61c65c43c21073e43b989ff4. Local source gate completed; required remote CI/image and full delivery applicability remain open."
+        }
+      },
+      "closure": null,
+      "history": [
+        {
+          "at": "2026-11-03T14:31:12.432499+00:00",
+          "transition": "null->candidate",
+          "actor": "Codex root with exact independent diff review",
+          "reason": "Semgrep1.169.0 misparsed unique keyword in loop and typeof-import generic expressions. Local variable rename and explicit type aliases preserve SQL/pagination/mocks/assertions. Three exact target files now parse with no findings or errors.",
+          "approval_id": null,
+          "binding": {
+            "commit": "01a874eb5919f29c041b6c3fd31777a8964e4c59",
+            "tree": "cb56e57329b06bdd0ec22327c66a6f0fb3d1f519",
+            "tool_name": "Semgrep",
+            "tool_version": "1.169.0",
+            "command": "bash scripts/security/run-sast.sh",
+            "environment": "Mac local isolated source/checks; application remains460ded4; no remote CI/image or product acceptance",
+            "result_sha256": "325464257942c39b222437a00553cf7fd3508ffd5a156be1e9eda62023ff7ffe",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/candidate-security-01a874e-r01/sast/semgrep.json",
+            "config_sha256": null,
+            "recorded_at": "2026-11-03T14:31:12.432499+00:00"
+          }
+        },
+        {
+          "at": "2026-11-03T14:31:12.432499+00:00",
+          "transition": "candidate->confirmed",
+          "actor": "Codex root with exact independent diff review",
+          "reason": "Semgrep1.169.0 misparsed unique keyword in loop and typeof-import generic expressions. Local variable rename and explicit type aliases preserve SQL/pagination/mocks/assertions. Three exact target files now parse with no findings or errors.",
+          "approval_id": null,
+          "binding": {
+            "commit": "1bf3c131bd647bff700b631af514237453c57f90",
+            "tree": "ae61f4e06a9d914c0d6eefc40862e99cdbcf6d67",
+            "tool_name": "Read-only exact six-file diff review",
+            "tool_version": "Exact pinned tool and input hashes in receipt",
+            "command": "save_idle_diff_review limited source diff; no new agent or recursive work",
+            "environment": "Mac local isolated source/checks; application remains460ded4; no remote CI/image or product acceptance",
+            "result_sha256": "884c5a43d3caa3a547f978826aaadda8f38c106b2d37f74a24756ecc209a3173",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/security-scan-fixes-r01/independent-review-r01.json",
+            "config_sha256": null,
+            "recorded_at": "2026-11-03T14:31:12.432499+00:00"
+          }
+        },
+        {
+          "at": "2026-11-03T14:31:12.432499+00:00",
+          "transition": "confirmed->accepted_for_fix",
+          "actor": "Codex root with exact independent diff review",
+          "reason": "Semgrep1.169.0 misparsed unique keyword in loop and typeof-import generic expressions. Local variable rename and explicit type aliases preserve SQL/pagination/mocks/assertions. Three exact target files now parse with no findings or errors.",
+          "approval_id": null,
+          "binding": {
+            "commit": "1bf3c131bd647bff700b631af514237453c57f90",
+            "tree": "ae61f4e06a9d914c0d6eefc40862e99cdbcf6d67",
+            "tool_name": "Read-only exact six-file diff review",
+            "tool_version": "Exact pinned tool and input hashes in receipt",
+            "command": "save_idle_diff_review limited source diff; no new agent or recursive work",
+            "environment": "Mac local isolated source/checks; application remains460ded4; no remote CI/image or product acceptance",
+            "result_sha256": "884c5a43d3caa3a547f978826aaadda8f38c106b2d37f74a24756ecc209a3173",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/security-scan-fixes-r01/independent-review-r01.json",
+            "config_sha256": null,
+            "recorded_at": "2026-11-03T14:31:12.432499+00:00"
+          }
+        },
+        {
+          "at": "2026-11-03T14:31:12.432499+00:00",
+          "transition": "accepted_for_fix->in_progress",
+          "actor": "Codex root with exact independent diff review",
+          "reason": "Semgrep1.169.0 misparsed unique keyword in loop and typeof-import generic expressions. Local variable rename and explicit type aliases preserve SQL/pagination/mocks/assertions. Three exact target files now parse with no findings or errors.",
+          "approval_id": null,
+          "binding": {
+            "commit": "1bf3c131bd647bff700b631af514237453c57f90",
+            "tree": "ae61f4e06a9d914c0d6eefc40862e99cdbcf6d67",
+            "tool_name": "Read-only exact six-file diff review",
+            "tool_version": "Exact pinned tool and input hashes in receipt",
+            "command": "save_idle_diff_review limited source diff; no new agent or recursive work",
+            "environment": "Mac local isolated source/checks; application remains460ded4; no remote CI/image or product acceptance",
+            "result_sha256": "884c5a43d3caa3a547f978826aaadda8f38c106b2d37f74a24756ecc209a3173",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/security-scan-fixes-r01/independent-review-r01.json",
+            "config_sha256": null,
+            "recorded_at": "2026-11-03T14:31:12.432499+00:00"
+          }
+        },
+        {
+          "at": "2026-11-03T14:31:12.432499+00:00",
+          "transition": "in_progress->fixed_target_verified",
+          "actor": "Codex root with exact independent diff review",
+          "reason": "Semgrep1.169.0 misparsed unique keyword in loop and typeof-import generic expressions. Local variable rename and explicit type aliases preserve SQL/pagination/mocks/assertions. Three exact target files now parse with no findings or errors.",
+          "approval_id": null,
+          "binding": {
+            "commit": "1bf3c131bd647bff700b631af514237453c57f90",
+            "tree": "ae61f4e06a9d914c0d6eefc40862e99cdbcf6d67",
+            "tool_name": "Read-only exact six-file diff review",
+            "tool_version": "Exact pinned tool and input hashes in receipt",
+            "command": "save_idle_diff_review limited source diff; no new agent or recursive work",
+            "environment": "Mac local isolated source/checks; application remains460ded4; no remote CI/image or product acceptance",
+            "result_sha256": "884c5a43d3caa3a547f978826aaadda8f38c106b2d37f74a24756ecc209a3173",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/security-scan-fixes-r01/independent-review-r01.json",
+            "config_sha256": null,
+            "recorded_at": "2026-11-03T14:31:12.432499+00:00"
+          }
+        },
+        {
+          "at": "2026-11-03T14:31:12.432499+00:00",
+          "transition": "fixed_target_verified->fixed_diff_verified",
+          "actor": "Codex root with exact independent diff review",
+          "reason": "Semgrep1.169.0 misparsed unique keyword in loop and typeof-import generic expressions. Local variable rename and explicit type aliases preserve SQL/pagination/mocks/assertions. Three exact target files now parse with no findings or errors.",
+          "approval_id": null,
+          "binding": {
+            "commit": "1bf3c131bd647bff700b631af514237453c57f90",
+            "tree": "ae61f4e06a9d914c0d6eefc40862e99cdbcf6d67",
+            "tool_name": "Read-only exact six-file diff review",
+            "tool_version": "Exact pinned tool and input hashes in receipt",
+            "command": "save_idle_diff_review limited source diff; no new agent or recursive work",
+            "environment": "Mac local isolated source/checks; application remains460ded4; no remote CI/image or product acceptance",
+            "result_sha256": "884c5a43d3caa3a547f978826aaadda8f38c106b2d37f74a24756ecc209a3173",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/security-scan-fixes-r01/independent-review-r01.json",
+            "config_sha256": null,
+            "recorded_at": "2026-11-03T14:31:12.432499+00:00"
+          }
+        }
+      ]
+    },
+    {
+      "id": "R50-CI-MD5-001",
+      "title": "Package metadata MD5 also guarded by mandatory pinned SHA256",
+      "status": "false_positive",
+      "severity": "low",
+      "confidence": "high",
+      "classification": "false_positive",
+      "cwe": null,
+      "source": {
+        "type": "sast",
+        "report_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/candidate-security-01a874e-r01/sast/semgrep.json",
+        "binding": {
+          "commit": "01a874eb5919f29c041b6c3fd31777a8964e4c59",
+          "tree": "cb56e57329b06bdd0ec22327c66a6f0fb3d1f519",
+          "tool_name": "Semgrep",
+          "tool_version": "1.169.0",
+          "command": "bash scripts/security/run-sast.sh",
+          "environment": "Mac local isolated source/checks; application remains460ded4; no remote CI/image or product acceptance",
+          "result_sha256": "325464257942c39b222437a00553cf7fd3508ffd5a156be1e9eda62023ff7ffe",
+          "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/candidate-security-01a874e-r01/sast/semgrep.json",
+          "config_sha256": null,
+          "recorded_at": "2026-11-03T14:31:12.432499+00:00"
+        }
+      },
+      "scope": {
+        "component": "Candidate source security gates",
+        "affected_files": [
+          "scripts/deploy/offline/install_scanner.py"
+        ],
+        "entry_points": [
+          "scripts/security/run-sast.sh"
+        ],
+        "trust_boundary": "Exact source/metadata scanning without generic suppression"
+      },
+      "evidence": {
+        "reachable": false,
+        "production_exposed": false,
+        "reproduction_path": "mapped_data requires pinned SHA256 AND package MD5 AND exact size/inode/device/ownership/mode with before/open/after identity guards. MD5 is not the security authenticator. usedforsecurity=False documents this purpose without removing checks.",
+        "proof_gap": "Remote required CI/images and full product delivery remain open. Original raw findings/errors retained."
+      },
+      "root_cause_cluster": "R50-CI-MD5",
+      "security_invariants": [],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": "mapped_data requires pinned SHA256 AND package MD5 AND exact size/inode/device/ownership/mode with before/open/after identity guards. MD5 is not the security authenticator. usedforsecurity=False documents this purpose without removing checks.",
+        "risk_acceptance": null
+      },
+      "fix": {
+        "task_id": "TRUCK-COLOR-V1-CI-SECURITY-CONTINUATION-20261103",
+        "branch": "codex/design-convergence-20261019",
+        "commit": "1bf3c131bd647bff700b631af514237453c57f90",
+        "tree": "ae61f4e06a9d914c0d6eefc40862e99cdbcf6d67",
+        "changed_files": [
+          "scripts/deploy/offline/install_scanner.py"
+        ]
+      },
+      "verification": {
+        "targeted": {
+          "status": "pass",
+          "binding": {
+            "commit": "1bf3c131bd647bff700b631af514237453c57f90",
+            "tree": "ae61f4e06a9d914c0d6eefc40862e99cdbcf6d67",
+            "tool_name": "Actual bounded target verification",
+            "tool_version": "Exact pinned tool and input hashes in receipt",
+            "command": "See exact report and target-results.json / static-results.json",
+            "environment": "Mac local isolated source/checks; application remains460ded4; no remote CI/image or product acceptance",
+            "result_sha256": "4bf7566d382ce3edb15ef1704d37fff48673a93c3f4e294d4bd98da4c28621c0",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/security-scan-fixes-r01/scanner-target-isolated-r02.json",
+            "config_sha256": null,
+            "recorded_at": "2026-11-03T14:31:12.432499+00:00"
+          },
+          "notes": "Exact reports retain failed first commands and successful scoped correction."
+        },
+        "affected_regression": {
+          "status": "pass",
+          "binding": {
+            "commit": "1bf3c131bd647bff700b631af514237453c57f90",
+            "tree": "ae61f4e06a9d914c0d6eefc40862e99cdbcf6d67",
+            "tool_name": "Type/lint and bounded behavior regressions",
+            "tool_version": "Exact pinned tool and input hashes in receipt",
+            "command": "TypeScript API/Web, scoped ESLint, web target and isolated scanner tests",
+            "environment": "Mac local isolated source/checks; application remains460ded4; no remote CI/image or product acceptance",
+            "result_sha256": "acade1a8734dcca02fe54a26cff4ec97341ff1234a1dcfc4983a17986dcc4a72",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/security-scan-fixes-r01/static-results.json",
+            "config_sha256": null,
+            "recorded_at": "2026-11-03T14:31:12.432499+00:00"
+          },
+          "notes": "Web mocks behavior preserved; scanner correct -I entry30PASS; native Gitleaks negative test8 expected findings."
+        },
+        "diff_review": {
+          "status": "pass",
+          "binding": {
+            "commit": "1bf3c131bd647bff700b631af514237453c57f90",
+            "tree": "ae61f4e06a9d914c0d6eefc40862e99cdbcf6d67",
+            "tool_name": "Read-only exact six-file diff review",
+            "tool_version": "Exact pinned tool and input hashes in receipt",
+            "command": "save_idle_diff_review limited source diff; no new agent or recursive work",
+            "environment": "Mac local isolated source/checks; application remains460ded4; no remote CI/image or product acceptance",
+            "result_sha256": "884c5a43d3caa3a547f978826aaadda8f38c106b2d37f74a24756ecc209a3173",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/security-scan-fixes-r01/independent-review-r01.json",
+            "config_sha256": null,
+            "recorded_at": "2026-11-03T14:31:12.432499+00:00"
+          },
+          "notes": "NO_ACTIONABLE_FINDINGS on six final files only."
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Exact final1bf3 candidate native sast entry exit0. Receipt /Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/candidate-security-1bf3c13-r01/sast/execution.json SHA256 788bb1443e8b9d383d06cb84b31d102de8e6a31b61c65c43c21073e43b989ff4. Local source gate completed; required remote CI/image and full delivery applicability remain open."
+        }
+      },
+      "closure": null,
+      "history": [
+        {
+          "at": "2026-11-03T14:31:12.432499+00:00",
+          "transition": "null->candidate",
+          "actor": "Codex root with exact independent diff review",
+          "reason": "mapped_data requires pinned SHA256 AND package MD5 AND exact size/inode/device/ownership/mode with before/open/after identity guards. MD5 is not the security authenticator. usedforsecurity=False documents this purpose without removing checks.",
+          "approval_id": null,
+          "binding": {
+            "commit": "01a874eb5919f29c041b6c3fd31777a8964e4c59",
+            "tree": "cb56e57329b06bdd0ec22327c66a6f0fb3d1f519",
+            "tool_name": "Semgrep",
+            "tool_version": "1.169.0",
+            "command": "bash scripts/security/run-sast.sh",
+            "environment": "Mac local isolated source/checks; application remains460ded4; no remote CI/image or product acceptance",
+            "result_sha256": "325464257942c39b222437a00553cf7fd3508ffd5a156be1e9eda62023ff7ffe",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/candidate-security-01a874e-r01/sast/semgrep.json",
+            "config_sha256": null,
+            "recorded_at": "2026-11-03T14:31:12.432499+00:00"
+          }
+        },
+        {
+          "at": "2026-11-03T14:31:12.432499+00:00",
+          "transition": "candidate->false_positive",
+          "actor": "Codex root with exact independent diff review",
+          "reason": "mapped_data requires pinned SHA256 AND package MD5 AND exact size/inode/device/ownership/mode with before/open/after identity guards. MD5 is not the security authenticator. usedforsecurity=False documents this purpose without removing checks.",
+          "approval_id": null,
+          "binding": {
+            "commit": "1bf3c131bd647bff700b631af514237453c57f90",
+            "tree": "ae61f4e06a9d914c0d6eefc40862e99cdbcf6d67",
+            "tool_name": "Read-only exact six-file diff review",
+            "tool_version": "Exact pinned tool and input hashes in receipt",
+            "command": "save_idle_diff_review limited source diff; no new agent or recursive work",
+            "environment": "Mac local isolated source/checks; application remains460ded4; no remote CI/image or product acceptance",
+            "result_sha256": "884c5a43d3caa3a547f978826aaadda8f38c106b2d37f74a24756ecc209a3173",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/security-scan-fixes-r01/independent-review-r01.json",
+            "config_sha256": null,
+            "recorded_at": "2026-11-03T14:31:12.432499+00:00"
+          }
+        }
+      ]
+    },
+    {
+      "id": "R50-CI-COMMIT-001",
+      "title": "Two acceptance matrix commit identifiers reported as API credentials",
+      "status": "false_positive",
+      "severity": "info",
+      "confidence": "high",
+      "classification": "false_positive",
+      "cwe": null,
+      "source": {
+        "type": "secrets",
+        "report_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/candidate-security-01a874e-r01/secrets/gitleaks-current.json",
+        "binding": {
+          "commit": "01a874eb5919f29c041b6c3fd31777a8964e4c59",
+          "tree": "cb56e57329b06bdd0ec22327c66a6f0fb3d1f519",
+          "tool_name": "Gitleaks",
+          "tool_version": "8.30.1",
+          "command": "bash scripts/security/run-secrets-scan.sh",
+          "environment": "Mac local isolated source/checks; application remains460ded4; no remote CI/image or product acceptance",
+          "result_sha256": "eda3faa626ea6d42f203e7937c62c35f83f3a3b2a5954e9331bf4310b145b82b",
+          "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/candidate-security-01a874e-r01/secrets/gitleaks-current.json",
+          "config_sha256": null,
+          "recorded_at": "2026-11-03T14:31:12.432499+00:00"
+        }
+      },
+      "scope": {
+        "component": "Candidate source security gates",
+        "affected_files": [
+          ".gitleaks.toml",
+          "scripts/security/tests/integrity-allowlist.test.mjs"
+        ],
+        "entry_points": [
+          "scripts/security/run-secrets-scan.sh"
+        ],
+        "trust_boundary": "Exact source/metadata scanning without generic suppression"
+      },
+      "evidence": {
+        "reachable": false,
+        "production_exposed": false,
+        "reproduction_path": "Only E19/E24 contextApiCommit/apiCommit value e0870e8f4d919496d0161646ccc2c1aa28cd7822; git cat-file verifies a commit. Allowlist matches exact full lines AND exact matrix path AND generic-api-key. Changed values, extra credentials and other paths remain blocking with actual native negative checks.",
+        "proof_gap": "Remote required CI/images and full product delivery remain open. Original raw findings/errors retained."
+      },
+      "root_cause_cluster": "R50-CI-COMMIT",
+      "security_invariants": [],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": "Only E19/E24 contextApiCommit/apiCommit value e0870e8f4d919496d0161646ccc2c1aa28cd7822; git cat-file verifies a commit. Allowlist matches exact full lines AND exact matrix path AND generic-api-key. Changed values, extra credentials and other paths remain blocking with actual native negative checks.",
+        "risk_acceptance": null
+      },
+      "fix": {
+        "task_id": "TRUCK-COLOR-V1-CI-SECURITY-CONTINUATION-20261103",
+        "branch": "codex/design-convergence-20261019",
+        "commit": "1bf3c131bd647bff700b631af514237453c57f90",
+        "tree": "ae61f4e06a9d914c0d6eefc40862e99cdbcf6d67",
+        "changed_files": [
+          ".gitleaks.toml",
+          "scripts/security/tests/integrity-allowlist.test.mjs"
+        ]
+      },
+      "verification": {
+        "targeted": {
+          "status": "pass",
+          "binding": {
+            "commit": "1bf3c131bd647bff700b631af514237453c57f90",
+            "tree": "ae61f4e06a9d914c0d6eefc40862e99cdbcf6d67",
+            "tool_name": "Actual bounded target verification",
+            "tool_version": "Exact pinned tool and input hashes in receipt",
+            "command": "See exact report and target-results.json / static-results.json",
+            "environment": "Mac local isolated source/checks; application remains460ded4; no remote CI/image or product acceptance",
+            "result_sha256": "47dddd32ac7a0026a73c3f502ee58c537636bfddef1a0fac444e9c2a81f1e334",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/security-scan-fixes-r01/integrity.log",
+            "config_sha256": null,
+            "recorded_at": "2026-11-03T14:31:12.432499+00:00"
+          },
+          "notes": "Exact reports retain failed first commands and successful scoped correction."
+        },
+        "affected_regression": {
+          "status": "pass",
+          "binding": {
+            "commit": "1bf3c131bd647bff700b631af514237453c57f90",
+            "tree": "ae61f4e06a9d914c0d6eefc40862e99cdbcf6d67",
+            "tool_name": "Type/lint and bounded behavior regressions",
+            "tool_version": "Exact pinned tool and input hashes in receipt",
+            "command": "TypeScript API/Web, scoped ESLint, web target and isolated scanner tests",
+            "environment": "Mac local isolated source/checks; application remains460ded4; no remote CI/image or product acceptance",
+            "result_sha256": "acade1a8734dcca02fe54a26cff4ec97341ff1234a1dcfc4983a17986dcc4a72",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/security-scan-fixes-r01/static-results.json",
+            "config_sha256": null,
+            "recorded_at": "2026-11-03T14:31:12.432499+00:00"
+          },
+          "notes": "Web mocks behavior preserved; scanner correct -I entry30PASS; native Gitleaks negative test8 expected findings."
+        },
+        "diff_review": {
+          "status": "pass",
+          "binding": {
+            "commit": "1bf3c131bd647bff700b631af514237453c57f90",
+            "tree": "ae61f4e06a9d914c0d6eefc40862e99cdbcf6d67",
+            "tool_name": "Read-only exact six-file diff review",
+            "tool_version": "Exact pinned tool and input hashes in receipt",
+            "command": "save_idle_diff_review limited source diff; no new agent or recursive work",
+            "environment": "Mac local isolated source/checks; application remains460ded4; no remote CI/image or product acceptance",
+            "result_sha256": "884c5a43d3caa3a547f978826aaadda8f38c106b2d37f74a24756ecc209a3173",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/security-scan-fixes-r01/independent-review-r01.json",
+            "config_sha256": null,
+            "recorded_at": "2026-11-03T14:31:12.432499+00:00"
+          },
+          "notes": "NO_ACTIONABLE_FINDINGS on six final files only."
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Exact final1bf3 candidate native secrets entry exit0. Receipt /Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/candidate-security-1bf3c13-r01/secrets/execution.json SHA256 16292bec9a06476cc75501c478f27756eaeb1f1749ba7e6e67e8ff9d21a7944f. Local source gate completed; required remote CI/image and full delivery applicability remain open."
+        }
+      },
+      "closure": null,
+      "history": [
+        {
+          "at": "2026-11-03T14:31:12.432499+00:00",
+          "transition": "null->candidate",
+          "actor": "Codex root with exact independent diff review",
+          "reason": "Only E19/E24 contextApiCommit/apiCommit value e0870e8f4d919496d0161646ccc2c1aa28cd7822; git cat-file verifies a commit. Allowlist matches exact full lines AND exact matrix path AND generic-api-key. Changed values, extra credentials and other paths remain blocking with actual native negative checks.",
+          "approval_id": null,
+          "binding": {
+            "commit": "01a874eb5919f29c041b6c3fd31777a8964e4c59",
+            "tree": "cb56e57329b06bdd0ec22327c66a6f0fb3d1f519",
+            "tool_name": "Gitleaks",
+            "tool_version": "8.30.1",
+            "command": "bash scripts/security/run-secrets-scan.sh",
+            "environment": "Mac local isolated source/checks; application remains460ded4; no remote CI/image or product acceptance",
+            "result_sha256": "eda3faa626ea6d42f203e7937c62c35f83f3a3b2a5954e9331bf4310b145b82b",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/candidate-security-01a874e-r01/secrets/gitleaks-current.json",
+            "config_sha256": null,
+            "recorded_at": "2026-11-03T14:31:12.432499+00:00"
+          }
+        },
+        {
+          "at": "2026-11-03T14:31:12.432499+00:00",
+          "transition": "candidate->false_positive",
+          "actor": "Codex root with exact independent diff review",
+          "reason": "Only E19/E24 contextApiCommit/apiCommit value e0870e8f4d919496d0161646ccc2c1aa28cd7822; git cat-file verifies a commit. Allowlist matches exact full lines AND exact matrix path AND generic-api-key. Changed values, extra credentials and other paths remain blocking with actual native negative checks.",
+          "approval_id": null,
+          "binding": {
+            "commit": "1bf3c131bd647bff700b631af514237453c57f90",
+            "tree": "ae61f4e06a9d914c0d6eefc40862e99cdbcf6d67",
+            "tool_name": "Read-only exact six-file diff review",
+            "tool_version": "Exact pinned tool and input hashes in receipt",
+            "command": "save_idle_diff_review limited source diff; no new agent or recursive work",
+            "environment": "Mac local isolated source/checks; application remains460ded4; no remote CI/image or product acceptance",
+            "result_sha256": "884c5a43d3caa3a547f978826aaadda8f38c106b2d37f74a24756ecc209a3173",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/security-scan-fixes-r01/independent-review-r01.json",
+            "config_sha256": null,
+            "recorded_at": "2026-11-03T14:31:12.432499+00:00"
+          }
+        }
+      ]
     }
   ]
 }

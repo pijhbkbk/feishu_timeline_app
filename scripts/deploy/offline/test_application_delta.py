@@ -24,7 +24,7 @@ class DeltaAcceptance(unittest.TestCase):
         self.old = {}
         for name in ('node_modules/pkg/index.js', 'runtime/node_modules/next/index.js',
                      'apps/api/dist/main.js', 'runtime/apps/web/server.js',
-                     'runtime/apps/web/.next/server/static.js', 'apps/api/package.json'):
+                     'runtime/apps/web/.next/server/static.js', 'apps/api/package.json', 'runtime/package.json'):
             data = ('old:' + name).encode()
             path = self.base / name
             path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -47,6 +47,7 @@ class DeltaAcceptance(unittest.TestCase):
         self.new = {p: self.row(('new:' + p).encode()) for p in
                     ('apps/api/dist/main.js', 'runtime/apps/web/server.js',
                      'runtime/apps/web/.next/server/static.js')}
+        self.payloads = {}
         self.manifest = {
             'kind': 'APPLICATION_BASE_PLUS_DELTA_V1', 'baseManifestSha256': d.BASE_SHA,
             'identity': {'sourceCommit': 'a' * 40, 'sourceTree': 'b' * 40,
@@ -71,7 +72,7 @@ class DeltaAcceptance(unittest.TestCase):
                 info.mode, info.size = row['mode'], row['bytes']
                 if pax:
                     info.pax_headers = pax
-                archive.addfile(info, io.BytesIO(('new:' + name).encode()))
+                archive.addfile(info, io.BytesIO(self.payloads.get(name, ('new:' + name).encode())))
             if extra:
                 archive.addfile(extra)
         path.chmod(0o600)
@@ -102,6 +103,48 @@ class DeltaAcceptance(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, 'EXACT_MODE_SIZE|FILE_SHA256'):
             d.run(self.args)
         self.assertFalse(self.args.target.exists())
+
+    def root_metadata_delta(self):
+        data = Path(__file__).resolve().parents[3].joinpath('package.json').read_bytes()
+        self.assertEqual(self.row(data), d.ROOT_PACKAGE_ROW)
+        self.payloads[d.ROOT_PACKAGE] = data
+        self.new[d.ROOT_PACKAGE] = self.row(data)
+        self.manifest['kind'] = 'APPLICATION_BASE_PLUS_DELTA_V2'
+        self.manifest['replacementFiles'] = [d.ROOT_PACKAGE]
+        self.manifest['preservedBaseEntryCount'] -= 1
+        self.make_archive()
+        self.seal()
+
+    def test_exact_root_metadata_overlay_preserves_base_and_reads_back(self):
+        self.root_metadata_delta()
+        before = (self.base / d.ROOT_PACKAGE).read_bytes()
+        d.run(self.args)
+        self.assertEqual((self.args.target / d.ROOT_PACKAGE).read_bytes(), self.payloads[d.ROOT_PACKAGE])
+        self.assertEqual((self.base / d.ROOT_PACKAGE).read_bytes(), before)
+        self.args.mode, self.args.receipt = 'verify', self.root / 'verify.json'
+        d.run(self.args)
+
+    def test_root_metadata_overlay_rejects_changed_bytes_and_scope(self):
+        self.root_metadata_delta()
+        for field, value in [('sha256', 'f' * 64), ('bytes', 4391), ('mode', 0o700), ('symlink', 'other.json')]:
+            with self.subTest(field=field):
+                changed = {**d.ROOT_PACKAGE_ROW, field: value}
+                self.new[d.ROOT_PACKAGE] = changed
+                self.seal()
+                with self.assertRaisesRegex(RuntimeError, 'EXACT_ROOT_PACKAGE_METADATA'):
+                    d.run(self.args)
+                self.assertFalse(self.args.target.exists())
+        self.new[d.ROOT_PACKAGE] = dict(d.ROOT_PACKAGE_ROW)
+        for files in [[d.ROOT_PACKAGE, 'runtime/other.json'], ['runtime/package.json.extra'], []]:
+            self.manifest['replacementFiles'] = files
+            self.seal()
+            with self.assertRaisesRegex(RuntimeError, 'DELTA_CONTRACT'):
+                d.run(self.args)
+        self.manifest['kind'] = 'APPLICATION_BASE_PLUS_DELTA_V1'
+        self.manifest['replacementFiles'] = [d.ROOT_PACKAGE]
+        self.seal()
+        with self.assertRaisesRegex(RuntimeError, 'DELTA_CONTRACT'):
+            d.run(self.args)
 
     def test_existing_target_not_overwritten(self):
         self.args.target.mkdir()
