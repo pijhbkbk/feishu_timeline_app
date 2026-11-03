@@ -662,7 +662,7 @@ V-E087=`e0870e8f4d919496d0161646ccc2c1aa28cd7822`；8c630=`8c630ac3c370c54908c9e
 
 | ID | 范围/准确出处 | 验收断言/样本 | 入口、步骤与可观察通过条件 | 所需方式 | 最近真实结果/证据 | 候选适用性/复用依据 | 当前结论 | 未完原因/执行依赖 | 最短下一动作/责任 |
 |---|---|---|---|---|---|---|---|---|---|
-| A03-01 | MUST; S1:A03 | 整本正式保存后关闭浏览器、重登重开 | W多表含图/样式/公式；等待真实保存回执→关标签和整个浏览器→重登同本；值类型公式表顺序合并高宽图片一致，未保存/失败状态明确 | 真实GUI+正式API+browser重开 | E99正式v2；E100所有者退出重开+根正常退出登录/重登/返回 | 703898c1…v2四份完整DTO字节等ec68…；所有者报告正常退出整个Chrome后值图正常，根实际logout/login/GET均200并看14/23/双表绿图，独审49dc9ee6…；两类观察分列 | PASS | 无本项缺口；OS退出由所有者报告，不以browser ID变化冒称自动观测；A03-05/E2E-02另记 | 已满足限定正式保存重开；E99未保存→保存与E92失败/待核实状态按未变输入复用，不要求宿主OS重启 |
+| A03-01 | MUST; S1:A03 | 整本正式保存后关闭浏览器、重登重开 | W多表含图/样式/公式；等待真实保存回执→关标签和整个浏览器→重登同本；值类型公式表顺序合并高宽图片一致，未保存/失败状态明确 | 真实GUI+正式API+browser重开 | E99正式v2；E100所有者退出重开+根正常退出登录/重登/返回 | 703898c1…v2四份完整DTO字节等ec68…；所有者报告正常退出整个Chrome后值图正常，根实际logout/login/GET均200并看14/23/双表绿图，独审49dc9ee6…；两类观察分列 | FAIL | E160重开。E155/E158已证实正式JSON写入改变精确数值，直接反证保持语义；原E99/E100限定样本历史保留 | b7共同候选精度补丁已构建/装配，须完成正常产品入口的云稿恢复、正式当前/历史及刷新精确读回后复闭 |
 | A03-02 | MUST; S1:A03; S3:32 | 未确认输入的隔离本机稿可恢复 | 在单元格未按Enter输入→本机落稿→刷新/关页→恢复→正式保存；20稿可恢复/21拒绝、账号隔离及旧写删保护按原承诺成立 | Chrome GUI+IndexedDB+API | E03 | R02：草稿/编辑稿/save-session同字节，普通挂载/restoreEdit连续源段未变 | PASS | 无；整浏览器/完整格式集成仍见A03-01 | 已满足；不重复执行此局部；Codex仅核E2E集成及后续输入变化 |
 | A03-03 | MUST; S1:A03; S3:32 | 无本机稿的新上下文可恢复私有服务器草稿 | 云稿保存回执后新上下文无IndexedDB→读私有云稿→恢复并发布rev2→仅精确对应槽清理；云稿丢回执新输入也保留 | GUI+server draft API | E05 | R02：云session/client/后端CAS不变；8c→e087更严资源键校验不影响合法唯一资源fixture | PASS | 无；不覆盖新实例身份配置 | 已满足；不重复执行此局部；Codex仅核E2E集成及后续输入变化 |
 | A03-04 | MUST; S1:A03; S1:A08 | 旧回执不清掉保存期间的新输入 | 分别在回执丢失/在途继续N+1输入→关页恢复→同请求核实只确认rev2且N+1仍dirty→明确新保存rev3 | Chrome GUI+意图/草稿+API | E04 | R02：save-session/writeVersion/草稿协议相同；两个回执位置为同一场景变体 | PASS | 无；不是全部故障组合 | 已满足；不重复执行此局部；Codex仅核E2E集成及后续输入变化 |
@@ -675,7 +675,7 @@ V-E087=`e0870e8f4d919496d0161646ccc2c1aa28cd7822`；8c630=`8c630ac3c370c54908c9e
 | A04-01 | MUST; S1:A04; S3:32 | Mac Chrome正常系统中文输入不丢字 | 所有者实际Mac Chrome155：候选停留约2秒→确认→连续两格、中文标点、换行、快切、粘贴→保存刷新，D1/D2正式rev2一致 | 所有者真实系统IME+GUI/API | E07 | R04：composition/imeActive/readEdit/restoreEdit同段，Univer核心/drawing仍1.0.4；新async保护独立A03-05 | PASS | 无；仅正常Chrome过程，未称Safari或新交错通过 | 已满足；不重复执行此局部；Codex仅核E2E集成及后续输入变化 |
 | A04-02 | MUST; S1:A04; S1:A15 | 真实Safari完成同类系统IME与主工作簿路径 | 所有者实际Safari使用与A04-01同类输入，再保存/刷新/关键导航；选词/文本/状态正确；自动WebKit另记 | 真实Safari+系统IME+GUI/API | E143所有者5b07真实输入/保存刷新v2，9c同窗口往返及五格图/正式DTO；独审6a81817b… | 原360本不重建；D2/D5实际仅“第二句，”由本人澄清，非丢字；9c未改IME。工作台→裸颜色入口仍360/v2/五格；四份正式DTO全文等 | PASS | 限本机真实Safari及原用户步骤；无Safari全程Network，不用API中文代系统输入；错窗口图/AX排除 | 已满足；不重复系统IME，性能三条另验 |
 | A04-03 | MUST; S1:A04; S7 | 最终构建冷暖可见可编辑加载≤3秒 | M1同机Chrome1440×900，1000×27及30图约定样本，冷/暖各1；导航起到可见/可编辑≤3000ms，保存原始资源及终点 | 真实GUI Performance | E144正常1000×27导入v2；预加载观察工具不支持，冷暖NOT_OBSERVED | 开发chunk128秒FAIL保留；不可用迟到注入或可打开页面代冷暖终点 | NOT_VERIFIED | RUN；E152当前e299已实装可操作；仅补对应未闭合性能路径，责任Codex | Codex在届时精确不可变候选测冷暖各1，不扣除滚动等待或修改阈值 |
-| A04-04 | MUST; S1:A04; S7 | 输入与保存达到固定阈值 | 选择/按键各50次p95≤100ms；正式保存50次点击至真实成功max≤2s；云稿从最后输入含800ms防抖至回执max≤2s，次数无旧规定则报原始实际n不造门槛 | 真实GUI事件/Network/正式读回 | E146同2e0选择50 p95=121.895ms/max271.680ms FAIL；首保存1/50=7269.515ms FAIL，v4全文刷新等 | 旧9c两FAIL保留；两版本各单保存不能统计判断普遍退化。正式PUT3348.673ms仅网络区间，根因未归属；E151唯一d9诊断5276.470ms仍FAIL，正式v5刷新全文等；前后端观察器均撤除  E155 e299一次新保存9559.650ms仍FAIL，实际1440×722非S7批次；完整formal与刷新等，PUT→GET内部富文本宽度有精度差异，未隐去。 | FAIL | RUN；旧余49保持停止。E155 PUT发完到首头6020.412ms，API timing OFF，具体DB/锁/GC未定位；一处宽度精度差异只读取证中 | 保留失败后只做对应边界定位及必要修复；不盲重开保存或缩终点/样本/阈值 |
+| A04-04 | MUST; S1:A04; S7 | 输入与保存达到固定阈值 | 选择/按键各50次p95≤100ms；正式保存50次点击至真实成功max≤2s；云稿从最后输入含800ms防抖至回执max≤2s，次数无旧规定则报原始实际n不造门槛 | 真实GUI事件/Network/正式读回 | E146同2e0选择50 p95=121.895ms/max271.680ms FAIL；首保存1/50=7269.515ms FAIL，v4全文刷新等 | 旧9c两FAIL保留；两版本各单保存不能统计判断普遍退化。正式PUT3348.673ms仅网络区间，根因未归属；E151唯一d9诊断5276.470ms仍FAIL，正式v5刷新全文等；前后端观察器均撤除  E155 e299一次新保存9559.650ms仍FAIL，实际1440×722非S7批次；完整formal与刷新等，PUT→GET内部富文本宽度有精度差异，未隐去。 | FAIL | RUN；旧余49保持停止。E155 PUT发完到首头6020.412ms，API timing OFF，具体DB/锁/GC未定位；E159已完成选定PG服务回归与独审，b7b8d13共同构建/实装待完成 | 保留失败后只做对应边界定位及必要修复；不盲重开保存或缩终点/样本/阈值 |
 | A04-05 | MUST; S1:A04; S7 | 排序/筛选/粘贴、30图与10次切换按原测量合同记录 | 1000行排序/筛选各5、100×10粘贴5次本地可编辑max≤1s；30图实际解码与10次目的页ready后返回，记录意外写/长任务/内存原始值 | 真实GUI+图像解码+Performance | E144原30图输入已独立核同hash，首保存失败后未继续其他性能写入 | 不增加零泄漏/全程零长任务或批量保存未规定的数值门槛 | NOT_VERIFIED | RUN；E152当前e299已实装可操作；仅补对应未闭合性能路径，责任Codex | Codex复用同一性能夹具；图加载/切换与输入阈值分别记证据 |
 
 #### A05
@@ -792,13 +792,13 @@ V-E087=`e0870e8f4d919496d0161646ccc2c1aa28cd7822`；8c630=`8c630ac3c370c54908c9e
 
 ### 由唯一原子表派生的计数
 
-主分母N=74，有效PASS P=67，覆盖率67/74=90.54%（证据覆盖率，非代码完成率）；OPTIONAL 3项不计分母。PASS=67、PARTIAL=1、NOT_VERIFIED=4、BLOCKED=1、FAIL=1、SKIPPED=0、SCOPE_UNRESOLVED=0、NOT_APPLICABLE=0，总和74。E153按完整菜单/填充/保存读回及独审关闭A02-03，A04-04继续FAIL；13/15整包、7/9有效技术链、7/10 P0、4/5 P1。E156完整依赖映射及真实同本桥接恢复E2E-02/P1-02，不随原子数自动升级。历史失败与保存/恢复及Office事实保留，不缩分母。
+主分母N=74，有效PASS P=66，覆盖率66/74=89.19%，按证据覆盖统计。PASS=66、PARTIAL=1、NOT_VERIFIED=4、BLOCKED=1、FAIL=2、SKIPPED=0、SCOPE_UNRESOLVED=0、NOT_APPLICABLE=0，总和74。E160根据E155/E158已证精度反例重开A03-01及直接依赖，当前12/15整包、6/9有效技术链、6/10 P0、3/5 P1。E153菜单关闭及E99/E100/E156历史事实保留，A05/Office未受反例推翻的样本按原范围保持。
 
 | A包 | MUST N_i | 有效PASS P_i | PARTIAL | NOT_VERIFIED | BLOCKED | 其他未通过 | 整包状态 |
 |---|---:|---:|---:|---:|---:|---:|---|
 | A01 | 4 | 4 | 0 | 0 | 0 | 0 | PASS |
 | A02 | 6 | 6 | 0 | 0 | 0 | 0 | PASS |
-| A03 | 5 | 5 | 0 | 0 | 0 | 0 | PASS |
+| A03 | 5 | 4 | 0 | 0 | 0 | 1 FAIL | PARTIAL |
 | A04 | 5 | 2 | 0 | 2 | 0 | 1 FAIL | PARTIAL |
 | A05 | 6 | 6 | 0 | 0 | 0 | 0 | PASS |
 | A06 | 3 | 3 | 0 | 0 | 0 | 0 | PASS |
@@ -812,7 +812,7 @@ V-E087=`e0870e8f4d919496d0161646ccc2c1aa28cd7822`；8c630=`8c630ac3c370c54908c9e
 | A14 | 4 | 4 | 0 | 0 | 0 | 0 | PASS |
 | A15 | 12 | 8 | 1 | 2 | 1 | 0 | PARTIAL |
 
-整包仅全部MUST PASS才PASS；当前13/15整包PASS不表示工程完成率。本基线v1.0已由PM核对冻结，当前分母保持不变，PASS计数随逐项真实证据更新，不以改变分母提高通过率；后续任何新增/删MUST/阈值变动需显式范围决定和版本记录。
+整包仅全部MUST PASS才PASS；当前12/15整包PASS不表示工程完成率。本基线v1.0已由PM核对冻结，当前分母保持不变，PASS计数随逐项真实证据更新，不以改变分母提高通过率；后续任何新增/删MUST/阈值变动需显式范围决定和版本记录。
 
 ### 既有证据与受测身份索引
 
@@ -978,6 +978,12 @@ E01–E35保留历史记录的原日期/身份；E36起是本轮新增实际验�
 | E154 | [局部成本分析](../../var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/menu-save-source-profile-20261102-r01/actual-analysis.json) SHAc0b1a1b5… | 固定d9/e299提交模块，Chrome独立profile文档与两IDB，原合成v4 | 2026-11-02 | 各3轮实际写/18事务complete+全读回，显式envelope clone9→0；三检查点write中位数485.8→335.0ms。非真实Univer capture/业务HTTP/E2E，A04-04仍FAIL；静态入口403/r02窄修与物理IDB归属UNKNOWN保留，页面及两服务已结束。 |
 | E155 | [单次保存观察](../../var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/menu-e299-one-save-20261102-r01/observation-result.json)、[分段诊断](../../var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/menu-e299-one-save-20261102-r01/bounded-diagnosis.json) SHA890ff1b6… | e299，原性能本0c879…v5→v6，1440×722/DPR2 | 2026-11-02 | 唯一可信保存完整UI9559.650ms FAIL，PUT发完至首头6020.412ms，API timing OFF；刷新v6、云稿清理/观察器撤除。PUT→原始GET富文本内部width末位精度差异保留，不称全snapshot严格相等；不作S7 1/50或严格旧新同比。 |
 | E156 | [原同本桥接独审](../../var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/menu-e299-multisheet-bridge-20261102-r01/independent-review.json) SHA917a17f1…；完整依赖映射e777f440… | e299，原703898…多表图片本v5→v6 | 2026-11-02 | D8新增→本机/云稿→刷新恢复→双表绿图→正式保存/精确清槽→工作台返回同本→刷新/API全读回；仅D8新增，其余完整snapshot严格保持。恢复E2E-02/P1-02，不重演Office/IME/整Chrome。 |
+| E157 | [R43反馈副本](../../var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/r43-feedback-gmail-20261102-r01.json) SHA60a0a998…；只读SELECT5aac7ffd… | e299；无新增业务写 | 2026-11-02 | R43已见送达且收到同件反馈，PM按报告认可菜单和同本链收口；初步区分number参数与JSON文本路径，不扩称model写已定位。 |
+| E158 | [模型回滚探针独审](../../var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/menu-e299-one-save-20261102-r01/numeric-model-rollback-actual-review-r01.json) SHAd5e1b71a…；diff独审f9134e09…；时序方案独审e441697a… | 运行e299；源码21197dc96d0d162a109c31f68ac2f53af3648510未实装 | 2026-11-02 | 仅新4ID单事务复现三表model写入数值变换，text::jsonb对照保真且全部回滚；只修快照写入，45目标检查及类型/lint通过，真实PG服务回归和构建/GUI仍待。不改变原子计数或性能FAIL。 |
+| E159 | [精度PG最终独审](../../var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/menu-e299-one-save-20261102-r01/numeric-pg-final-result-review-r01.json) SHA2b11565f…；资源接线独审84796422… | 源码21197dc/测试278332d/预算b7b8d13，运行e299 | 2026-11-03 | 新PG54迁移，D16九项与D17十二项先过，新增摘要断言纠正后只复验一项通过。按输入适用性支持选定22项，首轮FAIL及重型配额未执行保留。新制品/GUI与性能待完成，所有者批准原376根host25.25GiB。 |
+| E160 | [实际运行续接独审](../../var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/numeric-lifecycle-actual-review-20261103-r01.json) SHA3b0dbf76…；当前进程timing前缀只读附证 | 应用b7b8d13/9d405/02:03:27Z，操作3ca862c | 2026-11-03 | Linux装配、完整归档及正常失败state CAS续启成立，四入口/原M1/原703本v6绿图实际读回。首次小负age失败保留，最多1秒等待后原时效守卫，实际等待时长未落盘。按已证数值反例重开A03-01及直接依赖，66/74。 |
+| E161 | [时间修复PG实际独审](../../var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/menu-e299-one-save-20261102-r01/date-pg-actual-review-r04.json) SHAe63feb0d…；GUI精度/时间分析draft-precision-and-time-analysis.json | 运行b7；UTC修复7021d0d/478bd4待构建 | 2026-11-03 | 新合成本实际公式数值云稿全文精确保持，但创建/更新时间均加8小时。只读PG两时区对照确认typed Date与默认时间转换。五helper UTC ISO修复及3insert显式createdAt，D16十一+D17十三实际24PASS、重型1过滤，原数据保留。新候选GUI完整链及性能继续开放。 |
+
 
 
 
@@ -1007,12 +1013,12 @@ E19的原记录缺自身runtime四字段，e087仅邻近上下文，不据此记
 
 ### 关键端到端路径（同一最终候选集成环境）
 
-分母K=9，当前有效通过Q=7，Q/K=7/9=77.78%。E146因A02-03工具栏失败重开E2E-02的历史保留；E153小功能已闭，E156完整依赖映射和原703本实际草稿恢复/正式保存/返回桥接后恢复本机技术PASS。E139以原同项目完整事实链与10依赖适用性闭合E2E-05，不以原子数自动升级。E93/E99两份Office基准按各自既有原生操作和受影响新尾段闭合E2E-03；E79补齐同准确颜色/基地项目正式链及当前查询桥接，E2E-06本机技术PASS；E2E-04按E61同源数据与R22导航增量闭合；E2E-01按E44/E48原链限定复用；E2E-07按E23/E24/E46/E47/E50/E51同项目/原任务、多版本连续本机链闭合，真实时序和输入差异明确记录，不冒称一次浏览器会话/同一制品重演。每条起点/动作/终点须有集成记录，未受影响输入可限定复用、缺失/受影响步骤须实做；E2E-09仍限精确正式目标，所有者最终接收另记。 E136曾按原703…本v4→v5组合草稿恢复/保存重开及19依赖适用性关闭当时E2E-02；现行E156补新持久化分支同本桥接。整Chrome退出仅复用E100原版本。
+分母K=9，当前有效通过Q=6，Q/K=6/9=66.67%。E160因A03-01精度保持反证重开E2E-02。E136/E156同本链的历史通过保留，新共同候选需补受影响保存与恢复尾段后重新核其完整依赖。其余6条有效技术链保持原版本与样本范围，E2E-08安全依赖与E2E-09正式目标仍待。
 
 | E2E ID | 出处 | 起点与关键动作 | 结束通过条件 | 依赖断言 | 当前结果/证据 | 下一动作/依赖/责任 |
 |---|---|---|---|---|---|---|
 | E2E-01 | S1:A01,A12 | 原生两成员登录→同一人共维→停用/归档名单/旧作者→返回 | 同一人员ID/作者/访问边界正确，无重复登录授权 | A01-01 A01-02 A01-03 A01-04 A12-03 | PASS；E44实际两成员/同ID共维与生命周期/返回，E48限定边界补证；28相关源/36证据独审可复用至0c20c56 | 已满足本机限定完整链；原账号与无账号联系人两个fixture不混同，不冒称R18新GUI或生产接收 |
-| E2E-02 | S1:A02,A03,A04,A06,A08 | 登录→W多表结构/格式/图片编辑→正式回执→关浏览器→重登→必要草稿恢复 | 同一本完整内容/图/顺序保留，未提交状态不误清 | A02-01 A02-02 A02-03 A02-04 A02-05 A02-06 A03-01 A03-02 A03-03 A03-04 A03-05 A04-01 A06-01 A06-02 A08-01 A08-02 A08-03 A08-04 A08-05 | PASS（本机技术范围）：E153实装关闭A02-03；E156按e777完整19依赖映射，在原703本v5→v6完成本机草稿恢复、双表/绿图/新增D8、正常保存、工作台返回及刷新全文对应，独审917a17f1…。原E136/E100整本与Chrome重开按输入适用性复用 | 已满足冻结本机链；不冒称今日重跑Office/IME/整Chrome，E155性能与单独精度差异不以该小本结果代替 |
+| E2E-02 | S1:A02,A03,A04,A06,A08 | 登录→W多表结构/格式/图片编辑→正式回执→关浏览器→重登→必要草稿恢复 | 同一本完整内容/图/顺序保留，未提交状态不误清 | A02-01 A02-02 A02-03 A02-04 A02-05 A02-06 A03-01 A03-02 A03-03 A03-04 A03-05 A04-01 A06-01 A06-02 A08-01 A08-02 A08-03 A08-04 A08-05 | PARTIAL。E160因直接依赖A03-01精度保持反证重开，E153/E156及原E136/E100历史通过事实保留 | 新候选正常产品精度读回与完整19依赖适用性核对待完成，已通过的原Office/IME/整Chrome观察按输入适用性复用 |
 | E2E-03 | S1:A05 | O1/O2各自基准→系统编辑/保存/导出→实际Excel→回导保存刷新 | 值类型/真重算/日期/合并样式/图片在约定范围保持或明确转换，无静默丢失 | A05-01 A05-02 A05-03 A05-04 A05-05 A05-06 | PASS；E93 O1 v4→a745…→真实Excel13/22→641ce…v2保存刷新/PNG/有效100和88已独审；E99在3941用正确O2 db091…新导入703898c1…v2，四小数/14格/样式/合并/高宽/图原件均保持，独审a276422b… | E08原生打开/人工另存、E40/E42系统编辑/SUM与Excel只读查看/回导、E68日期、E70/E84四值按未变输入复用；新3941只补O2读取持久化，O1整数回归/源码差异支持复用。旧68px与8755…v2取整失败保留；不声称同一制品重演所有Office或产品签收 |
 | E2E-04 | S1:A07,A14 | 明确映射四域→业务详情/日志→产量stable-ID修订→汇总导出→年度依据 | 资料不二次手录、27→25→26、唯一依据及年度证据一致 | A07-01 A07-02 A07-03 A07-04 A07-05 A08-05 A14-01 A14-02 A14-03 A14-04 | PASS；E61绑定R21同源v2/3事实stable IDs/27→25→26/三数值导出/13月26及旧20/19不可变；R22实际详情跳转/关闭返回/刷新与完整DTO深等；其他三域按E43/E44/E45/E56受影响范围复用 | 已满足本机多版本连续链；R21丢ID失败及R22弹窗内同URL链接不关闭均保留，正常关闭可返回；不代表正式环境或所有者接收 |
 | E2E-05 | S1:A09,A10,A11 | 原合成项目现状态→未覆盖建项/并行/费用及适用任务动作（一次流程写同op重试核节点/审计仅一次）→材料保存返回→标准/整改历史核对→后续适用节点读回 | 原项目/标准/颜色/有效费用与未完支线保留，前置门禁/返回正确 | A08-05 A09-01 A09-02 A09-03 A10-01 A10-02 A10-03 A11-01 A11-02 A11-03 | PASS（限定本机）：E139同青州白原项目材料/同op重试/06→07原ISSUED v4/合成费用/来源返回；独审4079810e…核全部10依赖，历史执行与当前读回分列 | 无本链缺口；混合API3a11/Web3941不代最终同身份制品、安全、正式环境或所有者签收；05/09/18仍未完 |
@@ -1053,8 +1059,8 @@ E19的原记录缺自身runtime四字段，e087仅邻近上下文，不据此记
 | D13 | A14-01 A14-02 A14-03；27→25→26, exact old TOTAL replay, mixed basis/CAS lock, unknown0,13months20, coherent SQL snapshot, live approval | [`src/modules/production-facts/production-model.postgres.integration.spec.ts`](../../apps/api/src/modules/production-facts/production-model.postgres.integration.spec.ts) | `PRODUCTION_MODEL_TEST_DATABASE_URL`；127.0.0.1:55462/{v1_production_model_20261020,v1_production_model_final_20261020} | PASS（本属性，限16f/R20）：E58绑定823b1ea原执行10PASS/0FAIL/0SKIP及输入差异；原receipt/log/工具/环境/源逐项对应，非同次全候选PG。 |
 | D14 | A14-02；same SQL snapshot for total and grouped quantities across concurrent commits | [`src/modules/production-facts/production-statistics-snapshot.postgres.integration.spec.ts`](../../apps/api/src/modules/production-facts/production-statistics-snapshot.postgres.integration.spec.ts) | `LIGHT_TRUCK_FACTS_TEST_DATABASE_URL`；127.0.0.1:55438/light_truck_facts_test_* | PASS（本属性，限16f/R20）：E58绑定823b1ea原执行1PASS/0FAIL/0SKIP及输入差异；原receipt/log/工具/环境/源逐项对应，非同次全候选PG。 |
 | D15 | A14-03 A14-04；13month19/20/21, missing/early/revoked, CAS/audit rollback and actual HTTP/old-exit binding | [`src/modules/color-register/color-annual-review.postgres.integration.spec.ts`](../../apps/api/src/modules/color-register/color-annual-review.postgres.integration.spec.ts) | `COLOR_ANNUAL_REVIEW_TEST_DATABASE_URL`；127.0.0.1:55438/personnel_sheet_design_20261019 | PASS（本属性，限16f/R20）：E58绑定823b1ea原执行11PASS/0FAIL/0SKIP及输入差异；HTTP内存session不代Redis或密码全链。 |
-| D16 | A03-01 A08-01 A08-02 A08-04；actual persistence/history/CAS, same-op replay/restore, authorization and CLEAN image binding | [`src/modules/workbooks/workbooks.postgres.integration.spec.ts`](../../apps/api/src/modules/workbooks/workbooks.postgres.integration.spec.ts) | `WORKBOOK_TEST_DATABASE_URL OR WORKBOOK_DRAFT_TEST_DATABASE_URL`；127.0.0.1:55438/free_workbook_* OR55460/free_workbook_drafts_* | PASS（本属性，限16f/R20）：E58绑定9b53633原执行8PASS/0FAIL/0SKIP及输入差异；原9b536/53迁移8PG；D16+D17共21PG、另25规则/body。服务/模型/锁与旧53迁移不变，54仅生产事实；新filter另有纯规则，不称当前54迁移新跑工作簿PG。 |
-| D17 | A03-03 A08-04；draft/formal atomicity, quotas, lost response, replay, live admission/CLEAN | [`src/modules/workbooks/workbook-drafts.postgres.integration.spec.ts`](../../apps/api/src/modules/workbooks/workbook-drafts.postgres.integration.spec.ts) | `WORKBOOK_DRAFT_TEST_DATABASE_URL`；127.0.0.1:55460/free_workbook_drafts_* | PASS（本属性，限16f/R20）：E58绑定9b53633原执行13PASS/0FAIL/0SKIP及输入差异；原9b536/53迁移13PG；原46=21PG+25规则/body，不称当前54迁移/新filter/GUI已重跑。 |
+| D16 | A03-01 A08-01 A08-02 A08-04；actual persistence/history/CAS, same-op replay/restore, authorization and CLEAN image binding | [`src/modules/workbooks/workbooks.postgres.integration.spec.ts`](../../apps/api/src/modules/workbooks/workbooks.postgres.integration.spec.ts) | `WORKBOOK_TEST_DATABASE_URL OR WORKBOOK_DRAFT_TEST_DATABASE_URL`；127.0.0.1:55438/free_workbook_* OR55460/free_workbook_drafts_* | PASS（本属性，限16f/R20）：E58绑定9b53633原执行8PASS/0FAIL/0SKIP及输入差异；原9b536/53迁移8PG；D16+D17共21PG、另25规则/body。服务/模型/锁与旧53迁移不变，54仅生产事实；新filter另有纯规则，不称当前54迁移新跑工作簿PG。 E159追加源码21197dc的真实PG14.24/D16九项全部通过，含精确数值与既有CAS/历史/授权/资产/审计回滚。新源码与后继ops b7b8d13按未变输入复用，Linux新制品另待。 |
+| D17 | A03-03 A08-04；draft/formal atomicity, quotas, lost response, replay, live admission/CLEAN | [`src/modules/workbooks/workbook-drafts.postgres.integration.spec.ts`](../../apps/api/src/modules/workbooks/workbook-drafts.postgres.integration.spec.ts) | `WORKBOOK_DRAFT_TEST_DATABASE_URL`；127.0.0.1:55460/free_workbook_drafts_* | PASS（本属性，限16f/R20）：E58绑定9b53633原执行13PASS/0FAIL/0SKIP及输入差异；原9b536/53迁移13PG；原46=21PG+25规则/body，不称当前54迁移/新filter/GUI已重跑。 E159追加原十二项实际PASS，测试纠正278332d后新增精度发布case单项PASS，最终独审2b11565f…。512MiB全局配额本轮明确未执行，首轮摘要断言FAIL保留。 |
 | D18 | A01-02 A15-06；actual authenticated sessions/one-use+rate/queue primitive, bounded uncertain write/no automatic resend, reconnect | [`src/infra/redis/redis.integration.spec.ts`](../../apps/api/src/infra/redis/redis.integration.spec.ts) | `REDIS_SECURITY_TEST_URL`；password-protected127.0.0.1; port must not6379; dedicated disposable Redis only | PASS（本属性，限16f/R20）：E58绑定f323e51原执行3PASS/0FAIL/0SKIP及输入差异；全新密码Redis真实暂停/不确定写不自动重放/重连，非materials6399。 |
 
 原HTTP/PG E01/E03–06/E11–13仍只证明原范围；E58已逐D01–D18核原始执行与16f/R20适用性。D16/17原46=21PG+25规则/body，不是46PG或当前54迁移新跑；原5FAIL与修正两测试10PASS分列，不把新剪贴板输入视为已验。
@@ -1077,13 +1083,13 @@ verify未配置PG/Redis service或各TEST_* URL，`pnpm test`绿不自动填掉�
 
 ### 10组P0 / 5组原V1必需P1与执行队列
 
-这些是原子条目的工作分组，不是新增分母或漏洞数量；同一个ID在多个分组出现只计一次。组关闭条件是关联未闭合断言全部PASS并满足该组可观察条件。当前P0组7/10关闭、3/10未关闭；5组P1中3关闭、2未关闭（E146因A02-03反证重开P1-02；P1-01/03/05保持已核范围）；包含环境/证据/发布/签收障碍，不是10个已确证P0代码漏洞，当前阻断性漏洞完整总数没有新全量审计结论。已确认具体XLSX缺陷已修且focused验证，剩余full/runtime门槛；环境/证据/权限不足另列于各依赖。P2只含三条OPTIONAL和无额外投入的SaveAs自动工具/非必需装饰，不进入V1完工。
+这些工作分组引用原子条目，同一ID只计一次。关联未闭合断言全部PASS并满足可观察条件后才关闭。E160当前P0为6/10关闭、P1为3/5关闭，A03-01反证分别重开P0-03/P1-02。原环境、证据、发布和所有者接收边界保持。P2仅含三条OPTIONAL，不进入V1分母。
 
 | 分组 | 模块/缺口 | 唯一矩阵ID | 关闭的可观察条件 | 依赖/复用及责任人下一动作 |
 |---|---|---|---|---|
 | P0-01 | 候选运行身份 | A15-04 A15-05 | E152 e299共同四身份与正常OFF启动；E153原M1菜单本保存刷新 | 原关闭计数保持；E152新e299四入口及正常生命周期已实装，仍不代CI/正式HTTPS |
 | P0-02 | DB/Redis与G3（属性证据已关闭） | A15-06 | 定义属性有适用真实证据，无关键依赖skip；不机械293全跑 | E58真实属性适用性与E67 R23新G3独审成立，原5FAIL/303SKIP和新305SKIP保留；原依赖已恢复但缺失计划导致API暂停；历史属性与当前可用性分列，CI/安全/恢复独立 |
-| P0-03 | 正常保存/Office | A03-01 A05-01 A05-02 A05-03 A05-04 A05-05 A05-06 | 完整保存关浏览器重登和O1/O2两基准链、真实重算/日期/实际图位闭合 | CLOSED（限定本机）：E100同本正式v2→所有者正常退出Chrome重开→根正常重登完整读回，独审49dc9ee6…；E93/E99及未变原生Office连续链成立。A03-05由E135闭合；E2E-02的E136历史事实保留，当前按E146重开，不代所有者签收 |
+| P0-03 | 正常保存/Office | A03-01 A05-01 A05-02 A05-03 A05-04 A05-05 A05-06 | 完整保存关浏览器重登和O1/O2两基准链、真实重算/日期/实际图位闭合 | OPEN。E160因A03-01精度保持反证重开，E93/E99/E100及A05限定样本历史保持。须精度产品尾段闭合并核依赖后恢复 |
 | P0-04 | 实际周评/门禁（原子条件已关闭） | A12-01 A12-02 | E53双成员多色活动及查询统计、同TASK二人确认/阶段门禁；E50当前适用legacy签月和首签保护均满足 | 本组局部已满足；E79另以同项目桥接实证闭合E2E-06，不由原子计数自动提升整链 |
 | P0-05 | 产量/唯一依据/年度（已关闭） | A07-04 A14-01 A14-02 A14-03 A14-04 | 实际apply、27→25→26、unknown/0/唯一依据/13月20与19既有规则正确 | E36/E41/E43/E45已满足局部，E61闭合本机E2E-04；不推整体完成 |
 | P0-06 | CI/安全候选资格 | A15-07 A15-08 | 必需候选CI/镜像扫描、适用安全full/最终证据和生命周期满足 | E52旧0c20与E67精确R23本机双镜像/扫描各保局部；required CI及适用full仍未闭合；E141普通应用生命周期限定成立，不代安全Finding完整关闭，按有效授权/实际条件推进，不将未检出写成全安全 |
@@ -1092,12 +1098,12 @@ verify未配置PG/Redis service或各TEST_* URL，`pnpm test`绿不自动填掉�
 | P0-09 | 精确正式HTTPS交付 | A15-11 | 最终版本域名/upstream/镜像/数据源及真实业务/附件可用 | 外部发布准入与扫描资源限制先具体解决；不自行启VM；Codex主执行，外部/所有者只承担明确动作 |
 | P0-10 | 最终所有者签收 | A15-12 | 其余73项技术/交付MUST（不含A15-12）、9条技术关键链及必需门禁和约定环境先就绪，再由李晓晨实际UAT并明确接收；此后A15-12计PASS，原范围缺陷按影响修复/复验 | HUMAN最后签收；不是继续开发许可；Codex主执行，外部/所有者只承担明确动作 |
 | P1-01 | 成员/人员联动/性能提醒（已关闭） | A01-01 A01-02 A01-03 A01-04 A12-03 A13-01 A13-02 A13-03 A13-04 A13-05 A13-06 | A01四项/A12-03及A13六项均按E44/E46/E47/E48/E50/E51闭合；本机限定配置/同项目原任务链与历史保持 | 本组局部已满足；后续仅输入变化时复验，不代其他P1/P0、生产或所有者签收 |
-| P1-02 | 完整编辑/草稿/图片/幂等 | A02-01 A02-02 A02-03 A02-04 A02-05 A02-06 A03-01 A03-02 A03-03 A03-04 A03-05 A06-01 A06-02 A06-03 A08-01 A08-02 A08-03 A08-04 A08-05 A08-06 | 各对应结构/格式/恢复/图和冲突断言全PASS，不能以toolbar存在代实操 | CLOSED：E153真实小功能与E156原703本最小恢复桥接，经完整20依赖映射及独审917a17f1…，原E56/E57/E59/E135/E136范围适用；不按原子计数自动升组 |
+| P1-02 | 完整编辑/草稿/图片/幂等 | A02-01 A02-02 A02-03 A02-04 A02-05 A02-06 A03-01 A03-02 A03-03 A03-04 A03-05 A06-01 A06-02 A06-03 A08-01 A08-02 A08-03 A08-04 A08-05 A08-06 | 各对应结构/格式/恢复/图和冲突断言全PASS，不能以toolbar存在代实操 | OPEN。E160因A03-01反证重开，E153菜单与E156同本桥接历史保留。新共同候选须补受影响精度尾段并重新核完整依赖 |
 | P1-03 | 业务映射/标准/并行/整改（已关闭） | A07-01 A07-02 A07-03 A07-04 A07-05 A09-01 A09-02 A09-03 A10-01 A10-02 A10-03 A11-01 A11-02 A11-03 | 只补未闭合真实动作/文案、关联/更正/并行及驾驶室失败分支 | CLOSED；E137/E138标准及E139完整并行/整改链成立，其他精确局部适用复用；不重复执行 |
 | P1-04 | Safari/IME/性能 | A04-01 A04-02 A04-03 A04-04 A04-05 | 真实Safari系统IME和固定性能阈值达标，原Chrome正常IME有效复用 | RUN；E143真实Safari已闭合，仅A04-03/04/05固定性能未闭合，E144已有FAIL；不重复系统输入 |
 | P1-05 | 导航/四宽/参考实装（已关闭） | A15-01 A15-02 A15-03 | 原14页/guide路由组件动作返回、默认/编辑/长文/加载/错误及四CSS宽按原约定可用 | CLOSED；E142＋E143实际四宽/guide/认证/同本导航及r03对照完成；不代正式目标 |
 
-1. **当前继续（NOW/RUN）**：E153已闭A02-03，E156恢复E2E-02/P1-02；E155一次新保存仍FAIL，定位6020ms首头等待及单个富文本宽度精度差异。旧余49次不重开，不重演已闭Office/IME/安装。
+1. **当前继续（NOW/RUN）** E160已构建和Linux装配b7共同候选。首启在进程创建前被资源时间校验拒绝，现修复已定位的宿主与guest约103ms时钟偏差。先正常恢复预览，再补精度产品链和单次11点性能诊断。A03-01/E2E-02/P0-03/P1-02按直接反证重开，旧余49次保持暂停。
 2. **当前运行及后续绑定**：E152同一Lima/newboot589f…共享owner保持，e299/a3d2四入口、正常OFF启动及E153原M1小本v6已绑定；原签名时效沿E150。只补受影响路径，旧boot停因及全部失败保留。
 3. **特定人类/外部动作**：所有者已批准两项25GiB持续调整，冷备/扩容完成，正常服务恢复与后续准入继续；旧临时25/sudo许可不扩用。以后到具体候选再核Git/CI/发布授权与生产扫描条件，最后李晓晨UAT。普通独立准备继续，历史Safari/IME不再索取。
 

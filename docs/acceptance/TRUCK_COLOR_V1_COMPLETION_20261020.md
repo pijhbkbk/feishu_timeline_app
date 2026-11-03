@@ -3,33 +3,34 @@
 当前执行状态以 [EXECUTION_LEDGER](../EXECUTION_LEDGER.md) 最新检查点为准；本页是其摘要，验收断言和计数仅从 [ROUTE_ACCEPTANCE_MATRIX](ROUTE_ACCEPTANCE_MATRIX.md#v1-baseline-v10) 派生，安全状态仅引用 [FINDINGS](../security/FINDINGS.yaml)。下方历史追加保留原日期、FAIL和版本，不覆盖当前入口。
 
 - TASK_ID：`TRUCK-COLOR-V1-COMPLETION-20261020-R01`；主线 `TRUCK-COLOR-V1-CONTINUE-20261020-R02`；当前子任务 `TRUCK-COLOR-V1-FINAL-EXECUTION-20261024-R01`。
-- STATE：`VM_RUNNING / APPLICATION_RUNNING / DIAGNOSTICS_OFF`；产品 `PARTIAL / AWAITING_PRODUCT_OWNER_CONFIRMATION`。最近E152–E156，2026-11-02；e299四入口/原M1及菜单本v6读回，https://localhost:45464可操作。
-- WORKSPACE：`/Users/lixiaochen/Downloads/feishu_timeline_app`；分支 `codex/design-convergence-20261019`。应用e299057已不可变构建并增量实装；操作工具HEAD eceb51c，当前仅三份已知验收文档修改，受保护用户文件保持。
-- SOURCE_ID：新源码 `e299057a21e18f0b702e5d1bfe3d74ec47687505` / tree `a3d2ec84dc647d69d49e0bb995bd6e0f218351c4`。实际运行同e299/a3d2，release `truck-menu-save-e299057a21e1-r01` / build `2026-11-02T09:16:06Z`。
-- ARTIFACT_ID：`OP/menu-save-application-delta-20261102-r01`，947新叶＋14796保留Linux基包叶＝15743；archive9488474B/SHA `706fe993c8a786b7bf5f6d4bbeb4c543d61d9b5860fe7ebe66fdbb068b0f66b1`，manifest `3f89102e84cf5482ca6dc490d5b941664a5053ab3c337787e8a74dd309caf4de`。宿主与guest实际组装/消费成立，仍依赖原Linux基包；非新完整安装包。
-- RUNTIME_ID：同一Lima25GiB/boot `589fefa8-c3d5-477d-a597-7303774115c9`；PG/Redis/scanner2368/t939813及原proxy保持；最终API4003/t2543742、Web4020/t2543824。正常stop/start后timing前缀环境实际不存在，state SHA9e99d6a4…。
-- REMOTE_LAST_OBSERVED：2026-10-31连接GitHub只读main仍 `9bdec2864c3ed9eb1a045062b756611f98208bfb`、最新main CI `38866594479` failure；未新增可归档的分支保护配置证据，必需门禁不变。候选未新增远端CI，精确正式域名身份仍UNKNOWN。
-- CURRENT_ITEM：67 PASS/1 PARTIAL/4 NOT_VERIFIED/1 FAIL/1 BLOCKED=74，13/15包、7/9有效技术链、7/10 P0、4/5 P1。E153已按完整小功能证据关闭A02-03；E156经原703本实际草稿恢复/保存/返回及完整依赖映射恢复E2E-02/P1-02，不按原子数自动升链。
-- EVIDENCE：E152构建/24文件包/实际生命周期独审cf5cdb73…；E153菜单/填充/保存读回全范围独审cc51f67a…；E154局部源码成本独审d790a4e0…；E156同本桥接独审917a17f1…。既有14页reference-implementation-comparison-r03.html保持，新增截图位于OP/menu-save-product-20261102-r01；R42已由所有者发送，Gmail反馈同件1a19b7f245b377cb已读取；所有者明确确认发送，不另称取得消息ID。
-- OPEN_LIMITS：A02-03历史原子性失败已修并实装复验；A04-04最新单次完整UI9559.650ms仍FAIL，E155实际viewport1440×722，不计S7批次；富文本内部宽度末位精度差异已只读确认存在于当前/历史v6库值，写入链具体转换位置仍待定位。E149两次下载失败保留，E150另组官方三源实际通过；daily28171截止2026-11-03T06:27:34Z，后续使用继续实时守卫。CI/full安全/正式目标及所有者签收仍未闭合。
-- HUMAN_ACTION：所有者call_54a6adb263424774b0293f65de287840已批准两项25GiB持续调整并继续；当前磁盘已按正常入口实际扩容。旧临时25/限定sudo没有扩用，最终所有者签收仍待。
-- NEXT_ACTION：定位E155的6020ms首响应头等待与富文本内部宽度精度差异；E156同本恢复桥接已完成。保持376根25GiB、host64MiB/guest1GiB；不重做离线安装或旧失败批次余49次。
+- STATE：`VM_RUNNING / APPLICATION_RUNNING / DIAGNOSTICS_OFF`，产品 `PARTIAL / AWAITING_PRODUCT_OWNER_CONFIRMATION`。E160时钟补丁后正常续启b7，四入口及原M1会话/原703本v6绿色图片已实际读回，45464预览恢复。
+- WORKSPACE：`/Users/lixiaochen/Downloads/feishu_timeline_app`，分支 `codex/design-convergence-20261019`，当前HEAD `7021d0d46e8455f964d72b29cc9a88aa4fbd2d84`。三份执行/验收文档正在追加，应用源码与b7制品保持一致。
+- SOURCE_ID：共同候选 `b7b8d13190758654697c47d9c582a37e8ceba7e4` / tree `9d405dfa5dbaa87e707889cce5bfed658266fffe`，release `truck-numeric-json-b7b8d1319075-r01` / build `2026-11-03T02:03:27Z`。应用双端构建和Linux装配已完成，产品入口读回待完成。
+- ARTIFACT_ID：`OP/numeric-application-delta-20261103-r01`，948新叶与14796原Linux基包叶组成15744项。manifest `0afc682f8976d4e8be8455cc287b20e282390109d1d0e5dab4043c8ff366a25b`，archive `8dfa2b799e68da9251a4ba392d985d3bcaba89d6149378048dc9eec05ada6cae`。24文件增量交付manifest `e247be6d74979aeee703918546d262edff6b3f7d9eac24bbd4a10e0af5907581`。
+- RUNTIME_ID：同一25GiB Lima/boot `589fefa8-c3d5-477d-a597-7303774115c9`。原PG/Redis/scanner/proxy保持，API7248/t4743001、Web7265/t4743103，正常RUNNING原件b14e90f0…，独立当前进程核timing前缀均不存在。原e299正常stop及b7首次失败原件保留。
+- REMOTE_LAST_OBSERVED：2026-11-03通过git ls-remote与GitHub API只读复核main仍 `9bdec2864c3ed9eb1a045062b756611f98208bfb`、最新main CI `38866594479` failure；未新增可归档的分支保护配置证据，必需门禁不变。候选未新增远端CI，精确正式域名身份仍UNKNOWN。
+- CURRENT_ITEM：66 PASS/1 PARTIAL/4 NOT_VERIFIED/2 FAIL/1 BLOCKED=74，12/15包、6/9技术链、6/10 P0、3/5 P1。E160根据已证数值保持反例重开A03-01及E2E-02/P0-03/P1-02，原E99/E100/E156历史事实保留，A05/Office未受反例推翻的样本保持。
+- EVIDENCE：E160构建独审2a0d4762…、delta独审e65ad838…、Linux装配实际独审c9285ae7…。R44已于02:38Z通过授权会话实际发送，完整反馈及Gmail同件1a19f48c8e3751f2已读取去重。既有14页reference-implementation-comparison-r03.html保持。
+- OPEN_LIMITS：A03-01精度反证重开，E161新增时间元数据偏移回归，修复与实装复验待完成。A04-04最新单次9559.650ms仍FAIL，原6020.412ms首响应头等待未归因。daily有效截止2026-11-03T06:27:34Z，后续实际使用守原门禁。CI、完整安全、正式目标及所有者接收仍待。
+- HUMAN_ACTION：所有者call_54a6adb263424774b0293f65de287840已批准两项25GiB持续调整并继续；当前磁盘已按正常入口实际扩容。随后call_f8f85e0f25f849e999d88a0bab28bdd6批准原376根host25.25GiB用于本轮构建/增量交付/证据保留，VM磁盘额度25GiB。最终所有者签收仍待。
+- NEXT_ACTION：E161数值型B1云稿完整内容已精确读回，但新raw writer时间元数据实际偏移8小时，当前停止该本正式保存。保留原异常合成本，UTC补丁已提交并完成24项选定真实PG回归，待共同构建/实装后用新合成本完成精度/时间链，再开展单次性能诊断。
 - RESUME_ENTRY：最新Ledger → 矩阵未闭合原子/E2E依赖 → 本页派生摘要；最终A15-12由李晓晨明确接收，不由PM或Codex代签。
 
+
 <!-- V1_BASELINE_DASHBOARD_START -->
-## v1.0可复算验收看板（范围冻结于2026-10-23，状态更新2026-11-02）
+## v1.0可复算验收看板（范围冻结于2026-10-23，状态更新2026-11-03）
 
 唯一断言和详细步骤在[矩阵现行基线](ROUTE_ACCEPTANCE_MATRIX.md#v1-baseline-v10)，本表按其74条MUST派生。PM冻结的是标准，不是产品接受；旧PASS按原版本/输入适用性复用，FAIL和未执行仍保留。R36历史适用PASS保持；E152补新候选运行绑定，E153按真实菜单/填充/保存全路径增加A02-03一项PASS。
 
-- MUST证据覆盖 `67/74=90.54%`，PARTIAL 1、NOT_VERIFIED 4、FAIL 1、BLOCKED 1；这不是代码完成率。
-- 关键技术链 `7/9=77.78%`；E156按完整依赖映射及原同本真实恢复/返回桥接恢复E2E-02，其余已核链保持原范围，E2E-08仍有安全依赖，E2E-09正式目标未验。
-- P0交付组7/10关闭，P1必需组由矩阵逐项依赖决定；不是漏洞严重级别数量。剩6项技术/交付及1项所有者接收。
+- MUST证据覆盖 `66/74=89.19%`，PARTIAL 1、NOT_VERIFIED 4、FAIL 2、BLOCKED 1；这不是代码完成率。
+- 关键技术链 `6/9=66.67%`。E160重开E2E-02，原E156历史通过保留，其余链按未受反证推翻的样本范围保持。
+- P0交付组6/10关闭，P1组3/5关闭，剩7项技术/交付及1项所有者接收。
 
 | A包 | MUST N_i | 有效PASS P_i | PARTIAL | NOT_VERIFIED | FAIL | BLOCKED | 整包 |
 |---|---:|---:|---:|---:|---:|---:|---|
 | A01 | 4 | 4 | 0 | 0 | 0 | 0 | PASS |
 | A02 | 6 | 6 | 0 | 0 | 0 | 0 | PASS |
-| A03 | 5 | 5 | 0 | 0 | 0 | 0 | PASS |
+| A03 | 5 | 4 | 0 | 0 | 1 | 0 | PARTIAL |
 | A04 | 5 | 2 | 0 | 2 | 1 | 0 | PARTIAL |
 | A05 | 6 | 6 | 0 | 0 | 0 | 0 | PASS |
 | A06 | 3 | 3 | 0 | 0 | 0 | 0 | PASS |
@@ -43,7 +44,7 @@
 | A14 | 4 | 4 | 0 | 0 | 0 | 0 | PASS |
 | A15 | 12 | 8 | 1 | 2 | 0 | 1 | PARTIAL |
 
-13/15整包PASS，A04与A15未闭。代码、GUI、真实Office、系统IME、PG/Redis、恢复和精确目标环境各守证据范围，不互相替代。
+12/15整包PASS，A03、A04与A15未闭。代码、GUI、真实Office、系统IME、PG/Redis、恢复和精确目标环境各守证据范围，不互相替代。
 
 | 完工门槛 | 当前范围 | 矩阵入口 |
 |---|---|---|
@@ -56,6 +57,7 @@
 | 约定目标/接收 | 精确 `https://timeline.all-too-well.com` 当前身份UNKNOWN，新候选未发布；技术条件及代表UAT就绪后由所有者明确接收 | A15-11/12 |
 
 最终要求仍为74/74 MUST、9/9技术链、必需CI/安全/恢复门槛与约定环境就绪，再由李晓晨明确接收。当前PARTIAL；不新增分母或用本机结果代正式目标。
+
 <!-- V1_BASELINE_DASHBOARD_END -->
 
 
