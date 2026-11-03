@@ -27,12 +27,12 @@ export async function hasRecordedMonthlyReview(db: Prisma.TransactionClient | Pr
 }
 
 export async function recordedMonthlyReviewIds(db: Prisma.TransactionClient | PrismaService, ids: string[]) {
-  const unique = [...new Set(ids)];
+  const uniqueIds = [...new Set(ids)];
   const result = new Set<string>();
   // Callers pass already bounded project/page results; each SQL request is capped.
-  for (let offset = 0; offset < unique.length; offset += 100) {
+  for (let offset = 0; offset < uniqueIds.length; offset += 100) {
     const rows = await db.$queryRaw<Array<{ id: string }>>(Prisma.sql`
-      SELECT t.id FROM recurring_tasks t WHERE t.id IN (${Prisma.join(unique.slice(offset, offset + 100))})
+      SELECT t.id FROM recurring_tasks t WHERE t.id IN (${Prisma.join(uniqueIds.slice(offset, offset + 100))})
       AND ${recordedMonthlyReviewSql(Prisma.sql`t.id`, Prisma.sql`t."projectId"`)} LIMIT 100`);
     for (const row of rows) result.add(row.id);
   }

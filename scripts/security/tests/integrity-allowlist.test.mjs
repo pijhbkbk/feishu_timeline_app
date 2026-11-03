@@ -24,6 +24,15 @@ test('reviewed integrity exceptions keep changed values, new credentials and oth
       [`appended/${relative}`]: `${approvedLine}\n${extraLine}`,
       'unrelated/metadata.py': approvedLine,
     };
+    const matrixPath = 'docs/acceptance/ROUTE_ACCEPTANCE_MATRIX.md';
+    const matrixLines = fs.readFileSync(path.join(root, matrixPath), 'utf8').split('\n')
+      .filter(line => line.startsWith('| E19 |') || line.startsWith('| E24 |'));
+    assert.equal(matrixLines.length, 2);
+    const matrixText = matrixLines.join('\n');
+    fixtures[`approved/${matrixPath}`] = matrixText;
+    fixtures[`matrix-changed/${matrixPath}`] = matrixText.replaceAll('e0870e8f4d919496d0161646ccc2c1aa28cd7822', randomBytes(20).toString('hex'));
+    fixtures[`matrix-appended/${matrixPath}`] = `${matrixText}\n${extraLine}`;
+    fixtures['matrix-unrelated/metadata.md'] = matrixText;
     for (const [name, text] of Object.entries(fixtures)) {
       const filename = path.join(directory, name);
       fs.mkdirSync(path.dirname(filename), { recursive: true });
@@ -43,11 +52,14 @@ test('reviewed integrity exceptions keep changed values, new credentials and oth
     }
     assert.equal(result.status, 1, `expected blocked scan, got ${result.status}: ${result.stderr}`);
     const findings = JSON.parse(fs.readFileSync(report, 'utf8'));
-    assert.equal(findings.length, 3);
+    assert.equal(findings.length, 8);
     const files = findings.map(item => item.File.replaceAll('\\', '/'));
     assert.equal(files.some(file => file.includes('/approved/')), false);
     for (const directoryName of ['changed', 'appended', 'unrelated']) {
       assert.equal(files.filter(file => file.includes(`/${directoryName}/`)).length, 1);
+    }
+    for (const [directoryName, count] of [['matrix-changed', 2], ['matrix-appended', 1], ['matrix-unrelated', 2]]) {
+      assert.equal(files.filter(file => file.includes(`/${directoryName}/`)).length, count);
     }
     assert.equal(findings.every(item => item.RuleID === 'generic-api-key'), true);
   } finally {

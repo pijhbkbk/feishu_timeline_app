@@ -8,7 +8,11 @@ import { prepareBusinessMapping, type BusinessMappingDefinition, type BusinessMa
 import { mappingColumns, type MappingContext } from './mapping-context';
 import { BusinessApplySession, BusinessApplyFailure, retryBusinessApplyCheckpoint, assertPreparedBusinessSource, prepareMappedBusiness, sendBusinessApplyRequest, scopedBusinessApplyTransport, type BusinessApplyRequest } from './business-apply';
 import { validateBusinessApplyCheckpoint, BUSINESS_JOURNAL_LIMITS, type BusinessApplyCheckpoint } from './business-apply-journal';
-vi.mock('../../lib/auth-client', async importOriginal => ({ ...await importOriginal<typeof import('../../lib/auth-client')>(), apiRequest: vi.fn() }));
+type AuthClientModule = typeof import('../../lib/auth-client');
+vi.mock('../../lib/auth-client', async importOriginal => {
+  const actual = await importOriginal<AuthClientModule>();
+  return { ...actual, apiRequest: vi.fn() };
+});
 const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 const person = (): PersonRecord => ({ id: 'person-old', revision: 2, name: '同名人员', departmentId: null, department: null, position: null, mobile: null, email: null, note: '原备注', isActive: true, editableFields: ['name', 'departmentId', 'position', 'mobile', 'email', 'note', 'isActive'], account: null, originalSource: null });
 function people(items = [person()]): MappingContext { return { kind: 'person', directory: { items, departments: [{ id: 'department', name: '合成部门' }], hasMore: false } }; }

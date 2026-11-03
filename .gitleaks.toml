@@ -170,3 +170,14 @@ regexes = [
   '''^[ \t\r\n]*\| API `feishu-timeline-api:r27a-f5edacd4e302-arm64` \| `sha256:b969d9faa5394f7f2d4360dc7aaf94d15e8addba0bc545056671418030a62fd1` \| 107843796 \| `0/0/0/0/0` \| `a59c90ff06a6a20df671b0c6716599adee6867214d306ef56e0bfe3503d3ffcf` \| 155 \| `407461c4843370c4030e1d3de1819f8f73eba13d9558d19c2158fb6ab79c30a0` \|[ \t\r\n]*$''',
   '''^[ \t\r\n]*\| API ops `feishu-timeline-api-ops:r27a-f5edacd4e302-arm64` \| `sha256:12197a6ea1d5ac22d36c0621b8cd00b3c47805ba315c00a62ac84b9aa058a07e` \| 147257676 \| `0/0/0/0/0` \| `8786ff6d79e102637823f25ac726ab473ed4b569622dd3272707e9abe9092282` \| 62 \| `c84fb624baed5569403756829c50ce999c6063c5bebb9a0365dc18365156e928` \|[ \t\r\n]*$''',
 ]
+
+[[allowlists]]
+description = "Reviewed exact workbook acceptance runtime commit metadata"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "line"
+paths = ['''(?:^|/)docs/acceptance/ROUTE_ACCEPTANCE_MATRIX\.md$''']
+regexes = [
+  '''^[ \t\r\n]*\| E19 \| \[readback\.json\]\(\.\./\.\./var/truck\-color\-v1\-20261020/a09\-source/readback\.json\) SHA256 `cdf7cf1c86d52ade8408c8092d692146a4b5e81a513f78d4b9f0c0a68d3d73bd` \| \{"contextApiCommit":"e0870e8f4d919496d0161646ccc2c1aa28cd7822","bindingLimit":"record itself lacks runtime identity; nearest documented runtime context only"\} \| 2026\-10\-20T08:03:05\.046Z \| owned local synthetic materials_login_return_20261020_r01; actual parser/CLI/CLEAN; browser not implied；2sheet/10source rows→4colors, source identities/source hash retained \|[ \t\r\n]*$''',
+  '''^[ \t\r\n]*\| E24 \| \[a13\-report\-readback\.json\]\(\.\./\.\./var/truck\-color\-v1\-20261020/a13\-report\-readback\.json\) SHA256 `cdb25e3d4b70c9b37181d57c078949a2d131b0a0b8551fa7631c9890dec350be` \| \{"apiCommit":"e0870e8f4d919496d0161646ccc2c1aa28cd7822"\} \| 2026\-10\-20T09:49:04\.793Z \| 3490 GUI\+readback, Web development overlay; CDP buffer truncated；missing attachment rejects; PDF upload/submit/read\-only/refresh; performance complete button left unclicked \|[ \t\r\n]*$''',
+]

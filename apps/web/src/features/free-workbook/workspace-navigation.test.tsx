@@ -23,7 +23,11 @@ vi.mock('./canvas',()=>({WorkbookCanvas:({snapshot}:{snapshot:{id:string}})=><di
 vi.mock('./client',()=>({listWorkbooks:api.list,readWorkbook:api.read,createWorkbook:api.create,saveWorkbook:api.save,listRevisions:api.revisions,restoreWorkbook:api.restore}));
 vi.mock('./server-draft-client',()=>({readServerDraft:cloudApi.read,executeServerDraftRequest:cloudApi.execute}));
 vi.mock('./draft-store',()=>({validateLocalDraft:vi.fn(),readLocalDrafts:drafts.read,writeLocalDraft:drafts.write,removeLocalDraft:drafts.remove,claimLocalDraft:drafts.claim}));
-vi.mock('./workbook-intent-store',async importOriginal=>{const actual=await importOriginal<typeof import('./workbook-intent-store')>();return {...actual,readWorkbookIntent:intents.read,writeWorkbookIntent:intents.write,removeWorkbookIntent:intents.remove};});
+type WorkbookIntentModule = typeof import('./workbook-intent-store');
+vi.mock('./workbook-intent-store', async importOriginal => {
+  const actual = await importOriginal<WorkbookIntentModule>();
+  return { ...actual, readWorkbookIntent: intents.read, writeWorkbookIntent: intents.write, removeWorkbookIntent: intents.remove };
+});
 vi.mock('./xlsx',()=>({readFreeWorkbook:api.import}));
 import { ApiRequestError } from '../../lib/auth-client';
 import { blankWorkbook } from './contract';

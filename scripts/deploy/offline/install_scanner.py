@@ -960,7 +960,8 @@ def mapped_data(path, mapping):
     major, minor = [int(x, 16) for x in mapping['device'].split(':')]
     need(int(mapping['inode']) == before.st_ino and (major, minor) ==
          (os.major(before.st_dev), os.minor(before.st_dev)), 'NONEXEC_DATA_MAPPING_IDENTITY')
-    h = hashlib.sha256(); m = hashlib.md5(); total = 0
+    # SHA-256 authenticates the pinned bytes; MD5 also matches package metadata.
+    h = hashlib.sha256(); m = hashlib.md5(usedforsecurity=False); total = 0
     with os.fdopen(os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK), 'rb') as stream:
         need(identity(os.fstat(stream.fileno())) == identity(before), 'NONEXEC_DATA_OPEN_CHANGED')
         for chunk in iter(lambda: stream.read(65536), b''):
