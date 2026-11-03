@@ -68,7 +68,7 @@ def timing_config(raw, target, action, event):
     """Public, single-request diagnostic contract; never an arbitrary env map."""
     if raw is None:
         return None
-    need(target == 'menud9d00d2' and action in ('start', 'restart'), 'TIMING_SCOPE')
+    need(target in ('menud9d00d2', 'dateb2e94df') and action in ('start', 'restart'), 'TIMING_SCOPE')
     need(isinstance(raw, str) and len(raw.encode('utf-8')) <= 1024, 'TIMING_BOUND')
     def unique(pairs):
         result = {}
@@ -103,6 +103,7 @@ def target_input(target, requested):
         allowed.add('/home/recovery/input-numeric-lifecycle-20261103-r02')
     if target == 'dateb2e94df':
         allowed.add('/home/recovery/input-date-lifecycle-20261103-r02')
+        allowed.add('/home/recovery/input-date-lifecycle-20261103-r03')
     need(requested in allowed, 'HOST_INPUT_DIRECTORY')
     return requested
 

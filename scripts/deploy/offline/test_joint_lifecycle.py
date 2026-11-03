@@ -402,7 +402,7 @@ class CandidateContinuationTests(unittest.TestCase):
             with self.assertRaisesRegex(Exception, 'TIMING_SCOPE'):
                 module.timing_config('{}', target, 'start', 'numeric-start-r01')
 
-    def test_date_host_input_is_exact_and_diagnostic_stays_off(self):
+    def test_date_host_input_is_exact_and_timing_requires_valid_config(self):
         import importlib.util
         spec = importlib.util.spec_from_file_location('date_host', Path(__file__).with_name('joint_lifecycle_host.py'))
         host = importlib.util.module_from_spec(spec)
@@ -412,13 +412,15 @@ class CandidateContinuationTests(unittest.TestCase):
         self.assertEqual(host.target_input(target, path), path)
         self.assertEqual(host.target_input(target, '/home/recovery/input-date-lifecycle-20261103-r02'),
                          '/home/recovery/input-date-lifecycle-20261103-r02')
+        self.assertEqual(host.target_input(target, '/home/recovery/input-date-lifecycle-20261103-r03'),
+                         '/home/recovery/input-date-lifecycle-20261103-r03')
         self.assertEqual(host.TARGET_BOOTS[target], m.TARGETS[target]['bootId'])
         for other in [path + '-extra', '/home/recovery/input-menu-save-lifecycle-20261102-r01']:
             with self.assertRaisesRegex(Exception, 'HOST_INPUT_DIRECTORY'):
                 host.target_input(target, other)
         for module in [m, host]:
             self.assertIsNone(module.timing_config(None, target, 'start', 'date-start-r01'))
-            with self.assertRaisesRegex(Exception, 'TIMING_SCOPE'):
+            with self.assertRaisesRegex(Exception, 'TIMING_FIELDS'):
                 module.timing_config('{}', target, 'start', 'date-start-r01')
 
     def test_wrong_predecessor_and_nonstart_cannot_adopt(self):
@@ -638,6 +640,37 @@ class SaveTimingTests(unittest.TestCase):
             with self.assertRaisesRegex(Exception,'HOST_INPUT_DIRECTORY'):host.target_input('menud9d00d2',path)
         with self.assertRaisesRegex(Exception,'HOST_INPUT_DIRECTORY'):
             host.target_input('save2e0c191','/home/recovery/input-menu-lifecycle-20261102-r02')
+    def test_date_candidate_keeps_the_fixed_single_request_contract(self):
+        for module in (m, host):
+            self.assertEqual(self.invoke(module, target='dateb2e94df'), self.config)
+            for changes, code in [({'workbookId': self.trace}, 'WORKBOOK'),
+                                  ({'expectedRevision': True}, 'REVISION'),
+                                  ({'traceId': 'invalid'}, 'TRACE'),
+                                  ({'expiresAt': 1600001}, 'EXPIRY'),
+                                  ({'extra': 'value'}, 'FIELDS')]:
+                with self.subTest(changes=changes), self.assertRaisesRegex(Exception, 'TIMING_'+code):
+                    self.invoke(module, {**self.config, **changes}, target='dateb2e94df')
+            for action in ('stop', 'status', 'recover-boot'):
+                with self.assertRaisesRegex(Exception, 'TIMING_SCOPE'):
+                    self.invoke(module, target='dateb2e94df', action=action)
+        with self.assertRaisesRegex(Exception, 'HOST_INPUT_DIRECTORY'):
+            host.target_input('dateb2e94df', '/home/recovery/input-date-lifecycle-20261103-r04')
+
+    def test_date_timing_is_api_only_and_default_off(self):
+        original = {'LOCAL_RUNTIME_PROFILE': 'loopback-https', 'NODE_ENV': 'production',
+                    'DEPLOYMENT_ENV': 'staging', 'HOST': '127.0.0.1'}
+        args = types.SimpleNamespace(action='restart', event=self.event,
+                                     workbook_save_timing=json.dumps(self.config))
+        m.ctx.update(j=types.SimpleNamespace(environment=lambda *_: original), args=args,
+                     binding={'target': 'dateb2e94df'})
+        with patch.object(m.time, 'time', return_value=1000):
+            self.assertEqual(json.loads(m.launch_environment('api')['WORKBOOK_SAVE_TIMING']), self.config)
+            self.assertNotIn('WORKBOOK_SAVE_TIMING', m.launch_environment('web'))
+            self.assertNotIn('WORKBOOK_SAVE_TIMING', original)
+        with patch.object(m.time, 'time', return_value=1600), self.assertRaisesRegex(RuntimeError, 'TIMING_EXPIRY'):
+            m.launch_environment('api')
+        args.workbook_save_timing = None
+        self.assertEqual(m.launch_environment('api'), original)
     def test_api_only_copy_and_expiry_recheck(self):
         original={'LOCAL_RUNTIME_PROFILE':'loopback-https','NODE_ENV':'production',
                   'DEPLOYMENT_ENV':'staging','HOST':'127.0.0.1'}

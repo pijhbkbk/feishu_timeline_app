@@ -111,7 +111,7 @@ def timing_config(raw, target, action, event):
     """Public, single-request diagnostic contract; never an arbitrary env map."""
     if raw is None:
         return None
-    need(target == 'menud9d00d2' and action in ('start', 'restart'), 'TIMING_SCOPE')
+    need(target in ('menud9d00d2', 'dateb2e94df') and action in ('start', 'restart'), 'TIMING_SCOPE')
     need(isinstance(raw, str) and len(raw.encode('utf-8')) <= 1024, 'TIMING_BOUND')
     def unique(pairs):
         result = {}
