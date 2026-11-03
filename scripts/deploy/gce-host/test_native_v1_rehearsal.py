@@ -110,6 +110,25 @@ class RehearsalTests(unittest.TestCase):
             with self.assertRaisesRegex(backup.Failure, 'not effective'): rehearsal.install_scope()
             original_scope.assert_not_called()
 
+    def test_open_role_requires_closed_identity_and_effective_isolation(self):
+        prefix = rehearsal.scope.PREFIX + rehearsal.scope.V1_REHEARSAL_PREFIX
+        denied = SimpleNamespace(returncode=2, stderr=b'pg_hba.conf rejects connection')
+        with patch.object(rehearsal.scope, 'read_hba', return_value=prefix+b'original'), \
+                patch.object(rehearsal.scope, 'scope_bytes_valid', return_value=True), \
+                patch.object(rehearsal, 'probe', return_value=denied), \
+                patch.object(backup, 'sql', side_effect=['t', rehearsal.ROLE, '0', '0']), \
+                patch.object(backup, 'role_change') as role:
+            rehearsal.open_role()
+            self.assertIn('"' + rehearsal.ROLE + '" LOGIN CONNECTION LIMIT 4 VALID UNTIL', role.call_args.args[0])
+        for replies in [['f'], ['t', 'another_owner'], ['t', rehearsal.ROLE, '1'], ['t', rehearsal.ROLE, '0', '1']]:
+            with self.subTest(replies=replies), \
+                    patch.object(rehearsal.scope, 'read_hba', return_value=prefix+b'original'), \
+                    patch.object(rehearsal.scope, 'scope_bytes_valid', return_value=True), \
+                    patch.object(rehearsal, 'probe', return_value=denied), \
+                    patch.object(backup, 'sql', side_effect=replies), patch.object(backup, 'role_change') as role:
+                with self.assertRaises(backup.Failure): rehearsal.open_role()
+                role.assert_not_called()
+
 
 if __name__ == '__main__':
     unittest.main()

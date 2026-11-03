@@ -173,6 +173,26 @@ def verify_scope(password):
     require(allowed.returncode == 0 and allowed.stdout.strip() == b'1', 'Rehearsal target authentication failed')
 
 
+def open_role():
+    require(DATABASE != prepare.DATABASE and ROLE != prepare.ROLE, 'Production admission forbidden')
+    prefix = scope.PREFIX + scope.V1_REHEARSAL_PREFIX
+    hba = scope.read_hba()
+    require(hba.startswith(prefix) and scope.scope_bytes_valid(hba), 'Rehearsal HBA binding differs')
+    denied = probe('postgres', 'invalid-rehearsal-scope-probe')
+    require(denied.returncode != 0 and b'pg_hba.conf rejects connection' in denied.stderr,
+            'Rehearsal isolation must be effective before LOGIN')
+    require(backup.sql("SELECT NOT rolcanlogin AND NOT rolsuper AND NOT rolcreatedb AND NOT rolcreaterole "
+                       "AND NOT rolreplication AND NOT rolbypassrls FROM pg_roles WHERE rolname='" + ROLE + "';") == 't',
+            'Rehearsal role must start closed and unprivileged')
+    require(backup.sql("SELECT pg_get_userbyid(datdba) FROM pg_database WHERE datname='" + DATABASE + "';") == ROLE,
+            'Rehearsal database ownership differs')
+    require(backup.sql("SELECT count(*) FROM pg_auth_members WHERE member=(SELECT oid FROM pg_roles WHERE rolname='" + ROLE + "');") == '0' and
+            backup.sql("SELECT count(*) FROM pg_stat_activity WHERE usename='" + ROLE + "';") == '0',
+            'Rehearsal role has memberships or prior sessions')
+    expiry = (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=15)).isoformat()
+    backup.role_change('ALTER ROLE "' + ROLE + '" LOGIN CONNECTION LIMIT 4 VALID UNTIL \'' + expiry + "';")
+
+
 def run():
     prepare.baseline()
     prepare.saved('RESUMED')
@@ -204,13 +224,14 @@ def run():
     try:
         install_scope()
         expiry = (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=15)).isoformat()
-        backup.role_change('CREATE ROLE "' + ROLE + '" LOGIN CONNECTION LIMIT 4 NOSUPERUSER NOCREATEDB '
+        backup.role_change('CREATE ROLE "' + ROLE + '" NOLOGIN CONNECTION LIMIT 4 NOSUPERUSER NOCREATEDB '
                            'NOCREATEROLE NOREPLICATION NOBYPASSRLS PASSWORD \'' + password + "' VALID UNTIL '" + expiry + "';")
         backup.sql('ALTER ROLE "' + ROLE + '" SET statement_timeout=60000; ALTER ROLE "' + ROLE +
                    '" SET lock_timeout=5000; ALTER ROLE "' + ROLE + '" SET idle_session_timeout=180000;')
         backup.sql('CREATE DATABASE "' + DATABASE + '" OWNER "' + ROLE + '" TEMPLATE template0;')
         backup.sql('REVOKE ALL ON DATABASE "' + DATABASE + '" FROM PUBLIC;')
         backup.sql('REVOKE ALL ON SCHEMA public FROM PUBLIC; GRANT ALL ON SCHEMA public TO "' + ROLE + '";', DATABASE)
+        open_role()
         verify_scope(password)
         backup.command([backup.PG + 'pg_restore', '--no-owner', '--no-privileges', '--exit-on-error', '--single-transaction',
                         '--host=127.0.0.1', '--port=5432', '--username=' + ROLE, '--dbname=' + DATABASE],
