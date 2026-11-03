@@ -10795,6 +10795,472 @@
           }
         }
       ]
+    },
+    {
+      "id": "R51-V1-REHEARSAL-RACE-001",
+      "title": "Role existence must be checked under the creation transaction lock before recovery can report closed",
+      "status": "fixed_diff_verified",
+      "severity": "high",
+      "confidence": "high",
+      "classification": "patch_regression",
+      "cwe": "CWE-362",
+      "source": {
+        "type": "diff_scan",
+        "report_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/formal-release-preparation-r01/v1-rehearsal-review-r01.json",
+        "binding": {
+          "commit": "0bd0022f182fcbab1aca5ac0b4066197b237fe74",
+          "tree": "5af798a385893ccce900729df24cec2e9f9f8e50",
+          "tool_name": "Existing independent read-only review",
+          "tool_version": "save_idle_diff_review scoped context",
+          "command": "Review initial two untracked V1 rehearsal files and actual readonly host ACL/HBA metadata",
+          "environment": "Base commit plus explicitly uncommitted two-file preparation diff, exact file hashes in report. Neither installed nor executed.",
+          "result_sha256": "16ec0e05ae5062ce53a2406206087ab9df7e6aab9ff364561bb2bf5ffe39df4a",
+          "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/formal-release-preparation-r01/v1-rehearsal-review-r01.json",
+          "config_sha256": null,
+          "recorded_at": "2026-11-03T16:36:14.634023+00:00"
+        }
+      },
+      "scope": {
+        "component": "Fixed same-host V1 migration rehearsal preparation",
+        "affected_files": [
+          "scripts/deploy/gce-host/native_v1_rehearsal.py"
+        ],
+        "entry_points": [
+          "native_v1_rehearsal.py run",
+          "native_v1_rehearsal.py recover"
+        ],
+        "trust_boundary": "Interrupted rehearsal must not leave a newly enabled role after cleanup is reported complete."
+      },
+      "evidence": {
+        "reachable": true,
+        "production_exposed": false,
+        "reproduction_path": "run creates the LOGIN role through backup.role_change at lines 136-137, under ROLE_CHANGE_LOCK. recover first queries pg_roles outside that lock and entirely skips role_change when it observes zero. If the controller is interrupted while the server-side creation transaction is still finishing, recovery can observe zero, return CLOSED, and then leave the late-committed LOGIN role enabled. This is the exact interruption class already addressed by native_backup_controller.recover_restore at lines 235-245.",
+        "proof_gap": "Source was untracked preparation code. Actual corrected installation, scoped PostgreSQL rehearsal and interruption validation remain pending."
+      },
+      "root_cause_cluster": "R51-V1-REHEARSAL-RACE-001",
+      "security_invariants": [],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
+      "fix": {
+        "task_id": "TRUCK-COLOR-V1-FORMAL-RELEASE-20261104",
+        "branch": "codex/design-convergence-20261019",
+        "commit": "82e0601e653bc4d7cb2c65c3f7ede87795a24483",
+        "tree": "8c9cdcb410aabcff2579d6cf3a878c363300710f",
+        "changed_files": [
+          "scripts/deploy/gce-host/native_v1_rehearsal.py",
+          "scripts/deploy/gce-host/test_native_v1_rehearsal.py",
+          "scripts/deploy/gce-host/native_database_scope.py",
+          "scripts/deploy/gce-host/test_native_database_scope.py"
+        ]
+      },
+      "verification": {
+        "targeted": {
+          "status": "pass",
+          "binding": {
+            "commit": "82e0601e653bc4d7cb2c65c3f7ede87795a24483",
+            "tree": "8c9cdcb410aabcff2579d6cf3a878c363300710f",
+            "tool_name": "Bounded V1 rehearsal verification",
+            "tool_version": "Exact source and tool receipt in report",
+            "command": "python3 -m unittest discover -s scripts/deploy/gce-host -p test_native_v1_rehearsal.py -v",
+            "environment": "Mac source verification and existing independent readonly review. No GCE installation or rehearsal executed.",
+            "result_sha256": "8e162d9d3aa3e99915d2d4b483d9ded4f0dc5ea733a3f08d3affe699a537612d",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/formal-release-preparation-r01/v1-rehearsal-target-r03.log",
+            "config_sha256": null,
+            "recorded_at": "2026-11-03T16:39:52.735816+00:00"
+          },
+          "notes": "9 target cases, including late-created role barrier and negative NOLOGIN readback. Actual runtime pending."
+        },
+        "affected_regression": {
+          "status": "pass",
+          "binding": {
+            "commit": "82e0601e653bc4d7cb2c65c3f7ede87795a24483",
+            "tree": "8c9cdcb410aabcff2579d6cf3a878c363300710f",
+            "tool_name": "Bounded V1 rehearsal verification",
+            "tool_version": "Exact source and tool receipt in report",
+            "command": "python3 -m unittest discover -s scripts/deploy/gce-host -p test_native_database_scope.py -v",
+            "environment": "Mac source verification and existing independent readonly review. No GCE installation or rehearsal executed.",
+            "result_sha256": "b637377241e4ad43b0a1353fe886e11a69b79836d10063a987bb08ad16ae0f8d",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/formal-release-preparation-r01/v1-db-scope-affected.log",
+            "config_sha256": null,
+            "recorded_at": "2026-11-03T16:39:52.735816+00:00"
+          },
+          "notes": "7 existing scope cases preserve old prefix and exact HBA tail, with bounded new-role scope."
+        },
+        "diff_review": {
+          "status": "pass",
+          "binding": {
+            "commit": "82e0601e653bc4d7cb2c65c3f7ede87795a24483",
+            "tree": "8c9cdcb410aabcff2579d6cf3a878c363300710f",
+            "tool_name": "Bounded V1 rehearsal verification",
+            "tool_version": "Exact source and tool receipt in report",
+            "command": "Existing save_idle_diff_review four-file actual fix delta",
+            "environment": "Mac source verification and existing independent readonly review. No GCE installation or rehearsal executed.",
+            "result_sha256": "f08c0dd28a8c24fc4e10b8ffc54b7650b40751e23ee8c7a5241bb3ac29d19327",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/formal-release-preparation-r01/v1-rehearsal-review-r02.json",
+            "config_sha256": null,
+            "recorded_at": "2026-11-03T16:39:52.735816+00:00"
+          },
+          "notes": "Runtime source identical to reviewed files. One additional test strengthens NOLOGIN negative assertion; its supplementary review is in flight."
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Incremental fix and exact runtime validation pending."
+        }
+      },
+      "closure": null,
+      "history": [
+        {
+          "at": "2026-11-03T16:36:14.634023+00:00",
+          "transition": "null->candidate",
+          "actor": "Codex root with existing independent readonly review",
+          "reason": "Reuse the existing serialized conditional closure pattern without calling the old recovery entry. Under ROLE_CHANGE_LOCK, perform IF EXISTS then ALTER ROLE fixed-a51-role NOLOGIN. Only afterward read back existence and NOT rolcanlogin, terminate scoped sessions and verify zero sessions. Retain the rehearsal pending receipt.",
+          "approval_id": null,
+          "binding": {
+            "commit": "0bd0022f182fcbab1aca5ac0b4066197b237fe74",
+            "tree": "5af798a385893ccce900729df24cec2e9f9f8e50",
+            "tool_name": "Existing independent read-only review",
+            "tool_version": "save_idle_diff_review scoped context",
+            "command": "Review initial two untracked V1 rehearsal files and actual readonly host ACL/HBA metadata",
+            "environment": "Base commit plus explicitly uncommitted two-file preparation diff, exact file hashes in report. Neither installed nor executed.",
+            "result_sha256": "16ec0e05ae5062ce53a2406206087ab9df7e6aab9ff364561bb2bf5ffe39df4a",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/formal-release-preparation-r01/v1-rehearsal-review-r01.json",
+            "config_sha256": null,
+            "recorded_at": "2026-11-03T16:36:14.634023+00:00"
+          }
+        },
+        {
+          "at": "2026-11-03T16:36:14.634023+00:00",
+          "transition": "candidate->confirmed",
+          "actor": "Codex root with existing independent readonly review",
+          "reason": "Reuse the existing serialized conditional closure pattern without calling the old recovery entry. Under ROLE_CHANGE_LOCK, perform IF EXISTS then ALTER ROLE fixed-a51-role NOLOGIN. Only afterward read back existence and NOT rolcanlogin, terminate scoped sessions and verify zero sessions. Retain the rehearsal pending receipt.",
+          "approval_id": null,
+          "binding": {
+            "commit": "0bd0022f182fcbab1aca5ac0b4066197b237fe74",
+            "tree": "5af798a385893ccce900729df24cec2e9f9f8e50",
+            "tool_name": "Existing independent read-only review",
+            "tool_version": "save_idle_diff_review scoped context",
+            "command": "Review initial two untracked V1 rehearsal files and actual readonly host ACL/HBA metadata",
+            "environment": "Base commit plus explicitly uncommitted two-file preparation diff, exact file hashes in report. Neither installed nor executed.",
+            "result_sha256": "16ec0e05ae5062ce53a2406206087ab9df7e6aab9ff364561bb2bf5ffe39df4a",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/formal-release-preparation-r01/v1-rehearsal-review-r01.json",
+            "config_sha256": null,
+            "recorded_at": "2026-11-03T16:36:14.634023+00:00"
+          }
+        },
+        {
+          "at": "2026-11-03T16:36:14.634023+00:00",
+          "transition": "confirmed->accepted_for_fix",
+          "actor": "Codex root with existing independent readonly review",
+          "reason": "Reuse the existing serialized conditional closure pattern without calling the old recovery entry. Under ROLE_CHANGE_LOCK, perform IF EXISTS then ALTER ROLE fixed-a51-role NOLOGIN. Only afterward read back existence and NOT rolcanlogin, terminate scoped sessions and verify zero sessions. Retain the rehearsal pending receipt.",
+          "approval_id": null,
+          "binding": {
+            "commit": "0bd0022f182fcbab1aca5ac0b4066197b237fe74",
+            "tree": "5af798a385893ccce900729df24cec2e9f9f8e50",
+            "tool_name": "Existing independent read-only review",
+            "tool_version": "save_idle_diff_review scoped context",
+            "command": "Review initial two untracked V1 rehearsal files and actual readonly host ACL/HBA metadata",
+            "environment": "Base commit plus explicitly uncommitted two-file preparation diff, exact file hashes in report. Neither installed nor executed.",
+            "result_sha256": "16ec0e05ae5062ce53a2406206087ab9df7e6aab9ff364561bb2bf5ffe39df4a",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/formal-release-preparation-r01/v1-rehearsal-review-r01.json",
+            "config_sha256": null,
+            "recorded_at": "2026-11-03T16:36:14.634023+00:00"
+          }
+        },
+        {
+          "at": "2026-11-03T16:36:14.634023+00:00",
+          "transition": "accepted_for_fix->in_progress",
+          "actor": "Codex root with existing independent readonly review",
+          "reason": "Reuse the existing serialized conditional closure pattern without calling the old recovery entry. Under ROLE_CHANGE_LOCK, perform IF EXISTS then ALTER ROLE fixed-a51-role NOLOGIN. Only afterward read back existence and NOT rolcanlogin, terminate scoped sessions and verify zero sessions. Retain the rehearsal pending receipt.",
+          "approval_id": null,
+          "binding": {
+            "commit": "0bd0022f182fcbab1aca5ac0b4066197b237fe74",
+            "tree": "5af798a385893ccce900729df24cec2e9f9f8e50",
+            "tool_name": "Existing independent read-only review",
+            "tool_version": "save_idle_diff_review scoped context",
+            "command": "Review initial two untracked V1 rehearsal files and actual readonly host ACL/HBA metadata",
+            "environment": "Base commit plus explicitly uncommitted two-file preparation diff, exact file hashes in report. Neither installed nor executed.",
+            "result_sha256": "16ec0e05ae5062ce53a2406206087ab9df7e6aab9ff364561bb2bf5ffe39df4a",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/formal-release-preparation-r01/v1-rehearsal-review-r01.json",
+            "config_sha256": null,
+            "recorded_at": "2026-11-03T16:36:14.634023+00:00"
+          }
+        },
+        {
+          "at": "2026-11-03T16:39:52.735816+00:00",
+          "transition": "in_progress->fixed_target_verified",
+          "actor": "Codex root with existing independent readonly review",
+          "reason": "Exact race and database-scope fixes verified at source level. Actual GCE role isolation and restore/migration remain pending.",
+          "approval_id": null,
+          "binding": {
+            "commit": "82e0601e653bc4d7cb2c65c3f7ede87795a24483",
+            "tree": "8c9cdcb410aabcff2579d6cf3a878c363300710f",
+            "tool_name": "Bounded V1 rehearsal verification",
+            "tool_version": "Exact source and tool receipt in report",
+            "command": "python3 -m unittest discover -s scripts/deploy/gce-host -p test_native_v1_rehearsal.py -v",
+            "environment": "Mac source verification and existing independent readonly review. No GCE installation or rehearsal executed.",
+            "result_sha256": "8e162d9d3aa3e99915d2d4b483d9ded4f0dc5ea733a3f08d3affe699a537612d",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/formal-release-preparation-r01/v1-rehearsal-target-r03.log",
+            "config_sha256": null,
+            "recorded_at": "2026-11-03T16:39:52.735816+00:00"
+          }
+        },
+        {
+          "at": "2026-11-03T16:39:52.735816+00:00",
+          "transition": "fixed_target_verified->fixed_diff_verified",
+          "actor": "Codex root with existing independent readonly review",
+          "reason": "Exact race and database-scope fixes verified at source level. Actual GCE role isolation and restore/migration remain pending.",
+          "approval_id": null,
+          "binding": {
+            "commit": "82e0601e653bc4d7cb2c65c3f7ede87795a24483",
+            "tree": "8c9cdcb410aabcff2579d6cf3a878c363300710f",
+            "tool_name": "Bounded V1 rehearsal verification",
+            "tool_version": "Exact source and tool receipt in report",
+            "command": "Existing save_idle_diff_review four-file actual fix delta",
+            "environment": "Mac source verification and existing independent readonly review. No GCE installation or rehearsal executed.",
+            "result_sha256": "f08c0dd28a8c24fc4e10b8ffc54b7650b40751e23ee8c7a5241bb3ac29d19327",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/formal-release-preparation-r01/v1-rehearsal-review-r02.json",
+            "config_sha256": null,
+            "recorded_at": "2026-11-03T16:39:52.735816+00:00"
+          }
+        }
+      ]
+    },
+    {
+      "id": "R51-V1-REHEARSAL-SCOPE-001",
+      "title": "New temporary role is not confined to its rehearsal database on the actual host",
+      "status": "fixed_diff_verified",
+      "severity": "high",
+      "confidence": "high",
+      "classification": "patch_regression",
+      "cwe": "CWE-269",
+      "source": {
+        "type": "diff_scan",
+        "report_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/formal-release-preparation-r01/v1-rehearsal-review-r01.json",
+        "binding": {
+          "commit": "0bd0022f182fcbab1aca5ac0b4066197b237fe74",
+          "tree": "5af798a385893ccce900729df24cec2e9f9f8e50",
+          "tool_name": "Existing independent read-only review",
+          "tool_version": "save_idle_diff_review scoped context",
+          "command": "Review initial two untracked V1 rehearsal files and actual readonly host ACL/HBA metadata",
+          "environment": "Base commit plus explicitly uncommitted two-file preparation diff, exact file hashes in report. Neither installed nor executed.",
+          "result_sha256": "16ec0e05ae5062ce53a2406206087ab9df7e6aab9ff364561bb2bf5ffe39df4a",
+          "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/formal-release-preparation-r01/v1-rehearsal-review-r01.json",
+          "config_sha256": null,
+          "recorded_at": "2026-11-03T16:36:14.634023+00:00"
+        }
+      },
+      "scope": {
+        "component": "Fixed same-host V1 migration rehearsal preparation",
+        "affected_files": [
+          "scripts/deploy/gce-host/native_v1_rehearsal.py"
+        ],
+        "entry_points": [
+          "native_v1_rehearsal.py run",
+          "native_v1_rehearsal.py recover"
+        ],
+        "trust_boundary": "Restore and migration must be restricted to the newly authorized independent database and must not expose write capability to unrelated existing databases."
+      },
+      "evidence": {
+        "reachable": true,
+        "production_exposed": false,
+        "reproduction_path": "The initial controller creates a LOGIN role and only revokes PUBLIC privileges on the new database/schema. The actual read-only host metadata shows PUBLIC CONNECT and public-schema CREATE are both true for postgres and legacy feishu_timeline. The existing HBA has role-specific rules only for c38, followed by generic loopback all-database/all-role SCRAM rules. Thus the new a51 credential can authenticate to those existing databases and create objects during its lifetime. Fixed DATABASE_URL and NOSUPERUSER/NOCREATEDB do not enforce the promised only-new-database write boundary.",
+        "proof_gap": "Source was untracked preparation code. Actual corrected installation, scoped PostgreSQL rehearsal and interruption validation remain pending."
+      },
+      "root_cause_cluster": "R51-V1-REHEARSAL-SCOPE-001",
+      "security_invariants": [],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
+      "fix": {
+        "task_id": "TRUCK-COLOR-V1-FORMAL-RELEASE-20261104",
+        "branch": "codex/design-convergence-20261019",
+        "commit": "82e0601e653bc4d7cb2c65c3f7ede87795a24483",
+        "tree": "8c9cdcb410aabcff2579d6cf3a878c363300710f",
+        "changed_files": [
+          "scripts/deploy/gce-host/native_v1_rehearsal.py",
+          "scripts/deploy/gce-host/test_native_v1_rehearsal.py",
+          "scripts/deploy/gce-host/native_database_scope.py",
+          "scripts/deploy/gce-host/test_native_database_scope.py"
+        ]
+      },
+      "verification": {
+        "targeted": {
+          "status": "pass",
+          "binding": {
+            "commit": "82e0601e653bc4d7cb2c65c3f7ede87795a24483",
+            "tree": "8c9cdcb410aabcff2579d6cf3a878c363300710f",
+            "tool_name": "Bounded V1 rehearsal verification",
+            "tool_version": "Exact source and tool receipt in report",
+            "command": "python3 -m unittest discover -s scripts/deploy/gce-host -p test_native_v1_rehearsal.py -v",
+            "environment": "Mac source verification and existing independent readonly review. No GCE installation or rehearsal executed.",
+            "result_sha256": "8e162d9d3aa3e99915d2d4b483d9ded4f0dc5ea733a3f08d3affe699a537612d",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/formal-release-preparation-r01/v1-rehearsal-target-r03.log",
+            "config_sha256": null,
+            "recorded_at": "2026-11-03T16:39:52.735816+00:00"
+          },
+          "notes": "9 target cases, including late-created role barrier and negative NOLOGIN readback. Actual runtime pending."
+        },
+        "affected_regression": {
+          "status": "pass",
+          "binding": {
+            "commit": "82e0601e653bc4d7cb2c65c3f7ede87795a24483",
+            "tree": "8c9cdcb410aabcff2579d6cf3a878c363300710f",
+            "tool_name": "Bounded V1 rehearsal verification",
+            "tool_version": "Exact source and tool receipt in report",
+            "command": "python3 -m unittest discover -s scripts/deploy/gce-host -p test_native_database_scope.py -v",
+            "environment": "Mac source verification and existing independent readonly review. No GCE installation or rehearsal executed.",
+            "result_sha256": "b637377241e4ad43b0a1353fe886e11a69b79836d10063a987bb08ad16ae0f8d",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/formal-release-preparation-r01/v1-db-scope-affected.log",
+            "config_sha256": null,
+            "recorded_at": "2026-11-03T16:39:52.735816+00:00"
+          },
+          "notes": "7 existing scope cases preserve old prefix and exact HBA tail, with bounded new-role scope."
+        },
+        "diff_review": {
+          "status": "pass",
+          "binding": {
+            "commit": "82e0601e653bc4d7cb2c65c3f7ede87795a24483",
+            "tree": "8c9cdcb410aabcff2579d6cf3a878c363300710f",
+            "tool_name": "Bounded V1 rehearsal verification",
+            "tool_version": "Exact source and tool receipt in report",
+            "command": "Existing save_idle_diff_review four-file actual fix delta",
+            "environment": "Mac source verification and existing independent readonly review. No GCE installation or rehearsal executed.",
+            "result_sha256": "f08c0dd28a8c24fc4e10b8ffc54b7650b40751e23ee8c7a5241bb3ac29d19327",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/formal-release-preparation-r01/v1-rehearsal-review-r02.json",
+            "config_sha256": null,
+            "recorded_at": "2026-11-03T16:39:52.735816+00:00"
+          },
+          "notes": "Runtime source identical to reviewed files. One additional test strengthens NOLOGIN negative assertion; its supplementary review is in flight."
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Incremental fix and exact runtime validation pending."
+        }
+      },
+      "closure": null,
+      "history": [
+        {
+          "at": "2026-11-03T16:36:14.634023+00:00",
+          "transition": "null->candidate",
+          "actor": "Codex root with existing independent readonly review",
+          "reason": "Before enabling the new role, install and verify a narrowly scoped rule set that allows only the fixed a51 database via loopback and rejects other database/network/local routes for that role. Preserve original c38 rules and the exact original HBA tail, rejecting all unknown changes. After creation, verify the intended route with the valid credential and effective denial of the three other databases before restore or migration begins. Keep other roles and database grants unchanged.",
+          "approval_id": null,
+          "binding": {
+            "commit": "0bd0022f182fcbab1aca5ac0b4066197b237fe74",
+            "tree": "5af798a385893ccce900729df24cec2e9f9f8e50",
+            "tool_name": "Existing independent read-only review",
+            "tool_version": "save_idle_diff_review scoped context",
+            "command": "Review initial two untracked V1 rehearsal files and actual readonly host ACL/HBA metadata",
+            "environment": "Base commit plus explicitly uncommitted two-file preparation diff, exact file hashes in report. Neither installed nor executed.",
+            "result_sha256": "16ec0e05ae5062ce53a2406206087ab9df7e6aab9ff364561bb2bf5ffe39df4a",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/formal-release-preparation-r01/v1-rehearsal-review-r01.json",
+            "config_sha256": null,
+            "recorded_at": "2026-11-03T16:36:14.634023+00:00"
+          }
+        },
+        {
+          "at": "2026-11-03T16:36:14.634023+00:00",
+          "transition": "candidate->confirmed",
+          "actor": "Codex root with existing independent readonly review",
+          "reason": "Before enabling the new role, install and verify a narrowly scoped rule set that allows only the fixed a51 database via loopback and rejects other database/network/local routes for that role. Preserve original c38 rules and the exact original HBA tail, rejecting all unknown changes. After creation, verify the intended route with the valid credential and effective denial of the three other databases before restore or migration begins. Keep other roles and database grants unchanged.",
+          "approval_id": null,
+          "binding": {
+            "commit": "0bd0022f182fcbab1aca5ac0b4066197b237fe74",
+            "tree": "5af798a385893ccce900729df24cec2e9f9f8e50",
+            "tool_name": "Existing independent read-only review",
+            "tool_version": "save_idle_diff_review scoped context",
+            "command": "Review initial two untracked V1 rehearsal files and actual readonly host ACL/HBA metadata",
+            "environment": "Base commit plus explicitly uncommitted two-file preparation diff, exact file hashes in report. Neither installed nor executed.",
+            "result_sha256": "16ec0e05ae5062ce53a2406206087ab9df7e6aab9ff364561bb2bf5ffe39df4a",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/formal-release-preparation-r01/v1-rehearsal-review-r01.json",
+            "config_sha256": null,
+            "recorded_at": "2026-11-03T16:36:14.634023+00:00"
+          }
+        },
+        {
+          "at": "2026-11-03T16:36:14.634023+00:00",
+          "transition": "confirmed->accepted_for_fix",
+          "actor": "Codex root with existing independent readonly review",
+          "reason": "Before enabling the new role, install and verify a narrowly scoped rule set that allows only the fixed a51 database via loopback and rejects other database/network/local routes for that role. Preserve original c38 rules and the exact original HBA tail, rejecting all unknown changes. After creation, verify the intended route with the valid credential and effective denial of the three other databases before restore or migration begins. Keep other roles and database grants unchanged.",
+          "approval_id": null,
+          "binding": {
+            "commit": "0bd0022f182fcbab1aca5ac0b4066197b237fe74",
+            "tree": "5af798a385893ccce900729df24cec2e9f9f8e50",
+            "tool_name": "Existing independent read-only review",
+            "tool_version": "save_idle_diff_review scoped context",
+            "command": "Review initial two untracked V1 rehearsal files and actual readonly host ACL/HBA metadata",
+            "environment": "Base commit plus explicitly uncommitted two-file preparation diff, exact file hashes in report. Neither installed nor executed.",
+            "result_sha256": "16ec0e05ae5062ce53a2406206087ab9df7e6aab9ff364561bb2bf5ffe39df4a",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/formal-release-preparation-r01/v1-rehearsal-review-r01.json",
+            "config_sha256": null,
+            "recorded_at": "2026-11-03T16:36:14.634023+00:00"
+          }
+        },
+        {
+          "at": "2026-11-03T16:36:14.634023+00:00",
+          "transition": "accepted_for_fix->in_progress",
+          "actor": "Codex root with existing independent readonly review",
+          "reason": "Before enabling the new role, install and verify a narrowly scoped rule set that allows only the fixed a51 database via loopback and rejects other database/network/local routes for that role. Preserve original c38 rules and the exact original HBA tail, rejecting all unknown changes. After creation, verify the intended route with the valid credential and effective denial of the three other databases before restore or migration begins. Keep other roles and database grants unchanged.",
+          "approval_id": null,
+          "binding": {
+            "commit": "0bd0022f182fcbab1aca5ac0b4066197b237fe74",
+            "tree": "5af798a385893ccce900729df24cec2e9f9f8e50",
+            "tool_name": "Existing independent read-only review",
+            "tool_version": "save_idle_diff_review scoped context",
+            "command": "Review initial two untracked V1 rehearsal files and actual readonly host ACL/HBA metadata",
+            "environment": "Base commit plus explicitly uncommitted two-file preparation diff, exact file hashes in report. Neither installed nor executed.",
+            "result_sha256": "16ec0e05ae5062ce53a2406206087ab9df7e6aab9ff364561bb2bf5ffe39df4a",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/formal-release-preparation-r01/v1-rehearsal-review-r01.json",
+            "config_sha256": null,
+            "recorded_at": "2026-11-03T16:36:14.634023+00:00"
+          }
+        },
+        {
+          "at": "2026-11-03T16:39:52.735816+00:00",
+          "transition": "in_progress->fixed_target_verified",
+          "actor": "Codex root with existing independent readonly review",
+          "reason": "Exact race and database-scope fixes verified at source level. Actual GCE role isolation and restore/migration remain pending.",
+          "approval_id": null,
+          "binding": {
+            "commit": "82e0601e653bc4d7cb2c65c3f7ede87795a24483",
+            "tree": "8c9cdcb410aabcff2579d6cf3a878c363300710f",
+            "tool_name": "Bounded V1 rehearsal verification",
+            "tool_version": "Exact source and tool receipt in report",
+            "command": "python3 -m unittest discover -s scripts/deploy/gce-host -p test_native_v1_rehearsal.py -v",
+            "environment": "Mac source verification and existing independent readonly review. No GCE installation or rehearsal executed.",
+            "result_sha256": "8e162d9d3aa3e99915d2d4b483d9ded4f0dc5ea733a3f08d3affe699a537612d",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/formal-release-preparation-r01/v1-rehearsal-target-r03.log",
+            "config_sha256": null,
+            "recorded_at": "2026-11-03T16:39:52.735816+00:00"
+          }
+        },
+        {
+          "at": "2026-11-03T16:39:52.735816+00:00",
+          "transition": "fixed_target_verified->fixed_diff_verified",
+          "actor": "Codex root with existing independent readonly review",
+          "reason": "Exact race and database-scope fixes verified at source level. Actual GCE role isolation and restore/migration remain pending.",
+          "approval_id": null,
+          "binding": {
+            "commit": "82e0601e653bc4d7cb2c65c3f7ede87795a24483",
+            "tree": "8c9cdcb410aabcff2579d6cf3a878c363300710f",
+            "tool_name": "Bounded V1 rehearsal verification",
+            "tool_version": "Exact source and tool receipt in report",
+            "command": "Existing save_idle_diff_review four-file actual fix delta",
+            "environment": "Mac source verification and existing independent readonly review. No GCE installation or rehearsal executed.",
+            "result_sha256": "f08c0dd28a8c24fc4e10b8ffc54b7650b40751e23ee8c7a5241bb3ac29d19327",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/formal-release-preparation-r01/v1-rehearsal-review-r02.json",
+            "config_sha256": null,
+            "recorded_at": "2026-11-03T16:39:52.735816+00:00"
+          }
+        }
+      ]
     }
   ]
 }
