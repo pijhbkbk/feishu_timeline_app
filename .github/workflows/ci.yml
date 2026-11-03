@@ -139,6 +139,7 @@ jobs:
           name: delivery-images-${{ github.run_id }}-${{ github.run_attempt }}
           retention-days: 7
           if-no-files-found: error
+          include-hidden-files: false
           overwrite: false
           path: |
             reports/ci-delivery/manifest.json

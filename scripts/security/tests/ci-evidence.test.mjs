@@ -138,12 +138,12 @@ test('SCA script retains failure and separates parseable JSON from stderr using 
 
 test('workflow pins uploads, uses exact output paths and retains failure and push boundaries', () => {
   const yaml = fs.readFileSync(path.join(repoRoot, '.github/workflows/ci.yml'), 'utf8');
-  assert.equal((yaml.match(/docker build --platform linux\/amd64/g) ?? []).length, 2);
-  assert.equal((yaml.match(/uses: actions\/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a/g) ?? []).length, 2);
-  assert.equal((yaml.match(/retention-days: 7/g) ?? []).length, 2);
+  assert.equal((yaml.match(/docker build --platform linux\/amd64/g) ?? []).length, 3);
+  assert.equal((yaml.match(/uses: actions\/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a/g) ?? []).length, 3);
+  assert.equal((yaml.match(/retention-days: 7/g) ?? []).length, 3);
   assert.equal((yaml.match(/steps\.evidence\.outputs\.ready == 'true'/g) ?? []).length, 2);
-  assert.equal((yaml.match(/include-hidden-files: false/g) ?? []).length, 2);
-  assert.equal((yaml.match(/if-no-files-found: error/g) ?? []).length, 2);
+  assert.equal((yaml.match(/include-hidden-files: false/g) ?? []).length, 3);
+  assert.equal((yaml.match(/if-no-files-found: error/g) ?? []).length, 3);
   assert.match(yaml, /permissions:\n  contents: read/);
   assert.match(yaml, /if: github.event_name == 'workflow_dispatch'/);
   assert.doesNotMatch(yaml, /continue-on-error|\|\| true|docker push|id-token:|security-events:|packages:|workflow_run:|repository_dispatch:/);
@@ -151,6 +151,16 @@ test('workflow pins uploads, uses exact output paths and retains failure and pus
     const paths = [...yaml.matchAll(new RegExp(`^            (reports/ci-public/${job}/.+)$`, 'gm'))].map((m) => m[1]);
     assert.deepEqual(paths.sort(), publicFiles(job).map((n) => `reports/ci-public/${job}/${n}`).sort());
   }
+  const manual = yaml.split('      - name: ').filter((step) =>
+    /^(Build migration image|Scan migration image|Export verified manual|Retain manual delivery)/.test(step));
+  assert.equal(manual.length, 4);
+  for (const step of manual) assert.match(step, /\n        if: github.event_name == 'workflow_dispatch'\n/);
+  assert.match(manual[0], /docker build --platform linux\/amd64 --target ops/);
+  assert.match(manual[1], /SECURITY_REPORT_DIR: reports\/security\/ops-image-sca/);
+  assert.match(manual[1], /scan-production-images.sh feishu-timeline-api-ops:ci/);
+  assert.match(manual[2], /node scripts\/deploy\/export-ci-images.mjs/);
+  assert.deepEqual([...yaml.matchAll(/^            (reports\/ci-delivery\/.+)$/gm)].map((match) => match[1]),
+    ['reports/ci-delivery/manifest.json', 'reports/ci-delivery/api.tar', 'reports/ci-delivery/web.tar', 'reports/ci-delivery/api-ops.tar']);
 });
 
 
