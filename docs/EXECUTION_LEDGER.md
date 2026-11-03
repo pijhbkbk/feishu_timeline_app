@@ -9634,3 +9634,9 @@ R50已在原6ad6ddfe会话发送并回读，PM仍在生成正式反馈。当前�
 16d6d49补CREATE NOLOGIN和锁内有效期LOGIN，10目标与abba0ad0…独审成立。一次性既存角色准入driver初审发现恢复pending未强制，唯一R51-V1-ADMISSION-PENDING-001保留原未执行代码与finding；补精确plan/pending前置后6组夹具和214021df…增量审查通过。实际dfc51driver/b3bbBODY于17:58Z验证目标有效登录、postgres/旧feishu/原c38三库拒绝、错密拒绝、finally NOLOGIN与0会话，随后正常stop的recover CLOSED。独审b288c3c5…明确该范围，未重演CREATE、迁移或kill竞态。原a51数据及checksum保持。16d6d49既有CI41684800280 success。
 
 只读schema推导两次失败原件保留。直接依据已执行20261019190000_canonical_restore_checks迁移确认新54-schema即演练schema027992…，不增加归一化、不改历史迁移。正式新checkout0bcab已在原机独立目录取得，clean/tree/568文件原始diff摘要一致，旧目录未改。最终切换控制器继续限定鲜B1、原c38原角色13迁移、全旧投影核验、迁移意图后禁止旧程序及自动旧快照恢复。新13定向夹具通过，原71直接依赖回归通过；初次BASE重放由O_EXCL拒绝而非预期Failure，保留失败并补显式阶段拒绝。此处仅源码验证，正式域名仍e917，切换源码独审、安装及实际产品路径待完成。69/74与性能FAIL保持，新增Agent0，持续复用原一名只读上下文。
+
+E173续。正式控制器719f46f607c35d16086c1b001bf169cebc5e9544/tree4fb68a43，限定独审87d7ec26…通过，另33旧dispatch依赖通过；显式暂存8文件Secret扫描0后公开push。一次性installer初版3955ce…存在provider/consumer激活顺序P2，尚未执行即发现，保留原稿和真实fresh-import原ImportError。仅交换两步后的1f600f…及受控unit driver117db…由同一上下文增量复核74ec0221…通过，唯一R52-V1-INSTALL-ORDER-001记录fixed_diff_verified。
+
+719f CI41694106799 security-source success，verify Test的1failure/33errors均定位旧29ed→e917六文件夹具读取了当前V1 hooks，缺新target模块。原job日志保持。单文件将payload绑定原实际9eb94093，旧前像仍7f509f；六文件与本轮原生产preimage相等，全部中断/恢复/历史断言保持。8例及子场景31.9s exit0，ca8f36f2…增量独审支持，当前V1源码/安装输入未变，不借此宣称新CI通过。正式站仍e917，待修复后的既有CI和实际切换。
+
+同时只读当前本机原恢复工作簿4ecbab…v9，完整DTO与2026-10-25恢复后原件严格相等，原绿色图可见、真实thumbnail200；current-restored-workbook-comparison.json及截图/请求记录已存，观察结束。此为当前候选适用性增量，没有新恢复/保存/重启。E2E-08整链仍待核，不因该观察增加MUST数。

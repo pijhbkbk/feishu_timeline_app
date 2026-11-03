@@ -11481,6 +11481,224 @@
           }
         }
       ]
+    },
+    {
+      "id": "R52-V1-INSTALL-ORDER-001",
+      "title": "Install the release-hook provider before its runtime-app consumer",
+      "status": "fixed_diff_verified",
+      "severity": "medium",
+      "confidence": "high",
+      "classification": "patch_regression",
+      "cwe": "CWE-665",
+      "source": {
+        "type": "diff_scan",
+        "report_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/formal-release-preparation-r01/v1-release-entry-review-r01.json",
+        "binding": {
+          "commit": "719f46f607c35d16086c1b001bf169cebc5e9544",
+          "tree": "4fb68a4300ac25cad04549b703d166bc01f0513c",
+          "tool_name": "Bounded V1 installer dependency-order verification",
+          "tool_version": "Exact installer and source hashes in review",
+          "command": "Review provider-before-consumer install order and fixed supervised entry",
+          "environment": "One-shot root installer outside application commit; source commit is separate provenance. Initial faulty installer never executed on GCE. Synthetic imports use temporary files and mock start guard.",
+          "result_sha256": "74ec0221a07e467f3d38a541d665bec73ebccce27828460e8ac9b98be357dfd6",
+          "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/formal-release-preparation-r01/v1-release-entry-review-r01.json",
+          "config_sha256": "1f600f1fd2060930cd64b298f3e9350cf1d7975c008015757a824761c00a0724",
+          "recorded_at": "2026-11-03T18:35:51.260922+00:00"
+        }
+      },
+      "scope": {
+        "component": "One-shot V1 release controller installer",
+        "affected_files": [
+          "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/formal-release-preparation-r01/install-v1-release-controller.py"
+        ],
+        "entry_points": [
+          "Durable BASE followed by live controller activation"
+        ],
+        "trust_boundary": "Existing stable application must retain a callable start guard throughout partial installation"
+      },
+      "evidence": {
+        "reachable": true,
+        "production_exposed": false,
+        "reproduction_path": "Initial installer activates new app before new release provider. Fresh process import raises ImportError in this middle state. Fixed order reaches the existing guard before and after both activations.",
+        "proof_gap": "Actual privileged installation remains pending. No production interruption was injected."
+      },
+      "root_cause_cluster": "R52-V1-INSTALL-ORDER-001",
+      "security_invariants": [],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
+      "fix": {
+        "task_id": "TRUCK-COLOR-V1-FORMAL-RELEASE-20261104",
+        "branch": "codex/design-convergence-20261019",
+        "commit": null,
+        "tree": null,
+        "changed_files": [
+          "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/formal-release-preparation-r01/install-v1-release-controller.py"
+        ]
+      },
+      "verification": {
+        "targeted": {
+          "status": "pass",
+          "binding": {
+            "commit": "719f46f607c35d16086c1b001bf169cebc5e9544",
+            "tree": "4fb68a4300ac25cad04549b703d166bc01f0513c",
+            "tool_name": "Bounded V1 installer dependency-order verification",
+            "tool_version": "Exact installer and source hashes in review",
+            "command": "Fresh-process historical and V1 intermediate-import fixtures",
+            "environment": "One-shot root installer outside application commit; source commit is separate provenance. Initial faulty installer never executed on GCE. Synthetic imports use temporary files and mock start guard.",
+            "result_sha256": "d8e5d00ad39e0bea7aeaa12ea10eca601608ca5b51deb8d8230b594386866b30",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/formal-release-preparation-r01/v1-install-order-regression.json",
+            "config_sha256": "1f600f1fd2060930cd64b298f3e9350cf1d7975c008015757a824761c00a0724",
+            "recorded_at": "2026-11-03T18:35:51.260922+00:00"
+          },
+          "notes": "Original broken middle state reproduced; three valid states reach the required guard."
+        },
+        "affected_regression": {
+          "status": "not_required",
+          "binding": null,
+          "notes": "Only a two-line order swap in fixed one-shot installer. Application/controller source719f unchanged."
+        },
+        "diff_review": {
+          "status": "pass",
+          "binding": {
+            "commit": "719f46f607c35d16086c1b001bf169cebc5e9544",
+            "tree": "4fb68a4300ac25cad04549b703d166bc01f0513c",
+            "tool_name": "Bounded V1 installer dependency-order verification",
+            "tool_version": "Exact installer and source hashes in review",
+            "command": "Review provider-before-consumer install order and fixed supervised entry",
+            "environment": "One-shot root installer outside application commit; source commit is separate provenance. Initial faulty installer never executed on GCE. Synthetic imports use temporary files and mock start guard.",
+            "result_sha256": "74ec0221a07e467f3d38a541d665bec73ebccce27828460e8ac9b98be357dfd6",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/formal-release-preparation-r01/v1-release-entry-review-r01.json",
+            "config_sha256": "1f600f1fd2060930cd64b298f3e9350cf1d7975c008015757a824761c00a0724",
+            "recorded_at": "2026-11-03T18:35:51.260922+00:00"
+          },
+          "notes": "Existing independent readonly agent reviewed the exact corrected order and supervised launcher."
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Actual controlled installation and release remain pending."
+        }
+      },
+      "closure": null,
+      "history": [
+        {
+          "at": "2026-11-03T18:35:51.260922+00:00",
+          "transition": "null->candidate",
+          "actor": "Codex root with existing independent readonly review",
+          "reason": "Retain unexecuted initial installer and original import failure; swap dependency provider before consumer and verify scoped correction.",
+          "approval_id": null,
+          "binding": {
+            "commit": "719f46f607c35d16086c1b001bf169cebc5e9544",
+            "tree": "4fb68a4300ac25cad04549b703d166bc01f0513c",
+            "tool_name": "Bounded V1 installer dependency-order verification",
+            "tool_version": "Exact installer and source hashes in review",
+            "command": "Review provider-before-consumer install order and fixed supervised entry",
+            "environment": "One-shot root installer outside application commit; source commit is separate provenance. Initial faulty installer never executed on GCE. Synthetic imports use temporary files and mock start guard.",
+            "result_sha256": "74ec0221a07e467f3d38a541d665bec73ebccce27828460e8ac9b98be357dfd6",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/formal-release-preparation-r01/v1-release-entry-review-r01.json",
+            "config_sha256": "1f600f1fd2060930cd64b298f3e9350cf1d7975c008015757a824761c00a0724",
+            "recorded_at": "2026-11-03T18:35:51.260922+00:00"
+          }
+        },
+        {
+          "at": "2026-11-03T18:35:51.260922+00:00",
+          "transition": "candidate->confirmed",
+          "actor": "Codex root with existing independent readonly review",
+          "reason": "Retain unexecuted initial installer and original import failure; swap dependency provider before consumer and verify scoped correction.",
+          "approval_id": null,
+          "binding": {
+            "commit": "719f46f607c35d16086c1b001bf169cebc5e9544",
+            "tree": "4fb68a4300ac25cad04549b703d166bc01f0513c",
+            "tool_name": "Bounded V1 installer dependency-order verification",
+            "tool_version": "Exact installer and source hashes in review",
+            "command": "Review provider-before-consumer install order and fixed supervised entry",
+            "environment": "One-shot root installer outside application commit; source commit is separate provenance. Initial faulty installer never executed on GCE. Synthetic imports use temporary files and mock start guard.",
+            "result_sha256": "74ec0221a07e467f3d38a541d665bec73ebccce27828460e8ac9b98be357dfd6",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/formal-release-preparation-r01/v1-release-entry-review-r01.json",
+            "config_sha256": "1f600f1fd2060930cd64b298f3e9350cf1d7975c008015757a824761c00a0724",
+            "recorded_at": "2026-11-03T18:35:51.260922+00:00"
+          }
+        },
+        {
+          "at": "2026-11-03T18:35:51.260922+00:00",
+          "transition": "confirmed->accepted_for_fix",
+          "actor": "Codex root with existing independent readonly review",
+          "reason": "Retain unexecuted initial installer and original import failure; swap dependency provider before consumer and verify scoped correction.",
+          "approval_id": null,
+          "binding": {
+            "commit": "719f46f607c35d16086c1b001bf169cebc5e9544",
+            "tree": "4fb68a4300ac25cad04549b703d166bc01f0513c",
+            "tool_name": "Bounded V1 installer dependency-order verification",
+            "tool_version": "Exact installer and source hashes in review",
+            "command": "Review provider-before-consumer install order and fixed supervised entry",
+            "environment": "One-shot root installer outside application commit; source commit is separate provenance. Initial faulty installer never executed on GCE. Synthetic imports use temporary files and mock start guard.",
+            "result_sha256": "74ec0221a07e467f3d38a541d665bec73ebccce27828460e8ac9b98be357dfd6",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/formal-release-preparation-r01/v1-release-entry-review-r01.json",
+            "config_sha256": "1f600f1fd2060930cd64b298f3e9350cf1d7975c008015757a824761c00a0724",
+            "recorded_at": "2026-11-03T18:35:51.260922+00:00"
+          }
+        },
+        {
+          "at": "2026-11-03T18:35:51.260922+00:00",
+          "transition": "accepted_for_fix->in_progress",
+          "actor": "Codex root with existing independent readonly review",
+          "reason": "Retain unexecuted initial installer and original import failure; swap dependency provider before consumer and verify scoped correction.",
+          "approval_id": null,
+          "binding": {
+            "commit": "719f46f607c35d16086c1b001bf169cebc5e9544",
+            "tree": "4fb68a4300ac25cad04549b703d166bc01f0513c",
+            "tool_name": "Bounded V1 installer dependency-order verification",
+            "tool_version": "Exact installer and source hashes in review",
+            "command": "Review provider-before-consumer install order and fixed supervised entry",
+            "environment": "One-shot root installer outside application commit; source commit is separate provenance. Initial faulty installer never executed on GCE. Synthetic imports use temporary files and mock start guard.",
+            "result_sha256": "74ec0221a07e467f3d38a541d665bec73ebccce27828460e8ac9b98be357dfd6",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/formal-release-preparation-r01/v1-release-entry-review-r01.json",
+            "config_sha256": "1f600f1fd2060930cd64b298f3e9350cf1d7975c008015757a824761c00a0724",
+            "recorded_at": "2026-11-03T18:35:51.260922+00:00"
+          }
+        },
+        {
+          "at": "2026-11-03T18:35:51.260922+00:00",
+          "transition": "in_progress->fixed_target_verified",
+          "actor": "Codex root with existing independent readonly review",
+          "reason": "Retain unexecuted initial installer and original import failure; swap dependency provider before consumer and verify scoped correction.",
+          "approval_id": null,
+          "binding": {
+            "commit": "719f46f607c35d16086c1b001bf169cebc5e9544",
+            "tree": "4fb68a4300ac25cad04549b703d166bc01f0513c",
+            "tool_name": "Bounded V1 installer dependency-order verification",
+            "tool_version": "Exact installer and source hashes in review",
+            "command": "Review provider-before-consumer install order and fixed supervised entry",
+            "environment": "One-shot root installer outside application commit; source commit is separate provenance. Initial faulty installer never executed on GCE. Synthetic imports use temporary files and mock start guard.",
+            "result_sha256": "74ec0221a07e467f3d38a541d665bec73ebccce27828460e8ac9b98be357dfd6",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/formal-release-preparation-r01/v1-release-entry-review-r01.json",
+            "config_sha256": "1f600f1fd2060930cd64b298f3e9350cf1d7975c008015757a824761c00a0724",
+            "recorded_at": "2026-11-03T18:35:51.260922+00:00"
+          }
+        },
+        {
+          "at": "2026-11-03T18:35:51.260922+00:00",
+          "transition": "fixed_target_verified->fixed_diff_verified",
+          "actor": "Codex root with existing independent readonly review",
+          "reason": "Retain unexecuted initial installer and original import failure; swap dependency provider before consumer and verify scoped correction.",
+          "approval_id": null,
+          "binding": {
+            "commit": "719f46f607c35d16086c1b001bf169cebc5e9544",
+            "tree": "4fb68a4300ac25cad04549b703d166bc01f0513c",
+            "tool_name": "Bounded V1 installer dependency-order verification",
+            "tool_version": "Exact installer and source hashes in review",
+            "command": "Review provider-before-consumer install order and fixed supervised entry",
+            "environment": "One-shot root installer outside application commit; source commit is separate provenance. Initial faulty installer never executed on GCE. Synthetic imports use temporary files and mock start guard.",
+            "result_sha256": "74ec0221a07e467f3d38a541d665bec73ebccce27828460e8ac9b98be357dfd6",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/formal-release-preparation-r01/v1-release-entry-review-r01.json",
+            "config_sha256": "1f600f1fd2060930cd64b298f3e9350cf1d7975c008015757a824761c00a0724",
+            "recorded_at": "2026-11-03T18:35:51.260922+00:00"
+          }
+        }
+      ]
     }
   ]
 }

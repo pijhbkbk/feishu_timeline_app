@@ -47,7 +47,11 @@ class ReleaseInstallerTests(unittest.TestCase):
                        'api-login-20260918.env', 'web-login-20260918.env',
                        'controller-install-login-20260918.json', 'release-login-20260918-recovery-proof.json', 'release-login-20260918-update-proof.json')
             for name in history: (state / name).write_bytes(b'synthetic retained history\n')
-            payload = {name: {'text': (bundle.HERE / name).read_text()} for name in bundle.NAMES}
+            # This installer targets the historical 29ed -> e917 controller generation.
+            # Current V1 hooks use a separately reviewed dependency set and installer.
+            payload = {name: {'text': subprocess.check_output(['git', '-C', str(bundle.HERE), 'show',
+                '9eb94093df6c15df3600f9ddeb22ea92c7db67af:scripts/deploy/gce-host/' + name]).decode()}
+                for name in bundle.NAMES}
             target = bundle.TARGET
             for item in payload.values(): item['sha256'] = hashlib.sha256(item['text'].encode()).hexdigest()
             for key, value in [('OPS', ops), ('ROOT', state), ('UNITS', units), ('SAVED', state / 'saved'),
