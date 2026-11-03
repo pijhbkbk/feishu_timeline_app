@@ -5,6 +5,7 @@ import { beforeAll,afterAll,describe,it,expect } from 'vitest';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { WorkbooksService } from './workbooks.service';
 import { validateSnapshot } from './workbook.rules';
+import { insertWorkbookDraftSnapshot, insertWorkbookRevisionSnapshot, insertWorkbookSnapshot, updateWorkbookDraftSnapshot, updateWorkbookSnapshot } from './workbook-snapshot-storage';
 const connection=process.env.WORKBOOK_TEST_DATABASE_URL??process.env.WORKBOOK_DRAFT_TEST_DATABASE_URL;
 if(connection){const url=new URL(connection);const allowed=url.port==='55438'&&/^\/free_workbook_[a-z0-9_]+$/.test(url.pathname)||url.port==='55460'&&/^\/free_workbook_drafts_[a-z0-9_]+$/.test(url.pathname);if(url.hostname!=='127.0.0.1'||!allowed)throw new Error('Only explicit isolated workbook PostgreSQL targets allowed.');}
 const snapshot=(id:string,name='合成工作簿')=>({id,name,appVersion:'1.0.4',locale:'zhCN',styles:{bold:{bl:1,fs:16}},sheetOrder:['s1','s2'],sheets:{s1:{id:'s1',name:'清单',rowCount:100,columnCount:26,cellData:{0:{0:{v:'原始中文',s:'bold'},1:{v:2}},1:{1:{f:'=SUM(B1:B1)',v:2}}},mergeData:[{startRow:0,endRow:0,startColumn:3,endColumn:4}],rowData:{0:{h:32}},columnData:{0:{w:180}}},s2:{id:'s2',name:'资料',rowCount:100,columnCount:26,cellData:{}}}});
@@ -13,6 +14,75 @@ describe.runIf(Boolean(connection)).sequential('free workbook real PostgreSQL CA
  async function user(approved:boolean):Promise<AuthenticatedUser>{const row=await db.user.create({data:{username:`wb-${randomUUID()}`,name:'合成工作簿成员',teamAccessApproved:approved}});return {id:row.id,username:row.username,name:row.name,email:null,departmentId:null,departmentName:null,isSystemAdmin:false,teamAccessApproved:approved,authSource:'local',roleCodes:[],permissionCodes:[],authVersion:row.authVersion};}
  async function create(){const id=randomUUID(),data=snapshot(id);await service.create({id,name:data.name,snapshot:data,operationId:randomUUID()},actor);return {id,data};}
  beforeAll(async()=>{await db.$connect();service=new WorkbooksService(db as never);actor=await user(true);peer=await user(true);outsider=await user(false);});afterAll(async()=>{await db.$disconnect();});
+ it.each(['UTC', 'Asia/Shanghai'])('preserves UTC timestamps and snapshots in a %s database session', async (timezone) => {
+  const id = randomUUID();
+  const data = snapshot(id);
+  data.sheets.s1.cellData[0][1].v = JSON.parse('121.12173461914062') as number;
+  const initial = validateSnapshot(data, id);
+  const edited = validateSnapshot({ ...data, name: 'UTC时间更新' }, id);
+  const expectUtcWindow = (value: Date, before: number, after: number) => {
+   expect(value).toBeInstanceOf(Date);
+   expect(value.getTime()).toBeGreaterThanOrEqual(before);
+   expect(value.getTime()).toBeLessThanOrEqual(after);
+  };
+  const expected = await db.$transaction(async tx => {
+   const session = await tx.$queryRaw<Array<{ set_config: string }>>(Prisma.sql`SELECT set_config('TimeZone', ${timezone}, true)`);
+   expect(session).toEqual([{ set_config: timezone }]);
+   let before = Date.now();
+   const created = await insertWorkbookSnapshot(tx, id, data.name, actor.id, initial);
+   const currentBefore = await tx.freeWorkbook.findUniqueOrThrow({ where: { id } });
+   expectUtcWindow(currentBefore.createdAt, before, Date.now());
+   expectUtcWindow(created.updatedAt, before, Date.now());
+   expect(currentBefore.updatedAt).toEqual(created.updatedAt);
+   expect(currentBefore.createdAt).toEqual(currentBefore.updatedAt);
+
+   before = Date.now();
+   await insertWorkbookRevisionSnapshot(tx, id, 1, actor.id, initial);
+   const firstHistory = await tx.freeWorkbookRevision.findUniqueOrThrow({ where: { workbookId_revision: { workbookId: id, revision: 1 } } });
+   expectUtcWindow(firstHistory.createdAt, before, Date.now());
+
+   before = Date.now();
+   const draft = await insertWorkbookDraftSnapshot(tx, id, actor.id, 1, initial);
+   const draftBefore = await tx.freeWorkbookDraft.findUniqueOrThrow({ where: { id: draft.id } });
+   expectUtcWindow(draftBefore.createdAt, before, Date.now());
+   expectUtcWindow(draft.updatedAt, before, Date.now());
+   expect(draftBefore.updatedAt).toEqual(draft.updatedAt);
+   expect(draftBefore.createdAt).toEqual(draftBefore.updatedAt);
+
+   before = Date.now();
+   expect(await updateWorkbookSnapshot(tx, id, 1, 'UTC时间更新', actor.id, edited)).toBe(1);
+   const currentAfter = await tx.freeWorkbook.findUniqueOrThrow({ where: { id } });
+   expectUtcWindow(currentAfter.updatedAt, before, Date.now());
+   expect(currentAfter.createdAt).toEqual(currentBefore.createdAt);
+   expect(currentAfter.updatedAt.getTime()).toBeGreaterThanOrEqual(currentBefore.updatedAt.getTime());
+
+   before = Date.now();
+   await insertWorkbookRevisionSnapshot(tx, id, 2, actor.id, edited);
+   const secondHistory = await tx.freeWorkbookRevision.findUniqueOrThrow({ where: { workbookId_revision: { workbookId: id, revision: 2 } } });
+   expectUtcWindow(secondHistory.createdAt, before, Date.now());
+
+   before = Date.now();
+   expect(await updateWorkbookDraftSnapshot(tx, draft.id, actor.id, 1, 2, edited)).toBe(1);
+   const draftAfter = await tx.freeWorkbookDraft.findUniqueOrThrow({ where: { id: draft.id } });
+   expectUtcWindow(draftAfter.updatedAt, before, Date.now());
+   expect(draftAfter.createdAt).toEqual(draftBefore.createdAt);
+   expect(draftAfter.updatedAt.getTime()).toBeGreaterThanOrEqual(draftBefore.updatedAt.getTime());
+   expect(await updateWorkbookSnapshot(tx, id, 1, data.name, actor.id, initial)).toBe(0);
+   expect(await updateWorkbookDraftSnapshot(tx, draft.id, actor.id, 1, 1, initial)).toBe(0);
+   expect(await tx.freeWorkbook.findUniqueOrThrow({ where: { id } })).toEqual(currentAfter);
+   expect(await tx.freeWorkbookDraft.findUniqueOrThrow({ where: { id: draft.id } })).toEqual(draftAfter);
+   expect(await tx.freeWorkbookRevision.findUniqueOrThrow({ where: { workbookId_revision: { workbookId: id, revision: 1 } } })).toEqual(firstHistory);
+   for (const row of [currentAfter, draftAfter, secondHistory]) {
+    expect(row.snapshot).toEqual(edited.snapshot);
+    expect(row.snapshotHash).toBe(edited.hash);
+    expect(row.snapshotBytes).toBe(edited.bytes);
+   }
+   return { currentAfter, draftAfter, secondHistory };
+  });
+  expect(await db.freeWorkbook.findUniqueOrThrow({ where: { id } })).toEqual(expected.currentAfter);
+  expect(await db.freeWorkbookDraft.findUniqueOrThrow({ where: { id: expected.draftAfter.id } })).toEqual(expected.draftAfter);
+  expect(await db.freeWorkbookRevision.findUniqueOrThrow({ where: { workbookId_revision: { workbookId: id, revision: 2 } } })).toEqual(expected.secondHistory);
+ });
  it('preserves submitted numeric values through current, history and restore storage',async()=>{
   const id=randomUUID(),base=snapshot(id),width=JSON.parse('121.12173461914062') as number;
   const data={...base,sheets:{...base.sheets,s1:{...base.sheets.s1,cellData:{

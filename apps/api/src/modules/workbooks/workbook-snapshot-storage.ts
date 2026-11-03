@@ -16,42 +16,50 @@ function inserted<T>(rows: T[]): T {
 }
 
 export async function insertWorkbookSnapshot(tx: Prisma.TransactionClient, id: string, name: string, actorId: string, value: SnapshotInput): Promise<WorkbookMeta> {
+  // Prisma Date parameters are timestamptz. These columns store UTC timestamp
+  // values, so bind UTC text explicitly without the session time-zone cast.
+  const timestamp = new Date().toISOString();
   return inserted(await tx.$queryRaw<WorkbookMeta[]>(Prisma.sql`
     INSERT INTO free_workbooks
-      (id,name,revision,snapshot,"snapshotBytes","snapshotHash","createdById","updatedById","updatedAt")
-    VALUES (${id}::uuid,${name},1,${value.serialized}::jsonb,${value.bytes},${value.hash},${actorId},${actorId},${new Date()})
+      (id,name,revision,snapshot,"snapshotBytes","snapshotHash","createdById","updatedById","createdAt","updatedAt")
+    VALUES (${id}::uuid,${name},1,${value.serialized}::jsonb,${value.bytes},${value.hash},${actorId},${actorId},
+      ${timestamp}::timestamp(3),${timestamp}::timestamp(3))
     RETURNING id,name,revision,"snapshotHash","updatedAt"`));
 }
 
 export function updateWorkbookSnapshot(tx: Prisma.TransactionClient, id: string, expected: number, name: string, actorId: string, value: SnapshotInput): Promise<number> {
+  const timestamp = new Date().toISOString();
   return tx.$executeRaw(Prisma.sql`
     UPDATE free_workbooks SET name=${name},snapshot=${value.serialized}::jsonb,
       "snapshotBytes"=${value.bytes},"snapshotHash"=${value.hash},revision=revision+1,
-      "updatedById"=${actorId},"updatedAt"=${new Date()}
+      "updatedById"=${actorId},"updatedAt"=${timestamp}::timestamp(3)
     WHERE id=${id}::uuid AND revision=${expected}`);
 }
 
 export async function insertWorkbookRevisionSnapshot(tx: Prisma.TransactionClient, workbookId: string, revision: number, actorId: string, value: SnapshotInput, restoredFrom?: number): Promise<void> {
+  const timestamp = new Date().toISOString();
   const count=await tx.$executeRaw(Prisma.sql`
     INSERT INTO free_workbook_revisions
-      (id,"workbookId",revision,snapshot,"snapshotBytes","snapshotHash","actorUserId","restoredFrom")
+      (id,"workbookId",revision,snapshot,"snapshotBytes","snapshotHash","actorUserId","restoredFrom","createdAt")
     VALUES (${randomUUID()}::uuid,${workbookId}::uuid,${revision},${value.serialized}::jsonb,
-      ${value.bytes},${value.hash},${actorId},${restoredFrom ?? null})`);
+      ${value.bytes},${value.hash},${actorId},${restoredFrom ?? null},${timestamp}::timestamp(3))`);
   if(count !== 1) throw new Error('Unexpected workbook history insert result.');
 }
 
 export async function insertWorkbookDraftSnapshot(tx: Prisma.TransactionClient, workbookId: string, authorId: string, baseRevision: number, value: SnapshotInput): Promise<DraftMeta> {
+  const timestamp = new Date().toISOString();
   return inserted(await tx.$queryRaw<DraftMeta[]>(Prisma.sql`
     INSERT INTO free_workbook_drafts
-      (id,"workbookId","authorUserId","draftRevision","baseWorkbookRevision",snapshot,"snapshotBytes","snapshotHash","updatedAt")
+      (id,"workbookId","authorUserId","draftRevision","baseWorkbookRevision",snapshot,"snapshotBytes","snapshotHash","createdAt","updatedAt")
     VALUES (${randomUUID()}::uuid,${workbookId}::uuid,${authorId},1,${baseRevision},
-      ${value.serialized}::jsonb,${value.bytes},${value.hash},${new Date()})
+      ${value.serialized}::jsonb,${value.bytes},${value.hash},${timestamp}::timestamp(3),${timestamp}::timestamp(3))
     RETURNING id,"draftRevision","baseWorkbookRevision","snapshotHash","snapshotBytes","updatedAt"`));
 }
 
 export function updateWorkbookDraftSnapshot(tx: Prisma.TransactionClient, id: string, authorId: string, expected: number, baseRevision: number, value: SnapshotInput): Promise<number> {
+  const timestamp = new Date().toISOString();
   return tx.$executeRaw(Prisma.sql`
     UPDATE free_workbook_drafts SET "baseWorkbookRevision"=${baseRevision},snapshot=${value.serialized}::jsonb,
-      "snapshotBytes"=${value.bytes},"snapshotHash"=${value.hash},"draftRevision"="draftRevision"+1,"updatedAt"=${new Date()}
+      "snapshotBytes"=${value.bytes},"snapshotHash"=${value.hash},"draftRevision"="draftRevision"+1,"updatedAt"=${timestamp}::timestamp(3)
     WHERE id=${id}::uuid AND "authorUserId"=${authorId} AND "draftRevision"=${expected}`);
 }
