@@ -9620,6 +9620,334 @@
           }
         }
       ]
+    },
+    {
+      "id": "R49-CI-MINIMATCH-001",
+      "title": "minimatch 10.2.5 reported for GHSA-g3hv-75wg-m249 globparts amplification",
+      "status": "candidate",
+      "severity": "medium",
+      "confidence": "high",
+      "classification": "pre_existing",
+      "cwe": "CWE-405",
+      "source": {
+        "type": "sca",
+        "report_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/save-idle-sca-r01/pnpm-audit-all.json",
+        "binding": {
+          "commit": "444cea97b61dd7d8bf67df9d885cf01e14847191",
+          "tree": "18fa9b2101b43bf77e2647565edd56b98816c91e",
+          "tool_name": "pnpm audit",
+          "tool_version": "9.15.4",
+          "command": "bash scripts/security/run-sca.sh; full and production audit low-or-higher",
+          "environment": "Root dependency inputs match committed HEAD; documentation dirty only at scan. No deployed or image scan. Raw advisory preserved; version mechanism triage pending.",
+          "result_sha256": "3d76dc939b74402a7bdda54c7a39458cf6f00d6041df5653da2083445659b5a1",
+          "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/save-idle-sca-r01/pnpm-audit-all.log",
+          "config_sha256": "6e6d02606e188f3258a973f9067b57623b82307a27313c175c67075430b1050e",
+          "recorded_at": "2026-11-03T13:17:09.292146+00:00"
+        }
+      },
+      "scope": {
+        "component": "minimatch 10.2.5",
+        "affected_files": [
+          "package.json",
+          "pnpm-lock.yaml"
+        ],
+        "entry_points": [
+          ". > @eslint/js@10.0.1 > eslint@10.8.0 > @eslint/config-array@0.23.5 > minimatch@10.2.5",
+          ". > @eslint/js@10.0.1 > eslint@10.8.0 > minimatch@10.2.5",
+          ". > eslint@10.8.0 > @eslint/config-array@0.23.5 > minimatch@10.2.5",
+          ". > eslint@10.8.0 > minimatch@10.2.5",
+          ". > typescript-eslint@8.65.0 > @typescript-eslint/eslint-plugin@8.65.0 > @typescript-eslint/parser@8.65.0 > @typescript-eslint/typescript-estree@8.65.0 > minimatch@10.2.5",
+          ". > typescript-eslint@8.65.0 > @typescript-eslint/eslint-plugin@8.65.0 > @typescript-eslint/parser@8.65.0 > eslint@10.8.0 > @eslint/config-array@0.23.5 > minimatch@10.2.5",
+          ". > typescript-eslint@8.65.0 > @typescript-eslint/eslint-plugin@8.65.0 > @typescript-eslint/parser@8.65.0 > eslint@10.8.0 > minimatch@10.2.5",
+          ". > typescript-eslint@8.65.0 > @typescript-eslint/eslint-plugin@8.65.0 > @typescript-eslint/type-utils@8.65.0 > @typescript-eslint/typescript-estree@8.65.0 > minimatch@10.2.5",
+          ". > typescript-eslint@8.65.0 > @typescript-eslint/eslint-plugin@8.65.0 > @typescript-eslint/type-utils@8.65.0 > @typescript-eslint/utils@8.65.0 > @typescript-eslint/typescript-estree@8.65.0 > minimatch@10.2.5",
+          ". > typescript-eslint@8.65.0 > @typescript-eslint/eslint-plugin@8.65.0 > @typescript-eslint/type-utils@8.65.0 > @typescript-eslint/utils@8.65.0 > eslint@10.8.0 > @eslint/config-array@0.23.5 > minimatch@10.2.5",
+          ". > typescript-eslint@8.65.0 > @typescript-eslint/eslint-plugin@8.65.0 > @typescript-eslint/type-utils@8.65.0 > @typescript-eslint/utils@8.65.0 > eslint@10.8.0 > minimatch@10.2.5",
+          ". > typescript-eslint@8.65.0 > @typescript-eslint/eslint-plugin@8.65.0 > @typescript-eslint/type-utils@8.65.0 > eslint@10.8.0 > @eslint/config-array@0.23.5 > minimatch@10.2.5",
+          ". > typescript-eslint@8.65.0 > @typescript-eslint/eslint-plugin@8.65.0 > @typescript-eslint/type-utils@8.65.0 > eslint@10.8.0 > minimatch@10.2.5",
+          ". > typescript-eslint@8.65.0 > @typescript-eslint/eslint-plugin@8.65.0 > @typescript-eslint/utils@8.65.0 > @typescript-eslint/typescript-estree@8.65.0 > minimatch@10.2.5",
+          ". > typescript-eslint@8.65.0 > @typescript-eslint/eslint-plugin@8.65.0 > @typescript-eslint/utils@8.65.0 > eslint@10.8.0 > @eslint/config-array@0.23.5 > minimatch@10.2.5",
+          ". > typescript-eslint@8.65.0 > @typescript-eslint/eslint-plugin@8.65.0 > @typescript-eslint/utils@8.65.0 > eslint@10.8.0 > minimatch@10.2.5",
+          ". > typescript-eslint@8.65.0 > @typescript-eslint/eslint-plugin@8.65.0 > eslint@10.8.0 > @eslint/config-array@0.23.5 > minimatch@10.2.5",
+          ". > typescript-eslint@8.65.0 > @typescript-eslint/eslint-plugin@8.65.0 > eslint@10.8.0 > minimatch@10.2.5",
+          ". > typescript-eslint@8.65.0 > @typescript-eslint/parser@8.65.0 > @typescript-eslint/typescript-estree@8.65.0 > minimatch@10.2.5",
+          ". > typescript-eslint@8.65.0 > @typescript-eslint/parser@8.65.0 > eslint@10.8.0 > @eslint/config-array@0.23.5 > minimatch@10.2.5",
+          ". > typescript-eslint@8.65.0 > @typescript-eslint/parser@8.65.0 > eslint@10.8.0 > minimatch@10.2.5",
+          ". > typescript-eslint@8.65.0 > @typescript-eslint/typescript-estree@8.65.0 > minimatch@10.2.5",
+          ". > typescript-eslint@8.65.0 > @typescript-eslint/utils@8.65.0 > @typescript-eslint/typescript-estree@8.65.0 > minimatch@10.2.5",
+          ". > typescript-eslint@8.65.0 > @typescript-eslint/utils@8.65.0 > eslint@10.8.0 > @eslint/config-array@0.23.5 > minimatch@10.2.5",
+          ". > typescript-eslint@8.65.0 > @typescript-eslint/utils@8.65.0 > eslint@10.8.0 > minimatch@10.2.5",
+          ". > typescript-eslint@8.65.0 > eslint@10.8.0 > @eslint/config-array@0.23.5 > minimatch@10.2.5",
+          ". > typescript-eslint@8.65.0 > eslint@10.8.0 > minimatch@10.2.5"
+        ],
+        "trust_boundary": "Dependency glob pattern preprocessing; exact mechanism/reachability under investigation"
+      },
+      "evidence": {
+        "reachable": null,
+        "production_exposed": null,
+        "reproduction_path": "Raw full audit exit1 has one advisory covering versions10.2.5/3.1.5/5.1.9. Production audit exit1 reports3.1.5/5.1.9. Official https://github.com/advisories/GHSA-g3hv-75wg-m249 and fix77a0f5c4b80bdc641c3c930a1d9edf5ad2db57f8.",
+        "proof_gap": "Exact installed source, finite reproduction, compatibility, patch applicability and independent review pending; no allowlist or risk acceptance."
+      },
+      "root_cause_cluster": "GHSA-g3hv-75wg-m249",
+      "security_invariants": [],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
+      "fix": {
+        "task_id": "TRUCK-COLOR-V1-CI-SECURITY-CONTINUATION-20261103",
+        "branch": "codex/design-convergence-20261019",
+        "commit": null,
+        "tree": null,
+        "changed_files": []
+      },
+      "verification": {
+        "targeted": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Pending exact source mechanism triage and scoped verification."
+        },
+        "affected_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Pending exact source mechanism triage and scoped verification."
+        },
+        "diff_review": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Pending exact source mechanism triage and scoped verification."
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Pending exact source mechanism triage and scoped verification."
+        }
+      },
+      "closure": null,
+      "history": [
+        {
+          "at": "2026-11-03T13:17:09.292146+00:00",
+          "transition": "null->candidate",
+          "actor": "Codex root actual dependency audit",
+          "reason": "Current full/prod raw audit retained. Reported affected version recorded without assuming runtime exploitability.",
+          "approval_id": null,
+          "binding": {
+            "commit": "444cea97b61dd7d8bf67df9d885cf01e14847191",
+            "tree": "18fa9b2101b43bf77e2647565edd56b98816c91e",
+            "tool_name": "pnpm audit",
+            "tool_version": "9.15.4",
+            "command": "bash scripts/security/run-sca.sh; full and production audit low-or-higher",
+            "environment": "Root dependency inputs match committed HEAD; documentation dirty only at scan. No deployed or image scan. Raw advisory preserved; version mechanism triage pending.",
+            "result_sha256": "3d76dc939b74402a7bdda54c7a39458cf6f00d6041df5653da2083445659b5a1",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/save-idle-sca-r01/pnpm-audit-all.log",
+            "config_sha256": "6e6d02606e188f3258a973f9067b57623b82307a27313c175c67075430b1050e",
+            "recorded_at": "2026-11-03T13:17:09.292146+00:00"
+          }
+        }
+      ]
+    },
+    {
+      "id": "R49-CI-MINIMATCH-002",
+      "title": "minimatch 3.1.5 reported for GHSA-g3hv-75wg-m249 globparts amplification",
+      "status": "candidate",
+      "severity": "medium",
+      "confidence": "high",
+      "classification": "pre_existing",
+      "cwe": "CWE-405",
+      "source": {
+        "type": "sca",
+        "report_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/save-idle-sca-r01/pnpm-audit-all.json",
+        "binding": {
+          "commit": "444cea97b61dd7d8bf67df9d885cf01e14847191",
+          "tree": "18fa9b2101b43bf77e2647565edd56b98816c91e",
+          "tool_name": "pnpm audit",
+          "tool_version": "9.15.4",
+          "command": "bash scripts/security/run-sca.sh; full and production audit low-or-higher",
+          "environment": "Root dependency inputs match committed HEAD; documentation dirty only at scan. No deployed or image scan. Raw advisory preserved; version mechanism triage pending.",
+          "result_sha256": "3d76dc939b74402a7bdda54c7a39458cf6f00d6041df5653da2083445659b5a1",
+          "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/save-idle-sca-r01/pnpm-audit-all.log",
+          "config_sha256": "6e6d02606e188f3258a973f9067b57623b82307a27313c175c67075430b1050e",
+          "recorded_at": "2026-11-03T13:17:09.292146+00:00"
+        }
+      },
+      "scope": {
+        "component": "minimatch 3.1.5",
+        "affected_files": [
+          "package.json",
+          "pnpm-lock.yaml"
+        ],
+        "entry_points": [
+          "apps/web > exceljs@4.4.0 > archiver@5.3.2 > archiver-utils@2.1.0 > glob@7.2.3 > minimatch@3.1.5",
+          "apps/web > exceljs@4.4.0 > archiver@5.3.2 > zip-stream@4.1.1 > archiver-utils@3.0.4 > glob@7.2.3 > minimatch@3.1.5",
+          "apps/web > exceljs@4.4.0 > unzipper@0.10.14 > fstream@1.0.12 > rimraf@2.7.1 > glob@7.2.3 > minimatch@3.1.5"
+        ],
+        "trust_boundary": "Dependency glob pattern preprocessing; exact mechanism/reachability under investigation"
+      },
+      "evidence": {
+        "reachable": null,
+        "production_exposed": null,
+        "reproduction_path": "Raw full audit exit1 has one advisory covering versions10.2.5/3.1.5/5.1.9. Production audit exit1 reports3.1.5/5.1.9. Official https://github.com/advisories/GHSA-g3hv-75wg-m249 and fix77a0f5c4b80bdc641c3c930a1d9edf5ad2db57f8.",
+        "proof_gap": "Exact installed source, finite reproduction, compatibility, patch applicability and independent review pending; no allowlist or risk acceptance."
+      },
+      "root_cause_cluster": "GHSA-g3hv-75wg-m249",
+      "security_invariants": [],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
+      "fix": {
+        "task_id": "TRUCK-COLOR-V1-CI-SECURITY-CONTINUATION-20261103",
+        "branch": "codex/design-convergence-20261019",
+        "commit": null,
+        "tree": null,
+        "changed_files": []
+      },
+      "verification": {
+        "targeted": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Pending exact source mechanism triage and scoped verification."
+        },
+        "affected_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Pending exact source mechanism triage and scoped verification."
+        },
+        "diff_review": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Pending exact source mechanism triage and scoped verification."
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Pending exact source mechanism triage and scoped verification."
+        }
+      },
+      "closure": null,
+      "history": [
+        {
+          "at": "2026-11-03T13:17:09.292146+00:00",
+          "transition": "null->candidate",
+          "actor": "Codex root actual dependency audit",
+          "reason": "Current full/prod raw audit retained. Reported affected version recorded without assuming runtime exploitability.",
+          "approval_id": null,
+          "binding": {
+            "commit": "444cea97b61dd7d8bf67df9d885cf01e14847191",
+            "tree": "18fa9b2101b43bf77e2647565edd56b98816c91e",
+            "tool_name": "pnpm audit",
+            "tool_version": "9.15.4",
+            "command": "bash scripts/security/run-sca.sh; full and production audit low-or-higher",
+            "environment": "Root dependency inputs match committed HEAD; documentation dirty only at scan. No deployed or image scan. Raw advisory preserved; version mechanism triage pending.",
+            "result_sha256": "3d76dc939b74402a7bdda54c7a39458cf6f00d6041df5653da2083445659b5a1",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/save-idle-sca-r01/pnpm-audit-all.log",
+            "config_sha256": "6e6d02606e188f3258a973f9067b57623b82307a27313c175c67075430b1050e",
+            "recorded_at": "2026-11-03T13:17:09.292146+00:00"
+          }
+        }
+      ]
+    },
+    {
+      "id": "R49-CI-MINIMATCH-003",
+      "title": "minimatch 5.1.9 reported for GHSA-g3hv-75wg-m249 globparts amplification",
+      "status": "candidate",
+      "severity": "medium",
+      "confidence": "high",
+      "classification": "pre_existing",
+      "cwe": "CWE-405",
+      "source": {
+        "type": "sca",
+        "report_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/save-idle-sca-r01/pnpm-audit-all.json",
+        "binding": {
+          "commit": "444cea97b61dd7d8bf67df9d885cf01e14847191",
+          "tree": "18fa9b2101b43bf77e2647565edd56b98816c91e",
+          "tool_name": "pnpm audit",
+          "tool_version": "9.15.4",
+          "command": "bash scripts/security/run-sca.sh; full and production audit low-or-higher",
+          "environment": "Root dependency inputs match committed HEAD; documentation dirty only at scan. No deployed or image scan. Raw advisory preserved; version mechanism triage pending.",
+          "result_sha256": "3d76dc939b74402a7bdda54c7a39458cf6f00d6041df5653da2083445659b5a1",
+          "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/save-idle-sca-r01/pnpm-audit-all.log",
+          "config_sha256": "6e6d02606e188f3258a973f9067b57623b82307a27313c175c67075430b1050e",
+          "recorded_at": "2026-11-03T13:17:09.292146+00:00"
+        }
+      },
+      "scope": {
+        "component": "minimatch 5.1.9",
+        "affected_files": [
+          "package.json",
+          "pnpm-lock.yaml"
+        ],
+        "entry_points": [
+          "apps/web > exceljs@4.4.0 > archiver@5.3.2 > readdir-glob@1.1.3 > minimatch@5.1.9"
+        ],
+        "trust_boundary": "Dependency glob pattern preprocessing; exact mechanism/reachability under investigation"
+      },
+      "evidence": {
+        "reachable": null,
+        "production_exposed": null,
+        "reproduction_path": "Raw full audit exit1 has one advisory covering versions10.2.5/3.1.5/5.1.9. Production audit exit1 reports3.1.5/5.1.9. Official https://github.com/advisories/GHSA-g3hv-75wg-m249 and fix77a0f5c4b80bdc641c3c930a1d9edf5ad2db57f8.",
+        "proof_gap": "Exact installed source, finite reproduction, compatibility, patch applicability and independent review pending; no allowlist or risk acceptance."
+      },
+      "root_cause_cluster": "GHSA-g3hv-75wg-m249",
+      "security_invariants": [],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
+      "fix": {
+        "task_id": "TRUCK-COLOR-V1-CI-SECURITY-CONTINUATION-20261103",
+        "branch": "codex/design-convergence-20261019",
+        "commit": null,
+        "tree": null,
+        "changed_files": []
+      },
+      "verification": {
+        "targeted": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Pending exact source mechanism triage and scoped verification."
+        },
+        "affected_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Pending exact source mechanism triage and scoped verification."
+        },
+        "diff_review": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Pending exact source mechanism triage and scoped verification."
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Pending exact source mechanism triage and scoped verification."
+        }
+      },
+      "closure": null,
+      "history": [
+        {
+          "at": "2026-11-03T13:17:09.292146+00:00",
+          "transition": "null->candidate",
+          "actor": "Codex root actual dependency audit",
+          "reason": "Current full/prod raw audit retained. Reported affected version recorded without assuming runtime exploitability.",
+          "approval_id": null,
+          "binding": {
+            "commit": "444cea97b61dd7d8bf67df9d885cf01e14847191",
+            "tree": "18fa9b2101b43bf77e2647565edd56b98816c91e",
+            "tool_name": "pnpm audit",
+            "tool_version": "9.15.4",
+            "command": "bash scripts/security/run-sca.sh; full and production audit low-or-higher",
+            "environment": "Root dependency inputs match committed HEAD; documentation dirty only at scan. No deployed or image scan. Raw advisory preserved; version mechanism triage pending.",
+            "result_sha256": "3d76dc939b74402a7bdda54c7a39458cf6f00d6041df5653da2083445659b5a1",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/save-idle-sca-r01/pnpm-audit-all.log",
+            "config_sha256": "6e6d02606e188f3258a973f9067b57623b82307a27313c175c67075430b1050e",
+            "recorded_at": "2026-11-03T13:17:09.292146+00:00"
+          }
+        }
+      ]
     }
   ]
 }

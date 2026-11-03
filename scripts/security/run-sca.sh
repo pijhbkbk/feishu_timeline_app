@@ -54,6 +54,9 @@ if [ "$overall_status" -eq 0 ]; then
 elif ( cd "$ROOT_DIR"; node scripts/security/verify-patched-sca.mjs "$REPORT_DIR" ) >"$REPORT_DIR/local-remediation.json"; then
   overall_status=0
   acceptance="LOCALLY_REMEDIATED — raw full audit remains FAIL/exit 1 with one High finding. The exact reviewed braces patch, loaded source and bounded regressions validate; residual findings: 0; production audit: PASS. This is not upstream audit clearance or release approval."
+elif ( cd "$ROOT_DIR"; node scripts/security/verify-minimatch-sca.mjs "$REPORT_DIR" ) >"$REPORT_DIR/minimatch-applicability.json"; then
+  overall_status=0
+  acceptance="LOCALLY_REMEDIATED — raw full and production audits remain FAIL/exit 1 for GHSA-g3hv-75wg-m249. Exact installed minimatch 10.2.5 uses the reviewed upstream backport; the reported mechanism is absent in exact 3.1.5 and 5.1.9 sources. Independent ledger dispositions and bounded regressions validate. Image, runtime and release gates remain separate."
 else
   acceptance="FAIL — pnpm reported a production/development vulnerability or the audit tool/registry failed."
 fi

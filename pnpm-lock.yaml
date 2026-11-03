@@ -34,6 +34,9 @@ patchedDependencies:
   braces@3.0.3:
     hash: puxqlaaxolc2hdmxjvqssmpewy
     path: patches/braces@3.0.3.patch
+  minimatch@10.2.5:
+    hash: rwmddqc37tufv6xtc4b7vpdhia
+    path: patches/minimatch@10.2.5.patch
   sonner@2.0.8:
     hash: b4lopyayplddrzzvbfdbmblypy
     path: patches/sonner@2.0.8.patch
@@ -3737,7 +3740,7 @@ snapshots:
     dependencies:
       '@eslint/object-schema': 3.0.5
       debug: 4.4.3
-      minimatch: 10.2.5
+      minimatch: 10.2.5(patch_hash=rwmddqc37tufv6xtc4b7vpdhia)
     transitivePeerDependencies:
       - supports-color
 
@@ -4681,7 +4684,7 @@ snapshots:
       '@typescript-eslint/types': 8.65.0
       '@typescript-eslint/visitor-keys': 8.65.0
       debug: 4.4.3
-      minimatch: 10.2.5
+      minimatch: 10.2.5(patch_hash=rwmddqc37tufv6xtc4b7vpdhia)
       semver: 7.8.5
       tinyglobby: 0.2.16
       ts-api-utils: 2.5.0(typescript@5.9.3)
@@ -5774,7 +5777,7 @@ snapshots:
       imurmurhash: 0.1.4
       is-glob: 4.0.3
       json-stable-stringify-without-jsonify: 1.0.1
-      minimatch: 10.2.5
+      minimatch: 10.2.5(patch_hash=rwmddqc37tufv6xtc4b7vpdhia)
       natural-compare: 1.4.0
       optionator: 0.9.4
     optionalDependencies:
@@ -6370,7 +6373,7 @@ snapshots:
     dependencies:
       mime-db: 1.54.0
 
-  minimatch@10.2.5:
+  minimatch@10.2.5(patch_hash=rwmddqc37tufv6xtc4b7vpdhia):
     dependencies:
       brace-expansion: 5.0.12
 

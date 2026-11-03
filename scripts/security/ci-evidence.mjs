@@ -7,6 +7,7 @@ import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { validateBuildIdentity } from '../deploy/release-identity.mjs';
 import { verifyRemediatedAudit } from './verify-patched-sca.mjs';
+import { verifyMinimatchAudit } from './verify-minimatch-sca.mjs';
 
 const MAX_BYTES = 20 * 1024 * 1024;
 const REDACTED = '[REDACTED]';
@@ -256,6 +257,18 @@ export function collect(root, job, rawSteps, run = probe) {
         delete all.inconsistentWithStep;
       } catch { /* The existing FINDINGS state remains blocking. */ }
     }
+    if (all?.state === 'FINDINGS' && all.scannerStatus === 'FAIL'
+      && production?.state === 'FINDINGS' && production.scannerStatus === 'FAIL') {
+      try {
+        const applicability = verifyMinimatchAudit(root, path.join(root, 'reports/security/sca'));
+        all.localRemediation = applicability;
+        all.state = 'FINDINGS_LOCALLY_REMEDIATED';
+        production.localApplicability = applicability;
+        production.state = 'FINDINGS_VERIFIED_NOT_APPLICABLE';
+        delete all.inconsistentWithStep;
+        delete production.inconsistentWithStep;
+      } catch { /* Both original FINDINGS states remain blocking. */ }
+    }
   }
   const metadata = { ...identityMetadata, collectedAt: timestamp(), tools: toolObservations(root, job, steps, run), releaseReadiness: 'NOT_ESTABLISHED' };
   if (job === 'security-source') {
@@ -265,7 +278,7 @@ export function collect(root, job, rawSteps, run = probe) {
   metadata.evidenceGaps = Object.entries(metadata.tools).filter(([, t]) => !t.observedVersion).map(([name]) => `${name}: observed version unavailable`);
   if (job === 'security-source') metadata.evidenceGaps.push('Semgrep effective dynamic rule content digest unavailable');
   if (job === 'verify') metadata.evidenceGaps.push('Per-image DB identity and approved freshness policy unavailable');
-  const complete = metadata.identityState === 'PRESENT' && metadata.sourceWorktreeClean && metadata.platformAllowed && reports.every((r) => r.state === 'PASS' || r.check === 'sca-all' && r.state === 'FINDINGS_LOCALLY_REMEDIATED') && !Object.values(steps).some((s) => ['failure', 'cancelled'].includes(s));
+  const complete = metadata.identityState === 'PRESENT' && metadata.sourceWorktreeClean && metadata.platformAllowed && reports.every((r) => r.state === 'PASS' || r.check === 'sca-all' && r.state === 'FINDINGS_LOCALLY_REMEDIATED' || r.check === 'sca-production' && r.state === 'FINDINGS_VERIFIED_NOT_APPLICABLE') && !Object.values(steps).some((s) => ['failure', 'cancelled'].includes(s));
   const checks = { job, steps, collectedChecksPassed: Boolean(complete), uploadMeansScanPassed: false, reports: reports.map((r) => ({ check: r.check, state: r.state, reportPresence: r.reportPresence, findingCount: r.findingCount })), uploadedFiles: files, retentionDaysRequested: 7, visibility: 'PUBLIC_REPOSITORY_ARTIFACT_NOT_PRIVATE_STORAGE' };
   writeJson(root, `reports/ci-public/${job}/metadata.json`, metadata);
   writeJson(root, `reports/ci-public/${job}/checks.json`, checks);
