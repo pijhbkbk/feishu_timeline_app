@@ -101,6 +101,8 @@ def target_input(target, requested):
         allowed.add('/home/recovery/input-menu-lifecycle-20261102-r02')
     if target == 'numericb7b8d13':
         allowed.add('/home/recovery/input-numeric-lifecycle-20261103-r02')
+    if target == 'dateb2e94df':
+        allowed.add('/home/recovery/input-date-lifecycle-20261103-r02')
     need(requested in allowed, 'HOST_INPUT_DIRECTORY')
     return requested
 
