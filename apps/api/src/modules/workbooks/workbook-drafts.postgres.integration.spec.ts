@@ -40,9 +40,13 @@ describe.runIf(Boolean(connection)).sequential('replaceable workbook drafts on r
       FROM free_workbook_drafts WHERE id=${second.currentDraft!.id}::uuid AND "authorUserId"=${owner.id}`);
     expect(stored).toEqual([{width:String(width),bytes:checked.bytes,hash:checked.hash}]);
     expect((await service.get(id,owner)).snapshot).toEqual(data);
+    const publishSource=(await service.getDraft(id,owner)).draft!.snapshot;
+    expect(publishSource).toEqual(changed);
+    const publishedHash=validateSnapshot(publishSource,id).hash;
     const published=await service.publishDraft(id,{operationId:randomUUID(),...expectation(second.currentDraft!),expectedWorkbookRevision:1},owner);
     expect(published.receipt.workbook?.revision).toBe(2);
-    expect(published.receipt.workbook?.snapshotHash).toBe(checked.hash);
+    expect(published.receipt.snapshotHash).toBe(checked.hash);
+    expect(published.receipt.workbook?.snapshotHash).toBe(publishedHash);
     expect((await service.get(id,owner)).snapshot).toEqual(changed);
     expect((await db.freeWorkbookRevision.findUniqueOrThrow({where:{workbookId_revision:{workbookId:id,revision:2}}})).snapshot).toEqual(changed);
     expect((await service.getDraft(id,owner)).draft).toBeNull();
