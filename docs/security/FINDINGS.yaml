@@ -11261,6 +11261,226 @@
           }
         }
       ]
+    },
+    {
+      "id": "R51-V1-ADMISSION-PENDING-001",
+      "title": "Independent admission driver must bind existing recovery intent before LOGIN",
+      "status": "fixed_diff_verified",
+      "severity": "high",
+      "confidence": "high",
+      "classification": "patch_regression",
+      "cwe": "CWE-269",
+      "source": {
+        "type": "diff_scan",
+        "report_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/formal-release-preparation-r01/v1-admission-driver-review-r01.json",
+        "binding": {
+          "commit": "16d6d49be64d0943594c648ef444de061515c817",
+          "tree": "fa96f59c8fde45169e02ab1c276eb2ff1493cc83",
+          "tool_name": "Bounded one-shot admission driver verification",
+          "tool_version": "Exact source hashes in review",
+          "command": "Review initial one-shot driver e52acce8 and BODY2c93329a",
+          "environment": "One-shot preparation driver outside committed application source. Parent source commit identified separately; immutable driver/BODY hashes bind the actual change. Driver not yet executed on GCE.",
+          "result_sha256": "0db4ff01c457d463f9116cc12e5183d373a076f13165b5a0c8d236371257ebfe",
+          "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/formal-release-preparation-r01/v1-admission-driver-review-r01.json",
+          "config_sha256": "dfc51af0af41411817251c770486b9121ab843b71aaa1d80382acc8ab7bfe06c",
+          "recorded_at": "2026-11-03T17:58:08.614320+00:00"
+        }
+      },
+      "scope": {
+        "component": "One-shot existing rehearsal-role admission verification",
+        "affected_files": [
+          "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/formal-release-preparation-r01/execute-v1-admission-check.py",
+          "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/formal-release-preparation-r01/v1-admission-check-body.py"
+        ],
+        "entry_points": [
+          "Existing-role open, verify and recover action"
+        ],
+        "trust_boundary": "LOGIN must have a verified recoverable intent bound to the exact existing target and frozen plan"
+      },
+      "evidence": {
+        "reachable": true,
+        "production_exposed": false,
+        "reproduction_path": "Without pending.json, original driver could open the role while recover returned without closing it. The initial driver was reviewed before execution.",
+        "proof_gap": "Corrected driver has not executed on GCE. This is not a finding against the completed original restore/migration path."
+      },
+      "root_cause_cluster": "V1_ADMISSION_RECOVERY_INTENT",
+      "security_invariants": [],
+      "disposition": {
+        "duplicate_of": null,
+        "false_positive_reason": null,
+        "risk_acceptance": null
+      },
+      "fix": {
+        "task_id": "TRUCK-COLOR-V1-FORMAL-RELEASE-20261104",
+        "branch": "codex/design-convergence-20261019",
+        "commit": null,
+        "tree": null,
+        "changed_files": [
+          "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/formal-release-preparation-r01/execute-v1-admission-check.py",
+          "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/formal-release-preparation-r01/v1-admission-check-body.py"
+        ]
+      },
+      "verification": {
+        "targeted": {
+          "status": "pass",
+          "binding": {
+            "commit": "16d6d49be64d0943594c648ef444de061515c817",
+            "tree": "fa96f59c8fde45169e02ab1c276eb2ff1493cc83",
+            "tool_name": "Bounded one-shot admission driver verification",
+            "tool_version": "Exact source hashes in review",
+            "command": "Execute exact BODY precondition with six synthetic plan/receipt cases",
+            "environment": "One-shot preparation driver outside committed application source. Parent source commit identified separately; immutable driver/BODY hashes bind the actual change. Driver not yet executed on GCE.",
+            "result_sha256": "3ef0c05927ff9dda2c572bffd18e4b48fd0b26c368de0b5805e06e4d4979392e",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/formal-release-preparation-r01/admission-pending-regression.json",
+            "config_sha256": "dfc51af0af41411817251c770486b9121ab843b71aaa1d80382acc8ab7bfe06c",
+            "recorded_at": "2026-11-03T17:58:08.614320+00:00"
+          },
+          "notes": "Missing/mismatched intent and changed plan reject before LOGIN."
+        },
+        "affected_regression": {
+          "status": "not_required",
+          "binding": null,
+          "notes": "Only added driver precondition. Reviewed controller and completed data rehearsal remain unchanged."
+        },
+        "diff_review": {
+          "status": "pass",
+          "binding": {
+            "commit": "16d6d49be64d0943594c648ef444de061515c817",
+            "tree": "fa96f59c8fde45169e02ab1c276eb2ff1493cc83",
+            "tool_name": "Bounded one-shot admission driver verification",
+            "tool_version": "Exact source hashes in review",
+            "command": "Review only added fixed-plan/pending precondition and embedded BODY equality",
+            "environment": "One-shot preparation driver outside committed application source. Parent source commit identified separately; immutable driver/BODY hashes bind the actual change. Driver not yet executed on GCE.",
+            "result_sha256": "214021dfd4300ad90dff8780ec7e6be1ef7db69804f40dc92a5679d14bafd03d",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/formal-release-preparation-r01/v1-admission-driver-review-r02.json",
+            "config_sha256": "dfc51af0af41411817251c770486b9121ab843b71aaa1d80382acc8ab7bfe06c",
+            "recorded_at": "2026-11-03T17:58:08.614320+00:00"
+          },
+          "notes": "Runtime source and previous driver behavior otherwise unchanged."
+        },
+        "full_regression": {
+          "status": "pending",
+          "binding": null,
+          "notes": "Actual existing-role admission and cleanup readback pending."
+        }
+      },
+      "closure": null,
+      "history": [
+        {
+          "at": "2026-11-03T17:58:08.614320+00:00",
+          "transition": "null->candidate",
+          "actor": "Codex root with existing independent readonly review",
+          "reason": "Retain original unexecuted failure, require exact frozen plan and pending before LOGIN, then apply scoped verification.",
+          "approval_id": null,
+          "binding": {
+            "commit": "16d6d49be64d0943594c648ef444de061515c817",
+            "tree": "fa96f59c8fde45169e02ab1c276eb2ff1493cc83",
+            "tool_name": "Bounded one-shot admission driver verification",
+            "tool_version": "Exact source hashes in review",
+            "command": "Review initial one-shot driver e52acce8 and BODY2c93329a",
+            "environment": "One-shot preparation driver outside committed application source. Parent source commit identified separately; immutable driver/BODY hashes bind the actual change. Driver not yet executed on GCE.",
+            "result_sha256": "0db4ff01c457d463f9116cc12e5183d373a076f13165b5a0c8d236371257ebfe",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/formal-release-preparation-r01/v1-admission-driver-review-r01.json",
+            "config_sha256": "dfc51af0af41411817251c770486b9121ab843b71aaa1d80382acc8ab7bfe06c",
+            "recorded_at": "2026-11-03T17:58:08.614320+00:00"
+          }
+        },
+        {
+          "at": "2026-11-03T17:58:08.614320+00:00",
+          "transition": "candidate->confirmed",
+          "actor": "Codex root with existing independent readonly review",
+          "reason": "Retain original unexecuted failure, require exact frozen plan and pending before LOGIN, then apply scoped verification.",
+          "approval_id": null,
+          "binding": {
+            "commit": "16d6d49be64d0943594c648ef444de061515c817",
+            "tree": "fa96f59c8fde45169e02ab1c276eb2ff1493cc83",
+            "tool_name": "Bounded one-shot admission driver verification",
+            "tool_version": "Exact source hashes in review",
+            "command": "Review initial one-shot driver e52acce8 and BODY2c93329a",
+            "environment": "One-shot preparation driver outside committed application source. Parent source commit identified separately; immutable driver/BODY hashes bind the actual change. Driver not yet executed on GCE.",
+            "result_sha256": "0db4ff01c457d463f9116cc12e5183d373a076f13165b5a0c8d236371257ebfe",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/formal-release-preparation-r01/v1-admission-driver-review-r01.json",
+            "config_sha256": "dfc51af0af41411817251c770486b9121ab843b71aaa1d80382acc8ab7bfe06c",
+            "recorded_at": "2026-11-03T17:58:08.614320+00:00"
+          }
+        },
+        {
+          "at": "2026-11-03T17:58:08.614320+00:00",
+          "transition": "confirmed->accepted_for_fix",
+          "actor": "Codex root with existing independent readonly review",
+          "reason": "Retain original unexecuted failure, require exact frozen plan and pending before LOGIN, then apply scoped verification.",
+          "approval_id": null,
+          "binding": {
+            "commit": "16d6d49be64d0943594c648ef444de061515c817",
+            "tree": "fa96f59c8fde45169e02ab1c276eb2ff1493cc83",
+            "tool_name": "Bounded one-shot admission driver verification",
+            "tool_version": "Exact source hashes in review",
+            "command": "Review initial one-shot driver e52acce8 and BODY2c93329a",
+            "environment": "One-shot preparation driver outside committed application source. Parent source commit identified separately; immutable driver/BODY hashes bind the actual change. Driver not yet executed on GCE.",
+            "result_sha256": "0db4ff01c457d463f9116cc12e5183d373a076f13165b5a0c8d236371257ebfe",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/formal-release-preparation-r01/v1-admission-driver-review-r01.json",
+            "config_sha256": "dfc51af0af41411817251c770486b9121ab843b71aaa1d80382acc8ab7bfe06c",
+            "recorded_at": "2026-11-03T17:58:08.614320+00:00"
+          }
+        },
+        {
+          "at": "2026-11-03T17:58:08.614320+00:00",
+          "transition": "accepted_for_fix->in_progress",
+          "actor": "Codex root with existing independent readonly review",
+          "reason": "Retain original unexecuted failure, require exact frozen plan and pending before LOGIN, then apply scoped verification.",
+          "approval_id": null,
+          "binding": {
+            "commit": "16d6d49be64d0943594c648ef444de061515c817",
+            "tree": "fa96f59c8fde45169e02ab1c276eb2ff1493cc83",
+            "tool_name": "Bounded one-shot admission driver verification",
+            "tool_version": "Exact source hashes in review",
+            "command": "Review initial one-shot driver e52acce8 and BODY2c93329a",
+            "environment": "One-shot preparation driver outside committed application source. Parent source commit identified separately; immutable driver/BODY hashes bind the actual change. Driver not yet executed on GCE.",
+            "result_sha256": "0db4ff01c457d463f9116cc12e5183d373a076f13165b5a0c8d236371257ebfe",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/formal-release-preparation-r01/v1-admission-driver-review-r01.json",
+            "config_sha256": "dfc51af0af41411817251c770486b9121ab843b71aaa1d80382acc8ab7bfe06c",
+            "recorded_at": "2026-11-03T17:58:08.614320+00:00"
+          }
+        },
+        {
+          "at": "2026-11-03T17:58:08.614320+00:00",
+          "transition": "in_progress->fixed_target_verified",
+          "actor": "Codex root with existing independent readonly review",
+          "reason": "Retain original unexecuted failure, require exact frozen plan and pending before LOGIN, then apply scoped verification.",
+          "approval_id": null,
+          "binding": {
+            "commit": "16d6d49be64d0943594c648ef444de061515c817",
+            "tree": "fa96f59c8fde45169e02ab1c276eb2ff1493cc83",
+            "tool_name": "Bounded one-shot admission driver verification",
+            "tool_version": "Exact source hashes in review",
+            "command": "Review initial one-shot driver e52acce8 and BODY2c93329a",
+            "environment": "One-shot preparation driver outside committed application source. Parent source commit identified separately; immutable driver/BODY hashes bind the actual change. Driver not yet executed on GCE.",
+            "result_sha256": "0db4ff01c457d463f9116cc12e5183d373a076f13165b5a0c8d236371257ebfe",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/formal-release-preparation-r01/v1-admission-driver-review-r01.json",
+            "config_sha256": "dfc51af0af41411817251c770486b9121ab843b71aaa1d80382acc8ab7bfe06c",
+            "recorded_at": "2026-11-03T17:58:08.614320+00:00"
+          }
+        },
+        {
+          "at": "2026-11-03T17:58:08.614320+00:00",
+          "transition": "fixed_target_verified->fixed_diff_verified",
+          "actor": "Codex root with existing independent readonly review",
+          "reason": "Retain original unexecuted failure, require exact frozen plan and pending before LOGIN, then apply scoped verification.",
+          "approval_id": null,
+          "binding": {
+            "commit": "16d6d49be64d0943594c648ef444de061515c817",
+            "tree": "fa96f59c8fde45169e02ab1c276eb2ff1493cc83",
+            "tool_name": "Bounded one-shot admission driver verification",
+            "tool_version": "Exact source hashes in review",
+            "command": "Review only added fixed-plan/pending precondition and embedded BODY equality",
+            "environment": "One-shot preparation driver outside committed application source. Parent source commit identified separately; immutable driver/BODY hashes bind the actual change. Driver not yet executed on GCE.",
+            "result_sha256": "214021dfd4300ad90dff8780ec7e6be1ef7db69804f40dc92a5679d14bafd03d",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/formal-release-preparation-r01/v1-admission-driver-review-r02.json",
+            "config_sha256": "dfc51af0af41411817251c770486b9121ab843b71aaa1d80382acc8ab7bfe06c",
+            "recorded_at": "2026-11-03T17:58:08.614320+00:00"
+          }
+        }
+      ]
     }
   ]
 }

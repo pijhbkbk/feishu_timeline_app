@@ -9622,3 +9622,15 @@ R50已在原6ad6ddfe会话发送并回读，PM仍在生成正式反馈。当前�
 生产库实际为feishu_timeline_restore_c38c57da，41迁移/54表，原41checksum与候选相等；新13迁移目标54/72。旧probe所称restored-copy现在已是生产，默认执行入口禁用于演练。只读人员字段超长计数均0，业务行未离开GCE。0bd0022新增同机受控备份与恢复旧程序准备、精确历史投影合同，11目标/15旧patch回归和97f07b23…独审通过。随后演练初版未提交代码独审确认两P1，记录唯一FINDINGS的R51-V1-REHEARSAL-RACE-001/SCOPE-001。现场只读ACL/HBA证明旧postgres/feishu_timeline存在PUBLIC CONNECT和CREATE，必须约束新角色。82e0601改为服务器锁内IF EXISTS→NOLOGIN及读回，固定a51角色只准新库，原c38前缀和HBA尾部摘要保持；9目标/7原scope回归及f08c0dd2…增量审查支持fixed_diff_verified，实际隔离和中断恢复仍待验。两个问题代码尚未安装或执行，未改变线上账号或业务数据。
 
 冻结计划native_v1_plan.json SHA db7d64d123de784cd6c4c87458e2a1abdf279379e19e9e4b4529a762f0583f45绑定真实CI ops及54迁移。13个已安装生产控制器前像与0bcab源码逐字相同。镜像导入准备另发现目标Python3.10.12缺hashlib.file_digest，执行前改用分块SHA，原准备/目标解释器证据保留。后续仅在精确输入及独审通过后进行导入、私有停写备份、恢复旧服务和独立副本演练，再按结果进入正式发布。R50最终反馈已读回并与E171闭合一致；R51已在原6ad6ddfe会话发送、DOM/截图送达，回复生成中。矩阵69/74及原性能FAIL保持，新增Agent0，沿同一只读上下文按差异复核，完整有效工时/Token未知。
+
+## 2026-11-04 — 私有备份、独立迁移与正式切换准备（E173）
+
+实际导入CI候选0bcab226/tree33de205，API/Web/ops三份已扫描Docker config ImageID与manifest d4053bb…在原GCE逐项相等，gce-stage-images-result.json exit0。registry现有匿名和实例身份读取分别失败，改为原机本地固定configID并绑定CI软件归档/扫描/四项构建身份；这是本轮技术选择，不称registry digest发布，历史目标RepoDigest守卫保持。原scanner默认health unhealthy继续保留。已安装scanner_host源码与36a5fb1精确一致、当前仅两注释变化，实际systemd主/前后置及drop-in无额外Health消费者，原主机与扫描机严格状态/真实协议探测适用，独审f69d2c5c…支持限定准入。
+
+受控B0在20261103T165652Z完成，备份20261103T165652Z-be0864b5，manifest d866b414…、fingerprints4cac5cfb…，54表/对象0/Redis文件3，私有原件留GCE，源e917正常恢复并经精确HTTPS两个身份入口复核。unit结束后卸载导致show默认属性，其记录不当作实际执行限制证据。B0之后源站恢复写入，因此只用于演练，正式切换必须另取鲜B1。
+
+新a51d1104库/角色实际恢复并执行13迁移，原c38生产仍41。候选54迁移checksum、72表、旧54表投影及旧41迁移事实、人员原ID/字段/时间回填均一致，18新增表中仅预期人员回填，其余空；teamAccessApproved未被隐式开启。complete SHA368543f2…、schema0279924a…，原角色正常关闭0会话。实际loaded unit10分钟/90秒/512MiB/64tasks/0077及ExecStopPost受控记录保留。原演练采用HBA和pending先于CREATE ROLE LOGIN，并非NOLOGIN-first，不改写历史。
+
+16d6d49补CREATE NOLOGIN和锁内有效期LOGIN，10目标与abba0ad0…独审成立。一次性既存角色准入driver初审发现恢复pending未强制，唯一R51-V1-ADMISSION-PENDING-001保留原未执行代码与finding；补精确plan/pending前置后6组夹具和214021df…增量审查通过。实际dfc51driver/b3bbBODY于17:58Z验证目标有效登录、postgres/旧feishu/原c38三库拒绝、错密拒绝、finally NOLOGIN与0会话，随后正常stop的recover CLOSED。独审b288c3c5…明确该范围，未重演CREATE、迁移或kill竞态。原a51数据及checksum保持。16d6d49既有CI41684800280 success。
+
+只读schema推导两次失败原件保留。直接依据已执行20261019190000_canonical_restore_checks迁移确认新54-schema即演练schema027992…，不增加归一化、不改历史迁移。正式新checkout0bcab已在原机独立目录取得，clean/tree/568文件原始diff摘要一致，旧目录未改。最终切换控制器继续限定鲜B1、原c38原角色13迁移、全旧投影核验、迁移意图后禁止旧程序及自动旧快照恢复。新13定向夹具通过，原71直接依赖回归通过；初次BASE重放由O_EXCL拒绝而非预期Failure，保留失败并补显式阶段拒绝。此处仅源码验证，正式域名仍e917，切换源码独审、安装及实际产品路径待完成。69/74与性能FAIL保持，新增Agent0，持续复用原一名只读上下文。

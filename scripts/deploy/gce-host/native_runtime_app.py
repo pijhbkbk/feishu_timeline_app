@@ -74,6 +74,10 @@ def runtime_identity():
 
 def image_identity(component, identity=None):
     identity = runtime_identity() if identity is None else identity
+    from native_release_target_v1 import TARGET as v1_target
+    if identity.get('commit') == v1_target['commit']:
+        from native_release_v1 import verified_image
+        return verified_image(component, identity)
     images = identity['images']
     image = json.loads(docker('image', 'inspect', images[component]))[0]
     labels = image['Config']['Labels']
@@ -229,7 +233,7 @@ def validate_container(component, item, image):
 
 def prepare_start(component):
     state_directory()
-    from native_release_r28_patch import assert_start
+    from native_release import assert_start
     assert_start(runtime_identity()['commit'])
     from native_cutover import committed_value, present
     if present(ROOT / 'cutover-pending.json') or present(ROOT / 'cutover-committed.json'):
