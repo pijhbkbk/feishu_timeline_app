@@ -34,11 +34,13 @@ TARGET_INPUTS = {
     "menusavee299057": "/home/recovery/input-menu-save-lifecycle-20261102-r01",
     "numericb7b8d13": "/home/recovery/input-numeric-lifecycle-20261103-r01",
     "dateb2e94df": "/home/recovery/input-date-lifecycle-20261103-r01",
+    "saveidle460ded4": "/home/recovery/input-save-idle-lifecycle-20261103-r01",
 }
 TARGET_BOOTS = {'menud9d00d2':'589fefa8-c3d5-477d-a597-7303774115c9',
                 'menusavee299057':'589fefa8-c3d5-477d-a597-7303774115c9',
                 'numericb7b8d13':'589fefa8-c3d5-477d-a597-7303774115c9',
-                'dateb2e94df':'589fefa8-c3d5-477d-a597-7303774115c9'}
+                'dateb2e94df':'589fefa8-c3d5-477d-a597-7303774115c9',
+                'saveidle460ded4':'589fefa8-c3d5-477d-a597-7303774115c9'}
 ROOT = "/home/recovery/joint-lifecycle-3a11-r01"
 BOOT = "9fee751f-120b-451e-9b1b-b17eac34bf98"
 PROTOCOL = "A09_BUDGET_STDIO_V1"

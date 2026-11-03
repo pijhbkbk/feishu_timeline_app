@@ -96,6 +96,18 @@ TARGETS = {
         'deltaSha256': '945fdd6faa75979dd88f3f5d7aa77565ad5a22cb89ec79fd8be091dc4f0e4bbc',
         'bootId': '589fefa8-c3d5-477d-a597-7303774115c9',
     },
+    'saveidle460ded4': {
+        'identity': {
+            'sourceCommit': '460ded4b9e093b7424aad1616966cc1686294a8c',
+            'sourceTree': 'df12d1aed3e8b29778d212d4fc8cee74bd51b6fb',
+            'release': 'truck-save-idle-460ded4b9e09-r01',
+            'buildTime': '2026-11-03T12:29:40Z',
+        },
+        'application': '/home/recovery/application-save-idle-460ded4-r01',
+        'delta': '/home/recovery/input-save-idle-lifecycle-20261103-r01/delta',
+        'deltaSha256': '08a4fab308c3367c0caa84edbe77aecadc0127bfa1dc32b9e2923959f448d9d6',
+        'bootId': '589fefa8-c3d5-477d-a597-7303774115c9',
+    },
 }
 ctx = {}
 

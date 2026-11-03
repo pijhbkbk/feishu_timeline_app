@@ -299,7 +299,8 @@ class CandidateContinuationTests(unittest.TestCase):
         with patch.object(m,'BOOT',current_boot),patch.object(m,'ROOT',self.root),patch.object(m,'read',side_effect=lambda p,*a:Path(p).read_bytes()):
             for source,target in [('menud9d00d2','menusavee299057'),('menusavee299057','menud9d00d2'),
                                   ('menusavee299057','numericb7b8d13'),('numericb7b8d13','menusavee299057'),
-                                  ('numericb7b8d13','dateb2e94df'),('dateb2e94df','numericb7b8d13')]:
+                                  ('numericb7b8d13','dateb2e94df'),('dateb2e94df','numericb7b8d13'),
+                                  ('dateb2e94df','saveidle460ded4'),('saveidle460ded4','dateb2e94df')]:
                 digest,result=self.stopped(source,target)
                 self.assertEqual(m.state(digest),result)
                 self.assertEqual(m.APP,Path(m.TARGETS[target]['application']))
@@ -401,6 +402,30 @@ class CandidateContinuationTests(unittest.TestCase):
             self.assertIsNone(module.timing_config(None, target, 'start', 'numeric-start-r01'))
             with self.assertRaisesRegex(Exception, 'TIMING_SCOPE'):
                 module.timing_config('{}', target, 'start', 'numeric-start-r01')
+
+    def test_idle_save_target_has_exact_input_identity_and_no_timing_override(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location('save_idle_host', Path(__file__).with_name('joint_lifecycle_host.py'))
+        host = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(host)
+        target = 'saveidle460ded4'
+        path = '/home/recovery/input-save-idle-lifecycle-20261103-r01'
+        self.assertEqual(host.target_input(target, path), path)
+        self.assertEqual(host.TARGET_BOOTS[target], m.TARGETS[target]['bootId'])
+        self.assertEqual(m.TARGETS[target]['identity']['sourceCommit'],
+                         '460ded4b9e093b7424aad1616966cc1686294a8c')
+        self.assertEqual(m.TARGETS[target]['deltaSha256'],
+                         '08a4fab308c3367c0caa84edbe77aecadc0127bfa1dc32b9e2923959f448d9d6')
+        for other in [path + '-extra', path.replace('r01', 'r02'),
+                      '/home/recovery/input-date-lifecycle-20261103-r04']:
+            with self.assertRaisesRegex(Exception, 'HOST_INPUT_DIRECTORY'):
+                host.target_input(target, other)
+        with self.assertRaisesRegex(Exception, 'HOST_INPUT_DIRECTORY'):
+            host.target_input('dateb2e94df', path)
+        for module in (m, host):
+            self.assertIsNone(module.timing_config(None, target, 'start', 'save-idle-start-r01'))
+            with self.assertRaisesRegex(Exception, 'TIMING_SCOPE'):
+                module.timing_config('{}', target, 'start', 'save-idle-start-r01')
 
     def test_date_host_input_is_exact_and_timing_requires_valid_config(self):
         import importlib.util
