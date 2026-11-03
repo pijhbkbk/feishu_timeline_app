@@ -11485,7 +11485,7 @@
     {
       "id": "R52-V1-INSTALL-ORDER-001",
       "title": "Install the release-hook provider before its runtime-app consumer",
-      "status": "fixed_diff_verified",
+      "status": "closed",
       "severity": "medium",
       "confidence": "high",
       "classification": "patch_regression",
@@ -11520,7 +11520,7 @@
         "reachable": true,
         "production_exposed": false,
         "reproduction_path": "Initial installer activates new app before new release provider. Fresh process import raises ImportError in this middle state. Fixed order reaches the existing guard before and after both activations.",
-        "proof_gap": "Actual privileged installation remains pending. No production interruption was injected."
+        "proof_gap": "No remaining gap for the exact installer-order finding. Actual interrupted production installation was not performed or required; authenticated formal business and owner acceptance remain separate."
       },
       "root_cause_cluster": "R52-V1-INSTALL-ORDER-001",
       "security_invariants": [],
@@ -11577,12 +11577,39 @@
           "notes": "Existing independent readonly agent reviewed the exact corrected order and supervised launcher."
         },
         "full_regression": {
-          "status": "pending",
-          "binding": null,
-          "notes": "Actual controlled installation and release remain pending."
+          "status": "pass",
+          "binding": {
+            "commit": "dd6c1e0502e22f4441a1a02de066e9baca8610f3",
+            "tree": "7741aed28c473ab185225a1c3c38f3d44e9b41b5",
+            "tool_name": "Exact installer execution and independent runtime applicability review",
+            "tool_version": "GCE Python3.10.12; CI41695571683 attempt1; exact source and execution hashes in review",
+            "command": "Verify actual corrected four-file install, unchanged reviewed controller inputs, required CI and supervised release readback",
+            "environment": "Original GCE instance-20260408-091840, private c38 database, precise HTTPS origin; installer source719f equal dd6c; actual package0bc separately bound. No fault injection or repeated installation.",
+            "result_sha256": "64405b42d6b9c118bb1f219f04e7367c4288d675c77c1452024ef82c61e9b5a2",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/formal-release-preparation-r01/v1-production-runtime-applicability-review-r01.json",
+            "config_sha256": "1f600f1fd2060930cd64b298f3e9350cf1d7975c008015757a824761c00a0724",
+            "recorded_at": "2026-11-03T21:29:07.198272+00:00"
+          },
+          "notes": "Correct provider-before-consumer order, original failure and fixed middle-state fresh-import regression, independent entry review, actual exact four-file installation and fresh-process old/new hook validation, plus current required CI and source/runtime binding satisfy this installer-order finding. Original external launcher timeout remains FAIL; same supervised unit completed successfully. No claim of A15-11 authenticated product acceptance or owner signoff."
         }
       },
-      "closure": null,
+      "closure": {
+        "closed_by": "Codex root after independent readonly applicability verification",
+        "closed_at": "2026-11-03T21:29:07.198272+00:00",
+        "criterion": "Correct provider-before-consumer order, original failure and fixed middle-state fresh-import regression, independent entry review, actual exact four-file installation and fresh-process old/new hook validation, plus current required CI and source/runtime binding satisfy this installer-order finding. Original external launcher timeout remains FAIL; same supervised unit completed successfully. No claim of A15-11 authenticated product acceptance or owner signoff.",
+        "binding": {
+          "commit": "dd6c1e0502e22f4441a1a02de066e9baca8610f3",
+          "tree": "7741aed28c473ab185225a1c3c38f3d44e9b41b5",
+          "tool_name": "Exact installer execution and independent runtime applicability review",
+          "tool_version": "GCE Python3.10.12; CI41695571683 attempt1; exact source and execution hashes in review",
+          "command": "Verify actual corrected four-file install, unchanged reviewed controller inputs, required CI and supervised release readback",
+          "environment": "Original GCE instance-20260408-091840, private c38 database, precise HTTPS origin; installer source719f equal dd6c; actual package0bc separately bound. No fault injection or repeated installation.",
+          "result_sha256": "64405b42d6b9c118bb1f219f04e7367c4288d675c77c1452024ef82c61e9b5a2",
+          "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/formal-release-preparation-r01/v1-production-runtime-applicability-review-r01.json",
+          "config_sha256": "1f600f1fd2060930cd64b298f3e9350cf1d7975c008015757a824761c00a0724",
+          "recorded_at": "2026-11-03T21:29:07.198272+00:00"
+        }
+      },
       "history": [
         {
           "at": "2026-11-03T18:35:51.260922+00:00",
@@ -11696,6 +11723,44 @@
             "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/formal-release-preparation-r01/v1-release-entry-review-r01.json",
             "config_sha256": "1f600f1fd2060930cd64b298f3e9350cf1d7975c008015757a824761c00a0724",
             "recorded_at": "2026-11-03T18:35:51.260922+00:00"
+          }
+        },
+        {
+          "at": "2026-11-03T21:29:07.198272+00:00",
+          "transition": "fixed_diff_verified->fixed_full_verified",
+          "actor": "Codex root after existing independent readonly applicability review",
+          "reason": "Correct provider-before-consumer order, original failure and fixed middle-state fresh-import regression, independent entry review, actual exact four-file installation and fresh-process old/new hook validation, plus current required CI and source/runtime binding satisfy this installer-order finding. Original external launcher timeout remains FAIL; same supervised unit completed successfully. No claim of A15-11 authenticated product acceptance or owner signoff.",
+          "approval_id": null,
+          "binding": {
+            "commit": "dd6c1e0502e22f4441a1a02de066e9baca8610f3",
+            "tree": "7741aed28c473ab185225a1c3c38f3d44e9b41b5",
+            "tool_name": "Exact installer execution and independent runtime applicability review",
+            "tool_version": "GCE Python3.10.12; CI41695571683 attempt1; exact source and execution hashes in review",
+            "command": "Verify actual corrected four-file install, unchanged reviewed controller inputs, required CI and supervised release readback",
+            "environment": "Original GCE instance-20260408-091840, private c38 database, precise HTTPS origin; installer source719f equal dd6c; actual package0bc separately bound. No fault injection or repeated installation.",
+            "result_sha256": "64405b42d6b9c118bb1f219f04e7367c4288d675c77c1452024ef82c61e9b5a2",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/formal-release-preparation-r01/v1-production-runtime-applicability-review-r01.json",
+            "config_sha256": "1f600f1fd2060930cd64b298f3e9350cf1d7975c008015757a824761c00a0724",
+            "recorded_at": "2026-11-03T21:29:07.198272+00:00"
+          }
+        },
+        {
+          "at": "2026-11-03T21:29:07.198272+00:00",
+          "transition": "fixed_full_verified->closed",
+          "actor": "Codex root after existing independent readonly applicability review",
+          "reason": "Correct provider-before-consumer order, original failure and fixed middle-state fresh-import regression, independent entry review, actual exact four-file installation and fresh-process old/new hook validation, plus current required CI and source/runtime binding satisfy this installer-order finding. Original external launcher timeout remains FAIL; same supervised unit completed successfully. No claim of A15-11 authenticated product acceptance or owner signoff.",
+          "approval_id": null,
+          "binding": {
+            "commit": "dd6c1e0502e22f4441a1a02de066e9baca8610f3",
+            "tree": "7741aed28c473ab185225a1c3c38f3d44e9b41b5",
+            "tool_name": "Exact installer execution and independent runtime applicability review",
+            "tool_version": "GCE Python3.10.12; CI41695571683 attempt1; exact source and execution hashes in review",
+            "command": "Verify actual corrected four-file install, unchanged reviewed controller inputs, required CI and supervised release readback",
+            "environment": "Original GCE instance-20260408-091840, private c38 database, precise HTTPS origin; installer source719f equal dd6c; actual package0bc separately bound. No fault injection or repeated installation.",
+            "result_sha256": "64405b42d6b9c118bb1f219f04e7367c4288d675c77c1452024ef82c61e9b5a2",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/formal-release-preparation-r01/v1-production-runtime-applicability-review-r01.json",
+            "config_sha256": "1f600f1fd2060930cd64b298f3e9350cf1d7975c008015757a824761c00a0724",
+            "recorded_at": "2026-11-03T21:29:07.198272+00:00"
           }
         }
       ]

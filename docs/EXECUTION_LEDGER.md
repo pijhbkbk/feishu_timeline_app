@@ -9640,3 +9640,23 @@ E173续。正式控制器719f46f607c35d16086c1b001bf169cebc5e9544/tree4fb68a43�
 719f CI41694106799 security-source success，verify Test的1failure/33errors均定位旧29ed→e917六文件夹具读取了当前V1 hooks，缺新target模块。原job日志保持。单文件将payload绑定原实际9eb94093，旧前像仍7f509f；六文件与本轮原生产preimage相等，全部中断/恢复/历史断言保持。8例及子场景31.9s exit0，ca8f36f2…增量独审支持，当前V1源码/安装输入未变，不借此宣称新CI通过。正式站仍e917，待修复后的既有CI和实际切换。
 
 同时只读当前本机原恢复工作簿4ecbab…v9，完整DTO与2026-10-25恢复后原件严格相等，原绿色图可见、真实thumbnail200；current-restored-workbook-comparison.json及截图/请求记录已存，观察结束。此为当前候选适用性增量，没有新恢复/保存/重启。E2E-08整链仍待核，不因该观察增加MUST数。
+
+## 2026-11-04 — 恢复整链适用性闭合（E174）
+
+原同一只读上下文按E2E-08六项依赖和完整使用链核对，61ab220fb070decac2a7511ec207ed4d89269e58efe2e506517418fa3769b047支持限定技术关闭。E77独立Lima恢复、原账号/项目/图片、新合成计划后正常应用重启，E132完整安装，E141/E143后继生命周期与E171当前包/实跑/保存及安全依赖逐段绑定。27013→3941→1bf3指定认证、Prisma、附件核心无差异，7021→1bf3 workbooks目录无变化，实际数值/UTC回归按原范围适用。当前原4ec工作簿v9与10月25日恢复后完整DTO相等，真实原绿色图及thumbnail200补足当前观察。原事故后逻辑起点、旧计划未找回、正常应用重启边界保留，当前未重做安装/恢复。唯一矩阵改为8/9技术链，69/74 MUST保持，正式域名与性能/所有者接收仍独立。
+
+## 2026-11-04 — 原GCE新候选受控部署（E175）
+
+dd6c1e0502e22f4441a1a02de066e9baca8610f3/tree7741aed28c473ab185225a1c3c38f3d44e9b41b5，CI41695571683/attempt1 success，verify与security-source各必需步骤通过，smoke条件SKIPPED。两个artifact ZIP be544751…/39aa68c2…与GitHub登记摘要相等，metadata/checks和源/tree/clean绑定已核。SCA raw与专用准入结论分层保持。四运行控制文件与已审719f相同，复用已导入0bc软件，无新应用镜像装配。
+
+实际1f600f安装器+5fb8fa payload安装四文件，保留17前像，BASE初始化、provider先于consumer、fresh process的原站/新checkout读回通过。GCE完整安装回执v1-release-controller-install-result.json。原P2的初版与修正夹具保持，不重演生产中断。
+
+本次正式监督任务2026-11-03T18:48:27Z开始、18:49:45Z exit0，invocation8fb218fb454c4814a14b4fabb50ecf24。外层systemd-run调用错误设20秒等待，在真正任务尚运行时超时exit1，原driver117db及失败完整保留。只读确认同unit/PID仍在WRITE_ENABLE_INTENT后继续观察，未再次发起迁移。该单元自身loaded10分钟/2分钟/512MiB/64tasks/0077、control-group与ExecStopPost恢复均有实际属性。最终COMMITTED，正常stop0后同新状态及实际容器运行再次核对。移除transient unit时的两条Failed to open提示留在原journal，不删日志或改写为外层driver通过。
+
+鲜B1为20261103T184849Z-506b7d84，manifest d34de912dcb360023d976587c829b2df4ae67cb17bbceaf70682d4660555614b，fingerprints0c21566e946169abe1230c8c4e9dc238d2b0bd0115420387aefb2de376477516；54旧表/0对象/3Redis文件私有保护。原c38/原角色实际追加13迁移至54/72表，旧54表原列投影/旧41迁移事实/人员原ID与字段时间回填核验通过，无隐式team admission。a51未提升，无数据库或Redis快照回灌。
+
+正式软件0bcab226014617825190593c1b70553974dcdbde/tree33de20554cf9c80addef975ff45c0a529a12bc3f，release ci-41671421744-1/build2026-11-03T16:10:39Z。API config893b3c7d…/container a516c2c5…、Web config3483ff95…/container94e3447f…实际运行且未OOM；nginx486524be…仍原127.0.0.1:3001/3000。2026-11-03T21:21Z以Mac默认严格TLS两个公开入口均该四字段。正式新版登录页已真实截图。新API容器通过原扫描代理PING/VERSION/clean OK/EICAR FOUND，原默认Docker health问题边界不变；公开无Cookie GET/POST工作簿均401。只计PRODUCTION_DEPLOYED，A15-11保留BLOCKED待原正式管理员登录后的合成业务/保存/刷新/返回/实际附件路径；已向所有者请求在当前正式登录页手动登录，无密码外传。最终owner签收与性能原FAIL保持，原main/tag未操作。
+
+R52已送原PM并读到最终反馈。其认可B0/a51/角色范围和历史夹具修复，支持requiredCI通过后直接沿授权执行本次路径、固定configID适用以及E2E-08累计映射收口，无新增安装/恢复演练要求。完整Token与历史有效工时未知，报告的4–7有效工程工时不由墙钟间隔代算。
+
+E175续。实际安装及运行适用独审64405b42d6b9c118bb1f219f04e7367c4288d675c77c1452024ef82c61e9b5a2确认当前CI两artifact摘要、719控制源码、固定0bc软件和GCE实装身份相互绑定，支持PRODUCTION_DEPLOYED。中间只读捕获未含InvocationID，以同启动时间+PID桥接，终态两份属性同8fb218…，不倒填中间字段。R52-V1-INSTALL-ORDER-001补full_regression并按fixed_diff_verified→fixed_full_verified→closed收口，外层driver失败、正式业务/附件/owner待验边界保留。按根规则进行本轮Placeholder扫描，12处均Playwright定位器方法或测试负向断言，正式页面无匹配；不计产品完成。
