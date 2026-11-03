@@ -1414,7 +1414,7 @@ def fixed_owners(require_stopped=False):
 
 
 def budget(initial=False, *, approved_limit=HOST_CAP):
-    need(type(approved_limit) is int and approved_limit in (HOST_CAP,49*1024**3//2,25*1024**3,101*1024**3//4),
+    need(type(approved_limit) is int and approved_limit in (HOST_CAP,49*1024**3//2,25*1024**3,101*1024**3//4,51*1024**3//2),
          'APPROVED_BUDGET_LIMIT')
     policy, policy_meta = read_json(HERE/'host-budget-policy.json', TARGET_BINDING['budgetPolicySha256'], 4*1024**2)
     need(policy.get('kind') == 'OFFLINE_HOST_BUDGET_SCOPE_V1' and policy.get('limit') == approved_limit,

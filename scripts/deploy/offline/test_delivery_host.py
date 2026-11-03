@@ -110,7 +110,12 @@ class HostTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError,'TRANSPORT_TIMEOUT'):
             m.bounded([sys.executable,'-I','-B','-c','import time;time.sleep(5)'],{'PATH':'/usr/bin:/bin'},self.root,.1,64)
     def test_approved_25_quarter_requires_explicit_caller_and_keeps_reserve(self):
-        limit = 101 * 1024**3 // 4
+        self.check_explicit_caller_and_reserve(101 * 1024**3 // 4)
+
+    def test_approved_25_half_requires_explicit_caller_and_keeps_reserve(self):
+        self.check_explicit_caller_and_reserve(51 * 1024**3 // 2)
+
+    def check_explicit_caller_and_reserve(self, limit):
         policy = {'kind': 'OFFLINE_HOST_BUDGET_SCOPE_V1', 'limit': limit,
                   'expectedRootPaths': [str(self.root)]}
         for caller in (None, 49*1024**3//2, 25*1024**3):

@@ -493,7 +493,7 @@ def prepare_runtime(value):
     rv.initialize(False)
     # This explicit caller allowance never changes historical configuration pins.
     allowance = getattr(ctx['args'], 'approved_host_limit_bytes', 49*1024**3//2)
-    need(type(allowance) is int and allowance in (49*1024**3//2,25*1024**3,101*1024**3//4), 'APPROVED_HOST_LIMIT')
+    need(type(allowance) is int and allowance in (49*1024**3//2,25*1024**3,101*1024**3//4,51*1024**3//2), 'APPROVED_HOST_LIMIT')
     if allowance != 49*1024**3//2:
         rv.observe.resources = functools.partial(rv.observe.resources, approved_limit=allowance)
     _,old_id,old_env=rv.validate_existing_configuration()

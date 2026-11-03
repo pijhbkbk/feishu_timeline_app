@@ -71,7 +71,14 @@ class ResourceAdmissionTests(unittest.TestCase):
                 self.check(approved_limit=value)
 
     def test_explicit_25_quarter_host_allowance_retains_runtime_floors(self):
-        cap = 101 * 1024**3 // 4
+        self.check_explicit_allowance_floors(101 * 1024**3 // 4)
+
+    def test_explicit_25_half_host_allowance_retains_runtime_floors(self):
+        self.check_explicit_allowance_floors(51 * 1024**3 // 2)
+        with self.assertRaisesRegex(RuntimeError, 'FRESH_COMPLETE_HOST_BUDGET'):
+            self.check(limit=51 * 1024**3 // 2, approved_limit=101 * 1024**3 // 4)
+
+    def check_explicit_allowance_floors(self, cap):
         result = self.check(limit=cap, approved_limit=cap, total=cap-64*1024**2)
         self.assertEqual(result['hostLimitBytes'], cap)
         self.assertEqual(result['hostReservedBytes'], 64*1024**2)

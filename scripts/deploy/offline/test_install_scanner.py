@@ -348,6 +348,9 @@ class ScannerRetentionBudgetTests(unittest.TestCase):
     def test_explicit_25_quarter_limit_and_both_remaining_window_floors(self):
         self.check_explicit_limit_and_floors(101*1024**3//4)
 
+    def test_explicit_25_half_limit_and_both_remaining_window_floors(self):
+        self.check_explicit_limit_and_floors(51*1024**3//2)
+
     def check_explicit_limit_and_floors(self, limit):
         roots=['/r'+str(i) for i in range(376)]
         reader={'entrySha256':'a'*64,'dependencies':[{'name':'reader','sha256':'b'*64}]}
