@@ -290,14 +290,126 @@ def diagnostic_state(m, binding):
                  'cooldownStatePreserved':True,'automaticRetry':False}
 
 
+def reusable_file(m, source, pin, destination=None, root=None):
+    """Hash an owned immutable source; optionally copy to one exclusive new file."""
+    before = source.lstat()
+    need(source.is_absolute() and source.resolve(strict=True) == source and
+         not source.is_symlink() and before.st_uid == before.st_gid == 1100 and
+         before.st_nlink == 1 and before.st_mode & 0o777 == 0o600 and
+         stat.S_ISREG(before.st_mode) and 0 < before.st_size == pin['bytes'] <= MAX_FILE,
+         'REUSE_SOURCE_METADATA')
+    signature = lambda value: (value.st_dev, value.st_ino, value.st_size,
+                               value.st_mtime_ns, value.st_ctime_ns)
+    output = None
+    descriptor = os.open(source, os.O_RDONLY | os.O_NOFOLLOW)
+    try:
+        need(signature(os.fstat(descriptor)) == signature(before), 'REUSE_SOURCE_OPEN_CHANGED')
+        if destination is not None:
+            output = os.fdopen(os.open(destination, os.O_WRONLY | os.O_CREAT | os.O_EXCL |
+                                       os.O_NOFOLLOW, 0o600), 'wb')
+        digest = hashlib.sha256()
+        count = 0
+        while True:
+            chunk = os.read(descriptor, 1024**2)
+            if not chunk:
+                break
+            count += len(chunk)
+            need(count <= pin['bytes'], 'REUSE_SOURCE_GREW')
+            digest.update(chunk)
+            if output is not None:
+                output.write(chunk)
+                guard(root, m)
+        need(count == pin['bytes'] and digest.hexdigest() == pin['sha256'] and
+             signature(before) == signature(os.fstat(descriptor)) == signature(source.lstat()),
+             'REUSE_SOURCE_CHANGED_OR_HASH')
+        if output is not None:
+            output.flush()
+            os.fsync(output.fileno())
+    finally:
+        os.close(descriptor)
+        if output is not None:
+            output.close()
+    if destination is not None:
+        directory = os.open(destination.parent, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+        try:
+            os.fsync(directory)
+        finally:
+            os.close(directory)
+
+
+def reusable_inputs(m, binding):
+    reuse = binding.get('reuseExisting')
+    if reuse is None:
+        return [], None, None
+    need(isinstance(reuse, dict) and set(reuse) ==
+         {'kind', 'verifiedImport', 'updateReceipt', 'updateState'} and
+         reuse['kind'] == 'VERIFIED_MAIN_BYTECODE_AND_UPDATER_STATE_V1', 'REUSE_BINDING')
+    imported = m.pinned(reuse['verifiedImport'], 65536)
+    source_root = Path(imported.get('target', ''))
+    need(imported.get('status') == 'OFFLINE_SIGNATURE_IMPORT_VERIFIED_SCANNER_NOT_STARTED' and
+         imported.get('identity') == m.IDENTITY and imported.get('currentBootId') == binding['bootId'] and
+         source_root.is_absolute() and source_root.parent.parent == HOME and
+         source_root.name == 'scanner-db' and source_root.resolve(strict=True) == source_root and
+         reuse['verifiedImport']['path'] == str(source_root / 'IMPORT-RECEIPT.json'),
+         'VERIFIED_REUSE_ORIGIN')
+    rows = imported.get('signatures', [])
+    need(len(rows) == 3 and {row.get('name') for row in rows} ==
+         {'main.cvd', 'daily.cvd', 'bytecode.cvd'}, 'REUSE_IMPORT_SET')
+    files = []
+    for name in ('main.cvd', 'bytecode.cvd'):
+        row = next(row for row in rows if row['name'] == name)
+        need(row.get('sigtoolExitCode') == 0 and type(row.get('bytes')) is int and
+             re.fullmatch('[a-f0-9]{64}', row.get('sha256', '')) is not None,
+             'VERIFIED_REUSE_FILE')
+        source = source_root / name
+        pin = {key: row[key] for key in ('bytes', 'sha256')}
+        reusable_file(m, source, pin)
+        files.append({'name': name, 'path': str(source), **pin})
+    previous = m.pinned(reuse['updateReceipt'], 65536)
+    previous_root = Path(previous.get('output', ''))
+    need(previous.get('kind') == 'OFFICIAL_CVD_REFRESH_ONCE_V1' and
+         previous.get('status') in ('FAILED_PRESERVED', 'OFFICIAL_SIGNATURE_REFRESH_VERIFIED_SCANNER_NOT_STARTED') and
+         previous.get('maximumAttempts') == 1 and
+         previous.get('identity') == m.IDENTITY and previous.get('bootId') == binding['bootId'] and
+         previous.get('officialMirror') == 'database.clamav.net' and
+         previous.get('tlsVerificationDisabled') is False and previous_root.parent == HOME and
+         re.fullmatch('offline-signatures-[a-z0-9-]{1,48}', previous_root.name) and
+         reuse['updateReceipt']['path'] == str(previous_root / 'result.json'), 'UPDATER_STATE_ORIGIN')
+    commands = previous.get('commands', [])
+    allowed_commands = {'freshclam-once', 'verify-main', 'verify-daily', 'verify-bytecode'}
+    need(isinstance(commands, list) and 1 <= len(commands) <= 4 and
+         sum(command.get('name') == 'freshclam-once' for command in commands) == 1 and
+         all(command.get('name') in allowed_commands and type(command.get('exitCode')) is int and
+             command.get('cleanup', {}).get('exited') is True and
+             command['cleanup'].get('remainingOwners') == [] for command in commands) and
+         (previous['status'] == 'FAILED_PRESERVED' or all(command['exitCode'] == 0 for command in commands)),
+         'UPDATER_STATE_PRODUCER')
+    state_pin = reuse['updateState']
+    need(isinstance(state_pin, dict) and set(state_pin) == {'path', 'bytes', 'sha256'} and
+         state_pin['path'] == str(previous_root / 'db/freshclam.dat') and
+         type(state_pin['bytes']) is int and 0 < state_pin['bytes'] <= 4096 and
+         re.fullmatch('[a-f0-9]{64}', state_pin['sha256']) is not None, 'REUSE_UPDATER_STATE')
+    state = m.read(Path(state_pin['path']), 4096, private=True)
+    need(len(state) == state_pin['bytes'] and sha(state) == state_pin['sha256'], 'REUSE_UPDATER_STATE_PIN')
+    proof = {'kind': reuse['kind'], 'verifiedImport': reuse['verifiedImport'], 'files': files,
+             'updateReceipt': reuse['updateReceipt'], 'updateState': state_pin,
+             'sourceFilesChanged': False, 'cooldownStatePreserved': True,
+             'freshclamDatabaseSelection': 'DEFAULT_ALL_OFFICIAL_DATABASES', 'scriptedUpdates': False}
+    return files, state, proof
+
+
 def execute(args):
     m, b, root, generation, c, tools, budget, ca, native = admission(args)
     prior_state,diagnostic=diagnostic_state(m,b)
+    reuse_files, reuse_state, reuse_proof = reusable_inputs(m, b)
+    if reuse_state is not None:
+        need(prior_state is None or prior_state == reuse_state, 'REUSE_DIAGNOSTIC_STATE_MISMATCH')
+        prior_state = reuse_state
     if args.check_admission:
         print(json.dumps({'status': 'REFRESH_NOT_EXECUTED_ADMISSION_VERIFIED',
                           'bootId': b['bootId'], 'nativeApplicability': native, 'budget': budget,
                           'networkAccessed': False, 'filesWritten': False, 'servicesChanged': False,
-                          'diagnosticRetry':diagnostic}))
+                          'diagnosticRetry':diagnostic, 'reusedInputs':reuse_proof}))
         return
     REPORT.update(kind=b['kind'], bootId=b['bootId'], identity=m.IDENTITY, startedAt=dt.datetime.now(dt.timezone.utc).isoformat(),
                   output=str(root), nativeApplicability=native, budget=budget, signatureMaxAgeHours=48,
@@ -305,12 +417,22 @@ def execute(args):
                   systemCaSha256=b['systemCaSha256'], servicesStarted=False, oldSignatureFilesChanged=False,
                   sourceBindingSha256=args.binding_sha256, status='FAILED_PRESERVED')
     if diagnostic is not None:REPORT['diagnosticRetry']=diagnostic
+    if reuse_proof is not None:REPORT['reusedInputs']=reuse_proof
     root.mkdir(mode=0o700)
     try:
         for name in ('db','tmp','logs'): (root/name).mkdir(mode=0o700)
         if prior_state is not None:m.write_new(root/'db/freshclam.dat',prior_state)
+        if reuse_files:
+            guard(root, m, initial=True)
+            for row in reuse_files:
+                destination = root/'db'/row['name']
+                reusable_file(m, Path(row['path']), row, destination, root)
+                reusable_file(m, destination, row)
+        # Retain the existing three signed-CVD contract. A newer seeded database
+        # uses a full official CVD; unchanged versions are still not downloaded.
+        scripted_updates = 'no' if reuse_files else 'yes'
         conf=(f'DatabaseOwner recovery\nDatabaseDirectory {root}/db\nDatabaseMirror database.clamav.net\n'
-              'ConnectTimeout 10\nReceiveTimeout 120\nMaxAttempts 1\nScriptedUpdates yes\nTestDatabases yes\nChecks 1\nForeground yes\n')
+              f'ConnectTimeout 10\nReceiveTimeout 120\nMaxAttempts 1\nScriptedUpdates {scripted_updates}\nTestDatabases yes\nChecks 1\nForeground yes\n')
         m.write_new(root/'freshclam.conf',conf.encode())
         libraries=':'.join([str(c.TARGET/'runtime/clamav/lib'),generation['dependencies']+'/usr/lib/aarch64-linux-gnu',generation['dependencies']+'/usr/lib/postgresql/14/lib'])
         env={'PATH':'/usr/bin:/bin','HOME':str(HOME),'TMPDIR':str(root/'tmp'),'LANG':'C','LC_ALL':'C','TZ':'UTC','CURL_CA_BUNDLE':str(ca)}
