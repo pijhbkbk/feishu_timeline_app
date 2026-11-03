@@ -1,4 +1,5 @@
 'use client';
+import { BUSINESS_TIME_ZONE, localDateTimeToIso } from '../../lib/local-datetime';
 
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
@@ -65,9 +66,13 @@ function TaskWorkForm({ projectId, taskId }: { projectId: string; taskId: string
   }
   function save(event: FormEvent) {
     event.preventDefault(); if (!form.completedWork.trim()) { setError('请填写已完成工作。'); return; }
-    const payload = { progressStatus: form.progressStatus, completedWork: form.completedWork.trim(), nextPlan: form.nextPlan.trim() || null,
-      ...(form.progressStatus === 'BLOCKED' ? { blockerType: 'OTHER', blockerDescription: form.blockerDescription.trim(), expectedResolvedAt: form.expectedResolvedAt ? new Date(form.expectedResolvedAt).toISOString() : null, impactLevel: 'MAY_DELAY' } : {}) };
-    void write('progress', `/v2/tasks/${encodeURIComponent(taskId)}/progress-updates`, payload, JSON.stringify(payload));
+    try {
+      const payload = { progressStatus: form.progressStatus, completedWork: form.completedWork.trim(), nextPlan: form.nextPlan.trim() || null,
+        ...(form.progressStatus === 'BLOCKED' ? { blockerType: 'OTHER', blockerDescription: form.blockerDescription.trim(), expectedResolvedAt: form.expectedResolvedAt ? localDateTimeToIso(form.expectedResolvedAt) : null, impactLevel: 'MAY_DELAY' } : {}) };
+      void write('progress', `/v2/tasks/${encodeURIComponent(taskId)}/progress-updates`, payload, JSON.stringify(payload));
+    } catch (error) {
+      setError(error instanceof Error ? error.message : '请输入有效的北京时间。');
+    }
   }
   function upload(event: FormEvent) {
     event.preventDefault(); if (!file || !materialType) return;
@@ -100,7 +105,7 @@ function TaskWorkForm({ projectId, taskId }: { projectId: string; taskId: string
         <label className="field field-full"><span>选择文件</span><input type="file" required disabled={Boolean(busy)} onChange={event => setFile(event.target.files?.[0] ?? null)} /></label><button className="button" disabled={Boolean(busy) || !file}>{busy === 'upload' ? '正在上传并检查…' : '上传材料'}</button></form> : null}
       <MaterialHistory key={refresh} taskId={taskId} materials={data.materials} />
     </section>
-    <section className="page-card"><h2>办理记录</h2>{data.progressHistory.length ? <ol>{data.progressHistory.map(item => <li key={item.id}><strong>{progressLabels[item.progressStatus]}</strong> · {item.submittedBy?.name || '系统'} · {new Date(item.createdAt).toLocaleString('zh-CN')}<p>{item.completedWork}</p>{item.nextPlan ? <p>下一步：{item.nextPlan}</p> : null}</li>)}</ol> : <p>还没有工作进展记录。</p>}</section>
+    <section className="page-card"><h2>办理记录</h2>{data.progressHistory.length ? <ol>{data.progressHistory.map(item => <li key={item.id}><strong>{progressLabels[item.progressStatus]}</strong> · {item.submittedBy?.name || '系统'} · {new Date(item.createdAt).toLocaleString('zh-CN', { timeZone: BUSINESS_TIME_ZONE })}<p>{item.completedWork}</p>{item.nextPlan ? <p>下一步：{item.nextPlan}</p> : null}</li>)}</ol> : <p>还没有工作进展记录。</p>}</section>
   </section>;
 }
 

@@ -1,5 +1,6 @@
 'use client';
 
+import { localDateTimeToIso, toDateTimeLocalValue } from '../../lib/local-datetime';
 import React, { useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { apiRequest } from '../../lib/auth-client';
@@ -10,9 +11,8 @@ import { taskHref } from './context';
 import { useProjectUnsavedChanges } from './use-unsaved';
 
 function initialState(): CompletionPanelState {
-  const date = new Date();
-  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
-  return { preview: null, pending: false, error: null, colorNumber: '', completionReason: '', acknowledgedConsequences: false, resolutionSummary: '', actualResolvedAt: local.toISOString().slice(0, 16), success: null };
+  const local = toDateTimeLocalValue(new Date().toISOString());
+  return { preview: null, pending: false, error: null, colorNumber: '', completionReason: '', acknowledgedConsequences: false, resolutionSummary: '', actualResolvedAt: local, success: null };
 }
 
 export function M1TaskCompletion({ task, onUpdated }: { task: R26TaskDetail; onUpdated: () => void }) {
@@ -55,11 +55,17 @@ export function M1TaskCompletion({ task, onUpdated }: { task: R26TaskDetail; onU
   async function resolve(blockerId: string) {
     if (pending.current) return;
     const summary = state.resolutionSummary.trim();
-    const resolvedAt = new Date(state.actualResolvedAt);
-    if (!summary || !Number.isFinite(resolvedAt.getTime())) { setState(current => ({ ...current, error: '请填写解决说明和有效的实际解除时间。' })); return; }
+    let resolvedAt: string;
+    try {
+      resolvedAt = localDateTimeToIso(state.actualResolvedAt);
+      if (!summary || !resolvedAt) throw new Error('缺少解决说明或时间');
+    } catch {
+      setState(current => ({ ...current, error: '请填写解决说明和有效的实际解除时间。' }));
+      return;
+    }
     pending.current = true;
     setState(current => ({ ...current, pending: true, error: null }));
-    const body = { taskVersion: version.current, actualResolvedAt: resolvedAt.toISOString(), resolutionSummary: summary };
+    const body = { taskVersion: version.current, actualResolvedAt: resolvedAt, resolutionSummary: summary };
     const idempotencyKey = commandId(`resolve:${blockerId}`, body);
     try {
       const response = await r26Gate3C1Request<R26ResolveBlockerResponse>(`${taskPath}/blockers/${encodeURIComponent(blockerId)}/resolve`, { body: { ...body, idempotencyKey }, idempotencyKey });

@@ -1,4 +1,5 @@
 'use client';
+import { toBusinessDateInputValue } from './local-datetime';
 
 import {
   isApprovedTeamUser,
@@ -172,11 +173,11 @@ export function getColorExitWorkspaceHighlights(workspace: ColorExitWorkspaceRes
 
 export function toColorExitFormInput(record: ColorExitRecord): ColorExitFormInput {
   return {
-    exitDate: record.exitDate.slice(0, 10),
+    exitDate: toBusinessDateInputValue(record.exitDate),
     statisticYear: record.statisticYear ? String(record.statisticYear) : '',
     annualOutput: record.annualOutput != null ? String(record.annualOutput) : '',
     finalDecision: record.finalDecision ?? '',
-    effectiveDate: record.effectiveDate?.slice(0, 10) ?? '',
+    effectiveDate: toBusinessDateInputValue(record.effectiveDate),
     exitReason: record.exitReason,
     description: record.description ?? '',
     replacementColorId: record.replacementColorId ?? '',

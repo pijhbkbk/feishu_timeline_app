@@ -1,4 +1,5 @@
 'use client';
+import { BUSINESS_TIME_ZONE } from '../lib/local-datetime';
 
 import Link from 'next/link';
 import React, { useEffect, useState } from 'react';
@@ -111,7 +112,7 @@ export function ProjectRetrospectiveR22({ projectId }: { projectId: string }) {
       </section>
 
       <R22Card className="r22-retro-form">
-        <div className="r22-section-heading"><div><p className="r22-overline">Learning</p><h2>经验与改进</h2><p>改进项保存到项目复盘记录，完成后锁定。</p></div>{data.form.updatedAt ? <span className="r22-result-count">最近保存 {new Date(data.form.updatedAt).toLocaleString('zh-CN')}</span> : null}</div>
+        <div className="r22-section-heading"><div><p className="r22-overline">Learning</p><h2>经验与改进</h2><p>改进项保存到项目复盘记录，完成后锁定。</p></div>{data.form.updatedAt ? <span className="r22-result-count">最近保存 {new Date(data.form.updatedAt).toLocaleString('zh-CN', { timeZone: BUSINESS_TIME_ZONE })}</span> : null}</div>
         <div className="r22-retro-form-grid">
           <label className="r22-field r22-field-full"><span>复盘结论</span><textarea disabled={readOnly} value={draft.conclusion} onChange={(event) => setDraft({ ...draft, conclusion: event.target.value })} placeholder="概括项目最终结论、价值和后续方向" /></label>
           <label className="r22-field"><span>做得好的地方</span><textarea disabled={readOnly} value={draft.strengths} onChange={(event) => setDraft({ ...draft, strengths: event.target.value })} /></label>

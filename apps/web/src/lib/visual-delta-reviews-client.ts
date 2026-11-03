@@ -1,4 +1,5 @@
 'use client';
+import { toBusinessDateInputValue } from './local-datetime';
 
 import type { ReviewStandardOptions, ReviewStandardVersion } from './review-standard-version';
 
@@ -326,7 +327,7 @@ export function toVisualDeltaReviewFormInput(
 ): VisualDeltaReviewFormInput {
   return {
     standardVersionId: review.standardVersionId ?? '',
-    reviewDate: review.reviewDate ? review.reviewDate.slice(0, 10) : '',
+    reviewDate: toBusinessDateInputValue(review.reviewDate),
     reviewerId: review.reviewerId,
     reviewConclusion: review.reviewConclusion,
     comment: review.comment ?? '',

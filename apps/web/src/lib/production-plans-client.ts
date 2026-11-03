@@ -1,4 +1,5 @@
 'use client';
+import { toBusinessDateInputValue } from './local-datetime';
 
 import {
   isApprovedTeamUser,
@@ -259,5 +260,5 @@ function toDateInputValue(value: string | null | undefined) {
     return '';
   }
 
-  return new Date(value).toISOString().slice(0, 10);
+  return toBusinessDateInputValue(value);
 }

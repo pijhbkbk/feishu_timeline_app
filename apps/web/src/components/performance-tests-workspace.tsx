@@ -1,4 +1,5 @@
 'use client';
+import { toDateTimeLocalValue } from '../lib/local-datetime';
 
 import { M1RecordLink as Link, M1RecordReturn } from '../features/m1/record-return';
 import React, { useEffect, useRef, useState } from 'react';
@@ -861,14 +862,4 @@ export function CompletePerformanceTestTaskButton({
       完成性能试验节点
     </button>
   );
-}
-
-function toDateTimeLocalValue(value: string | null | undefined) {
-  if (!value) {
-    return '';
-  }
-
-  const date = new Date(value);
-  const offset = date.getTimezoneOffset();
-  return new Date(date.getTime() - offset * 60_000).toISOString().slice(0, 16);
 }

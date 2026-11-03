@@ -1,4 +1,5 @@
 'use client';
+import { BUSINESS_TIME_ZONE, localDateTimeToIso, toDateTimeLocalValue } from '../../lib/local-datetime';
 
 import Link from 'next/link';
 import { useAuth } from '../../components/auth-provider';
@@ -268,9 +269,7 @@ function ProjectWorkspace({ projectId }: { projectId: string }) {
             idempotencyKey,
             body: {
               taskVersion: task.taskVersion,
-              actualResolvedAt: new Date(
-                completionPanel.actualResolvedAt,
-              ).toISOString(),
+              actualResolvedAt: localDateTimeToIso(completionPanel.actualResolvedAt),
               resolutionSummary:
                 completionPanel.resolutionSummary.trim(),
               idempotencyKey,
@@ -1408,7 +1407,7 @@ function taskConclusion(node: R26FlowNode, task: R26TaskDetail | null) {
 
 function formatDateTime(value: string | null) {
   if (!value) return '待确定';
-  return new Intl.DateTimeFormat('zh-CN', {
+  return new Intl.DateTimeFormat('zh-CN', { timeZone: BUSINESS_TIME_ZONE,
     month: 'numeric',
     day: 'numeric',
     hour: '2-digit',
@@ -1418,10 +1417,7 @@ function formatDateTime(value: string | null) {
 }
 
 function toLocalDateTimeInput(value: Date) {
-  const local = new Date(
-    value.getTime() - value.getTimezoneOffset() * 60_000,
-  );
-  return local.toISOString().slice(0, 16);
+  return toDateTimeLocalValue(value.toISOString());
 }
 
 function isGate3C1CompletableTask(task: R26TaskDetail) {

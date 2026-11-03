@@ -1,4 +1,5 @@
 'use client';
+import { toBusinessDateInputValue } from '../lib/local-datetime';
 
 import { M1RecordReturn } from '../features/m1/record-return';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
@@ -1013,5 +1014,5 @@ function toDateInputValue(value: string | null | undefined) {
     return '';
   }
 
-  return new Date(value).toISOString().slice(0, 10);
+  return toBusinessDateInputValue(value);
 }

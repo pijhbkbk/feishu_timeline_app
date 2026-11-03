@@ -1,4 +1,5 @@
 'use client';
+import { BUSINESS_TIME_ZONE } from '../../lib/local-datetime';
 import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { AnnualReviewPanel } from './annual-review';
@@ -58,5 +59,5 @@ function JsonValue({ value }: { value: RegisterJson }) {
   return <pre className="cr-json">{typeof value === 'string' ? value || '空字符串' : JSON.stringify(value, null, 2)}</pre>;
 }
 function empty(value: string | number | null) { return value === null ? <span className="cr-empty" aria-label="未记录">—</span> : value === '' ? <span className="cr-empty">空字符串</span> : String(value); }
-function dateLabel(value: string) { const parsed = new Date(value); return Number.isNaN(parsed.valueOf()) ? value : parsed.toLocaleString('zh-CN', { hour12: false }); }
+function dateLabel(value: string) { const parsed = new Date(value); return Number.isNaN(parsed.valueOf()) ? value : parsed.toLocaleString('zh-CN', { timeZone: BUSINESS_TIME_ZONE, hour12: false }); }
 function errorMessage(error: unknown) { return error instanceof Error ? error.message : '读取失败，请重试。'; }

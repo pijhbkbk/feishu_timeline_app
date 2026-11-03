@@ -17,7 +17,8 @@ beforeEach(() => {
 });
 afterEach(() => vi.unstubAllEnvs());
 
-describe('workspace datetime controls send explicit instants', () => {
+describe.each(['Asia/Shanghai', 'UTC', 'America/New_York'])('workspace Beijing datetime controls on device in %s', zone => {
+  beforeEach(() => vi.stubEnv('TZ', zone));
   it('keeps issue/distribution/signature/detail update times on the same local day', async () => {
     await issueStandardBoard('p', 'b', { recipientName: '合成', recipientDept: '', issuedAt: local, remark: '' });
     await addBoardDistributionRecord('p', 'b', { receiverName: '合成', receiverDept: '合成', sentAt: local, signedAt: local, note: '' });

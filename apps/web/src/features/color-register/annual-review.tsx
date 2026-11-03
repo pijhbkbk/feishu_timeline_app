@@ -1,4 +1,5 @@
 'use client';
+import { toBusinessDateInputValue } from '../../lib/local-datetime';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { apiRequest, isApprovedTeamUser } from '../../lib/auth-client';
@@ -60,7 +61,7 @@ export function AnnualReviewPanel({ colorId, onSaved, onDirtyChange, onBusyChang
       </form> : null}
       {onUseExitBasis && data.canRecord && data.history[0]?.snapshot.window && data.history[0].snapshot.quantity !== null && data.history[0].snapshot.quantity !== undefined ? <button type="button" className="m1-button" disabled={saving || loading} onClick={() => { const saved = data.history[0]!.snapshot; onUseExitBasis({ statisticYear: saved.window!.reviewMonth.slice(0, 4), annualOutput: saved.quantity!, finalDecision: saved.decision === 'RETAIN' ? 'RETAIN' : '' }); }}>将已保存复核依据填入下方表单</button> : null}
       <h3>复核历史</h3>
-      {data.history.length ? <ul>{data.history.map(item => <li key={item.id}>{item.createdAt.slice(0, 10)} · {item.actorName ?? '历史操作人'} · {item.snapshot.window?.fromMonth ?? '—'} 至 {item.snapshot.window?.toMonth ?? '—'} · {item.snapshot.quantity ?? '待核对'} 台 · {reviewDecisionLabel(item.snapshot.decision ?? null)}<p>{item.snapshot.note}</p></li>)}</ul> : <p>尚未保存首次年度复核记录。</p>}
+      {data.history.length ? <ul>{data.history.map(item => <li key={item.id}>{toBusinessDateInputValue(item.createdAt)} · {item.actorName ?? '历史操作人'} · {item.snapshot.window?.fromMonth ?? '—'} 至 {item.snapshot.window?.toMonth ?? '—'} · {item.snapshot.quantity ?? '待核对'} 台 · {reviewDecisionLabel(item.snapshot.decision ?? null)}<p>{item.snapshot.note}</p></li>)}</ul> : <p>尚未保存首次年度复核记录。</p>}
       {data.historyHasMore ? <p>显示最近 20 条；更早复核事实仍保存在审计历史。</p> : null}
     </> : null}
   </section>;

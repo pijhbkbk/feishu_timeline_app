@@ -1,6 +1,6 @@
 'use client';
 
-import { localDateTimeToIso } from './local-datetime';
+import { localDateTimeToIso, toDateTimeLocalValue } from './local-datetime';
 
 import { isApprovedTeamUser, apiRequest, type SessionUser } from './auth-client';
 import {
@@ -241,14 +241,4 @@ function toFeePayload(input: FeeFormInput) {
     recordedAt: localDateTimeToIso(input.recordedAt),
     note: input.note || null,
   };
-}
-
-function toDateTimeLocalValue(value: string | null | undefined) {
-  if (!value) {
-    return '';
-  }
-
-  const date = new Date(value);
-  const offset = date.getTimezoneOffset();
-  return new Date(date.getTime() - offset * 60_000).toISOString().slice(0, 16);
 }

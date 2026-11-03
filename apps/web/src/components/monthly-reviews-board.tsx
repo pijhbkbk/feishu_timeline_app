@@ -1,4 +1,5 @@
 'use client';
+import { shanghaiToday } from '../features/inspections/week-range';
 
 import Link from 'next/link';
 import React, { useEffect, useRef, useState } from 'react';
@@ -206,7 +207,6 @@ function getRecurringStatusTone(status: DashboardMonthlyReviewTask['status'], ha
 }
 
 function isCurrentMonth(value: string) {
-  const date = new Date(value);
-  const now = new Date();
-  return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth();
+  // reviewMonth is a calendar label carried by a DATE value.
+  return value.slice(0, 7) === shanghaiToday().slice(0, 7);
 }

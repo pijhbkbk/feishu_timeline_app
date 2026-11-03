@@ -1038,13 +1038,7 @@ function formatFlowMapDateTime(value: string | null | undefined) {
     return '未设置';
   }
 
-  const date = new Date(value);
-  const pad = (part: number) => part.toString().padStart(2, '0');
-
-  return [
-    `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`,
-    `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`,
-  ].join(' ');
+  return formatDateTime(value).replaceAll('/', '-');
 }
 
 function getColorExitLabel(value: keyof typeof COLOR_EXIT_SUGGESTION_LABELS | string | null) {

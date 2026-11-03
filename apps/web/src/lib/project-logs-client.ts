@@ -1,4 +1,5 @@
 'use client';
+import { BUSINESS_TIME_ZONE } from './local-datetime';
 
 import { apiRequest } from './auth-client';
 import { formatDate, getWorkflowNodeLabel, type WorkflowNodeCode } from './projects-client';
@@ -90,7 +91,7 @@ export function getProjectLogSendStatusLabel(status: ProjectLogItem['sendStatus'
 }
 
 export function formatProjectLogTimestamp(value: string) {
-  return new Intl.DateTimeFormat('zh-CN', {
+  return new Intl.DateTimeFormat('zh-CN', { timeZone: BUSINESS_TIME_ZONE,
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',

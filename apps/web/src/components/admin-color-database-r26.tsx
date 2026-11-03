@@ -1,4 +1,5 @@
 'use client';
+import { BUSINESS_TIME_ZONE } from '../lib/local-datetime';
 
 import { ColorRegisterWorkspace } from '../features/color-register/workspace';
 import { FreeWorkbookWorkspace } from '../features/free-workbook/workspace';
@@ -18,5 +19,5 @@ export function formatColorStatus(status: string) {
   return ({ DRAFT: '开发中', ACTIVE: '使用中', APPROVED: '已批准', REJECTED: '已退回', ARCHIVED: '已归档', EXITED: '已退出' } as Record<string, string>)[status] ?? status;
 }
 export function formatDate(value: string) {
-  return new Date(value).toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
+  return new Date(value).toLocaleDateString('zh-CN', { timeZone: BUSINESS_TIME_ZONE, year: 'numeric', month: '2-digit', day: '2-digit' });
 }
