@@ -211,13 +211,21 @@ def load_budget_host():
     exec(compile(pinned(path,row["sha256"]),str(path),"exec"),module.__dict__)
     def budget(name,inputdir,reserve):
         allowance=state.get('approvedHostLimitBytes',49*1024**3//2)
-        need(type(allowance) is int and allowance in (49*1024**3//2,25*1024**3,101*1024**3//4,51*1024**3//2),'APPROVED_HOST_LIMIT')
-        policy={"kind":"OFFLINE_HOST_BUDGET_SCOPE_V1","limit":allowance,
-                "expectedRootPaths":state["pins"]["budgetRootPaths"]}
+        policy=state['pins'].get('hostBudgetPolicy')
+        allowed=policy.get('authorizedLimits',[]) if policy else (49*1024**3//2,25*1024**3,101*1024**3//4,51*1024**3//2)
+        need(type(allowance) is int and allowance in allowed,'APPROVED_HOST_LIMIT')
+        additional=64*1024**2 if policy and PHASES[state['phase']] else 0
+        if policy:
+            need(policy.get('expectedRootPaths')==state['pins']['budgetRootPaths'] and
+                 policy.get('capacityReaderSha256')==row['sha256'],'BOUND_HOST_BUDGET_POLICY')
+        else:
+            policy={"kind":"OFFLINE_HOST_BUDGET_SCOPE_V1","limit":allowance,
+                    "expectedRootPaths":state["pins"]["budgetRootPaths"]}
         b=module.budget(policy,OP,["/Users/lixiaochen/Library/Caches/lima"],
-                        approved_limit=allowance)
+                        approved_limit=allowance,additional_bytes=additional)
         b.update(round30RootsIncluded=True,guestAccess=False)
-        need(len(b["rows"])==376 and b["totalAllocatedBytes"]+reserve<=b["limit"],"FULL_BUDGET")
+        need([item['path'] for item in b['rows']]==state['pins']['budgetRootPaths'] and
+             b['totalAllocatedBytes']+reserve+additional<=b['limit'],'FULL_BUDGET')
         raw=(json.dumps(b,sort_keys=True,indent=2)+"\n").encode();digest=sha(raw)
         save(name+".budget.json",raw)
         destination=INPUT+"/budget-"+digest+".json"
@@ -452,7 +460,9 @@ def main():
     need(pins['bootId']==BOOT and pins['root']==ROOT and pins['guestInput']==INPUT,"HOST_BINDING")
     pinned(HOST,pins['files']['joint_lifecycle_host.py']['sha256'],256*1024)
     pinned(HOST.parent/'joint_lifecycle.py',pins['files']['joint_lifecycle.py']['sha256'],256*1024)
-    need(len(pins['budgetRootPaths'])==len(set(pins['budgetRootPaths']))==376 and
+    root_count=len(pins['budgetRootPaths'])
+    need((376<=root_count<=4096 if pins.get('hostBudgetPolicy') else root_count==376) and
+         root_count==len(set(pins['budgetRootPaths'])) and
          any(OP.is_relative_to(Path(r)) for r in pins['budgetRootPaths']),"FULL_BUDGET_SCOPE")
     need(a.output.is_absolute() and a.output.parent.resolve(strict=True)==a.output.parent and
          not a.output.is_relative_to(OP) and any(a.output.is_relative_to(Path(r)) for r in pins['budgetRootPaths']),"OUTPUT_SCOPE")

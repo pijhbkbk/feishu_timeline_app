@@ -1,4 +1,5 @@
 """Resource-policy boundary tests; no VM, process or business access."""
+import copy
 import datetime
 from contextlib import nullcontext
 import importlib.util
@@ -16,12 +17,14 @@ spec.loader.exec_module(m)
 class ResourceAdmissionTests(unittest.TestCase):
     def check(self, *, limit=49*1024**3//2, total=24*1024**3+128*1024**2,
               free=1024**3+64*1024**2, starting=True, approved_limit=49*1024**3//2,
-              clock_ages=None):
+              clock_ages=None, host_policy=None, budget_updates=None):
         roots = ['/Users/lixiaochen/.lima-tcr24', '/Users/lixiaochen/Library/Caches/lima', '/opt/homebrew/Cellar/lima']
         budget = {'at': datetime.datetime.now(datetime.timezone.utc).isoformat(),
                   'scopeNarrowed': False, 'round30RootsIncluded': True, 'limit': limit,
                   'rows': [{'path': p, 'allocatedBytes': total if i == 0 else 0} for i, p in enumerate(roots)],
                   'totalAllocatedBytes': total}
+        if budget_updates is not None:
+            budget.update(copy.deepcopy(budget_updates))
         def need(ok, code):
             if not ok:
                 raise RuntimeError(code)
@@ -43,7 +46,7 @@ class ResourceAdmissionTests(unittest.TestCase):
              patch.object(Path, 'read_text', return_value='MemAvailable: 2097152 kB\nMemTotal: 4194304 kB\n'), \
              clock_patch:
             return m.resources(view, types.SimpleNamespace(LOGS=Path(tmp)/'absent'), 'a'*64, starting,
-                               approved_limit=approved_limit)
+                               approved_limit=approved_limit, host_policy=host_policy)
 
     def test_retained_24_5_budget_accepts_usage_above_previous_24(self):
         self.assertEqual(self.check()['newApplicationReservationBytes'], 64*1024**2)
@@ -118,6 +121,108 @@ class ResourceAdmissionTests(unittest.TestCase):
         with patch.object(m.time, 'sleep'):
             with self.assertRaisesRegex(RuntimeError, 'APPLICATION_RESOURCE_ADMISSION'):
                 self.check(clock_ages=[-0.1, 0.001], free=1024**3-1)
+
+
+    def current_capacity_fixture(self):
+        cap = 40 * 1024**3
+        reserve = 10 * 1024**3
+        window = 64 * 1024**2
+        roots = ['/Users/lixiaochen/.lima-tcr24', '/Users/lixiaochen/Library/Caches/lima',
+                 '/opt/homebrew/Cellar/lima']
+        policy = {'limit': cap, 'authorizedLimits': [cap], 'capacityReaderSha256': 'b' * 64,
+                  'expectedRootPaths': roots, 'physicalReserveBytes': reserve,
+                  'physicalWritePaths': roots[:2],
+                  'reader': {'dependencies': [{'name': 'delivery_host.py', 'sha256': 'b' * 64}]}}
+        receipt = {'authorizedLimits': [cap], 'readerSha256': 'b' * 64,
+                   'physicalCapacity': {'reserveBytes': reserve, 'additionalBytes': window,
+                                        'filesystems': [{'device': 1, 'paths': roots[:2],
+                                                         'availableBytes': reserve + window,
+                                                         'additionalBytes': window,
+                                                         'afterAdditionalBytes': reserve}]}}
+        return policy, receipt
+
+    def check_current(self, policy, receipt, **kwargs):
+        values = {'limit': policy['limit'], 'approved_limit': policy['limit'],
+                  'total': policy['limit'] - 128 * 1024**2,
+                  'host_policy': policy, 'budget_updates': receipt}
+        values.update(kwargs)
+        return self.check(**values)
+
+    def test_current_40_receipt_keeps_both_reserves_and_phase_window(self):
+        policy, receipt = self.current_capacity_fixture()
+        result = self.check_current(policy, receipt)
+        self.assertEqual(result['hostLimitBytes'], 40 * 1024**3)
+        self.assertEqual(result['hostReservedBytes'], 64 * 1024**2)
+        self.assertEqual(result['newApplicationReservationBytes'], 64 * 1024**2)
+        self.assertEqual(result['guestAvailableBytes'], 1024**3 + 64 * 1024**2)
+        with self.assertRaisesRegex(RuntimeError, 'HOST_PHASE_CAPACITY'):
+            self.check_current(policy, receipt, total=policy['limit'] - 128 * 1024**2 + 1)
+        self.check_current(policy, receipt, starting=False, total=policy['limit'] - 64 * 1024**2)
+
+    def test_current_limit_requires_explicit_policy_and_matching_reader(self):
+        policy, receipt = self.current_capacity_fixture()
+        with self.assertRaisesRegex(RuntimeError, 'APPROVED_HOST_LIMIT'):
+            self.check_current(policy, receipt, host_policy=None)
+        for limit in (policy['limit'] + 1, True, float(policy['limit'])):
+            with self.subTest(limit=limit), self.assertRaisesRegex(RuntimeError, 'APPROVED_HOST_LIMIT'):
+                self.check_current(policy, receipt, approved_limit=limit)
+        for field, value in [('readerSha256', 'c' * 64), ('authorizedLimits', [policy['limit'] + 1])]:
+            changed = copy.deepcopy(receipt)
+            changed[field] = value
+            with self.subTest(field=field), self.assertRaisesRegex(RuntimeError, 'HOST_PHYSICAL_CAPACITY_PROOF'):
+                self.check_current(policy, changed)
+        changed_policy = {**policy, 'capacityReaderSha256': 'c' * 64}
+        with self.assertRaisesRegex(RuntimeError, 'HOST_PHYSICAL_CAPACITY_PROOF'):
+            self.check_current(changed_policy, receipt)
+
+    def test_current_physical_receipt_fields_are_required(self):
+        policy, receipt = self.current_capacity_fixture()
+        for field in ('readerSha256', 'authorizedLimits', 'physicalCapacity'):
+            changed = copy.deepcopy(receipt)
+            changed.pop(field)
+            with self.subTest(field=field), self.assertRaisesRegex(RuntimeError, 'HOST_PHYSICAL_CAPACITY_PROOF'):
+                self.check_current(policy, changed)
+        for field in ('reserveBytes', 'additionalBytes', 'filesystems'):
+            changed = copy.deepcopy(receipt)
+            changed['physicalCapacity'].pop(field)
+            with self.subTest(field=field), self.assertRaisesRegex(RuntimeError, 'HOST_PHYSICAL_CAPACITY_PROOF'):
+                self.check_current(policy, changed)
+
+    def test_current_physical_window_and_volume_readback_cannot_be_understated(self):
+        policy, receipt = self.current_capacity_fixture()
+        variants = []
+        short_window = copy.deepcopy(receipt)
+        short_window['physicalCapacity']['additionalBytes'] -= 1
+        variants.append(short_window)
+        tampered = copy.deepcopy(receipt)
+        tampered['physicalCapacity']['filesystems'][0]['afterAdditionalBytes'] += 1
+        variants.append(tampered)
+        low_space = copy.deepcopy(receipt)
+        low_space['physicalCapacity']['filesystems'][0]['availableBytes'] -= 1
+        low_space['physicalCapacity']['filesystems'][0]['afterAdditionalBytes'] -= 1
+        variants.append(low_space)
+        missing_path = copy.deepcopy(receipt)
+        missing_path['physicalCapacity']['filesystems'][0]['paths'].pop()
+        variants.append(missing_path)
+        for index, changed in enumerate(variants):
+            with self.subTest(index=index), self.assertRaisesRegex(RuntimeError, 'HOST_PHYSICAL_CAPACITY_PROOF'):
+                self.check_current(policy, changed)
+        lower_floor = copy.deepcopy(receipt)
+        lower_floor['physicalCapacity']['reserveBytes'] = 1024**3
+        with self.assertRaisesRegex(RuntimeError, 'HOST_PHYSICAL_CAPACITY_PROOF'):
+            self.check_current({**policy, 'physicalReserveBytes': 1024**3}, lower_floor)
+
+    def test_current_receipt_retains_full_scope_freshness_and_guest_floor(self):
+        policy, receipt = self.current_capacity_fixture()
+        with self.assertRaisesRegex(RuntimeError, 'HOST_PHYSICAL_CAPACITY_PROOF'):
+            self.check_current({**policy, 'expectedRootPaths': policy['expectedRootPaths'][:-1]}, receipt)
+        with self.assertRaisesRegex(RuntimeError, 'FRESH_COMPLETE_HOST_BUDGET'):
+            self.check_current(policy, {**receipt, 'scopeNarrowed': True})
+        with self.assertRaisesRegex(RuntimeError, 'FRESH_COMPLETE_HOST_BUDGET'):
+            self.check_current(policy, receipt, clock_ages=[120.001])
+        for starting, free in [(True, 1024**3 + 64 * 1024**2 - 1), (False, 1024**3 - 1)]:
+            with self.subTest(starting=starting), self.assertRaisesRegex(RuntimeError, 'APPLICATION_RESOURCE_ADMISSION'):
+                self.check_current(policy, receipt, starting=starting, free=free)
 
 
 if __name__ == '__main__':

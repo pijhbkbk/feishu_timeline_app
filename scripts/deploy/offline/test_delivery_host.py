@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import sys
 import tempfile
+import types
 import unittest
 from unittest.mock import patch
 
@@ -136,5 +137,144 @@ class HostTests(unittest.TestCase):
             m.bounded([sys.executable,'-I','-B','-c','import os,time;os.write(1,b"before-close");os.close(1);os.close(2);time.sleep(5)'],{'PATH':'/usr/bin:/bin'},self.root,.2,64)
         self.assertEqual(str(caught.exception),'CHECK_TRANSPORT_TIMEOUT')
         self.assertEqual(caught.exception.stdout,b'before-close')
+
+    def current_budget_policy(self):
+        backing = self.root.parent / 'budget-lima'
+        backing.mkdir(exist_ok=True)
+        disk = backing / 'diffdisk'
+        disk.write_bytes(b'isolated virtual-disk metadata fixture\n')
+        return {'kind': 'OFFLINE_HOST_BUDGET_SCOPE_V1',
+                'limit': m.MAX_APPROVED_LIMIT,
+                'authorizedLimits': [m.MAX_APPROVED_LIMIT],
+                'expectedRootPaths': [str(self.root), str(backing)],
+                'physicalReserveBytes': 10 * 1024**3,
+                'physicalWritePaths': [str(self.root), str(backing)],
+                'virtualDiskPath': str(disk),
+                'capacityReaderSha256': m.sha((HERE / 'delivery_host.py').read_bytes()),
+                'reader': {'dependencies': [{'name': 'delivery_host.py',
+                           'sha256': m.sha((HERE / 'delivery_host.py').read_bytes())}]}}
+
+    def available_space(self, available):
+        return types.SimpleNamespace(f_bavail=available, f_frsize=1)
+
+    def test_current_40_budget_uses_real_du_and_deduplicates_same_volume(self):
+        policy = self.current_budget_policy()
+        window = 64 * 1024**2
+        available = policy['physicalReserveBytes'] + window
+        with patch.object(m.os, 'statvfs', return_value=self.available_space(available)):
+            result = m.budget(policy, self.root, [], approved_limit=m.MAX_APPROVED_LIMIT,
+                              additional_bytes=window)
+        self.assertGreater(result['totalAllocatedBytes'], 0)
+        self.assertEqual([row['path'] for row in result['rows']], policy['expectedRootPaths'])
+        self.assertEqual(result['totalAllocatedBytes'], sum(row['allocatedBytes'] for row in result['rows']))
+        self.assertEqual(result['readerSha256'], m.sha((HERE / 'delivery_host.py').read_bytes()))
+        self.assertEqual(result['authorizedLimits'], [m.MAX_APPROVED_LIMIT])
+        self.assertFalse(result['scopeNarrowed'])
+        physical = result['physicalCapacity']
+        self.assertEqual((physical['reserveBytes'], physical['additionalBytes']),
+                         (10 * 1024**3, window))
+        self.assertEqual(len(physical['filesystems']), 1)
+        volume = physical['filesystems'][0]
+        self.assertEqual(volume['paths'], policy['physicalWritePaths'])
+        self.assertEqual(volume['afterAdditionalBytes'], 10 * 1024**3)
+        self.assertEqual(volume['additionalBytes'], window)
+
+    def test_current_budget_requires_explicit_authorization_and_rejects_above_maximum(self):
+        policy = self.current_budget_policy()
+        with self.assertRaisesRegex(RuntimeError, 'COMPLETE_BUDGET_POLICY'):
+            m.budget(policy, self.root, [])
+        for invalid in (m.MAX_APPROVED_LIMIT + 1, True, float(m.MAX_APPROVED_LIMIT)):
+            with self.subTest(invalid=invalid), self.assertRaisesRegex(RuntimeError, 'APPROVED_BUDGET_LIMIT'):
+                m.budget({**policy, 'limit': invalid}, self.root, [], approved_limit=invalid)
+        for allowed in (None, [], [m.MAX_APPROVED_LIMIT + 1]):
+            changed = {**policy, 'authorizedLimits': allowed}
+            with self.subTest(allowed=allowed), self.assertRaisesRegex(RuntimeError, 'EXPLICIT_CURRENT_AUTHORIZATION'):
+                m.budget(changed, self.root, [], approved_limit=m.MAX_APPROVED_LIMIT)
+
+    def test_current_software_reserve_and_write_window_have_exact_boundary(self):
+        policy = self.current_budget_policy()
+        window = 64 * 1024**2
+        used = m.MAX_APPROVED_LIMIT - 64 * 1024**2 - window
+        def du(argv, *args):
+            allocated = used if argv[-1] == str(self.root) else 0
+            return 0, str(allocated // 1024).encode(), b''
+        with patch.object(m, 'bounded', side_effect=du), \
+             patch.object(m.os, 'statvfs', return_value=self.available_space(20 * 1024**3)):
+            result = m.budget(policy, self.root, [], approved_limit=m.MAX_APPROVED_LIMIT,
+                              additional_bytes=window)
+            self.assertEqual(result['totalAllocatedBytes'] + result['reserve'] + window,
+                             m.MAX_APPROVED_LIMIT)
+            with self.assertRaisesRegex(RuntimeError, 'HOST_PREFLIGHT_CAPACITY'):
+                m.budget(policy, self.root, [], approved_limit=m.MAX_APPROVED_LIMIT,
+                         additional_bytes=window + 1)
+        for invalid in (-1, True, 1.0, m.MAX_APPROVED_LIMIT + 1):
+            with self.subTest(invalid=invalid), self.assertRaisesRegex(RuntimeError, 'ADDITIONAL_WRITE_BOUND'):
+                m.budget(policy, self.root, [], approved_limit=m.MAX_APPROVED_LIMIT,
+                         additional_bytes=invalid)
+
+    def test_current_physical_floor_plus_window_minus_one_is_rejected(self):
+        policy = self.current_budget_policy()
+        window = 64 * 1024**2
+        available = policy['physicalReserveBytes'] + window - 1
+        with patch.object(m.os, 'statvfs', return_value=self.available_space(available)):
+            with self.assertRaisesRegex(RuntimeError, 'HOST_PHYSICAL_CAPACITY'):
+                m.budget(policy, self.root, [], approved_limit=m.MAX_APPROVED_LIMIT,
+                         additional_bytes=window)
+
+    def test_current_different_filesystems_each_keep_their_physical_floor(self):
+        policy = self.current_budget_policy()
+        backing = Path(policy['physicalWritePaths'][1])
+        original_stat = Path.stat
+        window = 64 * 1024**2
+        floor = policy['physicalReserveBytes']
+        def stat(path, *args, **kwargs):
+            observed = original_stat(path, *args, **kwargs)
+            if path == backing:
+                values = list(observed)
+                values[2] += 1
+                return os.stat_result(values)
+            return observed
+        def space(path):
+            return self.available_space(floor + window if path == backing else floor + window + 1024)
+        with patch.object(Path, 'stat', new=stat), patch.object(m.os, 'statvfs', side_effect=space):
+            result = m.budget(policy, self.root, [], approved_limit=m.MAX_APPROVED_LIMIT,
+                              additional_bytes=window)
+        self.assertEqual(len(result['physicalCapacity']['filesystems']), 2)
+        def insufficient(path):
+            return self.available_space(floor + window - 1 if path == backing else floor + window + 1024)
+        with patch.object(Path, 'stat', new=stat), patch.object(m.os, 'statvfs', side_effect=insufficient):
+            with self.assertRaisesRegex(RuntimeError, 'HOST_PHYSICAL_CAPACITY'):
+                m.budget(policy, self.root, [], approved_limit=m.MAX_APPROVED_LIMIT,
+                         additional_bytes=window)
+
+    def test_current_physical_paths_require_backing_disk_and_complete_scope(self):
+        policy = self.current_budget_policy()
+        cases = [
+            ({**policy, 'physicalWritePaths': [str(self.root)]}, 'PHYSICAL_VIRTUAL_DISK_SCOPE'),
+            ({**policy, 'expectedRootPaths': [str(self.root)]}, 'PHYSICAL_WRITE_SCOPE'),
+            ({**policy, 'physicalWritePaths': policy['physicalWritePaths'][1:]}, 'PHYSICAL_OUTPUT_SCOPE'),
+        ]
+        missing_disk = dict(policy)
+        missing_disk.pop('virtualDiskPath')
+        cases.append((missing_disk, 'PHYSICAL_VIRTUAL_DISK_SCOPE'))
+        with patch.object(m.os, 'statvfs', return_value=self.available_space(20 * 1024**3)):
+            for changed, code in cases:
+                with self.subTest(code=code), self.assertRaisesRegex(RuntimeError, code):
+                    m.budget(changed, self.root, [], approved_limit=m.MAX_APPROVED_LIMIT)
+
+    def test_actual_disk_mount_cannot_use_parent_filesystem_space(self):
+        policy = self.current_budget_policy()
+        disk = Path(policy['virtualDiskPath'])
+        original_stat = Path.stat
+        def stat(path, *args, **kwargs):
+            observed = original_stat(path, *args, **kwargs)
+            if path == disk:
+                values = list(observed); values[2] += 1
+                return os.stat_result(values)
+            return observed
+        with patch.object(Path, 'stat', new=stat), \
+             patch.object(m.os, 'statvfs', return_value=self.available_space(20*1024**3)):
+            with self.assertRaisesRegex(RuntimeError, 'PHYSICAL_UNDECLARED_FILESYSTEM'):
+                m.budget(policy, self.root, [], approved_limit=m.MAX_APPROVED_LIMIT)
 
 if __name__=='__main__':unittest.main()

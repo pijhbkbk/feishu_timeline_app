@@ -20,6 +20,7 @@ import time
 import types
 
 LIMIT = 24 * 1024**3
+MAX_APPROVED_LIMIT = 40 * 1024**3
 PROGRAMS = {'new-instance-config': 'prepare_instance.py',
             'runtime-dependencies': 'install_runtime_debs.py',
             'signature-refresh': 'refresh_signatures.py',
@@ -109,13 +110,62 @@ def bounded(argv, env, cwd, timeout, cap):
         process.stdout.close(); process.stderr.close()
 
 
-def budget(policy, root, allowed_absent, *, approved_limit=LIMIT):
+def physical_capacity(policy, root, additional_bytes):
+    floor = policy.get('physicalReserveBytes')
+    paths = policy.get('physicalWritePaths')
+    need(type(floor) is int and floor >= 10*1024**3 and
+         isinstance(paths, list) and 1 <= len(paths) <= 32 and
+         len(paths) == len(set(paths)), 'PHYSICAL_POLICY')
+    need(any(root.is_relative_to(Path(value)) for value in paths), 'PHYSICAL_OUTPUT_SCOPE')
+    disk = Path(policy.get('virtualDiskPath', ''))
+    need(disk.is_absolute() and disk.resolve(strict=True) == disk and disk.is_file() and
+         any(disk.is_relative_to(Path(value)) for value in paths), 'PHYSICAL_VIRTUAL_DISK_SCOPE')
+    volumes = {}
+    for value in paths:
+        path = Path(value)
+        need(path.is_absolute() and path.resolve(strict=True) == path and
+             any(path.is_relative_to(Path(scope)) for scope in policy['expectedRootPaths']),
+             'PHYSICAL_WRITE_SCOPE')
+        device = path.stat().st_dev
+        space = os.statvfs(path)
+        available = space.f_bavail * space.f_frsize
+        need(available - additional_bytes >= floor, 'HOST_PHYSICAL_CAPACITY')
+        if device not in volumes:
+            volumes[device] = {'device': device, 'paths': [], 'availableBytes': available,
+                               'additionalBytes': additional_bytes,
+                               'afterAdditionalBytes': available - additional_bytes}
+        row = volumes[device]
+        row['paths'].append(value)
+        row['availableBytes'] = min(row['availableBytes'], available)
+        row['afterAdditionalBytes'] = row['availableBytes'] - additional_bytes
+    for target in (root, disk):
+        device = target.stat().st_dev
+        need(device in volumes, 'PHYSICAL_UNDECLARED_FILESYSTEM')
+        space = os.statvfs(target)
+        available = space.f_bavail * space.f_frsize
+        need(available - additional_bytes >= floor, 'HOST_PHYSICAL_CAPACITY')
+        volumes[device]['availableBytes'] = min(volumes[device]['availableBytes'], available)
+        volumes[device]['afterAdditionalBytes'] = volumes[device]['availableBytes'] - additional_bytes
+    return {'reserveBytes': floor, 'additionalBytes': additional_bytes,
+            'filesystems': list(volumes.values())}
+
+
+def budget(policy, root, allowed_absent, *, approved_limit=LIMIT, additional_bytes=0):
     roots = policy['expectedRootPaths']
     # A policy file cannot grant a higher ceiling. Only the reviewed caller can
     # select an explicitly granted retention allowance; legacy callers keep 24.
-    # The owner approved 25.25 GiB for the same scope on 2026-11-03.
-    need(type(approved_limit) is int and approved_limit in (LIMIT, 49*1024**3//2, 25*1024**3, 101*1024**3//4,51*1024**3//2),
+    need(type(approved_limit) is int and approved_limit in
+         (LIMIT, 49*1024**3//2, 25*1024**3, 101*1024**3//4, 51*1024**3//2, MAX_APPROVED_LIMIT),
          'APPROVED_BUDGET_LIMIT')
+    need(type(additional_bytes) is int and 0 <= additional_bytes <= approved_limit,
+         'ADDITIONAL_WRITE_BOUND')
+    current = approved_limit == MAX_APPROVED_LIMIT
+    need(not current or policy.get('authorizedLimits') == [MAX_APPROVED_LIMIT],
+         'EXPLICIT_CURRENT_AUTHORIZATION')
+    need(not current or (policy.get('capacityReaderSha256') == sha(read(Path(__file__).resolve())) and
+         {'name': 'delivery_host.py', 'sha256': policy['capacityReaderSha256']} in
+         policy.get('reader', {}).get('dependencies', [])),
+         'CURRENT_CAPACITY_READER')
     need(policy['kind'] == 'OFFLINE_HOST_BUDGET_SCOPE_V1' and policy['limit'] == approved_limit and
          1 <= len(roots) <= 4096 and len(roots) == len(set(roots)), 'COMPLETE_BUDGET_POLICY')
     need(isinstance(allowed_absent, list) and len(allowed_absent) <= 1 and
@@ -135,10 +185,14 @@ def budget(policy, root, allowed_absent, *, approved_limit=LIMIT):
         rows.append({'path': value, 'allocatedBytes': int(out.split()[0])*1024})
     need(all(not p.exists() and not p.is_symlink() for p in absent), 'ABSENT_ROOT_CHANGED')
     total = sum(r['allocatedBytes'] for r in rows)
-    need(total + 64*1024**2 <= approved_limit, 'HOST_PREFLIGHT_CAPACITY')
-    return {'at': dt.datetime.now(dt.timezone.utc).isoformat(), 'rows': rows,
+    need(total + 64*1024**2 + additional_bytes <= approved_limit, 'HOST_PREFLIGHT_CAPACITY')
+    physical = physical_capacity(policy, root, additional_bytes) if current else None
+    result = {'at': dt.datetime.now(dt.timezone.utc).isoformat(), 'rows': rows,
             'totalAllocatedBytes': total, 'limit': approved_limit, 'reserve': 64*1024**2,
             'scopeNarrowed': False, 'readerSha256': sha(read(Path(__file__).resolve()))}
+    if current:
+        result.update(authorizedLimits=policy['authorizedLimits'], physicalCapacity=physical)
+    return result
 
 
 def prepare(root, manifest_sha, binding, entry, preflight):

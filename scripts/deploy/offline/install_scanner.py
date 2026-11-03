@@ -59,7 +59,7 @@ BOOT = SCANNER_RUN = CONFIG_SHA = CONFIG_TEXT = LIBRARY_PATH = None
 TARGET_BINDING = {}
 DATA_ROWS = {}; NATIVE_LIBRARIES = {}; CURRENT_INDEX = {}; DATA_OWNERS = {}; PREVIOUS_OWNERS = {}
 BASE_LIBRARY_UPDATES = {}
-BASE_UPDATE_VERIFIER_SHA = '6efd9402e40d859fc0fa3be2aa6e6f3e3e2e549ef9c0be855f207e6a069edb6e'
+BASE_UPDATE_VERIFIER_SHA = 'ad2838eb35fc2dcf6c5b5df2c21b96dd0a1c50fba9b98f44930791ed343172bf'
 OUT = None; REPORT = {}
 RUNTIME_ENTRIES_SHA = '69d9a25cd9fac988f50fcc5f65c554e65829409ba903e9b705eb7d8d4d5782a1'
 # Frozen 3941 application manifest pins Next 15.5.28; Next rewrites its process title.
@@ -1414,9 +1414,10 @@ def fixed_owners(require_stopped=False):
 
 
 def budget(initial=False, *, approved_limit=HOST_CAP):
-    need(type(approved_limit) is int and approved_limit in (HOST_CAP,49*1024**3//2,25*1024**3,101*1024**3//4,51*1024**3//2),
-         'APPROVED_BUDGET_LIMIT')
+    need(type(approved_limit) is int and approved_limit > 0, 'APPROVED_BUDGET_LIMIT')
     policy, policy_meta = read_json(HERE/'host-budget-policy.json', TARGET_BINDING['budgetPolicySha256'], 4*1024**2)
+    allowed = policy.get('authorizedLimits', (HOST_CAP,49*1024**3//2,25*1024**3,101*1024**3//4,51*1024**3//2))
+    need(approved_limit in allowed, 'APPROVED_BUDGET_LIMIT')
     need(policy.get('kind') == 'OFFLINE_HOST_BUDGET_SCOPE_V1' and policy.get('limit') == approved_limit,
          'BUDGET_POLICY_KIND')
     roots = policy.get('expectedRootPaths'); reader = policy.get('reader', {})
@@ -1438,6 +1439,19 @@ def budget(initial=False, *, approved_limit=HOST_CAP):
          type(b.get('totalAllocatedBytes')) is int and sum(x['allocatedBytes'] for x in rows) == b['totalAllocatedBytes'],
          'FRESH_FULL_HOST_BUDGET')
     used = allocation()['totalAllocatedBytes']; reserve = WINDOW_BYTES-used
+    if 'authorizedLimits' in policy:
+        physical = b.get('physicalCapacity', {})
+        volumes = physical.get('filesystems', [])
+        need(allowed == [approved_limit] and b.get('authorizedLimits') == allowed and
+             re.fullmatch('[a-f0-9]{64}', policy.get('capacityReaderSha256', '')) is not None and
+             b.get('readerSha256') == policy.get('capacityReaderSha256') and
+             {'name': 'delivery_host.py', 'sha256': policy.get('capacityReaderSha256')} in deps and
+             physical.get('reserveBytes') == policy.get('physicalReserveBytes', 0) >= 10*1024**3 and
+             type(physical.get('additionalBytes')) is int and physical['additionalBytes'] >= reserve and
+             volumes and {p for v in volumes for p in v.get('paths', [])} == set(policy.get('physicalWritePaths', [])) and
+             all(v.get('additionalBytes') == physical['additionalBytes'] and type(v.get('availableBytes')) is int and
+                 v.get('afterAdditionalBytes') == v['availableBytes']-physical['additionalBytes'] >= physical['reserveBytes']
+                 for v in volumes), 'HOST_PHYSICAL_CAPACITY_PROOF')
     need(reserve >= 0 and b['totalAllocatedBytes']+reserve+64*1024**2 <= approved_limit and
          shutil.disk_usage(HOME).free >= FLOOR+reserve, 'FRESH_WINDOW_RESERVATION')
     REPORT['budgetAdmission'] = {'receipt': meta, 'policy': policy_meta, 'ageSeconds': age,

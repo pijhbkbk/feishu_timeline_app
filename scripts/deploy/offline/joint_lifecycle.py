@@ -505,9 +505,16 @@ def prepare_runtime(value):
     rv.initialize(False)
     # This explicit caller allowance never changes historical configuration pins.
     allowance = getattr(ctx['args'], 'approved_host_limit_bytes', 49*1024**3//2)
-    need(type(allowance) is int and allowance in (49*1024**3//2,25*1024**3,101*1024**3//4,51*1024**3//2), 'APPROVED_HOST_LIMIT')
+    host_policy = ctx['binding'].get('hostBudgetPolicy')
+    allowed = host_policy.get('authorizedLimits', []) if host_policy else (49*1024**3//2,25*1024**3,101*1024**3//4,51*1024**3//2)
+    need(type(allowance) is int and allowance in allowed, 'APPROVED_HOST_LIMIT')
+    if host_policy:
+        need(host_policy.get('expectedRootPaths') == ctx['binding']['budgetRootPaths'] and
+             host_policy.get('capacityReaderSha256') == ctx['binding']['files']['delivery_host.py']['sha256'],
+             'BOUND_HOST_BUDGET_POLICY')
     if allowance != 49*1024**3//2:
-        rv.observe.resources = functools.partial(rv.observe.resources, approved_limit=allowance)
+        rv.observe.resources = functools.partial(rv.observe.resources, approved_limit=allowance,
+                                                host_policy=host_policy)
     _,old_id,old_env=rv.validate_existing_configuration()
     if recovery:o.SHARED=current_recovery_services(m,plan,rv.base,value)
     need(not {'NODE_OPTIONS','NODE_PATH','LD_PRELOAD'}&set(old_env),'ENVIRONMENT_INJECTION')

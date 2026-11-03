@@ -149,12 +149,48 @@ class ConfigurationGuards(unittest.TestCase):
             with patch.object(m,'pinned',side_effect=[policy,receipt]),patch.object(m.shutil,'disk_usage',return_value=types.SimpleNamespace(free=2*1024**3)):
                 with self.assertRaisesRegex(RuntimeError,'FRESH_COMPLETE_BUDGET'):m.budget({'budgetPolicy':{}},{},approved_limit=limit)
         for invalid in (True,-1,26*1024**3,float(25*1024**3)):
-            with self.assertRaisesRegex(RuntimeError,'APPROVED_BUDGET_LIMIT'):m.budget({}, {},approved_limit=invalid)
+            policy, receipt = self.budget_inputs()
+            with patch.object(m, 'pinned', side_effect=[policy, receipt]):
+                with self.assertRaisesRegex(RuntimeError,'APPROVED_BUDGET_LIMIT'):
+                    m.budget({'budgetPolicy': {}}, {}, approved_limit=invalid)
 
     def test_payload_only_cannot_enter_native_admission(self):
         with patch.object(m, 'pinned', return_value={'status': 'FIXED_RUNTIME_PAYLOAD_EXTRACTED_AND_READBACK_VERIFIED'}):
             with self.assertRaisesRegex(RuntimeError, 'FULL_NATIVE_DEPENDENCIES'):
                 m.native_admission({'dependencyReceipt': {'sha256': m.DEPS_SHA}}, types.SimpleNamespace())
+
+    def test_current_budget_binds_physical_proof_and_phase_window(self):
+        policy, receipt = self.budget_inputs()
+        cap, floor, window = 40*1024**3, 10*1024**3, 320*1024**2
+        digest = 'd'*64
+        policy.update(limit=cap, authorizedLimits=[cap], capacityReaderSha256=digest,
+                      physicalReserveBytes=floor, physicalWritePaths=['/synthetic-output', '/synthetic-vm'])
+        policy['reader']['dependencies'] = [{'name': 'delivery_host.py', 'sha256': digest}]
+        receipt.update(limit=cap, authorizedLimits=[cap], readerSha256=digest,
+                       reader=copy.deepcopy(policy['reader']),
+                       physicalCapacity={'reserveBytes': floor, 'additionalBytes': window,
+                                         'filesystems': [{'device': 1, 'paths': policy['physicalWritePaths'],
+                                                          'availableBytes': floor+window, 'additionalBytes': window,
+                                                          'afterAdditionalBytes': floor}]})
+        def call(observed, supplied_policy=policy, guest_free=2*1024**3):
+            with patch.object(m, 'pinned', side_effect=[supplied_policy, observed]), \
+                 patch.object(m.shutil, 'disk_usage', return_value=types.SimpleNamespace(free=guest_free)):
+                return m.budget({'budgetPolicy': {}}, {}, approved_limit=cap, additional_bytes=window)
+        self.assertEqual(call(receipt)['limit'], cap)
+        for field in ('readerSha256', 'physicalCapacity', 'authorizedLimits'):
+            bad = copy.deepcopy(receipt); bad.pop(field)
+            with self.subTest(field=field), self.assertRaisesRegex(RuntimeError, 'HOST_PHYSICAL_CAPACITY_PROOF'):
+                call(bad)
+        bad = copy.deepcopy(receipt); bad['physicalCapacity']['additionalBytes'] -= 1
+        with self.assertRaisesRegex(RuntimeError, 'HOST_PHYSICAL_CAPACITY_PROOF'): call(bad)
+        bad = copy.deepcopy(receipt)
+        bad['physicalCapacity']['filesystems'][0]['availableBytes'] -= 1
+        bad['physicalCapacity']['filesystems'][0]['afterAdditionalBytes'] -= 1
+        with self.assertRaisesRegex(RuntimeError, 'HOST_PHYSICAL_CAPACITY_PROOF'): call(bad)
+        missing = copy.deepcopy(policy); missing['reader']['dependencies'] = []
+        with self.assertRaisesRegex(RuntimeError, 'HOST_PHYSICAL_CAPACITY_PROOF'): call(receipt, missing)
+        with self.assertRaisesRegex(RuntimeError, 'FRESH_COMPLETE_BUDGET'):
+            call(receipt, guest_free=1024**3+m.RESERVE-1)
 
     def test_existing_object_dependencies_and_privileged_role_are_rejected(self):
         state = {'kind': 'A2_DATABASE_READONLY_STATE_VERIFIED', 'at': dt.datetime.now(dt.timezone.utc).isoformat(),

@@ -351,6 +351,46 @@ class ScannerRetentionBudgetTests(unittest.TestCase):
     def test_explicit_25_half_limit_and_both_remaining_window_floors(self):
         self.check_explicit_limit_and_floors(51*1024**3//2)
 
+    def test_current_budget_binds_reader_physical_and_remaining_scanner_window(self):
+        cap, floor = 40*1024**3, 10*1024**3
+        used = 64*1024**2
+        remaining = m.WINDOW_BYTES-used
+        roots = ['/r'+str(i) for i in range(376)]
+        reader = {'entrySha256': 'a'*64, 'dependencies': [{'name': 'delivery_host.py', 'sha256': 'b'*64}]}
+        policy = {'kind': 'OFFLINE_HOST_BUDGET_SCOPE_V1', 'limit': cap, 'expectedRootPaths': roots,
+                  'reader': reader, 'authorizedLimits': [cap], 'capacityReaderSha256': 'b'*64,
+                  'physicalReserveBytes': floor, 'physicalWritePaths': roots[:2]}
+        total = cap-remaining-64*1024**2
+        receipt = {'at': dt.datetime.now(dt.timezone.utc).isoformat(), 'scopeNarrowed': False,
+                   'reader': reader, 'readerSha256': 'b'*64, 'authorizedLimits': [cap], 'limit': cap,
+                   'rows': [{'path': p, 'allocatedBytes': total if i == 0 else 0} for i,p in enumerate(roots)],
+                   'totalAllocatedBytes': total,
+                   'physicalCapacity': {'reserveBytes': floor, 'additionalBytes': remaining,
+                                        'filesystems': [{'device': 1, 'paths': roots[:2],
+                                                         'availableBytes': floor+remaining,
+                                                         'additionalBytes': remaining, 'afterAdditionalBytes': floor}]}}
+        def call(observed, guest=m.FLOOR+remaining):
+            with patch.object(m, 'TARGET_BINDING', {'budgetPolicySha256': D}), \
+                 patch.object(m, 'BUDGET_SHA', D), patch.object(m, 'REPORT', {}), \
+                 patch.object(m, 'read_json', side_effect=[(policy, {'sha256': D}), (observed, {'sha256': D})]), \
+                 patch.object(m, 'allocation', return_value={'totalAllocatedBytes': used}), \
+                 patch.object(m.shutil, 'disk_usage', return_value=types.SimpleNamespace(free=guest)):
+                m.budget(approved_limit=cap)
+                return m.REPORT['budgetAdmission']
+        self.assertEqual(call(receipt)['approvedLimitBytes'], cap)
+        for field in ('readerSha256', 'physicalCapacity', 'authorizedLimits'):
+            bad = copy.deepcopy(receipt); bad.pop(field)
+            with self.subTest(field=field), self.assertRaisesRegex(RuntimeError, 'HOST_PHYSICAL_CAPACITY_PROOF'):
+                call(bad)
+        bad = copy.deepcopy(receipt); bad['physicalCapacity']['additionalBytes'] -= 1
+        with self.assertRaisesRegex(RuntimeError, 'HOST_PHYSICAL_CAPACITY_PROOF'): call(bad)
+        bad = copy.deepcopy(receipt)
+        bad['physicalCapacity']['filesystems'][0]['availableBytes'] -= 1
+        bad['physicalCapacity']['filesystems'][0]['afterAdditionalBytes'] -= 1
+        with self.assertRaisesRegex(RuntimeError, 'HOST_PHYSICAL_CAPACITY_PROOF'): call(bad)
+        with self.assertRaisesRegex(RuntimeError, 'FRESH_WINDOW_RESERVATION'):
+            call(receipt, m.FLOOR+remaining-1)
+
     def check_explicit_limit_and_floors(self, limit):
         roots=['/r'+str(i) for i in range(376)]
         reader={'entrySha256':'a'*64,'dependencies':[{'name':'reader','sha256':'b'*64}]}

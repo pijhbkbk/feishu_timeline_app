@@ -288,15 +288,31 @@ def native_admission(b, c, base_update_refs=None):
             'currentBaseUpdate': update_evidence, 'historicalEvidenceBootId': evidence_boot}
 
 
-def budget(b, budget_ref, *, approved_limit=24*1024**3):
+def budget(b, budget_ref, *, approved_limit=24*1024**3, additional_bytes=RESERVE):
     # The reviewed caller selects an owner-approved allowance; policy cannot.
-    need(type(approved_limit) is int and approved_limit in (24*1024**3,49*1024**3//2,25*1024**3),
-         'APPROVED_BUDGET_LIMIT')
+    need(type(approved_limit) is int and approved_limit > 0, 'APPROVED_BUDGET_LIMIT')
     policy = pinned(b['budgetPolicy'])
+    allowed = policy.get('authorizedLimits', (24*1024**3,49*1024**3//2,25*1024**3))
+    need(approved_limit in allowed, 'APPROVED_BUDGET_LIMIT')
     receipt = pinned(budget_ref)
     roots = policy.get('expectedRootPaths', [])
     rows = receipt.get('rows', [])
     age = (dt.datetime.now(dt.timezone.utc) - dt.datetime.fromisoformat(receipt['at'])).total_seconds()
+    if 'authorizedLimits' in policy:
+        physical = receipt.get('physicalCapacity', {})
+        volumes = physical.get('filesystems', [])
+        need(type(additional_bytes) is int and additional_bytes >= 0 and
+             allowed == [approved_limit] and receipt.get('authorizedLimits') == allowed and
+             re.fullmatch('[a-f0-9]{64}', policy.get('capacityReaderSha256', '')) is not None and
+             receipt.get('readerSha256') == policy.get('capacityReaderSha256') and
+             {'name': 'delivery_host.py', 'sha256': policy.get('capacityReaderSha256')} in policy.get('reader', {}).get('dependencies', []) and
+             physical.get('reserveBytes') == policy.get('physicalReserveBytes', 0) >= 10*1024**3 and
+             type(physical.get('additionalBytes')) is int and physical['additionalBytes'] >= additional_bytes and
+             volumes and {p for v in volumes for p in v.get('paths', [])} == set(policy.get('physicalWritePaths', [])) and
+             all(v.get('additionalBytes') == physical['additionalBytes'] and type(v.get('availableBytes')) is int and
+                 v.get('afterAdditionalBytes') == v['availableBytes']-physical['additionalBytes'] >= physical['reserveBytes']
+                 for v in volumes) and receipt['totalAllocatedBytes']+RESERVE+additional_bytes <= approved_limit,
+             'HOST_PHYSICAL_CAPACITY_PROOF')
     need(policy.get('kind') == 'OFFLINE_HOST_BUDGET_SCOPE_V1' and policy.get('limit') == approved_limit and
          4 <= len(roots) <= 4096 and len(roots) == len(set(roots)) and 0 <= age <= 120 and
          receipt.get('scopeNarrowed') is False and receipt.get('reader') == policy.get('reader') and

@@ -211,7 +211,8 @@ def operation_budget(m, binding, generation, args):
     if 'executionBudgetPolicy' in binding:
         context['budgetPolicy'] = binding['executionBudgetPolicy']
     result = m.budget(context, {'path':args.budget, 'bytes':Path(args.budget).stat().st_size,
-                              'sha256':args.budget_sha256}, approved_limit=approved)
+                              'sha256':args.budget_sha256}, approved_limit=approved,
+                      additional_bytes=WINDOW)
     need(result['hostAllocatedBytes']+WINDOW+result['reservedBytes'] <= approved and
          m.shutil.disk_usage(HOME).free >= FLOOR+WINDOW, 'REFRESH_CAPACITY')
     result['configurationBudgetPolicy'] = generation['budgetPolicy']

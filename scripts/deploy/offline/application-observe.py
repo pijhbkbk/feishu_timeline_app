@@ -2,8 +2,9 @@
 from pathlib import Path
 import datetime,hashlib,os,re,shutil,stat,time
 
-def resources(m,base,budget_sha,starting=False,*,approved_limit=49*1024**3//2):
- m.need(type(approved_limit) is int and approved_limit in (49*1024**3//2,25*1024**3,101*1024**3//4,51*1024**3//2),'APPROVED_HOST_LIMIT')
+def resources(m,base,budget_sha,starting=False,*,approved_limit=49*1024**3//2,host_policy=None):
+ allowed=host_policy.get('authorizedLimits',[]) if host_policy else (49*1024**3//2,25*1024**3,101*1024**3//4,51*1024**3//2)
+ m.need(type(approved_limit) is int and approved_limit in allowed,'APPROVED_HOST_LIMIT')
  m.need(re.fullmatch('[a-f0-9]{64}',budget_sha or '') is not None,'FRESH_BUDGET_ARGUMENT')
  b=m.pinned(m.INPUT/('budget-'+budget_sha+'.json'),budget_sha,4*1024**2)
  sampled_at=datetime.datetime.fromisoformat(b['at'])
@@ -18,6 +19,22 @@ def resources(m,base,budget_sha,starting=False,*,approved_limit=49*1024**3//2):
  m.need(0<=age<=120 and b.get('scopeNarrowed') is False and b.get('round30RootsIncluded') is True and b.get('limit')==approved_limit and sum(r['allocatedBytes'] for r in b['rows'])==b['totalAllocatedBytes'],'FRESH_COMPLETE_HOST_BUDGET')
  m.need({'/Users/lixiaochen/.lima-tcr24','/Users/lixiaochen/Library/Caches/lima','/opt/homebrew/Cellar/lima'}<={r['path'] for r in b['rows']},'FULL_HOST_BUDGET_ROOTS')
  reserve=64*1024**2 if starting else 0;free=shutil.disk_usage('/home/recovery').free
+ if host_policy:
+  physical=b.get('physicalCapacity',{})
+  rows=physical.get('filesystems',[])
+  m.need(host_policy.get('limit')==approved_limit and allowed==[approved_limit] and
+         re.fullmatch('[a-f0-9]{64}',host_policy.get('capacityReaderSha256','')) is not None and
+         {'name':'delivery_host.py','sha256':host_policy['capacityReaderSha256']} in host_policy.get('reader',{}).get('dependencies',[]) and
+         b.get('authorizedLimits')==allowed and b.get('readerSha256')==host_policy.get('capacityReaderSha256') and
+         [row['path'] for row in b['rows']]==host_policy.get('expectedRootPaths') and
+         physical.get('reserveBytes')==host_policy.get('physicalReserveBytes',0)>=10*1024**3 and
+         type(physical.get('additionalBytes')) is int and physical['additionalBytes']>=reserve and
+         rows and {path for row in rows for path in row.get('paths',[])}==set(host_policy.get('physicalWritePaths',[])) and
+         all(row.get('additionalBytes')==physical['additionalBytes'] and
+             type(row.get('availableBytes')) is int and
+             row.get('afterAdditionalBytes')==row['availableBytes']-physical['additionalBytes']>=physical['reserveBytes'] for row in rows),
+         'HOST_PHYSICAL_CAPACITY_PROOF')
+  m.need(b['totalAllocatedBytes']+64*1024**2+reserve<=approved_limit,'HOST_PHASE_CAPACITY')
  mem={k:int(v.split()[0])*1024 for k,v in (l.split(':',1) for l in Path('/proc/meminfo').read_text().splitlines()) if k in ('MemAvailable','MemTotal')}
  m.need(b['totalAllocatedBytes']+64*1024**2<=approved_limit and free>=1024**3+reserve and mem['MemAvailable']>=(1536 if starting else 256)*1024**2,'APPLICATION_RESOURCE_ADMISSION')
  total=0;count=0;pending=[base.LOGS] if base.LOGS.exists() else []

@@ -215,6 +215,41 @@ class HostTests(unittest.TestCase):
             self.assertEqual(len(result['rows']),376)
             self.assertEqual(result['reserve'],64*1024**2)
 
+    def test_current_joint_budget_calls_central_reader_with_exact_phase_window(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            disk = root/'disk'; disk.write_bytes(b'fixture')
+            roots = [str(root), '/Users/lixiaochen/Library/Caches/lima']
+            raw = (HERE/'delivery_host.py').read_bytes()
+            digest = host.sha(raw)
+            policy = {'kind': 'OFFLINE_HOST_BUDGET_SCOPE_V1', 'limit': 40*1024**3,
+                      'authorizedLimits': [40*1024**3], 'expectedRootPaths': roots,
+                      'capacityReaderSha256': digest,
+                      'reader': {'dependencies': [{'name': 'delivery_host.py', 'sha256': digest}]},
+                      'physicalReserveBytes': 10*1024**3, 'physicalWritePaths': [str(root)],
+                      'virtualDiskPath': str(disk)}
+            host.state.update(pins={'files': {'delivery_host.py': {'sha256': digest}},
+                                    'budgetRootPaths': roots, 'hostBudgetPolicy': policy},
+                              approvedHostLimitBytes=policy['limit'])
+            captured = {}
+            with patch.object(host, 'OP', root), \
+                 patch.object(host.os, 'statvfs', return_value=types.SimpleNamespace(f_bavail=20*1024**3, f_frsize=1)), \
+                 patch.object(host, 'save', side_effect=lambda name, value: captured.update({name: value})), \
+                 patch.object(host, 'own_run', return_value=types.SimpleNamespace(
+                     returncode=0, stderr=b'', stdout=b'EXCLUSIVE_0600_VERIFIED\n')):
+                reader = host.load_budget_host()
+                for phase in ('prepare', 'switch-post-stop', 'switch-post-verify'):
+                    host.state['phase'] = phase
+                    reader.budget(phase, host.INPUT, 64*1024**2)
+                    observed = json.loads(captured[phase+'.budget.json'])
+                    self.assertEqual(observed['physicalCapacity']['additionalBytes'],
+                                     0 if phase == 'switch-post-verify' else 64*1024**2)
+                    self.assertEqual(observed['limit'], policy['limit'])
+                    self.assertEqual([row['path'] for row in observed['rows']], roots)
+                policy['expectedRootPaths'] = roots[:-1]
+                with self.assertRaisesRegex(host.Failure, 'BOUND_HOST_BUDGET_POLICY'):
+                    reader.budget('changed-roots', host.INPUT, 64*1024**2)
+
 
 class CandidateContinuationTests(unittest.TestCase):
     def setUp(self):
