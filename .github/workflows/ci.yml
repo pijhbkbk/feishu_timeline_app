@@ -60,6 +60,7 @@ jobs:
         id: tests
         run: |
           pnpm test
+          node --test scripts/deploy/export-ci-images.test.mjs
           PYTHONDONTWRITEBYTECODE=1 timeout 120s python3 -m unittest discover -s scripts/deploy/gce-host -p 'test_*.py' -v
           PYTHONDONTWRITEBYTECODE=1 timeout 120s python3 -m unittest discover -s scripts/deploy/tests -p 'test_*.py' -v
 
@@ -110,6 +111,40 @@ jobs:
       - name: Scan Production Container Images
         id: images
         run: bash scripts/security/scan-production-images.sh feishu-timeline-api:ci feishu-timeline-web:ci
+
+      - name: Build migration image for manual delivery
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          docker build --platform linux/amd64 --target ops \
+            --build-arg BUILD_SOURCE_COMMIT="$BUILD_SOURCE_COMMIT" \
+            --build-arg BUILD_SOURCE_TREE="$BUILD_SOURCE_TREE" \
+            --build-arg BUILD_RELEASE="$BUILD_RELEASE" \
+            --build-arg BUILD_TIME="$BUILD_TIME" \
+            -t feishu-timeline-api-ops:ci -f apps/api/Dockerfile .
+
+      - name: Scan migration image for manual delivery
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          SECURITY_REPORT_DIR: reports/security/ops-image-sca
+        run: bash scripts/security/scan-production-images.sh feishu-timeline-api-ops:ci
+
+      - name: Export verified manual delivery images
+        if: github.event_name == 'workflow_dispatch'
+        run: node scripts/deploy/export-ci-images.mjs
+
+      - name: Retain manual delivery images
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: delivery-images-${{ github.run_id }}-${{ github.run_attempt }}
+          retention-days: 7
+          if-no-files-found: error
+          overwrite: false
+          path: |
+            reports/ci-delivery/manifest.json
+            reports/ci-delivery/api.tar
+            reports/ci-delivery/web.tar
+            reports/ci-delivery/api-ops.tar
 
       - name: Collect redacted CI evidence
         id: evidence
