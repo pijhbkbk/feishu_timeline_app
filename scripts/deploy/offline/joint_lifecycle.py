@@ -84,6 +84,18 @@ TARGETS = {
         'deltaSha256': '0afc682f8976d4e8be8455cc287b20e282390109d1d0e5dab4043c8ff366a25b',
         'bootId': '589fefa8-c3d5-477d-a597-7303774115c9',
     },
+    'dateb2e94df': {
+        'identity': {
+            'sourceCommit': 'b2e94dffdf924be0eb564148723940664028a30e',
+            'sourceTree': '3cc22086db440b689122fc991d9cebd6b139820c',
+            'release': 'truck-utc-json-b2e94dffdf92-r01',
+            'buildTime': '2026-11-03T04:51:08Z',
+        },
+        'application': '/home/recovery/application-date-json-b2e94df-r01',
+        'delta': '/home/recovery/input-date-lifecycle-20261103-r01/delta',
+        'deltaSha256': '945fdd6faa75979dd88f3f5d7aa77565ad5a22cb89ec79fd8be091dc4f0e4bbc',
+        'bootId': '589fefa8-c3d5-477d-a597-7303774115c9',
+    },
 }
 ctx = {}
 

@@ -99,6 +99,19 @@ NUMERIC_INPUTS = {
     'inputs/composite-application-manifest.json': 'a7a39435f19047fa9fdf34df248609d771bf6e0b6d4a19b26e9719c623a78fff',
 }
 
+DATE_IDENTITY = {
+    'sourceCommit': 'b2e94dffdf924be0eb564148723940664028a30e',
+    'sourceTree': '3cc22086db440b689122fc991d9cebd6b139820c',
+    'release': 'truck-utc-json-b2e94dffdf92-r01',
+    'buildTime': '2026-11-03T04:51:08Z',
+}
+DATE_INPUTS = {
+    **JOINT_INPUTS,
+    'delta/manifest.json': '945fdd6faa75979dd88f3f5d7aa77565ad5a22cb89ec79fd8be091dc4f0e4bbc',
+    'delta/application-delta.tar.gz': '587ebdef19cb11abe1cd34b80a8725d05717492ef764214c315dcd4c8775e3b1',
+    'inputs/composite-application-manifest.json': 'e307aee89ad1b5424445f4dac4ae0fbc4d62de51cfab8be933975a7a86d5298e',
+}
+
 
 def need(ok, code):
     if not ok:
@@ -162,7 +175,8 @@ def check(root, manifest_sha):
                   else SAVE_INPUTS if identity == SAVE_IDENTITY
                   else MENU_INPUTS if identity == MENU_IDENTITY
                   else MENU_SAVE_INPUTS if identity == MENU_SAVE_IDENTITY
-                  else NUMERIC_INPUTS if identity == NUMERIC_IDENTITY else None)
+                  else NUMERIC_INPUTS if identity == NUMERIC_IDENTITY
+                  else DATE_INPUTS if identity == DATE_IDENTITY else None)
         need(inputs is not None and
              manifest.get('requiredBaseDeliveryManifestSha256') == JOINT_BASE_DELIVERY and
              manifest.get('standalone') is False, 'JOINT_MANIFEST_CONTRACT')
