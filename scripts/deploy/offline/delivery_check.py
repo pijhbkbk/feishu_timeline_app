@@ -86,6 +86,20 @@ MENU_SAVE_INPUTS = {
 }
 
 
+NUMERIC_IDENTITY = {
+    'sourceCommit': 'b7b8d13190758654697c47d9c582a37e8ceba7e4',
+    'sourceTree': '9d405dfa5dbaa87e707889cce5bfed658266fffe',
+    'release': 'truck-numeric-json-b7b8d1319075-r01',
+    'buildTime': '2026-11-03T02:03:27Z',
+}
+NUMERIC_INPUTS = {
+    **JOINT_INPUTS,
+    'delta/manifest.json': '0afc682f8976d4e8be8455cc287b20e282390109d1d0e5dab4043c8ff366a25b',
+    'delta/application-delta.tar.gz': '8dfa2b799e68da9251a4ba392d985d3bcaba89d6149378048dc9eec05ada6cae',
+    'inputs/composite-application-manifest.json': 'a7a39435f19047fa9fdf34df248609d771bf6e0b6d4a19b26e9719c623a78fff',
+}
+
+
 def need(ok, code):
     if not ok:
         raise RuntimeError('CHECK_' + code)
@@ -147,7 +161,8 @@ def check(root, manifest_sha):
                   else WORKBOOK_INPUTS if identity == WORKBOOK_IDENTITY
                   else SAVE_INPUTS if identity == SAVE_IDENTITY
                   else MENU_INPUTS if identity == MENU_IDENTITY
-                  else MENU_SAVE_INPUTS if identity == MENU_SAVE_IDENTITY else None)
+                  else MENU_SAVE_INPUTS if identity == MENU_SAVE_IDENTITY
+                  else NUMERIC_INPUTS if identity == NUMERIC_IDENTITY else None)
         need(inputs is not None and
              manifest.get('requiredBaseDeliveryManifestSha256') == JOINT_BASE_DELIVERY and
              manifest.get('standalone') is False, 'JOINT_MANIFEST_CONTRACT')

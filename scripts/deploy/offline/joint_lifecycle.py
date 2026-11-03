@@ -72,6 +72,18 @@ TARGETS = {
         'delta':'/home/recovery/input-menu-save-lifecycle-20261102-r01/delta',
         'deltaSha256':'3f89102e84cf5482ca6dc490d5b941664a5053ab3c337787e8a74dd309caf4de',
         'bootId':'589fefa8-c3d5-477d-a597-7303774115c9'},
+    'numericb7b8d13': {
+        'identity': {
+            'sourceCommit': 'b7b8d13190758654697c47d9c582a37e8ceba7e4',
+            'sourceTree': '9d405dfa5dbaa87e707889cce5bfed658266fffe',
+            'release': 'truck-numeric-json-b7b8d1319075-r01',
+            'buildTime': '2026-11-03T02:03:27Z',
+        },
+        'application': '/home/recovery/application-numeric-json-b7b8d13-r01',
+        'delta': '/home/recovery/input-numeric-lifecycle-20261103-r01/delta',
+        'deltaSha256': '0afc682f8976d4e8be8455cc287b20e282390109d1d0e5dab4043c8ff366a25b',
+        'bootId': '589fefa8-c3d5-477d-a597-7303774115c9',
+    },
 }
 ctx = {}
 

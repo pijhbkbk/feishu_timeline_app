@@ -262,7 +262,8 @@ class CandidateContinuationTests(unittest.TestCase):
             return value
         self.binding=binding
         with patch.object(m,'BOOT',current_boot),patch.object(m,'ROOT',self.root),patch.object(m,'read',side_effect=lambda p,*a:Path(p).read_bytes()):
-            for source,target in [('menud9d00d2','menusavee299057'),('menusavee299057','menud9d00d2')]:
+            for source,target in [('menud9d00d2','menusavee299057'),('menusavee299057','menud9d00d2'),
+                                  ('menusavee299057','numericb7b8d13'),('numericb7b8d13','menusavee299057')]:
                 digest,result=self.stopped(source,target)
                 self.assertEqual(m.state(digest),result)
                 self.assertEqual(m.APP,Path(m.TARGETS[target]['application']))
@@ -272,6 +273,31 @@ class CandidateContinuationTests(unittest.TestCase):
                 with self.assertRaises(RuntimeError):m.state(digest)
             bad=binding('menusavee299057');bad['identity']={**bad['identity'],'sourceCommit':'f'*40}
             with self.assertRaisesRegex(RuntimeError,'BINDING_SCOPE'):m.bind_target(bad)
+
+    def test_numeric_candidate_rejects_invalid_predecessor_and_identity(self):
+        current_boot = m.TARGETS['numericb7b8d13']['bootId']
+        original_binding = self.binding
+
+        def binding(target):
+            value = original_binding(target)
+            value['runtimeRecovery'] = {
+                'kind': 'SAME_INSTANCE_NEW_BOOT_BINDING_V1', 'bootId': current_boot,
+                'previousState': {}, 'pg': {}, 'redis': {}, 'scanner': {}, 'proxy': {},
+            }
+            return value
+
+        self.binding = binding
+        with patch.object(m, 'BOOT', current_boot), patch.object(m, 'ROOT', self.root), \
+             patch.object(m, 'read', side_effect=lambda path, *args: Path(path).read_bytes()):
+            for change in [{'status': 'JOINT_LIFECYCLE_RUNNING'}, {'status': 'FAILED_PRESERVED'},
+                           {'owners': {'api': owner('api')}}, {'bootId': 'wrong'}]:
+                digest, _ = self.stopped('menusavee299057', 'numericb7b8d13', change)
+                with self.assertRaises(RuntimeError):
+                    m.state(digest)
+            bad = binding('numericb7b8d13')
+            bad['identity'] = {**bad['identity'], 'sourceCommit': 'f' * 40}
+            with self.assertRaisesRegex(RuntimeError, 'BINDING_SCOPE'):
+                m.bind_target(bad)
 
     def test_foreign_running_failed_pending_and_wrong_boot_are_rejected(self):
         with patch.object(m,'ROOT',self.root),patch.object(m,'read',side_effect=lambda p,*a:Path(p).read_bytes()):
@@ -295,6 +321,23 @@ class CandidateContinuationTests(unittest.TestCase):
         for module in [m,host]:
             self.assertIsNone(module.timing_config(None,'menusavee299057','start','menu-save-start-r01'))
             with self.assertRaisesRegex(Exception,'TIMING_SCOPE'):module.timing_config('{}','menusavee299057','start','menu-save-start-r01')
+
+    def test_numeric_host_input_is_exact_and_diagnostic_stays_off(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location('numeric_host', Path(__file__).with_name('joint_lifecycle_host.py'))
+        host = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(host)
+        target = 'numericb7b8d13'
+        path = '/home/recovery/input-numeric-lifecycle-20261103-r01'
+        self.assertEqual(host.target_input(target, path), path)
+        self.assertEqual(host.TARGET_BOOTS[target], m.TARGETS[target]['bootId'])
+        for other in [path + '-extra', '/home/recovery/input-menu-save-lifecycle-20261102-r01']:
+            with self.assertRaisesRegex(Exception, 'HOST_INPUT_DIRECTORY'):
+                host.target_input(target, other)
+        for module in [m, host]:
+            self.assertIsNone(module.timing_config(None, target, 'start', 'numeric-start-r01'))
+            with self.assertRaisesRegex(Exception, 'TIMING_SCOPE'):
+                module.timing_config('{}', target, 'start', 'numeric-start-r01')
 
     def test_wrong_predecessor_and_nonstart_cannot_adopt(self):
         with patch.object(m,'ROOT',self.root),patch.object(m,'read',side_effect=lambda p,*a:Path(p).read_bytes()):
