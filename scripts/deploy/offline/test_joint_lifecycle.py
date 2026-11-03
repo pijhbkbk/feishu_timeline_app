@@ -414,6 +414,12 @@ class CandidateContinuationTests(unittest.TestCase):
                          '/home/recovery/input-date-lifecycle-20261103-r02')
         self.assertEqual(host.target_input(target, '/home/recovery/input-date-lifecycle-20261103-r03'),
                          '/home/recovery/input-date-lifecycle-20261103-r03')
+        self.assertEqual(host.target_input(target, '/home/recovery/input-date-lifecycle-20261103-r04'),
+                         '/home/recovery/input-date-lifecycle-20261103-r04')
+        with self.assertRaisesRegex(Exception, 'HOST_INPUT_DIRECTORY'):
+            host.target_input(target, '/home/recovery/input-date-lifecycle-20261103-r04-extra')
+        with self.assertRaisesRegex(Exception, 'HOST_INPUT_DIRECTORY'):
+            host.target_input('menud9d00d2', '/home/recovery/input-date-lifecycle-20261103-r04')
         self.assertEqual(host.TARGET_BOOTS[target], m.TARGETS[target]['bootId'])
         for other in [path + '-extra', '/home/recovery/input-menu-save-lifecycle-20261102-r01']:
             with self.assertRaisesRegex(Exception, 'HOST_INPUT_DIRECTORY'):
@@ -654,7 +660,7 @@ class SaveTimingTests(unittest.TestCase):
                 with self.assertRaisesRegex(Exception, 'TIMING_SCOPE'):
                     self.invoke(module, target='dateb2e94df', action=action)
         with self.assertRaisesRegex(Exception, 'HOST_INPUT_DIRECTORY'):
-            host.target_input('dateb2e94df', '/home/recovery/input-date-lifecycle-20261103-r04')
+            host.target_input('dateb2e94df', '/home/recovery/input-date-lifecycle-20261103-r05')
 
     def test_date_timing_is_api_only_and_default_off(self):
         original = {'LOCAL_RUNTIME_PROFILE': 'loopback-https', 'NODE_ENV': 'production',
