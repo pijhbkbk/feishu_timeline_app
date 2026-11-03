@@ -350,7 +350,10 @@ def signature_sources():
         return SOURCE_SOFTWARE/'scanner/signatures', CVD_PINS, None
     if TARGET_BINDING['kind'] == 'OFFLINE_SCANNER_TARGET_V3':
         return local_signature_sources()
-    pin=TARGET_BINDING['signatureRefreshReceipt']
+    return official_refresh_sources(TARGET_BINDING['signatureRefreshReceipt'])
+
+
+def official_refresh_sources(pin, current_boot=False):
     value,meta=read_json(Path(pin['path']),pin['sha256'],1024**2)
     root=target_path(value.get('output'),True)
     need(root.name.startswith('offline-signatures-') and Path(pin['path'])==root/'result.json' and
@@ -360,6 +363,7 @@ def signature_sources():
          value.get('officialMirror')=='database.clamav.net' and value.get('maximumAttempts')==1 and
          value.get('tlsVerificationDisabled') is False and value.get('servicesStarted') is False and
          value.get('oldSignatureFilesChanged') is False, 'VERIFIED_SIGNATURE_REFRESH')
+    if current_boot:need(value.get('bootId') == BOOT, 'MAINTENANCE_REFRESH_CURRENT_BOOT')
     commands=value.get('commands',[])
     need(len(commands)==4 and {r.get('name') for r in commands}=={'freshclam-once','verify-main','verify-daily','verify-bytecode'} and
          all(r.get('exitCode')==0 and r.get('cleanup',{}).get('exited') is True and r.get('forceKill') is False for r in commands), 'SIGNATURE_REFRESH_COMMANDS')
@@ -495,7 +499,7 @@ def pins():
     return value
 
 
-def package():
+def package(maintenance_refresh=None):
     bound = pins(); directory(SOFTWARE, False)
     app, _ = read_json(SOFTWARE/'assembly-result.json', APP_RECEIPT_SHA)
     rt, _ = read_json(SOFTWARE/'runtime-assembly-result.json', RUNTIME_RECEIPT_SHA)
@@ -536,7 +540,11 @@ def package():
     for key in required:
         need(NATIVE_LIBRARIES.get(str(SOFTWARE/key), {}).get('sha256') == checked[key]['sha256'], 'CLAM_ROOT_NATIVE_BINDING')
     need(file_info(LOADER, 8*1024**2, owner=0)['sha256'] == LOADER_SHA, 'EXACT_LOADER')
-    _,signature_pins,refresh_ref=signature_sources()
+    if maintenance_refresh is None:
+        _,signature_pins,refresh_ref=signature_sources()
+    else:
+        _,signature_pins,refresh_ref=official_refresh_sources(maintenance_refresh, current_boot=True)
+        REPORT['maintenanceOfficialRefresh']=refresh_ref
     if refresh_ref is None:
         source_manifest, _ = read_json(SOURCE_SOFTWARE/'MANIFEST.json', BASE_MANIFEST_SHA, 16*1024**2)
         source_rows = {x['path']: x for x in source_manifest['entries']}

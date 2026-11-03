@@ -74,4 +74,59 @@ class RefreshAdmission(unittest.TestCase):
    else:start['signatureImportReceipt']['sha256']='0'*64
    with self.subTest(key=key),self.assertRaises(RuntimeError):s.verify_refreshed(*args)
 
+
+
+
+class MaintenanceV4Admission(unittest.TestCase):
+ def maintained_fixture(self):
+  args=RefreshAdmission().local_fixture();proofs,start,verify,identity,boot,now=args
+  start['runtime']['signatures']=copy.deepcopy(start['runtime']['signatures'])
+  start['runtime']['config']={'path':str(s.NEW_ROOT/'scanner/clamd.conf'),'sha256':'9'*64}
+  current=copy.deepcopy(start['runtime']['signatures'])
+  current[1]['version']+=1;current[1]['sha256']='8'*64
+  verify['runtime']['signatures']=copy.deepcopy(current)
+  verify['runtime']['config']=copy.deepcopy(start['runtime']['config'])
+  loadedref={'path':str(s.MAINTENANCE_ROOT/'reload-result.json'),'sha256':'7'*64}
+  maintref={'path':str(s.MAINTENANCE_ROOT/'acceptance.json'),'sha256':'6'*64}
+  clientref={'path':str(s.MAINTENANCE_ROOT/'client-two/result.json'),'sha256':'5'*64}
+  loaded={'kind':'SAME_PROCESS_OFFICIAL_SIGNATURE_MAINTENANCE_V1',
+   'status':'SAME_PROCESS_RELOAD_READBACK_VERIFIED_CLIENT_PENDING','identity':identity,'currentBootId':boot,
+   'process':start['process'],'originalStart':proofs['startRef'],'originalImport':proofs['refreshRef'],
+   'target':str(s.NEW_ROOT/'scanner-db'),'config':start['runtime']['config'],'oldFilesPreserved':True,
+   'automaticRollback':False,'serviceStopOrStart':False,'signatures':current,
+   'runtime':{'signatures':copy.deepcopy(current)},'finishedAt':'2027-01-15T08:00:00+00:00',
+   'reload':{'attempts':1,'ack':'RELOADING','ackIsCompletion':False,'loadedSignatures':15,
+    'suffixSha256':'4'*64,'oldPrefixBytes':100,'daemonLogAfter':{'prefixBytes':200}}}
+  accepted={'kind':'SAME_PROCESS_SIGNATURE_MAINTENANCE_ACCEPTANCE_V1',
+   'status':'SAME_PROCESS_MAINTENANCE_CLIENT_VERIFIED','identity':identity,'currentBootId':boot,
+   'originalStart':proofs['startRef'],'originalImport':proofs['refreshRef'],'process':start['process'],
+   'client':clientref,'reloadResult':loadedref,'runtime':{'signatures':copy.deepcopy(current)},
+   'finishedAt':'2027-01-15T08:00:03+00:00'}
+  client=proofs['client'];client['identity']=client['compiledIdentity']=s.CLIENT_IDENTITY
+  client.update(maintenanceReceipt=loadedref,startedAt='2027-01-15T08:00:01+00:00',
+   finishedAt='2027-01-15T08:00:02+00:00',overallDeadlineMs=60000,
+   clientNode='/home/recovery/offline-software-r30-3941bec-r01/runtime/node24/bin/node')
+  for row in client['cases']:row['actual']['signatureVersion']=str(current[1]['version'])
+  client['loadedScanner']['signatureVersion']=str(current[1]['version'])
+  verify['signatureMaintenanceReceipt']=maintref
+  proofs.update(sourceKind='SAME_PROCESS_MAINTENANCE_V1',acceptance=accepted,reload=loaded,
+   maintenanceRef=maintref,clientRef=clientref)
+  return args
+ def test_current_b2_client_after_same_owner_reload_accepted(self):
+  args=self.maintained_fixture();s.verify_refreshed(*args)
+  self.assertNotEqual(args[1]['runtime']['signatures'],args[2]['runtime']['signatures'])
+ def test_old_start_not_rewritten_and_invalid_active_proofs_rejected(self):
+  for key in ('start','accepted','ack','loaded','clientId','owner','verifyRef','time','expired'):
+   args=self.maintained_fixture();proofs,start,verify,*_=args
+   if key=='start':start['runtime']['signatures'][1]['sha256']='f'*64
+   elif key=='accepted':proofs['acceptance']['status']='FAILED_PRESERVED'
+   elif key=='ack':proofs['reload']['reload']['ackIsCompletion']=True
+   elif key=='loaded':proofs['reload']['reload']['loadedSignatures']=0
+   elif key=='clientId':proofs['client']['identity']={'sourceCommit':'old'}
+   elif key=='owner':proofs['acceptance']['process']={'pid':999}
+   elif key=='verifyRef':verify['signatureMaintenanceReceipt']['sha256']='0'*64;proofs['maintenanceRef']={'path':str(s.MAINTENANCE_ROOT/'acceptance.json'),'sha256':'6'*64}
+   elif key=='time':proofs['client']['startedAt']='2027-01-15T07:59:59+00:00'
+   else:args[-1]+=172801
+   with self.subTest(key=key),self.assertRaises(RuntimeError):s.verify_refreshed(*args)
+
 if __name__=='__main__':unittest.main()
