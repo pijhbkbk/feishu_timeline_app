@@ -126,6 +126,21 @@ SAVE_IDLE_INPUTS = {
 }
 
 
+CALENDAR_IDENTITY = {
+    'sourceCommit': '1bf3c131bd647bff700b631af514237453c57f90',
+    'sourceTree': 'ae61f4e06a9d914c0d6eefc40862e99cdbcf6d67',
+    'release': 'truck-calendar-1bf3c131bd64-r01',
+    'buildTime': '2026-11-03T14:34:13Z',
+}
+CALENDAR_INPUTS = {
+    **JOINT_INPUTS,
+    'operations/application_delta.py': 'fdad3c9a1e28171a29e518af9d86af687cdd14e6245565d62a1746f095607da9',
+    'delta/manifest.json': 'be0d00b1cc6320af0a1b8fce5d83a16d6d01df3a3d20edc83b828282d5bcd006',
+    'delta/application-delta.tar.gz': '85210cfbc83617e8218cc70e7e6ff0c47c9f38942181556b434ef9acabe933f6',
+    'inputs/composite-application-manifest.json': '25982811fdc4c668ae0c2c8f55ce0d98ebbff48dc0a2a94beefde24b3206a371',
+}
+
+
 def need(ok, code):
     if not ok:
         raise RuntimeError('CHECK_' + code)
@@ -190,7 +205,8 @@ def check(root, manifest_sha):
                   else MENU_SAVE_INPUTS if identity == MENU_SAVE_IDENTITY
                   else NUMERIC_INPUTS if identity == NUMERIC_IDENTITY
                   else DATE_INPUTS if identity == DATE_IDENTITY
-                  else SAVE_IDLE_INPUTS if identity == SAVE_IDLE_IDENTITY else None)
+                  else SAVE_IDLE_INPUTS if identity == SAVE_IDLE_IDENTITY
+                  else CALENDAR_INPUTS if identity == CALENDAR_IDENTITY else None)
         need(inputs is not None and
              manifest.get('requiredBaseDeliveryManifestSha256') == JOINT_BASE_DELIVERY and
              manifest.get('standalone') is False, 'JOINT_MANIFEST_CONTRACT')

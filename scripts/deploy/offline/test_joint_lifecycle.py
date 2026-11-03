@@ -300,7 +300,8 @@ class CandidateContinuationTests(unittest.TestCase):
             for source,target in [('menud9d00d2','menusavee299057'),('menusavee299057','menud9d00d2'),
                                   ('menusavee299057','numericb7b8d13'),('numericb7b8d13','menusavee299057'),
                                   ('numericb7b8d13','dateb2e94df'),('dateb2e94df','numericb7b8d13'),
-                                  ('dateb2e94df','saveidle460ded4'),('saveidle460ded4','dateb2e94df')]:
+                                  ('dateb2e94df','saveidle460ded4'),('saveidle460ded4','dateb2e94df'),
+                                  ('saveidle460ded4','calendar1bf3c13'),('calendar1bf3c13','saveidle460ded4')]:
                 digest,result=self.stopped(source,target)
                 self.assertEqual(m.state(digest),result)
                 self.assertEqual(m.APP,Path(m.TARGETS[target]['application']))
@@ -426,6 +427,30 @@ class CandidateContinuationTests(unittest.TestCase):
             self.assertIsNone(module.timing_config(None, target, 'start', 'save-idle-start-r01'))
             with self.assertRaisesRegex(Exception, 'TIMING_SCOPE'):
                 module.timing_config('{}', target, 'start', 'save-idle-start-r01')
+
+    def test_calendar_target_has_exact_input_identity_and_no_timing_override(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location('calendar_host', Path(__file__).with_name('joint_lifecycle_host.py'))
+        host = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(host)
+        target = 'calendar1bf3c13'
+        path = '/home/recovery/input-calendar-lifecycle-20261103-r01'
+        self.assertEqual(host.target_input(target, path), path)
+        self.assertEqual(host.TARGET_BOOTS[target], m.TARGETS[target]['bootId'])
+        self.assertEqual(m.TARGETS[target]['identity']['sourceCommit'],
+                         '1bf3c131bd647bff700b631af514237453c57f90')
+        self.assertEqual(m.TARGETS[target]['deltaSha256'],
+                         'be0d00b1cc6320af0a1b8fce5d83a16d6d01df3a3d20edc83b828282d5bcd006')
+        for other in [path + '-extra', path.replace('r01', 'r02'),
+                      '/home/recovery/input-date-lifecycle-20261103-r04']:
+            with self.assertRaisesRegex(Exception, 'HOST_INPUT_DIRECTORY'):
+                host.target_input(target, other)
+        with self.assertRaisesRegex(Exception, 'HOST_INPUT_DIRECTORY'):
+            host.target_input('dateb2e94df', path)
+        for module in (m, host):
+            self.assertIsNone(module.timing_config(None, target, 'start', 'calendar-start-r01'))
+            with self.assertRaisesRegex(Exception, 'TIMING_SCOPE'):
+                module.timing_config('{}', target, 'start', 'calendar-start-r01')
 
     def test_date_host_input_is_exact_and_timing_requires_valid_config(self):
         import importlib.util

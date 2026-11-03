@@ -115,7 +115,12 @@ class DeliveryTests(unittest.TestCase):
     def test_save_idle_identity_cannot_retag_previous_delta(self):
         self.check_identity_cannot_retag_previous_delta(m.SAVE_IDLE_IDENTITY, 'SAVE_IDLE_INPUTS')
 
-    def check_identity_cannot_retag_previous_delta(self,new_identity,pins_name):
+    def test_calendar_identity_binds_new_consumer_and_cannot_retag_previous_delta(self):
+        consumer = Path(__file__).with_name('application_delta.py').read_bytes()
+        self.assertEqual(m.CALENDAR_INPUTS['operations/application_delta.py'], hashlib.sha256(consumer).hexdigest())
+        self.check_identity_cannot_retag_previous_delta(m.CALENDAR_IDENTITY, 'CALENDAR_INPUTS', ['operations/application_delta.py'])
+
+    def check_identity_cannot_retag_previous_delta(self,new_identity,pins_name,additional_changes=()):
         names=[*m.JOINT_INPUTS,'INSTALL.md','operations/delivery_check.py']
         rows=[];payloads={}
         for name in names:
@@ -124,6 +129,7 @@ class DeliveryTests(unittest.TestCase):
             rows.append({'path':name,'bytes':len(raw),'sha256':hashlib.sha256(raw).hexdigest()})
         oldpins={r['path']:r['sha256'] for r in rows if r['path'] in m.JOINT_INPUTS}
         changed=['delta/manifest.json','delta/application-delta.tar.gz','inputs/composite-application-manifest.json']
+        changed.extend(additional_changes)
         newpins={**oldpins,**{name:hashlib.sha256(b'new '+payloads[name]).hexdigest() for name in changed}}
         self.manifest.update(kind='R30_MATERIALIZED_APPLICATION_DELTA_DELIVERY_V1',
             applicationIdentity=m.JOINT_IDENTITY.copy(),requiredBaseDeliveryManifestSha256=m.JOINT_BASE_DELIVERY,

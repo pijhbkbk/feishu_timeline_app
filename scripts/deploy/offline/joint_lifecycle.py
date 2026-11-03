@@ -108,6 +108,18 @@ TARGETS = {
         'deltaSha256': '08a4fab308c3367c0caa84edbe77aecadc0127bfa1dc32b9e2923959f448d9d6',
         'bootId': '589fefa8-c3d5-477d-a597-7303774115c9',
     },
+    'calendar1bf3c13': {
+        'identity': {
+            'sourceCommit': '1bf3c131bd647bff700b631af514237453c57f90',
+            'sourceTree': 'ae61f4e06a9d914c0d6eefc40862e99cdbcf6d67',
+            'release': 'truck-calendar-1bf3c131bd64-r01',
+            'buildTime': '2026-11-03T14:34:13Z',
+        },
+        'application': '/home/recovery/application-calendar-1bf3c13-r01',
+        'delta': '/home/recovery/input-calendar-lifecycle-20261103-r01/delta',
+        'deltaSha256': 'be0d00b1cc6320af0a1b8fce5d83a16d6d01df3a3d20edc83b828282d5bcd006',
+        'bootId': '589fefa8-c3d5-477d-a597-7303774115c9',
+    },
 }
 ctx = {}
 
