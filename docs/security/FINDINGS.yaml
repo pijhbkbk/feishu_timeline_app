@@ -7462,7 +7462,7 @@
     {
       "id": "R28-V1-XLSX-NAMESPACE-BOUND-001",
       "title": "XLSX preflight flattens XML attributes and can hide allocation bounds from ExcelJS",
-      "status": "fixed_diff_verified",
+      "status": "closed",
       "severity": "medium",
       "confidence": "high",
       "classification": "pre_existing",
@@ -7569,12 +7569,39 @@
           "notes": "Independent exact final3-file review and100test rerun; root merge blobs confirmed. Full security clearance and runtime acceptance not claimed. Supplemental exact one-test-file independent review SHA2bb634d023b0c0409552656bb4d2d854a2af3487ccbaf372a14331d32db2c56b, independent30pass0skip, matches committed4e5e9ab test SHA3046682218f0fb4985d59a481ad4bc4dd104c3a3a01cec0dbde54146c8346bbf. Production repair review remains valid by unchanged bytes; no new100-test review or artifact rebuild claimed. Production normalizer subsequently changed in2eede76 for real native Excel metadata compatibility; new independent exact two-file review SHA c79761a6c73d5815dd5888f82b2679fae6d803a248778a46ca114551c77dac50 and committed blob appendix SHA e960730450a37094ee8aaab0ca6b484285d246a8d2f6cbbb6c7263684aeeda09 are stored at var/truck-color-v1-20261020/office-native-metadata-20261022/{independent-review,committed-review}.json. Independent29+45 frozen-source tests passed; later single-line test sentinel reviewed and root final45 log verified, not represented as rerun29+45 under new test hash. Existing allocation/namespace/ZIP guards remain intact; status stays fixed_diff_verified, no full/security/product clearance. Previous binding cef82c528980198dfbae62a6e5acdb94bb7cbdda / result 33b80ce207de096b5fb1394a310d9824bb01006f3b4b2432da5d88df84e59542 retained as historical; current binding advances only after independently verified full allocation paths in 01b4bbdb198a0c0fb324fdded5cb1c8b7bc3146a. Same-cluster additional path defect was confirmed by actual consumer tracing, repaired and independently verified during this follow-up. Existing transition enum does not represent reopening a fixed_diff_verified entry; no unsupported or fabricated transition was added. The rejected uncommitted draft and failed validation are retained in nested-core-paths-20261022. New verification binding records exact final source; status remains focused fixed_diff_verified, not full/closed. Compatibility follow-up exact three-file independent review at var/truck-color-v1-20261020/final-execution-20261024-r01/r22-xlsx-mc-path-review-r01/review.json SHAa763bde7ca221070747b0e2e401bafa845976d289c22eeea7761a7a56c0e2d04 binds final e3e7392 parser/test hashes, with no confirmed blocker. Old source/fix bindings stay historical; status remains fixed_diff_verified, full/runtime/release acceptance separate."
         },
         "full_regression": {
-          "status": "pending",
-          "binding": null,
-          "notes": "No whole-repository security clearance, final candidate runtime, Office or browser acceptance is established."
+          "status": "pass",
+          "binding": {
+            "commit": "2d79aaafb090dca11220efa02fda9af60dbb01de",
+            "tree": "d4e9d83f3bb9799a36635bca86995cbc5b9e56a6",
+            "tool_name": "Candidate CI and independent XLSX evidence applicability review",
+            "tool_version": "GitHub CI41656565260 attempt1; Semgrep1.169.0/Gitleaks8.30.1/Trivy0.72.0/pnpm9.15.4; local runtime1bf3 separately bound",
+            "command": "Existing verify/security-source workflow; bounded source/Office/runtime evidence reuse; no repeated Office or namespace test execution",
+            "environment": "Linux/amd64 github-hosted current2d79; selected app inputs identical to actual Linux/arm64 local1bf3; authorized local recovery scope; production/owner acceptance separate",
+            "result_sha256": "ad2fea40cce95af026378c05de11819d5da11d9ae396247cd3dba140f42a2508",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/ci-xlsx-applicability-r01.json",
+            "config_sha256": "ad2c346dd522b7500faf2eae87cf27378fa96cb37cb8565a4abf55cfbd5984b1",
+            "recorded_at": "2026-11-03T15:12:20.763564+00:00"
+          },
+          "notes": "Exact current candidate required CI and source/image security results, namespace/test unchanged from e3e7392, xlsx.ts unchanged from3941, dependencies unchanged; actual native Excel/roundtrip evidence and current1bf3 runtime/full saved readback remain applicable per independent bounded review. Original failures retained. Dynamic rule content hash, per-image DB identity/freshness policy and branch protection remain explicitly uncaptured/outside this frozen finding closure; no whole-system no-vulnerability or production/owner claim."
         }
       },
-      "closure": null,
+      "closure": {
+        "closed_by": "Codex root after independent read-only applicability verification",
+        "closed_at": "2026-11-03T15:12:20.763564+00:00",
+        "criterion": "Exact current candidate required CI and source/image security results, namespace/test unchanged from e3e7392, xlsx.ts unchanged from3941, dependencies unchanged; actual native Excel/roundtrip evidence and current1bf3 runtime/full saved readback remain applicable per independent bounded review. Original failures retained. Dynamic rule content hash, per-image DB identity/freshness policy and branch protection remain explicitly uncaptured/outside this frozen finding closure; no whole-system no-vulnerability or production/owner claim.",
+        "binding": {
+          "commit": "2d79aaafb090dca11220efa02fda9af60dbb01de",
+          "tree": "d4e9d83f3bb9799a36635bca86995cbc5b9e56a6",
+          "tool_name": "Candidate CI and independent XLSX evidence applicability review",
+          "tool_version": "GitHub CI41656565260 attempt1; Semgrep1.169.0/Gitleaks8.30.1/Trivy0.72.0/pnpm9.15.4; local runtime1bf3 separately bound",
+          "command": "Existing verify/security-source workflow; bounded source/Office/runtime evidence reuse; no repeated Office or namespace test execution",
+          "environment": "Linux/amd64 github-hosted current2d79; selected app inputs identical to actual Linux/arm64 local1bf3; authorized local recovery scope; production/owner acceptance separate",
+          "result_sha256": "ad2fea40cce95af026378c05de11819d5da11d9ae396247cd3dba140f42a2508",
+          "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/ci-xlsx-applicability-r01.json",
+          "config_sha256": "ad2c346dd522b7500faf2eae87cf27378fa96cb37cb8565a4abf55cfbd5984b1",
+          "recorded_at": "2026-11-03T15:12:20.763564+00:00"
+        }
+      },
       "history": [
         {
           "at": "2026-10-22T05:31:10.526Z",
@@ -7644,6 +7671,44 @@
             "environment": "Separate independent_review context;100pass/0skip; no new confirmed blocker. Merged source identity record SHA5db8bb2e542e8ee8157a0cd0d3aeb853fe08a85d2be0a8a8382aa4592f874dfe. No release/product approval.",
             "result_sha256": "33b80ce207de096b5fb1394a310d9824bb01006f3b4b2432da5d88df84e59542",
             "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/namespace-20261022/v1-xlsx-namespaces-20261022-independent-review.json"
+          }
+        },
+        {
+          "at": "2026-11-03T15:12:20.763564+00:00",
+          "transition": "fixed_diff_verified->fixed_full_verified",
+          "actor": "Codex root with independent save_idle_diff_review",
+          "reason": "Exact current candidate required CI and source/image security results, namespace/test unchanged from e3e7392, xlsx.ts unchanged from3941, dependencies unchanged; actual native Excel/roundtrip evidence and current1bf3 runtime/full saved readback remain applicable per independent bounded review. Original failures retained. Dynamic rule content hash, per-image DB identity/freshness policy and branch protection remain explicitly uncaptured/outside this frozen finding closure; no whole-system no-vulnerability or production/owner claim.",
+          "approval_id": "Owner direct approval to publish branch and run existing CI, 2026-11-03",
+          "binding": {
+            "commit": "2d79aaafb090dca11220efa02fda9af60dbb01de",
+            "tree": "d4e9d83f3bb9799a36635bca86995cbc5b9e56a6",
+            "tool_name": "Candidate CI and independent XLSX evidence applicability review",
+            "tool_version": "GitHub CI41656565260 attempt1; Semgrep1.169.0/Gitleaks8.30.1/Trivy0.72.0/pnpm9.15.4; local runtime1bf3 separately bound",
+            "command": "Existing verify/security-source workflow; bounded source/Office/runtime evidence reuse; no repeated Office or namespace test execution",
+            "environment": "Linux/amd64 github-hosted current2d79; selected app inputs identical to actual Linux/arm64 local1bf3; authorized local recovery scope; production/owner acceptance separate",
+            "result_sha256": "ad2fea40cce95af026378c05de11819d5da11d9ae396247cd3dba140f42a2508",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/ci-xlsx-applicability-r01.json",
+            "config_sha256": "ad2c346dd522b7500faf2eae87cf27378fa96cb37cb8565a4abf55cfbd5984b1",
+            "recorded_at": "2026-11-03T15:12:20.763564+00:00"
+          }
+        },
+        {
+          "at": "2026-11-03T15:12:20.763564+00:00",
+          "transition": "fixed_full_verified->closed",
+          "actor": "Codex root with independent save_idle_diff_review",
+          "reason": "Exact current candidate required CI and source/image security results, namespace/test unchanged from e3e7392, xlsx.ts unchanged from3941, dependencies unchanged; actual native Excel/roundtrip evidence and current1bf3 runtime/full saved readback remain applicable per independent bounded review. Original failures retained. Dynamic rule content hash, per-image DB identity/freshness policy and branch protection remain explicitly uncaptured/outside this frozen finding closure; no whole-system no-vulnerability or production/owner claim.",
+          "approval_id": "Owner direct approval to publish branch and run existing CI, 2026-11-03",
+          "binding": {
+            "commit": "2d79aaafb090dca11220efa02fda9af60dbb01de",
+            "tree": "d4e9d83f3bb9799a36635bca86995cbc5b9e56a6",
+            "tool_name": "Candidate CI and independent XLSX evidence applicability review",
+            "tool_version": "GitHub CI41656565260 attempt1; Semgrep1.169.0/Gitleaks8.30.1/Trivy0.72.0/pnpm9.15.4; local runtime1bf3 separately bound",
+            "command": "Existing verify/security-source workflow; bounded source/Office/runtime evidence reuse; no repeated Office or namespace test execution",
+            "environment": "Linux/amd64 github-hosted current2d79; selected app inputs identical to actual Linux/arm64 local1bf3; authorized local recovery scope; production/owner acceptance separate",
+            "result_sha256": "ad2fea40cce95af026378c05de11819d5da11d9ae396247cd3dba140f42a2508",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/ci-xlsx-applicability-r01.json",
+            "config_sha256": "ad2c346dd522b7500faf2eae87cf27378fa96cb37cb8565a4abf55cfbd5984b1",
+            "recorded_at": "2026-11-03T15:12:20.763564+00:00"
           }
         }
       ]

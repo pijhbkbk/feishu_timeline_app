@@ -3,17 +3,17 @@
 当前执行状态以 [EXECUTION_LEDGER](../EXECUTION_LEDGER.md) 最新检查点为准；本页是其摘要，验收断言和计数仅从 [ROUTE_ACCEPTANCE_MATRIX](ROUTE_ACCEPTANCE_MATRIX.md#v1-baseline-v10) 派生，安全状态仅引用 [FINDINGS](../security/FINDINGS.yaml)。下方历史追加保留原日期、FAIL和版本，不覆盖当前入口。
 
 - TASK_ID `TRUCK-COLOR-V1-COMPLETION-20261020-R01`，主线 `TRUCK-COLOR-V1-CONTINUE-20261020-R02`，当前执行 `TRUCK-COLOR-V1-CAPACITY-UNBLOCK-20261103-R01`。
-- STATE `VM_RUNNING / APPLICATION_RUNNING / DIAGNOSTICS_OFF`，产品 `PARTIAL / AWAITING_PRODUCT_OWNER_CONFIRMATION`。E163正常续启b2，E164原M1、原703本v6全文和绿色图片以及新c776本v2内容链已验证。
-- WORKSPACE `/Users/lixiaochen/Downloads/feishu_timeline_app`，分支 `codex/design-convergence-20261019`。当前应用含数值与UTC修复，后续标签修复源码 `78e877a7baeab097e639390006e08f71d33442c0` 已检查和独审，尚待构建实装。
-- SOURCE_ID `b2e94dffdf924be0eb564148723940664028a30e` / tree `3cc22086db440b689122fc991d9cebd6b139820c`，release `truck-utc-json-b2e94dffdf92-r01` / build `2026-11-03T04:51:08Z`。双端实际构建、Linux装配、四入口和产品读回均对应此身份。
-- ARTIFACT_ID `OP/date-application-delta-20261103-r01`，manifest945fdd6f…、archive587ebdef…、compositee307aee8…，948新增与14796原基包项组成15744项。完整24文件交付manifest014d562f…需联合 `date-count-recovery-preparation-r01/operations-continuation` 的2202十九文件补充使用。
-- RUNTIME_ID 同一25GiB Lima，boot `589fefa8-c3d5-477d-a597-7303774115c9`。E166正常OFF收据be243f27…，API9507/t6754006、Web9524/t6754088，双方timing键0，四入口仍b2。原共享服务保持，旧启动失败和本次输入摘要拒绝均保留。
-- REMOTE_LAST_OBSERVED：2026-11-03通过git ls-remote与GitHub API只读复核main仍 `9bdec2864c3ed9eb1a045062b756611f98208bfb`、最新main CI `38866594479` failure；未新增可归档的分支保护配置证据，必需门禁不变。候选未新增远端CI，精确正式域名身份仍UNKNOWN。
-- CURRENT_ITEM 67 PASS/1 PARTIAL/4 NOT_VERIFIED/1 FAIL/1 BLOCKED=74，13/15包、7/9技术链、7/10 P0、4/5 P1。E164完整受影响尾段及19依赖适用性独审支持恢复A03-01/E2E-02/P0-03/P1-02，历史失败和未受影响样本保持原范围。
-- EVIDENCE 构建891c323f…、delta f016ed30…、组装a89eebbf…、生命周期4e48507d…、产品链674b0ede…均有实际独审。R46及脱敏内嵌证据已实际送达，聊天与Gmail同件1a1a04a67d392886已读取去重，支持当前复闭范围和40GiB新授权。原14页参考与实装对照继续复用。
-- OPEN_LIMITS A04-04最新单次完整UI3025.275ms仍FAIL，后端641.932ms、write范围394.174ms。最大区间为正式PUT前1491.812ms，函数级热区尚未证明。云恢复来源文案及北京时间前端修改待实装，后端部分北京日历边界待修。daily28173维护完成并在2026-11-05T06:27:52Z前满足48小时规则。CI、完整安全、正式目标和所有者接收仍待。
-- HUMAN_ACTION 本会话所有者已直接授权原完整项目统计范围40GiB，替代旧小额度，新增Host物理峰后10GiB保留线。VM保持25GiB，项目64MiB和Guest1GiB分别保留。当前378根为原376有序根加两个精确测试缓存目录，最终产品仍由李晓晨接收。
-- NEXT_ACTION 11点诊断和正式v7读回、摘要绑定、OFF清理已完成。下一轮先有界定位前端快照/请求/草稿成本，再作证据支持的最小修复，预计3–5有效工程工时已预报。同时推进最终CI/安全输入差异与交付准备。新Agent0，超过8小时或连续两次无新进展提交简短工程阻塞报告。
+- STATE `VM_RUNNING / APPLICATION_RUNNING / DIAGNOSTICS_OFF`，产品 `PARTIAL / AWAITING_PRODUCT_OWNER_CONFIRMATION`。当前E171同候选实装及普通完整使用路径已验证。
+- WORKSPACE `/Users/lixiaochen/Downloads/feishu_timeline_app`，分支 `codex/design-convergence-20261019`。已公开推送且通过CI的操作/证据提交 `2d79aaafb090dca11220efa02fda9af60dbb01de`。
+- SOURCE_ID `1bf3c131bd647bff700b631af514237453c57f90` / tree `ae61f4e06a9d914c0d6eefc40862e99cdbcf6d67`，release `truck-calendar-1bf3c131bd64-r01` / build `2026-11-03T14:34:13Z`。与CI2d79的全部应用构建输入逐字相同，后继差异仅交付工具/证据。
+- ARTIFACT_ID `OP/calendar-application-delta-20261103-r01`，manifest be0d00b1…、archive85210cfb…、composite25982811…，948新增及14795基包叶。完整24文件补充交付 `joint-delivery-calendar-1bf3c13-r01` manifest fe7add2c…与原r05基包联合。
+- RUNTIME_ID 同一25GiB Lima、boot589fefa8…。RUNNING原件4069b6a8…，API11350/t8530071、Web11364/t8530133，直连/TLS四入口同1bf3。原v10全文DTO切换前后相等，新19b8…工作簿正式v2、13/22公式、刷新与工作台返回全文相等。
+- REMOTE_LAST_OBSERVED 候选CI41656565260/1在2d79已success，verify/security-source全部required步骤通过，条件playwright-smoke SKIPPED单列。两Linux/amd64镜像manifest/config及扫描报告已绑定。main保护查询404，旧main失败保留。正式公开HTTPS metadata实际仍e917da56…/Sep28。
+- CURRENT_ITEM 69 PASS/0 PARTIAL/3 NOT_VERIFIED/1 FAIL/1 BLOCKED=74，13/15包、7/9技术链、8/10 P0、4/5 P1。A15-07/A15-08/P0-06由E171真实证据技术闭合，E2E-08另核完整链。
+- EVIDENCE E171构建、Linux装配、正常启停、四身份、正式读回及实际CI制品完整。独审ad2fea40…支持原XLSX Finding合法关闭。原14页参考实装对照、Office/IME/恢复按精确输入复用，R50已送PM且反馈尚在生成。
+- OPEN_LIMITS A04-04保存完整5539.175ms与函数观察3003.925ms仍FAIL，原3025.275/641.932/394.174保持。所有者要求暂停性能专项、继续后续交付。北京Web/API日历已修复并实装，PG三时区只读边界通过；正式部署及所有者接收仍待。
+- HUMAN_ACTION 所有者已批准公开分支/CI，随后明确批准原GCE正式发布及timeline-scanner-r27恢复，原规格计算费上限USD60/月，现有磁盘/NAT另计。项目Host完整40GiB、物理峰后10GiB、项目64MiB及Guest1GiB保持，Lima25GiB。
+- NEXT_ACTION 原两GCE实例、价格、数据与备份/迁移演练/回退准入；源码比当前生产多13个迁移，正式阶段预计4–7有效工程工时已预报。性能专项暂停，原失败保留，复用现有一名只读审查上下文。Token与完整有效工时工具统计未知。
 - RESUME_ENTRY：最新Ledger → 矩阵未闭合原子/E2E依赖 → 本页派生摘要；最终A15-12由李晓晨明确接收，不由PM或Codex代签。
 
 
@@ -22,9 +22,9 @@
 
 唯一断言和详细步骤在[矩阵现行基线](ROUTE_ACCEPTANCE_MATRIX.md#v1-baseline-v10)，本表按其74条MUST派生。PM冻结的是标准，不是产品接受；旧PASS按原版本/输入适用性复用，FAIL和未执行仍保留。R36历史适用PASS保持；E152补新候选运行绑定，E153按真实菜单/填充/保存全路径增加A02-03一项PASS。
 
-- MUST证据覆盖 `67/74=90.54%`，PARTIAL 1、NOT_VERIFIED 4、FAIL 1、BLOCKED 1，按证据计数。
+- MUST证据覆盖 `69/74=93.24%`，PARTIAL 0、NOT_VERIFIED 3、FAIL 1、BLOCKED 1，按证据计数。
 - 关键技术链 `7/9=77.78%`。E164恢复E2E-02，原E136/E156及受影响反证历史均保留，Office/IME/整Chrome按输入适用性复用。
-- P0交付组7/10关闭，P1组4/5关闭，剩6项技术或交付要求及1项所有者接收。
+- P0交付组8/10关闭，P1组4/5关闭，剩4项技术或交付要求及1项所有者接收。
 
 | A包 | MUST N_i | 有效PASS P_i | PARTIAL | NOT_VERIFIED | FAIL | BLOCKED | 整包 |
 |---|---:|---:|---:|---:|---:|---:|---|
@@ -42,7 +42,7 @@
 | A12 | 3 | 3 | 0 | 0 | 0 | 0 | PASS |
 | A13 | 6 | 6 | 0 | 0 | 0 | 0 | PASS |
 | A14 | 4 | 4 | 0 | 0 | 0 | 0 | PASS |
-| A15 | 12 | 8 | 1 | 2 | 0 | 1 | PARTIAL |
+| A15 | 12 | 10 | 0 | 1 | 0 | 1 | PARTIAL |
 
 13/15整包PASS，A04与A15仍有未闭项。代码、GUI、真实Office、系统IME、PG/Redis、恢复和精确目标环境各守证据范围。
 
@@ -50,11 +50,11 @@
 |---|---|---|
 | 制品/运行身份 | E163实际b2四入口、2202正常OFF续启与E164原M1/原703和新c776读回成立 | A15-04/05 |
 | G3/真实DB/Redis | E67 R23 G3与E58属性证据按逐输入复用；原305 SKIP不计真实PG PASS；新局部24测试不充全仓 | A15-06 |
-| 必需CI/安全 | required候选CI和适用full仍未闭；原R23镜像未检出保留其版本，唯一Finding状态不擅改closed | A15-07/08 |
+| 必需CI/安全 | E171实际候选CI/镜像摘要与扫描绑定、适用full和XLSX合法生命周期已技术关闭；既有证据采集限制保持 | A15-07/08 |
 | Office/IME/整本 | E164精度UTC尾段与原703全文/绿图桥接，经674b独审复用原E99/E100/E136/E156与Office/IME样本，恢复相关保持断言 | A03/A05；E2E-02/03 |
 | Safari/性能/页面 | Safari/布局原范围保持；E146新选择p95=121.895ms/首保存7269.515ms FAIL；E153菜单小功能已闭；E155原9559.650ms保持；E166 b2单次3025.275ms仍FAIL，1440×900/DPR1但非S7批次；E154局部store中位数485.8→335.0ms保留原范围 | A02-03；A04-02至05；A15-01/03 |
 | 离线/恢复 | E132原3941完整安装合同已核；E140至E143共同候选增量包/普通生命周期适用性成立，非新全量安装或跨VM重启。E77获准逻辑恢复保持，E2E-08安全依赖另验 | A15-09/10 |
-| 约定目标/接收 | 精确 `https://timeline.all-too-well.com` 当前身份UNKNOWN，新候选未发布；技术条件及代表UAT就绪后由所有者明确接收 | A15-11/12 |
+| 约定目标/接收 | 精确 `https://timeline.all-too-well.com` 公开身份当前e917，新候选已获准受控发布；技术条件及代表UAT就绪后由所有者明确接收 | A15-11/12 |
 
 最终要求仍为74/74 MUST、9/9技术链、必需CI/安全/恢复门槛与约定环境就绪，再由李晓晨明确接收。当前PARTIAL；不新增分母或用本机结果代正式目标。
 
@@ -66,11 +66,11 @@
 
 2026-11-03，所有者在当前本机执行会话直接补充统一时间规范。事件时间戳以UTC时刻保存，唯一业务时区为Asia/Shanghai（北京时间，UTC+08:00）。创建、修改、评审、操作日志和通知等用户时间显式按北京时间显示。截止、提醒、月度统计、首次到货、半年性能试验和年度产量复核按北京日历计算，日期标签、月份与事件时刻分别处理。设备时区、服务器本地时区和UTC日期不能替代北京业务日期，时区转换只执行一次。北京时间凌晨、月末及跨年采用固定输入验证，现有适用UTC底层证据继续复用。
 
-本补充已进入现有调用点核对与修复范围。前端显示、datetime-local输入及回填正在修复，后端截止和统计中已定位的日历边界仍待实施验证。既有首次有效到货起六个日历月、月末夹断、后续到货不重置的规则保持。当前扫描器维护和既有单次性能诊断继续推进。
+E169/E171已完成前端显示、datetime-local输入回填与后端相关日历调用修复、定向检查及三时区真实PG边界验证，并实装1bf3。已有首次有效到货起六个日历月、月末夹断、后续到货不重置规则按输入复用。性能专项按所有者最新决定暂停。
 
 所有者已确认年度窗口为2026-09至2027-09首尾13个月，2027-10复核，恰好20台继续保留；完整合同中的历史“待决”被本聊天明确答复替代。缺月/未知量仍为待跟进。
 
-根项目约定的正式目标仍为 `https://timeline.all-too-well.com`，本机开发、离线交付与合成数据恢复分别验证。现有3390/45454不因领取本任务自动切换；必要发布仅按有效授权与可审阅候选的实际条件执行。生产扫描VM的所有者停机决定继续保留。
+根项目约定的正式目标仍为 `https://timeline.all-too-well.com`，本机开发、离线交付与合成数据恢复分别验证。现有3390/45454不因领取本任务自动切换；必要发布仅按有效授权与可审阅候选的实际条件执行。生产扫描VM在2026-11-03本会话获得所有者明确恢复授权，按限定原规格及费用、扫描安全和发布条件执行。
 
 ## 2026-10-20 首次续接
 

@@ -9595,3 +9595,20 @@ R49完整PM反馈已在原6ad6ddfe会话读回并保留，认可按所有者最�
 新精确提交通过原native入口重扫，SAST在14:30:44Z exit0，Secret当前文件及完整历史在14:30:56Z exit0，原始JSON、日志与执行回执均在capacity-unblock-20261103-r01/candidate-security-1bf3c13-r01。SCA既有已审锁、补丁、实际安装源保持其有效适用性。以上是本地源码安全门禁，远端requiredCI/Linux镜像及完整发布仍待完成。
 
 共同构建第一次在编译前被ORIGINAL_CLOSURE_CHANGED拒绝。差异准确为pnpm生成的两个新增.bin/jiti、.bin/tsx包装文件；无缺失依赖，编译命令尚未调用。新的精确hash非消费记录保持未知输入拒绝、原闭包和trace校验。原输出及失败保留，准备小范围复核后续建。当前运行仍460ded4/v10，性能FAIL作为所有者要求保留的已知偏差，验收分母与原状态保持。
+
+
+## 2026-11-03 — 当前候选实装、远端CI与两项技术门禁闭合（E171）
+
+应用1bf3c131bd647bff700b631af514237453c57f90/tree ae61f4e06a9d914c0d6eefc40862e99cdbcf6d67，release truck-calendar-1bf3c131bd64-r01/build14:34:13Z。六构建命令exit0，result5f716abc…，观察峰214966272B。首轮ORIGINAL_CLOSURE_CHANGED发生于编译前，实际仅pnpm新增jiti/tsx两包装器；精确hash非消费记录后恢复原闭包守卫。独审7251e42b…，旧失败保留。
+
+根package仅新增已审minimatch补丁声明，但95NFT中174引用要求同一新元数据。部署工具8a78c46新增V2精确runtime/package.json叶（4390B/0600/SHA6ac87d…），旧V1保持；17装配/负向检查与独审6e49af32…支持。实际delta be0d00b1…/archive85210cfb…/composite25982811…，948新+14795基包=15743，7770引用。目标注册操作2d79aaafb090dca11220efa02fda9af60dbb01de，61生命周期及17交付检查、独审0a930410…完成。
+
+21文件物化、17输入传输、Linux装配均实际exit0。旧460正常停止d0590df4…，fresh scanner877130cf…只读验证，24文件包manifest fe7add2c…/binding025b1521…/handoffd416308a…从实际stop与扫描器原件冻结并通过外层/private/tmp checker与stage。正常RUNNING4069b6a84a4fe1a3f57053a1c291e0e3f3e50a926f9fe43cf81d5f6666812143，API11350/t8530071、Web11364/t8530133，四入口同1bf3。原本0c879…v10切换前后完整DTO相等，原PG/Redis/对象及native会话保持。
+
+GUI建立19b8ce1a-507b-49e0-adc1-af27f6c5ec14“北京时间候选读回 20261103”，正常粘贴2×2文本/B1=13/B2=B1+9=22，明确保存v2、刷新及工作台加载后返回同本。保存与返回全文DTO相等，API14:57:38.603Z对应历史22:57:38；原新建操作确认后通过正常入口结束操作记录。未进行新性能计时或系统IME/Office重跑。截图与路径在calendar-product-path-result.json及calendar-final-preview-ready.png。
+
+所有者知悉public仓库后明确许可公开推送现codex分支和CI。2d79实际push exit0，CI41656565260/attempt1整体success，verify/security-source全部required success；条件playwright-smoke为SKIPPED。两个redacted artifacts已下载并对GitHub ZIP摘要复算，59c5ca52…/1f69694a…一致。原log export manifest API7fd13c48…、Webb50fea0f…与config/tag及后续同job两镜像扫描顺序绑定，原报告SHAf983cfe3…/5894ec23…各0finding/0toolError。镜像为job-local构建，registry发布另列。source2d79与本机1bf3全部应用构建输入diff为空；CI Node24.22.1/Linuxamd64和本机/运行环境分别记录。
+
+独审ad2fea40…按原冻结合同核A15-07与XLSX A15-08。namespace/test自e3e不变、xlsx.ts自3941不变及依赖保持，原E68/E99真实Office/回导证据适用，当前runtime/CI补足资格。唯一Finding按fixed_diff_verified→fixed_full_verified→closed补合法full绑定，severity不变，A15-07/A15-08/P0-06技术关闭。现69/0/3NOT_VERIFIED/1FAIL/1BLOCKED=74，13/15包、7/9链、P0 8/10/P1 4/5。动态规则正文hash、逐镜像DB信息及main保护404保留已知边界，不添加新门槛或宣称全系统无漏洞。既有24个历史Ledger schema错误继续单列。
+
+R50已在原6ad6ddfe会话发送并回读，PM仍在生成正式反馈。当前生产公开health/build-info经Mac系统默认严格TLS均200，仍e917da56…/Sep28；Python自身CA失败保留，未关闭TLS校验。所有者随后明确批准原GCE受控发布及timeline-scanner-r27恢复，原规格计算费≤USD60/月，原磁盘/NAT另计。云API实际确认主VM9011633983351136280 RUNNING、原扫描VM1961854189530189039 TERMINATED，均原us-west1-b。官方Oregon e2-standard-2当前USD0.06701142/h，730h约48.918337，31天约49.856496，符合计算费额度。源码相对生产多13迁移，正式阶段预计4–7有效工程工时已提前报告，实际备份/迁移演练/回退准入继续。新增Agent0、继续同一个获准只读上下文，完整Token/历史有效工时未知。
