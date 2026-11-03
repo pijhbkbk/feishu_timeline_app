@@ -9535,3 +9535,37 @@ E165维护完成。提交7d411621b84b82b6bf2b326061627ef4b853c022的同进程维
 E166独立交付准备续。已对精确R23/e3e73926与当前3f518692的13个CI、Docker、package及扫描入口输入逐字/摘要核对，11项相同，差异限定Univer UI补丁及锁内对应11处patch hash替换，锁内包版本无变化。旧4bdb的55项SCA输入有48相同/7变化，不能整体沿用旧PASS。ci-input-applicability-r01.json保留两基线、实际diff和后续范围，必需候选CI/full安全仍未执行。本轮Placeholder12命中均为测试定位/负向断言，正式占位0。R47及72399B证据附件已在6ad6ddfe会话发送并回读，附件SHAbca40f30c964570975aa32b56b2d8d445bc422f5cb5345b3512dca21c849b180，PM回复生成中。
 
 E166回报完成。R47完整反馈已在原6ad6ddfe会话读回，PM认可维护实际成功、完整诊断及读回/撤除范围，保持3025.275ms FAIL，支持优先查1491.812ms PUT前段，并指出现有锁区间1.117ms不支持锁等待主因。反馈原件r47-feedback-dom-20261103-r01.txt及截图已保存。本次Gmail限定subject R47/11月3日以后搜索为空，只代表该查询结果，未声明全邮箱无新信。没有新增验收项关闭或所有者接收。
+
+E166邮件重复转交。收到marker TRUCK-COLOR-V1-PM-R46-FEEDBACK-20261103-R01/efbcd7fc9267c2e35b3a0c65，完整原文9230B/SHA3bd2fdf553ad6afa824470de8a7787c0370a8b2d5fa6b7776484d55036d3ffe4核对一致，复用原R46/E165/E166/R47结果，新增业务动作0。按既有mail-task-dispatcher result登记，CLI exit0，deliveryId94ada544-eff5-45f1-8282-353b116d6559，状态WAITING_FOR_ROUTE_CONFIRMATION。SUCCEEDED只表示该反馈已处理并关联结果，V1仍PARTIAL且性能FAIL。分发器本任务origin尚缺，留给现有获准闭环完成来源确认，不改路由。请求、证据及完整CLI收据分别在capacity-unblock-20261103-r01/mail-r46-result-request-20261103-r01.json、mail-r46-dedup-evidence-20261103-r01.json、mail-r46-result-cli-receipt-20261103-r01.json。原R47已直接送达ChatGPT并收到完整反馈的事实保持。
+
+
+## 2026-11-03 — 保存函数归因、首轮修复实装与失败保留（E167）
+
+沿所有者批准的3–5有效工程工时继续。原R47完整3025.275ms、后端641.932ms/write394.174ms保持。本轮原b2新GUI F7唯一v7→v8，函数观察完整UI2996.365ms仍FAIL。实际605ms长任务内定位模型save61.285ms、request克隆91.815ms、checkpoint克隆96.260ms、两份snapshot序列化29.965/29.265ms及完整恢复envelope序列化127.290ms。800ms后台任务又对未变化序列做draftSnapshot、checkpoint克隆120.190ms及envelope序列化124.975ms，形成另一512ms任务。方法包装已恢复，全部内容读回一致。原787ms缺函数栈，不倒填本次归因。新页面wallTime与Performance映射不成立，function-save-analysis-r01原件保留，r02撤回其网络相对偏移，SHA103fb7ad…。
+
+性能补丁aa1970bf1f73a3d4a858d10d016f8bf5aa1ec796仅在busy+同pendingSequence+编辑空闲时跳过重复后台捕获，原发送前落盘、ACK检查点、新编辑/IME及未知回执保护保留。77通过/1新增夹具异步终态失败，修正等待后仅该用例续验通过，类型/目标lint通过，失败原件保留。原38个北京时间Web补丁单独提交460ded4b9e093b7424aad1616966cc1686294a8c，复用同输入定向检查，未声明后端所有日历规则完成。
+
+共同构建source460ded4/tree df12d1aed3e8b29778d212d4fc8cee74bd51b6fb，release truck-save-idle-460ded4b9e09-r01/build2026-11-03T12:29:40Z，6命令exit0，result ca881c5e…。Linux增量08a4fab3…/archive20d17ec5…/compositea1482145…，947新叶加14796基包叶。原root-clean保护保留，纯后续操作/文档未重建应用。新Web制品开发标记检查exit0，候选CI/full安全仍开放。
+
+R48与精确4文件附件已送原PM会话，但两次未取得最终结论，未以分析提示算独审通过。所有者随后明确例外许可一名只读审查。save_idle_diff_review完成原4文件+目标3文件，NO_ACTIONABLE_FINDINGS，d105dc1d…。交付检查器为同目标直接依赖，其2文件机械身份/摘要接线在同一审查内增量复核，d24a6495…，不重审旧7文件。操作提交b7d8108及444cea97b61dd7d8bf67df9d885cf01e14847191，生命周期60项/交付检查16项各exit0。新增Agent1、审查上下文1，无递归及并行工作区写入，Token与完整有效工时统计未知。
+
+21文件物化、17文件传输及Linux组装实际exit0，完整378根装配观察峰27727355904B。b2正常停止2bcb1e77…，原PG/Redis/scanner/proxy保持。首次包r01在stage前被CHECK_MISSING_ENTRYPOINT_FILE拒绝，因manifest入口仍引用V3文件名，而实际提供V4手交。原失败和冻结包保留，r02仅改manifest入口，24份payload逐字相同，包摘要1d75a873…，实际预检和stage通过。正常start实际RUNNING b76f0ae5…，API10537/t7824922、Web10553/t7824984，四入口同460ded4。scanner仅fresh只读观察69bd513d…，没有重复维护。原v8全文DTO切换前后相同。
+
+新460候选真实GUI F8=DIAG-idle-save-001，唯一正式v8→v9，operation8ee66e4f-8651-4dba-936a-a86046294186。完整UI5539.175ms仍FAIL，第一轮修复尚无实际耗时改善。UI与ResourceTiming同一页面时钟七段2155.170/2100.040/549.610/393.885/257.310/22.095/61.065ms，合计完整终点。1275/219/320ms长任务，backend timing保持OFF，2053.355ms请求至首响应不能直接归因数据库。云稿/正式请求/刷新全文严格相等，仅F8改变，正式v9、云槽空、观察器撤除、viewport恢复。idle-save-analysis-r01.json及原Network/资源计时/截图保留。下一次限定函数观察仅区分重复后台是否已消除及剩余同步热点，不计S7通过样本。矩阵67/1/4/1FAIL/1BLOCKED=74不变，A04-04继续FAIL。
+
+E167函数诊断续。当前460同本F9唯一v9→v10，完整3003.925ms仍FAIL，含函数观察开销，未声明统计改善。实际runtime.draftSnapshot0、structuredClone2，第一补丁的重复捕获已消除；剩余两clone132.415/122.590ms、6.1M字符恢复envelope序列化164.690ms。七段同页钟1519.205/729.770/346.875/152.945/196.335/20.975/37.820ms。全文云/正式/刷新相等，仅F9变化、云槽空、包装恢复、观察移除和视口复原。idle-function-analysis-r01.json SHA3c41420f…。历史GUI版本9/10分别20:54:59/21:01:49，支持本页北京时间实装范围。
+
+所有者先选技术路线交产品负责人裁定，随后直接更新为“不管这几秒种的超时了，继续后面的工作，确保完工”。因此性能扩展实现退出当前实施优先序，真实FAIL保持，继续CI、安全和交付。当前完整/生产SCA均exit1，公告GHSA-g3hv-75wg-m249触及minimatch10.2.5和ExcelJS链3.1.5/5.1.9，待按真实源码适用性及最小修复处理，未隐藏原始报告或直接豁免。新Web制品开发标记检查PASS。
+
+
+## 2026-11-03 — 当前依赖安全阻断修复与适用性准入（E168）
+
+遵照所有者最新继续后续工作指示，当前保留460ded4运行候选和正式v10，性能超时继续按实际FAIL记录，未实施下一条publish性能路线。R49已在原6ad6ddfe会话发送并留DOM/截图，反馈待读。
+
+实际full/prod pnpm audit均exit1，唯一新公告GHSA-g3hv-75wg-m249分别报告3个/2个版本，raw原件保存在save-idle-sca-r01。真实10.2.5两阶段预处理存在扩增，官方77a0f5c的数量上限与1000项去重上限回植到CJS/ESM两份已安装JS，其他包版本未变。有限原夹具4FAIL/4PASS，补丁后8PASS/0skip，全量lint入口exit0。旧3.1.5/5.1.9源make()直接braceExpand→split→parse，缺公告两阶段机制；限定30段输入仍1pattern。精确源码及版本的该CVE结论由同一只读上下文独审支持，未以无应用sink代替机制证据。
+
+安全源码提交7b6d0e1f2333e99964f301e1358064db388fc0c8，锁34208694…，补丁22cdec6c…。初审608de7c2…提出新validator未绑定package.json及实际main/exports入口的P2，已补三个package.json摘要及实际require.resolve入口，并以同版本改入口、保留dist的负向夹具验证阻断。增量独审c1534e7b…仅复核2文件。8机制检查、9准入/CI负向和旧37SCA/CI组合分别保留，不相加替代产品验收。legacy braces链源/补丁未变，仅锁摘要重绑定当前；原2测试失败保留，修绑定后旧15通过，实际链重新验证通过。
+
+唯一Ledger新增001 fixed_diff_verified、002/003为此CVE精确旧版本false_positive。新增3条schema通过，完整Ledger原24个历史schema错误与444cea9基线逐条相同，首次完整校验FAIL原事实保留，未重写历史。当前verifier实际复算原full/prod双FAIL原件与新安装源，返回LOCALLY_REMEDIATED，一版本已补丁、两版本该机制不适用，未知公告/变更入口/待审/伪造status均拒绝。当前目标与独审成立，完整安全、Linux镜像和正式发布门禁保留开放。
+
+在原378根/40GiB、Host峰后10GiB条件内，以2GiB预计新增窗口准入独立本地扫描工具。专用目录ci-toolchain-r01通过官方PyPI安装semgrep1.169.0及依赖，保留wheel安装报告和摘要，未改全局Python。结束完整范围28157075456B，属于终态测量而非峰值。原外盘Docker保持停用。待补后端北京时间直接依赖后对精确候选做最终SAST/Secret/CI，避免随后代码变化造成机械全仓重复。

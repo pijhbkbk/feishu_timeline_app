@@ -9624,7 +9624,7 @@
     {
       "id": "R49-CI-MINIMATCH-001",
       "title": "minimatch 10.2.5 reported for GHSA-g3hv-75wg-m249 globparts amplification",
-      "status": "candidate",
+      "status": "fixed_diff_verified",
       "severity": "medium",
       "confidence": "high",
       "classification": "pre_existing",
@@ -9683,10 +9683,10 @@
         "trust_boundary": "Dependency glob pattern preprocessing; exact mechanism/reachability under investigation"
       },
       "evidence": {
-        "reachable": null,
-        "production_exposed": null,
-        "reproduction_path": "Raw full audit exit1 has one advisory covering versions10.2.5/3.1.5/5.1.9. Production audit exit1 reports3.1.5/5.1.9. Official https://github.com/advisories/GHSA-g3hv-75wg-m249 and fix77a0f5c4b80bdc641c3c930a1d9edf5ad2db57f8.",
-        "proof_gap": "Exact installed source, finite reproduction, compatibility, patch applicability and independent review pending; no allowlist or risk acceptance."
+        "reachable": true,
+        "production_exposed": false,
+        "reproduction_path": "Installed10.2.5 optimizationLevel2 creates64 globparts under configured limit8; original two emitted formats fail4 finite assertions. Upstream77a0f5c bounds applied in both formats; 8/8 checks then pass. Development dependency chain only.",
+        "proof_gap": "Exact dependency/source target and diff verified. Candidate full CI, image, target runtime and release gates remain open."
       },
       "root_cause_cluster": "GHSA-g3hv-75wg-m249",
       "security_invariants": [],
@@ -9698,25 +9698,67 @@
       "fix": {
         "task_id": "TRUCK-COLOR-V1-CI-SECURITY-CONTINUATION-20261103",
         "branch": "codex/design-convergence-20261019",
-        "commit": null,
-        "tree": null,
-        "changed_files": []
+        "commit": "7b6d0e1f2333e99964f301e1358064db388fc0c8",
+        "tree": "babe22d7b1fd2bff0159daaac6d6c3e3975195c2",
+        "changed_files": [
+          "package.json",
+          "pnpm-lock.yaml",
+          "patches/minimatch@10.2.5.patch",
+          "scripts/security/verify-minimatch-sca.mjs",
+          "scripts/security/run-sca.sh",
+          "scripts/security/ci-evidence.mjs",
+          "scripts/security/tests/minimatch-globparts.test.mjs",
+          "scripts/security/tests/minimatch-sca.test.mjs"
+        ]
       },
       "verification": {
         "targeted": {
-          "status": "pending",
-          "binding": null,
-          "notes": "Pending exact source mechanism triage and scoped verification."
+          "status": "pass",
+          "binding": {
+            "commit": "7b6d0e1f2333e99964f301e1358064db388fc0c8",
+            "tree": "babe22d7b1fd2bff0159daaac6d6c3e3975195c2",
+            "tool_name": "Bounded actual installed dependency regression",
+            "tool_version": "Node24.14.0 / pnpm9.15.4; independent source review where stated",
+            "command": "node --test --test-reporter=tap scripts/security/tests/minimatch-globparts.test.mjs",
+            "environment": "Mac host exact committed dependency inputs; unchanged local runtime460ded4 separately recorded; no CI/image/runtime-security clearance",
+            "result_sha256": "dca8a9438ca3d79c76bd37070edba8d3b5b87ecf13f6b1be96902496e11bff19",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/minimatch-security-r01/after-patch-regression.log",
+            "config_sha256": "3420869473d1aa7c8bacb4f6310920c9f04231d5be3d3672d9c2677dfdd1be1f",
+            "recorded_at": "2026-11-03T13:34:27.921577+00:00"
+          },
+          "notes": "8/8 actual installed format/normal-glob/legacy-mechanism checks. Original10.2.5 finite same fixture4FAIL/4PASS retained."
         },
         "affected_regression": {
-          "status": "pending",
-          "binding": null,
-          "notes": "Pending exact source mechanism triage and scoped verification."
+          "status": "pass",
+          "binding": {
+            "commit": "7b6d0e1f2333e99964f301e1358064db388fc0c8",
+            "tree": "babe22d7b1fd2bff0159daaac6d6c3e3975195c2",
+            "tool_name": "Exact advisory, source and CI negative regression",
+            "tool_version": "Node24.14.0 / pnpm9.15.4; independent source review where stated",
+            "command": "node --test --test-reporter=tap scripts/security/tests/minimatch-sca.test.mjs",
+            "environment": "Mac host exact committed dependency inputs; unchanged local runtime460ded4 separately recorded; no CI/image/runtime-security clearance",
+            "result_sha256": "6dd776dbfd4ce42e1b12f2c7205e82fbc37688f40174791d3c261b418f0660b7",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/minimatch-security-r01/entrypoint-regression-r04.log",
+            "config_sha256": "3420869473d1aa7c8bacb4f6310920c9f04231d5be3d3672d9c2677dfdd1be1f",
+            "recorded_at": "2026-11-03T13:34:27.921577+00:00"
+          },
+          "notes": "9 exact source/advisory/CI-entrypoint checks, prior37CI/SCA guards and full lint exit0. Not full repository security or product acceptance."
         },
         "diff_review": {
-          "status": "pending",
-          "binding": null,
-          "notes": "Pending exact source mechanism triage and scoped verification."
+          "status": "pass",
+          "binding": {
+            "commit": "7b6d0e1f2333e99964f301e1358064db388fc0c8",
+            "tree": "babe22d7b1fd2bff0159daaac6d6c3e3975195c2",
+            "tool_name": "Independent read-only exact diff and entrypoint review",
+            "tool_version": "Node24.14.0 / pnpm9.15.4; independent source review where stated",
+            "command": "save_idle_diff_review initial608de7c2 plus entrypoint c1534e7b; no recursive agents or test rerun",
+            "environment": "Mac host exact committed dependency inputs; unchanged local runtime460ded4 separately recorded; no CI/image/runtime-security clearance",
+            "result_sha256": "c1534e7b83f83714cd6f826b2698f555cf60af54a2976ab9c50704f94a4478f9",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/minimatch-security-r01/independent-entrypoint-review-r02.json",
+            "config_sha256": "3420869473d1aa7c8bacb4f6310920c9f04231d5be3d3672d9c2677dfdd1be1f",
+            "recorded_at": "2026-11-03T13:34:27.921577+00:00"
+          },
+          "notes": "One independent context. InitialP2 entrypoint gap fixed with package metadata and actual require resolution pins; only changed2files re-reviewed."
         },
         "full_regression": {
           "status": "pending",
@@ -9744,16 +9786,111 @@
             "config_sha256": "6e6d02606e188f3258a973f9067b57623b82307a27313c175c67075430b1050e",
             "recorded_at": "2026-11-03T13:17:09.292146+00:00"
           }
+        },
+        {
+          "at": "2026-11-03T13:34:27.921577+00:00",
+          "transition": "candidate->confirmed",
+          "actor": "Codex root with independent exact diff review",
+          "reason": "Bounded reproduction, upstream-compatible two-format fix, exact installed inputs and independent entrypoint correction verified; raw auditFAIL preserved.",
+          "approval_id": null,
+          "binding": {
+            "commit": "7b6d0e1f2333e99964f301e1358064db388fc0c8",
+            "tree": "babe22d7b1fd2bff0159daaac6d6c3e3975195c2",
+            "tool_name": "Bounded actual installed dependency regression",
+            "tool_version": "Node24.14.0 / pnpm9.15.4; independent source review where stated",
+            "command": "node --test --test-reporter=tap scripts/security/tests/minimatch-globparts.test.mjs",
+            "environment": "Mac host exact committed dependency inputs; unchanged local runtime460ded4 separately recorded; no CI/image/runtime-security clearance",
+            "result_sha256": "dca8a9438ca3d79c76bd37070edba8d3b5b87ecf13f6b1be96902496e11bff19",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/minimatch-security-r01/after-patch-regression.log",
+            "config_sha256": "3420869473d1aa7c8bacb4f6310920c9f04231d5be3d3672d9c2677dfdd1be1f",
+            "recorded_at": "2026-11-03T13:34:27.921577+00:00"
+          }
+        },
+        {
+          "at": "2026-11-03T13:34:27.921577+00:00",
+          "transition": "confirmed->accepted_for_fix",
+          "actor": "Codex root with independent exact diff review",
+          "reason": "Bounded reproduction, upstream-compatible two-format fix, exact installed inputs and independent entrypoint correction verified; raw auditFAIL preserved.",
+          "approval_id": null,
+          "binding": {
+            "commit": "7b6d0e1f2333e99964f301e1358064db388fc0c8",
+            "tree": "babe22d7b1fd2bff0159daaac6d6c3e3975195c2",
+            "tool_name": "Bounded actual installed dependency regression",
+            "tool_version": "Node24.14.0 / pnpm9.15.4; independent source review where stated",
+            "command": "node --test --test-reporter=tap scripts/security/tests/minimatch-globparts.test.mjs",
+            "environment": "Mac host exact committed dependency inputs; unchanged local runtime460ded4 separately recorded; no CI/image/runtime-security clearance",
+            "result_sha256": "dca8a9438ca3d79c76bd37070edba8d3b5b87ecf13f6b1be96902496e11bff19",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/minimatch-security-r01/after-patch-regression.log",
+            "config_sha256": "3420869473d1aa7c8bacb4f6310920c9f04231d5be3d3672d9c2677dfdd1be1f",
+            "recorded_at": "2026-11-03T13:34:27.921577+00:00"
+          }
+        },
+        {
+          "at": "2026-11-03T13:34:27.921577+00:00",
+          "transition": "accepted_for_fix->in_progress",
+          "actor": "Codex root with independent exact diff review",
+          "reason": "Bounded reproduction, upstream-compatible two-format fix, exact installed inputs and independent entrypoint correction verified; raw auditFAIL preserved.",
+          "approval_id": null,
+          "binding": {
+            "commit": "7b6d0e1f2333e99964f301e1358064db388fc0c8",
+            "tree": "babe22d7b1fd2bff0159daaac6d6c3e3975195c2",
+            "tool_name": "Bounded actual installed dependency regression",
+            "tool_version": "Node24.14.0 / pnpm9.15.4; independent source review where stated",
+            "command": "node --test --test-reporter=tap scripts/security/tests/minimatch-globparts.test.mjs",
+            "environment": "Mac host exact committed dependency inputs; unchanged local runtime460ded4 separately recorded; no CI/image/runtime-security clearance",
+            "result_sha256": "dca8a9438ca3d79c76bd37070edba8d3b5b87ecf13f6b1be96902496e11bff19",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/minimatch-security-r01/after-patch-regression.log",
+            "config_sha256": "3420869473d1aa7c8bacb4f6310920c9f04231d5be3d3672d9c2677dfdd1be1f",
+            "recorded_at": "2026-11-03T13:34:27.921577+00:00"
+          }
+        },
+        {
+          "at": "2026-11-03T13:34:27.921577+00:00",
+          "transition": "in_progress->fixed_target_verified",
+          "actor": "Codex root with independent exact diff review",
+          "reason": "Bounded reproduction, upstream-compatible two-format fix, exact installed inputs and independent entrypoint correction verified; raw auditFAIL preserved.",
+          "approval_id": null,
+          "binding": {
+            "commit": "7b6d0e1f2333e99964f301e1358064db388fc0c8",
+            "tree": "babe22d7b1fd2bff0159daaac6d6c3e3975195c2",
+            "tool_name": "Bounded actual installed dependency regression",
+            "tool_version": "Node24.14.0 / pnpm9.15.4; independent source review where stated",
+            "command": "node --test --test-reporter=tap scripts/security/tests/minimatch-globparts.test.mjs",
+            "environment": "Mac host exact committed dependency inputs; unchanged local runtime460ded4 separately recorded; no CI/image/runtime-security clearance",
+            "result_sha256": "dca8a9438ca3d79c76bd37070edba8d3b5b87ecf13f6b1be96902496e11bff19",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/minimatch-security-r01/after-patch-regression.log",
+            "config_sha256": "3420869473d1aa7c8bacb4f6310920c9f04231d5be3d3672d9c2677dfdd1be1f",
+            "recorded_at": "2026-11-03T13:34:27.921577+00:00"
+          }
+        },
+        {
+          "at": "2026-11-03T13:34:27.921577+00:00",
+          "transition": "fixed_target_verified->fixed_diff_verified",
+          "actor": "Codex root with independent exact diff review",
+          "reason": "Bounded reproduction, upstream-compatible two-format fix, exact installed inputs and independent entrypoint correction verified; raw auditFAIL preserved.",
+          "approval_id": null,
+          "binding": {
+            "commit": "7b6d0e1f2333e99964f301e1358064db388fc0c8",
+            "tree": "babe22d7b1fd2bff0159daaac6d6c3e3975195c2",
+            "tool_name": "Independent read-only exact diff and entrypoint review",
+            "tool_version": "Node24.14.0 / pnpm9.15.4; independent source review where stated",
+            "command": "save_idle_diff_review initial608de7c2 plus entrypoint c1534e7b; no recursive agents or test rerun",
+            "environment": "Mac host exact committed dependency inputs; unchanged local runtime460ded4 separately recorded; no CI/image/runtime-security clearance",
+            "result_sha256": "c1534e7b83f83714cd6f826b2698f555cf60af54a2976ab9c50704f94a4478f9",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/minimatch-security-r01/independent-entrypoint-review-r02.json",
+            "config_sha256": "3420869473d1aa7c8bacb4f6310920c9f04231d5be3d3672d9c2677dfdd1be1f",
+            "recorded_at": "2026-11-03T13:34:27.921577+00:00"
+          }
         }
       ]
     },
     {
       "id": "R49-CI-MINIMATCH-002",
       "title": "minimatch 3.1.5 reported for GHSA-g3hv-75wg-m249 globparts amplification",
-      "status": "candidate",
+      "status": "false_positive",
       "severity": "medium",
       "confidence": "high",
-      "classification": "pre_existing",
+      "classification": "false_positive",
       "cwe": "CWE-405",
       "source": {
         "type": "sca",
@@ -9785,16 +9922,16 @@
         "trust_boundary": "Dependency glob pattern preprocessing; exact mechanism/reachability under investigation"
       },
       "evidence": {
-        "reachable": null,
-        "production_exposed": null,
-        "reproduction_path": "Raw full audit exit1 has one advisory covering versions10.2.5/3.1.5/5.1.9. Production audit exit1 reports3.1.5/5.1.9. Official https://github.com/advisories/GHSA-g3hv-75wg-m249 and fix77a0f5c4b80bdc641c3c930a1d9edf5ad2db57f8.",
-        "proof_gap": "Exact installed source, finite reproduction, compatibility, patch applicability and independent review pending; no allowlist or risk acceptance."
+        "reachable": false,
+        "production_exposed": false,
+        "reproduction_path": "Only GHSA-g3hv-75wg-m249 for exact installed minimatch3.1.5. Official issue requires firstPhasePreProcess/secondPhasePreProcess amplification at optimizationLevel>=2. This legacy source has neither phase; make() follows brace expansion, path split and per-segment parse. Finite30-segment input remains one pattern. Actual package.json/entry/source hashes and independent review bind this conclusion. No general exclusion of minimatch or other advisories.",
+        "proof_gap": "Other advisories, changed package contents or versions and entire production exposure are outside this specific mechanism conclusion."
       },
       "root_cause_cluster": "GHSA-g3hv-75wg-m249",
       "security_invariants": [],
       "disposition": {
         "duplicate_of": null,
-        "false_positive_reason": null,
+        "false_positive_reason": "Only GHSA-g3hv-75wg-m249 for exact installed minimatch3.1.5. Official issue requires firstPhasePreProcess/secondPhasePreProcess amplification at optimizationLevel>=2. This legacy source has neither phase; make() follows brace expansion, path split and per-segment parse. Finite30-segment input remains one pattern. Actual package.json/entry/source hashes and independent review bind this conclusion. No general exclusion of minimatch or other advisories.",
         "risk_acceptance": null
       },
       "fix": {
@@ -9806,19 +9943,52 @@
       },
       "verification": {
         "targeted": {
-          "status": "pending",
-          "binding": null,
-          "notes": "Pending exact source mechanism triage and scoped verification."
+          "status": "pass",
+          "binding": {
+            "commit": "7b6d0e1f2333e99964f301e1358064db388fc0c8",
+            "tree": "babe22d7b1fd2bff0159daaac6d6c3e3975195c2",
+            "tool_name": "Bounded actual installed dependency regression",
+            "tool_version": "Node24.14.0 / pnpm9.15.4; independent source review where stated",
+            "command": "node --test --test-reporter=tap scripts/security/tests/minimatch-globparts.test.mjs",
+            "environment": "Mac host exact committed dependency inputs; unchanged local runtime460ded4 separately recorded; no CI/image/runtime-security clearance",
+            "result_sha256": "dca8a9438ca3d79c76bd37070edba8d3b5b87ecf13f6b1be96902496e11bff19",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/minimatch-security-r01/after-patch-regression.log",
+            "config_sha256": "3420869473d1aa7c8bacb4f6310920c9f04231d5be3d3672d9c2677dfdd1be1f",
+            "recorded_at": "2026-11-03T13:34:27.921577+00:00"
+          },
+          "notes": "8/8 actual installed format/normal-glob/legacy-mechanism checks. Original10.2.5 finite same fixture4FAIL/4PASS retained."
         },
         "affected_regression": {
-          "status": "pending",
-          "binding": null,
-          "notes": "Pending exact source mechanism triage and scoped verification."
+          "status": "pass",
+          "binding": {
+            "commit": "7b6d0e1f2333e99964f301e1358064db388fc0c8",
+            "tree": "babe22d7b1fd2bff0159daaac6d6c3e3975195c2",
+            "tool_name": "Exact advisory, source and CI negative regression",
+            "tool_version": "Node24.14.0 / pnpm9.15.4; independent source review where stated",
+            "command": "node --test --test-reporter=tap scripts/security/tests/minimatch-sca.test.mjs",
+            "environment": "Mac host exact committed dependency inputs; unchanged local runtime460ded4 separately recorded; no CI/image/runtime-security clearance",
+            "result_sha256": "6dd776dbfd4ce42e1b12f2c7205e82fbc37688f40174791d3c261b418f0660b7",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/minimatch-security-r01/entrypoint-regression-r04.log",
+            "config_sha256": "3420869473d1aa7c8bacb4f6310920c9f04231d5be3d3672d9c2677dfdd1be1f",
+            "recorded_at": "2026-11-03T13:34:27.921577+00:00"
+          },
+          "notes": "9 exact source/advisory/CI-entrypoint checks, prior37CI/SCA guards and full lint exit0. Not full repository security or product acceptance."
         },
         "diff_review": {
-          "status": "pending",
-          "binding": null,
-          "notes": "Pending exact source mechanism triage and scoped verification."
+          "status": "pass",
+          "binding": {
+            "commit": "7b6d0e1f2333e99964f301e1358064db388fc0c8",
+            "tree": "babe22d7b1fd2bff0159daaac6d6c3e3975195c2",
+            "tool_name": "Independent read-only exact diff and entrypoint review",
+            "tool_version": "Node24.14.0 / pnpm9.15.4; independent source review where stated",
+            "command": "save_idle_diff_review initial608de7c2 plus entrypoint c1534e7b; no recursive agents or test rerun",
+            "environment": "Mac host exact committed dependency inputs; unchanged local runtime460ded4 separately recorded; no CI/image/runtime-security clearance",
+            "result_sha256": "c1534e7b83f83714cd6f826b2698f555cf60af54a2976ab9c50704f94a4478f9",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/minimatch-security-r01/independent-entrypoint-review-r02.json",
+            "config_sha256": "3420869473d1aa7c8bacb4f6310920c9f04231d5be3d3672d9c2677dfdd1be1f",
+            "recorded_at": "2026-11-03T13:34:27.921577+00:00"
+          },
+          "notes": "One independent context. InitialP2 entrypoint gap fixed with package metadata and actual require resolution pins; only changed2files re-reviewed."
         },
         "full_regression": {
           "status": "pending",
@@ -9846,16 +10016,35 @@
             "config_sha256": "6e6d02606e188f3258a973f9067b57623b82307a27313c175c67075430b1050e",
             "recorded_at": "2026-11-03T13:17:09.292146+00:00"
           }
+        },
+        {
+          "at": "2026-11-03T13:34:27.921577+00:00",
+          "transition": "candidate->false_positive",
+          "actor": "Codex root with independent mechanism and entrypoint review",
+          "reason": "Only GHSA-g3hv-75wg-m249 for exact installed minimatch3.1.5. Official issue requires firstPhasePreProcess/secondPhasePreProcess amplification at optimizationLevel>=2. This legacy source has neither phase; make() follows brace expansion, path split and per-segment parse. Finite30-segment input remains one pattern. Actual package.json/entry/source hashes and independent review bind this conclusion. No general exclusion of minimatch or other advisories.",
+          "approval_id": null,
+          "binding": {
+            "commit": "7b6d0e1f2333e99964f301e1358064db388fc0c8",
+            "tree": "babe22d7b1fd2bff0159daaac6d6c3e3975195c2",
+            "tool_name": "Independent read-only exact diff and entrypoint review",
+            "tool_version": "Node24.14.0 / pnpm9.15.4; independent source review where stated",
+            "command": "save_idle_diff_review initial608de7c2 plus entrypoint c1534e7b; no recursive agents or test rerun",
+            "environment": "Mac host exact committed dependency inputs; unchanged local runtime460ded4 separately recorded; no CI/image/runtime-security clearance",
+            "result_sha256": "c1534e7b83f83714cd6f826b2698f555cf60af54a2976ab9c50704f94a4478f9",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/minimatch-security-r01/independent-entrypoint-review-r02.json",
+            "config_sha256": "3420869473d1aa7c8bacb4f6310920c9f04231d5be3d3672d9c2677dfdd1be1f",
+            "recorded_at": "2026-11-03T13:34:27.921577+00:00"
+          }
         }
       ]
     },
     {
       "id": "R49-CI-MINIMATCH-003",
       "title": "minimatch 5.1.9 reported for GHSA-g3hv-75wg-m249 globparts amplification",
-      "status": "candidate",
+      "status": "false_positive",
       "severity": "medium",
       "confidence": "high",
-      "classification": "pre_existing",
+      "classification": "false_positive",
       "cwe": "CWE-405",
       "source": {
         "type": "sca",
@@ -9885,16 +10074,16 @@
         "trust_boundary": "Dependency glob pattern preprocessing; exact mechanism/reachability under investigation"
       },
       "evidence": {
-        "reachable": null,
-        "production_exposed": null,
-        "reproduction_path": "Raw full audit exit1 has one advisory covering versions10.2.5/3.1.5/5.1.9. Production audit exit1 reports3.1.5/5.1.9. Official https://github.com/advisories/GHSA-g3hv-75wg-m249 and fix77a0f5c4b80bdc641c3c930a1d9edf5ad2db57f8.",
-        "proof_gap": "Exact installed source, finite reproduction, compatibility, patch applicability and independent review pending; no allowlist or risk acceptance."
+        "reachable": false,
+        "production_exposed": false,
+        "reproduction_path": "Only GHSA-g3hv-75wg-m249 for exact installed minimatch5.1.9. Official issue requires firstPhasePreProcess/secondPhasePreProcess amplification at optimizationLevel>=2. This legacy source has neither phase; make() follows brace expansion, path split and per-segment parse. Finite30-segment input remains one pattern. Actual package.json/entry/source hashes and independent review bind this conclusion. No general exclusion of minimatch or other advisories.",
+        "proof_gap": "Other advisories, changed package contents or versions and entire production exposure are outside this specific mechanism conclusion."
       },
       "root_cause_cluster": "GHSA-g3hv-75wg-m249",
       "security_invariants": [],
       "disposition": {
         "duplicate_of": null,
-        "false_positive_reason": null,
+        "false_positive_reason": "Only GHSA-g3hv-75wg-m249 for exact installed minimatch5.1.9. Official issue requires firstPhasePreProcess/secondPhasePreProcess amplification at optimizationLevel>=2. This legacy source has neither phase; make() follows brace expansion, path split and per-segment parse. Finite30-segment input remains one pattern. Actual package.json/entry/source hashes and independent review bind this conclusion. No general exclusion of minimatch or other advisories.",
         "risk_acceptance": null
       },
       "fix": {
@@ -9906,19 +10095,52 @@
       },
       "verification": {
         "targeted": {
-          "status": "pending",
-          "binding": null,
-          "notes": "Pending exact source mechanism triage and scoped verification."
+          "status": "pass",
+          "binding": {
+            "commit": "7b6d0e1f2333e99964f301e1358064db388fc0c8",
+            "tree": "babe22d7b1fd2bff0159daaac6d6c3e3975195c2",
+            "tool_name": "Bounded actual installed dependency regression",
+            "tool_version": "Node24.14.0 / pnpm9.15.4; independent source review where stated",
+            "command": "node --test --test-reporter=tap scripts/security/tests/minimatch-globparts.test.mjs",
+            "environment": "Mac host exact committed dependency inputs; unchanged local runtime460ded4 separately recorded; no CI/image/runtime-security clearance",
+            "result_sha256": "dca8a9438ca3d79c76bd37070edba8d3b5b87ecf13f6b1be96902496e11bff19",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/minimatch-security-r01/after-patch-regression.log",
+            "config_sha256": "3420869473d1aa7c8bacb4f6310920c9f04231d5be3d3672d9c2677dfdd1be1f",
+            "recorded_at": "2026-11-03T13:34:27.921577+00:00"
+          },
+          "notes": "8/8 actual installed format/normal-glob/legacy-mechanism checks. Original10.2.5 finite same fixture4FAIL/4PASS retained."
         },
         "affected_regression": {
-          "status": "pending",
-          "binding": null,
-          "notes": "Pending exact source mechanism triage and scoped verification."
+          "status": "pass",
+          "binding": {
+            "commit": "7b6d0e1f2333e99964f301e1358064db388fc0c8",
+            "tree": "babe22d7b1fd2bff0159daaac6d6c3e3975195c2",
+            "tool_name": "Exact advisory, source and CI negative regression",
+            "tool_version": "Node24.14.0 / pnpm9.15.4; independent source review where stated",
+            "command": "node --test --test-reporter=tap scripts/security/tests/minimatch-sca.test.mjs",
+            "environment": "Mac host exact committed dependency inputs; unchanged local runtime460ded4 separately recorded; no CI/image/runtime-security clearance",
+            "result_sha256": "6dd776dbfd4ce42e1b12f2c7205e82fbc37688f40174791d3c261b418f0660b7",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/minimatch-security-r01/entrypoint-regression-r04.log",
+            "config_sha256": "3420869473d1aa7c8bacb4f6310920c9f04231d5be3d3672d9c2677dfdd1be1f",
+            "recorded_at": "2026-11-03T13:34:27.921577+00:00"
+          },
+          "notes": "9 exact source/advisory/CI-entrypoint checks, prior37CI/SCA guards and full lint exit0. Not full repository security or product acceptance."
         },
         "diff_review": {
-          "status": "pending",
-          "binding": null,
-          "notes": "Pending exact source mechanism triage and scoped verification."
+          "status": "pass",
+          "binding": {
+            "commit": "7b6d0e1f2333e99964f301e1358064db388fc0c8",
+            "tree": "babe22d7b1fd2bff0159daaac6d6c3e3975195c2",
+            "tool_name": "Independent read-only exact diff and entrypoint review",
+            "tool_version": "Node24.14.0 / pnpm9.15.4; independent source review where stated",
+            "command": "save_idle_diff_review initial608de7c2 plus entrypoint c1534e7b; no recursive agents or test rerun",
+            "environment": "Mac host exact committed dependency inputs; unchanged local runtime460ded4 separately recorded; no CI/image/runtime-security clearance",
+            "result_sha256": "c1534e7b83f83714cd6f826b2698f555cf60af54a2976ab9c50704f94a4478f9",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/minimatch-security-r01/independent-entrypoint-review-r02.json",
+            "config_sha256": "3420869473d1aa7c8bacb4f6310920c9f04231d5be3d3672d9c2677dfdd1be1f",
+            "recorded_at": "2026-11-03T13:34:27.921577+00:00"
+          },
+          "notes": "One independent context. InitialP2 entrypoint gap fixed with package metadata and actual require resolution pins; only changed2files re-reviewed."
         },
         "full_regression": {
           "status": "pending",
@@ -9945,6 +10167,25 @@
             "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/save-idle-sca-r01/pnpm-audit-all.log",
             "config_sha256": "6e6d02606e188f3258a973f9067b57623b82307a27313c175c67075430b1050e",
             "recorded_at": "2026-11-03T13:17:09.292146+00:00"
+          }
+        },
+        {
+          "at": "2026-11-03T13:34:27.921577+00:00",
+          "transition": "candidate->false_positive",
+          "actor": "Codex root with independent mechanism and entrypoint review",
+          "reason": "Only GHSA-g3hv-75wg-m249 for exact installed minimatch5.1.9. Official issue requires firstPhasePreProcess/secondPhasePreProcess amplification at optimizationLevel>=2. This legacy source has neither phase; make() follows brace expansion, path split and per-segment parse. Finite30-segment input remains one pattern. Actual package.json/entry/source hashes and independent review bind this conclusion. No general exclusion of minimatch or other advisories.",
+          "approval_id": null,
+          "binding": {
+            "commit": "7b6d0e1f2333e99964f301e1358064db388fc0c8",
+            "tree": "babe22d7b1fd2bff0159daaac6d6c3e3975195c2",
+            "tool_name": "Independent read-only exact diff and entrypoint review",
+            "tool_version": "Node24.14.0 / pnpm9.15.4; independent source review where stated",
+            "command": "save_idle_diff_review initial608de7c2 plus entrypoint c1534e7b; no recursive agents or test rerun",
+            "environment": "Mac host exact committed dependency inputs; unchanged local runtime460ded4 separately recorded; no CI/image/runtime-security clearance",
+            "result_sha256": "c1534e7b83f83714cd6f826b2698f555cf60af54a2976ab9c50704f94a4478f9",
+            "log_path": "/Users/lixiaochen/Downloads/feishu_timeline_app/var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/minimatch-security-r01/independent-entrypoint-review-r02.json",
+            "config_sha256": "3420869473d1aa7c8bacb4f6310920c9f04231d5be3d3672d9c2677dfdd1be1f",
+            "recorded_at": "2026-11-03T13:34:27.921577+00:00"
           }
         }
       ]

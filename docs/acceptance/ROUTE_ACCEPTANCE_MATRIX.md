@@ -1015,6 +1015,11 @@ E19的原记录缺自身runtime四字段，e087仅邻近上下文，不据此记
 
 E165签名维护最终收据beee9459…、当前b2编译客户端CLEAN/EICAR实际通过。E166仅一次原性能本正式v7保存，完整3025.275ms仍FAIL。时间对齐与15份证据摘要绑定在[最终诊断](../../var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/performance-b2-r01/analysis-r03.json)，SHA526013dbd6459cc1720634169484163522d67c16765a786dbcab951be34f8712。主慢段PUT前1491.812ms、787ms长任务，具体函数尚未证明。正常OFF、清槽、刷新及重启后的全快照读回已核，原性能与输入绑定失败保留。计数67/74及9链标准不变。
 
+
+### E167当前增量
+
+460ded4候选已在同一HTTPS45464正常运行，四入口身份一致，原v8保持。函数归因定位模型导出、请求/checkpoint克隆、恢复envelope序列化及同序列后台重复捕获；aa1970b最小修复已随共同候选实装。首保存v8→v9完整5539.175ms仍FAIL，云稿/正式/刷新全snapshot相等且仅F8变化。尚无实际耗时改善，正在一次限定函数观察；A04-04及67/74不提升。详见[执行E167](../EXECUTION_LEDGER.md)与[首轮实装诊断](../../var/truck-color-v1-20261020/final-execution-20261024-r01/r30-a09-api-overlay-preparation-20261030-r01/capacity-unblock-20261103-r01/idle-save-analysis-r01.json)。原失败、独审范围及交付入口V3/V4引用修正分别保留。
+
 ### E163/E164当前增量
 
 E163的40GiB授权直接来自所有者本会话TRUCK-COLOR-V1-CAPACITY-UNBLOCK-20261103-R01，配置policy074dced…和实际容量收据d9b596a3…；完整b2增量包manifest014d562f…需联合2202十九文件操作补充使用，生命周期实际独审4e48507d…与旧失败ed96原件共同保留。实际构建、组装和正常切换已完成，下一周期空间为按实测窗口的预测，Guest签名维护须届时新鲜准入。
