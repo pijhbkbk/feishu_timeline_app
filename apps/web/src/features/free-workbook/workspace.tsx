@@ -62,7 +62,19 @@ export function FreeWorkbookWorkspace(){
   useEffect(()=>{
     if(!dirty||!ready||!draftReady||uploading||pendingImport.current||recoverable.length||!ownerId)return;
     let stopped=false;const generation=draftGeneration.current,isCurrent=captureScope();
-    const timer=setTimeout(()=>{void (async()=>{try{const capturedSequence=sequence.current,draft=await runtime.current?.draftSnapshot();if(stopped||generation!==draftGeneration.current)return;if(!draft){setDraftTick(n=>n+1);return;}await persistDraft(draft.snapshot,capturedSequence,draft.edit);if(!stopped&&isCurrent()&&!draft.edit&&!busyRef.current&&!session.current?.uncertain)await autoSaveCloud(draft.snapshot,capturedSequence,isCurrent);}catch(cause){if(!stopped)setDraftStatus(message(cause));}})();},800);
+    const timer=setTimeout(()=>{void (async()=>{
+      try {
+        const capturedSequence=sequence.current;
+        // The formal save owns the pre-send checkpoint for this exact sequence.
+        // A later edit or live editor input still needs its background recovery copy.
+        if(busyRef.current&&session.current?.pendingSequence===capturedSequence&&runtime.current?.isEditIdle())return;
+        const draft=await runtime.current?.draftSnapshot();
+        if(stopped||generation!==draftGeneration.current)return;
+        if(!draft){setDraftTick(n=>n+1);return;}
+        await persistDraft(draft.snapshot,capturedSequence,draft.edit);
+        if(!stopped&&isCurrent()&&!draft.edit&&!busyRef.current&&!session.current?.uncertain)await autoSaveCloud(draft.snapshot,capturedSequence,isCurrent);
+      }catch(cause){if(!stopped)setDraftStatus(message(cause));}
+    })();},800);
     return()=>{stopped=true;clearTimeout(timer);};
   },[draftTick,dirty,ready,draftReady,busy,uploading,recoverable.length,ownerId,cloudReady]);
   useEffect(()=>{mounted.current=true;readController.current=new AbortController();return()=>{mounted.current=false;readController.current?.abort();navigationRead.current?.controller.abort();navigationRead.current=null;};},[]);

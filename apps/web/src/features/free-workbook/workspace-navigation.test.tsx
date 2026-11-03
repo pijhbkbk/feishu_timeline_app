@@ -201,6 +201,66 @@ it('durably captures later content while the first server save is still awaiting
  resolve({...saved(oldId),revision:2});await settle();expect(drafts.write.mock.calls.at(-1)![0].snapshot.name).toBe('N+1 actual content');expect(drafts.write.mock.calls.at(-1)![0].pending).toBeNull();expect(drafts.remove).not.toHaveBeenCalled();
 });
 
+it('avoids recapturing an unchanged idle editor while its formal save owns the checkpoint',async()=>{
+  vi.useFakeTimers();
+  await settle();readyEditor();await settle();
+  let acknowledge!:(value:SavedWorkbook)=>void;
+  api.save.mockImplementationOnce(()=>new Promise<SavedWorkbook>(resolve=>{acknowledge=resolve;}));
+  const button=nodes(tree).find(node=>node.type==='button'&&text(node)==='保存')!;
+  (button.props.onClick as ()=>void)();await settle();
+  expect(api.save).toHaveBeenCalledTimes(1);
+  const editor=(canvasRuntime().props.runtime as {current:{draftSnapshot:ReturnType<typeof vi.fn>}}).current;
+  const initialWrites=drafts.write.mock.calls.length;
+  await vi.advanceTimersByTimeAsync(801);await settle();
+  expect(editor.draftSnapshot).not.toHaveBeenCalled();
+  expect(drafts.write).toHaveBeenCalledTimes(initialWrites);
+  expect(renderToStaticMarkup(tree)).not.toContain('已保存 · 版本 2');
+  acknowledge({...saved(oldId),revision:2});await settle();
+  expect(renderToStaticMarkup(tree)).toContain('已保存 · 版本 2');
+});
+
+it('keeps uncommitted input durable during a formal save even before the change sequence advances',async()=>{
+  vi.useFakeTimers();
+  await settle();readyEditor();await settle();
+  let acknowledge!:(value:SavedWorkbook)=>void;
+  api.save.mockImplementationOnce(()=>new Promise<SavedWorkbook>(resolve=>{acknowledge=resolve;}));
+  const button=nodes(tree).find(node=>node.type==='button'&&text(node)==='保存')!;
+  (button.props.onClick as ()=>void)();await settle();
+  const original=structuredClone(api.save.mock.calls[0]![1]);
+  const editor=(canvasRuntime().props.runtime as {current:{isEditIdle:ReturnType<typeof vi.fn>;draftSnapshot:ReturnType<typeof vi.fn>}}).current;
+  const snapshot=saved(oldId).snapshot;
+  const edit={sheetId:snapshot.sheetOrder[0],row:0,column:0,document:{body:{dataStream:'尚未确认的输入\r\n'}}};
+  editor.isEditIdle.mockReturnValue(false);
+  editor.draftSnapshot.mockResolvedValue({snapshot,edit});
+  await vi.advanceTimersByTimeAsync(801);await settle();
+  const retained=drafts.write.mock.calls.at(-1)![0];
+  expect(retained.edit).toEqual(edit);
+  expect(retained.pending.payload).toEqual(original);
+  expect(retained.sequence).toBe(retained.pending.sequence);
+  acknowledge({...saved(oldId),revision:2});await settle();
+  await vi.waitFor(async()=>expect(await settle()).toContain('仍有未确认输入'));
+  expect(drafts.remove).not.toHaveBeenCalled();
+});
+
+it('resumes background recovery after an unsent formal checkpoint fails',async()=>{
+  vi.useFakeTimers();
+  await settle();readyEditor();await settle();
+  let failCheckpoint!:(error:Error)=>void;
+  drafts.write.mockImplementationOnce(()=>new Promise<boolean>((_resolve,reject)=>{failCheckpoint=reject;}));
+  const button=nodes(tree).find(node=>node.type==='button'&&text(node)==='保存')!;
+  (button.props.onClick as ()=>void)();await settle();
+  const editor=(canvasRuntime().props.runtime as {current:{draftSnapshot:ReturnType<typeof vi.fn>}}).current;
+  await vi.advanceTimersByTimeAsync(801);await settle();
+  expect(editor.draftSnapshot).not.toHaveBeenCalled();
+  expect(api.save).not.toHaveBeenCalled();
+  failCheckpoint(new Error('合成落盘失败'));await settle();
+  expect(renderToStaticMarkup(tree)).toContain('保存请求尚未发送');
+  await vi.advanceTimersByTimeAsync(801);await settle();
+  expect(editor.draftSnapshot).toHaveBeenCalled();
+  expect(drafts.write.mock.calls.at(-1)![0].pending).toBeNull();
+  expect(api.save).not.toHaveBeenCalled();
+});
+
 it('offers retry and a complete recovery download while a failed editing overlay remains preserved',async()=>{const draft={schema:1,ownerId:identity.id,workbookId:oldId,editorId:crypto.randomUUID(),baseRevision:1,sequence:3,savedAt:Date.now(),snapshot:saved(oldId).snapshot,pending:null};drafts.read.mockResolvedValueOnce([draft]);drafts.claim.mockResolvedValue({...draft,editorId:crypto.randomUUID()});await settle();await click('恢复这份草稿');const canvas=nodes(tree).find(n=>typeof n.props.onRecoveryError==='function')!;(canvas.props.onRecoveryError as (message:string)=>void)('合成恢复失败');const html=await settle();expect(html).toContain('合成恢复失败');expect(html).toContain('inert');expect(html).toContain('重新尝试恢复输入');expect(html).toContain('下载草稿恢复副本');expect(nodes(tree).find(n=>n.type==='button'&&text(n)==='保存')?.props.disabled).toBe(true);});
 
 function cloudRead(){const snapshot=saved(oldId).snapshot;snapshot.name='云端保留内容';return {workbookRevision:1,baseStale:false,draft:{id:laterId,draftRevision:1,baseWorkbookRevision:1,snapshotHash:'a'.repeat(64),snapshotBytes:JSON.stringify(snapshot).length,updatedAt:'2026-10-20T00:00:00Z',snapshot}};}

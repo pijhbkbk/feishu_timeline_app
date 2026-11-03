@@ -9,3 +9,14 @@ describe('workbook save acknowledgements',()=>{
 
 it('recreates an uncertain save after a browser restart using the original bytes and sequence',()=>{const before=new WorkbookSaveSession(6),first=before.request(blankWorkbook(crypto.randomUUID()),14),checkpoint=JSON.parse(JSON.stringify(before.checkpoint()));const after=new WorkbookSaveSession(6,checkpoint);checkpoint.payload.snapshot.name='mutated external record';expect(after.existing()).toEqual(first);expect(after.checkpoint()?.sequence).toBe(14);expect(after.confirm(7)).toBe(14);expect(after.checkpoint()).toBeNull();});
 it('rejects an uncertain request belonging to a different base revision',()=>{const before=new WorkbookSaveSession(4);before.request(blankWorkbook(crypto.randomUUID()),1);expect(()=>new WorkbookSaveSession(5,before.checkpoint())).toThrow('原版本');});
+
+it('exposes only the captured sequence while retaining or clearing the original pending operation',()=>{
+  const session=new WorkbookSaveSession(4);
+  expect(session.pendingSequence).toBeNull();
+  session.request(blankWorkbook(crypto.randomUUID()),9);
+  expect(session.pendingSequence).toBe(9);
+  session.reject(undefined);
+  expect(session.pendingSequence).toBe(9);
+  session.confirm(5);
+  expect(session.pendingSequence).toBeNull();
+});

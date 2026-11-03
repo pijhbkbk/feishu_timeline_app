@@ -5,6 +5,7 @@ export class WorkbookSaveSession {
   revision:number;private pending:PendingWorkbookSave|null=null;
   constructor(revision:number,pending:PendingWorkbookSave|null=null){this.revision=revision;if(pending){if(pending.payload.expectedRevision!==revision)throw new Error('草稿保存请求与原版本不一致。');this.pending=structuredClone(pending);}}
   get uncertain(){return this.pending!==null;}
+  get pendingSequence(){return this.pending?.sequence??null;}
   request(snapshot:IWorkbookData,sequence:number):SavePayload {if(!this.pending)this.pending={payload:{snapshot:structuredClone(snapshot),expectedRevision:this.revision,operationId:crypto.randomUUID()},sequence};return this.pending.payload;}
   abandonUnsent(operationId:string){if(this.pending?.payload.operationId===operationId)this.pending=null;}
   existing(){return this.pending?.payload??null;}
