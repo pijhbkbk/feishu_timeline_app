@@ -219,7 +219,8 @@ it('rejects a mapping snapshot that finishes after account or workbook navigatio
 });
 it('preserves the latest editing document before recovering a cloud draft without waiting for autosave',async()=>{
  cloudApi.read.mockResolvedValueOnce(cloudRead());await settle();readyEditor();await settle();const canvas=canvasRuntime(),rt=(canvas.props.runtime as {current:{draftSnapshot:ReturnType<typeof vi.fn>}}).current;const snapshot=saved(oldId).snapshot;snapshot.name='不到800ms的新内容';const edit={sheetId:snapshot.sheetOrder[0],row:0,column:0,document:{body:{dataStream:'未确认文本\r\n'}}};rt.draftSnapshot.mockResolvedValue({snapshot,edit});
- await click('恢复服务器草稿');expect(drafts.write.mock.calls[0]![0]).toMatchObject({snapshot:{name:'不到800ms的新内容'},edit});expect(drafts.write.mock.calls[1]![0].editorId).not.toBe(drafts.write.mock.calls[0]![0].editorId);expect((canvasRuntime().props.snapshot as {name:string}).name).toBe('云端保留内容');expect(window.confirm).toHaveBeenCalled();
+ const html=await click('恢复服务器草稿');expect(drafts.write.mock.calls[0]![0]).toMatchObject({snapshot:{name:'不到800ms的新内容'},edit});expect(drafts.write.mock.calls[1]![0].editorId).not.toBe(drafts.write.mock.calls[0]![0].editorId);expect((canvasRuntime().props.snapshot as {name:string}).name).toBe('云端保留内容');expect(window.confirm).toHaveBeenCalled();
+ expect(html).toContain('已恢复服务器草稿');expect(html).toContain('本机恢复副本已保留');expect(html).not.toContain('已恢复本机草稿');
 });
 it('does not replace the current editor when current input cannot be durably captured',async()=>{
  cloudApi.read.mockResolvedValueOnce(cloudRead());await settle();readyEditor();await settle();const canvas=canvasRuntime(),key=canvas.key;const rt=(canvas.props.runtime as {current:{draftSnapshot:ReturnType<typeof vi.fn>}}).current;rt.draftSnapshot.mockResolvedValue(null);const html=await click('恢复服务器草稿');expect(canvasRuntime().key).toBe(key);expect(drafts.write).not.toHaveBeenCalled();expect(html).toContain('完成中文选词');

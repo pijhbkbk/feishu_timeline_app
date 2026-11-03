@@ -171,6 +171,9 @@ export function FreeWorkbookWorkspace(){
     const isCurrent=captureScope();if(sequence.current>0){const captured=await captureLatestDraft(isCurrent,true);if(!isCurrent())return;if(!captured||captured.sequence!==sequence.current)throw new Error('保留期间又有新输入，请完成输入后重试恢复。');}
     const beforeRestore=sequence.current,coordinator=new ServerDraftSession({workbookId:active.id,authorUserId:ownerId,baseWorkbookRevision:draft.baseWorkbookRevision,draft:cloudMeta(draft),acknowledgedSequence:1});coordinator.capture(draft.snapshot,1);
     const local:WorkbookLocalDraft={schema:1,ownerId,workbookId:active.id,editorId:crypto.randomUUID(),baseRevision:draft.baseWorkbookRevision,sequence:1,savedAt:Date.now(),writeVersion:1,snapshot:draft.snapshot,edit:null,pending:null,server:coordinator.checkpoint()};await writeLocalDraft(local);if(!isCurrent())return;if(sequence.current!==beforeRestore)throw new Error('保留期间又有新输入，请完成输入后重试恢复。');mount({...active,snapshot:draft.snapshot},true,local,coordinator);
+    setStatus(`已恢复服务器草稿 · 基于版本 ${draft.baseWorkbookRevision}`);
+    setCloudStatus('服务器草稿已恢复，自动保存已启用');
+    setDraftStatus('本机恢复副本已保留 · 尚未保存为正式版本');
     if(active.revision!==draft.baseWorkbookRevision)setError('服务器草稿基于旧正式版本，本机内容保留；正式保存仍需处理版本冲突。');
   });}
   function cloudMeta(draft:NonNullable<ServerDraftRead['draft']>){return {id:draft.id,draftRevision:draft.draftRevision,baseWorkbookRevision:draft.baseWorkbookRevision,snapshotHash:draft.snapshotHash,snapshotBytes:draft.snapshotBytes,updatedAt:draft.updatedAt};}
