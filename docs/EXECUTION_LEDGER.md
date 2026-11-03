@@ -9487,3 +9487,18 @@ E163执行续。新40配置于05:24:01Z实际准入，378根27056914432B，永�
 b7按真实b14e90状态正常停止，收据f3ea89f2…。新24文件包manifest014d562f…/binding42d121b7…按实际前驱与fresh观察冻结并stage。date-start-r01在启动应用进程前失败，原件ed96e6c1a8c13aafbc1599f39eb1d9f6641b305314948a607f8e1b048f580512记录CHECK_COMPLETE_NEW_BUDGET_ROOTS、owners为空及无应用监听。根因是复用的api_overlay.py内部仍固定376，此次资源接线遗漏了该直接依赖。它没有位于原repo源清单；现将已交付4bfe751b…原源码纳入scripts/deploy/offline，只修新policy完整有序根校验，legacy376及原set语义保留，其他函数原字节复用。原预算/物理空间已经通过，失败不归类为磁盘满。
 
 目标3项协议回归与57项生命周期回归通过；第一份新fixture错用RuntimeError捕获真实Rejected的失败记录保留，改为该真实异常类型后通过。date精确input-r02用于正常失败state的后续启动，旧state和失败记录不改写。正在准备小操作续接，复用已组装b2应用、原delta和共享服务；当前预览暂不可用，容量任务尚未宣布完成。
+
+
+## 2026-11-03 — 40GiB正常续启与精度UTC内容链闭合（E164）
+
+376根遗漏修复提交2202ea0998c66bc59413f5c9a7d0ca5842b1d9ea，独审39eef015…。api_overlay原公开受测源码4bfe751b…纳入源码控制，实际仅resources根检查改变，其余函数逐字保持。新policy按完整378有序根校验，legacy376的set语义保留。19文件小操作补充的15ops及新绑定已按原完整包014d562f…核对并stage，原b2应用和delta直接复用。
+
+当次scanner观察eda7402e…于05:56:17Z完成，原daemon与签名来源保留。正常新event date-start-r02以实际失败ed96为CAS输入，RUNNING原件d6b618b7a1d052c57182bd53974c15343f9f02cda1edd6ef04495489e8053080，API8353/t5675709、Web8370/t5675790。05:58:48Z directApi/directWeb/tlsApi/tlsWeb四身份均b2e94dffdf924be0eb564148723940664028a30e/tree3cc22086db440b689122fc991d9cebd6b139820c/release truck-utc-json-b2e94dffdf92-r01/build04:51:08Z。06:04:11Z固定PID前后核timing前缀键计数0，Guest可用1767915520B。实际生命周期独审4e48507d…确认共享PG/Redis/scanner/proxy保持。
+
+原M1正常会话读取703本v6，全文DTO与b7时相等，第二表绿色图片实际加载可见，首张加载中截图也保留。正常GUI新建c776c2b9-216f-4ef8-bb99-2959743770f4，B1实际公式=121.12173461914062产生t2数值原值，云稿5ec9c06a…创建及更新200。B2 marker后刷新，明确选择服务器草稿恢复，再正常正式保存v2及精确DELETE草稿200，刷新正式GET、历史GUI及一次只读PG当前/历史v2均保持相应写入请求的完整snapshot。三协议hash/bytes各自重算，当前与历史v2为0b474d98…/1270B，草稿清空。当前createdAt、历史v1/v2 createdAt、当前updatedAt及两次云稿updatedAt六项均落真实网络请求窗口。draft createdAt本次未直接输出，语义由同源两时区PG用例支持。
+
+跨编辑器整体deepEqual首次失败，完整差异仅SHEET_DEFINED_NAME_PLUGIN.data空串到{}，原断言失败保留。独审70e4bef1…结合Univer1.0.4真实输入与原A05-04/E146已允许空定义集合规范化说明语义，不改数值、hash或任意字段容差。当前及历史对正式实际请求依然严格全等。云恢复来源提示误写本机也保留，源审4c15a6e6…确认取server snapshot后建立新的本机保护副本。文案修复78e877a7baeab097e639390006e08f71d33442c0仅三处setter，69目标/类型/lint及独审49108d91…完成，待构建实装。
+
+实际链独审674b0ede0723dad00cb8fab7f9604f6df2f9f94cd74929f987b8468901e7454b覆盖19链依赖/20分组、24项同源真实PG及原多表内容链输入适用性，支持恢复A03-01/E2E-02/P0-03/P1-02。现67/1/4/1/1=74，13/15包、7/9链、P0 7/10、P1 4/5。原Office/IME/整Chrome没有重跑，性能9559.650ms FAIL和CI/full安全/正式/签收门槛继续保留。
+
+完整周期分析5d663724…在378根实际约25.20GiB上规划新增峰1420MiB与2GiB缓冲，40GiB内预计约28.65GiB，下一轮有界修复/诊断具备规划余量。Guest签名维护阶段单列新鲜准入，512MiB是规划窗口而非已写入量。本轮文件删除数为0，VM未扩盘。源码层已接续单次11点诊断精确b2目标，正常启用需新有效签名。daily28171于06:27:34Z到期，本轮所有者已授权必要官方维护，现已核无新版缓存，正在准备复用已验签main/bytecode及既有更新状态的正常更新路径。纯工作簿编辑和源码修复继续，旧离线安装结论保留其执行时点。

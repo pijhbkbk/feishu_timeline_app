@@ -2,18 +2,18 @@
 
 当前执行状态以 [EXECUTION_LEDGER](../EXECUTION_LEDGER.md) 最新检查点为准；本页是其摘要，验收断言和计数仅从 [ROUTE_ACCEPTANCE_MATRIX](ROUTE_ACCEPTANCE_MATRIX.md#v1-baseline-v10) 派生，安全状态仅引用 [FINDINGS](../security/FINDINGS.yaml)。下方历史追加保留原日期、FAIL和版本，不覆盖当前入口。
 
-- TASK_ID：`TRUCK-COLOR-V1-COMPLETION-20261020-R01`；主线 `TRUCK-COLOR-V1-CONTINUE-20261020-R02`；当前子任务 `TRUCK-COLOR-V1-FINAL-EXECUTION-20261024-R01`。
-- STATE：`VM_RUNNING / APPLICATION_RUNNING / DIAGNOSTICS_OFF`，产品 `PARTIAL / AWAITING_PRODUCT_OWNER_CONFIRMATION`。E160时钟补丁后正常续启b7，四入口及原M1会话/原703本v6绿色图片已实际读回，45464预览恢复。
-- WORKSPACE：`/Users/lixiaochen/Downloads/feishu_timeline_app`，分支 `codex/design-convergence-20261019`，最新应用修复提交 `7021d0d46e8455f964d72b29cc9a88aa4fbd2d84`。后继证据提交单独记录，运行制品仍为b7，时间修复尚待构建。
-- SOURCE_ID：共同候选 `b7b8d13190758654697c47d9c582a37e8ceba7e4` / tree `9d405dfa5dbaa87e707889cce5bfed658266fffe`，release `truck-numeric-json-b7b8d1319075-r01` / build `2026-11-03T02:03:27Z`。应用双端构建和Linux装配已完成，产品入口读回待完成。
-- ARTIFACT_ID：`OP/numeric-application-delta-20261103-r01`，948新叶与14796原Linux基包叶组成15744项。manifest `0afc682f8976d4e8be8455cc287b20e282390109d1d0e5dab4043c8ff366a25b`，archive `8dfa2b799e68da9251a4ba392d985d3bcaba89d6149378048dc9eec05ada6cae`。24文件增量交付manifest `e247be6d74979aeee703918546d262edff6b3f7d9eac24bbd4a10e0af5907581`。
-- RUNTIME_ID：同一25GiB Lima/boot `589fefa8-c3d5-477d-a597-7303774115c9`。原PG/Redis/scanner/proxy保持，API7248/t4743001、Web7265/t4743103，正常RUNNING原件b14e90f0…，独立当前进程核timing前缀均不存在。原e299正常stop及b7首次失败原件保留。
+- TASK_ID `TRUCK-COLOR-V1-COMPLETION-20261020-R01`，主线 `TRUCK-COLOR-V1-CONTINUE-20261020-R02`，当前执行 `TRUCK-COLOR-V1-CAPACITY-UNBLOCK-20261103-R01`。
+- STATE `VM_RUNNING / APPLICATION_RUNNING / DIAGNOSTICS_OFF`，产品 `PARTIAL / AWAITING_PRODUCT_OWNER_CONFIRMATION`。E163正常续启b2，E164原M1、原703本v6全文和绿色图片以及新c776本v2内容链已验证。
+- WORKSPACE `/Users/lixiaochen/Downloads/feishu_timeline_app`，分支 `codex/design-convergence-20261019`。当前应用含数值与UTC修复，后续标签修复源码 `78e877a7baeab097e639390006e08f71d33442c0` 已检查和独审，尚待构建实装。
+- SOURCE_ID `b2e94dffdf924be0eb564148723940664028a30e` / tree `3cc22086db440b689122fc991d9cebd6b139820c`，release `truck-utc-json-b2e94dffdf92-r01` / build `2026-11-03T04:51:08Z`。双端实际构建、Linux装配、四入口和产品读回均对应此身份。
+- ARTIFACT_ID `OP/date-application-delta-20261103-r01`，manifest945fdd6f…、archive587ebdef…、compositee307aee8…，948新增与14796原基包项组成15744项。完整24文件交付manifest014d562f…需联合 `date-count-recovery-preparation-r01/operations-continuation` 的2202十九文件补充使用。
+- RUNTIME_ID 同一25GiB Lima，boot `589fefa8-c3d5-477d-a597-7303774115c9`。API8353/t5675709、Web8370/t5675790，正常RUNNING原件d6b618b7…。PG/Redis/scanner/proxy保持原身份，两进程timing键计数为0。原b7正常stop与新启动376计数遗漏失败原件ed96均保留。
 - REMOTE_LAST_OBSERVED：2026-11-03通过git ls-remote与GitHub API只读复核main仍 `9bdec2864c3ed9eb1a045062b756611f98208bfb`、最新main CI `38866594479` failure；未新增可归档的分支保护配置证据，必需门禁不变。候选未新增远端CI，精确正式域名身份仍UNKNOWN。
-- CURRENT_ITEM：66 PASS/1 PARTIAL/4 NOT_VERIFIED/2 FAIL/1 BLOCKED=74，12/15包、6/9技术链、6/10 P0、3/5 P1。E160根据已证数值保持反例重开A03-01及E2E-02/P0-03/P1-02，原E99/E100/E156历史事实保留，A05/Office未受反例推翻的样本保持。
-- EVIDENCE：E160构建独审2a0d4762…、delta独审e65ad838…、Linux装配实际独审c9285ae7…。R44已于02:38Z通过授权会话实际发送，完整反馈及Gmail同件1a19f48c8e3751f2已读取去重。既有14页reference-implementation-comparison-r03.html保持。
-- OPEN_LIMITS：A03-01精度反证重开，E161新增时间元数据偏移回归，修复与实装复验待完成。A04-04最新单次9559.650ms仍FAIL，原6020.412ms首响应头等待未归因。daily有效截止2026-11-03T06:27:34Z，后续实际使用守原门禁。CI、完整安全、正式目标及所有者接收仍待。
-- HUMAN_ACTION：所有者call_54a6adb263424774b0293f65de287840已批准两项25GiB持续调整并继续；当前磁盘已按正常入口实际扩容。随后call_f8f85e0f25f849e999d88a0bab28bdd6批准原376根host25.25GiB用于本轮构建/增量交付/证据保留，VM磁盘额度25GiB。25.5GiB新统计额度申请待所有者答复，最终所有者签收仍待。
-- NEXT_ACTION：E161数值型B1云稿完整内容已精确读回，但新raw writer时间元数据实际偏移8小时，当前停止该本正式保存。保留原异常合成本，UTC补丁已提交并完成24项选定真实PG回归，待共同构建/实装后用新合成本完成精度/时间链，再开展单次性能诊断。
+- CURRENT_ITEM 67 PASS/1 PARTIAL/4 NOT_VERIFIED/1 FAIL/1 BLOCKED=74，13/15包、7/9技术链、7/10 P0、4/5 P1。E164完整受影响尾段及19依赖适用性独审支持恢复A03-01/E2E-02/P0-03/P1-02，历史失败和未受影响样本保持原范围。
+- EVIDENCE 构建891c323f…、delta f016ed30…、组装a89eebbf…、生命周期4e48507d…、产品链674b0ede…均有实际独审。R45回报和Gmail反馈1a19f9b2731ed57b已读取，本次新容量与产品结果待R46报送。原14页参考与实装对照继续复用。
+- OPEN_LIMITS A04-04最新完整单次9559.650ms仍FAIL，6020.412ms首响应头等待待有界定位。云恢复来源提示的已知错误正在修复。daily28171已在2026-11-03T06:27:34Z到期，后继扫描与重启按本次授权维护。CI、完整安全、正式目标和所有者接收仍待。
+- HUMAN_ACTION 本会话所有者已直接授权原完整项目统计范围40GiB，替代旧小额度，新增Host物理峰后10GiB保留线。VM保持25GiB，项目64MiB和Guest1GiB分别保留。当前378根为原376有序根加两个精确测试缓存目录，最终产品仍由李晓晨接收。
+- NEXT_ACTION 已实际恢复构建、组装和正常切换，精度UTC产品尾段闭合。继续云来源标签实装、当前扫描器官方签名维护及既有11点单次性能诊断。原性能本v6、异常时间本bb1和历史证据保持，下一轮峰值按实测窗口预测并逐阶段重新准入。
 - RESUME_ENTRY：最新Ledger → 矩阵未闭合原子/E2E依赖 → 本页派生摘要；最终A15-12由李晓晨明确接收，不由PM或Codex代签。
 
 
@@ -22,15 +22,15 @@
 
 唯一断言和详细步骤在[矩阵现行基线](ROUTE_ACCEPTANCE_MATRIX.md#v1-baseline-v10)，本表按其74条MUST派生。PM冻结的是标准，不是产品接受；旧PASS按原版本/输入适用性复用，FAIL和未执行仍保留。R36历史适用PASS保持；E152补新候选运行绑定，E153按真实菜单/填充/保存全路径增加A02-03一项PASS。
 
-- MUST证据覆盖 `66/74=89.19%`，PARTIAL 1、NOT_VERIFIED 4、FAIL 2、BLOCKED 1；这不是代码完成率。
-- 关键技术链 `6/9=66.67%`。E160重开E2E-02，原E156历史通过保留，其余链按未受反证推翻的样本范围保持。
-- P0交付组6/10关闭，P1组3/5关闭，剩7项技术/交付及1项所有者接收。
+- MUST证据覆盖 `67/74=90.54%`，PARTIAL 1、NOT_VERIFIED 4、FAIL 1、BLOCKED 1，按证据计数。
+- 关键技术链 `7/9=77.78%`。E164恢复E2E-02，原E136/E156及受影响反证历史均保留，Office/IME/整Chrome按输入适用性复用。
+- P0交付组7/10关闭，P1组4/5关闭，剩6项技术或交付要求及1项所有者接收。
 
 | A包 | MUST N_i | 有效PASS P_i | PARTIAL | NOT_VERIFIED | FAIL | BLOCKED | 整包 |
 |---|---:|---:|---:|---:|---:|---:|---|
 | A01 | 4 | 4 | 0 | 0 | 0 | 0 | PASS |
 | A02 | 6 | 6 | 0 | 0 | 0 | 0 | PASS |
-| A03 | 5 | 4 | 0 | 0 | 1 | 0 | PARTIAL |
+| A03 | 5 | 5 | 0 | 0 | 0 | 0 | PASS |
 | A04 | 5 | 2 | 0 | 2 | 1 | 0 | PARTIAL |
 | A05 | 6 | 6 | 0 | 0 | 0 | 0 | PASS |
 | A06 | 3 | 3 | 0 | 0 | 0 | 0 | PASS |
@@ -44,14 +44,14 @@
 | A14 | 4 | 4 | 0 | 0 | 0 | 0 | PASS |
 | A15 | 12 | 8 | 1 | 2 | 0 | 1 | PARTIAL |
 
-12/15整包PASS，A03、A04与A15未闭。代码、GUI、真实Office、系统IME、PG/Redis、恢复和精确目标环境各守证据范围，不互相替代。
+13/15整包PASS，A04与A15仍有未闭项。代码、GUI、真实Office、系统IME、PG/Redis、恢复和精确目标环境各守证据范围。
 
 | 完工门槛 | 当前范围 | 矩阵入口 |
 |---|---|---|
-| 制品/运行身份 | E152实际e299四入口、正常OFF生命周期及E153原M1小本v6读回成立；不代正式域名 | A15-04/05 |
+| 制品/运行身份 | E163实际b2四入口、2202正常OFF续启与E164原M1/原703和新c776读回成立 | A15-04/05 |
 | G3/真实DB/Redis | E67 R23 G3与E58属性证据按逐输入复用；原305 SKIP不计真实PG PASS；新局部24测试不充全仓 | A15-06 |
 | 必需CI/安全 | required候选CI和适用full仍未闭；原R23镜像未检出保留其版本，唯一Finding状态不擅改closed | A15-07/08 |
-| Office/IME/整本 | E93/E99两基准、E135真实IME交错、E136历史组合编辑/草稿/正式v5读回事实保留；E156已补新持久化分支与原同本恢复/保存/返回，独审917a17f1… | A03/A05；E2E-02/03 |
+| Office/IME/整本 | E164精度UTC尾段与原703全文/绿图桥接，经674b独审复用原E99/E100/E136/E156与Office/IME样本，恢复相关保持断言 | A03/A05；E2E-02/03 |
 | Safari/性能/页面 | Safari/布局原范围保持；E146新选择p95=121.895ms/首保存7269.515ms FAIL；E153菜单小功能已闭；E155新单次9559.650ms仍FAIL且非S7固定viewport，E154局部store中位数485.8→335.0ms不是S7通过 | A02-03；A04-02至05；A15-01/03 |
 | 离线/恢复 | E132原3941完整安装合同已核；E140至E143共同候选增量包/普通生命周期适用性成立，非新全量安装或跨VM重启。E77获准逻辑恢复保持，E2E-08安全依赖另验 | A15-09/10 |
 | 约定目标/接收 | 精确 `https://timeline.all-too-well.com` 当前身份UNKNOWN，新候选未发布；技术条件及代表UAT就绪后由所有者明确接收 | A15-11/12 |
