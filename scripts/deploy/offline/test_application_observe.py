@@ -1,5 +1,6 @@
 """Resource-policy boundary tests; no VM, process or business access."""
 import datetime
+from contextlib import nullcontext
 import importlib.util
 from pathlib import Path
 import tempfile
@@ -14,7 +15,8 @@ spec.loader.exec_module(m)
 
 class ResourceAdmissionTests(unittest.TestCase):
     def check(self, *, limit=49*1024**3//2, total=24*1024**3+128*1024**2,
-              free=1024**3+64*1024**2, starting=True, approved_limit=49*1024**3//2):
+              free=1024**3+64*1024**2, starting=True, approved_limit=49*1024**3//2,
+              clock_ages=None):
         roots = ['/Users/lixiaochen/.lima-tcr24', '/Users/lixiaochen/Library/Caches/lima', '/opt/homebrew/Cellar/lima']
         budget = {'at': datetime.datetime.now(datetime.timezone.utc).isoformat(),
                   'scopeNarrowed': False, 'round30RootsIncluded': True, 'limit': limit,
@@ -25,9 +27,21 @@ class ResourceAdmissionTests(unittest.TestCase):
                 raise RuntimeError(code)
         view = types.SimpleNamespace(need=need, INPUT=Path('/synthetic'), pinned=lambda *a: budget,
                                      now=lambda: budget['at'])
+        clock_patch = nullcontext()
+        if clock_ages is not None:
+            sample_time = datetime.datetime.fromisoformat(budget['at'])
+            times = iter(sample_time + datetime.timedelta(seconds=age) for age in clock_ages)
+
+            class Clock(datetime.datetime):
+                @classmethod
+                def now(cls, timezone=None):
+                    return next(times)
+
+            clock_patch = patch.object(m.datetime, 'datetime', Clock)
         with tempfile.TemporaryDirectory() as tmp, \
              patch.object(m.shutil, 'disk_usage', return_value=types.SimpleNamespace(free=free)), \
-             patch.object(Path, 'read_text', return_value='MemAvailable: 2097152 kB\nMemTotal: 4194304 kB\n'):
+             patch.object(Path, 'read_text', return_value='MemAvailable: 2097152 kB\nMemTotal: 4194304 kB\n'), \
+             clock_patch:
             return m.resources(view, types.SimpleNamespace(LOGS=Path(tmp)/'absent'), 'a'*64, starting,
                                approved_limit=approved_limit)
 
@@ -80,6 +94,23 @@ class ResourceAdmissionTests(unittest.TestCase):
             self.check(free=1024**3+64*1024**2-1)
         with self.assertRaisesRegex(RuntimeError, 'APPLICATION_RESOURCE_ADMISSION'):
             self.check(free=1024**3-1, starting=False)
+
+    def test_small_clock_offset_waits_then_requires_nonfuture_budget(self):
+        with patch.object(m.time, 'sleep') as sleep:
+            result = self.check(clock_ages=[-0.103, 0.001])
+        sleep.assert_called_once_with(0.103)
+        self.assertEqual(result['clockWaitSeconds'], 0.103)
+        self.assertEqual(result['budgetAgeSeconds'], 0.001)
+
+    def test_clock_wait_keeps_future_stale_and_capacity_rejections(self):
+        for ages in ([-0.1, -0.001], [-0.1, 120.001], [-1.001], [120.001]):
+            with self.subTest(ages=ages), patch.object(m.time, 'sleep') as sleep:
+                with self.assertRaisesRegex(RuntimeError, 'FRESH_COMPLETE_HOST_BUDGET'):
+                    self.check(clock_ages=ages)
+                self.assertEqual(sleep.call_count, 1 if len(ages) == 2 else 0)
+        with patch.object(m.time, 'sleep'):
+            with self.assertRaisesRegex(RuntimeError, 'APPLICATION_RESOURCE_ADMISSION'):
+                self.check(clock_ages=[-0.1, 0.001], free=1024**3-1)
 
 
 if __name__ == '__main__':

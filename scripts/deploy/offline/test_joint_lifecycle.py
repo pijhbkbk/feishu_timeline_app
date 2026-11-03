@@ -330,6 +330,8 @@ class CandidateContinuationTests(unittest.TestCase):
         target = 'numericb7b8d13'
         path = '/home/recovery/input-numeric-lifecycle-20261103-r01'
         self.assertEqual(host.target_input(target, path), path)
+        recovery_path = '/home/recovery/input-numeric-lifecycle-20261103-r02'
+        self.assertEqual(host.target_input(target, recovery_path), recovery_path)
         self.assertEqual(host.TARGET_BOOTS[target], m.TARGETS[target]['bootId'])
         for other in [path + '-extra', '/home/recovery/input-menu-save-lifecycle-20261102-r01']:
             with self.assertRaisesRegex(Exception, 'HOST_INPUT_DIRECTORY'):

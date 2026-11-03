@@ -6,7 +6,15 @@ def resources(m,base,budget_sha,starting=False,*,approved_limit=49*1024**3//2):
  m.need(type(approved_limit) is int and approved_limit in (49*1024**3//2,25*1024**3,101*1024**3//4),'APPROVED_HOST_LIMIT')
  m.need(re.fullmatch('[a-f0-9]{64}',budget_sha or '') is not None,'FRESH_BUDGET_ARGUMENT')
  b=m.pinned(m.INPUT/('budget-'+budget_sha+'.json'),budget_sha,4*1024**2)
- age=(datetime.datetime.now(datetime.timezone.utc)-datetime.datetime.fromisoformat(b['at'])).total_seconds()
+ sampled_at=datetime.datetime.fromisoformat(b['at'])
+ age=(datetime.datetime.now(datetime.timezone.utc)-sampled_at).total_seconds()
+ clock_wait=0
+ if -1<=age<0:
+  # Wait for a small host/guest clock offset, then apply the original age gate.
+  # Never rewrite the sample timestamp or accept a still-future receipt.
+  clock_wait=-age
+  time.sleep(clock_wait)
+  age=(datetime.datetime.now(datetime.timezone.utc)-sampled_at).total_seconds()
  m.need(0<=age<=120 and b.get('scopeNarrowed') is False and b.get('round30RootsIncluded') is True and b.get('limit')==approved_limit and sum(r['allocatedBytes'] for r in b['rows'])==b['totalAllocatedBytes'],'FRESH_COMPLETE_HOST_BUDGET')
  m.need({'/Users/lixiaochen/.lima-tcr24','/Users/lixiaochen/Library/Caches/lima','/opt/homebrew/Cellar/lima'}<={r['path'] for r in b['rows']},'FULL_HOST_BUDGET_ROOTS')
  reserve=64*1024**2 if starting else 0;free=shutil.disk_usage('/home/recovery').free
@@ -18,7 +26,7 @@ def resources(m,base,budget_sha,starting=False,*,approved_limit=49*1024**3//2):
   if stat.S_ISDIR(s.st_mode):pending.extend(p.iterdir())
   else:m.need(stat.S_ISREG(s.st_mode) and s.st_nlink==1,'APPLICATION_LOG_FILE');total+=s.st_blocks*512
  m.need(total<=16*1024**2,'APPLICATION_LOG_AGGREGATE_BOUND')
- return {'at':m.now(),'budgetSha256':budget_sha,'hostAllocatedBytes':b['totalAllocatedBytes'],'hostLimitBytes':approved_limit,'hostReservedBytes':64*1024**2,'guestAvailableBytes':free,'memory':mem,'newApplicationReservationBytes':reserve,'privateLogsAllocatedBytes':total,'boundary':'Fresh admission and sampled observations, not a hard storage quota; scanner window is separate.'}
+ return {'at':m.now(),'budgetSha256':budget_sha,'budgetAgeSeconds':age,'clockWaitSeconds':clock_wait,'hostAllocatedBytes':b['totalAllocatedBytes'],'hostLimitBytes':approved_limit,'hostReservedBytes':64*1024**2,'guestAvailableBytes':free,'memory':mem,'newApplicationReservationBytes':reserve,'privateLogsAllocatedBytes':total,'boundary':'Fresh admission and sampled observations, not a hard storage quota; scanner window is separate.'}
 
 def maps(m,base,run,native):
  owners=base.owners_for(base.run_dir(run));m.need(set(owners)==set(base.PORTS),'THREE_NEW_APPLICATION_OWNERS')
