@@ -3,7 +3,7 @@ from pathlib import Path
 import datetime,hashlib,os,re,shutil,stat,time
 
 def resources(m,base,budget_sha,starting=False,*,approved_limit=49*1024**3//2):
- m.need(type(approved_limit) is int and approved_limit in (49*1024**3//2,25*1024**3),'APPROVED_HOST_LIMIT')
+ m.need(type(approved_limit) is int and approved_limit in (49*1024**3//2,25*1024**3,101*1024**3//4),'APPROVED_HOST_LIMIT')
  m.need(re.fullmatch('[a-f0-9]{64}',budget_sha or '') is not None,'FRESH_BUDGET_ARGUMENT')
  b=m.pinned(m.INPUT/('budget-'+budget_sha+'.json'),budget_sha,4*1024**2)
  age=(datetime.datetime.now(datetime.timezone.utc)-datetime.datetime.fromisoformat(b['at'])).total_seconds()

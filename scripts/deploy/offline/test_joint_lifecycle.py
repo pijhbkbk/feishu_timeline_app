@@ -201,7 +201,7 @@ class HostTests(unittest.TestCase):
                 reader=host.load_budget_host()
                 with patch.object(modules[0],'bounded',return_value=(0,b'4',b'')):
                     digest=reader.budget('prepare',host.INPUT,64*1024**2)
-                    for allowance in (25*1024**3,49*1024**3//2):
+                    for allowance in (101*1024**3//4,25*1024**3,49*1024**3//2):
                         host.state['approvedHostLimitBytes']=allowance
                         digest=reader.budget('prepare',host.INPUT,64*1024**2)
                         self.assertEqual(json.loads(captured['prepare.budget.json'])['limit'],allowance)

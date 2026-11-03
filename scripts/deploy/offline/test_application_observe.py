@@ -56,6 +56,23 @@ class ResourceAdmissionTests(unittest.TestCase):
             with self.subTest(value=value),self.assertRaisesRegex(RuntimeError,'APPROVED_HOST_LIMIT'):
                 self.check(approved_limit=value)
 
+    def test_explicit_25_quarter_host_allowance_retains_runtime_floors(self):
+        cap = 101 * 1024**3 // 4
+        result = self.check(limit=cap, approved_limit=cap, total=cap-64*1024**2)
+        self.assertEqual(result['hostLimitBytes'], cap)
+        self.assertEqual(result['hostReservedBytes'], 64*1024**2)
+        self.assertEqual(result['newApplicationReservationBytes'], 64*1024**2)
+        for old_cap in (49*1024**3//2, 25*1024**3):
+            with self.assertRaisesRegex(RuntimeError, 'FRESH_COMPLETE_HOST_BUDGET'):
+                self.check(limit=cap, approved_limit=old_cap)
+        for invalid in (cap+1, float(cap)):
+            with self.assertRaisesRegex(RuntimeError, 'APPROVED_HOST_LIMIT'):
+                self.check(limit=cap, approved_limit=invalid)
+        with self.assertRaisesRegex(RuntimeError, 'APPLICATION_RESOURCE_ADMISSION'):
+            self.check(limit=cap, approved_limit=cap, total=cap-64*1024**2+1)
+        with self.assertRaisesRegex(RuntimeError, 'APPLICATION_RESOURCE_ADMISSION'):
+            self.check(limit=cap, approved_limit=cap, free=1024**3+64*1024**2-1)
+
     def test_host_and_guest_reserves_are_not_waived(self):
         with self.assertRaisesRegex(RuntimeError, 'APPLICATION_RESOURCE_ADMISSION'):
             self.check(total=49*1024**3//2-64*1024**2+1)

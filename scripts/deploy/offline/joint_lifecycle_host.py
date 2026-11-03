@@ -205,7 +205,7 @@ def load_budget_host():
     exec(compile(pinned(path,row["sha256"]),str(path),"exec"),module.__dict__)
     def budget(name,inputdir,reserve):
         allowance=state.get('approvedHostLimitBytes',49*1024**3//2)
-        need(type(allowance) is int and allowance in (49*1024**3//2,25*1024**3),'APPROVED_HOST_LIMIT')
+        need(type(allowance) is int and allowance in (49*1024**3//2,25*1024**3,101*1024**3//4),'APPROVED_HOST_LIMIT')
         policy={"kind":"OFFLINE_HOST_BUDGET_SCOPE_V1","limit":allowance,
                 "expectedRootPaths":state["pins"]["budgetRootPaths"]}
         b=module.budget(policy,OP,["/Users/lixiaochen/Library/Caches/lima"],

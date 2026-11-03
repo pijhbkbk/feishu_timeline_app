@@ -343,7 +343,13 @@ class PhaseTests(unittest.TestCase):
 
 class ScannerRetentionBudgetTests(unittest.TestCase):
     def test_explicit_limit_and_both_remaining_window_floors(self):
-        limit=25*1024**3;roots=['/r'+str(i) for i in range(376)]
+        self.check_explicit_limit_and_floors(25*1024**3)
+
+    def test_explicit_25_quarter_limit_and_both_remaining_window_floors(self):
+        self.check_explicit_limit_and_floors(101*1024**3//4)
+
+    def check_explicit_limit_and_floors(self, limit):
+        roots=['/r'+str(i) for i in range(376)]
         reader={'entrySha256':'a'*64,'dependencies':[{'name':'reader','sha256':'b'*64}]}
         policy={'kind':'OFFLINE_HOST_BUDGET_SCOPE_V1','limit':limit,'expectedRootPaths':roots,'reader':reader}
         used=64*1024**2;remaining=m.WINDOW_BYTES-used;total=limit-remaining-64*1024**2

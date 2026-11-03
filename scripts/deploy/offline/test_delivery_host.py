@@ -109,6 +109,23 @@ class HostTests(unittest.TestCase):
     def test_transport_deadline_stops_owned_process(self):
         with self.assertRaisesRegex(RuntimeError,'TRANSPORT_TIMEOUT'):
             m.bounded([sys.executable,'-I','-B','-c','import time;time.sleep(5)'],{'PATH':'/usr/bin:/bin'},self.root,.1,64)
+    def test_approved_25_quarter_requires_explicit_caller_and_keeps_reserve(self):
+        limit = 101 * 1024**3 // 4
+        policy = {'kind': 'OFFLINE_HOST_BUDGET_SCOPE_V1', 'limit': limit,
+                  'expectedRootPaths': [str(self.root)]}
+        for caller in (None, 49*1024**3//2, 25*1024**3):
+            with self.subTest(caller=caller), self.assertRaisesRegex(RuntimeError, 'COMPLETE_BUDGET_POLICY'):
+                kwargs = {} if caller is None else {'approved_limit': caller}
+                m.budget(policy, self.root, [], **kwargs)
+        result = m.budget(policy, self.root, [], approved_limit=limit)
+        self.assertEqual((result['limit'], result['reserve'], len(result['rows'])),
+                         (limit, 64*1024**2, 1))
+        for invalid in (limit+1, float(limit), 26*1024**3):
+            with self.assertRaisesRegex(RuntimeError, 'APPROVED_BUDGET_LIMIT'):
+                m.budget({**policy, 'limit': invalid}, self.root, [], approved_limit=invalid)
+        with patch.object(m, 'bounded', return_value=(0, str((limit-64*1024**2)//1024+1).encode(), b'')):
+            with self.assertRaisesRegex(RuntimeError, 'HOST_PREFLIGHT_CAPACITY'):
+                m.budget(policy, self.root, [], approved_limit=limit)
     def test_closed_pipes_timeout_preserves_output(self):
         with self.assertRaises(m.TransportFailure) as caught:
             m.bounded([sys.executable,'-I','-B','-c','import os,time;os.write(1,b"before-close");os.close(1);os.close(2);time.sleep(5)'],{'PATH':'/usr/bin:/bin'},self.root,.2,64)
