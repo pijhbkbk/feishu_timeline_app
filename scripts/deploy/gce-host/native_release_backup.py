@@ -65,6 +65,9 @@ def protect(commit, quiescence=None):
     if commit == patch_target['base']:
         require(patch_record()['phase'] == 'PREPARED', '41-schema backup requires program patch intent')
         expected_tables = 54
+    elif commit == patch_target['commit']:
+        require(patch_record()['phase'] == 'COMMITTED', 'Current 41-schema program must be committed')
+        expected_tables = 54
     else:
         expected_tables = 52
     require(len(before['tables']) == expected_tables, 'Native schema table inventory differs')
