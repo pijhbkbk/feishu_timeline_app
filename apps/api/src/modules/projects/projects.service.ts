@@ -1,3 +1,4 @@
+import { parseBusinessDate, businessCalendarDayStart, businessCalendarDayEnd, businessDateKey, businessMonthCalendarRange } from '../../common/business-date';
 import { PERSON_PRESENTATION_SELECT, personPresentation } from '../persons/person-profile-read';
 import { PROJECT_DISPLAY_COLOR_SELECT, resolveProjectDisplayColor, projectColorSearchWhere } from '../../common/project-display-color';
 import { assignProjectColor, normalizeProjectColorInput, type ProjectColorInput } from '../../common/project-color';
@@ -192,8 +193,7 @@ export class ProjectsService {
     delete summaryQuery.view;
     const summaryWhere = this.buildListWhere(summaryQuery, actor);
     const now = new Date();
-    const dueWeekEnd = new Date(now);
-    dueWeekEnd.setDate(dueWeekEnd.getDate() + 7);
+    const dueWeekEnd = new Date(now.getTime() + 7 * 86400000);
 
     const activeWhere: Prisma.ProjectWhereInput = {
       status: { in: [ProjectStatus.DRAFT, ProjectStatus.IN_PROGRESS, ProjectStatus.ON_HOLD] },
@@ -1063,8 +1063,14 @@ export class ProjectsService {
       'priority',
     );
     const isOverdue = this.parseOptionalBoolean(rawQuery.isOverdue);
-    const dateFrom = this.parseOptionalDate(rawQuery.dateFrom, 'dateFrom');
-    const dateTo = this.parseOptionalDate(rawQuery.dateTo, 'dateTo');
+    let dateFrom = this.parseOptionalDate(rawQuery.dateFrom, 'dateFrom');
+    let dateTo = this.parseOptionalDate(rawQuery.dateTo, 'dateTo');
+    if (dateFrom && typeof rawQuery.dateFrom === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(rawQuery.dateFrom.trim())) {
+      dateFrom = businessCalendarDayStart(dateFrom);
+    }
+    if (dateTo && typeof rawQuery.dateTo === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(rawQuery.dateTo.trim())) {
+      dateTo = businessCalendarDayEnd(dateTo);
+    }
 
     if (dateFrom && dateTo && dateFrom > dateTo) {
       throw new BadRequestException('开始日期不能晚于结束日期。');
@@ -2463,8 +2469,7 @@ export class ProjectsService {
       };
     }
 
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    const { start: monthStart, end: nextMonthStart } = businessMonthCalendarRange(now);
     const currentMonthTask =
       recurringPlan.tasks.find(
         (task) =>
@@ -2676,7 +2681,7 @@ export class ProjectsService {
   }
 
   private generateProjectCode() {
-    const date = new Date().toISOString().slice(0, 10).replaceAll('-', '');
+    const date = businessDateKey(new Date()).replaceAll('-', '');
     return `PRJ-${date}-${randomUUID().slice(0, 8).toUpperCase()}`;
   }
 
@@ -2747,7 +2752,7 @@ export class ProjectsService {
       throw new BadRequestException('日期格式不正确。');
     }
 
-    const date = new Date(rawValue);
+    const date = parseBusinessDate(rawValue);
 
     if (Number.isNaN(date.getTime())) {
       throw new BadRequestException('日期格式不正确。');

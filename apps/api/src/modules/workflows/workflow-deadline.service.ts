@@ -1,4 +1,5 @@
 import { BusinessClock } from '../../common/business-clock';
+import { businessCalendarDate, businessCalendarDayEnd, businessDayDifference, businessDayRange, businessMonthRange } from '../../common/business-date';
 import { Injectable } from '@nestjs/common';
 import {
   WorkflowDurationType,
@@ -12,9 +13,6 @@ import { loadPerformanceArrivalAnchor, readPerformanceArrivalAnchor } from './pe
 import {
   addUtcDays,
   addUtcMonthsClamped,
-  endOfUtcDay,
-  endOfUtcMonth,
-  getUtcDayDiff,
   startOfUtcDay,
 } from './workflow-date.utils';
 
@@ -144,18 +142,17 @@ export class WorkflowDeadlineService {
       return 0;
     }
 
-    // Only the new, source-bound feedback rule uses an exact Shanghai deadline.
-    // Legacy tasks retain their original UTC-day calculation and stored facts.
+    // Preserve the source-bound exact deadline while counting Beijing calendar days.
     if (task?.nodeCode === WorkflowNodeCode.PERFORMANCE_TEST && readPerformanceArrivalAnchor(task.payload)) {
       if (now.getTime() <= dueAt.getTime()) return 0;
-      return Math.max(1, getUtcDayDiff(new Date(now.getTime() + 8 * 3600000), new Date(dueAt.getTime() + 8 * 3600000)));
+      return Math.max(1, businessDayDifference(now, dueAt));
     }
-    const dueBoundary = endOfUtcDay(dueAt);
+    const dueBoundary = new Date(businessDayRange(dueAt).end.getTime() - 1);
     if (now.getTime() <= dueBoundary.getTime()) {
       return 0;
     }
 
-    return Math.max(1, getUtcDayDiff(now, dueAt));
+    return Math.max(1, businessDayDifference(now, dueAt));
   }
 
   async calculateDueAt(
@@ -167,11 +164,11 @@ export class WorkflowDeadlineService {
       case WorkflowDurationType.WORKDAY:
         return this.addWorkdays(db, startAt, definition.durationValue ?? 0);
       case WorkflowDurationType.SAME_DAY:
-        return endOfUtcDay(startAt);
+        return businessCalendarDayEnd(businessCalendarDate(startAt));
       case WorkflowDurationType.MONTH_END:
-        return endOfUtcMonth(startAt);
+        return new Date(businessMonthRange(startAt).end.getTime() - 1);
       case WorkflowDurationType.MONTH_OFFSET:
-        return endOfUtcDay(addUtcMonthsClamped(startOfUtcDay(startAt), definition.durationValue ?? 0));
+        return businessCalendarDayEnd(addUtcMonthsClamped(businessCalendarDate(startAt), definition.durationValue ?? 0));
       case WorkflowDurationType.MANUAL_REVIEW_PASS:
         return this.addWorkdays(db, startAt, definition.durationValue ?? 2);
       case WorkflowDurationType.RECURRING_MONTHLY:
@@ -187,10 +184,10 @@ export class WorkflowDeadlineService {
     durationValue: number,
   ) {
     if (durationValue <= 0) {
-      return endOfUtcDay(startAt);
+      return businessCalendarDayEnd(businessCalendarDate(startAt));
     }
 
-    const startDate = startOfUtcDay(startAt);
+    const startDate = businessCalendarDate(startAt);
     const fallbackWindowEnd = addUtcDays(startDate, Math.max(durationValue * 5, 90));
     const calendarEntries = await db.workCalendar.findMany({
       where: {
@@ -233,6 +230,6 @@ export class WorkflowDeadlineService {
       }
     }
 
-    return endOfUtcDay(cursor);
+    return businessCalendarDayEnd(cursor);
   }
 }

@@ -1,3 +1,4 @@
+import { parseBusinessDate } from '../../common/business-date';
 import { assertInspectionReviewLink } from '../inspections/inspection-review-link';
 import { createHash } from 'node:crypto';
 import { parseExteriorRectificationCommand, readExteriorRectification, requireExteriorRectificationComplete } from '../../common/exterior-rectification';
@@ -3253,7 +3254,7 @@ export class ReviewsService {
       throw new BadRequestException(`${label}不能为空。`);
     }
 
-    const parsedDate = new Date(value);
+    const parsedDate = parseBusinessDate(value);
 
     if (Number.isNaN(parsedDate.getTime())) {
       throw new BadRequestException(`${label}格式不正确。`);

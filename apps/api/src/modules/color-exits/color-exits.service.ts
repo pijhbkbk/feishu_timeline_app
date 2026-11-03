@@ -1,3 +1,4 @@
+import { parseBusinessDate, businessDateKey } from '../../common/business-date';
 import { assertAnnualReviewExitBasis } from './color-exits.annual-review';
 import { assertApprovedTeamMember } from '../../common/team-membership';
 import { assertTeamTaskById, withProjectWrite } from '../../common/team-authorization';
@@ -138,7 +139,7 @@ export class ColorExitsService {
           replacementColorId: input.replacementColorId,
           operatorId: actor.id,
           exitDate: input.exitDate,
-          statisticYear: input.statisticYear ?? input.exitDate.getUTCFullYear(),
+          statisticYear: input.statisticYear ?? Number(businessDateKey(input.exitDate).slice(0, 4)),
           annualOutput: input.annualOutput,
           exitThreshold: exitPolicy.exitThreshold,
           systemSuggestion: exitPolicy.systemSuggestion,
@@ -207,7 +208,7 @@ export class ColorExitsService {
           replacementColorId: input.replacementColorId,
           operatorId: actor.id,
           exitDate: input.exitDate,
-          statisticYear: input.statisticYear ?? input.exitDate.getUTCFullYear(),
+          statisticYear: input.statisticYear ?? Number(businessDateKey(input.exitDate).slice(0, 4)),
           annualOutput: input.annualOutput,
           exitThreshold: exitPolicy.exitThreshold,
           systemSuggestion: exitPolicy.systemSuggestion,
@@ -808,7 +809,7 @@ export class ColorExitsService {
       throw new BadRequestException(`${label}不能为空。`);
     }
 
-    const parsedDate = new Date(value);
+    const parsedDate = parseBusinessDate(value);
 
     if (Number.isNaN(parsedDate.getTime())) {
       throw new BadRequestException(`${label}格式不正确。`);

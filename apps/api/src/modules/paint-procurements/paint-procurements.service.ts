@@ -1,3 +1,4 @@
+import { parseBusinessDate } from '../../common/business-date';
 import { assertApprovedTeamMember } from '../../common/team-membership';
 import { assertTeamTaskById, withProjectWrite } from '../../common/team-authorization';
 import {
@@ -941,7 +942,7 @@ export class PaintProcurementsService {
       throw new BadRequestException(`${label}格式不正确。`);
     }
 
-    const parsedDate = new Date(value);
+    const parsedDate = parseBusinessDate(value);
 
     if (Number.isNaN(parsedDate.getTime())) {
       throw new BadRequestException(`${label}格式不正确。`);

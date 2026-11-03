@@ -351,8 +351,7 @@ export class TasksService {
     const page = normalizePage(rawQuery.page, 1);
     const pageSize = normalizePageSize(rawQuery.pageSize, 20);
     const now = new Date();
-    const dueSoonEnd = new Date(now);
-    dueSoonEnd.setDate(dueSoonEnd.getDate() + 7);
+    const dueSoonEnd = new Date(now.getTime() + 7 * 86400000);
 
     const baseWhere: Prisma.WorkflowTaskWhereInput = {
       assigneeUserId: actor.id,

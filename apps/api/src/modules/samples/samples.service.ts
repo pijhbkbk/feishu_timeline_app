@@ -1,4 +1,4 @@
-import { isFutureBusinessDate } from '../../common/business-date';
+import { isFutureBusinessDate, parseBusinessDate } from '../../common/business-date';
 import { createHash } from 'node:crypto';
 import { isReworkTask, ancestorEvidenceIds, readEvidenceTask, taskEvidenceIds } from '../../common/workflow-evidence';
 import { assertTeamTaskById, withProjectWrite } from '../../common/team-authorization';
@@ -1393,9 +1393,9 @@ export class SamplesService {
     this.assertSampleId(taskId, '工序'); this.assertSampleId(confirmationAttachmentId, '确认单');
     if (!/^[A-Za-z0-9._:-]{1,128}$/.test(idempotencyKey)) throw new BadRequestException('请求编号不合法。');
     const versionDate = new Date(taskVersion);
-    const actualConfirmedAt = new Date(actualDate);
+    const actualConfirmedAt = parseBusinessDate(actualDate);
     if (!/^\d{4}-\d{2}-\d{2}T/.test(taskVersion) || !Number.isFinite(versionDate.getTime()) || versionDate.toISOString() !== taskVersion) throw new BadRequestException('工序版本不合法。');
-    if (!/^\d{4}-\d{2}-\d{2}(T.*)?$/.test(actualDate) || !Number.isFinite(actualConfirmedAt.getTime()) || actualConfirmedAt.toISOString().slice(0, 10) !== actualDate.slice(0, 10) || isFutureBusinessDate(actualDate, actualConfirmedAt)) throw new BadRequestException('实际确认日期不合法或晚于今天。');
+    if (!/^\d{4}-\d{2}-\d{2}(T.*)?$/.test(actualDate) || !Number.isFinite(actualConfirmedAt.getTime()) || isFutureBusinessDate(actualDate, actualConfirmedAt)) throw new BadRequestException('实际确认日期不合法或晚于今天。');
     this.assertSampleText(confirmationParty, '实际确认方', 200);
     const normalized = {
       taskId, taskVersion, idempotencyKey, actualConfirmedAt, confirmationParty, confirmationAttachmentId,
@@ -1635,9 +1635,9 @@ export class SamplesService {
       throw new BadRequestException('日期格式不正确。');
     }
 
-    const value = new Date(rawValue);
+    const value = parseBusinessDate(rawValue);
 
-    if (!/^\d{4}-\d{2}-\d{2}(T.*)?$/.test(rawValue) || Number.isNaN(value.getTime()) || value.toISOString().slice(0, 10) !== rawValue.slice(0, 10)) {
+    if (!/^\d{4}-\d{2}-\d{2}(T.*)?$/.test(rawValue) || Number.isNaN(value.getTime())) {
       throw new BadRequestException('日期格式不正确。');
     }
 

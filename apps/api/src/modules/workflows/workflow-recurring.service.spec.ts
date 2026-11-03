@@ -41,6 +41,21 @@ function createDb() {
 }
 
 describe('WorkflowRecurringService', () => {
+  it('chooses the Beijing start date and keeps planned DATE labels separate from due instants', async () => {
+    const service = new WorkflowRecurringService();
+    const db = createDb();
+    await service.ensureMonthlyReviewPlan(db as never, {
+      projectId: 'project-1', sourceWorkflowTaskId: 'task-17', startAt: new Date('2026-12-31T16:05:00.000Z'),
+    });
+    expect(db.recurringPlan.create.mock.calls[0]?.[0].data.startDate).toEqual(new Date('2027-01-01T00:00:00.000Z'));
+    expect(db.recurringTask.createMany.mock.calls[0]?.[0].data[0]).toMatchObject({
+      periodLabel: '2027-02', plannedDate: new Date('2027-02-01T00:00:00.000Z'), dueAt: new Date('2027-02-01T15:59:59.999Z'),
+    });
+    expect(service.buildMonthlyTasks(new Date('2027-01-31T00:00:00.000Z'), 12)[0]).toMatchObject({
+      plannedDate: new Date('2027-02-28T00:00:00.000Z'), dueAt: new Date('2027-02-28T15:59:59.999Z'),
+    });
+  });
+
   it('creates 12 monthly review tasks with fixed quality-role assignment', async () => {
     const service = new WorkflowRecurringService();
     const db = createDb();

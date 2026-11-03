@@ -1,3 +1,4 @@
+import { businessMonthCalendarRange } from '../../common/business-date';
 import { teamProjectScope } from '../../common/team-authorization';
 import { Injectable } from '@nestjs/common';
 import {
@@ -60,8 +61,7 @@ export class AnalyticsService {
 
   async getOverview(actor: AuthenticatedUser) {
     const now = new Date();
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    const { start: monthStart, end: nextMonthStart } = businessMonthCalendarRange(now);
     const visibleProjectSql = this.buildVisibleProjectSql(actor);
     const completedTaskStatuses = COMPLETED_TASK_STATUSES.map(
       (status) => Prisma.sql`${status}::"WorkflowTaskStatus"`,
@@ -326,21 +326,21 @@ export class AnalyticsService {
         )
         SELECT
           COUNT(*) FILTER (
-            WHERE rt."plannedDate" >= ${monthStart} AND rt."plannedDate" < ${nextMonthStart}
+            WHERE rt."plannedDate" >= ${monthStart.toISOString().slice(0, 10)}::date AND rt."plannedDate" < ${nextMonthStart.toISOString().slice(0, 10)}::date
           ) AS "currentMonthDue",
           COUNT(*) FILTER (
-            WHERE rt."plannedDate" >= ${monthStart}
-              AND rt."plannedDate" < ${nextMonthStart}
+            WHERE rt."plannedDate" >= ${monthStart.toISOString().slice(0, 10)}::date
+              AND rt."plannedDate" < ${nextMonthStart.toISOString().slice(0, 10)}::date
               AND rt."status" = ${RecurringTaskStatus.COMPLETED}::"RecurringTaskStatus"
           ) AS "completed",
           COUNT(*) FILTER (
-            WHERE rt."plannedDate" >= ${monthStart}
-              AND rt."plannedDate" < ${nextMonthStart}
+            WHERE rt."plannedDate" >= ${monthStart.toISOString().slice(0, 10)}::date
+              AND rt."plannedDate" < ${nextMonthStart.toISOString().slice(0, 10)}::date
               AND rt."status" IN (${Prisma.join(pendingRecurringTaskStatuses)})
           ) AS "pending",
           COUNT(*) FILTER (
-            WHERE rt."plannedDate" >= ${monthStart}
-              AND rt."plannedDate" < ${nextMonthStart}
+            WHERE rt."plannedDate" >= ${monthStart.toISOString().slice(0, 10)}::date
+              AND rt."plannedDate" < ${nextMonthStart.toISOString().slice(0, 10)}::date
               AND rt."status" = ${RecurringTaskStatus.OVERDUE}::"RecurringTaskStatus"
           ) AS "overdue",
           COUNT(*) FILTER (

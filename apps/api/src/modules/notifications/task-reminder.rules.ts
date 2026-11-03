@@ -1,10 +1,10 @@
 import { Prisma, type TaskReminderKind } from '@prisma/client';
 import { recordedMonthlyReviewSql } from '../../common/monthly-review-applicability';
 import { notificationRecipientEligibleSql } from './notification-recipient.rules';
+import { businessDateKey, businessDayRange } from '../../common/business-date';
 
 export function shanghaiBusinessDay(now: Date) {
-  const date = new Date(now.getTime() + 8 * 3600000).toISOString().slice(0, 10);
-  return { date, start: new Date(`${date}T00:00:00+08:00`), end: new Date(new Date(`${date}T00:00:00+08:00`).getTime() + 86400000) };
+  return { date: businessDateKey(now), ...businessDayRange(now) };
 }
 
 // All identifiers are fixed SQL fragments supplied by this module, never client strings.
@@ -20,7 +20,7 @@ export function reminderTaskEligibleSql(userId: Prisma.Sql, ordinaryId: Prisma.S
     OR EXISTS (SELECT 1 FROM recurring_tasks t JOIN recurring_plans p ON p.id = t."recurringPlanId"
       JOIN workflow_tasks parent ON parent.id = ${stage} AND parent."projectId" = t."projectId"
       JOIN users u ON u.id = ${userId} JOIN local_credentials lc ON lc."userId" = u.id
-      WHERE t.id = ${monthlyId} AND t."assignmentEpoch" = ${epoch} AND t."plannedDate" <= ${now}
+      WHERE t.id = ${monthlyId} AND t."assignmentEpoch" = ${epoch} AND t."plannedDate" <= ${businessDateKey(now)}::date
       AND ${recordedMonthlyReviewSql(Prisma.sql`t.id`, Prisma.sql`t."projectId"`)}
       AND t.status IN ('PENDING','IN_PROGRESS','OVERDUE') AND (t."reviewerId" IS NULL OR t."reviewerId" = u.id)
       AND ${notificationRecipientEligibleSql()}

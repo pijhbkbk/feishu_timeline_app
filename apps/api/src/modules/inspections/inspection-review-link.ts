@@ -1,3 +1,4 @@
+import { businessDateKey } from '../../common/business-date';
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { resolveVisualReviewPlan } from '../../common/monthly-review-plan';
@@ -25,7 +26,7 @@ export async function assertInspectionReviewLink(tx: Prisma.TransactionClient, i
   const project=await tx.project.findUniqueOrThrow({where:{id:input.projectId},select:{primaryColorId:true}});
   const plan=await resolveVisualReviewPlan(tx,input.projectId);
   const review=await tx.reviewRecord.findUniqueOrThrow({where:{id:input.reviewId},select:{projectId:true,reviewPeriod:true,workflowTask:{select:{projectId:true,nodeCode:true}}}});
-  const day=input.reviewedAt?.toISOString().slice(0,10);
+  const day=input.reviewedAt?businessDateKey(input.reviewedAt):undefined;
   const targetMatches=plan
     ? Boolean(activity.recurringTask && activity.recurringTask.projectId===input.projectId && activity.recurringTask.recurringPlanId===plan.id &&
         day?.slice(0,7)===activity.recurringTask.plannedDate.toISOString().slice(0,7) && review.reviewPeriod===day?.slice(0,7))

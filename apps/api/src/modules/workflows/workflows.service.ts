@@ -1,3 +1,4 @@
+import { businessCalendarDayStart, businessMonthCalendarRange } from '../../common/business-date';
 import { requireExteriorRectificationComplete } from '../../common/exterior-rectification';
 import { PERSON_PRESENTATION_SELECT, personPresentation } from '../persons/person-profile-read';
 import { PROJECT_DISPLAY_COLOR_SELECT, resolveProjectDisplayColor } from '../../common/project-display-color';
@@ -2441,8 +2442,7 @@ export class WorkflowsService {
     void systemParameters;
     const totalCount = recurringPlan?.totalCount ?? 0;
     const tasks = recurringPlan?.tasks ?? [];
-    const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
-    const nextMonthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
+    const { start: monthStart, end: nextMonthStart } = businessMonthCalendarRange(now);
     const currentMonthTask =
       tasks.find(
         (task) =>
@@ -3065,8 +3065,8 @@ export class WorkflowsService {
     const month = plannedDate.getUTCMonth();
 
     return {
-      periodStart: new Date(Date.UTC(year, month, 1, 0, 0, 0, 0)),
-      periodEnd: new Date(Date.UTC(year, month + 1, 1, 0, 0, 0, 0)),
+      periodStart: businessCalendarDayStart(new Date(Date.UTC(year, month, 1))),
+      periodEnd: businessCalendarDayStart(new Date(Date.UTC(year, month + 1, 1))),
     };
   }
 

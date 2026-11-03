@@ -103,18 +103,21 @@ describe('Performance feedback schedule from confirmed arrival', () => {
     expect(sql.strings.join('')).toContain('jsonb_build_object');
     expect(sql.strings.join('')).toContain('LEFT(');
     expect(sql.strings.join('')).not.toMatch(/SELECT\s+(?:\*|"?payload"?\s*[,\n])/);
-    expect(db.workflowTask.update).toHaveBeenCalledExactlyOnceWith({ where: { id: 'performance-2' }, data: { effectiveDueAt: dueAt, overdueDays: 1 } });
+    expect(db.workflowTask.update).toHaveBeenCalledTimes(2);
+    for (const id of ['performance-2', 'ordinary-1']) {
+      expect(db.workflowTask.update).toHaveBeenCalledWith({ where: { id }, data: { effectiveDueAt: dueAt, overdueDays: 1 } });
+    }
   });
 
-  it('marks source-bound feedback overdue at Shanghai midnight and leaves legacy UTC-day behavior intact', () => {
+  it('counts Shanghai overdue days for current and legacy tasks while preserving stored deadlines', () => {
     const deadlines = new WorkflowDeadlineService();
     const dueAt = new Date(anchor.dueAt);
     const task = { nodeCode: WorkflowNodeCode.PERFORMANCE_TEST, payload: { performanceArrivalAnchor: anchor } };
     expect(deadlines.getOverdueDays(dueAt, dueAt, task)).toBe(0);
     expect(deadlines.getOverdueDays(dueAt, new Date('2027-02-28T16:00:00.000Z'), task)).toBe(1);
     expect(deadlines.getOverdueDays(dueAt, new Date('2027-03-01T16:00:00.000Z'), task)).toBe(2);
-    expect(deadlines.getOverdueDays(dueAt, new Date('2027-02-28T16:00:00.000Z'), { ...task, payload: {} })).toBe(0);
-    expect(deadlines.getOverdueDays(dueAt, new Date('2027-02-28T16:00:00.000Z'), { ...task, nodeCode: WorkflowNodeCode.PAINT_PROCUREMENT })).toBe(0);
+    expect(deadlines.getOverdueDays(dueAt, new Date('2027-02-28T16:00:00.000Z'), { ...task, payload: {} })).toBe(1);
+    expect(deadlines.getOverdueDays(dueAt, new Date('2027-02-28T16:00:00.000Z'), { ...task, nodeCode: WorkflowNodeCode.PAINT_PROCUREMENT })).toBe(1);
     const { spawn } = fixture();
     expect((spawn as unknown as { resolveTaskSlaStatus: (...args: unknown[]) => string }).resolveTaskSlaStatus({ ...task, isActive: true, status: 'READY', dueAt, effectiveDueAt: dueAt }, new Date('2027-02-28T16:00:00.000Z'))).toBe('已逾期');
   });

@@ -1,3 +1,4 @@
+import { businessDayRange, businessMonthCalendarRange, businessMonthRange } from '../../common/business-date';
 import { PROJECT_DISPLAY_COLOR_SELECT, resolveProjectDisplayColor } from '../../common/project-display-color';
 import { teamProjectScope } from '../../common/team-authorization';
 import { recordedMonthlyReviewIds, recordedMonthlyReviewSql } from '../../common/monthly-review-applicability';
@@ -47,8 +48,7 @@ export class DashboardService {
 
   async getPersonalOverview(actor: AuthenticatedUser) {
     const now = new Date();
-    const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const nextDayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    const { start: dayStart, end: nextDayStart } = businessDayRange(now);
     const assignedWhere = this.buildAssignedActiveTaskWhere(actor);
     const visibleProjectWhere = this.buildVisibleProjectWhere(actor);
 
@@ -282,8 +282,8 @@ export class DashboardService {
 
   async getOverview(actor: AuthenticatedUser) {
     const now = new Date();
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    const monthDates = businessMonthCalendarRange(now);
+    const { start: monthStart, end: nextMonthStart } = businessMonthRange(now);
     const visibleProjectWhere = this.buildVisibleProjectWhere(actor);
     const myTaskWhere = this.buildAssignedActiveTaskWhere(actor);
 
@@ -370,7 +370,7 @@ export class DashboardService {
           },
         },
       }),
-      this.countVisibleMonthlyReviews(actor, monthStart, nextMonthStart),
+      this.countVisibleMonthlyReviews(actor, monthDates.start, monthDates.end),
     ]);
 
     const projectCountByStatus = new Map(
@@ -524,8 +524,7 @@ export class DashboardService {
 
   async getMonthlyReviewBoard(actor: AuthenticatedUser) {
     const now = new Date();
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    const { start: monthStart, end: nextMonthStart } = businessMonthCalendarRange(now);
     const visibleProjectWhere = this.buildVisibleProjectWhere(actor);
     const projects = await this.prisma.project.findMany({
       where: visibleProjectWhere,
@@ -816,8 +815,8 @@ export class DashboardService {
       WHERE recurring_task."status" IN (
         ${Prisma.join(recurringStatuses)}
       )
-        AND recurring_task."plannedDate" >= ${monthStart}
-        AND recurring_task."plannedDate" < ${nextMonthStart}
+        AND recurring_task."plannedDate" >= ${monthStart.toISOString().slice(0, 10)}::date
+        AND recurring_task."plannedDate" < ${nextMonthStart.toISOString().slice(0, 10)}::date
         AND ${recordedMonthlyReviewSql(Prisma.sql`recurring_task.id`, Prisma.sql`recurring_task."projectId"`)}
 
     `);

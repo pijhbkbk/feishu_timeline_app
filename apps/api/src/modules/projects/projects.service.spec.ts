@@ -166,6 +166,23 @@ function createService() {
 }
 
 describe('ProjectsService', () => {
+  it('filters a Beijing calendar day across UTC year rollover through the normal list entry', async () => {
+    const prisma = {
+      project: { count: vi.fn().mockResolvedValue(0), findMany: vi.fn().mockResolvedValue([]) },
+      workflowNodeDefinition: { findMany: vi.fn().mockResolvedValue([]) },
+      $transaction: vi.fn(async (queries: Promise<unknown>[]) => Promise.all(queries)),
+    };
+    const service = new ProjectsService(prisma as never, {} as never, {} as never, {} as never);
+    const result = await service.listProjects({ dateFrom: '2027-01-01', dateTo: '2027-01-01' }, actor);
+    expect(result.filters).toMatchObject({ dateFrom: '2026-12-31T16:00:00.000Z', dateTo: '2027-01-01T15:59:59.999Z' });
+    expect(prisma.project.findMany.mock.calls[0]?.[0].where.AND).toEqual(expect.arrayContaining([
+      { OR: [{ plannedEndDate: null }, { plannedEndDate: { gte: new Date('2026-12-31T16:00:00.000Z') } }] },
+      { OR: [{ plannedStartDate: null }, { plannedStartDate: { lte: new Date('2027-01-01T15:59:59.999Z') } }] },
+    ]));
+    expect(service['normalizeListQuery']({ dateFrom: '2026-12-31T16:05Z', dateTo: '2026-12-31T17:05Z' }))
+      .toMatchObject({ dateFrom: new Date('2026-12-31T16:05Z'), dateTo: new Date('2026-12-31T17:05Z') });
+  });
+
   it.each([
     [0, 'CURRENT', 'IN_PROGRESS'], [0, 'PENDING', 'PENDING'],
     [12, 'CURRENT', 'MONTHLY_TRACKING'], [12, 'COMPLETED', 'COMPLETED'],
