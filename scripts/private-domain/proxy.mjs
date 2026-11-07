@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import http from 'node:http';
 import https from 'node:https';
+import net from 'node:net';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 
@@ -74,6 +75,37 @@ server.requestTimeout = 30000; server.headersTimeout = 10000; server.maxHeadersC
 return server;
 }
 
+// Caddy uses this stable, group-restricted TLS endpoint. Never remove a live
+// listener, a symlink, a regular file, or a socket belonging to another uid.
+export async function listenPrivateSocket(server,socketPath,uid=process.getuid()) {
+  const parent=path.dirname(socketPath);
+  if(!path.isAbsolute(socketPath)||path.basename(socketPath)!=='proxy.sock'||fs.realpathSync(parent)!==parent)
+    throw new Error('Invalid private socket path');
+  const directory=fs.lstatSync(parent);
+  if(!directory.isDirectory()||directory.uid!==uid||(directory.mode&0o7777)!==0o2750)
+    throw new Error('Invalid private socket directory');
+  let old;
+  try {old=fs.lstatSync(socketPath);} catch(error) {if(error.code!=='ENOENT')throw error;}
+  if(old) {
+    if(!old.isSocket()||old.uid!==uid||old.nlink!==1)throw new Error('Unsafe existing private socket');
+    await new Promise((resolve,reject)=>{
+      const socket=net.createConnection(socketPath);
+      socket.setTimeout(750,()=>{socket.destroy();reject(new Error('Private socket state uncertain'));});
+      socket.once('connect',()=>{socket.destroy();reject(new Error('Private socket already active'));});
+      socket.once('error',error=>{socket.destroy();if(error.code==='ECONNREFUSED')resolve();else reject(new Error('Private socket state uncertain'));});
+    });
+    const current=fs.lstatSync(socketPath);
+    if(!current.isSocket()||current.ino!==old.ino||current.dev!==old.dev||current.uid!==uid||current.nlink!==1)
+      throw new Error('Private socket changed');
+    fs.unlinkSync(socketPath);
+  }
+  await new Promise((resolve,reject)=>{
+    server.once('error',reject);
+    server.listen(socketPath,()=>{server.removeListener('error',reject);resolve();});
+  });
+  fs.chmodSync(socketPath,0o660);
+}
+
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)) {
   if(process.argv.length===3&&process.argv[2]==='--healthcheck') {
     try {
@@ -84,6 +116,14 @@ if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.ur
     } catch {console.error('Proxy health check failed');process.exitCode=1;}
   } else if(process.argv.length===2) {
     if(![undefined,'1'].includes(process.env.Y9000P_PRIVATE_DOMAIN_ENABLED)) throw new Error('Unapproved private domain flag');
-    createProxyServer({origin:process.env.PUBLIC_ORIGIN,privateDomainEnabled:process.env.Y9000P_PRIVATE_DOMAIN_ENABLED==='1',cert:fs.readFileSync('/run/tls.crt'),key:fs.readFileSync('/run/tls.key')}).listen(8443,'0.0.0.0');
+    const enabled=process.env.Y9000P_PRIVATE_DOMAIN_ENABLED==='1';
+    const options={origin:process.env.PUBLIC_ORIGIN,privateDomainEnabled:enabled,cert:fs.readFileSync('/run/tls.crt'),key:fs.readFileSync('/run/tls.key')};
+    const servers=[];
+    const fail=()=>{for(const server of servers)server.close();console.error('Private proxy listener failed');process.exit(1);};
+    const tcp=createProxyServer(options);servers.push(tcp);tcp.on('error',fail);tcp.listen(8443,'0.0.0.0');
+    if(enabled) {
+      const unix=createProxyServer(options);servers.push(unix);unix.on('error',fail);
+      try {await listenPrivateSocket(unix,'/run/y9000p-timeline-upstream/proxy.sock');} catch {fail();}
+    }
   } else {console.error('Unsupported proxy operation');process.exitCode=1;}
 }

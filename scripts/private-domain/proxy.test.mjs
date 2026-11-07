@@ -5,9 +5,9 @@ import os from 'node:os';
 import path from 'node:path';
 import http from 'node:http';
 import https from 'node:https';
-import {execFileSync} from 'node:child_process';
-import {createProxyServer} from './proxy.mjs';
-const dir=fs.mkdtempSync(path.join(os.tmpdir(),'timeline-private-proxy-'));
+import {execFileSync,spawn} from 'node:child_process';
+import {createProxyServer,listenPrivateSocket} from './proxy.mjs';
+const dir=fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(),'timeline-private-proxy-')));
 fs.chmodSync(dir,0o700);
 try {
  execFileSync('/opt/homebrew/opt/openssl@3/bin/openssl',['req','-x509','-newkey','rsa:2048','-nodes','-days','1','-subj','/CN=localhost','-addext','subjectAltName=DNS:localhost','-keyout',path.join(dir,'key.pem'),'-out',path.join(dir,'cert.pem')],{stdio:'ignore'});
@@ -41,6 +41,36 @@ try {
   });
   await test('private domain opt-in refuses a different fallback origin',()=>{
    assert.throws(()=>createProxyServer({origin:'https://localhost:18444',privateDomainEnabled:true,cert,key}),/Unapproved/);
+  });
+  await test('Unix TLS listener preserves real Host and verifies the existing localhost CA',async()=>{
+   const socketDir=path.join(dir,'unix');fs.mkdirSync(socketDir);fs.chmodSync(socketDir,0o2750);
+   const socketPath=path.join(socketDir,'proxy.sock');
+   const unix=createProxyServer({origin:'https://localhost:18443',privateDomainEnabled:true,cert,key,upstreamAddress:()=>({hostname:'127.0.0.1',port:up})});
+   await listenPrivateSocket(unix,socketPath);
+   try {
+    const status=await new Promise((resolve,reject)=>{const req=https.get({socketPath,servername:'localhost',ca:cert,headers:{Host:'timeline.all-too-well.com',Origin:'https://timeline.all-too-well.com'},agent:false},res=>{res.resume();res.on('end',()=>resolve(res.statusCode));});req.on('error',reject);});
+    assert.equal(status,200);assert.equal(seen.headers.host,'timeline.all-too-well.com');assert.equal(seen.headers.origin,'https://timeline.all-too-well.com');
+    assert.equal(fs.statSync(socketPath).mode&0o777,0o660);
+    const second=createProxyServer({origin:'https://localhost:18443',cert,key});
+    await assert.rejects(listenPrivateSocket(second,socketPath),/already active/);
+    assert.ok(unix.listening);
+   } finally {await new Promise(r=>unix.close(r));}
+  });
+  await test('Unix socket refuses directory permissions, symlinks and regular-file replacement',async()=>{
+   const socketDir=path.join(dir,'refuse');fs.mkdirSync(socketDir,{mode:0o700});const socketPath=path.join(socketDir,'proxy.sock');
+   const make=()=>createProxyServer({origin:'https://localhost:18443',cert,key});
+   await assert.rejects(listenPrivateSocket(make(),socketPath),/directory/);
+   fs.chmodSync(socketDir,0o2750);fs.writeFileSync(socketPath,'retain');
+   await assert.rejects(listenPrivateSocket(make(),socketPath),/Unsafe/);assert.equal(fs.readFileSync(socketPath,'utf8'),'retain');
+   fs.unlinkSync(socketPath);fs.symlinkSync(path.join(dir,'cert.pem'),socketPath);
+   await assert.rejects(listenPrivateSocket(make(),socketPath),/Unsafe/);assert.ok(fs.lstatSync(socketPath).isSymbolicLink());
+  });
+  await test('Unix socket reclaims only a confirmed refused same-owner stale socket',async()=>{
+   const socketDir=path.join(dir,'stale');fs.mkdirSync(socketDir);fs.chmodSync(socketDir,0o2750);const socketPath=path.join(socketDir,'proxy.sock');
+   const child=spawn(process.execPath,['-e',"require('net').createServer().listen(process.argv[1],()=>console.log('ready'))",socketPath],{stdio:['ignore','pipe','ignore']});
+   await new Promise((resolve,reject)=>{child.stdout.once('data',resolve);child.once('error',reject);});
+   child.kill('SIGKILL');await new Promise(r=>child.once('exit',r));assert.ok(fs.lstatSync(socketPath).isSocket());
+   const server=createProxyServer({origin:'https://localhost:18443',cert,key});await listenPrivateSocket(server,socketPath);assert.ok(server.listening);await new Promise(r=>server.close(r));
   });
  } finally {await new Promise(r=>proxy.close(r));await new Promise(r=>upstream.close(r));}
 } finally {fs.rmSync(dir,{recursive:true});}
