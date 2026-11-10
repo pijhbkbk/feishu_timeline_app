@@ -38,10 +38,44 @@ function fixture(t) {
 }
 
 function report(kind) {
+  if (kind === 'clean') return { advisories: {}, muted: [], metadata: { vulnerabilities: { info: 0, low: 0, moderate: 0, high: 0, critical: 0 } } };
   const advisory = JSON.parse(fs.readFileSync(new URL(`./fixtures/minimatch-advisory-${kind}.json`, import.meta.url)));
   return { advisories: { [advisory.id]: advisory }, muted: [],
-    metadata: { vulnerabilities: { info: 0, low: 0, moderate: kind === 'all' ? 3 : 2, high: 0, critical: 0 } } };
+    metadata: { vulnerabilities: { info: 0, low: 0, moderate: kind === 'all' ? 3 : kind === 'prod' ? 2 : 1, high: 0, critical: 0 } } };
 }
+
+test('corrected upstream scope accepts only its exact advisory and clean production exit', () => {
+  const current = () => report('20261104');
+  assert.equal(assertMinimatchAudit(current(), report('clean'), 1, 0).rawAffectedVersionCount, 1);
+  for (const mutate of [
+    r => { r.advisories[1244623].severity = 'low'; },
+    r => { r.advisories[1244623].findings[0].paths.pop(); },
+    r => { r.advisories[1244623].overview += ' changed'; },
+    r => { r.advisories.extra = r.advisories[1244623]; },
+    r => { r.metadata.vulnerabilities.high = 1; },
+  ]) {
+    const all = current(); mutate(all);
+    assert.throws(() => assertMinimatchAudit(all, report('clean'), 1, 0));
+  }
+  for (const mutate of [
+    r => { r.error = { code: 'REGISTRY_FAILURE' }; },
+    r => { r.advisories.extra = current().advisories[1244623]; },
+    r => { r.metadata.vulnerabilities.low = 1; },
+    r => { r.muted.push('synthetic'); },
+    r => { delete r.metadata; },
+  ]) {
+    const production = report('clean'); mutate(production);
+    assert.throws(() => assertMinimatchAudit(current(), production, 1, 0));
+  }
+  for (const exits of [[0, 0], [1, 1], [1, 2], [2, 0]]) assert.throws(() => assertMinimatchAudit(current(), report('clean'), ...exits));
+  assert.throws(() => assertMinimatchAudit(report('all'), report('clean'), 1, 0));
+  assert.throws(() => assertMinimatchAudit(current(), report('prod'), 1, 1));
+  for (const malformed of [true, 1, '', 'bad', null, [], undefined]) {
+    const production = report('clean'); production.advisories = malformed;
+    assert.throws(() => assertMinimatchAudit(current(), production, 1, 0));
+    assert.throws(() => assertMinimatchAudit(current(), malformed, 1, 0));
+  }
+});
 
 test('only the complete exact full and production advisory pair is eligible', () => {
   assert.doesNotThrow(() => assertMinimatchAudit(report('all'), report('prod'), 1, 1));
@@ -79,6 +113,19 @@ test('actual installed sources and bounded regressions retain both raw failures'
   assert.equal(value.rawProductionAuditExitCode, 1);
   assert.equal(value.locallyRemediatedVersionCount, 1);
   assert.equal(value.notApplicableVersionCount, 2);
+});
+
+test('corrected scope retains raw development failure and raw production pass', t => {
+  const { directory, reports } = fixture(t);
+  fs.writeFileSync(path.join(reports, 'pnpm-audit-all.json'), JSON.stringify(report('20261104')));
+  fs.writeFileSync(path.join(reports, 'pnpm-audit.json'), JSON.stringify(report('clean')));
+  fs.writeFileSync(path.join(reports, 'pnpm-audit.exit-code'), '0');
+  const value = verifyMinimatchAudit(directory, reports);
+  assert.equal(value.rawAuditStatus, 'FAIL');
+  assert.equal(value.rawProductionAuditStatus, 'PASS');
+  assert.equal(value.rawProductionAuditExitCode, 0);
+  assert.equal(value.rawAffectedVersionCount, 1);
+  assert.equal(value.notApplicableVersionCount, 0);
 });
 
 for (const name of ['pnpm-lock.yaml', 'patches/minimatch@10.2.5.patch', 'scripts/security/tests/minimatch-globparts.test.mjs']) {
@@ -131,7 +178,7 @@ test('same-version main and exports redirection fails despite unchanged patched 
 
 test('CI revalidates both reports and retains raw findings even if a status file claims success', async t => {
   const { collect } = await import('../ci-evidence.mjs');
-  for (const forged of [false, true]) {
+  for (const corrected of [false, true]) for (const forged of [false, true]) {
     const { directory, reports } = fixture(t);
     const put = (name, value) => {
       const target = path.join(directory, name);
@@ -158,14 +205,22 @@ test('CI revalidates both reports and retains raw findings even if a status file
     for (const name of ['pnpm-audit-all.json', 'pnpm-audit.json', 'pnpm-audit-all.exit-code', 'pnpm-audit.exit-code']) {
       put(`reports/security/sca/${name}`, fs.readFileSync(path.join(reports, name), 'utf8'));
     }
+    if (corrected) {
+      put('reports/security/sca/pnpm-audit-all.json', report('20261104'));
+      put('reports/security/sca/pnpm-audit.json', report('clean'));
+      put('reports/security/sca/pnpm-audit.exit-code', '0');
+    }
     put('reports/security/sca/pnpm-audit-all.status', 'FAIL');
-    put('reports/security/sca/pnpm-audit.status', 'FAIL');
+    put('reports/security/sca/pnpm-audit.status', corrected ? 'PASS' : 'FAIL');
     put('reports/security/sca/minimatch-applicability.json', { status: 'LOCALLY_REMEDIATED', rawAdvisoryCount: 0 });
     if (forged) fs.appendFileSync(path.join(directory, 'patches/minimatch@10.2.5.patch'), '\n');
     const result = collect(directory, 'security-source', { secrets: { outcome: 'success' }, sast: { outcome: 'success' }, sca: { outcome: 'success' } }, () => null);
     assert.equal(result.complete, !forged);
     for (const [name, verifiedState] of [['sca-all', 'FINDINGS_LOCALLY_REMEDIATED'], ['sca-production', 'FINDINGS_VERIFIED_NOT_APPLICABLE']]) {
       const published = JSON.parse(fs.readFileSync(path.join(directory, `reports/ci-public/security-source/${name}.json`)));
+      if (corrected && name === 'sca-production') {
+        assert.equal(published.state, 'PASS'); assert.equal(published.scannerStatus, 'PASS'); assert.equal(published.findingCount, 0); continue;
+      }
       assert.equal(published.state, forged ? 'FINDINGS' : verifiedState);
       assert.equal(published.scannerStatus, 'FAIL');
       assert.equal(published.findingCount, 1);

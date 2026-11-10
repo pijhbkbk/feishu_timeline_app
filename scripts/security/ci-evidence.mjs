@@ -258,13 +258,16 @@ export function collect(root, job, rawSteps, run = probe) {
       } catch { /* The existing FINDINGS state remains blocking. */ }
     }
     if (all?.state === 'FINDINGS' && all.scannerStatus === 'FAIL'
-      && production?.state === 'FINDINGS' && production.scannerStatus === 'FAIL') {
+      && (production?.state === 'FINDINGS' && production.scannerStatus === 'FAIL'
+        || production?.state === 'PASS' && production.scannerStatus === 'PASS')) {
       try {
         const applicability = verifyMinimatchAudit(root, path.join(root, 'reports/security/sca'));
         all.localRemediation = applicability;
         all.state = 'FINDINGS_LOCALLY_REMEDIATED';
-        production.localApplicability = applicability;
-        production.state = 'FINDINGS_VERIFIED_NOT_APPLICABLE';
+        if (production.state === 'FINDINGS') {
+          production.localApplicability = applicability;
+          production.state = 'FINDINGS_VERIFIED_NOT_APPLICABLE';
+        }
         delete all.inconsistentWithStep;
         delete production.inconsistentWithStep;
       } catch { /* Both original FINDINGS states remain blocking. */ }

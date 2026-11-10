@@ -39,20 +39,28 @@ const canonical = value => value === null || typeof value !== 'object' ? JSON.st
     : '{' + Object.keys(value).sort().map(key => JSON.stringify(key) + ':' + canonical(value[key])).join(',') + '}';
 
 export function assertMinimatchAudit(all, production, allExit, productionExit) {
-  assert(allExit === 1 && productionExit === 1);
+  assert(allExit === 1 && [0, 1].includes(productionExit));
+  // The upstream 2026-11-04 correction excludes pre-v7 releases. Preserve the
+  // historical pair, but bind the corrected pair independently to its complete
+  // advisory, exact dependency paths, and genuinely clean production report.
+  const corrected = productionExit === 0;
   for (const [report, count, expected] of [
-    [all, 3, '52cc98a30e8a82bdf91400cf7a22bc4a14fd51ff331bd74c160abb185033fbab'],
-    [production, 2, 'bc810762319e80320e966c353813e64b86ea20f7915619a294cfe071b9c80ea9'],
+    [all, corrected ? 1 : 3, corrected ? '3c0d31b95264e01f8b834c9b58eba710a757d5d1ab3b9ac5cfe6878fa4fd8b9c' : '52cc98a30e8a82bdf91400cf7a22bc4a14fd51ff331bd74c160abb185033fbab'],
+    [production, corrected ? 0 : 2, corrected ? null : 'bc810762319e80320e966c353813e64b86ea20f7915619a294cfe071b9c80ea9'],
   ]) {
-    assert(report && !report.error && report.advisories && !Array.isArray(report.advisories));
+    assert(report && typeof report === 'object' && !Array.isArray(report) && !report.error);
+    assert(report.advisories !== null && typeof report.advisories === 'object' && !Array.isArray(report.advisories));
     assert(Array.isArray(report.muted) && report.muted.length === 0);
     assert(canonical(report.metadata?.vulnerabilities) === canonical({ info: 0, low: 0, moderate: count, high: 0, critical: 0 }));
     const entries = Object.values(report.advisories);
+    if (expected === null) { assert(entries.length === 0); continue; }
     assert(entries.length === 1 && entries[0].github_advisory_id === ADVISORY);
     // Bind the complete advisory and exact installed versions/paths. A changed
     // description, occurrence, severity, or additional advisory requires review.
     assert(hash(canonical(entries[0])) === expected);
   }
+  return { rawProductionAuditStatus: corrected ? 'PASS' : 'FAIL', rawProductionAuditExitCode: productionExit,
+    rawAffectedVersionCount: corrected ? 1 : 3, notApplicableVersionCount: corrected ? 0 : 2 };
 }
 
 function packageFrom(rootManifest, chain) {
@@ -105,11 +113,11 @@ export function verifyMinimatchAudit(root, directory) {
   const production = read(path.join(directory, 'pnpm-audit.json'));
   const allExit = read(path.join(directory, 'pnpm-audit-all.exit-code')).toString().trim();
   const productionExit = read(path.join(directory, 'pnpm-audit.exit-code')).toString().trim();
-  assert(allExit === '1' && productionExit === '1');
-  assertMinimatchAudit(JSON.parse(all), JSON.parse(production), Number(allExit), Number(productionExit));
-  return { ...verifyMinimatchSources(root), status: 'LOCALLY_REMEDIATED', rawAuditStatus: 'FAIL', rawProductionAuditStatus: 'FAIL',
-    rawAuditExitCode: 1, rawProductionAuditExitCode: 1, rawAdvisoryCount: 1, rawAffectedVersionCount: 3,
-    locallyRemediatedVersionCount: 1, notApplicableVersionCount: 2, residualFindingCount: 0,
+  assert(allExit === '1' && ['0', '1'].includes(productionExit));
+  const scope = assertMinimatchAudit(JSON.parse(all), JSON.parse(production), Number(allExit), Number(productionExit));
+  return { ...verifyMinimatchSources(root), status: 'LOCALLY_REMEDIATED', rawAuditStatus: 'FAIL', ...scope,
+    rawAuditExitCode: 1, rawAdvisoryCount: 1,
+    locallyRemediatedVersionCount: 1, residualFindingCount: 0,
     auditAllSha256: hash(all), auditProductionSha256: hash(production),
     boundary: 'Exact advisory and installed sources only. Original audit findings remain visible. No image or runtime security clearance.' };
 }
