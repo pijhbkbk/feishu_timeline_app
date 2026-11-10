@@ -25,6 +25,34 @@ const canonical = operationalProductionWhere;
 export class ProductionFactsService {
   constructor(private readonly prisma: PrismaService) {}
 
+  /** Bounded color page, twelve explicit month identities, one consistent database snapshot. */
+  async matrix(query: Record<string, unknown>, actor: AuthenticatedUser) {
+    assertApprovedTeamMember(actor);
+    const baseId = identity(query.baseId, '基地');
+    if (typeof query.year !== 'string' || !/^(19|20|21)\d{2}$/.test(query.year)) throw new BadRequestException('年份不正确。');
+    const { page, pageSize, skip } = pagination({ ...query, pageSize: query.pageSize ?? '20' });
+    if (pageSize > 20) throw new BadRequestException('矩阵每页最多20种颜色。');
+    const year = query.year;
+    return this.prisma.$transaction(async tx => {
+      const where = { productionBaseId: baseId };
+      const colors = await tx.color.findMany({ where, select: { id: true, name: true, code: true }, orderBy: { id: 'asc' }, take: pageSize, skip });
+      const total = await tx.color.count({ where });
+      const items = [];
+      for (const color of colors) {
+        const cells = [];
+        for (let m = 1; m <= 12; m++) {
+          const month = `${year}-${String(m).padStart(2, '0')}`;
+          const basis = await readProductionMonth(tx, { colorId: color.id, baseId, month });
+          const fact = basis.facts.find(f => f.id === basis.totalFactId);
+          cells.push({ colorId: color.id, baseId, ...basis, factId: fact?.id ?? null, factRevision: fact?.revision ?? null,
+            editable: !basis.invalid && !basis.reconciliationRequired && (!basis.hasFacts || basis.mode === 'MONTH_TOTAL') });
+        }
+        items.push({ ...color, cells });
+      }
+      return { baseId, year, page, pageSize, total, items };
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead, timeout: 15000 });
+  }
+
   async list(query: Record<string, unknown>, actor: AuthenticatedUser) {
     assertApprovedTeamMember(actor);
     const { page, pageSize, skip } = pagination(query);
@@ -129,7 +157,8 @@ export class ProductionFactsService {
     return withTeamWrite(this.prisma, actor, async tx => {
       const key = `production-facts:${actor.id}:${input.operationId}`;
       await tx.$executeRaw(Prisma.sql`SELECT pg_advisory_xact_lock(hashtext(${key}))`);
-      const requestHash = commandHash(productionCommandItems(input.items));
+      // Keep historical receipt hashes byte-for-byte compatible when no matrix guard was supplied.
+      const requestHash = commandHash(input.basisSnapshots ? { items: productionCommandItems(input.items), basisSnapshots: input.basisSnapshots } : productionCommandItems(input.items));
       const replay = await tx.adminCommandRequest.findUnique({ where: { idempotencyKey: key } });
       if (replay) {
         if (replay.action !== 'PRODUCTION_FACT_BATCH' || replay.requestHash !== requestHash) throw new ConflictException('操作标识已使用，且内容不同。');
@@ -154,6 +183,18 @@ export class ProductionFactsService {
       // Lock colors as well: a base reassignment must not slip between identity validation and creation.
       const colorIds = [...new Set(input.items.map(item => item.kind === 'create' ? item.colorId : before.get(item.id)!.colorId))].sort();
       for (const id of colorIds) await tx.$queryRaw(Prisma.sql`SELECT id FROM colors WHERE id = ${id} FOR SHARE`);
+      if (input.basisSnapshots) {
+        const expected = new Map(input.basisSnapshots.map(item => [grain(item), item]));
+        const groups = new Set(resolved.map(grain));
+        if (expected.size !== input.basisSnapshots.length || expected.size !== groups.size || [...groups].some(key => !expected.has(key))) throw new BadRequestException('统计依据必须准确覆盖本次修改的所有月份。');
+        for (const item of expected.values()) {
+          const color = await tx.color.findUnique({ where: { id: item.colorId }, select: { productionBaseId: true } });
+          if (!color || color.productionBaseId !== item.baseId) throw new ConflictException('颜色所属基地已变化，请重新读取。');
+          const current = await readProductionMonth(tx, item);
+          if (current.snapshotHash !== item.snapshotHash) throw new ConflictException({ code: 'PRODUCTION_BASIS_CHANGED', message: '产量或统计依据已变化。输入已保留，请核对最新值。' });
+          if (current.invalid || current.reconciliationRequired || (current.hasFacts && current.mode !== 'MONTH_TOTAL')) throw new ConflictException('此月份需先核对唯一统计依据，不能覆盖车型汇总。');
+        }
+      }
       const saved = [];
       for (const item of input.items) {
         if (item.kind === 'create') {

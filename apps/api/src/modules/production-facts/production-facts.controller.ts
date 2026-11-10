@@ -6,6 +6,8 @@ import { ProductionFactsService } from './production-facts.service';
 @Controller('production-facts')
 export class ProductionFactsController {
   constructor(private readonly service: ProductionFactsService) {}
+  @Get('matrix') @Permissions('project.read')
+  matrix(@Query() query: Record<string, unknown>, @CurrentUser() actor: AuthenticatedUser) { return this.service.matrix(query, actor); }
   @Get() @Permissions('project.read')
   list(@Query() query: Record<string, unknown>, @CurrentUser() actor: AuthenticatedUser) { return this.service.list(query, actor); }
   @Get('statistics') @Permissions('project.read')

@@ -58,7 +58,15 @@ export function parseBasisWrite(raw: unknown) {
 }
 export function parseProductionBatch(raw: unknown) {
   const body = object(raw);
-  onlyFields(body, ['operationId', 'items']);
+  onlyFields(body, ['operationId', 'items', 'basisSnapshots']);
+  const basisSnapshots = body.basisSnapshots === undefined ? undefined : (() => {
+    if (!Array.isArray(body.basisSnapshots) || !body.basisSnapshots.length || body.basisSnapshots.length > 50) throw new BadRequestException('统计依据须逐格提供，最多50格。');
+    return body.basisSnapshots.map(raw => {
+      const item = object(raw); onlyFields(item, ['colorId', 'baseId', 'month', 'snapshotHash']);
+      if (typeof item.snapshotHash !== 'string' || !/^[a-f0-9]{64}$/.test(item.snapshotHash)) throw new BadRequestException('统计依据快照不正确。');
+      return { ...parseBasisRead(item), snapshotHash: item.snapshotHash };
+    });
+  })();
   if (!Array.isArray(body.items) || body.items.length < 1 || body.items.length > 50) throw new BadRequestException('一次提交 1–50 条产量事实。');
   const items: ProductionMutation[] = body.items.map(rawItem => {
     const item = object(rawItem);
@@ -75,7 +83,7 @@ export function parseProductionBatch(raw: unknown) {
   const identities = items.map(item => item.kind === 'create' ? `new:${item.clientId}` : `id:${item.id}`);
   const grains = items.flatMap(item => item.kind === 'create' ? [factGrain(item)] : []);
   if (new Set(identities).size !== items.length || new Set(grains).size !== grains.length) throw new BadRequestException({ code: 'PRODUCTION_DUPLICATE_GRAIN', message: '同一批次含重复记录或重复月度业务键。' });
-  return { operationId: identity(body.operationId, '操作标识'), items };
+  return { operationId: identity(body.operationId, '操作标识'), items, basisSnapshots };
 }
 export function productionFilters(query: Record<string, unknown>, includeModel = true) {
   const baseId = query.baseId ? identity(query.baseId, '基地') : undefined;

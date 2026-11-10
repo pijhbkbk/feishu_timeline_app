@@ -2051,6 +2051,7 @@ model InspectionParticipant {
   @@map("inspection_participants")
 }
 model InspectionObject {
+  productionDate DateTime? @db.Date
   id String @id @default(cuid())
   objectKind InspectionObjectKind
   objectCode String @unique @db.VarChar(128)
@@ -2067,6 +2068,12 @@ model InspectionObject {
   @@map("inspection_objects")
 }
 model InspectionOccurrence {
+  visualScores Json?
+  manualRectification Boolean?
+  rectificationDueDate DateTime? @db.Date
+  paintUnit String? @db.VarChar(200)
+  responsibleUnit String? @db.VarChar(200)
+  rectificationUnit String? @db.VarChar(200)
   originalSource Json?
   id String @id @default(cuid())
   activityId String
