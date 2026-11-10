@@ -18,6 +18,7 @@ class ReleaseModelTests(unittest.TestCase):
                     'networks': ['private']} for n in model.SERVICES}, 'networks': {'private': {'internal': True}}}
         for n in ['api', 'timeline-proxy']:
             self.cfg['services'][n]['environment'] = {'Y9000P_PRIVATE_DOMAIN_ENABLED': '1'}
+        self.cfg['services']['timeline-proxy']['ports'] = copy.deepcopy(model.PROXY_PORTS)
         cfg = model.encode(self.cfg)
         state = {'composeSHA256': model.sha(cfg), 'services': {n: {'id': '1' * 64, 'image': old_image, 'networks': ['private']} for n in model.SERVICES}}
         self.original = {'compose.json': cfg, 'service-identities.json': model.encode(state),
@@ -47,6 +48,21 @@ class ReleaseModelTests(unittest.TestCase):
             changed[name] += b' '
             with self.subTest(name=name), self.assertRaises(RuntimeError):
                 model.transform(changed, self.plan)
+
+    def test_only_exact_existing_proxy_loopback_mapping_is_accepted(self):
+        for ports in [None, [], ['18443:8443'],
+                      [{**model.PROXY_PORTS[0], 'host_ip': '0.0.0.0'}],
+                      [{**model.PROXY_PORTS[0], 'published': '18444'}],
+                      [{**model.PROXY_PORTS[0], 'target': 3001}], model.PROXY_PORTS * 2]:
+            cfg = copy.deepcopy(self.cfg)
+            cfg['services']['timeline-proxy']['ports'] = ports
+            original = dict(self.original, **{'compose.json': model.encode(cfg)})
+            state = json.loads(original['service-identities.json'])
+            state['composeSHA256'] = model.sha(original['compose.json'])
+            original['service-identities.json'] = model.encode(state)
+            plan = dict(self.plan, baselineHashes={n: model.sha(b) for n, b in original.items()})
+            with self.subTest(ports=ports), self.assertRaisesRegex(RuntimeError, 'SERVICE_PORT_BASELINE'):
+                model.transform(original, plan)
 
     def test_scope_and_private_pair_fail_closed(self):
         for mutation in ['ports', 'flag', 'extra_service', 'recovery_digest']:

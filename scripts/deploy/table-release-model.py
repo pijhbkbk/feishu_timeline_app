@@ -6,6 +6,7 @@ import re
 
 SERVICES = {'api', 'web', 'timeline-proxy', 'postgres17', 'redis', 'scanner', 'cpwi', 'cpwi-proxy', 'root-site'}
 CHANGED = {'api', 'web', 'timeline-proxy'}
+PROXY_PORTS = [{'host_ip': '127.0.0.1', 'protocol': 'tcp', 'published': '18443', 'target': 8443}]
 ENV_KEYS = {'sourceCommit': 'EXPECTED_SOURCE_COMMIT', 'sourceTree': 'EXPECTED_SOURCE_TREE',
             'release': 'EXPECTED_RELEASE', 'buildTime': 'EXPECTED_BUILD_TIME'}
 
@@ -44,8 +45,10 @@ def transform(original, plan):
     need(state['composeSHA256'] == sha(original['compose.json']), 'RECOVERY_BASELINE')
     for name in CHANGED:
         service = cfg['services'][name]
-        need(service['image'] == state['services'][name]['image'] and not service.get('ports')
+        need(service['image'] == state['services'][name]['image']
              and not service.get('depends_on'), 'SERVICE_BASELINE')
+        need(service.get('ports') == PROXY_PORTS if name == 'timeline-proxy' else not service.get('ports'),
+             'SERVICE_PORT_BASELINE')
         if name != 'timeline-proxy':
             service['image'] = images[name]
         service.setdefault('environment', {}).update({ENV_KEYS[k]: v for k, v in identity.items()})

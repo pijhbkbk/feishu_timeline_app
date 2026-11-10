@@ -24,7 +24,7 @@ from urllib.parse import urlsplit, urlunsplit, quote, unquote
 ROOT = Path('/var/lib/y9000p-private-glibc-20261106')
 RUNTIME = ROOT / 'runtime-recovery'
 STAGE = Path('/home/serveradmin/table-first-release-20261110/prepared')
-OUT = ROOT / 'table-first-release-20261110'
+OUT = ROOT / 'table-first-release-20261110-r02'
 GUARD = RUNTIME / 'RECOVERY_BLOCKED.json'
 CLAM = Path('/usr/local/lib/y9000p-clamav-update/y9000p_clamav_autoupdate.py')
 TIMER = 'y9000p-clamav-autoupdate.timer'
@@ -39,7 +39,7 @@ ORIGINAL = {}
 LOCK = None
 SWITCHED = False
 PAUSED = False
-PG = 'table-first-rehearsal-20261110'
+PG = 'table-first-rehearsal-20261110-r02'
 NET = PG + '-net'
 CLONE_STARTED = False
 COMMITTED = False
@@ -291,6 +291,11 @@ def validate_new(c, old, cfg, name):
     need(actual == wanted and all(v['Type'] in ['bind', 'tmpfs'] for v in c['Mounts']), 'NEW_STORAGE_SCOPE')
 
 
+def check_started_ports(container, old):
+    need(container['HostConfig'].get('PortBindings') == old['HostConfig'].get('PortBindings')
+         and container['NetworkSettings'].get('Ports') == old['NetworkSettings'].get('Ports'), 'STARTED_PORT_SCOPE')
+
+
 def http_check():
     result = {}
     for path in ['/api/health', '/build-info']:
@@ -461,6 +466,7 @@ def main():
     for name in ['api', 'web', 'timeline-proxy']:
         run(['docker', 'start', NEW_IDS[name]])
         wait_healthy(NEW_IDS[name])
+        check_started_ports(inspect(NEW_IDS[name]), OLD[name])
     RESULT['http'] = http_check()
     unaffected()
     need(read(RUNTIME / 'business-ready.py') == ORIGINAL['business-ready.py'], 'RECOVERY_LOGIC_CHANGED')

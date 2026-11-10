@@ -1,3 +1,4 @@
+import copy
 import importlib.util
 import json
 from pathlib import Path
@@ -66,6 +67,21 @@ class FailureBarrierTests(unittest.TestCase):
                 host.retain_failure_barrier()
                 run.assert_not_called()
                 save.assert_not_called()
+
+
+class StartedPortTests(unittest.TestCase):
+    def test_preserves_configured_loopback_and_effective_unpublished_ports(self):
+        old = {'HostConfig': {'PortBindings': {'8443/tcp': [{'HostIp': '127.0.0.1', 'HostPort': '18443'}]}},
+               'NetworkSettings': {'Ports': {'3001/tcp': None, '8443/tcp': None}}}
+        host.check_started_ports(copy.deepcopy(old), old)
+        for field in ['configured', 'effective']:
+            changed = copy.deepcopy(old)
+            if field == 'configured':
+                changed['HostConfig']['PortBindings']['8443/tcp'][0]['HostIp'] = '0.0.0.0'
+            else:
+                changed['NetworkSettings']['Ports']['8443/tcp'] = [{'HostIp': '127.0.0.1', 'HostPort': '18443'}]
+            with self.subTest(field=field), self.assertRaisesRegex(RuntimeError, 'STARTED_PORT_SCOPE'):
+                host.check_started_ports(changed, old)
 
 
 class SourceFilenameTests(unittest.TestCase):
