@@ -28,6 +28,7 @@ OUT = ROOT / 'table-first-release-20261110-r03'
 GUARD = RUNTIME / 'RECOVERY_BLOCKED.json'
 CLAM = Path('/usr/local/lib/y9000p-clamav-update/y9000p_clamav_autoupdate.py')
 TIMER = 'y9000p-clamav-autoupdate.timer'
+COMPOSE = '/usr/libexec/docker/cli-plugins/docker-compose'
 ENV = {'PATH': '/usr/sbin:/usr/bin:/sbin:/bin', 'LANG': 'C.UTF-8', 'TZ': 'UTC'}
 RESULT = {'status': 'INCOMPLETE', 'phase': 'PRECHECK', 'startedAt': datetime.datetime.now(datetime.timezone.utc).isoformat()}
 M = None
@@ -336,6 +337,7 @@ def main():
     need(run(['findmnt', '-no', 'FSTYPE', '--target', str(ROOT)]).stdout.strip() == b'ext4', 'STORAGE_TYPE')
     need(run(['systemctl', 'is-active', 'y9000p-private-business.service']).stdout.strip() == b'active', 'BUSINESS_NOT_ACTIVE')
     need(run(['systemctl', 'is-active', TIMER]).stdout.strip() == b'active', 'UPDATER_TIMER_NOT_ACTIVE')
+    run([COMPOSE, 'version', '--short'])
     LOCK = os.open(ROOT / 'clamav-automatic-update/operation.lock', os.O_RDWR | os.O_NOFOLLOW)
     fcntl.flock(LOCK, fcntl.LOCK_EX | fcntl.LOCK_NB)
     OUT.mkdir(mode=0o700)
@@ -452,9 +454,18 @@ def main():
     RESULT['productionSource'] = import_data('production', production_env, 'y9000p-private_data', live, ROOT / 'objects')
     oneoff('production-compare', PLAN['images']['api'], production_env, 'y9000p-private_data',
            ['node', '/release/table-release-data.cjs', 'compare', '/evidence/before.json', '/evidence/preserved.json'], live)
+    activate_applications(candidate)
+
+
+def activate_applications(candidate):
+    global PAUSED, COMMITTED
     RESULT['phase'] = 'ACTIVATE_APPLICATIONS'
-    write(OUT / 'candidate-compose.json', candidate['compose.json'])
-    compose = ['docker', 'compose', '--project-name', 'y9000p-private', '--file', str(OUT / 'candidate-compose.json')]
+    candidate_path = OUT / 'candidate-compose.json'
+    if candidate_path.exists():
+        need(read(candidate_path) == candidate['compose.json'], 'CANDIDATE_COMPOSE_CHANGED')
+    else:
+        write(candidate_path, candidate['compose.json'])
+    compose = [COMPOSE, '--project-name', 'y9000p-private', '--file', str(OUT / 'candidate-compose.json')]
     run(compose + ['config', '--quiet'])
     # Immutable project labels would make Compose reuse even a renamed old
     # container. Remove only stopped read-only shells, retaining old images,
