@@ -102,7 +102,9 @@ async function main() {
     await writeFile(process.env.NATIVE_TABLE_CI_STATE, JSON.stringify({ admin: { username: 'native_table_ci_admin', password }, privateRoot }), { mode: 0o600, flag: 'wx' });
     const apiExec = ['--filter', '@feishu-timeline/api', 'exec', 'dotenv', '-e', '.env.example', '--', 'tsx'];
     await runPnpm('catalog', [...apiExec, 'src/cli/native-catalog.ts', 'initialize']);
-    await runPnpm('administrator', [...apiExec, 'src/cli/native-account.ts', 'initialize', '--username', 'native_table_ci_admin', '--name', '合成CI管理员', '--password-file', passwordFile]);
+    // Nest injection uses TypeScript decorator metadata, which tsx does not emit.
+    // Match the existing API dev entry; execute the unchanged native-account CLI.
+    await runPnpm('administrator', [...apiExec.slice(0, -1), 'node', '-r', 'ts-node/register/transpile-only', 'src/cli/native-account.ts', 'initialize', '--username', 'native_table_ci_admin', '--name', '合成CI管理员', '--password-file', passwordFile]);
     await runPnpm('synthetic-catalog', [...apiExec, '../../scripts/testing/native-table-ci-catalog.cjs']);
     const state = JSON.parse(await readFile(process.env.NATIVE_TABLE_CI_STATE, 'utf8'));
     for (const member of state.members) console.log(`::add-mask::${member.password}`);
