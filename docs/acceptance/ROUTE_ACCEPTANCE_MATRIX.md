@@ -1135,3 +1135,7 @@ verify未配置PG/Redis service或各TEST_* URL，`pnpm test`绿不自动填掉�
 本轮实际UAT指出 /inspections 的活动/仪器前置和 /production 长明细交互不符合日常台账。A15-01/A15-03 的两页布局/录入适用范围及颜色清单默认导航重新进入所有者确认；原版本的技术通过事实保留，不能将旧PASS或70/74、9/9作为本轮界面接收依据。A15-12继续NOT_VERIFIED。本轮不增加MUST/技术链/OPTIONAL分母。
 
 来源、字段对应、独立预览路径、最小模型缺口及验证范围见 `docs/design/TABLE_FIRST_PREVIEW_20261109.md`。本阶段两页浏览器合成存档验证不升级正式API、附件、认证、历史或恢复结论；真实业务接口和正式路由改动待所有者确认后实施。已暂停性能、未变化安装/Office/IME不重跑。新增Agent 0，产品适用性只能由李晓晨确认。
+
+### 2026-11-10 表格优先第二阶段续验范围
+
+已认可的两页在独立loopback合成环境接入真实业务服务，应用候选cfe6db8113442b449b5d9ab2607e9222c3e8fd59；A15-01/03相关表格交互补充了真实保存、读回、双账号冲突及原件扫描证据，见docs/design/TABLE_FIRST_SERVICE_PREVIEW_20261110.md。此为受影响路径的LOCAL_VERIFIED范围，不证明正式Next路由或生产部署；新增schema/事务独审REVIEW_PENDING，A15-12及所有者接收仍待确认。原74 MUST、9技术链、3 OPTIONAL与暂停性能状态保持，不提升整链或追认历史范围。
