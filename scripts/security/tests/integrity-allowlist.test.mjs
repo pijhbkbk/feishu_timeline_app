@@ -2,12 +2,15 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { randomBytes } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
+
+// Public synthetic fixtures with stable entropy; random hex may fall below the
+// scanner's entropy threshold and accidentally stop exercising the allowlist.
+const fixtureHex = (length, offset) => Array.from({ length }, (_, i) => ((i + offset) % 16).toString(16)).join('');
 
 test('reviewed integrity exceptions keep changed values, new credentials and other paths blocking', { timeout: 120_000 }, () => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'integrity-allowlist-'));
@@ -16,8 +19,8 @@ test('reviewed integrity exceptions keep changed values, new credentials and oth
     const approvedLine = fs.readFileSync(path.join(root, relative), 'utf8').split('\n')
       .find(line => line.includes("'timeline-native-api.service':"));
     assert.ok(approvedLine);
-    const changedLine = approvedLine.replace(/[a-f0-9]{64}/, randomBytes(32).toString('hex'));
-    const extraLine = `api_key = '${randomBytes(32).toString('hex')}'`;
+    const changedLine = approvedLine.replace(/[a-f0-9]{64}/, fixtureHex(64, 1));
+    const extraLine = `api_key = '${fixtureHex(64, 7)}'`;
     const fixtures = {
       [`approved/${relative}`]: approvedLine,
       [`changed/${relative}`]: changedLine,
@@ -30,7 +33,7 @@ test('reviewed integrity exceptions keep changed values, new credentials and oth
     assert.equal(matrixLines.length, 2);
     const matrixText = matrixLines.join('\n');
     fixtures[`approved/${matrixPath}`] = matrixText;
-    fixtures[`matrix-changed/${matrixPath}`] = matrixText.replaceAll('e0870e8f4d919496d0161646ccc2c1aa28cd7822', randomBytes(20).toString('hex'));
+    fixtures[`matrix-changed/${matrixPath}`] = matrixText.replaceAll('e0870e8f4d919496d0161646ccc2c1aa28cd7822', fixtureHex(40, 11));
     fixtures[`matrix-appended/${matrixPath}`] = `${matrixText}\n${extraLine}`;
     fixtures['matrix-unrelated/metadata.md'] = matrixText;
     for (const [name, text] of Object.entries(fixtures)) {
