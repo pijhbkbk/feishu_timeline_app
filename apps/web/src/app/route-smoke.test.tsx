@@ -53,8 +53,8 @@ describe('route smoke', () => {
       { label: '工作台', href: '/dashboard' },
       { label: '颜色项目', href: '/projects' },
       { label: '颜色清单', href: '/admin/color-database' },
-      { label: '周评', href: '/inspections' },
-      { label: '产量统计', href: '/production' },
+      { label: '色差评审', href: '/inspections' },
+      { label: '月度产量', href: '/production' },
       { label: '人员库', href: '/admin/people' },
     ]);
     expect(sidebarSections[0]?.items).toHaveLength(6);

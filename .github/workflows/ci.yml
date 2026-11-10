@@ -251,7 +251,8 @@ jobs:
 
   playwright-smoke:
     if: github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
+    # The locked Playwright 1.60 runtime supports Ubuntu 24.04, not 26.04.
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout
