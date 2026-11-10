@@ -278,4 +278,8 @@ jobs:
         run: pnpm --filter @feishu-timeline/web exec playwright install --with-deps chromium
 
       - name: Run Playwright Smoke
-        run: pnpm playwright:test
+        # Current native-account/table contract; historical mock suites remain
+        # available through the unchanged default playwright:test command.
+        run: |
+          node --test scripts/testing/native-table-ci-env.test.mjs
+          pnpm playwright:test -- --native-table
