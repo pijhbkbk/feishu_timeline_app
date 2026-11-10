@@ -1,4 +1,5 @@
 'use client';
+import { BUSINESS_TIME_ZONE, toBusinessDateInputValue } from '../../lib/local-datetime';
 
 import { displayColorName } from './color-name';
 import { M1FilePicker } from './file-picker';
@@ -15,12 +16,13 @@ import { TaskWorkspace } from '../team-work/task-workspace';
 import { M1Icon } from './icon';
 import { nodeReturnHref } from './context';
 import { useProjectUnsavedChanges } from './use-unsaved';
+import { shanghaiToday } from '../inspections/week-range';
 type Confirmation = SampleConfirmationSummary;
-function today(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
 export function M1NodeWorkspace({projectId,taskId}:{projectId:string;taskId:string}) {
+ const search=useSearchParams();
  const [context,setContext]=useState<R26ProgressResponse|null>(null),[error,setError]=useState(''),[retry,setRetry]=useState(0);
  useEffect(()=>{let active=true;setContext(null);setError('');void apiRequest<R26ProgressResponse>(`/v2/tasks/${encodeURIComponent(taskId)}/progress-context`,{signal:AbortSignal.timeout(15000)}).then(c=>{if(c.task.projectId!==projectId)throw Error('该节点不属于当前项目。');if(active)setContext(c);}).catch(e=>{if(active)setError(e instanceof Error?e.message:'节点加载失败。');});return()=>{active=false;};},[projectId,taskId,retry]);
- if(error)return <section className="m1-card m1-state"><p role="alert">{error}</p><button className="m1-button" onClick={()=>setRetry(n=>n+1)}>重新加载</button></section>;
+ if(error)return <section className="m1-card m1-state"><p role="alert">{error}</p><button className="m1-button" onClick={()=>setRetry(n=>n+1)}>重新加载</button><Link className="m1-button" href={nodeReturnHref(projectId,taskId,search.toString())}>返回来源页面</Link></section>;
  if(!context)return <p className="m1-state" role="status">正在加载记录…</p>;
  if(!['PROJECT_INITIATION','DEVELOPMENT_REPORT','PAINT_DEVELOPMENT','SAMPLE_COLOR_CONFIRMATION'].includes(context.task.nodeCode))return <TaskWorkspace projectId={projectId} taskId={taskId}/>;
  return <M1Record key={`${projectId}:${taskId}`} initial={context} projectId={projectId} taskId={taskId}/>;
@@ -31,7 +33,7 @@ function M1Record({initial,projectId,taskId}:{initial:R26ProgressResponse;projec
  const [factsLoading,setFactsLoading]=useState(true),[persistedSample,setPersistedSample]=useState<TaskSample|null>(null);
  const [approvedMaterial,setApprovedMaterial]=useState<ProjectAttachmentSummary|null>(null);
  const [error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(''),[dirty,setDirty]=useState(false);
- const [form,setForm]=useState({date:canRecordNode(initial)?today():'',party:'',decision:'APPROVE',comment:'',sampleId:'',sampleNo:'',sampleName:'',approvalReference:'',demandSource:''});
+ const [form,setForm]=useState({date:canRecordNode(initial)?shanghaiToday():'',party:'',decision:'APPROVE',comment:'',sampleId:'',sampleNo:'',sampleName:'',approvalReference:'',demandSource:''});
  const [conflictDraft,setConflictDraft]=useState<typeof form|null>(null);
  const [file,setFile]=useState<File|null>(null);const [preview,setPreview]=useState<{name:string;url:string;type:string}|null>(null);
 
@@ -52,7 +54,7 @@ function M1Record({initial,projectId,taskId}:{initial:R26ProgressResponse;projec
   const saved=next.confirmations.find(record=>record.taskId===taskId);
   if(preserveInput&&dirty&&(!writable||(isPaint&&sample)))setConflictDraft(previous=>previous??{...form});
   if(isPaint){setPersistedSample(sample);if(sample)setForm(old=>({...old,...paintFields(sample),sampleId:sample.id}));}
-  else if(!writable){setForm(old=>({...old,date:saved?(saved.actualConfirmedAt||saved.confirmedAt).slice(0,10):'',party:saved?.confirmationParty||'',decision:saved?.decision||'',comment:saved?.comment||'',sampleId:saved?.sampleId||sample?.id||''}));}
+  else if(!writable){setForm(old=>({...old,date:saved?toBusinessDateInputValue(saved.actualConfirmedAt||saved.confirmedAt):'',party:saved?.confirmationParty||'',decision:saved?.decision||'',comment:saved?.comment||'',sampleId:saved?.sampleId||sample?.id||''}));}
   else if(!preserveInput)setForm(old=>({...old,sampleId:sample?.id||''}));
  }
  async function fetchFacts(){
@@ -94,7 +96,7 @@ function M1Record({initial,projectId,taskId}:{initial:R26ProgressResponse;projec
  }catch(e){setError(e instanceof Error?e.message:'保存失败，请重试。');}finally{pending.current=false;setBusy('');}}
  return <section className="m1-workspace"><div className="m1-breadcrumb"><Link className="m1-icon-button" href={returnHref} aria-label="返回来源"><M1Icon name="back"/></Link><Link href={`/projects/${encodeURIComponent(projectId)}`}>颜色项目</Link><span>/</span><span>{displayColorName(data.task.project.name,data.task.project.colorName)}</span><span>/</span><span>{title}</span></div><header className="m1-heading"><h1>{title}</h1><span className={`m1-badge${active?' warning':''}`}>{active?'待记录':data.task.statusLabel}</span></header>
  {error&&<div className="m1-error" role="alert">{error}<button type="button" className="m1-button" onClick={()=>void refresh().catch(()=>undefined)} disabled={!!busy}>读取最新状态</button></div>}{notice&&<p className="m1-notice" role="status">{notice}</p>}
- {factsLoading&&<p role="status">正在读取本轮记录…</p>}{paintLocked&&active&&<p className="m1-notice" role="status">样板已登记，可继续完成本轮工序。</p>}<div className="m1-record-grid"><form className="m1-card m1-record-form" onSubmit={e=>void save(e)}><div className="m1-fields"><label className="m1-field">{isConfirmation?'实际确认日期':isPaint?'实际制样日期':'报告批准日期'}<input aria-label={isConfirmation?'实际确认日期':isPaint?'实际制样日期':'报告批准日期'} type="date" required value={form.date} max={today()} disabled={!!busy||!active||paintLocked} onChange={e=>change('date',e.target.value)}/></label>
+ {factsLoading&&<p role="status">正在读取本轮记录…</p>}{paintLocked&&active&&<p className="m1-notice" role="status">样板已登记，可继续完成本轮工序。</p>}<div className="m1-record-grid"><form className="m1-card m1-record-form" onSubmit={e=>void save(e)}><div className="m1-fields"><label className="m1-field">{isConfirmation?'实际确认日期':isPaint?'实际制样日期':'报告批准日期'}<input aria-label={isConfirmation?'实际确认日期':isPaint?'实际制样日期':'报告批准日期'} type="date" required value={form.date} max={shanghaiToday()} disabled={!!busy||!active||paintLocked} onChange={e=>change('date',e.target.value)}/></label>
  {isConfirmation?<label className="m1-field">确认方<input required maxLength={120} value={form.party} disabled={!!busy||!active} onChange={e=>change('party',e.target.value)}/></label>:isReport?<label className="m1-field">批准依据<input required maxLength={200} value={form.approvalReference} disabled={!!busy||!active} onChange={e=>change('approvalReference',e.target.value)}/></label>:<label className="m1-field">样板编号<input required maxLength={64} value={form.sampleNo} disabled={!!busy||!active||paintLocked} onChange={e=>change('sampleNo',e.target.value)}/></label>}</div>
  {isReport&&<label className="m1-field">需求来源<input required maxLength={500} value={form.demandSource} disabled={!!busy||!active} onChange={e=>change('demandSource',e.target.value)}/></label>}
  {isPaint&&<label className="m1-field">样板名称<input required maxLength={128} value={form.sampleName} disabled={!!busy||!active||paintLocked} onChange={e=>change('sampleName',e.target.value)}/></label>}
@@ -103,8 +105,8 @@ function M1Record({initial,projectId,taskId}:{initial:R26ProgressResponse;projec
  <footer className="m1-record-actions"><Link href={returnHref} className="m1-button">{active?'取消':'返回'}</Link>{active&&<button className="m1-button m1-primary" disabled={!!busy||factsLoading||(!isReport&&!facts)}><M1Icon name="check"/>{busy==='save'?'正在保存…':'保存并返回'}</button>}</footer></form>
  <aside className="m1-card"><h2>{isConfirmation?'确认材料':isReport?'已获批开发报告':'开发材料'}</h2><div className="m1-file-list">{!materials.length?<p className="m1-muted">尚无材料</p>:materials.map(m=><div className="m1-file" key={m.id}><M1Icon name="file"/><div><strong>{m.fileName}</strong><span>已放行 · V{m.versionNo}</span></div><button type="button" className="m1-icon-button" aria-label={`预览 ${m.fileName}`} onClick={()=>void showPreview(m)}><M1Icon name="zoomIn"/></button></div>)}</div>
  {active&&<form className="m1-material-upload" onSubmit={e=>void upload(e)}><M1FilePicker label={isConfirmation?'选择确认单':'选择材料'} file={file} disabled={!!busy} onChange={setFile}/><button className="m1-button" disabled={!!busy||!file}><M1Icon name="upload"/>{busy==='upload'?'正在传输并扫描…':isConfirmation?'上传确认单':'上传材料'}</button></form>}
- <h2>记录</h2><ul className="m1-history">{isPaint&&facts?.samples.map(sample=><li key={sample.id}><strong>{sample.sampleName} · {sample.sampleNo} · V{sample.versionNo}</strong><time>实际制样日期：{sample.producedAt?.slice(0,10)||'未记录'}</time>{sample.remark}</li>)}{history.map(h=><li key={h.id}><strong>{h.decision==='APPROVE'?'确认通过':h.decision==='REJECT'?'不通过':'需调整'} · {h.confirmationParty||'确认记录'}</strong><time>{h.actualConfirmedAt?.slice(0,10)||new Date(h.confirmedAt).toLocaleDateString('zh-CN')} · {h.confirmedByName}</time>{h.comment}</li>)}{data.task.flowLogs.map((l,i)=><li key={l.id||i}><strong>{readableFlowSummary(l.summary||l.actionLabel||'流程记录已更新')}</strong><time>{l.createdAt?new Date(l.createdAt).toLocaleString('zh-CN'):''} · {l.operatorName}</time></li>)}{!history.length&&!data.task.flowLogs.length&&(!isPaint||!facts?.samples.length)&&<li>暂无记录</li>}</ul>
- {data.materials.versions.length>0&&<details><summary>材料历史</summary><ul className="m1-history">{data.materials.versions.map(m=><li key={m.id}><a href={`${API_BASE_URL}${m.downloadUrl}`} target="_blank" rel="noopener noreferrer">{m.fileName} · V{m.versionNo}</a><time>{m.uploadedByName} · {new Date(m.uploadedAt).toLocaleString('zh-CN')}</time></li>)}</ul></details>}</aside></div>
+ <h2>记录</h2><ul className="m1-history">{isPaint&&facts?.samples.map(sample=><li key={sample.id}><strong>{sample.sampleName} · {sample.sampleNo} · V{sample.versionNo}</strong><time>实际制样日期：{sample.producedAt?.slice(0,10)||'未记录'}</time>{sample.remark}</li>)}{history.map(h=><li key={h.id}><strong>{h.decision==='APPROVE'?'确认通过':h.decision==='REJECT'?'不通过':'需调整'} · {h.confirmationParty||'确认记录'}</strong><time>{h.actualConfirmedAt?.slice(0,10)||new Date(h.confirmedAt).toLocaleDateString('zh-CN', { timeZone: BUSINESS_TIME_ZONE })} · {h.confirmedByName}</time>{h.comment}</li>)}{data.task.flowLogs.map((l,i)=><li key={l.id||i}><strong>{readableFlowSummary(l.summary||l.actionLabel||'流程记录已更新')}</strong><time>{l.createdAt?new Date(l.createdAt).toLocaleString('zh-CN', { timeZone: BUSINESS_TIME_ZONE }):''} · {l.operatorName}</time></li>)}{!history.length&&!data.task.flowLogs.length&&(!isPaint||!facts?.samples.length)&&<li>暂无记录</li>}</ul>
+ {data.materials.versions.length>0&&<details><summary>材料历史</summary><ul className="m1-history">{data.materials.versions.map(m=><li key={m.id}><a href={`${API_BASE_URL}${m.downloadUrl}`} target="_blank" rel="noopener noreferrer">{m.fileName} · V{m.versionNo}</a><time>{m.uploadedByName} · {new Date(m.uploadedAt).toLocaleString('zh-CN', { timeZone: BUSINESS_TIME_ZONE })}</time></li>)}</ul></details>}</aside></div>
  {conflictDraft&&<section className="m1-card m1-conflict-draft" aria-label="未提交内容"><h2>未提交内容</h2><dl><dt>实际日期</dt><dd>{conflictDraft.date||'未填写'}</dd><dt>{isConfirmation?'确认方':isPaint?'样板':'批准依据'}</dt><dd>{isConfirmation?conflictDraft.party:isPaint?`${conflictDraft.sampleNo} · ${conflictDraft.sampleName}`:conflictDraft.approvalReference}</dd><dt>{isReport?'需求来源':'意见 / 记录'}</dt><dd style={{whiteSpace:'pre-wrap'}}>{isReport?conflictDraft.demandSource:conflictDraft.comment}</dd>{isConfirmation&&<><dt>结论</dt><dd>{conflictDraft.decision==='APPROVE'?'通过':'需调整'}</dd></>}</dl></section>}
  {preview&&<MaterialPreview preview={preview} onClose={()=>setPreview(null)}/>}
  </section>;

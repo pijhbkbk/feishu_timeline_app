@@ -85,6 +85,7 @@ model ProductionBase {
   name      String  @db.VarChar(200)
   colors    Color[]
   productionFacts ColorProductionFact[]
+  productionBasesSelected ColorProductionBasis[]
   @@map("production_bases")
 }
 
@@ -140,6 +141,7 @@ model ColorProductionFact {
   productionBaseId String
   month            String @db.VarChar(7)
   metricScope      String @db.VarChar(200)
+  vehicleModel     String @default("") @db.VarChar(100)
   quantity         Decimal? @db.Decimal(18, 3)
   sourceRowId      String?
   sourceCell       String? @db.VarChar(32)
@@ -147,9 +149,24 @@ model ColorProductionFact {
   color            Color @relation(fields: [colorId], references: [id], onDelete: Restrict)
   productionBase   ProductionBase @relation(fields: [productionBaseId], references: [id], onDelete: Restrict)
   sourceRow        ColorImportRow? @relation(fields: [sourceRowId], references: [id], onDelete: Restrict)
-  @@unique([colorId, productionBaseId, month, metricScope])
+  @@unique([colorId, productionBaseId, month, metricScope, vehicleModel], map: "color_production_facts_model_grain_key")
   @@index([productionBaseId, month, metricScope])
   @@map("color_production_facts")
+}
+
+model ColorProductionBasis {
+  id               String @id @default(cuid())
+  colorId          String
+  productionBaseId String
+  month            String @db.VarChar(7)
+  mode             String @db.VarChar(20)
+  snapshotHash     String @db.VarChar(64)
+  revision         Int @default(1)
+  updatedAt        DateTime @updatedAt
+  color            Color @relation(fields: [colorId], references: [id], onDelete: Restrict)
+  productionBase   ProductionBase @relation(fields: [productionBaseId], references: [id], onDelete: Restrict)
+  @@unique([colorId, productionBaseId, month])
+  @@map("color_production_bases")
 }
 
 enum WorkflowNodeCode {
@@ -399,6 +416,7 @@ enum ProductionPlanStatus {
 }
 
 enum AttachmentTargetType {
+  SHEET_WORKBOOK
   SHEET_COLOR
   SHEET_PERSON
   SHEET_INSPECTION
@@ -464,6 +482,7 @@ enum SampleConfirmationDecision {
 }
 
 enum AuditTargetType {
+  FREE_WORKBOOK
   PERSON_PROFILE
   PROJECT
   COLOR
@@ -517,6 +536,10 @@ model Department {
 }
 
 model User {
+  workbooksCreated FreeWorkbook[] @relation("FreeWorkbookCreator")
+  workbooksUpdated FreeWorkbook[] @relation("FreeWorkbookEditor")
+  workbookRevisions FreeWorkbookRevision[]
+  workbookDrafts FreeWorkbookDraft[]
   uploadedSheetImages SheetImage[] @relation("SheetImageUploader")
   inspectionActivitiesCreated InspectionActivity[] @relation("InspectionActivityCreator")
   personProfile PersonProfile?
@@ -852,6 +875,7 @@ model Color {
   registerRevision      Int                @default(1)
   sourceRows            ColorImportRow[]
   productionFacts       ColorProductionFact[]
+  productionBasesSelected ColorProductionBasis[]
   code                  String?            @unique
   name                  String
   description           String?
@@ -1971,6 +1995,7 @@ model PersonProfile {
   mobile       String?     @db.VarChar(32)
   note         String?     @db.VarChar(2000)
   isActive     Boolean     @default(true)
+  archivedAt   DateTime?
   revision     Int         @default(1)
   user         User?       @relation(fields: [userId], references: [id], onDelete: Restrict)
   department   Department? @relation(fields: [departmentId], references: [id], onDelete: Restrict)
@@ -1978,6 +2003,7 @@ model PersonProfile {
   updatedAt    DateTime    @updatedAt
 
   @@index([departmentId, isActive, id])
+  @@index([archivedAt, id])
   @@index([name, id])
   @@map("person_profiles")
 }
@@ -2025,6 +2051,7 @@ model InspectionParticipant {
   @@map("inspection_participants")
 }
 model InspectionObject {
+  productionDate DateTime? @db.Date
   id String @id @default(cuid())
   objectKind InspectionObjectKind
   objectCode String @unique @db.VarChar(128)
@@ -2041,6 +2068,12 @@ model InspectionObject {
   @@map("inspection_objects")
 }
 model InspectionOccurrence {
+  visualScores Json?
+  manualRectification Boolean?
+  rectificationDueDate DateTime? @db.Date
+  paintUnit String? @db.VarChar(200)
+  responsibleUnit String? @db.VarChar(200)
+  rectificationUnit String? @db.VarChar(200)
   originalSource Json?
   id String @id @default(cuid())
   activityId String
@@ -2137,4 +2170,60 @@ model SheetImage {
   @@unique([actorUserId, operationId])
   @@index([targetType, recordId, isDeleted, id])
   @@map("sheet_images")
+}
+
+// Free workbook content is independent from published color records.
+model FreeWorkbook {
+  id String @id @default(uuid()) @db.Uuid
+  name String @db.VarChar(200)
+  revision Int @default(1)
+  snapshot Json
+  snapshotBytes Int
+  snapshotHash String @db.VarChar(64)
+  createdById String
+  updatedById String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  creator User @relation("FreeWorkbookCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  editor User @relation("FreeWorkbookEditor", fields: [updatedById], references: [id], onDelete: Restrict)
+  revisions FreeWorkbookRevision[]
+  drafts FreeWorkbookDraft[]
+  @@index([updatedAt, id])
+  @@map("free_workbooks")
+}
+
+model FreeWorkbookDraft {
+  id String @id @default(uuid()) @db.Uuid
+  workbookId String @db.Uuid
+  authorUserId String
+  draftRevision Int @default(1)
+  baseWorkbookRevision Int
+  snapshot Json
+  snapshotBytes Int
+  snapshotHash String @db.VarChar(64)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  author User @relation(fields: [authorUserId], references: [id], onDelete: Restrict)
+  workbook FreeWorkbook @relation(fields: [workbookId], references: [id], onDelete: Restrict)
+  baseRevision FreeWorkbookRevision @relation(fields: [workbookId, baseWorkbookRevision], references: [workbookId, revision], onDelete: Restrict)
+  @@unique([workbookId, authorUserId])
+  @@index([authorUserId, updatedAt])
+  @@map("free_workbook_drafts")
+}
+
+model FreeWorkbookRevision {
+  id String @id @default(uuid()) @db.Uuid
+  workbookId String @db.Uuid
+  revision Int
+  snapshot Json
+  snapshotBytes Int
+  snapshotHash String @db.VarChar(64)
+  actorUserId String
+  restoredFrom Int?
+  drafts FreeWorkbookDraft[]
+  createdAt DateTime @default(now())
+  actor User @relation(fields: [actorUserId], references: [id], onDelete: Restrict)
+  workbook FreeWorkbook @relation(fields: [workbookId], references: [id], onDelete: Restrict)
+  @@unique([workbookId, revision])
+  @@map("free_workbook_revisions")
 }

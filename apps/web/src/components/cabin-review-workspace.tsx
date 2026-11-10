@@ -3,7 +3,7 @@
 import { ReviewStandardSelect } from './review-standard-select';
 import { reviewStandardLabel, type ReviewStandardOptions } from '../lib/review-standard-version';
 
-import Link from 'next/link';
+import { M1RecordLink as Link, M1RecordReturn } from '../features/m1/record-return';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 import { useAuth } from './auth-provider';
@@ -93,7 +93,7 @@ export function CabinReviewWorkspace({
   const isReadOnly = !workspace?.activeTask || !canUserOperateWorkflowTask(user, workspace.activeTask);
   const decisionGuidance =
     form.reviewConclusion === 'REJECTED'
-      ? '驳回时必须填写驳回原因，并在评审意见中明确整改要求与整改责任人。'
+      ? '驳回后退回涂装厂重新试制；请填写驳回原因、整改要求与责任人。'
       : form.reviewConclusion === 'CONDITIONAL_APPROVED'
         ? '条件通过时必须补充整改条件，后续整改要求也应写入评审意见。'
         : '通过时建议在评审意见中保留关键结论，附件可补充佐证材料。';
@@ -270,8 +270,9 @@ export function CabinReviewWorkspace({
     return (
       <section className="page-card">
         <p className="eyebrow">驾驶室评审</p>
-        <h1>正在加载驾驶室评审模块…</h1>
-        <p>评审记录、附件和流程状态正在同步。</p>
+        <h1>{error ? '驾驶室评审读取失败' : '正在加载驾驶室评审模块…'}</h1>
+        {error ? <><p role="alert">{error}</p><button type="button" className="button button-secondary" onClick={() => void loadWorkspace({ initial: true })}>重试</button></> : <p role="status">评审记录、附件和流程状态正在同步。</p>}
+        <M1RecordReturn projectId={projectId} />
       </section>
     );
   }
@@ -300,9 +301,7 @@ export function CabinReviewWorkspace({
             <Link href={`/projects/${projectId}/pilot-production`} className="button button-secondary">
               查看样车试制
             </Link>
-            <Link href={`/projects/${projectId}/workflow`} className="button button-secondary">
-              查看流程
-            </Link>
+            <M1RecordReturn projectId={projectId} />
           </div>
         </div>
         <div className="summary-grid">
@@ -316,10 +315,10 @@ export function CabinReviewWorkspace({
         <div className="metadata-grid">
           <div className="metadata-item">
             <span>节点负责人</span>
-            <strong>{workspace.activeTask?.assigneeUserName ?? '未分配'}</strong>
+            <strong>{(workspace.displayTask ?? workspace.activeTask)?.assigneeUserName ?? '未分配'}</strong>
           </div>
           <div className="metadata-item">
-            <span>活跃任务状态</span>
+            <span>任务状态</span>
             <strong>{highlights.activeTaskStatusLabel}</strong>
           </div>
           <div className="metadata-item">
@@ -434,8 +433,8 @@ export function CabinReviewWorkspace({
         </div>
         <CabinReviewDetail
           review={selectedReview}
-          developmentFeeTask={workspace.downstreamTasks.developmentFee}
-          consistencyReviewTask={workspace.downstreamTasks.consistencyReview}
+          developmentFeeTask={(workspace.displayDownstreamTasks ?? workspace.downstreamTasks).developmentFee}
+          consistencyReviewTask={(workspace.displayDownstreamTasks ?? workspace.downstreamTasks).consistencyReview}
         />
       </section>
     </div>
@@ -495,7 +494,7 @@ export function CabinReviewForm({
             }`}
           >
             <strong>驳回</strong>
-            <p>必须填写驳回原因，并在评审意见中注明整改责任人。</p>
+            <p>退回涂装厂重新试制。必须填写驳回原因，并在评审意见中注明整改责任人。</p>
           </div>
         </div>
       </div>
@@ -581,7 +580,7 @@ export function CabinReviewForm({
           onChange={(event) => onChange({ ...value, rejectReason: event.target.value })}
         />
         <small className="field-hint field-hint-emphasis">
-          选择“驳回”时，此字段为必填，并会触发退回第 11 步生成新轮次。
+          选择“驳回”时，此字段为必填；退回涂装厂重新试制，第 11 步生成新轮次，旧记录保留。
         </small>
       </label>
       <div className="field field-actions">

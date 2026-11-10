@@ -44,7 +44,7 @@ describe('WorkflowDeadlineService', () => {
     );
 
     expect(db.workCalendar.findMany).toHaveBeenCalled();
-    expect(dueAt?.toISOString()).toBe('2026-04-21T23:59:59.999Z');
+    expect(dueAt?.toISOString()).toBe('2026-04-21T15:59:59.999Z');
   });
 
   it('uses manual review pass duration as workdays', async () => {
@@ -64,6 +64,17 @@ describe('WorkflowDeadlineService', () => {
       new Date('2026-04-17T08:00:00.000Z'),
     );
 
-    expect(dueAt?.toISOString()).toBe('2026-04-20T23:59:59.999Z');
+    expect(dueAt?.toISOString()).toBe('2026-04-20T15:59:59.999Z');
+  });
+
+  it('uses Beijing calendar boundaries at year rollover and clamped month end', async () => {
+    const service = new WorkflowDeadlineService();
+    const start = new Date('2026-12-31T16:05:00.000Z');
+    expect(await service.calculateDueAt({} as never, createDefinition({ durationType: WorkflowDurationType.SAME_DAY }), start))
+      .toEqual(new Date('2027-01-01T15:59:59.999Z'));
+    expect(await service.calculateDueAt({} as never, createDefinition({ durationType: WorkflowDurationType.MONTH_END }), start))
+      .toEqual(new Date('2027-01-31T15:59:59.999Z'));
+    expect(await service.calculateDueAt({} as never, createDefinition({ durationType: WorkflowDurationType.MONTH_OFFSET, durationValue: 6 }), new Date('2026-08-30T16:05:00.000Z')))
+      .toEqual(new Date('2027-02-28T15:59:59.999Z'));
   });
 });

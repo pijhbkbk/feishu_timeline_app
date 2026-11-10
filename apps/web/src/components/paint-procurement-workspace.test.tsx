@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-import { ProcurementRecordList } from './paint-procurement-workspace';
+import { ProcurementRecordForm, ProcurementRecordList } from './paint-procurement-workspace';
 import {
   canShowCompleteProcurementTaskButton,
   validateProcurementForm,
@@ -177,5 +177,40 @@ describe('PaintProcurementWorkspace', () => {
         baseWorkspace,
       ),
     ).toBe(false);
+  });
+
+  it('allows an undated intermediate record in both client validation and the HTML form', () => {
+    const value = {
+      supplierId: 'supplier-1', procurementCode: 'SYNTHETIC-PO-3', materialName: '合成涂料',
+      batchNo: 'LOT-3', quantity: '10', unit: 'KG', arrivalDate: '', note: '',
+    };
+    expect(validateProcurementForm(value)).toBeNull();
+    const html = renderToStaticMarkup(<ProcurementRecordForm
+      suppliers={[]} value={value} onChange={() => undefined} onSubmit={() => undefined}
+      onReset={() => undefined} disabled={false} submitLabel="保存采购记录" readOnly={false}
+    />);
+    const dateInput = html.match(/<input[^>]*type="date"[^>]*>/)?.[0];
+    expect(dateInput).toBeDefined();
+    expect(dateInput).not.toContain('required');
+    expect(html).toContain('实际到货日期');
+    expect(html).toContain('未到货可留空');
+    expect(validateProcurementForm({ ...value, quantity: '0' })).toBe('数量必须大于 0。');
+    expect(validateProcurementForm({ ...value, supplierId: '' })).toBe('供应商不能为空。');
+  });
+
+  it.each([null, '2026-09-23T00:00:00.000Z'])('requires a saved actual date before the arrival action (%s)', arrivalDate => {
+    const html = renderToStaticMarkup(<ProcurementRecordList
+      items={[{ ...baseWorkspace.items[0]!, status: 'ORDERED', arrivalDate }]}
+      canManage isReadOnly={false} actingKey={null}
+      onEdit={() => undefined} onMarkArrived={() => undefined}
+    />);
+    expect(html).toContain('编辑');
+    if (arrivalDate) {
+      expect(html).toContain('标记到货');
+    } else {
+      expect(html).toContain('编辑并保存实际到货日期后可标记到货');
+      expect(html).toMatch(/<button[^>]*disabled=""[^>]*>标记到货<\/button>/);
+      expect(html).not.toContain('处理中…');
+    }
   });
 });

@@ -26,7 +26,7 @@ describe.skipIf(!url).sequential('role reminders on real isolated PostgreSQL', (
     const role = await db.role.upsert({ where: { code: 'quality_engineer' }, create: { code: 'quality_engineer', name: '质量试验' }, update: { status: 'ACTIVE' } });
     for (const name of ['one', 'two']) {
       const username = `r28-reminder-${run}-${name}`;
-      const user = await db.user.create({ data: { username, name: '合成提醒人员', localCredential: { create: { loginName: username, passwordHash: 'synthetic-not-login' } }, userRoles: { create: { roleId: role.id } } } });
+      const user = await db.user.create({ data: { username, name: '合成提醒人员', teamAccessApproved: true, localCredential: { create: { loginName: username, passwordHash: 'synthetic-not-login' } }, userRoles: { create: { roleId: role.id } } } });
       if (name === 'one') userId = user.id; else otherId = user.id;
     }
     actor = { id: userId } as AuthenticatedUser;
@@ -86,6 +86,10 @@ describe.skipIf(!url).sequential('role reminders on real isolated PostgreSQL', (
     const plan = await db.recurringPlan.create({ data: { projectId, sourceNodeCode: 'VISUAL_COLOR_DIFFERENCE_REVIEW', planCode: `PLAN-${run}`, startDate: start, endDate: new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + 12, 1)), frequency: 'MONTHLY', totalCount: 12, generatedCount: 12, status: 'ACTIVE' } });
     const months = [];
     for (let i = 0; i < 12; i++) months.push(await db.recurringTask.create({ data: { recurringPlanId: plan.id, projectId, taskCode: `MONTH-${run}-${i}`, periodIndex: i + 1, periodLabel: String(i + 1), plannedDate: new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + i, 1)), dueAt: new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + i + 1, 1)), reviewerId: userId, requiredRoleCode: 'quality_engineer' } }));
+    const period = months[0]!.plannedDate.toISOString().slice(0, 7);
+    const review = await db.reviewRecord.create({ data: { projectId, workflowTaskId: parent.id, reviewType: 'VISUAL_COLOR_DIFFERENCE_REVIEW', reviewedAt: months[0]!.plannedDate, reviewPeriod: period } });
+    await db.auditLog.create({ data: { projectId, targetType: 'REVIEW_RECORD', targetId: review.id,
+      action: 'VISUAL_DELTA_REVIEW_CREATED', metadata: { recurringTaskId: months[0]!.id, reviewPeriod: period } } });
     const earlier = (await resolve('monthly', months[0]!.id, projectId))!;
     expect(earlier).not.toBeNull(); expect(await resolve('monthly', months[11]!.id, projectId)).toBeNull();
     const activation = await remind(earlier, 'ACTIVATE'); await remind(earlier, 'OVERDUE_DAY');

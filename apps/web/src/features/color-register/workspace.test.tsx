@@ -61,13 +61,14 @@ function elements(node: ReactNode): Element[] {
 function text(node: ReactNode): string { return React.isValidElement<Record<string, unknown>>(node) ? React.Children.toArray(node.props.children as ReactNode).map(text).join('') : String(node ?? ''); }
 let tree: ReactNode;
 let finish: ReturnType<typeof vi.fn>;
+let selectCell: ReturnType<typeof vi.fn>;
 let commitOnFinish = false;
-function canvas() { return elements(tree).find(item => item.type === BusinessSheetCanvas)!.props as unknown as BusinessSheetCanvasProps; }
+function canvas() { return elements(tree).find(item => item.type === BusinessSheetCanvas)?.props as unknown as BusinessSheetCanvasProps; }
 async function flush() {
   for (let round = 0; round < 15; round++) {
     hooks.index = 0; hooks.dirty = false; tree = ColorRegisterWorkspace();
     const current = canvas();
-    current.runtimeRef.current = { finishEditing: finish, updateValues: vi.fn() } as unknown as NonNullable<BusinessSheetCanvasProps['runtimeRef']['current']>;
+    if (current) current.runtimeRef.current = { finishEditing: finish, selectCell, updateValues: vi.fn() } as unknown as NonNullable<BusinessSheetCanvasProps['runtimeRef']['current']>;
     hooks.effects.splice(0).forEach(effect => effect());
     await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
     if (!hooks.dirty && !hooks.effects.length) return;
@@ -80,6 +81,7 @@ beforeEach(() => {
   vi.stubGlobal('window', { location: { search: '' }, setTimeout, clearTimeout, addEventListener: vi.fn(), removeEventListener: vi.fn() });
   api.readCatalog.mockResolvedValue({ items: [row('a', '基地甲'), row('b', '基地乙')], total: 2, facets: { bases: [], statuses: ['LISTED'] } });
   api.saveCatalog.mockReset(); api.fetchRegisterDetail.mockResolvedValue({ sources: [], projects: [] });
+  selectCell = vi.fn();
   finish = vi.fn(async () => {
     const current = canvas();
     if (commitOnFinish) current.onChanges([{ id: 'a', field: 'note', value: '刚结束原生编辑产生的草稿' }]);
@@ -89,6 +91,54 @@ beforeEach(() => {
 afterEach(() => { hooks.cleanups.forEach(cleanup => cleanup()); vi.useRealTimers(); vi.unstubAllGlobals(); });
 
 describe('color detail target during native editor completion', () => {
+  it('retains return intent across sorting during readback, reports the newly excluded record, then locates it after explicit clearing', async () => {
+    api.readCatalog.mockResolvedValueOnce({ items: [{ ...row('a', '基地甲'), boardCode: 'old-code' }, { ...row('b', '基地乙'), boardCode: 'old-code' }], total: 2, facets: { bases: [], statuses: ['LISTED'] } });
+    await flush();
+    const search = () => elements(tree).find(item => item.type === 'input' && item.props.type === 'search')!;
+    (search().props.onChange as (event: { target: { value: string } }) => void)({ target: { value: 'old-code' } }); await flush();
+    canvas().onSelection('a', 1, 2); await flush();
+    (detailsButton().props.onClick as () => void)(); await flush();
+    const readback = pending<Awaited<ReturnType<typeof api.readCatalog>>>(); api.readCatalog.mockReturnValueOnce(readback.promise);
+    (elements(tree).find(item => item.type === RegisterDetails)!.props.onReturnToRecord as () => void)(); await flush();
+    const sort = elements(tree).find(item => item.props['aria-label'] === '整行排序')!;
+    (sort.props.onChange as (event: { target: { value: string } }) => void)({ target: { value: 'name:desc' } }); await flush();
+    readback.resolve({ items: [{ ...row('a', '基地甲'), boardCode: 'new-code' }, { ...row('b', '基地乙'), boardCode: 'old-code' }], total: 2, facets: { bases: [], statuses: ['LISTED'] } }); await flush();
+    expect(search().props.value).toBe('old-code'); expect(text(tree)).toContain('刚查看的记录已不符合当前筛选');
+    expect(elements(tree).some(item => item.type === BusinessSheetCanvas)).toBe(false);
+    // A hidden native canvas cannot receive keyboard writes to an unrelated row.
+    finish.mockResolvedValue(undefined);
+    (elements(tree).find(item => item.type === 'button' && text(item.props.children as ReactNode) === '清除筛选并定位该记录')!.props.onClick as () => void)(); await flush();
+    expect(search().props.value).toBe(''); expect(canvas().selection.id).toBe('a');
+    expect(api.saveCatalog).not.toHaveBeenCalled();
+  });
+  it('returns to the modal record after completion moved selection, preserving the view and URL', async () => {
+    window.location.search = '?view=records&colorId=a&workbook=preserved-book';
+    await flush();
+    const sort = elements(tree).find(item => item.props['aria-label'] === '整行排序')!;
+    (sort.props.onChange as (event: { target: { value: string } }) => void)({ target: { value: 'name:desc' } }); await flush();
+    canvas().onSelection('a', 1, 2); await flush();
+    (detailsButton().props.onClick as () => void)(); await flush();
+    const modal = elements(tree).find(item => item.type === RegisterDetails)!;
+    expect(modal.props.id).toBe('a'); expect(canvas().selection.id).toBe('b');
+    const finishes = finish.mock.calls.length;
+    (modal.props.onReturnToRecord as () => void)(); await flush();
+    expect(canvas().selection.id).toBe('a'); expect(finish.mock.calls.length).toBe(finishes);
+    expect(selectCell).toHaveBeenCalledWith('a', canvas().selection.field);
+    expect(elements(tree).some(item => item.type === RegisterDetails)).toBe(false);
+    expect(elements(tree).find(item => item.props['aria-label'] === '整行排序')?.props.value).toBe('name:desc');
+    expect(window.location.search).toBe('?view=records&colorId=a&workbook=preserved-book');
+    expect(api.saveCatalog).not.toHaveBeenCalled();
+  });
+  it('does not replace a pending parent draft when returning to the modal record', async () => {
+    await flush(); (detailsButton().props.onClick as () => void)(); await flush();
+    canvas().onChanges([{ id: 'a', field: 'note', value: 'pending parent draft' }]); await flush();
+    const reads = api.readCatalog.mock.calls.length;
+    (elements(tree).find(item => item.type === RegisterDetails)!.props.onReturnToRecord as () => void)(); await flush();
+    expect(canvas().selection.id).toBe('a'); expect(displayedNote()).toBe('pending parent draft');
+    expect(selectCell).toHaveBeenCalledWith('a', canvas().selection.field);
+    expect(api.readCatalog.mock.calls.length).toBe(reads);
+    expect(api.saveCatalog).not.toHaveBeenCalled();
+  });
   it('keeps the clicked record ID when native completion selects the next row', async () => {
     await flush(); expect(canvas().selection.id).toBe('a');
     const button = detailsButton(); expect(button.props.disabled).toBe(false);
@@ -163,4 +213,26 @@ describe('autosave while a later native edit is still open', () => {
     expect(api.saveCatalog.mock.calls[2]?.[0]).toEqual([{ id: 'a', expectedRevision: 2, changes: { note: 'later full value' } }]);
     expect(api.saveCatalog.mock.calls[2]?.[1]).not.toBe(original?.[1]); expect(finish).toHaveBeenCalledOnce();
   });
+});
+
+it.each(['保存修改','撤销','刷新'])('stops %s when native editing rejects a value',async label=>{
+ await flush();canvas().onChanges([{id:'a',field:'note',value:'existing draft'}]);await flush();
+ finish.mockRejectedValueOnce(new Error('业务清单不支持公式，请输入文本。'));
+ const reads=api.readCatalog.mock.calls.length;const button=elements(tree).find(item=>item.type==='button'&&text(item.props.children as ReactNode).endsWith(label))!;
+ expect(button).toBeDefined();await (button.props.onClick as ()=>Promise<void>)();await flush();
+ expect(text(tree)).toContain('不支持公式');expect(displayedNote()).toBe('existing draft');expect(api.saveCatalog).not.toHaveBeenCalled();expect(api.readCatalog.mock.calls.length).toBe(reads);
+});
+
+
+it('keeps normal Undo and Redo available after a rejected native edit is resolved',async()=>{
+ await flush();canvas().onChanges([{id:'a',field:'note',value:'recoverable draft'}]);await flush();
+ const button=(label:string)=>elements(tree).find(item=>item.type==='button'&&text(item.props.children as ReactNode)===label)!;
+ finish.mockRejectedValueOnce(new Error('业务清单不支持公式，请输入文本。'));
+ await (button('撤销').props.onClick as ()=>Promise<void>)();await flush();
+ expect(displayedNote()).toBe('recoverable draft');expect(button('撤销').props.disabled).toBe(false);
+ finish.mockResolvedValue(undefined);
+ await (button('撤销').props.onClick as ()=>Promise<void>)();await flush();
+ expect(displayedNote()).toBe('备注-a');expect(button('重做').props.disabled).toBe(false);
+ await (button('重做').props.onClick as ()=>Promise<void>)();await flush();
+ expect(displayedNote()).toBe('recoverable draft');expect(api.saveCatalog).not.toHaveBeenCalled();
 });

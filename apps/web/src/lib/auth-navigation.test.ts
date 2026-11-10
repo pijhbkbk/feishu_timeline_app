@@ -48,6 +48,16 @@ describe('native login destinations from authenticated permissions', () => {
     }
     expect(await resolveLoginDestination(member, query('/admin/people/permissions'), origin, vi.fn())).toBe('/dashboard');
   });
+  it('returns approved roles-empty members to reminders without granting pending access', async () => {
+    const approved = { ...member, roleCodes: [], permissionCodes: [] };
+    const probe = vi.fn();
+    expect(loginHref('/notifications')).toBe('/login?returnTo=%2Fnotifications');
+    expect(await resolveLoginDestination(approved, query('/notifications'), origin, probe)).toBe('/notifications');
+    expect(await resolveLoginDestination(pending, query('/notifications'), origin, probe)).toBe('/pending-access');
+    expect(await resolveLoginDestination(approved, query('/notifications/unknown'), origin, probe)).toBe('/dashboard');
+    expect(await resolveLoginDestination(approved, query('https://evil.example/notifications'), origin, probe)).toBe('/dashboard');
+    expect(probe).not.toHaveBeenCalled();
+  });
   it('preserves a project deep link only after server read permission succeeds', async () => {
     const allowed = vi.fn(async () => true);
     expect(await resolveLoginDestination(member, query('/projects/project-a?taskId=task-a'), origin, allowed)).toBe('/projects/project-a?taskId=task-a');
@@ -56,4 +66,117 @@ describe('native login destinations from authenticated permissions', () => {
     expect(await resolveLoginDestination(member, query('/projects/private-a'), origin, async () => { throw new Error('403'); })).toBe('/dashboard');
     expect(await resolveLoginDestination(pending, query('/projects/project-a'), origin, allowed)).toBe('/pending-access');
   });
+  it.each([
+    ['/projects/project-a/materials', '/projects/project-a/materials'],
+    ['/projects/project-a/materials?taskId=task-a', '/projects/project-a/materials?taskId=task-a'],
+    ['/v2/projects/project-a/materials/', '/projects/project-a/materials'],
+  ])('returns a material deep link after the project read check: %s', async (target, expected) => {
+    const allowed = vi.fn(async () => true);
+    expect(await resolveLoginDestination(member, query(target), origin, allowed)).toBe(expected);
+    expect(allowed).toHaveBeenCalledExactlyOnceWith('project-a');
+  });
+  it('keeps material deep links fail closed for denied, failed or pending access', async () => {
+    const target = query('/projects/project-a/materials');
+    const denied = vi.fn(async () => false);
+    const failed = vi.fn(async () => { throw new Error('403'); });
+    const pendingProbe = vi.fn(async () => true);
+    expect(await resolveLoginDestination(member, target, origin, denied)).toBe('/dashboard');
+    expect(denied).toHaveBeenCalledExactlyOnceWith('project-a');
+    expect(await resolveLoginDestination(member, target, origin, failed)).toBe('/dashboard');
+    expect(failed).toHaveBeenCalledExactlyOnceWith('project-a');
+    expect(await resolveLoginDestination(pending, target, origin, pendingProbe)).toBe('/pending-access');
+    expect(pendingProbe).not.toHaveBeenCalled();
+  });
+  it.each([
+    'https://evil.example/projects/project-a/materials',
+    '//evil.example/projects/project-a/materials',
+    '/\\\\evil.example/projects/project-a/materials',
+    '/projects/project-a%2fmaterials',
+    '/projects/project-a%255cmaterials',
+    '/projects/project-a/materials/extra',
+    '/projects/project-a/materials-extra',
+    '/projects/project-a/unknown',
+  ])('rejects unsafe or unrecognized material targets without a project probe: %s', async target => {
+    const probe = vi.fn(async () => true);
+    expect(await resolveLoginDestination(member, query(target), origin, probe)).toBe('/dashboard');
+    expect(probe).not.toHaveBeenCalled();
+  });
+  it('preserves the existing project materials-tab and task routes', async () => {
+    for (const target of ['/projects/project-a?tab=materials&taskId=task-a', '/projects/project-a/tasks/task-a']) {
+      const allowed = vi.fn(async () => true);
+      expect(await resolveLoginDestination(member, query(target), origin, allowed)).toBe(target);
+      expect(allowed).toHaveBeenCalledExactlyOnceWith('project-a');
+    }
+  });
+  it.each([
+    '/projects/project-a/color-evaluation?from=project&tab=flow&originTask=task-a',
+    '/projects/project-a/color-evaluation?recurringTaskId=month-a',
+    '/projects/project-a/color-evaluation',
+    '/v2/projects/project-a/color-evaluation/',
+  ])('returns approved roles-empty members to precise visual review targets: %s', async target => {
+    const probe = vi.fn(async () => true);
+    const approved = { ...member, roleCodes: [], permissionCodes: [] };
+    expect(await resolveLoginDestination(approved, query(target), origin, probe))
+      .toBe(target.replace(/^\/v2/, '').replace(/\/$/, ''));
+    expect(probe).toHaveBeenCalledExactlyOnceWith('project-a');
+  });
+  it('keeps visual review returns behind the project permission probe and admission', async () => {
+    const target = query('/projects/project-a/color-evaluation?originTask=task-a');
+    for (const probe of [vi.fn(async () => false), vi.fn(async () => { throw new Error('unavailable'); })]) {
+      expect(await resolveLoginDestination(member, target, origin, probe)).toBe('/dashboard');
+      expect(probe).toHaveBeenCalledExactlyOnceWith('project-a');
+    }
+    const probe = vi.fn(async () => true);
+    expect(await resolveLoginDestination(pending, target, origin, probe)).toBe('/pending-access');
+    expect(probe).not.toHaveBeenCalled();
+  });
+  it.each([
+    '/projects/project-a/color-evaluation-extra', '/projects/project-a/color-evaluation/extra',
+    '//evil.example/projects/project-a/color-evaluation',
+    'https://evil.example/projects/project-a/color-evaluation',
+    '/projects/project-a%2fcolor-evaluation', '/projects/project-a%255ccolor-evaluation',
+  ])('does not broaden the visual review return allowlist: %s', async target => {
+    const probe = vi.fn(async () => true);
+    expect(await resolveLoginDestination(member, query(target), origin, probe)).toBe('/dashboard');
+    expect(probe).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    'attachments', 'color-exit', 'development-report', 'fees', 'flow-map', 'logs',
+    'mass-production', 'overview', 'paint-procurement', 'performance-tests',
+    'pilot-production', 'production-plans', 'retrospective', 'reviews', 'samples',
+    'standard-boards', 'tasks', 'workflow', 'samples/sample-a',
+  ])('preserves existing project page context after the server read probe: %s', async page => {
+    const target = `/projects/project-a/${page}?from=project&tab=flow&originTask=task-a`;
+    const allowed = vi.fn(async () => true);
+    const approved = { ...member, roleCodes: [], permissionCodes: [] };
+    expect(await resolveLoginDestination(approved, query(target), origin, allowed)).toBe(target);
+    expect(allowed).toHaveBeenCalledExactlyOnceWith('project-a');
+  });
+
+  it('keeps the failed pilot-plan login return behind admission and project permission', async () => {
+    const target = '/projects/project-a/pilot-production?from=project&tab=flow&originTask=task-a';
+    expect(loginHref('/projects/project-a/pilot-production', '?from=project&tab=flow&originTask=task-a'))
+      .toBe(`/login${query(target)}`);
+    for (const probe of [vi.fn(async () => false), vi.fn(async () => { throw new Error('unavailable'); })]) {
+      expect(await resolveLoginDestination(member, query(target), origin, probe)).toBe('/dashboard');
+      expect(probe).toHaveBeenCalledExactlyOnceWith('project-a');
+    }
+    const pendingProbe = vi.fn(async () => true);
+    expect(await resolveLoginDestination(pending, query(target), origin, pendingProbe)).toBe('/pending-access');
+    expect(pendingProbe).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    '/projects/project-a/actions/complete', '/projects/project-a/pilot-production-extra',
+    '/projects/project-a/pilot-production/extra', '/projects/project-a/samples/sample-a/extra',
+    '/projects/project-a/samples/unknown%2fsegment', '/projects/project-a%2fpilot-production',
+    '/projects/project-a%255cpilot-production', '//evil.example/projects/project-a/pilot-production',
+    'https://evil.example/projects/project-a/pilot-production',
+  ])('rejects actions, unknown descendants and unsafe project returns: %s', async target => {
+    const probe = vi.fn(async () => true);
+    expect(await resolveLoginDestination(member, query(target), origin, probe)).toBe('/dashboard');
+    expect(probe).not.toHaveBeenCalled();
+  });
+
 });

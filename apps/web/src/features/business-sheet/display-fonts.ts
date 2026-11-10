@@ -8,6 +8,13 @@ let prepared: Promise<void> | undefined;
 export function prepareDisplayFonts(): Promise<void> {
   return prepared ||= (async () => {
     if (typeof FontFace === 'undefined' || !document.fonts) return;
+    // The localized family can select a broken Canvas face on macOS even while
+    // the installed SimSun face renders correctly. Resolve only the display
+    // alias: workbook ff, font size, row height and exported styles stay intact.
+    // SimSun has no separate bold face here; let the browser synthesize it from
+    // the real regular face rather than registering regular bytes as weight 700.
+    const simsun = new FontFace('宋体', 'local("SimSun")', { style: 'normal', weight: '400' });
+    try { await simsun.load(); document.fonts.add(simsun); } catch { /* No installed face: retain the browser's original font resolution. */ }
     const candidates = [
       { regular: 'local("DengXian-Regular"), local("DengXian")', bold: 'local("DengXian-Bold"), local("DengXian Bold")' },
       { regular: 'local("MicrosoftYaHei"), local("Microsoft YaHei")', bold: 'local("MicrosoftYaHei-Bold"), local("Microsoft YaHei Bold")' },

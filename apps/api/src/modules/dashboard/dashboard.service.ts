@@ -1,5 +1,7 @@
+import { businessDayRange, businessMonthCalendarRange, businessMonthRange } from '../../common/business-date';
 import { PROJECT_DISPLAY_COLOR_SELECT, resolveProjectDisplayColor } from '../../common/project-display-color';
 import { teamProjectScope } from '../../common/team-authorization';
+import { recordedMonthlyReviewIds, recordedMonthlyReviewSql } from '../../common/monthly-review-applicability';
 import { Injectable } from '@nestjs/common';
 import {
   AttachmentScanStatus,
@@ -46,8 +48,7 @@ export class DashboardService {
 
   async getPersonalOverview(actor: AuthenticatedUser) {
     const now = new Date();
-    const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const nextDayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    const { start: dayStart, end: nextDayStart } = businessDayRange(now);
     const assignedWhere = this.buildAssignedActiveTaskWhere(actor);
     const visibleProjectWhere = this.buildVisibleProjectWhere(actor);
 
@@ -281,8 +282,8 @@ export class DashboardService {
 
   async getOverview(actor: AuthenticatedUser) {
     const now = new Date();
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    const monthDates = businessMonthCalendarRange(now);
+    const { start: monthStart, end: nextMonthStart } = businessMonthRange(now);
     const visibleProjectWhere = this.buildVisibleProjectWhere(actor);
     const myTaskWhere = this.buildAssignedActiveTaskWhere(actor);
 
@@ -369,7 +370,7 @@ export class DashboardService {
           },
         },
       }),
-      this.countVisibleMonthlyReviews(actor, monthStart, nextMonthStart),
+      this.countVisibleMonthlyReviews(actor, monthDates.start, monthDates.end),
     ]);
 
     const projectCountByStatus = new Map(
@@ -505,6 +506,8 @@ export class DashboardService {
       }
     }
 
+    const sampledPeriods = await recordedMonthlyReviewIds(this.prisma, recurringPlans.flatMap(plan => plan.tasks.map(task => task.id)));
+
     return {
       lastUpdatedAt: now.toISOString(),
       items: projects.map((project) =>
@@ -513,6 +516,7 @@ export class DashboardService {
           recurringPlanByProject.get(project.id) ?? null,
           nodeDefinitionByCode,
           now,
+          sampledPeriods,
         ),
       ),
     };
@@ -520,8 +524,7 @@ export class DashboardService {
 
   async getMonthlyReviewBoard(actor: AuthenticatedUser) {
     const now = new Date();
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    const { start: monthStart, end: nextMonthStart } = businessMonthCalendarRange(now);
     const visibleProjectWhere = this.buildVisibleProjectWhere(actor);
     const projects = await this.prisma.project.findMany({
       where: visibleProjectWhere,
@@ -569,6 +572,7 @@ export class DashboardService {
             },
           });
     const projectById = new Map(projects.map((project) => [project.id, project]));
+    const sampledPeriods = await recordedMonthlyReviewIds(this.prisma, plans.flatMap(plan => plan.tasks.map(task => task.id)));
     const items = plans
       .filter((plan, index, allPlans) =>
         allPlans.findIndex((candidate) => candidate.projectId === plan.projectId) === index,
@@ -594,9 +598,9 @@ export class DashboardService {
           planCode: plan.planCode,
           totalPeriods: plan.totalCount,
           completedPeriods: plan.tasks.filter((task) => task.status === RecurringTaskStatus.COMPLETED).length,
-          overduePeriods: plan.tasks.filter((task) => task.status === RecurringTaskStatus.OVERDUE).length,
-          currentMonthTask: currentMonthTask ? this.toMonthlyBoardTask(currentMonthTask) : null,
-          months: plan.tasks.map((task) => this.toMonthlyBoardTask(task)),
+          overduePeriods: plan.tasks.filter((task) => task.status === RecurringTaskStatus.OVERDUE && sampledPeriods.has(task.id)).length,
+          currentMonthTask: currentMonthTask && sampledPeriods.has(currentMonthTask.id) ? this.toMonthlyBoardTask(currentMonthTask, true) : null,
+          months: plan.tasks.map((task) => this.toMonthlyBoardTask(task, sampledPeriods.has(task.id))),
         };
       });
 
@@ -811,8 +815,9 @@ export class DashboardService {
       WHERE recurring_task."status" IN (
         ${Prisma.join(recurringStatuses)}
       )
-        AND recurring_task."plannedDate" >= ${monthStart}
-        AND recurring_task."plannedDate" < ${nextMonthStart}
+        AND recurring_task."plannedDate" >= ${monthStart.toISOString().slice(0, 10)}::date
+        AND recurring_task."plannedDate" < ${nextMonthStart.toISOString().slice(0, 10)}::date
+        AND ${recordedMonthlyReviewSql(Prisma.sql`recurring_task.id`, Prisma.sql`recurring_task."projectId"`)}
 
     `);
 
@@ -901,6 +906,7 @@ export class DashboardService {
       isBlocking: boolean;
     }>,
     now: Date,
+    sampledPeriods: ReadonlySet<string> = new Set(),
   ) {
     const latestTaskByNode = this.getLatestTaskByNode(project.workflowTasks);
     const activePrimaryTasks = project.workflowTasks
@@ -980,7 +986,7 @@ export class DashboardService {
             ).length,
             totalPeriods: recurringPlan.totalCount,
             overduePeriods: recurringPlan.tasks.filter(
-              (task) => task.status === RecurringTaskStatus.OVERDUE,
+              (task) => task.status === RecurringTaskStatus.OVERDUE && sampledPeriods.has(task.id),
             ).length,
           }
         : null,
@@ -1089,7 +1095,7 @@ export class DashboardService {
     completedAt: Date | null;
     status: RecurringTaskStatus;
     result: ReviewResult;
-  }) {
+  }, hasRecordedSampling = false) {
     return {
       id: task.id,
       periodIndex: task.periodIndex,
@@ -1098,6 +1104,7 @@ export class DashboardService {
       dueAt: task.dueAt?.toISOString() ?? null,
       completedAt: task.completedAt?.toISOString() ?? null,
       status: task.status,
+      hasRecordedSampling,
       result: task.result,
     };
   }

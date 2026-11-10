@@ -15,18 +15,19 @@ describe.runIf(Boolean(connection))('production statistics use one SQL snapshot'
     colorId = (await db.color.create({ data: { name: '统计隔离颜色', productionBaseId: baseId } })).id;
   });
   afterAll(async () => { await db.$disconnect(); });
-  it('keeps total and grouped quantities coherent when another connection commits between aggregate and groupBy', async () => {
+  it('keeps total and grouped quantities coherent when another connection commits between SQL aggregation reads', async () => {
     const service = new ProductionFactsService(db as never);
     const saved = await service.saveBatch({ operationId: randomUUID(), items: [{ kind: 'create', clientId: 'a', colorId, baseId, month: '2026-11', quantity: 10, rowKind: 'MONTH_TOTAL' }] }, actor) as { items: Array<{ id: string }> };
     let concurrentCommit = false;
     const client = {
       $transaction: <T>(runTransaction: (tx: Prisma.TransactionClient) => Promise<T>, options?: { isolationLevel?: Prisma.TransactionIsolationLevel }) => db.$transaction(async tx => {
-        const delegate = new Proxy(tx.colorProductionFact, {
+        const intercepted = new Proxy(tx, {
           get(target, name) {
             const value = Reflect.get(target, name);
-            if (name !== 'aggregate') return typeof value === 'function' ? value.bind(target) : value;
+            if (name !== '$queryRaw') return typeof value === 'function' ? value.bind(target) : value;
             return async (...args: unknown[]) => {
               const result = await Reflect.apply(value, target, args);
+              if (concurrentCommit) return result;
               // Real second connection commits after the first SELECT established the read snapshot.
               await db.colorProductionFact.update({ where: { id: saved.items[0]!.id }, data: { quantity: null } });
               concurrentCommit = true;
@@ -34,7 +35,6 @@ describe.runIf(Boolean(connection))('production statistics use one SQL snapshot'
             };
           },
         });
-        const intercepted = new Proxy(tx, { get(target, name) { const value = Reflect.get(target, name); return name === 'colorProductionFact' ? delegate : typeof value === 'function' ? value.bind(target) : value; } });
         return runTransaction(intercepted);
       }, options),
     };

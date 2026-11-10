@@ -12,6 +12,11 @@ import type {
 } from '../lib/projects-client';
 
 describe('FlowMap realtime UI atoms', () => {
+  it('renders exterior correction as a 14 self-return instead of paint development', () => {
+    const html = renderToStaticMarkup(<svg><FlowMapConnector edge={createFlowMapEdge({ fromNodeCode: 'COLOR_CONSISTENCY_REVIEW', toNodeCode: 'COLOR_CONSISTENCY_REVIEW', edgeType: 'return', status: 'rejected' })} /></svg>);
+    expect(html).toContain('外饰件厂家整改'); expect(html).toContain('整车复审');
+    expect(html).toContain('flow-map-edge-return'); expect(html).toContain('M 815 1150');
+  });
   it('renders node status, owner, due date and material tooltip in Chinese', () => {
     const html = renderToStaticMarkup(
       <FlowMapNode

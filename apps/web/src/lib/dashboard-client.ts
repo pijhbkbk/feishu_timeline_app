@@ -180,6 +180,7 @@ export type DashboardMonthlyReviewBoardResponse = {
 };
 
 export type DashboardMonthlyReviewTask = {
+  hasRecordedSampling?: boolean;
   id: string;
   periodIndex: number;
   periodLabel: string;

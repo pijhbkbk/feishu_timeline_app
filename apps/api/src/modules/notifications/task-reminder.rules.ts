@@ -1,8 +1,10 @@
 import { Prisma, type TaskReminderKind } from '@prisma/client';
+import { recordedMonthlyReviewSql } from '../../common/monthly-review-applicability';
+import { notificationRecipientEligibleSql } from './notification-recipient.rules';
+import { businessDateKey, businessDayRange } from '../../common/business-date';
 
 export function shanghaiBusinessDay(now: Date) {
-  const date = new Date(now.getTime() + 8 * 3600000).toISOString().slice(0, 10);
-  return { date, start: new Date(`${date}T00:00:00+08:00`), end: new Date(new Date(`${date}T00:00:00+08:00`).getTime() + 86400000) };
+  return { date: businessDateKey(now), ...businessDayRange(now) };
 }
 
 // All identifiers are fixed SQL fragments supplied by this module, never client strings.
@@ -10,19 +12,18 @@ export function reminderTaskEligibleSql(userId: Prisma.Sql, ordinaryId: Prisma.S
   return Prisma.sql`(
     EXISTS (SELECT 1 FROM workflow_tasks t JOIN users u ON u.id = ${userId}
       JOIN local_credentials lc ON lc."userId" = u.id
-      JOIN user_roles ur ON ur."userId" = u.id JOIN roles r ON r.id = ur."roleId"
       WHERE t.id = ${ordinaryId} AND t.id = ${stage} AND t."assignmentEpoch" = ${epoch}
       AND t."isActive" AND t.status IN ('PENDING','READY','IN_PROGRESS','RETURNED')
       AND t."nodeCode" <> 'VISUAL_COLOR_DIFFERENCE_REVIEW'
       AND (t."assigneeUserId" IS NULL OR t."assigneeUserId" = u.id)
-      AND u.status = 'ACTIVE' AND r.status = 'ACTIVE' AND r.code = t."requiredRoleCode")
+      AND ${notificationRecipientEligibleSql()})
     OR EXISTS (SELECT 1 FROM recurring_tasks t JOIN recurring_plans p ON p.id = t."recurringPlanId"
       JOIN workflow_tasks parent ON parent.id = ${stage} AND parent."projectId" = t."projectId"
       JOIN users u ON u.id = ${userId} JOIN local_credentials lc ON lc."userId" = u.id
-      JOIN user_roles ur ON ur."userId" = u.id JOIN roles r ON r.id = ur."roleId"
-      WHERE t.id = ${monthlyId} AND t."assignmentEpoch" = ${epoch} AND t."plannedDate" <= ${now}
+      WHERE t.id = ${monthlyId} AND t."assignmentEpoch" = ${epoch} AND t."plannedDate" <= ${businessDateKey(now)}::date
+      AND ${recordedMonthlyReviewSql(Prisma.sql`t.id`, Prisma.sql`t."projectId"`)}
       AND t.status IN ('PENDING','IN_PROGRESS','OVERDUE') AND (t."reviewerId" IS NULL OR t."reviewerId" = u.id)
-      AND u.status = 'ACTIVE' AND r.status = 'ACTIVE' AND r.code = 'quality_engineer'
+      AND ${notificationRecipientEligibleSql()}
       AND p.status = 'ACTIVE' AND p.frequency = 'MONTHLY' AND p."totalCount" = 12 AND p."projectId" = t."projectId" AND p."sourceNodeCode" = 'VISUAL_COLOR_DIFFERENCE_REVIEW'
       AND parent."isActive" AND parent.status IN ('PENDING','READY','IN_PROGRESS','RETURNED') AND parent."nodeCode" = 'VISUAL_COLOR_DIFFERENCE_REVIEW'
       AND (SELECT count(*) FROM workflow_tasks active_parent WHERE active_parent."projectId" = t."projectId" AND active_parent."isActive" AND active_parent.status IN ('PENDING','READY','IN_PROGRESS','RETURNED') AND active_parent."nodeCode" = 'VISUAL_COLOR_DIFFERENCE_REVIEW') = 1
@@ -66,17 +67,23 @@ export async function persistTaskReminder(tx: Prisma.TransactionClient, target: 
     userId, projectId: shared ? null : target.projectId, taskId: !shared && target.kind === 'ordinary' ? target.id : null,
     notificationType: shared ? 'TASK_OVERDUE' : kind === 'ACTIVATE' ? 'TASK_ASSIGNED' : 'SYSTEM_INFO',
     reminderKind: kind, businessDate: shared ? shanghaiBusinessDay(now).date : null,
-    title: shared ? `${shanghaiBusinessDay(now).date} 逾期工作汇总` : `${kind === 'ACTIVATE' ? target.ownerId ? '待办' : '可领取' : '今日到期'}：${target.title}`,
+    title: shared ? `${shanghaiBusinessDay(now).date} 逾期工作汇总` : `${kind === 'ACTIVATE' ? '待办' : '今日到期'}：${target.title}`,
     content: shared ? '查看仍需你处理的逾期工作。' : '打开工作单查看详情并办理。',
     linkPath: shared ? '/notifications' : target.kind === 'monthly' ? `/projects/${target.projectId}/color-evaluation?recurringTaskId=${target.id}` : `/projects/${target.projectId}/tasks/${target.id}`,
     dedupeKey, sendChannel: 'IN_APP', sendStatus: 'SENT', ...(!shared ? binding : {}),
   }], skipDuplicates: true });
-  const notification = await tx.notification.findUniqueOrThrow({ where: { sendChannel_dedupeKey: { sendChannel: 'IN_APP', dedupeKey } }, select: { id: true } });
+  const notification = await tx.notification.findUniqueOrThrow({ where: { sendChannel_dedupeKey: { sendChannel: 'IN_APP', dedupeKey } },
+    select: { id: true, assignmentEpoch: true, stageTaskId: true, recurringTaskId: true } });
   if (!shared) {
     // Rebind when the same immutable task returns to this recipient, preserving its read state and creation time.
-    await tx.notification.updateMany({ where: { id: notification.id }, data: binding });
+    // An unchanged replay must also preserve updatedAt; Prisma updates it even for identical data.
+    if (notification.assignmentEpoch !== binding.assignmentEpoch || notification.stageTaskId !== binding.stageTaskId || notification.recurringTaskId !== binding.recurringTaskId) {
+      await tx.notification.updateMany({ where: { id: notification.id }, data: binding });
+    }
   } else {
-    await tx.notificationDigestItem.upsert({ where: { notificationId_taskKey: { notificationId: notification.id, taskKey: `${target.kind}:${target.id}` } },
+    const key = { notificationId: notification.id, taskKey: `${target.kind}:${target.id}` };
+    const item = await tx.notificationDigestItem.findUnique({ where: { notificationId_taskKey: key }, select: { stageTaskId: true, assignmentEpoch: true } });
+    if (!item || item.stageTaskId !== target.stageTaskId || item.assignmentEpoch !== target.epoch) await tx.notificationDigestItem.upsert({ where: { notificationId_taskKey: key },
       create: { notificationId: notification.id, taskKey: `${target.kind}:${target.id}`, projectId: target.projectId,
         workflowTaskId: target.kind === 'ordinary' ? target.id : null, recurringTaskId: target.kind === 'monthly' ? target.id : null,
         stageTaskId: target.stageTaskId, assignmentEpoch: target.epoch },

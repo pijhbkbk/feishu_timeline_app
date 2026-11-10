@@ -32,6 +32,7 @@ REGISTRY = 'us-west1-docker.pkg.dev/axial-acrobat-492709-r7/feishu-timeline/'
 from native_release_target_owner_20260918 import TARGET
 from native_release_target_r28 import TARGET as R28_TARGET
 from native_release_target_r28_patch import TARGET as PATCH_TARGET
+from native_release_target_v1 import TARGET as V1_TARGET
 NEW = TARGET['commit'] if TARGET else None
 VERSIONS = {
     OLD: {'commit': OLD, 'tree': 'bc65d7145a498066556f2abc8d8619a6643dc325',
@@ -43,6 +44,7 @@ if TARGET:
     VERSIONS[NEW] = {key: TARGET[key] for key in ('commit', 'tree', 'release', 'buildTime', 'images')}
 VERSIONS[R28_TARGET['commit']] = {key: R28_TARGET[key] for key in ('commit', 'tree', 'release', 'buildTime', 'images')}
 VERSIONS[PATCH_TARGET['commit']] = {key: PATCH_TARGET[key] for key in ('commit', 'tree', 'release', 'buildTime', 'images')}
+VERSIONS[V1_TARGET['commit']] = {key: V1_TARGET[key] for key in ('commit', 'tree', 'release', 'buildTime', 'images')}
 require = backup.require
 
 
@@ -96,6 +98,8 @@ def environment_path(component, commit=None):
     require(component in ('api', 'web'), 'Unsupported environment component')
     commit = state()['active'] if commit is None else commit
     require(commit in VERSIONS, 'Unknown environment version')
+    if commit == V1_TARGET['commit']:
+        return ROOT / (component + '-v1-20261104.env')
     suffix = '-r28-ui-patch-20260928.env' if commit == PATCH_TARGET['commit'] else '-r28-20260928.env' if commit == R28_TARGET['commit'] else '-login-20260918.env' if commit == OLD else '-owner-20260918.env'
     return ROOT / (component + suffix)
 
@@ -125,6 +129,11 @@ def verify_checkout(commit):
                               user='lixiaochen').decode().strip()
     require(git('rev-parse', 'HEAD') == commit and git('rev-parse', 'HEAD^{tree}') == VERSIONS[commit]['tree'] and
             git('status', '--porcelain') == '', 'Release checkout is not the fixed clean source')
+    if commit == V1_TARGET['commit']:
+        raw = git('-c', 'core.quotePath=true', 'diff', '--raw', '--no-abbrev', '--no-renames',
+                  '--no-ext-diff', '--no-textconv', V1_TARGET['base'], commit, '--', *V1_TARGET['runtimeScope'])
+        require(len(raw.encode()) <= 1024 * 1024 and len(raw.splitlines()) == V1_TARGET['runtimeChangedFiles'] and
+                backup.sha(raw.encode()) == V1_TARGET['runtimeRawDiffSha256'], 'V1 source scope differs')
     if commit == PATCH_TARGET['commit']:
         guarded = ('apps/api', 'apps/api-ops', 'apps/web', 'packages/shared',
                    'pnpm-lock.yaml', 'package.json', 'pnpm-workspace.yaml')
@@ -180,16 +189,28 @@ def require_target():
             'Approved source digest missing')
 
 
+def assert_start(commit, ingress=False):
+    import native_release_v1 as v1
+    if v1.enabled() or commit == V1_TARGET['commit']:
+        v1.assert_start(commit, ingress=ingress)
+    else:
+        from native_release_r28_patch import assert_start as assert_patch
+        assert_patch(commit, ingress=ingress)
+
+
 def ingress_ready():
     value = state()
     require(not value['pending'], 'Program release is pending; ingress must stay closed')
-    from native_release_r28_patch import assert_start as assert_patch
-    assert_patch(value['active'], ingress=True)
+    assert_start(value['active'], ingress=True)
     verify_checkout(value['active'])
 
 
 def stage_environment(commit=None):
     commit = NEW if commit is None else commit
+    if commit == V1_TARGET['commit']:
+        from native_release_v1 import stage_environment as stage_v1
+        stage_v1()
+        return
     require_target()
     import native_runtime_app as app
     identity = VERSIONS[commit]
@@ -230,8 +251,12 @@ def close_program(require_drained=False):
 
 def recover_pending_unlocked():
     """Called under the existing operation lock, before boot starts app units."""
-    from native_release_r28_patch import recover_guard
-    recover_guard()
+    import native_release_v1 as v1
+    if v1.enabled() or (STATE.exists() and state()['active'] == V1_TARGET['commit']):
+        v1.recover_guard()
+    else:
+        from native_release_r28_patch import recover_guard
+        recover_guard()
     return False
 
 
@@ -324,21 +349,28 @@ def recover():
 def main():
     require(os.geteuid() == 0 and socket.gethostname() == 'instance-20260408-091840' and
             Path(__file__).parent == INSTALLED, 'Use reviewed intended-host release controller')
-    require(sys.argv[1:] in [['update'], ['rollback'], ['recover'], ['check-recovery']], 'Unsupported release operation')
+    require(sys.argv[1:] in [['update'], ['rollback'], ['recover'], ['check-recovery'], ['resume-v1-base']], 'Unsupported release operation')
     import native_runtime_app as app
     app.state_directory()
     if sys.argv[1] == 'recover':
         recover()
     else:
         with operation():
-            if sys.argv[1] == 'rollback':
+            if sys.argv[1] == 'resume-v1-base':
+                from native_release_v1 import resume_base
+                resume_base()
+            elif sys.argv[1] == 'rollback':
                 from native_release_r28 import JOURNAL
                 require(not present(JOURNAL), 'R28 migration prohibits automatic rollback to old schema/program')
                 update(rollback=True)
             else:
                 require(sys.argv[1] == 'update', '41-schema program patch forbids old migration rehearsal')
-                from native_release_r28_patch import update as update_patch
-                update_patch()
+                import native_release_v1 as v1
+                if v1.enabled():
+                    v1.update()
+                else:
+                    from native_release_r28_patch import update as update_patch
+                    update_patch()
 
 
 if __name__ == '__main__':

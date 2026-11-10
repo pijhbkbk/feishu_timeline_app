@@ -107,7 +107,7 @@ describe('workflow acceptance flow', () => {
         WorkflowNodeCode.COLOR_CONSISTENCY_REVIEW,
         WorkflowAction.REJECT,
       ).map((item) => item.nodeCode),
-    ).toEqual([WorkflowNodeCode.PAINT_DEVELOPMENT]);
+    ).toEqual([WorkflowNodeCode.COLOR_CONSISTENCY_REVIEW]);
 
     expect(
       getWorkflowNextTaskTemplates(

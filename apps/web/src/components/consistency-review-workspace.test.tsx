@@ -4,12 +4,16 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
 import {
+  ConsistencyReviewDetail,
   ConsistencyReviewForm,
   ConsistencyReviewHistory,
   ReviewConclusionBadge,
 } from './consistency-review-workspace';
 import {
   canShowConsistencyReviewSubmitButton,
+  canShowConsistencyReviewApproveButton,
+  canShowConsistencyReviewRejectButton,
+  getConsistencyReviewWorkspaceHighlights,
   validateConsistencyReviewForm,
   type ConsistencyReviewWorkspaceResponse,
 } from '../lib/consistency-reviews-client';
@@ -86,6 +90,14 @@ const workspace: ConsistencyReviewWorkspaceResponse = {
 };
 
 describe('ConsistencyReviewWorkspace', () => {
+  it('blocks review buttons until exterior supplier correction is recorded', () => {
+    const pending: ConsistencyReviewWorkspaceResponse = { ...workspace, exteriorRectification: { status: 'PENDING', taskId: 'task-1', taskVersion: '2026-10-20T00:00:00.000Z', sourceTaskId: 'old-14', requirement: '外饰件整改' } };
+    const row = workspace.items[0]!;
+    expect(canShowConsistencyReviewSubmitButton(reviewerUser, pending, row)).toBe(false);
+    expect(canShowConsistencyReviewApproveButton(reviewerUser, pending, { ...row, submittedAt: '2026-10-20T00:00:00.000Z' })).toBe(false);
+    expect(canShowConsistencyReviewRejectButton(reviewerUser, pending, { ...row, reviewConclusion: 'REJECTED', submittedAt: '2026-10-20T00:00:00.000Z' })).toBe(false);
+    expect(canShowConsistencyReviewSubmitButton(reviewerUser, { ...pending, exteriorRectification: { ...pending.exteriorRectification!, status: 'COMPLETED' } }, row)).toBe(true);
+  });
   it('renders consistency review form fields', () => {
     const html = renderToStaticMarkup(
       <ConsistencyReviewForm
@@ -174,5 +186,21 @@ describe('single-department review admission', () => {
   it('does not admit an unapproved account through a legacy role', () => {
     expect(canManageConsistencyReviews({ ...reviewerUser, teamAccessApproved: false })).toBe(false);
     expect(canManageConsistencyReviews({ ...reviewerUser, authSource: 'mock' })).toBe(false);
+  });
+});
+
+
+describe('completed consistency workflow display', () => {
+  it('shows completed current-workflow history and never re-enables review actions', () => {
+    const completed = { ...workspace.activeTask!, status: 'COMPLETED' as const, isActive: false, availableActions: [] };
+    const history: ConsistencyReviewWorkspaceResponse = { ...workspace, activeTask: null,
+      displayTask: completed, displayDownstreamTask: completed };
+    expect(getConsistencyReviewWorkspaceHighlights(history)).toMatchObject({ activeTaskStatusLabel: '已完成', downstreamTaskStatusLabel: '已完成' });
+    const html = renderToStaticMarkup(<ConsistencyReviewDetail review={workspace.items[0]!} downstreamTask={history.displayDownstreamTask!} />);
+    expect(html).toContain('已完成');
+    expect(html).not.toContain('未激活');
+    expect(canShowConsistencyReviewSubmitButton(reviewerUser, history, workspace.items[0]!)).toBe(false);
+    expect(canShowConsistencyReviewApproveButton(reviewerUser, history, { ...workspace.items[0]!, submittedAt: '2026-10-25T00:00:00Z' })).toBe(false);
+    expect(canShowConsistencyReviewRejectButton(reviewerUser, history, { ...workspace.items[0]!, reviewConclusion: 'REJECTED', submittedAt: '2026-10-25T00:00:00Z' })).toBe(false);
   });
 });

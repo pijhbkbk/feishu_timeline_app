@@ -1,6 +1,7 @@
 import { PERSON_PRESENTATION_SELECT, personPresentation } from '../persons/person-profile-read';
 import { BusinessClock } from '../../common/business-clock';
 import { requireActiveMonthlyPlan } from '../../common/monthly-review-plan';
+import { hasRecordedMonthlyReview, recordedMonthlyReviewSql } from '../../common/monthly-review-applicability';
 import { persistTaskReminder } from '../notifications/task-reminder.rules';
 import { ConflictException, ForbiddenException, HttpException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
@@ -132,6 +133,7 @@ export class TeamTasksService {
       FROM recurring_tasks t INNER JOIN projects p ON p.id = t."projectId"
       INNER JOIN recurring_plans plan ON plan.id = t."recurringPlanId"
       WHERE ${view === 'completed' ? Prisma.sql`t.status = 'COMPLETED'` : Prisma.sql`t.status IN ('PENDING', 'IN_PROGRESS', 'OVERDUE') AND plan.status = 'ACTIVE' AND t."plannedDate" <= ${this.businessClock.now()}`} AND (${scope})
+        ${view === 'completed' ? Prisma.empty : Prisma.sql`AND ${recordedMonthlyReviewSql(Prisma.sql`t.id`, Prisma.sql`t."projectId"`)}`}
         ${query.projectId ? Prisma.sql`AND t."projectId" = ${query.projectId}` : Prisma.empty}
         ${(view === 'overdue' || view === 'exceptions') && query.assignee ? Prisma.sql`AND t."reviewerId" = ${query.assignee}` : Prisma.empty}
         ${query.after ? Prisma.sql`AND t.id > ${query.after}` : Prisma.empty}
@@ -170,6 +172,7 @@ export class TeamTasksService {
       const task = await tx.recurringTask.findUnique({ where: { id: taskId }, include: { recurringPlan: { select: { status: true } } } });
       if (!task) throw new NotFoundException('月度任务不存在。');
       await requireActiveMonthlyPlan(tx, task.projectId, task.recurringPlanId);
+      if (!await hasRecordedMonthlyReview(tx, task.id, task.projectId)) throw new ConflictException('此历史日历期次尚无明确关联的实际抽检记录，不作为当前待办。请从周评入口登记实际抽检。');
       if (!OPEN_MONTHLY_TASK_STATUSES.includes(task.status as never) || task.plannedDate > this.businessClock.now() || task.recurringPlan.status !== 'ACTIVE') throw new ConflictException('此月份尚未到期或已经结束。');
       if (!await tx.workflowTask.findFirst({ where: { projectId: task.projectId, nodeCode: 'VISUAL_COLOR_DIFFERENCE_REVIEW', isActive: true }, select: { id: true } })) throw new ConflictException('项目当前尚未进入月度评审。');
       if (task.assignmentEpoch !== input.assignmentEpoch) throw new ConflictException('月度任务归属已变化，请刷新后重试。');

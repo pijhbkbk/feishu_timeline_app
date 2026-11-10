@@ -1,8 +1,8 @@
 'use client';
 
-import { CellValueType, CommandType, LifecycleStages, type ICellData, type IWorkbookData, type IObjectMatrixPrimitiveType } from '@univerjs/core';
+import { CellValueType, CommandType, getNumfmtLocaleTag, LifecycleStages, type ICellData, type IWorkbookData, type IObjectMatrixPrimitiveType } from '@univerjs/core';
 import { createUniver, LocaleType, mergeLocales } from '@univerjs/presets';
-import { UniverSheetsCorePreset } from '@univerjs/preset-sheets-core';
+import { ISheetClipboardService, UniverSheetsCorePreset } from '@univerjs/preset-sheets-core';
 import CoreZhCN from '@univerjs/preset-sheets-core/locales/zh-CN';
 import { setNonce } from 'get-nonce';
 import { BusinessSheetModel, VALUE_MUTATION, allowedSheetMutation, type BusinessSheetChange, type BusinessSheetColumn, type BusinessSheetRow, type BusinessSheetUpdate } from './runtime-model';
@@ -13,6 +13,7 @@ import { RecordImageIo, createRecordDrawingPreset } from './drawing-preset';
 import { bindRuntimeImages, drawingCommands, type RuntimeImageActions } from './runtime-images';
 import type { SheetImage } from './image-client';
 import { blockedSheetCommand } from './runtime-command-policy';
+import { businessClipboardGuard } from './runtime-clipboard';
 
 export type { BusinessSheetChange, BusinessSheetColumn, BusinessSheetRow, BusinessSheetUpdate } from './runtime-model';
 export interface BusinessSheetOptions {
@@ -108,7 +109,23 @@ export function createBusinessSheet(options: BusinessSheetOptions): BusinessShee
     const worksheet = workbook.getActiveSheet();
     const imageController = bindRuntimeImages(univerAPI, workbook, model, options.container, options.imageActions ?? { add: () => options.onError('请使用记录照片入口。'), change: () => {}, remove: () => {}, requestFiles: () => options.onError('请使用记录照片入口。') }, run => { silent++; try { return run(); } finally { silent--; } }, options.onError, imageIo);
     if (univerAPI.getCurrentLifecycleStage() >= LifecycleStages.Rendered) resolveReady();
-    const reject = (event: { cancel?: boolean }, message: string) => { event.cancel = true; options.onError(message); };
+    let rejection = 0, rejectionMessage = '';
+    const reportRejection = (message: string) => { rejection++; rejectionMessage = message; options.onError(message); };
+    const reject = (event: { cancel?: boolean }, message: string) => { event.cancel = true; reportRejection(message); };
+    const finishEditing = async () => {
+      if (disposed || !workbook.isCellEditing()) return;
+      const before = rejection;
+      // Univer 1.0.4 resolves endEditingAsync(true) even when the value mutation
+      // was rejected. Do not continue Save/history/view changes in that case.
+      await workbook.endEditingAsync(true);
+      if (rejection !== before) throw new Error(rejectionMessage);
+    };
+    subscriptions.push(univer.__getInjector().get(ISheetClipboardService).addClipboardHook(
+      businessClipboardGuard(model, workbookId, SHEET_ID, reportRejection, options.onBeforeChanges, {
+        numberFormat: (row, col) => worksheet.getSheet().getCellStyle(row, col)?.n?.pattern,
+        parseOptions: { locale: getNumfmtLocaleTag(workbook.getWorkbook().getSnapshot().locale), dateSystem: workbook.getWorkbook().getDateSystem() },
+      }),
+    ));
     // Univer omits undo/redo from BeforeCommandExecute; always route them through
     // record-scoped business history instead of its internal workbook snapshots.
     subscriptions.push(univerAPI.addEvent(univerAPI.Event.BeforeUndo, event => { event.cancel = true; options.onUndo?.(); }));
@@ -176,7 +193,7 @@ export function createBusinessSheet(options: BusinessSheetOptions): BusinessShee
       replaceRows: async rows => {
         await ready;
         if (disposed) return;
-        if (workbook.isCellEditing()) await workbook.endEditingAsync(true);
+        await finishEditing();
         // Validate identities before any display mutation. A view change only
         // replaces the positional projection, never a business value or revision.
         const next = new BusinessSheetModel(rows, options.columns);
@@ -213,7 +230,7 @@ export function createBusinessSheet(options: BusinessSheetOptions): BusinessShee
           if (result !== false) model.apply(accepted);
         } finally { silent -= 1; }
       },
-      finishEditing: async () => { if (!disposed && workbook.isCellEditing()) await workbook.endEditingAsync(true); },
+      finishEditing,
       selectCell: (id, field) => { const position = model.position(id, field); if (position && !disposed) { worksheet.setActiveRange(worksheet.getRange(position.row, position.col, 1, 1)); notifySelection(); } },
       dispose,
     };

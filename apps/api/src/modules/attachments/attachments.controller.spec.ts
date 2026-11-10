@@ -56,6 +56,7 @@ describe('AttachmentsController RBAC metadata', () => {
     expect(setHeader).toHaveBeenCalledWith('X-Content-Type-Options', 'nosniff');
     expect(setHeader).toHaveBeenCalledWith('Cache-Control', 'private, no-store');
     expect(setHeader).toHaveBeenCalledWith('Cross-Origin-Resource-Policy', 'same-origin');
+    expect(setHeader).toHaveBeenCalledWith('Cross-Origin-Embedder-Policy', 'credentialless');
     expect(setHeader).toHaveBeenCalledWith(
       'Content-Security-Policy',
       "sandbox; default-src 'none'",
@@ -67,6 +68,32 @@ describe('AttachmentsController RBAC metadata', () => {
     expect(setHeader).toHaveBeenCalledWith('Content-Length', '20971520');
     expect(setHeader).toHaveBeenCalledWith('X-Accel-Buffering', 'no');
     expect(setHeader.mock.calls.flat().join(' ')).not.toContain('\r\n');
+  });
+
+  it.each([
+    { contentType: 'application/pdf', disposition: 'attachment' },
+    { contentType: 'image/png', disposition: 'inline' },
+    { contentType: 'application/octet-stream', disposition: 'inline' },
+  ])('keeps other responses unchanged: $contentType / $disposition', (content) => {
+    const controller = new AttachmentsController({} as never);
+    const setHeader = vi.fn();
+
+    (controller as any).writeAttachmentResponseHeaders(
+      { setHeader },
+      { ...content, fileName: 'report.pdf', contentLength: 123 },
+    );
+
+    expect(setHeader.mock.calls.some(([header]) => header === 'Cross-Origin-Embedder-Policy')).toBe(false);
+    expect(setHeader).toHaveBeenCalledWith('Content-Type', content.contentType);
+    expect(setHeader).toHaveBeenCalledWith('X-Content-Type-Options', 'nosniff');
+    expect(setHeader).toHaveBeenCalledWith('Cache-Control', 'private, no-store');
+    expect(setHeader).toHaveBeenCalledWith('Cross-Origin-Resource-Policy', 'same-origin');
+    expect(setHeader).toHaveBeenCalledWith('Content-Security-Policy', "sandbox; default-src 'none'");
+    expect(setHeader).toHaveBeenCalledWith('Content-Length', '123');
+    expect(setHeader).toHaveBeenCalledWith('X-Accel-Buffering', 'no');
+    expect(setHeader).toHaveBeenCalledWith(
+      'Content-Disposition', `${content.disposition}; filename*=UTF-8''report.pdf`,
+    );
   });
 
   it('guards both attachment download controllers with download admission', () => {

@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import { M1RecordReturn } from '../features/m1/record-return';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 import { useAuth } from './auth-provider';
@@ -77,7 +77,7 @@ export function MassProductionWorkspace({
       },
       {
         label: '批量生产任务',
-        value: highlights?.activeTaskStatusLabel ?? '当前无批量生产任务',
+        value: highlights?.displayTaskStatusLabel ?? '当前未激活',
       },
       {
         label: '目视色差评审',
@@ -250,9 +250,7 @@ export function MassProductionWorkspace({
             >
               {isRefreshing ? '刷新中…' : '刷新'}
             </button>
-            <Link href={`/projects/${projectId}/workflow`} className="button button-secondary">
-              查看流程
-            </Link>
+            <M1RecordReturn projectId={projectId} />
           </div>
         </div>
         <div className="summary-grid">
@@ -265,12 +263,12 @@ export function MassProductionWorkspace({
         </div>
         <div className="metadata-grid">
           <div className="metadata-item">
-            <span>当前负责人</span>
-            <strong>{workspace.activeTask?.assigneeUserName ?? '未分配'}</strong>
+            <span>节点负责人</span>
+            <strong>{workspace.displayTask?.assigneeUserName ?? '未分配'}</strong>
           </div>
           <div className="metadata-item">
             <span>完成条件</span>
-            <strong>{workspace.canCompleteTask ? '已满足' : '未满足'}</strong>
+            <strong>{highlights?.completionStatusLabel ?? '当前未激活'}</strong>
           </div>
           <div className="metadata-item">
             <span>最近生产日期</span>

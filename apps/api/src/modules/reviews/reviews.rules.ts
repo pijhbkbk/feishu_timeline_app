@@ -1,3 +1,4 @@
+import { businessDateKey, businessMonthCalendarRange } from '../../common/business-date';
 import {
   ReviewResult,
   WorkflowNodeCode,
@@ -132,7 +133,7 @@ export function getConsistencyReviewStageIssue(input: {
 }
 
 export function getConsistencyReviewReturnNodeCode() {
-  return WorkflowNodeCode.PAINT_DEVELOPMENT;
+  return WorkflowNodeCode.COLOR_CONSISTENCY_REVIEW;
 }
 
 export function getVisualDeltaReviewStageIssue(input: {
@@ -155,20 +156,12 @@ export function getVisualDeltaReviewReturnNodeCode() {
 }
 
 export function getMonthlyReviewPeriodRange(reviewDate: Date) {
-  const year = reviewDate.getUTCFullYear();
-  const month = reviewDate.getUTCMonth();
-
-  return {
-    periodStart: new Date(Date.UTC(year, month, 1)),
-    periodEnd: new Date(Date.UTC(year, month + 1, 1)),
-  };
+  const { start, end } = businessMonthCalendarRange(reviewDate);
+  return { periodStart: start, periodEnd: end };
 }
 
 export function getMonthlyReviewPeriodKey(reviewDate: Date) {
-  return [
-    reviewDate.getUTCFullYear(),
-    String(reviewDate.getUTCMonth() + 1).padStart(2, '0'),
-  ].join('-');
+  return businessDateKey(reviewDate).slice(0, 7);
 }
 
 export function shouldCompleteVisualDeltaWorkflow(input: {

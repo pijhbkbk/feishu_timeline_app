@@ -160,7 +160,7 @@ class ProgramPatchTests(unittest.TestCase):
                 patch.object(app, 'runtime_identity', return_value={'commit': program.TARGET['commit']}), \
                 patch.object(app, 'state_directory'), patch.object(app, 'validate_files') as validate:
             with self.assertRaisesRegex(backup.Failure, 'patch hold'): app.prepare_start('api')
-            guard.assert_called_once_with(program.TARGET['commit']); validate.assert_not_called()
+            guard.assert_called_once_with(program.TARGET['commit'], ingress=False); validate.assert_not_called()
 
     def test_missing_historical_commit_cannot_fall_into_retained_pending_restore(self):
         with patch.object(program, 'anchor', side_effect=backup.Failure('historical commit missing')), \

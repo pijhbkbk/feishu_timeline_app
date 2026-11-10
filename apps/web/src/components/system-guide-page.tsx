@@ -91,7 +91,7 @@ const guideStages: GuideStage[] = [
         name: '涂料性能试验',
         owner: '质量管理部',
         output: '性能试验报告',
-        rule: '独立进行，不阻塞首台计划、试制和评审主线。',
+        rule: '同一开发轮次首次有效到货日起算6个日历月，月末取目标月最后一天，后续到货不重置；不阻塞首台计划、试制和评审主线。',
       },
     ],
   },
@@ -134,7 +134,7 @@ const guideStages: GuideStage[] = [
         name: '颜色一致性评审',
         owner: '质量管理部',
         output: '颜色一致性评审报告',
-        rule: '评审通过后进入排产计划。',
+        rule: '通过后进入排产计划；不通过时由外饰件厂家整改，登记整改完成后重新进行整车复审。',
       },
       {
         step: 15,
@@ -148,21 +148,21 @@ const guideStages: GuideStage[] = [
         name: '批量生产',
         owner: '生产部 / 涂装厂',
         output: '批量生产记录',
-        rule: '完成后进入第17步每月一次的色差一致性评审。',
+        rule: '完成后进入第17步，按实际抽检日期登记色差一致性评审。',
       },
     ],
   },
   {
-    title: '阶段4：月度评审与颜色退出',
-    summary: '批量生产后持续12个月月度评审，并基于年产量与人工结论完成颜色退出治理。',
+    title: '阶段4：实际周评、年度复核与颜色退出',
+    summary: '批量生产后记录实际抽检，核对月度产量和年度复核结果，再处理颜色退出。',
     accent: 'teal',
     steps: [
       {
         step: 17,
         name: '整车色差一致性评审',
         owner: '质量管理部',
-        output: '月度色差评审表',
-        rule: '关键节点：每月一次，共12个月。',
+        output: '实际抽检评审记录',
+        rule: '按实际抽检日期记录，一场可包含多色和多车；未抽检颜色不产生评审逾期。历史固定月期次保留原范围。',
         key: 'monthly',
       },
       {
@@ -170,7 +170,7 @@ const guideStages: GuideStage[] = [
         name: '颜色退出',
         owner: '涂装工艺部',
         output: '颜色整合清单',
-        rule: '关键节点：人工录入年产量，系统给出退出建议。',
+        rule: '先核对颜色档案的年度窗口及完整产量，再由业务成员记录退出结论与原因；未知数量或缺月保持待跟进。',
         key: 'exit',
       },
     ],
@@ -194,9 +194,14 @@ const businessRules = [
     copy: '第9步涂料性能试验独立进行，不阻塞主线继续进入首台计划、样车试制和评审。',
   },
   {
-    title: '评审退回',
+    title: '驾驶室整改',
     marker: '12↩11',
     copy: '第12步样车驾驶室评审不通过时，退回第11步并生成新轮次，历史记录完整保留。',
+  },
+  {
+    title: '外饰件整改',
+    marker: '14 整车复审',
+    copy: '第14步不通过时，外饰件厂家整改完成后重新进行整车复审；保留有效的驾驶室评审、标准、颜色及收费历史。',
   },
   {
     title: '固定收费',
@@ -204,59 +209,64 @@ const businessRules = [
     copy: '第13步颜色开发收费固定金额10000元，需要留存收费状态、凭证和财务确认信息。',
   },
   {
-    title: '月度评审与颜色退出',
-    marker: '12个月',
-    copy: '第16步完成后进入第17步，每月一次共12个月；第18步录入年产量后，系统给出颜色退出建议。',
+    title: '按实际日期周评',
+    marker: '实际抽检',
+    copy: '周评记录实际抽检日期、车辆、颜色和人员；未抽检颜色不产生评审逾期。已有历史月期次保持原有记录和范围。',
+  },
+  {
+    title: '年度产量复核',
+    marker: '首尾13个月',
+    copy: '2026-09入清单的颜色在2027-10复核，统计2026-09至2027-09，首尾都计入。累计恰好20台继续保留，低于20台进入退出评审；缺月或未知数量保持待跟进。',
   },
 ];
 
 const operationSteps = [
-  ['进入工作台', '查看项目总览、逾期、本月评审和颜色退出风险。'],
+  ['进入工作台', '查看项目流程、当前待办、实际评审和颜色复核提醒。'],
   ['新建项目', '填写颜色名称、客户、车型、开始时间等基础信息。'],
   ['查看项目看板', '横向查看项目18个流程节点。'],
   ['点击工序节点', '打开工序详情，查看负责人、责任部门、截止时间、材料和流转记录。'],
-  ['提交材料', '上传颜色样板、开发报告、评审报告、收费凭证、月度评审表等材料。'],
+  ['提交材料', '上传颜色样板、开发报告、评审报告、收费凭证和试验报告等材料。'],
   ['完成工序或提交评审', '普通工序点击完成；第12步选择通过或不通过。'],
-  ['处理月度评审', '批量生产后，在第17步台账中按月完成整车色差一致性评审。'],
-  ['查看数据中心', '查看项目进度、工序效率、返工、月度评审和颜色退出统计。'],
+  ['记录实际周评', '按实际抽检日期登记多色、多车和人员，并在需要时明确关联项目与评审。'],
+  ['核对产量与年度复核', '按颜色、基地、车型和月份维护产量，核对唯一计数口径及颜色档案中的年度窗口。'],
 ];
 
 const roleGuides = [
   {
-    role: '营销公司',
-    badge: '营销',
-    copy: '发起市场需求、提交客户颜色样板、跟踪颜色开发收费。',
-    entry: '新建项目｜项目看板',
+    role: '工作台',
+    badge: '流程',
+    copy: '从项目流程和当前待办进入工序，完成操作后返回原项目。',
+    entry: '工作台',
   },
   {
-    role: '涂装工艺部',
-    badge: '工艺',
-    copy: '涂料开发、样板确认、标准板制作、色板明细、颜色一致性评审。',
-    entry: '我的待办｜工序清单',
+    role: '颜色项目',
+    badge: '项目',
+    copy: '创建和维护项目、材料、试制及两类整改，保留每轮评审历史。',
+    entry: '颜色项目',
   },
   {
-    role: '采购部',
-    badge: '采购',
-    copy: '负责涂料采购和采购材料提交。',
-    entry: '我的待办｜材料中心',
+    role: '颜色清单与工作簿',
+    badge: '表格',
+    copy: '自由编辑、保存和恢复工作簿；明确映射与校验后再应用到业务记录。',
+    entry: '颜色清单',
   },
   {
-    role: '质量管理部',
-    badge: '质量',
-    copy: '涂料性能试验、样车驾驶室评审、整车色差一致性评审。',
-    entry: '评审任务｜月度评审',
+    role: '周评',
+    badge: '抽检',
+    copy: '按实际日期维护车辆、颜色、测量和检验人员，同一场活动可记录多色。',
+    entry: '周评',
   },
   {
-    role: '生产部 / 涂装厂',
-    badge: '生产',
-    copy: '首台生产计划、样车试制、排产计划、批量生产。',
-    entry: '项目看板｜工序清单',
+    role: '产量统计',
+    badge: '产量',
+    copy: '更正原记录的台数，明确选择车型明细或月总量口径；空白未知与0分开保留。',
+    entry: '产量统计',
   },
   {
-    role: '财务部',
-    badge: '财务',
-    copy: '颜色开发收费确认。',
-    entry: '开发费用｜数据中心',
+    role: '人员库',
+    badge: '人员',
+    copy: '直接维护人员档案及岗位说明，保留历史作者；同名人员不自动合并。',
+    entry: '人员库',
   },
 ];
 
@@ -267,18 +277,18 @@ const materialHints = [
   ['9 涂料性能试验', '性能试验报告', '试验报告'],
   ['12 样车驾驶室评审', '评审报告、样车照片', '评审记录'],
   ['13 颜色开发收费', '收费凭证', '费用凭证'],
-  ['17 整车色差评审', '月度色差评审表', '月度台账'],
-  ['18 颜色退出', '年产量记录、颜色整合清单', '退出治理'],
+  ['17 整车色差评审', '实际抽检评审记录及附件', '周评与评审记录'],
+  ['18 颜色退出', '年度复核依据、退出结论与颜色整合清单', '颜色档案与退出记录'],
 ];
 
 const quickLinks: Array<[string, string, string]> = [
   ['进入工作台', '/dashboard', '查看项目总览与待办'],
-  ['查看项目看板', '/projects/timeline', '查看18个流程节点'],
+  ['查看颜色项目', '/projects', '查看项目和18个流程节点'],
   ['新建项目', '/projects/new', '发起颜色开发流程'],
-  ['查看我的待办', '/tasks/my', '处理分配给我的工序'],
-  ['进入材料中心', '/materials', '提交和归档材料'],
-  ['查看月度评审', '/monthly-reviews', '处理第17步台账'],
-  ['进入数据中心', '/analytics', '查看统计与风险'],
+  ['打开颜色清单', '/admin/color-database', '编辑工作簿或查看正式颜色记录'],
+  ['记录实际周评', '/inspections', '维护实际抽检、车辆与检验人员'],
+  ['核对产量', '/production', '维护月度产量和统计口径'],
+  ['维护人员库', '/admin/people', '直接维护人员档案'],
 ];
 
 const faqs = [
@@ -296,12 +306,16 @@ const faqs = [
   ],
   ['颜色开发收费金额是多少？', '第13步颜色开发收费固定金额为10000元。'],
   [
-    '第17步为什么有12个月？',
-    '第16步批量生产完成后，需要连续12个月开展整车色差一致性评审，用于观察批产后的颜色稳定性。',
+    '没有抽检的颜色会产生周评逾期吗？',
+    '不会。按实际抽检登记周评，一场可包含多色和多车；未抽检颜色不产生评审逾期。已有历史固定月期次仍按原范围处理。',
+  ],
+  [
+    '半年性能试验从哪天起算？',
+    '从同一开发轮次首次有效到货日起算6个日历月，遇月末取目标月最后一天，后续到货不重置期限。',
   ],
   [
     '颜色退出由谁决定？',
-    '系统会根据人工录入的年产量给出退出建议，最终仍由业务责任人录入人工结论并留存原因。',
+    '先核对颜色档案给出的统计窗口与完整月度产量。累计恰好20台继续保留，低于20台进入退出评审；缺月或未知量保持待跟进。退出结论由业务成员明确记录并留存原因。',
   ],
 ];
 
@@ -311,7 +325,7 @@ export function SystemGuidePage() {
       <nav className="guide-anchor-nav" aria-label="系统导览锚点" data-testid="guide-page">
         <a href="#guide-flow">流程说明</a>
         <a href="#guide-operation">操作步骤</a>
-        <a href="#guide-roles">角色指南</a>
+        <a href="#guide-roles">共同维护</a>
         <a href="#guide-faq">常见问题</a>
       </nav>
 
@@ -320,7 +334,7 @@ export function SystemGuidePage() {
           <p className="eyebrow">流程导览</p>
           <h2>轻卡定制颜色开发项目管理系统</h2>
           <p>
-            从市场需求、颜色开发、样车评审、批量生产，到月度色差评审和颜色退出，全流程在线管理。
+            涂装工艺部获准成员在同一界面维护颜色、项目、工作簿、实际周评、人员和产量。
           </p>
           <div className="guide-action-row">
             <Link href="/dashboard" className="button button-primary">
@@ -329,13 +343,13 @@ export function SystemGuidePage() {
             <Link href="/projects/new" className="button button-secondary">
               新建项目
             </Link>
-            <Link href="/projects/timeline" className="button button-secondary">
+            <Link href="/projects" className="button button-secondary">
               查看项目看板
             </Link>
           </div>
         </div>
         <div className="guide-hero-panel" aria-label="颜色开发全生命周期">
-          {['需求', '开发', '采购', '试制', '评审', '生产', '月评', '退出'].map((item, index) => (
+          {['需求', '开发', '采购', '试制', '评审', '生产', '周评', '复核'].map((item, index) => (
             <span key={item} className="guide-lifecycle-step">
               <small>{String(index + 1).padStart(2, '0')}</small>
               {item}
@@ -383,7 +397,7 @@ export function SystemGuidePage() {
                   <h3>{step.name}</h3>
                   <dl>
                     <div>
-                      <dt>责任部门</dt>
+                      <dt>业务协作方</dt>
                       <dd>{step.owner}</dd>
                     </div>
                     <div>
@@ -427,7 +441,7 @@ export function SystemGuidePage() {
             <p className="eyebrow">操作步骤</p>
             <h2 className="section-title">如何使用本系统</h2>
           </div>
-          <p className="muted">从进入工作台到查看数据中心，用8步完成日常项目操作。</p>
+          <p className="muted">从进入工作台到核对产量与复核，用8步完成日常操作。</p>
         </div>
         <ol className="guide-operation-list">
           {operationSteps.map(([title, copy], index) => (
@@ -445,10 +459,10 @@ export function SystemGuidePage() {
       <section className="guide-section" id="guide-roles">
         <div className="section-header">
           <div>
-            <p className="eyebrow">角色指南</p>
-            <h2 className="section-title">各角色怎么使用</h2>
+            <p className="eyebrow">共同维护</p>
+            <h2 className="section-title">涂装工艺部如何共同维护</h2>
           </div>
-          <p className="muted">不同部门优先关注自己的工序、材料和待办入口。</p>
+          <p className="muted">获准成员使用相同入口；具体操作仍受当前负责人、账号资格和记录状态约束。流程中的业务协作方不代表需要切换账号角色。</p>
         </div>
         <div className="guide-role-grid">
           {roleGuides.map((item) => (
@@ -468,7 +482,7 @@ export function SystemGuidePage() {
             <p className="eyebrow">材料归档</p>
             <h2 className="section-title">关键材料提交说明</h2>
           </div>
-          <p className="muted">材料中心按项目、工序、材料类型、版本和状态归档，不直接存储附件二进制。</p>
+          <p className="muted">从原项目或工序提交材料，按材料类型、版本和状态查看原件与历史。</p>
         </div>
         <div className="guide-material-table" role="table" aria-label="关键材料提交说明">
           <div className="guide-material-row guide-material-head" role="row">
@@ -529,7 +543,7 @@ function getKeyLabel(key: NonNullable<GuideStep['key']>) {
     case 'review':
       return '关键评审';
     case 'monthly':
-      return '12个月';
+      return '实际抽检';
     case 'exit':
       return '退出治理';
   }

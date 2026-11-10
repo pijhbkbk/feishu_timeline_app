@@ -1,3 +1,4 @@
+import { businessDateKey } from '../../common/business-date';
 import { BusinessClock } from '../../common/business-clock';
 import { visibleNotificationSql, visibleDigestItemSql } from './task-reminder.rules';
 import {
@@ -464,7 +465,7 @@ export class NotificationsService {
         type,
         task.assigneeUserId ?? 'unknown',
         task.id,
-        new Date().toISOString().slice(0, 10),
+        businessDateKey(new Date()),
       );
     }
 

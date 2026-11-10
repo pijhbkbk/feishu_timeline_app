@@ -1,3 +1,4 @@
+import { WorkbooksModule } from './modules/workbooks/workbooks.module';
 import { SheetImagesModule } from './modules/sheet-images/sheet-images.module';
 import { ProductionFactsModule } from './modules/production-facts/production-facts.module';
 import { InspectionsModule } from './modules/inspections/inspections.module';
@@ -48,6 +49,7 @@ import { WorkflowsModule } from './modules/workflows/workflows.module';
 @Module({
   imports: [
     ColorRegisterModule,
+    WorkbooksModule,
     PersonsModule,
     SheetImagesModule,
     ProductionFactsModule,

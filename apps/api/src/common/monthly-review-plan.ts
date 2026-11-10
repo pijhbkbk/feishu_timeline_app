@@ -8,9 +8,17 @@ type MonthlyPlan = { id: string; totalCount: number; status: string; frequency: 
  * Historical anomalies fail closed; this check never repairs or discards history.
  */
 export async function requireActiveMonthlyPlan(db: Prisma.TransactionClient | PrismaService, projectId: string, expectedPlanId?: string) {
+  const plan = await resolveVisualReviewPlan(db, projectId, expectedPlanId);
+  if (!plan) throw new ConflictException({ code: 'MONTHLY_REVIEW_PLAN_INVALID', message: '历史月度计划缺失，请核对后再继续。' });
+  return plan;
+}
+
+/** A V1 project with no historical plan has actual stage reviews, not missing calendar obligations. */
+export async function resolveVisualReviewPlan(db: Prisma.TransactionClient | PrismaService, projectId: string, expectedPlanId?: string) {
   const plans = await db.$queryRaw<MonthlyPlan[]>(Prisma.sql`
     /* monthly_plan_integrity */
-    SELECT p.id, p."totalCount", p.status, p.frequency,
+    SELECT p.id, p."totalCount",
+      CASE WHEN p."projectId" = ${projectId} THEN p.status::text ELSE 'INVALID_IDENTITY' END AS status, p.frequency,
       months."taskCount", months."validCount"
     FROM recurring_plans p
     CROSS JOIN LATERAL (
@@ -19,9 +27,13 @@ export async function requireActiveMonthlyPlan(db: Prisma.TransactionClient | Pr
       FROM (SELECT "projectId", "periodIndex" FROM recurring_tasks
         WHERE "recurringPlanId" = p.id ORDER BY "periodIndex" LIMIT 13) t
     ) months
-    WHERE p."projectId" = ${projectId} AND p."sourceNodeCode" = 'VISUAL_COLOR_DIFFERENCE_REVIEW'
+    WHERE p."sourceNodeCode" = 'VISUAL_COLOR_DIFFERENCE_REVIEW'
+      AND (p."projectId" = ${projectId}
+        OR EXISTS (SELECT 1 FROM workflow_tasks source WHERE source.id = p."sourceWorkflowTaskId" AND source."projectId" = ${projectId})
+        OR EXISTS (SELECT 1 FROM recurring_tasks child WHERE child."recurringPlanId" = p.id AND child."projectId" = ${projectId}))
     ORDER BY p.id LIMIT 2
   `);
+  if (plans.length === 0 && !expectedPlanId) return null;
   const plan = plans[0];
   // The unique (recurringPlanId, periodIndex) constraint plus 12 valid indices
   // proves that every period 1..12 exists exactly once for this project.

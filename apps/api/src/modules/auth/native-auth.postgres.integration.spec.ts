@@ -63,6 +63,10 @@ describe.skipIf(!databaseUrl).sequential('native identity real PostgreSQL bounda
       await service.register({ username: `host-other-${runId}`, name: '合成同名人员', password }, 'host-other');
       const target = await prisma.user.findUniqueOrThrow({ where: { username: `host-target-${runId}` } });
       const other = await prisma.user.findUniqueOrThrow({ where: { username: `host-other-${runId}` } });
+      const profiles = await prisma.personProfile.findMany({ where: { userId: { in: [target.id, other.id] } } });
+      expect(profiles).toHaveLength(2);
+      expect(new Set(profiles.map(profile => profile.id)).size).toBe(2);
+      expect(profiles.every(profile => profile.name === '合成同名人员')).toBe(true);
       const credential = await prisma.localCredential.findUniqueOrThrow({ where: { userId: target.id } });
       const old = await login(target.username); const unrelated = await login(other.username);
       const oldAudit = await prisma.auditLog.create({ data: { actorUserId: target.id, targetType: 'USER', targetId: target.id, action: 'SYNTHETIC_HISTORY_BEFORE_GRANT' } });

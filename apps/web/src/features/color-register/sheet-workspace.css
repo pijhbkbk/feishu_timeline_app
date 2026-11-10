@@ -82,3 +82,9 @@
 .sheet-form-fields label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
 .sheet-form-fields input, .sheet-form-fields select, .sheet-form-fields textarea { border: 1px solid #d9e1da; padding: 9px 11px; border-radius: 5px; background: white; color: #20352a; }
 @media (max-width: 600px) { .sheet-form-fields { grid-template-columns: 1fr; } }
+
+@media (max-width: 700px) {
+  .record-sheet-workspace .cs-filters > label { display:flex;flex-direction:column;gap:6px;min-width:0; }
+  .record-sheet-workspace .cs-filters > label > input,
+  .record-sheet-workspace .cs-filters > label > select { width:100%;max-width:100%; }
+}

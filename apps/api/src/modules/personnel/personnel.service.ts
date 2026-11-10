@@ -91,9 +91,10 @@ export class PersonnelService {
         throw new HttpException('人员操作过于频繁，请稍后重试。', 429);
       }
       await tx.$queryRaw(Prisma.sql`SELECT id FROM users WHERE id = ${userId} FOR UPDATE`);
-      const target = await tx.user.findUnique({ where: { id: userId }, include: { userRoles: { include: { role: true } } } });
+      const target = await tx.user.findUnique({ where: { id: userId }, include: { userRoles: { include: { role: true } }, personProfile: { select: { archivedAt: true } } } });
       if (!target) throw new NotFoundException('人员不存在。');
       if (target.updatedAt.toISOString() !== input.expectedVersion) throw new ConflictException('人员已被其他操作更新，请刷新后重试。');
+      if (target.personProfile?.archivedAt && (input.status === 'ACTIVE' || input.teamAccessApproved === true)) throw new ConflictException('请先恢复人员档案，再启用账号或准入。');
       if (input.status === 'INACTIVE' && target.isSystemAdmin) {
         if (target.id === actor.id) throw new ConflictException('不能停用当前登录的管理员。');
         if (await tx.user.count({ where: { id: { not: target.id }, status: 'ACTIVE', isSystemAdmin: true, localCredential: { is: { passwordHash: { not: null } } } } }) === 0) {

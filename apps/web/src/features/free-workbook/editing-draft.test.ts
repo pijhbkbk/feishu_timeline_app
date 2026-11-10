@@ -1,0 +1,11 @@
+import {describe,it,expect} from 'vitest';
+import {blankWorkbook} from './contract';
+import {validateEditingDraft,type WorkbookEditingDraft} from './editing-draft';
+import {validateLocalDraft} from './draft-store';
+function fixture(){const snapshot=blankWorkbook(crypto.randomUUID());const edit:WorkbookEditingDraft={sheetId:snapshot.sheetOrder[0]!,row:2,column:3,document:{id:'__INTERNAL_EDITOR__DOCS_NORMAL_EDITOR',body:{dataStream:'=SUM(A1:\r\n',textRuns:[],customBlocks:[],customDecorations:[],customRanges:[],paragraphs:[{startIndex:8,paragraphId:'synthetic-paragraph'}],sectionBreaks:[]},drawings:{},drawingsOrder:[],footers:{},headers:{},tableSource:{},documentStyle:{}}};return{snapshot,edit};}
+describe('recoverable unconfirmed workbook input',()=>{
+ it('retains a partial formula as an editing document without parsing or committing it',()=>{const {snapshot,edit}=fixture();expect(()=>validateEditingDraft(edit,snapshot)).not.toThrow();expect(edit.document.body?.dataStream).toBe('=SUM(A1:\r\n');expect(snapshot.sheets[edit.sheetId]?.cellData).toEqual({});});
+ it('rejects an overlay outside the saved sheet and external objects',()=>{const {snapshot,edit}=fixture();expect(()=>validateEditingDraft({...edit,row:10001},snapshot)).toThrow('位置');expect(()=>validateEditingDraft({...edit,document:{...edit.document,resources:[{name:'external',data:'https://invalid.example'}]}},snapshot)).toThrow('不支持');});
+ it('keeps leading zeroes and styled text in a bounded draft bound to its owner',()=>{const {snapshot,edit}=fixture();edit.document.body!.dataStream='0010\r\n';edit.document.body!.textRuns=[{st:0,ed:4,ts:{bl:1}}];const draft={schema:1 as const,ownerId:'synthetic-owner',workbookId:snapshot.id,editorId:crypto.randomUUID(),baseRevision:1,sequence:4,savedAt:Date.now(),snapshot,pending:null,edit};expect(validateLocalDraft(draft,'synthetic-owner',snapshot.id)).toBeGreaterThan(0);expect(()=>validateLocalDraft(draft,'another-owner',snapshot.id)).toThrow('身份');expect(draft.edit.document.body?.dataStream).toBe('0010\r\n');});
+ it('rejects foreign pending requests and out-of-range format runs',()=>{const {snapshot,edit}=fixture();edit.document.body!.textRuns=[{st:0,ed:99999,ts:{bl:1}}];expect(()=>validateEditingDraft(edit,snapshot)).toThrow('格式范围');});
+});

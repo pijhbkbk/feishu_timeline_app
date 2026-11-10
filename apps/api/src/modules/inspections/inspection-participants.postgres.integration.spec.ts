@@ -56,10 +56,33 @@ describe.skipIf(!connection).sequential('inspection participant effective availa
     const rejectedOperation = op();
     const before = await db.inspectionActivity.count({ where: { productionBaseId: baseId } });
     await expect(create([personId], rejectedOperation)).rejects.toMatchObject({ status: 400 });
-    await expect(inspection.updateActivity(first.id, { operationId: op(), expectedRevision: 1, date: '2026-09-15', personIds: [personId], note: '不能以旧状态保存', batchLabel: null }, actor)).rejects.toMatchObject({ status: 400 });
     expect(await db.inspectionActivity.count({ where: { productionBaseId: baseId } })).toBe(before);
     expect(await db.adminCommandRequest.count({ where: { idempotencyKey: `inspections:${actor.id}:${rejectedOperation}` } })).toBe(0);
-    expect(await db.inspectionActivity.findUniqueOrThrow({ where: { id: first.id } })).toMatchObject({ revision: 1, note: null });
+
+    // Disabled people remain facts of an existing activity; an unrelated edit
+    // must not force the operator to remove them from its history.
+    const participantsBefore = await db.inspectionParticipant.findMany({ where: { activityId: first.id } });
+    const preserveOperation = op();
+    const preserveInput = { operationId: preserveOperation, expectedRevision: 1, date: '2026-09-15', personIds: [personId], note: '保留历史参与人并补充备注', batchLabel: null };
+    await expect(inspection.updateActivity(first.id, preserveInput, actor)).resolves.toMatchObject({ revision: 2 });
+    expect(await db.inspectionParticipant.findMany({ where: { activityId: first.id } })).toEqual(participantsBefore);
+    expect(await inspection.detail(first.id, actor)).toMatchObject({ revision: 2, note: preserveInput.note, participants: [{ person: { id: personId, isActive: false } }] });
+    const auditAfterPreserve = await db.auditLog.count({ where: { actorUserId: actor.id, targetId: first.id, action: 'INSPECTION_ACTIVITY_UPDATED' } });
+    expect(auditAfterPreserve).toBe(1);
+    await expect(inspection.updateActivity(first.id, preserveInput, actor)).resolves.toMatchObject({ revision: 2 });
+    expect(await db.auditLog.count({ where: { actorUserId: actor.id, targetId: first.id, action: 'INSPECTION_ACTIVITY_UPDATED' } })).toBe(auditAfterPreserve);
+
+    // Keeping a historical participant does not authorize a new selection in
+    // another activity. A rejected addition must roll back its receipt too.
+    const other = await create([]);
+    const otherBefore = await db.inspectionActivity.findUniqueOrThrow({ where: { id: other.id } });
+    const auditBeforeAdd = await db.auditLog.count({ where: { actorUserId: actor.id } });
+    const rejectedAddOperation = op();
+    await expect(inspection.updateActivity(other.id, { operationId: rejectedAddOperation, expectedRevision: 1, date: '2026-09-15', personIds: [personId], note: null, batchLabel: null }, actor)).rejects.toMatchObject({ status: 400 });
+    expect(await db.inspectionActivity.findUniqueOrThrow({ where: { id: other.id } })).toEqual(otherBefore);
+    expect(await db.inspectionParticipant.count({ where: { activityId: other.id } })).toBe(0);
+    expect(await db.adminCommandRequest.count({ where: { idempotencyKey: `inspections:${actor.id}:${rejectedAddOperation}` } })).toBe(0);
+    expect(await db.auditLog.count({ where: { actorUserId: actor.id } })).toBe(auditBeforeAdd);
     await changeStatus(user.id, 'ACTIVE');
     await expect(create([personId])).resolves.toMatchObject({ revision: 1 });
     expect(await inspection.detail(first.id, actor)).toMatchObject({ participants: [{ person: { isActive: true } }] });

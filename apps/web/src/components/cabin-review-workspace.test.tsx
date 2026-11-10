@@ -4,12 +4,16 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
 import {
+  CabinReviewDetail,
   CabinReviewForm,
   CabinReviewHistory,
   ReviewConclusionBadge,
 } from './cabin-review-workspace';
 import {
   canShowCabinReviewApproveButton,
+  canShowCabinReviewSubmitButton,
+  canShowCabinReviewRejectButton,
+  getCabinReviewWorkspaceHighlights,
   validateCabinReviewForm,
   type CabinReviewWorkspaceResponse,
 } from '../lib/reviews-client';
@@ -142,6 +146,8 @@ describe('CabinReviewWorkspace', () => {
     expect(html).toContain('评审日期');
     expect(html).toContain('评审结论');
     expect(html).toContain('驳回原因');
+    expect(html).toContain('退回涂装厂重新试制');
+    expect(html).toContain('旧记录保留');
   });
 
   it('renders review history rows', () => {
@@ -201,5 +207,24 @@ describe('single-department review admission', () => {
   it('does not admit an unapproved account through a legacy role', () => {
     expect(canManageCabinReviews({ ...reviewerUser, teamAccessApproved: false })).toBe(false);
     expect(canManageCabinReviews({ ...reviewerUser, authSource: 'mock' })).toBe(false);
+  });
+});
+
+
+describe('completed cabin workflow display', () => {
+  it('shows completed current-workflow history and never re-enables review actions', () => {
+    const completed = { ...workspace.activeTask!, status: 'COMPLETED' as const, isActive: false, availableActions: [] };
+    const history: CabinReviewWorkspaceResponse = { ...workspace, activeTask: null,
+      displayTask: completed, displayDownstreamTasks: { developmentFee: completed, consistencyReview: completed } };
+    expect(getCabinReviewWorkspaceHighlights(history)).toMatchObject({ activeTaskStatusLabel: '已完成',
+      developmentFeeStatusLabel: '已完成', consistencyReviewStatusLabel: '已完成' });
+    const html = renderToStaticMarkup(<CabinReviewDetail review={workspace.items[0]!}
+      developmentFeeTask={history.displayDownstreamTasks!.developmentFee}
+      consistencyReviewTask={history.displayDownstreamTasks!.consistencyReview} />);
+    expect(html.match(/已完成/g)).toHaveLength(2);
+    expect(html).not.toContain('未激活');
+    expect(canShowCabinReviewSubmitButton(reviewerUser, history, { ...workspace.items[0]!, submittedAt: null })).toBe(false);
+    expect(canShowCabinReviewApproveButton(reviewerUser, history, workspace.items[0]!)).toBe(false);
+    expect(canShowCabinReviewRejectButton(reviewerUser, history, { ...workspace.items[0]!, reviewConclusion: 'REJECTED' })).toBe(false);
   });
 });

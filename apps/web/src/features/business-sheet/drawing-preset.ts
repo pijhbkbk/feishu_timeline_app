@@ -29,7 +29,7 @@ export class RecordImageIo extends ImageIoService {
   dispose() { this.disposed = true; this.leases.forEach(lease => lease.release()); this.leases.clear(); this.reported.clear(); }
 }
 
-export function createRecordDrawingPreset(io: RecordImageIo) {
+export function createRecordDrawingPreset(io: ImageIoService) {
   const preset = UniverSheetsDrawingPreset({ allowImageSize: 5 * 1024 * 1024 });
   preset.plugins = preset.plugins.map(entry => {
     const plugin = Array.isArray(entry) ? entry[0] : entry;

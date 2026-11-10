@@ -1,4 +1,5 @@
 'use client';
+import { BUSINESS_TIME_ZONE } from '../../lib/local-datetime';
 import Link from 'next/link';
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../components/auth-provider';
@@ -40,7 +41,7 @@ export function Notifications() {
   return <section className="team-workspace"><header className="work-heading"><div><h1>我的提醒</h1><p>查看任务激活、今日到期和每日逾期汇总。</p></div><Link href="/dashboard">返回我的工作</Link></header>
     {error ? <div role="alert"><p>{error}</p><button className="button" onClick={() => setRefresh(value => value + 1)}>重新加载</button></div> : null}
     {loading ? <p role="status" className="work-state">正在加载提醒…</p> : data ? <><div className="work-overview"><span>{data.unreadCount} 条未读</span><button className="button" disabled={Boolean(busy) || !data.unreadCount} onClick={() => void read()}>全部标为已读</button></div>
-      {!data.items.length ? <p className="work-state">当前没有提醒。工作变化后，新提醒会显示在这里。</p> : data.items.map(item => <article className="page-card work-notification" key={item.id}><div className="work-heading"><div><h2>{item.isRead ? '' : '• '}{item.title}</h2><span className="work-secondary">{new Date(item.createdAt).toLocaleString('zh-CN')}</span></div>{!item.isRead ? <button className="work-link" disabled={Boolean(busy)} onClick={() => void read(item.id)}>标为已读</button> : <span className="work-secondary">已读</span>}</div><p>{item.content}</p>
+      {!data.items.length ? <p className="work-state">当前没有提醒。工作变化后，新提醒会显示在这里。</p> : data.items.map(item => <article className="page-card work-notification" key={item.id}><div className="work-heading"><div><h2>{item.isRead ? '' : '• '}{item.title}</h2><span className="work-secondary">{new Date(item.createdAt).toLocaleString('zh-CN', { timeZone: BUSINESS_TIME_ZONE })}</span></div>{!item.isRead ? <button className="work-link" disabled={Boolean(busy)} onClick={() => void read(item.id)}>标为已读</button> : <span className="work-secondary">已读</span>}</div><p>{item.content}</p>
         {item.reminderKind === 'OVERDUE_DAY' ? <Digest notificationId={item.id} /> : item.linkPath ? <Link href={item.linkPath}>打开工作 →</Link> : null}</article>)}
       <footer className="work-pagination"><span>第 {page} / {data.totalPages} 页</span><button className="button" disabled={page <= 1} onClick={() => setPage(page - 1)}>上一页</button><button className="button" disabled={page >= data.totalPages} onClick={() => setPage(page + 1)}>下一页</button></footer>
     </> : null}
@@ -61,7 +62,7 @@ function Digest({ notificationId }: { notificationId: string }) {
     return () => { active = false; };
   }, [notificationId, opened, cursor, retry]);
   return <details onToggle={event => setOpened(event.currentTarget.open)}><summary>查看逾期工作</summary>{error ? <p role="alert">{error} <button className="work-link" onClick={() => setRetry(value => value + 1)}>重试</button></p> : !data ? <p role="status">正在加载…</p> : <>
-    {data.items.length ? <ul>{data.items.map(item => <li key={item.id}><Link href={item.linkPath}>{item.title}</Link> · {item.projectCode} · {item.projectName}<span className="work-secondary">期限 {item.dueAt ? new Date(item.dueAt).toLocaleDateString('zh-CN') : '未设定'}</span></li>)}</ul> : <p>汇总中的工作已处理或分配发生变化。</p>}
+    {data.items.length ? <ul>{data.items.map(item => <li key={item.id}><Link href={item.linkPath}>{item.title}</Link> · {item.projectCode} · {item.projectName}<span className="work-secondary">期限 {item.dueAt ? new Date(item.dueAt).toLocaleDateString('zh-CN', { timeZone: BUSINESS_TIME_ZONE }) : '未设定'}</span></li>)}</ul> : <p>汇总中的工作已处理或分配发生变化。</p>}
     {history.length || data.nextCursor ? <div className="work-pagination"><button className="button" disabled={!history.length} onClick={() => { setCursor(history.at(-1)!); setHistory(history.slice(0, -1)); }}>上一页工作</button><button className="button" disabled={!data.nextCursor} onClick={() => { setHistory([...history, cursor]); setCursor(data.nextCursor!); }}>下一页工作</button></div> : null}
   </>}</details>;
 }

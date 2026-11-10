@@ -91,6 +91,7 @@ export class SheetImagesService {
     return withTeamWrite(this.prisma, actor, async tx => {
       const identity = await tx.sheetImage.findUnique({ where: { id }, select: { targetType: true, recordId: true } });
       if (!identity) throw new NotFoundException('图片不存在。');
+      if (identity.targetType === 'SHEET_WORKBOOK') throw new BadRequestException('工作簿图片的位置与移除通过工作簿快照保存；原始资产保留用于撤销和恢复。');
       await authorizeSheetAttachmentTarget(tx, identity.targetType, identity.recordId, actor, this.access);
       const known = await tx.adminCommandRequest.findUnique({ where: { idempotencyKey: key } });
       if (known) {

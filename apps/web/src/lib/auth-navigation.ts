@@ -1,5 +1,12 @@
 import type { SessionUser } from './auth-client';
 
+const projectReturnPages = new Set([
+  'attachments', 'color-evaluation', 'color-exit', 'development-report', 'fees',
+  'flow-map', 'logs', 'mass-production', 'materials', 'overview', 'paint-procurement',
+  'performance-tests', 'pilot-production', 'production-plans', 'retrospective',
+  'reviews', 'samples', 'standard-boards', 'tasks', 'workflow',
+]);
+
 export function needsAssignment(user: SessionUser) {
   return user.authSource === 'local' && !user.isSystemAdmin && !user.teamAccessApproved;
 }
@@ -31,14 +38,16 @@ export async function resolveLoginDestination(
   const destination = path + url.search + url.hash;
   if (path === '/account' || path === '/account/security') return destination;
   if (needsAssignment(user)) return fallback;
-  if (['/dashboard', '/projects', '/tasks', '/admin/people', '/admin/color-database', '/inspections', '/production', '/monthly-reviews', '/analytics'].includes(path)) return destination;
+  if (['/dashboard', '/projects', '/tasks', '/admin/people', '/admin/color-database', '/inspections', '/production', '/monthly-reviews', '/analytics', '/notifications'].includes(path)) return destination;
   const administrator = user.roleCodes.includes('admin') &&
     (user.isSystemAdmin || user.permissionCodes?.includes('system.manage'));
   if (path === '/admin/accounts' || path === '/admin/people/permissions') return administrator && user.isSystemAdmin ? destination : fallback;
   if (['/admin', '/admin/projects', '/admin/tasks', '/admin/organization', '/admin/assignments', '/admin/permissions', '/admin/audit-logs'].includes(path)) return administrator ? destination : fallback;
   if (path === '/projects/new') return user.isSystemAdmin || user.teamAccessApproved ? destination : fallback;
-  const project = /^\/projects\/([A-Za-z0-9_-]+)(?:\/tasks\/[A-Za-z0-9_-]+)?$/.exec(path);
+  const project = /^\/projects\/([A-Za-z0-9_-]+)(?:\/(.+))?$/.exec(path);
   if (project) {
+    const page = project[2];
+    if (page && !projectReturnPages.has(page) && !/^(?:tasks|samples)\/[A-Za-z0-9_-]+$/.test(page)) return fallback;
     try { if (await canReadProject(project[1]!)) return destination; } catch { /* fail closed */ }
   }
   return fallback;

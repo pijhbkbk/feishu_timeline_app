@@ -35,6 +35,7 @@ function createReviewRecord(overrides: Record<string, unknown> = {}) {
     reviewerId: 'reviewer-1',
     attachmentId: 'attachment-old',
     reviewType: ReviewType.CAB_REVIEW,
+    reviewPeriod: '2026-08',
     submittedAt: null,
     reviewedAt: new Date('2026-08-01T00:00:00Z'),
     ...overrides,

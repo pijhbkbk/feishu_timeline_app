@@ -1,4 +1,5 @@
 'use client';
+import { BUSINESS_TIME_ZONE } from '../../lib/local-datetime';
 
 import { ProjectColorPicker, type ProjectColorChoice } from '../color-register/project-color-picker';
 import { displayColorName } from '../m1/color-name';
@@ -111,7 +112,7 @@ function ColorProjectList() {
 }
 
 function formatProjectUpdate(value: string) {
-  return new Intl.DateTimeFormat('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(value));
+  return new Intl.DateTimeFormat('zh-CN', { timeZone: BUSINESS_TIME_ZONE, month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(value));
 }
 
 export function NewColorProject() {

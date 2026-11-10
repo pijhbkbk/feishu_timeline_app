@@ -60,6 +60,8 @@ jobs:
         id: tests
         run: |
           pnpm test
+          node --test scripts/deploy/export-ci-images.test.mjs
+          node --test scripts/deploy/tests/table-release-data.test.cjs
           PYTHONDONTWRITEBYTECODE=1 timeout 120s python3 -m unittest discover -s scripts/deploy/gce-host -p 'test_*.py' -v
           PYTHONDONTWRITEBYTECODE=1 timeout 120s python3 -m unittest discover -s scripts/deploy/tests -p 'test_*.py' -v
 
@@ -110,6 +112,41 @@ jobs:
       - name: Scan Production Container Images
         id: images
         run: bash scripts/security/scan-production-images.sh feishu-timeline-api:ci feishu-timeline-web:ci
+
+      - name: Build migration image for manual delivery
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          docker build --platform linux/amd64 --target ops \
+            --build-arg BUILD_SOURCE_COMMIT="$BUILD_SOURCE_COMMIT" \
+            --build-arg BUILD_SOURCE_TREE="$BUILD_SOURCE_TREE" \
+            --build-arg BUILD_RELEASE="$BUILD_RELEASE" \
+            --build-arg BUILD_TIME="$BUILD_TIME" \
+            -t feishu-timeline-api-ops:ci -f apps/api/Dockerfile .
+
+      - name: Scan migration image for manual delivery
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          SECURITY_REPORT_DIR: reports/security/ops-image-sca
+        run: bash scripts/security/scan-production-images.sh feishu-timeline-api-ops:ci
+
+      - name: Export verified manual delivery images
+        if: github.event_name == 'workflow_dispatch'
+        run: node scripts/deploy/export-ci-images.mjs
+
+      - name: Retain manual delivery images
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: delivery-images-${{ github.run_id }}-${{ github.run_attempt }}
+          retention-days: 7
+          if-no-files-found: error
+          include-hidden-files: false
+          overwrite: false
+          path: |
+            reports/ci-delivery/manifest.json
+            reports/ci-delivery/api.tar
+            reports/ci-delivery/web.tar
+            reports/ci-delivery/api-ops.tar
 
       - name: Collect redacted CI evidence
         id: evidence
@@ -172,7 +209,7 @@ jobs:
         id: security_gates
         run: |
           bash scripts/security/tests/security-gates.test.sh
-          node --test scripts/security/tests/ci-evidence.test.mjs
+          node --test scripts/security/tests/ci-evidence.test.mjs scripts/security/tests/integrity-allowlist.test.mjs scripts/security/tests/braces-depth.test.mjs scripts/security/tests/patched-sca.test.mjs
 
       - name: Secrets — Current Tree and Git History
         id: secrets
@@ -183,7 +220,7 @@ jobs:
         if: ${{ always() && steps.evidence_init.outcome == 'success' }}
         run: bash scripts/security/run-sast.sh
 
-      - name: SCA — Production Dependencies Only
+      - name: SCA — Full and Production Graphs with Exact Local Remediation
         id: sca
         if: ${{ always() && steps.evidence_init.outcome == 'success' }}
         run: bash scripts/security/run-sca.sh
@@ -215,7 +252,8 @@ jobs:
 
   playwright-smoke:
     if: github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
+    # The locked Playwright 1.60 runtime supports Ubuntu 24.04, not 26.04.
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout
@@ -241,4 +279,8 @@ jobs:
         run: pnpm --filter @feishu-timeline/web exec playwright install --with-deps chromium
 
       - name: Run Playwright Smoke
-        run: pnpm playwright:test
+        # Current native-account/table contract; historical mock suites remain
+        # available through the unchanged default playwright:test command.
+        run: |
+          node --test scripts/testing/native-table-ci-env.test.mjs
+          pnpm playwright:test -- --native-table

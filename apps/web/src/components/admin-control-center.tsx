@@ -1,4 +1,5 @@
 'use client';
+import { BUSINESS_TIME_ZONE, localDateTimeToIso, toDateTimeLocalValue, toBusinessDateInputValue } from '../lib/local-datetime';
 
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -817,9 +818,7 @@ function AdminEditDialog({ state, onClose, onSuccess }: { state: Exclude<DialogS
           operation: state.mode === 'schedule' ? 'SCHEDULE' : 'ASSIGNMENT',
           ...(state.mode === 'schedule'
             ? {
-                plannedDueAt: new Date(
-                  String(form.plannedDueAt),
-                ).toISOString(),
+                plannedDueAt: localDateTimeToIso(String(form.plannedDueAt)),
               }
             : {
                 primaryDepartmentId:
@@ -882,7 +881,7 @@ function AdminEditDialog({ state, onClose, onSuccess }: { state: Exclude<DialogS
       } else if (state.mode === 'schedule') {
         const body = {
           taskVersion: state.row.taskVersion,
-          plannedDueAt: new Date(String(form.plannedDueAt)).toISOString(),
+          plannedDueAt: localDateTimeToIso(String(form.plannedDueAt)),
           scope: String(form.scope),
           reason: String(form.reason),
         };
@@ -1284,7 +1283,7 @@ function hasSectionData(section: AdminControlSection, data: LoadState) {
 function formatDate(value: string | null | undefined) {
   if (!value) return '未设置';
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString('zh-CN', { timeZone: BUSINESS_TIME_ZONE, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
 }
 
 function displayProjectCode(value: string) {
@@ -1294,15 +1293,14 @@ function displayProjectCode(value: string) {
 }
 
 function toDateInput(value: string | null | undefined) {
-  return value ? value.slice(0, 10) : '';
+  return toBusinessDateInputValue(value);
 }
 
 function toDateTimeInput(value: string | null | undefined) {
   if (!value) return '';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '';
-  const offset = date.getTimezoneOffset() * 60_000;
-  return new Date(date.getTime() - offset).toISOString().slice(0, 16);
+  return toDateTimeLocalValue(value);
 }
 
 function shortVersion(value: string) {

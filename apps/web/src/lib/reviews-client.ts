@@ -1,4 +1,5 @@
 'use client';
+import { toBusinessDateInputValue } from './local-datetime';
 
 import type { ReviewStandardOptions, ReviewStandardVersion } from './review-standard-version';
 
@@ -80,6 +81,11 @@ export type CabinReviewWorkspaceResponse = ReviewStandardOptions & {
   };
   trialProductionCompleted: boolean;
   activeTask: WorkflowTaskSummary | null;
+  displayTask?: WorkflowTaskSummary | null;
+  displayDownstreamTasks?: {
+    developmentFee: WorkflowTaskSummary | null;
+    consistencyReview: WorkflowTaskSummary | null;
+  };
   downstreamTasks: {
     developmentFee: WorkflowTaskSummary | null;
     consistencyReview: WorkflowTaskSummary | null;
@@ -278,18 +284,20 @@ export function getCabinReviewConclusionLabel(conclusion: CabinReviewConclusion)
 export function getCabinReviewWorkspaceHighlights(
   workspace: CabinReviewWorkspaceResponse,
 ) {
+  const displayTask = workspace.displayTask === undefined ? workspace.activeTask : workspace.displayTask;
+  const downstream = workspace.displayDownstreamTasks ?? workspace.downstreamTasks;
   return {
     currentNodeLabel: getWorkflowNodeLabel(workspace.project.currentNodeCode),
     targetDateLabel: formatDate(workspace.project.targetDate),
     riskLevelLabel: getProjectPriorityLabel(workspace.project.riskLevel),
-    activeTaskStatusLabel: workspace.activeTask
-      ? getWorkflowTaskStatusLabel(workspace.activeTask.status)
+    activeTaskStatusLabel: displayTask
+      ? getWorkflowTaskStatusLabel(displayTask.status)
       : '当前无驾驶室评审任务',
-    developmentFeeStatusLabel: workspace.downstreamTasks.developmentFee
-      ? getWorkflowTaskStatusLabel(workspace.downstreamTasks.developmentFee.status)
+    developmentFeeStatusLabel: downstream.developmentFee
+      ? getWorkflowTaskStatusLabel(downstream.developmentFee.status)
       : '未激活',
-    consistencyReviewStatusLabel: workspace.downstreamTasks.consistencyReview
-      ? getWorkflowTaskStatusLabel(workspace.downstreamTasks.consistencyReview.status)
+    consistencyReviewStatusLabel: downstream.consistencyReview
+      ? getWorkflowTaskStatusLabel(downstream.consistencyReview.status)
       : '未激活',
   };
 }
@@ -299,7 +307,7 @@ export function toCabinReviewFormInput(
 ): CabinReviewFormInput {
   return {
     standardVersionId: review.standardVersionId ?? '',
-    reviewDate: review.reviewDate ? review.reviewDate.slice(0, 10) : '',
+    reviewDate: toBusinessDateInputValue(review.reviewDate),
     reviewerId: review.reviewerId,
     reviewConclusion: review.reviewConclusion,
     comment: review.comment ?? '',

@@ -298,6 +298,8 @@ def _walk_tree(
             os.close(root_fd)
             os.close(target_root_fd)
             raise ArchiveDataError(f"tree snapshot target must be empty: {target}")
+        # This descriptor is a directory; owner-only traversal is required and grants no group/world access.
+        # nosemgrep: python.lang.security.audit.insecure-file-permissions.insecure-file-permissions
         os.fchmod(target_root_fd, 0o700)
         if uid is not None or gid is not None:
             os.fchown(
@@ -365,6 +367,8 @@ def _walk_tree(
                         | getattr(os, "O_NOFOLLOW", 0),
                         dir_fd=target_directory_fd,
                     )
+                    # Owner-only directory traversal; source and target descriptors were opened without following links.
+                    # nosemgrep: python.lang.security.audit.insecure-file-permissions.insecure-file-permissions
                     os.fchmod(target_child_fd, 0o700)
                     if uid is not None or gid is not None:
                         os.fchown(

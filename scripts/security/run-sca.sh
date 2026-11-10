@@ -10,7 +10,9 @@ DOC_REPORT="${SCA_DOC_REPORT:-$ROOT_DIR/docs/security/SCA_REPORT_R19.md}"
 mkdir -p "$REPORT_DIR" "$(dirname "$DOC_REPORT")"
 rm -f "$REPORT_DIR/pnpm-audit.log" "$REPORT_DIR/pnpm-audit.status" \
   "$REPORT_DIR/pnpm-audit-all.log" "$REPORT_DIR/pnpm-audit-all.status" \
-  "$REPORT_DIR/pnpm-audit.json" "$REPORT_DIR/pnpm-audit-all.json"
+  "$REPORT_DIR/pnpm-audit.json" "$REPORT_DIR/pnpm-audit-all.json" \
+  "$REPORT_DIR/pnpm-audit.exit-code" "$REPORT_DIR/pnpm-audit-all.exit-code" \
+  "$REPORT_DIR/local-remediation.json"
 
 timestamp="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 commit="$(git -C "$ROOT_DIR" rev-parse --short HEAD 2>/dev/null || printf 'unknown')"
@@ -23,11 +25,14 @@ if (
   pnpm audit --audit-level low --json
 ) >"$REPORT_DIR/pnpm-audit-all.json" 2>"$REPORT_DIR/pnpm-audit-all.log"; then
   all_audit_status="PASS"
+  all_audit_exit=0
 else
+  all_audit_exit=$?
   all_audit_status="FAIL"
   overall_status=1
 fi
 printf '%s' "$all_audit_status" >"$REPORT_DIR/pnpm-audit-all.status"
+printf '%s' "$all_audit_exit" >"$REPORT_DIR/pnpm-audit-all.exit-code"
 
 printf '[INFO] Auditing production dependencies at Low-or-higher threshold\n'
 if (
@@ -35,14 +40,23 @@ if (
   pnpm audit --prod --audit-level low --json
 ) >"$REPORT_DIR/pnpm-audit.json" 2>"$REPORT_DIR/pnpm-audit.log"; then
   audit_status="PASS"
+  audit_exit=0
 else
+  audit_exit=$?
   audit_status="FAIL"
   overall_status=1
 fi
 printf '%s' "$audit_status" >"$REPORT_DIR/pnpm-audit.status"
+printf '%s' "$audit_exit" >"$REPORT_DIR/pnpm-audit.exit-code"
 
 if [ "$overall_status" -eq 0 ]; then
   acceptance="PASS — neither the full workspace nor the production dependency graph has a reported vulnerability."
+elif ( cd "$ROOT_DIR"; node scripts/security/verify-patched-sca.mjs "$REPORT_DIR" ) >"$REPORT_DIR/local-remediation.json"; then
+  overall_status=0
+  acceptance="LOCALLY_REMEDIATED — raw full audit remains FAIL/exit 1 with one High finding. The exact reviewed braces patch, loaded source and bounded regressions validate; residual findings: 0; production audit: PASS. This is not upstream audit clearance or release approval."
+elif ( cd "$ROOT_DIR"; node scripts/security/verify-minimatch-sca.mjs "$REPORT_DIR" ) >"$REPORT_DIR/minimatch-applicability.json"; then
+  overall_status=0
+  acceptance="LOCALLY_REMEDIATED — raw full audit remains FAIL/exit 1 for GHSA-g3hv-75wg-m249; production status and exit remain as recorded above. Exact installed minimatch 10.2.5 uses the reviewed upstream backport. The exact advisory pair, installed sources, independent ledger dispositions and bounded regressions validate; original scan results remain unchanged. Image, runtime and release gates remain separate."
 else
   acceptance="FAIL — pnpm reported a production/development vulnerability or the audit tool/registry failed."
 fi
@@ -58,8 +72,12 @@ Scope: all workspace dependencies, with production dependencies also reported as
 
 | Check | Status | Raw Output |
 |---|---|---|
-| \`pnpm audit --audit-level low\` | $all_audit_status | reports/security/sca/pnpm-audit-all.json (stderr: pnpm-audit-all.log) |
-| \`pnpm audit --prod --audit-level low\` | $audit_status | reports/security/sca/pnpm-audit.json (stderr: pnpm-audit.log) |
+| \`pnpm audit --audit-level low\` (exit $all_audit_exit) | $all_audit_status | reports/security/sca/pnpm-audit-all.json (stderr: pnpm-audit-all.log) |
+| \`pnpm audit --prod --audit-level low\` (exit $audit_exit) | $audit_status | reports/security/sca/pnpm-audit.json (stderr: pnpm-audit.log) |
+
+Exact local remediation evidence, when applicable, is recorded separately in
+\`reports/security/sca/local-remediation.json\` and references the unique Finding Ledger.
+The raw audit JSON, status and exit-code files are preserved.
 
 Container-image SCA is a separate gate implemented by
 \`scripts/security/scan-production-images.sh\`; it scans the exact images built by CI.

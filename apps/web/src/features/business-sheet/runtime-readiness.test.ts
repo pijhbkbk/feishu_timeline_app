@@ -10,12 +10,13 @@ const engine = vi.hoisted(() => ({
   callbacks: new Map<string, (event: any) => void>(),
   snapshot: null as null | { id: string },
   renderImages: vi.fn(), disposeImages: vi.fn(), disposeIo: vi.fn(), disposeUniver: vi.fn(),
+  editing: false, endEditing: vi.fn(), clipboard: vi.fn(), disposeClipboard: vi.fn(),
   execute: vi.fn(), setRowCount: vi.fn(), select: vi.fn(), disposeSelection: vi.fn(),
 }));
 vi.mock('@univerjs/presets', () => ({
   LocaleType: { ZH_CN: 'zhCN' }, mergeLocales: () => ({}),
   createUniver: () => ({
-    univer: { dispose: engine.disposeUniver },
+    univer: { dispose: engine.disposeUniver, __getInjector: () => ({ get: () => ({ addClipboardHook: engine.clipboard }) }) },
     univerAPI: {
       Event: new Proxy({}, { get: (_target, key) => key }),
       addEvent: (name: string, callback: (event: any) => void) => { engine.callbacks.set(name, callback); return { dispose: () => engine.callbacks.delete(name) }; },
@@ -25,15 +26,16 @@ vi.mock('@univerjs/presets', () => ({
         engine.snapshot = snapshot;
         if (engine.stageOnCreate !== null) engine.stage = engine.stageOnCreate;
         return {
-          getActiveSheet: () => ({ setRowCount: engine.setRowCount, getActiveCell: () => null, getRange: (...args: unknown[]) => args, setActiveRange: engine.select }),
+          getWorkbook: () => ({ getSnapshot: () => ({ locale: 'zhCN' }), getDateSystem: () => 1900 }),
+          getActiveSheet: () => ({ getSheet: () => ({ getCellStyle: () => ({ n: { pattern: '@' } }) }), setRowCount: engine.setRowCount, getActiveCell: () => null, getRange: (...args: unknown[]) => args, setActiveRange: engine.select }),
           onSelectionChange: () => ({ dispose: engine.disposeSelection }),
-          isCellEditing: () => false,
+          isCellEditing: () => engine.editing, endEditingAsync: engine.endEditing,
         };
       },
     },
   }),
 }));
-vi.mock('@univerjs/preset-sheets-core', () => ({ UniverSheetsCorePreset: () => ({}) }));
+vi.mock('@univerjs/preset-sheets-core', () => ({ UniverSheetsCorePreset: () => ({}), ISheetClipboardService: Symbol('clipboard'), virtualizeDiscreteRanges: () => ({}) }));
 vi.mock('@univerjs/preset-sheets-core/locales/zh-CN', () => ({ default: {} }));
 vi.mock('@univerjs/preset-sheets-drawing/locales/zh-CN', () => ({ default: {} }));
 vi.mock('@univerjs/preset-sheets-core/lib/index.css', () => ({}));
@@ -58,7 +60,7 @@ function setup() {
 }
 beforeEach(() => {
   engine.stage = LifecycleStages.Starting; engine.stageOnCreate = null; engine.callbacks.clear(); engine.snapshot = null;
-  vi.clearAllMocks(); engine.renderImages.mockResolvedValue(undefined); engine.execute.mockReturnValue(true);
+  vi.clearAllMocks(); engine.editing = false; engine.endEditing.mockResolvedValue(true); engine.clipboard.mockReturnValue({ dispose: engine.disposeClipboard }); engine.renderImages.mockResolvedValue(undefined); engine.execute.mockReturnValue(true);
   vi.stubGlobal('document', { querySelector: () => null });
 });
 afterEach(async () => { instances.splice(0).forEach(runtime => runtime.dispose()); await ticks(); vi.unstubAllGlobals(); });
@@ -104,4 +106,27 @@ describe('business sheet interaction readiness', () => {
     expect(ready).toBe(true); expect(engine.renderImages).not.toHaveBeenCalled(); expect(engine.execute).not.toHaveBeenCalled();
     expect(engine.disposeImages).toHaveBeenCalledOnce(); expect(engine.disposeIo).toHaveBeenCalledOnce(); expect(engine.disposeUniver).toHaveBeenCalledOnce(); expect(engine.callbacks.size).toBe(0);
   });
+});
+
+it('propagates a rejected native commit even when Univer resolves true, without poisoning later edits', async () => {
+ const { runtime, onChanges } = setup(); emit(LifecycleStages.Rendered); await ticks();
+ expect(engine.clipboard).toHaveBeenCalledOnce();
+ engine.editing = true;
+ engine.endEditing.mockImplementationOnce(async () => {
+  engine.callbacks.get('BeforeCommandExecute')!({ id: VALUE_MUTATION, type: CommandType.MUTATION,
+   params: { unitId: engine.snapshot!.id, subUnitId: 'business-records', cellValue: { 1: { 1: { f: '=1+1', v: 2 } } } }, cancel: false });
+  return true;
+ });
+ await expect(runtime.finishEditing()).rejects.toThrow('不支持公式'); expect(onChanges).not.toHaveBeenCalled();
+ await expect(runtime.finishEditing()).resolves.toBeUndefined();
+ runtime.dispose(); expect(engine.disposeClipboard).toHaveBeenCalledOnce();
+});
+it('does not replace rows after the current native edit was rejected', async () => {
+ const { runtime } = setup(); emit(LifecycleStages.Rendered); await ticks(); engine.editing = true;
+ engine.endEditing.mockImplementationOnce(async () => {
+  engine.callbacks.get('BeforeCommandExecute')!({ id: VALUE_MUTATION, type: CommandType.MUTATION,
+   params: { unitId: engine.snapshot!.id, subUnitId: 'business-records', cellValue: { 1: { 0: { v: 'readonly' } } } }, cancel: false });
+  return true;
+ });
+ await expect(runtime.replaceRows([])).rejects.toThrow('只读'); expect(engine.setRowCount).not.toHaveBeenCalled();
 });

@@ -70,7 +70,23 @@ export async function exportRecordWorkbook(title: string, module: string, column
   const workbook = new ExcelJS.Workbook(); workbook.creator = '轻卡定制色';
   const sheet = workbook.addWorksheet(title.slice(0, 31), { views: [{ state: 'frozen', xSplit: 2, ySplit: 1 }] });
   sheet.columns = [{ key: '__id', header: '记录ID', width: 38, hidden: true }, { key: '__revision', header: '记录版本', width: 12, hidden: true }, ...columns.map(column => ({ key: column.key, header: column.label, width: Math.max(12, Math.round(column.width / 7)) }))];
-  for (const row of rows) { const excelRow = sheet.addRow({ __id: row.id, __revision: row.revision, ...row.values }); excelRow.eachCell(cell => { cell.numFmt = '@'; }); excelRow.height = 60; }
+  for (const row of rows) {
+    const excelRow = sheet.addRow({ ...row.values, __id: row.id, __revision: row.revision });
+    excelRow.eachCell(cell => { cell.numFmt = '@'; });
+    excelRow.getCell('__revision').numFmt = '0';
+    for (const column of columns) {
+      if (column.exportType !== 'integer') continue;
+      const value = row.values[column.key];
+      const cell = excelRow.getCell(column.key);
+      cell.numFmt = '0';
+      // Unknown stays blank; neither Number(null) nor an arbitrary text column
+      // may silently turn a missing quantity or an identifier into a number.
+      if (value === null || value === undefined || value === '') { cell.value = null; continue; }
+      if (!/^\d+$/.test(value) || !Number.isSafeInteger(Number(value))) throw new Error(`「${column.label}」不是有效整数，无法导出。`);
+      cell.value = Number(value);
+    }
+    excelRow.height = 60;
+  }
   const headers = sheet.getRow(1); headers.font = { bold: true, color: { argb: 'FF254D39' } }; headers.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE7F0E8' } };
   const metadata = workbook.addWorksheet('_业务模板', { state: 'veryHidden' }); metadata.addRow(['LIGHT_TRUCK_BUSINESS_SHEET_V1', module]);
   metadata.addRow(['记录ID与版本用于合法更新；空白默认不清空；账号权限与流程结果不由导入授予。']);

@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import { M1RecordReturn } from '../features/m1/record-return';
 import React, { useMemo, useRef, useState, useEffect } from 'react';
 
 import { useAuth } from './auth-provider';
@@ -222,9 +222,7 @@ export function FeesWorkspace({ projectId }: FeesWorkspaceProps) {
             >
               {isRefreshing ? '刷新中…' : '刷新'}
             </button>
-            <Link href={`/projects/${projectId}/workflow`} className="button button-secondary">
-              查看流程
-            </Link>
+            <M1RecordReturn projectId={projectId} />
           </div>
         </div>
         <div className="summary-grid">

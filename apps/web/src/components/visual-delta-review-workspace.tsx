@@ -3,7 +3,7 @@
 import { ReviewStandardSelect } from './review-standard-select';
 import { reviewStandardLabel, type ReviewStandardOptions } from '../lib/review-standard-version';
 
-import Link from 'next/link';
+import { M1RecordLink as Link, M1RecordReturn } from '../features/m1/record-return';
 import React, { useEffect, useRef, useState } from 'react';
 import { useAuth } from './auth-provider';
 import {
@@ -13,6 +13,7 @@ import {
   getVisualDeltaReviewConclusionLabel, rejectVisualDeltaReview, submitVisualDeltaReview, toVisualDeltaReviewFormInput,
   updateVisualDeltaReview, uploadVisualDeltaReviewAttachment, validateVisualDeltaReviewForm,
   type VisualDeltaReviewFormInput, type VisualDeltaReviewRecord, type VisualDeltaReviewWorkspaceResponse,
+  previewVisualDeltaStage, confirmVisualDeltaStage, type VisualStagePreview,
 } from '../lib/visual-delta-reviews-client';
 import { getWorkflowTaskStatusLabel } from '../lib/workflows-client';
 import { type DirectoryUser, formatDate } from '../lib/projects-client';
@@ -30,13 +31,16 @@ export function VisualDeltaReviewWorkspace({ projectId, recurringTaskId = '' }: 
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [stagePreview, setStagePreview] = useState<VisualStagePreview | null>(null);
   const sequence = useRef(0);
   const identity = `${projectId}:${user?.id}:${user?.roleCodes.join(',')}:${recurringTaskId}`;
   const currentIdentity = useRef(identity); currentIdentity.current = identity;
   useEffect(() => { void load(); return () => { sequence.current++; }; }, [identity]);
   const month = workspace?.recurringTasks.find(item => item.id === selectedMonthId);
-  const records = month ? workspace?.items.filter(item => item.reviewPeriod === month.plannedDate.slice(0, 7)) ?? [] : [];
+  const actualMode = workspace?.reviewMode === 'ACTUAL';
+  const records = actualMode ? workspace.items.filter(item => item.reviewPeriod === 'TASK') : month ? workspace?.items.filter(item => item.reviewPeriod === month.plannedDate.slice(0, 7)) ?? [] : [];
   const canWrite = Boolean(workspace && canWriteVisualDeltaMonth(user, workspace, month));
+  const canWork = canWrite || Boolean(workspace && records.some(review => canWriteVisualDeltaRecord(user, workspace, review)));
   const selectedReview = records.find(item => item.id === selectedReviewId) ?? records[0] ?? null;
   const ownDraft = records.find(item => item.reviewerId === user?.id && item.workflowTaskId === workspace?.activeTask?.id && !item.submittedAt);
   const ownRecord = records.find(item => item.reviewerId === user?.id && item.workflowTaskId === workspace?.activeTask?.id);
@@ -46,7 +50,7 @@ export function VisualDeltaReviewWorkspace({ projectId, recurringTaskId = '' }: 
     setEditingReviewId(null); setSelectedReviewId(null); setNotice('');
   }, [selectedMonthId, defaultDate, user?.id]);
   async function load() {
-    const request = ++sequence.current; setLoading(true); setError(''); setWorkspace(null);
+    const request = ++sequence.current; setLoading(true); setError(''); setWorkspace(null); setStagePreview(null);
     try {
       const result = await fetchVisualDeltaReviewWorkspace(projectId);
       if (request !== sequence.current) return;
@@ -57,7 +61,7 @@ export function VisualDeltaReviewWorkspace({ projectId, recurringTaskId = '' }: 
   }
   async function mutate(key: string, action: () => Promise<VisualDeltaReviewWorkspaceResponse>, message: string | ((next: VisualDeltaReviewWorkspaceResponse) => string)) {
     if (busy) return;
-    setBusy(key); setError(''); setNotice('');
+    setBusy(key); setError(''); setNotice(''); setStagePreview(null);
     try {
       const result = await action();
       if (identity !== currentIdentity.current) return;
@@ -70,28 +74,36 @@ export function VisualDeltaReviewWorkspace({ projectId, recurringTaskId = '' }: 
   function save() {
     const validation = validateVisualDeltaReviewForm(form);
     if (validation) { setError(validation); return; }
-    if (!month || form.reviewDate.slice(0, 7) !== month.plannedDate.slice(0, 7)) { setError('评审日期必须属于所选月份。'); return; }
+    if (!actualMode && (!month || form.reviewDate.slice(0, 7) !== month.plannedDate.slice(0, 7))) { setError('评审日期必须属于所选历史月份。'); return; }
     void mutate('save', () => editingReviewId ? updateVisualDeltaReview(projectId, editingReviewId, form) : createVisualDeltaReview(projectId, form), '评审记录已保存，请上传必要附件后提交。');
   }
   function edit(review: VisualDeltaReviewRecord) { setEditingReviewId(review.id); setSelectedReviewId(review.id); setForm(toVisualDeltaReviewFormInput(review)); }
-  if (loading) return <section className="team-workspace"><p role="status">正在加载月度评审…</p></section>;
-  if (!workspace) return <section className="team-workspace"><p role="alert">{error || '月度评审未能加载。'}</p><button className="button" onClick={() => void load()}>重新加载</button></section>;
+  async function checkStage() {
+    if (busy || !workspace?.activeTask) return;
+    setBusy('stage-preview'); setError(''); setStagePreview(null);
+    try { const result = await previewVisualDeltaStage(projectId, workspace.activeTask); if (identity === currentIdentity.current) setStagePreview(result); }
+    catch (cause) { if (identity === currentIdentity.current) setError(cause instanceof Error ? cause.message : '阶段核对失败。'); }
+    finally { setBusy(''); }
+  }
+  if (loading) return <section className="team-workspace"><p role="status">正在加载实际目视评审…</p></section>;
+  if (!workspace) return <section className="team-workspace"><p role="alert">{error || '实际评审未能加载。'}</p><button className="button" onClick={() => void load()}>重新加载</button></section>;
   return <section className="team-workspace">
-    <header className="work-heading"><div><h1>月度目视色差评审</h1><p>{workspace.project.code} · {workspace.project.name}</p></div><Link href={`/projects/${projectId}`}>返回项目</Link></header>
-    <div className="work-overview"><label>评审月份 <select value={selectedMonthId} disabled={Boolean(busy)} onChange={event => setSelectedMonthId(event.target.value)}>
+    <header className="work-heading"><div><h1>{actualMode ? '实际目视色差评审' : '历史月度目视评审'}</h1><p>{workspace.project.code} · {workspace.project.name}</p></div><M1RecordReturn projectId={projectId} /></header>
+    <div className="work-overview">{!actualMode ? <><label>历史月份 <select value={selectedMonthId} disabled={Boolean(busy)} onChange={event => setSelectedMonthId(event.target.value)}>
       {recurringTaskId && !workspace.recurringTasks.some(item => item.id === recurringTaskId) ? <option value={recurringTaskId}>任务不存在</option> : null}
       {workspace.recurringTasks.map(item => <option key={item.id} value={item.id}>第 {item.periodIndex} 月 · {item.periodLabel}{item.status === 'COMPLETED' ? ' · 已完成' : ''}</option>)}
-    </select></label><span>已完成 {workspace.recurringTasks.filter(item => item.status === 'COMPLETED').length} / 12</span><button className="button" disabled={Boolean(busy)} onClick={() => void load()}>刷新</button></div>
+    </select></label><span>历史已完成 {workspace.recurringTasks.filter(item => item.status === 'COMPLETED').length} / {workspace.recurringTasks.length}</span></> : <span>按实际抽检日期登记；不生成固定月份义务。</span>}<button className="button" disabled={Boolean(busy)} onClick={() => void load()}>刷新</button></div>
     {error ? <p role="alert" className="error-text">{error}</p> : null}{notice ? <p role="status" className="work-notice">{notice}</p> : null}
-    {!month ? <p className="work-state">{recurringTaskId ? '未找到所选月度任务，请返回我的工作重新选择。' : '进入月度评审阶段后，将生成 12 个月份。'}</p> : <>
-      <p>第 {month.periodIndex} 月 · {month.periodLabel}，计划日期 {formatDate(month.plannedDate)}，期限 {formatDate(month.dueAt)}。</p>
-      {!canWrite ? <p className="work-state">{month.status === 'COMPLETED' ? '本月已完成，评审记录保留可查。' : Date.parse(month.plannedDate) > (workspace.businessTime ? Date.parse(workspace.businessTime) : Date.now()) ? '本月尚未到办理日期。' : '仅在月度评审阶段，由已获准的部门成员办理本人评审记录。'} <Link href="/dashboard">打开我的工作</Link></p> :
-      <section className="page-card"><h2>{editingReviewId ? '编辑本月评审' : '填写本月评审'}</h2>
-        {ownRecord && !editingReviewId ? <p>本月已有本人记录。{ownDraft ? <button className="button" disabled={Boolean(busy)} onClick={() => edit(ownDraft)}>继续填写</button> : '请在下方查看提交结果。'}</p> :
+    {!actualMode && !month ? <p className="work-state">未找到所选历史期次，请返回重新核对；不会自动生成月份。</p> : <>
+      {month ? <p>历史第 {month.periodIndex} 月 · {month.periodLabel}，原计划日期 {formatDate(month.plannedDate)}，原期限 {formatDate(month.dueAt)}。未抽检的空期次无需补做。</p> : null}
+      {month?.status === 'COMPLETED' && canWork ? <p>本期首条签署事实保留；仅继续办理此前已经登记的本人未确认记录，不新增或改派记录。</p> : null}
+      {!canWork ? <p className="work-state">{month?.status === 'COMPLETED' ? '本期已完成，评审记录保留可查。' : month && Date.parse(month.plannedDate) > (workspace.businessTime ? Date.parse(workspace.businessTime) : Date.now()) ? '历史期次尚未到办理日期。' : '仅在当前评审阶段，由已获准的部门成员办理本人实际评审记录。'} <Link href="/dashboard">打开我的工作</Link></p> :
+      <section className="page-card"><h2>{editingReviewId ? '编辑实际评审' : '填写实际评审'}</h2>
+        {ownRecord && !editingReviewId ? <p>当前已有本人记录。{ownDraft ? <button className="button" disabled={Boolean(busy)} onClick={() => edit(ownDraft)}>继续填写</button> : '请在下方查看提交结果。'}</p> :
           <VisualDeltaReviewForm standardOptions={workspace} standardLocked={Boolean(editingReviewId)} value={form} reviewerOptions={user ? [{ id: user.id, name: user.name, departmentId: user.departmentId, departmentName: user.departmentName }] : []}
             disabled={Boolean(busy)} submitLabel={busy === 'save' ? '正在保存…' : '保存评审记录'} onChange={setForm} onSubmit={save} />}
       </section>}
-      <section className="page-card"><h2>本月记录与附件</h2><VisualDeltaReviewHistory user={user} items={records} selectedReviewId={selectedReview?.id ?? null} isReadOnly={!canWrite}
+      <section className="page-card"><h2>实际记录与附件</h2><VisualDeltaReviewHistory user={user} items={records} selectedReviewId={selectedReview?.id ?? null} isReadOnly={!canWork}
         workspace={workspace} actingKey={busy || null} isUploading={busy.startsWith('upload:')} onSelect={setSelectedReviewId} onEdit={edit}
         onSubmitReview={review => void mutate(`submit:${review.id}`, () => submitVisualDeltaReview(projectId, review.id), '评审已提交，请核对后确认通过或驳回。')}
         onApproveReview={review => void mutate(`approve:${review.id}`, () => approveVisualDeltaReview(projectId, review.id), getVisualDeltaReviewApprovalSuccessMessage)}
@@ -99,6 +111,11 @@ export function VisualDeltaReviewWorkspace({ projectId, recurringTaskId = '' }: 
         onUploadAttachment={(review, file) => void mutate(`upload:${review.id}`, () => uploadVisualDeltaReviewAttachment(projectId, review.id, file), '附件已保存。')} /></section>
       {selectedReview ? <section className="page-card"><h2>评审详情</h2><VisualDeltaReviewDetail review={selectedReview} downstreamTask={workspace.downstreamTask} /></section> : null}
     </>}
+    {workspace.activeTask ? <section className="page-card"><h2>明确确认阶段完成</h2><p>记录保存、提交和单条通过均不会完成本阶段。核对所有已登记的实际事项、标准与材料后，才能进入颜色退出/收尾；不会自动退出颜色。</p>
+      <button className="button" disabled={Boolean(busy)} onClick={() => void checkStage()}>核对阶段完成条件</button>
+      {stagePreview ? <>{stagePreview.blockingReasons.length ? <ul>{stagePreview.blockingReasons.map(reason => <li key={reason}>{reason}</li>)}</ul> : <p>当前实际事项已具备阶段完成条件，请明确确认。</p>}
+        <button className="button" disabled={Boolean(busy) || !stagePreview.canComplete} onClick={() => void mutate('stage-confirm', () => confirmVisualDeltaStage(projectId, stagePreview), '本阶段已明确完成，后续颜色退出仍按年度依据与原门禁办理。')}>确认本阶段完成</button></> : null}
+    </section> : null}
   </section>;
 }
 

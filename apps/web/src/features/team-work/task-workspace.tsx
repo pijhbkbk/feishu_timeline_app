@@ -1,9 +1,10 @@
 'use client';
+import { BUSINESS_TIME_ZONE, localDateTimeToIso } from '../../lib/local-datetime';
 
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { M1TaskCompletion } from '../m1/task-completion';
-import { nodeReturnHref } from '../m1/context';
+import { nodeReturnHref, recordEntryHref } from '../m1/context';
 import React, { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useAuth } from '../../components/auth-provider';
 import { API_BASE_URL, apiRequest } from '../../lib/auth-client';
@@ -65,9 +66,13 @@ function TaskWorkForm({ projectId, taskId }: { projectId: string; taskId: string
   }
   function save(event: FormEvent) {
     event.preventDefault(); if (!form.completedWork.trim()) { setError('请填写已完成工作。'); return; }
-    const payload = { progressStatus: form.progressStatus, completedWork: form.completedWork.trim(), nextPlan: form.nextPlan.trim() || null,
-      ...(form.progressStatus === 'BLOCKED' ? { blockerType: 'OTHER', blockerDescription: form.blockerDescription.trim(), expectedResolvedAt: form.expectedResolvedAt ? new Date(form.expectedResolvedAt).toISOString() : null, impactLevel: 'MAY_DELAY' } : {}) };
-    void write('progress', `/v2/tasks/${encodeURIComponent(taskId)}/progress-updates`, payload, JSON.stringify(payload));
+    try {
+      const payload = { progressStatus: form.progressStatus, completedWork: form.completedWork.trim(), nextPlan: form.nextPlan.trim() || null,
+        ...(form.progressStatus === 'BLOCKED' ? { blockerType: 'OTHER', blockerDescription: form.blockerDescription.trim(), expectedResolvedAt: form.expectedResolvedAt ? localDateTimeToIso(form.expectedResolvedAt) : null, impactLevel: 'MAY_DELAY' } : {}) };
+      void write('progress', `/v2/tasks/${encodeURIComponent(taskId)}/progress-updates`, payload, JSON.stringify(payload));
+    } catch (error) {
+      setError(error instanceof Error ? error.message : '请输入有效的北京时间。');
+    }
   }
   function upload(event: FormEvent) {
     event.preventDefault(); if (!file || !materialType) return;
@@ -79,12 +84,13 @@ function TaskWorkForm({ projectId, taskId }: { projectId: string; taskId: string
   if (loading) return <section className="team-workspace"><p role="status">正在加载工作单…</p></section>;
   if (!data) return <section className="team-workspace"><p role="alert">{error || '工作单未能加载。'}</p><button className="button" onClick={() => setRefresh(value => value + 1)}>重新加载</button></section>;
   const business = getR26BusinessRecordAction(data.task.nodeCode, projectId);
+  const businessHref = business ? recordEntryHref(business.href, taskId, search.toString()) + (data.task.nodeCode === 'COLOR_CONSISTENCY_REVIEW' ? '&review=consistency' : '') : '';
   const canUpload = data.availableActions.some(item => item.action === 'UPLOAD_MATERIAL');
-  return <section className="team-workspace task-workspace"><header className="work-heading"><div><h1>{data.task.stepName}</h1><p>{data.task.project.name} · 第 {data.task.roundNo} 轮 · {data.task.owner?.name || '待领取'}</p></div><Link href={returnHref}>返回来源页面</Link></header>
+  return <section className="team-workspace task-workspace"><header className="work-heading"><div><h1>{data.task.stepName}</h1><p>{data.task.project.name} · 第 {data.task.roundNo} 轮 · {data.task.statusLabel} · {data.task.owner?.name || '未指定办理人'}</p></div><Link href={returnHref}>返回来源页面</Link></header>
     {error ? <p role="alert" className="error-text">{error}</p> : null}{notice ? <p role="status" className="work-notice">{notice}</p> : null}
     {data.rework?.requiresReview ? <p role="status" className="work-notice">本轮技术结果已进入返工复核，保留原签署和材料供追溯，不能直接作为新轮次通过依据。</p> : null}
     {data.rework?.isTechnicalRework ? <p className="work-notice">请登记本轮技术记录并补齐材料。原颜色编号、采购和收费事实保留。{data.rework.supersedesTaskId ? <Link href={`/projects/${encodeURIComponent(projectId)}/tasks/${encodeURIComponent(data.rework.supersedesTaskId)}`}>查看上一轮记录</Link> : null}</p> : null}
-    <div className="work-overview">{business ? <Link className="button button-primary" href={business.href}>{business.label}</Link> : null}<M1TaskCompletion task={data.task} onUpdated={() => setRefresh(value => value + 1)} /><button className="work-link" disabled={Boolean(busy)} onClick={() => setRefresh(value => value + 1)}>刷新</button></div>
+    <div className="work-overview">{business ? <Link className="button button-primary" href={businessHref}>{business.label}</Link> : null}<M1TaskCompletion task={data.task} onUpdated={() => setRefresh(value => value + 1)} /><button className="work-link" disabled={Boolean(busy)} onClick={() => setRefresh(value => value + 1)}>刷新</button></div>
     {business ? <p>{business.guidance}</p> : null}
     {data.progressSubmissionEnabled ? <form className="page-card form-grid" onSubmit={save}><h2 className="field-full">填写工作进展</h2>
       <label className="field"><span>本次状态</span><select disabled={Boolean(busy)} value={form.progressStatus} onChange={event => setForm({ ...form, progressStatus: event.target.value as R26ProgressStatus })}>{Object.entries(progressLabels).map(([key, label]) => <option value={key} key={key}>{label}</option>)}</select></label>
@@ -92,14 +98,14 @@ function TaskWorkForm({ projectId, taskId }: { projectId: string; taskId: string
       <label className="field field-full"><span>下一步计划</span><textarea maxLength={2000} rows={2} disabled={Boolean(busy)} value={form.nextPlan} onChange={event => setForm({ ...form, nextPlan: event.target.value })} /></label>
       {form.progressStatus === 'BLOCKED' ? <><label className="field"><span>阻塞原因 *</span><textarea required maxLength={2000} disabled={Boolean(busy)} value={form.blockerDescription} onChange={event => setForm({ ...form, blockerDescription: event.target.value })} /></label><label className="field"><span>预计解决时间 *</span><input required type="datetime-local" disabled={Boolean(busy)} value={form.expectedResolvedAt} onChange={event => setForm({ ...form, expectedResolvedAt: event.target.value })} /></label></> : null}
       <div className="field field-actions"><button className="button button-primary" disabled={Boolean(busy)}>{busy === 'progress' ? '正在保存…' : '保存进展'}</button><span>保存后可继续补充材料，再进行工序完成检查。</span></div>
-    </form> : <p className="work-state">当前为查看模式。办理工作需具备相应角色并领取任务。</p>}
+    </form> : <p className="work-state">当前为只读查看模式，可查看工序材料和办理记录。</p>}
     <section className="page-card"><h2>工序材料</h2><ul>{data.materials.requirements.map(item => <li key={item.id}>{item.name} · {item.status === 'SUBMITTED' ? '已提交' : item.required ? '待补充' : '选填'}{item.currentAttachment ? <> · <a href={`${API_BASE_URL}${item.currentAttachment.downloadUrl}`}>{item.currentAttachment.fileName}</a></> : null}</li>)}</ul>
       {canUpload ? <form className="form-grid" onSubmit={upload}><label className="field"><span>材料类型</span><select disabled={Boolean(busy)} value={materialType} onChange={event => { setMaterialType(event.target.value); setReplacement(''); }}>{data.materials.requirements.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}<option value="其他工序材料">其他工序材料</option></select></label>
         <label className="field"><span>上传方式</span><select disabled={Boolean(busy)} value={replacement} onChange={event => setReplacement(event.target.value)}><option value="">新增材料</option>{data.materials.current.filter(item => item.materialType === materialType).map(item => <option value={item.id} key={item.id}>新版本：{item.fileName}</option>)}</select></label>
         <label className="field field-full"><span>选择文件</span><input type="file" required disabled={Boolean(busy)} onChange={event => setFile(event.target.files?.[0] ?? null)} /></label><button className="button" disabled={Boolean(busy) || !file}>{busy === 'upload' ? '正在上传并检查…' : '上传材料'}</button></form> : null}
       <MaterialHistory key={refresh} taskId={taskId} materials={data.materials} />
     </section>
-    <section className="page-card"><h2>办理记录</h2>{data.progressHistory.length ? <ol>{data.progressHistory.map(item => <li key={item.id}><strong>{progressLabels[item.progressStatus]}</strong> · {item.submittedBy?.name || '系统'} · {new Date(item.createdAt).toLocaleString('zh-CN')}<p>{item.completedWork}</p>{item.nextPlan ? <p>下一步：{item.nextPlan}</p> : null}</li>)}</ol> : <p>还没有工作进展记录。</p>}</section>
+    <section className="page-card"><h2>办理记录</h2>{data.progressHistory.length ? <ol>{data.progressHistory.map(item => <li key={item.id}><strong>{progressLabels[item.progressStatus]}</strong> · {item.submittedBy?.name || '系统'} · {new Date(item.createdAt).toLocaleString('zh-CN', { timeZone: BUSINESS_TIME_ZONE })}<p>{item.completedWork}</p>{item.nextPlan ? <p>下一步：{item.nextPlan}</p> : null}</li>)}</ol> : <p>还没有工作进展记录。</p>}</section>
   </section>;
 }
 

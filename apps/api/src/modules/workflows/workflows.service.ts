@@ -1,9 +1,15 @@
+import { businessCalendarDayStart, businessMonthCalendarRange } from '../../common/business-date';
+import { requireExteriorRectificationComplete } from '../../common/exterior-rectification';
 import { PERSON_PRESENTATION_SELECT, personPresentation } from '../persons/person-profile-read';
 import { PROJECT_DISPLAY_COLOR_SELECT, resolveProjectDisplayColor } from '../../common/project-display-color';
 import { assertApprovedTeamMember } from '../../common/team-membership';
-import { isReworkTask, isTechnicalReworkTask, taskEvidenceIds, ancestorEvidenceIds } from '../../common/workflow-evidence';
+import { isReworkTask, getTrialReworkCompletionIssue, taskEvidenceIds, ancestorEvidenceIds } from '../../common/workflow-evidence';
 import { BusinessClock } from '../../common/business-clock';
-import { requireActiveMonthlyPlan } from '../../common/monthly-review-plan';
+import { resolveVisualReviewPlan } from '../../common/monthly-review-plan';
+import { confirmedVisualReviewIds } from '../../common/visual-review-confirmation';
+import { recordedMonthlyReviewSql, recordedMonthlyReviewIds } from '../../common/monthly-review-applicability';
+import { requireReviewStandardVersion } from '../reviews/review-standard-version';
+import { assertInspectionReviewLink } from '../inspections/inspection-review-link';
 import { assertTeamTaskOperator, withProjectWrite } from '../../common/team-authorization';
 import { notifyTeamTask, resolveTeamAssignment } from '../personnel/team-assignment';
 import {
@@ -66,6 +72,7 @@ import {
 } from './workflow-node.constants';
 import { WorkflowDeadlineService } from './workflow-deadline.service';
 import { WorkflowRecurringService } from './workflow-recurring.service';
+import { readPerformanceArrivalAnchor } from './performance-arrival-anchor';
 
 type WorkflowDbClient = Prisma.TransactionClient | PrismaService;
 
@@ -201,10 +208,10 @@ export class WorkflowsService {
     private readonly activityLogsService: ActivityLogsService,
     notificationQueueService: NotificationQueueService,
     private readonly workflowDeadlineService: WorkflowDeadlineService,
-    private readonly workflowRecurringService: WorkflowRecurringService,
+    workflowRecurringService: WorkflowRecurringService,
     private readonly projectAccessService: ProjectAccessService,
     private readonly businessClock: BusinessClock = new BusinessClock(),
-  ) { void notificationQueueService; }
+  ) { void notificationQueueService; void workflowRecurringService; }
 
   async initializeProjectWorkflow(
     tx: Prisma.TransactionClient,
@@ -436,6 +443,7 @@ export class WorkflowsService {
     }
 
     const recurringTasks = recurringPlan?.tasks ?? [];
+    const sampledPeriods = await recordedMonthlyReviewIds(this.prisma, recurringTasks.map(task => task.id));
 
     return {
       project: {
@@ -461,18 +469,18 @@ export class WorkflowsService {
         totalPeriods: recurringTasks.length,
         completedPeriods: recurringTasks.filter((task) => task.status === RecurringTaskStatus.COMPLETED)
           .length,
-        overduePeriods: recurringTasks.filter((task) => task.status === RecurringTaskStatus.OVERDUE)
+        overduePeriods: recurringTasks.filter((task) => task.status === RecurringTaskStatus.OVERDUE && sampledPeriods.has(task.id))
           .length,
         pendingPeriods: recurringTasks.filter(
           (task) =>
-            task.status === RecurringTaskStatus.PENDING ||
-            task.status === RecurringTaskStatus.IN_PROGRESS,
+            sampledPeriods.has(task.id) && (task.status === RecurringTaskStatus.PENDING ||
+            task.status === RecurringTaskStatus.IN_PROGRESS),
         ).length,
       },
       activeWorkflowTask: activeConsistencyTask
         ? this.toWorkflowTaskSummary(activeConsistencyTask)
         : null,
-      recurringTasks: recurringTasks.map((task) => this.toRecurringTaskSummary(task)),
+      recurringTasks: recurringTasks.map((task) => ({ ...this.toRecurringTaskSummary(task), hasRecordedSampling: sampledPeriods.has(task.id) })),
       recentReviews: latestReviews.map((review) => this.toMonthlyReviewRecordSummary(review)),
     };
   }
@@ -531,7 +539,7 @@ export class WorkflowsService {
         planCode: recurringTask.recurringPlan.planCode,
         status: recurringTask.recurringPlan.status,
       },
-      recurringTask: this.toRecurringTaskSummary(recurringTask),
+      recurringTask: { ...this.toRecurringTaskSummary(recurringTask), hasRecordedSampling: (await recordedMonthlyReviewIds(this.prisma, [recurringTask.id])).has(recurringTask.id) },
       relatedReviews: reviews.map((review) => this.toMonthlyReviewRecordSummary(review)),
     };
   }
@@ -821,7 +829,11 @@ export class WorkflowsService {
       nodeIndex >= 0 && nodeIndex < workflowNodeCodes.length - 1
         ? workflowNodeCodes[nodeIndex + 1]
         : null;
-    const durationRule = this.buildDurationRule(nodeDefinition);
+    const performanceAnchor = detailedTask.nodeCode === WorkflowNodeCode.PERFORMANCE_TEST
+      ? readPerformanceArrivalAnchor(detailedTask.payload) : null;
+    const durationRule = performanceAnchor
+      ? '本轮首次有效到货起算 6 个日历月；月末取目标月最后一天，后续到货不重置'
+      : this.buildDurationRule(nodeDefinition);
     const feeFixedAmount = this.resolveNumericSystemParameter(
       systemParameters,
       'WORKFLOW',
@@ -961,7 +973,8 @@ export class WorkflowsService {
           : null,
       monthlyReviewSummary:
         detailedTask.nodeCode === WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW
-          ? this.buildTaskMonthlyReviewSummary(recurringPlan, systemParameters, now)
+          ? this.buildTaskMonthlyReviewSummary(recurringPlan, systemParameters, now,
+              await recordedMonthlyReviewIds(this.prisma, recurringPlan?.tasks.map(task => task.id) ?? []))
           : null,
       colorExitSummary:
         detailedTask.nodeCode === WorkflowNodeCode.PROJECT_CLOSED
@@ -999,8 +1012,8 @@ export class WorkflowsService {
         currentNodeName: getCurrentNodeName(detailedTask.project.currentNodeCode),
       },
       schedule: {
-        durationType: nodeDefinition?.durationType ?? null,
-        durationValue: nodeDefinition?.durationValue ?? null,
+        durationType: performanceAnchor ? WorkflowDurationType.MONTH_OFFSET : nodeDefinition?.durationType ?? null,
+        durationValue: performanceAnchor ? 6 : nodeDefinition?.durationValue ?? null,
         ruleText: durationRule,
         startedAt: detailedTask.startedAt?.toISOString() ?? detailedTask.createdAt.toISOString(),
         createdAt: detailedTask.createdAt.toISOString(),
@@ -1016,12 +1029,14 @@ export class WorkflowsService {
         overdueDays: this.workflowDeadlineService.getOverdueDays(
           detailedTask.effectiveDueAt ?? detailedTask.dueAt,
           now,
+          detailedTask,
         ),
         isOverdue:
           detailedTask.isActive &&
           this.workflowDeadlineService.getOverdueDays(
             detailedTask.effectiveDueAt ?? detailedTask.dueAt,
             now,
+            detailedTask,
           ) > 0,
         slaStatus: this.resolveTaskSlaStatus(detailedTask, now),
         progressPercent: this.getTaskTimeProgressPercent(detailedTask, now),
@@ -1237,6 +1252,7 @@ export class WorkflowsService {
       ...await this.getPilotProductionCompletionIssues(tx, task),
       ...await this.getTechnicalReworkCompletionIssues(tx, task),
       ...await this.getRegisterStandardCompletionIssues(tx, task),
+      ...await this.getVisualReviewCompletionIssues(tx, task),
     ];
 
     return {
@@ -1308,6 +1324,7 @@ export class WorkflowsService {
     await this.projectAccessService.assertProjectAccess(tx, task.projectId, actor, 'workflow.transition');
     this.assertActorCanOperateTask(task, actor, authorizationSource);
     this.assertTaskCanTransition(task, action);
+    if (task.nodeCode === WorkflowNodeCode.COLOR_CONSISTENCY_REVIEW && action !== WorkflowAction.START) requireExteriorRectificationComplete(task);
 
     if (trustedOptions?.enforceCompletionRequirements) {
       const inspection = await this.inspectTaskCompletionWithExecutor(
@@ -1355,7 +1372,11 @@ export class WorkflowsService {
     }
 
     if (action === WorkflowAction.APPROVE || isWorkflowCompletionAction(action)) {
-      await this.assertMonthlyReviewPeriodsCompleted(tx, task);
+      if (task.nodeCode === WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW) {
+        await this.assertRequiredMaterialsSubmitted(tx, task);
+        const issues = await this.getVisualReviewCompletionIssues(tx, task);
+        if (issues.length) throw new BadRequestException({ code: 'VISUAL_REVIEW_COMPLETION_NOT_MET', message: issues[0], blockingReasons: issues });
+      }
     }
 
     if (action === WorkflowAction.START) {
@@ -1428,11 +1449,6 @@ export class WorkflowsService {
       },
     });
 
-    if (task.nodeCode === WorkflowNodeCode.COLOR_CONSISTENCY_REVIEW &&
-        (action === WorkflowAction.REJECT || action === WorkflowAction.RETURN)) {
-      await this.invalidateTechnicalRound(tx, task, actor, input.comment ?? '一致性评审退回涂料开发');
-    }
-
     const createdTasks = await this.createNextTasks(
       tx,
       task,
@@ -1442,12 +1458,8 @@ export class WorkflowsService {
       nextTemplates,
       trustedOptions?.nextTaskAssignments,
     );
-    const recurringPlan = await this.maybeCreateRecurringPlan(
-      tx,
-      task,
-      updatedTask,
-      createdTasks,
-    );
+    // V1 sampling is recorded as actual inspection activities. Completing mass
+    // production must not manufacture twelve per-color calendar obligations.
 
     if (createdTasks.length === 0) {
       await tx.workflowTransition.create({
@@ -1492,14 +1504,7 @@ export class WorkflowsService {
           isPrimary: createdTask.isPrimary,
           taskRound: createdTask.taskRound,
         })),
-        createdRecurringPlan: recurringPlan
-          ? {
-              id: recurringPlan.plan.id,
-              planCode: recurringPlan.plan.planCode,
-              totalCount: recurringPlan.plan.totalCount,
-              generatedTaskCount: recurringPlan.generatedTaskCount,
-            }
-          : null,
+        createdRecurringPlan: null,
       },
       ...(input.metadata === undefined ? {} : { metadata: input.metadata }),
     });
@@ -1513,39 +1518,6 @@ export class WorkflowsService {
     return getCurrentNodeName(nodeCode);
   }
 
-  /** Caller holds the project lock. Preserve signed history and identity/fee
-   * matters; only technical execution authority is superseded by a 14 return. */
-  private async invalidateTechnicalRound(tx: Prisma.TransactionClient, source: WorkflowTaskWithRelations,
-    actor: AuthenticatedUser, reason: string) {
-    const nodes: WorkflowNodeCode[] = [
-      WorkflowNodeCode.PAINT_DEVELOPMENT, WorkflowNodeCode.SAMPLE_COLOR_CONFIRMATION,
-      WorkflowNodeCode.PAINT_PROCUREMENT, WorkflowNodeCode.STANDARD_BOARD_PRODUCTION,
-      WorkflowNodeCode.BOARD_DETAIL_UPDATE, WorkflowNodeCode.PERFORMANCE_TEST,
-      WorkflowNodeCode.FIRST_UNIT_PRODUCTION_PLAN, WorkflowNodeCode.TRIAL_PRODUCTION, WorkflowNodeCode.CAB_REVIEW,
-    ];
-    // Only the latest execution per affected node; prior rework history is immutable.
-    for (const nodeCode of nodes) {
-      const previous = await tx.workflowTask.findFirst({ where: { workflowInstanceId: source.workflowInstanceId, nodeCode },
-        orderBy: [{ taskRound: 'desc' }, { id: 'desc' }] });
-      if (!previous) continue;
-      const payload = this.asJsonObject(previous.payload);
-      const priorRework = this.asJsonObject(payload.rework as Prisma.JsonValue | undefined);
-      if (priorRework.invalidatedByTaskId) continue;
-      const rework = { invalidatedByTaskId: source.id, applicability: 'REQUIRES_REVIEW', reason };
-      await tx.workflowTask.update({ where: { id: previous.id }, data: {
-        payload: { ...payload, rework } as Prisma.InputJsonObject,
-        ...(previous.isActive ? { status: WorkflowTaskStatus.CANCELLED, isActive: false, assignmentEpoch: { increment: 1 } } : {}),
-      } });
-      await this.activityLogsService.createWithExecutor(tx, { projectId: source.projectId, actorUserId: actor.id,
-        targetType: AuditTargetType.WORKFLOW_TASK, targetId: previous.id, nodeCode, action: 'WORKFLOW_REWORK_REVIEW_REQUIRED',
-        summary: `${previous.nodeName} 的旧结果保留，需按新配方复核。`,
-        beforeData: { status: previous.status, isActive: previous.isActive, assignmentEpoch: previous.assignmentEpoch },
-        afterData: { status: previous.isActive ? WorkflowTaskStatus.CANCELLED : previous.status, isActive: false,
-          assignmentEpoch: previous.assignmentEpoch + Number(previous.isActive), ...rework },
-      });
-    }
-  }
-
   private async createNextTasks(
     tx: Prisma.TransactionClient,
     sourceTask: WorkflowTaskWithRelations,
@@ -1557,9 +1529,10 @@ export class WorkflowsService {
   ) {
     void trustedAssignments; // Assignment is always resolved from current team roles.
     const sourcePayload = this.asJsonObject(sourceTask.payload);
-    const technicalReworkSourceTaskId = sourceTask.nodeCode === WorkflowNodeCode.COLOR_CONSISTENCY_REVIEW &&
-      (action === WorkflowAction.REJECT || action === WorkflowAction.RETURN) ? sourceTask.id :
-      typeof sourcePayload.technicalReworkSourceTaskId === 'string' ? sourcePayload.technicalReworkSourceTaskId : undefined;
+    // Preserve already-existing technical ancestry; exterior correction must not start a paint round.
+    const technicalReworkSourceTaskId = typeof sourcePayload.technicalReworkSourceTaskId === 'string' ? sourcePayload.technicalReworkSourceTaskId : undefined;
+    const exteriorCorrection = sourceTask.nodeCode === WorkflowNodeCode.COLOR_CONSISTENCY_REVIEW &&
+      (action === WorkflowAction.REJECT || action === WorkflowAction.RETURN);
     const createdTasks: Prisma.WorkflowTaskGetPayload<{
       select: {
         id: true;
@@ -1573,6 +1546,12 @@ export class WorkflowsService {
     for (const template of templates) {
       const nextNodeMeta = getWorkflowNodeMeta(template.nodeCode);
       const isPrimary = template.isPrimary ?? nextNodeMeta.isPrimaryTask;
+      const performanceAnchor = template.nodeCode === WorkflowNodeCode.PERFORMANCE_TEST
+        ? readPerformanceArrivalAnchor(sourceTask.payload) : null;
+      if (template.nodeCode === WorkflowNodeCode.PERFORMANCE_TEST &&
+          (sourceTask.nodeCode !== WorkflowNodeCode.PAINT_PROCUREMENT || !performanceAnchor || performanceAnchor.procurementTaskId !== sourceTask.id)) {
+        throw new ConflictException('缺少当前采购轮次的性能试验到货起算依据，请核对后重试。');
+      }
 
       // One identity and one fee matter per project, including completed matters.
       if (template.nodeCode === WorkflowNodeCode.COLOR_NUMBERING || template.nodeCode === WorkflowNodeCode.DEVELOPMENT_ACCEPTANCE) {
@@ -1611,7 +1590,8 @@ export class WorkflowsService {
       });
       const taskSchedule = await this.workflowDeadlineService.buildTaskSchedule(tx, {
         nodeCode: template.nodeCode,
-        startAt: this.businessClock.now(),
+        startAt: performanceAnchor ? new Date(performanceAnchor.arrivalDate) : this.businessClock.now(),
+        ...(performanceAnchor ? { manualDueAt: new Date(performanceAnchor.dueAt) } : {}),
       });
       const assignment = await resolveTeamAssignment(tx, template.nodeCode);
 
@@ -1621,7 +1601,7 @@ export class WorkflowsService {
           projectId: sourceTask.projectId,
           taskNo: this.buildTaskNo(),
           nodeCode: template.nodeCode,
-          nodeName: nextNodeMeta.name,
+          nodeName: exteriorCorrection ? '外饰件厂家整改与整车复审' : nextNodeMeta.name,
           stepCode: taskSchedule.stepCode,
           taskRound: (previousTask?.taskRound ?? 0) + 1,
           status: WorkflowTaskStatus.READY,
@@ -1649,8 +1629,10 @@ export class WorkflowsService {
             assignmentSource: assignment.assigneeUserId ? 'SINGLE_ELIGIBLE_MEMBER' : 'UNASSIGNED',
             requiredRoleCode: assignment.requiredRoleCode,
             collaboratorUserIds: [], reviewerUserIds: [],
+            ...(performanceAnchor ? { performanceArrivalAnchor: performanceAnchor } : {}),
             ...(previousTask?.id ? { supersedesTaskId: previousTask.id } : {}),
             ...(technicalReworkSourceTaskId ? { technicalReworkSourceTaskId } : {}),
+            ...(exteriorCorrection ? { exteriorRectification: { status: 'PENDING', sourceTaskId: sourceTask.id } } : {}),
             ...(taskSchedule.defaultChargeAmount
               ? { defaultChargeAmount: taskSchedule.defaultChargeAmount }
               : {}),
@@ -1930,6 +1912,10 @@ export class WorkflowsService {
   private async getTechnicalReworkCompletionIssues(tx: Prisma.TransactionClient,
     task: Pick<WorkflowTaskWithRelations, 'id' | 'workflowInstanceId' | 'nodeCode' | 'nodeName' | 'projectId' | 'payload'>) {
     if (!isReworkTask(task) && task.nodeCode !== WorkflowNodeCode.PAINT_DEVELOPMENT) return [];
+    if (task.nodeCode === WorkflowNodeCode.TRIAL_PRODUCTION) {
+      const issue = await getTrialReworkCompletionIssue(tx, task);
+      return issue ? [issue] : [];
+    }
     const ids = await taskEvidenceIds(tx, task.projectId, task.id);
     const where = { projectId: task.projectId, id: { in: ids } }, select = { id: true } as const;
     let record: { id: string } | null | undefined;
@@ -1947,36 +1933,50 @@ export class WorkflowsService {
         record = await tx.performanceTest.findFirst({ where: { ...where, status: 'SUBMITTED', result: { not: null } }, select }); break;
       case WorkflowNodeCode.FIRST_UNIT_PRODUCTION_PLAN:
         record = await tx.productionPlan.findFirst({ where: { ...where, planType: 'FIRST_UNIT', status: { in: ['PLANNED', 'IN_PROGRESS', 'COMPLETED'] } }, select }); break;
-      case WorkflowNodeCode.TRIAL_PRODUCTION:
-        record = await tx.trialProduction.findFirst({ where: { ...where, status: { in: ['PASSED', 'FAILED'] }, result: { not: null },
-          ...(isTechnicalReworkTask(task) ? { productionPlan: { planType: 'FIRST_UNIT', id: { in: await ancestorEvidenceIds(tx, task, WorkflowNodeCode.FIRST_UNIT_PRODUCTION_PLAN) }, status: { in: ['PLANNED', 'IN_PROGRESS', 'COMPLETED'] as ProductionPlanStatus[] } } } : {}) }, select }); break;
       default: return [];
     }
     return record ? [] : [`${task.nodeName} 的旧轮次结果需复核，请登记本轮有效记录后再完成。原采购与收费事实保留。`];
   }
 
-  private async assertMonthlyReviewPeriodsCompleted(
-    tx: Prisma.TransactionClient,
-    task: Pick<WorkflowTaskWithRelations, 'id' | 'projectId' | 'nodeCode' | 'nodeName'>,
+  private async getVisualReviewCompletionIssues(
+    tx: WorkflowDbClient,
+    task: Pick<WorkflowTaskWithRelations, 'id' | 'projectId' | 'nodeCode' | 'project' | 'workflowInstanceId' | 'payload'>,
   ) {
-    if (task.nodeCode !== WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW) {
-      return;
+    if (task.nodeCode !== WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW) return [];
+    const plan = await resolveVisualReviewPlan(tx, task.projectId);
+    const issues: string[] = [];
+    if (plan) {
+      const pending = await tx.$queryRaw<Array<{ count: number }>>(Prisma.sql`
+        SELECT count(*)::int AS count FROM recurring_tasks t
+        WHERE t."recurringPlanId" = ${plan.id} AND t."projectId" = ${task.projectId}
+          AND t.status IN ('PENDING','IN_PROGRESS','OVERDUE')
+          AND ${recordedMonthlyReviewSql(Prisma.sql`t.id`, Prisma.sql`t."projectId"`)}`);
+      if (pending[0]?.count) issues.push(`尚有 ${pending[0].count} 个已登记实际抽检的历史期次未完成；未抽检的空期次不要求补做。`);
     }
-
-    const recurringPlan = await requireActiveMonthlyPlan(tx, task.projectId);
-
-    const completedPeriods = await tx.recurringTask.count({
-      where: {
-        recurringPlanId: recurringPlan.id,
-        status: RecurringTaskStatus.COMPLETED,
-      },
+    const records = await tx.reviewRecord.findMany({
+      where: { projectId: task.projectId, workflowTaskId: task.id, reviewType: 'VISUAL_COLOR_DIFFERENCE_REVIEW' },
+      select: { id: true, standardVersionId: true, reviewedAt: true, reviewPeriod: true, attachmentId: true },
+      orderBy: { id: 'asc' }, take: 101,
     });
-
-    if (completedPeriods < recurringPlan.totalCount) {
-      throw new BadRequestException(
-        `${task.nodeName} 尚有 ${recurringPlan.totalCount - completedPeriods} 个月度评审未完成（${completedPeriods}/${recurringPlan.totalCount}）。`,
-      );
+    if (records.length > 100) return [...issues, '本阶段评审记录超出有界读取上限，请核对历史记录。'];
+    if (!records.length) return [...issues, '请先保存、提交并明确确认本阶段的实际评审记录。'];
+    const confirmed = await confirmedVisualReviewIds(tx, task.projectId, records.map(record => record.id));
+    const pendingRecords = records.filter(record => !confirmed.has(record.id));
+    if (pendingRecords.length) issues.push(`尚有 ${pendingRecords.length} 条本阶段实际评审记录未提交或未确认通过。`);
+    for (const record of records) {
+      if ((record.reviewPeriod === 'TASK') !== !plan) {
+        issues.push('评审模式与历史计划不一致；保留原记录，不能自动改派。');
+        break;
+      }
+      if (!confirmed.has(record.id)) continue;
+      await requireReviewStandardVersion(tx, task.project, task, record.standardVersionId);
+      await assertInspectionReviewLink(tx, { reviewId: record.id, projectId: task.projectId, reviewedAt: record.reviewedAt, standardVersionId: record.standardVersionId });
+      if (record.attachmentId && !await tx.attachment.findFirst({ where: {
+        id: record.attachmentId, projectId: task.projectId, entityType: 'REVIEW_RECORD',
+        entityId: record.id, scanStatus: 'CLEAN', isDeleted: false,
+      }, select: { id: true } })) issues.push('已确认评审的附件不可用或安全检查未通过，请核对原材料。');
     }
+    return issues;
   }
 
   private assertActorCanOperateTask(
@@ -2360,7 +2360,7 @@ export class WorkflowsService {
       case WorkflowNodeCode.DEVELOPMENT_ACCEPTANCE:
         return '开发收费记录';
       case WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW:
-        return '12 个月色差评审台账';
+        return '实际目视色差评审与历史台账';
       case WorkflowNodeCode.PROJECT_CLOSED:
         return '颜色退出记录';
       default:
@@ -2437,16 +2437,12 @@ export class WorkflowsService {
       valueNumber: Prisma.Decimal | null;
     }>,
     now: Date,
+    sampledPeriods: ReadonlySet<string> = new Set(),
   ) {
-    const totalCount = recurringPlan?.totalCount ?? this.resolveNumericSystemParameter(
-      systemParameters,
-      'WORKFLOW',
-      'MONTHLY_REVIEW_TOTAL_COUNT',
-      12,
-    );
+    void systemParameters;
+    const totalCount = recurringPlan?.totalCount ?? 0;
     const tasks = recurringPlan?.tasks ?? [];
-    const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
-    const nextMonthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
+    const { start: monthStart, end: nextMonthStart } = businessMonthCalendarRange(now);
     const currentMonthTask =
       tasks.find(
         (task) =>
@@ -2459,11 +2455,11 @@ export class WorkflowsService {
       planCode: recurringPlan?.planCode ?? null,
       totalPeriods: totalCount,
       completedPeriods: tasks.filter((task) => task.status === RecurringTaskStatus.COMPLETED).length,
-      overduePeriods: tasks.filter((task) => task.status === RecurringTaskStatus.OVERDUE).length,
-      progressText: `已完成 ${
+      overduePeriods: tasks.filter((task) => task.status === RecurringTaskStatus.OVERDUE && sampledPeriods.has(task.id)).length,
+      progressText: !recurringPlan ? '按实际抽检记录；无固定月度义务' : `历史月度已完成 ${
         tasks.filter((task) => task.status === RecurringTaskStatus.COMPLETED).length
       } / ${totalCount}`,
-      currentMonthTask: currentMonthTask
+      currentMonthTask: currentMonthTask && sampledPeriods.has(currentMonthTask.id)
         ? {
             id: currentMonthTask.id,
             periodLabel: currentMonthTask.periodLabel,
@@ -2473,7 +2469,7 @@ export class WorkflowsService {
             dueAt: currentMonthTask.dueAt?.toISOString() ?? null,
           }
         : null,
-      ledgerPath: '/monthly-reviews',
+      ledgerPath: recurringPlan ? '/monthly-reviews' : '/inspections',
     };
   }
 
@@ -2568,6 +2564,8 @@ export class WorkflowsService {
 
   private resolveTaskSlaStatus(
     task: {
+      nodeCode?: WorkflowNodeCode;
+      payload?: Prisma.JsonValue | null;
       isActive: boolean;
       status: WorkflowTaskStatus;
       dueAt: Date | null;
@@ -2588,7 +2586,7 @@ export class WorkflowsService {
 
     if (
       task.isActive &&
-      this.workflowDeadlineService.getOverdueDays(task.effectiveDueAt ?? task.dueAt, now) > 0
+      this.workflowDeadlineService.getOverdueDays(task.effectiveDueAt ?? task.dueAt, now, task) > 0
     ) {
       return '已逾期';
     }
@@ -3067,47 +3065,9 @@ export class WorkflowsService {
     const month = plannedDate.getUTCMonth();
 
     return {
-      periodStart: new Date(Date.UTC(year, month, 1, 0, 0, 0, 0)),
-      periodEnd: new Date(Date.UTC(year, month + 1, 1, 0, 0, 0, 0)),
+      periodStart: businessCalendarDayStart(new Date(Date.UTC(year, month, 1))),
+      periodEnd: businessCalendarDayStart(new Date(Date.UTC(year, month + 1, 1))),
     };
   }
 
-  private async maybeCreateRecurringPlan(
-    tx: Prisma.TransactionClient,
-    sourceTask: WorkflowTaskWithRelations,
-    updatedTask: {
-      nodeCode: WorkflowNodeCode;
-      status: WorkflowTaskStatus;
-      completedAt: Date | null;
-    },
-    createdTasks: Array<{
-      id: string;
-      nodeCode: WorkflowNodeCode;
-      nodeName: string;
-      isPrimary: boolean;
-      taskRound: number;
-    }>,
-  ) {
-    if (
-      sourceTask.nodeCode !== WorkflowNodeCode.MASS_PRODUCTION ||
-      updatedTask.status !== WorkflowTaskStatus.COMPLETED
-    ) {
-      return null;
-    }
-
-    const monthlyReviewTask = createdTasks.find(
-      (task) => task.nodeCode === WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW,
-    );
-
-    if (!monthlyReviewTask) {
-      return null;
-    }
-
-    return this.workflowRecurringService.ensureMonthlyReviewPlan(tx, {
-      projectId: sourceTask.projectId,
-      sourceWorkflowTaskId: monthlyReviewTask.id,
-      startAt: updatedTask.completedAt ?? this.businessClock.now(),
-
-    });
-  }
 }

@@ -7,3 +7,177 @@ regexTarget = "match"
 regexes = [
   '''API dist SHA-256:\s*`[0-9a-f]{64}`''',
 ]
+
+# Independently reviewed public build/file digests and commit identities from the
+# 2026-10-16 consolidation. Match exact path AND exact line under generic-api-key;
+# other values, files and rules remain blocking. No history or file is excluded.
+
+[[allowlists]]
+description = "Reviewed integrity metadata: docs/acceptance/NATIVE_ACCOUNTS_20260912/browser-resume-20260914.md"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "line"
+paths = ['''(?:^|/)docs/acceptance/NATIVE_ACCOUNTS_20260912/browser\-resume\-20260914\.md$'''
+]
+regexes = [
+  '''^[ \t\r\n]*- Runtime observed by fresh HTTPS Web/API metadata: `f2da3629e13b2653aae8879c98992877d5ef4170`; tree `435fd8f66beef2760ce02388b0948cea35cee55e`\.[ \t\r\n]*$''',
+]
+
+[[allowlists]]
+description = "Reviewed integrity metadata: docs/acceptance/NATIVE_LOGIN_EXPERIENCE_20260918/production-final-readback.json"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "line"
+paths = ['''(?:^|/)docs/acceptance/NATIVE_LOGIN_EXPERIENCE_20260918/production\-final\-readback\.json$'''
+]
+regexes = [
+  '''^[ \t\r\n]*"timeline-native-api\.service": "a5600c9b4f98c4a8852cb3e79ab395033fc685bd235e87277689f4da364412d1",[ \t\r\n]*$''',
+]
+
+[[allowlists]]
+description = "Reviewed integrity metadata: docs/acceptance/NATIVE_LOGIN_RELEASE_20260918/operations-continuation-preliminary.json"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "line"
+paths = ['''(?:^|/)docs/acceptance/NATIVE_LOGIN_RELEASE_20260918/operations\-continuation\-preliminary\.json$'''
+]
+regexes = [
+  '''^[ \t\r\n]*"apps/api/src/modules/auth/dto/native-auth\.dto\.ts": "04efd252a5c6321bb14d01688e7200d4bc57231f355becab7d7d961b90e0c9d8",[ \t\r\n]*$''',
+  '''^[ \t\r\n]*"apps/api/src/modules/auth/native-auth\.rules\.ts": "2ba258195c5fa1096defae84f2a66aefedce4771f27f9a0a868728baa0b50257",[ \t\r\n]*$''',
+  '''^[ \t\r\n]*"apps/api/src/modules/auth/native-auth\.service\.ts": "c1801013a3a7ce2fd334afb6ca281d9c59d9127f17e2384dd8e8820f26989b12",[ \t\r\n]*$''',
+  '''^[ \t\r\n]*"apps/api/src/modules/auth/native-password\.service\.spec\.ts": "b5bec8a74a94196c879b354b468505e916ab2960b90608e054aa3aff4ff458f6",[ \t\r\n]*$''',
+  '''^[ \t\r\n]*"apps/web/src/lib/native-password-policy\.test\.ts": "fc7a1f034258da3aa3326397131538416ecfb8b8c2750cfe74e399fab3ed0117",[ \t\r\n]*$''',
+  '''^[ \t\r\n]*"apps/web/src/lib/native-password-policy\.ts": "0e9863a37540487cf51afbee371b65c6d5f3f1078dd237cdcce43ba796b97f25",[ \t\r\n]*$''',
+  '''^[ \t\r\n]*"timeline-native-api\.service": "a5600c9b4f98c4a8852cb3e79ab395033fc685bd235e87277689f4da364412d1",[ \t\r\n]*$''',
+]
+
+[[allowlists]]
+description = "Reviewed integrity metadata: docs/acceptance/NATIVE_LOGIN_RELEASE_20260918/operations-final-binding-541b3dfff682.json"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "line"
+paths = ['''(?:^|/)docs/acceptance/NATIVE_LOGIN_RELEASE_20260918/operations\-final\-binding\-541b3dfff682\.json$'''
+]
+regexes = [
+  '''^[ \t\r\n]*"apps/api/src/modules/auth/dto/native-auth\.dto\.ts": "32a1aa782ea106d3679bb9185adb4ba1a8983be08d998623ac95fa41bef516c3",[ \t\r\n]*$''',
+  '''^[ \t\r\n]*"apps/api/src/modules/auth/native-auth\.rules\.ts": "2ba258195c5fa1096defae84f2a66aefedce4771f27f9a0a868728baa0b50257",[ \t\r\n]*$''',
+  '''^[ \t\r\n]*"apps/api/src/modules/auth/native-auth\.service\.ts": "c1801013a3a7ce2fd334afb6ca281d9c59d9127f17e2384dd8e8820f26989b12",[ \t\r\n]*$''',
+  '''^[ \t\r\n]*"apps/api/src/modules/auth/native-password\.service\.spec\.ts": "9754dbe7316ec72b61467d68c6ac3c4a3bc667a3dc554c59a8c064023b2e99f7",[ \t\r\n]*$''',
+  '''^[ \t\r\n]*"apps/web/src/lib/native-password-policy\.test\.ts": "fc7a1f034258da3aa3326397131538416ecfb8b8c2750cfe74e399fab3ed0117",[ \t\r\n]*$''',
+  '''^[ \t\r\n]*"apps/web/src/lib/native-password-policy\.ts": "0e9863a37540487cf51afbee371b65c6d5f3f1078dd237cdcce43ba796b97f25",[ \t\r\n]*$''',
+]
+
+[[allowlists]]
+description = "Reviewed integrity metadata: docs/acceptance/NATIVE_RELEASE_20260917/final-ops-identity-review-d16dc78.json"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "line"
+paths = ['''(?:^|/)docs/acceptance/NATIVE_RELEASE_20260917/final\-ops\-identity\-review\-d16dc78\.json$'''
+]
+regexes = [
+  '''^[ \t\r\n]*"timeline-native-api\.service": "a5600c9b4f98c4a8852cb3e79ab395033fc685bd235e87277689f4da364412d1",[ \t\r\n]*$''',
+]
+
+[[allowlists]]
+description = "Reviewed integrity metadata: scripts/deploy/gce-host/build_native_r28_bundle.py"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "line"
+paths = ['''(?:^|/)scripts/deploy/gce\-host/build_native_r28_bundle\.py$'''
+]
+regexes = [
+  '''^[ \t\r\n]*'timeline-native-api\.service': 'a5600c9b4f98c4a8852cb3e79ab395033fc685bd235e87277689f4da364412d1',[ \t\r\n]*$''',
+]
+
+[[allowlists]]
+description = "Reviewed integrity metadata: scripts/deploy/gce-host/build_native_r28_patch_bundle.py"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "line"
+paths = ['''(?:^|/)scripts/deploy/gce\-host/build_native_r28_patch_bundle\.py$'''
+]
+regexes = [
+  '''^[ \t\r\n]*'timeline-native-api\.service': 'a5600c9b4f98c4a8852cb3e79ab395033fc685bd235e87277689f4da364412d1',[ \t\r\n]*$''',
+]
+
+[[allowlists]]
+description = "Reviewed integrity metadata: scripts/deploy/gce-host/build_native_release_bundle.py"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "line"
+paths = ['''(?:^|/)scripts/deploy/gce\-host/build_native_release_bundle\.py$'''
+]
+regexes = [
+  '''^[ \t\r\n]*'timeline-native-api\.service': 'a5600c9b4f98c4a8852cb3e79ab395033fc685bd235e87277689f4da364412d1',[ \t\r\n]*$''',
+]
+
+[[allowlists]]
+description = "Reviewed integrity metadata: scripts/deploy/gce-host/native_release_target_20260918.py"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "line"
+paths = ['''(?:^|/)scripts/deploy/gce\-host/native_release_target_20260918\.py$'''
+]
+regexes = [
+  '''^[ \t\r\n]*'apps/api/src/modules/auth/dto/native-auth\.dto\.ts': '32a1aa782ea106d3679bb9185adb4ba1a8983be08d998623ac95fa41bef516c3',[ \t\r\n]*$''',
+  '''^[ \t\r\n]*'apps/api/src/modules/auth/native-auth\.rules\.ts': '2ba258195c5fa1096defae84f2a66aefedce4771f27f9a0a868728baa0b50257',[ \t\r\n]*$''',
+  '''^[ \t\r\n]*'apps/api/src/modules/auth/native-auth\.service\.ts': 'c1801013a3a7ce2fd334afb6ca281d9c59d9127f17e2384dd8e8820f26989b12',[ \t\r\n]*$''',
+  '''^[ \t\r\n]*'apps/api/src/modules/auth/native-password\.service\.spec\.ts': '9754dbe7316ec72b61467d68c6ac3c4a3bc667a3dc554c59a8c064023b2e99f7',[ \t\r\n]*$''',
+  '''^[ \t\r\n]*'apps/web/src/lib/native-password-policy\.test\.ts': 'fc7a1f034258da3aa3326397131538416ecfb8b8c2750cfe74e399fab3ed0117',[ \t\r\n]*$''',
+  '''^[ \t\r\n]*'apps/web/src/lib/native-password-policy\.ts': '0e9863a37540487cf51afbee371b65c6d5f3f1078dd237cdcce43ba796b97f25',[ \t\r\n]*$''',
+]
+
+[[allowlists]]
+description = "Reviewed integrity metadata: scripts/deploy/gce-host/native_release_target_owner_20260918.py"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "line"
+paths = ['''(?:^|/)scripts/deploy/gce\-host/native_release_target_owner_20260918\.py$'''
+]
+regexes = [
+  '''^[ \t\r\n]*'apps/api/src/modules/auth/native-auth\.service\.ts': '2044fb2a4bd7078ca58dea8bee4d5d79d495bf85640a61b65d971fb86fc18012',[ \t\r\n]*$''',
+  '''^[ \t\r\n]*'apps/web/src/components/password-field\.tsx': 'ac26657daafcf976beac4d3cf8567693a3dc69d7791c001b4b2ef57e076d14b1',[ \t\r\n]*$''',
+  '''^[ \t\r\n]*'apps/web/src/lib/auth-navigation\.test\.ts': '5d517c9d3bb3750afca621cd9d5333c68c36970205ffc8203c969cdce81dbec1',[ \t\r\n]*$''',
+  '''^[ \t\r\n]*'apps/web/src/lib/auth-navigation\.ts': 'dee153a3ecf3a90ce1f43ca40230adc74d5cb8a8469e197acec820edbe6ed5e7'\}\}[ \t\r\n]*$''',
+]
+
+[[allowlists]]
+description = "Reviewed integrity metadata: scripts/deploy/gce-host/native_release_target_r28.py"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "line"
+paths = ['''(?:^|/)scripts/deploy/gce\-host/native_release_target_r28\.py$'''
+]
+regexes = [
+  '''^[ \t\r\n]*"apps/api/src/modules/auth/auth\.constants\.ts": "8fc54b1fee0ece1694b73cea6f9653c58f34afc7b5e5e6483b7a5f3655f6d432",[ \t\r\n]*$''',
+  '''^[ \t\r\n]*"apps/api/src/modules/auth/native-auth\.controller\.ts": "10177806bb679c7f3e0a2deedccd70305687b466703cf2882d39138fc853f1b0",[ \t\r\n]*$''',
+  '''^[ \t\r\n]*"apps/api/src/modules/auth/native-auth\.service\.ts": "86fad8e278d8d0efbbcb084e1320a360f1a1b1ce6e242a0761eca86975a29a5c",[ \t\r\n]*$''',
+  '''^[ \t\r\n]*"apps/api/src/modules/auth/project-access\.service\.spec\.ts": "2e319b292d3fbc1f193b1ffb1c4cc50d81f2949e59c8cc1b680a6df9351d96c7",[ \t\r\n]*$''',
+  '''^[ \t\r\n]*"apps/api/src/modules/auth/project-access\.service\.ts": "a6c36e6fd1bb0875e68b28ea1b3fadba46b0e30859ac9e5d532b8263f80bb231",[ \t\r\n]*$''',
+  '''^[ \t\r\n]*"apps/web/src/lib/auth-client\.ts": "ddf56334ed73093326abe9818a95a18f42700a46265a114bd2878e47c080e2a9",[ \t\r\n]*$''',
+  '''^[ \t\r\n]*"apps/web/src/lib/auth-navigation\.ts": "8272dc311e1aebf896720fe9d0c361af2b21d4841cb4fb32805d6b053659ea19",[ \t\r\n]*$''',
+  '''^[ \t\r\n]*"apps/web/src/lib/production-role-access\.test\.ts": "8c06b4c0d79f50273d21c69e803f830c5a40ff566a50c733d280ec4cc541fee2",[ \t\r\n]*$''',
+]
+
+[[allowlists]]
+description = "Reviewed integrity metadata: security/R27A_EVIDENCE_BINDING.md"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "line"
+paths = ['''(?:^|/)security/R27A_EVIDENCE_BINDING\.md$'''
+]
+regexes = [
+  '''^[ \t\r\n]*\| API `feishu-timeline-api:r27a-f5edacd4e302-arm64` \| `sha256:b969d9faa5394f7f2d4360dc7aaf94d15e8addba0bc545056671418030a62fd1` \| 107843796 \| `0/0/0/0/0` \| `a59c90ff06a6a20df671b0c6716599adee6867214d306ef56e0bfe3503d3ffcf` \| 155 \| `407461c4843370c4030e1d3de1819f8f73eba13d9558d19c2158fb6ab79c30a0` \|[ \t\r\n]*$''',
+  '''^[ \t\r\n]*\| API ops `feishu-timeline-api-ops:r27a-f5edacd4e302-arm64` \| `sha256:12197a6ea1d5ac22d36c0621b8cd00b3c47805ba315c00a62ac84b9aa058a07e` \| 147257676 \| `0/0/0/0/0` \| `8786ff6d79e102637823f25ac726ab473ed4b569622dd3272707e9abe9092282` \| 62 \| `c84fb624baed5569403756829c50ce999c6063c5bebb9a0365dc18365156e928` \|[ \t\r\n]*$''',
+]
+
+[[allowlists]]
+description = "Reviewed exact workbook acceptance runtime commit metadata"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "line"
+paths = ['''(?:^|/)docs/acceptance/ROUTE_ACCEPTANCE_MATRIX\.md$''']
+regexes = [
+  '''^[ \t\r\n]*\| E19 \| \[readback\.json\]\(\.\./\.\./var/truck\-color\-v1\-20261020/a09\-source/readback\.json\) SHA256 `cdf7cf1c86d52ade8408c8092d692146a4b5e81a513f78d4b9f0c0a68d3d73bd` \| \{"contextApiCommit":"e0870e8f4d919496d0161646ccc2c1aa28cd7822","bindingLimit":"record itself lacks runtime identity; nearest documented runtime context only"\} \| 2026\-10\-20T08:03:05\.046Z \| owned local synthetic materials_login_return_20261020_r01; actual parser/CLI/CLEAN; browser not implied；2sheet/10source rows→4colors, source identities/source hash retained \|[ \t\r\n]*$''',
+  '''^[ \t\r\n]*\| E24 \| \[a13\-report\-readback\.json\]\(\.\./\.\./var/truck\-color\-v1\-20261020/a13\-report\-readback\.json\) SHA256 `cdb25e3d4b70c9b37181d57c078949a2d131b0a0b8551fa7631c9890dec350be` \| \{"apiCommit":"e0870e8f4d919496d0161646ccc2c1aa28cd7822"\} \| 2026\-10\-20T09:49:04\.793Z \| 3490 GUI\+readback, Web development overlay; CDP buffer truncated；missing attachment rejects; PDF upload/submit/read\-only/refresh; performance complete button left unclicked \|[ \t\r\n]*$''',
+]

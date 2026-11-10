@@ -1,6 +1,7 @@
 'use client';
+import { toBusinessDateInputValue } from '../lib/local-datetime';
 
-import Link from 'next/link';
+import { M1RecordLink as Link, M1RecordReturn } from '../features/m1/record-return';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 import { useAuth } from './auth-provider';
@@ -553,9 +554,7 @@ export function PilotProductionWorkspace({
             >
               {isRefreshing ? '刷新中…' : '刷新'}
             </button>
-            <Link href={`/projects/${projectId}/workflow`} className="button button-secondary">
-              查看流程
-            </Link>
+            <M1RecordReturn projectId={projectId} />
           </div>
         </div>
         <div className="summary-grid">
@@ -1367,5 +1366,5 @@ function toDateInputValue(value: string | null | undefined) {
     return '';
   }
 
-  return value.slice(0, 10);
+  return toBusinessDateInputValue(value);
 }

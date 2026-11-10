@@ -67,7 +67,7 @@ function reviewRecord(
     attachmentId: null,
     reviewType,
     reviewRound: 1,
-    reviewPeriod: 'TASK',
+    reviewPeriod: reviewType === ReviewType.VISUAL_COLOR_DIFFERENCE_REVIEW ? '2026-08' : 'TASK',
     result: ReviewResult.APPROVED,
     comment: '评审通过',
     conditionNote: null,
@@ -118,6 +118,7 @@ function workspaceDb(input?: {
   recurringTasks?: unknown[];
   recurringPlans?: unknown[];
   attachmentRows?: unknown[];
+  confirmedReviewIds?: string[];
 }) {
   const reviewFindMany = vi.fn().mockResolvedValue(input?.reviews ?? []);
   const recurringFindMany = vi
@@ -141,6 +142,8 @@ function workspaceDb(input?: {
   const queryRaw = vi.fn(async (query: { strings?: readonly string[] }) => {
     const sql = query.strings?.join('') ?? '';
     if (sql.includes('monthly_plan_integrity')) return [monthlyPlanRow()];
+    if (sql.includes('visual_review_continuation')) return [];
+    if (sql.includes('SELECT r.id FROM review_records r')) return (input?.confirmedReviewIds ?? []).map(id => ({ id }));
     if (sql.includes('CHAR_LENGTH')) {
       return sourceQuery(query);
     }
@@ -158,6 +161,7 @@ function workspaceDb(input?: {
     capacityQuery,
     db: {
       project: { findUnique: vi.fn().mockResolvedValue(project) },
+      workflowInstance: { findFirst: vi.fn().mockResolvedValue(null) },
       workflowTask: { findFirst: vi.fn().mockResolvedValue(null) },
       trialProduction: { findFirst: vi.fn().mockResolvedValue(null) },
       reviewRecord: { findMany: reviewFindMany },
@@ -240,6 +244,7 @@ function nonCreateWriteHarness(input: {
   const workspaceTx = {
     $queryRaw: queryRaw,
     project: { findUnique: vi.fn().mockResolvedValue(project) },
+    workflowInstance: { findFirst: vi.fn().mockResolvedValue(null) },
     workflowTask: { findFirst: vi.fn().mockResolvedValue(null) },
     trialProduction: { findFirst: vi.fn().mockResolvedValue(null) },
     reviewRecord: { findMany: vi.fn().mockResolvedValue(workspaceRows) },
@@ -437,6 +442,7 @@ function workspaceSourceAdmissionHarness(input: {
   });
   const queryRaw = vi.fn(async (query: RawSqlQuery) => {
     const sql = sqlText(query);
+    if (sql.includes('SELECT r.id FROM review_records r')) return [];
     if (sql.includes('monthly_plan_integrity')) return [monthlyPlanRow()];
     if (sql.includes('CHAR_LENGTH')) {
       return sourceQuery(query);
@@ -448,6 +454,7 @@ function workspaceSourceAdmissionHarness(input: {
   });
   const db = {
     project: { findUnique: vi.fn().mockResolvedValue(project) },
+    workflowInstance: { findFirst: vi.fn().mockResolvedValue(null) },
     workflowTask: { findFirst: vi.fn().mockResolvedValue(null) },
     trialProduction: { findFirst: vi.fn().mockResolvedValue(null) },
     reviewRecord: { findMany: reviewFindMany },
@@ -1387,6 +1394,7 @@ describe('ReviewsService resource bounds', () => {
       const tx = {
       inspectionActivity: { findUnique: vi.fn().mockResolvedValue(null) },
         project: { findUnique: vi.fn().mockResolvedValue(project) },
+        workflowInstance: { findFirst: vi.fn().mockResolvedValue(null) },
         workflowTask: { findFirst: vi.fn().mockResolvedValue(null) },
         trialProduction: { findFirst: vi.fn().mockResolvedValue(null) },
         reviewRecord: { findMany: reviewFindMany },
@@ -1526,11 +1534,18 @@ describe('ReviewsService resource bounds', () => {
     );
   });
 
-  it('keeps project month completion through a task rework without mixing different months', async () => {
+  it('keeps exact old record confirmations through rework without treating the month as every row confirmation', async () => {
     const rows = [
       reviewRecord('review-old', ReviewType.VISUAL_COLOR_DIFFERENCE_REVIEW, {
         workflowTaskId: 'task-old',
         reviewPeriod: '2026-07',
+        reviewedAt: new Date('2026-07-11T00:00:00Z'),
+        submittedAt: new Date('2026-07-11T00:00:00Z'),
+      }),
+      reviewRecord('review-unconfirmed', ReviewType.VISUAL_COLOR_DIFFERENCE_REVIEW, {
+        workflowTaskId: 'task-old',
+        reviewPeriod: '2026-07',
+        reviewedAt: new Date('2026-07-11T00:00:00Z'),
       }),
       reviewRecord('review-current', ReviewType.VISUAL_COLOR_DIFFERENCE_REVIEW, {
         workflowTaskId: 'task-current',
@@ -1541,7 +1556,7 @@ describe('ReviewsService resource bounds', () => {
       { status: RecurringTaskStatus.COMPLETED, plannedDate: new Date('2026-07-01T00:00:00Z') },
       { status: RecurringTaskStatus.PENDING, plannedDate: new Date('2026-08-01T00:00:00Z') },
     ] }];
-    const harness = workspaceDb({ reviews: rows, recurringPlans });
+    const harness = workspaceDb({ reviews: rows, recurringPlans, confirmedReviewIds: ['review-old'] });
     const { service } = createService(harness.db);
 
     const workspace = await Reflect.get(
@@ -1551,6 +1566,7 @@ describe('ReviewsService resource bounds', () => {
 
     expect(workspace.items).toEqual([
       expect.objectContaining({ id: 'review-old', isPeriodCompleted: true }),
+      expect.objectContaining({ id: 'review-unconfirmed', isPeriodCompleted: false }),
       expect.objectContaining({ id: 'review-current', isPeriodCompleted: false }),
     ]);
     expect(harness.recurringPlanFindMany).toHaveBeenCalledTimes(1);
@@ -1647,12 +1663,14 @@ describe('ReviewsService resource bounds', () => {
     {
       label: 'two same-scope plans even when each plan is individually bounded',
       plans: [{ id: 'plan-a' }, { id: 'plan-b' }],
+      code: 'VISUAL_DELTA_REVIEW_PLAN_IDENTITY_CONFLICT',
     },
     {
       label: 'a plan whose damaged project identity leaves no in-scope match',
       plans: [],
+      code: 'MONTHLY_REVIEW_PLAN_INVALID',
     },
-  ])('fails closed on $label before a visual write can continue', async ({ plans }) => {
+  ])('fails closed on $label before a visual write can continue', async ({ plans, code }) => {
     const afterLockWrite = vi.fn();
     const queryRaw = vi.fn(async (query: { strings?: readonly string[] }) => {
       const sql = query.strings?.join('') ?? '';
@@ -1686,7 +1704,7 @@ describe('ReviewsService resource bounds', () => {
         await afterLockWrite();
       })(),
     ).rejects.toMatchObject({
-      response: { code: 'VISUAL_DELTA_REVIEW_PLAN_IDENTITY_CONFLICT' },
+      response: { code },
     });
     expect(afterLockWrite).not.toHaveBeenCalled();
   });
@@ -1798,6 +1816,7 @@ describe('ReviewsService resource bounds', () => {
         'plan-exact',
         expect.any(Date),
         actor,
+        ...(method === 'updateVisualDeltaReview' ? ['review-1'] : []),
       );
     },
   );
@@ -1886,15 +1905,14 @@ describe('ReviewsService resource bounds', () => {
         }),
       }),
     );
-    expect(planFind).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { id: 'plan-exact' } }),
-    );
-    expect(recurringCount).toHaveBeenCalledWith({
-      where: {
-        recurringPlanId: 'plan-exact',
-        status: RecurringTaskStatus.COMPLETED,
-      },
-    });
+    expect(planFind).not.toHaveBeenCalled();
+    expect(recurringCount).not.toHaveBeenCalled();
+    expect(transition).not.toHaveBeenCalled();
+    expect(activityCreate).toHaveBeenCalledWith(tx, expect.objectContaining({
+      action: 'VISUAL_DELTA_REVIEW_APPROVED',
+      metadata: expect.objectContaining({ workflowTaskId: 'task-current', reviewRecordId: 'review-1',
+        reviewVersion: currentReview.updatedAt.toISOString(), recurringTaskId: 'period-current' }),
+    }));
   });
 
   it.each([

@@ -4,7 +4,8 @@ import { PrismaService } from '../../infra/prisma/prisma.service';
 import { BusinessClock } from '../../common/business-clock';
 import { assertApprovedTeamMember } from '../../common/team-membership';
 import { withProjectWrite, withTeamWrite } from '../../common/team-authorization';
-import { requireActiveMonthlyPlan } from '../../common/monthly-review-plan';
+import { resolveVisualReviewPlan } from '../../common/monthly-review-plan';
+import { continuableVisualReviewIds } from '../../common/visual-review-confirmation';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { ProjectAccessService } from '../auth/project-access.service';
 import { commandHash, identity, jsonData, object, pagination, positiveInt, textField } from '../color-register/color-register.rules';
@@ -18,6 +19,7 @@ export class InspectionsService {
 
   async list(query:Record<string,unknown>,actor:AuthenticatedUser){
     assertApprovedTeamMember(actor);
+    if(query.projectId)await this.access.assertProjectAccess(this.prisma,identity(query.projectId),actor,'project.read');
     const {page,pageSize,skip}=pagination(query);
     const where={...(query.baseId?{productionBaseId:identity(query.baseId)}:{}),...(query.projectId?{projectId:identity(query.projectId)}:{}),...(query.reviewRecordId?{reviewRecordId:identity(query.reviewRecordId)}:{}),...(query.colorId?{occurrences:{some:{colorId:identity(query.colorId)}}}:{}),...(query.fromDate||query.toDate?{activityDate:{...(query.fromDate?{gte:activityDate(query.fromDate)}:{}),...(query.toDate?{lte:activityDate(query.toDate)}:{})}}:{})};
     const [items,total]=await Promise.all([this.prisma.inspectionActivity.findMany({where,orderBy:[{activityDate:'desc'},{id:'asc'}],take:pageSize,skip,
@@ -79,10 +81,13 @@ export class InspectionsService {
     const input={expectedRevision:positiveInt(b.expectedRevision,'活动版本'),activityDate:activityDate(b.date),batchLabel:textField(b.batchLabel,'批次说明',200),note:textField(b.note,'备注',4000),personIds:parseParticipants(b.personIds)};
     return withTeamWrite(this.prisma,actor,tx=>this.command(tx,actor,identity(b.operationId),'INSPECTION_ACTIVITY_UPDATE',{id,...input},async()=>{
       const current=await lockInspectionActivity(tx,id);this.revision(current,input.expectedRevision);
-      if(current.reviewRecordId&&current.activityDate.valueOf()!==input.activityDate.valueOf())throw new ConflictException('关联月度评审后的活动日期不可移动。');
-      await this.checkPeople(tx,input.personIds);
+      if(current.reviewRecordId&&current.activityDate.valueOf()!==input.activityDate.valueOf())throw new ConflictException('关联评审后的活动日期不可移动。');
       const {personIds,expectedRevision:_revision,...data}=input;void _revision;
       const beforeParticipants=await tx.inspectionParticipant.findMany({where:{activityId:id},select:{personId:true},take:50});
+      // Existing participants remain historical facts when their directory entry
+      // is disabled/archived. Only newly added identities require availability.
+      const existingIds=new Set(beforeParticipants.map(p=>p.personId));
+      await this.checkPeople(tx,personIds.filter(personId=>!existingIds.has(personId)));
       await tx.inspectionParticipant.deleteMany({where:{activityId:id,personId:{notIn:personIds}}});
       await tx.inspectionParticipant.createMany({data:personIds.map(personId=>({activityId:id,personId})),skipDuplicates:true});
       const saved=await tx.inspectionActivity.update({where:{id},data:{...data,revision:{increment:1}}});
@@ -145,17 +150,21 @@ export class InspectionsService {
 
   async linkReview(id:string,raw:unknown,actor:AuthenticatedUser){
     assertApprovedTeamMember(actor);identity(id);const b=object(raw);onlyFields(b,['operationId','expectedRevision','projectId','recurringTaskId','reviewRecordId']);
-    const input={expectedRevision:positiveInt(b.expectedRevision,'活动版本'),projectId:identity(b.projectId),recurringTaskId:identity(b.recurringTaskId),reviewRecordId:identity(b.reviewRecordId)};
+    const input={expectedRevision:positiveInt(b.expectedRevision,'活动版本'),projectId:identity(b.projectId),recurringTaskId:nullableId(b.recurringTaskId),reviewRecordId:identity(b.reviewRecordId)};
     await this.access.assertProjectAccess(this.prisma,input.projectId,actor,'review.execute');
     return withProjectWrite(this.prisma,actor,{projectId:input.projectId},tx=>this.command(tx,actor,identity(b.operationId),'INSPECTION_LINK_REVIEW',{id,...input},async()=>{
       const activity=await lockInspectionActivity(tx,id);this.revision(activity,input.expectedRevision);
       if(activity.reviewRecordId)throw new ConflictException('活动已关联一个明确目标，不能复制到多个任务或替换历史关联。');
-      const task=await tx.recurringTask.findUnique({where:{id:input.recurringTaskId}});
-      if(!task||task.projectId!==input.projectId)throw new BadRequestException('月度任务不属于目标项目。');
-      await requireActiveMonthlyPlan(tx,input.projectId,task.recurringPlanId);
-      if(task.plannedDate>this.clock.now()||!['PENDING','IN_PROGRESS','OVERDUE'].includes(task.status))throw new ConflictException('月度任务尚未到期或已结束。');
+      const plan=await resolveVisualReviewPlan(tx,input.projectId);
+      if(plan){
+        if(!input.recurringTaskId)throw new BadRequestException('历史计划必须选择准确期次，不能绕过原关联。');
+        const task=await tx.recurringTask.findUnique({where:{id:input.recurringTaskId}});
+        if(!task||task.projectId!==input.projectId||task.recurringPlanId!==plan.id)throw new BadRequestException('月度任务不属于目标项目。');
+        const continuing=task.status==='COMPLETED'&&(await continuableVisualReviewIds(tx,input.projectId,[input.reviewRecordId],task.id)).has(input.reviewRecordId);
+        if(task.plannedDate>this.clock.now()||(!continuing&&!['PENDING','IN_PROGRESS','OVERDUE'].includes(task.status)))throw new ConflictException('月度任务尚未到期或已结束。');
+      }else if(input.recurringTaskId)throw new BadRequestException('实际阶段评审不能关联其他历史月份。');
       const review=await tx.reviewRecord.findUnique({where:{id:input.reviewRecordId},include:{workflowTask:{select:{isActive:true,nodeCode:true,status:true}}}});
-      if(!review||review.projectId!==input.projectId||review.reviewType!=='VISUAL_COLOR_DIFFERENCE_REVIEW'||review.reviewerId!==actor.id||review.submittedAt||!review.workflowTask.isActive||review.workflowTask.nodeCode!=='VISUAL_COLOR_DIFFERENCE_REVIEW'||!['PENDING','READY','IN_PROGRESS','RETURNED'].includes(review.workflowTask.status))throw new ConflictException('请选择本人通过原评审入口创建的有效月度评审草稿。');
+      if(!review||review.projectId!==input.projectId||review.reviewType!=='VISUAL_COLOR_DIFFERENCE_REVIEW'||review.reviewerId!==actor.id||review.submittedAt||!review.workflowTask.isActive||review.workflowTask.nodeCode!=='VISUAL_COLOR_DIFFERENCE_REVIEW'||!['PENDING','READY','IN_PROGRESS','RETURNED'].includes(review.workflowTask.status)||(review.reviewPeriod==='TASK')!==!plan)throw new ConflictException('请选择本人通过原评审入口创建的有效实际评审草稿。');
       const saved=await tx.inspectionActivity.update({where:{id},data:{projectId:input.projectId,recurringTaskId:input.recurringTaskId,reviewRecordId:input.reviewRecordId,revision:{increment:1}}});
       await assertInspectionReviewLink(tx,{reviewId:review.id,projectId:review.projectId,reviewedAt:review.reviewedAt,standardVersionId:review.standardVersionId});
       await this.audit(tx,actor.id,input.projectId,'INSPECTION_REVIEW_LINKED',activity,saved);
@@ -166,6 +175,11 @@ export class InspectionsService {
   async statistics(query:Record<string,unknown>,actor:AuthenticatedUser){
     assertApprovedTeamMember(actor);
     const filters:Prisma.Sql[]=[];
+    if(query.projectId){
+      const projectId=identity(query.projectId);
+      await this.access.assertProjectAccess(this.prisma,projectId,actor,'project.read');
+      filters.push(Prisma.sql`a."projectId"=${projectId}`);
+    }
     if(query.activityId)filters.push(Prisma.sql`a.id=${identity(query.activityId)}`);
     if(query.colorId)filters.push(Prisma.sql`o."colorId"=${identity(query.colorId)}`);
     if(query.baseId)filters.push(Prisma.sql`a."productionBaseId"=${identity(query.baseId)}`);
@@ -194,7 +208,7 @@ export class InspectionsService {
     // Keep unlinked profile state stable until this activity write commits. The
     // surrounding shared authorization fence already protects linked User status.
     if(ids.length)await tx.$queryRaw(Prisma.sql`SELECT id FROM person_profiles WHERE id IN (${Prisma.join(ids)}) ORDER BY id FOR SHARE`);
-    const found=await tx.personProfile.count({where:{id:{in:ids},OR:[{userId:null,isActive:true},{user:{is:{status:'ACTIVE'}}}]}});
+    const found=await tx.personProfile.count({where:{id:{in:ids},archivedAt:null,OR:[{userId:null,isActive:true},{user:{is:{status:'ACTIVE'}}}]}});
     if(found!==ids.length)throw new BadRequestException('参与人员须选择已启用的真实人员档案；不会自动创建账号或授予资格。');
   }
   private async command<T>(tx:Prisma.TransactionClient,actor:AuthenticatedUser,operationId:string,action:string,input:unknown,execute:()=>Promise<T>):Promise<T>{

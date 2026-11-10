@@ -39,7 +39,7 @@ const LIFECYCLE_ACTIONS: R26LifecycleAction[] = [
     title: '颜色一致性评审',
     eyebrow: '一致性门禁',
     description:
-      '通过后进入排产；驳回时由后端退回涂料开发，并保留历史评审记录。',
+      '通过后进入排产；驳回后由外饰件厂家整改，保留有效驾驶室、标准与收费记录，再办理整车一致性评审。历史审计保持可追溯。',
     primaryActionLabel: '办理一致性评审',
   },
   {
@@ -57,17 +57,17 @@ const LIFECYCLE_ACTIONS: R26LifecycleAction[] = [
     title: '批量生产',
     eyebrow: '生产记录',
     description:
-      '登记、开始并完成生产记录；至少一条生产记录完成后方可推进至月度评审。',
+      '登记、开始并完成生产记录；至少一条生产记录完成后进入后续检验阶段，不自动生成 12 期月度义务。',
     primaryActionLabel: '办理批量生产',
   },
   {
     slug: 'monthly-review',
     stepNumber: 17,
-    title: '12 个月整车色差一致性评审',
-    eyebrow: '月度治理',
+    title: '整车色差检验与历史月度评审',
+    eyebrow: '实际抽检与历史记录',
     description:
-      '每月记录独立保存，只有 12/12 全部完成后才由服务端激活颜色退出。',
-    primaryActionLabel: '办理本月评审',
+      '当前周评按实际抽检登记，未抽检颜色不产生月度义务。旧期次及已关联记录保留，原第 17、18 步门禁不会自动跳过；年度复核与人工退出按各自服务端条件办理。',
+    primaryActionLabel: '查看检验与历史评审',
   },
   {
     slug: 'color-exit',

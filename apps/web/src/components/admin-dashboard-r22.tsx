@@ -1,4 +1,5 @@
 'use client';
+import { BUSINESS_TIME_ZONE } from '../lib/local-datetime';
 
 import Link from 'next/link';
 import React, { useEffect, useState } from 'react';
@@ -112,5 +113,5 @@ function formatUpdatedAt(value: string) {
   const minutes = Math.max(0, Math.floor((Date.now() - timestamp) / 60_000));
   if (minutes < 1) return '刚刚';
   if (minutes < 60) return `${minutes} 分钟前`;
-  return new Date(value).toLocaleString('zh-CN', { hour12: false });
+  return new Date(value).toLocaleString('zh-CN', { timeZone: BUSINESS_TIME_ZONE, hour12: false });
 }

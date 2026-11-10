@@ -1,4 +1,5 @@
 'use client';
+import { BUSINESS_TIME_ZONE } from '../lib/local-datetime';
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -235,7 +236,7 @@ function readQueryState(params: URLSearchParams | ReadonlyURLSearchParams) {
 }
 
 type ReadonlyURLSearchParams = ReturnType<typeof useSearchParams>;
-function formatDateTime(value: string) { return new Date(value).toLocaleString('zh-CN', { hour12: false }); }
+function formatDateTime(value: string) { return new Date(value).toLocaleString('zh-CN', { timeZone: BUSINESS_TIME_ZONE, hour12: false }); }
 const AUDIT_CODE_LABELS: Record<string, string> = {
   PROJECT: '项目',
   COLOR: '颜色',

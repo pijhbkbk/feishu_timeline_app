@@ -1,7 +1,9 @@
 'use client';
+import { toDateTimeLocalValue } from '../lib/local-datetime';
 
-import Link from 'next/link';
+import { M1RecordLink as Link, M1RecordReturn } from '../features/m1/record-return';
 import React, { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 
 import { useAuth } from './auth-provider';
 import {
@@ -53,6 +55,11 @@ const EMPTY_FORM: PerformanceTestFormInput = {
 export function PerformanceTestsWorkspace({
   projectId,
 }: PerformanceTestsWorkspaceProps) {
+  const originTask = useSearchParams()?.get('originTask') ?? undefined;
+  return <PerformanceTestsWorkspaceContent key={JSON.stringify([projectId, originTask])} projectId={projectId} originTask={originTask} />;
+}
+
+function PerformanceTestsWorkspaceContent({ projectId, originTask }: PerformanceTestsWorkspaceProps & { originTask: string | undefined }) {
   const { user } = useAuth();
   const requestIdRef = useRef(0);
   const [workspace, setWorkspace] = useState<PerformanceTestsWorkspaceResponse | null>(null);
@@ -71,7 +78,8 @@ export function PerformanceTestsWorkspace({
 
   useEffect(() => {
     void loadWorkspace({ initial: true });
-  }, [projectId]);
+    return () => { requestIdRef.current += 1; };
+  }, [projectId, originTask]);
 
   useEffect(() => {
     if (!workspace?.items.length) {
@@ -116,7 +124,8 @@ export function PerformanceTestsWorkspace({
 
   const canManage = canManagePerformanceTests(user);
   const highlights = workspace ? getPerformanceTestWorkspaceHighlights(workspace) : null;
-  const isReadOnly = !workspace?.activeTask;
+  const taskContext = workspace?.taskContext ?? workspace?.activeTask ?? null;
+  const isReadOnly = !workspace?.activeTask || Boolean(taskContext && taskContext.id !== workspace.activeTask.id);
   const sampleOptions = workspace?.sampleOptions ?? [];
 
   async function loadWorkspace(options?: { initial?: boolean }) {
@@ -132,7 +141,7 @@ export function PerformanceTestsWorkspace({
 
     try {
       const [workspaceResponse, users] = await Promise.all([
-        fetchPerformanceTestsWorkspace(projectId),
+        fetchPerformanceTestsWorkspace(projectId, originTask),
         fetchPerformanceTestPageOptions(projectId),
       ]);
 
@@ -274,6 +283,15 @@ export function PerformanceTestsWorkspace({
     });
   }
 
+  if (!isLoading && !workspace && error) {
+    return <section className="page-card" role="alert">
+      <h1>性能试验工作区无法读取</h1><p>{error}</p>
+      <button type="button" className="button button-secondary" disabled={isRefreshing}
+        onClick={() => void loadWorkspace({ initial: true })}>重新读取</button>
+      <M1RecordReturn projectId={projectId} />
+    </section>;
+  }
+
   if (isLoading || !workspace || !highlights) {
     return (
       <section className="page-card">
@@ -305,9 +323,7 @@ export function PerformanceTestsWorkspace({
             >
               {isRefreshing ? '刷新中…' : '刷新'}
             </button>
-            <Link href={`/projects/${projectId}/workflow`} className="button button-secondary">
-              查看流程
-            </Link>
+            <M1RecordReturn projectId={projectId} />
           </div>
         </div>
         <div className="metadata-grid">
@@ -321,13 +337,15 @@ export function PerformanceTestsWorkspace({
           </div>
           <div className="metadata-item">
             <span>节点负责人</span>
-            <strong>{workspace.activeTask?.assigneeUserName ?? '未分配'}</strong>
+            <strong>{taskContext?.assigneeUserName ?? '未分配'}</strong>
           </div>
           <div className="metadata-item">
             <span>已提交记录</span>
             <strong>{workspace.statistics.submittedCount}</strong>
           </div>
         </div>
+        {taskContext && isReadOnly ? <p className="muted">查看第 {taskContext.taskRound} 轮工序历史；以下试验记录为本项目记录，保留各自原结论与附件。</p> : null}
+        <PerformanceArrivalSummary task={taskContext} />
         {workspace.activeTask && isWorkflowTaskOverdue(workspace.activeTask) ? (
           <p className="error-text">当前涂料性能试验任务已逾期。</p>
         ) : null}
@@ -436,6 +454,25 @@ export function PerformanceTestsWorkspace({
       </section>
     </div>
   );
+}
+
+export function PerformanceArrivalSummary({ task }: { task: Pick<NonNullable<PerformanceTestsWorkspaceResponse['activeTask']>, 'dueAt' | 'payload'> | null }) {
+  if (!task) return null;
+  const payload = task.payload && typeof task.payload === 'object' && !Array.isArray(task.payload)
+    ? task.payload as Record<string, unknown> : null;
+  const raw = payload?.performanceArrivalAnchor;
+  const anchor = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw as Record<string, unknown> : null;
+  const hasAnchor = anchor?.rule === 'FIRST_VALID_ARRIVAL_PLUS_6_CALENDAR_MONTHS_V1';
+  const dateLabel = (value: unknown) => {
+    if (typeof value !== 'string' || !Number.isFinite(new Date(value).getTime())) return '待核对';
+    return new Intl.DateTimeFormat('zh-CN', { timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(value));
+  };
+  return <div>
+    <p>本轮首次有效到货：<strong>{hasAnchor ? dateLabel(anchor.arrivalDate) : '尚无可核对依据'}</strong>；性能反馈截止：<strong>{dateLabel(task.dueAt)}</strong>（北京时间）。</p>
+    <p className="muted">{hasAnchor
+      ? '期限为首次有效到货后 6 个日历月，月末夹断；后续到货不重置。性能反馈与首台主线并行，不阻塞主线。'
+      : '保留该任务已记录的截止日期，不按当前时间重新推算；到货起算依据缺失时需核对。'}</p>
+  </div>;
 }
 
 export function TestResultForm({
@@ -825,14 +862,4 @@ export function CompletePerformanceTestTaskButton({
       完成性能试验节点
     </button>
   );
-}
-
-function toDateTimeLocalValue(value: string | null | undefined) {
-  if (!value) {
-    return '';
-  }
-
-  const date = new Date(value);
-  const offset = date.getTimezoneOffset();
-  return new Date(date.getTime() - offset * 60_000).toISOString().slice(0, 16);
 }

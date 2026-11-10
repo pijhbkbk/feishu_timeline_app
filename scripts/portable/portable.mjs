@@ -95,7 +95,7 @@ function imageMetadata(m) {
 export const softwareSourcePaths = [
   '.dockerignore', '.editorconfig', '.env.example', '.env.production.example',
   '.gitignore', '.gitleaks.toml', 'LICENSE', 'THIRD_PARTY_NOTICES',
-  'apps', 'packages', 'deploy', 'scripts', 'docker-compose.yml',
+  'apps', 'packages', 'patches', 'deploy', 'scripts', 'docker-compose.yml',
   'eslint.config.mjs', 'package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml',
   'tsconfig.base.json', 'docs/NATIVE_ACCOUNT_OPERATIONS.md',
 ];
@@ -122,8 +122,27 @@ function instance(root) {
   const u=new URL(c.origin);need(u.protocol==='https:'&&u.hostname==='localhost'&&u.origin===c.origin&&Number(u.port)>=1024,'This delivered profile only permits explicit localhost HTTPS');
   return {root,c,m};
 }
-function compose(s,args,input) {
-  return docker(['compose','--project-name',s.c.name,'--file',path.join(s.root,'compose.json'),...args],input);
+function compose(s,args,input,limit=MAX) {
+  return command('docker',['compose','--project-name',s.c.name,'--file',path.join(s.root,'compose.json'),...args],input,limit);
+}
+export function safeStatusRows(bytes) {
+  const message='Compose status response rejected';
+  need((typeof bytes==='string'||Buffer.isBuffer(bytes))&&Buffer.byteLength(bytes)<=1024*1024,message);
+  const raw=bytes.toString().trim();let rows;
+  try { rows=raw?(raw.startsWith('[')?JSON.parse(raw):raw.split('\n').map(line=>JSON.parse(line))):[]; }
+  catch { throw new Error(message); }
+  need(Array.isArray(rows)&&rows.length<=64,message);
+  return rows.map(row=>{
+    need(row&&typeof row==='object'&&!Array.isArray(row),message);
+    need(typeof row.Name==='string'&&/^[A-Za-z0-9][A-Za-z0-9_.-]{0,255}$/.test(row.Name),message);
+    need(typeof row.Service==='string'&&/^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$/.test(row.Service),message);
+    need(typeof row.State==='string'&&/^[a-z][a-z-]{0,31}$/.test(row.State),message);
+    need(typeof row.Health==='string'&&/^[a-z-]{0,32}$/.test(row.Health),message);
+    need(Number.isSafeInteger(row.ExitCode)&&row.ExitCode>=0&&row.ExitCode<=255,message);
+    // Compose includes Command (and may add other private fields). Never echo it,
+    // including on parse failure: CLI errors are displayed to the operator.
+    return {Name:row.Name,Service:row.Service,State:row.State,Health:row.Health,ExitCode:row.ExitCode};
+  });
 }
 function runtimeEnv(m,secrets,origin) {
   return {
@@ -163,7 +182,7 @@ function init(packageDir,root,origin,certFile,keyFile) {
     helper:{...app,profiles:['ops'],entrypoint:['node'],command:['/portable/data.mjs']},
     migrate:{...hardened,image:m.images.ops,user:'1000:1000',profiles:['ops'],environment,command:['/app/node_modules/.bin/prisma','migrate','deploy','--schema','prisma/schema.prisma'],mem_limit:'768m'},
     web:{...hardened,image:m.images.web,user:'1000:1000',mem_limit:'512m',environment:{NODE_ENV:'production',DEPLOYMENT_ENV:'staging',HOSTNAME:'0.0.0.0',PORT:'3000',EXPECTED_SOURCE_COMMIT:m.commit,EXPECTED_SOURCE_TREE:m.tree,EXPECTED_RELEASE:m.release,EXPECTED_BUILD_TIME:m.buildTime,V1_FALLBACK_ENABLED:'false'}},
-    proxy:{...hardened,image:m.images.api,user:`${process.getuid()}:${process.getgid()}`,mem_limit:'128m',entrypoint:['node','/portable/proxy.mjs'],environment:{PUBLIC_ORIGIN:origin},volumes:[path.join(root,'software','proxy.mjs')+':/portable/proxy.mjs:ro',path.join(root,'tls.crt')+':/run/tls.crt:ro',path.join(root,'tls.key')+':/run/tls.key:ro']},
+    proxy:{...hardened,image:m.images.api,user:`${process.getuid()}:${process.getgid()}`,mem_limit:'512m',entrypoint:['node','/portable/proxy.mjs'],environment:{PUBLIC_ORIGIN:origin,EXPECTED_SOURCE_COMMIT:m.commit,EXPECTED_SOURCE_TREE:m.tree,EXPECTED_RELEASE:m.release,EXPECTED_BUILD_TIME:m.buildTime},volumes:[path.join(root,'software','proxy.mjs')+':/portable/proxy.mjs:ro',path.join(root,'tls.crt')+':/run/tls.crt:ro',path.join(root,'tls.key')+':/run/tls.key:ro'],healthcheck:{test:['CMD','node','/portable/proxy.mjs','--healthcheck'],interval:'15s',timeout:'5s',retries:10,start_period:'20s'}},
     scanner:{...hardened,image:m.images.scanner,user:'100:101',mem_limit:'2048m',entrypoint:['/usr/sbin/clamd','--config-file=/run/clamd.conf'],volumes:[path.join(root,'signatures')+':/var/lib/clamav:ro',path.join(root,'clamd.conf')+':/run/clamd.conf:ro'],healthcheck:{disable:true}},
   };
   // The proxy uses the host owner's numeric UID, keeping the private TLS key 0600.
@@ -269,14 +288,14 @@ function backup(s,out,keyFile) {
     need(JSON.stringify(before)===JSON.stringify(fingerprint(s,true)),'Database changed while frozen');
     const body=Buffer.from(JSON.stringify({version:2,softwareSha256:hash(JSON.stringify(s.m)),commit:s.m.commit,postgresMajor:14,createdAt:new Date().toISOString(),signatureFloor:signatureFloor(s),database:{bytes:dump.toString('base64'),sha256:hash(dump)},fingerprints:before,objects,queue}));
     need(body.length<=MAX,'Backup exceeds bound');const key=read(keyFile,32,true);need(key.length===32,'Backup key must be 32 random bytes');
-    const nonce=crypto.randomBytes(12);const cipher=crypto.createCipheriv('aes-256-gcm',key,nonce);cipher.setAAD(Buffer.from('timeline-portable-backup-v1'));
+    const nonce=crypto.randomBytes(12);const cipher=crypto.createCipheriv('aes-256-gcm',key,nonce,{authTagLength:16});cipher.setAAD(Buffer.from('timeline-portable-backup-v1'));
     const encrypted=Buffer.concat([cipher.update(body),cipher.final()]);write(out,Buffer.concat([Buffer.from('TLPBK001'),nonce,cipher.getAuthTag(),encrypted]));
     console.log(JSON.stringify({backup:out,sha256:shaFile(out),tables:Object.keys(before.tables).length,objects:objects.length,persistentQueueKeys:queue.length,writers:'stopped; explicit start is required',sessionsExported:false}));
   }finally{sql(s,'ALTER ROLE timeline_app LOGIN;','postgres',false); /* API remains stopped. */ }
 }
 export function decryptBackup(raw,key) {
   need(raw.length>=36&&raw.length<=MAX+36&&raw.subarray(0,8).toString()==='TLPBK001'&&key.length===32,'Invalid encrypted backup');
-  const d=crypto.createDecipheriv('aes-256-gcm',key,raw.subarray(8,20));d.setAAD(Buffer.from('timeline-portable-backup-v1'));d.setAuthTag(raw.subarray(20,36));
+  const d=crypto.createDecipheriv('aes-256-gcm',key,raw.subarray(8,20),{authTagLength:16});d.setAAD(Buffer.from('timeline-portable-backup-v1'));d.setAuthTag(raw.subarray(20,36));
   return json(Buffer.concat([d.update(raw.subarray(36)),d.final()]));
 }
 function restore(s,file,keyFile) {
@@ -376,7 +395,7 @@ async function main(args) {
   if(op==='install'&&a.length===1)return install(s);
   if(op==='start'&&a.length===1)return await start(s);
   if(op==='stop'&&a.length===1){stop(s);compose(s,['stop','--timeout','30','scanner','redis','postgres']);return;}
-  if(op==='status'&&a.length===1){console.log(compose(s,['ps','--format','json']).toString());return;}
+  if(op==='status'&&a.length===1){console.log(JSON.stringify(safeStatusRows(compose(s,['ps','--format','json'],undefined,1024*1024))));return;}
   if(op==='initialize'&&a.length===4)return initialize(s,path.resolve(a[1]),a[2],a[3]);
   if(op==='backup'&&a.length===3)return backup(s,path.resolve(a[1]),path.resolve(a[2]));
   if(op==='restore'&&a.length===3)return restore(s,path.resolve(a[1]),path.resolve(a[2]));

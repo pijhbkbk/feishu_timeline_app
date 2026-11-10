@@ -1,5 +1,7 @@
 'use client';
 
+import { localDateTimeToIso } from './local-datetime';
+
 import {
   isApprovedTeamUser,
   apiRequest,
@@ -248,7 +250,7 @@ export async function issueStandardBoard(
       body: {
         recipientName: input.recipientName || null,
         recipientDept: input.recipientDept || null,
-        issuedAt: input.issuedAt,
+        issuedAt: localDateTimeToIso(input.issuedAt),
         remark: input.remark || null,
       },
     },
@@ -267,8 +269,8 @@ export async function addBoardDistributionRecord(
       body: {
         receiverName: input.receiverName,
         receiverDept: input.receiverDept,
-        sentAt: input.sentAt,
-        signedAt: input.signedAt || null,
+        sentAt: localDateTimeToIso(input.sentAt),
+        signedAt: input.signedAt ? localDateTimeToIso(input.signedAt) : null,
         note: input.note || null,
       },
     },
@@ -286,7 +288,7 @@ export async function createColorBoardDetailUpdate(
       body: {
         standardBoardId: input.standardBoardId,
         updateStatus: input.updateStatus,
-        detailUpdatedAt: input.detailUpdatedAt,
+        detailUpdatedAt: localDateTimeToIso(input.detailUpdatedAt),
         note: input.note || null,
       },
     },

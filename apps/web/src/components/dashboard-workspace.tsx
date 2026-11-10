@@ -1,4 +1,5 @@
 'use client';
+import { BUSINESS_TIME_ZONE } from '../lib/local-datetime';
 
 import Link from 'next/link';
 import React, { useEffect, useRef, useState } from 'react';
@@ -206,7 +207,7 @@ function DashboardSkeleton() {
 }
 
 function getGreeting() {
-  const hour = new Date().getHours();
+  const hour = Number(new Intl.DateTimeFormat('en', { timeZone: BUSINESS_TIME_ZONE, hour: '2-digit', hourCycle: 'h23' }).format(new Date()));
   if (hour < 11) return '早上好';
   if (hour < 14) return '中午好';
   if (hour < 18) return '下午好';

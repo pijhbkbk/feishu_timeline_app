@@ -50,7 +50,7 @@ export function assertProfileFieldAccess(userId: string | null, input: PersonCha
   if (userId && Object.hasOwn(input, 'departmentId') && !admin) throw new ForbiddenException('已关联账号的部门调整须由管理员办理。');
 }
 export function parsePersonSheet(raw: unknown) {
-  const body = object(raw); only(body, ['operationId', 'items']);
+  const body = object(raw); only(body, ['operationId', 'items', 'reason']);
   const operationId = identity(body.operationId);
   if (!Array.isArray(body.items) || body.items.length < 1 || body.items.length > 50) throw new BadRequestException('一次保存 1–50 条档案。');
   const items = body.items.map(rawItem => {
@@ -59,7 +59,7 @@ export function parsePersonSheet(raw: unknown) {
   }).sort((a, b) => a.id.localeCompare(b.id));
   if (new Set(items.map(item => item.id)).size !== items.length) throw new BadRequestException('重复的人员 ID。');
   if (Buffer.byteLength(JSON.stringify(items)) > 256 * 1024) throw new BadRequestException('保存内容过大。');
-  return { operationId, items };
+  return { operationId, items, ...(body.reason !== undefined ? { reason: text(body.reason, 500, true)! } : {}) };
 }
 export function parsePersonCreate(raw: unknown) {
   const body = object(raw); only(body, ['operationId', 'items']);
@@ -84,3 +84,9 @@ export function parsePersonDepartment(raw: unknown) {
   return { operationId: identity(body.operationId), expectedRevision: revision(body.expectedRevision), departmentId: body.departmentId === null ? null : identity(body.departmentId), reason: text(body.reason, 500, true)! };
 }
 export function commandHash(raw: unknown) { return createHash('sha256').update(JSON.stringify(raw)).digest('hex'); }
+
+export function parsePersonArchive(raw: unknown) {
+  const body = object(raw); only(body, ['operationId', 'expectedRevision', 'archived', 'reason']);
+  if (typeof body.archived !== 'boolean') throw new BadRequestException('请选择明确的归档或恢复操作。');
+  return { operationId: identity(body.operationId), expectedRevision: revision(body.expectedRevision), archived: body.archived, reason: text(body.reason, 500, true)! };
+}

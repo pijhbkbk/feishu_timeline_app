@@ -26,21 +26,46 @@ else if(mode==='start'){
 }else if(mode==='serve'){
   const actual=JSON.parse(execFileSync('docker',['inspect',container]))[0];
   if(actual.Image!==conf.software.images.api||actual.Config.Labels['com.timeline.portable.instance']!==conf.name||!actual.State.Running)throw new Error('Proxy container identity mismatch');
-  const connections=new Set();let stopping=false;
-  const forwarder=net.createServer(socket=>{
-    if(stopping||connections.size>=32){socket.destroy();return;}
+  const connections=new Set(),pending=new Map();let stopping=false;
+  function drain(){
+    while(!stopping&&connections.size<8&&pending.size){
+      const [socket,timer]=pending.entries().next().value;pending.delete(socket);clearTimeout(timer);
+      if(!socket.destroyed)relay(socket);
+    }
+  }
+  function relay(socket){
+    // Eight streams bound the relay runtimes as well as browser connections;
+    // their measured peak fits the proxy's dedicated 512 MiB budget.
     connections.add(socket);socket.setTimeout(60000,()=>socket.destroy());
     const code="const n=require('node:net');const s=n.connect(8443,'127.0.0.1',()=>{process.stdin.pipe(s);s.pipe(process.stdout);});s.on('error',()=>process.exit(1));s.on('close',()=>process.exit());process.stdin.on('end',()=>s.end());";
     const child=spawn('docker',['exec','-i',container,'node','-e',code],{stdio:['pipe','pipe','ignore']});
     socket.pipe(child.stdin);child.stdout.pipe(socket);child.stdin.on('error',()=>socket.destroy());child.on('error',()=>socket.destroy());child.on('exit',()=>socket.destroy());
-    socket.on('error',()=>{});socket.on('close',()=>{connections.delete(socket);child.kill('SIGTERM');});
+    let cleanup,execClosed=false;
+    // Retain the admission slot until exec has actually closed. Ending stdin
+    // ends the relay socket, instead of killing only the host Docker client
+    // while the container process is still alive.
+    socket.on('error',()=>{});socket.on('close',()=>{
+      if(!execClosed){child.stdin.end();cleanup=setTimeout(()=>child.kill('SIGKILL'),10000);}
+    });
+    child.on('close',()=>{execClosed=true;clearTimeout(cleanup);connections.delete(socket);socket.destroy();drain();});
+  }
+  const forwarder=net.createServer({pauseOnConnect:true},socket=>{
+    socket.on('error',()=>{});
+    if(stopping){socket.destroy();return;}
+    if(connections.size<8){relay(socket);return;}
+    // A browser refresh can replace its sockets before exec finishes closing.
+    // Queue at most eight paused peers for two seconds; no relay process or
+    // application data is created/read until an active slot becomes available.
+    if(pending.size>=8){socket.destroy();return;}
+    const timer=setTimeout(()=>{pending.delete(socket);socket.destroy();},2000);pending.set(socket,timer);
+    socket.once('close',()=>{clearTimeout(timer);pending.delete(socket);});
   });
   const controller=net.createServer({allowHalfOpen:true},socket=>{
     let data='';socket.setTimeout(2000,()=>socket.destroy());socket.on('error',()=>{});socket.on('data',b=>{data+=b;if(data.length>32)socket.destroy();});
     socket.on('end',()=>{
       if(data==='status\n'){socket.end(JSON.stringify({ready:!stopping,origin:conf.origin,container,network:'internal; exec control channel only'}));return;}
       if(data!=='stop\n'){socket.destroy();return;}
-      stopping=true;forwarder.close();for(const connection of connections)connection.destroy();
+      stopping=true;forwarder.close();for(const connection of connections)connection.destroy();for(const [socket,timer] of pending){clearTimeout(timer);socket.destroy();}pending.clear();
       socket.end('{"stopped":true}');controller.close(()=>{if(fs.existsSync(control))fs.unlinkSync(control);});
     });
   });

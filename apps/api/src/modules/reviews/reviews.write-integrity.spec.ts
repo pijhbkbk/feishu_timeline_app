@@ -106,7 +106,7 @@ function createHarness(
       attachmentId: null,
       reviewType: familyConfig.reviewType,
       reviewRound: 1,
-      reviewPeriod: 'TASK',
+      reviewPeriod: family === 'visual' ? '2026-08' : 'TASK',
       result: ReviewResult.APPROVED,
       comment: '原始正式意见',
       conditionNote: null,
@@ -157,6 +157,7 @@ function createHarness(
           $queryRaw: vi.fn(async (query: { strings?: readonly string[] }) => {
             const sql = query.strings?.join('') ?? '';
             if (sql.includes('monthly_plan_integrity')) return [{ id: task.id, status: 'ACTIVE', frequency: 'MONTHLY', totalCount: 12, taskCount: 12, validCount: 12 }];
+            if (sql.includes('SELECT r.id FROM review_records r')) return [];
             lockSql.push(sql);
             if (sql.includes('review_records')) {
               await pauseDelayedUpdate();

@@ -28,6 +28,7 @@ describe('ColorExitsService write integrity', () => {
     const tx = {
       $queryRaw: vi.fn().mockResolvedValue([{ id: task.id }]),
       colorExit: { update: vi.fn().mockResolvedValue({ ...record, completedAt: date }) },
+      auditLog: { findFirst: vi.fn().mockResolvedValue(null) },
       project: { findUniqueOrThrow: vi.fn().mockResolvedValue({ id: 'project-1', status: 'COMPLETED', currentNodeCode: 'PROJECT_CLOSED', actualEndDate: date, closedAt: date }) },
       color: { findUnique: vi.fn().mockResolvedValue(color), update: vi.fn().mockImplementation(async ({ data }) => ({ ...color, ...data })) },
     };

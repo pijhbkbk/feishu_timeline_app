@@ -141,6 +141,7 @@ export function R26FlowMap({
             <text x="880" y="988" className="r26-edge-label r26-edge-label--return">N</text>
             <text x="535" y="1028" className="r26-edge-label r26-edge-label--yes">Y</text>
             <text x="738" y="1102" className="r26-edge-label r26-edge-label--yes">Y</text>
+            <text x="850" y="1136" className="r26-edge-label r26-edge-label--return">外饰件厂家整改 → 整车复审</text>
           </g>
 
           <g className="r26-flow-nodes">

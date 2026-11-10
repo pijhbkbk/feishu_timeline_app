@@ -13,8 +13,8 @@ import { WorkflowDeadlineService } from './workflow-deadline.service';
 import { WorkflowRecurringService } from './workflow-recurring.service';
 import { getWorkflowNextTaskTemplates } from './workflow-node.constants';
 
-const url = process.env.R28_TEST_DATABASE_URL;
-describe.skipIf(!url).sequential('14 rework on isolated PostgreSQL', () => {
+const url = process.env.RECTIFICATION_TEST_DATABASE_URL ?? process.env.R28_TEST_DATABASE_URL;
+describe.skipIf(!url).sequential('14 exterior correction and legacy technical evidence on isolated PostgreSQL', () => {
   const db = new PrismaClient(url ? { datasources: { db: { url } } } : undefined);
   const access = new ProjectAccessService(db as never);
   const service = new WorkflowsService(db as never, new ActivityLogsService(db as never, access), {} as never,
@@ -22,12 +22,12 @@ describe.skipIf(!url).sequential('14 rework on isolated PostgreSQL', () => {
   let actor: AuthenticatedUser;
   beforeAll(async () => {
     const target = new URL(url!);
-    if (target.hostname !== '127.0.0.1' || target.port !== '55449' || target.pathname !== '/r28_recovered') throw new Error('Only isolated r28_recovered is allowed.');
-    const role = await db.role.findUniqueOrThrow({ where: { code: 'reviewer' } });
+    if (target.hostname !== '127.0.0.1' || (process.env.RECTIFICATION_TEST_DATABASE_URL ? target.port !== '55460' || !/^\/free_workbook_drafts_[a-f0-9]{10}$/.test(target.pathname) : target.port !== '55449' || target.pathname !== '/r28_recovered')) throw new Error('Only the explicitly configured isolated regression database is allowed.');
+    const role = await db.role.upsert({ where: { code: 'reviewer' }, update: {}, create: { code: 'reviewer', name: '合成评审岗位' } });
     await db.rolePermission.upsert({ where: { roleId_permissionCode: { roleId: role.id, permissionCode: 'workflow.transition' } },
       create: { roleId: role.id, permissionCode: 'workflow.transition' }, update: {} });
     const name = `r28-rework-${randomUUID()}`;
-    const user = await db.user.create({ data: { username: name, name: '合成返工评审人', userRoles: { create: { roleId: role.id } },
+    const user = await db.user.create({ data: { username: name, name: '合成返工评审人', teamAccessApproved: true, userRoles: { create: { roleId: role.id } },
       localCredential: { create: { loginName: name, passwordHash: 'synthetic-not-a-login-hash' } } } });
     actor = (await new UsersService(db as never).getAuthenticatedUser(user.id, 'local'))!;
   });
@@ -48,19 +48,16 @@ describe.skipIf(!url).sequential('14 rework on isolated PostgreSQL', () => {
   }
   const reject = (f: Awaited<ReturnType<typeof fixture>>) => withProjectWrite(db as never, actor, { projectId: f.project.id }, tx =>
     service.transitionTaskWithExecutor(tx, f.source.id, 'REJECT', actor, { comment: '合成配方返工' }, 'designated-review'));
-  it.each([false, true])('cancels stale technical branches but preserves number and fee (completed=%s)', async completed => {
+  it.each([false, true])('preserves all valid technical, number and fee facts and creates only a pending 14 round (completed=%s)', async completed => {
     const f = await fixture(completed);
     await reject(f);
-    for (const old of [f.old08, f.old09]) expect(await db.workflowTask.findUniqueOrThrow({ where: { id: old.id } })).toMatchObject({ isActive: false, status: 'CANCELLED', assignmentEpoch: 1 });
-    for (const old of [f.old03, f.old07]) {
-      const result = await db.workflowTask.findUniqueOrThrow({ where: { id: old.id } });
-      expect(result.status).toBe('COMPLETED'); expect(result.completedAt).toEqual(old.completedAt);
-      expect(result.payload).toMatchObject({ rework: { invalidatedByTaskId: f.source.id, applicability: 'REQUIRES_REVIEW' } });
-    }
-    for (const old of [f.number, f.fee]) expect(await db.workflowTask.findUniqueOrThrow({ where: { id: old.id } })).toEqual(old);
-    expect(await db.workflowTask.count({ where: { projectId: f.project.id, nodeCode: 'PAINT_DEVELOPMENT', isActive: true } })).toBe(1);
+    for (const old of [f.old03, f.old07, f.old08, f.old09, f.number, f.fee]) expect(await db.workflowTask.findUniqueOrThrow({ where: { id: old.id } })).toEqual(old);
+    expect(await db.workflowTask.count({ where: { projectId: f.project.id, nodeCode: 'PAINT_DEVELOPMENT', isActive: true } })).toBe(0);
+    const next = await db.workflowTask.findFirstOrThrow({ where: { projectId: f.project.id, nodeCode: 'COLOR_CONSISTENCY_REVIEW', isActive: true } });
+    expect(next).toMatchObject({ taskRound: 2, returnedFromTaskId: f.source.id, payload: { exteriorRectification: { status: 'PENDING', sourceTaskId: f.source.id } } });
+    expect(next.payload).not.toHaveProperty('technicalReworkSourceTaskId');
     await expect(reject(f)).rejects.toMatchObject({ status: 409 });
-    await expect(withProjectWrite(db as never, actor, { taskId: f.old09.id }, tx => assertTeamTaskById(tx, f.old09.id, actor))).rejects.toMatchObject({ status: 409 });
+    await expect(withProjectWrite(db as never, actor, { taskId: f.old09.id }, tx => assertTeamTaskById(tx, f.old09.id, actor))).resolves.toBeUndefined();
   });
   it.each([false, true])('reuses the same 05 and 13 on repeat spawning, without resetting task or notifications (%s)', async completed => {
     const f = await fixture(completed);
@@ -73,7 +70,7 @@ describe.skipIf(!url).sequential('14 rework on isolated PostgreSQL', () => {
       expect(await db.workflowTransition.count({ where: { fromTaskId: source.id, toTaskId: preserved.id } })).toBe(1);
     }
   });
-  it('rolls back cancellation, metadata, new03, transitions and audit together', async () => {
+  it('rolls back the rejected task, new14, transitions and audit together', async () => {
     const f = await fixture();
     await expect(withProjectWrite(db as never, actor, { projectId: f.project.id }, async tx => {
       await service.transitionTaskWithExecutor(tx, f.source.id, 'REJECT', actor, { comment: '合成回滚' }, 'designated-review');
@@ -85,12 +82,12 @@ describe.skipIf(!url).sequential('14 rework on isolated PostgreSQL', () => {
     expect(await db.workflowTransition.count({ where: { projectId: f.project.id } })).toBe(0);
     await reject(f);
   });
-  it('serializes duplicate rejections into one return and one new03', async () => {
+  it('serializes duplicate rejections into one return and one new14', async () => {
     const f = await fixture();
     const results = await Promise.allSettled([reject(f), reject(f)]);
     expect(results.filter(r => r.status === 'fulfilled')).toHaveLength(1);
     expect(results.filter(r => r.status === 'rejected')).toHaveLength(1);
-    expect(await db.workflowTask.count({ where: { projectId: f.project.id, nodeCode: 'PAINT_DEVELOPMENT', isActive: true } })).toBe(1);
+    expect(await db.workflowTask.count({ where: { projectId: f.project.id, nodeCode: 'COLOR_CONSISTENCY_REVIEW', isActive: true } })).toBe(1);
     expect(await db.auditLog.count({ where: { targetId: f.source.id, action: 'WORKFLOW_REJECT' } })).toBe(1);
   });
   it('bounds JSON chain identifiers and keeps project and workflow ancestry isolated', async () => {
@@ -138,9 +135,9 @@ describe.skipIf(!url).sequential('14 rework on isolated PostgreSQL', () => {
   it('does not admit a submitted old performance result as evidence for a new technical round', async () => {
     const f = await fixture();
     const old = await db.performanceTest.create({ data: { projectId: f.project.id, testCode: randomUUID(), testItem: 'GLOSS', status: 'SUBMITTED', result: 'PASS', createdAt: new Date('2026-09-01T00:00:00Z') } });
-    await reject(f);
-    const new03 = await db.workflowTask.findFirstOrThrow({ where: { projectId: f.project.id, nodeCode: 'PAINT_DEVELOPMENT', isActive: true } });
-    const task = await db.workflowTask.create({ data: { projectId: f.project.id, workflowInstanceId: f.instance.id, taskNo: randomUUID(), nodeCode: 'PERFORMANCE_TEST', nodeName: '性能试验', payload: new03.payload! } });
+    // Explicit historical technical-rework fixture; the new exterior path never creates this marker.
+    const legacyPayload = { technicalReworkSourceTaskId: f.source.id, fromTaskId: f.old03.id };
+    const task = await db.workflowTask.create({ data: { projectId: f.project.id, workflowInstanceId: f.instance.id, taskNo: randomUUID(), nodeCode: 'PERFORMANCE_TEST', nodeName: '性能试验', payload: legacyPayload } });
     expect(await (service as any).getTechnicalReworkCompletionIssues(db, task)).toHaveLength(1);
     const fresh = await db.performanceTest.create({ data: { projectId: f.project.id, testCode: randomUUID(), testItem: 'GLOSS', status: 'SUBMITTED', result: 'PASS' } });
     await db.auditLog.create({ data: { projectId: f.project.id, targetType: 'PERFORMANCE_TEST', targetId: fresh.id, action: 'PERFORMANCE_TEST_CREATED', nodeCode: 'PERFORMANCE_TEST', metadata: { workflowTaskId: task.id, evidenceKind: 'TASK_CREATED_RECORD' } } });

@@ -7,6 +7,13 @@ export const COLOR_EXIT_MANAGEMENT_ROLE_CODES = [
 
 export type ColorExitDecision = ColorExitSuggestion;
 
+export function getColorExitRetentionIssue(input: {
+  annualOutput: number | null; exitThreshold: number | null; finalDecision: ColorExitDecision | null;
+}) {
+  return input.exitThreshold === 20 && input.annualOutput === 20 && input.finalDecision !== null && input.finalDecision !== 'RETAIN'
+    ? '累计恰好20台须继续保留，不能按20台阈值提交退出或延期观察结论。' : null;
+}
+
 export function getColorExitStageIssue(input: {
   visualDeltaApproved: boolean;
   hasActiveTask: boolean;
@@ -70,7 +77,9 @@ export function getColorExitSystemSuggestion(input: {
     return null;
   }
 
-  return input.annualOutput <= input.threshold
+  // The confirmed 20-unit policy is strict: exactly 20 is retained. Other
+  // explicitly configured historical thresholds keep their existing semantics.
+  return (input.threshold === 20 ? input.annualOutput < 20 : input.annualOutput <= input.threshold)
     ? 'EXIT'
     : 'RETAIN';
 }

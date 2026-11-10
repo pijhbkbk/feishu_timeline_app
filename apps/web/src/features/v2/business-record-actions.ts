@@ -22,8 +22,8 @@ export function getR26BusinessRecordAction(
     COLOR_CONSISTENCY_REVIEW: ['reviews', '办理一致性评审', '填写本轮一致性评审结论。'],
     MASS_PRODUCTION_PLAN: ['production-plans', '办理排产计划', '填写并确认排产计划。'],
     MASS_PRODUCTION: ['mass-production', '登记批量生产', '登记批量生产记录与完成结果。'],
-    VISUAL_COLOR_DIFFERENCE_REVIEW: ['color-evaluation', '办理月度评审', '选择本人已领取且到期的月份进行评审。'],
-    PROJECT_CLOSED: ['color-exit', '办理颜色退出', '核对主链路与月度记录后提交人工决定。'],
+    VISUAL_COLOR_DIFFERENCE_REVIEW: ['color-evaluation', '办理目视色差评审', '按实际抽检日期办理本人评审；已有历史期次按原记录续办。'],
+    PROJECT_CLOSED: ['color-exit', '办理颜色退出', '核对主链路、实际评审与年度依据后提交人工决定。'],
   };
   const entry = pages[nodeCode];
   if (entry) return { href: `/projects/${encodeURIComponent(projectId)}/${entry[0]}`, label: entry[1], guidance: entry[2] };

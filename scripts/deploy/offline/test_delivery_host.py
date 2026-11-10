@@ -1,0 +1,280 @@
+import copy
+import hashlib
+import importlib.util
+import json
+import os
+from pathlib import Path
+import sys
+import tempfile
+import types
+import unittest
+from unittest.mock import patch
+
+HERE = Path(__file__).resolve().parent
+spec=importlib.util.spec_from_file_location('delivery_host',HERE/'delivery_host.py')
+m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
+
+class HostTests(unittest.TestCase):
+    def setUp(self):
+        self.temp=tempfile.TemporaryDirectory();self.root=Path(self.temp.name).resolve()/'delivery';self.root.mkdir()
+        (self.root/'operations').mkdir();(self.root/'bindings').mkdir();(self.root/'lima').mkdir()
+        self.input='/home/recovery/public-input-fixture'
+        files={f'operations/{n}':(HERE/n).read_bytes() for n in ('delivery_host.py','delivery_check.py')}
+        files.update({f'operations/{n}':b'# fixture only\n' for n in ('prepare_instance.py','instance_policy.py','instance_software.py')})
+        files['bindings/config.json']=b'{}\n';files['bindings/selection.json']=b'{}\n'
+        policy={'kind':'OFFLINE_HOST_BUDGET_SCOPE_V1','limit':m.LIMIT,'expectedRootPaths':[str(self.root)]}
+        files['bindings/policy.json']=json.dumps(policy).encode()
+        rows=[]
+        for name,raw in files.items():
+            (self.root/name).write_bytes(raw); rows.append({'path':name,'bytes':len(raw),'sha256':m.sha(raw)})
+        self.manifest={'kind':'R30_MATERIALIZED_SOFTWARE_DELIVERY_V1','applicationIdentity':{'sourceCommit':'3941beccddd0dfce94c8f0f7fd7d62819fb05270'},'files':rows,'entrypoints':{'new-instance-config':{'program':'operations/prepare_instance.py','support':['operations/instance_policy.py','operations/instance_software.py'],'inputs':['bindings/config.json','bindings/selection.json'],'scope':'fixture'}}}
+        raw=json.dumps(self.manifest).encode();(self.root/'manifest.json').write_bytes(raw);self.pin=m.sha(raw)
+        (self.root/'SHA256SUMS').write_text(''.join(r['sha256']+'  '+r['path']+'\n' for r in rows)+self.pin+'  manifest.json\n')
+        # A public transport-file fixture; prepare verifies its bytes but never
+        # executes it. The separate bounded-process tests use the real Python.
+        cli=self.root.parent/'transport';cli.write_bytes(b'fixture transport\n');cli.chmod(0o600)
+        self.binding={'kind':'R30_EXPLICIT_DELIVERY_HOST_V1','lima':{'path':str(cli),'sha256':m.sha(cli.read_bytes()),'home':str(self.root/'lima'),'vm':'fixture-vm'},'guest':{'hostname':'lima-fixture','bootId':'9fee751f-120b-451e-9b1b-b17eac34bf98','input':self.input},'inputFiles':[{'source':f'operations/{n}','guest':self.input+'/'+n} for n in ('prepare_instance.py','instance_policy.py','instance_software.py')]+[{'source':'bindings/config.json','guest':self.input+'/configuration-check-binding.json'},{'source':'bindings/selection.json','guest':'/home/recovery/other-input/selection-plan.json'}],'budgetPolicy':'bindings/policy.json','allowedAbsentBudgetRoots':[],'invocations':{'new-instance-config':['--check-native-admission','--binding',self.input+'/configuration-check-binding.json','--binding-sha256',m.sha(b'{}\n')]}}
+    def tearDown(self):self.temp.cleanup()
+    def prepare(self,b=None):
+        with patch.object(m,'budget',return_value={'fixture':True}):
+            return m.prepare(self.root,self.pin,b or self.binding,'new-instance-config',True)
+    def test_delivered_inputs_resolve_from_unrelated_cwd(self):
+        old=Path.cwd()
+        try:
+            os.chdir('/')
+            out=self.prepare();self.assertEqual(out[0]['files'],8)
+            self.assertIn('/home/recovery/other-input/selection-plan.json',out[2])
+        finally:os.chdir(old)
+    def test_missing_transitive_support_refused(self):
+        b=copy.deepcopy(self.binding);b['inputFiles'].pop(1)
+        with self.assertRaisesRegex(RuntimeError,'ENTRY_INPUT_CLOSURE'):self.prepare(b)
+    def test_different_code_and_unknown_file_refused(self):
+        (self.root/'operations/prepare_instance.py').write_bytes(b'changed')
+        with self.assertRaisesRegex(RuntimeError,'FILE_SIZE'):self.prepare()
+    def test_preflight_cannot_dispatch_generation(self):
+        b=copy.deepcopy(self.binding);b['invocations']['new-instance-config'][0]='--execute'
+        with self.assertRaisesRegex(RuntimeError,'READONLY_PREFLIGHT_COMMAND'):self.prepare(b)
+    def test_guest_mapping_path_escape_refused(self):
+        b=copy.deepcopy(self.binding);b['inputFiles'][0]['guest']='/home/recovery/x/../private.py'
+        with self.assertRaisesRegex(RuntimeError,'INPUT_MAPPING'):self.prepare(b)
+    def test_wrong_transport_sha_refused(self):
+        b=copy.deepcopy(self.binding);b['lima']['sha256']='0'*64
+        with self.assertRaisesRegex(RuntimeError,'INPUT_SHA256'):self.prepare(b)
+    def test_duplicate_json_key_refused(self):
+        with self.assertRaisesRegex(RuntimeError,'DUPLICATE_JSON_KEY'):m.decode(b'{"x":1,"x":2}')
+    def test_budget_preserves_explicit_absent_denominator(self):
+        absent=self.root/'absent-cache'
+        p={'kind':'OFFLINE_HOST_BUDGET_SCOPE_V1','limit':m.LIMIT,'expectedRootPaths':[str(self.root),str(absent)]}
+        r=m.budget(p,self.root,[str(absent)])
+        self.assertEqual(len(r['rows']),2);self.assertEqual(r['rows'][1]['allocatedBytes'],0)
+        self.assertFalse(r['scopeNarrowed'])
+        with self.assertRaises(FileNotFoundError):m.budget(p,self.root,[])
+    def test_transport_failure_and_output_bound(self):
+        code,out,err=m.bounded([sys.executable,'-I','-B','-c','import sys;print("public");sys.exit(3)'],{'PATH':'/usr/bin:/bin'},self.root,3,64)
+        self.assertEqual((code,out,err),(3,b'public\n',b''))
+        with self.assertRaisesRegex(RuntimeError,'TRANSPORT_OUTPUT_BOUND'):
+            m.bounded([sys.executable,'-I','-B','-c','print("x"*4096)'],{'PATH':'/usr/bin:/bin'},self.root,3,64)
+    def test_retention_limit_requires_explicit_caller_and_keeps_reserve(self):
+        limit=49*1024**3//2
+        policy={'kind':'OFFLINE_HOST_BUDGET_SCOPE_V1','limit':limit,'expectedRootPaths':[str(self.root)]}
+        with self.assertRaisesRegex(RuntimeError,'COMPLETE_BUDGET_POLICY'):
+            m.budget(policy,self.root,[])
+        for invalid in (26*1024**3, True, -1, float(limit)):
+            with self.assertRaisesRegex(RuntimeError,'APPROVED_BUDGET_LIMIT'):
+                m.budget({**policy,'limit':invalid},self.root,[],approved_limit=invalid)
+        used=24*1024**3+128*1024**2
+        with patch.object(m,'bounded',return_value=(0,str(used//1024).encode(),b'')):
+            result=m.budget(policy,self.root,[],approved_limit=limit)
+        self.assertEqual((result['totalAllocatedBytes'],result['limit'],result['reserve']),
+                         (used,limit,64*1024**2))
+        with patch.object(m,'bounded',return_value=(0,str((limit-64*1024**2+1024)//1024).encode(),b'')):
+            with self.assertRaisesRegex(RuntimeError,'HOST_PREFLIGHT_CAPACITY'):
+                m.budget(policy,self.root,[],approved_limit=limit)
+    def test_november_retention_25_requires_explicit_caller_and_exact_reserve(self):
+        limit=25*1024**3
+        policy={'kind':'OFFLINE_HOST_BUDGET_SCOPE_V1','limit':limit,'expectedRootPaths':[str(self.root)]}
+        for caller in (None,49*1024**3//2):
+            with self.assertRaisesRegex(RuntimeError,'COMPLETE_BUDGET_POLICY'):
+                kwargs={} if caller is None else {'approved_limit':caller}
+                m.budget(policy,self.root,[],**kwargs)
+        # Exercise the actual du reader, not just a precomputed receipt.
+        result=m.budget(policy,self.root,[],approved_limit=limit)
+        self.assertEqual(result['limit'],limit)
+        self.assertEqual(len(result['rows']),1)
+        self.assertEqual(result['readerSha256'],m.sha((HERE/'delivery_host.py').read_bytes()))
+        with patch.object(m,'bounded',return_value=(0,str((limit-64*1024**2)//1024).encode(),b'')):
+            self.assertEqual(m.budget(policy,self.root,[],approved_limit=limit)['reserve'],64*1024**2)
+        with patch.object(m,'bounded',return_value=(0,str((limit-64*1024**2)//1024+1).encode(),b'')):
+            with self.assertRaisesRegex(RuntimeError,'HOST_PREFLIGHT_CAPACITY'):
+                m.budget(policy,self.root,[],approved_limit=limit)
+    def test_transport_deadline_stops_owned_process(self):
+        with self.assertRaisesRegex(RuntimeError,'TRANSPORT_TIMEOUT'):
+            m.bounded([sys.executable,'-I','-B','-c','import time;time.sleep(5)'],{'PATH':'/usr/bin:/bin'},self.root,.1,64)
+    def test_approved_25_quarter_requires_explicit_caller_and_keeps_reserve(self):
+        self.check_explicit_caller_and_reserve(101 * 1024**3 // 4)
+
+    def test_approved_25_half_requires_explicit_caller_and_keeps_reserve(self):
+        self.check_explicit_caller_and_reserve(51 * 1024**3 // 2)
+
+    def check_explicit_caller_and_reserve(self, limit):
+        policy = {'kind': 'OFFLINE_HOST_BUDGET_SCOPE_V1', 'limit': limit,
+                  'expectedRootPaths': [str(self.root)]}
+        for caller in (None, 49*1024**3//2, 25*1024**3):
+            with self.subTest(caller=caller), self.assertRaisesRegex(RuntimeError, 'COMPLETE_BUDGET_POLICY'):
+                kwargs = {} if caller is None else {'approved_limit': caller}
+                m.budget(policy, self.root, [], **kwargs)
+        result = m.budget(policy, self.root, [], approved_limit=limit)
+        self.assertEqual((result['limit'], result['reserve'], len(result['rows'])),
+                         (limit, 64*1024**2, 1))
+        for invalid in (limit+1, float(limit), 26*1024**3):
+            with self.assertRaisesRegex(RuntimeError, 'APPROVED_BUDGET_LIMIT'):
+                m.budget({**policy, 'limit': invalid}, self.root, [], approved_limit=invalid)
+        with patch.object(m, 'bounded', return_value=(0, str((limit-64*1024**2)//1024+1).encode(), b'')):
+            with self.assertRaisesRegex(RuntimeError, 'HOST_PREFLIGHT_CAPACITY'):
+                m.budget(policy, self.root, [], approved_limit=limit)
+    def test_closed_pipes_timeout_preserves_output(self):
+        with self.assertRaises(m.TransportFailure) as caught:
+            m.bounded([sys.executable,'-I','-B','-c','import os,time;os.write(1,b"before-close");os.close(1);os.close(2);time.sleep(5)'],{'PATH':'/usr/bin:/bin'},self.root,.2,64)
+        self.assertEqual(str(caught.exception),'CHECK_TRANSPORT_TIMEOUT')
+        self.assertEqual(caught.exception.stdout,b'before-close')
+
+    def current_budget_policy(self):
+        backing = self.root.parent / 'budget-lima'
+        backing.mkdir(exist_ok=True)
+        disk = backing / 'diffdisk'
+        disk.write_bytes(b'isolated virtual-disk metadata fixture\n')
+        return {'kind': 'OFFLINE_HOST_BUDGET_SCOPE_V1',
+                'limit': m.MAX_APPROVED_LIMIT,
+                'authorizedLimits': [m.MAX_APPROVED_LIMIT],
+                'expectedRootPaths': [str(self.root), str(backing)],
+                'physicalReserveBytes': 10 * 1024**3,
+                'physicalWritePaths': [str(self.root), str(backing)],
+                'virtualDiskPath': str(disk),
+                'capacityReaderSha256': m.sha((HERE / 'delivery_host.py').read_bytes()),
+                'reader': {'dependencies': [{'name': 'delivery_host.py',
+                           'sha256': m.sha((HERE / 'delivery_host.py').read_bytes())}]}}
+
+    def available_space(self, available):
+        return types.SimpleNamespace(f_bavail=available, f_frsize=1)
+
+    def test_current_40_budget_uses_real_du_and_deduplicates_same_volume(self):
+        policy = self.current_budget_policy()
+        window = 64 * 1024**2
+        available = policy['physicalReserveBytes'] + window
+        with patch.object(m.os, 'statvfs', return_value=self.available_space(available)):
+            result = m.budget(policy, self.root, [], approved_limit=m.MAX_APPROVED_LIMIT,
+                              additional_bytes=window)
+        self.assertGreater(result['totalAllocatedBytes'], 0)
+        self.assertEqual([row['path'] for row in result['rows']], policy['expectedRootPaths'])
+        self.assertEqual(result['totalAllocatedBytes'], sum(row['allocatedBytes'] for row in result['rows']))
+        self.assertEqual(result['readerSha256'], m.sha((HERE / 'delivery_host.py').read_bytes()))
+        self.assertEqual(result['authorizedLimits'], [m.MAX_APPROVED_LIMIT])
+        self.assertFalse(result['scopeNarrowed'])
+        physical = result['physicalCapacity']
+        self.assertEqual((physical['reserveBytes'], physical['additionalBytes']),
+                         (10 * 1024**3, window))
+        self.assertEqual(len(physical['filesystems']), 1)
+        volume = physical['filesystems'][0]
+        self.assertEqual(volume['paths'], policy['physicalWritePaths'])
+        self.assertEqual(volume['afterAdditionalBytes'], 10 * 1024**3)
+        self.assertEqual(volume['additionalBytes'], window)
+
+    def test_current_budget_requires_explicit_authorization_and_rejects_above_maximum(self):
+        policy = self.current_budget_policy()
+        with self.assertRaisesRegex(RuntimeError, 'COMPLETE_BUDGET_POLICY'):
+            m.budget(policy, self.root, [])
+        for invalid in (m.MAX_APPROVED_LIMIT + 1, True, float(m.MAX_APPROVED_LIMIT)):
+            with self.subTest(invalid=invalid), self.assertRaisesRegex(RuntimeError, 'APPROVED_BUDGET_LIMIT'):
+                m.budget({**policy, 'limit': invalid}, self.root, [], approved_limit=invalid)
+        for allowed in (None, [], [m.MAX_APPROVED_LIMIT + 1]):
+            changed = {**policy, 'authorizedLimits': allowed}
+            with self.subTest(allowed=allowed), self.assertRaisesRegex(RuntimeError, 'EXPLICIT_CURRENT_AUTHORIZATION'):
+                m.budget(changed, self.root, [], approved_limit=m.MAX_APPROVED_LIMIT)
+
+    def test_current_software_reserve_and_write_window_have_exact_boundary(self):
+        policy = self.current_budget_policy()
+        window = 64 * 1024**2
+        used = m.MAX_APPROVED_LIMIT - 64 * 1024**2 - window
+        def du(argv, *args):
+            allocated = used if argv[-1] == str(self.root) else 0
+            return 0, str(allocated // 1024).encode(), b''
+        with patch.object(m, 'bounded', side_effect=du), \
+             patch.object(m.os, 'statvfs', return_value=self.available_space(20 * 1024**3)):
+            result = m.budget(policy, self.root, [], approved_limit=m.MAX_APPROVED_LIMIT,
+                              additional_bytes=window)
+            self.assertEqual(result['totalAllocatedBytes'] + result['reserve'] + window,
+                             m.MAX_APPROVED_LIMIT)
+            with self.assertRaisesRegex(RuntimeError, 'HOST_PREFLIGHT_CAPACITY'):
+                m.budget(policy, self.root, [], approved_limit=m.MAX_APPROVED_LIMIT,
+                         additional_bytes=window + 1)
+        for invalid in (-1, True, 1.0, m.MAX_APPROVED_LIMIT + 1):
+            with self.subTest(invalid=invalid), self.assertRaisesRegex(RuntimeError, 'ADDITIONAL_WRITE_BOUND'):
+                m.budget(policy, self.root, [], approved_limit=m.MAX_APPROVED_LIMIT,
+                         additional_bytes=invalid)
+
+    def test_current_physical_floor_plus_window_minus_one_is_rejected(self):
+        policy = self.current_budget_policy()
+        window = 64 * 1024**2
+        available = policy['physicalReserveBytes'] + window - 1
+        with patch.object(m.os, 'statvfs', return_value=self.available_space(available)):
+            with self.assertRaisesRegex(RuntimeError, 'HOST_PHYSICAL_CAPACITY'):
+                m.budget(policy, self.root, [], approved_limit=m.MAX_APPROVED_LIMIT,
+                         additional_bytes=window)
+
+    def test_current_different_filesystems_each_keep_their_physical_floor(self):
+        policy = self.current_budget_policy()
+        backing = Path(policy['physicalWritePaths'][1])
+        original_stat = Path.stat
+        window = 64 * 1024**2
+        floor = policy['physicalReserveBytes']
+        def stat(path, *args, **kwargs):
+            observed = original_stat(path, *args, **kwargs)
+            if path == backing:
+                values = list(observed)
+                values[2] += 1
+                return os.stat_result(values)
+            return observed
+        def space(path):
+            return self.available_space(floor + window if path == backing else floor + window + 1024)
+        with patch.object(Path, 'stat', new=stat), patch.object(m.os, 'statvfs', side_effect=space):
+            result = m.budget(policy, self.root, [], approved_limit=m.MAX_APPROVED_LIMIT,
+                              additional_bytes=window)
+        self.assertEqual(len(result['physicalCapacity']['filesystems']), 2)
+        def insufficient(path):
+            return self.available_space(floor + window - 1 if path == backing else floor + window + 1024)
+        with patch.object(Path, 'stat', new=stat), patch.object(m.os, 'statvfs', side_effect=insufficient):
+            with self.assertRaisesRegex(RuntimeError, 'HOST_PHYSICAL_CAPACITY'):
+                m.budget(policy, self.root, [], approved_limit=m.MAX_APPROVED_LIMIT,
+                         additional_bytes=window)
+
+    def test_current_physical_paths_require_backing_disk_and_complete_scope(self):
+        policy = self.current_budget_policy()
+        cases = [
+            ({**policy, 'physicalWritePaths': [str(self.root)]}, 'PHYSICAL_VIRTUAL_DISK_SCOPE'),
+            ({**policy, 'expectedRootPaths': [str(self.root)]}, 'PHYSICAL_WRITE_SCOPE'),
+            ({**policy, 'physicalWritePaths': policy['physicalWritePaths'][1:]}, 'PHYSICAL_OUTPUT_SCOPE'),
+        ]
+        missing_disk = dict(policy)
+        missing_disk.pop('virtualDiskPath')
+        cases.append((missing_disk, 'PHYSICAL_VIRTUAL_DISK_SCOPE'))
+        with patch.object(m.os, 'statvfs', return_value=self.available_space(20 * 1024**3)):
+            for changed, code in cases:
+                with self.subTest(code=code), self.assertRaisesRegex(RuntimeError, code):
+                    m.budget(changed, self.root, [], approved_limit=m.MAX_APPROVED_LIMIT)
+
+    def test_actual_disk_mount_cannot_use_parent_filesystem_space(self):
+        policy = self.current_budget_policy()
+        disk = Path(policy['virtualDiskPath'])
+        original_stat = Path.stat
+        def stat(path, *args, **kwargs):
+            observed = original_stat(path, *args, **kwargs)
+            if path == disk:
+                values = list(observed); values[2] += 1
+                return os.stat_result(values)
+            return observed
+        with patch.object(Path, 'stat', new=stat), \
+             patch.object(m.os, 'statvfs', return_value=self.available_space(20*1024**3)):
+            with self.assertRaisesRegex(RuntimeError, 'PHYSICAL_UNDECLARED_FILESYSTEM'):
+                m.budget(policy, self.root, [], approved_limit=m.MAX_APPROVED_LIMIT)
+
+if __name__=='__main__':unittest.main()

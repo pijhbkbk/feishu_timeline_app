@@ -1,5 +1,7 @@
+import { businessDateKey } from '../../common/business-date';
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { resolveVisualReviewPlan } from '../../common/monthly-review-plan';
 
 /** Also use for image writes. Submitting a linked review must acquire this lock before submittedAt changes. */
 export async function lockInspectionActivity(tx: Prisma.TransactionClient, id: string) {
@@ -22,9 +24,16 @@ export async function assertInspectionReviewLink(tx: Prisma.TransactionClient, i
   await tx.$queryRaw(Prisma.sql`SELECT id FROM inspection_activities WHERE id = ${linked.id} FOR UPDATE`);
   const activity=await tx.inspectionActivity.findUniqueOrThrow({where:{id:linked.id},include:{recurringTask:true}});
   const project=await tx.project.findUniqueOrThrow({where:{id:input.projectId},select:{primaryColorId:true}});
-  const day=input.reviewedAt?.toISOString().slice(0,10);
-  if(activity.projectId!==input.projectId || !activity.recurringTask || activity.recurringTask.projectId!==input.projectId ||
-     !day || day!==activity.activityDate.toISOString().slice(0,10) || day.slice(0,7)!==activity.recurringTask.plannedDate.toISOString().slice(0,7)) {
+  const plan=await resolveVisualReviewPlan(tx,input.projectId);
+  const review=await tx.reviewRecord.findUniqueOrThrow({where:{id:input.reviewId},select:{projectId:true,reviewPeriod:true,workflowTask:{select:{projectId:true,nodeCode:true}}}});
+  const day=input.reviewedAt?businessDateKey(input.reviewedAt):undefined;
+  const targetMatches=plan
+    ? Boolean(activity.recurringTask && activity.recurringTask.projectId===input.projectId && activity.recurringTask.recurringPlanId===plan.id &&
+        day?.slice(0,7)===activity.recurringTask.plannedDate.toISOString().slice(0,7) && review.reviewPeriod===day?.slice(0,7))
+    : activity.recurringTaskId===null && review.reviewPeriod==='TASK';
+  if(activity.projectId!==input.projectId || review.projectId!==input.projectId || review.workflowTask.projectId!==input.projectId ||
+     review.workflowTask.nodeCode!=='VISUAL_COLOR_DIFFERENCE_REVIEW' || !targetMatches ||
+     !day || day!==activity.activityDate.toISOString().slice(0,10)) {
     throw new ConflictException('关联检验活动的日期、项目或目标月份不一致；不能通过修改评审日期改派已关联事实。');
   }
   if(!project.primaryColorId) throw new BadRequestException('目标项目尚未绑定准确颜色。');

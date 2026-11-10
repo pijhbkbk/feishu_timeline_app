@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { isFutureBusinessDate } from '../../common/business-date';
+import { parseBusinessDate, isFutureBusinessDate } from '../../common/business-date';
 import { appendColorStandard, parseColorTechnicalData, parseRegisterMonth } from '../../common/color-standard';
 import { assertApprovedTeamMember } from '../../common/team-membership';
 import { isReworkTask, ancestorEvidenceIds, readEvidenceTask } from '../../common/workflow-evidence';
@@ -2186,7 +2186,7 @@ export class StandardBoardsService {
       throw new BadRequestException(`${label}不能为空。`);
     }
 
-    const parsedDate = new Date(value);
+    const parsedDate = parseBusinessDate(value);
 
     if (Number.isNaN(parsedDate.getTime())) {
       throw new BadRequestException(`${label}格式不正确。`);

@@ -6,12 +6,18 @@ import { ProductionFactsService } from './production-facts.service';
 @Controller('production-facts')
 export class ProductionFactsController {
   constructor(private readonly service: ProductionFactsService) {}
+  @Get('matrix') @Permissions('project.read')
+  matrix(@Query() query: Record<string, unknown>, @CurrentUser() actor: AuthenticatedUser) { return this.service.matrix(query, actor); }
   @Get() @Permissions('project.read')
   list(@Query() query: Record<string, unknown>, @CurrentUser() actor: AuthenticatedUser) { return this.service.list(query, actor); }
   @Get('statistics') @Permissions('project.read')
   statistics(@Query() query: Record<string, unknown>, @CurrentUser() actor: AuthenticatedUser) { return this.service.statistics(query, actor); }
   @Get('sources') @Permissions('project.read')
   sources(@Query() query: Record<string, unknown>, @CurrentUser() actor: AuthenticatedUser) { return this.service.sources(query, actor); }
+  @Get('basis') @Permissions('project.read')
+  basis(@Query() query: Record<string, unknown>, @CurrentUser() actor: AuthenticatedUser) { return this.service.basis(query, actor); }
+  @Patch('basis') @Permissions('project.write')
+  selectBasis(@Body() body: unknown, @CurrentUser() actor: AuthenticatedUser) { return this.service.selectBasis(body, actor); }
   @Get(':id') @Permissions('project.read')
   detail(@Param('id') id: string, @CurrentUser() actor: AuthenticatedUser) { return this.service.detail(id, actor); }
   @Patch('batch') @Permissions('project.write')

@@ -1,4 +1,5 @@
 'use client';
+import { toBusinessDateInputValue } from './local-datetime';
 
 import type { ReviewStandardOptions, ReviewStandardVersion } from './review-standard-version';
 
@@ -43,6 +44,7 @@ export type VisualDeltaReviewRecord = {
   reviewType: 'VISUAL_COLOR_DIFFERENCE_REVIEW';
   reviewPeriod: string | null;
   isPeriodCompleted: boolean;
+  canContinueCompletedPeriod?: boolean;
   reviewConclusion: VisualDeltaReviewConclusion;
   reviewDate: string | null;
   submittedAt: string | null;
@@ -60,6 +62,7 @@ export type VisualDeltaReviewRecord = {
 };
 
 export type VisualDeltaReviewWorkspaceResponse = ReviewStandardOptions & {
+  reviewMode?: 'ACTUAL' | 'LEGACY_MONTHLY';
   businessTime?: string;
   project: {
     id: string;
@@ -92,13 +95,30 @@ export type VisualDeltaMonth = { id: string; periodIndex: number; periodLabel: s
   dueAt: string | null; reviewerId: string | null; status: string };
 
 export function canWriteVisualDeltaMonth(user: SessionUser | null, workspace: VisualDeltaReviewWorkspaceResponse, month: VisualDeltaMonth | undefined, now = workspace.businessTime ? Date.parse(workspace.businessTime) : Date.now()) {
+  if (workspace.reviewMode === 'ACTUAL') return Boolean(canManageVisualDeltaReviews(user) && workspace.massProductionCompleted &&
+    workspace.activeTask && ['PENDING', 'READY', 'IN_PROGRESS', 'RETURNED'].includes(workspace.activeTask.status));
   return Boolean(canManageVisualDeltaReviews(user) && workspace.activeTask && workspace.monthlyPlanActive && month &&
     ['PENDING', 'IN_PROGRESS', 'OVERDUE'].includes(month.status) && Date.parse(month.plannedDate) <= now);
 }
 
 export function canWriteVisualDeltaRecord(user: SessionUser | null, workspace: VisualDeltaReviewWorkspaceResponse, review: VisualDeltaReviewRecord) {
   const month = workspace.recurringTasks.find(task => task.plannedDate.slice(0, 7) === review.reviewPeriod);
-  return review.workflowTaskId === workspace.activeTask?.id && review.reviewerId === user?.id && !review.isPeriodCompleted && canWriteVisualDeltaMonth(user, workspace, month);
+  const continuing = canManageVisualDeltaReviews(user) && workspace.monthlyPlanActive &&
+    workspace.activeTask && ['PENDING', 'READY', 'IN_PROGRESS', 'RETURNED'].includes(workspace.activeTask.status) &&
+    month?.status === 'COMPLETED' && review.canContinueCompletedPeriod === true;
+  return (workspace.reviewMode !== 'ACTUAL' || review.reviewPeriod === 'TASK') &&
+    review.workflowTaskId === workspace.activeTask?.id && review.reviewerId === user?.id && !review.isPeriodCompleted &&
+    (canWriteVisualDeltaMonth(user, workspace, month) || Boolean(continuing));
+}
+
+export type VisualStagePreview = { taskId: string; taskVersion: string; canComplete: boolean; blockingReasons: string[] };
+export function previewVisualDeltaStage(projectId: string, task: { id: string; updatedAt: string }) {
+  return apiRequest<VisualStagePreview>(`/projects/${projectId}/reviews/visual-delta/stage-preview`,
+    { method: 'POST', signal: AbortSignal.timeout(15000), body: { taskId: task.id, taskVersion: task.updatedAt } });
+}
+export function confirmVisualDeltaStage(projectId: string, preview: VisualStagePreview) {
+  return apiRequest<VisualDeltaReviewWorkspaceResponse>(`/projects/${projectId}/reviews/visual-delta/stage-confirm`,
+    { method: 'POST', signal: AbortSignal.timeout(30000), body: { taskId: preview.taskId, taskVersion: preview.taskVersion } });
 }
 
 const VISUAL_DELTA_REVIEW_CONCLUSION_LABELS: Record<
@@ -260,8 +280,8 @@ export function getVisualDeltaReviewApprovalSuccessMessage(
   workspace: VisualDeltaReviewWorkspaceResponse,
 ) {
   return workspace.downstreamTask
-    ? '12 个月目视色差评审已全部通过，颜色退出/收尾节点已激活。'
-    : '当前月份目视色差评审已通过，月度进度已同步；完成 12/12 后才会激活颜色退出/收尾。';
+    ? '实际目视色差评审阶段已明确完成，颜色退出/收尾节点已激活。'
+    : '本条实际评审已确认。请核对本阶段全部适用事项后，单独确认阶段完成；未抽检的空期次无需补做。';
 }
 
 export function canShowVisualDeltaReviewRejectButton(
@@ -307,7 +327,7 @@ export function toVisualDeltaReviewFormInput(
 ): VisualDeltaReviewFormInput {
   return {
     standardVersionId: review.standardVersionId ?? '',
-    reviewDate: review.reviewDate ? review.reviewDate.slice(0, 10) : '',
+    reviewDate: toBusinessDateInputValue(review.reviewDate),
     reviewerId: review.reviewerId,
     reviewConclusion: review.reviewConclusion,
     comment: review.comment ?? '',

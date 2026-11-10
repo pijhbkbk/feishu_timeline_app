@@ -1,6 +1,7 @@
 import {
   ProjectPriority,
   ProjectStatus,
+  WorkflowNodeCode,
 } from '@prisma/client';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -165,6 +166,43 @@ function createService() {
 }
 
 describe('ProjectsService', () => {
+  it('filters a Beijing calendar day across UTC year rollover through the normal list entry', async () => {
+    const prisma = {
+      project: { count: vi.fn().mockResolvedValue(0), findMany: vi.fn().mockResolvedValue([]) },
+      workflowNodeDefinition: { findMany: vi.fn().mockResolvedValue([]) },
+      $transaction: vi.fn(async (queries: Promise<unknown>[]) => Promise.all(queries)),
+    };
+    const service = new ProjectsService(prisma as never, {} as never, {} as never, {} as never);
+    const result = await service.listProjects({ dateFrom: '2027-01-01', dateTo: '2027-01-01' }, actor);
+    expect(result.filters).toMatchObject({ dateFrom: '2026-12-31T16:00:00.000Z', dateTo: '2027-01-01T15:59:59.999Z' });
+    expect(prisma.project.findMany.mock.calls[0]?.[0].where.AND).toEqual(expect.arrayContaining([
+      { OR: [{ plannedEndDate: null }, { plannedEndDate: { gte: new Date('2026-12-31T16:00:00.000Z') } }] },
+      { OR: [{ plannedStartDate: null }, { plannedStartDate: { lte: new Date('2027-01-01T15:59:59.999Z') } }] },
+    ]));
+    expect(service['normalizeListQuery']({ dateFrom: '2026-12-31T16:05Z', dateTo: '2026-12-31T17:05Z' }))
+      .toMatchObject({ dateFrom: new Date('2026-12-31T16:05Z'), dateTo: new Date('2026-12-31T17:05Z') });
+  });
+
+  it.each([
+    [0, 'CURRENT', 'IN_PROGRESS'], [0, 'PENDING', 'PENDING'],
+    [12, 'CURRENT', 'MONTHLY_TRACKING'], [12, 'COMPLETED', 'COMPLETED'],
+    [0, 'COMPLETED', 'COMPLETED'], [12, 'OVERDUE', 'OVERDUE'],
+    [12, 'RETURNED', 'RETURNED'], [0, 'RETURNED', 'RETURNED'],
+  ])('distinguishes actual reviews from retained historical periods (%s, %s)', (periods, status, expected) => {
+    const { service } = createService();
+    expect(service['resolveFlowMapNodeStatus']({
+      nodeCode: WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW, taskId: 'task-17', status,
+      monthlyReview: { totalPeriods: periods, completedPeriods: 0 }, colorExit: null,
+    })).toBe(expected);
+  });
+  it('does not invent historical tracking without a period summary or a task', () => {
+    const { service } = createService();
+    expect(service['resolveFlowMapNodeStatus']({ nodeCode: WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW,
+      taskId: 'task-17', status: 'CURRENT', monthlyReview: null, colorExit: null })).toBe('IN_PROGRESS');
+    expect(service['resolveFlowMapNodeStatus']({ nodeCode: WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW,
+      taskId: null, status: 'NOT_STARTED', monthlyReview: { totalPeriods: 12, completedPeriods: 0 }, colorExit: null })).toBe('NOT_STARTED');
+  });
+
   it('uses the explicit color identity and base in project list and workspace detail', () => {
     const { service } = createService();
     const color = { id: 'imported-base-color', name: '历史颜色', code: null, productionBaseId: 'base-shandong', productionBase: { id: 'base-shandong', name: '山东' } };

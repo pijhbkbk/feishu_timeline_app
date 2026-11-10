@@ -1,4 +1,4 @@
-import { MONTHLY_ACTUAL_SCOPE, MONTHLY_ACTUAL_SCOPE_LABEL } from '../production-facts/production-facts.rules';
+import { MONTHLY_ACTUAL_SCOPE, MONTHLY_ACTUAL_SCOPE_LABEL, MONTHLY_MODEL_SCOPE, MONTHLY_MODEL_SCOPE_LABEL } from '../production-facts/production-facts.rules';
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { ColorRegisterStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../../infra/prisma/prisma.service';
@@ -82,13 +82,15 @@ export class ColorRegisterService {
       this.prisma.colorImportRow.findMany({ where: { colorId: id }, orderBy: [{ sheetName: 'asc' }, { rowNumber: 'asc' }], take: 50, select: { sheetName: true, rowNumber: true, rawCells: true, status: true, batch: { select: { fileName: true } } } }),
       // Each fact already has color/base/month/scope grain; never join versions or measurement angles.
       this.prisma.colorProductionFact.findMany({ where: { colorId: id }, orderBy: [{ month: 'desc' }, { metricScope: 'asc' }], take: 120,
-        select: { id: true, month: true, metricScope: true, quantity: true, productionBaseId: true, sourceRowId: true, sourceCell: true, revision: true, originalSource: true } }),
+        select: { id: true, month: true, metricScope: true, vehicleModel: true, quantity: true, productionBaseId: true, sourceRowId: true, sourceCell: true, revision: true, originalSource: true } }),
       readSystemColorProduction(this.prisma, id),
     ]);
-    return { ...row(color), hueStandard: color.hueStandard, projects: color.linkedProjects,
+    const summary = row(color);
+    return { ...summary, hueStandard: color.hueStandard, projects: color.linkedProjects,
       pendingReasons: [!color.productionBaseId ? '生产基地尚待核对。' : null,
         color.registerStatus === 'PENDING_REVIEW' ? '来源字段存在待核对项，原始记录已保留。' : null,
-        color.projectId === null ? '历史来源没有提供量产批准证据；未创建开发流程。' : null].filter(Boolean),
+        !color.projectId && !color.linkedProjects.length ? '当前颜色尚未关联开发项目。' : null,
+        summary.productionApprovalStatus !== 'APPROVED' ? '当前标准尚未查询到有效量产批准记录。' : null].filter(Boolean),
       versions: versions.map(version => {
         const data = technical(version.technicalData);
         return { id: version.id, versionNo: version.versionNo, boardCode: version.boardCode,
@@ -102,9 +104,9 @@ export class ColorRegisterService {
       sources: versions.map(version => sourceReference(version.sourceReference)).filter(Boolean),
       provenance: provenance.map(value => ({ fileName: value.batch.fileName, sheetName: value.sheetName, rowNumber: value.rowNumber, rawCells: value.rawCells })),
       production: production.map(value => ({ ...value, quantity: value.quantity === null ? null : value.quantity.toString(),
-        countingScope: value.metricScope === MONTHLY_ACTUAL_SCOPE && value.sourceRowId === null ? 'OPERATIONAL_MONTH_TOTAL' : 'SOURCE_RECONCILIATION',
-        scopeLabel: value.metricScope === MONTHLY_ACTUAL_SCOPE ? MONTHLY_ACTUAL_SCOPE_LABEL : value.metricScope })),
-      productionScopePolicy: '本系统月度全车型总量、原始来源对账、项目已完成量产批次是不同口径，分别查看，不能相加。',
+        countingScope: value.metricScope === MONTHLY_ACTUAL_SCOPE && value.sourceRowId === null ? 'OPERATIONAL_MONTH_TOTAL' : value.metricScope === MONTHLY_MODEL_SCOPE && value.sourceRowId === null ? 'OPERATIONAL_MODEL_DETAIL' : 'SOURCE_RECONCILIATION',
+        scopeLabel: value.metricScope === MONTHLY_ACTUAL_SCOPE ? MONTHLY_ACTUAL_SCOPE_LABEL : value.metricScope === MONTHLY_MODEL_SCOPE ? MONTHLY_MODEL_SCOPE_LABEL : value.metricScope })),
+      productionScopePolicy: '本系统月度总量与车型明细须在产量清单选择唯一计数口径；原始来源和项目批次另列，不能相加。',
       productionLimit: 120, systemProduction,
     };
   }
@@ -199,7 +201,7 @@ export class ColorRegisterService {
     const input = { colorId: id, expectedRevision: positiveInt(body.expectedRevision, '颜色记录版本'),
       boardCode: textField(body.boardCode, '色板编号', 128), registerMonth: parseRegisterMonth(body.registerMonth),
       technicalData: parseColorTechnicalData(body.technicalData) };
-    if (!input.technicalData.changeSummary) throw new BadRequestException('请填写更正原因；历史标准不会被覆盖。');
+    if (typeof input.technicalData.changeSummary !== 'string' || !input.technicalData.changeSummary.trim()) throw new BadRequestException('请填写更正原因；历史标准不会被覆盖。');
     return withTeamWrite(this.prisma, actor, tx => this.command(tx, actor, identity(body.operationId, '操作标识'), 'COLOR_STANDARD_CORRECTED', input, async () => {
       const current = await lockRegisterColor(tx, id);
       // A candidate must pass the existing project board node; this correction endpoint cannot bypass it.

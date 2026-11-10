@@ -1,4 +1,5 @@
 'use client';
+import { BUSINESS_TIME_ZONE, localDateTimeToIso, toDateTimeLocalValue } from '../../lib/local-datetime';
 
 import Link from 'next/link';
 import { useAuth } from '../../components/auth-provider';
@@ -268,9 +269,7 @@ function ProjectWorkspace({ projectId }: { projectId: string }) {
             idempotencyKey,
             body: {
               taskVersion: task.taskVersion,
-              actualResolvedAt: new Date(
-                completionPanel.actualResolvedAt,
-              ).toISOString(),
+              actualResolvedAt: localDateTimeToIso(completionPanel.actualResolvedAt),
               resolutionSummary:
                 completionPanel.resolutionSummary.trim(),
               idempotencyKey,
@@ -681,13 +680,13 @@ export function RealTaskDetail({
           ) : <p>该工序未配置必交材料。</p>}
         </DetailSection>
         {node.step === 17 ? (
-          <DetailSection title="月度评审">
-            <DetailGrid items={[
-              ['完成进度', task?.monthlyReviewSummary?.progressText ?? rawNode?.monthlyReview?.progressText ?? '尚未生成月度实例'],
-              ['已完成', `${task?.monthlyReviewSummary?.completedPeriods ?? rawNode?.monthlyReview?.completedPeriods ?? 0} / ${task?.monthlyReviewSummary?.totalPeriods ?? rawNode?.monthlyReview?.totalPeriods ?? 12}`],
+          <DetailSection title="目视色差评审">
+            {(task?.monthlyReviewSummary?.totalPeriods ?? rawNode?.monthlyReview?.totalPeriods ?? 0) > 0 ? <DetailGrid items={[
+              ['完成进度', task?.monthlyReviewSummary?.progressText ?? rawNode?.monthlyReview?.progressText ?? '核对已有历史期次'],
+              ['已完成', `${task?.monthlyReviewSummary?.completedPeriods ?? rawNode?.monthlyReview?.completedPeriods ?? 0} / ${task?.monthlyReviewSummary?.totalPeriods ?? rawNode?.monthlyReview?.totalPeriods ?? 0}`],
               ['逾期月份', `${task?.monthlyReviewSummary?.overduePeriods ?? rawNode?.monthlyReview?.overduePeriods ?? 0} 个`],
-              ['记录原则', '每月独立实例'],
-            ]} />
+              ['记录原则', '保留原历史期次与签署事实'],
+            ]} /> : <p>按实际抽检日期登记，不生成固定月份义务；实际记录确认后仍需明确完成本阶段。</p>}
           </DetailSection>
         ) : null}
         {node.step === 18 ? (
@@ -1324,7 +1323,7 @@ function toDisplayNode(node: R26FlowMapNode): R26FlowNode {
     y: geometry.y,
     width: geometry.width,
     height: geometry.height,
-    shape: geometry.shape,
+    shape: geometry.shape === 'monthly' && !(node.monthlyReview?.totalPeriods) ? 'rounded' : geometry.shape,
     status,
     owner: node.ownerName ?? node.suggestedOwner?.name ?? '负责人待分配',
     department: node.departmentName ?? node.primaryDepartment?.name ?? '部门待定',
@@ -1338,7 +1337,7 @@ function toDisplayNode(node: R26FlowMapNode): R26FlowNode {
     taskId: node.taskId,
     round: node.roundNo || 1,
     monthlyCompleted: node.monthlyReview?.completedPeriods ?? 0,
-    monthlyTotal: node.monthlyReview?.totalPeriods ?? 12,
+    monthlyTotal: node.monthlyReview?.totalPeriods ?? 0,
     collaborators: node.collaborators.map((person) => person.name),
     approver: node.reviewers.map((person) => person.name).join('、') || '无',
     startedAt: '任务详情中查看',
@@ -1391,7 +1390,7 @@ function taskConclusion(node: R26FlowNode, task: R26TaskDetail | null) {
       ? `人工决定：${task.colorExitSummary.finalDecisionLabel}`
       : `系统建议：${task.colorExitSummary.systemSuggestionLabel ?? '暂无'}；仍需人工决定。`;
   }
-  if (task?.monthlyReviewSummary) {
+  if (task?.monthlyReviewSummary && task.monthlyReviewSummary.totalPeriods > 0) {
     const progressText =
       task.monthlyReviewSummary.progressText ??
       `已完成 ${task.monthlyReviewSummary.completedPeriods} / ${task.monthlyReviewSummary.totalPeriods}`;
@@ -1408,7 +1407,7 @@ function taskConclusion(node: R26FlowNode, task: R26TaskDetail | null) {
 
 function formatDateTime(value: string | null) {
   if (!value) return '待确定';
-  return new Intl.DateTimeFormat('zh-CN', {
+  return new Intl.DateTimeFormat('zh-CN', { timeZone: BUSINESS_TIME_ZONE,
     month: 'numeric',
     day: 'numeric',
     hour: '2-digit',
@@ -1418,10 +1417,7 @@ function formatDateTime(value: string | null) {
 }
 
 function toLocalDateTimeInput(value: Date) {
-  const local = new Date(
-    value.getTime() - value.getTimezoneOffset() * 60_000,
-  );
-  return local.toISOString().slice(0, 16);
+  return toDateTimeLocalValue(value.toISOString());
 }
 
 function isGate3C1CompletableTask(task: R26TaskDetail) {

@@ -1,6 +1,8 @@
 'use client';
+import { AnnualReviewPanel } from '../features/color-register/annual-review';
+import '../features/color-register/register.css';
 
-import Link from 'next/link';
+import { M1RecordLink as Link, M1RecordReturn } from '../features/m1/record-return';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 import { useAuth } from './auth-provider';
@@ -104,7 +106,7 @@ export function ColorExitWorkspace({ projectId }: ColorExitWorkspaceProps) {
   const previewSuggestion =
     annualOutputValue == null || !workspace
       ? null
-      : annualOutputValue <= workspace.defaultExitThreshold
+      : (workspace.defaultExitThreshold === 20 ? annualOutputValue < 20 : annualOutputValue <= workspace.defaultExitThreshold)
         ? 'EXIT'
         : 'RETAIN';
 
@@ -260,9 +262,7 @@ export function ColorExitWorkspace({ projectId }: ColorExitWorkspaceProps) {
             >
               {isRefreshing ? '刷新中…' : '刷新'}
             </button>
-            <Link href={`/projects/${projectId}/workflow`} className="button button-secondary">
-              查看流程
-            </Link>
+            <M1RecordReturn projectId={projectId} />
             <Link href={`/projects/${projectId}/color-evaluation`} className="button button-secondary">
               查看色差评审
             </Link>
@@ -332,6 +332,8 @@ export function ColorExitWorkspace({ projectId }: ColorExitWorkspaceProps) {
       {successMessage ? (
         <FeedbackBanner variant="success" title="退出操作已完成" message={successMessage} />
       ) : null}
+
+      {workspace.currentColor ? <AnnualReviewPanel colorId={workspace.currentColor.id} onSaved={() => void loadWorkspace()} onUseExitBasis={basis => { setForm(current => ({ ...current, ...basis })); setSuccessMessage('已填入保存过的13个月复核依据；仍须完成原退出评审与节点校验。'); }} /> : null}
 
       <section className="page-card">
         <div className="section-header">
@@ -577,7 +579,7 @@ export function ColorExitForm({
       <div className="detail-block field field-full">
         <h3>退出建议</h3>
         <p>
-          当前阈值 {defaultExitThreshold} 台。
+          当前阈值 {defaultExitThreshold} 台。{defaultExitThreshold === 20 ? '累计恰好20台继续保留。' : null}
           {previewSuggestion
             ? `按已录入年产量，系统建议为${getColorExitSuggestionLabel(previewSuggestion)}。`
             : '录入年产量后，系统会自动计算建议。'}

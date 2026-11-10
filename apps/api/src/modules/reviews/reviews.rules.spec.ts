@@ -67,14 +67,15 @@ describe('reviews rules', () => {
     expect(templates[0]?.nodeCode).toBe(WorkflowNodeCode.MASS_PRODUCTION_PLAN);
   });
 
-  it('returns to paint development after consistency review reject', () => {
+  it('starts exterior supplier correction and another consistency review without restarting paint development', () => {
     const templates = getWorkflowNextTaskTemplates(
       WorkflowNodeCode.COLOR_CONSISTENCY_REVIEW,
       WorkflowAction.REJECT,
     );
 
     expect(templates).toHaveLength(1);
-    expect(templates[0]?.nodeCode).toBe(WorkflowNodeCode.PAINT_DEVELOPMENT);
+    expect(templates[0]?.nodeCode).toBe(WorkflowNodeCode.COLOR_CONSISTENCY_REVIEW);
+    expect(templates[0]?.reason).toContain('外饰件厂家整改');
   });
 
   it('rejects approve when result or submit state is invalid', () => {

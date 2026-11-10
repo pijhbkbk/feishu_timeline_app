@@ -10,8 +10,13 @@ class DatabaseScopeTests(unittest.TestCase):
         original=b'local all all peer\nhost all all 127.0.0.1/32 scram-sha-256\n'
         with patch.object(scope,'BASE_SHA',hashlib.sha256(original).hexdigest()):
             self.assertTrue(scope.scope_bytes_valid(scope.PREFIX+original))
+            self.assertTrue(scope.scope_bytes_valid(scope.PREFIX+scope.V1_REHEARSAL_PREFIX+original))
             for changed in [original, b'host all all 0.0.0.0/0 trust\n'+scope.PREFIX+original,
-                            scope.PREFIX+original+b'\n', scope.PREFIX.replace(b'reject',b'trust')+original]:
+                            scope.PREFIX+original+b'\n', scope.PREFIX.replace(b'reject',b'trust')+original,
+                            scope.PREFIX+scope.V1_REHEARSAL_PREFIX.replace(b'reject',b'trust')+original,
+                            scope.V1_REHEARSAL_PREFIX+scope.PREFIX+original,
+                            scope.PREFIX+scope.V1_REHEARSAL_PREFIX.replace(b'127.0.0.1/32',b'0.0.0.0/0')+original,
+                            scope.PREFIX+scope.V1_REHEARSAL_PREFIX+scope.V1_REHEARSAL_PREFIX+original]:
                 self.assertFalse(scope.scope_bytes_valid(changed))
 
     def test_wrong_recovery_identity_never_changes_role(self):

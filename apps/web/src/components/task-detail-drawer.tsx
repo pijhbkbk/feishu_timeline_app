@@ -339,17 +339,18 @@ export function Step13FeeSummary({ detail }: { detail: WorkflowTaskInteractionDe
 
 export function Step17MonthlySummary({ detail }: { detail: WorkflowTaskInteractionDetail }) {
   const summary = detail.monthlyReviewSummary;
+  const hasHistoricalPeriods = (summary?.totalPeriods ?? 0) > 0;
 
   return (
     <TaskDetailSection title="第 17 步整车色差一致性评审">
-      <div className="task-detail-grid">
-        <DetailField label="周期" value={`${summary?.totalPeriods ?? 12} 个月`} />
-        <DetailField label="完成进度" value={`已完成 ${summary?.completedPeriods ?? 0} / ${summary?.totalPeriods ?? 12}`} />
+      {hasHistoricalPeriods ? <div className="task-detail-grid">
+        <DetailField label="历史周期" value={`${summary!.totalPeriods} 个月`} />
+        <DetailField label="完成进度" value={`已完成 ${summary!.completedPeriods} / ${summary!.totalPeriods}`} />
         <DetailField label="本月状态" value={summary?.currentMonthTask?.statusLabel ?? '未排期'} />
         <DetailField label="逾期月份" value={`${summary?.overduePeriods ?? 0} 个月`} />
-      </div>
-      <Link href={`/projects/${detail.projectId}/reviews`} className="button button-secondary button-small">
-        查看月度评审台账
+      </div> : <p>按实际抽检日期登记，不生成固定月份义务；实际记录确认后仍需明确完成本阶段。</p>}
+      <Link href={`/projects/${detail.projectId}/color-evaluation`} className="button button-secondary button-small">
+        {hasHistoricalPeriods ? '查看历史月度评审' : '查看实际目视评审'}
       </Link>
     </TaskDetailSection>
   );

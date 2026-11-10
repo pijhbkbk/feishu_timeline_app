@@ -186,7 +186,8 @@ describe('VisualDeltaReviewWorkspace', () => {
     expect(
       canShowVisualDeltaReviewApproveButton(reviewerUser, workspace, completedReview),
     ).toBe(false);
-    expect(getVisualDeltaReviewApprovalSuccessMessage(workspace)).toContain('完成 12/12 后');
+    expect(getVisualDeltaReviewApprovalSuccessMessage(workspace)).toContain('单独确认阶段完成');
+    expect(getVisualDeltaReviewApprovalSuccessMessage(workspace)).not.toContain('12/12');
     expect(
       getVisualDeltaReviewApprovalSuccessMessage({
         ...workspace,
@@ -234,6 +235,31 @@ describe('single-department review admission', () => {
 describe('M1 monthly admission matches current server rules', () => {
   const member: SessionUser = { ...reviewerUser, roleCodes: [] };
   const now = '2026-03-25T00:00:00.000Z';
+  it('continues only the server-qualified existing author record without reopening its completed month', () => {
+    const current = { ...workspace, recurringTasks: [{ ...workspace.recurringTasks[0]!, status: 'COMPLETED' }] };
+    const own = { ...workspace.items[0]!, canContinueCompletedPeriod: true };
+    expect(canWriteVisualDeltaMonth(member, current, current.recurringTasks[0])).toBe(false);
+    expect(canWriteVisualDeltaRecord(member, current, own)).toBe(true);
+    expect(canShowVisualDeltaReviewSubmitButton(member, current, own)).toBe(true);
+    expect(canShowVisualDeltaReviewApproveButton(member, current, { ...own, submittedAt: now })).toBe(true);
+    for (const denied of [
+      { ...own, canContinueCompletedPeriod: false },
+      { ...own, isPeriodCompleted: true },
+      { ...own, reviewerId: 'other-author' },
+      { ...own, workflowTaskId: 'old-task' },
+    ]) expect(canWriteVisualDeltaRecord(member, current, denied)).toBe(false);
+    expect(canWriteVisualDeltaRecord({ ...member, teamAccessApproved: false }, current, own)).toBe(false);
+    expect(canWriteVisualDeltaRecord(member, { ...current, monthlyPlanActive: false }, own)).toBe(false);
+    expect(canWriteVisualDeltaRecord(member, { ...current, activeTask: null }, own)).toBe(false);
+  });
+  it('allows only TASK records in actual mode without inventing monthly eligibility', () => {
+    const actual = { ...workspace, reviewMode: 'ACTUAL' as const, monthlyPlanActive: false, recurringTasks: [] };
+    expect(canWriteVisualDeltaMonth(member, actual, undefined)).toBe(true);
+    expect(canWriteVisualDeltaRecord(member, actual, { ...workspace.items[0]!, reviewPeriod: 'TASK' })).toBe(true);
+    expect(canWriteVisualDeltaRecord(member, actual, workspace.items[0]!)).toBe(false);
+    expect(canWriteVisualDeltaMonth({ ...member, teamAccessApproved: false }, actual, undefined)).toBe(false);
+    expect(canWriteVisualDeltaMonth(member, { ...actual, activeTask: null }, undefined)).toBe(false);
+  });
   const withMonthOwner = (reviewerId: string | null): VisualDeltaReviewWorkspaceResponse => ({
     ...workspace, businessTime: now,
     recurringTasks: [{ ...workspace.recurringTasks[0]!, reviewerId }],

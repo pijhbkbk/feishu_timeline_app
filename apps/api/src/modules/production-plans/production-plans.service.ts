@@ -1,3 +1,4 @@
+import { parseBusinessDate } from '../../common/business-date';
 import { assertApprovedTeamMember } from '../../common/team-membership';
 import { assertTeamTaskById, withProjectWrite } from '../../common/team-authorization';
 import {
@@ -13,6 +14,7 @@ import {
   ProductionPlanType,
   UserStatus,
   WorkflowAction,
+  WorkflowInstanceStatus,
   WorkflowNodeCode,
   WorkflowTaskStatus,
 } from '@prisma/client';
@@ -388,11 +390,23 @@ export class ProductionPlansService {
         }),
       ]);
     this.assertSchedulePlanRecordCapacity(items, false);
+    const displayWorkflowId = activeTask?.workflowInstanceId ??
+      await this.getDisplayWorkflowId(db, projectId);
+    const [displayTask, displayDownstreamTask] = displayWorkflowId
+      ? await Promise.all([
+          activeTask ?? this.getTaskForDisplay(db, projectId, displayWorkflowId, SCHEDULE_PLAN_NODE_CODE),
+          this.getTaskForDisplay(db, projectId, displayWorkflowId, WorkflowNodeCode.MASS_PRODUCTION),
+        ])
+      : [null, null];
 
     return {
       project: this.toProjectSummary(project),
       consistencyReviewApproved,
       activeTask: activeTask ? this.toWorkflowTaskSummary(activeTask) : null,
+      displayTask: displayTask ? this.toWorkflowTaskSummary(displayTask) : null,
+      displayDownstreamTask: displayDownstreamTask
+        ? this.toWorkflowTaskSummary(displayDownstreamTask)
+        : null,
       downstreamMassProductionTask: downstreamMassProductionTask
         ? this.toWorkflowTaskSummary(downstreamMassProductionTask)
         : null,
@@ -528,6 +542,38 @@ export class ProductionPlansService {
     }
 
     return project;
+  }
+
+  /** Display context only; never replace active-task write authorization with history. */
+  private async getDisplayWorkflowId(db: ProductionPlansDbClient, projectId: string) {
+    const running = await db.workflowInstance.findFirst({
+      where: { projectId, status: WorkflowInstanceStatus.RUNNING },
+      orderBy: { versionNo: 'desc' },
+      select: { id: true },
+    });
+    if (running) return running.id;
+    const latest = await db.workflowInstance.findFirst({
+      where: { projectId },
+      orderBy: { versionNo: 'desc' },
+      select: { id: true },
+    });
+    return latest?.id ?? null;
+  }
+
+  private async getTaskForDisplay(
+    db: ProductionPlansDbClient,
+    projectId: string,
+    workflowInstanceId: string,
+    nodeCode: WorkflowNodeCode,
+  ) {
+    return db.workflowTask.findFirst({
+      where: { projectId, workflowInstanceId, nodeCode },
+      include: { assigneeUser: true, assigneeDepartment: true },
+      orderBy: [
+        { isActive: 'desc' }, { taskRound: 'desc' },
+        { createdAt: 'desc' }, { id: 'desc' },
+      ],
+    });
   }
 
   private async getActiveTask(
@@ -752,7 +798,7 @@ export class ProductionPlansService {
       throw new BadRequestException(`${label}不能为空。`);
     }
 
-    const parsedDate = new Date(value);
+    const parsedDate = parseBusinessDate(value);
 
     if (Number.isNaN(parsedDate.getTime())) {
       throw new BadRequestException(`${label}格式不正确。`);

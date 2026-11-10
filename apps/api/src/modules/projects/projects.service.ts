@@ -1,8 +1,10 @@
+import { parseBusinessDate, businessCalendarDayStart, businessCalendarDayEnd, businessDateKey, businessMonthCalendarRange } from '../../common/business-date';
 import { PERSON_PRESENTATION_SELECT, personPresentation } from '../persons/person-profile-read';
 import { PROJECT_DISPLAY_COLOR_SELECT, resolveProjectDisplayColor, projectColorSearchWhere } from '../../common/project-display-color';
 import { assignProjectColor, normalizeProjectColorInput, type ProjectColorInput } from '../../common/project-color';
 import { assertApprovedTeamMember } from '../../common/team-membership';
 import { teamProjectScope } from '../../common/team-authorization';
+import { recordedMonthlyReviewIds, recordedMonthlyReviewSql } from '../../common/monthly-review-applicability';
 import { withTeamWrite, withProjectWrite } from '../../common/team-authorization';
 import {
   BadRequestException,
@@ -168,6 +170,7 @@ const FLOW_MAP_EDGE_DEFINITIONS: Array<{
   { from: WorkflowNodeCode.CAB_REVIEW, to: WorkflowNodeCode.TRIAL_PRODUCTION, edgeType: 'return', label: 'N 退回' },
   { from: WorkflowNodeCode.CAB_REVIEW, to: WorkflowNodeCode.DEVELOPMENT_ACCEPTANCE, edgeType: 'parallel', label: 'Y 非阻塞' },
   { from: WorkflowNodeCode.CAB_REVIEW, to: WorkflowNodeCode.COLOR_CONSISTENCY_REVIEW, edgeType: 'mainline', label: 'Y' },
+  { from: WorkflowNodeCode.COLOR_CONSISTENCY_REVIEW, to: WorkflowNodeCode.COLOR_CONSISTENCY_REVIEW, edgeType: 'return', label: '外饰件厂家整改后整车复审' },
   { from: WorkflowNodeCode.COLOR_CONSISTENCY_REVIEW, to: WorkflowNodeCode.MASS_PRODUCTION_PLAN, edgeType: 'mainline' },
   { from: WorkflowNodeCode.MASS_PRODUCTION_PLAN, to: WorkflowNodeCode.MASS_PRODUCTION, edgeType: 'mainline' },
   { from: WorkflowNodeCode.MASS_PRODUCTION, to: WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW, edgeType: 'mainline' },
@@ -190,8 +193,7 @@ export class ProjectsService {
     delete summaryQuery.view;
     const summaryWhere = this.buildListWhere(summaryQuery, actor);
     const now = new Date();
-    const dueWeekEnd = new Date(now);
-    dueWeekEnd.setDate(dueWeekEnd.getDate() + 7);
+    const dueWeekEnd = new Date(now.getTime() + 7 * 86400000);
 
     const activeWhere: Prisma.ProjectWhereInput = {
       status: { in: [ProjectStatus.DRAFT, ProjectStatus.IN_PROGRESS, ProjectStatus.ON_HOLD] },
@@ -312,11 +314,15 @@ export class ProjectsService {
       return leftSequence - rightSequence;
     });
     const monthlyProjectIds = projects.filter(project => project.workflowTasks.some(task => task.isActive && task.nodeCode === WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW)).map(project => project.id);
-    const monthlyDates = monthlyProjectIds.length ? await this.prisma.recurringTask.groupBy({
-      by: ['projectId'], where: { projectId: { in: monthlyProjectIds }, status: { in: [RecurringTaskStatus.PENDING, RecurringTaskStatus.IN_PROGRESS, RecurringTaskStatus.OVERDUE] },
-        recurringPlan: { status: 'ACTIVE', sourceNodeCode: WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW } }, _min: { dueAt: true },
-    }) : [];
-    const monthlyDeadlines = new Map(monthlyDates.map(item => [item.projectId, item._min.dueAt]));
+    const monthlyDates = monthlyProjectIds.length ? await this.prisma.$queryRaw<Array<{ projectId: string; dueAt: Date | null }>>(Prisma.sql`
+      SELECT t."projectId", min(t."dueAt") AS "dueAt" FROM recurring_tasks t
+      JOIN recurring_plans p ON p.id = t."recurringPlanId"
+      WHERE t."projectId" IN (${Prisma.join(monthlyProjectIds)})
+        AND t.status IN ('PENDING', 'IN_PROGRESS', 'OVERDUE')
+        AND p.status = 'ACTIVE' AND p."sourceNodeCode" = 'VISUAL_COLOR_DIFFERENCE_REVIEW'
+        AND ${recordedMonthlyReviewSql(Prisma.sql`t.id`, Prisma.sql`t."projectId"`)}
+      GROUP BY t."projectId" LIMIT ${monthlyProjectIds.length}`) : [];
+    const monthlyDeadlines = new Map(monthlyDates.map(item => [item.projectId, item.dueAt]));
 
     return {
       page: query.page,
@@ -611,6 +617,7 @@ export class ProjectsService {
     }
 
     const latestTaskByNode = this.getLatestTaskByNode(tasks);
+    const sampledPeriods = await recordedMonthlyReviewIds(this.prisma, recurringPlan?.tasks.map(task => task.id) ?? []);
     const nodes = this.getOrderedWorkflowNodeCodes().map((nodeCode) => {
       const task = latestTaskByNode.get(nodeCode) ?? null;
       const nodeReviews = reviewRecords.filter((review) => review.workflowTaskId === task?.id);
@@ -649,7 +656,7 @@ export class ProjectsService {
             : null,
         monthlyReview:
           nodeCode === WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW
-            ? this.buildMonthlyReviewSummary(recurringPlan, now)
+            ? this.buildMonthlyReviewSummary(recurringPlan, now, sampledPeriods)
             : null,
         colorExit:
           nodeCode === WorkflowNodeCode.PROJECT_CLOSED
@@ -1056,8 +1063,14 @@ export class ProjectsService {
       'priority',
     );
     const isOverdue = this.parseOptionalBoolean(rawQuery.isOverdue);
-    const dateFrom = this.parseOptionalDate(rawQuery.dateFrom, 'dateFrom');
-    const dateTo = this.parseOptionalDate(rawQuery.dateTo, 'dateTo');
+    let dateFrom = this.parseOptionalDate(rawQuery.dateFrom, 'dateFrom');
+    let dateTo = this.parseOptionalDate(rawQuery.dateTo, 'dateTo');
+    if (dateFrom && typeof rawQuery.dateFrom === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(rawQuery.dateFrom.trim())) {
+      dateFrom = businessCalendarDayStart(dateFrom);
+    }
+    if (dateTo && typeof rawQuery.dateTo === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(rawQuery.dateTo.trim())) {
+      dateTo = businessCalendarDayEnd(dateTo);
+    }
 
     if (dateFrom && dateTo && dateFrom > dateTo) {
       throw new BadRequestException('开始日期不能晚于结束日期。');
@@ -2150,7 +2163,8 @@ export class ProjectsService {
     if (
       node.nodeCode === WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW &&
       node.status !== 'COMPLETED' &&
-      node.taskId
+      node.taskId &&
+      (node.monthlyReview?.totalPeriods ?? 0) > 0
     ) {
       return 'MONTHLY_TRACKING';
     }
@@ -2443,19 +2457,19 @@ export class ProjectsService {
         }>
       | null,
     now: Date,
+    sampledPeriods: ReadonlySet<string> = new Set(),
   ) {
     if (!recurringPlan) {
       return {
-        totalPeriods: 12,
+        totalPeriods: 0,
         completedPeriods: 0,
         overduePeriods: 0,
-        progressText: '尚未生成 12 个月度实例',
+        progressText: '按实际抽检记录；无固定月度义务',
         currentMonthTask: null,
       };
     }
 
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    const { start: monthStart, end: nextMonthStart } = businessMonthCalendarRange(now);
     const currentMonthTask =
       recurringPlan.tasks.find(
         (task) =>
@@ -2470,10 +2484,10 @@ export class ProjectsService {
       totalPeriods: recurringPlan.totalCount,
       completedPeriods,
       overduePeriods: recurringPlan.tasks.filter(
-        (task) => task.status === RecurringTaskStatus.OVERDUE,
+        (task) => task.status === RecurringTaskStatus.OVERDUE && sampledPeriods.has(task.id),
       ).length,
-      progressText: `已完成 ${completedPeriods} / ${recurringPlan.totalCount}`,
-      currentMonthTask: currentMonthTask
+      progressText: `历史月度已完成 ${completedPeriods} / ${recurringPlan.totalCount}`,
+      currentMonthTask: currentMonthTask && sampledPeriods.has(currentMonthTask.id)
         ? {
             id: currentMonthTask.id,
             periodLabel: currentMonthTask.periodLabel,
@@ -2667,7 +2681,7 @@ export class ProjectsService {
   }
 
   private generateProjectCode() {
-    const date = new Date().toISOString().slice(0, 10).replaceAll('-', '');
+    const date = businessDateKey(new Date()).replaceAll('-', '');
     return `PRJ-${date}-${randomUUID().slice(0, 8).toUpperCase()}`;
   }
 
@@ -2738,7 +2752,7 @@ export class ProjectsService {
       throw new BadRequestException('日期格式不正确。');
     }
 
-    const date = new Date(rawValue);
+    const date = parseBusinessDate(rawValue);
 
     if (Number.isNaN(date.getTime())) {
       throw new BadRequestException('日期格式不正确。');

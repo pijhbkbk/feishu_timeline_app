@@ -1,6 +1,10 @@
 import { spawn } from 'node:child_process';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { randomBytes } from 'node:crypto';
+import { nativeTableEnvironment } from '../../../scripts/testing/native-table-ci-env.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(__dirname, '../../..');
@@ -52,14 +56,24 @@ async function runPnpm(label, args) {
 
 async function main() {
   const passthroughArgs = process.argv.slice(2);
-  const normalizedArgs =
+  let normalizedArgs =
     passthroughArgs[0] === '--' ? passthroughArgs.slice(1) : passthroughArgs;
+  const nativeTable = normalizedArgs.includes('--native-table');
+  if (nativeTable) {
+    Object.assign(process.env, nativeTableEnvironment(process.env));
+    normalizedArgs = normalizedArgs.filter(value => value !== '--native-table');
+  }
   if (normalizedArgs.includes('@r23')) {
     process.env.PLAYWRIGHT_RESULT_ROUND = 'r23';
   }
 
   log('启动本地基础设施。');
-  await runPnpm('infra', ['infra:up']);
+  // Compose "started" precedes PostgreSQL's first-run initialization. Migrations
+  // require the existing health checks, with a bounded failure, not a blind sleep.
+  await runPnpm('infra', ['infra:up', '--wait', '--wait-timeout', '120']);
+
+  log('生成当前 schema 的 Prisma 客户端。');
+  await runPnpm('generate', ['--filter', '@feishu-timeline/api', 'prisma:generate']);
 
   log('执行 Prisma migrate deploy。');
   await runPnpm('migrate', [
@@ -77,8 +91,27 @@ async function main() {
     'prisma/schema.prisma',
   ]);
 
-  log('执行种子数据，确保浏览器回归有稳定演示数据。');
-  await runPnpm('seed', ['prisma:seed']);
+  if (nativeTable) {
+    log('初始化空白隔离库的基础目录和原生管理员。');
+    const privateRoot = await mkdtemp(resolve(tmpdir(), 'native-table-ci-'));
+    const passwordFile = resolve(privateRoot, 'admin.password');
+    const password = randomBytes(24).toString('hex');
+    console.log(`::add-mask::${password}`);
+    await writeFile(passwordFile, password, { mode: 0o600, flag: 'wx' });
+    process.env.NATIVE_TABLE_CI_STATE = resolve(privateRoot, 'state.json');
+    await writeFile(process.env.NATIVE_TABLE_CI_STATE, JSON.stringify({ admin: { username: 'native_table_ci_admin', password }, privateRoot }), { mode: 0o600, flag: 'wx' });
+    const apiExec = ['--filter', '@feishu-timeline/api', 'exec', 'dotenv', '-e', '.env.example', '--', 'tsx'];
+    await runPnpm('catalog', [...apiExec, 'src/cli/native-catalog.ts', 'initialize']);
+    // Nest injection uses TypeScript decorator metadata, which tsx does not emit.
+    // Match the existing API dev entry; execute the unchanged native-account CLI.
+    await runPnpm('administrator', [...apiExec.slice(0, -1), 'node', '-r', 'ts-node/register/transpile-only', 'src/cli/native-account.ts', 'initialize', '--username', 'native_table_ci_admin', '--name', '合成CI管理员', '--password-file', passwordFile]);
+    await runPnpm('synthetic-catalog', [...apiExec, '../../scripts/testing/native-table-ci-catalog.cjs']);
+    const state = JSON.parse(await readFile(process.env.NATIVE_TABLE_CI_STATE, 'utf8'));
+    for (const member of state.members) console.log(`::add-mask::${member.password}`);
+  } else {
+    log('执行历史回归的演示种子数据。');
+    await runPnpm('seed', ['prisma:seed']);
+  }
 
   log('执行 Playwright 浏览器回归。');
   await runPnpm('playwright', [

@@ -1,0 +1,789 @@
+#!/usr/bin/env python3
+"""Normal lifecycle of the exact joint API/Web on the existing recovery VM.
+
+Uses delivered, pinned runtime primitives. No instance creation, database writes,
+shared-service control, old-candidate rollback or implicit process discovery.
+Each mutation requires the current external state digest and an instance lock.
+"""
+import argparse
+import fcntl
+import functools
+import hashlib
+import json
+import os
+from pathlib import Path
+import re
+import select
+import signal
+import stat
+import subprocess
+import sys
+import time
+import types
+
+HERE = Path(__file__).resolve().parent
+ROOT = Path('/home/recovery/joint-lifecycle-3a11-r01')
+APP = Path('/home/recovery/application-joint-3a11-r01')
+NODE = Path('/home/recovery/offline-software-r30-3941bec-r01/runtime/node24/bin/node')
+BOOT = '9fee751f-120b-451e-9b1b-b17eac34bf98'
+IDENTITY = {'sourceCommit': '3a11b23edd291869d29331d2abc089d2ae6fbc67',
+            'sourceTree': '8cc6afd7566142a967fd265b4a4f6b14f0c1f000',
+            'release': 'truck-joint-3a11b23edd29-r01', 'buildTime': '2026-10-30T07:14:36Z'}
+INITIAL = Path('/home/recovery/joint-preview-3a11-r01/events/switch-r01/result.json')
+INITIAL_SHA = '6717b032593de6e240ccbebe342fa997e58ba819821a66ac35546516a6512b8e'
+DELTA = Path('/home/recovery/input-joint-delivery-20261031-r01/delta')
+DELTA_SHA = '97b61b6b5957e5639b806a4ffdb2283eeb7c44a941f6902dfd546a68583ebedd'
+PORTS = {'api': 3591, 'web': 3592}
+TARGETS = {
+    'joint3a11': {'identity': IDENTITY, 'application': str(APP),
+                 'delta': str(DELTA), 'deltaSha256': DELTA_SHA},
+    'layout5b07': {
+        'identity': {'sourceCommit': '5b07fe3404cb83d485b924b9fdc65f1a1a18ddf0',
+                     'sourceTree': '3122780c1149a496d7bd58c19cb7e88d1c1c6816',
+                     'release': 'truck-layout-5b07fe3404cb-r01', 'buildTime': '2026-10-31T03:14:40Z'},
+        'application': '/home/recovery/application-layout-5b07-r01',
+        'delta': '/home/recovery/input-layout-lifecycle-20261031-r01/delta',
+        'deltaSha256': 'bb5c7d58cbe8f4433abb3509f707e7aae2a41b4c860005d82dfc7bab9d8dcb43'},
+    'workbook9c412dd': {
+        'identity': {'sourceCommit': '9c412ddf892db584633d3e083781e8bfc393fba5',
+                     'sourceTree': 'dde64d42b3f35b23bde0d53a21872f4ab1a37e55',
+                     'release': 'truck-workbook-return-9c412ddf892d-r01', 'buildTime': '2026-10-31T05:03:04Z'},
+        'application': '/home/recovery/application-workbook-9c412dd-r01',
+        'delta': '/home/recovery/input-workbook-lifecycle-20261031-r01/delta',
+        'deltaSha256': '77f6b2593ab32bbd180bf2c81a6cf310880c100a1ef051b0f3843e4ec17e1862'},
+    'save2e0c191': {
+        'identity': {'sourceCommit': '2e0c191f8ed1eb1bdd0f817354a0a785d0c3b126', 'sourceTree': '150440646f845b04774991ff65b2f84a37b3b968', 'release': 'truck-workbook-save-2e0c191f8ed1-r01', 'buildTime': '2026-10-31T08:03:16Z'},
+        'application': '/home/recovery/application-save-2e0c191-r01',
+        'delta': '/home/recovery/input-save-lifecycle-20261031-r01/delta',
+        'deltaSha256': '1eec75c5a436e2d49f4bdeff30bbeec1a856d878d243faa662a0e9e1260b7292'},
+    'menud9d00d2': {
+        'identity': {'sourceCommit':'d9d00d26729e321d2904ecc1c5b5f22f1d79958c',
+                     'sourceTree':'8ac5b1de6101f6e96bf1608b89d58ccf23fe3d38',
+                     'release':'truck-toolbar-menu-d9d00d26729e-r02','buildTime':'2026-11-02T01:07:31Z'},
+        'application':'/home/recovery/application-menu-d9d00d2-r01',
+        'delta':'/home/recovery/input-menu-lifecycle-20261102-r01/delta',
+        'deltaSha256':'ba0d4c52979ecabd3d9eee0546e930df04daddabc62a76fea56d7321ef4fe65a',
+        'bootId':'589fefa8-c3d5-477d-a597-7303774115c9'},
+    'menusavee299057': {
+        'identity': {'sourceCommit':'e299057a21e18f0b702e5d1bfe3d74ec47687505',
+                     'sourceTree':'a3d2ec84dc647d69d49e0bb995bd6e0f218351c4',
+                     'release':'truck-menu-save-e299057a21e1-r01','buildTime':'2026-11-02T09:16:06Z'},
+        'application':'/home/recovery/application-menu-save-e299057-r01',
+        'delta':'/home/recovery/input-menu-save-lifecycle-20261102-r01/delta',
+        'deltaSha256':'3f89102e84cf5482ca6dc490d5b941664a5053ab3c337787e8a74dd309caf4de',
+        'bootId':'589fefa8-c3d5-477d-a597-7303774115c9'},
+    'numericb7b8d13': {
+        'identity': {
+            'sourceCommit': 'b7b8d13190758654697c47d9c582a37e8ceba7e4',
+            'sourceTree': '9d405dfa5dbaa87e707889cce5bfed658266fffe',
+            'release': 'truck-numeric-json-b7b8d1319075-r01',
+            'buildTime': '2026-11-03T02:03:27Z',
+        },
+        'application': '/home/recovery/application-numeric-json-b7b8d13-r01',
+        'delta': '/home/recovery/input-numeric-lifecycle-20261103-r01/delta',
+        'deltaSha256': '0afc682f8976d4e8be8455cc287b20e282390109d1d0e5dab4043c8ff366a25b',
+        'bootId': '589fefa8-c3d5-477d-a597-7303774115c9',
+    },
+    'dateb2e94df': {
+        'identity': {
+            'sourceCommit': 'b2e94dffdf924be0eb564148723940664028a30e',
+            'sourceTree': '3cc22086db440b689122fc991d9cebd6b139820c',
+            'release': 'truck-utc-json-b2e94dffdf92-r01',
+            'buildTime': '2026-11-03T04:51:08Z',
+        },
+        'application': '/home/recovery/application-date-json-b2e94df-r01',
+        'delta': '/home/recovery/input-date-lifecycle-20261103-r01/delta',
+        'deltaSha256': '945fdd6faa75979dd88f3f5d7aa77565ad5a22cb89ec79fd8be091dc4f0e4bbc',
+        'bootId': '589fefa8-c3d5-477d-a597-7303774115c9',
+    },
+    'saveidle460ded4': {
+        'identity': {
+            'sourceCommit': '460ded4b9e093b7424aad1616966cc1686294a8c',
+            'sourceTree': 'df12d1aed3e8b29778d212d4fc8cee74bd51b6fb',
+            'release': 'truck-save-idle-460ded4b9e09-r01',
+            'buildTime': '2026-11-03T12:29:40Z',
+        },
+        'application': '/home/recovery/application-save-idle-460ded4-r01',
+        'delta': '/home/recovery/input-save-idle-lifecycle-20261103-r01/delta',
+        'deltaSha256': '08a4fab308c3367c0caa84edbe77aecadc0127bfa1dc32b9e2923959f448d9d6',
+        'bootId': '589fefa8-c3d5-477d-a597-7303774115c9',
+    },
+    'calendar1bf3c13': {
+        'identity': {
+            'sourceCommit': '1bf3c131bd647bff700b631af514237453c57f90',
+            'sourceTree': 'ae61f4e06a9d914c0d6eefc40862e99cdbcf6d67',
+            'release': 'truck-calendar-1bf3c131bd64-r01',
+            'buildTime': '2026-11-03T14:34:13Z',
+        },
+        'application': '/home/recovery/application-calendar-1bf3c13-r01',
+        'delta': '/home/recovery/input-calendar-lifecycle-20261103-r01/delta',
+        'deltaSha256': 'be0d00b1cc6320af0a1b8fce5d83a16d6d01df3a3d20edc83b828282d5bcd006',
+        'bootId': '589fefa8-c3d5-477d-a597-7303774115c9',
+    },
+}
+ctx = {}
+
+
+def binding_filename(name, event):
+    need(name == 'binding.json' or (
+        isinstance(event, str) and re.fullmatch('[a-z0-9][a-z0-9-]{0,47}', event)
+        and name == 'binding-' + event + '.json'), 'BINDING_NAME')
+    return name
+
+
+def timing_config(raw, target, action, event):
+    """Public, single-request diagnostic contract; never an arbitrary env map."""
+    if raw is None:
+        return None
+    need(target in ('menud9d00d2', 'dateb2e94df') and action in ('start', 'restart'), 'TIMING_SCOPE')
+    need(isinstance(raw, str) and len(raw.encode('utf-8')) <= 1024, 'TIMING_BOUND')
+    def unique(pairs):
+        result = {}
+        for key, value in pairs:
+            need(key not in result, 'TIMING_DUPLICATE_KEY')
+            result[key] = value
+        return result
+    try:
+        value = json.loads(raw, object_pairs_hook=unique)
+    except ValueError:
+        need(False, 'TIMING_JSON')
+    need(isinstance(value, dict) and set(value) ==
+         {'workbookId', 'expectedRevision', 'traceId', 'expiresAt'}, 'TIMING_FIELDS')
+    need(value['workbookId'] == '0c879b6d-12fe-43e5-b1dd-a46988f19c77', 'TIMING_WORKBOOK')
+    trace = value['traceId']
+    need(isinstance(trace, str) and re.fullmatch(
+        '[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}', trace), 'TIMING_TRACE')
+    need(event == 'save-timing-' + trace, 'TIMING_EVENT')
+    need(type(value['expectedRevision']) is int and 1 <= value['expectedRevision'] <= 2**53-1,
+         'TIMING_REVISION')
+    expiry = value['expiresAt']; current = int(time.time() * 1000)
+    need(type(expiry) is int and current < expiry <= min(current + 600000, 2**53-1), 'TIMING_EXPIRY')
+    return value
+
+
+
+def need(ok, code):
+    if not ok:
+        raise RuntimeError('CHECK_' + code)
+
+
+def sha(raw):
+    return hashlib.sha256(raw).hexdigest()
+
+
+def read(path, digest=None, maximum=256*1024):
+    path = Path(path); s = path.lstat()
+    need(path.is_absolute() and path.resolve(strict=True) == path and stat.S_ISREG(s.st_mode)
+         and s.st_nlink == 1 and s.st_uid == s.st_gid == 1100 and
+         stat.S_IMODE(s.st_mode) == 0o600 and s.st_size <= maximum, 'PUBLIC_FILE')
+    with os.fdopen(os.open(path, os.O_RDONLY|os.O_NOFOLLOW), 'rb') as f:
+        opened = os.fstat(f.fileno()); raw = f.read(maximum+1); after = os.fstat(f.fileno())
+    sig = lambda v: (v.st_dev,v.st_ino,v.st_mode,v.st_size,v.st_mtime_ns,v.st_ctime_ns)
+    need(len(raw) == s.st_size and sig(s) == sig(opened) == sig(after) == sig(path.lstat()), 'PUBLIC_FILE_CHANGED')
+    need(digest is None or re.fullmatch('[a-f0-9]{64}', digest) and sha(raw) == digest, 'PUBLIC_DIGEST')
+    return raw
+
+
+def packed(value):
+    return (json.dumps(value, sort_keys=True, separators=(',', ':'))+'\n').encode()
+
+
+def syncdir(path):
+    fd=os.open(path,os.O_RDONLY|os.O_DIRECTORY)
+    try:os.fsync(fd)
+    finally:os.close(fd)
+
+
+def write(path, value):
+    raw = packed(value); need(len(raw) <= 256*1024, 'RECEIPT_SIZE')
+    fd = os.open(path, os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW, 0o600)
+    with os.fdopen(fd, 'wb') as f:
+        f.write(raw); f.flush(); os.fsync(f.fileno())
+    syncdir(Path(path).parent)
+    return sha(raw)
+
+
+def private_dir(path):
+    if not path.exists():
+        path.mkdir(mode=0o700)
+    s=path.lstat()
+    need(path.resolve(strict=True)==path and stat.S_ISDIR(s.st_mode) and
+         s.st_uid==s.st_gid==1100 and stat.S_IMODE(s.st_mode)==0o700, 'PRIVATE_DIRECTORY')
+
+
+def instance_lock():
+    private_dir(ROOT)
+    path=ROOT/'lifecycle.lock'
+    fd=os.open(path,os.O_RDWR|os.O_CREAT|os.O_NOFOLLOW,0o600)
+    try:
+        s=os.fstat(fd)
+        need(stat.S_ISREG(s.st_mode) and s.st_nlink==1 and s.st_uid==s.st_gid==1100
+             and stat.S_IMODE(s.st_mode)==0o600, 'LOCK_METADATA')
+        try:fcntl.flock(fd,fcntl.LOCK_EX|fcntl.LOCK_NB)
+        except BlockingIOError:need(False,'LIFECYCLE_BUSY')
+        return fd
+    except BaseException:
+        os.close(fd);raise
+
+
+def boot():
+    need(sys.flags.isolated and os.getuid()==os.geteuid()==os.getgid()==1100 and
+         os.uname().nodename=='lima-truck-color-recovery-r24-20261025' and
+         Path('/proc/sys/kernel/random/boot_id').read_text().strip()==BOOT, 'EXECUTION_SCOPE')
+
+
+def expected(role):
+    need(role in PORTS, 'APPLICATION_ROLE')
+    cwd=APP/('apps/api' if role=='api' else 'runtime/apps/web')
+    argv=[str(NODE),'--max-old-space-size='+('512' if role=='api' else '768'),
+          str(APP/'apps/api/dist/main.js') if role=='api' else 'server.js']
+    return str(cwd),argv
+
+
+def validate_owner(role, owner):
+    cwd,argv=expected(role)
+    need(isinstance(owner,dict) and type(owner.get('pid')) is int and owner['pid']>1 and
+         re.fullmatch('[0-9]+',owner.get('startTicks','')) and owner.get('uid')==1100 and
+         owner.get('executable')==str(NODE) and owner.get('cwd')==cwd and owner.get('argv')==argv,
+         'APPLICATION_OWNER_SCOPE')
+
+
+def current(owner):
+    p=Path('/proc')/str(owner['pid'])
+    try:
+        raw=(p/'stat').read_text(); parts=raw[raw.rfind(')')+2:].split()
+        if parts[0]=='Z':return 'EXITED'
+        if parts[19]!=owner['startTicks'] or p.stat().st_uid!=owner['uid']:return 'STALE'
+        if os.readlink(p/'exe')!=owner['executable'] or os.readlink(p/'cwd')!=owner['cwd']:return 'STALE'
+        # Next changes process.title after launch. The bound launch recipe is
+        # evidence; live ownership uses PID/start ticks/UID/executable/cwd.
+        return 'RUNNING'
+    except FileNotFoundError:
+        return 'EXITED'
+
+
+def listening_ports():
+    found=set()
+    for name in ('tcp','tcp6'):
+        for line in Path('/proc/net',name).read_text().splitlines()[1:]:
+            columns=line.split()
+            # TIME_WAIT and historical connection rows are not listeners.
+            if columns[3]=='0A':found.add(int(columns[1].split(':')[-1],16))
+    return found & set(PORTS.values())
+
+
+def bind_target(binding):
+    """Explicit, reviewed candidates share one existing instance lock."""
+    global APP, IDENTITY, DELTA, DELTA_SHA, BOOT
+    if binding.get('kind') == 'R30_JOINT_APPLICATION_LIFECYCLE_V1':
+        target = TARGETS['joint3a11']
+    else:
+        need(binding.get('kind') == 'R30_JOINT_APPLICATION_LIFECYCLE_V2' and
+             binding.get('target') in TARGETS, 'TARGET_BINDING')
+        target = TARGETS[binding['target']]
+    need(binding.get('identity') == target['identity'] and
+         binding.get('application') == target['application'] and
+         binding.get('bootId') == target.get('bootId',BOOT) and binding.get('root') == str(ROOT), 'BINDING_SCOPE')
+    if 'bootId' in target:
+        BOOT=target['bootId']
+        recovery=binding.get('runtimeRecovery',{})
+        need(set(recovery)=={'kind','bootId','previousState','pg','redis','scanner','proxy'} and
+             recovery['kind']=='SAME_INSTANCE_NEW_BOOT_BINDING_V1' and recovery['bootId']==BOOT,
+             'RUNTIME_RECOVERY_BINDING')
+    APP, IDENTITY = Path(target['application']), target['identity']
+    DELTA, DELTA_SHA = Path(target['delta']), target['deltaSha256']
+
+
+def recovery_ref(reference, exact_path, maximum=256*1024):
+    need(isinstance(reference,dict) and set(reference)=={'path','sha256'} and
+         reference['path']==str(exact_path) and
+         re.fullmatch('[a-f0-9]{64}',reference['sha256']) is not None,'RECOVERY_REFERENCE')
+    return json.loads(read(Path(reference['path']),reference['sha256'],maximum))
+
+
+def recovery_origin(expected_sha):
+    """Historical owners are data only. Never inspect or signal their PIDs."""
+    r=ctx['binding']['runtimeRecovery'];origin=r['previousState']
+    need(set(origin)=={'path','sha256','bootId','target'} and origin['target']=='save2e0c191' and
+         origin['bootId']=='9fee751f-120b-451e-9b1b-b17eac34bf98' and origin['bootId']!=BOOT and
+         origin['sha256']==expected_sha and not (ROOT/'pending.json').exists(), 'RECOVERY_ORIGIN_SCOPE')
+    pointer=json.loads(read(ROOT/'state.json'))
+    need(pointer=={'path':origin['path'],'sha256':expected_sha},'RECOVERY_POINTER_CAS')
+    path=Path(origin['path'])
+    need(path.parent.parent==ROOT/'events' and path.name=='result.json','RECOVERY_OLD_RESULT_PATH')
+    old=json.loads(read(path,expected_sha))
+    need(old.get('kind')=='JOINT_APPLICATION_LIFECYCLE_RESULT_V1' and
+         old.get('status')=='JOINT_LIFECYCLE_RUNNING' and old.get('bootId')==origin['bootId'] and
+         old.get('identity')==TARGETS[origin['target']]['identity'] and
+         set(old.get('owners',{}))==set(PORTS) and
+         not any(old.get(k) for k in ('unresolvedChildren','cleanupIncomplete','statePublicationUncertain')),
+         'RECOVERY_OLD_RUNNING_SOURCE')
+    proxy=recovery_ref(r['proxy'],Path('/home/recovery/instance/vm-resume-r30-20261102-r02/proxy-start.json'))
+    need(proxy.get('status')=='ORIGINAL_PROXY_STARTED_NEW_BOOT' and proxy.get('bootId')==BOOT,
+         'RECOVERY_NEW_PROXY_RECEIPT')
+    need(not listening_ports(),'RECOVERY_APPS_MUST_BE_ABSENT')
+    ctx.update(previousStateSha256=expected_sha,stateReceiptPath=path,
+               recoveryOrigin={**origin,'interruptionCause':'UNKNOWN','historicalOwners':old['owners'],
+                               'historicalProxyOwner':old['proxyOwner']})
+    return {'owners':{},'proxyOwner':proxy['process'],'bootId':BOOT,'identity':IDENTITY,
+            'status':'NEW_BOOT_APPS_ABSENT'}
+
+
+def current_recovery_services(m,plan,base,value):
+    r=ctx['binding']['runtimeRecovery'];directory=Path('/home/recovery/instance/vm-resume-r30-20261102-r02')
+    pg=recovery_ref(r['pg'],directory/'pg-start.json')
+    rd=recovery_ref(r['redis'],directory/'redis-start.json')
+    need(pg.get('status')=='ORIGINAL_POSTGRES_STARTED_NEW_BOOT' and pg.get('bootId')==BOOT and
+         pg.get('noRestoreMigrationSeedOrRepair') is True and
+         pg['readback']['systemId']=='7700459308674415750' and
+         pg['readback']['data']=='/var/lib/postgresql/14/main' and pg['readback']['port']=='5432',
+         'RECOVERY_ORIGINAL_POSTGRES')
+    need(rd.get('status')=='ORIGINAL_REDIS_STARTED_NEW_BOOT' and rd.get('bootId')==BOOT and
+         rd.get('authenticatedPing') is True and rd.get('noFlushResetRepairOrConfigChanges') is True and
+         rd.get('settings')=={'bind':'127.0.0.1','protected-mode':'yes','appendonly':'yes',
+             'appendfsync':'always','aof-load-truncated':'no','maxmemory-policy':'noeviction'} and
+         rd.get('persistence')=={'loading':'0','aof_enabled':'1','aof_last_write_status':'ok'},
+         'RECOVERY_ORIGINAL_REDIS')
+    shared=[]
+    for owner,uid in ((pg['readback']['process'],109),(rd['process'],1100)):
+        need(owner.get('bootId')==BOOT and type(owner.get('pid')) is int and owner['pid']>1 and
+             owner.get('uid')==uid and re.fullmatch('[0-9]+',str(owner.get('startTicks',''))),
+             'RECOVERY_DATA_OWNER_FIELDS')
+        p=Path('/proc')/str(owner['pid']);raw=(p/'stat').read_text();parts=raw[raw.rfind(')')+2:].split()
+        need(parts[0]!='Z' and parts[19]==str(owner['startTicks']) and p.stat().st_uid==uid,
+             'RECOVERY_DATA_LIVE_OWNER')
+        shared.append((owner['pid'],str(owner['startTicks']),uid))
+    scanner=r['scanner']
+    local='materialPath' in scanner
+    source_key='materialPath' if local else 'refreshPath'
+    need(set(scanner)=={'handoff','root','run',source_key} and
+         (scanner['root'], scanner['run']) in {
+             ('/home/recovery/offline-scanner-healthy-20261102-r01', 'newboot-healthy-scanner-20261102-r01'),
+             ('/home/recovery/offline-scanner-healthy-20261102-r02', 'newboot-healthy-scanner-20261102-r02')} and
+         (scanner[source_key]==scanner['root']+'/scanner-db/IMPORT-RECEIPT.json' if local else
+          re.fullmatch(r'/home/recovery/offline-signatures-20261102-r[0-9]{2}/result.json',scanner[source_key])),
+         'RECOVERY_SCANNER_SCOPE')
+    handoff=load_module('scanner-handoff.py');handoff.NEW_ROOT=Path(scanner['root'])
+    handoff.CURRENT_RUN=scanner['run']
+    if not local:handoff.REFRESH_PATH=Path(scanner[source_key])
+    proof=handoff.load(m,plan,scanner['handoff'])
+    proof_key='currentLocalImport' if local else 'currentRefresh'
+    other_key='currentRefresh' if local else 'currentLocalImport'
+    need(proof.get('applicability',{}).get(proof_key,{}).get('path')==scanner[source_key] and
+         other_key not in proof['applicability'],'RECOVERY_SCANNER_SOURCE_KIND')
+    owner=proof['start']['process'];shared.append((owner['pid'],str(owner['startTicks']),owner['uid']))
+    proxy=recovery_ref(r['proxy'],directory/'proxy-start.json');owner=proxy['process']
+    need(proxy.get('status')=='ORIGINAL_PROXY_STARTED_NEW_BOOT' and proxy.get('bootId')==BOOT and
+         proxy.get('proxyPath')==str(base.PROXY) and proxy.get('proxySha256')==sha(base.read(base.PROXY)) and
+         owner.get('uid')==1100 and owner.get('executable')==str(NODE) and
+         owner.get('cwd')=='/home/recovery/instance' and
+         owner.get('launchedArgv')==[str(NODE),'--max-old-space-size=64',str(base.PROXY)] and
+         value['proxyOwner']==owner and base.matches(owner),'RECOVERY_PROXY_OWNER')
+    found=[x for x in base.listeners() if x['port']==45464]
+    need(len(found)==1 and found[0]['family']=='tcp' and found[0]['address']=='0100007F',
+         'RECOVERY_PROXY_LOOPBACK')
+    links=[]
+    for fd in (Path('/proc')/str(owner['pid'])/'fd').iterdir():
+        try:links.append(os.readlink(fd))
+        except FileNotFoundError:pass
+    need('socket:['+found[0]['inode']+']' in links and base.matches(owner),'RECOVERY_PROXY_SOCKET_OWNER')
+    ctx['currentRecoveryEvidence']={'pg':r['pg'],'redis':r['redis'],'scanner':proof['applicability'],'proxy':r['proxy']}
+    return tuple(shared)
+
+
+def stopped_predecessor(value, path, digest):
+    """Only an externally pinned actual normal stop can bridge identities."""
+    binding, args = ctx['binding'], ctx['args']
+    predecessor = binding.get('predecessor', {})
+    source = TARGETS.get(predecessor.get('target'), {})
+    need(binding.get('kind') == 'R30_JOINT_APPLICATION_LIFECYCLE_V2' and args.action == 'start'
+         and set(predecessor) == {'target', 'path', 'sha256'} and source and
+         source['identity'] != IDENTITY and value.get('identity') == source['identity'] and
+         predecessor['path'] == str(path) and predecessor['sha256'] == digest,
+         'STOPPED_PREDECESSOR_BINDING')
+    need(value.get('kind') == 'JOINT_APPLICATION_LIFECYCLE_RESULT_V1' and
+         value.get('action') == 'stop' and value.get('status') == 'JOINT_LIFECYCLE_STOPPED' and
+         value.get('owners') == {} and value.get('bootId') == BOOT and
+         not any(value.get(k) for k in ('unresolvedChildren', 'errorCode', 'cleanupIncomplete',
+                                       'cleanupFailureCode', 'statePublicationUncertain')) and
+         not (ROOT/'pending.json').exists(), 'PREDECESSOR_NOT_NORMAL_STOP')
+    need(re.fullmatch('[a-f0-9]{64}', value.get('claimSha256', '')) is not None,
+         'PREDECESSOR_CLAIM_DIGEST')
+    claim = json.loads(read(path.parent/'claim.json', value.get('claimSha256')))
+    need(claim.get('identity') == source['identity'] and claim.get('bootId') == BOOT and
+         claim.get('event') == path.parent.name and claim.get('action') == 'stop' and
+         claim.get('bindingSha256') == value.get('bindingSha256') and
+         claim.get('previousStateSha256') == value.get('previousStateSha256'), 'PREDECESSOR_CLAIM')
+    ctx['transitionOrigin'] = dict(predecessor)
+
+
+def state(expected_sha, discover=False):
+    pointer=ROOT/'state.json'
+    if not pointer.exists():
+        need(IDENTITY == TARGETS['joint3a11']['identity'] and
+             ctx.get('binding', {}).get('kind', 'R30_JOINT_APPLICATION_LIFECYCLE_V1') ==
+             'R30_JOINT_APPLICATION_LIFECYCLE_V1', 'NEW_TARGET_REQUIRES_STATE')
+        need(discover or expected_sha==INITIAL_SHA,'INITIAL_EXTERNAL_STATE')
+        expected_sha=INITIAL_SHA
+        source=json.loads(read(INITIAL,INITIAL_SHA))
+        need(source['status']=='JOINT_PREVIEW_RUNNING' and source['identity']==IDENTITY and source['bootId']==BOOT,
+             'INITIAL_RUNNING_RECEIPT')
+        owners=source['after']['owners']
+        value={'bootId':BOOT,'identity':IDENTITY,'owners':{r:owners[r] for r in PORTS},
+               'proxyOwner':owners['proxy'],'status':'RUNNING','sourceReceipt':str(INITIAL)}
+    else:
+        p=json.loads(read(pointer));need(discover or p['sha256']==expected_sha,'STALE_STATE_ARGUMENT')
+        expected_sha=p['sha256']
+        path=Path(p['path'])
+        need(path.parent.parent==ROOT/'events' and path.name=='result.json','STATE_RECEIPT_PATH')
+        value=json.loads(read(path,expected_sha))
+        ctx['stateReceiptPath']=path
+        need(value['bootId']==BOOT,'STATE_IDENTITY_OR_BOOT')
+        if value['identity'] != IDENTITY:
+            stopped_predecessor(value, path, expected_sha)
+    need(set(value['owners'])<=set(PORTS),'STATE_OWNER_ROLES')
+    for role,owner in value['owners'].items():validate_owner(role,owner)
+    ctx['previousStateSha256']=expected_sha
+    return value
+
+
+def resolve_published_pending(value):
+    """Finish only an exactly identified, already published operation."""
+    pending=ROOT/'pending.json'
+    if not pending.exists():return
+    p=json.loads(read(pending));event=p.get('event','')
+    need(re.fullmatch('[a-z0-9][a-z0-9-]{0,47}',event) and
+         ctx.get('stateReceiptPath')==ROOT/'events'/event/'result.json' and
+         p.get('claim')==str(ROOT/'events'/event/'claim.json') and
+         p.get('claimSha256')==value.get('claimSha256') and
+         not value.get('unresolvedChildren'), 'UNRESOLVED_PRIOR_OPERATION')
+    claim=json.loads(read(Path(p['claim']),p['claimSha256']))
+    need(claim.get('identity')==IDENTITY and claim.get('bootId')==BOOT and
+         claim.get('event')==event and claim.get('action')==value.get('action') and
+         claim.get('bindingSha256')==value.get('bindingSha256') and
+         claim.get('previousStateSha256')==value.get('previousStateSha256'), 'PUBLISHED_CLAIM_BINDING')
+    pending.unlink();syncdir(ROOT)
+
+
+def inspect(value):
+    owners={role:current(owner) for role,owner in value['owners'].items()}
+    ports=sorted(listening_ports())
+    if value.get('unresolvedChildren'):
+        return {'status':'UNRESOLVED_CHILD','owners':owners,'listeningPorts':ports,
+                'unresolvedChildren':value['unresolvedChildren']}
+    status='RUNNING' if len(owners)==2 and all(v=='RUNNING' for v in owners.values()) else (
+        'STOPPED' if all(v=='EXITED' for v in owners.values()) and not ports else 'PARTIAL_OR_STALE')
+    return {'status':status,'owners':owners,'listeningPorts':ports}
+
+
+def stop_owned(value):
+    # No configuration, health, scanner, DB or capacity dependency on this path.
+    handles=[];results=[]
+    try:
+        for role in ('web','api'):
+            owner=value['owners'].get(role)
+            if owner is None:continue
+            validate_owner(role,owner);boot()
+            observed=current(owner);need(observed!='STALE','OWNER_REUSED_OR_CHANGED')
+            if observed=='EXITED':results.append({'role':role,'alreadyExited':True});continue
+            try:fd=os.pidfd_open(owner['pid'])
+            except ProcessLookupError:
+                results.append({'role':role,'alreadyExited':True});continue
+            handles.append((role,owner,fd))
+            need(current(owner)=='RUNNING','OWNER_CHANGED_AFTER_PIDFD')
+        for role,owner,fd in handles:
+            boot();observed=current(owner)
+            if observed=='EXITED':
+                results.append({'role':role,'alreadyExited':True});continue
+            need(observed=='RUNNING','OWNER_CHANGED_BEFORE_SIGNAL')
+            signal.pidfd_send_signal(fd,signal.SIGTERM)
+            poll=select.poll();poll.register(fd,select.POLLIN)
+            need(bool(poll.poll(45000)),'NORMAL_STOP_TIMEOUT')
+            results.append({'role':role,'pid':owner['pid'],'startTicks':owner['startTicks'],'normalExit':True})
+    finally:
+        for _,_,fd in handles:os.close(fd)
+    need(not listening_ports(),'APPLICATION_PORT_NOT_FREE')
+    return results
+
+
+def load_module(name):
+    row=ctx['binding']['files'][name];raw=read(HERE/name,row['sha256'])
+    need(len(raw)==row['bytes'],'HELPER_SIZE')
+    m=types.ModuleType(name[:-3]);m.__file__=str(HERE/name)
+    exec(compile(raw,m.__file__,'exec'),m.__dict__)
+    return m
+
+
+def prepare_runtime(value):
+    j=load_module('joint_preview.py');o=load_module('api_overlay.py');j.o=o
+    m=load_module('preview-common.py');m.INPUT=HERE
+    recovery=ctx['binding'].get('runtimeRecovery')
+    if recovery:
+        m.BOOT=BOOT;o.BOOT=BOOT
+        execution_pin=ctx['binding'].get('legacyExecutionPinsSha256','')
+        need(re.fullmatch('[a-f0-9]{64}',execution_pin) is not None,'RECOVERY_EXECUTION_PINS')
+        o.LEGACY_PINS_SHA=execution_pin
+    old_pins,plan=m.load(o.LEGACY_PINS_SHA)
+    rv=load_module('runtime-preview.py');rv.INPUT=HERE;rv.m=m;rv.plan=plan
+    rv.PINS_SHA,rv.MANIFEST_SHA,rv.COPY_SHA=o.LEGACY_PINS_SHA,o.APP_SHA,o.ASSEMBLY_SHA
+    rv.initialize(False)
+    # This explicit caller allowance never changes historical configuration pins.
+    allowance = getattr(ctx['args'], 'approved_host_limit_bytes', 49*1024**3//2)
+    host_policy = ctx['binding'].get('hostBudgetPolicy')
+    allowed = host_policy.get('authorizedLimits', []) if host_policy else (49*1024**3//2,25*1024**3,101*1024**3//4,51*1024**3//2)
+    need(type(allowance) is int and allowance in allowed, 'APPROVED_HOST_LIMIT')
+    if host_policy:
+        need(host_policy.get('expectedRootPaths') == ctx['binding']['budgetRootPaths'] and
+             host_policy.get('capacityReaderSha256') == ctx['binding']['files']['delivery_host.py']['sha256'],
+             'BOUND_HOST_BUDGET_POLICY')
+    if allowance != 49*1024**3//2:
+        rv.observe.resources = functools.partial(rv.observe.resources, approved_limit=allowance,
+                                                host_policy=host_policy)
+    _,old_id,old_env=rv.validate_existing_configuration()
+    if recovery:o.SHARED=current_recovery_services(m,plan,rv.base,value)
+    need(not {'NODE_OPTIONS','NODE_PATH','LD_PRELOAD'}&set(old_env),'ENVIRONMENT_INJECTION')
+    o.INPUT=HERE;o.ROOT=ROOT;j.ROOT=ROOT;j.INPUT=HERE
+    j.APP=APP;j.IDENTITY=IDENTITY
+    o.ctx.update(args=ctx['args'],pins=ctx['binding'],m=m,base=rv.base,observe=rv.observe,
+                 native=rv.NATIVE_PROOF,old_id=old_id,old_env=old_env,event=ctx['event'],logs=ctx['logs'])
+    j.ctx.update(original={'proxy':value['proxyOwner']},priorIdentities={},children=[],
+                 proxyListener=[r for r in rv.base.listeners() if r['port']==45464])
+    j.retained()
+    ctx.update(j=j,o=o)
+    o.resources(True,'prepare')
+    checker=load_module('application_delta.py')
+    _,old,rows=checker.contract(DELTA,DELTA_SHA,o.ART.parent/'application-manifest.json')
+    started=time.monotonic()
+    def guard():need(time.monotonic()-started<=90,'APPLICATION_VERIFY_DEADLINE')
+    checker.verify_tree(o.ART,old,guard,old_base=True)
+    cache=load_module('joint_runtime_cache.py');extra,proof=cache.promoted_rows(APP,rows,checker,guard)
+    checker.verify_tree(APP,{**rows,**extra},guard,base=o.ART)
+    o.write(ctx['event']/'runtime-public-icon-cache.json',proof)
+    for root in (APP,APP/'apps/api',APP/'runtime/apps/web'):
+        for name in ('.env','.env.local','.env.production','.env.production.local'):
+            need(not os.path.lexists(root/name),'NO_DOTENV')
+    j.config_preflight()
+    # Validate before a restart can stop either application. Never persist the opt-in.
+    for role in PORTS: launch_environment(role)
+    return j,o
+
+
+def launch_environment(role):
+    need(role in PORTS, 'APPLICATION_ROLE')
+    env = dict(ctx['j'].environment(role, True))
+    need('WORKBOOK_SAVE_TIMING' not in env, 'TIMING_DEFAULT_OFF')
+    raw = getattr(ctx['args'], 'workbook_save_timing', None)
+    if raw is not None:
+        value = timing_config(raw, ctx['binding'].get('target'), ctx['args'].action, ctx['args'].event)
+        if role == 'api':
+            need(all(env.get(k) == v for k, v in {
+                'LOCAL_RUNTIME_PROFILE': 'loopback-https', 'NODE_ENV': 'production',
+                'DEPLOYMENT_ENV': 'staging', 'HOST': '127.0.0.1'}.items()), 'TIMING_PROFILE')
+            env['WORKBOOK_SAVE_TIMING'] = json.dumps(value, separators=(',', ':'))
+    return env
+
+
+def start_owned(value):
+    j,o=ctx['j'],ctx['o']
+    need(not listening_ports() and all(current(v)=='EXITED' for v in value['owners'].values()),'START_REQUIRES_STOPPED_APPS')
+    o.resources(True,'switch-post-stop')
+    before=o.quota('pre')
+    owners={}
+    try:
+        for role in ('api','web'):owners[role]=spawn_owned(role)
+        result=j.observe(owners,True);after=o.quota('post');o.resources(False,'switch-post-verify')
+        return owners,{'after':result,'quotaPre':before,'quotaPost':after}
+    except BaseException as original:
+        # Cleanup attempts both direct children even if one cleanup fails.
+        try:ctx['startCleanup']=j.cleanup('normal-start')
+        except BaseException as cleanup:ctx['cleanupFailureCode']=safe_code(cleanup)
+        raise
+
+
+def stop_with_admission(value, action):
+    if action == 'restart':
+        ctx['o'].resources(True, 'switch-pre-stop')
+        for role in PORTS: launch_environment(role)
+    else:
+        need(action == 'stop', 'STOP_ACTION')
+    return stop_owned(value)
+
+
+def spawn_owned(role):
+    """Use the existing launch/observe primitives with durable ownership records."""
+    j,o=ctx['j'],ctx['o'];cwd,argv=expected(role)
+    j.retained();need(j.free(role),'APP_PORT_OCCUPIED')
+    write(ctx['event']/('normal-'+role+'-intent.json'),
+          {'role':role,'bootId':BOOT,'cwd':cwd,'argv':argv,'identity':IDENTITY})
+    with (ctx['logs']/('normal-'+role+'.log')).open('xb') as stream:
+        child=subprocess.Popen(argv,cwd=cwd,env=launch_environment(role),stdin=subprocess.DEVNULL,
+                               stdout=stream,stderr=subprocess.STDOUT,close_fds=True,
+                               start_new_session=True,preexec_fn=lambda:o.limits(4*1024**2))
+    item={'child':child,'fd':None,'role':role};j.ctx['children'].append(item)
+    owner=o.ctx['base'].proc_record(child.pid)
+    owner['argv']=argv
+    validate_owner(role,owner);item['owner']=owner
+    write(ctx['event']/('normal-'+role+'-owner.json'),{**owner,'bootId':BOOT})
+    item['fd']=os.pidfd_open(child.pid)
+    until=time.monotonic()+60
+    while time.monotonic()<until:
+        need(child.poll() is None,'APP_EARLY_EXIT')
+        try:
+            j.listener(role,owner);return owner
+        except o.Rejected as error:
+            if str(error)!='CHECK_APP_LISTENER':raise
+        time.sleep(.2)
+    need(False,'APP_READY_TIMEOUT')
+
+
+def safe_code(error):
+    code=str(error)
+    return code if re.fullmatch('CHECK_[A-Z0-9_]+',code) else 'CHECK_LIFECYCLE_INTERNAL'
+
+
+def finish(value, report):
+    report.update(kind='JOINT_APPLICATION_LIFECYCLE_RESULT_V1',identity=IDENTITY,bootId=BOOT,
+                  previousStateSha256=ctx['previousStateSha256'],proxyOwner=value['proxyOwner'],
+                  bindingSha256=ctx['args'].binding_sha256,claimSha256=ctx['claimSha256'])
+    if 'transitionOrigin' in ctx:report['transitionOrigin']=ctx['transitionOrigin']
+    if 'recoveryOrigin' in ctx:report['recoveryOrigin']=ctx['recoveryOrigin']
+    if 'currentRecoveryEvidence' in ctx:report['currentRecoveryEvidence']=ctx['currentRecoveryEvidence']
+    if ctx.get('timing') is not None:report['workbookSaveTiming']=ctx['timing']
+    digest=write(ctx['event']/'result.json',report)
+    pointer={'path':str(ctx['event']/'result.json'),'sha256':digest}
+    temp=ROOT/('state-'+ctx['args'].event+'.tmp');write(temp,pointer)
+    # The current pointer is mutable; historical results are always exclusive.
+    if (ROOT/'state.json').exists():
+        old=json.loads(read(ROOT/'state.json'));need(old['sha256']==ctx['previousStateSha256'],'STATE_CHANGED_DURING_LOCK')
+    os.replace(temp,ROOT/'state.json')
+    # After atomic publication, ownership is externally discoverable. A later
+    # receipt/transport error must not silently stop the published applications.
+    ctx['statePublished']=True
+    syncdir(ROOT)
+    # Only this transient pointer is removed; its immutable claim stays in event.
+    pending=json.loads(read(ROOT/'pending.json'))
+    need(pending['event']==ctx['args'].event,'PENDING_CLAIM_CHANGED')
+    if not report.get('unresolvedChildren'):(ROOT/'pending.json').unlink();syncdir(ROOT)
+    if 'j' in ctx:ctx['j'].release_handles()
+    print(json.dumps({'status':report['status'],'path':pointer['path'],'sha256':digest}),flush=True)
+
+
+def preserve_recovery_failure(report):
+    event=ctx['event'];a=ctx['args'];claim_sha=ctx['claimSha256']
+    report.update(kind='NEW_BOOT_BINDING_FAILURE_V1',bootId=BOOT,identity=IDENTITY,
+                  recoveryOrigin=ctx['recoveryOrigin'],claimSha256=claim_sha,
+                  previousStateSha256=ctx['previousStateSha256'],servicesChanged=False)
+    if not (event/'result.json').exists():
+        digest=write(event/'result.json',report)
+        pointer=json.loads(read(ROOT/'state.json'))
+        need(pointer['sha256']==ctx['previousStateSha256'],'RECOVERY_FAILURE_POINTER_CHANGED')
+        pending=json.loads(read(ROOT/'pending.json'))
+        need(pending=={'event':a.event,'claim':str(event/'claim.json'),'claimSha256':claim_sha},
+             'RECOVERY_FAILURE_PENDING_CHANGED')
+        (ROOT/'pending.json').unlink();syncdir(ROOT)
+        print(json.dumps({'status':'FAILED_PRESERVED','path':str(event/'result.json'),'sha256':digest}),flush=True)
+    else:
+        report['statePublicationUncertain']=True
+        write(event/'publication-failure.json',report)
+        print(json.dumps({'status':'FAILED_PRESERVED','statePublicationUncertain':True}),flush=True)
+
+
+def main():
+    p=argparse.ArgumentParser(description=__doc__)
+    p.add_argument('action',choices=('status','start','stop','restart','recover-boot'))
+    p.add_argument('--execute-reviewed',action='store_true');p.add_argument('--binding-sha256')
+    p.add_argument('--expected-state-sha256');p.add_argument('--event');p.add_argument('--budget-channel-stdio',action='store_true')
+    p.add_argument('--approved-host-limit-bytes',type=int,default=49*1024**3//2)
+    p.add_argument('--binding-name',default='binding.json')
+    p.add_argument('--workbook-save-timing')
+    a=p.parse_args()
+    if not a.execute_reviewed:
+        print(json.dumps({'status':'PLAN_ONLY','actions':['status','start','stop','restart','recover-boot'],'components':['api','web']}));return
+    need(re.fullmatch('[a-f0-9]{64}',a.binding_sha256 or ''),'EXTERNAL_BINDING_DIGEST')
+    binding=json.loads(read(HERE/binding_filename(a.binding_name,a.event),a.binding_sha256))
+    need(binding.get('guestInput') == str(HERE), 'BINDING_INPUT_DIRECTORY')
+    timing=timing_config(a.workbook_save_timing,binding.get('target'),a.action,a.event)
+    bind_target(binding)
+    boot()
+    row=binding['files']['joint_lifecycle.py'];need(sha(read(Path(__file__)))==row['sha256'],'EXECUTION_FILE_PIN')
+    ctx.update(args=a,binding=binding,timing=timing)
+    lock=instance_lock()
+    try:
+        if a.action=='recover-boot':
+            need(binding.get('target')=='menud9d00d2','RECOVERY_TARGET')
+            value=recovery_origin(a.expected_state_sha256)
+        else:value=state(a.expected_state_sha256,discover=a.action=='status')
+        if a.action=='status':
+            print(json.dumps({'status':'JOINT_LIFECYCLE_STATUS','stateSha256':ctx['previousStateSha256'],
+                              'observed':inspect(value),'pendingClaim':
+                              json.loads(read(ROOT/'pending.json')) if (ROOT/'pending.json').exists() else None}));return
+        resolve_published_pending(value)
+        need(re.fullmatch('[a-z0-9][a-z0-9-]{0,47}',a.event or ''),'EVENT_NAME')
+        for path in (ROOT/'events',ROOT/'private'):private_dir(path)
+        event=ROOT/'events'/a.event;logs=ROOT/'private'/a.event
+        event.mkdir(mode=0o700);logs.mkdir(mode=0o700);ctx.update(event=event,logs=logs)
+        syncdir(event.parent);syncdir(logs.parent)
+        claim={'event':a.event,'action':a.action,'previousStateSha256':a.expected_state_sha256,
+               'bindingSha256':a.binding_sha256,'bootId':BOOT,'identity':IDENTITY,'ownersBefore':value['owners']}
+        if timing is not None:claim['workbookSaveTiming']=timing
+        if 'transitionOrigin' in ctx:claim['transitionOrigin']=ctx['transitionOrigin']
+        if 'recoveryOrigin' in ctx:claim['recoveryOrigin']=ctx['recoveryOrigin']
+        claim_sha=write(event/'claim.json',claim)
+        ctx['claimSha256']=claim_sha
+        write(ROOT/'pending.json',{'event':a.event,'claim':str(event/'claim.json'),'claimSha256':claim_sha})
+        report={'action':a.action,'status':'FAILED_PRESERVED','owners':dict(value['owners'])}
+        try:
+            if a.action in ('start','restart','recover-boot'):
+                need(a.budget_channel_stdio,'START_REQUIRES_BUDGET_CHANNEL')
+                prepare_runtime(value)
+            if a.action in ('stop','restart'):
+                report['stops']=stop_with_admission(value,a.action);report['owners']={}
+            if a.action in ('start','restart'):
+                owners,proof=start_owned(value);report.update(owners=owners,**proof,status='JOINT_LIFECYCLE_RUNNING')
+            elif a.action=='recover-boot':
+                ctx['j'].retained()
+                need(not listening_ports(),'RECOVERY_APPS_CHANGED_BEFORE_PUBLICATION')
+                report['status']='BOOT_RECOVERED'
+            else:report['status']='JOINT_LIFECYCLE_STOPPED'
+            finish(value,report)
+        except BaseException as error:
+            report['status']='FAILED_PRESERVED';report['errorCode']=safe_code(error)
+            if a.action=='recover-boot':
+                # This action creates no application/shared-service process.
+                # Its bounded configuration probe is handled by the original
+                # runtime helper. A failed binding must not
+                # replace the old RUNNING pointer or signal its historical PIDs.
+                preserve_recovery_failure(report)
+                raise SystemExit(1)
+            if not ctx.get('statePublished') and 'j' in ctx and ctx['j'].ctx.get('children'):
+                try:report['failureCleanup']=ctx['j'].cleanup('operation-failure')
+                except BaseException as cleanup:
+                    report['cleanupFailureCode']=safe_code(cleanup);report['cleanupIncomplete']=True
+            if 'cleanupFailureCode' in ctx:report['startCleanupFailureCode']=ctx['cleanupFailureCode']
+            # Preserve any direct child still owned after incomplete cleanup.
+            if 'j' in ctx:
+                for item in ctx['j'].ctx.get('children',[]):
+                    if item.get('owner') is not None:report['owners'][item['role']]=item['owner']
+                    elif not item.get('cleaned'):
+                        report.setdefault('unresolvedChildren',[]).append(item['role'])
+            report['observed']=inspect(report)
+            if not (event/'result.json').exists():finish(value,report)
+            else:
+                # A failed publication never overwrites a result already synced.
+                # Keep the claim unresolved and report the final observed state.
+                write(event/'publication-failure.json',report)
+                print(json.dumps({'status':'FAILED_PRESERVED','errorCode':report['errorCode'],
+                                  'preservedEvent':str(event),'statePublished':bool(ctx.get('statePublished')),
+                                  'statePublicationUncertain':True}),flush=True)
+            raise SystemExit(1)
+    finally:
+        fcntl.flock(lock,fcntl.LOCK_UN);os.close(lock)
+
+
+if __name__=='__main__':
+    os.umask(0o077)
+    try:main()
+    except Exception as error:
+        code=str(error)
+        print(json.dumps({'status':'FAILED_PRESERVED','errorCode':code if re.fullmatch('CHECK_[A-Z0-9_]+',code) else 'CHECK_LIFECYCLE_INTERNAL'}))
+        raise SystemExit(1)

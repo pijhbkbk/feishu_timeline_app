@@ -13,7 +13,7 @@ export function ReviewStandardSelect({ value, onChange, options = [], required =
       {options.map(item => <option key={item.id} value={item.id}>{reviewStandardLabel(item)}</option>)}
     </select>
     {locked ? <span className="muted">标准版本随评审记录保留，后续标准更正不会替换此记录。</span> : null}
-    {required && !locked && options.length === 0 ? <span role="status">本轮尚无可引用的已下发标准版本，请先核对制板与下发记录。</span> : null}
+    {required && !locked && !disabled && options.length === 0 ? <span role="status">本轮尚无可引用的已下发标准版本，请先核对制板与下发记录。</span> : null}
     {hasMore ? <span className="muted">当前显示最近 100 个本轮已下发版本，请核对所需版本。</span> : null}
   </label>;
 }

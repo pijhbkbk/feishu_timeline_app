@@ -15,6 +15,7 @@ import { createHash, randomUUID } from 'node:crypto';
 
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { RedisService } from '../../infra/redis/redis.service';
+import { validateReminderScope, type ReminderScope } from '../../common/notification-reminder-scope';
 import {
   NOTIFICATION_LINK_PATH_INVALID,
   NotificationLinkPathValidationError,
@@ -81,6 +82,7 @@ export class NotificationQueueService implements OnModuleInit, OnModuleDestroy {
   private workerTimer: NodeJS.Timeout | null = null;
   private overdueScanTimer: NodeJS.Timeout | null = null;
   private monthlyReviewScanTimer: NodeJS.Timeout | null = null;
+  private scopedReminderTimer: NodeJS.Timeout | null = null;
   private isProcessing = false;
   private isOverdueScanProcessing = false;
   private isDueReminderScanProcessing = false;
@@ -98,7 +100,14 @@ export class NotificationQueueService implements OnModuleInit, OnModuleDestroy {
 
   onModuleInit() {
     const queueEnabled = this.configService.get<boolean>('notificationQueueEnabled') ?? true;
-
+    if (this.scopedReminderScope) {
+      const interval = this.configService.get<number>('notificationInAppReminderScanMs') ?? 300000;
+      if (!Number.isInteger(interval) || interval < 1000 || interval > 86400000) throw new Error('Invalid scoped reminder interval.');
+      this.scopedReminderTimer = setInterval(() => {
+        this.runScheduledTask('process_scoped_in_app_reminders', () => this.processDueReminderScan(this.businessClock.now(), 'scheduled'));
+      }, interval);
+      this.scopedReminderTimer.unref();
+    }
     if (!queueEnabled) {
       return;
     }
@@ -141,6 +150,7 @@ export class NotificationQueueService implements OnModuleInit, OnModuleDestroy {
     if (this.monthlyReviewScanTimer) {
       clearInterval(this.monthlyReviewScanTimer);
     }
+    if (this.scopedReminderTimer) clearInterval(this.scopedReminderTimer);
   }
 
   /** Stop timers before HTTP drain; an already dequeued job must finish/requeue. */
@@ -371,24 +381,45 @@ export class NotificationQueueService implements OnModuleInit, OnModuleDestroy {
   }
 
   async processOverdueScan(now = this.businessClock.now()) {
+    if (this.scopedReminderScope) return this.processDueReminderScan(now);
     if (this.stopping || this.isOverdueScanProcessing) return this.skippedScanResult();
     this.isOverdueScanProcessing = true;
     try { return await new TaskRemindersService(this.prisma, this.businessClock).scan('ordinary', now); }
     finally { this.isOverdueScanProcessing = false; }
   }
 
-  async processDueReminderScan(now = this.businessClock.now()) {
+  async processDueReminderScan(now = this.businessClock.now(), origin: 'manual' | 'scheduled' = 'manual') {
     if (this.stopping || this.isDueReminderScanProcessing) return this.skippedScanResult();
+    const scope = this.scopedReminderScope;
+    const runId = scope ? randomUUID() : null;
     this.isDueReminderScanProcessing = true;
-    try { return await new TaskRemindersService(this.prisma, this.businessClock).scan('ordinary', now); }
+    try {
+      const scanner = new TaskRemindersService(this.prisma, this.businessClock);
+      const result = scope ? await scanner.scan('ordinary', now, scope) : await scanner.scan('ordinary', now);
+      if (scope) this.logger.log(`eventType=scoped_in_app_reminders origin=${origin} runId=${runId} scopeHash=${scope.hash} at=${now.toISOString()} result=completed scanned=${result.scanned} recipientAttempts=${result.enqueued} skipped=${result.skipped}`);
+      return result;
+    }
+    catch (error) {
+      if (scope) this.logger.error(`eventType=scoped_in_app_reminders origin=${origin} runId=${runId} scopeHash=${scope.hash} result=failed`);
+      throw error;
+    }
     finally { this.isDueReminderScanProcessing = false; }
   }
 
   async processMonthlyReviewSchedule(now = this.businessClock.now()) {
+    if (this.scopedReminderScope) return { ...this.skippedScanResult(), markedOverdue: 0 };
     if (this.stopping || this.isMonthlyReviewScanProcessing) return { ...this.skippedScanResult(), markedOverdue: 0 };
     this.isMonthlyReviewScanProcessing = true;
     try { return await new TaskRemindersService(this.prisma, this.businessClock).scan('monthly', now); }
     finally { this.isMonthlyReviewScanProcessing = false; }
+  }
+
+  private get scopedReminderScope(): ReminderScope | undefined {
+    if (!this.configService.get<boolean>('notificationInAppReminderScanEnabled')) return undefined;
+    if (this.configService.get<boolean>('notificationQueueEnabled') !== false || this.configService.get<string>('deploymentEnvironment') !== 'local') {
+      throw new Error('Scoped reminders require local deployment with the global queue disabled.');
+    }
+    return validateReminderScope(this.configService.get<ReminderScope>('notificationInAppReminderScope')!);
   }
 
   private runScheduledTask(

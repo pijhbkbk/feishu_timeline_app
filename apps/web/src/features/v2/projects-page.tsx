@@ -1,4 +1,5 @@
 'use client';
+import { BUSINESS_TIME_ZONE } from '../../lib/local-datetime';
 
 import Link from 'next/link';
 import {
@@ -489,7 +490,7 @@ function formatProjectDate(value: string | null) {
   if (!value) {
     return '待确定';
   }
-  return new Intl.DateTimeFormat('zh-CN', {
+  return new Intl.DateTimeFormat('zh-CN', { timeZone: BUSINESS_TIME_ZONE,
     month: 'numeric',
     day: 'numeric',
     hour: '2-digit',

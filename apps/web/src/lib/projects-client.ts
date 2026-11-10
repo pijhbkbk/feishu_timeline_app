@@ -1,4 +1,5 @@
 'use client';
+import { BUSINESS_TIME_ZONE, toBusinessDateInputValue } from './local-datetime';
 
 import { apiRequest } from './auth-client';
 import {
@@ -561,7 +562,7 @@ export function formatDate(value: string | null | undefined) {
     return '未设置';
   }
 
-  return new Intl.DateTimeFormat('zh-CN', {
+  return new Intl.DateTimeFormat('zh-CN', { timeZone: BUSINESS_TIME_ZONE,
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
@@ -573,7 +574,7 @@ export function formatDateTime(value: string | null | undefined) {
     return '未设置';
   }
 
-  return new Intl.DateTimeFormat('zh-CN', {
+  return new Intl.DateTimeFormat('zh-CN', { timeZone: BUSINESS_TIME_ZONE,
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
@@ -589,5 +590,5 @@ export function toDateInputValue(value: string | null | undefined) {
     return '';
   }
 
-  return value.slice(0, 10);
+  return toBusinessDateInputValue(value);
 }

@@ -1,4 +1,5 @@
 import { requireActiveMonthlyPlan } from '../../common/monthly-review-plan';
+import { businessCalendarDate, businessCalendarDayEnd } from '../../common/business-date';
 import { ConflictException, Injectable } from '@nestjs/common';
 import {
   RecurringPlanStatus,
@@ -12,8 +13,6 @@ import { resolveTeamAssignment } from '../personnel/team-assignment';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import {
   addUtcMonthsClamped,
-  endOfUtcDay,
-  startOfUtcDay,
 } from './workflow-date.utils';
 
 type WorkflowDbClient = Prisma.TransactionClient | PrismaService;
@@ -57,7 +56,7 @@ export class WorkflowRecurringService {
 
     const totalCount = 12;
     const assignment = await resolveTeamAssignment(db, WorkflowNodeCode.VISUAL_COLOR_DIFFERENCE_REVIEW);
-    const startDate = startOfUtcDay(input.startAt);
+    const startDate = businessCalendarDate(input.startAt);
     const monthlyTasks = this.buildMonthlyTasks(startDate, totalCount);
     const endDate = monthlyTasks.at(-1)?.plannedDate ?? startDate;
 
@@ -117,7 +116,7 @@ export class WorkflowRecurringService {
         periodIndex,
         periodLabel: `${year}-${month}`,
         plannedDate,
-        dueAt: endOfUtcDay(plannedDate),
+        dueAt: businessCalendarDayEnd(plannedDate),
         taskCode: `MONTHLY-REVIEW-${year}${month}-${String(periodIndex).padStart(2, '0')}-${randomUUID().slice(0, 6).toUpperCase()}`,
       };
     });

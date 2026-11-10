@@ -1,4 +1,5 @@
 'use client';
+import { toBusinessDateInputValue } from './local-datetime';
 
 import type { ReviewStandardOptions, ReviewStandardVersion } from './review-standard-version';
 
@@ -59,6 +60,7 @@ export type ConsistencyReviewRecord = {
 };
 
 export type ConsistencyReviewWorkspaceResponse = ReviewStandardOptions & {
+  exteriorRectification?: ExteriorRectificationSummary | null;
   project: {
     id: string;
     code: string;
@@ -70,9 +72,25 @@ export type ConsistencyReviewWorkspaceResponse = ReviewStandardOptions & {
   };
   cabinReviewCompleted: boolean;
   activeTask: WorkflowTaskSummary | null;
+  displayTask?: WorkflowTaskSummary | null;
+  displayDownstreamTask?: WorkflowTaskSummary | null;
   downstreamTask: WorkflowTaskSummary | null;
   items: ConsistencyReviewRecord[];
 };
+
+export interface ExteriorRectificationSummary {
+  taskId: string; taskVersion: string; sourceTaskId: string; requirement: string | null; status: 'PENDING' | 'COMPLETED';
+  supplierName?: string; completedOn?: string; summary?: string; recordedAt?: string; recordedById?: string; progressUpdateId?: string;
+}
+export interface ExteriorRectificationInput {
+  taskId: string; expectedTaskVersion: string; operationId: string; supplierName: string; completedOn: string; summary: string;
+}
+export async function completeExteriorRectification(projectId: string, input: Readonly<ExteriorRectificationInput>) {
+  const result = await apiRequest<{ receipt: { taskId: string; operationId: string; progressUpdateId: string }; workspace: ConsistencyReviewWorkspaceResponse }>(
+    `/projects/${projectId}/reviews/consistency/rectification`, { method: 'POST', body: input, signal: AbortSignal.timeout(15000) });
+  if (result.receipt?.taskId !== input.taskId || result.receipt.operationId !== input.operationId || (typeof result.receipt.progressUpdateId !== 'string' || !/^[A-Za-z0-9_-]{1,128}$/.test(result.receipt.progressUpdateId)) || result.workspace?.project.id !== projectId) throw new Error('整改保存回执不匹配；请保留原请求并刷新核对。');
+  return result;
+}
 
 export type ConsistencyReviewFormInput = {
   standardVersionId?: string;
@@ -213,7 +231,7 @@ export function canShowConsistencyReviewSubmitButton(
   workspace: ConsistencyReviewWorkspaceResponse,
   review: ConsistencyReviewRecord,
 ) {
-  if (!workspace.activeTask || review.submittedAt) {
+  if (!workspace.activeTask || workspace.exteriorRectification?.status === 'PENDING' || review.submittedAt) {
     return false;
   }
 
@@ -225,7 +243,7 @@ export function canShowConsistencyReviewApproveButton(
   workspace: ConsistencyReviewWorkspaceResponse,
   review: ConsistencyReviewRecord,
 ) {
-  if (!workspace.activeTask || !review.submittedAt) {
+  if (!workspace.activeTask || workspace.exteriorRectification?.status === 'PENDING' || !review.submittedAt) {
     return false;
   }
 
@@ -244,7 +262,7 @@ export function canShowConsistencyReviewRejectButton(
   workspace: ConsistencyReviewWorkspaceResponse,
   review: ConsistencyReviewRecord,
 ) {
-  if (!workspace.activeTask || !review.submittedAt) {
+  if (!workspace.activeTask || workspace.exteriorRectification?.status === 'PENDING' || !review.submittedAt) {
     return false;
   }
 
@@ -264,15 +282,18 @@ export function getConsistencyReviewConclusionLabel(
 export function getConsistencyReviewWorkspaceHighlights(
   workspace: ConsistencyReviewWorkspaceResponse,
 ) {
+  const displayTask = workspace.displayTask === undefined ? workspace.activeTask : workspace.displayTask;
+  const downstream = workspace.displayDownstreamTask === undefined
+    ? workspace.downstreamTask : workspace.displayDownstreamTask;
   return {
     currentNodeLabel: getWorkflowNodeLabel(workspace.project.currentNodeCode),
     targetDateLabel: formatDate(workspace.project.targetDate),
     riskLevelLabel: getProjectPriorityLabel(workspace.project.riskLevel),
-    activeTaskStatusLabel: workspace.activeTask
-      ? getWorkflowTaskStatusLabel(workspace.activeTask.status)
+    activeTaskStatusLabel: displayTask
+      ? getWorkflowTaskStatusLabel(displayTask.status)
       : '当前无一致性评审任务',
-    downstreamTaskStatusLabel: workspace.downstreamTask
-      ? getWorkflowTaskStatusLabel(workspace.downstreamTask.status)
+    downstreamTaskStatusLabel: downstream
+      ? getWorkflowTaskStatusLabel(downstream.status)
       : '未激活',
   };
 }
@@ -282,7 +303,7 @@ export function toConsistencyReviewFormInput(
 ): ConsistencyReviewFormInput {
   return {
     standardVersionId: review.standardVersionId ?? '',
-    reviewDate: review.reviewDate ? review.reviewDate.slice(0, 10) : '',
+    reviewDate: toBusinessDateInputValue(review.reviewDate),
     reviewerId: review.reviewerId,
     reviewConclusion: review.reviewConclusion,
     comment: review.comment ?? '',

@@ -8,6 +8,29 @@ import {
   LOCAL_DEVELOPMENT_BUILD_IDENTITY,
   type BuildIdentity,
 } from './build-identity';
+import { createReminderScope } from './notification-reminder-scope';
+
+describe('local scoped IN_APP reminder configuration', () => {
+  const scope = { projectIds: ['p1'], taskIds: ['t1'], recipientIds: ['u1'] };
+  const enabled = { DEPLOYMENT_ENV: 'local', NOTIFICATION_QUEUE_ENABLED: 'false',
+    NOTIFICATION_IN_APP_REMINDER_SCAN_ENABLED: 'true', NOTIFICATION_IN_APP_REMINDER_SCOPE_JSON: JSON.stringify(scope) };
+  it('is off by default and only enables with an exact explicit server scope', () => {
+    expect(resolveAppConfig({})).toMatchObject({ notificationInAppReminderScanEnabled: false, notificationInAppReminderScope: null });
+    expect(resolveAppConfig(enabled)).toMatchObject({ notificationQueueEnabled: false, notificationInAppReminderScanEnabled: true,
+      notificationInAppReminderScope: createReminderScope(scope), notificationInAppReminderScanMs: 300000 });
+  });
+  it.each([
+    { NOTIFICATION_QUEUE_ENABLED: undefined }, { NOTIFICATION_QUEUE_ENABLED: 'true' },
+    { NOTIFICATION_QUEUE_ENABLED: 'typo' }, { NOTIFICATION_IN_APP_REMINDER_SCOPE_JSON: '' },
+    { NOTIFICATION_IN_APP_REMINDER_SCOPE_JSON: '{}' }, { NOTIFICATION_IN_APP_REMINDER_SCAN_ENABLED: 'TRUE' },
+    { NOTIFICATION_IN_APP_REMINDER_SCAN_MS: '999' }, { NOTIFICATION_IN_APP_REMINDER_SCAN_MS: '86400001' },
+  ])('fails closed on invalid scoped configuration %#', override => {
+    expect(() => resolveAppConfig({ ...enabled, ...override })).toThrow(/NOTIFICATION_/);
+  });
+  it('cannot enable the isolated local mode in a protected deployment', () => {
+    expect(() => resolveAppConfig({ ...enabled, ...createProtectedEnvironment('staging') })).toThrow('requires local deployment');
+  });
+});
 
 const TEST_PROTECTED_BUILD_IDENTITY: BuildIdentity = Object.freeze({
   sourceCommit: '0123456789abcdef0123456789abcdef01234567',
@@ -89,6 +112,105 @@ function createProtectedEnvironment(
         }),
   };
 }
+
+describe('protected native loopback HTTPS profile', () => {
+  function profile(): NodeJS.ProcessEnv {
+    return {
+      ...createProtectedEnvironment('staging'),
+      LOCAL_RUNTIME_PROFILE: 'loopback-https',
+      HOST: '127.0.0.1', PORT: '3591',
+      FRONTEND_URL: 'https://localhost:45464',
+      AUTH_MOCK_ENABLED: 'false',
+      DATABASE_URL: 'postgresql://offline_app:test-only-database-password-for-local-profile@127.0.0.1:5432/offline_db?schema=public',
+      REDIS_URL: 'redis://:test-only-redis-password-for-local-profile@127.0.0.1:6379',
+      CLAMAV_HOST: '127.0.0.1',
+      OBJECT_STORAGE_LOCAL_ROOT: '/srv/offline/objects',
+    };
+  }
+
+  it('retains production auth, real scanning and immutable identity for a native instance', () => {
+    const env = profile();
+    expect(resolveAppConfig(env)).toMatchObject({
+      nodeEnv: 'production', deploymentEnvironment: 'staging',
+      authMockEnabled: false, malwareScannerProvider: 'clamav',
+      malwareScannerHost: '127.0.0.1', malwareScannerMaxSignatureAgeHours: 48,
+      frontendUrl: 'https://localhost:45464', databaseUrl: env.DATABASE_URL,
+      redisUrl: env.REDIS_URL, objectStorageLocalRoot: '/srv/offline/objects',
+      sourceCommit: TEST_PROTECTED_BUILD_IDENTITY.sourceCommit,
+    });
+  });
+
+  it.each([
+    { LOCAL_RUNTIME_PROFILE: undefined }, { LOCAL_RUNTIME_PROFILE: '' },
+    { LOCAL_RUNTIME_PROFILE: 'loopback-http' }, { LOCAL_RUNTIME_PROFILE: ' loopback-https ' },
+    { DEPLOYMENT_ENV: 'local' }, { DEPLOYMENT_ENV: 'production' },
+    { NODE_ENV: 'development' }, { NODE_ENV: 'test' },
+    { HOST: undefined }, { HOST: '0.0.0.0' }, { HOST: 'localhost' }, { HOST: '::1' },
+    { FRONTEND_URL: 'http://localhost:45464' }, { FRONTEND_URL: 'https://localhost' },
+    { FRONTEND_URL: 'https://localhost:443' }, { FRONTEND_URL: 'https://localhost:65536' },
+    { FRONTEND_URL: 'https://127.0.0.1:45464' }, { FRONTEND_URL: 'https://example.com:45464' },
+    { FRONTEND_URL: 'https://localhost:45464/?x=1' }, { FRONTEND_URL: 'https://localhost:45464/#x' },
+    { FRONTEND_URL: 'https://user:password@localhost:45464' },
+    { PORT: undefined }, { PORT: '0' }, { PORT: '65536' }, { PORT: '3591.5' }, { PORT: '45464' },
+    { AUTH_MOCK_ENABLED: undefined }, { AUTH_MOCK_ENABLED: 'true' }, { AUTH_MOCK_ENABLED: 'FALSE' },
+    { MALWARE_SCANNER_PROVIDER: 'local-eicar' }, { MALWARE_SCANNER_PROVIDER: undefined },
+    { CLAMAV_HOST: 'localhost' }, { CLAMAV_HOST: '192.168.1.1' }, { CLAMAV_HOST: undefined },
+    { OBJECT_STORAGE_LOCAL_ROOT: undefined }, { OBJECT_STORAGE_LOCAL_ROOT: 'var/objects' },
+    { OBJECT_STORAGE_LOCAL_ROOT: '/' }, { OBJECT_STORAGE_LOCAL_ROOT: '/srv/../objects' },
+    { OBJECT_STORAGE_LOCAL_ROOT: '/srv/objects\u0000' },
+  ])('rejects an incomplete or broadened local profile %#', override => {
+    expect(() => resolveAppConfig({ ...profile(), ...override })).toThrow();
+  });
+
+  it.each(['DATABASE_URL', 'REDIS_URL'] as const)('requires explicit strong local %s credentials and prevents endpoint overrides', key => {
+    const value = profile()[key]!;
+    const invalid = [undefined, value.replace('127.0.0.1', 'localhost'),
+      value.replace('127.0.0.1', '192.168.1.10'), value.replace('127.0.0.1', '0.0.0.0'),
+      value.replace(/:54[0-9]{2}|:6379/, ''), value.replace(/test-only-[^@]+/, 'short'),
+      value.replace(/test-only-[^@]+/, 'placeholder-password-that-is-long-enough'),
+      value + '#fragment', value + (value.includes('?') ? '&' : '?') + 'host=remote.internal',
+      value + (value.includes('?') ? '&' : '?') + 'port=9999',
+      value + (value.includes('?') ? '&' : '?') + 'path=%2Ftmp%2Fother.sock',
+    ];
+    for (const url of invalid) {
+      expect(() => resolveAppConfig({ ...profile(), [key]: url })).toThrow(key);
+    }
+  });
+
+  it.each(['DATABASE_URL', 'REDIS_URL'] as const)('enforces the 32 character local %s password minimum', key => {
+    const env = profile();
+    const setPassword = (password: string) => ({ ...env, [key]: env[key]!.replace(/test-only-[^@]+/, password) });
+    const testPassword = 'test-fixture-only-local-01234567';
+    expect(testPassword).toHaveLength(32);
+    expect(() => resolveAppConfig(setPassword(testPassword.slice(1)))).toThrow(key);
+    expect(() => resolveAppConfig(setPassword(testPassword))).not.toThrow();
+  });
+
+  it.each([
+    ['offline_app', 'postgres'], ['offline_app', 'root'], ['offline_app', ''],
+    ['/offline_db', '/'], ['/offline_db', '/bad%2Fpath'],
+    ['schema=public', 'schema=other'], ['schema=public', 'schema=public&schema=public'],
+  ])('rejects a default or ambiguous database target %s -> %s', (from, to) => {
+    const env = profile();
+    expect(() => resolveAppConfig({ ...env, DATABASE_URL: env.DATABASE_URL!.replace(from, to) })).toThrow('DATABASE_URL');
+  });
+
+  it('still rejects missing protected quotas, mismatched identities, mock and stale signature policies', () => {
+    expect(() => resolveAppConfig({ ...profile(), ATTACHMENT_STORAGE_GLOBAL_MAX_BYTES: undefined })).toThrow('ATTACHMENT_STORAGE_GLOBAL_MAX_BYTES');
+    expect(() => resolveAppConfig({ ...profile(), EXPECTED_RELEASE: 'wrong-release' })).toThrow('EXPECTED_RELEASE');
+    expect(() => resolveAppConfig({ ...profile(), EXPECTED_SOURCE_COMMIT: undefined })).toThrow('EXPECTED_SOURCE_COMMIT');
+    expect(() => resolveAppConfig({ ...profile(), CLAMAV_MAX_SIGNATURE_AGE_HOURS: '49' })).toThrow('CLAMAV_MAX_SIGNATURE_AGE_HOURS');
+    expect(() => resolveAppConfigImplementation(profile(), LOCAL_DEVELOPMENT_BUILD_IDENTITY)).toThrow('Immutable build identity');
+  });
+
+  it('does not relax ordinary staging or production loopback restrictions', () => {
+    for (const deployment of ['staging', 'production'] as const) {
+      expect(() => resolveAppConfig({ ...createProtectedEnvironment(deployment), DATABASE_URL: profile().DATABASE_URL })).toThrow('DATABASE_URL');
+      expect(() => resolveAppConfig({ ...createProtectedEnvironment(deployment), REDIS_URL: profile().REDIS_URL })).toThrow('REDIS_URL');
+      expect(() => resolveAppConfig({ ...createProtectedEnvironment(deployment), CLAMAV_HOST: '127.0.0.1' })).toThrow('CLAMAV_HOST');
+    }
+  });
+});
 
 describe('resolveAppConfig', () => {
   it('never treats example files as runtime configuration', () => {

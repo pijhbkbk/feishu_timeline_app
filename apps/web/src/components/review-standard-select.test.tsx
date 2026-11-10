@@ -20,4 +20,10 @@ describe('review standard selection', () => {
     expect(reviewStandardLabel(v1)).toBe('SD-01 · 标准 v1');
     expect(reviewStandardLabel(null)).toBe('历史记录未关联标准版本');
   });
+  it('does not report missing standards for an inactive form, while keeping the active warning', () => {
+    const inactive = renderToStaticMarkup(<ReviewStandardSelect value="" onChange={vi.fn()} required disabled />);
+    const active = renderToStaticMarkup(<ReviewStandardSelect value="" onChange={vi.fn()} required />);
+    expect(inactive).not.toContain('本轮尚无可引用');
+    expect(active).toContain('本轮尚无可引用');
+  });
 });

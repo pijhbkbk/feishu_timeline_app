@@ -1,4 +1,5 @@
 'use client';
+import { toBusinessDateInputValue } from './local-datetime';
 
 import {
   isApprovedTeamUser,
@@ -54,6 +55,8 @@ export type SchedulePlansWorkspaceResponse = {
   };
   consistencyReviewApproved: boolean;
   activeTask: WorkflowTaskSummary | null;
+  displayTask: WorkflowTaskSummary | null;
+  displayDownstreamTask: WorkflowTaskSummary | null;
   downstreamMassProductionTask: WorkflowTaskSummary | null;
   canCompleteTask: boolean;
   completionIssue: string | null;
@@ -209,12 +212,19 @@ export function getSchedulePlansWorkspaceHighlights(
     currentNodeLabel: getWorkflowNodeLabel(workspace.project.currentNodeCode),
     targetDateLabel: formatDate(workspace.project.targetDate),
     riskLevelLabel: getProjectPriorityLabel(workspace.project.riskLevel),
-    activeTaskStatusLabel: workspace.activeTask
-      ? getWorkflowTaskStatusLabel(workspace.activeTask.status)
-      : '当前无排产任务',
-    downstreamTaskStatusLabel: workspace.downstreamMassProductionTask
-      ? getWorkflowTaskStatusLabel(workspace.downstreamMassProductionTask.status)
+    displayTaskStatusLabel: workspace.displayTask
+      ? getWorkflowTaskStatusLabel(workspace.displayTask.status)
+      : '当前未激活',
+    downstreamTaskStatusLabel: workspace.displayDownstreamTask
+      ? getWorkflowTaskStatusLabel(workspace.displayDownstreamTask.status)
       : '未激活',
+    completionStatusLabel: workspace.displayTask?.status === 'COMPLETED'
+      ? '已完成'
+      : !workspace.displayTask
+        ? '当前未激活'
+        : workspace.activeTask?.id !== workspace.displayTask.id
+          ? `${getWorkflowTaskStatusLabel(workspace.displayTask.status)}（当前不可操作）`
+          : workspace.canCompleteTask ? '已满足' : '当前条件不足',
   };
 }
 
@@ -250,5 +260,5 @@ function toDateInputValue(value: string | null | undefined) {
     return '';
   }
 
-  return new Date(value).toISOString().slice(0, 10);
+  return toBusinessDateInputValue(value);
 }

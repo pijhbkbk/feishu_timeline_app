@@ -2,8 +2,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import type { NextConfig } from 'next';
+import { BoundedUiInputPlugin, sharedDependencyBuild } from './bounded-build';
 
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
+const sharedBuild = sharedDependencyBuild(path.resolve(currentDir, '../..'), process.env);
 
 const securityHeaders = [
   {
@@ -43,10 +45,19 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   distDir: process.env.NEXT_DIST_DIR ?? '.next',
   output: 'standalone',
+  webpack(config, { dev }) {
+    // A bounded offline build can omit the reusable disk cache. Application
+    // output, dependency tracing and runtime behavior retain the same settings.
+    if (!dev && process.env.TIMELINE_BUILD_CACHE === 'disabled') {
+      config.cache = false;
+    }
+    if (!dev && sharedBuild) config.plugins.push(new BoundedUiInputPlugin(sharedBuild));
+    return config;
+  },
   devIndicators: false,
   poweredByHeader: false,
   reactStrictMode: true,
-  outputFileTracingRoot: path.join(currentDir, '../../'),
+  outputFileTracingRoot: sharedBuild?.tracingRoot ?? path.join(currentDir, '../../'),
   outputFileTracingExcludes: {
     'next-server': [
       '**/node_modules/typescript/**/*',

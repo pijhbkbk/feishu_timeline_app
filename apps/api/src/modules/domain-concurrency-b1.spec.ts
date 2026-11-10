@@ -25,6 +25,17 @@ type DomainRecord = Record<string, unknown> & {
   updatedAt: Date;
 };
 
+type HarnessAudit = {
+  id: string;
+  projectId: string;
+  targetId: string;
+  action: string;
+  beforeData?: Record<string, unknown>;
+  afterData?: Record<string, unknown>;
+  metadata?: Record<string, unknown>;
+  createdAt: Date;
+};
+
 type HarnessTask = {
   id: string;
   projectId: string;
@@ -127,6 +138,7 @@ function createDomainHarness(
   domain: DomainCase,
   initialStatus: string,
   pause: 'complete' | 'transition',
+  options: { arrivalEvidence?: boolean } = {},
 ) {
   const taskLock = createRowLock();
   const domainLock = createRowLock();
@@ -138,6 +150,18 @@ function createDomainHarness(
   let transactionSequence = 0;
   let mutationSequence = 0;
   const records = [domain.makeRecord(initialStatus)];
+  // Existing procurement rows need the same current-round audit chain as real
+  // service writes. Do not stub the arrival-anchor or authorization checks.
+  const audits: HarnessAudit[] = domain.modelName === 'paintProcurement' && options.arrivalEvidence !== false ? [{
+    id: 'existing-create-audit', projectId: 'project-1', targetId: 'record-1',
+    action: 'PAINT_PROCUREMENT_CREATED', afterData: { id: 'record-1' },
+    metadata: { workflowTaskId: 'task-1' }, createdAt: new Date('2026-08-11T05:58:00.000Z'),
+  }, ...(initialStatus === ProcurementStatus.ARRIVED ? [{
+    id: 'existing-arrival-audit', projectId: 'project-1', targetId: 'record-1',
+    action: 'PAINT_PROCUREMENT_ARRIVED', beforeData: { status: ProcurementStatus.ORDERED },
+    afterData: { id: 'record-1', status: ProcurementStatus.ARRIVED, arrivalDate: (records[0]!.arrivalDate as Date).toISOString() },
+    createdAt: new Date('2026-08-11T05:59:00.000Z'),
+  }] : [])] : [];
   let activeTask: HarnessTask = {
     id: 'task-1',
     projectId: 'project-1',
@@ -167,8 +191,12 @@ function createDomainHarness(
   }
 
   function matchesRecordWhere(record: DomainRecord, where: Record<string, unknown>) {
-    if (where.id && record.id !== where.id) return false;
+    if (typeof where.id === 'string' && record.id !== where.id) return false;
+    if (where.id && typeof where.id === 'object' && 'in' in where.id &&
+      !(where.id.in as string[]).includes(record.id)) return false;
     if (where.projectId && record.projectId !== where.projectId) return false;
+    if (where.arrivalDate && typeof where.arrivalDate === 'object' &&
+      'not' in where.arrivalDate && where.arrivalDate.not === null && record.arrivalDate === null) return false;
     if (
       where.procurementCode !== undefined &&
       record.procurementCode !== where.procurementCode
@@ -202,7 +230,8 @@ function createDomainHarness(
         const transactionNumber = ++transactionSequence;
         const owner = Symbol(`tx-${transactionNumber}`);
         const model = {
-          findMany: vi.fn(async () => records.map((record) => ({ ...record }))),
+          findMany: vi.fn(async (args: { where?: Record<string, unknown> } = {}) =>
+            records.filter(record => matchesRecordWhere(record, args.where ?? {})).map(record => ({ ...record }))),
           findFirst: vi.fn(async (args: { where: Record<string, unknown> }) => {
             const record = records.find((candidate) =>
               matchesRecordWhere(candidate, args.where),
@@ -296,6 +325,14 @@ function createDomainHarness(
         const tx = {
           $queryRaw: vi.fn(async (query: { strings?: readonly string[] }) => {
             const sql = query.strings?.join('') ?? '';
+            if (sql.includes('FROM "audit_logs"')) {
+              const action = sql.includes('PAINT_PROCUREMENT_CREATED') ? 'PAINT_PROCUREMENT_CREATED' : 'PAINT_PROCUREMENT_ARRIVED';
+              return audits.filter(row => row.projectId === activeTask.projectId && row.action === action &&
+                (action !== 'PAINT_PROCUREMENT_CREATED' || row.metadata?.workflowTaskId === activeTask.id))
+                .map(row => ({ id: row.id, targetId: row.targetId, recordId: row.afterData?.id ?? null,
+                  beforeStatus: row.beforeData?.status ?? null, afterStatus: row.afterData?.status ?? null,
+                  arrivalDate: row.afterData?.arrivalDate ?? null, createdAt: row.createdAt }));
+            }
             if (sql.includes(`FROM "${domain.tableName}"`)) {
               if (transactionNumber === 2) secondOperationObserved.resolve();
               await domainLock.acquire(owner);
@@ -319,6 +356,14 @@ function createDomainHarness(
             })),
           },
           workflowTask: {
+            updateMany: vi.fn(async ({ where, data }: { where: Partial<HarnessTask>; data: Partial<HarnessTask> }) => {
+              await taskLock.acquire(owner);
+              if (where.id !== activeTask.id || where.projectId !== activeTask.projectId ||
+                where.isActive !== activeTask.isActive || where.status !== activeTask.status ||
+                where.updatedAt?.getTime() !== activeTask.updatedAt.getTime()) return { count: 0 };
+              activeTask = { ...activeTask, ...data };
+              return { count: 1 };
+            }),
             findFirst: vi.fn(
               async (args: { where: Record<string, unknown> }) => {
                 if (args.where.id) {
@@ -344,6 +389,14 @@ function createDomainHarness(
               },
             ),
             findMany: vi.fn().mockResolvedValue([]),
+          },
+          auditLog: {
+            create: vi.fn(async ({ data }: { data: Omit<HarnessAudit, 'id' | 'createdAt'> }) => {
+              const row = { ...data, id: `new-audit-${audits.length + 1}`, createdAt: new Date('2026-08-11T06:02:00.000Z') };
+              audits.push(row);
+              auditActions.push(data.action);
+              return row;
+            }),
           },
           supplier: {
             findUnique: vi.fn().mockResolvedValue({
@@ -385,9 +438,8 @@ function createDomainHarness(
   };
   const activityLogs = {
     createWithExecutor: vi.fn(
-      async (_tx: unknown, input: { action: string }) => {
-        auditActions.push(input.action);
-        return { id: `audit-${auditActions.length}` };
+      async (tx: { auditLog: { create: (args: { data: Omit<HarnessAudit, 'id' | 'createdAt'> }) => Promise<HarnessAudit> } }, input: Omit<HarnessAudit, 'id' | 'createdAt'>) => {
+        return tx.auditLog.create({ data: input });
       },
     ),
   };
@@ -801,6 +853,13 @@ describe.each(domainCases)('$label concurrency integrity', (domain) => {
     expect(state.task.isActive).toBe(false);
     expect(state.records).toHaveLength(1);
     expect(state.auditActions).not.toContain(domain.createAuditAction);
+    if (domain.modelName === 'paintProcurement') {
+      expect(state.task.payload.performanceArrivalAnchor).toEqual(expect.objectContaining({
+        procurementTaskId: 'task-1', procurementId: 'record-1',
+        creationAuditId: 'existing-create-audit', arrivalAuditId: 'existing-arrival-audit',
+      }));
+      expect(state.auditActions.filter(action => action === 'PERFORMANCE_ARRIVAL_ANCHOR_RECORDED')).toHaveLength(1);
+    }
   });
 
   it('prevents a stale update from committing after a terminal transition', async () => {
@@ -850,4 +909,13 @@ describe.each(domainCases)('$label concurrency integrity', (domain) => {
       );
     expect(domainAudits).toHaveLength(1);
   });
+});
+
+it('rejects procurement completion without current-round arrival evidence before transition or completion audit', async () => {
+  const domain = domainCases.find(value => value.modelName === 'paintProcurement')!;
+  const harness = createDomainHarness(domain, ProcurementStatus.ARRIVED, 'complete', { arrivalEvidence: false });
+  await expect(domain.complete(harness.service, domain.actor)).rejects.toThrow('创建与实际到货依据');
+  expect(harness.getState().task.isActive).toBe(true);
+  expect(harness.getState().task.payload.performanceArrivalAnchor).toBeUndefined();
+  expect(harness.getState().auditActions).toEqual([]);
 });

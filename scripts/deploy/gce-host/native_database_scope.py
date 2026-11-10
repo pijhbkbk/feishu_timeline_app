@@ -28,6 +28,12 @@ PREFIX = ("# Native account fixed-role scope; all previous rules retained below.
           "host all timeline_restore_c38c57da 0.0.0.0/0 reject\n"
           "host all timeline_restore_c38c57da ::0/0 reject\n"
           "local all timeline_restore_c38c57da reject\n").encode()
+V1_REHEARSAL_PREFIX = (
+    "# Fixed V1 rehearsal role can reach only its independent database.\n"
+    "host feishu_timeline_restore_a51d1104 timeline_restore_a51d1104 127.0.0.1/32 scram-sha-256\n"
+    "host all timeline_restore_a51d1104 0.0.0.0/0 reject\n"
+    "host all timeline_restore_a51d1104 ::0/0 reject\n"
+    "local all timeline_restore_a51d1104 reject\n").encode()
 JOURNAL = {'version': 1, 'database': migration.DATABASE, 'role': migration.ROLE, 'baseSha256': BASE_SHA}
 require = backup.require
 
@@ -44,7 +50,8 @@ def read_hba():
 
 
 def scope_bytes_valid(raw):
-    return raw.startswith(PREFIX) and hashlib.sha256(raw[len(PREFIX):]).hexdigest() == BASE_SHA
+    return any(raw.startswith(prefix) and hashlib.sha256(raw[len(prefix):]).hexdigest() == BASE_SHA
+               for prefix in (PREFIX, PREFIX + V1_REHEARSAL_PREFIX))
 
 
 def verify():

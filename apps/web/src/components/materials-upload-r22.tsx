@@ -1,4 +1,5 @@
 'use client';
+import { BUSINESS_TIME_ZONE } from '../lib/local-datetime';
 
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
@@ -141,7 +142,7 @@ export function MaterialsUploadR22() {
 
           <R22Card className="r22-material-history">
             <div className="r22-section-heading"><div><h2>已上传材料</h2><p>{detail.attachments.length} 份有效材料，旧文件不会被物理覆盖。</p></div></div>
-              {detail.attachments.length ? <div className="r22-material-table" role="table" aria-label="已上传材料"><div className="r22-material-row r22-material-row-head" role="row"><span>文件</span><span>材料类型</span><span>上传人 / 时间</span><span>版本</span><span>状态</span><span>操作</span></div>{detail.attachments.map((item) => <div className="r22-material-row" role="row" key={item.id}><span><strong>{item.fileName}</strong><small>{formatAttachmentSize(item.fileSize)}</small></span><span>{item.materialType ?? detail.outputName}</span><span><strong>{item.uploadedByName ?? '系统用户'}</strong><small>{new Date(item.uploadedAt).toLocaleString('zh-CN')}</small></span><span>V{item.versionNo ?? versions.get(item.id) ?? 1}</span><span><R22StatusBadge tone="success">{item.status}</R22StatusBadge></span><span className="r22-material-actions"><a href={`${API_BASE_URL}${item.previewUrl}`} target="_blank" rel="noreferrer">查看</a><button type="button" onClick={() => chooseReplacement(item.id)}>替换</button></span></div>)}</div> : <div className="r22-empty-compact"><strong>尚未上传材料</strong><p>选择文件并完成上传后，版本记录会显示在这里。</p></div>}
+              {detail.attachments.length ? <div className="r22-material-table" role="table" aria-label="已上传材料"><div className="r22-material-row r22-material-row-head" role="row"><span>文件</span><span>材料类型</span><span>上传人 / 时间</span><span>版本</span><span>状态</span><span>操作</span></div>{detail.attachments.map((item) => <div className="r22-material-row" role="row" key={item.id}><span><strong>{item.fileName}</strong><small>{formatAttachmentSize(item.fileSize)}</small></span><span>{item.materialType ?? detail.outputName}</span><span><strong>{item.uploadedByName ?? '系统用户'}</strong><small>{new Date(item.uploadedAt).toLocaleString('zh-CN', { timeZone: BUSINESS_TIME_ZONE })}</small></span><span>V{item.versionNo ?? versions.get(item.id) ?? 1}</span><span><R22StatusBadge tone="success">{item.status}</R22StatusBadge></span><span className="r22-material-actions"><a href={`${API_BASE_URL}${item.previewUrl}`} target="_blank" rel="noreferrer">查看</a><button type="button" onClick={() => chooseReplacement(item.id)}>替换</button></span></div>)}</div> : <div className="r22-empty-compact"><strong>尚未上传材料</strong><p>选择文件并完成上传后，版本记录会显示在这里。</p></div>}
           </R22Card>
         </>
       ) : null}

@@ -5,9 +5,12 @@ import { NestFactory } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
+import { workbookBody } from './modules/workbooks/workbook-body.middleware';
+import { observeWorkbookSave } from './modules/workbooks/workbook-save-timing';
 
 import { AppModule } from './app.module';
 import { createSameOriginMutationGuard } from './common/same-origin.middleware';
+import { resolveBrowserOrigins } from './common/private-entry-origins';
 import { drainWriters } from './common/graceful-shutdown';
 import { NotificationQueueService } from './modules/queue/notification-queue.service';
 import { AttachmentStorageQuotaService } from './modules/attachments/attachment-storage-quota.service';
@@ -21,9 +24,13 @@ async function bootstrap() {
   const host = process.env.HOST?.trim() || (nodeEnv === 'production' ? '127.0.0.1' : '0.0.0.0');
   const frontendUrl = configService.get<string>('frontendUrl') ?? 'http://localhost:3000';
 
+  const browserOrigins = resolveBrowserOrigins(frontendUrl, process.env.Y9000P_PRIVATE_DOMAIN_ENABLED,
+    configService.get<string>('deploymentEnvironment') ?? 'development');
+
   app.setGlobalPrefix('api');
   app.use(cookieParser());
-  app.use(createSameOriginMutationGuard(frontendUrl));
+  app.use(createSameOriginMutationGuard(browserOrigins, browserOrigins.length > 1));
+  app.use(observeWorkbookSave(workbookBody));
   const requestDrain = new RequestDrainInterceptor();
   app.useGlobalInterceptors(requestDrain);
   app.useGlobalPipes(
@@ -38,7 +45,7 @@ async function bootstrap() {
   );
 
   app.enableCors({
-    origin: frontendUrl,
+    origin: browserOrigins,
     credentials: true,
   });
 
