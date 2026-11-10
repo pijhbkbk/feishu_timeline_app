@@ -54,6 +54,13 @@ def sha(data):
     return hashlib.sha256(data).hexdigest()
 
 
+def source_filename(value):
+    need(isinstance(value, str) and 5 < len(value.encode('utf-8')) <= 240 and value.lower().endswith('.xlsx')
+         and not any(c in value for c in '/\\') and not any(ord(c) < 32 or ord(c) == 127 for c in value),
+         'SOURCE_FILENAME')
+    return value
+
+
 def syncdir(directory):
     fd = os.open(directory, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
     try:
@@ -239,7 +246,7 @@ def check_data(prefix, env, network, evidence):
 def import_data(prefix, env, network, evidence, objects):
     actor = PLAN['actorId']
     oneoff(prefix + '-import', PLAN['images']['api'], env, network,
-           ['node', 'dist/cli/color-register-import.js', '/release/source.xlsx', '/release/source.json', actor, '--preserve-production-only'],
+           ['node', 'dist/cli/color-register-import.js', '/release/' + source_filename(PLAN['sourceFileName']), '/release/source.json', actor, '--preserve-production-only'],
            evidence, scan=True, objects=objects)
     args = ['node', 'dist/cli/workbook-production-adopt.js', PLAN['sourceSha256'], '2026-01', '2026-08', actor]
     oneoff(prefix + '-plan', PLAN['images']['api'], env, network, args + ['/evidence/plan.json'], evidence)
@@ -308,6 +315,7 @@ def main():
     manifest = json.loads(data)
     need(set(manifest) == {'files', 'plan'}, 'MANIFEST_SCOPE')
     PLAN = manifest['plan']
+    original_name = source_filename(PLAN['sourceFileName'])
     required = {'api.tar', 'web.tar', 'api-ops.tar', 'source.xlsx', 'source.json', 'table-release-data.cjs', 'table-release-model.py'}
     need(set(manifest['files']) == required and manifest['files']['source.xlsx']['sha256'] == PLAN['sourceSha256'], 'FILE_SCOPE')
     need(re.fullmatch('[A-Za-z0-9_-]{1,100}', PLAN['database']) and re.fullmatch('[A-Za-z0-9_-]{1,100}', PLAN['actorId']), 'BUSINESS_IDENTITY')
@@ -325,6 +333,11 @@ def main():
     save(OUT / 'manifest.json', manifest)
     for name, entry in manifest['files'].items():
         copy_input(name, entry)
+    if original_name != 'source.xlsx':
+        # The transported bytes remain pinned as source.xlsx. Give the importer
+        # the owner's exact basename too, so source/download metadata is intact.
+        write(inputs / original_name, read(inputs / 'source.xlsx', 10 * 1024**2), 0o440)
+        os.chown(inputs / original_name, 0, 1000)
     # Inputs are now root-owned and digest checked; user-owned paths are no longer consumed.
     M = {'__name__': 'reviewed_release_model'}
     exec(compile(read(OUT / 'inputs/table-release-model.py'), '<pinned-release-model>', 'exec'), M)

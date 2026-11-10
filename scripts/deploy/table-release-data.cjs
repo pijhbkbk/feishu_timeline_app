@@ -95,7 +95,7 @@ async function main() {
       }
     }
     assert.equal(facts.length, checked); assert(checked > 0);
-    return { sourceSha256: sha256, sourceManifestSha256: source.sha256,
+    return { sourceSha256: sha256, sourceManifestSha256: source.sha256, sourceFileName: batch.fileName,
       rawRowsEqual: rows.length, standardsEqual: manifest.baseColorCandidates.length, monthlyCellsEqual: checked,
       blankCells: facts.filter(f => f.quantity === null).length, zeroCells: facts.filter(f => f.quantity?.toString() === '0').length, batchId: batch.id };
   }, { timeout: 120000, isolationLevel: 'RepeatableRead' });

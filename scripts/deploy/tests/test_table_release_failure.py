@@ -68,5 +68,16 @@ class FailureBarrierTests(unittest.TestCase):
                 save.assert_not_called()
 
 
+class SourceFilenameTests(unittest.TestCase):
+    def test_preserves_exact_basename(self):
+        for name in ['Synthetic Source.xlsx', '合成原件.xlsx', 'source.xlsx']:
+            self.assertEqual(host.source_filename(name), name)
+
+    def test_rejects_paths_controls_and_wrong_type_before_copy(self):
+        for name in [None, [], '../source.xlsx', '/tmp/source.xlsx', 'a\\source.xlsx', 'a\n.xlsx', 'a\x7f.xlsx', 'source.json', '.xlsx', 'x' * 241 + '.xlsx', '合' * 80 + '.xlsx']:
+            with self.assertRaisesRegex(RuntimeError, 'SOURCE_FILENAME'):
+                host.source_filename(name)
+
+
 if __name__ == '__main__':
     unittest.main()
