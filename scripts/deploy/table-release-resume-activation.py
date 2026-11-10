@@ -78,18 +78,19 @@ def resume(h, manifest_digest, compose_digest):
     need(h['read'](out / 'candidate-compose.json') == candidate['compose.json'], 'CANDIDATE_CHANGED')
     state = json.loads(h['ORIGINAL']['service-identities.json'])
     h['IDS'] = {n: v['id'] for n, v in state['services'].items()}
-    need(h['ids']() == h['IDS'], 'LIVE_IDS_CHANGED')
     before = json.loads(h['read'](out / 'before.json'))
     for n, cid in h['IDS'].items():
-        live = h['inspect'](cid)
-        need(live['Id'] == cid and live['Image'] == state['services'][n]['image'], 'LIVE_IMAGE_CHANGED')
+        actual_ids = h['service_ids'](n)
         if n in h['M']['CHANGED']:
+            need(not actual_ids, 'UNEXPECTED_APPLICATION_CONTAINER')
             old = json.loads(h['read'](out / 'rollback' / (n + '-inspect.json')))
-            need(not live['State']['Running'] and not live['State']['OOMKilled']
-                 and all(live[k] == old[k] for k in ['Config', 'HostConfig', 'Mounts'])
-                 and set(live['NetworkSettings']['Networks']) == set(old['NetworkSettings']['Networks']), 'STOPPED_APP_CHANGED')
+            need(old['Id'] == cid and old['Image'] == state['services'][n]['image']
+                 and old['HostConfig']['ReadonlyRootfs'] and not old['HostConfig']['Privileged'], 'OLD_APPLICATION_EVIDENCE')
             h['OLD'][n] = old
         else:
+            need(actual_ids == [cid], 'UNRELATED_IDS_CHANGED')
+            live = h['inspect'](cid)
+            need(live['Image'] == state['services'][n]['image'], 'UNRELATED_IMAGE_CHANGED')
             need(h['summary'](live) == before[n], 'UNRELATED_SERVICE_CHANGED')
             h['OLD'][n] = live
     source = json.loads(h['read'](out / 'production-evidence/source.json', uid=1000))
@@ -101,7 +102,7 @@ def resume(h, manifest_digest, compose_digest):
     h['save'](out / 'activation-resume-started.json', {'manifestSHA256': manifest_digest, 'composeSHA256': compose_digest})
     h['RESUME_STARTED_HERE'] = True
     h['SWITCHED'], h['PAUSED'] = True, True
-    h['activate_applications'](candidate)
+    h['activate_applications'](candidate, old_shells_removed=True)
 
 
 if __name__ == '__main__':

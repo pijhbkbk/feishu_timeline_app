@@ -9,6 +9,8 @@ import unittest
 from unittest.mock import Mock, patch
 
 ROOT = Path(__file__).resolve().parents[1]
+APP_NAMES = ['api', 'web', 'timeline-proxy']
+EMPTY_COMPOSE = json.dumps({'services': {n: {} for n in APP_NAMES}}).encode()
 spec = importlib.util.spec_from_file_location('activation_resume', ROOT / 'table-release-resume-activation.py')
 resume = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(resume)
@@ -70,13 +72,50 @@ class ResumeBoundaryTests(unittest.TestCase):
         def run(args, **kwargs):
             events.append(args)
             raise RuntimeError('COMPOSE_CONFIG_FAILED')
-        with patch.object(Path, 'exists', return_value=True), patch.object(host, 'read', return_value=b'fixed'), \
+        with patch.object(Path, 'exists', return_value=True), patch.object(host, 'read', return_value=EMPTY_COMPOSE), \
              patch.object(host, 'run', side_effect=run):
             with self.assertRaisesRegex(RuntimeError, 'COMPOSE_CONFIG_FAILED'):
-                host.activate_applications({'compose.json': b'fixed'})
+                host.activate_applications({'compose.json': EMPTY_COMPOSE})
         self.assertEqual(len(events), 1)
         self.assertEqual(events[0][0], '/usr/libexec/docker/cli-plugins/docker-compose')
         self.assertEqual(events[0][-2:], ['config', '--quiet'])
+
+    def test_absent_applications_create_without_removing_or_starting_anything(self):
+        events = []
+        def run(args, **kwargs):
+            events.append(args)
+            if 'create' in args:
+                raise RuntimeError('STOP_AT_CREATE')
+            return types.SimpleNamespace(stdout=b'')
+        with patch.object(Path, 'exists', return_value=True), patch.object(host, 'read', return_value=EMPTY_COMPOSE), \
+             patch.object(host, 'M', {'CHANGED': APP_NAMES}), patch.object(host, 'service_ids', return_value=[]) as inventory, \
+             patch.object(host, 'run', side_effect=run):
+            with self.assertRaisesRegex(RuntimeError, 'STOP_AT_CREATE'):
+                host.activate_applications({'compose.json': EMPTY_COMPOSE}, old_shells_removed=True)
+        self.assertEqual({c.args[0] for c in inventory.call_args_list}, set(APP_NAMES))
+        self.assertEqual(len(events), 2)
+        self.assertEqual(events[1][events[1].index('create'):],
+                         ['create', '--no-build', '--pull', 'never', '--no-recreate', *APP_NAMES])
+
+    def test_unexpected_app_container_blocks_create_without_removal(self):
+        with patch.object(Path, 'exists', return_value=True), patch.object(host, 'read', return_value=EMPTY_COMPOSE), \
+             patch.object(host, 'M', {'CHANGED': APP_NAMES}), patch.object(host, 'service_ids', return_value=['unexpected']), \
+             patch.object(host, 'run', return_value=types.SimpleNamespace(stdout=b'')) as run:
+            with self.assertRaisesRegex(RuntimeError, 'UNEXPECTED_APPLICATION_CONTAINER'):
+                host.activate_applications({'compose.json': EMPTY_COMPOSE}, old_shells_removed=True)
+        self.assertEqual(run.call_count, 1)
+        self.assertEqual(run.call_args.args[0][-2:], ['config', '--quiet'])
+
+    def test_implicit_dependency_blocks_all_container_commands(self):
+        cases = [('depends_on', ['postgres17']), ('links', ['postgres17']), ('volumes_from', ['postgres17']),
+                 ('network_mode', 'service:postgres17'), ('ipc', 'service:postgres17'), ('pid', 'container:foreign')]
+        for key, value in cases:
+            cfg = {'services': {n: {} for n in APP_NAMES}}
+            cfg['services']['api'][key] = value
+            with self.subTest(key=key), patch.object(host, 'run') as run:
+                with self.assertRaisesRegex(RuntimeError, 'APPLICATION_DEPENDENCY'):
+                    host.activate_applications({'compose.json': json.dumps(cfg).encode()}, old_shells_removed=True)
+                run.assert_not_called()
 
 
 if __name__ == '__main__':

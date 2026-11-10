@@ -116,11 +116,15 @@ def inspect(cid):
     return json.loads(run(['docker', 'inspect', cid]).stdout)[0]
 
 
+def service_ids(name):
+    return run(['docker', 'ps', '-aq', '--no-trunc', '--filter', 'label=com.docker.compose.project=y9000p-private',
+                '--filter', 'label=com.docker.compose.service=' + name]).stdout.decode().split()
+
+
 def ids():
     found = {}
     for name in M['SERVICES']:
-        values = run(['docker', 'ps', '-aq', '--no-trunc', '--filter', 'label=com.docker.compose.project=y9000p-private',
-                      '--filter', 'label=com.docker.compose.service=' + name]).stdout.decode().split()
+        values = service_ids(name)
         need(len(values) == 1 and re.fullmatch('[a-f0-9]{64}', values[0]), 'EXACT_SERVICE_' + name)
         found[name] = values[0]
     return found
@@ -457,9 +461,15 @@ def main():
     activate_applications(candidate)
 
 
-def activate_applications(candidate):
+def activate_applications(candidate, old_shells_removed=False):
     global PAUSED, COMMITTED
     RESULT['phase'] = 'ACTIVATE_APPLICATIONS'
+    cfg = json.loads(candidate['compose.json'])
+    for name in ['api', 'web', 'timeline-proxy']:
+        service = cfg['services'][name]
+        need(not any(service.get(k) for k in ['depends_on', 'links', 'volumes_from'])
+             and not any(str(service.get(k, '')).startswith(('service:', 'container:'))
+                         for k in ['network_mode', 'ipc', 'pid']), 'APPLICATION_DEPENDENCY')
     candidate_path = OUT / 'candidate-compose.json'
     if candidate_path.exists():
         need(read(candidate_path) == candidate['compose.json'], 'CANDIDATE_COMPOSE_CHANGED')
@@ -471,10 +481,14 @@ def activate_applications(candidate):
     # container. Remove only stopped read-only shells, retaining old images,
     # configuration, complete inspect/logs and all bind mounts for recreation.
     for name in M['CHANGED']:
-        need(not inspect(IDS[name])['State']['Running'], 'OLD_CONTAINER_RUNNING')
-        run(['docker', 'rm', IDS[name]])
-    run(compose + ['create', '--no-build', '--pull', 'never', '--no-deps', 'api', 'web', 'timeline-proxy'], timeout=180)
-    cfg = json.loads(candidate['compose.json'])
+        if old_shells_removed:
+            need(not service_ids(name), 'UNEXPECTED_APPLICATION_CONTAINER')
+        else:
+            need(not inspect(IDS[name])['State']['Running'], 'OLD_CONTAINER_RUNNING')
+            run(['docker', 'rm', IDS[name]])
+    # create has no --no-deps flag. The bound candidate check above rejects dependencies,
+    # and --no-recreate protects any existing service from replacement.
+    run(compose + ['create', '--no-build', '--pull', 'never', '--no-recreate', 'api', 'web', 'timeline-proxy'], timeout=180)
     for name in M['CHANGED']:
         cid = run(compose + ['ps', '--all', '--quiet', name]).stdout.decode().strip()
         need(re.fullmatch('[a-f0-9]{64}', cid) and cid != IDS[name], 'NEW_EXACT_ID')
