@@ -26,7 +26,7 @@ export function parseVisualBatch(raw: unknown) {
       ...(i.id ? { clientId: undefined, id: identity(i.id), expectedRevision: positiveInt(i.expectedRevision, '台次版本'), expectedActivityRevision: positiveInt(i.expectedActivityRevision, '活动版本'), expectedObjectRevision: positiveInt(i.expectedObjectRevision, '车辆版本') } : { id: undefined, expectedRevision: undefined, expectedActivityRevision: undefined, expectedObjectRevision: undefined, clientId: identity(i.clientId, '草稿标识') }),
       baseId: identity(i.baseId, '基地'), date: visualDate(i.date, true)!, colorId: identity(i.colorId, '颜色'), objectCode,
       vehicleModel: textField(i.vehicleModel, '车型', 200), productionDate: visualDate(i.productionDate), scores,
-      conclusion: textField(i.conclusion, '人工结论', 4000), action: textField(i.action, '整改说明', 4000), rectify: i.rectify as boolean | null,
+      conclusion: textField(i.conclusion, '人工结论', 2000), action: textField(i.action, '整改说明', 2000), rectify: i.rectify as boolean | null,
       deadline: visualDate(i.deadline), paintUnit: textField(i.paintUnit, '涂装单位', 200), responsibleUnit: textField(i.responsibleUnit, '责任单位', 200), rectificationUnit: textField(i.rectificationUnit, '整改单位', 200),
     };
   });

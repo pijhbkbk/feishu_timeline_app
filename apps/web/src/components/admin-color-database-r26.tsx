@@ -9,9 +9,11 @@ import Link from 'next/link';
 export function AdminColorDatabaseR26() {
   const params=useSearchParams();
   const workbookId=params.get('workbook');
-  const workbookHref=workbookId?`/admin/color-database?workbook=${encodeURIComponent(workbookId)}`:'/admin/color-database';
-  if(params.get('view')==='records'||params.has('colorId'))return <><div style={{padding:'12px 24px'}}><Link href={workbookHref}>返回自由工作簿</Link></div><ColorRegisterWorkspace /></>;
-  return <FreeWorkbookWorkspace />;
+  const workbookHref=workbookId?`/admin/color-database?view=workbook&workbook=${encodeURIComponent(workbookId)}`:'/admin/color-database?view=workbook';
+  const records=params.get('view')==='records'||params.has('colorId');
+  if(!records&&(params.get('view')==='workbook'||params.has('workbook')))return <FreeWorkbookWorkspace />;
+  return <><div style={{padding:'12px 24px'}}><Link href={workbookHref}>辅助工具：自由工作簿</Link></div><ColorRegisterWorkspace /></>;
+
 }
 
 // Retained for the existing development-material archive route.

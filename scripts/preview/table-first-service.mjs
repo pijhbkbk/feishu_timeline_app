@@ -7,7 +7,7 @@ import http from 'node:http';
 const root=resolve(fileURLToPath(new URL('../..',import.meta.url)));
 const require=createRequire(await realpath(join(root,'apps/web/node_modules/vite/package.json')));
 const {build}=require('esbuild'),out=join(root,'var/table-first-service-20261110/site');await mkdir(out,{recursive:true});
-await build({entryPoints:[join(root,'apps/web/src/features/table-first-service/app.tsx')],bundle:true,platform:'browser',format:'esm',outfile:join(out,'app.js'),jsx:'automatic',define:{'process.env.NODE_ENV':'"production"','process.env.NEXT_PUBLIC_API_BASE_URL':'"/api"'},minify:true});
+await build({entryPoints:[join(root,'apps/web/src/features/table-first-service/entry.tsx')],bundle:true,platform:'browser',format:'esm',outfile:join(out,'app.js'),jsx:'automatic',define:{'process.env.NODE_ENV':'"production"','process.env.NEXT_PUBLIC_API_BASE_URL':'"/api"'},minify:true});
 await writeFile(join(out,'index.html'),'<!doctype html><html lang="zh-CN"><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>轻卡定制色 · 隔离业务预览</title><link rel="stylesheet" href="/app.css"><div id="root"></div><script type="module" src="/app.js"></script></html>');
 const identity=require(join(root,'apps/api/dist/common/build-identity.generated.js')).IMMUTABLE_BUILD_IDENTITY;
 await writeFile(join(out,'build-info.json'),JSON.stringify(identity));

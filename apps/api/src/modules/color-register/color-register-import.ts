@@ -17,7 +17,7 @@ function rowKey(sheet: string, row: number) { return `${sheet}\0${row}`; }
 
 /** Local operator CLI only. Source bytes are scanned/stored before this authenticated, atomic domain command. */
 export async function importColorWorkbook(prisma: PrismaService, actor: AuthenticatedUser, input: {
-  manifest: unknown; sha256: string; fileName: string; byteSize: number; objectKey: string; scanEvidence: Prisma.InputJsonValue;
+  manifest: unknown; sha256: string; fileName: string; byteSize: number; objectKey: string; scanEvidence: Prisma.InputJsonValue; preserveProductionOnly?: boolean;
 }) {
   assertApprovedTeamMember(actor);
   if (!/^[a-f0-9]{64}$/.test(input.sha256) || input.byteSize < 1 || input.byteSize > 10 * 1024 * 1024) throw new BadRequestException('来源文件身份或大小不正确。');
@@ -62,7 +62,7 @@ export async function importColorWorkbook(prisma: PrismaService, actor: Authenti
       sheetCount: sheets.length, rowCount: rows.size, colorCount: 0,
       metadata: jsonData({ scan: input.scanEvidence, epoch: workbook.epoch, sheetNames: [...sheetNames],
         sheets: sheets.map(sheet => Object.fromEntries(Object.entries(sheet).filter(([key]) => key !== 'rows'))), rules: manifest.rules, sectionMappings: manifest.sectionMappings,
-        originalSourceRetained: true, sourceDatesAreNotRegisterMonths: true }) } });
+        originalSourceRetained: true, sourceDatesAreNotRegisterMonths: true, productionFactsDeferred: input.preserveProductionOnly === true }) } });
     const identities = new Map<string, { id: string; baseId: string; name: string; baseCode: string }>();
     for (const candidate of candidates) {
       const source = object(candidate.source);
@@ -123,6 +123,7 @@ export async function importColorWorkbook(prisma: PrismaService, actor: Authenti
     let mappedProductionRows = 0;
     const usedGrains = new Set<string>();
     for (const [key, production] of productionByRow) {
+      if (input.preserveProductionOnly) continue;
       const matching = array(production.exactLiteralNameBaseCandidates, '产量颜色候选', 100);
       if (matching.length !== 1 || typeof matching[0] !== 'string') continue;
       const color = identities.get(matching[0]);

@@ -13,8 +13,8 @@ import type { AuthenticatedUser } from '../modules/auth/auth.types';
 import { assertApprovedTeamMember } from '../common/team-membership';
 
 async function main() {
-  const [file, manifestPath, actorId] = process.argv.slice(2);
-  if (process.argv.length !== 5 || !file || !manifestPath || !actorId || !process.env.DATABASE_URL || !process.env.OBJECT_STORAGE_LOCAL_ROOT || process.env.MALWARE_SCANNER_PROVIDER !== 'clamav') {
+  const [file, manifestPath, actorId, mode] = process.argv.slice(2);
+  if (![5, 6].includes(process.argv.length) || (mode !== undefined && mode !== '--preserve-production-only') || !file || !manifestPath || !actorId || !process.env.DATABASE_URL || !process.env.OBJECT_STORAGE_LOCAL_ROOT || process.env.MALWARE_SCANNER_PROVIDER !== 'clamav') {
     throw new Error('SOURCE_IMPORT_USAGE');
   }
   const [fileStat, manifestStat] = await Promise.all([stat(file), stat(manifestPath)]);
@@ -39,7 +39,7 @@ async function main() {
     const objectKey = `color-register/${sha256}.xlsx`;
     // Content-addressed bytes are retained on a failed DB import and are safe to retry; no business row is half committed.
     await storage.upload({ bucket: 'color-register-sources', storageKey: objectKey, buffer });
-    const result = await importColorWorkbook(prisma as PrismaService, actor, { manifest, sha256, fileName: basename(file), byteSize: buffer.length, objectKey,
+    const result = await importColorWorkbook(prisma as PrismaService, actor, { manifest, sha256, fileName: basename(file), byteSize: buffer.length, objectKey, preserveProductionOnly: mode === '--preserve-production-only',
       scanEvidence: { engine: scan.engine, engineVersion: scan.engineVersion, signatureVersion: scan.signatureVersion, scannedAt: scan.scannedAt.toISOString(), verdict: scan.verdict } });
     process.stdout.write(JSON.stringify({ ...result, sha256, sourceScan: scan.verdict }) + '\n');
   } finally { await prisma.$disconnect(); }

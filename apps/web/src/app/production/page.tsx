@@ -1,2 +1,2 @@
-import { ProductionSheetWorkspace } from '../../features/production-sheet/workspace';
-export default function ProductionPage() { return <ProductionSheetWorkspace />; }
+import { TableFirstRoute } from '../../features/table-first-service/route';
+export default function Page() { return <TableFirstRoute page="production" />; }

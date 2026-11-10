@@ -2,12 +2,12 @@ import { describe, expect, it, vi } from 'vitest';
 import type { Request, Response } from 'express';
 import { resolveBrowserOrigins } from './private-entry-origins';
 import { createSameOriginMutationGuard } from './same-origin.middleware';
-const origins = ['https://localhost:18443', 'https://timeline.all-too-well.com'];
+const origins = ['https://localhost:18443', 'https://timeline.all-too-well.com'] as const;
 function invoke(origin: unknown, host: string, method = 'POST') {
   const response = { status: vi.fn(), json: vi.fn() };
   response.status.mockReturnValue(response);
   const next = vi.fn();
-  createSameOriginMutationGuard(origins, true)({ method, headers: {origin, host} } as Request, response as unknown as Response, next);
+  createSameOriginMutationGuard([...origins], true)({ method, headers: {origin, host} } as Request, response as unknown as Response, next);
   return {response, next};
 }
 describe('explicit private browser entries', () => {
