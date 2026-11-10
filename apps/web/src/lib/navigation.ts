@@ -95,6 +95,7 @@ export function isTopNavigationItemActive(pathname: string, href: string) {
 
   if (normalizedHref === '/admin/people') return ['/admin/people', '/admin/accounts', '/admin/users', '/admin/organization'].some(path => normalizedPathname === path || normalizedPathname.startsWith(`${path}/`));
   if (normalizedHref === '/admin/color-database') return normalizedPathname === normalizedHref || normalizedPathname.startsWith(`${normalizedHref}/`);
+  if (normalizedHref === '/inspections' || normalizedHref === '/production') return normalizedPathname === normalizedHref || normalizedPathname.startsWith(`${normalizedHref}/`);
 
   if (normalizedHref === '/admin') {
     return (

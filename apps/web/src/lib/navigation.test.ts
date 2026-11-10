@@ -20,8 +20,10 @@ const routeMatrix = [
   ['/materials/upload?taskId=task-1', '工作台'],
   ['/admin/color-database', '颜色清单'],
   ['/admin/color-database/color-1', '颜色清单'],
-  ['/inspections', '周评'],
-  ['/production', '产量统计'],
+  ['/inspections', '色差评审'],
+  ['/inspections/activities', '色差评审'],
+  ['/production', '月度产量'],
+  ['/production/details', '月度产量'],
   ['/admin', null],
   ['/admin/users', '人员库'],
   ['/admin/people', '人员库'],
@@ -39,8 +41,8 @@ describe('top navigation route matrix', () => {
       '工作台',
       '颜色项目',
       '颜色清单',
-      '周评',
-      '产量统计',
+      '色差评审',
+      '月度产量',
       '人员库',
     ]);
   });
