@@ -19,6 +19,12 @@ const read = file => {
 };
 const save = value => fs.writeFileSync(output, JSON.stringify(value, null, 2), { flag: 'wx', mode: 0o600 });
 const quote = value => '"' + value.replaceAll('"', '""') + '"';
+const legacyMigrationNames = new Set([
+  '202610130001_person_profiles', '202610130002_sheet_images', '202610130003_inspection_facts',
+  '202610130004_sheet_import_source', '202610130005_person_import_identity', '202610190001_person_profile_archive',
+]);
+const migrationFailureCodes = new Set(['MIGRATION_FILE_NAMES', 'MIGRATION_HISTORY', 'OLD_MIGRATION_CHANGED',
+  'PENDING_MIGRATION_SCOPE', 'PENDING_MIGRATION_CHANGED']);
 
 async function snapshot(tx) {
   const tables = await tx.$queryRawUnsafe("SELECT tablename FROM pg_tables WHERE schemaname='public' ORDER BY tablename");
@@ -45,7 +51,8 @@ async function main() {
     if (mode === 'migrations') {
       const applied = await tx.$queryRawUnsafe('SELECT migration_name, checksum, finished_at, rolled_back_at FROM _prisma_migrations');
       const files = fs.readdirSync(input, { withFileTypes: true }).filter(d => d.isDirectory()).map(d => d.name).sort();
-      assert(files.length > 10 && files.length < 200 && files.every(n => /^\d{14}_[a-z0-9_]+$/.test(n)));
+      assert(files.length > 10 && files.length < 200 && files.every(n => /^\d{14}_[a-z0-9_]+$/.test(n)
+        || legacyMigrationNames.has(n)), 'MIGRATION_FILE_NAMES');
       const completed = new Set();
       for (const row of applied) {
         if (row.rolled_back_at) continue;
@@ -54,8 +61,8 @@ async function main() {
         completed.add(row.migration_name);
       }
       const pending = files.filter(n => !completed.has(n));
-      assert.deepEqual(pending, ['20261110040000_visual_ledger_nullable']);
-      assert.equal(crypto.createHash('sha256').update(fs.readFileSync(path.join(input, pending[0], 'migration.sql'))).digest('hex'), '6924c6acabbe2e1ea7fe22309f6f82a40802f96834f9796f67b2b451cfb4e1a1');
+      assert.deepEqual(pending, ['20261110040000_visual_ledger_nullable'], 'PENDING_MIGRATION_SCOPE');
+      assert.equal(crypto.createHash('sha256').update(fs.readFileSync(path.join(input, pending[0], 'migration.sql'))).digest('hex'), '6924c6acabbe2e1ea7fe22309f6f82a40802f96834f9796f67b2b451cfb4e1a1', 'PENDING_MIGRATION_CHANGED');
       return { unchangedAppliedMigrations: completed.size, pending };
     }
     if (mode === 'snapshot') return { tables: await snapshot(tx) };
@@ -102,4 +109,10 @@ async function main() {
   save({ at: new Date().toISOString(), mode, ...result });
   process.stdout.write('PRIVATE_DATA_CHECK_OK\n');
 }
-main().catch(() => { process.stderr.write('PRIVATE_DATA_CHECK_FAILED\n'); process.exitCode = 1; }).finally(() => db.$disconnect());
+main().catch(error => {
+  // Only fixed diagnostic codes cross the operator log boundary, never error
+  // details, SQL, connection strings, source cells, or assertion values.
+  const firstLine = typeof error?.message === 'string' ? error.message.split('\n')[0] : '';
+  process.stderr.write((migrationFailureCodes.has(firstLine) ? firstLine : 'PRIVATE_DATA_CHECK_FAILED') + '\n');
+  process.exitCode = 1;
+}).finally(() => db.$disconnect());

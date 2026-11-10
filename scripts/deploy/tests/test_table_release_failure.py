@@ -84,6 +84,14 @@ class StartedPortTests(unittest.TestCase):
                 host.check_started_ports(changed, old)
 
 
+class FailureCodeTests(unittest.TestCase):
+    def test_only_one_fixed_code_crosses_journal_boundary(self):
+        self.assertEqual(host.failure_suffix(b'MIGRATION_HISTORY\n'), '_MIGRATION_HISTORY')
+        self.assertEqual(host.failure_suffix(b'postgresql://synthetic:secret@host/db\nMIGRATION_HISTORY\n'), '_MIGRATION_HISTORY')
+        for data in [b'MIGRATION_HISTORY: secret', b'PRIVATE_UNKNOWN\n', b'MIGRATION_HISTORY\nOLD_MIGRATION_CHANGED\n']:
+            self.assertEqual(host.failure_suffix(data), '')
+
+
 class SourceFilenameTests(unittest.TestCase):
     def test_preserves_exact_basename(self):
         for name in ['Synthetic Source.xlsx', '合成原件.xlsx', 'source.xlsx']:

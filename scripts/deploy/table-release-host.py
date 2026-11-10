@@ -24,7 +24,7 @@ from urllib.parse import urlsplit, urlunsplit, quote, unquote
 ROOT = Path('/var/lib/y9000p-private-glibc-20261106')
 RUNTIME = ROOT / 'runtime-recovery'
 STAGE = Path('/home/serveradmin/table-first-release-20261110/prepared')
-OUT = ROOT / 'table-first-release-20261110-r02'
+OUT = ROOT / 'table-first-release-20261110-r03'
 GUARD = RUNTIME / 'RECOVERY_BLOCKED.json'
 CLAM = Path('/usr/local/lib/y9000p-clamav-update/y9000p_clamav_autoupdate.py')
 TIMER = 'y9000p-clamav-autoupdate.timer'
@@ -39,7 +39,7 @@ ORIGINAL = {}
 LOCK = None
 SWITCHED = False
 PAUSED = False
-PG = 'table-first-rehearsal-20261110-r02'
+PG = 'table-first-rehearsal-20261110-r03'
 NET = PG + '-net'
 CLONE_STARTED = False
 COMMITTED = False
@@ -182,8 +182,15 @@ def private_dir(name, uid=0):
     return p
 
 
+def failure_suffix(stderr):
+    allowed = {'MIGRATION_FILE_NAMES', 'MIGRATION_HISTORY', 'OLD_MIGRATION_CHANGED',
+               'PENDING_MIGRATION_SCOPE', 'PENDING_MIGRATION_CHANGED', 'PRIVATE_DATA_CHECK_FAILED'}
+    codes = [line for line in stderr.decode('utf-8', errors='replace').splitlines() if line in allowed]
+    return '_' + codes[0] if len(codes) == 1 else ''
+
+
 def oneoff(label, image, env_file, network, argv, output_dir, scan=False, objects=None):
-    name = 'table-first-' + label
+    name = OUT.name + '-' + label
     need(not run(['docker', 'ps', '-aq', '--filter', 'name=^/' + name + '$']).stdout.strip(), 'PRIOR_ONEOFF')
     args = ['docker', 'create', '--name', name, '--network', network, '--read-only', '--cap-drop', 'ALL',
             '--security-opt', 'no-new-privileges:true', '--user', '1000:1000', '--pids-limit', '128', '--memory', '768m',
@@ -209,7 +216,8 @@ def oneoff(label, image, env_file, network, argv, output_dir, scan=False, object
         raise
     write(output_dir / (label + '.log'), result.stdout + b'\n' + result.stderr)
     state = inspect(cid)['State']
-    need(result.returncode == 0 and not state['Running'] and not state['OOMKilled'] and state['ExitCode'] == 0, 'ONEOFF_FAILED_' + label)
+    need(result.returncode == 0 and not state['Running'] and not state['OOMKilled'] and state['ExitCode'] == 0,
+         'ONEOFF_FAILED_' + label + failure_suffix(result.stderr))
     # Retain stopped diagnostic containers; no volumes or history are removed.
     return cid
 
@@ -412,7 +420,8 @@ def main():
            ['node', '/release/table-release-data.cjs', 'snapshot', 'unused', '/evidence/before.json'], rehearsal)
     oneoff('rehearsal-migration-scope', PLAN['images']['api-ops'], clone_file, NET,
            ['node', '/release/table-release-data.cjs', 'migrations', '/app/prisma/migrations', '/evidence/migration-scope.json'], rehearsal)
-    oneoff('rehearsal-migrate', PLAN['images']['api-ops'], clone_file, NET, ['prisma', 'migrate', 'deploy', '--schema', '/app/prisma/schema.prisma'], rehearsal)
+    oneoff('rehearsal-migrate', PLAN['images']['api-ops'], clone_file, NET,
+           ['/app/node_modules/.bin/prisma', 'migrate', 'deploy', '--schema', '/app/prisma/schema.prisma'], rehearsal)
     RESULT['rehearsalSource'] = import_data('rehearsal', clone_file, NET, rehearsal, objects)
     oneoff('rehearsal-compare', PLAN['images']['api'], clone_file, NET,
            ['node', '/release/table-release-data.cjs', 'compare', '/evidence/before.json', '/evidence/preserved.json'], rehearsal)
@@ -439,7 +448,7 @@ def main():
     oneoff('production-migration-scope', PLAN['images']['api-ops'], production_env, 'y9000p-private_data',
            ['node', '/release/table-release-data.cjs', 'migrations', '/app/prisma/migrations', '/evidence/migration-scope.json'], live)
     oneoff('production-migrate', PLAN['images']['api-ops'], production_env, 'y9000p-private_data',
-           ['prisma', 'migrate', 'deploy', '--schema', '/app/prisma/schema.prisma'], live)
+           ['/app/node_modules/.bin/prisma', 'migrate', 'deploy', '--schema', '/app/prisma/schema.prisma'], live)
     RESULT['productionSource'] = import_data('production', production_env, 'y9000p-private_data', live, ROOT / 'objects')
     oneoff('production-compare', PLAN['images']['api'], production_env, 'y9000p-private_data',
            ['node', '/release/table-release-data.cjs', 'compare', '/evidence/before.json', '/evidence/preserved.json'], live)

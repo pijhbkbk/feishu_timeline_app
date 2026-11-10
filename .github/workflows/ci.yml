@@ -61,6 +61,7 @@ jobs:
         run: |
           pnpm test
           node --test scripts/deploy/export-ci-images.test.mjs
+          node --test scripts/deploy/tests/table-release-data.test.cjs
           PYTHONDONTWRITEBYTECODE=1 timeout 120s python3 -m unittest discover -s scripts/deploy/gce-host -p 'test_*.py' -v
           PYTHONDONTWRITEBYTECODE=1 timeout 120s python3 -m unittest discover -s scripts/deploy/tests -p 'test_*.py' -v
 
