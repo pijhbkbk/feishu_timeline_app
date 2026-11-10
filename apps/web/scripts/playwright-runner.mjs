@@ -59,7 +59,9 @@ async function main() {
   }
 
   log('启动本地基础设施。');
-  await runPnpm('infra', ['infra:up']);
+  // Compose "started" precedes PostgreSQL's first-run initialization. Migrations
+  // require the existing health checks, with a bounded failure, not a blind sleep.
+  await runPnpm('infra', ['infra:up', '--wait', '--wait-timeout', '120']);
 
   log('执行 Prisma migrate deploy。');
   await runPnpm('migrate', [
